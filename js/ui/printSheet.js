@@ -42,7 +42,8 @@ import { retenirRepli } from './repli.js';
 import { fenetresDetachables } from './debugBar.js';
 import { paramSchemaOf } from '../data/catalog.js';
 import {
-    ajusterAuCarre, insecable, cheminSerpentin, boiteDe as boiteCaseDomino, cellulesDe
+    ajusterAuCarre, ajusterAuRectangle, insecable, cheminSerpentin,
+    boiteDe as boiteCaseDomino, cellulesDe
 } from '../core/dominos.js';
 import { marqueSvg as marqueSvgRelier } from '../core/relier.js';
 import { caseCentrale } from '../core/quadrillageSvg.js';
@@ -10193,14 +10194,72 @@ function dessinerCheminPdf(doc, item, slot, solution) {
 // deux lignes : en une colonne ils prennent la moitié de la page, en trois ils
 // se coupent au milieu d'un mot.
 
-/** Le plan de 100 × 100 du noyau, posé dans le bloc — et la place de la liste. */
+/**
+ * LA PLANCHE DE VIGNETTES, quand on l'a demandée — la page 3 de la fiche de Rémy.
+ *
+ * ELLE SE CALCULE À REBOURS DU PLAN, et c'est l'inverse de tout le reste de ce
+ * fichier. Une vignette doit entrer DANS la case du plan — c'est là qu'on la
+ * colle —, donc sa taille est celle des cases, donc elle dépend de la taille du
+ * plan… qui dépend de la place que prend la planche. On essaie donc plusieurs
+ * hauteurs de plan en descendant et l'on garde la plus grande où les treize
+ * cartes tiennent dessous. Six essais suffisent : au-delà, on grignote des
+ * dixièmes de millimètre qu'aucune photocopieuse ne rend.
+ *
+ * LES CARTES SE TOUCHENT. Rémy, à propos des dominos : « ce serait bien que les
+ * dominos à découper soient collés car sinon c'est long à découper. » Treize
+ * cartes séparées font cinquante-deux coups de ciseau ; collées, elles
+ * partagent leurs traits et la planche se débite en huit coups droits.
+ */
+function planVignettes(b, m, RAPPORT) {
+    const n = (m.vignettes || []).length;
+    const TITRE = 4.2;
+    let dernier = null;
+    // ON PART DU PLUS GRAND PLAN POSSIBLE et l'on descend : les cartes ont la
+    // taille des cases, donc un plan plus grand fait des cartes plus lisibles,
+    // et c'est la seule chose qui compte ici. Le premier essai qui laisse la
+    // place à la planche gagne.
+    for (const part of [0.84, 0.80, 0.76, 0.72, 0.68, 0.64, 0.58, 0.52]) {
+        const hUtile = b.h * part;
+        const wUtile = Math.min(b.w, hUtile * RAPPORT);
+        const h2 = wUtile / RAPPORT;
+        const condW = wUtile * (COND_L_Q / PLAN_L_Q);
+        const condH = h2 * (COND_H_Q / PLAN_H_Q);
+        // DES RANGÉES ÉGALES PLUTÔT QU'UNE RANGÉE PLEINE ET UN RESTE. Neuf
+        // cartes puis quatre laisse un décrochement en escalier au milieu de la
+        // planche : on coupe droit dans le vide, et le dernier trait de ciseau
+        // n'a plus rien à suivre. Sept et six se coupent d'un seul trait.
+        const maxCols = Math.max(1, Math.floor(b.w / condW));
+        const rangs = Math.ceil(n / maxCols);
+        const cols = Math.ceil(n / rangs);
+        const besoin = TITRE + rangs * condH;
+        const dispo = b.h - h2 - 3;
+        dernier = { hUtile: h2, wUtile, condW, condH, cols, rangs, besoin, TITRE };
+        if (besoin <= dispo) return dernier;
+    }
+    return dernier;
+}
+
+/** Les treize cartes mesurées d'un coup, rangées par clé de flèche. */
+function mesuresVignettes(m, planche) {
+    const v = m.vignettes || [];
+    const mesures = mesurerVignettes(v.map(x => x.texte), planche.condW, planche.condH);
+    const out = {};
+    v.forEach((x, i) => { out[x.cle] = mesures[i]; });
+    return out;
+}
+
+/** Le plan de 100 × 140 du noyau, posé dans le bloc — et la place de la liste. */
 function geoOrganigramme(item, slot) {
     const b = boiteDe(slot);
     const m = item.meta;
+    const RAPPORT_PLAN = PLAN_L_Q / PLAN_H_Q;
 
     // La liste d'abord : c'est elle qui a une hauteur imposée par son texte.
+    // Avec des vignettes, c'est la PLANCHE qui commande, et elle se calcule à
+    // rebours du plan (voir `planVignettes`).
+    const planche = m.vignettes ? planVignettes(b, m, RAPPORT_PLAN) : null;
     const lignes = Math.ceil(m.liste.length / 2);
-    const hListe = Math.min(b.h * 0.34, lignes * 4.6 + 4);
+    const hListe = planche ? planche.besoin : Math.min(b.h * 0.34, lignes * 4.6 + 4);
     const hPlan = b.h - hListe - 2;
 
     // LE PLAN GARDE LES PROPORTIONS DE CELUI DU NOYAU, et c'est la règle du
@@ -10211,9 +10270,14 @@ function geoOrganigramme(item, slot) {
     // qui alternent figures et conditions, du quadrilatère tout en haut au
     // carré tout en bas. C'est la seule forme où les treize conditions ont
     // chacune leur boîte — et c'est celle qu'il a dessinée à la main.
+    // AVEC UNE PLANCHE, C'EST ELLE QUI A FIXÉ LA TAILLE DU PLAN — on la reprend
+    // telle quelle plutôt que de la recalculer. Recalculer donnait un plan un
+    // cheveu plus grand que celui sur lequel la planche s'était accordée, donc
+    // des cases un cheveu plus grandes que les cartes : invisible à l'œil, et
+    // faux là où c'est gênant — une carte doit entrer dans sa case, exactement.
     const RAPPORT = PLAN_L_Q / PLAN_H_Q;        // largeur / hauteur
-    const wUtile = Math.min(b.w, hPlan * RAPPORT);
-    const hUtile = wUtile / RAPPORT;
+    const wUtile = planche ? planche.wUtile : Math.min(b.w, hPlan * RAPPORT);
+    const hUtile = planche ? planche.hUtile : wUtile / RAPPORT;
     const x0 = b.x + (b.w - wUtile) / 2;
     const y0 = b.y;
 
@@ -10246,7 +10310,20 @@ function geoOrganigramme(item, slot) {
         // unités de blanc entre deux.
         lettreW: Math.max(4.5, wUtile * 0.035),
         listeY: y0 + hUtile + 3,
-        listeH: hListe
+        listeH: hListe,
+        // LES MESURES, CALCULÉES UNE FOIS ET RANGÉES PAR CLÉ DE FLÈCHE. La même
+        // carte est dessinée à deux endroits — sur la planche, et dans sa case
+        // sur la feuille de solutions — et elle doit y être écrite à
+        // l'identique : c'est ce qui permet de vérifier qu'on l'a bien collée
+        // au bon endroit.
+        mesures: planche ? mesuresVignettes(m, planche) : null,
+        // LA PLANCHE, avec l'origine de sa grille : centrée sous le plan, parce
+        // qu'un bloc de cartes collé au bord gauche se lit comme un débord.
+        planche: planche && {
+            ...planche,
+            x: b.x + Math.max(0, (b.w - planche.cols * planche.condW) / 2),
+            y: y0 + hUtile + 3 + planche.TITRE
+        }
     };
 }
 
@@ -10597,15 +10674,33 @@ function organigrammePreviewHtml(item, slot, k, solution) {
         const w = g.condW, h = g.condH;
         // LA COULEUR DIT LA FAMILLE — l'idée de Rémy, reprise telle quelle :
         // bleu les côtés, rouge les diagonales, mauve les deux raccourcis.
-        const teinte = TEINTE_COND[f.famille] || '#ffffff';
+        //
+        // SAUF QUAND LA VIGNETTE LA PORTE. En mode découpage, c'est la CARTE
+        // qui est teintée ; teinter aussi la case du plan donnerait la réponse
+        // — il suffirait d'assortir les couleurs sans lire une seule phrase.
+        const teinte = g.planche ? '#ffffff' : (TEINTE_COND[f.famille] || '#ffffff');
         out += `<rect x="${T(e.x - w / 2)}" y="${T(e.y - h / 2)}" width="${T(w)}" height="${T(h)}"
             rx="${T(0.8)}" fill="${teinte}" stroke="#1a202c" stroke-width="${(0.3 * k).toFixed(2)}"/>`;
         if (solution) {
-            out += `<text x="${T(e.x)}" y="${T(e.y)}" text-anchor="middle"
-                dominant-baseline="central" font-size="${T(h * 0.7)}" font-weight="700"
-                fill="#1a202c" font-family="Helvetica, Arial, sans-serif">${g.m.parCle[cleFlecheQ(f)]}</text>`;
+            if (g.planche) {
+                dessinerVignetteSvg(g.mesures[cleFlecheQ(f)], f.famille,
+                    e.x - w / 2, e.y - h / 2, w, h, k, (html) => { out += html; });
+            } else {
+                out += `<text x="${T(e.x)}" y="${T(e.y)}" text-anchor="middle"
+                    dominant-baseline="central" font-size="${T(h * 0.7)}" font-weight="700"
+                    fill="#1a202c" font-family="Helvetica, Arial, sans-serif">${g.m.parCle[cleFlecheQ(f)]}</text>`;
+            }
         }
     });
+
+    if (g.planche) {
+        // LA PLANCHE : on ne la répète pas sur la feuille de solutions. Le
+        // corrigé montre le plan REMPLI ; treize cartes redessinées dessous ne
+        // servent qu'à faire une deuxième page à photocopier par erreur.
+        if (!solution) out += plancheVignettesSvg(g, k);
+        return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+            overflow:visible; pointer-events:none">${out}</svg>`;
+    }
 
     // La liste, sur deux colonnes.
     const colW = g.b.w / 2;
@@ -10621,6 +10716,116 @@ function organigrammePreviewHtml(item, slot, k, solution) {
 
     return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
         overflow:visible; pointer-events:none">${out}</svg>`;
+}
+
+/**
+ * UNE VIGNETTE, EN SVG — teinte, cadre, et son texte replié.
+ *
+ * Le repli vient du noyau (`ajusterAuRectangle`), pas du navigateur : c'est ce
+ * qui fait que l'aperçu coupe la phrase aux MÊMES endroits que le PDF. Un
+ * aperçu qui replie autrement affiche trois lignes là où la feuille en aura
+ * quatre, et cesse de dire la vérité sur ce qu'on va imprimer.
+ */
+/**
+ * TOUTES LES CARTES À LA MÊME TAILLE — parce qu'une planche panachée se lit mal.
+ *
+ * Chaque carte prise à part accepterait sa plus grande police : « 4 côtés
+ * égaux » en gros, « diagonales perpendiculaires » en tout petit. Le résultat
+ * est une planche où la taille du texte semble vouloir dire quelque chose
+ * — plus gros, plus important — alors qu'elle ne dit que la longueur du mot.
+ * On prend donc la plus petite des tailles, et on la donne à toutes.
+ *
+ * AVEC UN PLANCHER, ET UNE EXCEPTION. Un seul mot très long — ici
+ * « perpendiculaires » — tire toute la planche vers le bas : il ne se coupe
+ * pas, il doit tenir sur une ligne, et il impose sa taille aux douze autres.
+ * On refuse de descendre en dessous du plancher pour lui : les douze restent
+ * lisibles, et lui seul s'écrit un cran plus petit. La différence ne se
+ * remarque pas ; la planche entière écrite en corps 5, si.
+ */
+const PLANCHER_VIGNETTE = 2.4;   // mm d'œil — en dessous, on ne lit plus de loin
+
+function mesurerVignettes(textes, w, h) {
+    const util = { w: w - 1.6, h: h - 1.6 };
+    const seules = textes.map(t => ajusterAuRectangle(t, util.w, util.h, { max: 4, min: 1.5 }));
+    const commune = Math.max(PLANCHER_VIGNETTE, Math.min(...seules.map(m => m.taille)));
+    return textes.map((t, i) => (seules[i].taille >= commune
+        ? ajusterAuRectangle(t, util.w, util.h, { max: commune, min: commune })
+        : seules[i]));
+}
+
+/**
+ * UNE VIGNETTE, AU PDF — le pendant exact de `dessinerVignetteSvg`.
+ *
+ * LA TAILLE DE POLICE PASSE DES MILLIMÈTRES AUX POINTS. `ajusterAuRectangle`
+ * raisonne dans l'unité qu'on lui donne — ici le millimètre, comme toute cette
+ * feuille —, et jsPDF veut des points typographiques. Un point vaut 0,352 78 mm,
+ * d'où le facteur. Sans lui, une carte calculée pour 4 mm d'œil recevait une
+ * police de 4 points, soit un tiers de la taille voulue : le texte tenait, et
+ * ne se lisait plus.
+ */
+function dessinerVignettePdf(doc, mesure, famille, x, y, w, h) {
+    const { taille, lignes } = mesure;
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.3);
+    doc.setFillColor(...(RVB_COND[famille] || [255, 255, 255]));
+    doc.roundedRect(x, y, w, h, 0.8, 0.8, 'FD');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(taille / 0.352778);
+    doc.setTextColor(...ENCRE.texte);
+    const total = lignes.length * taille * 1.16;
+    lignes.forEach((ligne, i) => {
+        doc.text(pourPdf(ligne), x + w / 2, y + h / 2 - total / 2 + (i + 0.5) * taille * 1.16,
+            { align: 'center', baseline: 'middle' });
+    });
+}
+
+/** Les treize cartes, collées bord à bord, sous leur intertitre. */
+function dessinerPlancheVignettes(doc, g) {
+    const p = g.planche;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.2);
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf('À découper et à coller dans les cases'), g.b.x, g.listeY + 2.6);
+    (g.m.vignettes || []).forEach((v, i) => {
+        dessinerVignettePdf(doc, g.mesures[v.cle], v.famille,
+            p.x + (i % p.cols) * p.condW,
+            p.y + Math.floor(i / p.cols) * p.condH,
+            p.condW, p.condH);
+    });
+}
+
+const echapperXml = (t) => String(t == null ? '' : t)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function dessinerVignetteSvg(mesure, famille, x, y, w, h, k, ecrire) {
+    const T = (v) => (v * k).toFixed(2);
+    const { taille, lignes } = mesure;
+    ecrire(`<rect x="${T(x)}" y="${T(y)}" width="${T(w)}" height="${T(h)}" rx="${T(0.8)}"
+        fill="${TEINTE_COND[famille] || '#ffffff'}" stroke="#1a202c"
+        stroke-width="${(0.3 * k).toFixed(2)}"/>`);
+    const total = lignes.length * taille * 1.16;
+    lignes.forEach((ligne, i) => {
+        const yy = y + h / 2 - total / 2 + (i + 0.5) * taille * 1.16;
+        ecrire(`<text x="${T(x + w / 2)}" y="${T(yy)}" text-anchor="middle"
+            dominant-baseline="central" font-size="${T(taille)}" fill="#1a202c"
+            font-family="Helvetica, Arial, sans-serif">${echapperXml(ligne)}</text>`);
+    });
+}
+
+/** Les treize cartes, collées bord à bord, sous leur intertitre. */
+function plancheVignettesSvg(g, k) {
+    const p = g.planche;
+    const T = (v) => (v * k).toFixed(2);
+    let out = `<text x="${T(g.b.x)}" y="${T(g.listeY + 2.6)}" font-size="${T(2.9)}"
+        font-weight="700" fill="#2d3748" font-family="Helvetica, Arial, sans-serif"
+        >À découper et à coller dans les cases</text>`;
+    (g.m.vignettes || []).forEach((v, i) => {
+        const x = p.x + (i % p.cols) * p.condW;
+        const y = p.y + Math.floor(i / p.cols) * p.condH;
+        dessinerVignetteSvg(g.mesures[v.cle], v.famille, x, y, p.condW, p.condH, k,
+            (html) => { out += html; });
+    });
+    return out;
 }
 
 function dessinerOrganigrammePdf(doc, item, slot, solution) {
@@ -10674,6 +10879,23 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
     FLECHES_Q.forEach(f => {
         const e = g.P(posEtiquetteQ(f));
         const w = g.condW, h = g.condH;
+        if (g.planche) {
+            // EN MODE DÉCOUPAGE, LA CASE DU PLAN RESTE BLANCHE : c'est la CARTE
+            // qui porte la couleur de sa famille. Teinter les deux reviendrait
+            // à donner la réponse — il suffirait d'assortir les couleurs sans
+            // lire une seule phrase.
+            if (solution) {
+                dessinerVignettePdf(doc, g.mesures[cleFlecheQ(f)], f.famille,
+                    e.x - w / 2, e.y - h / 2, w, h);
+            }
+            else {
+                doc.setDrawColor(...ENCRE.trait);
+                doc.setLineWidth(0.3);
+                doc.setFillColor(255, 255, 255);
+                doc.roundedRect(e.x - w / 2, e.y - h / 2, w, h, 0.8, 0.8, 'FD');
+            }
+            return;
+        }
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.3);
         const teinte = RVB_COND[f.famille] || [255, 255, 255];
@@ -10686,6 +10908,12 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
             doc.text(g.m.parCle[cleFlecheQ(f)], e.x, e.y, { align: 'center', baseline: 'middle' });
         }
     });
+
+    if (g.planche) {
+        // La planche ne se répète pas sur la feuille de solutions.
+        if (!solution) dessinerPlancheVignettes(doc, g);
+        return;
+    }
 
     // La liste, sur deux colonnes.
     const colW = g.b.w / 2;
@@ -11403,13 +11631,14 @@ export const RENDUS = {
         // ce sont les lettres de la liste : deux voisins ne se recopient pas.
         disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
         parLigneDefaut: 1,
-        // Plus haut que large : c'est la forme de l'organigramme, et la liste
-        // des conditions vient encore sous lui.
-        // COUCHÉ, ET LA LISTE DES CONDITIONS SOUS LUI. Le plan fait 1,75 fois
-        // plus large que haut — c'est la forme de l'organigramme depuis qu'il se
-        // lit de gauche à droite —, et les neuf énoncés viennent en dessous sur
-        // deux colonnes.
-        proportions: { w: 1.35, h: 1 },
+        // DEBOUT, ET C'EST LA FORME DE LA FICHE DE RÉMY. Le plan fait 100 sur
+        // 140 — huit rangées empilées, du quadrilatère tout en haut au carré
+        // tout en bas — et la liste (ou la planche de vignettes) vient dessous.
+        // Le commentaire précédent parlait encore d'un organigramme couché à
+        // 1,75 : il datait d'avant la reprise de sa fiche, et laissait la
+        // feuille sortir en paysage, où le plan se tassait à 84 mm de large.
+        portrait: true,
+        proportions: { w: 1, h: 1.3 },
         titreAGauche: true
     },
 
@@ -12899,6 +13128,19 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         return;
     }
     if (!generator && !atelier) return;
+
+    // UNE FICHE PEUT ÊTRE FAITE POUR UNE ORIENTATION, et le dire.
+    //
+    // L'orientation est d'ordinaire un choix du professeur, retenu d'une
+    // feuille à l'autre. Mais certaines planches n'existent que dans un sens :
+    // l'organigramme des quadrilatères est PORTRAIT — huit rangées empilées du
+    // quadrilatère au carré — et sorti en paysage il se tasse jusqu'à ce que
+    // ses cases ne puissent plus rien recevoir. Mesuré : 84 mm de large sur une
+    // page de 279, et des cases de 13 mm où l'on doit écrire « Qui a ses
+    // diagonales perpendiculaires ». La fiche impose donc son sens à
+    // l'ouverture ; le sélecteur reste là, et le professeur peut toujours en
+    // décider autrement.
+    if (rendu.portrait && !ficheEnPortrait()) reglerFichePortrait(true);
 
     const modal = assurerModale();
     const apercu = modal.querySelector('#fp-apercu');

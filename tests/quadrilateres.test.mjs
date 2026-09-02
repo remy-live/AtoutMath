@@ -16,6 +16,7 @@ import {
     vignetteDe
 } from '../js/core/quadrilateres.js';
 import { PROPRIETES, proprieteDe } from '../js/core/quadriMorph.js';
+import { ajusterAuRectangle, largeurTexte } from '../js/core/dominos.js';
 
 test('LA HIÉRARCHIE EST DANS LE BON SENS', () => {
     // C'est la question qui départage ceux qui ont compris : « est-ce qu'un
@@ -579,5 +580,93 @@ test('LA CARTE POSÉE PORTE LES DEUX ÉCRITURES', () => {
         // identique à elle-même sur deux flèches différentes.
         e.bonnes.forEach(b => assert.equal(verifierEtape(e,
             e.cartes.find(c => c.texte === b)).ok, true));
+    });
+});
+
+
+// --- LES VIGNETTES À DÉCOUPER -----------------------------------------------
+//
+// Rémy : « pour l'organigramme, j'aimerais aussi inclure les vignettes de
+// propriétés. On part du quadrilatère et pour aller au parallélogramme, on
+// glisse la vignette côtés opposés parallèles. » C'est la troisième page de sa
+// fiche : le plan vide, puis le plan rempli, puis la planche à découper.
+
+test('UNE CARTE PAR FLÈCHE, ET NON PAR ÉNONCÉ', () => {
+    // Neuf énoncés, treize flèches : quatre conditions servent deux fois. Sur
+    // le papier des lettres, une même lettre se reporte à deux endroits. Avec
+    // des cartes, on ne peut pas coller la même carte deux fois — il en faut
+    // donc treize, dont quatre paires de jumelles.
+    const gen = getGenerator('geo.quadrilateres.organigramme');
+    const item = gen.generate({ vignettes: true }, { rng: makeRng(11), index: 0 });
+    assert.equal(item.meta.vignettes.length, FLECHES.length);
+    const cles = item.meta.vignettes.map(v => v.cle);
+    assert.equal(new Set(cles).size, FLECHES.length, 'deux cartes pour la même flèche');
+    // Et les jumelles existent bien : moins de textes distincts que de cartes.
+    const textes = new Set(item.meta.vignettes.map(v => v.texte));
+    assert.ok(textes.size < FLECHES.length, 'aucune condition ne sert deux fois');
+});
+
+test('la carte qu\'on découpe dit ce que dit la carte qu\'on déplace', () => {
+    // Le libellé court est celui des cartes de l'écran (`court`, partagé avec
+    // quadriMorph) : c'est le même vocabulaire des deux côtés, sinon ce sont
+    // deux leçons.
+    const gen = getGenerator('geo.quadrilateres.organigramme');
+    const item = gen.generate({ vignettes: true }, { rng: makeRng(4), index: 0 });
+    item.meta.vignettes.forEach(v => {
+        const f = flecheDe(v.cle);
+        assert.ok(f, `clé inconnue : ${v.cle}`);
+        assert.equal(v.texte, f.court);
+        assert.equal(v.famille, f.famille);
+    });
+});
+
+test('les cartes sont MÉLANGÉES, sinon l\'exercice se fait sans lire', () => {
+    // Rangées dans l'ordre du plan, la première carte irait dans la première
+    // case. On vérifie qu'au moins un tirage sur dix dérange l'ordre — et non
+    // qu'un tirage donné le dérange, ce qui serait un test du hasard.
+    const gen = getGenerator('geo.quadrilateres.organigramme');
+    const ordre = FLECHES.map(cleFleche).join('|');
+    let derangees = 0;
+    for (let s = 1; s <= 10; s++) {
+        const item = gen.generate({ vignettes: true }, { rng: makeRng(s), index: 0 });
+        if (item.meta.vignettes.map(v => v.cle).join('|') !== ordre) derangees++;
+    }
+    assert.equal(derangees, 10, 'la planche sort dans l\'ordre du plan');
+});
+
+test('sans le réglage, la feuille reste celle des lettres', () => {
+    const gen = getGenerator('geo.quadrilateres.organigramme');
+    const item = gen.generate({}, { rng: makeRng(3), index: 0 });
+    assert.equal(item.meta.vignettes, null);
+    assert.equal(item.meta.liste.length, 9);
+    assert.match(item.prompt.papier, /Reporte la lettre/);
+});
+
+test('LA CONSIGNE DIT LE GESTE QU\'ON DEMANDE', () => {
+    const gen = getGenerator('geo.quadrilateres.organigramme');
+    const avec = gen.generate({ vignettes: true }, { rng: makeRng(3), index: 0 });
+    assert.match(avec.prompt.papier, /Découpe/);
+    assert.doesNotMatch(avec.prompt.papier, /lettre/);
+    // Sans les noms, on demande d'abord de nommer les cinq figures.
+    const nu = gen.generate({ vignettes: true, noms: false }, { rng: makeRng(3), index: 0 });
+    assert.match(nu.prompt.papier, /nom des cinq figures/);
+});
+
+test('TOUTES LES CARTES TIENNENT DANS UNE CASE DU PLAN', () => {
+    // La mesure est celle de la fiche : une case de 23 × 18,7 mm, telle que la
+    // calcule `planVignettes` sur une page A4 portrait. Une carte qui déborde
+    // ne se colle pas — et l'on ne s'en aperçoit qu'une fois photocopié.
+    const gen = getGenerator('geo.quadrilateres.organigramme');
+    const item = gen.generate({ vignettes: true }, { rng: makeRng(7), index: 0 });
+    item.meta.vignettes.forEach(v => {
+        const m = ajusterAuRectangle(v.texte, 23 - 1.6, 18.69 - 1.6, { max: 4, min: 1.5 });
+        assert.ok(m.lignes.length >= 1, v.texte);
+        // Le repli doit avoir eu lieu : une carte d'un seul mot très long
+        // signalerait que la mesure a renoncé et laissé déborder.
+        const plusLong = Math.max(...m.lignes.map(l => largeurTexte(l)));
+        assert.ok(plusLong * m.taille <= 23 - 1.6 + 0.01,
+            `« ${v.texte} » déborde : ${(plusLong * m.taille).toFixed(1)} mm`);
+        assert.ok(m.lignes.length * m.taille * 1.16 <= 18.69 - 1.6 + 0.01,
+            `« ${v.texte} » déborde en hauteur`);
     });
 });

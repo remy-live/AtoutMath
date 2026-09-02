@@ -8,7 +8,8 @@ import {
     construireChaine, cheminSerpentin, longueurQuiPave, cellulesDe, boiteDe, plateauVide, casePiece,
     poserEnCase, retirerDeCase, retournerCase, plateauFini, verifierPlateau,
     prochaineCase, seMarient, demiDe, direJoint, reserveMelangee, direChaine,
-    insecable, ajusterAuCarre, largeurTexte, LIMITE_INSECABLE, MIN_COUPLES
+    insecable, ajusterAuCarre, ajusterAuRectangle, largeurTexte,
+    LIMITE_INSECABLE, MIN_COUPLES
 } from '../js/core/dominos.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -362,4 +363,47 @@ test('un calcul court ne se coupe pas en deux lignes', () => {
     // Et une espace ne coûte pas un chiffre : « 10 × 10 » doit rester plus
     // grand que « 1010101 », qui occupe vraiment sept caractères pleins.
     assert.ok(ajusterAuCarre(insecable('10 × 10')) > ajusterAuCarre('1010101'));
+});
+
+
+// --- LE MÊME CALCUL POUR UN RECTANGLE ---------------------------------------
+//
+// Les vignettes de l'organigramme des quadrilatères sont des cartes plus larges
+// que hautes. Elles ont besoin de la même chose que les dominos — la plus
+// grande police où le texte tienne — et, en plus, DES LIGNES : c'est ce qui
+// permet à l'aperçu à l'écran et au PDF de couper aux mêmes endroits. Deux
+// découpages différents donnent deux hauteurs, et l'aperçu cesse de dire la
+// vérité sur la feuille qu'on va imprimer.
+
+test('le texte tient dans le rectangle qu\'on lui donne', () => {
+    for (const t of ['côtés opposés parallèles', 'un angle droit',
+        'diagonales perpendiculaires', '2 côtés consécutifs égaux']) {
+        const { taille, lignes } = ajusterAuRectangle(t, 21.4, 17.1, { max: 4, min: 1.5 });
+        const plusLarge = Math.max(...lignes.map(largeurTexte));
+        assert.ok(plusLarge * taille <= 21.4 + 1e-9, `« ${t} » déborde en largeur`);
+        assert.ok(lignes.length * taille * 1.16 <= 17.1 + 1e-9, `« ${t} » déborde en hauteur`);
+        // Rien ne se perd au repli : les mots sont tous là, dans l'ordre.
+        assert.equal(lignes.join(' '), t);
+    }
+});
+
+test('une boîte plus grande accepte une plus grosse police', () => {
+    const petit = ajusterAuRectangle('un angle droit', 12, 10, { max: 6, min: 1 });
+    const grand = ajusterAuRectangle('un angle droit', 40, 30, { max: 6, min: 1 });
+    assert.ok(grand.taille > petit.taille);
+    assert.ok(grand.lignes.length <= petit.lignes.length);
+});
+
+test('un texte vide ne fabrique pas de ligne', () => {
+    assert.deepEqual(ajusterAuRectangle('', 20, 20).lignes, []);
+    assert.deepEqual(ajusterAuRectangle(null, 20, 20).lignes, []);
+});
+
+test('MÊME MESURE, MÊME DÉCOUPE — l\'aperçu et le PDF ne divergent pas', () => {
+    // Le calcul est PUR : deux appels identiques rendent la même chose. C'est
+    // toute la garantie qu'on cherche ici — l'aperçu et le PDF appellent la
+    // même fonction avec les mêmes millimètres.
+    const a = ajusterAuRectangle('diagonales : même milieu', 21.4, 17.1, { max: 4, min: 1.5 });
+    const b = ajusterAuRectangle('diagonales : même milieu', 21.4, 17.1, { max: 4, min: 1.5 });
+    assert.deepEqual(a, b);
 });

@@ -30,6 +30,26 @@ export const organigrammeQuadriGenerator = {
     answerKinds: ['figure'],
     params: [
         {
+            // LES VIGNETTES À DÉCOUPER — la troisième page de la fiche de Rémy.
+            //
+            // « Pour l'organigramme, j'aimerais aussi inclure les vignettes de
+            // propriétés. On part du quadrilatère et pour aller au
+            // parallélogramme, on glisse la vignette côtés opposés parallèles ;
+            // on peut faire bloc par bloc. »
+            //
+            // C'EST UN AUTRE GESTE, PAS UN AUTRE EXERCICE. Reporter une lettre
+            // se fait au stylo, seul, en dix minutes ; glisser une carte se fait
+            // à deux, on la retourne, on l'essaie ailleurs, on discute. Le
+            // second coûte une heure de ciseaux — c'est pourquoi il reste un
+            // choix, et non le défaut.
+            id: 'vignettes', type: 'checkbox', label: 'Des vignettes à découper',
+            default: false,
+            aide: 'La liste des lettres devient une planche de cartes à découper, '
+                + 'une par flèche, à coller dans les cases du plan. Les cartes se '
+                + 'touchent : quelques coups de ciseau droits suffisent à débiter la '
+                + 'planche.'
+        },
+        {
             id: 'noms', type: 'checkbox', label: 'Donner le nom des figures',
             default: true,
             aide: 'Décoché, les cinq cases sont vides elles aussi : l\'élève doit les nommer '
@@ -68,12 +88,45 @@ export const organigrammeQuadriGenerator = {
 
         const avecNoms = p.noms !== false;
         const doublons = liste.filter(l => l.cles.length > 1).length;
-        const consigne = (avecNoms
-            ? 'Reporte la lettre de chaque condition dans la case posée sur sa flèche.'
-            : 'Écris d\'abord le nom des cinq figures, puis reporte la lettre de chaque '
-                + 'condition dans la case posée sur sa flèche.')
-            + ` Attention : il y a ${liste.length} conditions pour ${FLECHES.length} flèches`
-            + `${doublons ? ' — certaines lettres servent DEUX FOIS' : ''}.`;
+
+        // LA PLANCHE : UNE CARTE PAR FLÈCHE, ET NON PAR ÉNONCÉ.
+        //
+        // Neuf énoncés, treize flèches : quatre conditions servent deux fois.
+        // Sur le papier des lettres, une même lettre se reporte à deux endroits
+        // et c'est la leçon. Avec des cartes, ON NE PEUT PAS COLLER LA MÊME
+        // CARTE DEUX FOIS — il en faut donc treize, dont quatre paires de
+        // jumelles. C'est aussi ce que montre la planche de Rémy.
+        //
+        // Elles sont MÉLANGÉES : rangées dans l'ordre du plan, la première
+        // carte de la planche irait dans la première case, et l'exercice se
+        // ferait sans lire.
+        const avecVignettes = !!p.vignettes;
+        const vignettes = avecVignettes
+            // LE LIBELLÉ COURT, ET NON LA PHRASE ENTIÈRE. « Qui a ses côtés
+            // opposés parallèles » ne tient pas dans une carte de deux
+            // centimètres sans devenir illisible ; « côtés opposés parallèles »
+            // si. Et c'est déjà le vocabulaire des cartes qu'on glisse à
+            // l'écran (`court`, partagé avec quadriMorph) : la carte qu'on
+            // découpe dit donc exactement ce que dit la carte qu'on déplace.
+            ? rng.shuffle(FLECHES.map(f => ({
+                cle: cleFleche(f), texte: f.court || f.ajoute, famille: f.famille
+            })))
+            : null;
+
+        const consigne = avecVignettes
+            ? (avecNoms
+                ? 'Découpe les vignettes et colle chacune dans la case posée sur sa flèche.'
+                : 'Écris d\'abord le nom des cinq figures, puis découpe les vignettes et '
+                    + 'colle chacune dans la case posée sur sa flèche.')
+                + ` Il y a ${FLECHES.length} vignettes pour ${FLECHES.length} cases`
+                + `${doublons ? ' — et certaines se ressemblent deux à deux : c\'est normal, '
+                    + 'une même condition ouvre deux portes' : ''}.`
+            : (avecNoms
+                ? 'Reporte la lettre de chaque condition dans la case posée sur sa flèche.'
+                : 'Écris d\'abord le nom des cinq figures, puis reporte la lettre de chaque '
+                    + 'condition dans la case posée sur sa flèche.')
+                + ` Attention : il y a ${liste.length} conditions pour ${FLECHES.length} flèches`
+                + `${doublons ? ' — certaines lettres servent DEUX FOIS' : ''}.`;
 
         return makeItem({
             seed: rng.seed,
@@ -91,11 +144,12 @@ export const organigrammeQuadriGenerator = {
                 + 'au carré par deux chemins, chacun apportant ce que l\'autre avait déjà.',
             difficulty: avecNoms ? 3 : 4,
             meta: {
-                liste, parCle, avecNoms,
+                liste, parCle, avecNoms, vignettes,
                 familles: FAMILLES.map(f => f.id),
                 // De quoi écrire la correction sans relire le noyau.
                 solution: FLECHES.map(f => ({
                     cle: cleFleche(f), lettre: parCle[cleFleche(f)],
+                    texte: f.ajoute, famille: f.famille,
                     de: familleDe(f.de).nom, vers: familleDe(f.vers).nom
                 }))
             }

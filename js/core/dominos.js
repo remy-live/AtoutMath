@@ -405,6 +405,63 @@ export const largeurTexte = (texte) =>
  * Deux contraintes, essayées en descendant : le plus long mot tient sur une
  * ligne, et toutes les lignes tiennent en hauteur.
  */
+/**
+ * LE MÊME CALCUL, POUR UN RECTANGLE QUELCONQUE — et pour la même raison.
+ *
+ * `ajusterAuCarre` sert les dominos, qui sont carrés. Les vignettes de
+ * l'organigramme des quadrilatères sont des cartes plus larges que hautes, et
+ * portent des phrases entières (« Les côtés opposés sont parallèles »). Elles
+ * ont besoin de la même chose : la plus grande police où le texte tienne, ET
+ * les lignes qui en découlent.
+ *
+ * ON REND LES LIGNES, et pas seulement la taille. C'est ce qui permet à
+ * l'aperçu à l'écran et au PDF de couper AUX MÊMES ENDROITS : deux découpages
+ * différents donnent deux nombres de lignes, donc deux hauteurs, et l'aperçu
+ * cesse de dire la vérité sur la feuille qu'on va imprimer.
+ *
+ * Le modèle de largeur est celui d'au-dessus (`largeurTexte`), exprimé en
+ * fractions de la taille de police — donc utilisable en millimètres comme en
+ * pixels, du moment qu'on donne `w` et `h` dans la même unité que la police.
+ *
+ * @param {string} texte
+ * @param {number} w      largeur utile de la carte
+ * @param {number} h      hauteur utile de la carte
+ * @param {Object} [opts] { max, min, interligne }
+ * @returns {{taille:number, lignes:string[]}}
+ */
+export function ajusterAuRectangle(texte, w, h, opts = {}) {
+    const { max = 12, min = 1.6, interligne = 1.16 } = opts;
+    const mots = String(texte ?? '').split(/[ \t\r\n]+/).filter(Boolean);
+    if (!mots.length) return { taille: min, lignes: [] };
+    const largeurs = mots.map(largeurTexte);
+    const espace = largeurCar(' ');
+
+    /** Les lignes qu'on obtient à cette taille — ou null si un mot déborde. */
+    const couper = (taille) => {
+        const cases = w / taille;                    // en « largeurs de police »
+        if (Math.max(...largeurs) > cases) return null;
+        const lignes = [];
+        let courante = '', large = 0;
+        mots.forEach((mot, i) => {
+            const ajout = (courante ? espace : 0) + largeurs[i];
+            if (courante && large + ajout > cases) { lignes.push(courante); courante = mot; large = largeurs[i]; }
+            else { courante += (courante ? ' ' : '') + mot; large += ajout; }
+        });
+        if (courante) lignes.push(courante);
+        return lignes.length * taille * interligne <= h ? lignes : null;
+    };
+
+    // On descend par pas d'un dixième : plus fin ne se voit pas à l'impression,
+    // plus grossier fait sauter une taille utile sur une carte serrée.
+    for (let t = max; t >= min; t -= 0.1) {
+        const lignes = couper(t);
+        if (lignes) return { taille: Math.round(t * 10) / 10, lignes };
+    }
+    // Rien ne tient : on rend quand même quelque chose de lisible plutôt qu'un
+    // vide. Une carte trop pleine se voit et se corrige ; une carte vide, non.
+    return { taille: min, lignes: couper(min) || [String(texte ?? '')] };
+}
+
 export function ajusterAuCarre(texte) {
     const t = String(texte ?? '');
     // On coupe sur les espaces ORDINAIRES : l'insécable soude ce qu'il relie,
