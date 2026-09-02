@@ -266,10 +266,10 @@ class Organigramme extends BaseGame {
                    décalait chaque case d'une demi-boîte. */
                 .qd-case {
                     position: absolute;
-                    box-sizing: border-box;
+                    box-sizing: border-box; overflow: hidden;
                     border: 1.5px solid var(--border); border-radius: 10px;
-                    background: var(--bg-panel); padding: 3px 2px 2px;
-                    display: flex; flex-direction: column; align-items: center; gap: 1px;
+                    background: var(--bg-panel);
+                    display: flex; flex-direction: column; align-items: stretch;
                 }
                 /* UNE CASE QUI N'EST PAS ENCORE ATTEINTE N'EST PAS LÀ. Rémy :
                    « il faut le faire apparaître au fur et à mesure ». Elle ne
@@ -288,9 +288,12 @@ class Organigramme extends BaseGame {
                    elles deux que se pose la question, et l'élève doit savoir
                    laquelle regarder sans lire la consigne. */
                 .qd-case--jeu { border-color: var(--primary); border-width: 2.5px; }
-                .qd-figure { width: 70%; aspect-ratio: 1.35; display: block; }
+                /* LE DESSIN PREND LE HAUT DE LA CASE, le nom la bande du bas —
+                   c'est la fiche de Rémy, et l'ordre a un sens : on lit la
+                   figure d'abord, son nom ensuite. */
+                .qd-figure { flex: 1 1 auto; width: 100%; min-height: 0; display: block; padding: 3px; box-sizing: border-box; }
                 .qd-trait {
-                    fill: color-mix(in srgb, var(--primary) 12%, transparent);
+                    fill: var(--qd-figure, #ccd0f7);
                     stroke: var(--text-main); stroke-width: 4; stroke-linejoin: round;
                 }
                 /* LE CONTOUR SE TRACE : le pointillé vaut la longueur du
@@ -321,10 +324,17 @@ class Organigramme extends BaseGame {
                    mot est pire qu'un nom qui dépasse. Il ne se coupe donc plus,
                    et déborde de quelques pixels dans l'intervalle — qui en
                    mesure cinquante-huit entre deux cases voisines. */
+                /* LE BANDEAU DU NOM. Il a sa couleur — le jaune pâle de la
+                   fiche de Rémy — et sa ligne de séparation : c'est ce qui
+                   fait qu'on ne le confond pas avec le dessin, et ce qui
+                   permet de le laisser VIDE quand c'est à l'élève de nommer. */
                 .qd-nom {
-                    font-weight: 800; text-align: center; white-space: nowrap;
+                    flex: 0 0 auto; font-weight: 800; text-align: center; white-space: nowrap;
                     font-size: clamp(6px, calc(1.8cqw * var(--zoom, 1)), 15px);
-                    line-height: 1.05; min-height: 1.1em;
+                    line-height: 1.05; padding: 3px 2px; min-height: 1.5em;
+                    background: var(--qd-bande, #fff5cc);
+                    border-top: 1.5px solid var(--border);
+                    display: flex; align-items: center; justify-content: center;
                 }
                 .qd-nom--vide { color: var(--text-muted); font-weight: 600; }
 
@@ -388,17 +398,20 @@ class Organigramme extends BaseGame {
                    au rectangle pour être un carré sait alors qu'il y a une
                    réponse bleue et une rouge, et que les deux disent la même
                    chose autrement. */
+                /* LES TROIS COULEURS SONT CELLES DE SA FICHE, relevées dans son
+                   PDF : fond saturé et texte BLANC pour les diagonales et les
+                   raccourcis, bleu pâle et texte noir pour les côtés. Elles se
+                   séparent à trois mètres, ce qu'un camaïeu de pastels ne fait
+                   pas — et l'écran montre alors exactement ce que la feuille
+                   imprimera en couleur. */
                 .qd-cond--cotes {
-                    border-color: #6b8fc7;
-                    background: color-mix(in srgb, #6b8fc7 26%, var(--bg-panel));
+                    border-color: #7f98b4; background: #b4c7dc; color: #12203a;
                 }
                 .qd-cond--diagonales {
-                    border-color: #d94a3d;
-                    background: color-mix(in srgb, #d94a3d 24%, var(--bg-panel));
+                    border-color: #c81f1f; background: #ff3838; color: #ffffff;
                 }
                 .qd-cond--raccourci {
-                    border-color: #b06a9e;
-                    background: color-mix(in srgb, #b06a9e 24%, var(--bg-panel));
+                    border-color: #8d5a74; background: #bf819e; color: #ffffff;
                 }
                 .qd-cond--vide {
                     border-style: dashed; font-size: clamp(9px, 2cqw, 16px);

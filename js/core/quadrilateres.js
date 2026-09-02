@@ -425,13 +425,49 @@ export const POSITIONS = {
 export const PLAN_L = 200;
 export const PLAN_H = 150;
 
-/** La case d'une figure : elle porte un dessin et un nom sous lui. */
+/**
+ * La case d'une figure : le dessin, et SOUS lui un bandeau qui porte le nom.
+ *
+ * Rémy a renvoyé sa fiche : chez lui le nom n'est pas dans la case, il est sur
+ * une bande collée dessous, d'une autre couleur. C'est ce qui fait qu'on lit
+ * la figure d'abord et son nom ensuite — dans cet ordre-là, qui est celui du
+ * raisonnement — et c'est aussi ce qui permet de laisser la bande VIDE quand
+ * on demande à l'élève de nommer lui-même.
+ */
 export const CASE_L = 30;
 export const CASE_H = 22;
+/** La part de la case que prend le bandeau du nom, sous le dessin. */
+export const BANDE_NOM = 0.27;
 
 /** La case d'une condition : large et basse, elle porte une phrase. */
-export const COND_L = 34;
+export const COND_L = 42;
 export const COND_H = 14;
+
+/**
+ * LES COULEURS SONT CELLES DE LA FICHE DE RÉMY, relevées dans son PDF.
+ *
+ * « Celui que je t'ai donné était plus joli. » Il l'était, et pas seulement par
+ * goût : chez lui le fond est SATURÉ et le texte BLANC pour ce qui parle des
+ * diagonales et pour les deux raccourcis, tandis que les côtés portent un bleu
+ * pâle et un texte noir. Trois familles, trois contrastes — on les distingue
+ * d'un coup d'œil à trois mètres, ce qu'un camaïeu de pastels ne fait pas.
+ *
+ * ET CELA PHOTOCOPIE. C'était l'objection à sa fiche, et elle tombe : les trois
+ * fonds ont des clartés très écartées (193, 142, 98 sur 255), donc trois gris
+ * bien séparés — et la lettre s'écrit dans un carré BLANC posé au milieu de la
+ * case, pas sur l'aplat.
+ *
+ * Le noyau les porte pour que l'écran et le papier ne puissent pas diverger.
+ */
+export const COULEURS_FAMILLE = {
+    cotes: { fond: '#b4c7dc', encre: '#12203a' },
+    diagonales: { fond: '#ff3838', encre: '#ffffff' },
+    raccourci: { fond: '#bf819e', encre: '#ffffff' }
+};
+
+/** La figure est DESSINÉE ET REMPLIE, et son nom est sur un bandeau clair. */
+export const COULEUR_FIGURE = '#ccd0f7';
+export const COULEUR_BANDE = '#fff5cc';
 
 /**
  * OÙ SE POSE CHAQUE CONDITION, dans l'ordre de `FLECHES`.
@@ -446,25 +482,41 @@ export const COND_H = 14;
  * autres boîtes — mesuré, et c'est ce que Rémy a évité en les faisant longer
  * l'extérieur.
  */
+/**
+ * LES DEUX RACCOURCIS MONTENT DANS LES COINS, et c'est la disposition de Rémy.
+ *
+ * Sur sa fiche, « Qui a 3 ou 4 angles droits » et « Qui a 4 côtés égaux » ne
+ * sont pas dans la rangée sous le quadrilatère : ils sont À CÔTÉ de lui, tout
+ * en haut, l'un à gauche l'autre à droite, et leur trait descend le long du
+ * bord jusqu'au rectangle et au losange. Deux raisons, et les deux comptent :
+ *
+ *  · CE SONT DES CHEMINS À PART. Les trois conditions du milieu mènent au
+ *    parallélogramme ; ces deux-là court-circuitent. Les mêler aux autres dans
+ *    une rangée de cinq laissait croire à cinq portes vers la même case.
+ *  · LA RANGÉE DU MILIEU RESPIRE. Trois cases au lieu de cinq, sur la même
+ *    largeur : chacune passe de trente-quatre unités à quarante-deux, et
+ *    « diagonales perpendiculaires » cesse d'être le mot qui décide de la
+ *    taille de toute la figure.
+ */
 export const POSITIONS_CONDITIONS = [
-    { x: 64, y: 34 },   // quadrilatère → parallélogramme : côtés opposés parallèles
-    { x: 136, y: 34 },  // quadrilatère → parallélogramme : côtés opposés égaux
+    { x: 50, y: 34 },   // quadrilatère → parallélogramme : côtés opposés parallèles
+    { x: 150, y: 34 },  // quadrilatère → parallélogramme : côtés opposés égaux
     { x: 100, y: 34 },  // quadrilatère → parallélogramme : diagonales, même milieu
-    { x: 28, y: 34 },   // raccourci : 3 ou 4 angles droits → rectangle
-    { x: 172, y: 34 },  // raccourci : 4 côtés égaux → losange
-    { x: 24, y: 76 },   // parallélogramme → rectangle : côtés consécutifs perpendiculaires
-    { x: 74, y: 76 },   // parallélogramme → rectangle : diagonales de même longueur
-    { x: 126, y: 76 },  // parallélogramme → losange : côtés consécutifs de même longueur
-    { x: 176, y: 76 },  // parallélogramme → losange : diagonales perpendiculaires
-    { x: 24, y: 118 },  // rectangle → carré : côtés consécutifs de même longueur
-    { x: 74, y: 118 },  // rectangle → carré : diagonales perpendiculaires
-    { x: 126, y: 118 }, // losange → carré : côtés consécutifs perpendiculaires
-    { x: 176, y: 118 }  // losange → carré : diagonales de même longueur
+    { x: 30, y: 16 },   // raccourci : 3 ou 4 angles droits → rectangle
+    { x: 170, y: 16 },  // raccourci : 4 côtés égaux → losange
+    { x: 27, y: 76 },   // parallélogramme → rectangle : côtés consécutifs perpendiculaires
+    { x: 76, y: 76 },   // parallélogramme → rectangle : diagonales de même longueur
+    { x: 124, y: 76 },  // parallélogramme → losange : côtés consécutifs de même longueur
+    { x: 173, y: 76 },  // parallélogramme → losange : diagonales perpendiculaires
+    { x: 27, y: 118 },  // rectangle → carré : côtés consécutifs de même longueur
+    { x: 76, y: 118 },  // rectangle → carré : diagonales perpendiculaires
+    { x: 124, y: 118 }, // losange → carré : côtés consécutifs perpendiculaires
+    { x: 173, y: 118 }  // losange → carré : diagonales de même longueur
 ];
 
 /** Les couloirs latéraux, où passent les traits des raccourcis. */
-export const COULOIR_G = 4;
-export const COULOIR_D = 196;
+export const COULOIR_G = 2;
+export const COULOIR_D = 198;
 
 /** L'identifiant d'une condition : sa place dans `FLECHES`, et rien d'autre. */
 export const cleFleche = (f) => `${f.de}>${f.vers}#${FLECHES.indexOf(f)}`;
@@ -501,6 +553,24 @@ export const boiteCondition = (f) => boite(posCondition(f), COND_L, COND_H);
  */
 export function traceLien(depart, arrivee, { bord = 0 } = {}) {
     const a = depart, b = arrivee;
+
+    // CÔTE À CÔTE : ON SORT PAR LE FLANC.
+    //
+    // Depuis que les deux raccourcis sont montés dans les coins, ils sont à la
+    // MÊME HAUTEUR que le quadrilatère : le trait qui les relie ne descend pas,
+    // il traverse. Le tracé orthogonal habituel sortait alors par le HAUT de la
+    // case de départ pour redescendre dans celle d'arrivée — et son segment
+    // horizontal passait au travers du quadrilatère qu'il quitte.
+    if (b.y1 < a.y2 && a.y1 < b.y2) {
+        const versLaDroite = b.x1 >= a.x2;
+        const sortie = { x: versLaDroite ? a.x2 : a.x1, y: a.y };
+        const entree = { x: versLaDroite ? b.x1 : b.x2, y: b.y };
+        if (Math.abs(sortie.y - entree.y) < 0.5) return [sortie, entree];
+        // Un décalage de hauteur se rattrape à mi-chemin, comme ailleurs.
+        const milieu = (sortie.x + entree.x) / 2;
+        return [sortie, { x: milieu, y: sortie.y }, { x: milieu, y: entree.y }, entree];
+    }
+
     // Le sens : on descend presque toujours, mais un raccourci peut remonter.
     const versLeBas = b.y1 >= a.y2;
     const sortie = { x: a.x, y: versLeBas ? a.y2 : a.y1 };

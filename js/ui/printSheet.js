@@ -24,7 +24,9 @@ import {
     boiteCondition as boiteCondQ,
     CASE_L as CASE_L_Q, CASE_H as CASE_H_Q,
     COND_L as COND_L_Q, COND_H as COND_H_Q, PLAN_L as PLAN_L_Q, PLAN_H as PLAN_H_Q,
-    pointeDe as pointeDeQ
+    pointeDe as pointeDeQ,
+    BANDE_NOM as BANDE_NOM_Q, COULEURS_FAMILLE as COULEURS_Q,
+    COULEUR_FIGURE as FIGURE_Q, COULEUR_BANDE as BANDE_Q
 } from '../core/quadrilateres.js';
 import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
 // LA SOLUTION DES TROIS CASSE-TÊTE, POSITION PAR POSITION. Rémy : « pour les
@@ -11049,18 +11051,36 @@ const cheminsUniques = () => FLECHES_Q;
  * raccourcis plus soutenu. En couleur on lit la teinte, en gris on lit la
  * clarté, et les deux disent la même chose.
  */
-/** Les mêmes trois teintes, en composantes — jsPDF ne lit pas le dièse. */
-const RVB_COND = {
-    cotes: [226, 237, 252],
-    diagonales: [247, 211, 205],
-    raccourci: [205, 191, 224]
+/**
+ * LA COULEUR D'UNE FAMILLE DÉPEND DE CE QU'ON MET DANS L'IMPRIMANTE.
+ *
+ * En COULEUR, ce sont les teintes de la fiche de Rémy, relevées dans son PDF :
+ * fond saturé et texte blanc pour les diagonales et les raccourcis, bleu pâle
+ * et texte noir pour les côtés. C'est ce qui les sépare à trois mètres.
+ *
+ * EN NOIR ET BLANC, NON — et c'était le piège. Le rouge vif de sa fiche ne
+ * devient pas un gris moyen : la conversion de la feuille tient compte de la
+ * SATURATION autant que de la clarté (voir `encre` dans ui/ficheRendu.js), et
+ * un rouge pur tombe sur un gris presque noir. Mesuré sur la première épreuve :
+ * six cases sur treize sortaient en aplat noir. On donne donc au noir et blanc
+ * trois gris CHOISIS — clair, moyen, foncé, texte noir sur les trois —, ce qui
+ * dit la même chose sans vider la cartouche du photocopieur de la salle des
+ * profs.
+ */
+const GRIS_COND = {
+    cotes: { fond: '#e8e8e8', encre: '#111111' },
+    diagonales: { fond: '#c2c2c2', encre: '#111111' },
+    raccourci: { fond: '#9c9c9c', encre: '#111111' }
 };
+const paletteCond = () => (['couleur', 'intense'].includes(modePolycopie())
+    ? COULEURS_Q : GRIS_COND);
 
-const TEINTE_COND = {
-    cotes: '#e2edfc',
-    diagonales: '#f7d3cd',
-    raccourci: '#cdbfe0'
-};
+const teinteCond = (f) => (paletteCond()[f] || paletteCond().cotes).fond;
+const RVB_COND = new Proxy({}, { get: (_, f) => rvbHex(teinteCond(String(f))) });
+const TEINTE_COND = new Proxy({}, { get: (_, f) => teinteCond(String(f)) });
+
+/** L'encre du texte d'une carte : elle suit son fond. */
+const ENCRE_COND = (f) => (paletteCond()[f] || paletteCond().cotes).encre;
 
 /**
  * LA TAILLE DU NOM D'UNE FIGURE : celle qui tient dans sa case.
@@ -11094,11 +11114,14 @@ const pasListe = (g, lignes) => Math.min(g.listeH / lignes, 9);
 /** Le côté du carré blanc où l'élève écrit sa lettre. */
 const carreLettre = (g) => Math.min(g.condH * 0.62, g.condW * 0.28, 9);
 
-function policeNomFigure(caseW, caseH) {
+function policeNomFigure(caseW, hBande) {
     const plusLong = Math.max(...FAMILLES_Q.map(f => f.nom.length));
     // 0,52 cadratin par lettre : c'est la largeur moyenne d'une capitale et
     // d'une bas-de-casse en Helvetica gras, mesurée sur les cinq noms.
-    return Math.min(caseH * 0.17, (caseW * 0.88) / (plusLong * 0.52));
+    // La hauteur disponible est celle du BANDEAU, dont le nom occupe les deux
+    // tiers : calculée sur la case entière, elle donnait un corps d'un
+    // millimètre — un nom qu'il fallait deviner.
+    return Math.min(hBande * 0.62, (caseW * 0.88) / (plusLong * 0.52));
 }
 
 /**
@@ -11155,28 +11178,32 @@ function organigrammePreviewHtml(item, slot, k, solution) {
     FAMILLES_Q.forEach(fam => {
         const c = g.P(POSITIONS_Q[fam.id]);
         const x = c.x - g.caseW / 2, y = c.y - g.caseH / 2;
+        // LA CASE D'UNE FIGURE, COMME CHEZ RÉMY : le dessin en haut, et SOUS
+        // lui un bandeau d'une autre couleur qui porte le nom. On lit la figure
+        // d'abord, son nom ensuite — dans l'ordre du raisonnement — et le
+        // bandeau reste vide quand c'est à l'élève de la nommer.
+        const hb = g.caseH * BANDE_NOM_Q, hd = g.caseH - hb;
         out += `<rect x="${T(x)}" y="${T(y)}" width="${T(g.caseW)}" height="${T(g.caseH)}"
             rx="${T(1.4)}" fill="#ffffff" stroke="#1a202c" stroke-width="${(0.35 * k).toFixed(2)}"/>`;
-        // LA FIGURE RESTE CARRÉE. La case est devenue plus large que haute en
-        // même temps que le plan s'est étalé ; une figure calculée en
-        // pourcentages de la case en serait sortie aplatie — un carré qui n'est
-        // plus carré, sur la feuille qui enseigne les quadrilatères.
-        const fw = Math.min(g.caseW * 0.5, g.caseH * 0.6), fh = fw;
-        const fx = c.x - fw / 2, fy = y + g.caseH * 0.08;
+        out += `<path d="M${T(x)} ${T(y + hd)} h${T(g.caseW)} v${T(hb - 1.4)}
+            a${T(1.4)} ${T(1.4)} 0 0 1 ${T(-1.4)} ${T(1.4)} h${T(-(g.caseW - 2.8))}
+            a${T(1.4)} ${T(1.4)} 0 0 1 ${T(-1.4)} ${T(-1.4)} Z"
+            fill="${BANDE_Q}" stroke="#1a202c" stroke-width="${(0.3 * k).toFixed(2)}"/>`;
+        // LA FIGURE RESTE CARRÉE. La case est plus large que haute depuis que le
+        // plan s'est étalé ; une figure calculée en pourcentages de la case en
+        // serait sortie aplatie — un carré qui n'est plus carré, sur la feuille
+        // qui enseigne les quadrilatères.
+        const fw = Math.min(g.caseW * 0.5, hd * 0.82), fh = fw;
+        const fx = c.x - fw / 2, fy = y + (hd - fh) / 2;
         const d = fam.figure.map((pt, i) =>
             `${i ? 'L' : 'M'}${T(fx + (pt[0] / 100) * fw)} ${T(fy + (pt[1] / 100) * fh)}`).join(' ') + ' Z';
-        out += `<path d="${d}" fill="none" stroke="#1a202c" stroke-width="${(0.35 * k).toFixed(2)}"/>`;
+        out += `<path d="${d}" fill="${FIGURE_Q}" stroke="#1a202c" stroke-width="${(0.4 * k).toFixed(2)}"/>`;
         const nom = (g.m.avecNoms || solution) ? fam.nom : '';
-        const corpsNom = policeNomFigure(g.caseW, g.caseH);
-        out += `<text x="${T(c.x)}" y="${T(y + g.caseH * 0.84)}" text-anchor="middle"
+        const corpsNom = policeNomFigure(g.caseW, hb);
+        out += `<text x="${T(c.x)}" y="${T(y + hd + hb / 2)}" text-anchor="middle"
             dominant-baseline="central"
             font-size="${T(corpsNom)}" font-weight="700" fill="#1a202c"
             font-family="Helvetica, Arial, sans-serif">${nom}</text>`;
-        if (!nom) {
-            out += `<line x1="${T(c.x - g.caseW * 0.38)}" y1="${T(y + g.caseH * 0.9)}"
-                x2="${T(c.x + g.caseW * 0.38)}" y2="${T(y + g.caseH * 0.9)}"
-                stroke="#b0b6c5" stroke-width="${(0.3 * k).toFixed(2)}"/>`;
-        }
     });
 
     FLECHES_Q.forEach(f => {
@@ -11311,7 +11338,7 @@ function dessinerVignettePdf(doc, mesure, famille, x, y, w, h) {
     doc.roundedRect(x, y, w, h, 0.8, 0.8, 'FD');
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(taille / 0.352778);
-    doc.setTextColor(...ENCRE.texte);
+    doc.setTextColor(...rvbHex(ENCRE_COND(famille)));
     const total = lignes.length * taille * 1.16;
     lignes.forEach((ligne, i) => {
         doc.text(pourPdf(ligne), x + w / 2, y + h / 2 - total / 2 + (i + 0.5) * taille * 1.16,
@@ -11343,11 +11370,12 @@ function dessinerVignetteSvg(mesure, famille, x, y, w, h, k, ecrire) {
     ecrire(`<rect x="${T(x)}" y="${T(y)}" width="${T(w)}" height="${T(h)}" rx="${T(0.8)}"
         fill="${TEINTE_COND[famille] || '#ffffff'}" stroke="#1a202c"
         stroke-width="${(0.3 * k).toFixed(2)}"/>`);
+    const encre = ENCRE_COND(famille);
     const total = lignes.length * taille * 1.16;
     lignes.forEach((ligne, i) => {
         const yy = y + h / 2 - total / 2 + (i + 0.5) * taille * 1.16;
         ecrire(`<text x="${T(x + w / 2)}" y="${T(yy)}" text-anchor="middle"
-            dominant-baseline="central" font-size="${T(taille)}" fill="#1a202c"
+            dominant-baseline="central" font-size="${T(taille)}" fill="${encre}"
             font-family="Helvetica, Arial, sans-serif">${echapperXml(ligne)}</text>`);
     });
 }
@@ -11390,33 +11418,38 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
     FAMILLES_Q.forEach(fam => {
         const c = g.P(POSITIONS_Q[fam.id]);
         const x = c.x - g.caseW / 2, y = c.y - g.caseH / 2;
+        const hb = g.caseH * BANDE_NOM_Q, hd = g.caseH - hb;
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.35);
         doc.setFillColor(255, 255, 255);
         doc.roundedRect(x, y, g.caseW, g.caseH, 1.4, 1.4, 'FD');
+        // Le bandeau du nom, sous le dessin — voir l'aperçu.
+        doc.setFillColor(...rvbHex(BANDE_Q));
+        doc.setLineWidth(0.3);
+        doc.rect(x, y + hd, g.caseW, hb - 1.4, 'FD');
+        doc.roundedRect(x, y + hd, g.caseW, hb, 1.4, 1.4, 'FD');
 
         // LA FIGURE PREND LES DEUX TIERS DU HAUT, le nom le dernier tiers. La
         // case a rétréci en passant en portrait, et le nom, calé à 85 % de sa
         // hauteur avec une police plancher de 5 points, débordait dessous —
         // mesuré sur le premier PDF, « Parallélogramme » chevauchait le trait
         // qui descend vers la rangée suivante.
-        const fw = Math.min(g.caseW * 0.5, g.caseH * 0.6), fh = fw;
-        const fx = c.x - fw / 2, fy = y + g.caseH * 0.08;
+        const fw = Math.min(g.caseW * 0.5, hd * 0.82), fh = fw;
+        const fx = c.x - fw / 2, fy = y + (hd - fh) / 2;
         const pts = fam.figure.map(pt => [fx + (pt[0] / 100) * fw, fy + (pt[1] / 100) * fh]);
-        for (let i = 0; i < pts.length; i++) {
-            const a = pts[i], b2 = pts[(i + 1) % pts.length];
-            doc.line(a[0], a[1], b2[0], b2[1]);
-        }
+        doc.setFillColor(...rvbHex(FIGURE_Q));
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.4);
+        doc.lines(pts.slice(1).concat([pts[0]]).map((q, i) => {
+            const a = i === 0 ? pts[0] : pts[i];
+            return [q[0] - a[0], q[1] - a[1]];
+        }), pts[0][0], pts[0][1], [1, 1], 'FD', true);
 
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(policeNomFigure(g.caseW, g.caseH) / 0.352778);
+        doc.setFontSize(policeNomFigure(g.caseW, hb) / 0.352778);
         doc.setTextColor(...ENCRE.texte);
         if (g.m.avecNoms || solution) {
-            doc.text(pourPdf(fam.nom), c.x, y + g.caseH * 0.84, { align: 'center', baseline: 'middle' });
-        } else {
-            doc.setDrawColor(...ENCRE.grille);
-            doc.setLineWidth(0.3);
-            doc.line(c.x - g.caseW * 0.38, y + g.caseH * 0.9, c.x + g.caseW * 0.38, y + g.caseH * 0.9);
+            doc.text(pourPdf(fam.nom), c.x, y + hd + hb / 2, { align: 'center', baseline: 'middle' });
         }
     });
 
