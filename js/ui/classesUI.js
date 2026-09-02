@@ -57,6 +57,9 @@ const CLE = 'classes';
 let classes = [];
 let classeActiveId = null;
 let eleveOuvertId = null;
+// La modale « Mes classes » elle-même : « Voir son écran » doit pouvoir la
+// refermer, sinon l'écran de l'élève reste caché derrière elle.
+let modaleClasses = null;
 let rafraichir = () => {};
 
 // --- Stockage ---------------------------------------------------------------
@@ -284,6 +287,17 @@ function ecranHtml() {
             <div class="cl-d-tete">
                 <h3>${esc(eleve.nom)}</h3>
                 <button type="button" class="cl-btn cl-btn--mini" data-renommer="${eleve.id}">Renommer</button>
+                <!-- VOIR CE QU'IL VOIT — la démonstration à deux écrans, en un clic.
+                     C'est le seul moyen de vérifier qu'une séance est bien
+                     partie : le professeur donne, et rien à l'écran ne lui dit
+                     ce que l'élève trouve en arrivant. Ce bouton rattache
+                     l'appareil à cet élève et bascule sur son accueil.
+                     ATTENTION, ET C'EST DIT DANS LA BOÎTE : c'est un REGARD,
+                     pas une usurpation. Le travail fait ensuite reste celui de
+                     cet appareil, pas celui de l'élève — ses résultats à lui
+                     n'arrivent que par le fichier qu'il envoie. -->
+                <button type="button" class="cl-btn cl-btn--mini" data-voir="${eleve.id}"
+                    title="Voir l'écran d'accueil de cet élève">Voir son écran</button>
                 <button type="button" class="cl-btn cl-btn--mini cl-btn--fin" data-retirer="${eleve.id}">Retirer</button>
                 <button type="button" class="cl-fermer-detail" data-ferme aria-label="Fermer le détail">×</button>
             </div>
@@ -292,6 +306,51 @@ function ecranHtml() {
 }
 
 // --- Actions ----------------------------------------------------------------
+
+/**
+ * VOIR L'ÉCRAN D'UN ÉLÈVE — la démonstration à deux écrans, en un clic.
+ *
+ * LE TROU QUE ÇA BOUCHE. Le professeur donne un parcours à une classe, et rien
+ * ne lui dit ce que l'élève trouve en arrivant. On vérifie en ouvrant une
+ * seconde fenêtre, en se rattachant à la main, en revenant… trois gestes qu'on
+ * ne fait pas, donc une chaîne qu'on ne vérifie jamais.
+ *
+ * CE N'EST PAS UNE USURPATION, ET LA BOÎTE LE DIT. On rattache l'APPAREIL à cet
+ * élève : on voit sa séance du jour, le mot qu'on lui a écrit, son avancement à
+ * zéro. Mais le travail fait ensuite reste celui de cet appareil — les
+ * résultats de l'élève, eux, n'arrivent que par le fichier qu'il envoie. Le
+ * professeur qui ferait l'exercice « à sa place » ne changerait rien à son
+ * bilan, et il vaut mieux qu'il le sache avant que de le découvrir.
+ */
+async function voirCommeEleve(eleveId) {
+    const classe = classeActive();
+    const eleve = classe && (classe.eleves || []).find(e => e.id === eleveId);
+    if (!eleve) return;
+    showConfirm(`Cet appareil va afficher l'écran de <b>${esc(eleve.nom)}</b> `
+        + `(${esc(classe.nom)}) : sa séance du jour, et le mot que vous lui avez laissé.`
+        + '<br><br>C\'est un REGARD, pas une usurpation : ce que vous feriez ensuite '
+        + 'resterait le travail de cet appareil, et n\'entrerait pas dans son bilan.',
+    async () => {
+        const [{ lireLiens, rafraichir }, { rattacher }, { getActiveProfileId }] =
+            await Promise.all([
+                import('./maSeance.js'), import('../core/rattachement.js'),
+                import('../core/profile.js')
+            ]);
+        await globalStore.set('rattachements',
+            rattacher(await lireLiens(), getActiveProfileId(), classe, eleve));
+        // ON QUITTE LE MODE PROFESSEUR : voir l'écran d'un élève depuis
+        // l'atelier du professeur ne montrerait pas l'écran d'un élève.
+        const nav = await import('./navigation.js');
+        state.isTeacherMode = false;
+        document.body.classList.remove('teacher-mode');
+        nav.setTopNavMode('grid');
+        // ET L'ON REFERME « MES CLASSES ». Laisser la fenêtre ouverte
+        // par-dessus l'écran qu'on vient de demander, c'est ne rien montrer.
+        if (modaleClasses) { modaleClasses.close(); modaleClasses = null; }
+        await rafraichir();
+        showToast(`Écran de ${eleve.nom}. Le lien se défait depuis l'accueil.`, 'success', 6000);
+    });
+}
 
 /** Un ou plusieurs fichiers déposés d'un coup : toute la classe en une fois. */
 function choisirFichiers() {
@@ -344,7 +403,8 @@ function brancher(racine) {
 
     racine.onclick = async (ev) => {
         const el = ev.target.closest('[data-classe],[data-nouvelle],[data-ajouter],[data-supprimer],'
-            + '[data-ouvre],[data-ferme],[data-retirer],[data-renommer],[data-demo],[data-effacer-demo]');
+            + '[data-ouvre],[data-ferme],[data-retirer],[data-renommer],[data-demo],'
+            + '[data-effacer-demo],[data-voir]');
         if (!el) return;
 
         // LES CINQ CLASSES DE DÉMONSTRATION. Elles ne se mêlent pas aux vraies :
@@ -410,6 +470,7 @@ function brancher(racine) {
             eleveOuvertId = eleveOuvertId === el.dataset.ouvre ? null : el.dataset.ouvre;
             return rafraichir();
         }
+        if (el.dataset.voir) return voirCommeEleve(el.dataset.voir);
         if ('ferme' in el.dataset) { eleveOuvertId = null; return rafraichir(); }
         if (el.dataset.retirer) {
             const c = classeActive();
@@ -436,6 +497,7 @@ function brancher(racine) {
 export async function ouvrirClasses() {
     await chargerClasses();
     const modal = showModal('Mes classes', '<div id="cl-racine"></div>', { width: '1100px' });
+    modaleClasses = modal;
     const racine = modal.element.querySelector('#cl-racine');
     rafraichir = () => {
         racine.innerHTML = ecranHtml();
