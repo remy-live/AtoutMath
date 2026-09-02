@@ -32,6 +32,7 @@ import { fusionnerDoublons } from '../core/carnet.js';
 import { planDuJour } from '../core/aujourdhui.js';
 import { startErrorReview } from '../core/remediation.js';
 import { openGameLayer } from '../games/engine.js';
+import { instantane, ouvrirMaSeance, ouvrirMesSeances, ouvrirRejoindre } from './maSeance.js';
 
 const CLE_PREMIERE = 'mathbox-derniere-visite';
 const CLE_CATALOGUE = 'mathbox-catalogue-ouvert';
@@ -160,7 +161,11 @@ export function rendreAujourdhui() {
         tentatives: (state.attemptHistory || [])
             .map(a => ({ ts: a.timestamp || a.ts, correct: !!a.correct })),
         suggestions: suggestions(),
-        nbExercices: filterByStatus(exercices, { only: 'valide', teacher: false }).length
+        nbExercices: filterByStatus(exercices, { only: 'valide', teacher: false }).length,
+        // LA SÉANCE DONNÉE PAR LE PROFESSEUR — l'instantané, pas une lecture.
+        // L'accueil se dessine d'un trait ; `maSeance.js` relit le stockage en
+        // fond et redemande un dessin quand il a du neuf.
+        seance: instantane().etat
     });
 
     const a = plan.action;
@@ -173,6 +178,10 @@ export function rendreAujourdhui() {
             <div class="auj-dit">
                 <b>${echapper(a.titre)}</b>
                 <span>${echapper(a.sous)}</span>
+                <!-- LE MOT DU PROFESSEUR, s'il y en a un, DANS la carte : c'est
+                     là que l'élève regarde, et un message rangé ailleurs n'est
+                     pas un message. -->
+                ${a.mot ? `<em class="auj-mot">« ${echapper(a.mot)} »</em>` : ''}
             </div>
             <button type="button" class="auj-go" data-go>${echapper(a.bouton)}</button>
         </div>` : ''}
@@ -183,6 +192,7 @@ export function rendreAujourdhui() {
                 <em>${echapper(r.sous)}</em></span>
             </button>`).join('')}
         </div>
+        ${lienRejoindreHtml()}
         <button type="button" class="auj-explorer" data-explorer>
             <span data-explorer-mot>Explorer tous les exercices</span>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
@@ -197,6 +207,8 @@ export function rendreAujourdhui() {
     });
     const explorer = b.querySelector('[data-explorer]');
     if (explorer) explorer.onclick = () => basculerCatalogue();
+    const rejoindre = b.querySelector('[data-rejoindre]');
+    if (rejoindre) rejoindre.onclick = () => ouvrirRejoindre();
 
     poserCatalogue(catalogueOuvert());
     majMotExplorer();
@@ -222,13 +234,37 @@ function basculerCatalogue() {
 }
 
 function lancer(a) {
+    if (a.genre === 'seance') return ouvrirMaSeance();
     if (a.genre === 'parcours') return allerA('parcours');
     if (a.genre === 'revision') return startErrorReview(a.questions);
     const exo = getExerciseById(a.exoId);
     if (exo) openGameLayer(exo, false);
 }
 
+/**
+ * LE LIEN DE RATTACHEMENT, tout en bas et tout petit.
+ *
+ * Il ne s'affiche que là où il sert : sur l'appareil qui connaît des classes.
+ * Ailleurs — le téléphone de l'élève, où AtoutMath vit tout seul —, il n'y a
+ * aucune classe à rejoindre, et une porte qui ne mène nulle part est pire
+ * qu'une porte absente. Une fois rattaché, il devient une simple ligne d'état :
+ * on doit pouvoir vérifier qui l'on est, et se détromper.
+ */
+function lienRejoindreHtml() {
+    const { lien, classes, pret } = instantane();
+    if (!pret) return '';
+    if (lien) {
+        return `<p class="auj-classe">Tu travailles comme
+            <b>${echapper(lien.nom)}</b> · ${echapper(lien.classeNom)}
+            <button type="button" class="auj-lien" data-rejoindre>changer</button></p>`;
+    }
+    if (!classes.length) return '';
+    return `<p class="auj-classe"><button type="button" class="auj-lien" data-rejoindre>
+        Rejoindre ma classe</button> pour recevoir le travail de ton professeur.</p>`;
+}
+
 function allerA(quoi) {
+    if (quoi === 'seance') return ouvrirMesSeances();
     // ON CLIQUE L'ONGLET, ON N'APPELLE PAS `setTopNavMode`. Ce module est
     // importé PAR la navigation — pour se redessiner au retour d'un exercice —
     // et l'importer en retour ferait un cercle. Le bouton, lui, fait déjà

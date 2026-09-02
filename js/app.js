@@ -37,6 +37,7 @@ import { initSyncUI } from './ui/syncUI.js';
 import { initPleinEcran } from './ui/fullscreen.js';
 import { initBilanExercice } from './ui/accueilUI.js';
 import { rendreAujourdhui } from './ui/aujourdhui.js';
+import { initMaSeance } from './ui/maSeance.js';
 
 // Confirmation universelle, utilisée par plusieurs vues.
 window.appConfirm = (title, message, onConfirm) => {
@@ -145,6 +146,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     // proposée, le conseil du jour) se lit maintenant DANS la page, où on le
     // prend si l'on veut.
     rendreAujourdhui();
+
+    // LA SÉANCE DU PROFESSEUR ARRIVE APRÈS COUP, et c'est voulu. Lire les
+    // classes et les séances passe par le stockage ; attendre cette lecture
+    // pour dessiner l'accueil le ferait apparaître avec un temps de retard,
+    // pour un élève qui n'a peut-être aucune séance. On dessine donc tout de
+    // suite, et la carte s'ajoute quand elle est connue.
+    initMaSeance();
 });
 
 /**

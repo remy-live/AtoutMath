@@ -248,3 +248,68 @@ test('le premier jour, on souhaite la bienvenue', () => {
     // Et l'heure ne l'emporte pas sur la première visite.
     assert.notEqual(plan.salut, 'Bonsoir !');
 });
+
+
+// --- LA SÉANCE DU PROFESSEUR ------------------------------------------------
+//
+// Elle passe avant tout le reste, et c'est la règle la plus importante de cet
+// écran : un élève qui arrive le mardi matin a UNE chose à faire, celle qu'on
+// lui a donnée. Lui proposer d'abord une révision, c'est le laisser travailler
+// sagement la mauvaise chose.
+
+const seance = (x = {}) => ({
+    titre: 'Les priorités', classeNom: '5e B', total: 4, faites: 0,
+    fini: false, commence: false, close: false, mot: '', ...x
+});
+
+test('LA SÉANCE PASSE AVANT LA RÉVISION ET LA DÉCOUVERTE', () => {
+    const beaucoupDErreurs = Array.from({ length: 8 },
+        (_, i) => ({ id: i, corrected: false }));
+    const a = actionDuJour({
+        seance: seance(), erreurs: beaucoupDErreurs, suggestions: [{ id: 'x', title: 'X' }]
+    });
+    assert.equal(a.genre, 'seance');
+    assert.equal(a.titre, 'Ta séance du jour');
+    assert.equal(a.sous, 'Les priorités · 5e B');
+    assert.equal(a.total, 4);
+});
+
+test('une séance commencée dit « reprends », pas « commence »', () => {
+    const a = actionDuJour({ seance: seance({ faites: 2, commence: true }), erreurs: [] });
+    assert.equal(a.titre, 'Reprends ta séance');
+    assert.equal(a.bouton, 'Continuer');
+    assert.equal(a.faites, 2);
+});
+
+test('une séance FINIE rend la place — mais garde sa tuile', () => {
+    // La carte est une CHOSE À FAIRE ; un travail terminé n'en est plus une.
+    const finie = seance({ faites: 4, commence: true, fini: true });
+    const a = actionDuJour({ seance: finie, erreurs: [], suggestions: [{ id: 'x', title: 'X' }] });
+    assert.notEqual(a.genre, 'seance');
+    const r = raccourcisDuJour({ seance: finie, erreurs: [], action: a });
+    const tuile = r.find(t => t.id === 'seance');
+    assert.ok(tuile, 'la séance finie a disparu de partout');
+    assert.equal(tuile.sous, 'Terminée — bravo');
+});
+
+test('la tuile ne répète jamais la carte de la séance', () => {
+    const s = seance({ faites: 1, commence: true });
+    const a = actionDuJour({ seance: s, erreurs: [] });
+    const r = raccourcisDuJour({
+        seance: s, parcours: parcours(['a']), erreurs: [], action: a
+    });
+    assert.equal(r.filter(t => t.id === 'seance' || t.id === 'parcours').length, 0,
+        'la carte et la tuile disent deux fois le même chiffre');
+});
+
+test('le mot du professeur voyage avec la carte', () => {
+    const a = actionDuJour({ seance: seance({ mot: 'Reprends les signes avec moi lundi.' }) });
+    assert.equal(a.mot, 'Reprends les signes avec moi lundi.');
+});
+
+test('sans séance, l\'accueil est exactement celui d\'avant', () => {
+    const T = midi();
+    const sans = planDuJour({ maintenant: T, suggestions: [{ id: 'x', title: 'X' }] });
+    const nulle = planDuJour({ maintenant: T, seance: null, suggestions: [{ id: 'x', title: 'X' }] });
+    assert.deepEqual(nulle, sans);
+});

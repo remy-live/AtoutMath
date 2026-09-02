@@ -117,7 +117,31 @@ export function phraseDuJour({ maintenant, premiere, tentatives }) {
  * un bouton, et c'est le point : un écran d'accueil sans action est un écran
  * qui renvoie l'élève à son propre choix.
  */
-export function actionDuJour({ parcours, erreurs, suggestions = [] }) {
+export function actionDuJour({ parcours, erreurs, suggestions = [], seance = null }) {
+    // LA SÉANCE DU PROFESSEUR PASSE AVANT TOUT LE RESTE, et ce n'est pas
+    // discutable. Un élève qui arrive le mardi matin a UNE chose à faire :
+    // celle qu'on lui a donnée. Lui proposer d'abord une révision de son carnet
+    // ou une découverte du catalogue, c'est le laisser travailler sagement la
+    // mauvaise chose — et le professeur découvrira le lendemain que la moitié
+    // de la classe a fait autre chose.
+    //
+    // ELLE DISPARAÎT QUAND ELLE EST FINIE : la carte est une CHOSE À FAIRE, et
+    // un travail terminé n'en est plus une. Elle redescend alors dans les
+    // raccourcis, où l'on peut la refaire.
+    if (seance && !seance.fini) {
+        return {
+            genre: 'seance',
+            titre: seance.commence ? 'Reprends ta séance' : 'Ta séance du jour',
+            sous: seance.classeNom ? `${seance.titre} · ${seance.classeNom}` : seance.titre,
+            bouton: seance.commence ? 'Continuer' : 'Commencer',
+            faites: seance.faites, total: seance.total,
+            // LE MOT DU PROFESSEUR VOYAGE AVEC LA CARTE. Rémy voulait pouvoir
+            // écrire un mot à un élève pendant la séance ; le lui montrer
+            // ailleurs qu'à l'endroit où il clique, c'est le lui cacher.
+            mot: seance.mot || ''
+        };
+    }
+
     const p = etatParcours(parcours);
     if (p && !p.fini) {
         return {
@@ -158,7 +182,9 @@ export function actionDuJour({ parcours, erreurs, suggestions = [] }) {
 }
 
 /** Ce qu'une carte d'action rend inutile juste en dessous d'elle. */
-const TUILE_DE_LA_CARTE = { parcours: 'parcours', revision: 'erreurs' };
+// La séance EST le parcours chargé : sa carte et la tuile « Mon parcours »
+// diraient le même chiffre, pour le même travail, deux fois.
+const TUILE_DE_LA_CARTE = { parcours: 'parcours', revision: 'erreurs', seance: 'parcours' };
 
 /**
  * LES TROIS RACCOURCIS, avec leur compte.
@@ -178,11 +204,23 @@ const TUILE_DE_LA_CARTE = { parcours: 'parcours', revision: 'erreurs' };
  * « 2/4 ». Le raccourci existe pour ce qu'on ne propose PAS ; ce qu'on propose
  * a déjà son bouton.
  */
-export function raccourcisDuJour({ parcours, erreurs, nbExercices = 0, action = null }) {
+export function raccourcisDuJour({
+    parcours, erreurs, nbExercices = 0, action = null, seance = null
+}) {
     const out = [];
     const dejaDit = action ? TUILE_DE_LA_CARTE[action.genre] : null;
+    // LA SÉANCE FINIE GARDE SA TUILE. C'est la seule façon de la refaire — et
+    // c'est aussi ce qui dit à l'élève, d'un coup d'œil, qu'il a fini le
+    // travail donné. « Mon parcours · 2 sur 4 » ne le disait pas : on ne savait
+    // pas de quel parcours il s'agissait.
+    if (seance && dejaDit !== 'parcours') {
+        out.push({
+            id: 'seance', icone: '📗', titre: 'Ma séance',
+            sous: seance.fini ? 'Terminée — bravo' : `${seance.faites} sur ${seance.total}`
+        });
+    }
     const p = etatParcours(parcours);
-    if (p && dejaDit !== 'parcours') {
+    if (p && dejaDit !== 'parcours' && !seance) {
         out.push({
             id: 'parcours', icone: '🗺️', titre: 'Mon parcours',
             sous: p.fini ? 'Terminé — bravo' : `${p.faites} sur ${p.total}`
@@ -211,13 +249,14 @@ export function raccourcisDuJour({ parcours, erreurs, nbExercices = 0, action = 
 export function planDuJour(faits) {
     const {
         maintenant = Date.now(), premiere = false, parcours = null,
-        erreurs = [], tentatives = [], suggestions = [], nbExercices = 0
+        erreurs = [], tentatives = [], suggestions = [], nbExercices = 0,
+        seance = null
     } = faits || {};
-    const action = actionDuJour({ parcours, erreurs, suggestions });
+    const action = actionDuJour({ parcours, erreurs, suggestions, seance });
     return {
         salut: premiere ? 'Bienvenue !' : salutation(maintenant),
         phrase: phraseDuJour({ maintenant, premiere, tentatives }),
         action,
-        raccourcis: raccourcisDuJour({ parcours, erreurs, nbExercices, action })
+        raccourcis: raccourcisDuJour({ parcours, erreurs, nbExercices, action, seance })
     };
 }

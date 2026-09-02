@@ -8587,6 +8587,68 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 }
 .auj-carte--revision { background: #f59e0b; box-shadow: 0 14px 30px rgba(245, 158, 11, .3); }
 .auj-carte--decouverte { background: #10b981; box-shadow: 0 14px 30px rgba(16, 185, 129, .3); }
+/* LA SÉANCE DU PROFESSEUR GARDE LA COULEUR PRINCIPALE. Elle n'est ni une
+   révision (ambre) ni une découverte (vert) : c'est LE travail, et elle doit se
+   reconnaître comme telle sans qu'on ait à lire le titre. */
+.auj-carte--seance { background: var(--primary); }
+
+/* LE MOT DU PROFESSEUR — écrit à la main, donc en italique, et détaché de la
+   ligne du dessus par un filet : c'est quelqu'un qui parle, pas un libellé de
+   l'application. */
+.auj-mot {
+    display: block; margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, .3);
+    font-style: italic; font-weight: 600; opacity: .95;
+    overflow-wrap: anywhere;
+}
+
+/* « TU TRAVAILLES COMME EMMA DURAND · 5ᵉ B » — une ligne d'état, en bas, en
+   petit. Elle ne demande rien ; elle permet seulement de vérifier qui l'on est
+   et de se détromper. */
+.auj-classe {
+    margin: 4px 0 10px; text-align: center;
+    color: var(--text-muted); font-size: .9rem; font-weight: 600;
+}
+.auj-lien {
+    background: none; border: 0; padding: 0 2px; cursor: pointer;
+    color: var(--primary); font: inherit; font-weight: 800;
+    text-decoration: underline; text-underline-offset: 2px;
+}
+.auj-lien:hover { filter: brightness(1.15); }
+
+/* ── REJOINDRE SA CLASSE ─────────────────────────────────────────────────── */
+.rj { display: flex; flex-direction: column; gap: 10px; }
+.rj-label { font-weight: 800; font-size: .95rem; }
+.rj-champ {
+    width: 100%; padding: 12px 14px; font: inherit; font-size: 1.05rem;
+    border: 2px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); color: var(--text-main);
+}
+.rj-champ:focus { outline: none; border-color: var(--primary); }
+.rj-aide, .rj-vide, .rj-etat { color: var(--text-muted); font-size: .88rem; margin: 0; }
+.rj-etat:empty { display: none; }
+.rj-etat--attention { color: var(--warning); font-weight: 800; }
+.rj-deja {
+    margin: 0; padding: 10px 12px; border-radius: 10px;
+    background: var(--bg-hover); font-size: .9rem;
+}
+.rj-quitter {
+    background: none; border: 0; padding: 0 2px; cursor: pointer;
+    color: var(--danger); font: inherit; font-weight: 800; text-decoration: underline;
+}
+/* LA LISTE NE DÉPASSE JAMAIS QUATRE LIGNES VISIBLES : au-delà, on ne choisit
+   plus, on cherche — et c'est le champ qui sert à ça. */
+.rj-liste { display: flex; flex-direction: column; gap: 6px; max-height: 244px; overflow-y: auto; }
+.rj-choix, .rj-seance {
+    display: flex; flex-direction: column; gap: 2px; text-align: left;
+    padding: 11px 14px; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); color: var(--text-main); font: inherit; cursor: pointer;
+    transition: border-color .12s, transform .1s;
+}
+.rj-choix:hover, .rj-seance:hover { border-color: var(--primary); transform: translateX(2px); }
+.rj-choix-nom, .rj-seance-nom { font-weight: 800; }
+.rj-choix-classe, .rj-seance-dit { color: var(--text-muted); font-size: .86rem; }
+.rj-seances { display: flex; flex-direction: column; gap: 8px; }
 .auj-dit { min-width: 0; flex: 1 1 190px; }
 .auj-dit b { display: block; font-size: clamp(1.05rem, 2.6vw, 1.3rem); font-weight: 900; }
 .auj-dit span { opacity: .92; font-weight: 600; }
