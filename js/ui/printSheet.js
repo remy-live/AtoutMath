@@ -11051,13 +11051,13 @@ const cheminsUniques = () => FLECHES_Q;
  */
 /** Les mêmes trois teintes, en composantes — jsPDF ne lit pas le dièse. */
 const RVB_COND = {
-    cotes: [234, 242, 253],
+    cotes: [226, 237, 252],
     diagonales: [247, 211, 205],
     raccourci: [205, 191, 224]
 };
 
 const TEINTE_COND = {
-    cotes: '#eaf2fd',
+    cotes: '#e2edfc',
     diagonales: '#f7d3cd',
     raccourci: '#cdbfe0'
 };
@@ -11161,7 +11161,7 @@ function organigrammePreviewHtml(item, slot, k, solution) {
         // même temps que le plan s'est étalé ; une figure calculée en
         // pourcentages de la case en serait sortie aplatie — un carré qui n'est
         // plus carré, sur la feuille qui enseigne les quadrilatères.
-        const fw = Math.min(g.caseW * 0.42, g.caseH * 0.52), fh = fw;
+        const fw = Math.min(g.caseW * 0.5, g.caseH * 0.6), fh = fw;
         const fx = c.x - fw / 2, fy = y + g.caseH * 0.08;
         const d = fam.figure.map((pt, i) =>
             `${i ? 'L' : 'M'}${T(fx + (pt[0] / 100) * fw)} ${T(fy + (pt[1] / 100) * fh)}`).join(' ') + ' Z';
@@ -11400,7 +11400,7 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
         // hauteur avec une police plancher de 5 points, débordait dessous —
         // mesuré sur le premier PDF, « Parallélogramme » chevauchait le trait
         // qui descend vers la rangée suivante.
-        const fw = Math.min(g.caseW * 0.42, g.caseH * 0.52), fh = fw;
+        const fw = Math.min(g.caseW * 0.5, g.caseH * 0.6), fh = fw;
         const fx = c.x - fw / 2, fy = y + g.caseH * 0.08;
         const pts = fam.figure.map(pt => [fx + (pt[0] / 100) * fw, fy + (pt[1] / 100) * fh]);
         for (let i = 0; i < pts.length; i++) {
