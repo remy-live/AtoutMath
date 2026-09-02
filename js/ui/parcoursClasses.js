@@ -42,7 +42,20 @@ import {
 } from '../core/seances.js';
 import { bilanSeance, bilanEleveSeance, aTravaille } from '../core/bilanSeance.js';
 import { lireClasses, lireSeances, ecrireSeances } from './donnerSeance.js';
-import { couleurNiveau } from '../core/bilan.js';
+import { couleurNiveau, consigneDe, consigneClasse } from '../core/bilan.js';
+import { LEVELS } from '../core/mastery.js';
+
+/**
+ * LE NIVEAU D'UN TAUX MOYEN, pour teinter la jauge d'une colonne.
+ *
+ * On réutilise les seuils de l'échelle de maîtrise plutôt que d'inventer un
+ * dégradé : la couleur d'une colonne doit vouloir dire la même chose que la
+ * couleur d'une case chez un élève, sinon le tableau ment.
+ */
+const niveauDeTaux = (x) => {
+    const ordre = ['E', 'A', 'EC', 'NA'];
+    return ordre.find(k => LEVELS[k] && (x || 0) >= (LEVELS[k].min || 0)) || 'NA';
+};
 
 const esc = (t) => String(t == null ? '' : t)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -173,23 +186,34 @@ function bilanClasseHtml(b) {
         <h4>${esc(b.titre)} — ${esc(b.nom)}</h4>
         <p class="pc-resume">${b.commences}/${b.attendus} ont ouvert la séance ·
             ${pourcent(b.moyenneReussite)} de réussite moyenne</p>
+        <!-- CE QU'ON FAIT DE TOUTE LA CLASSE, en tête : c'est la phrase qui
+             décide de l'heure suivante, et elle ne doit pas se chercher. -->
+        <p class="pc-consigne">${esc(consigneClasse(b))}</p>
         <p class="pc-phrase">${esc(b.phrase)}</p>
         ${cols.length ? `<table class="pc-table">
             <thead><tr><th>Notion</th><th>Moyenne</th><th>En peine</th></tr></thead>
             <tbody>${cols.map(c => `<tr>
                 <td>${esc(c.nom)}</td>
-                <td>${pourcent(c.moyenne)}</td>
+                <!-- LA COULEUR EST CELLE DE L'ÉCHELLE DE MAÎTRISE, pas un
+                     dégradé décoratif : c'est la même sur l'écran de l'élève,
+                     dans le tableau de classe et sur le PDF. -->
+                <td><span class="pc-jauge" style="--part:${Math.round(c.moyenne * 100)}%;
+                    --teinte:${couleurNiveau(niveauDeTaux(c.moyenne))}"></span>
+                    ${pourcent(c.moyenne)}</td>
                 <td class="${c.enPeine >= 0.5 ? 'pc-rouge' : ''}">${Math.round(c.enPeine * 100)} %</td>
             </tr>`).join('')}</tbody>
         </table>` : '<p class="pc-vide">Pas encore assez de réponses pour dire quoi que ce soit.</p>'}
-        <h5>Les élèves</h5>
+        <h5>Les élèves — une ligne, une chose à faire</h5>
         <div class="pc-eleves-bilan">${classer(b.eleves).map(e => `
-            <div class="pc-eleve">
+            <button type="button" class="pc-eleve pc-eleve--clic" data-detail="${esc(e.id)}"
+                title="Voir le détail de ${esc(e.nom)}">
                 <span class="pc-eleve-nom">${esc(e.nom)}</span>
+                <span class="pc-consigne-eleve">${esc(consigneDe(e))}</span>
                 <span class="pc-chiffre">${e.questions ? `${e.questions} q · ${pourcent(e.reussite)}`
-        : 'n\'a pas commencé'}</span>
+        : ''}</span>
                 ${e.mot ? `<span class="pc-mot">${esc(e.mot)}</span>` : ''}
-            </div>`).join('')}</div>
+            </button>`).join('')}</div>
+        <button type="button" class="pc-pdf" data-pdf>📄 Exporter ce bilan en PDF</button>
     </div>`;
 }
 
@@ -266,12 +290,50 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
 
     const zone = () => panel.querySelector('.pc-rapport-zone');
 
-    function montrer(html) {
+    function montrer(html, contexte) {
         const z = zone();
         if (!z) return;
         z.innerHTML = html + '<button type="button" class="pc-fermer-rapport">Fermer le bilan</button>';
         z.hidden = false;
         z.querySelector('.pc-fermer-rapport').onclick = () => { z.hidden = true; z.innerHTML = ''; };
+
+        // CLIQUER UN ÉLÈVE OUVRE SON DÉTAIL. Rémy : « dans la liste d'élèves
+        // dans le bilan, permets de cliquer sur l'élève pour avoir des
+        // détails ». La ligne du tableau dit QUOI FAIRE ; le détail dit
+        // pourquoi — les compétences, les erreurs qui restent, le mot qu'on lui
+        // a laissé. On lit la première pour balayer, le second avant de parler
+        // à l'élève.
+        if (contexte) {
+            z.querySelectorAll('[data-detail]').forEach(el => {
+                el.onclick = () => {
+                    const eleve = (contexte.classe.eleves || [])
+                        .find(x => x.id === el.dataset.detail);
+                    if (!eleve) return;
+                    montrer(bilanEleveHtml(bilanEleveSeance(contexte.seance, eleve))
+                        + `<button type="button" class="pc-retour" data-retour>← Revenir à la classe</button>`,
+                    contexte);
+                };
+            });
+            const retour = z.querySelector('[data-retour]');
+            if (retour) retour.onclick = () => montrer(
+                bilanClasseHtml(bilanSeance(contexte.seance, contexte.classe)), contexte);
+
+            const pdf = z.querySelector('[data-pdf]');
+            if (pdf) pdf.onclick = async () => {
+                pdf.disabled = true;
+                pdf.textContent = 'Préparation du PDF…';
+                try {
+                    const { exporterBilanPdf } = await import('./bilanPdf.js');
+                    await exporterBilanPdf(bilanSeance(contexte.seance, contexte.classe));
+                    showToast('Bilan exporté en PDF.', 'success');
+                } catch (e) {
+                    showToast('Le PDF n\'a pas pu être produit.', 'error');
+                } finally {
+                    pdf.disabled = false;
+                    pdf.textContent = '📄 Exporter ce bilan en PDF';
+                }
+            };
+        }
         z.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
 
@@ -339,7 +401,8 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 const classe = classes.find(c => c.id === b.dataset.bilanClasse);
                 const info = etatClasse(classe, seances, pathId);
                 if (!info.seance) return;
-                montrer(bilanClasseHtml(bilanSeance(info.seance, classe)));
+                montrer(bilanClasseHtml(bilanSeance(info.seance, classe)),
+                    { seance: info.seance, classe });
             };
         });
     }

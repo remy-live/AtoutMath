@@ -350,6 +350,80 @@ export function phraseClasse(eleves, competences) {
         + `plus de la moitié de la classe n'y est pas.${rappel}`;
 }
 
+/**
+ * LA CONSIGNE : une phrase courte, et une seule chose à faire.
+ *
+ * Rémy : « une phrase par élève : "Doit réviser les nombres relatifs", ou "a
+ * bien révisé", ou "revoir pour la classe les additions". »
+ *
+ * CE N'EST PAS `phraseDe`, ET LES DEUX SONT UTILES. `phraseDe` explique — elle
+ * dit ce qui est solide, ce qui bute, avec les pourcentages : c'est ce qu'on lit
+ * quand on prépare son heure, et cela prend quatre lignes. La CONSIGNE, elle,
+ * tient sur une ligne d'un tableau de vingt-six élèves, et elle ne dit qu'une
+ * chose : QUOI FAIRE. On la balaie du regard, on repère les cinq qui ont le
+ * même mot, on sait avec qui on reprendra les relatifs lundi.
+ *
+ * ELLE NOMME LA NOTION, jamais l'élève. « Doit réviser les nombres relatifs »
+ * se recopie sur un cahier de textes ; « est en difficulté » ne se recopie
+ * nulle part et n'apprend rien à personne.
+ *
+ * L'ORDRE DES CAS EST L'ORDRE DES PRIORITÉS, et il n'est pas arbitraire :
+ * n'avoir rien fait passe avant tout le reste — il n'y a rien à réviser tant
+ * qu'on n'a pas travaillé. Puis l'arrêt en chemin, puis l'erreur qui revient,
+ * qui se corrige en deux minutes quand on la voit. La révision d'une notion ne
+ * vient qu'ensuite.
+ */
+export function consigneDe(b) {
+    if (!b || !b.questions) return 'N\'a pas fait la séance.';
+    if (b.inacheve) {
+        return b.etapesInachevees
+            ? `Séance abandonnée après ${b.etapesInachevees} exercice`
+                + `${b.etapesInachevees > 1 ? 's' : ''} : à refaire.`
+            : 'Séance ouverte puis abandonnée : à refaire.';
+    }
+    if (!b.assez) return 'Trop peu de questions pour conclure.';
+    if (b.tetu) {
+        const q = String(b.tetu.questionText || '').trim();
+        return q ? `Une règle à reprendre : ${q}.` : 'Une même erreur revient : règle à reprendre.';
+    }
+
+    const durs = (b.difficultes || []).slice(0, 2).map(c => c.nom);
+    if (durs.length) {
+        return `Doit réviser ${durs.length > 1 ? ' : ' : ''}${durs.join(' et ')}.`
+            .replace('Doit réviser  : ', 'Doit réviser : ');
+    }
+    // AUCUNE DIFFICULTÉ FIABLE : on distingue quand même « tout est acquis » de
+    // « on a fait le tour ». Un élève qui réussit tout n'a pas besoin qu'on le
+    // félicite, il a besoin de plus dur — et c'est cela, l'information utile.
+    if ((b.forces || []).length >= 3 && b.reussite >= 0.9) {
+        return 'A bien révisé : tout est acquis, donner plus difficile.';
+    }
+    if ((b.forces || []).length) return 'A bien révisé : rien à reprendre.';
+    return 'Rien de sûr encore : à revoir la prochaine fois.';
+}
+
+/**
+ * LA CONSIGNE DE LA CLASSE — ce qu'on reprend avec tout le monde.
+ *
+ * « Revoir pour la classe les additions » : c'est la seule phrase qui décide
+ * de l'heure suivante, et elle ne vaut que si la notion bloque VRAIMENT la
+ * classe. Une notion ratée par trois élèves sur vingt-six se reprend avec les
+ * trois, pas au tableau.
+ */
+export function consigneClasse(b) {
+    const eleves = (b && b.eleves) || [];
+    const actifs = eleves.filter(e => e.questions > 0);
+    if (!eleves.length) return 'Aucun élève dans cette classe.';
+    if (!actifs.length) return 'Personne n\'a travaillé : rien à conclure.';
+
+    const durs = (b.competences || []).filter(c => c.enPeine >= 0.5 && c.eleves >= 2);
+    if (!durs.length) {
+        return 'Rien à reprendre avec toute la classe : voir les élèves un par un.';
+    }
+    const noms = durs.slice(0, 2).map(c => c.nom).join(' et ');
+    return `Revoir avec toute la classe : ${noms}.`;
+}
+
 /** La couleur d'une case du tableau, du plus fragile au plus sûr. */
 export function couleurNiveau(niveauKey) {
     return (LEVELS[niveauKey] || LEVELS.NA).color;

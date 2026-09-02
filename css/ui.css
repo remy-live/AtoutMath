@@ -1706,3 +1706,63 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     border: 1.5px solid var(--border); border-radius: 9px;
     background: var(--bg-panel); color: var(--text-main); cursor: pointer;
 }
+
+
+/* --- LE BILAN DANS LE PANNEAU : consignes, couleurs, détail --------------- */
+
+/* CE QU'ON FAIT DE TOUTE LA CLASSE, en tête. C'est la phrase qui décide de
+   l'heure suivante, et elle ne doit pas se chercher au milieu du reste. */
+.pc-consigne {
+    margin: 0 0 6px; padding: 7px 10px; border-radius: 8px;
+    font-size: .88rem; font-weight: 700; line-height: 1.35;
+    color: var(--text-main);
+    background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
+    border-left: 3px solid var(--primary);
+}
+
+/* LA JAUGE D'UNE COLONNE. Un tableau de chiffres demande de lire chaque case ;
+   une barre se lit d'un coup d'œil, et c'est le geste qu'on fait avant de
+   préparer l'heure suivante. La teinte est celle de l'échelle de maîtrise —
+   la même que chez l'élève —, sinon le tableau dirait deux choses. */
+/* LE POURCENTAGE NE SE COUPE PAS. Mesuré dans le panneau de 330 pixels :
+   « 60 % » passait à la ligne entre le chiffre et le signe, ce qui donnait une
+   colonne haute de deux lignes pour un nombre de deux caractères. */
+.pc-table td:nth-child(2) { white-space: nowrap; }
+.pc-jauge {
+    display: inline-block; vertical-align: middle; margin-right: 4px;
+    width: 24px; height: 7px; border-radius: 4px;
+    background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+    position: relative; overflow: hidden;
+}
+.pc-jauge::after {
+    content: ''; position: absolute; inset: 0 auto 0 0;
+    width: var(--part, 0%); background: var(--teinte, var(--primary));
+}
+
+/* UNE LIGNE D'ÉLÈVE EST UN BOUTON : on clique pour voir le détail. Elle garde
+   l'allure d'une ligne — un vrai bouton dans une liste de vingt-six ferait un
+   mur de cadres — mais elle réagit, et le curseur le dit. */
+.pc-eleve--clic {
+    display: grid; width: 100%; text-align: left; cursor: pointer;
+    grid-template-columns: minmax(70px, 1fr) minmax(0, 2.1fr) auto;
+    align-items: baseline; gap: 6px;
+    border: none; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+    background: none; font: inherit; padding: 4px 2px;
+}
+.pc-eleve--clic:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.pc-consigne-eleve {
+    font-size: .8rem; color: var(--text-muted); line-height: 1.25;
+    overflow: hidden; text-overflow: ellipsis;
+}
+.pc-eleve--clic .pc-mot { grid-column: 2 / -1; }
+
+.pc-pdf, .pc-retour {
+    margin-top: 10px; width: 100%; padding: 8px; font: inherit; font-size: .84rem;
+    font-weight: 700; border-radius: 9px; cursor: pointer;
+    border: 1.5px solid var(--primary); color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
+}
+.pc-pdf:disabled { opacity: .6; cursor: progress; }
+.pc-retour {
+    border-color: var(--border); color: var(--text-main); background: var(--bg-panel);
+}

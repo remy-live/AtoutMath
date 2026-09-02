@@ -7,7 +7,10 @@ import {
     creerClasse, creerEleve, poserEleve, fusionnerEvenements, retirerEleve,
     renommerEleve, lireFichierEleve, normaliser, elevesTries
 } from '../js/core/classes.js';
-import { bilanEleve, bilanClasse, phraseDe, phraseClasse, nomCompetence } from '../js/core/bilan.js';
+import {
+    bilanEleve, bilanClasse, phraseDe, phraseClasse, nomCompetence,
+    consigneDe, consigneClasse
+} from '../js/core/bilan.js';
 import { RELIABLE_MIN_ATTEMPTS } from '../js/core/mastery.js';
 
 const JOUR = 86400000;
@@ -234,4 +237,104 @@ test('le détail reste disponible sous la phrase', () => {
 test('phraseDe se suffit à elle-même — on peut la rejouer sur un bilan reconstruit', () => {
     const b = bilanEleve(suite('num.add.entiers', 8));
     assert.equal(phraseDe(b), b.phrase);
+});
+
+
+// --- LA CONSIGNE : une phrase, une chose à faire ---------------------------------
+
+test('LA CONSIGNE TIENT SUR UNE LIGNE et dit QUOI FAIRE', async () => {
+    // Rémy : « une phrase par élève : "Doit réviser les nombres relatifs", ou
+    // "a bien révisé", ou "revoir pour la classe les additions". »
+    //
+    // CE N'EST PAS `phraseDe`, et les deux servent. L'une explique en quatre
+    // lignes quand on prépare son heure ; l'autre tient sur une ligne d'un
+    // tableau de vingt-six élèves, et se balaie du regard pour repérer les cinq
+    // qui ont le même mot.
+    const { classesDeDemo } = await import('../js/core/demoClasses.js');
+    const classe = classesDeDemo({})[0];
+    const b = bilanClasse(classe);
+
+    b.eleves.forEach(e => {
+        const c = consigneDe(e);
+        assert.ok(c.length > 10, `${e.nom} : consigne vide`);
+        assert.ok(c.length <= 90, `${e.nom} : ${c.length} caractères — « ${c} »`);
+        // Elle se termine par un point : on la recopie sur un cahier de textes.
+        assert.match(c, /[.!]$/, `${e.nom} : « ${c} »`);
+        // ELLE NE JUGE PAS L'ÉLÈVE, elle nomme la notion. « Est en difficulté »
+        // ne se recopie nulle part et n'apprend rien à personne.
+        assert.doesNotMatch(c, /en difficulté|faible|mauvais|nul/i, `${e.nom} : « ${c} »`);
+        assert.equal(c.includes(e.nom), false, 'la consigne ne répète pas le nom');
+    });
+
+    // Sur une classe entière, on rencontre bien plusieurs consignes différentes :
+    // une phrase unique pour tout le monde ne renseignerait sur personne.
+    const vues = new Set(b.eleves.map(consigneDe));
+    assert.ok(vues.size >= 4, `seulement ${vues.size} consignes différentes`);
+});
+
+test('LA CONSIGNE SUIT L\'ORDRE DES PRIORITÉS', () => {
+    // N'avoir rien fait passe avant tout : il n'y a rien à réviser tant qu'on
+    // n'a pas travaillé. Puis l'arrêt en chemin, puis l'erreur qui revient —
+    // celle-là se corrige en deux minutes quand on la voit.
+    assert.match(consigneDe({ questions: 0 }), /pas fait la séance/i);
+    assert.match(consigneDe(null), /pas fait la séance/i);
+
+    assert.match(consigneDe({ questions: 40, inacheve: true, etapesInachevees: 2 }),
+        /abandonnée après 2 exercices/);
+    assert.match(consigneDe({ questions: 40, inacheve: true, etapesInachevees: 0 }),
+        /abandonnée/);
+
+    assert.match(consigneDe({ questions: 3, assez: false }), /trop peu/i);
+
+    assert.match(consigneDe({ questions: 40, assez: true,
+        tetu: { count: 8, questionText: '408 + 297' } }), /408 \+ 297/);
+
+    // La notion est nommée, et deux au plus : une liste de six ne se lit pas.
+    const c = consigneDe({ questions: 40, assez: true, difficultes: [
+        { nom: 'Nombres relatifs' }, { nom: 'Additions' }, { nom: 'Aires' }] });
+    assert.match(c, /^Doit réviser : Nombres relatifs et Additions\.$/);
+
+    // Un seul souci : pas de deux-points inutile.
+    assert.equal(consigneDe({ questions: 40, assez: true,
+        difficultes: [{ nom: 'Nombres relatifs' }] }), 'Doit réviser Nombres relatifs.');
+
+    // Et celui qui réussit tout n'a pas besoin d'être félicité : il a besoin de
+    // plus dur, et c'est cela l'information utile.
+    assert.match(consigneDe({ questions: 40, assez: true, reussite: 0.95, difficultes: [],
+        forces: [{}, {}, {}] }), /plus difficile/);
+    assert.match(consigneDe({ questions: 40, assez: true, reussite: 0.7, difficultes: [],
+        forces: [{}] }), /rien à reprendre/);
+});
+
+test('LA CONSIGNE DE CLASSE NE DÉCIDE QUE DE CE QUI BLOQUE TOUT LE MONDE', () => {
+    // Une notion ratée par trois élèves sur vingt-six se reprend avec les
+    // trois, pas au tableau. La phrase qui décide de l'heure suivante ne vaut
+    // que si la notion bloque vraiment la classe.
+    assert.match(consigneClasse({ eleves: [], competences: [] }), /Aucun élève/);
+    assert.match(consigneClasse({ eleves: [{ questions: 0 }], competences: [] }),
+        /Personne n'a travaillé/);
+
+    const rien = consigneClasse({
+        eleves: [{ questions: 30 }],
+        competences: [{ nom: 'Additions', enPeine: 0.2, eleves: 20 }]
+    });
+    assert.match(rien, /un par un/);
+
+    const bloque = consigneClasse({
+        eleves: [{ questions: 30 }],
+        competences: [
+            { nom: 'Additions', enPeine: 0.7, eleves: 20 },
+            { nom: 'Aires', enPeine: 0.6, eleves: 18 },
+            { nom: 'Divisions', enPeine: 0.55, eleves: 12 }
+        ]
+    });
+    assert.match(bloque, /^Revoir avec toute la classe : Additions et Aires\.$/,
+        'deux notions au plus : une liste de six ne se lit pas');
+
+    // Une notion en peine chez UN SEUL élève ne remonte pas au tableau.
+    const seul = consigneClasse({
+        eleves: [{ questions: 30 }],
+        competences: [{ nom: 'Aires', enPeine: 0.9, eleves: 1 }]
+    });
+    assert.match(seul, /un par un/);
 });
