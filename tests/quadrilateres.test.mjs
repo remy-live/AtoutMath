@@ -810,3 +810,47 @@ test('TOUTES LES CARTES TIENNENT DANS UNE CASE DU PLAN', () => {
             `« ${v.texte} » déborde en hauteur`);
     });
 });
+
+// --- LA MISE EN SCÈNE : chaque figure arrive QUELQUE PART ----------------------
+//
+// Rémy : « au départ, il faut montrer l'organigramme vide en entier, faire
+// apparaître le quadrilatère, on zoome dessus en laissant visible la case du
+// parallélogramme. Puis on fait apparaître le parallélogramme et là la popup
+// s'ouvre. Idem pour les autres. »
+
+test('CHAQUE ÉTAPE DE CODAGE SAIT D\'OÙ SA FIGURE DESCEND', async () => {
+    // C'est ce qui permet de cadrer sur les DEUX cases — celle qu'on connaît et
+    // celle qui arrive. Une figure qui surgit seule au milieu d'un écran ne dit
+    // pas d'où elle sort, et c'est justement ce que l'organigramme enseigne.
+    const { genererProgressif, estToujours } = await import('../js/core/quadrilateres.js');
+    const org = genererProgressif({ rng: makeRng('scene'), palier: 'conditions', codage: true });
+    const codages = org.etapes.filter(e => e.genre === 'codage');
+    assert.equal(codages.length, 4, 'quatre figures se codent : para, rectangle, losange, carré');
+    codages.forEach(e => {
+        assert.ok(e.de, `l'étape « ${e.titre} » ne dit pas d'où elle vient`);
+        assert.notEqual(e.de, e.figure);
+        // La case d'où l'on vient est bien AU-DESSUS dans la hiérarchie : la
+        // figure qui arrive en est un cas particulier.
+        assert.equal(estToujours(e.figure, e.de), true,
+            `${e.figure} devrait être un cas particulier de ${e.de}`);
+        // Et les deux cases sont déjà visibles à cette étape-là : on ne peut pas
+        // cadrer sur une case qu'on ne dessine pas.
+        assert.ok(e.vues.includes(e.de) && e.vues.includes(e.figure),
+            `« ${e.titre} » cadre sur des cases absentes du plan`);
+    });
+});
+
+test('la figure d\'une étape de codage est celle de la flèche qui l\'amène', () => {
+    // Le lien entre la mise en scène et le contenu : ce qu'on montre arriver est
+    // bien ce qu'on va coder, et ce qu'on va coder est bien l'arrivée de
+    // l'étape de conditions qui suit.
+    const org = genererProgressif({ rng: makeRng('scene2'), palier: 'conditions', codage: true });
+    org.etapes.forEach((e, i) => {
+        if (e.genre !== 'codage') return;
+        const suivante = org.etapes[i + 1];
+        assert.ok(suivante && suivante.genre === 'condition',
+            'un codage est toujours suivi de ses conditions');
+        assert.equal(suivante.vers, e.figure);
+        assert.equal(suivante.de, e.de);
+    });
+});

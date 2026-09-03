@@ -166,6 +166,11 @@ const fenetrePleine = () => fenetre([{ x1: 0, x2: PLAN_L, y1: 0, y2: PLAN_H }]);
 /** Le monde : le plan entier, plus une marge, dans lequel la fenêtre glisse. */
 const MONDE = { x0: -6, y0: -6, w: PLAN_L + 12, h: PLAN_H + 18 };
 
+/** Le monde vu en entier — la fenêtre de l'ouverture et de la relecture finale. */
+const TOUT_LE_MONDE = {
+    ...MONDE, rapport: MONDE.w / MONDE.h, zoom: PLAN_L / MONDE.w
+};
+
 /** La plus étroite acceptable : l'étape la plus large fait 142 unités. */
 const FEN_MIN = 148;
 const FEN_H = 90;
@@ -305,6 +310,60 @@ const COMPETENCE = 'geo.quadrilateres.familles';
 const ETAGE_MODALE = 100001;
 
 /**
+ * L'OUVERTURE — on montre la carte AVANT de la construire.
+ *
+ * Rémy : « au départ, il faut montrer l'organigramme vide en entier, faire
+ * apparaître le quadrilatère, on zoome dessus en laissant visible la case du
+ * parallélogramme. Puis on fait apparaître le parallélogramme, et là la popup
+ * s'ouvre pour expliquer que l'on va coder le parallélogramme. Idem pour les
+ * autres. »
+ *
+ * CE QUI MANQUAIT, ET CE N'EST PAS DE L'ORNEMENT. L'exercice s'ouvrait sur la
+ * figure à coder, seule au milieu de l'écran, avec une fenêtre par-dessus. On
+ * demandait donc de coder un parallélogramme sans avoir jamais montré OÙ l'on
+ * était : ni la carte qu'on allait construire, ni la case d'où l'on partait, ni
+ * celle où l'on arrivait. « Il faut le faire apparaître au fur et à mesure »,
+ * disait déjà Rémy — la construction pas à pas était là, mais elle commençait
+ * au deuxième pas.
+ *
+ * QUATRE TEMPS, ET CHACUN DIT UNE CHOSE :
+ *   1. le plan ENTIER, vide — cinq cases et treize fentes : voilà le travail ;
+ *   2. le quadrilatère arrive dans la sienne — voilà d'où l'on part ;
+ *   3. on zoome sur lui, la case du parallélogramme restant en vue — voilà où
+ *      l'on va (la case est là, elle est vide, c'est une question) ;
+ *   4. le parallélogramme arrive — et c'est LUI qu'on va coder, ce que la
+ *      fenêtre explique juste après.
+ *
+ * `duree` en millisecondes. Elles sont courtes : c'est une mise en place, pas un
+ * film, et l'on peut la couper d'un doigt (voir `finirOuverture`).
+ */
+const OUVERTURE = [
+    {
+        vues: [], cadre: 'monde', duree: 2200,
+        dit: 'Voici <b>l\'organigramme des quadrilatères</b> : cinq familles, et les '
+            + 'conditions qui mènent de l\'une à l\'autre. Il est vide — on va le construire.'
+    },
+    {
+        vues: ['quadrilatere'], cadre: 'monde', duree: 1900,
+        dit: 'On part du <b>quadrilatère</b>, tout en haut : la famille la plus large, '
+            + 'celle qui ne demande rien de plus que quatre côtés.'
+    },
+    {
+        vues: ['quadrilatere'], cadre: 'duo', duree: 1900,
+        dit: 'On descend d\'un cran. La case du dessous attend : qu\'est-ce qu\'un '
+            + 'quadrilatère doit avoir <b>en plus</b> pour être un parallélogramme ?'
+    },
+    {
+        vues: ['quadrilatere', 'parallelogramme'], cadre: 'duo', duree: 1700,
+        dit: 'Et voici le <b>parallélogramme</b>. Avant de dire ce qui y mène, on va '
+            + 'écrire ses propriétés sur la figure.'
+    }
+];
+
+/** Le temps qu'une figure met à s'installer dans sa case, aux étapes suivantes. */
+const DUREE_APPARITION = 1700;
+
+/**
  * LES BORNES DE L'ÉCRITURE AJUSTÉE, en pixels — voir `ajusterEcriture`.
  *
  * Le plancher est celui d'un texte encore lisible sur un téléphone ; le plafond
@@ -367,6 +426,8 @@ class Organigramme extends BaseGame {
         // l'étape. Le défaut est le sien : on recommence depuis le début.
         this.codageDemande = this.params.codage !== false && this.params.codage !== 'non';
         this.reprise = this.params.reprise === 'etape' ? 'etape' : 'debut';
+        // Vue une fois, elle ne se rejoue pas — voir `poser`.
+        this.ouvertureFaite = false;
         this.poses = {};
     }
 
@@ -460,6 +521,11 @@ class Organigramme extends BaseGame {
                 }
                 .qd-lien--ouvert { opacity: .9; stroke-dasharray: 3 3; stroke: var(--primary); }
                 .qd-lien--fait { stroke: var(--success); opacity: 1; stroke-width: 2; }
+                /* LE PLAN VIDE DE L'OUVERTURE : les chemins sont là, très pâles.
+                   C'est la carte du travail à venir — assez visible pour qu'on
+                   voie la forme, assez discrète pour qu'on ne la lise pas comme
+                   une réponse déjà donnée. */
+                .qd-lien--fantome { opacity: .22; stroke-dasharray: 2 4; }
                 /* LA POINTE DE LA FLÈCHE — un triangle de bordures, posé par sa
                    pointe. Elle dit le SENS de lecture, qui est tout ce qu'un
                    organigramme a de plus qu'un treillis. */
@@ -669,6 +735,30 @@ class Organigramme extends BaseGame {
                    poser. Un battement lent, jamais agressif : c'est un repère,
                    pas une alarme. */
                 .qd-cond--vide { animation: qd-attendre 1.6s ease-in-out infinite; }
+                /* LES CASES ET LES FENTES DE L'OUVERTURE. Elles ne clignotent
+                   pas et ne se touchent pas : à ce moment-là, il n'y a rien à
+                   faire — on regarde. Une case qui appelle avant que l'exercice
+                   ait commencé enseigne à cliquer, pas à lire. */
+                .qd-case--fantome, .qd-cond--fantome {
+                    border-style: dashed; border-color: var(--border);
+                    background: color-mix(in srgb, var(--bg-panel) 55%, transparent);
+                    opacity: .55; pointer-events: none; animation: none;
+                }
+                .qd-cond--fantome {
+                    position: absolute; box-sizing: border-box; border-width: 1.5px;
+                    border-radius: 8px; display: flex; align-items: center;
+                    justify-content: center; color: var(--text-muted);
+                    font-size: clamp(9px, 2cqw, 16px); font-weight: 700;
+                }
+                /* ON PEUT COUPER LA MISE EN SCÈNE. L'auteur la revoit cent fois,
+                   et un élève qui recommence l'exercice aussi. */
+                .qd-passer {
+                    margin-left: 8px; border: 1px solid var(--border); border-radius: 999px;
+                    background: var(--bg-panel); color: var(--text-muted);
+                    font: inherit; font-size: .72rem; font-weight: 700;
+                    padding: 2px 10px; min-height: 24px; cursor: pointer; vertical-align: middle;
+                }
+                .qd-passer:hover { border-color: var(--primary); color: var(--primary); }
                 @keyframes qd-attendre {
                     0%, 100% { border-color: var(--border); box-shadow: none; }
                     50% {
@@ -982,6 +1072,19 @@ class Organigramme extends BaseGame {
             this.codage = null;
             this.codages = {};
             this.annoncee = null;
+            // LA MISE EN SCÈNE. `ouverture` est l'indice du temps qu'on joue,
+            // `apparition` le numéro de la dernière étape dont la figure est
+            // déjà arrivée dans sa case. Le robot n'en a pas besoin : il a sa
+            // propre narration, et deux voix qui parlent en même temps n'en
+            // font aucune.
+            //
+            // L'OUVERTURE NE SE JOUE QU'UNE FOIS. Elle répond à « où suis-je » ;
+            // la réponse ne change pas au deuxième organigramme, et l'exercice
+            // en enchaîne trois. Les APPARITIONS, elles, se rejouent à chaque
+            // fois : elles disent « cette figure-ci arrive ICI », ce qui est le
+            // contenu même de la leçon.
+            this.ouverture = (this.isDemo || this.ouvertureFaite) ? null : 0;
+            this.apparition = null;
             this.vues = [];
             this.trouvees = {};   // clé d'étape → les textes trouvés, pour le carnet
         } else {
@@ -1031,6 +1134,21 @@ class Organigramme extends BaseGame {
         // vit sur les gestes de l'élève — poser une carte, coder une figure —,
         // là où un robot n'a rien à faire.
         if (!this.org) return false;
+        // LA MISE EN SCÈNE EST LA PREMIÈRE CHOSE QU'ON SAUTE. Un auteur qui
+        // cherche la septième étape n'a pas à regarder l'ouverture d'abord, et
+        // le saut doit franchir quelque chose de visible à chaque appui.
+        if (this.ouverture !== null && this.ouverture !== undefined) {
+            this.finirOuverture();
+            return true;
+        }
+        const enScene = this.etapeCourante;
+        if (enScene && enScene.genre === 'codage' && this.apparition !== enScene.numero) {
+            clearTimeout(this.minuteurScene);
+            this.apparition = enScene.numero;
+            this.planEl.onclick = null;
+            this.dessiner();
+            return true;
+        }
 
         // La série de questions : la suivante, sans la compter juste ni fausse.
         if (this.questions) {
@@ -1168,6 +1286,9 @@ class Organigramme extends BaseGame {
         if (e && e.genre === 'codage') delete this.codages[e.figure];
         else if (e) this.trouvees[e.rang] = [];
         this.annoncee = e ? e.numero : null;
+        // On revient sur une étape déjà vue : sa figure est déjà là, on ne la
+        // fait pas re-tomber du ciel.
+        if (e && e.genre === 'codage') this.apparition = e.numero;
         this.dessiner();
         return true;
     }
@@ -1227,11 +1348,154 @@ class Organigramme extends BaseGame {
      * yeux de l'élève au lieu de s'offrir tout fait. Et comme les positions
      * sont fixées d'avance, chacune arrive à SA place sans que le reste bouge.
      */
+    /**
+     * LE PLAN NU — cases pleines, cases fantômes, fentes vides, et rien à
+     * toucher. C'est le dessin de la mise en scène : l'organigramme tel qu'il
+     * SERA, avec ce qui est déjà arrivé.
+     *
+     * Les cases qu'on n'a pas encore atteintes ne sont pas absentes ici — c'est
+     * tout le propos de l'ouverture, montrer la carte entière — mais elles sont
+     * VIDES et sans nom : la forme du travail, pas ses réponses.
+     */
+    dessinerPlanNu(fen, visibles, neuve) {
+        this.coderEl.hidden = true;
+        this.planEl.hidden = false;
+        this.verifierEl.hidden = true;
+        this.carteEl.hidden = true;
+        this.etapeEl.hidden = true;
+        this.carnetEl.hidden = true;
+        this.cartesEl.className = 'qd-cartes';
+        this.cartesEl.innerHTML = '';
+        this.cadrer(fen, MONDE);
+
+        const traits = FLECHES.map(f => {
+            const t = traitsDeCondition(f);
+            return `<path class="qd-lien qd-lien--fantome" fill="none" vector-effect="non-scaling-stroke"
+                    d="${traitEnChemin(t.entrant, MONDE)}"/>
+                <path class="qd-lien qd-lien--fantome" fill="none" vector-effect="non-scaling-stroke"
+                    d="${traitEnChemin(t.sortant, MONDE)}"/>`;
+        }).join('');
+        let html = `<svg class="qd-fils" viewBox="0 0 100 100"
+            preserveAspectRatio="none">${traits}</svg>`;
+        html += pointesHtml(FLECHES.flatMap(f => {
+            const t = traitsDeCondition(f);
+            return [t.entrant, t.sortant];
+        }), MONDE);
+
+        for (const fam of FAMILLES) {
+            const b = placerBoite(boiteFigure(fam.id), MONDE);
+            const style = `left:${b.gauche}%; top:${b.haut}%; width:${b.large}%; height:${b.haute}%`;
+            html += visibles.includes(fam.id)
+                ? `<div class="qd-case ${fam.id === neuve ? 'qd-case--neuve' : ''}" style="${style}">
+                    ${this.figureSvg(fam, true, fam.id === neuve)}
+                    <div class="qd-nom">${fam.nom}</div></div>`
+                : `<div class="qd-case qd-case--fantome" style="${style}"></div>`;
+        }
+        for (const f of FLECHES) {
+            const b = placerBoite(boiteCondition(f), MONDE);
+            html += `<div class="qd-cond qd-cond--fantome"
+                style="left:${b.gauche}%; top:${b.haut}%; width:${b.large}%; height:${b.haute}%"
+                >?</div>`;
+        }
+        this.mondeEl.innerHTML = html;
+        this.ajusterCartes();
+    }
+
+    /** La fenêtre posée sur deux cases voisines et ce qui les relie. */
+    cadreDuo(de, vers) {
+        return fenetreFixe([boiteFigure(de), boiteFigure(vers),
+            ...FLECHES.filter(f => f.de === de && f.vers === vers).map(boiteCondition)],
+        this.largeurFenetre());
+    }
+
+    /** L'un des quatre temps de l'ouverture, puis le suivant. */
+    dessinerOuverture() {
+        const beat = OUVERTURE[this.ouverture];
+        if (!beat) return this.finirOuverture();
+        this.consigneEl.innerHTML = `${beat.dit}
+            <button type="button" class="qd-passer" data-passer>Passer ▸</button>`;
+        const fen = beat.cadre === 'monde' ? TOUT_LE_MONDE
+            : this.cadreDuo('quadrilatere', 'parallelogramme');
+        // La figure qui ARRIVE à ce temps-ci : celle que le temps précédent ne
+        // montrait pas encore. C'est elle qui reçoit l'animation d'entrée.
+        const avant = this.ouverture > 0 ? OUVERTURE[this.ouverture - 1].vues : [];
+        const neuve = beat.vues.find(id => !avant.includes(id)) || null;
+        this.dessinerPlanNu(fen, beat.vues, neuve);
+        // ON PEUT COUPER. Une mise en scène qu'on ne peut pas passer devient une
+        // corvée dès la deuxième fois — et l'auteur, lui, la revoit cent fois.
+        const passer = this.consigneEl.querySelector('[data-passer]');
+        if (passer) passer.onclick = () => this.finirOuverture();
+        this.planEl.onclick = () => this.finirOuverture();
+        clearTimeout(this.minuteurScene);
+        this.minuteurScene = setTimeout(() => {
+            if (!this.isRunning || this.ouverture === null) return;
+            this.ouverture += 1;
+            if (this.ouverture >= OUVERTURE.length) this.finirOuverture();
+            else this.dessiner();
+        }, beat.duree);
+    }
+
+    /**
+     * L'ouverture est finie : le parallélogramme est arrivé, on passe au
+     * codage. Son apparition est marquée comme faite — la rejouer aussitôt
+     * après l'avoir montrée serait la montrer deux fois.
+     */
+    finirOuverture() {
+        clearTimeout(this.minuteurScene);
+        if (this.ouverture === null) return;
+        this.ouverture = null;
+        this.ouvertureFaite = true;
+        this.planEl.onclick = null;
+        const e = this.etapeCourante;
+        if (e && e.genre === 'codage') this.apparition = e.numero;
+        this.dessiner();
+    }
+
+    /**
+     * LA FIGURE ARRIVE DANS SA CASE, puis on la code — « idem pour les autres ».
+     *
+     * On cadre sur la case d'où l'on vient et sur celle qui vient d'apparaître :
+     * une figure qui surgit seule au milieu d'un écran ne dit pas d'où elle
+     * sort, et c'est justement ce que l'organigramme enseigne.
+     */
+    montrerApparition(e) {
+        this.consigneEl.innerHTML = `Le <b>${familleDe(e.figure).nom.toLowerCase()}</b> `
+            + `arrive dans l'organigramme, sous le ${familleDe(e.de).nom.toLowerCase()}.
+            <button type="button" class="qd-passer" data-passer>Passer ▸</button>`;
+        this.dessinerPlanNu(this.cadreDuo(e.de, e.figure), e.vues, e.figure);
+        const fini = () => {
+            clearTimeout(this.minuteurScene);
+            if (this.apparition === e.numero) return;
+            this.apparition = e.numero;
+            this.planEl.onclick = null;
+            this.dessiner();
+        };
+        const passer = this.consigneEl.querySelector('[data-passer]');
+        if (passer) passer.onclick = fini;
+        this.planEl.onclick = fini;
+        clearTimeout(this.minuteurScene);
+        this.minuteurScene = setTimeout(() => { if (this.isRunning) fini(); }, DUREE_APPARITION);
+    }
+
     dessinerProgressif() {
         const e = this.etapeCourante;
+        // L'OUVERTURE PASSE AVANT TOUT — voir OUVERTURE.
+        if (this.ouverture !== null && this.ouverture !== undefined) return this.dessinerOuverture();
+        // ET CHAQUE FIGURE ARRIVE DANS SA CASE AVANT QU'ON LA CODE. Rémy :
+        // « idem pour les autres ». Sans cela, le rectangle apparaissait pour
+        // la première fois SEUL, en grand, dans l'écran de codage — c'est-à-dire
+        // nulle part : ni dans l'organigramme, ni à côté de la case dont il
+        // descend.
+        if (e && e.genre === 'codage' && !this.isDemo && this.apparition !== e.numero) {
+            return this.montrerApparition(e);
+        }
         // LE CODAGE A SON ÉCRAN. Il garde le même conteneur et le même compte
         // d'étapes : c'est la même leçon, vue de l'autre côté.
         if (e && e.genre === 'codage') return this.dessinerCodage(e);
+        // LE PLAN REDEVIENT UN PLAN. Pendant la mise en scène, un clic n'importe
+        // où la coupe ; passé ce moment, le plan porte les fentes où l'on
+        // dépose, et un écouteur oublié dessus avalerait ces gestes-là.
+        this.planEl.onclick = null;
         this.coderEl.hidden = true;
         this.planEl.hidden = false;
         this.verifierEl.hidden = true;
@@ -2709,6 +2973,7 @@ class Organigramme extends BaseGame {
         // rappeler un ajustement sur un élément détaché à chaque changement de
         // fenêtre, jusqu'au rechargement de la page.
         if (this.veilleScene) { this.veilleScene.disconnect(); this.veilleScene = null; }
+        clearTimeout(this.minuteurScene);
         super.destroy();
     }
 }

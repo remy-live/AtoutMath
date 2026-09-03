@@ -810,7 +810,11 @@ export function genererProgressif({ rng, palier = 'conditions', codage = true } 
         if (codage && !codees.has(e.vers) && DIMS_CODAGE[e.vers]) {
             codees.add(e.vers);
             etapes.push({
-                genre: 'codage', figure: e.vers, dims: DIMS_CODAGE[e.vers],
+                // `de` : la case d'où l'on vient. Elle ne sert pas au codage
+                // lui-même mais à la MISE EN SCÈNE — on cadre sur les deux
+                // cases, celle qu'on connaît et celle qui vient d'arriver, pour
+                // que la nouvelle apparaisse quelque part et non nulle part.
+                genre: 'codage', figure: e.vers, de: e.de, dims: DIMS_CODAGE[e.vers],
                 rang: e.rang, vues: e.vues,
                 // Les quatre figures codables sont masculines : « le
                 // parallélogramme », « le rectangle », « le losange », « le carré ».
