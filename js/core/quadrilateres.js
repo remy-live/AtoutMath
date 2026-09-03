@@ -719,24 +719,40 @@ export const vignetteDe = (texte) => {
  * Puis on passe au rectangle. […] On code le rectangle puis après on met les
  * vignettes. »
  *
- * DIRE LA PROPRIÉTÉ, PUIS L'ÉCRIRE SUR LA FIGURE. Poser « les côtés opposés
- * sont parallèles » sur une flèche, c'est reconnaître une phrase ; la CODER,
- * c'est la retrouver sur un dessin — et c'est là qu'on voit qui a compris. Les
- * deux gestes se suivent immédiatement, sur la figure qui vient d'apparaître :
- * la condition qu'on vient de nommer est encore à l'écran, juste au-dessus.
+ * ON CODE D'ABORD, ON NOMME ENSUITE — et c'est Rémy qui a remis l'ordre à
+ * l'endroit : « tu affiches le quadrilatère et le parallélogramme. Tu ouvres
+ * une modale pour dire que l'on va coder le parallélogramme. On code le
+ * parallélogramme avec les diagonales. Une fois fait, dans l'organigramme, on a
+ * le parallélogramme avec le codage, et là seulement on met les vignettes. »
  *
- * LES CÔTÉS ET LES SOMMETS, PAS LES DIAGONALES. Huit zones au lieu de treize :
- * une étape de codage s'intercale ici entre deux étapes de cartes, elle ne doit
- * pas devenir l'exercice principal — et surtout, une erreur fait tout
- * recommencer. Le codage complet, diagonales comprises, a son exercice à lui
- * (« Coder la figure »).
+ * La première version faisait l'inverse, et c'était moins bon : on demandait
+ * « qu'est-ce qu'un parallélogramme a de plus qu'un quadrilatère ? » à un élève
+ * qui n'avait encore rien regardé de la figure. En codant d'abord, il TROUVE
+ * les propriétés sur le dessin — deux paires de côtés égaux, des diagonales qui
+ * se coupent en leur milieu —, et les vignettes ne font plus que mettre un nom
+ * sur ce qu'il vient de voir. La figure codée reste ensuite dans sa case : la
+ * réponse est sous ses yeux pendant qu'il choisit.
+ *
+ * AVEC LES DIAGONALES, puisque c'est d'elles que parle la moitié des
+ * conditions : « diagonales qui se croisent en leur milieu », « diagonales de
+ * même longueur », « diagonales perpendiculaires ». Les coder d'abord, c'est
+ * les avoir déjà mesurées quand la vignette arrive.
  *
  * LES DIMENSIONS SONT FIXES, et c'est voulu : ce sont celles de la case de
  * l'organigramme, à peu de chose près. L'élève doit reconnaître la MÊME figure
  * qu'il vient de voir apparaître, pas une autre du même nom.
+ *
+ * ET ELLES SONT VÉRIFIÉES, parce qu'un chiffre au hasard PIÈGE. Dans un
+ * parallélogramme de base 12, hauteur 8 et décalage 4 — mon premier choix —, un
+ * côté mesure exactement la même chose qu'une demi-diagonale : le codage juste
+ * demanderait alors la même marque sur les deux, ce qui est vrai par
+ * coïncidence de mesures et faux comme propriété de la famille. C'est le même
+ * piège que refuse le générateur de « Coder la figure », et un test le vérifie
+ * ici : quatre paquets de longueurs pour le parallélogramme, trois pour le
+ * rectangle et le losange, deux pour le carré.
  */
 export const DIMS_CODAGE = {
-    parallelogramme: { base: 12, hauteur: 8, decalage: 4 },
+    parallelogramme: { base: 12, hauteur: 8, decalage: 5 },
     rectangle: { L: 13, l: 8 },
     losange: { p: 16, q: 11 },
     carre: { cote: 11 }
@@ -777,23 +793,24 @@ export function genererProgressif({ rng, palier = 'conditions', codage = true } 
         };
     });
 
-    // L'ALTERNANCE : on pose les vignettes, on code la figure qu'elles viennent
-    // de faire apparaître, on repart. Une figure ne se code qu'UNE fois — les
-    // deux raccourcis de sixième arrivent sur une case déjà codée, et redemander
-    // le même codage pour la troisième fois n'apprendrait rien.
+    // L'ALTERNANCE : la case apparaît, on code la figure, puis on pose les
+    // vignettes qui y mènent. Une figure ne se code qu'UNE fois — les deux
+    // raccourcis de sixième arrivent sur une case déjà codée, et redemander le
+    // même codage une troisième fois n'apprendrait rien.
     const etapes = [];
     const codees = new Set();
     cartes.forEach(e => {
+        if (codage && !codees.has(e.vers) && DIMS_CODAGE[e.vers]) {
+            codees.add(e.vers);
+            etapes.push({
+                genre: 'codage', figure: e.vers, dims: DIMS_CODAGE[e.vers],
+                rang: e.rang, vues: e.vues,
+                // Les quatre figures codables sont masculines : « le
+                // parallélogramme », « le rectangle », « le losange », « le carré ».
+                titre: `Coder le ${familleDe(e.vers).nom.toLowerCase()}`
+            });
+        }
         etapes.push(e);
-        if (!codage || codees.has(e.vers) || !DIMS_CODAGE[e.vers]) return;
-        codees.add(e.vers);
-        etapes.push({
-            genre: 'codage', figure: e.vers, dims: DIMS_CODAGE[e.vers],
-            rang: e.rang, vues: e.vues,
-            // Les quatre figures codables sont masculines : « le
-            // parallélogramme », « le rectangle », « le losange », « le carré ».
-            titre: `Coder le ${familleDe(e.vers).nom.toLowerCase()}`
-        });
     });
     etapes.forEach((e, i) => { e.numero = i; });
     return { mode: MODES.PROPRIETES, palier, progressif: true, etapes };
@@ -837,6 +854,93 @@ export function refusEtape(etape, texte) {
     const liste = ou.length > 1 ? `${ou.slice(0, -1).join(', ')} et ${ou[ou.length - 1]}` : ou[0];
     return `« ${texte} » ne fait pas passer du ${A} au ${B} : c'est la condition qui mène `
         + `${liste}. ${maisons[0].piege}`;
+}
+
+/**
+ * LE CONTRE-EXEMPLE — pourquoi cette condition ne suffit pas, EN FIGURE.
+ *
+ * Rémy : « pour l'organigramme, si l'élève se trompe, il faudrait lui montrer
+ * un contre-exemple et lui dire qu'il va recommencer. »
+ *
+ * IL SE CALCULE, IL NE S'ÉCRIT PAS. On aurait pu ranger treize contre-exemples
+ * dans un tableau ; ils auraient vieilli tout seuls, et ils auraient menti dès
+ * qu'une flèche aurait changé. Or l'organigramme SAIT déjà tout ce qu'il faut :
+ * une condition mène quelque part (`FLECHES`), et l'on sait dire si une famille
+ * est toujours une autre (`estToujours`). Le contre-exemple est donc la figure
+ * où la condition posée est vraie et où la famille visée est fausse.
+ *
+ * Exemple : l'élève pose « diagonales perpendiculaires » entre le
+ * parallélogramme et le rectangle. Cette condition mène au LOSANGE ; un losange
+ * n'est pas toujours un rectangle ; on lui montre donc un losange, et l'on dit :
+ * « il a bien ses diagonales perpendiculaires, et ce n'est pourtant pas un
+ * rectangle. »
+ *
+ * ET QUAND IL N'Y A PAS DE CONTRE-EXEMPLE, ON NE FAIT PAS SEMBLANT. Poser
+ * « 3 ou 4 angles droits » entre le quadrilatère et le parallélogramme n'est pas
+ * FAUX — un quadrilatère à trois angles droits est bel et bien un
+ * parallélogramme. C'est TROP FORT : cette condition mène directement au
+ * rectangle, et il n'existe aucun contre-exemple à montrer. On le dit
+ * autrement, parce que ce n'est pas la même erreur.
+ *
+ * @returns {{genre:'contre'|'trop-fort', figure?:string, dit:string}}
+ */
+export function contreExemple(de, vers, texte) {
+    // « Qui a ses diagonales perpendiculaires » se lit sur une carte ; dans une
+    // phrase, « il a bien qui a ses diagonales… » ne se lit pas. On rend la
+    // condition à sa forme parlée.
+    const dite = texte.replace(/^Qui a /, '');
+    const A = familleDe(de).nom.toLowerCase();
+    const B = familleDe(vers).nom.toLowerCase();
+    const chemins = FLECHES.filter(f => f.ajoute === texte);
+
+    // ① UN VRAI CONTRE-EXEMPLE, et l'on n'en montre pas d'autre. Il lui faut
+    // DEUX qualités, et la première a failli être oubliée : le témoin doit être
+    // un A — sinon il ne dit rien de la flèche qu'on discute — et ne pas être
+    // toujours un B. Une famille d'arrivée de la condition possède bien la
+    // condition : c'est ce que « mène à » veut dire.
+    const temoin = chemins.find(f => estToujours(f.vers, de) && !estToujours(f.vers, vers));
+    if (temoin) {
+        const T = familleDe(temoin.vers).nom.toLowerCase();
+        return {
+            genre: 'contre',
+            figure: temoin.vers,
+            dit: `Regarde ce ${T} : c'est bien un ${A}, il a bien ${dite}, et ce n'est `
+                + `pourtant pas un ${B}. La condition ne suffit donc pas pour passer du `
+                + `${A} au ${B}.`
+        };
+    }
+
+    // ② TROP FORT, ET C'EST VRAI, PAS UNE FORMULE DE POLITESSE. Poser « 3 ou 4
+    // angles droits » entre le quadrilatère et le parallélogramme n'est pas
+    // faux : un quadrilatère à trois angles droits EST un parallélogramme.
+    // C'est seulement plus que ce qu'il fallait. On ne le dit que quand les
+    // deux choses sont démontrées : la condition part bien d'ici, et tout ce à
+    // quoi elle mène est un B.
+    const partDIci = chemins.some(f => estToujours(de, f.de));
+    if (partDIci && chemins.every(f => estToujours(f.vers, vers))) {
+        return {
+            genre: 'trop-fort',
+            dit: `Ce n'est pas faux : un ${A} qui a ${dite} EST un ${B}. Mais c'est TROP `
+                + `FORT pour cette flèche — cette condition mène directement `
+                + `${chemins.map(f => `au ${familleDe(f.vers).nom.toLowerCase()}`)
+                    .filter((x, i, t) => t.indexOf(x) === i).join(' et ')}.`
+        };
+    }
+
+    // ③ ELLE NE SE LIT PAS AU DÉPART D'ICI. « Deux côtés consécutifs
+    // perpendiculaires » posé entre le quadrilatère et le parallélogramme : ce
+    // n'est ni suffisant ni trop fort, c'est une condition qui se lit AU DÉPART
+    // d'un parallélogramme. Le dire ainsi est la seule chose exacte — et
+    // inventer un contre-exemple pour faire joli serait enseigner un faux.
+    const dits = chemins
+        .map(f => `du ${familleDe(f.de).nom.toLowerCase()} au ${familleDe(f.vers).nom.toLowerCase()}`)
+        .filter((x, i, t) => t.indexOf(x) === i);
+    return {
+        genre: 'ailleurs',
+        dit: `Cette condition ne se lit pas au départ d'un ${A} : c'est elle qui fait passer `
+            + `${dits.length > 1 ? `${dits.slice(0, -1).join(', ')} et ${dits[dits.length - 1]}`
+                : dits[0]}. Chaque condition dit ce qu'on ajoute À PARTIR d'une famille précise.`
+    };
 }
 
 /**

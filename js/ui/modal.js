@@ -33,7 +33,15 @@ export function showToast(message, type = 'success', duration = 3000) {
 
 export function showModal(title, contentHTML, options = {}) {
     const overlay = document.createElement('div');
-    overlay.style = "position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(4px); animation: fadeIn 0.2s ease;";
+    // AU-DESSUS DE QUOI ? 9999 SUFFISAIT TANT QU'ON RESTAIT DANS LA PAGE.
+    //
+    // La couche de jeu (`#game-layer`) est à 10000 : une fenêtre ouverte DEPUIS
+    // un exercice se rangeait donc DERRIÈRE lui. Mesuré sur l'organigramme —
+    // le contre-exemple était bien dans le document, avec son texte et son
+    // dessin, et personne ne pouvait le voir. Un appelant qui sait qu'il est
+    // dans la couche de jeu passe donc son étage.
+    const etage = options.zIndex || 9999;
+    overlay.style = `position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:${etage}; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(4px); animation: fadeIn 0.2s ease;`;
     
     const width = options.width || '500px';
     

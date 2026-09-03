@@ -36,10 +36,12 @@ import {
     familleDe, flecheDe, cleFleche, traitsDeCondition,
     boiteFigure, boiteCondition,
     genererOrganigramme, verifierDepot, verifierOrganigramme, conseil,
-    genererProgressif, casesVisibles, verifierEtape, conseilEtape, vignetteDe, pointeDe
+    genererProgressif, casesVisibles, verifierEtape, conseilEtape, vignetteDe, pointeDe,
+    contreExemple, DIMS_CODAGE
 } from '../core/quadrilateres.js';
 import {
-    construireFigure, verifierCodage, canoniser, segmentsDe, pointsAngleDe, PROPRIETES
+    construireFigure, verifierCodage, canoniser, segmentsDe, pointsAngleDe, PROPRIETES,
+    classesDeLongueur, anglesDroitsDe
 } from '../core/codage.js';
 import { codageSvg, jetonSvg, jetonAngleSvg } from '../core/codageSvg.js';
 import { ajusterAuRectangle } from '../core/dominos.js';
@@ -230,6 +232,10 @@ const traitEnPoints = (pts, v) => pts
     .join(' ');
 
 const COMPETENCE = 'geo.quadrilateres.familles';
+
+// La couche de jeu est à 10000 : une fenêtre ouverte depuis l'exercice doit
+// passer au-dessus, sinon elle s'affiche derrière et personne ne la voit.
+const ETAGE_MODALE = 100001;
 
 /** De quoi poser un texte dans un attribut sans qu'un guillemet le coupe. */
 const enAttribut = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
@@ -701,6 +707,8 @@ class Organigramme extends BaseGame {
             this.etape = 0;
             this.posesEtape = [];
             this.codage = null;
+            this.codages = {};
+            this.annoncee = null;
             this.vues = [];
             this.trouvees = {};   // clé d'étape → les textes trouvés, pour le carnet
         } else {
@@ -915,13 +923,15 @@ class Organigramme extends BaseGame {
         // ne doit rejouer son animation d'arrivée.
         this.vues = (e.vues || []).slice();
         if (!this.codage || this.codage.numero !== e.numero) {
-            // LES CÔTÉS ET LES SOMMETS, PAS LES DIAGONALES — voir DIMS_CODAGE
-            // dans le noyau : huit zones, pas treize, parce que cette étape
-            // s'intercale et qu'une erreur fait tout recommencer.
+            // AVEC LES DIAGONALES. Rémy : « on code le parallélogramme avec les
+            // diagonales ». C'est d'elles que parle la moitié des vignettes qui
+            // vont suivre — « qui se croisent en leur milieu », « de même
+            // longueur », « perpendiculaires » —, et les avoir mesurées AVANT
+            // est exactement ce qui rend la vignette évidente.
             this.codage = {
                 numero: e.numero,
                 fig: construireFigure(e.figure, e.dims, 0),
-                ids: segmentsDe(false), pts: pointsAngleDe(false),
+                ids: segmentsDe(true), pts: pointsAngleDe(true),
                 pose: { marques: {}, angles: {} }
             };
         }
@@ -929,13 +939,14 @@ class Organigramme extends BaseGame {
         const nom = familleDe(e.figure).nom.toLowerCase();
 
         this.consigneEl.innerHTML = `Étape ${this.etape + 1} sur ${this.org.etapes.length} — `
-            + `<b>code ce ${nom}</b> : même marque sur les côtés de même longueur, `
-            + 'le petit carré sur les angles droits.';
+            + `<b>code ce ${nom}</b> : même marque sur les segments de même longueur — `
+            + 'les demi-diagonales comprises —, le petit carré sur les angles droits.';
         this.etapeEl.hidden = false;
         this.etapeEl.innerHTML = `<div class="qd-etape-titre">Tu viens de dire ce qui fait un
             <b>${nom}</b>. Écris-le maintenant sur la figure : on tape un côté pour faire
             défiler les marques, ou l'on glisse un symbole depuis la palette.</div>`;
 
+        this.annoncerCodage(e);
         this.coderEl.innerHTML = `<div class="qd-coder-fig">${codageSvg(c.fig, {
             segments: c.ids, points: c.pts, pose: c.pose, interactif: true
         })}</div>`
@@ -951,6 +962,39 @@ class Organigramme extends BaseGame {
                 aria-label="Effacer une marque">⌫</button>`;
 
         this.brancherCodage();
+    }
+
+    /**
+     * ON PRÉVIENT AVANT DE CODER — Rémy : « tu ouvres une modale pour dire que
+     * l'on va coder le parallélogramme ».
+     *
+     * Ce n'est pas une politesse : l'écran change entièrement de nature —
+     * l'organigramme disparaît, une figure seule le remplace, la palette n'est
+     * plus la même. Sans un mot, l'élève croit s'être trompé de bouton. La
+     * fenêtre dit ce qu'on va faire, POURQUOI on le fait maintenant, et ce qui
+     * arrivera après ; on n'annonce qu'une fois par étape.
+     */
+    async annoncerCodage(e) {
+        if (this.isDemo || this.annoncee === e.numero) return;
+        this.annoncee = e.numero;
+        const nom = familleDe(e.figure).nom.toLowerCase();
+        const { showModal } = await import('../ui/modal.js');
+        const m = showModal(`On code le ${nom}`, `
+            <div style="text-align:center; line-height:1.5">
+                <p style="margin:0 0 10px">Le <b>${nom}</b> vient d'apparaître dans
+                    l'organigramme. Avant de dire ce qui y mène, on va l'<b>écrire sur la
+                    figure</b> : même marque sur les segments de même longueur, petit carré
+                    sur les angles droits — <b>les diagonales comprises</b>.</p>
+                <p style="margin:0 0 16px; color:var(--text-muted); font-size:.9rem">
+                    C'est là qu'on trouve les propriétés. Les vignettes, juste après, ne
+                    feront que leur donner un nom — et la figure codée restera dans sa
+                    case pendant que tu les poses.</p>
+                <button type="button" class="qd-btn qd-modale-ok"
+                    style="background:var(--primary); border-color:var(--primary); color:#fff;
+                        padding:9px 18px; font-size:.9rem">Je code le ${nom}</button>
+            </div>`, { width: '430px', zIndex: ETAGE_MODALE });
+        const ok = m.element.querySelector('.qd-modale-ok');
+        if (ok) ok.onclick = () => m.close();
     }
 
     /** Les zones de la figure : au doigt, au clavier, et par glisser. */
@@ -1029,12 +1073,17 @@ class Organigramme extends BaseGame {
                 expected: (PROPRIETES[e.figure] || []).join(' ; '),
                 partiel: true, silencieux: true
             });
-            return this.rater(bilan.problemes[0].message);
+            return this.rater(bilan.problemes[0].message);   // le défaut est SUR la figure
         }
         this.onCorrectAnswer(null, COMPETENCE, {
             questionText: `Organigramme — coder le ${nom}`,
             expected: 'codage juste', given: 'codage juste', points: 8, partiel: true
         });
+        // Le codage est RANGÉ, et c'est lui qu'on reverra dans la case.
+        this.codages[e.figure] = {
+            fig: c.fig, ids: c.ids, pts: c.pts,
+            pose: { marques: { ...c.pose.marques }, angles: { ...c.pose.angles } }
+        };
         this.codage = null;
         this.avancer(`Le ${nom} est codé — ${(PROPRIETES[e.figure] || [])[0]}.`);
     }
@@ -1251,6 +1300,18 @@ class Organigramme extends BaseGame {
      * tracé d'un trait quand le nom vient d'être posé.
      */
     figureSvg(fam, montre, anime) {
+        // LA FIGURE CODÉE RESTE DANS SA CASE. Rémy : « une fois fait, dans
+        // l'organigramme, on a le parallélogramme avec le codage, et là
+        // seulement on met les vignettes. » C'est ce qui donne son sens à
+        // l'ordre : l'élève choisit ses vignettes en regardant les marques
+        // qu'il vient de poser lui-même, pas de mémoire.
+        const code = this.codages && this.codages[fam.id];
+        if (code && montre) {
+            return codageSvg(code.fig, {
+                segments: code.ids, points: code.pts, pose: code.pose,
+                interactif: false, nomsSommets: false
+            }).replace('class="cg-svg"', 'class="cg-svg qd-figure qd-figure--codee"');
+        }
         const pts = fam.figure.map(p => p.join(',')).join(' ');
         const tour = perimetre(fam.figure);
         const classe = montre ? (anime ? 'qd-trait qd-trait--anime' : 'qd-trait') : 'qd-trait qd-trait--fantome';
@@ -1298,7 +1359,9 @@ class Organigramme extends BaseGame {
                 input: carte.texte, expected: e.bonnes.join(' / '),
                 partiel: true, silencieux: true
             });
-            return this.rater(v.raison);
+            // LA FIGURE AVANT LA RÈGLE : on montre pourquoi, puis on repart.
+            this.montrerContreExemple(e, carte.texte, v.raison).then(() => this.rater(''));
+            return;
         }
         this.posesEtape.push(carteId);
         this.trouvees[e.rang] = (this.trouvees[e.rang] || []).concat(carte.texte);
@@ -1349,7 +1412,64 @@ class Organigramme extends BaseGame {
      * Le professeur peut adoucir la règle (réglage « Quand on se trompe ») : on
      * refait alors la seule étape ratée.
      */
+    /**
+     * LE CONTRE-EXEMPLE, AVANT DE REPARTIR.
+     *
+     * Rémy : « si l'élève se trompe, il faudrait lui montrer un contre-exemple
+     * et lui dire qu'il va recommencer. »
+     *
+     * Une phrase de refus explique ; une FIGURE démontre. « Regarde ce losange :
+     * il a bien ses diagonales perpendiculaires, et ce n'est pourtant pas un
+     * rectangle » — avec le losange dessiné et codé à côté, il n'y a plus rien à
+     * croire sur parole. Le contre-exemple se calcule à partir de
+     * l'organigramme lui-même (voir `contreExemple`), il n'est pas écrit à la
+     * main : il ne peut donc pas mentir.
+     *
+     * ET L'ON PRÉVIENT AVANT DE RECOMMENCER. Repartir du haut sans un mot se
+     * lit comme une panne ; annoncé, c'est une règle du jeu.
+     */
+    async montrerContreExemple(e, texte, raison) {
+        const c = contreExemple(e.de, e.vers, texte);
+        const { showModal } = await import('../ui/modal.js');
+        let dessin = '';
+        if (c.figure) {
+            const fig = construireFigure(c.figure, DIMS_CODAGE[c.figure], 0);
+            const ids = segmentsDe(true), pts = pointsAngleDe(true);
+            const pose = { marques: {}, angles: {} };
+            classesDeLongueur(fig, ids).forEach((classe, i) =>
+                classe.forEach(id => { pose.marques[id] = i + 1; }));
+            anglesDroitsDe(fig, pts).forEach(p => { pose.angles[p] = true; });
+            dessin = `<div style="max-width:260px; margin:0 auto 12px">${codageSvg(fig,
+                { segments: ids, points: pts, pose, interactif: false, nomsSommets: false })}</div>`;
+        }
+        return new Promise(resolve => {
+            const titres = {
+                contre: 'Un contre-exemple',
+                'trop-fort': 'Trop fort pour ici',
+                ailleurs: 'Pas au bon départ'
+            };
+            const m = showModal(titres[c.genre] || 'Regarde bien', `
+                <div style="text-align:center; line-height:1.5">
+                    <p style="margin:0 0 12px">${enAttribut(raison)}</p>
+                    ${dessin}
+                    <p style="margin:0 0 16px"><b>${enAttribut(c.dit)}</b></p>
+                    <p style="margin:0 0 16px; color:var(--text-muted); font-size:.9rem">
+                        ${this.reprise === 'etape'
+                    ? 'On refait cette étape.'
+                    : 'L\'organigramme est une chaîne : chaque case se lit sur celles du '
+                          + 'dessus. <b>On repart donc du début</b>, et on le relit en entier.'}</p>
+                    <button type="button" class="qd-btn qd-modale-ok"
+                        style="background:var(--primary); border-color:var(--primary); color:#fff;
+                            padding:9px 18px; font-size:.9rem">${this.reprise === 'etape'
+                    ? 'Je refais l\'étape' : 'Je repars du début'}</button>
+                </div>`, { width: '440px', onClose: resolve, zIndex: ETAGE_MODALE });
+            const ok = m.element.querySelector('.qd-modale-ok');
+            if (ok) ok.onclick = () => m.close();
+        });
+    }
+
     rater(pourquoi) {
+        this.annoncee = null;
         if (this.reprise === 'etape') {
             this.posesEtape = [];
             this.trouvees[this.etapeCourante && this.etapeCourante.rang] = [];
@@ -1361,10 +1481,12 @@ class Organigramme extends BaseGame {
         this.posesEtape = [];
         this.trouvees = {};
         this.codage = null;
+        this.codages = {};
         this.vues = [];
         this.dessiner();
-        this.note(`${pourquoi} <b>On repart du début.</b> L'organigramme est une chaîne : `
-            + 'chaque case se lit sur celles du dessus, et on la relit en entier.', 'ko');
+        this.note([pourquoi, '<b>On repart du début.</b> L\'organigramme est une chaîne : '
+            + 'chaque case se lit sur celles du dessus, et on la relit en entier.']
+            .filter(Boolean).join(' '), 'ko');
     }
 
     deposer(caseId, carteId) {

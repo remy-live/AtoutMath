@@ -13,7 +13,7 @@ import {
     posEtiquette, conditionsDe, CASE_L, CASE_H, COND_L, COND_H,
     PLAN_L, PLAN_H, boiteFigure, boiteCondition, traitsDeCondition, POSITIONS_CONDITIONS,
     ETAPES, genererProgressif, casesVisibles, verifierEtape, refusEtape, conseilEtape,
-    DIMS_CODAGE,
+    DIMS_CODAGE, contreExemple,
     vignetteDe
 } from '../js/core/quadrilateres.js';
 import { PROPRIETES, proprieteDe } from '../js/core/quadriMorph.js';
@@ -364,13 +364,17 @@ test('CHAQUE ÉTAPE MÊLE DES INTRUS AUX BONNES CARTES', () => {
 test('ON CODE LA FIGURE QU\'ON VIENT DE FAIRE APPARAÎTRE, et une seule fois', () => {
     const o = genererProgressif({ rng: makeRng('codage'), palier: 'conditions' });
     const suite = o.etapes.map(e => e.genre === 'codage' ? `coder:${e.figure}` : `${e.de}>${e.vers}`);
+    // ON CODE D'ABORD, ON NOMME ENSUITE. Rémy : « tu affiches le quadrilatère et
+    // le parallélogramme […] on code le parallélogramme avec les diagonales.
+    // Une fois fait, dans l'organigramme, on a le parallélogramme avec le
+    // codage, et là seulement on met les vignettes. »
     assert.deepEqual(suite, [
-        'quadrilatere>parallelogramme', 'coder:parallelogramme',
-        'parallelogramme>rectangle', 'coder:rectangle',
+        'coder:parallelogramme', 'quadrilatere>parallelogramme',
+        'coder:rectangle', 'parallelogramme>rectangle',
         'quadrilatere>rectangle',
-        'parallelogramme>losange', 'coder:losange',
+        'coder:losange', 'parallelogramme>losange',
         'quadrilatere>losange',
-        'losange>carre', 'coder:carre',
+        'coder:carre', 'losange>carre',
         'rectangle>carre'
     ]);
     // Le quadrilatère quelconque n'a rien à coder — c'est la seule famille sans
@@ -389,15 +393,18 @@ test('LA FIGURE À CODER EST BIEN CELLE QU\'ELLE PRÉTEND ÊTRE', () => {
     // Les dimensions sont écrites à la main : une faute de frappe donnerait un
     // « losange » aux quatre côtés inégaux, et l'élève coderait une figure qui
     // ment. On mesure, comme le fait la correction.
+    // AVEC LES DIAGONALES : quatre côtés et quatre demi-diagonales, quatre
+    // sommets et le centre. C'est ce que Rémy a demandé, et c'est de là que
+    // viennent la moitié des vignettes qui suivent.
     const attendus = {
-        parallelogramme: { paquets: 2, droits: 0 },
-        rectangle: { paquets: 2, droits: 4 },
-        losange: { paquets: 1, droits: 0 },
-        carre: { paquets: 1, droits: 4 }
+        parallelogramme: { paquets: 4, droits: 0 },
+        rectangle: { paquets: 3, droits: 4 },
+        losange: { paquets: 3, droits: 1 },
+        carre: { paquets: 2, droits: 5 }
     };
     Object.entries(DIMS_CODAGE).forEach(([type, dims]) => {
         const fig = construireFigure(type, dims, 0);
-        const cotes = segmentsDe(false), sommets = pointsAngleDe(false);
+        const cotes = segmentsDe(true), sommets = pointsAngleDe(true);
         assert.equal(classesDeLongueur(fig, cotes).length, attendus[type].paquets, type);
         assert.equal(anglesDroitsDe(fig, sommets).length, attendus[type].droits, type);
         // Et le codage juste se vérifie : c'est le contrat de l'étape.
@@ -406,6 +413,42 @@ test('LA FIGURE À CODER EST BIEN CELLE QU\'ELLE PRÉTEND ÊTRE', () => {
         const angles = {};
         anglesDroitsDe(fig, sommets).forEach(pt => { angles[pt] = true; });
         assert.equal(verifierCodage(fig, { marques, angles }, cotes, sommets).correct, true, type);
+    });
+});
+
+test('LE CONTRE-EXEMPLE NE DIT JAMAIS UN FAUX', () => {
+    // Rémy : « si l'élève se trompe, il faudrait lui montrer un contre-exemple ».
+    // Un contre-exemple faux serait pire que pas de contre-exemple du tout : on
+    // vérifie donc les DEUX qualités du témoin, pour toutes les erreurs
+    // possibles — chaque condition posée sur chaque flèche où elle n'est pas.
+    const textes = [...new Set(FLECHES.map(f => f.ajoute))];
+    ETAPES.forEach(e => {
+        const justes = conditionsDe(e.de, e.vers).map(f => f.ajoute);
+        textes.filter(t => !justes.includes(t)).forEach(texte => {
+            const c = contreExemple(e.de, e.vers, texte);
+            assert.ok(['contre', 'trop-fort', 'ailleurs'].includes(c.genre),
+                `genre inconnu pour ${texte} sur ${e.de}>${e.vers}`);
+            if (c.genre === 'contre') {
+                // Le témoin est un A — sinon il ne dit rien de cette flèche —
+                // et n'est pas toujours un B — sinon ce n'est pas un
+                // contre-exemple. Et il possède bien la condition, puisque
+                // c'est là qu'elle mène.
+                assert.ok(estToujours(c.figure, e.de),
+                    `${c.figure} n'est pas toujours un ${e.de}`);
+                assert.equal(estToujours(c.figure, e.vers), false,
+                    `${c.figure} est toujours un ${e.vers} : ce n'est pas un contre-exemple`);
+                assert.ok(FLECHES.some(f => f.ajoute === texte && f.vers === c.figure),
+                    `${c.figure} n'est pas l'arrivée de « ${texte} »`);
+            }
+            if (c.genre === 'trop-fort') {
+                // On n'affirme « ce n'est pas faux » que si c'est démontré :
+                // tout ce à quoi la condition mène est bien un B.
+                FLECHES.filter(f => f.ajoute === texte).forEach(f =>
+                    assert.ok(estToujours(f.vers, e.vers),
+                        `« trop fort » affirmé à tort : un ${f.vers} n'est pas toujours un ${e.vers}`));
+            }
+            assert.ok(c.dit && c.dit.length > 40, 'un contre-exemple sans phrase');
+        });
     });
 });
 
@@ -423,7 +466,7 @@ test('LES FENTES D\'UNE ÉTAPE SONT INTERCHANGEABLES', () => {
     // difficulté qui n'existe pas en mathématiques : on demande l'ENSEMBLE des
     // conditions qui mènent de A à B.
     const o = genererProgressif({ rng: makeRng('ordre'), palier: 'conditions' });
-    const e = o.etapes[0];
+    const e = o.etapes.find(x => x.genre === 'condition');
     assert.equal(e.bonnes.length, 3, 'trois façons d\'être un parallélogramme');
     e.cartes.filter(c => c.juste).forEach(c =>
         assert.equal(verifierEtape(e, c).ok, true, `${c.texte} devrait passer`));
@@ -459,7 +502,7 @@ test('L\'AIDE DONNE LES TROIS REGISTRES, jamais la réponse', () => {
     // qui bloque a presque toujours trouvé un registre et oublié les deux
     // autres : c'est cela qu'il faut lui rendre, pas le mot qui manque.
     const o = genererProgressif({ rng: makeRng('aide'), palier: 'conditions' });
-    const e = o.etapes[0];
+    const e = o.etapes.find(x => x.genre === 'condition');
     const texte = conseilEtape(e, 1);
     assert.match(texte, /CÔTÉS/);
     assert.match(texte, /ANGLES/);
