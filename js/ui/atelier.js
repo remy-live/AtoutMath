@@ -502,21 +502,29 @@ function majVolets() {
 }
 
 /**
- * UN VOLET QUI CHANGE DE TAILLE SE REDESSINE — et sans cela l'Atelier mentait.
+ * LA FEUILLE SE REDESSINE QUAND SON VOLET CHANGE DE TAILLE — ET ELLE SEULE.
  *
  * Mesuré : la feuille chargée dans un volet de 575 pixels calcule son échelle
  * une fois pour toutes (`k = largeur disponible / largeur de la page`). En
  * éteignant les deux autres volets, son cadre passait à 1156 pixels et l'aperçu
  * restait un timbre-poste au milieu — on agrandissait pour mieux voir, et l'on
- * voyait la même chose en plus petit. Le jeu a le même défaut, pour la raison
- * inverse : il a mesuré sa place au chargement, et c'est justement cette mesure
- * qu'on vient vérifier ici.
+ * voyait la même chose en plus petit. Elle n'a rien à perdre à recharger : une
+ * feuille n'a pas de partie en cours.
  *
- * On recharge donc le cadre quand sa largeur ou sa hauteur bouge vraiment. Le
- * seuil de quarante pixels écarte les frémissements d'une barre de défilement,
- * et le délai laisse une bascule finir son travail avant de relancer trois
- * pages d'un coup.
+ * LE JEU ET LE ROBOT, EUX, NE SE RECHARGENT PAS, et c'était un vrai défaut.
+ * Rémy : « dans l'Atelier, quand on met en plein écran, ça redevient rapidement
+ * en fenêtre — certainement dû au rafraîchissement. » Il avait raison :
+ * agrandir un volet changeait sa taille, donc rechargeait le cadre, donc
+ * relançait la partie. Mesuré : le plateau était vide 400 ms après le clic sur
+ * ⤢, et revenait deux secondes plus tard, à la première question.
+ *
+ * Et la bonne raison de ne PAS recharger est plus forte que la mauvaise :
+ * un jeu doit se remettre en page tout seul quand la place change — c'est
+ * précisément ce qu'on vient vérifier dans l'Atelier. Le recharger à chaque
+ * changement de taille CACHERAIT le défaut qu'on cherche.
  */
+const RECHARGEABLES = ['fiche'];
+
 function surveillerTailles() {
     if (typeof ResizeObserver !== 'function') return;
     const vues = new Map();
@@ -525,6 +533,7 @@ function surveillerTailles() {
         const aRefaire = [];
         entrees.forEach(e => {
             const quoi = e.target.id.replace('atl-volet-', '');
+            if (!RECHARGEABLES.includes(quoi)) return;
             const r = e.contentRect;
             const vu = vues.get(quoi);
             if (r.width < 20 || r.height < 20) return;
@@ -541,7 +550,7 @@ function surveillerTailles() {
             .filter(v => Date.now() - (dernierChargement[v] || 0) > 1200)
             .forEach(recharger), 350);
     });
-    VOLETS.forEach(v => obs.observe(panneau.querySelector(`#atl-volet-${v}`)));
+    RECHARGEABLES.forEach(v => obs.observe(panneau.querySelector(`#atl-volet-${v}`)));
 }
 
 /** Le robot allumé montre sa démonstration ; éteint, son volet le dit. */

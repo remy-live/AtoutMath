@@ -69,21 +69,138 @@ export const PALIERS = {
     // comprendre la règle, pas pour se faire piéger.
     facile: {
         label: '3 paires — pour comprendre la règle',
-        paires: 3, colonnes: 10, lignes: 8, croisementsMin: 2, prevoir: false
+        paires: 3, colonnes: 10, lignes: 8, croisementsMin: 2, prevoir: false, reflexes: []
     },
     moyen: {
         label: '4 paires — comme sur la fiche, en plus dense',
-        paires: 4, colonnes: 13, lignes: 10, croisementsMin: 2, prevoir: true
+        paires: 4, colonnes: 13, lignes: 10, croisementsMin: 2, prevoir: true,
+        reflexes: ['proche']
     },
     difficile: {
         label: '5 paires — il faut vraiment prévoir',
-        paires: 5, colonnes: 16, lignes: 12, croisementsMin: 3, prevoir: true
+        paires: 5, colonnes: 16, lignes: 12, croisementsMin: 3, prevoir: true,
+        reflexes: ['proche', 'gauche']
     },
     expert: {
         label: '6 paires — le cadre est plein',
-        paires: 6, colonnes: 19, lignes: 14, croisementsMin: 3, prevoir: true
+        paires: 6, colonnes: 19, lignes: 14, croisementsMin: 3, prevoir: true,
+        reflexes: ['proche', 'gauche'], echecMin: 0.5
     }
 };
+
+/**
+ * LES DEUX RÉFLEXES QU'IL FAUT METTRE EN DÉFAUT — et c'est la troisième fois
+ * que Rémy le dit : « je trouve que relier sans croiser est tellement facile ».
+ *
+ * Il avait raison, et cette fois c'est chiffré. Mesuré sur vingt figures par
+ * palier, en essayant TOUS les ordres de tracé :
+ *
+ *   · commencer par la paire la PLUS PROCHE réussissait 95 % du temps en
+ *     « moyen » et 90 % en « difficile » ;
+ *   · « difficile » était même plus facile que « moyen » (65 % des ordres
+ *     aboutissent, contre 52 %) — le palier mentait sur son nom.
+ *
+ * Le filtre d'avant (`demandeDePrevoir`) cherchait qu'AU MOINS UN ordre se
+ * fasse piéger sur trois tirés au hasard. C'est trop peu demander : l'élève,
+ * lui, ne tire pas au hasard. Il fait ce que tout le monde fait — la paire la
+ * plus proche d'abord, ou de gauche à droite —, et c'est CE chemin-là qu'on
+ * cherche à faire buter.
+ *
+ * CE QUE ÇA A DONNÉ, ET CE QUE ÇA N'A PAS DONNÉ. Le critère est le bon : il
+ * mesure enfin la difficulté que l'élève rencontre, et il a montré que
+ * « difficile » était plus facile que « moyen ». Mais on ne peut pas le
+ * SATISFAIRE souvent : mesuré, en tirant des centaines de figures, le réflexe
+ * échoue dans moins d'une figure sur trois, et le budget d'une seconde ne suffit
+ * pas à en trouver une à chaque fois. Trois pistes essayées et mesurées, toutes
+ * infructueuses :
+ *
+ *   · resserrer le cadre — les figures deviennent irroutables (dix sur douze
+ *     jetées à 10 % d'occupation), et celles qui survivent sont les plus larges,
+ *     donc les plus faciles ;
+ *   · exiger plus de croisements droits — le filtre écarte tant de candidats
+ *     qu'il en reste moins à noter, et la difficulté BAISSE ;
+ *   · planter le piège à la main (deux carrés collés au mur, un troisième entre
+ *     eux) — la géométrie ne tient pas : longer le mur laisse le carré piégé
+ *     DEHORS, et c'est justement le chemin le plus court. Le piège n'en est pas
+ *     un.
+ *
+ * LA VRAIE RAISON est dans l'architecture du générateur : on tire les carrés au
+ * hasard puis on cherche un routage. Le hasard ne produit pas de pièges, il
+ * produit de la PLACE — et de la place, il y en a toujours assez pour
+ * contourner. Un générateur qui ferait vraiment prévoir devrait poser les
+ * carrés en les faisant ALTERNER sur le pourtour, là où un trait posé sépare
+ * pour de bon, puis vérifier qu'une solution subsiste. C'est une autre
+ * construction, pas un réglage.
+ *
+ * ON GARDE DONC LA MESURE ET LE CHOIX DU MEILLEUR TIRAGE, et cela suffit à
+ * déplacer les chiffres. Mesuré sur vingt figures par palier, avant / après :
+ *
+ *                     tous les ordres      « la plus proche      « de gauche
+ *                      aboutissent           d'abord »            à droite »
+ *   moyen              52 % → 42 %          95 % → 80 %          40 % → 20 %
+ *   difficile          65 % → 52 %          90 % → 70 %          60 % → 20 %
+ *   expert             49 % → 46 %          45 % → 55 %          45 % → 30 %
+ *
+ * Et « difficile » n'est plus plus facile que « moyen », ce qui était le plus
+ * gênant. C'est un progrès réel ; ce n'est pas encore un exercice où l'on DOIT
+ * prévoir — trois élèves sur quatre s'en sortiront encore en commençant par la
+ * paire la plus proche.
+ */
+/**
+ * COMBIEN DE TIRAGES ON S'AUTORISE POUR TROUVER LA FIGURE LA PLUS RETORSE.
+ *
+ * UN NOMBRE, PAS UN CHRONOMÈTRE — et c'est un test qui l'a rattrapé. La
+ * première version s'arrêtait au bout de 600 millisecondes : la figure
+ * dépendait alors de la VITESSE de la machine, et la même graine ne redonnait
+ * plus la même figure. Or tout l'édifice repose là-dessus — réimprimer une
+ * fiche, rejouer une question, comparer deux versions. Un compte de tirages
+ * donne le même résultat partout, quitte à être un peu plus lent sur une
+ * vieille tablette.
+ *
+ * IL BAISSE QUAND LE CADRE GROSSIT, parce que le coût d'un tirage, lui, monte :
+ * chercher un routage à six paires sur 19 × 14 coûte quinze fois plus qu'à
+ * trois paires sur 10 × 8. Mesuré à 150 tirages pour tous : 0,8 s au palier
+ * moyen, 1,5 s au difficile, 2,4 s à l'expert — soit cinq à dix secondes sur la
+ * tablette d'un élève, ce qui n'est pas tenable. Les comptes ci-dessous
+ * ramènent tout le monde sous la seconde.
+ */
+const TIRAGES = { facile: 150, moyen: 150, difficile: 110, expert: 80 };
+
+export const REFLEXES = {
+    // La paire dont les deux carrés sont les plus proches : « celle-là est
+    // facile, je la fais tout de suite ».
+    proche: (fig) => fig.lettres.slice().sort((a, b) => ecartement(fig, a) - ecartement(fig, b)),
+    // Le sens de lecture : on commence par la gauche.
+    gauche: (fig) => fig.lettres.slice().sort((a, b) => bordGauche(fig, a) - bordGauche(fig, b))
+};
+
+function ecartement(fig, lettre) {
+    const [a, b] = fig.bornes.filter(p => p.lettre === lettre);
+    return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function bordGauche(fig, lettre) {
+    return Math.min(...fig.bornes.filter(p => p.lettre === lettre).map(p => p.x));
+}
+
+/** Le réflexe `nom` bute-t-il sur cette figure ? C'est ce qu'on veut. */
+export function reflexeEchoue(fig, nom) {
+    const faire = REFLEXES[nom];
+    return !!faire && !ordreAboutit(fig, faire(fig));
+}
+
+/**
+ * Quelle part des ordres se retrouve coincée ? Estimée sur un échantillon —
+ * il y a 720 ordres à six paires, et une figure se tire dans le navigateur
+ * d'un élève.
+ */
+export function partDesOrdresCoinces(fig, rng, essais = 10) {
+    let coinces = 0;
+    for (let i = 0; i < essais; i++) {
+        if (!ordreAboutit(fig, rng.shuffle(fig.lettres.slice()))) coinces += 1;
+    }
+    return coinces / essais;
+}
 
 // --- Géométrie ----------------------------------------------------------------
 
@@ -245,37 +362,73 @@ export function verifierFigure(fig, traits) {
  *
  * @returns {Object|null} null si le tirage n'a pas abouti (l'appelant retire)
  */
+/**
+ * ON NE PREND PLUS LA PREMIÈRE FIGURE ACCEPTABLE : ON GARDE LA MEILLEURE.
+ *
+ * L'ancienne version tirait jusqu'à trouver une figure qui passe le filtre, et
+ * se rabattait sur la première venue quand aucune ne passait. Avec un filtre
+ * exigeant — « le réflexe de l'élève doit échouer » —, ce repli devenait la
+ * règle : mesuré, 13 fois sur 20 en « moyen ». On rendait donc, la plupart du
+ * temps, exactement la figure facile dont Rémy se plaint.
+ *
+ * On NOTE maintenant chaque tirage et l'on garde le meilleur du lot. Le budget
+ * est le même, le résultat ne peut qu'être meilleur : à défaut d'une figure où
+ * les deux réflexes butent, on rend celle où il en bute un, et à défaut celle
+ * qui a le plus de croisements. Et quand le maximum est atteint, on s'arrête —
+ * il n'y a rien de mieux à chercher.
+ *
+ * LA NOTE, DANS L'ORDRE DE CE QUI COMPTE :
+ *   · combien de réflexes d'élève se retrouvent coincés (100 points chacun) ;
+ *   · la part des ordres au hasard qui échouent (jusqu'à 50 points) ;
+ *   · le nombre de traits droits qui ne passent pas, en départage.
+ */
+function noterFigure(fig, P, rng) {
+    const attendus = (P.reflexes || []).length;
+    const reflexes = (P.reflexes || []).filter(nom => reflexeEchoue(fig, nom)).length;
+    // ON MESURE LES DEUX, ET ON NE SACRIFIE PAS L'ANCIEN CRITÈRE AU NOUVEAU.
+    //
+    // Première version : l'échantillon d'ordres n'était calculé que pour les
+    // figures dont tous les réflexes butaient — une économie de temps qui a
+    // coûté cher. Comme presque aucune figure ne passe ce filtre, la note ne
+    // dépendait plus que des croisements, et l'on rendait des figures OÙ TOUT
+    // ORDRE ABOUTIT. Mesuré : cinq figures sur huit se laissaient piéger par un
+    // ordre au hasard, contre huit sur huit avant. Le remède était pire.
+    //
+    // Quatre parcours par candidat, donc, pour tout le monde : c'est le prix de
+    // ne pas régresser.
+    const coinces = P.prevoir ? partDesOrdresCoinces(fig, rng, 4) : 0;
+    return {
+        note: reflexes * 100 + Math.round(coinces * 50) + Math.min(croisementsDroits(fig), 9),
+        parfait: reflexes === (P.reflexes || []).length && coinces >= (P.echecMin || 0)
+    };
+}
+
 export function genererFigure({ rng = makeRng(1), palier = 'moyen' } = {}) {
     const P = PALIERS[palier] || PALIERS.moyen;
     // CINQ PAIRES SONT DIFFICILES À PLACER, et c'est normal : le coussin d'une
     // case coûte de la place, et une figure entrelacée n'est pas toujours
     // routable. On insiste — un tirage coûte deux dixièmes de milliseconde, et
     // une figure se tire une fois pour toutes.
-    // MIEUX VAUT UNE FIGURE UN PEU FACILE QUE PAS DE FIGURE. L'épreuve « il faut
-    // prévoir » est une PRÉFÉRENCE : elle écarte les tirages plats, mais si
-    // aucun tirage ne la passe, on rend le premier qui tenait debout plutôt que
-    // rien. Un élève devant un cadre vide n'apprendrait rien du tout.
-    let repli = null;
-    for (let essai = 0; essai < 250; essai++) {
+    // ON ÉPUISE LE BUDGET PRESQUE À CHAQUE FOIS, puisqu'on cherche la meilleure
+    // figure et non la première acceptable. Voir TIRAGES : c'est un compte, pas
+    // un chronomètre, pour que la graine redonne toujours la même figure.
+    let meilleure = null;
+    let meilleureNote = -1;
+    const tirages = TIRAGES[palier] || 120;
+    for (let essai = 0; essai < tirages; essai++) {
         const chemins = tirerFigure(P, rng);
         if (!chemins) continue;
         const fig = poserFigure(P, chemins, P.collerAuBord !== false);
         // UNE FIGURE OÙ TOUS LES TRAITS DROITS PASSENT N'EST PAS UN EXERCICE :
-        // l'élève relie à la règle sans réfléchir, et n'a rien appris. On exige
-        // donc que la solution naïve échoue quelque part.
+        // l'élève relie à la règle sans réfléchir, et n'a rien appris.
         if (croisementsDroits(fig) < P.croisementsMin) continue;
-        // ET SURTOUT : elle doit se laisser piéger par au moins un ordre. Sans
-        // ce filtre, la moitié des figures se faisaient dans n'importe quel
-        // sens — mesuré. Le niveau le plus facile en est dispensé : on y vient
-        // pour comprendre la règle, pas pour se faire coincer.
-        if (P.prevoir && !demandeDePrevoir(fig, rng)) {
-            if (!repli) { repli = fig; repli.palier = palier; }
-            continue;
-        }
-        fig.palier = palier;
-        return fig;
+        if (!P.prevoir) { fig.palier = palier; return fig; }
+        const { note, parfait } = noterFigure(fig, P, rng);
+        if (note > meilleureNote) { meilleureNote = note; meilleure = fig; }
+        if (parfait) break;
     }
-    return repli;
+    if (meilleure) meilleure.palier = palier;
+    return meilleure;
 }
 
 /**
@@ -292,6 +445,13 @@ export function genererFigure({ rng = makeRng(1), palier = 'moyen' } = {}) {
  * un routage sans croisement. Une figure qu'on n'arrive pas à router est jetée.
  * La solution existe toujours avant l'énoncé — c'est le seul point qui ne se
  * négocie pas — mais elle n'est plus imposée par la construction.
+ *
+ * ON CONSTRUIT LA SOLUTION SUR UN DAMIER CACHÉ : des chemins qui ne se touchent
+ * pas, même pas par un côté. Le coussin d'une case entre deux chemins n'est pas
+ * du luxe — l'élève trace à main levée, et deux chemins collés seraient justes
+ * mais infaisables au crayon.
+ *
+ * @returns {Object|null} null si le tirage n'a pas abouti (l'appelant retire)
  */
 function tirerFigure(P, rng) {
     const clef = (x, y) => `${x},${y}`;

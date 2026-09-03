@@ -11,7 +11,7 @@ import { RENDUS } from '../js/ui/printSheet.js';
 import {
     PALIERS, CONSIGNE, CADRE, LETTRES, genererFigure, verifierTrait, verifierFigure,
     segmentsSeCoupent, segmentTouche, dansRect, carres, croisementsDroits, conseil,
-    demandeDePrevoir, ordreAboutit
+    demandeDePrevoir, ordreAboutit, partDesOrdresCoinces, reflexeEchoue
 } from '../js/core/sansCroiser.js';
 
 const P = (x, y) => ({ x, y });
@@ -301,22 +301,34 @@ test('UNE FIGURE SE TROUVE À TOUS LES PALIERS, y compris le plus dur', () => {
     }
 });
 
-test('IL FAUT PRÉVOIR : au moins un ordre de tracé se retrouve coincé', () => {
+test('IL FAUT PRÉVOIR : une bonne part des ordres de tracé se retrouve coincée', () => {
     // « Contourner » n'est pas « prévoir » : on contourne au moment où l'on
     // bute. La seule question qui compte est celle-ci — peut-on prendre les
-    // paires dans n'importe quel ordre et arriver au bout ? Le générateur exige
-    // désormais que non, à partir du deuxième palier.
+    // paires dans n'importe quel ordre et arriver au bout ?
+    //
+    // ON MESURE UNE PROPORTION, PLUS UNE EXISTENCE. L'ancienne épreuve
+    // demandait qu'AU MOINS UN ordre sur six se fasse piéger : une figure où
+    // cinq ordres sur six passent la franchissait sans être difficile pour
+    // autant. Rémy, pour la troisième fois : « je trouve que relier sans
+    // croiser est tellement facile. » Il avait raison, et c'est cette mesure-là
+    // qui le dit — mesuré au moment d'écrire ce test : 57 % des ordres se
+    // coincent en « moyen », 44 % en « difficile », 45 % en « expert ».
     for (const nom of ['moyen', 'difficile', 'expert']) {
-        let piegees = 0;
+        let coinces = 0, figures = 0;
         for (let s = 1; s <= 8; s++) {
             const fig = genererFigure({ rng: makeRng(`piege-${nom}-${s}`), palier: nom });
-            if (fig && demandeDePrevoir(fig, makeRng(`ctrl-${s}`), 6)) piegees++;
+            if (!fig) continue;
+            figures += 1;
+            coinces += partDesOrdresCoinces(fig, makeRng(`ctrl-${s}`), 8);
         }
-        // PRESQUE TOUTES, ET NON TOUTES : l'épreuve est une préférence, pas une
-        // condition. Si aucun des 250 tirages ne la passe, on rend quand même
-        // le premier qui tenait debout — un élève devant un cadre vide
-        // n'apprendrait rien du tout. Mesuré : 8/8 à moyen et difficile, 7/8
-        // au palier expert, où le cadre est le plus contraint.
-        assert.ok(piegees >= 7, `${nom} : ${piegees}/8 figures demandent de prévoir`);
+        // LE SEUIL EST UN PLANCHER, PAS UNE AMBITION. Huit figures et huit
+        // ordres tirés font soixante-quatre mesures : c'est bruité, et l'on a
+        // relevé de 27 % à 57 % selon les graines. Le test garde contre une
+        // régression franche — « tous les ordres passent » —, il ne certifie
+        // pas que l'exercice est difficile. Ce qu'il en est vraiment est écrit
+        // dans `PALIERS`, mesuré et sans complaisance.
+        const part = coinces / Math.max(1, figures);
+        assert.ok(part >= 0.2,
+            `${nom} : seulement ${Math.round(part * 100)} % des ordres se coincent`);
     }
 });
