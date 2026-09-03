@@ -331,6 +331,29 @@ html.volet-atelier #top-navbar,
 html.volet-atelier #app-body,
 html.volet-atelier #bottom-nav,
 html.volet-atelier #debug-toolbar { display: none !important; }
+
+/* LA BARRE DE PASSE RESTE DANS LE VOLET DU JEU.
+   Rémy : « dans l'Atelier, je perds ma barre de debug, je l'aime bien car on
+   peut passer les questions. » Elle disparaissait avec tout le reste de
+   l'application — et c'était une perte sèche : dans un cadre, la palette
+   commande LE jeu de ce cadre-là, ce qui est précisément ce qu'on veut régler.
+   ON N'EN GARDE QUE LA PASSE. Dix-huit icônes dans un quart d'écran ne se
+   visent pas, et la moitié n'aurait aucun sens ici : changer de rôle, vider la
+   sauvegarde ou rouvrir l'Atelier dans l'Atelier. Restent les six boutons
+   qu'on emploie devant un exercice — la solution, les réglages, la ligne des
+   étapes, reculer, avancer, et le régime du saut. Les autres volets, eux, n'ont pas de jeu à
+   commander : la feuille ne se saute pas, et le robot a sa propre barre. */
+html.volet-atelier--jeu #debug-toolbar { display: flex !important; }
+/* UN SEUL SÉLECTEUR, ET C'EST VOULU. La première écriture cachait tout puis
+   rallumait les cinq — et les rallumait EN VAIN : « …#db-tools > .debug-btn »
+   porte deux classes, « …#db-solution » une seule, donc la règle qui cache
+   gagnait. Mesuré : la barre s'affichait, large de 96 pixels, sans un seul
+   bouton. Un « :not() » ne se fait pas battre par lui-même. */
+html.volet-atelier--jeu #db-tools > .debug-btn:not(#db-solution):not(#db-params):not(#db-etapes):not(#db-back):not(#db-skip):not(#db-saut-mode) { display: none; }
+/* Six icônes tiennent sur une ligne : la grille à neuf colonnes de la palette
+   laisserait trois colonnes vides et une barre trop large pour un quart
+   d'écran. */
+html.volet-atelier--jeu .dbg-tools { grid-template-columns: repeat(6, auto); }
 html.volet-atelier, html.volet-atelier body { overflow: hidden; }
 /* La fiche à imprimer occupe le volet entier : dans un cadre, une modale
    centrée sur fond sombre ne laisserait voir qu'un timbre-poste. */

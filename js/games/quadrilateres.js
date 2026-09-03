@@ -997,6 +997,55 @@ class Organigramme extends BaseGame {
         return true;
     }
 
+    /**
+     * LE PLAN DES ÉTAPES — outil d'auteur, et Rémy en a dit le besoin d'une
+     * phrase : « c'est où l'exercice sur "un parallélogramme qui a deux côtés
+     * consécutifs perpendiculaires est un…" ? Où je l'ai loupé quelque part ?
+     * On pourrait avoir dans la barre de debug un bouton qui fait apparaître
+     * une ligne sur les étapes. »
+     *
+     * IL NE L'AVAIT PAS LOUPÉ : cette question-là est la troisième étape de la
+     * construction de l'organigramme, et il n'y avait aucun moyen de savoir
+     * qu'elle existait sans y arriver — ni de sauter dessus pour la regarder.
+     * Onze étapes derrière un seul bouton « suivant », c'est un couloir sans
+     * fenêtres.
+     *
+     * On rend donc ce que le jeu sait de lui-même : la liste de ses étapes,
+     * avec leurs vrais titres, et celle où l'on est. Le meneur en fait une
+     * ligne cliquable ; le déplacement, lui, repasse par `sauterEtape` et
+     * `revenirEtape` — les deux chemins déjà éprouvés — plutôt que par un
+     * troisième qui pourrait laisser la carte incohérente.
+     *
+     * @returns {{courante:number, liste:string[], partie?:string}|null}
+     */
+    planEtapes() {
+        if (!this.org) return null;
+        // La partie en cours, quand l'exercice en enchaîne plusieurs : sans
+        // elle, « étape 3 sur 11 » ne dit pas de quelle leçon on parle.
+        const partie = this.parties.length > 1
+            ? `${(PALIERS[this.palier] || {}).label || this.palier} `
+                + `(${this.iPartie + 1}/${this.parties.length})`
+            : null;
+        if (this.progressif) {
+            return {
+                courante: Math.min(this.etape, this.org.etapes.length - 1),
+                liste: this.org.etapes.map(e => e.titre),
+                ...(partie ? { partie } : {})
+            };
+        }
+        if (this.questions) {
+            return {
+                courante: this.iQuestion,
+                liste: this.org.questions.map((q, i) => `Question ${i + 1}`),
+                ...(partie ? { partie } : {})
+            };
+        }
+        // L'assemblage se remplit case par case et flèche par flèche : ce n'est
+        // pas une suite d'étapes nommées, et une liste de dix-huit lignes
+        // « figure 4 » n'apprendrait rien à personne.
+        return partie ? { courante: 0, liste: [], partie } : null;
+    }
+
     /** Pendant du saut : on recule d'une étape, en la vidant. */
     revenirEtape() {
         if (this.isDemo || !this.org || this.fini) return false;

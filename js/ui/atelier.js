@@ -1293,6 +1293,9 @@ export async function ouvrirVoletAtelier(quoi, params) {
     try { regles = JSON.parse(decodeURIComponent(params.get('p') || '{}')) || {}; } catch (e) { regles = {}; }
     const complet = { ...exo, params: { ...(exo.params || {}), ...regles } };
     document.documentElement.classList.add('volet-atelier');
+    // Le volet dit LEQUEL il est — l'en-tête de la page l'a déjà posé, mais
+    // celui-ci s'ouvre aussi sans passer par l'URL (le contrôle en cadre).
+    document.documentElement.classList.add(`volet-atelier--${quoi}`);
     // LE VOLET REND SON JOURNAL. La page mère ne peut pas atteindre le module
     // de journalisation d'un cadre — chaque document a ses propres modules, et
     // un `import()` depuis le parent rendrait la copie du PARENT, toujours

@@ -57,6 +57,69 @@ body.teacher-mode .student-only { display: none !important; }
 #debug-toolbar.dbg--folded .dbg-tools { display: none; }
 .dbg-version, .dbg-fold, .dbg-grip { flex-shrink: 0; }
 
+/* --- LA LIGNE DES ÉTAPES ----------------------------------------------------
+   Même matière que la palette d'auteur — fond sombre, coins arrondis, posée par
+   dessus le jeu — parce que c'en est le prolongement : on l'ouvre d'un de ses
+   boutons et on la referme du même. Elle se déplace, parce que la place utile
+   n'est pas la même dans un volet de l'Atelier et sur un écran d'ordinateur. */
+#plan-etapes {
+    /* AU-DESSUS DES MODALES DU JEU (100001), et c'est le seul endroit où l'on
+       s'écarte du niveau de la palette. Un jeu à étapes ANNONCE chacune par une
+       fenêtre — « on code le rectangle » —, si bien qu'au premier saut la ligne
+       se retrouvait derrière le voile, illisible, exactement au moment où l'on
+       veut savoir où l'on vient d'atterrir. Mesuré : après un clic sur la
+       quatrième étape, la ligne est là et grisée. */
+    position: fixed; top: 46px; left: 6px; z-index: 100002;
+    display: flex; align-items: center; gap: 4px;
+    max-width: calc(100vw - 12px); padding: 3px;
+    border-radius: 10px; background: rgba(15, 23, 42, .94); color: #f8fafc;
+    border: 1px solid #334155; box-shadow: var(--shadow-lg); backdrop-filter: blur(6px);
+}
+#plan-etapes .pe-grip, #plan-etapes .pe-btn {
+    flex: none; border: 0; background: transparent; color: #cbd5e1;
+    font: inherit; font-size: .8rem; cursor: pointer;
+    min-width: 26px; min-height: 26px; border-radius: 7px;
+}
+#plan-etapes .pe-grip { cursor: grab; touch-action: none; }
+#plan-etapes .pe-btn:hover, #plan-etapes .pe-grip:hover { background: #334155; }
+.pe-titre {
+    flex: none; font-size: .68rem; font-weight: 800; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: .03em; max-width: 130px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pe-titre:empty { display: none; }
+/* ELLE DÉFILE PLUTÔT QUE DE S'ÉTAGER. Onze étapes nommées font une ligne plus
+   large qu'un écran ; en `flex-wrap`, la barre prenait quatre lignes et
+   recouvrait le tiers du jeu — c'est-à-dire ce qu'on regarde. */
+.pe-liste {
+    display: flex; gap: 3px; align-items: center;
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+    scroll-snap-type: x proximity; overscroll-behavior-x: contain;
+}
+.pe-liste::-webkit-scrollbar { display: none; }
+.pe-etape {
+    flex: none; scroll-snap-align: end;
+    border: 1px solid #334155; background: #1e293b; color: #cbd5e1;
+    border-radius: 999px; padding: 4px 10px; font: inherit; font-size: .72rem;
+    font-weight: 600; cursor: pointer; min-height: 26px; white-space: nowrap;
+    max-width: 190px; overflow: hidden; text-overflow: ellipsis;
+}
+.pe-etape b { color: #94a3b8; font-weight: 800; margin-right: 3px; }
+.pe-etape:hover { border-color: #64748b; background: #273449; }
+/* CE QUI EST FAIT, ET OÙ L'ON EST. Deux états lisibles d'un coup d'œil : le
+   passé s'efface, le présent s'allume. Sans eux, la ligne dirait CE QUE
+   l'exercice contient sans dire OÙ l'on en est — la moitié de la question. */
+.pe-etape--faite { opacity: .55; }
+.pe-etape--faite b { color: #4ade80; }
+.pe-etape--ici {
+    background: var(--primary, #6366f1); border-color: var(--primary, #6366f1);
+    color: #fff; font-weight: 800;
+}
+.pe-etape--ici b { color: #e0e7ff; }
+/* Le bouton de la palette s'allume tant que la ligne est là : sans témoin, on
+   la rouvre en croyant l'ouvrir, et elle se referme. */
+.debug-btn.dbg-actif { background: var(--primary, #6366f1); color: #fff; }
+
 .dbg-grip {
     flex-shrink: 0; width: 16px; height: 24px;
     display: flex; align-items: center; justify-content: center;

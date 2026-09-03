@@ -835,6 +835,19 @@ function initDebugToolbar() {
     const btnBack = document.getElementById('db-back');
     if (btnBack) btnBack.onclick = naviguer('revenirQuestion', 'Cet exercice ne sait pas revenir en arrière.');
 
+    // LA LIGNE DES ÉTAPES : ce que l'exercice contient, et de quoi y aller. Elle
+    // ne s'ouvre que sur un exercice qui MÈNE ses propres étapes ; ailleurs on
+    // le dit, plutôt que de poser une fenêtre vide.
+    const btnEtapes = document.getElementById('db-etapes');
+    if (btnEtapes) btnEtapes.onclick = async () => {
+        const { basculerPlanEtapes } = await import('./ui/planEtapes.js');
+        if (basculerPlanEtapes()) return;
+        const { showToast } = await import('./ui/modal.js');
+        showToast(state.activeSequenceRunner
+            ? 'Cet exercice n\'a pas d\'étapes internes : le « suivant » passe de question en question.'
+            : 'Aucun exercice en cours.', 'warning');
+    };
+
     // LES RÉGLAGES DE L'EXERCICE EN COURS. C'est la MÊME fenêtre que celle
     // d'avant-partie — celle que l'élève voit —, et c'est le but : ce qu'on
     // règle ici est ce qu'il aura. Elle se rouvre sur les réglages COURANTS de

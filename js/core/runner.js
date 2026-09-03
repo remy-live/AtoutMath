@@ -645,6 +645,9 @@ export class Runner {
                 // Rémy : « pour les exercices à étapes, cela ne fonctionne pas. »
                 sauterEtape: () => (jeu && typeof jeu.sauterEtape === 'function') ? jeu.sauterEtape() : false,
                 revenirEtape: () => (jeu && typeof jeu.revenirEtape === 'function') ? jeu.revenirEtape() : false,
+                // ET LE PLAN DE CES ÉTAPES, pour qu'on puisse les VOIR : voir
+                // `planEtapes` sur le meneur, juste en dessous.
+                planEtapes: () => (jeu && typeof jeu.planEtapes === 'function') ? jeu.planEtapes() : null,
                 destroy: () => {
                     if (jeu && typeof jeu.destroy === 'function') jeu.destroy();
                     else if (jeu && typeof jeu.pause === 'function') jeu.pause();
@@ -904,6 +907,38 @@ export class Runner {
     sauterQuestion(verdict = null) {
         if (!this.step) return false;
         if (verdict !== null) {
+            // ON AVANCE D'ABORD, ON ENREGISTRE ENSUITE — et l'ordre est le
+            // fond de la correction.
+            //
+            // Rémy : « j'aimerais qu'avec le "suivant" de la barre de debug on
+            // passe à l'étape suivante — par exemple pour l'organigramme, on
+            // doit coder le parallélogramme ; si j'appuie sur suivant avec le
+            // check validé, eh bien ça passe à la suite. »
+            //
+            // Le saut d'étape n'était consulté que dans la branche NEUTRE, plus
+            // bas. Mesuré sur l'organigramme, quatre appuis de suite : en
+            // régime neutre on montait de l'étape 1 à l'étape 5 ; avec le ✓ ou
+            // le ✗, on restait sur l'étape 1 — et au quatrième appui l'exercice
+            // s'achevait sur « 3 bonnes réponses sur 3 », parce que le meneur
+            // avait compté trois questions sans que l'écran ait bougé. Les deux
+            // régimes qui enregistrent une réponse étaient donc les deux où
+            // l'on ne pouvait pas atteindre la septième étape.
+            //
+            // ET UNE ÉTAPE N'EST PAS UNE QUESTION — c'est la règle que le
+            // meneur applique déjà partout ailleurs (voir `onAttempt`). Coder
+            // le parallélogramme est une tentative : elle compte aux
+            // statistiques et au carnet d'erreurs. Ce n'est pas une question de
+            // la série : la compter arrêterait l'exercice à la troisième étape
+            // sur onze, ce qui est exactement ce qu'on a mesuré. La tentative
+            // part donc marquée `partiel` quand elle franchit une étape — le
+            // même mot que les jeux emploient pour leurs marques intermédiaires
+            // — et pleine quand elle franchit une question.
+            //
+            // D'où l'ordre : il faut savoir si le saut a franchi une étape AVANT
+            // d'écrire la tentative, car `recordAttempt` prévient le meneur sur
+            // le champ.
+            const uneEtape = !!(this.handle && typeof this.handle.sauterEtape === 'function'
+                && this.handle.sauterEtape() !== false);
             // On passe par le chemin ordinaire d'une réponse : la tentative
             // part au journal, la note, le carnet et l'escalier la voient.
             // Rien à simuler de plus — c'est bien une réponse, elle vient
@@ -913,12 +948,15 @@ export class Runner {
                 correct: !!verdict,
                 attemptIndex: 0,
                 itemSeed: (item && item.seed) || null,
-                questionText: (item && item.question) || '(question sautée)',
+                questionText: (item && item.question)
+                    || (uneEtape ? '(étape sautée)' : '(question sautée)'),
                 expected: item ? item.answer : undefined,
                 given: verdict ? (item ? item.answer : 'juste') : '(saut d\'auteur)',
-                points: verdict ? (this.policy.pointsPerItem || 10) : 0
+                points: verdict ? (this.policy.pointsPerItem || 10) : 0,
+                partiel: uneEtape
             });
             if (this.session && !verdict) this.session.locked = true;
+            if (uneEtape) { this.updateStepNavigation(); return true; }
             if (this.handle && this.handle.showNext) this.handle.showNext();
             return true;
         }
@@ -955,6 +993,58 @@ export class Runner {
         }
         this.updateStepNavigation();
         return true;
+    }
+
+    /**
+     * LE PLAN DES ÉTAPES DE L'EXERCICE EN COURS — outil d'auteur.
+     *
+     * Rémy : « c'est où l'exercice sur "un parallélogramme qui a deux côtés
+     * consécutifs perpendiculaires est un…" ? Où je l'ai loupé quelque part ?
+     * On pourrait avoir dans la barre de debug un bouton qui fait apparaître
+     * une ligne sur les étapes. »
+     *
+     * Un exercice à onze étapes derrière un seul bouton « suivant » est un
+     * couloir sans fenêtres : on ne sait pas ce qu'il contient, ni où l'on en
+     * est, ni comment revenir sur celle qu'on veut regarder. Le jeu, lui, le
+     * sait — il n'avait simplement aucun moyen de le dire.
+     *
+     * @returns {{courante:number, liste:string[], partie?:string}|null}
+     */
+    planEtapes() {
+        if (!this.handle || typeof this.handle.planEtapes !== 'function') return null;
+        const p = this.handle.planEtapes();
+        return (p && Array.isArray(p.liste)) ? p : null;
+    }
+
+    /**
+     * ALLER DIRECTEMENT À UNE ÉTAPE — en passant par les deux chemins éprouvés.
+     *
+     * On aurait pu demander au jeu un « va à l'étape n ». On ne l'a pas fait :
+     * l'organigramme se construit, et poser l'étape 7 sans avoir rempli les six
+     * premières laisserait une carte incohérente — des flèches vides qu'on ne
+     * pourra plus jamais garnir. `sauterEtape` REMPLIT l'étape qu'il franchit,
+     * `revenirEtape` la VIDE ; les enchaîner mène donc à l'étape voulue dans un
+     * état juste, sans qu'aucun jeu ait un troisième chemin à tenir à jour.
+     *
+     * La borne existe parce qu'un jeu qui rendrait toujours `true` ferait
+     * tourner cette boucle sans fin : on ne dépasse jamais le nombre d'étapes.
+     * @returns {boolean} vrai si l'on a bougé
+     */
+    allerAEtape(rang) {
+        const p = this.planEtapes();
+        if (!p || !p.liste.length) return false;
+        const but = Math.max(0, Math.min(p.liste.length - 1, Math.round(rang)));
+        let bouge = false;
+        for (let garde = 0; garde <= p.liste.length; garde++) {
+            const ou = this.planEtapes();
+            if (!ou || ou.courante === but) break;
+            const avance = ou.courante < but
+                ? this.handle.sauterEtape() : this.handle.revenirEtape();
+            if (avance === false) break;
+            bouge = true;
+        }
+        if (bouge) this.updateStepNavigation();
+        return bouge;
     }
 
     /**

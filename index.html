@@ -20,9 +20,18 @@
          dans l'en-tête suffisent : la feuille de style est déjà là quand le
          premier pixel se dessine. -->
     <script>
-        if (new URLSearchParams(location.search).get('atelier')) {
+        (function () {
+            var quoi = new URLSearchParams(location.search).get('atelier');
+            if (!quoi) return;
             document.documentElement.classList.add('volet-atelier');
-        }
+            // LE VOLET DIT LEQUEL IL EST, et cela sert au moins à une chose :
+            // le volet du JEU garde la barre de passe de la palette d'auteur.
+            // Rémy : « dans l'Atelier, je perds ma barre de debug, je l'aime
+            // bien car on peut passer les questions. » Elle était cachée avec
+            // tout le reste de l'application ; or dans un cadre elle commande
+            // LE jeu de ce cadre-là, ce qui est exactement ce qu'on veut.
+            document.documentElement.classList.add('volet-atelier--' + quoi);
+        })();
     </script>
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#6366f1">
@@ -33,12 +42,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=567">
-    <link rel="stylesheet" href="css/layout.css?v=567">
-    <link rel="stylesheet" href="css/ui.css?v=567">
-    <link rel="stylesheet" href="css/games.css?v=567">
-    <link rel="stylesheet" href="css/components.css?v=567">
-    <link rel="stylesheet" href="css/modules.css?v=567">
+    <link rel="stylesheet" href="css/base.css?v=568">
+    <link rel="stylesheet" href="css/layout.css?v=568">
+    <link rel="stylesheet" href="css/ui.css?v=568">
+    <link rel="stylesheet" href="css/games.css?v=568">
+    <link rel="stylesheet" href="css/components.css?v=568">
+    <link rel="stylesheet" href="css/modules.css?v=568">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -181,6 +190,18 @@
             <button class="debug-btn" id="db-params" title="Régler l'exercice en cours et le relancer"
                     aria-label="Régler l'exercice en cours">
                 <svg viewBox="0 0 24 24"><path d="M5 4v6M5 14v6M12 4v3M12 11v9M19 4v10M19 18v2"/><path d="M2.5 12h5M9.5 9h5M16.5 16h5"/></svg>
+            </button>
+            <!-- LA LIGNE DES ÉTAPES. Rémy : « c'est où l'exercice sur "un
+                 parallélogramme qui a deux côtés consécutifs perpendiculaires
+                 est un…" ? Où je l'ai loupé quelque part ? On pourrait avoir
+                 dans la barre de debug un bouton qui fait apparaître une ligne
+                 sur les étapes. » Il ne l'avait pas loupé : c'est la troisième
+                 étape de la construction de l'organigramme, et rien ne disait
+                 qu'elle existait sans y arriver. L'icône : une liste numérotée. -->
+            <button class="debug-btn" id="db-etapes" aria-pressed="false"
+                    title="La ligne des étapes de l'exercice en cours"
+                    aria-label="Voir les étapes de l'exercice">
+                <svg viewBox="0 0 24 24"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4 5.5h1.6V9"/><path d="M3.6 11.2h2.2L3.6 14h2.4"/><path d="M3.8 16.4h2v1.5h-2v1.5h2"/></svg>
             </button>
             <!-- Reculer et avancer d'une question, dans n'importe quel
                  exercice : mettre au point la dixième sans jouer les neuf
