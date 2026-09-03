@@ -1061,6 +1061,11 @@ class Organigramme extends BaseGame {
                 }
                 .qd-note--ok { color: var(--success); font-weight: 700; }
                 .qd-note--ko { color: var(--danger); font-weight: 600; }
+                /* NI VERT NI ROUGE, ET C'EST TOUT LE PROPOS. « Vrai, mais trop
+                   fort pour cette flèche » n'est pas une réussite et n'est pas
+                   une faute ; le peindre en rouge redirait exactement ce que la
+                   phrase nie. */
+                .qd-note--info { color: var(--primary); font-weight: 600; }
 
                 /* Couché, le plan à gauche et les cartes à droite : en paysage
                    c'est la hauteur qui manque. La requête interroge le PLATEAU,
@@ -2757,6 +2762,28 @@ class Organigramme extends BaseGame {
         if (!carte || this.posesEtape.includes(carteId)) return;
 
         const v = verifierEtape(e, carte);
+        // « CE N'EST PAS FAUX, C'EST TROP FORT » — ET ON EN TIRE LES
+        // CONSÉQUENCES.
+        //
+        // Poser « 3 ou 4 angles droits » entre le parallélogramme et le
+        // rectangle est VRAI : un parallélogramme à trois angles droits est un
+        // rectangle. `contreExemple` le disait déjà avec les bons mots ; le jeu,
+        // lui, comptait une erreur au carnet et renvoyait au début de
+        // l'organigramme. L'élève lisait « tu as raison » et subissait « tu as
+        // tort » — de toutes les corrections, c'est la plus décourageante,
+        // parce qu'elle apprend à ne plus proposer ce qu'on a compris.
+        //
+        // Désormais on explique, et l'on RESTE SUR L'ÉTAPE : rien au carnet,
+        // pas de reprise, la carte retourne dans la main. Ce n'est pas de
+        // l'indulgence — c'est que l'énoncé de l'élève était juste.
+        if (!v.ok && v.tropFort) {
+            this.montrerContreExemple(e, carte.texte, v.raison).then(() => {
+                this.dessiner();
+                this.note('Vrai, mais trop fort pour cette flèche — cherche la condition '
+                    + 'qui suffit tout juste.', 'info');
+            });
+            return;
+        }
         if (!v.ok) {
             this.onWrongAnswer(null, {
                 concept: COMPETENCE,

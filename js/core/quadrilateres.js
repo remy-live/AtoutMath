@@ -125,7 +125,7 @@ export const FLECHES = [
     {
         de: 'quadrilatere', vers: 'parallelogramme', voie: -1,
         ajoute: 'Qui a ses côtés opposés parallèles', court: 'côtés opposés parallèles',
-        famille: 'cotes', propriete: 'opposesParalleles',
+        famille: 'cotes', theme: 'cotesOpposes', propriete: 'opposesParalleles',
         piege: 'Le parallélogramme n\'ajoute pas des côtés égaux : il ajoute le '
             + 'PARALLÉLISME des deux paires de côtés opposés. Les longueurs suivent toutes '
             + 'seules.'
@@ -133,7 +133,7 @@ export const FLECHES = [
     {
         de: 'quadrilatere', vers: 'parallelogramme', voie: 0,
         ajoute: 'Qui a ses côtés opposés égaux', court: 'côtés opposés égaux',
-        famille: 'cotes', propriete: 'cotesOpposesEgaux',
+        famille: 'cotes', theme: 'cotesOpposes', propriete: 'cotesOpposesEgaux',
         piege: 'Deux paires de côtés opposés de même longueur suffisent : le parallélisme '
             + 'suit. Attention, il faut bien les côtés OPPOSÉS — deux côtés consécutifs '
             + 'égaux ne donnent rien du tout dans un quadrilatère quelconque.'
@@ -141,7 +141,7 @@ export const FLECHES = [
     {
         de: 'quadrilatere', vers: 'parallelogramme', voie: 1,
         ajoute: 'Qui a ses diagonales se croisant en leur milieu', court: 'diagonales : même milieu',
-        famille: 'diagonales', propriete: 'diagonalesMilieu',
+        famille: 'diagonales', theme: 'diagonales', propriete: 'diagonalesMilieu',
         piege: 'C\'est la troisième façon d\'être un parallélogramme, et la plus oubliée. '
             + 'Les diagonales se coupent en leur MILIEU — qu\'elles se coupent tout court '
             + 'n\'apprend rien, tout quadrilatère non croisé le fait.'
@@ -155,6 +155,7 @@ export const FLECHES = [
         // Incurvé vers le haut, il passe à 22 unités.
         de: 'quadrilatere', vers: 'rectangle', voie: -1,
         ajoute: 'Qui a 3 ou 4 angles droits', court: '3 ou 4 angles droits', famille: 'raccourci',
+        theme: 'sixieme',
         piege: 'Trois suffisent : la somme des angles d\'un quadrilatère vaut 360°, donc le '
             + 'quatrième est droit lui aussi. C\'est la définition du rectangle qu\'on donne '
             + 'en sixième, sans passer par le parallélogramme.'
@@ -163,7 +164,7 @@ export const FLECHES = [
         // Et son symétrique s'incurve vers le bas, par-dessous.
         de: 'quadrilatere', vers: 'losange', voie: 1,
         ajoute: 'Qui a 4 côtés égaux', court: '4 côtés égaux',
-        famille: 'raccourci', propriete: 'quatreCotesEgaux',
+        famille: 'raccourci', theme: 'sixieme', propriete: 'quatreCotesEgaux',
         piege: 'QUATRE côtés égaux, pas deux : c\'est la définition du losange, et elle part '
             + 'directement du quadrilatère quelconque. Dans un parallélogramme, deux côtés '
             + 'consécutifs auraient suffi.'
@@ -173,14 +174,14 @@ export const FLECHES = [
     {
         de: 'parallelogramme', vers: 'rectangle', voie: -1,
         ajoute: 'Qui a deux côtés consécutifs perpendiculaires', court: 'un angle droit',
-        famille: 'cotes', propriete: 'unAngleDroit',
+        famille: 'cotes', theme: 'consecutifs', propriete: 'unAngleDroit',
         piege: 'Un seul angle droit suffit dans un parallélogramme : les trois autres le '
             + 'deviennent forcément.'
     },
     {
         de: 'parallelogramme', vers: 'rectangle', voie: 1,
         ajoute: 'Qui a ses diagonales de même longueur', court: 'diagonales égales',
-        famille: 'diagonales', propriete: 'diagonalesEgales',
+        famille: 'diagonales', theme: 'diagonales', propriete: 'diagonalesEgales',
         piege: 'Des diagonales de MÊME LONGUEUR font le rectangle ; des diagonales '
             + 'PERPENDICULAIRES font le losange. C\'est la paire qu\'on échange le plus '
             + 'souvent.'
@@ -190,14 +191,14 @@ export const FLECHES = [
     {
         de: 'parallelogramme', vers: 'losange', voie: -1,
         ajoute: 'Qui a deux côtés consécutifs de même longueur', court: '2 côtés consécutifs égaux',
-        famille: 'cotes',
+        famille: 'cotes', theme: 'consecutifs',
         piege: 'Dans un parallélogramme, deux côtés CONSÉCUTIFS de même longueur suffisent : '
             + 'les côtés opposés étaient déjà égaux.'
     },
     {
         de: 'parallelogramme', vers: 'losange', voie: 1,
         ajoute: 'Qui a ses diagonales perpendiculaires', court: 'diagonales perpendiculaires',
-        famille: 'diagonales', propriete: 'diagonalesPerpendiculaires',
+        famille: 'diagonales', theme: 'diagonales', propriete: 'diagonalesPerpendiculaires',
         piege: 'Des diagonales PERPENDICULAIRES font le losange ; des diagonales de même '
             + 'LONGUEUR font le rectangle. C\'est la paire qu\'on échange le plus souvent.'
     },
@@ -206,28 +207,28 @@ export const FLECHES = [
     {
         de: 'rectangle', vers: 'carre', voie: -1,
         ajoute: 'Qui a deux côtés consécutifs de même longueur', court: '2 côtés consécutifs égaux',
-        famille: 'cotes',
+        famille: 'cotes', theme: 'consecutifs',
         piege: 'Au rectangle il manque les longueurs ; au losange il manque l\'angle droit. '
             + 'Ce n\'est pas la même carte qui les complète.'
     },
     {
         de: 'rectangle', vers: 'carre', voie: 1,
         ajoute: 'Qui a ses diagonales perpendiculaires', court: 'diagonales perpendiculaires',
-        famille: 'diagonales', propriete: 'diagonalesPerpendiculaires',
+        famille: 'diagonales', theme: 'diagonales', propriete: 'diagonalesPerpendiculaires',
         piege: 'Au rectangle, les diagonales sont déjà de même longueur : ce qui lui manque, '
             + 'c\'est qu\'elles soient PERPENDICULAIRES.'
     },
     {
         de: 'losange', vers: 'carre', voie: -1,
         ajoute: 'Qui a deux côtés consécutifs perpendiculaires', court: 'un angle droit',
-        famille: 'cotes', propriete: 'unAngleDroit',
+        famille: 'cotes', theme: 'consecutifs', propriete: 'unAngleDroit',
         piege: 'Au losange il manque l\'angle droit ; au rectangle il manque les longueurs. '
             + 'Ce n\'est pas la même carte qui les complète.'
     },
     {
         de: 'losange', vers: 'carre', voie: 1,
         ajoute: 'Qui a ses diagonales de même longueur', court: 'diagonales égales',
-        famille: 'diagonales', propriete: 'diagonalesEgales',
+        famille: 'diagonales', theme: 'diagonales', propriete: 'diagonalesEgales',
         piege: 'Au losange, les diagonales sont déjà perpendiculaires : ce qui lui manque, '
             + 'c\'est qu\'elles aient la MÊME LONGUEUR.'
     }
@@ -842,6 +843,62 @@ export const DIMS_CODAGE = {
     carre: { cote: 11 }
 };
 
+/**
+ * LES INTRUS SE CHOISISSENT, ILS NE SE TIRENT PLUS AU HASARD.
+ *
+ * DEUX DÉFAUTS, ET LE PREMIER EST GRAVE.
+ *
+ * ① ON PROPOSAIT DES CARTES VRAIES. Le tirage prenait n'importe quelle autre
+ * condition de l'organigramme. Or deux d'entre elles — « 3 ou 4 angles droits »
+ * et « 4 côtés égaux », celles de sixième — restent VRAIES bien plus bas que
+ * leur flèche : un parallélogramme qui a trois angles droits est bel et bien un
+ * rectangle. Mesuré sur les sept étapes : SIX couples (étape, intrus) sur
+ * cinquante, soit 12 %, étaient des cartes justes. `contreExemple` le disait
+ * déjà — « ce n'est pas faux, c'est TROP FORT » — mais `verifierEtape`
+ * répondait « faux » quand même : l'élève était compté en erreur et renvoyé au
+ * début pour avoir dit quelque chose de vrai. On ne les propose plus.
+ *
+ * ② LES INTRUS RESTANTS ÉTAIENT TROP LOIN. Mesuré aussi : l'intrus tombait sur
+ * une JUMELLE — une condition qui parle de la même chose et diverge sur la
+ * propriété — 29 % du temps seulement. Les sept autres fois sur dix, l'élève
+ * écartait une carte sans rapport, sans réfléchir. Or les jumelles sont
+ * exactement les confusions que les textes de `piege` nomment une par une :
+ * « des diagonales de MÊME LONGUEUR font le rectangle ; des diagonales
+ * PERPENDICULAIRES font le losange — c'est la paire qu'on échange le plus
+ * souvent ». C'est à quoi sert `theme` : ce dont la condition PARLE, et non la
+ * famille de couleur à laquelle elle appartient (`famille` réunit sous
+ * « cotes » les côtés opposés et les côtés consécutifs, qui ne se confondent
+ * pas entre eux).
+ *
+ * On préfère donc les jumelles, puis le reste s'il en faut davantage — le
+ * palier « avec des intrus » en demande trois.
+ */
+function tirerIntrus(rng, etape, bonnes, ailleurs, combien) {
+    // ON NE PIÈGE PAS AVEC UNE VÉRITÉ.
+    const honnetes = ailleurs.filter(t => !estTropFort(etape.de, etape.vers, t));
+    const themes = new Set(bonnes.map(themeDe));
+    const jumelles = honnetes.filter(t => themes.has(themeDe(t)));
+    const lointaines = honnetes.filter(t => !themes.has(themeDe(t)));
+    return rng.shuffle(jumelles.slice())
+        .concat(rng.shuffle(lointaines.slice()))
+        .slice(0, combien);
+}
+
+/** Ce dont une condition parle — « les diagonales », « les côtés opposés »… */
+export const themeDe = (texte) => {
+    const f = FLECHES.find(x => x.ajoute === texte);
+    return (f && f.theme) || null;
+};
+
+/**
+ * Cette condition est-elle VRAIE sur cette flèche, sans être son étiquette ?
+ *
+ * C'est la question que `contreExemple` tranche déjà, et l'on ne la retranche
+ * pas ici : une seule définition de « trop fort » dans l'application.
+ */
+export const estTropFort = (de, vers, texte) =>
+    contreExemple(de, vers, texte).genre === 'trop-fort';
+
 export function genererProgressif({ rng, palier = 'conditions', codage = true } = {}) {
     const P = PALIERS[palier] || PALIERS.conditions;
     const intrus = P.intrus === undefined ? 1 : P.intrus;
@@ -858,7 +915,7 @@ export function genererProgressif({ rng, palier = 'conditions', codage = true } 
             if (bonnes.includes(f.ajoute) || ailleurs.includes(f.ajoute)) return;
             ailleurs.push(f.ajoute);
         });
-        const faux = rng.shuffle(ailleurs.slice()).slice(0, intrus);
+        const faux = tirerIntrus(rng, e, bonnes, ailleurs, intrus);
         // LA CARTE PORTE LES DEUX ÉCRITURES. `court` est ce qu'on lit sur la
         // vignette et sur la flèche ; `texte` reste la phrase entière, celle
         // qui juge, celle du carnet et celle qu'on relit. Une seule des deux
@@ -1073,6 +1130,14 @@ export function verifierEtape(etape, carte) {
     if (!carte) return { ok: false, raison: '' };
     if (etape.bonnes.includes(carte.texte)) {
         return { ok: true, texteJuste: memeTexte(FLECHES.find(f => f.ajoute === carte.texte)) };
+    }
+    // « PAS FAUX, MAIS TROP FORT » N'EST PAS UNE ERREUR, ET NE DOIT PLUS EN
+    // ÊTRE COMPTÉE UNE. Le refus le disait déjà avec les bons mots ; la
+    // conséquence, elle, disait le contraire — carnet d'erreurs, et retour au
+    // début de l'organigramme. Deux messages contradictoires pour un élève qui
+    // vient d'énoncer une vérité, c'est la pire des corrections.
+    if (estTropFort(etape.de, etape.vers, carte.texte)) {
+        return { ok: false, tropFort: true, raison: refusEtape(etape, carte.texte) };
     }
     return { ok: false, raison: refusEtape(etape, carte.texte) };
 }

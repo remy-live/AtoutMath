@@ -976,3 +976,92 @@ test('LA FENÊTRE NE COUPE AUCUNE CARTE EN DEUX', async () => {
         });
     });
 });
+
+// ---------------------------------------------------------------------------
+// LES INTRUS
+//
+// Rémy : « le 1 » — c'est-à-dire affûter les cartes fausses mêlées aux bonnes.
+
+test('ON NE PROPOSE JAMAIS UNE CARTE QUI EST VRAIE', async () => {
+    // C'EST UNE CORRECTION, PAS UN RAFFINEMENT. Deux conditions — celles de
+    // sixième — restent vraies bien plus bas que leur flèche : un
+    // parallélogramme qui a trois angles droits EST un rectangle. Mesuré avant
+    // la correction : six couples (étape, intrus) sur cinquante, soit 12 %,
+    // étaient des cartes justes proposées comme pièges. L'élève qui les posait
+    // lisait « ce n'est pas faux » et se retrouvait compté en erreur, puis
+    // renvoyé au début.
+    const { genererProgressif, estTropFort } = await import('../js/core/quadrilateres.js');
+    for (let i = 0; i < 120; i++) {
+        const o = genererProgressif({ rng: makeRng('intrus' + i), palier: 'tout', codage: false });
+        o.etapes.filter(e => e.genre === 'condition').forEach(e => {
+            e.cartes.filter(c => !c.juste).forEach(c => {
+                assert.equal(estTropFort(e.de, e.vers, c.texte), false,
+                    `${e.de} → ${e.vers} : « ${c.court} » est vraie et pourtant proposée comme intrus`);
+            });
+        });
+    }
+});
+
+test('L\'INTRUS EST UNE JUMELLE — il parle de la même chose', async () => {
+    // Mesuré avant : l'intrus tombait sur une condition du même thème 29 % du
+    // temps. Les sept autres fois sur dix, l'élève écartait une carte sans
+    // rapport, sans réfléchir — un piège qui ne piège personne n'enseigne rien.
+    // Les jumelles, elles, sont exactement les confusions que les textes de
+    // `piege` nomment : « des diagonales de MÊME LONGUEUR font le rectangle ;
+    // des diagonales PERPENDICULAIRES font le losange ».
+    const { genererProgressif, themeDe } = await import('../js/core/quadrilateres.js');
+    let jumelles = 0, total = 0;
+    for (let i = 0; i < 120; i++) {
+        const o = genererProgressif({ rng: makeRng('jum' + i), palier: 'conditions', codage: false });
+        o.etapes.filter(e => e.genre === 'condition').forEach(e => {
+            const themes = new Set(e.bonnes.map(themeDe));
+            e.cartes.filter(c => !c.juste).forEach(c => {
+                total++;
+                if (themes.has(themeDe(c.texte))) jumelles++;
+            });
+        });
+    }
+    assert.ok(total > 0);
+    // Chaque étape a au moins une jumelle disponible : au palier à UN intrus,
+    // c'est donc toujours une jumelle qui sort.
+    assert.equal(jumelles, total, `${jumelles}/${total} intrus sont des jumelles`);
+});
+
+test('CHAQUE CONDITION A UN THÈME, ET AUCUN THÈME N\'EST SEUL', async () => {
+    // Sans cette garantie, une étape pourrait n'avoir aucune jumelle
+    // disponible et retomber silencieusement sur un intrus lointain — le
+    // défaut qu'on vient de corriger, revenu sans que rien ne le signale.
+    const { FLECHES } = await import('../js/core/quadrilateres.js');
+    const parTexte = new Map();
+    FLECHES.forEach(f => {
+        assert.ok(f.theme, `« ${f.court} » n'a pas de thème`);
+        // La même condition portée par deux flèches doit porter le même thème.
+        if (parTexte.has(f.ajoute)) assert.equal(f.theme, parTexte.get(f.ajoute));
+        parTexte.set(f.ajoute, f.theme);
+    });
+    const parTheme = {};
+    parTexte.forEach((theme, texte) => { (parTheme[theme] = parTheme[theme] || []).push(texte); });
+    Object.entries(parTheme).forEach(([theme, liste]) => {
+        assert.ok(liste.length >= 2, `le thème « ${theme} » n'a qu'une condition : personne à confondre`);
+    });
+});
+
+test('UNE CARTE TROP FORTE N\'EST PAS COMPTÉE COMME UNE ERREUR', async () => {
+    // `contreExemple` disait déjà « ce n'est pas faux, c'est trop fort » ;
+    // `verifierEtape` répondait « faux » quand même, et le jeu inscrivait
+    // l'erreur au carnet puis renvoyait au début. Les mots et la conséquence se
+    // contredisaient.
+    const { verifierEtape, contreExemple, FLECHES } = await import('../js/core/quadrilateres.js');
+    const etape = { de: 'parallelogramme', vers: 'rectangle',
+        bonnes: FLECHES.filter(f => f.de === 'parallelogramme' && f.vers === 'rectangle')
+            .map(f => f.ajoute) };
+    const trop = 'Qui a 3 ou 4 angles droits';
+    assert.equal(contreExemple(etape.de, etape.vers, trop).genre, 'trop-fort');
+    const v = verifierEtape(etape, { texte: trop });
+    assert.equal(v.ok, false);
+    assert.equal(v.tropFort, true);
+    // Et une VRAIE faute reste une vraie faute.
+    const faux = verifierEtape(etape, { texte: 'Qui a ses diagonales perpendiculaires' });
+    assert.equal(faux.ok, false);
+    assert.ok(!faux.tropFort);
+});
