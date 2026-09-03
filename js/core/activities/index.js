@@ -24,6 +24,7 @@ import {
 } from '../generators/numeration.js';
 import { kenkenGenerator } from '../generators/kenken.js';
 import { binairoGenerator } from '../generators/binairo.js';
+import { colorierNombresGenerator } from '../generators/colorierNombres.js';
 import { garamGenerator } from '../generators/garam.js';
 import { sudokuGenerator } from '../generators/sudoku.js';
 import { anglesGenerator } from '../generators/angles.js';
@@ -118,7 +119,7 @@ import {
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
-    kenkenGenerator, binairoGenerator, garamGenerator, sudokuGenerator,
+    kenkenGenerator, binairoGenerator, colorierNombresGenerator, garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, relatifsProduitGenerator, litteralReduireGenerator,
     litteralPuissancesGenerator,

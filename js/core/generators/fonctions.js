@@ -90,9 +90,11 @@ export const fonctionsGenerator = {
                 + 'est le plus dur : il faut remonter le programme à l\'envers.',
             options: [
                 { value: 'lire', label: 'Lire une égalité (image ou antécédent ?)' },
+                { value: 'phrase', label: 'Compléter la phrase (… est l\'image de …)' },
                 { value: 'image', label: 'Calculer une image' },
                 { value: 'programme', label: 'Suivre un programme de calcul' },
                 { value: 'tableau', label: 'Compléter un tableau de valeurs' },
+                { value: 'tableau-complet', label: 'Remplir TOUT le tableau' },
                 { value: 'antecedent', label: 'Chercher un antécédent' },
                 { value: 'melange', label: 'Mélangé' }
             ]
@@ -102,11 +104,14 @@ export const fonctionsGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = params || {};
-        const quoi = ['lire', 'image', 'programme', 'tableau', 'antecedent'].includes(p.quoi)
+        const quoi = ['lire', 'phrase', 'image', 'programme', 'tableau', 'tableau-complet',
+            'antecedent'].includes(p.quoi)
             ? p.quoi
-            // Le mélange fait revenir « lire » aussi souvent que les autres :
-            // c'est la question qui ne se travaille jamais assez.
-            : rng.pick(['lire', 'image', 'programme', 'tableau', 'antecedent', 'image', 'lire']);
+            // Le mélange fait revenir la PHRASE aussi souvent que le calcul :
+            // c'est là que les points se perdent, et le simple « quelle est
+            // l'image ? » ne le travaille pas — voir `itemPhrase`.
+            : rng.pick(['phrase', 'image', 'programme', 'tableau', 'antecedent',
+                'image', 'phrase', 'tableau-complet']);
 
         const a = rng.pick([2, 3, 4, 5, -2, -3, 2, 3]);
         const b = rng.pick([-9, -7, -5, -4, -3, -1, 1, 2, 3, 4, 5, 6, 8]);
@@ -114,6 +119,8 @@ export const fonctionsGenerator = {
         const ecrit = `f(x) = ${ecrireAffine(a, b)}`;
 
         if (quoi === 'lire') return itemLire(rng, a, b, f, ecrit);
+        if (quoi === 'phrase') return itemPhrase(rng, a, b, f, ecrit);
+        if (quoi === 'tableau-complet') return itemTableauComplet(rng, a, b, f, ecrit);
         if (quoi === 'antecedent') return itemAntecedent(rng, a, b, f, ecrit);
         if (quoi === 'programme') return itemProgramme(rng, a, b, f);
         if (quoi === 'tableau') return itemTableau(rng, a, b, f, ecrit);
@@ -162,6 +169,142 @@ function itemLire(rng, a, b, f, ecrit) {
             + `aussi « ${x} est un antécédent de ${nb(y)} ». On part du nombre entre `
             + 'parenthèses, on arrive au résultat.',
         difficulty: 1
+    });
+}
+
+/**
+ * COMPLÉTER LA PHRASE — et c'est Rémy qui a dit pourquoi elle manquait.
+ *
+ * « Fais des phrases du genre : f(3) = 1 … est l'image de … par la fonction f.
+ * Ou … est un antécédent de … par la fonction f. Car là tes questions sont
+ * faciles. »
+ *
+ * IL A RAISON, ET LE DÉFAUT ÉTAIT DE FORME. « On sait que f(3) = 1, quelle est
+ * l'image de 3 ? » se répond sans avoir compris : la réponse est l'un des deux
+ * nombres écrits juste au-dessus, et le hasard en donne un sur deux. La PHRASE,
+ * elle, oblige à ranger les deux nombres — et c'est exactement le geste qu'on
+ * rate en contrôle, parce qu'« image » et « antécédent » se disent dans le même
+ * souffle et se rangent à l'envers l'un de l'autre.
+ *
+ * DEUX FAÇONS DE LA POSER, ET LA SECONDE FERME LA PORTE AU HASARD :
+ *
+ *   · ON DONNE L'ÉGALITÉ. « f(3) = 1. Complète : … est l'image de 3 par f. »
+ *     Les deux nombres sont sous les yeux ; il n'y a qu'à les ranger. C'est la
+ *     forme de Rémy, et c'est la première marche.
+ *   · ON DONNE LA FONCTION. « Soit f(x) = 3x + 5. Complète : … est un
+ *     antécédent de 17 par f. » Le nombre manquant n'est écrit nulle part : il
+ *     faut le CALCULER, et il faut d'abord avoir compris de quel côté on part.
+ *     Deviner ne sert plus à rien.
+ *
+ * ET LES QUATRE COMBINAISONS SONT TIRÉES : image ou antécédent, trou à gauche
+ * ou à droite. Un élève qui a retenu « la réponse est toujours le résultat » se
+ * fait prendre à la première phrase où le trou est de l'autre côté.
+ */
+function itemPhrase(rng, a, b, f, ecrit) {
+    const x = rng.pick([-3, -2, 1, 2, 3, 4, 5, 6]);
+    const y = f(x);
+    const versImage = rng.bool();          // « … est l'image de … » ou « … est un antécédent de … »
+    const trouAGauche = rng.bool();        // quel pointillé porte la réponse
+    const avecEgalite = rng.bool();        // on donne f(x) = y, ou seulement f
+
+    // Dans « A est l'image de B », A est le résultat et B le départ.
+    // Dans « A est un antécédent de B », c'est l'inverse.
+    const gauche = versImage ? y : x;
+    const droite = versImage ? x : y;
+    const dit = versImage ? 'est l\'image de' : 'est un antécédent de';
+    const phrase = trouAGauche
+        ? `. . . . . ${dit} ${nb(droite)} par la fonction f.`
+        : `${nb(gauche)} ${dit} . . . . . par la fonction f.`;
+    const reponse = trouAGauche ? gauche : droite;
+
+    // CE QU'ON DONNE EN TÊTE. Avec l'égalité, tout est là et il n'y a qu'à
+    // ranger ; sans elle, le nombre manquant se calcule.
+    const tete = avecEgalite ? `On sait que f(${nb(x)}) = ${nb(y)}.` : `Soit ${ecrit}.`;
+    const question = `Complète la phrase :\n${phrase}`;
+    const htmlPhrase = `<div class="game-question">${avecEgalite
+        ? `On sait que <b>f(${nb(x)}) = ${nb(y)}</b>.`
+        : `Soit <b>${ecrit}</b>.`}<br>Complète la phrase :<br>
+        <span class="fn-phrase">${trouAGauche
+        ? `<u>&nbsp;&nbsp;?&nbsp;&nbsp;</u> ${dit} ${nb(droite)} par la fonction f.`
+        : `${nb(gauche)} ${dit} <u>&nbsp;&nbsp;?&nbsp;&nbsp;</u> par la fonction f.`}</span></div>`;
+
+    // L'aide ne donne jamais le nombre : elle donne le SENS de la marche.
+    const sens = 'Une fonction PART du nombre entre parenthèses et ARRIVE au résultat : dans '
+        + `f(${nb(x)}) = ${nb(y)}, on part de ${nb(x)} et l'on arrive à ${nb(y)}.`;
+    const rangement = versImage
+        ? 'Dans « A est l\'image de B », A est ce qu\'on OBTIENT et B ce d\'où l\'on PART.'
+        : 'Dans « A est un antécédent de B », A est ce d\'où l\'on PART et B ce qu\'on OBTIENT.';
+    const calcul = avecEgalite
+        ? `Les deux nombres sont écrits : f(${nb(x)}) = ${nb(y)}. Il n'y a qu'à les ranger `
+            + `dans le bon ordre — la réponse est ${nb(reponse)}.`
+        : (versImage === trouAGauche
+            ? `Il faut calculer : f(${nb(x)}) = ${nb(a)} × ${facteur(x)} `
+                + `${b > 0 ? '+' : '−'} ${Math.abs(b)} = ${nb(y)}.`
+            : `Il faut remonter : quel nombre a pour image ${nb(y)} ? C'est ${nb(x)}.`);
+
+    return item(rng, {
+        quoi: versImage ? 'phrase' : 'phrase-antecedent',
+        reponse,
+        texte: `${tete} ${question}`,
+        html: htmlPhrase,
+        papier: `${tete}\nComplète la phrase :\n${phrase}`,
+        hints: [rangement, sens, calcul],
+        explanation: `f(${nb(x)}) = ${nb(y)} se lit dans les deux sens : « ${nb(y)} est `
+            + `l'image de ${nb(x)} par f » et « ${nb(x)} est un antécédent de ${nb(y)} par f ». `
+            + `Ici la phrase demandait ${nb(reponse)}.`,
+        difficulty: avecEgalite ? 2 : 3
+    });
+}
+
+/**
+ * REMPLIR TOUT LE TABLEAU — Rémy : « tu peux demander de remplir tout le
+ * tableau si on donne la fonction ».
+ *
+ * Le tableau à un seul trou pose UNE image, habillée en tableau. Le tableau
+ * complet en pose quatre, et il enseigne autre chose : à la troisième colonne,
+ * l'élève ne réécrit plus le calcul, il l'automatise — et c'est là qu'on voit
+ * les fautes de signe, parce qu'elles reviennent en série. C'est aussi le
+ * format du contrôle, et celui de la feuille : quatre colonnes vides sous une
+ * fonction donnée.
+ *
+ * À L'ÉCRAN, ON DEMANDE UNE COLONNE À LA FOIS. Le pavé numérique rend UN
+ * nombre : on remplit donc les trois premières colonnes pour l'élève et on lui
+ * demande la dernière — la même question, avec trois exemples déjà faits sous
+ * les yeux. Sur le papier, où l'on écrit ce qu'on veut, le tableau est vide en
+ * entier, et la correction donne les quatre valeurs.
+ */
+function itemTableauComplet(rng, a, b, f, ecrit) {
+    const xs = rng.shuffle([-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]).slice(0, 4).sort((u, v) => u - v);
+    const ys = xs.map(f);
+    const cellules = (lot) => lot.map(v => `<td>${v}</td>`).join('');
+    const vides = xs.map(() => '. . .');
+    const tableauVide = `x : ${xs.map(nb).join(' | ')}\nf(x) : ${vides.join(' | ')}`;
+    // À l'écran, les trois premières sont données : c'est la dernière qu'on demande.
+    const montrees = ys.map((y, i) => (i === ys.length - 1 ? '?' : nb(y)));
+    const html = enonceFonctionHtml(ecrit, 'Complète le tableau de valeurs.')
+        + `<table class="fn-valeurs"><tbody>
+            <tr><th>x</th>${cellules(xs.map(nb))}</tr>
+            <tr><th>f(x)</th>${cellules(montrees)}</tr>
+        </tbody></table>`;
+    const dernier = xs[xs.length - 1];
+    const detail = xs.map((x, i) => `f(${nb(x)}) = ${nb(ys[i])}`).join(' ; ');
+
+    return item(rng, {
+        quoi: 'tableau-complet', reponse: ys[ys.length - 1],
+        texte: enonceFonction(ecrit,
+            `Complète le tableau de valeurs.\nx : ${xs.map(nb).join(' | ')}\n`
+            + `f(x) : ${montrees.join(' | ')}`),
+        html,
+        papier: enonceFonction(ecrit, `Complète TOUT le tableau de valeurs.\n${tableauVide}`),
+        hints: [
+            'Une colonne à la fois : on remplace x par le nombre du haut, on calcule, '
+                + 'on écrit le résultat en dessous.',
+            `Pour la dernière colonne, x = ${nb(dernier)}.`,
+            `f(${nb(dernier)}) = ${nb(a)} × ${facteur(dernier)} ${b > 0 ? '+' : '−'} `
+                + `${Math.abs(b)} = ${nb(ys[ys.length - 1])}`
+        ],
+        explanation: `Chaque colonne est un couple (x ; f(x)) : ${detail}.`,
+        difficulty: 3
     });
 }
 
@@ -292,7 +435,10 @@ function item(rng, { quoi, texte, html, papier, reponse, hints, explanation, dif
     return makeItem({
         seed: rng.seed,
         generatorId: 'alg.fonctions',
-        skillId: quoi === 'antecedent' ? 'alg.fonction.antecedent' : 'alg.fonction.image',
+        // « phrase-antecedent » compte lui aussi dans la compétence
+        // « antécédent » : c'est le même geste, posé autrement. Un `===` nu
+        // l'aurait rangé dans « image », et le bilan aurait menti.
+        skillId: quoi.includes('antecedent') ? 'alg.fonction.antecedent' : 'alg.fonction.image',
         answerKind: 'numeric',
         // `html` n'existe que là où l'énoncé porte un DESSIN — ici le tableau de
         // valeurs. Ailleurs, `text` suffit et l'écran l'habille lui-même.

@@ -486,3 +486,16 @@
     background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
     color: var(--primary); text-align: right; min-width: 0;
 }
+
+/* LA PHRASE À COMPLÉTER. Rémy : « fais des phrases du genre : f(3) = 1, … est
+   l'image de … par la fonction f. Car là tes questions sont faciles. » Elle a
+   sa ligne et son trou souligné : c'est la phrase qu'on écrira au contrôle, et
+   la voir en entier est déjà la moitié du travail. */
+.fn-phrase {
+    display: inline-block; margin-top: 6px; font-weight: 800;
+    font-size: clamp(1rem, 3vw, 1.2rem); line-height: 1.5;
+}
+.fn-phrase u {
+    text-decoration: none; border-bottom: 2px solid var(--primary);
+    color: var(--primary); letter-spacing: .06em;
+}

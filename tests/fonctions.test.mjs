@@ -129,12 +129,24 @@ test('L\'EXPLICATION DU « LIRE » NOMME LES DEUX MOTS ENSEMBLE', () => {
     }
 });
 
-test('le mélange fait revenir les cinq questions, « lire » en tête', () => {
+test('le mélange fait revenir toutes les questions, la PHRASE en tête', () => {
+    // Rémy : « fais des phrases du genre : f(3) = 1, … est l'image de … par la
+    // fonction f. Car là tes questions sont faciles. » La phrase remplace le
+    // « lire » dans le mélange — même notion, mais il faut RANGER les deux
+    // nombres au lieu d'en désigner un —, et elle reste la plus fréquente :
+    // c'est là que les points se perdent en contrôle.
     const vus = {};
     suite(200, {}, 'mel').forEach(it => { vus[it.meta.quoi] = (vus[it.meta.quoi] || 0) + 1; });
-    ['lire', 'image', 'programme', 'tableau', 'antecedent'].forEach(q =>
+    ['image', 'programme', 'tableau', 'tableau-complet', 'antecedent'].forEach(q =>
         assert.ok(vus[q] > 10, `${q} sort trop rarement : ${vus[q] || 0}/200`));
-    assert.ok(vus.lire > vus.antecedent, 'la lecture du sens doit revenir plus souvent');
+    const phrases = (vus.phrase || 0) + (vus['phrase-antecedent'] || 0);
+    assert.ok(phrases > 30, `la phrase sort trop rarement : ${phrases}/200`);
+    assert.ok(phrases > (vus.antecedent || 0), 'la phrase doit revenir plus souvent');
+    // ET LES DEUX SENS DE LA PHRASE SORTENT : « … est l'image de … » et « … est
+    // un antécédent de … ». Une seule des deux formes n'apprendrait que la
+    // moitié du vocabulaire, celle qu'on retient déjà.
+    assert.ok(vus.phrase > 5 && vus['phrase-antecedent'] > 5,
+        `un seul sens de phrase : ${vus.phrase}/${vus['phrase-antecedent']}`);
 });
 
 test('la même graine redonne le même énoncé', () => {
@@ -150,7 +162,17 @@ test('l\'exercice du catalogue tient debout', () => {
     assert.equal(exo.generatorId, 'alg.fonctions');
     assert.ok(gen(), 'le générateur doit être enregistré');
     const schema = gen().params.find(p => p.id === 'quoi');
-    const rendus = new Set(suite(200, {}, 'cat').map(it => it.meta.quoi));
-    schema.options.filter(o => o.value !== 'melange').forEach(o =>
-        assert.ok(rendus.has(o.value), `l'option « ${o.label} » ne produit rien`));
+    // CHAQUE OPTION EST DEMANDÉE POUR ELLE-MÊME. Les vérifier à travers le
+    // MÉLANGE était une erreur : le mélange ne tire pas toutes les options —
+    // « lire » n'y est plus, remplacé par la phrase —, et le test tombait sur
+    // une option parfaitement valide que personne n'avait cassée.
+    schema.options.filter(o => o.value !== 'melange').forEach(o => {
+        const it = gen().generate({ quoi: o.value }, { rng: makeRng(`opt-${o.value}`), index: 0 });
+        assert.ok(it && it.prompt.text, `l'option « ${o.label} » ne produit rien`);
+        assert.equal(Number.isFinite(it.answer), true, `« ${o.label} » sans réponse`);
+        // La phrase se range sous deux genres selon le sens demandé.
+        const attendu = o.value === 'phrase' ? ['phrase', 'phrase-antecedent'] : [o.value];
+        assert.ok(attendu.includes(it.meta.quoi),
+            `« ${o.label} » rend ${it.meta.quoi}`);
+    });
 });

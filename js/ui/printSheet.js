@@ -12145,6 +12145,127 @@ function dessinerLabyNombresPdf(doc, item, slot, solution) {
     doc.setFont('helvetica', 'normal');
 }
 
+
+// --- Colorier par les nombres -------------------------------------------------
+//
+// Rémy : « pour colorier par les nombres, on ne pourrait pas faire un pdf ».
+//
+// LA GRILLE OCCUPE UN CARRÉ, INDICES COMPRIS. Les nombres se lisent à gauche
+// des lignes et au-dessus des colonnes ; la place qu'ils prennent dépend de la
+// grille — une grille de dix peut demander trois nombres sur une colonne, une
+// grille de cinq n'en demande qu'un. On mesure donc les marges sur l'énoncé,
+// et la case se déduit du reste : `taille / (n + marge)`. Une marge écrite en
+// dur aurait rogné les indices d'un côté ou gaspillé un tiers de la feuille de
+// l'autre.
+//
+// LES CASES SONT GRANDES, ET C'EST LE POINT. On colorie au crayon et l'on
+// BARRE ce qu'on sait blanc — une croix vaut autant qu'une case coloriée. Une
+// case de trois millimètres ne se barre pas.
+function plaqueColorier(item, slot) {
+    const { enonce, margeLignes, margeColonnes } = item.meta;
+    const n = enonce.largeur, h = enonce.hauteur;
+    // Une colonne d'indices est moins large qu'une case : ce sont des chiffres
+    // seuls, et leur donner la largeur d'une case pousserait la grille dehors.
+    const c = slot.taille / (n + margeLignes * 0.62);
+    const cote = Math.min(c, slot.taille / (h + margeColonnes * 0.62));
+    return {
+        cote,
+        gauche: slot.x + margeLignes * cote * 0.62,
+        haut: slot.y + margeColonnes * cote * 0.62,
+        n, h
+    };
+}
+
+function colorierPreviewHtml(item, slot, k, solution) {
+    const { enonce, solution: sol } = item.meta;
+    const p = plaqueColorier(item, slot);
+    const s = p.cote * k;
+    const g = p.gauche * k, t = p.haut * k;
+    const petit = s * 0.42;
+    // LE CONTENEUR RESTE À L'ORIGINE DE LA FEUILLE, et ses enfants portent des
+    // coordonnées de PAGE. Le poser sur la case et donner à ses enfants des
+    // coordonnées de page revenait à additionner deux fois le décalage : la
+    // deuxième grille partait hors de la feuille — vu à l'écran, la place
+    // réservée était bien là, et la grille nulle part.
+    let html = '<div class="fp-colorier" style="left:0; top:0">';
+
+    // Les indices des colonnes, empilés vers le haut, le dernier collé à la grille.
+    enonce.colonnes.forEach((ind, x) => {
+        ind.forEach((v, j) => {
+            const rang = ind.length - 1 - j;
+            html += `<span class="fp-col-ind" style="left:${g + x * s}px;
+                top:${t - (rang + 1) * s * 0.62}px; width:${s}px; height:${s * 0.62}px;
+                font-size:${petit}px">${v}</span>`;
+        });
+    });
+    // Ceux des lignes, alignés à droite contre la grille.
+    enonce.lignes.forEach((ind, y) => {
+        ind.forEach((v, j) => {
+            const rang = ind.length - 1 - j;
+            html += `<span class="fp-lig-ind" style="left:${g - (rang + 1) * s * 0.62}px;
+                top:${t + y * s}px; width:${s * 0.62}px; height:${s}px;
+                font-size:${petit}px">${v}</span>`;
+        });
+    });
+    // La grille. Les traits de cinq en cinq sont plus épais : sans eux, on perd
+    // sa ligne au milieu d'une grille de dix.
+    for (let y = 0; y < p.h; y++) {
+        for (let x = 0; x < p.n; x++) {
+            const plein = solution && sol[y][x];
+            html += `<span class="fp-cn-case${plein ? ' fp-cn-case--plein' : ''}"
+                style="left:${g + x * s}px; top:${t + y * s}px; width:${s}px; height:${s}px;
+                ${x % 5 === 0 ? 'border-left-width:1.6px;' : ''}
+                ${y % 5 === 0 ? 'border-top-width:1.6px;' : ''}"></span>`;
+        }
+    }
+    html += `<span class="fp-cn-cadre" style="left:${g}px; top:${t}px;
+        width:${p.n * s}px; height:${p.h * s}px"></span>`;
+    return html + '</div>';
+}
+
+function dessinerColorierPdf(doc, item, slot, solution) {
+    const { enonce, solution: sol } = item.meta;
+    const p = plaqueColorier(item, slot);
+    const { cote: s, gauche: g, haut: t, n, h } = p;
+
+    // Les cases coloriées, d'abord : le quadrillage passe par-dessus.
+    if (solution) {
+        doc.setFillColor(...ENCRE.trait);
+        for (let y = 0; y < h; y++) for (let x = 0; x < n; x++) {
+            if (sol[y][x]) doc.rect(g + x * s, t + y * s, s, s, 'F');
+        }
+    }
+
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.12);
+    for (let i = 1; i < n; i++) doc.line(g + i * s, t, g + i * s, t + h * s);
+    for (let i = 1; i < h; i++) doc.line(g, t + i * s, g + n * s, t + i * s);
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.45);
+    for (let i = 5; i < n; i += 5) doc.line(g + i * s, t, g + i * s, t + h * s);
+    for (let i = 5; i < h; i += 5) doc.line(g, t + i * s, g + n * s, t + i * s);
+    doc.rect(g, t, n * s, h * s, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...ENCRE.texte);
+    doc.setFontSize(Math.max(5, Math.min(11, s * 2.1)));
+    enonce.colonnes.forEach((ind, x) => {
+        ind.forEach((v, j) => {
+            const rang = ind.length - 1 - j;
+            doc.text(String(v), g + x * s + s / 2, t - (rang + 0.5) * s * 0.62,
+                { align: 'center', baseline: 'middle' });
+        });
+    });
+    enonce.lignes.forEach((ind, y) => {
+        ind.forEach((v, j) => {
+            const rang = ind.length - 1 - j;
+            doc.text(String(v), g - (rang + 0.5) * s * 0.62, t + y * s + s / 2,
+                { align: 'center', baseline: 'middle' });
+        });
+    });
+}
+
 export const RENDUS = {
     // --- Les jeux à jouer sur papier ---
     puissance4: {
@@ -13441,6 +13562,28 @@ export const RENDUS = {
         // dit maintenant aussi — six par page, et de quoi écrire entre les
         // pointillés.
         disposition: { cols: 2, rows: 3, maxCols: 2, maxRows: 4 },
+        parLigneDefaut: 2
+    },
+    colorier: {
+        titre: 'Colorier par les nombres',
+        // PAS DE TOTAL DANS LA CONSIGNE. Le premier jet annonçait « 52 cases
+        // coloriées par grille » — le compte de la PREMIÈRE grille, présenté
+        // comme celui de toutes. Deux grilles n'ont aucune raison d'avoir le
+        // même, et un renseignement faux vaut moins que pas de renseignement.
+        consigne: () => 'LES NOMBRES DONNENT LA LONGUEUR DES BLOCS COLORIÉS, dans l\'ordre, '
+            + 'séparés d\'au moins une case blanche. « 2 1 » : un bloc de deux, une blanche '
+            + 'au moins, puis un bloc d\'un. On ne devine jamais — on cherche ce qui est '
+            + 'CERTAIN, et l\'on BARRE les cases qu\'on sait blanches : une croix interdit '
+            + 'des placements, elle vaut autant qu\'une case coloriée. Commence par les '
+            + 'grands nombres : un bloc large ne peut pas beaucoup bouger.',
+        previewGrille: colorierPreviewHtml,
+        pdfGrille: dessinerColorierPdf,
+        nomBloc: 'Grille', nomBlocs: 'grilles',
+        // DEUX PAR PAGE AU PLUS, ET C'EST LA TAILLE DES CASES QUI COMMANDE : on
+        // colorie au crayon et l'on barre, ce qu'une case de trois millimètres
+        // ne permet pas. Quatre grilles de dix sur une page donnaient des cases
+        // de 4 mm — mesuré ; deux en donnent 8.
+        disposition: { cols: 2, rows: 1, maxCols: 3, maxRows: 3 },
         parLigneDefaut: 2
     },
     sudoku: {

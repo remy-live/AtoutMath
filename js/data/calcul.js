@@ -2129,6 +2129,14 @@ export const calculExercises = [
         title: 'Colorier par les Nombres',
         cree: '2026-09-02',
         activityId: 'colorier-nombres', skills: ['num.logique.colorier'],
+        // SUR LE PAPIER, ET C'EST L'EXERCICE QUI LE DEMANDE LE PLUS. Rémy :
+        // « pour colorier par les nombres, on ne pourrait pas faire un pdf ». À
+        // l'écran on tapote une case ; sur la feuille on colorie au crayon et
+        // l'on BARRE ce qu'on sait blanc — le geste que la méthode réclame, et
+        // celui qu'on oublie devant un écran.
+        printGeneratorId: 'logique.colorier-nombres',
+        printable: 'colorier',
+        consignePapier: 'Colorie les blocs donnés par les nombres. Barre les cases que tu sais blanches.',
         sansRevision: true,
         params: { palier: 'decouverte' },
         paramSchema: [

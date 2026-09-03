@@ -555,6 +555,22 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-controles--qcm { margin: -2px 0 4px; }
 .fp-controles--qcm:empty { display: none; }
 
+/* --- Colorier par les nombres, sur la feuille ---
+   Chaque case est un carré posé en absolu : c'est le seul moyen d'aligner la
+   grille sur ses deux bandes d'indices, qui n'ont pas la largeur d'une case.
+   Un tableau aurait imposé ses propres largeurs. */
+.fp-colorier { position: absolute; }
+.fp-colorier span { position: absolute; box-sizing: border-box; }
+.fp-cn-case { border: .5px solid #b0b6c5; border-left-color: #b0b6c5; border-top-color: #b0b6c5; }
+.fp-cn-case--plein { background: #1a202c; }
+.fp-cn-cadre { border: 1.6px solid #1a202c; pointer-events: none; }
+.fp-col-ind, .fp-lig-ind {
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: #1a202c; line-height: 1;
+}
+.fp-col-ind { align-items: flex-end; }
+.fp-lig-ind { justify-content: flex-end; padding-right: 1px; }
+
 /* La feuille : format A4 paysage exact, ombre de papier posé. */
 .fp-apercu-cadre { display: flex; justify-content: center; }
 .fp-apercu {
