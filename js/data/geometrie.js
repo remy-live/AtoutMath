@@ -1317,6 +1317,11 @@ export const geometrieExercises = [
     {
         id: 'geo-trigo-cotes', status: STATUS.TEST,
         title: 'Hypoténuse, Opposé, Adjacent',
+        // LA FEUILLE N'EST PAS L'ÉCRAN. À l'écran on CLIQUE le côté ; sur le
+        // papier on l'ÉCRIT — le premier palier n'a pas de traduction papier,
+        // et la fiche part donc du second. Voir generators/trigoCotes.js.
+        printGeneratorId: 'geo.trigo.cotes',
+        printable: 'trigo-cotes',
         cree: '2026-09-02',
         activityId: 'trigo-cotes',
         // PAS DE RÉVISION ESPACÉE : ce n'est pas un fait à retenir, c'est une

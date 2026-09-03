@@ -350,3 +350,70 @@ test('L\'AIDE DONNE LE RAPPORT, JAMAIS LE CÔTÉ', () => {
         }
     }
 });
+
+// ---------------------------------------------------------------------------
+// LA FICHE PAPIER
+//
+// Rémy, quand je lui ai demandé quels exercices manquaient de fiche :
+// « Hypoténuse, Opposé, Adjacent, et Les Fonctions : Image et Antécédent ».
+
+test('LA FICHE DEMANDE CE QUE LA FIGURE PERMET DE RÉPONDRE', async () => {
+    const { trigoCotesGenerator } = await import('../js/core/generators/trigoCotes.js');
+    for (let i = 0; i < 60; i++) {
+        const it = trigoCotesGenerator.generate({ quoi: 'noms', tourner: true },
+            { rng: makeRng('fiche' + i) });
+        const t = it.meta.triangle;
+        const r = rolesDe(t);
+        // L'ANGLE MARQUÉ N'EST JAMAIS L'ANGLE DROIT : « adjacent à l'angle
+        // droit » n'a pas de sens, les deux côtés qui le touchent sont les
+        // cathètes. Une fiche qui le demanderait n'aurait pas de réponse.
+        assert.notEqual(it.meta.angle, it.meta.droit);
+        assert.equal(it.meta.lignes.length, 3);
+        // Les trois réponses sont trois côtés DIFFÉRENTS du triangle : si deux
+        // se répétaient, une des trois définitions serait fausse.
+        const rep = it.meta.lignes.map(l => l.solution.replace(/[[\]]/g, ''));
+        assert.equal(new Set(rep.map(x => x.split('').sort().join(''))).size, 3);
+        const cotes = cotesDe(t);
+        rep.forEach(c => assert.ok(cotes.some(x => memeCote(x, c)),
+            `${c} n'est pas un côté de ${t.nom}`));
+        // Et chacune est bien le rôle annoncé par son étiquette.
+        assert.ok(memeCote(rep[0], r[ROLES.HYPOTENUSE]));
+        assert.ok(memeCote(rep[1], r[ROLES.OPPOSE]));
+        assert.ok(memeCote(rep[2], r[ROLES.ADJACENT]));
+    }
+});
+
+test('LA FICHE DES FORMULES REND UNE FORMULE COMPLÈTE', async () => {
+    const { trigoCotesGenerator } = await import('../js/core/generators/trigoCotes.js');
+    const vues = new Set();
+    for (let i = 0; i < 60; i++) {
+        const it = trigoCotesGenerator.generate({ quoi: 'formule', tourner: true },
+            { rng: makeRng('form' + i) });
+        assert.equal(it.meta.lignes.length, 1);
+        const l = it.meta.lignes[0];
+        const m = /^(cos|sin|tan)\((\w)\) =$/.exec(l.etiquette);
+        assert.ok(m, `étiquette inattendue : ${l.etiquette}`);
+        vues.add(m[1]);
+        // Le sommet nommé dans la formule est l'angle MARQUÉ sur la figure —
+        // sinon l'élève lit un angle et calcule pour un autre.
+        assert.equal(m[2], it.meta.angle);
+        const attendu = formuleDe(it.meta.triangle, m[1]);
+        assert.equal(l.solution, `[${attendu.attenduHaut}] / [${attendu.attenduBas}]`);
+    }
+    // LES TROIS FONCTIONS SORTENT. Le cosinus est le seul qu'on révise
+    // spontanément ; une feuille qui ne tirerait que lui laisserait la tangente
+    // — celle qu'on rate — jamais travaillée.
+    assert.deepEqual([...vues].sort(), ['cos', 'sin', 'tan']);
+});
+
+test('SANS ROTATION, LES FIGURES SONT TOUTES POSÉES PAREIL', async () => {
+    const { trigoCotesGenerator } = await import('../js/core/generators/trigoCotes.js');
+    // C'est le réglage de la découverte, et il doit vraiment figer la figure :
+    // « adjacent = horizontal » est une règle fausse qu'on veut pouvoir
+    // enseigner UNE fois, puis casser.
+    for (let i = 0; i < 20; i++) {
+        const it = trigoCotesGenerator.generate({ quoi: 'noms', tourner: false },
+            { rng: makeRng('fixe' + i) });
+        assert.equal(it.meta.triangle.orientation, 0);
+    }
+});

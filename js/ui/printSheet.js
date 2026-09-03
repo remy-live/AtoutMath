@@ -29,6 +29,7 @@ import {
     BANDE_NOM as BANDE_NOM_Q, COULEURS_FAMILLE as COULEURS_Q,
     COULEUR_FIGURE as FIGURE_Q, COULEUR_BANDE as BANDE_Q
 } from '../core/quadrilateres.js';
+import { pointsDe as pointsDeTrigo } from '../core/trigonometrie.js';
 import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
 // LA SOLUTION DES TROIS CASSE-TÊTE, POSITION PAR POSITION. Rémy : « pour les
 // solutions des grenouilles, parking, hanoï, dessine des vignettes des étapes
@@ -11180,6 +11181,222 @@ function pointeMm(trait, g, taille) {
     return [bout, { x: base.x + px, y: base.y + py }, { x: base.x - px, y: base.y - py }];
 }
 
+// ================= HYPOTÉNUSE, OPPOSÉ, ADJACENT ==========================
+//
+// Rémy, quand je lui ai demandé quels exercices manquaient de fiche :
+// « Hypoténuse, Opposé, Adjacent, et Les Fonctions : Image et Antécédent ».
+//
+// UN BLOC = UNE FIGURE ET SES LIGNES. Le triangle occupe le haut du bloc, les
+// deux ou trois lignes à remplir sont dessous. Ce partage n'est pas décoratif :
+// c'est la figure qui porte TOUTE la donnée — l'angle droit, l'angle marqué,
+// les trois lettres — et l'élève y revient à chaque ligne. La mettre à côté du
+// texte, comme une illustration, obligerait à traverser le bloc des yeux trois
+// fois.
+//
+// LA FIGURE OCCUPE LA PLACE QU'ON LUI DONNE, et pas la place qu'elle voudrait.
+// `pointsDe` rend un triangle inscrit dans un carré de cent, orientation
+// comprise : on le remet à l'échelle du cadre disponible. Un triangle 5-12
+// tourné de 40° n'a pas les mêmes proportions qu'un 3-4 droit, mais tous deux
+// remplissent leur cadre — sinon la feuille alternerait des figures énormes et
+// des figures minuscules, ce qui se lit comme une erreur.
+
+/** La hauteur réservée sous la figure, par ligne à remplir. */
+const TRIGO_LIGNE = 8.5;
+
+function geoTrigo(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const lignes = m.lignes || [];
+    // Le pied : une ligne par réponse, plus un peu d'air.
+    const pied = lignes.length * TRIGO_LIGNE + 2;
+    const cadre = { x: b.x, y: b.y, w: b.w, h: Math.max(14, b.h - pied) };
+    // Une marge intérieure : les lettres des sommets se posent EN DEHORS du
+    // triangle, et sans elle elles sortaient du bloc — mesuré sur les
+    // orientations proches de 90°, où le sommet touche le bord du carré.
+    const marge = Math.min(cadre.w, cadre.h) * 0.16;
+    const cote = Math.min(cadre.w - 2 * marge, cadre.h - 2 * marge);
+    const x0 = cadre.x + (cadre.w - cote) / 2;
+    const y0 = cadre.y + (cadre.h - cote) / 2;
+    const pts = pointsDeTrigo(m.triangle, 100).map(q => ({
+        x: x0 + (q.x / 100) * cote,
+        y: y0 + (q.y / 100) * cote
+    }));
+    return { b, m, lignes, cadre, pts, cote, pied };
+}
+
+/**
+ * CE QU'IL Y A À TRACER : trois côtés, trois lettres, le carré de l'angle droit
+ * et l'arc de l'angle marqué.
+ *
+ * L'ARC EST LA SEULE DONNÉE VARIABLE DE LA FIGURE, et c'est lui qui fait
+ * l'exercice : sans lui, « opposé » et « adjacent » n'ont pas de sens. Il est
+ * donc gras et coloré, quand le reste est au trait noir.
+ */
+function tracesTrigo(g) {
+    const { pts, m } = g;
+    const t = m.triangle;
+    const iD = t.angleDroit, iA = t.angleVise;
+    const cotes = [[0, 1], [1, 2], [0, 2]].map(([i, j]) => [pts[i], pts[j]]);
+
+    // LE PETIT CARRÉ DE L'ANGLE DROIT, posé sur les deux côtés qui s'y
+    // rejoignent — à la taille du triangle, pas à une taille fixe : sur une
+    // feuille à six figures par page, un carré de 3 mm mange le sommet.
+    const taille = Math.max(1.6, g.cote * 0.075);
+    const versDroit = [0, 1, 2].filter(i => i !== iD).map(i => unite(pts[iD], pts[i]));
+    const carre = [
+        { x: pts[iD].x + versDroit[0].x * taille, y: pts[iD].y + versDroit[0].y * taille },
+        { x: pts[iD].x + (versDroit[0].x + versDroit[1].x) * taille,
+            y: pts[iD].y + (versDroit[0].y + versDroit[1].y) * taille },
+        { x: pts[iD].x + versDroit[1].x * taille, y: pts[iD].y + versDroit[1].y * taille }
+    ];
+
+    // L'ARC DE L'ANGLE MARQUÉ — un arc de cercle centré sur le sommet, tracé en
+    // segments : le PDF n'a pas d'arc elliptique simple, et un polygone de
+    // douze points est indiscernable d'un arc à cette taille.
+    const rayon = Math.max(2.4, g.cote * 0.155);
+    const versA = [0, 1, 2].filter(i => i !== iA).map(i => unite(pts[iA], pts[i]));
+    const a0 = Math.atan2(versA[0].y, versA[0].x);
+    let a1 = Math.atan2(versA[1].y, versA[1].x);
+    // On prend le PETIT arc : celui qui est à l'intérieur du triangle.
+    while (a1 - a0 > Math.PI) a1 -= 2 * Math.PI;
+    while (a0 - a1 > Math.PI) a1 += 2 * Math.PI;
+    const arc = [];
+    for (let i = 0; i <= 12; i++) {
+        const a = a0 + ((a1 - a0) * i) / 12;
+        arc.push({ x: pts[iA].x + Math.cos(a) * rayon, y: pts[iA].y + Math.sin(a) * rayon });
+    }
+
+    // LES LETTRES SE POSENT VERS L'EXTÉRIEUR — dans la direction opposée au
+    // centre du triangle. Posées au sommet même, elles chevauchaient le trait ;
+    // posées toujours au-dessus, elles tombaient dans la figure une fois sur
+    // trois selon l'orientation.
+    const cx = (pts[0].x + pts[1].x + pts[2].x) / 3;
+    const cy = (pts[0].y + pts[1].y + pts[2].y) / 3;
+    const ecart = Math.max(2.6, g.cote * 0.085);
+    const noms = pts.map((p, i) => {
+        const u = unite({ x: cx, y: cy }, p);
+        return { t: t.sommets[i], x: p.x + u.x * ecart, y: p.y + u.y * ecart };
+    });
+
+    return { cotes, carre, arc, noms, rayon };
+}
+
+/** Le vecteur unitaire de `a` vers `b` — nul si les deux points se confondent. */
+function unite(a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const n = Math.hypot(dx, dy) || 1;
+    return { x: dx / n, y: dy / n };
+}
+
+function trigoPreviewHtml(item, slot, k, solution) {
+    const g = geoTrigo(item, slot);
+    const t = tracesTrigo(g);
+    const T = (v) => (v * k).toFixed(2);
+    const police = 'Helvetica, Arial, sans-serif';
+    let out = '';
+
+    t.cotes.forEach(([a, b]) => {
+        out += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(b.x)}" y2="${T(b.y)}"
+            stroke="#1a202c" stroke-width="${T(0.45)}" stroke-linecap="round"/>`;
+    });
+    out += `<path d="M ${T(t.carre[0].x)} ${T(t.carre[0].y)} L ${T(t.carre[1].x)} ${T(t.carre[1].y)}
+        L ${T(t.carre[2].x)} ${T(t.carre[2].y)}" fill="none" stroke="#1a202c"
+        stroke-width="${T(0.35)}"/>`;
+    // L'ARC EST NOIR ET GRAS, PAS BLEU ET FIN.
+    //
+    // Une fiche s'imprime en noir et blanc : la couleur ne survit pas, et un
+    // trait de 0,55 mm dans un bleu moyen devient un gris pâle. Or l'arc est la
+    // SEULE donnée variable de la figure — sans lui, « opposé » et « adjacent »
+    // n'ont aucun sens et la feuille n'a pas de réponse. Il est donc de la même
+    // encre que les côtés, plus épais qu'eux, et son rayon fait 15 % du
+    // triangle : on le voit d'un mètre.
+    out += `<path d="M ${t.arc.map(p => `${T(p.x)} ${T(p.y)}`).join(' L ')}" fill="none"
+        stroke="#1a202c" stroke-width="${T(0.75)}" stroke-linecap="round"
+        stroke-linejoin="round"/>`;
+    t.noms.forEach(n => {
+        out += `<text x="${T(n.x)}" y="${T(n.y)}" text-anchor="middle" dominant-baseline="central"
+            font-size="${T(3.4)}" font-weight="800" fill="#1a202c"
+            font-family="${police}">${echapper(n.t)}</text>`;
+    });
+
+    // Les lignes à remplir.
+    let y = g.cadre.y + g.cadre.h + 2;
+    g.lignes.forEach(l => {
+        out += `<text x="${T(g.b.x + 1)}" y="${T(y + 3)}" font-size="${T(2.9)}" fill="#2d3748"
+            font-family="${police}">${echapper(l.etiquette)}</text>`;
+        const xDebut = g.b.x + 1 + largeurTrigo(l.etiquette, 2.9) + 2;
+        out += `<line x1="${T(xDebut)}" y1="${T(y + 4)}" x2="${T(g.b.x + g.b.w - 1)}" y2="${T(y + 4)}"
+            stroke="#b0b6c5" stroke-width="${T(0.22)}" stroke-dasharray="${T(0.9)} ${T(0.9)}"/>`;
+        if (solution) {
+            out += `<text x="${T(xDebut + 1.5)}" y="${T(y + 3)}" font-size="${T(2.9)}"
+                font-weight="700" fill="#2b6cb0"
+                font-family="${police}">${echapper(l.solution)}</text>`;
+        }
+        y += TRIGO_LIGNE;
+    });
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${out}</svg>`;
+}
+
+/**
+ * La largeur d'un texte, en millimètres, à la louche.
+ *
+ * L'aperçu ne peut pas mesurer un texte SVG avant de l'avoir posé, et le PDF a
+ * `getTextWidth`. Un facteur de 0,52 sur la taille de police approche Helvetica
+ * à mieux qu'un millimètre sur ces étiquettes-là — vérifié en comparant les
+ * deux rendus : la ligne pointillée commence au même endroit sur l'écran et sur
+ * la feuille.
+ */
+const largeurTrigo = (texte, taille) => String(texte || '').length * taille * 0.52;
+
+function dessinerTrigoPdf(doc, item, slot, solution) {
+    const g = geoTrigo(item, slot);
+    const t = tracesTrigo(g);
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.45);
+    doc.setLineJoin('round');
+    doc.setLineCap('round');
+    t.cotes.forEach(([a, b]) => doc.line(a.x, a.y, b.x, b.y));
+
+    doc.setLineWidth(0.35);
+    doc.line(t.carre[0].x, t.carre[0].y, t.carre[1].x, t.carre[1].y);
+    doc.line(t.carre[1].x, t.carre[1].y, t.carre[2].x, t.carre[2].y);
+
+    doc.setLineWidth(0.75);
+    for (let i = 1; i < t.arc.length; i++) {
+        doc.line(t.arc[i - 1].x, t.arc[i - 1].y, t.arc[i].x, t.arc[i].y);
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...ENCRE.trait);
+    t.noms.forEach(n => doc.text(n.t, n.x, n.y, { align: 'center', baseline: 'middle' }));
+
+    let y = g.cadre.y + g.cadre.h + 2;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    g.lignes.forEach(l => {
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(l.etiquette, g.b.x + 1, y + 3);
+        const xDebut = g.b.x + 1 + doc.getTextWidth(l.etiquette) + 2;
+        doc.setDrawColor(...ENCRE.grille);
+        doc.setLineWidth(0.22);
+        doc.setLineDashPattern([0.9, 0.9], 0);
+        doc.line(xDebut, y + 4, g.b.x + g.b.w - 1, y + 4);
+        doc.setLineDashPattern([], 0);
+        if (solution) {
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(43, 108, 176);
+            doc.text(l.solution, xDebut + 1.5, y + 3);
+            doc.setFont('helvetica', 'normal');
+        }
+        y += TRIGO_LIGNE;
+    });
+    doc.setLineJoin('miter');
+    doc.setLineCap('butt');
+}
+
 function organigrammePreviewHtml(item, slot, k, solution) {
     const g = geoOrganigramme(item, slot);
     const T = (v) => (v * k).toFixed(2);
@@ -12379,6 +12596,27 @@ export const RENDUS = {
         // Plus haut que large : la figure en haut, les trois cadres dessous.
         proportions: { w: 1, h: 1.45 },
         titreAGauche: true
+    },
+
+    'trigo-cotes': {
+        titre: 'Hypoténuse, opposé, adjacent',
+        consigne: (items) => (items[0] && items[0].prompt && items[0].prompt.papier)
+            || 'Nomme les trois côtés de chaque triangle par leurs deux extrémités.',
+        previewGrille: trigoPreviewHtml,
+        pdfGrille: dessinerTrigoPdf,
+        nomBloc: 'Triangle', nomBlocs: 'triangles',
+        // SIX PAR PAGE, DEUX RANGÉES DE TROIS. Une figure doit rester lisible —
+        // trois lettres, un petit carré, un arc — et trois lignes d'écriture
+        // manuscrite se logent dessous. À neuf par page, mesuré, la ligne à
+        // remplir tombait à quatre millimètres : on n'y écrit pas « [MN] » au
+        // stylo. À quatre, la feuille ne pose que quatre questions, et le piège
+        // de l'exercice — la MÊME lecture sur des figures tournées différemment
+        // — a besoin de la série pour se tendre.
+        disposition: { cols: 3, rows: 2, maxCols: 4, maxRows: 3 },
+        parLigneDefaut: 3,
+        // Plus haut que large : la figure occupe le carré du haut, les lignes
+        // s'ajoutent dessous. Un bloc carré écraserait l'une ou l'autre.
+        proportions: { w: 1, h: 1.3 }
     },
 
     'organigramme-quadri': {

@@ -58,6 +58,7 @@ import { bonsCheminsFicheGenerator } from '../generators/bonsCheminsFiche.js';
 import { tableauCroiseFicheGenerator } from '../generators/tableauCroiseFiche.js';
 import { sansCroiserFicheGenerator } from '../generators/sansCroiserFiche.js';
 import { organigrammeQuadriGenerator } from '../generators/organigrammeQuadri.js';
+import { trigoCotesGenerator } from '../generators/trigoCotes.js';
 import { thalesRedactionFicheGenerator } from '../generators/thalesRedactionFiche.js';
 import { cercleVocabulaireGenerator } from '../generators/cercleVocabulaire.js';
 import { grandeursComposeesGenerator } from '../generators/grandeursComposees.js';
@@ -133,6 +134,7 @@ import {
     codageGenerator, cheminNumeroteGenerator, labyNombresGenerator,
     bonsCheminsFicheGenerator, tableauCroiseFicheGenerator, sansCroiserFicheGenerator,
     organigrammeQuadriGenerator,
+    trigoCotesGenerator,
     thalesRedactionFicheGenerator,
     cercleVocabulaireGenerator, grandeursComposeesGenerator, fonctionsGenerator,
     virguleFicheGenerator, problemesFicheGenerator, pizzaFicheGenerator,

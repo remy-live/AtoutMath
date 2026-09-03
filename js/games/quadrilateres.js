@@ -170,11 +170,32 @@ const MONDE = { x0: -6, y0: -6, w: PLAN_L + 12, h: PLAN_H + 18 };
 const FEN_MIN = 148;
 const FEN_H = 90;
 
+/** Le peu d'air qu'on laisse autour d'une carte qu'on vient d'englober. */
+const MARGE_CARTE = 2;
+
+/**
+ * TOUTES LES CARTES DU PLAN — les cinq figures et les treize conditions.
+ *
+ * C'est la liste que la fenêtre consulte pour ne couper personne. On y met les
+ * cases VIDES aussi : pendant la construction elles sont dessinées en fantôme,
+ * et une case fantôme coupée en deux se voit exactement autant qu'une pleine.
+ */
+let toutesLesBoites = null;
+function boitesDuPlan() {
+    if (!toutesLesBoites) {
+        toutesLesBoites = [
+            ...FAMILLES.map(f => boiteFigure(f.id)),
+            ...FLECHES.map(boiteCondition)
+        ];
+    }
+    return toutesLesBoites;
+}
+
 /**
  * La fenêtre posée sur un groupe de boîtes : même taille toujours, centrée sur
  * ce qu'on regarde, et retenue aux bords du monde — on ne montre pas du vide.
  */
-export function fenetreDeLEtape(boites, largeur) {
+export function fenetreDeLEtape(boites, largeur, voisines = []) {
     const e = enveloppe(boites);
     // LA FENÊTRE CONTIENT TOUJOURS CE QU'ELLE MONTRE — et c'est un défaut qu'on
     // répare, pas un raffinement.
@@ -201,11 +222,42 @@ export function fenetreDeLEtape(boites, largeur) {
     const H = Math.max(FEN_H, Math.min(MONDE.h, (e.y2 - e.y1) + 8));
     const cx = (e.x1 + e.x2) / 2, cy = (e.y1 + e.y2) / 2;
     const borne = (v, min, max) => Math.max(min, Math.min(max, v));
-    return {
-        x0: borne(cx - L / 2, MONDE.x0, MONDE.x0 + MONDE.w - L),
-        y0: borne(cy - H / 2, MONDE.y0, MONDE.y0 + MONDE.h - H),
-        w: L, h: H, rapport: L / H, zoom: PLAN_L / L
-    };
+    let x0 = borne(cx - L / 2, MONDE.x0, MONDE.x0 + MONDE.w - L);
+    let y0 = borne(cy - H / 2, MONDE.y0, MONDE.y0 + MONDE.h - H);
+    let x1 = x0 + L, y1 = y0 + H;
+
+    // ON NE COUPE AUCUNE CARTE EN DEUX.
+    //
+    // Rémy, capture à l'appui : « on ne voit pas le quadrilatère et le
+    // parallélogramme ». À l'étape « parallélogramme → rectangle », le bord
+    // haut de la fenêtre tombait AU MILIEU de la rangée de conditions du
+    // dessus : on lisait « Qui a ses côtés » et la moitié basse des lettres,
+    // et la case du quadrilatère, juste au-dessus, était hors champ. Une carte
+    // à moitié dessinée ne se lit pas et ressemble à un défaut d'affichage ;
+    // elle donne surtout l'impression que l'organigramme s'est effacé.
+    //
+    // La règle est donc binaire : une carte est ENTIÈREMENT dedans ou
+    // ENTIÈREMENT dehors. Tout ce qui dépasse d'un bord tire ce bord jusqu'à
+    // l'englober — et comme s'élargir peut faire entrer une nouvelle carte, on
+    // recommence tant que quelque chose bouge (quatre tours suffisent
+    // largement : le plan n'a que huit rangées).
+    for (let tour = 0; tour < 4; tour++) {
+        let bouge = false;
+        for (const b of voisines) {
+            // Se toucher par le bord ne compte pas : ce n'est pas une coupure.
+            if (b.x2 <= x0 || b.x1 >= x1 || b.y2 <= y0 || b.y1 >= y1) continue;
+            if (b.x1 < x0) { x0 = b.x1 - MARGE_CARTE; bouge = true; }
+            if (b.x2 > x1) { x1 = b.x2 + MARGE_CARTE; bouge = true; }
+            if (b.y1 < y0) { y0 = b.y1 - MARGE_CARTE; bouge = true; }
+            if (b.y2 > y1) { y1 = b.y2 + MARGE_CARTE; bouge = true; }
+        }
+        if (!bouge) break;
+    }
+    x0 = Math.max(MONDE.x0, x0); x1 = Math.min(MONDE.x0 + MONDE.w, x1);
+    y0 = Math.max(MONDE.y0, y0); y1 = Math.min(MONDE.y0 + MONDE.h, y1);
+
+    const w = x1 - x0, h = y1 - y0;
+    return { x0, y0, w, h, rapport: w / h, zoom: PLAN_L / w };
 }
 
 /** Une position du plan, ramenée en pourcentage de la fenêtre affichée. */
@@ -424,6 +476,10 @@ const enAttribut = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;
  * disait l'ancien réglage — `palier` —, puis sur la construction étape par
  * étape, qui est le défaut du catalogue.
  */
+/** Les bornes du glissement de la caméra — voir `dureeDuGlissement`. */
+const DUREE_GLISSE_MIN = 0.75;
+const DUREE_GLISSE_MAX = 1.9;
+
 export function partiesDe(params = {}) {
     const ordre = Object.keys(PALIERS);
     const demandees = Array.isArray(params.parties) ? params.parties
@@ -542,8 +598,15 @@ class Organigramme extends BaseGame {
                 /* LE MONDE — le plan entier, dont la fenêtre ne montre qu'une
                    part. Il ne change jamais de taille : il GLISSE. La transition
                    est ce que Rémy appelle « descendre l'organigramme ». */
-                .qd-monde { position: absolute; left: 0; top: 0; transition: transform .65s ease-in-out; }
-                @media (prefers-reduced-motion: reduce) { .qd-monde { transition: none; } }
+                /* LA DURÉE EST ÉCRITE PAR cadrer(), PAS ICI — voir dureeDuGlissement().
+                   Celle-ci n'est que le repli si le calcul n'a pas eu lieu. */
+                .qd-monde {
+                    position: absolute; left: 0; top: 0;
+                    transition: transform 1s cubic-bezier(.33, 0, .18, 1);
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .qd-monde { transition: none !important; }
+                }
                 .qd-fils { position: absolute; inset: 0; width: 100%; height: 100%; }
                 /* LES TRAITS. Plus sombres et plus francs qu'avant : à 40 %
                    d'opacité sur du gris clair, l'organigramme ressemblait à un
@@ -1465,7 +1528,7 @@ class Organigramme extends BaseGame {
     cadreDuo(de, vers) {
         return fenetreDeLEtape([boiteFigure(de), boiteFigure(vers),
             ...FLECHES.filter(f => f.de === de && f.vers === vers).map(boiteCondition)],
-        this.largeurFenetre());
+        this.largeurFenetre(), boitesDuPlan());
     }
 
     /**
@@ -1500,7 +1563,7 @@ class Organigramme extends BaseGame {
             // mieux à quoi ressemblent une case et une fente, parce qu'elles y
             // sont à la taille où l'on travaillera.
             ? fenetreDeLEtape([boiteFigure('carre'), boiteFigure('losange'),
-                boiteFigure('rectangle')], this.largeurFenetre())
+                boiteFigure('rectangle')], this.largeurFenetre(), boitesDuPlan())
             : this.cadreDuo('quadrilatere', 'parallelogramme');
         // La figure qui ARRIVE à ce temps-ci : celle que le temps précédent ne
         // montrait pas encore. C'est elle qui reçoit l'animation d'entrée.
@@ -1604,7 +1667,7 @@ class Organigramme extends BaseGame {
         this.cadrer(e
             ? fenetreDeLEtape([boiteFigure(e.de), boiteFigure(e.vers),
                 ...FLECHES.filter(f => e.cles.includes(cleFleche(f))).map(boiteCondition)],
-            this.largeurFenetre())
+            this.largeurFenetre(), boitesDuPlan())
             : v, v);
 
         // LES TRAITS. Chaque condition en porte deux : ce qui y entre, ce qui en
@@ -2562,6 +2625,24 @@ class Organigramme extends BaseGame {
     }
 
     cadrer(fen, monde = fen) {
+        // LE GLISSEMENT DURE CE QUE LE CHEMIN MÉRITE.
+        //
+        // Rémy, deux fois : « la présentation pour l'organigramme est hyper
+        // rapide » — réglé par un bouton « Suivant » —, puis « ça va un peu
+        // vite encore, le scroll de l'organigramme ». C'est un autre défaut :
+        // le premier était le RYTHME des temps, celui-ci est la VITESSE de la
+        // caméra. Une transition unique de 0,65 s traitait pareillement un
+        // petit décalage d'une case et une traversée du plan entier en
+        // dézoomant — et cette dernière filait sous les yeux.
+        //
+        // On mesure donc le chemin : de combien le centre se déplace (rapporté
+        // à la diagonale du monde) et de combien le grossissement change. Le
+        // plus grand des deux commande, entre 0,75 s pour un pas de côté et
+        // 1,9 s pour la traversée. Rien d'inventé : c'est le même geste qu'une
+        // caméra qui accompagne, et il se termine en douceur (la courbe
+        // décélère fort) parce que ce qui compte est l'arrivée.
+        this.mondeEl.style.transitionDuration = this.dureeDuGlissement(fen, monde);
+        this.derniereFenetre = { ...fen };
         this.planEl.style.setProperty('--zoom', fen.zoom.toFixed(3));
         this.planEl.style.aspectRatio = fen.rapport.toFixed(4);
         this.planEl.style.width = `min(100%, ${(fen.rapport * 100).toFixed(2)}cqh)`;
@@ -2572,6 +2653,30 @@ class Organigramme extends BaseGame {
         // décaler d'un centième du MONDE, c'est bien avancer d'une unité de plan.
         m.style.transform = `translate(${(-(fen.x0 - monde.x0) / monde.w * 100).toFixed(3)}%,`
             + ` ${(-(fen.y0 - monde.y0) / monde.h * 100).toFixed(3)}%)`;
+    }
+
+    /** Combien de temps pour aller de la fenêtre précédente à celle-ci. */
+    dureeDuGlissement(fen, monde) {
+        // Le réglage système passe avant tout : qui demande moins d'animation
+        // n'en veut pas davantage parce qu'elle est jolie.
+        const vue = this.container && this.container.ownerDocument.defaultView;
+        if (vue && vue.matchMedia && vue.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return '0s';
+        }
+        const av = this.derniereFenetre;
+        // Le tout premier cadrage ne glisse de nulle part : il se pose.
+        if (!av) return '0s';
+        const diag = Math.hypot(monde.w || 1, monde.h || 1);
+        const dep = Math.hypot(
+            (fen.x0 + fen.w / 2) - (av.x0 + av.w / 2),
+            (fen.y0 + fen.h / 2) - (av.y0 + av.h / 2)
+        ) / (diag || 1);
+        // Un facteur de grossissement se compare en RAPPORT, pas en écart :
+        // passer de ×1 à ×2 et de ×2 à ×4 est le même mouvement pour l'œil.
+        const rapport = (fen.zoom || 1) / (av.zoom || 1);
+        const gross = Math.abs(Math.log(rapport || 1)) / Math.log(3);
+        const part = Math.max(0, Math.min(1, Math.max(dep, gross)));
+        return `${(DUREE_GLISSE_MIN + (DUREE_GLISSE_MAX - DUREE_GLISSE_MIN) * part).toFixed(2)}s`;
     }
 
     /**

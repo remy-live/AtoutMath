@@ -945,3 +945,34 @@ test('LA FENÊTRE CONTIENT TOUJOURS CE QU\'ELLE MONTRE', async () => {
         });
     });
 });
+
+test('LA FENÊTRE NE COUPE AUCUNE CARTE EN DEUX', async () => {
+    // Rémy, capture à l'appui : « on ne voit pas le quadrilatère et le
+    // parallélogramme ». Le bord haut du cadre tombait AU MILIEU de la rangée
+    // de conditions du dessus : on lisait la moitié des lettres, et la case du
+    // quadrilatère au-dessus était hors champ. Mesuré au navigateur sur les
+    // dix-huit états de l'exercice : SEPT d'entre eux coupaient des cartes, de
+    // 2 à 35 pixels — dont exactement celui de sa capture.
+    //
+    // La règle est binaire : une carte est entièrement dedans ou entièrement
+    // dehors. « À cheval sur le bord » est le seul cas interdit.
+    const { boiteFigure, boiteCondition, FLECHES, FAMILLES, ETAPES } =
+        await import('../js/core/quadrilateres.js');
+    const { fenetreDeLEtape } = await import('../js/games/quadrilateres.js');
+    const toutes = [...FAMILLES.map(f => boiteFigure(f.id)), ...FLECHES.map(boiteCondition)];
+    ETAPES.forEach(e => {
+        const cond = FLECHES.filter(f => f.de === e.de && f.vers === e.vers);
+        const boites = [boiteFigure(e.de), boiteFigure(e.vers), ...cond.map(boiteCondition)];
+        const v = fenetreDeLEtape(boites, 148, toutes);
+        const x1 = v.x0 + v.w, y1 = v.y0 + v.h;
+        toutes.forEach(b => {
+            const touche = b.x2 > v.x0 + 0.01 && b.x1 < x1 - 0.01
+                && b.y2 > v.y0 + 0.01 && b.y1 < y1 - 0.01;
+            if (!touche) return;
+            assert.ok(b.x1 >= v.x0 - 0.01 && b.x2 <= x1 + 0.01,
+                `${e.de} → ${e.vers} : une carte est coupée en largeur`);
+            assert.ok(b.y1 >= v.y0 - 0.01 && b.y2 <= y1 + 0.01,
+                `${e.de} → ${e.vers} : une carte est coupée en hauteur`);
+        });
+    });
+});
