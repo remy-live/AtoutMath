@@ -922,3 +922,26 @@ test('LES CASES DE LA FEUILLE SONT PASTEL : on écrit dedans', async () => {
     const fonds = Object.values(COULEURS_FAMILLE).map(c => c.fond);
     assert.equal(new Set(fonds).size, 3);
 });
+
+test('LA FENÊTRE CONTIENT TOUJOURS CE QU\'ELLE MONTRE', async () => {
+    // Rémy : « il faut que là où on colle la vignette, on le voie en entier. »
+    // Les deux raccourcis de sixième relient le quadrilatère au losange et au
+    // rectangle en sautant une rangée : leur chemin traverse le plan de haut en
+    // bas, et la fenêtre — large de 148 unités, haute de 90, centrée sur
+    // l'étape — laissait la case à remplir juste au-dessus du bord. Mesuré au
+    // navigateur : 8 à 22 pixels de la cible dehors, aux étapes 5 et 8.
+    const { boiteFigure, boiteCondition, FLECHES, ETAPES } =
+        await import('../js/core/quadrilateres.js');
+    const { fenetreDeLEtape } = await import('../js/games/quadrilateres.js');
+    ETAPES.forEach(e => {
+        const cond = FLECHES.filter(f => f.de === e.de && f.vers === e.vers);
+        const boites = [boiteFigure(e.de), boiteFigure(e.vers), ...cond.map(boiteCondition)];
+        const v = fenetreDeLEtape(boites, 148);
+        boites.forEach(b => {
+            assert.ok(b.x1 >= v.x0 - 0.01 && b.x2 <= v.x0 + v.w + 0.01,
+                `${e.de} → ${e.vers} : une boîte sort du cadre en largeur`);
+            assert.ok(b.y1 >= v.y0 - 0.01 && b.y2 <= v.y0 + v.h + 0.01,
+                `${e.de} → ${e.vers} : une boîte sort du cadre en hauteur`);
+        });
+    });
+});

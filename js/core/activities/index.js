@@ -705,7 +705,13 @@ const legacy = [
     ['bons-chemins', 'Les Bons Chemins (produits)', 'bonsChemins', 'engineBonsChemins', 'grille', 6],
     ['tableau-croise', 'Tableau à double entrée', 'tableauCroise', 'engineTableauCroise', 'tableau', 4],
     ['sans-croiser', 'Relier sans croiser', 'sansCroiser', 'engineSansCroiser', 'figure', 5],
-    ['quadrilateres', 'L\'organigramme des quadrilatères', 'quadrilateres', 'engineQuadrilateres', 'organigramme', 3],
+    // UN SEUL ORGANIGRAMME, ET C'EST TOUT. Rémy : « ne fais qu'un seul
+    // organigramme au complet. » Le compte naturel en donnait trois — et trois
+    // fois LA MÊME carte : c'est une hiérarchie, elle ne se tire pas au sort.
+    // La construire une fois demande onze étapes, dont quatre codages ; la
+    // refaire à l'identique deux fois de plus n'apprend rien et fait passer
+    // pour une punition ce qui est une leçon.
+    ['quadrilateres', 'L\'organigramme des quadrilatères', 'quadrilateres', 'engineQuadrilateres', 'organigramme', 1],
     // TROIS CÔTÉS PAR TRIANGLE, ET DONC UNE « QUESTION » PAR TRIANGLE. Repérer
     // l'hypoténuse seule n'apprend rien : c'est l'enchaînement des trois — le
     // repère fixe, puis les deux qui dépendent de l'angle — qui fait la leçon.

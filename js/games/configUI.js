@@ -2342,7 +2342,16 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
         ${champsSchema(libre, valeurDe)}
         ${glissiereNombre({
         id: 'cfg-nbitems', label: 'Nombre de questions', aide: aideDuree,
-        min: MIN_QUESTIONS, max: MAX_QUESTIONS, value: nbConseille
+        // LE PLANCHER SUIT L'UNITÉ COMPTÉE. Trois est le minimum d'un exercice à
+        // QUESTIONS — au-dessous, l'escalier de l'aide n'a pas le temps de
+        // monter. Mais une activité qui compte des ORGANIGRAMMES, des grilles
+        // ou des parties n'a pas cette contrainte, et le noyau le dit déjà
+        // (`questionsConseillees` plancher à 1 dans ce cas). Le champ, lui,
+        // gardait trois : Rémy demandait UN organigramme, le catalogue en
+        // écrivait un, et l'écran en lançait trois — le champ remontait la
+        // valeur à son minimum sans que rien ne le dise.
+        min: Math.max(1, Math.min(MIN_QUESTIONS, nbConseille)),
+        max: MAX_QUESTIONS, value: nbConseille
     })}
         ${champsSchema(groupes, valeurDe, { titres: TITRES_ELEVE })}
         ${impression}`;

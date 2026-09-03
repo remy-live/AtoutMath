@@ -166,11 +166,6 @@ const fenetrePleine = () => fenetre([{ x1: 0, x2: PLAN_L, y1: 0, y2: PLAN_H }]);
 /** Le monde : le plan entier, plus une marge, dans lequel la fenêtre glisse. */
 const MONDE = { x0: -6, y0: -6, w: PLAN_L + 12, h: PLAN_H + 18 };
 
-/** Le monde vu en entier — la fenêtre de l'ouverture et de la relecture finale. */
-const TOUT_LE_MONDE = {
-    ...MONDE, rapport: MONDE.w / MONDE.h, zoom: PLAN_L / MONDE.w
-};
-
 /** La plus étroite acceptable : l'étape la plus large fait 142 unités. */
 const FEN_MIN = 148;
 const FEN_H = 90;
@@ -179,15 +174,37 @@ const FEN_H = 90;
  * La fenêtre posée sur un groupe de boîtes : même taille toujours, centrée sur
  * ce qu'on regarde, et retenue aux bords du monde — on ne montre pas du vide.
  */
-function fenetreFixe(boites, largeur) {
-    const L = Math.max(FEN_MIN, Math.min(MONDE.w, largeur || MONDE.w));
+export function fenetreDeLEtape(boites, largeur) {
     const e = enveloppe(boites);
+    // LA FENÊTRE CONTIENT TOUJOURS CE QU'ELLE MONTRE — et c'est un défaut qu'on
+    // répare, pas un raffinement.
+    //
+    // Rémy : « il faut que là où on colle la vignette, on le voie en entier. »
+    // La largeur était FIXE : centrée sur les boîtes de l'étape, elle coupait
+    // celles qui n'y tenaient pas. Or les deux raccourcis de sixième posent
+    // leur case tout au bord du plan — le chemin « quadrilatère → losange »
+    // s'étale sur cent quarante unités —, et c'est justement la case où l'on
+    // doit déposer sa vignette qui sortait du cadre.
+    //
+    // On garde donc la largeur demandée comme un PLANCHER, et l'on s'élargit
+    // quand il le faut. Ce qu'on y perd — les cases rapetissent — est très
+    // inférieur à ce qu'on y gagne : une cible qu'on ne voit pas est une cible
+    // qu'on ne vise pas.
+    const L = Math.max(FEN_MIN, Math.min(MONDE.w, Math.max(largeur || 0, (e.x2 - e.x1) + 8)));
+    // ET LA HAUTEUR SUIT LA MÊME RÈGLE. C'est elle qui coupait, en fait : les
+    // deux raccourcis de sixième relient le quadrilatère au losange et au
+    // rectangle en sautant une rangée entière — leur chemin traverse le plan de
+    // haut en bas —, et la fenêtre, haute de quatre-vingt-dix unités et centrée
+    // sur l'étape, laissait la case à remplir juste au-dessus ou juste en
+    // dessous du bord. Mesuré : huit à vingt-deux pixels de la cible dehors,
+    // aux étapes 5 et 8.
+    const H = Math.max(FEN_H, Math.min(MONDE.h, (e.y2 - e.y1) + 8));
     const cx = (e.x1 + e.x2) / 2, cy = (e.y1 + e.y2) / 2;
     const borne = (v, min, max) => Math.max(min, Math.min(max, v));
     return {
         x0: borne(cx - L / 2, MONDE.x0, MONDE.x0 + MONDE.w - L),
-        y0: borne(cy - FEN_H / 2, MONDE.y0, MONDE.y0 + MONDE.h - FEN_H),
-        w: L, h: FEN_H, rapport: L / FEN_H, zoom: PLAN_L / L
+        y0: borne(cy - H / 2, MONDE.y0, MONDE.y0 + MONDE.h - H),
+        w: L, h: H, rapport: L / H, zoom: PLAN_L / L
     };
 }
 
@@ -325,12 +342,22 @@ const ETAGE_MODALE = 100001;
  * disait déjà Rémy — la construction pas à pas était là, mais elle commençait
  * au deuxième pas.
  *
- * QUATRE TEMPS, ET CHACUN DIT UNE CHOSE :
- *   1. le plan ENTIER, vide — cinq cases et treize fentes : voilà le travail ;
- *   2. le quadrilatère arrive dans la sienne — voilà d'où l'on part ;
- *   3. on zoome sur lui, la case du parallélogramme restant en vue — voilà où
- *      l'on va (la case est là, elle est vide, c'est une question) ;
- *   4. le parallélogramme arrive — et c'est LUI qu'on va coder, ce que la
+ * ON REMONTE, ON NE RAPETISSE PAS. Rémy, devant la première version : « ne le
+ * mets pas en plein écran, mais pars du bas pour aller vers le haut. » Le plan
+ * entier tenait dans la scène, oui — mais réduit au point que « Quadrilatère »
+ * débordait de sa case, et qu'aucune des treize fentes ne se lisait. Une carte
+ * qu'on montre en entier et qu'on ne peut pas lire n'est pas une carte, c'est
+ * une vignette. On la PARCOURT donc, à la taille où elle se lit : on part du
+ * bas — là où sont les figures les plus particulières — et l'on remonte jusqu'à
+ * la case d'où tout part.
+ *
+ * CINQ TEMPS, ET CHACUN DIT UNE CHOSE :
+ *   1. le bas du plan, vide : voilà le travail, et voilà à quoi ressemble une
+ *      case et une fente quand on les voit pour de bon ;
+ *   2. on remonte tout en haut : la case la plus large est encore vide ;
+ *   3. le quadrilatère arrive dedans — voilà d'où l'on part ;
+ *   4. la case du dessous attend — voilà où l'on va, et c'est une question ;
+ *   5. le parallélogramme arrive — et c'est LUI qu'on va coder, ce que la
  *      fenêtre explique juste après.
  *
  * ON AVANCE AU BOUTON, PAS AU MINUTEUR. Rémy, devant la première version :
@@ -343,14 +370,20 @@ const ETAGE_MODALE = 100001;
  */
 const OUVERTURE = [
     {
-        vues: [], cadre: 'monde',
+        vues: [], cadre: 'bas',
         dit: 'Voici <b>l\'organigramme des quadrilatères</b> : cinq familles, et les '
-            + 'conditions qui mènent de l\'une à l\'autre. Il est vide — on va le construire.'
+            + 'conditions qui mènent de l\'une à l\'autre. Il est vide — on va le '
+            + 'construire. Tout en bas, les figures qui demandent le PLUS de conditions.'
     },
     {
-        vues: ['quadrilatere'], cadre: 'monde',
-        dit: 'On part du <b>quadrilatère</b>, tout en haut : la famille la plus large, '
-            + 'celle qui ne demande rien de plus que quatre côtés.'
+        vues: [], cadre: 'duo',
+        dit: 'On remonte tout en haut, là où l\'on part : la case la plus large de '
+            + 'toutes, et celle qui la suit, sont encore vides.'
+    },
+    {
+        vues: ['quadrilatere'], cadre: 'duo',
+        dit: 'On part du <b>quadrilatère</b> : la famille la plus large, celle qui ne '
+            + 'demande rien de plus que quatre côtés.'
     },
     {
         vues: ['quadrilatere'], cadre: 'duo',
@@ -526,7 +559,7 @@ class Organigramme extends BaseGame {
                    C'est la carte du travail à venir — assez visible pour qu'on
                    voie la forme, assez discrète pour qu'on ne la lise pas comme
                    une réponse déjà donnée. */
-                .qd-lien--fantome { opacity: .22; stroke-dasharray: 2 4; }
+                .qd-lien--fantome { opacity: .45; stroke-dasharray: 2 4; }
                 /* LA POINTE DE LA FLÈCHE — un triangle de bordures, posé par sa
                    pointe. Elle dit le SENS de lecture, qui est tout ce qu'un
                    organigramme a de plus qu'un treillis. */
@@ -740,10 +773,15 @@ class Organigramme extends BaseGame {
                    pas et ne se touchent pas : à ce moment-là, il n'y a rien à
                    faire — on regarde. Une case qui appelle avant que l'exercice
                    ait commencé enseigne à cliquer, pas à lire. */
+                /* DES BORDURES QU'ON VOIT. Rémy : « de base, mets un peu plus
+                   foncé les bordures. » Elles étaient au gris des bordures de
+                   l'application, encore éclaircies par une demi-opacité : la
+                   carte vide se devinait au lieu de se lire, et c'est pourtant
+                   elle qu'on montre en premier. */
                 .qd-case--fantome, .qd-cond--fantome {
-                    border-style: dashed; border-color: var(--border);
+                    border-style: dashed; border-color: var(--text-muted);
                     background: color-mix(in srgb, var(--bg-panel) 55%, transparent);
-                    opacity: .55; pointer-events: none; animation: none;
+                    opacity: .8; pointer-events: none; animation: none;
                 }
                 .qd-cond--fantome {
                     position: absolute; box-sizing: border-box; border-width: 1.5px;
@@ -1360,7 +1398,7 @@ class Organigramme extends BaseGame {
      * tout le propos de l'ouverture, montrer la carte entière — mais elles sont
      * VIDES et sans nom : la forme du travail, pas ses réponses.
      */
-    dessinerPlanNu(fen, visibles, neuve) {
+    dessinerPlanNu(fen, visibles, neuve, avecTravail = false) {
         this.coderEl.hidden = true;
         this.planEl.hidden = false;
         this.verifierEl.hidden = true;
@@ -1371,11 +1409,22 @@ class Organigramme extends BaseGame {
         this.cartesEl.innerHTML = '';
         this.cadrer(fen, MONDE);
 
+        // CE QUI EST DÉJÀ POSÉ RESTE POSÉ — et c'est un vrai défaut qu'on répare.
+        //
+        // Rémy : « quand on arrive à "on code le losange", les vignettes d'avant
+        // disparaissent. » Elles disparaissaient pour de bon : cet écran-ci
+        // redessinait TOUT en fantôme, conditions comprises, et l'élève voyait
+        // son organigramme se vider d'un coup au milieu de l'exercice. Le
+        // travail était intact dans les données — il revenait à l'étape
+        // suivante —, mais on ne le savait qu'après avoir eu peur.
+        const poses = avecTravail ? this.pointsPoses() : {};
         const traits = FLECHES.map(f => {
             const t = traitsDeCondition(f);
-            return `<path class="qd-lien qd-lien--fantome" fill="none" vector-effect="non-scaling-stroke"
+            const fait = poses[cleFleche(f)] !== undefined;
+            const cls = `qd-lien${fait ? ' qd-lien--fait' : ' qd-lien--fantome'}`;
+            return `<path class="${cls}" fill="none" vector-effect="non-scaling-stroke"
                     d="${traitEnChemin(t.entrant, MONDE)}"/>
-                <path class="qd-lien qd-lien--fantome" fill="none" vector-effect="non-scaling-stroke"
+                <path class="${cls}" fill="none" vector-effect="non-scaling-stroke"
                     d="${traitEnChemin(t.sortant, MONDE)}"/>`;
         }).join('');
         let html = `<svg class="qd-fils" viewBox="0 0 100 100"
@@ -1396,9 +1445,17 @@ class Organigramme extends BaseGame {
         }
         for (const f of FLECHES) {
             const b = placerBoite(boiteCondition(f), MONDE);
-            html += `<div class="qd-cond qd-cond--fantome"
-                style="left:${b.gauche}%; top:${b.haut}%; width:${b.large}%; height:${b.haute}%"
-                >?</div>`;
+            const style = `left:${b.gauche}%; top:${b.haut}%; width:${b.large}%; height:${b.haute}%`;
+            const texte = poses[cleFleche(f)];
+            if (texte === undefined) {
+                html += `<div class="qd-cond qd-cond--fantome" style="${style}">?</div>`;
+                continue;
+            }
+            const pol = policeCondition(texte);
+            html += `<div class="qd-cond qd-cond--${f.famille} qd-cond--posee"
+                style="${style}; font-size:clamp(5px, ${pol.cqw}cqw, 15px)"
+                title="${enAttribut(texte)}"
+                ><span class="qd-cond-t">${pol.lignes.map(enAttribut).join('<br>')}</span></div>`;
         }
         this.mondeEl.innerHTML = html;
         this.ajusterCartes();
@@ -1406,7 +1463,7 @@ class Organigramme extends BaseGame {
 
     /** La fenêtre posée sur deux cases voisines et ce qui les relie. */
     cadreDuo(de, vers) {
-        return fenetreFixe([boiteFigure(de), boiteFigure(vers),
+        return fenetreDeLEtape([boiteFigure(de), boiteFigure(vers),
             ...FLECHES.filter(f => f.de === de && f.vers === vers).map(boiteCondition)],
         this.largeurFenetre());
     }
@@ -1438,7 +1495,12 @@ class Organigramme extends BaseGame {
         const beat = OUVERTURE[this.ouverture];
         if (!beat) return this.finirOuverture();
         this.consigneEl.innerHTML = beat.dit;
-        const fen = beat.cadre === 'monde' ? TOUT_LE_MONDE
+        const fen = beat.cadre === 'bas'
+            // Le bas du plan : le carré et ce qui y mène. C'est là qu'on voit le
+            // mieux à quoi ressemblent une case et une fente, parce qu'elles y
+            // sont à la taille où l'on travaillera.
+            ? fenetreDeLEtape([boiteFigure('carre'), boiteFigure('losange'),
+                boiteFigure('rectangle')], this.largeurFenetre())
             : this.cadreDuo('quadrilatere', 'parallelogramme');
         // La figure qui ARRIVE à ce temps-ci : celle que le temps précédent ne
         // montrait pas encore. C'est elle qui reçoit l'animation d'entrée.
@@ -1479,7 +1541,7 @@ class Organigramme extends BaseGame {
         const nom = familleDe(e.figure).nom.toLowerCase();
         this.consigneEl.innerHTML = `Le <b>${nom}</b> arrive dans l'organigramme, `
             + `sous le ${familleDe(e.de).nom.toLowerCase()}.`;
-        this.dessinerPlanNu(this.cadreDuo(e.de, e.figure), e.vues, e.figure);
+        this.dessinerPlanNu(this.cadreDuo(e.de, e.figure), e.vues, e.figure, true);
         this.boutonsDeScene(`On code le ${nom} ▸`, () => {
             if (this.apparition === e.numero) return;
             this.apparition = e.numero;
@@ -1540,7 +1602,7 @@ class Organigramme extends BaseGame {
             : fenetre([...visibles.map(id => boiteFigure(id)),
                 ...montrees.map(f => boiteCondition(f))]);
         this.cadrer(e
-            ? fenetreFixe([boiteFigure(e.de), boiteFigure(e.vers),
+            ? fenetreDeLEtape([boiteFigure(e.de), boiteFigure(e.vers),
                 ...FLECHES.filter(f => e.cles.includes(cleFleche(f))).map(boiteCondition)],
             this.largeurFenetre())
             : v, v);

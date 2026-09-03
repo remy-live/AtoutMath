@@ -167,7 +167,13 @@ export const geometrieExercises = [
         // à créer quatre entrées de catalogue pour donner une leçon entière —
         // ou à les lancer à la main l'un après l'autre. Le défaut ne change
         // pas : une seule case cochée, la construction étape par étape.
-        params: { parties: ['conditions'], codage: true, reprise: 'debut' },
+        // UN SEUL ORGANIGRAMME, COMPLET. Rémy : « ne fais qu'un seul organigramme
+        // au complet. » Le compte par défaut en donnait trois — et trois fois la
+        // MÊME carte : c'est une hiérarchie, elle ne se tire pas au sort. La
+        // construire une fois demande déjà onze étapes ; la refaire à
+        // l'identique deux fois de plus n'apprend rien et fait passer pour une
+        // punition ce qui est une leçon.
+        params: { parties: ['conditions'], codage: true, reprise: 'debut', nbQuestions: 1 },
         paramSchema: [
             {
                 id: 'parties', type: 'multiselect', deroulant: true, tout: 'parties',
