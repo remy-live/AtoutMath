@@ -164,12 +164,18 @@ export const geometrieExercises = [
                     + 'définitions, et se joue en sept étapes : à chacune, deux cases et une '
                     + 'seule question — qu\'est-ce que celle de droite a de plus que celle de '
                     + 'gauche ? Les deux paliers de construction ne diffèrent que par le '
-                    + 'nombre de cartes-intrus mêlées aux bonnes.',
+                    + 'nombre de cartes-intrus mêlées aux bonnes. RECONSTRUIRE, enfin, ne '
+                    + 'guide plus du tout : l\'organigramme est vide, les cinq figures sont '
+                    + 'données sans leur nom — on les reconnaît à leur codage — et il faut '
+                    + 'd\'abord les ranger, puis relier chaque flèche. C\'est ce qu\'on '
+                    + 'demande en contrôle.',
                 options: [
                     { value: 'decouverte', label: 'Placer trois noms' },
                     { value: 'noms', label: 'Placer tous les noms' },
                     { value: 'conditions', label: 'Construire l\'organigramme, étape par étape' },
-                    { value: 'tout', label: 'Étape par étape, avec des intrus' }
+                    { value: 'tout', label: 'Étape par étape, avec des intrus' },
+                    { value: 'assembler', label: 'Reconstruire l\'organigramme entier' },
+                    { value: 'questions', label: 'Une série de questions (la carte à portée)' }
                 ]
             },
             // CODER LA FIGURE ENTRE DEUX ÉTAPES. Rémy : « ensuite, on lui

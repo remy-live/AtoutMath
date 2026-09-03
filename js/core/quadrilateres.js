@@ -259,7 +259,9 @@ export const estToujours = (a, b) => a === b || ancetres(a).includes(b);
 
 export const MODES = {
     FAMILLES: 'familles',      // placer les NOMS dans les cases
-    PROPRIETES: 'proprietes'   // placer les CONDITIONS sur les flèches
+    PROPRIETES: 'proprietes',  // placer les CONDITIONS sur les flèches
+    ASSEMBLAGE: 'assemblage',  // poser les FIGURES CODÉES, puis les relier
+    QUESTIONS: 'questions'     // une série de questions, la carte à portée
 };
 
 export const PALIERS = {
@@ -268,7 +270,12 @@ export const PALIERS = {
     // LES CONDITIONS SE POSENT ÉTAPE PAR ÉTAPE, et les deux paliers ne diffèrent
     // que par le nombre d'INTRUS mêlés aux bonnes cartes. Voir `ETAPES`.
     conditions: { label: 'Construire l\'organigramme, étape par étape', mode: MODES.PROPRIETES, intrus: 1 },
-    tout: { label: 'Étape par étape, avec des intrus', mode: MODES.PROPRIETES, intrus: 3 }
+    tout: { label: 'Étape par étape, avec des intrus', mode: MODES.PROPRIETES, intrus: 3 },
+    // LA DEUXIÈME QUESTION DE RÉMY : l'organigramme VIDE, à remonter en entier.
+    assembler: { label: 'Reconstruire l\'organigramme entier', mode: MODES.ASSEMBLAGE },
+    // LA TROISIÈME QUESTION DE RÉMY : « ce sera une série de questions où on
+    // peut rappeler l'organigramme pour voir. »
+    questions: { label: 'Une série de questions (la carte à portée)', mode: MODES.QUESTIONS, combien: 8 }
 };
 
 /**
@@ -814,6 +821,160 @@ export function genererProgressif({ rng, palier = 'conditions', codage = true } 
     });
     etapes.forEach((e, i) => { e.numero = i; });
     return { mode: MODES.PROPRIETES, palier, progressif: true, etapes };
+}
+
+/**
+ * RECONSTRUIRE L'ORGANIGRAMME ENTIER — la deuxième question.
+ *
+ * Rémy : « pour le suivant, l'organigramme vide où il faut juste placer les
+ * figures codées dans un premier temps (on se fiche que le rectangle soit à
+ * gauche ou à droite dans l'organigramme). Et dans un second temps, on glisse
+ * les vignettes (une vignette peut se glisser plusieurs fois) pour relier les
+ * figures. »
+ *
+ * CE QUE ÇA TRAVAILLE, ET QUI N'EST PAS DANS LA PREMIÈRE QUESTION. L'étape par
+ * étape guide : à chaque instant, deux cases et une question. Ici, rien n'est
+ * guidé — on a cinq figures sans nom, treize flèches vides, et il faut
+ * retrouver la CARTE. C'est la différence entre suivre un raisonnement et le
+ * refaire ; c'est aussi ce qu'on demande en contrôle.
+ *
+ * ET LES FIGURES SONT CODÉES, SANS LEUR NOM. C'est là que le codage de la
+ * première question sert : on reconnaît un losange à ses quatre marques
+ * identiques et à son angle droit au centre, pas à l'étiquette. Un élève qui a
+ * codé quatre figures sait les lire ; l'autre s'en aperçoit ici.
+ *
+ * « ON SE FICHE QUE LE RECTANGLE SOIT À GAUCHE OU À DROITE » — et ce n'est pas
+ * une tolérance, c'est la vérité mathématique : les deux cases du milieu ont le
+ * même RANG dans la hiérarchie, aucune n'est avant l'autre. Une case accepte
+ * donc toute figure de son rang, et les conditions qui en partent se recalculent
+ * sur la figure qu'on y a POSÉE — sans quoi l'élève qui a mis le losange à
+ * gauche verrait ses bonnes réponses refusées.
+ */
+export function genererAssemblage({ rng } = {}) {
+    return {
+        mode: MODES.ASSEMBLAGE, palier: 'assembler', assemblage: true,
+        // Les cinq figures à poser, dans le désordre.
+        figures: rng.shuffle(FAMILLES.map(f => f.id)),
+        // LES VIGNETTES NE S'ÉPUISENT PAS. Rémy : « une vignette peut se glisser
+        // plusieurs fois ». C'est le fond de l'affaire : « un angle droit » sert
+        // du parallélogramme au rectangle ET du losange au carré, « diagonales
+        // perpendiculaires » deux fois aussi. Une palette qui se vide
+        // enseignerait le contraire — que chaque condition n'a qu'une place.
+        vignettes: rng.shuffle([...new Set(FLECHES.map(f => f.ajoute))])
+    };
+}
+
+/** Les cases de figure qui acceptent cette famille : celles de même rang. */
+export const casesDuRang = (familleId) =>
+    FAMILLES.filter(f => f.rang === familleDe(familleId).rang).map(f => f.id);
+
+/**
+ * La figure posée dans une case, ou la famille de la case si rien n'est posé.
+ * C'est par là que passent toutes les vérifications de la deuxième question :
+ * l'organigramme qu'on relie est celui que l'élève a CONSTRUIT.
+ */
+export const figureDansCase = (placement, caseId) => (placement && placement[caseId]) || caseId;
+
+/**
+ * Les conditions attendues sur la flèche qui relie deux CASES, en tenant compte
+ * de ce que l'élève y a posé.
+ */
+export function conditionsDeCases(placement, caseDe, caseVers) {
+    return conditionsDe(figureDansCase(placement, caseDe), figureDansCase(placement, caseVers));
+}
+
+/**
+ * UNE SÉRIE DE QUESTIONS, LA CARTE À PORTÉE — la troisième question.
+ *
+ * Rémy : « pour la 3ème question, ce sera une série de questions où on peut
+ * rappeler l'organigramme pour voir. »
+ *
+ * ET LE DROIT DE REGARDER N'EST PAS UNE FAIBLESSE, c'est le geste qu'on veut
+ * installer. Un organigramme sert à ÊTRE CONSULTÉ : l'élève qui ne sait plus
+ * s'il faut des diagonales égales ou perpendiculaires doit apprendre à aller
+ * voir sur la carte, pas à deviner. Les deux premières questions l'ont fait
+ * construire ; celle-ci lui apprend à s'en servir.
+ *
+ * TROIS GENRES, ET TOUS SE DÉDUISENT DE L'ORGANIGRAMME — rien n'est écrit à la
+ * main, donc rien ne peut mentir si une flèche change :
+ *
+ *   · LA FIGURE OBTENUE — « un parallélogramme qui a ses diagonales
+ *     perpendiculaires est un … ? » C'est la question de Rémy, mot pour mot,
+ *     et c'est celle du contrôle.
+ *   · LA CONDITION À AJOUTER — « que faut-il ajouter à un rectangle pour qu'il
+ *     soit un carré ? » La même flèche, lue à l'envers.
+ *   · L'EMBOÎTEMENT — « est-ce que tout carré est un rectangle ? » La question
+ *     qui départage ceux qui ont compris, et l'on tire autant de « oui » que de
+ *     « non » : sans quoi on apprend à répondre toujours pareil.
+ */
+export function genererQuestions({ rng, combien = 8 } = {}) {
+    const genres = ['figure', 'condition', 'toujours'];
+    const faire = { figure: questionFigure, condition: questionCondition, toujours: questionToujours };
+    const out = [];
+    for (let i = 0; out.length < combien && i < combien * 8; i++) {
+        const q = faire[genres[out.length % genres.length]](rng);
+        if (q && !out.some(x => x.texte === q.texte)) out.push(q);
+    }
+    return { mode: MODES.QUESTIONS, palier: 'questions', questions: out };
+}
+
+/** « Un parallélogramme qui a ses diagonales perpendiculaires est un … ? » */
+function questionFigure(rng) {
+    const f = rng.pick(FLECHES);
+    const dite = f.ajoute.replace(/^Qui a /, '');
+    return {
+        genre: 'figure',
+        texte: `Un ${familleDe(f.de).nom.toLowerCase()} qui a ${dite} est un… ?`,
+        choix: FAMILLES.map(x => ({ valeur: x.id, dit: x.nom })),
+        bonnes: [f.vers],
+        pourquoi: `${f.piege || ''} C'est la flèche qui mène du `
+            + `${familleDe(f.de).nom.toLowerCase()} au ${familleDe(f.vers).nom.toLowerCase()}.`
+    };
+}
+
+/** « Que faut-il ajouter à un rectangle pour qu'il soit un carré ? » */
+function questionCondition(rng) {
+    const e = rng.pick(ETAPES);
+    const bonnes = conditionsDe(e.de, e.vers).map(f => f.ajoute);
+    return {
+        genre: 'condition',
+        texte: `Que faut-il ajouter à un ${familleDe(e.de).nom.toLowerCase()} pour qu'il soit `
+            + `un ${familleDe(e.vers).nom.toLowerCase()} ?`,
+        choix: [...new Set(FLECHES.map(f => f.ajoute))]
+            .map(t => ({ valeur: t, dit: vignetteDe(t) })),
+        bonnes,
+        pourquoi: bonnes.length > 1
+            ? `Il y a ${bonnes.length} réponses justes : ${bonnes.map(t => `« ${vignetteDe(t)} »`)
+                .join(', ')}. La même case s'atteint de plusieurs façons.`
+            : `Une seule réponse : « ${vignetteDe(bonnes[0])} ».`
+    };
+}
+
+/** « Est-ce que tout carré est un rectangle ? » */
+function questionToujours(rng) {
+    // ON TIRE LA RÉPONSE D'ABORD, puis un couple qui la donne : tirer le couple
+    // au hasard rendrait « non » trois fois plus souvent que « oui », et l'élève
+    // apprendrait à répondre non.
+    const veutOui = rng.bool();
+    const couples = [];
+    FAMILLES.forEach(a => FAMILLES.forEach(b => {
+        if (a.id !== b.id && estToujours(a.id, b.id) === veutOui) couples.push([a.id, b.id]);
+    }));
+    const [a, b] = rng.pick(couples);
+    return {
+        genre: 'toujours',
+        texte: `Est-ce que tout ${familleDe(a).nom.toLowerCase()} est un `
+            + `${familleDe(b).nom.toLowerCase()} ?`,
+        choix: [{ valeur: 'oui', dit: 'Oui' }, { valeur: 'non', dit: 'Non' }],
+        bonnes: [veutOui ? 'oui' : 'non'],
+        pourquoi: veutOui
+            ? `Oui : dans l'organigramme, on descend du ${familleDe(b).nom.toLowerCase()} au `
+                + `${familleDe(a).nom.toLowerCase()} en ajoutant des conditions. Tout ce qui est `
+                + 'en bas est aussi tout ce qui est au-dessus.'
+            : `Non : le ${familleDe(a).nom.toLowerCase()} n'est pas sous le `
+                + `${familleDe(b).nom.toLowerCase()} dans l'organigramme. Il faudrait remonter `
+                + 'une flèche à l\'envers, et une flèche ne se lit que dans un sens.'
+    };
 }
 
 /** Les cases visibles quand on aborde l'étape numéro `rang`. */

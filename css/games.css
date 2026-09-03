@@ -487,6 +487,15 @@
     color: var(--primary); text-align: right; min-width: 0;
 }
 
+/* LA CARTE RAPPELÉE, DANS SA FENÊTRE. Les styles de l'organigramme sont posés
+   par le jeu dans un <style> — qui vaut pour tout le document —, donc la
+   fenêtre en profite. Il ne manque que le cadre : une boîte au format du plan,
+   dans laquelle les cases se placent en pourcentage comme dans le jeu. */
+.qd-carte-fenetre {
+    position: relative; width: 100%; margin: 0 auto;
+    container-type: size;
+}
+
 /* LA PHRASE À COMPLÉTER. Rémy : « fais des phrases du genre : f(3) = 1, … est
    l'image de … par la fonction f. Car là tes questions sont faciles. » Elle a
    sa ligne et son trou souligné : c'est la phrase qu'on écrira au contrôle, et

@@ -36,12 +36,13 @@ import {
     familleDe, flecheDe, cleFleche, traitsDeCondition,
     boiteFigure, boiteCondition,
     genererOrganigramme, verifierDepot, verifierOrganigramme, conseil,
-    genererProgressif, casesVisibles, verifierEtape, conseilEtape, vignetteDe, pointeDe,
-    contreExemple, DIMS_CODAGE
+    genererProgressif, casesVisibles, verifierEtape, refusEtape, conseilEtape, vignetteDe, pointeDe,
+    contreExemple, DIMS_CODAGE, genererAssemblage, casesDuRang, figureDansCase,
+    conditionsDeCases, genererQuestions
 } from '../core/quadrilateres.js';
 import {
     construireFigure, verifierCodage, canoniser, segmentsDe, pointsAngleDe, PROPRIETES,
-    classesDeLongueur, anglesDroitsDe
+    classesDeLongueur, anglesDroitsDe, codageAttendu
 } from '../core/codage.js';
 import { codageSvg, jetonSvg, jetonAngleSvg } from '../core/codageSvg.js';
 import { ajusterAuRectangle } from '../core/dominos.js';
@@ -231,6 +232,72 @@ const traitEnPoints = (pts, v) => pts
     .map(q => { const r = placer(q, v); return `${r.gauche.toFixed(2)},${r.haut.toFixed(2)}`; })
     .join(' ');
 
+/**
+ * LE VIRAGE S'ARRONDIT — Rémy : « améliore les flèches, ce n'est pas beau une
+ * flèche en escaliers. Tu n'as qu'à arrondir le dernier virage. »
+ *
+ * Les chemins sont orthogonaux, et ils doivent le rester : c'est ce qui fait
+ * qu'on suit un trait des yeux dans un organigramme chargé, et c'est ainsi que
+ * sont tracées les fiches. Ce qui est laid, ce n'est pas l'angle droit du
+ * tracé, c'est le COIN VIF — la petite marche qui accroche l'œil à chaque
+ * changement de direction. On garde donc les segments droits et l'on adoucit
+ * les coins, tous, pas seulement le dernier : un chemin à deux coudes dont un
+ * seul serait arrondi serait plus bizarre que deux coins vifs.
+ *
+ * LE RAYON SE MESURE DANS LE PLAN, PAS SUR L'ÉCRAN. Le SVG des liens est étiré
+ * (`preserveAspectRatio="none"`) : un rayon posé en pourcentage donnerait un
+ * quart de cercle aplati dans un sens et étiré dans l'autre. On coupe donc les
+ * segments en unités de plan — trois unités, jamais plus du tiers du segment,
+ * sinon un coude court se mangerait lui-même — et l'on convertit ensuite.
+ */
+const RAYON_VIRAGE = 5;
+
+function traitEnChemin(pts, v) {
+    if (pts.length < 3) return `M ${traitEnPoints(pts, v).replace(/ /g, ' L ')}`;
+    const xy = (q) => { const r = placer(q, v); return `${r.gauche.toFixed(2)},${r.haut.toFixed(2)}`; };
+    // Un point avancé de `d` unités de plan depuis `a` vers `b`.
+    const vers = (a, b, d) => {
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const l = Math.hypot(dx, dy) || 1;
+        const t = Math.min(d, l / 2) / l;
+        return { x: a.x + dx * t, y: a.y + dy * t };
+    };
+    let out = `M ${xy(pts[0])}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+        const avant = pts[i - 1], coin = pts[i], apres = pts[i + 1];
+        const r = Math.min(RAYON_VIRAGE,
+            Math.hypot(coin.x - avant.x, coin.y - avant.y) / 2.2,
+            Math.hypot(apres.x - coin.x, apres.y - coin.y) / 2.2);
+        out += ` L ${xy(vers(coin, avant, r))} Q ${xy(coin)} ${xy(vers(coin, apres, r))}`;
+    }
+    return `${out} L ${xy(pts[pts.length - 1])}`;
+}
+
+/**
+ * POURQUOI CETTE FIGURE N'EST PAS DANS CETTE CASE — et l'on parle de RANG, pas
+ * de côté. Les deux cases du milieu ont le même rang : aucune n'est avant
+ * l'autre, et c'est la seule chose que l'organigramme dit d'elles.
+ */
+function refusPlacement(caseId, figureId) {
+    const p = familleDe(figureId), c = familleDe(caseId);
+    if (p.rang < c.rang) {
+        return `${p.nom} est PLUS GÉNÉRAL que ce qui va ici : cette case est plus bas dans `
+            + 'l\'organigramme, donc plus particulière. On descend en ajoutant des conditions.';
+    }
+    return `${p.nom} est plus PARTICULIER que ce qui va ici : il a plus de conditions que la `
+        + 'case ne le demande. Cherche-lui une place plus bas.';
+}
+
+/** Ce qu'on répond quand une vignette tombe juste, sans répéter la phrase. */
+function memeTexteDit(texte) {
+    const f = FLECHES.find(x => x.ajoute === texte);
+    const ailleurs = FLECHES.filter(x => x.ajoute === texte).length;
+    return ailleurs > 1
+        ? `Oui. Et retiens que « ${(f.court || texte)} » sert ${ailleurs} fois dans cet `
+            + 'organigramme : la même condition ne fait pas la même chose selon d\'où l\'on part.'
+        : 'Oui.';
+}
+
 const COMPETENCE = 'geo.quadrilateres.familles';
 
 // La couche de jeu est à 10000 : une fenêtre ouverte depuis l'exercice doit
@@ -339,7 +406,10 @@ class Organigramme extends BaseGame {
                    d'opacité sur du gris clair, l'organigramme ressemblait à un
                    filigrane. Rémy : « celui que je t'ai donné était plus
                    joli » — sa fiche est tracée au feutre noir. */
-                .qd-lien { stroke: var(--text-muted); stroke-width: 1.6; fill: none; opacity: .75; }
+                .qd-lien {
+                    stroke: var(--text-muted); stroke-width: 1.6; fill: none; opacity: .75;
+                    stroke-linejoin: round; stroke-linecap: round;
+                }
                 .qd-lien--ouvert { opacity: .9; stroke-dasharray: 3 3; stroke: var(--primary); }
                 .qd-lien--fait { stroke: var(--success); opacity: 1; stroke-width: 2; }
                 /* LA POINTE DE LA FLÈCHE — un triangle de bordures, posé par sa
@@ -406,9 +476,20 @@ class Organigramme extends BaseGame {
                    c'est la fiche de Rémy, et l'ordre a un sens : on lit la
                    figure d'abord, son nom ensuite. */
                 .qd-figure { flex: 1 1 auto; width: 100%; min-height: 0; display: block; padding: 3px; box-sizing: border-box; }
+                /* LA MÊME PLUME QUE LA FIGURE CODÉE, et c'est ce qui manquait.
+                   Rémy : « le quadrilatère dénote dans le style, ses bords sont
+                   très épais. » Il l'était : ce contour-ci vit dans un repère de
+                   100 unités avec une plume de 4 (quatre pour cent de la boîte),
+                   la figure codée dans un repère de 300 avec une plume de 2,6
+                   (moins d'un pour cent). Mesuré à l'écran : sept pixels contre
+                   un et demi, dans des cases de même taille. Et comme quatre
+                   figures sur cinq finissent codées, c'est le quadrilatère —
+                   celui qui ne se code jamais — qui restait seul avec sa grosse
+                   plume. On l'aligne sur les autres : même encre, même fond,
+                   même épaisseur apparente. */
                 .qd-trait {
-                    fill: var(--qd-figure, #ccd0f7);
-                    stroke: var(--text-main); stroke-width: 4; stroke-linejoin: round;
+                    fill: var(--tag-dom-bg, #ccd0f7);
+                    stroke: var(--primary); stroke-width: 1.1; stroke-linejoin: round;
                 }
                 /* LE CONTOUR SE TRACE : le pointillé vaut la longueur du
                    périmètre entier, et en ramenant le décalage à zéro le trait
@@ -532,6 +613,24 @@ class Organigramme extends BaseGame {
                     color: var(--text-muted);
                     background: color-mix(in srgb, var(--warning) 10%, var(--bg-panel));
                 }
+                /* LA CASE QUI ATTEND SE SIGNALE. Rémy : « quand on passe du
+                   parallélogramme au rectangle, il faudrait faire clignoter la
+                   case à remplir. » L'organigramme descend d'un cran, les deux
+                   figures en jeu s'encadrent — mais la case vide, elle, ne
+                   disait rien de plus que les autres, et rien ne montrait OÙ
+                   poser. Un battement lent, jamais agressif : c'est un repère,
+                   pas une alarme. */
+                .qd-cond--vide { animation: qd-attendre 1.6s ease-in-out infinite; }
+                @keyframes qd-attendre {
+                    0%, 100% { border-color: var(--border); box-shadow: none; }
+                    50% {
+                        border-color: var(--primary);
+                        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 22%, transparent);
+                    }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .qd-cond--vide { animation: none; border-color: var(--primary); }
+                }
                 .qd-cond--posee { animation: qd-poser .4s ease-out; }
                 @keyframes qd-poser { from { transform: scale(.92); } to { transform: scale(1); } }
                 .qd-cond--visee {
@@ -614,6 +713,26 @@ class Organigramme extends BaseGame {
                     touch-action: none; min-height: 34px; display: inline-flex; align-items: center;
                 }
                 .qd-cartes .kk-chip--pris { opacity: .25; pointer-events: none; }
+                /* UNE FIGURE DANS LA PALETTE. Elle n'a pas de nom — c'est tout
+                   le propos de la deuxième question : on la reconnaît à son
+                   codage. Le carré de la vignette est généreux, parce qu'un
+                   codage de 40 pixels ne se lit pas. */
+                .qd-cartes .qd-chip-fig {
+                    width: clamp(64px, 22cqw, 104px); height: clamp(64px, 22cqw, 104px);
+                    padding: 4px; background: var(--bg-app);
+                }
+                .qd-cartes .qd-chip-fig .cg-svg { width: 100%; height: 100%; }
+                .qd-cartes .kk-chip--visee {
+                    border-color: var(--primary); border-width: 3px;
+                    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 22%, transparent);
+                }
+                /* La case vide : un point d'interrogation discret, à la place
+                   du dessin qui viendra. */
+                .qd-vide-fig {
+                    flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
+                    color: var(--text-muted); font-weight: 800;
+                    font-size: clamp(12px, calc(3cqw * var(--zoom, 1)), 28px);
+                }
                 /* LES JETONS DE CODAGE SONT DES DESSINS, PAS DES MOTS : ils
                    reprennent le carré de l'exercice « Coder la figure ». La
                    règle du dessus rend la taille au contenu — ce qui convient à
@@ -628,6 +747,13 @@ class Organigramme extends BaseGame {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700;
                     padding: 6px 11px; font-size: .82rem; min-height: 34px;
+                }
+                /* LA QUESTION DE LA TROISIÈME PARTIE. Elle a la place que le
+                   plan occupait : c'est elle qu'on lit, et il n'y a rien
+                   d'autre à regarder — la carte est derrière son bouton. */
+                .qd-question {
+                    font-size: clamp(1rem, 3.2cqw, 1.5rem); font-weight: 800;
+                    text-align: center; line-height: 1.35; padding: 10px 4px;
                 }
                 .qd-note {
                     min-height: 2.2em; text-align: center; font-size: .82rem; line-height: 1.3;
@@ -671,6 +797,7 @@ class Organigramme extends BaseGame {
                      ce que le bouton d'à côté fait déjà. Sur un téléphone il
                      prenait en plus une ligne entière de la hauteur. -->
                 <div class="qd-barre">
+                    <button type="button" class="qd-btn" data-carte hidden>🗺 Voir l'organigramme</button>
                     <button type="button" class="qd-btn" data-verifier hidden>✓ Vérifier le codage</button>
                     <button type="button" class="qd-btn" data-effacer>↺ Recommencer</button>
                     <button type="button" class="qd-btn" data-aide>💡 Aide-moi</button>
@@ -688,6 +815,8 @@ class Organigramme extends BaseGame {
         this.consigneEl = this.container.querySelector('[data-consigne]');
         this.verifierEl = this.container.querySelector('[data-verifier]');
         this.verifierEl.onclick = () => this.verifierLeCodage();
+        this.carteEl = this.container.querySelector('[data-carte]');
+        this.carteEl.onclick = () => this.montrerLaCarte();
         this.container.querySelector('[data-effacer]').onclick = () => this.effacer();
         this.container.querySelector('[data-aide]').onclick = () => this.aider();
     }
@@ -699,8 +828,21 @@ class Organigramme extends BaseGame {
         // les NOMS, c'est ranger cinq mots dans une hiérarchie déjà dessinée ;
         // placer les CONDITIONS, c'est construire la hiérarchie elle-même, une
         // flèche après l'autre. Le second se joue donc par étapes.
-        this.progressif = (PALIERS[this.palier] || {}).mode === MODES.PROPRIETES;
-        if (this.progressif) {
+        const mode = (PALIERS[this.palier] || {}).mode;
+        this.assemblage = mode === MODES.ASSEMBLAGE;
+        this.questions = mode === MODES.QUESTIONS;
+        this.progressif = mode === MODES.PROPRIETES;
+        if (this.questions) {
+            this.org = genererQuestions({
+                rng: this.rng, combien: (PALIERS[this.palier] || {}).combien || 8
+            });
+            this.iQuestion = 0;
+            this.justes = 0;
+        } else if (this.assemblage) {
+            this.org = genererAssemblage({ rng: this.rng });
+            this.placement = {};      // case → figure posée
+            this.liens = {};          // clé de flèche → texte posé
+        } else if (this.progressif) {
             this.org = genererProgressif({
                 rng: this.rng, palier: this.palier, codage: this.codageDemande
             });
@@ -737,8 +879,36 @@ class Organigramme extends BaseGame {
     // --- Le dessin ----------------------------------------------------------
 
     dessiner() {
+        if (this.questions) return this.dessinerQuestions();
+        if (this.assemblage) return this.dessinerAssemblage();
         if (this.progressif) return this.dessinerProgressif();
         this.dessinerNoms();
+    }
+
+    /** Les cinq figures posées : on passe alors aux vignettes. */
+    get phaseVignettes() {
+        return Object.keys(this.placement || {}).length >= FAMILLES.length;
+    }
+
+    /**
+     * LA FIGURE TELLE QU'ON LA MONTRE DANS LA PALETTE ET DANS SA CASE : codée.
+     *
+     * C'est là que le codage de la première question paie. On reconnaît un
+     * losange à ses quatre marques identiques et à l'angle droit de ses
+     * diagonales, pas à son étiquette — et le quadrilatère quelconque se
+     * reconnaît, lui, à ce qu'il n'a AUCUNE marque : c'est sa définition.
+     */
+    figureCodeeSvg(famId) {
+        const dims = DIMS_CODAGE[famId];
+        if (!dims) return this.figureSvg(familleDe(famId), true, false);
+        const fig = construireFigure(famId, dims, 0);
+        const ids = segmentsDe(true), pts = pointsAngleDe(true);
+        const pose = { marques: {}, angles: {} };
+        classesDeLongueur(fig, ids).forEach((classe, i) =>
+            classe.forEach(id => { pose.marques[id] = i + 1; }));
+        anglesDroitsDe(fig, pts).forEach(pt => { pose.angles[pt] = true; });
+        return codageSvg(fig, { segments: ids, points: pts, pose, interactif: false, nomsSommets: false })
+            .replace('class="cg-svg"', 'class="cg-svg qd-figure qd-figure--codee"');
     }
 
     /**
@@ -758,6 +928,7 @@ class Organigramme extends BaseGame {
         this.coderEl.hidden = true;
         this.planEl.hidden = false;
         this.verifierEl.hidden = true;
+        this.carteEl.hidden = true;
 
         const visibles = (e && e.vues) || casesVisibles(this.org.etapes.length);
         const nouvelles = this.vues || [];
@@ -804,10 +975,10 @@ class Organigramme extends BaseGame {
             const t = traitsDeCondition(f);
             const fait = poses[cleFleche(f)] !== undefined;
             const cls = `qd-lien${fait ? ' qd-lien--fait' : ' qd-lien--ouvert'}`;
-            return `<polyline class="${cls}" fill="none" vector-effect="non-scaling-stroke"
-                    points="${traitEnPoints(t.entrant, v)}"/>
-                <polyline class="${cls}" fill="none" vector-effect="non-scaling-stroke"
-                    points="${traitEnPoints(t.sortant, v)}"/>`;
+            return `<path class="${cls}" fill="none" vector-effect="non-scaling-stroke"
+                    d="${traitEnChemin(t.entrant, v)}"/>
+                <path class="${cls}" fill="none" vector-effect="non-scaling-stroke"
+                    d="${traitEnChemin(t.sortant, v)}"/>`;
         }).join('');
 
         let html = `<svg class="qd-fils" viewBox="0 0 100 100"
@@ -918,6 +1089,7 @@ class Organigramme extends BaseGame {
         this.planEl.hidden = true;
         this.coderEl.hidden = false;
         this.verifierEl.hidden = false;
+        this.carteEl.hidden = true;
         this.carnetEl.hidden = true;
         // Les cases vues restent celles de l'étape : au retour au plan, aucune
         // ne doit rejouer son animation d'arrivée.
@@ -1129,6 +1301,313 @@ class Organigramme extends BaseGame {
         return out;
     }
 
+
+
+    /**
+     * UNE SÉRIE DE QUESTIONS, LA CARTE À PORTÉE — la troisième question.
+     *
+     * Rémy : « pour la 3ème question, ce sera une série de questions où on peut
+     * rappeler l'organigramme pour voir. »
+     *
+     * LE PLAN N'EST PAS À L'ÉCRAN, ET C'EST LE POINT. S'il y était, on lirait la
+     * réponse sans se poser la question — on ne travaillerait plus rien. Il est
+     * derrière un bouton : on essaie d'abord, et l'on va voir quand on ne sait
+     * plus. C'est exactement le geste qu'un organigramme doit installer.
+     */
+    dessinerQuestions() {
+        // LA QUESTION PREND LA PLACE DU PLAN, et pas la ligne d'en dessous. Vu
+        // à l'écran : posée dans le panneau d'étape, elle se retrouvait tout en
+        // bas, avec six cents pixels de vide au-dessus — là où le plan aurait
+        // été. Elle vit donc dans la scène, qui est faite pour cela.
+        this.planEl.hidden = true;
+        this.coderEl.hidden = false;
+        this.verifierEl.hidden = true;
+        this.carnetEl.hidden = true;
+        this.etapeEl.hidden = true;
+        this.carteEl.hidden = false;
+
+        const q = this.org.questions[this.iQuestion];
+        if (!q) return;
+        this.consigneEl.innerHTML = `Question ${this.iQuestion + 1} sur `
+            + `${this.org.questions.length} — <b>${this.justes} juste`
+            + `${this.justes > 1 ? 's' : ''}</b> pour l'instant. Tu peux rappeler `
+            + 'l\'organigramme à tout moment : il est fait pour être consulté.';
+        this.coderEl.innerHTML = `<div class="qd-question">${enAttribut(q.texte)}</div>`;
+        this.cartesEl.innerHTML = q.choix.map((c, i) =>
+            `<div class="kk-chip" data-choix="${i}">${enAttribut(c.dit)}</div>`).join('');
+        this.cartesEl.querySelectorAll('[data-choix]').forEach(chip => {
+            chip.onclick = () => this.repondre(Number(chip.dataset.choix));
+        });
+    }
+
+    repondre(i) {
+        if (this.isDemo || this.fini) return;
+        const q = this.org.questions[this.iQuestion];
+        const choix = q.choix[i];
+        if (!choix) return;
+        const juste = q.bonnes.includes(choix.valeur);
+        const dire = () => this.note(`${juste ? '✅' : '❌'} ${q.pourquoi}`, juste ? 'ok' : 'ko');
+        if (juste) {
+            this.justes += 1;
+            this.onCorrectAnswer(null, COMPETENCE, {
+                questionText: q.texte, expected: choix.dit, given: choix.dit,
+                points: 6, partiel: true
+            });
+        } else {
+            this.onWrongAnswer(null, {
+                concept: COMPETENCE, questionText: q.texte,
+                input: choix.dit, expected: q.bonnes.join(' / '),
+                partiel: true, silencieux: true
+            });
+        }
+        this.iQuestion += 1;
+        if (this.iQuestion >= this.org.questions.length) {
+            dire();
+            return this.gagner();
+        }
+        this.dessiner();
+        dire();
+    }
+
+    /**
+     * LA CARTE, RAPPELÉE — l'organigramme entier dans une fenêtre.
+     *
+     * C'est le plan complet, figures nommées et conditions écrites : celui de la
+     * fiche de Rémy. On le dessine dans une fenêtre plutôt qu'à côté de la
+     * question pour que le geste reste volontaire — « je vais voir » — et parce
+     * qu'à côté, sur un téléphone, il ne resterait de place ni pour l'un ni pour
+     * l'autre.
+     */
+    async montrerLaCarte() {
+        if (this.isDemo) return;
+        const v = fenetrePleine();
+        const traits = FLECHES.map(f => {
+            const t = traitsDeCondition(f);
+            return `<path class="qd-lien" fill="none" vector-effect="non-scaling-stroke"
+                    d="${traitEnChemin(t.entrant, v)}"/>
+                <path class="qd-lien" fill="none" vector-effect="non-scaling-stroke"
+                    d="${traitEnChemin(t.sortant, v)}"/>`;
+        }).join('');
+        let dedans = `<svg class="qd-fils" viewBox="0 0 100 100"
+            preserveAspectRatio="none">${traits}</svg>`;
+        dedans += pointesHtml(FLECHES.flatMap(f => {
+            const t = traitsDeCondition(f);
+            return [t.entrant, t.sortant];
+        }), v);
+        for (const fam of FAMILLES) {
+            const b = placerBoite(boiteFigure(fam.id), v);
+            dedans += `<div class="qd-case" style="left:${b.gauche}%; top:${b.haut}%;
+                width:${b.large}%; height:${b.haute}%">
+                ${this.figureCodeeSvg(fam.id)}
+                <div class="qd-nom">${fam.nom}</div></div>`;
+        }
+        for (const f of FLECHES) {
+            const b = placerBoite(boiteCondition(f), v);
+            const p = policeCondition(f.court);
+            dedans += `<div class="qd-cond qd-cond--${f.famille}"
+                style="left:${b.gauche}%; top:${b.haut}%; width:${b.large}%; height:${b.haute}%;
+                    font-size:clamp(4px, ${p.cqw}cqw, 14px)" title="${enAttribut(f.ajoute)}"
+                ><span class="qd-cond-t">${p.lignes.map(enAttribut).join('<br>')}</span></div>`;
+        }
+        const { showModal } = await import('../ui/modal.js');
+        const m = showModal('L\'organigramme', `
+            <div class="qd-carte-fenetre" style="--zoom:${v.zoom.toFixed(3)};
+                aspect-ratio:${v.rapport.toFixed(3)}">${dedans}</div>
+            <div style="text-align:center; margin-top:12px">
+                <button type="button" class="qd-btn qd-modale-ok"
+                    style="background:var(--primary); border-color:var(--primary); color:#fff;
+                        padding:9px 18px; font-size:.9rem">Je retourne à la question</button>
+            </div>`, { width: '860px', zIndex: ETAGE_MODALE });
+        const ok = m.element.querySelector('.qd-modale-ok');
+        if (ok) ok.onclick = () => m.close();
+    }
+
+    /**
+     * L'ORGANIGRAMME VIDE, À REMONTER EN ENTIER — la deuxième question.
+     *
+     * Rémy : « l'organigramme vide où il faut juste placer les figures codées
+     * dans un premier temps […]. Et dans un second temps, on glisse les
+     * vignettes pour relier les figures. »
+     *
+     * DEUX TEMPS, ET LE SECOND DÉPEND DU PREMIER : les conditions attendues sur
+     * une flèche se calculent sur la figure que l'élève a POSÉE dans la case, pas
+     * sur celle qui « devrait » y être. C'est ce qui permet d'accepter le losange
+     * à gauche — « on se fiche que le rectangle soit à gauche ou à droite » — sans
+     * refuser ensuite ses bonnes réponses.
+     */
+    dessinerAssemblage() {
+        this.coderEl.hidden = true;
+        this.planEl.hidden = false;
+        this.verifierEl.hidden = true;
+        this.carteEl.hidden = true;
+        this.carnetEl.hidden = true;
+        this.etapeEl.hidden = false;
+
+        const v = fenetrePleine();
+        this.cadrer(v);
+        const vignettes = this.phaseVignettes;
+        const posees = Object.keys(this.placement).length;
+
+        this.consigneEl.innerHTML = vignettes
+            ? 'Relie les figures : glisse sur chaque flèche la condition qui fait passer '
+                + 'de la figure du dessus à celle du dessous. <b>Une vignette sert plusieurs fois.</b>'
+            : 'Pose chaque figure à sa place dans l\'organigramme. <b>Elles n\'ont plus '
+                + 'leur nom</b> : c\'est leur codage qui les dit.';
+        this.etapeEl.innerHTML = `<div class="qd-etape-titre">${vignettes
+            ? `Les cinq figures sont posées. Il reste <b>${FLECHES.length
+                - Object.keys(this.liens).length}</b> flèches à garnir.`
+            : `<b>${posees}</b> figure${posees > 1 ? 's' : ''} posée${posees > 1 ? 's' : ''} `
+                + `sur ${FAMILLES.length}. On descend du plus général au plus particulier.`}</div>`;
+
+        // LES TRAITS, TOUJOURS TOUS : c'est la carte qu'on reconstruit, et une
+        // flèche qui n'apparaîtrait qu'une fois garnie cacherait la question.
+        const traits = FLECHES.map(f => {
+            const t = traitsDeCondition(f);
+            const fait = this.liens[cleFleche(f)] !== undefined;
+            const cls = `qd-lien${fait ? ' qd-lien--fait' : ''}`;
+            return `<path class="${cls}" fill="none" vector-effect="non-scaling-stroke"
+                    d="${traitEnChemin(t.entrant, v)}"/>
+                <path class="${cls}" fill="none" vector-effect="non-scaling-stroke"
+                    d="${traitEnChemin(t.sortant, v)}"/>`;
+        }).join('');
+        let html = `<svg class="qd-fils" viewBox="0 0 100 100"
+            preserveAspectRatio="none">${traits}</svg>`;
+        html += pointesHtml(FLECHES.flatMap(f => {
+            const t = traitsDeCondition(f);
+            return [t.entrant, t.sortant];
+        }), v);
+
+        for (const fam of FAMILLES) {
+            const b = placerBoite(boiteFigure(fam.id), v);
+            const pose = this.placement[fam.id];
+            const style = `left:${b.gauche}%; top:${b.haut}%; width:${b.large}%; height:${b.haute}%`;
+            html += `<div class="qd-case ${pose ? 'qd-case--juste' : 'qd-case--trou'}"
+                style="${style}" data-case="${fam.id}"
+                ${pose || vignettes ? '' : 'data-depose="1"'}>
+                ${pose ? this.figureCodeeSvg(pose) : '<div class="qd-vide-fig">?</div>'}
+                <div class="qd-nom${pose ? '' : ' qd-nom--vide'}">${pose ? familleDe(pose).nom : '…'}</div>
+            </div>`;
+        }
+
+        for (const f of FLECHES) {
+            const cle = cleFleche(f);
+            const b = placerBoite(boiteCondition(f), v);
+            const texte = this.liens[cle];
+            const style = `left:${b.gauche}%; top:${b.haut}%; `
+                + `width:${b.large}%; height:${b.haute}%`;
+            if (texte !== undefined) {
+                const pol = policeCondition(texte);
+                html += `<div class="qd-cond qd-cond--${f.famille} qd-cond--posee"
+                    style="${style}; font-size:clamp(5px, ${pol.cqw}cqw, 15px)"
+                    data-donnee="${enAttribut(texte)}" title="${enAttribut(texte)}"
+                    ><span class="qd-cond-t">${pol.lignes.map(enAttribut).join('<br>')}</span></div>`;
+            } else {
+                html += `<div class="qd-cond qd-cond--vide" style="${style}"
+                    data-fente="${enAttribut(cle)}"
+                    ${vignettes ? 'data-depose="1"' : ''}>?</div>`;
+            }
+        }
+
+        this.mondeEl.innerHTML = html;
+        this.ajusterCartes();
+        this.mondeEl.querySelectorAll('[data-donnee]').forEach(el => {
+            el.onclick = () => this.note(el.dataset.donnee);
+        });
+
+        // LA PALETTE CHANGE DE NATURE ENTRE LES DEUX TEMPS : des figures, puis
+        // des mots. Les vignettes ne s'épuisent pas — voir `genererAssemblage`.
+        this.cartesEl.innerHTML = vignettes
+            ? this.org.vignettes.map(t =>
+                `<div class="kk-chip" data-vignette="${enAttribut(t)}"
+                    title="${enAttribut(t)}">${enAttribut(vignetteDe(t))}</div>`).join('')
+            : this.org.figures.filter(id => !Object.values(this.placement).includes(id))
+                .map(id => `<div class="kk-chip qd-chip-fig" data-figure="${id}"
+                    title="Une figure à placer">${this.figureCodeeSvg(id)}</div>`).join('');
+        this.brancherGlisser();
+        this.cartesEl.querySelectorAll('[data-figure], [data-vignette]').forEach(chip => {
+            chip.onclick = () => this.viser(chip);
+        });
+    }
+
+    /**
+     * UN SIMPLE APPUI SUFFIT, ici comme dans l'étape par étape : on tape la
+     * carte, puis la case. Le glisser reste le geste principal ; le tapotement
+     * sauve celui qui a raté sa cible trois fois de suite — et il est le seul
+     * geste possible au clavier.
+     */
+    viser(chip) {
+        if (this.isDemo || this.fini) return;
+        const deja = this.cartesEl.querySelector('.kk-chip--visee');
+        if (deja) deja.classList.remove('kk-chip--visee');
+        if (deja === chip) { this.visee = null; return; }
+        chip.classList.add('kk-chip--visee');
+        this.visee = chip;
+        this.note('Touche maintenant la case où tu veux la poser.');
+    }
+
+    /** Une figure posée dans une case : c'est le RANG qui juge, pas le côté. */
+    deposerFigure(caseId, figureId) {
+        if (this.isDemo || this.fini || this.placement[caseId]) return;
+        const attendu = casesDuRang(figureId);
+        if (!attendu.includes(caseId)) {
+            this.onWrongAnswer(null, {
+                concept: COMPETENCE,
+                questionText: `Organigramme — placer ${familleDe(figureId).nom}`,
+                input: familleDe(caseId).nom, expected: attendu.map(x => familleDe(x).nom).join(' ou '),
+                partiel: true, silencieux: true
+            });
+            return this.rater(refusPlacement(caseId, figureId));
+        }
+        this.placement[caseId] = figureId;
+        this.onCorrectAnswer(null, COMPETENCE, {
+            questionText: `Organigramme — placer ${familleDe(figureId).nom}`,
+            expected: familleDe(figureId).nom, given: familleDe(figureId).nom,
+            points: 5, partiel: true
+        });
+        this.visee = null;
+        this.dessiner();
+        this.note(this.phaseVignettes
+            ? 'Les cinq figures sont en place. Maintenant, relie-les : chaque flèche '
+                + 'porte la condition qu\'on AJOUTE en descendant d\'un cran.'
+            : `${familleDe(figureId).nom} est à sa place.`, 'ok');
+    }
+
+    /** Une vignette posée sur une flèche. Elle ne s'épuise jamais. */
+    deposerVignette(cle, texte) {
+        if (this.isDemo || this.fini || this.liens[cle] !== undefined) return;
+        const f = flecheDe(cle);
+        if (!f) return;
+        const bonnes = conditionsDeCases(this.placement, f.de, f.vers).map(x => x.ajoute);
+        const dejaPosees = FLECHES
+            .filter(x => x.de === f.de && x.vers === f.vers && this.liens[cleFleche(x)] !== undefined)
+            .map(x => this.liens[cleFleche(x)]);
+        const A = figureDansCase(this.placement, f.de);
+        const B = figureDansCase(this.placement, f.vers);
+        if (!bonnes.includes(texte)) {
+            this.onWrongAnswer(null, {
+                concept: COMPETENCE,
+                questionText: `Organigramme — ${familleDe(A).nom} → ${familleDe(B).nom}`,
+                input: texte, expected: bonnes.join(' / '), partiel: true, silencieux: true
+            });
+            return this.montrerContreExemple({ de: A, vers: B }, texte,
+                refusEtape({ de: A, vers: B }, texte)).then(() => this.rater(''));
+        }
+        if (dejaPosees.includes(texte)) {
+            return this.note('Cette condition est déjà posée sur ce chemin. Il en faut une AUTRE : '
+                + 'la même case s\'atteint de plusieurs façons, et ce sont ces façons-là qu\'on '
+                + 'cherche.', 'ko');
+        }
+        this.liens[cle] = texte;
+        this.onCorrectAnswer(null, COMPETENCE, {
+            questionText: `Organigramme — ${familleDe(A).nom} → ${familleDe(B).nom}`,
+            expected: texte, given: texte, points: 6, partiel: true
+        });
+        this.visee = null;
+        this.dessiner();
+        if (Object.keys(this.liens).length >= FLECHES.length) return this.gagner();
+        this.note(memeTexteDit(texte), 'ok');
+    }
+
     /**
      * LE MODE « PLACER LES NOMS » : l'organigramme entier, conditions écrites.
      *
@@ -1143,6 +1622,7 @@ class Organigramme extends BaseGame {
         this.coderEl.hidden = true;
         this.planEl.hidden = false;
         this.verifierEl.hidden = true;
+        this.carteEl.hidden = true;
         this.consigneEl.textContent =
             'Glisse chaque nom dans sa case. On descend en ajoutant une condition à la '
             + 'fois : plus on descend, plus la figure est particulière.';
@@ -1152,10 +1632,10 @@ class Organigramme extends BaseGame {
 
         const traits = FLECHES.map(f => {
             const t = traitsDeCondition(f);
-            return `<polyline class="qd-lien" fill="none" vector-effect="non-scaling-stroke"
-                    points="${traitEnPoints(t.entrant, v)}"/>
-                <polyline class="qd-lien" fill="none" vector-effect="non-scaling-stroke"
-                    points="${traitEnPoints(t.sortant, v)}"/>`;
+            return `<path class="qd-lien" fill="none" vector-effect="non-scaling-stroke"
+                    d="${traitEnChemin(t.entrant, v)}"/>
+                <path class="qd-lien" fill="none" vector-effect="non-scaling-stroke"
+                    d="${traitEnChemin(t.sortant, v)}"/>`;
         }).join('');
         let html = `<svg class="qd-fils" viewBox="0 0 100 100"
             preserveAspectRatio="none">${traits}</svg>`;
@@ -1247,6 +1727,18 @@ class Organigramme extends BaseGame {
      * d'un cran. Deux ou trois tours suffisent, et rien n'est plus à calibrer.
      */
     ajusterCartes() {
+        // LE NOM DE LA FIGURE SE RÉDUIT AUSSI. Vu dans la reconstruction, où
+        // l'organigramme entier tient à l'écran : les cases y sont deux fois
+        // plus petites qu'à l'étape par étape, et « Parallélogramme » s'y
+        // rognait des deux côtés — « rallélogramm ». Le nom d'une figure coupé
+        // est pire qu'un nom écrit petit.
+        this.mondeEl.querySelectorAll('.qd-nom').forEach(el => {
+            let taille = parseFloat(getComputedStyle(el).fontSize) || 12;
+            for (let i = 0; i < 14 && el.scrollWidth > el.clientWidth + 1 && taille > 5; i++) {
+                taille = Math.max(5, taille - Math.max(0.4, taille * 0.08));
+                el.style.fontSize = `${taille}px`;
+            }
+        });
         this.mondeEl.querySelectorAll('.qd-cond').forEach(el => {
             const t = el.querySelector('.qd-cond-t');
             if (!t) return;
@@ -1330,10 +1822,30 @@ class Organigramme extends BaseGame {
                 const cible = el && el.closest('[data-depose="1"]');
                 return cible || null;
             },
-            deposer: (cible, chip) => (this.progressif
-                ? this.deposerEtape(chip.dataset.carte)
-                : this.deposer(cible.dataset.case, chip.dataset.carte))
+            deposer: (cible, chip) => {
+                if (this.assemblage) {
+                    if (chip.dataset.figure) return this.deposerFigure(cible.dataset.case, chip.dataset.figure);
+                    if (chip.dataset.vignette) return this.deposerVignette(cible.dataset.fente, chip.dataset.vignette);
+                    return undefined;
+                }
+                return this.progressif
+                    ? this.deposerEtape(chip.dataset.carte)
+                    : this.deposer(cible.dataset.case, chip.dataset.carte);
+            }
         });
+        // LE TAPOTEMENT : on touche la carte, puis la case. C'est le seul geste
+        // possible au doigt sur un écran étroit, où la palette et la case ne
+        // tiennent pas ensemble à l'écran — et le seul possible au clavier.
+        if (this.assemblage) {
+            this.mondeEl.querySelectorAll('[data-depose="1"]').forEach(cible => {
+                cible.onclick = () => {
+                    if (!this.visee) return;
+                    const chip = this.visee;
+                    if (chip.dataset.figure) this.deposerFigure(cible.dataset.case, chip.dataset.figure);
+                    else if (chip.dataset.vignette) this.deposerVignette(cible.dataset.fente, chip.dataset.vignette);
+                };
+            });
+        }
     }
 
     /**
@@ -1470,6 +1982,15 @@ class Organigramme extends BaseGame {
 
     rater(pourquoi) {
         this.annoncee = null;
+        if (this.assemblage) {
+            // ON NE REPART PAS DE ZÉRO ICI, et c'est une autre leçon que
+            // l'étape par étape : la reconstruction n'est pas une chaîne, c'est
+            // une CARTE. Une figure mal placée ne compromet pas les autres ; on
+            // rend la carte à la palette et l'on continue.
+            this.visee = null;
+            this.dessiner();
+            return this.note(`${pourquoi} Reprends cette carte-là.`, 'ko');
+        }
         if (this.reprise === 'etape') {
             this.posesEtape = [];
             this.trouvees[this.etapeCourante && this.etapeCourante.rang] = [];
@@ -1518,11 +2039,31 @@ class Organigramme extends BaseGame {
 
     gagner() {
         this.fini = true;
+        // LA SÉRIE DE QUESTIONS NE SE FÉLICITE PAS DE LA MÊME CHOSE : elle n'a
+        // rien construit, elle a interrogé. Lui servir « l'organigramme est
+        // complet » était faux, et le compte de conditions qu'elle n'a pas
+        // posées levait une exception — vu au pilote, pas à l'œil.
+        if (this.questions) {
+            const n = this.org.questions.length;
+            this.note(`✅ ${this.justes} bonne${this.justes > 1 ? 's' : ''} réponse`
+                + `${this.justes > 1 ? 's' : ''} sur ${n}. Retiens la forme de la carte : `
+                + 'on arrive au carré PAR DEUX CHEMINS, et chacun ajoute ce que l\'autre '
+                + 'avait déjà.', 'ok');
+            this.onCorrectAnswer(null, COMPETENCE, {
+                questionText: `Organigramme — série de questions (${this.org.palier})`,
+                expected: `${n} questions`, given: `${this.justes} justes`,
+                points: 6 + this.justes * 3
+            });
+            setTimeout(() => { if (this.isRunning) this.showNext(); }, 3500);
+            return;
+        }
         this.note('✅ L\'organigramme est complet. Retiens la forme : on arrive au carré '
             + 'PAR DEUX CHEMINS, et chacun ajoute ce que l\'autre avait déjà.', 'ok');
-        const combien = this.progressif
-            ? this.org.etapes.reduce((n, x) => n + (x.bonnes || []).length, 0)
-            : this.org.trous.length;
+        const combien = this.assemblage
+            ? FAMILLES.length + FLECHES.length
+            : (this.progressif
+                ? this.org.etapes.reduce((n, x) => n + (x.bonnes || []).length, 0)
+                : this.org.trous.length);
         this.onCorrectAnswer(null, COMPETENCE, {
             questionText: `Organigramme des quadrilatères — ${this.org.palier}`,
             expected: `${combien} conditions`, given: `${combien} conditions`,
@@ -1533,6 +2074,12 @@ class Organigramme extends BaseGame {
 
     aider() {
         if (this.isDemo || !this.org) return;
+        if (this.questions) {
+            return this.note('Va voir la carte : c\'est à cela qu\'elle sert. Un organigramme '
+                + 'ne s\'apprend pas par cœur, il se CONSULTE — et à force de le consulter, '
+                + 'on finit par le savoir.');
+        }
+        if (this.assemblage) return this.aiderAssemblage();
         const e = this.etapeCourante;
         // CODER : l'aide dit la propriété, pas les marques. « Les côtés opposés
         // ont la même longueur » se traduit tout seul en deux paires de traits ;
@@ -1552,8 +2099,39 @@ class Organigramme extends BaseGame {
         this.note(conseil(this.org, this.poses));
     }
 
+    /** L'aide de la reconstruction : elle donne la MÉTHODE, jamais la case. */
+    aiderAssemblage() {
+        if (!this.phaseVignettes) {
+            const reste = FAMILLES.filter(f => !this.placement[f.id]);
+            return this.note('Commence par les deux extrêmes : la figure qui n\'a AUCUNE marque '
+                + 'va tout en haut — c\'est le quadrilatère quelconque, celui qui n\'a rien de '
+                + 'particulier —, et celle qui en a le plus va tout en bas. '
+                + `Il t'en reste ${reste.length} à placer.`);
+        }
+        const vide = FLECHES.find(f => this.liens[cleFleche(f)] === undefined);
+        if (!vide) return this.note('Tout est relié : relis chaque flèche de haut en bas.');
+        const A = familleDe(figureDansCase(this.placement, vide.de)).nom.toLowerCase();
+        const B = familleDe(figureDansCase(this.placement, vide.vers)).nom.toLowerCase();
+        return this.note(`Regarde une flèche vide et demande-toi ce qu'un ${B} a de plus qu'un `
+            + `${A}. Une réponse se dit toujours d'une de ces trois façons : par les CÔTÉS, `
+            + 'par les ANGLES, ou par les DIAGONALES.');
+    }
+
     montrerSolution() {
         if (!this.org) return false;
+        if (this.questions) {
+            const q = this.org.questions[this.iQuestion];
+            this.note(q ? `Réponse : ${q.bonnes.join(' / ')} (outil d'auteur).` : 'Série finie.');
+            return true;
+        }
+        if (this.assemblage) {
+            FAMILLES.forEach(f => { this.placement[f.id] = f.id; });
+            FLECHES.forEach(f => { this.liens[cleFleche(f)] = f.ajoute; });
+            this.fini = true;
+            this.dessiner();
+            this.note('Solution affichée (outil d\'auteur).');
+            return true;
+        }
         if (this.progressif) {
             this.org.etapes.forEach(x => {
                 if (x.bonnes) this.trouvees[x.rang] = x.bonnes.slice();
@@ -1623,6 +2201,11 @@ class Organigramme extends BaseGame {
             return fin();
         }
 
+        // LES DEUX NOUVELLES PARTIES N'ONT PAS DE « TROUS » À MONTRER, et le
+        // robot s'y cassait : la reconstruction pose des figures, la série pose
+        // des questions. Il a déjà dit l'essentiel — la forme de la carte —,
+        // c'est assez pour un aperçu.
+        if (!this.org.trous) return fin();
         for (let k = 0; k < 2 && k < this.org.trous.length; k++) {
             const caseId = this.org.trous[this.org.trous.length - 1 - k];
             const carte = this.org.cartes.find(c => verifierDepot(this.org, caseId, c).ok);
