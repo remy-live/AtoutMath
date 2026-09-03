@@ -31,7 +31,7 @@ export const LISTES = {
     enigme: ENIGMES
 };
 
-/** L'emoji de chaque genre — celui du bandeau et celui du banc d'essai. */
+/** L'emoji de chaque genre — celui du bandeau et celui de la revue. */
 export const EMOJIS_GENRE = {
     conseil: '💡',
     blague: '😄',
@@ -98,7 +98,7 @@ export function entreeDuJour(genre, opts = {}) {
  * TOUT CE QU'ON PROPOSE AUJOURD'HUI, dans l'ordre des genres.
  *
  * L'écran d'accueil n'en montre qu'un à la fois — quatre encarts empilés, c'est
- * un journal, pas un bonjour. Mais le banc d'essai les veut tous, et le
+ * un journal, pas un bonjour. Mais l'onglet « Le quotidien » les veut tous, et le
  * professeur qui prépare sa journée aussi.
  */
 export function toutDuJour(opts = {}) {
@@ -123,13 +123,13 @@ export function genreDuJour(jour) {
     return ROULEMENT[((j % ROULEMENT.length) + ROULEMENT.length) % ROULEMENT.length];
 }
 
-/** Les `combien` prochains jours d'un genre — l'aperçu du banc d'essai. */
+/** Les `combien` prochains jours d'un genre — l'aperçu de la revue. */
 export function apercu(genre, combien, opts = {}) {
     return prochains(LISTES[genre], combien, opts)
         .map(p => ({ ...p, entree: normaliser(genre, p.entree) }));
 }
 
-/** Combien d'entrées par genre : le compte affiché au banc d'essai. */
+/** Combien d'entrées par genre : le compte affiché dans la revue. */
 export function comptes() {
     return GENRES.map(g => ({ genre: g, libelle: LIBELLES_GENRE[g], n: LISTES[g].length }));
 }

@@ -33,12 +33,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=566">
-    <link rel="stylesheet" href="css/layout.css?v=566">
-    <link rel="stylesheet" href="css/ui.css?v=566">
-    <link rel="stylesheet" href="css/games.css?v=566">
-    <link rel="stylesheet" href="css/components.css?v=566">
-    <link rel="stylesheet" href="css/modules.css?v=566">
+    <link rel="stylesheet" href="css/base.css?v=567">
+    <link rel="stylesheet" href="css/layout.css?v=567">
+    <link rel="stylesheet" href="css/ui.css?v=567">
+    <link rel="stylesheet" href="css/games.css?v=567">
+    <link rel="stylesheet" href="css/components.css?v=567">
+    <link rel="stylesheet" href="css/modules.css?v=567">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -115,14 +115,20 @@
                  appareil, noter ce qui marche, ce que valent les indices et le
                  robot, corriger le classement — et en sortir un rapport. Les
                  tests automatiques ne savent rien dire de tout cela. -->
-            <button class="debug-btn" id="db-banc" title="Banc d'essai : noter les exercices un par un"
-                    aria-label="Ouvrir le banc d'essai">
-                <svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 3.5h6v2H9z"/><path d="m8.5 11 2 2 4-4"/><path d="M8.5 16.5h7"/></svg>
-            </button>
             <!-- LA REVUE DU CATALOGUE : le tableau de TOUS les exercices, une
-                 ligne chacun. Le banc note un exercice à fond ; la revue en
-                 trie cent — cocher « en test », dater, annoter, et lancer
-                 l'aperçu sur les trois appareils sans quitter le tableau. -->
+                 ligne chacun — cocher « en test », dater, annoter, et lancer
+                 l'aperçu sur les trois appareils sans quitter le tableau. Son
+                 second onglet trie les listes du quotidien.
+
+                 LE BANC D'ESSAI ÉTAIT ICI, ET IL N'Y EST PLUS. Rémy : « on a
+                 beaucoup d'interface de debug, qu'en penses-tu ? » Il notait un
+                 exercice sur six critères — or quatre d'entre eux sont MESURÉS
+                 depuis (le Contrôle mesure les débordements sur trois écrans,
+                 le Pilote joue l'exercice jusqu'au bout, l'audit vérifie que la
+                 feuille se garnit), le cinquième vivait déjà dans la revue, et
+                 sa barre de passe faisait doublon avec les ◀ ▶ de l'Atelier.
+                 Cocher à la main ce que la machine mesure, c'est du travail
+                 qu'on se donne. -->
             <button class="debug-btn" id="db-revue" title="Revue du catalogue : trier tous les exercices"
                     aria-label="Ouvrir la revue du catalogue">
                 <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M9 9v11"/><path d="m12 13.5 1.6 1.6 3.4-3.4"/></svg>
@@ -135,10 +141,13 @@
                     aria-label="Ouvrir l'Atelier">
                 <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M11 4v16M11 12h10"/></svg>
             </button>
-            <!-- LA BARRE DE PASSE. Le panneau du banc est une PAGE : il faut
-                 le fermer pour jouer, le rouvrir pour noter. Cette barre-là
-                 tient sur une ligne et reste posée PAR-DESSUS le jeu :
-                 reculer, avancer, imprimer, griffonner une remarque. -->
+            <!-- LA BARRE DE PASSE. Rémy : « garder les mini-barres, c'est bien
+                 aussi. » Un écran d'auteur est une PAGE : il faut le fermer
+                 pour jouer, le rouvrir pour noter. Cette barre-là tient sur une
+                 ligne et reste posée PAR-DESSUS le jeu — reculer, avancer,
+                 imprimer, griffonner une remarque, ouvrir l'Atelier sur
+                 l'exercice qu'on regarde — et sa remarque va dans le carnet de
+                 la revue, qui est le seul. -->
             <button class="debug-btn" id="db-banc-barre" title="Barre de passe : enchaîner et noter"
                     aria-label="Barre de passe">
                 <svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="m8 7-5 5 5 5"/><path d="m16 7 5 5-5 5"/></svg>

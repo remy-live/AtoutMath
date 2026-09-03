@@ -5,9 +5,9 @@
 // flottante, elle se pousse là où elle ne gêne pas, et se replie sur sa
 // poignée quand on veut voir l'écran tel que l'élève le verra.
 //
-// Le glissé lui-même vit dans ui/flottant.js : la barre de passe du banc
-// d'essai en a besoin aussi, et deux implémentations du même geste finissent
-// toujours par ne plus se comporter pareil.
+// Le glissé lui-même vit dans ui/flottant.js : la barre de passe en a besoin
+// aussi, et deux implémentations du même geste finissent toujours par ne plus
+// se comporter pareil.
 
 import { placer, restaurer, rendreDeplacable } from './flottant.js';
 

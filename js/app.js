@@ -757,18 +757,29 @@ function initDebugToolbar() {
         btnClear.onclick = () => {
             window.appConfirm('Réinitialisation',
                 'Effacer toutes les données locales de ce poste ?<br><br>'
-                + '<b>Le carnet du banc d\'essai est conservé.</b> Une passe s\'étale sur '
+                + '<b>Le carnet de la revue est conservé.</b> Une passe s\'étale sur '
                 + 'plusieurs soirées, et ce bouton sert justement à repartir d\'un profil '
                 + 'propre POUR continuer à tester.', async () => {
-                // Le carnet du banc est un travail d'auteur, pas une donnée
-                // d'élève : le perdre en vidant un profil de test coûterait
-                // plusieurs soirées de relevés.
-                let carnet = null;
-                try { carnet = window.localStorage.getItem('mathbox-banc-essai'); } catch (e) { /* privé */ }
+                // LE CARNET D'AUTEUR SURVIT À LA VIDANGE. Ce n'est pas une
+                // donnée d'élève : le perdre en vidant un profil de test
+                // coûterait plusieurs soirées de relevés.
+                //
+                // ET C'EST BIEN LE CARNET DE LA REVUE qu'on garde. On gardait
+                // encore celui du banc d'essai — une clef morte depuis que le
+                // banc a été retiré —, si bien que ce bouton effaçait
+                // exactement ce qu'il promettait de préserver : les décisions,
+                // les remarques de la barre de passe et le tri du quotidien.
+                const GARDES = ['mathbox-revue', 'atoutmath.quotidien.verdicts'];
+                const carnets = {};
+                GARDES.forEach(k => {
+                    try { carnets[k] = window.localStorage.getItem(k); } catch (e) { /* privé */ }
+                });
                 if (typeof localforage !== 'undefined') await localforage.clear();
                 try {
                     window.localStorage.clear();
-                    if (carnet) window.localStorage.setItem('mathbox-banc-essai', carnet);
+                    GARDES.forEach(k => {
+                        if (carnets[k]) window.localStorage.setItem(k, carnets[k]);
+                    });
                 } catch (e) { /* mode privé */ }
                 window.location.reload();
             });
@@ -789,18 +800,15 @@ function initDebugToolbar() {
         openNouveautesModal();
     };
 
-    // Le banc d'essai : chargé à la demande. C'est un outil d'auteur, il n'a
-    // aucune raison de peser sur le démarrage d'un élève.
-    const btnBanc = document.getElementById('db-banc');
-    if (btnBanc) btnBanc.onclick = () => import('./ui/bancEssai.js').then(m => m.ouvrirBancEssai());
-
-    // La barre de passe : la version d'une ligne du banc, posée par-dessus le
-    // jeu. On l'allume et on l'éteint du même bouton.
+    // La revue du catalogue : chargée à la demande. C'est un outil d'auteur, il
+    // n'a aucune raison de peser sur le démarrage d'un élève.
     const btnRevue = document.getElementById('db-revue');
     if (btnRevue) btnRevue.onclick = () => import('./ui/revue.js').then(m => m.ouvrirRevue());
 
+    // La barre de passe : la revue en une ligne, posée par-dessus le jeu. On
+    // l'allume et on l'éteint du même bouton.
     const btnBarre = document.getElementById('db-banc-barre');
-    if (btnBarre) btnBarre.onclick = () => import('./ui/bancEssai.js').then(m => m.basculerBarreBanc());
+    if (btnBarre) btnBarre.onclick = () => import('./ui/barrePasse.js').then(m => m.basculerBarrePasse());
 
     // L'ATELIER : les trois vues d'un exercice côte à côte, et les réglages qui
     // les redessinent toutes. Chargé à la demande, comme le reste de la palette.

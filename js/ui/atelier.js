@@ -1233,9 +1233,23 @@ function deborde(doc) {
     return out.slice(0, 10);
 }
 
-export function ouvrirAtelier() {
+/**
+ * Ouvre l'Atelier — sur l'exercice demandé, ou sur celui qu'on regardait.
+ *
+ * `id` : la barre de passe s'en sert. Elle dit « il y a quelque chose à voir
+ * sur celui-ci » ; sans cet argument, il faudrait le retrouver à la main dans
+ * une liste de cent cinquante-deux, et l'on ouvrirait l'Atelier sur un autre
+ * exercice que celui qu'on venait de regarder.
+ */
+export function ouvrirAtelier(id) {
     lireVolets();
     assurerPanneau();
+    const demande = id ? exercices.find(e => e.id === id) : null;
+    if (demande && (!exoCourant || exoCourant.id !== demande.id)) {
+        exoCourant = demande;
+        paramsCourants = { ...(demande.params || {}) };
+        try { localStorage.setItem(CLE_EXO, demande.id); } catch (e) { /* privé */ }
+    }
     if (!exoCourant) {
         let garde = null;
         try { garde = localStorage.getItem(CLE_EXO); } catch (e) { garde = null; }

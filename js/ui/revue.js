@@ -3,8 +3,21 @@
 // Rémy : « comment sait-on que ce sont les derniers jeux, on n'avait pas
 // trié ». Soixante-sept exercices sur cent neuf portent `status: test`, et
 // certains le portent depuis des mois parce que personne n'a jamais eu sous
-// les yeux la LISTE de ce qui reste à décider. Le banc d'essai note un
-// exercice à fond ; ce tableau-ci en trie cent.
+// les yeux la LISTE de ce qui reste à décider. C'est ce tableau-ci.
+//
+// C'EST AUSSI LE SEUL CARNET D'AUTEUR, depuis que le banc d'essai a été retiré.
+// Rémy : « on a beaucoup d'interface de debug, qu'en penses-tu ? » Le banc
+// notait un exercice sur six critères ; quatre sont MESURÉS depuis — le
+// Contrôle mesure les débordements sur trois écrans, le Pilote joue l'exercice
+// jusqu'au bout, l'audit vérifie que la feuille se garnit — et le cinquième, le
+// classement, vivait déjà ici. Y écrivent maintenant : ce tableau, la barre de
+// passe (ses remarques) et l'Atelier (ses trois décisions). Un seul carnet, une
+// seule consigne à recoller.
+//
+// SON SECOND ONGLET TRIE LES LISTES DU QUOTIDIEN — proverbes, blagues,
+// citations, énigmes. C'était l'autre chose que portait le banc, et la seule
+// qui n'avait pas de doublon : parcourir une longue liste et trancher une fois
+// par ligne, c'est exactement ce que fait cet écran sur les exercices.
 //
 // CE QU'UNE LIGNE PORTE :
 //   - la case « en test », qu'on coche et qu'on décoche ;
@@ -21,8 +34,7 @@
 // ici ne peut pas réécrire `status: STATUS.TEST` dans `js/data/calcul.js`. Le
 // tableau garde donc les décisions sur l'appareil et en sort une consigne
 // d'une ligne — « STATUT v328 | valide = … » — à coller dans la conversation
-// pour que je les reporte dans les descripteurs. C'est le même aller-retour
-// que le RETEST du banc d'essai, et il a fait ses preuves.
+// pour que je les reporte dans les descripteurs.
 
 import { exercices } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
@@ -34,6 +46,12 @@ import {
     jeuRevu, aChangeJeu, calcRevu, aChangeCalc, lireTags, ecrireTags, basculerTag, aLeTag
 } from '../core/revue.js';
 
+// LE TRI DU QUOTIDIEN — proverbes, blagues, énigmes. Il vivait dans le banc
+// d'essai, qui a été retiré ; c'est ici son doublon le plus proche, et de très
+// loin : parcourir une longue liste et trancher une fois par ligne, c'est
+// exactement ce que fait cet écran sur les exercices.
+import { quotidienHtml, brancherQuotidien } from './quotidienTri.js';
+
 const CLE = 'mathbox-revue';
 let revue = null;
 // L'ORDRE PAR DÉFAUT EST « LES DERNIERS TOUCHÉS ». La question de départ était
@@ -43,6 +61,8 @@ const CRITERES_VIDES = () => ({
     texte: '', domaine: '', niveau: '', statut: '', avancee: '', jeux: false, tri: '-ecrit'
 });
 let criteres = CRITERES_VIDES();
+/** L'onglet regardé : les exercices, ou le tri du quotidien. */
+let vue = 'exercices';
 let retour = null;         // ce qu'on est parti regarder, et où le cocher au retour
 
 // --- Le carnet, gardé sur l'appareil ----------------------------------------
@@ -166,6 +186,28 @@ function assurerPanneau() {
                 border-radius: 8px; padding: 6px 9px; font: inherit; font-size: .82rem; min-height: 34px;
             }
             .rv-recherche { flex: 1 1 160px; min-width: 120px; }
+            .rv-onglets {
+                display: flex; gap: 4px; padding: 6px 10px 0; flex: 0 0 auto;
+                border-bottom: 1px solid var(--border);
+            }
+            .rv-onglet {
+                border: 1px solid transparent; border-bottom: none; background: transparent;
+                color: var(--text-muted); border-radius: 9px 9px 0 0; padding: 6px 13px;
+                font: inherit; font-weight: 700; font-size: .82rem; cursor: pointer;
+                min-height: 34px; margin-bottom: -1px;
+            }
+            .rv-onglet--actif {
+                background: var(--bg-app); border-color: var(--border);
+                color: var(--text-main);
+            }
+            /* Le tri du quotidien défile comme le tableau, mais il n'est pas un
+               tableau : il lui faut ses marges. */
+            .rv-quotidien { padding: 10px 12px 40px; }
+            /* LES FILTRES SONT CEUX DES EXERCICES. On les cache par une CLASSE
+               et non par l'attribut « hidden » : « display: flex » le bat — il
+               ne pose que « display: none » en feuille par défaut —, et la
+               barre de filtres serait restée sous l'onglet des proverbes. */
+            .rv--quotidien .rv-filtres, .rv--quotidien .rv-recherche { display: none; }
 
             /* Le tableau défile dans les DEUX sens, et seule l'en-tête et la
                colonne du nom restent en place : sans elles, on ne sait plus à
@@ -360,6 +402,16 @@ function assurerPanneau() {
             <button type="button" class="rv-btn" data-fermer>Fermer</button>
             <span class="rv-compteur" data-compteur></span>
         </div>
+        <!-- DEUX OBJETS, DEUX ONGLETS, UN SEUL ÉCRAN. Rémy : « on a beaucoup
+             d'interface de debug ». On en a retiré une (le banc d'essai) ; ce
+             qu'elle portait d'irremplaçable — le tri des listes du quotidien —
+             arrive ici plutôt que dans un nouveau bouton de la palette. -->
+        <div class="rv-onglets" role="tablist">
+            <button type="button" class="rv-onglet rv-onglet--actif" data-vue="exercices"
+                role="tab" aria-selected="true">Les exercices</button>
+            <button type="button" class="rv-onglet" data-vue="quotidien"
+                role="tab" aria-selected="false">📅 Le quotidien</button>
+        </div>
         <div class="rv-filtres" data-filtres></div>
         <div class="rv-cadre" data-cadre></div>
         <!-- LE VOCABULAIRE EXISTANT, PROPOSÉ À LA SAISIE. Retaper « Grandeurs
@@ -376,6 +428,9 @@ function assurerPanneau() {
         plier.setAttribute('aria-expanded', String(ouvert));
         plier.classList.toggle('rv-btn--fort', ouvert);
     };
+    el.querySelectorAll('[data-vue]').forEach(b => {
+        b.onclick = () => { vue = b.dataset.vue; peindre(); };
+    });
     el.querySelector('[data-fermer]').onclick = () => fermer();
     el.querySelector('[data-consigne]').onclick = () => copierConsigne();
     el.querySelector('[data-copier]').onclick = () => copierBilan();
@@ -1025,6 +1080,26 @@ function demanderCarnet() {
 
 function peindre() {
     const el = assurerPanneau();
+    el.querySelectorAll('[data-vue]').forEach(b => {
+        const actif = b.dataset.vue === vue;
+        b.classList.toggle('rv-onglet--actif', actif);
+        b.setAttribute('aria-selected', String(actif));
+    });
+    // LES FILTRES SONT CEUX DES EXERCICES : les montrer au-dessus d'une liste
+    // de proverbes proposerait de filtrer par niveau et par domaine des
+    // phrases qui n'en ont pas.
+    const cadre = el.querySelector('[data-cadre]');
+    el.classList.toggle('rv--quotidien', vue === 'quotidien');
+    if (vue === 'quotidien') {
+        cadre.className = 'rv-cadre rv-quotidien';
+        cadre.innerHTML = quotidienHtml();
+        brancherQuotidien(cadre, peindre);
+        // Le compteur parle des exercices : il n'a rien à dire ici, et un
+        // « 152 lignes » sous une liste de proverbes serait un mensonge.
+        el.querySelector('[data-compteur]').textContent = '';
+        return;
+    }
+    cadre.className = 'rv-cadre';
     peindreFiltres(el);
     peindreTable(el);
     majCompteur(el);

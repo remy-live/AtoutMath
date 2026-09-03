@@ -8782,9 +8782,27 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .fx-gr-pad--coup { border-color: #c3cad6; background: transparent; }
 .fx-gr-num { position: absolute; text-align: right; color: #6e7684; font-weight: 700; }
 
-/* L'ONGLET « LE QUOTIDIEN » du banc d'essai. L'entrée du jour est en grand —
-   c'est la seule que trente élèves liront ce matin ; le reste est une liste
-   qu'on parcourt à l'œil. */
+/* L'ONGLET « LE QUOTIDIEN » de la revue du catalogue. L'entrée du jour est en
+   grand — c'est la seule que trente élèves liront ce matin ; le reste est une
+   liste qu'on parcourt à l'œil.
+
+   LES QUATRE CLASSES QUI SUIVENT VENAIENT DU BANC D'ESSAI, dont la feuille de
+   style était écrite dans son propre fichier. Le banc a été retiré ; ce bloc-ci
+   lui a survécu et en avait besoin, elles le suivent donc ici plutôt que de
+   disparaître avec lui. */
+.banc-chip {
+    border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-muted);
+    border-radius: 999px; padding: 5px 12px; font-size: .78rem; font-weight: 700;
+    cursor: pointer; min-height: 32px;
+}
+.banc-chip--actif { background: var(--primary); border-color: var(--primary); color: #fff; }
+.banc-domaine {
+    font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted); margin: 14px 0 6px;
+}
+.banc-vide { color: var(--text-muted); font-size: .86rem; padding: 20px 0; text-align: center; }
+.banc-critere-q { font-size: .78rem; color: var(--text-muted); margin: 2px 0 7px; }
+
 .banc-q-onglets { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
 .banc-q-jour {
     background: var(--surface-2, #f6f8fc); border: 1px solid var(--border, #dce2ec);

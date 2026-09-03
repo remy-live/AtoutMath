@@ -245,7 +245,7 @@ export function equiperFenetre(overlay, cle, opts = {}) {
         bReplier.setAttribute('aria-expanded', String(!replie));
     };
 
-    // `force` : la barre de passe du banc d'essai EXIGE une fenêtre posée à
+    // `force` : la barre de passe EXIGE une fenêtre posée à
     // côté — une modale qui bloque ne peut pas accompagner une passe de cent
     // exercices. C'est déjà un outil d'auteur, il n'a pas à demander deux fois.
     const detacherIci = (force) => {
