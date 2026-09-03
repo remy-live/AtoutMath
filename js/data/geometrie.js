@@ -155,20 +155,35 @@ export const geometrieExercises = [
         // même leçon, une question à la fois, et tout tient en grand. C'est
         // aussi ce que Rémy décrit : « tu as un quadrilatère et le
         // parallélogramme et les 3 cases vides pour le transformer ».
-        params: { palier: 'conditions', codage: true, reprise: 'debut' },
+        // LES PARTIES SE COCHENT, ELLES NE SE CHOISISSENT PLUS.
+        //
+        // Rémy : « pour les paramètres, on a l'étape organigramme que l'on peut
+        // mettre ou non et après celle où il faut compléter les propriétés.
+        // Dans les paramètres, il faut pouvoir paramétrer les exercices à
+        // étape. »
+        //
+        // Les six paliers n'étaient pas six exercices : ce sont six MOMENTS de
+        // la même leçon. Le menu déroulant obligeait à n'en donner qu'un, donc
+        // à créer quatre entrées de catalogue pour donner une leçon entière —
+        // ou à les lancer à la main l'un après l'autre. Le défaut ne change
+        // pas : une seule case cochée, la construction étape par étape.
+        params: { parties: ['conditions'], codage: true, reprise: 'debut' },
         paramSchema: [
             {
-                id: 'palier', type: 'select', label: 'Ce qu\'on replace', default: 'conditions',
-                aide: 'Placer les NOMS travaille la hiérarchie : qui contient qui, dans un '
-                    + 'organigramme déjà tracé. CONSTRUIRE l\'organigramme travaille les '
-                    + 'définitions, et se joue en sept étapes : à chacune, deux cases et une '
-                    + 'seule question — qu\'est-ce que celle de droite a de plus que celle de '
-                    + 'gauche ? Les deux paliers de construction ne diffèrent que par le '
-                    + 'nombre de cartes-intrus mêlées aux bonnes. RECONSTRUIRE, enfin, ne '
-                    + 'guide plus du tout : l\'organigramme est vide, les cinq figures sont '
-                    + 'données sans leur nom — on les reconnaît à leur codage — et il faut '
-                    + 'd\'abord les ranger, puis relier chaque flèche. C\'est ce qu\'on '
-                    + 'demande en contrôle.',
+                id: 'parties', type: 'multiselect', deroulant: true, tout: 'parties',
+                label: 'Les parties de la leçon', default: ['conditions'],
+                aide: 'Coche ce que l\'élève traversera, dans l\'ordre de la leçon — les '
+                    + 'parties s\'enchaînent, elles ne se remplacent pas. Placer les NOMS '
+                    + 'travaille la hiérarchie : qui contient qui, dans un organigramme déjà '
+                    + 'tracé. CONSTRUIRE l\'organigramme travaille les définitions, et se joue '
+                    + 'en sept étapes : à chacune, deux cases et une seule question — '
+                    + 'qu\'est-ce que celle de droite a de plus que celle de gauche ? Les deux '
+                    + 'paliers de construction ne diffèrent que par le nombre de cartes-intrus '
+                    + 'mêlées aux bonnes. RECONSTRUIRE ne guide plus du tout : l\'organigramme '
+                    + 'est vide, les cinq figures sont données sans leur nom — on les reconnaît '
+                    + 'à leur codage — et il faut d\'abord les ranger, puis relier chaque '
+                    + 'flèche. C\'est ce qu\'on demande en contrôle. La SÉRIE DE QUESTIONS, '
+                    + 'enfin, ne construit rien : elle vérifie, la carte à portée de main.',
                 options: [
                     { value: 'decouverte', label: 'Placer trois noms' },
                     { value: 'noms', label: 'Placer tous les noms' },

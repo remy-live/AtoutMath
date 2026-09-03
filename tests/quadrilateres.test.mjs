@@ -544,12 +544,40 @@ test('l\'exercice du catalogue tient debout', () => {
     const exo = getExerciseById('geo-quadrilateres');
     assert.ok(exo, 'l\'exercice doit être au catalogue');
     assert.equal(exo.activityId, 'quadrilateres');
-    const schema = exo.paramSchema.find(p => p.id === 'palier');
+    // LES PARTIES SE COCHENT : elles s'enchaînent, elles ne se remplacent pas.
+    const schema = exo.paramSchema.find(p => p.id === 'parties');
+    assert.equal(schema.type, 'multiselect');
     schema.options.forEach(o => {
         assert.ok(PALIERS[o.value], `palier inconnu : ${o.value}`);
         assert.equal(o.label, PALIERS[o.value].label, `le libellé du palier ${o.value} a divergé du noyau`);
     });
+    // Le défaut du catalogue reste la construction étape par étape.
+    assert.deepEqual(exo.params.parties, ['conditions']);
     assert.ok(MODES.FAMILLES && MODES.PROPRIETES);
+});
+
+test('LES PARTIES S\'ENCHAÎNENT DANS L\'ORDRE DE LA LEÇON, pas dans celui des clics', async () => {
+    // Rémy : « on a l'étape organigramme que l'on peut mettre ou non et après
+    // celle où il faut compléter les propriétés. Dans les paramètres, il faut
+    // pouvoir paramétrer les exercices à étape. »
+    //
+    // L'ordre est celui de `PALIERS` — les noms, la construction guidée, la
+    // construction seule, les questions —, et non celui dans lequel on coche :
+    // sinon la même leçon se donnerait à l'endroit ou à l'envers selon le sens
+    // des clics.
+    const { partiesDe } = await import('../js/games/quadrilateres.js');
+    assert.deepEqual(partiesDe({ parties: ['questions', 'noms', 'conditions'] }),
+        ['noms', 'conditions', 'questions']);
+    // Les doublons et les valeurs inconnues tombent.
+    assert.deepEqual(partiesDe({ parties: ['noms', 'noms', 'zzz'] }), ['noms']);
+    // JAMAIS DE LISTE VIDE : `poser()` lirait `undefined` et l'exercice
+    // n'afficherait rien. On retombe sur l'ancien réglage, puis sur le défaut.
+    assert.deepEqual(partiesDe({}), ['conditions']);
+    assert.deepEqual(partiesDe({ parties: [] }), ['conditions']);
+    assert.deepEqual(partiesDe({ parties: 'zzz' }), ['conditions']);
+    assert.deepEqual(partiesDe({ palier: 'assembler' }), ['assembler']);
+    // Une chaîne seule vaut une case cochée.
+    assert.deepEqual(partiesDe({ parties: 'questions' }), ['questions']);
 });
 
 // --- LA FICHE PAPIER ----------------------------------------------------------

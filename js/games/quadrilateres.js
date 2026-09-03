@@ -308,11 +308,49 @@ const ETAGE_MODALE = 100001;
 const enAttribut = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
     .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/**
+ * LES PARTIES DEMANDÉES, DANS L'ORDRE DE LA LEÇON.
+ *
+ * L'ordre est celui de `PALIERS`, et il n'est pas alphabétique : c'est celui
+ * dans lequel on enseigne — les noms, la construction guidée, la construction
+ * seule, les questions. Laisser l'ordre des cases cochées aurait donné une
+ * leçon différente selon le sens dans lequel on clique.
+ *
+ * Un réglage vide ou inconnu ne rend jamais une liste vide : `poser()` lirait
+ * `undefined` et l'exercice n'afficherait rien. On retombe alors sur ce que
+ * disait l'ancien réglage — `palier` —, puis sur la construction étape par
+ * étape, qui est le défaut du catalogue.
+ */
+export function partiesDe(params = {}) {
+    const ordre = Object.keys(PALIERS);
+    const demandees = Array.isArray(params.parties) ? params.parties
+        : (typeof params.parties === 'string' && params.parties ? [params.parties] : []);
+    const propres = [...new Set(demandees.filter(x => PALIERS[x]))]
+        .sort((a, b) => ordre.indexOf(a) - ordre.indexOf(b));
+    if (propres.length) return propres;
+    return [PALIERS[params.palier] ? params.palier : 'conditions'];
+}
+
 class Organigramme extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'quadrilateres');
         this.rng = makeRng(this.params.seed);
-        this.palier = PALIERS[this.params.palier] ? this.params.palier : 'noms';
+        // LES PARTIES DE L'EXERCICE, DANS L'ORDRE — et c'est Rémy qui a vu
+        // qu'elles manquaient : « on a l'étape organigramme que l'on peut
+        // mettre ou non et après celle où il faut compléter les propriétés.
+        // Dans les paramètres, il faut pouvoir paramétrer les exercices à
+        // étape. »
+        //
+        // LES SIX PALIERS N'ÉTAIENT PAS SIX EXERCICES : ce sont six MOMENTS de
+        // la même leçon, et on les donne l'un après l'autre. Placer les noms
+        // fait entrer dans la hiérarchie ; la construire étape par étape
+        // travaille les définitions ; la reconstruire en entier retire les
+        // appuis ; la série de questions vérifie. Un menu déroulant obligeait à
+        // choisir UN moment, donc à créer quatre exercices pour donner une
+        // leçon — ou à les lancer à la main l'un après l'autre.
+        this.parties = partiesDe(this.params);
+        this.iPartie = 0;
+        this.palier = this.parties[0];
         // DEUX RÉGLAGES POUR L'ÉTAPE PAR ÉTAPE, tous deux demandés par Rémy.
         // `codage` intercale « code la figure » après chaque nouvelle case ;
         // `reprise` dit ce qu'on fait d'une erreur — tout reprendre, ou refaire
@@ -824,6 +862,9 @@ class Organigramme extends BaseGame {
     startGameLoop() { this.poser(); }
 
     poser() {
+        // La partie courante commande le palier : tout le reste du jeu lit
+        // `this.palier` et n'a rien à savoir de l'enchaînement.
+        this.palier = this.parties[this.iPartie] || this.parties[0];
         // DEUX EXERCICES DANS UN SEUL JEU, et ils ne se ressemblent pas. Placer
         // les NOMS, c'est ranger cinq mots dans une hiérarchie déjà dessinée ;
         // placer les CONDITIONS, c'est construire la hiérarchie elle-même, une
@@ -863,7 +904,16 @@ class Organigramme extends BaseGame {
         return true;
     }
 
-    showNext() { return this.poser(); }
+    /**
+     * LA PARTIE SUIVANTE — et l'on repart à la première quand on les a toutes
+     * faites. Une leçon en trois parties donnée à une classe rapide doit
+     * pouvoir recommencer : le meneur, lui, s'arrête quand il a son compte de
+     * questions, et c'est à lui de décider quand cela suffit.
+     */
+    showNext() {
+        this.iPartie = (this.iPartie + 1) % this.parties.length;
+        return this.poser();
+    }
 
     /**
      * PASSER À L'ÉTAPE SUIVANTE — l'outil d'auteur, et il ne marchait pas ici.

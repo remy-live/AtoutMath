@@ -32,7 +32,11 @@
 import { exercices } from '../data/catalog.js';
 import { paramSchemaOf } from '../data/catalog.js';
 import { fieldHtml, readParams, wireTips } from '../games/configUI.js';
-import { estJeuCatalogue } from '../core/revue.js';
+import {
+    estJeuCatalogue, jeuRevu, aChangeJeu, statutRevu, aChange, calcRevu, aChangeCalc,
+    lireRevue, nouvelleRevue, ficheDe, decider, consigneJeux, consigneStatuts, consigneCalc
+} from '../core/revue.js';
+import { STATUS, STATUS_LABELS } from '../data/status.js';
 import { isGame } from '../core/gameAccess.js';
 import { aUneFichePapier, getActivity, getGenerator } from '../core/registry.js';
 import { journalConsole } from './consoleLog.js';
@@ -65,6 +69,94 @@ function catalogueRecent() {
 }
 
 /**
+ * LE CARNET DE REVUE — celui de l'écran « Revue du catalogue », pas un autre.
+ *
+ * Rémy, devant le bloc « Où c'est rangé » : « il faudrait pouvoir éditer, car
+ * par exemple l'organigramme n'est pas un jeu ».
+ *
+ * IL A RAISON, ET LE CATALOGUE NE PEUT PAS AVOIR RAISON TOUT SEUL. « Est-ce un
+ * jeu ? » se devine ici d'une règle de code — il porte un moteur d'activité et
+ * aucun générateur —, et cette règle range l'organigramme des quadrilatères
+ * parmi les jeux : il a bien un moteur à lui, et son contenu ne vient d'aucun
+ * générateur. Mais ce n'est pas un jeu, c'est une leçon de géométrie qui se
+ * construit. Aucune règle mécanique ne trouvera cela ; il faut le dire.
+ *
+ * ET ON LE DIT DANS LE CARNET QUI EXISTE DÉJÀ. La revue du catalogue tient
+ * exactement ces décisions-là — « c'est un jeu », « c'est en test », « la
+ * calculatrice est offerte » —, sait dire quand elles diffèrent du code, et en
+ * sort une CONSIGNE d'une ligne à recoller dans la conversation pour que je les
+ * reporte dans les descripteurs. Écrire un second carnet ici aurait donné deux
+ * vérités qui se contredisent au premier oubli. L'Atelier ouvre donc le même,
+ * sous la même clef, et ce qu'on décide devant l'exercice se retrouve dans le
+ * tableau de la revue — et l'inverse.
+ *
+ * (Le catalogue reste du CODE : une case cochée dans un navigateur ne réécrit
+ * pas `js/data/geometrie.js`. C'est la consigne qui fait le voyage, et c'est
+ * elle que le relevé 📋 emporte.)
+ */
+const CLE_REVUE = 'mathbox-revue';
+let revue = null;
+
+function chargerRevue() {
+    if (revue) return revue;
+    let garde = null;
+    try { garde = lireRevue(window.localStorage.getItem(CLE_REVUE)); } catch (e) { garde = null; }
+    revue = garde || nouvelleRevue({ date: Date.now() });
+    // LA VERSION VOYAGE AVEC LA CONSIGNE — « JEU v565 | pas = … ». Sans elle,
+    // une consigne collée trois jours plus tard ne dit pas sur quel état du
+    // catalogue la décision a été prise, et c'est justement ce qu'il faut
+    // savoir pour la reporter sans se tromper d'exercice.
+    revue.version = versionChargee();
+    return revue;
+}
+
+/** La version affichée par la page — la même lecture que l'écran de revue. */
+function versionChargee() {
+    const el = document.getElementById('db-version');
+    if (el && el.textContent) return el.textContent.trim();
+    const lien = document.querySelector('link[href*="?v="]');
+    const m = lien && lien.getAttribute('href').match(/\?v=([\w.-]+)/);
+    return m ? `v${m[1]}` : '';
+}
+
+function garderRevue() {
+    try { window.localStorage.setItem(CLE_REVUE, JSON.stringify(revue)); } catch (e) { /* privé */ }
+}
+
+/** La fiche de revue de l'exercice regardé, ou null tant que rien n'est décidé. */
+const ficheCourante = () => ficheDe(chargerRevue(), exoCourant.id);
+
+/** Décide, garde, et redessine — le bloc et les volets, car le statut se voit. */
+function decidere(changements) {
+    revue = decider(chargerRevue(), exoCourant.id, changements);
+    garderRevue();
+    peindreRangement();
+}
+
+/**
+ * LES TROIS LIGNES QU'ON PEUT DÉCIDER. Chacune porte le même mécanisme : ce que
+ * dit le CODE, ce qu'on a décidé s'il y a une décision, et le rappel qu'elles
+ * diffèrent. « — » remet la ligne au silence : c'est le code qui reparle.
+ */
+const DECISIONS = {
+    jeu: {
+        options: [['', 'ce que dit le code'], ['oui', 'un JEU'], ['non', 'un EXERCICE']],
+        lire: (exo, f) => (f && f.jeu === null) || !f ? '' : (f.jeu ? 'oui' : 'non'),
+        ecrire: (v) => ({ jeu: v === '' ? null : v === 'oui' })
+    },
+    statut: {
+        options: [['', 'ce que dit le code'], ['test', 'En test'], ['valide', 'Validé']],
+        lire: (exo, f) => (f && f.enTest === null) || !f ? '' : (f.enTest ? 'test' : 'valide'),
+        ecrire: (v) => ({ enTest: v === '' ? null : v === 'test' })
+    },
+    calc: {
+        options: [['', 'ce que dit le code'], ['oui', 'offerte'], ['non', 'refusée']],
+        lire: (exo, f) => (f && f.calc === null) || !f ? '' : (f.calc ? 'oui' : 'non'),
+        ecrire: (v) => ({ calc: v === '' ? null : v === 'oui' })
+    }
+};
+
+/**
  * OÙ CET EXERCICE EST RANGÉ — les deux sens du mot « jeu », et ils diffèrent.
  *
  * · `estJeuCatalogue` : il porte un moteur d'activité et AUCUN générateur, donc
@@ -74,22 +166,39 @@ function catalogueRecent() {
  * · `isGame` : son activité se déclare AUTONOME, donc il compte dans la
  *   progression des jeux à débloquer. Un exercice peut être l'un sans l'autre,
  *   et c'est exactement ce qu'on veut voir d'un coup d'œil.
+ *
+ * TROIS DE CES LIGNES SE DÉCIDENT (`decision`), et le compte qui suit la
+ * première la suit : décider que l'organigramme n'est pas un jeu doit le
+ * retirer des jeux comptés, sinon on lit une décision et un total qui se
+ * contredisent dans le même bloc.
  */
 function rangement(exo) {
     const act = exo.activityId ? getActivity(exo.activityId) : null;
     const gen = exo.generatorId ? getGenerator(exo.generatorId) : null;
-    const tousJeux = exercices.filter(estJeuCatalogue).length;
+    const carnet = chargerRevue();
+    const f = ficheDe(carnet, exo.id);
+    const jeu = jeuRevu(exo, f);
+    // Le compte tient compte de TOUTES les décisions du carnet, pas seulement
+    // de celle-ci : c'est le catalogue tel qu'il sera une fois la consigne
+    // reportée.
+    const tousJeux = exercices.filter(e => jeuRevu(e, ficheDe(carnet, e.id))).length;
     const rang = catalogueRecent().findIndex(e => e.id === exo.id);
     const chemin = (exo.tags && exo.tags.chemin) || [];
+    const statut = statutRevu(exo, f);
     return [
-        ['Rangé comme', estJeuCatalogue(exo) ? 'un JEU' : 'un EXERCICE'],
-        ['Compté dans', estJeuCatalogue(exo)
+        ['Rangé comme', jeu ? 'un JEU' : 'un EXERCICE',
+            { decision: 'jeu', change: aChangeJeu(exo, f), code: estJeuCatalogue(exo) ? 'un JEU' : 'un EXERCICE' }],
+        ['Compté dans', jeu
             ? `les ${tousJeux} jeux du catalogue`
             : `les ${exercices.length - tousJeux} exercices du catalogue`],
         ['Jeu à débloquer', isGame(exo) ? 'oui — il compte dans la progression' : 'non'],
         ['Créé le', exo.cree || '—'],
         ['Ordre inverse', `${rang === 0 ? '1ᵉʳ' : `${rang + 1}ᵉ`} sur ${exercices.length} — du plus neuf au plus ancien`],
-        ['Statut', exo.status || 'publié'],
+        ['Statut', STATUS_LABELS[statut] || statut,
+            { decision: 'statut', change: aChange(exo, f),
+                code: STATUS_LABELS[exo.status || STATUS.VALIDE] || exo.status }],
+        ['Calculatrice', calcRevu(exo, f) ? 'offerte' : 'refusée',
+            { decision: 'calc', change: aChangeCalc(exo, f), code: exo.calculatrice ? 'offerte' : 'refusée' }],
         ['Domaine', chemin.join(' › ') || '—'],
         ['Niveaux', ((exo.tags && exo.tags.niveaux) || []).join(', ') || '—'],
         ['Activité', exo.activityId || '—'],
@@ -99,6 +208,12 @@ function rangement(exo) {
         ['Robot', act && act.supports && act.supports.demo === false ? 'non' : 'oui'],
         ['Compétences', (exo.skills || (gen && gen.skills) || []).join(', ') || '—']
     ];
+}
+
+/** La consigne à recoller — vide tant que rien ne diffère du code. */
+function consigneDuCarnet() {
+    return [consigneStatuts(revue, exercices), consigneJeux(revue, exercices),
+        consigneCalc(revue, exercices)].filter(Boolean).join('\n');
 }
 
 /** L'adresse d'un volet : la même page, avec ce qu'elle doit ouvrir. */
@@ -273,6 +388,35 @@ function assurerPanneau() {
             .atl-rangement { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: .76rem; }
             .atl-rangement dt { color: var(--text-muted); font-weight: 600; }
             .atl-rangement dd { margin: 0; font-weight: 700; }
+            /* LES LIGNES QU'ON DÉCIDE. Le menu porte la valeur ; il n'a donc
+               ni bordure ni fond tant qu'on ne le touche pas, pour que le bloc
+               se lise comme une liste et non comme un formulaire. */
+            .atl-decide { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+            .atl-rang-select {
+                border: 1px solid transparent; border-radius: 7px; padding: 1px 4px;
+                background: transparent; color: var(--text-main);
+                font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer;
+            }
+            .atl-rang-select:hover, .atl-rang-select:focus {
+                border-color: var(--border); background: var(--bg-app);
+            }
+            .atl-diff {
+                font-size: .66rem; font-weight: 800; letter-spacing: .02em;
+                color: #b45309; background: rgba(245, 158, 11, .16);
+                border-radius: 999px; padding: 1px 7px;
+            }
+            /* « display: grid » bat « [hidden] », qui ne pose que
+               « display: none » en feuille par défaut : sans cette ligne, le
+               bloc de consigne restait à l'écran, vide, avec son bouton —
+               mesuré à l'ouverture, avant même la première décision. */
+            .atl-consigne { margin-top: 8px; display: grid; gap: 6px; }
+            .atl-consigne[hidden] { display: none; }
+            .atl-consigne-dit { font-size: .72rem; color: var(--text-muted); }
+            .atl-consigne code {
+                display: block; font-size: .72rem; line-height: 1.4; white-space: pre-wrap;
+                word-break: break-word; background: var(--bg-app);
+                border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px;
+            }
             .atl-notes {
                 width: 100%; min-height: 130px; resize: vertical; border: 1px solid var(--border);
                 border-radius: 9px; padding: 7px 9px; font: inherit; font-size: .8rem;
@@ -395,6 +539,12 @@ function assurerPanneau() {
                 <div class="atl-bloc">
                     <div class="atl-bloc-titre">Où c'est rangé</div>
                     <dl class="atl-rangement" id="atl-rangement"></dl>
+                    <div class="atl-consigne" id="atl-consigne" hidden>
+                        <div class="atl-consigne-dit">À recoller dans la conversation —
+                            le catalogue est du code, une case cochée ici ne le récrit pas :</div>
+                        <code></code>
+                        <button class="atl-btn" id="atl-copier-consigne">📋 Copier la consigne</button>
+                    </div>
                 </div>
                 <div class="atl-bloc" id="atl-bloc-controle" hidden>
                     <div class="atl-bloc-titre">Le contrôle</div>
@@ -459,6 +609,19 @@ function assurerPanneau() {
             majVolets();
         };
     });
+    panneau.querySelector('#atl-copier-consigne').onclick = async () => {
+        const { showToast } = await import('./modal.js');
+        const c = consigneDuCarnet();
+        if (!c) return;
+        try {
+            await navigator.clipboard.writeText(c);
+            showToast('Consigne copiée : colle-la dans la conversation, je la reporte dans le code.',
+                'success');
+        } catch (e) {
+            showToast('Le presse-papier a refusé : la consigne est écrite juste au-dessus, '
+                + 'elle se sélectionne à la main.', 'warning');
+        }
+    };
     panneau.querySelector('#atl-robot-bascule').onclick = () => {
         reglerRobot(!robotActif());
         majRobot();
@@ -614,8 +777,37 @@ function peindreReglages() {
 }
 
 function peindreRangement() {
-    panneau.querySelector('#atl-rangement').innerHTML = rangement(exoCourant)
-        .map(([k, v]) => `<dt>${echapper(k)}</dt><dd>${echapper(v)}</dd>`).join('');
+    const zone = panneau.querySelector('#atl-rangement');
+    const f = ficheCourante();
+    zone.innerHTML = rangement(exoCourant).map(([k, v, d]) => {
+        if (!d) return `<dt>${echapper(k)}</dt><dd>${echapper(v)}</dd>`;
+        const D = DECISIONS[d.decision];
+        const choisi = D.lire(exoCourant, f);
+        // LE MENU DIT LA VALEUR, PAS « CHANGER ». Une ligne qui affiche son
+        // état et se change au même endroit se lit d'un coup d'œil ; un
+        // crayon qui ouvre une boîte demande de retenir ce qu'on vient de
+        // lire. Et « ce que dit le code » reste une option : c'est ainsi
+        // qu'on retire une décision qu'on regrette.
+        const opts = D.options.map(([val, mot]) =>
+            `<option value="${val}"${val === choisi ? ' selected' : ''}>${
+                echapper(val === '' ? `${mot} : ${d.code}` : mot)}</option>`).join('');
+        return `<dt>${echapper(k)}</dt><dd class="atl-decide">
+            <select class="atl-rang-select" data-decision="${d.decision}"
+                title="Décidé ici, gardé dans le carnet de revue, reporté dans le code par la consigne"
+                >${opts}</select>${d.change
+    ? `<span class="atl-diff" title="Le code dit encore « ${echapper(d.code)} » : la consigne du relevé le dira">≠ code</span>`
+    : ''}</dd>`;
+    }).join('');
+    zone.querySelectorAll('[data-decision]').forEach(sel => {
+        sel.onchange = () => decidere(DECISIONS[sel.dataset.decision].ecrire(sel.value));
+    });
+    // LA CONSIGNE, SOUS LE BLOC ET SEULEMENT QUAND ELLE EXISTE. C'est elle qui
+    // fait sortir la décision du navigateur : sans elle, on coche et le
+    // catalogue continue de dire le contraire.
+    const c = consigneDuCarnet();
+    const pied = panneau.querySelector('#atl-consigne');
+    pied.hidden = !c;
+    pied.querySelector('code').textContent = c;
 }
 
 function peindreListe() {
@@ -919,7 +1111,16 @@ function texteReleve() {
     lignes.push(JSON.stringify(paramsCourants));
     lignes.push('');
     lignes.push('## Où c\'est rangé');
-    rangement(exoCourant).forEach(([k, v]) => lignes.push(`- ${k} : ${v}`));
+    rangement(exoCourant).forEach(([k, v, d]) => lignes.push(
+        `- ${k} : ${v}${d && d.change ? ` (le code dit encore « ${d.code} »)` : ''}`));
+    // LA CONSIGNE VOYAGE AVEC LE RELEVÉ. C'est le seul chemin par lequel une
+    // décision prise dans le navigateur atteint les descripteurs.
+    const consigne = consigneDuCarnet();
+    if (consigne) {
+        lignes.push('');
+        lignes.push('## Consigne à reporter dans le code');
+        lignes.push(consigne);
+    }
     ['jeu', 'fiche', 'robot'].forEach(quoi => {
         const cadre = cadreDuVolet(quoi);
         lignes.push('');
