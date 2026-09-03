@@ -466,10 +466,28 @@ export const COND_H = 14;
  *
  * Le noyau les porte pour que l'écran et le papier ne puissent pas diverger.
  */
+/**
+ * LES TEINTES DE LA FEUILLE — PASTEL, PARCE QU'ON ÉCRIT DEDANS.
+ *
+ * Rémy : « ne mets pas les carrés d'écriture dans les propriétés, car l'élève
+ * écrira dans les cases qui ont une couleur pastel. »
+ *
+ * ELLES ÉTAIENT SATURÉES, et c'était juste tant qu'un carré blanc au milieu
+ * portait la réponse : le fond disait la famille, le carré recevait la lettre.
+ * Le carré parti, le fond devient la surface d'écriture — et personne n'écrit
+ * au crayon gris sur un rouge vif. Les trois teintes s'éclaircissent donc, et
+ * gardent leur écart : bleu, rose, mauve, chacune reconnaissable à un mètre.
+ *
+ * L'ÉCRAN, LUI, GARDE SES COULEURS FRANCHES (voir `.qd-cond--*` dans le jeu), et
+ * ce n'est pas une divergence oubliée : là-bas, la case est REMPLIE — on la lit
+ * — et un fond saturé la sépare de ses voisines à trois mètres, ce qu'un
+ * camaïeu de pastels ne fait pas. Ici, la case est VIDE : on y écrit. Deux
+ * usages, deux réglages.
+ */
 export const COULEURS_FAMILLE = {
-    cotes: { fond: '#b4c7dc', encre: '#12203a' },
-    diagonales: { fond: '#ff3838', encre: '#ffffff' },
-    raccourci: { fond: '#bf819e', encre: '#ffffff' }
+    cotes: { fond: '#d7e5f4', encre: '#123055' },
+    diagonales: { fond: '#fbd8d8', encre: '#7a1616' },
+    raccourci: { fond: '#ecdcf1', encre: '#4a2358' }
 };
 
 /** La figure est DESSINÉE ET REMPLIE, et son nom est sur un bandeau clair. */
@@ -617,6 +635,65 @@ export function traceLien(depart, arrivee, { bord = 0 } = {}) {
  * l'écran, l'aperçu et le PDF n'ont plus qu'à le multiplier par la taille
  * qu'ils veulent donner à la pointe.
  */
+/**
+ * LE RAYON DES VIRAGES D'UNE FLÈCHE, en unités de plan.
+ *
+ * Rémy, deux fois : « améliore les flèches, c'est pas beau une flèche en
+ * escaliers ; tu n'as qu'à arrondir le dernier virage » — puis, devant le PDF :
+ * « j'aimerais des flèches arrondies ». L'écran a été corrigé le premier ; la
+ * feuille, elle, traçait encore ses angles droits. Le rayon vit donc ICI, dans
+ * le noyau, et non dans l'un des deux rendus : c'est la même carte, dessinée sur
+ * deux supports, et un chiffre recopié finit toujours par diverger.
+ */
+export const RAYON_VIRAGE = 5;
+
+/**
+ * UNE POLYLIGNE DONT LES COINS SONT ARRONDIS, en unités de plan.
+ *
+ * Rendue en POINTS et non en courbe, parce que les deux supports ne savent pas
+ * dessiner la même chose : le navigateur prend un « Q » de SVG, le PDF veut des
+ * courbes de Bézier cubiques et sait surtout tracer des segments. Un virage
+ * découpé en huit segments ne se distingue d'une vraie courbe ni à l'écran ni
+ * sur le papier — la corde d'un arc de cinq unités vaut alors deux dixièmes
+ * d'unité, c'est-à-dire un dixième de millimètre sur une feuille A4.
+ *
+ * Le rayon se réduit tout seul quand le segment est court : sans cela, deux
+ * virages voisins se mangeraient l'un l'autre et le trait ferait un nœud.
+ *
+ * @param {Array<{x,y}>} pts   - la ligne brisée
+ * @param {number} rayon       - en unités de plan
+ * @param {number} parVirage   - segments par virage
+ */
+export function coinsArrondis(pts, rayon = RAYON_VIRAGE, parVirage = 8) {
+    if (!pts || pts.length < 3) return (pts || []).slice();
+    const vers = (a, b, d) => {
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const l = Math.hypot(dx, dy) || 1;
+        const t = Math.min(d, l / 2) / l;
+        return { x: a.x + dx * t, y: a.y + dy * t };
+    };
+    const out = [pts[0]];
+    for (let i = 1; i < pts.length - 1; i++) {
+        const avant = pts[i - 1], coin = pts[i], apres = pts[i + 1];
+        const r = Math.min(rayon,
+            Math.hypot(coin.x - avant.x, coin.y - avant.y) / 2.2,
+            Math.hypot(apres.x - coin.x, apres.y - coin.y) / 2.2);
+        const a = vers(coin, avant, r), b = vers(coin, apres, r);
+        out.push(a);
+        // La quadratique de contrôle `coin`, échantillonnée.
+        for (let k = 1; k < parVirage; k++) {
+            const t = k / parVirage, u = 1 - t;
+            out.push({
+                x: u * u * a.x + 2 * u * t * coin.x + t * t * b.x,
+                y: u * u * a.y + 2 * u * t * coin.y + t * t * b.y
+            });
+        }
+        out.push(b);
+    }
+    out.push(pts[pts.length - 1]);
+    return out;
+}
+
 export function pointeDe(polyligne) {
     const n = polyligne.length;
     if (n < 2) return null;

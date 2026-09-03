@@ -779,7 +779,11 @@ test('sans le réglage, la feuille reste celle des lettres', () => {
     const item = gen.generate({}, { rng: makeRng(3), index: 0 });
     assert.equal(item.meta.vignettes, null);
     assert.equal(item.meta.liste.length, 9);
-    assert.match(item.prompt.papier, /Reporte la lettre/);
+    // Rémy : « et marque : complète avec les phrases suivantes ». La formule
+    // dit le TRAVAIL — compléter l'organigramme avec les phrases — là où
+    // « reporte la lettre » ne décrivait que le geste de la main.
+    assert.match(item.prompt.papier, /Complète avec les phrases suivantes/);
+    assert.match(item.prompt.papier, /case colorée/);
 });
 
 test('LA CONSIGNE DIT LE GESTE QU\'ON DEMANDE', () => {
@@ -853,4 +857,68 @@ test('la figure d\'une étape de codage est celle de la flèche qui l\'amène', 
         assert.equal(suivante.vers, e.figure);
         assert.equal(suivante.de, e.de);
     });
+});
+
+// --- LES FLÈCHES ARRONDIES, PARTAGÉES PAR L'ÉCRAN ET LA FEUILLE ---------------
+//
+// Rémy, deux fois : « améliore les flèches, c'est pas beau une flèche en
+// escaliers » (à l'écran), puis « j'aimerais des flèches arrondies » (sur le
+// PDF). Le rayon vit dans le noyau pour que les deux supports dessinent la même
+// carte — un chiffre recopié d'un fichier à l'autre finit toujours par diverger.
+
+test('UN COIN ARRONDI RESTE DANS LE COIN, et les bouts ne bougent pas', async () => {
+    const { coinsArrondis, RAYON_VIRAGE } = await import('../js/core/quadrilateres.js');
+    const brise = [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 40 }];
+    const doux = coinsArrondis(brise);
+    // Les extrémités sont intactes : une flèche part et arrive au même endroit.
+    assert.deepEqual(doux[0], brise[0]);
+    assert.deepEqual(doux[doux.length - 1], brise[2]);
+    // Le sommet anguleux a disparu, remplacé par des points intermédiaires.
+    assert.ok(doux.length > 3, 'le virage doit être échantillonné');
+    assert.ok(!doux.some(q => q.x === 40 && q.y === 0), 'le coin vif est resté');
+    // Et tout le virage tient dans le carré de rayon autour du coin.
+    doux.slice(1, -1).forEach(q => {
+        assert.ok(Math.abs(q.x - 40) <= RAYON_VIRAGE + 0.01
+            && Math.abs(q.y - 0) <= RAYON_VIRAGE + 0.01,
+        `le point (${q.x}, ${q.y}) sort du virage`);
+    });
+});
+
+test('un segment court réduit son rayon au lieu de faire un nœud', async () => {
+    const { coinsArrondis } = await import('../js/core/quadrilateres.js');
+    // Deux virages à trois unités l'un de l'autre : à rayon plein, ils se
+    // mangeraient et le trait repartirait en arrière.
+    const doux = coinsArrondis([{ x: 0, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 3 }, { x: 6, y: 3 }]);
+    // La ligne ne revient jamais en arrière en x : c'est la signature d'un nœud.
+    for (let i = 1; i < doux.length; i++) {
+        assert.ok(doux[i].x >= doux[i - 1].x - 1e-9,
+            `le trait recule en x à l'étape ${i}`);
+    }
+});
+
+test('une ligne de moins de trois points n\'a rien à arrondir', async () => {
+    const { coinsArrondis } = await import('../js/core/quadrilateres.js');
+    assert.deepEqual(coinsArrondis([{ x: 0, y: 0 }, { x: 5, y: 5 }]),
+        [{ x: 0, y: 0 }, { x: 5, y: 5 }]);
+    assert.deepEqual(coinsArrondis([]), []);
+    assert.deepEqual(coinsArrondis(null), []);
+});
+
+test('LES CASES DE LA FEUILLE SONT PASTEL : on écrit dedans', async () => {
+    // Rémy : « ne mets pas les carrés d'écriture dans les propriétés, car
+    // l'élève écrira dans les cases qui ont une couleur pastel. » Le carré blanc
+    // parti, le fond devient la surface d'écriture — et personne n'écrit au
+    // crayon gris sur un rouge vif.
+    const { COULEURS_FAMILLE } = await import('../js/core/quadrilateres.js');
+    const clarte = (hex) => {
+        const [r, v, b2] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+        return (0.299 * r + 0.587 * v + 0.114 * b2) / 255;
+    };
+    Object.entries(COULEURS_FAMILLE).forEach(([nom, c]) => {
+        assert.ok(clarte(c.fond) > 0.82, `${nom} : fond trop sombre pour écrire dessus`);
+        assert.ok(clarte(c.encre) < 0.35, `${nom} : encre trop pâle sur ce fond`);
+    });
+    // Et les trois teintes restent DISTINCTES : la couleur dit la famille.
+    const fonds = Object.values(COULEURS_FAMILLE).map(c => c.fond);
+    assert.equal(new Set(fonds).size, 3);
 });

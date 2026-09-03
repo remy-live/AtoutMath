@@ -24,6 +24,7 @@ import {
     boiteCondition as boiteCondQ,
     CASE_L as CASE_L_Q, CASE_H as CASE_H_Q,
     COND_L as COND_L_Q, COND_H as COND_H_Q, PLAN_L as PLAN_L_Q, PLAN_H as PLAN_H_Q,
+    coinsArrondis as coinsArrondisQ,
     pointeDe as pointeDeQ,
     BANDE_NOM as BANDE_NOM_Q, COULEURS_FAMILLE as COULEURS_Q,
     COULEUR_FIGURE as FIGURE_Q, COULEUR_BANDE as BANDE_Q
@@ -10562,9 +10563,34 @@ function geoOrganigramme(item, slot) {
     // s'étale sur la largeur (le format du noyau lui donne sa hauteur), et la
     // liste occupe le bas de la feuille.
     const RAPPORT = PLAN_L_Q / PLAN_H_Q;        // largeur / hauteur
-    const voulu = Math.min(b.w / RAPPORT, b.h * 0.74);
-    const wUtile = planche ? planche.wUtile : voulu * RAPPORT;
-    const hUtile = planche ? planche.hUtile : voulu;
+    // LE PLAN PREND TOUTE LA HAUTEUR QUE LA LISTE LUI LAISSE, ET IL S'ÉTIRE.
+    //
+    // Rémy : « rends l'organigramme plus haut, car les flèches sont écrasées. »
+    // Mesuré sur la feuille précédente : le plan tenait 135 mm de haut — la
+    // largeur de la page divisée par les proportions du noyau — et il restait
+    // CINQUANTE MILLIMÈTRES DE BLANC sous la légende. Les flèches, elles, ne
+    // reliaient plus rien : entre deux rangées, le segment vertical faisait
+    // moins de quatre millimètres, et les cases se touchaient presque.
+    //
+    // On garde donc la largeur pleine, et l'on prend en hauteur ce que la liste
+    // n'utilise pas. Le plan cesse alors d'avoir les proportions exactes du
+    // noyau — c'est un ÉTIREMENT, pas un agrandissement — et c'est acceptable
+    // ici parce que rien de ce qui s'étire ne porte de sens géométrique : les
+    // figures, elles, restent carrées (voir `fw`/`fh`, plus bas), et ce sont les
+    // seules formes que l'élève lit comme des formes. Ce qui s'allonge, ce sont
+    // les intervalles entre les rangées — c'est-à-dire les flèches — et les
+    // cases de condition, qu'on remplit à la main : les deux y gagnent.
+    //
+    // L'étirement est BORNÉ : au-delà de la moitié, l'organigramme devient une
+    // échelle, les cases s'éloignent et l'on perd la vue d'ensemble qui fait
+    // tout l'intérêt de la carte.
+    const ETIRE_MAX = 1.5;
+    const besoinListe = Math.ceil((m.liste ? m.liste.length : 9) / 2) * 9 + 10;
+    const wVoulue = planche ? planche.wUtile : b.w;
+    const hNaturelle = wVoulue / RAPPORT;
+    const wUtile = wVoulue;
+    const hUtile = planche ? planche.hUtile
+        : Math.max(hNaturelle, Math.min(b.h - besoinListe - 4, hNaturelle * ETIRE_MAX));
     const hListe = planche ? planche.besoin : Math.max(16, b.h - hUtile - 4);
     const x0 = b.x + (b.w - wUtile) / 2;
     const y0 = b.y;
@@ -11067,10 +11093,14 @@ const cheminsUniques = () => FLECHES_Q;
  * dit la même chose sans vider la cartouche du photocopieur de la salle des
  * profs.
  */
+// ET LES TROIS GRIS S'ÉCLAIRCISSENT AUSSI. Même raison que les couleurs : la
+// case n'a plus de carré blanc au milieu, c'est ELLE qu'on remplit au crayon.
+// Un gris à 61 % — celui des raccourcis — avale une écriture de crayon à
+// papier ; à 78 %, elle se lit encore, et les trois marches restent nettes.
 const GRIS_COND = {
-    cotes: { fond: '#e8e8e8', encre: '#111111' },
-    diagonales: { fond: '#c2c2c2', encre: '#111111' },
-    raccourci: { fond: '#9c9c9c', encre: '#111111' }
+    cotes: { fond: '#f1f1f1', encre: '#111111' },
+    diagonales: { fond: '#dedede', encre: '#111111' },
+    raccourci: { fond: '#c6c6c6', encre: '#111111' }
 };
 const paletteCond = () => (['couleur', 'intense'].includes(modePolycopie())
     ? COULEURS_Q : GRIS_COND);
@@ -11111,8 +11141,6 @@ const LEGENDE_COND = [
  */
 const pasListe = (g, lignes) => Math.min(g.listeH / lignes, 9);
 
-/** Le côté du carré blanc où l'élève écrit sa lettre. */
-const carreLettre = (g) => Math.min(g.condH * 0.62, g.condW * 0.28, 9);
 
 function policeNomFigure(caseW, hBande) {
     const plusLong = Math.max(...FAMILLES_Q.map(f => f.nom.length));
@@ -11164,9 +11192,15 @@ function organigrammePreviewHtml(item, slot, k, solution) {
     cheminsUniques().forEach(f => {
         const t = traitsQ(f);
         [t.entrant, t.sortant].forEach(seg => {
-            const pts = seg.map(q => g.P(q)).map(q => `${T(q.x)},${T(q.y)}`).join(' ');
+            // LES VIRAGES SONT ARRONDIS — Rémy : « j'aimerais des flèches
+            // arrondies ». L'écran l'était depuis qu'il a dit « c'est pas beau
+            // une flèche en escaliers » ; la feuille traçait encore ses angles
+            // droits. Le rayon vient du noyau, pour que les deux supports
+            // dessinent la même carte.
+            const pts = coinsArrondisQ(seg).map(q => g.P(q))
+                .map(q => `${T(q.x)},${T(q.y)}`).join(' ');
             out += `<polyline points="${pts}" fill="none" stroke="#5a6274"
-                stroke-width="${(0.45 * k).toFixed(2)}"/>`;
+                stroke-width="${(0.45 * k).toFixed(2)}" stroke-linejoin="round"/>`;
             const tri = pointeMm(seg, g, tailleP);
             if (tri) {
                 out += `<path d="M${T(tri[0].x)} ${T(tri[0].y)} L${T(tri[1].x)} ${T(tri[1].y)}
@@ -11225,19 +11259,20 @@ function organigrammePreviewHtml(item, slot, k, solution) {
             }
             return;
         }
-        // LA CASE OÙ S'ÉCRIT LA LETTRE, EN BLANC AU MILIEU DE LA TEINTE.
+        // ON ÉCRIT DANS LA CASE, PAS DANS UN CARRÉ DEDANS.
         //
-        // La case de condition fait maintenant trois centimètres de large : sans
-        // repère, c'est un grand rectangle gris où l'on ne sait pas où poser sa
-        // lettre, et personne n'écrit au crayon sur un aplat. Un carré blanc au
-        // milieu dit les deux choses à la fois — écris ICI, et écris en blanc.
-        const cw = carreLettre(g);
-        out += `<rect x="${T(e.x - cw / 2)}" y="${T(e.y - cw / 2)}" width="${T(cw)}" height="${T(cw)}"
-            rx="${T(0.8)}" fill="#ffffff" stroke="#5a6274" stroke-width="${(0.25 * k).toFixed(2)}"/>`;
+        // Rémy : « ne mets pas les carrés d'écriture dans les propriétés, car
+        // l'élève écrira dans les cases qui ont une couleur pastel. » Il y avait
+        // un petit carré blanc au milieu de chaque case teintée, pour dire « la
+        // lettre va ici ». Deux cadres emboîtés pour une seule réponse : la case
+        // pastel suffit, elle est faite pour cela, et depuis que le plan s'étire
+        // elle est deux fois plus haute qu'avant. Le carré, lui, contraignait
+        // l'écriture à neuf millimètres au milieu d'un rectangle de trente.
         if (solution) {
             out += `<text x="${T(e.x)}" y="${T(e.y)}" text-anchor="middle"
-                dominant-baseline="central" font-size="${T(cw * 0.72)}" font-weight="700"
-                fill="#1a202c" font-family="Helvetica, Arial, sans-serif">${g.m.parCle[cleFlecheQ(f)]}</text>`;
+                dominant-baseline="central" font-size="${T(Math.min(h * 0.62, 7))}" font-weight="700"
+                fill="${ENCRE_COND(f.famille)}" font-family="Helvetica, Arial, sans-serif"
+                >${g.m.parCle[cleFlecheQ(f)]}</text>`;
         }
     });
 
@@ -11403,10 +11438,17 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
     doc.setDrawColor(90, 98, 116);
     doc.setFillColor(90, 98, 116);
     doc.setLineWidth(0.45);
+    doc.setLineJoin('round');
+    doc.setLineCap('round');
     cheminsUniques().forEach(f => {
         const t = traitsQ(f);
         [t.entrant, t.sortant].forEach(seg => {
-            const pts = seg.map(q => g.P(q));
+            // Les mêmes virages arrondis qu'à l'aperçu et qu'à l'écran : le
+            // noyau rend la ligne déjà découpée, les deux rendus n'ont plus qu'à
+            // la projeter. Une courbe échantillonnée à huit segments s'écarte
+            // d'un dixième de millimètre de la vraie — invisible au trait de
+            // 0,45 mm dont elle est tracée.
+            const pts = coinsArrondisQ(seg).map(q => g.P(q));
             for (let i = 1; i < pts.length; i++) {
                 doc.line(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y);
             }
@@ -11478,16 +11520,12 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
         const teinte = RVB_COND[f.famille] || [255, 255, 255];
         doc.setFillColor(...teinte);
         doc.roundedRect(e.x - w / 2, e.y - h / 2, w, h, 1.6, 1.6, 'FD');
-        // La case blanche où s'écrit la lettre — voir l'aperçu.
-        const cw = carreLettre(g);
-        doc.setFillColor(255, 255, 255);
-        doc.setDrawColor(90, 98, 116);
-        doc.setLineWidth(0.25);
-        doc.roundedRect(e.x - cw / 2, e.y - cw / 2, cw, cw, 0.8, 0.8, 'FD');
+        // PAS DE CARRÉ D'ÉCRITURE DEDANS — voir l'aperçu : on écrit dans la case
+        // teintée elle-même.
         if (solution) {
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize((cw * 0.72) / 0.352778);
-            doc.setTextColor(...ENCRE.texte);
+            doc.setFontSize(Math.min(h * 0.62, 7) / 0.352778);
+            doc.setTextColor(...rvbHex(ENCRE_COND(f.famille)));
             doc.text(g.m.parCle[cleFlecheQ(f)], e.x, e.y, { align: 'center', baseline: 'middle' });
         }
     });

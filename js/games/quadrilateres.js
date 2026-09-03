@@ -33,7 +33,7 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointe
 import {
     FAMILLES, FLECHES, POSITIONS, PALIERS, MODES, PLAN_L, PLAN_H,
     COND_L, COND_H,
-    familleDe, flecheDe, cleFleche, traitsDeCondition,
+    familleDe, flecheDe, cleFleche, traitsDeCondition, RAYON_VIRAGE,
     boiteFigure, boiteCondition,
     genererOrganigramme, verifierDepot, verifierOrganigramme, conseil,
     genererProgressif, casesVisibles, verifierEtape, refusEtape, conseilEtape, vignetteDe, pointeDe,
@@ -255,7 +255,6 @@ const traitEnPoints = (pts, v) => pts
  * segments en unités de plan — trois unités, jamais plus du tiers du segment,
  * sinon un coude court se mangerait lui-même — et l'on convertit ensuite.
  */
-const RAYON_VIRAGE = 5;
 
 function traitEnChemin(pts, v) {
     if (pts.length < 3) return `M ${traitEnPoints(pts, v).replace(/ /g, ' L ')}`;
@@ -334,34 +333,36 @@ const ETAGE_MODALE = 100001;
  *   4. le parallélogramme arrive — et c'est LUI qu'on va coder, ce que la
  *      fenêtre explique juste après.
  *
- * `duree` en millisecondes. Elles sont courtes : c'est une mise en place, pas un
- * film, et l'on peut la couper d'un doigt (voir `finirOuverture`).
+ * ON AVANCE AU BOUTON, PAS AU MINUTEUR. Rémy, devant la première version :
+ * « la présentation pour l'organigramme est hyper rapide, utilise un bouton
+ * suivant ». Il a raison, et un minuteur n'aurait jamais pu avoir raison : deux
+ * secondes sont trop longues pour qui a déjà compris et trop courtes pour qui
+ * lit la phrase — et il n'existe aucune durée qui convienne aux deux. Le
+ * rythme appartient donc à celui qui regarde, comme la correction de la série
+ * de questions. « Passer » reste là pour l'auteur, qui la revoit cent fois.
  */
 const OUVERTURE = [
     {
-        vues: [], cadre: 'monde', duree: 2200,
+        vues: [], cadre: 'monde',
         dit: 'Voici <b>l\'organigramme des quadrilatères</b> : cinq familles, et les '
             + 'conditions qui mènent de l\'une à l\'autre. Il est vide — on va le construire.'
     },
     {
-        vues: ['quadrilatere'], cadre: 'monde', duree: 1900,
+        vues: ['quadrilatere'], cadre: 'monde',
         dit: 'On part du <b>quadrilatère</b>, tout en haut : la famille la plus large, '
             + 'celle qui ne demande rien de plus que quatre côtés.'
     },
     {
-        vues: ['quadrilatere'], cadre: 'duo', duree: 1900,
+        vues: ['quadrilatere'], cadre: 'duo',
         dit: 'On descend d\'un cran. La case du dessous attend : qu\'est-ce qu\'un '
             + 'quadrilatère doit avoir <b>en plus</b> pour être un parallélogramme ?'
     },
     {
-        vues: ['quadrilatere', 'parallelogramme'], cadre: 'duo', duree: 1700,
+        vues: ['quadrilatere', 'parallelogramme'], cadre: 'duo',
         dit: 'Et voici le <b>parallélogramme</b>. Avant de dire ce qui y mène, on va '
             + 'écrire ses propriétés sur la figure.'
     }
 ];
-
-/** Le temps qu'une figure met à s'installer dans sa case, aux étapes suivantes. */
-const DUREE_APPARITION = 1700;
 
 /**
  * LES BORNES DE L'ÉCRITURE AJUSTÉE, en pixels — voir `ajusterEcriture`.
@@ -945,6 +946,10 @@ class Organigramme extends BaseGame {
                     background: color-mix(in srgb, var(--success) 16%, transparent);
                     color: var(--success);
                 }
+                /* PENDANT LA MISE EN SCÈNE, la rangée des cartes porte les deux
+                   boutons : « Suivant » est l'action de cet écran, et une
+                   pastille au bout d'une phrase ne se voit pas. */
+                .qd-cartes--scene { gap: 10px; align-items: center; }
                 .qd-cartes--choix .qd-choix--rate {
                     border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent);
                     color: var(--danger); text-decoration: line-through;
@@ -1143,9 +1148,7 @@ class Organigramme extends BaseGame {
         }
         const enScene = this.etapeCourante;
         if (enScene && enScene.genre === 'codage' && this.apparition !== enScene.numero) {
-            clearTimeout(this.minuteurScene);
             this.apparition = enScene.numero;
-            this.planEl.onclick = null;
             this.dessiner();
             return true;
         }
@@ -1408,12 +1411,33 @@ class Organigramme extends BaseGame {
         this.largeurFenetre());
     }
 
-    /** L'un des quatre temps de l'ouverture, puis le suivant. */
+    /**
+     * LES DEUX BOUTONS DE LA MISE EN SCÈNE, posés là où sont les cartes.
+     *
+     * Pas dans la ligne de consigne : « Suivant » est L'ACTION de cet écran, et
+     * une petite pastille au bout d'une phrase ne se voit pas. La rangée des
+     * cartes est vide pendant la mise en scène — c'est sa place.
+     */
+    boutonsDeScene(mot, suite, passer = null) {
+        this.cartesEl.className = 'qd-cartes qd-cartes--scene';
+        this.cartesEl.innerHTML = `
+            <button type="button" class="qd-btn qd-btn--suite" data-suivant>${mot}</button>
+            ${passer ? '<button type="button" class="qd-passer" data-passer>Passer ▸</button>' : ''}`;
+        this.cartesEl.querySelector('[data-suivant]').onclick = suite;
+        // ON PEUT COUPER L'OUVERTURE — elle raconte la carte, et qui la connaît
+        // n'a pas à la revoir ; l'auteur, lui, la reverrait cent fois. Une
+        // APPARITION, non : elle ne dure qu'un clic, et ce clic EST la leçon —
+        // « le rectangle arrive ICI ». Deux boutons pour le même geste ne
+        // seraient d'ailleurs qu'une hésitation de plus.
+        const b = this.cartesEl.querySelector('[data-passer]');
+        if (b) b.onclick = passer;
+    }
+
+    /** L'un des quatre temps de l'ouverture. On avance au bouton. */
     dessinerOuverture() {
         const beat = OUVERTURE[this.ouverture];
         if (!beat) return this.finirOuverture();
-        this.consigneEl.innerHTML = `${beat.dit}
-            <button type="button" class="qd-passer" data-passer>Passer ▸</button>`;
+        this.consigneEl.innerHTML = beat.dit;
         const fen = beat.cadre === 'monde' ? TOUT_LE_MONDE
             : this.cadreDuo('quadrilatere', 'parallelogramme');
         // La figure qui ARRIVE à ce temps-ci : celle que le temps précédent ne
@@ -1421,18 +1445,13 @@ class Organigramme extends BaseGame {
         const avant = this.ouverture > 0 ? OUVERTURE[this.ouverture - 1].vues : [];
         const neuve = beat.vues.find(id => !avant.includes(id)) || null;
         this.dessinerPlanNu(fen, beat.vues, neuve);
-        // ON PEUT COUPER. Une mise en scène qu'on ne peut pas passer devient une
-        // corvée dès la deuxième fois — et l'auteur, lui, la revoit cent fois.
-        const passer = this.consigneEl.querySelector('[data-passer]');
-        if (passer) passer.onclick = () => this.finirOuverture();
-        this.planEl.onclick = () => this.finirOuverture();
-        clearTimeout(this.minuteurScene);
-        this.minuteurScene = setTimeout(() => {
-            if (!this.isRunning || this.ouverture === null) return;
+        const dernier = this.ouverture >= OUVERTURE.length - 1;
+        this.boutonsDeScene(dernier ? 'On code le parallélogramme ▸' : 'Suivant ▸', () => {
+            if (this.ouverture === null) return;
             this.ouverture += 1;
             if (this.ouverture >= OUVERTURE.length) this.finirOuverture();
             else this.dessiner();
-        }, beat.duree);
+        }, () => this.finirOuverture());
     }
 
     /**
@@ -1441,11 +1460,9 @@ class Organigramme extends BaseGame {
      * après l'avoir montrée serait la montrer deux fois.
      */
     finirOuverture() {
-        clearTimeout(this.minuteurScene);
         if (this.ouverture === null) return;
         this.ouverture = null;
         this.ouvertureFaite = true;
-        this.planEl.onclick = null;
         const e = this.etapeCourante;
         if (e && e.genre === 'codage') this.apparition = e.numero;
         this.dessiner();
@@ -1459,22 +1476,15 @@ class Organigramme extends BaseGame {
      * sort, et c'est justement ce que l'organigramme enseigne.
      */
     montrerApparition(e) {
-        this.consigneEl.innerHTML = `Le <b>${familleDe(e.figure).nom.toLowerCase()}</b> `
-            + `arrive dans l'organigramme, sous le ${familleDe(e.de).nom.toLowerCase()}.
-            <button type="button" class="qd-passer" data-passer>Passer ▸</button>`;
+        const nom = familleDe(e.figure).nom.toLowerCase();
+        this.consigneEl.innerHTML = `Le <b>${nom}</b> arrive dans l'organigramme, `
+            + `sous le ${familleDe(e.de).nom.toLowerCase()}.`;
         this.dessinerPlanNu(this.cadreDuo(e.de, e.figure), e.vues, e.figure);
-        const fini = () => {
-            clearTimeout(this.minuteurScene);
+        this.boutonsDeScene(`On code le ${nom} ▸`, () => {
             if (this.apparition === e.numero) return;
             this.apparition = e.numero;
-            this.planEl.onclick = null;
             this.dessiner();
-        };
-        const passer = this.consigneEl.querySelector('[data-passer]');
-        if (passer) passer.onclick = fini;
-        this.planEl.onclick = fini;
-        clearTimeout(this.minuteurScene);
-        this.minuteurScene = setTimeout(() => { if (this.isRunning) fini(); }, DUREE_APPARITION);
+        });
     }
 
     dessinerProgressif() {
@@ -1492,10 +1502,6 @@ class Organigramme extends BaseGame {
         // LE CODAGE A SON ÉCRAN. Il garde le même conteneur et le même compte
         // d'étapes : c'est la même leçon, vue de l'autre côté.
         if (e && e.genre === 'codage') return this.dessinerCodage(e);
-        // LE PLAN REDEVIENT UN PLAN. Pendant la mise en scène, un clic n'importe
-        // où la coupe ; passé ce moment, le plan porte les fentes où l'on
-        // dépose, et un écouteur oublié dessus avalerait ces gestes-là.
-        this.planEl.onclick = null;
         this.coderEl.hidden = true;
         this.planEl.hidden = false;
         this.verifierEl.hidden = true;
@@ -2973,7 +2979,6 @@ class Organigramme extends BaseGame {
         // rappeler un ajustement sur un élément détaché à chaque changement de
         // fenêtre, jusqu'au rechargement de la page.
         if (this.veilleScene) { this.veilleScene.disconnect(); this.veilleScene = null; }
-        clearTimeout(this.minuteurScene);
         super.destroy();
     }
 }

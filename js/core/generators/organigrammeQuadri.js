@@ -121,10 +121,19 @@ export const organigrammeQuadriGenerator = {
                 + ` Il y a ${FLECHES.length} vignettes pour ${FLECHES.length} cases`
                 + `${doublons ? ' — et certaines se ressemblent deux à deux : c\'est normal, '
                     + 'une même condition ouvre deux portes' : ''}.`
+            // « COMPLÈTE AVEC LES PHRASES SUIVANTES » — la formule est de Rémy,
+            // et elle dit mieux ce qu'on demande. « Reporte la lettre » décrivait
+            // le GESTE, pas le travail : ce qu'on complète, ce sont les cases de
+            // l'organigramme, et ce qu'on y met, ce sont les phrases de la liste
+            // — la lettre n'est que leur abréviation, parce qu'une phrase de
+            // quarante caractères n'entre pas dans une case qu'on remplit au
+            // stylo.
             : (avecNoms
-                ? 'Reporte la lettre de chaque condition dans la case posée sur sa flèche.'
-                : 'Écris d\'abord le nom des cinq figures, puis reporte la lettre de chaque '
-                    + 'condition dans la case posée sur sa flèche.')
+                ? 'Complète avec les phrases suivantes : écris la lettre de chacune dans '
+                    + 'la case colorée posée sur sa flèche.'
+                : 'Écris d\'abord le nom des cinq figures, puis complète avec les phrases '
+                    + 'suivantes : la lettre de chacune dans la case colorée posée sur sa '
+                    + 'flèche.')
                 + ` Attention : il y a ${liste.length} conditions pour ${FLECHES.length} flèches`
                 + `${doublons ? ' — certaines lettres servent DEUX FOIS' : ''}.`;
 
