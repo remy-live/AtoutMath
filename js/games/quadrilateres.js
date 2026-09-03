@@ -304,6 +304,16 @@ const COMPETENCE = 'geo.quadrilateres.familles';
 // passer au-dessus, sinon elle s'affiche derrière et personne ne la voit.
 const ETAGE_MODALE = 100001;
 
+/**
+ * LES BORNES DE L'ÉCRITURE AJUSTÉE, en pixels — voir `ajusterEcriture`.
+ *
+ * Le plancher est celui d'un texte encore lisible sur un téléphone ; le plafond
+ * n'est pas une limite technique mais un choix : au-delà, une phrase de deux
+ * lignes devient une affiche, et l'on ne lit plus une question, on la subit.
+ */
+const TAILLE_MIN = 14;
+const TAILLE_MAX = 46;
+
 /** De quoi poser un texte dans un attribut sans qu'un guillemet le coupe. */
 const enAttribut = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
     .replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -789,9 +799,65 @@ class Organigramme extends BaseGame {
                 /* LA QUESTION DE LA TROISIÈME PARTIE. Elle a la place que le
                    plan occupait : c'est elle qu'on lit, et il n'y a rien
                    d'autre à regarder — la carte est derrière son bouton. */
+                /* LA TAILLE EST POSÉE EN LIGNE, PAR LA MESURE — voir
+                   « ajusterEcriture ». La valeur écrite ici n'est que le point
+                   de départ, celle qu'on voit le temps d'une image avant le
+                   premier ajustement. */
+                /* UN MOT NE SE COUPE PAS. Sans cette ligne, la coupure
+                   automatique laissait « parallélogram / me » sur deux lignes
+                   au milieu de la question — vu à l'écran, sur téléphone. Et ce
+                   n'est pas qu'une affaire de goût : c'est le mot qu'on
+                   apprend. Le débordement qu'on laisse ainsi apparaître est
+                   justement ce que la mesure surveille, et c'est lui qui fait
+                   redescendre la taille. */
                 .qd-question {
-                    font-size: clamp(1rem, 3.2cqw, 1.5rem); font-weight: 800;
-                    text-align: center; line-height: 1.35; padding: 10px 4px;
+                    font-size: 1.2rem; font-weight: 800; width: 100%;
+                    text-align: center; line-height: 1.3; padding: 4px;
+                    box-sizing: border-box; overflow-wrap: normal; hyphens: none;
+                }
+                /* ON TOURNE LA PAGE QUAND ON A LU. Rémy : « et attend entre
+                   chaque réponse ». Le bouton est sous la question, là où l'œil
+                   vient de finir sa lecture — et non dans la barre du bas, avec
+                   « Voir l'organigramme » et « Recommencer », où il se
+                   chercherait. */
+                .qd-suite {
+                    flex: 0 0 auto; padding-top: 6px; width: 100%;
+                    display: flex; flex-direction: column; align-items: center; gap: 8px;
+                }
+                .qd-suite[hidden] { display: none; }
+                .qd-pourquoi {
+                    font-size: clamp(12px, 2.4cqw, 15px); line-height: 1.35;
+                    text-align: center; max-width: 640px; font-weight: 600;
+                }
+                .qd-pourquoi--ok { color: var(--success); }
+                .qd-pourquoi--ko { color: var(--danger); }
+                .qd-btn--suite {
+                    background: var(--primary); border-color: var(--primary); color: #fff;
+                    padding: 9px 18px; font-size: .92rem; min-height: 42px;
+                }
+                /* LES JETONS DE LA TROISIÈME PARTIE — des mots qu'on LIT et
+                   qu'on touche, pas des cartes qu'on glisse. Mesuré sur
+                   téléphone : dix pixels d'écriture dans une cible de
+                   trente-quatre, au milieu d'un écran vide aux quatre
+                   cinquièmes. */
+                .qd-cartes--choix { gap: 7px; }
+                .qd-cartes--choix .kk-chip {
+                    font-size: clamp(13px, 3.6cqw, 18px); padding: 10px 15px;
+                    min-height: 44px; cursor: pointer;
+                }
+                /* CE QUE MONTRE LA CORRECTION : la bonne réponse s'entoure, la
+                   nôtre se barre si elle était fausse. Les deux ensemble, parce
+                   que « ce n'était pas ça » et « c'était ça » sont deux
+                   informations, et la seconde est celle qu'on retient. */
+                .qd-cartes--choix .kk-chip--figee { cursor: default; pointer-events: none; }
+                .qd-cartes--choix .qd-choix--bon {
+                    border-color: var(--success); border-width: 3px;
+                    background: color-mix(in srgb, var(--success) 16%, transparent);
+                    color: var(--success);
+                }
+                .qd-cartes--choix .qd-choix--rate {
+                    border-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent);
+                    color: var(--danger); text-decoration: line-through;
                 }
                 .qd-note {
                     min-height: 2.2em; text-align: center; font-size: .82rem; line-height: 1.3;
@@ -857,6 +923,29 @@ class Organigramme extends BaseGame {
         this.carteEl.onclick = () => this.montrerLaCarte();
         this.container.querySelector('[data-effacer]').onclick = () => this.effacer();
         this.container.querySelector('[data-aide]').onclick = () => this.aider();
+        this.surveillerLaScene();
+    }
+
+    /**
+     * LA SCÈNE CHANGE DE TAILLE, L'ÉCRITURE SUIT.
+     *
+     * Une taille mesurée une fois est juste une fois. Tourner le téléphone,
+     * ouvrir le clavier, redimensionner un volet de l'Atelier : la place change
+     * et la phrase resterait à l'ancienne mesure — trop grande, donc coupée, ou
+     * trop petite au milieu du vide. Le reste du jeu n'en a pas besoin (il se
+     * dimensionne en unités de conteneur, qui suivent d'elles-mêmes) ; seule la
+     * phrase ajustée a besoin qu'on la remesure.
+     */
+    surveillerLaScene() {
+        const sc = this.container.querySelector('.qd-scene');
+        if (!sc || typeof ResizeObserver !== 'function') return;
+        this.veilleScene = new ResizeObserver(() => {
+            // `isConnected` : l'observateur survit un instant à la fermeture du
+            // jeu, et mesurer un élément détaché rend des zéros — de quoi
+            // écrire une taille absurde dans un style qu'on ne reverra pas.
+            if (sc.isConnected) this.ajusterEcriture();
+        });
+        this.veilleScene.observe(sc);
     }
 
     startGameLoop() { this.poser(); }
@@ -879,6 +968,7 @@ class Organigramme extends BaseGame {
             });
             this.iQuestion = 0;
             this.justes = 0;
+            this.attente = false;
         } else if (this.assemblage) {
             this.org = genererAssemblage({ rng: this.rng });
             this.placement = {};      // case → figure posée
@@ -945,6 +1035,10 @@ class Organigramme extends BaseGame {
         // La série de questions : la suivante, sans la compter juste ni fausse.
         if (this.questions) {
             if (this.iQuestion >= this.org.questions.length - 1) return false;
+            // On saute PAR-DESSUS l'attente : le saut d'auteur ne lit pas les
+            // explications, et une attente laissée en travers figerait les
+            // jetons de la question suivante.
+            this.attente = false;
             this.iQuestion += 1;
             this.dessiner();
             this.note('Question suivante (saut d\'auteur).');
@@ -1051,6 +1145,7 @@ class Organigramme extends BaseGame {
         if (this.isDemo || !this.org || this.fini) return false;
         if (this.questions) {
             if (this.iQuestion <= 0) return false;
+            this.attente = false;
             this.iQuestion -= 1;
             this.dessiner();
             return true;
@@ -1249,6 +1344,7 @@ class Organigramme extends BaseGame {
         // ce sont les mêmes mots que dans « Le Quadrilatère qui se Transforme »,
         // et c'est exprès — deux exercices, un seul vocabulaire.
         const restantes = e ? e.cartes.filter(c => !this.posesEtape.includes(c.id)) : [];
+        this.cartesEl.className = 'qd-cartes';
         this.cartesEl.innerHTML = restantes.map(c =>
             `<div class="kk-chip" data-carte="${c.id}"
                 title="${enAttribut(c.texte)}">${enAttribut(c.court || c.texte)}</div>`).join('');
@@ -1336,6 +1432,7 @@ class Organigramme extends BaseGame {
         })}</div>`
             + '<div class="qd-coder-dit">Quand tout est marqué, appuie sur « Vérifier le codage ».</div>';
 
+        this.cartesEl.className = 'qd-cartes';
         this.cartesEl.innerHTML = [1, 2, 3, 4].map(n =>
             `<button type="button" class="kk-chip cg-chip" data-chip="${n}"
                 aria-label="Marque à ${n === 4 ? 'croix' : `${n} trait${n > 1 ? 's' : ''}`}"
@@ -1540,25 +1637,112 @@ class Organigramme extends BaseGame {
 
         const q = this.org.questions[this.iQuestion];
         if (!q) return;
-        this.consigneEl.innerHTML = `Question ${this.iQuestion + 1} sur `
-            + `${this.org.questions.length} — <b>${this.justes} juste`
-            + `${this.justes > 1 ? 's' : ''}</b> pour l'instant. Tu peux rappeler `
-            + 'l\'organigramme à tout moment : il est fait pour être consulté.';
-        this.coderEl.innerHTML = `<div class="qd-question">${enAttribut(q.texte)}</div>`;
+        this.direOuEnEstLaSerie();
+        this.coderEl.innerHTML = `<div class="qd-question" data-question>${enAttribut(q.texte)}</div>
+            <div class="qd-suite" data-suite hidden>
+                <div class="qd-pourquoi" data-pourquoi></div>
+                <button type="button" class="qd-btn qd-btn--suite" data-suivante></button>
+            </div>`;
+        // LES JETONS DE CETTE PARTIE PORTENT DES MOTS QU'ON LIT, pas des cartes
+        // qu'on glisse : ils ont leur propre écriture, plus grande, et une
+        // hauteur de vraie cible tactile. Voir la règle « --choix ».
+        this.cartesEl.className = 'qd-cartes qd-cartes--choix';
         this.cartesEl.innerHTML = q.choix.map((c, i) =>
             `<div class="kk-chip" data-choix="${i}">${enAttribut(c.dit)}</div>`).join('');
         this.cartesEl.querySelectorAll('[data-choix]').forEach(chip => {
             chip.onclick = () => this.repondre(Number(chip.dataset.choix));
         });
+        this.coderEl.querySelector('[data-suivante]').onclick = () => this.questionSuivante();
+        this.ajusterEcriture();
     }
 
+    /**
+     * L'ÉCRITURE S'ADAPTE À LA PLACE DISPONIBLE — et il faut la MESURER.
+     *
+     * Rémy, sur la dernière partie de l'organigramme : « il faut que l'écriture
+     * s'adapte à la place disponible ».
+     *
+     * MESURÉ SUR TÉLÉPHONE, ET C'ÉTAIT PIRE QUE « PERFECTIBLE » : la question
+     * s'écrivait en 16 pixels au milieu d'une scène de 390 × 492 vide à quatre
+     * cinquièmes. Elle est la seule chose à lire de l'écran — la carte est
+     * derrière son bouton — et elle occupait un vingtième de la place.
+     *
+     * POURQUOI LES UNITÉS DE CONTENEUR N'Y SUFFISENT PAS. Tout le reste du jeu
+     * se dimensionne en `cqw`, et c'est le bon outil pour un dessin : un
+     * quadrilatère occupe une fraction connue de sa boîte. Une PHRASE, non — sa
+     * hauteur dépend du nombre de lignes qu'elle prendra, donc de sa longueur ET
+     * de la largeur disponible, et aucune règle CSS ne sait cela d'avance.
+     * « Que faut-il ajouter à un parallélogramme pour qu'il soit un carré ? »
+     * tient sur deux lignes à 24 pixels et sur cinq à 40.
+     *
+     * On cherche donc la plus grande taille qui TIENNE, par dichotomie, en
+     * interrogeant la mise en page à chaque essai. Douze tours suffisent à
+     * trancher au demi-pixel, et l'on ne les fait qu'aux moments où l'écran
+     * change — une nouvelle question, un changement de taille de fenêtre.
+     */
+    ajusterEcriture() {
+        const el = this.coderEl && this.coderEl.querySelector('[data-question]');
+        if (!el || !this.questions) return;
+        const boite = this.coderEl;
+        if (!boite.clientHeight || !boite.clientWidth) return;
+        // La place qui reste : la boîte, moins ce qui l'occupe déjà — le bouton
+        // « question suivante » quand il est là. Sans ce retrait, la phrase
+        // grandissait jusqu'à pousser le bouton hors de l'écran.
+        let pris = 0;
+        [...boite.children].forEach(c => {
+            if (c === el || c.hidden) return;
+            pris += c.getBoundingClientRect().height + 6;
+        });
+        // ON NE REMPLIT PAS JUSQU'AU BORD. Une phrase qui touche le haut et le
+        // bas de la scène se lit moins bien qu'une phrase qui respire, et le
+        // dernier dixième ne gagne qu'un ou deux pixels de corps.
+        const hauteur = Math.max(36, (boite.clientHeight - pris - 6) * 0.92);
+        let bas = TAILLE_MIN, haut = TAILLE_MAX;
+        for (let garde = 0; garde < 12 && haut - bas > 0.6; garde++) {
+            const essai = (bas + haut) / 2;
+            el.style.fontSize = `${essai}px`;
+            // ON COMPARE LA LARGEUR À LA SIENNE, PAS À CELLE DE LA BOÎTE.
+            //
+            // La phrase occupe toute la largeur (`width: 100%`) : son
+            // `scrollWidth` vaut donc TOUJOURS la largeur de la boîte, et le
+            // comparer à « la boîte moins huit pixels » échouait à chaque essai.
+            // Mesuré : la dichotomie retombait sur son plancher de quatorze
+            // pixels alors que quarante-six tenaient sans peine — trois cent
+            // sept pixels de haut dans une scène de quatre cent soixante-dix.
+            // Le seul débordement horizontal possible est un MOT plus large que
+            // la ligne, et cela se lit sur l'élément lui-même.
+            if (el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= hauteur) bas = essai;
+            else haut = essai;
+        }
+        el.style.fontSize = `${bas.toFixed(1)}px`;
+    }
+
+    /**
+     * ON RÉPOND, PUIS ON ATTEND — et c'est Rémy qui a vu que la seconde moitié
+     * manquait : « et attend entre chaque réponse ».
+     *
+     * LA CORRECTION S'AFFICHAIT SOUS LA QUESTION SUIVANTE. `repondre` avançait
+     * le compteur, redessinait l'écran, PUIS posait la note : « ✅ C'est la
+     * flèche qui mène du parallélogramme au rectangle » se lisait donc sous
+     * « Est-ce que tout losange est un carré ? ». Au mieux on ne la lisait pas,
+     * au pire elle répondait à la mauvaise question — et l'explication est
+     * précisément ce qu'on vient chercher dans cette partie-là.
+     *
+     * ON RESTE DONC SUR LA QUESTION : les jetons se figent, le bon s'entoure de
+     * vert, celui qu'on a touché à tort se barre de rouge, l'explication
+     * s'écrit dessous, et l'on continue quand on veut. Le rythme appartient à
+     * celui qui lit, pas à un minuteur : une explication à quatre lignes ne se
+     * lit pas dans le même temps qu'un « Oui ».
+     */
     repondre(i) {
-        if (this.isDemo || this.fini) return;
+        // `attente` : on a répondu et l'on n'a pas encore tourné la page. Sans
+        // cette garde, un second clic sur un jeton compterait une réponse de
+        // plus à la même question.
+        if (this.isDemo || this.fini || this.attente) return;
         const q = this.org.questions[this.iQuestion];
         const choix = q.choix[i];
         if (!choix) return;
         const juste = q.bonnes.includes(choix.valeur);
-        const dire = () => this.note(`${juste ? '✅' : '❌'} ${q.pourquoi}`, juste ? 'ok' : 'ko');
         if (juste) {
             this.justes += 1;
             this.onCorrectAnswer(null, COMPETENCE, {
@@ -1572,13 +1756,71 @@ class Organigramme extends BaseGame {
                 partiel: true, silencieux: true
             });
         }
-        this.iQuestion += 1;
-        if (this.iQuestion >= this.org.questions.length) {
-            dire();
-            return this.gagner();
+        this.attente = true;
+        // CE QU'ON MONTRE SUR LES JETONS. « Il y a deux réponses justes » se dit
+        // dans l'explication ; on entoure donc TOUTES les bonnes, pas seulement
+        // celle qu'on attendait — sinon la phrase et l'écran se contredisent.
+        this.cartesEl.querySelectorAll('[data-choix]').forEach(chip => {
+            const k = Number(chip.dataset.choix);
+            chip.classList.add('kk-chip--figee');
+            if (q.bonnes.includes(q.choix[k].valeur)) chip.classList.add('qd-choix--bon');
+            else if (k === i) chip.classList.add('qd-choix--rate');
+        });
+        // L'EXPLICATION VA SOUS LA QUESTION, PAS DANS LA LIGNE DU BAS.
+        //
+        // Deux raisons, et la seconde est un défaut. D'abord la lecture : ici
+        // l'explication EST le contenu — on vient chercher « pourquoi », pas un
+        // score —, et la mettre au pied de l'écran, sous les boutons, la met à
+        // l'endroit où l'œil ne va plus. Ensuite : couché — écran bas et large,
+        // c'est-à-dire un téléphone tourné ou un petit portable — la ligne du
+        // bas est en « display: none » (voir la requête de conteneur), et la
+        // correction ne s'affichait alors NULLE PART.
+        const derniere = this.iQuestion >= this.org.questions.length - 1;
+        const suite = this.coderEl.querySelector('[data-suite]');
+        const bouton = this.coderEl.querySelector('[data-suivante]');
+        const pourquoi = this.coderEl.querySelector('[data-pourquoi]');
+        if (suite && bouton) {
+            if (pourquoi) {
+                pourquoi.textContent = `${juste ? '✅' : '❌'} ${q.pourquoi}`;
+                pourquoi.className = `qd-pourquoi qd-pourquoi--${juste ? 'ok' : 'ko'}`;
+            }
+            bouton.textContent = derniere ? 'Voir le bilan' : 'Question suivante ▶';
+            suite.hidden = false;
+            this.direOuEnEstLaSerie();
+            // La phrase reprend la place que le bouton vient de prendre.
+            this.ajusterEcriture();
+            bouton.focus({ preventScroll: true });
+        } else {
+            // Sans bouton — cas qui ne devrait pas arriver — on ne coince pas
+            // l'élève sur une question à laquelle il a répondu.
+            this.note(`${juste ? '✅' : '❌'} ${q.pourquoi}`, juste ? 'ok' : 'ko');
+            this.questionSuivante();
         }
+    }
+
+    /**
+     * OÙ EN EST LA SÉRIE — et il faut la redire APRÈS chaque réponse.
+     *
+     * On reste maintenant sur la question le temps de lire l'explication : le
+     * compte de bonnes réponses, écrit au moment où la question s'est affichée,
+     * restait donc en retard d'un cran — « 0 juste pour l'instant » à côté d'un
+     * « ✅ » tout frais.
+     */
+    direOuEnEstLaSerie() {
+        this.consigneEl.innerHTML = `Question ${this.iQuestion + 1} sur `
+            + `${this.org.questions.length} — <b>${this.justes} juste`
+            + `${this.justes > 1 ? 's' : ''}</b> pour l'instant. Tu peux rappeler `
+            + 'l\'organigramme à tout moment : il est fait pour être consulté.';
+    }
+
+    /** La page se tourne : c'est le seul chemin qui fait avancer la série. */
+    questionSuivante() {
+        if (!this.questions || this.fini) return;
+        this.attente = false;
+        this.iQuestion += 1;
+        if (this.iQuestion >= this.org.questions.length) return this.gagner();
         this.dessiner();
-        dire();
+        this.note('');
     }
 
     /**
@@ -1728,6 +1970,7 @@ class Organigramme extends BaseGame {
 
         // LA PALETTE CHANGE DE NATURE ENTRE LES DEUX TEMPS : des figures, puis
         // des mots. Les vignettes ne s'épuisent pas — voir `genererAssemblage`.
+        this.cartesEl.className = 'qd-cartes';
         this.cartesEl.innerHTML = vignettes
             ? this.org.vignettes.map(t =>
                 `<div class="kk-chip" data-vignette="${enAttribut(t)}"
@@ -1895,6 +2138,7 @@ class Organigramme extends BaseGame {
         this.ajusterCartes();
 
         const restantes = org.cartes.filter(c => !Object.values(this.poses).some(p => p.id === c.id));
+        this.cartesEl.className = 'qd-cartes';
         this.cartesEl.innerHTML = restantes.map(c =>
             `<div class="kk-chip" data-carte="${c.id}">${enAttribut(c.texte)}</div>`).join('');
         this.brancherGlisser();
@@ -2461,6 +2705,10 @@ class Organigramme extends BaseGame {
 
     destroy() {
         if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        // L'observateur de taille se débranche : laissé en place, il continue de
+        // rappeler un ajustement sur un élément détaché à chaque changement de
+        // fenêtre, jusqu'au rechargement de la page.
+        if (this.veilleScene) { this.veilleScene.disconnect(); this.veilleScene = null; }
         super.destroy();
     }
 }
