@@ -898,7 +898,12 @@ class Tetris extends BaseGame {
     gameOver() {
         this.gameRunning = false;
         if(this.rafId) cancelAnimationFrame(this.rafId);
-        this.container.querySelector('#tetris-final-score').innerText = this.score;
-        this.container.querySelector('#tetris-game-over').classList.remove('tetris-hidden');
+        // Le plateau a pu être vidé avant que la partie ne se termine — on
+        // ferme le jeu, la boucle d'animation finit son tour. Vu à la sonde.
+        const note = this.container.querySelector('#tetris-final-score');
+        const ecran = this.container.querySelector('#tetris-game-over');
+        if (!note || !ecran) return;
+        note.innerText = this.score;
+        ecran.classList.remove('tetris-hidden');
     }
 }

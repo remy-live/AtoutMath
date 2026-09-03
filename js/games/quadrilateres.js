@@ -886,7 +886,11 @@ class Organigramme extends BaseGame {
      *                    alors son chemin ordinaire et passe à l'exercice suivant.
      */
     sauterEtape() {
-        if (this.isDemo || !this.org) return false;
+        // PAS DE GARDE « ISDEMO » ICI, et c'est voulu : c'est la démonstration
+        // elle-même qui s'en sert pour franchir l'étape de codage. La garde
+        // vit sur les gestes de l'élève — poser une carte, coder une figure —,
+        // là où un robot n'a rien à faire.
+        if (!this.org) return false;
 
         // La série de questions : la suivante, sans la compter juste ni fausse.
         if (this.questions) {
@@ -2283,12 +2287,28 @@ class Organigramme extends BaseGame {
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (this.progressif) {
+            // LE CODAGE D'ABORD, PUISQUE C'EST LA PREMIÈRE ÉTAPE — et le robot
+            // restait bloqué dessus. Depuis que l'on code avant de nommer,
+            // `etapeCourante` est une étape de CODAGE au départ : elle n'a pas
+            // de `bonnes`, la boucle ci-dessous ne tournait pas, et la
+            // démonstration s'arrêtait sur sa première phrase. On dit ce qu'on
+            // y fait, on le fait, et l'on passe aux vignettes — qui sont ce
+            // qu'il y a de particulier dans cet exercice.
+            if (this.etapeCourante && this.etapeCourante.genre === 'codage') {
+                const nom = familleDe(this.etapeCourante.figure).nom.toLowerCase();
+                if (!await gate.waitTurn() || !this.isRunning) return fin();
+                cur.say(`On commence par CODER la figure : je marque d'un même trait les `
+                    + `segments de même longueur, et d'un petit carré les angles droits. `
+                    + `Coder un ${nom}, c'est déjà dire ce qu'il est.`, this.coderEl);
+                if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+                this.sauterEtape();
+            }
             // LA DÉMONSTRATION MONTRE LA PREMIÈRE ÉTAPE EN ENTIER, et pas deux
             // cartes prises au hasard : c'est le fait qu'il y ait PLUSIEURS
             // façons d'être un parallélogramme qui surprend, et il faut les voir
             // arriver toutes les trois pour le comprendre.
             const e = this.etapeCourante;
-            if (!e) return fin();
+            if (!e || !e.bonnes) return fin();
             for (let k = 0; k < e.bonnes.length; k++) {
                 if (!await gate.waitTurn() || !this.isRunning) return fin();
                 cur.say(k === 0

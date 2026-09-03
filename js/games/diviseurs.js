@@ -466,10 +466,16 @@ class Diviseurs extends BaseGame {
 
     majTete() {
         const p = this.partie;
-        this.container.querySelector('[data-boucliers]').textContent =
-            '🛡'.repeat(Math.max(0, p.boucliers)) || '—';
-        this.container.querySelector('[data-vague]').textContent = `Vague ${p.vague}`;
-        this.container.querySelector('[data-score]').textContent = `${p.score} pts`;
+        // UN JEU FERMÉ N'A PLUS DE TÊTE À METTRE À JOUR. Une vague en vol
+        // rappelait cette méthode après que le plateau a été vidé — vu à la
+        // sonde des démonstrations : « Cannot set properties of null ».
+        const ecrire = (sel, texte) => {
+            const el = this.container.querySelector(sel);
+            if (el) el.textContent = texte;
+        };
+        ecrire('[data-boucliers]', '🛡'.repeat(Math.max(0, p.boucliers)) || '—');
+        ecrire('[data-vague]', `Vague ${p.vague}`);
+        ecrire('[data-score]', `${p.score} pts`);
     }
 
     majCanon() {

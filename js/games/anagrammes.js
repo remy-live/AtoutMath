@@ -396,7 +396,11 @@ class Anagrammes extends BaseGame {
             const j = this.tas.find(x => !x.pose && x.lettre === lettre);
             if (!j) break;
             const el = this.tasEl.querySelector(`[data-jeton="${j.i}"]`);
-            if (el) await cur.tapOn(el);
+            // `tap`, pas `tapOn` : le curseur n'a jamais eu de `tapOn`, et la
+            // démonstration mourait sur cette ligne — sans erreur visible pour
+            // qui ne regarde pas la console. Trente-sept autres jeux appellent
+            // `tap` ; celui-ci était le seul à s'être trompé de nom.
+            if (el) await cur.tap(el);
             j.pose = true;
             this.cases[this.premiereLibre()] = j.i;
             this.dessiner();

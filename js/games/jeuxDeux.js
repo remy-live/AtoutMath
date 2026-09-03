@@ -388,10 +388,17 @@ class JeuADeux extends BaseGame {
     // --- Le dessin -------------------------------------------------------------
 
     dessiner() {
+        // UN JEU QU'ON VIENT DE QUITTER NE DESSINE PLUS. Le plateau est vidé à
+        // la fermeture, mais un minuteur en vol appelle encore `dessiner()` :
+        // vu à la sonde, « Cannot read properties of null (reading 'classList') »
+        // au moment où l'on passait d'une démonstration à la suivante. On ne
+        // dessine que si l'on est encore à l'écran — c'est moins bavard qu'un
+        // try/catch, et cela n'avale aucune vraie erreur.
+        if (!this.scoreEl || !this.scoreEl.isConnected) return;
         this.scoreEl.textContent = this.def.score(this.partie);
         ['B', 'N'].forEach(c => {
-            this.container.querySelector(`[data-joueur="${c}"]`)
-                .classList.toggle('jd-joueur--actif', !this.fini && this.partie.trait === c);
+            const pion = this.container.querySelector(`[data-joueur="${c}"]`);
+            if (pion) pion.classList.toggle('jd-joueur--actif', !this.fini && this.partie.trait === c);
         });
         this.def.dessiner.call(this, this.partie);
     }

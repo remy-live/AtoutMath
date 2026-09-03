@@ -355,8 +355,12 @@ class Skweek extends BaseGame {
         }, this.rng);
         this.reste = this.etat.secondes;
         this.finie = false;
-        this.container.querySelector('[data-regle]').textContent =
-            `Repeins ${this.etat.regle.consigne}`;
+        // LE PLATEAU PEUT AVOIR ÉTÉ VIDÉ ENTRE-TEMPS : cette méthode est aussi
+        // appelée par un observateur de taille, qui survit un instant à la
+        // fermeture du jeu. Vu à la sonde des démonstrations.
+        const regle = this.container.querySelector('[data-regle]');
+        if (!regle) return;
+        regle.textContent = `Repeins ${this.etat.regle.consigne}`;
         this.dessinerSol();
         this.majTete();
         this.note(`Niveau ${this.etat.niveau} — marche sur les dalles qui vérifient la règle. `

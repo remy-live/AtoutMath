@@ -464,6 +464,14 @@ class QuadriMorph extends BaseGame {
     // --- La démonstration du robot ---------------------------------------------
 
     async runDemoSequence() {
+        // LE ROBOT PARLAIT AU-DESSUS D'UN ÉCRAN VIDE. Rémy : « le robot pour le
+        // quadrilatère qui se transforme ne fonctionne pas. » Il ne fonctionnait
+        // pas, en effet, et pour une raison qui n'était pas dans ce fichier :
+        // `BaseGame.start()` appelle `runDemoSequence()` OU `startGameLoop()`,
+        // jamais les deux — et c'est `startGameLoop()` qui pose le défi ici. La
+        // démonstration montrait donc une bulle, une flèche, et rien dessous.
+        // On pose le défi avant de commenter : il n'y a rien à commenter sans.
+        if (!this.defi) this.poserDefi();
         const cursor = createDemoCursor();
         const gate = createDemoGate(this.container);
         this.demoCursor = cursor;

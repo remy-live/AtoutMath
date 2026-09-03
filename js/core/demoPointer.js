@@ -86,6 +86,87 @@ export function dureeDemo(ms) {
 // <body> y recouvrirait toute la page — et survivait à la vignette. En muet,
 // le robot joue sans parler ; le plein écran garde ses bulles.
 let muet = false;
+
+/**
+ * LA PAUSE EST UN ÉTAT DU MODULE, PAS UN SECRET DE LA BARRE — et « Un pas » ne
+ * marchait pas à cause de cela.
+ *
+ * Rémy : « j'ai l'impression que le pas suivant du robot (le bouton) ne
+ * fonctionne pas. » Mesuré : sur l'addition, la bulle ne bougeait pas après
+ * trois appuis ; sur le quadrilatère qui se transforme, elle avançait une fois
+ * sur trois.
+ *
+ * DEUX CAUSES, ET LA SECONDE EST LA PIRE :
+ *
+ *  · UNE LIBÉRATION PERDUE. « Un pas » relâchait les attentes EN COURS ; s'il
+ *    n'y en avait aucune — le robot était alors dans un simple délai —, l'appui
+ *    tombait dans le vide, et il fallait appuyer une seconde fois. Un jeton
+ *    d'avance corrige cela : libéré sans personne à libérer, il est GARDÉ, et
+ *    la prochaine attente le consomme aussitôt.
+ *
+ *  · LA PAUSE NE METTAIT PAS EN PAUSE. Les délais du robot — `cur.pause()`, la
+ *    quasi-totalité de son temps — sont de simples minuteurs, qui ignoraient
+ *    l'état de la barre. Le robot continuait donc son texte pendant la pause, et
+ *    « Un pas » ne pouvait rien avancer puisque rien n'attendait. Un minuteur
+ *    qui arrive à échéance pendant la pause se met désormais dans la file, avec
+ *    les autres.
+ *
+ * La file est commune aux deux — les tours de parole et les délais —, et « Un
+ * pas » en libère EXACTEMENT un : c'est ce qui fait qu'un appui vaut un pas.
+ */
+let enPause = false;
+/** Un pas est en cours : on court jusqu'à la PROCHAINE explication. */
+let pasEnCours = false;
+const fileDAttente = [];
+
+/**
+ * Attendre son tour. Pendant un pas, on ne s'arrête à rien : c'est la prochaine
+ * explication qui refermera la porte — voir `marquerExplication`.
+ */
+function attendreLaReprise() {
+    if (!enPause || pasEnCours) return Promise.resolve();
+    return new Promise(res => fileDAttente.push(res));
+}
+
+/** Reprendre : tout le monde repart. */
+function reprendreTout() {
+    enPause = false;
+    pasEnCours = false;
+    fileDAttente.splice(0).forEach(res => res());
+}
+
+/**
+ * UNE EXPLICATION VIENT D'ÊTRE DITE : le pas est consommé.
+ *
+ * C'est ce qui donne son sens au bouton — « un pas » veut dire « la phrase
+ * suivante », pas « le prochain point d'attente ». Entre deux phrases il y en a
+ * DEUX, un délai de lecture et un tour de parole ; un jeton par attente aurait
+ * demandé deux appuis par phrase, ce qui était le défaut d'à côté.
+ */
+function marquerExplication() {
+    pasEnCours = false;
+}
+
+/**
+ * UN PAS : on coupe court à ce que le robot est en train d'attendre.
+ *
+ * ET C'ÉTAIT LÀ LE VRAI DÉFAUT, mesuré à la sonde : la file d'attente restait
+ * VIDE et les jetons s'empilaient — 1, 2, 3, 4 — sans que rien n'avance. Le
+ * robot n'attendait pas son tour : il attendait le TEMPS DE LECTURE de sa
+ * phrase. Une explication de deux cents caractères se lit en treize secondes ;
+ * pendant ces treize secondes, « Un pas » n'avait rien à libérer, et l'on
+ * concluait — comme Rémy — que le bouton ne marchait pas.
+ *
+ * On presse donc le délai en cours. C'est exactement ce que le bouton veut
+ * dire : « j'ai lu, la suite. »
+ */
+function unPas() {
+    enPause = true;
+    pasEnCours = true;
+    // Tout ce qui attendait repart : le pas court jusqu'à la prochaine phrase.
+    fileDAttente.splice(0).forEach(res => res());
+    curseursVivants.forEach(c => { if (c.hater) c.hater(); });
+}
 export function setDemoMuet(v) { muet = !!v; }
 
 // --- Temps de lecture d'une bulle --------------------------------------------
@@ -288,9 +369,10 @@ export function createDemoGate(host) {
     // carte de 170 px ne servirait qu'à la défigurer.
     if (muet) return BARRE_MUETTE;
 
-    let paused = false;
     let destroyed = false;
-    let attentes = [];
+    // La barre lit et écrit l'état du module : c'est le même robot qu'elle
+    // pilote, et il l'attend ailleurs qu'ici (voir `attendre`).
+    reprendreTout();
     // Les délais du robot en cours. Séparés des attentes de pause : reprendre
     // ne doit pas escamoter le temps qu'il reste à patienter.
     const minuteurs = new Set();
@@ -350,9 +432,9 @@ export function createDemoGate(host) {
     majVitesse();
 
     const btnPause = bar.querySelector('[data-demo-pause]');
-    const liberer = () => { attentes.forEach(r => r()); attentes = []; };
     const poserPause = (etat) => {
-        paused = etat;
+        const paused = etat;
+        if (paused) enPause = true; else reprendreTout();
         habiller(btnPause, paused ? '▶' : '⏸', paused ? 'Reprendre' : 'Pause');
         btnPause.classList.toggle('demo-ctrl-btn--active', paused);
         // La pause doit arrêter LE JEU, pas seulement le robot.
@@ -366,22 +448,20 @@ export function createDemoGate(host) {
         document.dispatchEvent(new CustomEvent('demo_pause', { detail: paused }));
     };
 
-    btnPause.onclick = () => {
-        poserPause(!paused);
-        if (!paused) liberer();
-    };
+    btnPause.onclick = () => poserPause(!enPause);
     bar.querySelector('[data-demo-step]').onclick = () => {
-        // « Un pas » implique la pause : on libère un seul coup, la boucle
-        // se rebloquera au prochain `waitTurn()`.
-        if (!paused) poserPause(true);
-        liberer();
+        // « Un pas » implique la pause, et libère EXACTEMENT une attente — ou
+        // garde un jeton s'il n'y en a aucune, pour que l'appui ne soit jamais
+        // perdu. C'était le défaut : un appui sur deux tombait dans le vide.
+        poserPause(true);
+        unPas();
     };
 
     const btnBack = bar.querySelector('[data-demo-back]');
     btnBack.onclick = () => {
         // Remonter suppose de s'arrêter : sinon le robot recouvrirait la bulle
         // rappelée par la suivante avant qu'on ait fini de la lire.
-        if (!paused) poserPause(true);
+        if (!enPause) poserPause(true);
         if (revoirPrecedent()) return;
         // ON NE SE TAIT PAS. Le bouton se grisait 700 ms, et rien d'autre : sur
         // la première explication — ou quand la démonstration n'avait pas encore
@@ -399,11 +479,11 @@ export function createDemoGate(host) {
     };
 
     return {
-        get paused() { return paused; },
+        get paused() { return enPause; },
         async waitTurn() {
             if (destroyed) return false;
-            if (!paused) return true;
-            return new Promise(res => attentes.push(() => res(!destroyed)));
+            await attendreLaReprise();
+            return !destroyed;
         },
         /**
          * ATTENDRE UN MOMENT, PUIS SON TOUR.
@@ -445,13 +525,17 @@ export function createDemoGate(host) {
         },
         destroy() {
             destroyed = true;
-            // Une barre détruite en pause laisserait le jeu gelé pour de bon.
-            if (paused) { paused = false; document.dispatchEvent(new CustomEvent('demo_pause', { detail: false })); }
+            // Une barre détruite en pause laisserait le jeu gelé pour de bon —
+            // et, depuis que la pause est un état du module, elle gèlerait
+            // aussi la démonstration SUIVANTE.
+            if (enPause) {
+                document.dispatchEvent(new CustomEvent('demo_pause', { detail: false }));
+            }
             // Et un robot qu'on ferme ne doit pas continuer à parler dans le
             // vide pendant les deux secondes de son dernier délai.
             [...minuteurs].forEach(f => f());
             minuteurs.clear();
-            liberer();
+            reprendreTout();
             bar.remove();
             // Le titre revient — mais seulement si plus aucune barre n'occupe
             // l'en-tête : une activité qui refait sa barre à chaque question
@@ -498,9 +582,22 @@ export function createDemoCursor() {
     function attendre(ms) {
         if (destroyed) return Promise.resolve(false);
         return new Promise(resolve => {
-            const done = (ok) => { pending.delete(done); resolve(ok); };
+            let fini = false;
+            const done = (ok) => {
+                if (fini) return;
+                fini = true;
+                pending.delete(done);
+                resolve(ok);
+            };
             pending.add(done);
-            regTimeout(() => done(!destroyed), Math.max(0, ms));
+            // LE DÉLAI ÉCOULÉ NE SUFFIT PLUS : il faut aussi que la barre ait
+            // rendu la main. Sans quoi la pause ne mettait rien en pause — voir
+            // `enPause` en tête de fichier. Et « Un pas » peut couper court au
+            // délai lui-même : voir `hater` plus bas.
+            regTimeout(() => {
+                if (fini) return;
+                attendreLaReprise().then(() => done(!destroyed));
+            }, Math.max(0, ms));
         });
     }
 
@@ -542,6 +639,9 @@ export function createDemoCursor() {
          */
         say(texte, cible = null, rejeu = false) {
             if (destroyed || !texte || muet || discret) return;
+            // Le pas demandé est arrivé à destination : la phrase suivante est
+            // à l'écran, le robot se rebloque à sa prochaine attente.
+            if (!rejeu) marquerExplication();
             // `rejeu` : rappel d'une explication passée par le bouton
             // « Arrière ». Le noter rallongerait l'historique à l'infini et
             // ferait perdre le fil du retour en arrière.
@@ -756,6 +856,21 @@ export function createDemoCursor() {
         pause(ms = DEMO_SPEED.settle) {
             const restant = finDeLecture - performance.now();
             return attendre(Math.max(ms * facteurVitesse, restant));
+        },
+
+        /**
+         * COUPER COURT À CE QU'ON ATTEND — c'est « Un pas ».
+         *
+         * Le robot passe l'essentiel de son temps à laisser lire sa phrase. Ce
+         * temps-là n'est pas un tour de parole qu'on pourrait libérer : c'est un
+         * minuteur. On le termine donc d'autorité, et le robot enchaîne.
+         *
+         * @returns {boolean} vrai si quelque chose attendait vraiment
+         */
+        hater() {
+            if (!pending.size) return false;
+            [...pending].forEach(done => done(!destroyed));
+            return true;
         },
 
         destroy() {
