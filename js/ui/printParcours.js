@@ -216,7 +216,10 @@ function questionsDe(etape, nb) {
     const vus = new Set();
     const out = [];
     for (let essai = 0; out.length < nb && essai < nb * 12; essai++) {
-        const item = etape.generator.generate(etape.params, { index: out.length, rng: makeRng() });
+        // `papier: true` : le générateur sait qu'il écrit pour une feuille, et
+        // peut poser autre chose que sa question d'écran — voir printQuestions.
+        const item = etape.generator.generate(etape.params,
+            { index: out.length, rng: makeRng(), papier: true });
         // `papier` : la même question, écrite pour la feuille — sans la
         // consigne répétée devant chaque ligne. À défaut, le texte d'écran.
         const texte = (item.prompt && (item.prompt.papier || item.prompt.text)) || '';
@@ -224,6 +227,8 @@ function questionsDe(etape, nb) {
         vus.add(texte);
         out.push({
             texte,
+            // Le tableau de l'énoncé, dessiné par la mise en page.
+            tableau: (item.prompt && item.prompt.tableau) || null,
             // LE MÊME PIÈGE QUE POUR LA RÉPONSE, un cran plus loin : le
             // libellé d'une proposition est fait pour l'ÉCRAN. Une fraction y
             // est du HTML — deux span empilés —, et une égalité de Thalès
@@ -259,6 +264,14 @@ function texteDeProposition(c) {
 }
 
 function formaterReponse(item) {
+    // LA RÉPONSE DU PAPIER N'EST PAS TOUJOURS CELLE DE L'ÉCRAN.
+    //
+    // L'écran demande UN nombre — c'est ce que rend un pavé numérique. La
+    // feuille, elle, peut demander quatre cases d'un tableau de valeurs : le
+    // corrigé imprimait alors la dernière, seule, en face d'une question qui en
+    // posait quatre. Le générateur écrit donc ce qu'il faut lire, quand ce n'est
+    // pas la même chose.
+    if (item.reponsePapier) return String(item.reponsePapier);
     if (item.answerKind === 'choice' && item.choices) {
         const bonne = item.choices.find(c => c.correct);
         // LE LIBELLÉ D'UNE RÉPONSE EST FAIT POUR L'ÉCRAN, pas pour le papier :

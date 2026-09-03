@@ -1000,3 +1000,101 @@ test('sans interrogation, l\'ultra n\'invente aucun barème', () => {
     const morceaux = r.pages[0].blocs.flatMap(b => b.lignes).flatMap(morceauxReponse);
     assert.equal(morceaux.filter(m => m.bareme).length, 0);
 });
+
+// --- UN TABLEAU DESSINÉ SOUS L'ÉNONCÉ -----------------------------------------
+//
+// Rémy, sur le PDF des fonctions : « tableau non dessiné », « des lignes en
+// pointillé qui ne servent à rien ». Un tableau écrit « x : −2 | 2 | 3 » en
+// texte suivi n'est pas un tableau : les deux rangées ne s'alignent plus dès
+// que la ligne se coupe, et ce qu'on apprend — une colonne, un couple — devient
+// illisible.
+
+const tableauDeux = () => ({ lignes: [['x', '−2', '0', '3', '5'], ['f(x)', '', '', '', '']] });
+
+test('un tableau reçoit sa géométrie, dans la colonne de son énoncé', async () => {
+    const { composerBlocs } = await import('../js/core/fiche.js');
+    const mise = composerBlocs([{
+        id: 'fn', titre: 'Fonctions', colonnes: 1,
+        questions: Array.from({ length: 4 }, () => ({
+            texte: 'Soit f(x) = 3x + 5.\nComplète le tableau.',
+            tableau: tableauDeux(), reponse: 'f(−2) = −1'
+        }))
+    }], {}, mesurer);
+    const qs = mise.pages.flatMap(p => p.items).filter(i => i.type === 'q');
+    assert.equal(qs.length, 4, 'aucune question perdue');
+    qs.forEach(q => {
+        assert.ok(q.tableau, 'le tableau doit être posé avec sa question');
+        // Il commence sous la dernière ligne de l'énoncé, jamais dessus.
+        assert.ok(q.tableau.y >= q.y + q.lignes.length * mise.opts.interligne - 0.01,
+            'le tableau remonte dans le texte');
+        // Il est aligné sur le texte, et tient dans la colonne.
+        assert.equal(q.tableau.x, q.texteX);
+        assert.ok(q.tableau.w <= q.texteW + 0.01,
+            `le tableau déborde de sa colonne : ${q.tableau.w.toFixed(1)} > ${q.texteW.toFixed(1)}`);
+        // Cinq colonnes, deux rangées.
+        assert.equal(q.tableau.larg.length, 5);
+        assert.ok(Math.abs(q.tableau.larg.reduce((a, b) => a + b, 0) - q.tableau.w) < 0.01);
+        assert.ok(Math.abs(q.tableau.h - 2 * q.tableau.hLigne) < 0.01);
+    });
+});
+
+test('les colonnes de valeurs sont TOUTES de la même largeur', async () => {
+    // Des cases inégales feraient croire que la plus large attend le plus
+    // grand nombre. Seule la tête de rangée — « f(x) » — se mesure sur son
+    // texte.
+    const { mesurerTableau, DEFAUTS_BLOCS } = await import('../js/core/fiche.js');
+    const t = mesurerTableau({ lignes: [['x', '1', '−12', '100'], ['f(x)', '', '', '']] },
+        200, DEFAUTS_BLOCS, mesurer);
+    assert.deepEqual(t.larg.slice(1), [t.larg[1], t.larg[1], t.larg[1]]);
+    assert.ok(t.larg[1] >= DEFAUTS_BLOCS.caseTableauMin, 'de quoi écrire à la main');
+    assert.equal(t.serre, false, 'il y avait toute la place');
+    assert.equal(t.aRemplir, true);
+});
+
+test('un tableau trop large pour sa colonne fait retirer une colonne', async () => {
+    // Ses cases se resserrent pour tenir ; en dessous d'un centimètre et demi,
+    // l'élève n'a plus la place d'y écrire un nombre à deux chiffres.
+    const { composerBlocs } = await import('../js/core/fiche.js');
+    const large = { lignes: [['x', '1', '2', '3', '4', '5', '6', '7', '8'],
+        ['f(x)', '', '', '', '', '', '', '', '']] };
+    const mise = composerBlocs([{
+        id: 'fn', titre: 'F',
+        questions: Array.from({ length: 6 }, () => ({ texte: 'Complète.', tableau: large, reponse: '' }))
+    }], {}, mesurer);
+    assert.deepEqual(mise.colonnes, [1], 'quatre colonnes de tableaux ne tiennent pas');
+    mise.pages.flatMap(p => p.items).filter(i => i.type === 'q')
+        .forEach(q => assert.equal(q.tableau.serre, false, 'les cases sont restées écrasées'));
+});
+
+test('sous un tableau à remplir, plus aucun pointillé', async () => {
+    // « Des lignes en pointillé qui ne servent à rien » : sous un tableau
+    // qu'on remplit, elles proposent un second endroit pour la même réponse.
+    const { composerBlocs } = await import('../js/core/fiche.js');
+    const mise = composerBlocs([{
+        id: 'fn', titre: 'F', colonnes: 1,
+        questions: [
+            { texte: 'Complète le tableau.', tableau: tableauDeux(), reponse: '' },
+            // Assez longue pour que sa réponse passe sous l'énoncé : c'est là
+            // qu'on voit les deux lignes réservées pour rédiger.
+            { texte: 'Soit f(x) = 3x + 5. Quel nombre a pour image 14 ? '
+                + 'Autrement dit, trouve un antécédent de 14 par la fonction f.', reponse: '3' }
+        ]
+    }], { ligneReponse: 14, lignesReponse: 2, interrogation: true }, mesurer);
+    const qs = mise.pages.flatMap(p => p.items).filter(i => i.type === 'q');
+    assert.equal(qs[0].rep, null, 'le tableau EST la place pour répondre');
+    assert.ok(qs[1].rep, 'une question sans tableau garde ses lignes');
+    assert.equal(qs[1].rep.lignes, 2);
+});
+
+test('un tableau tout rempli garde, lui, sa ligne de réponse', async () => {
+    // C'est un tableau qu'on LIT : la réponse s'écrit ailleurs.
+    const { composerBlocs } = await import('../js/core/fiche.js');
+    const mise = composerBlocs([{
+        id: 'fn', titre: 'F', colonnes: 1,
+        questions: [{ texte: 'Quelle est l\'image de 3 ?',
+            tableau: { lignes: [['x', '1', '3'], ['f(x)', '5', '11']] }, reponse: '11' }]
+    }], {}, mesurer);
+    const q = mise.pages[0].items.find(i => i.type === 'q');
+    assert.equal(q.tableau.aRemplir, false);
+    assert.ok(q.rep, 'sans case vide, la réponse va sur des pointillés');
+});

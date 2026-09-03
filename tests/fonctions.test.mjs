@@ -176,3 +176,92 @@ test('l\'exercice du catalogue tient debout', () => {
             `« ${o.label} » rend ${it.meta.quoi}`);
     });
 });
+
+// --- LA FEUILLE : « TABLEAU NON DESSINÉ, QUESTION TROP TRIVIALE » --------------
+//
+// Les trois défauts que Rémy a vus sur le PDF, chacun avec sa vérification.
+
+test('le tableau de valeurs part vers la feuille en TABLEAU, pas en texte', () => {
+    for (const it of suite(20, { quoi: 'tableau-complet' }, 'tab')) {
+        const t = it.prompt.tableau;
+        assert.ok(t && t.lignes, 'la feuille doit recevoir un tableau à dessiner');
+        assert.equal(t.lignes.length, 2);
+        assert.equal(t.lignes[0][0], 'x');
+        assert.equal(t.lignes[1][0], 'f(x)');
+        assert.equal(t.lignes[0].length, 5, 'quatre valeurs, plus la tête de rangée');
+        // Toutes les cases de la seconde rangée sont VIDES : c'est ce qui
+        // demande de remplir TOUT le tableau, et c'est ce qui fait de chaque
+        // case une case où l'on écrit.
+        assert.deepEqual(t.lignes[1].slice(1), ['', '', '', '']);
+        // Et l'énoncé n'écrit plus le tableau en toutes lettres à côté.
+        assert.ok(!/\|/.test(it.prompt.papier),
+            `le tableau est resté écrit en texte : « ${it.prompt.papier} »`);
+    }
+});
+
+test('le tableau à un trou laisse la case VIDE, pas un « ? » à barrer', () => {
+    for (const it of suite(20, { quoi: 'tableau' }, 'tab1')) {
+        const bas = it.prompt.tableau.lignes[1].slice(1);
+        assert.equal(bas.filter(c => c === '').length, 1, 'une seule case à remplir');
+        assert.ok(!bas.includes('?'), 'le « ? » de l\'écran n\'a rien à faire dans une case');
+        // La case vide est bien celle dont la valeur est la réponse.
+        const haut = it.prompt.tableau.lignes[0].slice(1);
+        const x = enNombre(haut[bas.indexOf('')]);
+        const { a, b } = lireAffine(it.prompt.text);
+        assert.equal(it.answer, a * x + b);
+    }
+});
+
+test('le corrigé du tableau complet donne les QUATRE valeurs, pas la dernière', () => {
+    // L'écran ne demande qu'une colonne — un pavé numérique rend un nombre.
+    // La feuille en demande quatre : le corrigé imprimait la dernière, seule,
+    // en face d'une question qui en posait quatre.
+    for (const it of suite(12, { quoi: 'tableau-complet' }, 'sol')) {
+        const morceaux = it.reponsePapier.split(' ; ');
+        assert.equal(morceaux.length, 4, `corrigé incomplet : « ${it.reponsePapier} »`);
+        const { a, b } = lireAffine(it.prompt.text);
+        morceaux.forEach(m => {
+            const [, x, y] = /f\((−?\d+)\) = (−?\d+)/.exec(m) || [];
+            assert.ok(x !== undefined, `corrigé illisible : « ${m} »`);
+            assert.equal(enNombre(y), a * enNombre(x) + b);
+        });
+    }
+});
+
+test('sur la feuille, la phrase à compléter porte un VRAI trou', () => {
+    // Rémy : « des lignes en pointillé qui ne servent à rien ». La feuille
+    // reconnaît un trou à une SUITE D'ESPACES et y pose la ligne à remplir ;
+    // des points de suspension écrits à la main n'en sont pas un, et l'on
+    // obtenait la phrase pointillée PLUS deux lignes de pointillés dessous.
+    for (const it of suite(20, { quoi: 'phrase' }, 'ph')) {
+        assert.match(it.prompt.papier, / {3,}/, 'aucun trou reconnaissable sur la feuille');
+        assert.ok(!/\. \. \./.test(it.prompt.papier), 'les points de l\'écran sont restés');
+        // L'écran, lui, garde ses pointillés : il n'a pas de ligne à tracer.
+        assert.match(it.prompt.text, /\. \. \./);
+    }
+});
+
+test('LA FEUILLE NE POSE PAS LES MÊMES QUESTIONS QUE L\'ÉCRAN', () => {
+    // « Question trop triviale » : sur une feuille qu'on emporte, lire une
+    // égalité déjà écrite ne demande rien. Le mélange du papier garde ce qui
+    // demande un calcul ou un raisonnement.
+    const compter = (papier) => {
+        const vus = {};
+        for (let i = 0; i < 300; i++) {
+            const it = gen().generate({ quoi: 'melange' },
+                { rng: makeRng(`mel-${papier}-${i}`), index: i, papier });
+            vus[it.meta.quoi] = (vus[it.meta.quoi] || 0) + 1;
+        }
+        return vus;
+    };
+    const ecran = compter(false);
+    const papier = compter(true);
+    assert.ok(!papier.tableau,
+        'le tableau à un trou est une image habillée en tableau : pas sur la feuille');
+    assert.ok(ecran.tableau > 0, 'à l\'écran, il a toute sa place');
+    // Le gros du papier demande un calcul : tableau complet, antécédent, image.
+    const durs = (v) => (v['tableau-complet'] || 0) + (v.antecedent || 0)
+        + (v['phrase-antecedent'] || 0);
+    assert.ok(durs(papier) > durs(ecran),
+        `la feuille devrait être plus exigeante : ${JSON.stringify(papier)}`);
+});

@@ -104,14 +104,12 @@ export const fonctionsGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = params || {};
+        // POUR QUI ON ÉCRIT — et cela change le mélange, voir MELANGE ci-dessous.
+        const papier = !!(ctx && ctx.papier);
         const quoi = ['lire', 'phrase', 'image', 'programme', 'tableau', 'tableau-complet',
             'antecedent'].includes(p.quoi)
             ? p.quoi
-            // Le mélange fait revenir la PHRASE aussi souvent que le calcul :
-            // c'est là que les points se perdent, et le simple « quelle est
-            // l'image ? » ne le travaille pas — voir `itemPhrase`.
-            : rng.pick(['phrase', 'image', 'programme', 'tableau', 'antecedent',
-                'image', 'phrase', 'tableau-complet']);
+            : rng.pick(papier ? MELANGE_PAPIER : MELANGE_ECRAN);
 
         const a = rng.pick([2, 3, 4, 5, -2, -3, 2, 3]);
         const b = rng.pick([-9, -7, -5, -4, -3, -1, 1, 2, 3, 4, 5, 6, 8]);
@@ -119,7 +117,7 @@ export const fonctionsGenerator = {
         const ecrit = `f(x) = ${ecrireAffine(a, b)}`;
 
         if (quoi === 'lire') return itemLire(rng, a, b, f, ecrit);
-        if (quoi === 'phrase') return itemPhrase(rng, a, b, f, ecrit);
+        if (quoi === 'phrase') return itemPhrase(rng, a, b, f, ecrit, papier);
         if (quoi === 'tableau-complet') return itemTableauComplet(rng, a, b, f, ecrit);
         if (quoi === 'antecedent') return itemAntecedent(rng, a, b, f, ecrit);
         if (quoi === 'programme') return itemProgramme(rng, a, b, f);
@@ -127,6 +125,34 @@ export const fonctionsGenerator = {
         return itemImage(rng, a, b, f, ecrit);
     }
 };
+
+/**
+ * DEUX MÉLANGES, PARCE QU'UN ÉCRAN ET UNE FEUILLE NE POSENT PAS LA MÊME QUESTION.
+ *
+ * Rémy, en regardant le PDF : « question trop triviale ».
+ *
+ * À L'ÉCRAN, une question facile n'est pas une question perdue : elle arrive
+ * dans une série chronométrée, où reconnaître d'un coup d'œil de quel côté de
+ * l'égalité on part EST l'exercice — c'est même le seul endroit où l'on peut
+ * s'entraîner à ce réflexe-là. La PHRASE revient donc souvent, et « calcule
+ * f(3) » sert de respiration entre deux.
+ *
+ * SUR LA FEUILLE, il n'y a ni chronomètre ni série : l'élève a le temps, il
+ * relit, il vérifie. Une question qui ne demande que de lire l'énoncé dans le
+ * bon sens ne lui coûte rien — c'est une ligne de plus à recopier. La feuille
+ * garde donc ce qui demande un CALCUL ou un RAISONNEMENT : le tableau complet
+ * (quatre images à la suite, où les fautes de signe reviennent en série),
+ * l'antécédent (remonter le programme à l'envers), et la phrase — mais celle
+ * dont le nombre manquant n'est écrit nulle part.
+ *
+ * Ce qui disparaît du papier : « lire une égalité », qui n'y demande rien, et
+ * le tableau à UN trou, qui est une image habillée en tableau et que le tableau
+ * complet fait quatre fois mieux.
+ */
+const MELANGE_ECRAN = ['phrase', 'image', 'programme', 'tableau', 'antecedent',
+    'image', 'phrase', 'tableau-complet'];
+const MELANGE_PAPIER = ['phrase', 'tableau-complet', 'antecedent', 'phrase',
+    'image', 'antecedent', 'tableau-complet', 'programme'];
 
 /**
  * L'ÉNONCÉ D'UNE FONCTION TIENT SUR DEUX LIGNES.
@@ -200,12 +226,17 @@ function itemLire(rng, a, b, f, ecrit) {
  * ou à droite. Un élève qui a retenu « la réponse est toujours le résultat » se
  * fait prendre à la première phrase où le trou est de l'autre côté.
  */
-function itemPhrase(rng, a, b, f, ecrit) {
+function itemPhrase(rng, a, b, f, ecrit, papier) {
     const x = rng.pick([-3, -2, 1, 2, 3, 4, 5, 6]);
     const y = f(x);
     const versImage = rng.bool();          // « … est l'image de … » ou « … est un antécédent de … »
     const trouAGauche = rng.bool();        // quel pointillé porte la réponse
-    const avecEgalite = rng.bool();        // on donne f(x) = y, ou seulement f
+    // ON DONNE f(x) = y, OU SEULEMENT f. Sur la feuille, deux fois sur trois on
+    // ne donne QUE la fonction : avec l'égalité sous les yeux, il n'y a qu'à
+    // ranger deux nombres déjà écrits, et l'élève qui a le temps de réfléchir
+    // n'a rien à réfléchir. L'écran, lui, garde l'équilibre : c'est là qu'on
+    // s'entraîne au réflexe de lecture, pas ici.
+    const avecEgalite = papier ? rng.pick([false, false, true]) : rng.bool();
 
     // Dans « A est l'image de B », A est le résultat et B le départ.
     // Dans « A est un antécédent de B », c'est l'inverse.
@@ -215,6 +246,18 @@ function itemPhrase(rng, a, b, f, ecrit) {
     const phrase = trouAGauche
         ? `. . . . . ${dit} ${nb(droite)} par la fonction f.`
         : `${nb(gauche)} ${dit} . . . . . par la fonction f.`;
+    // SUR LE PAPIER, LE TROU EST UN BLANC, PAS DES POINTS.
+    //
+    // Rémy : « des lignes en pointillé qui ne servent à rien ». Elles venaient
+    // de là : la feuille reconnaît un trou dans un énoncé à une SUITE
+    // D'ESPACES — elle y pose alors la ligne à remplir, à l'endroit exact où
+    // l'on écrit. Des points de suspension écrits à la main ne sont pas un
+    // trou pour elle : elle imprimait donc la phrase telle quelle, ET deux
+    // lignes de pointillés dessous. Deux endroits pour une seule réponse.
+    const blanc = '            ';
+    const phrasePapier = trouAGauche
+        ? `${blanc}${dit} ${nb(droite)} par la fonction f.`
+        : `${nb(gauche)} ${dit}${blanc}par la fonction f.`;
     const reponse = trouAGauche ? gauche : droite;
 
     // CE QU'ON DONNE EN TÊTE. Avec l'égalité, tout est là et il n'y a qu'à
@@ -247,7 +290,7 @@ function itemPhrase(rng, a, b, f, ecrit) {
         reponse,
         texte: `${tete} ${question}`,
         html: htmlPhrase,
-        papier: `${tete}\nComplète la phrase :\n${phrase}`,
+        papier: `${tete}\nComplète la phrase :\n${phrasePapier}`,
         hints: [rangement, sens, calcul],
         explanation: `f(${nb(x)}) = ${nb(y)} se lit dans les deux sens : « ${nb(y)} est `
             + `l'image de ${nb(x)} par f » et « ${nb(x)} est un antécédent de ${nb(y)} par f ». `
@@ -277,8 +320,13 @@ function itemTableauComplet(rng, a, b, f, ecrit) {
     const xs = rng.shuffle([-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]).slice(0, 4).sort((u, v) => u - v);
     const ys = xs.map(f);
     const cellules = (lot) => lot.map(v => `<td>${v}</td>`).join('');
-    const vides = xs.map(() => '. . .');
-    const tableauVide = `x : ${xs.map(nb).join(' | ')}\nf(x) : ${vides.join(' | ')}`;
+    // LE TABLEAU DE LA FEUILLE — dessiné, pas écrit. Une case vide est une case
+    // à remplir : c'est la mise en page qui trace le quadrillage, et c'est elle
+    // qui décide de ne poser aucun pointillé dessous, puisque la place pour
+    // répondre est DANS le tableau.
+    const tableauPapier = {
+        lignes: [['x', ...xs.map(nb)], ['f(x)', ...xs.map(() => '')]]
+    };
     // À l'écran, les trois premières sont données : c'est la dernière qu'on demande.
     const montrees = ys.map((y, i) => (i === ys.length - 1 ? '?' : nb(y)));
     const html = enonceFonctionHtml(ecrit, 'Complète le tableau de valeurs.')
@@ -295,7 +343,12 @@ function itemTableauComplet(rng, a, b, f, ecrit) {
             `Complète le tableau de valeurs.\nx : ${xs.map(nb).join(' | ')}\n`
             + `f(x) : ${montrees.join(' | ')}`),
         html,
-        papier: enonceFonction(ecrit, `Complète TOUT le tableau de valeurs.\n${tableauVide}`),
+        papier: enonceFonction(ecrit, 'Complète TOUT le tableau de valeurs.'),
+        tableau: tableauPapier,
+        // LE CORRIGÉ DOIT DONNER LES QUATRE. La feuille pose quatre cases,
+        // l'écran n'en demande qu'une — sans cela, le corrigé imprimait la
+        // dernière valeur, seule, en face d'une question qui en posait quatre.
+        reponsePapier: xs.map((v, i) => `f(${nb(v)}) = ${nb(ys[i])}`).join(' ; '),
         hints: [
             'Une colonne à la fois : on remplace x par le nombre du haut, on calcule, '
                 + 'on écrit le résultat en dessous.',
@@ -370,6 +423,12 @@ function itemTableau(rng, a, b, f, ecrit) {
     // en colonnes non plus — c'est du texte suivi —, mais une barre verticale
     // sépare les cases sans ambiguïté, quelle que soit la police.
     const tableau = `x : ${xs.map(nb).join(' | ')}\nf(x) : ${ligne.join(' | ')}`;
+    // Sur la feuille, le même tableau se DESSINE, et la case manquante est vide
+    // plutôt que marquée d'un « ? » : un point d'interrogation dans une case
+    // qu'on doit remplir se retrouve barré ou entouré par la réponse.
+    const tableauPapier = {
+        lignes: [['x', ...xs.map(nb)], ['f(x)', ...xs.map((v, i) => (i === trou ? '' : nb(f(v))))]]
+    };
     const x0 = xs[trou];
     const cellules = (lot) => lot.map(v => `<td>${v}</td>`).join('');
     // ESPACE INSÉCABLE DEVANT LE DEUX-POINTS : sans lui, il se retrouve seul en
@@ -383,7 +442,8 @@ function itemTableau(rng, a, b, f, ecrit) {
         quoi: 'tableau', reponse: f(x0),
         texte: enonceFonction(ecrit, `Complète le tableau : quelle valeur remplace le « ? » ?\n${tableau}`),
         html,
-        papier: enonceFonction(ecrit, `Complète le tableau de valeurs.\n${tableau}`),
+        papier: enonceFonction(ecrit, 'Complète le tableau de valeurs.'),
+        tableau: tableauPapier,
         hints: [
             'Un tableau de valeurs, c\'est une image par colonne : la ligne du haut donne x, '
                 + 'celle du bas donne f(x).',
@@ -431,7 +491,8 @@ function itemAntecedent(rng, a, b, f, ecrit) {
     });
 }
 
-function item(rng, { quoi, texte, html, papier, reponse, hints, explanation, difficulty }) {
+function item(rng, { quoi, texte, html, papier, tableau, reponse, reponsePapier,
+    hints, explanation, difficulty }) {
     return makeItem({
         seed: rng.seed,
         generatorId: 'alg.fonctions',
@@ -442,8 +503,15 @@ function item(rng, { quoi, texte, html, papier, reponse, hints, explanation, dif
         answerKind: 'numeric',
         // `html` n'existe que là où l'énoncé porte un DESSIN — ici le tableau de
         // valeurs. Ailleurs, `text` suffit et l'écran l'habille lui-même.
-        prompt: { text: texte, papier: papier || texte, ...(html ? { html } : {}) },
+        prompt: {
+            text: texte, papier: papier || texte,
+            // Le tableau ne concerne QUE la feuille : l'écran, lui, en pose un
+            // vrai en HTML, qui se met en forme tout seul.
+            ...(tableau ? { tableau } : {}),
+            ...(html ? { html } : {})
+        },
         answer: reponse,
+        reponsePapier: reponsePapier || '',
         hints,
         explanation,
         difficulty,

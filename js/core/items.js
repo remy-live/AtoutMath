@@ -32,6 +32,9 @@
  * @property {Choice[]} [choices]
  * @property {string[]} hints       - aides graduées, de la plus légère à la plus explicite
  * @property {string} explanation   - correction affichée après coup
+ * @property {string} [reponsePapier] - la réponse telle qu'on l'écrit dans le
+ *   corrigé de la FEUILLE, quand celle-ci pose plus (ou autre chose) que
+ *   l'écran — les quatre cases d'un tableau de valeurs, par exemple.
  * @property {string} [explicationPapier] - la même, POUR LA FEUILLE IMPRIMÉE,
  *   quand l'écran s'appuie sur un dessin que le papier n'a pas. Une correction
  *   qui parle de pastilles rouges et bleues sous un calcul écrit en chiffres
@@ -65,6 +68,11 @@ export function makeItem(spec) {
         // Vide = l'explication de l'écran convient au papier. C'est le cas
         // général : on ne double que les corrections qui décrivent une image.
         explicationPapier: spec.explicationPapier || '',
+        // CE QU'IL FAUT LIRE DANS LE CORRIGÉ, quand la feuille ne demande pas la
+        // même chose que l'écran. Un tableau de valeurs à quatre cases n'a pas
+        // « 13 » pour réponse : il en a quatre, et le corrigé doit les donner.
+        // Vide = la réponse de l'écran convient, ce qui est le cas général.
+        reponsePapier: spec.reponsePapier || '',
         difficulty: spec.difficulty || 2,
         meta: spec.meta || {}
     };

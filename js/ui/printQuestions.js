@@ -69,7 +69,19 @@ function tirerQuestions(generator, params, nb) {
     // bâclée — sans boucler indéfiniment quand le générateur a peu de cas
     // possibles (les compléments à 10, par exemple).
     for (let essai = 0; out.length < nb && essai < nb * 12; essai++) {
-        const item = generator.generate(params, { index: out.length, rng: makeRng() });
+        // `papier: true` — LE GÉNÉRATEUR SAIT POUR QUI IL ÉCRIT.
+        //
+        // Rémy, sur les fonctions : « question trop triviale ». Elle ne l'était
+        // pas à l'écran : « quelle est l'image de 3 ? » sous une égalité déjà
+        // écrite se répond d'un coup d'œil, mais l'écran la pose au milieu d'une
+        // série chronométrée, où lire vite EST l'exercice. Sur une feuille qu'on
+        // emporte, la même question ne demande plus rien. Les deux supports ne
+        // veulent donc pas le même mélange, et jusqu'ici le générateur n'avait
+        // aucun moyen de savoir lequel on lui demandait. (`printParams` ne
+        // pouvait pas s'en charger : les réglages du catalogue le recouvrent —
+        // voir plus bas, c'est ce qui rendait dix-sept exercices insensibles à
+        // leurs propres réglages.)
+        const item = generator.generate(params, { index: out.length, rng: makeRng(), papier: true });
         // `papier` : la même question, écrite pour la feuille — sans la
         // consigne répétée devant chaque ligne. À défaut, le texte d'écran.
         const texte = (item.prompt && (item.prompt.papier || item.prompt.text)) || '';
@@ -77,6 +89,9 @@ function tirerQuestions(generator, params, nb) {
         vus.add(texte);
         out.push({
             texte,
+            // LE TABLEAU DE L'ÉNONCÉ, quand le générateur en pose un : la mise
+            // en page le DESSINE au lieu de l'écrire en texte suivi.
+            tableau: (item.prompt && item.prompt.tableau) || null,
             // SUR LE PAPIER, UNE FRACTION S'ÉCRIT EN COLONNE — numérateur sur
             // dénominateur, séparés d'un trait. La barre oblique est une
             // commodité d'écran ; ce n'est pas ce qu'on demande d'écrire à
@@ -116,6 +131,14 @@ function texteDeProposition(c) {
 }
 
 function formaterReponse(item) {
+    // LA RÉPONSE DU PAPIER N'EST PAS TOUJOURS CELLE DE L'ÉCRAN.
+    //
+    // L'écran demande UN nombre — c'est ce que rend un pavé numérique. La
+    // feuille, elle, peut demander quatre cases d'un tableau de valeurs : le
+    // corrigé imprimait alors la dernière, seule, en face d'une question qui en
+    // posait quatre. Le générateur écrit donc ce qu'il faut lire, quand ce n'est
+    // pas la même chose.
+    if (item.reponsePapier) return String(item.reponsePapier);
     if (item.answerKind === 'choice' && item.choices) {
         const bonne = item.choices.find(c => c.correct);
         // LE LIBELLÉ D'UNE RÉPONSE EST FAIT POUR L'ÉCRAN, pas pour le papier :

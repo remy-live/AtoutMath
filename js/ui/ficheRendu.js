@@ -572,6 +572,46 @@ const titreExo = (it) => `Exercice ${it.n} — ${it.titre}${it.suite ? ' (suite)
 // --- Aperçu HTML -------------------------------------------------------------
 
 /** Les items d'une page, en HTML positionné. `k` = pixels par millimètre. */
+/**
+ * UN TABLEAU, TRACÉ — les traits d'abord, le texte ensuite.
+ *
+ * On dessine des LIGNES, pas des cases bordées. Douze cases à bordure font
+ * vingt-quatre traits dont la moitié se superposent : à l'échelle de l'aperçu,
+ * un pixel d'écart et le tableau prend l'air d'un croquis. Et surtout, l'aperçu
+ * doit montrer EXACTEMENT ce que le PDF imprimera — or le PDF, lui, ne sait
+ * tracer que des lignes.
+ */
+function tableauApercu(t, k, o) {
+    const trait = (x, y, w, h) => `<div class="fq-tab-trait" style="left:${x * k}px; top:${y * k}px;
+        width:${Math.max(w * k, 1)}px; height:${Math.max(h * k, 1)}px"></div>`;
+    const nl = t.lignes.length;
+    let html = '';
+    for (let i = 0; i <= nl; i++) html += trait(t.x, t.y + i * t.hLigne, t.w, 0.3);
+    let x = t.x;
+    for (let c = 0; c <= t.larg.length; c++) {
+        html += trait(x, t.y, 0.3, t.h);
+        x += t.larg[c] || 0;
+    }
+    t.lignes.forEach((ligne, i) => {
+        let cx = t.x;
+        ligne.forEach((texte, c) => {
+            const w = t.larg[c] || 0;
+            const mot = String(texte ?? '');
+            // La première colonne porte le NOM de la rangée (« f(x) ») : en
+            // gras, comme dans un manuel — c'est ce qui distingue l'étiquette
+            // de la valeur, et le tableau se lit alors sans le relire.
+            if (mot) {
+                html += `<div class="fq-tab-case${c === 0 ? ' fq-tab-case--tete' : ''}"
+                    style="left:${cx * k}px; top:${(t.y + i * t.hLigne) * k}px;
+                    width:${w * k}px; height:${t.hLigne * k}px;
+                    font-size:${o.taille * k}px">${echapper(mot)}</div>`;
+            }
+            cx += w;
+        });
+    });
+    return html;
+}
+
 export function apercuItems(page, k, o) {
     let html = '';
     for (const it of page.items) {
@@ -726,6 +766,7 @@ export function apercuItems(page, k, o) {
             html += `<div class="fq-choix" style="left:${it.texteX * k}px; top:${it.choixY * k}px;
                 font-size:${o.taille * k * .9}px">${it.choix.map(c => '☐ ' + echapper(c)).join('&nbsp;&nbsp;')}</div>`;
         }
+        if (it.tableau) html += tableauApercu(it.tableau, k, o);
         if (it.rep && !it.rep.dansLeTexte) {
             // AVEC CHAMPS, la place à remplir est une boîte, pas un trait :
             // l'aperçu doit montrer ce que l'élève verra dans son lecteur PDF,
@@ -1216,6 +1257,50 @@ function champCase(pdf, x, y, w, h, nom) {
     return true;
 }
 
+/**
+ * LE MÊME TABLEAU, DANS LE PDF — au millimètre près, par construction : la
+ * géométrie vient de la composition, qui l'a calculée UNE fois pour les deux
+ * rendus. Ce que le professeur voit dans l'aperçu est ce qui sort de
+ * l'imprimante, y compris quand les cases ont dû se resserrer.
+ */
+function tableauPdf(pdf, t, o) {
+    pdf.setDrawColor(...ENCRE.trait);
+    pdf.setLineWidth(0.3);
+    const nl = t.lignes.length;
+    for (let i = 0; i <= nl; i++) pdf.line(t.x, t.y + i * t.hLigne, t.x + t.w, t.y + i * t.hLigne);
+    let x = t.x;
+    for (let c = 0; c <= t.larg.length; c++) {
+        pdf.line(x, t.y, x, t.y + t.h);
+        x += t.larg[c] || 0;
+    }
+    pdf.setFontSize(o.taille * 2.83);
+    pdf.setTextColor(...ENCRE.texte);
+    t.lignes.forEach((ligne, i) => {
+        let cx = t.x;
+        ligne.forEach((texte, c) => {
+            const w = t.larg[c] || 0;
+            const mot = String(texte ?? '');
+            const y = t.y + i * t.hLigne;
+            if (mot) {
+                pdf.setFont('helvetica', c === 0 ? 'bold' : 'normal');
+                // Centré dans la case, et posé sur la ligne de base : un nombre
+                // collé au trait du bas se lit comme s'il appartenait à la
+                // rangée du dessous.
+                pdf.text(pourPdf(mot), cx + w / 2, y + t.hLigne / 2 + o.taille * 0.38,
+                    { align: 'center' });
+            } else if (o.champs && !o.solution) {
+                // UNE CASE VIDE EST UNE CASE OÙ L'ON ÉCRIT — au stylo sur la
+                // feuille imprimée, au clavier dans le PDF remplissable.
+                champCase(pdf, cx + 0.4, y + 0.4, w - 0.8, t.hLigne - 0.8,
+                    `case_${++compteurChamps}`);
+            }
+            cx += w;
+        });
+    });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...ENCRE.texte);
+}
+
 /** Les items d'une page, dans le PDF. */
 export function pdfItems(pdf, page, o) {
     let nChamp = 0;
@@ -1294,6 +1379,7 @@ export function pdfItems(pdf, page, o) {
             }
             pdf.setTextColor(...ENCRE.texte);
         }
+        if (it.tableau) tableauPdf(pdf, it.tableau, o);
         if (it.rep) {
             if (o.champs) champSaisie(pdf, it.rep, ++nChamp);
             else {

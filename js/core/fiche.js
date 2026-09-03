@@ -167,6 +167,75 @@ export function trouDe(ligne) {
     return m ? { debut: m.index, fin: m.index + m[0].length } : null;
 }
 
+/**
+ * UN TABLEAU DESSINÉ SOUS L'ÉNONCÉ — et il fallait Rémy pour s'en apercevoir.
+ *
+ * « Le pdf pour les fonctions n'est pas terrible. Tableau non dessiné. »
+ *
+ * Un tableau de valeurs s'écrivait « x : −2 | 2 | 3 | 4 » puis « f(x) : … » à
+ * la ligne suivante, en texte suivi. Sur l'écran, le générateur pose un vrai
+ * `<table>` ; sur le papier, la feuille ne savait dessiner que du texte et des
+ * pointillés, alors on lui donnait des barres verticales en espérant que l'œil
+ * ferait les colonnes. Il ne les fait pas : la fiche coupe les lignes où elle
+ * peut, les deux rangées ne s'alignent plus, et ce qu'on demande d'apprendre —
+ * UNE COLONNE, UN COUPLE (x ; f(x)) — n'est plus lisible du tout.
+ *
+ * Un tableau est donc devenu un objet de la mise en page, au même titre qu'une
+ * ligne de texte ou qu'une grille : le générateur le déclare dans
+ * `prompt.tableau`, la composition lui réserve sa hauteur, et l'aperçu comme le
+ * PDF le TRACENT. La forme est volontairement la plus simple qui tienne :
+ *
+ *     { lignes: [ ['x', '−2', '2', '3'], ['f(x)', '', '', ''] ] }
+ *
+ * — une matrice de textes, première colonne en tête de rangée, CASE VIDE = case
+ * à remplir. Rien d'autre à savoir pour s'en servir ailleurs : un tableau de
+ * conversion, un tableau de proportionnalité, un relevé de mesures.
+ *
+ * LES COLONNES SONT ÉGALES SAUF LA PREMIÈRE. La colonne d'en-tête porte un mot
+ * (« f(x) ») et se mesure ; les autres portent un nombre ou rien, et une case
+ * vide ne se mesure pas — sa largeur, c'est la place qu'il faut pour ÉCRIRE
+ * dedans. Des colonnes inégales feraient d'ailleurs croire à l'élève que la
+ * case la plus large attend le plus grand nombre.
+ *
+ * @param {{lignes: string[][]}} t
+ * @param {number} dispo   - la largeur disponible, en mm
+ * @param {Object} o       - les options de composition
+ * @param {Function} mes   - le mesureur de texte
+ */
+export function mesurerTableau(t, dispo, o, mes) {
+    const lignes = (t && t.lignes) || [];
+    const nl = lignes.length;
+    const nc = Math.max(1, ...lignes.map(l => l.length));
+    const pad = 2.4;
+    const hLigne = Math.max(o.interligne * 1.35, o.taille * 2.2);
+    const largeurDe = (c) => {
+        let w = 0;
+        for (const l of lignes) w = Math.max(w, mes(String(l[c] ?? ''), o.taille));
+        return w + 2 * pad;
+    };
+    const tete = largeurDe(0);
+    // La plus large des colonnes de données commande TOUTES les colonnes de
+    // données : c'est ce qui fait un tableau, et non une suite de cases.
+    let corps = o.caseTableauMin;
+    for (let c = 1; c < nc; c++) corps = Math.max(corps, largeurDe(c));
+    const nat = tete + corps * (nc - 1);
+    // Trop large pour la colonne où il tombe : on resserre les cases de données
+    // — jamais l'en-tête, dont le texte deviendrait illisible — et l'on garde la
+    // trace (`serre`) pour que la composition préfère, si elle le peut, poser
+    // l'exercice sur moins de colonnes.
+    const k = nat > dispo && nc > 1 ? Math.max(0, (dispo - tete) / (corps * (nc - 1))) : 1;
+    const larg = [tete, ...Array(nc - 1).fill(corps * k)];
+    return {
+        lignes, larg, hLigne, nat, serre: k < 1,
+        w: larg.reduce((a, b) => a + b, 0),
+        h: nl * hLigne,
+        // Une case vide est une case où l'élève écrit : c'est elle qui rend les
+        // pointillés du dessous inutiles, et c'est elle qui devient un champ
+        // dans un PDF remplissable.
+        aRemplir: lignes.some(l => l.some(c => String(c ?? '') === ''))
+    };
+}
+
 
 export const DEFAUTS = {
     colonnes: 2,
@@ -428,6 +497,11 @@ export const DEFAUTS_BLOCS = {
     colonnesMax: 6,          // le plafond absolu, toutes orientations confondues
     champs: false,           // champs de formulaire remplissables dans le PDF
     champH: 6,               // hauteur d'un champ de saisie, en mm
+    // UN TABLEAU DESSINÉ SOUS L'ÉNONCÉ — l'air qu'on lui laisse au-dessus et
+    // au-dessous, et la place qu'on laisse dans une case pour écrire à la main.
+    avantTableau: 1.8,
+    apresTableau: 2.2,
+    caseTableauMin: 15,      // largeur minimale d'une case à remplir, en mm
     // LA NUMÉROTATION. « continue » suit la feuille du début à la fin
     // (« question 27 » se trouve sans compter les exercices) ; « exercice »
     // repart à 1 à chaque exercice, ce qui est la convention des manuels et
@@ -447,7 +521,8 @@ export const DEFAUTS_BLOCS = {
  * Chaque item d'une page est positionné en mm et typé :
  *   { type:'exo', n, titre, points, x, y, w, h, suite }
  *   { type:'consigne', lignes, x, y, w }
- *   { type:'q', n, lignes, x, y, texteX, texteW, choix, choixY, rep:{x,y,w}|null }
+ *   { type:'q', n, lignes, x, y, texteX, texteW, choix, choixY, rep:{x,y,w}|null,
+ *     tableau:{lignes, larg, hLigne, x, y, w, h}|null }
  */
 export function composerBlocs(exos, opts, mesurer) {
     const o = { ...DEFAUTS_BLOCS, ...(opts || {}) };
@@ -743,6 +818,11 @@ export function composerBlocs(exos, opts, mesurer) {
             cellules = mesurerCellules();
             if (cols <= 1) break;
             if (cellules.some(c => c.lignes.length > 1 && (c.fractions || c.trou))) { cols--; continue; }
+            // UN TABLEAU RESSERRÉ EST UN TABLEAU OÙ L'ON N'ÉCRIT PLUS. Ses cases
+            // se rétrécissent pour tenir dans la colonne ; en dessous d'un
+            // centimètre et demi, l'élève n'a plus la place d'y poser un nombre
+            // à deux chiffres. Une colonne de moins lui rend cette place.
+            if (cellules.some(c => c.tableau && c.tableau.serre)) { cols--; continue; }
             if (cols > 2 && exerciceHomogene(cellules) && !reponsesRegulieres(cellules)) { cols--; continue; }
             break;
         }
@@ -779,7 +859,11 @@ export function composerBlocs(exos, opts, mesurer) {
             // BOUT DE LA COLONNE, et ils y vont déjà. Quand l'énoncé ne laisse
             // pas de quoi écrire, la réponse passe dessous : c'est la même
             // règle, et elle suffit.
-            const memeLigne = !trou && !choix && lignes.length === 1
+            // LE TABLEAU DE L'ÉNONCÉ, s'il y en a un : il se dessine sous le
+            // texte, et c'est LUI qu'on remplit — la réponse ne va donc ni au
+            // bout de la ligne ni sur des pointillés en dessous.
+            const tableau = q.tableau ? mesurerTableau(q.tableau, texteW, o, mes) : null;
+            const memeLigne = !trou && !choix && !tableau && lignes.length === 1
                 && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= o.repMin;
             // LES FRACTIONS S'ÉCRIVENT EN COLONNE, comme au tableau : le
             // numérateur au-dessus du trait, le dénominateur dessous. Il leur
@@ -787,20 +871,27 @@ export function composerBlocs(exos, opts, mesurer) {
             // d'autant pour que le numérateur ne monte pas dans la question du
             // dessus.
             const supp = q.fractions ? o.interligne * 0.85 : 0;
+            // « Des lignes en pointillé qui ne servent à rien », disait Rémy du
+            // tableau des fonctions : sous un tableau qu'on remplit, elles ne
+            // sont pas seulement inutiles, elles proposent un second endroit
+            // pour la même réponse.
+            const sansPointilles = trou || memeLigne || (tableau && tableau.aRemplir);
             const h = supp + lignes.length * o.interligne
                 + (choix ? o.interligne : 0)
-                + (trou || memeLigne ? 0 : ligneRep);
+                + (tableau ? o.avantTableau + tableau.h + o.apresTableau : 0)
+                + (sansPointilles ? 0 : ligneRep);
             // `iQ` : le rang de la question DANS SON EXERCICE. C'est la seule
             // chose qui permette, depuis l'aperçu, de désigner celle qu'on
             // veut retirer ou retirer au sort — le numéro imprimé, lui, court
             // sur toute la feuille et saute les exercices non numérotés.
-            return { lignes, choix, memeLigne, trou, h, dy: supp, mes, iQ, fractions: !!q.fractions };
+            return { lignes, choix, memeLigne, trou, tableau, sansPointilles, h,
+                dy: supp, mes, iQ, fractions: !!q.fractions };
         }); }
 
         /** Vingt questions du même moule : une ligne, pas de trou, pas de QCM. */
         function exerciceHomogene(cells) {
             return cells.length > 1
-                && cells.every(c => !c.trou && !c.choix && c.lignes.length === 1);
+                && cells.every(c => !c.trou && !c.choix && !c.tableau && c.lignes.length === 1);
         }
         /** Les réponses sont-elles toutes au même endroit ? */
         function reponsesRegulieres(cells) {
@@ -871,7 +962,9 @@ export function composerBlocs(exos, opts, mesurer) {
                 const x = zone.x + iCell * (cellW + o.gouttiere);
                 const texteX = x + gouttiereNum;
                 let rep = null;
-                if (cell.trou) {
+                if (cell.tableau && cell.tableau.aRemplir) {
+                    // Rien : le tableau est la place pour répondre.
+                } else if (cell.trou) {
                     // On écrit DANS l'énoncé, à l'endroit du trou : le trait à
                     // remplir se pose sous ce blanc, et le champ du PDF dessus.
                     const ligne = cell.lignes[cell.trou.ligne];
@@ -910,11 +1003,23 @@ export function composerBlocs(exos, opts, mesurer) {
                 // formulaire, lui, a une hauteur. On la pose À CHEVAL sur ce
                 // trait — c'est là que l'élève écrirait à la main, donc c'est
                 // là que le curseur doit clignoter.
-                rep.h = Math.min(o.champH, ligneRep || o.champH);
-                rep.champY = rep.y - rep.h * 0.78;
-                rep.nom = `q${total}`;
+                if (rep) {
+                    rep.h = Math.min(o.champH, ligneRep || o.champH);
+                    rep.champY = rep.y - rep.h * 0.78;
+                    rep.nom = `q${total}`;
+                }
+                // LE TABLEAU, POSÉ. Sa géométrie est mesurée plus haut ; il ne
+                // lui manquait que le coin où le tracer, et ce coin dépend de la
+                // hauteur du texte qui le précède.
+                const tableau = cell.tableau ? {
+                    ...cell.tableau,
+                    x: texteX,
+                    y: y + cell.dy + cell.lignes.length * o.interligne
+                        + (cell.choix ? o.interligne : 0) + o.avantTableau
+                } : null;
                 page.items.push({
                     type: 'q', n: numerote ? numero : null,
+                    tableau,
                     // D'où vient cette question : de quel exercice, à quel rang.
                     exoId: exo.id ?? null, iQ: cell.iQ,
                     lignes: cell.lignes, x, y, dy: cell.dy, texteX, texteW,

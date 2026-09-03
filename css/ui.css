@@ -930,6 +930,17 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 /* La ligne à remplir : des pointillés, pas un trait plein — un trait plein
    ressemble à une réponse déjà écrite quand on photocopie en gris. */
 .fq-reponse { position: absolute; border-top: 1px dotted #9aa3b2; }
+/* LE TABLEAU DE L'ÉNONCÉ — des traits et du texte, comme dans le PDF.
+   Les traits sont des BLOCS, pas des bordures : une bordure d'un pixel sur une
+   case mise à l'échelle se dédouble d'un côté et disparaît de l'autre, et le
+   tableau prend l'air d'un croquis. Ici, chaque trait est posé une seule fois,
+   exactement là où le PDF le tracera. */
+.fq-tab-trait { position: absolute; background: #1a202c; }
+.fq-tab-case {
+    position: absolute; display: flex; align-items: center; justify-content: center;
+    color: #1a202c; line-height: 1.05; white-space: pre;
+}
+.fq-tab-case--tete { font-weight: 700; }
 .fq-consigne { position: absolute; color: #5a6270; line-height: 1.25; }
 .fq-case { gap: 6px; }
 .fq-case input { accent-color: var(--primary); }
