@@ -865,6 +865,115 @@ class Organigramme extends BaseGame {
 
     showNext() { return this.poser(); }
 
+    /**
+     * PASSER À L'ÉTAPE SUIVANTE — l'outil d'auteur, et il ne marchait pas ici.
+     *
+     * Rémy : « le "passer à la question suivante" sur la barre de debug ne
+     * fonctionne pas ; en fait, pour les exercices à étapes, cela ne fonctionne
+     * pas. » Mesuré : l'écran ne changeait PAS. Le saut appelait `showNext()`,
+     * qui relance ici l'organigramme ENTIER depuis sa première étape ; comme la
+     * carte est toujours la même, on retombait sur l'écran qu'on venait de
+     * quitter. Impossible, donc, d'aller regarder la septième étape — ce qui
+     * est précisément à quoi sert ce bouton.
+     *
+     * ON REMPLIT L'ÉTAPE AU LIEU DE LA SAUTER, et c'est la seule façon de
+     * laisser l'organigramme cohérent : une flèche vide qu'on aurait dépassée
+     * resterait vide pour toujours, et l'étape suivante montrerait une carte
+     * fausse. On pose donc les bonnes réponses de l'étape — le codage juste, ou
+     * les conditions de la flèche — puis on avance.
+     *
+     * @returns {boolean} faux quand il n'y a plus d'étape : le meneur reprend
+     *                    alors son chemin ordinaire et passe à l'exercice suivant.
+     */
+    sauterEtape() {
+        if (this.isDemo || !this.org) return false;
+
+        // La série de questions : la suivante, sans la compter juste ni fausse.
+        if (this.questions) {
+            if (this.iQuestion >= this.org.questions.length - 1) return false;
+            this.iQuestion += 1;
+            this.dessiner();
+            this.note('Question suivante (saut d\'auteur).');
+            return true;
+        }
+
+        // La reconstruction : on pose l'élément suivant qui manque — une figure
+        // tant qu'il en reste, une flèche ensuite.
+        if (this.assemblage) {
+            if (!this.phaseVignettes) {
+                const fam = FAMILLES.find(f => !this.placement[f.id]);
+                if (!fam) return false;
+                this.placement[fam.id] = fam.id;
+                this.dessiner();
+                this.note(`${fam.nom} posé (saut d'auteur).`);
+                return true;
+            }
+            const f = FLECHES.find(x => this.liens[cleFleche(x)] === undefined);
+            if (!f) return false;
+            this.liens[cleFleche(f)] = f.ajoute;
+            this.dessiner();
+            if (Object.keys(this.liens).length >= FLECHES.length) return this.gagner() || true;
+            this.note('Flèche garnie (saut d\'auteur).');
+            return true;
+        }
+
+        if (!this.progressif) return false;
+        const e = this.etapeCourante;
+        if (!e) return false;
+        if (e.genre === 'codage') {
+            // On code la figure comme il faut : la case doit porter son codage
+            // à l'étape suivante, sinon la carte ment.
+            const fig = construireFigure(e.figure, e.dims, 0);
+            const ids = segmentsDe(true), pts = pointsAngleDe(true);
+            const pose = { marques: {}, angles: {} };
+            classesDeLongueur(fig, ids).forEach((classe, i) =>
+                classe.forEach(id => { pose.marques[id] = i + 1; }));
+            anglesDroitsDe(fig, pts).forEach(pt => { pose.angles[pt] = true; });
+            this.codages[e.figure] = { fig, ids, pts, pose };
+            this.codage = null;
+        } else {
+            this.trouvees[e.rang] = (e.bonnes || []).slice();
+        }
+        this.etape += 1;
+        this.posesEtape = [];
+        this.annoncee = e.numero;   // on ne rouvre pas la fenêtre d'annonce
+        if (this.etape >= this.org.etapes.length) { this.gagner(); return true; }
+        this.dessiner();
+        this.note(`Étape ${this.etape + 1} sur ${this.org.etapes.length} (saut d'auteur).`);
+        return true;
+    }
+
+    /** Pendant du saut : on recule d'une étape, en la vidant. */
+    revenirEtape() {
+        if (this.isDemo || !this.org || this.fini) return false;
+        if (this.questions) {
+            if (this.iQuestion <= 0) return false;
+            this.iQuestion -= 1;
+            this.dessiner();
+            return true;
+        }
+        if (this.assemblage) {
+            if (this.phaseVignettes) {
+                const f = [...FLECHES].reverse().find(x => this.liens[cleFleche(x)] !== undefined);
+                if (f) { delete this.liens[cleFleche(f)]; this.dessiner(); return true; }
+            }
+            const fam = [...FAMILLES].reverse().find(x => this.placement[x.id]);
+            if (!fam) return false;
+            delete this.placement[fam.id];
+            this.dessiner();
+            return true;
+        }
+        if (!this.progressif || this.etape <= 0) return false;
+        this.etape -= 1;
+        this.posesEtape = [];
+        const e = this.etapeCourante;
+        if (e && e.genre === 'codage') delete this.codages[e.figure];
+        else if (e) this.trouvees[e.rang] = [];
+        this.annoncee = e ? e.numero : null;
+        this.dessiner();
+        return true;
+    }
+
     effacer() {
         if (this.isDemo || !this.org) return;
         this.poser();

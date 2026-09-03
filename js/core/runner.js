@@ -637,6 +637,14 @@ export class Runner {
                 // lui demander.
                 showNext: () => (jeu && typeof jeu.showNext === 'function') ? jeu.showNext() : false,
                 showPrevious: () => (jeu && typeof jeu.showPrevious === 'function') ? jeu.showPrevious() : false,
+                // ET LES ÉTAPES INTERNES, qui manquaient au relais. Un jeu qui
+                // mène ses propres étapes — l'organigramme et ses onze — peut
+                // les offrir au saut d'auteur ; sans ces deux lignes, le
+                // gestionnaire les cachait au meneur, et le bouton retombait
+                // sur `showNext()`, c'est-à-dire sur « recommence l'exercice ».
+                // Rémy : « pour les exercices à étapes, cela ne fonctionne pas. »
+                sauterEtape: () => (jeu && typeof jeu.sauterEtape === 'function') ? jeu.sauterEtape() : false,
+                revenirEtape: () => (jeu && typeof jeu.revenirEtape === 'function') ? jeu.revenirEtape() : false,
                 destroy: () => {
                     if (jeu && typeof jeu.destroy === 'function') jeu.destroy();
                     else if (jeu && typeof jeu.pause === 'function') jeu.pause();
@@ -914,6 +922,27 @@ export class Runner {
             if (this.handle && this.handle.showNext) this.handle.showNext();
             return true;
         }
+        // UN EXERCICE À ÉTAPES AVANCE D'UNE ÉTAPE, PAS D'UN EXERCICE.
+        //
+        // Rémy : « passer à la question suivante sur la barre de debug ne
+        // fonctionne pas ; en fait, pour les exercices à étapes, cela ne
+        // fonctionne pas. » Mesuré sur l'organigramme : l'écran ne changeait
+        // PAS. Et pour cause — le saut appelait `showNext()`, qui pour ces
+        // jeux-là relance l'exercice ENTIER depuis sa première étape ; comme la
+        // carte des quadrilatères est toujours la même, on retombait
+        // exactement sur l'écran qu'on venait de quitter, en croyant avoir
+        // avancé.
+        //
+        // Un jeu qui mène ses propres étapes peut donc offrir `sauterEtape()` :
+        // le saut avance ALORS d'une étape, sans toucher au compteur de
+        // questions du meneur — les étapes internes ne sont pas des questions,
+        // et les compter finirait l'exercice au milieu. Le jeu qui rend `false`
+        // dit qu'il n'a plus d'étape : on reprend le chemin ordinaire.
+        if (this.handle && typeof this.handle.sauterEtape === 'function'
+            && this.handle.sauterEtape() !== false) {
+            this.updateStepNavigation();
+            return true;
+        }
         const item = this.session && this.session.item;
         const cle = (item && item.seed) || `saut_${this.itemsResolved.size}_${this.autonomousCounter++}`;
         this.itemsResolved.add(cle);
@@ -939,7 +968,14 @@ export class Runner {
      * @returns {boolean} faux si l'exercice en cours ne sait pas reculer
      */
     revenirQuestion() {
-        if (!this.step || !this.handle || typeof this.handle.showPrevious !== 'function') return false;
+        if (!this.step || !this.handle) return false;
+        // Pendant du saut : un jeu à étapes recule d'une étape.
+        if (typeof this.handle.revenirEtape === 'function'
+            && this.handle.revenirEtape() !== false) {
+            this.updateStepNavigation();
+            return true;
+        }
+        if (typeof this.handle.showPrevious !== 'function') return false;
         if (this.handle.showPrevious() === false) return false;
         // Le compteur de progression suit : sans quoi la barre annoncerait
         // « 5 / 10 » sur la quatrième question.
