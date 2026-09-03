@@ -37,6 +37,7 @@ import { isGame } from '../core/gameAccess.js';
 import { aUneFichePapier, getActivity, getGenerator } from '../core/registry.js';
 import { journalConsole } from './consoleLog.js';
 import { FORMATS, sonder, rapportEnTexte } from './controle.js';
+import { piloter, piloteEnTexte } from './pilote.js';
 
 const CLE_NOTES = 'mathbox-atelier-notes';
 const CLE_EXO = 'mathbox-atelier-exo';
@@ -47,6 +48,7 @@ let panneau = null;
 let exoCourant = null;
 let paramsCourants = {};
 let bilans = [];
+let bilanPilote = null;
 let controleArrete = false;
 let controleEnCours = false;
 
@@ -196,6 +198,13 @@ function assurerPanneau() {
                 font-size: .76rem; cursor: pointer; min-height: 30px;
             }
             .atl-chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+            .atl-pas {
+                border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+                border-radius: 9px; padding: 6px 10px; font: inherit; font-size: .8rem;
+                cursor: pointer; min-height: 34px; flex: 0 0 auto;
+            }
+            .atl-pas:hover { background: var(--bg-hover); }
+            .atl-pas:disabled { opacity: .35; cursor: default; }
 
             /* TROIS VOLETS ET UN RAIL, ET CHACUN S'ÉTEINT.
                Le jeu et le robot empilés à gauche — on compare la
@@ -295,6 +304,14 @@ function assurerPanneau() {
                 flex: 1 1 auto; width: 100%; min-height: 0;
                 display: flex; align-items: center; justify-content: center;
             }
+            /* LE BOUTON D'ARRÊT VIT HORS DU VOILE, parce qu'il sert aussi au
+               pilote — qui, lui, joue dans le volet visible et n'ouvre aucun
+               voile. Un seul bouton pour arrêter les deux. */
+            .atl-arreter {
+                position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+                z-index: 100003; box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+            }
+            .atl-arreter[hidden] { display: none; }
             .ctl-cadre {
                 border: 8px solid var(--text-muted); border-radius: 18px; background: #fff;
                 box-shadow: 0 12px 40px rgba(0, 0, 0, .28); transform-origin: center;
@@ -319,7 +336,18 @@ function assurerPanneau() {
         </style>
         <div class="atl-tete">
             <span class="atl-titre">🛠️ L'Atelier</span>
+            <!-- AVANT ET APRÈS, À CÔTÉ DE LA LISTE. Rémy : « pour l'atelier,
+                 mets à côté de la liste déroulante un bouton avant et après ».
+                 On met au point à la chaîne — on regarde ce qu'on vient
+                 d'écrire, puis l'exercice d'avant, puis le suivant —, et
+                 rouvrir la liste à chaque fois pour descendre d'un cran est
+                 trois gestes pour un. L'ordre est celui de la liste : du plus
+                 neuf au plus ancien. -->
+            <button class="atl-mini atl-pas" id="atl-avant"
+                title="L'exercice précédent dans la liste" aria-label="Précédent">◀</button>
             <select class="atl-select" id="atl-exo" aria-label="Exercice"></select>
+            <button class="atl-mini atl-pas" id="atl-apres"
+                title="L'exercice suivant dans la liste" aria-label="Suivant">▶</button>
             <span class="atl-volets" role="group" aria-label="Les volets à l'écran">
                 <button class="atl-chip" data-volet="jeu" title="Montrer ou cacher le jeu">Le jeu</button>
                 <button class="atl-chip" data-volet="fiche" title="Montrer ou cacher la feuille">La feuille</button>
@@ -385,6 +413,9 @@ function assurerPanneau() {
                         <button class="atl-btn" id="atl-controler"
                             title="Lancer l'exercice en téléphone, tablette et ordinateur, et mesurer"
                             >🔎 Contrôler</button>
+                        <button class="atl-btn" id="atl-jouer"
+                            title="Le pilote joue l'exercice jusqu'au bout et dit ce qui a cassé"
+                            >▶ Jouer tout seul</button>
                     </div>
                 </div>
             </div>
@@ -392,13 +423,15 @@ function assurerPanneau() {
         <div class="atl-controle-voile" id="atl-controle-voile" hidden>
             <div class="atl-controle-tete" id="atl-controle-dit"></div>
             <div class="atl-controle-scene" id="atl-controle-scene"></div>
-            <button class="atl-btn" id="atl-controle-stop">Arrêter</button>
-        </div>`;
+        </div>
+        <button class="atl-btn atl-arreter" id="atl-controle-stop" hidden>■ Arrêter</button>`;
     document.body.appendChild(panneau);
 
     panneau.querySelector('#atl-fermer').onclick = fermerAtelier;
     panneau.querySelector('#atl-recharger').onclick = () => rafraichir();
     panneau.querySelector('#atl-exo').onchange = (e) => choisir(e.target.value);
+    panneau.querySelector('#atl-avant').onclick = () => decaler(-1);
+    panneau.querySelector('#atl-apres').onclick = () => decaler(1);
     panneau.querySelectorAll('[data-relancer]').forEach(b => {
         b.onclick = () => recharger(b.dataset.relancer);
     });
@@ -440,6 +473,7 @@ function assurerPanneau() {
     panneau.querySelector('#atl-releve').onclick = releve;
     panneau.querySelector('#atl-telecharger').onclick = telechargerReleve;
     panneau.querySelector('#atl-controler').onclick = controler;
+    panneau.querySelector('#atl-jouer').onclick = jouerToutSeul;
     panneau.querySelector('#atl-controle-stop').onclick = () => { controleArrete = true; };
     return panneau;
 }
@@ -577,9 +611,22 @@ function peindreRangement() {
 
 function peindreListe() {
     const sel = panneau.querySelector('#atl-exo');
-    sel.innerHTML = catalogueRecent().map(e =>
+    const liste = catalogueRecent();
+    sel.innerHTML = liste.map(e =>
         `<option value="${echapper(e.id)}"${e.id === exoCourant.id ? ' selected' : ''}>${
             echapper(`${e.cree || '????-??-??'} · ${e.title}`)}</option>`).join('');
+    const i = liste.findIndex(e => e.id === exoCourant.id);
+    panneau.querySelector('#atl-avant').disabled = i <= 0;
+    panneau.querySelector('#atl-apres').disabled = i < 0 || i >= liste.length - 1;
+}
+
+/** D'un exercice au voisin, dans l'ordre de la liste. */
+function decaler(pas) {
+    const liste = catalogueRecent();
+    const i = liste.findIndex(e => e.id === exoCourant.id);
+    const j = i + pas;
+    if (i < 0 || j < 0 || j >= liste.length) return;
+    choisir(liste[j].id);
 }
 
 function choisir(id) {
@@ -588,6 +635,7 @@ function choisir(id) {
     // Le contrôle porte sur UN exercice : le garder à l'écran après en avoir
     // changé ferait lire le verdict du précédent sur le suivant.
     bilans = [];
+    bilanPilote = null;
     panneau.querySelector('#atl-bloc-controle').hidden = true;
     exoCourant = exo;
     paramsCourants = { ...(exo.params || {}) };
@@ -727,6 +775,7 @@ async function controler() {
     const scene = panneau.querySelector('#atl-controle-scene');
     const dit = panneau.querySelector('#atl-controle-dit');
     voile.hidden = false;
+    panneau.querySelector('#atl-controle-stop').hidden = false;
     panneau.querySelector('#atl-bloc-controle').hidden = false;
     try {
         for (const etape of TOURNEE) {
@@ -746,6 +795,7 @@ async function controler() {
         }
     } finally {
         voile.hidden = true;
+        panneau.querySelector('#atl-controle-stop').hidden = true;
         scene.innerHTML = '';
         controleEnCours = false;
     }
@@ -755,6 +805,58 @@ async function controler() {
     showToast(soucis
         ? `Contrôle terminé : ${soucis} point${soucis > 1 ? 's' : ''} à regarder.`
         : 'Contrôle terminé : rien à signaler.', soucis ? 'warning' : 'success');
+}
+
+
+/**
+ * LE PILOTE — l'exercice joué jusqu'au bout, sous les yeux.
+ *
+ * Rémy a dit oui. Le contrôle regarde le PREMIER écran ; le pilote les regarde
+ * TOUS. C'est là que se trouvent les ennuis : le nombre à trois chiffres qui ne
+ * tient plus dans sa case à la septième question, la correction qui déborde, le
+ * bilan qui ne vient jamais.
+ *
+ * IL JOUE DANS LE VOLET VISIBLE, et c'est voulu : on le regarde faire. Le
+ * contrôle, lui, ouvre ses propres cadres parce qu'il change de format ; ici il
+ * n'y a qu'un format — celui qu'on a sous les yeux — et voir le pilote répondre
+ * vaut tous les rapports. Le volet est rechargé d'abord : on part d'une partie
+ * neuve, pas de celle qu'on venait de commencer à la main.
+ */
+async function jouerToutSeul() {
+    if (controleEnCours) return;
+    controleEnCours = true;
+    controleArrete = false;
+    bilanPilote = null;
+    if (!volets.jeu) { volets.jeu = true; ecrireVolets(); majVolets(); }
+    panneau.querySelector('#atl-bloc-controle').hidden = false;
+    const cadre = cadreDuVolet('jeu');
+    const stop = panneau.querySelector('#atl-controle-stop');
+    stop.hidden = false;
+    try {
+        cadre.src = adresse('jeu');
+        await new Promise(ok => { cadre.onload = ok; setTimeout(ok, 8000); });
+        // Le temps que le plateau se pose : le pilote qui clique dans le vide
+        // se croirait bloqué avant même la première question.
+        await new Promise(r => setTimeout(r, 900));
+        bilanPilote = await piloter(cadre, {
+            max: 15,
+            dire: (t) => peindreControle(`Le pilote joue — ${t}`),
+            stop: () => controleArrete
+        });
+    } catch (e) {
+        bilanPilote = { questions: 0, justes: 0, fini: false, geste: {},
+            soucis: [`LANCEMENT : ${String((e && e.message) || e).slice(0, 150)}`] };
+    } finally {
+        controleEnCours = false;
+        stop.hidden = true;
+    }
+    peindreControle();
+    const { showToast } = await import('./modal.js');
+    const n = bilanPilote.soucis.length;
+    showToast(n
+        ? `Le pilote a joué ${bilanPilote.questions} question(s) : ${n} point(s) à regarder.`
+        : `Le pilote a joué ${bilanPilote.questions} question(s), rien à signaler.`,
+        n ? 'warning' : 'success');
 }
 
 function peindreControle(enAttente) {
@@ -770,6 +872,19 @@ function peindreControle(enAttente) {
             + b.soucis.map(x => `<span class="atl-controle-detail">· ${echapper(x)}</span>`).join('')
             + '</div>';
     });
+    if (bilanPilote) {
+        const b = bilanPilote;
+        lignes.push('<div class="atl-controle-ligne">'
+            + `<span class="atl-controle-nom">Le pilote</span> `
+            + `<span class="atl-controle-attente">${b.questions} question(s), `
+            + `${b.justes} juste(s)${b.fini ? ', bilan atteint'
+                : (b.limite ? ', arrêté à la limite' : '')}</span>`
+            + (b.soucis.length
+                ? ` <span class="atl-controle-ko">${b.soucis.length}</span>`
+                    + b.soucis.map(x => `<span class="atl-controle-detail">· ${echapper(x)}</span>`).join('')
+                : ' <span class="atl-controle-ok">✓</span>')
+            + '</div>');
+    }
     if (enAttente) lignes.push(`<div class="atl-controle-attente">${echapper(enAttente)}</div>`);
     zone.innerHTML = lignes.join('') || '<span class="atl-controle-attente">—</span>';
 }
@@ -813,6 +928,11 @@ function texteReleve() {
         lignes.push('');
         lignes.push('## Le contrôle');
         lignes.push(rapportEnTexte(bilans));
+    }
+    if (bilanPilote) {
+        lignes.push('');
+        lignes.push('## Le pilote');
+        lignes.push(piloteEnTexte(bilanPilote));
     }
     const notes = panneau.querySelector('#atl-notes').value.trim();
     if (notes) { lignes.push(''); lignes.push('## Le carnet'); lignes.push(notes); }
@@ -955,6 +1075,21 @@ export async function ouvrirVoletAtelier(quoi, params) {
     // vide. On pose donc la lecture sur `window` : le contrôle la trouve là,
     // et il n'y a rien d'autre à faire passer.
     window.__journalAtelier = journalConsole;
+    // ET SA SESSION. Le pilote a besoin de la question en cours et de sa
+    // réponse ; elles vivent dans la session, que rien n'expose — et un
+    // `import()` depuis la page mère rendrait SA copie du module, jamais celle
+    // du cadre. On greffe donc un relais sur `next()`, ici et nulle part
+    // ailleurs : ce code ne s'exécute que dans un volet de l'Atelier, jamais
+    // dans l'application que voit un élève.
+    const { ItemSession } = await import('../core/itemSession.js');
+    if (!ItemSession.prototype.__relaisAtelier) {
+        ItemSession.prototype.__relaisAtelier = true;
+        const suivant = ItemSession.prototype.next;
+        ItemSession.prototype.next = function (...args) {
+            window.__sessionAtelier = this;
+            return suivant.apply(this, args);
+        };
+    }
     if (quoi === 'fiche') {
         const { ouvrirFicheModal } = await import('./printSheet.js');
         ouvrirFicheModal(complet, complet.params);
