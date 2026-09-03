@@ -559,7 +559,8 @@ function assurerPanneau() {
                         <button class="atl-btn atl-btn--fort" id="atl-releve"
                             title="Tout ce qu'il faut pour décrire l'état, dans le presse-papier">📋 Relevé</button>
                         <button class="atl-btn" id="atl-telecharger"
-                            title="Le même relevé, en fichier texte">⤓ Télécharger</button>
+                            title="Le relevé ET les dessins des volets, dans un seul fichier"
+                            >⤓ Télécharger (avec les images)</button>
                         <button class="atl-btn" id="atl-controler"
                             title="Lancer l'exercice en téléphone, tablette et ordinateur, et mesurer"
                             >🔎 Contrôler</button>
@@ -890,6 +891,41 @@ async function photo() {
         'warning');
 }
 
+/**
+ * LES DESSINS DE TOUS LES VOLETS OUVERTS — un par volet, le plus grand.
+ *
+ * `photo()` n'en rend qu'un, le premier trouvé, parce qu'un bouton « photo »
+ * rend une photo. Le relevé, lui, décrit l'état ENTIER : s'il parle des trois
+ * volets, il montre les trois.
+ */
+async function imagesDesVolets() {
+    const out = [];
+    for (const quoi of ['fiche', 'jeu', 'robot']) {
+        // Un volet fermé n'a rien à dire : on ne le mentionne même pas.
+        if (!volets[quoi]) continue;
+        const cadre = cadreDuVolet(quoi);
+        const doc = cadre && !cadre.hidden && cadre.contentDocument;
+        if (!doc) { out.push({ quoi, pourquoi: 'le volet est éteint' }); continue; }
+        const dessin = plusGrandDessin(doc);
+        // ON DIT POURQUOI IL MANQUE UNE IMAGE. Un volet ouvert dont le relevé
+        // ne montre rien, sans un mot, se lit comme une panne ; c'est presque
+        // toujours qu'il n'y avait rien de photographiable, ce qui est une
+        // information et non un incident.
+        if (!dessin) {
+            out.push({ quoi, pourquoi: 'rien de dessiné à photographier — un écran '
+                + 'fait de texte et de boutons est du HTML, qu\'aucune capture fidèle '
+                + 'ne sait rendre ; le rapport ci-dessus en donne le contenu' });
+            continue;
+        }
+        const url = await enImage(dessin);
+        if (url) out.push({ quoi, url });
+        else out.push({ quoi, pourquoi: 'le plus grand dessin du volet est vide — '
+            + 'sur cet écran, ce qui porte l\'information est en HTML, et seul le '
+            + 'calque des traits est un vrai dessin' });
+    }
+    return out;
+}
+
 /** Le plus grand `<svg>` ou `<canvas>` d'un document : c'est ce qu'on regarde. */
 function plusGrandDessin(doc) {
     const candidats = [...doc.querySelectorAll('svg, canvas')]
@@ -897,6 +933,58 @@ function plusGrandDessin(doc) {
         .filter(x => x.aire > 400)
         .sort((a, b) => b.aire - a.aire);
     return candidats.length ? candidats[0].el : null;
+}
+
+/** Au-delà, un dessin n'apprend plus rien de plus et alourdit le relevé. */
+const PLUS_LARGE = 1600;
+
+// CE QUI FAIT QU'UN TRAIT SE VOIT. Un SVG sorti de sa page perd sa feuille de
+// style : `<line class="qd-lien">` n'a plus de `stroke`, et `stroke` vaut
+// « none » par défaut. On recopie donc sur chaque nœud ce que le navigateur
+// avait CALCULÉ pour lui. Cette liste-là, et pas « toutes les propriétés » :
+// figer les 340 propriétés d'un style calculé multiplie le poids du fichier
+// par vingt et fige aussi des choses fausses (des `inline-size` en pixels, des
+// `transform` déjà appliquées par l'attribut).
+const STYLES_A_FIGER = [
+    'fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity',
+    'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin',
+    'opacity', 'color', 'display', 'visibility', 'font-family', 'font-size',
+    'font-weight', 'font-style', 'text-anchor', 'dominant-baseline', 'letter-spacing',
+    'marker-start', 'marker-mid', 'marker-end', 'paint-order'
+];
+
+/** Recopie les styles calculés de `vif` (et de sa descendance) sur `copie`. */
+function figerLesStyles(vif, copie) {
+    const vue = vif.ownerDocument.defaultView;
+    if (!vue) return;
+    const a = [vif, ...vif.querySelectorAll('*')];
+    const b = [copie, ...copie.querySelectorAll('*')];
+    for (let i = 0; i < a.length && i < b.length; i++) {
+        const calc = vue.getComputedStyle(a[i]);
+        let decl = '';
+        for (const prop of STYLES_A_FIGER) {
+            const v = calc.getPropertyValue(prop);
+            if (v && v !== 'none' && v !== 'normal' && v !== 'auto') decl += `${prop}:${v};`;
+        }
+        // `stroke: none` et `display: none` DISENT quelque chose, eux : un trait
+        // éteint doit rester éteint, sinon la copie montre ce que l'écran cache.
+        for (const prop of ['display', 'visibility', 'stroke', 'fill']) {
+            const v = calc.getPropertyValue(prop);
+            if (v === 'none' || v === 'hidden') decl += `${prop}:${v};`;
+        }
+        if (decl) b[i].setAttribute('style', decl);
+    }
+}
+
+/** Une image entièrement d'une seule couleur ne montre rien : on ne la garde pas. */
+function estVide(c) {
+    try {
+        const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+        for (let i = 4; i < d.length; i += 4) {
+            if (d[i] !== d[0] || d[i + 1] !== d[1] || d[i + 2] !== d[2]) return false;
+        }
+        return true;
+    } catch (e) { return false; }
 }
 
 /** Un dessin en PNG : le canvas se lit tel quel, le SVG se rejoue. */
@@ -910,6 +998,7 @@ function enImage(el) {
     copie.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     copie.setAttribute('width', w);
     copie.setAttribute('height', h);
+    figerLesStyles(el, copie);
     const texte = new XMLSerializer().serializeToString(copie);
     return new Promise(resolve => {
         const img = new Image();
@@ -918,11 +1007,30 @@ function enImage(el) {
             // Deux fois la taille : une capture d'écran sert à REGARDER un
             // détail, et un PNG à la taille de l'écran ne montre rien de plus
             // que l'écran.
-            c.width = w * 2; c.height = h * 2;
+            //
+            // MAIS PAS PLUS DE MILLE SIX CENTS PIXELS DE LARGE. Depuis que le
+            // relevé emporte ses images, son poids est celui d'un fichier qu'on
+            // s'envoie, et doubler AVEUGLÉMENT n'a plus de plafond. C'est une
+            // borne, pas une correction : mesuré sur l'organigramme, les trois
+            // dessins des volets font 454, 259 et 511 pixels de large, donc 908,
+            // 518 et 1022 une fois doublés — aucun ne l'atteint, et le relevé
+            // entier pèse 158 Ko. Elle sert le jour où un dessin sera large.
+            const echelle = Math.min(2, Math.max(1, PLUS_LARGE / w));
+            c.width = Math.round(w * echelle); c.height = Math.round(h * echelle);
             const ctx = c.getContext('2d');
             ctx.fillStyle = '#fff';
             ctx.fillRect(0, 0, c.width, c.height);
             ctx.drawImage(img, 0, 0, c.width, c.height);
+            // MIEUX VAUT PAS D'IMAGE QU'UNE IMAGE BLANCHE. Un cadre blanc dans
+            // le relevé se lit comme « l'écran était vide », ce qui est un
+            // contresens : c'est la CAPTURE qui a échoué, pas l'écran. Mesuré
+            // avant `figerLesStyles` : le volet « jeu » de l'organigramme
+            // rendait très exactement cela, 5,8 Ko de blanc, parce que son
+            // calque de flèches tenait tout son trait de la feuille de style.
+            // Le figeage des styles règle ce cas-là — il en reste d'autres
+            // (un dessin fait d'images externes, un calque vide), et ce
+            // garde-fou coûte une lecture de pixels.
+            if (estVide(c)) { resolve(null); return; }
             try { resolve(c.toDataURL('image/png')); } catch (e) { resolve(null); }
         };
         img.onerror = () => resolve(null);
@@ -1167,10 +1275,71 @@ async function releve() {
     }
 }
 
+/**
+ * LE RELEVÉ TÉLÉCHARGÉ EMPORTE SES IMAGES — un seul fichier à m'envoyer.
+ *
+ * Rémy : « c'est possible d'inclure les images dans le carnet et de t'envoyer
+ * un seul fichier sans image ? »
+ *
+ * C'était deux gestes et deux fichiers : ⤓ rendait le texte, 📷 rendait un PNG,
+ * et il fallait penser aux deux, se souvenir lequel allait avec lequel, et me
+ * les envoyer ensemble. Or le texte et l'image ne se remplacent pas — « le mot
+ * déborde de 12 px » et le mot qu'on voit déborder répondent à deux questions
+ * différentes —, donc ils doivent voyager ENSEMBLE.
+ *
+ * UNE PAGE, PAS UN TEXTE. Un `.txt` ne sait pas porter d'image ; un `.html`
+ * autonome, si : les dessins y entrent en `data:image/png;base64`, il n'a
+ * aucun fichier voisin à trouver, il s'ouvre d'un double-clic et il se lit
+ * aussi bien comme du texte — le relevé est en tête, dans un `<pre>`, et les
+ * images sont à la fin, pour que lire le fichier commence par le rapport et
+ * non par trois cents lignes de base64.
+ *
+ * ET LES TROIS VOLETS, PAS UN. La photo rend le premier dessin trouvé, parce
+ * qu'un bouton « photo » rend une photo. Le relevé décrit l'état entier : il
+ * montre la feuille, le plateau et le robot, chacun nommé sous son image.
+ */
 async function telechargerReleve() {
-    enFichier(texteReleve());
     const { showToast } = await import('./modal.js');
-    showToast('Relevé enregistré.', 'success');
+    const texte = texteReleve();
+    const images = await imagesDesVolets();
+    const page = releveEnPage(texte, images);
+    const nom = enFichier(page, 'html', 'text/html');
+    const ko = Math.round(page.length / 1024);
+    const n = images.filter(i => i.url).length;
+    showToast(n
+        ? `Relevé enregistré (${nom}) — ${n} image${n > 1 ? 's' : ''} dedans, ${ko} Ko. `
+          + 'Un seul fichier à m\'envoyer.'
+        : `Relevé enregistré (${nom}) — aucun dessin photographiable dans les volets ouverts.`,
+    'success');
+}
+
+/** La page autonome : le relevé lisible, puis les dessins qui l'illustrent. */
+function releveEnPage(texte, images) {
+    const quand = new Date().toLocaleString('fr-FR');
+    return `<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atelier — ${echapper(exoCourant.title)}</title>
+<style>
+ body { margin: 0 auto; padding: 24px; max-width: 1100px; background: #fbfbfd; color: #1a1a2e;
+        font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+ h1 { font-size: 20px; margin: 0 0 4px; }
+ .quand { color: #6b6b80; font-size: 13px; margin-bottom: 18px; }
+ pre { white-space: pre-wrap; word-break: break-word; background: #fff; border: 1px solid #dcdce6;
+       border-radius: 10px; padding: 16px; font: 13px/1.55 ui-monospace, Menlo, Consolas, monospace; }
+ figure { margin: 22px 0 0; }
+ figcaption { font-weight: 600; margin-bottom: 6px; }
+ img { max-width: 100%; height: auto; background: #fff;
+       border: 1px solid #dcdce6; border-radius: 10px; }
+ .rien { color: #6b6b80; font-style: italic; margin: 0; }
+</style></head><body>
+<h1>Atelier — ${echapper(exoCourant.title)}</h1>
+<div class="quand">${echapper(exoCourant.id)} — ${echapper(quand)}</div>
+<pre>${echapper(texte)}</pre>
+${images.map(i => `<figure><figcaption>Volet « ${echapper(i.quoi)} »</figcaption>
+${i.url ? `<img alt="Le dessin du volet ${echapper(i.quoi)}" src="${i.url}">`
+        : `<p class="rien">Pas d'image : ${echapper(i.pourquoi)}.</p>`}</figure>`).join('\n')}
+</body></html>`;
 }
 
 // UN FICHIER, PAS UNE ADRESSE. `data:` passe par `encodeURIComponent`, qui
@@ -1178,14 +1347,15 @@ async function telechargerReleve() {
 // coupait un emoji en deux au milieu d'un `slice`, et le téléchargement
 // s'arrêtait sur « URI malformed ». Un blob prend le texte tel qu'il est, et
 // n'a pas de limite de longueur.
-function enFichier(texte) {
+function enFichier(texte, ext = 'txt', mime = 'text/plain') {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([texte], { type: 'text/plain;charset=utf-8' }));
+    a.href = URL.createObjectURL(new Blob([texte], { type: `${mime};charset=utf-8` }));
     // Daté : on en garde plusieurs d'affilée, avant et après un réglage.
     a.download = `atelier-${exoCourant.id}-${new Date().toISOString().slice(0, 16)
-        .replace(/[:T]/g, '-')}.txt`;
+        .replace(/[:T]/g, '-')}.${ext}`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    return a.download;
 }
 
 /**
