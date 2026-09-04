@@ -188,7 +188,7 @@ export const CHAPITRES = [
 
     // --- 4ᵉ -----------------------------------------------------------------
     { id: '4-calcul-litteral', niveau: QUATRIEME, nom: 'Calcul littéral', skills: [] },
-    { id: '4-equations', niveau: QUATRIEME, nom: 'Équations', skills: [] },
+    { id: '4-equations', niveau: QUATRIEME, nom: 'Équations', skills: ['alg.equation.resoudre'] },
     {
         id: '4-fractions', niveau: QUATRIEME, nom: 'Fractions',
         skills: ['num.frac.compare', 'num.frac.simplification']

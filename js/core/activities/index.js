@@ -726,6 +726,11 @@ const legacy = [
     // « questions » plus petites ferait perdre ce qui s'apprend — l'ordre des
     // objets les uns par rapport aux autres.
     ['programme-construction', 'Le programme de construction', 'programmeConstruction', 'engineProgrammeConstruction', 'figure', 3],
+    // UNE « QUESTION » EST UNE ÉQUATION RÉSOLUE, du premier geste au dernier.
+    // Quatre par séance : chacune demande trois à cinq gestes réfléchis, et
+    // découper en morceaux plus petits ferait perdre ce qui s'apprend — l'ORDRE
+    // des gestes, qui est toute la difficulté du chapitre.
+    ['balance', 'La Balance des équations', 'balance', 'engineBalance', 'équation', 4],
     ['quadri-morph', 'Le quadrilatère qui se transforme', 'quadriMorph', 'engineQuadriMorph', 'propriété', 6],
     // LA RÉDACTION SE COMPTE EN DÉMONSTRATIONS. Une « question » y est la copie
     // entière — hypothèses, théorème, calcul — et rien ne se valide avant la

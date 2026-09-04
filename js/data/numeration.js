@@ -479,6 +479,72 @@ export const numerationExercises = [
         instruction: "Douze marches, deux questions chacune. LES CINQ PREMIÈRES NE DEMANDENT PAS DE CALCULER : seulement de dire si le produit sera positif ou négatif. C'est le vrai sujet du chapitre — (−3) + (−4) fait −7, mais (−3) × (−4) fait +12, et ce n'est pas la même règle. Ensuite on calcule, d'abord avec les parenthèses puis sans. Les trois dernières marches passent à plusieurs facteurs : on ne récite plus une règle, on COMPTE les facteurs négatifs, et leur parité décide. La dernière garde les cas à part : le zéro, le 1, le −1, et le carré d'un négatif — (−4)² vaut +16, mais −4² vaut −16."
     },
     {
+        // LA BALANCE — parce que le chapitre « Équations » de 4e était VIDE.
+        //
+        // Pas « à venir » : structurellement inatteignable. Onze chapitres de la
+        // progression ne déclaraient aucune compétence, et `chapitresDe`
+        // associe PAR compétence — un chapitre à la liste vide ne peut donc
+        // s'accrocher à rien, quel qu'en soit le contenu. Rémy a choisi ce
+        // chapitre-là parmi les onze, et c'est le plus lourd : celui où le plus
+        // d'élèves décrochent.
+        //
+        // POURQUOI UNE BALANCE PLUTÔT QU'UNE SUITE DE RÈGLES. « On fait la même
+        // chose des deux côtés » est la phrase que tout le monde récite et que
+        // presque personne ne comprend : elle énonce le résultat, elle
+        // n'explique rien. Sur une balance il n'y a rien à expliquer — retirer
+        // trois poids d'un seul plateau fait pencher le fléau, et la seule
+        // façon de le redresser est de retirer les trois autres.
+        //
+        // ON LAISSE DONC FAIRE LA FAUTE. Le geste porte sur UN plateau, la
+        // balance penche pour de bon, l'égalité cesse d'être vraie, et l'écran
+        // attend le geste jumeau. Appliquer chaque geste aux deux côtés à la
+        // fois aurait été plus simple à écrire et aurait tout gâché : l'élève
+        // n'aurait jamais vu ce qu'il évite.
+        //
+        // ET L'ORDRE DES GESTES S'APPREND PAR UN REFUS. « 2x + 5 = 17 » ne se
+        // partage pas en deux — 5 et 17 sont impairs —, et le bouton le dit.
+        // C'est exactement pourquoi on retire les poids AVANT de diviser :
+        // la règle n'est pas récitée, elle est rencontrée.
+        id: 'alg-balance',
+        cree: '2026-09-04',
+        title: 'La Balance des Équations',
+        activityId: 'balance',
+        skills: ['alg.equation.resoudre'],
+        params: { symboles: 'toujours' },
+        paramSchema: [
+            {
+                id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
+                label: 'Les gestes disponibles',
+                default: ['unites', 'partage', 'deuxTemps', 'deuxCotes'],
+                aide: 'Coche ce que la classe a déjà vu : les niveaux qui réclameraient '
+                    + 'un geste absent disparaissent. Avec les seuls POIDS il reste les deux '
+                    + 'premiers niveaux — de quoi installer « la même chose des deux côtés » '
+                    + 'avant d\'introduire la division.',
+                options: [
+                    { value: 'unites', label: 'Enlever des poids (x + 3 = 8)' },
+                    { value: 'partage', label: 'Partager en parts égales (3x = 12)' },
+                    { value: 'deuxTemps', label: 'Enlever puis partager (2x + 5 = 17)' },
+                    { value: 'deuxCotes', label: 'Des boîtes des deux côtés (4x + 2 = x + 14)' }
+                ]
+            },
+            {
+                id: 'symboles', type: 'select', label: 'La ligne d\'algèbre',
+                options: ['toujours', 'jamais'], default: 'toujours',
+                aide: 'Affichée, l\'équation change sous les yeux de l\'élève en même temps '
+                    + 'que les poids : c\'est le pont entre la balance et le cahier, et c\'est '
+                    + 'lui qu\'on veut. Coupée, il ne reste que la manipulation — utile une '
+                    + 'seule séance, pour une classe qui découvre.'
+            }
+        ],
+        motsClefs: ['équation', 'balance', 'équilibre', 'inconnue', 'résoudre', 'x',
+            'premier degré', 'membre', 'isoler', 'même chose des deux côtés'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LITTERAL],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Une équation est une balance en équilibre : les deux plateaux pèsent pareil. La boîte bleue cache un nombre — le même dans toutes les boîtes —, et les jetons dorés valent 1. Tu cliques un jeton pour l'enlever, et la balance PENCHE : l'égalité est cassée, et le seul geste qui la répare est d'enlever la même chose de l'autre plateau. C'est toute la règle du chapitre, et tu vas la voir plutôt que de la réciter. Ton but : amener une seule boîte, seule, sur un plateau — ce qui reste en face est sa valeur. L'ORDRE COMPTE, et un refus te l'apprendra mieux qu'une consigne : « 2x + 5 = 17 » ne se partage pas en deux parts égales tant que le 5 est là, parce que 5 et 17 sont impairs. On rassemble donc les boîtes, PUIS on enlève les jetons, ET SEULEMENT ENSUITE on partage."
+    },
+    {
         // LES FONCTIONS. Rémy : « et des exercices sur les fonctions ».
         //
         // CE CHAPITRE SE JOUE SUR DEUX MOTS. « f(3) = 11 » se lit « 11 est
