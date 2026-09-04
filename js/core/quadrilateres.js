@@ -899,7 +899,30 @@ export const themeDe = (texte) => {
 export const estTropFort = (de, vers, texte) =>
     contreExemple(de, vers, texte).genre === 'trop-fort';
 
-export function genererProgressif({ rng, palier = 'conditions', codage = true } = {}) {
+/**
+ * COMBIEN DE FIGURES ON CODE — Rémy : « et pourquoi faire 4 fois la même
+ * chose ».
+ *
+ * Ce n'est pas tout à fait la même : le parallélogramme code ses côtés opposés
+ * et ses diagonales, le rectangle y ajoute les angles droits, le losange les
+ * quatre côtés égaux, et le carré réunit les deux. Chaque codage prépare
+ * précisément les vignettes qui suivent — c'est là qu'on TROUVE les propriétés
+ * avant de les nommer.
+ *
+ * MAIS LE GESTE, LUI, SE RÉPÈTE, et quatre fois dans un même exercice, c'est
+ * long. Le premier codage porte l'essentiel de la leçon ; les suivants
+ * l'appliquent. On règle donc, et le défaut devient « le premier seulement » —
+ * c'est ce que Rémy demande en le demandant.
+ */
+export const CODAGES = { tous: 'tous', premier: 'premier', aucun: 'aucun' };
+
+const veutCoder = (reglage, deja) => {
+    if (reglage === false || reglage === 'aucun' || reglage === 'non') return false;
+    if (reglage === true || reglage === 'tous') return true;
+    return deja === 0;                    // « premier » : seulement le premier
+};
+
+export function genererProgressif({ rng, palier = 'conditions', codage = 'premier' } = {}) {
     const P = PALIERS[palier] || PALIERS.conditions;
     const intrus = P.intrus === undefined ? 1 : P.intrus;
     let numero = 0;
@@ -941,7 +964,7 @@ export function genererProgressif({ rng, palier = 'conditions', codage = true } 
     const etapes = [];
     const codees = new Set();
     cartes.forEach(e => {
-        if (codage && !codees.has(e.vers) && DIMS_CODAGE[e.vers]) {
+        if (veutCoder(codage, codees.size) && !codees.has(e.vers) && DIMS_CODAGE[e.vers]) {
             codees.add(e.vers);
             etapes.push({
                 // `de` : la case d'où l'on vient. Elle ne sert pas au codage

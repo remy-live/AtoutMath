@@ -362,7 +362,9 @@ test('CHAQUE ÉTAPE MÊLE DES INTRUS AUX BONNES CARTES', () => {
 // vignettes, si l'élève se trompe, il recommence depuis le début. »
 
 test('ON CODE LA FIGURE QU\'ON VIENT DE FAIRE APPARAÎTRE, et une seule fois', () => {
-    const o = genererProgressif({ rng: makeRng('codage'), palier: 'conditions' });
+    // AVEC « TOUTES LES FIGURES », qui n'est plus le défaut — voir le test
+    // suivant : Rémy a demandé « pourquoi faire 4 fois la même chose ».
+    const o = genererProgressif({ rng: makeRng('codage'), palier: 'conditions', codage: 'tous' });
     const suite = o.etapes.map(e => e.genre === 'codage' ? `coder:${e.figure}` : `${e.de}>${e.vers}`);
     // ON CODE D'ABORD, ON NOMME ENSUITE. Rémy : « tu affiches le quadrilatère et
     // le parallélogramme […] on code le parallélogramme avec les diagonales.
@@ -387,6 +389,30 @@ test('ON CODE LA FIGURE QU\'ON VIENT DE FAIRE APPARAÎTRE, et une seule fois', (
         assert.ok(e.vues.includes(e.figure), `${e.figure} codé avant d'apparaître`);
         assert.ok(DIMS_CODAGE[e.figure], `${e.figure} sans dimensions`);
     });
+});
+
+test('ON NE CODE PLUS QUATRE FOIS PAR DÉFAUT', () => {
+    // Rémy : « et pourquoi faire 4 fois la même chose ». Les quatre codages ne
+    // sont pas identiques — le rectangle ajoute les angles droits, le losange
+    // les quatre côtés égaux — mais le GESTE se répète, et quatre fois dans une
+    // même séance c'est long. Le premier porte l'essentiel, les suivants
+    // l'appliquent : le réglage existe, et son défaut est « le premier ».
+    const compte = (codage) => genererProgressif({ rng: makeRng('n'), palier: 'conditions', codage })
+        .etapes.filter(e => e.genre === 'codage').length;
+    assert.equal(compte(undefined), 1, 'le défaut doit coder une seule figure');
+    assert.equal(compte('premier'), 1);
+    assert.equal(compte('tous'), 4);
+    assert.equal(compte('aucun'), 0);
+    // L'ancien réglage booléen reste lisible : un descripteur qui dirait encore
+    // `codage: true` ne doit pas se retrouver sans codage du tout.
+    assert.equal(compte(true), 4);
+    assert.equal(compte(false), 0);
+    // Et le codage qu'on garde est bien LE PREMIER — le parallélogramme, celui
+    // dont les marques servent aux vignettes qui suivent immédiatement.
+    const o = genererProgressif({ rng: makeRng('n'), palier: 'conditions', codage: 'premier' });
+    const c = o.etapes.find(e => e.genre === 'codage');
+    assert.equal(c.figure, 'parallelogramme');
+    assert.equal(o.etapes.indexOf(c), 0);
 });
 
 test('LA FIGURE À CODER EST BIEN CELLE QU\'ELLE PRÉTEND ÊTRE', () => {

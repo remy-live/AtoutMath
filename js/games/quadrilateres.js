@@ -335,11 +335,15 @@ export function fenetreSerree(boite, marge, rapportScene, voisine = null, apercu
  * et l'on serre à quatre unités (261 × 191). C'est le prix de ne plus quitter
  * la carte, et il se règle ici.
  */
-const MARGE_CODAGE_LARGE = 10;
-const MARGE_CODAGE_ETROIT = 4;
+// ON ZOOME PLUS FORT — Rémy : « tu pourrais zoomer un peu plus sur les figures
+// quand on code ». Mesuré à dix unités de marge, la case s'affichait à 300 px
+// de large sur un écran d'ordinateur ; à six, elle en fait davantage, et c'est
+// bien la figure qu'on vient coder qui doit occuper la scène.
+const MARGE_CODAGE_LARGE = 6;
+const MARGE_CODAGE_ETROIT = 3;
 
 /** Combien d'unités de la case parente on laisse affleurer sous le dégradé. */
-const APERCU_VOISIN = 6;
+const APERCU_VOISIN = 4;
 
 /** Une position du plan, ramenée en pourcentage de la fenêtre affichée. */
 const placer = (p, v) => ({
@@ -696,11 +700,19 @@ class Organigramme extends BaseGame {
                             #000 calc(100% - var(--fondu, 0px)), transparent 100%);
                     mask-composite: intersect;
                 }
-                /* LA FIGURE QU'ON EST EN TRAIN DE CODER remplit sa case : c'est
-                   elle qu'on vise du doigt, et la bande du nom lui prendrait le
-                   quart de la hauteur. */
+                /* LA FIGURE QU'ON CODE RESTE DANS LE FLUX DE SA CASE.
+                   Rémy : « le rectangle déborde un peu sur le titre […] et
+                   centre la figure que l'on code ». Les deux défauts n'en
+                   faisaient qu'un : je l'avais posée en « position: absolute »
+                   pour qu'elle remplisse la case, ce qui l'a SORTIE de la
+                   colonne flex — la bande du nom, restée seule dans le flux,
+                   est remontée en haut, et la figure lui passait par-dessus.
+                   Mesuré : 205 pixels de recouvrement.
+                   Rendue au flux, elle prend toute la place au-dessus de la
+                   bande, et le flex la centre sans qu'on ait à le demander. */
                 .qd-case .qd-figure--encodage {
-                    position: absolute; inset: 2% 2% 6%; width: 96%; height: 92%;
+                    flex: 1 1 auto; width: 100%; height: auto; min-height: 0;
+                    display: block; margin: 0 auto;
                 }
                 .qd-case--encodage {
                     border-color: var(--primary); border-width: 2.5px;

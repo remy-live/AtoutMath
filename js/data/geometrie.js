@@ -254,7 +254,7 @@ export const geometrieExercises = [
         // construire une fois demande déjà onze étapes ; la refaire à
         // l'identique deux fois de plus n'apprend rien et fait passer pour une
         // punition ce qui est une leçon.
-        params: { parties: ['conditions'], codage: true, reprise: 'debut', nbQuestions: 1 },
+        params: { parties: ['conditions'], codage: 'premier', reprise: 'debut', nbQuestions: 1 },
         paramSchema: [
             {
                 id: 'parties', type: 'multiselect', deroulant: true, tout: 'parties',
@@ -284,12 +284,21 @@ export const geometrieExercises = [
             // demande de coder le parallélogramme. Puis on passe au rectangle
             // […]. On code le rectangle puis après on met les vignettes. »
             {
-                id: 'codage', type: 'bool', label: 'Coder la figure à chaque étape', default: true,
-                aide: 'Après chaque nouvelle case, l\'élève CODE la figure qui vient '
-                    + 'd\'apparaître : mêmes marques sur les côtés de même longueur, petit '
-                    + 'carré sur les angles droits. Dire la propriété et l\'écrire sur un '
-                    + 'dessin ne sont pas le même travail — et c\'est le second qui se voit '
-                    + 'en contrôle. Ne concerne que l\'étape par étape.'
+                id: 'codage', type: 'select', label: 'Coder les figures', default: 'premier',
+                echelle: true,
+                aide: 'Quand une case apparaît, l\'élève CODE la figure : mêmes marques sur '
+                    + 'les côtés de même longueur, petit carré sur les angles droits. Dire la '
+                    + 'propriété et l\'écrire sur un dessin ne sont pas le même travail, et '
+                    + 'c\'est le second qui se voit en contrôle. Les quatre codages ne sont '
+                    + 'pas identiques — le rectangle ajoute les angles droits, le losange les '
+                    + 'quatre côtés égaux — mais le GESTE se répète, et quatre fois dans une '
+                    + 'même séance c\'est long. Le premier porte l\'essentiel ; les suivants '
+                    + 'l\'appliquent. Ne concerne que l\'étape par étape.',
+                options: [
+                    { value: 'aucun', label: 'Aucun — on passe directement aux vignettes', court: 'Aucun' },
+                    { value: 'premier', label: 'Le premier seulement', court: 'Premier' },
+                    { value: 'tous', label: 'Toutes les figures', court: 'Toutes' }
+                ]
             },
             {
                 id: 'reprise', type: 'select', label: 'Quand on se trompe', default: 'debut',
