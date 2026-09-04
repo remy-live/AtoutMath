@@ -16,6 +16,7 @@
 // la page, l'en-tête et la page des solutions sont communs.
 
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
+import { ficheSvg, refaireSvg, telechargerSvg } from './icones.js';
 import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
 import {
@@ -14198,7 +14199,7 @@ function assurerModale() {
     modal.className = 'modal-overlay modal-overlay--top';
     modal.innerHTML = `
         <div class="glass-panel modal-panel-lg fp-panel">
-            <h3 class="modal-title">📄 Fiche à imprimer</h3>
+            <h3 class="modal-title">${ficheSvg(22, 'modal-title-ico')} Fiche à imprimer</h3>
             <!-- TROIS QUESTIONS, TOUJOURS DANS LE MÊME ORDRE, et les mêmes
                  sur les deux fiches : QUOI dessus, COMBIEN, SUR QUEL PAPIER.
                  Rémy : « il faut aller au plus clair et au plus simple ». Les
@@ -14220,7 +14221,7 @@ function assurerModale() {
                         <button type="button" class="fp-pas-btn" data-pas="1" aria-label="Un de plus">+</button>
                     </span></label>
                 <span class="fp-total" id="fp-total"></span>
-                <button type="button" class="btn-hint" id="fp-regen">🎲 Autres grilles</button>
+                <button type="button" class="btn-hint" id="fp-regen">${refaireSvg(16)} Autres grilles</button>
                 <button type="button" class="btn-hint" id="fp-atelier" style="display:none">♟ Composer mes échiquiers…</button>
                 <button type="button" class="btn-hint" id="fp-voir-sol" aria-pressed="false">Voir les solutions</button>
             </div>
@@ -14246,7 +14247,7 @@ function assurerModale() {
                 Page 2 : les solutions — à garder pour soi ou à donner après.</div>
             <div class="modal-actions-center">
                 <button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" id="fp-fermer">Fermer</button>
-                <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="fp-telecharger">⬇️ Télécharger le PDF</button>
+                <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="fp-telecharger">${telechargerSvg(19)} Télécharger le PDF</button>
             </div>
         </div>`;
     document.body.appendChild(modal);
@@ -14543,7 +14544,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
             html += `<button type="button" class="fp-bloc" data-bloc="${i}"
                 title="Changer cette grille"
                 style="left:${bo.x * k}px; top:${(bo.y - 4) * k}px;
-                width:${bo.w * k}px; height:${(bo.h + 4) * k}px"><span>🎲 Autre</span></button>`;
+                width:${bo.w * k}px; height:${(bo.h + 4) * k}px"><span>${refaireSvg(14)} Autre</span></button>`;
         });
         // L'ENCRE DU MODE, POSÉE SUR LA CHAÎNE ELLE-MÊME : c'est la porte
         // unique par où passent toutes les couleurs de l'aperçu.

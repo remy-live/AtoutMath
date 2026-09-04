@@ -9,6 +9,7 @@
 // fiche d'un parcours (printParcours) : même papier, même trait, même bandeau.
 
 import { A4, morceauxReponse, typographieFr, couperEnLignes } from '../core/fiche.js';
+import { refaireSvg, croixSvg } from './icones.js';
 import { RE_FRACTION, etageEstUnTrou } from '../core/fiche.js';
 // Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
 // pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
@@ -745,10 +746,10 @@ export function apercuItems(page, k, o) {
                 width:${(it.texteW + (it.texteX - it.x)) * k}px; height:${Math.max(it.lignes.length * o.interligne, o.interligne) * k}px">
                 <button type="button" class="fx-qgeste" data-q-neuf="${echapper(it.exoId)}" data-q-rang="${it.iQ}"
                     title="Retirer une autre question au sort à cette place"
-                    aria-label="Remplacer la question ${it.n ?? it.iQ + 1}">🎲</button>
+                    aria-label="Remplacer la question ${it.n ?? it.iQ + 1}">${refaireSvg(13)}</button>
                 <button type="button" class="fx-qgeste fx-qgeste--sup" data-q-sup="${echapper(it.exoId)}" data-q-rang="${it.iQ}"
                     title="Retirer cette question de la fiche"
-                    aria-label="Supprimer la question ${it.n ?? it.iQ + 1}">✕</button>
+                    aria-label="Supprimer la question ${it.n ?? it.iQ + 1}">${croixSvg(12)}</button>
             </div>`;
         }
         // ET L'ÉNONCÉ LUI-MÊME SE RETOUCHE. Rémy : « il faudrait aller sur le

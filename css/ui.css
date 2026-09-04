@@ -763,7 +763,44 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .fp-fantome:hover { color: var(--primary, #6366f1); border-color: var(--primary, #6366f1); }
 .fp-fantome--case { border-style: dotted; }
+/* LA CROIX QUI RETIRE UN CHAMP D'EN-TÊTE.
+   Rémy : « on ne peut les supprimer ». On pouvait : le clic marchait, et une
+   infobulle l'annonçait. Mais un champ ressemblait trait pour trait au contenu
+   imprimé, pendant que les fantômes « + Prénom » affichaient franchement leur
+   bouton en pointillé — l'ajout criait, le retrait se taisait. La croix rétablit
+   la symétrie. Au doigt, où il n'y a pas de survol, elle ne se cache pas. */
+.fp-champ-x {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 13px; height: 13px; margin-left: .2em; border-radius: 50%;
+    color: var(--text-muted); opacity: 0; transition: opacity .12s, color .12s, background .12s;
+    cursor: pointer; vertical-align: middle;
+}
+.fp-champ:hover .fp-champ-x,
+.fp-champ:focus-within .fp-champ-x { opacity: .75; }
+.fp-champ-x:hover { opacity: 1; color: #fff; background: var(--danger, #c0392b); }
+@media (hover: none) { .fp-champ-x { opacity: .6; } }
 .fp-champ i { font-style: normal; color: #4a5568; }
+
+/* LE NOM D'UN GROUPE DE LA BARRE — « Contenu », « Combien », « Papier ».
+   Trois blocs existaient déjà dans le code ; aucun ne se voyait à l'écran. */
+.fp-groupe { display: block; }
+.fp-groupe + .fp-groupe { margin-top: 2px; }
+.fp-groupe-titre {
+    font-weight: 800; font-size: .7rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted);
+    min-width: 62px; flex: 0 0 auto;
+}
+/* Le repli porte son nom comme les deux autres groupes : le même petit
+   capitale grise, sur TOUTE sa ligne. Je l'avais d'abord coupé en deux —
+   « PAPIER » en capitales et « et corrigé » en romain —, ce qui se lisait
+   comme une phrase cassée plutôt que comme un titre. */
+.fp-repli > summary.fp-repli-groupe {
+    font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
+}
+/* Les icônes au trait des fenêtres d'impression : elles suivent la couleur du
+   texte qui les porte, et se calent sur sa ligne de base. */
+.ico { vertical-align: -.18em; flex: 0 0 auto; }
+.modal-title-ico { vertical-align: -.22em; margin-right: .15em; }
 .fp-champ u {
     display: inline-block; text-decoration: none;
     border-bottom: 1px dotted #9aa3b2; height: .85em;

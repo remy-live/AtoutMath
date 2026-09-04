@@ -24,6 +24,7 @@
 // manœuvrer — sont ANNONCÉES comme telles plutôt que silencieusement omises.
 
 import { hydratePath } from '../core/path.js';
+import { ficheSvg, refaireSvg, telechargerSvg } from './icones.js';
 import { generateurDeFiche } from '../core/registry.js';
 import { paramSchemaOf } from '../data/catalog.js';
 import { fieldHtml, readParams, wireTips } from '../games/configUI.js';
@@ -299,7 +300,7 @@ function assurerModale() {
     m.className = 'modal-overlay modal-overlay--top';
     m.innerHTML = `
         <div class="glass-panel modal-panel-lg fp-panel">
-            <h3 class="modal-title">📄 Fiche du parcours</h3>
+            <h3 class="modal-title">${ficheSvg(22, 'modal-title-ico')} Fiche du parcours</h3>
             <!-- CE QUI NE SE VOIT PAS SUR LA FEUILLE, ET RIEN D'AUTRE.
                  Rémy : « on pourrait améliorer cela en passant par l'apercu
                  plutôt que des options j'ai l'impression que pour la fiche de
@@ -320,7 +321,7 @@ function assurerModale() {
                     <input type="number" id="pp-note-sur" class="cfg-input cfg-input--num"
                         min="5" max="100" step="1" value="20"></label>
                 <span class="fp-total" id="pp-total"></span>
-                <button type="button" class="btn-hint" id="pp-regen">🎲 D'autres questions</button>
+                <button type="button" class="btn-hint" id="pp-regen">${refaireSvg(16)} D'autres questions</button>
                 <span class="pp-ecran" id="pp-ecran"></span>
             </div>
             <details class="fp-repli" id="pp-plus">
@@ -391,7 +392,7 @@ function assurerModale() {
             <div class="fp-note" id="pp-note"></div>
             <div class="modal-actions-center">
                 <button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" id="pp-fermer">Fermer</button>
-                <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="pp-dl">⬇️ Télécharger le PDF</button>
+                <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="pp-dl">${telechargerSvg(19)} Télécharger le PDF</button>
             </div>
         </div>`;
     document.body.appendChild(m);
@@ -986,7 +987,7 @@ export function ouvrirFicheParcours(chemin) {
                 ${schema.map(p => fieldHtml(p,
         e.params[p.id] !== undefined ? e.params[p.id] : p.default)).join('')}
             </div>` : ''}
-            <button type="button" class="pp-roue-autres" data-r-neuf>🎲 Autres questions</button>`;
+            <button type="button" class="pp-roue-autres" data-r-neuf>${refaireSvg(15)} Autres questions</button>`;
         document.body.appendChild(panneau);
 
         // COLLÉ À L'ENGRENAGE, et rabattu s'il devait sortir de l'écran : un

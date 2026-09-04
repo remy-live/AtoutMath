@@ -20,6 +20,7 @@
 //    qui sort de l'imprimante.
 
 import { generateurDeFiche } from '../core/registry.js';
+import { crayonSvg, refaireSvg, telechargerSvg } from './icones.js';
 import { equiperFenetre } from './flottant.js';
 // Le détachement est un outil d'auteur : l'interrupteur vit dans la palette.
 import { fenetresDetachables } from './debugBar.js';
@@ -164,7 +165,7 @@ function assurerModale() {
     modal.className = 'modal-overlay modal-overlay--top';
     modal.innerHTML = `
         <div class="glass-panel modal-panel-lg fp-panel">
-            <h3 class="modal-title">📝 Fiche d'exercices</h3>
+            <h3 class="modal-title">${crayonSvg(22, 'modal-title-ico')} Fiche d'exercices</h3>
             <!-- TROIS QUESTIONS, TOUJOURS DANS LE MÊME ORDRE, et les mêmes que
                  sur la fiche de grilles : QUOI dessus, COMBIEN, SUR QUEL
                  PAPIER. Cette fenêtre-ci sautait la première et portait treize
@@ -173,28 +174,48 @@ function assurerModale() {
 
             <!-- ① QUOI — les réglages de l'exercice, et le seul choix de
                  contenu qui ne vienne pas de lui : proposer les réponses. -->
-            <div class="fp-contenu" id="fq-contenu" hidden></div>
-            <div class="fp-controles fp-controles--qcm">
-                <label class="fq-case"><input type="checkbox" id="fq-choix"> Proposer les réponses (QCM)</label>
+            <!-- LES TROIS GROUPES SE VOIENT, MAINTENANT. Rémy : « je trouve la
+                 barre associée au PDF tellement chargée et incompréhensible ».
+                 La structure existait DANS LE CODE — quoi, combien, sur quel
+                 papier — mais rien à l'écran ne la montrait : onze commandes
+                 alignées à la même taille, dans la même couleur, sans un titre.
+                 Le lecteur devait retrouver seul un rangement qu'on avait
+                 pourtant fait pour lui. Chaque groupe porte donc son nom, du
+                 même petit capitale grise que « CONTENU » qui existait déjà et
+                 restait tout seul de son espèce. -->
+            <div class="fp-groupe">
+                <div class="fp-contenu" id="fq-contenu" hidden></div>
+                <div class="fp-controles fp-controles--qcm">
+                    <!-- PAS DE SECOND « CONTENU » ICI. Le bloc des réglages
+                         au-dessus porte déjà ce titre, et je l'avais répété :
+                         deux fois le même mot dans deux lignes qui se suivent.
+                         La case appartient au même groupe et s'aligne dessous,
+                         d'où le décalage vide plutôt qu'un titre. -->
+                    <span class="fp-groupe-titre" aria-hidden="true"></span>
+                    <label class="fq-case"><input type="checkbox" id="fq-choix"> Proposer les réponses (QCM)</label>
+                </div>
             </div>
 
             <!-- ② COMBIEN -->
-            <div class="fp-controles fp-combien">
-                <label>Combien
+            <div class="fp-groupe">
+                <div class="fp-controles fp-combien">
+                    <span class="fp-groupe-titre">Combien</span>
                     <span class="fp-pas">
                         <button type="button" class="fp-pas-btn" data-pas="-2" aria-label="Deux questions de moins">−</button>
-                        <input type="number" id="fq-nb" class="cfg-input cfg-input--num" min="4" max="80" value="20">
+                        <input type="number" id="fq-nb" class="cfg-input cfg-input--num" min="4" max="80"
+                            value="20" aria-label="Nombre de questions">
                         <button type="button" class="fp-pas-btn" data-pas="2" aria-label="Deux questions de plus">+</button>
-                    </span></label>
-                <span class="fp-total" id="fq-total"></span>
-                <button type="button" class="btn-hint" id="fq-regen">🎲 D'autres questions</button>
+                    </span>
+                    <span class="fp-total" id="fq-total"></span>
+                    <button type="button" class="btn-hint" id="fq-regen">${refaireSvg(16)} D'autres questions</button>
+                </div>
             </div>
 
             <!-- ③ SUR QUEL PAPIER — la consigne, le format, les colonnes, la
                  numérotation, le corrigé : des habitudes qu'on prend une fois.
                  Le repli se souvient d'être ouvert. -->
             <details class="fp-repli" id="fq-plus">
-                <summary>Papier et corrigé</summary>
+                <summary class="fp-repli-groupe">Papier et corrigé</summary>
             <div class="fp-controles">
                 <label class="pp-consigne">Consigne
                     <input type="text" id="fq-consigne" class="cfg-input"
@@ -264,7 +285,7 @@ function assurerModale() {
             <div class="fp-note" id="fq-note"></div>
             <div class="modal-actions-center">
                 <button type="button" class="btn-toggle glass-btn modal-btn-flex modal-btn-flex--neutral" id="fq-fermer">Fermer</button>
-                <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="fq-telecharger">⬇️ Télécharger le PDF</button>
+                <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="fq-telecharger">${telechargerSvg(19)} Télécharger le PDF</button>
             </div>
         </div>`;
     document.body.appendChild(modal);

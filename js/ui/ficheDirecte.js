@@ -26,6 +26,7 @@
 // du contenu.
 
 import { CHAMPS_ENTETE } from './ficheRendu.js';
+import { croixSvg } from './icones.js';
 
 /** Les cases du cartouche, comme les champs d'identité : un nom, un libellé. */
 const CASES_CARTOUCHE = { note: 'Note', commentaire: 'Commentaire' };
@@ -63,6 +64,31 @@ export function garnirFicheDirecte(apercu, etat = {}, parties = PARTIES_TOUTES) 
             >+ ${CHAMPS_ENTETE[c].label}</button>`).join(''));
     }
 
+    // LA CROIX SUR CHAQUE CHAMP, PARCE QUE LE CLIC NE SE DEVINE PAS.
+    //
+    // Rémy : « pas terrible l'ergonomie pour les zones de formulaire, on ne
+    // peut les supprimer ». On pouvait — le clic sur « Nom : …… » retire le
+    // champ depuis le début, et une infobulle le dit. Mais une infobulle se
+    // mérite : il faut survoler, attendre, et surtout AVOIR L'IDÉE de survoler.
+    // Rien ne distinguait « Nom : …… » du contenu imprimé qui l'entoure, alors
+    // que les fantômes « + Prénom » criaient leur bouton en pointillé. On
+    // pouvait donc ajouter et pas retirer : la moitié du geste était visible.
+    //
+    // La croix vient combler exactement cet écart, et c'est le même dessin que
+    // celle du titre — un professeur qui a compris l'une comprend les autres.
+    // Elle apparaît au survol sur un poste ; au doigt, où il n'y a pas de
+    // survol, elle reste visible (voir `.fp-champ-x` dans ui.css).
+    if (parties.champs) {
+        apercu.querySelectorAll('[data-fiche="champ"]').forEach(ch => {
+            if (ch.querySelector('[data-retirer-champ]')) return;
+            const nom = CHAMPS_ENTETE[ch.dataset.champ];
+            ch.insertAdjacentHTML('beforeend',
+                `<span class="fp-champ-x" data-retirer-champ
+                    title="Retirer le champ « ${nom ? nom.label : ''} »"
+                    >${croixSvg(11)}</span>`);
+        });
+    }
+
     // LA CROIX QUI EFFACE LE TITRE. Rémy : « il faudrait pouvoir supprimer le
     // titre ». On pouvait déjà : cliquer, tout sélectionner, effacer, Entrée.
     // Quatre gestes pour une chose qui se dit en un — et rien à l'écran ne
@@ -85,7 +111,7 @@ export function garnirFicheDirecte(apercu, etat = {}, parties = PARTIES_TOUTES) 
     if (parties.titre && titre && !titre.querySelector('[data-vider-titre]')) {
         titre.insertAdjacentHTML('beforeend',
             `<button type="button" class="fp-fantome fp-vider-titre" data-vider-titre
-                title="Supprimer le titre de la feuille">✕</button>`);
+                title="Supprimer le titre de la feuille">${croixSvg(11)}</button>`);
     }
     // ET LE CHEMIN DU RETOUR. Rémy : « quand on clique sur la croix, ça ne le
     // supprime pas forcément, mets un plus (dans la marge inutile) pour remettre
