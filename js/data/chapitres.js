@@ -57,7 +57,8 @@ export const CHAPITRES = [
         id: '6-elements-geometrie', niveau: SIXIEME, nom: 'Éléments de géométrie',
         skills: [
             'geo.notation.ecrire', 'geo.notation.lire', 'geo.notation.dire',
-            'geo.construire.instruments', 'geo.figure.programme', 'geo.repere.coord'
+            'geo.construire.instruments', 'geo.figure.programme', 'geo.repere.coord',
+            'geo.construction.programme'
         ]
     },
     {

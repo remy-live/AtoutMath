@@ -662,6 +662,24 @@ const BASE = {
         descriptor: 'Écrire sur la figure, avec les marques d\'égalité et l\'angle droit, les propriétés d\'un carré, d\'un rectangle, d\'un losange ou d\'un parallélogramme.',
         lesson: 'Coder, c\'est ÉCRIRE ce que la figure a de vrai, avec deux signes seulement. Les MARQUES D\'ÉGALITÉ — un trait, deux traits, trois traits — se posent sur les segments de même longueur : mêmes marques, mêmes longueurs, et des marques différentes annoncent des longueurs différentes. Le PETIT CARRÉ se pose là où l\'angle est droit, et nulle part ailleurs. Les quatre quadrilatères se distinguent alors d\'un coup d\'œil. Le CARRÉ a tout : quatre côtés égaux, quatre angles droits, des diagonales égales, perpendiculaires, qui se coupent en leur milieu. Le RECTANGLE garde les angles droits et les diagonales égales, mais ses côtés vont deux par deux. Le LOSANGE garde les quatre côtés égaux et les diagonales perpendiculaires, mais ses angles ne sont plus droits et ses diagonales n\'ont plus la même longueur. Le PARALLÉLOGRAMME ne garde que le minimum : côtés opposés égaux, diagonales qui se coupent en leur milieu. Dans les quatre, cette dernière propriété est là — c\'est la famille commune.'
     },
+    // ÉCRIRE le programme, et non l'EXÉCUTER. C'est le geste inverse de
+    // « geo.construire.instruments » — là on suit une consigne, ici on la
+    // rédige — et il est nettement plus exigeant : il faut nommer les objets
+    // ([AB] le segment, (AB) la droite) et les ORDONNER, puisqu'on ne trace pas
+    // un milieu avant le segment qui le porte.
+    //
+    // À ne pas confondre avec « geo.figure.programme », qui est le Chat
+    // Géomètre : celui-là décrit une figure par des AVANCES et des ROTATIONS,
+    // c'est la tortue et l'angle qui referme. Ici on parle de constructions à la
+    // règle et au compas, et le vocabulaire n'est pas le même.
+    'geo.construction.programme': {
+        label: 'Écrire un programme de construction',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.notation.ecrire'],
+        descriptor: 'Rédiger la suite d\'instructions qui construit une figure donnée, en nommant correctement points, segments, droites et cercles.',
+        lesson: 'Un programme de construction se lit comme une recette : chaque ligne trace UN objet, et l\'ordre compte. DEUX RÈGLES SUFFISENT. La NOTATION d\'abord : [AB] est le segment, (AB) la droite qui le prolonge des deux côtés, AB la longueur — trois choses différentes que trois écritures distinguent. L\'ORDRE ensuite : on ne peut nommer que ce qui existe déjà. Le milieu de [AB] suppose A et B ; le point d\'intersection de deux cercles suppose les deux cercles tracés. Écris donc les objets DONNÉS en premier, puis ce qui s\'en déduit. Et souviens-toi qu\'un cercle se donne par son CENTRE et par un point de son bord : « le cercle de centre A passant par B » n\'est pas « le cercle de centre B passant par A ». Enfin, plusieurs programmes différents construisent souvent la même figure : ce qui compte, c\'est le dessin obtenu.'
+    },
     'geo.construire.instruments': {
         label: 'Construire aux instruments',
         chemin: [D.GEOMETRIQUE, SD.REPERAGE],

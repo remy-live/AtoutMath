@@ -136,6 +136,7 @@ export const CODES_EXERCICES = {
     'geo-angles-manquants':       'VM',   // La Valeur Manquante
     'geo-angles-nommer':          'NA',   // Le Nom des Angles
     'geo-quadrilateres':          'RG',   // L'oRGanigramme des Quadrilatères
+    'geo-programme-construction': 'GP',   // Géométrie : le Programme de construction
     // « QM » serait plus parlant, mais Q ne fait pas partie des vingt-trois
     // lettres : on garde « TF », comme TransFormation.
     'geo-quadri-morph':           'TF',   // Le quadrilatère qui se TransForme

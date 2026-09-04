@@ -128,6 +128,73 @@ export const geometrieExercises = [
         },
         instruction: "Tu pars d'une figure — souvent un quadrilatère qui n'a rien de particulier, parfois un parallélogramme déjà rangé — et son nom est écrit dessous. Tu travailles en DEUX TEMPS. 1. Tu poses une vignette sur la figure, et elle se déforme AUSSITÔT pour respecter la propriété : tu vois les sommets glisser. 2. Tu dis ce qu'elle est DEVENUE, et pour cela tu lis son codage — les chevrons marquent les côtés parallèles, les petits traits les longueurs égales, le petit carré l'angle droit. Le nom ne réapparaît qu'après ta réponse. Chaque vignette porte une PROPRIÉTÉ : la figure se déforme pour la respecter — c'est là qu'est le travail, l'animation n'est que la correction. Une propriété n'est pas une étiquette qu'on colle : c'est une contrainte, et chaque contrainte en plus RÉTRÉCIT la famille. Attention : certaines ne disent rien toutes seules. Des diagonales perpendiculaires dans un quadrilatère quelconque ne donnent aucune figure du cours ; les mêmes dans un parallélogramme font un losange. Et plusieurs chemins mènent au même endroit — côtés opposés parallèles, côtés opposés égaux, diagonales qui se coupent en leur milieu : trois propriétés différentes, un seul parallélogramme."
     },
+    // LE PROGRAMME DE CONSTRUCTION — Rémy : « j'aimerais bien un exercice où on
+    // a un tracé (points, segments, cercle) et il faut faire le programme de
+    // construction. »
+    //
+    // ON JUGE LA FIGURE, PAS LA RÉDACTION : le programme s'exécute, et l'on
+    // compare le dessin obtenu à celui qu'on montre. C'est la même règle que le
+    // Chat Géomètre (« c'est le tracé obtenu qui compte ») et que l'atelier
+    // d'instruments (« c'est la figure obtenue qui est jugée »). Voir
+    // core/programmeConstruction.js.
+    {
+        id: 'geo-programme-construction',
+        status: STATUS.TEST,
+        title: 'Écris le programme de construction',
+        cree: '2026-09-04',
+        activityId: 'programme-construction',
+        skills: ['geo.construction.programme'],
+        params: { familles: ['traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'], depuis: 0 },
+        paramSchema: [
+            {
+                id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
+                label: 'Les blocs disponibles',
+                default: ['traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'],
+                aide: 'Coche ce que la classe a déjà vu : la palette suit, et les niveaux dont '
+                    + 'la solution réclamerait un bloc absent disparaissent — un exercice sans '
+                    + 'réponse ne se propose pas. Avec les seuls SEGMENTS ET DROITES il reste '
+                    + 'les deux premiers niveaux, ce qui est exactement ce qu\'on donne en '
+                    + 'début de sixième.',
+                options: [
+                    { value: 'traits', label: 'Segments et droites' },
+                    { value: 'cercles', label: 'Cercles' },
+                    { value: 'milieux', label: 'Milieu et médiatrice' },
+                    { value: 'perpendiculaires', label: 'Perpendiculaires' },
+                    { value: 'paralleles', label: 'Parallèles' },
+                    { value: 'intersections', label: 'Points d\'intersection' }
+                ]
+            },
+            {
+                id: 'depuis', type: 'select', label: 'Commencer au niveau', default: 0,
+                echelle: true,
+                aide: 'On entre au milieu de l\'échelle quand les premiers ont été faits en '
+                    + 'classe. Les niveaux s\'enchaînent ensuite jusqu\'au dernier disponible.',
+                options: [
+                    { value: 0, label: '1 — Un segment', court: '1' },
+                    { value: 2, label: '3 — Un cercle', court: '3' },
+                    { value: 4, label: '5 — Le milieu', court: '5' },
+                    { value: 6, label: '7 — La perpendiculaire', court: '7' },
+                    { value: 9, label: '10 — Le triangle équilatéral', court: '10' }
+                ]
+            }
+        ],
+        motsClefs: ['programme de construction', 'construire', 'segment', 'droite', 'cercle',
+            'milieu', 'médiatrice', 'perpendiculaire', 'parallèle', 'intersection', 'rédiger'],
+        tags: { chemin: ['Géométrique', 'Repérage'], niveaux: ['6ème', '5ème'] },
+        instruction: 'Une figure est dessinée : à toi d\'écrire le PROGRAMME qui la construit. '
+            + 'Tu poses des blocs — « trace le segment [AB] », « trace le cercle de centre A '
+            + 'passant par B », « trace la perpendiculaire à (AB) passant par C » — et '
+            + 'l\'ordinateur les EXÉCUTE : ta figure se dessine à côté du modèle, et tu vois '
+            + 'tout de suite ce qui manque. DEUX CHOSES À RETENIR. D\'abord la NOTATION : [AB] '
+            + 'est le segment, (AB) la droite, AB la longueur — les blocs l\'écrivent pour toi, '
+            + 'lis-la. Ensuite l\'ORDRE : on ne trace pas [AB] avant d\'avoir A et B, on ne '
+            + 'prend pas le milieu d\'un segment qui n\'existe pas. Un bloc dont il manque un '
+            + 'objet ne s\'exécute pas et te dit lequel. Il y a souvent PLUSIEURS programmes '
+            + 'justes pour la même figure : c\'est le dessin obtenu qui compte, pas la façon de '
+            + 'l\'écrire. Et tes traits de construction ont le droit de rester — les deux '
+            + 'cercles qui donnent un triangle équilatéral sont la preuve de ton travail.'
+    },
+
     {
         id: 'geo-quadrilateres',
         cree: '2026-09-01',

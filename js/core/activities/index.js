@@ -718,6 +718,12 @@ const legacy = [
     // l'hypoténuse seule n'apprend rien : c'est l'enchaînement des trois — le
     // repère fixe, puis les deux qui dépendent de l'angle — qui fait la leçon.
     ['trigo-cotes', 'Trigonométrie : repérer les côtés', 'trigonometrie', 'engineTrigonometrie', 'triangle', 6],
+    // UNE « QUESTION » EST UN NIVEAU ENTIER, c'est-à-dire une figure construite
+    // du premier bloc au dernier. Trois par séance : écrire un programme de
+    // construction et le débugger prend le temps qu'il prend, et découper en
+    // « questions » plus petites ferait perdre ce qui s'apprend — l'ordre des
+    // objets les uns par rapport aux autres.
+    ['programme-construction', 'Le programme de construction', 'programmeConstruction', 'engineProgrammeConstruction', 'figure', 3],
     ['quadri-morph', 'Le quadrilatère qui se transforme', 'quadriMorph', 'engineQuadriMorph', 'propriété', 6],
     // LA RÉDACTION SE COMPTE EN DÉMONSTRATIONS. Une « question » y est la copie
     // entière — hypothèses, théorème, calcul — et rien ne se valide avant la
