@@ -27,8 +27,8 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import {
-    NIVEAUX, CONSIGNE, EXPOSANTS,
-    nouvellePartie, avancer, expression, texteTerme, longueurIdeale
+    NIVEAUX, CONSIGNE, EXPOSANTS, RAYON_TETE, RAYON_TERME,
+    nouvellePartie, avancer, expression, texteTerme, longueurIdeale, anneaux
 } from '../core/serpent.js';
 import { makeRng } from '../core/ids.js';
 
@@ -68,7 +68,9 @@ export class Serpent extends BaseGame {
         this.etat = nouvellePartie(this.rng, this.rang, this.rapportDeLaScene());
         this.ideal = longueurIdeale(this.etat.graines);
         this.enAttente = true;
-        this.sensVoulu = null;
+        this.capVoulu = null;
+        this.cible = null;
+        this.bandeauFait = false;   // le bandeau se refait au changement de terrain
     }
 
     render() {
@@ -123,7 +125,7 @@ export class Serpent extends BaseGame {
                    directionnelle a disparu avec cette version ; le terrain,
                    lui, récupère toute sa place. */
                 .sp-cible {
-                    fill: none; stroke: var(--primary, #4a6fd4); stroke-width: .06;
+                    fill: none; stroke: var(--primary, #4a6fd4); stroke-width: .2;
                     opacity: .55; pointer-events: none;
                 }
 
@@ -159,10 +161,13 @@ export class Serpent extends BaseGame {
                     .sp-note { grid-area: note; min-height: 1.3em; font-size: 11px; }
                 }
                 .sp-fond { fill: var(--card-bg, #fff); stroke: var(--border-color, #d7dae3); stroke-width: .04; }
-                .sp-quadrillage { stroke: var(--border-color, #d7dae3); stroke-width: .015; opacity: .55; }
-                .sp-anneau { stroke: #fff; stroke-width: .05; }
-                .sp-tete { stroke: var(--text-main); stroke-width: .09; }
-                .sp-graine { stroke-width: .04; }
+                /* Plus de quadrillage : Rémy voulait « un peu plus libre », et
+                   des lignes de case sur un terrain qui n'en a plus seraient un
+                   mensonge de dessin. */
+                .sp-anneau { stroke: #fff; stroke-width: .12; }
+                .sp-tete { stroke: var(--text-main); stroke-width: .2; }
+                .sp-oeil { fill: #fff; pointer-events: none; }
+                .sp-graine { stroke-width: .12; }
                 .sp-txt {
                     text-anchor: middle; dominant-baseline: central; font-weight: 800;
                     pointer-events: none;
@@ -195,59 +200,56 @@ export class Serpent extends BaseGame {
         // refait à la bonne forme — avant que le joueur ait vu quoi que ce soit.
         this.charger();
         this.dessiner();
-        this.note('Pose ton doigt sur le terrain, là où tu veux aller — le serpent y va. Au clavier : les flèches.');
+        this.note('Pose ton doigt sur le terrain, là où tu veux aller — le serpent '
+            + 'y va, en tournant comme il peut. Au clavier : les flèches.');
     }
 
     brancher() {
         if (this.isDemo) return;
+
+        // LE CLAVIER DONNE UN CAP, PAS UNE CASE. Les quatre flèches valent
+        // quatre angles, et le serpent y tourne à sa vitesse de virage : sur un
+        // terrain sans grille, appuyer sur ↑ ne peut plus vouloir dire « saute
+        // d'une case vers le haut », seulement « prends le nord ».
+        const CAPS = { haut: -Math.PI / 2, bas: Math.PI / 2, gauche: Math.PI, droite: 0 };
         this.surTouche = (e) => {
             const s = TOUCHES[e.key] || TOUCHES[(e.key || '').toLowerCase()];
             if (!s) return;
             e.preventDefault();
-            this.sensVoulu = s;
+            this.capVoulu = CAPS[s];
+            this.cible = null;
             this.demarrer();
         };
         window.addEventListener('keydown', this.surTouche, { passive: false });
 
-        // LE DOIGT EST LE GOUVERNAIL, ET NON QUATRE BOUTONS.
-        //
-        // Rémy : « au tactile ça suit le doigt, je pense que c'est mieux ». Il
-        // a raison, et la croix directionnelle disparaît avec cette version.
-        // Une croix demande de viser un bouton pendant qu'on regarde le
-        // serpent — deux endroits pour les yeux, sur un écran où il n'y a
-        // déjà pas de place. Ici on pose le doigt SUR LE TERRAIN, à l'endroit
-        // où l'on veut aller, et le serpent s'y dirige ; on le fait glisser et
-        // il suit. Le terrain récupère au passage la place que la croix
-        // prenait, ce qui était mon souci en paysage.
-        //
-        // ON LIT L'AXE DOMINANT, pas l'angle exact : un serpent ne va que dans
-        // quatre directions, et lui en proposer une cinquième ne ferait
-        // qu'inventer un virage que le joueur n'a pas demandé.
-        const viser = (e) => {
+        // LE DOIGT DONNE L'ANGLE EXACT, ET C'EST LÀ QUE LA GRILLE MANQUAIT LE
+        // MOINS. Avec des cases, on ne pouvait lire du doigt que l'axe
+        // dominant — quatre directions sur les trois cent soixante degrés
+        // qu'il désignait. Le serpent va maintenant PRÉCISÉMENT où l'on
+        // montre, et les virages sont des courbes.
+        const viser = (ev) => {
             const svg = this.sceneEl.querySelector('svg');
             if (!svg) return;
             const b = svg.getBoundingClientRect();
             const niv = this.etat.niv;
-            const cote = b.width / (niv.large + .2);
-            const doigtX = (e.clientX - b.left) / cote - .1;
-            const doigtY = (e.clientY - b.top) / cote - .1;
-            const [hx, hy] = this.tetePeinte();
-            const dx = doigtX - (hx + .5), dy = doigtY - (hy + .5);
-            // UNE ZONE MORTE AUTOUR DE LA TÊTE. Sans elle, un doigt posé juste
-            // sur le serpent fait osciller la consigne à chaque frémissement.
-            if (Math.abs(dx) < .6 && Math.abs(dy) < .6) return;
-            this.sensVoulu = Math.abs(dx) > Math.abs(dy)
-                ? (dx > 0 ? 'droite' : 'gauche') : (dy > 0 ? 'bas' : 'haut');
-            this.cible = [doigtX, doigtY];
+            const k = b.width / niv.large;
+            const x = (ev.clientX - b.left) / k;
+            const y = (ev.clientY - b.top) / k;
+            const dx = x - this.etat.tete.x, dy = y - this.etat.tete.y;
+            // Une zone morte autour de la tête : un doigt posé dessus ferait
+            // osciller le cap à chaque frémissement.
+            if (Math.hypot(dx, dy) < RAYON_TETE * 1.6) return;
+            this.capVoulu = Math.atan2(dy, dx);
+            this.cible = [x, y];
             this.demarrer();
         };
-        this.sceneEl.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            this.sceneEl.setPointerCapture?.(e.pointerId);
+        this.sceneEl.addEventListener('pointerdown', (ev) => {
+            ev.preventDefault();
+            this.sceneEl.setPointerCapture?.(ev.pointerId);
             this.mene = true;
-            viser(e);
+            viser(ev);
         });
-        this.sceneEl.addEventListener('pointermove', (e) => { if (this.mene) viser(e); });
+        this.sceneEl.addEventListener('pointermove', (ev) => { if (this.mene) viser(ev); });
         const lacher = () => { this.mene = false; this.cible = null; };
         this.sceneEl.addEventListener('pointerup', lacher);
         this.sceneEl.addEventListener('pointercancel', lacher);
@@ -257,48 +259,35 @@ export class Serpent extends BaseGame {
         if (!this.enAttente || this.fini) return;
         this.enAttente = false;
         this.note('');
-        this.precedent = this.etat.cases.map(c => [...c]);
-        this.tDernierPas = performance.now();
+        this.tDerniere = performance.now();
         this.boucle();
     }
 
     /**
-     * LA BOUCLE EST DÉSORMAIS CELLE DE L'ÉCRAN, PAS CELLE DU JEU.
+     * LA BOUCLE EST CELLE DE L'ÉCRAN, ET MAINTENANT AUSSI CELLE DU JEU.
      *
-     * Rémy : « je vois bien que le serpent c'est carreau par carreau mais ça ne
-     * fait pas fluide du tout ». C'était exact : on redessinait tout à chaque
-     * pas logique, donc le serpent SAUTAIT d'une case à l'autre toutes les
-     * 230 ms. Un vrai snake glisse.
-     *
-     * La règle du jeu, elle, reste discrète — et c'est volontaire : c'est
-     * `core/serpent.js`, testé sans navigateur, et un serpent qui avancerait
-     * en continu rendrait « deux anneaux voisins » impossible à définir. On
-     * sépare donc les deux horloges. Le NOYAU avance case par case ; l'ÉCRAN
-     * interpole entre la position d'avant et celle d'après, soixante fois par
-     * seconde. Rien de la logique ne change, et tous ses tests tiennent.
+     * Avec la grille, il y avait deux horloges : le noyau avançait d'une case
+     * toutes les 240 ms, l'écran interpolait entre les deux. Sans cases, la
+     * position EST continue : une seule horloge suffit, et l'on passe au noyau
+     * le temps réellement écoulé depuis l'image précédente. C'est plus simple
+     * et plus juste — un écran à 120 Hz n'accélère plus le serpent.
      */
     boucle() {
         cancelAnimationFrame(this.image);
         if (this.fini || this.enAttente || !this.isRunning) return;
         const trame = (maintenant) => {
             if (this.fini || this.enAttente || !this.isRunning) return;
-            const duree = this.etat.niv.vitesse;
-            let avancement = (maintenant - this.tDernierPas) / duree;
-            if (avancement >= 1) {
-                this.precedent = this.etat.cases.map(c => [...c]);
-                const r = avancer(this.etat, this.sensVoulu);
-                this.sensVoulu = null;
-                this.etat = r.etat;
-                this.tDernierPas = maintenant;
-                avancement = 0;
-                if (r.dit) {
-                    this.note(r.dit, r.quoi === 'mur' || r.quoi === 'mordu' ? 'ko'
-                        : r.quoi === 'annule' ? 'bravo' : r.quoi === 'fusion' ? 'ok' : '');
-                }
-                this.dessiner();
-                if (this.etat.fini) return this.terminer(this.etat.fini);
+            const dt = (maintenant - this.tDerniere) / 1000;
+            this.tDerniere = maintenant;
+            const r = avancer(this.etat, dt, this.capVoulu);
+            this.etat = r.etat;
+            if (r.dit) {
+                this.note(r.dit, r.quoi === 'mur' || r.quoi === 'mordu' ? 'ko'
+                    : r.quoi === 'annule' ? 'bravo' : r.quoi === 'fusion' ? 'ok' : '');
             }
-            this.placer(avancement);
+            if (r.quoi === 'mange' || r.quoi === 'fusion' || r.quoi === 'annule') this.dessinerBandeau();
+            this.dessiner();
+            if (this.etat.fini) return this.terminer(this.etat.fini);
             this.image = requestAnimationFrame(trame);
         };
         this.image = requestAnimationFrame(trame);
@@ -310,89 +299,55 @@ export class Serpent extends BaseGame {
         super.destroy();
     }
 
-    /** Où la tête est PEINTE en ce moment — le doigt vise le dessin, pas la grille. */
-    tetePeinte() {
-        const a = (this.precedent && this.precedent[0]) || this.etat.cases[0];
-        const b = this.etat.cases[0];
-        const t = this.dernierAvancement || 0;
-        return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-    }
-
-    /**
-     * PLACER LES ANNEAUX ENTRE DEUX CASES.
-     *
-     * Un anneau qui vient d'apparaître — parce qu'on a mangé — n'a pas de
-     * position précédente : on le fait SORTIR DE LA QUEUE, ce qui est
-     * exactement ce qu'on voit quand un vrai serpent s'allonge. Sans cela il
-     * surgirait d'un coup au milieu du terrain.
-     */
-    placer(t) {
-        this.dernierAvancement = t;
-        if (this.cibleEl) {
-            if (this.mene && this.cible) {
-                this.cibleEl.setAttribute('cx', this.cible[0].toFixed(2));
-                this.cibleEl.setAttribute('cy', this.cible[1].toFixed(2));
-                this.cibleEl.style.display = '';
-            } else this.cibleEl.style.display = 'none';
-        }
-        if (!this.anneauxEl) return;
-        const av = this.precedent || this.etat.cases;
-        this.anneauxEl.forEach((g, i) => {
-            const b = this.etat.cases[i];
-            if (!b) return;
-            const a = av[i] || av[av.length - 1] || b;
-            const x = a[0] + (b[0] - a[0]) * t;
-            const y = a[1] + (b[1] - a[1]) * t;
-            g.setAttribute('transform', `translate(${x.toFixed(3)} ${y.toFixed(3)})`);
-        });
-    }
-
     dessiner() {
         const e = this.etat, niv = e.niv;
         const teinte = (t, claire) => (claire ? CLAIRES : COULEURS)[t.e] || COULEURS[0];
+        const corps = anneaux(e);
 
-        let out = `<rect class="sp-fond" x="0" y="0" width="${niv.large}" height="${niv.haut}" rx=".2"/>`;
-        for (let x = 1; x < niv.large; x++) {
-            out += `<line class="sp-quadrillage" x1="${x}" y1="0" x2="${x}" y2="${niv.haut}"/>`;
-        }
-        for (let y = 1; y < niv.haut; y++) {
-            out += `<line class="sp-quadrillage" x1="0" y1="${y}" x2="${niv.large}" y2="${y}"/>`;
-        }
+        let out = `<rect class="sp-fond" x="0" y="0" width="${niv.large}" height="${niv.haut}" rx="1.5"/>`;
 
-        // Les termes à ramasser : pastilles claires, cerclées de leur famille.
+        // Les termes à ramasser.
         e.graines.forEach(g => {
-            out += `<circle class="sp-graine" cx="${g.x + .5}" cy="${g.y + .5}" r=".38"
-                fill="${teinte(g.t, true)}" stroke="${teinte(g.t)}"/>
-                <text class="sp-txt" x="${g.x + .5}" y="${g.y + .52}" font-size=".34"
-                    fill="${teinte(g.t)}">${texteTerme(g.t)}</text>`;
+            out += `<circle class="sp-graine" cx="${g.x.toFixed(2)}" cy="${g.y.toFixed(2)}"
+                r="${RAYON_TERME}" fill="${teinte(g.t, true)}" stroke="${teinte(g.t)}"/>
+                <text class="sp-txt" x="${g.x.toFixed(2)}" y="${(g.y + 0.06).toFixed(2)}"
+                    font-size="${RAYON_TERME * 0.95}" fill="${teinte(g.t)}">${texteTerme(g.t)}</text>`;
         });
 
-        // LE SERPENT : un groupe par anneau, POSÉ À L'ORIGINE et déplacé par
-        // une transformation. C'est ce qui permet à `placer` de le faire
-        // glisser sans reconstruire le dessin soixante fois par seconde.
-        e.cases.forEach((_, i) => {
+        // LE CORPS, DE LA QUEUE VERS LA TÊTE, pour que la tête passe dessus.
+        for (let i = corps.length - 1; i >= 0; i--) {
             const t = e.corps[i] || e.corps[e.corps.length - 1] || { c: 0, e: 0 };
+            const p = corps[i];
             const tete = i === 0 ? ' sp-tete' : '';
-            out += `<g class="sp-groupe" data-anneau="${i}">
-                <rect class="sp-anneau${tete}" x=".04" y=".04" width=".92" height=".92" rx=".18"
-                    fill="${teinte(t)}"/>
-                <text class="sp-txt" x=".5" y=".52" font-size=".3" fill="#fff">${texteTerme(t)}</text>
-                </g>`;
+            out += `<circle class="sp-anneau${tete}" cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}"
+                r="${RAYON_TETE}" fill="${teinte(t)}"/>
+                <text class="sp-txt" x="${p.x.toFixed(2)}" y="${(p.y + 0.05).toFixed(2)}"
+                    font-size="${RAYON_TETE * 0.9}" fill="#fff">${texteTerme(t)}</text>`;
+        }
+        // LES DEUX YEUX : ils disent le cap. Sans eux, une bille ronde ne
+        // montre pas où elle va, et l'on ne sait pas de combien on corrige.
+        const t0 = corps[0], c = e.cap;
+        [-0.6, 0.6].forEach(a => {
+            const ox = t0.x + Math.cos(c + a) * RAYON_TETE * 0.55;
+            const oy = t0.y + Math.sin(c + a) * RAYON_TETE * 0.55;
+            out += `<circle class="sp-oeil" cx="${ox.toFixed(2)}" cy="${oy.toFixed(2)}" r="${RAYON_TETE * 0.2}"/>`;
         });
+        if (this.mene && this.cible) {
+            out += `<circle class="sp-cible" cx="${this.cible[0].toFixed(2)}"
+                cy="${this.cible[1].toFixed(2)}" r="${RAYON_TERME * 0.9}"/>`;
+        }
 
-        // LA CIBLE DU DOIGT, dessinée en dernier pour rester au-dessus.
-        out += `<circle class="sp-cible" data-cible cx="0" cy="0" r=".42" style="display:none"/>`;
+        this.sceneEl.innerHTML = `<svg class="sp-svg" viewBox="0 0 ${niv.large} ${niv.haut}"
+            preserveAspectRatio="none">${out}</svg>`;
+        if (!this.bandeauFait) this.dessinerBandeau();
+    }
 
-        this.sceneEl.innerHTML = `<svg class="sp-svg" viewBox="-.1 -.1 ${niv.large + .2} ${niv.haut + .2}"
-            preserveAspectRatio="xMidYMid meet">${out}</svg>`;
-        this.anneauxEl = [...this.sceneEl.querySelectorAll('[data-anneau]')];
-        this.cibleEl = this.sceneEl.querySelector('[data-cible]');
-        this.placer(this.dernierAvancement || 0);
-
+    dessinerBandeau() {
+        this.bandeauFait = true;
+        const e = this.etat;
         this.exprEl.textContent = expression(e.corps);
-        const long = e.corps.length;
-        this.bandeauEl.innerHTML = `<span>${niv.titre}</span>`
-            + `<span>anneaux <b>${long}</b> / idéal ${this.ideal}</span>`
+        this.bandeauEl.innerHTML = `<span>${e.niv.titre}</span>`
+            + `<span>anneaux <b>${e.corps.length}</b> / idéal ${this.ideal}</span>`
             + `<span>reste <b>${e.graines.length}</b></span>`
             + `<span>vies <b>${this.vies}</b></span>`;
     }
@@ -459,28 +414,39 @@ export class Serpent extends BaseGame {
         this.noteEl.className = 'sp-note' + (ton ? ` sp-note--${ton}` : '');
     }
 
-    /** Le robot joue tout droit puis tourne : on montre la règle, pas l'adresse. */
+    /**
+     * LE ROBOT VISE LE TERME LE PLUS PROCHE, et se contente de cela.
+     *
+     * On montre la RÈGLE — les semblables fusionnent, le reste allonge — et
+     * non l'adresse au pilotage. Un robot qui jouerait parfaitement donnerait
+     * l'impression qu'il faut être bon au serpent pour réussir en algèbre.
+     */
     async runDemoSequence() {
-        const sens = ['droite', 'bas', 'gauche', 'haut'];
-        let i = 0;
-        for (let pas = 0; pas < 60 && this.isRunning && !this.etat.fini; pas++) {
-            await new Promise(ok => setTimeout(ok, 320));
-            if (this.gelDemo) await new Promise(ok => setTimeout(ok, 500));
-            // On vise la graine la plus proche, sans chercher le chemin optimal.
-            const [hx, hy] = this.etat.cases[0];
+        this.tDerniere = performance.now();
+        while (this.isRunning) {
+            await new Promise(ok => requestAnimationFrame(ok));
+            if (!this.isRunning) return;
+            if (this.gelDemo) { this.tDerniere = performance.now(); continue; }
+            const maintenant = performance.now();
+            const dt = (maintenant - this.tDerniere) / 1000;
+            this.tDerniere = maintenant;
             const g = this.etat.graines
-                .map(x => ({ x, d: Math.abs(x.x - hx) + Math.abs(x.y - hy) }))
+                .map(x => ({ x, d: Math.hypot(x.x - this.etat.tete.x, x.y - this.etat.tete.y) }))
                 .sort((a, b) => a.d - b.d)[0];
-            let voulu = sens[i % 4];
-            if (g) {
-                voulu = Math.abs(g.x.x - hx) > 0
-                    ? (g.x.x > hx ? 'droite' : 'gauche')
-                    : (g.x.y > hy ? 'bas' : 'haut');
+            const cap = g
+                ? Math.atan2(g.x.y - this.etat.tete.y, g.x.x - this.etat.tete.x)
+                : null;
+            const r = avancer(this.etat, dt, cap);
+            // En démonstration on ne meurt pas : on repart, sinon l'écran se
+            // fige sur un mur au bout de quinze secondes.
+            this.etat = r.etat.fini && r.etat.fini !== 'gagne'
+                ? nouvellePartie(this.rng, this.rang, this.rapportDeLaScene())
+                : r.etat;
+            if (r.etat.fini === 'gagne') {
+                this.etat = nouvellePartie(this.rng, this.rang, this.rapportDeLaScene());
             }
-            const r = avancer(this.etat, voulu);
-            if (r.etat.fini) { i += 1; this.etat = { ...r.etat, fini: null }; }
-            else this.etat = r.etat;
             if (r.dit) this.note(r.dit);
+            this.dessinerBandeau();
             this.dessiner();
         }
     }

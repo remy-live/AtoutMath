@@ -9,8 +9,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRng } from '../js/core/ids.js';
 import {
-    NIVEAUX, CONSIGNE, SENS, OPPOSE,
-    terme, semblables, texteTerme, expression, reduire,
+    NIVEAUX, CONSIGNE, ESPACEMENT, RAYON_TETE, RAYON_TERME,
+    terme, semblables, texteTerme, expression, reduire, ecartCap, anneaux,
     nouvellePartie, avancer, semer, longueurIdeale, formePourEcran
 } from '../js/core/serpent.js';
 
@@ -110,34 +110,64 @@ test('l\'expression s\'écrit dans l\'ordre des anneaux, pas par degrés', () =>
     assert.equal(expression([]), '0');
 });
 
-// --- Le terrain --------------------------------------------------------------
+// --- Le terrain, sans cases -------------------------------------------------
+//
+// Rémy : « ne mets pas de case, que ce soit un peu plus libre. » Les tests de
+// la grille sont donc remplacés — et c'est le bon moment de redire ce qu'ils
+// gardaient VRAIMENT : l'algèbre du corps, éprouvée plus haut, n'a pas changé
+// d'une ligne. Deux anneaux « voisins » l'ont toujours été DANS LE CORPS, et
+// jamais sur le damier.
 
-test('une partie neuve tient dans son terrain', () => {
-    const p = nouvellePartie(makeRng('depart'), 0);
-    assert.equal(p.cases.length, 1);
-    assert.equal(p.graines.length, p.niv.termes);
-    p.graines.forEach(g => {
-        assert.ok(g.x >= 0 && g.x < p.niv.large && g.y >= 0 && g.y < p.niv.haut, 'hors terrain');
-    });
-    const cles = new Set(p.graines.map(g => `${g.x},${g.y}`));
-    assert.equal(cles.size, p.graines.length, 'deux termes sur la même case');
+test('un écart de cap ne fait jamais le tour du cadran', () => {
+    // Sans normalisation, aller de 350° à 10° se lit comme un virage de −340° :
+    // le serpent ferait presque un tour complet pour vingt degrés.
+    const deg = (d) => d * Math.PI / 180;
+    assert.ok(Math.abs(ecartCap(deg(350), deg(10)) - deg(20)) < 1e-9);
+    assert.ok(Math.abs(ecartCap(deg(10), deg(350)) + deg(20)) < 1e-9);
+    assert.equal(ecartCap(1, 1), 0);
+    for (let a = -7; a < 7; a += 0.37) {
+        for (let b = -7; b < 7; b += 0.41) {
+            const d = ecartCap(a, b);
+            assert.ok(d > -Math.PI - 1e-9 && d <= Math.PI + 1e-9, `${a}→${b} donne ${d}`);
+        }
+    }
 });
 
-test('RIEN N\'EST SEMÉ DEVANT LE SERPENT', () => {
-    // Un terme ramassé avant d'avoir pu choisir n'est pas un choix.
-    for (let i = 0; i < 30; i++) {
+test('une partie neuve tient dans son aire', () => {
+    const p = nouvellePartie(makeRng('depart'), 0);
+    assert.equal(p.corps.length, 1);
+    assert.equal(p.graines.length, p.niv.termes);
+    p.graines.forEach(g => {
+        assert.ok(g.x > 0 && g.x < p.niv.large && g.y > 0 && g.y < p.niv.haut, 'hors du terrain');
+    });
+});
+
+test('DEUX TERMES NE SE TOUCHENT JAMAIS', () => {
+    // Sans grille pour les tenir écartés, deux pastilles collées se ramassent
+    // d'un seul passage — ce qui retire à l'élève le choix qu'on veut lui
+    // laisser entre deux familles.
+    for (let i = 0; i < 25; i++) {
+        const p = nouvellePartie(makeRng(`ecart${i}`), i % NIVEAUX.length);
+        for (let a = 0; a < p.graines.length; a++) {
+            for (let b = a + 1; b < p.graines.length; b++) {
+                const d = Math.hypot(p.graines[a].x - p.graines[b].x, p.graines[a].y - p.graines[b].y);
+                assert.ok(d > RAYON_TERME * 2,
+                    `deux termes à ${d.toFixed(2)} l'un de l'autre au niveau ${p.rang}`);
+            }
+        }
+    }
+});
+
+test('rien n\'est semé sur le serpent', () => {
+    for (let i = 0; i < 25; i++) {
         const p = nouvellePartie(makeRng(`devant${i}`), i % NIVEAUX.length);
-        const [x0, y0] = p.cases[0];
-        [0, 1, 2, 3].forEach(d => {
-            assert.ok(!p.graines.some(g => g.x === x0 + d && g.y === y0),
-                'un terme est posé sur le chemin de départ');
-        });
+        p.graines.forEach(g => assert.ok(
+            Math.hypot(g.x - p.tete.x, g.y - p.tete.y) > 10,
+            'un terme est posé sur le serpent ou juste devant'));
     }
 });
 
 test('chaque famille semée l\'est au moins deux fois', () => {
-    // Un x² unique ne pourrait fusionner avec rien : l'anneau qu'il coûte
-    // serait une punition sans leçon.
     for (let i = 0; i < 20; i++) {
         const p = nouvellePartie(makeRng(`fam${i}`), i % NIVEAUX.length);
         const compte = {};
@@ -153,163 +183,155 @@ test('un niveau ne sème que les exposants qu\'il annonce', () => {
         const p = nouvellePartie(makeRng(`exp${i}`), i);
         p.graines.forEach(g => assert.ok(niv.exposants.includes(g.t.e),
             `${niv.titre} sème un exposant ${g.t.e}`));
-        if (!niv.negatifs) p.graines.forEach(g => assert.ok(g.t.c > 0, `${niv.titre} : coefficient négatif`));
+        if (!niv.negatifs) p.graines.forEach(g => assert.ok(g.t.c > 0, `${niv.titre} : négatif`));
     });
 });
 
-test('LE MUR TUE, ET LA MORSURE AUSSI', () => {
-    let p = nouvellePartie(makeRng('mur'), 0);
-    let r = { etat: p };
-    for (let i = 0; i < 40 && !r.etat.fini; i++) r = avancer(r.etat, 'droite');
-    assert.equal(r.etat.fini, 'mur');
-    assert.match(r.dit, /mur/i);
+test('LE MUR TUE', () => {
+    let e = nouvellePartie(makeRng('mur'), 0);
+    for (let i = 0; i < 600 && !e.fini; i++) e = avancer(e, 1 / 60, 0).etat;
+    assert.equal(e.fini, 'mur');
 });
 
-test('on ne fait pas demi-tour sur place', () => {
-    // Un serpent qui rebrousse chemin se mangerait sans que le joueur l'ait
-    // voulu : ce n'est pas une erreur de calcul, cela ne doit pas coûter la
-    // partie.
-    const p = nouvellePartie(makeRng('demi'), 0);
-    const r = avancer(p, OPPOSE[p.sens]);
-    assert.notEqual(r.quoi, 'mordu');
-    assert.equal(r.etat.sens, p.sens, 'le sens n\'a pas changé');
+test('LE VIRAGE EST BORNÉ — on ne pivote pas sur place', () => {
+    // C'est cette borne qui fait la conduite. Sans elle, on tournerait
+    // instantanément et le jeu redeviendrait une grille à quatre directions
+    // déguisée ; c'est aussi elle qui remplace l'ancien « pas de demi-tour ».
+    const p = nouvellePartie(makeRng('virage'), 0);
+    const dt = 1 / 60;
+    const r = avancer(p, dt, Math.PI);          // demi-tour demandé
+    const tourne = Math.abs(ecartCap(p.cap, r.etat.cap));
+    assert.ok(tourne <= p.niv.virage * dt + 1e-9,
+        `${tourne.toFixed(3)} rad en une image, pour un maximum de ${(p.niv.virage * dt).toFixed(3)}`);
+    assert.ok(tourne > 0, 'il tourne quand même');
 });
 
-test('AVANCER SANS RAMASSER NE CHANGE PAS L\'EXPRESSION', () => {
-    let p = nouvellePartie(makeRng('glisse'), 0);
-    // On choisit un sens sans graine devant, puis on avance et l'on compare.
-    const avant = expression(p.corps);
-    const r = avancer(p, 'droite');
-    if (r.quoi === 'rien') {
-        assert.equal(expression(r.etat.corps), avant);
-        assert.equal(r.etat.cases.length, p.cases.length, 'la longueur n\'a pas bougé');
-    }
+test('une image qui traîne ne téléporte pas le serpent', () => {
+    // Un onglet en arrière-plan rend des `dt` d'une seconde ou plus. Sans
+    // plafond, le serpent traverserait le terrain d'un bond — à travers son
+    // propre corps et les murs.
+    const p = nouvellePartie(makeRng('lag'), 0);
+    const r = avancer(p, 5, 0);
+    const parcouru = Math.hypot(r.etat.tete.x - p.tete.x, r.etat.tete.y - p.tete.y);
+    assert.ok(parcouru <= p.niv.vitesse * 0.12 + 1e-6,
+        `${parcouru.toFixed(2)} unités en une image`);
 });
 
-test('LE CORPS RESTE UNE CHAÎNE DE CASES VOISINES', () => {
-    // Chaque fusion retire un anneau. S'il était retiré au mauvais endroit, le
-    // serpent se couperait en deux morceaux — invisible dans les nombres, mais
-    // catastrophique à l'écran.
-    const rng = makeRng('chaine');
-    for (let partie = 0; partie < 12; partie++) {
-        let e = nouvellePartie(makeRng(`ch${partie}`), partie % NIVEAUX.length);
-        for (let pas = 0; pas < 220 && !e.fini; pas++) {
-            const r = avancer(e, rng.pick(['haut', 'bas', 'gauche', 'droite']));
-            e = r.etat;
-            assert.equal(e.cases.length, Math.max(1, e.corps.length),
-                'autant de cases que d\'anneaux');
-            for (let i = 1; i < e.cases.length; i++) {
-                const d = Math.abs(e.cases[i][0] - e.cases[i - 1][0])
-                    + Math.abs(e.cases[i][1] - e.cases[i - 1][1]);
-                assert.equal(d, 1, `anneaux ${i - 1} et ${i} non voisins`);
-            }
-            const vus = new Set(e.cases.map(c => c.join(',')));
-            assert.equal(vus.size, e.cases.length, 'deux anneaux sur la même case');
+test('LES ANNEAUX SUIVENT LA TRACE, à écart constant', () => {
+    // Le corps épouse la courbe que la tête a décrite : c'est ce qui donne au
+    // serpent son ondulation, qu'aucune grille ne sait produire.
+    const rng = makeRng('trace');
+    let e = nouvellePartie(makeRng('trace'), 3);
+    for (let i = 0; i < 900 && !e.fini; i++) {
+        const g = e.graines[0];
+        const cap = g ? Math.atan2(g.y - e.tete.y, g.x - e.tete.x) : rng.next() * 6.28;
+        e = avancer(e, 1 / 60, cap).etat;
+        const a = anneaux(e);
+        assert.equal(a.length, Math.max(1, e.corps.length), 'autant d\'anneaux que de termes');
+        for (let k = 1; k < a.length; k++) {
+            const d = Math.hypot(a[k].x - a[k - 1].x, a[k].y - a[k - 1].y);
+            assert.ok(Math.abs(d - ESPACEMENT) < 0.25,
+                `anneaux ${k - 1} et ${k} à ${d.toFixed(2)} au lieu de ${ESPACEMENT}`);
         }
     }
 });
 
 test('LE CORPS DIT TOUJOURS LA VÉRITÉ SUR CE QUI A ÉTÉ RAMASSÉ', () => {
-    // L'invariant qui compte vraiment : à tout instant, l'expression portée par
-    // le serpent vaut la somme de tous les termes ramassés depuis le début.
-    const rng = makeRng('verite');
-    for (let partie = 0; partie < 10; partie++) {
+    // L'invariant qui compte, et il traverse le changement de déplacement sans
+    // une retouche : à tout instant, l'expression portée par le serpent vaut la
+    // somme de tous les termes ramassés depuis le début.
+    for (let partie = 0; partie < 8; partie++) {
         let e = nouvellePartie(makeRng(`vr${partie}`), partie % NIVEAUX.length);
         const ramasses = [];
-        for (let pas = 0; pas < 260 && !e.fini; pas++) {
+        for (let i = 0; i < 2500 && !e.fini; i++) {
+            const g = e.graines.map(x => ({ x, d: Math.hypot(x.x - e.tete.x, x.y - e.tete.y) }))
+                .sort((a, b) => a.d - b.d)[0];
+            const cap = g ? Math.atan2(g.x.y - e.tete.y, g.x.x - e.tete.x) : null;
             const avant = e.graines.length;
-            const r = avancer(e, rng.pick(['haut', 'bas', 'gauche', 'droite']));
+            const r = avancer(e, 1 / 60, cap);
             if (r.etat.graines.length < avant) {
-                const mange = e.graines.find(g => !r.etat.graines.includes(g));
-                ramasses.push(mange.t);
+                ramasses.push(e.graines.find(x => !r.etat.graines.includes(x)).t);
             }
             e = r.etat;
             [-1, 0, 2, 5].forEach(x => assert.equal(vaut(e.corps, x), vaut(ramasses, x),
-                `après ${pas} pas : ${expression(e.corps)} ≠ somme des ${ramasses.length} termes`));
+                `${expression(e.corps)} ≠ somme des ${ramasses.length} termes ramassés`));
         }
     }
 });
 
-test('nettoyer le terrain gagne la partie', () => {
-    // On force le ramassage en téléportant la tête sur chaque graine : c'est du
-    // trucage assumé, on ne teste ici que la condition de victoire.
-    let e = nouvellePartie(makeRng('gagne'), 0);
-    let tours = 0;
-    while (e.graines.length && tours++ < 100) {
-        const g = e.graines[0];
-        e = { ...e, cases: [[g.x - 1, g.y], ...e.cases.slice(1)] };
-        e = avancer(e, 'droite').etat;
-        if (e.fini && e.fini !== 'gagne') break;
+test('LE MUR NE DOIT PAS ÊTRE LE PRINCIPAL ADVERSAIRE', () => {
+    // La difficulté doit venir des mathématiques, pas du pilotage. On fait donc
+    // jouer un pilote AVEUGLE — il fonce au terme le plus proche, sans jamais
+    // regarder le bord — et l'on compte de quoi il meurt.
+    //
+    // Première mesure : 86 morts contre le mur sur 180 parties, 32 % de
+    // terrains nettoyés. La faute n'était pas au pilote : on semait jusqu'à
+    // 2,7 unités du bord alors que le serpent tourne sur un rayon de 3,8. Un
+    // terme posé là ne PEUT pas se prendre sans finir dans le mur — ce n'est
+    // pas une difficulté, c'est un piège. Marge portée à 1,7 rayon de virage :
+    // 19 morts, 54 % nettoyés.
+    //
+    // Les parties non finies, elles, sont l'affaire du pilote : sans anticiper,
+    // il tourne en rond autour d'un terme qu'il a dépassé. Un joueur ne fait
+    // pas ça, et l'on ne mesure donc pas cela ici.
+    const sorts = { gagne: 0, mur: 0, mordu: 0, encours: 0 };
+    for (let i = 0; i < 24; i++) {
+        let e = nouvellePartie(makeRng(`jouable${i}`), i % NIVEAUX.length);
+        for (let k = 0; k < 4000 && !e.fini; k++) {
+            const g = e.graines.map(x => ({ x, d: Math.hypot(x.x - e.tete.x, x.y - e.tete.y) }))
+                .sort((a, b) => a.d - b.d)[0];
+            e = avancer(e, 1 / 60, g ? Math.atan2(g.x.y - e.tete.y, g.x.x - e.tete.x) : null).etat;
+        }
+        sorts[e.fini || 'encours'] += 1;
     }
-    assert.equal(e.fini, 'gagne');
-    assert.equal(e.graines.length, 0);
+    assert.ok(sorts.mur <= sorts.gagne / 2,
+        `le mur tue ${sorts.mur} fois pour ${sorts.gagne} terrains nettoyés : il est semé trop près du bord`);
+    assert.ok(sorts.gagne >= 8, `seulement ${sorts.gagne} terrains nettoyés sur 24`);
+});
+
+test('aucun terme n\'est semé dans le rayon de virage du bord', () => {
+    // La règle en clair, éprouvée directement plutôt que par ses conséquences.
+    for (let i = 0; i < 20; i++) {
+        const p = nouvellePartie(makeRng(`bord${i}`), i % NIVEAUX.length);
+        const marge = p.niv.vitesse / p.niv.virage;
+        p.graines.forEach(g => {
+            const d = Math.min(g.x, g.y, p.niv.large - g.x, p.niv.haut - g.y);
+            assert.ok(d >= marge,
+                `un terme à ${d.toFixed(1)} du bord, pour un rayon de virage de ${marge.toFixed(1)}`);
+        });
+    }
 });
 
 test('la longueur idéale est le nombre de familles semées', () => {
     const p = nouvellePartie(makeRng('ideal'), 3);
-    const familles = new Set(p.graines.map(g => g.t.e)).size;
-    assert.equal(longueurIdeale(p.graines), familles);
-    assert.ok(familles >= 2 && familles <= 4);
+    assert.equal(longueurIdeale(p.graines), new Set(p.graines.map(g => g.t.e)).size);
 });
 
-test('les niveaux montent : plus de termes, plus de familles, plus vite', () => {
+test('les niveaux montent : plus de termes, plus vite, virage plus serré', () => {
     for (let i = 1; i < NIVEAUX.length; i++) {
         assert.ok(NIVEAUX[i].termes >= NIVEAUX[i - 1].termes, `${NIVEAUX[i].titre} : moins de termes`);
-        assert.ok(NIVEAUX[i].vitesse <= NIVEAUX[i - 1].vitesse, `${NIVEAUX[i].titre} : plus lent`);
+        assert.ok(NIVEAUX[i].vitesse >= NIVEAUX[i - 1].vitesse, `${NIVEAUX[i].titre} : plus lent`);
+        assert.ok(NIVEAUX[i].virage <= NIVEAUX[i - 1].virage, `${NIVEAUX[i].titre} : tourne mieux`);
     }
     assert.deepEqual(NIVEAUX[0].exposants, [0, 1], 'on commence par « 2x + 3 ne se réduit pas »');
-    assert.ok(NIVEAUX.some(n => n.negatifs), 'les négatifs arrivent');
-    assert.ok(NIVEAUX.some(n => n.exposants.includes(3)), 'les cubes aussi');
+    assert.ok(NIVEAUX.some(n => n.negatifs) && NIVEAUX.some(n => n.exposants.includes(3)));
+});
+
+test('L\'AIRE PREND LA FORME DE L\'ÉCRAN, à surface constante', () => {
+    const niv = NIVEAUX[0];
+    const aire = niv.large * niv.haut;
+    [[330 / 470, 'téléphone debout'], [740 / 240, 'téléphone couché'],
+     [1, 'écran carré'], [1340 / 678, 'ordinateur']].forEach(([r, quoi]) => {
+        const f = formePourEcran(niv, r);
+        assert.ok(f.large >= 30 && f.haut >= 30, `${quoi} : un côté trop court pour se retourner`);
+        assert.ok(Math.abs(f.large * f.haut - aire) / aire < 0.12, `${quoi} : ${f.large}×${f.haut}`);
+        assert.ok(Math.abs(Math.log((f.large / f.haut) / r)) < 0.5, `${quoi} : forme trop loin`);
+    });
+    NIVEAUX.forEach(n => assert.deepEqual(formePourEcran(n, null), { large: n.large, haut: n.haut }));
 });
 
 test('LA CONSIGNE NE DONNE PAS LA RÈGLE DE RÉDUCTION', () => {
     // Elle dit ce qui se passe — « ils fusionnent » — sans nommer le critère.
-    // C'est le critère qu'on veut faire trouver.
     assert.doesNotMatch(CONSIGNE, /même exposant|même puissance|coefficient/i);
     assert.match(CONSIGNE, /fusionnent/i);
-    assert.ok(Object.keys(SENS).length === 4);
-});
-
-test('LE TERRAIN PREND LA FORME DE L\'ÉCRAN, à nombre de cases constant', () => {
-    // Rémy : « horrible au portable ». Un terrain carré sur un téléphone
-    // portrait laissait un tiers de la hauteur en blanc — 325 px de terrain
-    // dans 470 px de place. Le NOMBRE de cases fait la difficulté et ne bouge
-    // pas ; les côtés, eux, suivent l'écran.
-    const niv = NIVEAUX[0];
-    const cases = niv.large * niv.haut;
-    [[330 / 470, 'téléphone debout'], [740 / 240, 'téléphone couché'],
-     [1, 'écran carré'], [1340 / 678, 'ordinateur']].forEach(([r, quoi]) => {
-        const f = formePourEcran(niv, r);
-        assert.ok(f.large >= 8 && f.haut >= 8, `${quoi} : un côté sous huit cases`);
-        const ecart = Math.abs(f.large * f.haut - cases) / cases;
-        assert.ok(ecart < 0.12, `${quoi} : ${f.large}×${f.haut}, trop loin de ${cases} cases`);
-        // La forme obtenue doit ressembler à celle demandée.
-        const obtenu = f.large / f.haut;
-        assert.ok(Math.abs(Math.log(obtenu / r)) < 0.5,
-            `${quoi} : demandé ${r.toFixed(2)}, obtenu ${obtenu.toFixed(2)}`);
-    });
-});
-
-test('sans écran connu, le terrain garde la forme du niveau', () => {
-    NIVEAUX.forEach(niv => {
-        assert.deepEqual(formePourEcran(niv, null), { large: niv.large, haut: niv.haut });
-        assert.deepEqual(formePourEcran(niv, 0), { large: niv.large, haut: niv.haut });
-    });
-});
-
-test('un terrain reformé reste jouable', () => {
-    // Le serpent démarre au centre et l'on réserve trois cases devant lui : sur
-    // un terrain devenu étroit, il faut que ça tienne encore.
-    [330 / 470, 740 / 240, 1].forEach(r => {
-        for (let i = 0; i < NIVEAUX.length; i++) {
-            const p = nouvellePartie(makeRng(`forme${i}`), i, r);
-            assert.ok(p.niv.large >= 8 && p.niv.haut >= 8);
-            assert.equal(p.graines.length, NIVEAUX[i].termes, 'il manque des termes');
-            p.graines.forEach(g => assert.ok(
-                g.x >= 0 && g.x < p.niv.large && g.y >= 0 && g.y < p.niv.haut, 'hors terrain'));
-            const [x0, y0] = p.cases[0];
-            [0, 1, 2, 3].forEach(d => assert.ok(
-                !p.graines.some(g => g.x === x0 + d && g.y === y0), 'un terme sur le chemin'));
-        }
-    });
 });
