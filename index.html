@@ -42,12 +42,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=591">
-    <link rel="stylesheet" href="css/layout.css?v=591">
-    <link rel="stylesheet" href="css/ui.css?v=591">
-    <link rel="stylesheet" href="css/games.css?v=591">
-    <link rel="stylesheet" href="css/components.css?v=591">
-    <link rel="stylesheet" href="css/modules.css?v=591">
+    <link rel="stylesheet" href="css/base.css?v=592">
+    <link rel="stylesheet" href="css/layout.css?v=592">
+    <link rel="stylesheet" href="css/ui.css?v=592">
+    <link rel="stylesheet" href="css/games.css?v=592">
+    <link rel="stylesheet" href="css/components.css?v=592">
+    <link rel="stylesheet" href="css/modules.css?v=592">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1161,9 +1161,54 @@
 
         // PWA : enregistre le service worker (installation + hors ligne).
         // Silencieux en cas d'échec — l'application marche sans lui.
+        //
+        // ET ON GARNIT LE CACHE DÈS LA PREMIÈRE VISITE.
+        //
+        // Mesuré : après UNE visite le cache contenait 18 entrées — le noyau
+        // seul, aucun module — et l'application hors ligne n'affichait qu'une
+        // coquille vide, zéro exercice. Après une deuxième : 267 entrées, 248
+        // modules, et les 157 cartes. La raison est une règle des service
+        // workers : celui-ci ne prend le contrôle des requêtes qu'APRÈS son
+        // activation, or les modules de la page ont déjà été chargés à ce
+        // moment-là. Ils ne passent donc jamais par son gestionnaire au premier
+        // tour, et rien ne les met en cache.
+        //
+        // Un élève qui ouvre AtoutMath une fois puis perd le réseau n'avait
+        // rien. Dans une salle où le wifi flanche, c'est exactement la panne
+        // que la mise en cache devait éviter.
+        //
+        // On répare sans construire de liste à la main — il n'y a pas d'étape
+        // de compilation ici, et une liste de 248 modules écrite à la main
+        // serait fausse au premier ajout. LA PAGE SAIT CE QU'ELLE A CHARGÉ :
+        // `performance.getEntriesByType('resource')` le dit exactement. On
+        // envoie donc cette liste au service worker, une fois, quand tout est
+        // chargé et que le navigateur n'a plus rien d'urgent à faire.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').catch(() => { });
+
+                const garnir = () => {
+                    const sw = navigator.serviceWorker.controller;
+                    if (!sw) return;
+                    let liste = [];
+                    try {
+                        liste = performance.getEntriesByType('resource')
+                            .map(r => r.name)
+                            .filter(u => u.startsWith(location.origin)
+                                && /\.(js|css|woff2?|png|svg|json)(\?|$)/.test(u));
+                    } catch (e) { return; }
+                    if (liste.length) sw.postMessage({ type: 'garnir', liste });
+                };
+                // Après le chargement ET après que le service worker a pris la
+                // main : au tout premier passage, `controller` est encore nul
+                // au moment du `load`.
+                navigator.serviceWorker.ready.then(() => {
+                    if (navigator.serviceWorker.controller) return garnir();
+                    navigator.serviceWorker.addEventListener('controllerchange', garnir, { once: true });
+                }).catch(() => { });
+                // Et un second passage plus tard, pour ramasser ce que
+                // l'application charge à la demande une fois ouverte.
+                setTimeout(garnir, 8000);
             });
         }
     </script>

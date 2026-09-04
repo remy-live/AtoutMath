@@ -9,18 +9,18 @@
 //     toujours la dernière version — le cache ne sert que hors ligne.
 //
 // À incrémenter à chaque déploiement pour purger l'ancien cache.
-const CACHE = 'atoutmath-v530';
+const CACHE = 'atoutmath-v531';
 
 const NOYAU = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './css/base.css?v=591',
-    './css/layout.css?v=591',
-    './css/ui.css?v=591',
-    './css/games.css?v=591',
-    './css/components.css?v=591',
-    './css/modules.css?v=591',
+    './css/base.css?v=592',
+    './css/layout.css?v=592',
+    './css/ui.css?v=592',
+    './css/games.css?v=592',
+    './css/components.css?v=592',
+    './css/modules.css?v=592',
     './icons/icon-192.png',
     './icons/icon-512.png',
     // LES BIBLIOTHÈQUES, désormais servies avec l'application. Elles sont dans
@@ -50,6 +50,46 @@ self.addEventListener('activate', (e) => {
             .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
             .then(() => self.clients.claim())
     );
+});
+
+/**
+ * GARNIR LE CACHE AVEC CE QUE LA PAGE A RÉELLEMENT CHARGÉ.
+ *
+ * Un service worker ne voit pas les requêtes faites AVANT son activation :
+ * au tout premier passage, les deux cent quarante modules de l'application
+ * sont déjà arrivés quand il prend la main, et rien ne les met en cache.
+ * Mesuré : 18 entrées après une visite, 267 après deux — et entre les deux,
+ * une application hors ligne réduite à une coquille vide.
+ *
+ * La page nous envoie donc la liste de ce qu'elle a chargé (elle la connaît
+ * par `performance`), et on la range. Aucune liste écrite à la main : il n'y a
+ * pas d'étape de compilation dans ce projet, et une liste de 248 modules
+ * tapée à la main serait fausse dès le premier ajout.
+ *
+ * ON NE RECOMMENCE PAS À CHAQUE VISITE. Une fois le cache garni, les visites
+ * suivantes n'ont rien à ranger : on compare le nombre d'entrées à la liste
+ * reçue et l'on ne va chercher que ce qui manque. Et l'on met en cache UNE PAR
+ * UNE plutôt qu'avec `addAll` : celui-ci abandonne tout si un seul fichier
+ * échoue, ce qui rendrait la mise en cache otage de la première image absente.
+ */
+async function garnir(liste) {
+    const cache = await caches.open(CACHE);
+    const deja = new Set((await cache.keys()).map(r => r.url));
+    const manquants = [...new Set(liste)].filter(u => !deja.has(u));
+    if (!manquants.length) return;
+    for (const url of manquants) {
+        try {
+            const r = await fetch(url, { cache: 'no-cache', credentials: 'same-origin' });
+            if (r && r.ok) await cache.put(url, r.clone());
+        } catch (e) { /* un fichier manquant n'empêche pas les autres */ }
+    }
+}
+
+self.addEventListener('message', (e) => {
+    const d = e.data;
+    if (d && d.type === 'garnir' && Array.isArray(d.liste)) {
+        e.waitUntil(garnir(d.liste));
+    }
 });
 
 self.addEventListener('fetch', (e) => {

@@ -292,6 +292,52 @@ async function tourDesPanneaux(p, seau) {
     return { combien: 13 + boutons.length, soucis };
 }
 
+/**
+ * L'APPLICATION TIENT-ELLE SANS RÉSEAU, APRÈS UNE SEULE VISITE ?
+ *
+ * La panne que ce contrôle garde était invisible : un service worker ne voit
+ * pas les requêtes faites AVANT son activation, si bien qu'au premier passage
+ * les deux cent quarante modules arrivaient sans jamais être mis en cache.
+ * Mesuré alors : 18 entrées après une visite, 267 après deux — et entre les
+ * deux, une application hors ligne réduite à une coquille vide, zéro exercice.
+ *
+ * Aucun test sous Node ne pouvait le voir : il faut un vrai service worker, un
+ * vrai cache, et couper le réseau pour de bon. C'est exactement ce que cet
+ * outil sait faire.
+ */
+async function tourHorsLigne(nav) {
+    const soucis = [];
+    const ctx = await nav.newContext(vue());
+    const p = await ctx.newPage();
+    try {
+        await p.goto(BASE, { waitUntil: 'networkidle' });
+        await p.evaluate(() => navigator.serviceWorker.ready);
+        // On laisse le garnissage finir : il part après l'activation.
+        let entrees = 0;
+        for (let i = 0; i < 20 && entrees < 200; i++) {
+            await p.waitForTimeout(900);
+            entrees = await p.evaluate(async () => {
+                const k = await caches.keys();
+                return k.length ? (await (await caches.open(k[0])).keys()).length : 0;
+            });
+        }
+        if (entrees < 200) soucis.push({ id: 'cache', quoi: [`CACHE MAIGRE : ${entrees} entrées après une visite`] });
+
+        await ctx.setOffline(true);
+        await p.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
+        await p.waitForTimeout(4000);
+        const cartes = await p.evaluate(() => document.querySelectorAll('.card').length);
+        if (cartes < 50) {
+            soucis.push({ id: 'hors ligne', quoi: [
+                `VIDE : ${cartes} exercices affichés sans réseau, après une visite`] });
+        }
+    } catch (e) {
+        soucis.push({ id: 'hors ligne', quoi: ['ERREUR : ' + String(e.message || e).split('\n')[0].slice(0, 150)] });
+    }
+    await ctx.close();
+    return { combien: 2, soucis };
+}
+
 // --- Le tour complet -----------------------------------------------------------
 
 const nav = await chromium.launch({ executablePath: CHROMIUM });
@@ -302,7 +348,8 @@ process.stderr.write(`# audit ${cadre}${OPT.rapide ? ' (rapide)' : ''}\n`);
 const tours = [
     ['exercices', await tourDuCatalogue(p, seau)],
     ['fiches papier', await tourDesFiches(p, seau)],
-    ['panneaux', await tourDesPanneaux(p, seau)]
+    ['panneaux', await tourDesPanneaux(p, seau)],
+    ['hors ligne', await tourHorsLigne(nav)]
 ];
 await nav.close();
 
