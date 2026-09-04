@@ -150,18 +150,19 @@ export const geometrieExercises = [
         printGeneratorId: 'geo.construction.programme.fiche',
         printable: 'programme-construction',
         skills: ['geo.construction.programme'],
-        params: { familles: ['traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'], depuis: 0 },
+        params: { familles: ['points', 'traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'], depuis: 0, modeles: true },
         paramSchema: [
             {
                 id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
                 label: 'Les blocs disponibles',
-                default: ['traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'],
+                default: ['points', 'traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'],
                 aide: 'Coche ce que la classe a déjà vu : la palette suit, et les niveaux dont '
                     + 'la solution réclamerait un bloc absent disparaissent — un exercice sans '
                     + 'réponse ne se propose pas. Avec les seuls SEGMENTS ET DROITES il reste '
                     + 'les deux premiers niveaux, ce qui est exactement ce qu\'on donne en '
                     + 'début de sixième.',
                 options: [
+                    { value: 'points', label: 'Placer des points' },
                     { value: 'traits', label: 'Segments et droites' },
                     { value: 'cercles', label: 'Cercles' },
                     { value: 'milieux', label: 'Milieu et médiatrice' },
@@ -171,16 +172,23 @@ export const geometrieExercises = [
                 ]
             },
             {
+                id: 'modeles', type: 'checkbox', label: 'Proposer les débuts de phrase', default: true,
+                aide: 'Des boutons qui posent le début d\'une phrase dans la zone d\'écriture — '
+                    + '« Trace le segment [ » — et laissent l\'élève taper les lettres. C\'est '
+                    + 'un tremplin, pas une réponse : quel objet, à partir de quels points, '
+                    + 'reste entièrement à décider. Décoché, il rédige de mémoire.'
+            },
+            {
                 id: 'depuis', type: 'select', label: 'Commencer au niveau', default: 0,
                 echelle: true,
                 aide: 'On entre au milieu de l\'échelle quand les premiers ont été faits en '
                     + 'classe. Les niveaux s\'enchaînent ensuite jusqu\'au dernier disponible.',
                 options: [
-                    { value: 0, label: '1 — Un segment', court: '1' },
-                    { value: 2, label: '3 — Un cercle', court: '3' },
-                    { value: 4, label: '5 — Le milieu', court: '5' },
-                    { value: 6, label: '7 — La perpendiculaire', court: '7' },
-                    { value: 9, label: '10 — Le triangle équilatéral', court: '10' }
+                    { value: 0, label: '1 — Un point', court: '1' },
+                    { value: 3, label: '4 — Un segment', court: '4' },
+                    { value: 5, label: '6 — Un cercle', court: '6' },
+                    { value: 8, label: '9 — Une médiatrice', court: '9' },
+                    { value: 12, label: '13 — Un triangle équilatéral', court: '13' }
                 ]
             }
         ],

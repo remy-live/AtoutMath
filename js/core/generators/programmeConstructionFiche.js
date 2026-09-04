@@ -63,11 +63,11 @@ export const programmeConstructionFicheGenerator = {
             aide: 'On entre au milieu de l\'échelle quand les premières ont été faites en '
                 + 'classe. Les figures se suivent ensuite dans l\'ordre de difficulté.',
             options: [
-                { value: 0, label: '1 — Un segment', court: '1' },
-                { value: 2, label: '3 — Un cercle', court: '3' },
-                { value: 4, label: '5 — Le milieu', court: '5' },
-                { value: 6, label: '7 — La perpendiculaire', court: '7' },
-                { value: 9, label: '10 — Le triangle équilatéral', court: '10' }
+                { value: 0, label: '1 — Un point', court: '1' },
+                { value: 3, label: '4 — Un segment', court: '4' },
+                { value: 5, label: '6 — Un cercle', court: '6' },
+                { value: 8, label: '9 — Une médiatrice', court: '9' },
+                { value: 12, label: '13 — Un triangle équilatéral', court: '13' }
             ]
         }
     ],
@@ -93,13 +93,13 @@ export const programmeConstructionFicheGenerator = {
         const phrases = [];
         const jusque = [];
         niv.modeleResolu.forEach(ins => {
-            const avant = executer(jusque, niv.depart);
+            const avant = executer(jusque, niv.atlas);
             const args = OPERATIONS[ins.op].prend.map((sorte, i) => {
                 if (sorte !== 'objet') return ins.args[i];
                 const o = avant.objets.find(x => cleObjet(x) === ins.args[i]);
                 return o ? nomObjet(o, avant.points) : '…';
             });
-            phrases.push(OPERATIONS[ins.op].libelle(args));
+            phrases.push(OPERATIONS[ins.op].libelle(ins.op === 'points' ? ins.args : args));
             jusque.push(ins);
         });
 
@@ -161,7 +161,7 @@ export const programmeConstructionFicheGenerator = {
             meta: {
                 niveauId: niv.id,
                 titre: niv.titre,
-                depart: niv.depart,
+                depart: niv.donnes,
                 // Les tracés à montrer : ceux qu'on exige, sans les aides — la
                 // figure imprimée ne doit pas trahir la méthode.
                 objets: niv.attendus.map(o => (o.genre === 'cercle'

@@ -15,16 +15,29 @@
 // comparaison est exacte et l'exercice devient « construis À PARTIR DE CECI »,
 // qui est la vraie tâche.
 //
-// LE BLOC PORTE LA PHRASE ENTIÈRE, avec ses crochets et ses parenthèses. C'est
-// la moitié de la leçon : [AB] le segment, (AB) la droite. On ne peut pas les
-// effacer, on ne peut que remplir les trous — et l'on a donc lu la notation
-// juste vingt fois avant la fin de l'heure.
+// L'ÉLÈVE TAPE, ET IL RÉDIGE. Rémy : « il n'y a pas de rédaction […] je veux
+// qu'il tape et qu'il rédige ». La première version faisait choisir des blocs
+// dans des menus déroulants : la phrase était donnée, l'élève ne posait que les
+// lettres. On écrit maintenant dans une zone de texte, une phrase par ligne, et
+// c'est `lireInstruction` qui lit — tolérante sur la langue (place, pose,
+// trace, dessine ; avec ou sans accents ni crochets), exigeante sur l'objet.
+//
+// ET L'ÉNONCÉ NE DIT PLUS LA MÉTHODE. Rémy encore : « tu donnes les réponses
+// dans l'énoncé ». C'était vrai — « trace [AB], place son milieu, puis trace le
+// cercle… » était le programme écrit au-dessus de la case où on le demandait.
+// La consigne est désormais la même partout : « écris le programme qui
+// construit cette figure ». Ce qu'il faut savoir se lit sur le dessin.
+//
+// LES MODÈLES DE PHRASES INSÈRENT, ILS NE REMPLISSENT PAS. Rémy : « au départ,
+// on peut faire glisser des vignettes, l'élève écrit les lettres ». Un bouton
+// pose donc « Trace le segment [ ] » dans la zone, curseur entre les crochets :
+// c'est un tremplin, pas une réponse — et il se retire d'un réglage.
 
 import { BaseGame } from '../core/BaseGame.js';
 import {
     MONDE, OPERATIONS, FAMILLES, ORDRE_FAMILLES,
     NIVEAUX, preparerNiveau, niveauxDisponibles, operationsDe,
-    executer, comparer, cleObjet, nomObjet, couperAuMonde
+    executer, comparer, cleObjet, nomObjet, couperAuMonde, lireProgramme
 } from '../core/programmeConstruction.js';
 
 const COMPETENCE = 'geo.construction.programme';
@@ -74,17 +87,15 @@ export class ProgrammeConstruction extends BaseGame {
         const familles = Array.isArray(this.params.familles) && this.params.familles.length
             ? this.params.familles : ORDRE_FAMILLES;
         this.famillesActives = familles;
-        // LES NIVEAUX SUIVENT LES RÉGLAGES. Rémy : « on peut avoir ce que l'on
-        // veut mettre ». Décocher les cercles ne doit pas proposer un niveau
-        // dont la solution en réclame — ce serait un exercice sans réponse.
+        // LES NIVEAUX SUIVENT LES RÉGLAGES : décocher les cercles ne doit pas
+        // proposer une figure dont la construction en réclame.
         this.plan = niveauxDisponibles(familles);
         if (!this.plan.length) this.plan = niveauxDisponibles(ORDRE_FAMILLES);
-        // On peut aussi entrer au milieu de l'échelle : c'est le réglage de
-        // celui qui a déjà fait les premiers en classe.
         const depuis = Math.max(0, Math.min(NIVEAUX.length - 1, (this.params.depuis | 0)));
         const debut = this.plan.findIndex(i => i >= depuis);
         this.rang = debut < 0 ? 0 : debut;
-        this.programme = [];
+        this.avecModeles = this.params.modeles !== false;
+        this.texte = '';
         this.fini = false;
     }
 
@@ -104,10 +115,6 @@ export class ProgrammeConstruction extends BaseGame {
                     margin: 0 auto;
                 }
                 .pc-consigne b { color: var(--text-main); }
-                /* LES DEUX FIGURES CÔTE À CÔTE, ET L'UNE SOUS L'AUTRE SUR UN
-                   TÉLÉPHONE : les comparer suppose de les voir ensemble, et
-                   deux colonnes de 160 pixels ne montreraient ni l'une ni
-                   l'autre. */
                 .pc-figures { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 0 0 auto; }
                 @container (max-width: 460px) { .pc-figures { grid-template-columns: 1fr; } }
                 .pc-cadre {
@@ -120,50 +127,43 @@ export class ProgrammeConstruction extends BaseGame {
                     position: absolute; top: -9px; left: 10px; padding: 0 6px; font-size: 11px;
                     font-weight: 700; background: var(--card-bg, #fff); color: var(--text-muted);
                 }
-                /* LA FIGURE NE MANGE PAS L'ÉCRAN. Mesuré : à pleine largeur, le
-                   format 100 × 70 donnait deux cadres de 456 px de haut pour un
-                   segment, et le programme — qui est le travail — passait sous
-                   la ligne de flottaison. Le viewBox se recentre tout seul dans
-                   la place qu'on lui laisse. */
-                .pc-svg {
-                    width: 100%; height: clamp(110px, 30vh, 280px); display: block;
-                }
+                .pc-svg { width: 100%; height: clamp(100px, 26vh, 250px); display: block; }
                 .pc-trait { stroke: var(--primary); stroke-width: 0.5; fill: none; stroke-linecap: round; }
-                /* LES TRAITS DE CONSTRUCTION SE VOIENT MOINS. Ils sont la preuve
-                   du travail, pas le résultat : les peindre comme le reste ferait
-                   croire qu'on les exige. */
                 .pc-trait--aide { stroke: var(--text-muted); stroke-width: 0.3; opacity: .55; }
+                /* UN POINT SE MARQUE D'UNE CROIX — Rémy : « les points sont des
+                   croix ». Le point est le CROISEMENT des deux traits ; une
+                   pastille cacherait justement l'endroit qu'elle désigne. */
                 .pc-croix {
-                    stroke: var(--text-main); stroke-width: 0.45; fill: none;
-                    stroke-linecap: round;
+                    stroke: var(--text-main); stroke-width: 0.45; fill: none; stroke-linecap: round;
                 }
                 .pc-nom { fill: var(--text-main); font-size: 4px; font-weight: 700;
                     font-family: inherit; }
-                .pc-prog { display: flex; flex-direction: column; gap: 5px; }
-                .pc-bloc {
-                    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+                /* LA ZONE D'ÉCRITURE ET SES REMARQUES SONT CÔTE À CÔTE : la
+                   remarque d'une ligne se lit en face de la ligne, pas en bas
+                   d'une liste. */
+                .pc-redaction { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+                @container (max-width: 560px) { .pc-redaction { grid-template-columns: 1fr; } }
+                .pc-zone {
+                    width: 100%; box-sizing: border-box; min-height: 120px; resize: vertical;
                     border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
-                    background: var(--card-bg, #fff); padding: 5px 8px;
-                    font-size: clamp(11px, 2.2cqw, 14px);
+                    background: var(--card-bg, #fff); color: var(--text-main);
+                    padding: 8px 10px; font: inherit; line-height: 1.55;
+                    font-size: clamp(12px, 2.3cqw, 15px);
                 }
-                .pc-bloc--bloque { border-color: var(--danger); }
-                .pc-bloc--jamais { opacity: .45; }
-                .pc-rang { font-weight: 700; color: var(--text-muted); min-width: 1.4em; }
-                .pc-bloc select {
-                    font: inherit; font-weight: 700; color: var(--primary);
-                    border: 1.5px solid var(--primary); border-radius: 7px;
-                    background: var(--card-bg, #fff); padding: 1px 3px; max-width: 14em;
-                }
-                .pc-nes { color: var(--success); font-weight: 700; }
-                .pc-x { margin-left: auto; border: 0; background: none; cursor: pointer;
-                    color: var(--text-muted); font-size: 15px; line-height: 1; padding: 2px 4px; }
-                .pc-palette { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+                .pc-zone:focus { outline: none; border-color: var(--primary); }
+                .pc-lignes { display: flex; flex-direction: column; gap: 0; font-size: clamp(10px, 2cqw, 12.5px); }
+                .pc-l { display: flex; gap: 6px; line-height: 1.55;
+                    font-size: clamp(12px, 2.3cqw, 15px); min-height: 1.55em; }
+                .pc-l small { font-size: .82em; line-height: 1.55; }
+                .pc-l--ok { color: var(--success); }
+                .pc-l--ko { color: var(--danger); }
+                .pc-l--note { color: var(--primary); }
+                .pc-modeles { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
                 .pc-ajout {
                     border: 1.5px dashed var(--primary); border-radius: 10px; cursor: pointer;
                     background: transparent; color: var(--primary); font: inherit; font-weight: 600;
                     padding: 5px 9px; font-size: clamp(11px, 2.1cqw, 13px);
                 }
-                .pc-ajout:disabled { opacity: .4; cursor: not-allowed; }
                 .pc-barre { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
                 .pc-btn {
                     border: 0; border-radius: 10px; cursor: pointer; font: inherit; font-weight: 700;
@@ -175,8 +175,6 @@ export class ProgrammeConstruction extends BaseGame {
                 .pc-note--ok { color: var(--success); font-weight: 700; }
                 .pc-note--ko { color: var(--danger); font-weight: 600; }
                 .pc-note--info { color: var(--primary); font-weight: 600; }
-                .pc-vide { color: var(--text-muted); font-style: italic; text-align: center;
-                    font-size: clamp(11px, 2.2cqw, 13px); padding: 6px; }
             </style>
             <div class="pc-wrap" lang="fr">
                 <div class="pc-consigne" data-consigne></div>
@@ -186,8 +184,13 @@ export class ProgrammeConstruction extends BaseGame {
                     <div class="pc-cadre" data-cadre-moi><span class="pc-etiq">Ce que ton programme trace</span>
                         <div data-moi></div></div>
                 </div>
-                <div class="pc-prog" data-prog></div>
-                <div class="pc-palette" data-palette></div>
+                <div class="pc-redaction">
+                    <textarea class="pc-zone" data-zone spellcheck="false"
+                        aria-label="Ton programme de construction, une phrase par ligne"
+                        placeholder="Une phrase par ligne.&#10;Place 2 points A et B&#10;Trace le segment [AB]"></textarea>
+                    <div class="pc-lignes" data-lignes></div>
+                </div>
+                <div class="pc-modeles" data-modeles></div>
                 <div class="pc-note" data-note></div>
                 <div class="pc-barre" data-barre></div>
             </div>`;
@@ -195,116 +198,97 @@ export class ProgrammeConstruction extends BaseGame {
         this.butEl = this.container.querySelector('[data-but]');
         this.moiEl = this.container.querySelector('[data-moi]');
         this.cadreMoiEl = this.container.querySelector('[data-cadre-moi]');
-        this.progEl = this.container.querySelector('[data-prog]');
-        this.paletteEl = this.container.querySelector('[data-palette]');
+        this.zoneEl = this.container.querySelector('[data-zone]');
+        this.lignesEl = this.container.querySelector('[data-lignes]');
+        this.modelesEl = this.container.querySelector('[data-modeles]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.barreEl = this.container.querySelector('[data-barre]');
+
+        if (!this.isDemo) {
+            this.zoneEl.addEventListener('input', () => {
+                this.texte = this.zoneEl.value;
+                this.note('');
+                this.dessiner({ garderZone: true });
+            });
+        }
+        this.dessinerBarre();
         this.dessiner();
     }
 
-    startGameLoop() { /* rien à animer : l'exercice avance aux clics */ }
+    startGameLoop() { /* rien à animer : l'exercice avance à la frappe */ }
 
-    /** Les points connus juste AVANT le bloc de rang `k`. */
-    etatAvant(k) {
-        return executer(this.programme.slice(0, k), this.niveau.depart);
-    }
-
-    dessiner() {
+    dessiner({ garderZone = false } = {}) {
         const niv = this.niveau;
-        const r = executer(this.programme, niv.depart);
-        this.dernier = r;
+        if (!garderZone) this.zoneEl.value = this.texte;
+        const lu = lireProgramme(this.texte, niv.atlas);
+        const r = executer(lu.instructions, niv.atlas);
+        this.dernier = { lu, r };
 
-        this.consigneEl.innerHTML = `<b>Niveau ${this.rang + 1} sur ${this.plan.length} — `
+        this.consigneEl.innerHTML = `<b>Figure ${this.rang + 1} sur ${this.plan.length} — `
             + `${enAttribut(niv.titre)}.</b> ${enAttribut(niv.dit)}`;
-        // LA CIBLE NE MONTRE PAS LES TRAITS DE CONSTRUCTION. Les afficher
-        // donnerait la méthode ; c'est justement ce qu'on demande de trouver.
-        this.butEl.innerHTML = figureSvg(niv.attendus, niv.depart, { classe: 'pc-svg--but' });
+        // LA CIBLE MONTRE LES POINTS DONNÉS ET LES TRACÉS EXIGÉS, jamais les
+        // traits de construction : les afficher donnerait la méthode.
+        this.butEl.innerHTML = figureSvg(niv.attendus, niv.donnes);
         this.moiEl.innerHTML = figureSvg(r.objets, r.points, {
             aides: r.objets.filter(o => !niv.attendus.some(a => cleObjet(a) === cleObjet(o)))
         });
 
-        this.dessinerProgramme(r);
-        this.dessinerPalette(r);
-        this.dessinerBarre();
-        if (r.erreur) this.note(r.erreur.dit, 'ko');
+        this.dessinerLignes(lu, r);
+        this.dessinerModeles();
     }
 
-    dessinerProgramme(r) {
-        if (!this.programme.length) {
-            this.progEl.innerHTML = '<div class="pc-vide">Ton programme est vide : '
-                + 'choisis un premier bloc ci-dessous.</div>';
-            return;
-        }
-        this.progEl.innerHTML = this.programme.map((ins, k) => {
-            const op = OPERATIONS[ins.op];
-            const ligne = (r.lignes || [])[k] || {};
-            const avant = this.etatAvant(k);
-            const cls = ligne.etat === 'bloque' ? ' pc-bloc--bloque'
-                : ligne.etat === 'jamais' ? ' pc-bloc--jamais' : '';
-            const morceaux = op.gabarit.map(part => {
-                if (typeof part === 'string') return enAttribut(part);
-                const sorte = op.prend[part];
-                const choix = sorte === 'point'
-                    ? Object.keys(avant.points).map(n => ({ v: n, dit: n }))
-                    : avant.objets.map(o => ({ v: cleObjet(o), dit: nomObjet(o, avant.points) }));
-                const val = ins.args[part] ?? '';
-                return `<select data-bloc="${k}" data-arg="${part}">
-                    <option value=""${val === '' ? ' selected' : ''}>?</option>
-                    ${choix.map(c => `<option value="${enAttribut(c.v)}"${
-    c.v === val ? ' selected' : ''}>${enAttribut(c.dit)}</option>`).join('')}
-                </select>`;
-            }).join('');
-            const nes = ligne.noms && ligne.noms.length
-                ? `<span class="pc-nes">→ ${ligne.noms.join(', ')}</span>` : '';
-            return `<div class="pc-bloc${cls}">
-                <span class="pc-rang">${k + 1}.</span>${morceaux}${nes}
-                <button type="button" class="pc-x" data-retirer="${k}"
-                    aria-label="Retirer ce bloc">✕</button>
-            </div>`;
+    /** En face de chaque ligne écrite : ce qu'elle a produit, ou pourquoi non. */
+    dessinerLignes(lu, r) {
+        let iIns = -1;
+        this.lignesEl.innerHTML = lu.lignes.map(l => {
+            if (l.vide) return '<div class="pc-l">&nbsp;</div>';
+            if (!l.ok) {
+                return `<div class="pc-l pc-l--ko"><span>✕</span><small>${enAttribut(l.dit)}</small></div>`;
+            }
+            iIns += 1;
+            const etat = (r.lignes || [])[iIns] || {};
+            if (etat.etat === 'bloque' && r.erreur) {
+                return `<div class="pc-l pc-l--ko"><span>✕</span><small>${enAttribut(r.erreur.dit)}</small></div>`;
+            }
+            if (etat.etat === 'jamais') return '<div class="pc-l">&nbsp;</div>';
+            const nes = etat.noms && etat.noms.length
+                ? ` <small>→ ${enAttribut(etat.noms.join(', '))}</small>` : '';
+            const note = l.note ? `<small class="pc-l--note"> ${enAttribut(l.note)}</small>` : '';
+            return `<div class="pc-l pc-l--ok"><span>✓</span><span>${nes}${note}</span></div>`;
         }).join('');
-
-        if (this.isDemo) return;
-        this.progEl.querySelectorAll('select').forEach(sel => {
-            sel.onchange = () => {
-                const k = Number(sel.dataset.bloc), i = Number(sel.dataset.arg);
-                this.programme[k].args[i] = sel.value;
-                this.note('');
-                this.dessiner();
-            };
-        });
-        this.progEl.querySelectorAll('[data-retirer]').forEach(b => {
-            b.onclick = () => {
-                this.programme.splice(Number(b.dataset.retirer), 1);
-                this.note('');
-                this.dessiner();
-            };
-        });
     }
 
-    dessinerPalette(r) {
+    dessinerModeles() {
+        if (!this.avecModeles) { this.modelesEl.innerHTML = ''; return; }
         const ops = operationsDe(this.famillesActives);
-        this.paletteEl.innerHTML = ops.map(op => {
-            // UN BLOC QU'ON NE PEUT PAS ENCORE POSER RESTE VISIBLE, MAIS ÉTEINT.
-            // Le cacher ferait croire qu'il n'existe pas ; l'éteindre dit qu'il
-            // faudra d'abord tracer quelque chose — ce qui est la leçon sur
-            // l'ordre.
-            const faut = op.prend.filter(s => s === 'objet').length;
-            const peut = r.objets.length >= faut;
-            // LE BOUTON DIT L'OBJET, LE BLOC DIT LA PHRASE. Découper le gabarit
-            // pour en tirer une étiquette donnait « Trace le segment []… », avec
-            // ses crochets orphelins : une phrase à trous n'est pas un nom.
-            return `<button type="button" class="pc-ajout" data-op="${op.id}"
-                ${peut ? '' : 'disabled title="Il faut d\'abord tracer quelque chose"'}
-                >+ ${enAttribut(op.bouton)}</button>`;
-        }).join('');
+        this.modelesEl.innerHTML = ops.map(op =>
+            `<button type="button" class="pc-ajout" data-op="${op.id}"
+                title="Insérer le début de la phrase">${enAttribut(op.bouton)}</button>`).join('');
         if (this.isDemo) return;
-        this.paletteEl.querySelectorAll('[data-op]').forEach(b => {
-            b.onclick = () => {
-                this.programme.push({ op: b.dataset.op, args: [] });
-                this.note('');
-                this.dessiner();
-            };
+        this.modelesEl.querySelectorAll('[data-op]').forEach(b => {
+            b.onclick = () => this.insererModele(b.dataset.op);
         });
+    }
+
+    /**
+     * LE MODÈLE S'INSÈRE, IL NE SE REMPLIT PAS.
+     *
+     * Le bouton pose le début de la phrase et laisse le curseur là où il faut
+     * écrire. C'est l'aide que Rémy décrit — « on peut faire glisser des
+     * vignettes, l'élève écrit les lettres » — sans jamais donner la réponse :
+     * quel objet, à partir de quels points, reste entièrement à décider.
+     */
+    insererModele(id) {
+        const op = OPERATIONS[id];
+        if (!op) return;
+        const debut = op.gabarit.filter(x => typeof x === 'string').join('').replace(/\s+$/, ' ');
+        const avant = this.zoneEl.value;
+        const saut = (avant && !avant.endsWith('\n')) ? '\n' : '';
+        this.zoneEl.value = `${avant}${saut}${debut}`;
+        this.texte = this.zoneEl.value;
+        this.zoneEl.focus();
+        this.zoneEl.setSelectionRange(this.zoneEl.value.length, this.zoneEl.value.length);
+        this.dessiner({ garderZone: true });
     }
 
     dessinerBarre() {
@@ -314,8 +298,9 @@ export class ProgrammeConstruction extends BaseGame {
         if (this.isDemo) return;
         this.barreEl.querySelector('[data-verifier]').onclick = () => this.verifier();
         this.barreEl.querySelector('[data-vider]').onclick = () => {
-            this.programme = [];
+            this.texte = '';
             this.note('');
+            this.cadreMoiEl.classList.remove('pc-cadre--ok');
             this.dessiner();
         };
     }
@@ -329,19 +314,25 @@ export class ProgrammeConstruction extends BaseGame {
     verifier() {
         if (this.fini) return;
         const niv = this.niveau;
-        const r = executer(this.programme, niv.depart);
-        if (r.erreur) { this.note(r.erreur.dit, 'ko'); return; }
-        if (!this.programme.length) {
+        const lu = lireProgramme(this.texte, niv.atlas);
+        const mauvaise = lu.lignes.find(l => !l.vide && !l.ok);
+        if (mauvaise) { this.note(mauvaise.dit, 'ko'); return; }
+        if (!lu.instructions.length) {
             this.note('Ton programme est vide : il ne trace rien.', 'info');
             return;
         }
-        const c = comparer(r.objets, niv.attendus);
+        const r = executer(lu.instructions, niv.atlas);
+        if (r.erreur) { this.note(r.erreur.dit, 'ko'); return; }
+
+        const c = comparer(r.objets, niv.attendus, r.points, niv.exiges);
         if (!c.ok) {
-            const quoi = c.manquants.map(o => nomObjet(o, niv.points)).join(', ');
+            const quoi = c.sansPoint.length
+                ? `${c.sansPoint.length > 1 ? 'les points' : 'le point'} ${c.sansPoint.join(', ')}`
+                : c.manquants.map(o => nomObjet(o, niv.points)).join(', ');
             this.onWrongAnswer(null, {
                 concept: COMPETENCE,
                 questionText: `Programme de construction — ${niv.titre}`,
-                input: this.programme.map(i => OPERATIONS[i.op].libelle(i.args)).join(' ; '),
+                input: this.texte.replace(/\n/g, ' ; ').slice(0, 300),
                 expected: niv.attendus.map(o => nomObjet(o, niv.points)).join(', '),
                 partiel: true, silencieux: true
             });
@@ -351,7 +342,7 @@ export class ProgrammeConstruction extends BaseGame {
         this.cadreMoiEl.classList.add('pc-cadre--ok');
         this.onCorrectAnswer(null, COMPETENCE, {
             questionText: `Programme de construction — ${niv.titre}`,
-            expected: niv.titre, given: `${this.programme.length} blocs`, points: 8, partiel: true
+            expected: niv.titre, given: `${lu.instructions.length} phrases`, points: 8, partiel: true
         });
         const enTrop = c.enTrop.length;
         this.note(enTrop
@@ -366,10 +357,10 @@ export class ProgrammeConstruction extends BaseGame {
         setTimeout(() => {
             if (!this.isRunning) return;
             this.rang += 1;
-            this.programme = [];
+            this.texte = '';
             this.cadreMoiEl.classList.remove('pc-cadre--ok');
             this.dessiner();
-        }, 1500);
+        }, 1600);
     }
 
     note(html, ton) {
@@ -378,62 +369,68 @@ export class ProgrammeConstruction extends BaseGame {
         this.noteEl.className = 'pc-note' + (ton ? ` pc-note--${ton}` : '');
     }
 
-    /** Le robot écrit le programme modèle, un bloc à la fois. */
+    /** Le robot écrit le programme modèle, une phrase à la fois. */
     async runDemoSequence() {
         const niv = this.niveau;
+        const jusque = [];
         for (const ins of niv.modeleResolu) {
             if (!this.isRunning) return;
-            await new Promise(ok => setTimeout(ok, 900));
-            if (this.gelDemo) { await new Promise(ok => setTimeout(ok, 600)); }
-            this.programme.push({ op: ins.op, args: [...ins.args] });
+            await new Promise(ok => setTimeout(ok, 950));
+            if (this.gelDemo) await new Promise(ok => setTimeout(ok, 600));
+            const avant = executer(jusque, niv.atlas);
+            const args = OPERATIONS[ins.op].prend.map((sorte, i) => {
+                if (sorte !== 'objet') return ins.args[i];
+                const o = avant.objets.find(x => cleObjet(x) === ins.args[i]);
+                return o ? nomObjet(o, avant.points) : '…';
+            });
+            this.texte += `${this.texte ? '\n' : ''}${OPERATIONS[ins.op].libelle(
+                ins.op === 'points' ? ins.args : args)}`;
+            jusque.push(ins);
             this.dessiner();
         }
         this.note('Le programme est écrit : la figure de droite est celle de gauche.', 'ok');
     }
 
     /**
-     * LA BARRE D'AUTEUR AVANCE, ET ELLE FRANCHIT QUELQUE CHOSE DE VISIBLE.
-     *
-     * Rémy : « on ne peut pas avancer avec la barre de debug ». J'avais écrit
-     * `sauterQuestion()` ; le meneur, lui, appelle `sauterEtape()`. Un nom pour
-     * un autre, et le bouton ne faisait rien — sans rien dire, puisque le
-     * meneur retombe silencieusement sur son chemin ordinaire quand la méthode
-     * n'existe pas.
-     *
-     * DEUX APPUIS, DEUX CHOSES. Le premier écrit le programme MODÈLE : l'auteur
-     * voit la réponse, ce qui est justement ce qu'il cherche en parcourant les
-     * niveaux. Le second passe au niveau suivant. C'est aussi ce que demande le
-     * meneur — « on pose les bonnes réponses de l'étape, puis on avance » : un
-     * niveau franchi à vide laisserait une figure fausse à l'écran.
+     * LA BARRE D'AUTEUR AVANCE EN DEUX TEMPS : le premier écrit le programme
+     * modèle, le second passe à la figure suivante. Le meneur appelle
+     * `sauterEtape`, pas `sauterQuestion` — je m'étais trompé de nom, et le
+     * bouton ne faisait rien sans rien dire.
      */
     sauterEtape() {
         if (this.fini) return false;
-        const modele = this.niveau.modeleResolu;
-        const dejaEcrit = this.programme.length >= modele.length;
-        if (!dejaEcrit) {
-            this.programme = modele.map(i => ({ op: i.op, args: [...i.args] }));
-            this.note('Programme modèle posé — il en existe d\'autres.', 'info');
+        const niv = this.niveau;
+        const attendu = niv.modeleResolu.length;
+        const ecrites = this.texte.split('\n').filter(l => l.trim()).length;
+        if (ecrites < attendu) {
+            const jusque = [];
+            this.texte = niv.modeleResolu.map(ins => {
+                const avant = executer(jusque, niv.atlas);
+                const args = OPERATIONS[ins.op].prend.map((sorte, i) => {
+                    if (sorte !== 'objet') return ins.args[i];
+                    const o = avant.objets.find(x => cleObjet(x) === ins.args[i]);
+                    return o ? nomObjet(o, avant.points) : '…';
+                });
+                jusque.push(ins);
+                return OPERATIONS[ins.op].libelle(ins.op === 'points' ? ins.args : args);
+            }).join('\n');
+            this.note('Programme modèle écrit — il en existe d\'autres.', 'info');
             this.dessiner();
             return true;
         }
         if (this.rang + 1 >= this.plan.length) return false;
         this.rang += 1;
-        this.programme = [];
+        this.texte = '';
         this.cadreMoiEl.classList.remove('pc-cadre--ok');
         this.note('');
         this.dessiner();
         return true;
     }
 
-    /** Pendant du saut : on efface le programme, puis on recule d'un niveau. */
+    /** Pendant du saut : on efface le programme, puis on recule d'une figure. */
     revenirEtape() {
         if (this.isDemo || this.fini) return false;
-        if (this.programme.length) {
-            this.programme = [];
-            this.note('');
-            this.dessiner();
-            return true;
-        }
+        if (this.texte.trim()) { this.texte = ''; this.note(''); this.dessiner(); return true; }
         if (this.rang <= 0) return false;
         this.rang -= 1;
         this.cadreMoiEl.classList.remove('pc-cadre--ok');
@@ -441,12 +438,9 @@ export class ProgrammeConstruction extends BaseGame {
         return true;
     }
 
-    /** La ligne des étapes : ici, les figures de la progression. */
+    /** La ligne des étapes : les figures de la progression. */
     planEtapes() {
-        return {
-            courante: this.rang,
-            liste: this.plan.map(i => NIVEAUX[i].titre)
-        };
+        return { courante: this.rang, liste: this.plan.map(i => NIVEAUX[i].titre) };
     }
 }
 

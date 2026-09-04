@@ -15,7 +15,8 @@ import './helpers.mjs';
 import {
     NIVEAUX, FAMILLES, OPERATIONS, ORDRE_FAMILLES,
     preparerNiveau, niveauxDisponibles, operationsDe,
-    executer, comparer, cleObjet, intersections
+    executer, comparer, cleObjet, intersections,
+    lireInstruction, lireProgramme
 } from '../js/core/programmeConstruction.js';
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -24,14 +25,20 @@ test('LES DOUZE NIVEAUX SE CONSTRUISENT, ET LEUR MODÈLE EST JUSTE', () => {
     // LE MODÈLE EST LE SUJET : on n'écrit pas la figure attendue à la main, on
     // exécute un programme et ce qu'il trace devient la cible. Si le modèle ne
     // construit pas ce qu'il annonce, c'est ici qu'on l'apprend.
-    assert.equal(NIVEAUX.length, 12);
+    assert.equal(NIVEAUX.length, 15);
     NIVEAUX.forEach((n, i) => {
         const p = preparerNiveau(i);
         assert.ok(p, `le niveau ${n.id} ne se prépare pas`);
-        assert.ok(p.attendus.length >= 1, `${n.id} n'exige aucun tracé`);
-        assert.ok(comparer(p.objets, p.attendus).ok, `${n.id} : le modèle ne se valide pas lui-même`);
-        // La consigne parle à un élève : elle n'est pas une étiquette.
-        assert.ok(p.dit.length > 30, `${n.id} : la consigne est trop courte pour dire quoi faire`);
+        // Les trois premiers niveaux ne tracent rien : leur figure EST une croix.
+        assert.ok(p.attendus.length >= 1 || p.exiges.length >= 1,
+            `${n.id} n'exige ni tracé ni point`);
+        assert.ok(comparer(p.objets, p.attendus, p.points, p.exiges).ok,
+            `${n.id} : le modèle ne se valide pas lui-même`);
+        // L'ÉNONCÉ NE DONNE PAS LA MÉTHODE — Rémy : « tu donnes les réponses
+        // dans l'énoncé ». La consigne est la même partout et ne nomme aucun
+        // des objets à construire ; ce qu'il faut savoir se lit sur la figure.
+        assert.ok(!/trace|place|milieu|médiatrice|perpendiculaire|parallèle|cercle de centre/i
+            .test(p.dit), `${n.id} : la consigne souffle la méthode — « ${p.dit} »`);
     });
 });
 
@@ -54,7 +61,8 @@ test('LES RÉGLAGES OUVRENT ET FERMENT VRAIMENT DES NIVEAUX', () => {
     // Rémy : « on peut avoir ce que l'on veut mettre (segments, parallèles,
     // perpendiculaires, cercles) ». Cocher une famille de moins doit retirer
     // les niveaux qui en dépendent, et EUX SEULS.
-    assert.deepEqual(niveauxDisponibles(['traits']), [0, 1]);
+    assert.deepEqual(niveauxDisponibles(['points']), [0, 1, 2]);
+    assert.deepEqual(niveauxDisponibles(['points', 'traits']), [0, 1, 2, 3, 4]);
     const sansCercle = niveauxDisponibles(ORDRE_FAMILLES.filter(f => f !== 'cercles'));
     NIVEAUX.forEach((n, i) => {
         const aBesoin = preparerNiveau(i).familles.includes('cercles');
@@ -64,6 +72,7 @@ test('LES RÉGLAGES OUVRENT ET FERMENT VRAIMENT DES NIVEAUX', () => {
     assert.equal(niveauxDisponibles([]).length, NIVEAUX.length);
     assert.equal(operationsDe([]).length, Object.keys(OPERATIONS).length);
     assert.equal(operationsDe(['traits']).map(o => o.id).join(','), 'segment,droite');
+    assert.equal(operationsDe(['points']).map(o => o.id).join(','), 'points');
 });
 
 test('LA MÊME FIGURE PAR UN AUTRE CHEMIN EST ACCEPTÉE', () => {
@@ -72,10 +81,11 @@ test('LA MÊME FIGURE PAR UN AUTRE CHEMIN EST ACCEPTÉE', () => {
     // droite. Corriger la rédaction reviendrait à choisir une des deux.
     const n = preparerNiveau('mediatrice');
     const autre = executer([
+        { op: 'points', args: ['A', 'B'] },
         { op: 'segment', args: ['A', 'B'] },
         { op: 'milieu', args: ['A', 'B'] },
         { op: 'perpendiculaire', args: ['A', 'B', 'C'] }
-    ], n.depart);
+    ], n.atlas);
     assert.equal(autre.erreur, null);
     assert.ok(comparer(autre.objets, n.attendus).ok);
 });
@@ -83,10 +93,11 @@ test('LA MÊME FIGURE PAR UN AUTRE CHEMIN EST ACCEPTÉE', () => {
 test('L\'ORDRE DES TRACÉS INDÉPENDANTS EST LIBRE', () => {
     const n = preparerNiveau('triangle');
     const autre = executer([
+        { op: 'points', args: ['A', 'B', 'C'] },
         { op: 'segment', args: ['C', 'B'] },
         { op: 'segment', args: ['A', 'C'] },
         { op: 'segment', args: ['B', 'A'] }
-    ], n.depart);
+    ], n.atlas);
     assert.ok(comparer(autre.objets, n.attendus).ok);
 });
 
@@ -103,16 +114,18 @@ test('DEUX CERCLES SE COUPENT EN DEUX POINTS, ET IL FAUT CHOISIR LE BON', () => 
     // le papier.
     const n = preparerNiveau('equilateral');
     const debut = executer([
+        { op: 'points', args: ['A', 'B'] },
         { op: 'cercle', args: ['A', 'B'] },
         { op: 'cercle', args: ['B', 'A'] }
-    ], n.depart);
+    ], n.atlas);
     const [c1, c2] = debut.objets.map(cleObjet);
     const avecInter = executer([
+        { op: 'points', args: ['A', 'B'] },
         { op: 'cercle', args: ['A', 'B'] },
         { op: 'cercle', args: ['B', 'A'] },
         { op: 'intersection', args: [c1, c2] }
-    ], n.depart);
-    const nouveaux = Object.keys(avecInter.points).filter(k => !(k in n.depart));
+    ], n.atlas);
+    const nouveaux = Object.keys(avecInter.points).filter(k => !(k in n.atlas));
     assert.equal(nouveaux.length, 2, 'deux cercles sécants doivent donner deux points');
 
     const reussis = nouveaux.filter(sommet => {
@@ -123,13 +136,14 @@ test('DEUX CERCLES SE COUPENT EN DEUX POINTS, ET IL FAUT CHOISIR LE BON', () => 
         assert.ok(Math.max(...cotes) - Math.min(...cotes) < 1e-9,
             `le sommet ${sommet} ne donne pas un triangle équilatéral`);
         const complet = executer([
+            { op: 'points', args: ['A', 'B'] },
             { op: 'cercle', args: ['A', 'B'] },
             { op: 'cercle', args: ['B', 'A'] },
             { op: 'intersection', args: [c1, c2] },
             { op: 'segment', args: ['A', 'B'] },
             { op: 'segment', args: ['B', sommet] },
             { op: 'segment', args: [sommet, 'A'] }
-        ], n.depart);
+        ], n.atlas);
         return comparer(complet.objets, n.attendus).ok;
     });
     assert.equal(reussis.length, 1,
@@ -146,9 +160,10 @@ test('LES TRAITS DE CONSTRUCTION SONT TOLÉRÉS, LES TRACÉS EXIGÉS NE LE SONT 
     // Mais il manque un côté : ce n'est pas la figure demandée.
     const t = preparerNiveau('triangle');
     const partiel = executer([
+        { op: 'points', args: ['A', 'B', 'C'] },
         { op: 'segment', args: ['A', 'B'] },
         { op: 'segment', args: ['B', 'C'] }
-    ], t.depart);
+    ], t.atlas);
     const r = comparer(partiel.objets, t.attendus);
     assert.equal(r.ok, false);
     assert.equal(r.manquants.length, 1);
@@ -159,18 +174,22 @@ test('UN BLOC DONT LES OBJETS MANQUENT LE DIT, ET NOMME CE QUI MANQUE', () => {
     // d'avoir A et B, on ne prend pas le milieu d'un segment qui n'existe pas.
     // « Il manque le point Z » enseigne l'ordre ; « raté » n'enseigne rien.
     const n = preparerNiveau('triangle');
-    const r = executer([{ op: 'segment', args: ['A', 'Z'] }], n.depart);
+    const r = executer([
+        { op: 'points', args: ['A', 'B', 'C'] },
+        { op: 'segment', args: ['A', 'Z'] }
+    ], n.atlas);
     assert.ok(r.erreur);
-    assert.equal(r.erreur.rang, 0);
+    assert.equal(r.erreur.rang, 1);
     assert.match(r.erreur.dit, /le point Z/);
 
     // Et ce qui suit un bloc bloqué ne s'exécute pas en douce.
     const r2 = executer([
+        { op: 'points', args: ['A', 'B', 'C'] },
         { op: 'segment', args: ['A', 'Z'] },
         { op: 'segment', args: ['A', 'B'] }
-    ], n.depart);
+    ], n.atlas);
     assert.equal(r2.objets.length, 0);
-    assert.equal(r2.lignes[1].etat, 'jamais');
+    assert.equal(r2.lignes[2].etat, 'jamais');
 });
 
 test('DEUX TRACÉS IDENTIQUES ONT LA MÊME CLÉ, QUEL QUE SOIT LE CHEMIN', () => {
@@ -194,9 +213,10 @@ test('LE MÊME TRACÉ POSÉ DEUX FOIS NE COMPTE QU\'UNE FOIS', () => {
     // une comparaison d'ENSEMBLES.
     const n = preparerNiveau('segment');
     const r = executer([
+        { op: 'points', args: ['A', 'B'] },
         { op: 'segment', args: ['A', 'B'] },
         { op: 'segment', args: ['B', 'A'] }
-    ], n.depart);
+    ], n.atlas);
     assert.equal(r.objets.length, 1);
 });
 
@@ -215,7 +235,7 @@ test('LES FIGURES TIENNENT DANS LE MONDE', () => {
     // corrigerait un dessin qu'il ne voit pas en entier.
     NIVEAUX.forEach((n, i) => {
         const p = preparerNiveau(i);
-        Object.entries(p.depart).forEach(([nom, q]) => {
+        Object.entries(p.donnes).forEach(([nom, q]) => {
             assert.ok(q.x >= 0 && q.x <= 100 && q.y >= 0 && q.y <= 70,
                 `${n.id} : le point donné ${nom} est hors du monde`);
         });
@@ -236,4 +256,126 @@ test('CHAQUE BLOC SAIT SE DIRE EN FRANÇAIS', () => {
         assert.ok(faux && faux.length > 10, `${op.id} n'a pas de libellé`);
         assert.ok(FAMILLES.some(f => f.id === op.famille), `${op.id} n'a pas de famille connue`);
     });
+});
+
+// ---------------------------------------------------------------------------
+// LA RÉDACTION
+//
+// Rémy : « je veux qu'il tape et qu'il rédige », et il a donné lui-même les
+// phrases acceptables. Ces tests-là les citent : si une seule cessait d'être
+// lue, l'exercice cesserait d'être le sien.
+
+test('LES PHRASES DE RÉMY SE LISENT, MOT POUR MOT', () => {
+    const dit = (t) => lireInstruction(t, { points: {}, objets: [] });
+    // « On commence par un point A. Les phrases acceptables sont "Place un
+    // point A". Puis on a deux points A et B : "Place 2 points A et B". […]
+    // "Place 3 points A, B et C non alignés". »
+    assert.deepEqual(dit('Place un point A').ins, { op: 'points', args: ['A'], nonAlignes: false });
+    assert.deepEqual(dit('Place 2 points A et B').ins,
+        { op: 'points', args: ['A', 'B'], nonAlignes: false });
+    assert.deepEqual(dit('Place 3 points A, B et C non alignés').ins,
+        { op: 'points', args: ['A', 'B', 'C'], nonAlignes: true });
+});
+
+test('« TOLÉRABLE, DESSINE OU TRACE » — et les accents ne comptent pas', () => {
+    // On corrige la GÉOMÉTRIE, pas la langue : faire échouer une construction
+    // juste sur un accent apprendrait quelque chose de faux.
+    const args = (t) => (lireInstruction(t, { points: {}, objets: [] }).ins || {}).args;
+    ['Place 2 points A et B', 'Dessine 2 points A et B', 'Trace 2 points A et B',
+        'Pose 2 points A et B', 'place deux points a et b', 'PLACE 2 POINTS A ET B',
+        'Place 2 points A, B', 'Place les points A et B', 'Place 2 points A B']
+        .forEach(t => assert.deepEqual(args(t), ['A', 'B'], `refusée : « ${t} »`));
+
+    const p = { A: { x: 0, y: 0 }, B: { x: 10, y: 0 } };
+    const etat = { points: p, objets: [] };
+    ['Trace le segment [AB]', 'trace le segment AB', 'Dessine le segment [A B]',
+        'construis le segment [AB]']
+        .forEach(t => assert.deepEqual(lireInstruction(t, etat).ins,
+            { op: 'segment', args: ['A', 'B'] }, `refusée : « ${t} »`));
+});
+
+test('UNE PHRASE À MOITIÉ COMPRISE EST REFUSÉE, ET L\'ON DIT CE QU\'ON ATTEND', () => {
+    // ON NE DEVINE JAMAIS : construire sur une supposition ferait une figure
+    // que l'élève ne saurait pas expliquer.
+    const etat = { points: {}, objets: [] };
+    const cercle = lireInstruction('Trace le cercle qui passe par A et B', etat);
+    assert.equal(cercle.ins, undefined);
+    assert.match(cercle.dit, /CENTRE/);
+
+    const perp = lireInstruction('Trace la perpendiculaire à (AB)', etat);
+    assert.equal(perp.ins, undefined);
+    assert.match(perp.dit, /passant par/);
+
+    const compte = lireInstruction('Place 2 points A, B et C', etat);
+    assert.equal(compte.ins, undefined);
+    assert.match(compte.dit, /3/);
+
+    const rien = lireInstruction('fais un beau dessin', etat);
+    assert.equal(rien.ins, undefined);
+    assert.ok(rien.dit.includes('Place 2 points A et B'));
+});
+
+test('« NON ALIGNÉS » SE SIGNALE SANS SE SANCTIONNER', () => {
+    // C'est une précision de rédaction, pas une faute de construction : on la
+    // dit, on ne la compte pas.
+    const sans = lireInstruction('Place 3 points A, B et C', { points: {}, objets: [] });
+    assert.ok(sans.ins, 'la phrase reste acceptée');
+    assert.match(sans.note, /non alignés/);
+    const avec = lireInstruction('Place 3 points A, B et C non alignés', { points: {}, objets: [] });
+    assert.equal(avec.note, null);
+});
+
+test('UN PROGRAMME ENTIER, TAPÉ À LA MAIN, CONSTRUIT LA FIGURE', () => {
+    // Le vrai essai : une rédaction libre, avec ses accents, ses crochets
+    // oubliés, et le nom que l'élève choisit pour le centre.
+    const n = preparerNiveau('circonscrit');
+    const texte = [
+        '1. Place 3 points A, B et C non alignés',
+        'Trace le segment [AB]',
+        'trace le segment BC',
+        'Trace le segment [CA]',
+        'Trace la médiatrice de [AB]',
+        'trace la mediatrice de BC',
+        'Place le point d\'intersection O de la médiatrice de [AB] et de la médiatrice de [BC]',
+        'Trace le cercle de centre O passant par A'
+    ].join('\n');
+    const lu = lireProgramme(texte, n.atlas);
+    lu.lignes.forEach(l => assert.ok(l.vide || l.ok,
+        `ligne refusée : ${texte.split('\n')[l.i]} — ${l.dit}`));
+    const r = executer(lu.instructions, n.atlas);
+    assert.equal(r.erreur, null);
+    // Le point porte le nom que l'élève lui a donné, pas celui qu'on aurait
+    // inventé : « le centre du cercle circonscrit, je l'appelle O ».
+    assert.ok('O' in r.points);
+    assert.ok(comparer(r.objets, n.attendus, r.points, n.exiges).ok);
+});
+
+test('LE NUMÉRO DE LIGNE N\'EST PAS DE LA GÉOMÉTRIE', () => {
+    // Un élève numérote son programme : « 1. Place… ». Refuser la ligne pour
+    // cela serait corriger la mise en page.
+    const n = preparerNiveau('segment');
+    const lu = lireProgramme('1. Place 2 points A et B\n2) Trace le segment [AB]', n.atlas);
+    assert.ok(lu.lignes.every(l => l.vide || l.ok));
+    assert.equal(lu.instructions.length, 2);
+});
+
+test('SANS AVOIR PLACÉ SES POINTS, ON NE TRACE RIEN', () => {
+    // C'est la première leçon du chapitre, et elle se mesure : le programme qui
+    // saute la ligne « Place… » ne construit pas la figure.
+    const n = preparerNiveau('segment');
+    const lu = lireProgramme('Trace le segment [AB]', n.atlas);
+    const r = executer(lu.instructions, n.atlas);
+    assert.ok(r.erreur);
+    assert.match(r.erreur.dit, /le point A/);
+});
+
+test('ON NE PLACE QUE LES POINTS DE LA FIGURE', () => {
+    // « Place un point Z » se lit très bien — c'est une phrase juste — mais
+    // cette figure-là ne part pas de Z, et le dire vaut mieux que de dessiner
+    // un point de plus.
+    const n = preparerNiveau('deux-points');
+    assert.ok(lireInstruction('Place un point Z', { points: {}, objets: [] }).ins);
+    const r = executer([{ op: 'points', args: ['Z'] }], n.atlas);
+    assert.ok(r.erreur);
+    assert.match(r.erreur.dit, /2 points/);
 });
