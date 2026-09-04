@@ -49,6 +49,7 @@ export const CODES_EXERCICES = {
     'num-ninja-zeros':           'NZ',   // le Ninja des Zéros
     'alg-balance':               'BA',   // la BAlance des équations
     'geo-patrons':               'CW',   // le patron du CuBe — « PT », « PA » et « CB » étaient pris
+    'num-serpent':               'SP',   // le SerPent littéral — « SR » et « SL » étaient pris
     'num-relatifs-addition':      'AR',   // Additionner des Relatifs, pas à pas
     'num-relatifs-produit':       'MR',   // Multiplier des Relatifs, pas à pas
     'alg-fonctions':              'FN',   // Les Fonctions : Image et Antécédent

@@ -736,6 +736,10 @@ const legacy = [
     // apprend à refuser. Huit par séance — c'est le temps d'en voir passer des
     // deux familles sans que la série devienne une litanie.
     ['patrons', 'Le patron du cube', 'patrons', 'enginePatrons', 'figure', 8],
+    // UNE « QUESTION » EST UN TERRAIN NETTOYÉ. Découper plus fin n'aurait aucun
+    // sens : ce qui s'apprend est l'ORDRE de ramassage sur un terrain entier,
+    // et un terrain à moitié fait ne dit rien de cet ordre. Trois par séance.
+    ['serpent', 'Le Serpent Littéral', 'serpent', 'engineSerpent', 'terrain', 3],
     ['quadri-morph', 'Le quadrilatère qui se transforme', 'quadriMorph', 'engineQuadriMorph', 'propriété', 6],
     // LA RÉDACTION SE COMPTE EN DÉMONSTRATIONS. Une « question » y est la copie
     // entière — hypothèses, théorème, calcul — et rien ne se valide avant la

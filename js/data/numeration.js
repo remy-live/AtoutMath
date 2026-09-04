@@ -479,6 +479,69 @@ export const numerationExercises = [
         instruction: "Douze marches, deux questions chacune. LES CINQ PREMIÈRES NE DEMANDENT PAS DE CALCULER : seulement de dire si le produit sera positif ou négatif. C'est le vrai sujet du chapitre — (−3) + (−4) fait −7, mais (−3) × (−4) fait +12, et ce n'est pas la même règle. Ensuite on calcule, d'abord avec les parenthèses puis sans. Les trois dernières marches passent à plusieurs facteurs : on ne récite plus une règle, on COMPTE les facteurs négatifs, et leur parité décide. La dernière garde les cas à part : le zéro, le 1, le −1, et le carré d'un négatif — (−4)² vaut +16, mais −4² vaut −16."
     },
     {
+        // LE SERPENT LITTÉRAL. Rémy : « Quel jeu sympa comme Nova ou le
+        // Peintre pourrait-on mettre en place ? »
+        //
+        // CE QUE CES DEUX JEUX ONT EN COMMUN, et qui commande tout : LE CALCUL
+        // EST LE MOUVEMENT. On ne pose pas une question entre deux tirs — c'est
+        // le déplacement lui-même qui est le calcul. Un « shoot'em up où l'on
+        // répond à un QCM entre deux vagues » n'aurait été ni l'un ni l'autre.
+        //
+        // ET LE CHOIX DU CHAPITRE EST MESURÉ, pas deviné : la 4e comptait SIX
+        // jeux d'arcade contre vingt-sept en 6e, et cinq de ces six étaient du
+        // calcul mental. Le calcul littéral n'en avait aucun.
+        //
+        // LA TROUVAILLE : LE CORPS DU SERPENT EST L'EXPRESSION. Chaque anneau
+        // porte un terme, dans l'ordre où on l'a ramassé, et deux anneaux
+        // VOISINS qui se ressemblent fusionnent — le serpent raccourcit.
+        // Ramasser 2x, 3x, puis 5 donne deux anneaux ; ramasser 2x, 5, puis 3x
+        // en donne trois, parce que le 5 s'est glissé entre les deux x.
+        //
+        // L'ORDRE DE RAMASSAGE EST DONC L'ORDRE DE RÉDUCTION. « On regroupe les
+        // termes semblables » cesse d'être une consigne à retenir : c'est ce
+        // qui garde en vie. Un élève qui croit que 2x + 3 se réduit ramasse
+        // dans le désordre, s'allonge, et se mord — sans qu'on lui ait rien
+        // dit, et c'est le but.
+        //
+        // ON NE DIT JAMAIS « FAUX ». Ramasser un terme qui ne se regroupe avec
+        // rien est un choix légitime, parfois le seul possible. Il coûte un
+        // anneau, et l'anneau se voit. La sanction est dans la mécanique.
+        id: 'num-serpent',
+        cree: '2026-09-04',
+        title: 'Le Serpent Littéral',
+        activityId: 'serpent',
+        skills: ['num.litteral.reduire'],
+        sansRevision: true,
+        params: { depuis: 0, vies: 3 },
+        paramSchema: [
+            {
+                id: 'depuis', type: 'select', label: 'Commencer au terrain',
+                options: [
+                    { value: 0, label: '1 — Des x et des nombres' },
+                    { value: 1, label: '2 — Plus de termes' },
+                    { value: 2, label: '3 — Les carrés arrivent' },
+                    { value: 3, label: '4 — Carrés et cubes' },
+                    { value: 4, label: '5 — Les négatifs' },
+                    { value: 5, label: '6 — Tout à la fois' }
+                ],
+                default: 0,
+                aide: 'Les six terrains s\'enchaînent, chacun ajoutant UNE chose : les '
+                    + 'carrés, puis les cubes, puis les coefficients négatifs — qui '
+                    + 'ouvrent les annulations, le plus joli coup du jeu. Démarrer plus '
+                    + 'haut sert à reprendre un point qui coince.'
+            },
+            {
+                id: 'vies', type: 'number', label: 'Nombre de vies', default: 3, min: 1, max: 9,
+                aide: 'Une vie perdue rejoue LE MÊME terrain : recommencer ailleurs '
+                    + 'punirait sans laisser retenter le rangement qu\'on vient de rater.'
+            }
+        ],
+        motsClefs: ['calcul littéral', 'réduire', 'termes semblables', 'expression',
+            'serpent', 'regrouper', 'coefficient', 'carré', 'cube', 'arcade'],
+        tags: { chemin: [D, LITT], niveaux: [CINQUIEME, QUATRIEME] },
+        instruction: "Tu es un serpent, et CHAQUE ANNEAU DE TON CORPS PORTE UN TERME — dans l'ordre où tu l'as ramassé. Deux anneaux VOISINS qui se ressemblent fusionnent aussitôt, et tu raccourcis. C'est là tout le jeu. Ramasse 2x, puis 3x, puis 5 : les deux x se touchent, ils fusionnent, il te reste deux anneaux. Ramasse 2x, puis 5, puis 3x : le 5 s'est glissé entre les deux x, plus rien ne fusionne, et te voilà à trois anneaux. L'ordre dans lequel tu ramasses EST l'ordre dans lequel tu réduis. Un serpent long est un serpent qui se mord, alors ramasse les termes semblables À LA SUITE. La couleur t'aide : même couleur, même famille. Et deux opposés — 3x puis −3x — ne laissent pas un anneau à zéro : ils ne laissent RIEN, l'anneau disparaît. C'est le meilleur coup du jeu. Flèches du clavier, ZQSD, ou glisse le doigt sur le terrain."
+    },
+    {
         // LA BALANCE — parce que le chapitre « Équations » de 4e était VIDE.
         //
         // Pas « à venir » : structurellement inatteignable. Onze chapitres de la
