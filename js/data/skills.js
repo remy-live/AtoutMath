@@ -889,6 +889,14 @@ const BASE = {
         descriptor: 'D\u00e9nombrer les cubes d\'un empilement dessin\u00e9 en perspective, y compris ceux qu\'on ne voit pas.',
         lesson: "UN DESSIN D'EMPILEMENT MENT TOUJOURS UN PEU : il montre les cubes de devant et cache ceux de derri\u00e8re et de dessous. Celui qui compte les faces trouve trop, celui qui compte les cubes visibles trouve trop peu. La m\u00e9thode qui ne trompe pas : compter COLONNE par colonne. Chaque case du sol porte une pile ; on lit la hauteur de chaque pile et on additionne. Deux raccourcis valent la peine. D'abord, si l'empilement est un PAV\u00c9 PLEIN, le compte est une multiplication : longueur \u00d7 profondeur \u00d7 hauteur \u2014 c'est exactement la formule du volume, rencontr\u00e9e ici pour de vrai. Ensuite, s'il ressemble \u00e0 un pav\u00e9 auquel il manque des cubes, on compte le pav\u00e9 entier et on retire ce qui manque : une soustraction est souvent plus s\u00fbre qu'une longue addition. Enfin, ne confonds jamais deux questions diff\u00e9rentes : le nombre de cubes qui TOUCHENT LE SOL est le nombre de cases occup\u00e9es de la base \u2014 une pile de quatre cubes n'en pose qu'un par terre."
     },
+    'geo.espace.patron': {
+        label: 'Patron du cube et faces opposées',
+        chemin: [D.GEOMETRIQUE, SD.ESPACE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.espace.denombrer'],
+        descriptor: 'Reconnaître si une figure de six carrés se plie en cube, et repérer les faces qui se feront face.',
+        lesson: "UN PATRON NE SE RECONNAÎT PAS À L'ŒIL : il se plie. Il existe trente-cinq façons d'assembler six carrés bord à bord, et onze seulement se ferment en cube — rien dans l'allure d'une figure ne dit à quelle famille elle appartient. Le RECTANGLE 2 × 3 est la réponse que tout le monde donne, et c'est faux : plié, deux carrés retombent sur la même face du cube. La méthode qui ne trompe pas est de faire ROULER un cube en pensée sur la figure : on le pose sur un carré, on le bascule vers le carré voisin, et l'on note quelle face se retrouve dessous. Si deux carrés reçoivent la même face, le patron se recouvre ; si les six faces sont prises une seule fois, il se ferme. Les onze patrons se rangent en quatre familles selon leurs bandes : 1-4-1 (six patrons, une bande de quatre avec un carré de chaque côté, les plus faciles à voir), 2-3-1 (trois), 3-3 (un, deux bandes de trois décalées) et l'escalier 2-2-2 (un, le plus déroutant). Enfin, les FACES OPPOSÉES : sur une bande de quatre, un carré sur deux se fait face — la première et la troisième case, la deuxième et la quatrième. Deux carrés qui se touchent ne peuvent jamais être opposés, puisqu'ils partagent une arête une fois pliés."
+    },
     'geo.espace.reperage': {
         label: 'Se repérer et tracer un chemin sur une grille',
         chemin: [D.GEOMETRIQUE, SD.ESPACE],

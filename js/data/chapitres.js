@@ -85,7 +85,7 @@ export const CHAPITRES = [
     },
     {
         id: '6-solides', niveau: SIXIEME, nom: 'Les solides',
-        skills: ['geo.espace.denombrer', 'geo.espace.orientation']
+        skills: ['geo.espace.denombrer', 'geo.espace.orientation', 'geo.espace.patron']
     },
     {
         // Rien encore : les triangles de 6ᵉ ne sont pas couverts.
@@ -194,7 +194,7 @@ export const CHAPITRES = [
     },
     {
         id: '5-solides', niveau: CINQUIEME, nom: 'Solides',
-        skills: ['geo.espace.denombrer', 'geo.espace.orientation']
+        skills: ['geo.espace.denombrer', 'geo.espace.orientation', 'geo.espace.patron']
     },
     {
         id: '5-transformations', niveau: CINQUIEME, nom: 'Transformations',

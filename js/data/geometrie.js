@@ -1075,6 +1075,67 @@ export const geometrieExercises = [
             + 'pavé plein, c\'est encore plus court : longueur × profondeur × hauteur.'
     },
     {
+        // LE PATRON DU CUBE. Rémy, sur trois propositions de jeux : « J'adore
+        // le 1 et 3. » Voici le 3.
+        //
+        // POURQUOI CETTE QUESTION-LÀ NE S'APPREND QU'EN PLIANT. Un patron ne se
+        // reconnaît pas à l'œil. Il existe trente-cinq façons d'assembler six
+        // carrés bord à bord, onze seulement se ferment en cube, et rien dans
+        // l'allure d'une figure ne dit à quelle famille elle appartient. Le
+        // rectangle 2 × 3 est la réponse que tout le monde donne, et c'est
+        // faux — deux carrés y retombent sur la même face.
+        //
+        // ON DÉCIDE D'ABORD, ON PLIE ENSUITE, et l'ordre fait tout l'exercice.
+        // Un bouton « plier » disponible avant la réponse en ferait une
+        // manipulation sans enjeu : on plierait pour voir, puis on cocherait.
+        // Ici l'élève s'engage, puis regarde s'il avait raison — c'est une
+        // conjecture suivie d'une vérification, ce qui est le geste qu'on veut.
+        //
+        // ET QUAND ÇA NE SE FERME PAS, ON MONTRE OÙ. Les carrés qui se
+        // recouvrent sont cerclés de rouge : « ce n'est pas un patron » se
+        // subit, « ces deux-là retombent au même endroit » se comprend.
+        //
+        // AUCUN PATRON N'EST RECOPIÉ DANS LE CODE. Le module énumère les
+        // trente-cinq hexominos et PLIE chacun d'eux ; un test vérifie qu'on
+        // retrouve bien 35 et 11, deux nombres établis de longue date. S'ils
+        // tombent juste, c'est que la simulation est correcte — une liste
+        // recopiée aurait été juste sans rien prouver.
+        id: 'geo-patrons',
+        cree: '2026-09-04',
+        title: 'Le Patron qui se Plie',
+        activityId: 'patrons',
+        skills: ['geo.espace.patron'],
+        params: { combien: 8 },
+        paramSchema: [
+            {
+                id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
+                label: 'Ce qu\'on demande',
+                default: ['reconnaitre', 'opposees'],
+                aide: 'La reconnaissance seule suffit pour une première séance. Les faces '
+                    + 'opposées sont la question qui reste difficile même quand on sait '
+                    + 'reconnaître un patron, parce qu\'elle ne se lit pas sur le dessin.',
+                options: [
+                    { value: 'reconnaitre', label: 'Est-ce un patron de cube ?' },
+                    { value: 'opposees', label: 'Quelle face sera en face ?' }
+                ]
+            },
+            {
+                id: 'combien', type: 'number', label: 'Nombre de figures',
+                default: 8, min: 2, max: 20,
+                aide: 'Les figures vont de la plus évidente à la plus retorse, et la série '
+                    + 'garde toujours autant de patrons que d\'intrus — dans un ordre tiré '
+                    + 'au sort, pour qu\'on ne puisse pas répondre au rythme.'
+            }
+        ],
+        motsClefs: ['patron', 'cube', 'pliage', 'hexomino', 'faces opposées', 'solide',
+            'perspective', 'plier', 'développement'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ESPACE],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Six carrés posés à plat : est-ce que ça se plie en cube ? Tu réponds d'abord, et ENSUITE la figure se plie sous tes yeux — c'est le seul moyen d'apprendre, parce qu'un patron ne se reconnaît pas à l'allure. Méfie-toi du rectangle de 2 sur 3 : c'est la réponse que tout le monde donne, et deux de ses carrés retombent sur la même face. La méthode qui ne trompe jamais est de faire ROULER un cube en pensée : pose-le sur un carré, bascule-le vers le carré voisin, et note quelle face arrive dessous. Deux carrés sur la même face, le patron se recouvre ; les six faces prises une seule fois, il se ferme. Quand tu te trompes, les carrés cerclés de rouge sont ceux qui se recouvrent — regarde-les, c'est là qu'est l'erreur. Une fois plié, les carrés de même teinte sont ceux qui se FONT FACE : et tu remarqueras que deux carrés qui se touchent ne peuvent jamais être opposés, puisqu'ils partagent une arête."
+    },
+    {
         // DÉNOMBRER SUR UN SOLIDE. L'exercice a l'air simple et ne l'est pas :
         // sur une perspective cavalière, une partie du solide est derrière, et
         // l'élève qui compte ce qu'il voit trouve toujours trop peu. Le jeu

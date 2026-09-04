@@ -731,6 +731,11 @@ const legacy = [
     // découper en morceaux plus petits ferait perdre ce qui s'apprend — l'ORDRE
     // des gestes, qui est toute la difficulté du chapitre.
     ['balance', 'La Balance des équations', 'balance', 'engineBalance', 'équation', 4],
+    // UNE « QUESTION » EST UNE FIGURE JUGÉE, et il en faut plusieurs : la
+    // difficulté ne tient pas à une figure mais à la VARIÉTÉ des formes qu'on
+    // apprend à refuser. Huit par séance — c'est le temps d'en voir passer des
+    // deux familles sans que la série devienne une litanie.
+    ['patrons', 'Le patron du cube', 'patrons', 'enginePatrons', 'figure', 8],
     ['quadri-morph', 'Le quadrilatère qui se transforme', 'quadriMorph', 'engineQuadriMorph', 'propriété', 6],
     // LA RÉDACTION SE COMPTE EN DÉMONSTRATIONS. Une « question » y est la copie
     // entière — hypothèses, théorème, calcul — et rien ne se valide avant la
