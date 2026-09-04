@@ -260,6 +260,87 @@ export function fenetreDeLEtape(boites, largeur, voisines = []) {
     return { x0, y0, w, h, rapport: w / h, zoom: PLAN_L / w };
 }
 
+/**
+ * LA FENÊTRE SERRÉE SUR UNE SEULE BOÎTE — c'est là qu'on code.
+ *
+ * Rémy : « je pense que le codage doit avoir lieu dans l'organigramme, on zoome
+ * sur la case avec le parallélogramme et on code directement, car là on n'arrête
+ * pas de faire des sauts entre les exercices. »
+ *
+ * Il avait raison, et le code lui donnait raison plus franchement qu'il ne le
+ * disait : à l'étape de codage, le jeu faisait `planEl.hidden = true`. Mesuré,
+ * `.qd-plan` tombait à 0 × 0 — l'organigramme ne rétrécissait pas, il
+ * s'effaçait, quatre fois sur onze étapes. Or le RÉSULTAT du codage atterrissait
+ * déjà dans la case (voir `figureSvg`), et la modale l'annonçait à l'élève :
+ * « la figure codée restera dans sa case ». Seul le GESTE était exilé ailleurs.
+ *
+ * `fenetreDeLEtape` ne pouvait pas servir : elle impose un plancher de 148
+ * unités de large, et une case en fait 30 — on n'aurait pas zoomé du tout. Ce
+ * plancher a sa raison (une étape ordinaire ne doit pas grossir au point qu'on
+ * perde le fil), elle ne vaut simplement pas ici.
+ *
+ * ET LA FENÊTRE ÉPOUSE LA FORME DE LA SCÈNE, en AGRANDISSANT le côté trop
+ * court. C'est le second défaut, mesuré sur téléphone : la scène offrait 394
+ * pixels de haut et le plan n'en occupait que 211, parce que le format de la
+ * fenêtre ne ressemblait pas à celui de la scène. Cent quatre-vingts pixels de
+ * vide pendant que `ajusterCartes` rapetissait « Parallélogramme » jusqu'à 6
+ * pixels pour le faire tenir. On agrandit, on ne rétrécit jamais : rétrécir
+ * couperait ce qu'on vient de décider de montrer.
+ */
+export function fenetreSerree(boite, marge, rapportScene, voisine = null, apercu = 0) {
+    let x0 = boite.x1 - marge, x1 = boite.x2 + marge;
+    let y0 = boite.y1 - marge, y1 = boite.y2 + marge;
+    // ON GARDE UNE TRANCHE DE LA CASE D'OÙ L'ON VIENT.
+    //
+    // Premier essai mesuré : cadrée sur elle seule, la case du parallélogramme
+    // s'affichait à 415 × 304 px — confortable — mais SEULE au milieu du blanc,
+    // le quadrilatère hors champ. On avait échangé « la carte disparaît » contre
+    // « la carte est hors cadre », ce qui, sur une image fixe, revient au même.
+    // Le mouvement de caméra dit la continuité ; encore faut-il qu'un élève qui
+    // arrive en cours d'étape la voie aussi.
+    //
+    // On mord donc de quelques unités DANS la case parente — pas jusqu'à
+    // l'englober, ce qui rendrait la figure deux fois plus petite : juste assez
+    // pour qu'elle affleure sous le dégradé, avec la flèche qui en descend.
+    if (voisine && apercu > 0) {
+        if (voisine.y2 <= boite.y1) y0 = Math.min(y0, voisine.y2 - apercu);
+        else if (voisine.y1 >= boite.y2) y1 = Math.max(y1, voisine.y1 + apercu);
+        if (voisine.x2 <= boite.x1) x0 = Math.min(x0, voisine.x2 - apercu);
+        else if (voisine.x1 >= boite.x2) x1 = Math.max(x1, voisine.x1 + apercu);
+    }
+    const etirer = (r) => {
+        const w = x1 - x0, h = y1 - y0;
+        if (!r || !isFinite(r) || r <= 0) return;
+        if (w / h < r) { const d = (h * r - w) / 2; x0 -= d; x1 += d; }
+        else if (w / h > r) { const d = (w / r - h) / 2; y0 -= d; y1 += d; }
+    };
+    etirer(rapportScene);
+    // On ne sort pas du monde : d'abord on borne la taille, puis on ramène le
+    // cadre dedans sans le déformer — le déformer changerait l'échelle des deux
+    // axes et les cases sortiraient en rectangles.
+    const w = Math.min(x1 - x0, MONDE.w), h = Math.min(y1 - y0, MONDE.h);
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    x0 = Math.max(MONDE.x0, Math.min(MONDE.x0 + MONDE.w - w, cx - w / 2));
+    y0 = Math.max(MONDE.y0, Math.min(MONDE.y0 + MONDE.h - h, cy - h / 2));
+    return { x0, y0, w, h, rapport: w / h, zoom: PLAN_L / w };
+}
+
+/**
+ * L'AIR AUTOUR DE LA CASE QU'ON CODE, et il dépend de l'écran.
+ *
+ * Mesuré : une case fait 30 × 22 dans un plan de 200 × 150. Cadrée avec dix
+ * unités de marge, elle s'affiche à 424 × 311 pixels sur un ordinateur — une
+ * cible confortable. Sur un téléphone la même marge ne donne que 198 × 145,
+ * contre 330 × 394 que l'ancien écran plein offrait : on y respire donc moins,
+ * et l'on serre à quatre unités (261 × 191). C'est le prix de ne plus quitter
+ * la carte, et il se règle ici.
+ */
+const MARGE_CODAGE_LARGE = 10;
+const MARGE_CODAGE_ETROIT = 4;
+
+/** Combien d'unités de la case parente on laisse affleurer sous le dégradé. */
+const APERCU_VOISIN = 6;
+
 /** Une position du plan, ramenée en pourcentage de la fenêtre affichée. */
 const placer = (p, v) => ({
     gauche: ((p.x - v.x0) / v.w) * 100,
@@ -594,7 +675,37 @@ class Organigramme extends BaseGame {
                    cadrer() : l'organigramme d'une étape est presque carré,
                    l'organigramme entier est en portrait, et un format figé ici
                    gaspillerait la moitié de la place dans l'un des deux cas. */
-                .qd-plan { position: relative; width: 100%; margin: 0 auto; overflow: hidden; }
+                /* LES BORDS S'ESTOMPENT, ET C'EST UNE PHRASE, PAS UN ORNEMENT.
+                   Dès qu'on cadre serré — sur la case qu'on code, ou sur un
+                   téléphone où l'on ne peut pas tout montrer —, les cartes
+                   voisines sont coupées net par le bord. Une carte tranchée au
+                   couteau se lit « c'est cassé » ; la même fondue au blanc se lit
+                   « ça continue par là », ce qui est exactement vrai. */
+                .qd-plan {
+                    position: relative; width: 100%; margin: 0 auto; overflow: hidden;
+                    -webkit-mask-image:
+                        linear-gradient(to right, transparent 0, #000 var(--fondu, 0px),
+                            #000 calc(100% - var(--fondu, 0px)), transparent 100%),
+                        linear-gradient(to bottom, transparent 0, #000 var(--fondu, 0px),
+                            #000 calc(100% - var(--fondu, 0px)), transparent 100%);
+                    -webkit-mask-composite: source-in;
+                    mask-image:
+                        linear-gradient(to right, transparent 0, #000 var(--fondu, 0px),
+                            #000 calc(100% - var(--fondu, 0px)), transparent 100%),
+                        linear-gradient(to bottom, transparent 0, #000 var(--fondu, 0px),
+                            #000 calc(100% - var(--fondu, 0px)), transparent 100%);
+                    mask-composite: intersect;
+                }
+                /* LA FIGURE QU'ON EST EN TRAIN DE CODER remplit sa case : c'est
+                   elle qu'on vise du doigt, et la bande du nom lui prendrait le
+                   quart de la hauteur. */
+                .qd-case .qd-figure--encodage {
+                    position: absolute; inset: 2% 2% 6%; width: 96%; height: 92%;
+                }
+                .qd-case--encodage {
+                    border-color: var(--primary); border-width: 2.5px;
+                    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
+                }
                 /* LE MONDE — le plan entier, dont la fenêtre ne montre qu'une
                    part. Il ne change jamais de taille : il GLISSE. La transition
                    est ce que Rémy appelle « descendre l'organigramme ». */
@@ -1416,6 +1527,10 @@ class Organigramme extends BaseGame {
     // --- Le dessin ----------------------------------------------------------
 
     dessiner() {
+        // La case vivante n'appartient qu'au mode progressif : sans cette
+        // remise à zéro, une case resterait cliquable dans l'assemblage ou la
+        // série de questions, où l'on ne code rien.
+        if (!this.progressif) this.codageEnCase = null;
         if (this.questions) return this.dessinerQuestions();
         if (this.assemblage) return this.dessinerAssemblage();
         if (this.progressif) return this.dessinerProgressif();
@@ -1629,22 +1744,29 @@ class Organigramme extends BaseGame {
         if (e && e.genre === 'codage' && !this.isDemo && this.apparition !== e.numero) {
             return this.montrerApparition(e);
         }
-        // LE CODAGE A SON ÉCRAN. Il garde le même conteneur et le même compte
-        // d'étapes : c'est la même leçon, vue de l'autre côté.
-        if (e && e.genre === 'codage') return this.dessinerCodage(e);
+        // LE CODAGE N'A PLUS D'ÉCRAN : il se fait DANS SA CASE. Rémy : « on
+        // n'arrête pas de faire des sauts entre les exercices ». Voir
+        // `fenetreSerree` — l'étape traverse maintenant le même tracé de plan
+        // que les autres, avec une fenêtre resserrée et une case vivante.
+        const codage = !!(e && e.genre === 'codage');
+        this.codageEnCase = codage ? e.figure : null;
+        if (codage) this.preparerCodage(e);
+
         this.coderEl.hidden = true;
         this.planEl.hidden = false;
-        this.verifierEl.hidden = true;
+        this.verifierEl.hidden = !codage;
         this.carteEl.hidden = true;
 
         const visibles = (e && e.vues) || casesVisibles(this.org.etapes.length);
         const nouvelles = this.vues || [];
         this.vues = visibles.slice();
 
-        this.consigneEl.innerHTML = e
-            ? `Étape ${this.etape + 1} sur ${this.org.etapes.length} — chaque chemin passe `
-                + 'par <b>UNE</b> condition. Pose les cartes qui mènent d\'une figure à l\'autre.'
-            : 'L\'organigramme est complet. Relis-le : chaque chemin ajoute une seule condition.';
+        if (!codage) {
+            this.consigneEl.innerHTML = e
+                ? `Étape ${this.etape + 1} sur ${this.org.etapes.length} — chaque chemin passe `
+                    + 'par <b>UNE</b> condition. Pose les cartes qui mènent d\'une figure à l\'autre.'
+                : 'L\'organigramme est complet. Relis-le : chaque chemin ajoute une seule condition.';
+        }
 
         // CE QU'ON MONTRE : les figures atteintes, et les conditions qui les
         // relient — celles déjà posées et celles de l'étape en cours. Une case
@@ -1669,11 +1791,32 @@ class Organigramme extends BaseGame {
             ? MONDE
             : fenetre([...visibles.map(id => boiteFigure(id)),
                 ...montrees.map(f => boiteCondition(f))]);
-        this.cadrer(e
-            ? fenetreDeLEtape([boiteFigure(e.de), boiteFigure(e.vers),
-                ...FLECHES.filter(f => e.cles.includes(cleFleche(f))).map(boiteCondition)],
-            this.largeurFenetre(), boitesDuPlan())
-            : v, v);
+        // POUR LE CODAGE, ON NE PASSE PAS LES VOISINES. La règle « ne jamais
+        // couper une carte » est juste quand on cadre une ÉTAPE ; ici on cadre
+        // exprès UNE case, et l'appliquer rouvrirait le plan en grand — c'est-à-
+        // dire annulerait le zoom qu'on vient de demander. Les voisines sont
+        // donc coupées, et le dégradé des bords dit que ça continue.
+        // SUR ÉCRAN ÉTROIT, ON RENONCE À NE RIEN COUPER — et c'est le seul
+        // choix honnête. Mesuré sur un téléphone de 390 pixels : « Parallélo-
+        // gramme » s'affichait à 6,0 px, les cases vides à 9, les vignettes à
+        // 10, là où l'ordinateur donne 16. La cause est `ajusterCartes`, qui
+        // rapetisse le texte jusqu'à ce qu'il tienne — et il ne tenait pas,
+        // parce que la fenêtre s'élargissait pour englober toute la rangée.
+        //
+        // On ne peut pas avoir sur un téléphone À LA FOIS toute la rangée ET un
+        // texte lisible ; aujourd'hui on n'avait ni l'un ni l'autre. On garde
+        // donc le texte et l'on accepte que les voisines soient coupées — le
+        // dégradé des bords dit alors « ça continue », ce qui est vrai.
+        const etroit = this.sceneEtroite();
+        this.cadrer(
+            !e ? v
+                : codage ? this.fenetreDeLaCase(e.figure, e.de)
+                    : fenetreDeLEtape([boiteFigure(e.de), boiteFigure(e.vers),
+                        ...FLECHES.filter(f => e.cles.includes(cleFleche(f))).map(boiteCondition)],
+                    this.largeurFenetre(), etroit ? [] : boitesDuPlan()),
+            v);
+        // Le fondu ne s'allume que là où l'on coupe vraiment.
+        this.planEl.style.setProperty('--fondu', (codage || etroit) ? '16px' : '0px');
 
         // LES TRAITS. Chaque condition en porte deux : ce qui y entre, ce qui en
         // sort. Ils ne se dessinent que si la condition est montrée — sinon on
@@ -1700,7 +1843,9 @@ class Organigramme extends BaseGame {
             const b = placerBoite(boiteFigure(fam.id), v);
             const neuve = !nouvelles.includes(fam.id);
             const enJeu = e && (fam.id === e.de || fam.id === e.vers);
-            html += `<div class="qd-case ${neuve ? 'qd-case--neuve' : ''} ${enJeu ? 'qd-case--jeu' : ''}"
+            const encodage = this.codageEnCase === fam.id;
+            html += `<div class="qd-case ${neuve ? 'qd-case--neuve' : ''} ${enJeu ? 'qd-case--jeu' : ''}${
+    encodage ? ' qd-case--encodage' : ''}"
                 style="left:${b.gauche}%; top:${b.haut}%;
                     width:${b.large}%; height:${b.haute}%"
                 data-case="${fam.id}">
@@ -1736,6 +1881,14 @@ class Organigramme extends BaseGame {
         this.mondeEl.querySelectorAll('[data-donnee]').forEach(el => {
             el.onclick = () => this.note(el.dataset.donnee);
         });
+
+        // LE CODAGE GARDE SON PROPRE PANNEAU ET SA PROPRE PALETTE, posés par
+        // `preparerCodage` : `dessinerEtape` et la rangée de vignettes lisent
+        // `e.de`, `e.vers` et `e.cartes`, qu'une étape de codage n'a pas.
+        if (codage) {
+            this.brancherCodage();
+            return;
+        }
 
         this.dessinerEtape(e);
         // PLUS DE CARNET : voir dessinerCarnet().
@@ -1793,11 +1946,7 @@ class Organigramme extends BaseGame {
      * MOMENT : la condition qu'on vient de poser sur la flèche est encore
      * fraîche, et coder, c'est la retrouver sur le dessin.
      */
-    dessinerCodage(e) {
-        this.planEl.hidden = true;
-        this.coderEl.hidden = false;
-        this.verifierEl.hidden = false;
-        this.carteEl.hidden = true;
+    preparerCodage(e) {
         this.carnetEl.hidden = true;
         // Les cases vues restent celles de l'étape : au retour au plan, aucune
         // ne doit rejouer son animation d'arrivée.
@@ -1819,18 +1968,15 @@ class Organigramme extends BaseGame {
         const nom = familleDe(e.figure).nom.toLowerCase();
 
         this.consigneEl.innerHTML = `Étape ${this.etape + 1} sur ${this.org.etapes.length} — `
-            + `<b>code ce ${nom}</b> : même marque sur les segments de même longueur — `
-            + 'les demi-diagonales comprises —, le petit carré sur les angles droits.';
+            + `<b>code ce ${nom}</b>, dans sa case : même marque sur les segments de même `
+            + 'longueur — les demi-diagonales comprises —, le petit carré sur les angles droits.';
         this.etapeEl.hidden = false;
         this.etapeEl.innerHTML = `<div class="qd-etape-titre">Tu viens de dire ce qui fait un
             <b>${nom}</b>. Écris-le maintenant sur la figure : on tape un côté pour faire
-            défiler les marques, ou l'on glisse un symbole depuis la palette.</div>`;
+            défiler les marques, ou l'on glisse un symbole depuis la palette. Quand tout est
+            marqué, appuie sur « Vérifier le codage ».</div>`;
 
         this.annoncerCodage(e);
-        this.coderEl.innerHTML = `<div class="qd-coder-fig">${codageSvg(c.fig, {
-            segments: c.ids, points: c.pts, pose: c.pose, interactif: true
-        })}</div>`
-            + '<div class="qd-coder-dit">Quand tout est marqué, appuie sur « Vérifier le codage ».</div>';
 
         this.cartesEl.className = 'qd-cartes';
         this.cartesEl.innerHTML = [1, 2, 3, 4].map(n =>
@@ -1841,8 +1987,9 @@ class Organigramme extends BaseGame {
                 aria-label="Angle droit">${jetonAngleSvg()}</button>`
             + `<button type="button" class="kk-chip cg-chip cg-chip--gomme" data-chip=""
                 aria-label="Effacer une marque">⌫</button>`;
-
-        this.brancherCodage();
+        // On ne branche PAS ici : la figure vit désormais dans sa case, et la
+        // case n'est dessinée qu'à la fin du tracé du plan. Voir la queue de
+        // `dessinerProgressif`.
     }
 
     /**
@@ -1891,7 +2038,9 @@ class Organigramme extends BaseGame {
             if (actif) c.pose.angles[pt] = true; else delete c.pose.angles[pt];
             this.dessiner();
         };
-        this.coderEl.querySelectorAll('.cg-cible--seg').forEach(cible => {
+        // LA FIGURE N'EST PLUS DANS `coderEl` MAIS DANS SA CASE : on cherche
+        // donc dans tout le plateau, ce qui marche dans les deux cas.
+        this.container.querySelectorAll('.cg-cible--seg').forEach(cible => {
             const defiler = () => {
                 const actuel = c.pose.marques[cible.dataset.seg] || 0;
                 poserMarque(cible.dataset.seg, actuel >= marques.length ? 0 : actuel + 1);
@@ -1901,7 +2050,7 @@ class Organigramme extends BaseGame {
                 if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); defiler(); }
             };
         });
-        this.coderEl.querySelectorAll('.cg-cible--pt').forEach(cible => {
+        this.container.querySelectorAll('.cg-cible--pt').forEach(cible => {
             const bascule = () => poserAngle(cible.dataset.pt, !c.pose.angles[cible.dataset.pt]);
             cible.onclick = bascule;
             cible.onkeydown = (ev) => {
@@ -2629,6 +2778,38 @@ class Organigramme extends BaseGame {
         return (r.width / r.height) * FEN_H;
     }
 
+    /**
+     * LA SCÈNE EST-ELLE ÉTROITE ? — et c'est la SCÈNE qu'on mesure, pas la
+     * fenêtre du navigateur : dans un volet de l'Atelier, un ordinateur offre
+     * une scène de téléphone, et c'est la place réelle qui commande.
+     */
+    sceneEtroite() {
+        const sc = this.container.querySelector('.qd-scene');
+        const r = sc && sc.getBoundingClientRect();
+        return !r || r.width < 520;
+    }
+
+    /** La forme de la place disponible — largeur sur hauteur. */
+    rapportScene() {
+        const sc = this.container.querySelector('.qd-scene');
+        const r = sc && sc.getBoundingClientRect();
+        return r && r.height ? r.width / r.height : MONDE.w / MONDE.h;
+    }
+
+    /** La fenêtre posée sur la case qu'on code — voir `fenetreSerree`. */
+    fenetreDeLaCase(id, de = null) {
+        // SUR TÉLÉPHONE, PAS D'APERÇU DU VOISIN. Mesuré : avec lui, la figure à
+        // coder tombait à 162 × 114 px — on ne vise pas un demi-segment au doigt
+        // dans ce format. Sans lui, elle remonte, et la continuité reste dite
+        // par le MOUVEMENT de caméra, qui est de toute façon ce que l'élève
+        // regarde. Sur un grand écran on a la place pour les deux.
+        const etroit = this.sceneEtroite();
+        return fenetreSerree(boiteFigure(id),
+            etroit ? MARGE_CODAGE_ETROIT : MARGE_CODAGE_LARGE,
+            this.rapportScene(),
+            (!etroit && de) ? boiteFigure(de) : null, APERCU_VOISIN);
+    }
+
     cadrer(fen, monde = fen) {
         // LE GLISSEMENT DURE CE QUE LE CHEMIN MÉRITE.
         //
@@ -2695,6 +2876,19 @@ class Organigramme extends BaseGame {
         // seulement on met les vignettes. » C'est ce qui donne son sens à
         // l'ordre : l'élève choisit ses vignettes en regardant les marques
         // qu'il vient de poser lui-même, pas de mémoire.
+        // ON CODE DANS LA CASE. Rémy : « on zoome sur la case avec le
+        // parallélogramme et on code directement ». La case qu'on est en train
+        // de coder porte donc la figure VIVANTE — segments et sommets
+        // cliquables — et non une vignette ; la fenêtre, elle, s'est resserrée
+        // dessus (voir `fenetreDeLaCase`), si bien que cette case occupe presque
+        // toute la scène.
+        if (this.codageEnCase === fam.id && this.codage) {
+            const c = this.codage;
+            return codageSvg(c.fig, {
+                segments: c.ids, points: c.pts, pose: c.pose,
+                interactif: !this.isDemo, nomsSommets: false
+            }).replace('class="cg-svg"', 'class="cg-svg qd-figure qd-figure--encodage"');
+        }
         const code = this.codages && this.codages[fam.id];
         if (code && montre) {
             return codageSvg(code.fig, {
