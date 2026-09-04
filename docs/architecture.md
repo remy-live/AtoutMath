@@ -5,6 +5,72 @@ fichiers, lisez le code ; pour comprendre où ajouter quelque chose, lisez ceci.
 
 ---
 
+## 0. La ligne rouge
+
+> « Je ne veux pas de construction géométrique avec des outils virtuels. Rien
+> ne remplace le geste. Ce sera ma ligne rouge pour ce logiciel. » — Rémy
+
+**Aucun exercice ne doit demander de CONSTRUIRE une figure en manipulant des
+instruments à l'écran.** Pas de compas qu'on fait tourner à la souris, pas
+d'équerre qu'on pose, pas de règle qu'on glisse le long d'un trait.
+
+### Pourquoi c'est une ligne et pas une préférence
+
+Tracer un cercle au compas est un geste du corps : on plante la pointe, on
+règle l'écartement, on tourne le poignet d'un seul mouvement en gardant
+l'inclinaison. Ce geste s'apprend en le faisant rater — la pointe qui glisse,
+l'écartement qui bouge, le trait qui ne se referme pas. Un compas à la souris
+n'a aucune de ces difficultés : il donne le résultat sans le geste, et fait
+croire qu'on a appris. L'élève qui « sait » construire une médiatrice à l'écran
+se retrouve devant sa feuille sans rien dans les mains.
+
+C'est le seul domaine où l'écran ne peut pas mieux faire que le papier. Partout
+ailleurs il apporte quelque chose que la feuille n'a pas : la correction
+immédiate, la figure qui bouge, le pliage qu'on voit, la balance qui penche.
+Ici il retire l'essentiel et ne rend rien.
+
+### Ce qui reste permis, et pourquoi ce n'est pas la même chose
+
+  * **ÉCRIRE un programme de construction** (`geo-programme-construction`). On
+    ne trace pas : on rédige, et la figure est la CONSÉQUENCE de ce qu'on a
+    écrit. C'est l'inverse du geste escamoté — c'est le raisonnement isolé du
+    geste, pour être travaillé à part. La construction, elle, se fera sur la
+    feuille imprimable.
+  * **RECONNAÎTRE, CODER, TRIER des figures** (l'organigramme des
+    quadrilatères, le codage). On lit une figure, on ne la fabrique pas.
+  * **PLIER, DÉPLACER, PROGRAMMER** (le patron du cube, le tangram, le chat
+    géomètre, l'automate). Aucun instrument de tracé n'y intervient.
+  * **LIRE une mesure** sur un rapporteur dessiné (`geo-galactic`). Lire n'est
+    pas construire — mais voir plus bas, la frontière est mince.
+
+### Ce qui la franchit aujourd'hui, et qui reste
+
+Deux exercices sont ANTÉRIEURS à la règle. Rémy, consulté, les garde pour
+l'instant : **la ligne vaut pour ce qu'on écrira désormais, pas contre
+l'existant.** Ils sont listés ici pour qu'on sache que ce sont des exceptions
+datées, et non des exemples à suivre.
+
+| exercice | ce qu'il fait | ce que son retrait coûterait |
+|---|---|---|
+| `geo-atelier-instruments` | « On les prend, on les pose, on les tourne — à la souris comme au doigt — et on trace le long » | vide `geo.construire.instruments`, seule compétence qu'il porte |
+| `geo-angles` (Angle Master) | « déplace le rapporteur sur le sommet, tourne-le par ses poignées » | vide `geo.angles.construire`, et laisse `geo.angles.mesure` au seul `geo-galactic` |
+
+Le premier est en plein dedans. Le second est plus discutable : il fait MESURER
+et non construire, mais il fait manipuler un rapporteur virtuel, ce qui est
+exactement le geste dont Rémy dit qu'il ne se remplace pas.
+
+### Aucun test ne garde cette règle, et c'est volontaire
+
+On aurait pu déclarer une liste d'activités interdites et la vérifier. Ce
+serait un garde-fou en trompe-l'œil : rien dans le code ne distingue « faire
+tourner un compas » de « faire tourner une pièce de tangram », et un test qui
+ne sait pas reconnaître la faute qu'il prétend interdire donne une fausse
+sécurité — pire que pas de test du tout. La règle est ici, en tête du document
+qu'on lit avant d'ajouter un exercice. C'est une décision de conception, elle
+se tient par la lecture.
+
+---
+
 ## 1. Les quatre couches
 
 ```
