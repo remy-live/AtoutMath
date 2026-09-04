@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import '../js/core/activities/index.js';
-import { CHAPITRES } from '../js/data/chapitres.js';
+import { CHAPITRES, SANS_EXERCICE } from '../js/data/chapitres.js';
 import { TAGS } from '../js/data/tags.js';
 import { SKILLS } from '../js/data/skills.js';
 import { exercices, skillsOf } from '../js/data/catalog.js';
@@ -204,4 +204,60 @@ test('le classement livré avec l\'application vaut pour tout le monde', async (
             assert.equal(typeof valeur, 'boolean', `${exoId} › ${chapId}`);
         }
     }
+});
+
+
+// --- Le garde-fou des chapitres vides ---------------------------------------
+
+test('UN CHAPITRE VIDE DOIT ÊTRE DÉCLARÉ VIDE', () => {
+    // Onze chapitres étaient à zéro compétence, et CINQ l'étaient par oubli :
+    // les exercices sur les puissances, les fonctions et le calcul littéral
+    // tournaient depuis des mois pendant que la carte annonçait « notion non
+    // couverte ». Rien ne permettait de s'en apercevoir — un chapitre vide par
+    // oubli ressemble trait pour trait à un chapitre vide par manque de
+    // contenu. Il faut maintenant le dire à voix haute.
+    const vides = CHAPITRES.filter(c => !c.skills.length).map(c => c.id).sort();
+    assert.deepEqual(vides, Object.keys(SANS_EXERCICE).sort(),
+        'un chapitre sans compétence doit figurer dans SANS_EXERCICE — et réciproquement');
+    Object.values(SANS_EXERCICE).forEach(raison => {
+        assert.ok(raison && raison.length > 20, 'chaque manque dit ce qui manque');
+    });
+});
+
+test('un chapitre déclaré vide l\'est vraiment', () => {
+    Object.keys(SANS_EXERCICE).forEach(id => {
+        const c = CHAPITRES.find(x => x.id === id);
+        assert.ok(c, `SANS_EXERCICE nomme un chapitre inexistant : ${id}`);
+        assert.equal(c.skills.length, 0, `${id} a des compétences : retire-le de SANS_EXERCICE`);
+    });
+});
+
+test('UNE COMPÉTENCE DE CHAPITRE EXISTE VRAIMENT', () => {
+    // Une compétence inconnue de `skills.js` rend le chapitre inatteignable
+    // sans rien montrer : c'est la même panne muette que la compétence fantôme
+    // trouvée dans `core/tri.js`, vue du côté de la progression.
+    for (const c of CHAPITRES) {
+        for (const sk of c.skills) {
+            if (sk.includes('*')) continue;   // les motifs, résolus par matchSkills
+            assert.ok(SKILLS[sk], `${c.id} cite « ${sk} », absente de skills.js`);
+        }
+    }
+});
+
+test('un chapitre PARTIELLEMENT couvert reste licite', () => {
+    // J'AVAIS ÉCRIT L'INVERSE, ET C'ÉTAIT FAUX. Mon premier test exigeait que
+    // toute compétence citée soit travaillée par un exercice ; il échouait sur
+    // `num.frac.sens` et `num.calc.decomposition`. Ce ne sont pas des erreurs :
+    // c'est exactement le signal décrit en tête de `chapitres.js` — la
+    // progression dit ce qu'elle veut couvrir, le catalogue dit ce qu'il
+    // couvre, et l'écart EST l'information utile. On mesure donc l'écart au
+    // lieu de l'interdire, et l'on vérifie seulement qu'il reste petit.
+    const travaillees = new Set();
+    exercices.forEach(e => (skillsOf(e) || []).forEach(sk => travaillees.add(sk)));
+    const citees = new Set();
+    CHAPITRES.forEach(c => c.skills.forEach(sk => { if (!sk.includes('*')) citees.add(sk); }));
+    const orphelines = [...citees].filter(sk => !travaillees.has(sk));
+    assert.ok(orphelines.length <= 5,
+        `${orphelines.length} compétences de la progression sans aucun exercice : `
+        + orphelines.join(', '));
 });

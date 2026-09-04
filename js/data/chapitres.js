@@ -17,10 +17,24 @@
 // demanderait de recocher cent cases chaque année.
 //
 // UN CHAPITRE SANS COMPÉTENCE N'EST PAS UNE ERREUR : c'est un chapitre
-// qu'AtoutMath ne couvre pas encore. « Probabilités », « Symétrie axiale »,
-// « Quadrilatères » sont dans la progression et n'ont aucun exercice — le
+// qu'AtoutMath ne couvre pas encore. « Probabilités », « Les triangles »,
+// « Les solides » sont dans la progression et n'ont aucun exercice — le
 // tableau de classement les montre vides, et c'est précisément l'information
 // utile : elle dit où il manque du contenu.
+//
+// MAIS IL Y A DEUX FAÇONS D'ÊTRE VIDE, ET LA SECONDE EST BEL ET BIEN UNE
+// ERREUR. Onze chapitres étaient à zéro compétence ; pour CINQ d'entre eux les
+// exercices existaient depuis des mois — quatre sur les puissances, un sur les
+// fonctions, deux sur le calcul littéral. Ils tournaient, ils comptaient, et la
+// carte des chapitres annonçait pourtant « notion non couverte », parce que
+// personne n'avait rempli la liste. Un chapitre vide par oubli est
+// indiscernable d'un chapitre vide par manque de contenu : rien dans le code ne
+// les distinguait.
+//
+// D'OÙ `SANS_EXERCICE`, PLUS BAS. Un chapitre sans compétence doit désormais y
+// être NOMMÉ, et un test vérifie que les deux listes coïncident exactement.
+// Le silence n'est plus une option : ou bien le chapitre est câblé, ou bien on
+// déclare qu'on assume son absence.
 //
 // Les motifs `num.mult.table.*` sont résolus par `matchSkills` : une seule
 // ligne couvre les dix tables.
@@ -131,7 +145,9 @@ export const CHAPITRES = [
         id: '5-aires-perimetres', niveau: CINQUIEME, nom: 'Aires et périmètres',
         skills: ['mes.perimetre.rectangle', 'mes.aire.rectangle', 'mes.aire.proportion', 'geo.aires.tangram']
     },
-    { id: '5-calcul-litteral', niveau: CINQUIEME, nom: 'Calcul littéral', skills: [] },
+    // `num.litteral.puissances` est déclarée en 4e seulement : elle reste
+    // dans le chapitre de 4e, et n'est pas remontée ici pour faire nombre.
+    { id: '5-calcul-litteral', niveau: CINQUIEME, nom: 'Calcul littéral', skills: ['num.litteral.reduire'] },
     {
         id: '5-divisions', niveau: CINQUIEME, nom: 'Divisions',
         skills: ['num.div.quotient', 'num.vocabulaire.division', 'num.probleme.division']
@@ -151,7 +167,10 @@ export const CHAPITRES = [
         id: '5-mediatrices', niveau: CINQUIEME, nom: 'Médiatrices',
         skills: ['geo.construire.instruments']
     },
-    { id: '5-parallelogramme', niveau: CINQUIEME, nom: 'Parallélogramme', skills: [] },
+    // L'organigramme des quadrilatères EST ce chapitre : il part du
+    // parallélogramme et descend vers le rectangle, le losange et le carré.
+    { id: '5-parallelogramme', niveau: CINQUIEME, nom: 'Parallélogramme',
+        skills: ['geo.quadrilateres.familles', 'geo.figures.coder'] },
     {
         id: '5-proportionnalite', niveau: CINQUIEME, nom: 'Proportionnalité',
         skills: ['num.proportion.tableau', 'num.probleme.proportion']
@@ -187,7 +206,8 @@ export const CHAPITRES = [
     },
 
     // --- 4ᵉ -----------------------------------------------------------------
-    { id: '4-calcul-litteral', niveau: QUATRIEME, nom: 'Calcul littéral', skills: [] },
+    { id: '4-calcul-litteral', niveau: QUATRIEME, nom: 'Calcul littéral',
+        skills: ['num.litteral.reduire', 'num.litteral.puissances'] },
     { id: '4-equations', niveau: QUATRIEME, nom: 'Équations', skills: ['alg.equation.resoudre'] },
     {
         id: '4-fractions', niveau: QUATRIEME, nom: 'Fractions',
@@ -197,7 +217,8 @@ export const CHAPITRES = [
         id: '4-grandeurs-composees', niveau: QUATRIEME, nom: 'Grandeurs composées',
         skills: ['mes.vitesse']
     },
-    { id: '4-fonctions', niveau: QUATRIEME, nom: 'Les fonctions', skills: [] },
+    { id: '4-fonctions', niveau: QUATRIEME, nom: 'Les fonctions',
+        skills: ['alg.fonction.image', 'alg.fonction.antecedent'] },
     { id: '4-solides', niveau: QUATRIEME, nom: 'Les solides', skills: [] },
     { id: '4-probabilite', niveau: QUATRIEME, nom: 'Probabilité', skills: [] },
     {
@@ -208,7 +229,9 @@ export const CHAPITRES = [
         id: '4-proportionnalite', niveau: QUATRIEME, nom: 'Proportionnalité',
         skills: ['num.proportion.tableau', 'num.probleme.proportion']
     },
-    { id: '4-puissances', niveau: QUATRIEME, nom: 'Puissances', skills: [] },
+    { id: '4-puissances', niveau: QUATRIEME, nom: 'Puissances',
+        skills: ['num.puissances.dix', 'num.puissances.scientifique',
+            'num.puissances.prefixes', 'num.puissances.regles'] },
     {
         id: '4-reperage', niveau: QUATRIEME, nom: 'Repérage',
         skills: ['geo.repere.coord', 'geo.repere.relatifs']
@@ -228,6 +251,32 @@ export const CHAPITRES = [
     },
     { id: '4-triangles-semblables', niveau: QUATRIEME, nom: 'Triangles semblables', skills: [] }
 ];
+
+/**
+ * LES CHAPITRES QU'ON ASSUME DE NE PAS COUVRIR.
+ *
+ * Un chapitre à `skills: []` n'est plus un silence : il doit figurer ici, et un
+ * test refuse toute divergence entre les deux listes — dans les deux sens. Un
+ * chapitre oublié le fera échouer ; un chapitre câblé sans qu'on retire son nom
+ * d'ici aussi.
+ *
+ * POURQUOI CE GARDE-FOU EXISTE. Onze chapitres étaient vides ; cinq l'étaient
+ * PAR OUBLI, avec des exercices qui tournaient depuis des mois — les quatre sur
+ * les puissances, celui sur les fonctions, les deux sur le calcul littéral. La
+ * carte annonçait « notion non couverte » sur des notions couvertes, et rien
+ * dans le code ne permettait de s'en apercevoir : un chapitre vide par oubli
+ * ressemble trait pour trait à un chapitre vide par manque de contenu.
+ *
+ * Chaque ligne dit donc ce qui manque VRAIMENT — c'est la liste de courses.
+ */
+export const SANS_EXERCICE = {
+    '6-triangles': 'Construire et caractériser un triangle — rien pour l\'instant.',
+    '6-probabilites': 'Aucune notion de hasard dans le catalogue, à aucun niveau.',
+    '4-solides': 'Volumes et patrons : `geo.espace.denombrer` s\'arrête à la 5e.',
+    '4-probabilite': 'Même manque qu\'en 6e.',
+    '4-triangles-semblables': 'Proche de Thalès, mais c\'est une décision de progression '
+        + 'et non un câblage : à Rémy de dire si `geo.thales` doit y figurer.'
+};
 
 /** Les niveaux qui ont une progression, dans l'ordre de la scolarité. */
 export const NIVEAUX_AVEC_CHAPITRES = [CM2, SIXIEME, CINQUIEME, QUATRIEME]
