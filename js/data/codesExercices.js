@@ -46,6 +46,7 @@ export const CODES_EXERCICES = {
     'num-relatifs':               'NR',   // Nombres Relatifs
     'num-dictee':                 'DG',   // Dictée de Grands Nombres
     'num-ninja':                  'NN',   // Ninja des Nombres
+    'num-ninja-zeros':           'NZ',   // le Ninja des Zéros
     'num-relatifs-addition':      'AR',   // Additionner des Relatifs, pas à pas
     'num-relatifs-produit':       'MR',   // Multiplier des Relatifs, pas à pas
     'alg-fonctions':              'FN',   // Les Fonctions : Image et Antécédent

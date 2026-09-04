@@ -11,6 +11,48 @@ import { STATUS } from './status.js';
 const D = TAGS.DOMAINE.NUMERIQUE;
 const NUM = TAGS.SOUS_DOMAINE.NUMERATION;
 const DEC = TAGS.SOUS_DOMAINE.DECIMAUX;
+
+/**
+ * LES RÉGLAGES DU NINJA, PARTAGÉS PAR SES DEUX ENTRÉES.
+ *
+ * Le jeu a trois règles pour un seul geste, et deux portes d'entrée au
+ * catalogue — une par rubrique. Recopier quarante lignes de réglages donnerait
+ * deux listes qui divergeraient au premier ajout ; on les fabrique donc, et
+ * seul le mode par DÉFAUT change.
+ */
+const NINJA_REGLAGES = (mode) => ([
+
+            {
+                id: 'mode', type: 'select', label: 'Ce qu\'on coupe', default: mode,
+                aide: 'Trois règles pour le même geste. « Zéros inutiles » travaille l\'écriture décimale ; les deux autres, le signe d\'une somme de relatifs — l\'un en tranchant, l\'autre en tirant.',
+                options: [
+                    { value: 'negatifs', label: 'Les résultats négatifs' },
+                    { value: 'positifs', label: 'Les résultats positifs (au tir)' },
+                    { value: 'zeros', label: 'Les zéros inutiles' }
+                ]
+            },
+            {
+                id: 'vitesse', type: 'select', label: 'Allure', default: 'normale',
+                aide: 'Le temps de vol, pas la difficulté du calcul. « Posée » laisse un tiers de temps en plus pour lire et décider — c\'est souvent ce qu\'il faut la première fois.',
+                options: [
+                    { value: 'tranquille', label: 'Tranquille — tout le temps de réfléchir' },
+                    { value: 'posee', label: 'Posée — un tiers de temps en plus' },
+                    { value: 'normale', label: 'Normale' },
+                    { value: 'rapide', label: 'Rapide — pour ceux qui s\'ennuient' }
+                ]
+            },
+            {
+                id: 'vies', type: 'select', label: 'Vies',
+                options: [{ value: 1, label: '1 vie' }, { value: 3, label: '3 vies' }, { value: 5, label: '5 vies' }],
+                default: 3
+            },
+            {
+                id: 'parVague', type: 'select', label: 'Objets par vague',
+                options: [{ value: 3, label: '3' }, { value: 5, label: '5' }, { value: 7, label: '7' }],
+                default: 5
+            }
+]);
+
 const REL = TAGS.SOUS_DOMAINE.RELATIFS;
 const MENTAL = TAGS.SOUS_DOMAINE.CALCUL_MENTAL;
 const LITT = TAGS.SOUS_DOMAINE.LITTERAL;
@@ -355,7 +397,7 @@ export const numerationExercises = [
         // lisait, et ne disait pas son mode — il servait donc les résultats
         // négatifs, à l'identique du « Ninja des Résultats Négatifs », avec
         // deux curseurs sans effet.
-        id: 'num-ninja', status: STATUS.TEST, title: 'Ninja des Nombres',
+        id: 'num-ninja', title: 'Ninja des Relatifs',
         cree: '2026-08-10',
         // Trois règles pour le même geste : les zéros inutiles d'un côté, le
         // signe d'une somme de relatifs de l'autre. Les deux sont déclarées.
@@ -365,40 +407,43 @@ export const numerationExercises = [
         // ratés de vitesse.
         sansRevision: true,
         params: { vitesse: 'normale', mode: 'negatifs', vies: 3, parVague: 5 },
-        paramSchema: [
-            {
-                id: 'mode', type: 'select', label: 'Ce qu\'on coupe', default: 'negatifs',
-                aide: 'Trois règles pour le même geste. « Zéros inutiles » travaille l\'écriture décimale ; les deux autres, le signe d\'une somme de relatifs — l\'un en tranchant, l\'autre en tirant.',
-                options: [
-                    { value: 'negatifs', label: 'Les résultats négatifs' },
-                    { value: 'positifs', label: 'Les résultats positifs (au tir)' },
-                    { value: 'zeros', label: 'Les zéros inutiles' }
-                ]
-            },
-            {
-                id: 'vitesse', type: 'select', label: 'Allure', default: 'normale',
-                aide: 'Le temps de vol, pas la difficulté du calcul. « Posée » laisse un tiers de temps en plus pour lire et décider — c\'est souvent ce qu\'il faut la première fois.',
-                options: [
-                    { value: 'tranquille', label: 'Tranquille — tout le temps de réfléchir' },
-                    { value: 'posee', label: 'Posée — un tiers de temps en plus' },
-                    { value: 'normale', label: 'Normale' },
-                    { value: 'rapide', label: 'Rapide — pour ceux qui s\'ennuient' }
-                ]
-            },
-            {
-                id: 'vies', type: 'select', label: 'Vies',
-                options: [{ value: 1, label: '1 vie' }, { value: 3, label: '3 vies' }, { value: 5, label: '5 vies' }],
-                default: 3
-            },
-            {
-                id: 'parVague', type: 'select', label: 'Objets par vague',
-                options: [{ value: 3, label: '3' }, { value: 5, label: '5' }, { value: 7, label: '7' }],
-                default: 5
-            }
-        ],
+        paramSchema: NINJA_REGLAGES('negatifs'),
         motsClefs: ['zéros inutiles', 'décimaux', 'relatifs', 'négatifs', 'positifs', 'tir', 'trancher'],
         tags: { chemin: [D, REL], niveaux: [CM2, SIXIEME, CINQUIEME, QUATRIEME] },
         instruction: "Des objets traversent l'écran, chacun porte un nombre ou un calcul, et la règle est écrite en haut du début à la fin. Coupe ceux qu'elle désigne, laisse filer les autres : se tromper coûte une vie, laisser passer aussi — ne rien faire n'est pas une stratégie. Le réglage « Ce qu'on coupe » change la règle : les résultats négatifs, les résultats positifs (on tire au lieu de trancher), ou les zéros inutiles d'une écriture décimale."
+    },
+    // LE MÊME JEU, UNE AUTRE RUBRIQUE — Rémy : « y a plus le jeu où on coupe
+    // les zéros », puis « un exercice peut appartenir à plusieurs catégories
+    // mais avec un paramètre qui lui permet d'être dans une rubrique et un
+    // autre paramètre dans l'ordre ».
+    //
+    // C'EST EXACTEMENT LE CAS DU NINJA, ET C'EST LE SEUL DU CATALOGUE. Audité
+    // sur les 153 exercices : quatre sont à cheval sur deux rubriques, mais
+    // trois le sont EN PERMANENCE — les Arpenteurs multiplient et calculent des
+    // aires à chaque partie — et les chapitres, qui se rangent par compétence,
+    // les placent déjà des deux côtés. Le Ninja est le seul dont un RÉGLAGE
+    // change ce qu'on travaille : « zéros inutiles » relève de l'écriture
+    // décimale, « résultats négatifs » des relatifs.
+    //
+    // Quatre entrées avaient été fusionnées en une, et la fusion corrigeait un
+    // vrai défaut — deux d'entre elles servaient la même chose avec des
+    // curseurs sans effet. Mais elle a coûté la VISIBILITÉ des zéros : le mode
+    // survivait dans un réglage d'un exercice qui porte le nom d'autre chose,
+    // et Rémy l'a cherché en vain. Deux entrées, donc, une par rubrique — même
+    // activité, même écran, un défaut de réglage différent. On garde le menu
+    // complet dans les deux : ce n'est pas une amputation, c'est une porte
+    // d'entrée de plus.
+    {
+        id: 'num-ninja-zeros', title: 'Ninja des Zéros',
+        cree: '2026-09-04',
+        activityId: 'ninja', skills: ['num.decimal.zeros'],
+        sansRevision: true,
+        params: { vitesse: 'normale', mode: 'zeros', vies: 3, parVague: 5 },
+        paramSchema: NINJA_REGLAGES('zeros'),
+        motsClefs: ['zéros inutiles', 'décimaux', 'écriture décimale', 'trancher', 'ninja',
+            'barrer les zéros', 'zéro'],
+        tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME] },
+        instruction: "Des nombres traversent l'écran et tu tranches LES ZÉROS INUTILES, ceux qu'on peut effacer sans changer le nombre. Un zéro est inutile s'il est DEVANT le nombre — 048 s'écrit 48 — ou tout à la FIN après la virgule : 2,90 s'écrit 2,9. Les autres tiennent la place d'un rang et doivent rester : dans 4,08 le zéro dit qu'il n'y a pas de dixième, et dans 250 qu'il n'y a pas d'unité. Attention, laisser filer un zéro inutile coûte une vie, comme trancher un zéro utile : ne rien faire n'est pas une stratégie."
     },
     {
         id: 'num-relatifs-addition',

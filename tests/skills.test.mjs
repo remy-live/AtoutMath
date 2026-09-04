@@ -152,3 +152,46 @@ test('une compétence déclarée par un exercice existe vraiment', async () => {
         .map(e => `${e.id} → ${e.skills.join(', ')}`);
     assert.deepEqual(perdus, []);
 });
+
+test('AUCUNE COMPÉTENCE FANTÔME DANS LE CODE', async () => {
+    // Rémy : « y a plus le jeu où on coupe les zéros ». En cherchant, j'ai
+    // trouvé pire que ce qu'il signalait : le mode « zéros inutiles » du Ninja
+    // rangeait ses résultats sous « num.decimaux.zeros » — au pluriel — quand
+    // la compétence s'écrit « num.decimal.zeros ». Une lettre, et tout ce que
+    // l'élève y réussissait partait dans le vide : ni maîtrise, ni carnet
+    // d'erreurs, ni bilan, puisque la compétence n'existait pas.
+    //
+    // LE CATALOGUE ÉTAIT DÉJÀ PROTÉGÉ — un test vérifie les `skills` déclarés
+    // par les exercices —, mais pas le CODE. Or c'est là que vivent les tables
+    // de modes : celle du Ninja donne une compétence différente par règle, et
+    // personne ne la relisait. On lit donc tous les fichiers.
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const connues = new Set(Object.keys(SKILLS));
+
+    const fichiers = [];
+    (function marche(d) {
+        for (const f of fs.readdirSync(d)) {
+            const p = path.join(d, f);
+            if (fs.statSync(p).isDirectory()) marche(p);
+            else if (p.endsWith('.js')) fichiers.push(p);
+        }
+    }('js'));
+    assert.ok(fichiers.length > 300, 'la marche dans js/ n\'a presque rien lu');
+
+    const fantomes = [];
+    fichiers.forEach(f => {
+        const src = fs.readFileSync(f, 'utf8');
+        const voir = (id) => { if (!connues.has(id)) fantomes.push(`${id} ← ${f}`); };
+        // « skill: 'num.decimal.zeros' », « skillId: … », « concept: … »
+        for (const m of src.matchAll(/(?:skillId|skill|concept)\s*:\s*'([a-z][a-z0-9.]*\.[a-z0-9.]+)'/g)) {
+            voir(m[1]);
+        }
+        // « skills: ['a.b', 'c.d'] »
+        for (const m of src.matchAll(/skills\s*:\s*\[([^\]]*)\]/g)) {
+            for (const x of m[1].matchAll(/'([a-z][a-z0-9.]*\.[a-z0-9.]+)'/g)) voir(x[1]);
+        }
+    });
+    assert.deepEqual([...new Set(fantomes)], [],
+        'ces identifiants de compétence ne sont pas dans js/data/skills.js');
+});

@@ -25,7 +25,12 @@ export const MODES = {
         titre: 'Ninja des zéros inutiles',
         consigne: 'Tranche UNIQUEMENT les zéros inutiles.',
         rappel: 'Un zéro est inutile s\'il est devant le nombre, ou tout à la fin après la virgule. Les autres tiennent la place d\'un rang : ils restent.',
-        skill: 'num.decimaux.zeros',
+        // « decimal », PAS « decimaux » : une lettre, et tout ce que l'élève
+        // réussissait ici partait dans le vide — ni maîtrise, ni carnet
+        // d'erreurs, ni bilan, puisque la compétence n'existait pas. Un test
+        // vérifie désormais qu'aucun identifiant cité dans le code ne manque à
+        // `data/skills.js`.
+        skill: 'num.decimal.zeros',
         geste: 'trancher'
     },
     negatifs: {
