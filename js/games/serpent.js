@@ -76,19 +76,88 @@ export class Serpent extends BaseGame {
                     font-size: clamp(10px, 2.1cqw, 13px); line-height: 1.3;
                     max-width: 620px; margin: 0 auto;
                 }
-                /* LA LIGNE D'ALGÈBRE : c'est elle qui fait l'exercice. */
+                /* LA LIGNE D'ALGÈBRE : c'est elle qui fait l'exercice, et elle
+                   était le plus petit texte de l'écran sur un téléphone —
+                   16 px mesurés, pour la seule chose qu'on veut faire lire. Le
+                   plancher passe à 22 px : c'est le titre de la partie. */
                 .sp-expr {
                     text-align: center; font-weight: 800; flex: 0 0 auto;
-                    font-size: clamp(16px, 4.4cqw, 30px); min-height: 1.25em;
+                    font-size: clamp(22px, 6.4cqw, 32px); min-height: 1.25em;
                     font-variant-numeric: tabular-nums; letter-spacing: .4px;
+                    line-height: 1.15;
                 }
                 .sp-bandeau {
-                    display: flex; gap: 12px; justify-content: center; flex: 0 0 auto;
-                    font-size: clamp(10px, 2cqw, 12px); color: var(--text-muted);
+                    display: flex; gap: 6px 14px; justify-content: center; flex: 0 0 auto;
+                    flex-wrap: wrap; font-size: clamp(11px, 2.4cqw, 13px);
+                    color: var(--text-muted);
                 }
                 .sp-bandeau b { color: var(--text-main); }
-                .sp-scene { flex: 1 1 auto; min-height: 0; display: block; width: 100%; }
-                .sp-svg { width: 100%; height: 100%; display: block; touch-action: none; }
+                /* LE CORPS : terrain et croix. En portrait ils s'empilent, en
+                   téléphone couché ils se mettent côte à côte — sinon la croix
+                   sort de l'écran et le jeu redevient injouable. */
+                .sp-corps {
+                    display: flex; flex-direction: column; align-items: center; gap: 8px;
+                    flex: 1 1 auto; min-height: 0; width: 100%;
+                }
+                .sp-scene {
+                    flex: 1 1 auto; min-height: 0; min-width: 0; width: 100%;
+                    display: flex; align-items: center; justify-content: center;
+                }
+                .sp-svg {
+                    display: block; touch-action: none;
+                    height: 100%; width: auto; max-width: 100%; max-height: 100%;
+                }
+                /* LA CROIX DIRECTIONNELLE, ET ELLE N'EST PAS OPTIONNELLE.
+                   Sur un téléphone il n'y avait RIEN pour jouer : pas de
+                   flèches, et le glissé ne s'annonçait nulle part. Elle prend
+                   au passage la place blanche que le terrain laissait sous lui.
+                   Sur grand écran elle reste, en retrait : le clavier suffit,
+                   mais la souris doit pouvoir jouer aussi. */
+                .sp-croix {
+                    display: grid; grid-template-columns: repeat(3, 52px);
+                    grid-template-rows: repeat(3, 44px); gap: 4px; flex: 0 0 auto;
+                }
+                .sp-fleche {
+                    border: 0; border-radius: 11px; cursor: pointer; font-size: 1.25rem;
+                    background: color-mix(in srgb, var(--text-main) 12%, var(--bg-panel, #fff));
+                    color: var(--text-main); font-weight: 900; font-family: inherit;
+                    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+                }
+                .sp-fleche:active { background: var(--primary); color: #fff; scale: .93; }
+                @container (min-width: 760px) { .sp-croix { opacity: .5; } }
+
+                /* TÉLÉPHONE COUCHÉ : LA CONTRAINTE EST LA HAUTEUR, PAS LA
+                   LARGEUR — et c'est ce que la première version avait manqué.
+                   Elle masquait la consigne sous 400 px de LARGE ; en paysage
+                   l'écran est large, la consigne s'affichait donc sur deux
+                   lignes et mangeait la hauteur qui restait au terrain, qui
+                   tombait à 210 px de côté. Mesuré, et injouable.
+                   On bascule ici en grille : le terrain prend toute la hauteur
+                   d'un côté, l'expression, le bandeau, la croix et la note se
+                   rangent en colonne de l'autre. « display: contents » sur le
+                   corps laisse ses deux enfants rejoindre cette grille. */
+                @media (max-height: 560px) {
+                    .sp-consigne { display: none; }
+                    .sp-wrap {
+                        display: grid; gap: 4px 12px; align-items: center;
+                        grid-template-columns: minmax(0, 1fr) auto;
+                        grid-template-rows: auto auto 1fr auto;
+                        grid-template-areas:
+                            "scene expr"
+                            "scene bandeau"
+                            "scene croix"
+                            "scene note";
+                    }
+                    .sp-corps { display: contents; }
+                    .sp-scene { grid-area: scene; height: 100%; }
+                    .sp-expr { grid-area: expr; font-size: clamp(18px, 3.2cqw, 28px); }
+                    .sp-bandeau { grid-area: bandeau; }
+                    .sp-croix {
+                        grid-area: croix; justify-self: center; align-self: center;
+                        grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 38px);
+                    }
+                    .sp-note { grid-area: note; min-height: 1.3em; font-size: 11px; }
+                }
                 .sp-fond { fill: var(--card-bg, #fff); stroke: var(--border-color, #d7dae3); stroke-width: .04; }
                 .sp-quadrillage { stroke: var(--border-color, #d7dae3); stroke-width: .015; opacity: .55; }
                 .sp-anneau { stroke: #fff; stroke-width: .05; }
@@ -111,7 +180,20 @@ export class Serpent extends BaseGame {
                 <p class="sp-consigne">${CONSIGNE}</p>
                 <div class="sp-expr" data-expr></div>
                 <div class="sp-bandeau" data-bandeau></div>
-                <div class="sp-scene" data-scene></div>
+                <div class="sp-corps">
+                    <div class="sp-scene" data-scene></div>
+                    <div class="sp-croix" role="group" aria-label="Diriger le serpent">
+                        <span></span>
+                        <button type="button" class="sp-fleche" data-dir="haut" aria-label="Haut">▲</button>
+                        <span></span>
+                        <button type="button" class="sp-fleche" data-dir="gauche" aria-label="Gauche">◀</button>
+                        <span></span>
+                        <button type="button" class="sp-fleche" data-dir="droite" aria-label="Droite">▶</button>
+                        <span></span>
+                        <button type="button" class="sp-fleche" data-dir="bas" aria-label="Bas">▼</button>
+                        <span></span>
+                    </div>
+                </div>
                 <div class="sp-note" data-note></div>
             </div>`;
         this.exprEl = this.container.querySelector('[data-expr]');
@@ -120,7 +202,7 @@ export class Serpent extends BaseGame {
         this.noteEl = this.container.querySelector('[data-note]');
         this.brancher();
         this.dessiner();
-        this.note('Appuie sur une flèche — ou glisse le doigt — pour lancer le serpent.');
+        this.note('Touche une flèche pour lancer le serpent.');
     }
 
     brancher() {
@@ -133,6 +215,18 @@ export class Serpent extends BaseGame {
             this.demarrer();
         };
         window.addEventListener('keydown', this.surTouche, { passive: false });
+
+        // LA CROIX. `pointerdown` et non `click` : sur un serpent qui avance
+        // toutes les 340 ms, attendre le relâchement du doigt fait manquer le
+        // pas — le virage part un tour trop tard, et l'on meurt en croyant
+        // avoir tourné.
+        this.container.querySelectorAll('[data-dir]').forEach(b => {
+            b.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                this.sensVoulu = b.dataset.dir;
+                this.demarrer();
+            });
+        });
 
         // LE GLISSÉ : on lit la direction dominante, comme sur le Peintre.
         let dep = null;
