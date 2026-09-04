@@ -11,7 +11,7 @@ import { makeRng } from '../js/core/ids.js';
 import {
     NIVEAUX, CONSIGNE, SENS, OPPOSE,
     terme, semblables, texteTerme, expression, reduire,
-    nouvellePartie, avancer, semer, longueurIdeale
+    nouvellePartie, avancer, semer, longueurIdeale, formePourEcran
 } from '../js/core/serpent.js';
 
 /** Ce que vaut une expression pour une valeur de x — le juge de tous les tests. */
@@ -268,4 +268,48 @@ test('LA CONSIGNE NE DONNE PAS LA RÈGLE DE RÉDUCTION', () => {
     assert.doesNotMatch(CONSIGNE, /même exposant|même puissance|coefficient/i);
     assert.match(CONSIGNE, /fusionnent/i);
     assert.ok(Object.keys(SENS).length === 4);
+});
+
+test('LE TERRAIN PREND LA FORME DE L\'ÉCRAN, à nombre de cases constant', () => {
+    // Rémy : « horrible au portable ». Un terrain carré sur un téléphone
+    // portrait laissait un tiers de la hauteur en blanc — 325 px de terrain
+    // dans 470 px de place. Le NOMBRE de cases fait la difficulté et ne bouge
+    // pas ; les côtés, eux, suivent l'écran.
+    const niv = NIVEAUX[0];
+    const cases = niv.large * niv.haut;
+    [[330 / 470, 'téléphone debout'], [740 / 240, 'téléphone couché'],
+     [1, 'écran carré'], [1340 / 678, 'ordinateur']].forEach(([r, quoi]) => {
+        const f = formePourEcran(niv, r);
+        assert.ok(f.large >= 8 && f.haut >= 8, `${quoi} : un côté sous huit cases`);
+        const ecart = Math.abs(f.large * f.haut - cases) / cases;
+        assert.ok(ecart < 0.12, `${quoi} : ${f.large}×${f.haut}, trop loin de ${cases} cases`);
+        // La forme obtenue doit ressembler à celle demandée.
+        const obtenu = f.large / f.haut;
+        assert.ok(Math.abs(Math.log(obtenu / r)) < 0.5,
+            `${quoi} : demandé ${r.toFixed(2)}, obtenu ${obtenu.toFixed(2)}`);
+    });
+});
+
+test('sans écran connu, le terrain garde la forme du niveau', () => {
+    NIVEAUX.forEach(niv => {
+        assert.deepEqual(formePourEcran(niv, null), { large: niv.large, haut: niv.haut });
+        assert.deepEqual(formePourEcran(niv, 0), { large: niv.large, haut: niv.haut });
+    });
+});
+
+test('un terrain reformé reste jouable', () => {
+    // Le serpent démarre au centre et l'on réserve trois cases devant lui : sur
+    // un terrain devenu étroit, il faut que ça tienne encore.
+    [330 / 470, 740 / 240, 1].forEach(r => {
+        for (let i = 0; i < NIVEAUX.length; i++) {
+            const p = nouvellePartie(makeRng(`forme${i}`), i, r);
+            assert.ok(p.niv.large >= 8 && p.niv.haut >= 8);
+            assert.equal(p.graines.length, NIVEAUX[i].termes, 'il manque des termes');
+            p.graines.forEach(g => assert.ok(
+                g.x >= 0 && g.x < p.niv.large && g.y >= 0 && g.y < p.niv.haut, 'hors terrain'));
+            const [x0, y0] = p.cases[0];
+            [0, 1, 2, 3].forEach(d => assert.ok(
+                !p.graines.some(g => g.x === x0 + d && g.y === y0), 'un terme sur le chemin'));
+        }
+    });
 });

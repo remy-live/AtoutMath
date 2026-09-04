@@ -56,8 +56,16 @@ export class Serpent extends BaseGame {
         this.charger();
     }
 
+    /** Les proportions de la place où le terrain va se dessiner. */
+    rapportDeLaScene() {
+        if (!this.sceneEl) return null;
+        const b = this.sceneEl.getBoundingClientRect();
+        if (!b.width || !b.height) return null;
+        return b.width / b.height;
+    }
+
     charger() {
-        this.etat = nouvellePartie(this.rng, this.rang);
+        this.etat = nouvellePartie(this.rng, this.rang, this.rapportDeLaScene());
         this.ideal = longueurIdeale(this.etat.graines);
         this.enAttente = true;
         this.sensVoulu = null;
@@ -103,28 +111,21 @@ export class Serpent extends BaseGame {
                     flex: 1 1 auto; min-height: 0; min-width: 0; width: 100%;
                     display: flex; align-items: center; justify-content: center;
                 }
-                .sp-svg {
-                    display: block; touch-action: none;
-                    height: 100%; width: auto; max-width: 100%; max-height: 100%;
+                /* Le terrain épouse maintenant les proportions de la scène
+                   (voir « formePourEcran »), donc il peut la remplir sans se
+                   déformer : la grille n'est plus carrée sur un écran qui ne
+                   l'est pas. */
+                .sp-svg { display: block; touch-action: none; width: 100%; height: 100%; }
+                /* LE DOIGT VISE, ET ON LE MONTRE. Une petite cible suit le
+                   doigt sur le terrain : sans elle, rien ne dirait que
+                   l'écran écoute — c'était le défaut de la première version,
+                   où le glissé marchait sans s'annoncer. La croix
+                   directionnelle a disparu avec cette version ; le terrain,
+                   lui, récupère toute sa place. */
+                .sp-cible {
+                    fill: none; stroke: var(--primary, #4a6fd4); stroke-width: .06;
+                    opacity: .55; pointer-events: none;
                 }
-                /* LA CROIX DIRECTIONNELLE, ET ELLE N'EST PAS OPTIONNELLE.
-                   Sur un téléphone il n'y avait RIEN pour jouer : pas de
-                   flèches, et le glissé ne s'annonçait nulle part. Elle prend
-                   au passage la place blanche que le terrain laissait sous lui.
-                   Sur grand écran elle reste, en retrait : le clavier suffit,
-                   mais la souris doit pouvoir jouer aussi. */
-                .sp-croix {
-                    display: grid; grid-template-columns: repeat(3, 52px);
-                    grid-template-rows: repeat(3, 44px); gap: 4px; flex: 0 0 auto;
-                }
-                .sp-fleche {
-                    border: 0; border-radius: 11px; cursor: pointer; font-size: 1.25rem;
-                    background: color-mix(in srgb, var(--text-main) 12%, var(--bg-panel, #fff));
-                    color: var(--text-main); font-weight: 900; font-family: inherit;
-                    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
-                }
-                .sp-fleche:active { background: var(--primary); color: #fff; scale: .93; }
-                @container (min-width: 760px) { .sp-croix { opacity: .5; } }
 
                 /* TÉLÉPHONE COUCHÉ : LA CONTRAINTE EST LA HAUTEUR, PAS LA
                    LARGEUR — et c'est ce que la première version avait manqué.
@@ -140,22 +141,21 @@ export class Serpent extends BaseGame {
                     .sp-consigne { display: none; }
                     .sp-wrap {
                         display: grid; gap: 4px 12px; align-items: center;
-                        grid-template-columns: minmax(0, 1fr) auto;
-                        grid-template-rows: auto auto 1fr auto;
+                        /* LA COLONNE DE DROITE SE TIENT. En « auto » elle
+                           prenait la largeur de la plus longue ligne du
+                           bandeau, et le terrain tombait à 172 px de large —
+                           mesuré, et pire que ce qu'on venait de corriger. */
+                        grid-template-columns: minmax(0, 1fr) clamp(120px, 30%, 260px);
+                        grid-template-rows: auto auto 1fr;
                         grid-template-areas:
                             "scene expr"
                             "scene bandeau"
-                            "scene croix"
                             "scene note";
                     }
                     .sp-corps { display: contents; }
                     .sp-scene { grid-area: scene; height: 100%; }
                     .sp-expr { grid-area: expr; font-size: clamp(18px, 3.2cqw, 28px); }
                     .sp-bandeau { grid-area: bandeau; }
-                    .sp-croix {
-                        grid-area: croix; justify-self: center; align-self: center;
-                        grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 38px);
-                    }
                     .sp-note { grid-area: note; min-height: 1.3em; font-size: 11px; }
                 }
                 .sp-fond { fill: var(--card-bg, #fff); stroke: var(--border-color, #d7dae3); stroke-width: .04; }
@@ -182,17 +182,6 @@ export class Serpent extends BaseGame {
                 <div class="sp-bandeau" data-bandeau></div>
                 <div class="sp-corps">
                     <div class="sp-scene" data-scene></div>
-                    <div class="sp-croix" role="group" aria-label="Diriger le serpent">
-                        <span></span>
-                        <button type="button" class="sp-fleche" data-dir="haut" aria-label="Haut">▲</button>
-                        <span></span>
-                        <button type="button" class="sp-fleche" data-dir="gauche" aria-label="Gauche">◀</button>
-                        <span></span>
-                        <button type="button" class="sp-fleche" data-dir="droite" aria-label="Droite">▶</button>
-                        <span></span>
-                        <button type="button" class="sp-fleche" data-dir="bas" aria-label="Bas">▼</button>
-                        <span></span>
-                    </div>
                 </div>
                 <div class="sp-note" data-note></div>
             </div>`;
@@ -201,8 +190,12 @@ export class Serpent extends BaseGame {
         this.sceneEl = this.container.querySelector('[data-scene]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.brancher();
+        // LE CONSTRUCTEUR NE CONNAÎT PAS ENCORE LA TAILLE DE LA SCÈNE : le
+        // premier terrain est donc carré. Maintenant qu'il y a un écran, on le
+        // refait à la bonne forme — avant que le joueur ait vu quoi que ce soit.
+        this.charger();
         this.dessiner();
-        this.note('Touche une flèche pour lancer le serpent.');
+        this.note('Pose ton doigt sur le terrain, là où tu veux aller — le serpent y va. Au clavier : les flèches.');
     }
 
     brancher() {
@@ -216,64 +209,147 @@ export class Serpent extends BaseGame {
         };
         window.addEventListener('keydown', this.surTouche, { passive: false });
 
-        // LA CROIX. `pointerdown` et non `click` : sur un serpent qui avance
-        // toutes les 340 ms, attendre le relâchement du doigt fait manquer le
-        // pas — le virage part un tour trop tard, et l'on meurt en croyant
-        // avoir tourné.
-        this.container.querySelectorAll('[data-dir]').forEach(b => {
-            b.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                this.sensVoulu = b.dataset.dir;
-                this.demarrer();
-            });
-        });
-
-        // LE GLISSÉ : on lit la direction dominante, comme sur le Peintre.
-        let dep = null;
-        this.sceneEl.addEventListener('pointerdown', (e) => { dep = [e.clientX, e.clientY]; });
-        this.sceneEl.addEventListener('pointerup', (e) => {
-            if (!dep) return;
-            const dx = e.clientX - dep[0], dy = e.clientY - dep[1];
-            dep = null;
-            if (Math.abs(dx) < 14 && Math.abs(dy) < 14) return;
+        // LE DOIGT EST LE GOUVERNAIL, ET NON QUATRE BOUTONS.
+        //
+        // Rémy : « au tactile ça suit le doigt, je pense que c'est mieux ». Il
+        // a raison, et la croix directionnelle disparaît avec cette version.
+        // Une croix demande de viser un bouton pendant qu'on regarde le
+        // serpent — deux endroits pour les yeux, sur un écran où il n'y a
+        // déjà pas de place. Ici on pose le doigt SUR LE TERRAIN, à l'endroit
+        // où l'on veut aller, et le serpent s'y dirige ; on le fait glisser et
+        // il suit. Le terrain récupère au passage la place que la croix
+        // prenait, ce qui était mon souci en paysage.
+        //
+        // ON LIT L'AXE DOMINANT, pas l'angle exact : un serpent ne va que dans
+        // quatre directions, et lui en proposer une cinquième ne ferait
+        // qu'inventer un virage que le joueur n'a pas demandé.
+        const viser = (e) => {
+            const svg = this.sceneEl.querySelector('svg');
+            if (!svg) return;
+            const b = svg.getBoundingClientRect();
+            const niv = this.etat.niv;
+            const cote = b.width / (niv.large + .2);
+            const doigtX = (e.clientX - b.left) / cote - .1;
+            const doigtY = (e.clientY - b.top) / cote - .1;
+            const [hx, hy] = this.tetePeinte();
+            const dx = doigtX - (hx + .5), dy = doigtY - (hy + .5);
+            // UNE ZONE MORTE AUTOUR DE LA TÊTE. Sans elle, un doigt posé juste
+            // sur le serpent fait osciller la consigne à chaque frémissement.
+            if (Math.abs(dx) < .6 && Math.abs(dy) < .6) return;
             this.sensVoulu = Math.abs(dx) > Math.abs(dy)
                 ? (dx > 0 ? 'droite' : 'gauche') : (dy > 0 ? 'bas' : 'haut');
+            this.cible = [doigtX, doigtY];
             this.demarrer();
+        };
+        this.sceneEl.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            this.sceneEl.setPointerCapture?.(e.pointerId);
+            this.mene = true;
+            viser(e);
         });
+        this.sceneEl.addEventListener('pointermove', (e) => { if (this.mene) viser(e); });
+        const lacher = () => { this.mene = false; this.cible = null; };
+        this.sceneEl.addEventListener('pointerup', lacher);
+        this.sceneEl.addEventListener('pointercancel', lacher);
     }
 
     demarrer() {
         if (!this.enAttente || this.fini) return;
         this.enAttente = false;
         this.note('');
+        this.precedent = this.etat.cases.map(c => [...c]);
+        this.tDernierPas = performance.now();
         this.boucle();
     }
 
+    /**
+     * LA BOUCLE EST DÉSORMAIS CELLE DE L'ÉCRAN, PAS CELLE DU JEU.
+     *
+     * Rémy : « je vois bien que le serpent c'est carreau par carreau mais ça ne
+     * fait pas fluide du tout ». C'était exact : on redessinait tout à chaque
+     * pas logique, donc le serpent SAUTAIT d'une case à l'autre toutes les
+     * 230 ms. Un vrai snake glisse.
+     *
+     * La règle du jeu, elle, reste discrète — et c'est volontaire : c'est
+     * `core/serpent.js`, testé sans navigateur, et un serpent qui avancerait
+     * en continu rendrait « deux anneaux voisins » impossible à définir. On
+     * sépare donc les deux horloges. Le NOYAU avance case par case ; l'ÉCRAN
+     * interpole entre la position d'avant et celle d'après, soixante fois par
+     * seconde. Rien de la logique ne change, et tous ses tests tiennent.
+     */
     boucle() {
-        clearTimeout(this.minuteur);
+        cancelAnimationFrame(this.image);
         if (this.fini || this.enAttente || !this.isRunning) return;
-        this.minuteur = setTimeout(() => {
-            const r = avancer(this.etat, this.sensVoulu);
-            this.sensVoulu = null;
-            this.etat = r.etat;
-            if (r.dit) this.note(r.dit, r.quoi === 'mur' || r.quoi === 'mordu' ? 'ko'
-                : r.quoi === 'annule' ? 'bravo' : r.quoi === 'fusion' ? 'ok' : '');
-            this.dessiner();
-            if (this.etat.fini) return this.terminer(this.etat.fini);
-            this.boucle();
-        }, this.etat.niv.vitesse);
+        const trame = (maintenant) => {
+            if (this.fini || this.enAttente || !this.isRunning) return;
+            const duree = this.etat.niv.vitesse;
+            let avancement = (maintenant - this.tDernierPas) / duree;
+            if (avancement >= 1) {
+                this.precedent = this.etat.cases.map(c => [...c]);
+                const r = avancer(this.etat, this.sensVoulu);
+                this.sensVoulu = null;
+                this.etat = r.etat;
+                this.tDernierPas = maintenant;
+                avancement = 0;
+                if (r.dit) {
+                    this.note(r.dit, r.quoi === 'mur' || r.quoi === 'mordu' ? 'ko'
+                        : r.quoi === 'annule' ? 'bravo' : r.quoi === 'fusion' ? 'ok' : '');
+                }
+                this.dessiner();
+                if (this.etat.fini) return this.terminer(this.etat.fini);
+            }
+            this.placer(avancement);
+            this.image = requestAnimationFrame(trame);
+        };
+        this.image = requestAnimationFrame(trame);
     }
 
     destroy() {
-        clearTimeout(this.minuteur);
+        cancelAnimationFrame(this.image);
         if (this.surTouche) window.removeEventListener('keydown', this.surTouche);
         super.destroy();
+    }
+
+    /** Où la tête est PEINTE en ce moment — le doigt vise le dessin, pas la grille. */
+    tetePeinte() {
+        const a = (this.precedent && this.precedent[0]) || this.etat.cases[0];
+        const b = this.etat.cases[0];
+        const t = this.dernierAvancement || 0;
+        return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    }
+
+    /**
+     * PLACER LES ANNEAUX ENTRE DEUX CASES.
+     *
+     * Un anneau qui vient d'apparaître — parce qu'on a mangé — n'a pas de
+     * position précédente : on le fait SORTIR DE LA QUEUE, ce qui est
+     * exactement ce qu'on voit quand un vrai serpent s'allonge. Sans cela il
+     * surgirait d'un coup au milieu du terrain.
+     */
+    placer(t) {
+        this.dernierAvancement = t;
+        if (this.cibleEl) {
+            if (this.mene && this.cible) {
+                this.cibleEl.setAttribute('cx', this.cible[0].toFixed(2));
+                this.cibleEl.setAttribute('cy', this.cible[1].toFixed(2));
+                this.cibleEl.style.display = '';
+            } else this.cibleEl.style.display = 'none';
+        }
+        if (!this.anneauxEl) return;
+        const av = this.precedent || this.etat.cases;
+        this.anneauxEl.forEach((g, i) => {
+            const b = this.etat.cases[i];
+            if (!b) return;
+            const a = av[i] || av[av.length - 1] || b;
+            const x = a[0] + (b[0] - a[0]) * t;
+            const y = a[1] + (b[1] - a[1]) * t;
+            g.setAttribute('transform', `translate(${x.toFixed(3)} ${y.toFixed(3)})`);
+        });
     }
 
     dessiner() {
         const e = this.etat, niv = e.niv;
         const teinte = (t, claire) => (claire ? CLAIRES : COULEURS)[t.e] || COULEURS[0];
-        const taille = 1;
 
         let out = `<rect class="sp-fond" x="0" y="0" width="${niv.large}" height="${niv.haut}" rx=".2"/>`;
         for (let x = 1; x < niv.large; x++) {
@@ -291,19 +367,27 @@ export class Serpent extends BaseGame {
                     fill="${teinte(g.t)}">${texteTerme(g.t)}</text>`;
         });
 
-        // Le serpent : la tête cerclée, chaque anneau à la couleur de sa famille.
-        e.cases.forEach(([x, y], i) => {
+        // LE SERPENT : un groupe par anneau, POSÉ À L'ORIGINE et déplacé par
+        // une transformation. C'est ce qui permet à `placer` de le faire
+        // glisser sans reconstruire le dessin soixante fois par seconde.
+        e.cases.forEach((_, i) => {
             const t = e.corps[i] || e.corps[e.corps.length - 1] || { c: 0, e: 0 };
             const tete = i === 0 ? ' sp-tete' : '';
-            out += `<rect class="sp-anneau${tete}" x="${x + .04}" y="${y + .04}"
-                width="${taille - .08}" height="${taille - .08}" rx=".18"
-                fill="${teinte(t)}"/>
-                <text class="sp-txt" x="${x + .5}" y="${y + .52}" font-size=".3"
-                    fill="#fff">${texteTerme(t)}</text>`;
+            out += `<g class="sp-groupe" data-anneau="${i}">
+                <rect class="sp-anneau${tete}" x=".04" y=".04" width=".92" height=".92" rx=".18"
+                    fill="${teinte(t)}"/>
+                <text class="sp-txt" x=".5" y=".52" font-size=".3" fill="#fff">${texteTerme(t)}</text>
+                </g>`;
         });
+
+        // LA CIBLE DU DOIGT, dessinée en dernier pour rester au-dessus.
+        out += `<circle class="sp-cible" data-cible cx="0" cy="0" r=".42" style="display:none"/>`;
 
         this.sceneEl.innerHTML = `<svg class="sp-svg" viewBox="-.1 -.1 ${niv.large + .2} ${niv.haut + .2}"
             preserveAspectRatio="xMidYMid meet">${out}</svg>`;
+        this.anneauxEl = [...this.sceneEl.querySelectorAll('[data-anneau]')];
+        this.cibleEl = this.sceneEl.querySelector('[data-cible]');
+        this.placer(this.dernierAvancement || 0);
 
         this.exprEl.textContent = expression(e.corps);
         const long = e.corps.length;
@@ -314,7 +398,7 @@ export class Serpent extends BaseGame {
     }
 
     terminer(comment) {
-        clearTimeout(this.minuteur);
+        cancelAnimationFrame(this.image);
         if (comment === 'gagne') return this.gagne();
         // Perdre coûte une vie et rejoue LE MÊME niveau : recommencer ailleurs
         // punirait sans laisser retenter le rangement qu'on vient de rater.
@@ -407,7 +491,7 @@ export class Serpent extends BaseGame {
      */
     sauterEtape() {
         if (this.fini) return false;
-        clearTimeout(this.minuteur);
+        cancelAnimationFrame(this.image);
         if (this.etat.graines.length) {
             this.etat = { ...this.etat, graines: [] };
             this.enAttente = true;
@@ -426,7 +510,7 @@ export class Serpent extends BaseGame {
     /** Pendant du saut : on resème le terrain, puis on recule d'un niveau. */
     revenirEtape() {
         if (this.isDemo || this.fini) return false;
-        clearTimeout(this.minuteur);
+        cancelAnimationFrame(this.image);
         if (this.etat.mange || !this.etat.graines.length) {
             this.charger();
             this.note('');

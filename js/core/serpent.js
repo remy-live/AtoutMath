@@ -117,13 +117,18 @@ const cle = (x, y) => `${x},${y}`;
  * les coefficients négatifs en dernier, parce qu'ils ouvrent les annulations,
  * qui sont le plus joli coup du jeu.
  */
+// `vitesse` est la DURÉE d'un pas en millisecondes, et l'écran l'anime
+// désormais d'un bout à l'autre au lieu de sauter d'une case à l'autre. Le
+// glissement change la perception : 340 ms passaient pour vives quand on
+// sautait, elles traînent quand on glisse. Les six paliers sont resserrés
+// d'autant.
 export const NIVEAUX = [
-    { titre: 'Des x et des nombres', large: 11, haut: 11, exposants: [0, 1], negatifs: false, termes: 8, vitesse: 340 },
-    { titre: 'Plus de termes', large: 12, haut: 12, exposants: [0, 1], negatifs: false, termes: 11, vitesse: 320 },
-    { titre: 'Les carrés arrivent', large: 12, haut: 12, exposants: [0, 1, 2], negatifs: false, termes: 12, vitesse: 305 },
-    { titre: 'Carrés et cubes', large: 13, haut: 13, exposants: [0, 1, 2, 3], negatifs: false, termes: 13, vitesse: 290 },
-    { titre: 'Les négatifs', large: 13, haut: 13, exposants: [0, 1, 2], negatifs: true, termes: 14, vitesse: 275 },
-    { titre: 'Tout à la fois', large: 14, haut: 14, exposants: [0, 1, 2, 3], negatifs: true, termes: 16, vitesse: 260 }
+    { titre: 'Des x et des nombres', large: 11, haut: 11, exposants: [0, 1], negatifs: false, termes: 8, vitesse: 240 },
+    { titre: 'Plus de termes', large: 12, haut: 12, exposants: [0, 1], negatifs: false, termes: 11, vitesse: 225 },
+    { titre: 'Les carrés arrivent', large: 12, haut: 12, exposants: [0, 1, 2], negatifs: false, termes: 12, vitesse: 215 },
+    { titre: 'Carrés et cubes', large: 13, haut: 13, exposants: [0, 1, 2, 3], negatifs: false, termes: 13, vitesse: 205 },
+    { titre: 'Les négatifs', large: 13, haut: 13, exposants: [0, 1, 2], negatifs: true, termes: 14, vitesse: 195 },
+    { titre: 'Tout à la fois', large: 14, haut: 14, exposants: [0, 1, 2, 3], negatifs: true, termes: 16, vitesse: 185 }
 ];
 
 /**
@@ -156,9 +161,37 @@ export function semer(rng, niv, occupe = []) {
     });
 }
 
-/** L'état de départ d'un niveau. */
-export function nouvellePartie(rng, rang) {
-    const niv = NIVEAUX[Math.max(0, Math.min(NIVEAUX.length - 1, rang | 0))];
+/**
+ * LE TERRAIN PREND LA FORME DE L'ÉCRAN, à nombre de cases constant.
+ *
+ * Les niveaux décrivent des terrains carrés, et un carré sur un téléphone
+ * portrait laisse un tiers de la hauteur en blanc — mesuré : 325 px de terrain
+ * dans 470 px de place. On garde donc le NOMBRE de cases du niveau, qui est ce
+ * qui fait sa difficulté, et l'on redistribue les côtés selon les proportions
+ * de la place disponible. Un téléphone joue alors sur 9 × 13 là où un écran
+ * large joue sur 11 × 11 : même terrain, même compte, aucune place perdue.
+ *
+ * Le côté minimal est de huit cases. En deçà, un serpent de quatre anneaux ne
+ * peut plus faire demi-tour, et le terrain devient un couloir.
+ */
+export function formePourEcran(niv, rapport) {
+    const cases = niv.large * niv.haut;
+    if (!rapport || !isFinite(rapport) || rapport <= 0) return { large: niv.large, haut: niv.haut };
+    let large = Math.round(Math.sqrt(cases * rapport));
+    large = Math.max(8, Math.min(cases / 8 | 0, large));
+    const haut = Math.max(8, Math.round(cases / large));
+    return { large, haut };
+}
+
+/**
+ * L'état de départ d'un niveau.
+ *
+ * `rapport` est la largeur divisée par la hauteur de la place disponible ;
+ * omis, le terrain garde la forme carrée déclarée par le niveau.
+ */
+export function nouvellePartie(rng, rang, rapport) {
+    const base = NIVEAUX[Math.max(0, Math.min(NIVEAUX.length - 1, rang | 0))];
+    const niv = { ...base, ...formePourEcran(base, rapport) };
     const x0 = Math.floor(niv.large / 2), y0 = Math.floor(niv.haut / 2);
     // On réserve la case du serpent et les trois devant lui.
     const reserve = [[x0, y0], [x0 + 1, y0], [x0 + 2, y0], [x0 + 3, y0]];
