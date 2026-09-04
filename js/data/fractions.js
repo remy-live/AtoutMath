@@ -1,5 +1,4 @@
 import { TAGS } from './tags.js';
-import { STATUS } from './status.js';
 
 // Domaine entièrement nouveau, ajouté sans écrire un seul moteur de jeu :
 // trois générateurs et trois lignes de catalogue. C'est la démonstration
@@ -50,7 +49,7 @@ export const fractionsExercises = [
         // démontrer. Puis les bandes s'en vont, et il ne reste que les deux
         // flèches de multiplication, en haut et en bas, portant le même
         // facteur — la notation du cahier.
-        id: 'frac-egalite', status: STATUS.TEST, title: 'L\'Égalité à Compléter',
+        id: 'frac-egalite', title: 'L\'Égalité à Compléter',
         cree: '2026-08-20',
         consignePapier: 'Complète l\'égalité entre les deux fractions.',
         colonnesPapier: 4,
@@ -100,7 +99,7 @@ export const fractionsExercises = [
         // des 3 se rencontrent en 12, et le premier rendez-vous est le
         // dénominateur commun. C'est aussi pour elle que les dénominateurs
         // restent entre 2 et 10.
-        id: 'frac-somme-posee', status: STATUS.TEST, title: 'Poser une Addition de Fractions',
+        id: 'frac-somme-posee', title: 'Poser une Addition de Fractions',
         cree: '2026-08-20',
         consignePapier: 'Mets au même dénominateur, puis calcule.',
         colonnesPapier: 3,
@@ -134,7 +133,7 @@ export const fractionsExercises = [
         // Le calcul se pose ensuite exactement comme dans l'exercice d'à côté :
         // c'est la même compétence, on ne la réapprend pas parce qu'elle arrive
         // dans une histoire.
-        id: 'frac-probleme', status: STATUS.TEST, title: 'Histoires de Fractions',
+        id: 'frac-probleme', title: 'Histoires de Fractions',
         cree: '2026-08-20',
         consignePapier: 'Lis l\'énoncé, pose le calcul et réponds par une phrase.',
         colonnesPapier: 2,
@@ -174,7 +173,7 @@ export const fractionsExercises = [
             + 'ou supprime la première phase.'
     },
     {
-        id: 'frac-samurai', status: STATUS.TEST, title: 'Le Samouraï des Fractions',
+        id: 'frac-samurai', title: 'Le Samouraï des Fractions',
         cree: '2026-08-04',
         revisions: [{
             date: '2026-08-20',

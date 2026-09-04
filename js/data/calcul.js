@@ -1,6 +1,5 @@
 import { TAGS } from './tags.js';
 import { REGLAGE_SAISIE } from '../ui/champsGrille.js';
-import { STATUS } from './status.js';
 import { NIVEAUX as NIVEAUX_CHANTIER } from '../core/chantier.js';
 // Les dominos empruntent leurs questions aux autres notions : la liste des
 // sources est tenue là où elle est vérifiée, pas recopiée ici.
@@ -360,7 +359,7 @@ export const calculExercises = [
         // c'est justement ce qu'on veut faire sentir : ce qui change entre + et
         // −, ce n'est pas la méthode, c'est l'endroit où se note la retenue.
         // Les deux règles sont dites dans la consigne, l'une après l'autre.
-        id: 'calc-poser', status: STATUS.TEST, title: 'Poser une opération',
+        id: 'calc-poser', title: 'Poser une opération',
         cree: '2026-08-14',
         revisions: [
             {
@@ -428,7 +427,7 @@ export const calculExercises = [
         // retenue qui ne se comporte pas comme celle de l'addition : elle
         // s'ajoute APRÈS le produit, jamais au chiffre avant de multiplier.
         // C'est l'erreur qu'on ne voit pas si l'on ne fait écrire que le total.
-        id: 'calc-poser-multiplication', status: STATUS.TEST, title: 'Poser une multiplication',
+        id: 'calc-poser-multiplication', title: 'Poser une multiplication',
         cree: '2026-08-14',
         revisions: [
             {
@@ -502,7 +501,7 @@ export const calculExercises = [
         // Le rang du chiffre abaissé donne le rang du chiffre du quotient —
         // d'où la virgule du quotient, qu'on récite d'ordinaire sans la
         // comprendre.
-        id: 'calc-poser-division', status: STATUS.TEST, title: 'Poser une division',
+        id: 'calc-poser-division', title: 'Poser une division',
         cree: '2026-08-14',
         activityId: 'poser-division',
         // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
@@ -693,7 +692,7 @@ export const calculExercises = [
         instruction: "Remplis la grille avec des 0 et des 1 : autant de chaque sur chaque ligne et chaque colonne, jamais trois identiques à la suite."
     },
     {
-        id: 'calc-nova', status: STATUS.TEST, title: 'Nova',
+        id: 'calc-nova', title: 'Nova',
         cree: '2026-08-06',
         activityId: 'nova', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], lives: 3, entrePortes: 18 },
@@ -832,7 +831,7 @@ export const calculExercises = [
         instruction: "Trouve le code secret ! À chaque essai, le coffre répond « c'est plus » ou « c'est moins ». Astuce de champion : propose toujours le milieu de la zone possible."
     },
     {
-        id: 'calc-duel', status: STATUS.TEST, title: 'Duel des Tables (à deux)',
+        id: 'calc-duel', title: 'Duel des Tables (à deux)',
         cree: '2026-08-07',
         revisions: [{
             date: '2026-08-19',
@@ -891,7 +890,7 @@ export const calculExercises = [
         instruction: "À DEUX, sur une tablette posée à plat entre vous. Le serveur choisit une table, puis la balle fait des allers-retours : celui qui la reçoit tape le résultat avant qu'elle n'atteigne sa ligne. Elle accélère à chaque renvoi. Rien n'est enregistré dans le carnet — c'est un duel."
     },
     {
-        id: 'calc-arpenteurs', status: STATUS.TEST, title: 'Les Arpenteurs',
+        id: 'calc-arpenteurs', title: 'Les Arpenteurs',
         cree: '2026-08-10',
         // Clôturer une parcelle rectangulaire, c'est lire un produit comme une
         // aire : les deux compétences travaillent ensemble, sur le même geste.
@@ -1047,7 +1046,7 @@ export const calculExercises = [
         // Une grille de mots croisés EST un objet de papier ; l'écran n'en est
         // qu'une transcription. Rémy : « on pourrait avoir un pdf ».
         printable: 'motscroises', printGeneratorId: 'voc.mots-croises-fiche',
-        printParams: { theme: 'angles', nbMots: 10, niveauMax: 3, lettresDonnees: 0 }, status: STATUS.TEST, title: 'Mots Croisés Mathématiques',
+        printParams: { theme: 'angles', nbMots: 10, niveauMax: 3, lettresDonnees: 0 }, title: 'Mots Croisés Mathématiques',
         cree: '2026-08-19',
         activityId: 'mots-croises', skills: ['voc.mathematique'],
         sansRevision: true,
@@ -1112,7 +1111,7 @@ export const calculExercises = [
         // chiffre-dans-la-case et la case-pour-le-chiffre d'un sudoku : « ce
         // 4-là n'a plus qu'un voisin possible » et « le 7 ne peut se faire qu'à
         // cet endroit ».
-        id: 'log-tasuko', status: STATUS.TEST, title: 'Tasuko',
+        id: 'log-tasuko', title: 'Tasuko',
         cree: '2026-08-25',
         activityId: 'tasuko', skills: ['num.logique.tasuko'],
         sansRevision: true,
@@ -1150,7 +1149,7 @@ export const calculExercises = [
         // celui qui a compris que soustraire, c'est chercher ce qui manque, la
         // remplit sans hésiter. C'est la leçon des « nombres à trous », posée
         // sur un objet qu'on a envie de finir.
-        id: 'calc-pyramide-nombres', status: STATUS.TEST, title: 'La Pyramide des Nombres',
+        id: 'calc-pyramide-nombres', title: 'La Pyramide des Nombres',
         cree: '2026-08-25',
         activityId: 'pyramide-nombres', skills: ['num.pyramide-additive'],
         sansRevision: true,
@@ -1198,7 +1197,7 @@ export const calculExercises = [
         // code. Le jeu devient un exercice de logique pure — et il y gagne : à
         // l'écran on s'en tire en tâtonnant, sur la feuille il faut raisonner,
         // parce qu'il n'y a plus d'essai à dépenser.
-        id: 'log-mastermind', status: STATUS.TEST, title: 'Mastermind',
+        id: 'log-mastermind', title: 'Mastermind',
         cree: '2026-08-25',
         activityId: 'mastermind', skills: ['num.logique.mastermind'],
         sansRevision: true,
@@ -1241,7 +1240,7 @@ export const calculExercises = [
         // suffisent. Avec elle, il faut reconnaître un ENSEMBLE de lettres sous
         // un ordre nouveau — CODE, CORDE, DECORS —, c'est-à-dire penser
         // arrangement : le dénombrement qu'on retrouvera en troisième.
-        id: 'voc-pyramide', status: STATUS.TEST, title: 'La Pyramide des Mots',
+        id: 'voc-pyramide', title: 'La Pyramide des Mots',
         cree: '2026-08-25',
         activityId: 'pyramide', skills: ['voc.anagramme'],
         sansRevision: true,
@@ -1290,7 +1289,7 @@ export const calculExercises = [
         // mot mais un ALPHABET, et une lettre trouvée se pose d'un coup dans
         // toute la grille : c'est ce ricochet qui fait le jeu, et c'est pour
         // cela que l'état est un dictionnaire numéro → lettre, pas des cases.
-        id: 'voc-mot-code', status: STATUS.TEST, title: 'Le Mot Codé',
+        id: 'voc-mot-code', title: 'Le Mot Codé',
         cree: '2026-08-25',
         activityId: 'mot-code', skills: ['voc.mathematique'],
         sansRevision: true,
@@ -1360,7 +1359,7 @@ export const calculExercises = [
         // C'est la décomposition en facteurs premiers jouée à l'envers : on ne
         // l'écrit pas, on la FAIT — et le bilan de fin de partie la réécrit
         // comme au tableau, à côté du chemin réellement pris.
-        id: 'calc-diviseurs', status: STATUS.TEST, title: 'Le Chasseur de Diviseurs',
+        id: 'calc-diviseurs', title: 'Le Chasseur de Diviseurs',
         cree: '2026-08-19',
         activityId: 'diviseurs', skills: ['num.arith.decomposition'],
         params: { niveau: 'facile', boucliers: 3 },
@@ -1447,7 +1446,7 @@ export const calculExercises = [
         id: 'logi-puissance4',
         // Un plateau vide à imprimer : deux élèves, deux crayons de couleur.
         printable: 'puissance4', printGeneratorId: 'jeux.plateaux-fiche',
-        printParams: { jeu: 'puissance4', colonnes: 7, rangees: 6 }, status: STATUS.TEST, title: 'Puissance 4',
+        printParams: { jeu: 'puissance4', colonnes: 7, rangees: 6 }, title: 'Puissance 4',
         cree: '2026-08-19',
         activityId: 'puissance4', horsProgression: true, sansRevision: true,
         deuxJoueurs: true,
@@ -1514,7 +1513,7 @@ export const calculExercises = [
         instruction: "Six points, et les quinze segments qui les relient tous. Chacun son tour, on colorie un segment de SA couleur — et celui qui forme le premier un triangle de sa propre couleur A PERDU. On ne cherche donc pas à construire, on cherche à ne pas construire, ce qui est déroutant. Et l'on ne peut pas y couper indéfiniment : sur quinze segments de deux couleurs, un triangle d'une seule couleur est inévitable. C'est un théorème (Ramsey, R(3,3) = 6), et il se vérifie à la main."
     },
     {
-        id: 'voc-mots-caches', status: STATUS.TEST, title: 'Mots Cachés Mathématiques',
+        id: 'voc-mots-caches', title: 'Mots Cachés Mathématiques',
         cree: '2026-08-10',
         activityId: 'motscaches', skills: ['voc.mathematique'],
         // SUR LE PAPIER, PERSONNE NE VALIDE : il faut entourer, donc être sûr.
@@ -1574,7 +1573,7 @@ export const calculExercises = [
         instruction: "Glisse ton doigt de la première à la dernière lettre pour tracer un mot. Chaque mot trouvé affiche SA DÉFINITION : c'est le vocabulaire que ton cours emploie sans toujours l'expliquer. Le bouton 💡 fait l'inverse — il donne la définition, à toi de retrouver le mot."
     },
     {
-        id: 'calc-chantier', status: STATUS.TEST, title: 'Le Chantier des Blocs',
+        id: 'calc-chantier', title: 'Le Chantier des Blocs',
         cree: '2026-08-10',
         activityId: 'chantier', skills: ['num.mult.table.*'],
         params: { depart: 'ch1' },
@@ -1793,7 +1792,7 @@ export const calculExercises = [
         //
         // L'identifiant reste « calc-skweek » : le renommer effacerait les
         // statistiques et les parcours déjà enregistrés sous ce nom.
-        id: 'calc-skweek', status: STATUS.TEST, title: 'Le Peintre',
+        id: 'calc-skweek', title: 'Le Peintre',
         cree: '2026-08-12',
         activityId: 'skweek',
         sansRevision: true,
@@ -1842,8 +1841,7 @@ export const calculExercises = [
         //
         // La grille est fabriquée puis VÉRIFIÉE : solution unique, et — sauf en
         // difficile — trouvable par propagation pure, sans jamais essayer.
-        id: 'logi-hashi', title: 'Le Hashi', status: STATUS.TEST,
-        cree: '2026-08-25',
+        id: 'logi-hashi', title: 'Le Hashi',        cree: '2026-08-25',
         activityId: 'hashi',
         generatorId: 'logique.hashi-fiche', printable: 'hashi',
         printGeneratorId: 'logique.hashi-fiche',
@@ -1955,7 +1953,7 @@ export const calculExercises = [
         // main : on cherche la ligne où il ne manque qu'une case, on soustrait
         // de la somme magique, et chaque case écrite en débloque d'autres. Le
         // générateur garantit la résolubilité par déduction pure.
-        id: 'logi-carre-magique', status: STATUS.TEST, title: 'Le Carré Magique',
+        id: 'logi-carre-magique', title: 'Le Carré Magique',
         cree: '2026-08-12',
         activityId: 'carre-magique',
         generatorId: 'logique.carre-magique', printable: 'carre-magique',
@@ -2125,8 +2123,7 @@ export const calculExercises = [
     // essai-erreur à quinze coups de profondeur : un élève qui bloque là-dessus
     // ne bloque pas sur une notion, il bloque sur une grille mal faite.
     {
-        id: 'logi-colorier-nombres', status: STATUS.TEST,
-        title: 'Colorier par les Nombres',
+        id: 'logi-colorier-nombres',        title: 'Colorier par les Nombres',
         cree: '2026-09-02',
         activityId: 'colorier-nombres', skills: ['num.logique.colorier'],
         // SUR LE PAPIER, ET C'EST L'EXERCICE QUI LE DEMANDE LE PLUS. Rémy :
@@ -2163,7 +2160,7 @@ export const calculExercises = [
         instruction: "Les nombres écrits devant chaque ligne et au-dessus de chaque colonne donnent la longueur des BLOCS coloriés, dans l'ordre, séparés d'au moins une case blanche. « 2 1 » veut dire : un bloc de deux, puis au moins une blanche, puis un bloc d'un. ON NE DEVINE JAMAIS, on cherche ce qui est CERTAIN. Commence par les grands nombres : un bloc large ne peut pas beaucoup bouger. Dans une ligne de 5, un bloc de 4 ne se pose que de deux façons, et les deux couvrent les mêmes 3 cases du milieu — c'est le RECOUVREMENT, et il se calcule : bloc + bloc − largeur. Un 4 sur 5 donne 3 cases sûres, un 3 en donne 1, un 2 n'en donne aucune. Regarde aussi les cas évidents : si la somme des blocs vaut la largeur, la ligne est pleine ; si l'indice est 0, elle est entièrement blanche — et c'est souvent le renseignement le plus utile de la grille. BARRE LES CASES QUE TU SAIS BLANCHES : une croix vaut autant qu'une case coloriée, parce qu'elle interdit des placements et fait avancer la déduction. Enfin, quand une ligne ne dit plus rien, croise : ce que tu viens de poser renseigne les colonnes qu'elle traverse."
     },
     {
-        id: 'logi-demineur', status: STATUS.TEST, title: 'Le Démineur',
+        id: 'logi-demineur', title: 'Le Démineur',
         cree: '2026-08-07',
         activityId: 'demineur', skills: ['num.logique.demineur'],
         sansRevision: true,
@@ -2222,7 +2219,7 @@ export const calculExercises = [
         // fermer la porte avant d'avoir lu la première ligne. Ce sont des
         // histoires — courtes, mélangées, et c'est justement le mélange qui
         // empêche de reconnaître l'opération sans lire.
-        id: 'num-problemes', status: STATUS.TEST, title: 'Histoires en Pagaille',
+        id: 'num-problemes', title: 'Histoires en Pagaille',
         cree: '2026-08-11',
         activityId: 'problemes',
         // C'est l'exercice qui appelle le plus la feuille : un problème se
@@ -2279,7 +2276,7 @@ export const calculExercises = [
         // juste assez souvent pour ne pas l'alerter. Le bouton « Montrer le
         // lien » existe pour que chercher le coefficient devienne le premier
         // geste, pas le dernier recours.
-        id: 'num-proportion-tableau', status: STATUS.TEST, title: 'Tableau de Proportionnalité',
+        id: 'num-proportion-tableau', title: 'Tableau de Proportionnalité',
         cree: '2026-08-11',
         activityId: 'proportion',
         // Le seul de ces exercices qui se photocopie tel quel : deux lignes,
@@ -2374,7 +2371,7 @@ export const calculExercises = [
         // suivre le sol demande une accélération vers le bas de v² fois la
         // courbure, et si la gravité ne fournit pas autant, l'oiseau part tout
         // droit. Aucun saut à programmer.
-        id: 'jeu-petites-ailes', status: STATUS.TEST, title: 'Les Petites Ailes',
+        id: 'jeu-petites-ailes', title: 'Les Petites Ailes',
         cree: '2026-08-25',
         // PAS DE COMPÉTENCE, ET C'EST VOULU. Rémy : « n'en fais pas un jeu
         // mathématiques […] c'est plus un jeu de réflexe ». Lui accrocher une

@@ -1,5 +1,4 @@
 import { TAGS } from './tags.js';
-import { STATUS } from './status.js';
 // Les cinquante paliers du Pousseur viennent du noyau : ils y sont calculés,
 // et les recopier ici serait la promesse d'une liste qui vieillit toute seule.
 import { NIVEAUX_POUSSEUR } from '../core/pousseur.js';
@@ -43,8 +42,7 @@ export const defisExercises = [
         // boule de moins. Et le compte suit — 1, 3, 7, 15, 31 —, le double plus
         // un à chaque fois. On ne lui demande pas de le démontrer ; on lui
         // demande de le CONSTATER, ce qui est déjà beaucoup.
-        id: 'defi-tour-brahma', status: STATUS.TEST,
-        title: 'La Tour de Hanoï (Tour de Brahma)',
+        id: 'defi-tour-brahma',        title: 'La Tour de Hanoï (Tour de Brahma)',
         cree: '2026-08-25',
         activityId: 'tour-brahma', skills: ['defi.recursion'],
         sansRevision: true,
@@ -82,7 +80,7 @@ export const defisExercises = [
         // s'acharner un quart d'heure sans le savoir. Apprendre à regarder ce
         // qu'un coup REND IMPOSSIBLE, et pas seulement ce qu'il fait gagner,
         // est une leçon qui ressert bien au-delà des grenouilles.
-        id: 'defi-grenouilles', status: STATUS.TEST, title: 'Les Grenouilles',
+        id: 'defi-grenouilles', title: 'Les Grenouilles',
         cree: '2026-08-25',
         activityId: 'grenouilles', skills: ['defi.grenouilles'],
         sansRevision: true,
@@ -124,7 +122,7 @@ export const defisExercises = [
         // voitures une demi-heure sans la remarquer, et ne jamais finir. Un
         // élève qui comprend pourquoi elle est là a compris le jeu ; le reste
         // n'est que de la patience.
-        id: 'defi-parking', status: STATUS.TEST, title: 'Le Parking',
+        id: 'defi-parking', title: 'Le Parking',
         cree: '2026-08-25',
         activityId: 'parking', skills: ['defi.parking'],
         sansRevision: true,
@@ -167,7 +165,7 @@ export const defisExercises = [
         // LA PROGRESSION EST MESURÉE, PAS ESTIMÉE. Chaque parking est exploré
         // en entier avant d'être posé, et le départ est choisi à une distance
         // voulue de la sortie. Le niveau monte tout seul à chaque victoire.
-        id: 'defi-embouteillage', status: STATUS.TEST, title: 'L\'Embouteillage',
+        id: 'defi-embouteillage', title: 'L\'Embouteillage',
         cree: '2026-08-25',
         activityId: 'embouteillage', skills: ['defi.embouteillage'],
         sansRevision: true,
@@ -211,7 +209,7 @@ export const defisExercises = [
         // coin n'en sortira plus, mais le jeu continue de proposer des coups :
         // sur un carton, on s'acharne. Ici, la table sait exactement quelles
         // positions restent résolubles, et le jeu le dit tout de suite.
-        id: 'defi-pousseur', status: STATUS.TEST, title: 'Le Pousseur',
+        id: 'defi-pousseur', title: 'Le Pousseur',
         cree: '2026-08-25',
         activityId: 'pousseur', skills: ['defi.pousseur'],
         sansRevision: true,

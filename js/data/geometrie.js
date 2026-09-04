@@ -1,5 +1,4 @@
 import { TAGS } from './tags.js';
-import { STATUS } from './status.js';
 // Les paliers du quadrilatère qui se transforme viennent du noyau : deux listes
 // d'options qui se répondent finissent toujours par diverger.
 import { PALIERS as MORPH_PALIERS } from '../core/quadriMorph.js';
@@ -102,8 +101,7 @@ export const geometrieExercises = [
         // famille. C'est l'idée que les élèves n'ont pas, et qu'aucun manuel ne
         // peut montrer parce qu'il faudrait que la figure bouge. Il vient donc
         // AVANT l'organigramme dans la progression, pas après.
-        id: 'geo-quadri-morph', status: STATUS.TEST,
-        title: 'Le Quadrilatère qui se Transforme',
+        id: 'geo-quadri-morph',        title: 'Le Quadrilatère qui se Transforme',
         cree: '2026-09-01',
         activityId: 'quadri-morph',
         sansRevision: true,
@@ -139,7 +137,6 @@ export const geometrieExercises = [
     // core/programmeConstruction.js.
     {
         id: 'geo-programme-construction',
-        status: STATUS.TEST,
         title: 'Écris le programme de construction',
         cree: '2026-09-04',
         activityId: 'programme-construction',
@@ -392,7 +389,7 @@ export const geometrieExercises = [
         // séparer en deux entrées la rendait invisible : chacune s'annonçait
         // dans son titre, donc il n'y avait plus rien à discriminer. Le
         // réglage « Propriété travaillée » les offre côte à côte.
-        id: 'geo-redaction', status: STATUS.TEST, title: 'Rédiger une Justification',
+        id: 'geo-redaction', title: 'Rédiger une Justification',
         cree: '2026-08-11',
         activityId: 'redaction',
         // Le générateur ne sert PAS à l'écran (l'activité est autonome) : il
@@ -411,7 +408,7 @@ export const geometrieExercises = [
         // écrire l'égalité pour SON triangle, calculer l'hypoténuse, calculer
         // un côté (on soustrait), rédiger en entier. On ne demande jamais deux
         // choses nouvelles à la fois — le modèle des exercices de rédaction.
-        id: 'geo-pythagore', status: STATUS.TEST, title: 'Le Théorème de Pythagore',
+        id: 'geo-pythagore', title: 'Le Théorème de Pythagore',
         cree: '2026-08-12',
         revisions: [{
             date: '2026-08-19',
@@ -463,8 +460,7 @@ export const geometrieExercises = [
         // par l'application (le segment [AB] est déjà là), la construction est
         // libre — compas, équerre, règle, peu importe — et c'est la FIGURE
         // obtenue qui est jugée, pas la méthode employée.
-        id: 'geo-atelier-instruments', status: STATUS.TEST,
-        cree: '2026-08-12',
+        id: 'geo-atelier-instruments',        cree: '2026-08-12',
         title: 'Atelier de Géométrie : Règle, Équerre et Compas',
         activityId: 'geometrie',
         params: { consigne: 'aleatoire' },
@@ -646,7 +642,7 @@ export const geometrieExercises = [
         // À DEUX SUR LA MÊME TABLETTE, ou contre le robot — qui, lui, cherche
         // vraiment le plus court chemin (parcours en largeur sur position ET
         // vitesse), et qu'on peut rendre « mou » pour laisser une chance.
-        id: 'geo-course-vecteurs', status: STATUS.TEST, title: 'La Course de Vecteurs',
+        id: 'geo-course-vecteurs', title: 'La Course de Vecteurs',
         cree: '2026-08-20',
         activityId: 'course-vecteurs',
         // UNE QUESTION, C'EST UNE COURSE. Le meneur compte les tentatives pour
@@ -756,7 +752,7 @@ export const geometrieExercises = [
         // générateur les offre depuis toujours dans son réglage « Question » —
         // qui propose même de les ALTERNER, ce qu'aucune des deux entrées
         // séparées ne permettait d'atteindre.
-        id: 'geo-angles', status: STATUS.TEST, title: 'Angle Master',
+        id: 'geo-angles', title: 'Angle Master',
         cree: '2026-08-04',
         revisions: [{
             date: '2026-08-19',
@@ -781,7 +777,7 @@ export const geometrieExercises = [
         instruction: "Estime d'abord si l'angle est aigu ou obtus, puis mesure-le : déplace le rapporteur sur le sommet, tourne-le par ses poignées pour aligner le zéro, et saisis la valeur lue. Le réglage « Question » passe à la construction — placer le rapporteur, repérer la graduation, amener le côté rouge dessus — ou fait alterner les deux."
     },
     {
-        id: 'geo-chat-geometre', status: STATUS.TEST, title: 'Le Chat Géomètre',
+        id: 'geo-chat-geometre', title: 'Le Chat Géomètre',
         cree: '2026-08-05',
         generatorId: 'geo.scratch', activityId: 'scratch',
         // SUR LE PAPIER, ON RENVERSE L'EXERCICE : le programme est donné, la
@@ -800,7 +796,7 @@ export const geometrieExercises = [
         // Les douze figures apprennent l'angle, elles n'apprennent pas
         // l'envie ; c'est en essayant « répéter 36 fois » pour voir ce que ça
         // donne qu'on découvre le cercle.
-        id: 'geo-chat-libre', status: STATUS.TEST, title: 'Le Chat Géomètre — atelier libre',
+        id: 'geo-chat-libre', title: 'Le Chat Géomètre — atelier libre',
         cree: '2026-08-06',
         generatorId: 'geo.scratch', activityId: 'scratch',
         // Un ATELIER, pas un exercice : rien à régler avant d'entrer (le
@@ -1167,7 +1163,7 @@ export const geometrieExercises = [
         // trois choses deviennent inévitables : il y a un endroit du programme
         // où l'on se trouve, la boucle y REMONTE, et la gauche est celle du
         // robot.
-        id: 'geo-automate', status: STATUS.TEST, title: 'L\'Automate',
+        id: 'geo-automate', title: 'L\'Automate',
         cree: '2026-08-11',
         activityId: 'automate',
         params: { niveau: 'moyen', mode: 'progressif' },
@@ -1319,7 +1315,7 @@ export const geometrieExercises = [
         // LA FIGURE N'EST PAS À L'ÉCHELLE, et c'est ce que font tous les
         // manuels : une figure à l'échelle se mesure à la règle, et l'élève
         // cesse d'appliquer le théorème. Seul le rapport est respecté.
-        id: 'geo-thales', status: STATUS.TEST, title: 'Le Théorème de Thalès',
+        id: 'geo-thales', title: 'Le Théorème de Thalès',
         cree: '2026-08-25',
         generatorId: 'geo.thales', activityId: 'buttons',
         // LA FICHE PORTE LA FIGURE : sans elle, « quelle est la configuration
@@ -1352,8 +1348,7 @@ export const geometrieExercises = [
         // dépend de la précédente. Les deux formes ne tiennent pas dans le
         // même moule, et forcer la seconde dans le premier aurait donné quatre
         // questions sans rapport apparent au lieu d'une démonstration.
-        id: 'geo-thales-redaction', status: STATUS.TEST,
-        title: 'Thalès : la Rédaction', cree: '2026-09-01',
+        id: 'geo-thales-redaction',        title: 'Thalès : la Rédaction', cree: '2026-09-01',
         activityId: 'thales-redaction', sansRevision: true,
         // LA FICHE PAPIER A SON PROPRE GÉNÉRATEUR. Rémy : « et pour
         // l'impression, il faut aussi proposer un exercice de rédaction ».
@@ -1405,8 +1400,7 @@ export const geometrieExercises = [
     // copie est fausse. C'est pour cela que ce repérage mérite un exercice à
     // lui seul, et pas trois lignes d'introduction au chapitre suivant.
     {
-        id: 'geo-trigo-cotes', status: STATUS.TEST,
-        title: 'Hypoténuse, Opposé, Adjacent',
+        id: 'geo-trigo-cotes',        title: 'Hypoténuse, Opposé, Adjacent',
         // LA FEUILLE N'EST PAS L'ÉCRAN. À l'écran on CLIQUE le côté ; sur le
         // papier on l'ÉCRIT — le premier palier n'a pas de traduction papier,
         // et la fiche part donc du second. Voir generators/trigoCotes.js.

@@ -32,7 +32,12 @@ test('un filtre explicite isole un seul état, brouillon compris', () => {
 test('le comptage couvre l\'intégralité du catalogue', () => {
     const c = countByStatus(exercices);
     assert.equal(c.valide + c.test + c.brouillon, exercices.length);
-    assert.ok(c.test > 0, 'des exercices sont marqués en test');
+    // Ce test exigeait autrefois « c.test > 0 ». Il gardait une vérité qui n'en
+    // est plus une : Rémy a demandé d'ouvrir TOUS les exercices aux élèves
+    // (« ouvre-les tous »), et le catalogue ne compte donc plus une seule
+    // fiche en test. Le mécanisme, lui, est vérifié plus haut sur un lot
+    // fabriqué — c'est là qu'il faut le vérifier, pas sur l'état du jour.
+    assert.equal(c.brouillon, 0, 'aucun exercice n\'est laissé au brouillon');
 });
 
 test('aucun exercice ne porte un statut inconnu', () => {

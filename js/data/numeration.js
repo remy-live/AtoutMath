@@ -1,5 +1,4 @@
 import { TAGS } from './tags.js';
-import { STATUS } from './status.js';
 
 // Chapitre « Nombres entiers et décimaux » (6ᵉ), d'après la fiche de cours.
 //
@@ -249,7 +248,7 @@ export const numerationExercises = [
         // en CHERCHANT des paires, pas en répondant à des questions : une
         // table de cartes, on tape 3 puis 7, elles s'envolent. La table vidée,
         // une plus grande arrive.
-        id: 'num-amis-de-dix', status: STATUS.TEST, title: 'Les Amis de Dix',
+        id: 'num-amis-de-dix', title: 'Les Amis de Dix',
         cree: '2026-08-12',
         activityId: 'dix',
         // Sur le papier, on TRACE le trait au lieu de taper deux cartes : c'est
@@ -368,7 +367,7 @@ export const numerationExercises = [
         instruction: "Un nombre relatif, c'est une POSITION. L'addition, c'est un DÉPLACEMENT : compte les crans, n'additionne pas les distances. Le réglage « Niveau » choisit le modèle — l'ascenseur, le thermomètre, les pastilles qui s'annulent, ou l'écriture (+3) + (−5) — ou les enchaîne tous."
     },
     {
-        id: 'num-dictee', status: STATUS.TEST, title: 'Dictée de Grands Nombres',
+        id: 'num-dictee', title: 'Dictée de Grands Nombres',
         cree: '2026-08-10',
         activityId: 'dictee', skills: ['num.ecriture.lettres'],
         params: { palier: 'grands' },
@@ -620,8 +619,7 @@ export const numerationExercises = [
         // POURQUOI ce n'en est pas une ». Tant qu'un élève ne sait pas nommer
         // le défaut — trop grand, ou trop petit —, il déplace sa virgule au
         // hasard et tombe juste une fois sur deux.
-        id: 'num-puissances-reconnaitre', status: STATUS.TEST,
-        title: 'Puissances de 10 — reconnaître',
+        id: 'num-puissances-reconnaitre',        title: 'Puissances de 10 — reconnaître',
         cree: '2026-08-25',
         // Rémy : « mets juste calcule ». L'`instruction` ci-dessous explique
         // les quatre marches à l'écran, où l'on a le temps de lire ; sur le
@@ -647,8 +645,7 @@ export const numerationExercises = [
         // fabrique EXPRÈS une fois sur deux — deux exposants égaux — parce
         // qu'un élève qui a bien retenu « le plus grand exposant gagne » cesse
         // aussitôt de regarder le nombre de devant.
-        id: 'num-puissances-transformer', status: STATUS.TEST,
-        title: 'Puissances de 10 — écriture scientifique',
+        id: 'num-puissances-transformer',        title: 'Puissances de 10 — écriture scientifique',
         cree: '2026-08-25',
         // Trois marches — fabriquer, revenir au décimal, comparer — et un seul
         // verbe qui les couvre toutes les trois.
@@ -677,8 +674,7 @@ export const numerationExercises = [
         // calcule (10⁶). Un élève sait presque toujours dire « méga, c'est un
         // million » et reste bloqué sur « 3 Mo = … octets », faute d'avoir fait
         // le troisième pas.
-        id: 'num-puissances-prefixes', status: STATUS.TEST,
-        title: 'Kilo, Méga, Giga, Micro, Nano',
+        id: 'num-puissances-prefixes',        title: 'Kilo, Méga, Giga, Micro, Nano',
         cree: '2026-08-27',
         generatorId: 'num.puissances-prefixes', activityId: 'buttons',
         skills: ['num.puissances.prefixes'],
@@ -708,8 +704,7 @@ export const numerationExercises = [
         // l'étourderie : le signe × est écrit sous les yeux de l'élève, et il
         // l'applique à ce qu'il voit. C'est donc le distracteur de CHAQUE
         // question de la marche du produit.
-        id: 'num-puissances-calcul', status: STATUS.TEST,
-        title: 'Calculer avec des Puissances',
+        id: 'num-puissances-calcul',        title: 'Calculer avec des Puissances',
         cree: '2026-08-27',
         generatorId: 'num.puissances-calcul', activityId: 'buttons',
         skills: ['num.puissances.regles'],

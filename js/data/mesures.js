@@ -1,5 +1,4 @@
 import { TAGS } from './tags.js';
-import { STATUS } from './status.js';
 
 // Grandeurs et mesures : deux notions posées avec le pavé numérique, où
 // l'élève produit la réponse au lieu de la reconnaître. Le même générateur
@@ -197,7 +196,7 @@ export const mesuresExercises = [
         // deux formes différentes peuvent couvrir la même surface. Chaque
         // pièce porte sa fraction de la figure, et la figure terminée pose une
         // question d'aire : sans elle, il ne resterait qu'un casse-tête.
-        id: 'geo-tangram', status: STATUS.TEST, title: 'Le Tangram',
+        id: 'geo-tangram', title: 'Le Tangram',
         cree: '2026-08-13',
         activityId: 'tangram',
         // SUR LE PAPIER : le carré à découper une fois, puis les silhouettes à

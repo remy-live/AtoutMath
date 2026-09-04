@@ -913,9 +913,22 @@ function initStatusFilter() {
     };
     const NAMES = { tout: 'Tout', ...STATUS_LABELS };
 
-    const render = () => {
-        const filter = state.catalogFilter || 'tout';
+    // Les états HABITÉS, « tout » toujours en tête.
+    //
+    // Le bouton faisait défiler les quatre états sans regarder s'il y avait
+    // quelque chose dedans. Depuis que Rémy a ouvert tout le catalogue
+    // (« ouvre-les tous »), « en test » et « non validé » comptent zéro
+    // exercice : deux clics sur quatre menaient à une page blanche, sans rien
+    // dire de plus que le nombre déjà écrit sur le bouton. On saute ce qui est
+    // vide — et si le catalogue se repeuple un jour, l'état revient tout seul.
+    const cycle = () => {
         const counts = countByStatus(exercices);
+        return STATUS_CYCLE.filter(e => e === 'tout' || counts[e] > 0);
+    };
+
+    const render = () => {
+        const counts = countByStatus(exercices);
+        const filter = state.catalogFilter || 'tout';
         const n = filter === 'tout' ? exercices.length : counts[filter];
         btn.innerHTML = `<svg viewBox="0 0 24 24">${ICONS[filter] || ICONS.tout}</svg>`;
         etiquette(btn, `Catalogue : ${NAMES[filter]} (${n}) — cliquer pour changer d'état`);
@@ -923,12 +936,21 @@ function initStatusFilter() {
     };
 
     btn.onclick = async () => {
-        const i = STATUS_CYCLE.indexOf(state.catalogFilter || 'tout');
-        await state.setCatalogFilter(STATUS_CYCLE[(i + 1) % STATUS_CYCLE.length]);
+        const suite = cycle();
+        const i = suite.indexOf(state.catalogFilter || 'tout');
+        await state.setCatalogFilter(suite[(i + 1) % suite.length]);
         render();
         refreshViews();
         initGridFilters();
     };
+
+    // Un filtre GARDÉ d'une session précédente peut désigner un état devenu
+    // vide. Le corriger seulement à l'affichage ferait mentir le bouton : le
+    // catalogue, lui, lit `state.catalogFilter` et resterait nu. On remet donc
+    // l'état pour de bon, puis on redessine.
+    if (state.catalogFilter && !cycle().includes(state.catalogFilter)) {
+        state.setCatalogFilter('tout').then(() => { render(); refreshViews(); });
+    }
 
     render();
 }

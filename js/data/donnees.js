@@ -1,5 +1,4 @@
 import { TAGS } from './tags.js';
-import { STATUS } from './status.js';
 
 // Domaine « Organisation de données » : ouvert par l'École du Tableur,
 // portée de l'ancien projet. D'autres exercices (lecture de tableaux, de
@@ -75,7 +74,7 @@ export const donneesExercises = [
         instruction: "Complète les cases vides du tableau. Ne commence pas par la première case venue : cherche à chaque fois la LIGNE ou la COLONNE où il ne manque qu'une seule information — celle-là, tu peux la boucler tout de suite. Si la case qui manque est un total, tu additionnes toute la ligne ; si elle est dans le corps du tableau, tu pars du total et tu retires ce qui est déjà écrit. Le nombre que tu viens d'écrire en ouvre alors d'autres, et de proche en proche tout se remplit. On n'a jamais besoin de deviner."
     },
     {
-        id: 'don-tableur', status: STATUS.TEST, title: "L'École du Tableur",
+        id: 'don-tableur', title: "L'École du Tableur",
         cree: '2026-08-04',
         activityId: 'tableur',
         // SUR LE PAPIER, RIEN NE CALCULE À LA PLACE DE L'ÉLÈVE. Devant le

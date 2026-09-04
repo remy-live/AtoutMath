@@ -650,7 +650,13 @@ test('le catalogue entier passe dans la revue sans exploser', () => {
     const b = bilan(r, exercices);
     assert.equal(b.decides, 0);
     assert.equal(b.enTest + b.valides, exercices.length);
-    assert.ok(b.enTest > 0, 'il y a bien des exercices en test à trier');
+    // Ce test exigeait autrefois « b.enTest > 0 ». Rémy a ouvert tout le
+    // catalogue aux élèves (« ouvre-les tous ») : il ne reste plus rien à
+    // trier, et la revue doit le dire calmement plutôt que de planter. Le tri
+    // lui-même est vérifié plus haut sur des lots fabriqués — c'est là qu'il
+    // faut l'éprouver, pas sur l'humeur du catalogue du jour.
+    assert.equal(b.enTest, 0, 'plus rien n\'attend d\'être trié');
+    assert.equal(b.valides, exercices.length);
 });
 
 test('chaque domaine du catalogue se filtre', () => {
