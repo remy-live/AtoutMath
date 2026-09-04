@@ -152,7 +152,11 @@ export const OPERATIONS = {
         // est aussi sur le papier.
         gabarit: ['Place le point d\'intersection de ', 0, ' et ', 1],
         bouton: 'un point d\'intersection',
-        libelle: (a, nom) => `Place le point d'intersection de ${a[0]} et ${a[1]}`
+        // « DE LE CERCLE » NE SE DIT PAS. Les noms d'objets commencent par leur
+        // article — « le cercle de centre A », « la médiatrice de [AB] » — et
+        // l'élision doit suivre, sinon la phrase qu'on donne en modèle est
+        // fautive. Sur une feuille de français-mathématiques, cela se voit.
+        libelle: (a, nom) => `Place le point d'intersection ${elider(a[0])} et ${elider(a[1])}`
             + (nom ? ` : ${nom}` : ''),
         creeDepuisObjets: (o1, o2) => intersections(o1, o2)
     }
@@ -174,6 +178,15 @@ export function operationsDe(familles) {
 // ---------------------------------------------------------------------------
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/** « le cercle… » → « du cercle… », « la médiatrice… » → « de la médiatrice… ». */
+const elider = (nom) => {
+    const t = String(nom ?? '');
+    if (/^le /.test(t)) return `du ${t.slice(3)}`;
+    if (/^les /.test(t)) return `des ${t.slice(4)}`;
+    if (/^l'/.test(t)) return `de ${t}`;
+    return `de ${t}`;
+};
 
 /** La forme normale d'une droite : a x + b y = c, avec (a, b) unitaire et orienté. */
 function normaliserDroite(p, q) {
@@ -280,6 +293,30 @@ function cercleCercle(c1, c2) {
         { x: m.x + u.x * h, y: m.y + u.y * h },
         { x: m.x - u.x * h, y: m.y - u.y * h }
     ];
+}
+
+/**
+ * UNE DROITE N'A PAS DE BOUTS : on la coupe au cadre du monde.
+ *
+ * Un trait dessiné a besoin de deux extrémités, et une droite n'en propose
+ * aucune de naturelle : la tracer entre les deux points qui l'ont définie la
+ * ferait lire comme un SEGMENT. Or la confusion segment / droite est justement
+ * ce que l'exercice travaille — la dessiner de travers enseignerait le
+ * contraire. Le calcul vit ici, dans le noyau, pour que l'écran et la feuille
+ * coupent au même endroit.
+ */
+export function couperAuMonde(a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const ts = [];
+    if (Math.abs(dx) > 1e-9) ts.push((0 - a.x) / dx, (MONDE.w - a.x) / dx);
+    if (Math.abs(dy) > 1e-9) ts.push((0 - a.y) / dy, (MONDE.h - a.y) / dy);
+    const dedans = ts.filter(t => {
+        const x = a.x + dx * t, y = a.y + dy * t;
+        return x >= -0.01 && x <= MONDE.w + 0.01 && y >= -0.01 && y <= MONDE.h + 0.01;
+    }).sort((u, v) => u - v);
+    if (dedans.length < 2) return null;
+    const t0 = dedans[0], t1 = dedans[dedans.length - 1];
+    return [{ x: a.x + dx * t0, y: a.y + dy * t0 }, { x: a.x + dx * t1, y: a.y + dy * t1 }];
 }
 
 /** Le point tombe-t-il vraiment SUR l'objet (et pas seulement sur sa droite) ? */

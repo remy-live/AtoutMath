@@ -143,6 +143,12 @@ export const geometrieExercises = [
         title: 'Écris le programme de construction',
         cree: '2026-09-04',
         activityId: 'programme-construction',
+        // LA FEUILLE NE FAIT PAS LE MÊME TRAVAIL QUE L'ÉCRAN. À l'écran on POSE
+        // des blocs qui portent la phrase toute faite ; sur le papier on l'ÉCRIT.
+        // C'est l'exercice du contrôle, et c'est le seul endroit où l'élève doit
+        // produire la tournure lui-même. Voir generators/programmeConstructionFiche.js.
+        printGeneratorId: 'geo.construction.programme.fiche',
+        printable: 'programme-construction',
         skills: ['geo.construction.programme'],
         params: { familles: ['traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'], depuis: 0 },
         paramSchema: [

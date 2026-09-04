@@ -30,6 +30,7 @@ import {
     COULEUR_FIGURE as FIGURE_Q, COULEUR_BANDE as BANDE_Q
 } from '../core/quadrilateres.js';
 import { pointsDe as pointsDeTrigo } from '../core/trigonometrie.js';
+import { MONDE as MONDE_PC, couperAuMonde } from '../core/programmeConstruction.js';
 import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
 // LA SOLUTION DES TROIS CASSE-TÊTE, POSITION PAR POSITION. Rémy : « pour les
 // solutions des grenouilles, parking, hanoï, dessine des vignettes des étapes
@@ -11181,6 +11182,181 @@ function pointeMm(trait, g, taille) {
     return [bout, { x: base.x + px, y: base.y + py }, { x: base.x - px, y: base.y - py }];
 }
 
+// ================= LE PROGRAMME DE CONSTRUCTION ===========================
+//
+// LA FIGURE EN HAUT, LES LIGNES DESSOUS. C'est la seule disposition qui marche :
+// l'élève regarde le dessin, écrit une phrase, revient au dessin, écrit la
+// suivante. Mettre la figure à côté du texte doublerait ce va-et-vient.
+//
+// ET DEUX LIGNES DE PLUS QUE LE MODÈLE. Donner exactement le compte serait un
+// indice — « ah, il en faut sept » —, en donner trois de trop laisserait croire
+// qu'on en attend davantage. Deux, c'est de la place pour se reprendre.
+
+/** La hauteur d'une ligne d'écriture manuscrite, en millimètres. */
+const PC_LIGNE = 7;
+
+/** La demi-branche de la croix qui marque un point, en millimètres. */
+const PC_CROIX = 1.1;
+
+/** La réserve, repliée à la largeur du bloc — en nombre de lignes de texte. */
+function reservePliee(texte, largeur, taille) {
+    if (!texte) return [];
+    // Une largeur de caractère à 0,49 fois le corps approche Helvetica en
+    // italique à mieux qu'un millimètre sur ces libellés-là ; le PDF, lui,
+    // mesure pour de bon (voir `dessinerProgrammePdf`).
+    const parLigne = Math.max(10, Math.floor(largeur / (taille * 0.49)));
+    const lignes = [];
+    let courante = '';
+    texte.split(' · ').forEach(mot => {
+        const essai = courante ? `${courante} · ${mot}` : mot;
+        if (essai.length <= parLigne) { courante = essai; return; }
+        if (courante) lignes.push(courante);
+        courante = mot;
+    });
+    if (courante) lignes.push(courante);
+    return lignes;
+}
+
+const PC_RESERVE = 2.1;      // corps de la réserve, en millimètres
+
+function geoProgramme(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const reserve = reservePliee(m.reserve, b.w - 2, PC_RESERVE);
+    const hReserve = reserve.length ? reserve.length * (PC_RESERVE + 0.5) + 1.5 : 0;
+    const pied = m.lignes * PC_LIGNE + 3 + hReserve;
+    const cadre = { x: b.x, y: b.y, w: b.w, h: Math.max(16, b.h - pied) };
+    // La figure garde ses proportions : un monde de 100 × 70 étiré au cadre
+    // rendrait les cercles ovales, et un cercle ovale n'est plus un cercle.
+    const k = Math.min(cadre.w / MONDE_PC.w, cadre.h / MONDE_PC.h);
+    const w = MONDE_PC.w * k, h = MONDE_PC.h * k;
+    const x0 = cadre.x + (cadre.w - w) / 2, y0 = cadre.y + (cadre.h - h) / 2;
+    const P = (p) => ({ x: x0 + p.x * k, y: y0 + p.y * k });
+    return { b, m, cadre, k, P, pied, reserve, hReserve };
+}
+
+/** Ce qu'il y a à tracer, en millimètres : des traits, des cercles, des lettres. */
+function tracesProgramme(g) {
+    const traits = [], cercles = [];
+    (g.m.objets || []).forEach(o => {
+        if (o.genre === 'cercle') {
+            cercles.push({ c: g.P(o.c), r: o.r * g.k });
+            return;
+        }
+        const bouts = o.genre === 'droite' ? couperAuMonde(o.a, o.b) : [o.a, o.b];
+        if (bouts) traits.push([g.P(bouts[0]), g.P(bouts[1])]);
+    });
+    const noms = Object.entries(g.m.depart || {}).map(([nom, p]) => {
+        const q = g.P(p);
+        return { t: nom, x: q.x + 1.6, y: q.y - 1.6, pt: q };
+    });
+    return { traits, cercles, noms };
+}
+
+function programmePreviewHtml(item, slot, k, solution) {
+    const g = geoProgramme(item, slot);
+    const t = tracesProgramme(g);
+    const T = (v) => (v * k).toFixed(2);
+    const police = 'Helvetica, Arial, sans-serif';
+    let out = '';
+
+    t.traits.forEach(([a, b]) => {
+        out += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(b.x)}" y2="${T(b.y)}"
+            stroke="#1a202c" stroke-width="${T(0.4)}" stroke-linecap="round"/>`;
+    });
+    t.cercles.forEach(c => {
+        out += `<circle cx="${T(c.c.x)}" cy="${T(c.c.y)}" r="${T(c.r)}" fill="none"
+            stroke="#1a202c" stroke-width="${T(0.4)}"/>`;
+    });
+    // UN POINT SE MARQUE D'UNE CROIX — Rémy : « les points sont des croix ».
+    // C'est la convention du collège : le point est le CROISEMENT des deux
+    // traits, on peut y poser la pointe du compas. Un disque cacherait
+    // justement l'endroit qu'il désigne. L'écran fait de même.
+    t.noms.forEach(n => {
+        const c = PC_CROIX;
+        out += `<path d="M ${T(n.pt.x - c)} ${T(n.pt.y - c)} L ${T(n.pt.x + c)} ${T(n.pt.y + c)}
+            M ${T(n.pt.x - c)} ${T(n.pt.y + c)} L ${T(n.pt.x + c)} ${T(n.pt.y - c)}"
+            fill="none" stroke="#1a202c" stroke-width="${T(0.35)}" stroke-linecap="round"/>`;
+        out += `<text x="${T(n.x)}" y="${T(n.y)}" font-size="${T(3.2)}" font-weight="800"
+            fill="#1a202c" font-family="${police}">${echapper(n.t)}</text>`;
+    });
+
+    let y = g.cadre.y + g.cadre.h + 2;
+    g.reserve.forEach((ligne, i) => {
+        out += `<text x="${T(g.b.x + 1)}" y="${T(y + PC_RESERVE + i * (PC_RESERVE + 0.5))}"
+            font-size="${T(PC_RESERVE)}" font-style="italic" fill="#8a90a0"
+            font-family="${police}">${echapper(ligne)}</text>`;
+    });
+    y += g.hReserve;
+    for (let i = 0; i < g.m.lignes; i++) {
+        out += `<line x1="${T(g.b.x + 1)}" y1="${T(y + 4.6)}" x2="${T(g.b.x + g.b.w - 1)}"
+            y2="${T(y + 4.6)}" stroke="#b0b6c5" stroke-width="${T(0.22)}"
+            stroke-dasharray="${T(0.9)} ${T(0.9)}"/>`;
+        if (solution && g.m.solution[i]) {
+            out += `<text x="${T(g.b.x + 1.5)}" y="${T(y + 3.9)}" font-size="${T(2.6)}"
+                font-weight="700" fill="#2b6cb0"
+                font-family="${police}">${echapper(`${i + 1}. ${g.m.solution[i]}`)}</text>`;
+        }
+        y += PC_LIGNE;
+    }
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${out}</svg>`;
+}
+
+function dessinerProgrammePdf(doc, item, slot, solution) {
+    const g = geoProgramme(item, slot);
+    const t = tracesProgramme(g);
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.4);
+    doc.setLineCap('round');
+    t.traits.forEach(([a, b]) => doc.line(a.x, a.y, b.x, b.y));
+    t.cercles.forEach(c => doc.circle(c.c.x, c.c.y, c.r, 'S'));
+    doc.setLineCap('butt');
+
+    doc.setLineWidth(0.35);
+    doc.setLineCap('round');
+    t.noms.forEach(n => {
+        const c = PC_CROIX;
+        doc.line(n.pt.x - c, n.pt.y - c, n.pt.x + c, n.pt.y + c);
+        doc.line(n.pt.x - c, n.pt.y + c, n.pt.x + c, n.pt.y - c);
+    });
+    doc.setLineCap('butt');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...ENCRE.trait);
+    t.noms.forEach(n => doc.text(n.t, n.x, n.y));
+
+    let y = g.cadre.y + g.cadre.h + 2;
+    if (g.reserve.length) {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(PC_RESERVE * 2.83);       // millimètres → points
+        doc.setTextColor(...ENCRE.gris);
+        // Le PDF sait mesurer : on replie sur la vraie largeur plutôt que sur
+        // l'estimation de l'aperçu.
+        doc.splitTextToSize(g.m.reserve, g.b.w - 2).slice(0, g.reserve.length)
+            .forEach((ligne, i) => doc.text(ligne, g.b.x + 1, y + PC_RESERVE + i * (PC_RESERVE + 0.5)));
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...ENCRE.trait);
+    }
+    y += g.hReserve;
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.22);
+    for (let i = 0; i < g.m.lignes; i++) {
+        doc.setLineDashPattern([0.9, 0.9], 0);
+        doc.line(g.b.x + 1, y + 4.6, g.b.x + g.b.w - 1, y + 4.6);
+        doc.setLineDashPattern([], 0);
+        if (solution && g.m.solution[i]) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7);
+            doc.setTextColor(43, 108, 176);
+            doc.text(`${i + 1}. ${g.m.solution[i]}`, g.b.x + 1.5, y + 3.9);
+            doc.setTextColor(...ENCRE.trait);
+        }
+        y += PC_LIGNE;
+    }
+}
+
 // ================= HYPOTÉNUSE, OPPOSÉ, ADJACENT ==========================
 //
 // Rémy, quand je lui ai demandé quels exercices manquaient de fiche :
@@ -12595,6 +12771,25 @@ export const RENDUS = {
         parLigneDefaut: 1,
         // Plus haut que large : la figure en haut, les trois cadres dessous.
         proportions: { w: 1, h: 1.45 },
+        titreAGauche: true
+    },
+
+    'programme-construction': {
+        titre: 'Écris le programme de construction',
+        consigne: (items) => (items[0] && items[0].prompt && items[0].prompt.papier)
+            || 'Écris le programme de construction de chaque figure.',
+        previewGrille: programmePreviewHtml,
+        pdfGrille: dessinerProgrammePdf,
+        nomBloc: 'Figure', nomBlocs: 'figures',
+        // DEUX PAR PAGE, ET C'EST LE SUJET. Une figure demande cinq à neuf
+        // lignes d'écriture manuscrite : à quatre par page, la ligne tombe à
+        // trois millimètres et l'on n'y écrit pas « le cercle de centre A
+        // passant par B ». Ce qu'on travaille ici est la rédaction, pas le
+        // nombre de figures.
+        disposition: { cols: 2, rows: 2, maxCols: 2, maxRows: 3 },
+        parLigneDefaut: 2,
+        // Plus haut que large : le dessin en haut, les lignes dessous.
+        proportions: { w: 1, h: 1.3 },
         titreAGauche: true
     },
 

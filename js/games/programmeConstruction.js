@@ -24,37 +24,13 @@ import { BaseGame } from '../core/BaseGame.js';
 import {
     MONDE, OPERATIONS, FAMILLES, ORDRE_FAMILLES,
     NIVEAUX, preparerNiveau, niveauxDisponibles, operationsDe,
-    executer, comparer, cleObjet, nomObjet
+    executer, comparer, cleObjet, nomObjet, couperAuMonde
 } from '../core/programmeConstruction.js';
 
 const COMPETENCE = 'geo.construction.programme';
 
 const enAttribut = (s) => String(s ?? '')
     .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
-/**
- * UNE DROITE N'A PAS DE BOUTS : on la coupe au cadre.
- *
- * Un `<line>` a besoin de deux points, et une droite n'en propose aucun de
- * naturel. On calcule donc où elle entre et sort du monde — sinon elle
- * s'arrêterait aux deux points qui l'ont définie, et se lirait comme un
- * segment. La confusion segment / droite est précisément ce que l'exercice
- * travaille : la dessiner de travers serait enseigner le contraire.
- */
-function droiteAuCadre(a, b) {
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const ts = [];
-    if (Math.abs(dx) > 1e-9) { ts.push((0 - a.x) / dx, (MONDE.w - a.x) / dx); }
-    if (Math.abs(dy) > 1e-9) { ts.push((0 - a.y) / dy, (MONDE.h - a.y) / dy); }
-    if (!ts.length) return null;
-    const dedans = ts.filter(t => {
-        const x = a.x + dx * t, y = a.y + dy * t;
-        return x >= -0.01 && x <= MONDE.w + 0.01 && y >= -0.01 && y <= MONDE.h + 0.01;
-    }).sort((u, v) => u - v);
-    if (dedans.length < 2) return null;
-    const t0 = dedans[0], t1 = dedans[dedans.length - 1];
-    return [{ x: a.x + dx * t0, y: a.y + dy * t0 }, { x: a.x + dx * t1, y: a.y + dy * t1 }];
-}
 
 /** Le dessin d'une figure : les tracés, puis les points par-dessus. */
 function figureSvg(objets, points, { classe = '', aides = [] } = {}) {
@@ -67,13 +43,24 @@ function figureSvg(objets, points, { classe = '', aides = [] } = {}) {
                 r="${o.r.toFixed(3)}" fill="none"/>`;
             return;
         }
-        const bouts = o.genre === 'droite' ? droiteAuCadre(o.a, o.b) : [o.a, o.b];
+        const bouts = o.genre === 'droite' ? couperAuMonde(o.a, o.b) : [o.a, o.b];
         if (!bouts) return;
         out += `<line class="pc-trait${aide}" x1="${bouts[0].x.toFixed(3)}" y1="${bouts[0].y.toFixed(3)}"
             x2="${bouts[1].x.toFixed(3)}" y2="${bouts[1].y.toFixed(3)}"/>`;
     });
+    // UN POINT SE MARQUE D'UNE CROIX, PAS D'UNE PASTILLE.
+    //
+    // Rémy : « les points sont des croix ». C'est la convention du collège, et
+    // elle a une raison : un gros disque cache l'endroit qu'il désigne, alors
+    // que le point est exactement le CROISEMENT des deux traits — on peut y
+    // poser la pointe du compas. Une pastille dit « quelque part par ici », une
+    // croix dit « ici ».
     Object.entries(points || {}).forEach(([nom, p]) => {
-        out += `<circle class="pc-point" cx="${p.x.toFixed(3)}" cy="${p.y.toFixed(3)}" r="0.9"/>`;
+        const c = 1.3;
+        out += `<path class="pc-croix" d="M ${(p.x - c).toFixed(3)} ${(p.y - c).toFixed(3)}
+            L ${(p.x + c).toFixed(3)} ${(p.y + c).toFixed(3)}
+            M ${(p.x - c).toFixed(3)} ${(p.y + c).toFixed(3)}
+            L ${(p.x + c).toFixed(3)} ${(p.y - c).toFixed(3)}"/>`;
         out += `<text class="pc-nom" x="${(p.x + 2).toFixed(3)}" y="${(p.y - 1.8).toFixed(3)}"
             >${enAttribut(nom)}</text>`;
     });
@@ -146,7 +133,10 @@ export class ProgrammeConstruction extends BaseGame {
                    du travail, pas le résultat : les peindre comme le reste ferait
                    croire qu'on les exige. */
                 .pc-trait--aide { stroke: var(--text-muted); stroke-width: 0.3; opacity: .55; }
-                .pc-point { fill: var(--text-main); }
+                .pc-croix {
+                    stroke: var(--text-main); stroke-width: 0.45; fill: none;
+                    stroke-linecap: round;
+                }
                 .pc-nom { fill: var(--text-main); font-size: 4px; font-weight: 700;
                     font-family: inherit; }
                 .pc-prog { display: flex; flex-direction: column; gap: 5px; }
@@ -401,14 +391,62 @@ export class ProgrammeConstruction extends BaseGame {
         this.note('Le programme est écrit : la figure de droite est celle de gauche.', 'ok');
     }
 
-    /** La barre d'auteur : passer au niveau suivant. */
-    sauterQuestion() {
+    /**
+     * LA BARRE D'AUTEUR AVANCE, ET ELLE FRANCHIT QUELQUE CHOSE DE VISIBLE.
+     *
+     * Rémy : « on ne peut pas avancer avec la barre de debug ». J'avais écrit
+     * `sauterQuestion()` ; le meneur, lui, appelle `sauterEtape()`. Un nom pour
+     * un autre, et le bouton ne faisait rien — sans rien dire, puisque le
+     * meneur retombe silencieusement sur son chemin ordinaire quand la méthode
+     * n'existe pas.
+     *
+     * DEUX APPUIS, DEUX CHOSES. Le premier écrit le programme MODÈLE : l'auteur
+     * voit la réponse, ce qui est justement ce qu'il cherche en parcourant les
+     * niveaux. Le second passe au niveau suivant. C'est aussi ce que demande le
+     * meneur — « on pose les bonnes réponses de l'étape, puis on avance » : un
+     * niveau franchi à vide laisserait une figure fausse à l'écran.
+     */
+    sauterEtape() {
+        if (this.fini) return false;
+        const modele = this.niveau.modeleResolu;
+        const dejaEcrit = this.programme.length >= modele.length;
+        if (!dejaEcrit) {
+            this.programme = modele.map(i => ({ op: i.op, args: [...i.args] }));
+            this.note('Programme modèle posé — il en existe d\'autres.', 'info');
+            this.dessiner();
+            return true;
+        }
         if (this.rang + 1 >= this.plan.length) return false;
         this.rang += 1;
         this.programme = [];
+        this.cadreMoiEl.classList.remove('pc-cadre--ok');
         this.note('');
         this.dessiner();
         return true;
+    }
+
+    /** Pendant du saut : on efface le programme, puis on recule d'un niveau. */
+    revenirEtape() {
+        if (this.isDemo || this.fini) return false;
+        if (this.programme.length) {
+            this.programme = [];
+            this.note('');
+            this.dessiner();
+            return true;
+        }
+        if (this.rang <= 0) return false;
+        this.rang -= 1;
+        this.cadreMoiEl.classList.remove('pc-cadre--ok');
+        this.dessiner();
+        return true;
+    }
+
+    /** La ligne des étapes : ici, les figures de la progression. */
+    planEtapes() {
+        return {
+            courante: this.rang,
+            liste: this.plan.map(i => NIVEAUX[i].titre)
+        };
     }
 }
 
