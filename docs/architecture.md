@@ -194,6 +194,38 @@ intégrés en déclarant leurs réponses via `BaseGame.onCorrectAnswer` /
 `onWrongAnswer`, donc ils alimentent identiquement statistiques, carnet
 d'erreurs et notes.
 
+### Les marches d'une progression
+
+Certains générateurs ne posent pas des questions interchangeables : ils montent
+un escalier — douze marches pour additionner des relatifs, dix pour réduire
+avec des puissances. Trois questions se posent alors, et elles étaient toutes
+les trois dans un seul menu déroulant. Rémy :
+
+> « il faudrait pouvoir choisir les niveaux par checkbox, avoir un nombre de
+> questions que ça change le nombre de questions, et avoir la même chose avec
+> un peu le diagramme en barres. »
+
+Elles sont maintenant séparées, et `core/progression.js` porte le calcul, sans
+écran donc testable :
+
+1. **Quelles marches** on travaille — une liste à cocher (`type: 'marches'`,
+   posée par `paramMarches`), tout coché à l'ouverture. Au-delà de huit
+   marches, elle se plie sur les groupes que le générateur déclare (les temps
+   A / B / C), sinon elle reste à plat.
+2. **Combien de questions** dure l'exercice — le réglage de longueur, et rien
+   d'autre. Il ne bouge plus tout seul ; `conseil()` sert une fois, à
+   l'ouverture, pour ne pas proposer dix questions à treize marches.
+3. **Comment elles se partagent** — `decoupeMarches()` répartit le total sur
+   les marches cochées, et le panneau le dessine en barre, avec la bulle au
+   clic et les bornes qu'on tire, exactement comme la frise du QCM 2/4/libre.
+   Le partage tiré à la main s'écrit dans `params.repartitionMarches` — pas
+   `repartition`, qui appartient déjà à l'escalier de l'aide.
+
+Côté générateur, une seule ligne dans `generate` : `marcheAuRang(ctx.index,
+marchesCochees(params, LISTE_MARCHES, ANCIEN), totalDe(ctx, params), params)`.
+`itemSession` passe `total` dans le `ctx` — sans lui, on retombe sur le compte
+que le générateur posait avant qu'il y ait un réglage.
+
 ---
 
 ## 4. Les questions sont reproductibles

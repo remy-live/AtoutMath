@@ -170,10 +170,16 @@ test('NEUF MARCHES, EN TROIS TEMPS, et le sens des règles arrive avant les règ
     assert.deepEqual(ETAPES.slice(0, 2).map(e => e.temps), ['A', 'A']);
     assert.equal(ETAPES[0].id, 'valeur', 'on installe ce QU\'EST une puissance en premier');
     ETAPES.forEach((e, i) => assert.equal(e.rang, i + 1, `${e.id} mal rangé`));
+    // COCHER UN TEMPS ENTIER, c'est ce que les entrées « A », « B », « C » du
+    // menu faisaient — et un parcours enregistré de ce temps-là se relit
+    // encore comme tel. Dans un temps, on ne sort jamais de ses marches.
     ['A', 'B', 'C'].forEach(t => {
         const liste = ETAPES.filter(e => e.temps === t).map(e => e.id);
         for (let i = 0; i < 12; i++) {
-            assert.ok(liste.includes(marchePour(t, i)), `le temps ${t} sort de ses marches`);
+            assert.ok(liste.includes(marchePour({ marches: liste }, i, 12)),
+                `le temps ${t} sort de ses marches`);
+            assert.ok(liste.includes(marchePour({ etape: t }, i, 12)),
+                `le temps ${t} relu depuis un parcours enregistré sort de ses marches`);
         }
     });
 });

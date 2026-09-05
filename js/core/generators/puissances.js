@@ -20,7 +20,9 @@
 // sens.
 
 import { makeItem, finalizeChoices } from '../items.js';
-import { paramRepartition, rangMarcheCyclique, conseilProgression, totalDe } from '../progression.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 import {
     ETAPES_PUISSANCES, ORDRE_ETAPES, puissanceTexte, valeurPuissance, decimaleDe,
     mantisseTexte, scientifiqueTexte, jugerMantisse, RAISONS, versScientifique,
@@ -310,26 +312,33 @@ const MARCHES = {
 /**
  * La marche à travailler pour la question numéro `index`.
  *
- * `etape` vaut soit l'identifiant d'une marche — on y reste —, soit
- * « progressif » : on monte alors d'une marche tous les `PAR_MARCHE` items, et
- * l'on s'arrête sur la dernière. `bornes` restreint la montée à un intervalle,
- * ce qui donne les deux exercices que Rémy demandait : « déjà reconnaître »,
- * puis « transformer ».
+ * `bornes` restreint la liste à un intervalle, ce qui donne les deux exercices
+ * que Rémy demandait : « déjà reconnaître », puis « transformer ». Dedans, ce
+ * sont les cases cochées qui se partagent l'exercice.
+ *
+ * LE MENU A DISPARU AVEC LES CASES : on passe les RÉGLAGES, plus une étape
+ * choisie. Cocher une seule case dit ce que le menu disait, et
+ * `marchesCochees` relit au passage les parcours enregistrés du temps du menu.
+ * LE CYCLE aussi a disparu : il servait à ne pas poser quatorze questions du
+ * même type au bas d'une fiche de vingt quand on montait toutes les trois
+ * questions ; les marches cochées se partagent maintenant l'exercice, donc
+ * aucune ne peut déborder. Voir core/progression.js.
  */
-export function marchePour(etape, index, bornes, params, total = 0) {
-    const liste = bornes
+export function marchePour(params, index, bornes, total = 0) {
+    return marcheAuRang(index, marchesCochees(params, listeMarches(bornes), ANCIEN),
+        total, params, PAR_MARCHE);
+}
+
+/** Les marches de CET exercice-ci : les deux du catalogue n'ont pas les mêmes. */
+function listeMarches(bornes) {
+    const ids = bornes
         ? ORDRE_ETAPES.slice(ORDRE_ETAPES.indexOf(bornes[0]), ORDRE_ETAPES.indexOf(bornes[1]) + 1)
         : ORDRE_ETAPES;
-    if (etape && etape !== 'progressif' && MARCHES[etape]) return etape;
-    const rang = rangMarcheCyclique(index, liste.length, params, PAR_MARCHE, total);
-    // ARRIVÉ EN HAUT, ON REDESCEND ET L'ON RECOMMENCE. La première version
-    // s'arrêtait sur la dernière marche, et cela se voyait à l'impression :
-    // sur une fiche de vingt questions, l'exercice « transformer » en posait
-    // trois du premier type, trois du deuxième et QUATORZE du troisième. Le
-    // cycle donne une feuille équilibrée, et une longue séance qui repasse
-    // par tout au lieu de s'enliser sur la fin.
-    return liste[rang % liste.length];
+    return ids.map((e, i) => ({ id: e, nom: `${i + 1}. ${ETAPES_PUISSANCES[e].label}`, groupe: null }));
 }
+
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'etape' };
 
 /** Le générateur, partagé par les deux exercices du catalogue. */
 function fabriquer(id, competence, bornes) {
@@ -339,45 +348,18 @@ function fabriquer(id, competence, bornes) {
         skills: [competence],
         answerKinds: ['choice'],
         ecrit: true,
-        // La montée CYCLE : arrivée en haut, elle repart en bas. Il faut donc
-        // au moins un tour complet pour que chaque marche soit vue une fois,
-        // et c'est ce qu'on conseille. Voir core/duree.js.
-        marches: (p) => {
-            if (((p && p.etape) || 'progressif') !== 'progressif') return 1;
-            return (bornes
-                ? ORDRE_ETAPES.slice(ORDRE_ETAPES.indexOf(bornes[0]), ORDRE_ETAPES.indexOf(bornes[1]) + 1)
-                : ORDRE_ETAPES).length;
-        },
-        conseil: (p) => {
-            const etape = (p && p.etape) || 'progressif';
-            if (etape !== 'progressif') return 10;
-            const liste = bornes
-                ? ORDRE_ETAPES.slice(ORDRE_ETAPES.indexOf(bornes[0]), ORDRE_ETAPES.indexOf(bornes[1]) + 1)
-                : ORDRE_ETAPES;
-            return conseilProgression(liste.length, p, PAR_MARCHE);
-        },
+        // COMBIEN DE QUESTIONS À L'OUVERTURE — et rien de plus. Voir
+        // core/duree.js : le nombre ne bouge plus ensuite.
+        conseil: (p) => conseilProgression(
+            marchesCochees(p, listeMarches(bornes), ANCIEN).length, PAR_MARCHE),
         params: [
-            {
-                id: 'etape', type: 'select', label: 'Marche à travailler', default: 'progressif',
-                aide: '« Tout en ordre » monte d\'une marche toutes les trois questions : on '
-                    + 'commence par lire 10³ et l\'on finit par comparer deux écritures. Choisir '
-                    + 'une marche précise y reste, pour une séance qui ne travaille que celle-là.',
-                options: [{ value: 'progressif', label: 'Tout en ordre, du plus simple au plus dur' }]
-                    .concat((bornes
-                        ? ORDRE_ETAPES.slice(ORDRE_ETAPES.indexOf(bornes[0]), ORDRE_ETAPES.indexOf(bornes[1]) + 1)
-                        : ORDRE_ETAPES).map(e => ({ value: e, label: ETAPES_PUISSANCES[e].label })))
-            },
-            paramRepartition({
-                marches: (bornes
-                    ? ORDRE_ETAPES.slice(ORDRE_ETAPES.indexOf(bornes[0]), ORDRE_ETAPES.indexOf(bornes[1]) + 1)
-                    : ORDRE_ETAPES).length
-            })
+            paramMarches({ marches: listeMarches(bornes), mot: 'marche', ancien: ANCIEN })
         ],
 
         generate(params, ctx) {
             const rng = ctx.rng;
             const p = params || {};
-            const marche = marchePour(p.etape, ctx.index, bornes, p, totalDe(ctx, p));
+            const marche = marchePour(p, ctx.index, bornes, totalDe(ctx, p));
             const q = MARCHES[marche](rng);
             // LES CHOIX PUREMENT NUMÉRIQUES S'AFFICHENT GROUPÉS, mais leur
             // `value` reste brute : c'est elle qui sert à comparer la réponse

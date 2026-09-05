@@ -36,7 +36,9 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { ecrire, nb } from './relatifs.js';
-import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 const SKILL = 'num.relatifs.produit';
 const SKILL_SENS = 'num.relatifs.sens';
@@ -269,6 +271,18 @@ function questionBrute(etape, rng) {
 
 // --- Le générateur ------------------------------------------------------------
 
+// LES MARCHES TELLES QUE LE PANNEAU LES COCHE, dans l'ordre de la leçon.
+// Rémy : « il faudrait pouvoir choisir les niveaux par checkbox ».
+const LISTE_MARCHES = ETAPES.map((e, i) => ({ id: e.id, nom: `${i + 1}. ${e.titre}`, groupe: e.temps }));
+const TEMPS = {
+    A: 'A — le signe seul, sans calculer',
+    B: 'B — le produit de deux relatifs',
+    C: 'C — plusieurs facteurs, cas particuliers'
+};
+const MOT = 'marche';
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'etape' };
+
 export const relatifsProduitGenerator = {
     id: 'num.relatifs.produit',
     label: 'Multiplier des relatifs, pas à pas',
@@ -277,47 +291,21 @@ export const relatifsProduitGenerator = {
     // La question se photocopie telle quelle : « (−3) × (+4) = ? » n'a besoin
     // d'aucune figure.
     ecrit: true,
-    marches: (p) => {
-        const choix = (p && p.etape) || 'progressif';
-        if (['A', 'B', 'C'].includes(choix)) return ETAPES.filter(e => e.temps === choix).length;
-        return choix === 'progressif' ? ETAPES.length : 1;
-    },
-    conseil: (p) => {
-        const choix = (p && p.etape) || 'progressif';
-        if (['A', 'B', 'C'].includes(choix)) {
-            return conseilProgression(ETAPES.filter(e => e.temps === choix).length, p);
-        }
-        return choix === 'progressif' ? conseilProgression(ETAPES.length, p) : 6;
-    },
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'etape', type: 'select', label: 'Étape', echelle: true,
-            aide: 'En « progressif », les douze marches s\'enchaînent, deux questions chacune. '
-                + 'Le temps A ne demande QUE le signe, sans calculer : c\'est là que se joue le '
-                + 'contresens du chapitre — (−3) × (−4) est POSITIF, alors que (−3) + (−4) est '
-                + 'négatif. Le temps B calcule, le temps C compte les facteurs négatifs.',
-            options: [
-                { value: 'progressif', label: 'Progressif (les 12 marches à la suite)', court: 'Tout' },
-                { value: 'A', label: 'A — le signe seul, sans calculer', court: 'A' },
-                { value: 'B', label: 'B — le produit de deux relatifs', court: 'B' },
-                { value: 'C', label: 'C — plusieurs facteurs, cas particuliers', court: 'C' },
-                ...ETAPES.map((e, i) => ({ value: e.id, label: `${i + 1}. ${e.titre}`, court: String(i + 1) }))
-            ],
-            default: 'progressif'
-        },
-        paramRepartition({ marches: ETAPES.length })
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        }),
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
         const index = ctx.index ?? 0;
-        const choix = params?.etape || 'progressif';
-
-        let liste = ETAPES;
-        if (['A', 'B', 'C'].includes(choix)) liste = ETAPES.filter(e => e.temps === choix);
-        else if (choix !== 'progressif') liste = [ETAPES.find(e => e.id === choix) || ETAPES[0]];
-        const rang = rangMarche(index, liste.length, params, undefined, totalDe(ctx, params));
-        const etape = liste[rang];
+        // LES MARCHES COCHÉES SE PARTAGENT LES QUESTIONS — voir
+        // core/progression.js. Le nombre de questions se règle à part.
+        const id = marcheAuRang(ctx.index ?? 0, marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params);
+        const etape = ETAPES.find(e => e.id === id) || ETAPES[0];
         const rangGlobal = ETAPES.findIndex(e => e.id === etape.id);
 
         const q = question(etape, rng);

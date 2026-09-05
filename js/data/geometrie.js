@@ -1401,7 +1401,7 @@ export const geometrieExercises = [
         // de cette figure ? » n'est pas une question, c'est une devinette.
         printable: 'thales', sansRevision: true,
         skills: ['geo.thales'],
-        params: { etape: 'progressif', config: 'melange' },
+        params: { config: 'melange' },
         motsClefs: ['thalès', 'thales', 'triangles emboîtés', 'papillon', 'rapports',
             'proportionnalité', 'parallèles', 'réciproque', 'longueur manquante',
             'agrandissement', 'réduction'],

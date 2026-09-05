@@ -18,7 +18,7 @@
 
 import { makeItem } from '../items.js';
 import {
-    paramRepartition, rangMarche, conseilProgression, repartitionDe, AUTO, totalDe
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
 import {
     tirerEgalite, etapesEgalite, NIVEAUX_SOMME, tirerCalcul, tirerComplement,
@@ -274,11 +274,17 @@ const PAR_MARCHE = 2;
 
 const NIVEAU = Object.fromEntries(NIVEAUX_SOMME.map(n => [n.id, n]));
 
-/** La marche : celle qu'on a fixée, ou celle où en est la série. */
+/** Les marches telles que le panneau les coche, dans l'ordre de la leçon. */
+const LISTE_MARCHES = NIVEAUX_SOMME.map((n, i) => ({ id: n.id, nom: `${i + 1}. ${n.nom}`, groupe: null }));
+const TEMPS = {};
+const MOT = 'marche';
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'niveau' };
+
+/** La marche : celle où le partage fait tomber cette question-là. */
 function marcheDe(params, index, total = 0) {
-    const choisi = params.niveau || 'progressif';
-    if (choisi !== 'progressif') return choisi;
-    return NIVEAUX_SOMME[rangMarche(index || 0, NIVEAUX_SOMME.length, params, PAR_MARCHE, total)].id;
+    return marcheAuRang(index || 0, marchesCochees(params, LISTE_MARCHES, ANCIEN),
+        total, params, PAR_MARCHE);
 }
 
 // --- LE DESSIN DE L'INDICE ---------------------------------------------------
@@ -420,23 +426,11 @@ export const fracSommeProgressiveGenerator = {
     // les couvrait. Dès qu'on demande trois ou quatre questions par marche, il
     // en faut douze ou seize — sans ce conseil, le réglage n'aurait fait que
     // tronquer la progression plus tôt. Voir core/duree.js.
-    marches: (p) => (((p && p.niveau) || 'progressif') === 'progressif'
-        ? NIVEAUX_SOMME.length : 1),
-    conseil: (p) => ((p && p.niveau) || 'progressif') === 'progressif'
-        ? conseilProgression(NIVEAUX_SOMME.length, p, PAR_MARCHE) : 6,
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length, PAR_MARCHE),
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'La progression', default: 'progressif',
-            aide: 'En progressif, l\'exercice monte tout seul de marche en marche : même '
-                + 'dénominateur, puis l\'un multiple de l\'autre, puis premiers entre eux, et '
-                + 'enfin le vrai PPCM. Chaque marche n\'ajoute QU\'UNE difficulté. On peut '
-                + 'aussi s\'arrêter sur une marche et n\'en faire que celle-là.',
-            options: [
-                { value: 'progressif', label: 'Progressif — les quatre marches à la suite' },
-                ...NIVEAUX_SOMME.map(n => ({ value: n.id, label: n.nom }))
-            ]
-        },
-        paramRepartition({ marches: NIVEAUX_SOMME.length }),
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        }),
         PARAM_OPERATION,
         PARAM_SIMPLIFIER,
         {
@@ -575,26 +569,16 @@ export const fracProblemeGenerator = {
     // Les compléments à UN passent AVANT la progression et ne comptent pas
     // dedans : il faut donc les ajouter au compte, sinon régler « 3 questions
     // “combien reste-t-il ?” » mangerait trois marches sur quatre.
-    marches: (p) => (((p && p.niveau) || 'progressif') === 'progressif'
-        ? NIVEAUX_SOMME.length : 1),
     conseil: (p) => {
+        // Les compléments à UN passent AVANT la progression et ne comptent pas
+        // dedans : il faut donc les ajouter au compte.
         const avant = Math.max(0, Number((p && p.complements) ?? 3) || 0);
-        const suite = ((p && p.niveau) || 'progressif') === 'progressif'
-            ? conseilProgression(NIVEAUX_SOMME.length, p, PAR_MARCHE)
-            : (repartitionDe(p) === AUTO ? PAR_MARCHE : repartitionDe(p)) * 3;
-        return avant + suite;
+        return avant + conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length, PAR_MARCHE);
     },
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'La progression', default: 'progressif',
-            aide: 'Les mêmes quatre marches que le calcul posé — la difficulté est dans les '
-                + 'dénominateurs, pas dans l\'histoire.',
-            options: [
-                { value: 'progressif', label: 'Progressif — les quatre marches à la suite' },
-                ...NIVEAUX_SOMME.map(n => ({ value: n.id, label: n.nom }))
-            ]
-        },
-        paramRepartition({ marches: NIVEAUX_SOMME.length }),
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        }),
         { ...PARAM_OPERATION, default: 'les-deux' },
         PARAM_SIMPLIFIER,
         {

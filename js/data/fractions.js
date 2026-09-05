@@ -149,7 +149,7 @@ export const fractionsExercises = [
         generatorId: 'frac.somme-progressive', activityId: 'fraction-somme',
         // « Pas besoin de simplifier dans un premier temps » : le résultat brut
         // suffit, et mettre au même dénominateur est déjà tout l'exercice.
-        params: { niveau: 'progressif', operation: 'somme', simplifier: 'non', maxDen: 10 },
+        params: { operation: 'somme', simplifier: 'non', maxDen: 10 },
         motsClefs: ['PPCM', 'dénominateur commun', 'additionner', 'soustraire',
             'même dénominateur', 'table de Pythagore'],
         tags: {
@@ -188,7 +188,7 @@ export const fractionsExercises = [
         lignesReponsePapier: 1,
         generatorId: 'frac.probleme', activityId: 'fraction-somme',
         params: {
-            niveau: 'progressif', operation: 'les-deux', simplifier: 'non',
+            operation: 'les-deux', simplifier: 'non',
             complements: 3, maxDen: 10
         },
         revisions: [{

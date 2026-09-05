@@ -30,7 +30,9 @@
 // qu'on doit voir.
 
 import { makeItem, finalizeChoices } from '../items.js';
-import { paramRepartition, rangMarcheCyclique, conseilProgression, totalDe } from '../progression.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 import {
     CONFIGURATIONS, creerThales, longueurTexte, egaliteThales, FAUSSES_EGALITES,
     sontParalleles, rapportsCompares, calculThales, pointsReels,
@@ -599,14 +601,28 @@ const MARCHES = {
     reciproque: etapeReciproque
 };
 
-/** La marche à travailler pour la question numéro `index`. */
-export function marcheThales(etape, index, params, total = 0) {
-    if (etape && etape !== 'progressif' && MARCHES[etape]) return etape;
-    // À compte fixe, arrivé en haut on recommence en bas : sur une fiche de
-    // vingt questions, plafonner donnerait onze fois la même. En partage, aucune
-    // marche ne déborde et le cycle ne sert plus.
-    return ORDRE_THALES[rangMarcheCyclique(index, ORDRE_THALES.length, params, PAR_MARCHE, total)];
+/**
+ * La marche à travailler pour la question numéro `index`.
+ *
+ * On passe les RÉGLAGES, plus une étape choisie : cocher une seule case dit ce
+ * que le menu disait, et `marchesCochees` relit au passage les parcours
+ * enregistrés du temps du menu — y compris « configuration », la marche que
+ * Rémy a fait retirer, qui retombe alors sur la liste entière.
+ *
+ * Le cycle a disparu avec le menu : les marches cochées se partagent
+ * l'exercice, donc aucune ne peut déborder. Voir core/progression.js.
+ */
+export function marcheThales(params, index, total = 0) {
+    return marcheAuRang(index, marchesCochees(params, LISTE_MARCHES, ANCIEN), total, params, PAR_MARCHE);
 }
+
+// LES MARCHES TELLES QUE LE PANNEAU LES COCHE, dans l'ordre de la leçon.
+// Rémy : « il faudrait pouvoir choisir les niveaux par checkbox ».
+const LISTE_MARCHES = ORDRE_THALES.map((id, i) => ({ id, nom: `${i + 1}. ${ETAPES_THALES[id].label}`, groupe: null }));
+const TEMPS = {};
+const MOT = 'marche';
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'etape' };
 
 export const thalesGenerator = {
     id: 'geo.thales',
@@ -618,21 +634,11 @@ export const thalesGenerator = {
     ecrit: true,
     // La montée cycle : il faut au moins un tour complet — trois marches — pour
     // que la réciproque soit vue une fois. Voir core/duree.js.
-    marches: (p) => (((p && p.etape) || 'progressif') === 'progressif' ? ORDRE_THALES.length : 1),
-    conseil: (p) => ((p && p.etape) || 'progressif') === 'progressif'
-        ? conseilProgression(ORDRE_THALES.length, p, PAR_MARCHE) : 6,
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length, 3),
     params: [
-        {
-            id: 'etape', type: 'select', label: 'Marche à travailler', default: 'progressif',
-            aide: '« Tout en ordre » monte d\'une marche toutes les trois questions : '
-                + 'écrire l\'égalité, calculer une longueur, puis la réciproque. On ne '
-                + 'commence pas par le calcul, et c\'est voulu : la faute ordinaire est '
-                + 'd\'écrire AE/EB au lieu de AE/AB, et le calcul qui suit tombe alors '
-                + 'parfaitement juste sur une égalité fausse.',
-            options: [{ value: 'progressif', label: 'Tout en ordre, du plus simple au plus dur' }]
-                .concat(ORDRE_THALES.map(e => ({ value: e, label: ETAPES_THALES[e].label })))
-        },
-        paramRepartition({ marches: ORDRE_THALES.length }),
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        }),
         {
             id: 'config', type: 'select', label: 'Configuration', default: 'melange',
             aide: 'Le papillon est le même théorème avec le point A entre les deux '
@@ -648,7 +654,7 @@ export const thalesGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = params || {};
-        const marche = marcheThales(p.etape, ctx.index, p, totalDe(ctx, p));
+        const marche = marcheThales(p, ctx.index, totalDe(ctx, p));
         // « Mélange » tire à chaque question ; un réglage explicite s'impose,
         // ce qui permet de ne travailler que le papillon — celui que les élèves
         // ne reconnaissent pas.

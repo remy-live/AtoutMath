@@ -30,7 +30,7 @@
 import { makeItem, finalizeChoices } from '../items.js';
 import { puissanceTexte, valeurPuissance, grouper } from '../puissances.js';
 import {
-    paramRepartition, rangMarcheCyclique, conseilProgression, totalDe
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
 
 /**
@@ -404,14 +404,30 @@ const MARCHES = {
     }
 };
 
-/** La marche d'une question : celle qu'on a choisie, ou celle du rang. */
-export function marchePour(etape, index, params, total = 0) {
-    if (etape && etape !== 'progressif' && PAR_ID[etape]) return etape;
-    const liste = ['A', 'B', 'C'].includes(etape)
-        ? ETAPES.filter(e => e.temps === etape).map(e => e.id)
-        : ORDRE;
-    return liste[rangMarcheCyclique(index, liste.length, params, PAR_MARCHE, total)];
+/**
+ * La marche d'une question : celle où le partage la fait tomber.
+ *
+ * On passe les RÉGLAGES, plus une étape choisie : cocher une seule case dit ce
+ * que le menu disait, et `marchesCochees` relit au passage les parcours
+ * enregistrés du temps du menu. Le cycle, lui, a disparu avec lui — les
+ * marches cochées se partagent l'exercice, donc aucune ne peut déborder. Voir
+ * core/progression.js.
+ */
+export function marchePour(params, index, total = 0) {
+    return marcheAuRang(index, marchesCochees(params, LISTE_MARCHES, ANCIEN), total, params, PAR_MARCHE);
 }
+
+// LES MARCHES TELLES QUE LE PANNEAU LES COCHE, dans l'ordre de la leçon.
+// Rémy : « il faudrait pouvoir choisir les niveaux par checkbox ».
+const LISTE_MARCHES = ORDRE.map((id, i) => ({ id, nom: `${i + 1}. ${PAR_ID[id].label.replace(/^\d+ · /, '')}`, groupe: PAR_ID[id].temps }));
+const TEMPS = {
+    A: 'A — ce qu’est une puissance',
+    B: 'B — multiplier et diviser',
+    C: 'C — puissance de puissance, et la même base'
+};
+const MOT = 'marche';
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'etape' };
 
 export const puissancesCalculGenerator = {
     id: 'num.puissances-calcul',
@@ -419,41 +435,16 @@ export const puissancesCalculGenerator = {
     skills: [SKILL],
     answerKinds: ['choice'],
     ecrit: true,
-    marches: (p) => {
-        const choix = (p && p.etape) || 'progressif';
-        if (['A', 'B', 'C'].includes(choix)) return ETAPES.filter(e => e.temps === choix).length;
-        return choix === 'progressif' ? ORDRE.length : 1;
-    },
-    conseil: (p) => {
-        const choix = (p && p.etape) || 'progressif';
-        if (['A', 'B', 'C'].includes(choix)) {
-            return conseilProgression(ETAPES.filter(e => e.temps === choix).length, p, PAR_MARCHE);
-        }
-        return choix === 'progressif' ? conseilProgression(ORDRE.length, p, PAR_MARCHE) : 6;
-    },
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length, 3),
     params: [
-        {
-            id: 'etape', type: 'select', label: 'Marche à travailler', default: 'progressif',
-            echelle: true,
-            aide: 'Le temps A installe ce QU\'EST une puissance — un produit de facteurs égaux — '
-                + 'avant toute règle. Le temps B pose les deux règles qu\'on échange tout le '
-                + 'temps : le produit AJOUTE les exposants, le quotient les SOUSTRAIT. Le temps '
-                + 'C ajoute la puissance de puissance, l\'inverse, et la condition qu\'on oublie : '
-                + 'il faut la MÊME base.',
-            options: [
-                { value: 'progressif', label: 'Tout en ordre, du plus simple au plus dur', court: 'Tout' },
-                { value: 'A', label: 'A — ce qu\'est une puissance', court: 'A' },
-                { value: 'B', label: 'B — multiplier et diviser', court: 'B' },
-                { value: 'C', label: 'C — puissance de puissance, et la même base', court: 'C' },
-                ...ETAPES.map(e => ({ value: e.id, label: e.label, court: String(e.rang) }))
-            ]
-        },
-        paramRepartition({ marches: ORDRE.length })
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const marche = marchePour((params || {}).etape, ctx.index, params, totalDe(ctx, params));
+        const marche = marchePour(params, ctx.index, totalDe(ctx, params));
         const q = MARCHES[marche](rng);
         return makeItem({
             seed: rng.seed,

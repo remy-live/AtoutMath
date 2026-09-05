@@ -142,15 +142,20 @@ test('on ne commence pas par calculer, et l\'on finit par la réciproque', () =>
     assert.deepEqual(ORDRE_THALES, ['egalite', 'calculer', 'reciproque']);
     ORDRE_THALES.forEach((id, i) => assert.equal(ETAPES_THALES[id].rang, i + 1));
     assert.equal(ETAPES_THALES.configuration, undefined);
-    assert.equal(marcheThales('progressif', 0), 'egalite');
-    assert.equal(marcheThales('progressif', 3), 'calculer');
-    assert.equal(marcheThales('progressif', 6), 'reciproque');
-    // Arrivé en haut, on recommence : sinon une fiche de vingt questions en
-    // poserait onze fois la même.
-    assert.equal(marcheThales('progressif', 9), 'egalite');
-    assert.equal(marcheThales('calculer', 0), 'calculer');
+    // Neuf questions pour trois marches : trois chacune.
+    assert.equal(marcheThales({}, 0, 9), 'egalite');
+    assert.equal(marcheThales({}, 3, 9), 'calculer');
+    assert.equal(marcheThales({}, 6, 9), 'reciproque');
+    // PLUS DE CYCLE : les marches cochées se partagent le total, donc aucune
+    // ne déborde et redescendre au bas de l'escalier n'aurait plus de sens.
+    // Une question de rab, s'il y en a une, reste en haut.
+    assert.equal(marcheThales({}, 9, 9), 'reciproque');
+    // Cocher une seule case y reste, et un parcours enregistré du temps du
+    // menu se relit encore.
+    assert.equal(marcheThales({ marches: ['calculer'] }, 0, 9), 'calculer');
+    assert.equal(marcheThales({ etape: 'calculer' }, 0, 9), 'calculer');
     // Un réglage enregistré avant la suppression ne doit pas casser l'exercice.
-    assert.equal(marcheThales('configuration', 0), 'egalite');
+    assert.equal(marcheThales({ etape: 'configuration' }, 0, 9), 'egalite');
 });
 
 test('chaque question est complète, et sa figure tient dans son cadre', () => {
@@ -252,9 +257,13 @@ test('Thalès est au catalogue, imprimable, avec ses deux réglages', () => {
     assert.ok(e, 'geo-thales manque au catalogue');
     assert.deepEqual(e.skills, ['geo.thales']);
     assert.equal(e.printable, 'thales', 'la fiche doit porter la figure');
-    assert.equal(e.params.etape, 'progressif');
     const schema = paramSchemaOf(e);
-    assert.ok(schema.find(p => p.id === 'etape').options.length === ORDRE_THALES.length + 1);
+    // LES CASES, PLUS LE MENU — Rémy : « il faudrait pouvoir choisir les
+    // niveaux par checkbox ». La liste s'ouvre tout cochée, et l'on décoche.
+    const cases = schema.find(p => p.type === 'marches');
+    assert.ok(cases, 'le réglage des marches manque');
+    assert.equal(cases.marches.length, ORDRE_THALES.length);
+    assert.deepEqual(cases.default, ORDRE_THALES);
     assert.equal(schema.find(p => p.id === 'config').options.length, 3);
     assert.ok(e.instruction.length > 500, 'consigne trop courte');
     assert.ok(/emboîtés/i.test(e.instruction) && /papillon/i.test(e.instruction));

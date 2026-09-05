@@ -128,35 +128,45 @@ test('SUR LE PAPIER, LES EXPOSANTS SURVIVENT — et les cm² aussi', () => {
 
 // --- La progression -------------------------------------------------------------
 
-test('les sept marches montent dans l\'ordre, trois questions chacune', () => {
+test('les sept marches montent dans l\'ordre, et se partagent l\'exercice', () => {
     assert.deepEqual(ORDRE_ETAPES, ['lire', 'ecrire', 'reconnaitre', 'pourquoi',
         'versScientifique', 'versDecimale', 'comparer']);
     ORDRE_ETAPES.forEach((id, i) => assert.equal(ETAPES_PUISSANCES[id].rang, i + 1));
 
-    assert.equal(marchePour('progressif', 0), 'lire');
-    assert.equal(marchePour('progressif', 2), 'lire');
-    assert.equal(marchePour('progressif', 3), 'ecrire');
-    assert.equal(marchePour('progressif', 12), 'versScientifique');
-    // ARRIVÉ EN HAUT, ON RECOMMENCE EN BAS : sans cela, une fiche de vingt
-    // questions posait la dernière marche quatorze fois de suite.
-    assert.equal(marchePour('progressif', 21), 'lire');
-    assert.equal(marchePour('progressif', 24), 'ecrire');
-    // Une marche choisie explicitement y reste.
-    assert.equal(marchePour('comparer', 0), 'comparer');
+    // Vingt-et-une questions pour sept marches : trois chacune.
+    const m = (i) => marchePour({}, i, undefined, 21);
+    assert.equal(m(0), 'lire');
+    assert.equal(m(2), 'lire');
+    assert.equal(m(3), 'ecrire');
+    assert.equal(m(12), 'versScientifique');
+    // PLUS DE CYCLE. Il servait quand la montée était fixe — trois questions
+    // par marche, quelle que soit la longueur — et qu'une fiche de vingt
+    // finissait par quatorze questions de la dernière marche. Maintenant les
+    // marches cochées SE PARTAGENT le total : aucune ne peut déborder, et
+    // redescendre au bas de l'escalier au milieu de l'exercice n'aurait plus
+    // de sens. Une question de rab, s'il y en a une, reste en haut.
+    assert.equal(m(21), 'comparer');
+    // Une seule case cochée, et l'on y reste.
+    assert.equal(marchePour({ marches: ['comparer'] }, 0, undefined, 21), 'comparer');
+    // Un parcours enregistré du temps du menu se relit encore.
+    assert.equal(marchePour({ etape: 'comparer' }, 5, undefined, 21), 'comparer');
 });
 
 test('les deux exercices couvrent bien « reconnaître » puis « transformer »', () => {
     // Rémy : « déjà reconnaître puis transformer ». Le premier ne doit jamais
     // demander de transformer, et le second ne doit pas redemander de lire.
+    // Le total fait partie du contexte : ce sont les marches cochées qui se le
+    // partagent, donc on ne peut plus demander « quelle marche au rang i ? »
+    // sans dire combien de questions dure l'exercice.
     const vus = (gen, n) => new Set(Array.from({ length: n }, (_, i) =>
-        gen.generate({ etape: 'progressif' }, { rng: makeRng(`e${i}`), index: i }).meta.etape));
+        gen.generate({}, { rng: makeRng(`e${i}`), index: i, total: n }).meta.etape));
 
     // ET LA FICHE EST ÉQUILIBRÉE : sur vingt questions, aucune marche ne doit
     // écraser les autres.
     const compte = {};
     for (let i = 0; i < 20; i++) {
         const m = puissancesTransformerGenerator
-            .generate({ etape: 'progressif' }, { rng: makeRng(`b${i}`), index: i }).meta.etape;
+            .generate({}, { rng: makeRng(`b${i}`), index: i, total: 20 }).meta.etape;
         compte[m] = (compte[m] || 0) + 1;
     }
     Object.entries(compte).forEach(([m, n]) =>
@@ -181,8 +191,8 @@ test('AUCUN DISTRACTEUR NE VAUT LA BONNE RÉPONSE', () => {
     // différentes, rien ne l'avait signalé.
     const nombre = (v) => Number(String(v).replace(/\s| /g, '').replace(',', '.'));
     for (let i = 0; i < 3000; i++) {
-        const it = puissancesGenerator.generate({ etape: 'progressif' },
-            { rng: makeRng(`d${i}`), index: i % 21 });
+        const it = puissancesGenerator.generate({},
+            { rng: makeRng(`d${i}`), index: i % 21, total: 21 });
         const bonne = it.choices.find(c => c.correct);
         assert.ok(bonne, 'aucune bonne réponse');
         const vb = nombre(bonne.value);
@@ -281,13 +291,15 @@ test('les deux exercices sont au catalogue, avec leur progression réglable', ()
         const e = getExerciseById(id);
         assert.ok(e, `${id} manque au catalogue`);
         assert.deepEqual(e.skills, [competence]);
-        assert.equal(e.params.etape, 'progressif');
         const schema = paramSchemaOf(e);
-        const etape = schema.find(p => p.id === 'etape');
-        assert.ok(etape, `${id} : le réglage des marches manque`);
-        // « Tout en ordre » plus les marches de l'intervalle.
-        assert.equal(etape.options.length, marches + 1, `${id} : les marches proposées`);
-        assert.equal(etape.options[0].value, 'progressif');
+        // LES CASES, PLUS LE MENU. Rémy : « il faudrait pouvoir choisir les
+        // niveaux par checkbox ». L'exercice n'a donc plus de réglage `etape`
+        // par défaut : la liste s'ouvre tout cochée, et l'on décoche.
+        const cases = schema.find(p => p.type === 'marches');
+        assert.ok(cases, `${id} : le réglage des marches manque`);
+        assert.equal(cases.marches.length, marches, `${id} : les marches proposées`);
+        assert.deepEqual(cases.default, cases.marches.map(m => m.id),
+            `${id} : tout doit être coché à l'ouverture`);
         // L'activité apporte en plus ses réglages d'aide — deux propositions,
         // puis quatre, puis le clavier : c'est la progression de la MAISON,
         // qui se superpose à celle des marches.

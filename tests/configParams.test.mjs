@@ -89,6 +89,33 @@ test('un nombre reste un nombre, une case cochée reste un booléen', () => {
     assert.equal(readParams(root, [{ id: 'b', type: 'checkbox' }]).b, true);
 });
 
+test('UNE LISTE DE MARCHES REND UN TABLEAU, ET SON PARTAGE AVEC', () => {
+    // LE DÉFAUT QUI A MOTIVÉ CE TEST. Le panneau dessinait la bonne barre —
+    // sept marches cochées, dix questions, une borne tirée — et l'exercice
+    // jouait les douze marches à la file : `readParams` ne connaissait pas le
+    // type `marches`, il retombait donc sur la branche « un seul champ » et
+    // rendait la valeur de la PREMIÈRE case, une chaîne au lieu d'une liste.
+    // Rien ne plantait, et tout était faux. Le partage, lui, vit dans un champ
+    // caché hors schéma : il faut aller le chercher.
+    const root = {
+        querySelector(sel) {
+            if (sel === '[data-repartition-marches]') return { value: '2,0,1,1,2,2,2' };
+            return { value: 'm1', dataset: {} };
+        },
+        querySelectorAll(sel) {
+            if (!sel.includes('multiselect')) return [];
+            return [
+                { checked: true, value: 'm1' },
+                { checked: false, value: 'm2' },
+                { checked: true, value: 'm3' }
+            ];
+        }
+    };
+    const rendu = readParams(root, [{ id: 'marches', type: 'marches' }]);
+    assert.deepEqual(rendu.marches, ['m1', 'm3']);
+    assert.equal(rendu.repartitionMarches, '2,0,1,1,2,2,2');
+});
+
 test('un paramètre absent du panneau n\'est pas inventé', () => {
     const rendu = readParams(fauxPanneau({}), [{ id: 'x', type: 'select', options: [1, 2] }]);
     assert.equal('x' in rendu, false);

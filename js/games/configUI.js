@@ -12,7 +12,10 @@ import { estimerEtape, mesuresParExercice, direDuree } from '../core/dureeParcou
 import { state } from '../core/state.js';
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
-import { repartitionEnMots } from '../core/progression.js';
+import {
+    groupesDeMarches, marchesCochees, decoupeMarches, lireLongueurs, ecrireLongueurs,
+    poserBorne as poserBorneMarches, motsDeCoupe
+} from '../core/progression.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
 import { echelleDe, rangDans } from '../core/echelle.js';
 // Une graine FIXE pour l'aperçu : voir `vraieQuestion`.
@@ -770,6 +773,68 @@ export function fieldHtml(param, value, options = {}) {
         </div>`;
     } else {
         control = `<input type="text" id="${id}" class="cfg-input" data-param="${param.id}" data-kind="text" value="${value ?? ''}">`;
+    }
+
+    // LES MARCHES SE COCHENT, ET LA BARRE MONTRE LE PARTAGE.
+    //
+    // Rémy : « il faudrait pouvoir choisir les niveaux par checkbox, avoir un
+    // nombre de questions que ça change le nombre de questions, et avoir la
+    // même chose avec un peu le diagramme en barres. »
+    //
+    // TROIS QUESTIONS ÉTAIENT DANS UN SEUL MENU — quelles marches, combien de
+    // questions, comment elles se partagent. Voir core/progression.js pour le
+    // pourquoi ; ici, la forme : une liste à cocher (pliée en temps au-delà de
+    // huit marches, sinon elle est illisible), et sous elle une barre qui dit
+    // ce que le partage donne. La barre est remplie par le panneau, qui seul
+    // connaît le nombre de questions du moment.
+    if (param.type === 'marches') {
+        const liste = param.marches || [];
+        const coches = new Set((Array.isArray(value) ? value : liste.map(m => m.id)).map(String));
+        const groupes = groupesDeMarches(liste, param.groupes || {});
+        const ligne = (m) => `<label class="cfg-liste-ligne">
+            <input type="checkbox" data-param="${param.id}" data-kind="multiselect"
+                value="${escapeAttr(m.id)}" ${coches.has(String(m.id)) ? 'checked' : ''}>
+            <span>${escapeAttr(m.nom)}</span></label>`;
+        // AU-DELÀ DE HUIT, ON PLIE PAR TEMPS. Rémy : « pour un exercice des
+        // nombres relatifs il y a beaucoup d'étapes, ça risque d'être
+        // illisible ». Le premier niveau tient sur trois lignes ; le second
+        // n'apparaît que si on le demande.
+        const corps = groupes
+            ? groupes.map(g => {
+                const dedans = g.marches.filter(m => coches.has(String(m.id))).length;
+                // REPLIÉ QUAND IL EST ENTIER, ouvert quand il est entamé.
+                // Rémy : « ça risque d'être illisible ». Tout coché est le cas
+                // ordinaire, et il n'y a alors rien à lire dedans ; un temps à
+                // moitié coché, au contraire, ne se comprend qu'ouvert.
+                const entier = dedans === g.marches.length || dedans === 0;
+                return `<details class="cfg-groupe" ${entier ? '' : 'open'}>
+                    <summary class="cfg-groupe-tete">
+                        <button type="button" class="cfg-groupe-case${
+    dedans === g.marches.length ? ' cfg-groupe-case--tout'
+        : (dedans ? ' cfg-groupe-case--part' : '')}"
+                            data-groupe="${escapeAttr(g.cle)}"
+                            aria-label="${escapeAttr(`Cocher ou décocher ${g.nom}`)}"></button>
+                        <b>${escapeAttr(g.nom)}</b>
+                        <em>${dedans}/${g.marches.length}</em>
+                    </summary>
+                    <div class="cfg-liste-corps">${g.marches.map(ligne).join('')}</div>
+                </details>`;
+            }).join('')
+            : `<div class="cfg-liste-corps">${liste.map(ligne).join('')}</div>`;
+
+        control = `<div class="cfg-marches" data-marches>
+            <div class="cfg-liste-actions">
+                <button type="button" class="cfg-liste-btn" data-cocher="1">Tout cocher</button>
+                <button type="button" class="cfg-liste-btn" data-cocher="0">Tout décocher</button>
+            </div>
+            ${corps}
+            <div class="cfg-barre" data-barre-marches
+                data-mot="${escapeAttr(param.mot || 'marche')}"></div>
+        </div>`;
+        return `<div class="cfg-field cfg-field--wide">
+            <label class="cfg-label">${param.label}${infoBtn(options.aide || param.aide, options.aideId)}</label>
+            ${control}
+        </div>`;
     }
 
     // LA RÉPARTITION DIT CE QU'ELLE VA FAIRE, sous elle-même.
@@ -1753,6 +1818,92 @@ function ecrireZonesSansSauter(hote, zones, i) {
     });
 }
 
+// --- LES GESTES DE LA BARRE DES MARCHES -------------------------------------
+
+/** Toutes les cases d'une liste de marches. */
+const casesMarches = (hote) =>
+    [...hote.querySelectorAll('[data-marches] [data-kind="multiselect"]')];
+
+// COCHER OU DÉCOCHER UN TEMPS ENTIER. Rémy : « pour un exercice des nombres
+// relatifs il y a beaucoup d'étapes ». Un temps, c'est trois à cinq marches
+// d'un coup — et c'est le geste qu'on fait vraiment : « aujourd'hui, le
+// temps B ».
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('[data-groupe], [data-cocher]');
+    if (!btn) return;
+    const hote = btn.closest('[data-marches]');
+    if (!hote) return;
+    e.preventDefault();
+    const cases = btn.dataset.groupe !== undefined
+        ? [...btn.closest('.cfg-groupe').querySelectorAll('[data-kind="multiselect"]')]
+        : casesMarches(hote);
+    const tout = btn.dataset.cocher !== undefined
+        ? btn.dataset.cocher === '1'
+        : !cases.every(c => c.checked);
+    cases.forEach(c => { c.checked = tout; });
+    // TOUT DÉCOCHER NE VIDE PAS L'EXERCICE : `marchesCochees` retombe alors sur
+    // la progression entière, parce qu'un exercice sans marche n'aurait rien à
+    // poser. L'écran doit dire la même chose que le noyau, sinon on lit une
+    // liste vide et l'on joue tout.
+    //
+    // ET C'EST LA LISTE ENTIÈRE QU'ON REGARDE, PAS LE GROUPE. Premier essai :
+    // décocher le temps A vidait ses cinq cases, cette garde voyait « aucune
+    // cochée » — parmi les cinq — et recochait les douze. Le bouton ne faisait
+    // donc rien du tout, et rien ne le disait.
+    const toutes = casesMarches(hote);
+    if (!toutes.some(c => c.checked)) toutes.forEach(c => { c.checked = true; });
+    cases[0].dispatchEvent(new Event('change', { bubbles: true }));
+});
+
+// CLIQUER UNE MARCHE LA CHOISIT — et la bulle vient se poser au-dessus d'elle.
+// Rémy : « tu mets aussi l'aperçu quand on clique sur la zone ».
+document.addEventListener('click', (e) => {
+    const z = e.target.closest && e.target.closest('[data-marche]');
+    if (!z) return;
+    const hote = z.closest('#student-config-content, .cfg-content, [data-exo]');
+    if (!hote) return;
+    e.preventDefault();
+    rafraichirBarreMarches(hote, Number(z.dataset.marche));
+});
+
+// LA BORNE QUI SE TIRE : on déplace des questions d'une marche à sa voisine,
+// SANS TOUCHER AU TOTAL. C'est la propriété qui compte, et c'est celle de la
+// frise du QCM.
+let borneMarcheTiree = null;
+
+function poserBorneDeMarche(hote, k, clientX) {
+    const bande = hote.querySelector('[data-bande-marches]');
+    const champ = hote.querySelector('[data-repartition-marches]');
+    if (!bande || !champ) return;
+    const boite = bande.getBoundingClientRect();
+    if (!boite.width) return;
+    const etat = etatMarches(hote);
+    if (!etat) return;
+    const total = etat.coupe.reduce((s2, z) => s2 + z.n, 0);
+    const coupe = Math.round(Math.min(1, Math.max(0, (clientX - boite.left) / boite.width)) * total);
+    const parts = poserBorneMarches(etat.coupe.map(z => z.n), k, coupe);
+    champ.value = ecrireLongueurs(parts.map(n => ({ n })));
+    champ.dispatchEvent(new Event('change', { bubbles: true }));
+    rafraichirBarreMarches(hote, k);
+}
+
+document.addEventListener('pointerdown', (e) => {
+    const borne = e.target.closest && e.target.closest('[data-borne-marche]');
+    if (!borne) return;
+    const hote = borne.closest('#student-config-content, .cfg-content, [data-exo]');
+    if (!hote) return;
+    // PAS DE `setPointerCapture` : la barre se redessine pendant le geste, et
+    // la capture serait posée sur l'élément qu'on vient de jeter.
+    borneMarcheTiree = { hote, k: Number(borne.dataset.borneMarche) };
+    e.preventDefault();
+});
+document.addEventListener('pointermove', (e) => {
+    if (!borneMarcheTiree) return;
+    poserBorneDeMarche(borneMarcheTiree.hote, borneMarcheTiree.k, e.clientX);
+});
+document.addEventListener('pointerup', () => { borneMarcheTiree = null; });
+document.addEventListener('pointercancel', () => { borneMarcheTiree = null; });
+
 // CLIQUER UNE ZONE LA CHOISIT — et la bulle vient se poser au-dessus d'elle.
 document.addEventListener('click', (e) => {
     const z = e.target.closest && e.target.closest('[data-zone]');
@@ -1999,6 +2150,22 @@ function valeurChoisie(param, brut) {
 export function readParams(root, schema) {
     const out = {};
     schema.forEach(param => {
+        if (param.type === 'marches') {
+            // UNE LISTE DE MARCHES REND DEUX CHOSES, PAS UNE. Les cases disent
+            // ce qu'on travaille ; la barre, comment les questions s'y
+            // partagent. Le partage vit dans un champ caché posé à côté des
+            // cases (`repartitionMarches`), qui ne figure PAS au schéma —
+            // c'est un état de la barre, pas un réglage qu'on offre. Sans
+            // cette branche, le panneau montrait le bon dessin et l'exercice
+            // jouait autre chose : `readParams` rendait la valeur du premier
+            // input rencontré, c'est-à-dire l'identifiant d'une seule marche.
+            const boxes = [...root.querySelectorAll(
+                `[data-param="${param.id}"][data-kind="multiselect"]`)];
+            out[param.id] = boxes.filter(b => b.checked).map(b => b.value);
+            const rep = root.querySelector('[data-repartition-marches]');
+            if (rep) out.repartitionMarches = rep.value || '';
+            return;
+        }
         if (param.type === 'multiselect') {
             const boxes = [...root.querySelectorAll(`[data-param="${param.id}"][data-kind="multiselect"]`)];
             out[param.id] = boxes.filter(b => b.checked).map(b => valeurChoisie(param, b.value));
@@ -2032,16 +2199,120 @@ export function readParams(root, schema) {
  * questions, et il valait pour tout le monde ; l'activité dit maintenant son
  * compte naturel, et le générateur, sa progression.
  */
+// --- LA BARRE DES MARCHES ---------------------------------------------------
+//
+// Rémy : « la même chose avec un peu le diagramme en barres », et « j'aime bien
+// ce que l'on avait fait pour le réglage des QCM 2/4/libre ».
+//
+// C'est donc la frise de l'aide, avec un objet différent : là-bas une zone
+// porte une FAÇON DE RÉPONDRE qu'on choisit ; ici elle porte une MARCHE, et
+// l'ordre comme la présence viennent des cases à cocher. Ce qui reste commun,
+// ce sont les proportions, la bulle au clic, et la borne qu'on tire — on
+// réutilise donc les mêmes classes de style, et le calcul lui-même vit dans
+// `core/progression.js`, testable sans écran.
+//
+// UNE MARCHE COCHÉE MAIS SANS QUESTION RESTE VISIBLE, EN CREUX. C'est
+// l'information qui manque le plus quand on prépare : « j'ai coché douze
+// marches et j'ai mis dix questions, donc deux ne passeront pas ». La faire
+// disparaître laisserait croire qu'elle est traitée.
+
+/** Le schéma d'un panneau porte-t-il une liste de marches ? */
+function paramMarchesDe(schema) {
+    return (schema || []).find(p => p && p.type === 'marches') || null;
+}
+
+function barreMarchesHtml(coupe, mot, choisie) {
+    if (!coupe.length) return '';
+    const total = Math.max(1, coupe.reduce((s2, z) => s2 + z.n, 0));
+    const i = Math.max(0, Math.min(coupe.length - 1, Math.round(choisie) || 0));
+
+    // La flèche de la bulle vise le centre de la marche choisie — comme sur la
+    // frise du QCM, c'est ce qui rattache l'une à l'autre.
+    let avant = 0;
+    for (let k = 0; k < i; k++) avant += coupe[k].n;
+    const centre = `${((avant + Math.max(coupe[i].n, 0.6) / 2) / total * 100).toFixed(3)}%`;
+
+    const bandes = coupe.map((z, k) => `<button type="button"
+        class="cfg-zone cfg-zone--m${k % 6}${k === i ? ' cfg-zone--ici' : ''}${
+    z.n ? '' : ' cfg-zone--vide'}" data-marche="${k}"
+        title="${escapeAttr(`${z.nom} — ${z.n ? (z.n === 1
+        ? `question ${z.de}` : `questions ${z.de} à ${z.a}`) : 'aucune question'}`)}"
+        style="flex-grow:${Math.max(z.n, 0.6)}"><span>${z.n || '–'}</span></button>`).join('');
+
+    // LES BORNES NE S'AFFICHENT QUE SI L'ON PEUT LES VISER. Onze poignées sur
+    // une barre de trois cent soixante pixels, ce sont onze pastilles blanches
+    // collées les unes aux autres : on ne voit plus les marches, on voit les
+    // poignées, et aucune n'est attrapable au doigt. Au-delà de huit marches on
+    // les retire donc — décocher un temps rend aussitôt la barre réglable, et
+    // c'est de toute façon ce qu'on fait avant de doser.
+    let cumul = 0;
+    const bornes = coupe.length > 8 ? '' : coupe.slice(0, -1).map((z, k) => {
+        cumul += z.n;
+        return `<button type="button" class="cfg-borne cfg-borne--marche" data-borne-marche="${k}"
+            style="left:${(cumul / total * 100).toFixed(3)}%"
+            aria-label="${escapeAttr(`Limite après la question ${cumul}`)}"></button>`;
+    }).join('');
+
+    const z = coupe[i];
+    const rangs = !z.n ? 'Aucune question'
+        : (z.n === 1 ? `Question ${z.de}` : `Questions ${z.de} à ${z.a}`);
+    // LA LÉGENDE S'ARRÊTE À SIX MARCHES. Au-delà elle fait treize lignes sous
+    // la barre — c'est-à-dire la liste à cocher, écrite une seconde fois juste
+    // en dessous d'elle-même. La barre porte déjà les comptes, la bulle nomme
+    // celle qu'on regarde, et les noms sont dans les cases.
+    const legende = coupe.length > 6 ? '' : coupe.map((x, k) => `<button type="button"
+        class="cfg-leg cfg-leg--m${k % 6}${k === i ? ' cfg-leg--ici' : ''}"
+        data-marche="${k}"><i></i><b>${escapeAttr(x.nom)}</b><em>${
+    x.n ? (x.n === 1 ? x.de : `${x.de} à ${x.a}`) : '—'}</em></button>`).join('');
+
+    return `<div class="cfg-apercu-titre">
+            <span>Ce que l’élève verra, sur ${total} question${total > 1 ? 's' : ''}</span>
+        </div>
+        <div class="cfg-scene" data-scene-marches data-marche-ici="${i}">
+            <div class="cfg-bulle" data-bulle style="--cfg-bulle-x:${centre}">
+                <div class="cfg-bulle-rang">${rangs}</div>
+                <div class="cfg-bulle-q">${escapeAttr(z.nom)}</div>
+            </div>
+            <div class="cfg-bande" data-bande-marches>${bandes}${bornes}</div>
+            <div class="cfg-legendes">${legende}</div>
+        </div>
+        <p class="cfg-dit">${escapeAttr(motsDeCoupe(coupe, mot))}</p>`;
+}
+
 /**
- * « marche », « étape », « palier », « niveau », « cran » — chaque générateur
- * nomme ses marches comme son chapitre les nomme, et l'aperçu doit reprendre
- * SON mot. Il est déjà dans le libellé du réglage ; on ne le déclare pas deux
- * fois pour risquer qu'ils divergent.
+ * Redessine la barre d'un panneau, s'il en a une.
+ *
+ * ELLE SE RELIT DANS LE PANNEAU, jamais dans l'objet d'origine : c'est la seule
+ * lecture qui ne puisse pas se désynchroniser, y compris pendant un glissé.
  */
-function motDeLaRepartition(schema) {
-    const p = (schema || []).find(x => x && x.id === 'repartition');
-    const m = /Répartition des (\w+)s/.exec((p && p.label) || '');
-    return m ? m[1] : 'marche';
+export function rafraichirBarreMarches(racine, choisie) {
+    const boite = racine && racine.querySelector('[data-barre-marches]');
+    if (!boite) return;
+    const scene = boite.querySelector('[data-scene-marches]');
+    const i = choisie !== undefined ? choisie
+        : Math.max(0, Math.round(Number(scene && scene.dataset.marcheIci)) || 0);
+    const etat = etatMarches(racine);
+    if (!etat) { boite.innerHTML = ''; return; }
+    boite.innerHTML = barreMarchesHtml(etat.coupe, boite.dataset.mot || 'marche', i);
+}
+
+/**
+ * L'ÉTAT DES MARCHES, LU DANS LE PANNEAU : ce qui est coché, combien de
+ * questions, et le découpage qui en résulte.
+ */
+function etatMarches(racine) {
+    const boite = racine && racine.querySelector('[data-marches]');
+    if (!boite) return null;
+    const liste = boite._marches || [];
+    if (!liste.length) return null;
+    const coches = [...boite.querySelectorAll('[data-kind="multiselect"]')]
+        .filter(c => c.checked).map(c => c.value);
+    const cochees = marchesCochees({ marches: coches }, liste);
+    const nb = racine.querySelector('#cfg-nbitems');
+    const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
+    const champ = racine.querySelector('[data-repartition-marches]');
+    const params = { repartitionMarches: champ ? champ.value : '' };
+    return { liste, cochees, total, params, coupe: decoupeMarches(cochees, total, params) };
 }
 
 export function conseilEtape(step) {
@@ -2428,63 +2699,42 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
         };
     }
 
-    // LE CONSEIL SUIT LES RÉGLAGES, PAS SEULEMENT L'OUVERTURE DU PANNEAU.
+    // LE NOMBRE DE QUESTIONS NE FAIT PLUS QUE CELA.
     //
-    // Rémy vient d'obtenir « Questions par marche » (core/progression.js) : sur
-    // douze marches, passer de 2 à 4 fait monter le compte nécessaire de 24 à
-    // 48. Sans ce qui suit, le rail resterait à 24 et le réglage n'aurait servi
-    // qu'à TRONQUER la progression plus tôt — l'élève verrait six marches sur
-    // douze, exactement le défaut que `core/duree.js` a été écrit pour tuer.
+    // Rémy : « avoir un nombre de questions que ça change le nombre de
+    // questions ». Il bougeait tout seul quand un réglage changeait le conseil ;
+    // il ne bouge plus. Le conseil sert une fois, à l'ouverture, et c'est tout.
     //
-    // ET SEULEMENT TANT QUE PERSONNE N'Y A TOUCHÉ. Si le rail porte encore le
-    // conseil précédent, c'est une valeur que le professeur n'a pas choisie et
-    // qu'on peut donc corriger ; dès qu'il l'a déplacée, elle est à lui. C'est
-    // la même règle que le quota de bonnes réponses (`majDuo`), et pour la même
-    // raison : un réglage qui bouge tout seul après qu'on l'a posé est pire
-    // qu'un réglage qui ne bouge pas.
-    let dernierConseil = conseil;
-    // ET L'APERÇU DE LA RÉPARTITION SUIT, LUI, À CHAQUE GESTE.
-    //
-    // Rémy : « on ne comprend pas grand-chose ». « En partage » est un NOM : il
-    // ne dit pas qu'un exercice de dix questions sur six marches en donnera une
-    // aux deux premières et deux aux quatre suivantes. C'est le même remède que
-    // pour l'escalier de l'aide — on déroule, et l'on écrit ce qu'on trouve
-    // (`core/apercuAide.js` ouvre sur exactement cette phrase).
-    const majRepartition = () => {
-        const boite = content.querySelector('[data-dit-repartition]');
-        if (!boite || !generateurEcran || typeof generateurEcran.marches !== 'function') return;
-        const rail = document.getElementById('cfg-nbitems');
-        const total = Math.max(1, Math.round(Number(rail && rail.value)) || nbConseille);
-        const p = { ...current, ...readParams(content, schema) };
-        let m = 1;
-        try { m = Math.max(1, Math.round(Number(generateurEcran.marches(p))) || 1); } catch (err) { m = 1; }
-        // UNE SEULE MARCHE, RIEN À PARTAGER — et le dire vaut mieux que
-        // d'afficher « 12 questions pour 1 marche », qui a l'air d'une panne.
-        boite.textContent = m <= 1
-            ? 'Une seule marche est choisie : la répartition ne s\'applique pas.'
-            : repartitionEnMots(m, total, p, motDeLaRepartition(schema));
-    };
+    // MAIS LA BARRE, ELLE, SUIT CHAQUE GESTE : cocher une marche, tirer la
+    // glissière, tirer une borne. C'est elle qui dit ce que le réglage produit,
+    // et un aperçu en retard d'un geste ne vaut rien.
+    const champMarches = content.querySelector('[data-marches]');
+    if (champMarches) {
+        // La liste des marches voyage sur le noeud plutôt que d'être relue dans
+        // le schéma à chaque rafraîchissement : le panneau est déjà dessiné,
+        // c'est lui la vérité.
+        champMarches._marches = (paramMarchesDe(schema) || {}).marches || [];
+        // ET LE CHAMP CACHÉ QUI PORTE LE PARTAGE. Il n'a pas de contrôle à lui :
+        // c'est en tirant une borne qu'on l'écrit, et `readParams` le relit
+        // comme n'importe quel réglage.
+        const rep = document.createElement('input');
+        rep.type = 'hidden';
+        rep.dataset.param = 'repartitionMarches';
+        rep.dataset.repartitionMarches = '1';
+        rep.setAttribute('data-repartition-marches', '1');
+        rep.value = String(current.repartitionMarches || '');
+        champMarches.appendChild(rep);
+        rafraichirBarreMarches(content);
+    }
 
     content.addEventListener('change', (e) => {
         if (!e.target.closest || !e.target.closest('[data-param]')) return;
-        const rail = document.getElementById('cfg-nbitems');
-        if (!rail) return;
-        const neuf = questionsConseillees(generateurEcran,
-            { ...current, ...readParams(content, schema) }, { activite: exo.activityId });
-        const pose = Math.round(Number(rail.value)) || 0;
-        if (neuf !== dernierConseil && pose === dernierConseil) {
-            rail.value = String(Math.max(Number(rail.min), Math.min(Number(rail.max), neuf)));
-            majRail(rail);
-        }
-        dernierConseil = neuf;
-        majRepartition();
+        rafraichirBarreMarches(content);
     });
-    // Le nombre de questions se change à la glissière ET au champ : les deux
-    // émettent `input` avant `change`, et l'aperçu doit suivre le geste.
+    // La glissière du nombre de questions émet `input` avant `change`.
     content.addEventListener('input', (e) => {
-        if (e.target && e.target.id === 'cfg-nbitems') majRepartition();
+        if (e.target && e.target.id === 'cfg-nbitems') rafraichirBarreMarches(content);
     });
-    majRepartition();
 
     document.getElementById('btn-student-config-cancel').onclick = () => { modal.style.display = 'none'; };
     document.getElementById('btn-student-config-start').onclick = () => {

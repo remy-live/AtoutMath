@@ -25,7 +25,9 @@
 // elle qui révèle qu'on a compris.
 
 import { makeItem } from '../items.js';
-import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 const SKILL_LIRE = 'mes.heure.lire';
 const SKILL_PLACER = 'mes.heure.placer';
@@ -127,6 +129,14 @@ export function expliquerLecture(h, m, apresmidi) {
     return `${petite} ${grande} ${conclusion}`;
 }
 
+// LES MARCHES TELLES QUE LE PANNEAU LES COCHE, dans l'ordre de la leçon.
+// Rémy : « il faudrait pouvoir choisir les niveaux par checkbox ».
+const LISTE_MARCHES = NIVEAUX.map((n, i) => ({ id: n.id, nom: `${i + 1}. ${n.titre}`, groupe: null }));
+const TEMPS = {};
+const MOT = 'niveau';
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'niveau' };
+
 export const horlogeGenerator = {
     id: 'mes.horloge',
     label: 'Lire l\'heure sur une pendule',
@@ -134,19 +144,11 @@ export const horlogeGenerator = {
     answerKinds: ['heure'],
     // Six niveaux a deux questions, comme les relatifs : douze questions pour
     // aller de « l'heure pile » au tour de midi.
-    marches: (p) => ((p && p.niveau) || 'progressif') === 'progressif' ? NIVEAUX.length : 1,
-    conseil: (p) => (p && p.niveau === 'progressif')
-        ? conseilProgression(NIVEAUX.length, p) : 10,
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'Niveau',
-            options: [
-                { value: 'progressif', label: 'Progressif (les 6 niveaux à la suite)' },
-                ...NIVEAUX.map((n, i) => ({ value: n.id, label: `${i + 1}. ${n.titre}` }))
-            ],
-            default: 'progressif'
-        },
-        paramRepartition({ marches: NIVEAUX.length, mot: 'niveau' }),
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        }),
         {
             id: 'question', type: 'select', label: 'Question',
             options: [
@@ -169,14 +171,11 @@ export const horlogeGenerator = {
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const choix = params?.niveau || 'progressif';
-        // En progressif, on monte d'un cran toutes les deux questions — ou au
-        // rythme choisi : le temps de s'installer dans un niveau avant d'en
-        // changer.
-        const rang = choix === 'progressif'
-            ? rangMarche(ctx.index ?? 0, NIVEAUX.length, params, undefined, totalDe(ctx, params))
-            : Math.max(0, NIVEAUX.findIndex(n => n.id === choix));
-        const niveau = NIVEAUX[rang];
+        // LES MARCHES COCHÉES SE PARTAGENT LES QUESTIONS — voir
+        // core/progression.js. Le nombre de questions se règle à part.
+        const id = marcheAuRang(ctx.index ?? 0, marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params);
+        const niveau = NIVEAUX.find(n => n.id === id) || NIVEAUX[0];
 
         const mode = params?.question === 'mixte'
             ? (rng.bool() ? 'lire' : 'placer')
@@ -235,7 +234,7 @@ export const horlogeGenerator = {
             meta: {
                 mode, h, m, h12,
                 niveau: niveau.id, titre: niveau.titre,
-                rang: rang + 1, total: NIVEAUX.length,
+                rang: NIVEAUX.indexOf(niveau) + 1, total: NIVEAUX.length,
                 apresmidi: !!niveau.apresmidi,
                 reperes, dit
             }

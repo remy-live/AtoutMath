@@ -3231,6 +3231,71 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-zone--t { background: #a855f7; }
 .cfg-zone--k { background: #7c3aed; }
 
+/* --- LA BARRE DES MARCHES ---------------------------------------------------
+   Rémy : « la même chose avec un peu le diagramme en barres », « j'aime bien ce
+   que l'on avait fait pour le réglage des QCM 2/4/libre ». On reprend donc la
+   frise telle quelle — bande, bornes, bulle, légende — et l'on n'ajoute ici que
+   ce qui lui est propre : les couleurs des marches et le creux d'une marche
+   sans question. */
+.cfg-zone--m0 { background: #0ea5e9; }
+.cfg-zone--m1 { background: #10b981; }
+.cfg-zone--m2 { background: #6366f1; }
+.cfg-zone--m3 { background: #f59e0b; }
+.cfg-zone--m4 { background: #ec4899; }
+.cfg-zone--m5 { background: #14b8a6; }
+.cfg-leg--m0 i { background: #0ea5e9; }
+.cfg-leg--m1 i { background: #10b981; }
+.cfg-leg--m2 i { background: #6366f1; }
+.cfg-leg--m3 i { background: #f59e0b; }
+.cfg-leg--m4 i { background: #ec4899; }
+.cfg-leg--m5 i { background: #14b8a6; }
+/* UNE MARCHE COCHÉE MAIS SANS QUESTION RESTE VISIBLE, en creux. C'est
+   l'information qui manque le plus quand on prépare une séance : « j'ai coché
+   douze marches et mis dix questions, donc deux ne passeront pas ». La faire
+   disparaître laisserait croire qu'elle est traitée. */
+.cfg-zone--vide {
+    background: transparent !important;
+    border: 1.5px dashed var(--border); color: var(--text-muted);
+    min-width: 14px;
+}
+
+/* La liste à cocher des marches, et ses temps repliables. */
+.cfg-marches { display: flex; flex-direction: column; gap: 8px; }
+/* LA BULLE DES MARCHES TIENT EN DEUX LIGNES — un rang et un nom —, là où celle
+   du QCM montre une question et ses propositions. On ne lui réserve donc pas
+   les 122 px de l'autre : ce serait un trou blanc au milieu du panneau. */
+.cfg-marches .cfg-scene { padding-top: 74px; }
+.cfg-groupe {
+    border: 1.5px solid var(--border); border-radius: 10px;
+    background: var(--bg-panel); overflow: hidden;
+}
+.cfg-groupe + .cfg-groupe { margin-top: 6px; }
+.cfg-groupe-tete {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    padding: 7px 10px; font-size: .9rem; list-style: none;
+}
+.cfg-groupe-tete::-webkit-details-marker { display: none; }
+.cfg-groupe-tete b { flex: 1 1 auto; font-weight: 700; }
+.cfg-groupe-tete em { font-style: normal; color: var(--text-muted); font-size: .82rem; }
+/* LA CASE DU TEMPS EST UN BOUTON, PAS UNE CASE À COCHER : elle a trois états —
+   tout, rien, une partie — et une case n'en a que deux. L'état « une partie »
+   est celui qu'on lit le plus souvent, et c'est lui qui dit qu'il faut
+   déplier. */
+.cfg-groupe-case {
+    flex: 0 0 auto; width: 18px; height: 18px; border-radius: 5px; cursor: pointer;
+    border: 2px solid var(--border); background: var(--bg-panel); position: relative;
+}
+.cfg-groupe-case--tout { background: var(--primary); border-color: var(--primary); }
+.cfg-groupe-case--tout::after {
+    content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 9px;
+    border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(42deg);
+}
+.cfg-groupe-case--part { border-color: var(--primary); }
+.cfg-groupe-case--part::after {
+    content: ''; position: absolute; left: 2px; top: 5px; width: 10px; height: 3px;
+    border-radius: 2px; background: var(--primary);
+}
+
 /* LE TRAIT ENTRE DEUX ZONES, QU'ON PEUT BOUGER. Rémy : « entre chaque zone, tu
    as un trait que tu peux bouger. »
 

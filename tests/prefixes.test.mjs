@@ -85,14 +85,22 @@ test('SIX MARCHES, ET LA CONVERSION ARRIVE EN DERNIER', () => {
     ETAPES.forEach((e, i) => assert.equal(e.rang, i + 1, `${e.id} mal rangé`));
 });
 
-test('trois questions par marche, et l\'on repasse par tout', () => {
-    // Arrivé en haut, on redescend : sur une fiche de vingt questions,
-    // s'arrêter sur la dernière marche en poserait quinze du même type.
-    for (let i = 0; i < 3; i++) assert.equal(marchePour('progressif', i), 'symbole');
-    for (let i = 3; i < 6; i++) assert.equal(marchePour('progressif', i), 'versPuissance');
-    assert.equal(marchePour('progressif', ORDRE.length * 3), 'symbole', 'le cycle ne recommence pas');
-    // Et choisir une marche y reste.
-    for (let i = 0; i < 10; i++) assert.equal(marchePour('mesure', i), 'mesure');
+test('les six marches se partagent l\'exercice, dans l\'ordre', () => {
+    // Dix-huit questions pour six marches : trois chacune.
+    const total = ORDRE.length * 3;
+    for (let i = 0; i < 3; i++) assert.equal(marchePour({}, i, total), 'symbole');
+    for (let i = 3; i < 6; i++) assert.equal(marchePour({}, i, total), 'versPuissance');
+    // PLUS DE CYCLE. Il servait à ne pas finir une fiche de vingt par quinze
+    // questions du même type quand la montée était fixe ; les marches cochées
+    // se partagent maintenant le total, donc aucune ne déborde et l'on ne
+    // redescend plus au bas de l'escalier. Une question de rab reste en haut.
+    assert.equal(marchePour({}, total, total), 'entre');
+    // Et cocher une seule case y reste — comme le faisait le menu, dont les
+    // parcours enregistrés se relisent encore.
+    for (let i = 0; i < 10; i++) {
+        assert.equal(marchePour({ marches: ['mesure'] }, i, total), 'mesure');
+        assert.equal(marchePour({ etape: 'mesure' }, i, total), 'mesure');
+    }
 });
 
 test('CHAQUE QUESTION A QUATRE PROPOSITIONS, TOUTES DIFFÉRENTES', () => {

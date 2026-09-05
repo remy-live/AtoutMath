@@ -26,7 +26,9 @@
 // Module pur : ni DOM, ni horloge.
 
 import { makeItem } from '../items.js';
-import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 import {
     ecrireSomme, reduire, fauteToutRegrouper, fauteAjouterExposants, partDeDegre, MOINS
 } from '../reductionPuissances.js';
@@ -212,6 +214,14 @@ export function question(etape, rng) {
     }
 }
 
+// LES MARCHES TELLES QUE LE PANNEAU LES COCHE, dans l'ordre de la leçon.
+// Rémy : « il faudrait pouvoir choisir les niveaux par checkbox ».
+const LISTE_MARCHES = ETAPES.map((e, i) => ({ id: e.id, nom: `${i + 1}. ${e.titre}`, groupe: null }));
+const TEMPS = {};
+const MOT = 'marche';
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'etape' };
+
 export const litteralPuissancesGenerator = {
     id: 'num.litteral.puissances',
     label: 'Réduire avec des puissances',
@@ -223,47 +233,28 @@ export const litteralPuissancesGenerator = {
     // la marche décisive — celle où l'on apprend à NE PAS regrouper x² avec x —
     // n'arrivait jamais. Le générateur dit maintenant ce qu'il lui faut, comme
     // ses voisins. Voir core/duree.js.
-    marches: (p) => (((p && p.etape) || 'progressif') !== 'progressif' ? 1
-        : ETAPES.filter(e => (p && p.cubes) !== false || e.degreMax <= 2).length),
-    conseil: (p) => {
-        const choix = (p && p.etape) || 'progressif';
-        if (choix !== 'progressif') return 6;
-        const liste = ETAPES.filter(e => (p && p.cubes) !== false || e.degreMax <= 2);
-        return conseilProgression(liste.length, p);
-    },
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'etape', type: 'select', label: 'Étape', echelle: true,
-            aide: 'En « progressif », les dix marches s\'enchaînent, deux questions chacune. '
-                + 'On apprend d\'abord à ÉCRIRE une puissance, puis à regrouper ce qui a le '
-                + 'même degré, puis — c\'est la marche décisive — à NE PAS regrouper ce qui '
-                + 'ne se regroupe pas.',
-            options: [
-                { value: 'progressif', label: 'Progressif (les 10 marches à la suite)', court: 'Tout' },
-                ...ETAPES.map((e, i) => ({ value: e.id, label: `${i + 1}. ${e.titre}`, court: String(i + 1) }))
-            ],
-            default: 'progressif'
-        },
-        paramRepartition({ marches: ETAPES.length }),
-        {
-            id: 'cubes', type: 'bool', label: 'Autoriser les cubes', default: true,
-            aide: 'Décoché, l\'exercice s\'arrête aux carrés — et le bouton x³ disparaît du clavier.'
-        }
+        // PLUS DE BOUTON « AUTORISER LES CUBES ». Il filtrait la liste des
+        // marches pour n'en garder que les degrés 2 : les cases le disent
+        // maintenant en toutes lettres, et mieux — on peut garder « Cube,
+        // carré, lettre et nombre » sans « Les cubes », ce que le booléen ne
+        // savait pas faire. Le clavier, lui, n'a jamais lu ce réglage : il
+        // suit le `degreMax` de la QUESTION posée (meta plus bas), donc le
+        // bouton x³ continue d'apparaître exactement quand il sert.
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
         const index = ctx.index ?? 0;
-        const choix = params?.etape || 'progressif';
-        const avecCubes = params?.cubes !== false;
-
-        let liste = ETAPES.filter(e => avecCubes || e.degreMax <= 2);
-        if (choix !== 'progressif') {
-            const une = ETAPES.find(e => e.id === choix);
-            if (une) liste = [une];
-        }
-        const rang = rangMarche(index, liste.length, params, undefined, totalDe(ctx, params));
-        const etape = liste[rang];
+        // LES MARCHES COCHÉES SE PARTAGENT LES QUESTIONS — voir
+        // core/progression.js. Le nombre de questions se règle à part.
+        const id = marcheAuRang(ctx.index ?? 0, marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params);
+        const etape = ETAPES.find(e => e.id === id) || ETAPES[0];
         const q = question(etape, rng);
         const rangGlobal = ETAPES.findIndex(e => e.id === etape.id);
 

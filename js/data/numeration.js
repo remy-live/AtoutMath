@@ -207,7 +207,7 @@ export const numerationExercises = [
         // mot, impossible à faire.
         printable: 'graduation',
         generatorId: 'num.graduations', activityId: 'numpad',
-        params: { zoom: 'progressif' },
+
         motsClefs: ['graduation', 'abscisse', 'décimaux', 'intercaler', 'axe', 'centièmes', 'loupe'],
         tags: { chemin: [D, DEC], niveaux: [CM2, SIXIEME, CINQUIEME, QUATRIEME] },
         instruction: "Entre les deux grands traits, l'axe est coupé en DIX. On compte les INTERVALLES depuis le trait de gauche, jamais les traits. Puis on recommence un cran plus bas : entre 3,5 et 3,6, il y a encore dix intervalles, et un intervalle vaut 0,01. Le réglage « Le pas de la graduation » permet de rester aux centièmes du début à la fin."
@@ -360,7 +360,7 @@ export const numerationExercises = [
         consignePapier: "Calcule.",
         colonnesPapier: 3,
         generatorId: 'num.relatifs', activityId: 'relatifs',
-        params: { niveau: 'progressif', reponse: 'saisie' },
+        params: { reponse: 'saisie' },
         motsClefs: ['thermomètre', 'ascenseur', 'pastilles', 'températures',
             'sommes de relatifs', 'négatifs', 'la montée'],
         tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
@@ -451,7 +451,7 @@ export const numerationExercises = [
         colonnesPapier: 3,
         title: 'Additionner des Relatifs, pas à pas',
         generatorId: 'num.relatifs.addition', activityId: 'add-relatifs',
-        params: { etape: 'progressif', reponse: 'saisie' },
+        params: { reponse: 'saisie' },
         motsClefs: ['signes différents', 'pastilles', 'simplifier', 'écriture'],
         tags: { chemin: [D, REL], niveaux: [CINQUIEME, QUATRIEME] },
         instruction: "Douze marches, deux questions chacune. D'abord des pastilles toutes de la même couleur — il n'y a qu'à compter, et on apprend l'écriture. Puis des pastilles des DEUX couleurs : une rouge et une bleue valent zéro ensemble, on les élimine par paires, et la soustraction apparaît toute seule. Ensuite on simplifie les écritures, et on finit avec une virgule. Le réglage « Étape » permet de se poser sur le passage difficile — (+7) + (−3) — et d'y rester."
@@ -472,7 +472,6 @@ export const numerationExercises = [
         colonnesPapier: 3,
         title: 'Multiplier des Relatifs, pas à pas',
         generatorId: 'num.relatifs.produit', activityId: 'bubbles',
-        params: { etape: 'progressif' },
         motsClefs: ['règle des signes', 'produit', 'multiplication', 'négatif', 'positif',
             'facteurs', 'carré', 'opposé'],
         tags: { chemin: [D, REL], niveaux: [QUATRIEME] },
@@ -658,7 +657,6 @@ export const numerationExercises = [
         colonnesPapier: 3,
         title: 'Simplifier et Réduire',
         generatorId: 'num.litteral.reduire', activityId: 'bubbles',
-        params: { etape: 'progressif' },
         motsClefs: ['calcul littéral', 'expression', 'réduire', 'simplifier', 'lettre',
             'coefficient', 'terme', 'facteur', 'signe fois'],
         tags: { chemin: [D, LITT], niveaux: [CINQUIEME, QUATRIEME] },
@@ -687,7 +685,7 @@ export const numerationExercises = [
         colonnesPapier: 2,
         title: 'Carrés, Cubes et Réduction',
         generatorId: 'num.litteral.puissances', activityId: 'litteral-saisie',
-        params: { etape: 'progressif', cubes: true },
+
         motsClefs: ['calcul littéral', 'puissance', 'carré', 'cube', 'exposant', 'degré',
             'réduire', 'terme', 'expression'],
         tags: { chemin: [D, LITT], niveaux: [QUATRIEME] },
@@ -757,7 +755,6 @@ export const numerationExercises = [
         colonnesPapier: 3,
         generatorId: 'num.puissances-reconnaitre', activityId: 'buttons',
         skills: ['num.puissances.dix'],
-        params: { etape: 'progressif' },
         motsClefs: ['puissances', 'puissance de 10', 'exposant', 'écriture scientifique',
             'notation scientifique', 'reconnaître', 'grands nombres', 'petits nombres'],
         tags: {
@@ -782,7 +779,6 @@ export const numerationExercises = [
         colonnesPapier: 3,
         generatorId: 'num.puissances-transformer', activityId: 'buttons',
         skills: ['num.puissances.scientifique'],
-        params: { etape: 'progressif' },
         motsClefs: ['écriture scientifique', 'notation scientifique', 'puissances de 10',
             'exposant', 'transformer', 'comparer', 'ordre de grandeur', 'mantisse'],
         tags: {
@@ -807,7 +803,6 @@ export const numerationExercises = [
         cree: '2026-08-27',
         generatorId: 'num.puissances-prefixes', activityId: 'buttons',
         skills: ['num.puissances.prefixes'],
-        params: { etape: 'progressif' },
         // LE RAPPEL DOIT COUVRIR TOUT CE QUE LA FEUILLE DEMANDE. Il n'en
         // nommait que six, et les questions tiraient aussi téra et centi :
         // l'élève lisait la consigne, cherchait « c », et ne le trouvait pas.
@@ -837,7 +832,6 @@ export const numerationExercises = [
         cree: '2026-08-27',
         generatorId: 'num.puissances-calcul', activityId: 'buttons',
         skills: ['num.puissances.regles'],
-        params: { etape: 'progressif' },
         // TROIS SORTES DE RÉPONSES, ET LA CONSIGNE DOIT LES ANNONCER TOUTES.
         // « Sous la forme d'une seule puissance » était juste pour 10⁴ × 10⁸,
         // faux pour 2⁵ — dont on attend 32 — et piégeur pour 3⁴ × 5³, dont la

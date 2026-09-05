@@ -25,7 +25,9 @@
 
 import { makeItem } from '../items.js';
 import { ecrire } from './relatifs.js';
-import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 const SKILL_SOMME = 'num.relatifs.somme';
 const SKILL_ECRITURE = 'num.relatifs.sens';
@@ -257,6 +259,20 @@ export function leurres(a, b, total) {
     return [...set.entries()].map(([value, why]) => ({ value, why }));
 }
 
+// LES MARCHES TELLES QUE LE PANNEAU LES COCHE, dans l'ordre de la leçon.
+// Rémy : « il faudrait pouvoir choisir les niveaux par checkbox ».
+const LISTE_MARCHES = ETAPES.map((e, i) => ({ id: e.id, nom: `${i + 1}. ${e.titre}`, groupe: e.temps }));
+// LES TROIS TEMPS, NOMMÉS : ils replient la liste quand elle passe huit
+// marches. Rémy : « ça risque d'être illisible. »
+const TEMPS = {
+    A: 'A — tout du même signe',
+    B: 'B — des signes différents',
+    C: 'C — le mélange'
+};
+const MOT = 'marche';
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'etape' };
+
 export const relatifsAdditionGenerator = {
     id: 'num.relatifs.addition',
     label: 'Additionner des relatifs, pas à pas',
@@ -267,32 +283,11 @@ export const relatifsAdditionGenerator = {
     // douze en progressif, quatre pour un temps, une pour une marche seule.
     // Le defaut de dix questions n'en montrait que CINQ sur douze — la
     // moitie du chapitre ne s'affichait jamais. Voir core/duree.js.
-    marches: (p) => {
-        const choix = (p && p.etape) || 'progressif';
-        if (['A', 'B', 'C'].includes(choix)) return ETAPES.filter(e => e.temps === choix).length;
-        return choix === 'progressif' ? ETAPES.length : 1;
-    },
-    conseil: (p) => {
-        const choix = (p && p.etape) || 'progressif';
-        if (choix === 'A' || choix === 'B' || choix === 'C') {
-            return conseilProgression(ETAPES.filter(e => e.temps === choix).length, p);
-        }
-        return choix === 'progressif' ? conseilProgression(ETAPES.length, p) : 6;
-    },
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'etape', type: 'select', label: 'Étape',
-            aide: 'En « progressif », les douze marches s\'enchaînent, deux questions chacune — le réglage juste en dessous change ce compte. Choisir une étape précise sert à reprendre un point qui coince.',
-            options: [
-                { value: 'progressif', label: 'Progressif (les 12 marches à la suite)' },
-                { value: 'A', label: 'A — tout du même signe (marches 1 à 4)' },
-                { value: 'B', label: 'B — des signes différents (marches 1 à 4)' },
-                { value: 'C', label: 'C — le mélange (marches 1 à 3)' },
-                ...ETAPES.map((e, i) => ({ value: e.id, label: `${i + 1}. ${e.titre}` }))
-            ],
-            default: 'progressif'
-        },
-        paramRepartition({ marches: ETAPES.length }),
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        }),
         {
             id: 'reponse', type: 'select', label: 'Réponse', papier: false,
             options: [
@@ -306,15 +301,11 @@ export const relatifsAdditionGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const index = ctx.index ?? 0;
-        const choix = params?.etape || 'progressif';
-
-        // Le temps de s'installer avant de monter : deux questions par marche
-        // par défaut, ou ce que le réglage « Questions par marche » demande.
-        let liste = ETAPES;
-        if (choix === 'A' || choix === 'B' || choix === 'C') liste = ETAPES.filter(e => e.temps === choix);
-        else if (choix !== 'progressif') liste = [ETAPES.find(e => e.id === choix) || ETAPES[0]];
-        const rang = rangMarche(index, liste.length, params, undefined, totalDe(ctx, params));
-        const etape = liste[rang];
+        // LES MARCHES COCHÉES SE PARTAGENT LES QUESTIONS — voir
+        // core/progression.js. Le nombre de questions se règle à part.
+        const id = marcheAuRang(index, marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params);
+        const etape = ETAPES.find(e => e.id === id) || ETAPES[0];
         // Le rang annoncé est TOUJOURS celui des douze marches : « Marche 6 /
         // 12 » situe l'élève dans le chapitre, « Marche 1 / 1 » ne lui dit
         // rien du tout quand le professeur a isolé une étape.

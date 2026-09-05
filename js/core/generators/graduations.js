@@ -25,7 +25,9 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { axeSvg, figure } from '../figures.js';
-import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 /** Écriture française d'un décimal, sans traîne de virgule flottante. */
 const fr = (x, rang) => x.toFixed(rang)
@@ -64,6 +66,14 @@ function tirerLecture(rng, zoom) {
     return { debut, fin: Number((debut + 10 * z.pas).toFixed(z.rang + 1)), crans, valeur };
 }
 
+// LES MARCHES TELLES QUE LE PANNEAU LES COCHE, dans l'ordre de la leçon.
+// Rémy : « il faudrait pouvoir choisir les niveaux par checkbox ».
+const LISTE_MARCHES = ZOOMS.map((z) => ({ id: z.id, nom: `Graduations ${z.titre}`, groupe: null }));
+const TEMPS = {};
+const MOT = 'palier';
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'zoom' };
+
 export const graduationsGenerator = {
     id: 'num.graduations',
     label: 'Lire une graduation décimale',
@@ -72,37 +82,23 @@ export const graduationsGenerator = {
     ecrit: true,
     // Trois echelles a trois questions : neuf pour aller des unites aux
     // centiemes. Voir core/duree.js.
-    marches: (p) => ((p && p.zoom) || 'progressif') === 'progressif' ? ZOOMS.length : 1,
-    conseil: (p) => (p && p.zoom === 'progressif')
-        ? conseilProgression(ZOOMS.length, p, 3) : 10,
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length, 3),
     params: [
-        {
-            id: 'zoom', type: 'select', label: 'Le pas de la graduation', default: 'progressif',
-            aide: 'De 1 en 1, on lit des entiers. De 0,1 en 0,1, on découvre que l\'intervalle entre '
-                + 'deux entiers se coupe en dix. De 0,01 en 0,01, on refait le même geste UN CRAN plus '
-                + 'bas — et c\'est là qu\'on comprend qu\'on pourrait continuer sans fin. '
-                + '« Progressif » enchaîne les trois.',
-            options: [
-                { value: 'progressif', label: 'Progressif : 1, puis 0,1, puis 0,01' },
-                { value: 'unites', label: 'De 1 en 1' },
-                { value: 'dixiemes', label: 'De 0,1 en 0,1' },
-                { value: 'centiemes', label: 'De 0,01 en 0,01' }
-            ]
-        },
-        paramRepartition({ marches: ZOOMS.length, mot: 'palier' })
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = params || {};
         const i = Number(ctx.index) || 0;
-        // PROGRESSIF : trois questions par palier par défaut. Une seule
-        // question par échelle ne laisse pas le temps de reconnaître le geste ;
-        // dix enferment dans une routine. Entre les deux, c'est le réglage
-        // « Questions par palier » qui tranche.
-        const zoom = p.zoom && p.zoom !== 'progressif'
-            ? zoomDe(p.zoom)
-            : ZOOMS[rangMarche(i, ZOOMS.length, p, 3, totalDe(ctx, p))];
+        // LES PALIERS COCHÉS SE PARTAGENT LES QUESTIONS. Une seule question
+        // par échelle ne laisse pas le temps de reconnaître le geste ; dix
+        // enferment dans une routine. C'est la barre du panneau qui tranche, et
+        // le professeur y voit ce qu'il fait.
+        const zoom = zoomDe(marcheAuRang(i, marchesCochees(p, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, p), p, 3));
 
         const { debut, fin, crans, valeur } = tirerLecture(rng, zoom);
         const rang = zoom.rang;

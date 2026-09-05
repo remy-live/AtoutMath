@@ -226,7 +226,7 @@ export const mesuresExercises = [
         cree: '2026-08-06',
         generatorId: 'mes.horloge', activityId: 'horloge',
         printable: 'horloge',
-        params: { niveau: 'progressif', question: 'lire', reperes: 'auto' },
+        params: { question: 'lire', reperes: 'auto' },
         motsClefs: ['pendule', 'aiguilles', 'placer', 'régler', '24 heures', 'après-midi'],
         tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.DUREES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Lis l'heure sur la pendule : la petite aiguille donne les heures, la grande les minutes. Le réglage « Question » passe au geste inverse — tirer les aiguilles pour afficher une heure donnée — ou fait alterner les deux. Le réglage « Niveau » mène jusqu'au tour de midi : la pendule ne compte que jusqu'à 12, l'après-midi il faut ajouter 12 pour donner l'heure en 24 heures."

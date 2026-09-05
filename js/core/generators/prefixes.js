@@ -27,7 +27,9 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { PREFIXES, puissanceTexte, prefixeDe, convertirPrefixe, grouper } from '../puissances.js';
-import { paramRepartition, rangMarcheCyclique, conseilProgression, totalDe } from '../progression.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 const SKILL = 'num.puissances.prefixes';
 
@@ -305,18 +307,29 @@ const MARCHES = {
 };
 
 /**
- * La marche d'une question : celle qu'on a choisie, ou celle du rang.
+ * La marche d'une question : celle où le partage la fait tomber.
  *
- * ARRIVÉ EN HAUT, ON REDESCEND ET L'ON RECOMMENCE — même règle que pour les
- * puissances de 10 : sur une fiche de vingt questions à compte fixe, s'arrêter
- * sur la dernière marche en poserait quinze du même type. En PARTAGE, le cycle
- * ne sert plus à rien : aucune marche ne peut déborder. Voir
- * `rangMarcheCyclique`.
+ * LE MENU A DISPARU AVEC LES CASES : on ne passe plus une étape choisie en
+ * premier argument, on passe les réglages. Une seule case cochée donne
+ * exactement ce que « choisir une marche » donnait, et `marchesCochees` relit
+ * au passage les parcours enregistrés du temps du menu.
+ *
+ * LE CYCLE A DISPARU AVEC LE MENU. Il servait à ne pas poser quinze questions
+ * du même type au bas d'une fiche de vingt quand on montait toutes les trois
+ * questions : les marches cochées se partagent maintenant l'exercice, donc
+ * aucune ne peut déborder. Voir core/progression.js.
  */
-export function marchePour(etape, index, params, total = 0) {
-    if (etape && etape !== 'progressif' && PAR_ID[etape]) return etape;
-    return ORDRE[rangMarcheCyclique(index, ORDRE.length, params, PAR_MARCHE, total)];
+export function marchePour(params, index, total = 0) {
+    return marcheAuRang(index, marchesCochees(params, LISTE_MARCHES, ANCIEN), total, params, PAR_MARCHE);
 }
+
+// LES MARCHES TELLES QUE LE PANNEAU LES COCHE, dans l'ordre de la leçon.
+// Rémy : « il faudrait pouvoir choisir les niveaux par checkbox ».
+const LISTE_MARCHES = ORDRE.map((id, i) => ({ id, nom: `${i + 1}. ${PAR_ID[id].label.replace(/^\d+ · /, '')}`, groupe: null }));
+const TEMPS = {};
+const MOT = 'marche';
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'etape' };
 
 export const prefixesGenerator = {
     id: 'num.puissances-prefixes',
@@ -324,24 +337,16 @@ export const prefixesGenerator = {
     skills: [SKILL],
     answerKinds: ['choice'],
     ecrit: true,
-    marches: (p) => (((p && p.etape) || 'progressif') === 'progressif' ? ORDRE.length : 1),
-    conseil: (p) => conseilProgression(ORDRE.length, p, PAR_MARCHE),
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length, 3),
     params: [
-        {
-            id: 'etape', type: 'select', label: 'Marche à travailler', default: 'progressif',
-            echelle: true,
-            aide: '« Tout en ordre » monte d\'une marche toutes les trois questions : on lit '
-                + 'un symbole, puis on passe du préfixe à la puissance, et l\'on finit par '
-                + 'convertir une mesure — qui est le but de tout le chapitre.',
-            options: [{ value: 'progressif', label: 'Tout en ordre, du plus simple au plus dur', court: 'Tout' }]
-                .concat(ETAPES.map(e => ({ value: e.id, label: e.label, court: String(e.rang) })))
-        },
-        paramRepartition({ marches: ORDRE.length })
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const marche = marchePour((params || {}).etape, ctx.index, params, totalDe(ctx, params));
+        const marche = marchePour(params, ctx.index, totalDe(ctx, params));
         const q = MARCHES[marche](rng);
         return makeItem({
             seed: rng.seed,

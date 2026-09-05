@@ -1,253 +1,255 @@
-// LA RÉPARTITION D'UNE PROGRESSION.
+// LES MARCHES D'UNE PROGRESSION : lesquelles on travaille, et comment elles se
+// partagent l'exercice.
 //
-// Rémy, deux fois. D'abord : « quand on a une progression, il faudrait pouvoir
-// choisir aussi la répartition non ? » Puis, devant le premier essai : « pour
-// les étapes on ne comprend pas grand-chose, parce que du coup le nombre de
-// questions dépend des marches. On pourrait faire comme quand on définit pour
-// le QCM à 2, 4 ou libre, avec le même principe. »
+// Rémy : « il faudrait pouvoir choisir les niveaux par checkbox, avoir un
+// nombre de questions que ça change le nombre de questions, et avoir la même
+// chose avec un peu le diagramme en barres. »
 //
-// CE QU'ON ÉPROUVE ICI TIENT EN UNE PHRASE : le nombre de questions ne dépend
-// plus des marches, ce sont les marches qui se partagent les questions. C'est
-// le sens de lecture de l'escalier de l'aide (`core/aide.js`, les ZONES), et
-// c'est ce que Rémy demande.
+// TROIS QUESTIONS ÉTAIENT DANS UN SEUL MENU — quelles marches, combien de
+// questions, comment elles se partagent. Ce qu'on éprouve ici, c'est qu'elles
+// sont maintenant séparées, et surtout que LA SOMME EST TOUJOURS JUSTE : une
+// question qui tomberait entre deux marches serait une question sans contenu.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    AUTO, PAR_MARCHE_DEFAUT, PAR_MARCHE_MIN, PAR_MARCHE_MAX,
-    repartitionDe, paramRepartition, rangMarche, rangMarcheCyclique,
-    decoupeMarches, conseilProgression, repartitionEnMots, totalDe
+    SANS_GROUPE_MAX, PAR_MARCHE_DEFAUT,
+    normaliserMarches, marchesCochees, groupesDeMarches, decoupeMarches, partageEgal,
+    ecrireLongueurs, lireLongueurs, poserBorne, marcheAuRang, conseilProgression,
+    motsDeCoupe, paramMarches, totalDe
 } from '../js/core/progression.js';
 import { questionsConseillees } from '../js/core/duree.js';
-
-import { relatifsGenerator, NIVEAUX } from '../js/core/generators/relatifs.js';
 import { relatifsAdditionGenerator } from '../js/core/generators/relatifsAddition.js';
-import { fracSommeProgressiveGenerator } from '../js/core/generators/fractionsEquivalentes.js';
-import { marchePour as marchePrefixes, ORDRE as ORDRE_PREFIXES } from '../js/core/generators/prefixes.js';
-import { marcheThales, ORDRE_THALES } from '../js/core/generators/thales.js';
+import { makeRng } from '../js/core/ids.js';
 
-// --- Ce que le réglage demande ------------------------------------------------
+/** Douze marches, trois temps — la forme de « Additionner des relatifs ». */
+const DOUZE = Array.from({ length: 12 }, (_, i) => ({
+    id: `m${i + 1}`, nom: `${i + 1}. Marche`, groupe: 'ABC'[Math.floor(i / 4)]
+}));
+const SIX = Array.from({ length: 6 }, (_, i) => ({ id: `n${i + 1}`, nom: `${i + 1}. Niveau` }));
 
-test('LE DÉFAUT EST LE PARTAGE, pas un compte', () => {
-    assert.equal(repartitionDe(null), AUTO);
-    assert.equal(repartitionDe({}), AUTO);
-    assert.equal(repartitionDe({ repartition: 'auto' }), AUTO);
-    assert.equal(repartitionDe({ repartition: 3 }), 3);
-    assert.equal(repartitionDe({ repartition: '3' }), 3, 'le DOM ne rend que des chaînes');
+// --- Ce qui est coché ---------------------------------------------------------
+
+test('PAR DÉFAUT, TOUT EST COCHÉ — c\'est ce que disait « progressif »', () => {
+    assert.equal(marchesCochees({}, DOUZE).length, 12);
+    assert.equal(marchesCochees(null, DOUZE).length, 12);
 });
 
-test('L\'ANCIEN NOM SE RELIT ENCORE', () => {
-    // Les parcours enregistrés pendant la vie du premier essai portent
-    // `parMarche` ; les relire comme « auto » effacerait sans prévenir un
-    // réglage que le professeur a posé.
-    assert.equal(repartitionDe({ parMarche: 4 }), 4);
-    // Mais le nouveau nom l'emporte quand les deux sont là.
-    assert.equal(repartitionDe({ parMarche: 4, repartition: 2 }), 2);
+test('L\'ORDRE VIENT DE LA PROGRESSION, jamais de l\'ordre des clics', () => {
+    // Cocher la 7 avant la 3 ne veut pas dire qu'on veut la 7 d'abord : une
+    // progression est une progression.
+    const c = marchesCochees({ marches: ['m7', 'm3', 'm1'] }, DOUZE);
+    assert.deepEqual(c.map(m => m.id), ['m1', 'm3', 'm7']);
 });
 
-test('UNE VALEUR ABSURDE RETOMBE SUR LE PARTAGE', () => {
-    [0, -3, 'x', NaN].forEach(v => {
-        assert.equal(repartitionDe({ repartition: v }), AUTO, String(v));
-    });
-    assert.equal(repartitionDe({ repartition: 99 }), PAR_MARCHE_MAX);
-    assert.equal(repartitionDe({ repartition: 1 }), PAR_MARCHE_MIN);
+test('TOUT DÉCOCHER NE VIDE PAS L\'EXERCICE', () => {
+    // C'est un geste qu'on fait en passant, pour tout recocher ensuite. Un
+    // exercice sans aucune marche n'aurait rien à poser.
+    assert.equal(marchesCochees({ marches: [] }, DOUZE).length, 12);
+    assert.equal(marchesCochees({ marches: ['inconnu'] }, DOUZE).length, 12);
 });
 
-test('le réglage se déclare en échelle, du partage au compte fixe', () => {
-    const p = paramRepartition({ marches: 12 });
-    assert.equal(p.id, 'repartition');
-    assert.equal(p.default, AUTO);
-    assert.equal(p.echelle, true);
-    assert.deepEqual(p.options.map(o => o.value), [AUTO, 1, 2, 3, 4, 5, 6]);
-    assert.match(p.aide, /24 questions/, 'le compte exact, pas « il en faudra plus »');
-    assert.match(p.aide, /sans effet/i, 'une marche isolée : le panneau ne sait pas masquer');
+test('LES RÉGLAGES D\'AVANT LES CASES SE RELISENT', () => {
+    // Un parcours enregistré porte `etape: 'progressif'`, `etape: 'B'` ou
+    // l'identifiant d'une marche. Les lire comme « rien de coché » viderait
+    // l'exercice ; les ignorer effacerait un choix que le professeur a posé.
+    const anc = { cle: 'etape' };
+    assert.equal(marchesCochees({ etape: 'progressif' }, DOUZE, anc).length, 12);
+    assert.deepEqual(marchesCochees({ etape: 'B' }, DOUZE, anc).map(m => m.id),
+        ['m5', 'm6', 'm7', 'm8']);
+    assert.deepEqual(marchesCochees({ etape: 'm9' }, DOUZE, anc).map(m => m.id), ['m9']);
+    // Et le nouveau nom l'emporte quand les deux sont là.
+    assert.deepEqual(marchesCochees({ etape: 'B', marches: ['m1'] }, DOUZE, anc).map(m => m.id),
+        ['m1']);
 });
 
-// --- LE PARTAGE, qui est le sujet ---------------------------------------------
+test('LES FORMES COURTES DU CODE SONT ACCEPTÉES', () => {
+    // Les générateurs écrivent `titre`, `label` ou `temps` selon leur âge : on
+    // ne renomme pas treize fichiers pour un seul champ.
+    const n = normaliserMarches([{ id: 'a', titre: 'Un' }, { id: 'b', label: 'Deux', temps: 'A' }]);
+    assert.deepEqual(n, [{ id: 'a', nom: 'Un', groupe: null }, { id: 'b', nom: 'Deux', groupe: 'A' }]);
+});
 
-test('EN PARTAGE, LES MARCHES SE DIVISENT L\'EXERCICE', () => {
-    const parts = (m, n) => decoupeMarches(m, n, {}).map(z => z.n);
-    assert.deepEqual(parts(6, 12), [2, 2, 2, 2, 2, 2]);
-    assert.deepEqual(parts(6, 30), [5, 5, 5, 5, 5, 5]);
-    assert.deepEqual(parts(4, 12), [3, 3, 3, 3]);
-    // LE RESTE VA AUX DERNIÈRES, une question de plus chacune. Tout donner à la
-    // seule dernière — ce que faisait `core/pythagore.js` — creusait un trou :
-    // dix questions sur six marches y faisaient 1-1-1-1-1-5.
-    assert.deepEqual(parts(6, 10), [1, 1, 2, 2, 2, 2]);
-    assert.deepEqual(parts(4, 10), [2, 2, 3, 3]);
-    // Et la somme est TOUJOURS le total : c'est l'invariant qui garantit
-    // qu'aucune question ne tombe dans le vide.
+// --- Les groupes, qui rendent la liste lisible --------------------------------
+
+test('AU-DELÀ DE HUIT MARCHES, LA LISTE SE PLIE EN TEMPS', () => {
+    // Rémy : « pour un exercice des nombres relatifs il y a beaucoup d'étapes,
+    // ça risque d'être illisible ». Douze cases à la file sur un téléphone, en
+    // effet — mais le groupement existe déjà dans le code, et il est
+    // pédagogique.
+    const g = groupesDeMarches(DOUZE, { A: 'A — même signe' });
+    assert.equal(g.length, 3);
+    assert.equal(g[0].nom, 'A — même signe');
+    assert.equal(g[0].marches.length, 4);
+    // SOUS HUIT, AUCUN GROUPE : un pli et un clic pour la même liste.
+    assert.equal(groupesDeMarches(SIX), null);
+    assert.ok(SANS_GROUPE_MAX >= 6);
+    // Et pas de groupe non plus quand le générateur n'en déclare pas — Rémy :
+    // « non, pas pour le moment » (on n'en invente pas).
+    assert.equal(groupesDeMarches(Array.from({ length: 10 },
+        (_, i) => ({ id: `x${i}`, nom: `${i}` }))), null);
+});
+
+// --- Le partage ---------------------------------------------------------------
+
+test('LES MARCHES SE PARTAGENT LES QUESTIONS, le reste aux dernières', () => {
+    assert.deepEqual(partageEgal(6, 12), [2, 2, 2, 2, 2, 2]);
+    assert.deepEqual(partageEgal(4, 12), [3, 3, 3, 3]);
+    // Tout donner à la SEULE dernière — ce que faisait `core/pythagore.js` —
+    // creusait un trou : dix questions sur six marches y faisaient 1-1-1-1-1-5.
+    assert.deepEqual(partageEgal(6, 10), [1, 1, 2, 2, 2, 2]);
+    assert.deepEqual(partageEgal(4, 10), [2, 2, 3, 3]);
+});
+
+test('LA SOMME EST TOUJOURS LE TOTAL — l\'invariant qui compte', () => {
+    // Une question qui tomberait entre deux marches serait une question sans
+    // contenu.
     for (let m = 1; m <= 13; m++) {
         for (let n = 1; n <= 50; n++) {
-            const somme = decoupeMarches(m, n, {}).reduce((s, z) => s + z.n, 0);
+            const liste = Array.from({ length: m }, (_, k) => ({ id: `z${k}`, nom: `${k}` }));
+            const somme = decoupeMarches(liste, n, {}).reduce((s, z) => s + z.n, 0);
             assert.equal(somme, n, `${m} marches, ${n} questions`);
         }
     }
 });
 
-test('MOINS DE QUESTIONS QUE DE MARCHES : on le dit', () => {
-    // On ne peut pas toutes les voir. Plutôt que d'en écraser deux dans une
-    // question, on garde les premières — et l'aperçu annonce le compte qu'il
-    // faudrait, ce qui est l'information dont le professeur a besoin.
-    const c = decoupeMarches(12, 10, {});
-    assert.equal(c.length, 10);
-    assert.deepEqual(c.map(z => z.n), Array(10).fill(1));
-    assert.match(repartitionEnMots(12, 10, {}), /10 marches sur 12/);
-    assert.match(repartitionEnMots(12, 10, {}), /faudrait 12/);
+test('MOINS DE QUESTIONS QUE DE MARCHES : les dernières restent en creux', () => {
+    // On ne triche pas. La barre montre les marches sans question, et c'est ce
+    // qui dit au professeur qu'il faut rallonger ou décocher.
+    const c = decoupeMarches(DOUZE, 10, {});
+    assert.equal(c.length, 12, 'les douze restent dans la barre');
+    assert.deepEqual(c.map(z => z.n), [...Array(10).fill(1), 0, 0]);
+    const mots = (marches, total, params) => motsDeCoupe(decoupeMarches(marches, total, params));
+    assert.match(mots(DOUZE, 10, {}), /10 marches sur 12/);
+    assert.match(mots(DOUZE, 10, {}), /aucune question/);
+    // ET LA PHRASE SUIT LA BORNE. Vider une marche à la main doit s'entendre
+    // dans le texte comme cela se voit dans la barre : c'est le défaut qui a
+    // fait passer la phrase du couple (marches, total) au découpage.
+    const sept = DOUZE.slice(0, 7);
+    assert.match(mots(sept, 10, {}), /pour 7 marches/);
+    assert.match(mots(sept, 10, { repartitionMarches: '2,0,1,1,2,2,2' }), /6 marches sur 7/);
 });
 
-test('L\'APERÇU DIT LE RÉSULTAT, ET NE SUPPOSE RIEN', () => {
-    // C'est la réponse à « on ne comprend pas grand-chose » : un nom ne dit pas
-    // ce qu'il produira. Chaque phrase est déduite du découpage.
-    assert.equal(repartitionEnMots(12, 24, {}), '24 questions pour 12 marches : 2 questions chacune.');
-    assert.match(repartitionEnMots(12, 15, {}), /de 1 à 2 questions chacune/);
-    // À compte fixe, on ne voit pas toutes les marches — et l'aperçu ne dit
-    // plus « une question chacune », qui était faux : quinze questions à trois
-    // par marche en couvrent cinq, à trois chacune.
-    const fixe = repartitionEnMots(12, 15, { repartition: 3 });
-    assert.match(fixe, /5 marches sur 12/);
-    assert.match(fixe, /3 questions chacune/);
-    assert.match(fixe, /faudrait 36/);
-    // ET LE HAUT DE L'ESCALIER QUI RAMASSE LE RESTE SE DIT AUSSI : à trois par
-    // marche sur six marches et trente questions, la dernière en reçoit quinze.
-    // C'est voulu, ce n'est pas ce qu'on lit dans « 3 questions par marche ».
-    assert.match(repartitionEnMots(6, 30, { repartition: 3 }), /dernière marche en garde 15/);
-    // Le mot du chapitre est repris : palier, niveau, cran…
-    assert.match(repartitionEnMots(3, 9, {}, 'palier'), /3 paliers/);
+// --- La borne qu'on tire -------------------------------------------------------
+
+test('TIRER UNE BORNE NE CHANGE PAS LE TOTAL', () => {
+    // C'est la propriété qui compte, et c'est celle de la frise du QCM : le
+    // nombre de questions se règle ailleurs, et lui seul.
+    const parts = [2, 2, 2, 2];
+    for (let coupe = -3; coupe <= 12; coupe++) {
+        const out = poserBorne(parts, 1, coupe);
+        assert.equal(out.reduce((s, n) => s + n, 0), 8, `coupe ${coupe}`);
+    }
+    assert.deepEqual(poserBorne([2, 2, 2, 2], 1, 5), [2, 3, 1, 2]);
+    // UNE MARCHE PEUT TOMBER À ZÉRO : elle reste cochée, elle reste dans la
+    // barre, et on la remplit en tirant dans l'autre sens. C'est réversible,
+    // donc c'est permis — contrairement aux zones de l'aide, qui
+    // disparaîtraient avec leur réglage.
+    assert.deepEqual(poserBorne([2, 2, 2, 2], 1, 2), [2, 0, 4, 2]);
+    // Une borne au bord ne fait rien plutôt que de casser la liste.
+    assert.deepEqual(poserBorne([2, 2], 5, 1), [2, 2]);
 });
 
-test('LA MARCHE SUIT LE PARTAGE, question par question', () => {
-    const rangs = (m, n) => Array.from({ length: n }, (_, i) => rangMarche(i, m, {}, AUTO, n));
-    assert.deepEqual(rangs(6, 12), [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5]);
-    assert.deepEqual(rangs(6, 6), [0, 1, 2, 3, 4, 5], 'six questions : on VISITE');
-    assert.deepEqual(rangs(4, 10), [0, 0, 1, 1, 2, 2, 2, 3, 3, 3]);
-    // On ne redescend jamais, et l'on ne dépasse jamais la dernière.
-    for (let i = 0; i < 40; i++) assert.ok(rangMarche(i, 4, {}, AUTO, 12) <= 3);
+test('UNE RÉPARTITION ÉCRITE SE RELIT, ET SE RECALE', () => {
+    // On coche une marche de plus, on raccourcit l'exercice : une répartition
+    // écrite hier ne peut pas être crue sur parole.
+    assert.deepEqual(lireLongueurs('2,3,1', 3, 6), [2, 3, 1]);
+    assert.deepEqual(lireLongueurs('2,3,1', 4, 6), [2, 3, 1, 0], 'une marche de plus');
+    assert.deepEqual(lireLongueurs('2,3,1', 3, 10), [2, 3, 5], 'la dernière absorbe l\'écart');
+    assert.deepEqual(lireLongueurs('9,9,9', 3, 6), [6, 0, 0], 'et l\'écart peut être négatif');
+    assert.equal(lireLongueurs('', 3, 6), null);
+    assert.equal(lireLongueurs('auto', 3, 6), null);
+    assert.equal(ecrireLongueurs([{ n: 2 }, { n: 0 }, { n: 4 }]), '2,0,4');
+    // La somme reste juste dans tous les cas.
+    ['1', '1,1', '50,50', '0,0,0'].forEach(txt => {
+        assert.equal(lireLongueurs(txt, 4, 12).reduce((s, n) => s + n, 0), 12, txt);
+    });
 });
 
-test('LE COMPTE FIXE FAIT L\'INVERSE, et c'.concat("'est un choix légitime"), () => {
-    // « Je veux trois questions sur chaque marche, quitte à ne pas toutes les
-    // voir. » Le total ne commande plus rien : on monte tous les trois.
-    const rangs = (n) => Array.from({ length: 12 }, (_, i) => rangMarche(i, 6, { repartition: n }, AUTO, 12));
-    assert.deepEqual(rangs(3), [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3]);
-    assert.deepEqual(rangs(1), [0, 1, 2, 3, 4, 5, 5, 5, 5, 5, 5, 5]);
+// --- La marche de chaque question ---------------------------------------------
+
+test('CHAQUE QUESTION TOMBE SUR SA MARCHE', () => {
+    const rangs = (n) => Array.from({ length: n }, (_, i) => marcheAuRang(i, SIX, n, {}));
+    assert.deepEqual(rangs(12), ['n1', 'n1', 'n2', 'n2', 'n3', 'n3', 'n4', 'n4', 'n5', 'n5', 'n6', 'n6']);
+    assert.deepEqual(rangs(6), ['n1', 'n2', 'n3', 'n4', 'n5', 'n6'], 'six questions : on VISITE');
+    // UNE MARCHE VIDE EST SAUTÉE : elle est dans la barre, pas dans l'exercice.
+    const p = { repartitionMarches: '2,0,2,2,2,2' };
+    const vus = Array.from({ length: 10 }, (_, i) => marcheAuRang(i, SIX, 10, p));
+    assert.ok(!vus.includes('n2'), `la marche vide ne doit pas être posée : ${vus.join(' ')}`);
+    assert.equal(vus.length, 10);
 });
 
 test('SANS LE TOTAL, on retombe sur le compte historique', () => {
-    // Une vignette de catalogue, un aperçu papier : le total est inconnu. Le
-    // pire qui puisse arriver est alors que rien ne change — deux questions par
-    // marche, ce que tous les générateurs faisaient avant qu'il y ait un
-    // réglage.
-    const rangs = Array.from({ length: 8 }, (_, i) => rangMarche(i, 6, {}));
-    assert.deepEqual(rangs, [0, 0, 1, 1, 2, 2, 3, 3]);
+    // Une vignette de catalogue, un aperçu papier : la longueur n'existe pas
+    // encore. Le pire qui puisse arriver est alors que rien ne change.
+    const rangs = Array.from({ length: 8 }, (_, i) => marcheAuRang(i, SIX, 0, {}));
+    assert.deepEqual(rangs, ['n1', 'n1', 'n2', 'n2', 'n3', 'n3', 'n4', 'n4']);
+    assert.equal(marcheAuRang(0, [], 10, {}), null, 'une liste vide se dit, elle ne se tait pas');
     assert.equal(totalDe({}, {}), 0);
-    assert.equal(totalDe({ total: 15 }, {}), 15);
-    assert.equal(totalDe({}, { nbQuestions: 20 }), 20, 'le panneau pose nbQuestions');
     assert.equal(totalDe({ total: 15 }, { nbQuestions: 20 }), 15, 'la session l\'emporte');
+    assert.equal(totalDe({}, { nbQuestions: 20 }), 20, 'le panneau pose nbQuestions');
 });
 
-// --- Le conseil, qui ne commande plus ----------------------------------------
+// --- Le conseil, qui ne commande plus -----------------------------------------
 
-test('LE CONSEIL PROPOSE, IL N\'IMPOSE PLUS', () => {
-    // C'est tout le changement que Rémy demande. Avant, « 4 par marche » sur
-    // douze marches poussait le rail à 48 questions ; maintenant le conseil
-    // vaut 24 en partage et le professeur met ce qu'il veut.
-    assert.equal(conseilProgression(12, {}), 24);
-    assert.equal(conseilProgression(12, { repartition: 4 }), 48);
-    assert.equal(conseilProgression(12, { repartition: 1 }), 12);
-});
-
-test('les conseils par défaut ne bougent pas d\'un pouce', () => {
-    assert.equal(questionsConseillees(relatifsGenerator, { niveau: 'progressif' }),
-        NIVEAUX.length * 2);
-    assert.equal(questionsConseillees(relatifsAdditionGenerator, { etape: 'progressif' }), 24);
-    // Quatre marches à deux questions font huit ; le défaut de dix reste
-    // au-dessus, et c'est lui qu'on garde — le conseil est un plancher.
-    assert.equal(questionsConseillees(fracSommeProgressiveGenerator, { niveau: 'progressif' }), 10);
-});
-
-test('une marche isolée ne réclame pas la longueur de tout l\'escalier', () => {
-    const seule = questionsConseillees(relatifsAdditionGenerator,
-        { etape: 'somme-positifs', repartition: 6 });
+test('LE CONSEIL SERT UNE FOIS, À L\'OUVERTURE', () => {
+    // Rémy : « avoir un nombre de questions que ça change le nombre de
+    // questions ». Il bougeait tout seul ; il ne bouge plus. Ce compte-ci
+    // évite seulement de proposer dix questions à douze marches.
+    assert.equal(conseilProgression(12), 24);
+    assert.equal(conseilProgression(12, 3), 36);
+    assert.equal(PAR_MARCHE_DEFAUT, 2);
+    assert.equal(questionsConseillees(relatifsAdditionGenerator, {}), 24);
+    // Une marche seule ne réclame pas la longueur de tout l'escalier.
+    const seule = questionsConseillees(relatifsAdditionGenerator, { etape: 'a1-pastilles-positifs' });
     assert.ok(seule <= 10, `une seule marche ne demande pas ${seule} questions`);
 });
 
-// --- Les progressions qui CYCLENT ---------------------------------------------
+// --- Le réglage, et sa présence partout ----------------------------------------
 
-test('LE CYCLE NE SERT PLUS QU\'AU COMPTE FIXE', () => {
-    // Préfixes et Thalès repartaient de la première marche une fois en haut :
-    // sur une fiche de vingt questions à compte fixe, plafonner en poserait
-    // quinze du même type. En partage, aucune marche ne peut déborder — le
-    // défaut que le cycle réparait n'existe plus.
-    assert.equal(marchePrefixes('progressif', 0), ORDRE_PREFIXES[0]);
-    assert.equal(marchePrefixes('progressif', 1, { repartition: 1 }), ORDRE_PREFIXES[1]);
-    assert.equal(marchePrefixes('progressif', ORDRE_PREFIXES.length, { repartition: 1 }),
-        ORDRE_PREFIXES[0], 'à compte fixe, le cycle recommence');
-    // En partage, la dernière question est sur la DERNIÈRE marche, pas revenue
-    // au début.
-    const n = ORDRE_PREFIXES.length * 2;
-    assert.equal(marchePrefixes('progressif', n - 1, {}, n),
-        ORDRE_PREFIXES[ORDRE_PREFIXES.length - 1]);
-
-    // Et sans réglage ni total, le comportement d'origine tient : trois par
-    // marche pour Thalès.
-    assert.equal(marcheThales('progressif', 2), ORDRE_THALES[0]);
-    assert.equal(marcheThales('progressif', 3), ORDRE_THALES[1]);
-    assert.equal(rangMarcheCyclique(0, 3, {}, 3), 0);
+test('le réglage porte sa liste, ses groupes et son mot', () => {
+    const p = paramMarches({ marches: DOUZE, groupes: { A: 'A — un' }, mot: 'palier' });
+    assert.equal(p.id, 'marches');
+    assert.equal(p.type, 'marches');
+    // L'accord suit le mot : un palier est masculin, une marche féminine.
+    assert.equal(p.label, 'Les paliers travaillés');
+    assert.equal(paramMarches({ marches: DOUZE, mot: 'marche' }).label, 'Les marches travaillées');
+    assert.deepEqual(p.default, DOUZE.map(m => m.id));
+    assert.equal(p.marches.length, 12);
 });
 
-// --- Le réglage est offert PARTOUT où il y a une progression ------------------
-
-test('`marches` ET `conseil` NE PEUVENT PAS DIVERGER', async () => {
-    // Le panneau lit `marches(params)` pour dire ce que la répartition va
-    // produire ; `duree.js` lit `conseil(params)` pour proposer une longueur.
-    // Les deux décrivent le MÊME escalier, et deux déclarations d'une même
-    // chose finissent toujours par ne plus dire la même chose — sauf si un test
-    // les tient ensemble.
+test('TOUT GÉNÉRATEUR À PROGRESSION OFFRE SES CASES, ET ELLES MARCHENT', async () => {
+    // Le garde-fou : rien n'empêcherait le prochain générateur d'annoncer une
+    // progression sans dire quelles marches on peut cocher. Et l'on vérifie que
+    // chaque exercice, joué sur la longueur qu'il conseille, PARCOURT bien
+    // toutes ses marches — ce que le premier essai ne garantissait pas.
     await import('../js/core/activities/index.js');
     const { allGenerators } = await import('../js/core/registry.js');
-    const ecarts = [];
+    let vus = 0;
     for (const gen of allGenerators()) {
-        if (typeof gen.marches !== 'function' || typeof gen.conseil !== 'function') continue;
-        // Sur les réglages par défaut, et avec un compte fixe : là, le conseil
-        // vaut exactement marches x compte, sans plancher ni cas particulier.
+        const param = (gen.params || []).find(p => p.type === 'marches');
+        if (!param) continue;
+        vus += 1;
+        assert.ok(param.marches.length >= 2, `${gen.id} : une seule marche`);
+        assert.deepEqual(param.default, param.marches.map(m => m.id),
+            `${gen.id} : tout doit être coché par défaut`);
+
         const defauts = Object.fromEntries((gen.params || [])
             .filter(p => p.default !== undefined).map(p => [p.id, p.default]));
-        for (const par of [1, 2, 3]) {
-            const p = { ...defauts, repartition: par };
-            const m = gen.marches(p);
-            if (m <= 1) continue;
-            const attendu = m * par;
-            const dit = gen.conseil(p);
-            // Certains générateurs ajoutent des questions HORS progression —
-            // les compléments à un des problèmes de fractions. Le conseil est
-            // alors plus grand, jamais plus petit.
-            if (dit < attendu) ecarts.push(`${gen.id} : ${m} marches x ${par} = ${attendu}, conseil ${dit}`);
+        const total = gen.conseil ? gen.conseil(defauts) : 10;
+        const marches = new Set();
+        for (let i = 0; i < total; i++) {
+            const it = gen.generate({ ...defauts }, { rng: makeRng(`${gen.id}${i}`), index: i, total });
+            marches.add(it.meta && (it.meta.etape || it.meta.niveau || it.meta.zoom || it.meta.marche));
         }
+        // ON COMPTE CE QUI EST JOUÉ, PAS LE NOMBRE DE VALEURS VUES : certains
+        // générateurs ouvrent sur une phase qui n'est PAS une marche (les
+        // compléments à UN de « frac.probleme », qui passent avant la
+        // progression). Ce qu'on exige, c'est qu'aucune marche cochée ne reste
+        // sur le carreau.
+        const manquantes = param.marches.map(m => m.id).filter(id => !marches.has(id));
+        assert.deepEqual(manquantes, [],
+            `${gen.id} : marches jamais jouées en ${total} questions : ${manquantes.join(', ')}`);
     }
-    assert.deepEqual(ecarts, []);
-});
-
-test('TOUT GÉNÉRATEUR QUI ANNONCE UNE PROGRESSION OFFRE LE RÉGLAGE', async () => {
-    // Un menu qui promet « les 12 marches à la suite » sans dire comment elles
-    // se partagent l'exercice est précisément ce qu'on vient de corriger — et
-    // rien n'empêcherait le prochain générateur de refaire le même oubli.
-    await import('../js/core/activities/index.js');
-    const { allGenerators } = await import('../js/core/registry.js');
-    const manquants = [];
-    for (const gen of allGenerators()) {
-        const params = gen.params || [];
-        // « Une progression » se reconnaît de deux façons dans le catalogue :
-        // une option nommée `progressif` dans un menu, ou une case à cocher
-        // `progressif` (« Commencer plus facile »).
-        const progressif = params.some(p => p.id === 'progressif')
-            || params.some(p => (p.options || [])
-                .some(o => (o && typeof o === 'object' ? o.value : o) === 'progressif'));
-        if (!progressif) continue;
-        if (!params.some(p => p.id === 'repartition')) manquants.push(gen.id);
-        // ET IL DIT COMBIEN IL A DE MARCHES : sans quoi l'aperçu du panneau ne
-        // peut rien annoncer, et l'on retombe sur le nom sans le résultat.
-        if (typeof gen.marches !== 'function') manquants.push(`${gen.id} (sans marches())`);
-    }
-    assert.deepEqual(manquants, [], 'ces progressions ne disent pas leur répartition');
+    assert.ok(vus >= 13, `seulement ${vus} générateurs à progression`);
 });

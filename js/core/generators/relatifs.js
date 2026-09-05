@@ -25,7 +25,9 @@
 // Tout ce fichier est pur : aucune dépendance au DOM, il se teste sous Node.
 
 import { makeItem } from '../items.js';
-import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 const SKILL_SOMME = 'num.relatifs.somme';
 const SKILL_SENS = 'num.relatifs.sens';
@@ -187,6 +189,14 @@ export function leurres(depart, deplacements, resultat) {
     return [...set.entries()].map(([value, why]) => ({ value, why }));
 }
 
+// LES MARCHES TELLES QUE LE PANNEAU LES COCHE, dans l'ordre de la leçon.
+// Rémy : « il faudrait pouvoir choisir les niveaux par checkbox ».
+const LISTE_MARCHES = NIVEAUX.map((n, i) => ({ id: n.id, nom: `${i + 1}. ${n.titre}`, groupe: null }));
+const TEMPS = {};
+const MOT = 'étape';
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'niveau' };
+
 export const relatifsGenerator = {
     id: 'num.relatifs',
     label: 'Additionner des nombres relatifs',
@@ -198,19 +208,11 @@ export const relatifsGenerator = {
     // l'ecriture (+3) + (-5), qui est la derniere marche, n'arrivait jamais.
     // COMBIEN DE MARCHES, RÉGLAGES EN MAIN. Le panneau s'en sert pour dire ce
     // que la répartition va produire — voir core/progression.js.
-    marches: (p) => ((p && p.niveau) || 'progressif') === 'progressif' ? NIVEAUX.length : 1,
-    conseil: (p) => (p && p.niveau === 'progressif')
-        ? conseilProgression(NIVEAUX.length, p) : 10,
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'Niveau',
-            options: [
-                { value: 'progressif', label: 'Progressif (les 6 étapes à la suite)' },
-                ...NIVEAUX.map((n, i) => ({ value: n.id, label: `${i + 1}. ${n.titre}` }))
-            ],
-            default: 'progressif'
-        },
-        paramRepartition({ marches: NIVEAUX.length, mot: 'étape' }),
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        }),
         {
             id: 'reponse', type: 'select', label: 'Réponse', papier: false,
             options: [
@@ -223,13 +225,11 @@ export const relatifsGenerator = {
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const choix = params?.niveau || 'progressif';
-        // En progressif, le temps de s'installer dans un modèle avant d'en
-        // changer — deux questions par étape, ou ce que le réglage dit.
-        const rang = choix === 'progressif'
-            ? rangMarche(ctx.index ?? 0, NIVEAUX.length, params, undefined, totalDe(ctx, params))
-            : Math.max(0, NIVEAUX.findIndex(n => n.id === choix));
-        const niveau = NIVEAUX[rang];
+        // LES MARCHES COCHÉES SE PARTAGENT LES QUESTIONS — voir
+        // core/progression.js. Le nombre de questions se règle à part.
+        const id = marcheAuRang(ctx.index ?? 0, marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params);
+        const niveau = NIVEAUX.find(n => n.id === id) || NIVEAUX[0];
 
         const [pasMin, pasMax] = niveau.pas;
         const tirerPas = () => {
