@@ -125,6 +125,55 @@ export const fractionsExercises = [
             + 'raisonnement à l\'envers.'
     },
     {
+        // EST-CE LA MÊME FRACTION ? — Rémy : « je ne veux pas de duel, juste un
+        // exercice d'égalité de fractions à dénominateur multiple ».
+        //
+        // C'est le pendant des deux exercices d'à côté, et il pose la question
+        // dans l'autre sens. « L'Égalité à Compléter » et « Par Combien ? »
+        // affichent un signe = : l'élève SAIT que les deux fractions sont
+        // égales et cherche comment. Ici on ne lui dit rien, les deux fractions
+        // sont écrites en entier, et c'est à lui de trancher — donc de faire le
+        // geste pour de bon.
+        //
+        // UN DÉNOMINATEUR MULTIPLE DE L'AUTRE, ET C'EST LE POINT : aucun PPCM à
+        // chercher, le dénominateur commun est déjà écrit, il est le plus grand
+        // des deux. Toute la difficulté tient dans le geste — multiplier le
+        // haut ET le bas — et dans les quatre façons de le rater : ajouter le
+        // même nombre des deux côtés, ne multiplier qu'une ligne, se tromper
+        // d'un cran de table, ou se tromper d'une part. Chacune est une erreur
+        // de copie, donc chacune se NOMME quand l'élève tombe dedans.
+        //
+        // ON COMMENCE PAR AGRANDIR, avec un facteur dans les tables. C'est le
+        // geste du cours ; simplifier demande de trouver le facteur au lieu de
+        // le lire, et attend d'être demandé.
+        id: 'frac-egales', title: 'Est-ce la Même Fraction ?',
+        cree: '2026-09-05',
+        consignePapier: 'Ces deux fractions sont-elles égales ? Entoure OUI ou NON, '
+            + 'et justifie en une ligne.',
+        // DEUX COLONNES, et c'est ce que la feuille compose vraiment : deux
+        // fractions empilées, « OUI ou NON » et la ligne de justification ne
+        // tiennent pas trois fois dans une largeur de page.
+        colonnesPapier: 2,
+        lignesReponse: 1,
+        generatorId: 'frac.egales', activityId: 'buttons',
+        params: { sens: 'agrandir', maxFacteur: 8, maxBase: 8 },
+        motsClefs: ['fractions égales', 'fraction équivalente', 'même dénominateur',
+            'dénominateur multiple', 'vrai ou faux'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: 'Deux fractions sont écrites, et l\'un des dénominateurs est dans la '
+            + 'table de l\'autre : 12, c\'est 4 × 3. Il n\'y a donc pas de dénominateur '
+            + 'commun à chercher, il est déjà là. Prends la fraction en quarts, multiplie '
+            + 'son numérateur ET son dénominateur par 3, et compare ce que tu obtiens à '
+            + 'l\'autre fraction. Attention : les fausses ne sont pas au hasard. Ce sont '
+            + 'les quatre erreurs qu\'on fait vraiment — avoir ajouté le même nombre en '
+            + 'haut et en bas au lieu de multiplier, n\'avoir multiplié que le '
+            + 'dénominateur, s\'être trompé d\'un cran dans la table, ou s\'être trompé '
+            + 'd\'une seule part. La dernière ne se voit pas : il faut poser le calcul.'
+    },
+    {
         // « UN EXERCICE D'ADDITION DE FRACTIONS PROGRESSIF », puis, après essai
         // des bandes : « je ne suis pas convaincu par les bandes pour les
         // fractions, on va proposer l'addition de fraction sans support visuel,

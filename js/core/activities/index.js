@@ -14,7 +14,8 @@ import {
 } from '../generators/calcul.js';
 import { fracCompareGenerator, fracAddGenerator, decCompareGenerator } from '../generators/fractions.js';
 import {
-    fracEgaliteGenerator, fracFacteurGenerator, fracSommeProgressiveGenerator,
+    fracEgaliteGenerator, fracFacteurGenerator, fracEgalesGenerator,
+    fracSommeProgressiveGenerator,
     fracProblemeGenerator
 } from '../generators/fractionsEquivalentes.js';
 import { repereGenerator, perimetreGenerator, aireGenerator } from '../generators/geometrie.js';
@@ -116,7 +117,8 @@ import {
     additionGenerator, soustractionGenerator, multFactGenerator,
     multMissingGenerator, divisionGenerator, prioriteGenerator, mixteGenerator,
     fracCompareGenerator, fracAddGenerator, decCompareGenerator,
-    fracEgaliteGenerator, fracFacteurGenerator, fracSommeProgressiveGenerator, fracProblemeGenerator,
+    fracEgaliteGenerator, fracFacteurGenerator, fracEgalesGenerator,
+    fracSommeProgressiveGenerator, fracProblemeGenerator,
     repereGenerator, perimetreGenerator, aireGenerator,
     // Chapitre « Nombres entiers et décimaux » (6ᵉ)
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,

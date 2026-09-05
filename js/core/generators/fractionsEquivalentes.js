@@ -21,8 +21,8 @@ import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
 import {
-    tirerEgalite, etapesEgalite, NIVEAUX_SOMME, tirerCalcul, tirerComplement,
-    ecrireFraction
+    tirerEgalite, etapesEgalite, tirerEgalesOuNon, etapesEgalesOuNon,
+    NIVEAUX_SOMME, tirerCalcul, tirerComplement, ecrireFraction
 } from '../fractionsEquivalentes.js';
 
 /** Une fraction en colonne, telle qu'on l'écrit au tableau. */
@@ -130,6 +130,172 @@ export const fracEgaliteGenerator = {
                 : etapesEgalite(e),
             difficulty: (avecBandes ? 1 : 3) + (e.sens === 'simplifier' ? 1 : 0),
             meta: { egalite: e, avecBandes, decimal: false }
+        });
+    }
+};
+
+// --- EST-CE LA MÊME FRACTION ? -------------------------------------------------
+//
+// Rémy : « je ne veux pas de duel, juste un exercice d'égalité de fractions à
+// dénominateur multiple ».
+//
+// LES DEUX EXERCICES D'À CÔTÉ DONNENT L'ÉGALITÉ ; CELUI-CI LA MET EN DOUTE.
+// « L'Égalité à Compléter » et « Par Combien ? » affichent un signe = et
+// demandent un nombre : l'élève sait d'avance que les deux fractions SONT
+// égales, il n'a plus qu'à retrouver comment. Ici les deux fractions sont
+// écrites en entier, on ne dit rien, et la question est celle du cours. Il
+// faut FAIRE le geste pour pouvoir répondre, au lieu de l'appliquer parce
+// qu'on nous a dit de l'appliquer.
+//
+// LA MOITIÉ DU TRAVAIL EST DANS LES FAUSSES ÉGALITÉS. Une fausse paire tirée
+// au hasard se refuse d'un coup d'œil et n'apprend rien ; celles-ci sont les
+// quatre erreurs qu'on lit sur les copies (voir `FAUTES_EGALITE` dans le
+// noyau), et c'est ce qui permet de NOMMER la faute au lieu de dire « non ».
+//
+// DEUX PROPOSITIONS, ET L'ESCALIER DE L'AIDE NE S'APPLIQUE PAS. Une question
+// par oui ou par non n'a pas de version « à quatre propositions », et « oui »
+// ne se tape pas au clavier : l'activité le voit toute seule (la réponse n'est
+// pas un nombre) et reste sur les deux boutons.
+
+export const fracEgalesGenerator = {
+    id: 'frac.egales',
+    label: 'Ces deux fractions sont-elles égales ?',
+    skills: ['num.frac.equivalentes'],
+    answerKinds: ['choice'],
+    ecrit: true,
+    fractions: true,
+    params: [
+        {
+            id: 'sens', type: 'select', label: 'Dans quel sens', default: 'agrandir',
+            aide: 'En agrandissant, la fraction en gros dénominateur est à droite et l\'élève '
+                + 'multiplie — c\'est le geste du cours. En simplifiant, elle est à gauche : '
+                + 'il faut la ramener, ou multiplier l\'autre, et c\'est là qu\'on bute.',
+            options: [
+                { value: 'agrandir', label: 'La petite fraction d\'abord (× un nombre)' },
+                { value: 'simplifier', label: 'La grande fraction d\'abord (÷ un nombre)' },
+                { value: 'les-deux', label: 'Les deux, au hasard' }
+            ]
+        },
+        {
+            id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 8, min: 2, max: 20,
+            aide: 'De combien le dénominateur est multiplié. À 8 on reste dans les tables ; '
+                + 'au-delà, la question devient aussi une multiplication à poser.'
+        },
+        {
+            id: 'maxBase', type: 'number', label: 'Dénominateur de départ maximum',
+            default: 8, min: 2, max: 20,
+            aide: 'Le plus petit des deux dénominateurs. Il se combine au facteur : 8 et 8 '
+                + 'donnent déjà des soixante-quatrièmes.'
+        }
+    ],
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        const e = tirerEgalesOuNon(rng, {
+            sens: params.sens || 'agrandir',
+            maxBase: Number(params.maxBase) || 8,
+            maxFacteur: Number(params.maxFacteur) || 8
+        });
+
+        const juste = e.base.n * e.facteur;
+        const grand = e.grande.d, petit = e.petite.d;
+        // CE QUI EST ÉCRIT DU CÔTÉ OÙ L'ÉLÈVE CALCULE : la grande fraction
+        // quand on agrandit, la petite quand on simplifie. C'est ce nombre-là
+        // qui est faux, et c'est de lui qu'il faut parler.
+        const ecrite = e.sens === 'agrandir'
+            ? `${e.grande.n}/${grand}` : `${e.petite.n}/${petit}`;
+
+        // LE CORRIGÉ SE RETOURNE AVEC LA QUESTION. Le premier jet écrivait
+        // toujours « le dénominateur a bien été MULTIPLIÉ par 2 » — faux
+        // devant 14/16 et 14/8, où l'élève a divisé 16 par 2. Un corrigé qui
+        // décrit un geste que l'élève n'a pas fait ne se reconnaît pas ; il se
+        // subit.
+        const verbe = e.sens === 'agrandir' ? 'multiplié' : 'divisé';
+        const geste = e.sens === 'agrandir' ? 'AJOUTANT' : 'RETRANCHANT';
+        const gesteNu = e.sens === 'agrandir' ? 'ajouter' : 'retrancher';
+        const contraire = e.sens === 'agrandir' ? 'MULTIPLIER' : 'DIVISER';
+        const de = e.sens === 'agrandir' ? petit : grand;
+        const vers = e.sens === 'agrandir' ? grand : petit;
+
+        // POURQUOI C'EST NON, dans les mots de la faute commise. « Ce n'est pas
+        // la même fraction » est vrai et ne sert à rien : ce qui sert, c'est de
+        // reconnaître SON erreur dans la phrase.
+        const POURQUOI = {
+            'ajout': `On est passé de ${de} à ${vers} en ${geste} ${Math.abs(grand - petit)}, `
+                + `et on a fait pareil en haut. Mais ${gesteNu} le même nombre des deux côtés `
+                + `CHANGE la fraction — c'est ${contraire} qui ne la change pas.`,
+            'une-ligne': `Le dénominateur a bien été ${verbe} par ${e.facteur}, pas le `
+                + `numérateur : le geste n'est fait qu'à moitié.`,
+            'table-voisine': `Il y a un cran d'écart dans la table : de ${petit} à ${grand} `
+                + `on multiplie par ${e.facteur}, pas par ${e.facteur - 1}.`,
+            'une-part': 'Il s\'en faut d\'une seule part — et c\'est pour cela qu\'il faut '
+                + 'poser le calcul au lieu de regarder.'
+        };
+        const pourquoiNon = e.faute ? POURQUOI[e.faute.id] : '';
+
+        // ET LA VÉRITÉ, UNE FOIS. Elle porte la bonne égalité et nomme ce qui
+        // est écrit : dire deux fois le même nombre — « donc 9/8 = 63/56. Il
+        // aurait fallu écrire 63/56 » — dilue la seule ligne qu'on relira.
+        const verite = `${e.base.n}/${petit} = ${juste}/${grand} : ${ecrite} n'est pas la `
+            + 'même fraction.';
+
+        const explication = e.vrai
+            ? `Oui. ${e.base.d} × ${e.facteur} = ${grand} et ${e.base.n} × ${e.facteur} = `
+                + `${juste} : on a multiplié le numérateur ET le dénominateur par le même `
+                + `nombre, donc la fraction n'a pas changé de valeur. On l'a seulement `
+                + `coupée en parts ${e.facteur} fois plus fines.`
+            : `Non. ${pourquoiNon} ${verite}`;
+
+        return makeItem({
+            seed: rng.seed,
+            generatorId: 'frac.egales',
+            skillId: 'num.frac.equivalentes',
+            answerKind: 'choice',
+            prompt: {
+                text: `${e.gauche.n}/${e.gauche.d} et ${e.droite.n}/${e.droite.d} : `
+                    + 'ces deux fractions sont-elles égales ?',
+                html: `<div class="game-question">Ces deux fractions sont-elles égales&nbsp;?</div>`
+                    + `<div class="frac-egalite">
+                        ${fracHtml(e.gauche.n, e.gauche.d)}
+                        <span class="frac-doute" aria-label="égales ?">?</span>
+                        ${fracHtml(e.droite.n, e.droite.d)}
+                       </div>`,
+                // SUR LE PAPIER, LA QUESTION EST LES DEUX FRACTIONS. La
+                // consigne est déjà en tête de l'exercice, et la recopier
+                // sous chaque numéro mangeait toute la case : la fiche
+                // n'affichait plus une seule fraction, rien que « Entoure OUI
+                // ou NON » vingt fois. La feuille empile un `a/b` en colonnes
+                // toute seule (`porteUneFraction`), donc il suffit de les
+                // écrire. Deux espaces au plus entre les mots : trois
+                // d'affilée, et la feuille y dessine un trou à remplir.
+                papier: `${e.gauche.n}/${e.gauche.d} et ${e.droite.n}/${e.droite.d}`
+                    + ' — OUI ou NON ?'
+            },
+            answer: e.vrai ? 'oui' : 'non',
+            choices: [
+                {
+                    value: 'oui', label: 'Oui', correct: e.vrai,
+                    why: e.vrai ? undefined : pourquoiNon
+                },
+                {
+                    value: 'non', label: 'Non', correct: !e.vrai,
+                    why: e.vrai
+                        ? `Elles sont pourtant égales : ${e.base.d} × ${e.facteur} = ${grand} `
+                            + `et ${e.base.n} × ${e.facteur} = ${juste}. Multiplier le haut et `
+                            + `le bas par le même nombre ne change pas une fraction.`
+                        : undefined
+                }
+            ],
+            hints: etapesEgalesOuNon(e),
+            explanation: explication,
+            // Simplifier demande de trouver le facteur au lieu de le lire, et
+            // « il s'en faut d'une part » ne se voit pas : ces deux-là montent
+            // d'un cran.
+            difficulty: 2 + (e.sens === 'simplifier' ? 1 : 0)
+                + (e.faute && e.faute.id === 'une-part' ? 1 : 0),
+            meta: {
+                egalite: e, vrai: e.vrai, faute: e.faute ? e.faute.id : null,
+                facteur: e.facteur, sens: e.sens
+            }
         });
     }
 };

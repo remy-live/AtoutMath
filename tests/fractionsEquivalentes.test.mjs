@@ -18,6 +18,7 @@ import './helpers.mjs';
 import {
     pgcd, ppcm, simplifier, estIrreductible,
     tirerEgalite, etapesEgalite, verifierEgalite,
+    tirerEgalesOuNon, etapesEgalesOuNon, FAUTES_EGALITE,
     NIVEAUX_SOMME, estNiveauSomme, tirerDenominateurs, tirerSomme, etapesSomme,
     tirerCalcul, etapesCalcul, multiplesCommuns,
     etapesPosees, bougeDansPose,
@@ -169,6 +170,189 @@ test('L\'INDICE MONTRE LA LIGNE À LIRE, il ne donne pas le résultat d\'emblée
         assert.doesNotMatch(it.hints[0], new RegExp(`\\b${it.answer}\\b`));
         assert.match(it.hints[0], /HAUT|BAS/);
     }
+});
+
+// --- Est-ce la même fraction ? -------------------------------------------------
+//
+// Rémy : « je ne veux pas de duel, juste un exercice d'égalité de fractions à
+// dénominateur multiple ». Trois promesses tiennent cet exercice, et une
+// seule est visible à l'œil nu.
+
+test('LE VERDICT EST JUSTE — c\'est la seule chose qui ne se rattrape pas', () => {
+    // Une question par oui ou par non dont la réponse est fausse ne se répare
+    // pas par un bon corrigé : l'élève qui a RAISON est compté faux, et c'est
+    // le pire de ce qu'un exercice peut faire.
+    for (let i = 0; i < 800; i++) {
+        const e = tirerEgalesOuNon(makeRng('eq' + i), { sens: 'les-deux', maxBase: 8, maxFacteur: 8 });
+        const vraimentEgales = e.gauche.n * e.droite.d === e.droite.n * e.gauche.d;
+        assert.equal(e.vrai, vraimentEgales,
+            `${e.gauche.n}/${e.gauche.d} et ${e.droite.n}/${e.droite.d} : annoncé ${e.vrai}`);
+    }
+});
+
+test('UN DÉNOMINATEUR EST TOUJOURS MULTIPLE DE L\'AUTRE — c\'est tout le sujet', () => {
+    // Sans cela il faudrait chercher un PPCM, et l'exercice deviendrait celui
+    // d'à côté. Le dénominateur commun doit être DÉJÀ ÉCRIT.
+    for (let i = 0; i < 400; i++) {
+        const e = tirerEgalesOuNon(makeRng('mu' + i), { sens: 'les-deux', maxBase: 8, maxFacteur: 8 });
+        const [p, g] = e.gauche.d < e.droite.d ? [e.gauche.d, e.droite.d] : [e.droite.d, e.gauche.d];
+        assert.equal(g % p, 0, `${p} et ${g} ne sont pas l'un dans la table de l'autre`);
+        assert.notEqual(p, g, 'deux dénominateurs égaux ne demandent aucun geste');
+        assert.equal(g / p, e.facteur);
+        // La fraction de départ est irréductible : sinon on répondrait en
+        // simplifiant les deux, ce qui est une bonne méthode mais pas celle du
+        // chapitre — et qui ne marcherait plus sur la moitié des tirages.
+        assert.ok(estIrreductible(e.base.n, e.base.d),
+            `${e.base.n}/${e.base.d} se simplifie`);
+    }
+});
+
+test('UNE FOIS SUR DEUX, ET PAS TROIS FOIS SUR CINQ', () => {
+    // C'est la seule proportion qui ne se devine pas. Le premier jet retirait
+    // le tirage complet quand la faute choisie tombait sur un numérateur
+    // impossible : seules les questions FAUSSES pouvaient être rejetées, donc
+    // les vraies remontaient à 58 % — et répondre « oui » sans regarder
+    // devenait payant.
+    for (const sens of ['agrandir', 'simplifier', 'les-deux']) {
+        let vrais = 0;
+        for (let i = 0; i < 1000; i++) {
+            if (tirerEgalesOuNon(makeRng(`${sens}${i}`), { sens, maxBase: 8, maxFacteur: 8 }).vrai) vrais++;
+        }
+        assert.ok(Math.abs(vrais - 500) < 60, `${sens} : ${vrais} vraies sur mille`);
+    }
+});
+
+test('LES FAUSSES SONT DES ERREURS D\'ÉLÈVE, pas des nombres au hasard', () => {
+    // « 3/4 et 5/12 » se refuse d'un coup d'œil et n'apprend rien. Chacune de
+    // celles-ci se lit sur les copies, et c'est ce qui permet de NOMMER la
+    // faute au lieu de dire « non ».
+    const vues = new Set();
+    for (let i = 0; i < 600; i++) {
+        const e = tirerEgalesOuNon(makeRng('fa' + i), { sens: 'agrandir', maxBase: 8, maxFacteur: 8 });
+        if (e.vrai) { assert.equal(e.faute, null); continue; }
+        assert.ok(e.faute && e.faute.id, 'une fausse égalité sans faute nommée');
+        vues.add(e.faute.id);
+        const { n: a, d: b } = e.base;
+        const k = e.facteur;
+        const faux = e.grande.n;
+        const attendus = {
+            'ajout': a + b * (k - 1),
+            'une-ligne': a,
+            'table-voisine': a * (k - 1),
+            'une-part': null            // ± 1, les deux sens sont permis
+        };
+        if (e.faute.id === 'une-part') assert.equal(Math.abs(faux - a * k), 1);
+        else assert.equal(faux, attendus[e.faute.id], `${e.faute.id} mal posée`);
+        assert.ok(faux >= 1, 'un numérateur négatif ou nul n\'est pas une erreur d\'élève');
+    }
+    // Les quatre passent : en agrandissant, aucune n'est impossible.
+    assert.deepEqual([...vues].sort(), FAUTES_EGALITE.map(f => f.id).sort());
+});
+
+test('L\'INDICE PARLE DE CE QUI EST À L\'ÉCRAN, et ne dit pas le verdict', () => {
+    for (let i = 0; i < 200; i++) {
+        const e = tirerEgalesOuNon(makeRng('in' + i), { sens: 'les-deux', maxBase: 8, maxFacteur: 8 });
+        const etapes = etapesEgalesOuNon(e);
+        assert.equal(etapes.length, 3);
+        const tout = etapes.join(' ');
+        // Il ne tranche pas : la conclusion reste à l'élève.
+        assert.doesNotMatch(tout, /elles sont (bien )?égales|ne sont pas égales/i);
+        // Et il part du nombre AFFICHÉ, pas de la fraction de départ : une fois
+        // sur deux, celle qu'on montre est celle qu'on a faussée, et un indice
+        // qui parlerait de « 3/4 » devant un élève qui lit « 5/4 » le perdrait.
+        assert.match(etapes[2], new RegExp(`^${e.petite.n} × ${e.facteur} = `));
+    }
+});
+
+test('EST-CE LA MÊME FRACTION — deux propositions, et le corrigé nomme la faute', async () => {
+    const { fracEgalesGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
+    let fausses = 0;
+    for (let i = 0; i < 300; i++) {
+        const it = G.generate({ sens: 'les-deux', maxFacteur: 8, maxBase: 8 },
+            { rng: makeRng('ge' + i), index: i, total: 300 });
+        // DEUX PROPOSITIONS, PAS QUATRE : « oui » et « non » n'ont pas de
+        // voisins à inventer.
+        assert.equal(it.choices.length, 2);
+        assert.equal(it.choices.filter(c => c.correct).length, 1);
+        assert.equal(it.choices.find(c => c.correct).value, it.answer);
+        // Et la réponse n'est pas un nombre : l'escalier de l'aide ne peut donc
+        // pas basculer au clavier, ce qui n'aurait aucun sens ici.
+        assert.ok(!Number.isFinite(Number(it.answer)));
+        // La proposition FAUSSE porte toujours la raison : c'est elle que
+        // l'élève vient de choisir.
+        assert.ok(it.choices.find(c => !c.correct).why, `question ${i} : aucun « pourquoi »`);
+        assert.ok(!it.choices.find(c => c.correct).why,
+            'la bonne réponse n\'a rien à justifier');
+        // « Toujours les fractions en colonnes ».
+        assert.match(it.prompt.html, /fraction-num/);
+        assert.match(it.prompt.html, /fraction-den/);
+        // AUCUN SIGNE = DANS L'ÉNONCÉ : il répondrait la question posée.
+        assert.doesNotMatch(it.prompt.html, /frac-signe|>=</);
+        if (it.answer === 'non') {
+            fausses++;
+            assert.match(it.explanation, /^Non\./);
+            assert.ok(it.explanation.length > 90, `corrigé trop court : ${it.explanation}`);
+        } else {
+            assert.match(it.explanation, /^Oui\./);
+        }
+    }
+    assert.ok(fausses > 100 && fausses < 200, `${fausses} fausses sur 300`);
+});
+
+test('LE CORRIGÉ DÉCRIT LE GESTE QUE L\'ÉLÈVE A FAIT, pas son contraire', async () => {
+    // LE DÉFAUT QUI A MOTIVÉ CE TEST. Le corrigé écrivait toujours « le
+    // dénominateur a bien été MULTIPLIÉ par 2 » — faux devant 14/16 et 14/8,
+    // où l'élève a DIVISÉ 16 par 2. Un corrigé qui décrit un geste que l'élève
+    // n'a pas fait ne se reconnaît pas, il se subit. Même chose pour
+    // « ajouté » / « retranché ».
+    const { fracEgalesGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
+    const vues = { agrandir: new Set(), simplifier: new Set() };
+    for (const sens of ['agrandir', 'simplifier']) {
+        for (let i = 0; i < 400; i++) {
+            const it = G.generate({ sens, maxFacteur: 8, maxBase: 8 },
+                { rng: makeRng(`co${sens}${i}`), index: i, total: 400 });
+            if (it.answer === 'oui') continue;
+            vues[sens].add(it.meta.faute);
+            const dit = it.explanation;
+            if (sens === 'agrandir') {
+                assert.doesNotMatch(dit, /divisé|RETRANCHANT|DIVISER/, dit);
+            } else {
+                assert.doesNotMatch(dit, /a bien été multiplié|AJOUTANT|c'est MULTIPLIER/, dit);
+            }
+            // ET IL NE SE RÉPÈTE PAS. « donc 9/8 = 63/56. Il aurait fallu
+            // écrire 63/56 » disait deux fois la seule ligne qu'on relira.
+            const nombres = dit.match(/\d+\/\d+/g) || [];
+            assert.equal(new Set(nombres).size, nombres.length,
+                `une fraction est citée deux fois : ${dit}`);
+        }
+    }
+    // Un cran d'écart dans la table n'a pas de sens en divisant : diviser par
+    // k − 1 ne tombe pas juste, et un nombre au hasard n'est plus une erreur
+    // d'élève. Les trois autres passent des deux côtés.
+    assert.equal(vues.agrandir.size, 4);
+    assert.ok(!vues.simplifier.has('table-voisine'));
+    assert.equal(vues.simplifier.size, 3);
+});
+
+test('l\'exercice est au catalogue, imprimable, et rattaché à un chapitre', async () => {
+    const { getExerciseById } = await import('../js/data/catalog.js');
+    const { CHAPITRES } = await import('../js/data/chapitres.js');
+    const { fracEgalesGenerator } = await import('../js/core/generators/fractionsEquivalentes.js');
+    const e = getExerciseById('frac-egales');
+    assert.ok(e, 'frac-egales manque au catalogue');
+    // La compétence vient du GÉNÉRATEUR : une ligne de catalogue est un
+    // assemblage, elle ne redéclare pas ce que la brique porte déjà.
+    assert.deepEqual(fracEgalesGenerator.skills, ['num.frac.equivalentes']);
+    assert.equal(e.generatorId, 'frac.egales');
+    assert.equal(e.activityId, 'buttons');
+    assert.ok(e.consignePapier && e.lignesReponse >= 1,
+        'sur le papier, « entoure OUI ou NON » demande une ligne pour justifier');
+    assert.ok(e.instruction.length > 400, 'consigne trop courte');
+    // LA COMPÉTENCE N'APPARTENAIT À AUCUN CHAPITRE : les trois exercices qui la
+    // portent n'étaient atteignables que par la recherche.
+    const chapitres = CHAPITRES.filter(c => c.skills.includes('num.frac.equivalentes'));
+    assert.ok(chapitres.length >= 2,
+        'num.frac.equivalentes doit être rattachée aux chapitres « Fractions »');
 });
 
 // --- La progression de l'addition --------------------------------------------

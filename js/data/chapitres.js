@@ -77,7 +77,14 @@ export const CHAPITRES = [
     },
     {
         id: '6-fractions', niveau: SIXIEME, nom: 'Fractions',
-        skills: ['num.frac.sens', 'num.frac.denominateur-commun', 'num.probleme.fraction']
+        // `num.frac.equivalentes` n'appartenait à AUCUN chapitre : les trois
+        // exercices qui la portent — « L'Égalité à Compléter », « Par
+        // Combien ? » et « Est-ce la Même Fraction ? » — n'étaient donc
+        // atteignables que par la recherche, jamais depuis la vue par
+        // chapitres. Elle est pourtant la règle dont dépend tout le reste du
+        // chapitre : le dénominateur commun, la simplification, l'addition.
+        skills: ['num.frac.sens', 'num.frac.equivalentes',
+            'num.frac.denominateur-commun', 'num.probleme.fraction']
     },
     {
         id: '6-angles', niveau: SIXIEME, nom: 'Les angles',
@@ -155,7 +162,8 @@ export const CHAPITRES = [
     {
         id: '5-fractions', niveau: CINQUIEME, nom: 'Fractions',
         skills: [
-            'num.frac.sens', 'num.frac.compare', 'num.frac.add-meme-denom',
+            'num.frac.sens', 'num.frac.compare', 'num.frac.equivalentes',
+            'num.frac.add-meme-denom',
             'num.frac.denominateur-commun', 'num.frac.simplification', 'num.probleme.fraction'
         ]
     },

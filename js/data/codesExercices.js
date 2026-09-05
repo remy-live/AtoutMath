@@ -133,6 +133,7 @@ export const CODES_EXERCICES = {
     'frac-add':                   'AF',   // Addition de Fractions
     'frac-egalite':               'EG',   // L'Égalité à Compléter
     'frac-facteur':               'FK',   // Par Combien ?
+    'frac-egales':                'FE',   // Est-ce la Même Fraction ?
     'frac-somme-posee':           'AN',   // Poser une Addition de Fractions
     'frac-probleme':              'HF',   // Histoires de Fractions
     'frac-samurai':               'SF',   // Le Samouraï des Fractions

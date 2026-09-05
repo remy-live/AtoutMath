@@ -146,6 +146,193 @@ export function verifierEgalite(e, proposition) {
     return Number.isFinite(v) && v === e.reponse;
 }
 
+// --- SONT-ELLES ÉGALES ? -----------------------------------------------------
+//
+// Rémy : « je ne veux pas de duel, juste un exercice d'égalité de fractions à
+// dénominateur multiple ».
+//
+// LES DEUX AUTRES EXERCICES DONNENT L'ÉGALITÉ, CELUI-CI LA MET EN DOUTE.
+// « Compléter une égalité » et « Par combien ? » affichent tous deux un signe
+// = et demandent un nombre : l'élève sait d'avance que les deux fractions
+// SONT égales, il n'a qu'à retrouver comment. C'est un exercice de calcul.
+// Ici on ne lui dit rien, les deux fractions sont écrites en entier, et la
+// question est celle du cours : est-ce la même fraction ? Il faut alors
+// FAIRE le geste — mettre au même dénominateur — pour pouvoir répondre, au
+// lieu de l'appliquer parce qu'on nous a dit de l'appliquer.
+//
+// UN DÉNOMINATEUR MULTIPLE DE L'AUTRE, ET C'EST LE POINT. Pas de PPCM à
+// chercher : le dénominateur commun est le plus grand des deux, il est déjà
+// écrit. Toute la difficulté se concentre donc sur le geste lui-même —
+// multiplier le haut ET le bas —, et sur les façons de le rater.
+//
+// LA FRACTION DE DÉPART EST IRRÉDUCTIBLE. Sans cela, 2/4 et 6/12 se
+// répondraient en simplifiant les deux — une bonne méthode, mais pas celle du
+// chapitre, et qui ne marcherait plus sur 2/4 et 7/12. On ne veut pas d'un
+// exercice dont la méthode change selon le tirage.
+
+/**
+ * LES QUATRE FAÇONS DE SE TROMPER, et pourquoi ce sont celles-là.
+ *
+ * Une fausse égalité tirée au hasard ne dit rien : « 3/4 et 5/12 » se refuse
+ * d'un coup d'œil et n'apprend pas où l'on chute. Chacune de celles-ci EST une
+ * erreur d'élève, celles qu'on lit sur les copies — et c'est ce qui permet de
+ * nommer la faute au lieu de dire « non ».
+ *
+ *   `ajout`         on a ajouté le même nombre en haut et en bas (3/4 → 11/12,
+ *                   +8 des deux côtés). L'erreur reine : la règle « le même
+ *                   des deux côtés » est retenue, l'opération ne l'est pas.
+ *   `une-ligne`     on n'a multiplié que le dénominateur (3/4 → 3/12). Le geste
+ *                   est à moitié fait — et cette fraction-là vaut le tiers de
+ *                   l'autre, ce qui se voit sur une bande.
+ *   `table-voisine` un cran d'écart dans la table (× 2 au lieu de × 3). Se
+ *                   corrige en relisant le dénominateur, pas en recalculant.
+ *   `une-part`      il s'en faut d'un douzième (3/4 → 10/12). La seule qui ne
+ *                   se voie pas : il FAUT poser le calcul. C'est celle qui
+ *                   sépare l'élève qui a compris de celui qui reconnaît.
+ *
+ * `table-voisine` n'a pas de sens dans l'autre sens : diviser par k − 1 ne
+ * tombe pas juste, et une division fausse ne serait plus une erreur d'élève,
+ * juste un nombre. Elle est donc réservée à l'agrandissement.
+ */
+export const FAUTES_EGALITE = [
+    {
+        id: 'ajout', nom: 'on a ajouté le même nombre en haut et en bas',
+        faux: (a, b, k, agrandit) => (agrandit ? a + b * (k - 1) : a * k - b * (k - 1))
+    },
+    {
+        id: 'une-ligne', nom: 'on n’a touché qu’au dénominateur',
+        faux: (a, b, k, agrandit) => (agrandit ? a : a * k)
+    },
+    {
+        id: 'table-voisine', nom: 'un cran d’écart dans la table',
+        agrandirSeulement: true,
+        faux: (a, b, k) => a * (k - 1)
+    },
+    {
+        id: 'une-part', nom: 'il s’en faut d’une part',
+        faux: (a, b, k, agrandit, rng) => (agrandit ? a * k : a) + (rng.bool() ? 1 : -1)
+    }
+];
+
+/**
+ * DEUX FRACTIONS À DÉNOMINATEURS MULTIPLES, ÉGALES OU NON.
+ *
+ * @param {Object} rng
+ * @param {Object} [opts]
+ * @param {string} [opts.sens]       - 'agrandir' | 'simplifier' | 'les-deux'
+ * @param {number} [opts.maxBase]    - plus grand dénominateur de départ
+ * @param {number} [opts.maxFacteur] - plus grand facteur
+ * @param {boolean} [opts.vrai]      - forcer la réponse ; sinon une fois sur deux
+ * @returns {{gauche, droite, vrai, facteur, sens, petite, grande, faute}}
+ *   `faute` est `null` quand les deux fractions sont bien égales.
+ */
+export function tirerEgalesOuNon(rng, opts = {}) {
+    const {
+        sens = 'les-deux', maxBase = 9, maxFacteur = 10, vrai = null, eviter = []
+    } = opts;
+
+    for (let essai = 0; essai < 120; essai++) {
+        const b = rng.int(2, Math.max(2, maxBase));
+        const a = rng.int(1, Math.max(1, b * 2));
+        if (a === b) continue;                  // 1 = 1 ne se met pas en doute
+        if (!estIrreductible(a, b)) continue;   // voir l'en-tête
+        const k = rng.int(2, Math.max(2, maxFacteur));
+
+        const agrandit = sens === 'agrandir' ? true
+            : sens === 'simplifier' ? false : rng.bool();
+        // UNE FOIS SUR DEUX, ET PAS AUTREMENT. À une question par oui ou par
+        // non, toute autre proportion se devine : une classe qui sent que « la
+        // plupart sont fausses » répond non sans regarder et a raison plus
+        // souvent qu'en cherchant. C'est le seul réglage qu'on ne propose pas.
+        const juste = vrai === null ? rng.bool() : !!vrai;
+
+        const petite = { n: a, d: b };
+        const grande = { n: a * k, d: b * k };
+        let faute = null;
+
+        if (!juste) {
+            // Le nombre faux se pose là où l'élève CALCULE : sur la grande
+            // fraction quand on agrandit, sur la petite quand on simplifie.
+            const attendu = agrandit ? grande.n : petite.n;
+            // ON CHOISIT PARMI LES FAUTES POSSIBLES ICI, et c'est un vrai
+            // choix de conception. Toutes ne le sont pas à chaque tirage :
+            // « on a retranché le même nombre » donne un numérateur négatif
+            // sur 1/9 ramené de 90èmes, et « un cran d'écart dans la table »
+            // n'a pas de sens en divisant.
+            //
+            // Le premier jet retirait tout le tirage quand la faute choisie ne
+            // tombait pas — pour ne pas biaiser leur fréquence. MESURÉ sur 600
+            // questions, cela biaisait bien pire : seules les questions FAUSSES
+            // pouvaient être rejetées, donc les vraies remontaient à 58 %, et
+            // répondre « oui » sans regarder devenait payant. Le verdict prime
+            // sur l'équilibre des fautes — c'est lui la réponse.
+            const possibles = FAUTES_EGALITE
+                .filter(f => agrandit || !f.agrandirSeulement)
+                .map(f => ({ f, n: f.faux(a, b, k, agrandit, rng) }))
+                .filter(({ n }) => Number.isFinite(n) && n >= 1 && n !== attendu);
+            if (!possibles.length) continue;
+            const choisie = rng.pick(possibles);
+            if (agrandit) grande.n = choisie.n; else petite.n = choisie.n;
+            faute = choisie.f;
+        }
+
+        const gauche = agrandit ? petite : grande;
+        const droite = agrandit ? grande : petite;
+        const clef = `${gauche.n}/${gauche.d}?${droite.n}/${droite.d}`;
+        if (eviter.includes(clef)) continue;
+
+        return {
+            gauche, droite, petite, grande, vrai: juste, facteur: k,
+            // LA FRACTION DE DÉPART, INTACTE. `petite` et `grande` portent ce
+            // qui est AFFICHÉ, donc l'une des deux est fausse la moitié du
+            // temps : le corrigé ne peut pas s'y fier pour dire ce qu'il
+            // aurait fallu écrire.
+            base: { n: a, d: b },
+            sens: agrandit ? 'agrandir' : 'simplifier', faute, clef
+        };
+    }
+    // Repli : une question toujours valable, plutôt que rien.
+    return {
+        gauche: { n: 1, d: 2 }, droite: { n: 3, d: 6 },
+        petite: { n: 1, d: 2 }, grande: { n: 3, d: 6 }, base: { n: 1, d: 2 },
+        vrai: true, facteur: 3, sens: 'agrandir', faute: null, clef: '1/2?3/6'
+    };
+}
+
+/**
+ * LE RAISONNEMENT, dans l'ordre où on l'écrit au tableau.
+ *
+ * DEUX PRÉCAUTIONS, parce qu'un indice n'est pas un corrigé.
+ *
+ * Il ne DIT PAS la réponse : il s'arrête sur « compare les numérateurs », qui
+ * est le geste, et laisse la conclusion à l'élève. Un troisième indice qui
+ * annoncerait « elles sont égales » ferait de l'aide un bouton « donne-moi le
+ * point ».
+ *
+ * Et il part de ce qui est ÉCRIT À L'ÉCRAN, pas de la fraction de départ : une
+ * fois sur deux la fraction affichée est celle qu'on a faussée, et un indice
+ * qui parlerait de « 3/4 » devant un élève qui lit « 5/4 » ne l'aiderait pas,
+ * il le perdrait. La méthode marche telle quelle sur la fausse : on multiplie,
+ * on compare, on ne retrouve pas — c'est exactement ce qu'on veut lui faire
+ * découvrir.
+ *
+ * Il part enfin toujours de la PETITE fraction et multiplie, même quand la
+ * question est posée dans l'autre sens : le facteur se lit sur les
+ * dénominateurs dans les deux cas, tandis que « par quoi diviser 9/12 ? » se
+ * cherche.
+ */
+export function etapesEgalesOuNon(e) {
+    const petit = e.petite.d, grand = e.grande.d;
+    return [
+        `Les dénominateurs sont ${e.gauche.d} et ${e.droite.d} : `
+            + `${grand} = ${petit} × ${e.facteur}, donc l’un est dans la table de l’autre.`,
+        `Prends celle qui a ${petit} en bas et multiplie son haut ET son bas par `
+            + `${e.facteur} : tu obtiens une fraction sur ${grand}.`,
+        `${e.petite.n} × ${e.facteur} = ${e.petite.n * e.facteur}. Compare ce numérateur `
+            + `à celui de l’autre fraction : mêmes numérateurs, mêmes fractions.`
+    ];
+}
+
 // --- ADDITIONNER DEUX FRACTIONS, PAR MARCHES ---------------------------------
 
 export const NIVEAUX_SOMME = [

@@ -1391,6 +1391,18 @@
 .fraction--trou .fraction-num,
 .fraction--trou .fraction-den { min-width: 1.4em; }
 
+/* LE DOUTE SE MET À LA PLACE DU SIGNE. « Ces deux fractions sont-elles
+   égales ? » ne peut pas s'écrire avec un = entre les deux : le signe
+   affirmerait ce qu'on demande de trancher, et la moitié des questions
+   seraient déjà répondues par leur propre énoncé. On pose donc un point
+   d'interrogation là où le signe irait — même place, même poids, même
+   fonction de charnière — et il reste vide de sens jusqu'à la réponse. */
+.frac-doute {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.2em; font-weight: 800;
+    color: var(--primary);
+}
+
 /* UNE FRACTION DANS UNE BULLE tient sur deux étages : elle se règle sur le
    diamètre du rond, pas sur le nombre de caractères. Les classes de longueur
    posaient 1,7 rem quelle que soit la place — sur un téléphone, « 17/10 »
