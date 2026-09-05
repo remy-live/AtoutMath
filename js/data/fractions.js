@@ -202,7 +202,7 @@ export const fractionsExercises = [
         colonnesPapier: 2,
         lignesReponse: 1,
         generatorId: 'frac.egales', activityId: 'buttons',
-        params: { sens: 'agrandir', maxFacteur: 8, maxBase: 8 },
+        params: { sens: 'agrandir', maxFacteur: 10, maxBase: 8 },
         motsClefs: ['fractions égales', 'fraction équivalente', 'même dénominateur',
             'dénominateur multiple', 'vrai ou faux'],
         tags: {

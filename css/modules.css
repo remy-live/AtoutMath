@@ -1363,8 +1363,17 @@
     display: inline-flex; flex-direction: column; align-items: center;
     vertical-align: middle; line-height: 1.1; font-weight: 700;
 }
-.fraction-num { padding: 0 .35em; }
-.fraction-den { padding: 0 .35em; border-top: 3px solid currentColor; }
+/* LE NUMÉRATEUR SE CENTRE SUR LE TRAIT, toujours.
+   Rémy : « le ? n'est pas centré ». Mesuré sur « 2/3 = ?/18 » : la colonne est
+   bien centrée (`align-items: center` ci-dessus), mais elle centre des BOÎTES.
+   Dès qu'une boîte est plus large que son contenu — un trou porte un
+   `min-width` pour que l'égalité ne se déforme pas selon que le nombre caché
+   fait un ou deux chiffres —, le texte qu'elle contient se range à gauche
+   dedans, et le « ? » se retrouve décalé sous le 18. Sans min-width la boîte
+   épouse son contenu et cette règle ne change rien : elle ne coûte donc que
+   dans le cas où elle sert. */
+.fraction-num { padding: 0 .35em; text-align: center; }
+.fraction-den { padding: 0 .35em; border-top: 3px solid currentColor; text-align: center; }
 
 /* UNE ÉGALITÉ DE FRACTIONS, ÉCRITE COMME AU TABLEAU.
    Rémy : « toujours les fractions en colonnes ». Elles l'étaient déjà — c'est

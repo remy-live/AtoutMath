@@ -157,6 +157,30 @@ export const fracEgaliteGenerator = {
 // ne se tape pas au clavier : l'activité le voit toute seule (la réponse n'est
 // pas un nombre) et reste sur les deux boutons.
 
+// LES QUATRE MARCHES. Rémy, devant « 15/8 et 105/56 » posé en PREMIÈRE
+// question : « gros calcul pour un départ ». Il avait raison, et le défaut
+// n'était pas dans le tirage : l'exercice n'avait AUCUNE progression, donc la
+// première question était tirée dans le même sac que la dernière.
+//
+// CE QUI MONTE ICI, C'EST LE CALCUL, PAS L'IDÉE. L'idée est la même du début à
+// la fin — mettre au même dénominateur, puis comparer. Doubler se fait de
+// tête ; multiplier par sept un numérateur à deux chiffres ne se fait plus de
+// tête, et à ce moment-là l'élève ne travaille plus les fractions, il pose une
+// multiplication par-dessus. Les trois premières marches restent donc sous
+// l'unité, où le numérateur ne peut pas dépasser le dénominateur.
+const MARCHES_EGALES = [
+    { id: 'doubler', titre: 'Doubler ou tripler', minF: 2, maxF: 3, maxB: 6, propre: true },
+    { id: 'tables', titre: 'Dans les tables', minF: 2, maxF: 5, maxB: 7, propre: true },
+    { id: 'jusqua-dix', titre: 'Jusqu’à dix', minF: 2, maxF: 10, maxB: 8, propre: true },
+    {
+        id: 'plus-grandes', titre: 'Des fractions plus grandes que 1',
+        minF: 2, maxF: 10, maxB: 8, propre: false
+    }
+];
+const LISTE_EGALES = MARCHES_EGALES.map((m, i) => ({ id: m.id, nom: `${i + 1}. ${m.titre}`, groupe: null }));
+const PAR_MARCHE_EGALES = 3;
+const marcheEgalesDe = (id) => MARCHES_EGALES.find(m => m.id === id) || MARCHES_EGALES[0];
+
 export const fracEgalesGenerator = {
     id: 'frac.egales',
     label: 'Ces deux fractions sont-elles égales ?',
@@ -164,7 +188,10 @@ export const fracEgalesGenerator = {
     answerKinds: ['choice'],
     ecrit: true,
     fractions: true,
+    conseil: (p) => conseilProgression(
+        marchesCochees(p, LISTE_EGALES).length, PAR_MARCHE_EGALES),
     params: [
+        paramMarches({ marches: LISTE_EGALES, mot: 'marche' }),
         {
             id: 'sens', type: 'select', label: 'Dans quel sens', default: 'agrandir',
             aide: 'En agrandissant, la fraction en gros dénominateur est à droite et l\'élève '
@@ -176,24 +203,37 @@ export const fracEgalesGenerator = {
                 { value: 'les-deux', label: 'Les deux, au hasard' }
             ]
         },
+        // CES DEUX-LÀ SONT DES PLAFONDS, PAS DES CONSIGNES. La marche donne la
+        // forme de la question ; ces réglages la bornent par-dessus, pour la
+        // classe où même « jusqu'à dix » est trop. Les baisser n'enlève donc
+        // pas la progression, cela l'écrase vers le bas.
         {
-            id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 8, min: 2, max: 20,
-            aide: 'De combien le dénominateur est multiplié. À 8 on reste dans les tables ; '
-                + 'au-delà, la question devient aussi une multiplication à poser.'
+            id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 10, min: 2, max: 20,
+            aide: 'Le plus grand facteur qu’une marche pourra utiliser. À 10 on reste dans '
+                + 'les tables ; au-delà, la question devient aussi une multiplication à poser.'
         },
         {
             id: 'maxBase', type: 'number', label: 'Dénominateur de départ maximum',
             default: 8, min: 2, max: 20,
-            aide: 'Le plus petit des deux dénominateurs. Il se combine au facteur : 8 et 8 '
-                + 'donnent déjà des soixante-quatrièmes.'
+            aide: 'Le plus petit des deux dénominateurs. Il se combine au facteur : 8 et 10 '
+                + 'donnent déjà des quatre-vingtièmes.'
         }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
+        // LES MARCHES COCHÉES SE PARTAGENT LES QUESTIONS — voir
+        // core/progression.js. Le nombre de questions se règle à part.
+        const m = marcheEgalesDe(marcheAuRang(
+            ctx.index ?? 0, marchesCochees(params, LISTE_EGALES),
+            totalDe(ctx, params), params, PAR_MARCHE_EGALES));
+        const plafondF = Number(params.maxFacteur) || 10;
+        const plafondB = Number(params.maxBase) || 8;
         const e = tirerEgalesOuNon(rng, {
             sens: params.sens || 'agrandir',
-            maxBase: Number(params.maxBase) || 8,
-            maxFacteur: Number(params.maxFacteur) || 8
+            propre: m.propre,
+            minFacteur: Math.min(m.minF, plafondF),
+            maxFacteur: Math.min(m.maxF, plafondF),
+            maxBase: Math.min(m.maxB, plafondB)
         });
 
         const juste = e.base.n * e.facteur;
@@ -294,7 +334,8 @@ export const fracEgalesGenerator = {
                 + (e.faute && e.faute.id === 'une-part' ? 1 : 0),
             meta: {
                 egalite: e, vrai: e.vrai, faute: e.faute ? e.faute.id : null,
-                facteur: e.facteur, sens: e.sens
+                facteur: e.facteur, sens: e.sens,
+                marche: m.id, titre: m.titre
             }
         });
     }

@@ -226,17 +226,26 @@ export const FAUTES_EGALITE = [
  * @returns {{gauche, droite, vrai, facteur, sens, petite, grande, faute}}
  *   `faute` est `null` quand les deux fractions sont bien égales.
  */
+const GRAND_MAX = 100;
+
 export function tirerEgalesOuNon(rng, opts = {}) {
     const {
-        sens = 'les-deux', maxBase = 9, maxFacteur = 10, vrai = null, eviter = []
+        sens = 'les-deux', maxBase = 9, maxFacteur = 10, vrai = null, eviter = [],
+        minFacteur = 2, propre = false
     } = opts;
 
     for (let essai = 0; essai < 120; essai++) {
         const b = rng.int(2, Math.max(2, maxBase));
-        const a = rng.int(1, Math.max(1, b * 2));
+        // PROPRE : la fraction tient sous l'unité. Rémy, devant « 15/8 et
+        // 105/56 » posé en PREMIÈRE question : « gros calcul pour un départ ».
+        // 15 × 7 = 105 n'est pas la difficulté du chapitre, c'est une
+        // multiplication à deux chiffres posée par-dessus. Les premières
+        // marches restent donc sous l'unité, où le numérateur ne peut pas
+        // dépasser le dénominateur.
+        const a = propre ? rng.int(1, Math.max(1, b - 1)) : rng.int(1, Math.max(1, b * 2));
         if (a === b) continue;                  // 1 = 1 ne se met pas en doute
         if (!estIrreductible(a, b)) continue;   // voir l'en-tête
-        const k = rng.int(2, Math.max(2, maxFacteur));
+        const k = rng.int(Math.max(2, minFacteur), Math.max(2, maxFacteur));
 
         const agrandit = sens === 'agrandir' ? true
             : sens === 'simplifier' ? false : rng.bool();
@@ -245,6 +254,14 @@ export function tirerEgalesOuNon(rng, opts = {}) {
         // plupart sont fausses » répond non sans regarder et a raison plus
         // souvent qu'en cherchant. C'est le seul réglage qu'on ne propose pas.
         const juste = vrai === null ? rng.bool() : !!vrai;
+
+        // ON RESTE DANS LES TABLES, MÊME EN HAUT DE L'ESCALIER. Rémy, sur
+        // « 15/8 et 105/56 » : « gros calcul pour un départ ». La progression
+        // règle le départ ; ce plafond règle l'arrivée. Au-delà, ce n'est plus
+        // la règle des fractions qu'on travaille mais une multiplication à
+        // deux chiffres posée par-dessus — et c'est vrai à la douzième
+        // question comme à la première.
+        if (a * k > GRAND_MAX || b * k > GRAND_MAX) continue;
 
         const petite = { n: a, d: b };
         const grande = { n: a * k, d: b * k };

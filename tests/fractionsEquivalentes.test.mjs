@@ -299,6 +299,48 @@ test('EST-CE LA MÊME FRACTION — deux propositions, et le corrigé nomme la fa
     assert.ok(fausses > 100 && fausses < 200, `${fausses} fausses sur 300`);
 });
 
+test('LA PREMIÈRE QUESTION N\'EST PAS LA DERNIÈRE', async () => {
+    // Rémy, devant « 15/8 et 105/56 » posé en PREMIÈRE question : « gros calcul
+    // pour un départ ». Il avait raison, et le défaut n'était pas dans le
+    // tirage : l'exercice n'avait AUCUNE progression, donc la première question
+    // était tirée dans le même sac que la dernière.
+    const { fracEgalesGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
+    const { getExerciseById } = await import('../js/data/catalog.js');
+    const exo = getExerciseById('frac-egales');
+    const total = G.conseil(exo.params);
+
+    for (let i = 0; i < 400; i++) {
+        const debut = G.generate(exo.params, { rng: makeRng(`deb${i}`), index: 0, total });
+        const e = debut.meta.egalite;
+        // Doubler ou tripler, sous l'unité, petits dénominateurs : la première
+        // question se répond de tête.
+        assert.ok(e.facteur <= 3, `question 1 : facteur ${e.facteur}`);
+        assert.ok(e.base.n < e.base.d, `question 1 : ${e.base.n}/${e.base.d} dépasse 1`);
+        assert.ok(e.grande.d <= 18 && e.grande.n <= 18,
+            `question 1 : ${e.grande.n}/${e.grande.d}, gros calcul pour un départ`);
+    }
+
+    // ET LE PLAFOND VAUT AUSSI EN HAUT DE L'ESCALIER : la progression règle le
+    // départ, le plafond règle l'arrivée. Au-delà, ce n'est plus la règle des
+    // fractions qu'on travaille mais une multiplication à deux chiffres.
+    for (let i = 0; i < 1500; i++) {
+        const it = G.generate(exo.params, { rng: makeRng(`fin${i}`), index: i % total, total });
+        const e = it.meta.egalite;
+        assert.ok(e.grande.n <= 100 && e.grande.d <= 100,
+            `${e.grande.n}/${e.grande.d} : le calcul prend le pas sur la règle`);
+    }
+
+    // Les quatre marches sont jouées sur la longueur conseillée, dans l'ordre.
+    const vues = [];
+    for (let i = 0; i < total; i++) {
+        const it = G.generate(exo.params, { rng: makeRng(`ord${i}`), index: i, total });
+        if (it.meta.marche !== vues[vues.length - 1]) vues.push(it.meta.marche);
+    }
+    assert.deepEqual(vues,
+        ['doubler', 'tables', 'jusqua-dix', 'plus-grandes'],
+        'les marches doivent monter dans l\'ordre, sans en sauter');
+});
+
 test('LE CORRIGÉ DÉCRIT LE GESTE QUE L\'ÉLÈVE A FAIT, pas son contraire', async () => {
     // LE DÉFAUT QUI A MOTIVÉ CE TEST. Le corrigé écrivait toujours « le
     // dénominateur a bien été MULTIPLIÉ par 2 » — faux devant 14/16 et 14/8,
