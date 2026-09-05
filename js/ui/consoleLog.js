@@ -68,7 +68,7 @@ export function journalConsole() {
  */
 export function rapportTexte() {
     const entete = [];
-    entete.push(`MathBox — rapport de console`);
+    entete.push(`AtoutMath — rapport de console`);
     entete.push(`Date       : ${new Date().toISOString()}`);
     entete.push(`Version CSS: ${versionChargee()}`);
     entete.push(`URL        : ${location.href}`);

@@ -508,12 +508,18 @@ function initNavButtons() {
         };
     });
 
-    const codeBtn = document.getElementById('top-btn-code');
-    if (codeBtn) codeBtn.onclick = () => {
+    // LE CODE S'OUVRE DE DEUX ENDROITS, et il le faut : l'onglet du haut
+    // disparaît sous 900 px de large, et c'est justement sur téléphone qu'un
+    // élève cherche le code que le professeur vient de dicter.
+    const ouvrirCode = () => {
         document.getElementById('code-modal').style.display = 'flex';
         const input = document.getElementById('student-code-input');
-        if (input) input.focus();
+        if (input) { input.value = ''; input.focus(); }
     };
+    ['top-btn-code', 'mob-btn-code'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.onclick = ouvrirCode;
+    });
 
     // Tiroir du catalogue (professeur sur téléphone) : la poignée et le ☰
     // ouvrent et ferment la même feuille coulissante.

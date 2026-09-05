@@ -90,7 +90,7 @@ function conseilIOS() {
     } catch (e) { return; }
     import('./modal.js').then(m => m.showToast(
         'Ce navigateur ne donne pas le plein écran complet. Astuce : Partager → « Sur l\'écran d\'accueil » '
-        + 'installe MathBox comme une application, sans barre d\'adresse.', 'info', 9000
+        + 'installe AtoutMath comme une application, sans barre d\'adresse.', 'info', 9000
     )).catch(() => { /* pas de toast disponible : tant pis, ce n'est qu'un conseil */ });
 }
 
