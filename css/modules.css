@@ -3720,6 +3720,18 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     font-size: .82rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4;
     text-align: left; overflow-wrap: break-word;
 }
+/* CE QUE LE RÉGLAGE VA PRODUIRE, sous le réglage — pas ce qu'il est.
+   Rémy, sur la répartition des marches : « on ne comprend pas grand-chose ».
+   L'aide dit la règle ; cette ligne-là dit le résultat, pour le nombre de
+   questions du moment, et elle change quand on bouge la glissière. En couleur
+   d'accent parce qu'elle n'est pas une note de bas de page : c'est la réponse
+   à la question qu'on vient de se poser. Vide, elle ne prend aucune place. */
+.cfg-dit {
+    grid-column: 1 / -1;
+    margin: 6px 0 0; font-size: .82rem; line-height: 1.4; text-align: left;
+    color: var(--primary); font-weight: 600; overflow-wrap: break-word;
+}
+.cfg-dit:empty { display: none; }
 
 /* En colonne étroite (téléphone, panneau replié), le champ RESTE à côté de
    son libellé : chaque réglage tient sur une ligne. L'empilement précédent

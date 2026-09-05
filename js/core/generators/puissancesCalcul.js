@@ -29,7 +29,9 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { puissanceTexte, valeurPuissance, grouper } from '../puissances.js';
-import { paramParMarche, parMarcheDe } from '../progression.js';
+import {
+    paramRepartition, rangMarcheCyclique, conseilProgression, totalDe
+} from '../progression.js';
 
 /**
  * UN NOMBRE AVEC LE VRAI SIGNE MOINS (U+2212), jamais le trait d'union du
@@ -403,14 +405,12 @@ const MARCHES = {
 };
 
 /** La marche d'une question : celle qu'on a choisie, ou celle du rang. */
-export function marchePour(etape, index, params) {
+export function marchePour(etape, index, params, total = 0) {
     if (etape && etape !== 'progressif' && PAR_ID[etape]) return etape;
-    const rang = Math.floor((index || 0) / parMarcheDe(params, PAR_MARCHE));
-    if (['A', 'B', 'C'].includes(etape)) {
-        const liste = ETAPES.filter(e => e.temps === etape).map(e => e.id);
-        return liste[rang % liste.length];
-    }
-    return ORDRE[rang % ORDRE.length];
+    const liste = ['A', 'B', 'C'].includes(etape)
+        ? ETAPES.filter(e => e.temps === etape).map(e => e.id)
+        : ORDRE;
+    return liste[rangMarcheCyclique(index, liste.length, params, PAR_MARCHE, total)];
 }
 
 export const puissancesCalculGenerator = {
@@ -419,11 +419,17 @@ export const puissancesCalculGenerator = {
     skills: [SKILL],
     answerKinds: ['choice'],
     ecrit: true,
+    marches: (p) => {
+        const choix = (p && p.etape) || 'progressif';
+        if (['A', 'B', 'C'].includes(choix)) return ETAPES.filter(e => e.temps === choix).length;
+        return choix === 'progressif' ? ORDRE.length : 1;
+    },
     conseil: (p) => {
         const choix = (p && p.etape) || 'progressif';
-        const par = parMarcheDe(p, PAR_MARCHE);
-        if (['A', 'B', 'C'].includes(choix)) return ETAPES.filter(e => e.temps === choix).length * par;
-        return choix === 'progressif' ? ORDRE.length * par : 6;
+        if (['A', 'B', 'C'].includes(choix)) {
+            return conseilProgression(ETAPES.filter(e => e.temps === choix).length, p, PAR_MARCHE);
+        }
+        return choix === 'progressif' ? conseilProgression(ORDRE.length, p, PAR_MARCHE) : 6;
     },
     params: [
         {
@@ -442,12 +448,12 @@ export const puissancesCalculGenerator = {
                 ...ETAPES.map(e => ({ value: e.id, label: e.label, court: String(e.rang) }))
             ]
         },
-        paramParMarche({ defaut: PAR_MARCHE, marches: ORDRE.length })
+        paramRepartition({ marches: ORDRE.length })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const marche = marchePour((params || {}).etape, ctx.index, params);
+        const marche = marchePour((params || {}).etape, ctx.index, params, totalDe(ctx, params));
         const q = MARCHES[marche](rng);
         return makeItem({
             seed: rng.seed,

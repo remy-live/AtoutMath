@@ -138,6 +138,16 @@ export class ItemSession {
             // où l'on en est, sinon il repose éternellement la première.
             // `history` contient déjà la graine de la question en cours.
             index: Math.max(0, this.history.length - 1),
+            // ET COMBIEN IL Y EN AURA EN TOUT, quand on le sait.
+            //
+            // Rémy, sur le réglage des progressions : « le nombre de questions
+            // dépend des marches ». C'était vrai, et à l'envers : un générateur
+            // qui ne connaît que son rang ne peut que compter — deux questions,
+            // je monte —, donc la longueur de l'exercice découlait du nombre de
+            // marches. En lui donnant le TOTAL, les marches peuvent se le
+            // partager, et c'est le professeur qui règle la longueur. Voir
+            // core/progression.js.
+            total: this.nbItems || null,
             // Certains générateurs posent une question différente selon ce que
             // l'activité sait afficher (placer un point vs lire ses coordonnées).
             preferredKind: this.preferredKind

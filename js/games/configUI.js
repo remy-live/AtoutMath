@@ -12,6 +12,7 @@ import { estimerEtape, mesuresParExercice, direDuree } from '../core/dureeParcou
 import { state } from '../core/state.js';
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
+import { repartitionEnMots } from '../core/progression.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
 import { echelleDe, rangDans } from '../core/echelle.js';
 // Une graine FIXE pour l'aperçu : voir `vraieQuestion`.
@@ -771,12 +772,24 @@ export function fieldHtml(param, value, options = {}) {
         control = `<input type="text" id="${id}" class="cfg-input" data-param="${param.id}" data-kind="text" value="${value ?? ''}">`;
     }
 
+    // LA RÉPARTITION DIT CE QU'ELLE VA FAIRE, sous elle-même.
+    //
+    // Rémy : « on ne comprend pas grand-chose ». Une bulle d'aide explique la
+    // RÈGLE ; ce qui manquait est le RÉSULTAT — « 12 questions pour 6 marches :
+    // 2 chacune » —, et il change avec le nombre de questions, donc il ne peut
+    // pas vivre dans un texte figé. Le panneau le remplit et le tient à jour
+    // (`majRepartition`) ; c'est le même principe que l'aperçu de l'escalier de
+    // l'aide, en une ligne au lieu d'une frise.
+    const dit = param.id === 'repartition'
+        ? '<p class="cfg-dit" data-dit-repartition role="status"></p>' : '';
+
     // L'explication peut venir du schéma lui-même (`aide`) : un réglage dont le
     // libellé ne suffit pas se documente là où il est défini, pas au point
     // d'appel — sinon l'aide n'existe que dans un seul des trois panneaux.
     return `<div class="cfg-field${wide ? ' cfg-field--wide' : ''}${longOptions ? ' cfg-field--long' : ''}">
         <label class="cfg-label" for="${id}">${param.label}${infoBtn(options.aide || param.aide, options.aideId)}</label>
         ${control}
+        ${dit}
     </div>`;
 }
 
@@ -2019,6 +2032,18 @@ export function readParams(root, schema) {
  * questions, et il valait pour tout le monde ; l'activité dit maintenant son
  * compte naturel, et le générateur, sa progression.
  */
+/**
+ * « marche », « étape », « palier », « niveau », « cran » — chaque générateur
+ * nomme ses marches comme son chapitre les nomme, et l'aperçu doit reprendre
+ * SON mot. Il est déjà dans le libellé du réglage ; on ne le déclare pas deux
+ * fois pour risquer qu'ils divergent.
+ */
+function motDeLaRepartition(schema) {
+    const p = (schema || []).find(x => x && x.id === 'repartition');
+    const m = /Répartition des (\w+)s/.exec((p && p.label) || '');
+    return m ? m[1] : 'marche';
+}
+
 export function conseilEtape(step) {
     const exo = getExerciseById(step && step.exerciseId) || (step && step.exercise) || {};
     return questionsConseillees(
@@ -2418,6 +2443,28 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     // raison : un réglage qui bouge tout seul après qu'on l'a posé est pire
     // qu'un réglage qui ne bouge pas.
     let dernierConseil = conseil;
+    // ET L'APERÇU DE LA RÉPARTITION SUIT, LUI, À CHAQUE GESTE.
+    //
+    // Rémy : « on ne comprend pas grand-chose ». « En partage » est un NOM : il
+    // ne dit pas qu'un exercice de dix questions sur six marches en donnera une
+    // aux deux premières et deux aux quatre suivantes. C'est le même remède que
+    // pour l'escalier de l'aide — on déroule, et l'on écrit ce qu'on trouve
+    // (`core/apercuAide.js` ouvre sur exactement cette phrase).
+    const majRepartition = () => {
+        const boite = content.querySelector('[data-dit-repartition]');
+        if (!boite || !generateurEcran || typeof generateurEcran.marches !== 'function') return;
+        const rail = document.getElementById('cfg-nbitems');
+        const total = Math.max(1, Math.round(Number(rail && rail.value)) || nbConseille);
+        const p = { ...current, ...readParams(content, schema) };
+        let m = 1;
+        try { m = Math.max(1, Math.round(Number(generateurEcran.marches(p))) || 1); } catch (err) { m = 1; }
+        // UNE SEULE MARCHE, RIEN À PARTAGER — et le dire vaut mieux que
+        // d'afficher « 12 questions pour 1 marche », qui a l'air d'une panne.
+        boite.textContent = m <= 1
+            ? 'Une seule marche est choisie : la répartition ne s\'applique pas.'
+            : repartitionEnMots(m, total, p, motDeLaRepartition(schema));
+    };
+
     content.addEventListener('change', (e) => {
         if (!e.target.closest || !e.target.closest('[data-param]')) return;
         const rail = document.getElementById('cfg-nbitems');
@@ -2430,7 +2477,14 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
             majRail(rail);
         }
         dernierConseil = neuf;
+        majRepartition();
     });
+    // Le nombre de questions se change à la glissière ET au champ : les deux
+    // émettent `input` avant `change`, et l'aperçu doit suivre le geste.
+    content.addEventListener('input', (e) => {
+        if (e.target && e.target.id === 'cfg-nbitems') majRepartition();
+    });
+    majRepartition();
 
     document.getElementById('btn-student-config-cancel').onclick = () => { modal.style.display = 'none'; };
     document.getElementById('btn-student-config-start').onclick = () => {

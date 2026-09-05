@@ -25,7 +25,7 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { axeSvg, figure } from '../figures.js';
-import { paramParMarche, rangMarche, conseilProgression } from '../progression.js';
+import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
 
 /** Écriture française d'un décimal, sans traîne de virgule flottante. */
 const fr = (x, rang) => x.toFixed(rang)
@@ -72,6 +72,7 @@ export const graduationsGenerator = {
     ecrit: true,
     // Trois echelles a trois questions : neuf pour aller des unites aux
     // centiemes. Voir core/duree.js.
+    marches: (p) => ((p && p.zoom) || 'progressif') === 'progressif' ? ZOOMS.length : 1,
     conseil: (p) => (p && p.zoom === 'progressif')
         ? conseilProgression(ZOOMS.length, p, 3) : 10,
     params: [
@@ -88,7 +89,7 @@ export const graduationsGenerator = {
                 { value: 'centiemes', label: 'De 0,01 en 0,01' }
             ]
         },
-        paramParMarche({ defaut: 3, marches: ZOOMS.length, mot: 'palier' })
+        paramRepartition({ marches: ZOOMS.length, mot: 'palier' })
     ],
 
     generate(params, ctx) {
@@ -101,7 +102,7 @@ export const graduationsGenerator = {
         // « Questions par palier » qui tranche.
         const zoom = p.zoom && p.zoom !== 'progressif'
             ? zoomDe(p.zoom)
-            : ZOOMS[rangMarche(i, ZOOMS.length, p, 3)];
+            : ZOOMS[rangMarche(i, ZOOMS.length, p, 3, totalDe(ctx, p))];
 
         const { debut, fin, crans, valeur } = tirerLecture(rng, zoom);
         const rang = zoom.rang;

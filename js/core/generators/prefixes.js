@@ -27,7 +27,7 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { PREFIXES, puissanceTexte, prefixeDe, convertirPrefixe, grouper } from '../puissances.js';
-import { paramParMarche, parMarcheDe } from '../progression.js';
+import { paramRepartition, rangMarcheCyclique, conseilProgression, totalDe } from '../progression.js';
 
 const SKILL = 'num.puissances.prefixes';
 
@@ -304,14 +304,18 @@ const MARCHES = {
     }
 };
 
-/** La marche d'une question : celle qu'on a choisie, ou celle du rang. */
-export function marchePour(etape, index, params) {
+/**
+ * La marche d'une question : celle qu'on a choisie, ou celle du rang.
+ *
+ * ARRIVÉ EN HAUT, ON REDESCEND ET L'ON RECOMMENCE — même règle que pour les
+ * puissances de 10 : sur une fiche de vingt questions à compte fixe, s'arrêter
+ * sur la dernière marche en poserait quinze du même type. En PARTAGE, le cycle
+ * ne sert plus à rien : aucune marche ne peut déborder. Voir
+ * `rangMarcheCyclique`.
+ */
+export function marchePour(etape, index, params, total = 0) {
     if (etape && etape !== 'progressif' && PAR_ID[etape]) return etape;
-    const rang = Math.floor((index || 0) / parMarcheDe(params, PAR_MARCHE));
-    // ARRIVÉ EN HAUT, ON REDESCEND ET L'ON RECOMMENCE — même règle que pour les
-    // puissances de 10 : sur une fiche de vingt questions, s'arrêter sur la
-    // dernière marche en poserait quinze du même type.
-    return ORDRE[rang % ORDRE.length];
+    return ORDRE[rangMarcheCyclique(index, ORDRE.length, params, PAR_MARCHE, total)];
 }
 
 export const prefixesGenerator = {
@@ -320,7 +324,8 @@ export const prefixesGenerator = {
     skills: [SKILL],
     answerKinds: ['choice'],
     ecrit: true,
-    conseil: (p) => ORDRE.length * parMarcheDe(p, PAR_MARCHE),
+    marches: (p) => (((p && p.etape) || 'progressif') === 'progressif' ? ORDRE.length : 1),
+    conseil: (p) => conseilProgression(ORDRE.length, p, PAR_MARCHE),
     params: [
         {
             id: 'etape', type: 'select', label: 'Marche à travailler', default: 'progressif',
@@ -331,12 +336,12 @@ export const prefixesGenerator = {
             options: [{ value: 'progressif', label: 'Tout en ordre, du plus simple au plus dur', court: 'Tout' }]
                 .concat(ETAPES.map(e => ({ value: e.id, label: e.label, court: String(e.rang) })))
         },
-        paramParMarche({ defaut: PAR_MARCHE, marches: ORDRE.length })
+        paramRepartition({ marches: ORDRE.length })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const marche = marchePour((params || {}).etape, ctx.index, params);
+        const marche = marchePour((params || {}).etape, ctx.index, params, totalDe(ctx, params));
         const q = MARCHES[marche](rng);
         return makeItem({
             seed: rng.seed,

@@ -17,7 +17,9 @@
 // le HTML en `.fraction` pour l'écran.
 
 import { makeItem } from '../items.js';
-import { paramParMarche, rangMarche, conseilProgression, parMarcheDe } from '../progression.js';
+import {
+    paramRepartition, rangMarche, conseilProgression, repartitionDe, AUTO, totalDe
+} from '../progression.js';
 import {
     tirerEgalite, etapesEgalite, NIVEAUX_SOMME, tirerCalcul, tirerComplement,
     ecrireFraction
@@ -273,10 +275,10 @@ const PAR_MARCHE = 2;
 const NIVEAU = Object.fromEntries(NIVEAUX_SOMME.map(n => [n.id, n]));
 
 /** La marche : celle qu'on a fixée, ou celle où en est la série. */
-function marcheDe(params, index) {
+function marcheDe(params, index, total = 0) {
     const choisi = params.niveau || 'progressif';
     if (choisi !== 'progressif') return choisi;
-    return NIVEAUX_SOMME[rangMarche(index || 0, NIVEAUX_SOMME.length, params, PAR_MARCHE)].id;
+    return NIVEAUX_SOMME[rangMarche(index || 0, NIVEAUX_SOMME.length, params, PAR_MARCHE, total)].id;
 }
 
 // --- LE DESSIN DE L'INDICE ---------------------------------------------------
@@ -418,6 +420,8 @@ export const fracSommeProgressiveGenerator = {
     // les couvrait. Dès qu'on demande trois ou quatre questions par marche, il
     // en faut douze ou seize — sans ce conseil, le réglage n'aurait fait que
     // tronquer la progression plus tôt. Voir core/duree.js.
+    marches: (p) => (((p && p.niveau) || 'progressif') === 'progressif'
+        ? NIVEAUX_SOMME.length : 1),
     conseil: (p) => ((p && p.niveau) || 'progressif') === 'progressif'
         ? conseilProgression(NIVEAUX_SOMME.length, p, PAR_MARCHE) : 6,
     params: [
@@ -432,7 +436,7 @@ export const fracSommeProgressiveGenerator = {
                 ...NIVEAUX_SOMME.map(n => ({ value: n.id, label: n.nom }))
             ]
         },
-        paramParMarche({ defaut: PAR_MARCHE, marches: NIVEAUX_SOMME.length }),
+        paramRepartition({ marches: NIVEAUX_SOMME.length }),
         PARAM_OPERATION,
         PARAM_SIMPLIFIER,
         {
@@ -444,7 +448,7 @@ export const fracSommeProgressiveGenerator = {
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const marche = marcheDe(params, ctx.index);
+        const marche = marcheDe(params, ctx.index, totalDe(ctx, params));
         const c = tirerCalcul(rng, {
             niveau: marche,
             maxDen: Math.min(10, Number(params.maxDen) || 10),
@@ -571,11 +575,13 @@ export const fracProblemeGenerator = {
     // Les compléments à UN passent AVANT la progression et ne comptent pas
     // dedans : il faut donc les ajouter au compte, sinon régler « 3 questions
     // “combien reste-t-il ?” » mangerait trois marches sur quatre.
+    marches: (p) => (((p && p.niveau) || 'progressif') === 'progressif'
+        ? NIVEAUX_SOMME.length : 1),
     conseil: (p) => {
         const avant = Math.max(0, Number((p && p.complements) ?? 3) || 0);
         const suite = ((p && p.niveau) || 'progressif') === 'progressif'
             ? conseilProgression(NIVEAUX_SOMME.length, p, PAR_MARCHE)
-            : parMarcheDe(p, PAR_MARCHE) * 3;
+            : (repartitionDe(p) === AUTO ? PAR_MARCHE : repartitionDe(p)) * 3;
         return avant + suite;
     },
     params: [
@@ -588,7 +594,7 @@ export const fracProblemeGenerator = {
                 ...NIVEAUX_SOMME.map(n => ({ value: n.id, label: n.nom }))
             ]
         },
-        paramParMarche({ defaut: PAR_MARCHE, marches: NIVEAUX_SOMME.length }),
+        paramRepartition({ marches: NIVEAUX_SOMME.length }),
         { ...PARAM_OPERATION, default: 'les-deux' },
         PARAM_SIMPLIFIER,
         {
@@ -637,7 +643,8 @@ export const fracProblemeGenerator = {
             });
         }
 
-        const marche = marcheDe(params, index - Number(params.complements ?? 3));
+        const marche = marcheDe(params, index - Number(params.complements ?? 3),
+            Math.max(1, totalDe(ctx, params) - Number(params.complements ?? 3)));
         const c = tirerCalcul(rng, {
             niveau: marche,
             maxDen,

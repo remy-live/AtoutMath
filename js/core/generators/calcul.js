@@ -13,7 +13,7 @@
 import { makeItem, finalizeChoices } from '../items.js';
 import { tirerExpression, operationPrioritaire, naif, critiquer, ecrire } from '../priorites.js';
 import { souligner } from '../fiche.js';
-import { paramParMarche, rangMarche, parMarcheDe } from '../progression.js';
+import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
 
 // --- Addition ---------------------------------------------------------------
 
@@ -397,8 +397,9 @@ export const prioriteGenerator = {
     // elle se coche au lieu de se choisir dans un menu : il faut assez de
     // questions pour atteindre le niveau réglé, sinon on cocherait une montée
     // dont on ne verrait jamais le sommet. Voir core/duree.js.
+    marches: (p) => ((p && p.progressif) ? Math.max(1, Math.min(4, Number(p.niveau) || 2)) : 1),
     conseil: (p) => (p && p.progressif)
-        ? Math.max(1, Math.min(4, Number(p.niveau) || 2)) * parMarcheDe(p, 4) : 10,
+        ? conseilProgression(Math.max(1, Math.min(4, Number(p.niveau) || 2)), p, 4) : 10,
     params: [
         { id: 'mode', type: 'select', label: 'Question posée', options: ['operation', 'resultat'], default: 'operation' },
         {
@@ -426,7 +427,7 @@ export const prioriteGenerator = {
                 + 'puis la difficulté monte d\'un cran jusqu\'à celle réglée ci-dessus, au '
                 + 'rythme du réglage suivant. On installe la règle avant de la compliquer.'
         },
-        paramParMarche({ defaut: 4, mot: 'cran' })
+        paramRepartition({ mot: 'cran' })
     ],
 
     generate(params, ctx) {
@@ -440,7 +441,8 @@ export const prioriteGenerator = {
         // niveau réglé au bout de quelques questions.
         const plafondNiveau = Math.max(1, Math.min(4, Number(params.niveau) || 2));
         const niveau = params.progressif
-            ? Math.min(plafondNiveau, 1 + rangMarche(Number(ctx.index) || 0, plafondNiveau, params, 4))
+            ? Math.min(plafondNiveau,
+                1 + rangMarche(Number(ctx.index) || 0, plafondNiveau, params, 4, totalDe(ctx, params)))
             : plafondNiveau;
         const e = tirerExpression({
             rng,

@@ -25,7 +25,7 @@
 
 import { makeItem } from '../items.js';
 import { ecrire } from './relatifs.js';
-import { paramParMarche, rangMarche, conseilProgression } from '../progression.js';
+import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
 
 const SKILL_SOMME = 'num.relatifs.somme';
 const SKILL_ECRITURE = 'num.relatifs.sens';
@@ -267,6 +267,11 @@ export const relatifsAdditionGenerator = {
     // douze en progressif, quatre pour un temps, une pour une marche seule.
     // Le defaut de dix questions n'en montrait que CINQ sur douze — la
     // moitie du chapitre ne s'affichait jamais. Voir core/duree.js.
+    marches: (p) => {
+        const choix = (p && p.etape) || 'progressif';
+        if (['A', 'B', 'C'].includes(choix)) return ETAPES.filter(e => e.temps === choix).length;
+        return choix === 'progressif' ? ETAPES.length : 1;
+    },
     conseil: (p) => {
         const choix = (p && p.etape) || 'progressif';
         if (choix === 'A' || choix === 'B' || choix === 'C') {
@@ -287,7 +292,7 @@ export const relatifsAdditionGenerator = {
             ],
             default: 'progressif'
         },
-        paramParMarche({ marches: ETAPES.length }),
+        paramRepartition({ marches: ETAPES.length }),
         {
             id: 'reponse', type: 'select', label: 'Réponse', papier: false,
             options: [
@@ -308,7 +313,7 @@ export const relatifsAdditionGenerator = {
         let liste = ETAPES;
         if (choix === 'A' || choix === 'B' || choix === 'C') liste = ETAPES.filter(e => e.temps === choix);
         else if (choix !== 'progressif') liste = [ETAPES.find(e => e.id === choix) || ETAPES[0]];
-        const rang = rangMarche(index, liste.length, params);
+        const rang = rangMarche(index, liste.length, params, undefined, totalDe(ctx, params));
         const etape = liste[rang];
         // Le rang annoncé est TOUJOURS celui des douze marches : « Marche 6 /
         // 12 » situe l'élève dans le chapitre, « Marche 1 / 1 » ne lui dit

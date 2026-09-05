@@ -25,7 +25,7 @@
 // elle qui révèle qu'on a compris.
 
 import { makeItem } from '../items.js';
-import { paramParMarche, rangMarche, conseilProgression } from '../progression.js';
+import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
 
 const SKILL_LIRE = 'mes.heure.lire';
 const SKILL_PLACER = 'mes.heure.placer';
@@ -134,6 +134,7 @@ export const horlogeGenerator = {
     answerKinds: ['heure'],
     // Six niveaux a deux questions, comme les relatifs : douze questions pour
     // aller de « l'heure pile » au tour de midi.
+    marches: (p) => ((p && p.niveau) || 'progressif') === 'progressif' ? NIVEAUX.length : 1,
     conseil: (p) => (p && p.niveau === 'progressif')
         ? conseilProgression(NIVEAUX.length, p) : 10,
     params: [
@@ -145,7 +146,7 @@ export const horlogeGenerator = {
             ],
             default: 'progressif'
         },
-        paramParMarche({ marches: NIVEAUX.length, mot: 'niveau' }),
+        paramRepartition({ marches: NIVEAUX.length, mot: 'niveau' }),
         {
             id: 'question', type: 'select', label: 'Question',
             options: [
@@ -173,7 +174,7 @@ export const horlogeGenerator = {
         // rythme choisi : le temps de s'installer dans un niveau avant d'en
         // changer.
         const rang = choix === 'progressif'
-            ? rangMarche(ctx.index ?? 0, NIVEAUX.length, params)
+            ? rangMarche(ctx.index ?? 0, NIVEAUX.length, params, undefined, totalDe(ctx, params))
             : Math.max(0, NIVEAUX.findIndex(n => n.id === choix));
         const niveau = NIVEAUX[rang];
 

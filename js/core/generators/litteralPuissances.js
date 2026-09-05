@@ -26,7 +26,7 @@
 // Module pur : ni DOM, ni horloge.
 
 import { makeItem } from '../items.js';
-import { paramParMarche, rangMarche, conseilProgression } from '../progression.js';
+import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
 import {
     ecrireSomme, reduire, fauteToutRegrouper, fauteAjouterExposants, partDeDegre, MOINS
 } from '../reductionPuissances.js';
@@ -223,6 +223,8 @@ export const litteralPuissancesGenerator = {
     // la marche décisive — celle où l'on apprend à NE PAS regrouper x² avec x —
     // n'arrivait jamais. Le générateur dit maintenant ce qu'il lui faut, comme
     // ses voisins. Voir core/duree.js.
+    marches: (p) => (((p && p.etape) || 'progressif') !== 'progressif' ? 1
+        : ETAPES.filter(e => (p && p.cubes) !== false || e.degreMax <= 2).length),
     conseil: (p) => {
         const choix = (p && p.etape) || 'progressif';
         if (choix !== 'progressif') return 6;
@@ -242,7 +244,7 @@ export const litteralPuissancesGenerator = {
             ],
             default: 'progressif'
         },
-        paramParMarche({ marches: ETAPES.length }),
+        paramRepartition({ marches: ETAPES.length }),
         {
             id: 'cubes', type: 'bool', label: 'Autoriser les cubes', default: true,
             aide: 'Décoché, l\'exercice s\'arrête aux carrés — et le bouton x³ disparaît du clavier.'
@@ -260,7 +262,7 @@ export const litteralPuissancesGenerator = {
             const une = ETAPES.find(e => e.id === choix);
             if (une) liste = [une];
         }
-        const rang = rangMarche(index, liste.length, params);
+        const rang = rangMarche(index, liste.length, params, undefined, totalDe(ctx, params));
         const etape = liste[rang];
         const q = question(etape, rng);
         const rangGlobal = ETAPES.findIndex(e => e.id === etape.id);

@@ -25,7 +25,7 @@
 // Tout ce fichier est pur : aucune dépendance au DOM, il se teste sous Node.
 
 import { makeItem } from '../items.js';
-import { paramParMarche, rangMarche, conseilProgression } from '../progression.js';
+import { paramRepartition, rangMarche, conseilProgression, totalDe } from '../progression.js';
 
 const SKILL_SOMME = 'num.relatifs.somme';
 const SKILL_SENS = 'num.relatifs.sens';
@@ -196,6 +196,9 @@ export const relatifsGenerator = {
     // Six niveaux a deux questions : la progression complete demande douze
     // questions. Voir core/duree.js — le defaut de dix la tronquait, et
     // l'ecriture (+3) + (-5), qui est la derniere marche, n'arrivait jamais.
+    // COMBIEN DE MARCHES, RÉGLAGES EN MAIN. Le panneau s'en sert pour dire ce
+    // que la répartition va produire — voir core/progression.js.
+    marches: (p) => ((p && p.niveau) || 'progressif') === 'progressif' ? NIVEAUX.length : 1,
     conseil: (p) => (p && p.niveau === 'progressif')
         ? conseilProgression(NIVEAUX.length, p) : 10,
     params: [
@@ -207,7 +210,7 @@ export const relatifsGenerator = {
             ],
             default: 'progressif'
         },
-        paramParMarche({ marches: NIVEAUX.length, mot: 'étape' }),
+        paramRepartition({ marches: NIVEAUX.length, mot: 'étape' }),
         {
             id: 'reponse', type: 'select', label: 'Réponse', papier: false,
             options: [
@@ -224,7 +227,7 @@ export const relatifsGenerator = {
         // En progressif, le temps de s'installer dans un modèle avant d'en
         // changer — deux questions par étape, ou ce que le réglage dit.
         const rang = choix === 'progressif'
-            ? rangMarche(ctx.index ?? 0, NIVEAUX.length, params)
+            ? rangMarche(ctx.index ?? 0, NIVEAUX.length, params, undefined, totalDe(ctx, params))
             : Math.max(0, NIVEAUX.findIndex(n => n.id === choix));
         const niveau = NIVEAUX[rang];
 
