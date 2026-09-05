@@ -25,12 +25,17 @@
 
 import { state } from '../core/state.js';
 import { placer, restaurer, rendreDeplacable } from './flottant.js';
+import { runnerEnJeu } from './cadreAtelier.js';
 
 const CLE_POS = 'mathbox-plan-etapes-pos';
 let plan = null;
 let minuteur = null;
 
-const runner = () => state.activeSequenceRunner;
+// L'EXERCICE PILOTÉ N'EST PAS TOUJOURS DANS CETTE PAGE. Ouvert depuis
+// l'Atelier, il joue dans un cadre — voir ui/cadreAtelier.js. La ligne des
+// étapes répondait alors « aucun exercice en cours » devant un exercice qui
+// tournait sous les yeux.
+const runner = () => runnerEnJeu(state.activeSequenceRunner);
 
 /** Ouverte ? La palette d'auteur s'en sert pour allumer son bouton. */
 export const planOuvert = () => !!plan;

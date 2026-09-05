@@ -81,6 +81,49 @@ export const fractionsExercises = [
             + 'avec les bandes » allonge ou supprime la phase du comptage ; « Dans quel sens » '
             + 'fait passer de la multiplication à la division.'
     },
+
+    {
+        // PAR COMBIEN ? — Rémy : « il faudrait un exercice du style 2/3 = 22/…
+        // On demande par combien il faut multiplier ou diviser. Toujours les
+        // fractions en colonnes. »
+        //
+        // C'EST LA MARCHE QUE « L'ÉGALITÉ À COMPLÉTER » ENJAMBE, et il faut un
+        // exercice à part pour elle. Devant 2/3 = 22/…, un élève à qui l'on
+        // demande le dénominateur peut arriver au bon nombre par plusieurs
+        // chemins, dont un mauvais qui marche souvent : ajouter la même
+        // différence en haut et en bas (2 → 22, donc 3 → 23), ou essayer les
+        // tables jusqu'à tomber juste. Lui demander LE FACTEUR ne laisse qu'un
+        // chemin — lire la ligne écrite des deux côtés, et voir par combien on
+        // passe de l'un à l'autre.
+        //
+        // ET C'EST LE GESTE DE TOUT LE CHAPITRE. Mettre au même dénominateur,
+        // simplifier, comparer deux fractions, additionner : à chaque fois on
+        // cherche par combien multiplier. Un exercice qui ne travaille que cela
+        // se fait en cinq minutes et débloque tout le reste.
+        id: 'frac-facteur', title: 'Par Combien ?',
+        cree: '2026-09-05',
+        consignePapier: 'Par combien faut-il multiplier (ou diviser) pour passer d\'une '
+            + 'fraction à l\'autre ?',
+        colonnesPapier: 4,
+        generatorId: 'frac.facteur', activityId: 'numpad',
+        // On multiplie d'abord, et seulement : c'est le geste dont on se sert
+        // pour mettre au même dénominateur. La division est le même
+        // raisonnement lu à l'envers, et elle attend d'être demandée.
+        params: { sens: 'agrandir', trou: 'les-deux', maxFacteur: 12, maxBase: 9 },
+        motsClefs: ['fraction équivalente', 'par combien', 'multiplier', 'simplifier',
+            'même dénominateur'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: 'Les deux fractions sont ÉGALES, et il manque un nombre. On ne te demande '
+            + 'pas ce nombre : on te demande PAR COMBIEN on est passé de l\'une à l\'autre. '
+            + 'Une seule ligne est écrite des deux côtés — celle du haut ou celle du bas —, et '
+            + 'c\'est elle qui te le dit : de 2 à 22, on multiplie par 11. L\'autre ligne suit '
+            + 'le MÊME nombre, et c\'est exactement ce qui fait qu\'une fraction ne change pas '
+            + 'de valeur. Quand les nombres RAPETISSENT, on divise — c\'est le même '
+            + 'raisonnement à l\'envers.'
+    },
     {
         // « UN EXERCICE D'ADDITION DE FRACTIONS PROGRESSIF », puis, après essai
         // des bandes : « je ne suis pas convaincu par les bandes pour les

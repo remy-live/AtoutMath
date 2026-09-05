@@ -168,7 +168,20 @@ const MONDE = { x0: -6, y0: -6, w: PLAN_L + 12, h: PLAN_H + 18 };
 
 /** La plus étroite acceptable : l'étape la plus large fait 142 unités. */
 const FEN_MIN = 148;
+/**
+ * ET LA PLUS ÉTROITE ACCEPTABLE SUR UN TÉLÉPHONE.
+ *
+ * Soixante unités tiennent une figure et ses trois conditions — c'est ce qu'une
+ * étape montre. À 350 pixels de scène cela fait 5,8 pixels par unité : une case
+ * de figure passe de 52 à 126 pixels, et son nom de 6,2 à 15 px, qui est le
+ * plafond de la police. Au-dessous de soixante on ne gagnerait plus rien (le
+ * nom est déjà à son maximum) et l'on couperait la condition voisine.
+ */
+const FEN_MIN_ETROIT = 60;
 const FEN_H = 90;
+
+/** Sous dix pixels, un nom de figure ne se lit plus — voir `ajusterCartes`. */
+const NOM_MIN = 10;
 
 /** Le peu d'air qu'on laisse autour d'une carte qu'on vient d'englober. */
 const MARGE_CARTE = 2;
@@ -195,7 +208,7 @@ function boitesDuPlan() {
  * La fenêtre posée sur un groupe de boîtes : même taille toujours, centrée sur
  * ce qu'on regarde, et retenue aux bords du monde — on ne montre pas du vide.
  */
-export function fenetreDeLEtape(boites, largeur, voisines = []) {
+export function fenetreDeLEtape(boites, largeur, voisines = [], opts = {}) {
     const e = enveloppe(boites);
     // LA FENÊTRE CONTIENT TOUJOURS CE QU'ELLE MONTRE — et c'est un défaut qu'on
     // répare, pas un raffinement.
@@ -211,7 +224,31 @@ export function fenetreDeLEtape(boites, largeur, voisines = []) {
     // quand il le faut. Ce qu'on y perd — les cases rapetissent — est très
     // inférieur à ce qu'on y gagne : une cible qu'on ne voit pas est une cible
     // qu'on ne vise pas.
-    const L = Math.max(FEN_MIN, Math.min(MONDE.w, Math.max(largeur || 0, (e.x2 - e.x1) + 8)));
+    // SUR UN TÉLÉPHONE, LE PLANCHER DE 148 UNITÉS REND LE PLAN ILLISIBLE.
+    //
+    // Rémy, capture à l'appui : « je vois bien le texte mais l'élève va avoir
+    // du mal à lire. » Mesuré sur un écran de 390 : la scène fait 350 × 749 —
+    // haute et étroite —, la fenêtre 148 × 90, et comme c'est la LARGEUR qui
+    // commande, l'échelle tombe à 2,4 pixels par unité. Une case de figure fait
+    // alors 52 × 38 pixels, son nom s'écrit en 6,2 px, et cinq cent trente-six
+    // pixels de hauteur restent vides sous le plan.
+    //
+    // `largeurFenetre()` calculait déjà la bonne valeur — la largeur qui donne
+    // au plan la forme de la scène, soit 42 unités ici — et le plancher la
+    // jetait. Il est là pour que l'échelle ne change pas d'une étape à l'autre
+    // (« tu peux descendre l'organigramme sans le dézoomer »), et c'est une
+    // bonne règle sur un écran large, où le plan entier tient de toute façon.
+    // Sur un écran étroit elle demande l'impossible : deux cents unités de plan
+    // dans trois cent cinquante pixels ne se lisent à AUCUNE échelle. Il faut
+    // choisir, et une constance illisible ne vaut rien.
+    //
+    // Le plancher devient donc un réglage : 148 sur un écran large — rien ne
+    // change —, une soixantaine sur un téléphone, où l'on tient deux figures et
+    // leurs conditions en grand. Les deux seules étapes vraiment larges (les
+    // raccourcis de sixième, qui traversent le plan) s'élargissent d'elles-mêmes
+    // comme avant.
+    const minL = Math.max(20, Number(opts.minLargeur) || FEN_MIN);
+    const L = Math.max(minL, Math.min(MONDE.w, Math.max(largeur || 0, (e.x2 - e.x1) + 8)));
     // ET LA HAUTEUR SUIT LA MÊME RÈGLE. C'est elle qui coupait, en fait : les
     // deux raccourcis de sixième relient le quadrilatère au losange et au
     // rectangle en sautant une rangée entière — leur chemin traverse le plan de
@@ -219,7 +256,12 @@ export function fenetreDeLEtape(boites, largeur, voisines = []) {
     // sur l'étape, laissait la case à remplir juste au-dessus ou juste en
     // dessous du bord. Mesuré : huit à vingt-deux pixels de la cible dehors,
     // aux étapes 5 et 8.
-    const H = Math.max(FEN_H, Math.min(MONDE.h, (e.y2 - e.y1) + 8));
+    // ET LA HAUTEUR PREND LA PLACE QU'ON LUI LAISSE. L'échelle vient de la
+    // largeur ; agrandir la fenêtre en hauteur ne rapetisse donc rien, cela
+    // montre seulement plus de rangées autour de l'étape. Sans cela, sur un
+    // téléphone, la moitié basse de l'écran restait blanche.
+    const hEcran = opts.rapport > 0 ? L / opts.rapport : 0;
+    const H = Math.min(MONDE.h, Math.max(FEN_H, (e.y2 - e.y1) + 8, hEcran));
     const cx = (e.x1 + e.x2) / 2, cy = (e.y1 + e.y2) / 2;
     const borne = (v, min, max) => Math.max(min, Math.min(max, v));
     let x0 = borne(cx - L / 2, MONDE.x0, MONDE.x0 + MONDE.w - L);
@@ -506,29 +548,38 @@ const ETAGE_MODALE = 100001;
  * de questions. « Passer » reste là pour l'auteur, qui la revoit cent fois.
  */
 const OUVERTURE = [
+    // ON NE COMMENCE PLUS PAR LE BAS.
+    //
+    // Rémy : « je vois bien le texte mais l'élève va avoir du mal à lire.
+    // D'abord, on parcourt l'organigramme de bas en haut. »
+    //
+    // L'ouverture cadrait le BAS du plan — le carré et ce qui y mène —, puis
+    // annonçait « on remonte tout en haut », et redescendait ensuite pendant
+    // onze étapes. Trois changements de direction avant la première question :
+    // l'élève voyait la carte bouger sans savoir où elle allait, et il ne
+    // pouvait pas deviner que le premier écran montrait la FIN.
+    //
+    // Le premier cadre est donc celui où l'on commence, et la carte ne descend
+    // plus qu'une fois — dans le sens où on la construit.
     {
-        vues: [], cadre: 'bas',
+        vues: [],
         dit: 'Voici <b>l\'organigramme des quadrilatères</b> : cinq familles, et les '
             + 'conditions qui mènent de l\'une à l\'autre. Il est vide — on va le '
-            + 'construire. Tout en bas, les figures qui demandent le PLUS de conditions.'
+            + 'construire, en partant d\'ici, tout en haut. Plus on descend, plus les '
+            + 'figures demandent de conditions.'
     },
     {
-        vues: [], cadre: 'duo',
-        dit: 'On remonte tout en haut, là où l\'on part : la case la plus large de '
-            + 'toutes, et celle qui la suit, sont encore vides.'
-    },
-    {
-        vues: ['quadrilatere'], cadre: 'duo',
+        vues: ['quadrilatere'],
         dit: 'On part du <b>quadrilatère</b> : la famille la plus large, celle qui ne '
             + 'demande rien de plus que quatre côtés.'
     },
     {
-        vues: ['quadrilatere'], cadre: 'duo',
+        vues: ['quadrilatere'],
         dit: 'On descend d\'un cran. La case du dessous attend : qu\'est-ce qu\'un '
             + 'quadrilatère doit avoir <b>en plus</b> pour être un parallélogramme ?'
     },
     {
-        vues: ['quadrilatere', 'parallelogramme'], cadre: 'duo',
+        vues: ['quadrilatere', 'parallelogramme'],
         dit: 'Et voici le <b>parallélogramme</b>. Avant de dire ce qui y mène, on va '
             + 'écrire ses propriétés sur la figure.'
     }
@@ -774,13 +825,20 @@ class Organigramme extends BaseGame {
                 /* POSÉE PAR SON COIN, plus par son centre : placerBoite rend
                    déjà le bord et la taille. Le translate(-50%, -50%) d'avant
                    décalait chaque case d'une demi-boîte. */
+                /* LA CASE NE ROGNE PLUS SON NOM. Elle rognait tout — c'était
+                   nécessaire pour que la figure dessinée reste dans les coins
+                   arrondis, mais cela coupait aussi le bandeau du nom :
+                   « arallélogramm », mesuré sur un téléphone dès que le nom
+                   cesse de rétrécir (voir NOM_MIN). Le rognage descend donc sur
+                   la FIGURE, qui est la seule à en avoir besoin. */
                 .qd-case {
                     position: absolute;
-                    box-sizing: border-box; overflow: hidden;
+                    box-sizing: border-box;
                     border: 1.5px solid var(--border); border-radius: 10px;
                     background: var(--bg-panel);
                     display: flex; flex-direction: column; align-items: stretch;
                 }
+                .qd-figure { overflow: hidden; border-radius: 9px 9px 0 0; }
                 /* UNE CASE QUI N'EST PAS ENCORE ATTEINTE N'EST PAS LÀ. Rémy :
                    « il faut le faire apparaître au fur et à mesure ». Elle ne
                    s'efface pas, elle n'existe pas encore — et elle arrive à sa
@@ -857,9 +915,20 @@ class Organigramme extends BaseGame {
                    fiche de Rémy — et sa ligne de séparation : c'est ce qui
                    fait qu'on ne le confond pas avec le dessin, et ce qui
                    permet de le laisser VIDE quand c'est à l'élève de nommer. */
+                /* ET UN PLANCHER QU'ON PEUT LIRE. Rémy : « l'élève va avoir du
+                   mal à lire ». Mesuré sur un téléphone de 390 : « Quadrilatère »
+                   s'écrivait en 6,2 px — la borne basse de cette règle, atteinte
+                   parce que la fenêtre était trop large (voir FEN_MIN_ETROIT).
+                   La fenêtre corrigée le remonte à 7,9 ; le plancher fait le
+                   reste. Dix pixels, c'est petit mais lisible, et le nom déborde
+                   alors de quelques pixels dans un intervalle qui en offre plus
+                   de cent cinquante — le même débordement assumé qu'au-dessus. */
                 .qd-nom {
                     flex: 0 0 auto; font-weight: 800; text-align: center; white-space: nowrap;
-                    font-size: clamp(6px, calc(1.8cqw * var(--zoom, 1)), 15px);
+                    /* Le nom déborde dans l'intervalle plutôt que de se faire
+                       couper — voir le bloc au-dessus et ajusterCartes(). */
+                    overflow: visible;
+                    font-size: clamp(10px, calc(1.8cqw * var(--zoom, 1)), 15px);
                     line-height: 1.05; padding: 3px 2px; min-height: 1.5em;
                     background: var(--qd-bande, #fff5cc);
                     border-top: 1.5px solid var(--border);
@@ -1656,11 +1725,27 @@ class Organigramme extends BaseGame {
         this.ajusterCartes();
     }
 
+    /**
+     * CE QU'ON DEMANDE À LA FENÊTRE, selon la place réelle — voir FEN_MIN.
+     *
+     * Sur un écran large, rien ne change : plancher de 148 unités, échelle
+     * constante d'un bout à l'autre de la leçon. Sur un téléphone, le plancher
+     * descend — sans quoi le plan s'affiche à 2,4 pixels par unité et les noms
+     * de figures à 6 px, ce que Rémy a vu et signalé.
+     */
+    reglageFenetre() {
+        return {
+            minLargeur: this.sceneEtroite() ? FEN_MIN_ETROIT : FEN_MIN,
+            rapport: this.rapportScene()
+        };
+    }
+
     /** La fenêtre posée sur deux cases voisines et ce qui les relie. */
     cadreDuo(de, vers) {
         return fenetreDeLEtape([boiteFigure(de), boiteFigure(vers),
             ...FLECHES.filter(f => f.de === de && f.vers === vers).map(boiteCondition)],
-        this.largeurFenetre(), boitesDuPlan());
+        this.largeurFenetre(),
+        this.sceneEtroite() ? [] : boitesDuPlan(), this.reglageFenetre());
     }
 
     /**
@@ -1690,13 +1775,9 @@ class Organigramme extends BaseGame {
         const beat = OUVERTURE[this.ouverture];
         if (!beat) return this.finirOuverture();
         this.consigneEl.innerHTML = beat.dit;
-        const fen = beat.cadre === 'bas'
-            // Le bas du plan : le carré et ce qui y mène. C'est là qu'on voit le
-            // mieux à quoi ressemblent une case et une fente, parce qu'elles y
-            // sont à la taille où l'on travaillera.
-            ? fenetreDeLEtape([boiteFigure('carre'), boiteFigure('losange'),
-                boiteFigure('rectangle')], this.largeurFenetre(), boitesDuPlan())
-            : this.cadreDuo('quadrilatere', 'parallelogramme');
+        // Un seul cadre pour toute l'ouverture : le haut du plan, là où l'on
+        // part. Voir OUVERTURE — le cadre « bas » a disparu avec le détour.
+        const fen = this.cadreDuo('quadrilatere', 'parallelogramme');
         // La figure qui ARRIVE à ce temps-ci : celle que le temps précédent ne
         // montrait pas encore. C'est elle qui reçoit l'animation d'entrée.
         const avant = this.ouverture > 0 ? OUVERTURE[this.ouverture - 1].vues : [];
@@ -1825,7 +1906,8 @@ class Organigramme extends BaseGame {
                 : codage ? this.fenetreDeLaCase(e.figure, e.de)
                     : fenetreDeLEtape([boiteFigure(e.de), boiteFigure(e.vers),
                         ...FLECHES.filter(f => e.cles.includes(cleFleche(f))).map(boiteCondition)],
-                    this.largeurFenetre(), etroit ? [] : boitesDuPlan()),
+                    this.largeurFenetre(), etroit ? [] : boitesDuPlan(),
+                    this.reglageFenetre()),
             v);
         // Le fondu ne s'allume que là où l'on coupe vraiment.
         this.planEl.style.setProperty('--fondu', (codage || etroit) ? '16px' : '0px');
@@ -2749,10 +2831,25 @@ class Organigramme extends BaseGame {
         // plus petites qu'à l'étape par étape, et « Parallélogramme » s'y
         // rognait des deux côtés — « rallélogramm ». Le nom d'une figure coupé
         // est pire qu'un nom écrit petit.
+        // MAIS IL NE DESCEND PLUS SOUS DIX PIXELS, et c'est le fond de ce que
+        // Rémy signale : « l'élève va avoir du mal à lire ».
+        //
+        // Cette boucle rapetissait jusqu'à CINQ pixels pour faire tenir le nom
+        // dans sa case. Elle contredisait la règle écrite juste à côté de la
+        // feuille de style — « le nom déborde un peu de sa case, et c'est
+        // voulu » — et elle gagnait, puisqu'elle écrit en ligne. Mesuré sur un
+        // téléphone : « Parallélogramme » sortait à 7,8 px là où le plancher de
+        // la police en demandait dix.
+        //
+        // Or l'intervalle entre deux cases voisines est large — cinquante-huit
+        // unités de plan, cent pixels et plus à l'écran d'un téléphone : un nom
+        // qui dépasse de quinze pixels de chaque côté n'y rencontre personne.
+        // Entre un nom qui déborde et un nom qu'on ne peut pas lire, le choix
+        // est fait.
         this.mondeEl.querySelectorAll('.qd-nom').forEach(el => {
             let taille = parseFloat(getComputedStyle(el).fontSize) || 12;
-            for (let i = 0; i < 14 && el.scrollWidth > el.clientWidth + 1 && taille > 5; i++) {
-                taille = Math.max(5, taille - Math.max(0.4, taille * 0.08));
+            for (let i = 0; i < 14 && el.scrollWidth > el.clientWidth + 1 && taille > NOM_MIN; i++) {
+                taille = Math.max(NOM_MIN, taille - Math.max(0.4, taille * 0.08));
                 el.style.fontSize = `${taille}px`;
             }
         });

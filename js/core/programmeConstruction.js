@@ -122,6 +122,21 @@ export const OPERATIONS = {
         libelle: (a) => `Trace la droite (${a[0]}${a[1]})`,
         trace: (p, a) => ({ genre: 'droite', a: p[a[0]], b: p[a[1]] })
     },
+    // LA DEMI-DROITE MANQUAIT, ET RÉMY LA DEMANDE NOMMÉMENT : « on veut juste
+    // un programme facile avec les parallèles perpendiculaires, droite,
+    // segment, demi-droite ».
+    //
+    // Elle manquait aussi à la LEÇON, et c'est le vrai motif : les trois
+    // notations du chapitre sont [AB], (AB) et [AB) — le crochet du côté de
+    // l'origine, la parenthèse du côté qui continue. Deux sur trois seulement
+    // étaient traçables ; celle qui EXPLIQUE les deux autres était absente.
+    demiDroite: {
+        id: 'demiDroite', famille: 'traits', prend: ['point', 'point'],
+        gabarit: ['Trace la demi-droite [', 0, 1, ')'],
+        bouton: 'une demi-droite',
+        libelle: (a) => `Trace la demi-droite [${a[0]}${a[1]})`,
+        trace: (p, a) => ({ genre: 'demidroite', a: p[a[0]], b: p[a[1]] })
+    },
     cercle: {
         id: 'cercle', famille: 'cercles', prend: ['point', 'point'],
         gabarit: ['Trace le cercle de centre ', 0, ' passant par ', 1],
@@ -144,7 +159,16 @@ export const OPERATIONS = {
         trace: (p, a) => {
             const m = { x: (p[a[0]].x + p[a[1]].x) / 2, y: (p[a[0]].y + p[a[1]].y) / 2 };
             const u = { x: p[a[1]].x - p[a[0]].x, y: p[a[1]].y - p[a[0]].y };
-            return { genre: 'droite', a: m, b: { x: m.x - u.y, y: m.y + u.x } };
+            return {
+                genre: 'droite', a: m, b: { x: m.x - u.y, y: m.y + u.x },
+                // LE CODAGE — Rémy : « n'oublie pas de coder s'il y a une
+                // médiatrice ». Une médiatrice non codée est un trait qui
+                // traverse un segment : rien ne dit qu'il le coupe en son
+                // MILIEU ni qu'il lui est PERPENDICULAIRE, et ce sont les deux
+                // moitiés de sa définition. Sur la feuille du cahier on les
+                // écrit toujours ; l'écran doit montrer la même figure.
+                codage: { type: 'mediatrice', m, a: p[a[0]], b: p[a[1]] }
+            };
         }
     },
     perpendiculaire: {
@@ -155,7 +179,18 @@ export const OPERATIONS = {
         trace: (p, a) => {
             const u = { x: p[a[1]].x - p[a[0]].x, y: p[a[1]].y - p[a[0]].y };
             const c = p[a[2]];
-            return { genre: 'droite', a: c, b: { x: c.x - u.y, y: c.y + u.x } };
+            // Le pied de la perpendiculaire : c'est là que se pose le petit
+            // carré de l'angle droit. Rémy, capture à l'appui : « là il faut
+            // coder ». Deux droites qui se croisent à l'écran ne se croisent
+            // pas forcément à angle droit — c'est même exactement ce qu'on
+            // apprend à ne pas supposer.
+            const n2 = u.x * u.x + u.y * u.y;
+            const t = n2 ? ((c.x - p[a[0]].x) * u.x + (c.y - p[a[0]].y) * u.y) / n2 : 0;
+            const pied = { x: p[a[0]].x + u.x * t, y: p[a[0]].y + u.y * t };
+            return {
+                genre: 'droite', a: c, b: { x: c.x - u.y, y: c.y + u.x },
+                codage: { type: 'angleDroit', sommet: pied, u, v: { x: -u.y, y: u.x } }
+            };
         }
     },
     parallele: {
@@ -166,7 +201,12 @@ export const OPERATIONS = {
         trace: (p, a) => {
             const u = { x: p[a[1]].x - p[a[0]].x, y: p[a[1]].y - p[a[0]].y };
             const c = p[a[2]];
-            return { genre: 'droite', a: c, b: { x: c.x + u.x, y: c.y + u.y } };
+            return {
+                genre: 'droite', a: c, b: { x: c.x + u.x, y: c.y + u.y },
+                // Les chevrons du parallélisme, posés sur les DEUX droites : un
+                // seul ne dirait rien, c'est la paire qui est le codage.
+                codage: { type: 'paralleles', autre: { a: p[a[0]], b: p[a[1]] } }
+            };
         }
     },
     intersection: {
@@ -191,7 +231,7 @@ export const OPERATIONS = {
 };
 
 export const ORDRE_OPERATIONS = [
-    'points', 'segment', 'droite', 'cercle', 'milieu', 'mediatrice',
+    'points', 'segment', 'droite', 'demiDroite', 'cercle', 'milieu', 'mediatrice',
     'perpendiculaire', 'parallele', 'intersection'
 ];
 
@@ -243,6 +283,17 @@ export function cleObjet(o) {
         const d = normaliserDroite(o.a, o.b);
         return d ? `droite|${r(d.a)}|${r(d.b)}|${r(d.c)}` : 'droite|degeneree';
     }
+    // UNE DEMI-DROITE N'EST NI UNE DROITE NI UN SEGMENT, et sa clé doit le
+    // dire : [AB) et (AB) se superposent à l'écran sur la moitié de leur
+    // longueur, et les confondre ferait accepter l'une pour l'autre — c'est-à-
+    // dire noter juste une figure qui n'est pas celle du modèle. Elle est
+    // définie par son ORIGINE et par sa DIRECTION, pas par le second point :
+    // [AB) et [AC) sont la même demi-droite si C est sur [AB).
+    if (o.genre === 'demidroite') {
+        const dx = o.b.x - o.a.x, dy = o.b.y - o.a.y;
+        const n = Math.hypot(dx, dy) || 1;
+        return `demidroite|${r(o.a.x)}|${r(o.a.y)}|${r(dx / n)}|${r(dy / n)}`;
+    }
     // Un segment est orienté par ses extrémités : on les range toujours pareil.
     const [p, q] = [o.a, o.b].sort((u, v) => (u.x - v.x) || (u.y - v.y));
     return `segment|${r(p.x)}|${r(p.y)}|${r(q.x)}|${r(q.y)}`;
@@ -263,6 +314,7 @@ export function nomObjet(o, points) {
     }
     const a = nomDe(o.a), b = nomDe(o.b);
     if (o.genre === 'segment') return a && b ? `[${a}${b}]` : 'un segment';
+    if (o.genre === 'demidroite') return a && b ? `[${a}${b})` : 'une demi-droite';
     return a && b ? `(${a}${b})` : 'une droite';
 }
 
@@ -345,6 +397,20 @@ export function couperAuMonde(a, b) {
     if (dedans.length < 2) return null;
     const t0 = dedans[0], t1 = dedans[dedans.length - 1];
     return [{ x: a.x + dx * t0, y: a.y + dy * t0 }, { x: a.x + dx * t1, y: a.y + dy * t1 }];
+}
+
+/**
+ * LA DEMI-DROITE COUPÉE AU MONDE : de son origine jusqu'au bord, d'un seul
+ * côté. `couperAuMonde` rend les DEUX bords — c'est ce qu'il faut pour une
+ * droite, et c'est faux pour une demi-droite, qui s'arrête à son origine.
+ */
+export function couperDemiDroite(a, b) {
+    const bouts = couperAuMonde(a, b);
+    if (!bouts) return null;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    // Celui des deux bords qui est DEVANT l'origine, dans le sens A → B.
+    const devant = bouts.find(q => (q.x - a.x) * dx + (q.y - a.y) * dy > 0);
+    return devant ? [a, devant] : null;
 }
 
 /** Le point tombe-t-il vraiment SUR l'objet (et pas seulement sur sa droite) ? */
@@ -576,6 +642,28 @@ const surLaDroite = (o, p) => !!p
         / (Math.hypot(o.b.x - o.a.x, o.b.y - o.a.y) || 1) < 1e-6;
 
 /**
+ * « PLACE UN POINT A ET UN POINT B » — et l'application refusait.
+ *
+ * Rémy, capture à l'appui : « ça devrait être compris, ça ». Il a raison, et
+ * c'est même la tournure la plus naturelle : on énumère les points un par un,
+ * chacun avec son article. La grammaire n'attendait qu'une seule occurrence du
+ * mot « point » suivie de toutes les lettres — « place 2 points A et B » —,
+ * donc elle lisait « a et un point b » comme une liste de lettres et n'y
+ * trouvait pas que des lettres.
+ *
+ * On recolle la phrase avant de la lire : les répétitions de « et un point »,
+ * « , le point », « et un autre point » se réduisent à un simple « et ». Ce
+ * n'est pas deviner — la phrase dit exactement la même chose des deux façons,
+ * et l'on ne change rien à ce qui est demandé.
+ */
+function repeterPoints(t) {
+    return String(t || '')
+        .replace(/\s*(?:,|\bet\b)\s+(?:(?:un|une|le|la|les|des|l)\s+)?(?:autre\s+)?points?\s+(?=[a-z]\b)/g, ' et ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/**
  * LA PHRASE → UNE INSTRUCTION, OU UN REFUS QUI ENSEIGNE.
  *
  * @param {string} phrase
@@ -587,6 +675,7 @@ export function lireInstruction(phrase, etat = { points: {}, objets: [] }) {
     if (!t) return {};
     const sansVerbe = t.replace(new RegExp(`^${VERBES}\\s+`), '');
     const corps = sansVerbe.replace(/^(?:le |la |les |l'|un |une |des |deux |trois )/, '');
+    const repetee = repeterPoints(sansVerbe) !== sansVerbe;
     let m;
 
     // ① L'INTERSECTION PASSE EN PREMIER, et ce n'est pas un détail d'ordre.
@@ -614,7 +703,7 @@ export function lireInstruction(phrase, etat = { points: {}, objets: [] }) {
     // points A et B » était refusé faute d'avoir prévu le déterminant : on
     // corrigeait la grammaire au lieu de la géométrie.
     m = /^(?:(?:les|des|le|la|l')\s*)?(?:(\d+|un|une|deux|trois|quatre|cinq)\s+)?points?\s+(.+)$/
-        .exec(sansVerbe);
+        .exec(repeterPoints(sansVerbe));
     if (m) {
         const reste = m[2].replace(/\s+non\s+alignes?$/, '');
         const nonAlignes = /\s+non\s+alignes?$/.test(m[2]);
@@ -623,7 +712,11 @@ export function lireInstruction(phrase, etat = { points: {}, objets: [] }) {
             return { dit: 'Je lis bien « place … point(s) », mais pas les lettres. '
                 + 'Écris-les comme dans « Place 2 points A et B ».' };
         }
-        const annonce = m[1] ? (NOMBRES[m[1]] || Number(m[1])) : null;
+        // « PLACE UN POINT A ET UN POINT B » ANNONCE UN et en nomme DEUX, et
+        // c'est du bon français : le « un » porte sur le premier point, pas sur
+        // le compte. `repeterPoints` a déjà recollé la phrase ; on ne va donc
+        // pas la contredire ici en comptant l'article du premier.
+        const annonce = (m[1] && !repetee) ? (NOMBRES[m[1]] || Number(m[1])) : null;
         if (annonce !== null && annonce !== lettres.length) {
             return { dit: `Tu annonces ${annonce} point${annonce > 1 ? 's' : ''} et tu en `
                 + `nommes ${lettres.length} : ${lettres.join(', ')}.` };
@@ -640,11 +733,46 @@ export function lireInstruction(phrase, etat = { points: {}, objets: [] }) {
     }
 
     // ③ LES TRACÉS.
+    //
+    // PLUSIEURS FORMULATIONS POUR LE MÊME TRACÉ — Rémy : « n'hésite pas à
+    // programmer plusieurs formulations ». On n'écrit pas tous la même phrase,
+    // et refuser « Trace la droite passant par A et B » au motif qu'on attendait
+    // « Trace la droite (AB) » corrige du français, pas de la géométrie. Ce
+    // qu'on exige reste entier : QUEL objet, à partir de QUELS points.
+    //
+    // Ce qui est accepté, tracé par tracé :
+    //   · le segment    — [AB], « d'extrémités A et B », « qui relie A et B »,
+    //                     et le verbe « joins A et B » sans nommer l'objet ;
+    //   · la droite     — (AB), « passant par A et B », « qui passe par A et B » ;
+    //   · la demi-droite— [AB), « d'origine A passant par B » ;
+    //   · la perpendiculaire et la parallèle — « à (AB) », « à la droite (AB) »,
+    //     « passant par C », « qui passe par C », « en C ».
+    const LETTRE2 = '\\s*([a-z])\\s*(?:et\\s*)?([a-z])\\s*';
+
     m = /^segments?\s*\[?\s*([a-z])\s*([a-z])\s*\]?$/.exec(corps);
+    if (m) return { ins: { op: 'segment', args: [m[1].toUpperCase(), m[2].toUpperCase()] } };
+    m = new RegExp(`^segments?\\s+(?:d.?extremites|qui\\s+relie|reliant|joignant|entre|de)${LETTRE2}$`)
+        .exec(corps);
+    if (m) return { ins: { op: 'segment', args: [m[1].toUpperCase(), m[2].toUpperCase()] } };
+    // « Joins A et B » : le verbe dit déjà l'objet, il n'y a plus de nom à lire.
+    m = new RegExp(`^(?:joins|joindre|relie|relier)${LETTRE2}$`).exec(t);
     if (m) return { ins: { op: 'segment', args: [m[1].toUpperCase(), m[2].toUpperCase()] } };
 
     m = /^droites?\s*\(?\s*([a-z])\s*([a-z])\s*\)?$/.exec(corps);
     if (m) return { ins: { op: 'droite', args: [m[1].toUpperCase(), m[2].toUpperCase()] } };
+    m = new RegExp(`^droites?\\s+(?:qui\\s+)?pass(?:ant|e)\\s+par${LETTRE2}$`).exec(corps);
+    if (m) return { ins: { op: 'droite', args: [m[1].toUpperCase(), m[2].toUpperCase()] } };
+
+    m = /^demi[- ]?droites?\s*\[?\s*([a-z])\s*([a-z])\s*[)\]]?$/.exec(corps);
+    if (m) return { ins: { op: 'demiDroite', args: [m[1].toUpperCase(), m[2].toUpperCase()] } };
+    m = /^demi[- ]?droites?\s+d.?origine\s+([a-z])\s+(?:qui\s+)?pass(?:ant|e)\s+par\s+([a-z])$/
+        .exec(corps);
+    if (m) return { ins: { op: 'demiDroite', args: [m[1].toUpperCase(), m[2].toUpperCase()] } };
+    if (/^demi[- ]?droite/.test(corps)) {
+        return { dit: 'Une demi-droite se donne par son ORIGINE puis par un point qu\'elle '
+            + 'traverse : « Trace la demi-droite [AB) ». Le crochet est du côté de '
+            + 'l\'origine, la parenthèse du côté qui continue.' };
+    }
 
     m = /^cercles?\s+de\s+centre\s+([a-z])\s+(?:qui\s+)?pass(?:ant|e)\s+par\s+([a-z])$/.exec(corps);
     if (m) return { ins: { op: 'cercle', args: [m[1].toUpperCase(), m[2].toUpperCase()] } };
@@ -667,7 +795,7 @@ export function lireInstruction(phrase, etat = { points: {}, objets: [] }) {
     m = /^mediatrices?\s+(?:de\s*)?\[?\s*([a-z])\s*([a-z])\s*\]?$/.exec(corps);
     if (m) return { ins: { op: 'mediatrice', args: [m[1].toUpperCase(), m[2].toUpperCase()] } };
 
-    m = /^(perpendiculaire|parallele)s?\s+(?:a|à)\s*\(?\s*([a-z])\s*([a-z])\s*\)?\s+(?:qui\s+)?pass(?:ant|e)\s+par\s+([a-z])$/
+    m = /^(?:droites?\s+)?(perpendiculaire|parallele)s?\s+(?:a|à)\s*(?:la\s+droite\s*)?\(?\s*([a-z])\s*([a-z])\s*\)?\s+(?:(?:qui\s+)?pass(?:ant|e)\s+par|en)\s+([a-z])$/
         .exec(corps);
     if (m) {
         return {
@@ -677,14 +805,14 @@ export function lireInstruction(phrase, etat = { points: {}, objets: [] }) {
             }
         };
     }
-    if (/^(perpendiculaire|parallele)/.test(corps)) {
+    if (/^(?:droites?\s+)?(perpendiculaire|parallele)/.test(corps)) {
         return { dit: 'Il manque par où elle passe : « Trace la perpendiculaire à (AB) '
             + 'passant par C ».' };
     }
 
     return { dit: 'Je ne comprends pas cette phrase. Une phrase, un objet : '
-        + '« Place 2 points A et B », « Trace le segment [AB] », « Trace le cercle de '
-        + 'centre A passant par B ».' };
+        + '« Place 2 points A et B », « Trace le segment [AB] », « Trace la droite (AB) », '
+        + '« Trace la perpendiculaire à (AB) passant par C ».' };
 }
 
 /** Un programme entier, ligne à ligne — chaque ligne est lue dans l'état atteint. */
@@ -792,6 +920,17 @@ export const NIVEAUX = [
         ]
     },
     {
+        // LA TROISIÈME NOTATION. On vient d'écrire [AB] et l'on écrira (AB) :
+        // [AB) est celle qui explique les deux autres — le crochet du côté de
+        // l'origine, la parenthèse du côté qui continue sans fin.
+        id: 'demi-droite', titre: 'Une demi-droite',
+        atlas: { A: P(25, 45), B: P(58, 32) },
+        modele: [
+            { op: 'points', args: ['A', 'B'] },
+            { op: 'demiDroite', args: ['A', 'B'] }
+        ]
+    },
+    {
         id: 'triangle', titre: 'Un triangle',
         atlas: { A: P(20, 55), B: P(80, 55), C: P(50, 15) },
         // La figure ne le crie pas : trois points alignés ne feraient pas de
@@ -870,50 +1009,28 @@ export const NIVEAUX = [
             { op: 'perpendiculaire', args: ['A', 'B', 'C'] }
         ]
     },
-    {
-        id: 'equilateral', titre: 'Un triangle équilatéral',
-        atlas: { A: P(30, 55), B: P(70, 55) },
-        modele: [
-            { op: 'points', args: ['A', 'B'] },
-            { op: 'cercle', args: ['A', 'B'], aide: true },
-            { op: 'cercle', args: ['B', 'A'], aide: true },
-            { op: 'intersection', args: [1, 2], aide: true },
-            { op: 'segment', args: ['A', 'B'] },
-            { op: 'segment', args: ['B', 'C'] },
-            { op: 'segment', args: ['C', 'A'] }
-        ]
-    },
-    {
-        id: 'losange', titre: 'Un losange',
-        atlas: { A: P(28, 50), B: P(62, 50) },
-        modele: [
-            { op: 'points', args: ['A', 'B'] },
-            { op: 'cercle', args: ['A', 'B'], aide: true },
-            { op: 'cercle', args: ['B', 'A'], aide: true },
-            { op: 'intersection', args: [1, 2], aide: true },
-            { op: 'cercle', args: ['C', 'A'], aide: true },
-            { op: 'intersection', args: [2, 4], aide: true },
-            { op: 'segment', args: ['A', 'B'] },
-            { op: 'segment', args: ['B', 'E'] },
-            { op: 'segment', args: ['E', 'C'] },
-            { op: 'segment', args: ['C', 'A'] }
-        ]
-    },
-    {
-        id: 'circonscrit', titre: 'Un triangle et son cercle circonscrit',
-        atlas: { A: P(22, 55), B: P(80, 50), C: P(52, 16) },
-        nonAlignes: true,
-        modele: [
-            { op: 'points', args: ['A', 'B', 'C'] },
-            { op: 'segment', args: ['A', 'B'] },
-            { op: 'segment', args: ['B', 'C'] },
-            { op: 'segment', args: ['C', 'A'] },
-            { op: 'mediatrice', args: ['A', 'B'], aide: true },
-            { op: 'mediatrice', args: ['B', 'C'], aide: true },
-            { op: 'intersection', args: [4, 5], aide: true },
-            { op: 'cercle', args: ['D', 'A'] }
-        ]
-    }
+    // TROIS NIVEAUX ONT ÉTÉ RETIRÉS — le triangle équilatéral, le losange et
+    // le cercle circonscrit — et c'est Rémy qui les retire, capture par
+    // capture :
+    //
+    //   « on ne voit pas le triangle en entier et il faut coder » ;
+    //   « on ne veut pas la construction, on veut juste ce que l'on a » ;
+    //   « retire le losange et le triangle et le cercle circonscrit. En fait on
+    //     veut juste un programme facile avec les parallèles perpendiculaires,
+    //     droite, segment, demi-droite. »
+    //
+    // Ils avaient tous les trois le même défaut, et c'est pour cela qu'ils
+    // partent ensemble : ils étaient les SEULS à porter des traits `aide` —
+    // les cercles de construction du triangle équilatéral, les médiatrices du
+    // cercle circonscrit. Le modèle montrait donc à l'élève la MÉTHODE dessinée
+    // avant qu'il ait écrit une ligne, ce qui est exactement l'inverse d'un
+    // programme de construction : on lui demandait de retrouver un chemin qu'on
+    // venait de lui tracer. Et la figure obtenue, encombrée de ces cercles, ne
+    // ressemblait plus à ce qu'on voulait obtenir.
+    //
+    // Avec eux disparaît la notion de trait d'aide dans les niveaux : plus
+    // aucun `aide: true` ici. Le mécanisme reste dans le noyau — il est juste,
+    // et il resservira le jour où l'on écrira une construction au compas.
 ];
 
 /**

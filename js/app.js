@@ -824,9 +824,21 @@ function initDebugToolbar() {
     // Passer la question en cours, ou revenir sur la précédente, quel que soit
     // l'exercice. Reculer manquait : on dépassait d'un cran la question qu'on
     // voulait examiner et il fallait relancer l'exercice depuis le début.
+    // LA PALETTE PILOTE L'EXERCICE QU'ON REGARDE, MÊME S'IL EST DANS L'ATELIER.
+    //
+    // Rémy : « synchronise la barre de debug et l'Atelier. » L'Atelier joue dans
+    // des cadres, et tous les boutons de mise au point lisaient le runner de
+    // CETTE page — vide dès qu'on ouvre l'Atelier. On cliquait sur « question
+    // suivante » et l'on recevait « aucun exercice en cours », devant un
+    // exercice qui tournait sous les yeux. Voir ui/cadreAtelier.js.
+    const runnerCourant = async () => {
+        const { runnerEnJeu } = await import('./ui/cadreAtelier.js');
+        return runnerEnJeu(state.activeSequenceRunner);
+    };
+
     const naviguer = (methode, rate, argument) => async () => {
         const { showToast } = await import('./ui/modal.js');
-        const runner = state.activeSequenceRunner;
+        const runner = await runnerCourant();
         const arg = typeof argument === 'function' ? await argument() : undefined;
         if (!runner || typeof runner[methode] !== 'function' || !runner[methode](arg)) {
             showToast(runner ? rate : 'Aucun exercice en cours.', 'warning');
@@ -849,7 +861,7 @@ function initDebugToolbar() {
         const { basculerPlanEtapes } = await import('./ui/planEtapes.js');
         if (basculerPlanEtapes()) return;
         const { showToast } = await import('./ui/modal.js');
-        showToast(state.activeSequenceRunner
+        showToast(await runnerCourant()
             ? 'Cet exercice n\'a pas d\'étapes internes : le « suivant » passe de question en question.'
             : 'Aucun exercice en cours.', 'warning');
     };
@@ -862,7 +874,7 @@ function initDebugToolbar() {
     const btnParams = document.getElementById('db-params');
     if (btnParams) btnParams.onclick = async () => {
         const { showToast } = await import('./ui/modal.js');
-        const runner = state.activeSequenceRunner;
+        const runner = await runnerCourant();
         const step = runner && runner.steps[runner.index];
         if (!step || !step.exercise) return showToast('Aucun exercice en cours.', 'warning');
         const { ouvrirReglagesAvantPartie } = await import('./games/configUI.js');
@@ -888,8 +900,8 @@ function initDebugToolbar() {
     const btnSol = document.getElementById('db-solution');
     if (btnSol) btnSol.onclick = async () => {
         const { showToast } = await import('./ui/modal.js');
-        const jeu = state.activeSequenceRunner && state.activeSequenceRunner.handle
-            && state.activeSequenceRunner.handle.jeu;
+        const r = await runnerCourant();
+        const jeu = r && r.handle && r.handle.jeu;
         if (!jeu || typeof jeu.montrerSolution !== 'function' || !jeu.montrerSolution()) {
             showToast(jeu ? 'Ce jeu ne sait pas montrer sa solution.' : 'Aucun jeu en cours.', 'warning');
         }

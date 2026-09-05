@@ -16,7 +16,7 @@
 // même travail, et c'est pour cela qu'ils vont ensemble.
 //
 // LA RÉSERVE DE MOTS EST DANS LA CONSIGNE, et elle n'est pas une aide de
-// confort : ce sont les huit tournures du chapitre, avec leurs crochets et
+// confort : ce sont les tournures du chapitre, avec leurs crochets et
 // leurs parenthèses. L'élève y recopie « le cercle de centre A passant par B »
 // plutôt que d'inventer « le cercle autour de A jusqu'à B ». C'est le
 // vocabulaire qu'on note, pas l'orthographe.
@@ -65,9 +65,9 @@ export const programmeConstructionFicheGenerator = {
             options: [
                 { value: 0, label: '1 — Un point', court: '1' },
                 { value: 3, label: '4 — Un segment', court: '4' },
-                { value: 5, label: '6 — Un cercle', court: '6' },
-                { value: 8, label: '9 — Une médiatrice', court: '9' },
-                { value: 12, label: '13 — Un triangle équilatéral', court: '13' }
+                { value: 4, label: '5 — Une demi-droite', court: '5' },
+                { value: 7, label: '8 — Un cercle', court: '8' },
+                { value: 10, label: '11 — Deux perpendiculaires', court: '11' }
             ]
         }
     ],

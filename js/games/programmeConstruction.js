@@ -37,7 +37,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import {
     MONDE, OPERATIONS, FAMILLES, ORDRE_FAMILLES,
     NIVEAUX, preparerNiveau, niveauxDisponibles, operationsDe,
-    executer, comparer, cleObjet, nomObjet, couperAuMonde, lireProgramme
+    executer, comparer, cleObjet, nomObjet, couperAuMonde, couperDemiDroite, lireProgramme
 } from '../core/programmeConstruction.js';
 
 const COMPETENCE = 'geo.construction.programme';
@@ -45,10 +45,91 @@ const COMPETENCE = 'geo.construction.programme';
 const enAttribut = (s) => String(s ?? '')
     .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// --- LE CODAGE DE LA FIGURE -------------------------------------------------
+//
+// Rémy, deux fois dans la même passe : « n'oublie pas de coder s'il y a une
+// médiatrice », « là il faut coder ».
+//
+// UN CODAGE N'EST PAS UNE DÉCORATION, C'EST LA MOITIÉ DE L'ÉNONCÉ. Un trait qui
+// traverse un segment ne dit pas qu'il le coupe en son milieu ni qu'il lui est
+// perpendiculaire ; deux droites qui se croisent à l'écran ne se croisent pas
+// forcément à angle droit ; deux droites qui semblent parallèles peuvent se
+// couper trois mètres plus loin. C'est même la première chose qu'on apprend en
+// géométrie : ce qui n'est pas codé n'est pas su. Une figure de modèle qui ne
+// code pas ses propriétés demande donc de les DEVINER — et l'élève qui les
+// devine juste a eu de la chance.
+//
+// Le codage est calculé par l'opération qui trace (`codage` dans core/
+// programmeConstruction.js), pas ici : c'est elle qui sait où est le pied de la
+// perpendiculaire et quel segment la médiatrice partage. L'écran ne fait que le
+// dessiner.
+
+const f3 = (v) => Number(v).toFixed(3);
+
+/** Le vecteur unitaire de a vers b — ou null si les deux points se confondent. */
+function unite(a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const n = Math.hypot(dx, dy);
+    return n < 1e-9 ? null : { x: dx / n, y: dy / n };
+}
+
+/** Le petit carré de l'angle droit, posé au sommet entre deux directions. */
+function angleDroitSvg(sommet, u, v, cote = 3.4) {
+    const nu = unite({ x: 0, y: 0 }, u), nv = unite({ x: 0, y: 0 }, v);
+    if (!nu || !nv) return '';
+    const p1 = { x: sommet.x + nu.x * cote, y: sommet.y + nu.y * cote };
+    const p2 = { x: p1.x + nv.x * cote, y: p1.y + nv.y * cote };
+    const p3 = { x: sommet.x + nv.x * cote, y: sommet.y + nv.y * cote };
+    return `<path class="pc-code" d="M ${f3(p1.x)} ${f3(p1.y)} L ${f3(p2.x)} ${f3(p2.y)}
+        L ${f3(p3.x)} ${f3(p3.y)}"/>`;
+}
+
+/** Un trait en travers, au milieu de [ab] : la marque des longueurs égales. */
+function tiretSvg(a, b, demi = 2) {
+    const u = unite(a, b);
+    if (!u) return '';
+    const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const n = { x: -u.y, y: u.x };
+    return `<path class="pc-code" d="M ${f3(m.x - n.x * demi)} ${f3(m.y - n.y * demi)}
+        L ${f3(m.x + n.x * demi)} ${f3(m.y + n.y * demi)}"/>`;
+}
+
+/** Le chevron du parallélisme, posé au milieu du tracé visible d'une droite. */
+function chevronSvg(a, b) {
+    const bouts = couperAuMonde(a, b);
+    if (!bouts) return '';
+    const u = unite(bouts[0], bouts[1]);
+    if (!u) return '';
+    const m = { x: (bouts[0].x + bouts[1].x) / 2, y: (bouts[0].y + bouts[1].y) / 2 };
+    const n = { x: -u.y, y: u.x };
+    const c = 1.9;
+    const pointe = { x: m.x + u.x * c, y: m.y + u.y * c };
+    const g = { x: m.x - u.x * c + n.x * c, y: m.y - u.y * c + n.y * c };
+    const d = { x: m.x - u.x * c - n.x * c, y: m.y - u.y * c - n.y * c };
+    return `<path class="pc-code" d="M ${f3(g.x)} ${f3(g.y)} L ${f3(pointe.x)} ${f3(pointe.y)}
+        L ${f3(d.x)} ${f3(d.y)}"/>`;
+}
+
+/** Ce qu'un objet fait écrire sur la figure, s'il porte un codage. */
+function codageSvg(o) {
+    const c = o && o.codage;
+    if (!c) return '';
+    if (c.type === 'angleDroit') return angleDroitSvg(c.sommet, c.u, c.v);
+    if (c.type === 'mediatrice') {
+        // Les deux moitiés égales ET l'angle droit : la définition complète.
+        return tiretSvg(c.a, c.m) + tiretSvg(c.m, c.b)
+            + angleDroitSvg(c.m, { x: c.b.x - c.a.x, y: c.b.y - c.a.y },
+                { x: -(c.b.y - c.a.y), y: c.b.x - c.a.x });
+    }
+    if (c.type === 'paralleles') return chevronSvg(o.a, o.b) + chevronSvg(c.autre.a, c.autre.b);
+    return '';
+}
+
 /** Le dessin d'une figure : les tracés, puis les points par-dessus. */
 function figureSvg(objets, points, { classe = '', aides = [] } = {}) {
     const cles = new Set(aides.map(cleObjet));
     let out = '';
+    let codes = '';
     (objets || []).forEach(o => {
         const aide = cles.has(cleObjet(o)) ? ' pc-trait--aide' : '';
         if (o.genre === 'cercle') {
@@ -56,11 +137,16 @@ function figureSvg(objets, points, { classe = '', aides = [] } = {}) {
                 r="${o.r.toFixed(3)}" fill="none"/>`;
             return;
         }
-        const bouts = o.genre === 'droite' ? couperAuMonde(o.a, o.b) : [o.a, o.b];
+        const bouts = o.genre === 'droite' ? couperAuMonde(o.a, o.b)
+            : (o.genre === 'demidroite' ? couperDemiDroite(o.a, o.b) : [o.a, o.b]);
         if (!bouts) return;
         out += `<line class="pc-trait${aide}" x1="${bouts[0].x.toFixed(3)}" y1="${bouts[0].y.toFixed(3)}"
             x2="${bouts[1].x.toFixed(3)}" y2="${bouts[1].y.toFixed(3)}"/>`;
+        // Le codage passe APRÈS tous les traits : un petit carré d'angle droit
+        // barré par la droite suivante ne se lit plus.
+        if (!aide) codes += codageSvg(o);
     });
+    out += codes;
     // UN POINT SE MARQUE D'UNE CROIX, PAS D'UNE PASTILLE.
     //
     // Rémy : « les points sont des croix ». C'est la convention du collège, et
@@ -130,6 +216,14 @@ export class ProgrammeConstruction extends BaseGame {
                 .pc-svg { width: 100%; height: clamp(100px, 26vh, 250px); display: block; }
                 .pc-trait { stroke: var(--primary); stroke-width: 0.5; fill: none; stroke-linecap: round; }
                 .pc-trait--aide { stroke: var(--text-muted); stroke-width: 0.3; opacity: .55; }
+                /* LE CODAGE — angle droit, tirets d'égalité, chevrons du
+                   parallélisme. En ROUGE et un peu plus fin que le tracé : il
+                   se lit d'un coup d'oeil sans qu'on le prenne pour un trait
+                   de la figure. C'est la couleur qu'on prend au tableau. */
+                .pc-code {
+                    stroke: var(--danger); stroke-width: 0.55; fill: none;
+                    stroke-linecap: round; stroke-linejoin: round;
+                }
                 /* UN POINT SE MARQUE D'UNE CROIX — Rémy : « les points sont des
                    croix ». Le point est le CROISEMENT des deux traits ; une
                    pastille cacherait justement l'endroit qu'elle désigne. */

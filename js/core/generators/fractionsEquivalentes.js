@@ -132,6 +132,130 @@ export const fracEgaliteGenerator = {
     }
 };
 
+// --- PAR COMBIEN ? ------------------------------------------------------------
+//
+// Rémy : « il faudrait un exercice du style 2/3 = 22/… On demande par combien
+// il faut multiplier ou diviser. Toujours les fractions en colonnes. »
+//
+// C'EST LA MARCHE QUE « L'ÉGALITÉ À COMPLÉTER » ENJAMBE. Devant 2/3 = 22/…,
+// l'élève à qui l'on demande le dénominateur peut répondre par plusieurs
+// chemins, dont un mauvais qui marche souvent : reconnaître une table, ajouter
+// la même différence en haut et en bas, essayer. Lui demander LE FACTEUR le
+// force à faire le seul geste qui compte — regarder ce qui est écrit DES DEUX
+// CÔTÉS de la même ligne (ici les numérateurs, 2 et 22), et voir par combien on
+// passe de l'un à l'autre. Le reste du chapitre en découle.
+//
+// LE TROU RESTE VISIBLE, et c'est nécessaire : sans lui, l'égalité serait
+// entièrement écrite et la question deviendrait une simple division. Avec lui,
+// une seule ligne est lisible — c'est celle-là qu'il faut savoir trouver.
+//
+// ON DEMANDE UN NOMBRE, PAS UN SIGNE. « ×11 » et « ÷11 » ne s'écrivent pas au
+// pavé numérique, et surtout ce n'est pas la question : le sens se LIT (les
+// nombres grandissent ou rapetissent), le facteur se CHERCHE. La consigne dit
+// donc lequel des deux gestes on fait, et l'élève donne le nombre.
+
+export const fracFacteurGenerator = {
+    id: 'frac.facteur',
+    label: 'Par combien multiplie-t-on ?',
+    skills: ['num.frac.equivalentes'],
+    answerKinds: ['numeric'],
+    ecrit: true,
+    fractions: true,
+    params: [
+        {
+            id: 'sens', type: 'select', label: 'Dans quel sens', default: 'agrandir',
+            aide: 'On commence par AGRANDIR — c\'est le geste qu\'on fait pour mettre au même '
+                + 'dénominateur, et c\'est celui dont on se sert tous les jours. Simplifier est '
+                + 'le même raisonnement à l\'envers : les nombres rapetissent, donc on divise.',
+            options: [
+                { value: 'agrandir', label: 'Multiplier seulement' },
+                { value: 'simplifier', label: 'Diviser seulement' },
+                { value: 'les-deux', label: 'Les deux mélangés' }
+            ]
+        },
+        {
+            id: 'trou', type: 'select', label: 'Le côté qu\'on cache', default: 'les-deux',
+            aide: 'Le côté caché décide de la ligne qu\'il faut lire : cacher le dénominateur '
+                + 'oblige à travailler sur les numérateurs, et l\'inverse. Les mélanger empêche '
+                + 'de prendre l\'habitude de ne regarder qu\'en haut.',
+            options: [
+                { value: 'denominateur', label: 'Le dénominateur (on lit les numérateurs)' },
+                { value: 'numerateur', label: 'Le numérateur (on lit les dénominateurs)' },
+                { value: 'les-deux', label: 'L\'un ou l\'autre' }
+            ]
+        },
+        {
+            id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 12, min: 2, max: 30,
+            aide: 'À 12 on reste dans les tables. Au-delà, trouver le facteur devient aussi une '
+                + 'division à poser — c\'est un autre exercice.'
+        },
+        { id: 'maxBase', type: 'number', label: 'Dénominateur de départ maximum', default: 9, min: 2, max: 20 }
+    ],
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        const p = params || {};
+        const tirage = () => tirerEgalite(rng, {
+            sens: p.sens || 'agrandir',
+            trou: p.trou || 'les-deux',
+            maxBase: Number(p.maxBase) || 9,
+            maxFacteur: Number(p.maxFacteur) || 12
+        });
+        // ON ÉCARTE LES ÉGALITÉS OÙ LE FACTEUR EST AUSSI LE NOMBRE CACHÉ.
+        //
+        // « 1/7 = ?/35 » : le numérateur manquant vaut 5, et le facteur aussi.
+        // La question est encore juste, mais elle ne mesure plus rien — l'élève
+        // qui a lu l'ancienne consigne (« complète l'égalité ») tombe sur la
+        // bonne réponse sans avoir fait le geste qu'on demande ici. Cela arrive
+        // dès que la ligne trouée part de 1 ; on retire, on ne corrige pas.
+        let e = tirage();
+        for (let essai = 0; essai < 40 && String(e.reponse) === String(e.facteur); essai++) {
+            e = tirage();
+        }
+
+        // LA LIGNE QU'ON PEUT LIRE : celle dont les deux nombres sont écrits.
+        // C'est elle qui porte la réponse, et le trou est en face.
+        const lisible = e.trou === 'numerateur' ? 'dénominateur' : 'numérateur';
+        const depart = e.trou === 'numerateur' ? e.gauche.d : e.gauche.n;
+        const arrivee = e.visible;
+        const divise = e.sens === 'simplifier';
+        const consigne = divise
+            ? 'Par combien faut-il DIVISER pour passer d\'une fraction à l\'autre ?'
+            : 'Par combien faut-il MULTIPLIER pour passer d\'une fraction à l\'autre ?';
+        const texte = `${e.gauche.n}/${e.gauche.d} = `
+            + (e.trou === 'numerateur' ? `?/${e.droite.d}` : `${e.droite.n}/?`);
+
+        return makeItem({
+            seed: rng.seed, generatorId: 'frac.facteur', skillId: 'num.frac.equivalentes',
+            answerKind: 'numeric',
+            prompt: {
+                text: `${consigne} ${texte}`,
+                papier: `${texte}   ${divise ? '÷' : '×'} …`,
+                html: `<div class="game-question">${consigne}</div>`
+                    + `<div class="frac-egalite">
+                        ${fracHtml(e.gauche.n, e.gauche.d)}
+                        <span class="frac-signe">=</span>
+                        ${fracTrou(e.droite.n, e.droite.d, e.trou)}
+                       </div>`
+            },
+            answer: e.facteur,
+            hints: [
+                `Une seule ligne est écrite des deux côtés : celle ${
+                    lisible === 'numérateur' ? 'du HAUT' : 'du BAS'}. C'est elle qui te le dira.`,
+                `On y passe de ${depart} à ${arrivee}.`,
+                `${depart} ${divise ? '÷' : '×'} ${e.facteur} = ${arrivee}.`
+            ],
+            explanation: `On lit le ${lisible} : on passe de ${depart} à ${arrivee}, `
+                + `donc on ${divise ? 'divise' : 'multiplie'} par ${e.facteur}. `
+                + `L'autre ligne suit le MÊME nombre — c'est ce qui fait que la fraction ne `
+                + `change pas de valeur : ${e.gauche.n}/${e.gauche.d} = ${e.droite.n}/${e.droite.d}.`,
+            // Diviser est le même raisonnement lu à l'envers, et c'est celui
+            // qu'on rate : les nombres rapetissent, l'habitude dit « multiplie ».
+            difficulty: divise ? 3 : 2,
+            meta: { egalite: e, facteur: e.facteur, sens: e.sens, decimal: false }
+        });
+    }
+};
+
 // --- Poser une addition (ou une soustraction) ---------------------------------
 
 // COMBIEN DE QUESTIONS AVANT DE MONTER D'UNE MARCHE.

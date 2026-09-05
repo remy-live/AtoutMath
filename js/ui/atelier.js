@@ -1478,6 +1478,12 @@ export async function ouvrirVoletAtelier(quoi, params) {
     // du cadre. On greffe donc un relais sur `next()`, ici et nulle part
     // ailleurs : ce code ne s'exécute que dans un volet de l'Atelier, jamais
     // dans l'application que voit un élève.
+    // ET SON RUNNER — Rémy : « synchronise la barre de debug et l'Atelier ».
+    // Même piège, même remède : la page mère ne peut pas atteindre le module
+    // `core/state.js` du cadre (elle aurait le sien, toujours vide), donc le
+    // volet pose la lecture sur `window`. Voir ui/cadreAtelier.js, qui la lit.
+    const { state: etatDuVolet } = await import('../core/state.js');
+    window.__runnerAtelier = () => etatDuVolet.activeSequenceRunner || null;
     const { ItemSession } = await import('../core/itemSession.js');
     if (!ItemSession.prototype.__relaisAtelier) {
         ItemSession.prototype.__relaisAtelier = true;

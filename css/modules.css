@@ -1366,6 +1366,31 @@
 .fraction-num { padding: 0 .35em; }
 .fraction-den { padding: 0 .35em; border-top: 3px solid currentColor; }
 
+/* UNE ÉGALITÉ DE FRACTIONS, ÉCRITE COMME AU TABLEAU.
+   Rémy : « toujours les fractions en colonnes ». Elles l'étaient déjà — c'est
+   ce que fait `.fraction` — mais l'égalité elle-même n'avait AUCUN style : elle
+   sortait à la taille du texte courant, deux fois plus petite que la consigne
+   qui la surmonte. Mesuré sur « 6/5 = 42/? » : la question occupait deux lignes
+   en gros caractères et la question POSÉE tenait dans un centimètre.
+   C'est elle qu'on lit, donc c'est elle qui doit être grande. */
+.frac-egalite {
+    display: flex; align-items: center; justify-content: center;
+    gap: clamp(10px, 3vw, 26px);
+    font-size: clamp(1.6rem, 7vw, 3.2rem);
+    margin: clamp(10px, 3vh, 26px) 0;
+    color: var(--text-main);
+}
+.frac-signe { font-weight: 800; }
+/* LE TROU EST UNE CASE, PAS UN POINT D'INTERROGATION PERDU. Il montre où
+   l'on écrirait, et il a la largeur d'un nombre à deux chiffres — sinon
+   l'égalité se déforme selon que le nombre caché en fait un ou deux. */
+.frac-trou {
+    display: inline-block; min-width: 1.4em;
+    color: var(--primary); font-weight: 800;
+}
+.fraction--trou .fraction-num,
+.fraction--trou .fraction-den { min-width: 1.4em; }
+
 /* UNE FRACTION DANS UNE BULLE tient sur deux étages : elle se règle sur le
    diamètre du rond, pas sur le nombre de caractères. Les classes de longueur
    posaient 1,7 rem quelle que soit la place — sur un téléphone, « 17/10 »

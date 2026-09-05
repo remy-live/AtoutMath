@@ -122,6 +122,55 @@ test('les étapes NOMMENT le facteur et la réponse', () => {
     });
 });
 
+// --- PAR COMBIEN ? -----------------------------------------------------------
+
+test('PAR COMBIEN — la réponse est le FACTEUR, pas le nombre manquant', async () => {
+    // Rémy : « il faudrait un exercice du style 2/3 = 22/… On demande par
+    // combien il faut multiplier ou diviser. »
+    //
+    // C'est la marche que « L'Égalité à Compléter » enjambe : à qui l'on
+    // demande le dénominateur, un élève peut arriver au bon nombre en ajoutant
+    // la même différence en haut et en bas, ou en essayant les tables. Le
+    // facteur, lui, ne s'obtient que d'une façon.
+    const { fracFacteurGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
+    for (let i = 0; i < 120; i++) {
+        const it = G.generate({ sens: 'les-deux' }, { rng: makeRng('pc' + i), index: i });
+        const e = it.meta.egalite;
+        assert.equal(it.answer, e.facteur);
+        // La réponse n'est JAMAIS le nombre manquant : ce serait le même
+        // exercice que le voisin, avec une consigne différente.
+        assert.notEqual(String(it.answer), String(e.reponse),
+            `${it.prompt.text} : le facteur vaut le nombre caché`);
+        assert.ok(e.facteur >= 2, 'multiplier par 1 ne change rien');
+    }
+});
+
+test('LA CONSIGNE DIT LE GESTE, ET LA FIGURE GARDE SON TROU', async () => {
+    const { fracFacteurGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
+    const mult = G.generate({ sens: 'agrandir' }, { rng: makeRng('m'), index: 0 });
+    assert.match(mult.prompt.text, /MULTIPLIER/);
+    const div = G.generate({ sens: 'simplifier' }, { rng: makeRng('d'), index: 0 });
+    assert.match(div.prompt.text, /DIVISER/);
+    // LE TROU RESTE. Sans lui l'égalité serait écrite en entier et la question
+    // deviendrait une division ordinaire.
+    assert.match(mult.prompt.html, /frac-trou/);
+    // « TOUJOURS LES FRACTIONS EN COLONNES » : c'est la consigne de Rémy, et
+    // c'est ce que fait `fraction-num` / `fraction-den`.
+    assert.match(mult.prompt.html, /fraction-num/);
+    assert.match(mult.prompt.html, /fraction-den/);
+});
+
+test('L\'INDICE MONTRE LA LIGNE À LIRE, il ne donne pas le résultat d\'emblée', async () => {
+    const { fracFacteurGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
+    for (let i = 0; i < 30; i++) {
+        const it = G.generate({ sens: 'agrandir' }, { rng: makeRng('h' + i), index: i });
+        assert.equal(it.hints.length, 3);
+        // Le premier indice ne contient pas la réponse : il dit OÙ regarder.
+        assert.doesNotMatch(it.hints[0], new RegExp(`\\b${it.answer}\\b`));
+        assert.match(it.hints[0], /HAUT|BAS/);
+    }
+});
+
 // --- La progression de l'addition --------------------------------------------
 
 test('les quatre marches existent et sont nommées', () => {

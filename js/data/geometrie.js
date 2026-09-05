@@ -155,12 +155,14 @@ export const geometrieExercises = [
                 default: ['points', 'traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'],
                 aide: 'Coche ce que la classe a déjà vu : la palette suit, et les niveaux dont '
                     + 'la solution réclamerait un bloc absent disparaissent — un exercice sans '
-                    + 'réponse ne se propose pas. Avec les seuls SEGMENTS ET DROITES il reste '
-                    + 'les deux premiers niveaux, ce qui est exactement ce qu\'on donne en '
-                    + 'début de sixième.',
+                    + 'réponse ne se propose pas. Avec les seuls SEGMENTS, DROITES ET '
+                    + 'DEMI-DROITES il reste les premiers niveaux, ce qui est exactement ce '
+                    + 'qu\'on donne en début de sixième ; en y ajoutant les perpendiculaires '
+                    + 'et les parallèles on a le programme facile en entier, sans un seul '
+                    + 'trait de construction.',
                 options: [
                     { value: 'points', label: 'Placer des points' },
-                    { value: 'traits', label: 'Segments et droites' },
+                    { value: 'traits', label: 'Segments, droites et demi-droites' },
                     { value: 'cercles', label: 'Cercles' },
                     { value: 'milieux', label: 'Milieu et médiatrice' },
                     { value: 'perpendiculaires', label: 'Perpendiculaires' },
@@ -183,9 +185,9 @@ export const geometrieExercises = [
                 options: [
                     { value: 0, label: '1 — Un point', court: '1' },
                     { value: 3, label: '4 — Un segment', court: '4' },
-                    { value: 5, label: '6 — Un cercle', court: '6' },
-                    { value: 8, label: '9 — Une médiatrice', court: '9' },
-                    { value: 12, label: '13 — Un triangle équilatéral', court: '13' }
+                    { value: 4, label: '5 — Une demi-droite', court: '5' },
+                    { value: 7, label: '8 — Un cercle', court: '8' },
+                    { value: 10, label: '11 — Deux perpendiculaires', court: '11' }
                 ]
             }
         ],
@@ -202,8 +204,10 @@ export const geometrieExercises = [
             + 'prend pas le milieu d\'un segment qui n\'existe pas. Un bloc dont il manque un '
             + 'objet ne s\'exécute pas et te dit lequel. Il y a souvent PLUSIEURS programmes '
             + 'justes pour la même figure : c\'est le dessin obtenu qui compte, pas la façon de '
-            + 'l\'écrire. Et tes traits de construction ont le droit de rester — les deux '
-            + 'cercles qui donnent un triangle équilatéral sont la preuve de ton travail.'
+            + 'l\'écrire. Et la NOTATION est la troisième chose à lire sur la figure : le '
+            + 'petit carré rouge dit l\'angle droit, les tirets disent deux longueurs égales, '
+            + 'les chevrons disent que deux droites sont parallèles. Ce qui n\'est pas codé '
+            + 'n\'est pas su : c\'est la règle du chapitre, et le modèle la respecte.'
     },
 
     {

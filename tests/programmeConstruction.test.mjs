@@ -21,11 +21,18 @@ import {
 
 const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-test('LES DOUZE NIVEAUX SE CONSTRUISENT, ET LEUR MODÈLE EST JUSTE', () => {
+test('LES TREIZE NIVEAUX SE CONSTRUISENT, ET LEUR MODÈLE EST JUSTE', () => {
     // LE MODÈLE EST LE SUJET : on n'écrit pas la figure attendue à la main, on
     // exécute un programme et ce qu'il trace devient la cible. Si le modèle ne
     // construit pas ce qu'il annonce, c'est ici qu'on l'apprend.
-    assert.equal(NIVEAUX.length, 15);
+    // TROIS NIVEAUX SONT PARTIS — le triangle équilatéral, le losange et le
+    // cercle circonscrit. Rémy : « retire le losange et le triangle et le
+    // cercle circonscrit. En fait on veut juste un programme facile avec les
+    // parallèles perpendiculaires, droite, segment, demi-droite. » Ils étaient
+    // les seuls à porter des traits de construction dans leur modèle, donc les
+    // seuls à montrer la MÉTHODE avant qu'on l'ait écrite. Une demi-droite les
+    // remplace : c'est la troisième notation du chapitre, et elle manquait.
+    assert.equal(NIVEAUX.length, 13);
     NIVEAUX.forEach((n, i) => {
         const p = preparerNiveau(i);
         assert.ok(p, `le niveau ${n.id} ne se prépare pas`);
@@ -53,8 +60,14 @@ test('LA PROGRESSION N\'INTRODUIT PAS DEUX MOTS À LA FOIS', () => {
             `le niveau ${n.id} introduit ${neuves.length} familles nouvelles : ${neuves.join(', ')}`);
         f.forEach(x => vues.add(x));
     });
-    // Et à la fin, toutes les familles ont servi : aucune n'est décorative.
-    assert.deepEqual([...vues].sort(), [...ORDRE_FAMILLES].sort());
+    // Et à la fin, toutes les familles ont servi — SAUF UNE, et il faut la
+    // nommer plutôt que de la laisser passer : « intersections » n'a plus de
+    // niveau à elle depuis que le triangle équilatéral, le losange et le cercle
+    // circonscrit sont partis. Le bloc reste offert, parce qu'il sert dès qu'on
+    // trace deux cercles et qu'on veut nommer leur croisement ; il n'est
+    // simplement plus EXIGÉ par aucune figure du programme facile.
+    assert.deepEqual([...vues].sort(),
+        ORDRE_FAMILLES.filter(f => f !== 'intersections').sort());
 });
 
 test('LES RÉGLAGES OUVRENT ET FERMENT VRAIMENT DES NIVEAUX', () => {
@@ -62,7 +75,9 @@ test('LES RÉGLAGES OUVRENT ET FERMENT VRAIMENT DES NIVEAUX', () => {
     // perpendiculaires, cercles) ». Cocher une famille de moins doit retirer
     // les niveaux qui en dépendent, et EUX SEULS.
     assert.deepEqual(niveauxDisponibles(['points']), [0, 1, 2]);
-    assert.deepEqual(niveauxDisponibles(['points', 'traits']), [0, 1, 2, 3, 4]);
+    // Segments, droites ET demi-droites : les six premiers niveaux, c'est-à-dire
+    // le début de sixième en entier.
+    assert.deepEqual(niveauxDisponibles(['points', 'traits']), [0, 1, 2, 3, 4, 5]);
     const sansCercle = niveauxDisponibles(ORDRE_FAMILLES.filter(f => f !== 'cercles'));
     NIVEAUX.forEach((n, i) => {
         const aBesoin = preparerNiveau(i).familles.includes('cercles');
@@ -71,7 +86,7 @@ test('LES RÉGLAGES OUVRENT ET FERMENT VRAIMENT DES NIVEAUX', () => {
     // Sans rien de coché, on ne bride rien : c'est le réglage par défaut.
     assert.equal(niveauxDisponibles([]).length, NIVEAUX.length);
     assert.equal(operationsDe([]).length, Object.keys(OPERATIONS).length);
-    assert.equal(operationsDe(['traits']).map(o => o.id).join(','), 'segment,droite');
+    assert.equal(operationsDe(['traits']).map(o => o.id).join(','), 'segment,droite,demiDroite');
     assert.equal(operationsDe(['points']).map(o => o.id).join(','), 'points');
 });
 
@@ -101,64 +116,63 @@ test('L\'ORDRE DES TRACÉS INDÉPENDANTS EST LIBRE', () => {
     assert.ok(comparer(autre.objets, n.attendus).ok);
 });
 
-test('DEUX CERCLES SE COUPENT EN DEUX POINTS, ET IL FAUT CHOISIR LE BON', () => {
+test('DEUX CERCLES SE COUPENT EN DEUX POINTS, ET ON LES CRÉE TOUS LES DEUX', () => {
     // Un énoncé honnête dit « l'UN des deux points d'intersection », et l'on
     // crée donc les deux : faire choisir avant de voir serait un pile ou face.
+    // Le point non retenu reste un point de construction, comme sur le papier.
     //
-    // MAIS L'EXERCICE MONTRE UNE FIGURE, et les deux sommets n'en donnent pas
-    // la même : l'un pointe au-dessus de [AB], l'autre au-dessous. Les deux
-    // triangles sont équilatéraux — c'est le test qui l'établit — et un seul
-    // est celui du dessin. Lire de quel côté est le sommet fait donc partie du
-    // travail, ce qui est exactement ce qu'on demande à un élève qui reproduit
-    // une figure. Le point non retenu reste un point de construction, comme sur
-    // le papier.
-    const n = preparerNiveau('equilateral');
+    // CE TEST NE PASSE PLUS PAR UN NIVEAU DU CATALOGUE. Il s'appuyait sur le
+    // triangle équilatéral, que Rémy a fait retirer avec le losange et le
+    // cercle circonscrit ; le MÉCANISME, lui, reste — le bloc « point
+    // d'intersection » est toujours offert dès qu'on trace deux cercles. On
+    // l'éprouve donc sur une figure écrite ici, ce qui est d'ailleurs plus
+    // honnête : c'est le noyau qu'on mesure, pas la liste des niveaux.
+    const atlas = { A: { x: 30, y: 55 }, B: { x: 70, y: 55 } };
     const debut = executer([
         { op: 'points', args: ['A', 'B'] },
         { op: 'cercle', args: ['A', 'B'] },
         { op: 'cercle', args: ['B', 'A'] }
-    ], n.atlas);
+    ], atlas);
     const [c1, c2] = debut.objets.map(cleObjet);
     const avecInter = executer([
         { op: 'points', args: ['A', 'B'] },
         { op: 'cercle', args: ['A', 'B'] },
         { op: 'cercle', args: ['B', 'A'] },
         { op: 'intersection', args: [c1, c2] }
-    ], n.atlas);
-    const nouveaux = Object.keys(avecInter.points).filter(k => !(k in n.atlas));
+    ], atlas);
+    const nouveaux = Object.keys(avecInter.points).filter(k => !(k in atlas));
     assert.equal(nouveaux.length, 2, 'deux cercles sécants doivent donner deux points');
-
-    const reussis = nouveaux.filter(sommet => {
+    // Et les deux donnent bien un triangle équilatéral : c'est la géométrie qui
+    // est en jeu, pas un hasard de nommage.
+    nouveaux.forEach(sommet => {
         const p = avecInter.points;
-        // Les DEUX sont équilatéraux : c'est bien la géométrie qui est en jeu,
-        // pas un hasard de nommage.
         const cotes = [d(p.A, p.B), d(p.B, p[sommet]), d(p[sommet], p.A)];
         assert.ok(Math.max(...cotes) - Math.min(...cotes) < 1e-9,
             `le sommet ${sommet} ne donne pas un triangle équilatéral`);
-        const complet = executer([
-            { op: 'points', args: ['A', 'B'] },
-            { op: 'cercle', args: ['A', 'B'] },
-            { op: 'cercle', args: ['B', 'A'] },
-            { op: 'intersection', args: [c1, c2] },
-            { op: 'segment', args: ['A', 'B'] },
-            { op: 'segment', args: ['B', sommet] },
-            { op: 'segment', args: [sommet, 'A'] }
-        ], n.atlas);
-        return comparer(complet.objets, n.attendus).ok;
     });
-    assert.equal(reussis.length, 1,
-        'un seul des deux sommets doit rendre LA figure montrée');
+    // Les deux sommets sont de part et d'autre de [AB] : lire de quel côté est
+    // celui du dessin fait partie du travail.
+    const [s1, s2] = nouveaux.map(k => avecInter.points[k]);
+    assert.ok((s1.y - 55) * (s2.y - 55) < 0, 'les deux sommets doivent s\'opposer');
 });
 
-test('LES TRAITS DE CONSTRUCTION SONT TOLÉRÉS, LES TRACÉS EXIGÉS NE LE SONT PAS', () => {
-    // « Laisse tes traits de construction apparents » : les deux cercles qui
-    // donnent le triangle équilatéral sont la preuve du travail, pas une faute.
-    const n = preparerNiveau('equilateral');
-    assert.ok(n.objets.length > n.attendus.length, 'le modèle devrait tracer des aides');
-    assert.ok(comparer(n.objets, n.attendus).ok, 'les aides ne doivent pas gêner');
+test('LES TRAITS EN TROP SONT TOLÉRÉS, LES TRACÉS EXIGÉS NE LE SONT PAS', () => {
+    // « Laisse tes traits de construction apparents » : un tracé que l'élève a
+    // ajouté pour s'aider n'est pas une faute — c'est le dessin OBTENU qu'on
+    // juge, pas le chemin pris. Plus aucun niveau ne porte de traits d'aide
+    // depuis le retrait des trois constructions au compas ; la tolérance, elle,
+    // reste, et c'est l'élève qui s'en sert maintenant.
+    const t = preparerNiveau('triangle');
+    const enPlus = executer([
+        { op: 'points', args: ['A', 'B', 'C'] },
+        { op: 'segment', args: ['A', 'B'] },
+        { op: 'segment', args: ['B', 'C'] },
+        { op: 'segment', args: ['C', 'A'] },
+        { op: 'droite', args: ['A', 'B'] }
+    ], t.atlas);
+    assert.ok(comparer(enPlus.objets, t.attendus).ok, 'un tracé en trop ne doit pas gêner');
 
     // Mais il manque un côté : ce n'est pas la figure demandée.
-    const t = preparerNiveau('triangle');
     const partiel = executer([
         { op: 'points', args: ['A', 'B', 'C'] },
         { op: 'segment', args: ['A', 'B'] },
@@ -327,27 +341,140 @@ test('« NON ALIGNÉS » SE SIGNALE SANS SE SANCTIONNER', () => {
 
 test('UN PROGRAMME ENTIER, TAPÉ À LA MAIN, CONSTRUIT LA FIGURE', () => {
     // Le vrai essai : une rédaction libre, avec ses accents, ses crochets
-    // oubliés, et le nom que l'élève choisit pour le centre.
-    const n = preparerNiveau('circonscrit');
+    // oubliés, et les tournures que chacun écrit à sa façon.
+    const n = preparerNiveau('hauteur');
     const texte = [
-        '1. Place 3 points A, B et C non alignés',
+        '1. Place un point A, un point B et un point C non alignés',
         'Trace le segment [AB]',
         'trace le segment BC',
-        'Trace le segment [CA]',
-        'Trace la médiatrice de [AB]',
-        'trace la mediatrice de BC',
-        'Place le point d\'intersection O de la médiatrice de [AB] et de la médiatrice de [BC]',
-        'Trace le cercle de centre O passant par A'
+        'Joins C et A',
+        'Trace la droite perpendiculaire à la droite (AB) qui passe par C'
     ].join('\n');
     const lu = lireProgramme(texte, n.atlas);
     lu.lignes.forEach(l => assert.ok(l.vide || l.ok,
         `ligne refusée : ${texte.split('\n')[l.i]} — ${l.dit}`));
     const r = executer(lu.instructions, n.atlas);
     assert.equal(r.erreur, null);
-    // Le point porte le nom que l'élève lui a donné, pas celui qu'on aurait
-    // inventé : « le centre du cercle circonscrit, je l'appelle O ».
-    assert.ok('O' in r.points);
     assert.ok(comparer(r.objets, n.attendus, r.points, n.exiges).ok);
+});
+
+test('« PLACE UN POINT A ET UN POINT B » EST COMPRIS', () => {
+    // Rémy, capture à l'appui : « ça devrait être compris, ça ». C'est la
+    // tournure la plus naturelle — on énumère les points un par un, chacun avec
+    // son article — et l'application la refusait, parce que la grammaire
+    // n'attendait qu'une seule occurrence du mot « point ».
+    const attendu = { op: 'points', args: ['A', 'B'], nonAlignes: false };
+    [
+        'Place un point A et un point B',
+        'place un point A, un point B',
+        'Place un point A et le point B',
+        'Place un point A et un autre point B'
+    ].forEach(phrase => {
+        const r = lireInstruction(phrase);
+        assert.deepEqual(r.ins, attendu, `${phrase} → ${r.dit}`);
+    });
+    // Et l'ancienne tournure marche toujours, avec son contrôle du compte.
+    assert.deepEqual(lireInstruction('Place 2 points A et B').ins, attendu);
+    assert.ok(lireInstruction('Place 3 points A et B').dit,
+        'annoncer trois points et en nommer deux reste une faute');
+    assert.deepEqual(lireInstruction('place un point A, un point B et un point C non alignés').ins,
+        { op: 'points', args: ['A', 'B', 'C'], nonAlignes: true });
+});
+
+test('PLUSIEURS FORMULATIONS POUR LE MÊME TRACÉ', () => {
+    // Rémy : « n'hésite pas à programmer plusieurs formulations ». On n'écrit
+    // pas tous la même phrase, et refuser « Trace la droite passant par A et
+    // B » au motif qu'on attendait « (AB) » corrige du français, pas de la
+    // géométrie. Ce qu'on exige reste entier : QUEL objet, à partir de QUELS
+    // points.
+    const cas = [
+        [['Trace le segment [AB]', 'Trace le segment d\'extrémités A et B',
+            'Trace le segment qui relie A et B', 'Joins A et B', 'Relie A et B'],
+        { op: 'segment', args: ['A', 'B'] }],
+        [['Trace la droite (AB)', 'Trace la droite passant par A et B',
+            'Trace la droite qui passe par A et B'],
+        { op: 'droite', args: ['A', 'B'] }],
+        [['Trace la demi-droite [AB)', 'Trace la demi-droite d\'origine A passant par B',
+            'Trace la demi droite [AB)'],
+        { op: 'demiDroite', args: ['A', 'B'] }],
+        [['Trace la perpendiculaire à (AB) passant par C',
+            'Trace la droite perpendiculaire à la droite (AB) qui passe par C',
+            'Trace la perpendiculaire à (AB) en C'],
+        { op: 'perpendiculaire', args: ['A', 'B', 'C'] }],
+        [['Trace la parallèle à (AB) passant par C',
+            'Trace la droite parallèle à (AB) qui passe par C'],
+        { op: 'parallele', args: ['A', 'B', 'C'] }]
+    ];
+    cas.forEach(([phrases, attendu]) => {
+        phrases.forEach(ph => {
+            const r = lireInstruction(ph);
+            assert.deepEqual(r.ins, attendu, `${ph} → ${r.dit}`);
+        });
+    });
+    // ON NE DEVINE TOUJOURS PAS : une phrase incomplète est refusée avec un
+    // exemple, jamais interprétée au plus proche.
+    assert.ok(lireInstruction('Trace la perpendiculaire à (AB)').dit);
+    assert.ok(lireInstruction('Trace la demi-droite').dit);
+});
+
+test('LA DEMI-DROITE N\'EST NI UNE DROITE NI UN SEGMENT', () => {
+    // [AB) et (AB) se superposent sur la moitié de leur longueur : les
+    // confondre ferait accepter l'une pour l'autre, c'est-à-dire noter juste
+    // une figure qui n'est pas celle du modèle.
+    const atlas = { A: { x: 25, y: 45 }, B: { x: 58, y: 32 } };
+    const prog = (op) => executer([{ op: 'points', args: ['A', 'B'] },
+        { op, args: ['A', 'B'] }], atlas).objets;
+    const [dd] = prog('demiDroite');
+    const [dr] = prog('droite');
+    const [sg] = prog('segment');
+    assert.notEqual(cleObjet(dd), cleObjet(dr));
+    assert.notEqual(cleObjet(dd), cleObjet(sg));
+    // Elle est définie par son ORIGINE et sa DIRECTION : [AB) et [AC) sont la
+    // même demi-droite quand C est plus loin sur le même rayon.
+    const loin = executer([
+        { op: 'points', args: ['A', 'B', 'C'] },
+        { op: 'demiDroite', args: ['A', 'C'] }
+    ], { ...atlas, C: { x: 25 + (58 - 25) * 2, y: 45 + (32 - 45) * 2 } }).objets;
+    assert.equal(cleObjet(loin[0]), cleObjet(dd));
+    // Et le niveau qui la travaille se valide lui-même.
+    const n = preparerNiveau('demi-droite');
+    assert.ok(comparer(n.objets, n.attendus, n.points, n.exiges).ok);
+});
+
+test('LA FIGURE EST CODÉE — angle droit, égalités, parallèles', () => {
+    // Rémy, deux fois dans la même passe : « n'oublie pas de coder s'il y a une
+    // médiatrice », « là il faut coder ». Ce qui n'est pas codé n'est pas su :
+    // un trait qui traverse un segment ne dit pas qu'il le coupe en son milieu
+    // ni qu'il lui est perpendiculaire.
+    const med = preparerNiveau('mediatrice').objets.find(o => o.codage);
+    assert.ok(med, 'la médiatrice doit porter son codage');
+    assert.equal(med.codage.type, 'mediatrice');
+    // Le milieu du segment, et les deux extrémités : de quoi tracer les deux
+    // tirets d'égalité ET le petit carré.
+    assert.ok(Math.abs(med.codage.m.x - (med.codage.a.x + med.codage.b.x) / 2) < 1e-9);
+
+    const perp = preparerNiveau('perpendiculaire').objets.find(o => o.codage);
+    assert.equal(perp.codage.type, 'angleDroit');
+    // Le sommet du petit carré est le PIED de la perpendiculaire : il est sur
+    // les deux droites à la fois.
+    const { sommet, u, v } = perp.codage;
+    assert.ok(Math.abs(u.x * v.x + u.y * v.y) < 1e-9, 'les deux directions sont perpendiculaires');
+    const p = preparerNiveau('perpendiculaire').points;
+    const aire = (sommet.x - p.A.x) * (p.B.y - p.A.y) - (sommet.y - p.A.y) * (p.B.x - p.A.x);
+    assert.ok(Math.abs(aire) < 1e-6, 'le pied doit être sur (AB)');
+
+    const par = preparerNiveau('parallele').objets.find(o => o.codage);
+    assert.equal(par.codage.type, 'paralleles');
+    assert.ok(par.codage.autre, 'les chevrons se posent sur les DEUX droites');
+
+    // ET AUCUN NIVEAU NE MONTRE PLUS SES TRAITS DE CONSTRUCTION. Rémy : « on ne
+    // veut pas la construction, on veut juste ce que l'on a. »
+    NIVEAUX.forEach((n, i) => {
+        assert.ok(!n.modele.some(x => x.aide), `${n.id} montre encore une aide`);
+        const p2 = preparerNiveau(i);
+        assert.equal(p2.objets.length, p2.attendus.length,
+            `${n.id} trace plus que ce qu'il demande`);
+    });
 });
 
 test('LE NUMÉRO DE LIGNE N\'EST PAS DE LA GÉOMÉTRIE', () => {
