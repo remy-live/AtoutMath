@@ -863,7 +863,26 @@ export function composerBlocs(exos, opts, mesurer) {
             // texte, et c'est LUI qu'on remplit — la réponse ne va donc ni au
             // bout de la ligne ni sur des pointillés en dessous.
             const tableau = q.tableau ? mesurerTableau(q.tableau, texteW, o, mes) : null;
-            const memeLigne = !trou && !choix && !tableau && lignes.length === 1
+            // LA PLACE DEMANDÉE L'EMPORTE SUR LA PLACE DISPONIBLE.
+            //
+            // Rémy, sur la fiche des grandeurs composées : « pourquoi tu mets
+            // qqs pointillés pour la première question ? il faut au moins une
+            // ligne de pointillés en plus. »
+            //
+            // Ce qui se passait : quand l'énoncé tient sur UNE ligne et qu'il
+            // reste 11 mm derrière, la réponse se met au bout de cette ligne —
+            // une trentaine de millimètres de pointillés, et rien dessous. La
+            // règle est bonne pour un calcul mental (« 7 × 8 = ..... »), elle
+            // est fausse dès que le professeur a demandé de la place pour
+            // RÉDIGER : sur la même feuille, une question courte recevait un
+            // bout de ligne et la suivante, plus longue, deux lignes pleines.
+            // La place à écrire dépendait de la longueur de la QUESTION, ce qui
+            // n'a aucun sens — elle dépend de ce qu'on attend de la RÉPONSE.
+            //
+            // Dès que `lignesReponse` est demandé, on descend donc toujours
+            // sous l'énoncé. Sans réglage, rien ne change.
+            const placeDemandee = Math.round(Number(o.lignesReponse) || 0) > 0;
+            const memeLigne = !placeDemandee && !trou && !choix && !tableau && lignes.length === 1
                 && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= o.repMin;
             // LES FRACTIONS S'ÉCRIVENT EN COLONNE, comme au tableau : le
             // numérateur au-dessus du trait, le dénominateur dessous. Il leur

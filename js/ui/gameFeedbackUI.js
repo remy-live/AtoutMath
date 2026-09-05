@@ -50,6 +50,44 @@ export function initGameFeedbackUI() {
 
 const ICON_OK_SM = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
 
+/**
+ * LE HOCHEMENT DE TÊTE SUR CE QU'ON VIENT DE RÉUSSIR — et il dépend de la
+ * taille de la cible.
+ *
+ * Rémy, sur « L'Égalité à Compléter » : « quand on met la bonne réponse,
+ * l'image grossit et redevient normale ». Mesuré au navigateur : la scène
+ * passait de 1036 x 820 à 1140 x 902 pendant quatorze images, puis revenait.
+ * C'était `element.style.transform = 'scale(1.1)'` posé en dur et retiré
+ * 200 ms plus tard, SANS transition : deux sauts, pas une animation.
+ *
+ * Le geste était pensé pour une petite cible — la carte de QCM qu'on vient de
+ * toucher, le champ qu'on vient de remplir —, et là il est juste : il DÉSIGNE
+ * ce qui a été validé. Mais deux activités passent leur scène entière
+ * (`fractionsBandes`, `traceNotation`), et gonfler de 10 % un dessin de mille
+ * pixels déplace tout ce que l'élève regarde, au moment précis où il veut le
+ * regarder.
+ *
+ * On garde donc le gonflement pour ce qu'on peut désigner d'un coup d'œil, et
+ * l'on entoure le reste d'un halo — qui se voit à n'importe quelle taille et
+ * ne bouge rien. Le seuil est en PIXELS et non en proportion : ce qui compte
+ * est le déplacement que l'œil subit, pas le rapport de tailles.
+ */
+const GRANDE_CIBLE = 320;
+
+function marquerReussi(el) {
+    let boite;
+    try { boite = el.getBoundingClientRect(); } catch (e) { boite = null; }
+    const grande = !boite || Math.max(boite.width, boite.height) > GRANDE_CIBLE;
+    const classe = grande ? 'fb-reussi-halo' : 'fb-reussi';
+    // On retire d'abord : deux bonnes réponses de suite sur le même élément
+    // (une cascade de fractions, un pavé) ne relanceraient pas l'animation,
+    // et la seconde réussite passerait inaperçue.
+    el.classList.remove('fb-reussi', 'fb-reussi-halo');
+    void el.offsetWidth;
+    el.classList.add(classe);
+    setTimeout(() => el.classList.remove(classe), 700);
+}
+
 function showSuccess(d, done) {
     const msg = SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)];
     const points = d.points ? `<span class="fb-toast-points">+${d.points}</span>` : '';
@@ -65,10 +103,7 @@ function showSuccess(d, done) {
     host.appendChild(card);
     current = card;
 
-    if (d.element) {
-        d.element.style.transform = 'scale(1.1)';
-        setTimeout(() => { d.element.style.transform = ''; }, 200);
-    }
+    if (d.element) marquerReussi(d.element);
     setTimeout(() => { close(card); done(); }, 1200);
 }
 

@@ -68,6 +68,35 @@
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* LE HOCHEMENT DE TÊTE SUR CE QU'ON VIENT DE RÉUSSIR.
+   Rémy : « quand on met la bonne réponse pour l'égalité à compléter, l'image
+   grossit et redevient normale. » Mesuré : la scène passait de 1036 x 820 à
+   1140 x 902 pendant quatorze images, puis revenait — un scale(1.1) posé en
+   style en ligne et retiré 200 ms plus tard, SANS transition. Ce n'était pas
+   une animation, c'était deux sauts.
+   Deux réponses, selon la taille, parce qu'un même geste ne convient pas aux
+   deux : une petite cible (une carte de QCM, un champ) se gonfle un peu — on
+   voit ce qu'on a touché ; un GRAND dessin ne se gonfle pas du tout, il
+   s'entoure d'un halo. Grossir de 10 % une figure de mille pixels déplace tout
+   ce que l'élève regarde, à l'instant précis où il veut le regarder. */
+.fb-reussi { animation: fbReussi .34s cubic-bezier(.175, .885, .32, 1.275); }
+@keyframes fbReussi {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.07); }
+    100% { transform: scale(1); }
+}
+.fb-reussi-halo { animation: fbReussiHalo .55s ease-out; border-radius: 12px; }
+@keyframes fbReussiHalo {
+    0%   { box-shadow: 0 0 0 0 rgba(22, 163, 74, .0); }
+    30%  { box-shadow: 0 0 0 6px rgba(22, 163, 74, .28); }
+    100% { box-shadow: 0 0 0 14px rgba(22, 163, 74, 0); }
+}
+/* On ne fait sauter personne qui a demandé qu'on ne le fasse pas. */
+@media (prefers-reduced-motion: reduce) {
+    .fb-reussi { animation: none; }
+    .fb-reussi-halo { animation: fbReussiHalo .55s ease-out; }
+}
+
 @keyframes fbRise {
     from { opacity: 0; transform: translateX(-50%) translateY(18px); }
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }

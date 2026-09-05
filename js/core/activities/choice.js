@@ -606,17 +606,8 @@ export function wireHint(container, session) {
 export function wireShowMe(container, session, opts = {}) {
     const btn = container.querySelector('[data-showme]');
     if (!btn) return;
-    btn.onclick = () => {
-        const item = session.current;
-        if (!item || session.locked) return;
-        btn.disabled = true;
-        // Révéler vaut tous les indices : en entraînement, les points de la
-        // question s'en ressentent ; en apprentissage (pénalité nulle), non.
-        session.hintIndex = Math.max(session.hintIndex, (item.hints || []).length, 2);
-        state.noteHintUsed();
-        const msg = opts.message
-            ? opts.message(item)
-            : `La réponse est « ${answerLabelOf(item)} ». À toi de la jouer !`;
+
+    const dire = (msg, detail) => {
         if (opts.enPage) {
             let box = container.querySelector('.hint-text');
             if (!box) {
@@ -628,11 +619,101 @@ export function wireShowMe(container, session, opts = {}) {
             box.textContent = msg;
         } else {
             document.dispatchEvent(new CustomEvent('game_feedback', {
-                detail: { kind: 'hint', msg, misconception: item.explanation || null }
+                detail: { kind: 'hint', msg, misconception: detail || null }
             }));
         }
+    };
+
+    // DEUX APPUIS, ET LE PREMIER N'EST PAS LA RÉPONSE.
+    //
+    // Rémy : « le problème du montre-moi est qu'il donne toujours la réponse. »
+    //
+    // Il a raison, et le défaut était dans le principe même du bouton : un
+    // élève bloqué et un élève pressé appuyaient sur le même bouton et
+    // recevaient la même chose — le résultat, tout de suite. Rien n'était
+    // demandé entre les deux, donc le chemin le plus court pour finir
+    // l'exercice passait par ce bouton, à chaque question.
+    //
+    // Le premier appui montre donc COMMENT ON FAIT sur cette question-là — le
+    // dernier indice, celui que le générateur a écrit comme l'aide la plus
+    // explicite avant le résultat. Le bouton change alors de nom et dit
+    // franchement ce qu'il fera ensuite : « Donne-moi la réponse ». Rien n'est
+    // retiré à personne — on est en mode apprentissage, la réponse reste à un
+    // appui — mais elle devient un choix, et non le comportement par défaut.
+    //
+    // Le module de l'aide (`ui/aideExercice.js`) dit déjà la même chose de son
+    // exemple : « un exemple entièrement affiché est une correction : on la
+    // lit, on ne la cherche pas ».
+    //
+    // CERTAINES ACTIVITÉS N'ONT PAS DE PREMIÈRE MARCHE, et il ne faut pas leur
+    // en inventer une : quand le jeu passe son propre `message` (le rapporteur
+    // POSE l'outil au lieu d'annoncer une mesure), ce message EST déjà la
+    // méthode, et un appui suffit.
+    const methode = () => {
+        if (opts.message) return null;
+        const hints = (session.current && session.current.hints) || [];
+        // Le dernier indice, sauf s'il se contente d'annoncer la réponse — ce
+        // qui ferait deux appuis pour le même résultat.
+        for (let i = hints.length - 1; i >= 0; i--) {
+            const h = String(hints[i] || '').trim();
+            if (h && !donneLaReponse(h, session.current)) return h;
+        }
+        return null;
+    };
+
+    let montre = false;
+    btn.onclick = () => {
+        const item = session.current;
+        if (!item || session.locked) return;
+        state.noteHintUsed();
+
+        if (!montre) {
+            const m = methode();
+            if (m) {
+                montre = true;
+                btn.innerHTML = '<span aria-hidden="true">🤝</span> Donne-moi la réponse';
+                // La méthode vaut tous les indices : on ne rejoue pas
+                // l'escalier après l'avoir sauté.
+                session.hintIndex = Math.max(session.hintIndex, (item.hints || []).length);
+                dire(m, null);
+                // PAS DE `highlight` ICI : sur un QCM, il allume la bonne case.
+                // Montrer la méthode ET désigner la réponse du doigt serait
+                // exactement le bouton qu'on vient de corriger.
+                return;
+            }
+        }
+
+        btn.disabled = true;
+        // Révéler vaut tous les indices : en entraînement, les points de la
+        // question s'en ressentent ; en apprentissage (pénalité nulle), non.
+        session.hintIndex = Math.max(session.hintIndex, (item.hints || []).length, 2);
+        const msg = opts.message
+            ? opts.message(item)
+            : `La réponse est « ${answerLabelOf(item)} ». À toi de la jouer !`;
+        dire(msg, item.explanation || null);
         if (opts.highlight) opts.highlight();
     };
+}
+
+/**
+ * Cet indice-là annonce-t-il simplement le résultat ?
+ *
+ * Plusieurs générateurs finissent leur escalier par « Ces deux angles sont
+ * supplémentaires. » ou « Le calcul : 12 ÷ 4 = 3. » — c'est un dernier recours
+ * légitime dans l'escalier des indices, mais ce n'est pas une MÉTHODE : le
+ * proposer au premier appui de « Montre-moi » ferait deux boutons pour la même
+ * chose. On le reconnaît à ce qu'il porte la réponse et presque rien d'autre.
+ */
+function donneLaReponse(texte, item) {
+    if (!item) return false;
+    const rep = answerLabelOf(item).trim();
+    if (!rep || rep.length > 40) return false;
+    const nu = (v) => String(v).toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!nu(texte).includes(nu(rep))) return false;
+    // Il la contient : reste à savoir s'il ne fait QUE la contenir. Un indice
+    // qui explique en quarante mots et cite la réponse au passage reste une
+    // méthode ; une phrase de dix mots construite autour d'elle n'en est pas.
+    return nu(texte).length <= nu(rep).length + 45;
 }
 
 function escapeAttr(v) {

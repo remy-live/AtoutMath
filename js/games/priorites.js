@@ -167,6 +167,20 @@ class Priorites extends BaseGame {
                 // Sous la cascade, avant la note : en fin de page le pavé
                 // sortait de l'écran d'un téléphone.
                 avant: zone.querySelector('.pr-note'),
+                // LE « − », SANS QUOI LES RELATIFS SONT INJOUABLES AU DOIGT.
+                //
+                // Rémy : « on ne peut écrire les − pour le prio bot relatifs à
+                // la calculatrice ». C'est exact, et c'était total : le champ
+                // porte `inputmode: none` (le clavier du système ne s'ouvre pas
+                // — voir `trouHtml`), le pavé est donc la SEULE façon d'écrire,
+                // et il n'avait pas de touche de signe. Sur « 2 − 8 × (−4) »,
+                // la réponse de la ligne est −32 : l'élève pouvait taper 32 et
+                // rien d'autre. Il n'avait aucun moyen de répondre juste.
+                //
+                // Seulement là où c'est le sujet : sur les Prio-Bot ordinaires
+                // aucune ligne ne descend sous zéro, et une touche de signe n'y
+                // servirait qu'à fabriquer des fautes.
+                signe: this.relatifs,
                 champ: () => this.container.querySelector('.pr-trou'),
                 valider: () => {
                     const trou = this.container.querySelector('.pr-trou');

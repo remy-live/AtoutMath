@@ -45,6 +45,7 @@ export const GRANDEURS = [
         ],
         bases: [10, 20, 4, 5, 50, 100, 2],
         dire: (s) => `un morceau ${de(s.quoi)}`,
+        constat: (s, h, hu, b, bu) => `Un morceau ${de(s.quoi)} de ${b} ${bu} pèse ${h} ${hu}.`,
         haut_q: (b, u) => `Quelle est sa masse pour ${b} ${u} ?`,
         bas_q: (h, u) => `Quel est son volume si sa masse est de ${h} ${u} ?`
     },
@@ -58,6 +59,7 @@ export const GRANDEURS = [
         ],
         bases: [2, 3, 4, 5, 10, 20],
         dire: (s) => s.quoi,
+        constat: (s, h, hu, b, bu) => `On paie ${h} ${hu} pour ${b} ${bu} ${de(nu(s.quoi))}.`,
         haut_q: (b, u) => `Combien coûtent ${b} ${u} ?`,
         bas_q: (h, u) => `Quelle masse a-t-on achetée pour ${h} ${u} ?`
     },
@@ -71,6 +73,7 @@ export const GRANDEURS = [
         ],
         bases: [3, 4, 5, 10, 12, 20],
         dire: (s) => s.quoi,
+        constat: (s, h, hu, b, bu) => `${majuscule(s.quoi)} laisse couler ${h} ${hu} en ${b} ${bu}.`,
         haut_q: (b, u) => `Quel volume s'écoule en ${b} ${u} ?`,
         bas_q: (h, u) => `Combien de temps faut-il pour recueillir ${h} ${u} ?`
     },
@@ -83,6 +86,7 @@ export const GRANDEURS = [
         ],
         bases: [10, 20, 50, 100, 200, 400],
         dire: (s) => s.quoi,
+        constat: (s, h, hu, b, bu) => `${majuscule(s.quoi)} de ${b} ${bu} compte ${h} ${hu}.`,
         haut_q: (b, u) => `Combien d'habitants compte une zone de ${b} ${u} ?`,
         bas_q: (h, u) => `Quelle superficie occupent ${h} ${u} ?`
     },
@@ -95,8 +99,13 @@ export const GRANDEURS = [
         ],
         bases: [2, 3, 4, 5, 8, 10],
         dire: (s) => s.quoi,
-        haut_q: (b, u) => `Combien gagne-t-il en ${b} ${u} ?`,
-        bas_q: (h, u) => `Combien de temps a-t-il travaillé pour gagner ${h} ${u} ?`
+        constat: (s, h, hu, b, bu) => `${majuscule(s.quoi)} gagne ${h} ${hu} en ${b} ${bu} de travail.`,
+        // SANS PRONOM, ET CE N'ÉTAIT PAS UN DÉTAIL DE STYLE : « Combien
+        // gagne-t-il » suivait « une professeure particulière » et « une
+        // jardinière » — deux sujets sur quatre, et l'énoncé était faux une
+        // fois sur deux. On tourne la phrase plutôt que d'accorder un pronom.
+        haut_q: (b, u) => `Combien cette personne gagne-t-elle en ${b} ${u} ?`,
+        bas_q: (h, u) => `Combien de temps faut-il travailler pour gagner ${h} ${u} ?`
     },
     {
         id: 'rendement', nom: 'le rendement', genre: 'm', unite: 'kg/ha',
@@ -107,6 +116,7 @@ export const GRANDEURS = [
         ],
         bases: [2, 3, 4, 5, 10],
         dire: (s) => s.quoi,
+        constat: (s, h, hu, b, bu) => `${majuscule(s.quoi)} de ${b} ${bu} produit ${h} ${hu}.`,
         haut_q: (b, u) => `Quelle récolte donnent ${b} ${u} ?`,
         bas_q: (h, u) => `Quelle surface a-t-il fallu pour récolter ${h} ${u} ?`
     }
@@ -114,6 +124,19 @@ export const GRANDEURS = [
 
 /** « de fer », mais « d'aluminium » : l'élision se fait ici, pas dans l'énoncé. */
 const de = (mot) => (/^[aeiouyéèêh]/i.test(mot) ? `d'${mot}` : `de ${mot}`);
+
+/** Le sujet ouvre la phrase : « un robinet » devient « Un robinet ». */
+const majuscule = (mot) => String(mot).charAt(0).toUpperCase() + String(mot).slice(1);
+
+/**
+ * « les carottes » → « carottes ».
+ *
+ * Les sujets du prix au kilo portent leur article, parce que la plupart des
+ * énoncés en ont besoin : « Pour les carottes, le prix vaut 1,2 €/kg ». Mais
+ * après « 20 kg de », l'article n'a plus rien à faire là — « 20 kg de les
+ * carottes » est du charabia, et le test de français l'attrape.
+ */
+const nu = (mot) => String(mot).replace(/^(les |la |le |l')/i, '');
 
 /**
  * LES CONVERSIONS D'UNITÉS COMPOSÉES — l'autre moitié du chapitre.
@@ -228,8 +251,23 @@ export const grandeursComposeesGenerator = {
         const quelEst = g.genre === 'f' ? 'Quelle est' : 'Quel est';
         let texte, reponse, unite, calcul;
         if (quoi === 'composee') {
-            texte = `Pour ${g.dire(sujet)}, on mesure ${fr(haut)} ${g.haut.unite} `
-                + `pour ${fr(bas)} ${g.bas.unite}. ${quelEst} ${g.nom} ?`;
+            // UNE PHRASE QUE L'ON DIRAIT VRAIMENT, GRANDEUR PAR GRANDEUR.
+            //
+            // Rémy, sur « Pour une professeure particulière, on mesure 100 €
+            // pour 4 h. Quel est le salaire horaire ? » : « pas sûr de la
+            // formulation ». Il a raison, et le défaut était général : un seul
+            // moule — « Pour X, on mesure H pour B » — servait aux six
+            // grandeurs. Il va au fer (on MESURE bien une masse et un volume)
+            // et ne va nulle part ailleurs : on ne mesure pas un salaire, on le
+            // gagne ; on ne mesure pas un prix, on le paie ; on ne mesure pas
+            // une récolte pour une surface, un champ la produit.
+            //
+            // Or ce chapitre est un chapitre de LECTURE : tout le travail est de
+            // reconnaître, dans une phrase ordinaire, les deux grandeurs et
+            // laquelle est « pour un ». Une phrase qui ne se dit pas ajoute une
+            // difficulté de langue à un exercice qui n'en demandait pas.
+            texte = `${g.constat(sujet, fr(haut), g.haut.unite, fr(bas), g.bas.unite)} `
+                + `${quelEst} ${g.nom} ?`;
             reponse = sujet.valeur; unite = g.unite;
             calcul = `${fr(haut)} ÷ ${fr(bas)} = ${fr(sujet.valeur)} ${g.unite}`;
         } else if (quoi === 'haut') {

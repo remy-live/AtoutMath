@@ -1086,6 +1086,33 @@ test('sous un tableau à remplir, plus aucun pointillé', async () => {
     assert.equal(qs[1].rep.lignes, 2);
 });
 
+test('LA PLACE DEMANDÉE L\'EMPORTE SUR LA LONGUEUR DE L\'ÉNONCÉ', async () => {
+    // Rémy, sur la fiche des grandeurs composées : « pourquoi tu mets qqs
+    // pointillés pour la première question ? il faut au moins une ligne de
+    // pointillés en plus. »
+    //
+    // Une question courte recevait un bout de ligne de trente millimètres au
+    // bout de son énoncé, et la question suivante — plus longue à écrire — deux
+    // lignes pleines en dessous. La place pour RÉDIGER dépendait donc de la
+    // longueur de la QUESTION.
+    const { composerBlocs } = await import('../js/core/fiche.js');
+    const courte = { texte: 'Quel est le débit ?', reponse: '12' };
+    const opts = { ligneReponse: 14, lignesReponse: 2, interrogation: true };
+
+    const avec = composerBlocs([{ id: 'g', titre: 'G', colonnes: 1, questions: [courte] }],
+        opts, mesurer);
+    const q = avec.pages[0].items.find(i => i.type === 'q');
+    assert.equal(q.rep.lignes, 2, 'les deux lignes demandées, même sur une question courte');
+    assert.ok(!q.rep.dansLeTexte);
+
+    // Sans réglage, rien ne change : un calcul mental garde ses pointillés au
+    // bout de la ligne, et la feuille reste dense.
+    const sans = composerBlocs([{ id: 'c', titre: 'C', colonnes: 1, questions: [courte] }],
+        {}, mesurer);
+    const r = sans.pages[0].items.find(i => i.type === 'q');
+    assert.ok(!r.rep || !r.rep.lignes, 'sans place demandée, la réponse reste au bout de la ligne');
+});
+
 test('un tableau tout rempli garde, lui, sa ligne de réponse', async () => {
     // C'est un tableau qu'on LIT : la réponse s'écrit ailleurs.
     const { composerBlocs } = await import('../js/core/fiche.js');
