@@ -477,6 +477,49 @@ test('LA FIGURE EST CODÉE — angle droit, égalités, parallèles', () => {
     });
 });
 
+test('ON ASSEMBLE AVANT D\'ÉCRIRE, et la banque dit les vraies formulations', async () => {
+    // Rémy : « on pourrait commencer par du drag drop pour que l'élève voit
+    // bien les formulations ». Rédiger demande deux choses à la fois — trouver
+    // la SUITE des tracés, et l'écrire dans la langue du chapitre. Celui qui
+    // bute sur la seconde ne peut pas montrer qu'il sait la première.
+    const { banqueDePhrases, ordreDeLaBanque, phrasesDuModele } =
+        await import('../js/core/programmeConstruction.js');
+    for (let i = 0; i < NIVEAUX.length; i++) {
+        const niv = preparerNiveau(i);
+        const { justes, leurres } = banqueDePhrases(niv);
+        // LES PHRASES JUSTES SONT EXACTEMENT LE PROGRAMME MODÈLE : c'est ce
+        // qu'on veut lui faire lire dix fois avant qu'il ait à le taper.
+        assert.deepEqual(justes, phrasesDuModele(niv));
+        assert.equal(justes.length, niv.modele.length);
+        // ET ELLES SE RELISENT : le parseur accepte ce que la banque propose.
+        const lu = lireProgramme(justes.join('\n'), niv.atlas);
+        lu.lignes.forEach((l, k) => assert.ok(l.ok, `${niv.id} : « ${justes[k]} » — ${l.dit}`));
+        const r = executer(lu.instructions, niv.atlas);
+        assert.ok(comparer(r.objets, niv.attendus, r.points, niv.exiges).ok,
+            `${niv.id} : la banque ne construit pas sa propre figure`);
+        // AUCUN LEURRE N'EST UNE PHRASE JUSTE — sinon on compterait faux une
+        // réponse qu'on vient d'offrir.
+        leurres.forEach(p2 => assert.ok(!justes.includes(p2), `${niv.id} : leurre juste`));
+    }
+});
+
+test('LA BANQUE NE SE MÉLANGE PAS SOUS LE DOIGT', async () => {
+    // Elle se redessine à chaque phrase posée : un ordre tiré au hasard
+    // déplacerait les étiquettes entre deux clics, ce qui rend l'exercice
+    // injouable au doigt.
+    const { ordreDeLaBanque, banqueDePhrases } =
+        await import('../js/core/programmeConstruction.js');
+    const niv = preparerNiveau('triangle');
+    const a = ordreDeLaBanque(niv).map(x => x.p);
+    const b = ordreDeLaBanque(niv).map(x => x.p);
+    assert.deepEqual(a, b);
+    // Mais elle EST mélangée : les bonnes phrases ne sont pas rangées en tête,
+    // sinon il suffirait de cliquer les premières dans l'ordre.
+    const { justes, leurres } = banqueDePhrases(niv);
+    assert.equal(a.length, justes.length + leurres.length);
+    assert.notDeepEqual(a, [...justes, ...leurres]);
+});
+
 test('LE NUMÉRO DE LIGNE N\'EST PAS DE LA GÉOMÉTRIE', () => {
     // Un élève numérote son programme : « 1. Place… ». Refuser la ligne pour
     // cela serait corriger la mise en page.

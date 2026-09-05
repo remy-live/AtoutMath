@@ -29,7 +29,8 @@
 import { makeItem } from '../items.js';
 import {
     NIVEAUX, OPERATIONS, ORDRE_FAMILLES, FAMILLES,
-    preparerNiveau, niveauxDisponibles, operationsDe, nomObjet, executer, cleObjet
+    preparerNiveau, niveauxDisponibles, operationsDe, nomObjet, executer, cleObjet,
+    phrasesDuModele
 } from '../programmeConstruction.js';
 
 /** Deux lignes de plus que le modèle : de la place, sans donner le compte. */
@@ -90,18 +91,10 @@ export const programmeConstructionFicheGenerator = {
         // CLÉS d'objets — « droite|0.44|-0.89|3.2 » —, qu'on ne met pas sur une
         // feuille. On rejoue donc le programme et l'on rend à chaque tracé le
         // nom qu'il porte à l'écran : « la médiatrice de [AB] ».
-        const phrases = [];
-        const jusque = [];
-        niv.modeleResolu.forEach(ins => {
-            const avant = executer(jusque, niv.atlas);
-            const args = OPERATIONS[ins.op].prend.map((sorte, i) => {
-                if (sorte !== 'objet') return ins.args[i];
-                const o = avant.objets.find(x => cleObjet(x) === ins.args[i]);
-                return o ? nomObjet(o, avant.points) : '…';
-            });
-            phrases.push(OPERATIONS[ins.op].libelle(ins.op === 'points' ? ins.args : args));
-            jusque.push(ins);
-        });
+        // Elle vivait ici ; l'écran en a besoin aussi depuis qu'on assemble des
+        // phrases toutes faites, et deux copies d'une même règle finissent
+        // toujours par ne plus dire la même chose. Voir `phrasesDuModele`.
+        const phrases = phrasesDuModele(niv);
 
         // LA RÉSERVE DE MOTS DESCEND DANS LE BLOC, ET CE N'EST PAS UN CAPRICE.
         //

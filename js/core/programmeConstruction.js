@@ -1108,6 +1108,127 @@ export function preparerNiveau(n) {
     };
 }
 
+/**
+ * LE PROGRAMME MODÈLE, EN FRANÇAIS.
+ *
+ * Le modèle désigne ses intersections par des CLÉS d'objets —
+ * « droite|0.44|-0.89|3.2 » —, qu'on ne montre à personne. On rejoue donc le
+ * programme et l'on rend à chaque tracé le nom qu'il porte à l'écran : « la
+ * médiatrice de [AB] ».
+ *
+ * Cette fonction vivait dans le générateur de la fiche, qui en avait besoin
+ * pour son corrigé. L'écran en a besoin aussi depuis qu'on assemble des phrases
+ * toutes faites (voir `banqueDePhrases`), et deux copies d'une même règle
+ * finissent toujours par ne plus dire la même chose.
+ */
+export function phrasesDuModele(niv) {
+    const phrases = [];
+    const jusque = [];
+    (niv.modeleResolu || []).forEach(ins => {
+        const avant = executer(jusque, niv.atlas);
+        const args = OPERATIONS[ins.op].prend.map((sorte, i) => {
+            if (sorte !== 'objet') return ins.args[i];
+            const o = avant.objets.find(x => cleObjet(x) === ins.args[i]);
+            return o ? nomObjet(o, avant.points) : '…';
+        });
+        phrases.push(OPERATIONS[ins.op].libelle(ins.op === 'points' ? ins.args : args));
+        jusque.push(ins);
+    });
+    return phrases;
+}
+
+/**
+ * LA BANQUE DE PHRASES — on assemble avant d'écrire.
+ *
+ * Rémy : « on pourrait commencer par du drag drop pour que l'élève voit bien
+ * les formulations. »
+ *
+ * C'EST LE BON ORDRE, ET LE MOT « FORMULATIONS » EST LE SUJET. Rédiger un
+ * programme demande deux choses en même temps : trouver la SUITE des tracés, et
+ * l'écrire dans la langue du chapitre — [AB] pour le segment, (AB) pour la
+ * droite, « passant par », « d'origine ». Un élève qui bute sur la seconde ne
+ * peut pas montrer qu'il sait la première, et la page reste blanche.
+ *
+ * On sépare donc les deux : d'abord on ORDONNE des phrases écrites, ensuite on
+ * les écrit soi-même. Les phrases posées sont exactement celles que les blocs
+ * produisent — l'élève les aura lues dix fois avant d'avoir à les taper.
+ *
+ * DES LEURRES, SINON CE N'EST PLUS UN EXERCICE. Une banque qui ne contiendrait
+ * que les bonnes phrases se résoudrait en les cliquant toutes : il resterait
+ * l'ordre, et rien d'autre. Les leurres disent les confusions du chapitre — le
+ * segment pris pour la droite, les lettres échangées, un point qui n'existe pas
+ * encore.
+ *
+ * L'ORDRE DE LA BANQUE EST STABLE, et c'est nécessaire : elle se redessine à
+ * chaque phrase posée, et des étiquettes qui changent de place sous le doigt
+ * entre deux clics rendraient l'exercice injouable. Il ne dépend donc que du
+ * niveau — pas d'un tirage.
+ */
+export function banqueDePhrases(niv) {
+    const justes = phrasesDuModele(niv);
+    const leurres = [];
+    const ajouter = (p) => {
+        if (p && !justes.includes(p) && !leurres.includes(p)) leurres.push(p);
+    };
+    // LES CONFUSIONS DU CHAPITRE, dans l'ordre où on les rencontre.
+    (niv.modeleResolu || []).forEach(ins => {
+        const a = ins.args;
+        // Le segment, la droite et la demi-droite sur les mêmes points : c'est
+        // LA faute de notation, et elle se voit sur le dessin.
+        if (ins.op === 'segment') {
+            ajouter(OPERATIONS.droite.libelle(a));
+            ajouter(OPERATIONS.demiDroite.libelle(a));
+        }
+        if (ins.op === 'droite') {
+            ajouter(OPERATIONS.segment.libelle(a));
+            ajouter(OPERATIONS.demiDroite.libelle(a));
+        }
+        if (ins.op === 'demiDroite') {
+            // [BA) n'est pas [AB) : l'origine est l'autre bout.
+            ajouter(OPERATIONS.demiDroite.libelle([a[1], a[0]]));
+            ajouter(OPERATIONS.segment.libelle(a));
+        }
+        // Perpendiculaire et parallèle se confondent quand on ne regarde pas la
+        // figure ; et « passant par » se trompe de point.
+        if (ins.op === 'perpendiculaire') ajouter(OPERATIONS.parallele.libelle(a));
+        if (ins.op === 'parallele') ajouter(OPERATIONS.perpendiculaire.libelle(a));
+        if ((ins.op === 'perpendiculaire' || ins.op === 'parallele') && a[0] !== a[2]) {
+            ajouter(OPERATIONS[ins.op].libelle([a[0], a[2], a[1]]));
+        }
+        if (ins.op === 'cercle' && a[0] !== a[1]) {
+            ajouter(OPERATIONS.cercle.libelle([a[1], a[0]]));
+        }
+        if (ins.op === 'mediatrice') ajouter(OPERATIONS.milieu.libelle(a));
+    });
+    // Trois leurres suffisent : au-delà, la banque devient une liste à lire, et
+    // l'exercice n'est plus de reconnaître mais de fouiller.
+    return { justes, leurres: leurres.slice(0, 3) };
+}
+
+/**
+ * L'ORDRE OÙ LA BANQUE S'AFFICHE — mélangé, mais TOUJOURS LE MÊME pour un
+ * niveau donné. Un mélange au hasard changerait à chaque phrase posée, puisque
+ * la liste se redessine ; on tire donc du seul identifiant du niveau.
+ */
+export function ordreDeLaBanque(niv) {
+    const { justes, leurres } = banqueDePhrases(niv);
+    const toutes = [...justes.map(p => ({ p, juste: true })),
+        ...leurres.map(p => ({ p, juste: false }))];
+    // Une graine tirée du nom du niveau : stable d'une session à l'autre, donc
+    // un professeur qui refait la figure retrouve la même disposition.
+    let graine = 0;
+    for (const c of String(niv.id || '')) graine = (graine * 31 + c.charCodeAt(0)) % 100003;
+    const suivant = () => {
+        graine = (graine * 1103515245 + 12345) % 2147483648;
+        return graine / 2147483648;
+    };
+    for (let i = toutes.length - 1; i > 0; i--) {
+        const j = Math.floor(suivant() * (i + 1));
+        [toutes[i], toutes[j]] = [toutes[j], toutes[i]];
+    }
+    return toutes;
+}
+
 /** Les niveaux jouables avec les familles cochées, dans l\'ordre de difficulté. */
 export function niveauxDisponibles(familles) {
     const voulues = new Set(familles && familles.length ? familles : ORDRE_FAMILLES);

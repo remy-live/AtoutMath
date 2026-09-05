@@ -147,7 +147,7 @@ export const geometrieExercises = [
         printGeneratorId: 'geo.construction.programme.fiche',
         printable: 'programme-construction',
         skills: ['geo.construction.programme'],
-        params: { familles: ['points', 'traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'], depuis: 0, modeles: true },
+        params: { familles: ['points', 'traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'], depuis: 0, modeles: true, assembler: 3 },
         paramSchema: [
             {
                 id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
@@ -169,6 +169,20 @@ export const geometrieExercises = [
                     { value: 'paralleles', label: 'Parallèles' },
                     { value: 'intersections', label: 'Points d\'intersection' }
                 ]
+            },
+            {
+                // ON ASSEMBLE AVANT D'ÉCRIRE — Rémy : « on pourrait commencer
+                // par du drag drop pour que l'élève voit bien les
+                // formulations ».
+                id: 'assembler', type: 'number', label: 'Figures à composer avant d\'écrire',
+                default: 3, min: 0, max: 13,
+                aide: 'Sur ces figures-là, l\'élève ne tape rien : il choisit des phrases '
+                    + 'toutes faites et les met dans l\'ordre. Rédiger demande deux choses à la '
+                    + 'fois — trouver la SUITE des tracés, et l\'écrire dans la langue du '
+                    + 'chapitre ([AB], (AB), « passant par ») ; celui qui bute sur la seconde ne '
+                    + 'peut pas montrer qu\'il sait la première, et la page reste blanche. On '
+                    + 'sépare donc les deux, et les phrases posées sont exactement celles qu\'il '
+                    + 'aura à taper ensuite. À 0, on écrit dès la première figure.'
             },
             {
                 id: 'modeles', type: 'checkbox', label: 'Proposer les débuts de phrase', default: true,

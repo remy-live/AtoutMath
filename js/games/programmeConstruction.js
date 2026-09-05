@@ -37,7 +37,8 @@ import { BaseGame } from '../core/BaseGame.js';
 import {
     MONDE, OPERATIONS, FAMILLES, ORDRE_FAMILLES,
     NIVEAUX, preparerNiveau, niveauxDisponibles, operationsDe,
-    executer, comparer, cleObjet, nomObjet, couperAuMonde, couperDemiDroite, lireProgramme
+    executer, comparer, cleObjet, nomObjet, couperAuMonde, couperDemiDroite, lireProgramme,
+    ordreDeLaBanque
 } from '../core/programmeConstruction.js';
 
 const COMPETENCE = 'geo.construction.programme';
@@ -180,10 +181,28 @@ export class ProgrammeConstruction extends BaseGame {
         const depuis = Math.max(0, Math.min(NIVEAUX.length - 1, (this.params.depuis | 0)));
         const debut = this.plan.findIndex(i => i >= depuis);
         this.rang = debut < 0 ? 0 : debut;
+        // LE COMPTE PART D'OÙ L'ON COMMENCE, pas du début du plan. « Commencer
+        // au niveau 4 » avec « 3 figures à composer » doit donner trois figures
+        // composées puis la rédaction — pas la rédaction d'emblée sous prétexte
+        // qu'on entre au rang 3.
+        this.premier = this.rang;
         this.avecModeles = this.params.modeles !== false;
+        // ON ASSEMBLE AVANT D'ÉCRIRE — Rémy : « on pourrait commencer par du
+        // drag drop pour que l'élève voit bien les formulations ».
+        //
+        // Rédiger demande deux choses en même temps : trouver la SUITE des
+        // tracés, et l'écrire dans la langue du chapitre. Un élève qui bute sur
+        // la seconde ne peut pas montrer qu'il sait la première, et la page
+        // reste blanche. Les premières figures se composent donc en posant des
+        // phrases toutes faites ; on les aura lues dix fois avant d'avoir à les
+        // taper. Voir `banqueDePhrases` dans le noyau.
+        this.aAssembler = Math.max(0, Math.min(20, Number(this.params.assembler ?? 3)));
         this.texte = '';
         this.fini = false;
     }
+
+    /** Cette figure-ci se compose-t-elle, ou s'écrit-elle ? */
+    get enAssemblage() { return (this.rang - this.premier) < this.aAssembler; }
 
     get niveau() { return preparerNiveau(this.plan[this.rang]); }
 
@@ -236,6 +255,11 @@ export class ProgrammeConstruction extends BaseGame {
                    remarque d'une ligne se lit en face de la ligne, pas en bas
                    d'une liste. */
                 .pc-redaction { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+                /* Un display de grille BAT l'attribut « hidden », et c'est la
+                   règle qu'on oublie : les deux modes — écrire et composer — se
+                   cachent l'un l'autre par cet attribut, et les deux restaient
+                   à l'écran l'un au-dessus de l'autre. */
+                .pc-redaction[hidden] { display: none; }
                 @container (max-width: 560px) { .pc-redaction { grid-template-columns: 1fr; } }
                 .pc-zone {
                     width: 100%; box-sizing: border-box; min-height: 120px; resize: vertical;
@@ -252,6 +276,48 @@ export class ProgrammeConstruction extends BaseGame {
                 .pc-l--ok { color: var(--success); }
                 .pc-l--ko { color: var(--danger); }
                 .pc-l--note { color: var(--primary); }
+                /* --- LA COMPOSITION PAR PHRASES ------------------------------
+                   Deux colonnes comme la rédaction : à gauche ce qu'on a posé,
+                   à droite la banque. On garde exactement la même géométrie que
+                   le mode écriture, pour que passer de l'un à l'autre ne
+                   déplace rien à l'écran. */
+                .pc-pose {
+                    display: flex; flex-direction: column; gap: 4px; min-height: 120px;
+                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
+                    background: var(--card-bg, #fff); padding: 8px;
+                }
+                .pc-pose--vide {
+                    align-items: center; justify-content: center; text-align: center;
+                    border-style: dashed; color: var(--text-muted);
+                    font-size: clamp(11px, 2.2cqw, 13px);
+                }
+                .pc-posee {
+                    display: flex; align-items: center; gap: 8px; text-align: left;
+                    border: 0; border-radius: 8px; cursor: pointer; font: inherit;
+                    background: color-mix(in srgb, var(--primary) 9%, transparent);
+                    color: var(--text-main); padding: 5px 8px;
+                    font-size: clamp(12px, 2.3cqw, 15px); line-height: 1.4;
+                }
+                .pc-posee-n {
+                    flex: 0 0 auto; min-width: 1.5em; text-align: right;
+                    color: var(--text-muted); font-weight: 700; font-size: .85em;
+                }
+                .pc-posee-t { flex: 1 1 auto; }
+                /* LA CROIX EST TOUJOURS LÀ, pas seulement au survol : au doigt,
+                   il n'y a pas de survol, et une commande qu'on ne voit pas
+                   n'existe pas. */
+                .pc-posee-x { flex: 0 0 auto; color: var(--text-muted); font-weight: 700; }
+                .pc-posee:hover .pc-posee-x { color: var(--danger); }
+                .pc-banque { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
+                .pc-carte {
+                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
+                    cursor: pointer; background: var(--card-bg, #fff); color: var(--text-main);
+                    font: inherit; padding: 6px 10px; font-size: clamp(11px, 2.2cqw, 14px);
+                    line-height: 1.35; text-align: left;
+                }
+                .pc-carte:hover { border-color: var(--primary); color: var(--primary); }
+                .pc-carte--posee { opacity: .38; cursor: default; }
+                .pc-carte--posee:hover { border-color: var(--border-color, #d7dae3); color: var(--text-main); }
                 .pc-modeles { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
                 .pc-ajout {
                     border: 1.5px dashed var(--primary); border-radius: 10px; cursor: pointer;
@@ -278,11 +344,15 @@ export class ProgrammeConstruction extends BaseGame {
                     <div class="pc-cadre" data-cadre-moi><span class="pc-etiq">Ce que ton programme trace</span>
                         <div data-moi></div></div>
                 </div>
-                <div class="pc-redaction">
+                <div class="pc-redaction" data-redaction>
                     <textarea class="pc-zone" data-zone spellcheck="false"
                         aria-label="Ton programme de construction, une phrase par ligne"
                         placeholder="Une phrase par ligne.&#10;Place 2 points A et B&#10;Trace le segment [AB]"></textarea>
                     <div class="pc-lignes" data-lignes></div>
+                </div>
+                <div class="pc-redaction" data-composition hidden>
+                    <div class="pc-pose" data-pose></div>
+                    <div class="pc-banque" data-banque></div>
                 </div>
                 <div class="pc-modeles" data-modeles></div>
                 <div class="pc-note" data-note></div>
@@ -293,6 +363,10 @@ export class ProgrammeConstruction extends BaseGame {
         this.moiEl = this.container.querySelector('[data-moi]');
         this.cadreMoiEl = this.container.querySelector('[data-cadre-moi]');
         this.zoneEl = this.container.querySelector('[data-zone]');
+        this.redactionEl = this.container.querySelector('[data-redaction]');
+        this.compositionEl = this.container.querySelector('[data-composition]');
+        this.poseEl = this.container.querySelector('[data-pose]');
+        this.banqueEl = this.container.querySelector('[data-banque]');
         this.lignesEl = this.container.querySelector('[data-lignes]');
         this.modelesEl = this.container.querySelector('[data-modeles]');
         this.noteEl = this.container.querySelector('[data-note]');
@@ -327,8 +401,57 @@ export class ProgrammeConstruction extends BaseGame {
             aides: r.objets.filter(o => !niv.attendus.some(a => cleObjet(a) === cleObjet(o)))
         });
 
-        this.dessinerLignes(lu, r);
+        // DEUX FAÇONS DE COMPOSER LE MÊME PROGRAMME, et une seule à l'écran.
+        // Le texte reste la vérité dans les deux cas : composer, c'est écrire
+        // une ligne de plus. Tout ce qui suit — la lecture, la figure, la
+        // vérification — ne sait même pas laquelle des deux a servi.
+        const compose = this.enAssemblage;
+        this.redactionEl.hidden = compose;
+        this.compositionEl.hidden = !compose;
+        if (compose) this.dessinerComposition(niv);
+        else this.dessinerLignes(lu, r);
         this.dessinerModeles();
+    }
+
+    /** Les phrases posées, et celles qu'on peut encore poser. */
+    dessinerComposition(niv) {
+        const lignes = this.texte.split('\n').filter(l => l.trim());
+        this.poseEl.className = `pc-pose${lignes.length ? '' : ' pc-pose--vide'}`;
+        this.poseEl.innerHTML = lignes.length
+            ? lignes.map((l, i) => `<button type="button" class="pc-posee" data-retirer="${i}"
+                    title="Retirer cette phrase">
+                    <span class="pc-posee-n">${i + 1}.</span>
+                    <span class="pc-posee-t">${enAttribut(l)}</span>
+                    <span class="pc-posee-x" aria-hidden="true">✕</span>
+                </button>`).join('')
+            : '<span>Ton programme s\'écrit ici. Choisis les phrases à droite, '
+                + 'dans l\'ordre où il faut les faire.</span>';
+
+        // UNE PHRASE DÉJÀ POSÉE RESTE VISIBLE, ÉTEINTE. La retirer de la banque
+        // ferait bouger toutes les autres sous le doigt à chaque clic, et
+        // surtout on ne verrait plus ce qu'on a choisi parmi ce qu'on avait.
+        this.banqueEl.innerHTML = ordreDeLaBanque(niv).map(({ p }) => {
+            const posee = lignes.includes(p);
+            return `<button type="button" class="pc-carte${posee ? ' pc-carte--posee' : ''}"
+                data-poser="${enAttribut(p)}" ${posee ? 'disabled' : ''}>${enAttribut(p)}</button>`;
+        }).join('');
+
+        if (this.isDemo) return;
+        this.poseEl.querySelectorAll('[data-retirer]').forEach(b => {
+            b.onclick = () => {
+                const i = Number(b.dataset.retirer);
+                this.texte = lignes.filter((_, k) => k !== i).join('\n');
+                this.note('');
+                this.dessiner();
+            };
+        });
+        this.banqueEl.querySelectorAll('[data-poser]').forEach(b => {
+            b.onclick = () => {
+                this.texte = (this.texte ? `${this.texte}\n` : '') + b.dataset.poser;
+                this.note('');
+                this.dessiner();
+            };
+        });
     }
 
     /** En face de chaque ligne écrite : ce qu'elle a produit, ou pourquoi non. */
@@ -353,7 +476,11 @@ export class ProgrammeConstruction extends BaseGame {
     }
 
     dessinerModeles() {
-        if (!this.avecModeles) { this.modelesEl.innerHTML = ''; return; }
+        // EN COMPOSITION, LES DÉBUTS DE PHRASE N'ONT PLUS D'OBJET : ils
+        // insèrent du texte dans une zone qui n'est pas à l'écran, et la banque
+        // fait déjà — mieux — ce qu'ils faisaient, puisqu'elle donne la phrase
+        // ENTIÈRE.
+        if (!this.avecModeles || this.enAssemblage) { this.modelesEl.innerHTML = ''; return; }
         const ops = operationsDe(this.famillesActives);
         this.modelesEl.innerHTML = ops.map(op =>
             `<button type="button" class="pc-ajout" data-op="${op.id}"
