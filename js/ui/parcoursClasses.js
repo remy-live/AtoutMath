@@ -237,6 +237,13 @@ function bilanClasseHtml(b) {
                  accepter la liste. -->
             <button type="button" class="pc-rattrapage" data-rattrapage>↻ Donner un rattrapage</button>
             <button type="button" class="pc-pdf" data-pdf>📄 Exporter ce bilan en PDF</button>
+            <!-- LA COLONNE POUR PRONOTE. Rémy : « pourrais-je récupérer
+                 directement les notes sans devoir les saisir ? » Pas par une
+                 API — Index Éducation ne l'ouvre qu'à des partenaires sous
+                 convention —, mais par le geste qui marche partout : une
+                 colonne de notes que l'on colle dans la grille. Voir
+                 « core/pronote.js » pour l'ordre, qui est tout le sujet. -->
+            <button type="button" class="pc-pdf" data-pronote>Copier la colonne pour PRONOTE</button>
         </div>
     </div>`;
 }
@@ -379,6 +386,37 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                     pdf.disabled = false;
                     pdf.textContent = '📄 Exporter ce bilan en PDF';
                 }
+            };
+
+            const versPronote = z.querySelector('[data-pronote]');
+            if (versPronote) versPronote.onclick = async () => {
+                const { colonne, enColonne, enTableau, aVerifier } = await import('../core/pronote.js');
+                const b = bilanSeance(contexte.seance, contexte.classe);
+                // LA LISTE DE LA CLASSE, PAS CELLE DES PRÉSENTS. Une colonne
+                // qui saute les absents décale tout ce qui suit, et le décalage
+                // ne se voit plus une fois collé dans PRONOTE.
+                const tous = ((contexte.classe && contexte.classe.eleves) || []).map(e => e.nom);
+                const c = colonne(b.eleves, tous);
+                const texte = enColonne(c.lignes);
+                try {
+                    await navigator.clipboard.writeText(texte);
+                } catch (e) {
+                    // Un navigateur qui refuse le presse-papier ne doit pas
+                    // faire perdre le travail : on montre la colonne à copier.
+                    const { showAlert } = await import('./modal.js');
+                    await showAlert(`<pre class="pc-colonne">${esc(enTableau(c.lignes))}</pre>`,
+                        'Colonne pour PRONOTE');
+                    return;
+                }
+                const manques = c.absents
+                    ? ` ${c.absents} case${c.absents > 1 ? 's' : ''} vide${c.absents > 1 ? 's' : ''} — `
+                        + 'ceux qui n\'ont rien fait ne reçoivent PAS un zéro.'
+                    : '';
+                const hors = c.sansListe.length
+                    ? ` Hors liste, non exporté${c.sansListe.length > 1 ? 's' : ''} : `
+                        + c.sansListe.join(', ') + '.'
+                    : '';
+                showToast(aVerifier(c.lignes) + manques + hors, 'success', 14000);
             };
         }
         z.scrollIntoView({ block: 'nearest', behavior: 'smooth' });

@@ -25,7 +25,7 @@ import { showModal, showToast, showConfirm } from './modal.js';
 import { globalStore } from '../core/store.js';
 import {
     creerClasse, poserEleve, retirerEleve, renommerEleve,
-    lireFichierEleve, elevesTries
+    lireFichierEleve, elevesTries, normaliser
 } from '../core/classes.js';
 import { bilanClasse, SIGNAUX } from '../core/bilan.js';
 import { classesDeDemo, LEGENDE_PROFILS } from '../core/demoClasses.js';
@@ -275,6 +275,7 @@ function ecranHtml() {
         <div class="cl-tete">
             <p class="cl-resume">${esc(b.phrase)}</p>
             <div class="cl-actions">
+                <button type="button" class="cl-btn" data-coller>Coller la liste de la classe…</button>
                 <button type="button" class="cl-btn" data-ajouter>Déposer des progressions…</button>
                 <button type="button" class="cl-btn cl-btn--fin" data-supprimer>Supprimer la classe</button>
             </div>
@@ -353,6 +354,57 @@ async function voirCommeEleve(eleveId) {
 }
 
 /** Un ou plusieurs fichiers déposés d'un coup : toute la classe en une fois. */
+/**
+ * COLLER LA LISTE DE LA CLASSE, telle qu'elle sort de PRONOTE.
+ *
+ * Rémy prépare le rapatriement des notes vers PRONOTE, et tout dépend de
+ * l'ORDRE des lignes. Or les élèves ne pouvaient entrer qu'un par un, par une
+ * boîte de dialogue : vingt-huit fois, à la main, avec les fautes de frappe
+ * qui vont avec — et un nom mal tapé, c'est une note qui ne retrouve pas son
+ * élève au moment de l'export.
+ *
+ * On colle donc la liste entière. `core/pronote.js` la lit : il tolère les
+ * colonnes en trop d'un export, la virgule qui sépare le nom du prénom, les
+ * guillemets d'un CSV, et il écarte l'en-tête. Ce qu'il n'a PAS retenu est
+ * annoncé, jamais avalé en silence.
+ *
+ * LES ÉLÈVES DÉJÀ LÀ NE SONT PAS ÉCRASÉS. `poserEleve` retrouve un élève par
+ * son nom, aux accents et aux majuscules près : recoller la liste après avoir
+ * déposé des progressions n'efface rien.
+ */
+async function collerLaListe() {
+    const c = classeActive();
+    if (!c) return showToast('Choisis d\'abord une classe.', 'error');
+
+    const { lireListe } = await import('../core/pronote.js');
+    const texte = window.prompt(
+        `Colle ici la liste de « ${c.nom} », un élève par ligne.\n`
+        + 'Les colonnes en trop (classe, identifiant) sont ignorées.', '');
+    if (texte === null) return;
+
+    const { eleves, ignorees } = lireListe(texte);
+    if (!eleves.length) {
+        return showToast('Aucun nom n\'a été reconnu dans ce qui a été collé.', 'error', 6000);
+    }
+
+    let courante = c;
+    let ajoutes = 0;
+    const deja = new Set((c.eleves || []).map(e => normaliser(e.nom)));
+    eleves.forEach(nom => {
+        if (!deja.has(normaliser(nom))) ajoutes++;
+        courante = poserEleve(courante, nom);
+    });
+    await majClasse(courante);
+    showToast(`${eleves.length} nom${eleves.length > 1 ? 's' : ''} lu${eleves.length > 1 ? 's' : ''}, `
+        + `${ajoutes} ajouté${ajoutes > 1 ? 's' : ''} — les autres y étaient déjà.`, 'success', 7000);
+    // On dit ce qui a été écarté : une ligne perdue en silence est un élève
+    // qui manquera à la colonne de notes.
+    if (ignorees.length) {
+        showToast(`${ignorees.length} ligne${ignorees.length > 1 ? 's' : ''} écartée`
+            + `${ignorees.length > 1 ? 's' : ''} : ${ignorees.slice(0, 3).join(' · ')}`, 'info', 8000);
+    }
+}
+
 function choisirFichiers() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -402,7 +454,7 @@ function brancher(racine) {
     };
 
     racine.onclick = async (ev) => {
-        const el = ev.target.closest('[data-classe],[data-nouvelle],[data-ajouter],[data-supprimer],'
+        const el = ev.target.closest('[data-classe],[data-nouvelle],[data-ajouter],[data-coller],[data-supprimer],'
             + '[data-ouvre],[data-ferme],[data-retirer],[data-renommer],[data-demo],'
             + '[data-effacer-demo],[data-voir]');
         if (!el) return;
@@ -454,6 +506,7 @@ function brancher(racine) {
             await enregistrer();
             return rafraichir();
         }
+        if ('coller' in el.dataset) return collerLaListe();
         if ('ajouter' in el.dataset) return choisirFichiers();
         if ('supprimer' in el.dataset) {
             const c = classeActive();
