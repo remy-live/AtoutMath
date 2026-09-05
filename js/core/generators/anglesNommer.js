@@ -34,8 +34,9 @@ export const NOMS_ANGLES = [
         id: 'adjacents', nom: 'adjacents',
         pourquoi: 'ils ont le même sommet, un côté commun, et ils sont de part et '
             + 'd\'autre de ce côté',
-        contre: 'Deux angles adjacents partagent un sommet ET un côté — mais leur somme '
-            + 'ne fait ici ni 90°, ni 180°, sinon ils auraient un nom plus précis.',
+        // CE CONTRE-MESSAGE-LÀ NE PEUT PAS ÊTRE UNE PHRASE FIXE, et c'est le
+        // fond de l'erreur que Rémy a attrapée : voir `contreAdjacents`.
+        contre: 'Deux angles adjacents partagent un sommet ET un côté.',
         // Ni 90° ni 180° ni 360° : sinon ils mériteraient un nom plus précis.
         figure: (rng) => {
             const ouverture = rng.pick([65, 70, 75, 80, 100, 110, 120, 130, 140, 150, 160]);
@@ -98,6 +99,53 @@ export const NOMS_ANGLES = [
     }
 ];
 
+// LES SIX NOMS NE SONT PAS SIX CASES ÉTANCHES, et l'application le disait.
+//
+// Rémy, sur une figure de deux angles formant un angle plat, où il avait
+// répondu « adjacents » : « ces angles là sont adjacents ET supplémentaires ».
+// Il a raison, et l'application lui répondait « CE N'EST PAS ÇA — leur somme
+// ne fait ici ni 90°, ni 180° », c'est-à-dire une phrase FAUSSE sur une figure
+// où la somme faisait exactement 180°.
+//
+// Trois des six noms se lisent sur la même figure — un sommet, un côté commun :
+//
+//   · adjacents          — c'est tout ce qu'on peut en dire ;
+//   · complémentaires    — adjacents ET leur somme fait 90° ;
+//   · supplémentaires    — adjacents ET leur somme fait 180°.
+//
+// « Adjacents » n'est donc jamais FAUX sur ces trois figures : il est parfois
+// INSUFFISANT. C'est une nuance de vocabulaire, pas une erreur de lecture, et
+// les deux ne se corrigent pas de la même façon — dire « ce n'est pas ça » à
+// un élève qui vient de lire correctement la figure lui apprend à se méfier de
+// ce qu'il voit.
+//
+// DEUX CHANGEMENTS, DONC. La question demande le nom LE PLUS PRÉCIS — sans
+// quoi « adjacents » serait une réponse juste qu'on compte fausse, ce qui
+// n'est acceptable dans aucun exercice. Et quand l'élève répond « adjacents »
+// devant deux angles complémentaires ou supplémentaires, on lui dit d'abord
+// qu'il a raison.
+const AVEC_SOMMET_COMMUN = new Set(['adjacents', 'complementaires', 'supplementaires']);
+
+/**
+ * Ce qu'on répond à qui a coché « adjacents » — cela dépend de la figure.
+ *
+ * @param {Object} vrai  la relation que la figure montre
+ */
+function contreAdjacents(vrai) {
+    if (vrai.id === 'complementaires' || vrai.id === 'supplementaires') {
+        const somme = vrai.id === 'complementaires' ? '90°' : '180°';
+        return `C'est vrai : ils ont bien le même sommet et un côté commun, ils SONT `
+            + `adjacents. Mais leur somme fait ${somme}, et on a alors un nom qui en dit `
+            + `plus — ${vrai.nom}. C'est celui-là qu'on demande.`;
+    }
+    if (vrai.id === 'opposes') {
+        return 'Ils ont bien le même sommet, mais aucun côté commun : deux angles '
+            + 'adjacents se touchent par un CÔTÉ, pas seulement par la pointe.';
+    }
+    return 'Deux angles adjacents partagent un sommet ET un côté. Ici, ils n\'ont même '
+        + 'pas le même sommet : il y a deux croisements.';
+}
+
 const nomDe = (id) => NOMS_ANGLES.find(n => n.id === id);
 
 export const anglesNommerGenerator = {
@@ -138,13 +186,20 @@ function itemNommer(rng, n, liste) {
     // qu'on lit, pas la mesure.
     figure.arcs[0].pas = 1;
     figure.arcs[1].pas = 2;
-    const enonce = 'Comment s\'appellent les angles 1 et 2 ?';
+    // « LE PLUS PRÉCIS », ET CE N'EST PAS UNE FORMULE DE STYLE. Sur un angle
+    // plat partagé, « adjacents » et « supplémentaires » sont vrais tous les
+    // deux ; sans ce mot, la question aurait deux réponses justes et n'en
+    // accepterait qu'une. Voir le bloc AVEC_SOMMET_COMMUN plus haut.
+    const enonce = 'Quel est le nom le plus précis des angles 1 et 2 ?';
     // LES LEURRES SONT LES AUTRES NOMS DU TABLEAU, pas des mots inventés :
     // c'est entre eux que l'élève hésite, et chacun dit pourquoi ce n'est pas
     // lui. On les prend dans TOUTE la liste du chapitre, même si la série ne
     // travaille qu'une relation — sinon la bonne réponse serait la seule.
     const autres = NOMS_ANGLES.filter(a => a.id !== n.id)
-        .map(a => ({ value: a.nom, label: a.nom, why: a.contre }));
+        .map(a => ({
+            value: a.nom, label: a.nom,
+            why: a.id === 'adjacents' ? contreAdjacents(n) : a.contre
+        }));
     return makeItem({
         seed: rng.seed,
         generatorId: 'geo.angles-nommer',
@@ -173,7 +228,13 @@ function itemNommer(rng, n, liste) {
                 + 's\'ils ont un côté commun, et ce que fait leur somme.',
             `Ces deux angles sont ${n.nom}.`
         ],
-        explanation: `Ces deux angles sont ${n.nom} : ${n.pourquoi}.`,
+        // ET L'EXPLICATION NOMME LES DEUX. Un élève qui a répondu « adjacents »
+        // doit lire que son mot n'était pas faux : sinon il retient qu'il
+        // avait mal lu la figure, alors qu'il l'avait bien lue.
+        explanation: `Ces deux angles sont ${n.nom} : ${n.pourquoi}.`
+            + (AVEC_SOMMET_COMMUN.has(n.id) && n.id !== 'adjacents'
+                ? ` Ils sont aussi adjacents — c'est vrai, mais « ${n.nom} » en dit plus.`
+                : ''),
         // Reconnaître se travaille avant de calculer : ces figures ouvrent le
         // chapitre, elles ne le concluent pas.
         difficulty: liste.length > 3 ? 2 : 1,

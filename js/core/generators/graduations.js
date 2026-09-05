@@ -25,6 +25,7 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { axeSvg, figure } from '../figures.js';
+import { paramParMarche, rangMarche, conseilProgression } from '../progression.js';
 
 /** Écriture française d'un décimal, sans traîne de virgule flottante. */
 const fr = (x, rang) => x.toFixed(rang)
@@ -71,7 +72,8 @@ export const graduationsGenerator = {
     ecrit: true,
     // Trois echelles a trois questions : neuf pour aller des unites aux
     // centiemes. Voir core/duree.js.
-    conseil: (p) => (p && p.zoom === 'progressif') ? ZOOMS.length * 3 : 10,
+    conseil: (p) => (p && p.zoom === 'progressif')
+        ? conseilProgression(ZOOMS.length, p, 3) : 10,
     params: [
         {
             id: 'zoom', type: 'select', label: 'Le pas de la graduation', default: 'progressif',
@@ -85,19 +87,21 @@ export const graduationsGenerator = {
                 { value: 'dixiemes', label: 'De 0,1 en 0,1' },
                 { value: 'centiemes', label: 'De 0,01 en 0,01' }
             ]
-        }
+        },
+        paramParMarche({ defaut: 3, marches: ZOOMS.length, mot: 'palier' })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = params || {};
         const i = Number(ctx.index) || 0;
-        // PROGRESSIF : trois questions par palier. Une seule question par
-        // échelle ne laisse pas le temps de reconnaître le geste ; dix
-        // enferment dans une routine.
+        // PROGRESSIF : trois questions par palier par défaut. Une seule
+        // question par échelle ne laisse pas le temps de reconnaître le geste ;
+        // dix enferment dans une routine. Entre les deux, c'est le réglage
+        // « Questions par palier » qui tranche.
         const zoom = p.zoom && p.zoom !== 'progressif'
             ? zoomDe(p.zoom)
-            : ZOOMS[Math.min(ZOOMS.length - 1, Math.floor(i / 3))];
+            : ZOOMS[rangMarche(i, ZOOMS.length, p, 3)];
 
         const { debut, fin, crans, valeur } = tirerLecture(rng, zoom);
         const rang = zoom.rang;

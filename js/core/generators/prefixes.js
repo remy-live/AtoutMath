@@ -27,6 +27,7 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { PREFIXES, puissanceTexte, prefixeDe, convertirPrefixe, grouper } from '../puissances.js';
+import { paramParMarche, parMarcheDe } from '../progression.js';
 
 const SKILL = 'num.puissances.prefixes';
 
@@ -304,9 +305,9 @@ const MARCHES = {
 };
 
 /** La marche d'une question : celle qu'on a choisie, ou celle du rang. */
-export function marchePour(etape, index) {
+export function marchePour(etape, index, params) {
     if (etape && etape !== 'progressif' && PAR_ID[etape]) return etape;
-    const rang = Math.floor((index || 0) / PAR_MARCHE);
+    const rang = Math.floor((index || 0) / parMarcheDe(params, PAR_MARCHE));
     // ARRIVÉ EN HAUT, ON REDESCEND ET L'ON RECOMMENCE — même règle que pour les
     // puissances de 10 : sur une fiche de vingt questions, s'arrêter sur la
     // dernière marche en poserait quinze du même type.
@@ -319,7 +320,7 @@ export const prefixesGenerator = {
     skills: [SKILL],
     answerKinds: ['choice'],
     ecrit: true,
-    conseil: () => ORDRE.length * PAR_MARCHE,
+    conseil: (p) => ORDRE.length * parMarcheDe(p, PAR_MARCHE),
     params: [
         {
             id: 'etape', type: 'select', label: 'Marche à travailler', default: 'progressif',
@@ -329,12 +330,13 @@ export const prefixesGenerator = {
                 + 'convertir une mesure — qui est le but de tout le chapitre.',
             options: [{ value: 'progressif', label: 'Tout en ordre, du plus simple au plus dur', court: 'Tout' }]
                 .concat(ETAPES.map(e => ({ value: e.id, label: e.label, court: String(e.rang) })))
-        }
+        },
+        paramParMarche({ defaut: PAR_MARCHE, marches: ORDRE.length })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const marche = marchePour((params || {}).etape, ctx.index);
+        const marche = marchePour((params || {}).etape, ctx.index, params);
         const q = MARCHES[marche](rng);
         return makeItem({
             seed: rng.seed,

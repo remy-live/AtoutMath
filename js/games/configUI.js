@@ -2403,6 +2403,35 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
         };
     }
 
+    // LE CONSEIL SUIT LES RÉGLAGES, PAS SEULEMENT L'OUVERTURE DU PANNEAU.
+    //
+    // Rémy vient d'obtenir « Questions par marche » (core/progression.js) : sur
+    // douze marches, passer de 2 à 4 fait monter le compte nécessaire de 24 à
+    // 48. Sans ce qui suit, le rail resterait à 24 et le réglage n'aurait servi
+    // qu'à TRONQUER la progression plus tôt — l'élève verrait six marches sur
+    // douze, exactement le défaut que `core/duree.js` a été écrit pour tuer.
+    //
+    // ET SEULEMENT TANT QUE PERSONNE N'Y A TOUCHÉ. Si le rail porte encore le
+    // conseil précédent, c'est une valeur que le professeur n'a pas choisie et
+    // qu'on peut donc corriger ; dès qu'il l'a déplacée, elle est à lui. C'est
+    // la même règle que le quota de bonnes réponses (`majDuo`), et pour la même
+    // raison : un réglage qui bouge tout seul après qu'on l'a posé est pire
+    // qu'un réglage qui ne bouge pas.
+    let dernierConseil = conseil;
+    content.addEventListener('change', (e) => {
+        if (!e.target.closest || !e.target.closest('[data-param]')) return;
+        const rail = document.getElementById('cfg-nbitems');
+        if (!rail) return;
+        const neuf = questionsConseillees(generateurEcran,
+            { ...current, ...readParams(content, schema) }, { activite: exo.activityId });
+        const pose = Math.round(Number(rail.value)) || 0;
+        if (neuf !== dernierConseil && pose === dernierConseil) {
+            rail.value = String(Math.max(Number(rail.min), Math.min(Number(rail.max), neuf)));
+            majRail(rail);
+        }
+        dernierConseil = neuf;
+    });
+
     document.getElementById('btn-student-config-cancel').onclick = () => { modal.style.display = 'none'; };
     document.getElementById('btn-student-config-start').onclick = () => {
         modal.style.display = 'none';

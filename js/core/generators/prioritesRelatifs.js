@@ -26,6 +26,7 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { tirerExpression, operationPrioritaire, naif, critiquer, ecrire } from '../priorites.js';
+import { paramParMarche, rangMarche, parMarcheDe } from '../progression.js';
 
 const SKILL = 'num.prio.relatifs';
 const OPTS = { relatifs: true };
@@ -116,6 +117,10 @@ export const prioritesRelatifsGenerator = {
     skills: [SKILL],
     answerKinds: ['choice'],
     ecrit: true,
+    // « Commencer plus facile » est une progression : il faut assez de
+    // questions pour atteindre le niveau réglé. Voir core/duree.js.
+    conseil: (p) => ((p && p.progressif) !== false)
+        ? Math.max(1, Math.min(4, Number(p && p.niveau) || 2)) * parMarcheDe(p, 4) : 10,
     params: [
         {
             id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
@@ -144,11 +149,12 @@ export const prioritesRelatifsGenerator = {
         },
         {
             id: 'progressif', type: 'checkbox', label: 'Commencer plus facile', default: true,
-            aide: 'Les quatre premières questions restent à trois nombres, puis la '
-                + 'difficulté monte d\'un cran toutes les quatre questions. Sur ce '
+            aide: 'Les premières questions restent à trois nombres, puis la '
+                + 'difficulté monte d\'un cran — au rythme réglé juste en dessous. Sur ce '
                 + 'chapitre-là, deux règles se rencontrent : il vaut mieux les voir '
                 + 'arriver une à une.'
-        }
+        },
+        paramParMarche({ defaut: 4, mot: 'cran' })
     ],
 
     generate(params, ctx) {
@@ -157,7 +163,7 @@ export const prioritesRelatifsGenerator = {
         const plafond = Math.max(1, Math.min(4, Number(params.niveau) || 2));
         const niveau = params.progressif === false
             ? plafond
-            : Math.min(plafond, 1 + Math.floor((Number(ctx.index) || 0) / 4));
+            : Math.min(plafond, 1 + rangMarche(Number(ctx.index) || 0, plafond, params, 4));
 
         const e = tirerExpression({
             rng, niveau, relatifs: true,

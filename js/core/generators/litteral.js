@@ -34,6 +34,7 @@
 // Module pur : ni DOM, ni horloge. Il se teste sous Node.
 
 import { makeItem, finalizeChoices } from '../items.js';
+import { paramParMarche, rangMarche, conseilProgression } from '../progression.js';
 
 const SKILL = 'num.litteral.reduire';
 const LETTRES = ['x', 'a', 'y', 'n', 'b', 't'];
@@ -374,8 +375,10 @@ export const litteralReduireGenerator = {
     // Deux questions par marche : le temps de s'installer avant de monter.
     conseil: (p) => {
         const choix = (p && p.etape) || 'progressif';
-        if (['A', 'B', 'C'].includes(choix)) return ETAPES.filter(e => e.temps === choix).length * 2;
-        return choix === 'progressif' ? ETAPES.length * 2 : 6;
+        if (['A', 'B', 'C'].includes(choix)) {
+            return conseilProgression(ETAPES.filter(e => e.temps === choix).length, p);
+        }
+        return choix === 'progressif' ? conseilProgression(ETAPES.length, p) : 6;
     },
     params: [
         {
@@ -392,7 +395,8 @@ export const litteralReduireGenerator = {
                 ...ETAPES.map((e, i) => ({ value: e.id, label: `${i + 1}. ${e.titre}`, court: String(i + 1) }))
             ],
             default: 'progressif'
-        }
+        },
+        paramParMarche({ marches: ETAPES.length })
     ],
 
     generate(params, ctx) {
@@ -403,7 +407,7 @@ export const litteralReduireGenerator = {
         let liste = ETAPES;
         if (['A', 'B', 'C'].includes(choix)) liste = ETAPES.filter(e => e.temps === choix);
         else if (choix !== 'progressif') liste = [ETAPES.find(e => e.id === choix) || ETAPES[0]];
-        const rang = Math.min(liste.length - 1, Math.floor(index / 2));
+        const rang = rangMarche(index, liste.length, params);
         const etape = liste[rang];
         const rangGlobal = ETAPES.findIndex(e => e.id === etape.id);
 

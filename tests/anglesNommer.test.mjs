@@ -73,6 +73,47 @@ test('« adjacents » ne cache jamais un nom plus précis', () => {
     }
 });
 
+test('DEUX ANGLES SUPPLÉMENTAIRES SONT AUSSI ADJACENTS, ET ON LE DIT', () => {
+    // Rémy, sur une figure d'angle plat partagé où il avait répondu
+    // « adjacents » : « ces angles là sont adjacents et supplémentaires ».
+    // L'application lui répondait « CE N'EST PAS ÇA — leur somme ne fait ici ni
+    // 90°, ni 180° » sur une figure où elle faisait exactement 180°. Une phrase
+    // fausse dite à un élève qui venait de lire la figure correctement.
+    for (const rel of ['complementaires', 'supplementaires']) {
+        for (let i = 0; i < 30; i++) {
+            const it = G.generate({ familles: [rel] }, { rng: makeRng(rel + i), index: 0 });
+            const adj = it.choices.find(c => c.value === 'adjacents');
+            assert.ok(adj, 'le nom « adjacents » reste proposé');
+            assert.match(adj.why, /c'est vrai|ils SONT adjacents/i,
+                'on commence par dire à l\'élève qu\'il a raison');
+            assert.doesNotMatch(adj.why, /ne fait ici ni/,
+                'la phrase qui mentait sur la somme a disparu');
+            // Et l'explication finale nomme les deux mots.
+            assert.match(it.explanation, /aussi adjacents/);
+        }
+    }
+});
+
+test('LA QUESTION DEMANDE LE NOM LE PLUS PRÉCIS', () => {
+    // Sans ce mot, la question aurait deux réponses justes sur trois figures
+    // sur six, et n'en accepterait qu'une.
+    const it = tirer({}, 0);
+    assert.match(it.prompt.text, /le plus précis/);
+    assert.match(it.prompt.papier, /le plus précis/);
+});
+
+test('sur une figure à DEUX sommets, « adjacents » est bien faux — et on le dit', () => {
+    for (const rel of ['correspondants', 'alternes']) {
+        const it = G.generate({ familles: [rel] }, { rng: makeRng(rel), index: 0 });
+        const adj = it.choices.find(c => c.value === 'adjacents');
+        assert.match(adj.why, /même sommet|deux croisements/);
+        assert.doesNotMatch(adj.why, /c'est vrai/i);
+    }
+    // Opposés par le sommet : même sommet, mais aucun côté commun.
+    const op = G.generate({ familles: ['opposes'] }, { rng: makeRng('op'), index: 0 });
+    assert.match(op.choices.find(c => c.value === 'adjacents').why, /aucun côté commun/);
+});
+
 test('les deux angles sont numérotés 1 et 2, sans aucune mesure écrite', () => {
     for (let i = 0; i < 60; i++) {
         const m = tirer({}, i).meta;

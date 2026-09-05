@@ -36,6 +36,7 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { ecrire, nb } from './relatifs.js';
+import { paramParMarche, rangMarche, conseilProgression } from '../progression.js';
 
 const SKILL = 'num.relatifs.produit';
 const SKILL_SENS = 'num.relatifs.sens';
@@ -278,8 +279,10 @@ export const relatifsProduitGenerator = {
     ecrit: true,
     conseil: (p) => {
         const choix = (p && p.etape) || 'progressif';
-        if (['A', 'B', 'C'].includes(choix)) return ETAPES.filter(e => e.temps === choix).length * 2;
-        return choix === 'progressif' ? ETAPES.length * 2 : 6;
+        if (['A', 'B', 'C'].includes(choix)) {
+            return conseilProgression(ETAPES.filter(e => e.temps === choix).length, p);
+        }
+        return choix === 'progressif' ? conseilProgression(ETAPES.length, p) : 6;
     },
     params: [
         {
@@ -296,7 +299,8 @@ export const relatifsProduitGenerator = {
                 ...ETAPES.map((e, i) => ({ value: e.id, label: `${i + 1}. ${e.titre}`, court: String(i + 1) }))
             ],
             default: 'progressif'
-        }
+        },
+        paramParMarche({ marches: ETAPES.length })
     ],
 
     generate(params, ctx) {
@@ -307,7 +311,7 @@ export const relatifsProduitGenerator = {
         let liste = ETAPES;
         if (['A', 'B', 'C'].includes(choix)) liste = ETAPES.filter(e => e.temps === choix);
         else if (choix !== 'progressif') liste = [ETAPES.find(e => e.id === choix) || ETAPES[0]];
-        const rang = Math.min(liste.length - 1, Math.floor(index / 2));
+        const rang = rangMarche(index, liste.length, params);
         const etape = liste[rang];
         const rangGlobal = ETAPES.findIndex(e => e.id === etape.id);
 

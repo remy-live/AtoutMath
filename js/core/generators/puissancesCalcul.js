@@ -29,6 +29,7 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import { puissanceTexte, valeurPuissance, grouper } from '../puissances.js';
+import { paramParMarche, parMarcheDe } from '../progression.js';
 
 /**
  * UN NOMBRE AVEC LE VRAI SIGNE MOINS (U+2212), jamais le trait d'union du
@@ -402,13 +403,14 @@ const MARCHES = {
 };
 
 /** La marche d'une question : celle qu'on a choisie, ou celle du rang. */
-export function marchePour(etape, index) {
+export function marchePour(etape, index, params) {
     if (etape && etape !== 'progressif' && PAR_ID[etape]) return etape;
+    const rang = Math.floor((index || 0) / parMarcheDe(params, PAR_MARCHE));
     if (['A', 'B', 'C'].includes(etape)) {
         const liste = ETAPES.filter(e => e.temps === etape).map(e => e.id);
-        return liste[Math.floor((index || 0) / PAR_MARCHE) % liste.length];
+        return liste[rang % liste.length];
     }
-    return ORDRE[Math.floor((index || 0) / PAR_MARCHE) % ORDRE.length];
+    return ORDRE[rang % ORDRE.length];
 }
 
 export const puissancesCalculGenerator = {
@@ -419,8 +421,9 @@ export const puissancesCalculGenerator = {
     ecrit: true,
     conseil: (p) => {
         const choix = (p && p.etape) || 'progressif';
-        if (['A', 'B', 'C'].includes(choix)) return ETAPES.filter(e => e.temps === choix).length * PAR_MARCHE;
-        return choix === 'progressif' ? ORDRE.length * PAR_MARCHE : 6;
+        const par = parMarcheDe(p, PAR_MARCHE);
+        if (['A', 'B', 'C'].includes(choix)) return ETAPES.filter(e => e.temps === choix).length * par;
+        return choix === 'progressif' ? ORDRE.length * par : 6;
     },
     params: [
         {
@@ -438,12 +441,13 @@ export const puissancesCalculGenerator = {
                 { value: 'C', label: 'C — puissance de puissance, et la même base', court: 'C' },
                 ...ETAPES.map(e => ({ value: e.id, label: e.label, court: String(e.rang) }))
             ]
-        }
+        },
+        paramParMarche({ defaut: PAR_MARCHE, marches: ORDRE.length })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const marche = marchePour((params || {}).etape, ctx.index);
+        const marche = marchePour((params || {}).etape, ctx.index, params);
         const q = MARCHES[marche](rng);
         return makeItem({
             seed: rng.seed,

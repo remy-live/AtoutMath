@@ -30,6 +30,7 @@
 // qu'on doit voir.
 
 import { makeItem, finalizeChoices } from '../items.js';
+import { paramParMarche, parMarcheDe } from '../progression.js';
 import {
     CONFIGURATIONS, creerThales, longueurTexte, egaliteThales, FAUSSES_EGALITES,
     sontParalleles, rapportsCompares, calculThales, pointsReels,
@@ -599,9 +600,9 @@ const MARCHES = {
 };
 
 /** La marche à travailler pour la question numéro `index`. */
-export function marcheThales(etape, index) {
+export function marcheThales(etape, index, params) {
     if (etape && etape !== 'progressif' && MARCHES[etape]) return etape;
-    const rang = Math.floor((index || 0) / PAR_MARCHE);
+    const rang = Math.floor((index || 0) / parMarcheDe(params, PAR_MARCHE));
     // Arrivé en haut on recommence en bas : sur une fiche de vingt questions,
     // plafonner donnerait onze fois la même.
     return ORDRE_THALES[rang % ORDRE_THALES.length];
@@ -615,6 +616,10 @@ export const thalesGenerator = {
     // nombre : l'item déclare donc ce qu'il est, question par question.
     answerKinds: ['choice', 'numeric'],
     ecrit: true,
+    // La montée cycle : il faut au moins un tour complet — trois marches — pour
+    // que la réciproque soit vue une fois. Voir core/duree.js.
+    conseil: (p) => ((p && p.etape) || 'progressif') === 'progressif'
+        ? ORDRE_THALES.length * parMarcheDe(p, PAR_MARCHE) : 6,
     params: [
         {
             id: 'etape', type: 'select', label: 'Marche à travailler', default: 'progressif',
@@ -626,6 +631,7 @@ export const thalesGenerator = {
             options: [{ value: 'progressif', label: 'Tout en ordre, du plus simple au plus dur' }]
                 .concat(ORDRE_THALES.map(e => ({ value: e, label: ETAPES_THALES[e].label })))
         },
+        paramParMarche({ defaut: PAR_MARCHE, marches: ORDRE_THALES.length }),
         {
             id: 'config', type: 'select', label: 'Configuration', default: 'melange',
             aide: 'Le papillon est le même théorème avec le point A entre les deux '
@@ -641,7 +647,7 @@ export const thalesGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = params || {};
-        const marche = marcheThales(p.etape, ctx.index);
+        const marche = marcheThales(p.etape, ctx.index, p);
         // « Mélange » tire à chaque question ; un réglage explicite s'impose,
         // ce qui permet de ne travailler que le papillon — celui que les élèves
         // ne reconnaissent pas.

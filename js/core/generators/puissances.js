@@ -20,6 +20,7 @@
 // sens.
 
 import { makeItem, finalizeChoices } from '../items.js';
+import { paramParMarche, parMarcheDe } from '../progression.js';
 import {
     ETAPES_PUISSANCES, ORDRE_ETAPES, puissanceTexte, valeurPuissance, decimaleDe,
     mantisseTexte, scientifiqueTexte, jugerMantisse, RAISONS, versScientifique,
@@ -43,7 +44,8 @@ function memeNombre(a, b) {
     return Number.isFinite(x) && Number.isFinite(y) && Math.abs(x - y) <= Math.abs(y) * 1e-12;
 }
 
-/** Combien de questions on passe sur une marche avant de monter. */
+/** Combien de questions on passe sur une marche avant de monter, par défaut :
+ *  le réglage « Questions par marche » a le dernier mot. */
 const PAR_MARCHE = 3;
 
 /** Des chiffres significatifs plausibles : « 34 », « 5 », « 207 ». */
@@ -314,12 +316,12 @@ const MARCHES = {
  * ce qui donne les deux exercices que Rémy demandait : « déjà reconnaître »,
  * puis « transformer ».
  */
-export function marchePour(etape, index, bornes) {
+export function marchePour(etape, index, bornes, params) {
     const liste = bornes
         ? ORDRE_ETAPES.slice(ORDRE_ETAPES.indexOf(bornes[0]), ORDRE_ETAPES.indexOf(bornes[1]) + 1)
         : ORDRE_ETAPES;
     if (etape && etape !== 'progressif' && MARCHES[etape]) return etape;
-    const rang = Math.floor((index || 0) / PAR_MARCHE);
+    const rang = Math.floor((index || 0) / parMarcheDe(params, PAR_MARCHE));
     // ARRIVÉ EN HAUT, ON REDESCEND ET L'ON RECOMMENCE. La première version
     // s'arrêtait sur la dernière marche, et cela se voyait à l'impression :
     // sur une fiche de vingt questions, l'exercice « transformer » en posait
@@ -337,6 +339,17 @@ function fabriquer(id, competence, bornes) {
         skills: [competence],
         answerKinds: ['choice'],
         ecrit: true,
+        // La montée CYCLE : arrivée en haut, elle repart en bas. Il faut donc
+        // au moins un tour complet pour que chaque marche soit vue une fois,
+        // et c'est ce qu'on conseille. Voir core/duree.js.
+        conseil: (p) => {
+            const etape = (p && p.etape) || 'progressif';
+            if (etape !== 'progressif') return 10;
+            const liste = bornes
+                ? ORDRE_ETAPES.slice(ORDRE_ETAPES.indexOf(bornes[0]), ORDRE_ETAPES.indexOf(bornes[1]) + 1)
+                : ORDRE_ETAPES;
+            return liste.length * parMarcheDe(p, PAR_MARCHE);
+        },
         params: [
             {
                 id: 'etape', type: 'select', label: 'Marche à travailler', default: 'progressif',
@@ -347,13 +360,19 @@ function fabriquer(id, competence, bornes) {
                     .concat((bornes
                         ? ORDRE_ETAPES.slice(ORDRE_ETAPES.indexOf(bornes[0]), ORDRE_ETAPES.indexOf(bornes[1]) + 1)
                         : ORDRE_ETAPES).map(e => ({ value: e, label: ETAPES_PUISSANCES[e].label })))
-            }
+            },
+            paramParMarche({
+                defaut: PAR_MARCHE,
+                marches: (bornes
+                    ? ORDRE_ETAPES.slice(ORDRE_ETAPES.indexOf(bornes[0]), ORDRE_ETAPES.indexOf(bornes[1]) + 1)
+                    : ORDRE_ETAPES).length
+            })
         ],
 
         generate(params, ctx) {
             const rng = ctx.rng;
             const p = params || {};
-            const marche = marchePour(p.etape, ctx.index, bornes);
+            const marche = marchePour(p.etape, ctx.index, bornes, p);
             const q = MARCHES[marche](rng);
             // LES CHOIX PUREMENT NUMÉRIQUES S'AFFICHENT GROUPÉS, mais leur
             // `value` reste brute : c'est elle qui sert à comparer la réponse

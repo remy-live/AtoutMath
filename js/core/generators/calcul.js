@@ -13,6 +13,7 @@
 import { makeItem, finalizeChoices } from '../items.js';
 import { tirerExpression, operationPrioritaire, naif, critiquer, ecrire } from '../priorites.js';
 import { souligner } from '../fiche.js';
+import { paramParMarche, rangMarche, parMarcheDe } from '../progression.js';
 
 // --- Addition ---------------------------------------------------------------
 
@@ -392,6 +393,12 @@ export const prioriteGenerator = {
     skills: ['num.prio'],
     answerKinds: ['choice'],
     ecrit: true,
+    // « Commencer plus facile » est une progression comme les autres, même si
+    // elle se coche au lieu de se choisir dans un menu : il faut assez de
+    // questions pour atteindre le niveau réglé, sinon on cocherait une montée
+    // dont on ne verrait jamais le sommet. Voir core/duree.js.
+    conseil: (p) => (p && p.progressif)
+        ? Math.max(1, Math.min(4, Number(p.niveau) || 2)) * parMarcheDe(p, 4) : 10,
     params: [
         { id: 'mode', type: 'select', label: 'Question posée', options: ['operation', 'resultat'], default: 'operation' },
         {
@@ -415,10 +422,11 @@ export const prioriteGenerator = {
         },
         {
             id: 'progressif', type: 'checkbox', label: 'Commencer plus facile', default: false,
-            aide: 'Les quatre premières questions restent à trois nombres et deux opérations, '
-                + 'puis la difficulté monte d\'un cran toutes les quatre questions jusqu\'à celle '
-                + 'réglée ci-dessus. On installe la règle avant de la compliquer.'
-        }
+            aide: 'Les premières questions restent à trois nombres et deux opérations, '
+                + 'puis la difficulté monte d\'un cran jusqu\'à celle réglée ci-dessus, au '
+                + 'rythme du réglage suivant. On installe la règle avant de la compliquer.'
+        },
+        paramParMarche({ defaut: 4, mot: 'cran' })
     ],
 
     generate(params, ctx) {
@@ -432,7 +440,7 @@ export const prioriteGenerator = {
         // niveau réglé au bout de quelques questions.
         const plafondNiveau = Math.max(1, Math.min(4, Number(params.niveau) || 2));
         const niveau = params.progressif
-            ? Math.min(plafondNiveau, 1 + Math.floor((Number(ctx.index) || 0) / 4))
+            ? Math.min(plafondNiveau, 1 + rangMarche(Number(ctx.index) || 0, plafondNiveau, params, 4))
             : plafondNiveau;
         const e = tirerExpression({
             rng,
