@@ -190,6 +190,21 @@ const BASE = {
         descriptor: 'Rendre une fraction irréductible en divisant numérateur et dénominateur par leurs facteurs communs.',
         lesson: 'On cherche un diviseur commun au numérateur et au dénominateur : 36/48 = (12×3)/(12×4) = 3/4. Quand il n\'y a plus aucun diviseur commun, la fraction est irréductible.'
     },
+    'num.frac.multiplication': {
+        label: 'Multiplier deux fractions',
+        chemin: [D.NUMERIQUE, SD.FRACTIONS],
+        niveaux: [N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.frac.sens', 'num.frac.simplification'],
+        descriptor: 'Multiplier deux fractions, en simplifiant en diagonale avant de calculer.',
+        lesson: 'On multiplie les numérateurs entre eux et les dénominateurs entre eux — '
+            + 'aucun dénominateur commun à chercher, contrairement à l\'addition : '
+            + '2/3 × 5/7 = (2×5)/(3×7) = 10/21. Quand un facteur du haut se retrouve en bas, '
+            + 'on le BARRE avant de calculer : 3/4 × 8/9 = (3×8)/(4×9), où 3 se simplifie avec '
+            + '9 et 4 avec 8, donc il reste 2/3. Multiplier d\'abord donnerait 24/36, qu\'il '
+            + 'faudrait ensuite simplifier par 12 — le même résultat, mais un PGCD à chercher. '
+            + 'C\'est pour cela qu\'on décompose avant : la méthode tient encore quand les '
+            + 'nombres grandissent.'
+    },
     // --- Chapitre « Nombres entiers et décimaux » (6ᵉ) ---
     'num.ecriture.lettres': {
         label: 'Écrire un nombre en chiffres et en lettres',

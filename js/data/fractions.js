@@ -36,6 +36,52 @@ export const fractionsExercises = [
         instruction: "Additionne les deux fractions et choisis le bon résultat."
     },
     {
+        // MULTIPLIER DES FRACTIONS — Rémy : « on fait les multiplications de
+        // fractions avec et sans décomposition ».
+        //
+        // LA RÈGLE EST LA PLUS FACILE DU CHAPITRE, ET C'EST LE PIÈGE. Pour
+        // additionner il faut un dénominateur commun ; pour multiplier, on
+        // multiplie en haut et en bas, et c'est tout. L'élève l'applique dès la
+        // première question. Ce qu'il ne sait pas faire, c'est s'ARRÊTER avant
+        // de calculer — et c'est cela que le réglage sépare.
+        //
+        //   3/4 × 8/9 = (3 × 8)/(4 × 9) = 24/36 = 2/3      ← il faut trouver 12
+        //   3/4 × 8/9 = (3 × 8)/(4 × 9) = 2/3              ← on barre d'abord
+        //
+        // Le même résultat par les deux chemins, et pas le même travail : à
+        // droite on cherche un PGCD sur des nombres à deux chiffres, à gauche
+        // on reconnaît des facteurs déjà écrits. C'est la seule méthode qui
+        // tienne quand les nombres grandissent, et c'est pour cela qu'on
+        // l'apprend AVANT d'en avoir besoin. Le corrigé montre donc toujours
+        // les deux.
+        //
+        // ON COMMENCE SANS. La règle d'abord, seule ; la diagonale ensuite,
+        // quand elle n'est plus qu'une économie et non une deuxième idée à
+        // tenir en même temps que la première.
+        id: 'frac-produit', title: 'Multiplier des Fractions',
+        cree: '2026-09-05',
+        consignePapier: 'Calcule le produit. Simplifie avant de multiplier quand c\'est possible.',
+        colonnesPapier: 4,
+        generatorId: 'frac.produit', activityId: 'bubbles',
+        params: { decomposition: 'sans', maxDen: 9, maxNum: 10 },
+        motsClefs: ['multiplier des fractions', 'produit de fractions', 'simplifier avant',
+            'décomposition', 'barrer en diagonale'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: 'Multiplier deux fractions ne demande AUCUN dénominateur commun — c\'est '
+            + 'ce qui la sépare de l\'addition, et ce qu\'on oublie le plus vite. On multiplie '
+            + 'les numérateurs entre eux, les dénominateurs entre eux : 2/3 × 5/7 = 10/21. Le '
+            + 'réglage « Décomposer avant de calculer » change ce qui se passe ensuite. Sans, '
+            + 'rien ne se croise et le calcul est fini. Avec, un facteur du haut se retrouve '
+            + 'en bas — 3/4 × 8/9 — et il faut le BARRER avant de multiplier : 3 avec 9, 4 '
+            + 'avec 8, il reste 2/3. Tu peux aussi multiplier d\'abord et simplifier après : '
+            + 'tu trouveras 24/36, et il faudra chercher que 24 et 36 ont 12 en commun. Le '
+            + 'résultat est le même, le travail non — et sur des nombres plus grands, seule '
+            + 'la première méthode reste faisable.'
+    },
+    {
         // « 3/2 = 33/… » — l'exemple est de Rémy, et il est bien choisi : la
         // fraction est IMPROPRE, donc la bande dépasse l'unité, et le facteur
         // (11) n'est pas dans les petites tables. On ne s'en tire pas de tête.

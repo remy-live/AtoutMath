@@ -163,7 +163,7 @@ export const CHAPITRES = [
         id: '5-fractions', niveau: CINQUIEME, nom: 'Fractions',
         skills: [
             'num.frac.sens', 'num.frac.compare', 'num.frac.equivalentes',
-            'num.frac.add-meme-denom',
+            'num.frac.add-meme-denom', 'num.frac.multiplication',
             'num.frac.denominateur-commun', 'num.frac.simplification', 'num.probleme.fraction'
         ]
     },
@@ -219,7 +219,7 @@ export const CHAPITRES = [
     { id: '4-equations', niveau: QUATRIEME, nom: 'Équations', skills: ['alg.equation.resoudre'] },
     {
         id: '4-fractions', niveau: QUATRIEME, nom: 'Fractions',
-        skills: ['num.frac.compare', 'num.frac.simplification']
+        skills: ['num.frac.compare', 'num.frac.simplification', 'num.frac.multiplication']
     },
     {
         id: '4-grandeurs-composees', niveau: QUATRIEME, nom: 'Grandeurs composées',

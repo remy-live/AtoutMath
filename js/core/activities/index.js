@@ -12,7 +12,7 @@ import {
     additionGenerator, soustractionGenerator, multFactGenerator,
     multMissingGenerator, divisionGenerator, prioriteGenerator, mixteGenerator
 } from '../generators/calcul.js';
-import { fracCompareGenerator, fracAddGenerator, decCompareGenerator } from '../generators/fractions.js';
+import { fracCompareGenerator, fracAddGenerator, fracProduitGenerator, decCompareGenerator } from '../generators/fractions.js';
 import {
     fracEgaliteGenerator, fracFacteurGenerator, fracEgalesGenerator,
     fracSommeProgressiveGenerator,
@@ -116,7 +116,7 @@ import {
 [
     additionGenerator, soustractionGenerator, multFactGenerator,
     multMissingGenerator, divisionGenerator, prioriteGenerator, mixteGenerator,
-    fracCompareGenerator, fracAddGenerator, decCompareGenerator,
+    fracCompareGenerator, fracAddGenerator, fracProduitGenerator, decCompareGenerator,
     fracEgaliteGenerator, fracFacteurGenerator, fracEgalesGenerator,
     fracSommeProgressiveGenerator, fracProblemeGenerator,
     repereGenerator, perimetreGenerator, aireGenerator,
