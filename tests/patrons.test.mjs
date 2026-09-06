@@ -13,7 +13,7 @@ import { makeRng } from '../js/core/ids.js';
 import {
     HEXOMINOS, PATRONS, FAUX, FAMILLES, ORDRE_FAMILLES, CONSIGNES,
     plier, faceOpposee, opposee, profil, difficulte, polyominos,
-    canonique, normaliser, preparerSerie
+    canonique, normaliser, preparerSerie, arbrePliage
 } from '../js/core/patrons.js';
 
 const cle = ([x, y]) => `${x},${y}`;
@@ -204,4 +204,72 @@ test('LES CONSIGNES NE DONNENT PAS LA RÉPONSE', () => {
         assert.doesNotMatch(c, /onze|11|opposé[e]?s? sont|il suffit/i);
     });
     assert.match(CONSIGNES.reconnaitre, /plie/i);
+});
+
+// --- L'ARBRE DU PLIAGE -------------------------------------------------------
+//
+// Rémy : « le patron qui se plie ne se plie pas ». L'écran plie maintenant pour
+// de vrai, et il le fait EN SUIVANT CET ARBRE : si l'arbre ment, l'animation
+// montre un cube qui n'est pas celui que le calcul décrit. Trois promesses,
+// donc — il atteint tous les carrés, il ne fait pas de boucle, et chaque pli
+// est bien un pli, c'est-à-dire une arête commune entre deux carrés voisins.
+
+test('L\'ARBRE DU PLIAGE ATTEINT TOUS LES CARRÉS, SANS BOUCLE', () => {
+    for (const forme of HEXOMINOS) {
+        const { racine, enfants } = arbrePliage(forme);
+        const vus = new Set([racine]);
+        const file = [racine];
+        while (file.length) {
+            for (const e of enfants[file.shift()] || []) {
+                assert.equal(vus.has(e.cle), false, `deux chemins mènent à ${e.cle}`);
+                vus.add(e.cle);
+                file.push(e.cle);
+            }
+        }
+        assert.equal(vus.size, forme.length,
+            `${forme.length} carrés, ${vus.size} atteints`);
+    }
+});
+
+test('chaque pli se fait autour d\'une arête commune', () => {
+    for (const forme of HEXOMINOS.slice(0, 12)) {
+        const dans = new Set(forme.map(cle));
+        const { enfants } = arbrePliage(forme);
+        for (const [k, liste] of Object.entries(enfants)) {
+            const [x, y] = k.split(',').map(Number);
+            for (const e of liste) {
+                assert.equal(Math.abs(e.dx) + Math.abs(e.dy), 1,
+                    'un carré ne se relève que sur un voisin de côté');
+                assert.equal(e.cle, cle([x + e.dx, y + e.dy]));
+                assert.ok(dans.has(e.cle));
+            }
+        }
+    }
+});
+
+test('LA RACINE EST LIBRE : n\'importe quel carré peut rester posé', () => {
+    // C'est ce qui autorise l'écran à choisir le carré le plus central pour
+    // cadrer la figure. Le pliage obtenu doit être le même — mêmes carrés,
+    // mêmes arêtes — quel que soit celui qu'on garde sur la table.
+    const forme = CROIX;
+    const aretes = (racine) => {
+        const { enfants } = arbrePliage(forme, racine);
+        return new Set(Object.entries(enfants).flatMap(([k, l]) =>
+            l.map(e => [k, e.cle].sort().join('|'))));
+    };
+    const depart = aretes(cle(forme[0]));
+    assert.equal(depart.size, forme.length - 1, 'un arbre de six carrés a cinq plis');
+    for (const c of forme) {
+        const autre = aretes(cle(c));
+        assert.equal(autre.size, forme.length - 1);
+        // Les plis peuvent différer d'un arbre à l'autre, mais chacun reste un
+        // arbre couvrant : c'est cela qui garantit le même cube.
+        autre.forEach(a => {
+            const [p, q] = a.split('|').map(x => x.split(',').map(Number));
+            assert.equal(Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]), 1);
+        });
+    }
+    // Une racine qu'on ne trouve pas dans la figure ne casse rien : on repart
+    // du premier carré.
+    assert.equal(arbrePliage(forme, '99,99').racine, cle(forme[0]));
 });

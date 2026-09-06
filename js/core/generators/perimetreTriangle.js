@@ -12,6 +12,7 @@
 // qu'habiller.
 
 import { makeItem } from '../items.js';
+import { figure } from '../figures.js';
 import {
     MARCHES_TRIANGLE, tirerTriangle, enonceDe, reponseDe, expliquer, leurresDe,
     figureTriangleSvg, ecrireNombre
@@ -73,7 +74,7 @@ export const perimetreTriangleGenerator = {
         const etiquette = (v) => `${ecrireNombre(v)} ${unite}`;
 
         const enonce = enonceDe(t);
-        const figure = figureTriangleSvg(t);
+        const figureSvg = figureTriangleSvg(t);
 
         return makeItem({
             seed: rng.seed,
@@ -86,7 +87,7 @@ export const perimetreTriangleGenerator = {
                 // périmètre sans figure n'apprend pas que le périmètre fait le
                 // tour — c'est la leçon retenue du rectangle.
                 papier: enonce,
-                html: `<div class="game-question tri-question">${enonce}</div>${figure}`
+                html: `<div class="game-question tri-question">${enonce}</div>${figure(figureSvg)}`
             },
             answer: juste,
             choices: auChoix ? [
@@ -101,7 +102,7 @@ export const perimetreTriangleGenerator = {
             meta: {
                 marche: id, titre: (MARCHES_TRIANGLE.find(m => m.id === id) || {}).nom,
                 a: t.a, b: t.b, c: t.c, rot: t.rot, perimetre: t.perimetre, cache: t.cache || '',
-                unit: unite, decimal: false, figure
+                unit: unite, decimal: false, figure: figureSvg
             }
         });
     }

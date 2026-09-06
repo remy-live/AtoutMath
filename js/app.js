@@ -798,6 +798,17 @@ function initDebugToolbar() {
     const btnConsole = document.getElementById('db-console');
     if (btnConsole) btnConsole.onclick = () => openConsoleModal();
 
+    // La poubelle du journal : elle dit combien de lignes elle a emportées,
+    // sinon on ne sait pas si elle a fait quelque chose.
+    const btnVider = document.getElementById('db-vider-journal');
+    if (btnVider) btnVider.onclick = async () => {
+        const { viderJournal } = await import('./ui/consoleLog.js');
+        const n = viderJournal();
+        const { showToast } = await import('./ui/modal.js');
+        showToast(n ? `Journal vidé — ${n} ligne${n > 1 ? 's' : ''} effacée${n > 1 ? 's' : ''}.`
+            : 'Le journal était déjà vide.', n ? 'success' : 'warning', 2200);
+    };
+
     // Les nouveautés : la liste de ce qui vient d'arriver, avec de quoi
     // l'essayer et de quoi en voir la fiche.
     const btnNeuf = document.getElementById('db-nouveautes');

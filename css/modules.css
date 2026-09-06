@@ -768,6 +768,58 @@
 .figure-wrap:has(.egy-svg) { width: min(600px, 97%); }
 .fig-svg, .rep-svg { width: 100%; height: auto; max-height: 46cqh; overflow: visible; }
 
+/* --- LE GRAND PLATEAU, C'EST-À-DIRE L'ORDINATEUR ---------------------------
+ *
+ * Rémy, sur trois exercices différents : « un peu petit la figure sur ordi »,
+ * « figure hyper petite pour l'ordinateur et bulle grosse, je pense qu'il faut
+ * revoir le design sur ordi », « tellement petit sur ordi ».
+ *
+ * Il a raison, et la cause n'est pas le hasard : TOUTES LES BORNES DE CE
+ * FICHIER ONT ÉTÉ TAILLÉES POUR LE TÉLÉPHONE. `--fig-plafond` s'arrête à
+ * 250 px, `.figure-wrap` à 360, `.numpad-context` à 430 — trois plafonds
+ * écrits pour qu'un dessin ne chasse pas le clavier d'un écran de 667 px de
+ * haut. Sur un plateau de 1440 × 830 ils ne protègent plus rien : mesuré, la
+ * figure du rectangle occupait 360 × 163 px au milieu de 830 px de hauteur,
+ * et le reste était du vide.
+ *
+ * Les bornes ne sont donc pas fausses, elles sont CONDITIONNELLES. Ce palier
+ * les relève quand le plateau a la place, et lui seul : rien ne change sous
+ * 900 px de large ou 620 px de haut, donc rien ne change sur un téléphone ni
+ * sur une tablette en portrait.
+ *
+ * Le seuil de largeur est plus haut que celui des deux colonnes (720) exprès :
+ * à 720 le pavé vient de passer à droite et la colonne de gauche n'a pas
+ * encore de marge à donner. */
+@container plateau (min-width: 900px) and (min-height: 620px) {
+    /* LA COLONNE DE GAUCHE CESSE D'ÊTRE `max-content`. C'est ce qui bridait
+       tout le reste : mesuré, la figure du rectangle plafonnait à 403 px non
+       parce qu'un plafond le disait, mais parce que la colonne prenait la
+       largeur de la PHRASE — « Périmètre de ce rectangle ? », 380 px. Le
+       dessin ne pouvait pas dépasser son propre énoncé. */
+    .numpad-layout { grid-template-columns: minmax(0, 560px) minmax(0, 318px); }
+    .numpad-context { width: 100%; max-width: 600px; --fig-plafond: clamp(250px, 46cqh, 440px); }
+    /* La question grandit avec la figure : un énoncé de 1,25 rem sous un dessin
+       de 400 px se lit comme une légende. */
+    .numpad-context .game-question { font-size: clamp(1.35rem, 3.6cqh, 2.1rem); }
+    .figure-wrap { width: min(560px, 96%); }
+    .fig-svg, .rep-svg { max-height: 56cqh; }
+    /* ET LA BULLE REDESCEND. Ce n'est pas un caprice de proportion : quand la
+       figure fait 90 px d'encre et la proposition 220 px de diamètre, l'œil
+       lit d'abord les réponses et regarde la figure ensuite — or l'exercice
+       demande l'inverse. Une bulle de 176 px reste une cible confortable à la
+       souris ; le doigt, lui, ne joue jamais sur un plateau de 900 px. */
+    .bubble-container { --bulle-max: 176px; }
+}
+
+/* Et le même palier pour un plateau large mais BAS — un ordinateur portable en
+   plein écran, où la hauteur est la ressource rare. On donne alors la largeur
+   sans toucher au plafond vertical, qui, lui, sert encore. */
+@container plateau (min-width: 900px) and (max-height: 619px) {
+    .numpad-context { max-width: 560px; }
+    .figure-wrap { width: min(460px, 96%); }
+}
+
+
 /* LE REPÈRE OÙ L'ON CLIQUE PREND TOUTE LA PLACE DISPONIBLE.
    Rémy : « pour placer les points le repère pourrait être plus grand sur
    iPhone. » Il mesurait 308 x 248 sur un écran de 375, en laissant 107 px de
@@ -4806,12 +4858,26 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    au réflexe suivant. */
 .np-choix-btn--use { opacity: .45; text-decoration: line-through; }
 
-/* La figure d'un énoncé — triangle, disque — tient dans la colonne et laisse
-   la place au pavé en dessous. */
-.fig-svg {
-    display: block; width: min(230px, 62cqw, 30cqh); height: auto;
-    aspect-ratio: 1; margin: 4px auto 0;
-}
+/* CETTE RÈGLE A ÉTÉ RETIRÉE, ET C'EST LE DÉFAUT LE PLUS COÛTEUX DE LA
+   LIVRAISON PRÉCÉDENTE. Elle disait :
+
+       .fig-svg { width: min(230px, 62cqw, 30cqh); aspect-ratio: 1; }
+
+   Elle était écrite pour le triangle et le disque — deux dessins carrés posés
+   sans enveloppe, qui se réduisaient à rien dans une colonne centrée. Mais
+   `.fig-svg` est la classe de TOUTES les figures du logiciel : le rectangle du
+   périmètre, l'axe gradué, le segment de la notation. Mesuré sur 1440 × 900,
+   plateau 1440 × 830 : les cinq exercices essayés affichaient exactement
+   230 × 230 px. Rémy, trois fois : « un peu petit la figure sur ordi »,
+   « figure hyper petite pour l'ordinateur », « tellement petit sur ordi ».
+
+   L'`aspect-ratio: 1` faisait pire : l'axe gradué est large et bas, et forcé
+   dans un carré il ne remplissait que le tiers de sa boîte — le dessin faisait
+   230 de large pour 57 de haut, avec 170 px de vide autour.
+
+   Les deux figures qui manquaient d'enveloppe en ont une maintenant
+   (`figure()` dans leurs générateurs), et c'est `.figure-wrap` qui donne la
+   largeur, comme partout ailleurs. */
 
 /* --- LE CIRCUIT D'EAU ----------------------------------------
    Rémy : « j'aimerais bien avoir un jeu dans ce style-là, il faut tourner des
@@ -8098,6 +8164,25 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .nv-note { margin: 0; font-size: .82rem; color: var(--text-muted); }
 
 .nv-corps { overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+
+/* LA LISTE COMPLÈTE, AU-DESSUS DES NOUVEAUTÉS.
+   Rémy : « si on clique sur l'exercice on a une liste déroulante avec les
+   exercices ». Elle est posée avant le corps défilant, pas dedans : on doit la
+   trouver sans faire défiler trois journées de livraison. */
+.nv-tout {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 10px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg-app);
+}
+.nv-tout-titre { font-size: .8rem; font-weight: 700; color: var(--text-muted); }
+.nv-tout-ligne { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+/* Le menu prend toute la largeur qui reste : les titres sont longs, et un
+   menu tronqué à « Le Tour du Rect… » ne se choisit pas. */
+.nv-select {
+    flex: 1 1 220px; min-width: 0; padding: 8px 10px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); font-family: inherit; font-size: .9rem;
+}
 
 .nv-vague { display: flex; flex-direction: column; gap: 8px; }
 /* LA DATE EN TÊTE DE VAGUE. Rémy ne reçoit pas des versions, il reçoit des

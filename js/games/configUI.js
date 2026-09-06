@@ -2899,8 +2899,18 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     // `readParams` ne trouverait pas ses cases et rendrait une liste VIDE, qui
     // écraserait ce que le professeur a préparé. C'est le piège de ce genre de
     // filtre, et il est silencieux.
+    //
+    // ET « AUTEUR » EST UN MODE PROFESSEUR, MÊME HORS MODE PROFESSEUR.
+    // Rémy, sur la barre de débogage : « il faut vraiment pouvoir avoir les
+    // réglages du prof, là il en manque au niveau des étapes par exemple ».
+    // Le filtre ne regardait que `state.isTeacherMode` : la barre d'auteur
+    // demandait pourtant explicitement le rôle « auteur », et recevait quand
+    // même le panneau de l'élève — sans la liste des marches, qui est
+    // justement ce qu'on vient y régler. Le rôle demandé compte autant que le
+    // mode global ; la barre de débogage n'existe que pour celui qui prépare.
     const complet = paramSchemaOf(exo);
-    const schema = state.isTeacherMode ? complet : complet.filter(p => !p.prof);
+    const prepare = state.isTeacherMode || opts.role === 'auteur';
+    const schema = prepare ? complet : complet.filter(p => !p.prof);
     const current = { ...(exo.params || {}) };
 
     // Travailler sur papier : proposé quand l'exercice s'y prête, c'est-à-dire

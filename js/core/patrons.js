@@ -108,6 +108,56 @@ export function plier(cellules) {
     return { ok: toutes && !doublons.length && prises.size === 6, faces, doublons };
 }
 
+/**
+ * L'ARBRE DU PLIAGE : qui se relève autour de qui.
+ *
+ * Rémy : « le patron qui se plie ne se plie pas ». Il avait raison — la
+ * figure changeait de couleurs, et c'est tout. Pour la plier POUR DE VRAI il
+ * faut savoir, pour chaque carré, autour de quelle arête il pivote et de quel
+ * carré il dépend : un patron se ferme en relevant les voisins d'un carré
+ * posé, puis les voisins de ceux-là, et chaque pli entraîne avec lui tout ce
+ * qui est accroché plus loin.
+ *
+ * C'EST EXACTEMENT LE PARCOURS DE `plier`, et c'est pour cela qu'il vit ici :
+ * l'animation ne raconte pas une autre histoire que le calcul, elle raconte
+ * la même. Un pliage dessiné à côté du calcul pourrait montrer un cube qui se
+ * ferme là où le calcul dit qu'il se recouvre.
+ *
+ * Le premier carré de la figure ne bouge pas : c'est celui qu'on garde posé
+ * sur la table, tous les autres se relèvent par rapport à lui.
+ *
+ * @param {Array<[number,number]>} cellules
+ * @returns {{racine: string, enfants: Object<string, Array<{cle: string, dx: number, dy: number}>>}}
+ */
+export function arbrePliage(cellules, racineVoulue) {
+    const vide = { racine: null, enfants: {} };
+    if (!cellules || !cellules.length) return vide;
+    const dans = new Set(cellules.map(([x, y]) => cle(x, y)));
+    // LA RACINE EST LIBRE, ET C'EST VOULU. N'IMPORTE QUEL CARRÉ peut rester
+    // posé sur la table : le cube obtenu est le même, seule change la façon de
+    // le regarder. L'écran choisit donc le carré le plus CENTRAL, pour que la
+    // figure dépliée reste centrée dans son cadre au lieu de partir dans un
+    // coin. Le calcul, lui, ne s'en sert pas.
+    const depart = (racineVoulue && dans.has(racineVoulue))
+        ? racineVoulue.split(',').map(Number) : cellules[0];
+    const [x0, y0] = depart;
+    const racine = cle(x0, y0);
+    const enfants = {};
+    const vus = new Set([racine]);
+    const file = [[x0, y0]];
+    while (file.length) {
+        const [x, y] = file.shift();
+        for (const v of VOISINS) {
+            const k = cle(x + v.dx, y + v.dy);
+            if (!dans.has(k) || vus.has(k)) continue;
+            vus.add(k);
+            (enfants[cle(x, y)] = enfants[cle(x, y)] || []).push({ cle: k, dx: v.dx, dy: v.dy });
+            file.push([x + v.dx, y + v.dy]);
+        }
+    }
+    return { racine, enfants };
+}
+
 /** Sur un patron valide : la case qui se retrouvera en face de `case_`. */
 export function faceOpposee(cellules, caseCle) {
     const { ok, faces } = plier(cellules);

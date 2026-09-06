@@ -208,7 +208,13 @@
     --large: min(96cqw, 900px);
     /* Les 4 px de marge évitent qu'un arrondi au demi-pixel ne fasse tomber la
        dernière bulle à la ligne alors que le compte est juste. */
-    --bulle: min(220px, 34cqh,
+    /* Le plafond est une VARIABLE parce qu'il se relit ailleurs : sur un grand
+       plateau, une bulle de 220 px à côté d'une figure devenait le sujet de
+       l'écran. Rémy : « figure hyper petite pour l'ordinateur et bulle
+       grosse ». C'est le seul chiffre qui change là-bas ; le calcul, lui,
+       reste le même partout. */
+    --bulle-max: 220px;
+    --bulle: min(var(--bulle-max), 34cqh,
         calc((var(--large) - 4px - (var(--n) - 1) * var(--ecart)) / var(--n)));
     display: flex; gap: var(--ecart); flex-wrap: wrap; justify-content: center;
     width: 100%; max-width: var(--large);

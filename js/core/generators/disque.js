@@ -16,6 +16,7 @@
 // arrondies, et son aide le dit.
 
 import { makeItem } from '../items.js';
+import { figure } from '../figures.js';
 import {
     MARCHES_DISQUE, ETAPES_EXACTES, tirerDisque, enonceDe, reponseDe, uniteDe,
     expliquer, indicesDe, leurresDe, figureDisqueSvg, ecrireNombre
@@ -71,7 +72,7 @@ export const disqueGenerator = {
         const etiquette = (v) => (typeof v === 'number' ? `${ecrireNombre(v)} ${unite}` : String(v));
 
         const enonce = enonceDe(t);
-        const figure = figureDisqueSvg(t);
+        const figureSvg = figureDisqueSvg(t);
 
         return makeItem({
             seed: rng.seed,
@@ -81,7 +82,7 @@ export const disqueGenerator = {
             prompt: {
                 text: enonce,
                 papier: enonce,
-                html: `<div class="game-question dsq-question">${enonce}</div>${figure}`
+                html: `<div class="game-question dsq-question">${enonce}</div>${figure(figureSvg)}`
             },
             answer: juste,
             choices: auChoix ? [
@@ -102,7 +103,7 @@ export const disqueGenerator = {
                 // à l'unité.
                 unit: unite,
                 decimal: !ETAPES_EXACTES.includes(id) && t.decimales > 0,
-                figure
+                figure: figureSvg
             }
         });
     }

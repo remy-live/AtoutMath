@@ -171,6 +171,23 @@ export function openConsoleModal() {
     return { close: fermer, element: fond };
 }
 
+/**
+ * VIDER LE JOURNAL, SANS OUVRIR LA CONSOLE.
+ *
+ * Rémy : « il n'y a plus la poubelle pour enlever le journal ». La poubelle
+ * existait bien — au fond de la fenêtre de console, à trois clics de là. Or on
+ * vide le journal AVANT de reproduire un défaut, pour que ce qu'on relève
+ * ensuite ne soit que le défaut : c'est un geste de la barre d'outils, pas un
+ * geste de la fenêtre qu'on vient lire.
+ *
+ * @returns {number} le nombre de lignes effacées
+ */
+export function viderJournal() {
+    const n = lignes.length;
+    lignes.length = 0;
+    return n;
+}
+
 export function fermerConsole() {
     document.querySelectorAll('.console-fond').forEach(el => el.remove());
 }

@@ -18,8 +18,8 @@
 // que pour les exercices qui savent s'imprimer — un bouton qui ne fait rien
 // est pire que pas de bouton.
 
-import { direLaDate, vaguesDuCatalogue } from '../data/nouveautes.js';
-import { getExerciseById } from '../data/catalog.js';
+import { direLaDate, vaguesDuCatalogue, dateDeReference } from '../data/nouveautes.js';
+import { getExerciseById, exercices } from '../data/catalog.js';
 import { makePath, makeStep } from '../core/path.js';
 
 const QUESTIONS_D_ESSAI = 4;
@@ -55,6 +55,7 @@ export function openNouveautesModal() {
                 <button type="button" class="nv-croix" data-fermer aria-label="Fermer">✕</button>
             </div>
             <p class="nv-note">Un essai court, et rien n'est enregistré dans la progression.</p>
+            ${toutLeCatalogue()}
             <div class="nv-corps">${vagues.map(bloc).join('') || vide()}</div>
         </div>`;
     document.body.appendChild(fond);
@@ -66,12 +67,59 @@ export function openNouveautesModal() {
         const essai = e.target.closest('[data-essayer]');
         if (essai) { essayer(essai.dataset.essayer); return; }
         const fiche = e.target.closest('[data-fiche]');
-        if (fiche) voirLaFiche(fiche.dataset.fiche);
+        if (fiche) { voirLaFiche(fiche.dataset.fiche); return; }
+        // La liste déroulante : deux boutons qui lisent la même sélection.
+        const choix = fond.querySelector('#nv-choix');
+        if (e.target.closest('[data-essayer-choix]') && choix) { essayer(choix.value); return; }
+        if (e.target.closest('[data-fiche-choix]') && choix) voirLaFiche(choix.value);
     });
     document.addEventListener('keydown', surEchap);
 }
 
 const vide = () => '<p class="nv-note">Aucune nouveauté à essayer pour le moment.</p>';
+
+/**
+ * TOUT LE CATALOGUE, DANS L'ORDRE OÙ IL A ÉTÉ ÉCRIT.
+ *
+ * Rémy : « si on clique sur l'exercice on a une liste déroulante avec les
+ * exercices. Range les exercices par l'ordre croissant de leur création. »
+ *
+ * Les trois dernières journées de livraison ne suffisent pas quand on cherche
+ * un exercice d'il y a trois semaines — et c'est le cas courant : on revient
+ * sur celui qu'on avait laissé de côté. La liste complète est donc là, et elle
+ * est triée PAR DATE DE CRÉATION, pas par ordre alphabétique ni par chapitre :
+ * c'est ainsi qu'on s'en souvient quand on les a tous vus arriver un par un.
+ *
+ * La date est écrite dans l'option : sans elle, un ordre qu'on ne peut pas
+ * vérifier ressemble à un désordre.
+ */
+function toutLeCatalogue() {
+    // C'EST LA DATE DE CRÉATION QUI CLASSE, PAS LA DERNIÈRE RÉVISION. Rémy a
+    // demandé « l'ordre croissant de leur création », et les deux dates ne
+    // disent pas la même chose : un exercice de juillet retouché hier
+    // remonterait en tête et l'on ne le retrouverait plus là où on l'a rangé
+    // dans sa tête. Vérifié à l'écran : trié sur la révision, l'ordre affiché
+    // n'était pas croissant, puisque l'étiquette portait, elle, la création.
+    const dateDe = (e) => (e && e.cree) || dateDeReference(e) || '0';
+    const liste = exercices.slice().sort((a, b) =>
+        dateDe(a).localeCompare(dateDe(b)) || String(a.title).localeCompare(String(b.title)));
+    if (!liste.length) return '';
+    const options = liste.map(exo => {
+        const d = exo.cree || '';
+        return `<option value="${esc(exo.id)}">${esc(d ? `${d} · ${exo.title}` : exo.title)}</option>`;
+    }).join('');
+    return `
+        <div class="nv-tout">
+            <label class="nv-tout-titre" for="nv-choix">
+                Tous les exercices (${liste.length}), du plus ancien au plus récent
+            </label>
+            <div class="nv-tout-ligne">
+                <select class="nv-select" id="nv-choix">${options}</select>
+                <button type="button" class="nv-btn nv-btn--primaire" data-essayer-choix>Essayer</button>
+                <button type="button" class="nv-btn" data-fiche-choix>La fiche</button>
+            </div>
+        </div>`;
+}
 
 function bloc(v) {
     return `
@@ -127,6 +175,15 @@ async function essayer(id) {
 async function voirLaFiche(id) {
     const exo = getExerciseById(id);
     if (!exo) return;
+    // La liste déroulante propose TOUS les exercices, et tous ne s'impriment
+    // pas. Le dire vaut mieux qu'ouvrir une fenêtre vide.
+    const { generateurDeFiche } = await import('../core/registry.js');
+    const gen = generateurDeFiche(exo);
+    if (!exo.printable && !(gen && gen.ecrit)) {
+        const { showToast } = await import('./modal.js');
+        showToast(`« ${exo.title} » n'a pas de fiche papier.`, 'warning');
+        return;
+    }
     fermerNouveautes();
     const { ouvrirFicheModal } = await import('./printSheet.js');
     ouvrirFicheModal(exo, exo.params || {});

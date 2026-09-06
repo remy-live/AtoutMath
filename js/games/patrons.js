@@ -10,12 +10,28 @@
 // on regarde si l'on avait raison, ce qui est la même chose qu'une conjecture
 // suivie d'une vérification.
 //
-// COMMENT ON MONTRE LE PLIAGE SANS TROIS DIMENSIONS. On ne construit pas un
-// cube en perspective : on relève les cases dans l'ordre du parcours, chacune
-// se colorant de la face qu'elle deviendra, et les paires opposées se
-// répondent par leur couleur. Un vrai pliage 3D serait plus joli et dirait
-// moins — ce qu'on veut faire voir, c'est QUELLE CASE DEVIENT QUELLE FACE, et
-// c'est une information de coloriage, pas de volume.
+// LE PLIAGE SE PLIE. Il a fallu deux essais pour l'admettre. La première
+// version ne faisait que COLORIER les cases de la face qu'elles deviendraient,
+// avec cet argument : « ce qu'on veut faire voir, c'est quelle case devient
+// quelle face, et c'est une information de coloriage, pas de volume. »
+// L'argument est faux, et Rémy l'a dit en six mots : « le patron qui se plie
+// ne se plie pas ». Un coloriage montre le RÉSULTAT du pliage à qui sait déjà
+// plier ; l'élève qui ne sait pas, lui, a besoin de voir les carrés SE LEVER.
+// C'est le geste qui manque, pas la couleur.
+//
+// Les carrés se relèvent donc vraiment, en trois dimensions, autour de leurs
+// arêtes communes : chaque carré est une boîte emboîtée dans celle de son
+// voisin, et un seul angle — l'angle du pli, de 0 à 90 degrés — les fait tous
+// tourner ensemble, chacun entraînant ce qui est accroché plus loin. C'est
+// exactement ainsi qu'une feuille se plie. L'arbre du pliage vient du noyau
+// (`arbrePliage`), qui est le MÊME parcours que celui qui décide de la
+// réponse : l'animation ne peut donc pas montrer un cube qui se ferme là où le
+// calcul dit qu'il se recouvre.
+//
+// ET QUAND ÇA SE RECOUVRE, ON LE VOIT ARRIVER. Le carré en trop se pose PAR
+// DESSUS celui qui occupait déjà la place, légèrement en avant pour qu'on
+// distingue les deux épaisseurs. « Il retombe sur une face déjà prise » cesse
+// d'être une phrase.
 //
 // QUAND ÇA NE SE FERME PAS, ON MONTRE OÙ. Le noyau rend `doublons` : les cases
 // qui reçoivent une face déjà prise. Ce sont elles qui se recouvrent, et les
@@ -25,7 +41,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import {
     FAMILLES, ORDRE_FAMILLES, CONSIGNES,
-    preparerSerie, plier, profil
+    preparerSerie, plier, profil, arbrePliage
 } from '../core/patrons.js';
 import { makeRng } from '../core/ids.js';
 
@@ -44,6 +60,15 @@ const TEINTES = [
     '#2f8f5b', '#a9dcbe',   // paire 2/3 — vert
     '#c06a1f', '#f0cfa4'    // paire 4/5 — orange
 ];
+
+/**
+ * DU DÉPLACEMENT D'UNE CASE AU SENS DU PLI.
+ *
+ * Le noyau parle en `dx, dy` — la case voisine est à droite, en dessous. Le
+ * dessin, lui, a besoin de savoir autour de QUELLE ARÊTE le carré se relève :
+ * c'est la même information, dite du point de vue du pli.
+ */
+const SENS = { '1,0': 'est', '-1,0': 'ouest', '0,1': 'sud', '0,-1': 'nord' };
 
 const enTexte = (s) => String(s ?? '')
     .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -79,20 +104,113 @@ export class Patrons extends BaseGame {
                     max-width: 620px; margin: 0 auto;
                 }
                 .pa-consigne b { color: var(--text-main); }
-                .pa-scene { flex: 1 1 auto; min-height: 0; display: block; width: 100%; }
-                .pa-svg { width: 100%; height: 100%; display: block; }
-                .pa-case {
-                    stroke: var(--text-main); stroke-width: .09; fill: var(--card-bg, #fff);
-                    transition: fill .35s ease, opacity .35s ease;
+                /* LA SCÈNE EST UN CONTENEUR DE TAILLE : c'est elle qui dit
+                   au carré combien de pixels il vaut, sans que personne n'ait
+                   à mesurer quoi que ce soit en JavaScript. */
+                .pa-scene {
+                    flex: 1 1 auto; min-height: 0; position: relative;
+                    container-type: size; container-name: pascene;
                 }
-                .pa-case--cliquable { cursor: pointer; }
-                .pa-case--cliquable:hover { stroke-width: .16; }
-                .pa-case--depart { stroke-width: .2; stroke: var(--primary, #4a6fd4); }
-                .pa-case--double { stroke: var(--danger, #c0392b); stroke-width: .2; }
-                .pa-case--choisie { stroke: var(--primary, #4a6fd4); stroke-width: .2; }
+                /* La perspective vit sur le parent des faces, jamais sur les
+                   faces : posée sur chacune, chaque carré aurait son propre
+                   point de fuite et le cube ne se refermerait pas. */
+                .pa-stage {
+                    position: absolute; inset: 0;
+                    perspective: calc(var(--s) * 11);
+                    perspective-origin: 50% 45%;
+                }
+                /* La variable du côté d'un carré. Les demi-étendues « hx »
+                   et « hy » disent jusqu'où la figure s'écarte du carré resté
+                   posé ; on divise la place par le double, et tout tient à
+                   plat comme une fois plié. */
+                .pa-monde {
+                    position: absolute; inset: 0;
+                    --s: min(calc(92cqw / (2 * var(--hx))), calc(92cqh / (2 * var(--hy))));
+                    transform-style: preserve-3d;
+                    /* DEUX CADRAGES POUR DEUX ÉTATS, et le glissement de l'un à
+                       l'autre fait partie du pli. À plat, c'est la FIGURE qu'on
+                       centre ; pliée, c'est le CUBE, qui se forme autour du
+                       carré resté posé — rarement au milieu de la figure. Sans
+                       ce décalage, le cube se refermait dans un coin. La
+                       variable « plat » vaut 1 tant que c'est à plat et 0 une
+                       fois plié : la translation s'annule d'elle-même. */
+                    transform: translate(calc(var(--dx, 0) * var(--s) * var(--plat, 1)),
+                                         calc(var(--dy, 0) * var(--s) * var(--plat, 1)))
+                               rotateX(var(--vx, 0deg)) rotateY(var(--vy, 0deg));
+                    transition: transform .9s cubic-bezier(.34, .01, .2, 1);
+                }
+                .pa-face {
+                    position: absolute; width: var(--s); height: var(--s);
+                    box-sizing: border-box;
+                    border: 1.5px solid var(--text-main);
+                    border-radius: calc(var(--s) * .04);
+                    background: var(--card-bg, #fff);
+                    transform-style: preserve-3d;
+                    /* Une face vue de dos reste peinte : sinon, la moitié du
+                       cube disparaît dès qu'il tourne. */
+                    backface-visibility: visible;
+                    transition: transform .9s cubic-bezier(.34, .01, .2, 1),
+                                background-color .5s ease, border-color .3s ease;
+                    display: flex; align-items: center; justify-content: center;
+                }
+                /* LE CARRÉ RESTÉ POSÉ. Il ne tourne pas : c'est la table. */
+                .pa-face--racine {
+                    left: 50%; top: 50%;
+                    margin-left: calc(var(--s) / -2); margin-top: calc(var(--s) / -2);
+                }
+                /* Les quatre sens du pli. Le point de rotation est L'ARÊTE
+                   COMMUNE avec le carré porteur, et les quatre signes sont
+                   choisis pour que tout se relève DU MÊME CÔTÉ — vers celui
+                   qui regarde. Un seul signe inversé et le cube se retourne
+                   comme un gant. */
+                .pa-face--est {
+                    left: 100%; top: 0; transform-origin: 0% 50%;
+                    transform: rotateY(calc(-1 * var(--a, 0deg))) rotateY(var(--releve, 0deg));
+                }
+                .pa-face--ouest {
+                    left: -100%; top: 0; transform-origin: 100% 50%;
+                    transform: rotateY(var(--a, 0deg)) rotateY(calc(-1 * var(--releve, 0deg)));
+                }
+                .pa-face--sud {
+                    left: 0; top: 100%; transform-origin: 50% 0%;
+                    transform: rotateX(var(--a, 0deg)) rotateX(calc(-1 * var(--releve, 0deg)));
+                }
+                .pa-face--nord {
+                    left: 0; top: -100%; transform-origin: 50% 100%;
+                    transform: rotateX(calc(-1 * var(--a, 0deg))) rotateX(var(--releve, 0deg));
+                }
+                /* LE CUBE EN VERRE, POUR LA QUESTION DES FACES OPPOSÉES.
+                   Un cube fermé cache trois de ses six faces, et deux faces
+                   opposées ne sont JAMAIS visibles ensemble : la réponse —
+                   « ces deux-là portent la même teinte » — devenait invérifiable
+                   au moment précis où on la donne. Les faces deviennent donc
+                   translucides une fois le pli terminé : on voit à travers, et
+                   la paire se lit d'un coup d'œil. Seulement pour cette
+                   question-là ; pour « est-ce un patron ? », un cube plein dit
+                   mieux qu'il est fermé.
+                   Et la transparence passe par la COULEUR, jamais par
+                   « opacity » : une opacité inférieure à 1 aplatit d'office la
+                   scène 3D qu'elle contient — mesuré, le cube s'est réduit à un
+                   seul carré. C'est le canal alpha du remplissage qui fait le
+                   verre, et lui seul. */
+                .pa-face--cliquable { cursor: pointer; }
+                .pa-face--cliquable:hover { border-color: var(--primary, #4a6fd4); border-width: 2.5px; }
+                .pa-face--depart { border-color: var(--primary, #4a6fd4); border-width: 2.5px; }
+                .pa-face--choisie { border-color: var(--primary, #4a6fd4); border-width: 2.5px; }
+                /* Le carré qui retombe sur une place déjà prise : cerclé de
+                   rouge, et surélevé pour qu'on voie les deux épaisseurs. */
+                /* Mesuré à l'écran : surélevé d'un vingtième de carré, le
+                   doublon restait COINCÉ derrière la face qu'il recouvre — on
+                   n'en voyait qu'un liseré rouge. Il flotte maintenant
+                   nettement au dessus, teinté, et l'on voit ce qu'on dit :
+                   deux carrés pour une seule place. */
+                .pa-face--double {
+                    border-color: var(--danger, #c0392b); border-width: 3px;
+                    background: color-mix(in srgb, var(--danger, #c0392b) 22%, #fff);
+                }
                 .pa-marque {
-                    text-anchor: middle; dominant-baseline: central; font-weight: 800;
-                    font-size: .34px; pointer-events: none; fill: var(--text-main);
+                    font-weight: 800; color: var(--text-main);
+                    font-size: calc(var(--s) * .34); line-height: 1; pointer-events: none;
                 }
                 .pa-outils { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto; }
                 .pa-btn {
@@ -130,31 +248,41 @@ export class Patrons extends BaseGame {
         const q = this.question;
         if (!q) return;
         const { faces, doublons } = plier(q.forme);
-        const doubles = new Set(doublons);
+        this.doubles = new Set(doublons);
+        this.faces = faces;
+
+        // LE CARRÉ QUI RESTE POSÉ est le plus central : la figure dépliée tient
+        // alors dans son cadre au lieu de partir dans un coin, et le cube fini
+        // se referme au milieu. N'importe quel carré ferait l'affaire pour le
+        // calcul — c'est un choix de cadrage, pas de géométrie.
+        const cx = (Math.min(...q.forme.map(c => c[0])) + Math.max(...q.forme.map(c => c[0]))) / 2;
+        const cy = (Math.min(...q.forme.map(c => c[1])) + Math.max(...q.forme.map(c => c[1]))) / 2;
+        const ranges = q.forme.slice().sort((A, B) =>
+            (Math.abs(A[0] - cx) + Math.abs(A[1] - cy)) - (Math.abs(B[0] - cx) + Math.abs(B[1] - cy)));
+        // Et jamais un carré qui se recouvre : celui-là doit rester en l'air,
+        // ce qu'un carré posé sur la table ne peut pas faire.
+        const centre = ranges.find(c => !this.doubles.has(`${c[0]},${c[1]}`)) || ranges[0];
+        const racine = `${centre[0]},${centre[1]}`;
+        const arbre = arbrePliage(q.forme, racine);
+
+        // La place qu'il faut : la moitié de la figure de chaque côté, plus un
+        // souffle. C'est l'état À PLAT qui commande — le cube, lui, tient dans
+        // moins de deux carrés.
         const largeur = Math.max(...q.forme.map(c => c[0])) + 1;
         const hauteur = Math.max(...q.forme.map(c => c[1])) + 1;
-        const M = 0.35;
+        const hx = largeur / 2 + 0.12;
+        const hy = hauteur / 2 + 0.12;
+        // Ce qui sépare le carré posé du milieu de la figure : c'est de cela
+        // qu'on décale le monde tant qu'il est à plat.
+        const dx = centre[0] - (largeur - 1) / 2;
+        const dy = centre[1] - (hauteur - 1) / 2;
 
-        const cases = q.forme.map(([x, y]) => {
-            const k = `${x},${y}`;
-            const classes = ['pa-case'];
-            if (q.famille === 'opposees' && !this.plie) classes.push('pa-case--cliquable');
-            if (q.famille === 'opposees' && k === q.depart) classes.push('pa-case--depart');
-            if (this.plie && q.famille === 'reconnaitre' && doubles.has(k)) classes.push('pa-case--double');
-            if (this.choisie === k) classes.push('pa-case--choisie');
-            // LA COULEUR N'APPARAÎT QU'APRÈS LE PLIAGE. Avant, elle donnerait la
-            // réponse : deux cases de la même teinte se font face.
-            const teinte = this.plie && !doubles.has(k) ? TEINTES[faces[k]] : '';
-            const style = teinte ? ` style="fill:${teinte}"` : '';
-            const marque = (q.famille === 'opposees' && k === q.depart) ? '★' : '';
-            return `<g><rect class="${classes.join(' ')}" data-case="${k}"${style}
-                x="${x}" y="${y}" width="1" height="1" rx=".05"/>
-                ${marque ? `<text class="pa-marque" x="${x + 0.5}" y="${y + 0.5}">${marque}</text>` : ''}</g>`;
-        }).join('');
-
-        this.sceneEl.innerHTML = `<svg class="pa-svg"
-            viewBox="${-M} ${-M} ${largeur + 2 * M} ${hauteur + 2 * M}"
-            preserveAspectRatio="xMidYMid meet">${cases}</svg>`;
+        this.sceneEl.innerHTML = `<div class="pa-stage">
+            <div class="pa-monde" style="--hx:${hx};--hy:${hy};--dx:${dx};--dy:${dy}">
+                ${this.faceHtml(racine, arbre, null, q)}
+            </div>
+        </div>`;
+        this.mondeEl = this.sceneEl.querySelector('.pa-monde');
 
         this.consigneEl.innerHTML = enTexte(CONSIGNES[q.famille]);
         this.compteEl.textContent = `Figure ${this.rang + 1} sur ${this.serie.length}`
@@ -166,6 +294,81 @@ export class Patrons extends BaseGame {
             });
         }
         this.dessinerOutils();
+
+        // LE PLI PART À LA FRAME SUIVANTE, ET C'EST TOUT LE TRUC. Les carrés
+        // naissent à plat ; on leur donne leur angle d'arrivée une fois qu'ils
+        // sont posés, et la transition CSS fait le reste. Appliquer l'angle
+        // dans le même souffle que la création ne montrerait qu'un cube déjà
+        // fermé — c'est ce que faisait l'ancienne version, en couleurs.
+        this.appliquerPli(false, true);
+        if (this.plie) {
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                if (this.mondeEl && this.mondeEl.isConnected) this.appliquerPli(true, false);
+            }));
+        }
+    }
+
+    /** Un carré, et tout ce qui pend après lui. */
+    faceHtml(k, arbre, sens, q) {
+        const classes = ['pa-face'];
+        if (sens) classes.push(`pa-face--${sens}`);
+        else classes.push('pa-face--racine');
+        if (q.famille === 'opposees' && !this.plie) classes.push('pa-face--cliquable');
+        if (q.famille === 'opposees' && k === q.depart) classes.push('pa-face--depart');
+        if (this.choisie === k) classes.push('pa-face--choisie');
+        const marque = (q.famille === 'opposees' && k === q.depart)
+            ? '<span class="pa-marque">★</span>' : '';
+        const petits = (arbre.enfants[k] || []).map(e =>
+            this.faceHtml(e.cle, arbre, SENS[`${e.dx},${e.dy}`], q)).join('');
+        return `<div class="${classes.join(' ')}" data-case="${k}">${marque}${petits}</div>`;
+    }
+
+    /**
+     * L'ÉTAT DU PLIAGE, EN TROIS VARIABLES.
+     *
+     * L'angle du pli est posé une seule fois, sur le monde : les carrés le
+     * lisent par héritage, donc ils tournent tous ensemble, et une transition
+     * CSS suffit à animer les six. Le point de vue bascule en même temps —
+     * de face quand c'est à plat, de trois quarts quand c'est un cube : un cube
+     * regardé pile en face n'est qu'un carré.
+     *
+     * @param {boolean} plie - l'angle d'arrivée
+     * @param {boolean} sec - poser l'état sans le montrer arriver
+     */
+    appliquerPli(plie, sec) {
+        const m = this.mondeEl;
+        if (!m) return;
+        const verre = !!plie && !!this.question && this.question.famille === 'opposees';
+        if (sec) m.style.transition = 'none';
+        m.style.setProperty('--a', plie ? '90deg' : '0deg');
+        m.style.setProperty('--vx', plie ? '-24deg' : '0deg');
+        m.style.setProperty('--vy', plie ? '32deg' : '0deg');
+        m.style.setProperty('--plat', plie ? '0' : '1');
+        m.classList.toggle('pa-monde--verre', verre);
+        m.querySelectorAll('[data-case]').forEach(el => {
+            const k = el.dataset.case;
+            const dbl = this.doubles.has(k);
+            el.classList.toggle('pa-face--double', !!(plie && dbl));
+            // LA COULEUR N'APPARAÎT QU'APRÈS LE PLIAGE. Avant, elle donnerait la
+            // réponse : deux carrés de la même teinte se font face.
+            el.style.backgroundColor = (plie && !dbl)
+                ? TEINTES[this.faces[k]] + (verre ? 'b0' : '') : '';
+            // LE CARRÉ EN TROP NE SE COUCHE PAS. Première tentative : le
+            // soulever d'un vingtième de carré le long de sa normale. Mesuré à
+            // l'écran, il restait invisible — pour la moitié des faces, la
+            // normale pointe vers l'INTÉRIEUR du cube, et le doublon partait se
+            // cacher dedans. Il s'arrête donc à soixante degrés au lieu de
+            // quatre-vingt-dix : un rabat qui reste en l'air, qu'aucune
+            // orientation ne peut faire disparaître, et qui dit la chose mieux
+            // qu'un décalage — la place est prise, il ne peut pas se poser.
+            el.style.setProperty('--releve', plie && dbl ? '30deg' : '0deg');
+        });
+        if (sec) {
+            // Forcer le calcul du style avant de rendre la transition : sinon
+            // le navigateur regroupe les deux changements et rien ne s'anime.
+            void m.offsetWidth;
+            m.style.transition = '';
+        }
     }
 
     dessinerOutils() {
@@ -202,8 +405,8 @@ export class Patrons extends BaseGame {
             this.note(q.reponse
                 ? 'Oui : les six faces tombent chacune à leur place. Les carrés de même '
                     + 'teinte se feront face.'
-                : 'Non, et les carrés cerclés de rouge disent pourquoi : ils se '
-                    + 'recouvrent une fois plié.', 'ok');
+                : 'Non : le carré rouge reste en l’air, il ne peut pas se poser — '
+                    + 'sa place est déjà prise.', 'ok');
         } else {
             this.onWrongAnswer(null, {
                 concept: COMPETENCE,
@@ -214,8 +417,8 @@ export class Patrons extends BaseGame {
             this.note(q.reponse
                 ? 'Il se ferme, pourtant : chaque teinte est prise une seule fois. '
                     + 'Regarde le pliage.'
-                : 'Il ne se ferme pas : les carrés cerclés de rouge retombent sur une '
-                    + 'face déjà occupée.', 'ko');
+                : 'Il ne se ferme pas : regarde le carré rouge, il retombe sur une '
+                    + 'face déjà occupée et reste en l’air.', 'ko');
         }
         this.suivant();
     }
@@ -267,7 +470,10 @@ export class Patrons extends BaseGame {
             this.choisie = null;
             this.note('');
             this.dessiner();
-        }, 2100);
+            // Le pliage dure neuf dixièmes de seconde : partir au bout de
+            // 2,1 s ne laissait qu'un instant pour REGARDER le cube fermé, qui
+            // est pourtant tout ce qu'on est venu voir.
+        }, 3000);
     }
 
     note(texte, ton) {

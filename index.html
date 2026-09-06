@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=617">
-    <link rel="stylesheet" href="css/layout.css?v=617">
-    <link rel="stylesheet" href="css/ui.css?v=617">
-    <link rel="stylesheet" href="css/games.css?v=617">
-    <link rel="stylesheet" href="css/components.css?v=617">
-    <link rel="stylesheet" href="css/modules.css?v=617">
+    <link rel="stylesheet" href="css/base.css?v=618">
+    <link rel="stylesheet" href="css/layout.css?v=618">
+    <link rel="stylesheet" href="css/ui.css?v=618">
+    <link rel="stylesheet" href="css/games.css?v=618">
+    <link rel="stylesheet" href="css/components.css?v=618">
+    <link rel="stylesheet" href="css/modules.css?v=618">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -135,6 +135,18 @@
             <button class="debug-btn" id="db-console" title="Console : voir et copier le journal"
                     aria-label="Ouvrir la console">
                 <svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="14" rx="2.5"/><path d="M6.5 9 9 11.5 6.5 14"/><path d="M12 14h5"/></svg>
+            </button>
+            <!-- LA POUBELLE DU JOURNAL, COLLÉE À LA CONSOLE.
+                 Rémy : « il n'y a plus la poubelle pour enlever le journal ».
+                 Elle était au fond de la fenêtre de console — donc après trois
+                 clics, alors qu'on vide le journal AVANT de reproduire un
+                 défaut. L'autre poubelle, la rouge, efface la sauvegarde de
+                 l'élève : ce n'est pas la même chose, et c'est pour cela
+                 qu'elles ne sont pas de la même couleur.
+                 L'icône : une corbeille dans un écran. -->
+            <button class="debug-btn" id="db-vider-journal" title="Vider le journal de la console"
+                    aria-label="Vider le journal de la console">
+                <svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="14" rx="2.5"/><path d="M8 8.5h8"/><path d="M10.5 8.5V7h3v1.5"/><path d="M9 8.5 9.7 15h4.6l.7-6.5"/></svg>
             </button>
             <!-- LE BANC D'ESSAI : passer les exercices un par un sur CET
                  appareil, noter ce qui marche, ce que valent les indices et le
