@@ -110,6 +110,14 @@ export class Patrons extends BaseGame {
                 .pa-scene {
                     flex: 1 1 auto; min-height: 0; position: relative;
                     container-type: size; container-name: pascene;
+                    /* LES CARRÉS SONT EN POSITION ABSOLUE ET NE POUSSENT RIEN :
+                       ce qui dépasse dépasse pour de bon. L'audit l'a mesuré —
+                       49 px hors de l'écran pendant le pliage, quand la
+                       perspective rapproche une face du regard et l'agrandit.
+                       La scène est déjà dimensionnée pour contenir la figure à
+                       plat ; on coupe ce qui sortirait du cadre plutôt que de
+                       laisser la page déborder. */
+                    overflow: hidden;
                 }
                 /* La perspective vit sur le parent des faces, jamais sur les
                    faces : posée sur chacune, chaque carré aurait son propre

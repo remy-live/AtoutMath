@@ -164,6 +164,7 @@ export const CODES_EXERCICES = {
     'geo-symetrie-quadrillage':   'SY',   // Le Symétrique aux Carreaux
     'geo-transfo-quadrillage':    'TM',   // Tracer l'Image d'une Figure
     'geo-tuyaux':                 'TY',   // les TuYaux à tourner
+    'geo-lasers':                 'LZ',   // le rayon LaZer et les miroirs
     'geo-translation-fleche':     'TG',   // La Flèche qui Glisse
     'geo-course-vecteurs':        'CV',   // La Course de Vecteurs
     'geo-pavage':                 'ST',   // Symétrique par Rapport à Quoi ?

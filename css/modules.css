@@ -4879,6 +4879,110 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    (`figure()` dans leurs générateurs), et c'est `.figure-wrap` qui donne la
    largeur, comme partout ailleurs. */
 
+/* --- LE RAYON ET LES MIROIRS ---------------------------------
+   Rémy : « j'aimerai bien un jeu dans ce style avec des lasers et des miroirs
+   […] C'est un exercice bonus comme le sudoku. »
+
+   LE FOND EST SOMBRE, ET CE N'EST PAS UNE COQUETTERIE. Un rayon lumineux sur
+   un fond blanc n'est pas lumineux : c'est un trait. Le contraste fait ici
+   partie de la lecture — on doit voir d'un coup d'œil jusqu'où la lumière va,
+   et où elle s'arrête. */
+.la-layout {
+    display: flex; flex-direction: column; align-items: center;
+    gap: clamp(8px, 1.6cqh, 16px);
+    width: 100%; max-width: 560px; margin: 0 auto; padding: 12px;
+}
+.la-consigne { font-size: clamp(1rem, 2.6cqh, 1.3rem); margin-bottom: 0; }
+.la-barre {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    justify-content: center;
+}
+.la-compteur {
+    display: inline-flex; align-items: baseline; gap: 5px;
+    padding: 4px 12px; border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
+    color: var(--text-main); font-size: .88rem;
+}
+.la-compteur b { font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+/* Plus un seul miroir en réserve : le compteur le dit avant que le geste soit
+   refusé, sinon le refus paraît arbitraire. */
+.la-compteur--vide { background: color-mix(in srgb, var(--danger) 14%, var(--bg-panel)); }
+.la-btn-doux {
+    border: 1.5px solid var(--border); background: var(--bg-panel);
+    color: var(--text-muted); border-radius: 10px; padding: 5px 12px;
+    cursor: pointer; font: inherit; font-size: .84rem; font-weight: 600;
+}
+.la-btn-doux:hover { border-color: var(--primary); color: var(--primary); }
+
+.la-board {
+    position: relative;
+    /* Sur un grand plateau, la grille grandit : c'est la remarque de Rémy sur
+       les figures — « je pense qu'il faut revoir le design sur ordi ». */
+    width: min(560px, 94cqw, 64cqh); aspect-ratio: 1;
+    border-radius: 14px; padding: 0; overflow: hidden;
+    background: #101826; border: 3px solid #2c3e50; box-shadow: var(--shadow-md);
+}
+.la-board--ok { border-color: var(--success); }
+.la-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* Les cases cliquables sont une grille TRANSPARENTE posée par dessus le
+   dessin : le SVG garde ses proportions et sa géométrie, et les boutons
+   gardent leur taille de doigt. Dessiner les boutons DANS le SVG aurait mêlé
+   les deux, et une cible tactile ne se règle pas en unités de viewBox. */
+/* LES BOUTONS SE CALENT SUR LA GRILLE, PAS SUR LE CADRE. Le dessin réserve une
+   marge autour d'elle — l'émetteur est dehors —, et la couche cliquable doit
+   la reprendre au pixel près, sinon on touche une case et c'est la voisine qui
+   réagit. La marge vaut 40 sur des cases de 100, donc `40 / (n × 100 + 80)`
+   de la largeur du cadre. */
+.la-cases {
+    position: absolute;
+    inset: calc(100% * 40 / (var(--la-n) * 100 + 80));
+    display: grid; grid-template-columns: repeat(var(--la-n), 1fr);
+    grid-template-rows: repeat(var(--la-n), 1fr);
+}
+.la-case {
+    padding: 0; border: none; background: transparent; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.la-case:hover { background: rgba(255, 255, 255, .07); }
+.la-case--indice { background: rgba(250, 204, 21, .22); }
+
+.la-quadrillage line { stroke: rgba(255, 255, 255, .09); stroke-width: 2; }
+.la-mur { fill: #33445c; stroke: #22314a; stroke-width: 3; }
+
+/* LE MIROIR : une face claire, un dos sombre. Le trait fin seul se confondait
+   avec le rayon quand les deux se croisaient. */
+.la-miroir-dos { stroke: #0b1220; stroke-width: 13; stroke-linecap: round; fill: none; }
+.la-miroir-face { stroke: #cfe4ff; stroke-width: 6; stroke-linecap: round; fill: none; }
+/* Un miroir vissé ne se touche pas, et il le dit : doré, comme une pièce du
+   décor plutôt qu'une pièce à nous. */
+.la-miroir--fixe .la-miroir-face { stroke: #f2c14e; }
+
+/* LE RAYON. Deux traits superposés seraient plus jolis ; un seul suffit,
+   avec un halo par le filtre de l'ombre portée — et il reste un seul tracé,
+   donc aucune jointure à tenir entre deux cases. */
+.la-rayon {
+    fill: none; stroke: #ff5d5d; stroke-width: 7;
+    stroke-linejoin: round; stroke-linecap: round;
+    filter: drop-shadow(0 0 7px rgba(255, 93, 93, .85));
+    transition: stroke .25s ease;
+}
+.la-rayon--arrive { stroke: #4ade80; filter: drop-shadow(0 0 9px rgba(74, 222, 128, .9)); }
+
+.la-source rect { fill: #64748b; stroke: #cbd5e1; stroke-width: 3; }
+.la-oeil { fill: #ff5d5d; }
+.la-cible path { fill: #1e3a5f; stroke: #7dd3fc; stroke-width: 4; }
+.la-cible-coeur { fill: #38566f; stroke: none; }
+/* Le cristal s'allume : c'est la seule chose à valider, et elle se voit. */
+.la-cible--allumee path { fill: #14532d; stroke: #4ade80; }
+.la-cible--allumee .la-cible-coeur { fill: #4ade80; }
+
+.la-status {
+    min-height: 2.2em; text-align: center; font-size: .92rem; line-height: 1.35;
+    color: var(--text-muted); max-width: 30rem;
+}
+.la-status--ok { color: var(--success); font-weight: 700; }
+.la-status--ko { color: var(--danger); font-weight: 600; }
+
 /* --- LE CIRCUIT D'EAU ----------------------------------------
    Rémy : « j'aimerais bien avoir un jeu dans ce style-là, il faut tourner des
    tuyaux pour faire un chemin. »

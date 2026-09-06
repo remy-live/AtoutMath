@@ -755,6 +755,25 @@ const BASE = {
             + 'Attention aux pièces qui se ressemblent après rotation : un tuyau droit revient sur '
             + 'lui-même en un DEMI-tour, il n\'a donc que deux positions, pas quatre.'
     },
+    // LE REBOND SUR UN MIROIR — Rémy : « j'aimerai bien un jeu dans ce style
+    // avec des lasers et des miroirs ». Ce n'est pas la symétrie axiale du
+    // programme, et cela ne prétend pas l'être : c'est le quart de tour, vu du
+    // côté du DÉPLACEMENT plutôt que du côté de la figure. La composition de
+    // deux rebonds est ce qui se travaille vraiment.
+    'geo.transfo.reflexion': {
+        label: 'Prévoir un rebond sur un miroir',
+        chemin: [D.GEOMETRIQUE, SD.TRANSFORMATIONS],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Prévoir la direction d’un rayon après un miroir posé à 45°, et enchaîner les rebonds.',
+        lesson: 'UN MIROIR À 45° FAIT FAIRE UN QUART DE TOUR. Le miroir « / » va du coin en bas '
+            + 'à gauche au coin en haut à droite : ce qui allait vers la DROITE repart vers le '
+            + 'HAUT, et ce qui allait vers le haut repart vers la droite. Le miroir « \\ » est '
+            + 'l’autre diagonale, et échange la droite et le BAS. La difficulté n’est jamais un '
+            + 'rebond, c’est d’en enchaîner deux ou trois : après le premier miroir, il faut '
+            + 'raisonner sur la NOUVELLE direction, pas sur celle de départ. Le moyen sûr est de '
+            + 'suivre le rayon du doigt, case après case.'
+    },
     'geo.transfo.reconnaitre': {
         label: 'Reconnaître la transformation',
         chemin: [D.GEOMETRIQUE, SD.TRANSFORMATIONS],

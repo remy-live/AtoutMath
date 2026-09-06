@@ -575,6 +575,52 @@ export const geometrieExercises = [
     },
 
     {
+        // LE RAYON ET LES MIROIRS — le jeu bonus que Rémy a décrit sans le
+        // nommer : « j'aimerai bien un jeu dans ce style avec des lasers et des
+        // miroirs, je ne connais pas le nom. C'est un exercice bonus comme le
+        // sudoku. »
+        //
+        // CE QU'IL Y A DE MATHÉMATIQUE DEDANS, ET IL FALLAIT LE CHERCHER. Un
+        // miroir posé à 45° change un déplacement horizontal en déplacement
+        // vertical : c'est un quart de tour, vu du côté du DÉPLACEMENT plutôt
+        // que du côté de la figure. La règle s'énonce en une phrase ; ce qui
+        // s'apprend, c'est de l'ENCHAÎNER — après le premier rebond, il faut
+        // raisonner sur la nouvelle direction, et c'est là que tout le monde
+        // se trompe.
+        //
+        // ET LE BUDGET EST LE JEU. Sans lui, on couvrirait la grille de miroirs
+        // jusqu'à ce que ça marche : le raisonnement disparaîtrait derrière
+        // l'essai. Le nombre de miroirs est donc exactement celui qu'il faut, et
+        // le geste qui dépasserait est refusé avec sa raison.
+        id: 'geo-lasers', title: 'Le Rayon et les Miroirs',
+        cree: '2026-09-06',
+        generatorId: 'logique.lasers', activityId: 'lasers',
+        // Une grille se cherche dans SA grille : « le miroir en haut à droite »
+        // n'est pas une question qu'on peut reposer ailleurs. Comme le sudoku,
+        // ce jeu entraîne un raisonnement, pas une connaissance.
+        sansRevision: true,
+        // Cinq grilles : une par niveau coché, et une grille est une question
+        // longue. Voir `conseilProgression` dans core/progression.js.
+        params: { nbQuestions: 5 },
+        motsClefs: ['laser', 'rayon', 'miroir', 'rebond', 'réflexion', 'quart de tour',
+            'jeu', 'logique', 'bonus'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Un rayon part de l'émetteur et file tout droit. Touche une case pour y "
+            + "poser un miroir : une première fois pour « / », une deuxième pour « \\ », une "
+            + "troisième pour l'enlever. UN MIROIR FAIT FAIRE UN QUART DE TOUR au rayon — « / » "
+            + "envoie vers le HAUT ce qui allait à droite, « \\ » l'envoie vers le BAS. Ton but : "
+            + "amener le rayon sur le cristal. Le nombre de miroirs est COMPTÉ, et c'est ce qui "
+            + "fait l'exercice : on ne peut pas en semer partout, il faut prévoir le trajet "
+            + "avant de poser. La difficulté n'est jamais un rebond, c'est d'en enchaîner deux "
+            + "ou trois — après le premier miroir, raisonne sur la NOUVELLE direction, pas sur "
+            + "celle du départ. Le moyen sûr est de suivre le rayon du doigt, case après case. "
+            + "Rien à valider : le cristal s'allume tout seul quand le rayon l'atteint."
+    },
+
+    {
         // LE JEU QUI FAIT FAIRE DES QUARTS DE TOUR SANS LE DIRE.
         //
         // Rémy, capture d'écran d'un jeu mobile à l'appui : « j'aimerais bien

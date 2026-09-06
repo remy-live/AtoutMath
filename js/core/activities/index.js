@@ -107,6 +107,7 @@ import { tangramFicheGenerator } from '../generators/tangramFiche.js';
 import { memoryFicheGenerator } from '../generators/memoryFiche.js';
 import { hexagrilleFicheGenerator } from '../generators/hexagrilleFiche.js';
 import { tuyauxGenerator } from '../generators/tuyaux.js';
+import { lasersGenerator } from '../generators/lasers.js';
 import { pourcentagesGenerator } from '../generators/pourcentages.js';
 import { perimetreTriangleGenerator } from '../generators/perimetreTriangle.js';
 import { disqueGenerator } from '../generators/disque.js';
@@ -164,7 +165,7 @@ import {
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator, hexagrilleFicheGenerator,
     tuyauxGenerator, pourcentagesGenerator,
-    perimetreTriangleGenerator, disqueGenerator
+    perimetreTriangleGenerator, disqueGenerator, lasersGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -400,6 +401,22 @@ registerActivity({
     accepts: ['grid'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./tuyaux.js')
+});
+
+// LE RAYON ET LES MIROIRS — l'autre jeu qui ne demande rien à valider.
+//
+// Même famille que le circuit d'eau, et pour les mêmes raisons : la réponse est
+// un ÉTAT de la grille, obtenu en posant des miroirs, et elle se déclare seule
+// quand le rayon touche la cible. Le genre 'grid' est celui des grilles qu'on
+// remplit soi-même — ici on y pose des miroirs plutôt que des chiffres.
+registerActivity({
+    id: 'lasers',
+    unite: 'grille',
+    parDefaut: 5,
+    label: 'Le rayon et les miroirs',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./lasers.js')
 });
 
 registerActivity({
