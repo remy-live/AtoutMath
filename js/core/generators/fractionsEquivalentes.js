@@ -438,7 +438,14 @@ export const fracFacteurGenerator = {
             answerKind: 'numeric',
             prompt: {
                 text: `${consigne} ${texte}`,
-                papier: `${texte}   ${divise ? '÷' : '×'} …`,
+                // SUR LE PAPIER, RIEN QUE L'ÉGALITÉ. Rémy : « pour l'exercice
+                // par combien, la fiche d'exercice n'est pas bonne, propose
+                // simple 3/2 = …/22, c'est tout. » La ligne portait en plus un
+                // « × … » à droite : la consigne en tête de l'exercice dit
+                // déjà qu'on cherche un facteur, et ces trois espaces avant le
+                // signe se transformaient en un SECOND trou à remplir, juste à
+                // côté de celui de la fraction. Deux trous pour une réponse.
+                papier: texte,
                 html: `<div class="game-question">${consigne}</div>`
                     + `<div class="frac-egalite">
                         ${fracHtml(e.gauche.n, e.gauche.d)}

@@ -12,7 +12,7 @@ import {
     additionGenerator, soustractionGenerator, multFactGenerator,
     multMissingGenerator, divisionGenerator, prioriteGenerator, mixteGenerator
 } from '../generators/calcul.js';
-import { fracCompareGenerator, fracAddGenerator, fracProduitGenerator, decCompareGenerator } from '../generators/fractions.js';
+import { fracCompareGenerator, fracAddGenerator, fracProduitGenerator, fracProduitPoseGenerator, decCompareGenerator } from '../generators/fractions.js';
 import {
     fracEgaliteGenerator, fracFacteurGenerator, fracEgalesGenerator,
     fracSommeProgressiveGenerator,
@@ -116,7 +116,7 @@ import {
 [
     additionGenerator, soustractionGenerator, multFactGenerator,
     multMissingGenerator, divisionGenerator, prioriteGenerator, mixteGenerator,
-    fracCompareGenerator, fracAddGenerator, fracProduitGenerator, decCompareGenerator,
+    fracCompareGenerator, fracAddGenerator, fracProduitGenerator, fracProduitPoseGenerator, decCompareGenerator,
     fracEgaliteGenerator, fracFacteurGenerator, fracEgalesGenerator,
     fracSommeProgressiveGenerator, fracProblemeGenerator,
     repereGenerator, perimetreGenerator, aireGenerator,
@@ -571,6 +571,21 @@ registerActivity({
 // support visuel, car on peut tomber sur des choses incohérentes ». Quatre
 // lignes qui s'écrivent dans l'ordre, exactement comme au cahier, et la table
 // de Pythagore en aide pour le dénominateur commun.
+// L'ATELIER DU PRODUIT : décomposer, barrer, calculer. Rémy : « il faut pouvoir
+// décomposer les nombres, mais un QCM ce n'est pas terrible ». Le QCM demandait
+// le RÉSULTAT, qu'on pouvait trouver en multipliant tout puis en simplifiant à
+// la fin — par la méthode même qu'on voulait faire abandonner. Ici les deux
+// seuls gestes sont ceux du cours.
+registerActivity({
+    id: 'produit-pose',
+    unite: 'calcul',
+    label: 'Poser un produit de fractions',
+    accepts: ['text'],
+    requiresMeta: ['produit'],
+    supports: { timed: true, autonomous: false, demo: false },
+    load: () => import('./produitPose.js')
+});
+
 registerActivity({
     id: 'fraction-somme',
     unite: 'calcul',

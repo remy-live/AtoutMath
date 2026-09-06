@@ -135,6 +135,7 @@ export const CODES_EXERCICES = {
     'frac-facteur':               'FK',   // Par Combien ?
     'frac-egales':                'FE',   // Est-ce la Même Fraction ?
     'frac-produit':               'FP',   // Multiplier des Fractions
+    'frac-produit-pose':          'BF',   // Poser un Produit de Fractions (Barrer)
     'frac-somme-posee':           'AN',   // Poser une Addition de Fractions
     'frac-probleme':              'HF',   // Histoires de Fractions
     'frac-samurai':               'SF',   // Le Samouraï des Fractions

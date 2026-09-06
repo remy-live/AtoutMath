@@ -9126,3 +9126,126 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     background-image: repeating-linear-gradient(45deg,
         rgba(255,255,255,.45) 0 3px, transparent 3px 6px);
 }
+
+
+/* ═══════════ L'ATELIER DU PRODUIT DE FRACTIONS — décomposer, barrer ═══════════
+   Rémy : « il faut pouvoir décomposer les nombres, mais un QCM ce n'est pas
+   terrible ». L'expression est MANIPULABLE : chaque nombre est un bouton, on
+   l'ouvre en deux facteurs ou on le raye. Le dessin doit donc rester lisible
+   alors que le nombre de facteurs double à chaque décomposition — d'où les
+   tailles en clamp() et le retour à la ligne autorisé entre les fractions.
+   Préfixe `pp-` : `fa-` appartient à l'addition posée, `fp-` aux fiches. */
+.pp-scene { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+.pp-expr {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: clamp(6px, 2vw, 16px);
+    font-size: clamp(1.3rem, 5.5vw, 2.6rem);
+    margin: clamp(8px, 2.5vh, 22px) 0;
+    color: var(--text-main);
+}
+/* LE REFUS SE VOIT AVANT DE SE LIRE. Un message sous le calcul se rate quand on
+   regarde ses doigts ; la secousse, non. */
+.pp-expr--non { animation: pp-non .32s ease; }
+@keyframes pp-non {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-7px); }
+    75% { transform: translateX(7px); }
+}
+
+.pp-frac {
+    display: inline-flex; flex-direction: column; align-items: center;
+    line-height: 1.15; font-weight: 800;
+}
+.pp-num, .pp-den {
+    display: inline-flex; align-items: center; gap: .18em;
+    padding: .08em .3em; text-align: center;
+}
+.pp-den { border-top: 3px solid currentColor; }
+.pp-op { font-weight: 800; padding: 0 .1em; }
+/* Le « × » ENTRE DEUX FACTEURS est plus petit que celui entre deux fractions :
+   ils ne disent pas la même chose, et les confondre ferait lire « 3 × 11 × 45 »
+   comme un seul produit à plat, ce qui est vrai en valeur mais illisible. */
+.pp-fois { font-size: .58em; opacity: .55; font-weight: 700; }
+
+.pp-jeton {
+    font: inherit; color: inherit; background: none;
+    border: 2px solid transparent; border-radius: 10px;
+    padding: 0 .12em; cursor: pointer; line-height: 1.1;
+    transition: background .12s, border-color .12s, transform .12s;
+}
+.pp-jeton:hover { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.pp-jeton--choisi {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+/* BARRER N'EFFACE PAS : le nombre reste écrit, rayé. C'est le geste du cahier,
+   et c'est ce qui permet de relire son calcul — il vaut 1, il ne disparaît pas
+   de la page. */
+.pp-jeton--barre {
+    opacity: .42; text-decoration: line-through;
+    text-decoration-thickness: .12em;
+    text-decoration-color: var(--danger, #e0245e);
+    cursor: default;
+}
+.pp-jeton--barre:hover { background: none; }
+
+/* LE NOMBRE OUVERT, à sa place exacte dans la ligne. Rémy : « on clique sur le
+   33 et il apparaît … × … ». Les deux cases remplacent le nombre là où il
+   était : on voit ce qu'on fait à l'endroit où on le fait. */
+.pp-ouvre { display: inline-flex; align-items: center; gap: .12em; }
+.pp-x { font-size: .58em; opacity: .55; }
+.pp-case {
+    font: inherit; font-weight: 800; text-align: center;
+    width: 2.1em; padding: 0 .1em;
+    border: none; border-bottom: 3px dashed var(--primary);
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+    border-radius: 8px 8px 0 0; color: var(--text-main);
+}
+.pp-case:focus { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.pp-outils { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.pp-outil, .pp-table, .pp-valider {
+    font: inherit; font-weight: 700; cursor: pointer;
+    padding: 10px 16px; border-radius: 12px;
+    border: 2px solid var(--border, #d8dbe6);
+    background: var(--surface, #fff); color: var(--text-main);
+}
+.pp-outil--actif {
+    border-color: var(--primary); color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.pp-valider { border-color: var(--primary); background: var(--primary); color: #fff; }
+.pp-aide-mode { font-size: .82rem; opacity: .7; margin: 2px 0 0; text-align: center; }
+.pp-note { min-height: 1.4em; margin: 0; text-align: center; color: var(--danger, #e0245e); font-weight: 600; }
+.pp-bravo { margin: 0 0 8px; text-align: center; font-weight: 600; }
+.pp-res { display: flex; align-items: center; justify-content: center; gap: 16px; }
+/* LE RÉSULTAT S'ÉCRIT DANS UNE FRACTION, pas dans deux boîtes empilées. Le
+   premier jet laissait à la case du numérateur son propre soulignement : avec
+   le trait que `.pp-den` pose au-dessus de lui, cela faisait DEUX barres de
+   fraction l'une sur l'autre, et l'ensemble ne ressemblait plus à une
+   fraction. La barre appartient à la fraction ; les cases, elles, se
+   contentent d'un fond. */
+.pp-frac--res { font-size: clamp(1.4rem, 6vw, 2.4rem); }
+.pp-frac--res .pp-num { padding-bottom: .1em; }
+.pp-frac--res .pp-den { padding-top: .1em; }
+.pp-case--res {
+    border: none; border-radius: 10px; width: 2.6em;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+/* LA TABLE DE PYTHAGORE. Elle ne donne pas la réponse : elle allume les cases
+   où le nombre cherché apparaît, et l'élève LIT ses deux facteurs sur les
+   bords. Rémy : « va jusque 11 dans un premier temps ». */
+.pp-table-dit { margin: 0 0 10px; font-weight: 600; }
+.pp-table-boite { overflow-x: auto; }
+.pp-pytha { border-collapse: collapse; margin: 0 auto; font-variant-numeric: tabular-nums; }
+.pp-pytha th, .pp-pytha td {
+    border: 1px solid var(--border, #d8dbe6);
+    padding: 5px 7px; text-align: center; font-size: .82rem; min-width: 2.1em;
+}
+.pp-pytha th { background: color-mix(in srgb, var(--primary) 10%, transparent); font-weight: 800; }
+.pp-c-cible {
+    background: var(--primary); color: #fff; font-weight: 800;
+    box-shadow: inset 0 0 0 2px #fff;
+}

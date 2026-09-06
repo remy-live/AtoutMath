@@ -220,6 +220,58 @@ export const fractionsExercises = [
             + 'd\'une seule part. La dernière ne se voit pas : il faut poser le calcul.'
     },
     {
+        // L'ATELIER DU PRODUIT — Rémy, après avoir essayé le QCM : « je trouve
+        // que multiplier des fractions en barrant en diagonale n'est pas
+        // clair, il faut pouvoir décomposer les nombres, mais un QCM ce n'est
+        // pas terrible. »
+        //
+        //   On écrit la multiplication, on a : 33/22 × 45/25
+        //   On clique sur le 33 et il apparaît (… × …)/22 × 45/25
+        //   On a un bouton décomposer ou barrer ; barrer permet de barrer les
+        //   mêmes nombres en haut et en bas. Dans un premier temps, on peut
+        //   appeler la table de Pythagore pour chercher le nombre.
+        //
+        // LE QCM DEMANDAIT LE RÉSULTAT, ET C'ÉTAIT LE DÉFAUT. On pouvait le
+        // trouver en multipliant tout puis en simplifiant à la fin —
+        // c'est-à-dire par la méthode qu'on voulait justement faire
+        // abandonner. « Barrer en diagonale » n'était qu'un conseil dans un
+        // corrigé qu'on lit après coup. Ici décomposer et barrer sont les
+        // seuls gestes offerts : la méthode n'est plus racontée, elle est
+        // faite. « Multiplier des Fractions » reste à côté, pour la classe qui
+        // travaille la règle seule sans l'atelier.
+        //
+        // LES FRACTIONS NE SONT PLUS IRRÉDUCTIBLES, et c'est le point. 33/22
+        // se simplifie déjà tout seul : dans un produit posé, on ne distingue
+        // plus « simplifier dans une fraction » de « simplifier en diagonale ».
+        // Il n'y a qu'un numérateur, qu'un dénominateur, et des facteurs qui
+        // se barrent où qu'ils soient — ce que la barre de fraction veut dire,
+        // et que le QCM cachait.
+        id: 'frac-produit-pose', title: 'Poser un Produit de Fractions',
+        cree: '2026-09-06',
+        consignePapier: 'Décompose, barre les facteurs communs, puis écris le résultat.',
+        colonnesPapier: 3,
+        lignesReponse: 2,
+        generatorId: 'frac.produit-pose', activityId: 'produit-pose',
+        params: { maxFacteur: 11 },
+        motsClefs: ['multiplier des fractions', 'décomposer', 'barrer', 'simplifier avant',
+            'table de Pythagore', 'produit de fractions'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: 'Une multiplication de fractions n\'a qu\'UN numérateur et qu\'UN '
+            + 'dénominateur : tout ce qui est en haut se multiplie, tout ce qui est en bas '
+            + 'aussi, et la barre du milieu ne sépare pas deux mondes. Un nombre qui se '
+            + 'trouve en haut ET en bas se barre — le diviser des deux côtés par lui-même ne '
+            + 'change rien. Deux boutons, et c\'est tout l\'outillage. DÉCOMPOSER ouvre un '
+            + 'nombre en deux facteurs à écrire : clique sur 33, il devient « … × … », tu '
+            + 'écris 3 et 11. BARRER raye le même nombre en haut et en bas : clique-le d\'un '
+            + 'côté, puis de l\'autre. Quand plus rien ne se barre, tu multiplies ce qui '
+            + 'reste. La table de Pythagore est là si tu cherches dans quelle multiplication '
+            + 'un nombre apparaît : choisis-le d\'abord, elle allumera ses cases. Et 45 = 5 × 9 '
+            + 'ou 45 = 3 × 15 : les deux sont justes, la table est une aide, pas une règle.'
+    },
+    {
         // « UN EXERCICE D'ADDITION DE FRACTIONS PROGRESSIF », puis, après essai
         // des bandes : « je ne suis pas convaincu par les bandes pour les
         // fractions, on va proposer l'addition de fraction sans support visuel,

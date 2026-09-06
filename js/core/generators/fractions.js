@@ -9,6 +9,12 @@ import { makeItem, finalizeChoices } from '../items.js';
 import {
     tirerProduit, etapesProduit, corrigeProduit, reduire, memeValeur
 } from '../fractionsProduit.js';
+import {
+    tirerProduitPose, etapesPose, MARCHES_POSE, PYTHAGORE_MAX
+} from '../produitPose.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 function gcd(a, b) {
     return b === 0 ? a : gcd(b, a % b);
@@ -256,6 +262,89 @@ export const fracProduitGenerator = {
                 croise: p.croise, g1: p.g1, g2: p.g2,
                 produit: p.produit, reponse: p.reponse,
                 theme: p.croise ? 'avec-decomposition' : 'sans-decomposition'
+            }
+        });
+    }
+};
+
+// --- L'atelier : poser le produit et le simplifier ---------------------------
+//
+// Rémy, après le QCM : « je trouve que multiplier des fractions en barrant en
+// diagonale n'est pas clair, il faut pouvoir décomposer les nombres, mais un
+// QCM ce n'est pas terrible. »
+//
+// LE QCM DEMANDAIT LE RÉSULTAT, ET C'ÉTAIT LE DÉFAUT. On pouvait le trouver en
+// multipliant tout puis en simplifiant à la fin — c'est-à-dire par la méthode
+// qu'on voulait justement faire abandonner. Ici on ne demande pas un nombre :
+// on donne deux gestes, décomposer et barrer, et il n'y a pas d'autre chemin.
+//
+// Le générateur ne fait donc presque rien : il pose les quatre nombres et
+// laisse l'activité `produit-pose` mener le calcul. Tout ce qui compte est
+// dans le tirage — voir core/produitPose.js, et son garde-fou : la marche ne
+// doit pas mentir sur le nombre de décompositions qu'elle demande.
+
+const LISTE_POSE = MARCHES_POSE.map((m, i) => ({ id: m.id, nom: `${i + 1}. ${m.titre}`, groupe: null }));
+const PAR_MARCHE_POSE = 3;
+
+export const fracProduitPoseGenerator = {
+    id: 'frac.produit-pose',
+    label: 'Poser un produit de fractions',
+    skills: ['num.frac.multiplication'],
+    // ON N'ÉCRIT PAS UN NOMBRE, ON ÉCRIT UNE FRACTION : deux cases, un trait
+    // entre les deux. C'est le genre `text`, comme l'addition posée.
+    answerKinds: ['text'],
+    ecrit: true,
+    fractions: true,
+    conseil: (p) => conseilProgression(
+        marchesCochees(p, LISTE_POSE).length, PAR_MARCHE_POSE),
+    params: [
+        paramMarches({ marches: LISTE_POSE, mot: 'marche' }),
+        {
+            id: 'maxFacteur', type: 'number', label: 'Plus grand facteur',
+            default: PYTHAGORE_MAX, min: 2, max: 12,
+            aide: 'Rémy : « va jusque 11 dans un premier temps ». C\'est la table de '
+                + 'Pythagore du cahier — au-delà, le facteur cherché n\'y est plus, et '
+                + 'l\'aide cesse d\'aider.'
+        }
+    ],
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        const marche = marcheAuRang(
+            ctx.index ?? 0, marchesCochees(params, LISTE_POSE),
+            totalDe(ctx, params), params, PAR_MARCHE_POSE);
+        const p = tirerProduitPose(rng, {
+            marche,
+            maxFacteur: Number(params.maxFacteur) || PYTHAGORE_MAX
+        });
+
+        return makeItem({
+            seed: rng.seed,
+            generatorId: 'frac.produit-pose',
+            skillId: 'num.frac.multiplication',
+            answerKind: 'text',
+            prompt: {
+                text: `${p.a}/${p.b} × ${p.c}/${p.d} = ?`,
+                consigne: 'Décompose et barre, puis écris le résultat.',
+                // Sur le papier il n'y a ni bouton ni table : on écrit le
+                // calcul à la main, ce qui est exactement le même travail.
+                papier: `${p.a}/${p.b} × ${p.c}/${p.d} =`
+            },
+            answer: `${p.reponse.n}/${p.reponse.d}`,
+            hints: etapesPose(p),
+            explanation: `${p.a}/${p.b} × ${p.c}/${p.d} : tout ce qui est en haut se `
+                + `multiplie, tout ce qui est en bas aussi. En barrant les facteurs communs `
+                + `avant de calculer, il reste ${p.reponse.n}/${p.reponse.d}. Sans les barrer, `
+                + `on obtiendrait ${p.brut.n}/${p.brut.d} — le même nombre, mais il faudrait `
+                + `encore chercher par combien le simplifier.`,
+            difficulty: 2 + Math.min(2, p.gestes),
+            meta: {
+                // L'ACTIVITÉ CONSTRUIT SON ÉTAT DE DÉPART À PARTIR D'ICI. Les
+                // quatre nombres voyagent avec l'item, pas dans une variable
+                // du jeu : c'est ce qui rend la question rejouable à
+                // l'identique depuis sa graine.
+                produit: { a: p.a, b: p.b, c: p.c, d: p.d },
+                marche: p.marche, titre: p.titre, gestes: p.gestes,
+                reponse: p.reponse, brut: p.brut
             }
         });
     }
