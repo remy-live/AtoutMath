@@ -1882,6 +1882,29 @@ document.addEventListener('click', (e) => {
 // frise du QCM.
 let borneMarcheTiree = null;
 
+/**
+ * SOUS LE DOIGT, QUELLE QUESTION ?
+ *
+ * La barre n'est pas graduée en questions mais en POIDS : une marche vide y
+ * garde 0,6 de largeur pour rester visible en creux. Lire la position comme une
+ * fraction du nombre de questions faisait donc viser à côté — d'autant plus que
+ * des marches étaient vides, c'est-à-dire exactement quand on tire une borne
+ * pour les remplir. On marche le long des zones, et l'on interpole DANS celle
+ * où le doigt se trouve.
+ */
+function questionSousLePointeur(coupe, fraction) {
+    const poids = coupe.map(z => Math.max(z.n, 0.6));
+    const somme = poids.reduce((s2, w) => s2 + w, 0) || 1;
+    let reste = fraction * somme;
+    let questions = 0;
+    for (let k = 0; k < coupe.length; k++) {
+        if (reste <= poids[k]) return Math.round(questions + coupe[k].n * (reste / poids[k]));
+        reste -= poids[k];
+        questions += coupe[k].n;
+    }
+    return questions;
+}
+
 function poserBorneDeMarche(hote, k, clientX) {
     const bande = hote.querySelector('[data-bande-marches]');
     const champ = hote.querySelector('[data-repartition-marches]');
@@ -1890,8 +1913,8 @@ function poserBorneDeMarche(hote, k, clientX) {
     if (!boite.width) return;
     const etat = etatMarches(hote);
     if (!etat) return;
-    const total = etat.coupe.reduce((s2, z) => s2 + z.n, 0);
-    const coupe = Math.round(Math.min(1, Math.max(0, (clientX - boite.left) / boite.width)) * total);
+    const coupe = questionSousLePointeur(etat.coupe,
+        Math.min(1, Math.max(0, (clientX - boite.left) / boite.width)));
     const parts = poserBorneMarches(etat.coupe.map(z => z.n), k, coupe);
     champ.value = ecrireLongueurs(parts.map(n => ({ n })));
     champ.dispatchEvent(new Event('change', { bubbles: true }));
@@ -2227,28 +2250,79 @@ export function readParams(root, schema) {
 // marches et j'ai mis dix questions, donc deux ne passeront pas ». La faire
 // disparaître laisserait croire qu'elle est traitée.
 
+/**
+ * LA VRAIE QUESTION D'UNE MARCHE — pas son titre.
+ *
+ * Rémy : « l'aperçu n'est pas le vrai aperçu ». Il avait raison, et la
+ * comparaison était sous nos yeux : la bulle de la frise du QCM, dont celle-ci
+ * est copiée, montre une question RÉELLEMENT TIRÉE avec ses propositions
+ * (`vraieQuestion`). Celle des marches se contentait du nom de la marche —
+ * « 3. Le thermomètre » —, c'est-à-dire de ce que la case à cocher disait déjà
+ * trois centimètres plus haut. Un aperçu qui répète l'étiquette n'apprend rien.
+ *
+ * ON TIRE AVEC LES RÉGLAGES DU PANNEAU ET AU RANG DE LA MARCHE. Même liste
+ * cochée, même partage, même index : `marcheAuRang` retombe donc exactement sur
+ * la marche qu'on regarde, sans qu'on ait à le lui souffler. C'est la question
+ * que l'élève aura, aux nombres près — la graine, elle, ne peut pas être celle
+ * d'une partie qui n'a pas commencé.
+ */
+function vraieQuestionMarche(exoId, z, params, total) {
+    if (!exoId || !z || !z.n) return null;
+    try {
+        const exo = getExerciseById(exoId);
+        const gen = exo && exo.generatorId ? getGenerator(exo.generatorId) : null;
+        if (!gen || !gen.generate) return null;
+        const it = gen.generate({ ...(exo.params || {}), ...params },
+            { index: z.de - 1, total, rng: makeRng(`marche-${exoId}-${z.id}-${z.de}`) });
+        if (!it) return null;
+        const nu = (x) => String(x ?? '').replace(/<[^>]*>/g, ' ')
+            .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+        const texte = nu((it.prompt && (it.prompt.text || it.prompt.papier)) || '');
+        const choix = (Array.isArray(it.choices) ? it.choices : [])
+            .map(c => nu(c.label ?? c.value)).filter(Boolean).slice(0, 8);
+        return texte || choix.length ? { texte, choix } : null;
+    } catch { return null; }
+}
+
 /** Le schéma d'un panneau porte-t-il une liste de marches ? */
 function paramMarchesDe(schema) {
     return (schema || []).find(p => p && p.type === 'marches') || null;
 }
 
-function barreMarchesHtml(coupe, mot, choisie, vide = false) {
+function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params = {}) {
     if (!coupe.length) return '';
     const total = Math.max(1, coupe.reduce((s2, z) => s2 + z.n, 0));
     const i = Math.max(0, Math.min(coupe.length - 1, Math.round(choisie) || 0));
 
+    // UN SEUL JEU DE POIDS POUR TOUT CE QUI SE PLACE. Rémy : « les barres sont
+    // parfois décalées ».
+    //
+    // « Parfois » disait exactement la cause. Une marche VIDE reste visible, en
+    // creux, et pèse donc 0,6 dans la largeur — sinon elle serait invisible et
+    // l'on croirait l'avoir décochée. Mais les bornes, elles, se posaient au
+    // pourcentage du NOMBRE DE QUESTIONS, où cette même marche pèse zéro. Tant
+    // qu'aucune marche n'était vide les deux comptes coïncidaient ; dès qu'une
+    // se vidait — en tirant une borne à fond, ou en mettant moins de questions
+    // que de marches —, toutes les poignées d'après glissaient.
+    //
+    // On calcule donc les poids UNE fois, et largeur, bornes et bulle s'y
+    // réfèrent toutes les trois. Deux façons de mesurer la même barre, c'est
+    // une de trop.
+    const poids = coupe.map(z => Math.max(z.n, 0.6));
+    const somme = poids.reduce((s2, w) => s2 + w, 0) || 1;
+    const jusqua = (k) => poids.slice(0, k).reduce((s2, w) => s2 + w, 0);
+    const pourcent = (x) => `${(x / somme * 100).toFixed(3)}%`;
+
     // La flèche de la bulle vise le centre de la marche choisie — comme sur la
     // frise du QCM, c'est ce qui rattache l'une à l'autre.
-    let avant = 0;
-    for (let k = 0; k < i; k++) avant += coupe[k].n;
-    const centre = `${((avant + Math.max(coupe[i].n, 0.6) / 2) / total * 100).toFixed(3)}%`;
+    const centre = pourcent(jusqua(i) + poids[i] / 2);
 
     const bandes = coupe.map((z, k) => `<button type="button"
         class="cfg-zone cfg-zone--m${k % 6}${k === i ? ' cfg-zone--ici' : ''}${
     z.n ? '' : ' cfg-zone--vide'}" data-marche="${k}"
         title="${escapeAttr(`${z.nom} — ${z.n ? (z.n === 1
         ? `question ${z.de}` : `questions ${z.de} à ${z.a}`) : 'aucune question'}`)}"
-        style="flex-grow:${Math.max(z.n, 0.6)}"><span>${z.n || '–'}</span></button>`).join('');
+        style="flex-grow:${poids[k]}"><span>${z.n || '–'}</span></button>`).join('');
 
     // LES BORNES NE S'AFFICHENT QUE SI L'ON PEUT LES VISER. Onze poignées sur
     // une barre de trois cent soixante pixels, ce sont onze pastilles blanches
@@ -2260,11 +2334,12 @@ function barreMarchesHtml(coupe, mot, choisie, vide = false) {
     const bornes = coupe.length > 8 ? '' : coupe.slice(0, -1).map((z, k) => {
         cumul += z.n;
         return `<button type="button" class="cfg-borne cfg-borne--marche" data-borne-marche="${k}"
-            style="left:${(cumul / total * 100).toFixed(3)}%"
+            style="left:${pourcent(jusqua(k + 1))}"
             aria-label="${escapeAttr(`Limite après la question ${cumul}`)}"></button>`;
     }).join('');
 
     const z = coupe[i];
+    const vraie = vraieQuestionMarche(exoId, z, params, total);
     const rangs = !z.n ? 'Aucune question'
         : (z.n === 1 ? `Question ${z.de}` : `Questions ${z.de} à ${z.a}`);
     // LA LÉGENDE S'ARRÊTE À SIX MARCHES. Au-delà elle fait treize lignes sous
@@ -2281,8 +2356,18 @@ function barreMarchesHtml(coupe, mot, choisie, vide = false) {
         </div>
         <div class="cfg-scene" data-scene-marches data-marche-ici="${i}">
             <div class="cfg-bulle" data-bulle style="--cfg-bulle-x:${centre}">
-                <div class="cfg-bulle-rang">${rangs}</div>
-                <div class="cfg-bulle-q">${escapeAttr(z.nom)}</div>
+                <div class="cfg-bulle-rang">${rangs} · ${escapeAttr(z.nom)}</div>
+                ${vraie
+        ? `<div class="cfg-bulle-q">${escapeAttr(vraie.texte)}</div>`
+                    + (vraie.choix.length
+                        ? `<div class="cfg-bulle-choix">${vraie.choix
+                            .map(c => `<b>${escapeAttr(c)}</b>`).join('')}</div>`
+                        : '')
+        // SANS QUESTION À MONTRER — une marche vide, ou un exercice dont on ne
+        // peut pas tirer à la volée —, on ne fait pas semblant : on dit
+        // pourquoi il n'y a rien.
+        : `<div class="cfg-bulle-q cfg-bulle-q--vide">${z.n
+            ? 'Aperçu indisponible' : 'Aucune question sur cette ' + mot}</div>`}
             </div>
             <div class="cfg-bande" data-bande-marches>${bandes}${bornes}</div>
             <div class="cfg-legendes">${legende}</div>
@@ -2316,7 +2401,7 @@ function barreMarchesHtml(coupe, mot, choisie, vide = false) {
  * disait déjà que les deux panneaux « divergeaient jusqu'ici » ; il ne
  * disait pas encore que c'était réparé pour les marches.
  */
-export function brancherMarches(racine, schema, current = {}) {
+export function brancherMarches(racine, schema, current = {}, exoId = '') {
     const champMarches = racine && racine.querySelector('[data-marches]');
     if (!champMarches) return;
     // LE PANNEAU SE DÉSIGNE, ON NE LE DEVINE PLUS. Les gestes de la barre — le
@@ -2327,6 +2412,12 @@ export function brancherMarches(racine, schema, current = {}) {
     // premier panneau ajouté, et en silence. Marquer l'hôte au moment où on le
     // branche ne peut pas dériver : ce qui est branché est marqué.
     racine.setAttribute('data-marches-hote', '1');
+    // L'EXERCICE ET SON SCHÉMA VOYAGENT AVEC LA BARRE. La bulle montre une
+    // question RÉELLEMENT TIRÉE (voir `vraieQuestionMarche`), donc elle a
+    // besoin de savoir de quel exercice, et avec quels réglages — ceux du
+    // panneau, tels qu'ils sont en ce moment, pas ceux du catalogue.
+    const barre = racine.querySelector('[data-barre-marches]');
+    if (barre) { barre.dataset.exo = exoId || ''; barre._schema = schema || []; }
     // La liste des marches voyage sur le nœud plutôt que d'être relue dans le
     // schéma à chaque rafraîchissement : le panneau est déjà dessiné, c'est lui
     // la vérité.
@@ -2367,7 +2458,8 @@ export function rafraichirBarreMarches(racine, choisie) {
         : Math.max(0, Math.round(Number(scene && scene.dataset.marcheIci)) || 0);
     const etat = etatMarches(racine);
     if (!etat) { boite.innerHTML = ''; return; }
-    boite.innerHTML = barreMarchesHtml(etat.coupe, boite.dataset.mot || 'marche', i, etat.vide);
+    boite.innerHTML = barreMarchesHtml(etat.coupe, boite.dataset.mot || 'marche', i,
+        etat.vide, etat.exoId, etat.params);
 }
 
 /**
@@ -2390,8 +2482,16 @@ function etatMarches(racine) {
     const nb = racine.querySelector('#cfg-nbitems');
     const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
     const champ = racine.querySelector('[data-repartition-marches]');
-    const params = { repartitionMarches: champ ? champ.value : '' };
-    return { liste, cochees, total, params, vide,
+    // LES RÉGLAGES DU PANNEAU EN ENTIER, pas seulement le partage : la bulle
+    // tire une vraie question, et une question tirée avec les réglages du
+    // catalogue pendant que le professeur en change d'autres serait un aperçu
+    // qui ment. On relit donc le panneau, comme le fait « Jouer ! ».
+    const barre = racine.querySelector('[data-barre-marches]');
+    let params = { repartitionMarches: champ ? champ.value : '' };
+    try {
+        if (barre && barre._schema) params = { ...readParams(racine, barre._schema), ...params };
+    } catch { /* un panneau à moitié dessiné ne doit pas casser la barre */ }
+    return { liste, cochees, total, params, vide, exoId: (barre && barre.dataset.exo) || '',
         coupe: decoupeMarches(cochees, total, params) };
 }
 
@@ -2594,7 +2694,7 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     // LA LISTE DE MARCHES SE BRANCHE ICI AUSSI. C'est le seul endroit qui la
     // laissait morte : les cases s'affichaient, la boîte de la barre restait
     // vide, et l'étape s'enregistrait sans son partage.
-    brancherMarches(content, schema, current);
+    brancherMarches(content, schema, current, exo.id || step.exerciseId);
 
     const commit = () => {
         const overrides = readParams(content, schema);
@@ -2793,7 +2893,7 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     // MAIS LA BARRE, ELLE, SUIT CHAQUE GESTE : cocher une marche, tirer la
     // glissière, tirer une borne. C'est elle qui dit ce que le réglage produit,
     // et un aperçu en retard d'un geste ne vaut rien.
-    brancherMarches(content, schema, current);
+    brancherMarches(content, schema, current, exo.id || '');
 
     document.getElementById('btn-student-config-cancel').onclick = () => { modal.style.display = 'none'; };
     document.getElementById('btn-student-config-start').onclick = () => {

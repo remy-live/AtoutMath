@@ -310,7 +310,17 @@ export const relatifsGenerator = {
                 modele: niveau.modele, depart, deplacements, total,
                 min: niveau.min, max: niveau.max,
                 niveau: niveau.id, titre: niveau.titre,
-                rang: rang + 1, total_niveaux: NIVEAUX.length,
+                // LE RANG DE LA MARCHE, PAS LA FONCTION `rang`. Rémy : « un bug
+                // qui traîne pour l'ascenseur » — l'écran affichait
+                // « Étape function rang(n) { return n === 1 ? '1er' : … }1 / 6 ».
+                //
+                // La variable `rang` du temps du menu a disparu avec la
+                // migration vers les marches ; la FONCTION `rang` déclarée en
+                // haut du fichier a pris sa place en silence, et `rang + 1` a
+                // stringifié son code source. Aucun test ne regardait les
+                // `meta`, et rien ne plantait : le défaut n'existait qu'à
+                // l'écran.
+                rang: NIVEAUX.indexOf(niveau) + 1, total_niveaux: NIVEAUX.length,
                 lecon: SKILL_SOMME
             }
         });

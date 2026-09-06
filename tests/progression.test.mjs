@@ -218,6 +218,52 @@ test('le réglage porte sa liste, ses groupes et son mot', () => {
     assert.equal(p.marches.length, 12);
 });
 
+test('AUCUN `meta` NE PORTE DE CODE — le défaut qui ne plante pas', async () => {
+    // Rémy : « un bug qui traîne pour l'ascenseur ». L'écran affichait
+    // « Étape function rang(n) { return n === 1 ? '1er' : `${n}e`; }1 / 6 ».
+    //
+    // LA VARIABLE AVAIT DISPARU, LA FONCTION AVAIT PRIS SA PLACE. `rang` était
+    // le rang de la marche du temps du menu ; la migration vers les cases l'a
+    // supprimée, et la FONCTION `rang` déclarée en haut du même fichier a
+    // silencieusement pris le relais. `rang + 1` a stringifié son code source.
+    //
+    // RIEN N'A PLANTÉ, ET C'EST TOUT LE PROBLÈME. La question se jouait, la
+    // réponse était juste, seule une étiquette montrait du JavaScript à un
+    // élève de cinquième. Aucun test ne regardait les `meta` : ils ne servent
+    // « qu'à » l'affichage, donc personne ne les gardait — c'est justement là
+    // qu'une faute peut vivre longtemps.
+    await import('../js/core/activities/index.js');
+    const { allGenerators } = await import('../js/core/registry.js');
+    const suspect = (v) => {
+        if (typeof v === 'function') return 'une fonction';
+        const t = String(v);
+        if (/\bfunction\b|=>|\breturn\b|\[object Object\]|undefined|NaN/.test(t)) {
+            return t.slice(0, 60);
+        }
+        return '';
+    };
+    for (const gen of allGenerators()) {
+        const defauts = Object.fromEntries((gen.params || [])
+            .filter(p => p.default !== undefined).map(p => [p.id, p.default]));
+        for (let i = 0; i < 6; i++) {
+            let it;
+            try {
+                it = gen.generate({ ...defauts },
+                    { rng: makeRng(`${gen.id}meta${i}`), index: i, total: 12 });
+            } catch { continue; }   // un générateur qui refuse ces réglages-là
+            const meta = (it && it.meta) || {};
+            // ON NE REGARDE QUE LES FEUILLES SIMPLES : un `meta` porte parfois
+            // l'objet entier du tirage (l'égalité, le calcul), et ses branches
+            // sont du domaine du générateur, pas de l'affichage.
+            Object.entries(meta).forEach(([k, v]) => {
+                if (v === null || typeof v === 'object') return;
+                const quoi = suspect(v);
+                assert.equal(quoi, '', `${gen.id} : meta.${k} vaut « ${quoi} »`);
+            });
+        }
+    }
+});
+
 test('TOUT GÉNÉRATEUR À PROGRESSION OFFRE SES CASES, ET ELLES MARCHENT', async () => {
     // Le garde-fou : rien n'empêcherait le prochain générateur d'annoncer une
     // progression sans dire quelles marches on peut cocher. Et l'on vérifie que
