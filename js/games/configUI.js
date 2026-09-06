@@ -1659,8 +1659,16 @@ function majResumeListe(liste) {
 document.addEventListener('click', (e) => {
     const btn = e.target.closest('.cfg-liste-btn');
     if (!btn) return;
-    e.preventDefault();
+    // CE BOUTON-LÀ N'EST PAS TOUJOURS DANS UNE `.cfg-liste`. La liste de
+    // marches lui emprunte sa classe — c'est le même bouton pour l'œil — mais
+    // elle a sa propre structure et son propre écouteur. Sans cette garde,
+    // chaque « Tout cocher » des marches jetait une exception ici (`liste` est
+    // nul), qui ne cassait rien de visible et interrompait pourtant la chaîne
+    // des écouteurs suivants. Une erreur silencieuse est pire qu'un défaut
+    // visible : personne ne la cherche.
     const liste = btn.closest('.cfg-liste');
+    if (!liste) return;
+    e.preventDefault();
     liste.querySelectorAll('input[type="checkbox"]').forEach(b => { b.checked = btn.dataset.cocher === '1'; });
     majResumeListe(liste);
 });
@@ -1841,17 +1849,20 @@ document.addEventListener('click', (e) => {
         ? btn.dataset.cocher === '1'
         : !cases.every(c => c.checked);
     cases.forEach(c => { c.checked = tout; });
-    // TOUT DÉCOCHER NE VIDE PAS L'EXERCICE : `marchesCochees` retombe alors sur
-    // la progression entière, parce qu'un exercice sans marche n'aurait rien à
-    // poser. L'écran doit dire la même chose que le noyau, sinon on lit une
-    // liste vide et l'on joue tout.
+    // « TOUT DÉCOCHER » DÉCOCHE VRAIMENT. Rémy : « tout décocher ne fonctionne
+    // pas ».
     //
-    // ET C'EST LA LISTE ENTIÈRE QU'ON REGARDE, PAS LE GROUPE. Premier essai :
-    // décocher le temps A vidait ses cinq cases, cette garde voyait « aucune
-    // cochée » — parmi les cinq — et recochait les douze. Le bouton ne faisait
-    // donc rien du tout, et rien ne le disait.
-    const toutes = casesMarches(hote);
-    if (!toutes.some(c => c.checked)) toutes.forEach(c => { c.checked = true; });
+    // Il ne fonctionnait pas parce qu'une garde recochait tout dès que la
+    // dernière case tombait — au motif que `marchesCochees` retombe de toute
+    // façon sur la progression entière, et que l'écran devait dire la même
+    // chose que le noyau. L'intention était juste, le remède était le pire
+    // possible : le bouton, lui, ne faisait plus RIEN, et rien ne le disait.
+    //
+    // Or « tout décocher » n'est pas une demande de jouer zéro marche, c'est le
+    // premier geste de « je n'en veux que deux » — on vide, puis on coche.
+    // L'empêcher, c'est empêcher la seule façon commode de faire un choix
+    // court. On laisse donc la liste se vider, et c'est la BARRE qui dit la
+    // vérité du noyau : aucune marche cochée, l'exercice les jouerait toutes.
     cases[0].dispatchEvent(new Event('change', { bubbles: true }));
 });
 
@@ -1860,7 +1871,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('click', (e) => {
     const z = e.target.closest && e.target.closest('[data-marche]');
     if (!z) return;
-    const hote = z.closest('#student-config-content, .cfg-content, [data-exo]');
+    const hote = z.closest('[data-marches-hote]');
     if (!hote) return;
     e.preventDefault();
     rafraichirBarreMarches(hote, Number(z.dataset.marche));
@@ -1890,7 +1901,7 @@ function poserBorneDeMarche(hote, k, clientX) {
 document.addEventListener('pointerdown', (e) => {
     const borne = e.target.closest && e.target.closest('[data-borne-marche]');
     if (!borne) return;
-    const hote = borne.closest('#student-config-content, .cfg-content, [data-exo]');
+    const hote = borne.closest('[data-marches-hote]');
     if (!hote) return;
     // PAS DE `setPointerCapture` : la barre se redessine pendant le geste, et
     // la capture serait posée sur l'élément qu'on vient de jeter.
@@ -2221,7 +2232,7 @@ function paramMarchesDe(schema) {
     return (schema || []).find(p => p && p.type === 'marches') || null;
 }
 
-function barreMarchesHtml(coupe, mot, choisie) {
+function barreMarchesHtml(coupe, mot, choisie, vide = false) {
     if (!coupe.length) return '';
     const total = Math.max(1, coupe.reduce((s2, z) => s2 + z.n, 0));
     const i = Math.max(0, Math.min(coupe.length - 1, Math.round(choisie) || 0));
@@ -2276,7 +2287,9 @@ function barreMarchesHtml(coupe, mot, choisie) {
             <div class="cfg-bande" data-bande-marches>${bandes}${bornes}</div>
             <div class="cfg-legendes">${legende}</div>
         </div>
-        <p class="cfg-dit">${escapeAttr(motsDeCoupe(coupe, mot))}</p>`;
+        <p class="cfg-dit${vide ? ' cfg-dit--vide' : ''}">${vide
+        ? `Aucune ${mot} cochée : l’exercice les jouerait toutes. Coche celles que tu veux.`
+        : escapeAttr(motsDeCoupe(coupe, mot))}</p>`;
 }
 
 /**
@@ -2285,6 +2298,67 @@ function barreMarchesHtml(coupe, mot, choisie) {
  * ELLE SE RELIT DANS LE PANNEAU, jamais dans l'objet d'origine : c'est la seule
  * lecture qui ne puisse pas se désynchroniser, y compris pendant un glissé.
  */
+/**
+ * BRANCHER LA LISTE DE MARCHES DANS UN PANNEAU — n'importe lequel.
+ *
+ * Rémy, dans les propriétés d'une étape : « on ne peut pas faire les réglages
+ * des étapes, tout décocher ne fonctionne pas. Où est la frise ? »
+ *
+ * LA FRISE N'ÉTAIT NULLE PART, ET C'EST UNE DIVERGENCE ENTRE DEUX PANNEAUX QUI
+ * L'AVAIT MANGÉE. `champsSchema` dessine bien les cases et la boîte vide de la
+ * barre dans les deux — mais tout ce qui la fait VIVRE (la liste posée sur le
+ * nœud, le champ caché du partage, le premier rafraîchissement, l'écoute des
+ * gestes) n'existait que dans le panneau d'avant-partie. L'éditeur d'étape
+ * affichait donc une boîte vide, et enregistrait une étape sans partage.
+ *
+ * Le remède n'est pas de recopier les quinze lignes : c'est de n'en avoir
+ * qu'une seule version, appelée par les deux. Le commentaire de `champsSchema`
+ * disait déjà que les deux panneaux « divergeaient jusqu'ici » ; il ne
+ * disait pas encore que c'était réparé pour les marches.
+ */
+export function brancherMarches(racine, schema, current = {}) {
+    const champMarches = racine && racine.querySelector('[data-marches]');
+    if (!champMarches) return;
+    // LE PANNEAU SE DÉSIGNE, ON NE LE DEVINE PLUS. Les gestes de la barre — le
+    // clic sur une zone, la borne qu'on tire — sont posés sur le document et
+    // doivent retrouver leur panneau ; ils le cherchaient par une liste d'id
+    // écrite à la main (`#student-config-content, .cfg-content, [data-exo]`),
+    // où l'éditeur d'étape ne figurait pas. Une liste pareille dérive au
+    // premier panneau ajouté, et en silence. Marquer l'hôte au moment où on le
+    // branche ne peut pas dériver : ce qui est branché est marqué.
+    racine.setAttribute('data-marches-hote', '1');
+    // La liste des marches voyage sur le nœud plutôt que d'être relue dans le
+    // schéma à chaque rafraîchissement : le panneau est déjà dessiné, c'est lui
+    // la vérité.
+    champMarches._marches = (paramMarchesDe(schema) || {}).marches || [];
+    // ET LE CHAMP CACHÉ QUI PORTE LE PARTAGE. Il n'a pas de contrôle à lui :
+    // c'est en tirant une borne qu'on l'écrit, et `readParams` le relit comme
+    // n'importe quel réglage.
+    if (!racine.querySelector('[data-repartition-marches]')) {
+        const rep = document.createElement('input');
+        rep.type = 'hidden';
+        rep.dataset.param = 'repartitionMarches';
+        rep.setAttribute('data-repartition-marches', '1');
+        rep.value = String(current.repartitionMarches || '');
+        champMarches.appendChild(rep);
+    }
+    rafraichirBarreMarches(racine);
+
+    // LA BARRE SUIT CHAQUE GESTE : cocher une marche, tirer la glissière du
+    // nombre de questions, tirer une borne. Un aperçu en retard d'un geste ne
+    // vaut rien.
+    if (racine._marchesBranchees) return;
+    racine._marchesBranchees = true;
+    racine.addEventListener('change', (e) => {
+        if (!e.target.closest || !e.target.closest('[data-param], #cfg-nbitems')) return;
+        rafraichirBarreMarches(racine);
+    });
+    // La glissière du nombre de questions émet `input` avant `change`.
+    racine.addEventListener('input', (e) => {
+        if (e.target && e.target.id === 'cfg-nbitems') rafraichirBarreMarches(racine);
+    });
+}
+
 export function rafraichirBarreMarches(racine, choisie) {
     const boite = racine && racine.querySelector('[data-barre-marches]');
     if (!boite) return;
@@ -2293,7 +2367,7 @@ export function rafraichirBarreMarches(racine, choisie) {
         : Math.max(0, Math.round(Number(scene && scene.dataset.marcheIci)) || 0);
     const etat = etatMarches(racine);
     if (!etat) { boite.innerHTML = ''; return; }
-    boite.innerHTML = barreMarchesHtml(etat.coupe, boite.dataset.mot || 'marche', i);
+    boite.innerHTML = barreMarchesHtml(etat.coupe, boite.dataset.mot || 'marche', i, etat.vide);
 }
 
 /**
@@ -2307,12 +2381,18 @@ function etatMarches(racine) {
     if (!liste.length) return null;
     const coches = [...boite.querySelectorAll('[data-kind="multiselect"]')]
         .filter(c => c.checked).map(c => c.value);
+    // AUCUNE CASE COCHÉE EST UN ÉTAT DE TRAVAIL, pas une demande. C'est ce que
+    // fait le noyau (`marchesCochees` retombe sur la liste entière), et la
+    // barre doit le DIRE au lieu de le taire — sinon on lit une liste vide et
+    // l'exercice joue tout, sans que rien ne l'ait annoncé.
+    const vide = !coches.length;
     const cochees = marchesCochees({ marches: coches }, liste);
     const nb = racine.querySelector('#cfg-nbitems');
     const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
     const champ = racine.querySelector('[data-repartition-marches]');
     const params = { repartitionMarches: champ ? champ.value : '' };
-    return { liste, cochees, total, params, coupe: decoupeMarches(cochees, total, params) };
+    return { liste, cochees, total, params, vide,
+        coupe: decoupeMarches(cochees, total, params) };
 }
 
 export function conseilEtape(step) {
@@ -2511,6 +2591,11 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         if (titre) titre.textContent = bonus ? 'Quand la récompense s\'arrête' : 'Déroulement de l\'étape';
     };
 
+    // LA LISTE DE MARCHES SE BRANCHE ICI AUSSI. C'est le seul endroit qui la
+    // laissait morte : les cases s'affichaient, la boîte de la barre restait
+    // vide, et l'étape s'enregistrait sans son partage.
+    brancherMarches(content, schema, current);
+
     const commit = () => {
         const overrides = readParams(content, schema);
         const nbItems = intVal('cfg-nbitems', 10);
@@ -2708,33 +2793,7 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     // MAIS LA BARRE, ELLE, SUIT CHAQUE GESTE : cocher une marche, tirer la
     // glissière, tirer une borne. C'est elle qui dit ce que le réglage produit,
     // et un aperçu en retard d'un geste ne vaut rien.
-    const champMarches = content.querySelector('[data-marches]');
-    if (champMarches) {
-        // La liste des marches voyage sur le noeud plutôt que d'être relue dans
-        // le schéma à chaque rafraîchissement : le panneau est déjà dessiné,
-        // c'est lui la vérité.
-        champMarches._marches = (paramMarchesDe(schema) || {}).marches || [];
-        // ET LE CHAMP CACHÉ QUI PORTE LE PARTAGE. Il n'a pas de contrôle à lui :
-        // c'est en tirant une borne qu'on l'écrit, et `readParams` le relit
-        // comme n'importe quel réglage.
-        const rep = document.createElement('input');
-        rep.type = 'hidden';
-        rep.dataset.param = 'repartitionMarches';
-        rep.dataset.repartitionMarches = '1';
-        rep.setAttribute('data-repartition-marches', '1');
-        rep.value = String(current.repartitionMarches || '');
-        champMarches.appendChild(rep);
-        rafraichirBarreMarches(content);
-    }
-
-    content.addEventListener('change', (e) => {
-        if (!e.target.closest || !e.target.closest('[data-param]')) return;
-        rafraichirBarreMarches(content);
-    });
-    // La glissière du nombre de questions émet `input` avant `change`.
-    content.addEventListener('input', (e) => {
-        if (e.target && e.target.id === 'cfg-nbitems') rafraichirBarreMarches(content);
-    });
+    brancherMarches(content, schema, current);
 
     document.getElementById('btn-student-config-cancel').onclick = () => { modal.style.display = 'none'; };
     document.getElementById('btn-student-config-start').onclick = () => {

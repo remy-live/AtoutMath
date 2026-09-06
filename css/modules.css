@@ -3285,6 +3285,11 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 /* LA BULLE DES MARCHES TIENT EN DEUX LIGNES — un rang et un nom —, là où celle
    du QCM montre une question et ses propositions. On ne lui réserve donc pas
    les 122 px de l'autre : ce serait un trou blanc au milieu du panneau. */
+/* QUAND RIEN N'EST COCHÉ, la phrase sous la barre ne décrit plus un partage :
+   elle avertit. Elle change donc de ton — c'est un état de travail, pas une
+   erreur, mais il ne doit pas passer inaperçu. */
+.cfg-dit--vide { color: var(--warning, #f59e0b); font-weight: 700; }
+
 .cfg-marches .cfg-scene { padding-top: 74px; }
 .cfg-groupe {
     border: 1.5px solid var(--border); border-radius: 10px;

@@ -268,6 +268,60 @@ async function tourDesFiches(p, seau) {
     return { combien: liste.length, soucis };
 }
 
+/**
+ * LA FRISE DES MARCHES VIT DANS LES DEUX PANNEAUX, ET PAS SEULEMENT DANS UN.
+ *
+ * Rémy, dans les propriétés d'une étape : « on ne peut pas faire les réglages
+ * des étapes, tout décocher ne fonctionne pas. Où est la frise ? » Les cases
+ * s'affichaient, la boîte de la barre restait vide : tout ce qui la fait vivre
+ * n'était branché que dans le panneau d'avant-partie.
+ *
+ * On monte donc CHAQUE exercice à progression dans l'éditeur d'étape, et l'on
+ * exige une barre garnie. Le défaut était invisible aux tests — il n'existe que
+ * dans le DOM — et c'est exactement ce que l'audit est là pour attraper.
+ */
+async function tourDesEtapes(p, seau) {
+    const ids = await p.evaluate(async () => {
+        const { exercices, paramSchemaOf } = await import('/js/data/catalog.js');
+        return exercices
+            .filter(e => paramSchemaOf(e).some(x => x && x.type === 'marches'))
+            .map(e => e.id);
+    });
+    const soucis = [];
+    for (const id of ids) {
+        seau.length = 0;
+        const quoi = await p.evaluate(async (exoId) => {
+            const { renderGameConfigUI } = await import('/js/games/configUI.js');
+            let hote = document.getElementById('builder-config-content');
+            if (!hote) {
+                hote = document.createElement('div');
+                hote.id = 'builder-config-content';
+                hote.style.display = 'none';
+                document.body.appendChild(hote);
+            }
+            hote.innerHTML = '';
+            delete hote._marchesBranchees;
+            renderGameConfigUI({ exerciseId: exoId, nbItems: 12, overrides: {} },
+                () => { }, 'builder-config-content');
+            await new Promise(r => setTimeout(r, 120));
+            const cases = hote.querySelectorAll('[data-kind="multiselect"]').length;
+            const zones = hote.querySelectorAll('[data-bande-marches] [data-marche]').length;
+            const cache = !!hote.querySelector('[data-repartition-marches]');
+            if (!cases) return 'les cases à cocher manquent';
+            if (!zones) return 'la frise reste vide';
+            if (!cache) return 'le partage ne serait pas enregistré';
+            return '';
+        }, id);
+        if (quoi) seau.push(`ÉTAPE: ${quoi}`);
+        if (seau.length) soucis.push({ id, quoi: [...new Set(seau)] });
+    }
+    await p.evaluate(() => {
+        const h = document.getElementById('builder-config-content');
+        if (h) h.innerHTML = '';
+    });
+    return { combien: ids.length, soucis };
+}
+
 async function tourDesPanneaux(p, seau) {
     const soucis = [];
     const essai = async (nom, fn) => {
@@ -383,6 +437,7 @@ process.stderr.write(`# audit ${cadre}${OPT.rapide ? ' (rapide)' : ''}\n`);
 const tours = [
     ['exercices', await tourDuCatalogue(p, seau)],
     ['fiches papier', await tourDesFiches(p, seau)],
+    ['étapes de parcours', await tourDesEtapes(p, seau)],
     ['panneaux', await tourDesPanneaux(p, seau)],
     ['hors ligne', await tourHorsLigne(nav)]
 ];
