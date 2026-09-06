@@ -9137,13 +9137,25 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
    Préfixe `pp-` : `fa-` appartient à l'addition posée, `fp-` aux fiches. */
 .pp-scene { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 
+/* LA LIGNE DU CALCUL RESPIRE, ET ELLE PASSE À LA LIGNE PLUTÔT QUE DE SE
+   SERRER. Rémy, sur un téléphone : « cela fait un peu écrasé à droite ». Un
+   produit décomposé — « (3 × 3)/8 × 3/(3 × 3) = …/… » — occupe toute la
+   largeur d'un écran de 390 px, et le dernier morceau finissait collé au bord.
+   Trois choses : un plancher de taille plus bas, une marge intérieure pour que
+   rien ne touche le bord, et une gouttière de ligne pour que le retour à la
+   ligne se voie comme un choix et non comme un accident. */
 .pp-expr {
     display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
-    gap: clamp(6px, 2vw, 16px);
-    font-size: clamp(1.3rem, 5.5vw, 2.6rem);
+    column-gap: clamp(8px, 2.4vw, 18px); row-gap: clamp(6px, 1.6vh, 14px);
+    font-size: clamp(1.05rem, 4.8vw, 2.6rem);
     margin: clamp(8px, 2.5vh, 22px) 0;
+    padding: 0 8px;
     color: var(--text-main);
 }
+/* LE « = » NE SE SÉPARE JAMAIS DE SON RÉSULTAT : ils passent à la ligne
+   ensemble. Un « = » resté seul en bout de ligne serait pire que le retour à
+   la ligne qu'il évite. */
+.pp-resultat { display: inline-flex; align-items: center; gap: clamp(8px, 2.4vw, 18px); }
 /* LE REFUS SE VOIT AVANT DE SE LIRE. Un message sous le calcul se rate quand on
    regarde ses doigts ; la secousse, non. */
 .pp-expr--non { animation: pp-non .32s ease; }
@@ -9180,8 +9192,11 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .pp-ouvre { display: inline-flex; flex-direction: column; align-items: center; gap: .06em; }
 .pp-duo { display: inline-flex; align-items: center; gap: .12em; }
 .pp-cible {
-    font-size: .38em; font-weight: 700; opacity: .55; letter-spacing: .02em;
-    line-height: 1;
+    /* Un plancher en pixels : `.38em` d'une ligne qui descend à 1,05 rem sur un
+       téléphone ferait sept pixels, c'est-à-dire rien. L'étiquette doit rester
+       lisible même quand le calcul, lui, s'est réduit. */
+    font-size: max(.38em, 12px); font-weight: 700; opacity: .6;
+    letter-spacing: .02em; line-height: 1;
 }
 .pp-op { font-weight: 800; padding: 0 .1em; }
 /* Le « × » ENTRE DEUX FACTEURS est plus petit que celui entre deux fractions :
@@ -9259,20 +9274,47 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .pp-touche:active { transform: scale(.94); }
+/* La touche « ⌫ » prend deux cases pour que le rang du bas soit PLEIN : une
+   grille sans trou se vise du pouce sans regarder. */
+.pp-touche--del { grid-column: span 2; }
 .pp-touche--ok {
-    grid-column: span 2; background: var(--primary);
+    grid-column: span 3; background: var(--primary);
     border-color: var(--primary); color: #fff;
     font-size: clamp(.8rem, 2.6vw, 1rem);
 }
+.pp-touche--large { grid-column: span 6; }
 .pp-touche--ok:disabled { opacity: .45; cursor: default; }
+.pp-touche--annuler {
+    grid-column: span 3; font-size: clamp(.8rem, 2.6vw, 1rem);
+    color: var(--text-soft, #6b7280);
+}
 
+/* LE PANNEAU DU BAS : les outils, ou le pavé. Ils ne coexistent jamais — on
+   décompose OU l'on choisit un geste —, donc ils partagent la même place au
+   lieu de se pousser l'un l'autre à chaque clic. */
+.pp-panneau {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    width: min(100%, 30rem); margin: 0 auto;
+}
 .pp-outils { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-.pp-outil, .pp-table {
+.pp-outil, .pp-lien {
     font: inherit; font-weight: 700; cursor: pointer;
     padding: 10px 16px; border-radius: 12px;
     border: 2px solid var(--border, #d8dbe6);
     background: var(--surface, #fff); color: var(--text-main);
 }
+/* « J'AI FINI DE SIMPLIFIER » — c'est l'élève qui le dit, et le bouton doit se
+   voir sans se confondre avec les deux gestes au-dessus : il ne fait pas
+   avancer le calcul, il déclare qu'il est terminé. Vert, seul sur sa ligne. */
+.pp-fini {
+    font: inherit; font-weight: 800; cursor: pointer;
+    padding: 11px 20px; border-radius: 12px; margin-top: 2px;
+    border: 2px solid var(--success, #14a06a);
+    background: color-mix(in srgb, var(--success, #14a06a) 12%, transparent);
+    color: var(--success, #14a06a);
+}
+.pp-fini:active { transform: scale(.97); }
+.pp-lien { padding: 8px 14px; font-size: .86rem; font-weight: 700; }
 .pp-outil--actif {
     border-color: var(--primary); color: var(--primary);
     background: color-mix(in srgb, var(--primary) 10%, transparent);

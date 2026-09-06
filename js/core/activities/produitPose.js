@@ -25,79 +25,94 @@
 //   · en mode BARRER, il s'allume, et le nombre suivant qu'on touche de
 //     l'autre côté de la barre se raye avec lui — s'ils sont égaux.
 //
+// UN SEUL PAVÉ NUMÉRIQUE POUR TOUT CE QUI S'ÉCRIT. Rémy : « quand on décompose
+// on n'a pas le pavé numérique ». Les deux facteurs d'une décomposition et les
+// deux nombres du résultat sont la même chose du point de vue du doigt : des
+// chiffres à poser dans une case. Un `<input>` ferait monter le clavier du
+// système, qui mange la moitié de l'écran — précisément la moitié où se trouve
+// le calcul qu'on est en train de lire. Le pavé, lui, est dans la page.
+//
+// ET C'EST L'ÉLÈVE QUI DIT QUAND IL A FINI. Rémy : « c'est à l'élève de choisir
+// s'il a fini de décomposer ». L'atelier basculait tout seul sur le résultat
+// dès que plus rien ne se simplifiait — c'est-à-dire qu'il ANNONÇAIT la fin du
+// travail, qui est justement ce qu'on demande de reconnaître.
+//
 // LE CALCUL VIT DANS `core/produitPose.js`, sans écran, où il se teste. Ici il
-// n'y a que le dessin, les clics, et la table de Pythagore.
+// n'y a que le dessin, les gestes, et la table de Pythagore.
 //
 // (Préfixe `pp-` : `fa-` appartient à l'addition posée, `fp-` à l'aperçu des
 // fiches imprimées.)
 
-import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import {
-    etatInitial, decomposer, barrer, resultat, estFini, tousHaut, tousBas,
+    etatInitial, decomposer, barrer, estFini, tousHaut, tousBas,
     decompositions, PYTHAGORE_MAX
 } from '../produitPose.js';
 import { showModal } from '../../ui/modal.js';
 
-/** Les touches du pavé, dans l'ordre où elles s'écrivent — pas celui d'une
- *  calculatrice : c'est une ligne de chiffres, pas un clavier de comptable. */
+/** Les touches, dans l'ordre où on les lit — pas celui d'une calculatrice. */
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let item = null;
     let etat = null;
-    let mode = 'decomposer';
+    let mode = 'decomposer';    // le geste armé : 'decomposer' ou 'barrer'
     let choisi = null;          // le jeton allumé, en mode barrer
-    let ouvert = null;          // le jeton ouvert en « … × … »
+    let phase = 'travail';      // 'travail' ou 'resultat' — c'est l'élève qui bascule
     let tableOuverte = null;
-    let fini = false;           // l'expression est simplifiée, on écrit le résultat
-    let res = { n: '', d: '' }; // ce qu'on tape dans le résultat
-    let resActif = 'n';         // la case du résultat que le pavé remplit
+
+    // CE QU'ON EST EN TRAIN D'ÉCRIRE, décomposition ou résultat. Les deux ont
+    // la même forme — deux cases et une case active — et c'est pour cela qu'un
+    // seul pavé les sert.
+    let saisie = null;          // { quoi, id?, cible?, a, b, actif }
 
     function renderNext() {
         if (destroyed) return;
         item = session.next();
+        demarrer();
+    }
+
+    function demarrer() {
         etat = etatInitial(item.meta.produit);
         mode = 'decomposer';
         choisi = null;
-        ouvert = null;
-        fini = false;
-        res = { n: '', d: '' };
-        resActif = 'n';
+        phase = 'travail';
+        saisie = null;
         render();
     }
 
     // --- Le dessin -------------------------------------------------------------
 
+    /** Une case qu'on remplit au pavé. */
+    const caseHtml = (k, etiquette) => `<button type="button"
+        class="pp-caseres${saisie && saisie.actif === k ? ' pp-caseres--active' : ''}"
+        data-case="${k}" aria-label="${etiquette}">${(saisie && saisie[k]) || ''}</button>`;
+
     const jetonHtml = (t, etage) => {
-        const classes = ['pp-jeton', `pp-jeton--${etage}`];
-        if (t.barre) classes.push('pp-jeton--barre');
-        if (choisi === t.id) classes.push('pp-jeton--choisi');
         // LE NOMBRE OUVERT DEVIENT DEUX CASES, à sa place exacte. Rémy : « on
-        // clique sur le 33 et il apparaît … × … ». Les deux cases remplacent le
-        // nombre dans la ligne : on voit ce qu'on est en train de faire là où
-        // on le fait, et non dans un panneau à côté.
-        if (ouvert === t.id) {
-            // ON RAPPELLE CE QUE LA DÉCOMPOSITION DOIT VALOIR, AU-DESSUS.
-            // Rémy : « juste rappeler à quoi doit être égale la décomposition »,
-            // puis « écris = 7 au-dessus ». Le nombre disparaissait en
-            // s'ouvrant : deux cases vides au milieu d'un calcul, et plus rien
-            // ne disait ce qu'on cherchait à écrire — surtout après un détour
-            // par la table de Pythagore. Sous les cases il se glissait entre
-            // elles et la barre de fraction, où il se lisait comme un morceau
-            // du calcul ; au-dessus, il est clairement une étiquette.
+        // clique sur le 33 et il apparaît … × … ». Elles remplacent le nombre
+        // dans la ligne : on voit ce qu'on fait là où on le fait.
+        //
+        // ET LE NOMBRE RESTE ÉCRIT AU-DESSUS. Rémy : « juste rappeler à quoi
+        // doit être égale la décomposition », puis « écris = 7 au-dessus ».
+        // Deux cases vides au milieu d'un calcul ne disent pas ce qu'on
+        // cherche — surtout au retour de la table de Pythagore ; et sous les
+        // cases, l'étiquette se glissait entre elles et la barre de fraction,
+        // où elle se lisait comme un morceau du calcul.
+        if (saisie && saisie.quoi === 'decomposition' && saisie.id === t.id) {
             return `<span class="pp-ouvre" data-ouvre>
                 <span class="pp-cible">= ${t.v}</span>
                 <span class="pp-duo">
-                    <input class="pp-case" data-fac="1" inputmode="numeric" maxlength="3"
-                        aria-label="premier facteur de ${t.v}" autocomplete="off">
+                    ${caseHtml('a', `premier facteur de ${t.v}`)}
                     <span class="pp-x">×</span>
-                    <input class="pp-case" data-fac="2" inputmode="numeric" maxlength="3"
-                        aria-label="second facteur de ${t.v}" autocomplete="off">
+                    ${caseHtml('b', `second facteur de ${t.v}`)}
                 </span>
             </span>`;
         }
+        const classes = ['pp-jeton', `pp-jeton--${etage}`];
+        if (t.barre) classes.push('pp-jeton--barre');
+        if (choisi === t.id) classes.push('pp-jeton--choisi');
         return `<button type="button" class="${classes.join(' ')}" data-jeton="${t.id}"
             ${t.barre ? 'aria-label="nombre barré, il vaut 1"' : ''}>${t.v}</button>`;
     };
@@ -106,12 +121,6 @@ export function mount(container, session, opts = {}) {
         .map(t => jetonHtml(t, etage))
         .join('<span class="pp-fois">×</span>');
 
-    /** Une case du résultat : on la choisit, le pavé la remplit. */
-    const caseRes = (k) => `<button type="button"
-        class="pp-caseres${resActif === k ? ' pp-caseres--active' : ''}" data-res="${k}"
-        aria-label="${k === 'n' ? 'numérateur' : 'dénominateur'} du résultat"
-        >${res[k] || ''}</button>`;
-
     function expressionHtml() {
         const produit = etat.fractions.map((f, i) => `
             ${i ? '<span class="pp-op">×</span>' : ''}
@@ -119,18 +128,22 @@ export function mount(container, session, opts = {}) {
                 <span class="pp-num">${etageHtml(f.haut, 'haut')}</span>
                 <span class="pp-den">${etageHtml(f.bas, 'bas')}</span>
             </span>`).join('');
-        if (!fini) return produit;
+        if (phase !== 'resultat') return produit;
         // LE RÉSULTAT S'ÉCRIT DANS LA MÊME LIGNE, après un « = ». Rémy : « mets
-        // la fraction avec les produits et le = à côté quand on a barré ». Il
-        // vivait dans un bloc à part, sous le calcul : sur un téléphone, ce
-        // bloc plus le pavé numérique ne tenaient pas ensemble, et l'on
-        // perdait de vue le produit qu'on est en train de recopier. Sur une
-        // seule ligne, on lit « ce qui reste = ce que j'écris ».
+        // la fraction avec les produits et le = à côté quand on a barré ».
+        //
+        // LE « = » ET LA FRACTION NE SE SÉPARENT JAMAIS : ils forment un seul
+        // bloc, qui passe à la ligne d'un bloc quand la largeur manque. Sur un
+        // téléphone, un calcul décomposé occupe déjà toute la ligne — Rémy :
+        // « cela fait un peu écrasé à droite » —, et un « = » resté seul en
+        // bout de ligne serait pire que le retour à la ligne qu'il évite.
         return `${produit}
-            <span class="pp-op">=</span>
-            <span class="pp-frac pp-frac--res">
-                <span class="pp-num">${caseRes('n')}</span>
-                <span class="pp-den">${caseRes('d')}</span>
+            <span class="pp-resultat">
+                <span class="pp-op">=</span>
+                <span class="pp-frac pp-frac--res">
+                    <span class="pp-num">${caseHtml('a', 'numérateur du résultat')}</span>
+                    <span class="pp-den">${caseHtml('b', 'dénominateur du résultat')}</span>
+                </span>
             </span>`;
     }
 
@@ -140,7 +153,7 @@ export function mount(container, session, opts = {}) {
                 <div class="game-question">${item.prompt.consigne || 'Simplifie, puis calcule.'}</div>
                 <div class="pp-expr" data-expr>${expressionHtml()}</div>
                 <p class="pp-note" data-note role="status"></p>
-                ${fini ? finalHtml() : outilsHtml()}
+                <div class="pp-panneau">${saisie ? paveHtml() : outilsHtml()}</div>
             </div>
             ${hintBar(item)}`;
         wireHint(container, item, session);
@@ -154,35 +167,40 @@ export function mount(container, session, opts = {}) {
         return `<div class="pp-outils">
                 ${bouton('decomposer', '✂️ Décomposer', 'Clique un nombre pour l’écrire en produit')}
                 ${bouton('barrer', '❌ Barrer', 'Clique le même nombre en haut et en bas')}
-                <button type="button" class="pp-table" data-table>🔢 Table de Pythagore</button>
+                <button type="button" class="pp-outil" data-table>🔢 Table</button>
             </div>
             <p class="pp-aide-mode">${mode === 'decomposer'
         ? 'Clique un nombre : il s’ouvre en deux facteurs à écrire.'
-        : 'Clique un nombre en haut, puis le même en bas.'}</p>`;
+        : 'Clique un nombre en haut, puis le même en bas.'}</p>
+            <button type="button" class="pp-fini" data-fini>✅ J’ai fini de simplifier</button>`;
     }
 
-    // LE PAVÉ NUMÉRIQUE, ET NON UN CHAMP DE SAISIE. Rémy : « pour que sur
-    // téléphone portable on puisse avoir le pavé numérique que tu as déjà
-    // créé ». Un `<input>` fait monter le clavier du système, qui mange la
-    // moitié de l'écran — précisément la moitié où se trouve le calcul qu'on
-    // est en train de recopier. Le pavé, lui, est dans la page : il ne cache
-    // rien, et il n'offre que des chiffres.
-    //
-    // LA DERNIÈRE LIGNE EST LA SEULE QUI COMPTE POUR LA SESSION. Décomposer et
-    // barrer sont l'écriture du raisonnement : on les corrige sur place, on ne
-    // les note pas — sinon une question vaudrait six points de statistiques, et
-    // le carnet d'erreurs parlerait de « barrage » sans dire de quel calcul.
-    const finalHtml = () => `<div class="pp-final" data-final>
-            <p class="pp-bravo">Plus rien ne se barre : multiplie ce qui n’est pas barré.</p>
+    /**
+     * LE PAVÉ, LE MÊME POUR LES DEUX SAISIES.
+     *
+     * Trois rangs qui remplissent exactement six colonnes : 1 à 6, puis 7-8-9-0
+     * et l'effacement sur deux cases, puis les boutons. Une grille pleine se
+     * vise du pouce sans regarder ; une grille trouée fait chercher.
+     */
+    function paveHtml() {
+        const pret = saisie.a && saisie.b;
+        const dec = saisie.quoi === 'decomposition';
+        return `<p class="pp-bravo">${dec
+            ? `Écris deux nombres dont le produit fait ${saisie.cible}.`
+            : 'Multiplie ce qui n’est pas barré : le haut avec le haut, le bas avec le bas.'}</p>
             <div class="pp-pave" role="group" aria-label="Chiffres">
                 ${DIGITS.map(k => `<button type="button" class="pp-touche"
                     data-touche="${k}">${k}</button>`).join('')}
                 <button type="button" class="pp-touche pp-touche--del" data-touche="←"
                     aria-label="Effacer">⌫</button>
-                <button type="button" class="pp-touche pp-touche--ok" data-valider
-                    ${res.n && res.d ? '' : 'disabled'}>Valider</button>
+                ${dec ? '<button type="button" class="pp-touche pp-touche--annuler"'
+                    + ' data-annuler>Annuler</button>' : ''}
+                <button type="button" class="pp-touche pp-touche--ok${dec ? '' : ' pp-touche--large'}"
+                    data-valider ${pret ? '' : 'disabled'}>Valider</button>
             </div>
-        </div>`;
+            ${dec ? '<button type="button" class="pp-lien" data-table>'
+                + '🔢 Table de Pythagore</button>' : ''}`;
+    }
 
     const note = (texte) => {
         const el = container.querySelector('[data-note]');
@@ -205,110 +223,93 @@ export function mount(container, session, opts = {}) {
                 if (session.locked) return;
                 mode = b.dataset.mode;
                 choisi = null;
-                ouvert = null;
                 render();
             };
         });
-        const t = container.querySelector('[data-table]');
-        if (t) t.onclick = ouvrirTable;
-
+        container.querySelectorAll('[data-table]').forEach(b => { b.onclick = ouvrirTable; });
         container.querySelectorAll('[data-jeton]').forEach(b => {
             b.onclick = () => toucher(b.dataset.jeton);
         });
-
-        // LES DEUX CASES D'UNE DÉCOMPOSITION.
-        //
-        // ELLE SE VALIDE DÈS QUE LE PRODUIT TOMBE JUSTE, sans qu'on cherche un
-        // bouton : « 5 » puis « 11 » devant 55, et c'est écrit. Un produit faux
-        // ne déclenche rien — c'est Entrée qui demande l'avis, et qui obtient
-        // alors la raison du refus.
-        //
-        // ET CLIQUER AILLEURS REMET LE NOMBRE. Rémy : « quand on clique
-        // ailleurs ça remet ». C'était le seul geste sans issue de l'atelier :
-        // une fois deux cases ouvertes, il fallait trouver Échap ou écrire
-        // quelque chose. On abandonne maintenant en cliquant n'importe où —
-        // sur un autre nombre, sur un bouton, sur le fond.
-        const cases = [...container.querySelectorAll('[data-fac]')];
-        if (cases.length === 2) {
-            cases[0].focus();
-            const essayer = () => {
-                const [x, y] = cases.map(c => Number(c.value.trim()));
-                const cible = container.querySelector('.pp-cible');
-                const v = cible ? Number(cible.textContent.replace(/\D/g, '')) : NaN;
-                if (Number.isFinite(x) && Number.isFinite(y) && x > 1 && y > 1 && x * y === v) {
-                    validerDecomposition();
-                }
-            };
-            cases.forEach((c, i) => {
-                c.oninput = () => {
-                    if (c.value.length >= 2 && i === 0) cases[1].focus();
-                    essayer();
-                };
-                c.onkeydown = (ev) => {
-                    if (ev.key === 'Enter') { ev.preventDefault(); validerDecomposition(); }
-                    if (ev.key === 'Escape') { ouvert = null; render(); }
-                };
-            });
-        }
-        // Le clic qui ANNULE : n'importe où hors des deux cases. Posé sur la
-        // scène en capture, pour passer avant les boutons — sinon cliquer un
-        // autre nombre ouvrirait le suivant sans refermer le précédent.
-        const scene = container.querySelector('.pp-scene');
-        if (scene && ouvert) {
-            scene.addEventListener('pointerdown', (ev) => {
-                if (!ouvert) return;
-                if (ev.target.closest('[data-ouvre]')) return;
-                ouvert = null;
-                render();
-            }, { capture: true, once: true });
-        }
-
-        const v = container.querySelector('[data-valider]');
-        if (v) v.onclick = validerResultat;
-        container.querySelectorAll('[data-res]').forEach(c => {
-            c.onclick = () => { resActif = c.dataset.res; render(); };
+        container.querySelectorAll('[data-case]').forEach(c => {
+            c.onclick = () => { if (saisie) { saisie.actif = c.dataset.case; render(); } };
         });
         container.querySelectorAll('[data-touche]').forEach(b => {
             b.onclick = () => taper(b.dataset.touche);
         });
+        const annuler = container.querySelector('[data-annuler]');
+        if (annuler) annuler.onclick = () => { saisie = null; note(''); render(); };
+        const fin = container.querySelector('[data-fini]');
+        if (fin) fin.onclick = declarerFini;
+        const v = container.querySelector('[data-valider]');
+        if (v) v.onclick = valider;
+
+        // CLIQUER AILLEURS REMET LE NOMBRE. Rémy : « quand on clique ailleurs
+        // ça remet ». C'était le seul geste sans issue de l'atelier. Le pavé
+        // est exclu, évidemment : sans quoi taper un chiffre annulerait ce
+        // qu'on est en train d'écrire.
+        const scene = container.querySelector('.pp-scene');
+        if (scene && saisie && saisie.quoi === 'decomposition') {
+            scene.addEventListener('pointerdown', (ev) => {
+                if (!saisie) return;
+                if (ev.target.closest('[data-ouvre], .pp-panneau')) return;
+                saisie = null;
+                note('');
+                render();
+            }, { capture: true, once: true });
+        }
 
         // LE CLAVIER PHYSIQUE MARCHE AUSSI. Le pavé est là pour le téléphone ;
-        // sur un ordinateur, taper reste plus rapide que viser des boutons, et
-        // s'en priver serait un choix de personne. Le conteneur doit pouvoir
-        // recevoir le focus pour entendre les touches : `tabIndex = -1` le rend
-        // focusable au clic sans l'insérer dans l'ordre de tabulation, où il
-        // n'aurait rien à faire.
+        // sur un ordinateur, taper reste plus rapide que viser des boutons.
+        // `tabIndex = -1` rend le conteneur focusable au clic sans l'insérer
+        // dans l'ordre de tabulation, où il n'aurait rien à faire.
         container.tabIndex = -1;
         container.onkeydown = (ev) => {
-            if (!fini || session.locked) return;
-            if (document.activeElement && document.activeElement.matches('[data-fac]')) return;
+            if (session.locked || !saisie) return;
             if (/^[0-9]$/.test(ev.key)) { ev.preventDefault(); return taper(ev.key); }
             if (ev.key === 'Backspace') { ev.preventDefault(); return taper('←'); }
-            if (ev.key === 'Enter') { ev.preventDefault(); return validerResultat(); }
-            if (ev.key === '/' || ev.key === 'ArrowDown') {
-                ev.preventDefault(); resActif = 'd'; return render();
+            if (ev.key === 'Enter') { ev.preventDefault(); return valider(); }
+            if (ev.key === 'Escape' && saisie.quoi === 'decomposition') {
+                ev.preventDefault(); saisie = null; note(''); return render();
             }
-            if (ev.key === 'ArrowUp') { ev.preventDefault(); resActif = 'n'; render(); }
+            if (['ArrowRight', 'ArrowDown', '/', '*', 'x'].includes(ev.key)) {
+                ev.preventDefault(); saisie.actif = 'b'; return render();
+            }
+            if (['ArrowLeft', 'ArrowUp'].includes(ev.key)) {
+                ev.preventDefault(); saisie.actif = 'a'; render();
+            }
         };
     }
 
     /**
-     * UNE TOUCHE DU PAVÉ.
+     * UNE TOUCHE.
      *
      * QUATRE CHIFFRES AU PLUS : le plus grand résultat possible est un produit
      * de nombres à deux chiffres, donc il en tient quatre. Au-delà, ce n'est
-     * plus un résultat, c'est une touche restée enfoncée.
+     * plus un nombre, c'est une touche restée enfoncée.
      */
     function taper(k) {
-        if (session.locked || !fini) return;
-        if (k === '←') res[resActif] = res[resActif].slice(0, -1);
-        else res[resActif] = (res[resActif] + k).slice(0, 4);
+        if (session.locked || !saisie) return;
+        const cle = saisie.actif;
+        if (k === '←') saisie[cle] = String(saisie[cle]).slice(0, -1);
+        else saisie[cle] = (String(saisie[cle]) + k).slice(0, 4);
+        // ON PASSE À LA SECONDE CASE TOUT SEUL quand la première tient déjà deux
+        // chiffres — c'est le cas ordinaire, et revenir la chercher du doigt
+        // pour rien fait perdre du temps. On y revient en la touchant.
+        if (cle === 'a' && saisie[cle].length >= 2 && !saisie.b) saisie.actif = 'b';
+        note('');
         render();
     }
 
     function toucher(id) {
-        if (session.locked || fini) return;
-        if (mode === 'decomposer') { ouvert = id; choisi = null; return render(); }
+        if (session.locked || phase === 'resultat') return;
+        if (mode === 'decomposer') {
+            const t = [...tousHaut(etat), ...tousBas(etat)].find(x => x.id === id);
+            if (!t) return;
+            if (t.barre) { note('Ce nombre est déjà barré : il vaut 1.'); return render(); }
+            saisie = { quoi: 'decomposition', id, cible: t.v, a: '', b: '', actif: 'a' };
+            choisi = null;
+            return render();
+        }
 
         // MODE BARRER. Le premier clic allume, le second raye — et il faut que
         // l'un soit en haut et l'autre en bas : barrer deux numérateurs
@@ -318,59 +319,77 @@ export function mount(container, session, opts = {}) {
         if (choisi === id) { choisi = null; return render(); }
 
         const enHaut = (x) => tousHaut(etat).some(t => t.id === x);
-        const a = choisi, b = id;
-        if (enHaut(a) === enHaut(b)) {
+        if (enHaut(choisi) === enHaut(id)) {
             note('Il faut un nombre EN HAUT et un EN BAS : barrer deux numérateurs '
                 + 'diviserait le haut sans toucher au bas.');
             secouer();
             choisi = null;
             return render();
         }
-        const [h, bas] = enHaut(a) ? [a, b] : [b, a];
+        const [h, bas] = enHaut(choisi) ? [choisi, id] : [id, choisi];
         const r = barrer(etat, h, bas);
         choisi = null;
         if (!r.ok) { note(r.pourquoi); secouer(); return render(); }
         etat = r.etat;
         note('');
-        verifierFin();
         render();
+    }
+
+    /** Valider ce qui est écrit — une décomposition, ou le résultat. */
+    function valider() {
+        if (!saisie || !saisie.a || !saisie.b) return;
+        return saisie.quoi === 'decomposition' ? validerDecomposition() : validerResultat();
     }
 
     function validerDecomposition() {
-        if (destroyed || !ouvert) return;
-        const cases = [...container.querySelectorAll('[data-fac]')];
-        if (cases.length !== 2 || cases.some(c => !c.value.trim())) return;
-        const r = decomposer(etat, ouvert, cases[0].value, cases[1].value);
+        const r = decomposer(etat, saisie.id, saisie.a, saisie.b);
         if (!r.ok) {
             note(r.pourquoi);
             secouer();
-            cases.forEach(c => { c.value = ''; });
-            cases[0].focus();
-            return;
+            saisie.a = ''; saisie.b = ''; saisie.actif = 'a';
+            return render();
         }
         etat = r.etat;
-        ouvert = null;
+        saisie = null;
         note('');
-        // DÉCOMPOSER PEUT SUFFIRE À FINIR — 4/6 devient (2×2)/(2×3), et l'élève
-        // n'a plus qu'à barrer.
-        verifierFin();
         // ON RESTE EN MODE DÉCOMPOSER. Le premier jet basculait tout seul sur
-        // « barrer », en supposant que c'était le geste suivant. Rémy : « on
-        // peut avoir 100 = 10 × 10 et on peut cliquer sur le 10 » — un facteur
-        // qu'on vient d'écrire se décompose à son tour, et le basculement
-        // automatique obligeait à revenir en arrière pour le faire. On ne
-        // devine plus l'intention.
+        // « barrer », en supposant le geste suivant. Rémy : « on peut avoir
+        // 100 = 10 × 10 et on peut cliquer sur le 10 » — un facteur qu'on vient
+        // d'écrire se décompose à son tour, et le basculement obligeait à
+        // revenir en arrière pour le faire.
         render();
     }
 
-    function verifierFin() {
-        if (estFini(etat)) { fini = true; mode = 'decomposer'; choisi = null; }
+    /**
+     * « J'AI FINI DE SIMPLIFIER » — et c'est l'élève qui le dit.
+     *
+     * Rémy : « c'est à l'élève de choisir s'il a fini de décomposer ». L'atelier
+     * basculait tout seul dès que plus rien ne se simplifiait : il annonçait la
+     * fin du travail, qui est précisément ce qu'on demande de reconnaître.
+     *
+     * SE TROMPER N'EST PAS COMPTÉ. On dit qu'il reste quelque chose, on ne dit
+     * pas quoi — et le seul geste noté reste le résultat final. Sans ce
+     * garde-fou, l'élève qui se croit arrivé écrirait 12/18, une réponse juste
+     * en valeur mais comptée fausse, sans jamais savoir pourquoi.
+     */
+    function declarerFini() {
+        if (session.locked) return;
+        if (!estFini(etat)) {
+            note('Pas encore : il reste un facteur commun entre le haut et le bas. '
+                + 'Cherche en diagonale, et décompose si rien n’est écrit deux fois.');
+            secouer();
+            return;
+        }
+        phase = 'resultat';
+        choisi = null;
+        saisie = { quoi: 'resultat', a: '', b: '', actif: 'a' };
+        note('');
+        render();
     }
 
     function validerResultat() {
         if (destroyed || session.locked) return;
-        if (!res.n || !res.d) return;
-        const donnee = `${res.n}/${res.d}`;
+        const donnee = `${saisie.a}/${saisie.b}`;
         const result = session.submit(donnee, { element: container.querySelector('[data-expr]') });
         if (result.ignored) return;
         if (!result.correct) {
@@ -386,8 +405,7 @@ export function mount(container, session, opts = {}) {
         result.dismissed.then(() => {
             if (destroyed) return;
             if (result.correct || result.revealed) return renderNext();
-            res = { n: '', d: '' };
-            resActif = 'n';
+            saisie = { quoi: 'resultat', a: '', b: '', actif: 'a' };
             render();
         });
     }
@@ -403,10 +421,11 @@ export function mount(container, session, opts = {}) {
         if (tableOuverte) { tableOuverte.close(); tableOuverte = null; return; }
         // Le nombre qu'on cherche : celui qu'on vient d'ouvrir, sinon celui
         // qu'on a allumé, sinon rien — et la table est alors juste une table.
-        const cible = ouvert || choisi;
-        const t = cible ? [...tousHaut(etat), ...tousBas(etat)].find(x => x.id === cible) : null;
-        tableOuverte = showModal('La table de Pythagore',
-            tableHtml(t ? t.v : null),
+        const allume = choisi
+            ? ([...tousHaut(etat), ...tousBas(etat)].find(x => x.id === choisi) || {}).v
+            : null;
+        const cible = (saisie && saisie.quoi === 'decomposition') ? saisie.cible : allume;
+        tableOuverte = showModal('La table de Pythagore', tableHtml(cible ?? null),
             { width: '620px', onClose: () => { tableOuverte = null; } });
         // AU-DESSUS DU PLEIN ÉCRAN DU JEU. La modale générique se pose à 9999 ;
         // l'écran de jeu est à 10000 — la table s'ouvrirait derrière lui.
@@ -423,8 +442,7 @@ export function mount(container, session, opts = {}) {
             corps += `<tr><th>${l}</th>`;
             for (let c = 1; c <= PYTHAGORE_MAX; c++) {
                 const v = l * c;
-                const ici = cible !== null && v === cible;
-                corps += `<td class="${ici ? 'pp-c-cible' : ''}">${v}</td>`;
+                corps += `<td class="${cible !== null && v === cible ? 'pp-c-cible' : ''}">${v}</td>`;
             }
             corps += '</tr>';
         }
@@ -440,7 +458,7 @@ export function mount(container, session, opts = {}) {
             <div class="pp-table-boite"><table class="pp-pytha">${corps}</table></div>`;
     }
 
-    if (opts.item) { item = opts.item; etat = etatInitial(item.meta.produit); render(); } else renderNext();
+    if (opts.item) { item = opts.item; demarrer(); } else renderNext();
 
     return {
         showNext: renderNext,
