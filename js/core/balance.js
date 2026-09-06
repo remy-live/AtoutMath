@@ -56,11 +56,24 @@ export function enSymboles(etat) {
     return `${cote(etat.g)} = ${cote(etat.d)}`;
 }
 
+/**
+ * UN MEMBRE, ÉCRIT COMME AU TABLEAU.
+ *
+ * « 5x + -5 » ne s'écrit pas : on écrit « 5x − 5 ». Le signe appartient à
+ * l'opération, pas au nombre — c'est la première chose qu'on corrige dans un
+ * cahier de quatrième, et l'écran ne peut pas donner l'exemple inverse.
+ */
 function cote(p) {
-    const bouts = [];
-    if (p.x) bouts.push(p.x === 1 ? 'x' : `${p.x}x`);
-    if (p.u || !bouts.length) bouts.push(String(p.u));
-    return bouts.join(' + ');
+    let out = '';
+    if (p.x) {
+        const n = Math.abs(p.x);
+        out += `${p.x < 0 ? '−' : ''}${n === 1 ? '' : n}x`;
+    }
+    if (p.u || !out) {
+        if (!out) out = String(p.u).replace('-', '−');
+        else out += `${p.u < 0 ? ' − ' : ' + '}${Math.abs(p.u)}`;
+    }
+    return out;
 }
 
 /** Le total d'un plateau, une fois qu'on sait ce que vaut x. */
@@ -170,6 +183,42 @@ export function appliquer(etat, geste) {
             + `Enlève la même chose à ${NOM_COTE[AUTRE[c]]}.` };
     }
 
+    // LE GESTE DES DEUX CÔTÉS À LA FOIS.
+    //
+    // Rémy m'a envoyé sa propre balance en modèle : « pour les équations,
+    // refais, je te donne un modèle ». Ce qu'elle a et que celle-ci n'avait
+    // pas, c'est une BARRE D'OPÉRATIONS — « − x », « + x », « − 1 », « + 1 »,
+    // « ÷ » — dont chaque bouton s'applique aux deux membres d'un coup.
+    //
+    // ET ELLE NE REMPLACE PAS LES JETONS, ELLE LES SUIT. Cliquer un jeton fait
+    // pencher la balance et laisse voir la faute : c'est ce qu'on apprend
+    // d'abord, et cela reste. La barre, elle, est le geste qu'on écrit au
+    // cahier — « −4 des deux côtés » sur une seule ligne. Le passage de l'un à
+    // l'autre EST le programme de quatrième : on manipule, puis on écrit.
+    //
+    // ELLE AJOUTE AUTANT QU'ELLE ENLÈVE, et c'est ce qui ouvre les négatifs.
+    // « x − 5 = 10 » ne se résout pas en enlevant : il faut AJOUTER 5 des deux
+    // côtés. Un plateau porte alors des poids négatifs — des ballons qui tirent
+    // vers le haut. Le noyau les acceptait déjà (tous les comptes sont des
+    // entiers signés) ; il n'y avait aucun geste pour en fabriquer.
+    if (geste.geste === 'desDeuxCotes') {
+        const quoi = geste.quoi === 'x' ? 'x' : 'u';
+        const n = geste.combien | 0;
+        if (!n) return refus('Ce geste ne change rien.');
+        if (etat.attente) {
+            return refus('La balance penche : finis le geste commencé avant d\'en écrire un autre.');
+        }
+        const e = copie(etat);
+        COTES.forEach(c => { e[c][quoi] += n; });
+        // `combien` EST SIGNÉ, ET C'EST LA MÊME CONVENTION QU'AU TABLEAU :
+        // ce qu'on écrit est ce qu'on AJOUTE aux deux membres. « −4 » retire
+        // quatre, « +4 » en ajoute quatre. Deux gestes séparés — « enlever » et
+        // « ajouter » — auraient dédoublé chaque règle pour rien.
+        const nom = quoi === 'x' ? (Math.abs(n) === 1 ? 'x' : `${Math.abs(n)}x`) : String(Math.abs(n));
+        return { ok: true, etat: e, ton: 'ok',
+            dit: `${n < 0 ? '−' : '+'} ${nom} des deux côtés : l'égalité tient toujours.` };
+    }
+
     if (geste.geste === 'partager') {
         const n = Math.max(2, geste.en | 0);
         if (etat.attente) {
@@ -212,21 +261,15 @@ export function solution(etat) {
     let e = copie(etat);
     const jouer = (g) => { const r = appliquer(e, g); if (r.ok) { e = r.etat; gestes.push(g); } return r.ok; };
 
-    // ① Les boîtes en trop du côté qui en a le moins.
-    const petit = e.g.x <= e.d.x ? 'g' : 'd';
+    // ① RASSEMBLER LES BOÎTES du côté où il y en a le plus.
     const nx = Math.min(e.g.x, e.d.x);
-    if (nx > 0) {
-        jouer({ geste: 'enlever', cote: petit, quoi: 'x', combien: nx });
-        jouer({ geste: 'enlever', cote: AUTRE[petit], quoi: 'x', combien: nx });
-    }
-    // ② Les poids du côté où il reste les boîtes.
+    if (nx !== 0) jouer({ geste: 'desDeuxCotes', quoi: 'x', combien: -nx });
+    // ② FAIRE PARTIR LES POIDS du côté des boîtes. Le signe se calcule, il ne
+    // se devine pas : on ajoute l'opposé de ce qui gêne. C'est exactement le
+    // geste que la famille « des poids qui manquent » vient enseigner.
     const avecX = e.g.x ? 'g' : 'd';
-    const nu = Math.min(e.g.u, e.d.u, e[avecX].u);
-    if (nu > 0) {
-        jouer({ geste: 'enlever', cote: avecX, quoi: 'u', combien: nu });
-        jouer({ geste: 'enlever', cote: AUTRE[avecX], quoi: 'u', combien: nu });
-    }
-    // ③ Partager par le nombre de boîtes restantes.
+    if (e[avecX].u !== 0) jouer({ geste: 'desDeuxCotes', quoi: 'u', combien: -e[avecX].u });
+    // ③ PARTAGER par le nombre de boîtes restantes.
     const k = e[avecX].x;
     if (k > 1) jouer({ geste: 'partager', en: k });
     return { gestes, coups: coups(gestes), etat: e, ok: !!resolu(e) };
@@ -245,9 +288,13 @@ export function solution(etat) {
  * clics) ou un partage. C'est l'unité qu'on compte au tableau.
  */
 export function coups(gestes) {
-    const partages = gestes.filter(g => g.geste === 'partager').length;
-    const enleve = gestes.length - partages;
-    return partages + Math.ceil(enleve / 2);
+    // Un geste de la barre — « −4 des deux côtés » — vaut un coup à lui seul :
+    // il EST la ligne qu'on écrit au cahier. Un partage aussi. Les clics sur
+    // les jetons, eux, vont par paires : le geste n'est achevé qu'une fois la
+    // balance redressée.
+    const entiers = gestes.filter(g => g.geste !== 'enlever').length;
+    const enleve = gestes.length - entiers;
+    return entiers + Math.ceil(enleve / 2);
 }
 
 // --- La progression ---------------------------------------------------------
@@ -263,10 +310,15 @@ export const FAMILLES = {
     unites: { label: 'Enlever des poids', aide: 'x + 3 = 8 — un seul geste, des deux côtés.' },
     partage: { label: 'Partager en parts égales', aide: '3x = 12 — on coupe la balance en trois.' },
     deuxTemps: { label: 'Enlever puis partager', aide: '2x + 5 = 17 — dans cet ordre, et pas l\'autre.' },
-    deuxCotes: { label: 'Des boîtes des deux côtés', aide: '4x + 2 = x + 14 — on les rassemble d\'abord.' }
+    deuxCotes: { label: 'Des boîtes des deux côtés', aide: '4x + 2 = x + 14 — on les rassemble d\'abord.' },
+    // LA CINQUIÈME FAMILLE VIENT DU MODÈLE DE RÉMY : « 5x − 5 = 2x + 10 » est
+    // le dernier de ses cinq niveaux. Elle demande le geste que les quatre
+    // autres n'exigent jamais — AJOUTER des deux côtés —, et c'est celui qui
+    // manque le jour du contrôle.
+    negatifs: { label: 'Des poids qui manquent', aide: '5x − 5 = 2x + 10 — là, il faut AJOUTER.' }
 };
 
-export const ORDRE_FAMILLES = ['unites', 'partage', 'deuxTemps', 'deuxCotes'];
+export const ORDRE_FAMILLES = ['unites', 'partage', 'deuxTemps', 'deuxCotes', 'negatifs'];
 
 /**
  * LES NIVEAUX SONT DES FORMES, PAS DES ÉQUATIONS FIGÉES.
@@ -288,7 +340,12 @@ export const NIVEAUX = [
     { famille: 'deuxTemps', titre: 'ax + b = c, à cinq', a: [4, 6], b: [2, 12], k: [2, 9], c: 0, d: null },
     { famille: 'deuxCotes', titre: 'ax + b = cx + d', a: [3, 5], b: [1, 4], k: [2, 6], c: [1, 2], d: null },
     { famille: 'deuxCotes', titre: 'ax + b = cx + d, plus serré', a: [4, 7], b: [2, 8], k: [2, 8], c: [2, 4], d: null },
-    { famille: 'deuxCotes', titre: 'ax + b = cx + d, pour finir', a: [5, 9], b: [3, 12], k: [3, 10], c: [3, 6], d: null }
+    { famille: 'deuxCotes', titre: 'ax + b = cx + d, pour finir', a: [5, 9], b: [3, 12], k: [3, 10], c: [3, 6], d: null },
+    // `b` NÉGATIF : le membre de gauche porte des poids qui manquent, et le
+    // premier geste ne peut plus être d'en enlever.
+    { famille: 'negatifs', titre: 'x − b = c', a: 1, b: [-6, -2], k: [2, 9], c: 0, d: null },
+    { famille: 'negatifs', titre: 'ax − b = c', a: [2, 4], b: [-9, -2], k: [2, 8], c: 0, d: null },
+    { famille: 'negatifs', titre: 'ax − b = cx + d', a: [4, 7], b: [-8, -2], k: [2, 7], c: [2, 3], d: null }
 ];
 
 const tire = (rng, v) => (Array.isArray(v) ? rng.int(v[0], v[1]) : v);
@@ -308,7 +365,13 @@ export function preparerNiveau(i, rng) {
     let a = tire(rng, n.a);
     if (a <= c) a = c + 1;
     const b = tire(rng, n.b);
-    const k = tire(rng, n.k);
+    let k = tire(rng, n.k);
+    // LE MEMBRE DE DROITE RESTE POSITIF, MÊME AVEC DES POIDS QUI MANQUENT.
+    // « x − 4 = −1 » est une équation juste, mais elle met du négatif DES DEUX
+    // CÔTÉS : le plateau de droite porterait alors un ballon tout seul, et l'on
+    // ne verrait plus ce que le niveau vient enseigner — qu'il faut ajouter à
+    // gauche. On relève donc la solution jusqu'à ce que la droite pèse.
+    while ((a - c) * k + b < 1 && k < 40) k += 1;
     const d = (a - c) * k + b;
     return {
         indice: i, titre: n.titre, famille: n.famille,

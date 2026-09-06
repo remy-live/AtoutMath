@@ -29,7 +29,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import {
     FAMILLES, ORDRE_FAMILLES, NIVEAUX, CONSIGNE, NOM_COTE, AUTRE,
-    preparerNiveau, niveauxDisponibles, appliquer, resolu, solution, enSymboles, coups
+    preparerNiveau, niveauxDisponibles, appliquer, resolu, solution, enSymboles, coups, pese
 } from '../core/balance.js';
 import { makeRng } from '../core/ids.js';
 
@@ -42,10 +42,25 @@ const COMPETENCE = 'alg.equation.resoudre';
 const enTexte = (s) => String(s ?? '')
     .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-/** Les diviseurs plausibles proposés en boutons : ceux qui divisent une boîte. */
+/**
+ * LES PARTAGES PROPOSÉS — Y COMPRIS CEUX QUI VONT ÊTRE REFUSÉS.
+ *
+ * C'était l'inverse : on ne montrait que les partages jouables, si bien que
+ * « 2x + 5 = 17 » n'offrait aucun bouton. Or ce refus EST la leçon du chapitre
+ * — on ne partage pas en deux ce qui n'est pas pair, et c'est exactement
+ * pourquoi on règle les poids AVANT de diviser. Un bouton absent ne l'enseigne
+ * pas : il fait croire qu'il n'y a rien à tenter.
+ *
+ * Le critère est donc « ce partage a-t-il un SENS à tenter ? » : il faut qu'un
+ * plateau porte un nombre de boîtes divisible par n. Le noyau dira ensuite si
+ * les poids suivent, et le dira avec une phrase.
+ */
 function partagesPossibles(etat) {
     const out = [];
-    for (let n = 2; n <= 9; n++) if (appliquer(etat, { geste: 'partager', en: n }).ok) out.push(n);
+    for (let n = 2; n <= 9; n++) {
+        const utile = [etat.g, etat.d].some(p => p.x !== 0 && Math.abs(p.x) % n === 0);
+        if (utile) out.push(n);
+    }
     return out;
 }
 
@@ -76,6 +91,11 @@ export class Balance extends BaseGame {
         // deux clics groupés ou en huit clics unitaires.
         this.gestes = 0;
         this.optimal = solution(this.etat).coups;
+        // Le journal repart de l'équation de départ, et le testeur se rearme :
+        // la valeur essayée sur l'équation précédente n'a plus aucun sens ici.
+        this.journal = [{ eq: enSymboles(this.etat), geste: '' }];
+        this.testX = null;
+        this.derniereCle = null;
     }
 
     render() {
@@ -100,8 +120,25 @@ export class Balance extends BaseGame {
                 }
                 .bl-eq--penche { color: var(--danger, #c0392b); }
                 .bl-eq--penche::after { content: ' ✗'; font-size: .7em; }
-                .bl-scene { flex: 1 1 auto; min-height: 0; display: block; width: 100%; }
-                .bl-svg { width: 100%; height: 100%; display: block; }
+                /* LA BALANCE PREND LA LARGEUR, PAS LA HAUTEUR VIDE.
+                   Mesuré sur un téléphone de 390 px : la scène recevait toute
+                   la hauteur restante, le SVG s'y centrait en gardant ses
+                   proportions, et le dessin se retrouvait grand comme un timbre
+                   au milieu de trois cents pixels de blanc. La boîte prend
+                   maintenant la FORME du dessin — et c'est la largeur qui
+                   commande, comme pour toutes les figures du logiciel. */
+                /* La balance prend la place qu'il lui faut, pas plus : elle est
+                   large et basse, et la hauteur qu'on lui donnait en trop ne
+                   l'agrandissait pas — elle la centrait dans du vide, loin de
+                   l'équation qu'elle illustre. Le reste va au journal. */
+                .bl-scene {
+                    flex: 0 1 auto; min-height: 0; width: 100%;
+                    display: flex; align-items: center; justify-content: center;
+                }
+                .bl-svg {
+                    display: block; width: 100%; height: auto;
+                    max-height: 100%;
+                }
                 .bl-barre {
                     stroke: var(--text-main); stroke-width: 3.5; stroke-linecap: round;
                     transition: transform .55s cubic-bezier(.34,1.3,.64,1);
@@ -117,6 +154,14 @@ export class Balance extends BaseGame {
                 .bl-jeton:hover rect, .bl-jeton:hover circle { opacity: .55; }
                 .bl-boite { fill: var(--primary, #4a6fd4); stroke: #22315f; stroke-width: 1.6; }
                 .bl-poids { fill: #d9a441; stroke: #8a6414; stroke-width: 1.4; }
+                /* CE QUI MANQUE SE DESSINE AUSSI. « 5x − 5 » ne veut pas dire
+                   qu'il n'y a rien : il y a CINQ POIDS EN MOINS sur le plateau,
+                   et c'est cela qu'il faut compenser. On les montre en rouge,
+                   comme des ballons qui tirent vers le haut au lieu de peser —
+                   sinon « x − 5 = 10 » est un plateau vide qu'on ne sait pas
+                   lire. Le noyau les acceptait depuis le début ; l'écran, non. */
+                .bl-boite.bl-manque { fill: #e07a3f; stroke: #8a4514; }
+                .bl-poids.bl-manque { fill: #d1495b; stroke: #7d1f2c; }
                 .bl-lettre {
                     fill: #fff; font-weight: 800; text-anchor: middle; dominant-baseline: central;
                     pointer-events: none;
@@ -133,6 +178,69 @@ export class Balance extends BaseGame {
                 .bl-btn:hover:not(:disabled) { border-color: var(--primary); }
                 .bl-btn:disabled { opacity: .38; cursor: default; }
                 .bl-btn--doux { font-weight: 600; color: var(--text-muted); }
+                /* --- LA BARRE D'OPÉRATIONS ----------------------------------
+                   Rémy m'a envoyé sa propre balance : « pour les équations,
+                   refais, je te donne un modèle ». Elle a une rangée de boutons
+                   — « − x », « + x », « − 1 », « + 1 », « ÷ » — qui agissent sur
+                   LES DEUX MEMBRES à la fois. C'est le geste qu'on écrit au
+                   cahier, à côté du geste qu'on fait avec les mains. */
+                .bl-ops { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto; }
+                .bl-op {
+                    border: 1.5px solid var(--primary, #4a6fd4); border-radius: 9px;
+                    background: color-mix(in srgb, var(--primary) 8%, var(--card-bg, #fff));
+                    color: var(--primary, #4a6fd4); cursor: pointer; font: inherit; font-weight: 800;
+                    padding: 6px 13px; font-size: clamp(12px, 2.4cqw, 15px);
+                    font-variant-numeric: tabular-nums;
+                }
+                .bl-op:hover:not(:disabled) { background: var(--primary); color: #fff; }
+                .bl-op:disabled { opacity: .3; cursor: default; }
+                /* Le refus se voit : un bouton qui ne fait rien passe pour une
+                   panne, un bouton qui SURSAUTE dit qu'il a compris et qu'il
+                   refuse. La phrase en dessous explique pourquoi. */
+                .bl-op--refus { animation: bl-secousse .34s; border-color: var(--danger, #c0392b);
+                    color: var(--danger, #c0392b); }
+                @keyframes bl-secousse {
+                    0%, 100% { transform: translateX(0); }
+                    20% { transform: translateX(-5px); } 40% { transform: translateX(5px); }
+                    60% { transform: translateX(-3px); } 80% { transform: translateX(3px); }
+                }
+                /* --- LE TESTEUR DE VÉRITÉ -----------------------------------
+                   C'est l'idée du modèle de Rémy que je n'aurais pas eue : un
+                   curseur qui propose une valeur pour x et FAIT PENCHER la
+                   balance selon qu'elle est trop petite ou trop grande. Il ne
+                   résout rien — il dit ce que « solution » veut dire, et c'est
+                   le mot que personne ne définit jamais : la valeur qui rend
+                   les deux plateaux égaux. Un élève qui n'a pas encore la
+                   méthode peut chercher à tâtons, et VOIR l'équilibre arriver. */
+                .bl-test {
+                    display: flex; align-items: center; gap: 10px; flex: 0 0 auto;
+                    justify-content: center; flex-wrap: wrap;
+                    font-size: clamp(11px, 2.2cqw, 13px); color: var(--text-muted);
+                }
+                .bl-test input[type=range] { width: min(240px, 60cqw); accent-color: var(--primary); }
+                .bl-test-val { font-weight: 800; color: var(--text-main); min-width: 4.5em;
+                    font-variant-numeric: tabular-nums; }
+                .bl-test-val--ok { color: var(--success, #2e7d32); }
+                /* --- LE JOURNAL DE BORD -------------------------------------
+                   « 2x + 4 = 10 [− 4] » : chaque ligne porte l'équation ET le
+                   geste qui l'a produite. C'est la trace écrite du chapitre —
+                   ce qu'on recopie au cahier —, et elle s'écrit toute seule
+                   pendant qu'on manipule. */
+                .bl-journal {
+                    flex: 1 1 auto; min-height: 0; overflow-y: auto;
+                    display: flex; flex-direction: column; gap: 1px;
+                    font-size: clamp(10px, 2cqw, 12.5px); font-variant-numeric: tabular-nums;
+                    color: var(--text-muted); text-align: center;
+                }
+                /* Le journal porte son nom partout : sans titre, la colonne de
+                   lignes sous la balance passait pour un reliquat d'affichage. */
+                .bl-journal::before {
+                    content: 'Journal de bord'; font-weight: 800; color: var(--text-main);
+                    font-size: .84em; margin-bottom: 3px;
+                }
+                .bl-jl { line-height: 1.5; }
+                .bl-jl b { color: var(--text-main); font-weight: 700; }
+                .bl-jl i { font-style: normal; color: var(--primary); font-weight: 700; }
                 .bl-note {
                     text-align: center; min-height: 2.4em; flex: 0 0 auto;
                     font-size: clamp(11px, 2.2cqw, 13px); line-height: 1.3;
@@ -141,17 +249,45 @@ export class Balance extends BaseGame {
                 .bl-note--ok { color: var(--success, #2e7d32); }
                 .bl-note--attente { color: #b8860b; font-weight: 600; }
                 @container (max-width: 420px) { .bl-consigne { display: none; } }
+                /* SUR UN GRAND PLATEAU, LE JOURNAL PASSE À DROITE.
+                   Empilé sous la balance, il était relégué au bas de l'écran en
+                   corps 11 — alors qu'il est la TRACE ÉCRITE, c'est-à-dire ce
+                   qu'on recopie au cahier. À côté de la balance, on lit les
+                   deux ensemble : le geste à gauche, sa ligne à droite. C'est
+                   tout le passage du concret à l'abstrait, mis côte à côte. */
+                @container (min-width: 760px) {
+                    .bl-wrap {
+                        display: grid; column-gap: 16px;
+                        grid-template-columns: minmax(0, 1fr) minmax(190px, 250px);
+                        grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+                    }
+                    .bl-consigne, .bl-eq, .bl-ops { grid-column: 1 / -1; }
+                    .bl-scene, .bl-test, .bl-outils, .bl-note { grid-column: 1; }
+                    .bl-journal {
+                        grid-column: 2; grid-row: 4 / -1; max-height: none;
+                        align-self: stretch; text-align: left; overflow-y: auto;
+                        border-left: 1.5px solid var(--border-color, #d7dae3);
+                        padding-left: 12px; gap: 3px;
+                        font-size: clamp(12px, 1.6cqw, 15px);
+                    }
+                }
             </style>
             <div class="bl-wrap">
                 <p class="bl-consigne">${enTexte(CONSIGNE)}</p>
                 <div class="bl-eq" data-eq></div>
+                <div class="bl-ops" data-ops></div>
                 <div class="bl-scene" data-scene></div>
+                <div class="bl-test" data-test></div>
                 <div class="bl-outils" data-outils></div>
                 <div class="bl-note" data-note></div>
+                <div class="bl-journal" data-journal></div>
             </div>`;
         this.eqEl = this.container.querySelector('[data-eq]');
         this.sceneEl = this.container.querySelector('[data-scene]');
         this.outilsEl = this.container.querySelector('[data-outils]');
+        this.opsEl = this.container.querySelector('[data-ops]');
+        this.testEl = this.container.querySelector('[data-test]');
+        this.journalEl = this.container.querySelector('[data-journal]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.dessiner();
     }
@@ -165,32 +301,32 @@ export class Balance extends BaseGame {
     jetons(p, cote, cx, base) {
         const L = 26, H = 20, PAS = 5;
         let out = '';
-        const poser = (i, quoi, n) => {
+        const clic = (quoi) => (this.isDemo ? '' : ` data-cote="${cote}" data-quoi="${quoi}"`);
+
+        // LES BOÎTES, puis les poids, chacun sur ses rangées.
+        const nx = Math.abs(p.x);
+        for (let i = 0; i < nx; i++) {
             const rangee = Math.floor(i / PAS), place = i % PAS;
-            const dans = Math.min(n - rangee * PAS, PAS);
+            const dans = Math.min(nx - rangee * PAS, PAS);
             const x = cx + (place - (dans - 1) / 2) * (L + 3);
             const y = base - rangee * (H + 3);
-            const clic = this.isDemo ? '' : ` data-cote="${cote}" data-quoi="${quoi}"`;
-            if (quoi === 'x') {
-                return `<g class="bl-jeton"${clic}>
-                    <rect class="bl-boite" x="${x - L / 2}" y="${y - H}" width="${L}" height="${H}" rx="3"/>
-                    <text class="bl-lettre" x="${x}" y="${y - H / 2}" font-size="13">x</text></g>`;
-            }
-            return `<g class="bl-jeton"${clic}>
-                <circle class="bl-poids" cx="${x}" cy="${y - H / 2}" r="${H / 2 - 1}"/>
-                <text class="bl-lettre" x="${x}" y="${y - H / 2}" font-size="10" fill="#4a3208">1</text></g>`;
-        };
-        for (let i = 0; i < p.x; i++) out += poser(i, 'x', p.x);
-        const hautX = Math.ceil(p.x / PAS) * (H + 3);
-        for (let i = 0; i < p.u; i++) {
+            out += `<g class="bl-jeton"${clic('x')}>
+                <rect class="bl-boite${p.x < 0 ? ' bl-manque' : ''}"
+                    x="${x - L / 2}" y="${y - H}" width="${L}" height="${H}" rx="3"/>
+                <text class="bl-lettre" x="${x}" y="${y - H / 2}" font-size="13"
+                    >${p.x < 0 ? '−x' : 'x'}</text></g>`;
+        }
+        const hautX = Math.ceil(nx / PAS) * (H + 3);
+        const nu = Math.abs(p.u);
+        for (let i = 0; i < nu; i++) {
             const rangee = Math.floor(i / PAS), place = i % PAS;
-            const dans = Math.min(p.u - rangee * PAS, PAS);
+            const dans = Math.min(nu - rangee * PAS, PAS);
             const x = cx + (place - (dans - 1) / 2) * 21;
             const y = base - hautX - rangee * 21;
-            const clic = this.isDemo ? '' : ` data-cote="${cote}" data-quoi="u"`;
-            out += `<g class="bl-jeton"${clic}>
-                <circle class="bl-poids" cx="${x}" cy="${y - 9}" r="9"/>
-                <text class="bl-lettre" x="${x}" y="${y - 9}" font-size="10" fill="#4a3208">1</text></g>`;
+            out += `<g class="bl-jeton"${clic('u')}>
+                <circle class="bl-poids${p.u < 0 ? ' bl-manque' : ''}" cx="${x}" cy="${y - 9}" r="9"/>
+                <text class="bl-lettre" x="${x}" y="${y - 9}" font-size="${p.u < 0 ? 9 : 10}"
+                    fill="${p.u < 0 ? '#fff' : '#4a3208'}">${p.u < 0 ? '−1' : '1'}</text></g>`;
         }
         return out;
     }
@@ -207,9 +343,29 @@ export class Balance extends BaseGame {
         if (e.attente) {
             const ampleur = Math.min(14, 5 + e.attente.combien * 2.2);
             inclinaison = e.attente.cote === 'g' ? -ampleur : ampleur;
+        } else if (this.testX !== null) {
+            // LE TESTEUR PENCHE LA BALANCE, LUI AUSSI, et il le fait pour une
+            // autre raison : ici l'égalité n'est pas cassée, c'est la VALEUR
+            // essayée qui ne convient pas. L'écart se voit — plus on est loin,
+            // plus ça penche —, et l'équilibre dit qu'on a trouvé.
+            const g = pese(e.g, this.testX), d = pese(e.d, this.testX);
+            const ecart = g - d;
+            if (ecart) inclinaison = Math.sign(ecart) * Math.min(14, 4 + Math.abs(ecart) * 1.1) * -1;
         }
 
-        const W = 460, H = 300, cy = 96, demi = 150;
+        // LE CADRE COLLE AU DESSIN, ET IL S'AJUSTE À CHAQUE ÉQUATION.
+        //
+        // Il faisait 460 × 300, taillé pour la pile de jetons la plus haute
+        // qu'on puisse rencontrer. Résultat mesuré sur « x − 2 = 1 » : le
+        // dessin occupait 110 px sur les 191 de sa boîte, et paraissait petit
+        // sans que rien ne le brime — c'était du vide réservé à des jetons qui
+        // n'existaient pas. La hauteur du fléau se calcule donc à partir de la
+        // pile la plus haute réellement posée, et le pied s'arrête juste sous
+        // les plateaux.
+        const W = 460, demi = 150;
+        const hautPile = (p) => Math.ceil(Math.abs(p.x) / 5) * 23 + Math.ceil(Math.abs(p.u) / 5) * 21;
+        const cy = Math.max(26, Math.max(hautPile(e.g), hautPile(e.d)) - 47);
+        const H = cy + 124;
         const dy = (c) => (c === 'g' ? -1 : 1) * inclinaison * 1.9;
         const plateauSvg = (c, cx) => {
             const y = cy + 62 + dy(c);
@@ -221,9 +377,10 @@ export class Balance extends BaseGame {
         };
 
         this.sceneEl.innerHTML = `
-            <svg class="bl-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
-                <line class="bl-mat" x1="${W / 2}" y1="${cy}" x2="${W / 2}" y2="${H - 26}"/>
-                <line class="bl-socle" x1="${W / 2 - 46}" y1="${H - 26}" x2="${W / 2 + 46}" y2="${H - 26}"/>
+            <svg class="bl-svg" viewBox="0 0 ${W} ${H}"
+                style="aspect-ratio:${W}/${H}" preserveAspectRatio="xMidYMid meet">
+                <line class="bl-mat" x1="${W / 2}" y1="${cy}" x2="${W / 2}" y2="${H - 12}"/>
+                <line class="bl-socle" x1="${W / 2 - 46}" y1="${H - 12}" x2="${W / 2 + 46}" y2="${H - 12}"/>
                 <g class="bl-barre" transform="rotate(${inclinaison} ${W / 2} ${cy})">
                     <line x1="${W / 2 - demi}" y1="${cy}" x2="${W / 2 + demi}" y2="${cy}"
                         stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
@@ -242,9 +399,96 @@ export class Balance extends BaseGame {
             });
         }
         this.dessinerOutils();
+        this.dessinerOps();
+        this.dessinerTest();
+        this.dessinerJournal();
+    }
+
+    /**
+     * LA BARRE D'OPÉRATIONS — le geste qu'on écrit au cahier.
+     *
+     * Quatre boutons, unité par unité : c'est ce que fait la balance de Rémy,
+     * et c'est volontairement lent. « − 4 » d'un coup escamoterait le comptage,
+     * qui est la moitié du travail en quatrième.
+     */
+    dessinerOps() {
+        const e = this.etat;
+        const dit = (quoi, n) => (quoi === 'x' ? `${n < 0 ? '−' : '+'} x` : `${n < 0 ? '−' : '+'} 1`);
+        const ops = [
+            { quoi: 'x', combien: -1 }, { quoi: 'x', combien: 1 },
+            { quoi: 'u', combien: -1 }, { quoi: 'u', combien: 1 }
+        ];
+        this.opsEl.innerHTML = ops.map((o, i) =>
+            `<button type="button" class="bl-op" data-op="${i}">${dit(o.quoi, o.combien)}</button>`).join('');
+        if (this.isDemo) {
+            this.opsEl.querySelectorAll('button').forEach(b => { b.disabled = true; });
+            return;
+        }
+        this.opsEl.querySelectorAll('[data-op]').forEach(b => {
+            b.onclick = () => {
+                const o = ops[+b.dataset.op];
+                const r = this.jouer({ geste: 'desDeuxCotes', ...o });
+                if (r === false) this.secouer(b);
+            };
+        });
+    }
+
+    /** Un bouton qui refuse le dit : il sursaute, et la note explique. */
+    secouer(btn) {
+        btn.classList.remove('bl-op--refus');
+        void btn.offsetWidth;
+        btn.classList.add('bl-op--refus');
+        setTimeout(() => btn.classList.remove('bl-op--refus'), 420);
+    }
+
+    /**
+     * LE TESTEUR DE VÉRITÉ — l'idée que Rémy m'a donnée avec son modèle.
+     *
+     * Il ne résout rien et ne doit rien résoudre. Il répond à une question que
+     * l'exercice ne posait nulle part : « qu'est-ce qu'une SOLUTION ? » On
+     * propose un nombre, la balance penche ou s'équilibre, et la définition
+     * cesse d'être une phrase.
+     */
+    dessinerTest() {
+        const max = Math.max(12, (this.niv && this.niv.solution ? this.niv.solution : 6) + 6);
+        const v = this.testX === null ? '' : this.testX;
+        const equilibre = this.testX !== null
+            && pese(this.etat.g, this.testX) === pese(this.etat.d, this.testX);
+        this.testEl.innerHTML = `
+            <label for="bl-testeur">Et si x valait…</label>
+            <input id="bl-testeur" type="range" min="0" max="${max}" step="1"
+                value="${this.testX === null ? 0 : this.testX}" ${this.isDemo ? 'disabled' : ''}>
+            <span class="bl-test-val${equilibre ? ' bl-test-val--ok' : ''}">${
+    this.testX === null ? '? ' : `x = ${v}`}${equilibre ? ' ⚖' : ''}</span>
+            ${this.testX === null ? '' : '<button type="button" class="bl-btn bl-btn--doux" '
+                + 'data-test-off>arrêter d\'essayer</button>'}`;
+        if (this.isDemo) return;
+        const curseur = this.testEl.querySelector('#bl-testeur');
+        curseur.oninput = () => { this.testX = +curseur.value; this.dessiner(); };
+        const off = this.testEl.querySelector('[data-test-off]');
+        if (off) off.onclick = () => { this.testX = null; this.dessiner(); };
+    }
+
+    /**
+     * LE JOURNAL DE BORD — « 2x + 4 = 10 [− 4] ».
+     *
+     * La trace écrite, qui s'écrit toute seule pendant qu'on manipule. C'est
+     * elle qu'on recopie au cahier, et c'est le pont que le chapitre demande :
+     * la suite des lignes EST la rédaction d'une résolution d'équation.
+     */
+    dessinerJournal() {
+        this.journalEl.innerHTML = this.journal.map(l =>
+            `<div class="bl-jl"><b>${enTexte(l.eq)}</b>${l.geste ? ` <i>${enTexte(l.geste)}</i>` : ''}</div>`
+        ).join('');
+        this.journalEl.scrollTop = this.journalEl.scrollHeight;
     }
 
     dessinerOutils() {
+        // LES PARTAGES SONT PROPOSÉS MÊME QUAND ILS SONT REFUSÉS, et c'est le
+        // cœur de la leçon : « 2x + 5 = 17 » ne se partage pas en deux tant que
+        // le 5 est là. N'afficher que les partages possibles cachait
+        // exactement ce qu'on veut faire rencontrer. Le bouton existe, il
+        // sursaute, et la phrase dit pourquoi.
         const possibles = partagesPossibles(this.etat);
         this.outilsEl.innerHTML = possibles.map(n =>
             `<button type="button" class="bl-btn" data-partage="${n}">Partager en ${n}</button>`).join('')
@@ -254,10 +498,14 @@ export class Balance extends BaseGame {
             return;
         }
         this.outilsEl.querySelectorAll('[data-partage]').forEach(b => {
-            b.onclick = () => this.jouer({ geste: 'partager', en: +b.dataset.partage });
+            b.onclick = () => {
+                if (this.jouer({ geste: 'partager', en: +b.dataset.partage }) === false) this.secouer(b);
+            };
         });
         this.outilsEl.querySelector('[data-recommencer]').onclick = () => {
             this.etat = this.depart;
+            this.journal = [{ eq: enSymboles(this.depart), geste: '' }];
+            this.testX = null;
             this.note('On repart de l\'équation de départ.', 'info');
             this.dessiner();
         };
@@ -274,12 +522,46 @@ export class Balance extends BaseGame {
     jouer(geste) {
         if (this.fini || this.isDemo) return;
         const avant = this.etat.attente;
+        const avantEq = enSymboles(this.etat);
         const r = appliquer(this.etat, geste);
-        if (!r.ok) { this.note(r.dit, 'ko'); return; }
+        // Le refus rend `false`, pour que l'appelant fasse sursauter le bouton :
+        // un bouton qui ne bouge pas se lit comme une panne.
+        if (!r.ok) { this.note(r.dit, 'ko'); return false; }
         this.etat = r.etat;
-        // Un geste est ACHEVÉ quand la balance revient droite — ou quand on
-        // partage. Les clics intermédiaires, eux, ne comptent pas.
-        if (geste.geste === 'partager' || (avant && !r.etat.attente)) this.gestes += 1;
+
+        // QUATRE FOIS « + 1 » EST UN SEUL GESTE, et il fallait le dire.
+        //
+        // Mesuré en jouant « x − 4 = 4 » à la barre : quatre pressions sur
+        // « + 1 », et l'écran répondait « tu y es en 4 gestes ; il en suffisait
+        // de 1 ». C'était faux et décourageant — l'élève avait fait EXACTEMENT
+        // le geste attendu, en quatre pressions, parce que la barre avance
+        // unité par unité, exprès. Deux pressions de suite sur le même bouton
+        // continuent donc le même geste : c'est aussi ce qu'on écrit au cahier,
+        // « + 4 » sur une seule ligne, pas quatre lignes de « + 1 ».
+        const cle = this.cleDuGeste(geste);
+        const suite = cle && cle === this.derniereCle && !avant;
+        if (geste.geste !== 'enlever' || (avant && !r.etat.attente)) {
+            if (!suite) this.gestes += 1;
+        }
+        this.derniereCle = r.etat.attente ? null : cle;
+
+        // LE JOURNAL S'ÉCRIT SUR LES GESTES ACHEVÉS SEULEMENT. Une balance qui
+        // penche n'est pas une ligne de cahier : c'est un état transitoire, et
+        // l'écrire ferait une rédaction qui contient des égalités fausses.
+        if (geste.geste === 'enlever') {
+            if (!avant && r.etat.attente) {
+                this.eqAvantDette = avantEq;
+                this.detteMax = r.etat.attente.combien;
+                this.detteQuoi = geste.quoi;
+            } else if (r.etat.attente) {
+                this.detteMax = Math.max(this.detteMax || 0, r.etat.attente.combien);
+            } else {
+                this.noterAuJournal(this.eqAvantDette || avantEq,
+                    { geste: 'desDeuxCotes', quoi: this.detteQuoi, combien: -(this.detteMax || 1) }, false);
+            }
+        } else {
+            this.noterAuJournal(avantEq, geste, suite);
+        }
         this.note(r.dit, r.ton);
         this.dessiner();
 
@@ -298,6 +580,45 @@ export class Balance extends BaseGame {
             ? 'Et par le chemin le plus court.'
             : `Tu y es en ${this.gestes} gestes ; il en suffisait de ${this.optimal}.`), 'ok');
         this.suivant();
+    }
+
+    /**
+     * LA SIGNATURE D'UN GESTE : ce qui fait que le suivant le CONTINUE.
+     *
+     * Même nature, même grandeur, même sens. « + 1 » puis « + 1 » continue ;
+     * « + 1 » puis « − 1 » ne continue pas — c'est un repentir, et il mérite
+     * sa ligne. Un partage ne se continue jamais : diviser par 2 puis par 2,
+     * ce n'est pas diviser par 4 dans la tête d'un élève, c'est deux gestes.
+     */
+    cleDuGeste(geste) {
+        if (geste.geste !== 'desDeuxCotes') return null;
+        return `${geste.quoi}:${Math.sign(geste.combien)}`;
+    }
+
+    /**
+     * UNE LIGNE DE JOURNAL : l'équation d'avant, et le geste qui l'a changée.
+     *
+     * La dernière ligne, elle, ne porte pas de geste : c'est l'équation où l'on
+     * en est. Elle est réécrite à chaque fois plutôt que empilée, sans quoi le
+     * journal doublerait chaque ligne.
+     */
+    noterAuJournal(avantEq, geste, suite) {
+        if (this.journal.length && !this.journal[this.journal.length - 1].geste) this.journal.pop();
+        const dernier = this.journal[this.journal.length - 1];
+        if (suite && dernier && dernier.quoi === geste.quoi) {
+            dernier.combien += geste.combien;
+        } else {
+            this.journal.push({
+                eq: avantEq, type: geste.geste, quoi: geste.quoi,
+                combien: geste.combien || 0, en: geste.en
+            });
+        }
+        const d = this.journal[this.journal.length - 1];
+        d.geste = `[${d.type === 'partager' ? `÷ ${d.en}`
+            : `${d.combien < 0 ? '−' : '+'} ${d.quoi === 'x'
+                ? (Math.abs(d.combien) === 1 ? 'x' : `${Math.abs(d.combien)}x`)
+                : Math.abs(d.combien)}`}]`;
+        this.journal.push({ eq: enSymboles(this.etat), geste: '' });
     }
 
     suivant() {
@@ -332,7 +653,12 @@ export class Balance extends BaseGame {
             if (this.gelDemo) await new Promise(ok => setTimeout(ok, 700));
             const r = appliquer(this.etat, g);
             if (!r.ok) return;
+            const avantEq = enSymboles(this.etat);
             this.etat = r.etat;
+            // LE ROBOT ÉCRIT AU JOURNAL, LUI AUSSI. Une démonstration qui
+            // laisse le journal vide montre les gestes sans montrer la
+            // rédaction — or c'est la rédaction qu'on vient copier.
+            this.noterAuJournal(avantEq, g, false);
             this.note(r.dit, r.ton);
             this.dessiner();
         }
@@ -350,8 +676,13 @@ export class Balance extends BaseGame {
         if (this.fini) return false;
         if (!resolu(this.etat)) {
             for (const g of solution(this.etat).gestes) {
+                const avantEq = enSymboles(this.etat);
                 const r = appliquer(this.etat, g);
-                if (r.ok) this.etat = r.etat;
+                if (!r.ok) continue;
+                this.etat = r.etat;
+                // Le saut d'auteur écrit la rédaction complète : c'est ce qu'on
+                // vient voir quand on demande la solution.
+                this.noterAuJournal(avantEq, g, false);
             }
             const fait = resolu(this.etat);
             this.note(fait ? `Résolue : x = ${fait.x}.` : 'Chemin joué.', 'info');
@@ -372,6 +703,8 @@ export class Balance extends BaseGame {
         if (this.etat !== this.depart) {
             this.etat = this.depart;
             this.gestes = 0;
+            this.journal = [{ eq: enSymboles(this.depart), geste: '' }];
+            this.testX = null;
             this.note('');
             this.dessiner();
             return true;

@@ -155,9 +155,15 @@ test('LE CHEMIN ENSEIGNÉ RÉSOUT, dans l\'ordre qu\'on enseigne', () => {
     const s = solution(eq(4, 2, 1, 14));
     assert.equal(s.ok, true);
     assert.deepEqual(resolu(s.etat), { x: 4, cote: 'g' });
-    // D'abord les boîtes, puis les poids, et le partage en dernier.
+    // D'abord les boîtes, puis les poids, et le partage en dernier. Le chemin
+    // s'écrit maintenant à la BARRE D'OPÉRATIONS — un geste par étape, agissant
+    // sur les deux membres —, là où il fallait auparavant deux « enlever »
+    // jumelés. C'est le modèle que Rémy a envoyé, et c'est aussi la rédaction
+    // du cahier : « − 2x » est une ligne, pas deux.
     const ordre = s.gestes.map(g => (g.geste === 'partager' ? 'partager' : g.quoi));
-    assert.deepEqual(ordre, ['x', 'x', 'u', 'u', 'partager']);
+    assert.deepEqual(ordre, ['x', 'u', 'partager']);
+    s.gestes.filter(g => g.geste === 'desDeuxCotes')
+        .forEach(g => assert.ok(g.combien !== 0, 'un geste qui ne change rien'));
 });
 
 test('chaque geste du chemin est accepté par le modèle', () => {
@@ -190,7 +196,12 @@ test('LA SOLUTION NE CHANGE JAMAIS EN COURS DE ROUTE', () => {
     }
 });
 
-test('les équations tirées sont vraies par construction, et sans négatif', () => {
+test('les équations tirées sont vraies par construction', () => {
+    // LE NÉGATIF EST DEVENU UNE FAMILLE, ET SEULEMENT UNE. Rémy a envoyé sa
+    // balance en modèle, et son dernier niveau est « 5x − 5 = 2x + 10 » : il
+    // demande le geste que les quatre autres familles n'exigent jamais —
+    // AJOUTER des deux côtés. Le membre de gauche peut donc porter des poids
+    // qui manquent ; le reste, non, et la droite pèse toujours.
     const rng = makeRng('progression');
     for (let tour = 0; tour < 30; tour++) {
         for (let i = 0; i < NIVEAUX.length; i++) {
@@ -199,11 +210,54 @@ test('les équations tirées sont vraies par construction, et sans négatif', ()
             assert.ok(a > c, `${n.titre} : il faut plus de boîtes à gauche`);
             assert.ok(n.solution >= 1, `${n.titre} : solution ${n.solution}`);
             assert.equal((a - c) * n.solution + b, d, `${n.titre} : l'équation est fausse`);
-            assert.ok(b >= 0 && c >= 0 && d >= 0, `${n.titre} : un compte négatif`);
+            assert.ok(c >= 0 && d >= 1, `${n.titre} : la droite doit peser`);
+            if (n.famille === 'negatifs') assert.ok(b < 0, `${n.titre} : où est le poids qui manque ?`);
+            else assert.ok(b >= 0, `${n.titre} : un compte négatif hors de sa famille`);
             // Et elle se résout : c'est la seule garantie qui compte.
             assert.equal(solution(n.etat).ok, true, `${n.titre} : insoluble`);
         }
     }
+});
+
+test('LA FAMILLE DES POIDS QUI MANQUENT RÉCLAME D\'AJOUTER', () => {
+    // C'est sa raison d'être : si son chemin ne contenait que des retraits,
+    // elle n'apprendrait rien que les autres n'apprennent déjà.
+    const rng = makeRng('neg');
+    const negatifs = NIVEAUX.map((n, i) => (n.famille === 'negatifs' ? i : -1)).filter(i => i >= 0);
+    assert.ok(negatifs.length >= 3, 'trois niveaux au moins');
+    negatifs.forEach(i => {
+        const n = preparerNiveau(i, rng);
+        const ajouts = solution(n.etat).gestes.filter(g => g.geste === 'desDeuxCotes' && g.combien > 0);
+        assert.ok(ajouts.length >= 1, `${n.titre} : aucun ajout dans le chemin`);
+    });
+    // Et l'écriture algébrique dit « − 5 », jamais « + -5 ».
+    assert.equal(enSymboles(eq(5, -5, 2, 10)), '5x − 5 = 2x + 10');
+    assert.equal(enSymboles(eq(1, -3, 0, 4)), 'x − 3 = 4');
+});
+
+test('LE GESTE DES DEUX CÔTÉS GARDE L\'ÉGALITÉ, DANS LES DEUX SENS', () => {
+    // Le geste de la barre d'opérations : il ajoute ou retire, et la solution
+    // ne bouge jamais. C'est l'invariant, et il tient aussi pour les négatifs.
+    const depart = eq(5, -5, 2, 10);
+    let e = depart;
+    [{ quoi: 'x', combien: -2 }, { quoi: 'u', combien: 5 },
+        { quoi: 'u', combien: -3 }, { quoi: 'u', combien: 3 }].forEach(g => {
+        const r = appliquer(e, { geste: 'desDeuxCotes', ...g });
+        assert.equal(r.ok, true, r.dit);
+        e = r.etat;
+        assert.equal(pese(e.g, 5), pese(e.d, 5), 'la solution a bougé');
+    });
+    assert.equal(enSymboles(e), '3x = 15');
+    // Et il refuse de s'appliquer sur une balance qui penche : on ne mélange
+    // pas un geste écrit avec un geste inachevé.
+    // On penche en retirant une BOÎTE : le plateau de gauche ne porte que des
+    // poids qui manquent, et l'on ne prend pas un poids qui n'est pas là.
+    const penchee = appliquer(depart, { geste: 'enlever', cote: 'g', quoi: 'x', combien: 1 });
+    assert.equal(penchee.ok, true, penchee.dit);
+    assert.equal(appliquer(depart, { geste: 'enlever', cote: 'g', quoi: 'u', combien: 1 }).ok, false,
+        'on ne retire pas un poids qui manque déjà');
+    assert.equal(appliquer(penchee.etat, { geste: 'desDeuxCotes', quoi: 'u', combien: 1 }).ok, false);
+    assert.equal(appliquer(depart, { geste: 'desDeuxCotes', quoi: 'u', combien: 0 }).ok, false);
 });
 
 test('la progression est reproductible pour une graine donnée', () => {
@@ -265,12 +319,10 @@ test('ON COMPTE LES GESTES, PAS LES CLICS', () => {
     // 3x + 3 = 2x + 8 : on enlève 2x des deux côtés, puis 3 des deux côtés, et
     // c'est fini — il ne reste qu'une boîte, donc aucun partage.
     const court = solution(eq(3, 3, 2, 8));
-    assert.equal(court.gestes.length, 4, 'quatre entrées : deux paires');
-    assert.equal(court.coups, 2, 'mais deux gestes au tableau');
+    assert.equal(court.coups, 2, 'deux gestes au tableau');
 
     // 4x + 2 = x + 14 en réclame un troisième : le partage.
     const long = solution(eq(4, 2, 1, 14));
-    assert.equal(long.gestes.length, 5);
     assert.equal(long.coups, 3, 'deux rééquilibrages et un partage');
 
     assert.equal(coups([]), 0);
@@ -279,4 +331,6 @@ test('ON COMPTE LES GESTES, PAS LES CLICS', () => {
         { geste: 'enlever', cote: 'g', quoi: 'u', combien: 4 },
         { geste: 'enlever', cote: 'd', quoi: 'u', combien: 4 }
     ]), 1, 'enlever des deux côtés est UN geste');
+    // Et un geste de la barre en vaut un, seul : il EST la ligne du cahier.
+    assert.equal(coups([{ geste: 'desDeuxCotes', quoi: 'u', combien: -4 }]), 1);
 });

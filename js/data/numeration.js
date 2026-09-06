@@ -578,7 +578,7 @@ export const numerationExercises = [
             {
                 id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
                 label: 'Les gestes disponibles',
-                default: ['unites', 'partage', 'deuxTemps', 'deuxCotes'],
+                default: ['unites', 'partage', 'deuxTemps', 'deuxCotes', 'negatifs'],
                 aide: 'Coche ce que la classe a déjà vu : les niveaux qui réclameraient un geste '
                     + 'absent disparaissent. Avec les seuls poids, il reste les deux premiers '
                     + 'niveaux.',
@@ -586,7 +586,8 @@ export const numerationExercises = [
                     { value: 'unites', label: 'Enlever des poids (x + 3 = 8)' },
                     { value: 'partage', label: 'Partager en parts égales (3x = 12)' },
                     { value: 'deuxTemps', label: 'Enlever puis partager (2x + 5 = 17)' },
-                    { value: 'deuxCotes', label: 'Des boîtes des deux côtés (4x + 2 = x + 14)' }
+                    { value: 'deuxCotes', label: 'Des boîtes des deux côtés (4x + 2 = x + 14)' },
+                    { value: 'negatifs', label: 'Des poids qui manquent (5x − 5 = 2x + 10)' }
                 ]
             },
             {
@@ -602,7 +603,7 @@ export const numerationExercises = [
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LITTERAL],
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
-        instruction: "Une équation est une balance en équilibre : les deux plateaux pèsent pareil. La boîte bleue cache un nombre — le même dans toutes les boîtes —, et les jetons dorés valent 1. Tu cliques un jeton pour l'enlever, et la balance PENCHE : l'égalité est cassée, et le seul geste qui la répare est d'enlever la même chose de l'autre plateau. C'est toute la règle du chapitre, et tu vas la voir plutôt que de la réciter. Ton but : amener une seule boîte, seule, sur un plateau — ce qui reste en face est sa valeur. L'ORDRE COMPTE, et un refus te l'apprendra mieux qu'une consigne : « 2x + 5 = 17 » ne se partage pas en deux parts égales tant que le 5 est là, parce que 5 et 17 sont impairs. On rassemble donc les boîtes, PUIS on enlève les jetons, ET SEULEMENT ENSUITE on partage."
+        instruction: "Une équation est une balance en équilibre : les deux plateaux pèsent pareil. La boîte bleue cache un nombre — le même dans toutes les boîtes —, et les jetons dorés valent 1. DEUX FAÇONS DE JOUER, et elles disent la même chose. Tu peux cliquer un jeton pour l'enlever d'un seul plateau : la balance PENCHE, l'égalité est cassée, et le seul geste qui la répare est d'enlever la même chose en face — c'est toute la règle du chapitre, vue plutôt que récitée. Ou tu peux utiliser les boutons « − x », « + x », « − 1 », « + 1 », qui agissent sur LES DEUX MEMBRES d'un coup : c'est le geste qu'on écrit au cahier, et le journal de bord l'écrit pour toi, ligne après ligne. LES JETONS ROUGES SONT DES POIDS QUI MANQUENT : « x − 5 » veut dire qu'il manque cinq poids, et pour les faire disparaître il faut en AJOUTER cinq, pas en enlever. Ton but : amener une seule boîte, seule, sur un plateau — ce qui reste en face est sa valeur. Et si tu ne sais pas par où commencer, le curseur « et si x valait… » te laisse essayer un nombre : la balance penche tant que ce n'est pas le bon, et s'équilibre quand tu tombes juste. C'est exactement ce que veut dire le mot SOLUTION. L'ORDRE COMPTE, et un refus te l'apprendra mieux qu'une consigne : « 2x + 5 = 17 » ne se partage pas en deux parts égales tant que le 5 est là, parce que 5 et 17 sont impairs. On rassemble donc les boîtes, PUIS on règle les jetons, ET SEULEMENT ENSUITE on partage."
     },
     {
         // LES FONCTIONS. Rémy : « et des exercices sur les fonctions ».
