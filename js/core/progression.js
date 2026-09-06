@@ -340,6 +340,24 @@ export function paramMarches({ marches = [], groupes = {}, mot = 'marche', ancie
     const f = feminin(mot);
     return {
         id: 'marches', type: 'marches', label: `Les ${mot}s travaillé${f ? 'es' : 's'}`,
+        // OUTIL DE PRÉPARATION, PAS RÉGLAGE D'ÉLÈVE.
+        //
+        // Rémy : « est-ce que tu penses, sans que je te cause quoi que ce soit,
+        // que les réglages ne sont pas trop compliqués ? » Mesuré : sur 158
+        // panneaux, la médiane est de quatre commandes — mais onze dépassent
+        // vingt, et ce sont exactement les exercices à progression. Le pire en
+        // montrait trente et une.
+        //
+        // Et surtout : l'élève voyait EXACTEMENT le même panneau que le
+        // professeur, au titre de section près. Or « comment répartir 32
+        // questions sur 6 marches » est une question de préparation — un
+        // professeur se la pose, un élève jamais. Lui a besoin de deux choses :
+        // combien de questions, et comment il répond.
+        //
+        // Le panneau d'avant-partie retire donc ce réglage à l'élève, et le
+        // garde entier pour le professeur. Ce qui a été préparé continue de
+        // s'appliquer : ce qu'on cache n'est pas ce qu'on oublie.
+        prof: true,
         default: liste.map(m => m.id),
         marches: liste,
         groupes,

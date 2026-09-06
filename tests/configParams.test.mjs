@@ -116,6 +116,40 @@ test('UNE LISTE DE MARCHES REND UN TABLEAU, ET SON PARTAGE AVEC', () => {
     assert.equal(rendu.repartitionMarches, '2,0,1,1,2,2,2');
 });
 
+test('CE QU\'ON CACHE À L\'ÉLÈVE N\'EST PAS CE QU\'ON EFFACE', () => {
+    // Le panneau d'avant-partie retire à l'élève les outils de PRÉPARATION —
+    // la liste des marches et sa frise, marquées `prof: true`. Mesuré : la
+    // médiane de commandes passe de 7 à 4,9 et le pire panneau de 31 à 17.
+    //
+    // LE PIÈGE EST SILENCIEUX, et c'est pour lui que ce test existe. Dessiner
+    // sans un réglage puis le relire quand même le remet à zéro : `readParams`
+    // ne trouve pas ses cases et rend une liste VIDE, qui écrase ce que le
+    // professeur a préparé. L'élève jouerait alors toutes les marches, sans que
+    // rien ne l'annonce. Le panneau filtre donc UNE fois, et le même schéma
+    // sert à dessiner et à relire.
+    const complet = [
+        { id: 'marches', type: 'marches', prof: true },
+        { id: 'reponse', type: 'select', options: [{ value: 'saisie' }, { value: 'choix' }] }
+    ];
+    const eleve = complet.filter(p => !p.prof);
+    assert.deepEqual(eleve.map(p => p.id), ['reponse'],
+        'la liste des marches est un outil de préparation');
+
+    // Le panneau de l'élève ne porte que « reponse » : relu avec SON schéma, il
+    // ne dit rien des marches, et ce que le professeur a posé passe au travers.
+    const rendu = readParams(fauxPanneau({ reponse: 'choix' }), eleve);
+    assert.equal('marches' in rendu, false, 'les marches ne doivent pas être inventées');
+    const prepare = { marches: ['m3', 'm5'], repartitionMarches: '7,3' };
+    assert.deepEqual({ ...prepare, ...rendu },
+        { marches: ['m3', 'm5'], repartitionMarches: '7,3', reponse: 'choix' });
+
+    // Relu avec le schéma COMPLET, en revanche, il rendrait une liste vide —
+    // c'est exactement ce qu'il ne faut pas faire, et c'est ce que ce test
+    // fige.
+    const faux = readParams(fauxPanneau({ reponse: 'choix' }), complet);
+    assert.deepEqual(faux.marches, [], 'le mauvais schéma vide bien la liste');
+});
+
 test('un paramètre absent du panneau n\'est pas inventé', () => {
     const rendu = readParams(fauxPanneau({}), [{ id: 'x', type: 'select', options: [1, 2] }]);
     assert.equal('x' in rendu, false);

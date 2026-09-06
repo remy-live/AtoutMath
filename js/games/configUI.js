@@ -2763,7 +2763,27 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     const content = document.getElementById('student-config-content');
     if (!modal || !content) return onStart({ ...(exo.params || {}) });
 
-    const schema = paramSchemaOf(exo);
+    // LES OUTILS DE PRÉPARATION NE SONT PAS POUR L'ÉLÈVE.
+    //
+    // Rémy : « est-ce que tu penses, sans que je te cause quoi que ce soit, que
+    // les réglages ne sont pas trop compliqués ? » Mesuré sur les 158 panneaux :
+    // médiane de quatre commandes, mais onze dépassent vingt — les onze
+    // exercices à progression —, et le pire en montrait trente et une. Surtout,
+    // l'élève voyait EXACTEMENT le même panneau que le professeur : le seul
+    // écart, dans le code, était le titre des sections.
+    //
+    // Un élève de sixième recevait donc douze cases à cocher et une frise à
+    // poignées avant de commencer. « Comment répartir 32 questions sur 6
+    // marches » est une question de préparation ; lui a besoin de deux choses,
+    // combien de questions et comment il répond.
+    //
+    // ON FILTRE UNE SEULE FOIS, ET LE MÊME SCHÉMA SERT À DESSINER ET À RELIRE.
+    // Dessiner sans un réglage puis le relire quand même le remettrait à zéro :
+    // `readParams` ne trouverait pas ses cases et rendrait une liste VIDE, qui
+    // écraserait ce que le professeur a préparé. C'est le piège de ce genre de
+    // filtre, et il est silencieux.
+    const complet = paramSchemaOf(exo);
+    const schema = state.isTeacherMode ? complet : complet.filter(p => !p.prof);
     const current = { ...(exo.params || {}) };
 
     // Travailler sur papier : proposé quand l'exercice s'y prête, c'est-à-dire
