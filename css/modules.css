@@ -4780,6 +4780,39 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     .kk-board { width: min(300px, 90cqw, 62cqh); }
 }
 
+/* --- LES PROPOSITIONS DU PAVÉ ---------------------------------
+   Le pavé numérique sait aussi poser une question à choix — voir
+   `propositions` dans core/activities/numeric.js. Les boutons reprennent la
+   forme de ceux des relatifs : larges au doigt, un par ligne dès qu'ils
+   portent une formule (« 2 × π × r ») plutôt qu'un nombre. */
+.np-choix {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    width: min(440px, 94cqw); max-width: 100%; margin: 0 auto;
+}
+.np-choix-btn {
+    flex: 1 1 44%; min-width: 130px; padding: 14px 16px; border-radius: 14px;
+    border: 2px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); font-size: 1.1rem; font-weight: 800;
+    font-family: inherit; cursor: pointer; font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 0 rgba(15, 23, 42, .12);
+    -webkit-tap-highlight-color: transparent;
+}
+.np-choix-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.np-choix-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+.np-choix-btn:disabled { cursor: default; }
+.np-choix-btn--ok { border-color: var(--success); color: var(--success); }
+.np-choix-btn--ko { border-color: var(--danger); color: var(--danger); }
+/* Celle qu'on vient d'essayer reste barrée et fermée : on ne la repropose pas
+   au réflexe suivant. */
+.np-choix-btn--use { opacity: .45; text-decoration: line-through; }
+
+/* La figure d'un énoncé — triangle, disque — tient dans la colonne et laisse
+   la place au pavé en dessous. */
+.fig-svg {
+    display: block; width: min(230px, 62cqw, 30cqh); height: auto;
+    aspect-ratio: 1; margin: 4px auto 0;
+}
+
 /* --- LE CIRCUIT D'EAU ----------------------------------------
    Rémy : « j'aimerais bien avoir un jeu dans ce style-là, il faut tourner des
    tuyaux pour faire un chemin. »

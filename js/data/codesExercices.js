@@ -183,6 +183,8 @@ export const CODES_EXERCICES = {
     'geo-dedale-forme':           'DA',   // Les Dédales
     'geo-mat-echecs':             'EM',   // Échecs : mat en un, mat en deux
     'geo-thales':                 'TR',   // Le Théorème de Thalès
+    'mes-perimetre-triangle':     'RD',   // le touR D'un triangle (TR et TP étaient pris)
+    'mes-disque':                 'DS',   // le DiSque (Q ne fait pas partie de l'alphabet)
     'mes-perimetre':              'TU',   // Le Tour du Rectangle
     'mes-perimetre-qcm':          'PH',   // Périmètre : à toi de choisir
     'mes-aire':                   'CX',   // Carreaux et Surfaces

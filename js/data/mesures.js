@@ -35,6 +35,67 @@ export const mesuresExercises = [
         instruction: "Choisis le bon périmètre parmi les propositions."
     },
     {
+        // LE TOUR DU TRIANGLE. Rémy : « nous avons déjà fait un exercice sur les
+        // périmètres et les aires du rectangle. J'aimerais bien faire un
+        // exercice sur le périmètre du triangle. »
+        //
+        // SUR LE TRIANGLE, IL N'Y A PAS DE FORMULE À RETENIR — on ajoute les
+        // trois côtés —, et c'est précisément ce qui en fait le bon exercice
+        // pour installer l'idée de tour. Sur le rectangle, 2 × (L + l) finit
+        // par la masquer.
+        //
+        // La quatrième étape retourne la question : on donne le périmètre, on
+        // cherche un côté. Celui qui n'a retenu qu'une addition ne sait pas
+        // quoi faire d'une soustraction, et cela se voit là.
+        id: 'mes-perimetre-triangle', title: 'Le Tour du Triangle',
+        cree: '2026-09-06',
+        generatorId: 'mes.perimetre-triangle', activityId: 'numpad',
+        skills: ['mes.perimetre.triangle'],
+        motsClefs: ['périmètre', 'triangle', 'isocèle', 'équilatéral', 'codage', 'tour'],
+        params: { max: 12, unite: 'cm' },
+        tags: { chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Quatre étapes qui se cochent : trois côtés donnés, le triangle isocèle, "
+            + "le triangle équilatéral, puis le côté qui manque. La figure est dessinée à "
+            + "l'échelle et CODÉE : sur l'isocèle, une seule mesure est écrite et ce sont les "
+            + "marques qui disent que l'autre côté vaut pareil — lire le codage fait partie du "
+            + "travail. Le triangle est posé chaque fois dans une position différente, pour "
+            + "qu'on regarde la figure au lieu d'apprendre une place."
+    },
+    {
+        // LE DISQUE, EN DEUX TEMPS. Rémy : « un exercice sur le périmètre et
+        // l'aire du disque : au départ on donne la valeur exacte, faire des QCM
+        // après. Et après on a le droit à la calculatrice pour pouvoir calculer
+        // la valeur approchée. »
+        //
+        // Tant qu'on écrit 10π, on travaille la FORMULE, et l'on voit d'un coup
+        // d'œil si l'élève a pris le rayon pour le diamètre ou l'aire pour le
+        // périmètre. Dès qu'on écrit 31,4, ces deux erreurs se noient dans la
+        // frappe et l'arrondi.
+        id: 'mes-disque', title: 'Le Périmètre et l\'Aire du Disque',
+        cree: '2026-09-06',
+        generatorId: 'mes.disque', activityId: 'numpad',
+        skills: ['mes.perimetre.disque', 'mes.aire.disque'],
+        // LA CALCULATRICE EST LE SUJET DES DEUX DERNIÈRES ÉTAPES, pas un
+        // service rendu : « et après on a le droit à la calculatrice pour
+        // pouvoir calculer la valeur approchée ». Sur les quatre premières elle
+        // ne sert à rien — on n'y écrit que des π.
+        calculatrice: true,
+        motsClefs: ['disque', 'cercle', 'périmètre', 'aire', 'pi', 'rayon', 'diamètre',
+            'valeur exacte', 'valeur approchée', 'arrondi'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GRANDEURS, TAGS.SOUS_DOMAINE.PERIMETRE_AIRE],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Six étapes qui se cochent. Les quatre premières demandent la valeur EXACTE "
+            + "— « 25π cm² » — et se répondent parmi quatre propositions : un pavé de chiffres "
+            + "ne sait pas écrire π. Les deux dernières demandent la valeur ARRONDIE, et c'est là "
+            + "que la calculatrice sert : le bouton apparaît en haut de l'écran. Le périmètre "
+            + "s'arrondit au dixième, l'aire à l'unité — et les rayons sont choisis pour que "
+            + "l'élève qui prend 3,14 et celui qui appuie sur la touche π trouvent le même "
+            + "résultat. L'étape 4 est le piège du chapitre : on donne le diamètre, et le rayon "
+            + "en est la moitié."
+    },
+    {
         id: 'mes-aire', title: 'Carreaux et Surfaces',
         cree: '2026-07-28',
         generatorId: 'mes.aire', activityId: 'numpad',

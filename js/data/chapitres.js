@@ -57,7 +57,8 @@ export const CHAPITRES = [
     },
     {
         id: '6-aires-perimetres', niveau: SIXIEME, nom: 'Aires et périmètres',
-        skills: ['mes.perimetre.rectangle', 'mes.aire.rectangle', 'mes.aire.proportion', 'geo.aires.tangram']
+        skills: ['mes.perimetre.rectangle', 'mes.aire.rectangle', 'mes.aire.proportion',
+            'geo.aires.tangram', 'mes.perimetre.triangle', 'mes.perimetre.disque']
     },
     {
         id: '6-conversion', niveau: SIXIEME, nom: 'Conversion',
@@ -150,7 +151,8 @@ export const CHAPITRES = [
     // --- 5ᵉ -----------------------------------------------------------------
     {
         id: '5-aires-perimetres', niveau: CINQUIEME, nom: 'Aires et périmètres',
-        skills: ['mes.perimetre.rectangle', 'mes.aire.rectangle', 'mes.aire.proportion', 'geo.aires.tangram']
+        skills: ['mes.perimetre.rectangle', 'mes.aire.rectangle', 'mes.aire.proportion',
+            'geo.aires.tangram', 'mes.perimetre.disque', 'mes.aire.disque']
     },
     // `num.litteral.puissances` est déclarée en 4e seulement : elle reste
     // dans le chapitre de 4e, et n'est pas remontée ici pour faire nombre.

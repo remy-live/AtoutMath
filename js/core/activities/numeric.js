@@ -61,6 +61,25 @@ export function mount(container, session, opts = {}) {
     let cursor = null;
     let gate = null;
 
+    /**
+     * CE PAVÉ SAIT AUSSI MONTRER DES PROPOSITIONS — et il faut qu'il le sache.
+     *
+     * Le défaut trouvé à l'écran : un exercice branché sur `numpad` qui rendait
+     * une question À CHOIX affichait quand même le clavier de chiffres. La
+     * question demandait « quelle formule donne l'aire d'un disque ? », et l'on
+     * proposait de la taper.
+     *
+     * `opts.rendreLaMain` DISTINGUE LES DEUX SITUATIONS, et c'est le seul
+     * signal fiable. Quand le QCM (choice.js) passe la main au pavé — parce que
+     * l'aide est montée jusqu'au clavier —, il le fait AVEC ce rappel : la
+     * question porte alors des propositions qu'il ne faut surtout pas
+     * réafficher, puisque tout l'intérêt est justement de les retirer. Sans ce
+     * rappel, personne ne gère le QCM à notre place : si la question en demande
+     * un, c'est à nous de le poser.
+     */
+    const propositions = (item) => !opts.rendreLaMain
+        && item.answerKind === 'choice' && Array.isArray(item.choices) && item.choices.length > 0;
+
     function renderNext() {
         if (destroyed) return;
         const item = session.next();
@@ -86,6 +105,36 @@ export function mount(container, session, opts = {}) {
      * l'énoncé en image ou rappellent ce qui est écrit au tableau pour toute
      * la classe. La grandeur cherchée y porte un « ? » : ils ne résolvent rien.
      */
+    /**
+     * Une proposition se touche, et le retour est celui de partout : la bonne
+     * passe à la question suivante, la mauvaise laisse la correction s'ouvrir.
+     */
+    function brancherPropositions(item) {
+        wireHint(container, session);
+        brancherOutils(item);
+        const boutons = [...container.querySelectorAll('[data-choix-i]')];
+        boutons.forEach(btn => {
+            btn.onclick = () => {
+                if (destroyed || session.locked) return;
+                const choix = item.choices[Number(btn.dataset.choixI)];
+                const result = session.submit(choix.value, { element: btn });
+                if (result.ignored) return;
+                btn.classList.add(result.correct ? 'np-choix-btn--ok' : 'np-choix-btn--ko');
+                boutons.forEach(b => { b.disabled = true; });
+                result.dismissed.then(() => {
+                    if (destroyed) return;
+                    if (result.correct || result.revealed) { renderNext(); return; }
+                    // RATÉ SANS RÉVÉLATION : on rouvre tout sauf ce qui vient
+                    // d'être essayé. Laisser la liste entière permettrait de
+                    // retomber sur le même bouton par réflexe.
+                    boutons.forEach(b => { b.disabled = b === btn; });
+                    btn.classList.remove('np-choix-btn--ko');
+                    btn.classList.add('np-choix-btn--use');
+                });
+            };
+        });
+    }
+
     function barreOutils(item) {
         const outils = (item.meta && item.meta.outils) || [];
         if (!outils.length) return '';
@@ -159,6 +208,10 @@ export function mount(container, session, opts = {}) {
                     ${barreOutils(item)}
                     <div class="np-outil" data-outil hidden></div></div>
                 <div class="numpad-panel">
+                    ${propositions(item) ? `<div class="np-choix" role="group"
+                        aria-label="Propositions">${item.choices.map((c, i) =>
+        `<button type="button" class="np-choix-btn" data-choix-i="${i}">${
+            echapperTexte(String(c.label ?? c.value))}</button>`).join('')}</div>` : `
                     <div class="numpad-device">
                     <div class="numpad-screen" aria-live="polite">
                         <span class="numpad-value" data-display></span>
@@ -179,12 +232,13 @@ export function mount(container, session, opts = {}) {
                                 aria-label="Effacer le dernier chiffre">${ICON_BACKSPACE}</button>
                         <button type="button" class="numpad-key numpad-key--ok" data-validate>Valider</button>
                     </div>
-                    </div>
+                    </div>`}
                     ${hintBar(session)}
                 </div>
             </div>`;
 
         avis = '';
+        if (propositions(item)) return brancherPropositions(item);
         const display = container.querySelector('[data-display]');
         const screen = container.querySelector('.numpad-screen');
         // LE NOMBRE SE GROUPE SOUS LES DOIGTS. « 62307 » ne s'écrit pas :

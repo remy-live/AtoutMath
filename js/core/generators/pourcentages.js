@@ -85,7 +85,13 @@ export const pourcentagesGenerator = {
         // « 156 » et « 156 € » sont la même réponse au clavier — `sameAnswer`
         // ne compare que des nombres —, mais dans une liste de quatre prix,
         // l'euro dit de quoi on parle.
-        const etiquette = (v) => (unite ? ecrireEuros(v) : ecrireCoefficient(v));
+        // UN COEFFICIENT S'ÉCRIT « 1,20 », UN POURCENTAGE « 120 ». Le leurre qui
+        // propose le pourcentage total au lieu du coefficient s'affichait
+        // « 120,00 » : les deux décimales le déguisaient en coefficient, et le
+        // piège perdait ce qui le rend instructif. Au-delà de 10, ce n'est plus
+        // un coefficient.
+        const etiquette = (v) => (unite ? ecrireEuros(v)
+            : (Math.abs(v) < 10 ? ecrireCoefficient(v) : ecrireNombre(v)));
 
         const choix = auChoix ? [
             { value: juste, label: etiquette(juste), correct: true },

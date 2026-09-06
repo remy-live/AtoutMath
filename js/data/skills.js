@@ -1169,6 +1169,40 @@ const BASE = {
         descriptor: 'Calculer le périmètre d\'un rectangle à partir de ses dimensions.',
         lesson: 'Périmètre = 2 × (Longueur + largeur). On fait le tour de la figure.'
     },
+    'mes.perimetre.triangle': {
+        label: 'Périmètre d\'un triangle',
+        chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],
+        niveaux: [N.SIXIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Faire le tour d\'un triangle, y compris quand un côté se déduit du codage.',
+        lesson: 'Le périmètre, c\'est le TOUR : on ajoute les trois côtés, il n\'y a pas de formule '
+            + 'à retenir. Sur un triangle isocèle, les marques disent que deux côtés sont égaux — '
+            + 'une seule mesure est écrite, l\'autre se lit sur le codage. Sur un équilatéral, '
+            + 'les trois sont égaux : côté × 3. Et si l\'on connaît le périmètre, un côté manquant '
+            + 'se retrouve en enlevant les deux autres.'
+    },
+    'mes.perimetre.disque': {
+        label: 'Périmètre d\'un disque',
+        chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.cercle.vocabulaire'],
+        descriptor: 'Calculer la longueur d\'un cercle, en valeur exacte puis approchée.',
+        lesson: 'Périmètre = 2 × π × r, ou π × d puisque le diamètre vaut deux rayons. La valeur '
+            + 'EXACTE garde le π — on écrit 10π cm ; la valeur APPROCHÉE se calcule ensuite, et '
+            + 'l\'arrondi ne se fait qu\'à la toute fin. L\'erreur la plus fréquente est d\'oublier '
+            + 'le 2 quand on part du rayon.'
+    },
+    'mes.aire.disque': {
+        label: 'Aire d\'un disque',
+        chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],
+        niveaux: [N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['mes.perimetre.disque'],
+        descriptor: 'Calculer l\'aire d\'un disque, en valeur exacte puis approchée.',
+        lesson: 'Aire = π × r × r. Le carré est la marque d\'une surface : une aire se mesure en '
+            + 'cm², un périmètre en cm. Quand l\'énoncé donne le DIAMÈTRE, on prend d\'abord sa '
+            + 'moitié — c\'est là que se perdent le plus de points, parce que le calcul, lui, '
+            + 'marche très bien avec le mauvais nombre.'
+    },
     'mes.aire.rectangle': {
         label: 'Aire d\'un rectangle',
         chemin: [D.GRANDEURS, SD.PERIMETRE_AIRE],
