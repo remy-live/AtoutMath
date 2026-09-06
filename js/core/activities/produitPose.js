@@ -71,12 +71,20 @@ export function mount(container, session, opts = {}) {
         // nombre dans la ligne : on voit ce qu'on est en train de faire là où
         // on le fait, et non dans un panneau à côté.
         if (ouvert === t.id) {
-            return `<span class="pp-ouvre">
-                <input class="pp-case" data-fac="1" inputmode="numeric" maxlength="3"
-                    aria-label="premier facteur" autocomplete="off">
-                <span class="pp-x">×</span>
-                <input class="pp-case" data-fac="2" inputmode="numeric" maxlength="3"
-                    aria-label="second facteur" autocomplete="off">
+            // ON RAPPELLE CE QUE LA DÉCOMPOSITION DOIT VALOIR. Rémy : « juste
+            // rappeler à quoi doit être égale la décomposition ». Le nombre
+            // disparaissait en s'ouvrant : deux cases vides au milieu d'un
+            // calcul, et plus rien ne disait ce qu'on cherchait à écrire —
+            // surtout après un détour par la table de Pythagore.
+            return `<span class="pp-ouvre" data-ouvre>
+                <span class="pp-duo">
+                    <input class="pp-case" data-fac="1" inputmode="numeric" maxlength="3"
+                        aria-label="premier facteur de ${t.v}" autocomplete="off">
+                    <span class="pp-x">×</span>
+                    <input class="pp-case" data-fac="2" inputmode="numeric" maxlength="3"
+                        aria-label="second facteur de ${t.v}" autocomplete="off">
+                </span>
+                <span class="pp-cible">= ${t.v}</span>
             </span>`;
         }
         return `<button type="button" class="${classes.join(' ')}" data-jeton="${t.id}"
@@ -176,25 +184,51 @@ export function mount(container, session, opts = {}) {
             b.onclick = () => toucher(b.dataset.jeton);
         });
 
-        // Les deux cases d'une décomposition : on valide à la seconde, ou par
-        // Entrée. Personne ne cherche un bouton quand il vient d'écrire deux
-        // nombres.
+        // LES DEUX CASES D'UNE DÉCOMPOSITION.
+        //
+        // ELLE SE VALIDE DÈS QUE LE PRODUIT TOMBE JUSTE, sans qu'on cherche un
+        // bouton : « 5 » puis « 11 » devant 55, et c'est écrit. Un produit faux
+        // ne déclenche rien — c'est Entrée qui demande l'avis, et qui obtient
+        // alors la raison du refus.
+        //
+        // ET CLIQUER AILLEURS REMET LE NOMBRE. Rémy : « quand on clique
+        // ailleurs ça remet ». C'était le seul geste sans issue de l'atelier :
+        // une fois deux cases ouvertes, il fallait trouver Échap ou écrire
+        // quelque chose. On abandonne maintenant en cliquant n'importe où —
+        // sur un autre nombre, sur un bouton, sur le fond.
         const cases = [...container.querySelectorAll('[data-fac]')];
         if (cases.length === 2) {
             cases[0].focus();
+            const essayer = () => {
+                const [x, y] = cases.map(c => Number(c.value.trim()));
+                const cible = container.querySelector('.pp-cible');
+                const v = cible ? Number(cible.textContent.replace(/\D/g, '')) : NaN;
+                if (Number.isFinite(x) && Number.isFinite(y) && x > 1 && y > 1 && x * y === v) {
+                    validerDecomposition();
+                }
+            };
             cases.forEach((c, i) => {
                 c.oninput = () => {
                     if (c.value.length >= 2 && i === 0) cases[1].focus();
+                    essayer();
                 };
                 c.onkeydown = (ev) => {
                     if (ev.key === 'Enter') { ev.preventDefault(); validerDecomposition(); }
                     if (ev.key === 'Escape') { ouvert = null; render(); }
                 };
             });
-            const finir = () => {
-                if (cases.every(c => c.value.trim())) validerDecomposition();
-            };
-            cases[1].onblur = () => regTimeout(finir, 120);
+        }
+        // Le clic qui ANNULE : n'importe où hors des deux cases. Posé sur la
+        // scène en capture, pour passer avant les boutons — sinon cliquer un
+        // autre nombre ouvrirait le suivant sans refermer le précédent.
+        const scene = container.querySelector('.pp-scene');
+        if (scene && ouvert) {
+            scene.addEventListener('pointerdown', (ev) => {
+                if (!ouvert) return;
+                if (ev.target.closest('[data-ouvre]')) return;
+                ouvert = null;
+                render();
+            }, { capture: true, once: true });
         }
 
         const v = container.querySelector('[data-valider]');
@@ -252,14 +286,14 @@ export function mount(container, session, opts = {}) {
         ouvert = null;
         note('');
         // DÉCOMPOSER PEUT SUFFIRE À FINIR — 4/6 devient (2×2)/(2×3), et l'élève
-        // n'a plus qu'à barrer. Mais il peut aussi avoir décomposé un nombre
-        // qui n'avait rien à donner : on ne bascule que si plus rien ne se
-        // simplifie.
+        // n'a plus qu'à barrer.
         verifierFin();
-        // ON PASSE EN MODE BARRER TOUT SEUL après une décomposition. C'est le
-        // geste suivant dans neuf cas sur dix, et laisser l'élève rouvrir un
-        // nombre qu'il vient d'écrire n'apprend rien.
-        if (!fini) mode = 'barrer';
+        // ON RESTE EN MODE DÉCOMPOSER. Le premier jet basculait tout seul sur
+        // « barrer », en supposant que c'était le geste suivant. Rémy : « on
+        // peut avoir 100 = 10 × 10 et on peut cliquer sur le 10 » — un facteur
+        // qu'on vient d'écrire se décompose à son tour, et le basculement
+        // automatique obligeait à revenir en arrière pour le faire. On ne
+        // devine plus l'intention.
         render();
     }
 

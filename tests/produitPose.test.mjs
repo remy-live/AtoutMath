@@ -213,6 +213,28 @@ test('ON N\'IMPOSE PAS LA DÉCOMPOSITION ATTENDUE', () => {
     });
 });
 
+test('DEUX FACTEURS IDENTIQUES RESTENT DEUX NOMBRES DISTINCTS', () => {
+    // Rémy : « on peut avoir 100 = 10 × 10 et on peut cliquer sur le 10 ». Deux
+    // jetons de même valeur ne doivent pas se confondre : ouvrir le premier ne
+    // doit pas toucher au second, sans quoi l'élève cliquerait un nombre et en
+    // verrait bouger un autre. C'est l'identifiant qui les distingue, pas leur
+    // valeur.
+    let e = etatInitial({ a: 100, b: 3, c: 7, d: 2 });
+    e = decomposer(e, tousHaut(e)[0].id, 10, 10).etat;
+    const dix = tousHaut(e).filter(t => t.v === 10);
+    assert.equal(dix.length, 2);
+    assert.notEqual(dix[0].id, dix[1].id);
+
+    e = decomposer(e, dix[0].id, 2, 5).etat;
+    assert.deepEqual(tousHaut(e).map(t => t.v), [2, 5, 10, 7]);
+    // Et l'autre dix est toujours là, entier, cliquable à son tour.
+    const reste = tousHaut(e).find(t => t.v === 10);
+    assert.equal(reste.id, dix[1].id);
+    assert.equal(decomposer(e, reste.id, 5, 2).ok, true);
+    // La valeur, elle, n'a pas bougé d'un pouce.
+    assert.deepEqual(valeur(e), valeur(etatInitial({ a: 100, b: 3, c: 7, d: 2 })));
+});
+
 test('UN NOMBRE BARRÉ NE SE TOUCHE PLUS', () => {
     let e = etatInitial({ a: 3, b: 5, c: 7, d: 3 });
     const h = tousHaut(e).find(t => t.v === 3);

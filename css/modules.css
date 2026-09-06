@@ -9153,15 +9153,33 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     75% { transform: translateX(7px); }
 }
 
+/* LA BARRE COUVRE TOUT LE NUMÉRATEUR, si large soit-il.
+   Rémy : « il faut allonger la barre de fraction ». La barre est le
+   `border-top` du dénominateur, donc elle faisait la largeur DU DÉNOMINATEUR :
+   devant « (… × …)/55 », les deux cases de la décomposition dépassaient de la
+   barre par la droite, et l'on ne voyait plus quel étage elles occupaient.
+   `align-items: stretch` fait prendre aux deux étages la largeur du plus
+   large ; chacun centre son contenu dedans. */
 .pp-frac {
-    display: inline-flex; flex-direction: column; align-items: center;
+    display: inline-flex; flex-direction: column; align-items: stretch;
     line-height: 1.15; font-weight: 800;
 }
 .pp-num, .pp-den {
-    display: inline-flex; align-items: center; gap: .18em;
+    display: inline-flex; align-items: center; justify-content: center; gap: .18em;
     padding: .08em .3em; text-align: center;
 }
 .pp-den { border-top: 3px solid currentColor; }
+
+/* LE NOMBRE QU'ON DÉCOMPOSE RESTE ÉCRIT, en petit, sous les deux cases.
+   Rémy : « juste rappeler à quoi doit être égale la décomposition ». Il
+   disparaissait en s'ouvrant, et deux cases vides au milieu d'un calcul ne
+   disent pas ce qu'on cherche — surtout au retour de la table de Pythagore. */
+.pp-ouvre { display: inline-flex; flex-direction: column; align-items: center; gap: .05em; }
+.pp-duo { display: inline-flex; align-items: center; gap: .12em; }
+.pp-cible {
+    font-size: .38em; font-weight: 700; opacity: .55; letter-spacing: .02em;
+    line-height: 1;
+}
 .pp-op { font-weight: 800; padding: 0 .1em; }
 /* Le « × » ENTRE DEUX FACTEURS est plus petit que celui entre deux fractions :
    ils ne disent pas la même chose, et les confondre ferait lire « 3 × 11 × 45 »
@@ -9193,7 +9211,6 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 /* LE NOMBRE OUVERT, à sa place exacte dans la ligne. Rémy : « on clique sur le
    33 et il apparaît … × … ». Les deux cases remplacent le nombre là où il
    était : on voit ce qu'on fait à l'endroit où on le fait. */
-.pp-ouvre { display: inline-flex; align-items: center; gap: .12em; }
 .pp-x { font-size: .58em; opacity: .55; }
 .pp-case {
     font: inherit; font-weight: 800; text-align: center;
