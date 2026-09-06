@@ -26,7 +26,8 @@
 
 import { makeItem } from '../items.js';
 import {
-    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe,
+    valeurParMarche
 } from '../progression.js';
 
 const SKILL_SOMME = 'num.relatifs.somme';
@@ -215,9 +216,16 @@ export const relatifsGenerator = {
         }),
         {
             id: 'reponse', type: 'select', label: 'Réponse', papier: false,
+            // ET IL SE RÈGLE MARCHE PAR MARCHE. Rémy : « pour réponse à saisir
+            // ou 4 réponses, il faut que ce soit spécifique à la zone ». Sur la
+            // frise du professeur, ce menu devient une rangée de boutons DANS
+            // la bulle, qui ne vaut que pour la marche qu'on regarde ; dans le
+            // panneau de l'élève, où il n'y a pas de frise, il reste le menu
+            // qu'il était. Voir `valeurParMarche` (core/progression.js).
+            parMarche: true,
             options: [
-                { value: 'saisie', label: 'À saisir (clavier de nombres)' },
-                { value: 'choix', label: 'À choisir parmi quatre' }
+                { value: 'saisie', label: 'À saisir (clavier de nombres)', court: 'Clavier', clavier: true },
+                { value: 'choix', label: 'À choisir parmi quatre', court: '4' }
             ],
             default: 'saisie'
         }
@@ -284,7 +292,12 @@ export const relatifsGenerator = {
             explication
         ];
 
-        const modeReponse = params?.reponse === 'choix' ? 'choice' : 'numeric';
+        // LA FAÇON DE RÉPONDRE EST CELLE DE CETTE MARCHE-CI. Sur les pastilles,
+        // l'élève lit un nombre sur le dessin ; sur l'écriture, il calcule.
+        // Demander les deux au même clavier, ou les deux parmi quatre, c'est
+        // rater l'un des deux — d'où la table par marche.
+        const modeReponse = valeurParMarche(params, 'reponse', id, 'saisie') === 'choix'
+            ? 'choice' : 'numeric';
         const distracteurs = leurres(depart, deplacements, total).slice(0, 3);
 
         return makeItem({

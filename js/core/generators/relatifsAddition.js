@@ -26,7 +26,8 @@
 import { makeItem } from '../items.js';
 import { ecrire } from './relatifs.js';
 import {
-    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe,
+    valeurParMarche
 } from '../progression.js';
 
 const SKILL_SOMME = 'num.relatifs.somme';
@@ -290,9 +291,12 @@ export const relatifsAdditionGenerator = {
         }),
         {
             id: 'reponse', type: 'select', label: 'Réponse', papier: false,
+            // Réglable marche par marche sur la frise du professeur — voir le
+            // même réglage dans `relatifs.js`, et `valeurParMarche`.
+            parMarche: true,
             options: [
-                { value: 'saisie', label: 'À saisir (pavé de nombres)' },
-                { value: 'choix', label: 'À choisir parmi quatre' }
+                { value: 'saisie', label: 'À saisir (pavé de nombres)', court: 'Clavier', clavier: true },
+                { value: 'choix', label: 'À choisir parmi quatre', court: '4' }
             ],
             default: 'saisie'
         }
@@ -370,7 +374,9 @@ export const relatifsAdditionGenerator = {
         // écrit le raisonnement sur les signes et les distances à zéro.
         const explicationPapier = etape.modele === 'pastilles'
             ? expliquer({ ...etape, modele: 'ecriture' }, a, b, total) : '';
-        const modeReponse = params?.reponse === 'choix' ? 'choice' : 'numeric';
+        // La façon de répondre est celle de CETTE marche — voir `relatifs.js`.
+        const modeReponse = valeurParMarche(params, 'reponse', id, 'saisie') === 'choix'
+            ? 'choice' : 'numeric';
 
         return makeItem({
             seed: rng.seed,

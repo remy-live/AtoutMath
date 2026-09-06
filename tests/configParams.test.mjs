@@ -14,7 +14,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
-import { readParams } from '../js/games/configUI.js';
+import { readParams, champsSchema } from '../js/games/configUI.js';
+import { cleParMarche } from '../js/core/progression.js';
 import { exercices } from '../js/data/catalog.js';
 
 const valeurDe = (o) => (o && typeof o === 'object') ? o.value : o;
@@ -148,6 +149,47 @@ test('CE QU\'ON CACHE À L\'ÉLÈVE N\'EST PAS CE QU\'ON EFFACE', () => {
     // fige.
     const faux = readParams(fauxPanneau({ reponse: 'choix' }), complet);
     assert.deepEqual(faux.marches, [], 'le mauvais schéma vide bien la liste');
+});
+
+test('LA RÉPONSE PAR MARCHE REVIENT DU PANNEAU', () => {
+    // Rémy : « pour réponse à saisir ou 4 réponses, il faut que ce soit
+    // spécifique à la zone ». La table vit dans un champ caché, comme le
+    // partage — et pour la même raison : c'est un état de la frise, pas une
+    // ligne du schéma. Sans cette lecture, la bulle montrerait le bon aperçu
+    // et l'exercice jouerait autre chose, exactement comme le partage l'a fait.
+    const root = {
+        querySelector(sel) {
+            if (sel === '[data-repartition-marches]') return { value: '' };
+            return { value: 'm1', dataset: {} };
+        },
+        querySelectorAll(sel) {
+            if (sel === '[data-par-marche]') {
+                return [{ dataset: { parMarche: 'reponse' }, value: 'm1:choix,m3:saisie' }];
+            }
+            if (!sel.includes('multiselect')) return [];
+            return [{ checked: true, value: 'm1' }, { checked: true, value: 'm3' }];
+        }
+    };
+    const rendu = readParams(root, [{ id: 'marches', type: 'marches' }]);
+    assert.equal(rendu.reponseParMarche, 'm1:choix,m3:saisie');
+    // La clé se compose dans le code, jamais dans le DOM : le champ ne porte
+    // que le nom du réglage qu'il précise.
+    assert.equal(cleParMarche('reponse'), 'reponseParMarche');
+});
+
+test('UN RÉGLAGE PAR MARCHE NE S\'ÉCRIT PAS DEUX FOIS', () => {
+    // Sur un panneau qui porte la frise, la façon de répondre se règle DANS la
+    // bulle : laisser en plus le menu global en bas, ce serait deux commandes
+    // pour une décision. Sans frise — le panneau de l'élève —, le menu reste :
+    // lui doit pouvoir choisir comment il répond, il n'a simplement pas de
+    // zones où le faire varier.
+    const reponse = { id: 'reponse', type: 'select', parMarche: true, options: [{ value: 'saisie' }] };
+    const avec = champsSchema([{ id: 'marches', type: 'marches', marches: [] }, reponse], () => '');
+    const sans = champsSchema([reponse], () => '');
+    assert.equal(avec.includes('data-param="reponse"'), false,
+        'la frise porte déjà ce réglage, marche par marche');
+    assert.equal(sans.includes('data-param="reponse"'), true,
+        'sans frise, le menu reste la seule façon de le régler');
 });
 
 test('un paramètre absent du panneau n\'est pas inventé', () => {

@@ -292,6 +292,7 @@ async function tourDesEtapes(p, seau) {
         seau.length = 0;
         const quoi = await p.evaluate(async (exoId) => {
             const { renderGameConfigUI } = await import('/js/games/configUI.js');
+            const { paramSchemaOf, getExerciseById } = await import('/js/data/catalog.js');
             let hote = document.getElementById('builder-config-content');
             if (!hote) {
                 hote = document.createElement('div');
@@ -310,6 +311,23 @@ async function tourDesEtapes(p, seau) {
             if (!cases) return 'les cases à cocher manquent';
             if (!zones) return 'la frise reste vide';
             if (!cache) return 'le partage ne serait pas enregistré';
+            // LE RÉGLAGE QUI CHANGE D'UNE MARCHE À L'AUTRE, s'il y en a un.
+            //
+            // Rémy : « pour réponse à saisir ou 4 réponses, il faut que ce soit
+            // spécifique à la zone ». Ce réglage QUITTE le bas du panneau pour
+            // entrer dans la bulle : s'il n'y arrive pas, il n'est plus nulle
+            // part, et le panneau perd un réglage sans rien dire. C'est
+            // exactement le genre de disparition qu'un tour de garde attrape et
+            // qu'une relecture manque.
+            const parM = paramSchemaOf(getExerciseById(exoId)).filter(x => x && x.parMarche);
+            for (const x of parM) {
+                if (!hote.querySelector(`[data-par-marche="${x.id}"]`)) {
+                    return `« ${x.label} » ne serait pas enregistré par marche`;
+                }
+                if (!hote.querySelector(`[data-marche-reponse][data-marche-cle="${x.id}"]`)) {
+                    return `« ${x.label} » a quitté le panneau sans arriver dans la bulle`;
+                }
+            }
             return '';
         }, id);
         if (quoi) seau.push(`ÉTAPE: ${quoi}`);

@@ -374,6 +374,75 @@ export function paramMarches({ marches = [], groupes = {}, mot = 'marche', ancie
     };
 }
 
+// --- UN RÉGLAGE QUI CHANGE D'UNE MARCHE À L'AUTRE ---------------------------
+//
+// Rémy : « pour réponse à saisir ou 4 réponses, il faut que ce soit spécifique
+// à la zone, est-ce clair ? »
+//
+// C'est clair, et c'est la MÊME demande que celle qui a produit les zones de
+// l'aide (core/aide.js) : là-bas une zone porte une façon de répondre, et le
+// professeur en pose plusieurs le long de l'exercice. Ici les zones existent
+// déjà — ce sont les marches —, et le réglage « Réponse » restait pourtant
+// unique pour l'exercice entier. On répondait donc au clavier sur la marche
+// « pastilles », où il n'y a rien à taper qu'un nombre qu'on lit sur le
+// dessin, comme sur la marche « écriture », où c'est justement le calcul.
+//
+// UNE VALEUR PAR MARCHE, ET LA MARCHE EST NOMMÉE, PAS NUMÉROTÉE. Les longueurs
+// (`repartitionMarches`) s'écrivent par position parce qu'elles n'ont de sens
+// que dans l'ordre du découpage ; une façon de répondre, elle, appartient à
+// une marche précise. Décocher puis recocher « le thermomètre » doit lui
+// rendre son réglage, pas celui de la marche qui a pris sa place.
+//
+// LE RÉGLAGE GLOBAL RESTE LE SOCLE. Une marche qui ne figure pas dans la table
+// prend la valeur du réglage d'exercice — celui que l'élève voit encore dans
+// son panneau, où la frise, elle, ne s'affiche pas. Rien ne se perd donc quand
+// on passe d'un panneau à l'autre : le tableau précise, il ne remplace pas.
+
+/** Le nom du réglage qui porte la table d'un réglage `parMarche`. */
+export const cleParMarche = (id) => `${id}ParMarche`;
+
+/** « thermometre:choix,ecriture:saisie » → { thermometre: 'choix', … } */
+export function lireParMarche(brut) {
+    const out = {};
+    if (brut === undefined || brut === null || brut === '') return out;
+    if (typeof brut === 'object') {
+        Object.entries(brut).forEach(([k, v]) => {
+            if (k && v !== undefined && v !== null && v !== '') out[k] = String(v);
+        });
+        return out;
+    }
+    String(brut).split(',').forEach(part => {
+        const i = part.indexOf(':');
+        if (i <= 0) return;
+        const id = part.slice(0, i).trim();
+        const v = part.slice(i + 1).trim();
+        if (id && v) out[id] = v;
+    });
+    return out;
+}
+
+/** La table telle qu'on l'écrit dans les réglages. */
+export const ecrireParMarche = (table) => Object.entries(table || {})
+    .filter(([id, v]) => id && v !== undefined && v !== null && v !== '')
+    .map(([id, v]) => `${id}:${v}`)
+    .join(',');
+
+/**
+ * LA VALEUR DE CE RÉGLAGE SUR CETTE MARCHE — c'est la seule fonction que les
+ * générateurs appellent.
+ *
+ * Trois sources, dans cet ordre : ce que le professeur a posé sur la marche,
+ * puis le réglage d'exercice, puis le défaut du générateur. Aucune ne peut
+ * manquer sans que la suivante réponde, ce qui veut dire qu'un exercice qui
+ * n'a jamais vu de frise se comporte exactement comme avant.
+ */
+export function valeurParMarche(params, cle, marcheId, defaut) {
+    const v = lireParMarche((params || {})[cleParMarche(cle)])[marcheId];
+    if (v !== undefined) return v;
+    const global = (params || {})[cle];
+    return global === undefined || global === null || global === '' ? defaut : global;
+}
+
 /**
  * L'APERÇU EN UNE PHRASE — « 10 questions pour 7 marches : de 1 à 2 chacune ».
  *

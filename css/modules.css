@@ -3290,7 +3290,61 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    erreur, mais il ne doit pas passer inaperçu. */
 .cfg-dit--vide { color: var(--warning, #f59e0b); font-weight: 700; }
 
-.cfg-marches .cfg-scene { padding-top: 74px; }
+/* LA BULLE DES MARCHES VIT DANS LE FLUX — elle ne se fait plus réserver une
+   hauteur devinée.
+
+   Elle en avait une, 74 px, et c'était un nombre écrit à la main pour une
+   bulle qui contient une question de longueur inconnue et jusqu'à huit
+   propositions. Mesuré sur les seize exercices à progression, aux deux
+   largeurs d'écran : NEUF débordaient, c'est-à-dire que la bulle recouvrait la
+   barre qu'elle est censée expliquer — jusqu'à 81 px sur « Reconnaître une
+   puissance », soit la barre entière et sa légende. On ne voyait plus les
+   marches ; on voyait la bulle posée dessus.
+
+   Réserver la bonne hauteur est impossible : ce n'est pas UNE hauteur. Une
+   bulle sans propositions, une bulle à deux lignes de question, une bulle qui
+   porte en plus la rangée « Réponse » n'ont aucune raison de faire la même
+   taille, et le jour où l'on ajoute une ligne dedans, le nombre écrit ici
+   redevient faux en silence. On la remet donc dans le flux : elle occupe la
+   place qu'elle prend, ni plus ni moins, et le débordement devient
+   structurellement impossible.
+
+   LE `min-height` GARDE LA BARRE EN PLACE quand on passe d'une marche à
+   l'autre — c'était le mérite de la hauteur fixe, et le seul. Mesuré après
+   coup, sur les seize exercices : la barre ne bouge plus du tout sur dix
+   d'entre eux, et de 53 px au pire (Thalès, sur grand écran), quand une marche
+   propose des réponses et pas la suivante. Contre un recouvrement pur et
+   simple avant.
+
+   L'aperçu de l'aide, lui, garde sa réserve : ses quatre cartes ont une
+   hauteur, elles, qui ne dépend pas de ce qu'on tire. */
+.cfg-marches .cfg-scene { padding-top: 0; }
+.cfg-marches .cfg-bulle {
+    position: relative; box-sizing: border-box;
+    min-height: 74px; margin-bottom: 10px;
+}
+
+/* LA RANGÉE QUI RÈGLE LA MARCHE QU'ON REGARDE.
+   Rémy : « pour réponse à saisir ou 4 réponses, il faut que ce soit spécifique
+   à la zone ».
+
+   LA BULLE EST TRANSPARENTE AUX CLICS — c'est ce qui permet d'attraper la
+   borne qui passe dessous —, donc ce qui, dedans, doit se cliquer le redit
+   pour lui-même. Sans cette ligne les boutons se voient, se survolent... et ne
+   répondent pas. */
+.cfg-bulle-reglage {
+    pointer-events: auto; margin-top: 6px;
+    display: flex; align-items: center; gap: 8px;
+}
+.cfg-bulle-quoi {
+    font-size: .66rem; font-weight: 800; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-muted);
+    flex: 0 0 auto;
+}
+/* Plus basse que la bascule d'un panneau : ici elle partage une bulle avec la
+   question qu'elle règle, et c'est la question qui doit rester le sujet. */
+.cfg-bascule--bulle { flex: 1 1 auto; padding: 2px; border-radius: 9px; }
+.cfg-bascule--bulle .cfg-bsc { height: 26px; font-size: .85rem; border-radius: 7px; }
 .cfg-groupe {
     border: 1.5px solid var(--border); border-radius: 10px;
     background: var(--bg-panel); overflow: hidden;
@@ -3431,8 +3485,25 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden; margin-bottom: 5px;
 }
+/* ET DEUX LIGNES AU MOINS SUR LA FRISE DES MARCHES, dont la bulle vit dans le
+   flux : sans cela une question courte puis une question longue faisaient
+   monter et descendre la barre à chaque marche cliquée. La place de la
+   deuxième ligne est toujours prise ; elle n'est simplement pas toujours
+   occupée. La bulle de l'aide, elle, est posée par-dessus une hauteur
+   réservée : rien ne bouge sous elle, elle n'a pas besoin de cette réserve. */
+.cfg-marches .cfg-bulle-q { min-height: 2.4em; }
 .cfg-bulle-q--vide { color: var(--text-muted); font-weight: 700; }
+/* DEUX RANGS DE PROPOSITIONS AU PLUS SUR LA FRISE DES MARCHES, comme la
+   question y tient en deux lignes au plus : c'est un aperçu, pas la question
+   elle-même. Sans cette borne, huit propositions longues — « 10 × 10 × 10 » —
+   faisaient huit rangs, et la bulle grandissait de 77 px d'une marche à
+   l'autre : on cliquait une marche et la barre fuyait sous le doigt. Mesuré
+   sur « Reconnaître une puissance », le pire des seize exercices à
+   progression ; ramené à 22 px après. L'aperçu de l'aide, lui, garde ses
+   propositions entières : sa bulle est posée sur une hauteur réservée, rien ne
+   bouge sous elle. */
 .cfg-bulle-choix { display: flex; flex-wrap: wrap; gap: 3px; }
+.cfg-marches .cfg-bulle-choix { max-height: 2.5rem; overflow: hidden; }
 .cfg-bulle-choix b {
     font-size: .7rem; font-weight: 700; padding: 2px 6px; border-radius: 5px;
     background: var(--primary-soft, #eceafd); color: var(--primary);

@@ -14,7 +14,8 @@ import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
 import {
     groupesDeMarches, marchesCochees, decoupeMarches, lireLongueurs, ecrireLongueurs,
-    poserBorne as poserBorneMarches, motsDeCoupe
+    poserBorne as poserBorneMarches, motsDeCoupe,
+    cleParMarche, lireParMarche, ecrireParMarche, valeurParMarche
 } from '../core/progression.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
 import { echelleDe, rangDans } from '../core/echelle.js';
@@ -536,7 +537,19 @@ document.addEventListener('pointercancel', () => { quotaTire = null; });
  * @param {{apercu?: boolean}} options
  */
 export function champsSchema(schema, valeurDe, options = {}) {
-    const tous = schema || [];
+    // UN RÉGLAGE PAR MARCHE NE S'ÉCRIT PAS DEUX FOIS. Quand le panneau porte
+    // une frise, la façon de répondre se règle DANS la bulle, marche par
+    // marche (voir `barreMarchesHtml`) : laisser en plus le menu global en bas
+    // du panneau, ce serait deux commandes pour une décision, sans que rien ne
+    // dise laquelle l'emporte — le défaut qu'on vient de corriger sur l'aide.
+    //
+    // Sans frise — le panneau de l'élève, où les marches sont un outil de
+    // préparation qu'on lui retire —, le menu reste ce qu'il était : lui a bien
+    // besoin de choisir comment il répond, il n'a simplement pas de zones où le
+    // faire varier.
+    const liste = schema || [];
+    const tous = liste.some(p => p && p.type === 'marches')
+        ? liste.filter(p => !p.parMarche) : liste;
     const groupes = new Map();
     tous.forEach(p => {
         const g = p.groupe || '';
@@ -1877,6 +1890,27 @@ document.addEventListener('click', (e) => {
     rafraichirBarreMarches(hote, Number(z.dataset.marche));
 });
 
+// RÉGLER LA MARCHE QU'ON REGARDE, ET ELLE SEULE.
+//
+// La bulle reste sur la même marche après le clic : on choisit « 4 propositions »
+// et l'aperçu se redessine AVEC ses quatre propositions, sous les yeux. Sauter
+// à une autre marche, ou refermer la bulle, priverait le geste de sa réponse.
+document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-marche-reponse]');
+    if (!b) return;
+    const hote = b.closest('[data-marches-hote]');
+    if (!hote) return;
+    e.preventDefault();
+    const champ = hote.querySelector(`[data-par-marche="${b.dataset.marcheCle}"]`);
+    if (!champ) return;
+    const table = lireParMarche(champ.value);
+    table[b.dataset.marcheId] = b.dataset.marcheReponse;
+    champ.value = ecrireParMarche(table);
+    champ.dispatchEvent(new Event('change', { bubbles: true }));
+    const scene = hote.querySelector('[data-scene-marches]');
+    rafraichirBarreMarches(hote, Math.max(0, Number(scene && scene.dataset.marcheIci) || 0));
+});
+
 // LA BORNE QUI SE TIRE : on déplace des questions d'une marche à sa voisine,
 // SANS TOUCHER AU TOTAL. C'est la propriété qui compte, et c'est celle de la
 // frise du QCM.
@@ -2198,6 +2232,14 @@ export function readParams(root, schema) {
             out[param.id] = boxes.filter(b => b.checked).map(b => b.value);
             const rep = root.querySelector('[data-repartition-marches]');
             if (rep) out.repartitionMarches = rep.value || '';
+            // ET LES RÉGLAGES POSÉS MARCHE PAR MARCHE, pour la même raison :
+            // ce sont des champs cachés que la bulle écrit, pas des lignes du
+            // schéma. Chacun porte le nom du réglage qu'il précise, et la clé
+            // se compose ici plutôt que dans le DOM — une seule fonction
+            // décide comment ce réglage s'appelle (`cleParMarche`).
+            root.querySelectorAll('[data-par-marche]').forEach(el => {
+                out[cleParMarche(el.dataset.parMarche)] = el.value || '';
+            });
             return;
         }
         if (param.type === 'multiselect') {
@@ -2289,7 +2331,48 @@ function paramMarchesDe(schema) {
     return (schema || []).find(p => p && p.type === 'marches') || null;
 }
 
-function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params = {}) {
+/**
+ * LES RÉGLAGES QUI APPARTIENNENT À LA MARCHE QU'ON REGARDE.
+ *
+ * Rémy : « pour réponse à saisir ou 4 réponses, il faut que ce soit spécifique
+ * à la zone, est-ce clair ? »
+ *
+ * C'est la rangée « 2 · 3 · 4 · ⌨ » de la frise du QCM, posée sous l'aperçu au
+ * lieu d'être sous la barre — et pour la même raison qu'elle y est là-bas : ce
+ * qu'on règle et ce qu'on regarde doivent se toucher. On clique une marche, on
+ * voit sa vraie question, on choisit comment on y répond, et la question se
+ * redessine avec ou sans propositions. Trois gestes qui tiennent dans un
+ * centimètre carré.
+ *
+ * UN BOUTON MONTRE CE QU'IL FAIT, PAS SON NOM COMPLET. « À saisir (clavier de
+ * nombres) » ne tient pas dans une bulle ; l'option porte donc un `court` — un
+ * chiffre, ou l'icône du pavé quand elle est marquée `clavier`, exactement
+ * comme les modes de l'aide.
+ */
+function reglagesDeMarche(schema, z, params) {
+    const parM = (schema || []).filter(p => p && p.parMarche && (p.options || []).length);
+    if (!parM.length || !z) return '';
+    return parM.map(p => {
+        const val = String(valeurParMarche(params, p.id, z.id, p.default));
+        const boutons = p.options.map(o => {
+            const v = String(valeurOption(o));
+            const ici = v === val;
+            const dedans = o.clavier ? PAVE_SVG : escapeAttr(o.court || libelleOption(o));
+            return `<button type="button" class="cfg-bsc${ici ? ' cfg-bsc--ici' : ''}"
+                data-marche-reponse="${escapeAttr(v)}" data-marche-cle="${escapeAttr(p.id)}"
+                data-marche-id="${escapeAttr(z.id)}" aria-pressed="${ici}"
+                title="${escapeAttr(libelleOption(o))}"
+                aria-label="${escapeAttr(libelleOption(o))}">${dedans}</button>`;
+        }).join('');
+        return `<div class="cfg-bulle-reglage">
+            <span class="cfg-bulle-quoi">${escapeAttr(p.label || '')}</span>
+            <span class="cfg-bascule cfg-bascule--bulle" role="group"
+                  aria-label="${escapeAttr(`${p.label} — ${z.nom}`)}">${boutons}</span>
+        </div>`;
+    }).join('');
+}
+
+function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params = {}, schema = []) {
     if (!coupe.length) return '';
     const total = Math.max(1, coupe.reduce((s2, z) => s2 + z.n, 0));
     const i = Math.max(0, Math.min(coupe.length - 1, Math.round(choisie) || 0));
@@ -2351,6 +2434,8 @@ function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params 
         data-marche="${k}"><i></i><b>${escapeAttr(x.nom)}</b><em>${
     x.n ? (x.n === 1 ? x.de : `${x.de} à ${x.a}`) : '—'}</em></button>`).join('');
 
+    const reglages = reglagesDeMarche(schema, z, params);
+
     return `<div class="cfg-apercu-titre">
             <span>Ce que l’élève verra, sur ${total} question${total > 1 ? 's' : ''}</span>
         </div>
@@ -2368,6 +2453,7 @@ function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params 
         // pourquoi il n'y a rien.
         : `<div class="cfg-bulle-q cfg-bulle-q--vide">${z.n
             ? 'Aperçu indisponible' : 'Aucune question sur cette ' + mot}</div>`}
+                ${reglages}
             </div>
             <div class="cfg-bande" data-bande-marches>${bandes}${bornes}</div>
             <div class="cfg-legendes">${legende}</div>
@@ -2433,6 +2519,36 @@ export function brancherMarches(racine, schema, current = {}, exoId = '') {
         rep.value = String(current.repartitionMarches || '');
         champMarches.appendChild(rep);
     }
+    // LES RÉGLAGES QUI CHANGENT D'UNE MARCHE À L'AUTRE — un champ caché par
+    // réglage, écrit depuis la bulle. Même mécanique que le partage, et pour la
+    // même raison : c'est un état de la frise, pas une ligne du schéma.
+    //
+    // LA TABLE EST ÉCRITE EN ENTIER À L'OUVERTURE, marche par marche, y compris
+    // pour celles qui ne font que reprendre le réglage global. C'est délibéré :
+    // ce panneau-ci N'AFFICHE PLUS le menu global (voir `champsSchema`), donc
+    // `readParams` ne le rendra pas, et une table partielle laisserait retomber
+    // les marches non nommées sur le réglage du CATALOGUE — c'est-à-dire
+    // effacerait en silence ce que le professeur avait posé la fois d'avant.
+    // Écrire ce qu'on sait plutôt que compter sur un défaut : la table dit
+    // l'état entier de la frise, et rien ne dépend plus de ce qui a disparu.
+    (schema || []).filter(p => p && p.parMarche).forEach(p => {
+        if (racine.querySelector(`[data-par-marche="${p.id}"]`)) return;
+        const el = document.createElement('input');
+        el.type = 'hidden';
+        el.setAttribute('data-par-marche', p.id);
+        // `data-param` autant que `data-par-marche` : le premier le fait
+        // reconnaître par les écoutes qui redessinent le panneau à chaque
+        // réglage touché, le second par la lecture. Le champ du partage porte
+        // les deux depuis toujours ; celui-ci n'avait que le second, et la
+        // frise ne se redessinait donc pas toute seule.
+        el.dataset.param = cleParMarche(p.id);
+        const table = {};
+        (champMarches._marches || []).forEach(m => {
+            table[m.id] = valeurParMarche(current, p.id, m.id, p.default);
+        });
+        el.value = ecrireParMarche(table);
+        champMarches.appendChild(el);
+    });
     rafraichirBarreMarches(racine);
 
     // LA BARRE SUIT CHAQUE GESTE : cocher une marche, tirer la glissière du
@@ -2459,7 +2575,7 @@ export function rafraichirBarreMarches(racine, choisie) {
     const etat = etatMarches(racine);
     if (!etat) { boite.innerHTML = ''; return; }
     boite.innerHTML = barreMarchesHtml(etat.coupe, boite.dataset.mot || 'marche', i,
-        etat.vide, etat.exoId, etat.params);
+        etat.vide, etat.exoId, etat.params, etat.schema);
 }
 
 /**
@@ -2492,6 +2608,7 @@ function etatMarches(racine) {
         if (barre && barre._schema) params = { ...readParams(racine, barre._schema), ...params };
     } catch { /* un panneau à moitié dessiné ne doit pas casser la barre */ }
     return { liste, cochees, total, params, vide, exoId: (barre && barre.dataset.exo) || '',
+        schema: (barre && barre._schema) || [],
         coupe: decoupeMarches(cochees, total, params) };
 }
 

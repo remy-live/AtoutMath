@@ -16,6 +16,7 @@ import {
     SANS_GROUPE_MAX, PAR_MARCHE_DEFAUT,
     normaliserMarches, marchesCochees, groupesDeMarches, decoupeMarches, partageEgal,
     ecrireLongueurs, lireLongueurs, poserBorne, marcheAuRang, conseilProgression,
+    cleParMarche, lireParMarche, ecrireParMarche, valeurParMarche,
     motsDeCoupe, paramMarches, totalDe
 } from '../js/core/progression.js';
 import { questionsConseillees } from '../js/core/duree.js';
@@ -298,4 +299,74 @@ test('TOUT GÉNÉRATEUR À PROGRESSION OFFRE SES CASES, ET ELLES MARCHENT', asyn
             `${gen.id} : marches jamais jouées en ${total} questions : ${manquantes.join(', ')}`);
     }
     assert.ok(vus >= 13, `seulement ${vus} générateurs à progression`);
+});
+
+// --- UN RÉGLAGE QUI CHANGE D'UNE MARCHE À L'AUTRE ---------------------------
+
+test('LA TABLE PAR MARCHE FAIT L\'ALLER-RETOUR', () => {
+    const table = { thermometre: 'choix', ecriture: 'saisie' };
+    assert.equal(ecrireParMarche(table), 'thermometre:choix,ecriture:saisie');
+    assert.deepEqual(lireParMarche(ecrireParMarche(table)), table);
+    // Rien d'écrit n'est pas une erreur : c'est l'état de départ.
+    assert.deepEqual(lireParMarche(''), {});
+    assert.deepEqual(lireParMarche(undefined), {});
+    // Une table déjà en objet — un parcours relu, une valeur posée à la main.
+    assert.deepEqual(lireParMarche({ a: 'x', b: '' }), { a: 'x' });
+    // Ce qui ne ressemble à rien ne devient pas une clé vide.
+    assert.deepEqual(lireParMarche(':choix,,thermometre:'), {});
+});
+
+test('TROIS SOURCES, ET LA MARCHE PASSE DEVANT', () => {
+    // Rémy : « pour réponse à saisir ou 4 réponses, il faut que ce soit
+    // spécifique à la zone ». La marche nommée l'emporte ; le réglage
+    // d'exercice sert de socle aux autres ; le défaut du générateur ferme la
+    // marche. C'est cet ordre qui fait qu'un exercice sans frise se comporte
+    // exactement comme avant.
+    const params = { reponse: 'choix', reponseParMarche: 'pastilles:saisie' };
+    assert.equal(valeurParMarche(params, 'reponse', 'pastilles', 'saisie'), 'saisie');
+    assert.equal(valeurParMarche(params, 'reponse', 'ecriture', 'saisie'), 'choix');
+    assert.equal(valeurParMarche({}, 'reponse', 'ecriture', 'saisie'), 'saisie');
+    // Le nom du réglage se compose ici, et nulle part ailleurs.
+    assert.equal(cleParMarche('reponse'), 'reponseParMarche');
+});
+
+test('LE GÉNÉRATEUR SUIT LA TABLE, MARCHE PAR MARCHE', async () => {
+    // C'est la seule vérification qui compte : le panneau peut bien dessiner ce
+    // qu'il veut, c'est ici que l'élève reçoit — ou non — ses quatre
+    // propositions. Le test tire les douze questions d'une progression réglée
+    // moitié au clavier, moitié au choix, et regarde ce qui SORT.
+    const { relatifsGenerator } = await import('../js/core/generators/relatifs.js');
+    const params = {
+        marches: ['ascenseur-positif', 'ascenseur-sous-sol', 'thermometre',
+            'pastilles', 'ecriture', 'chaine'],
+        nbQuestions: 12,
+        reponseParMarche: 'ascenseur-positif:choix,ascenseur-sous-sol:choix,'
+            + 'thermometre:choix,pastilles:saisie,ecriture:saisie,chaine:saisie'
+    };
+    const vus = {};
+    for (let i = 0; i < 12; i++) {
+        const it = relatifsGenerator.generate(params, { index: i, total: 12, rng: makeRng(`r${i}`) });
+        vus[it.meta.niveau] = it.answerKind;
+        // UNE QUESTION À CHOISIR A DES PROPOSITIONS, et une question au clavier
+        // n'en a pas : le genre de réponse et la liste doivent dire la même
+        // chose, sinon l'écran montre un pavé sous quatre boutons.
+        assert.equal(Array.isArray(it.choices), it.answerKind === 'choice',
+            `${it.meta.niveau} : le genre de réponse et les propositions divergent`);
+    }
+    assert.deepEqual(vus, {
+        'ascenseur-positif': 'choice', 'ascenseur-sous-sol': 'choice', thermometre: 'choice',
+        pastilles: 'numeric', ecriture: 'numeric', chaine: 'numeric'
+    });
+});
+
+test('SANS TABLE, RIEN NE CHANGE POUR PERSONNE', async () => {
+    // La garde qui protège les seize exercices à progression : un réglage
+    // ajouté pour deux d'entre eux ne doit rien déplacer chez les quatorze
+    // autres, ni chez ces deux-là tant que personne n'a touché la frise.
+    const { relatifsGenerator } = await import('../js/core/generators/relatifs.js');
+    const nature = (params) => Array.from({ length: 12 }, (_, i) =>
+        relatifsGenerator.generate({ ...params, nbQuestions: 12 },
+            { index: i, total: 12, rng: makeRng(`s${i}`) }).answerKind);
+    assert.deepEqual(new Set(nature({})), new Set(['numeric']));
+    assert.deepEqual(new Set(nature({ reponse: 'choix' })), new Set(['choice']));
 });
