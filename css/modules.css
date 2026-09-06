@@ -766,6 +766,13 @@
    glyphes à des traits qu'on ne distingue plus — or l'exercice consiste à les
    COMPTER. */
 .figure-wrap:has(.egy-svg) { width: min(600px, 97%); }
+/* MÊME RAISON POUR LE SEGMENT, LA DROITE ET LA DEMI-DROITE. Le dessin réserve
+   toute sa largeur à la DROITE, qui file de bord à bord ; le segment, lui,
+   n'en occupe qu'un tiers — c'est voulu, il doit se voir plus court. Mais dans
+   une enveloppe taillée pour une figure carrée, ce tiers ne faisait plus que
+   deux cents pixels à côté de bulles de réponse de cent soixante-seize. Rémy :
+   « figure hyper petite pour l'ordinateur et bulle grosse ». */
+.figure-wrap:has(.tr-svg) { width: min(760px, 97%); }
 .fig-svg, .rep-svg { width: 100%; height: auto; max-height: 46cqh; overflow: visible; }
 
 /* --- LE GRAND PLATEAU, C'EST-À-DIRE L'ORDINATEUR ---------------------------
