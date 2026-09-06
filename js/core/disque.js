@@ -72,7 +72,11 @@ export const arrondir = (x, decimales = 1) => {
 // numériquement identiques sur un exercice qui apprend justement à ne pas
 // confondre les deux — et le leurre « c'est l'aire, pas le périmètre » devenait
 // impossible à proposer.
-const RAYON_MIN = 3, RAYON_MAX = 12;
+// ET LE RAYON 3 NON PLUS, DEPUIS LA FICHE PAPIER : sur une feuille, tous les
+// disques partagent une seule échelle, et un rayon de 3 posé à côté d'un rayon
+// de 12 devenait un cercle de sept millimètres dont la cote débordait. Entre 4
+// et 12, le rapport reste de un à trois.
+const RAYON_MIN = 4, RAYON_MAX = 12;
 
 /**
  * COMBIEN DE DÉCIMALES ON DEMANDE — et ce n'est pas la même chose des deux côtés.

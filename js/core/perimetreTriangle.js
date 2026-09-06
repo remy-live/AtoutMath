@@ -67,21 +67,26 @@ export function assezOuvert(a, b, c) {
  */
 export function tirerTriangle(rng, marche = 'quelconque', { max = 12, unite = 'cm' } = {}) {
     const M = Math.max(4, Math.round(max) || 12);
+    // LE PLUS PETIT CÔTÉ N'EST PAS 2, MAIS LE TIERS DU PLUS GRAND. Sur la
+    // FEUILLE, tous les triangles partagent une seule échelle : un triangle de
+    // 2 cm posé à côté d'un triangle de 12 cm devenait un point noir de trois
+    // millimètres, cotes illisibles. Vu sur la première fiche imprimée.
+    const petit = Math.max(2, Math.round(M / 3));
     let a, b, c;
 
     if (marche === 'equilateral') {
-        a = b = c = rng.int(2, M);
+        a = b = c = rng.int(petit, M);
     } else if (marche === 'isocele') {
         // LES DEUX CÔTÉS ÉGAUX SONT AC ET AB : le triangle est isocèle EN A, et
         // c'est ainsi qu'on le dit en classe. La base peut être plus courte ou
         // plus longue que les côtés — un isocèle n'est pas toujours pointu.
         do {
-            b = c = rng.int(3, M);
-            a = rng.int(2, Math.min(M, 2 * b - 1));
+            b = c = rng.int(Math.max(3, petit), M);
+            a = rng.int(petit, Math.min(M, 2 * b - 1));
         } while (!assezOuvert(a, b, c) || a === b);
     } else {
         do {
-            a = rng.int(2, M); b = rng.int(2, M); c = rng.int(2, M);
+            a = rng.int(petit, M); b = rng.int(petit, M); c = rng.int(petit, M);
         } while (!assezOuvert(a, b, c) || a === b || b === c || a === c);
     }
 
@@ -98,7 +103,7 @@ export function tirerTriangle(rng, marche = 'quelconque', { max = 12, unite = 'c
     // LE CÔTÉ QUI MANQUE : on donne le périmètre et deux côtés. Le triangle est
     // quelconque — sur un isocèle, le codage donnerait la réponse.
     do {
-        a = rng.int(2, M); b = rng.int(2, M); c = rng.int(2, M);
+        a = rng.int(petit, M); b = rng.int(petit, M); c = rng.int(petit, M);
     } while (!assezOuvert(a, b, c) || a === b || b === c || a === c);
     const cache = ['a', 'b', 'c'][rng.int(0, 2)];
     return { marche, a, b, c, perimetre: a + b + c, cache, unite, rot };
@@ -194,18 +199,42 @@ const MARGE = 26;     // de quoi loger les cotes et les noms de sommets
  * peut être long et plat ou presque équilatéral, et il doit rester lisible dans
  * les deux cas.
  */
-export function sommetsTriangle(t) {
+/**
+ * LES SOMMETS EN UNITÉS DE LONGUEUR — avant toute mise à l'échelle.
+ *
+ * L'ÉCRAN AJUSTE CHAQUE FIGURE À SA CASE, LE PAPIER NON. Sur une feuille, tous
+ * les triangles partagent une SEULE échelle : c'est ce qui fait qu'un côté de
+ * 4 cm se voit plus court qu'un côté de 10 cm d'un bloc à l'autre, et sur une
+ * fiche de géométrie c'est le dessin qui ment en premier. Les deux tracés
+ * partent donc des mêmes coordonnées, et chacun les met à l'échelle à sa
+ * façon — sans quoi ils dériveraient l'un de l'autre au premier réglage.
+ */
+export function sommetsBruts(t) {
     const { a, b, c } = t;
     const x = (b * b + c * c - a * a) / (2 * c);
     const y = Math.sqrt(Math.max(0, b * b - x * x));
     const pose = [{ n: 'A', x: 0, y: 0 }, { n: 'B', x: c, y: 0 }, { n: 'C', x, y }];
     const th = ((Number(t.rot) || 0) * Math.PI) / 180;
-    const brut = pose.map(p => ({
+    return pose.map(p => ({
         n: p.n,
         x: p.x * Math.cos(th) - p.y * Math.sin(th),
         y: p.x * Math.sin(th) + p.y * Math.cos(th)
     }));
+}
 
+/** L'encombrement de la figure, une fois tournée — pour l'échelle commune. */
+export function etendueTriangle(t) {
+    const s = sommetsBruts(t);
+    const xs = s.map(p => p.x), ys = s.map(p => p.y);
+    return {
+        w: Math.max(...xs) - Math.min(...xs),
+        h: Math.max(...ys) - Math.min(...ys),
+        x0: Math.min(...xs), y0: Math.min(...ys)
+    };
+}
+
+export function sommetsTriangle(t) {
+    const brut = sommetsBruts(t);
     const xs = brut.map(p => p.x), ys = brut.map(p => p.y);
     const larg = Math.max(...xs) - Math.min(...xs) || 1;
     const haut = Math.max(...ys) - Math.min(...ys) || 1;

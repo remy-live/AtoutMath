@@ -50,6 +50,13 @@ export const mesuresExercises = [
         id: 'mes-perimetre-triangle', title: 'Le Tour du Triangle',
         cree: '2026-09-06',
         generatorId: 'mes.perimetre-triangle', activityId: 'numpad',
+        // LA FIGURE PART SUR LE PAPIER, ELLE AUSSI. Rémy : « n'oublie pas non
+        // plus d'en faire des fiches papier ». Une fiche de périmètre sans
+        // figure n'apprend pas que le périmètre fait le tour — c'est la leçon
+        // du rectangle, et elle vaut deux fois pour un triangle, dont le
+        // codage EST la moitié du travail.
+        printable: 'triangle',
+        consignePapier: 'Écris le calcul, puis le résultat avec son unité.',
         skills: ['mes.perimetre.triangle'],
         motsClefs: ['périmètre', 'triangle', 'isocèle', 'équilatéral', 'codage', 'tour'],
         params: { max: 12, unite: 'cm' },
@@ -74,6 +81,11 @@ export const mesuresExercises = [
         id: 'mes-disque', title: 'Le Périmètre et l\'Aire du Disque',
         cree: '2026-09-06',
         generatorId: 'mes.disque', activityId: 'numpad',
+        // Sur la feuille, les étapes cochées décident des questions : une fiche
+        // de valeurs exactes, une fiche de valeurs arrondies, ou les deux — la
+        // consigne s'ajuste toute seule.
+        printable: 'disque',
+        consignePapier: 'Écris le calcul, puis le résultat avec son unité.',
         skills: ['mes.perimetre.disque', 'mes.aire.disque'],
         // LA CALCULATRICE EST LE SUJET DES DEUX DERNIÈRES ÉTAPES, pas un
         // service rendu : « et après on a le droit à la calculatrice pour

@@ -42,7 +42,11 @@ export const perimetreTriangleGenerator = {
         },
         {
             id: 'unite', type: 'select', label: 'Unité', default: 'cm',
-            options: [{ value: 'cm' }, { value: 'm' }, { value: 'mm' }],
+            options: [
+                { value: 'cm', label: 'centimètres (cm)' },
+                { value: 'm', label: 'mètres (m)' },
+                { value: 'mm', label: 'millimètres (mm)' }
+            ],
             aide: 'L’unité écrite sur la figure et attendue dans la réponse. Elle ne change rien '
                 + 'au calcul.'
         },
@@ -96,7 +100,7 @@ export const perimetreTriangleGenerator = {
             difficulty: DIFFICULTE[id] || 2,
             meta: {
                 marche: id, titre: (MARCHES_TRIANGLE.find(m => m.id === id) || {}).nom,
-                a: t.a, b: t.b, c: t.c, perimetre: t.perimetre, cache: t.cache || '',
+                a: t.a, b: t.b, c: t.c, rot: t.rot, perimetre: t.perimetre, cache: t.cache || '',
                 unit: unite, decimal: false, figure
             }
         });

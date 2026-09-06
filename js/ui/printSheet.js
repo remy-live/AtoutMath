@@ -31,6 +31,10 @@ import {
     COULEUR_FIGURE as FIGURE_Q, COULEUR_BANDE as BANDE_Q
 } from '../core/quadrilateres.js';
 import { pointsDe as pointsDeTrigo } from '../core/trigonometrie.js';
+import { sommetsBruts, etendueTriangle, ecrireNombre as ecrireLongueurTri }
+    from '../core/perimetreTriangle.js';
+import { ETAPES_EXACTES as DISQUE_EXACTES, ecrireNombre as ecrireNombreDisque }
+    from '../core/disque.js';
 import { MONDE as MONDE_PC, couperAuMonde } from '../core/programmeConstruction.js';
 import { ETAPES as ETAPES_RAISONNEMENT, trame as trameRaisonnement } from '../core/raisonnement.js';
 // LA SOLUTION DES TROIS CASSE-TÊTE, POSITION PAR POSITION. Rémy : « pour les
@@ -6963,6 +6967,313 @@ function dessinerRectanglePdf(doc, item, slot, solution, champ, rang, tous) {
     });
 }
 
+// --- LE TOUR DU TRIANGLE ------------------------------------------------------
+//
+// Même principe que le rectangle, et pour la même raison : sur une fiche de
+// géométrie, une longueur se LIT sur la figure. Le triangle est donc coté, codé
+// et dessiné à l'échelle — l'échelle de la FEUILLE, commune à tous les blocs,
+// sans quoi un côté de 4 cm et un côté de 10 cm se dessineraient pareil.
+
+/** La mise en page d'un bloc « triangle », en millimètres. */
+function geoTriangle(item, slot, tous) {
+    const m = item.meta;
+    const b = slot.boite;
+    const ligneH = Math.max(4, Math.min(b.h * 0.2, 6));
+    const zone = b.h - ligneH;
+    // De quoi loger les cotes et les noms de sommets, qui sortent de la figure.
+    const marge = Math.max(3.5, Math.min(b.w, zone) * 0.12);
+    const dispoW = Math.max(6, b.w - 2 * marge);
+    const dispoH = Math.max(6, zone - 2 * marge);
+
+    const metas = (tous && tous.length ? tous : [item]).map(it => it.meta || {});
+    const etendues = metas.map(x => etendueTriangle(x));
+    const grandW = Math.max(...etendues.map(e => e.w), 1);
+    const grandH = Math.max(...etendues.map(e => e.h), 1);
+    const ech = Math.min(dispoW / grandW, dispoH / grandH);
+
+    const e = etendueTriangle(m);
+    const w = e.w * ech, h = e.h * ech;
+    const x = b.x + marge + (dispoW - w) / 2;
+    const y = b.y + marge + (dispoH - h) / 2;
+    // L'AXE DES ORDONNÉES EST RETOURNÉ, comme à l'écran : en PDF comme en SVG,
+    // y descend. Sans ce retournement le triangle est dessiné pointe en bas —
+    // juste, mais illisible.
+    const P = Object.fromEntries(sommetsBruts(m).map(p => [p.n, {
+        x: x + (p.x - e.x0) * ech,
+        y: y + h - (p.y - e.y0) * ech
+    }]));
+    const centre = {
+        x: (P.A.x + P.B.x + P.C.x) / 3,
+        y: (P.A.y + P.B.y + P.C.y) / 3
+    };
+    return {
+        m, P, centre, b, ligneH,
+        police: Math.max(2.1, Math.min(b.h * 0.075, 3.6)),
+        ligneY: b.y + zone
+    };
+}
+
+/** Ce qu'on demande sur la feuille, et la réponse quand c'est le corrigé. */
+function demandeTriangle(m) {
+    const nom = { a: '[BC]', b: '[AC]', c: '[AB]' };
+    if (m.marche === 'manquant') {
+        return { etiquette: nom[m.cache] || 'Côté', signe: '=', valeur: `${m[m.cache]} ${m.unit}` };
+    }
+    return { etiquette: 'Périmètre', signe: '=', valeur: `${m.perimetre} ${m.unit}` };
+}
+
+/**
+ * Les mesures et les marques d'un côté, en coordonnées de page.
+ *
+ * Une cote se pose DEHORS : au milieu du côté, poussée à l'opposé du centre de
+ * gravité. C'est la règle la plus simple qui marche pour tous les triangles, y
+ * compris les très plats — et c'est la même qu'à l'écran, pour que la feuille
+ * et l'écran montrent la même figure.
+ */
+function cotesTriangle(g) {
+    const m = g.m;
+    const muet = { isocele: ['b'], equilateral: ['a', 'b'] }[m.marche] || [];
+    const dit = (k) => (m.marche === 'manquant' && m.cache === k) ? '?'
+        : (muet.includes(k) ? '' : String(m[k]));
+    const marques = m.marche === 'isocele' ? { a: 0, b: 1, c: 1 }
+        : (m.marche === 'equilateral' ? { a: 1, b: 1, c: 1 } : { a: 0, b: 0, c: 0 });
+    const cotes = [['a', g.P.B, g.P.C], ['b', g.P.A, g.P.C], ['c', g.P.A, g.P.B]];
+
+    return cotes.map(([cle, Q, R]) => {
+        const mx = (Q.x + R.x) / 2, my = (Q.y + R.y) / 2;
+        const vx = mx - g.centre.x, vy = my - g.centre.y;
+        const n = Math.hypot(vx, vy) || 1;
+        const ecart = g.police * 1.15;
+        const dx = R.x - Q.x, dy = R.y - Q.y;
+        const l = Math.hypot(dx, dy) || 1;
+        const ux = dx / l, uy = dy / l;
+        const traits = [];
+        for (let i = 0; i < (marques[cle] || 0); i++) {
+            const d = (i - (marques[cle] - 1) / 2) * g.police * 0.5;
+            const cx = mx + ux * d, cy = my + uy * d;
+            const e = g.police * 0.45;
+            traits.push({ x1: cx - uy * e, y1: cy + ux * e, x2: cx + uy * e, y2: cy - ux * e });
+        }
+        return {
+            texte: dit(cle), traits,
+            x: mx + (vx / n) * ecart, y: my + (vy / n) * ecart
+        };
+    });
+}
+
+function trianglePreviewHtml(item, slot, k, solution, rang, tous) {
+    const g = geoTriangle(item, slot, tous);
+    const T = (v) => (v * k).toFixed(2);
+    const couleur = polycopieEnCouleur();
+    const t = teinteFigure(rang);
+    const trait = couleur ? rvbCss(t.trait) : '#1a202c';
+
+    let d = `<polygon points="${[g.P.A, g.P.B, g.P.C].map(p => `${T(p.x)},${T(p.y)}`).join(' ')}"
+        fill="${couleur ? rvbCss(t.fond) : 'none'}" fill-opacity="0.35"
+        stroke="${trait}" stroke-width="${T(0.45)}" stroke-linejoin="round"/>`;
+
+    cotesTriangle(g).forEach(c => {
+        c.traits.forEach(m => {
+            d += `<line x1="${T(m.x1)}" y1="${T(m.y1)}" x2="${T(m.x2)}" y2="${T(m.y2)}"
+                stroke="${couleur ? rvbCss(t.trait) : '#1a202c'}" stroke-width="${T(0.4)}"/>`;
+        });
+        if (!c.texte) return;
+        d += `<text x="${T(c.x)}" y="${T(c.y)}" text-anchor="middle" dominant-baseline="central"
+            font-size="${T(g.police)}" font-weight="700" fill="#2d3748">${c.texte}</text>`;
+    });
+    ['A', 'B', 'C'].forEach(nom => {
+        const p = g.P[nom];
+        const vx = p.x - g.centre.x, vy = p.y - g.centre.y;
+        const n = Math.hypot(vx, vy) || 1;
+        d += `<text x="${T(p.x + (vx / n) * g.police)}" y="${T(p.y + (vy / n) * g.police)}"
+            text-anchor="middle" dominant-baseline="central"
+            font-size="${T(g.police * 0.92)}" font-weight="700" fill="#1a202c">${nom}</text>`;
+    });
+
+    const q = demandeTriangle(g.m);
+    const valeur = solution ? q.valeur : `.............. ${g.m.unit}`;
+    return `<svg class="fx-rc-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`
+        + `<div class="fx-rc-ligne" style="left:${g.b.x * k}px; top:${g.ligneY * k}px;
+            width:${g.b.w * k}px; height:${g.ligneH * k}px;
+            font-size:${g.ligneH * 0.46 * k}px">
+            <b>${q.etiquette}</b><span>${q.signe || '='}</span><i>${valeur}</i></div>`;
+}
+
+function dessinerTrianglePdf(doc, item, slot, solution, champ, rang, tous) {
+    const g = geoTriangle(item, slot, tous);
+    const couleur = polycopieEnCouleur();
+    const t = teinteFigure(rang);
+
+    if (couleur) { doc.setDrawColor(...t.trait); doc.setFillColor(...t.fond); }
+    else { doc.setDrawColor(...ENCRE.trait); doc.setFillColor(255, 255, 255); }
+    doc.setLineWidth(0.45);
+    doc.setLineJoin('round');
+    doc.triangle(g.P.A.x, g.P.A.y, g.P.B.x, g.P.B.y, g.P.C.x, g.P.C.y, couleur ? 'FD' : 'S');
+
+    doc.setLineWidth(0.4);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.police * 2.83);
+    doc.setTextColor(...ENCRE.texte);
+    cotesTriangle(g).forEach(c => {
+        c.traits.forEach(m => doc.line(m.x1, m.y1, m.x2, m.y2));
+        if (c.texte) doc.text(pourPdf(c.texte), c.x, c.y + g.police * 0.35, { align: 'center' });
+    });
+    doc.setFontSize(g.police * 2.6);
+    ['A', 'B', 'C'].forEach(nom => {
+        const p = g.P[nom];
+        const vx = p.x - g.centre.x, vy = p.y - g.centre.y;
+        const n = Math.hypot(vx, vy) || 1;
+        doc.text(nom, p.x + (vx / n) * g.police, p.y + (vy / n) * g.police + g.police * 0.35,
+            { align: 'center' });
+    });
+
+    ligneReponseFigurePdf(doc, g, demandeTriangle(g.m), solution, champ, g.m.unit);
+}
+
+/**
+ * La ligne « Périmètre = ……… cm » sous une figure, commune au triangle et au
+ * disque. (Le nom porte « Figure » : `ligneReponsePdf` existe déjà plus haut,
+ * pour les blocs de texte, et ne prend pas les mêmes mesures.)
+ */
+function ligneReponseFigurePdf(doc, g, q, solution, champ, unite) {
+    const y = g.ligneY + g.ligneH * 0.68;
+    const x0 = g.b.x + 2;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(Math.max(6.5, Math.min(g.ligneH * 1.4, 11)));
+    doc.setTextColor(...ENCRE.texte);
+    const etiquette = pourPdf(`${q.etiquette} ${q.signe || '='}`);
+    doc.text(etiquette, x0, y);
+    const xr = x0 + doc.getTextWidth(etiquette) + 2;
+    if (solution) { doc.text(pourPdf(q.valeur), xr, y); return; }
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...ENCRE.gris);
+    doc.text(pourPdf(`.............. ${unite || ''}`.trim()), xr, y);
+    if (champ) champ(xr, y - g.ligneH * 0.6, g.b.x + g.b.w - 2 - xr, g.ligneH * 0.8);
+}
+
+// --- LE DISQUE ------------------------------------------------------------------
+//
+// Le disque est dessiné à l'échelle lui aussi, et il ne porte QUE le segment
+// donné par l'énoncé : le rayon, ou le diamètre. Les dessiner tous les deux
+// répondrait à l'étape où toute la difficulté est justement de passer de l'un
+// à l'autre.
+
+function geoDisque(item, slot, tous) {
+    const m = item.meta;
+    const b = slot.boite;
+    const ligneH = Math.max(4, Math.min(b.h * 0.2, 6));
+    const zone = b.h - ligneH;
+    const police = Math.max(2.1, Math.min(b.h * 0.075, 3.6));
+    const marge = police * 1.6;
+    const dispo = Math.max(6, Math.min(b.w, zone) - 2 * marge);
+
+    const metas = (tous && tous.length ? tous : [item]).map(it => it.meta || {});
+    const grand = Math.max(...metas.map(x => Number(x.r) || 1), 1);
+    // « QUELLE FORMULE ? » NE PARLE D'AUCUN DISQUE PARTICULIER : sa figure porte
+    // « r », pas une mesure. La dessiner à l'échelle du rayon tiré ferait deux
+    // disques de tailles différentes pour la même question, et l'écart
+    // signifierait quelque chose qui n'existe pas. On la dessine donc à la
+    // taille de la case.
+    const rayon = m.marche === 'formule' ? grand : (Number(m.r) || 1);
+    const R = (dispo / 2) * rayon / grand;
+    return {
+        m, R, police, b, ligneH,
+        cx: b.x + b.w / 2, cy: b.y + zone / 2,
+        ligneY: b.y + zone
+    };
+}
+
+function demandeDisque(m) {
+    if (m.marche === 'formule') {
+        return { etiquette: 'Formule', signe: '=',
+            valeur: m.surLAire ? 'π × r × r' : '2 × π × r', unite: '' };
+    }
+    const exact = DISQUE_EXACTES.includes(m.marche);
+    const grandeur = m.surLAire ? 'Aire' : 'Périmètre';
+    // LE SIGNE FAIT PARTIE DE LA QUESTION. Une valeur exacte s'écrit avec « = »,
+    // une valeur arrondie avec « ≈ », et c'est une distinction du cours — pas
+    // une décoration. La ligne écrivait « Périmètre ≈ = … » : les deux signes à
+    // la file, parce que l'étiquette portait déjà le sien.
+    return exact
+        ? { etiquette: `${grandeur} exact${m.surLAire ? 'e' : ''}`, signe: '=',
+            valeur: m.exact, unite: '' }
+        : { etiquette: grandeur, signe: '≈',
+            valeur: `${ecrireNombreDisque(m.arrondi)} ${m.unit}`, unite: m.unit };
+}
+
+/**
+ * Le segment donné : rayon depuis le centre, ou diamètre de bord à bord.
+ *
+ * IL EST HORIZONTAL SUR LE PAPIER, et c'est un choix de lisibilité. À l'écran
+ * il est incliné, parce que la figure y est trois fois plus grande ; sur une
+ * fiche de neuf disques, un rayon oblique posait sa mesure en travers de l'arc —
+ * « 20 cm » se lisait par-dessus le cercle qu'il mesure. Horizontal, le nombre
+ * tient au-dessus du trait, à l'intérieur du disque, et ne croise rien.
+ */
+function segmentDisque(g) {
+    const parDiametre = g.m.marche === 'diametre';
+    const P = { x: g.cx + g.R, y: g.cy };
+    const Q = parDiametre ? { x: g.cx - g.R, y: g.cy } : { x: g.cx, y: g.cy };
+    const texte = g.m.marche === 'formule' ? 'r'
+        : `${parDiametre ? g.m.d : g.m.r} ${g.m.unit || 'cm'}`;
+    return {
+        P, Q, texte,
+        mx: (P.x + Q.x) / 2,
+        my: g.cy - g.police * 0.75
+    };
+}
+
+function disquePreviewHtml(item, slot, k, solution, rang, tous) {
+    const g = geoDisque(item, slot, tous);
+    const T = (v) => (v * k).toFixed(2);
+    const couleur = polycopieEnCouleur();
+    const t = teinteFigure(rang);
+    const s = segmentDisque(g);
+
+    let d = `<circle cx="${T(g.cx)}" cy="${T(g.cy)}" r="${T(g.R)}"
+        fill="${couleur ? rvbCss(t.fond) : 'none'}" fill-opacity="0.35"
+        stroke="${couleur ? rvbCss(t.trait) : '#1a202c'}" stroke-width="${T(0.45)}"/>`;
+    d += `<line x1="${T(s.P.x)}" y1="${T(s.P.y)}" x2="${T(s.Q.x)}" y2="${T(s.Q.y)}"
+        stroke="#1a202c" stroke-width="${T(0.4)}"/>`;
+    d += `<circle cx="${T(g.cx)}" cy="${T(g.cy)}" r="${T(0.35)}" fill="#1a202c"/>`;
+    d += `<text x="${T(s.mx)}" y="${T(s.my)}" text-anchor="middle" dominant-baseline="auto"
+        font-size="${T(g.police)}" font-weight="700" fill="#2d3748">${s.texte}</text>`;
+
+    const q = demandeDisque(g.m);
+    const valeur = solution ? q.valeur : `.............. ${q.unite}`.trimEnd();
+    return `<svg class="fx-rc-svg" style="left:0; top:0; width:100%; height:100%">${d}</svg>`
+        + `<div class="fx-rc-ligne" style="left:${g.b.x * k}px; top:${g.ligneY * k}px;
+            width:${g.b.w * k}px; height:${g.ligneH * k}px;
+            font-size:${g.ligneH * 0.44 * k}px">
+            <b>${q.etiquette}</b><span>${q.signe || '='}</span><i>${valeur}</i></div>`;
+}
+
+function dessinerDisquePdf(doc, item, slot, solution, champ, rang, tous) {
+    const g = geoDisque(item, slot, tous);
+    const couleur = polycopieEnCouleur();
+    const t = teinteFigure(rang);
+    const s = segmentDisque(g);
+
+    if (couleur) { doc.setDrawColor(...t.trait); doc.setFillColor(...t.fond); }
+    else { doc.setDrawColor(...ENCRE.trait); doc.setFillColor(255, 255, 255); }
+    doc.setLineWidth(0.45);
+    doc.circle(g.cx, g.cy, g.R, couleur ? 'FD' : 'S');
+
+    doc.setDrawColor(...ENCRE.trait);
+    doc.setLineWidth(0.4);
+    doc.line(s.P.x, s.P.y, s.Q.x, s.Q.y);
+    doc.setFillColor(...ENCRE.trait);
+    doc.circle(g.cx, g.cy, 0.35, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.police * 2.83);
+    doc.setTextColor(...ENCRE.texte);
+    doc.text(pourPdf(s.texte), s.mx, s.my, { align: 'center' });
+
+    const q = demandeDisque(g.m);
+    ligneReponseFigurePdf(doc, g, q, solution, champ, q.unite);
+}
+
 // --- L'ÉCHIQUIER ---------------------------------------------------------------
 //
 // Un échiquier est un tableau à double entrée : lettre en abscisse, chiffre en
@@ -13672,6 +13983,50 @@ export const RENDUS = {
         // d'être haut. Trois rangées au lieu de deux, et jusqu'à quatre.
         disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
         proportions: { w: 1, h: 0.5 },
+        parLigneDefaut: 3
+    },
+
+    triangle: {
+        titre: 'Le tour du triangle',
+        consigne: () => 'Les longueurs sont écrites sur la figure. Calcule le périmètre de '
+            + 'chaque triangle — le tour, c\'est-à-dire les trois côtés mis bout à bout. '
+            + 'Attention aux MARQUES : deux côtés qui portent la même marque ont la même '
+            + 'longueur, et c\'est pour cela qu\'une seule mesure est écrite. Quand le '
+            + 'périmètre est donné et qu\'un côté porte un « ? », c\'est ce côté qu\'on cherche.',
+        previewGrille: trianglePreviewHtml,
+        pdfGrille: dessinerTrianglePdf,
+        nomBloc: 'Triangle',
+        // Une figure et une ligne de réponse : même encombrement que le
+        // rectangle, à ceci près qu'un triangle est plus haut que large.
+        disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
+        proportions: { w: 1, h: 0.75 },
+        parLigneDefaut: 3
+    },
+
+    disque: {
+        titre: 'Le périmètre et l\'aire du disque',
+        consigne: (items) => {
+            const exact = (items || []).some(it => DISQUE_EXACTES.includes((it.meta || {}).marche));
+            const arrondi = (items || []).some(it => !DISQUE_EXACTES.includes((it.meta || {}).marche));
+            const commun = 'La mesure donnée est écrite sur la figure — regarde bien s\'il '
+                + 's\'agit du RAYON ou du DIAMÈTRE. ';
+            if (exact && !arrondi) {
+                return `${commun}Donne la valeur EXACTE : on garde le π, on n\'arrondit pas. `
+                    + 'Périmètre = 2 × π × r, aire = π × r × r.';
+            }
+            if (arrondi && !exact) {
+                return `${commun}Donne la valeur ARRONDIE : le périmètre au dixième, l\'aire à `
+                    + 'l\'unité. On arrondit à la toute fin, jamais avant.';
+            }
+            return `${commun}Quand on demande la valeur EXACTE, on garde le π ; quand on demande `
+                + 'la valeur arrondie, on prend la calculatrice — le périmètre au dixième, '
+                + 'l\'aire à l\'unité.';
+        },
+        previewGrille: disquePreviewHtml,
+        pdfGrille: dessinerDisquePdf,
+        nomBloc: 'Disque',
+        disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
+        proportions: { w: 1, h: 0.8 },
         parLigneDefaut: 3
     },
 
