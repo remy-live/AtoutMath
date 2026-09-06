@@ -9170,11 +9170,14 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 }
 .pp-den { border-top: 3px solid currentColor; }
 
-/* LE NOMBRE QU'ON DÉCOMPOSE RESTE ÉCRIT, en petit, sous les deux cases.
-   Rémy : « juste rappeler à quoi doit être égale la décomposition ». Il
-   disparaissait en s'ouvrant, et deux cases vides au milieu d'un calcul ne
-   disent pas ce qu'on cherche — surtout au retour de la table de Pythagore. */
-.pp-ouvre { display: inline-flex; flex-direction: column; align-items: center; gap: .05em; }
+/* LE NOMBRE QU'ON DÉCOMPOSE RESTE ÉCRIT, en petit, AU-DESSUS des deux cases.
+   Rémy : « juste rappeler à quoi doit être égale la décomposition », puis
+   « écris = 7 au-dessus ». Il disparaissait en s'ouvrant, et deux cases vides
+   au milieu d'un calcul ne disent pas ce qu'on cherche — surtout au retour de
+   la table de Pythagore. Sous les cases il se glissait entre elles et la barre
+   de fraction, où il se lisait comme un morceau du calcul ; au-dessus, il est
+   clairement une étiquette. */
+.pp-ouvre { display: inline-flex; flex-direction: column; align-items: center; gap: .06em; }
 .pp-duo { display: inline-flex; align-items: center; gap: .12em; }
 .pp-cible {
     font-size: .38em; font-weight: 700; opacity: .55; letter-spacing: .02em;
@@ -9221,8 +9224,50 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 }
 .pp-case:focus { outline: 2px solid var(--primary); outline-offset: 2px; }
 
+/* LES DEUX CASES DU RÉSULTAT, dans la ligne du calcul. Ce ne sont pas des
+   champs de saisie : sur un téléphone, un `<input>` fait monter le clavier du
+   système, qui mange précisément la moitié de l'écran où se trouve le produit
+   qu'on est en train de recopier. Ce sont des boutons qu'on choisit, et le
+   pavé de la page les remplit. */
+.pp-caseres {
+    font: inherit; font-weight: 800; color: var(--text-main);
+    min-width: 2.4em; min-height: 1.15em; padding: 0 .1em;
+    border: 2px dashed color-mix(in srgb, var(--primary) 45%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+    cursor: pointer; line-height: 1.1;
+}
+.pp-caseres--active {
+    border-style: solid; border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+/* LE PAVÉ NUMÉRIQUE — le même geste que celui de l'addition posée, mais avec
+   ses propres classes : partager `.fa-` coudrait deux activités l'une à
+   l'autre pour dix lignes de style, et les unités `cq` de là-bas dépendent
+   d'un conteneur nommé qui n'existe pas ici. */
+.pp-pave {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: clamp(4px, 1.2vw, 8px);
+    width: min(100%, 26rem); margin: 0 auto;
+}
+.pp-touche {
+    min-height: clamp(38px, 6vh, 52px);
+    border: 2px solid var(--border, #d8dbe6); border-radius: 12px;
+    background: var(--surface, #fff); color: var(--text-main);
+    font-size: clamp(1rem, 3.4vw, 1.3rem); font-weight: 800;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.pp-touche:active { transform: scale(.94); }
+.pp-touche--ok {
+    grid-column: span 2; background: var(--primary);
+    border-color: var(--primary); color: #fff;
+    font-size: clamp(.8rem, 2.6vw, 1rem);
+}
+.pp-touche--ok:disabled { opacity: .45; cursor: default; }
+
 .pp-outils { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-.pp-outil, .pp-table, .pp-valider {
+.pp-outil, .pp-table {
     font: inherit; font-weight: 700; cursor: pointer;
     padding: 10px 16px; border-radius: 12px;
     border: 2px solid var(--border, #d8dbe6);
@@ -9232,24 +9277,13 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     border-color: var(--primary); color: var(--primary);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
 }
-.pp-valider { border-color: var(--primary); background: var(--primary); color: #fff; }
 .pp-aide-mode { font-size: .82rem; opacity: .7; margin: 2px 0 0; text-align: center; }
 .pp-note { min-height: 1.4em; margin: 0; text-align: center; color: var(--danger, #e0245e); font-weight: 600; }
 .pp-bravo { margin: 0 0 8px; text-align: center; font-weight: 600; }
-.pp-res { display: flex; align-items: center; justify-content: center; gap: 16px; }
-/* LE RÉSULTAT S'ÉCRIT DANS UNE FRACTION, pas dans deux boîtes empilées. Le
-   premier jet laissait à la case du numérateur son propre soulignement : avec
-   le trait que `.pp-den` pose au-dessus de lui, cela faisait DEUX barres de
-   fraction l'une sur l'autre, et l'ensemble ne ressemblait plus à une
-   fraction. La barre appartient à la fraction ; les cases, elles, se
-   contentent d'un fond. */
-.pp-frac--res { font-size: clamp(1.4rem, 6vw, 2.4rem); }
-.pp-frac--res .pp-num { padding-bottom: .1em; }
-.pp-frac--res .pp-den { padding-top: .1em; }
-.pp-case--res {
-    border: none; border-radius: 10px; width: 2.6em;
-    background: color-mix(in srgb, var(--primary) 10%, transparent);
-}
+/* LE RÉSULTAT S'ÉCRIT DANS UNE FRACTION, pas dans deux boîtes empilées : la
+   barre appartient à la fraction, les cases se contentent d'un fond. */
+.pp-frac--res .pp-num { padding-bottom: .12em; }
+.pp-frac--res .pp-den { padding-top: .12em; }
 
 /* LA TABLE DE PYTHAGORE. Elle ne donne pas la réponse : elle allume les cases
    où le nombre cherché apparaît, et l'élève LIT ses deux facteurs sur les

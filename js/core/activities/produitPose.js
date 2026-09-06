@@ -39,6 +39,10 @@ import {
 } from '../produitPose.js';
 import { showModal } from '../../ui/modal.js';
 
+/** Les touches du pavé, dans l'ordre où elles s'écrivent — pas celui d'une
+ *  calculatrice : c'est une ligne de chiffres, pas un clavier de comptable. */
+const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let item = null;
@@ -48,6 +52,8 @@ export function mount(container, session, opts = {}) {
     let ouvert = null;          // le jeton ouvert en « … × … »
     let tableOuverte = null;
     let fini = false;           // l'expression est simplifiée, on écrit le résultat
+    let res = { n: '', d: '' }; // ce qu'on tape dans le résultat
+    let resActif = 'n';         // la case du résultat que le pavé remplit
 
     function renderNext() {
         if (destroyed) return;
@@ -57,6 +63,8 @@ export function mount(container, session, opts = {}) {
         choisi = null;
         ouvert = null;
         fini = false;
+        res = { n: '', d: '' };
+        resActif = 'n';
         render();
     }
 
@@ -71,12 +79,16 @@ export function mount(container, session, opts = {}) {
         // nombre dans la ligne : on voit ce qu'on est en train de faire là où
         // on le fait, et non dans un panneau à côté.
         if (ouvert === t.id) {
-            // ON RAPPELLE CE QUE LA DÉCOMPOSITION DOIT VALOIR. Rémy : « juste
-            // rappeler à quoi doit être égale la décomposition ». Le nombre
-            // disparaissait en s'ouvrant : deux cases vides au milieu d'un
-            // calcul, et plus rien ne disait ce qu'on cherchait à écrire —
-            // surtout après un détour par la table de Pythagore.
+            // ON RAPPELLE CE QUE LA DÉCOMPOSITION DOIT VALOIR, AU-DESSUS.
+            // Rémy : « juste rappeler à quoi doit être égale la décomposition »,
+            // puis « écris = 7 au-dessus ». Le nombre disparaissait en
+            // s'ouvrant : deux cases vides au milieu d'un calcul, et plus rien
+            // ne disait ce qu'on cherchait à écrire — surtout après un détour
+            // par la table de Pythagore. Sous les cases il se glissait entre
+            // elles et la barre de fraction, où il se lisait comme un morceau
+            // du calcul ; au-dessus, il est clairement une étiquette.
             return `<span class="pp-ouvre" data-ouvre>
+                <span class="pp-cible">= ${t.v}</span>
                 <span class="pp-duo">
                     <input class="pp-case" data-fac="1" inputmode="numeric" maxlength="3"
                         aria-label="premier facteur de ${t.v}" autocomplete="off">
@@ -84,7 +96,6 @@ export function mount(container, session, opts = {}) {
                     <input class="pp-case" data-fac="2" inputmode="numeric" maxlength="3"
                         aria-label="second facteur de ${t.v}" autocomplete="off">
                 </span>
-                <span class="pp-cible">= ${t.v}</span>
             </span>`;
         }
         return `<button type="button" class="${classes.join(' ')}" data-jeton="${t.id}"
@@ -95,23 +106,41 @@ export function mount(container, session, opts = {}) {
         .map(t => jetonHtml(t, etage))
         .join('<span class="pp-fois">×</span>');
 
+    /** Une case du résultat : on la choisit, le pavé la remplit. */
+    const caseRes = (k) => `<button type="button"
+        class="pp-caseres${resActif === k ? ' pp-caseres--active' : ''}" data-res="${k}"
+        aria-label="${k === 'n' ? 'numérateur' : 'dénominateur'} du résultat"
+        >${res[k] || ''}</button>`;
+
     function expressionHtml() {
-        return etat.fractions.map((f, i) => `
+        const produit = etat.fractions.map((f, i) => `
             ${i ? '<span class="pp-op">×</span>' : ''}
             <span class="pp-frac">
                 <span class="pp-num">${etageHtml(f.haut, 'haut')}</span>
                 <span class="pp-den">${etageHtml(f.bas, 'bas')}</span>
             </span>`).join('');
+        if (!fini) return produit;
+        // LE RÉSULTAT S'ÉCRIT DANS LA MÊME LIGNE, après un « = ». Rémy : « mets
+        // la fraction avec les produits et le = à côté quand on a barré ». Il
+        // vivait dans un bloc à part, sous le calcul : sur un téléphone, ce
+        // bloc plus le pavé numérique ne tenaient pas ensemble, et l'on
+        // perdait de vue le produit qu'on est en train de recopier. Sur une
+        // seule ligne, on lit « ce qui reste = ce que j'écris ».
+        return `${produit}
+            <span class="pp-op">=</span>
+            <span class="pp-frac pp-frac--res">
+                <span class="pp-num">${caseRes('n')}</span>
+                <span class="pp-den">${caseRes('d')}</span>
+            </span>`;
     }
 
     function render() {
-        const r = resultat(etat);
         container.innerHTML = `
             <div class="pp-scene">
                 <div class="game-question">${item.prompt.consigne || 'Simplifie, puis calcule.'}</div>
                 <div class="pp-expr" data-expr>${expressionHtml()}</div>
                 <p class="pp-note" data-note role="status"></p>
-                ${fini ? finalHtml(r) : outilsHtml()}
+                ${fini ? finalHtml() : outilsHtml()}
             </div>
             ${hintBar(item)}`;
         wireHint(container, item, session);
@@ -132,23 +161,26 @@ export function mount(container, session, opts = {}) {
         : 'Clique un nombre en haut, puis le même en bas.'}</p>`;
     }
 
+    // LE PAVÉ NUMÉRIQUE, ET NON UN CHAMP DE SAISIE. Rémy : « pour que sur
+    // téléphone portable on puisse avoir le pavé numérique que tu as déjà
+    // créé ». Un `<input>` fait monter le clavier du système, qui mange la
+    // moitié de l'écran — précisément la moitié où se trouve le calcul qu'on
+    // est en train de recopier. Le pavé, lui, est dans la page : il ne cache
+    // rien, et il n'offre que des chiffres.
+    //
     // LA DERNIÈRE LIGNE EST LA SEULE QUI COMPTE POUR LA SESSION. Décomposer et
     // barrer sont l'écriture du raisonnement : on les corrige sur place, on ne
     // les note pas — sinon une question vaudrait six points de statistiques, et
     // le carnet d'erreurs parlerait de « barrage » sans dire de quel calcul.
-    const finalHtml = (r) => `<div class="pp-final" data-final>
-            <p class="pp-bravo">Plus rien ne se barre. Il ne reste qu’à multiplier ce qui n’est
-                pas barré.</p>
-            <div class="pp-res">
-                <span class="pp-frac pp-frac--res">
-                    <span class="pp-num"><input class="pp-case pp-case--res" data-res="n"
-                        inputmode="numeric" maxlength="4" aria-label="numérateur du résultat"
-                        autocomplete="off"></span>
-                    <span class="pp-den"><input class="pp-case pp-case--res" data-res="d"
-                        inputmode="numeric" maxlength="4" aria-label="dénominateur du résultat"
-                        autocomplete="off"></span>
-                </span>
-                <button type="button" class="pp-valider" data-valider>Valider</button>
+    const finalHtml = () => `<div class="pp-final" data-final>
+            <p class="pp-bravo">Plus rien ne se barre : multiplie ce qui n’est pas barré.</p>
+            <div class="pp-pave" role="group" aria-label="Chiffres">
+                ${DIGITS.map(k => `<button type="button" class="pp-touche"
+                    data-touche="${k}">${k}</button>`).join('')}
+                <button type="button" class="pp-touche pp-touche--del" data-touche="←"
+                    aria-label="Effacer">⌫</button>
+                <button type="button" class="pp-touche pp-touche--ok" data-valider
+                    ${res.n && res.d ? '' : 'disabled'}>Valider</button>
             </div>
         </div>`;
 
@@ -234,10 +266,44 @@ export function mount(container, session, opts = {}) {
         const v = container.querySelector('[data-valider]');
         if (v) v.onclick = validerResultat;
         container.querySelectorAll('[data-res]').forEach(c => {
-            c.onkeydown = (ev) => { if (ev.key === 'Enter') validerResultat(); };
+            c.onclick = () => { resActif = c.dataset.res; render(); };
         });
-        const premier = container.querySelector('[data-res="n"]');
-        if (premier) premier.focus();
+        container.querySelectorAll('[data-touche]').forEach(b => {
+            b.onclick = () => taper(b.dataset.touche);
+        });
+
+        // LE CLAVIER PHYSIQUE MARCHE AUSSI. Le pavé est là pour le téléphone ;
+        // sur un ordinateur, taper reste plus rapide que viser des boutons, et
+        // s'en priver serait un choix de personne. Le conteneur doit pouvoir
+        // recevoir le focus pour entendre les touches : `tabIndex = -1` le rend
+        // focusable au clic sans l'insérer dans l'ordre de tabulation, où il
+        // n'aurait rien à faire.
+        container.tabIndex = -1;
+        container.onkeydown = (ev) => {
+            if (!fini || session.locked) return;
+            if (document.activeElement && document.activeElement.matches('[data-fac]')) return;
+            if (/^[0-9]$/.test(ev.key)) { ev.preventDefault(); return taper(ev.key); }
+            if (ev.key === 'Backspace') { ev.preventDefault(); return taper('←'); }
+            if (ev.key === 'Enter') { ev.preventDefault(); return validerResultat(); }
+            if (ev.key === '/' || ev.key === 'ArrowDown') {
+                ev.preventDefault(); resActif = 'd'; return render();
+            }
+            if (ev.key === 'ArrowUp') { ev.preventDefault(); resActif = 'n'; render(); }
+        };
+    }
+
+    /**
+     * UNE TOUCHE DU PAVÉ.
+     *
+     * QUATRE CHIFFRES AU PLUS : le plus grand résultat possible est un produit
+     * de nombres à deux chiffres, donc il en tient quatre. Au-delà, ce n'est
+     * plus un résultat, c'est une touche restée enfoncée.
+     */
+    function taper(k) {
+        if (session.locked || !fini) return;
+        if (k === '←') res[resActif] = res[resActif].slice(0, -1);
+        else res[resActif] = (res[resActif] + k).slice(0, 4);
+        render();
     }
 
     function toucher(id) {
@@ -303,11 +369,9 @@ export function mount(container, session, opts = {}) {
 
     function validerResultat() {
         if (destroyed || session.locked) return;
-        const n = container.querySelector('[data-res="n"]');
-        const d = container.querySelector('[data-res="d"]');
-        if (!n || !d || !n.value.trim() || !d.value.trim()) return;
-        const donnee = `${n.value.trim()}/${d.value.trim()}`;
-        const result = session.submit(donnee, { element: container.querySelector('[data-final]') });
+        if (!res.n || !res.d) return;
+        const donnee = `${res.n}/${res.d}`;
+        const result = session.submit(donnee, { element: container.querySelector('[data-expr]') });
         if (result.ignored) return;
         if (!result.correct) {
             // ON RAPPELLE LE GESTE, PAS LE NOMBRE. Le premier jet écrivait
@@ -322,7 +386,9 @@ export function mount(container, session, opts = {}) {
         result.dismissed.then(() => {
             if (destroyed) return;
             if (result.correct || result.revealed) return renderNext();
-            n.value = ''; d.value = ''; n.focus();
+            res = { n: '', d: '' };
+            resActif = 'n';
+            render();
         });
     }
 
@@ -382,6 +448,7 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (tableOuverte) { tableOuverte.close(); tableOuverte = null; }
+            container.onkeydown = null;
             container.innerHTML = '';
             session.finish();
         }
