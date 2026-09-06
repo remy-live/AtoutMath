@@ -4780,6 +4780,147 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     .kk-board { width: min(300px, 90cqw, 62cqh); }
 }
 
+/* --- LE CIRCUIT D'EAU ----------------------------------------
+   Rémy : « j'aimerais bien avoir un jeu dans ce style-là, il faut tourner des
+   tuyaux pour faire un chemin. »
+
+   UN TUYAU EST UN TRAIT ÉPAIS DANS UN TRAIT PLUS ÉPAIS. La gaine sombre par
+   dessous, l'eau par dessus, les deux tracés sur la MÊME géométrie : rien ne
+   peut se décaler entre le sec et le mouillé, puisqu'il n'y a qu'un dessin.
+   Un tuyau dessiné en deux morceaux (le tube, puis le liquide) demanderait de
+   tenir deux formes accordées à un pixel près, à chaque quart de tour. */
+.tu-layout {
+    display: flex; flex-direction: column; align-items: center;
+    gap: clamp(8px, 1.6cqh, 16px);
+    width: 100%; max-width: 560px; margin: 0 auto; padding: 12px;
+}
+.tu-consigne { font-size: clamp(1rem, 2.6cqh, 1.3rem); margin-bottom: 0; }
+
+.tu-barre {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; width: min(440px, 94cqw); max-width: 100%;
+}
+.tu-avance { font-size: .9rem; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+.tu-avance--fuite { color: var(--warning, #f59e0b); }
+
+/* LE COMPTEUR EST LE SUJET DE LA MARCHE COMPTÉE : il se lit de loin, et il
+   rougit quand le budget est dépassé — sans bloquer, parce qu'un budget dépassé
+   se répare en recommençant, pas en interdisant le geste suivant. */
+.tu-compteur {
+    display: flex; align-items: baseline; gap: 6px;
+    font-size: .9rem; font-weight: 700; color: var(--text-muted);
+}
+.tu-compteur b { font-size: 1.5rem; font-weight: 900; color: var(--primary); }
+.tu-compteur--depasse b { color: var(--danger); }
+
+/* LE SENS EST UN MOT, PAS SEULEMENT UNE FLÈCHE. C'est ce que le jeu apprend en
+   passant : « le sens des aiguilles d'une montre » se lit sur le bouton qu'on
+   presse, pas dans une consigne qu'on saute. */
+.tu-sens {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px; cursor: pointer;
+    border: 2px solid var(--primary); background: var(--bg-panel);
+    color: var(--primary); font: inherit; font-size: .8rem; font-weight: 800;
+    -webkit-tap-highlight-color: transparent;
+}
+.tu-sens-icone { font-size: 1.25rem; line-height: 1; }
+/* Le libellé tient sur une ligne, sinon le bouton double de hauteur et pousse
+   la grille : le mot entier reste dans l'étiquette lue à voix haute. */
+.tu-sens-mot { white-space: nowrap; }
+.tu-sens--inverse { border-color: var(--warning, #f59e0b); color: var(--warning, #f59e0b); }
+
+.tu-board {
+    display: grid;
+    grid-template-columns: repeat(var(--tu-c), 1fr);
+    grid-template-rows: repeat(var(--tu-l), 1fr);
+    width: min(440px, 94cqw, 54cqh);
+    aspect-ratio: var(--tu-c) / var(--tu-l);
+    gap: 0;
+    padding: 6px; border-radius: 14px;
+    background: var(--tu-mur, #f6c99a);
+    border: 3px solid #2c3e50; box-shadow: var(--shadow-md);
+}
+.tu-board--ok { border-color: var(--success); }
+
+/* LA CASE EST UN BOUTON CARRÉ SANS RIEN AUTOUR. Les bordures entre cases
+   coupaient les tuyaux en tronçons : un circuit doit se lire comme une seule
+   canalisation, pas comme un damier qu'on aurait relié. */
+.tu-case {
+    position: relative; padding: 0; border: none; background: transparent;
+    cursor: pointer; aspect-ratio: 1;
+    -webkit-tap-highlight-color: transparent;
+}
+.tu-case--fixe { cursor: default; }
+.tu-piece, .tu-sur { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* LE QUART DE TOUR SE VOIT PASSER. C'est tout le jeu : une pièce qui sauterait
+   d'une position à l'autre ne montrerait pas le geste, et le geste EST le
+   contenu mathématique. 180 ms — assez pour lire le mouvement, trop court pour
+   ralentir celui qui enchaîne. */
+.tu-piece { transition: transform .18s ease-out; }
+.tu-gaine line { stroke: #2c3e50; stroke-width: 40; stroke-linecap: round; }
+.tu-eau line { stroke: #cbd5e1; stroke-width: 24; stroke-linecap: round; }
+.tu-bouchon { fill: #2c3e50; }
+.tu-case--eau .tu-eau line { stroke: var(--tu-liquide, #22b8f0); }
+
+/* LA SOURCE NE TOURNE PAS : c'est l'arrivée d'eau, elle est posée là.
+   Un ANNEAU, et non un disque : la goutte de fuite est un disque à pointe, et
+   deux pastilles de même taille au même endroit ne se distinguaient plus. */
+.tu-source circle { fill: #fff; stroke: #2c3e50; stroke-width: 5; }
+.tu-source-oeil { fill: #2c3e50 !important; stroke: none !important; }
+.tu-case--eau .tu-source-oeil { fill: var(--tu-liquide, #22b8f0) !important; }
+
+/* LA FUITE EST UNE GOUTTE, ET ELLE TOMBE. Un simple liseré rouge dirait « c'est
+   faux » ; la goutte dit ce qui se passe — l'eau sort par là. */
+.tu-goutte { fill: var(--tu-liquide, #22b8f0); stroke: #fff; stroke-width: 2.5; }
+/* LA GOUTTE ATTEND, PUIS ELLE TOMBE — elle ne clignote pas.
+   Premier essai : opacité 0 au départ, 1 au tiers, 0 à la fin. La fuite était
+   donc INVISIBLE la moitié du temps, et sur une capture d'écran, invisible tout
+   court. Or c'est le seul repère qui dise où chercher. Elle reste donc pleine
+   les deux tiers du cycle, et ne s'efface qu'en tombant. */
+.tu-case--fuite .tu-goutte { animation: tu-fuit 1.4s ease-in infinite; }
+@keyframes tu-fuit {
+    0%, 60% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(10px); }
+}
+.tu-case--indice { animation: tu-indice 1s ease-in-out 3; }
+@keyframes tu-indice {
+    0%, 100% { filter: none; }
+    50% { filter: drop-shadow(0 0 10px var(--primary)); }
+}
+
+.tu-actions { display: flex; gap: 10px; }
+.tu-btn-recommencer {
+    padding: 8px 16px; border-radius: 10px; cursor: pointer;
+    border: 2px solid var(--border); background: var(--bg-panel);
+    color: var(--text-muted); font: inherit; font-size: .85rem; font-weight: 700;
+}
+.tu-status { min-height: 1.3em; font-weight: 600; font-size: .95rem; color: var(--text-muted); text-align: center; }
+.tu-status--ok { color: var(--success); }
+.tu-status--ko { color: var(--danger); }
+
+/* Le mur de briques du fond s'assombrit en thème sombre : une grille orange vif
+   sur un écran nocturne éblouit là où le jeu demande de l'attention. L'appli ne
+   suit pas `prefers-color-scheme` — le thème est un CHOIX, porté par
+   `data-theme` (voir css/base.css) —, donc on le déclare comme les autres. */
+:root { --tu-mur: #f6c99a; }
+:root[data-theme="dark"] { --tu-mur: #7c5a3a; }
+
+@media (max-height: 780px), (max-width: 700px) {
+    .tu-consigne {
+        font-size: .84rem; line-height: 1.3; font-weight: 600;
+        color: var(--text-muted);
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .tu-consigne b { font-weight: 800; color: var(--text-main); }
+    .tu-layout { gap: 6px; padding: 8px 6px; }
+}
+@container plateau (max-height: 500px) {
+    .tu-layout { gap: 6px; padding: 6px; }
+    .tu-board { width: min(300px, 90cqw, 62cqh); }
+}
+
 /* --- Garam --------------------------------------------------
    Le treillis n'est pas une grille pleine : les cases occupent des positions
    éparses, les signes vivent entre elles. Chaque élément est placé par ses

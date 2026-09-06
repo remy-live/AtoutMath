@@ -742,6 +742,19 @@ const BASE = {
         descriptor: 'Tracer l\'image d\'une figure par une rotation d\'un quart de tour, sur quadrillage.',
         lesson: 'Le quart de tour fait BASCULER la figure : ce qui était couché se met debout. La règle qui ne trompe pas : repère une case par ses deux écarts au centre O — tant de carreaux en largeur, tant en hauteur — et après un quart de tour ces deux nombres S\'ÉCHANGENT, l\'un d\'eux changeant de signe selon le sens. Et n\'appelle jamais « rotation » un demi-tour : un demi-tour est une symétrie centrale, et les deux mots désignent le même geste.'
     },
+    'geo.transfo.quart-tour': {
+        label: 'Anticiper un quart de tour',
+        chemin: [D.GEOMETRIQUE, SD.TRANSFORMATIONS],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Prévoir ce que devient une pièce après un quart de tour, et choisir le sens le plus court.',
+        lesson: 'UN QUART DE TOUR FAIT BASCULER : ce qui partait vers le haut part vers la droite, '
+            + 'la droite vers le bas, et ainsi de suite. Quatre quarts de tour ramènent toujours '
+            + 'au point de départ — c\'est pourquoi trois quarts de tour dans un sens font exactement '
+            + 'un seul quart de tour dans l\'autre, et c\'est le calcul qui fait gagner du temps. '
+            + 'Attention aux pièces qui se ressemblent après rotation : un tuyau droit revient sur '
+            + 'lui-même en un DEMI-tour, il n\'a donc que deux positions, pas quatre.'
+    },
     'geo.transfo.reconnaitre': {
         label: 'Reconnaître la transformation',
         chemin: [D.GEOMETRIQUE, SD.TRANSFORMATIONS],

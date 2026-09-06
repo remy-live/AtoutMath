@@ -605,6 +605,44 @@ export const geometrieExercises = [
     },
 
     {
+        // LE JEU QUI FAIT FAIRE DES QUARTS DE TOUR SANS LE DIRE.
+        //
+        // Rémy, capture d'écran d'un jeu mobile à l'appui : « j'aimerais bien
+        // avoir un jeu dans ce style-là, il faut tourner des tuyaux pour faire
+        // un chemin. » Et, sur ce qu'il en attend : le jeu reste un jeu, et un
+        // réglage de plus compte les quarts de tour.
+        //
+        // IL EST RANGÉ DANS LES TRANSFORMATIONS, ET CE N'EST PAS UN HABILLAGE.
+        // Chaque appui EST un quart de tour : l'élève en fait cent dans une
+        // partie, et il finit par anticiper — « celui-là, c'est un quart à
+        // gauche, pas trois à droite ». C'est exactement ce que demande la
+        // compétence, et c'est le seul exercice du catalogue où le quart de
+        // tour se fait au doigt plutôt qu'au crayon.
+        id: 'geo-tuyaux', title: 'Le Circuit d\'Eau',
+        cree: '2026-09-06',
+        generatorId: 'logique.tuyaux', activityId: 'tuyaux',
+        // Une grille se cherche dans SA grille : « la pièce en haut à droite »
+        // n'est pas une question qu'on peut reposer ailleurs. Comme le sudoku
+        // et le binairo, ce jeu entraîne un raisonnement, pas une connaissance.
+        sansRevision: true,
+        // Quatre grilles : une par niveau coché, et une grille est une question
+        // longue. Voir `conseilProgression` dans core/progression.js.
+        params: { nbQuestions: 4 },
+        motsClefs: ['quart de tour', 'rotation', 'tuyaux', 'circuit', 'jeu', 'logique'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Touche un tuyau : il fait un quart de tour. L'eau part de la pastille "
+            + "blanche et doit atteindre TOUTES les cases sans une seule fuite — une goutte "
+            + "tombe partout où un tuyau plein s'ouvre dans le vide. Le bouton « ↻ » change le "
+            + "sens des quarts de tour, et c'est lui qui rend le dernier niveau intéressant : "
+            + "les quarts de tour y sont COMPTÉS, avec un budget à ne pas dépasser, et trois "
+            + "quarts de tour à droite valent un seul quart de tour à gauche. Rien à valider : "
+            + "le circuit se déclare gagné quand l'eau arrive partout."
+    },
+
+    {
         // LA TRANSLATION SEULE, ET LA FLÈCHE QUI SE DÉPLACE.
         //
         // Rémy : « j'aimerais bien un exercice juste avec les translations où la

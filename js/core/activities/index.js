@@ -106,6 +106,7 @@ import { conversionFicheGenerator } from '../generators/conversionFiche.js';
 import { tangramFicheGenerator } from '../generators/tangramFiche.js';
 import { memoryFicheGenerator } from '../generators/memoryFiche.js';
 import { hexagrilleFicheGenerator } from '../generators/hexagrilleFiche.js';
+import { tuyauxGenerator } from '../generators/tuyaux.js';
 import {
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator
@@ -158,7 +159,8 @@ import {
     poserFicheGenerator, conversionFicheGenerator,
     tangramFicheGenerator, memoryFicheGenerator,
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
-    egypteFicheGenerator, hexagrilleFicheGenerator
+    egypteFicheGenerator, hexagrilleFicheGenerator,
+    tuyauxGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -378,6 +380,23 @@ registerActivity({
     // aujourd'hui comme demain, et le réglage n'est écrit qu'une fois.
     params: [REGLAGE_SAISIE],
     load: () => import('./kenken.js')
+});
+
+// LE CIRCUIT D'EAU — un jeu qui ne demande rien à valider.
+//
+// Pas de `REGLAGE_SAISIE` : il n'y a rien à saisir. Et pas de propositions non
+// plus — la réponse est un ÉTAT du circuit, qu'on obtient en tournant des
+// pièces. Le genre 'grid' est celui des grilles qu'on remplit soi-même ; c'est
+// exactement le cas, à ceci près qu'on y pose des orientations et non des
+// chiffres.
+registerActivity({
+    id: 'tuyaux',
+    unite: 'circuit',
+    parDefaut: 4,
+    label: 'Le circuit d’eau',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./tuyaux.js')
 });
 
 registerActivity({
