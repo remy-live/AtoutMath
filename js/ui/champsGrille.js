@@ -141,9 +141,8 @@ export const REGLAGE_SAISIE = {
     id: 'saisieClavier', type: 'checkbox', label: 'Écrire au clavier dans les cases',
     // Sur une photocopie, on écrit au crayon. Ce réglage n'a pas de sens là-bas.
     papier: false,
-    aide: 'Chaque case devient un champ : on tape le chiffre et l\'on passe à la suivante, '
-        + 'les flèches se déplacent dans la grille. Décoché, la grille se remplit uniquement '
-        + 'en touchant une case puis un jeton — c\'est plus sûr sur une tablette, et cela '
-        + 'évite qu\'un élève écrive au hasard sans regarder la grille.',
+    aide: 'Chaque case devient un champ : on tape le chiffre et l\'on passe à la '
+        + 'suivante. Décoché, la grille se remplit en touchant une case puis un jeton — '
+        + 'plus sûr sur une tablette.',
     default: true
 };

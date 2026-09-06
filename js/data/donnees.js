@@ -37,10 +37,9 @@ export const donneesExercises = [
         paramSchema: [
             {
                 id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
-                aide: 'La difficulté ne tient pas aux calculs — ce sont des additions et des '
-                    + 'soustractions — mais au nombre de lignes qu\'il faut relire pour trouver la '
-                    + 'prochaine à un seul trou. La calculatrice accompagne les premiers paliers, '
-                    + 'puis elle s\'éteint.',
+                aide: 'La difficulté tient au nombre de lignes à relire pour trouver la prochaine à '
+                    + 'un seul trou, pas aux calculs. La calculatrice accompagne les premiers '
+                    + 'paliers, puis s\'éteint.',
                 options: [
                     { value: 'decouverte', label: 'Petit tableau, peu de trous — avec la calculatrice' },
                     { value: 'facile', label: 'Comme sur la fiche — 2 lignes, 4 colonnes' },
@@ -58,10 +57,9 @@ export const donneesExercises = [
                 // précisément le geste qu'on rate en évaluation.
                 id: 'depart', type: 'select', label: 'D\'où viennent les nombres', default: 'tableau',
                 affiner: true,
-                aide: 'Dans le TABLEAU, les nombres connus sont déjà écrits : il ne reste qu\'à '
-                    + 'compléter. Dans l\'ÉNONCÉ, ils sont donnés en toutes lettres et le tableau '
-                    + 'part vide : l\'élève doit d\'abord les ranger dans les bonnes cases, et '
-                    + 'c\'est là que tout se joue.',
+                aide: 'Dans le tableau, les nombres sont déjà écrits : il ne reste qu\'à compléter. '
+                    + 'Dans l\'énoncé, ils sont en toutes lettres et le tableau part vide — c\'est là '
+                    + 'que tout se joue.',
                 options: [
                     { value: 'tableau', label: 'Écrits dans le tableau' },
                     { value: 'enonce', label: 'Dits dans l\'énoncé — le tableau part vide' }

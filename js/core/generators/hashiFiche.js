@@ -29,11 +29,9 @@ export const hashiFicheGenerator = {
         },
         {
             id: 'difficulte', type: 'select', label: 'Difficulté', default: 'moyen',
-            aide: 'La difficulté est une DENSITÉ de ponts. Plus il y en a, plus il y a de '
-                + 'contraintes, et plus la grille se déduit vite : une île qui demande six '
-                + 'ponts sur trois arêtes ne laisse aucun choix. En difficile, la grille est '
-                + 'clairsemée et il faut se servir de la règle « tout d\'un seul tenant » — '
-                + 'celle que personne n\'utilise avant d\'y être forcé.',
+            aide: 'La difficulté est une densité de ponts : plus il y en a, plus la grille se '
+                  + 'déduit vite. En difficile elle est clairsemée, et la règle « tout d\'un seul '
+                  + 'tenant » devient nécessaire.',
             options: [
                 { value: 'facile', label: 'Facile — beaucoup de ponts' },
                 { value: 'moyen', label: 'Moyen' },

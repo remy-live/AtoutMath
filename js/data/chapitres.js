@@ -129,7 +129,7 @@ export const CHAPITRES = [
     { id: '6-probabilites', niveau: SIXIEME, nom: 'Probabilités', skills: [] },
     {
         id: '6-proportionnalite', niveau: SIXIEME, nom: 'Proportionnalité',
-        skills: ['num.proportion.tableau', 'num.probleme.proportion']
+        skills: ['num.proportion.tableau', 'num.probleme.proportion', 'num.pourcentage.part']
     },
     {
         // Le chapitre existait sans sa compétence : les deux exercices sur les
@@ -181,7 +181,8 @@ export const CHAPITRES = [
         skills: ['geo.quadrilateres.familles', 'geo.figures.coder'] },
     {
         id: '5-proportionnalite', niveau: CINQUIEME, nom: 'Proportionnalité',
-        skills: ['num.proportion.tableau', 'num.probleme.proportion']
+        skills: ['num.proportion.tableau', 'num.probleme.proportion',
+            'num.pourcentage.part', 'num.pourcentage.coefficient', 'num.pourcentage.variation']
     },
     {
         // LES PRIORITÉS EXISTAIENT EN 6ᵉ, ET LES EXERCICES SONT EN 5ᵉ.
@@ -235,7 +236,8 @@ export const CHAPITRES = [
     },
     {
         id: '4-proportionnalite', niveau: QUATRIEME, nom: 'Proportionnalité',
-        skills: ['num.proportion.tableau', 'num.probleme.proportion']
+        skills: ['num.proportion.tableau', 'num.probleme.proportion',
+            'num.pourcentage.part', 'num.pourcentage.coefficient', 'num.pourcentage.variation']
     },
     { id: '4-puissances', niveau: QUATRIEME, nom: 'Puissances',
         skills: ['num.puissances.dix', 'num.puissances.scientifique',

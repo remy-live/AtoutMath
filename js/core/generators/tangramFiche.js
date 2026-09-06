@@ -39,9 +39,9 @@ export const tangramFicheGenerator = {
             // pièces découpées dans le carré ne pouvaient alors couvrir qu'une
             // silhouette sur deux.
             id: 'echelle', type: 'select', label: 'Taille des figures', default: 'commune',
-            aide: 'À la même échelle, les pièces découpées dans le carré remplissent VRAIMENT '
-                + 'chaque silhouette — c\'est indispensable dès qu\'on découpe. Ajustée, chaque '
-                + 'figure remplit son cadre : plus grand à regarder, mais impossible à recouvrir.',
+            aide: 'À la même échelle, les pièces du carré remplissent vraiment chaque '
+                + 'silhouette — indispensable dès qu\'on découpe. Ajustée, chaque figure remplit '
+                + 'son cadre mais ne peut plus être recouverte.',
             options: [
                 { value: 'commune', label: 'Toutes à la même échelle (pour découper)' },
                 { value: 'ajustee', label: 'Chacune au plus grand dans son cadre' }

@@ -996,6 +996,47 @@ const BASE = {
         descriptor: 'Trouver le coefficient de proportionnalité et compléter les cases manquantes, dans les deux sens.',
         lesson: "Dans un tableau de proportionnalité, on passe de la ligne du haut à la ligne du bas en MULTIPLIANT toujours par le même nombre : le coefficient. Pour le trouver, il faut une colonne complète, et on divise la valeur du bas par celle du haut. Ensuite on l'applique partout. Pour remonter du bas vers le haut, on divise par ce même coefficient. Le piège à éviter absolument : ajouter l'écart d'une colonne à l'autre. « 4 stylos coûtent 6 €, donc 5 stylos coûtent 7 € » est faux — 5 stylos coûtent 5 × 1,50 = 7,50 €. On multiplie, on n'ajoute jamais. Autre chemin toujours possible : passer par 1 (la valeur unitaire), puis multiplier."
     },
+    // LES POURCENTAGES — trois compétences, parce que ce sont trois moments.
+    //
+    // Rémy : « calculer une réduction, calculer une augmentation, se rendre
+    // compte que 120 % c'est multiplié par 1,20 ». Prendre un pourcentage,
+    // reconnaître le coefficient et appliquer une variation ne se ratent pas
+    // aux mêmes endroits : un élève peut calculer 20 % de 40 € sans savoir
+    // qu'une baisse de 20 % se multiplie par 0,80, et l'inverse arrive aussi.
+    // Une seule compétence aurait dit « pourcentages : à revoir », ce qui
+    // n'aide personne à savoir quoi revoir.
+    'num.pourcentage.part': {
+        label: 'Prendre un pourcentage d\'une quantité',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.probleme.proportion'],
+        descriptor: 'Calculer p % d\'un nombre.',
+        lesson: 'Un pourcentage est une part sur 100. Prendre 25 % de 80, c\'est faire '
+            + '80 × 25 ÷ 100 = 20. Les repères à connaître par cœur : 50 % c\'est la moitié, '
+            + '25 % le quart, 10 % le dixième — et 10 %, il suffit de décaler la virgule.'
+    },
+    'num.pourcentage.coefficient': {
+        label: 'Le coefficient multiplicateur',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.pourcentage.part'],
+        descriptor: 'Traduire une hausse ou une baisse en une seule multiplication.',
+        lesson: 'Le prix de départ, c\'est 100 %. Augmenter de 20 %, c\'est en avoir 120 %, '
+            + 'donc multiplier par 1,20. Réduire de 20 %, c\'est n\'en garder que 80 %, donc '
+            + 'multiplier par 0,80. L\'erreur la plus fréquente est de multiplier par 0,20 : '
+            + 'cela ne garderait que ce qu\'on enlève.'
+    },
+    'num.pourcentage.variation': {
+        label: 'Réduction, augmentation, TVA',
+        chemin: [D.NUMERIQUE, SD.PROBLEMES],
+        niveaux: [N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.pourcentage.coefficient'],
+        descriptor: 'Calculer un prix soldé, un prix augmenté, un prix TTC.',
+        lesson: 'Lis d\'abord ce qu\'on demande : ce qu\'on ENLÈVE, ou ce qu\'on PAIE ? '
+            + 'C\'est là que se perdent la moitié des points. Pour ce qu\'on paie, un seul '
+            + 'calcul suffit : × 0,70 pour −30 %, × 1,20 pour +20 %. La TVA s\'ajoute au prix '
+            + 'hors taxes : 150 € HT avec 20 % de TVA font 150 × 1,20 = 180 € à payer.'
+    },
     'num.probleme.proportion': {
         label: 'Problème : proportionnalité simple',
         chemin: [D.NUMERIQUE, SD.PROBLEMES],

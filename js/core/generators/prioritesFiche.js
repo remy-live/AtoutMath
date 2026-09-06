@@ -52,9 +52,8 @@ export const prioritesFicheGenerator = {
         },
         {
             id: 'puissances', type: 'checkbox', label: 'Avec des puissances', default: false,
-            aide: 'Une ou deux puissances tombent dans l\'expression : 3 + 4² × 2. Elles se '
-                + 'calculent APRÈS les parenthèses et AVANT les multiplications. La feuille '
-                + 'réserve alors une ligne de plus par calcul, puisqu\'il y a une étape de plus.'
+            aide: 'Ajoute une ou deux puissances dans les expressions. Elles se calculent après '
+                  + 'les parenthèses et avant les multiplications.'
         }
     ],
 

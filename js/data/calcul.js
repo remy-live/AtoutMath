@@ -297,7 +297,8 @@ export const calculExercises = [
                 // la règle qu'on ajoute — la puissance avant le × — n'a de sens
                 // qu'au milieu de toutes les autres.
                 id: 'puissances', type: 'checkbox', label: 'Avec des puissances',
-                aide: 'Une ou deux puissances tombent dans l\'expression : 3 + 4² × 2. Elles se calculent APRÈS les parenthèses et AVANT les multiplications — c\'est le seul cran qui s\'ajoute à la règle, et il se souligne comme les autres.',
+                aide: 'Ajoute une ou deux puissances dans les expressions. Elles se calculent après '
+                    + 'les parenthèses et avant les multiplications.',
                 default: false
             }
         ],
@@ -395,7 +396,9 @@ export const calculExercises = [
             },
             {
                 id: 'decimales', type: 'checkbox', label: 'Nombres à virgule',
-                aide: 'C\'est là que tout se joue : on aligne sur la VIRGULE, pas sur le bord droit.',
+                aide: 'On aligne sur la virgule, pas sur le bord droit. Les deux nombres n\'ont pas '
+                    + 'le même nombre de décimales, sinon la difficulté s\'efface. La '
+                    + 'multiplication, elle, ne s\'aligne pas.',
                 default: false
             },
             {
@@ -477,14 +480,9 @@ export const calculExercises = [
             },
             {
                 id: 'verification', type: 'select', label: 'Quand corriger', default: 'merite',
-                aide: 'Refuser un chiffre faux à l\'instant où il est tapé évite de construire sur '
-                    + 'une erreur, et c\'est le seul régime qui dise OÙ ça coince — mais on ne pose '
-                    + 'plus une multiplication : sur le cahier, on écrit la ligne ENTIÈRE puis on la '
-                    + 'relit, et c\'est ce regard-là qu\'il faut apprendre. Le réglage par défaut '
-                    + 'enchaîne les deux : on est guidé, et le libre s\'ouvre à qui vient de poser '
-                    + 'une multiplication entière sans une faute. Une faute le referme — non pour '
-                    + 'punir, mais parce que c\'est justement là qu\'on a besoin d\'être repris '
-                    + 'colonne par colonne.',
+                aide: 'Au fur et à mesure, un chiffre faux est refusé dès qu\'il est tapé. À la fin, '
+                    + 'on pose la multiplication entière avant qu\'elle soit relue. Le défaut passe '
+                    + 'de l\'un à l\'autre selon les réussites.',
                 options: [
                     { value: 'merite', label: 'Guidé, puis libre quand c\'est réussi' },
                     { value: 'fin', label: 'Toujours libre : à la fin de chaque ligne' },
@@ -857,7 +855,9 @@ export const calculExercises = [
             { id: 'cible', type: 'select', label: 'Partie en', options: [5, 7, 11], default: 7 },
             {
                 id: 'envoi', type: 'select', label: 'Qui fabrique le calcul ?',
-                aide: 'En automatique, la machine tire un produit de la table annoncée : le duel va vite, et c\'est du calcul pur. En composé, celui qui frappe TAPE son calcul — « tiens, je te mets du 7 × 8 » — on voit la brique se préparer, puis il la lance. Choisir ce qu\'on envoie, c\'est déjà savoir lesquels sont durs, et c\'est là qu\'est le chambrage. L\'un des deux facteurs doit rester dans les tables travaillées.',
+                aide: 'En automatique, la machine tire un produit dans les tables choisies. En '
+                    + 'composé, celui qui frappe tape lui-même son calcul — un des deux facteurs '
+                    + 'doit rester dans les tables.',
                 options: [
                     { value: 'auto', label: 'La machine tire le calcul' },
                     { value: 'compose', label: 'Le joueur compose sa brique' }
@@ -866,7 +866,9 @@ export const calculExercises = [
             },
             {
                 id: 'rythme', type: 'select', label: 'Rythme de la balle',
-                aide: 'Ce qui change n\'est pas seulement la vitesse de départ : c\'est aussi le plancher — jusqu\'où la balle accélère — et la pente. Un départ lent suivi d\'une accélération brutale redonne exactement le sentiment d\'aller trop vite. Tranquille laisse le temps de lire, calculer et taper ; Rapide s\'adresse à qui connaît déjà ses tables.',
+                aide: 'La vitesse de départ, mais aussi jusqu\'où la balle accélère. Tranquille '
+                    + 'laisse le temps de lire et de taper ; Rapide s\'adresse à qui connaît déjà '
+                    + 'ses tables.',
                 options: [
                     { value: 'tranquille', label: 'Tranquille — on a le temps de penser' },
                     { value: 'normal', label: 'Normal' },
@@ -904,7 +906,9 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'joueurs', type: 'select', label: 'Qui joue ?',
-                aide: 'Contre l\'ordinateur, la machine cherche les parcelles qui abîment le moins le terrain — celles qui se collent à un bord ou à une clôture déjà posée. C\'est exactement le raisonnement qu\'on veut voir chez l\'élève, et il peut le rattraper. Seul, on clôture jusqu\'à ce que plus rien ne rentre, et la partie se juge à la surface conquise.',
+                aide: 'Contre l\'ordinateur, il cherche les parcelles qui abîment le moins le '
+                    + 'terrain. Seul, on clôture jusqu\'à ce que plus rien ne rentre, et la partie '
+                    + 'se juge à la surface conquise.',
                 options: [
                     { value: 2, label: 'À deux, sur la même tablette' },
                     { value: 'ia', label: 'Contre l\'ordinateur' },
@@ -914,7 +918,8 @@ export const calculExercises = [
             },
             {
                 id: 'forceIA', type: 'select', label: 'Force de l\'ordinateur', default: 'normal',
-                aide: 'Débutant pose au hasard parmi les coups valables : on le bat en réfléchissant, ce qui est le but. Normal choisit la parcelle qui touche le plus de bords et de clôtures, avec un peu de désordre. Fort prend toujours la meilleure. N\'a d\'effet que contre l\'ordinateur.',
+                aide: 'Débutant pose au hasard, Normal cherche les bords et les clôtures, Fort '
+                    + 'prend toujours la meilleure parcelle. Sans effet quand on joue seul.',
                 options: [
                     { value: 'debutant', label: 'Débutant — joue au hasard' },
                     { value: 'normal', label: 'Normal' },
@@ -982,7 +987,8 @@ export const calculExercises = [
             },
             {
                 id: 'definition', type: 'select', label: 'La définition',
-                aide: 'Affichée d\'emblée, elle fait de l\'exercice un travail de vocabulaire : on lit, on reconnaît le mot du cours, on le compose. Différée, il faut d\'abord chercher DANS LES LETTRES — c\'est le vrai jeu d\'anagramme, et c\'est nettement plus difficile.',
+                aide: 'Affichée d\'emblée, on reconnaît le mot du cours et on le compose. Différée, '
+                    + 'il faut d\'abord chercher dans les lettres : c\'est bien plus difficile.',
                 options: [
                     { value: 'toujours', label: 'Donnée tout de suite' },
                     { value: 'apres', label: 'Après un premier essai' },
@@ -1121,7 +1127,9 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'taille', type: 'select', label: 'Taille de la grille',
-                aide: 'La difficulté ne vient pas du calcul — aucun chiffre ne dépasse la moitié de la plus grande somme — mais du nombre de PIÈGES : des paires parfaitement justes qui volent un chiffre à une autre, ou qui refont une somme déjà employée. Plus la grille est grande, plus il y en a.',
+                aide: 'La difficulté vient du nombre de pièges — des paires justes qui volent un '
+                    + 'chiffre à une autre —, pas des calculs. Plus la grille est grande, plus il y '
+                    + 'en a.',
                 options: [
                     { value: 'petite', label: '4 × 3 — six sommes, pour découvrir' },
                     { value: 'moyenne', label: '4 × 4 — huit sommes, la grille du vrai jeu' },
@@ -1159,7 +1167,8 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'taille', type: 'select', label: 'Hauteur de la pyramide',
-                aide: 'Plus la pyramide est haute, plus le sommet est grand — et plus une erreur du bas se paie cher en haut. Les nombres de la base sont donc plus petits quand on monte : le travail doit rester du raisonnement, pas des retenues.',
+                aide: 'Plus la pyramide est haute, plus une erreur du bas se paie cher en haut. Les '
+                    + 'nombres de la base sont donc plus petits quand on monte.',
                 options: [
                     { value: 'petite', label: '4 étages — pour découvrir' },
                     { value: 'moyenne', label: '5 étages' },
@@ -1169,7 +1178,9 @@ export const calculExercises = [
             },
             {
                 id: 'difficulte', type: 'select', label: 'Où sont les trous',
-                aide: 'C\'est CE réglage qui change la nature de l\'exercice, bien plus que la hauteur. La base donnée, on ne fait qu\'additionner. Des trous en bas, et il faut soustraire pour redescendre — ce qui est exactement la leçon « soustraire, c\'est chercher ce qui manque ».',
+                aide: 'Base donnée, on ne fait qu\'additionner. Trous dans la base, il faut '
+                    + 'soustraire pour redescendre. C\'est ce réglage qui change la nature de '
+                    + 'l\'exercice.',
                 options: [
                     { value: 'addition', label: 'La base est donnée — on ne fait qu\'additionner' },
                     { value: 'melange', label: 'Des trous partout — il faut aussi soustraire' },
@@ -1207,7 +1218,9 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'format', type: 'select', label: 'Taille du code',
-                aide: 'C\'est la PALETTE qui fait la difficulté, pas le nombre de cases : quatre cases et quatre couleurs font 256 codes possibles, quatre cases et six couleurs en font 1296, cinq cases et huit couleurs 32 768.',
+                aide: 'C\'est la palette qui fait la difficulté, pas le nombre de cases : quatre '
+                    + 'cases et quatre couleurs font 256 codes, quatre cases et six couleurs en '
+                    + 'font 1 296.',
                 options: [
                     { value: 'facile', label: '4 cases, 4 couleurs — pour découvrir' },
                     { value: 'moyen', label: '4 cases, 6 couleurs — le jeu classique' },
@@ -1217,7 +1230,9 @@ export const calculExercises = [
             },
             {
                 id: 'repetitions', type: 'boolean', label: 'Une couleur peut se répéter',
-                aide: 'Sans répétition, le jeu est nettement plus facile — et il perd sa subtilité la plus intéressante : quand une couleur paraît deux fois dans la proposition mais une seule dans le code, elle ne compte qu\'une fois.',
+                aide: 'Sans répétition, le jeu est nettement plus facile. Avec, une couleur vue '
+                    + 'deux fois dans la proposition mais une seule dans le code ne compte qu\'une '
+                    + 'fois.',
                 default: true
             }
         ],
@@ -1261,7 +1276,8 @@ export const calculExercises = [
             },
             {
                 id: 'difficulte', type: 'select', label: 'Lignes déjà écrites',
-                aide: 'Les lignes données sont toujours les PREMIÈRES, jamais des lignes au hasard : une pyramide se remplit du haut vers le bas, chaque mot se cherchant à partir du précédent. Un trou au milieu couperait la chaîne en deux.',
+                aide: 'Les lignes données sont toujours les premières : chaque mot se cherche à '
+                    + 'partir du précédent, et un trou au milieu couperait la chaîne.',
                 options: [
                     { value: 'facile', label: 'Facile — la moitié est écrite' },
                     { value: 'moyen', label: 'Moyen — les deux premières lignes' },
@@ -1299,7 +1315,8 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'theme', type: 'select', label: 'Vocabulaire',
-                aide: 'Sur UN chapitre, l\'élève décode par le sens autant que par la déduction : il reconnaît « BISSECTRICE » à trois lettres près parce qu\'il sait de quoi la fiche parle. Mélangé, il ne reste que la déduction — c\'est un autre exercice, et il est plus dur.',
+                aide: 'Sur un seul chapitre, l\'élève reconnaît le mot par le sens autant que par la '
+                    + 'déduction. Mélangé, il ne reste que la déduction — c\'est plus dur.',
                 options: [
                     { value: 'litteral', label: 'Le calcul littéral' },
                     { value: 'angles', label: 'Le vocabulaire des angles' },
@@ -1323,7 +1340,8 @@ export const calculExercises = [
             },
             {
                 id: 'aide', type: 'select', label: 'Lettres offertes', echelle: true,
-                aide: 'La clé s\'ouvre sur un mot du chapitre, dont les lettres sont données d\'avance — c\'est ainsi que fonctionne un mot codé. Encore faut-il que ce soit une AMORCE : en prenant le mot le plus long qu\'il trouvait, le générateur donnait 52 % de la clé et remplissait les deux tiers des cases avant le premier coup. Ce qu\'on règle ici est la PART de l\'alphabet codé qu\'on offre — les lettres les plus fréquentes remplissant beaucoup de cases, une part modeste suffit largement à démarrer.',
+                aide: 'La part de l\'alphabet donnée d\'avance pour démarrer. Les lettres les plus '
+                    + 'fréquentes remplissent beaucoup de cases : une part modeste suffit.',
                 options: [
                     { value: 'large', label: 'Généreuse — on démarre vite', court: 'Généreuse' },
                     { value: 'normale', label: 'Une amorce', court: 'Amorce' },
@@ -1366,7 +1384,8 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Les facteurs en jeu',
-                aide: 'Ce qui change n\'est pas la vitesse, c\'est la MATIÈRE. Au premier niveau, les cibles se cassent avec les critères de divisibilité qu\'on vient d\'apprendre — 2, 3 et 5. Au dernier, il faut chercher un facteur 7, 11 ou 13, ce qu\'aucun critère ne donne : on essaie, on divise, on recommence.',
+                aide: 'Au premier niveau, les critères de divisibilité par 2, 3 et 5 suffisent. Au '
+                    + 'dernier, il faut chercher un facteur 7, 11 ou 13 en essayant.',
                 options: Object.entries({
                     facile: 'Les tables — facteurs 2, 3 et 5',
                     moyen: 'Jusqu\'à 7 — les critères ne suffisent plus',
@@ -1610,7 +1629,8 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'mode', type: 'select', label: 'Ce qu\'on fait',
-                aide: 'Le mode EXERCICE ne joue pas de partie : il pose une position figée et demande le mat. Cent neuf positions rangées du plus simple au plus difficile, toutes vérifiées par le solveur — une solution, et une seule.',
+                aide: 'Le mode Exercice ne joue pas de partie : il pose une position figée et '
+                    + 'demande le mat. Cent neuf positions, de la plus simple à la plus difficile.',
                 options: [
                     { value: 'ia', label: "Une partie contre l'ordinateur" },
                     { value: 'deux', label: 'Une partie à deux sur le même écran' },
@@ -1650,7 +1670,8 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'mode', type: 'select', label: 'Ce qu\'on fait',
-                aide: 'Le mode EXERCICE ne joue pas de partie : il pose une position figée et demande le mat. Cent neuf positions rangées du plus simple au plus difficile, toutes vérifiées par le solveur — une solution, et une seule.',
+                aide: 'Le mode Exercice ne joue pas de partie : il pose une position figée et '
+                    + 'demande le mat. Cent neuf positions, de la plus simple à la plus difficile.',
                 options: [
                     { value: 'ia', label: "Une partie contre l'ordinateur" },
                     { value: 'deux', label: 'Une partie à deux sur le même écran' },
@@ -1698,7 +1719,8 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'mode', type: 'select', label: 'Ce qu\'on fait',
-                aide: 'Le mode EXERCICE ne joue pas de partie : il pose une position figée et demande le mat. Cent neuf positions rangées du plus simple au plus difficile, toutes vérifiées par le solveur — une solution, et une seule.',
+                aide: 'Le mode Exercice ne joue pas de partie : il pose une position figée et '
+                    + 'demande le mat. Cent neuf positions, de la plus simple à la plus difficile.',
                 options: [
                     { value: 'ia', label: "Une partie contre l'ordinateur" },
                     { value: 'deux', label: 'Une partie à deux sur le même écran' },
@@ -1821,7 +1843,9 @@ export const calculExercises = [
             },
             {
                 id: 'ennemis', type: 'select', label: 'Les blobs verts',
-                aide: 'Au doigt, esquiver un blob pendant qu\'on décide si 7 × 4 est pair fait un jeu d\'adresse là où l\'on voulait un jeu de calcul — et l\'adresse, sur un écran de téléphone, est celle du matériel plutôt que celle de l\'élève. Ils sont retirés par défaut ; au clavier, ils rendent les derniers niveaux plus vifs.',
+                aide: 'Au doigt, esquiver un blob pendant qu\'on calcule fait un jeu d\'adresse '
+                    + 'plutôt qu\'un jeu de calcul. Retirés par défaut ; au clavier, ils rendent les '
+                    + 'derniers niveaux plus vifs.',
                 options: [
                     { value: 'non', label: 'Pas de blobs — que du calcul' },
                     { value: 'oui', label: 'Avec les blobs, à partir du niveau 2' }
@@ -1862,7 +1886,9 @@ export const calculExercises = [
             },
             {
                 id: 'difficulte', type: 'select', label: 'Difficulté',
-                aide: 'La difficulté est une DENSITÉ de ponts. Plus il y en a, plus il y a de contraintes, et plus la grille se déduit vite : une île qui demande six ponts sur trois arêtes ne laisse aucun choix. En difficile, la grille est clairsemée et il faut se servir de la règle « tout d\'un seul tenant » — celle que personne n\'utilise avant d\'y être forcé.',
+                aide: 'La difficulté est une densité de ponts : plus il y en a, plus la grille se '
+                    + 'déduit vite. En difficile elle est clairsemée, et la règle « tout d\'un seul '
+                    + 'tenant » devient nécessaire.',
                 options: [
                     { value: 'facile', label: 'Facile — beaucoup de ponts' },
                     { value: 'moyen', label: 'Moyen' },
@@ -1936,7 +1962,9 @@ export const calculExercises = [
             },
             {
                 id: 'difficulte', type: 'select', label: 'Difficult\u00e9',
-                aide: "En \u00ab facile \u00bb, un tiers des cases est d\u00e9j\u00e0 rempli : l'\u00e9l\u00e8ve a de quoi accrocher avant de se servir des signes. En \u00ab difficile \u00bb, il ne reste que les indices strictement n\u00e9cessaires \u2014 c'est le vrai futoshiki, et c'est beaucoup plus dur.",
+                aide: 'En facile, un tiers des cases est déjà rempli. En difficile, il ne reste que '
+                    + 'les indices strictement nécessaires : c\'est le vrai futoshiki, et c\'est bien '
+                    + 'plus dur.',
                 options: [
                     { value: 'facile', label: 'Facile \u2014 des chiffres pour commencer' },
                     { value: 'moyen', label: 'Moyen' },
@@ -1990,9 +2018,9 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Difficulté', default: 'facile',
-                aide: 'La difficulté ne tient pas aux calculs — ils restent des additions de un chiffre — '
-                    + 'mais au nombre d\'appuis : combien de cases sont déjà écrites, et combien de flèches '
-                    + 'sont données. Chaque grille reste résoluble par déduction pure, sans jamais deviner.',
+                aide: 'La difficulté tient au nombre d\'appuis — cases déjà écrites et flèches '
+                    + 'données —, pas aux calculs. Chaque grille reste résoluble sans jamais '
+                    + 'deviner.',
                 options: [
                     { value: 'facile', label: 'Trois cases données' },
                     { value: 'moyen', label: 'Une seule case donnée' },
@@ -2034,9 +2062,9 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'palier', type: 'select', label: 'La difficulté', default: 'moyen',
-                aide: 'Ce qui rend la recherche difficile n\'est pas la taille de la grille, c\'est '
-                    + 'la LONGUEUR du chemin : deux nombres se voient d\'un coup d\'œil, cinq '
-                    + 'obligent à casser la cible en facteurs avant de se lancer.',
+                aide: 'Ce qui rend la recherche difficile, c\'est la longueur du chemin : deux '
+                    + 'nombres se voient d\'un coup d\'œil, cinq obligent à casser la cible en '
+                    + 'facteurs.',
                 options: [
                     { value: 'facile', label: '3 × 3 — deux ou trois nombres' },
                     { value: 'moyen', label: '3 × 3 — la fiche d\'origine' },
@@ -2139,11 +2167,9 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'palier', type: 'select', label: 'Grille', default: 'decouverte',
-                aide: 'On commence par le plus simple qui soit : cinq sur cinq, et UN SEUL '
-                    + 'bloc par ligne et par colonne — il n\'y a qu\'à compter. Le palier '
-                    + 'suivant coupe les blocs en deux, et il faut alors croiser les lignes '
-                    + 'et les colonnes. Les grilles de dix dessinent quelque chose, ce qui '
-                    + 'donne une raison de finir et un moyen de repérer ses fautes.',
+                aide: 'Cinq sur cinq avec un seul bloc par ligne et par colonne : il n\'y a qu\'à '
+                    + 'compter. Le palier suivant coupe les blocs en deux, et il faut croiser '
+                    + 'lignes et colonnes.',
                 options: [
                     { value: 'decouverte', label: 'Cinq sur cinq, un seul bloc par ligne' },
                     { value: 'simple', label: 'Cinq sur cinq, plusieurs blocs' },
@@ -2198,7 +2224,8 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'mode', type: 'select', label: 'Opération', echelle: true,
-                aide: 'L\'opération choisie est écrite partout dans le jeu — dans le jeton à côté de la cible, dans le calcul en cours, et entre deux gemmes de la chaîne. Rémy : « pour la cible, on ne sait pas si on doit additionner ou multiplier ».',
+                aide: 'L\'opération choisie est écrite partout : dans le jeton à côté de la cible, '
+                    + 'dans le calcul en cours, et entre deux gemmes de la chaîne.',
                 options: ['addition', 'multiplication'], default: 'addition'
             },
             { id: 'difficulty', type: 'select', label: 'Difficulté', echelle: true, options: ['progressive', 'difficile'], default: 'progressive' }
@@ -2245,7 +2272,9 @@ export const calculExercises = [
             {
                 id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
                 label: 'Familles précises (facultatif)',
-                aide: "Pour cibler une difficulté : coche les familles à travailler. Aucune cochée = toutes. L'opération demandée est rappelée entre parenthèses — c'est souvent par elle qu'on choisit, quand on veut faire travailler la division ou les deux étapes. Le réglage du dessus limite déjà au niveau ; celui-ci sert à isoler, par exemple, les seuls problèmes de durée.",
+                aide: 'Coche les familles à travailler ; aucune cochée = toutes. L\'opération '
+                    + 'demandée est rappelée entre parenthèses, pour isoler par exemple les '
+                    + 'problèmes de durée.',
                 options: [
                     { value: 'composition', label: 'Réunir deux quantités (+)' },
                     { value: 'complement', label: 'Trouver la part qui manque (−)' },
@@ -2286,7 +2315,9 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Difficulté',
-                aide: "Le coefficient et le sens de lecture. En « facile » il est entier et on ne complète que la ligne du bas : on apprend à multiplier avant d'apprendre à diviser. Aux niveaux suivants, le tableau se complète aussi vers le haut, et le coefficient peut être décimal ou plus petit que 1 — ce qui casse l'idée fausse que « multiplier, ça fait plus grand ».",
+                aide: 'En facile, le coefficient est entier et on ne complète que la ligne du bas. '
+                    + 'Plus haut, le tableau se complète aussi vers le haut, et le coefficient peut '
+                    + 'être décimal ou plus petit que 1.',
                 options: [
                     { value: 'facile', label: 'Coefficient entier, 2 cases en bas' },
                     { value: 'moyen', label: 'Coefficient décimal, 3 cases dans les deux sens' },
@@ -2298,6 +2329,40 @@ export const calculExercises = [
         skills: ['num.proportion.tableau'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PROBLEMES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Touche une case bleue, tape le nombre au pavé, puis ✓. La colonne surlignée en jaune est complète : c'est elle qui donne le lien entre les deux lignes. Le piège à éviter : compléter en ajoutant l'écart d'une colonne à l'autre. Dans un tableau de proportionnalité, on passe d'une ligne à l'autre en MULTIPLIANT, toujours par le même nombre. Appuie sur « Montrer le lien » pour faire apparaître ce coefficient — et la valeur pour 1, qui est l'autre chemin."
+    },
+    {
+        // LES POURCENTAGES, DANS L'ORDRE QUE RÉMY A DICTÉ.
+        //
+        // « Calculer une réduction, calculer une augmentation, se rendre compte
+        // que 120 % c'est multiplié par 1,20, que prendre 80 % [c'est] 0,20 [de
+        // moins] ; puis des exercices avec des calculs de réduction et le calcul
+        // final, des exercices avec des augmentations, puis des exercices avec
+        // les taxes […] il faut les explications très simples. »
+        //
+        // Sept étapes, et le pivot est au milieu. Les quatre dernières — la
+        // réduction, le prix soldé, le prix augmenté, la TVA — sont la MÊME
+        // multiplication habillée de quatre phrases : c'est ce que l'élève doit
+        // finir par voir, et c'est pour cela qu'elles se cochent séparément.
+        // Une classe qui découvre ne fait que les trois premières ; une classe
+        // qui révise coche tout et retrouve la TVA en dernier.
+        id: 'num-pourcentages', title: 'Pourcentages',
+        cree: '2026-09-06',
+        generatorId: 'num.pourcentages', activityId: 'numpad',
+        skills: ['num.pourcentage.part', 'num.pourcentage.coefficient', 'num.pourcentage.variation'],
+        motsClefs: ['pourcentage', 'réduction', 'solde', 'augmentation', 'TVA', 'taxe',
+            'coefficient', 'prix', 'proportionnalité'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PROBLEMES],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Sept étapes, dans l'ordre du chapitre : prendre un pourcentage, "
+            + "reconnaître le coefficient d'une hausse puis d'une baisse, calculer une "
+            + "réduction, le prix soldé, le prix augmenté, et enfin la TVA. Tout tient sur "
+            + "une seule idée : le prix de départ vaut 100 %, donc +20 % se multiplie par "
+            + "1,20 et −20 % par 0,80. Les nombres tombent toujours juste — on n'apprend "
+            + "pas le sens d'un coefficient en même temps que la division décimale. "
+            + "Chaque étape a sa propre façon de répondre : les deux étapes du coefficient "
+            + "se posent bien parmi quatre propositions, les calculs de prix se tapent."
     },
     {
         // LE POINT À POINT. Les pastilles ne portent pas de numéro : elles
@@ -2344,7 +2409,9 @@ export const calculExercises = [
             },
             {
                 id: 'verification', type: 'select', label: 'Correction',
-                aide: 'Au fur et à mesure, un mauvais point est refusé tout de suite et l\'image ne peut pas se déformer — sans jamais dire quel point il fallait. À la fin, tout passe et les fautes se découvrent au bout : c\'est un contrôle.',
+                aide: 'Au fur et à mesure, un mauvais point est refusé tout de suite, sans dire '
+                    + 'lequel il fallait. À la fin, tout passe et les fautes se découvrent au bout '
+                    + ': c\'est un contrôle.',
                 options: [
                     { value: 'immediate', label: 'Au fur et à mesure' },
                     { value: 'fin', label: 'À la fin — plus difficile' }

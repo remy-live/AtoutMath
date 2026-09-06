@@ -242,11 +242,9 @@ export const poserFicheGenerator = {
             // décimal, et ce qu'on peut faire de la virgule y est un autre
             // choix — celui d'en dessous.
             visibleSi: (r) => r.operation !== '÷',
-            aide: 'C\'est là que tout se joue : on aligne sur la VIRGULE, pas sur le bord '
-                + 'droit. Les deux nombres n\'ont d\'ailleurs pas le même nombre de '
-                + 'décimales — « 12,5 + 3,75 » — sans quoi la difficulté s\'efface toute '
-                + 'seule. La multiplication, elle, ne s\'aligne pas du tout : on multiplie '
-                + 'comme si de rien n\'était et l\'on compte les décimales à la fin.',
+            aide: 'On aligne sur la virgule, pas sur le bord droit. Les deux nombres n\'ont pas '
+                + 'le même nombre de décimales, sinon la difficulté s\'efface. La '
+                + 'multiplication, elle, ne s\'aligne pas.',
             options: [
                 { value: 0, label: 'Nombres entiers' },
                 { value: 1, label: 'Jusqu\'aux dixièmes' },
@@ -256,10 +254,9 @@ export const poserFicheGenerator = {
         {
             id: 'jusquOu', type: 'select', label: 'Jusqu\'où diviser', default: 'reste',
             visibleSi: (r) => r.operation === '÷',
-            aide: 'La virgule du quotient tombe exactement quand on abaisse celle du '
-                + 'dividende : ce n\'est pas une convention à retenir, c\'est une '
-                + 'conséquence du rang. Et « poursuivre au centième » est l\'autre moitié '
-                + 'du chapitre : le reste n\'est plus un reste, on abaisse des zéros.',
+            aide: 'La virgule du quotient tombe quand on abaisse celle du dividende : c\'est une '
+                + 'conséquence du rang. « Poursuivre au centième » abaisse des zéros au lieu de '
+                + 'garder un reste.',
             options: [
                 { value: 'reste', label: 'S\'arrêter au reste' },
                 { value: 'dividende', label: 'Dividende à virgule — 47,5 ÷ 5' },

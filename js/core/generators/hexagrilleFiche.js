@@ -36,10 +36,9 @@ export const hexagrilleFicheGenerator = {
     params: [
         {
             id: 'niveau', type: 'select', label: 'Difficulté', default: 'facile',
-            aide: 'La difficulté ne tient pas aux calculs — ils restent des additions '
-                + 'd\'un chiffre — mais au nombre d\'appuis : combien de cases sont déjà '
-                + 'écrites, et combien de flèches sont données. Chaque grille reste '
-                + 'résoluble par déduction pure, sans jamais deviner.',
+            aide: 'La difficulté tient au nombre d\'appuis — cases déjà écrites et flèches '
+                  + 'données —, pas aux calculs. Chaque grille reste résoluble sans jamais '
+                  + 'deviner.',
             options: Object.entries(NIVEAUX).map(([value, label]) => ({ value, label }))
         }
     ],

@@ -84,10 +84,9 @@ export const fonctionsGenerator = {
     params: [
         {
             id: 'quoi', type: 'select', label: 'Ce qu\'on demande', default: 'melange',
-            aide: 'LIRE ne demande aucun calcul : la réponse est écrite dans l\'énoncé, il '
-                + 'faut seulement lire l\'égalité dans le bon sens. C\'est là que les points '
-                + 'se perdent, et c\'est par là qu\'il faut commencer. Chercher un ANTÉCÉDENT '
-                + 'est le plus dur : il faut remonter le programme à l\'envers.',
+            aide: 'Lire ne demande aucun calcul : la réponse est dans l\'énoncé, il faut la lire '
+                + 'dans le bon sens. Chercher un antécédent est le plus dur : il faut remonter '
+                + 'le programme à l\'envers.',
             options: [
                 { value: 'lire', label: 'Lire une égalité (image ou antécédent ?)' },
                 { value: 'phrase', label: 'Compléter la phrase (… est l\'image de …)' },

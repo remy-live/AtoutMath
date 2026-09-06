@@ -157,10 +157,9 @@ export const anglesNommerGenerator = {
     params: [
         {
             id: 'familles', type: 'multiselect', label: 'Les relations travaillées',
-            aide: 'Les trois premières se lisent sur UN croisement, les deux suivantes '
-                + 'demandent de repérer les parallèles, et « complémentaires » et '
-                + '« supplémentaires » se reconnaissent à l\'angle droit ou plat. Une '
-                + 'série qui ne mélange pas les deux moitiés ne trie rien.',
+            aide: 'Les trois premières se lisent sur un seul croisement ; les deux suivantes '
+                + 'demandent de repérer les parallèles. Complémentaires et supplémentaires se '
+                + 'reconnaissent à l\'angle droit ou plat.',
             options: NOMS_ANGLES.map(n => ({ value: n.id, label: n.nom })),
             default: NOMS_ANGLES.map(n => n.id)
         }

@@ -109,11 +109,9 @@ export const geometrieExercises = [
         paramSchema: [
             {
                 id: 'palier', type: 'select', label: 'Jusqu\'où on descend', default: 'decouverte',
-                aide: 'Une seule propriété montre déjà l\'essentiel : la famille rétrécit. '
-                    + 'Deux à la suite font descendre l\'arbre — et c\'est là qu\'on découvre '
-                    + 'qu\'un angle droit posé sur un parallélogramme ne fait pas la même chose '
-                    + 'que posé sur un quadrilatère quelconque. Les diagonales, elles, disent '
-                    + 'les mêmes choses autrement.',
+                aide: 'Une seule propriété fait déjà rétrécir la famille. Deux à la suite font '
+                    + 'descendre l\'arbre : un angle droit sur un parallélogramme ne dit pas la même '
+                    + 'chose que sur un quadrilatère quelconque.',
                 options: Object.entries(MORPH_PALIERS).map(([value, p]) => ({ value, label: p.label }))
             }
         ],
@@ -153,13 +151,9 @@ export const geometrieExercises = [
                 id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
                 label: 'Les blocs disponibles',
                 default: ['points', 'traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'],
-                aide: 'Coche ce que la classe a déjà vu : la palette suit, et les niveaux dont '
-                    + 'la solution réclamerait un bloc absent disparaissent — un exercice sans '
-                    + 'réponse ne se propose pas. Avec les seuls SEGMENTS, DROITES ET '
-                    + 'DEMI-DROITES il reste les premiers niveaux, ce qui est exactement ce '
-                    + 'qu\'on donne en début de sixième ; en y ajoutant les perpendiculaires '
-                    + 'et les parallèles on a le programme facile en entier, sans un seul '
-                    + 'trait de construction.',
+                aide: 'Coche ce que la classe a déjà vu : la palette suit, et les niveaux qui '
+                    + 'réclameraient un bloc absent disparaissent. Avec les seuls segments et '
+                    + 'droites, il reste le début de sixième.',
                 options: [
                     { value: 'points', label: 'Placer des points' },
                     { value: 'traits', label: 'Segments, droites et demi-droites' },
@@ -176,20 +170,15 @@ export const geometrieExercises = [
                 // formulations ».
                 id: 'assembler', type: 'number', label: 'Figures à composer avant d\'écrire',
                 default: 3, min: 0, max: 13,
-                aide: 'Sur ces figures-là, l\'élève ne tape rien : il choisit des phrases '
-                    + 'toutes faites et les met dans l\'ordre. Rédiger demande deux choses à la '
-                    + 'fois — trouver la SUITE des tracés, et l\'écrire dans la langue du '
-                    + 'chapitre ([AB], (AB), « passant par ») ; celui qui bute sur la seconde ne '
-                    + 'peut pas montrer qu\'il sait la première, et la page reste blanche. On '
-                    + 'sépare donc les deux, et les phrases posées sont exactement celles qu\'il '
-                    + 'aura à taper ensuite. À 0, on écrit dès la première figure.'
+                aide: 'Sur ces figures, l\'élève ne tape rien : il remet dans l\'ordre des phrases '
+                    + 'toutes faites. Trouver la suite des tracés et savoir l\'écrire deviennent '
+                    + 'deux exercices. À 0, on écrit dès la première figure.'
             },
             {
                 id: 'modeles', type: 'checkbox', label: 'Proposer les débuts de phrase', default: true,
-                aide: 'Des boutons qui posent le début d\'une phrase dans la zone d\'écriture — '
-                    + '« Trace le segment [ » — et laissent l\'élève taper les lettres. C\'est '
-                    + 'un tremplin, pas une réponse : quel objet, à partir de quels points, '
-                    + 'reste entièrement à décider. Décoché, il rédige de mémoire.'
+                aide: 'Des boutons qui posent le début d\'une phrase — « Trace le segment [ » — et '
+                    + 'laissent taper les lettres. Quel objet, à partir de quels points, reste à '
+                    + 'décider. Décoché, il rédige de mémoire.'
             },
             {
                 id: 'depuis', type: 'select', label: 'Commencer au niveau', default: 0,
@@ -274,18 +263,9 @@ export const geometrieExercises = [
             {
                 id: 'parties', type: 'multiselect', deroulant: true, tout: 'parties',
                 label: 'Les parties de la leçon', default: ['conditions'],
-                aide: 'Coche ce que l\'élève traversera, dans l\'ordre de la leçon — les '
-                    + 'parties s\'enchaînent, elles ne se remplacent pas. Placer les NOMS '
-                    + 'travaille la hiérarchie : qui contient qui, dans un organigramme déjà '
-                    + 'tracé. CONSTRUIRE l\'organigramme travaille les définitions, et se joue '
-                    + 'en sept étapes : à chacune, deux cases et une seule question — '
-                    + 'qu\'est-ce que celle de droite a de plus que celle de gauche ? Les deux '
-                    + 'paliers de construction ne diffèrent que par le nombre de cartes-intrus '
-                    + 'mêlées aux bonnes. RECONSTRUIRE ne guide plus du tout : l\'organigramme '
-                    + 'est vide, les cinq figures sont données sans leur nom — on les reconnaît '
-                    + 'à leur codage — et il faut d\'abord les ranger, puis relier chaque '
-                    + 'flèche. C\'est ce qu\'on demande en contrôle. La SÉRIE DE QUESTIONS, '
-                    + 'enfin, ne construit rien : elle vérifie, la carte à portée de main.',
+                aide: 'Coche ce que l\'élève traversera, dans l\'ordre de la leçon. Placer les noms '
+                    + 'travaille la hiérarchie, construire l\'organigramme travaille les '
+                    + 'définitions, reconstruire ne guide plus du tout.',
                 options: [
                     { value: 'decouverte', label: 'Placer trois noms' },
                     { value: 'noms', label: 'Placer tous les noms' },
@@ -301,14 +281,9 @@ export const geometrieExercises = [
             {
                 id: 'codage', type: 'select', label: 'Coder les figures', default: 'premier',
                 echelle: true,
-                aide: 'Quand une case apparaît, l\'élève CODE la figure : mêmes marques sur '
-                    + 'les côtés de même longueur, petit carré sur les angles droits. Dire la '
-                    + 'propriété et l\'écrire sur un dessin ne sont pas le même travail, et '
-                    + 'c\'est le second qui se voit en contrôle. Les quatre codages ne sont '
-                    + 'pas identiques — le rectangle ajoute les angles droits, le losange les '
-                    + 'quatre côtés égaux — mais le GESTE se répète, et quatre fois dans une '
-                    + 'même séance c\'est long. Le premier porte l\'essentiel ; les suivants '
-                    + 'l\'appliquent. Ne concerne que l\'étape par étape.',
+                aide: 'Quand une case apparaît, l\'élève code la figure : mêmes marques sur les '
+                    + 'côtés égaux, petit carré sur les angles droits. Ne concerne que le mode '
+                    + 'étape par étape.',
                 options: [
                     { value: 'aucun', label: 'Aucun — on passe directement aux vignettes', court: 'Aucun' },
                     { value: 'premier', label: 'Le premier seulement', court: 'Premier' },
@@ -317,10 +292,9 @@ export const geometrieExercises = [
             },
             {
                 id: 'reprise', type: 'select', label: 'Quand on se trompe', default: 'debut',
-                aide: 'L\'organigramme est une chaîne : chaque case se lit sur celles du '
-                    + 'dessus. Tout reprendre, c\'est tout relire — et c\'est ainsi qu\'on le '
-                    + 'retient. Refaire la seule étape ratée est plus doux, et convient à un '
-                    + 'élève qui découvre.',
+                aide: 'Tout reprendre, c\'est tout relire — l\'organigramme est une chaîne, et c\'est '
+                    + 'ainsi qu\'on le retient. Refaire la seule étape ratée est plus doux pour qui '
+                    + 'découvre.',
                 options: [
                     { value: 'debut', label: 'On recommence depuis le début' },
                     { value: 'etape', label: 'On refait seulement l\'étape' }
@@ -708,10 +682,9 @@ export const geometrieExercises = [
         paramSchema: [
             {
                 id: 'piste', type: 'select', label: 'La piste', default: 'echauffement',
-                aide: 'L\'Échauffement est une ligne droite et un virage : de quoi comprendre '
-                    + 'que la vitesse se conserve. La Chicane enchaîne deux virages en sens '
-                    + 'contraire. Le Grand Tour ajoute un couloir étroit, où arriver vite ne '
-                    + 'sert à rien si l\'on n\'arrive pas placé.',
+                aide: 'L\'Échauffement est une ligne droite et un virage. La Chicane enchaîne deux '
+                    + 'virages en sens contraire. Le Grand Tour ajoute un couloir étroit, où '
+                    + 'arriver vite ne sert à rien si l\'on n\'arrive pas placé.',
                 options: [
                     { value: 'echauffement', label: 'L\'Échauffement — un seul virage' },
                     { value: 'chicane', label: 'La Chicane — deux virages opposés' },
@@ -962,7 +935,9 @@ export const geometrieExercises = [
                 // Rien ne s'éclaire en vert sur une photocopie : c'est une aide
                 // de l'écran, et l'aide ci-dessous le dit déjà.
                 papier: false,
-                aide: 'Les quatre cases atteignables depuis la case courante s\'éclairent en vert. Au début, cela APPREND à compter juste ; ensuite c\'est une béquille, et le labyrinthe redevient celui du livre une fois décoché. Le bouton de la barre le bascule aussi en cours de partie.',
+                aide: 'Les quatre cases atteignables s\'éclairent en vert. Au début cela apprend à '
+                    + 'compter juste, ensuite c\'est une béquille. Le bouton de la barre le bascule '
+                    + 'aussi en cours de partie.',
                 default: true
             }
         ],
@@ -991,7 +966,9 @@ export const geometrieExercises = [
         paramSchema: [
             {
                 id: 'taille', type: 'select', label: 'La grille',
-                aide: 'En 4 × 4, le chemin se voit presque d\'un coup d\'œil ; en 7 × 7, il faut vraiment commencer par les coins et compter les voisines. Plus la grille est grande, plus il y a de nombres pour guider — mais aussi plus de cases à ne pas oublier.',
+                aide: 'En 4 × 4, le chemin se voit presque d\'un coup d\'œil ; en 7 × 7, il faut '
+                    + 'commencer par les coins et compter les voisines. Plus de nombres pour '
+                    + 'guider, mais plus de cases à ne pas oublier.',
                 options: [
                     { value: 'petit', label: '4 × 4 — pour découvrir' },
                     { value: 'moyen', label: '5 × 5 — la taille habituelle' },
@@ -1043,9 +1020,8 @@ export const geometrieExercises = [
         paramSchema: [
             {
                 id: 'palier', type: 'select', label: 'La difficulté', default: 'moyen',
-                aide: 'Ce n\'est pas le nombre de paires qui compte, c\'est leur ENTRELACEMENT : '
-                    + 'le générateur ne garde que les figures où relier à la règle échoue quelque '
-                    + 'part. Deux paires bien enchevêtrées valent trois paires posées côte à côte.',
+                aide: 'Ce n\'est pas le nombre de paires qui compte, c\'est leur entrelacement : deux '
+                    + 'paires bien enchevêtrées valent trois paires posées côte à côte.',
                 options: [
                     { value: 'facile', label: '3 paires — pour comprendre la règle' },
                     { value: 'moyen', label: '4 paires — comme sur la fiche, en plus dense' },
@@ -1090,7 +1066,9 @@ export const geometrieExercises = [
                 // la feuille imprimée porte toujours les symboles, et le choix
                 // ne concerne donc que l'écran.
                 papier: false,
-                aide: 'La couleur seule exclut les élèves qui distinguent mal le rouge du vert — et disparaît sur une photocopie. Les symboles marchent partout. « Couleurs + symboles » convient à tout le monde ; « symboles seuls » donne à l\'écran ce que donnera le polycopié en noir et blanc.',
+                aide: 'La couleur seule exclut ceux qui distinguent mal le rouge du vert, et '
+                    + 'disparaît sur une photocopie. « Symboles seuls » donne à l\'écran ce que '
+                    + 'donnera le polycopié en noir et blanc.',
                 options: [
                     { value: 'les-deux', label: 'Couleurs et symboles' },
                     { value: 'couleurs', label: 'Couleurs seules' },
@@ -1215,7 +1193,9 @@ export const geometrieExercises = [
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Les solides proposés',
-                aide: 'Les solides usuels d\'abord — cube, pavé, prisme triangulaire, pyramide. Les bases à cinq et six côtés obligent à raisonner par familles plutôt qu\'à retenir des nombres ; l\'octaèdre, lui, ne se range dans aucune des deux et force à vraiment regarder le dessin.',
+                aide: 'Les solides usuels d\'abord — cube, pavé, prisme, pyramide. Les bases à cinq '
+                    + 'et six côtés obligent à raisonner par familles ; l\'octaèdre force à vraiment '
+                    + 'regarder le dessin.',
                 options: [
                     { value: 'facile', label: 'Les solides usuels' },
                     { value: 'moyen', label: 'Jusqu\'aux bases pentagonales' },
@@ -1229,7 +1209,9 @@ export const geometrieExercises = [
                 // justement l'exercice que l'écran ne sait pas donner, celui où
                 // le compte s'efface avec la marque. Le choix reste à l'écran.
                 papier: false,
-                aide: 'On ne demande jamais les trois d\'un coup : l\'élève qui se trompe saurait seulement qu\'il s\'est trompé quelque part, et la correction ne pourrait plus rien montrer. Fixer une seule catégorie sert à travailler un point précis — les arêtes sont les plus difficiles, parce que ce sont elles qu\'on oublie derrière.',
+                aide: 'On ne demande jamais les trois d\'un coup : la correction ne pourrait plus '
+                    + 'rien montrer. Fixer une seule catégorie travaille un point précis — les '
+                    + 'arêtes sont les plus difficiles.',
                 options: [
                     { value: 'tous', label: 'Les trois, en alternance' },
                     { value: 'sommets', label: 'Les sommets seulement' },
@@ -1241,7 +1223,9 @@ export const geometrieExercises = [
             {
                 id: 'numeros', type: 'select', label: 'Le numéro sur chaque marque',
                 papier: false,
-                aide: 'Le numéro qui s\'inscrit sur la marque fait la moitié du travail : l\'élève LIT son total au lieu de le compter. Il sert à installer la méthode — marquer une par une, ne pas repasser — puis il gêne. Par défaut, il disparaît après trois questions réussies.',
+                aide: 'Le numéro inscrit sur la marque fait la moitié du travail : l\'élève lit son '
+                    + 'total au lieu de le compter. Par défaut, il disparaît après trois questions '
+                    + 'réussies.',
                 options: [
                     { value: 'progressif', label: 'Il disparaît après 3 réussites' },
                     { value: 'toujours', label: 'Toujours affiché' },
@@ -1254,7 +1238,9 @@ export const geometrieExercises = [
                 // « sur le papier, il n'y aura ni marque ni compteur » — l'aide
                 // le disait déjà ; le réglage le dit maintenant au programme.
                 papier: false,
-                aide: 'Marquer une par une installe la méthode — n\'oublier personne, ne compter personne deux fois. Mais tant qu\'on marque, la machine additionne à notre place ; sur le papier, il n\'y aura ni marque ni compteur. Par défaut, les marques disparaissent après six réussites, et l\'on compte des yeux.',
+                aide: 'Marquer une par une installe la méthode : n\'oublier personne, ne compter '
+                    + 'personne deux fois. Mais la machine additionne à notre place. Par défaut, '
+                    + 'les marques disparaissent après six réussites.',
                 options: [
                     { value: 'progressif', label: 'Elles disparaissent après 6 réussites' },
                     { value: 'toujours', label: 'Toujours possibles' },
@@ -1287,7 +1273,9 @@ export const geometrieExercises = [
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Le programme',
-                aide: 'Ce qu\'il y a dans le programme. La boucle apparaît au niveau moyen : c\'est elle qui fait tout l\'intérêt, et toute la difficulté. Ce réglage est IGNORÉ en mode progressif, où chaque étape apporte sa forme de programme.',
+                aide: 'Ce qu\'il y a dans le programme. La boucle apparaît au niveau moyen : c\'est '
+                    + 'elle qui fait tout l\'intérêt. Ignoré en mode progressif, où chaque étape '
+                    + 'apporte sa forme de programme.',
                 options: [
                     { value: 'decouverte', label: 'Deux ou trois blocs, sans boucle' },
                     { value: 'facile', label: 'Sans boucle — 3 ou 4 blocs' },
@@ -1302,7 +1290,9 @@ export const geometrieExercises = [
             },
             {
                 id: 'mode', type: 'select', label: 'Comment on exécute',
-                aide: 'Le surligneur montre où en est le programme. Le retirer, c\'est demander à l\'élève de tenir lui-même le compte des tours — c\'est là que la boucle devient une vraie notion. La prédiction, elle, demande de tout dérouler dans sa tête. En mode progressif, le jeu retire les aides lui-même, une par une, en annonçant chaque changement.',
+                aide: 'Le surligneur montre où en est le programme ; le retirer demande de tenir '
+                    + 'soi-même le compte des tours. La prédiction demande de tout dérouler dans sa '
+                    + 'tête. En progressif, le jeu les retire lui-même.',
                 options: [
                     { value: 'progressif', label: 'Progressif — sept étapes, annoncées' },
                     { value: 'guide', label: 'Guidé — le bloc en cours s\'allume' },
@@ -1405,7 +1395,9 @@ export const geometrieExercises = [
         paramSchema: [
             {
                 id: 'depart', type: 'select', label: 'Où commencer',
-                aide: 'La progression est dans le MATÉRIEL : on commence par une dame qui fait tout le travail, on passe aux tours qui ont besoin du roi, et l\'on finit par deux tours à coordonner en deux coups. Cent neuf positions, toutes vérifiées : une solution, et une seule.',
+                aide: 'La progression est dans le matériel : une dame qui fait tout le travail, '
+                    + 'puis les tours qui ont besoin du roi, puis deux tours à coordonner. Cent '
+                    + 'neuf positions, une solution chacune.',
                 options: [
                     { value: 'debut', label: 'Au début — la dame qui mate seule' },
                     { value: 'milieu', label: 'Plus loin — tours et cavaliers' },
@@ -1539,11 +1531,9 @@ export const geometrieExercises = [
                 // des formules, en aidant au départ. »
                 id: 'palier', type: 'select', label: 'Ce qu\'on demande',
                 default: 'reperer', echelle: true,
-                aide: 'Montrer prouve qu\'on a LU la figure ; écrire prouve en plus '
-                    + 'qu\'on sait NOMMER un segment par ses deux extrémités — et c\'est '
-                    + 'cette écriture-là qui servira dans une formule. Le troisième palier '
-                    + 'fait écrire cos, sin ou tan : le rapport est rappelé sur les deux '
-                    + 'premières figures, puis il faut le savoir.',
+                aide: 'Montrer prouve qu\'on a lu la figure ; écrire prouve en plus qu\'on sait '
+                    + 'nommer un segment par ses extrémités. Le troisième palier fait écrire cos, '
+                    + 'sin ou tan.',
                 options: [
                     { value: 'reperer', label: 'Cliquer le côté sur la figure', court: 'Cliquer' },
                     { value: 'ecrire', label: 'Écrire le nom du côté — [AB]', court: 'Écrire' },
@@ -1552,11 +1542,9 @@ export const geometrieExercises = [
             },
             {
                 id: 'tourner', type: 'boolean', label: 'Faire tourner la figure', default: true,
-                aide: 'Un triangle toujours posé l\'angle droit en bas à gauche enseigne une '
-                    + 'règle fausse — « adjacent = horizontal » — qui s\'effondre au premier '
-                    + 'contrôle. On peut la figer le temps de la découverte, mais il faut la '
-                    + 'faire tourner ensuite : c\'est là qu\'on vérifie que l\'élève lit la '
-                    + 'figure et ne récite pas une position.'
+                aide: 'Un triangle toujours posé l\'angle droit en bas à gauche enseigne une règle '
+                    + 'fausse : « adjacent = horizontal ». On peut le figer le temps de la '
+                    + 'découverte, puis il faut le faire tourner.'
             }
         ],
         motsClefs: ['trigonométrie', 'trigo', 'hypoténuse', 'opposé', 'adjacent',

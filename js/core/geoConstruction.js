@@ -242,8 +242,9 @@ export const CONSIGNES = [
         id: 'mediatrice',
         titre: 'La médiatrice d\'un segment',
         enonce: 'Trace la médiatrice du segment [AB].',
-        aide: 'La médiatrice passe par le milieu de [AB] ET lui est perpendiculaire. '
-            + 'Au compas : même écartement depuis A et depuis B, les deux arcs se croisent en deux points — la droite qui les joint est la médiatrice.',
+        aide: 'La médiatrice passe par le milieu de [AB] et lui est perpendiculaire. Au '
+            + 'compas : même écartement depuis A et depuis B, puis la droite qui joint les '
+            + 'deux croisements.',
         depart(t, rng) {
             const c = cadre(t);
             const L = longueur(6, Math.min(c.utileW, c.utileH * 1.6));

@@ -28,9 +28,8 @@ export const motCodeFicheGenerator = {
     params: [
         {
             id: 'theme', type: 'select', label: 'Vocabulaire', default: 'angles',
-            aide: 'Un mot codé sur UN chapitre se décode par le sens autant que par les '
-                + 'croisements : l\'élève reconnaît « BISSECTRICE » à trois lettres près parce '
-                + 'qu\'il sait de quoi la fiche parle. Mélangé, il ne reste que la déduction.',
+            aide: 'Sur un seul chapitre, l\'élève décode par le sens autant que par les '
+                + 'croisements. Mélangé, il ne reste que la déduction.',
             options: Object.entries(THEMES).map(([value, label]) => ({ value, label }))
         },
         {

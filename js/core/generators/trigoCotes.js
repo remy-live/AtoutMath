@@ -39,10 +39,9 @@ export const trigoCotesGenerator = {
         {
             id: 'quoi', type: 'select', label: 'Ce qu\'on demande', default: 'noms',
             echelle: true,
-            aide: 'Nommer les trois côtés est le travail de base, et il suffit à occuper '
-                + 'une feuille entière. La formule demande DEUX choses à la fois — le '
-                + 'rapport (CAH SOH TOA) et la lecture de la figure —, et ces deux-là se '
-                + 'ratent séparément : on ne la donne qu\'une fois la première acquise.',
+            aide: 'Nommer les trois côtés suffit à occuper une feuille. La formule demande deux '
+                + 'choses à la fois — le rapport et la lecture de la figure —, et elles se '
+                + 'ratent séparément.',
             options: [
                 { value: 'noms', label: 'Nommer les trois côtés', court: 'Noms' },
                 { value: 'formule', label: 'Écrire la formule — cos(G) = …', court: 'Formule' }

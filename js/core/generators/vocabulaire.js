@@ -309,9 +309,9 @@ export const vocabulaireGenerator = {
     params: [
         {
             id: 'volets', type: 'multiselect', label: 'Ce qu\'on demande',
-            aide: 'Le nom du résultat (somme, différence, produit, quotient), le nom des nombres '
-                + '(termes, facteurs), la traduction dans les deux sens entre une phrase et un calcul, '
-                + 'les mots qui cachent une opération (double, tiers), et les quatre noms de la division posée.',
+            aide: 'Le nom du résultat (somme, produit…), le nom des nombres (termes, facteurs), '
+                + 'la traduction entre une phrase et un calcul, les mots qui cachent une '
+                + 'opération, et la division posée.',
             options: [
                 { value: 'resultat', label: 'Le nom du résultat' },
                 { value: 'nombres', label: 'Termes ou facteurs' },

@@ -45,18 +45,16 @@ export const programmeConstructionFicheGenerator = {
         {
             id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
             label: 'Les tournures autorisées', default: [...ORDRE_FAMILLES],
-            aide: 'La réserve de mots imprimée en tête de feuille, et les figures qu\'on '
-                + 'propose : une figure dont la construction réclamerait une tournure absente '
-                + 'ne sort pas. Avec les seuls SEGMENTS ET DROITES, il reste les deux '
-                + 'premières figures — ce qu\'on donne en début de sixième.',
+            aide: 'La réserve de mots imprimée en tête, et les figures proposées : une figure '
+                + 'qui réclamerait une tournure absente ne sort pas. Avec les seuls segments et '
+                + 'droites, il reste les deux premières.',
             options: FAMILLES.map(f => ({ value: f.id, label: f.nom }))
         },
         {
             id: 'reserve', type: 'checkbox', label: 'Donner la réserve de mots', default: true,
             aide: 'Les tournures du chapitre, imprimées en petit sous chaque figure — là où '
-                + 'l\'élève écrit, plutôt qu\'en haut de la page. Décochée, il doit les '
-                + 'retrouver seul : c\'est ce qu\'on demande en contrôle, et c\'est une autre '
-                + 'difficulté que celle de construire.'
+                + 'l\'élève écrit. Décochée, il doit les retrouver seul : c\'est ce qu\'on demande '
+                + 'en contrôle.'
         },
         {
             id: 'depuis', type: 'select', label: 'Commencer à la figure', default: 0,

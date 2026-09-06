@@ -65,10 +65,9 @@ export const thalesRedactionFicheGenerator = {
         {
             id: 'rappel', type: 'checkbox', label: 'Rappeler le plan en trois parties',
             default: true,
-            aide: 'Décoché, les trois cadres ne portent plus que leur titre. C\'est la '
-                + 'version de contrôle : à l\'élève de savoir ce qui va dans chacun. '
-                + 'Coché, une petite phrase grise rappelle ce qu\'on attend — l\'énoncé, '
-                + 'le cours, la déduction.'
+            aide: 'Coché, une phrase grise rappelle ce qu\'on attend dans chaque cadre : '
+                + 'l\'énoncé, le cours, la déduction. Décoché, les cadres ne portent que leur '
+                + 'titre — c\'est la version de contrôle.'
         }
     ],
 

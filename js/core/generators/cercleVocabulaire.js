@@ -299,10 +299,9 @@ export const cercleVocabulaireGenerator = {
     params: [
         {
             id: 'mots', type: 'multiselect', label: 'Les mots travaillés',
-            aide: 'Rayon, diamètre, corde et arc suffisent en sixième — et c\'est déjà là '
-                + 'que tout se joue, parce qu\'un diamètre EST une corde. Tangente et '
-                + 'sécante arrivent en quatrième. Le couple cercle / disque, lui, se '
-                + 'travaille à part : c\'est une ligne contre une surface.',
+            aide: 'Rayon, diamètre, corde et arc suffisent en sixième — et un diamètre EST une '
+                + 'corde. Tangente et sécante arrivent en quatrième. Cercle et disque se '
+                + 'travaillent à part.',
             options: MOTS_CERCLE.map(m => ({ value: m.id, label: m.nom })),
             default: MOTS_CERCLE.filter(m => !m.avance).map(m => m.id)
         },

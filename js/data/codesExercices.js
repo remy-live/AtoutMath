@@ -127,6 +127,7 @@ export const CODES_EXERCICES = {
     'calc-math-crush':            'CU',   // Math Crush
     'num-problemes':              'HP',   // Histoires en Pagaille
     'num-proportion-tableau':     'TB',   // Tableau de Proportionnalité
+    'num-pourcentages':           'PW',   // les POurcentages (les autres P étaient pris)
     'calc-point-a-point':         'PF',   // Le Point à Point
     'jeu-petites-ailes':          'AL',   // Les Petites Ailes
     'frac-compare':               'DF',   // Duel de Fractions

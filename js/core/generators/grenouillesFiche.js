@@ -17,7 +17,8 @@ export const grenouillesFicheGenerator = {
     params: [
         {
             id: 'taille', type: 'select', label: 'Grenouilles de chaque couleur', default: 'quatre',
-            aide: 'Le minimum vaut n² + 2n, et il se démontre : n × n sauts — un par croisement — plus 2n glissades, une par grenouille.',
+            aide: 'Le minimum vaut n² + 2n : n × n sauts, un par croisement, plus 2n glissades. '
+                + 'Deux contre deux : 8 coups. Quatre contre quatre : 24.',
             options: Object.values(TAILLES_GRENOUILLES).map(t => ({ value: t.id, label: t.label }))
         }
     ],

@@ -146,11 +146,9 @@ export const fracProduitGenerator = {
         {
             id: 'decomposition', type: 'select', label: 'Décomposer avant de calculer',
             default: 'sans',
-            aide: 'Sans décomposition, rien ne se croise entre les deux fractions : on '
-                + 'multiplie en haut, on multiplie en bas, c\'est fini. Avec, un facteur du '
-                + 'haut se retrouve en bas — 3/4 × 8/9 — et il faut le barrer AVANT de '
-                + 'calculer. C\'est le même résultat par les deux chemins ; l\'un fait '
-                + 'chercher que 24 et 36 ont 12 en commun, l\'autre non.',
+            aide: 'Sans décomposition, on multiplie en haut, on multiplie en bas, c\'est fini. '
+                + 'Avec, un facteur du haut se retrouve en bas et il faut le barrer avant de '
+                + 'calculer.',
             options: [
                 { value: 'sans', label: 'Sans — rien ne se simplifie' },
                 { value: 'avec', label: 'Avec — il faut barrer en diagonale' },

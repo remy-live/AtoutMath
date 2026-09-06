@@ -62,10 +62,9 @@ export const cubesGenerator = {
         },
         {
             id: 'formes', type: 'multiselect', label: 'Formes d\'empilement',
-            aide: 'Ce ne sont pas cinq décors, ce sont cinq méthodes de comptage : le pavé se '
-                + 'multiplie, l\'escalier se compte par tranches, le pavé creusé se soustrait, '
-                + 'et les colonnes quelconques se comptent une par une. Mélangés, ils obligent '
-                + 'à CHOISIR la méthode — c\'est là que l\'exercice devient utile.',
+            aide: 'Ce ne sont pas cinq décors mais cinq méthodes : le pavé se multiplie, '
+                + 'l\'escalier se compte par tranches, le pavé creusé se soustrait. Mélangés, '
+                + 'ils obligent à choisir la méthode.',
             options: Object.entries(FAMILLES).map(([value, label]) => ({ value, label })),
             default: ['pave', 'couche', 'escalier', 'creux']
         },

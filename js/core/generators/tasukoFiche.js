@@ -25,9 +25,9 @@ export const tasukoFicheGenerator = {
     params: [
         {
             id: 'taille', type: 'select', label: 'Taille de la grille', default: 'moyenne',
-            aide: 'La difficulté ne vient pas du calcul — les chiffres sont minuscules — mais '
-                + 'du nombre de PIÈGES : des paires parfaitement justes qui volent un chiffre '
-                + 'à une autre, ou qui refont une somme déjà employée.',
+            aide: 'La difficulté vient du nombre de pièges — des paires justes qui volent un '
+                  + 'chiffre à une autre —, pas des calculs. Plus la grille est grande, plus il y '
+                  + 'en a.',
             options: Object.values(TAILLES_TASUKO).map(t => ({ value: t.id, label: t.label }))
         }
     ],

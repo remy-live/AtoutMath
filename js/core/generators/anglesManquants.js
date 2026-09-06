@@ -114,10 +114,9 @@ export const anglesManquantsGenerator = {
     params: [
         {
             id: 'niveau', type: 'select', label: 'Difficulté', default: 'melange',
-            aide: 'Le niveau 0 ne demande aucun calcul : les deux angles sont ÉGAUX, et tout '
-                + 'l\'exercice est de voir lesquels. Le niveau 1 ajoute la soustraction — et '
-                + 'le vrai choix, c\'est le total : 90, 180 ou 360. La chaîne enchaîne deux '
-                + 'relations : c\'est le raisonnement du chapitre.',
+            aide: 'Le niveau 0 ne demande aucun calcul : les deux angles sont égaux, il faut '
+                + 'voir lesquels. Le niveau 1 ajoute la soustraction, et le total change — 90, '
+                + '180 ou 360. La chaîne enchaîne deux relations.',
             options: [
                 { value: '0', label: '0 — Des angles égaux, rien à calculer' },
                 { value: '1', label: '1 — Une soustraction : 90°, 180° ou 360°' },

@@ -37,9 +37,9 @@ export const pyramideFicheGenerator = {
         },
         {
             id: 'difficulte', type: 'select', label: 'Lignes déjà écrites', default: 'moyen',
-            aide: 'La fiche de la revue en met deux côte à côte : une commencée — « l\'Extrait » '
-                + '— et une toute vide — « En direct ». C\'est un exemple travaillé suivi de '
-                + 'l\'exercice, et cela explique la règle mieux qu\'une consigne.',
+            aide: 'Deux pyramides côte à côte : une commencée, une toute vide. C\'est un exemple '
+                + 'travaillé suivi de l\'exercice, et cela explique la règle mieux qu\'une '
+                + 'consigne.',
             options: Object.values(DIFFICULTES).map(d => ({ value: d.id, label: d.label }))
         }
     ],

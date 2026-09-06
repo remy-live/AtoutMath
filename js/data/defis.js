@@ -90,7 +90,8 @@ export const defisExercises = [
         paramSchema: [
             {
                 id: 'taille', type: 'select', label: 'Grenouilles de chaque couleur',
-                aide: 'Le minimum vaut n² + 2n, et il se démontre : n × n sauts — un par croisement, puisque chaque verte doit dépasser chaque rouge — plus 2n glissades, une par grenouille. Deux contre deux : 8 coups. Quatre contre quatre : 24.',
+                aide: 'Le minimum vaut n² + 2n : n × n sauts, un par croisement, plus 2n glissades. '
+                    + 'Deux contre deux : 8 coups. Quatre contre quatre : 24.',
                 options: [
                     { value: 'deux', label: '2 contre 2 — 8 coups' },
                     { value: 'trois', label: '3 contre 3 — 15 coups' },
@@ -132,7 +133,9 @@ export const defisExercises = [
         paramSchema: [
             {
                 id: 'taille', type: 'select', label: 'Voitures de chaque côté',
-                aide: 'Le nombre de coups grimpe très vite — 36, 62, 104, 146 — parce que chaque croisement coûte un aller-retour par la place de dégagement. Commencer à 2 contre 2 pour comprendre le mécanisme, puis passer au plateau de la revue.',
+                aide: 'Le nombre de coups grimpe très vite — 36, 62, 104, 146 — car chaque '
+                    + 'croisement coûte un aller-retour. Commencer à 2 contre 2 pour comprendre le '
+                    + 'mécanisme.',
                 options: [
                     { value: 'minuscule', label: '2 contre 2 — pour découvrir (36 coups)' },
                     { value: 'petit', label: '3 contre 3 (62 coups)' },
@@ -173,7 +176,9 @@ export const defisExercises = [
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Niveau de départ',
-                aide: 'Le niveau se mesure en COUPS MINIMUM, pas en nombre de voitures : un parking très encombré peut se résoudre en quatre coups. Il monte tout seul à chaque parking résolu, alors commencer au niveau 1 n\'est pas une perte de temps.',
+                aide: 'Le niveau se mesure en coups minimum, pas en nombre de voitures. Il monte '
+                    + 'tout seul à chaque parking résolu : commencer au niveau 1 n\'est pas une '
+                    + 'perte de temps.',
                 options: [
                     { value: 1, label: 'Niveau 1 — pour comprendre (4 à 6 coups)' },
                     { value: 2, label: 'Niveau 2 (7 à 9 coups)' },
@@ -217,7 +222,8 @@ export const defisExercises = [
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Niveau de départ',
-                aide: 'Le niveau se mesure en POUSSÉES minimum, et il monte tout seul à chaque entrepôt rangé. Les deux premiers niveaux tiennent en deux caisses : c\'est assez pour rencontrer le piège du coin, qui est toute la leçon.',
+                aide: 'Le niveau se mesure en poussées minimum, et il monte tout seul. Les deux '
+                    + 'premiers tiennent en deux caisses : assez pour rencontrer le piège du coin.',
                 // CINQUANTE PALIERS, DONC UNE GLISSIÈRE ET NON UN MENU. Rémy :
                 // « Il faut au moins 50 niveaux ». Une liste déroulante de
                 // cinquante lignes ne se choisit pas, elle se subit ; et c'est

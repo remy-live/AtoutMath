@@ -25,17 +25,17 @@ export const mastermindFicheGenerator = {
     params: [
         {
             id: 'format', type: 'select', label: 'Taille du code', default: 'moyen',
-            aide: 'C\'est la PALETTE qui fait la difficulté, pas le nombre de cases : quatre '
-                + 'cases et quatre couleurs font 256 codes possibles, quatre cases et six '
-                + 'couleurs en font 1296, cinq cases et huit couleurs 32 768.',
+            aide: 'C\'est la palette qui fait la difficulté, pas le nombre de cases : quatre '
+                  + 'cases et quatre couleurs font 256 codes, quatre cases et six couleurs en '
+                  + 'font 1 296.',
             options: Object.values(FORMATS).map(f => ({ value: f.id, label: f.label }))
         },
         {
             id: 'repetitions', type: 'boolean', label: 'Une couleur peut se répéter',
             default: true,
-            aide: 'Sans répétition, l\'exercice est nettement plus facile — et il perd sa '
-                + 'subtilité la plus intéressante : quand une couleur paraît deux fois dans la '
-                + 'proposition mais une seule dans le code, elle ne compte qu\'une fois.'
+            aide: 'Sans répétition, l\'exercice est nettement plus facile. Avec, une couleur vue '
+                + 'deux fois dans la proposition mais une seule dans le code ne compte qu\'une '
+                + 'fois.'
         }
     ],
 

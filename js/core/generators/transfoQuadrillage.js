@@ -328,11 +328,9 @@ export const transfoQuadrillageGenerator = {
             id: 'motsDuVecteur', type: 'checkbox', label: 'Écrire le déplacement dans la consigne',
             default: true,
             visibleSi: (r) => !r.genres || !r.genres.length || r.genres.includes('translation'),
-            aide: 'Décoché, la consigne dit seulement « la translation que montre la flèche » : '
-                + 'la flèche devient la seule donnée. Coché, elle annonce « 2 carreaux vers la '
-                + 'gauche et 2 vers le haut », et l\'élève peut compter sans jamais regarder le '
-                + 'dessin. Gardez-le coché quand plusieurs transformations se mêlent — il faut '
-                + 'd\'abord reconnaître laquelle —, décochez-le pour travailler la flèche.'
+            aide: 'Coché, la consigne annonce « 2 carreaux vers la gauche et 2 vers le haut » '
+                + 'et l\'élève peut compter sans regarder le dessin. Décoché, la flèche devient '
+                + 'la seule donnée.'
         },
         {
             id: 'fleche', type: 'select', label: 'D\'où part la flèche', default: 'melange',
@@ -343,12 +341,9 @@ export const transfoQuadrillageGenerator = {
             ],
             // Une flèche, il n'y en a que dans la TRANSLATION.
             visibleSi: (r) => !r.genres || !r.genres.length || r.genres.includes('translation'),
-            aide: 'Rémy : « j\'aimerais bien un exercice juste avec les translations où la '
-                + 'flèche démarre d\'un sommet de la figure, puis après à un autre endroit. » '
-                + 'Partant d\'un sommet, la flèche MONTRE où va ce sommet-là, et il n\'y a '
-                + 'qu\'à recopier. Posée ailleurs, elle ne touche plus rien : il faut avoir '
-                + 'compris qu\'un vecteur est un déplacement, pas un trajet entre deux points '
-                + 'précis. C\'est la marche la plus difficile de la translation.'
+            aide: 'Partant d\'un sommet, la flèche montre où va ce sommet-là : il n\'y a qu\'à '
+                + 'recopier. Posée ailleurs, elle ne touche plus rien — c\'est la marche la plus '
+                + 'difficile de la translation.'
         },
         {
             id: 'taille', type: 'select', label: 'Le quadrillage', default: 'moyen',

@@ -140,9 +140,8 @@ export const sudokuGenerator = {
         },
         {
             id: 'difficulte', type: 'select', label: 'Difficulté', default: 'facile',
-            aide: 'Le TUTORIEL ne laisse que trois ou quatre cases à remplir, et le jeu dit à '
-                + 'chaque fois laquelle et pourquoi : c\'est le mode pour la toute première '
-                + 'fois, ou pour un élève qui n\'a jamais fini une grille.',
+            aide: 'Le tutoriel ne laisse que trois ou quatre cases à remplir, et dit à chaque '
+                + 'fois laquelle et pourquoi. C\'est le mode de la toute première fois.',
             options: [
                 { value: 'tutoriel', label: 'Tutoriel — presque tout est donné, et le jeu guide' },
                 { value: 'facile', label: 'Facile (candidat unique)' },

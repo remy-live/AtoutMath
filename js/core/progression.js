@@ -367,10 +367,9 @@ export function paramMarches({ marches = [], groupes = {}, mot = 'marche', ancie
         // sans cela, rouvrir un parcours d'hier montrerait tout coché alors que
         // l'exercice, lui, ne jouerait qu'un temps.
         ancien,
-        aide: `Coche ce que la classe travaille aujourd’hui — tout, un temps entier, `
-            + `ou ${f ? 'une' : 'un'} ${mot} seul${f ? 'e' : ''}. Le nombre de questions se règle à part : `
-            + `ce sont les ${mot}s coché${f ? 'e' : ''}s qui se le partagent, et la barre montre comment. `
-            + `Tire une borne pour donner plus de questions à l’une qu’à l’autre.`
+        aide: `Coche ce que la classe travaille aujourd’hui. Les ${mot}s coché${f ? 'e' : ''}s se `
+            + `partagent les questions, et la barre montre comment : tire une borne pour en `
+            + `donner plus à l’${f ? 'une' : 'un'} qu’à l’autre.`
     };
 }
 

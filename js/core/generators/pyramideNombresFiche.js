@@ -20,17 +20,15 @@ export const pyramideNombresFicheGenerator = {
     params: [
         {
             id: 'taille', type: 'select', label: 'Hauteur de la pyramide', default: 'moyenne',
-            aide: 'Plus la pyramide est haute, plus le sommet est grand — et plus une erreur '
-                + 'du bas se paie cher en haut. Les nombres de la base sont donc plus petits '
-                + 'quand on monte : le travail doit rester du raisonnement, pas des retenues.',
+            aide: 'Plus la pyramide est haute, plus une erreur du bas se paie cher en haut. Les '
+                  + 'nombres de la base sont donc plus petits quand on monte.',
             options: Object.values(TAILLES_PN).map(t => ({ value: t.id, label: t.label }))
         },
         {
             id: 'difficulte', type: 'select', label: 'Où sont les trous', default: 'melange',
-            aide: 'C\'est CE réglage qui change la nature de l\'exercice, bien plus que la '
-                + 'hauteur. La base donnée, on ne fait qu\'additionner vers le haut. Des trous '
-                + 'en bas, et il faut soustraire pour redescendre — ce qui est exactement la '
-                + 'leçon « soustraire, c\'est chercher ce qui manque ».',
+            aide: 'Base donnée, on ne fait qu\'additionner. Trous dans la base, il faut '
+                  + 'soustraire pour redescendre. C\'est ce réglage qui change la nature de '
+                  + 'l\'exercice.',
             options: Object.values(DIFFICULTES_PN).map(d => ({ value: d.id, label: d.label }))
         }
     ],

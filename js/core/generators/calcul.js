@@ -415,9 +415,9 @@ export const prioriteGenerator = {
         },
         {
             id: 'progressif', type: 'checkbox', label: 'Commencer plus facile', default: false,
-            aide: 'Les premières questions restent à trois nombres et deux opérations, '
-                + 'puis la difficulté monte d\'un cran jusqu\'à celle réglée ci-dessus, au '
-                + 'rythme du réglage suivant. On installe la règle avant de la compliquer.'
+            aide: 'Les premières questions restent à trois nombres et deux opérations, puis la '
+                + 'difficulté monte jusqu\'à celle réglée au-dessus. On installe la règle avant '
+                + 'de la compliquer.'
         }
     ],
 

@@ -75,11 +75,9 @@ export const fracEgaliteGenerator = {
         { id: 'maxBase', type: 'number', label: 'Dénominateur de départ maximum', default: 9, min: 2, max: 20 },
         {
             id: 'bandes', type: 'number', label: 'Questions avec les bandes', default: 3, min: 0, max: 10,
-            aide: 'Rémy : « les bandes l\'une en dessous de l\'autre, la seconde découpée : '
-                + 'l\'élève aura juste à compter dans un premier temps, deux ou trois questions, '
-                + 'et après tu les enlèves pour qu\'il multiplie. » Pendant ces questions-là les '
-                + 'nombres restent petits — on ne compte pas jusqu\'à quatre-vingts. Ensuite les '
-                + 'bandes disparaissent et il ne reste que les deux flèches de multiplication.'
+            aide: 'Les premières questions montrent deux bandes, la seconde découpée : on '
+                + 'compte au lieu de multiplier, et les nombres restent petits. Ensuite les '
+                + 'bandes disparaissent.'
         }
     ],
     generate(params, ctx) {
@@ -194,9 +192,9 @@ export const fracEgalesGenerator = {
         paramMarches({ marches: LISTE_EGALES, mot: 'marche' }),
         {
             id: 'sens', type: 'select', label: 'Dans quel sens', default: 'agrandir',
-            aide: 'En agrandissant, la fraction en gros dénominateur est à droite et l\'élève '
-                + 'multiplie — c\'est le geste du cours. En simplifiant, elle est à gauche : '
-                + 'il faut la ramener, ou multiplier l\'autre, et c\'est là qu\'on bute.',
+            aide: 'En agrandissant, la grosse fraction est à droite et l\'élève multiplie : '
+                + 'c\'est le geste du cours. En simplifiant, elle est à gauche, et c\'est là '
+                + 'qu\'on bute.',
             options: [
                 { value: 'agrandir', label: 'La petite fraction d\'abord (× un nombre)' },
                 { value: 'simplifier', label: 'La grande fraction d\'abord (÷ un nombre)' },
@@ -373,9 +371,9 @@ export const fracFacteurGenerator = {
     params: [
         {
             id: 'sens', type: 'select', label: 'Dans quel sens', default: 'agrandir',
-            aide: 'On commence par AGRANDIR — c\'est le geste qu\'on fait pour mettre au même '
-                + 'dénominateur, et c\'est celui dont on se sert tous les jours. Simplifier est '
-                + 'le même raisonnement à l\'envers : les nombres rapetissent, donc on divise.',
+            aide: 'On commence par agrandir : c\'est le geste qu\'on fait pour mettre au même '
+                + 'dénominateur. Simplifier est le même raisonnement à l\'envers — les nombres '
+                + 'rapetissent, donc on divise.',
             options: [
                 { value: 'agrandir', label: 'Multiplier seulement' },
                 { value: 'simplifier', label: 'Diviser seulement' },
@@ -607,10 +605,8 @@ function itemDeCalcul(c, rng, {
 
 const PARAM_OPERATION = {
     id: 'operation', type: 'select', label: 'L\'opération', default: 'somme',
-    aide: 'La soustraction ne demande rien de plus au dénominateur — c\'est exactement le même '
-        + 'travail — mais elle empêche de répondre au flair : on ne peut plus additionner deux '
-        + 'petits nombres au hasard et tomber juste. Le résultat reste toujours positif : pas de '
-        + 'nombres relatifs ici.',
+    aide: 'La soustraction ne demande rien de plus au dénominateur, mais elle empêche '
+        + 'de répondre au flair. Le résultat reste toujours positif.',
     options: [
         { value: 'somme', label: 'Additions seulement' },
         { value: 'difference', label: 'Soustractions seulement' },
@@ -620,9 +616,8 @@ const PARAM_OPERATION = {
 
 const PARAM_SIMPLIFIER = {
     id: 'simplifier', type: 'select', label: 'Simplifier le résultat', default: 'non',
-    aide: 'Au départ, on s\'arrête au résultat brut : mettre au même dénominateur est déjà tout '
-        + 'l\'exercice, et simplifier par-dessus fait rater les deux. La ligne s\'ajoute quand '
-        + 'la mise au même dénominateur est acquise.',
+    aide: 'Au départ, on s\'arrête au résultat brut : mettre au même dénominateur est '
+        + 'déjà tout l\'exercice. La ligne s\'ajoute quand c\'est acquis.',
     options: [
         { value: 'non', label: 'Non — on s\'arrête au résultat' },
         { value: 'oui', label: 'Oui — une ligne de plus' }
@@ -798,11 +793,9 @@ export const fracProblemeGenerator = {
         {
             id: 'complements', type: 'number', label: 'Questions « combien reste-t-il ? »',
             default: 3, min: 0, max: 10,
-            aide: 'Les premières questions sont des compléments à UN : « il a parcouru 4/9 du '
-                + 'trajet, combien lui reste-t-il ? ». C\'est le cas le plus facile — un seul '
-                + 'dénominateur, aucun PPCM — et pourtant celui qui fait buter, parce qu\'il '
-                + 'faut d\'abord voir que le tout s\'écrit en neuvièmes : 1 = 9/9. Ensuite '
-                + 'viennent les problèmes à deux fractions.'
+            aide: 'Les premières questions sont des compléments à 1 : « il a parcouru 4/9 du '
+                + 'trajet, combien lui reste-t-il ? ». Un seul dénominateur, mais il faut voir '
+                + 'que 1 = 9/9.'
         },
         { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 10, min: 4, max: 10 },
         // ÉCRIRE LE CALCUL, OU LE FAIRE CHERCHER. Rémy : « pour histoire de

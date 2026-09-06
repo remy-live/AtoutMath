@@ -60,9 +60,9 @@ export const motsCroisesFicheGenerator = {
         // d'espace », fait par la machine plutôt qu'à l'œil.
         {
             id: 'defs', type: 'select', label: 'Les définitions', default: 'auto',
-            aide: 'En dessous, c\'est la mise en page du journal. À côté, la grille se '
-                + 'décale et gagne en hauteur : c\'est mieux quand la grille est haute et '
-                + 'étroite. « Automatique » essaie les trois et garde la plus grande grille.',
+            aide: 'En dessous, c\'est la mise en page du journal. À côté, la grille gagne en '
+                + 'hauteur : mieux quand elle est haute et étroite. Automatique essaie les '
+                + 'trois.',
             options: [
                 { value: 'auto', label: 'Automatique — la plus grande grille' },
                 { value: 'dessous', label: 'En dessous de la grille' },

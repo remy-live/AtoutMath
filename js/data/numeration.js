@@ -272,7 +272,9 @@ export const numerationExercises = [
             },
             {
                 id: 'mouvement', type: 'select', label: 'Les cartes qui bougent', default: 'apres',
-                aide: 'Sur une table immobile, un élève finit par ne plus calculer : il RETIENT où sont les cartes et cherche des yeux celle qu\'il a repérée tout à l\'heure. Dès qu\'elles dérivent, cette béquille disparaît, et il ne reste que « quel nombre va avec celui-là ». La dérive commence après deux tables vidées et s\'accélère très doucement.',
+                aide: 'Sur une table immobile, l\'élève retient où sont les cartes au lieu de '
+                    + 'calculer. Dès qu\'elles dérivent, il ne reste que « quel nombre va avec '
+                    + 'celui-là ». La dérive commence après deux tables.',
                 options: [
                     { value: 'apres', label: 'Après deux tables vidées' },
                     { value: 'jamais', label: 'Jamais — table immobile' },
@@ -524,10 +526,9 @@ export const numerationExercises = [
                     { value: 5, label: '6 — Tout à la fois' }
                 ],
                 default: 0,
-                aide: 'Les six terrains s\'enchaînent, chacun ajoutant UNE chose : les '
-                    + 'carrés, puis les cubes, puis les coefficients négatifs — qui '
-                    + 'ouvrent les annulations, le plus joli coup du jeu. Démarrer plus '
-                    + 'haut sert à reprendre un point qui coince.'
+                aide: 'Les six terrains s\'enchaînent, chacun ajoutant une chose : les carrés, les '
+                    + 'cubes, puis les coefficients négatifs. Démarrer plus haut sert à reprendre '
+                    + 'un point qui coince.'
             },
             {
                 id: 'vies', type: 'number', label: 'Nombre de vies', default: 3, min: 1, max: 9,
@@ -578,10 +579,9 @@ export const numerationExercises = [
                 id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
                 label: 'Les gestes disponibles',
                 default: ['unites', 'partage', 'deuxTemps', 'deuxCotes'],
-                aide: 'Coche ce que la classe a déjà vu : les niveaux qui réclameraient '
-                    + 'un geste absent disparaissent. Avec les seuls POIDS il reste les deux '
-                    + 'premiers niveaux — de quoi installer « la même chose des deux côtés » '
-                    + 'avant d\'introduire la division.',
+                aide: 'Coche ce que la classe a déjà vu : les niveaux qui réclameraient un geste '
+                    + 'absent disparaissent. Avec les seuls poids, il reste les deux premiers '
+                    + 'niveaux.',
                 options: [
                     { value: 'unites', label: 'Enlever des poids (x + 3 = 8)' },
                     { value: 'partage', label: 'Partager en parts égales (3x = 12)' },
@@ -592,10 +592,8 @@ export const numerationExercises = [
             {
                 id: 'symboles', type: 'select', label: 'La ligne d\'algèbre',
                 options: ['toujours', 'jamais'], default: 'toujours',
-                aide: 'Affichée, l\'équation change sous les yeux de l\'élève en même temps '
-                    + 'que les poids : c\'est le pont entre la balance et le cahier, et c\'est '
-                    + 'lui qu\'on veut. Coupée, il ne reste que la manipulation — utile une '
-                    + 'seule séance, pour une classe qui découvre.'
+                aide: 'Affichée, l\'équation change en même temps que les poids : c\'est le pont '
+                    + 'entre la balance et le cahier. Coupée, il ne reste que la manipulation.'
             }
         ],
         motsClefs: ['équation', 'balance', 'équilibre', 'inconnue', 'résoudre', 'x',
@@ -715,7 +713,9 @@ export const numerationExercises = [
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Difficulté',
-                aide: "En « facile », on ne fait que multiplier, par 10 ou par 100 : on installe le sens du décalage avant d'ajouter la division. Le nombre de départ a TOUJOURS une partie décimale — avec un entier, la règle fausse « on ajoute un zéro » tomberait juste et sortirait renforcée.",
+                aide: 'En facile, on ne fait que multiplier, par 10 ou par 100 : on installe le '
+                    + 'sens du décalage avant d\'ajouter la division. Le nombre de départ a toujours '
+                    + 'une partie décimale.',
                 options: [
                     { value: 'facile', label: '× 10 et × 100 seulement' },
                     { value: 'moyen', label: '× et ÷ par 10, 100, 1000' },

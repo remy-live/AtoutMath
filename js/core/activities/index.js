@@ -107,6 +107,7 @@ import { tangramFicheGenerator } from '../generators/tangramFiche.js';
 import { memoryFicheGenerator } from '../generators/memoryFiche.js';
 import { hexagrilleFicheGenerator } from '../generators/hexagrilleFiche.js';
 import { tuyauxGenerator } from '../generators/tuyaux.js';
+import { pourcentagesGenerator } from '../generators/pourcentages.js';
 import {
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator
@@ -160,7 +161,7 @@ import {
     tangramFicheGenerator, memoryFicheGenerator,
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator, hexagrilleFicheGenerator,
-    tuyauxGenerator
+    tuyauxGenerator, pourcentagesGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -205,9 +206,8 @@ const choiceModule = () => import('./choice.js');
 const PARAM_AIDE = [{
     id: 'aide', type: 'select', label: 'L\'aide', default: 'progressive', papier: false,
     echelle: true, groupe: 'aide',
-    aide: 'En progressif, l\'exercice monte tout seul : d\'abord deux propositions '
-        + '— la bonne réponse contre l\'erreur classique —, puis quatre, puis on tape '
-        + 'la réponse au pavé. Une question dont la réponse n\'est pas un nombre '
+    aide: 'En progressif, l\'exercice monte tout seul : deux propositions, puis quatre, '
+        + 'puis la réponse au pavé. Une question dont la réponse n\'est pas un nombre '
         + 'reste en propositions.',
     // LES NOMS COURTS SONT LA GRADUATION DU RAIL. Rémy en a dessiné le croquis :
     // « Qcm 2 · Qcm 4 · Libre — O———O———O ». Le rail ne montrait que le cran
@@ -449,10 +449,9 @@ registerActivity({
     params: [{
         id: 'reponse', type: 'select', label: 'Comment on répond', default: 'progressive',
         papier: false, echelle: true,
-        aide: 'CHOISIR suffit à installer les mots. RÉPONDRE SEUL demande de les '
-            + 'produire : on écrit le mot quand la question nomme un tracé, on clique le '
-            + 'tracé quand elle demande de le trouver. La progression fait les deux, '
-            + 'dans cet ordre.',
+        aide: 'Choisir suffit à installer les mots. Répondre seul demande de les produire : '
+            + 'écrire le mot, ou cliquer le tracé. La progression fait les deux, dans cet '
+            + 'ordre.',
         options: [
             { value: 'choisir', label: 'Choisir parmi les propositions' },
             { value: 'seul', label: 'Répondre seul : écrire le mot ou cliquer la figure' },

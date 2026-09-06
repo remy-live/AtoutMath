@@ -144,9 +144,8 @@ export const prioritesRelatifsGenerator = {
         },
         {
             id: 'progressif', type: 'checkbox', label: 'Commencer plus facile', default: true,
-            aide: 'Les premières questions restent à trois nombres, puis la '
-                + 'difficulté monte d\'un cran — au rythme réglé juste en dessous. Sur ce '
-                + 'chapitre-là, deux règles se rencontrent : il vaut mieux les voir '
+            aide: 'Les premières questions restent à trois nombres, puis la difficulté monte '
+                + 'd\'un cran. Sur ce chapitre, deux règles se rencontrent : mieux vaut les voir '
                 + 'arriver une à une.'
         }
     ],

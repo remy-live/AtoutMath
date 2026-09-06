@@ -373,10 +373,9 @@ export const kenkenGenerator = {
         },
         {
             id: 'difficulte', type: 'select', label: 'Difficulté', default: 'facile',
-            aide: 'Une zone d\'UNE case donne son chiffre : il n\'y a rien à calculer, on '
-                + 'l\'écrit. Le TUTORIEL n\'a que des zones d\'une et deux cases — la moitié '
-                + 'de la grille est écrite d\'avance —, et le jeu dit à chaque fois par quelle '
-                + 'zone continuer et pourquoi.',
+            aide: 'Une zone d\'une case donne son chiffre : on l\'écrit. Le tutoriel n\'a que des '
+                + 'zones d\'une et deux cases, et dit à chaque fois par où continuer et '
+                + 'pourquoi.',
             options: [
                 { value: 'tutoriel', label: 'Tutoriel — que des zones d\'une ou deux cases' },
                 { value: 'facile', label: 'Facile (petites zones)' },
