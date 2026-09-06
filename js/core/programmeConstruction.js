@@ -1047,8 +1047,12 @@ export const NIVEAUX = [
  * ne peut pas dire une contrainte — trois points non alignés se voient, mais
  * rien ne prouve qu'ils ne DOIVENT pas l'être —, on l'ajoute d'un mot.
  */
-export const CONSIGNE = 'Écris le programme qui construit cette figure : '
-    + 'une phrase par ligne.';
+// « UNE PHRASE PAR LIGNE » N'A PLUS DE SENS DEPUIS QU'ON NE TAPE PLUS RIEN.
+// L'écran compose les phrases en cliquant les mots possibles (voir
+// core/arbrePhrase.js) : ce qui reste à trouver, c'est la SUITE des tracés.
+// La fiche papier, elle, garde sa propre consigne — là on écrit vraiment.
+export const CONSIGNE = 'Écris le programme qui construit cette figure, '
+    + 'une phrase après l\'autre.';
 
 export const consigneDe = (niv) => CONSIGNE
     + (niv && niv.nonAlignes ? ' Les points de départ ne sont pas alignés.' : '');

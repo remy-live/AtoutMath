@@ -145,7 +145,7 @@ export const geometrieExercises = [
         printGeneratorId: 'geo.construction.programme.fiche',
         printable: 'programme-construction',
         skills: ['geo.construction.programme'],
-        params: { familles: ['points', 'traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'], depuis: 0, modeles: true, assembler: 3 },
+        params: { familles: ['points', 'traits', 'cercles', 'milieux', 'perpendiculaires', 'paralleles', 'intersections'], depuis: 0, assembler: 3 },
         paramSchema: [
             {
                 id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
@@ -175,12 +175,6 @@ export const geometrieExercises = [
                     + 'deux exercices. À 0, on écrit dès la première figure.'
             },
             {
-                id: 'modeles', type: 'checkbox', label: 'Proposer les débuts de phrase', default: true,
-                aide: 'Des boutons qui posent le début d\'une phrase — « Trace le segment [ » — et '
-                    + 'laissent taper les lettres. Quel objet, à partir de quels points, reste à '
-                    + 'décider. Décoché, il rédige de mémoire.'
-            },
-            {
                 id: 'depuis', type: 'select', label: 'Commencer au niveau', default: 0,
                 echelle: true,
                 aide: 'On entre au milieu de l\'échelle quand les premiers ont été faits en '
@@ -198,14 +192,16 @@ export const geometrieExercises = [
             'milieu', 'médiatrice', 'perpendiculaire', 'parallèle', 'intersection', 'rédiger'],
         tags: { chemin: ['Géométrique', 'Repérage'], niveaux: ['6ème', '5ème'] },
         instruction: 'Une figure est dessinée : à toi d\'écrire le PROGRAMME qui la construit. '
-            + 'Tu poses des blocs — « trace le segment [AB] », « trace le cercle de centre A '
-            + 'passant par B », « trace la perpendiculaire à (AB) passant par C » — et '
-            + 'l\'ordinateur les EXÉCUTE : ta figure se dessine à côté du modèle, et tu vois '
-            + 'tout de suite ce qui manque. DEUX CHOSES À RETENIR. D\'abord la NOTATION : [AB] '
-            + 'est le segment, (AB) la droite, AB la longueur — les blocs l\'écrivent pour toi, '
-            + 'lis-la. Ensuite l\'ORDRE : on ne trace pas [AB] avant d\'avoir A et B, on ne '
-            + 'prend pas le milieu d\'un segment qui n\'existe pas. Un bloc dont il manque un '
-            + 'objet ne s\'exécute pas et te dit lequel. Il y a souvent PLUSIEURS programmes '
+            + 'Tu composes chaque phrase EN CLIQUANT, mot après mot : d\'abord « Place » ou '
+            + '« Trace », puis ce que tu traces — « le segment [__] », « le cercle de centre _ '
+            + 'passant par _ » —, puis les points. À chaque fois, seuls les mots qui peuvent '
+            + 'suivre te sont proposés : ta phrase est donc toujours bien écrite, et '
+            + 'l\'ordinateur l\'EXÉCUTE aussitôt — ta figure se dessine à côté du modèle, et tu '
+            + 'vois tout de suite ce qui manque. DEUX CHOSES À RETENIR. D\'abord la NOTATION : '
+            + '[AB] est le segment, (AB) la droite, AB la longueur — les phrases l\'écrivent '
+            + 'pour toi, lis-la. Ensuite l\'ORDRE : on ne trace pas [AB] avant d\'avoir A et B, '
+            + 'on ne prend pas le milieu d\'un segment qui n\'existe pas — c\'est pour cela que '
+            + 'seuls les points DÉJÀ PLACÉS te sont proposés. Il y a souvent PLUSIEURS programmes '
             + 'justes pour la même figure : c\'est le dessin obtenu qui compte, pas la façon de '
             + 'l\'écrire. Et la NOTATION est la troisième chose à lire sur la figure : le '
             + 'petit carré rouge dit l\'angle droit, les tirets disent deux longueurs égales, '

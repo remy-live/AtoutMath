@@ -40,6 +40,7 @@ import {
     executer, comparer, cleObjet, nomObjet, couperAuMonde, couperDemiDroite, lireProgramme,
     ordreDeLaBanque
 } from '../core/programmeConstruction.js';
+import { branches, descendre, remonter, phraseEnCours, phraseFinie } from '../core/arbrePhrase.js';
 
 const COMPETENCE = 'geo.construction.programme';
 
@@ -186,7 +187,9 @@ export class ProgrammeConstruction extends BaseGame {
         // composées puis la rédaction — pas la rédaction d'emblée sous prétexte
         // qu'on entre au rang 3.
         this.premier = this.rang;
-        this.avecModeles = this.params.modeles !== false;
+        // LE CHEMIN DANS L'ARBRE : le verbe choisi, l'objet, et les points
+        // déjà désignés. Vide entre deux phrases.
+        this.chemin = null;
         // ON ASSEMBLE AVANT D'ÉCRIRE — Rémy : « on pourrait commencer par du
         // drag drop pour que l'élève voit bien les formulations ».
         //
@@ -261,14 +264,44 @@ export class ProgrammeConstruction extends BaseGame {
                    à l'écran l'un au-dessus de l'autre. */
                 .pc-redaction[hidden] { display: none; }
                 @container (max-width: 560px) { .pc-redaction { grid-template-columns: 1fr; } }
-                .pc-zone {
-                    width: 100%; box-sizing: border-box; min-height: 120px; resize: vertical;
+                /* --- L'ARBRE DES PHRASES -------------------------------------
+                   Rémy : « on pourrait cliquer sur trace ou place, un arbre
+                   s'ouvre avec les mots possibles et ainsi de suite ». La
+                   phrase en cours est en haut, GRANDE : c'est elle qu'on lit,
+                   les boutons ne sont que la façon de l'écrire. */
+                .pc-arbre {
+                    display: flex; flex-direction: column; gap: 8px;
                     border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
-                    background: var(--card-bg, #fff); color: var(--text-main);
-                    padding: 8px 10px; font: inherit; line-height: 1.55;
-                    font-size: clamp(12px, 2.3cqw, 15px);
+                    background: var(--card-bg, #fff); padding: 10px; min-height: 120px;
                 }
-                .pc-zone:focus { outline: none; border-color: var(--primary); }
+                .pc-arbre-phrase {
+                    font-size: clamp(14px, 2.9cqw, 19px); font-weight: 700; line-height: 1.4;
+                    text-align: center; min-height: 1.4em; color: var(--text-main);
+                }
+                .pc-arbre-phrase--vide { color: var(--text-muted); font-weight: 500;
+                    font-size: clamp(11px, 2.2cqw, 13.5px); }
+                .pc-arbre-titre {
+                    text-align: center; color: var(--text-muted); font-weight: 600;
+                    font-size: clamp(11px, 2.1cqw, 13px);
+                }
+                .pc-arbre-mots { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+                .pc-mot {
+                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
+                    cursor: pointer; background: var(--card-bg, #fff); color: var(--text-main);
+                    font: inherit; font-weight: 600; padding: 7px 12px;
+                    font-size: clamp(12px, 2.3cqw, 15px); line-height: 1.3;
+                }
+                .pc-mot:hover { border-color: var(--primary); color: var(--primary); }
+                /* UNE LETTRE EST UNE CIBLE CARRÉE : « A » dans un bouton taillé
+                   pour « le cercle de centre » se cherche du doigt. */
+                .pc-mot--lettre { min-width: 44px; text-align: center; font-weight: 800; }
+                .pc-mot--fait { border-color: var(--success); color: var(--success); font-weight: 800; }
+                .pc-arbre-outils { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+                .pc-retour {
+                    border: 0; background: transparent; color: var(--text-muted); cursor: pointer;
+                    font: inherit; font-size: clamp(11px, 2.1cqw, 13px); padding: 4px 8px;
+                }
+                .pc-retour:hover { color: var(--text-main); }
                 .pc-lignes { display: flex; flex-direction: column; gap: 0; font-size: clamp(10px, 2cqw, 12.5px); }
                 .pc-l { display: flex; gap: 6px; line-height: 1.55;
                     font-size: clamp(12px, 2.3cqw, 15px); min-height: 1.55em; }
@@ -345,16 +378,13 @@ export class ProgrammeConstruction extends BaseGame {
                         <div data-moi></div></div>
                 </div>
                 <div class="pc-redaction" data-redaction>
-                    <textarea class="pc-zone" data-zone spellcheck="false"
-                        aria-label="Ton programme de construction, une phrase par ligne"
-                        placeholder="Une phrase par ligne.&#10;Place 2 points A et B&#10;Trace le segment [AB]"></textarea>
-                    <div class="pc-lignes" data-lignes></div>
+                    <div class="pc-pose" data-ecrit></div>
+                    <div class="pc-arbre" data-arbre></div>
                 </div>
                 <div class="pc-redaction" data-composition hidden>
                     <div class="pc-pose" data-pose></div>
                     <div class="pc-banque" data-banque></div>
                 </div>
-                <div class="pc-modeles" data-modeles></div>
                 <div class="pc-note" data-note></div>
                 <div class="pc-barre" data-barre></div>
             </div>`;
@@ -362,32 +392,23 @@ export class ProgrammeConstruction extends BaseGame {
         this.butEl = this.container.querySelector('[data-but]');
         this.moiEl = this.container.querySelector('[data-moi]');
         this.cadreMoiEl = this.container.querySelector('[data-cadre-moi]');
-        this.zoneEl = this.container.querySelector('[data-zone]');
+        this.ecritEl = this.container.querySelector('[data-ecrit]');
+        this.arbreEl = this.container.querySelector('[data-arbre]');
         this.redactionEl = this.container.querySelector('[data-redaction]');
         this.compositionEl = this.container.querySelector('[data-composition]');
         this.poseEl = this.container.querySelector('[data-pose]');
         this.banqueEl = this.container.querySelector('[data-banque]');
-        this.lignesEl = this.container.querySelector('[data-lignes]');
-        this.modelesEl = this.container.querySelector('[data-modeles]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.barreEl = this.container.querySelector('[data-barre]');
 
-        if (!this.isDemo) {
-            this.zoneEl.addEventListener('input', () => {
-                this.texte = this.zoneEl.value;
-                this.note('');
-                this.dessiner({ garderZone: true });
-            });
-        }
         this.dessinerBarre();
         this.dessiner();
     }
 
     startGameLoop() { /* rien à animer : l'exercice avance à la frappe */ }
 
-    dessiner({ garderZone = false } = {}) {
+    dessiner() {
         const niv = this.niveau;
-        if (!garderZone) this.zoneEl.value = this.texte;
         const lu = lireProgramme(this.texte, niv.atlas);
         const r = executer(lu.instructions, niv.atlas);
         this.dernier = { lu, r };
@@ -409,8 +430,7 @@ export class ProgrammeConstruction extends BaseGame {
         this.redactionEl.hidden = compose;
         this.compositionEl.hidden = !compose;
         if (compose) this.dessinerComposition(niv);
-        else this.dessinerLignes(lu, r);
-        this.dessinerModeles();
+        else this.dessinerArbre(niv, lu, r);
     }
 
     /** Les phrases posées, et celles qu'on peut encore poser. */
@@ -454,62 +474,98 @@ export class ProgrammeConstruction extends BaseGame {
         });
     }
 
-    /** En face de chaque ligne écrite : ce qu'elle a produit, ou pourquoi non. */
-    dessinerLignes(lu, r) {
-        let iIns = -1;
-        this.lignesEl.innerHTML = lu.lignes.map(l => {
-            if (l.vide) return '<div class="pc-l">&nbsp;</div>';
-            if (!l.ok) {
-                return `<div class="pc-l pc-l--ko"><span>✕</span><small>${enAttribut(l.dit)}</small></div>`;
-            }
-            iIns += 1;
-            const etat = (r.lignes || [])[iIns] || {};
-            if (etat.etat === 'bloque' && r.erreur) {
-                return `<div class="pc-l pc-l--ko"><span>✕</span><small>${enAttribut(r.erreur.dit)}</small></div>`;
-            }
-            if (etat.etat === 'jamais') return '<div class="pc-l">&nbsp;</div>';
-            const nes = etat.noms && etat.noms.length
-                ? ` <small>→ ${enAttribut(etat.noms.join(', '))}</small>` : '';
-            const note = l.note ? `<small class="pc-l--note"> ${enAttribut(l.note)}</small>` : '';
-            return `<div class="pc-l pc-l--ok"><span>✓</span><span>${nes}${note}</span></div>`;
-        }).join('');
-    }
-
-    dessinerModeles() {
-        // EN COMPOSITION, LES DÉBUTS DE PHRASE N'ONT PLUS D'OBJET : ils
-        // insèrent du texte dans une zone qui n'est pas à l'écran, et la banque
-        // fait déjà — mieux — ce qu'ils faisaient, puisqu'elle donne la phrase
-        // ENTIÈRE.
-        if (!this.avecModeles || this.enAssemblage) { this.modelesEl.innerHTML = ''; return; }
-        const ops = operationsDe(this.famillesActives);
-        this.modelesEl.innerHTML = ops.map(op =>
-            `<button type="button" class="pc-ajout" data-op="${op.id}"
-                title="Insérer le début de la phrase">${enAttribut(op.bouton)}</button>`).join('');
-        if (this.isDemo) return;
-        this.modelesEl.querySelectorAll('[data-op]').forEach(b => {
-            b.onclick = () => this.insererModele(b.dataset.op);
-        });
-    }
-
     /**
-     * LE MODÈLE S'INSÈRE, IL NE SE REMPLIT PAS.
+     * L'ARBRE DES PHRASES, ET CE QU'ON A DÉJÀ POSÉ.
      *
-     * Le bouton pose le début de la phrase et laisse le curseur là où il faut
-     * écrire. C'est l'aide que Rémy décrit — « on peut faire glisser des
-     * vignettes, l'élève écrit les lettres » — sans jamais donner la réponse :
-     * quel objet, à partir de quels points, reste entièrement à décider.
+     * À gauche les phrases écrites, avec ce que chacune a tracé ; à droite le
+     * mot suivant. Une phrase se compose de haut en bas — le verbe, l'objet,
+     * les points — et à chaque cran l'écran ne montre QUE ce qui peut suivre.
+     * C'est ce que Rémy demandait : « on pourrait cliquer sur trace ou place,
+     * un arbre s'ouvre avec les mots possibles et ainsi de suite. »
      */
-    insererModele(id) {
-        const op = OPERATIONS[id];
-        if (!op) return;
-        const debut = op.gabarit.filter(x => typeof x === 'string').join('').replace(/\s+$/, ' ');
-        const avant = this.zoneEl.value;
-        const saut = (avant && !avant.endsWith('\n')) ? '\n' : '';
-        this.zoneEl.value = `${avant}${saut}${debut}`;
-        this.texte = this.zoneEl.value;
-        this.zoneEl.focus();
-        this.zoneEl.setSelectionRange(this.zoneEl.value.length, this.zoneEl.value.length);
-        this.dessiner({ garderZone: true });
+    dessinerArbre(niv, lu, r) {
+        const lignes = this.texte.split('\n').filter(l => l.trim());
+
+        // LES PHRASES POSÉES PORTENT LEUR RÉSULTAT. « → M » en face de « Place
+        // le milieu de [AB] » dit que le point s'appelle M, et c'est ce nom-là
+        // qu'on retrouvera dans la liste des points de la phrase suivante.
+        this.ecritEl.className = `pc-pose${lignes.length ? '' : ' pc-pose--vide'}`;
+        this.ecritEl.innerHTML = lignes.length
+            ? lignes.map((l, i) => {
+                const etat = (r.lignes || [])[i] || {};
+                const nes = etat.noms && etat.noms.length
+                    ? ` <small>→ ${enAttribut(etat.noms.join(', '))}</small>` : '';
+                return `<button type="button" class="pc-posee" data-retirer="${i}"
+                        title="Retirer cette phrase">
+                        <span class="pc-posee-n">${i + 1}.</span>
+                        <span class="pc-posee-t">${enAttribut(l)}${nes}</span>
+                        <span class="pc-posee-x" aria-hidden="true">✕</span>
+                    </button>`;
+            }).join('')
+            : '<span>Ton programme s\'écrit ici, phrase après phrase. '
+                + 'Choisis les mots à droite.</span>';
+
+        const chemin = this.chemin || null;
+        const b = branches(chemin, {
+            operations: operationsDe(this.famillesActives),
+            points: r.points, objets: r.objets, lettres: niv.exiges
+        });
+        const phrase = phraseEnCours(chemin);
+        const finie = phraseFinie(chemin);
+        const classeLettre = (b.genre === 'lettres' || b.genre === 'point') ? ' pc-mot--lettre' : '';
+
+        this.arbreEl.innerHTML = `
+            <div class="pc-arbre-phrase${phrase ? '' : ' pc-arbre-phrase--vide'}">
+                ${phrase ? enAttribut(phrase) : 'La phrase que tu composes s\'écrira ici.'}
+            </div>
+            <div class="pc-arbre-titre">${enAttribut(b.titre)}</div>
+            <div class="pc-arbre-mots">
+                ${b.choix.map(c => `<button type="button" class="pc-mot${classeLettre}"
+                    data-mot="${enAttribut(c.valeur)}">${enAttribut(c.mot)}</button>`).join('')}
+                ${(b.fini && finie) ? `<button type="button" class="pc-mot pc-mot--fait"
+                    data-poser-phrase>✓ Ajouter cette phrase</button>` : ''}
+            </div>
+            <div class="pc-arbre-outils">
+                ${chemin && chemin.verbe
+        ? '<button type="button" class="pc-retour" data-reculer>← Revenir en arrière</button>' : ''}
+            </div>`;
+
+        if (this.isDemo) return;
+        this.ecritEl.querySelectorAll('[data-retirer]').forEach(x => {
+            x.onclick = () => {
+                const i = Number(x.dataset.retirer);
+                this.texte = lignes.filter((_, k) => k !== i).join('\n');
+                this.chemin = null;
+                this.note('');
+                this.dessiner();
+            };
+        });
+        this.arbreEl.querySelectorAll('[data-mot]').forEach(x => {
+            x.onclick = () => {
+                this.chemin = descendre(this.chemin, x.dataset.mot);
+                // UNE PHRASE SANS TROU S'AJOUTE TOUTE SEULE. « Trace le segment
+                // [AB] » est finie dès la deuxième lettre : demander en plus de
+                // confirmer ferait un clic de cérémonie à chaque phrase. Seule
+                // « Place des points », qui n'a pas de longueur fixe, garde son
+                // bouton de fin.
+                const p2 = phraseFinie(this.chemin);
+                if (p2 && OPERATIONS[this.chemin.op].id !== 'points') this.poserPhrase(p2);
+                else { this.note(''); this.dessiner(); }
+            };
+        });
+        const fin2 = this.arbreEl.querySelector('[data-poser-phrase]');
+        if (fin2) fin2.onclick = () => this.poserPhrase(phraseFinie(this.chemin));
+        const rec = this.arbreEl.querySelector('[data-reculer]');
+        if (rec) rec.onclick = () => { this.chemin = remonter(this.chemin); this.note(''); this.dessiner(); };
+    }
+
+    /** La phrase composée rejoint le programme, et l'arbre repart de zéro. */
+    poserPhrase(phrase) {
+        if (!phrase) return;
+        this.texte = (this.texte ? `${this.texte}\n` : '') + phrase;
+        this.chemin = null;
+        this.note('');
+        this.dessiner();
     }
 
     dessinerBarre() {
@@ -520,6 +576,7 @@ export class ProgrammeConstruction extends BaseGame {
         this.barreEl.querySelector('[data-verifier]').onclick = () => this.verifier();
         this.barreEl.querySelector('[data-vider]').onclick = () => {
             this.texte = '';
+            this.chemin = null;
             this.note('');
             this.cadreMoiEl.classList.remove('pc-cadre--ok');
             this.dessiner();
@@ -574,11 +631,23 @@ export class ProgrammeConstruction extends BaseGame {
     }
 
     suivant() {
-        if (this.rang + 1 >= this.plan.length) { this.fini = true; return this.gagner(); }
+        // LA DERNIÈRE FIGURE APPELAIT UNE MÉTHODE QUI N'EXISTE PAS. Trouvé en
+        // jouant le dernier niveau : « this.gagner is not a function » dans la
+        // console, et la partie restait ouverte sans que rien ne le dise. La
+        // fin de partie a un nom, et c'est celui du socle commun.
+        if (this.rang + 1 >= this.plan.length) {
+            this.fini = true;
+            return this.terminerPartie({
+                gagne: true, concept: COMPETENCE,
+                quoi: 'Écrire un programme de construction',
+                obtenu: `${this.plan.length} figures`, points: 20
+            });
+        }
         setTimeout(() => {
             if (!this.isRunning) return;
             this.rang += 1;
             this.texte = '';
+            this.chemin = null;
             this.cadreMoiEl.classList.remove('pc-cadre--ok');
             this.dessiner();
         }, 1600);
@@ -642,6 +711,7 @@ export class ProgrammeConstruction extends BaseGame {
         if (this.rang + 1 >= this.plan.length) return false;
         this.rang += 1;
         this.texte = '';
+        this.chemin = null;
         this.cadreMoiEl.classList.remove('pc-cadre--ok');
         this.note('');
         this.dessiner();
@@ -651,7 +721,7 @@ export class ProgrammeConstruction extends BaseGame {
     /** Pendant du saut : on efface le programme, puis on recule d'une figure. */
     revenirEtape() {
         if (this.isDemo || this.fini) return false;
-        if (this.texte.trim()) { this.texte = ''; this.note(''); this.dessiner(); return true; }
+        if (this.texte.trim()) { this.texte = ''; this.chemin = null; this.note(''); this.dessiner(); return true; }
         if (this.rang <= 0) return false;
         this.rang -= 1;
         this.cadreMoiEl.classList.remove('pc-cadre--ok');
