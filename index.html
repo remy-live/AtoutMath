@@ -4,7 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <!-- `viewport-fit=cover` : nécessaire pour que env(safe-area-inset-*)
-         soit renseigné sur iPhone — la barre basse s'appuie dessus. -->
+         soit renseigné sur iPhone — la barre basse s'appuie dessus.
+
+         `user-scalable=no` NE PROTÈGE DE RIEN SUR IPHONE, et il faut le savoir
+         avant de compter dessus : Safari l'ignore depuis iOS 10,
+         délibérément — interdire le zoom ferme l'application à qui voit mal, et
+         Apple a tranché que ce n'était pas au site de le décider. C'est ce qui
+         a laissé passer le défaut signalé par Rémy : deux tapes rapides sur le
+         « + » de l'horloge zoomaient la page. Ce qui l'empêche vraiment est
+         `touch-action: manipulation`, posé sur toutes les commandes dans
+         css/base.css — chirurgical, il retire le double-tap et laisse le
+         pincement. On garde la balise pour Android, où elle agit encore, mais
+         elle n'est pas la protection. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <!-- L'APPLICATION A UN SEUL NOM. Le manifeste, l'icône installée et
          l'écran d'accueil d'iOS disaient « AtoutMath » ; le titre de l'onglet
@@ -47,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=608">
-    <link rel="stylesheet" href="css/layout.css?v=608">
-    <link rel="stylesheet" href="css/ui.css?v=608">
-    <link rel="stylesheet" href="css/games.css?v=608">
-    <link rel="stylesheet" href="css/components.css?v=608">
-    <link rel="stylesheet" href="css/modules.css?v=608">
+    <link rel="stylesheet" href="css/base.css?v=609">
+    <link rel="stylesheet" href="css/layout.css?v=609">
+    <link rel="stylesheet" href="css/ui.css?v=609">
+    <link rel="stylesheet" href="css/games.css?v=609">
+    <link rel="stylesheet" href="css/components.css?v=609">
+    <link rel="stylesheet" href="css/modules.css?v=609">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le

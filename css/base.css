@@ -109,3 +109,38 @@
    caché derrière. L'unité dynamique suit la fenêtre réellement visible. */
 body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; background-color: var(--bg-app); color: var(--text-main); }
 button { cursor: pointer; border: none; background: none; }
+
+/* ═══════════ DEUX TAPES RAPIDES NE DOIVENT PAS ZOOMER LA PAGE ═══════════
+   Rémy : « mon fils a joué au jeu de l'horloge et en tapant deux fois
+   rapidement sur le plus, cela a zoomé ».
+
+   C'EST LE DOUBLE-TAP DU NAVIGATEUR, et il est exactement dans le chemin de
+   cet exercice : pour passer de 3 h 05 à 3 h 37, on appuie trente-deux fois
+   sur « + » — vite. Deux appuis rapprochés sur le même bouton, c'est un
+   double-tap, et le navigateur zoome sur ce qu'il croit être un paragraphe.
+
+   LE `user-scalable=no` DE L'EN-TÊTE NE LE FAIT PAS, ET NE L'A JAMAIS FAIT.
+   Safari sur iOS l'IGNORE depuis iOS 10, délibérément : interdire le zoom
+   ferme l'application à qui voit mal, et Apple a tranché que ce n'était pas au
+   site de le décider. La balise donnait donc l'illusion d'une protection.
+
+   `touch-action: manipulation` est le bon outil, et il est chirurgical : il
+   retire le double-tap-pour-zoomer, et RIEN D'AUTRE. Le défilement continue,
+   le pincement pour zoomer aussi — l'accessibilité est intacte, c'est
+   seulement le geste accidentel qui disparaît.
+
+   Les surfaces qu'on fait glisser (le compas, les bornes de la frise, les
+   pièces du tangram) déclarent `touch-action: none`, plus restrictif : elles
+   gardent leur réglage, qui est posé plus loin et plus précisément. */
+button, [role="button"], input, select, textarea, label, summary, a {
+    touch-action: manipulation;
+}
+/* ET DEUX TAPES NE DOIVENT PAS SÉLECTIONNER UN MOT NON PLUS. Sur un bouton,
+   le double-tap surligne son texte en bleu — sur « + », c'est le signe
+   lui-même qui devient une sélection, et il faut toucher ailleurs pour s'en
+   défaire. On ne le retire QUE sur les commandes : le texte d'un énoncé, lui,
+   doit rester copiable. */
+button, [role="button"], label, summary {
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}

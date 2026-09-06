@@ -139,6 +139,37 @@ async function debordements(p) {
 }
 
 /**
+ * DEUX TAPES RAPIDES NE DOIVENT PAS ZOOMER LA PAGE.
+ *
+ * Rémy : « mon fils a joué au jeu de l'horloge et en tapant deux fois
+ * rapidement sur le plus, cela a zoomé ». C'est le double-tap du navigateur, et
+ * il est en plein dans le chemin de l'exercice : passer de 3 h 05 à 3 h 37
+ * demande trente-deux appuis sur « + », vite.
+ *
+ * `user-scalable=no` dans l'en-tête ne l'empêche pas — Safari sur iOS l'ignore
+ * depuis iOS 10, délibérément, parce qu'interdire le zoom ferme l'application à
+ * qui voit mal. Ce qui l'empêche, c'est `touch-action: manipulation` sur le
+ * bouton. Un bouton laissé en `auto` rouvre donc le défaut, sans que rien ne le
+ * signale : d'où ce balayage, sur CHAQUE exercice, à chaque audit.
+ *
+ * On ne regarde que ce qui se voit : un bouton caché ne reçoit pas de tape.
+ */
+async function tapesRapides(p) {
+    return p.evaluate(() => {
+        const z = document.getElementById('game-board');
+        if (!z) return [];
+        const noms = new Set();
+        z.querySelectorAll('button, [role="button"]').forEach(el => {
+            const r = el.getBoundingClientRect();
+            if (!r.width || !r.height) return;
+            if (getComputedStyle(el).touchAction !== 'auto') return;
+            noms.add(String(el.className || el.tagName).split(' ')[0] || el.tagName);
+        });
+        return [...noms].slice(0, 4);
+    });
+}
+
+/**
  * LE PANNEAU DE RÉGLAGES D'AVANT-PARTIE, TRAVERSÉ COMME LE FAIT UN PROFESSEUR.
  *
  * Un exercice réglable ne démarre plus tout seul : il demande d'abord ses
@@ -185,6 +216,10 @@ async function tourDuCatalogue(p, seau) {
             else if (mis > LENT) seau.push(`LENT: ${mis} ms avant la première image`);
             const trop = await debordements(p);
             if (trop) seau.push(`DÉBORDE: ${trop} px hors de l'écran`);
+            const zoomables = await tapesRapides(p);
+            if (zoomables.length) {
+                seau.push(`ZOOM: deux tapes rapides zoomeraient sur ${zoomables.join(', ')}`);
+            }
         } catch (e) {
             seau.push('LANCEMENT: ' + String(e.message || e).split('\n')[0].slice(0, 170));
         }
