@@ -45,6 +45,16 @@ export const ecrireNombre = (x) => String(Math.round(Number(x) * 100) / 100).rep
 export const ecrireExact = (k, unite) => `${k === 1 ? '' : ecrireNombre(k)}π ${unite}`;
 
 /**
+ * LA MÊME, SANS SON UNITÉ — c'est ce qu'on TAPE au pavé numérique.
+ *
+ * Rémy : « Au départ quand tu utilises le pavé numérique, demande une valeur
+ * exacte (rajoute le Pi) en symbole. » L'unité s'affiche à côté de l'écran du
+ * pavé, comme sur toutes les autres questions chiffrées ; ce qui se tape, c'est
+ * le nombre et son π.
+ */
+export const ecrireExactNu = (k) => `${k === 1 ? '' : ecrireNombre(k)}π`;
+
+/**
  * L'ARRONDI EST-IL LE MÊME AVEC 3,14 ET AVEC π ?
  *
  * Un élève de sixième calcule avec 3,14 ; un élève de cinquième appuie sur la
@@ -122,6 +132,7 @@ export function tirerDisque(rng, marche = 'perimetre-exact', { unite = 'cm' } = 
         marche, r, d: 2 * r, unite,
         coefficient, decimales: dec,
         exact: ecrireExact(coefficient, surLAire ? `${unite}²` : unite),
+        exactNu: ecrireExactNu(coefficient),
         arrondi: arrondir(coefficient * Math.PI, dec),
         surLAire
     };
@@ -221,6 +232,85 @@ export function indicesDe(t) {
                 + 'à la fin — jamais avant.'
     ];
 }
+
+/**
+ * L'ERREUR D'ARRONDI, NOMMÉE.
+ *
+ * Rémy : « Explique l'erreur d'arrondi si l'élève en fait une. » Ce sont trois
+ * fautes différentes, et « faux » les confond toutes les trois :
+ *
+ *   · TRONQUER au lieu d'arrondir. « 62,83 » devient « 62,8 » dans les deux
+ *     cas, mais « 37,69 » devient « 37,7 » en arrondissant et « 37,6 » en
+ *     coupant. C'est la faute la plus fréquente, et elle est invisible tant
+ *     qu'on ne tombe pas sur un chiffre ≥ 5.
+ *   · ARRONDIR AU MAUVAIS RANG — l'unité quand on demandait le dixième, et
+ *     l'inverse. L'élève a su calculer ; il n'a pas lu la consigne.
+ *   · NE PAS ARRONDIR DU TOUT : recopier l'affichage de la calculatrice.
+ *
+ * Chacune se reconnaît au nombre écrit, sans deviner : on les calcule.
+ *
+ * Ces valeurs ne s'affichent JAMAIS — ce ne sont pas des propositions, ce sont
+ * des réponses possibles qu'on saura nommer si elles viennent.
+ */
+export function diagnosticsArrondi(t) {
+    if (ETAPES_EXACTES.includes(t.marche)) return null;
+    const exact = t.coefficient * Math.PI;
+    const dec = t.decimales;
+    const p = 10 ** dec;
+    const rang = dec ? 'au dixième' : 'à l’unité';
+    const autreRang = dec ? 'à l’unité' : 'au dixième';
+    const d = [];
+
+    // Tronqué : on coupe au lieu d'arrondir. N'existe comme faute distincte que
+    // lorsque le chiffre suivant fait monter — sinon c'est la bonne réponse.
+    const tronque = Math.floor(exact * p) / p;
+    if (tronque !== t.arrondi) {
+        d.push({
+            value: tronque,
+            why: `Tu as COUPÉ après le chiffre demandé au lieu d’arrondir. `
+                + `${ecrireNombre(Math.round(exact * 100) / 100)}… arrondi ${rang} `
+                + `donne ${ecrireNombre(t.arrondi)}, parce que le chiffre suivant est 5 ou plus.`
+        });
+    }
+    // Le mauvais rang.
+    const autre = Math.round(exact * (dec ? 1 : 10)) / (dec ? 1 : 10);
+    if (autre !== t.arrondi) {
+        d.push({
+            value: autre,
+            why: `Ton calcul est juste, mais tu as arrondi ${autreRang} : `
+                + `on demandait ${rang}, donc ${ecrireNombre(t.arrondi)}.`
+        });
+    }
+    // Pas arrondi du tout — l'affichage de la calculatrice, à deux décimales.
+    const brut = Math.round(exact * 100) / 100;
+    if (brut !== t.arrondi && brut !== tronque && brut !== autre) {
+        d.push({
+            value: brut,
+            why: `C’est la valeur de la calculatrice, pas la réponse demandée : `
+                + `il fallait arrondir ${rang}, donc ${ecrireNombre(t.arrondi)}.`
+        });
+    }
+    return d.length ? d : null;
+}
+
+/**
+ * LE RAPPEL DE π — un bouton, pas une phrase dans l'énoncé.
+ *
+ * Rémy : « Rappelle la valeur de Pi au départ. » Dans l'énoncé, il serait lu
+ * une fois et sauté les vingt suivantes ; en bouton, il est là quand on en a
+ * besoin, et il ne donne jamais la réponse — c'est une constante, pas un
+ * résultat.
+ */
+export const RAPPEL_PI_HTML = `<div class="dsq-pi">
+    <p><b>π</b> est un nombre, comme 2 ou 0,5 — mais ses décimales ne s’arrêtent
+       jamais et ne se répètent jamais.</p>
+    <p class="dsq-pi-val">π ≈ 3,141 592 6…</p>
+    <p>Au collège on écrit <b>π ≈ 3,14</b>, ou l’on appuie sur la touche π de la
+       calculatrice, qui en garde bien plus.</p>
+    <p><b>La valeur exacte GARDE le π</b> — « 25π cm² » est un nombre écrit
+       exactement. On ne remplace π par 3,14 que lorsqu’on demande une valeur
+       arrondie, et l’on arrondit <b>à la fin</b>, jamais avant.</p>
+</div>`;
 
 /**
  * LES FAUSSES RÉPONSES — les quatre confusions du chapitre, et rien d'autre.
@@ -359,8 +449,12 @@ export function figureDisqueSvg(t) {
             .dsq-nom { font-size: 13px; font-weight: 800; fill: #2b6cb0; }
         </style>
         <circle cx="${c}" cy="${c}" r="${R}" class="dsq-bord"/>
+        ${/* `data-montrer` : le robot POINTE ce trait pendant qu'il parle du
+              rayon. Rémy : « il faut que le robot explique, montre le rayon ».
+              L'attribut est générique — n'importe quelle figure peut désigner
+              l'élément dont le deuxième indice parle. */ ''}
         <line x1="${T(P.x)}" y1="${T(P.y)}" x2="${T(Q.x)}" y2="${T(Q.y)}" class="dsq-trait"
-            data-rayon/>
+            data-montrer/>
         <circle cx="${c}" cy="${c}" r="3.2" class="dsq-centre"/>
         <text x="${c - 9}" y="${c + 14}" text-anchor="middle" class="dsq-nom">O</text>
         <text x="${T(ex)}" y="${T(ey)}" text-anchor="middle" dominant-baseline="central"

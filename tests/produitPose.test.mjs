@@ -302,6 +302,67 @@ test('L\'INDICE DIT LA RÈGLE, jamais le résultat', () => {
     }
 });
 
+// --- Le robot ------------------------------------------------------------------------
+
+test('LE ROBOT SAIT FINIR L\'EXERCICE — sur les quatre marches, sans se bloquer', async () => {
+    // Rémy : « Le robot fait juste un long texte illisible, il faut qu'il
+    // agisse. » Pour agir, il faut savoir quoi faire : c'est `prochainGeste`,
+    // et c'est la seule chose de la démonstration qui se teste sans écran.
+    const { prochainGeste, etatInitial, barrer, decomposer, estFini, resultat } =
+        await import('../js/core/produitPose.js');
+    for (const m of MARCHES_POSE) {
+        for (let k = 0; k < 40; k++) {
+            const p = tirerProduitPose(makeRng(`rb${m.id}${k}`), { marche: m.id });
+            let etat = etatInitial(p);
+            let coups = 0;
+            while (!estFini(etat)) {
+                const g = prochainGeste(etat);
+                assert.ok(g, `${m.id} : aucun geste proposé sur ${p.a}/${p.b} × ${p.c}/${p.d}`);
+                // Douze coups : la boucle de la démonstration s'arrête là, et
+                // un robot qui s'arrête avant la fin ne montre rien.
+                assert.ok(++coups <= 12, `${m.id} : ${coups} coups`);
+                if (g.quoi === 'barrer') {
+                    const r = barrer(etat, g.haut.id, g.bas.id);
+                    assert.ok(r.ok, r.pourquoi);
+                    etat = r.etat;
+                } else {
+                    // Les deux facteurs sont écrivables tels quels : ni 1, ni
+                    // un produit faux — le pavé les refuserait.
+                    assert.ok(g.x >= 2 && g.y >= 2, `${g.v} = ${g.x} × ${g.y}`);
+                    assert.equal(g.x * g.y, g.v);
+                    const r = decomposer(etat, g.id, g.x, g.y);
+                    assert.ok(r.ok, r.pourquoi);
+                    etat = r.etat;
+                }
+            }
+            // Et il arrive sur LA bonne réponse, celle que l'exercice attend.
+            const r = resultat(etat);
+            assert.equal(`${r.n}/${r.d}`, `${p.reponse.n}/${p.reponse.d}`,
+                `${p.a}/${p.b} × ${p.c}/${p.d}`);
+        }
+    }
+});
+
+test('LE ROBOT BARRE AVANT DE DÉCOMPOSER — c’est le geste le plus court', async () => {
+    const { prochainGeste, etatInitial } = await import('../js/core/produitPose.js');
+    // Une marche « barrer » n'a rien à décomposer : le premier geste est un
+    // barrage, sinon le robot enseignerait un détour.
+    for (let k = 0; k < 30; k++) {
+        const p = tirerProduitPose(makeRng(`bd${k}`), { marche: 'barrer' });
+        assert.equal(prochainGeste(etatInitial(p)).quoi, 'barrer');
+    }
+});
+
+test('LES INDICES TIENNENT DANS UNE BULLE', () => {
+    // Ils s'affichent dans une bulle, et une bulle de quarante mots ne se lit
+    // pas — on la ferme. Le robot montre ; le texte rappelle.
+    for (const m of MARCHES_POSE) {
+        for (const t of etapesPose(tirerProduitPose(makeRng(`c${m.id}`), { marche: m.id }))) {
+            assert.ok(t.length <= 110, `${t.length} caractères : « ${t} »`);
+        }
+    }
+});
+
 // --- Le rangement --------------------------------------------------------------------
 
 test('l\'atelier est au catalogue, avec son activité et son chapitre', async () => {

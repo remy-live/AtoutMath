@@ -262,6 +262,26 @@ const BASE = {
         descriptor: 'Lire un nombre écrit avec les hiéroglyphes égyptiens.',
         lesson: 'Bâton = 1, anse = 10, corde = 100, lotus = 1 000, doigt = 10 000. On additionne les valeurs : il n\'y a pas de rang, seulement des symboles à compter.'
     },
+    // TROIS MOTS, UNE COMPÉTENCE. Rémy : « un exercice d'arrondi avec valeur
+    // par excès, valeur par défaut, valeur approchée ». On ne les sépare pas :
+    // ils portent sur le même encadrement, et c'est justement de savoir
+    // LEQUEL des trois on demande qu'il s'agit. Trois compétences distinctes
+    // diraient au carnet d'erreurs « il ne sait pas arrondir » quand le
+    // problème est qu'il n'a pas lu le mot.
+    'num.arrondi': {
+        label: 'Valeur approchée : par défaut, par excès, arrondie',
+        chemin: [D.NUMERIQUE, SD.NUMERATION],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Encadrer un nombre décimal au rang demandé et donner la valeur par '
+            + 'défaut, par excès ou arrondie.',
+        lesson: '3,14 < 3,1416 < 3,15. La valeur par DÉFAUT au centième est celle du dessous '
+            + '(3,14) : on garde les chiffres jusqu\'au rang, on coupe le reste. La valeur par '
+            + 'EXCÈS est celle du dessus (3,15). La valeur ARRONDIE est celle des deux dont on '
+            + 'est le plus PROCHE — on regarde le chiffre qui SUIT le rang : 5 ou plus, on '
+            + 'monte ; moins de 5, on reste. Arrondir n\'est pas couper : cela ne tombe pareil '
+            + 'qu\'une fois sur deux.'
+    },
     'num.ordre-grandeur': {
         label: 'Ordre de grandeur',
         chemin: [D.NUMERIQUE, SD.CALCUL_MENTAL],

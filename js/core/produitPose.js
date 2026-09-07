@@ -197,6 +197,52 @@ export function barragePossible(etat) {
 }
 
 /**
+ * LE PROCHAIN GESTE QUI FAIT AVANCER — celui que le robot joue, et celui
+ * qu'un indice pourrait montrer.
+ *
+ * Rémy, sur cet atelier : « Le robot fait juste un long texte illisible, il
+ * faut qu'il agisse. » Pour agir, il faut savoir quoi faire, et c'est une
+ * question de calcul, pas d'écran : elle vit donc ici, où elle se teste.
+ *
+ * DEUX GESTES, DANS CET ORDRE. Si le même nombre est écrit des deux côtés, on
+ * le barre — c'est toujours le geste le plus court. Sinon on cherche une paire
+ * haut/bas qui a un facteur commun, et l'on décompose CELUI DES DEUX qui ne
+ * vaut pas déjà ce facteur. Deux coups plus tard au pire, le barrage est
+ * possible.
+ *
+ * CELA TERMINE, et ce n'est pas une chance : tant que `estFini` est faux, le
+ * produit du haut et celui du bas ont un facteur premier commun ; ce premier
+ * divise alors un jeton en haut et un jeton en bas, donc la paire existe. Et
+ * chaque décomposition fait strictement décroître le plus grand jeton
+ * concerné.
+ *
+ * @returns {?{quoi:'barrer', haut, bas} | ?{quoi:'decomposer', id, v, x, y}}
+ */
+export function prochainGeste(etat) {
+    const direct = barragePossible(etat);
+    if (direct) return { quoi: 'barrer', haut: direct.haut, bas: direct.bas };
+
+    const hauts = tousHaut(etat).filter(t => !t.barre);
+    const bas = tousBas(etat).filter(t => !t.barre);
+    // La paire au plus grand facteur commun d'abord : c'est le geste qui
+    // simplifie le plus, et c'est celui qu'un professeur montrerait.
+    let mieux = null;
+    for (const h of hauts) {
+        for (const b of bas) {
+            const g = pgcd(h.v, b.v);
+            if (g > 1 && (!mieux || g > mieux.g)) mieux = { h, b, g };
+        }
+    }
+    if (!mieux) return null;
+    // On décompose celui qui ne vaut pas déjà le facteur commun. Si les deux
+    // le dépassent, on prend le plus grand : il reste toujours l'autre au coup
+    // suivant, et le robot montre alors deux fois le même geste — ce qui est
+    // exactement ce qu'on veut faire comprendre.
+    const t = mieux.h.v !== mieux.g ? mieux.h : mieux.b;
+    return { quoi: 'decomposer', id: t.id, v: t.v, x: mieux.g, y: t.v / mieux.g };
+}
+
+/**
  * LES DÉCOMPOSITIONS D'UN NOMBRE, telles que la table les montre.
  *
  * Elle ne sert qu'à ALLUMER des cases : on n'oblige personne à choisir dans
@@ -326,16 +372,17 @@ export function tirerProduitPose(rng, opts = {}) {
 
 /** Le raisonnement, dans l'ordre où on le fait — jamais le résultat. */
 export function etapesPose(p) {
+    // TROIS PHRASES, PAS TROIS PARAGRAPHES. Rémy : « Le robot fait juste un
+    // long texte illisible. » Ces indices s'affichent dans une bulle, et une
+    // bulle de quarante mots ne se lit pas — on la ferme. Le robot, lui, FAIT
+    // maintenant l'exercice (voir `prochainGeste` et la démonstration de
+    // l'atelier) : le texte n'a plus à décrire ce qu'on peut montrer, il n'a
+    // qu'à rappeler la règle en une ligne.
     return [
-        'Une multiplication de fractions n’a qu’UN numérateur et qu’UN '
-            + 'dénominateur : tout ce qui est en haut se multiplie, tout ce qui est '
-            + 'en bas aussi. La barre du milieu ne sépare pas deux mondes.',
-        'Un nombre qui se trouve en haut ET en bas se barre : le diviser en haut '
-            + 'et en bas par lui-même ne change pas la fraction.',
+        'Tout ce qui est en haut se multiplie ; tout ce qui est en bas aussi.',
+        'Le même nombre en haut et en bas se barre : il vaut 1.',
         p.gestes === 0
-            ? 'Ici le nombre est déjà écrit des deux côtés — regarde bien.'
-            : 'Aucun nombre n’est écrit deux fois ? Alors décompose : cherche celui '
-                + 'qui se cache dans un produit. La table de Pythagore te dit dans '
-                + 'quelles multiplications il apparaît.'
+            ? 'Ici, un nombre est déjà écrit des deux côtés.'
+            : 'Rien n’est écrit deux fois ? Décompose, et le facteur commun apparaît.'
     ];
 }

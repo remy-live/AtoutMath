@@ -13,6 +13,9 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js'
 
 const DIGITS = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
 
+/** Le symbole, une fois pour toutes : il sert de touche, de garde et de tampon. */
+const PI = '\u03c0';
+
 /**
  * Le pavé porte une VIRGULE, comme tout ce qu'on écrit en français ; JavaScript,
  * lui, rend `0.2`. Le robot cherchait donc une touche « . » qui n'existe pas :
@@ -236,6 +239,25 @@ export function mount(container, session, opts = {}) {
             ? !!item.meta.signe
             : Number(item.answer) < 0;
 
+        // LA TOUCHE π, POUR ÉCRIRE UNE VALEUR EXACTE.
+        //
+        // Rémy, sur le disque : « Au départ quand tu utilises le pavé
+        // numérique, demande une valeur exacte (rajoute le Pi) en symbole. »
+        // Les quatre premières étapes du disque étaient bloquées en
+        // propositions, et le commentaire disait pourquoi : « aucun clavier de
+        // chiffres ne permet de taper 25π ». C'était vrai du clavier, pas de
+        // la question — et le prix était lourd, puisque la valeur exacte est
+        // justement ce qu'on veut voir ÉCRIRE, pas reconnaître dans une liste.
+        //
+        // La touche s'ajoute donc quand l'exercice la demande (`meta.pi`), et
+        // elle ne s'écrit qu'à la fin d'un nombre : « 25π » est un produit, pas
+        // une suite de caractères, et « π25 » ne veut rien dire.
+        const pi = !!(item.meta && item.meta.pi);
+        // Où la poser. La case libre à gauche du zéro est celle des
+        // calculatrices ; quand la virgule ou le « ± » l'occupent déjà, π prend
+        // une rangée à lui plutôt que de pousser le pavé à quatre colonnes.
+        const piEnLigne = pi && !decimal && !signe;
+
         // Deux colonnes dès qu'il y a la place : énoncé et figure à gauche,
         // saisie à droite. En une seule colonne, l'ensemble énoncé + figure +
         // pavé + validation dépassait la hauteur d'écran et imposait un
@@ -266,7 +288,9 @@ export function mount(container, session, opts = {}) {
                               signée —, le signe prend une rangée à lui plutôt
                               que de pousser le pavé à quatre colonnes. */ ''}
                         ${decimal && signe ? `${keySigne()}${BLANC}${BLANC}` : ''}
-                        ${decimal ? key(',') : (signe ? keySigne() : BLANC)}
+                        ${pi && !piEnLigne ? `${keyPi()}${BLANC}${BLANC}` : ''}
+                        ${piEnLigne ? keyPi()
+        : (decimal ? key(',') : (signe ? keySigne() : BLANC))}
                         ${key('0')}
                         <button type="button" class="numpad-key numpad-key--del" data-key="←"
                                 aria-label="Effacer le dernier chiffre">${ICON_BACKSPACE}</button>
@@ -354,7 +378,10 @@ export function mount(container, session, opts = {}) {
                 if (k === '←') setBuffer(buffer.slice(0, -1));
                 else if (k === ',') { if (!buffer.includes(',') && buffer !== '') setBuffer(buffer + ','); }
                 else if (k === '\u00b1') setBuffer(basculerSigne(buffer));
-                else if (buffer.replace('-', '').length < 7) setBuffer(buffer + k);
+                // π clôt le nombre : rien ne s'écrit après lui, et il ne
+                // s'écrit pas seul en tête — « π25 » n'est pas un produit.
+                else if (k === PI) { if (!buffer.includes(PI) && buffer !== '') setBuffer(buffer + PI); }
+                else if (!buffer.includes(PI) && buffer.replace('-', '').length < 7) setBuffer(buffer + k);
             };
         });
         container.querySelector('[data-validate]').onclick = validate;
@@ -364,7 +391,16 @@ export function mount(container, session, opts = {}) {
         container.focus({ preventScroll: true });
         container.onkeydown = (e) => {
             if (session.locked) return;
-            if (/^[0-9]$/.test(e.key)) { setBuffer(buffer + e.key); e.preventDefault(); }
+            if (/^[0-9]$/.test(e.key)) {
+                if (!buffer.includes(PI)) setBuffer(buffer + e.key);
+                e.preventDefault();
+            }
+            // « p » comme pi : la lettre du clavier physique la plus proche du
+            // symbole, et elle n'entre en conflit avec rien d'autre ici.
+            else if (pi && (e.key === 'p' || e.key === 'P')) {
+                if (!buffer.includes(PI) && buffer !== '') setBuffer(buffer + PI);
+                e.preventDefault();
+            }
             else if (e.key === 'Backspace') { setBuffer(buffer.slice(0, -1)); e.preventDefault(); }
             else if (e.key === ',' || e.key === '.') { if (!buffer.includes(',')) setBuffer(buffer + ','); e.preventDefault(); }
             // Le trait d'union du clavier bascule le signe, comme la touche.
@@ -395,6 +431,24 @@ export function mount(container, session, opts = {}) {
         const contexte = container.querySelector('.numpad-context');
         cursor.say(phraseDepart(item), contexte || container);
         if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+
+        // LE ROBOT MONTRE CE DONT IL PARLE.
+        //
+        // Rémy, sur le disque : « il faut que le robot explique, montre le
+        // rayon ». Il disait « Ici le rayon vaut 7 cm » en flottant au-dessus
+        // du pavé, à l'autre bout de l'écran — la phrase était juste et
+        // l'élève ne savait pas quel trait elle désignait.
+        //
+        // La figure marque donc l'élément dont le deuxième indice parle
+        // (`data-montrer`), et la bulle vient s'y accrocher. C'est générique :
+        // aucune figure n'est nommée ici.
+        const montre = container.querySelector('[data-montrer]');
+        const indiceFigure = (item.hints || [])[1];
+        if (montre && tientEnUneBulle(indiceFigure)) {
+            if (!await gate.waitTurn() || destroyed) return;
+            cursor.say(indiceFigure.trim(), montre);
+            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        }
 
         if (!await gate.waitTurn() || destroyed) return;
         cursor.say(phraseCalcul(item, target), screen);
@@ -454,6 +508,12 @@ function key(k) {
 }
 
 const BLANC = '<span class="numpad-blank" aria-hidden="true"></span>';
+
+/** La touche π — voir `meta.pi` dans `render`. */
+function keyPi() {
+    return `<button type="button" class="numpad-key numpad-key--pi" data-key="${PI}"`
+        + ` aria-label="Pi">${PI}</button>`;
+}
 
 /** « 31 » ↔ « -31 ». Le signe vit en tête du tampon, jamais ailleurs. */
 const basculerSigne = (v) => (v.startsWith('-') ? v.slice(1) : '-' + v);

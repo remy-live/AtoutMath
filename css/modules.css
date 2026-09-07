@@ -1194,6 +1194,33 @@
     text-align: center;
 }
 .np-outil svg { max-width: 100%; height: auto; }
+
+/* LES TROIS MOTS DE L'ARRONDI. Même besoin que le rappel de π ci-dessous : le
+   panneau des outils centre son contenu, et une définition en trois points se
+   lit alignée à gauche. L'encadrement, lui, est la figure — il se centre. */
+.arr-mots { text-align: left; }
+.arr-mots p { margin: 0 0 .55em; line-height: 1.45; }
+.arr-mots ul { margin: 0 0 .55em; padding-left: 1.2em; }
+.arr-mots li { margin-bottom: .3em; line-height: 1.4; }
+.arr-mots p:last-child { margin-bottom: 0; }
+.arr-mots-enc {
+    text-align: center; font-size: 1.2rem; font-weight: 800;
+    color: var(--primary); margin: .5em 0 .7em !important;
+}
+
+/* LE RAPPEL DE π. Rémy : « Rappelle la valeur de Pi au départ. » Le panneau
+   des outils centre son contenu — c'est ce qu'il faut pour un schéma, et le
+   contraire de ce qu'il faut pour quatre phrases : centrées, elles se lisent
+   ligne à ligne au lieu de se lire d'un trait. Et la valeur elle-même, qui est
+   ce qu'on vient chercher, doit se voir sans être cherchée. */
+.dsq-pi { text-align: left; }
+.dsq-pi p { margin: 0 0 .55em; line-height: 1.45; }
+.dsq-pi p:last-child { margin-bottom: 0; }
+.dsq-pi-val {
+    text-align: center; font-size: 1.35rem; font-weight: 800;
+    color: var(--primary); letter-spacing: .01em;
+    margin: .5em 0 .7em !important;
+}
 /* Le bandeau du panneau : ce qu'on regarde, et de quoi refermer. Sur
    téléphone le panneau recouvre l'exercice — sans cette croix, on ne
    retrouverait plus le bouton qui l'a ouvert. */

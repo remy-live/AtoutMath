@@ -39,9 +39,20 @@ export const trigoCotesGenerator = {
         {
             id: 'quoi', type: 'select', label: 'Ce qu\'on demande', default: 'noms',
             echelle: true,
-            aide: 'Nommer les trois côtés suffit à occuper une feuille. La formule demande deux '
-                + 'choses à la fois — le rapport et la lecture de la figure —, et elles se '
-                + 'ratent séparément.',
+            // ON NOMME CE QUI MANQUE, PLUTÔT QUE DE LE LAISSER MANQUER.
+            //
+            // Rémy, sur cet exercice : « Il n'y a pas d'options sur la fiche à
+            // imprimer ! » Il y en a deux, et elles sont en haut du panneau —
+            // mesuré. Mais ce ne sont pas LES SIENNES : il avait réglé l'écran
+            // sur « Cliquer le côté / Écrire / Formule », et la feuille propose
+            // « Nommer / Formule ». Chercher une option qu'on a posée et en
+            // trouver une autre au même endroit, c'est ne pas la trouver.
+            //
+            // Le palier « cliquer » n'a pas de traduction papier — on ne clique
+            // pas une feuille —, et ce n'est pas rattrapable. Ce qui l'est,
+            // c'est de le DIRE là où on le cherche.
+            aide: 'Le premier palier de l\'écran — cliquer le côté — n\'existe pas sur papier : '
+                + 'on l\'écrit. La formule demande en plus le bon rapport.',
             options: [
                 { value: 'noms', label: 'Nommer les trois côtés', court: 'Noms' },
                 { value: 'formule', label: 'Écrire la formule — cos(G) = …', court: 'Formule' }

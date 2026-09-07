@@ -53,6 +53,25 @@ export function makeItem(spec) {
         prompt: typeof spec.prompt === 'string' ? { text: spec.prompt } : (spec.prompt || { text: '' }),
         answer: spec.answer,
         choices: spec.choices || null,
+        // DIAGNOSTIQUER UNE RÉPONSE TAPÉE, PAS SEULEMENT UNE RÉPONSE CHOISIE.
+        //
+        // Un item à propositions dit pourquoi chaque leurre est faux : c'est le
+        // `why` du distracteur, et c'est ce qui transforme un « faux » en
+        // diagnostic. Un item à saisie n'avait rien — l'élève tapait un nombre,
+        // recevait « faux », et l'explication générale, la même pour tout le
+        // monde, ne parlait pas de SON erreur.
+        //
+        // Rémy, sur le disque : « Explique l'erreur d'arrondi si l'élève en
+        // fait une. » Tronquer au lieu d'arrondir, arrondir au mauvais rang,
+        // recopier toutes les décimales : trois fautes qui n'en sont pas une
+        // seule, et qui se reconnaissent au nombre écrit.
+        //
+        // On ne réutilise pas `choices` pour cela : ces valeurs ne doivent
+        // JAMAIS s'afficher. `choices` sur un item à saisie ferait imprimer un
+        // QCM sur la fiche papier et jouerait la mauvaise réponse en démo.
+        //
+        // @type {?Array<{value:*, why:string}>}
+        diagnostics: spec.diagnostics || null,
         hints: spec.hints || [],
         // UN INDICE PEUT AVOIR UN DESSIN.
         //
@@ -181,6 +200,13 @@ export function evaluate(item, given) {
     if (!correct && item.choices) {
         const picked = item.choices.find(c => sameAnswer(c.value, given));
         if (picked && picked.why) misconception = picked.why;
+    }
+    // Puis les diagnostics de saisie — voir `makeItem`. Ils ne prennent jamais
+    // la place d'un distracteur reconnu : celui-là a été CHOISI, celui-ci est
+    // deviné d'après ce qui a été tapé.
+    if (!correct && !misconception && Array.isArray(item.diagnostics)) {
+        const vu = item.diagnostics.find(d => sameAnswer(d.value, given));
+        if (vu && vu.why) misconception = vu.why;
     }
     return {
         correct,

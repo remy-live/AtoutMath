@@ -190,6 +190,49 @@ export const numerationExercises = [
             + "Avec « Nombres décimaux », on cherche l'entier le plus proche : 7,98 est presque 8."
     },
 
+    // --- La valeur approchée : par défaut, par excès, arrondie ---
+    //
+    // Rémy, au bout d'une remarque sur le disque : « D'ailleurs tu feras un
+    // exercice d'arrondi avec valeur par excès, valeur par défaut, valeur
+    // approchée (au dixième, centième, millième). » Il l'a demandé LÀ, et ce
+    // n'est pas un hasard : l'erreur d'arrondi du disque est celle-ci, et elle
+    // n'a rien à voir avec les disques.
+    //
+    // « À PEU PRÈS » EST À CÔTÉ, ET CE N'EST PAS LE MÊME EXERCICE. L'ordre de
+    // grandeur cherche le nombre ROND le plus proche pour vérifier un calcul ;
+    // ici on cherche une valeur au RANG demandé, et l'on distingue trois mots
+    // que l'ordre de grandeur confond exprès.
+    {
+        id: 'num-arrondi',
+        cree: '2026-09-07',
+        title: 'Par Défaut, par Excès, Arrondi',
+        generatorId: 'num.arrondi', activityId: 'numpad',
+        // Une colonne de nombres à recopier puis à réécrire : deux colonnes
+        // laissent la place d'écrire la valeur en face de la question.
+        consignePapier: 'Donne la valeur demandée. Tu peux écrire l\'encadrement au brouillon.',
+        colonnesPapier: 2,
+        // LES CINQ ÉTAPES SONT COCHÉES AU DÉPART, l'unité comprise. Rémy a
+        // nommé le dixième, le centième et le millième ; l'unité est la marche
+        // d'avant, celle où l'on voit l'encadrement sans virgule du tout, et
+        // elle prépare les trois autres en deux minutes. Le professeur la
+        // décoche s'il l'a déjà passée.
+        //
+        // ET ON NE LA RETIRE PAS PAR `params` : la fiche ne lit pas `params`,
+        // elle lit `printParams` — l'écran et le papier auraient alors deux
+        // progressions différentes sans que rien ne le dise.
+        motsClefs: ['arrondi', 'valeur approchée', 'par défaut', 'par excès', 'troncature',
+            'encadrement', 'dixième', 'centième', 'millième', 'décimal'],
+        tags: { chemin: [D, NUM], niveaux: [SIXIEME, CINQUIEME] },
+        instruction: 'Un nombre décimal est toujours pris ENTRE DEUX voisins du rang qu\'on '
+            + 'demande : au centième, 3,1416 est entre 3,14 et 3,15. La valeur approchée par '
+            + 'DÉFAUT est celle du dessous — on garde les chiffres jusqu\'au rang, on coupe le '
+            + 'reste. La valeur approchée par EXCÈS est celle du dessus. La valeur ARRONDIE est '
+            + 'celle des deux dont on est le plus PROCHE : on regarde le chiffre qui SUIT le '
+            + 'rang, et lui seul — 5 ou plus, on monte ; moins de 5, on reste en dessous. '
+            + 'ARRONDIR N\'EST PAS COUPER, et c\'est là que tout se joue : les deux donnent le '
+            + 'même résultat une fois sur deux, ce qui laisse croire longtemps qu\'on sait faire.'
+    },
+
     // --- La loupe sur la droite graduée (fiche 4ᵉ § C) ---
     // Entre 3 et 4 les dixièmes, entre 3,5 et 3,6 les centièmes : le même
     // geste à deux échelles. C'est ainsi qu'on installe l'idée qu'entre deux

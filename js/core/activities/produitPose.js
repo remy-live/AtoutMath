@@ -46,8 +46,9 @@
 import { hintBar, wireHint } from './choice.js';
 import {
     etatInitial, decomposer, barrer, estFini, tousHaut, tousBas,
-    decompositions, PYTHAGORE_MAX
+    decompositions, prochainGeste, resultat, PYTHAGORE_MAX
 } from '../produitPose.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { showModal } from '../../ui/modal.js';
 
 /** Les touches, dans l'ordre où on les lit — pas celui d'une calculatrice. */
@@ -66,6 +67,8 @@ export function mount(container, session, opts = {}) {
     // la même forme — deux cases et une case active — et c'est pour cela qu'un
     // seul pavé les sert.
     let saisie = null;          // { quoi, id?, cible?, a, b, actif }
+    let cursor = null;
+    let gate = null;
 
     function renderNext() {
         if (destroyed) return;
@@ -80,6 +83,8 @@ export function mount(container, session, opts = {}) {
         phase = 'travail';
         saisie = null;
         render();
+        // LE ROBOT FAIT L'EXERCICE — il ne le raconte pas. Voir `runDemo`.
+        if (session.isDemo && !session.frozen) runDemo();
     }
 
     // --- Le dessin -------------------------------------------------------------
@@ -458,6 +463,114 @@ export function mount(container, session, opts = {}) {
             <div class="pp-table-boite"><table class="pp-pytha">${corps}</table></div>`;
     }
 
+    // --- LE ROBOT ---------------------------------------------------------------
+    //
+    // Rémy : « Le robot fait juste un long texte illisible, il faut qu'il
+    // agisse. » Il avait raison, et le défaut était de principe : l'aide de cet
+    // atelier était trois paragraphes qui DÉCRIVAIENT la méthode — décomposer,
+    // barrer, multiplier ce qui reste — devant un écran où ces trois gestes
+    // sont des boutons. On expliquait par écrit ce qu'il suffisait de faire.
+    //
+    // Le robot joue donc la partie : il choisit le mode, clique les jetons,
+    // écrit les facteurs au pavé, barre, et s'arrête devant le résultat. Chaque
+    // geste est annoncé d'une phrase courte, accrochée AU NOMBRE dont elle
+    // parle — c'est le pointeur qui dit « celui-là », pas le texte.
+    //
+    // IL NE VALIDE PAS LA DERNIÈRE CASE. Une démonstration qui répond à la
+    // place de l'élève lui retire la seule chose qu'on lui demande ; elle
+    // s'arrête au moment où il n'y a plus qu'à multiplier, et le dit.
+    //
+    // LE CHOIX DU GESTE N'EST PAS ICI : `prochainGeste` vit dans le noyau, où
+    // il se teste sans écran — et l'on peut mesurer qu'il termine sur les
+    // quatre marches.
+
+    /** Un appui montré, puis joué. Le pointeur n'émet pas de vrai clic. */
+    async function appuyer(selecteur, action) {
+        const el = container.querySelector(selecteur);
+        if (!el || destroyed) return false;
+        if (!await cursor.tap(el, DEMO_SPEED.move)) return false;
+        if (destroyed) return false;
+        action();
+        return !destroyed;
+    }
+
+    /** Écrire un nombre au pavé, chiffre par chiffre. */
+    async function ecrire(nombre) {
+        for (const c of String(nombre)) {
+            if (!await appuyer(`[data-touche="${c}"]`, () => taper(c))) return false;
+        }
+        return true;
+    }
+
+    async function runDemo() {
+        if (!cursor) cursor = createDemoCursor();
+        if (!gate) gate = createDemoGate(container);
+        const souffler = (ms) => cursor.pause(ms);
+        const vise = (sel) => container.querySelector(sel);
+
+        if (!await gate.waitTurn() || destroyed) return;
+        if (!await souffler(600) || destroyed) return;
+        cursor.say('Tout ce qui est en haut se multiplie, tout ce qui est en bas aussi.',
+            vise('[data-expr]'));
+        if (!await souffler(DEMO_SPEED.settle) || destroyed) return;
+
+        // Douze tours au plus : `prochainGeste` termine, mais une boucle qui
+        // pilote une interface ne se laisse jamais sans garde-fou.
+        for (let tour = 0; tour < 12 && !estFini(etat); tour++) {
+            const geste = prochainGeste(etat);
+            if (!geste || destroyed) break;
+
+            if (geste.quoi === 'barrer') {
+                if (mode !== 'barrer' && !await appuyer('[data-mode="barrer"]', () => {
+                    mode = 'barrer'; choisi = null; render();
+                })) return;
+                if (!await gate.waitTurn() || destroyed) return;
+                cursor.say(`${geste.haut.v} est écrit en haut ET en bas : je le barre.`,
+                    vise(`[data-jeton="${geste.haut.id}"]`));
+                if (!await souffler(DEMO_SPEED.settle) || destroyed) return;
+                if (!await appuyer(`[data-jeton="${geste.haut.id}"]`,
+                    () => toucher(geste.haut.id))) return;
+                if (!await appuyer(`[data-jeton="${geste.bas.id}"]`,
+                    () => toucher(geste.bas.id))) return;
+            } else {
+                if (mode !== 'decomposer' && !await appuyer('[data-mode="decomposer"]', () => {
+                    mode = 'decomposer'; choisi = null; render();
+                })) return;
+                if (!await gate.waitTurn() || destroyed) return;
+                cursor.say(`Aucun nombre n’est écrit deux fois. Mais ${geste.v} = `
+                    + `${geste.x} × ${geste.y} : je le décompose.`,
+                    vise(`[data-jeton="${geste.id}"]`));
+                if (!await souffler(DEMO_SPEED.settle) || destroyed) return;
+                if (!await appuyer(`[data-jeton="${geste.id}"]`, () => toucher(geste.id))) return;
+                if (!await ecrire(geste.x)) return;
+                // La seconde case s'arme toute seule quand la première tient
+                // déjà deux chiffres : on ne la vise que si elle ne l'est pas.
+                if (saisie && saisie.actif !== 'b'
+                    && !await appuyer('[data-case="b"]', () => { saisie.actif = 'b'; render(); })) return;
+                if (!await ecrire(geste.y)) return;
+                if (!await appuyer('[data-valider]', valider)) return;
+            }
+            if (!await souffler(320) || destroyed) return;
+        }
+
+        if (!await gate.waitTurn() || destroyed) return;
+        cursor.say('Plus rien à barrer. Je multiplie ce qui reste.', vise('[data-fini]'));
+        if (!await souffler(DEMO_SPEED.settle) || destroyed) return;
+        if (!await appuyer('[data-fini]', declarerFini)) return;
+
+        const r = resultat(etat);
+        if (!await ecrire(r.n)) return;
+        if (saisie && saisie.actif !== 'b'
+            && !await appuyer('[data-case="b"]', () => { saisie.actif = 'b'; render(); })) return;
+        if (!await ecrire(r.d)) return;
+
+        if (!await gate.waitTurn() || destroyed) return;
+        cursor.say(`${r.n} sur ${r.d} : tout ce qui restait, en haut et en bas.`,
+            vise('[data-expr]'));
+        if (!await souffler(DEMO_SPEED.between) || destroyed) return;
+        renderNext();
+    }
+
     if (opts.item) { item = opts.item; demarrer(); } else renderNext();
 
     return {
@@ -466,6 +579,8 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (tableOuverte) { tableOuverte.close(); tableOuverte = null; }
+            if (cursor) { cursor.destroy(); cursor = null; }
+            if (gate) { gate.destroy(); gate = null; }
             container.onkeydown = null;
             container.innerHTML = '';
             session.finish();

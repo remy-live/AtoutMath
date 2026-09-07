@@ -2,11 +2,14 @@
 //
 // Deux promesses tiennent tout l'exercice, et aucune ne se voit à l'œil nu :
 //
-//   · UNE VALEUR EXACTE NE SE TAPE PAS. « 25π » n'est pas un nombre qu'on
-//     saisit avec des chiffres. Les quatre premières étapes restent donc en
-//     propositions QUOI QU'ON RÈGLE — un exercice qui offrirait le pavé sur
-//     ces questions-là serait injouable, et personne ne s'en apercevrait avant
-//     un élève bloqué devant son écran.
+//   · UNE VALEUR EXACTE SE TAPE, DEPUIS QUE LE PAVÉ PORTE UN π. Rémy : « Au
+//     départ quand tu utilises le pavé numérique, demande une valeur exacte
+//     (rajoute le Pi) en symbole. » Ce qui se tape est « 25π » — le nombre et
+//     son symbole, l'unité restant à côté de l'écran —, et l'item doit
+//     réclamer la touche (`meta.pi`), sans quoi l'exercice serait injouable et
+//     personne ne s'en apercevrait avant un élève bloqué devant son écran.
+//     Seule « Quelle formule ? » reste en propositions : sa réponse est
+//     « 2 × π × r », qui n'est pas un nombre.
 //   · 3,14 ET LA TOUCHE π DONNENT LE MÊME ARRONDI. Sinon l'exercice compte
 //     faux une réponse juste, et l'on ne sait pas laquelle des deux méthodes
 //     est en cause.
@@ -18,8 +21,9 @@ import { makeRng } from '../js/core/ids.js';
 import {
     MARCHES_DISQUE, ETAPES_EXACTES, PI_COLLEGE, arrondiStable, arrondir, decimalesDe,
     tirerDisque, enonceDe, reponseDe, uniteDe, expliquer, indicesDe, leurresDe,
-    figureDisqueSvg, FORMULE_PERIMETRE, FORMULE_AIRE
+    figureDisqueSvg, FORMULE_PERIMETRE, FORMULE_AIRE, diagnosticsArrondi
 } from '../js/core/disque.js';
+import { evaluate } from '../js/core/items.js';
 import { disqueGenerator } from '../js/core/generators/disque.js';
 
 const ETAPES = MARCHES_DISQUE.map(m => m.id);
@@ -57,11 +61,8 @@ test('LE PÉRIMÈTRE S\'ARRONDIT AU DIXIÈME, L\'AIRE À L\'UNITÉ', () => {
     assert.ok(rayons.size >= 6, `seulement ${rayons.size} rayons différents sur l’aire arrondie`);
 });
 
-test('UNE VALEUR EXACTE NE SE TAPE PAS : ces étapes restent en propositions', () => {
+test('UNE VALEUR EXACTE SE TAPE — avec la touche π, et sans son unité', () => {
     const total = ETAPES.length;
-    // Même en demandant la saisie partout, les quatre premières étapes
-    // proposent : ce n'est pas un choix pédagogique qu'on retire au
-    // professeur, c'est qu'aucun clavier de chiffres n'écrit π.
     const params = {
         reponseParMarche: ETAPES.map(id => `${id}:saisie`).join(',')
     };
@@ -69,25 +70,98 @@ test('UNE VALEUR EXACTE NE SE TAPE PAS : ces étapes restent en propositions', (
     for (let i = 0; i < total; i++) {
         const it = disqueGenerator.generate(params, { index: i, total, rng: makeRng(`x${i}`) });
         genres[it.meta.marche] = it.answerKind;
-        if (ETAPES_EXACTES.includes(it.meta.marche)) {
-            assert.equal(it.answerKind, 'choice', `${it.meta.marche} : le pavé ne sait pas écrire π`);
-            assert.equal(typeof it.answer, 'string');
+        if (it.meta.marche === 'formule') {
+            // « 2 × π × r » n'est pas un nombre : cette étape-là propose.
+            assert.equal(it.answerKind, 'choice');
             assert.equal(it.choices.length, 4);
+            assert.equal(it.meta.pi, false, 'aucune touche π sur une question de formule');
+            continue;
+        }
+        assert.equal(it.answerKind, 'numeric', `${it.meta.marche} : la saisie doit être respectée`);
+        if (ETAPES_EXACTES.includes(it.meta.marche)) {
+            // Ce qu'on TAPE : le nombre et son π, rien d'autre. L'unité
+            // s'affiche à côté de l'écran du pavé, comme partout ailleurs.
+            assert.equal(it.meta.pi, true, `${it.meta.marche} : il faut la touche π`);
+            assert.match(String(it.answer), /^\d+π$/, String(it.answer));
+            assert.doesNotMatch(String(it.answer), /cm/);
+            assert.ok(/^cm²?$/.test(it.meta.unit), `unité « ${it.meta.unit} »`);
+            // La réponse tapée doit être ACCEPTÉE — c'est tout l'enjeu.
+            assert.equal(evaluate(it, it.answer).correct, true);
         } else {
-            assert.equal(it.answerKind, 'numeric', `${it.meta.marche} : la saisie doit être respectée`);
+            assert.equal(it.meta.pi, false, 'pas de π dans un arrondi');
             assert.equal(typeof it.answer, 'number');
         }
     }
     assert.deepEqual(Object.keys(genres).sort(), [...ETAPES].sort());
 });
 
-test('et les étapes arrondies obéissent au réglage', () => {
+test('et chaque étape obéit au réglage « à choisir »', () => {
     const total = ETAPES.length;
-    const params = { reponseParMarche: 'perimetre-arrondi:choix,aire-arrondie:choix' };
+    const params = { reponseParMarche: ETAPES.map(id => `${id}:choix`).join(',') };
     for (let i = 0; i < total; i++) {
         const it = disqueGenerator.generate(params, { index: i, total, rng: makeRng(`y${i}`) });
         assert.equal(it.answerKind, 'choice', `${it.meta.marche}`);
         assert.equal(it.choices.filter(c => c.correct).length, 1);
+        // En propositions, l'étiquette porte l'unité : c'est elle qui dit de
+        // quoi l'on parle dans une liste de quatre.
+        if (ETAPES_EXACTES.includes(it.meta.marche) && it.meta.marche !== 'formule') {
+            assert.match(String(it.answer), /cm/, String(it.answer));
+        }
+    }
+});
+
+test('LE RAPPEL DE π EST TOUJOURS LÀ, et il ne donne jamais la réponse', () => {
+    // Rémy : « Rappelle la valeur de Pi au départ. »
+    const total = ETAPES.length;
+    for (let i = 0; i < total; i++) {
+        const it = disqueGenerator.generate({}, { index: i, total, rng: makeRng(`pi${i}`) });
+        const outils = it.meta.outils || [];
+        assert.equal(outils.length, 1);
+        assert.equal(outils[0].id, 'pi');
+        assert.match(outils[0].html, /3,141 592 6/);
+        // Un outil qui contiendrait la réponse serait un bouton « tricher ».
+        assert.doesNotMatch(outils[0].html, new RegExp(String(it.answer).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    }
+});
+
+test('L\'ERREUR D\'ARRONDI SE NOMME — tronquer, rater le rang, ne pas arrondir', () => {
+    // Rémy : « Explique l'erreur d'arrondi si l'élève en fait une. »
+    let vusTronque = 0, vusRang = 0;
+    for (let k = 0; k < 40; k++) {
+        for (const marche of ['perimetre-arrondi', 'aire-arrondie']) {
+            const t = tirerDisque(makeRng(`d${marche}${k}`), marche);
+            const d = diagnosticsArrondi(t) || [];
+            // Aucune valeur diagnostiquée ne vaut la bonne réponse : ce serait
+            // expliquer une erreur à qui a juste.
+            d.forEach(x => assert.notEqual(x.value, t.arrondi,
+                `${t.arrondi} diagnostiqué comme une faute`));
+            assert.equal(new Set(d.map(x => x.value)).size, d.length, 'deux fois la même valeur');
+            d.forEach(x => assert.ok(x.why && x.why.length > 20, x.why));
+            if (d.some(x => /COUPÉ/.test(x.why))) vusTronque++;
+            if (d.some(x => /arrondi à l’unité|arrondi au dixième/.test(x.why))) vusRang++;
+        }
+    }
+    // Les deux fautes se rencontrent pour de bon sur les tirages de l'exercice.
+    assert.ok(vusTronque > 5, `tronqué reconnu ${vusTronque} fois`);
+    assert.ok(vusRang > 5, `mauvais rang reconnu ${vusRang} fois`);
+
+    // Et le diagnostic ARRIVE jusqu'à l'élève : c'est `evaluate` qui le rend.
+    const t = tirerDisque(makeRng('diag'), 'perimetre-arrondi');
+    const it = disqueGenerator.generate({ reponseParMarche: 'perimetre-arrondi:saisie' },
+        { index: 4, total: 6, rng: makeRng('diag') });
+    assert.ok(Array.isArray(it.diagnostics) && it.diagnostics.length, 'des diagnostics');
+    const faux = it.diagnostics[0];
+    const v = evaluate(it, faux.value);
+    assert.equal(v.correct, false);
+    assert.equal(v.misconception, faux.why);
+    assert.ok(t.arrondi > 0);
+});
+
+test('UNE VALEUR EXACTE N\'A PAS DE DIAGNOSTIC D\'ARRONDI', () => {
+    // Il n'y a rien à arrondir dans « 25π » : c'est le contraire de l'arrondi.
+    for (const marche of ETAPES_EXACTES) {
+        const t = tirerDisque(makeRng(`e${marche}`), marche);
+        assert.equal(diagnosticsArrondi(t), null, marche);
     }
 });
 
