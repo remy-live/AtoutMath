@@ -409,7 +409,14 @@
     margin: 0; flex-wrap: nowrap; justify-content: flex-start; min-width: 0;
     /* En tout dernier recours — un écran de 320 px, quatre commandes et deux
        navigations du professeur — la barre défile plutôt que de repousser la
-       croix de fermeture hors de l'écran. */
+       croix de fermeture hors de l'écran.
+       ET ELLE DOIT POUVOIR RÉTRÉCIR POUR CELA. La règle générale de la barre
+       porte « flex-shrink: 0 » — elle vaut sous le plateau, où la barre a
+       toute la largeur. Dans l'en-tête, elle empêchait le défilement de
+       servir : mesuré sur un écran de 320 pixels, les commandes occupaient
+       133 pixels dans une colonne de 120 et passaient PAR-DESSUS les boutons
+       de droite, de 8 à 141 contre 124 à 312. */
+    flex-shrink: 1; max-width: 100%;
     overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
 }
 #game-header #demo-controls-host .demo-controls::-webkit-scrollbar { display: none; }

@@ -57,3 +57,42 @@ test('aucun jeu ne multiplie une durée par DEMO_SPEED', () => {
     }
     assert.deepEqual(fautes, [], `DEMO_SPEED multiplié tel quel : ${fautes.join(', ')}`);
 });
+
+// --- LA BANDE DU ROBOT NE DÉSORGANISE PLUS L'EN-TÊTE -------------------------
+//
+// Rémy, capture d'un aperçu sur son téléphone : « Quand le robot est en route
+// les boutons en haut c'est l'anarchie. »
+//
+// Mesuré sur un 393 × 660, en mode professeur : les commandes du robot
+// occupaient une rangée, les quatre boutons de droite une autre — deux bandes
+// désalignées, l'une collée à gauche, l'autre à droite, et un en-tête de
+// 101 pixels. Pourtant les commandes font 133 pixels et les boutons 170 : ils
+// tiennent côte à côte sur 393. La rangée en trop venait de ce que la règle
+// regardait la LARGEUR ÉTIRÉE du conteneur, pas celle de son contenu.
+//
+// Et sur 320 pixels, les commandes passaient PAR-DESSUS les boutons de droite
+// — de 8 à 141 contre 124 à 312 — parce que la barre porte « flex-shrink: 0 »,
+// ce qui vaut sous le plateau et empêchait ici le défilement de servir.
+test('L\'EN-TÊTE DU ROBOT TIENT SUR UNE SEULE RANGÉE', async () => {
+    const { readFileSync } = await import('node:fs');
+    const mod = readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8');
+    const jeux = readFileSync(new URL('../css/games.css', import.meta.url), 'utf8');
+
+    // Une rangée partout : téléphone, simulateurs, et avec la navigation du prof.
+    const bloc = mod.slice(mod.indexOf('.jeu--demo#game-layer.avec-nav-prof #game-header'),
+        mod.indexOf('.demo-ctrl-signe'));
+    assert.match(bloc, /grid-template-areas:\s*"robot actions"/,
+        'les commandes du robot ont encore une rangée à elles');
+    assert.ok(!/grid-template-areas:\s*"robot" "actions"/.test(mod),
+        'il reste un en-tête de démonstration à deux rangées');
+
+    // La barre peut rétrécir dans l'en-tête : sans quoi elle recouvre la croix.
+    const entete = jeux.slice(jeux.indexOf('#game-header #demo-controls-host .demo-controls {'),
+        jeux.indexOf('#game-header #demo-controls-host .demo-ctrl-btn'));
+    assert.match(entete, /flex-shrink:\s*1/, 'la barre ne peut pas rétrécir');
+    assert.match(entete, /overflow-x:\s*auto/, 'et elle ne défile pas non plus');
+
+    // Sous 360 pixels, les quatre signes se resserrent au lieu de défiler.
+    assert.match(mod, /@media \(max-width: 360px\)[\s\S]{0,220}\.jeu--demo #game-header \.demo-ctrl-btn/,
+        'rien ne resserre les commandes sur un écran de 320');
+});
