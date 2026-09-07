@@ -125,6 +125,18 @@ export const disqueGenerator = {
                 // dixième pour un périmètre, jamais pour une aire qu'on arrondit
                 // à l'unité.
                 unit: unite,
+                // ET LA FIGURE A LA SIENNE, QUI N'EST PAS CELLE-LÀ.
+                //
+                // `unit` est l'unité de la RÉPONSE — des centimètres carrés
+                // quand on demande une aire. La cote portée sur le rayon mesure
+                // une LONGUEUR, et n'a donc jamais de carré. La fiche imprimée
+                // n'avait que `unit` sous la main et écrivait « 18 cm² » le
+                // long du rayon ; Rémy : « sur le polycopié, tu marques 18 cm²
+                // pour la longueur du rayon ou diamètre ». Un rayon de dix-huit
+                // centimètres carrés n'existe pas, et c'est précisément la
+                // confusion aire / longueur que le chapitre entier travaille à
+                // défaire.
+                uniteLongueur: t.unite,
                 decimal: !ETAPES_EXACTES.includes(id) && t.decimales > 0,
                 figure: figureSvg
             }

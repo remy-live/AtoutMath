@@ -1125,3 +1125,49 @@ test('un tableau tout rempli garde, lui, sa ligne de réponse', async () => {
     assert.equal(q.tableau.aRemplir, false);
     assert.ok(q.rep, 'sans case vide, la réponse va sur des pointillés');
 });
+
+test('blocs : UN RETOUR À LA LIGNE VOULU N\'EST PAS UNE COUPURE', () => {
+    // Un énoncé à trou qui se fait COUPER doit faire retirer une colonne : le
+    // trou reste d'un côté, sa suite passe de l'autre, et l'élève écrit dans un
+    // blanc dont il ne voit plus la consigne. Mais un énoncé qui va à la ligne
+    // EXPRÈS n'est pas coupé — et c'est le cas des fonctions : « Soit
+    // f(x) = 3x + 8. », « Complète : », puis la phrase à trous. Trois lignes
+    // voulues, comptées comme trois lignes subies : la feuille redescendait à
+    // une colonne quoi qu'on lui demande, et vingt questions tenaient trois
+    // pages.
+    const voulu = { texte: 'Soit f(x) = 3x + 8.\nComplète :\n… est l\'image de 4 par f.', reponse: '20' };
+    const { pages } = composerBlocs([{
+        titre: 'Fonctions', colonnes: 2,
+        questions: Array.from({ length: 12 }, () => ({ ...voulu }))
+    }], {}, mesurer);
+    const xs = new Set(pages[0].items.filter(i => i.type === 'q').map(q => Math.round(q.x)));
+    assert.equal(xs.size, 2, 'les deux colonnes demandées');
+
+    // Et la protection reste en place quand la coupure est réelle : le même
+    // trou, mais dans une phrase d'un seul tenant, trop longue pour la colonne.
+    const coupe = { texte: 'Le nombre cherché est … et il complète cette phrase beaucoup trop '
+        + 'longue pour tenir dans la moitié de la largeur de la feuille imprimée.', reponse: '20' };
+    const serre = composerBlocs([{
+        titre: 'Trop long', colonnes: 2,
+        questions: Array.from({ length: 12 }, () => ({ ...coupe }))
+    }], {}, mesurer);
+    assert.equal(new Set(serre.pages[0].items.filter(i => i.type === 'q')
+        .map(q => Math.round(q.x))).size, 1, 'un trou coupé en deux ramène à une colonne');
+});
+
+test('blocs : LE NOMBRE DE COLONNES DEMANDÉ N\'EST PAS RABAISSÉ PAR GOÛT', () => {
+    // Vingt puissances à quatre colonnes : la moitié n'a pas la place d'écrire
+    // sa réponse au bout de la ligne, et toutes descendent alors sous leur
+    // énoncé. La feuille reste régulière et remplie ; elle est simplement plus
+    // dense que celle à trois colonnes que la règle automatique préférait.
+    // Rémy a relu la fiche et écrit « fais 4 colonnes par défaut » : c'est lui
+    // qui tranche cette question-là.
+    const qs = Array.from({ length: 20 }, (_, i) => ({ texte: `10⁻${i % 9} × 10⁸ =`, reponse: '10⁸' }));
+    const { pages } = composerBlocs([{ titre: 'Puissances', colonnes: 4, questions: qs }], {}, mesurer);
+    const xs = new Set(pages[0].items.filter(i => i.type === 'q').map(q => Math.round(q.x)));
+    assert.equal(xs.size, 4, 'quatre colonnes, comme demandé');
+    // « auto », lui, garde son arbitrage : il n'a personne pour trancher.
+    const auto = composerBlocs([{ titre: 'Puissances', questions: qs }], {}, mesurer);
+    assert.ok(new Set(auto.pages[0].items.filter(i => i.type === 'q')
+        .map(q => Math.round(q.x))).size <= 4);
+});

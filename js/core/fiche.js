@@ -774,8 +774,9 @@ export function composerBlocs(exos, opts, mesurer) {
         // à condition que CHAQUE question tienne sur une ligne de sa cellule
         // avec au moins `repMin` de pointillés derrière.
         const voulues = Number(exo.colonnes);
+        const auto = !(Number.isFinite(voulues) && voulues > 0);
         let cols = 1;
-        if (Number.isFinite(voulues) && voulues > 0) {
+        if (!auto) {
             cols = Math.max(1, Math.min(o.colonnesMax, Math.round(voulues)));
         } else {
             for (let c = maxCols; c >= 2; c--) {
@@ -817,13 +818,23 @@ export function composerBlocs(exos, opts, mesurer) {
             texteW = cellW - gouttiereNum;
             cellules = mesurerCellules();
             if (cols <= 1) break;
-            if (cellules.some(c => c.lignes.length > 1 && (c.fractions || c.trou))) { cols--; continue; }
+            if (cellules.some(c => c.coupee && (c.fractions || c.trou))) { cols--; continue; }
             // UN TABLEAU RESSERRÉ EST UN TABLEAU OÙ L'ON N'ÉCRIT PLUS. Ses cases
             // se rétrécissent pour tenir dans la colonne ; en dessous d'un
             // centimètre et demi, l'élève n'a plus la place d'y poser un nombre
             // à deux chiffres. Une colonne de moins lui rend cette place.
             if (cellules.some(c => c.tableau && c.tableau.serre)) { cols--; continue; }
-            if (cols > 2 && exerciceHomogene(cellules) && !reponsesRegulieres(cellules)) { cols--; continue; }
+            // ET CETTE RÈGLE-LÀ NE VAUT QUE POUR « auto ».
+            //
+            // Les deux précédentes protègent d'une feuille sur laquelle on ne
+            // peut plus écrire ; celle-ci arbitre une QUESTION DE MISE EN PAGE
+            // — réponses sur la ligne à trois colonnes, ou réponses dessous à
+            // quatre. Les deux se remplissent. Quand le professeur a nommé son
+            // nombre de colonnes, il a tranché cette question-là, et la
+            // rabaisser en silence lui donne une feuille qu'il n'a pas
+            // demandée sans lui dire pourquoi. Rémy a relu le catalogue fiche
+            // par fiche pour les écrire, ces nombres.
+            if (auto && cols > 2 && exerciceHomogene(cellules) && !reponsesRegulieres(cellules)) { cols--; continue; }
             break;
         }
         // Faute de mieux, on aligne par le bas : toutes les réponses dessous.
@@ -836,7 +847,22 @@ export function composerBlocs(exos, opts, mesurer) {
         // avant de poser quoi que ce soit.
         function mesurerCellules() { return questions.map((q, iQ) => {
             const mes = q.fractions ? mesureurFractions(mesurer) : mesurer;
-            const lignes = couperEnLignes(texteImprime(q.texte, q.reponse), texteW, o.taille, mes);
+            const brut = texteImprime(q.texte, q.reponse);
+            const lignes = couperEnLignes(brut, texteW, o.taille, mes);
+            // UN RETOUR À LA LIGNE VOULU N'EST PAS UNE COUPURE.
+            //
+            // Plus bas, une cellule à trou ou à fraction qui tient sur
+            // plusieurs lignes fait retirer une colonne : un « 660 + … =
+            // 1 000 » coupé en deux laisse le trou d'un côté et sa suite de
+            // l'autre. La règle disait « plusieurs lignes » ; elle voulait
+            // dire « coupée ». La différence n'existait pas tant qu'un énoncé
+            // s'écrivait d'un trait — elle est apparue avec ceux qui vont à la
+            // ligne EXPRÈS : « Soit f(x) = 3x + 8. », puis « Complète : », puis
+            // la phrase à trous. Trois lignes voulues, comptées comme trois
+            // lignes subies : les fonctions ne sortaient plus JAMAIS qu'en une
+            // colonne, quel que soit le réglage, et vingt questions occupaient
+            // trois pages.
+            const lignesVoulues = brut.split('\n').length;
             const choix = (o.avecChoix && q.choix && q.choix.length) ? q.choix.slice() : null;
             // LE TROU DANS L'ÉNONCÉ. « 82 041 = 80 000 +      + 40 + 1 » porte
             // déjà la place où l'on écrit : lui ajouter des pointillés au bout
@@ -903,7 +929,7 @@ export function composerBlocs(exos, opts, mesurer) {
             // chose qui permette, depuis l'aperçu, de désigner celle qu'on
             // veut retirer ou retirer au sort — le numéro imprimé, lui, court
             // sur toute la feuille et saute les exercices non numérotés.
-            return { lignes, choix, memeLigne, trou, tableau, sansPointilles, h,
+            return { lignes, coupee: lignes.length > lignesVoulues, choix, memeLigne, trou, tableau, sansPointilles, h,
                 dy: supp, mes, iQ, fractions: !!q.fractions };
         }); }
 

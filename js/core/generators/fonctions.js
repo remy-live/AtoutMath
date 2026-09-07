@@ -332,11 +332,18 @@ function itemPhrase(rng, a, b, f, ecrit, papier) {
     // trou pour elle : elle imprimait donc la phrase telle quelle, ET deux
     // lignes de pointillés dessous. Deux endroits pour une seule réponse.
     const blanc = '            ';
+    // ET LA PHRASE EST PLUS COURTE SUR LA FEUILLE : « par f », non « par la
+    // fonction f ». Ce n'est pas une économie de mots pour elle-même. La
+    // colonne d'une fiche à deux colonnes fait huit centimètres ; la phrase
+    // longue y tient sur deux lignes, et une phrase à trous coupée en deux
+    // fait REDESCENDRE toute la feuille à une seule colonne — la moitié du
+    // papier pour vingt questions. À l'écran, où la place ne manque pas, la
+    // phrase reste entière : c'est là qu'on apprend à la dire.
     const phrasePapier = deuxTrous
-        ? `${blanc}${dit}${blanc}par la fonction f.`
+        ? `${blanc}${dit}${blanc}par f.`
         : (trouAGauche
-            ? `${blanc}${dit} ${nb(droite)} par la fonction f.`
-            : `${nb(gauche)} ${dit}${blanc}par la fonction f.`);
+            ? `${blanc}${dit} ${nb(droite)} par f.`
+            : `${nb(gauche)} ${dit}${blanc}par f.`);
     // LA RÉPONSE À DEUX TROUS S'ÉCRIT « gauche|droite ». La barre n'est pas une
     // fantaisie : c'est ce que le pavé renvoie quand la question porte
     // plusieurs cases, et c'est aussi ce qui permet de reconnaître la faute
@@ -393,7 +400,7 @@ function itemPhrase(rng, a, b, f, ecrit, papier) {
         }] : null,
         texte: `${tete} ${question}`,
         html: htmlPhrase,
-        papier: `${tete}\nComplète la phrase :\n${phrasePapier}`,
+        papier: `${tete}\nComplète :\n${phrasePapier}`,
         // La colonne des solutions écrit les nombres comme partout ailleurs
         // sur cette feuille : bruts. Mélanger « −3 » et « -3 » dans la même
         // colonne se voit.

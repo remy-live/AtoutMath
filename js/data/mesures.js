@@ -82,6 +82,7 @@ export const mesuresExercises = [
         // périmètre. Dès qu'on écrit 31,4, ces deux erreurs se noient dans la
         // frappe et l'arrondi.
         id: 'mes-disque', title: 'Le Périmètre et l\'Aire du Disque',
+        colonnesPapier: 5,
         cree: '2026-09-06',
         generatorId: 'mes.disque', activityId: 'numpad',
         // Sur la feuille, les étapes cochées décident des questions : une fiche
@@ -193,7 +194,7 @@ export const mesuresExercises = [
         title: 'Les Grandeurs Composées',
         generatorId: 'mes.grandeurs-composees', activityId: 'numpad',
         consignePapier: 'Relis l\'unité : la barre « / » se lit « pour un ». Écris le calcul, puis la réponse avec son unité.',
-        colonnesPapier: 1,
+        colonnesPapier: 3,
         lignesReponsePapier: 2,
         skills: ['mes.grandeurs.composees'],
         params: { chercher: 'melange' },
@@ -299,6 +300,7 @@ export const mesuresExercises = [
     // réglages remontent d'eux-mêmes.
     {
         id: 'mes-heure', title: 'Quelle heure est-il ?',
+        colonnesPapier: 5,
         cree: '2026-08-06',
         generatorId: 'mes.horloge', activityId: 'horloge',
         printable: 'horloge',

@@ -116,7 +116,7 @@ export const calculExercises = [
         id: 'calc-prio',
         cree: '2026-07-26',
         consignePapier: "Quelle opération faut-il effectuer en premier ?",
-        colonnesPapier: 2,
+        colonnesPapier: 1,
         title: 'Prio-Bot Express',
         generatorId: 'calc.priorites', activityId: 'buttons',
         // Le niveau et la taille des nombres se règlent : les expressions
@@ -202,7 +202,7 @@ export const calculExercises = [
         id: 'calc-prio-relatifs',
         cree: '2026-09-02',
         consignePapier: "Calcule en respectant les priorités, écris les calculs. Attention aux signes.",
-        colonnesPapier: 2,
+        colonnesPapier: 4,
         title: 'Prio-Bot Relatifs',
         // LA CASCADE, ET NON LE QCM. Rémy : « sur les Prio-Bot relatifs, ne
         // mets pas de QCM mais plutôt des calculs en ligne par étape ».
@@ -259,6 +259,7 @@ export const calculExercises = [
         // coûte vraiment des points : calculer 4 × 5 juste, puis oublier le
         // « − 2 » en passant à la ligne. Un QCM ne la voit jamais.
         id: 'calc-prio-cascade', title: 'Priorités : ligne par ligne',
+        colonnesPapier: 4,
         cree: '2026-08-14',
         activityId: 'priorites',
         // Sur le papier, c'est le MÊME exercice en plus exigeant : à l'écran
@@ -361,6 +362,7 @@ export const calculExercises = [
         // −, ce n'est pas la méthode, c'est l'endroit où se note la retenue.
         // Les deux règles sont dites dans la consigne, l'une après l'autre.
         id: 'calc-poser', title: 'Poser une opération',
+        colonnesPapier: 5,
         cree: '2026-08-14',
         revisions: [
             {
@@ -431,6 +433,7 @@ export const calculExercises = [
         // s'ajoute APRÈS le produit, jamais au chiffre avant de multiplier.
         // C'est l'erreur qu'on ne voit pas si l'on ne fait écrire que le total.
         id: 'calc-poser-multiplication', title: 'Poser une multiplication',
+        colonnesPapier: 4,
         cree: '2026-08-14',
         revisions: [
             {
@@ -500,6 +503,7 @@ export const calculExercises = [
         // d'où la virgule du quotient, qu'on récite d'ordinaire sans la
         // comprendre.
         id: 'calc-poser-division', title: 'Poser une division',
+        colonnesPapier: 4,
         cree: '2026-08-14',
         activityId: 'poser-division',
         // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
@@ -1118,6 +1122,7 @@ export const calculExercises = [
         // 4-là n'a plus qu'un voisin possible » et « le 7 ne peut se faire qu'à
         // cet endroit ».
         id: 'log-tasuko', title: 'Tasuko',
+        colonnesPapier: 4,
         cree: '2026-08-25',
         activityId: 'tasuko', skills: ['num.logique.tasuko'],
         sansRevision: true,
@@ -1306,6 +1311,7 @@ export const calculExercises = [
         // toute la grille : c'est ce ricochet qui fait le jeu, et c'est pour
         // cela que l'état est un dictionnaire numéro → lettre, pas des cases.
         id: 'voc-mot-code', title: 'Le Mot Codé',
+        colonnesPapier: 2,
         cree: '2026-08-25',
         activityId: 'mot-code', skills: ['voc.mathematique'],
         sansRevision: true,
@@ -1463,6 +1469,7 @@ export const calculExercises = [
         // choisit pas la case, on choisit la colonne — et poser sous une case
         // gagnante la donne à l'adversaire.
         id: 'logi-puissance4',
+        colonnesPapier: 3,
         // Un plateau vide à imprimer : deux élèves, deux crayons de couleur.
         printable: 'puissance4', printGeneratorId: 'jeux.plateaux-fiche',
         printParams: { jeu: 'puissance4', colonnes: 7, rangees: 6 }, title: 'Puissance 4',
@@ -1501,6 +1508,7 @@ export const calculExercises = [
         // coloriées de deux couleurs, un triangle monochrome est INÉVITABLE.
         // Le match nul n'existe pas, et c'est démontrable.
         id: 'logi-sim',
+        colonnesPapier: 4,
         printable: 'sim', printGeneratorId: 'jeux.plateaux-fiche',
         printParams: { jeu: 'sim' }, title: 'Le Sim',
         cree: '2026-08-19',
@@ -1533,6 +1541,7 @@ export const calculExercises = [
     },
     {
         id: 'voc-mots-caches', title: 'Mots Cachés Mathématiques',
+        colonnesPapier: 2,
         cree: '2026-08-10',
         activityId: 'motscaches', skills: ['voc.mathematique'],
         // SUR LE PAPIER, PERSONNE NE VALIDE : il faut entourer, donc être sûr.
@@ -1758,6 +1767,7 @@ export const calculExercises = [
         // règles qu'il connaît déjà. Un exercice par niveau aurait éparpillé
         // dans le catalogue ce qui est une seule progression.
         id: 'logi-logigramme', title: 'Le Logigramme',
+        colonnesPapier: 3,
         cree: '2026-08-12',
         activityId: 'logigramme',
         // Le générateur ne sert PAS à l'écran (l'activité mène son propre jeu) :
@@ -1866,6 +1876,7 @@ export const calculExercises = [
         // La grille est fabriquée puis VÉRIFIÉE : solution unique, et — sauf en
         // difficile — trouvable par propagation pure, sans jamais essayer.
         id: 'logi-hashi', title: 'Le Hashi',        cree: '2026-08-25',
+        colonnesPapier: 3,
         activityId: 'hashi',
         generatorId: 'logique.hashi-fiche', printable: 'hashi',
         printGeneratorId: 'logique.hashi-fiche',
@@ -1908,6 +1919,7 @@ export const calculExercises = [
         // — le chiffre et le point — et jamais besoin de deviner : la grille
         // est fabriquée pour se déduire par propagation pure.
         id: 'logi-slitherlink', title: 'Le Slitherlink',
+        colonnesPapier: 4,
         cree: '2026-08-13',
         activityId: 'slitherlink',
         generatorId: 'logique.slitherlink', printable: 'slitherlink',
@@ -1944,6 +1956,7 @@ export const calculExercises = [
         // la COMPARAISON un outil de déduction. Généré à solution unique,
         // résoluble par propagation pure — jamais d'essai-erreur.
         id: 'logi-futoshiki', title: 'Le Futoshiki',
+        colonnesPapier: 4,
         cree: '2026-08-12',
         activityId: 'futoshiki',
         generatorId: 'logique.futoshiki', printable: 'futoshiki',
@@ -1982,6 +1995,7 @@ export const calculExercises = [
         // de la somme magique, et chaque case écrite en débloque d'autres. Le
         // générateur garantit la résolubilité par déduction pure.
         id: 'logi-carre-magique', title: 'Le Carré Magique',
+        colonnesPapier: 4,
         cree: '2026-08-12',
         activityId: 'carre-magique',
         generatorId: 'logique.carre-magique', printable: 'carre-magique',
@@ -1998,6 +2012,7 @@ export const calculExercises = [
         // par là qu'on entre. On ne récite pas une somme magique, on croise
         // des décompositions.
         id: 'logi-hexagrille', title: 'L\'Hexagrille',
+        colonnesPapier: 4,
         cree: '2026-08-17',
         revisions: [{
             date: '2026-08-19',
@@ -2152,6 +2167,7 @@ export const calculExercises = [
     // ne bloque pas sur une notion, il bloque sur une grille mal faite.
     {
         id: 'logi-colorier-nombres',        title: 'Colorier par les Nombres',
+        colonnesPapier: 4,
         cree: '2026-09-02',
         activityId: 'colorier-nombres', skills: ['num.logique.colorier'],
         // SUR LE PAPIER, ET C'EST L'EXERCICE QUI LE DEMANDE LE PLUS. Rémy :

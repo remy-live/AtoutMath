@@ -100,6 +100,7 @@ export const numerationExercises = [
     // --- Décimaux (fiche § 5, 6) ---
     {
         id: 'num-parties',
+        colonnesPapier: 2,
         cree: '2026-07-29',
         consignePapier: "",
         title: 'Entière ou Décimale ?',
@@ -146,6 +147,7 @@ export const numerationExercises = [
     // --- Numération égyptienne (fiche § 8, 9) ---
     {
         id: 'num-egypte', title: 'Les Nombres des Pharaons',
+        colonnesPapier: 3,
         cree: '2026-07-29',
         generatorId: 'num.egypte', activityId: 'numpad',
         // SUR LE PAPIER : les glyphes tracés au PDF, à partir du dessin de
@@ -207,10 +209,15 @@ export const numerationExercises = [
         cree: '2026-09-07',
         title: 'Par Défaut, par Excès, Arrondi',
         generatorId: 'num.arrondi', activityId: 'numpad',
-        // Une colonne de nombres à recopier puis à réécrire : deux colonnes
-        // laissent la place d'écrire la valeur en face de la question.
         consignePapier: 'Donne la valeur demandée. Tu peux écrire l\'encadrement au brouillon.',
-        colonnesPapier: 2,
+        // UNE SEULE COLONNE — Rémy, après relecture du polycopié : « par
+        // défaut : 1 colonne ». J'en donnais deux, en me disant qu'un nombre à
+        // recopier laissait la place d'écrire la valeur en face. C'est vrai du
+        // NOMBRE et faux de la QUESTION : « 3,478 arrondi au centième » tient
+        // sur une demi-largeur, mais « la valeur approchée par excès au
+        // dixième de 12,0649 » n'y tient pas, et la question se coupait en
+        // deux au milieu d'un mot.
+        colonnesPapier: 1,
         // LES CINQ ÉTAPES SONT COCHÉES AU DÉPART, l'unité comprise. Rémy a
         // nommé le dixième, le centième et le millième ; l'unité est la marche
         // d'avant, celle où l'on voit l'encadrement sans virgule du tout, et
@@ -242,7 +249,7 @@ export const numerationExercises = [
         id: 'num-graduations',
         cree: '2026-08-17',
         consignePapier: "Écris l'abscisse du point.",
-        colonnesPapier: 1,
+        colonnesPapier: 3,
         title: 'La Loupe sur la Droite',
         // SUR LE PAPIER, L'AXE SE DESSINE. Sans rendu imprimé, la feuille
         // sortait la question toute seule — « Sur l'axe ci-dessus, écris
@@ -403,7 +410,7 @@ export const numerationExercises = [
         id: 'num-relatifs', title: 'Nombres Relatifs',
         cree: '2026-08-07',
         consignePapier: "Calcule.",
-        colonnesPapier: 3,
+        colonnesPapier: 2,
         generatorId: 'num.relatifs', activityId: 'relatifs',
         params: { reponse: 'saisie' },
         motsClefs: ['thermomètre', 'ascenseur', 'pastilles', 'températures',
@@ -621,16 +628,22 @@ export const numerationExercises = [
         // dessous. » La balance n'a pas de générateur — elle a une activité —,
         // donc la fiche en reçoit un à elle, qui tire les MÊMES treize formes.
         //
-        // DEUX COLONNES, ET TROIS LIGNES. Trois colonnes tiendraient les
-        // équations (« 5x − 5 = 2x + 10 » fait quatre centimètres) mais pas la
-        // rédaction : les trois lignes sous chaque question sont l'équation, le
-        // geste porté sur les deux membres, et « x = … ». C'est ce qu'on écrit
-        // en contrôle, et ça ne s'écrit pas dans cinq centimètres. Le réglage
-        // reste : une fiche de calcul mental peut en demander trois.
+        // QUATRE COLONNES, ET TROIS LIGNES. Rémy, sur la fiche imprimée :
+        // « par défaut 4 colonnes ».
+        //
+        // J'en donnais deux, et j'avais écrit pourquoi : les trois lignes sous
+        // chaque équation sont la rédaction — l'équation, le geste porté sur
+        // les deux membres, « x = … » —, et l'on n'écrit pas cela dans cinq
+        // centimètres. Ce raisonnement compte la largeur d'une LIGNE
+        // D'ÉCRITURE ; il oublie que les trois lignes sont l'une SOUS l'autre.
+        // Un élève qui rédige n'a pas besoin de la largeur d'une équation
+        // entière par ligne : il écrit « 5x − 5 = 2x + 10 », puis « 3x = 15 »
+        // en dessous, puis « x = 5 ». Ce sont des lignes courtes, et une
+        // feuille de quatre colonnes en porte quatre fois plus.
         printGeneratorId: 'alg.equation-fiche',
         consignePapier: 'Résous chaque équation. Écris chaque étape, en faisant '
             + 'la même chose des deux côtés.',
-        colonnesPapier: 2,
+        colonnesPapier: 4,
         lignesReponsePapier: 3,
         // LE CORRIGÉ DONNE LE CHEMIN, PAS LE NOMBRE. « x = 6 » ne dit pas si
         // l'élève a rassemblé les boîtes avant de partager — et c'est cela
@@ -692,7 +705,7 @@ export const numerationExercises = [
         title: 'Les Fonctions : Image et Antécédent',
         generatorId: 'alg.fonctions', activityId: 'numpad',
         consignePapier: 'Écris le calcul, puis la réponse. Pour un antécédent, remonte le programme à l\'envers et vérifie.',
-        colonnesPapier: 1,
+        colonnesPapier: 2,
         lignesReponsePapier: 2,
         skills: ['alg.fonction.image', 'alg.fonction.antecedent'],
         params: { quoi: ['lire', 'phrase', 'image', 'programme', 'tableau', 'tableau-complet', 'antecedent'] },
@@ -744,7 +757,7 @@ export const numerationExercises = [
         id: 'num-litteral-puissances',
         cree: '2026-08-28',
         consignePapier: "Réduis chaque expression. Attention : on ne regroupe que ce qui a le même exposant.",
-        colonnesPapier: 2,
+        colonnesPapier: 4,
         title: 'Carrés, Cubes et Réduction',
         generatorId: 'num.litteral.puissances', activityId: 'litteral-saisie',
 
@@ -873,7 +886,7 @@ export const numerationExercises = [
         // « centi » est mis à part parce qu'il EST à part — la seule marche
         // qui ne soit pas de trois, héritée du centimètre.
         consignePapier: "Complète. Les préfixes vont de trois en trois : kilo 10³, méga 10⁶, giga 10⁹, téra 10¹² ; milli 10⁻³, micro 10⁻⁶, nano 10⁻⁹. Seul « centi » fait exception : c'est 10⁻², comme dans centimètre.",
-        colonnesPapier: 2,
+        colonnesPapier: 3,
         motsClefs: ['préfixe', 'kilo', 'méga', 'giga', 'téra', 'milli', 'micro', 'nano',
             'pico', 'symbole', 'unité', 'conversion', 'octet', 'watt', 'micromètre'],
         tags: {
@@ -902,7 +915,7 @@ export const numerationExercises = [
         // bonne réponse est qu'il n'y en a pas. Un élève qui lit une consigne
         // et à qui l'on reproche de l'avoir suivie n'apprend rien.
         consignePapier: "Écris le résultat le plus simple : sa valeur quand elle se calcule (2⁵ = 32), une seule puissance sinon (10⁴ × 10⁸ = 10¹²). Si c'est impossible, écris-le. Tu écriras le calcul !",
-        colonnesPapier: 3,
+        colonnesPapier: 4,
         motsClefs: ['puissances', 'exposant', 'produit', 'quotient', 'multiplier', 'diviser',
             'puissance de puissance', 'règles de calcul', 'même base', 'inverse', 'carré'],
         tags: {

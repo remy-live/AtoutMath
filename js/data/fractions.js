@@ -408,6 +408,7 @@ export const fractionsExercises = [
         // une feuille : il compte des parts, et le nombre trouvé EST le
         // numérateur.
         id: 'frac-pizza', title: 'La Pizzeria des Fractions',
+        colonnesPapier: 3,
         cree: '2026-08-11',
         activityId: 'pizza',
         // Sur le papier, la fraction se CONVERTIT avant de se colorier : « la

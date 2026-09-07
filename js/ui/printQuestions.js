@@ -378,7 +378,7 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     let questions = [];
 
     const lire = () => ({
-        nb: Math.max(4, Math.min(80, Number(nbEl.value) || 20)),
+        nb: Math.max(4, Math.min(80, Number(nbEl.value) || Number(nbEl.defaultValue) || 20)),
         avecChoix: choixEl.checked,
         modeSolution: modeSol.value,
         ouSolution: ouSol.value,
@@ -618,6 +618,27 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     // Le nombre de colonnes que l'exercice sait lui convenir — le professeur
     // reste libre de le changer.
     colsEl.value = exo.colonnesPapier ? String(exo.colonnesPapier) : 'auto';
+    // ET LE NOMBRE DE QUESTIONS SUIT LES COLONNES.
+    //
+    // Rémy, en marge du Tasuko et pour tout le catalogue : « Quand je te dis 3
+    // colonnes mets 6 questions ou un multiple de 3. Quand je dis 4 colonnes
+    // mets 4 questions ou un multiple de 4 — mais bien sûr l'utilisateur peut
+    // choisir. » Vingt questions sur trois colonnes, c'est une dernière rangée
+    // à deux et un trou en bas de feuille ; vingt et une n'en laissent pas.
+    //
+    // Le PAS des boutons suit la même règle, sans quoi la première pression
+    // défait ce que l'ouverture avait arrangé : à trois colonnes on ajoute et
+    // l'on retire des questions TROIS par trois.
+    const parLigne = Math.max(1, Math.round(exo.colonnesPapier) || 2);
+    nbEl.defaultValue = String(Math.max(parLigne, Math.round(20 / parLigne) * parLigne));
+    nbEl.value = nbEl.defaultValue;
+    modal.querySelectorAll('.fp-pas-btn').forEach(b => {
+        const sens = Number(b.dataset.sens) || (Number(b.dataset.pas) < 0 ? -1 : 1);
+        b.dataset.sens = String(sens);
+        b.dataset.pas = String(sens * parLigne);
+        b.setAttribute('aria-label',
+            `${parLigne} question${parLigne > 1 ? 's' : ''} de ${sens < 0 ? 'moins' : 'plus'}`);
+    });
     // ET LA PLACE POUR ÉCRIRE. Un exercice de vitesse ne se répond pas au bout
     // d'une ligne de pointillés : il faut poser d = v × t, remplacer, calculer,
     // et conclure avec l'unité. Rémy : « place pour les calculs et la réponse ».

@@ -115,6 +115,73 @@ export function dispositionDuRendu(rendu) {
     return { cols: 3, rows: 4, maxCols: 5, maxRows: 5 };
 }
 
+/**
+ * COMBIEN DE RANGÉES QUAND LE NOMBRE DE COLONNES EST DONNÉ — celles qui
+ * remplissent la feuille, et pas une de plus.
+ *
+ * Fixer les colonnes fixe la LARGEUR d'un bloc : elle ne dépend plus que de la
+ * page. La proportion du rendu en donne alors la hauteur, et la question « et
+ * combien par page ? » n'a plus qu'une réponse honnête — autant qu'il en tient
+ * de haut.
+ *
+ * ON ARRONDIT, ON NE TRONQUE PAS. Trois colonnes de blocs carrés sur une page
+ * couchée : le bloc fait 89 mm de large, la zone utile 169 mm de haut. Tronquer
+ * donne UNE rangée — un bloc de 89 mm et 76 mm de blanc en dessous, c'est-à-dire
+ * la moitié de la feuille perdue. Arrondir en donne deux : les blocs descendent
+ * à 78 mm — un neuvième de moins — et l'on imprime deux fois plus. Rémy le dit
+ * d'une autre façon à propos des graduations : « car là ça gâche du papier ».
+ */
+export function lignesQuiRemplissent(cols, page, opts = {}) {
+    const p = opts.proportions;
+    const forme = (p && p !== 'plein' && p.w > 0 && p.h > 0) ? p : { w: 1, h: 1 };
+    const gapX = opts.colles ? 0 : GOUTTIERE.x;
+    const gapY = opts.colles ? 0 : GOUTTIERE.y;
+    const titreH = opts.colles ? 0 : GOUTTIERE.titre;
+    const z = zoneUtile(page);
+    const largeur = (z.w - gapX * (cols - 1)) / cols;
+    // Ce qu'une rangée coûte en hauteur : le bloc, son titre, la gouttière qui
+    // la sépare de la suivante. La dernière n'a pas de gouttière — d'où le
+    // `+ gapY` au numérateur.
+    const parRangee = largeur * forme.h / forme.w + titreH + gapY;
+    return Math.max(1, Math.round((z.h + gapY) / parRangee));
+}
+
+/**
+ * LA DISPOSITION D'UN EXERCICE QUI DIT SES COLONNES.
+ *
+ * Rémy a relu le catalogue fiche par fiche et écrit, quarante-six fois, « fais
+ * 3 colonnes par défaut », « par défaut 4 colonnes ». Ce n'est pas le rendu qui
+ * le sait — trois exercices partagent l'opération posée et en veulent cinq,
+ * quatre et quatre —, c'est L'EXERCICE. `colonnesPapier` le disait déjà pour
+ * les fiches de questions ; il vaut désormais aussi pour les grilles.
+ *
+ * Et la règle qui va avec, dictée sous le Tasuko : « Quand je te dis 3 colonnes
+ * mets 6 questions ou un multiple de 3. Quand je dis 4 colonnes mets 4
+ * questions ou un multiple de 4 — mais bien sûr l'utilisateur peut choisir. »
+ * Le nombre par défaut est donc `colonnes × rangées`, et jamais un compte qui
+ * laisserait une rangée à trous dès l'ouverture.
+ *
+ * Les plafonds du rendu sont relevés, pas remplacés : `maxCols` bornait le
+ * nombre de colonnes tel que le rendu l'avait mesuré POUR SON PROPRE compte, et
+ * refuser les colonnes que l'exercice demande n'aurait servi qu'à ignorer la
+ * demande en silence.
+ */
+export function dispositionEnColonnes(colonnes, rendu, page, opts = {}) {
+    const base = dispositionDuRendu(rendu);
+    const cols = Math.round(colonnes) || 0;
+    if (cols < 1) return base;
+    const rows = lignesQuiRemplissent(cols, page, opts);
+    return {
+        ...base,
+        cols, rows,
+        // Le vœu de l'exercice, que `choisirDisposition` suivra tant qu'il
+        // reste une disposition à ce nombre de colonnes.
+        colonnes: cols,
+        maxCols: Math.max(cols, base.maxCols || 5),
+        maxRows: Math.max(rows, base.maxRows || 5)
+    };
+}
+
 /** Combien de blocs la page peut porter au maximum, ce rendu-là. */
 export const capaciteMax = (dispo) => Math.max(1, (dispo.maxCols || 5) * (dispo.maxRows || 5));
 
@@ -131,7 +198,19 @@ export function choisirDisposition(n, dispo, page, opts = {}) {
     const maxCols = Math.max(1, dispo.maxCols || 5);
     const maxRows = Math.max(1, dispo.maxRows || 5);
     const voulu = Math.max(1, Math.min(capaciteMax({ maxCols, maxRows }), Math.round(n) || 1));
+    // LE NOMBRE DE COLONNES QUE L'EXERCICE RÉCLAME, s'il en réclame un.
+    //
+    // La règle générale — la plus grande grille possible — reste la bonne quand
+    // personne n'a regardé la feuille. Mais Rémy a regardé les quarante-six
+    // siennes, et « fais 4 colonnes par défaut » n'est pas une préférence
+    // esthétique : c'est le nombre d'exercices qu'il veut voir sur la page
+    // qu'il photocopie. On garde donc les deux règles, dans cet ordre : d'abord
+    // les dispositions qui ont le bon nombre de colonnes, et la plus grande
+    // d'entre elles ; la règle libre ne sert que si aucune n'y suffit — quand
+    // on demande plus de blocs que ces colonnes-là n'en portent.
+    const voulues = Math.round(dispo.colonnes) || 0;
     let best = null;
+    let bestVoulues = null;
     for (let c = 1; c <= maxCols; c++) {
         for (let r = 1; r <= maxRows; r++) {
             const places = c * r;
@@ -141,10 +220,13 @@ export function choisirDisposition(n, dispo, page, opts = {}) {
             // La plus grande d'abord ; à égalité, celle qui perd le moins de
             // places — à douze blocs, 4 × 3 et 3 × 4 donnent la même taille et
             // ne laissent pas les mêmes trous.
-            if (!best || cand.cote > best.cote + 1e-9
-                || (Math.abs(cand.cote - best.cote) <= 1e-9 && cand.gachis < best.gachis)) best = cand;
+            const mieux = (a, b) => !a || b.cote > a.cote + 1e-9
+                || (Math.abs(b.cote - a.cote) <= 1e-9 && b.gachis < a.gachis);
+            if (mieux(best, cand)) best = cand;
+            if (c === voulues && mieux(bestVoulues, cand)) bestVoulues = cand;
         }
     }
+    best = bestVoulues || best;
     // Aucune disposition ne tient `voulu` blocs : on rend la plus grande, et
     // l'appelant borne le nombre. Ne jamais renvoyer `null` — la feuille doit
     // se dessiner, même quand on lui demande l'impossible.

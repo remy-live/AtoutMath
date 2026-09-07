@@ -311,3 +311,21 @@ test('LE CADRE RÉSERVE LA PLACE DE LA PLUS GROSSE COTE — celle du téléphone
     assert.equal(Math.max(...tailles), TAILLE_COTE_MAX,
         `la feuille de style monte à ${Math.max(...tailles)} px, le cadre en réserve ${TAILLE_COTE_MAX}`);
 });
+
+test('LA COTE DU RAYON EST UNE LONGUEUR, JAMAIS UNE AIRE', () => {
+    // Rémy, sur le polycopié : « tu marques 18 cm² pour la longueur du rayon ou
+    // diamètre ». La fiche n'avait sous la main que `meta.unit`, qui est
+    // l'unité de la RÉPONSE — des centimètres carrés dès qu'on demande une aire
+    // — et l'écrivait le long du segment. Un rayon de dix-huit centimètres
+    // carrés n'existe pas, et c'est exactement la confusion aire / longueur que
+    // le chapitre travaille à défaire. `uniteLongueur` la porte à part.
+    const gen = disqueGenerator;
+    let vuesAires = 0;
+    for (let i = 0; i < 40; i++) {
+        const it = gen.generate({}, { index: i, total: 40, rng: makeRng(`cote-${i}`) });
+        assert.equal(it.meta.uniteLongueur, 'cm', 'la cote se mesure en centimètres');
+        assert.ok(!/²/.test(it.meta.uniteLongueur));
+        if (it.meta.surLAire) vuesAires++;
+    }
+    assert.ok(vuesAires > 0, 'on doit avoir croisé des questions d\'aire');
+});

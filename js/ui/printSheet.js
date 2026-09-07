@@ -115,7 +115,8 @@ import {
 // COMBIEN DE GRILLES, ET RIEN D'AUTRE : la disposition se calcule, elle ne se
 // règle plus. Le même module sert à placer les blocs et à choisir leur nombre.
 import {
-    mesuresSlot, choisirDisposition, capaciteMax, coteLisible, dispositionDuRendu
+    mesuresSlot, choisirDisposition, capaciteMax, coteLisible, dispositionDuRendu,
+    dispositionEnColonnes
 } from '../core/dispositionFiche.js';
 import { monterPanneauContenu } from './panneauContenu.js';
 // Poser une opération, c'est ranger des chiffres PAR RANG ; la virgule marque
@@ -7266,8 +7267,11 @@ function segmentDisque(g) {
     const Q = parDiametre
         ? { x: g.cx - g.R * ux, y: g.cy - g.R * uy }
         : { x: g.cx, y: g.cy };
+    // LA COTE MESURE UNE LONGUEUR, PAS UNE AIRE. `m.unit` est l'unité de la
+    // RÉPONSE — « cm² » dès qu'on demande une aire —, et l'on écrivait donc
+    // « 18 cm² » le long du rayon. Voir `uniteLongueur` dans le générateur.
     const texte = g.m.marche === 'formule' ? 'r'
-        : `${parDiametre ? g.m.d : g.m.r} ${g.m.unit || 'cm'}`;
+        : `${parDiametre ? g.m.d : g.m.r} ${g.m.uniteLongueur || 'cm'}`;
     // LA MESURE TIENT DANS LE SEGMENT QU'ELLE MESURE. Sur un petit disque,
     // « 20 cm » écrit au corps de la case dépassait du cercle des deux côtés :
     // le nombre semblait alors mesurer autre chose. On le réduit jusqu'à ce
@@ -13756,6 +13760,11 @@ export const RENDUS = {
         titreAGauche: true,
         // Une grille par page : la clé prend déjà deux rangées, et à deux
         // grilles les cases tombent sous trois millimètres.
+        //
+        // C'ÉTAIT VRAI DE CE PLAFOND-LÀ, ET L'EXERCICE PEUT LE LEVER. Rémy,
+        // après relecture : « mets deux colonnes par défaut ». Ce que dit
+        // `colonnesPapier` sur l'exercice l'emporte sur ce que le rendu a
+        // mesuré une fois — c'est le professeur qui a la feuille sous les yeux.
         disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
         parLigneDefaut: 1
     },
@@ -14299,6 +14308,7 @@ export const RENDUS = {
         titreAGauche: true,
         // UNE GRILLE PAR PAGE. À deux, un 12 × 12 tombe sous quatre millimètres
         // par lettre : on ne cherche plus des mots, on plisse les yeux.
+        // (Ce défaut cède devant `colonnesPapier` : Rémy en veut deux.)
         disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
         parLigneDefaut: 1
     },
@@ -14556,6 +14566,11 @@ export const RENDUS = {
         // colorie au crayon et l'on barre, ce qu'une case de trois millimètres
         // ne permet pas. Quatre grilles de dix sur une page donnaient des cases
         // de 4 mm — mesuré ; deux en donnent 8.
+        //
+        // C'était mesuré sur DEUX RANGÉES de deux. Rémy en demande quatre par
+        // défaut, et quatre en une seule rangée ne coûtent pas la même chose :
+        // 6,5 cm de côté au lieu de 13,7 — des cases de 8 mm sur une grille de
+        // cinq, mesuré. `colonnesPapier` le dit sur l'exercice.
         disposition: { cols: 2, rows: 1, maxCols: 3, maxRows: 3 },
         parLigneDefaut: 2
     },
@@ -14902,6 +14917,12 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     // l'ouverture ; le sélecteur reste là, et le professeur peut toujours en
     // décider autrement.
     if (rendu.portrait && !ficheEnPortrait()) reglerFichePortrait(true);
+    // ET LA PAGE PREND CE SENS TOUT DE SUITE. Elle ne le prenait qu'à la fin de
+    // l'ouverture, au moment de régler le sélecteur : entre-temps la
+    // disposition par défaut se calculait sur une feuille couchée alors que la
+    // fiche allait sortir debout — et l'on n'obtenait le bon nombre de blocs
+    // qu'en touchant un réglage, n'importe lequel.
+    orienterPage(ficheEnPortrait());
 
     const modal = assurerModale();
     const apercu = modal.querySelector('#fp-apercu');
@@ -14923,7 +14944,18 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     // sudoku va par douze, un logigramme par deux. Il le disait déjà en
     // colonnes et en lignes ; on n'en garde que le PRODUIT — le nombre qu'il
     // conseille — et les bornes.
-    const dispo = dispositionDuRendu(rendu);
+    //
+    // ET L'EXERCICE PEUT LE DIRE MIEUX QUE LUI. Trois exercices partagent le
+    // rendu de l'opération posée — l'addition, la multiplication, la division
+    // — et Rémy en veut cinq colonnes pour la première, quatre pour les deux
+    // autres : un défaut par RENDU ne sait pas l'écrire. `colonnesPapier`, que
+    // les fiches de questions lisaient déjà, vaut donc aussi pour les grilles.
+    const proportionsStatiques = typeof rendu.proportions === 'function'
+        ? rendu.proportions([]) : rendu.proportions;
+    const dispo = exo.colonnesPapier > 0
+        ? dispositionEnColonnes(exo.colonnesPapier, rendu, PAGE,
+            { proportions: proportionsStatiques, colles: !!rendu.blocsColles })
+        : dispositionDuRendu(rendu);
     const combienDefaut = Math.max(1, (dispo.cols || 3) * (dispo.rows || 4));
     const plafond = capaciteMax(dispo);
     const lireCombien = () =>

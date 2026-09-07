@@ -17,6 +17,7 @@ export const geometrieExercises = [
     // qui donne l'autre.
     {
         id: 'geo-angles-manquants',
+        colonnesPapier: 5,
         cree: '2026-08-25',
         title: 'La Valeur Manquante',
         generatorId: 'geo.angles-manquants', activityId: 'numpad',
@@ -135,6 +136,7 @@ export const geometrieExercises = [
     // core/programmeConstruction.js.
     {
         id: 'geo-programme-construction',
+        colonnesPapier: 4,
         title: 'Écris le programme de construction',
         cree: '2026-09-04',
         activityId: 'programme-construction',
@@ -349,6 +351,7 @@ export const geometrieExercises = [
     // place de « [AB] », dans des copies où la construction est juste.
     {
         id: 'geo-notation',
+        colonnesPapier: 4,
         cree: '2026-08-17',
         title: 'Segment, Droite ou Demi-droite ?',
         generatorId: 'geo.notation', activityId: 'bubbles',
@@ -463,6 +466,7 @@ export const geometrieExercises = [
     // imprimée restait dans les positifs quoi qu'on ait choisi à l'écran.
     {
         id: 'geo-repere-placer', title: 'Placer un Point',
+        colonnesPapier: 3,
         cree: '2026-07-28',
         generatorId: 'geo.repere',
         // Sur le papier, UN repère porte SIX points : retracer des axes à
@@ -504,6 +508,7 @@ export const geometrieExercises = [
     // par chapitre n'aurait plus rien eu à ranger.
     {
         id: 'geo-symetrie-quadrillage',
+        colonnesPapier: 4,
         revisions: [
             {
                 date: '2026-08-19',
@@ -536,6 +541,7 @@ export const geometrieExercises = [
     },
     {
         id: 'geo-transfo-quadrillage',
+        colonnesPapier: 4,
         revisions: [
             {
                 date: '2026-08-19',
@@ -697,6 +703,7 @@ export const geometrieExercises = [
         // points donnés. C'est précisément la marche que les élèves ratent, et
         // elle méritait sa propre porte d'entrée.
         id: 'geo-translation-fleche',
+        colonnesPapier: 4,
         title: 'La Flèche qui Glisse',
         cree: '2026-09-01',
         consignePapier: 'Colorie l\'image de la figure grise par la translation que montre la flèche.',
@@ -807,6 +814,7 @@ export const geometrieExercises = [
         // de points correspondants. C'est la définition, et c'est elle qu'on
         // travaille.
         id: 'geo-pavage', title: 'Symétrique par Rapport à Quoi ?',
+        colonnesPapier: 4,
         cree: '2026-08-18',
         // UNE RÉVISION SE NOTE QUAND L'EXERCICE CHANGE DE NATURE, jamais pour
         // une faute d'orthographe : sinon la liste devient un journal de
@@ -848,6 +856,7 @@ export const geometrieExercises = [
         // qui propose même de les ALTERNER, ce qu'aucune des deux entrées
         // séparées ne permettait d'atteindre.
         id: 'geo-angles', title: 'Angle Master',
+        colonnesPapier: 3,
         cree: '2026-08-04',
         revisions: [{
             date: '2026-08-19',
@@ -1108,6 +1117,7 @@ export const geometrieExercises = [
         // passer ne l'est pas. La grille est tirée d'un chemin qui couvre
         // déjà toute la surface : elle est donc résoluble par construction.
         id: 'geo-relier-points', title: 'Relie les points',
+        colonnesPapier: 3,
         cree: '2026-08-14',
         activityId: 'relier',
         // La même grille sert à l'écran et sur le papier : le générateur la
@@ -1261,6 +1271,7 @@ export const geometrieExercises = [
         // et la correction montre CE QU'ON A OUBLIÉ plutôt que d'annoncer un
         // nombre.
         id: 'geo-solides-denombrer', cree: '2026-08-13',
+        colonnesPapier: 3,
         revisions: [{
             date: '2026-08-19',
             quoi: 'Les aides s\'effacent en deux temps : le numéro sur la marque après trois '
@@ -1396,6 +1407,7 @@ export const geometrieExercises = [
         // dans un plan sans le voir d'en haut, c'est la compétence ; la forme,
         // elle, est là pour qu'on ait envie de la traverser.
         id: 'geo-dedale-forme', title: 'Les Dédales',
+        colonnesPapier: 2,
         cree: '2026-08-14',
         activityId: 'dedale',
         // SUR LE PAPIER : le dédale imprimé, à parcourir au crayon. C'est
@@ -1462,6 +1474,7 @@ export const geometrieExercises = [
         // et une seule. Un problème à deux solutions donnerait tort à l'élève
         // qui trouve l'autre.
         id: 'geo-mat-echecs', title: 'Échecs : mat en un, mat en deux',
+        colonnesPapier: 4,
         cree: '2026-08-14',
         // C'EST LE JEU D'ÉCHECS LUI-MÊME, en mode exercice. Un second écran
         // aurait redemandé à l'élève d'apprendre un damier, des pièces et des
@@ -1594,6 +1607,7 @@ export const geometrieExercises = [
     // lui seul, et pas trois lignes d'introduction au chapitre suivant.
     {
         id: 'geo-trigo-cotes',        title: 'Hypoténuse, Opposé, Adjacent',
+        colonnesPapier: 4,
         // LA FEUILLE N'EST PAS L'ÉCRAN. À l'écran on CLIQUE le côté ; sur le
         // papier on l'ÉCRIT — le premier palier n'a pas de traduction papier,
         // et la fiche part donc du second. Voir generators/trigoCotes.js.
