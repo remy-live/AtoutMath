@@ -770,16 +770,48 @@ class Organigramme extends BaseGame {
                     box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
                 }
                 /* LE MONDE — le plan entier, dont la fenêtre ne montre qu'une
-                   part. Il ne change jamais de taille : il GLISSE. La transition
-                   est ce que Rémy appelle « descendre l'organigramme ». */
+                   part. La transition est ce que Rémy appelle « descendre
+                   l'organigramme ».
+
+                   LE GROSSISSEMENT AUSSI GLISSE, et il ne le faisait pas.
+
+                   Rémy : « L'arrivée du parallélogramme est bizarre, j'aimerais
+                   plutôt que ça zoome depuis l'organigramme jusqu'au
+                   parallélogramme. Il faut que ce soit fluide. »
+
+                   Filmé image par image à l'entrée dans l'étape de codage :
+
+                       1 ms   monde large = 1148   coin = (−24, 183)
+                      78 ms   monde large = 2164   coin = (−72, 136)
+                     ...      monde large = 2164   le coin glisse pendant 1,4 s
+
+                   Le monde DOUBLAIT de taille en une seule image, puis se
+                   contentait de glisser. C'est que « cadrer() » écrit deux choses
+                   de nature différente : le « transform », qui était la seule
+                   propriété en transition, et la LARGEUR du monde, qui porte
+                   tout le grossissement et changeait d'un coup. On voyait donc
+                   la figure sauter à sa taille finale, puis venir se placer :
+                   un saut suivi d'un glissement, jamais un zoom.
+
+                   Les trois propriétés qui font le cadrage — la largeur et la
+                   hauteur du monde, et sa translation — glissent maintenant
+                   ensemble, sur la même durée et la même courbe. Le format du
+                   plan les suit, un peu de hauteur changeant d'une étape à
+                   l'autre. */
                 /* LA DURÉE EST ÉCRITE PAR cadrer(), PAS ICI — voir dureeDuGlissement().
                    Celle-ci n'est que le repli si le calcul n'a pas eu lieu. */
                 .qd-monde {
                     position: absolute; left: 0; top: 0;
-                    transition: transform 1s cubic-bezier(.33, 0, .18, 1);
+                    transition: transform 1s cubic-bezier(.33, 0, .18, 1),
+                                width 1s cubic-bezier(.33, 0, .18, 1),
+                                height 1s cubic-bezier(.33, 0, .18, 1);
+                }
+                .qd-plan {
+                    transition: aspect-ratio 1s cubic-bezier(.33, 0, .18, 1),
+                                width 1s cubic-bezier(.33, 0, .18, 1);
                 }
                 @media (prefers-reduced-motion: reduce) {
-                    .qd-monde { transition: none !important; }
+                    .qd-monde, .qd-plan { transition: none !important; }
                 }
                 .qd-fils { position: absolute; inset: 0; width: 100%; height: 100%; }
                 /* LES TRAITS. Plus sombres et plus francs qu'avant : à 40 %
@@ -1901,13 +1933,21 @@ class Organigramme extends BaseGame {
         // donc le texte et l'on accepte que les voisines soient coupées — le
         // dégradé des bords dit alors « ça continue », ce qui est vrai.
         const etroit = this.sceneEtroite();
+        // LE VOL ATTEND QUE LA MODALE SOIT PARTIE — voir `annoncerCodage`.
+        // Tant qu'elle couvre l'écran, la caméra reste où elle était : sinon
+        // elle fait tout le trajet DERRIÈRE la fenêtre, et l'élève, en la
+        // fermant, découvre l'arrivée sans avoir vu le départ.
+        const attend = codage && this.volEnAttente && this.derniereFenetre;
         this.cadrer(
             !e ? v
-                : codage ? this.fenetreDeLaCase(e.figure, e.de)
-                    : fenetreDeLEtape([boiteFigure(e.de), boiteFigure(e.vers),
-                        ...FLECHES.filter(f => e.cles.includes(cleFleche(f))).map(boiteCondition)],
-                    this.largeurFenetre(), etroit ? [] : boitesDuPlan(),
-                    this.reglageFenetre()),
+                : attend ? this.derniereFenetre
+                    : codage ? this.fenetreDeLaCase(e.figure, e.de)
+                        : fenetreDeLEtape(
+                            [boiteFigure(e.de), boiteFigure(e.vers),
+                                ...FLECHES.filter(f => e.cles.includes(cleFleche(f)))
+                                    .map(boiteCondition)],
+                            this.largeurFenetre(), etroit ? [] : boitesDuPlan(),
+                            this.reglageFenetre()),
             v);
         // Le fondu ne s'allume que là où l'on coupe vraiment.
         this.planEl.style.setProperty('--fondu', (codage || etroit) ? '16px' : '0px');
@@ -2099,6 +2139,23 @@ class Organigramme extends BaseGame {
     async annoncerCodage(e) {
         if (this.isDemo || this.annoncee === e.numero) return;
         this.annoncee = e.numero;
+        // LA CAMÉRA ATTEND QUE LA FENÊTRE SOIT PARTIE.
+        //
+        // Rémy : « L'arrivée du parallélogramme est bizarre, j'aimerais plutôt
+        // que ça zoome depuis l'organigramme jusqu'au parallélogramme. »
+        //
+        // Filmé : le vol partait AVEC la modale, durait 1,4 seconde et se
+        // terminait pendant qu'on lisait le texte. L'élève fermait la fenêtre
+        // et trouvait la case déjà en gros plan — un changement d'écran, pas un
+        // zoom. Le drapeau retient le cadrage sur la fenêtre précédente ; le vol
+        // part quand on ferme, quel que soit le chemin — le bouton, la croix ou
+        // le fond.
+        this.volEnAttente = true;
+        const decoller = () => {
+            if (!this.volEnAttente) return;
+            this.volEnAttente = false;
+            this.cadrer(this.fenetreDeLaCase(e.figure, e.de), MONDE);
+        };
         const nom = familleDe(e.figure).nom.toLowerCase();
         const { showModal } = await import('../ui/modal.js');
         const m = showModal(`On code le ${nom}`, `
@@ -2114,7 +2171,7 @@ class Organigramme extends BaseGame {
                 <button type="button" class="qd-btn qd-modale-ok"
                     style="background:var(--primary); border-color:var(--primary); color:#fff;
                         padding:9px 18px; font-size:.9rem">Je code le ${nom}</button>
-            </div>`, { width: '430px', zIndex: ETAGE_MODALE });
+            </div>`, { width: '430px', zIndex: ETAGE_MODALE, onClose: decoller });
         const ok = m.element.querySelector('.qd-modale-ok');
         if (ok) ok.onclick = () => m.close();
     }
@@ -2936,7 +2993,11 @@ class Organigramme extends BaseGame {
         // 1,9 s pour la traversée. Rien d'inventé : c'est le même geste qu'une
         // caméra qui accompagne, et il se termine en douceur (la courbe
         // décélère fort) parce que ce qui compte est l'arrivée.
-        this.mondeEl.style.transitionDuration = this.dureeDuGlissement(fen, monde);
+        // LA MÊME DURÉE POUR LES TROIS PROPRIÉTÉS et pour le format du plan :
+        // c'est ce qui fait qu'on voit UN mouvement et non trois.
+        const duree = this.dureeDuGlissement(fen, monde);
+        this.mondeEl.style.transitionDuration = duree;
+        this.planEl.style.transitionDuration = duree;
         this.derniereFenetre = { ...fen };
         this.planEl.style.setProperty('--zoom', fen.zoom.toFixed(3));
         this.planEl.style.aspectRatio = fen.rapport.toFixed(4);

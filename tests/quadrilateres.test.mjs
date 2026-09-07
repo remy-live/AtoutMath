@@ -1091,3 +1091,51 @@ test('UNE CARTE TROP FORTE N\'EST PAS COMPTÉE COMME UNE ERREUR', async () => {
     assert.equal(faux.ok, false);
     assert.ok(!faux.tropFort);
 });
+
+// --- LE VOL DE CAMÉRA VERS LA CASE QU'ON CODE --------------------------------
+//
+// Rémy : « L'arrivée du parallélogramme est bizarre, j'aimerais plutôt que ça
+// zoome depuis l'organigramme jusqu'au parallélogramme. Il faut que ce soit
+// fluide. »
+//
+// DEUX DÉFAUTS, ET LE PREMIER EST LE PIRE. Filmé image par image à l'entrée
+// dans l'étape de codage :
+//
+//     1 ms   monde large = 1148   coin = (−24, 183)
+//    78 ms   monde large = 2164   coin = (−72, 136)
+//    ...     monde large = 2164   le coin glisse pendant 1,4 s
+//
+//  · LE GROSSISSEMENT NE GLISSAIT PAS. Seul le « transform » était en
+//    transition ; la largeur du monde, qui porte tout le zoom, changeait d'un
+//    coup. Un saut suivi d'un glissement, jamais un zoom.
+//  · ET LE VOL PARTAIT DERRIÈRE LA MODALE. Il durait 1,4 s et se terminait
+//    pendant qu'on lisait le texte : on fermait la fenêtre, la case était déjà
+//    en gros plan.
+test('LA CAMÉRA ZOOME, ELLE NE SAUTE PAS, et elle attend la modale', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../js/games/quadrilateres.js', import.meta.url), 'utf8');
+
+    // 1. Les trois propriétés du cadrage glissent ensemble.
+    const monde = src.slice(src.indexOf('.qd-monde {'), src.indexOf('.qd-fils'));
+    assert.match(monde, /transition:\s*transform[^;]*width[^;]*height/s,
+        'la largeur et la hauteur du monde ne glissent pas : le zoom saute');
+    // Et le format du plan les suit.
+    assert.match(src, /\.qd-plan \{\s*\n\s*transition:\s*aspect-ratio/,
+        'le format du plan ne glisse pas');
+    // Qui refuse les animations n'en veut pas davantage parce qu'elles sont jolies.
+    assert.match(src, /prefers-reduced-motion[\s\S]{0,120}\.qd-monde, \.qd-plan \{ transition: none/,
+        'le réglage système ne coupe plus tout');
+
+    // 2. La durée est la même pour tout : c'est ce qui fait UN mouvement.
+    const cadrer = src.slice(src.indexOf('    cadrer(fen, monde = fen) {'),
+        src.indexOf('/** Combien de temps pour aller'));
+    assert.match(cadrer, /this\.mondeEl\.style\.transitionDuration = duree/);
+    assert.match(cadrer, /this\.planEl\.style\.transitionDuration = duree/);
+
+    // 3. Le vol attend que la fenêtre soit fermée, par quelque chemin que ce soit.
+    assert.match(src, /this\.volEnAttente = true/, 'rien ne retient plus la caméra');
+    assert.match(src, /attend \? this\.derniereFenetre/,
+        'la caméra ne reste pas sur la fenêtre précédente pendant la modale');
+    assert.match(src, /onClose: decoller/,
+        'fermer par la croix ou par le fond ne fait pas décoller la caméra');
+});
