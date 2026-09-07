@@ -624,6 +624,13 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     // Le professeur reste libre d'en remettre ou d'en enlever.
     lignesRepEl.value = exo.lignesReponsePapier != null
         ? String(exo.lignesReponsePapier) : '0';
+    // ET LE CORRIGÉ QUI VA AVEC. Une fiche où l'élève écrit trois lignes de
+    // calcul ne se corrige pas avec une colonne de nombres : ce qu'on note,
+    // c'est le chemin. Le polycopié d'équations en est le cas net — « x = 6 »
+    // ne dit pas si l'élève a rassemblé les boîtes avant de partager. Les
+    // exercices qui le savent le disent ; les autres gardent le corrigé
+    // compact, qui est le bon quand la réponse est un nombre et rien d'autre.
+    if (exo.solutionsPapier) modeSol.value = exo.solutionsPapier;
     // De quoi se redessiner quand la fenêtre change de taille : l'aperçu
     // calcule son échelle sur la largeur disponible.
     modal._flotRendre = () => rendre();

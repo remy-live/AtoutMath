@@ -1331,6 +1331,14 @@ export function reponseEnPlace(texte, reponse) {
     // aussi le seul où l'on écrit une phrase de réponse.
     const propre = nettoyer(t);
     if (/[?!.:]$/.test(propre.trim())) return `${propre} Réponse : ${marquee}`;
+    // UN ÉNONCÉ QUI EST DÉJÀ UNE ÉGALITÉ N'EN PREND PAS UNE SECONDE.
+    //
+    // Le polycopié d'équations pose « x + 6 = 11 » et attend 5 : la règle
+    // ordinaire écrivait « x + 6 = 11 = 5 », une chaîne d'égalités fausse, sur
+    // la feuille même où l'on apprend qu'une égalité se conserve. Le corrigé ne
+    // peut pas donner cet exemple-là. On l'annonce donc comme on annonce la
+    // réponse d'un problème — l'énoncé, puis ce qu'on répond.
+    if (propre.includes('=')) return `${propre}   Réponse : ${marquee}`;
     return `${propre} = ${marquee}`;
 }
 

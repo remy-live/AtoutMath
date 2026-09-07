@@ -7033,8 +7033,13 @@ function demandeTriangle(m) {
 function cotesTriangle(g) {
     const m = g.m;
     const muet = { isocele: ['b'], equilateral: ['a', 'b'] }[m.marche] || [];
+    // L'UNITÉ SUR CHAQUE LONGUEUR. Rémy : « mets l'unité sur les longueurs des
+    // côtés ». Sur la feuille, un « 8 » nu oblige à aller chercher l'unité dans
+    // la consigne — et la moitié des élèves l'oublient dans leur réponse pour
+    // exactement cette raison. À l'écran l'unité est dans le pavé ; sur le
+    // papier, il n'y a que la figure.
     const dit = (k) => (m.marche === 'manquant' && m.cache === k) ? '?'
-        : (muet.includes(k) ? '' : String(m[k]));
+        : (muet.includes(k) ? '' : `${m[k]} ${m.unit}`);
     const marques = m.marche === 'isocele' ? { a: 0, b: 1, c: 1 }
         : (m.marche === 'equilateral' ? { a: 1, b: 1, c: 1 } : { a: 0, b: 0, c: 0 });
     const cotes = [['a', g.P.B, g.P.C], ['b', g.P.A, g.P.C], ['c', g.P.A, g.P.B]];
@@ -7054,8 +7059,17 @@ function cotesTriangle(g) {
             const e = g.police * 0.45;
             traits.push({ x1: cx - uy * e, y1: cy + ux * e, x2: cx + uy * e, y2: cy - ux * e });
         }
+        // LA COTE SUIT LA DIRECTION DU CÔTÉ. Rémy : « écris-les dans la
+        // direction du côté (si le côté est penché, la longueur suit sa
+        // direction) ». C'est la convention du cahier, et elle sert : une
+        // longueur écrite à l'horizontale à côté d'un côté oblique se
+        // rattache à l'œil au mauvais côté quand deux d'entre eux se
+        // rejoignent. On redresse seulement pour ne jamais écrire à l'envers.
+        let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        if (angle > 90) angle -= 180;
+        if (angle < -90) angle += 180;
         return {
-            texte: dit(cle), traits,
+            texte: dit(cle), traits, angle,
             x: mx + (vx / n) * ecart, y: my + (vy / n) * ecart
         };
     });
@@ -7079,6 +7093,7 @@ function trianglePreviewHtml(item, slot, k, solution, rang, tous) {
         });
         if (!c.texte) return;
         d += `<text x="${T(c.x)}" y="${T(c.y)}" text-anchor="middle" dominant-baseline="central"
+            transform="rotate(${(c.angle || 0).toFixed(1)} ${T(c.x)} ${T(c.y)})"
             font-size="${T(g.police)}" font-weight="700" fill="#2d3748">${c.texte}</text>`;
     });
     ['A', 'B', 'C'].forEach(nom => {
@@ -7116,7 +7131,13 @@ function dessinerTrianglePdf(doc, item, slot, solution, champ, rang, tous) {
     doc.setTextColor(...ENCRE.texte);
     cotesTriangle(g).forEach(c => {
         c.traits.forEach(m => doc.line(m.x1, m.y1, m.x2, m.y2));
-        if (c.texte) doc.text(pourPdf(c.texte), c.x, c.y + g.police * 0.35, { align: 'center' });
+        // jsPDF compte les angles dans le sens TRIGONOMÉTRIQUE, l'écran dans
+        // le sens des aiguilles : d'où le signe opposé. Écrit pareil des deux
+        // côtés, la feuille et l'aperçu ne montreraient pas la même figure.
+        if (c.texte) {
+            doc.text(pourPdf(c.texte), c.x, c.y + g.police * 0.35,
+                { align: 'center', angle: -(c.angle || 0) });
+        }
     });
     doc.setFontSize(g.police * 2.6);
     ['A', 'B', 'C'].forEach(nom => {
@@ -7158,12 +7179,21 @@ function ligneReponseFigurePdf(doc, g, q, solution, champ, unite) {
 // répondrait à l'étape où toute la difficulté est justement de passer de l'un
 // à l'autre.
 
+/** L'inclinaison du rayon, la même qu'à l'écran : le papier ne montre pas une
+ *  autre figure que le jeu. */
+const PENTE_RAYON = -30 * Math.PI / 180;
+
 function geoDisque(item, slot, tous) {
     const m = item.meta;
     const b = slot.boite;
     const ligneH = Math.max(4, Math.min(b.h * 0.2, 6));
-    const zone = b.h - ligneH;
     const police = Math.max(2.1, Math.min(b.h * 0.075, 3.6));
+    // CE QU'ON DEMANDE, EN TÊTE DE CASE. Rémy : « sur le polycopié, on ne sait
+    // pas si tu demandes l'aire ou le périmètre ». C'était écrit — en bas, en
+    // tout petit, à la fin d'une ligne de pointillés qu'on remplit APRÈS avoir
+    // cherché. Or c'est la question : elle se lit avant la figure, pas après.
+    const titreH = police * 1.5;
+    const zone = b.h - ligneH - titreH;
     const marge = police * 1.6;
     const dispo = Math.max(6, Math.min(b.w, zone) - 2 * marge);
 
@@ -7175,12 +7205,27 @@ function geoDisque(item, slot, tous) {
     // signifierait quelque chose qui n'existe pas. On la dessine donc à la
     // taille de la case.
     const rayon = m.marche === 'formule' ? grand : (Number(m.r) || 1);
-    const R = (dispo / 2) * rayon / grand;
+    // LES DISQUES RESTENT ORDONNÉS, MAIS LE PLUS PETIT RESTE LISIBLE.
+    // À l'échelle stricte, un rayon 4 à côté d'un rayon 11 donnait un cercle de
+    // trois millimètres : sa mesure débordait de tous les côtés et l'on ne
+    // voyait plus un disque, mais un point. Le rayon dessiné garde l'ordre des
+    // rayons vrais — plus grand reste plus grand — sans descendre sous 60 % du
+    // plus gros. Aucune question ne demande de comparer deux disques entre eux ;
+    // l'échelle exacte ne sert donc à rien qu'on perde ici.
+    const R = (dispo / 2) * (0.6 + 0.4 * rayon / grand);
     return {
-        m, R, police, b, ligneH,
-        cx: b.x + b.w / 2, cy: b.y + zone / 2,
-        ligneY: b.y + zone
+        m, R, police, b, ligneH, titreH,
+        cx: b.x + b.w / 2, cy: b.y + titreH + zone / 2,
+        titreY: b.y + titreH * 0.8,
+        ligneY: b.y + titreH + zone
     };
+}
+
+/** La question, en trois mots, écrite en tête de case. */
+function titreDisque(m) {
+    if (m.marche === 'formule') return 'Quelle formule ?';
+    const exact = DISQUE_EXACTES.includes(m.marche);
+    return `${m.surLAire ? 'Aire' : 'Périmètre'}${exact ? ' exact' : ' arrondi'}${m.surLAire && exact ? 'e' : ''} ?`;
 }
 
 function demandeDisque(m) {
@@ -7204,22 +7249,43 @@ function demandeDisque(m) {
 /**
  * Le segment donné : rayon depuis le centre, ou diamètre de bord à bord.
  *
- * IL EST HORIZONTAL SUR LE PAPIER, et c'est un choix de lisibilité. À l'écran
- * il est incliné, parce que la figure y est trois fois plus grande ; sur une
- * fiche de neuf disques, un rayon oblique posait sa mesure en travers de l'arc —
- * « 20 cm » se lisait par-dessus le cercle qu'il mesure. Horizontal, le nombre
- * tient au-dessus du trait, à l'intérieur du disque, et ne croise rien.
+ * IL EST PENCHÉ, COMME À L'ÉCRAN, ET SA MESURE SUIT SA DIRECTION.
+ *
+ * Rémy : « mets la longueur dans la direction du rayon (penché si le rayon est
+ * penché) ». La première fiche le dessinait à l'horizontale, pour une raison
+ * qui n'était pas bonne : un rayon oblique avec une mesure ÉCRITE À PLAT posait
+ * « 20 cm » en travers de l'arc. Ce n'était pas l'inclinaison le problème,
+ * c'était le texte horizontal — écrit PARALLÈLEMENT au rayon et décalé d'un
+ * côté, il longe le trait sans jamais croiser le cercle. Et la feuille montre
+ * de nouveau la même figure que le jeu, ce qui compte plus que tout le reste.
  */
 function segmentDisque(g) {
     const parDiametre = g.m.marche === 'diametre';
-    const P = { x: g.cx + g.R, y: g.cy };
-    const Q = parDiametre ? { x: g.cx - g.R, y: g.cy } : { x: g.cx, y: g.cy };
+    const ux = Math.cos(PENTE_RAYON), uy = Math.sin(PENTE_RAYON);
+    const P = { x: g.cx + g.R * ux, y: g.cy + g.R * uy };
+    const Q = parDiametre
+        ? { x: g.cx - g.R * ux, y: g.cy - g.R * uy }
+        : { x: g.cx, y: g.cy };
     const texte = g.m.marche === 'formule' ? 'r'
         : `${parDiametre ? g.m.d : g.m.r} ${g.m.unit || 'cm'}`;
+    // LA MESURE TIENT DANS LE SEGMENT QU'ELLE MESURE. Sur un petit disque,
+    // « 20 cm » écrit au corps de la case dépassait du cercle des deux côtés :
+    // le nombre semblait alors mesurer autre chose. On le réduit jusqu'à ce
+    // qu'il tienne — jamais sous les deux tiers, en deçà on ne le lit plus.
+    const longueur = Math.hypot(P.x - Q.x, P.y - Q.y);
+    const large = 0.55 * texte.length;
+    const police = Math.max(g.police * 0.66,
+        Math.min(g.police, (longueur * 0.92) / Math.max(1, large)));
+    // Le décalage est PERPENDICULAIRE au segment : c'est ce qui garde le
+    // nombre à côté du trait quelle que soit la pente.
+    const ecart = police * 0.7;
+    let angle = PENTE_RAYON * 180 / Math.PI;
+    if (angle > 90) angle -= 180;
+    if (angle < -90) angle += 180;
     return {
-        P, Q, texte,
-        mx: (P.x + Q.x) / 2,
-        my: g.cy - g.police * 0.75
+        P, Q, texte, angle, police,
+        mx: (P.x + Q.x) / 2 + uy * ecart,
+        my: (P.y + Q.y) / 2 - ux * ecart
     };
 }
 
@@ -7236,8 +7302,12 @@ function disquePreviewHtml(item, slot, k, solution, rang, tous) {
     d += `<line x1="${T(s.P.x)}" y1="${T(s.P.y)}" x2="${T(s.Q.x)}" y2="${T(s.Q.y)}"
         stroke="#1a202c" stroke-width="${T(0.4)}"/>`;
     d += `<circle cx="${T(g.cx)}" cy="${T(g.cy)}" r="${T(0.35)}" fill="#1a202c"/>`;
-    d += `<text x="${T(s.mx)}" y="${T(s.my)}" text-anchor="middle" dominant-baseline="auto"
-        font-size="${T(g.police)}" font-weight="700" fill="#2d3748">${s.texte}</text>`;
+    d += `<text x="${T(s.mx)}" y="${T(s.my)}" text-anchor="middle" dominant-baseline="central"
+        transform="rotate(${s.angle.toFixed(1)} ${T(s.mx)} ${T(s.my)})"
+        font-size="${T(s.police)}" font-weight="700" fill="#2d3748">${s.texte}</text>`;
+    d += `<text x="${T(g.cx)}" y="${T(g.titreY)}" text-anchor="middle" dominant-baseline="central"
+        font-size="${T(g.police * 1.05)}" font-weight="700" fill="#1a202c"
+        >${titreDisque(g.m)}</text>`;
 
     const q = demandeDisque(g.m);
     const valeur = solution ? q.valeur : `.............. ${q.unite}`.trimEnd();
@@ -7266,9 +7336,14 @@ function dessinerDisquePdf(doc, item, slot, solution, champ, rang, tous) {
     doc.circle(g.cx, g.cy, 0.35, 'F');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(g.police * 2.83);
+    doc.setFontSize(s.police * 2.83);
     doc.setTextColor(...ENCRE.texte);
-    doc.text(pourPdf(s.texte), s.mx, s.my, { align: 'center' });
+    // Signe opposé : jsPDF compte les angles dans le sens trigonométrique.
+    doc.text(pourPdf(s.texte), s.mx, s.my + s.police * 0.35,
+        { align: 'center', angle: -s.angle });
+    // LA QUESTION EN TÊTE DE CASE, avant la figure.
+    doc.setFontSize(g.police * 2.97);
+    doc.text(pourPdf(titreDisque(g.m)), g.cx, g.titreY + g.police * 0.35, { align: 'center' });
 
     const q = demandeDisque(g.m);
     ligneReponseFigurePdf(doc, g, q, solution, champ, q.unite);
@@ -13988,11 +14063,14 @@ export const RENDUS = {
 
     triangle: {
         titre: 'Le tour du triangle',
-        consigne: () => 'Les longueurs sont écrites sur la figure. Calcule le périmètre de '
-            + 'chaque triangle — le tour, c\'est-à-dire les trois côtés mis bout à bout. '
-            + 'Attention aux MARQUES : deux côtés qui portent la même marque ont la même '
-            + 'longueur, et c\'est pour cela qu\'une seule mesure est écrite. Quand le '
-            + 'périmètre est donné et qu\'un côté porte un « ? », c\'est ce côté qu\'on cherche.',
+        // Rémy : « énoncé pour le pdf : Calcule le périmètre des figures. » Sa
+        // phrase d'abord, en tête et en clair ; le reste est ce qu'il faut
+        // savoir pour lire la figure, et vient après.
+        consigne: () => 'CALCULE LE PÉRIMÈTRE DES FIGURES — le tour, c\'est-à-dire les trois '
+            + 'côtés mis bout à bout. Attention aux MARQUES : deux côtés qui portent la même '
+            + 'marque ont la même longueur, et c\'est pour cela qu\'une seule mesure est '
+            + 'écrite. Quand le périmètre est donné et qu\'un côté porte un « ? », c\'est ce '
+            + 'côté qu\'on cherche.',
         previewGrille: trianglePreviewHtml,
         pdfGrille: dessinerTrianglePdf,
         nomBloc: 'Triangle',

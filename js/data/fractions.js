@@ -162,12 +162,12 @@ export const fractionsExercises = [
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.FRACTIONS],
             niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
         },
-        instruction: 'Les deux fractions sont ÉGALES, et il manque un nombre. On ne te demande '
-            + 'pas ce nombre : on te demande PAR COMBIEN on est passé de l\'une à l\'autre. '
-            + 'Une seule ligne est écrite des deux côtés — celle du haut ou celle du bas —, et '
-            + 'c\'est elle qui te le dit : de 2 à 22, on multiplie par 11. L\'autre ligne suit '
-            + 'le MÊME nombre, et c\'est exactement ce qui fait qu\'une fraction ne change pas '
-            + 'de valeur. Quand les nombres RAPETISSENT, on divise — c\'est le même '
+        instruction: 'Les deux fractions sont ÉGALES, et les deux flèches disent comment on '
+            + 'passe de l\'une à l\'autre : celle du haut relie les numérateurs, celle du bas '
+            + 'relie les dénominateurs. Elles portent le MÊME nombre, et c\'est lui qu\'on te '
+            + 'demande — de 2 à 22, on multiplie par 11, donc en bas aussi. Que les deux lignes '
+            + 'suivent le même nombre, c\'est exactement ce qui fait qu\'une fraction ne change '
+            + 'pas de valeur. Quand les nombres RAPETISSENT, on divise — c\'est le même '
             + 'raisonnement à l\'envers.'
     },
     {
@@ -249,7 +249,12 @@ export const fractionsExercises = [
         id: 'frac-produit-pose', title: 'Poser un Produit de Fractions',
         cree: '2026-09-06',
         consignePapier: 'Décompose, barre les facteurs communs, puis écris le résultat.',
-        colonnesPapier: 3,
+        // DEUX COLONNES, PAS TROIS. Rémy : « ne mets que deux colonnes par défaut
+        // (on peut en ajouter) sur le pdf ». Une multiplication de fractions
+        // POSÉE s'écrit en hauteur — numérateurs, dénominateurs, la
+        // simplification — et trois colonnes serraient chaque calcul dans un
+        // tiers de page. Le réglage reste, pour une fiche de révision rapide.
+        colonnesPapier: 2,
         lignesReponse: 2,
         generatorId: 'frac.produit-pose', activityId: 'produit-pose',
         params: { maxFacteur: 11 },

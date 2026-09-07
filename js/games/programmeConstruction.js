@@ -413,8 +413,19 @@ export class ProgrammeConstruction extends BaseGame {
         const r = executer(lu.instructions, niv.atlas);
         this.dernier = { lu, r };
 
-        this.consigneEl.innerHTML = `<b>Figure ${this.rang + 1} sur ${this.plan.length} — `
-            + `${enAttribut(niv.titre)}.</b> ${enAttribut(niv.dit)}`;
+        // LE TITRE DU NIVEAU NE S'AFFICHE PLUS, ET C'ÉTAIT LA RÉPONSE.
+        //
+        // Rémy : « j'ai l'impression que tu donnes la réponse parfois dans le
+        // programme à gauche ». C'était au-dessus, pas à gauche, mais il avait
+        // vu juste : la consigne annonçait « Figure 10 sur 13 — UN SEGMENT ET
+        // SA MÉDIATRICE », c'est-à-dire exactement ce qu'il fallait trouver en
+        // regardant la figure. Il ne restait qu'à traduire une phrase française
+        // en deux blocs.
+        //
+        // Le titre reste où il sert : dans le plan d'étapes de la barre
+        // d'auteur, qui n'est pas montrée à l'élève.
+        this.consigneEl.innerHTML = `<b>Figure ${this.rang + 1} sur ${this.plan.length}.</b> `
+            + `${enAttribut(niv.dit)}`;
         // LA CIBLE MONTRE LES POINTS DONNÉS ET LES TRACÉS EXIGÉS, jamais les
         // traits de construction : les afficher donnerait la méthode.
         this.butEl.innerHTML = figureSvg(niv.attendus, niv.donnes);

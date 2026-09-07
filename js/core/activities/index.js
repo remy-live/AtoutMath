@@ -37,6 +37,7 @@ import { relatifsAdditionGenerator } from '../generators/relatifsAddition.js';
 import { relatifsProduitGenerator } from '../generators/relatifsProduit.js';
 import { litteralReduireGenerator } from '../generators/litteral.js';
 import { litteralPuissancesGenerator } from '../generators/litteralPuissances.js';
+import { balanceFicheGenerator } from '../generators/balanceFiche.js';
 import { redactionGenerator } from '../generators/redaction.js';
 import { CONSIGNES } from '../geoConstruction.js';
 import { logigrammeGenerator } from '../generators/logigramme.js';
@@ -133,6 +134,8 @@ import {
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, relatifsProduitGenerator, litteralReduireGenerator,
     litteralPuissancesGenerator,
+    // La balance n'a pas de générateur — elle a une activité. Sa fiche en a un.
+    balanceFicheGenerator,
     redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
     anglesManquantsGenerator, anglesNommerGenerator,

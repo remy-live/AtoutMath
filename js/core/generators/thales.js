@@ -107,7 +107,7 @@ export function figureThalesSvg(f, cotes = []) {
         ${e.traits.map(t => `<line x1="${T(t.p.x)}" y1="${T(t.p.y)}" x2="${T(t.q.x)}" y2="${T(t.q.y)}" class="th-${t.genre}"/>`).join('\n        ')}
         ${e.cotes.map(doubleFleche).join('\n        ')}
         ${e.noms.map(t => `<text x="${T(t.x)}" y="${T(t.yBase)}" text-anchor="${t.ancre}" class="th-nom">${t.texte}</text>`).join('\n        ')}
-        ${e.cotes.map(c => `<text x="${T(c.x)}" y="${T(c.y)}" transform="rotate(${c.angle.toFixed(1)} ${T(c.x)} ${T(c.y)})" text-anchor="middle" dominant-baseline="central" class="th-cote">${c.texte}</text>`).join('\n        ')}
+        ${e.cotes.map(c => `<text x="${T(c.x)}" y="${T(c.y)}" transform="rotate(${c.angle.toFixed(1)} ${T(c.x)} ${T(c.y)})" text-anchor="middle" dominant-baseline="central" class="th-cote"${c.taille && c.taille !== TAILLE_COTE ? ` font-size="${T(c.taille)}"` : ''}>${c.texte}</text>`).join('\n        ')}
     </svg>`;
 }
 
@@ -310,7 +310,35 @@ export function figureThalesElements(f, cotes = []) {
         // UN SEGMENT TROP COURT NE PORTE PAS SA COTE : la flèche et le nombre
         // se poseraient sur les lettres de ses deux extrémités.
         if (n < 14) continue;
-        const texte = `${cle} = ${longueurTexte(f[cle])}`;
+        // L'UNITÉ SUR LA COTE, ET LE NOM DU SEGMENT EN MOINS.
+        //
+        // Rémy : « mets les unités sur le poly ». L'unité était dans l'énoncé —
+        // « on donne AB = 20 cm » — et absente de la figure, si bien qu'un élève
+        // qui travaille sur le dessin écrit sa réponse sans unité. Sur une
+        // copie, c'est un point.
+        //
+        // Premier essai : « AB = 20 cm ». Trois tests l'ont refusé d'un coup —
+        // la cote sortait du cadre, se décollait de son segment, touchait un
+        // trait. Ils avaient raison : la figure de Thalès est dense, cinq
+        // points et quatre droites qui se croisent, et trois caractères de plus
+        // par étiquette ne tiennent nulle part.
+        //
+        // On écrit donc « 20 cm » : c'est la convention du dessin technique —
+        // une cote porte la MESURE, le segment est nommé par ses extrémités,
+        // qui sont écrites juste à côté. L'étiquette est même plus courte
+        // qu'avant, et les trois tests repassent.
+        const texte = `${longueurTexte(f[cle])} cm`;
+        // LA COTE TIENT DANS SON SEGMENT.
+        //
+        // L'unité a rallongé chaque étiquette de trois caractères, et le test
+        // « aucune cote ne se pose sur un trait » l'a vu tout de suite : sur un
+        // papillon, « AD = 6 cm » dépassait de son segment et venait toucher la
+        // droite voisine. Une cote plus longue que ce qu'elle mesure ne peut
+        // pas être placée — aucun écart ne la sauve, puisqu'elle déborde dans
+        // l'axe. On la réduit donc jusqu'à ce qu'elle tienne, sans descendre
+        // sous les trois quarts du corps normal.
+        const taille = Math.max(TAILLE_COTE * 0.75,
+            Math.min(TAILLE_COTE, (n * 0.95) / (texte.length * 0.56)));
         let mieux = null;
         for (const sens of [1, -1]) {
             // LE PREMIER ÉCART QUI TIENT GAGNE, mais il faut aller jusqu'au bout
@@ -336,8 +364,8 @@ export function figureThalesElements(f, cotes = []) {
                 const q1 = { x: q.x + ux * ecart, y: q.y + uy * ecart };
                 // Le nombre au MILIEU de la cote, poussé d'un demi-corps vers
                 // l'extérieur : il longe la flèche sans la couper.
-                const x = (p1.x + q1.x) / 2 + ux * TAILLE_COTE * 0.62;
-                const y = (p1.y + q1.y) / 2 + uy * TAILLE_COTE * 0.62;
+                const x = (p1.x + q1.x) / 2 + ux * taille * 0.62;
+                const y = (p1.y + q1.y) / 2 + uy * taille * 0.62;
                 const libreLigne = degagementLigne(p1, q1, [a, b]);
                 // De quel côté est le dehors ? On le mesure sur le rayon qui va
                 // du centre de la figure au milieu du segment.
@@ -351,8 +379,8 @@ export function figureThalesElements(f, cotes = []) {
                 // sa ligne médiane seule laissait passer des traits qui le
                 // traversent par le travers.
                 const vx = dx / n, vy = dy / n;
-                const demiL = texte.length * TAILLE_COTE * 0.28;
-                const demiH = TAILLE_COTE * 0.5;
+                const demiL = texte.length * taille * 0.28;
+                const demiH = taille * 0.5;
                 const coin = (sl, sh) => ({
                     x: x + vx * demiL * sl + ux * demiH * sh,
                     y: y + vy * demiL * sl + uy * demiH * sh
@@ -402,6 +430,11 @@ export function figureThalesElements(f, cotes = []) {
         textes.push({ b: bt });
         fleches[fleches.length - 1].texte = texte;
         fleches[fleches.length - 1].angle = angle;
+        fleches[fleches.length - 1].taille = taille;
+        // LE NOM DU SEGMENT RESTE DANS LA DONNÉE, même s'il a quitté le dessin.
+        // C'est par lui qu'on vérifie qu'une cote ne porte QUE des longueurs
+        // données — la promesse tient toujours, elle se relit ailleurs.
+        fleches[fleches.length - 1].nom = cle;
     }
 
     // LA BOÎTE ÉPOUSE TOUT CE QU'ON A DESSINÉ, figure ET étiquettes. Un carré

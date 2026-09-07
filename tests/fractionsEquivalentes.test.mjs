@@ -146,19 +146,51 @@ test('PAR COMBIEN — la réponse est le FACTEUR, pas le nombre manquant', async
     }
 });
 
-test('LA CONSIGNE DIT LE GESTE, ET LA FIGURE GARDE SON TROU', async () => {
+test('LA CONSIGNE DIT LE GESTE, ET LA FIGURE PORTE SES DEUX FLÈCHES', async () => {
     const { fracFacteurGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
     const mult = G.generate({ sens: 'agrandir' }, { rng: makeRng('m'), index: 0 });
     assert.match(mult.prompt.text, /MULTIPLIER/);
     const div = G.generate({ sens: 'simplifier' }, { rng: makeRng('d'), index: 0 });
     assert.match(div.prompt.text, /DIVISER/);
-    // LE TROU RESTE. Sans lui l'égalité serait écrite en entier et la question
-    // deviendrait une division ordinaire.
-    assert.match(mult.prompt.html, /frac-trou/);
+
+    // DEUX ARCS, ET L'ÉGALITÉ ÉCRITE EN ENTIER. Rémy : « mets une flèche entre
+    // les deux numérateurs et une flèche entre les deux dénominateurs et comme
+    // au final on ne cherche pas la valeur du ?, tu peux le remplacer par la
+    // bonne valeur ». Les deux flèches portent le même signe que la consigne —
+    // sinon la figure dirait le contraire de la question.
+    assert.match(mult.prompt.html, /fe-arc--haut/);
+    assert.match(mult.prompt.html, /fe-arc--bas/);
+    assert.equal((mult.prompt.html.match(/× \?/g) || []).length, 2);
+    assert.equal((div.prompt.html.match(/÷ \?/g) || []).length, 2);
+    // PLUS DE TROU À L'ÉCRAN : les quatre nombres de l'égalité sont écrits.
+    assert.doesNotMatch(mult.prompt.html, /frac-trou/);
+    const e = mult.meta.egalite;
+    [e.gauche.n, e.gauche.d, e.droite.n, e.droite.d].forEach(x => {
+        assert.match(mult.prompt.html, new RegExp(`>${x}</span>`),
+            `${x} manque dans « ${mult.prompt.text} »`);
+    });
+
+    // LA FICHE, ELLE, GARDE SON TROU : elle n'a pas d'arc pour dire le sens de
+    // lecture, et Rémy y avait tranché — « propose simple 3/2 = …/22 ».
+    assert.match(mult.prompt.papier, /\?/);
+
     // « TOUJOURS LES FRACTIONS EN COLONNES » : c'est la consigne de Rémy, et
     // c'est ce que fait `fraction-num` / `fraction-den`.
     assert.match(mult.prompt.html, /fraction-num/);
     assert.match(mult.prompt.html, /fraction-den/);
+});
+
+test('LE FACTEUR N\'EST JAMAIS DÉJÀ ÉCRIT DANS L\'ÉGALITÉ', async () => {
+    // Depuis que les quatre nombres sont visibles, un élève qui recopie au
+    // hasard l'un d'eux ne doit pas tomber juste : « 1/7 = 5/35 » se répondrait
+    // en lisant, pas en cherchant.
+    const { fracFacteurGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
+    for (let i = 0; i < 200; i++) {
+        const it = G.generate({ sens: 'les-deux' }, { rng: makeRng('cp' + i), index: i });
+        const e = it.meta.egalite;
+        assert.notEqual(String(it.answer), String(e.droite.n), it.prompt.text);
+        assert.notEqual(String(it.answer), String(e.droite.d), it.prompt.text);
+    }
 });
 
 test('L\'INDICE MONTRE LA LIGNE À LIRE, il ne donne pas le résultat d\'emblée', async () => {
@@ -168,7 +200,7 @@ test('L\'INDICE MONTRE LA LIGNE À LIRE, il ne donne pas le résultat d\'emblée
         assert.equal(it.hints.length, 3);
         // Le premier indice ne contient pas la réponse : il dit OÙ regarder.
         assert.doesNotMatch(it.hints[0], new RegExp(`\\b${it.answer}\\b`));
-        assert.match(it.hints[0], /HAUT|BAS/);
+        assert.match(it.hints[0], /haut/);
     }
 });
 

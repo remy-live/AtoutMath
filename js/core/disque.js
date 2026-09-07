@@ -330,7 +330,24 @@ export function figureDisqueSvg(t) {
     const th = -30 * Math.PI / 180;
     const P = { x: c + R * Math.cos(th), y: c + R * Math.sin(th) };
     const Q = parDiametre ? { x: c - R * Math.cos(th), y: c - R * Math.sin(th) } : { x: c, y: c };
-    const mx = (P.x + Q.x) / 2, my = (P.y + Q.y) / 2;
+    // LE MILIEU D'UN DIAMÈTRE EST LE CENTRE — et le centre porte déjà son
+    // point et son « O ». « 10 cm » venait s'y asseoir dessus. On glisse donc
+    // la cote d'un quart de segment vers l'extérieur : elle reste sur le trait
+    // qu'elle mesure, et le centre reste lisible.
+    const k = parDiametre ? 0.75 : 0.5;
+    const mx = Q.x + (P.x - Q.x) * k, my = Q.y + (P.y - Q.y) * k;
+    // LA LONGUEUR SUIT LE RAYON. Rémy : « Met la longueur dans la direction du
+    // rayon (penché si le rayon est penché). » C'est la convention du dessin
+    // technique, et elle dit quelque chose : une cote posée à plat au-dessus
+    // d'un segment incliné peut se lire comme la mesure d'AUTRE CHOSE — ici,
+    // « 10 cm » écrit horizontalement au milieu du disque ressemblait à une
+    // largeur. Écrite le long du trait, elle ne peut mesurer que lui.
+    //
+    // ET ELLE SE DÉCALE PERPENDICULAIREMENT, pas vers le haut de l'écran : à
+    // −30°, douze pixels « vers le haut » la posaient à cheval sur le trait.
+    const deg = (th * 180) / Math.PI;
+    const nx = Math.sin(th), ny = -Math.cos(th);   // la normale, vers l'extérieur
+    const ex = mx + nx * 13, ey = my + ny * 13;
 
     return `<svg viewBox="0 0 ${VUE} ${VUE}" class="dsq-fig fig-svg" role="img"
         aria-label="Disque de ${parDiametre ? 'diamètre' : 'rayon'} ${texte}">
@@ -342,9 +359,11 @@ export function figureDisqueSvg(t) {
             .dsq-nom { font-size: 13px; font-weight: 800; fill: #2b6cb0; }
         </style>
         <circle cx="${c}" cy="${c}" r="${R}" class="dsq-bord"/>
-        <line x1="${T(P.x)}" y1="${T(P.y)}" x2="${T(Q.x)}" y2="${T(Q.y)}" class="dsq-trait"/>
+        <line x1="${T(P.x)}" y1="${T(P.y)}" x2="${T(Q.x)}" y2="${T(Q.y)}" class="dsq-trait"
+            data-rayon/>
         <circle cx="${c}" cy="${c}" r="3.2" class="dsq-centre"/>
         <text x="${c - 9}" y="${c + 14}" text-anchor="middle" class="dsq-nom">O</text>
-        <text x="${T(mx)}" y="${T(my - 12)}" text-anchor="middle" class="dsq-cote">${texte}</text>
+        <text x="${T(ex)}" y="${T(ey)}" text-anchor="middle" dominant-baseline="central"
+            transform="rotate(${deg.toFixed(1)} ${T(ex)} ${T(ey)})" class="dsq-cote">${texte}</text>
     </svg>`;
 }

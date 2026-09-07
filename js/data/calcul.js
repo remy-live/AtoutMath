@@ -2348,6 +2348,19 @@ export const calculExercises = [
         id: 'num-pourcentages', title: 'Pourcentages',
         cree: '2026-09-06',
         generatorId: 'num.pourcentages', activityId: 'numpad',
+        // LA FEUILLE DEMANDE LE CALCUL ET LA PHRASE, PAS LE NOMBRE.
+        //
+        // Rémy : « Énoncé : Réponds aux questions. Tu écriras le calcul et une
+        // phrase réponse. » C'est la différence entre l'écran et le papier :
+        // le pavé numérique ne peut recevoir qu'un nombre, la copie reçoit un
+        // raisonnement — et c'est le raisonnement qu'on note.
+        //
+        // Deux lignes pleine largeur, donc : une pour le calcul, une pour la
+        // phrase. Le trait s'arrêtait au ras de la question, ce qui laissait
+        // trois centimètres pour écrire « 140 × 0,60 = 84, le manteau coûte
+        // 84 € ».
+        consignePapier: 'Réponds aux questions. Tu écriras le calcul et une phrase réponse.',
+        lignesReponsePapier: 2,
         skills: ['num.pourcentage.part', 'num.pourcentage.coefficient', 'num.pourcentage.variation'],
         motsClefs: ['pourcentage', 'réduction', 'solde', 'augmentation', 'TVA', 'taxe',
             'coefficient', 'prix', 'proportionnalité'],

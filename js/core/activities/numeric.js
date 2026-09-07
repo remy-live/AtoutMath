@@ -41,9 +41,49 @@ function phraseDepart(item) {
     return 'Je lis l\'énoncé en entier avant de toucher une touche.';
 }
 
+/**
+ * LA PREMIÈRE PHRASE D'UN TEXTE TROP LONG, plutôt que rien du tout.
+ *
+ * Une explication de trois lignes ne tient pas dans une bulle — mais sa
+ * PREMIÈRE phrase, si, et c'est presque toujours celle qui porte le calcul :
+ * « 60 % de 140, c'est 140 × 60 ÷ 100 = 84. » Ce qui suit développe. On coupe
+ * donc à la première ponctuation forte suivie d'une espace : le point d'un
+ * nombre décimal, lui, n'a pas d'espace après, et ne coupe rien.
+ */
+function premiereRespiration(t) {
+    const s = String(t || '').trim();
+    if (!s) return '';
+    if (s.length <= COURT) return s;
+    const m = s.match(/^[\s\S]{16,110}?[.!?](?=\s|$)/);
+    return m ? m[0].trim() : '';
+}
+
+/**
+ * CE QUE LE ROBOT DIT AVANT DE TAPER : LE CALCUL.
+ *
+ * Rémy, sur les pourcentages : « Le robot n'explique rien. Il faut qu'il donne
+ * le calcul plutôt que juste taper la réponse. » Il disait « Je tape 84 chiffre
+ * par chiffre » — un commentaire de GESTE, pas de raisonnement, et l'élève qui
+ * regarde une main composer un numéro n'apprend pas le numéro.
+ *
+ * Le dernier indice est fait pour cela : par construction, dans tous les
+ * générateurs à progression, il POSE le calcul sans le faire. C'est exactement
+ * ce qu'il faut entendre juste avant de voir le résultat s'écrire.
+ */
+function phraseCalcul(item, cible) {
+    const indices = item.hints || [];
+    const dernier = indices.length > 1 ? indices[indices.length - 1] : null;
+    if (tientEnUneBulle(dernier)) return `${dernier.trim()} Je tape ${cible}.`;
+    return `Je tape ${cible} chiffre par chiffre.`;
+}
+
 function phraseFin(item) {
     if (tientEnUneBulle(item.explanation)) return item.explanation.trim();
-    return 'Je relis mon nombre, puis je valide.';
+    // AVANT : « Je relis mon nombre, puis je valide. » — une phrase de geste, à
+    // la place de l'explication. Dès que celle-ci dépassait cent dix caractères
+    // — c'est-à-dire presque toujours dans les exercices qui expliquent le
+    // mieux — le robot ne disait plus rien du raisonnement.
+    return premiereRespiration(item.explanation) || 'Je relis mon nombre, puis je valide.';
 }
 
 const ICON_BACKSPACE = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
@@ -357,7 +397,7 @@ export function mount(container, session, opts = {}) {
         if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
 
         if (!await gate.waitTurn() || destroyed) return;
-        cursor.say(`Je tape ${target} chiffre par chiffre.`, screen);
+        cursor.say(phraseCalcul(item, target), screen);
         if (!await cursor.pause(DEMO_SPEED.press) || destroyed) return;
 
         for (let i = 0; i < target.length; i++) {

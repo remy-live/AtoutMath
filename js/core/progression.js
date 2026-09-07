@@ -332,7 +332,7 @@ export function conseilProgression(nbMarches, historique = PAR_MARCHE_DEFAUT) {
 // « Les paliers travaillées » dans un logiciel de français... de maths, mais
 // lu par des élèves de sixième, ne se fait pas. Quatre mots suffisent — on ne
 // devine pas le genre, on le déclare.
-const FEMININS = new Set(['marche', 'étape']);
+const FEMININS = new Set(['marche', 'étape', 'forme']);
 const feminin = (mot) => FEMININS.has(String(mot || '').toLowerCase());
 
 export function paramMarches({ marches = [], groupes = {}, mot = 'marche', ancien = {} } = {}) {

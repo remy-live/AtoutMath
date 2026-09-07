@@ -38,6 +38,35 @@ function fracTrou(n, d, trou) {
         'fraction--trou');
 }
 
+// L'ÉGALITÉ AVEC SES DEUX FLÈCHES, COMME AU TABLEAU.
+//
+// Rémy, sur « Par Combien ? » : « mets une flèche entre les deux numérateurs
+// et une flèche entre les deux dénominateurs et comme au final on ne cherche
+// pas la valeur du ?, tu peux le remplacer par la bonne valeur ».
+//
+// C'est un renversement de la mise en page, et il est juste. On cachait un
+// nombre pour forcer à lire l'AUTRE ligne ; mais le nombre caché n'est pas la
+// question, et un élève qui voit un trou cherche d'abord à le boucher. En
+// écrivant l'égalité en entier et en posant les deux arcs, la question devient
+// visible sur la figure elle-même : chaque flèche porte « × ? », et les deux
+// portent le MÊME nombre — ce qui est exactement la règle qu'on enseigne.
+//
+// LES ARCS SONT EN CSS, pas en SVG : ils doivent s'étirer avec la largeur de
+// l'égalité, qui dépend du nombre de chiffres. Un SVG étiré déformerait sa
+// pointe ; une bordure arrondie s'étire sans rien déformer, et la pointe est
+// posée à part, à taille fixe, à l'extrémité droite.
+function egaliteFlechee(g, d, signe) {
+    const arc = (ou) => `<span class="fe-arc fe-arc--${ou}" aria-hidden="true">`
+        + `<span class="fe-arc-mot">${signe} ?</span></span>`;
+    return `<div class="frac-fleches">
+                ${arc('haut')}
+                ${fracHtml(g.n, g.d)}
+                <span class="frac-signe">=</span>
+                ${fracHtml(d.n, d.d)}
+                ${arc('bas')}
+            </div>`;
+}
+
 // --- Compléter une égalité ---------------------------------------------------
 
 export const fracEgaliteGenerator = {
@@ -381,10 +410,14 @@ export const fracFacteurGenerator = {
             ]
         },
         {
-            id: 'trou', type: 'select', label: 'Le côté qu\'on cache', default: 'les-deux',
-            aide: 'Le côté caché décide de la ligne qu\'il faut lire : cacher le dénominateur '
-                + 'oblige à travailler sur les numérateurs, et l\'inverse. Les mélanger empêche '
-                + 'de prendre l\'habitude de ne regarder qu\'en haut.',
+            // À L'ÉCRAN, L'ÉGALITÉ EST ÉCRITE EN ENTIER depuis que les deux arcs
+            // la traversent : ce réglage ne décide donc plus que de la FICHE,
+            // où il n'y a pas d'arc et où le trou tient lieu de flèche.
+            id: 'trou', type: 'select', label: 'Sur la fiche, le côté qu\'on cache',
+            default: 'les-deux',
+            aide: 'Ne concerne que la feuille imprimée. Le côté caché y décide de la ligne '
+                + 'qu\'il faut lire : cacher le dénominateur oblige à travailler sur les '
+                + 'numérateurs, et l\'inverse.',
             options: [
                 { value: 'denominateur', label: 'Le dénominateur (on lit les numérateurs)' },
                 { value: 'numerateur', label: 'Le numérateur (on lit les dénominateurs)' },
@@ -407,27 +440,31 @@ export const fracFacteurGenerator = {
             maxBase: Number(p.maxBase) || 9,
             maxFacteur: Number(p.maxFacteur) || 12
         });
-        // ON ÉCARTE LES ÉGALITÉS OÙ LE FACTEUR EST AUSSI LE NOMBRE CACHÉ.
+        // ON ÉCARTE LES ÉGALITÉS OÙ LE FACTEUR EST AUSSI L'UN DES NOMBRES
+        // ÉCRITS À DROITE.
         //
-        // « 1/7 = ?/35 » : le numérateur manquant vaut 5, et le facteur aussi.
-        // La question est encore juste, mais elle ne mesure plus rien — l'élève
-        // qui a lu l'ancienne consigne (« complète l'égalité ») tombe sur la
-        // bonne réponse sans avoir fait le geste qu'on demande ici. Cela arrive
-        // dès que la ligne trouée part de 1 ; on retire, on ne corrige pas.
+        // « 1/7 = 5/35 » : le facteur vaut 5, et 5 est déjà écrit au
+        // numérateur. L'élève qui recopie un nombre au hasard tombe juste, et
+        // l'exercice ne mesure plus rien. Cela arrive dès qu'une ligne part de
+        // 1 ; on retire le tirage, on ne le corrige pas.
+        const copiable = (x) => String(x.facteur) === String(x.droite.n)
+            || String(x.facteur) === String(x.droite.d);
         let e = tirage();
-        for (let essai = 0; essai < 40 && String(e.reponse) === String(e.facteur); essai++) {
-            e = tirage();
-        }
+        for (let essai = 0; essai < 40 && copiable(e); essai++) e = tirage();
 
-        // LA LIGNE QU'ON PEUT LIRE : celle dont les deux nombres sont écrits.
-        // C'est elle qui porte la réponse, et le trou est en face.
-        const lisible = e.trou === 'numerateur' ? 'dénominateur' : 'numérateur';
-        const depart = e.trou === 'numerateur' ? e.gauche.d : e.gauche.n;
-        const arrivee = e.visible;
+        // LES DEUX LIGNES SONT ÉCRITES, ET C'EST LE POINT DE LA FIGURE : on
+        // lit celle qu'on veut, les deux donnent le même nombre. L'aide part
+        // donc du haut, parce que c'est là qu'on lit d'abord.
+        const depart = e.gauche.n;
+        const arrivee = e.droite.n;
         const divise = e.sens === 'simplifier';
         const consigne = divise
             ? 'Par combien faut-il DIVISER pour passer d\'une fraction à l\'autre ?'
             : 'Par combien faut-il MULTIPLIER pour passer d\'une fraction à l\'autre ?';
+        // SUR LE PAPIER, L'ÉGALITÉ RESTE TROUÉE. Rémy avait tranché pour la
+        // fiche : « propose simple 3/2 = …/22, c'est tout. » Les arcs ne
+        // s'impriment pas — la fiche n'a pas de figure, juste une ligne de
+        // texte —, et sans eux c'est le trou qui donne le sens de lecture.
         const texte = `${e.gauche.n}/${e.gauche.d} = `
             + (e.trou === 'numerateur' ? `?/${e.droite.d}` : `${e.droite.n}/?`);
 
@@ -445,23 +482,18 @@ export const fracFacteurGenerator = {
                 // côté de celui de la fraction. Deux trous pour une réponse.
                 papier: texte,
                 html: `<div class="game-question">${consigne}</div>`
-                    + `<div class="frac-egalite">
-                        ${fracHtml(e.gauche.n, e.gauche.d)}
-                        <span class="frac-signe">=</span>
-                        ${fracTrou(e.droite.n, e.droite.d, e.trou)}
-                       </div>`
+                    + egaliteFlechee(e.gauche, e.droite, divise ? '\u00f7' : '\u00d7')
             },
             answer: e.facteur,
             hints: [
-                `Une seule ligne est écrite des deux côtés : celle ${
-                    lisible === 'numérateur' ? 'du HAUT' : 'du BAS'}. C'est elle qui te le dira.`,
-                `On y passe de ${depart} à ${arrivee}.`,
+                'Les deux flèches portent le MÊME nombre : suis celle du haut.',
+                `En haut, on passe de ${depart} à ${arrivee}.`,
                 `${depart} ${divise ? '÷' : '×'} ${e.facteur} = ${arrivee}.`
             ],
-            explanation: `On lit le ${lisible} : on passe de ${depart} à ${arrivee}, `
-                + `donc on ${divise ? 'divise' : 'multiplie'} par ${e.facteur}. `
-                + `L'autre ligne suit le MÊME nombre — c'est ce qui fait que la fraction ne `
-                + `change pas de valeur : ${e.gauche.n}/${e.gauche.d} = ${e.droite.n}/${e.droite.d}.`,
+            explanation: `En haut : ${depart} ${divise ? '÷' : '×'} ${e.facteur} = ${arrivee}. `
+                + `En bas : ${e.gauche.d} ${divise ? '÷' : '×'} ${e.facteur} = ${e.droite.d}. `
+                + `Les deux flèches portent le même nombre — c'est ce qui fait que la fraction `
+                + `ne change pas de valeur.`,
             // Diviser est le même raisonnement lu à l'envers, et c'est celui
             // qu'on rate : les nombres rapetissent, l'habitude dit « multiplie ».
             difficulty: divise ? 3 : 2,

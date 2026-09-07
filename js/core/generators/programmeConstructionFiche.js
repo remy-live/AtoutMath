@@ -51,10 +51,15 @@ export const programmeConstructionFicheGenerator = {
             options: FAMILLES.map(f => ({ value: f.id, label: f.nom }))
         },
         {
-            id: 'reserve', type: 'checkbox', label: 'Donner la réserve de mots', default: true,
+            // DÉCOCHÉE PAR DÉFAUT. Rémy : « ne mets pas les mots sous la
+            // figure ». Les tournures imprimées sous chaque figure occupent la
+            // place où l'élève écrit, et surtout elles font l'exercice à sa
+            // place : retrouver « la médiatrice de [AB] » EST le travail. Le
+            // réglage reste, pour la classe qui découvre.
+            id: 'reserve', type: 'checkbox', label: 'Donner la réserve de mots', default: false,
             aide: 'Les tournures du chapitre, imprimées en petit sous chaque figure — là où '
-                + 'l\'élève écrit. Décochée, il doit les retrouver seul : c\'est ce qu\'on demande '
-                + 'en contrôle.'
+                + 'l\'élève écrit. Cochée, elles l\'aident à démarrer ; décochée, il les '
+                + 'retrouve seul, et c\'est ce qu\'on demande en contrôle.'
         },
         {
             id: 'depuis', type: 'select', label: 'Commencer à la figure', default: 0,
@@ -123,18 +128,31 @@ export const programmeConstructionFicheGenerator = {
                 // « Place le » se répètent huit fois pour rien dans une réserve.
                 .replace(/^(Trace|Place) (le|la|les) /, ''))
             .join(' · ');
-        const avecReserve = p.reserve !== false;
+        // LE DÉFAUT SE LIT DANS LES DEUX SENS, ET C'EST LE PIÈGE.
+        //
+        // La ligne disait `p.reserve !== false` : un réglage ABSENT valait donc
+        // « oui ». Tant que le défaut du schéma était « oui », cela marchait
+        // par accident ; le jour où il est passé à « non », l'écran affichait
+        // « Non » et la feuille imprimait quand même les mots — vu à l'aperçu.
+        // Un défaut ne doit jamais être écrit à deux endroits qui peuvent se
+        // contredire : c'est la présence explicite du « oui » qui décide.
+        const avecReserve = p.reserve === true;
 
         // LA CONSIGNE TIENT DANS SA PLACE, ET C'EST LA RÉSERVE QU'ON PROTÈGE.
         // Mesuré sur l'aperçu : la première version était coupée à « Tu peux
         // laisser tes… » — c'est-à-dire que les huit tournures, la seule chose
         // qu'on ne peut pas deviner, disparaissaient. On a donc taillé dans la
         // prose, pas dans la liste.
-        const consigne = 'ÉCRIS LE PROGRAMME DE CONSTRUCTION de chaque figure : la suite des '
-            + 'phrases qui permettrait de la refaire sans la voir. Les points marqués d\'une '
-            + 'CROIX et d\'une lettre sont donnés ; tout le reste se construit. Attention à la '
-            + 'NOTATION — [AB] le segment, (AB) la droite — et à l\'ORDRE : on ne nomme que ce '
-            + 'qui existe déjà. Tes traits de construction peuvent rester.'
+        // La phrase de Rémy en tête, mot pour mot ou presque : il a écrit
+        // « écris le programme de calcul qui permet d'obtenir la figure », et
+        // c'est bien un programme de CONSTRUCTION — le programme de calcul est
+        // l'objet du chapitre des fonctions, et le confondre sur une feuille de
+        // géométrie serait une faute qu'on relèverait dans une copie.
+        const consigne = 'ÉCRIS LE PROGRAMME DE CONSTRUCTION QUI PERMET D\'OBTENIR LA FIGURE : '
+            + 'la suite des phrases qui permettrait de la refaire sans la voir. Les points '
+            + 'marqués d\'une CROIX et d\'une lettre sont donnés ; tout le reste se construit. '
+            + 'Attention à la NOTATION — [AB] le segment, (AB) la droite — et à l\'ORDRE : on ne '
+            + 'nomme que ce qui existe déjà. Tes traits de construction peuvent rester.'
             + (avecReserve ? '' : ' Écris avec le vocabulaire du cours.');
 
         return makeItem({

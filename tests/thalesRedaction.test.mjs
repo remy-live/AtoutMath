@@ -252,8 +252,10 @@ test('LA FIGURE DE LA FICHE NE PORTE QUE LES LONGUEURS DONNÉES', () => {
         // Les cotes tracées sont un sous-ensemble des données : un segment trop
         // court ne porte pas sa cote (elle se poserait sur les lettres).
         m.figure.cotes.forEach(c => {
-            const nom = c.texte.split(' ')[0];
-            assert.ok(m.donnees.includes(nom), `${nom} est coté sans être donné`);
+            // La cote porte la MESURE (« 12 cm »), convention du dessin
+            // technique ; le segment qu'elle mesure est dans `nom`.
+            assert.ok(m.donnees.includes(c.nom), `${c.nom} est coté sans être donné`);
+            assert.match(c.texte, /^\d[\d,]* cm$/, `cote « ${c.texte} » sans son unité`);
         });
         // Et l'énoncé nomme les trois, plus la cherchée.
         m.donnees.forEach(n => assert.ok(m.enonce.includes(n), `${n} absent de l'énoncé`));

@@ -39,6 +39,21 @@ import { makeRng } from '../core/ids.js';
 // compétence fantôme, et on vient d'en corriger une dans ce dépôt.
 const COMPETENCE = 'alg.equation.resoudre';
 
+/**
+ * L'ÉQUATION AVEC L'OPÉRATION ÉCRITE DES DEUX CÔTÉS.
+ *
+ * « 2x + 4 = 10 » et « − 4 » donnent « 2x + 4 − 4 = 10 − 4 ». C'est la ligne
+ * de rédaction du chapitre : les deux membres, la même opération, et l'égalité
+ * qui tient — celle qu'on demande au contrôle, et celle qu'un journal en marge
+ * ne montre pas.
+ */
+function deuxMembres(eq, op) {
+    const bouts = String(eq).split('=');
+    if (bouts.length !== 2) return '';
+    const g = bouts[0].trim(), d = bouts[1].trim();
+    return `${g} ${op} = ${d} ${op}`;
+}
+
 const enTexte = (s) => String(s ?? '')
     .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -240,6 +255,11 @@ export class Balance extends BaseGame {
                 }
                 .bl-jl { line-height: 1.5; }
                 .bl-jl b { color: var(--text-main); font-weight: 700; }
+                /* La ligne développée est un CALCUL INTERMÉDIAIRE : plus
+                   discrète que les équations, mais lisible — c'est elle qu'on
+                   recopie. */
+                .bl-jl--detail { color: var(--text-muted); padding-left: 1em; font-size: .92em; }
+                .bl-jl--fin { color: var(--success); font-weight: 800; margin-top: 3px; }
                 .bl-jl i { font-style: normal; color: var(--primary); font-weight: 700; }
                 .bl-note {
                     text-align: center; min-height: 2.4em; flex: 0 0 auto;
@@ -477,9 +497,16 @@ export class Balance extends BaseGame {
      * la suite des lignes EST la rédaction d'une résolution d'équation.
      */
     dessinerJournal() {
+        const fait = resolu(this.etat);
         this.journalEl.innerHTML = this.journal.map(l =>
             `<div class="bl-jl"><b>${enTexte(l.eq)}</b>${l.geste ? ` <i>${enTexte(l.geste)}</i>` : ''}</div>`
-        ).join('');
+            + (l.detail ? `<div class="bl-jl bl-jl--detail">${enTexte(l.detail)}</div>` : '')
+        ).join('')
+        // ET LA CONCLUSION, EN TOUTES LETTRES. Rémy : « quand on a la réponse
+        // il faut le dire ». Une suite de lignes qui s'arrête sur « x = 5 »
+        // laisse le lecteur conclure lui-même ; une rédaction de quatrième se
+        // termine par une phrase, et c'est elle qu'on oublie en copie.
+            + (fait ? `<div class="bl-jl bl-jl--fin">La solution est x = ${fait.x}.</div>` : '');
         this.journalEl.scrollTop = this.journalEl.scrollHeight;
     }
 
@@ -614,10 +641,21 @@ export class Balance extends BaseGame {
             });
         }
         const d = this.journal[this.journal.length - 1];
-        d.geste = `[${d.type === 'partager' ? `÷ ${d.en}`
+        const op = d.type === 'partager' ? `÷ ${d.en}`
             : `${d.combien < 0 ? '−' : '+'} ${d.quoi === 'x'
                 ? (Math.abs(d.combien) === 1 ? 'x' : `${Math.abs(d.combien)}x`)
-                : Math.abs(d.combien)}`}]`;
+                : Math.abs(d.combien)}`;
+        d.geste = `[${op}]`;
+        // LA LIGNE QU'ON ÉCRIT AU CAHIER : l'opération sur LES DEUX MEMBRES.
+        //
+        // Rémy : « quand on met −1 il faut bien que tu mettes le −1 des deux
+        // côtés de l'équation dans le journal de bord ». Le journal notait
+        // « [− 1] » en marge — la notation abrégée du professeur, celle qu'on
+        // met à côté de la ligne. Or ce que l'élève doit apprendre à ÉCRIRE,
+        // c'est « 2x + 4 − 4 = 10 − 4 » : les deux membres, la même opération,
+        // et l'égalité qui tient. C'est la ligne qu'on lui demandera au
+        // contrôle, et elle n'apparaissait nulle part.
+        d.detail = deuxMembres(d.eq, op);
         this.journal.push({ eq: enSymboles(this.etat), geste: '' });
     }
 

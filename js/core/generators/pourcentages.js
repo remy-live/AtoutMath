@@ -149,6 +149,13 @@ export const pourcentagesGenerator = {
  * proportionnalité avant de dire quoi faire n'aide personne : on commence par
  * le mot, on finit par l'opération, et on ne pose jamais le résultat.
  */
+// « LE CALCUL : … », PAS « POSE LE CALCUL : … ».
+//
+// Le dernier indice est aussi ce que le robot dit juste avant de taper — voir
+// `phraseCalcul` dans `core/activities/numeric.js`. À l'impératif, il mélangeait
+// deux voix dans une même bulle : « Pose le calcul : 140 × 0,6. Je tape 84. »
+// Le groupe nominal se lit dans les deux bouches, celle de l'aide comme celle
+// du robot, et il dit exactement la même chose.
 function indicesDe(t) {
     const c = ecrireCoefficient(t.coef);
     switch (t.marche) {
@@ -156,7 +163,7 @@ function indicesDe(t) {
         return [
             `${t.p} %, c’est ${t.p} sur 100.`,
             `On multiplie par ${t.p}, puis on divise par 100.`,
-            `Pose le calcul : ${ecrireNombre(t.montant)} × ${t.p} ÷ 100.`
+            `Le calcul : ${ecrireNombre(t.montant)} × ${t.p} ÷ 100.`
         ];
     case 'hausse-coef':
         return [
@@ -174,25 +181,25 @@ function indicesDe(t) {
         return [
             'On cherche ce qu’on ENLÈVE, pas ce qu’on paie.',
             `Il faut ${t.p} % de ${ecrireNombre(t.montant)}.`,
-            `Pose le calcul : ${ecrireNombre(t.montant)} × ${ecrireNombre(t.p / 100)}.`
+            `Le calcul : ${ecrireNombre(t.montant)} × ${ecrireNombre(t.p / 100)}.`
         ];
     case 'prix-reduit':
         return [
             `On enlève ${t.p} %, donc il reste ${100 - t.p} % du prix.`,
             `${100 - t.p} %, c’est le coefficient ${c}.`,
-            `Pose le calcul : ${ecrireNombre(t.montant)} × ${c}.`
+            `Le calcul : ${ecrireNombre(t.montant)} × ${c}.`
         ];
     case 'prix-augmente':
         return [
             `On ajoute ${t.p} %, donc on paie ${100 + t.p} % du prix.`,
             `${100 + t.p} %, c’est le coefficient ${c}.`,
-            `Pose le calcul : ${ecrireNombre(t.montant)} × ${c}.`
+            `Le calcul : ${ecrireNombre(t.montant)} × ${c}.`
         ];
     case 'taxe':
         return [
             'La TVA s’AJOUTE au prix hors taxes.',
             `On paie donc ${100 + t.p} % du prix, soit le coefficient ${c}.`,
-            `Pose le calcul : ${ecrireNombre(t.montant)} × ${c}.`
+            `Le calcul : ${ecrireNombre(t.montant)} × ${c}.`
         ];
     default:
         return [];

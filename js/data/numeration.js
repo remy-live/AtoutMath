@@ -573,6 +573,26 @@ export const numerationExercises = [
         title: 'La Balance des Équations',
         activityId: 'balance',
         skills: ['alg.equation.resoudre'],
+        // LE POLYCOPIÉ D'ÉQUATIONS. Rémy : « Tu peux faire un polycopé
+        // d'équations. Plusieurs colonnes et 3 lignes de pointillés en
+        // dessous. » La balance n'a pas de générateur — elle a une activité —,
+        // donc la fiche en reçoit un à elle, qui tire les MÊMES treize formes.
+        //
+        // DEUX COLONNES, ET TROIS LIGNES. Trois colonnes tiendraient les
+        // équations (« 5x − 5 = 2x + 10 » fait quatre centimètres) mais pas la
+        // rédaction : les trois lignes sous chaque question sont l'équation, le
+        // geste porté sur les deux membres, et « x = … ». C'est ce qu'on écrit
+        // en contrôle, et ça ne s'écrit pas dans cinq centimètres. Le réglage
+        // reste : une fiche de calcul mental peut en demander trois.
+        printGeneratorId: 'alg.equation-fiche',
+        consignePapier: 'Résous chaque équation. Écris chaque étape, en faisant '
+            + 'la même chose des deux côtés.',
+        colonnesPapier: 2,
+        lignesReponsePapier: 3,
+        // LE CORRIGÉ DONNE LE CHEMIN, PAS LE NOMBRE. « x = 6 » ne dit pas si
+        // l'élève a rassemblé les boîtes avant de partager — et c'est cela
+        // qu'on lui a demandé d'écrire sur les trois lignes.
+        solutionsPapier: 'detaille',
         params: { symboles: 'toujours' },
         paramSchema: [
             {

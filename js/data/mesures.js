@@ -56,7 +56,10 @@ export const mesuresExercises = [
         // du rectangle, et elle vaut deux fois pour un triangle, dont le
         // codage EST la moitié du travail.
         printable: 'triangle',
-        consignePapier: 'Écris le calcul, puis le résultat avec son unité.',
+        // Rémy, sur le PDF : « Calcule le périmètre des figures. » La consigne
+        // d'écran parlait du calcul à poser ; sur la feuille, la figure est là
+        // et c'est le TRAVAIL qu'il faut annoncer, pas la mise en forme.
+        consignePapier: 'Calcule le périmètre des figures.',
         skills: ['mes.perimetre.triangle'],
         motsClefs: ['périmètre', 'triangle', 'isocèle', 'équilatéral', 'codage', 'tour'],
         params: { max: 12, unite: 'cm' },

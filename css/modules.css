@@ -1459,6 +1459,87 @@
 .fraction--trou .fraction-num,
 .fraction--trou .fraction-den { min-width: 1.4em; }
 
+/* L'ÉGALITÉ AVEC SES DEUX ARCS — « Par Combien ? ».
+   Rémy : « mets une flèche entre les deux numérateurs et une flèche entre les
+   deux dénominateurs ». C'est la figure du cours, et elle porte la question :
+   deux arcs, un « × ? » sur chacun, et le même nombre attendu sur les deux.
+
+   UNE GRILLE, PAS UN FLEX. Les arcs doivent traverser TOUTE l'égalité, du
+   numérateur de gauche à celui de droite ; en flex, ils s'intercaleraient
+   entre les fractions. En grille, ils occupent une rangée à eux et s'étendent
+   sur les trois colonnes (`grid-column: 1 / -1`).
+
+   POURQUOI `calc(100% - 1.5em)` : l'arc doit partir du MILIEU du nombre de
+   gauche et arriver au MILIEU de celui de droite, pas des bords de l'égalité.
+   La retenue est la même des deux côtés — CSS ne connaît pas la largeur de
+   chaque fraction —, donc elle vise le milieu des deux cas courants : un
+   nombre à un chiffre et un à deux. Mesuré sur « 9/7 = 99/77 » : les pointes
+   tombent à moins d'un demi-chiffre du centre de chaque nombre, donc DESSUS. */
+.frac-fleches {
+    display: grid;
+    grid-template-columns: auto auto auto;
+    /* `justify-content` — pas seulement `justify-items` : sans lui, les trois
+       colonnes se partagent TOUTE la largeur du bloc et les arcs, qui les
+       traversent, débordent de deux cents pixels de chaque côté de l'égalité.
+       Mesuré : arc de 56 à 844 pour des numérateurs à 162 et 724. */
+    justify-content: center;
+    justify-items: center; align-items: center;
+    column-gap: clamp(10px, 3vw, 26px);
+    font-size: clamp(1.5rem, 6.4vw, 3rem);
+    margin: clamp(10px, 3vh, 26px) 0;
+    color: var(--text-main);
+}
+.frac-fleches .fraction,
+.frac-fleches .frac-signe { grid-row: 2; }
+
+/* L'ARC EST UNE BORDURE ARRONDIE, PAS UN SVG : il s'étire avec l'égalité — qui
+   change de largeur selon le nombre de chiffres — et une bordure s'étire sans
+   se déformer. Un SVG étiré aplatirait sa pointe. La pointe est donc posée à
+   part, en triangle CSS, à taille fixe, à l'extrémité droite. */
+.fe-arc {
+    grid-column: 1 / -1;
+    position: relative;
+    box-sizing: border-box;
+    width: calc(100% - 1.5em); height: .62em;
+    border: 2.5px solid var(--primary);
+    pointer-events: none;
+}
+.fe-arc--haut {
+    grid-row: 1; border-bottom: none;
+    border-radius: 45% 45% 0 0 / 100% 100% 0 0;
+    margin-bottom: .12em;
+}
+.fe-arc--bas {
+    grid-row: 3; border-top: none;
+    border-radius: 0 0 45% 45% / 0 0 100% 100%;
+    margin-top: .12em;
+}
+/* LA POINTE. Un triangle plein posé sur l'extrémité droite de l'arc, incliné
+   pour suivre sa pente à cet endroit — l'arc y descend, la pointe descend. */
+.fe-arc::after {
+    content: ''; position: absolute; right: -.09em;
+    width: 0; height: 0;
+    border: .17em solid transparent;
+    border-left-color: var(--primary); border-right: 0;
+}
+.fe-arc--haut::after { bottom: -.16em; transform: rotate(58deg); }
+.fe-arc--bas::after { top: -.16em; transform: rotate(-58deg); }
+
+/* LE « × ? » EST ASSIS SUR L'ARC, et il efface le trait derrière lui : un
+   texte posé SUR une courbe se lit mal, un texte qui la creuse se lit comme
+   une étiquette. Le fond repris est celui du PLATEAU — `.canvas-area` y pose
+   un dégradé de `--bg-plateau` vers `--bg-app`, et l'égalité est au centre,
+   donc sur la couleur du plateau. Un `#fff` en dur laisserait une pastille
+   blanche au milieu de l'arc en thème nuit. */
+.fe-arc-mot {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    padding: 0 .22em;
+    background: var(--bg-plateau, var(--bg-app, #fff));
+    color: var(--primary); font-weight: 800;
+    font-size: .52em; line-height: 1; white-space: nowrap;
+}
+
 /* LE DOUTE SE MET À LA PLACE DU SIGNE. « Ces deux fractions sont-elles
    égales ? » ne peut pas s'écrire avec un = entre les deux : le signe
    affirmerait ce qu'on demande de trancher, et la moitié des questions

@@ -234,19 +234,28 @@ test('le réglage de configuration est respecté', () => {
 });
 
 test('la figure SVG ne porte une cote que là où elle tient', () => {
+    // UNE COTE PORTE LA MESURE, PAS LE NOM DU SEGMENT. Elle s'écrivait
+    // « AB = 12 » ; Rémy a demandé l'unité sur la feuille, et « AB = 12 cm » ne
+    // tenait plus — trois autres tests l'ont refusée d'un coup. On écrit donc
+    // « 12 cm », qui est la convention du dessin technique : le segment est
+    // nommé par ses extrémités, écrites juste à côté. On compte donc les cotes
+    // au lieu de les chercher par leur nom.
+    const combien = (svg) => (svg.match(/class="th-cote"/g) || []).length;
     const f = creerThales({ config: 'emboites', rng: makeRng('cotes') });
-    const nue = figureThalesSvg(f);
-    assert.ok(!nue.includes('AB ='), 'aucune cote demandée, aucune écrite');
+    assert.equal(combien(figureThalesSvg(f)), 0, 'aucune cote demandée, aucune écrite');
     const cotee = figureThalesSvg(f, ['AB', 'AC']);
-    assert.ok(cotee.includes('AB ='), 'la cote demandée doit être écrite');
+    assert.equal(combien(cotee), 2, 'les deux cotes demandées doivent être écrites');
+    // Et elles portent la mesure, avec son unité.
+    assert.match(cotee, /class="th-cote"[^>]*>\d[\d,]* cm</, 'la cote doit porter son unité');
+
     // Une cote sur un segment minuscule se poserait sur la lettre du point.
     // Depuis l'étalement des rapports le cas ne se produit plus tout seul, on
     // le fabrique donc à la main pour vérifier que le garde-fou tient.
     const degeneree = { ...f, points: { ...f.points, E: { x: f.points.A.x + 3, y: f.points.A.y + 3 } } };
-    assert.ok(!figureThalesSvg(degeneree, ['AE']).includes('AE ='),
+    assert.equal(combien(figureThalesSvg(degeneree, ['AE'])), 0,
         'un segment trop court ne porte pas sa cote');
     // Et sur une figure normale, la cote de AE tient bien.
-    assert.ok(figureThalesSvg(f, ['AE']).includes('AE ='),
+    assert.equal(combien(figureThalesSvg(f, ['AE'])), 1,
         'l\'étalement doit rendre toutes les cotes des figures fabriquées lisibles');
 });
 
