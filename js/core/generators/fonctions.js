@@ -226,7 +226,14 @@ function itemLire(rng, a, b, f, ecrit) {
  * fait prendre à la première phrase où le trou est de l'autre côté.
  */
 function itemPhrase(rng, a, b, f, ecrit, papier) {
-    const x = rng.pick([-3, -2, 1, 2, 3, 4, 5, 6]);
+    // ON ÉVITE LE POINT FIXE, et il n'est pas si rare : avec f(x) = 2x − 3,
+    // f(3) = 3. « 3 est l'image de 3 » se complète juste dans les deux sens, et
+    // la question qu'on pose — dans quel ORDRE vont les deux nombres — n'a
+    // alors plus de réponse à donner. C'est vrai de la phrase à un trou ; c'est
+    // pire à deux, où la paire échangée serait comptée juste.
+    const choix = [-3, -2, 1, 2, 3, 4, 5, 6];
+    const utiles = choix.filter(v => f(v) !== v);
+    const x = rng.pick(utiles.length ? utiles : choix);
     const y = f(x);
     const versImage = rng.bool();          // « … est l'image de … » ou « … est un antécédent de … »
     const trouAGauche = rng.bool();        // quel pointillé porte la réponse
@@ -242,9 +249,27 @@ function itemPhrase(rng, a, b, f, ecrit, papier) {
     const gauche = versImage ? y : x;
     const droite = versImage ? x : y;
     const dit = versImage ? 'est l\'image de' : 'est un antécédent de';
-    const phrase = trouAGauche
-        ? `. . . . . ${dit} ${nb(droite)} par la fonction f.`
-        : `${nb(gauche)} ${dit} . . . . . par la fonction f.`;
+    // DEUX TROUS QUAND L'ÉGALITÉ EST DONNÉE — Rémy : « Dans la phrase enlève
+    // les deux chiffres, on peut les compléter grâce au f(x) ».
+    //
+    // Il a encore raison, et c'est la moitié du travail que j'avais laissée
+    // faite. « On sait que f(4) = 1. Complète : … est l'image de 4 par f » ne
+    // pose que la moitié de la question : le 4 est déjà rangé, il ne reste
+    // qu'un nombre à mettre, et comme il n'y en a que deux à l'écran, le
+    // trouver ne prouve rien. Avec les DEUX trous, l'élève doit ranger la
+    // paire entière — et ranger la paire, c'est exactement le geste qu'on
+    // rate en contrôle.
+    //
+    // On ne le fait QUE si l'égalité est donnée : sans elle, un des deux
+    // nombres n'est écrit nulle part et se calcule ; deux trous n'auraient
+    // alors aucun point d'appui.
+    const deuxTrous = avecEgalite;
+    const TROU = '. . . . .';
+    const phrase = deuxTrous
+        ? `${TROU} ${dit} ${TROU} par la fonction f.`
+        : (trouAGauche
+            ? `${TROU} ${dit} ${nb(droite)} par la fonction f.`
+            : `${nb(gauche)} ${dit} ${TROU} par la fonction f.`);
     // SUR LE PAPIER, LE TROU EST UN BLANC, PAS DES POINTS.
     //
     // Rémy : « des lignes en pointillé qui ne servent à rien ». Elles venaient
@@ -254,21 +279,36 @@ function itemPhrase(rng, a, b, f, ecrit, papier) {
     // trou pour elle : elle imprimait donc la phrase telle quelle, ET deux
     // lignes de pointillés dessous. Deux endroits pour une seule réponse.
     const blanc = '            ';
-    const phrasePapier = trouAGauche
-        ? `${blanc}${dit} ${nb(droite)} par la fonction f.`
-        : `${nb(gauche)} ${dit}${blanc}par la fonction f.`;
-    const reponse = trouAGauche ? gauche : droite;
+    const phrasePapier = deuxTrous
+        ? `${blanc}${dit}${blanc}par la fonction f.`
+        : (trouAGauche
+            ? `${blanc}${dit} ${nb(droite)} par la fonction f.`
+            : `${nb(gauche)} ${dit}${blanc}par la fonction f.`);
+    // LA RÉPONSE À DEUX TROUS S'ÉCRIT « gauche|droite ». La barre n'est pas une
+    // fantaisie : c'est ce que le pavé renvoie quand la question porte
+    // plusieurs cases, et c'est aussi ce qui permet de reconnaître la faute
+    // qui compte — la paire ÉCHANGÉE.
+    // Les nombres BRUTS, avec le trait d'union du clavier : c'est ce que le
+    // pavé renvoie. `nb()` met le vrai signe moins, qui est fait pour être LU.
+    const reponse = deuxTrous
+        ? `${gauche}|${droite}`
+        : (trouAGauche ? gauche : droite);
 
     // CE QU'ON DONNE EN TÊTE. Avec l'égalité, tout est là et il n'y a qu'à
     // ranger ; sans elle, le nombre manquant se calcule.
     const tete = avecEgalite ? `On sait que f(${nb(x)}) = ${nb(y)}.` : `Soit ${ecrit}.`;
     const question = `Complète la phrase :\n${phrase}`;
+    // À l'écran, un trou est une case qu'on touche : `data-trou` la désigne, et
+    // le pavé y écrit — voir « plusieurs trous » dans activities/numeric.js.
+    const caseHtml = (i) => `<u class="np-trou" data-trou="${i}">&nbsp;&nbsp;?&nbsp;&nbsp;</u>`;
     const htmlPhrase = `<div class="game-question">${avecEgalite
         ? `On sait que <b>f(${nb(x)}) = ${nb(y)}</b>.`
         : `Soit <b>${ecrit}</b>.`}<br>Complète la phrase :<br>
-        <span class="fn-phrase">${trouAGauche
-        ? `<u>&nbsp;&nbsp;?&nbsp;&nbsp;</u> ${dit} ${nb(droite)} par la fonction f.`
-        : `${nb(gauche)} ${dit} <u>&nbsp;&nbsp;?&nbsp;&nbsp;</u> par la fonction f.`}</span></div>`;
+        <span class="fn-phrase">${deuxTrous
+        ? `${caseHtml(0)} ${dit} ${caseHtml(1)} par la fonction f.`
+        : (trouAGauche
+            ? `${caseHtml(0)} ${dit} ${nb(droite)} par la fonction f.`
+            : `${nb(gauche)} ${dit} ${caseHtml(0)} par la fonction f.`)}</span></div>`;
 
     // L'aide ne donne jamais le nombre : elle donne le SENS de la marche.
     const sens = 'Une fonction PART du nombre entre parenthèses et ARRIVE au résultat : dans '
@@ -278,7 +318,7 @@ function itemPhrase(rng, a, b, f, ecrit, papier) {
         : 'Dans « A est un antécédent de B », A est ce d\'où l\'on PART et B ce qu\'on OBTIENT.';
     const calcul = avecEgalite
         ? `Les deux nombres sont écrits : f(${nb(x)}) = ${nb(y)}. Il n'y a qu'à les ranger `
-            + `dans le bon ordre — la réponse est ${nb(reponse)}.`
+            + `dans le bon ordre — c'est ${nb(gauche)}, puis ${nb(droite)}.`
         : (versImage === trouAGauche
             ? `Il faut calculer : f(${nb(x)}) = ${nb(a)} × ${facteur(x)} `
                 + `${b > 0 ? '+' : '−'} ${Math.abs(b)} = ${nb(y)}.`
@@ -287,13 +327,30 @@ function itemPhrase(rng, a, b, f, ecrit, papier) {
     return item(rng, {
         quoi: versImage ? 'phrase' : 'phrase-antecedent',
         reponse,
+        // Deux trous : la réponse n'est plus un nombre mais une PAIRE RANGÉE.
+        sorte: deuxTrous ? 'text' : 'numeric',
+        trous: deuxTrous ? 2 : 1,
+        // LA FAUTE QUI COMPTE EST L'ÉCHANGE, et elle a un nom. Un élève qui
+        // écrit la paire à l'envers n'a pas « faux » : il a mis l'image à la
+        // place de l'antécédent, et c'est cela qu'il faut lui dire.
+        diagnostics: deuxTrous ? [{
+            value: `${droite}|${gauche}`,
+            why: `Tu as échangé les deux. ${rangement} Or f(${nb(x)}) = ${nb(y)} `
+                + `part de ${nb(x)} et arrive à ${nb(y)}.`
+        }] : null,
         texte: `${tete} ${question}`,
         html: htmlPhrase,
         papier: `${tete}\nComplète la phrase :\n${phrasePapier}`,
+        // La colonne des solutions écrit les nombres comme partout ailleurs
+        // sur cette feuille : bruts. Mélanger « −3 » et « -3 » dans la même
+        // colonne se voit.
+        reponsePapier: deuxTrous ? `${gauche} … ${droite}` : '',
         hints: [rangement, sens, calcul],
         explanation: `f(${nb(x)}) = ${nb(y)} se lit dans les deux sens : « ${nb(y)} est `
             + `l'image de ${nb(x)} par f » et « ${nb(x)} est un antécédent de ${nb(y)} par f ». `
-            + `Ici la phrase demandait ${nb(reponse)}.`,
+            + (deuxTrous
+                ? `La phrase se complétait donc par ${nb(gauche)}, puis ${nb(droite)}.`
+                : `Ici la phrase demandait ${nb(reponse)}.`),
         difficulty: avecEgalite ? 2 : 3
     });
 }
@@ -491,7 +548,7 @@ function itemAntecedent(rng, a, b, f, ecrit) {
 }
 
 function item(rng, { quoi, texte, html, papier, tableau, reponse, reponsePapier,
-    hints, explanation, difficulty }) {
+    hints, explanation, difficulty, sorte, trous, diagnostics }) {
     return makeItem({
         seed: rng.seed,
         generatorId: 'alg.fonctions',
@@ -499,7 +556,10 @@ function item(rng, { quoi, texte, html, papier, tableau, reponse, reponsePapier,
         // « antécédent » : c'est le même geste, posé autrement. Un `===` nu
         // l'aurait rangé dans « image », et le bilan aurait menti.
         skillId: quoi.includes('antecedent') ? 'alg.fonction.antecedent' : 'alg.fonction.image',
-        answerKind: 'numeric',
+        // « text » quand la réponse est une PAIRE — voir `itemPhrase` et les
+        // « plusieurs trous » du pavé. Partout ailleurs, un nombre.
+        answerKind: sorte || 'numeric',
+        diagnostics: diagnostics || null,
         // `html` n'existe que là où l'énoncé porte un DESSIN — ici le tableau de
         // valeurs. Ailleurs, `text` suffit et l'écran l'habille lui-même.
         prompt: {
@@ -514,6 +574,6 @@ function item(rng, { quoi, texte, html, papier, tableau, reponse, reponsePapier,
         hints,
         explanation,
         difficulty,
-        meta: { quoi, theme: `fonction-${quoi}` }
+        meta: { quoi, theme: `fonction-${quoi}`, ...(trous > 1 ? { trous } : {}) }
     });
 }

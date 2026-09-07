@@ -216,12 +216,20 @@ export function mount(container, session, opts = {}) {
 
     function render(item) {
         const unit = item.meta && item.meta.unit ? item.meta.unit : '';
+        // UNE RÉPONSE À PLUSIEURS CASES S'ÉCRIT « a|b », ET CE N'EST PAS UN
+        // NOMBRE. `Number('−5|−2')` vaut NaN : la virgule apparaissait donc
+        // toujours (NaN n'est pas entier) et le « ± » jamais (NaN < 0 est
+        // faux) — c'est-à-dire une touche inutile de trop et la seule touche
+        // indispensable en moins, sur une question dont les deux réponses
+        // pouvaient être négatives. On regarde donc les cases une par une.
+        const morceaux = String(item.answer ?? '').split('|');
+        const unNombre = (v) => Number(String(v).replace(',', '.'));
         // La virgule n'apparaît que si la réponse peut être décimale. Une
         // touche inutilisable sur un périmètre entier n'est pas neutre : elle
         // suggère qu'on attend peut-être des décimales.
         const decimal = item.meta && item.meta.decimal !== undefined
             ? item.meta.decimal
-            : !Number.isInteger(Number(item.answer));
+            : morceaux.some(v => !Number.isInteger(unNombre(v)));
 
         // LA TOUCHE « ± », ET POURQUOI ELLE NE SE DÉDUIT PAS DE LA RÉPONSE.
         //
@@ -237,7 +245,7 @@ export function mount(container, session, opts = {}) {
         // réponse possible.
         const signe = item.meta && item.meta.signe !== undefined
             ? !!item.meta.signe
-            : Number(item.answer) < 0;
+            : morceaux.some(v => unNombre(v) < 0);
 
         // LA TOUCHE π, POUR ÉCRIRE UNE VALEUR EXACTE.
         //
@@ -305,6 +313,47 @@ export function mount(container, session, opts = {}) {
         if (propositions(item)) return brancherPropositions(item);
         const display = container.querySelector('[data-display]');
         const screen = container.querySelector('.numpad-screen');
+
+        // --- PLUSIEURS TROUS DANS LA MÊME PHRASE -------------------------
+        //
+        // Rémy, sur les fonctions : « Dans la phrase enlève les deux chiffres,
+        // on peut les compléter grâce au f(x) ». « … est l'image de 4 par f »
+        // ne posait que la moitié de la question — le 4 était déjà rangé.
+        //
+        // L'ÉNONCÉ DÉCLARE SES TROUS, le pavé les remplit. Chaque case porte
+        // `data-trou="i"` dans le HTML de la question ; le pavé écrit dans
+        // celle qui est visée, et la case visée se touche comme un bouton. La
+        // réponse envoyée est la suite des cases, séparées par des barres :
+        // c'est une PAIRE RANGÉE qu'on juge, pas deux nombres indépendants —
+        // et l'échange, qui est LA faute du chapitre, se reconnaît alors comme
+        // un distracteur ordinaire (voir `diagnostics` dans core/items.js).
+        //
+        // Un seul trou, ou aucun : rien de tout cela ne s'allume, et le pavé
+        // se comporte exactement comme avant.
+        const trous = [...container.querySelectorAll('[data-trou]')];
+        const aTrous = trous.length > 1;
+        const valeurs = trous.map(() => '');
+        let vise = 0;
+        const VIDE = '\u00a0\u00a0?\u00a0\u00a0';
+        const btnOk = container.querySelector('[data-validate]');
+
+        const peindreTrous = () => {
+            trous.forEach((t, i) => {
+                // LE VRAI SIGNE MOINS DANS LA PHRASE. Le tampon garde le trait
+                // d'union du clavier — c'est lui qu'on compare —, mais la phrase
+                // est faite pour être lue, et « −11 » est ce que l'élève lit
+                // dans l'énoncé juste au-dessus.
+                t.textContent = valeurs[i] ? valeurs[i].replace('-', '−') : VIDE;
+                t.classList.toggle('np-trou--vise', i === vise);
+                t.classList.toggle('np-trou--plein', !!valeurs[i]);
+            });
+            // LE BOUTON DIT CE QU'IL VA FAIRE. Tant qu'une case est vide, il
+            // fait avancer ; il ne valide que lorsque la phrase est entière.
+            // Un « Valider » qui refuse en silence parce qu'il manque une case
+            // se lit comme une panne.
+            if (btnOk) btnOk.textContent = valeurs.every(v => v !== '') ? 'Valider' : 'Suivant →';
+        };
+
         // LE NOMBRE SE GROUPE SOUS LES DOIGTS. « 62307 » ne s'écrit pas :
         // on écrit « 62 307 », et c'est ce découpage de trois en trois qui
         // permet de LIRE le nombre à voix haute. Un élève de numération qui
@@ -332,11 +381,30 @@ export function mount(container, session, opts = {}) {
                 display.appendChild(g);
             });
             screen.classList.toggle('numpad-screen--empty', buffer === '');
+            if (aTrous) { valeurs[vise] = buffer; peindreTrous(); }
         };
         setBuffer('');
 
+        // ALLER À UNE CASE, ET Y RETROUVER CE QU'ON Y AVAIT ÉCRIT.
+        const viser = (i) => {
+            if (i < 0 || i >= trous.length) return;
+            vise = i;
+            setBuffer(valeurs[i]);
+        };
+        if (aTrous) {
+            peindreTrous();
+            trous.forEach((t, i) => {
+                t.setAttribute('role', 'button');
+                t.setAttribute('tabindex', '0');
+                t.onclick = () => { if (!session.locked) viser(i); };
+            });
+        }
+
         if (session.isDemo) {
-            if (!session.frozen) runDemo(enFrancais(item.answer), setBuffer, screen, item);
+            if (!session.frozen) {
+                if (aTrous) runDemoTrous(item, valeurs, setBuffer, viser, screen);
+                else runDemo(enFrancais(item.answer), setBuffer, screen, item);
+            }
             return;
         }
 
@@ -344,8 +412,15 @@ export function mount(container, session, opts = {}) {
         brancherOutils(item);
 
         const validate = () => {
-            if (destroyed || buffer === '' || buffer === '-') return;
-            const result = session.submit(buffer, { element: display });
+            if (destroyed) return;
+            // PLUSIEURS TROUS : tant qu'il en reste un vide, « Valider » n'est
+            // pas une validation, c'est un passage à la case suivante.
+            if (aTrous) {
+                const creux = valeurs.findIndex(v => v === '');
+                if (creux >= 0) return viser(creux);
+            } else if (buffer === '' || buffer === '-') return;
+            const envoi = aTrous ? valeurs.join('|') : buffer;
+            const result = session.submit(envoi, { element: display });
             if (result.ignored) return;
 
             // L'état se joue sur l'écran entier, pas sur le seul nombre :
@@ -360,13 +435,24 @@ export function mount(container, session, opts = {}) {
                 if (result.correct) { renderNext(); return; }
 
                 if (result.revealed) {
-                    setBuffer(enFrancais(item.answer));
+                    if (aTrous) {
+                        // La solution se pose DANS LA PHRASE, case par case :
+                        // c'est là qu'elle se lit, pas dans l'écran du pavé.
+                        String(item.answer).split('|').forEach((v, i) => { valeurs[i] = v; });
+                        vise = 0;
+                        setBuffer(valeurs[0]);
+                        peindreTrous();
+                    } else {
+                        setBuffer(enFrancais(item.answer));
+                    }
                     screen.classList.remove('numpad-screen--ko');
                     screen.classList.add('numpad-screen--ok');
                     regTimeout(renderNext, 1600);
                 } else {
                     screen.classList.remove('numpad-screen--ko');
+                    if (aTrous) { valeurs.fill(''); vise = 0; }
                     setBuffer('');
+                    if (aTrous) peindreTrous();
                 }
             });
         };
@@ -474,6 +560,61 @@ export function mount(container, session, opts = {}) {
 
         if (!await gate.waitTurn() || destroyed) return;
         cursor.say(phraseFin(item), screen);
+        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        renderNext();
+    }
+
+    /**
+     * LE ROBOT REMPLIT LA PHRASE, CASE PAR CASE.
+     *
+     * Il ne suffit pas de taper deux nombres : ce qu'il y a à montrer est le
+     * RANGEMENT — quel nombre va à gauche, lequel à droite, et pourquoi. Il
+     * désigne donc la case avant d'y écrire, et dit ce qu'il y met.
+     */
+    async function runDemoTrous(item, valeurs, setBuffer, viser, screen) {
+        if (!cursor) cursor = createDemoCursor();
+        if (!gate) gate = createDemoGate(container);
+        if (!await gate.waitTurn() || destroyed) return;
+        if (!await cursor.pause(600) || destroyed) return;
+
+        const contexte = container.querySelector('.numpad-context');
+        cursor.say(phraseDepart(item), contexte || container);
+        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+
+        const cases = [...container.querySelectorAll('[data-trou]')];
+        const cibles = String(item.answer).split('|');
+        // Le premier indice dit comment se range la phrase : c'est exactement
+        // ce que le robot est en train de faire.
+        const rangement = (item.hints || [])[0];
+        if (tientEnUneBulle(rangement)) {
+            if (!await gate.waitTurn() || destroyed) return;
+            cursor.say(rangement.trim(), cases[0] || contexte);
+            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        }
+
+        for (let n = 0; n < cibles.length; n++) {
+            if (cases[n]) { if (!await cursor.tap(cases[n], 420) || destroyed) return; }
+            viser(n);
+            const cible = String(cibles[n]);
+            for (let i = 0; i < cible.length; i++) {
+                const cle = cible[i] === '-' ? '±' : cible[i];
+                const touche = container.querySelector(`[data-key="${cssEscape(cle)}"]`);
+                if (touche) {
+                    if (!await cursor.tap(touche, 380) || destroyed) return;
+                    touche.classList.add('numpad-key--demo');
+                    regTimeout(() => touche.classList.remove('numpad-key--demo'), 220);
+                }
+                setBuffer(cible.slice(0, i + 1));
+                if (!await cursor.pause(160) || destroyed) return;
+            }
+        }
+
+        const valider = container.querySelector('[data-validate]');
+        if (!await cursor.tap(valider, 480) || destroyed) return;
+        screen.classList.add('numpad-screen--ok');
+
+        if (!await gate.waitTurn() || destroyed) return;
+        cursor.say(phraseFin(item), cases[0] || screen);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }

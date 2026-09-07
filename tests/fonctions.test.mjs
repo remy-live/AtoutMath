@@ -6,6 +6,7 @@ import './helpers.mjs';
 import '../js/core/activities/index.js';
 import { makeRng } from '../js/core/ids.js';
 import { getGenerator } from '../js/core/registry.js';
+import { evaluate } from '../js/core/items.js';
 import { getExerciseById } from '../js/data/catalog.js';
 
 const gen = () => getGenerator('alg.fonctions');
@@ -110,9 +111,25 @@ test('chaque question porte trois indices qui vont du sens vers le calcul', () =
         assert.ok(it.hints[0].length > 40, `${it.meta.quoi} : « ${it.hints[0]} »`);
         it.hints.forEach(h => assert.ok(h.length > 12, `${it.meta.quoi} : « ${h} »`));
         assert.ok(it.explanation.length > 40, it.prompt.text);
-        assert.equal(typeof it.answer, 'number');
-        assert.equal(Number.isFinite(it.answer), true, it.prompt.text);
-        assert.equal(it.answerKind, 'numeric');
+        // LA PHRASE À DEUX TROUS RÉPOND UNE PAIRE, PAS UN NOMBRE.
+        //
+        // Rémy : « Dans la phrase enlève les deux chiffres, on peut les
+        // compléter grâce au f(x). » Quand l'égalité est donnée, les deux
+        // places de la phrase sont vides et l'élève range la paire entière ;
+        // la réponse s'écrit alors « gauche|droite ». Partout ailleurs, un
+        // nombre — et ce test tient les deux formes.
+        if (it.answerKind === 'text') {
+            const paire = String(it.answer).split('|');
+            assert.equal(paire.length, 2, it.prompt.text);
+            paire.forEach(v => assert.equal(Number.isFinite(Number(v)), true, it.prompt.text));
+            assert.equal(it.meta.trous, 2);
+            // La phrase de l'écran porte bien DEUX cases à remplir.
+            assert.equal((it.prompt.html.match(/data-trou=/g) || []).length, 2, it.prompt.text);
+        } else {
+            assert.equal(typeof it.answer, 'number');
+            assert.equal(Number.isFinite(it.answer), true, it.prompt.text);
+            assert.equal(it.answerKind, 'numeric');
+        }
         // Le dernier indice donne le calcul fait : après lui, il ne reste plus
         // qu'à recopier. C'est voulu — un indice qui ne débloque pas ne sert à rien.
         assert.match(it.hints[2], /\d/);
@@ -264,4 +281,61 @@ test('LA FEUILLE NE POSE PAS LES MÊMES QUESTIONS QUE L\'ÉCRAN', () => {
         + (v['phrase-antecedent'] || 0);
     assert.ok(durs(papier) > durs(ecran),
         `la feuille devrait être plus exigeante : ${JSON.stringify(papier)}`);
+});
+
+// --- LA PHRASE À DEUX TROUS -------------------------------------------------
+//
+// Rémy, capture à l'appui : « Dans la phrase enlève les deux chiffres, on peut
+// les compléter grâce au f(x). »
+//
+// « On sait que f(4) = 1. Complète : … est l'image de 4 par f » ne posait que
+// la moitié de la question : le 4 était déjà rangé, il ne restait qu'un nombre
+// à mettre — et comme il n'y en a que deux à l'écran, le trouver ne prouvait
+// rien. Avec les deux trous, l'élève range la PAIRE, et ranger la paire est
+// exactement le geste qu'on rate en contrôle.
+test('LES DEUX TROUS N\'APPARAISSENT QUE SI L\'ÉGALITÉ EST DONNÉE', () => {
+    let deux = 0, un = 0;
+    for (const it of suite(200, { quoi: 'phrase' }, 'trous')) {
+        const html = it.prompt.html;
+        const n = (html.match(/data-trou=/g) || []).length;
+        const avecEgalite = /On sait que/.test(html);
+        if (n === 2) {
+            deux++;
+            // Deux trous supposent l'égalité sous les yeux : sans elle, un des
+            // deux nombres n'est écrit nulle part et n'a aucun point d'appui.
+            assert.ok(avecEgalite, it.prompt.text);
+            assert.equal(it.answerKind, 'text');
+            // Aucun nombre ne reste écrit dans la phrase elle-même.
+            const phrase = html.slice(html.indexOf('fn-phrase'));
+            assert.equal(/\d/.test(phrase.replace(/data-trou="\d"/g, '')), false, phrase);
+        } else {
+            un++;
+            assert.equal(n, 1, it.prompt.text);
+            assert.equal(avecEgalite, false, it.prompt.text);
+        }
+    }
+    assert.ok(deux > 20 && un > 20, `${deux} à deux trous, ${un} à un seul`);
+});
+
+test('LA PAIRE ÉCHANGÉE EST NOMMÉE, pas seulement refusée', () => {
+    // C'est LA faute du chapitre : « image » et « antécédent » se disent dans
+    // le même souffle et se rangent à l'envers l'un de l'autre. Un élève qui
+    // les échange n'a pas « faux » — il a mis l'image à la place de
+    // l'antécédent, et c'est cela qu'il faut lui dire.
+    let vus = 0;
+    for (const it of suite(120, { quoi: 'phrase' }, 'echange')) {
+        if (it.answerKind !== 'text') continue;
+        vus++;
+        const [g, d] = String(it.answer).split('|');
+        assert.ok(Array.isArray(it.diagnostics) && it.diagnostics.length === 1);
+        assert.equal(it.diagnostics[0].value, `${d}|${g}`);
+        assert.match(it.diagnostics[0].why, /échangé/);
+        // Et l'évaluation le retrouve : c'est elle qui parle à l'élève.
+        const r = evaluate(it, `${d}|${g}`);
+        assert.equal(r.correct, false);
+        assert.match(r.misconception || '', /échangé/);
+        // La paire juste passe.
+        assert.equal(evaluate(it, `${g}|${d}`).correct, true);
+    }
+    assert.ok(vus > 10, `${vus} questions à deux trous vues`);
 });

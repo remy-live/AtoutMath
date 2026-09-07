@@ -514,3 +514,17 @@
     text-decoration: none; border-bottom: 2px solid var(--primary);
     color: var(--primary); letter-spacing: .06em;
 }
+/* UN TROU EST UNE CASE QU'ON TOUCHE. Rémy : « dans la phrase enlève les deux
+   chiffres, on peut les compléter grâce au f(x) ». Deux trous au lieu d'un :
+   il faut donc pouvoir dire DANS LEQUEL on écrit, et le voir. La case visée
+   est pleine et pâle ; les autres attendent. */
+.np-trou {
+    cursor: pointer; display: inline-block; min-width: 2.4em; text-align: center;
+    padding: 0 .15em; border-radius: 6px 6px 0 0;
+    white-space: pre;
+}
+.np-trou--vise {
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    border-bottom-width: 3px;
+}
+.np-trou--plein { letter-spacing: normal; }
