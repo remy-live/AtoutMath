@@ -9634,8 +9634,6 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 /* LES RUBANS OÙ L'ON NOTE SES COUPS. Plus petits que le plateau et plus
    discrets : ce sont des lignes à remplir, pas un second plateau — l'élève ne
    doit pas hésiter une seconde sur celui où il pose ses pions. */
-.fx-gr-pad--coup { border-color: #c3cad6; background: transparent; }
-.fx-gr-num { position: absolute; text-align: right; color: #6e7684; font-weight: 700; }
 
 /* L'ONGLET « LE QUOTIDIEN » de la revue du catalogue. L'entrée du jour est en
    grand — c'est la seule que trente élèves liront ce matin ; le reste est une

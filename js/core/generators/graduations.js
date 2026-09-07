@@ -74,6 +74,45 @@ const MOT = 'palier';
 /** Le réglage d'avant les cases, pour relire un parcours enregistré. */
 const ANCIEN = { cle: 'zoom' };
 
+/**
+ * PLUSIEURS POINTS SUR LE MÊME AXE — sur le papier, et sur lui seul.
+ *
+ * Rémy : « pour un MÊME axe, mets plusieurs lettres et demande A(....) B(...)
+ * ou d'autres lettres ». Deux raisons, et la seconde est la meilleure.
+ *
+ * Le papier d'abord : un axe gradué prend toute la largeur d'un bloc et une
+ * ligne de réponse. Une croix par axe, c'est UNE question pour une bande de
+ * onze centimètres, et Rémy l'avait déjà dit à la revue précédente — « car là
+ * ça gâche du papier ».
+ *
+ * Mais surtout, LIRE TROIS POINTS SUR LE MÊME AXE N'EST PAS TROIS FOIS LA MÊME
+ * QUESTION. L'échelle est posée une fois, et l'élève la réutilise : c'est
+ * exactement le geste du contrôle, où l'on ne redessine pas un axe par point.
+ * Il voit aussi que le deuxième point est plus loin que le premier, ce qu'une
+ * suite d'axes séparés ne montre jamais.
+ *
+ * L'ÉCRAN NE CHANGE PAS : il pose une question à la fois et corrige tout de
+ * suite, c'est ce qui en fait un entraînement. La croix de l'écran reste la
+ * première lettre du papier — le même item raconte la même chose des deux
+ * côtés.
+ */
+const LETTRES_POINTS = ['A', 'B', 'C'];
+
+function pointsPapier(rng, ctx, zoom, debut, cransA, valeurA, rang) {
+    if (!ctx || !ctx.papier) return null;
+    // Deux ou trois points, jamais sur le même trait, jamais sur les bouts —
+    // « lis le point posé sur 3 » ne demande pas de compter.
+    const pris = new Set([cransA]);
+    const combien = rng.int(2, 3);
+    for (let essai = 0; pris.size < combien && essai < 40; essai++) pris.add(rng.int(1, 9));
+    return [...pris].sort((a, b) => a - b).map((crans, i) => ({
+        lettre: LETTRES_POINTS[i] || String.fromCharCode(68 + i - 3),
+        crans,
+        valeur: crans === cransA ? valeurA
+            : Number((debut + crans * zoom.pas).toFixed(rang + 1))
+    }));
+}
+
 export const graduationsGenerator = {
     id: 'num.graduations',
     label: 'Lire une graduation décimale',
@@ -148,7 +187,10 @@ export const graduationsGenerator = {
                 + `${zoom.pas === 1 ? '1' : fr(zoom.pas, rang)}. Le point est ${crans} intervalles après ${label(debut)}, `
                 + `donc son abscisse est ${label(valeur)}.`,
             difficulty: rang + 1,
-            meta: { zoom: zoom.id, debut, fin, crans, valeur, theme: `${zoom.id}-${debut}` }
+            meta: {
+                zoom: zoom.id, debut, fin, crans, valeur, theme: `${zoom.id}-${debut}`,
+                points: pointsPapier(rng, ctx, zoom, debut, crans, valeur, rang)
+            }
         });
     }
 };

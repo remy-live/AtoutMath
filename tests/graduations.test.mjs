@@ -114,3 +114,35 @@ test('l\'explication dit combien vaut un intervalle', () => {
     assert.match(it.explanation, /coupé en dix/);
     assert.match(it.explanation, /0,1/);
 });
+
+test('SUR LE PAPIER, UN AXE PORTE PLUSIEURS POINTS NOMMÉS', () => {
+    // Rémy : « pour un MÊME axe, mets plusieurs lettres et demande A(....)
+    // B(...) ». Un axe gradué prend la largeur d'un bloc : une croix par axe,
+    // c'était une question pour onze centimètres de papier. Et lire trois
+    // points sur le même axe n'est pas trois fois la même question — l'échelle
+    // est posée une fois, et c'est le geste du contrôle.
+    for (let i = 0; i < 20; i++) {
+        const it = graduationsGenerator.generate({}, {
+            index: i, total: 20, rng: makeRng(`p${i}`), papier: true
+        });
+        const pts = it.meta.points;
+        assert.ok(Array.isArray(pts) && pts.length >= 2 && pts.length <= 3,
+            `deux ou trois points, pas ${pts && pts.length}`);
+        // Jamais deux points sur le même trait, jamais sur les bouts.
+        assert.equal(new Set(pts.map(p => p.crans)).size, pts.length);
+        pts.forEach(p => {
+            assert.ok(p.crans >= 1 && p.crans <= 9, `cran ${p.crans}`);
+            assert.ok(/^[A-Z]$/.test(p.lettre), `lettre « ${p.lettre} »`);
+        });
+        // Rangés de gauche à droite : A avant B, comme on les lit.
+        assert.deepEqual(pts.map(p => p.crans), [...pts.map(p => p.crans)].sort((a, b) => a - b));
+        // La croix de l'écran est l'un des points de la feuille : le même item
+        // raconte la même chose des deux côtés.
+        assert.ok(pts.some(p => p.crans === it.meta.crans && p.valeur === it.meta.valeur));
+    }
+});
+
+test('l\'écran, lui, n\'a toujours qu\'un point', () => {
+    const it = graduationsGenerator.generate({}, { index: 0, total: 10, rng: makeRng('e') });
+    assert.equal(it.meta.points, null);
+});

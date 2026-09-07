@@ -4054,36 +4054,19 @@ function piecesGrenouilles(g) {
             y: g.pieces.y + Math.floor(i / parRangee) * pas
         });
     }
-    // Les rubans à remplir commencent sous la dernière rangée de pièces.
-    const yDebut = g.pieces.y + rangees * pas + 6;
-    const restant = g.pieces.y + g.pieces.h - yDebut;
+    // PAS DE RUBANS À REMPLIR SOUS LES PIÈCES.
+    //
+    // Il y en avait : autant de rangées numérotées que la page en acceptait,
+    // « c'est là qu'on note ses coups ». L'idée venait d'une remarque de Rémy
+    // sur une autre feuille — « n'occupe pas le maximum de l'espace » — et
+    // c'était une mauvaise réponse à une bonne question. Rémy, la feuille en
+    // main : « ne mets pas les lignes de carrés arrondis qui vont de 1 à 10
+    // sous les jetons grenouille ». Cette feuille-là se DÉCOUPE : ce qu'on met
+    // sous les pièces, on le passe aux ciseaux. Et les rangées n'existaient
+    // que dans l'aperçu — le PDF ne les traçait pas —, si bien que la fiche
+    // imprimée ne ressemblait déjà pas à ce qu'on voyait.
     const margeNum = Math.max(6, g.pad * 0.5);
-    // ON VISE LE NOMBRE DE COUPS DU DÉFI, et l'on adapte la hauteur des rangées
-    // pour qu'il tienne. L'inverse — une hauteur fixe, autant de rangées que le
-    // reste en accepte — n'en donnait qu'UNE SEULE : c'est le reste qui décidait,
-    // et il était petit. Ici c'est l'exercice qui décide, et la page suit.
-    // UNE CASE OÙ L'ON PEUT ÉCRIRE, ou pas de case du tout. Viser les
-    // vingt-quatre coups du défi donnait des rangées de trois millimètres et
-    // demi : personne n'y dessine une grenouille. On fixe donc un plancher de
-    // SIX millimètres — la plus petite case qu'un élève de sixième remplisse au
-    // crayon — et l'on en met autant que la page en accepte, quitte à n'en
-    // mettre que cinq. Cinq rangées lisibles valent mieux que vingt illisibles.
-    // LA LARGEUR D'ABORD, LE NOMBRE ENSUITE. Faire tenir les vingt-quatre coups
-    // du défi donnait des rangées de trois millimètres, illisibles ; les caler
-    // sur la hauteur restante les rendait étroites, un quart de page pendant que
-    // les pièces en occupaient la totalité. Une rangée de coups est un plateau
-    // en réduction : elle a la LARGEUR d'un plateau, un peu plus de la moitié de
-    // sa hauteur, et l'on en met autant que la page en accepte.
-    const cible = g.n * g.n + 2 * g.n;
-    const padCoup = Math.max(6, Math.min((g.b.w - margeNum) / g.cases, g.pad * 0.62));
-    const pasCoup = padCoup + 1.2;
-    const combien = Math.max(0, Math.min(cible, Math.floor(restant / pasCoup)));
-    const coups = [];
-    for (let i = 0; i < combien; i++) {
-        coups.push({ x: g.b.x + margeNum, y: yDebut + i * pasCoup });
-    }
-    g.padCoup = padCoup;
-    return { jetons, coups, margeNum, yDebut };
+    return { jetons, margeNum };
 }
 
 const vignettesGrenouilles = (n) => [
@@ -4124,19 +4107,6 @@ function grenouillesPreviewHtml(item, slot, k, solution) {
             style="left:${T(j.x)}px; top:${T(j.y)}px;
             width:${T(g.pad)}px; height:${T(g.pad)}px">${
             grenouilleSvgFiche(j.vert)}</div>`;
-    });
-    // ET LA PAGE SERT À QUELQUE CHOSE. Rémy : « n'occupe pas le maximum de
-    // l'espace ». Sous les pièces, autant de rubans vides que la feuille en
-    // porte, numérotés : c'est là qu'on NOTE ses coups. Vingt-quatre coups
-    // pour quatre contre quatre — les compter est le vrai exercice, et sans
-    // ces lignes il ne reste que du blanc.
-    pieces.coups.forEach((c, i) => {
-        html += `<div class="fx-gr-num" style="left:${T(g.b.x)}px; top:${T(c.y + g.padCoup * 0.15)}px;
-            width:${T(pieces.margeNum - 2)}px; font-size:${T(g.taille * 1.1)}px">${i + 1}</div>`;
-        for (let j = 0; j < g.cases; j++) {
-            html += `<div class="fx-gr-pad fx-gr-pad--coup" style="left:${T(c.x + j * g.padCoup)}px;
-                top:${T(c.y)}px; width:${T(g.padCoup)}px; height:${T(g.padCoup)}px"></div>`;
-        }
     });
     return html;
 }
@@ -8857,7 +8827,15 @@ function geoPriorites(item, slot) {
         // étapes s'imprimait à côté d'un calcul en trois, moitié plus gros, et
         // la feuille avait l'air bricolée. Elle ne dépend plus que du bloc,
         // le même pour tout le monde.
-        taille: Math.max(7.5, Math.min(b.h * 0.3, 11))
+        //
+        // ET UN CRAN PLUS GROS. Rémy, sur les deux fiches de priorités : « tu
+        // peux écrire les calculs en un peu plus gros — les pointillés
+        // nickel ». C'est bien l'EXPRESSION qu'il vise, pas l'interligne : le
+        // calcul est la seule chose imprimée du bloc, tout le reste est du
+        // vide à remplir, et il se lit de loin quand on corrige une pile de
+        // copies. Le plus long qu'on tire — « 3 × (−2) + 5 − (−6) » — occupe
+        // encore moins de la moitié d'un bloc de quatre colonnes.
+        taille: Math.max(8.5, Math.min(b.h * 0.36, 14))
     };
 }
 
@@ -10271,8 +10249,14 @@ function geoGraduation(item, slot) {
     const larg = b.w - 2 * marge;
     const pas = larg / 10;
     const cran = Math.min(b.h * 0.15, pas * 0.65);
+    // UN POINT, OU PLUSIEURS QUI ONT CHACUN LEUR LETTRE. La fiche en pose deux
+    // ou trois par axe (voir `pointsPapier`) ; les parcours enregistrés et
+    // l'écran n'en ont qu'un, sans lettre, et continuent de marcher.
+    const points = (Array.isArray(m.points) && m.points.length)
+        ? m.points
+        : [{ lettre: '', crans: m.crans, valeur: m.valeur }];
     return {
-        m, rang, x0, larg, pas, cran, boite: b,
+        m, rang, x0, larg, pas, cran, boite: b, points,
         // L'axe en haut du bloc, les nombres dessous, la réponse tout en bas.
         yAxe: b.y + b.h * 0.30,
         yNombres: b.y + b.h * 0.30 + cran + Math.max(2.2, b.h * 0.16),
@@ -10316,31 +10300,57 @@ function graduationPreviewHtml(item, slot, k, solution) {
             color:#1a202c">${ecrireDecimal(v, g.rang)}</div>`;
     });
 
-    // La croix marque le point : elle désigne le trait sans le recouvrir.
-    const xp = g.px(m.crans), r = g.cran * 0.5;
-    html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
-        <g stroke="#c0392b" stroke-width="${(0.55 * k).toFixed(2)}" stroke-linecap="round">
-            <line x1="${((xp - r) * k).toFixed(2)}" y1="${((g.yAxe - r) * k).toFixed(2)}"
+    // Les croix marquent les points : elles désignent le trait sans le
+    // recouvrir, et chacune porte sa lettre au-dessus de l'axe.
+    const r = g.cran * 0.5;
+    let croix = '';
+    g.points.forEach(p => {
+        const xp = g.px(p.crans);
+        croix += `<line x1="${((xp - r) * k).toFixed(2)}" y1="${((g.yAxe - r) * k).toFixed(2)}"
                   x2="${((xp + r) * k).toFixed(2)}" y2="${((g.yAxe + r) * k).toFixed(2)}"/>
             <line x1="${((xp - r) * k).toFixed(2)}" y1="${((g.yAxe + r) * k).toFixed(2)}"
-                  x2="${((xp + r) * k).toFixed(2)}" y2="${((g.yAxe - r) * k).toFixed(2)}"/>
-        </g></svg>`;
+                  x2="${((xp + r) * k).toFixed(2)}" y2="${((g.yAxe - r) * k).toFixed(2)}"/>`;
+    });
+    html += `<svg style="position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible">
+        <g stroke="#c0392b" stroke-width="${(0.55 * k).toFixed(2)}" stroke-linecap="round">
+            ${croix}</g></svg>`;
+    g.points.forEach(p => {
+        if (!p.lettre) return;
+        html += `<div style="position:absolute; left:${(g.px(p.crans) - g.pas / 2) * k}px;
+            top:${(g.yAxe - g.cran - g.pt * 0.3528 * 1.15) * k}px; width:${g.pas * k}px;
+            text-align:center; font-size:${police}px; font-weight:800;
+            color:#c0392b">${echapperSheet(p.lettre)}</div>`;
+    });
 
-    // Où écrire la réponse : à gauche du bloc, sous l'axe.
+    // Où écrire la réponse : « A ( …… ) », une case par point, sous l'axe.
+    // Rémy : « écris plutôt A(....) B(...) ». C'est la notation du cours, et
+    // elle rattache chaque trait à sa lettre — « Abscisse : …… » ne pouvait
+    // rien rattacher, puisqu'il n'y avait qu'un point.
     const xMot = g.boite.x + g.boite.w * 0.06;
-    const xTrait = xMot + g.pt * 0.3528 * 5.4;
-    const lTrait = g.boite.w * 0.30;
-    html += `<div style="position:absolute; left:${xMot * k}px;
-        top:${(g.yEcrit - g.pt * 0.3528) * k}px; font-size:${police}px;
-        font-weight:700; color:#1a202c; white-space:nowrap">Abscisse :</div>`;
-    if (solution) {
-        html += `<div style="position:absolute; left:${xTrait * k}px;
+    const large = (g.boite.w * 0.88) / g.points.length;
+    g.points.forEach((p, i) => {
+        const x = xMot + i * large;
+        const etiq = p.lettre ? `${p.lettre} (` : 'Abscisse :';
+        html += `<div style="position:absolute; left:${x * k}px;
             top:${(g.yEcrit - g.pt * 0.3528) * k}px; font-size:${police}px;
-            font-weight:800; color:#2f855a">${ecrireDecimal(m.valeur, g.rang)}</div>`;
-    } else {
-        html += `<div style="position:absolute; left:${xTrait * k}px; top:${g.yEcrit * k}px;
-            width:${lTrait * k}px; height:0; border-top:${Math.max(1, 0.4 * k)}px dotted #a8b0bf"></div>`;
-    }
+            font-weight:700; color:#1a202c; white-space:nowrap">${etiq}</div>`;
+        const xTrait = x + g.pt * 0.3528 * (p.lettre ? 2.2 : 5.4);
+        const lTrait = Math.max(8, large - g.pt * 0.3528 * (p.lettre ? 4.2 : 6.4));
+        if (solution) {
+            html += `<div style="position:absolute; left:${xTrait * k}px;
+                top:${(g.yEcrit - g.pt * 0.3528) * k}px; font-size:${police}px;
+                font-weight:800; color:#2f855a">${ecrireDecimal(p.valeur, g.rang)}</div>`;
+        } else {
+            html += `<div style="position:absolute; left:${xTrait * k}px; top:${g.yEcrit * k}px;
+                width:${lTrait * k}px; height:0;
+                border-top:${Math.max(1, 0.4 * k)}px dotted #a8b0bf"></div>`;
+        }
+        if (p.lettre) {
+            html += `<div style="position:absolute; left:${(xTrait + lTrait + 0.6) * k}px;
+                top:${(g.yEcrit - g.pt * 0.3528) * k}px; font-size:${police}px;
+                font-weight:700; color:#1a202c">)</div>`;
+        }
+    });
     return html;
 }
 
@@ -10368,31 +10378,54 @@ function dessinerGraduationPdf(doc, item, slot, solution) {
     doc.text(ecrireDecimal(m.debut, g.rang), g.px(0), g.yNombres, { align: 'center' });
     doc.text(ecrireDecimal(m.fin, g.rang), g.px(10), g.yNombres, { align: 'center' });
 
-    // La croix du point, à l'encre du trait : une photocopie ne garde pas la
+    // Les croix des points, à l'encre du trait : une photocopie ne garde pas la
     // couleur, et une croix rouge devenue grise doit rester la plus marquée.
-    const xp = g.px(m.crans), r = g.cran * 0.55;
+    const r = g.cran * 0.55;
     doc.setLineWidth(0.7);
-    doc.line(xp - r, g.yAxe - r, xp + r, g.yAxe + r);
-    doc.line(xp - r, g.yAxe + r, xp + r, g.yAxe - r);
-
-    const xMot = g.boite.x + g.boite.w * 0.06;
-    const xTrait = xMot + g.pt * 0.3528 * 5.4;
+    g.points.forEach(p => {
+        const xp = g.px(p.crans);
+        doc.line(xp - r, g.yAxe - r, xp + r, g.yAxe + r);
+        doc.line(xp - r, g.yAxe + r, xp + r, g.yAxe - r);
+    });
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(g.pt);
-    doc.text('Abscisse :', xMot, g.yEcrit);
-    if (solution) {
-        doc.setTextColor(...ENCRE.gris);
-        doc.text(ecrireDecimal(m.valeur, g.rang), xTrait, g.yEcrit);
-    } else {
-        // `ENCRE.gris`, et non un `ENCRE.pointille` qui n'a jamais existé :
-        // l'étalement d'une clef absente lève une TypeError, et c'est la
-        // FEUILLE DE QUESTIONS qui passe par ici — celle qu'on imprime
-        // toujours. Le corrigé, lui, prend l'autre branche et s'en tirait.
-        doc.setDrawColor(...ENCRE.gris);
-        doc.setLineWidth(0.35);
-        doc.setLineDashPattern([0.8, 0.8], 0);
-        doc.line(xTrait, g.yEcrit, xTrait + g.boite.w * 0.30, g.yEcrit);
-        doc.setLineDashPattern([], 0);
-    }
+    doc.setTextColor(...ENCRE.trait);
+    g.points.forEach(p => {
+        if (!p.lettre) return;
+        doc.text(p.lettre, g.px(p.crans), g.yAxe - g.cran - g.pt * 0.3528 * 0.35,
+            { align: 'center' });
+    });
+
+    // « A ( …… ) », une case par point — voir l'aperçu.
+    const xMot = g.boite.x + g.boite.w * 0.06;
+    const large = (g.boite.w * 0.88) / g.points.length;
+    doc.setFontSize(g.pt);
+    g.points.forEach((p, i) => {
+        const x = xMot + i * large;
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...ENCRE.texte);
+        doc.text(p.lettre ? `${p.lettre} (` : 'Abscisse :', x, g.yEcrit);
+        const xTrait = x + g.pt * 0.3528 * (p.lettre ? 2.2 : 5.4);
+        const lTrait = Math.max(8, large - g.pt * 0.3528 * (p.lettre ? 4.2 : 6.4));
+        if (solution) {
+            doc.setTextColor(...ENCRE.gris);
+            doc.text(ecrireDecimal(p.valeur, g.rang), xTrait, g.yEcrit);
+        } else {
+            // `ENCRE.gris`, et non un `ENCRE.pointille` qui n'a jamais existé :
+            // l'étalement d'une clef absente lève une TypeError, et c'est la
+            // FEUILLE DE QUESTIONS qui passe par ici — celle qu'on imprime
+            // toujours. Le corrigé, lui, prend l'autre branche et s'en tirait.
+            doc.setDrawColor(...ENCRE.gris);
+            doc.setLineWidth(0.35);
+            doc.setLineDashPattern([0.8, 0.8], 0);
+            doc.line(xTrait, g.yEcrit, xTrait + lTrait, g.yEcrit);
+            doc.setLineDashPattern([], 0);
+        }
+        if (p.lettre) {
+            doc.setTextColor(...ENCRE.texte);
+            doc.text(')', xTrait + lTrait + 0.6, g.yEcrit);
+        }
+    });
 }
 
 // --- Le quadrillage des transformations --------------------------------------
@@ -14058,9 +14091,13 @@ export const RENDUS = {
         titre: 'La loupe sur la droite graduée',
         consigne: (items) => {
             const zooms = new Set(items.map(it => it.meta && it.meta.zoom));
+            // LA CONSIGNE COMPTE LES POINTS QU'ELLE ANNONCE. Un axe en porte
+            // maintenant deux ou trois, nommés ; « le point marqué d'une croix »
+            // au singulier faisait chercher lequel.
             const commun = 'Chaque axe est coupé en DIX intervalles égaux. '
                 + 'Compte les INTERVALLES depuis le trait de gauche — jamais les traits — '
-                + 'et écris l\'abscisse du point marqué d\'une croix.';
+                + 'et écris l\'abscisse de chaque point marqué d\'une croix, '
+                + 'entre les parenthèses qui portent sa lettre.';
             return zooms.size > 1
                 ? `${commun} Attention : l'échelle change d'un axe à l'autre.`
                 : commun;
@@ -14609,8 +14646,16 @@ export const RENDUS = {
         // Une paire = deux cartes. Douze paires font vingt-quatre cartes, ce qui
         // est déjà un long memory pour une classe de sixième.
         proportions: { w: 1, h: 0.62 },
-        disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
-        parLigneDefaut: 3
+        // HUIT PAIRES PAR DÉFAUT, ET PAR MULTIPLES DE HUIT. Rémy : « mets 8
+        // paires ou 16 paires ou 24 paires ». Neuf n'est pas un nombre de
+        // memory : on étale les cartes en rectangle, et neuf paires font une
+        // rangée bancale. Quatre colonnes de paires — huit cartes de front —
+        // donnent des cartes de 35 mm sur 43, la taille d'une carte à jouer ;
+        // deux rangées font huit paires, quatre en font seize, six vingt-quatre.
+        // `colonnes` est le vœu que `choisirDisposition` suivra : sans lui, la
+        // règle générale préférait trois colonnes larges et neuf paires.
+        disposition: { cols: 4, rows: 2, colonnes: 4, maxCols: 4, maxRows: 6 },
+        parLigneDefaut: 4
     },
 
     tangram: {
@@ -15226,6 +15271,11 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
             // boulangerie trois fois sur la même feuille.
             items.push(generator.generate(reglages, {
                 rng: makeRng(), index: items.length,
+                // UNE FICHE EST DU PAPIER, et un générateur a le droit de le
+                // savoir : la feuille de questions le disait déjà, la feuille
+                // de grilles non. C'est ce qui permet à un axe gradué d'y
+                // porter trois points nommés là où l'écran n'en pose qu'un.
+                papier: true,
                 themesExclus: items.map(it => it.meta && it.meta.theme).filter(Boolean)
             }));
         }
