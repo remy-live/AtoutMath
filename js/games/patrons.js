@@ -147,18 +147,36 @@ export class Patrons extends BaseGame {
                                rotateX(var(--vx, 0deg)) rotateY(var(--vy, 0deg));
                     transition: transform .9s cubic-bezier(.34, .01, .2, 1);
                 }
+                /* DES CARRÉS CARRÉS, ET QUI SE TOUCHENT VRAIMENT.
+                   Rémy : « utilise des carrés non arrondis. J'ai l'impression
+                   qu'ils sont décalés. Quand ça se plie, c'est un peu décalé. »
+                   Les deux remarques n'en font qu'une, et la mesure a donné la
+                   cause : les carrés voisins se CHEVAUCHAIENT de 1 à 3 px.
+
+                   La raison est un piège classique. Un enfant en position
+                   absolue se place par rapport à la BOÎTE DE PADDING de son
+                   parent, pas à sa boîte de bordure : en « border-box », un
+                   « left: 100% » valait donc « le côté MOINS les deux
+                   bordures », soit trois pixels de trop vers la gauche — et
+                   cela s'accumulait le long d'une chaîne de carrés.
+
+                   Le trait est donc un « outline », qui ne fait PAS partie de la
+                   boîte : la géométrie redevient exacte, et le contour se
+                   dessine à l'intérieur grâce au décalage négatif. Les coins
+                   sont vifs, comme un patron découpé aux ciseaux. */
                 .pa-face {
+                    --trait: 1.5px;
                     position: absolute; width: var(--s); height: var(--s);
-                    box-sizing: border-box;
-                    border: 1.5px solid var(--text-main);
-                    border-radius: calc(var(--s) * .04);
+                    box-sizing: border-box; border: none;
+                    outline: var(--trait) solid var(--text-main);
+                    outline-offset: calc(-1 * var(--trait));
                     background: var(--card-bg, #fff);
                     transform-style: preserve-3d;
                     /* Une face vue de dos reste peinte : sinon, la moitié du
                        cube disparaît dès qu'il tourne. */
                     backface-visibility: visible;
                     transition: transform .9s cubic-bezier(.34, .01, .2, 1),
-                                background-color .5s ease, border-color .3s ease;
+                                background-color .5s ease, outline-color .3s ease;
                     display: flex; align-items: center; justify-content: center;
                 }
                 /* LE CARRÉ RESTÉ POSÉ. Il ne tourne pas : c'est la table. */
@@ -202,9 +220,9 @@ export class Patrons extends BaseGame {
                    seul carré. C'est le canal alpha du remplissage qui fait le
                    verre, et lui seul. */
                 .pa-face--cliquable { cursor: pointer; }
-                .pa-face--cliquable:hover { border-color: var(--primary, #4a6fd4); border-width: 2.5px; }
-                .pa-face--depart { border-color: var(--primary, #4a6fd4); border-width: 2.5px; }
-                .pa-face--choisie { border-color: var(--primary, #4a6fd4); border-width: 2.5px; }
+                .pa-face--cliquable:hover { --trait: 2.5px; outline-color: var(--primary, #4a6fd4); }
+                .pa-face--depart { --trait: 2.5px; outline-color: var(--primary, #4a6fd4); }
+                .pa-face--choisie { --trait: 2.5px; outline-color: var(--primary, #4a6fd4); }
                 /* Le carré qui retombe sur une place déjà prise : cerclé de
                    rouge, et surélevé pour qu'on voie les deux épaisseurs. */
                 /* Mesuré à l'écran : surélevé d'un vingtième de carré, le
@@ -213,7 +231,7 @@ export class Patrons extends BaseGame {
                    nettement au dessus, teinté, et l'on voit ce qu'on dit :
                    deux carrés pour une seule place. */
                 .pa-face--double {
-                    border-color: var(--danger, #c0392b); border-width: 3px;
+                    --trait: 3px; outline-color: var(--danger, #c0392b);
                     background: color-mix(in srgb, var(--danger, #c0392b) 22%, #fff);
                 }
                 .pa-marque {

@@ -45,6 +45,9 @@ const C = 100;
  */
 const MARGE = 40;
 
+/** Les directions dites comme on les dirait à un élève. */
+const MOTS = { E: 'la droite', O: 'la gauche', N: 'le haut', S: 'le bas' };
+
 export function mount(container, session) {
     let destroyed = false;
     let cursor = null;
@@ -359,7 +362,13 @@ export function mount(container, session) {
         const gate = createDemoGate(container.querySelector('.la-layout') || container);
         const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
-        if (!await cursor.pause(600) || destroyed) return fin();
+        // LE PRINCIPE D'ABORD, EN UNE PHRASE. Rémy : « de manière générale, il
+        // faut que le texte du robot soit très court. Et qu'il explique le
+        // principe. » Une bulle qu'on lit en une seconde peut être lue ; une
+        // bulle de trois lignes est sautée, et le robot n'a plus rien montré.
+        cursor.say('Un miroir fait tourner le rayon d’un quart de tour.',
+            container.querySelector('.la-board'));
+        if (!await cursor.pause(1200) || destroyed) return fin();
         while (!destroyed) {
             const i = prochaineCase();
             if (i < 0) break;
@@ -367,9 +376,10 @@ export function mount(container, session) {
             const el = container.querySelector(`.la-case[data-i="${i}"]`);
             if (!el) return fin();
             const vise = g.solution[i];
-            cursor.say(vise === '/'
-                ? 'Ici un miroir « / » : ce qui allait à droite repart vers le haut.'
-                : 'Ici un miroir « \\ » : ce qui allait à droite repart vers le bas.', el);
+            // ET ENSUITE, RIEN QUE LE VIRAGE, avec ses vraies directions : le
+            // texte d'avant disait « ce qui allait à droite » quel que soit le
+            // sens réel du rayon, ce qui était faux une fois sur deux.
+            cursor.say(`Ici : ${virageDit(i, vise)}.`, el);
             // Le robot appuie autant de fois qu'il faut pour arriver au bon
             // sens : c'est le geste de l'élève, montré tel quel.
             for (let k = 0; k < 3 && g.cases[i] !== vise; k++) {
@@ -386,6 +396,22 @@ export function mount(container, session) {
         container.querySelector('.la-board').classList.add('la-board--ok');
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
+    }
+
+    /**
+     * LE VIRAGE, DIT EN CINQ MOTS : « la droite devient le haut ».
+     *
+     * On le lit sur le trajet plutôt que sur le miroir : c'est la direction
+     * RÉELLE du rayon à cet endroit qui compte, et elle dépend de tout ce qui
+     * précède.
+     */
+    function virageDit(i, miroir) {
+        const essai = g.cases.slice();
+        essai[i] = miroir;
+        const r = tracer({ ...g, cases: essai });
+        const p = r.chemin.find(c => c.y * g.n + c.x === i);
+        if (!p) return miroir === '/' ? 'la droite devient le haut' : 'la droite devient le bas';
+        return `${MOTS[p.entre]} devient ${MOTS[p.sort]}`;
     }
 
     renderNext();

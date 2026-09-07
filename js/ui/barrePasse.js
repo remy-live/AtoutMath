@@ -149,6 +149,22 @@ function ouvrirBarre() {
              sans avoir à le retrouver dans une liste de cent cinquante-deux. -->
         <button type="button" class="bb-btn" data-atelier title="Ouvrir l'Atelier sur cet exercice"
             aria-label="Ouvrir l'Atelier sur cet exercice">⚒</button>
+        <!-- LES RÉGLAGES, QUI MANQUAIENT. Rémy, sur « Colorier par les
+             Nombres » : « j'ai perdu semble-t-il les options ». Elles n'étaient
+             pas perdues, elles étaient INATTEIGNABLES : la barre lance chaque
+             exercice en sautant le panneau
+             d'avant-partie — et il le faut, sinon une passe de cent
+             soixante-six exercices demanderait cent soixante-six fois de
+             valider un panneau. Le réglage revient donc par un bouton, quand
+             on le veut, et l'exercice repart aussitôt avec.
+             L'icône : les curseurs d'un mélangeur. -->
+        <button type="button" class="bb-btn" data-reglages
+            title="Régler cet exercice et le relancer"
+            aria-label="Régler cet exercice et le relancer">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M5 4v6M5 14v6M12 4v3M12 11v9M19 4v10M19 18v2"/>
+                <path d="M3 12h4M10 9h4M17 16h4"/></svg></button>
         <textarea class="bb-note" data-note rows="1" maxlength="2000"
             placeholder="Une remarque sur cet exercice…"
             aria-label="Remarque sur cet exercice"></textarea>
@@ -193,6 +209,7 @@ function ouvrirBarre() {
     barre.querySelector('[data-liste]').onclick = () => basculerListe();
     barre.querySelector('[data-fiche]').onclick = () => basculerApercuFlottant();
     barre.querySelector('[data-atelier]').onclick = () => ouvrirAtelierIci();
+    barre.querySelector('[data-reglages]').onclick = () => reglerIci();
     majBoutonFiche();
     barre.querySelector('[data-export]').onclick = () => telechargerBilan();
     barre.querySelector('[data-vider]').onclick = () => viderLeCarnet();
@@ -340,6 +357,33 @@ function lancerCourant() {
     if (!exo) return;
     import('../games/engine.js').then(m => {
         m.openGameLayer({ ...exo, internalStudentConfig: true, params: { ...(exo.params || {}) } });
+    });
+}
+
+/**
+ * LES RÉGLAGES DE L'EXERCICE QU'ON REGARDE, ET IL REPART AVEC.
+ *
+ * C'est la MÊME fenêtre que celle d'avant-partie — celle que l'élève voit —,
+ * ouverte en rôle « auteur » pour qu'elle montre tout, y compris ce qui est
+ * réservé au professeur. Ce qu'on règle ici est donc exactement ce que l'élève
+ * aura, et l'exercice se relance aussitôt : pendant une passe, on veut voir
+ * l'effet du réglage, pas le noter pour plus tard.
+ */
+function reglerIci() {
+    const exo = exoCourant();
+    if (!exo) return;
+    ecrireNote(true);
+    fermerListe();
+    import('../games/configUI.js').then(m => {
+        m.ouvrirReglagesAvantPartie({ ...exo, params: { ...(exo.params || {}) } }, (params) => {
+            import('../games/engine.js').then(g => {
+                g.openGameLayer({ ...exo, internalStudentConfig: true, params });
+            });
+        }, { role: 'auteur' });
+        // « AFFINER… » S'OUVRE D'OFFICE : c'est là que vivent les réglages
+        // qu'on vient chercher pendant une passe.
+        document.querySelectorAll('#student-config-content details.cfg-affiner')
+            .forEach(d => { d.open = true; });
     });
 }
 
