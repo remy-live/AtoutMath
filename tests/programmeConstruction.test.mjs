@@ -549,3 +549,67 @@ test('ON NE PLACE QUE LES POINTS DE LA FIGURE', () => {
     assert.ok(r.erreur);
     assert.match(r.erreur.dit, /2 points/);
 });
+
+// --- L'APERÇU : « il faut que le robot montre et explique » -----------------
+//
+// Rémy, capture à l'appui : « En cliquant sur le texte du robot il n'y a que du
+// texte, il faut que le robot montre et explique ». Mesuré avant correction :
+// l'aperçu partait de la figure 1 — « Place un point A » —, écrivait la ligne
+// d'un trait et s'arrêtait au bout de neuf dixièmes de seconde, sans flèche et
+// sans bulle. Ces deux tests protègent les deux moitiés de la réparation.
+
+test('L\'APERÇU NE DÉMONTRE JAMAIS UN PROGRAMME D\'UNE SEULE PHRASE', async () => {
+    const { figureDeDemonstration } = await import('../js/games/programmeConstruction.js');
+
+    // Le plan complet : on doit tomber sur une figure d'au moins trois phrases.
+    const plan = niveauxDisponibles(ORDRE_FAMILLES);
+    const r = figureDeDemonstration(plan);
+    assert.ok(r >= 0 && r < plan.length);
+    assert.ok(NIVEAUX[plan[r]].modele.length >= 3,
+        `l'aperçu démontrerait « ${NIVEAUX[plan[r]].titre} », ${NIVEAUX[plan[r]].modele.length} phrase(s)`);
+
+    // Et sur CHAQUE jeu de réglages : décocher des familles ne doit jamais
+    // ramener l'aperçu sur « Place un point A ».
+    ORDRE_FAMILLES.forEach(f => {
+        const p = niveauxDisponibles([f, 'points']);
+        if (!p.length) return;
+        const k = figureDeDemonstration(p);
+        assert.ok(k >= 0 && k < p.length, `famille ${f} : rang hors du plan`);
+        // Avec les seuls points il n'existe aucune figure à trois phrases : on
+        // prend alors la plus riche disponible, et c'est la dernière.
+        const riche = p.some(i => NIVEAUX[i].modele.length >= 3);
+        if (riche) assert.ok(NIVEAUX[p[k]].modele.length >= 3, `famille ${f}`);
+        else assert.equal(k, p.length - 1, `famille ${f}`);
+    });
+});
+
+test('CHAQUE OPÉRATION A SON EXPLICATION, ET ELLE SE LIT EN UNE FOIS', async () => {
+    const { DIT } = await import('../js/games/programmeConstruction.js');
+
+    Object.values(OPERATIONS).forEach(op => {
+        const d = DIT[op.id];
+        assert.ok(d && typeof d.avant === 'function',
+            `${op.id} n'a rien à dire : le robot poserait la phrase sans l'expliquer`);
+        // Des arguments plausibles : trois lettres suffisent à toutes.
+        const a = op.id === 'points' ? ['A', 'B', 'C'] : ['A', 'B', 'C'];
+        [0, 1].forEach(n => {
+            const t = d.avant(a, n);
+            assert.equal(typeof t, 'string', `${op.id} (${n}) ne dit pas une phrase`);
+            // La reprise a le droit d'être brève — c'est même le but ; la
+            // première fois, non : c'est là qu'on explique.
+            assert.ok(t.length > (n ? 8 : 20), `${op.id} (${n}) : « ${t} » est trop court`);
+            // LE PLAFOND DE LECTURE EST À QUATORZE SECONDES — voir tempsDeLecture
+            // dans demoPointer. Au-delà, la bulle est coupée par le minuteur et
+            // la fin de l'explication passe à la trappe.
+            assert.ok(t.split(/\s+/).length <= 41,
+                `${op.id} (${n}) : ${t.split(/\s+/).length} mots, la bulle sera coupée`);
+            const suite = d.apres && d.apres(a, n);
+            if (suite) assert.ok(suite.split(/\s+/).length <= 41, `${op.id} (${n}) : « après » trop long`);
+        });
+        // La deuxième occurrence abrège : répéter mot pour mot fait décrocher.
+        if (['segment', 'droite', 'cercle'].includes(op.id)) {
+            assert.ok(d.avant(a, 1).length < d.avant(a, 0).length,
+                `${op.id} : la répétition n'abrège pas`);
+        }
+    });
+});

@@ -40,7 +40,8 @@ import {
     executer, comparer, cleObjet, nomObjet, couperAuMonde, couperDemiDroite, lireProgramme,
     ordreDeLaBanque
 } from '../core/programmeConstruction.js';
-import { branches, descendre, remonter, phraseEnCours, phraseFinie } from '../core/arbrePhrase.js';
+import { branches, descendre, remonter, phraseEnCours, phraseFinie, verbeDe } from '../core/arbrePhrase.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 
 const COMPETENCE = 'geo.construction.programme';
 
@@ -167,6 +168,135 @@ function figureSvg(objets, points, { classe = '', aides = [] } = {}) {
     });
     return `<svg class="pc-svg ${classe}" viewBox="0 0 ${MONDE.w} ${MONDE.h}"
         preserveAspectRatio="xMidYMid meet">${out}</svg>`;
+}
+
+// --- CE QUE LE ROBOT DIT, ET CE QU'IL MONTRE --------------------------------
+//
+// Rémy, capture de l'aperçu à l'appui : « En cliquant sur le texte du robot il
+// n'y a que du texte, il faut que le robot montre et explique ».
+//
+// Il avait raison au pied de la lettre : l'aperçu écrivait le programme modèle
+// d'un trait, sans flèche, sans bulle, et sur la figure 1 — « Place un point A »
+// — c'était fini en neuf dixièmes de seconde. Mesuré : zéro bulle, zéro
+// pointeur, une seule ligne posée. Le professeur qui ouvrait l'aperçu pour voir
+// à quoi ressemble l'exercice voyait passer une ligne de texte.
+//
+// UNE DÉMONSTRATION DE PROGRAMME DE CONSTRUCTION A TROIS TEMPS, et ce sont ceux
+// de l'exercice lui-même :
+//
+//   · le POURQUOI se lit sur la figure à obtenir — c'est là qu'on voit qu'il
+//     manque un côté, et c'est la seule chose qui s'apprend ici ;
+//   · le GESTE se fait sur la commande — la carte qu'on pose, ou les mots qu'on
+//     enchaîne dans l'arbre ;
+//   · le RÉSULTAT se lit sur la figure de droite, qui vient de changer.
+//
+// Le robot fait donc l'aller-retour gauche → commande → droite à chaque phrase.
+// Sans le troisième temps on regarde une liste de phrases ; avec lui, on voit
+// un programme S'EXÉCUTER, et c'est tout le sujet de l'exercice.
+//
+// LES PHRASES SONT ÉCRITES POUR ÊTRE ENTENDUES DEUX FOIS. La deuxième fois
+// qu'une opération revient — les trois côtés d'un triangle — le robot abrège :
+// répéter mot pour mot ce qu'on vient de dire fait décrocher, et la troisième
+// occurrence n'apprend rien de plus que la première.
+export const DIT = {
+    points: {
+        avant: (a) => 'Un programme dit d\'abord d\'où il part. '
+            + (a.length === 1
+                ? `Le point ${a[0]} n'est déduit de rien : je le place.`
+                : `Les points ${liste(a)} ne sont déduits de rien : je les place, `
+                  + 'et tout le reste s\'appuiera sur eux.'),
+        apres: (a) => (a.length === 1 ? 'La croix est là' : 'Les croix sont là')
+            + '. Un point se marque d\'une croix, jamais d\'un rond : c\'est le '
+            + 'croisement des deux traits qui EST le point.'
+    },
+    segment: {
+        avant: (a, n) => n === 0
+            ? `Sur la figure à obtenir, ${a[0]} et ${a[1]} sont reliés par un trait `
+              + `qui s'arrête aux deux bouts : c'est le segment [${a[0]}${a[1]}].`
+            : `Même chose pour [${a[0]}${a[1]}].`,
+        apres: (a, n) => n === 0
+            ? `Le voilà. Les crochets de [${a[0]}${a[1]}] disent que le trait `
+              + `s'arrête à ${a[0]} et à ${a[1]} — ni avant, ni après.`
+            : null
+    },
+    droite: {
+        avant: (a, n) => n === 0
+            ? `Ce trait-là ne s'arrête pas : il sort de la figure des deux côtés. `
+              + `C'est la droite (${a[0]}${a[1]}), avec des parenthèses.`
+            : `Et la droite (${a[0]}${a[1]}).`,
+        apres: (a, n) => n === 0
+            ? 'Elle traverse tout le cadre. Une droite n\'a pas de bout : on n\'en '
+              + 'dessine que le morceau qui tient sur la feuille.'
+            : null
+    },
+    demiDroite: {
+        avant: (a) => `Ce trait part de ${a[0]} et ne revient pas : c'est la `
+            + `demi-droite [${a[0]}${a[1]}). Le crochet est du côté de l'origine, `
+            + 'la parenthèse du côté qui continue.',
+        apres: (a) => `${a[0]} est le seul bout. La notation le dit toute seule, `
+            + 'sans qu\'on ait besoin de regarder le dessin.'
+    },
+    cercle: {
+        avant: (a, n) => n === 0
+            ? `Un cercle se donne par son centre et par ce qu'il touche. Celui-ci `
+              + `est centré en ${a[0]} et passe par ${a[1]}.`
+            : `Et le cercle de centre ${a[0]} passant par ${a[1]}.`,
+        apres: (a, n) => n === 0
+            ? 'Je n\'ai pas eu à mesurer le rayon : dire par où il passe suffit à '
+              + 'le définir, et c\'est exactement ce que fait le compas.'
+            : null
+    },
+    milieu: {
+        avant: (a) => `Ce point-là n'est pas donné : il se construit. C'est le `
+            + `milieu de [${a[0]}${a[1]}], et il reçoit une lettre pour que les `
+            + 'phrases suivantes puissent le nommer.',
+        apres: () => 'Il porte maintenant un nom, et je peux m\'en servir comme '
+            + 'de n\'importe quel autre point.'
+    },
+    mediatrice: {
+        avant: (a) => `La médiatrice de [${a[0]}${a[1]}] : la droite qui coupe le `
+            + 'segment en son milieu et à angle droit. Une seule phrase la donne '
+            + 'en entier.',
+        apres: () => 'Le codage rouge est venu tout seul : les deux tirets pour le '
+            + 'milieu, le petit carré pour l\'angle droit. Ce qui n\'est pas codé '
+            + 'n\'est pas su.'
+    },
+    perpendiculaire: {
+        avant: (a) => `Il faut dire deux choses, pas une : perpendiculaire à quoi — `
+            + `(${a[0]}${a[1]}) — et passant par où — ${a[2]}. Sans le point, il y `
+            + 'en aurait une infinité.',
+        apres: () => 'Le petit carré rouge marque l\'angle droit. Deux droites qui '
+            + 'se croisent à l\'écran ne se croisent pas forcément à angle droit : '
+            + 'c\'est le codage qui le dit.'
+    },
+    parallele: {
+        avant: (a) => `Même chose ici : parallèle à (${a[0]}${a[1]}), et passant `
+            + `par ${a[2]}. Par un point il ne passe qu'une seule parallèle.`,
+        apres: () => 'Les chevrons rouges vont par paire : un seul ne dirait rien, '
+            + 'c\'est la paire qui affirme que les deux droites sont parallèles.'
+    },
+    intersection: {
+        avant: () => 'Ce point-là est au croisement de deux tracés que j\'ai déjà '
+            + 'faits. Je ne le place pas où je veux : je le nomme là où il tombe.',
+        apres: () => 'Deux cercles se coupent en deux points, et je les obtiens tous '
+            + 'les deux. C\'est ce que dit un énoncé honnête : « l\'un des deux ».'
+    }
+};
+
+/**
+ * Le rang, DANS LE PLAN, de la figure que l'aperçu démontre.
+ *
+ * Pure, et à part de la classe, pour être vérifiable sans navigateur : c'est
+ * elle qui garantit qu'un aperçu ne retombera jamais sur « Place un point A ».
+ */
+export function figureDeDemonstration(plan) {
+    const riche = plan.findIndex(i => (NIVEAUX[i].modele || []).length >= 3);
+    return riche >= 0 ? riche : Math.max(0, plan.length - 1);
+}
+
+/** « A, B et C » — la liste des lettres comme on l'écrit dans une phrase. */
+function liste(a) {
+    return a.length < 2 ? (a[0] || '') : `${a.slice(0, -1).join(', ')} et ${a[a.length - 1]}`;
 }
 
 export class ProgrammeConstruction extends BaseGame {
@@ -711,26 +841,146 @@ export class ProgrammeConstruction extends BaseGame {
         this.noteEl.className = 'pc-note' + (ton ? ` pc-note--${ton}` : '');
     }
 
-    /** Le robot écrit le programme modèle, une phrase à la fois. */
+    /**
+     * LA FIGURE QUE LE ROBOT MONTRE — pas forcément la première.
+     *
+     * L'aperçu partait du rang de départ de l'exercice, c'est-à-dire de « Un
+     * point » : un programme d'UNE phrase, « Place un point A ». Il n'y avait
+     * rien à démontrer, et rien ne se passait à l'écran.
+     *
+     * On cherche donc, dans le plan tel que les réglages l'ont laissé, la
+     * première figure dont le programme compte au moins trois phrases : c'est
+     * le minimum pour qu'on voie une SUITE de tracés, et donc un programme. Si
+     * les réglages n'en laissent aucune — tout décoché sauf les points —, on
+     * prend la dernière disponible, qui est la plus riche des restantes.
+     */
+    rangDeDemonstration() { return figureDeDemonstration(this.plan); }
+
+    /**
+     * LE ROBOT MONTRE ET EXPLIQUE — voir le bloc DIT plus haut pour le pourquoi.
+     *
+     * Trois temps par phrase : la raison sur la figure à obtenir, le geste sur
+     * la commande, le résultat sur la figure qui vient de changer. Le geste
+     * suit le mode dans lequel l'élève travaillera vraiment — poser des cartes,
+     * ou descendre l'arbre des mots —, parce qu'un aperçu qui montre un écran
+     * que l'élève ne verra pas ne sert à rien.
+     */
     async runDemoSequence() {
+        this.rang = this.rangDeDemonstration();
+        // `premier` suit le rang : l'aperçu doit montrer le mode que l'élève
+        // rencontre EN PREMIER, et c'est `rang - premier` qui en décide.
+        this.premier = this.rang;
+        this.texte = '';
+        this.chemin = null;
+        this.dessiner();
+
+        const cursor = createDemoCursor();
+        const gate = createDemoGate(this.container);
+        this.demoCursor = cursor;
+        // LA BULLE NE RECOUVRE JAMAIS LES DEUX FIGURES. Tout ce que le robot dit
+        // parle d'elles ; une explication posée dessus cacherait précisément ce
+        // qu'elle demande de regarder.
+        cursor.protegerZone([this.container.querySelector('.pc-figures')]);
+
         const niv = this.niveau;
+        const butEl = this.container.querySelector('.pc-cadre--but');
+
+        if (!await gate.waitTurn()) return;
+        cursor.say('À gauche, la figure à obtenir. Tout ce qu\'il faut savoir est '
+            + 'dessiné dessus : les lettres des points, les traits, et le codage '
+            + 'en rouge.', butEl);
+        if (!await cursor.pause(DEMO_SPEED.settle)) return;
+
+        if (!await gate.waitTurn()) return;
+        cursor.say('À droite, ce que mon programme trace vraiment. Elle est vide : '
+            + 'je n\'ai encore rien posé. C\'est elle qui dira si j\'ai juste, pas moi.',
+        this.cadreMoiEl);
+        if (!await cursor.pause(DEMO_SPEED.settle)) return;
+
         const jusque = [];
+        const vus = {};
         for (const ins of niv.modeleResolu) {
-            if (!this.isRunning) return;
-            await new Promise(ok => setTimeout(ok, 950));
-            if (this.gelDemo) await new Promise(ok => setTimeout(ok, 600));
+            if (!this.isRunning || cursor.destroyed) return;
             const avant = executer(jusque, niv.atlas);
             const args = OPERATIONS[ins.op].prend.map((sorte, i) => {
                 if (sorte !== 'objet') return ins.args[i];
                 const o = avant.objets.find(x => cleObjet(x) === ins.args[i]);
                 return o ? nomObjet(o, avant.points) : '…';
             });
-            this.texte += `${this.texte ? '\n' : ''}${OPERATIONS[ins.op].libelle(
-                ins.op === 'points' ? ins.args : args)}`;
+            const valeurs = ins.op === 'points' ? ins.args : args;
+            const phrase = OPERATIONS[ins.op].libelle(valeurs);
+            const dit = DIT[ins.op] || {};
+            const n = vus[ins.op] || 0;
+
+            // 1. LE POURQUOI, SUR LA FIGURE À OBTENIR. C'est là qu'on voit qu'il
+            // manque un côté ; le raisonnement se lit sur le modèle, jamais sur
+            // la liste des phrases disponibles.
+            if (!await gate.waitTurn()) return;
+            cursor.say(dit.avant ? dit.avant(valeurs, n) : phrase, butEl);
+            if (!await cursor.pause(DEMO_SPEED.settle)) return;
+
+            // 2. LE GESTE, SUR LA COMMANDE — celle que l'élève aura sous le doigt.
+            if (!await this.gesteDemo(cursor, ins, valeurs, phrase)) return;
             jusque.push(ins);
+            vus[ins.op] = n + 1;
+
+            // 3. LE RÉSULTAT, SUR LA FIGURE QUI VIENT DE CHANGER.
+            const apres = dit.apres && dit.apres(valeurs, n);
+            if (apres) {
+                if (!await gate.waitTurn()) return;
+                cursor.say(apres, this.cadreMoiEl);
+                if (!await cursor.pause(DEMO_SPEED.settle)) return;
+            }
+        }
+
+        if (!await gate.waitTurn()) return;
+        this.note('Le programme est écrit : la figure de droite est celle de gauche.', 'ok');
+        this.cadreMoiEl.classList.add('pc-cadre--ok');
+        cursor.say('Les deux figures sont les mêmes : le programme est bon. Il en '
+            + 'existe d\'autres — c\'est la figure obtenue qui décide, pas la '
+            + 'tournure des phrases.', this.cadreMoiEl);
+        await cursor.pause(DEMO_SPEED.between);
+    }
+
+    /**
+     * LE GESTE DE LA PHRASE, DANS LE MODE OÙ L'ÉLÈVE EST.
+     *
+     * Composer : une carte, un appui. Écrire : le verbe, l'objet, les points,
+     * un appui chacun — et la phrase se lit en haut de l'arbre pendant qu'elle
+     * se construit, ce qui est exactement ce qu'on veut faire voir.
+     *
+     * Le DOM est refait à chaque `dessiner()` : on rappelle donc le bouton
+     * juste avant de le désigner, jamais une référence gardée d'avant.
+     */
+    async gesteDemo(cursor, ins, valeurs, phrase) {
+        if (!this.enAssemblage) return this.gesteDemoArbre(cursor, ins, valeurs);
+        const carte = [...this.banqueEl.querySelectorAll('[data-poser]')]
+            .find(b => b.dataset.poser === phrase);
+        if (carte && !await cursor.tap(carte)) return false;
+        this.texte += `${this.texte ? '\n' : ''}${phrase}`;
+        this.dessiner();
+        return true;
+    }
+
+    /** Le même geste, mot à mot, quand l'élève descend l'arbre des phrases. */
+    async gesteDemoArbre(cursor, ins, valeurs) {
+        const op = OPERATIONS[ins.op];
+        for (const v of [verbeDe(op), op.id, ...valeurs]) {
+            const mot = [...this.arbreEl.querySelectorAll('[data-mot]')]
+                .find(b => b.dataset.mot === String(v));
+            if (!mot) return true;              // l'arbre ne propose pas ce mot : on n'insiste pas
+            if (!await cursor.tap(mot)) return false;
+            this.chemin = descendre(this.chemin, v);
+            // UNE PHRASE SANS TROU S'AJOUTE TOUTE SEULE — c'est la règle de
+            // l'écran, et la démonstration doit la montrer telle quelle.
+            const finie = phraseFinie(this.chemin);
+            if (finie && op.id !== 'points') { this.poserPhrase(finie); return true; }
             this.dessiner();
         }
-        this.note('Le programme est écrit : la figure de droite est celle de gauche.', 'ok');
+        const fin = this.arbreEl.querySelector('[data-poser-phrase]');
+        if (fin && !await cursor.tap(fin)) return false;
+        this.poserPhrase(phraseFinie(this.chemin));
+        return true;
     }
 
     /**
