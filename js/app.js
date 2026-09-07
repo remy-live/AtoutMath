@@ -542,11 +542,58 @@ function initNavButtons() {
     // possible, et le ☰ aussi.
     const handle = document.getElementById('drawer-handle');
     if (handle) {
-        let departY = null, enTraction = false, vientDeTirer = false;
+        // LA POIGNÉE MESURE CE QUE SON TEXTE LUI DONNE. Voir `--tiroir-poignee`
+        // dans base.css : la même hauteur sert à la transformation du tiroir, à
+        // la place réservée sous le parcours et aux calculs de traction. Elle
+        // était écrite « 52 » à ces trois endroits ; la poignée, elle, fait 50
+        // pixels au réglage normal d'un iPhone et 60 quand l'affichage est
+        // agrandi — et huit pixels de bande passaient alors sous l'écran.
+        const mesurerPoignee = () => {
+            const h = Math.round(handle.getBoundingClientRect().height);
+            if (h > 20) document.documentElement.style.setProperty('--tiroir-poignee', `${h}px`);
+        };
+        const hauteurPoignee = () => parseFloat(getComputedStyle(document.documentElement)
+            .getPropertyValue('--tiroir-poignee')) || 52;
+        mesurerPoignee();
+        window.addEventListener('resize', mesurerPoignee);
+        // LA POIGNÉE N'EXISTE QU'EN MODE PROFESSEUR SUR TÉLÉPHONE : au premier
+        // chargement elle est cachée, sa hauteur vaut zéro, et une mesure prise
+        // là ne vaut rien. On la remesure dès qu'elle prend sa taille.
+        if (window.ResizeObserver) new ResizeObserver(mesurerPoignee).observe(handle);
+
+        /**
+         * LA BANDE NE VOLE PLUS LE GESTE DE LA PAGE.
+         *
+         * Rémy, capture du constructeur de parcours à l'appui : « Je n'arrive
+         * pas à descendre. »
+         *
+         * MESURÉ, sur un écran de 660 pixels utiles : un balayage vers le haut
+         * qui PART de la bande « 📚 Catalogue d'exercices » donne « défilement
+         * 0 / 120 » — la page ne bouge pas d'un pixel, le catalogue s'ouvre par
+         * -dessus. Le même geste quarante pixels plus haut donne « 120 / 120 ».
+         * La bande fait toute la largeur, cinquante pixels de haut, dans le
+         * tiers bas de l'écran : c'est exactement là que se pose le pouce de
+         * qui tient son téléphone d'une main.
+         *
+         * Elle avait ses raisons — `touch-action: none` est ce qui permet de
+         * TIRER le tiroir au lieu de le taper — mais elle prenait le geste même
+         * quand la page avait encore de quoi défiler.
+         *
+         * LA RÈGLE EST CELLE DES FEUILLES COULISSANTES : le tiroir ne prend le
+         * geste QUE lorsque la page dessous ne peut plus aller dans ce sens.
+         * On défile d'abord jusqu'au bout du parcours ; alors seulement, en
+         * continuant, le catalogue monte. Plus rien n'est hors d'atteinte, et
+         * la traction reste possible — c'est le même doigt, qui continue.
+         */
+        const zonePage = () => document.getElementById('app-body');
+        const resteEnBas = (z) => z.scrollHeight - z.clientHeight - z.scrollTop;
+
+        let departY = null, dernierY = null, mode = null, vientDeTirer = false;
 
         handle.addEventListener('pointerdown', (e) => {
             departY = e.clientY;
-            enTraction = false;
+            dernierY = e.clientY;
+            mode = null;
             try { handle.setPointerCapture(e.pointerId); } catch (err) { /* Safari ancien */ }
         });
 
@@ -554,12 +601,32 @@ function initNavButtons() {
             if (departY === null) return;
             const sidebar = document.getElementById('sidebar');
             const dy = e.clientY - departY;
-            if (!enTraction && Math.abs(dy) < 8) return;
-            enTraction = true;
+            if (mode === null) {
+                if (Math.abs(dy) < 8) return;
+                // Tiroir ouvert : il est le sujet du geste, comme avant.
+                // Tiroir fermé : la page passe d'abord, si elle a où aller.
+                const z = zonePage();
+                const ouvert = sidebar.classList.contains('drawer-open');
+                const pageAOu = !ouvert && z
+                    && ((dy < 0 && resteEnBas(z) > 1) || (dy > 0 && z.scrollTop > 1));
+                mode = pageAOu ? 'page' : 'tiroir';
+            }
+            if (mode === 'page') {
+                const z = zonePage();
+                z.scrollTop -= e.clientY - dernierY;
+                dernierY = e.clientY;
+                // La page est arrivée au bout : le doigt n'a pas à se relever,
+                // c'est le tiroir qui prend la suite.
+                if (resteEnBas(z) <= 1 && e.clientY - departY < 0) {
+                    mode = 'tiroir';
+                    departY = e.clientY;
+                }
+                return;
+            }
             const h = sidebar.offsetHeight;
-            const ferme = h - 52;
+            const ferme = h - hauteurPoignee();
             const base = sidebar.classList.contains('drawer-open') ? 0 : ferme;
-            const off = Math.max(0, Math.min(base + dy, ferme));
+            const off = Math.max(0, Math.min(base + (e.clientY - departY), ferme));
             sidebar.style.transition = 'none';
             sidebar.style.transform = `translateY(${off}px)`;
         });
@@ -567,24 +634,27 @@ function initNavButtons() {
         const finTraction = (e) => {
             if (departY === null) return;
             const sidebar = document.getElementById('sidebar');
-            if (enTraction) {
+            if (mode === 'tiroir') {
                 const h = sidebar.offsetHeight;
-                const ferme = h - 52;
+                const ferme = h - hauteurPoignee();
                 const base = sidebar.classList.contains('drawer-open') ? 0 : ferme;
                 const off = Math.max(0, Math.min(base + (e.clientY - departY), ferme));
                 setDrawer(off < ferme / 2);
+            }
+            // Un geste, quel qu'il soit, n'est pas un tap : le clic synthétisé
+            // qui suit ne doit pas basculer le tiroir par-dessus.
+            if (mode) {
                 vientDeTirer = true;
                 setTimeout(() => { vientDeTirer = false; }, 400);
             }
-            departY = null;
-            enTraction = false;
+            departY = null; dernierY = null; mode = null;
         };
         handle.addEventListener('pointerup', finTraction);
         handle.addEventListener('pointercancel', () => {
             const sidebar = document.getElementById('sidebar');
             sidebar.style.transform = '';
             sidebar.style.transition = '';
-            departY = null; enTraction = false;
+            departY = null; dernierY = null; mode = null;
         });
 
         // Le tap simple bascule — sauf s'il conclut une traction (le clic

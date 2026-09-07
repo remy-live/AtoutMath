@@ -172,7 +172,7 @@ body.mobile-view.teacher-mode #sidebar {
     position: fixed; left: 0; right: 0; top: auto;
     bottom: var(--bottom-nav-height);
     height: 64vh; height: min(64dvh, 540px);
-    transform: translateY(calc(100% - 52px));
+    transform: translateY(calc(100% - var(--tiroir-poignee)));
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 4000;
     border-radius: 18px 18px 0 0;
@@ -181,8 +181,15 @@ body.mobile-view.teacher-mode #sidebar {
     background: var(--bg-panel);
 }
 body.mobile-view.teacher-mode #sidebar.drawer-open { transform: translateY(0); }
-/* De la place sous le parcours pour que la poignée ne cache rien. */
-body.mobile-view.teacher-mode #app-body { padding-bottom: calc(var(--bottom-nav-height) + 64px); }
+/* DE LA PLACE SOUS LE PARCOURS pour que la poignée ne cache rien — la hauteur
+   de la poignée, ET une marge de confort. Mesuré : 124 pixels réservés pour
+   112 occupés, soit douze pixels d'écart. Douze pixels, c'est rien : une
+   poignée un peu plus haute, et le bas de la dernière carte passait sous la
+   bande sans qu'on puisse aller le chercher — car sur un parcours court, TOUT
+   le défilement disponible vient de cette réserve. */
+body.mobile-view.teacher-mode #app-body {
+    padding-bottom: calc(var(--bottom-nav-height) + var(--tiroir-poignee) + 24px);
+}
 
 .drawer-handle { display: none; }
 body.mobile-view.teacher-mode .drawer-handle {

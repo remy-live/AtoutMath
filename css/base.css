@@ -30,6 +30,14 @@
     /* La barre basse intègre la zone sûre d'iOS (encoche basse / indicateur
        d'accueil) : sans elle, ses boutons tombaient sous la barre du système. */
     --bottom-nav-height: calc(60px + env(safe-area-inset-bottom, 0px));
+    /* LA PART DU TIROIR QUI DÉPASSE, tiroir fermé. Elle valait 52 pixels écrits
+       en dur à trois endroits — la transformation CSS, la place réservée sous
+       le parcours, et deux calculs de traction. La poignée, elle, mesure ce que
+       son texte lui donne : 50 pixels au réglage normal d'un iPhone, 60 quand
+       l'affichage est agrandi. Écrite en dur, la bande se faisait donc rogner
+       de huit pixels chez qui grossit le texte. La vraie hauteur est mesurée au
+       chargement et posée ici ; 52 reste le repli avant la mesure. */
+    --tiroir-poignee: 52px;
     
     /* Modern Shadows */
     --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04);
