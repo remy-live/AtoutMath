@@ -137,6 +137,69 @@ class ColorierNombres extends BaseGame {
                 .cn-note--ko { color: var(--danger); font-weight: 600; }
                 .cn-note b { color: var(--primary); }
 
+                /* --- LA GRILLE FINIE DEVIENT UN DESSIN ---------------------
+                   Rémy : « Quand le dessin est bon dis le ».
+                   Tant qu'on cherche, la grille est un TABLEAU : des croix, des
+                   traits, des chiffres, une case visée. Une fois finie, tout
+                   cela a servi et ne sert plus — et laissé en place, cela
+                   empêche de voir ce qu'on vient de dessiner. Un cœur au milieu
+                   de soixante-douze croix n'est pas un cœur.
+                   On efface donc l'échafaudage : les croix disparaissent, les
+                   cases blanches perdent leur bord, les nombres s'éteignent. Il
+                   ne reste que la forme. */
+                .cn-plateau--fini .cn-case { cursor: default; }
+                .cn-plateau--fini .cn-case--croix::after { content: none; }
+                .cn-plateau--fini .cn-case:not(.cn-case--plein) {
+                    border-color: transparent; background: transparent;
+                }
+                .cn-plateau--fini .cn-case--bloc5,
+                .cn-plateau--fini .cn-case--bloc5h { border-width: 1px; }
+                .cn-plateau--fini .cn-ind { opacity: .3; transition: opacity .5s ease; }
+                /* LES GOUTTIÈRES SE REFERMENT. Deux pixels de blanc entre deux
+                   cases voisines, c'est ce qu'il faut pour COMPTER ; c'est aussi
+                   ce qui empêche de voir une forme. Une croix en quarante-quatre
+                   carrés séparés reste quarante-quatre carrés. On les referme
+                   sur les trois grilles à la fois — la grille et ses deux
+                   bandes de nombres — sinon les nombres ne désignent plus leur
+                   ligne. */
+                .cn-plateau--fini .cn-haut,
+                .cn-plateau--fini .cn-gauche,
+                .cn-plateau--fini .cn-grille { gap: 0; }
+                /* LE TRAIT DE CINQ EN CINQ DISPARAÎT DANS LA FORME : il est gris,
+                   et un trait gris qui traverse un coeur bleu le coupe en
+                   quatre. Il a servi à compter, il n'a plus à se voir. */
+                .cn-plateau--fini .cn-case--plein { border-radius: 0; border-color: var(--primary); }
+                /* LES CASES S'ALLUMENT EN DIAGONALE, du coin haut-gauche vers le
+                   bas-droit. C'est le retard « --cn-r » posé sur chaque case : le
+                   dessin se révèle au lieu d'apparaître, et l'oeil le suit.
+                   Une demi-seconde en tout — au-delà, on attend. */
+                .cn-plateau--fini .cn-case--plein {
+                    animation: cn-revele .34s ease both;
+                    animation-delay: calc(var(--cn-r, 0) * 26ms);
+                }
+                @keyframes cn-revele {
+                    from { transform: scale(.35); opacity: .2; }
+                    60%  { transform: scale(1.12); }
+                    to   { transform: scale(1); opacity: 1; }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .cn-plateau--fini .cn-case--plein { animation: none; }
+                }
+
+                /* L'ANNONCE. Elle prend la place de la consigne — celle-ci
+                   expliquait comment chercher, et il n'y a plus rien à
+                   chercher. */
+                .cn-fini {
+                    display: inline-flex; align-items: center; gap: 8px;
+                    font-size: clamp(14px, 3.6cqw, 20px); font-weight: 800;
+                    color: var(--success); line-height: 1.3;
+                }
+                .cn-fini b { color: var(--success); }
+                .cn-btn--suivant {
+                    border-color: var(--primary); background: var(--primary); color: #fff;
+                    font-size: .92rem; padding: 8px 16px; min-height: 40px;
+                }
+
                 /* Couché : la grille à gauche, le texte à droite — en paysage
                    c'est la hauteur qui manque. */
                 @container plateau (max-height: 460px) and (min-width: 720px) {
@@ -154,21 +217,15 @@ class ColorierNombres extends BaseGame {
             <div class="cn-wrap">
                 <div class="cn-consigne" data-consigne></div>
                 <div class="cn-scene"><div class="cn-plateau" data-plateau></div></div>
-                <div class="cn-barre">
-                    <button type="button" class="cn-btn" data-mode>✏️ Colorier</button>
-                    <button type="button" class="cn-btn" data-aide>💡 Aide-moi</button>
-                    <button type="button" class="cn-btn" data-neuf>↻ Autre grille</button>
-                </div>
+                <div class="cn-barre" data-barre></div>
                 <div class="cn-note" data-note></div>
             </div>`;
 
         this.consigneEl = this.container.querySelector('[data-consigne]');
         this.plateauEl = this.container.querySelector('[data-plateau]');
         this.noteEl = this.container.querySelector('[data-note]');
-        this.btnMode = this.container.querySelector('[data-mode]');
-        this.container.querySelector('[data-aide]').onclick = () => this.aider();
-        this.container.querySelector('[data-neuf]').onclick = () => this.poser();
-        this.btnMode.onclick = () => this.basculerMode();
+        this.barreEl = this.container.querySelector('[data-barre]');
+        this.dessinerBarre();
 
         // LE CLIC DROIT BARRE, comme dans tous les jeux de ce genre. C'est le
         // geste de celui qui connaît ; le bouton reste pour celui qui découvre
@@ -199,7 +256,9 @@ class ColorierNombres extends BaseGame {
         this.etat = Array.from({ length: hauteur }, () => new Array(largeur).fill(INCONNU));
         this.fini = false;
         this.vise = null;
+        this.aides = 0;
         this.dessiner();
+        this.dessinerBarre();
         // LA NOTE NE REDIT PAS LA CONSIGNE — elle donne la méthode. Le compte
         // des cases restantes est déjà écrit en haut ; l'écrire deux fois occupe
         // la seule ligne dont on dispose pour dire par où commencer.
@@ -207,6 +266,40 @@ class ColorierNombres extends BaseGame {
             + 'beaucoup bouger, donc il recouvre à coup sûr des cases du milieu.'
             + (this.grille.sujet ? ' À la fin, cela dessine quelque chose.' : ''));
         return true;
+    }
+
+    /**
+     * LA BARRE CHANGE DE MÉTIER QUAND LA GRILLE EST FINIE.
+     *
+     * Rémy : « Quand le dessin est bon dis le et mets un bouton au suivant ».
+     *
+     * Avant, la grille finie s'effaçait TOUTE SEULE au bout d'une seconde six,
+     * remplacée par la suivante. Deux choses se perdaient d'un coup : le dessin,
+     * qu'on n'avait pas le temps de regarder — et c'est la seule récompense de
+     * ce jeu-là, on colorie une demi-heure pour voir apparaître un cœur —, et
+     * la MAIN, puisque personne n'avait rien demandé. Un élève qui vient de
+     * finir veut regarder, montrer à son voisin, et repartir quand il le décide.
+     *
+     * Les trois boutons de recherche — colorier, aider, changer de grille — ne
+     * veulent plus rien dire une fois la grille finie : « Aide-moi » n'a plus
+     * rien à déduire, et « Autre grille » ferait exactement ce qu'on vient de
+     * reprocher à l'effacement automatique. Il n'en reste qu'un, et il est
+     * grand.
+     */
+    dessinerBarre() {
+        this.barreEl.innerHTML = this.fini
+            ? '<button type="button" class="cn-btn cn-btn--suivant" data-suivant>Grille suivante →</button>'
+            : `<button type="button" class="cn-btn${this.modeCroix ? ' cn-btn--actif' : ''}" data-mode>`
+                + `${this.modeCroix ? '❌ Barrer' : '✏️ Colorier'}</button>`
+                + '<button type="button" class="cn-btn" data-aide>💡 Aide-moi</button>'
+                + '<button type="button" class="cn-btn" data-neuf>↻ Autre grille</button>';
+        if (this.isDemo) return;
+        const suivant = this.barreEl.querySelector('[data-suivant]');
+        if (suivant) { suivant.onclick = () => this.poser(); return; }
+        this.btnMode = this.barreEl.querySelector('[data-mode]');
+        this.btnMode.onclick = () => this.basculerMode();
+        this.barreEl.querySelector('[data-aide]').onclick = () => this.aider();
+        this.barreEl.querySelector('[data-neuf]').onclick = () => this.poser();
     }
 
     basculerMode() {
@@ -291,12 +384,16 @@ class ColorierNombres extends BaseGame {
                 if (v === CROIX) cls.push('cn-case--croix');
                 if (x % 5 === 0 && x) cls.push('cn-case--bloc5');
                 if (y % 5 === 0 && y) cls.push('cn-case--bloc5h');
-                if (this.vise && (this.vise.x === x || this.vise.y === y)) cls.push('cn-case--visee');
+                if (!this.fini && this.vise && (this.vise.x === x || this.vise.y === y)) cls.push('cn-case--visee');
+                // Le retard de révélation : la diagonale, pour que le dessin
+                // s'allume du coin haut-gauche vers le bas-droit.
                 cases.push(`<div class="${cls.join(' ')}" data-x="${x}" data-y="${y}"
+                    style="--cn-r: ${x + y}"
                     role="button" aria-label="colonne ${x + 1}, ligne ${y + 1}"></div>`);
             }
         }
 
+        this.plateauEl.classList.toggle('cn-plateau--fini', !!this.fini);
         this.plateauEl.innerHTML = `
             <div class="cn-coin"></div>
             <div class="cn-haut" style="grid-template-columns: repeat(${largeur}, var(--cn-case))">
@@ -311,10 +408,14 @@ class ColorierNombres extends BaseGame {
             </div>`;
 
         const reste = this.grille.total - this.etat.flat().filter(c => c === PLEIN).length;
+        // ON DIT QUE C'EST BON, ET ON DIT QUOI. Rémy : « Quand le dessin est bon
+        // dis le ». « La grille est complète » ne disait pas que c'était juste —
+        // une grille pleine de fautes est complète elle aussi. Et sur les
+        // grilles de dix, le dessin a un nom : c'est lui la récompense.
         this.consigneEl.innerHTML = this.fini
-            ? (this.grille.sujet
-                ? `C'est <b>${this.grille.sujet}</b>.`
-                : 'La grille est complète.')
+            ? `<span class="cn-fini">✓ ${this.grille.sujet
+                ? `Le dessin est bon : c'est <b>${this.grille.sujet}</b> !`
+                : 'Le dessin est bon : toutes les lignes et toutes les colonnes tombent juste.'}</span>`
             : `Les nombres disent les <b>blocs</b> coloriés de chaque ligne et de chaque `
                 + `colonne, dans l'ordre. Il reste <b>${Math.max(0, reste)}</b> case`
                 + `${Math.max(0, reste) > 1 ? 's' : ''} à colorier.`;
@@ -373,18 +474,23 @@ class ColorierNombres extends BaseGame {
 
     gagner() {
         this.fini = true;
+        this.vise = null;
         this.dessiner();
+        this.dessinerBarre();
         this.onCorrectAnswer(null, SKILL, {
             questionText: `Colorier par les nombres — ${PALIERS[this.palier].label}`,
             expected: `${this.grille.total} cases`,
             given: `${this.grille.total} cases`,
             points: 20 + this.grille.total
         });
-        this.note(this.grille.sujet
-            ? `Terminé — c'était <b>${this.grille.sujet}</b>.`
-            : 'Terminé : toutes les lignes et toutes les colonnes tombent juste.', 'ok');
-        if (this.demoGate) return;
-        setTimeout(() => { if (!this.destroyed) this.poser(); }, 1600);
+        // LA NOTE NE RÉPÈTE PAS L'ANNONCE, elle ajoute ce qu'on ne voit pas :
+        // le nombre d'aides prises, et l'invitation à regarder. La grille ne
+        // s'efface plus toute seule — voir `dessinerBarre`.
+        this.note(this.aides
+            ? `Regarde ton dessin autant que tu veux. Tu as demandé <b>${this.aides}</b> `
+                + `aide${this.aides > 1 ? 's' : ''} : la prochaine, essaie d'en prendre une de moins.`
+            : 'Regarde ton dessin autant que tu veux, et appuie sur « Grille suivante » '
+                + 'quand tu es prêt. <b>Sans aucune aide</b> : bravo.', 'ok');
     }
 
     /**
@@ -416,6 +522,7 @@ class ColorierNombres extends BaseGame {
         this.fini = true;
         this.vise = null;
         this.dessiner();
+        this.dessinerBarre();
         this.note('Solution affichée (outil d\'auteur).');
         return true;
     }
@@ -477,8 +584,19 @@ class ColorierNombres extends BaseGame {
         }
 
         if (!gate.stopped) {
-            dire(this.grille.sujet ? `Et c'était ${this.grille.sujet}.` : 'Et la grille est finie.');
-            await gate.wait(DEMO_SPEED);
+            // LA DÉMONSTRATION VA JUSQU'AU BOUT, révélation comprise : c'est
+            // la moitié de ce que l'aperçu a à montrer — l'échafaudage tombe,
+            // le dessin reste, et un bouton attend qu'on soit prêt.
+            this.fini = true;
+            this.vise = null;
+            this.dessiner();
+            this.dessinerBarre();
+            dire(this.grille.sujet
+                ? `Et le dessin est bon : c'était ${this.grille.sujet}. Les croix s'effacent, `
+                  + 'il ne reste que le dessin — et l\'on passe à la suivante quand on veut.'
+                : 'Et le dessin est bon. Les croix s\'effacent, il ne reste que la forme — '
+                  + 'et l\'on passe à la suivante quand on veut.');
+            await gate.wait(DEMO_SPEED * 2);
         }
         cursor.destroy();
     }

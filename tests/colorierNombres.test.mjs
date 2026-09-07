@@ -6,6 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
+import { readFileSync } from 'node:fs';
 import { makeRng } from '../js/core/ids.js';
 import {
     INCONNU, PLEIN, CROIX, PALIERS,
@@ -329,4 +330,42 @@ test('LES NOMBRES ÉCRITS DANS L\'AIDE SONT JUSTES — le calcul, pas seulement 
     // Le test ne vaudrait rien s'il n'avait jamais rencontré la phrase visée.
     assert.ok(vuesRecouvrement > 20,
         `seulement ${vuesRecouvrement} recouvrements rencontrés`);
+});
+
+// --- LA FIN DE LA GRILLE ----------------------------------------------------
+//
+// Rémy : « Quand le dessin est bon dis le et mets un bouton au suivant ».
+//
+// Avant, la grille finie s'effaçait TOUTE SEULE au bout d'une seconde six. On
+// perdait le dessin — c'est la récompense de ce jeu-là, on colorie pour voir
+// apparaître un cœur — et l'on perdait la main. Ce test garde les deux moitiés
+// de la réparation : plus d'effacement automatique, et un bouton pour partir.
+//
+// Il lit la SOURCE, faute de navigateur : c'est ce que font déjà les tests de
+// mise en page de ce dépôt, et cela suffit à empêcher le retour en arrière.
+test('LA GRILLE FINIE NE S\'EFFACE PLUS TOUTE SEULE, ET DIT QU\'ELLE EST BONNE', () => {
+    const src = readFileSync(new URL('../js/games/colorierNombres.js', import.meta.url), 'utf8');
+
+    const gagner = src.slice(src.indexOf('    gagner() {'), src.indexOf('    /**\n     * L\'AIDE MONTRE'));
+    assert.ok(gagner.length > 100, 'gagner() n\'a pas été retrouvé');
+    // AUCUN MINUTEUR NE POSE LA GRILLE SUIVANTE : c'est l'élève qui décide.
+    assert.ok(!/setTimeout/.test(gagner), 'la victoire relance une grille toute seule');
+    assert.ok(!/\bposer\(\)/.test(gagner), 'la victoire pose une grille toute seule');
+    // Elle DIT que c'est bon, et elle propose la suite.
+    assert.match(src, /data-suivant/, 'aucun bouton « suivant »');
+    assert.match(src, /Grille suivante/, 'le bouton ne se nomme pas');
+    assert.match(src, /Le dessin est bon/, 'on ne dit pas que le dessin est bon');
+
+    // LE BOUTON REMPLACE LES TROIS AUTRES. « Aide-moi » n'a plus rien à
+    // déduire, et « Autre grille » ferait exactement ce qu'on vient de retirer.
+    const barre = src.slice(src.indexOf('    dessinerBarre() {'), src.indexOf('    basculerMode() {'));
+    assert.ok(barre.length > 100, 'dessinerBarre() n\'a pas été retrouvé');
+    assert.match(barre, /this\.fini\s*\n?\s*\?/, 'la barre ne dépend pas de l\'état fini');
+    const [siFini] = barre.split(': `<button');
+    assert.ok(/data-suivant/.test(siFini) && !/data-aide/.test(siFini),
+        'la barre de la grille finie propose autre chose que « suivante »');
+
+    // L'ÉCHAFAUDAGE TOMBE : sans cela, un cœur reste caché sous ses croix.
+    assert.match(src, /\.cn-plateau--fini \.cn-case--croix::after\s*\{\s*content:\s*none/,
+        'les croix restent sur le dessin fini');
 });
