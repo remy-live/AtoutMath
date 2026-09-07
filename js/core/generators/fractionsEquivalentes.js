@@ -22,49 +22,18 @@ import {
 } from '../progression.js';
 import {
     tirerEgalite, etapesEgalite, tirerEgalesOuNon, etapesEgalesOuNon,
-    NIVEAUX_SOMME, tirerCalcul, tirerComplement, ecrireFraction
+    NIVEAUX_SOMME, tirerCalcul, tirerComplement, ecrireFraction,
+    fractionHtml, egaliteFlecheeHtml
 } from '../fractionsEquivalentes.js';
 
 /** Une fraction en colonne, telle qu'on l'écrit au tableau. */
-function fracHtml(n, d, classe = '') {
-    return `<span class="fraction ${classe}"><span class="fraction-num">${n}</span>`
-        + `<span class="fraction-den">${d}</span></span>`;
-}
+const fracHtml = (n, d, classe = '') => fractionHtml(n, d, classe);
 
 /** La même, avec un côté vide : c'est ce qu'on demande d'écrire. */
 function fracTrou(n, d, trou) {
     const vide = '<span class="frac-trou" aria-label="nombre manquant">?</span>';
     return fracHtml(trou === 'numerateur' ? vide : n, trou === 'denominateur' ? vide : d,
         'fraction--trou');
-}
-
-// L'ÉGALITÉ AVEC SES DEUX FLÈCHES, COMME AU TABLEAU.
-//
-// Rémy, sur « Par Combien ? » : « mets une flèche entre les deux numérateurs
-// et une flèche entre les deux dénominateurs et comme au final on ne cherche
-// pas la valeur du ?, tu peux le remplacer par la bonne valeur ».
-//
-// C'est un renversement de la mise en page, et il est juste. On cachait un
-// nombre pour forcer à lire l'AUTRE ligne ; mais le nombre caché n'est pas la
-// question, et un élève qui voit un trou cherche d'abord à le boucher. En
-// écrivant l'égalité en entier et en posant les deux arcs, la question devient
-// visible sur la figure elle-même : chaque flèche porte « × ? », et les deux
-// portent le MÊME nombre — ce qui est exactement la règle qu'on enseigne.
-//
-// LES ARCS SONT EN CSS, pas en SVG : ils doivent s'étirer avec la largeur de
-// l'égalité, qui dépend du nombre de chiffres. Un SVG étiré déformerait sa
-// pointe ; une bordure arrondie s'étire sans rien déformer, et la pointe est
-// posée à part, à taille fixe, à l'extrémité droite.
-function egaliteFlechee(g, d, signe) {
-    const arc = (ou) => `<span class="fe-arc fe-arc--${ou}" aria-hidden="true">`
-        + `<span class="fe-arc-mot">${signe} ?</span></span>`;
-    return `<div class="frac-fleches">
-                ${arc('haut')}
-                ${fracHtml(g.n, g.d)}
-                <span class="frac-signe">=</span>
-                ${fracHtml(d.n, d.d)}
-                ${arc('bas')}
-            </div>`;
 }
 
 // --- Compléter une égalité ---------------------------------------------------
@@ -390,13 +359,32 @@ export const fracEgalesGenerator = {
 // nombres grandissent ou rapetissent), le facteur se CHERCHE. La consigne dit
 // donc lequel des deux gestes on fait, et l'élève donne le nombre.
 
+/**
+ * DEUX ÉTAPES, ET LA SECONDE EST CELLE QU'ON ÉCRIT AU CAHIER.
+ *
+ * Rémy : « il faudrait rajouter une étape, celle de compléter le numérateur et
+ * le dénominateur. On laisse les flèches, l'élève doit taper dans les cases des
+ * flèches par quoi il doit diviser ou multiplier, et après on met la réponse. »
+ *
+ * La première étape DEMANDE le facteur, et l'égalité est écrite en entier :
+ * c'est un exercice de lecture. La seconde l'UTILISE — on écrit le facteur sur
+ * les deux arcs, puis on s'en sert pour compléter le nombre qui manque. C'est
+ * la même figure, un geste de plus, et c'est exactement le pas qui sépare
+ * « je vois le facteur » de « je sais m'en servir ».
+ */
+export const MARCHES_FACTEUR = [
+    { id: 'facteur', nom: '1. Par combien ?' },
+    { id: 'completer', nom: '2. Par combien, puis complète' }
+];
+
 export const fracFacteurGenerator = {
     id: 'frac.facteur',
     label: 'Par combien multiplie-t-on ?',
     skills: ['num.frac.equivalentes'],
-    answerKinds: ['numeric'],
+    answerKinds: ['numeric', 'text'],
     ecrit: true,
     fractions: true,
+    conseil: (p) => conseilProgression(marchesCochees(p, MARCHES_FACTEUR).length),
     params: [
         {
             id: 'sens', type: 'select', label: 'Dans quel sens', default: 'agrandir',
@@ -409,15 +397,16 @@ export const fracFacteurGenerator = {
                 { value: 'les-deux', label: 'Les deux mélangés' }
             ]
         },
+        paramMarches({ marches: MARCHES_FACTEUR, mot: 'étape' }),
         {
-            // À L'ÉCRAN, L'ÉGALITÉ EST ÉCRITE EN ENTIER depuis que les deux arcs
-            // la traversent : ce réglage ne décide donc plus que de la FICHE,
-            // où il n'y a pas d'arc et où le trou tient lieu de flèche.
-            id: 'trou', type: 'select', label: 'Sur la fiche, le côté qu\'on cache',
+            // LE CÔTÉ CACHÉ SERT DEUX FOIS : sur la fiche, où il n'y a pas
+            // d'arc et où le trou tient lieu de flèche ; et à la seconde
+            // étape, où c'est justement lui qu'on complète.
+            id: 'trou', type: 'select', label: 'Le côté qu\'on cache',
             default: 'les-deux',
-            aide: 'Ne concerne que la feuille imprimée. Le côté caché y décide de la ligne '
-                + 'qu\'il faut lire : cacher le dénominateur oblige à travailler sur les '
-                + 'numérateurs, et l\'inverse.',
+            aide: 'Le côté caché décide de la ligne qu\'il faut lire : cacher le dénominateur '
+                + 'oblige à travailler sur les numérateurs, et l\'inverse. À la première '
+                + 'étape, il ne vaut que pour la feuille imprimée.',
             options: [
                 { value: 'denominateur', label: 'Le dénominateur (on lit les numérateurs)' },
                 { value: 'numerateur', label: 'Le numérateur (on lit les dénominateurs)' },
@@ -434,6 +423,9 @@ export const fracFacteurGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const p = params || {};
+        const marche = marcheAuRang(ctx.index ?? 0, marchesCochees(params, MARCHES_FACTEUR),
+            totalDe(ctx, params), params);
+        const complete = marche === 'completer';
         const tirage = () => tirerEgalite(rng, {
             sens: p.sens || 'agrandir',
             trou: p.trou || 'les-deux',
@@ -458,9 +450,24 @@ export const fracFacteurGenerator = {
         const depart = e.gauche.n;
         const arrivee = e.droite.n;
         const divise = e.sens === 'simplifier';
-        const consigne = divise
-            ? 'Par combien faut-il DIVISER pour passer d\'une fraction à l\'autre ?'
-            : 'Par combien faut-il MULTIPLIER pour passer d\'une fraction à l\'autre ?';
+        // LA LIGNE QU'ON PEUT LIRE À LA SECONDE ÉTAPE : celle dont les deux
+        // nombres sont écrits. C'est elle qui donne le facteur ; l'autre est
+        // celle qu'on complète.
+        const lisible = e.trou === 'numerateur' ? 'du BAS' : 'du HAUT';
+        const litDe = e.trou === 'numerateur' ? e.gauche.d : e.gauche.n;
+        const litA = e.visible;
+        const manquant = e.reponse;
+        // LA CONSIGNE TIENT SUR UNE LIGNE ET DEMIE. « Écris sur les flèches par
+        // combien on DIVISE, puis complète la fraction » en prenait trois sur
+        // un plateau étroit, au-dessus d'une figure deux fois plus petite
+        // qu'elle : on lisait la consigne, pas l'égalité.
+        const consigne = complete
+            ? (divise
+                ? 'Écris sur les flèches par combien on DIVISE, puis complète.'
+                : 'Écris sur les flèches par combien on MULTIPLIE, puis complète.')
+            : (divise
+                ? 'Par combien faut-il DIVISER pour passer d\'une fraction à l\'autre ?'
+                : 'Par combien faut-il MULTIPLIER pour passer d\'une fraction à l\'autre ?');
         // SUR LE PAPIER, L'ÉGALITÉ RESTE TROUÉE. Rémy avait tranché pour la
         // fiche : « propose simple 3/2 = …/22, c'est tout. » Les arcs ne
         // s'impriment pas — la fiche n'a pas de figure, juste une ligne de
@@ -481,23 +488,64 @@ export const fracFacteurGenerator = {
                 // signe se transformaient en un SECOND trou à remplir, juste à
                 // côté de celui de la fraction. Deux trous pour une réponse.
                 papier: texte,
+                // L'ACTIVITÉ DESSINE LA FIGURE ELLE-MÊME — les cases doivent
+                // être cliquables — et elle a besoin de la consigne SEULE, sans
+                // l'égalité que `text` lui accole pour le carnet et la fiche.
+                consigne,
                 html: `<div class="game-question">${consigne}</div>`
-                    + egaliteFlechee(e.gauche, e.droite, divise ? '\u00f7' : '\u00d7')
+                    + egaliteFlecheeHtml({
+                        gauche: e.gauche, droite: e.droite,
+                        signe: divise ? '\u00f7' : '\u00d7',
+                        // À la seconde étape, la figure garde son trou : c'est
+                        // lui qu'on remplit une fois le facteur écrit.
+                        trou: complete ? e.trou : null
+                    })
             },
-            answer: e.facteur,
-            hints: [
-                'Les deux flèches portent le MÊME nombre : suis celle du haut.',
-                `En haut, on passe de ${depart} à ${arrivee}.`,
-                `${depart} ${divise ? '÷' : '×'} ${e.facteur} = ${arrivee}.`
-            ],
+            // LA RÉPONSE DE LA SECONDE ÉTAPE EST UN TRIPLET, et c'est voulu :
+            // les deux arcs ET le nombre. Écrire le bon nombre en bas avec un
+            // facteur faux sur les flèches, ou deux facteurs différents sur les
+            // deux arcs, ce n'est pas la même chose que d'avoir juste — et
+            // l'activité sait le dire.
+            answerKind: complete ? 'text' : 'numeric',
+            answer: complete ? `${e.facteur}/${e.facteur}/${manquant}` : e.facteur,
+            // SUR LE PAPIER, LES DEUX ÉTAPES POSENT LA MÊME QUESTION — et c'est
+            // nécessaire.
+            //
+            // La feuille n'a pas d'arc : les deux étapes y impriment la même
+            // ligne, « 3/2 = …/22 ». Si le corrigé donnait le facteur pour
+            // l'une et le nombre manquant pour l'autre, deux questions
+            // IDENTIQUES à l'œil auraient deux réponses différentes, et l'élève
+            // ne pourrait pas savoir laquelle on lui demande. La fiche s'en
+            // tient donc à sa consigne — « par combien faut-il multiplier ? » —
+            // et la seconde étape est un exercice d'écran, là où les flèches
+            // existent.
+            reponsePapier: complete ? String(e.facteur) : '',
+            hints: complete
+                ? [
+                    `Une seule ligne est écrite des deux côtés : celle ${lisible}.`,
+                    `On y passe de ${litDe} à ${litA} : c'est le nombre des deux flèches.`,
+                    `${litDe} ${divise ? '÷' : '×'} ${e.facteur} = ${litA}, `
+                        + `donc l'autre ligne suit le même chemin.`
+                ]
+                : [
+                    'Les deux flèches portent le MÊME nombre : suis celle du haut.',
+                    `En haut, on passe de ${depart} à ${arrivee}.`,
+                    `${depart} ${divise ? '÷' : '×'} ${e.facteur} = ${arrivee}.`
+                ],
             explanation: `En haut : ${depart} ${divise ? '÷' : '×'} ${e.facteur} = ${arrivee}. `
                 + `En bas : ${e.gauche.d} ${divise ? '÷' : '×'} ${e.facteur} = ${e.droite.d}. `
                 + `Les deux flèches portent le même nombre — c'est ce qui fait que la fraction `
                 + `ne change pas de valeur.`,
             // Diviser est le même raisonnement lu à l'envers, et c'est celui
             // qu'on rate : les nombres rapetissent, l'habitude dit « multiplie ».
-            difficulty: divise ? 3 : 2,
-            meta: { egalite: e, facteur: e.facteur, sens: e.sens, decimal: false }
+            // Compléter demande un geste de plus que lire.
+            difficulty: (divise ? 3 : 2) + (complete ? 1 : 0),
+            meta: {
+                marche, egalite: e, facteur: e.facteur, sens: e.sens, decimal: false,
+                // Ce dont l'activité a besoin pour dessiner et pour juger.
+                gauche: e.gauche, droite: e.droite, trou: e.trou,
+                manquant, signe: divise ? '\u00f7' : '\u00d7', complete
+            }
         });
     }
 };

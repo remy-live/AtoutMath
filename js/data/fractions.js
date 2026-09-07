@@ -151,7 +151,11 @@ export const fractionsExercises = [
         consignePapier: 'Par combien faut-il multiplier (ou diviser) pour passer d\'une '
             + 'fraction à l\'autre ?',
         colonnesPapier: 4,
-        generatorId: 'frac.facteur', activityId: 'numpad',
+        // L'ÉGALITÉ FLÉCHÉE, PAS LE PAVÉ. Rémy : « l'élève doit taper dans les
+        // cases des flèches ». Le pavé numérique posait la réponse dans un
+        // écran noir à côté de la figure ; ici le nombre s'écrit sur l'arc, à
+        // sa place, et la seconde étape n'ajoute qu'une case de plus.
+        generatorId: 'frac.facteur', activityId: 'egalite-fleches',
         // On multiplie d'abord, et seulement : c'est le geste dont on se sert
         // pour mettre au même dénominateur. La division est le même
         // raisonnement lu à l'envers, et elle attend d'être demandée.

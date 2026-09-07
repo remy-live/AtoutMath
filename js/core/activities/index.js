@@ -629,6 +629,20 @@ registerActivity({
     load: () => import('./produitPose.js')
 });
 
+// ÉCRIRE LE FACTEUR SUR LES FLÈCHES. Rémy : « on laisse les flèches, l'élève
+// doit taper dans les cases des flèches par quoi il doit diviser ou multiplier
+// et après on met la réponse ». La figure devient la copie : le nombre s'écrit
+// là où il s'écrit au cahier, sur l'arc, et non dans un écran à côté.
+registerActivity({
+    id: 'egalite-fleches',
+    unite: 'égalité',
+    label: 'Écrire le facteur sur les flèches',
+    accepts: ['numeric', 'text'],
+    requiresMeta: ['facteur'],
+    supports: { timed: true, autonomous: false, demo: true },
+    load: () => import('./egaliteFleches.js')
+});
+
 registerActivity({
     id: 'fraction-somme',
     unite: 'calcul',

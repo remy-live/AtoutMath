@@ -135,7 +135,8 @@ test('PAR COMBIEN — la réponse est le FACTEUR, pas le nombre manquant', async
     // facteur, lui, ne s'obtient que d'une façon.
     const { fracFacteurGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
     for (let i = 0; i < 120; i++) {
-        const it = G.generate({ sens: 'les-deux' }, { rng: makeRng('pc' + i), index: i });
+        const it = G.generate({ sens: 'les-deux', marches: ['facteur'] },
+            { rng: makeRng('pc' + i), index: i });
         const e = it.meta.egalite;
         assert.equal(it.answer, e.facteur);
         // La réponse n'est JAMAIS le nombre manquant : ce serait le même
@@ -196,11 +197,89 @@ test('LE FACTEUR N\'EST JAMAIS DÉJÀ ÉCRIT DANS L\'ÉGALITÉ', async () => {
 test('L\'INDICE MONTRE LA LIGNE À LIRE, il ne donne pas le résultat d\'emblée', async () => {
     const { fracFacteurGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
     for (let i = 0; i < 30; i++) {
-        const it = G.generate({ sens: 'agrandir' }, { rng: makeRng('h' + i), index: i });
+        const it = G.generate({ sens: 'agrandir', marches: ['facteur'] },
+            { rng: makeRng('h' + i), index: i });
         assert.equal(it.hints.length, 3);
         // Le premier indice ne contient pas la réponse : il dit OÙ regarder.
         assert.doesNotMatch(it.hints[0], new RegExp(`\\b${it.answer}\\b`));
         assert.match(it.hints[0], /haut/);
+    }
+});
+
+// --- Par combien, PUIS complète ------------------------------------------------
+//
+// Rémy : « il faudrait rajouter une étape, celle de compléter le numérateur et
+// le dénominateur. On laisse les flèches, l'élève doit taper dans les cases des
+// flèches par quoi il doit diviser ou multiplier, et après on met la réponse. »
+
+test('LA SECONDE ÉTAPE DEMANDE LES DEUX FLÈCHES ET LE NOMBRE QUI MANQUE', async () => {
+    const { fracFacteurGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
+    for (let i = 0; i < 120; i++) {
+        const it = G.generate({ sens: 'les-deux', marches: ['completer'] },
+            { rng: makeRng('c2' + i), index: i });
+        const e = it.meta.egalite;
+        assert.equal(it.meta.marche, 'completer');
+        assert.equal(it.meta.complete, true);
+        assert.equal(it.answerKind, 'text');
+        // Trois nombres : le facteur sur chaque flèche, puis le nombre manquant.
+        assert.equal(it.answer, `${e.facteur}/${e.facteur}/${e.reponse}`);
+        assert.equal(it.meta.manquant, e.reponse);
+        // La figure garde son trou : c'est lui qu'on remplit une fois le
+        // facteur écrit. Sans trou, il n'y aurait rien à compléter.
+        assert.match(it.prompt.html, /frac-fleches--saisie|fraction--trou/);
+        assert.ok(['numerateur', 'denominateur'].includes(it.meta.trou));
+    }
+});
+
+test('LES DEUX ÉTAPES DESSINENT LA MÊME FIGURE — un trou de plus, pas un autre écran', async () => {
+    const { fracFacteurGenerator: G, MARCHES_FACTEUR } =
+        await import('../js/core/generators/fractionsEquivalentes.js');
+    assert.equal(MARCHES_FACTEUR.length, 2);
+    const un = G.generate({ marches: ['facteur'] }, { rng: makeRng('f1'), index: 0 });
+    const deux = G.generate({ marches: ['completer'] }, { rng: makeRng('f1'), index: 0 });
+    // Les deux arcs, dans les deux cas.
+    [un, deux].forEach(it => {
+        assert.match(it.prompt.html, /fe-arc--haut/);
+        assert.match(it.prompt.html, /fe-arc--bas/);
+    });
+    // La première écrit l'égalité en entier ; la seconde en cache un nombre.
+    assert.doesNotMatch(un.prompt.html, /fraction--trou/);
+    assert.match(deux.prompt.html, /fraction--trou/);
+});
+
+test('LA FICHE POSE LA MÊME QUESTION AUX DEUX ÉTAPES', async () => {
+    // La feuille n'a pas d'arc : les deux étapes y impriment la même ligne. Si
+    // le corrigé donnait le facteur pour l'une et le nombre manquant pour
+    // l'autre, deux questions identiques à l'œil auraient deux réponses.
+    const { fracFacteurGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
+    for (let i = 0; i < 60; i++) {
+        const it = G.generate({ sens: 'les-deux' }, { rng: makeRng('fi' + i), index: i, total: 60 });
+        const attendu = it.reponsePapier || String(it.answer);
+        assert.equal(attendu, String(it.meta.facteur),
+            `${it.prompt.papier} : la fiche attend ${attendu}`);
+        // Et la ligne imprimée porte toujours un trou, jamais un « × … ».
+        assert.match(it.prompt.papier, /\?/);
+        assert.doesNotMatch(it.prompt.papier, /×|÷/);
+    }
+});
+
+test('LE DIAGNOSTIC DE LA SECONDE ÉTAPE NOMME LES TROIS FAUTES', async () => {
+    // Les trois fautes ne sont pas la même erreur : deux nombres différents sur
+    // les arcs, le même mais le mauvais, ou le bon facteur mal appliqué. C'est
+    // l'activité qui les nomme, et elle a besoin de tout cela dans `meta`.
+    const { fracFacteurGenerator: G } = await import('../js/core/generators/fractionsEquivalentes.js');
+    for (let i = 0; i < 40; i++) {
+        const it = G.generate({ sens: 'les-deux', marches: ['completer'] },
+            { rng: makeRng('d' + i), index: i });
+        const m = it.meta;
+        ['gauche', 'droite', 'trou', 'facteur', 'manquant', 'signe'].forEach(k => {
+            assert.ok(m[k] !== undefined, `meta.${k} manque`);
+        });
+        assert.ok(m.signe === '×' || m.signe === '÷', m.signe);
+        // Le nombre manquant se déduit du facteur, dans le bon sens.
+        const de = m.trou === 'numerateur' ? m.gauche.n : m.gauche.d;
+        const attendu = m.sens === 'simplifier' ? de / m.facteur : de * m.facteur;
+        assert.equal(m.manquant, attendu, `${de} ${m.signe} ${m.facteur}`);
     }
 });
 

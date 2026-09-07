@@ -123,6 +123,80 @@ export function tirerEgalite(rng, opts = {}) {
     };
 }
 
+// --- LA FIGURE : L'ÉGALITÉ ET SES DEUX FLÈCHES -------------------------------
+//
+// Rémy, sur « Par Combien ? » : « mets une flèche entre les deux numérateurs et
+// une flèche entre les deux dénominateurs ». Puis, pour l'étape suivante :
+// « on laisse les flèches, l'élève doit taper dans les cases des flèches par
+// quoi il doit diviser ou multiplier et après on met la réponse ».
+//
+// LA MÊME FIGURE SERT DEUX FOIS, et c'est pour cela qu'elle vit ici plutôt que
+// dans un générateur : à la marche « par combien », l'élève écrit le facteur
+// sur les deux arcs ; à la marche « complète », il écrit en plus le nombre qui
+// manque. Une seule figure, deux jeux de cases — le dessin ne change pas entre
+// les deux étapes, ce qui est exactement ce qu'on veut faire sentir.
+//
+// LES ARCS SONT EN CSS, pas en SVG : ils s'étirent avec la largeur de
+// l'égalité, qui dépend du nombre de chiffres. Un SVG étiré déformerait sa
+// pointe ; une bordure arrondie s'étire sans rien déformer, et la pointe est
+// posée à part, à taille fixe, à l'extrémité droite.
+
+/** Une fraction en colonne, telle qu'on l'écrit au tableau. */
+export function fractionHtml(n, d, classe = '') {
+    return `<span class="fraction ${classe}"><span class="fraction-num">${n}</span>`
+        + `<span class="fraction-den">${d}</span></span>`;
+}
+
+/**
+ * L'ÉGALITÉ FLÉCHÉE.
+ *
+ * @param {Object} o
+ * @param {{n:number,d:number}} o.gauche
+ * @param {{n:number,d:number}} o.droite
+ * @param {string} o.signe        « × » ou « ÷ »
+ * @param {?string} o.trou        'numerateur' | 'denominateur' | null — le côté
+ *                                caché à droite. Sans lui, l'égalité est écrite
+ *                                en entier.
+ * @param {?Object} o.cases       De quoi rendre les cases REMPLISSABLES :
+ *                                `{ haut, bas, trou, actif }`. Chaque valeur est
+ *                                ce qui est déjà tapé. Absent : la figure se lit,
+ *                                elle ne s'écrit pas, et porte « ? ».
+ */
+export function egaliteFlecheeHtml({ gauche, droite, signe, trou = null, cases = null }) {
+    const vide = '<span class="frac-trou" aria-label="nombre manquant">?</span>';
+    const caseHtml = (quoi, etiquette) => `<button type="button"
+        class="fe-case${cases.actif === quoi ? ' fe-case--actif' : ''}"
+        data-case="${quoi}" aria-label="${etiquette}">${cases[quoi] || ''}</button>`;
+
+    const arc = (ou) => {
+        const dedans = cases
+            ? `<span class="fe-signe">${signe}</span>`
+                + caseHtml(ou, `par combien on ${signe === '\u00f7' ? 'divise' : 'multiplie'}`)
+            : `${signe} ?`;
+        return `<span class="fe-arc fe-arc--${ou}"${cases ? '' : ' aria-hidden="true"'}>`
+            + `<span class="fe-arc-mot">${dedans}</span></span>`;
+    };
+
+    // À DROITE, TROIS ÉTATS POUR UN MÊME NOMBRE : écrit, caché derrière un « ? »,
+    // ou à écrire dans une case. C'est le seul endroit où les deux marches
+    // diffèrent vraiment.
+    const nombre = (cle) => {
+        if (trou !== cle) return droite[cle === 'numerateur' ? 'n' : 'd'];
+        if (!cases) return vide;
+        return caseHtml('trou', cle === 'numerateur' ? 'numérateur manquant' : 'dénominateur manquant');
+    };
+    const aDroite = fractionHtml(nombre('numerateur'), nombre('denominateur'),
+        trou ? 'fraction--trou' : '');
+
+    return `<div class="frac-fleches${cases ? ' frac-fleches--saisie' : ''}">
+                ${arc('haut')}
+                ${fractionHtml(gauche.n, gauche.d)}
+                <span class="frac-signe">=</span>
+                ${aDroite}
+                ${arc('bas')}
+            </div>`;
+}
+
 /** Le raisonnement, dans l'ordre où on l'écrit au tableau. */
 export function etapesEgalite(e) {
     const deDroiteAGauche = e.sens === 'simplifier';
