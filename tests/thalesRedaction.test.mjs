@@ -302,3 +302,42 @@ test('LA FIGURE DE L\'ÉCRAN ET CELLE DU PAPIER SONT LA MÊME', () => {
     });
     assert.ok(svg.includes(`viewBox="${e.vue.x0.toFixed(1)} ${e.vue.y0.toFixed(1)}`));
 });
+
+// --- LES SIX CASES SE TOUCHENT ---------------------------------------------
+//
+// Rémy, capture d'un téléphone à l'appui : « Quand on clique sur le téléphone
+// ça ouvre le clavier alors que là on pourrait juste cliquer et appuyer sur la
+// longueur ».
+//
+// Les cases étaient des champs de saisie. Sur un téléphone, toucher un champ
+// ouvre le clavier du système, qui recouvre la moitié basse de l'écran — donc
+// les huit étiquettes qu'il faut choisir ET le bouton « Vérifier l'égalité ».
+// Le clavier cachait la réponse qu'on venait lui demander.
+//
+// Un bouton, lui, n'ouvre aucun clavier et reçoit quand même les touches d'un
+// vrai clavier : « il faudrait aussi pouvoir taper l'égalité » — l'autre
+// demande de Rémy, plus ancienne — tient toujours au bureau.
+test('AUCUNE CASE DE L\'ÉGALITÉ N\'EST UN CHAMP DE SAISIE', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../js/games/thalesRedaction.js', import.meta.url), 'utf8');
+
+    // La case de l'égalité : un bouton, et rien d'autre.
+    const trou = src.slice(src.indexOf('    trouHtml('), src.indexOf('    htmlDonc()'));
+    assert.ok(trou.length > 100, 'trouHtml() n\'a pas été retrouvé');
+    assert.match(trou, /<button type="button" class="thr-case/);
+    assert.ok(!/<input/.test(trou), 'la case de l\'égalité est encore un champ');
+    assert.ok(!/data-case="\$\{[^}]*\}"[^>]*inputmode/.test(src),
+        'une case de l\'égalité porte encore un inputmode');
+
+    // Aucun <input data-case> nulle part : c'est la garantie qui compte, le
+    // clavier du téléphone ne s'ouvre que sur un champ.
+    assert.ok(!/<input[^>]*data-case/.test(src), 'il reste un champ data-case');
+
+    // Le clavier d'un vrai ordinateur, lui, reste servi.
+    assert.match(src, /el\.onkeydown/, 'les cases n\'écoutent plus le clavier');
+    assert.match(src, /\[a-zA-Z\]/, 'les lettres tapées ne sont plus lues');
+
+    // Et la consigne dit le geste qu'on attend.
+    assert.match(src, /touche une case, puis la longueur/,
+        'la consigne parle encore de taper');
+});

@@ -132,6 +132,35 @@ class ThalesRedaction extends BaseGame {
                 }
                 .thr-case:focus { outline: none; border-color: var(--primary);
                     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent); }
+                /* --- LES SIX CASES DE L'ÉGALITÉ SE TOUCHENT ------------------
+                   Rémy, capture d'un téléphone à l'appui : « Quand on clique
+                   sur le téléphone ça ouvre le clavier alors que là on pourrait
+                   juste cliquer et appuyer sur la longueur ».
+                   Elles étaient des champs de saisie. Sur un téléphone, toucher
+                   un champ ouvre le clavier du système, qui recouvre la moitié
+                   basse de l'écran — c'est-à-dire EXACTEMENT les huit étiquettes
+                   AD, AE, DE, AC, AB, BC, CD, BE qu'il faut choisir, et le
+                   bouton « Vérifier l'égalité ». Le clavier cachait la réponse
+                   qu'on venait lui demander.
+                   Et il ne servait à rien : ce qu'on apprend ici n'est pas
+                   d'écrire « AD », c'est de savoir QUELLE longueur va sur
+                   QUELLE ligne. Une case est donc un bouton : on la touche, on
+                   touche la longueur, elle s'écrit dedans. */
+                .thr-case--trou {
+                    cursor: pointer; min-height: 38px; line-height: 1.2;
+                    display: flex; align-items: center; justify-content: center;
+                }
+                .thr-case--trou:hover { border-color: var(--primary); }
+                /* LA CASE VISÉE SE VOIT DE LOIN. C'est elle qui recevra la
+                   prochaine étiquette : sans repère, on touche une longueur et
+                   l'on ne sait pas où elle est allée. */
+                .thr-case--vise {
+                    border-color: var(--primary);
+                    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+                }
+                /* Une case vide garde sa hauteur : la barre de fraction ne doit
+                   pas monter et descendre au fil du remplissage. */
+                .thr-case--trou:empty::after { content: ' '; }
                 .thr-egal { font-weight: 800; font-size: 1.1rem; }
                 .thr-palette {
                     display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;
@@ -220,6 +249,7 @@ class ThalesRedaction extends BaseGame {
         this.chiffres = null;
         this.chiffresEcrits = null;
         this.saisie = [];
+        this.focus = 0;
         this.phase = 'sais';
         this.fautes = 0;
         this.dessiner();
@@ -236,6 +266,7 @@ class ThalesRedaction extends BaseGame {
         this.chiffres = null;
         this.chiffresEcrits = null;
         this.saisie = [];
+        this.focus = 0;
         this.phase = 'sais';
         this.dessiner();
         this.note('On reprend au début de la rédaction.');
@@ -343,10 +374,7 @@ class ThalesRedaction extends BaseGame {
                     ? `<div class="thr-ligne">${egaliteEnColonnes(this.chiffresEcrits)}</div>` : '');
         }
         const frac = (a, b) => `<div class="thr-frac">
-            <input class="thr-case" data-case="${a}" maxlength="2" autocomplete="off"
-                inputmode="text" aria-label="numérateur"><hr>
-            <input class="thr-case" data-case="${b}" maxlength="2" autocomplete="off"
-                inputmode="text" aria-label="dénominateur"></div>`;
+            ${this.trouHtml(a, 'numérateur')}<hr>${this.trouHtml(b, 'dénominateur')}</div>`;
         return `<div class="thr-ligne">d'après le théorème de Thalès :</div>
             <div class="thr-eg">${frac(0, 1)}<span class="thr-egal">=</span>${frac(2, 3)}
                 <span class="thr-egal">=</span>${frac(4, 5)}</div>
@@ -356,6 +384,19 @@ class ThalesRedaction extends BaseGame {
                 <button type="button" class="thr-btn thr-btn--fort" data-verif>Vérifier l'égalité</button>
                 <button type="button" class="thr-btn" data-vider>Effacer</button>
             </div>`;
+    }
+
+    /**
+     * UNE CASE DE L'ÉGALITÉ — un bouton, pas un champ. Voir le commentaire de
+     * `.thr-case--trou` dans la feuille de style : sur un téléphone, un champ
+     * ouvre le clavier du système, et le clavier recouvre les étiquettes.
+     */
+    trouHtml(i, quoi) {
+        const v = (this.saisie || [])[i] || '';
+        const vise = this.focus === i;
+        return `<button type="button" class="thr-case thr-case--trou`
+            + `${vise ? ' thr-case--vise' : ''}" data-case="${i}"`
+            + ` aria-label="${quoi}${v ? ` : ${v}` : ', à remplir'}">${v}</button>`;
     }
 
     htmlDonc() {
@@ -387,17 +428,72 @@ class ThalesRedaction extends BaseGame {
         this.copieEl.querySelectorAll('[data-hyp]').forEach(b => {
             b.onclick = () => this.poserHypothese(Number(b.dataset.hyp), b);
         });
-        const cases = [...this.copieEl.querySelectorAll('[data-case]')];
-        cases.forEach((el, i) => {
-            el.value = (this.saisie || [])[Number(el.dataset.case)] || '';
-            el.onfocus = () => { this.focus = Number(el.dataset.case); };
-            el.oninput = () => {
+        // TOUCHER UNE CASE LA VISE ; la retoucher quand elle est déjà visée et
+        // pleine la vide. C'est le seul geste d'effacement dont on ait besoin
+        // au doigt : « Effacer » vide les six d'un coup, et corriger UNE case
+        // demandait jusque-là un clavier.
+        this.copieEl.querySelectorAll('[data-case]').forEach(el => {
+            el.onclick = () => {
+                const i = Number(el.dataset.case);
+                if (this.focus === i && (this.saisie || [])[i]) {
+                    const s = (this.saisie || []).slice();
+                    s[i] = '';
+                    this.saisie = s;
+                } else {
+                    this.focus = i;
+                }
+                // LE REDESSIN EMPORTE LE BOUTON qu'on vient de toucher, et le
+                // focus avec lui : sans cette ligne, la case visée n'entendait
+                // plus le clavier, et « taper l'égalité » ne marchait plus dès
+                // qu'on avait pointé une case.
+                this.rendreLeFocus = true;
+                this.dessinerCopie();
+            };
+            // ON PEUT TOUJOURS TAPER L'ÉGALITÉ — Rémy le demandait déjà : « il
+            // faudrait aussi pouvoir taper l'égalité ». Un bouton n'ouvre pas
+            // le clavier du téléphone, mais il reçoit les touches d'un vrai
+            // clavier : au bureau, rien n'est perdu. Deux lettres remplissent
+            // la case et la main passe au trou suivant, comme avant.
+            el.onkeydown = (e) => {
+                const i = Number(el.dataset.case);
                 this.lireCases();
-                // Une case pleine passe la main à la suivante : on écrit une
-                // égalité d'un trait, sans repointer six fois.
-                if (el.value.length >= 2 && cases[i + 1]) cases[i + 1].focus();
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                    if (!this.saisie[i]) return;
+                    const t = this.saisie.slice(); t[i] = '';
+                    this.saisie = t; this.rendreLeFocus = true;
+                    e.preventDefault(); return this.dessinerCopie();
+                }
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    this.focus = Math.max(0, Math.min(5, i + (e.key === 'ArrowRight' ? 1 : -1)));
+                    this.rendreLeFocus = true;
+                    e.preventDefault(); return this.dessinerCopie();
+                }
+                if (!/^[a-zA-Z]$/.test(e.key)) return;
+                const t = this.saisie.slice();
+                const deja = t[i] || '';
+                // Une case ne tient que deux lettres : la troisième recommence.
+                t[i] = (deja.length >= 2 ? '' : deja) + e.key.toUpperCase();
+                this.saisie = t;
+                if (t[i].length >= 2) {
+                    const apres = t.findIndex((x, k) => k > i && !x);
+                    const nimporte = t.findIndex(x => !x);
+                    this.focus = apres >= 0 ? apres : (nimporte >= 0 ? nimporte : i);
+                } else {
+                    this.focus = i;
+                }
+                this.rendreLeFocus = true;
+                e.preventDefault();
+                this.dessinerCopie();
             };
         });
+        // LE FOCUS SUIT LA CASE VISÉE, mais SEULEMENT quand c'est le clavier qui
+        // vient de jouer. Le reprendre à chaque redessin l'arracherait au bouton
+        // « Vérifier » que l'élève vient d'atteindre par la tabulation.
+        if (this.rendreLeFocus) {
+            this.rendreLeFocus = false;
+            const vise = this.copieEl.querySelector('.thr-case--vise');
+            if (vise) vise.focus();
+        }
         const chiffres = [...this.copieEl.querySelectorAll('[data-chiffre]')];
         chiffres.forEach((el, i) => {
             el.value = (this.chiffres || [])[Number(el.dataset.chiffre)] || '';
@@ -415,7 +511,7 @@ class ThalesRedaction extends BaseGame {
         const verif = this.copieEl.querySelector('[data-verif]');
         if (verif) verif.onclick = () => this.verifierOr();
         const vider = this.copieEl.querySelector('[data-vider]');
-        if (vider) vider.onclick = () => { this.saisie = []; this.dessinerCopie(); };
+        if (vider) vider.onclick = () => { this.saisie = []; this.focus = 0; this.dessinerCopie(); };
         this.copieEl.querySelectorAll('[data-iso]').forEach(b => {
             b.onclick = () => this.choisirIsolement(Number(b.dataset.iso), b);
         });
@@ -427,14 +523,17 @@ class ThalesRedaction extends BaseGame {
         }
     }
 
+    /**
+     * LES SIX CASES, NORMALISÉES. Elles ne se lisent plus dans le DOM : depuis
+     * qu'une case est un bouton, `this.saisie` EST la vérité, et le DOM n'en
+     * est que l'image. On se contente donc de garantir la longueur — six cases,
+     * toujours, même quand rien n'a encore été posé.
+     */
     lireCases() {
-        this.saisie = [0, 1, 2, 3, 4, 5].map(i => {
-            const el = this.copieEl.querySelector(`[data-case="${i}"]`);
-            return el ? el.value.trim().toUpperCase() : '';
-        });
+        this.saisie = [0, 1, 2, 3, 4, 5].map(i => (this.saisie || [])[i] || '');
     }
 
-    /** Une étiquette touchée remplit la case au curseur, puis avance. */
+    /** Une étiquette touchée remplit la case visée, puis vise le prochain trou. */
     poserEtiquette(mot) {
         this.lireCases();
         const s = this.saisie.slice();
@@ -442,9 +541,13 @@ class ThalesRedaction extends BaseGame {
         if (i < 0) i = 0;
         s[i] = mot;
         this.saisie = s;
+        // ON VISE LE PROCHAIN TROU, pas la case d'à côté. Après avoir rempli la
+        // case 2 alors que la 3 est déjà écrite, viser la 3 ferait écraser une
+        // réponse juste au coup suivant.
+        const apres = s.findIndex((x, k) => k > i && !x);
+        const nimporte = s.findIndex(x => !x);
+        this.focus = apres >= 0 ? apres : (nimporte >= 0 ? nimporte : i);
         this.dessinerCopie();
-        const suivant = this.copieEl.querySelector(`[data-case="${Math.min(5, i + 1)}"]`);
-        if (suivant) suivant.focus();
     }
 
     poserHypothese(i, bouton) {
@@ -465,9 +568,10 @@ class ThalesRedaction extends BaseGame {
         }
         this.phase = 'or';
         this.saisie = [];
+        this.focus = 0;
         this.dessinerCopie();
         this.note('Les deux hypothèses y sont. Écris maintenant l\'égalité des trois '
-            + 'rapports : tape les longueurs, ou touche les étiquettes.');
+            + 'rapports : touche une case, puis la longueur qui va dedans.');
     }
 
     verifierOr() {
