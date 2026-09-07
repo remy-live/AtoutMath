@@ -262,12 +262,19 @@ test('sur la feuille, la phrase à compléter porte un VRAI trou', () => {
 
 test('LA FEUILLE NE POSE PAS LES MÊMES QUESTIONS QUE L\'ÉCRAN', () => {
     // « Question trop triviale » : sur une feuille qu'on emporte, lire une
-    // égalité déjà écrite ne demande rien. Le mélange du papier garde ce qui
-    // demande un calcul ou un raisonnement.
-    const compter = (papier) => {
+    // égalité déjà écrite ne demande rien. Le mélange du papier PÈSE donc sur
+    // ce qui demande un calcul ou un raisonnement.
+    //
+    // IL NE LES EXCLUT PLUS. Le papier ne tirait ni « lire une égalité » ni le
+    // tableau à un trou, quoi qu'on règle. Depuis que le professeur COCHE ce
+    // qu'il veut, une case cochée qui ne donne jamais rien est un réglage qui
+    // ment : les deux sortes légères sont devenues rares au lieu d'être
+    // absentes — mesuré, 9 % et 10 % du papier contre 11 % chacune à l'écran —
+    // et il suffit de les décocher pour ne plus les voir du tout.
+    const compter = (papier, quoi) => {
         const vus = {};
-        for (let i = 0; i < 300; i++) {
-            const it = gen().generate({ quoi: 'melange' },
+        for (let i = 0; i < 400; i++) {
+            const it = gen().generate({ quoi },
                 { rng: makeRng(`mel-${papier}-${i}`), index: i, papier });
             vus[it.meta.quoi] = (vus[it.meta.quoi] || 0) + 1;
         }
@@ -275,14 +282,18 @@ test('LA FEUILLE NE POSE PAS LES MÊMES QUESTIONS QUE L\'ÉCRAN', () => {
     };
     const ecran = compter(false);
     const papier = compter(true);
-    assert.ok(!papier.tableau,
-        'le tableau à un trou est une image habillée en tableau : pas sur la feuille');
-    assert.ok(ecran.tableau > 0, 'à l\'écran, il a toute sa place');
     // Le gros du papier demande un calcul : tableau complet, antécédent, image.
     const durs = (v) => (v['tableau-complet'] || 0) + (v.antecedent || 0)
         + (v['phrase-antecedent'] || 0);
     assert.ok(durs(papier) > durs(ecran),
         `la feuille devrait être plus exigeante : ${JSON.stringify(papier)}`);
+    // Les légères restent minoritaires sur la feuille.
+    const leger = (v) => (v.tableau || 0) + (v.lire || 0);
+    assert.ok(leger(papier) < 400 * 0.25, `trop de questions légères : ${JSON.stringify(papier)}`);
+    assert.ok(leger(papier) < leger(ecran), 'la feuille devrait en poser moins que l\'écran');
+    // Et décochées, elles disparaissent pour de bon.
+    const sansLeger = compter(true, ['phrase', 'image', 'programme', 'antecedent', 'tableau-complet']);
+    assert.equal(leger(sansLeger), 0, JSON.stringify(sansLeger));
 });
 
 // --- LA PHRASE À DEUX TROUS -------------------------------------------------
@@ -378,5 +389,66 @@ test('CHAQUE ÉTAPE DU PROGRAMME A SA LIGNE, à l\'écran comme sur la feuille',
         // Et la question reste HORS de la liste : ce n'est pas une étape.
         assert.ok(it.prompt.html.indexOf('</ol>') < it.prompt.html.indexOf('Quel résultat'),
             it.prompt.html);
+    }
+});
+
+// --- ON COCHE CE QU'ON VEUT --------------------------------------------------
+//
+// Rémy : « Pourquoi pour les fonctions je n'ai pas les cases à cocher pour
+// choisir ce que je veux ? »
+//
+// C'était un menu : une sorte à la fois, ou « Mélangé », c'est-à-dire les sept.
+// Entre les deux, rien — et c'est justement entre les deux qu'on enseigne.
+// « Calculer une image » et « chercher un antécédent » font la séance où l'on
+// oppose les deux sens de la marche ; « lire » et « compléter la phrase » font
+// celle du vocabulaire.
+test('« CE QU\'ON DEMANDE » SE COCHE, une sorte ou plusieurs', async () => {
+    const { SORTES, sortesDemandees } = await import('../js/core/generators/fonctions.js');
+    const gen = getGenerator('alg.fonctions');
+    const p = gen.params.find(x => x.id === 'quoi');
+
+    assert.equal(p.type, 'multiselect', 'le réglage n\'est pas une liste à cocher');
+    assert.ok(p.deroulant, 'sept phrases en pastilles au fil du texte : la liste doit se replier');
+    assert.deepEqual(p.options.map(o => o.value), SORTES);
+    // « Mélangé » n'est plus une option : tout coché VEUT DIRE mélangé.
+    assert.equal(p.options.some(o => o.value === 'melange'), false);
+    assert.deepEqual([...p.default].sort(), [...SORTES].sort());
+
+    // Ce qui arrive au générateur, remis au propre.
+    assert.deepEqual(sortesDemandees(['image', 'antecedent']), ['image', 'antecedent']);
+    assert.deepEqual(sortesDemandees('phrase'), ['phrase']);          // ancien réglage
+    assert.deepEqual(sortesDemandees('image,antecedent'), ['image', 'antecedent']);
+    assert.deepEqual(sortesDemandees(['image', 'image']), ['image']);  // pas de doublon
+    // Rien de coché, ou l'ancien « melange » : tout. Un exercice sans question
+    // n'existe pas, et une case oubliée ne doit pas rendre l'étape vide.
+    assert.deepEqual(sortesDemandees([]), SORTES);
+    assert.deepEqual(sortesDemandees('melange'), SORTES);
+    assert.deepEqual(sortesDemandees(undefined), SORTES);
+});
+
+test('LE GÉNÉRATEUR NE POSE QUE CE QUI EST COCHÉ, écran et feuille', async () => {
+    const { SORTES } = await import('../js/core/generators/fonctions.js');
+    const gen = getGenerator('alg.fonctions');
+    // « phrase-antecedent » est la phrase posée dans l'autre sens : c'est la
+    // même sorte, et le bilan la range déjà avec les antécédents.
+    const sorteDe = (it) => (it.meta.quoi === 'phrase-antecedent' ? 'phrase' : it.meta.quoi);
+
+    const essais = [['image'], ['antecedent'], ['image', 'antecedent'],
+        ['lire', 'phrase'], ['tableau'], ['tableau-complet', 'programme'], SORTES];
+    for (const choix of essais) {
+        for (const papier of [false, true]) {
+            const vus = new Set();
+            for (let i = 0; i < 120; i++) {
+                const it = gen.generate({ quoi: choix },
+                    { rng: makeRng(`c${i}${papier}`), papier });
+                vus.add(sorteDe(it));
+            }
+            [...vus].forEach(v => assert.ok(choix.includes(v),
+                `${papier ? 'feuille' : 'écran'} · coché ${choix.join('+')} : « ${v} » est sorti`));
+            // Et tout ce qui est coché finit par sortir : un réglage qui ne
+            // donne jamais l'une des sortes cochées ment au professeur.
+            choix.forEach(v => assert.ok(vus.has(v),
+                `${papier ? 'feuille' : 'écran'} · coché ${choix.join('+')} : « ${v} » n'est jamais sorti`));
+        }
     }
 });

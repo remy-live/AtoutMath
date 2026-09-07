@@ -86,10 +86,22 @@ export const fonctionsGenerator = {
     ecrit: true,
     params: [
         {
-            id: 'quoi', type: 'select', label: 'Ce qu\'on demande', default: 'melange',
-            aide: 'Lire ne demande aucun calcul : la réponse est dans l\'énoncé, il faut la lire '
-                + 'dans le bon sens. Chercher un antécédent est le plus dur : il faut remonter '
-                + 'le programme à l\'envers.',
+            // ON COCHE CE QU'ON VEUT — Rémy : « Pourquoi pour les fonctions je
+            // n'ai pas les cases à cocher pour choisir ce que je veux ? »
+            //
+            // C'était un menu : une sorte à la fois, ou « Mélangé », c'est-à
+            // -dire les sept. Entre les deux, rien — et c'est justement entre
+            // les deux qu'on enseigne. « Calculer une image » et « chercher un
+            // antécédent » forment la séance où l'on oppose les deux sens de la
+            // marche ; « lire » et « compléter la phrase » forment celle du
+            // vocabulaire. Le menu obligeait à choisir une seule chose ou tout.
+            id: 'quoi', type: 'multiselect', deroulant: true, tout: 'questions',
+            label: 'Ce qu\'on demande',
+            default: ['lire', 'phrase', 'image', 'programme', 'tableau',
+                'tableau-complet', 'antecedent'],
+            aide: 'Coche ce que la séance travaille ; tout coché, les questions alternent. '
+                + 'Lire ne demande aucun calcul ; chercher un antécédent est le plus dur, '
+                + 'il faut remonter le programme à l\'envers.',
             options: [
                 { value: 'lire', label: 'Lire une égalité (image ou antécédent ?)' },
                 { value: 'phrase', label: 'Compléter la phrase (… est l\'image de …)' },
@@ -97,8 +109,7 @@ export const fonctionsGenerator = {
                 { value: 'programme', label: 'Suivre un programme de calcul' },
                 { value: 'tableau', label: 'Compléter un tableau de valeurs' },
                 { value: 'tableau-complet', label: 'Remplir TOUT le tableau' },
-                { value: 'antecedent', label: 'Chercher un antécédent' },
-                { value: 'melange', label: 'Mélangé' }
+                { value: 'antecedent', label: 'Chercher un antécédent' }
             ]
         }
     ],
@@ -108,10 +119,26 @@ export const fonctionsGenerator = {
         const p = params || {};
         // POUR QUI ON ÉCRIT — et cela change le mélange, voir MELANGE ci-dessous.
         const papier = !!(ctx && ctx.papier);
-        const quoi = ['lire', 'phrase', 'image', 'programme', 'tableau', 'tableau-complet',
-            'antecedent'].includes(p.quoi)
-            ? p.quoi
-            : rng.pick(papier ? MELANGE_PAPIER : MELANGE_ECRAN);
+        // CE QUE LE PROFESSEUR A COCHÉ, puis le MÉLANGE réduit à ce qu'il a
+        // coché. Le mélange porte des poids — la phrase revient plus souvent
+        // que le tableau, voir MELANGE ci-dessous —, et ces poids restent
+        // valables sur un sous-ensemble : on filtre la liste pondérée au lieu
+        // de tirer à plat. Quand la sélection ne rencontre pas le mélange —
+        // « compléter un tableau » n'existe pas sur le papier —, on tire
+        // uniformément parmi ce qui a été coché, plutôt que de rendre une
+        // question que personne n'a demandée.
+        const demandes = sortesDemandees(p.quoi);
+        const pondere = (papier ? MELANGE_PAPIER : MELANGE_ECRAN)
+            .filter(k => demandes.includes(k));
+        // UNE CASE COCHÉE DOIT POUVOIR SORTIR. Le mélange ne porte pas les
+        // sept sortes : « lire une égalité » n'était pas dans celui du papier,
+        // et « compléter un tableau » n'y est toujours pas. Cocher l'une des
+        // deux ne donnait alors RIEN d'elle — un réglage qui ne fait rien ment
+        // au professeur. Ce qui manque au mélange y entre une fois : les poids
+        // continuent de valoir pour le reste, et la case cochée compte.
+        const oubliees = demandes.filter(k => !pondere.includes(k));
+        const melange = [...pondere, ...oubliees];
+        const quoi = rng.pick(melange.length ? melange : demandes);
 
         const a = rng.pick([2, 3, 4, 5, -2, -3, 2, 3]);
         const b = rng.pick([-9, -7, -5, -4, -3, -1, 1, 2, 3, 4, 5, 6, 8]);
@@ -127,6 +154,26 @@ export const fonctionsGenerator = {
         return itemImage(rng, a, b, f, ecrit);
     }
 };
+
+/** Les sept sortes de questions, dans l'ordre du réglage. */
+export const SORTES = ['lire', 'phrase', 'image', 'programme', 'tableau',
+    'tableau-complet', 'antecedent'];
+
+/**
+ * CE QUE LE PROFESSEUR A COCHÉ, remis au propre.
+ *
+ * On accepte une liste (le réglage d'aujourd'hui), une chaîne séparée par des
+ * virgules (ce que rend un formulaire), et une sorte seule (ce que les tests et
+ * les anciens parcours écrivent). Rien de coché — ou l'ancien « melange », qui
+ * n'est plus une sorte — vaut TOUT coché : un exercice sans question n'existe
+ * pas, et une case oubliée ne doit pas rendre l'étape vide.
+ */
+export function sortesDemandees(brut) {
+    const liste = (Array.isArray(brut) ? brut : String(brut ?? '').split(','))
+        .map(s => String(s).trim())
+        .filter(s => SORTES.includes(s));
+    return liste.length ? [...new Set(liste)] : [...SORTES];
+}
 
 /**
  * DEUX MÉLANGES, PARCE QU'UN ÉCRAN ET UNE FEUILLE NE POSENT PAS LA MÊME QUESTION.
@@ -147,9 +194,12 @@ export const fonctionsGenerator = {
  * l'antécédent (remonter le programme à l'envers), et la phrase — mais celle
  * dont le nombre manquant n'est écrit nulle part.
  *
- * Ce qui disparaît du papier : « lire une égalité », qui n'y demande rien, et
- * le tableau à UN trou, qui est une image habillée en tableau et que le tableau
- * complet fait quatre fois mieux.
+ * Ce qui pèse le moins sur le papier : « lire une égalité », qui n'y demande
+ * rien, et le tableau à UN trou, qui est une image habillée en tableau et que
+ * le tableau complet fait quatre fois mieux. Ils n'en sont plus EXCLUS pour
+ * autant : depuis que le professeur coche ce qu'il veut, une case cochée doit
+ * sortir — voir `oubliees` dans `generate`. Ce mélange dit les POIDS ; les
+ * cases disent QUOI.
  */
 const MELANGE_ECRAN = ['phrase', 'image', 'programme', 'tableau', 'antecedent',
     'image', 'phrase', 'tableau-complet'];

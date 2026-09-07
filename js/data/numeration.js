@@ -695,7 +695,7 @@ export const numerationExercises = [
         colonnesPapier: 1,
         lignesReponsePapier: 2,
         skills: ['alg.fonction.image', 'alg.fonction.antecedent'],
-        params: { quoi: 'melange' },
+        params: { quoi: ['lire', 'phrase', 'image', 'programme', 'tableau', 'tableau-complet', 'antecedent'] },
         motsClefs: ['fonction', 'image', 'antécédent', 'programme de calcul',
             'tableau de valeurs', 'notation'],
         tags: {
