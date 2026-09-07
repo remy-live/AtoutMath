@@ -1208,6 +1208,24 @@ export const geometrieExercises = [
         params: { combien: 8 },
         paramSchema: [
             {
+                // LES SYMBOLES SUR LES FACES. Rémy : « pour le patron on
+                // pourrait mettre les symboles sur toutes les faces, pas qu'une
+                // seule (mais au départ un seul) ». Une fois plié, un cube dont
+                // les six faces sont nommées se LIT — on tourne autour et l'on
+                // retrouve chaque carré ; pendant le dépliage, le symbole est
+                // la seule chose qu'on puisse suivre des yeux d'une face
+                // jusqu'à sa case.
+                id: 'symboles', type: 'select', label: 'Les symboles sur les faces',
+                default: 'progressif',
+                aide: 'Six symboles sur un patron qu\'on découvre, c\'est six choses à '
+                    + 'regarder avant d\'avoir compris qu\'il faut plier.',
+                options: [
+                    { value: 'progressif', label: 'Un seul d\'abord, puis les six', court: 'Progressif' },
+                    { value: 'un', label: 'Le carré marqué seulement', court: 'Un' },
+                    { value: 'tous', label: 'Les six, dès la première figure', court: 'Tous' }
+                ]
+            },
+            {
                 id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
                 label: 'Ce qu\'on demande',
                 default: ['reconnaitre', 'opposees'],

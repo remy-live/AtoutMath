@@ -41,7 +41,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import {
     FAMILLES, ORDRE_FAMILLES, CONSIGNES,
-    preparerSerie, plier, profil, arbrePliage
+    preparerSerie, plier, profil, arbrePliage, marquesDe, MARQUE
 } from '../core/patrons.js';
 import { makeRng } from '../core/ids.js';
 
@@ -101,7 +101,8 @@ export class Patrons extends BaseGame {
         this.rng = makeRng(this.params.graine);
         this.serie = preparerSerie(this.rng, {
             familles,
-            combien: Math.max(2, this.params.combien | 0 || 8)
+            combien: Math.max(2, this.params.combien | 0 || 8),
+            symboles: this.params.symboles || 'progressif'
         });
         this.rang = 0;
         this.plie = false;       // le pliage a-t-il été montré pour cette question ?
@@ -280,9 +281,20 @@ export class Patrons extends BaseGame {
                     --trait: 3px; outline-color: var(--danger, #c0392b);
                     background: color-mix(in srgb, var(--danger, #c0392b) 22%, #fff);
                 }
+                /* LE SYMBOLE D'UNE FACE. Assez gros pour se lire sur un cube
+                   qui tourne, assez discret pour ne pas manger le carré : un
+                   tiers du côté. Il ne prend pas les clics — c'est le CARRÉ
+                   qu'on désigne, pas son signe. */
                 .pa-marque {
                     font-weight: 800; color: var(--text-main);
-                    font-size: calc(var(--s) * .34); line-height: 1; pointer-events: none;
+                    font-size: calc(var(--s) * .3); line-height: 1; pointer-events: none;
+                    opacity: .7;
+                }
+                /* L'ÉTOILE EST LA QUESTION, les autres ne sont que des noms :
+                   elle se voit d'abord, et elle garde sa taille d'avant. */
+                .pa-marque--depart {
+                    font-size: calc(var(--s) * .34); opacity: 1;
+                    color: var(--primary, #4a6fd4);
                 }
                 .pa-outils { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto; }
                 .pa-btn {
@@ -322,6 +334,9 @@ export class Patrons extends BaseGame {
         const { faces, doublons } = plier(q.forme);
         this.doubles = new Set(doublons);
         this.faces = faces;
+        // Ce que porte chaque carré : le ★ tout seul sur la première figure,
+        // les six symboles ensuite. Voir `marquesDe` dans le noyau.
+        this.marques = marquesDe(q);
 
         // LE CARRÉ QUI RESTE POSÉ est le plus central : la figure dépliée tient
         // alors dans son cadre au lieu de partir dans un coin, et le cube fini
@@ -372,10 +387,20 @@ export class Patrons extends BaseGame {
         // sont posés, et la transition CSS fait le reste. Appliquer l'angle
         // dans le même souffle que la création ne montrerait qu'un cube déjà
         // fermé — c'est ce que faisait l'ancienne version, en couleurs.
+        // TOUT REDESSIN COUPE LA CHORÉGRAPHIE EN COURS, et il faut que ce soit
+        // ICI plutôt que dans `montrerLePli`.
+        //
+        // Le jeton n'avançait qu'au DÉPART d'une chorégraphie. En passant à la
+        // figure suivante — qui, elle, n'en lance aucune, puisqu'elle n'est pas
+        // encore pliée — celle de la figure précédente se croyait toujours
+        // vivante : son dernier temps repliait et RECOLORAIT le patron neuf.
+        // Mesuré à l'écran : la figure 2 arrivait déjà peinte, c'est-à-dire en
+        // donnant les faces opposées avant qu'on ait répondu.
+        const jeton = ++this.jetonPli;
         this.appliquerPli(false, true);
         if (this.plie) {
             requestAnimationFrame(() => requestAnimationFrame(() => {
-                if (this.mondeEl && this.mondeEl.isConnected) this.montrerLePli();
+                if (this.mondeEl && this.mondeEl.isConnected) this.montrerLePli(jeton);
             }));
         }
     }
@@ -404,8 +429,7 @@ export class Patrons extends BaseGame {
      * intérieur deux fois plus gras que le bord (voir la feuille de style) et
      * un pli trop rapide pour qu'on suive un carré des yeux.
      */
-    async montrerLePli() {
-        const jeton = ++this.jetonPli;
+    async montrerLePli(jeton) {
         const dors = (ms) => new Promise(ok => setTimeout(ok, ms));
         // La chorégraphie meurt avec sa question : changer de figure, revenir en
         // arrière ou fermer le jeu la coupe net, au lieu de la laisser jouer sur
@@ -441,8 +465,10 @@ export class Patrons extends BaseGame {
         if (q.famille === 'opposees' && !this.plie) classes.push('pa-face--cliquable');
         if (q.famille === 'opposees' && k === q.depart) classes.push('pa-face--depart');
         if (this.choisie === k) classes.push('pa-face--choisie');
-        const marque = (q.famille === 'opposees' && k === q.depart)
-            ? '<span class="pa-marque">★</span>' : '';
+        const sym = this.marques[k];
+        const marque = sym
+            ? `<span class="pa-marque${sym === MARQUE ? ' pa-marque--depart' : ''}">${sym}</span>`
+            : '';
         const petits = (arbre.enfants[k] || []).map(e =>
             this.faceHtml(e.cle, arbre, SENS[`${e.dx},${e.dy}`], q)).join('');
         return `<div class="${classes.join(' ')}" data-case="${k}">${marque}${petits}</div>`;
@@ -568,20 +594,25 @@ export class Patrons extends BaseGame {
         const juste = k === q.reponse;
         this.dessiner();
 
+        // LE SYMBOLE NOMME LA FACE, quand il y en a un. « Le ▲ est en face du
+        // ★ » se vérifie en tournant autour du cube ; « ces deux-là portent la
+        // même teinte » demande de retrouver lesquels étaient « ces deux-là ».
+        const nom = (c) => (this.marques[c] ? `le ${this.marques[c]}` : 'ce carré-là');
         if (juste) {
             this.onCorrectAnswer(null, COMPETENCE, {
                 questionText: `Quel carré se retrouve en face du carré marqué ? (bandes de ${q.profil})`,
                 expected: q.reponse, given: k, points: 8
             });
-            this.note('Exactement : ces deux-là portent la même teinte, ils se font face.', 'ok');
+            this.note(`Exactement : ${nom(k)} se retrouve en face du ${MARQUE}. `
+                + 'Ils portent la même teinte, ils se font face.', 'ok');
         } else {
             this.onWrongAnswer(null, {
                 concept: COMPETENCE,
                 questionText: `Quel carré se retrouve en face du carré marqué ? (bandes de ${q.profil})`,
                 input: k, expected: q.reponse, silencieux: true
             });
-            this.note('Pas celui-là. Les deux carrés de même teinte sont ceux qui se '
-                + 'font face : repère-les sur le pliage.', 'ko');
+            this.note(`Pas celui-là : c'est ${nom(q.reponse)}. Les deux carrés de même `
+                + 'teinte sont ceux qui se font face — repère-les sur le pliage.', 'ko');
         }
         this.suivant();
     }
@@ -649,7 +680,7 @@ export class Patrons extends BaseGame {
             if (q.famille === 'opposees') this.choisie = q.reponse;
             this.note(q.famille === 'reconnaitre'
                 ? (q.reponse ? 'C\'est un patron.' : 'Ce n\'en est pas un.')
-                : `La face opposée est ${q.reponse}.`, 'info');
+                : `La face opposée est ${this.marques[q.reponse] || q.reponse}.`, 'info');
             this.dessiner();
             return true;
         }

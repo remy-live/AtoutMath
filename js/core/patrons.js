@@ -309,9 +309,16 @@ export function difficulte(cellules) {
  * ne réponde « oui » cinq fois de suite — un élève qui repère le rythme cesse
  * de plier, et c'est plier qu'on veut.
  */
-export function preparerSerie(rng, { familles = ORDRE_FAMILLES, combien = 8 } = {}) {
+export function preparerSerie(rng, { familles = ORDRE_FAMILLES, combien = 8,
+    symboles = 'progressif' } = {}) {
     const actives = familles.length ? familles : ORDRE_FAMILLES;
     const questions = [];
+    // « Au départ un seul » : la première figure de chaque famille garde le
+    // marquage d'avant, les suivantes portent les six symboles. Voir
+    // `symbolesDe` plus haut.
+    const avecSymboles = (rangDansSaFamille) => (symboles === 'tous' ? true
+        : symboles === 'un' ? false
+            : rangDansSaFamille > 0);
 
     // LE PALIER DES ÉVIDENCES SERT UNE FOIS, PAS QUATRE.
     //
@@ -345,9 +352,10 @@ export function preparerSerie(rng, { familles = ORDRE_FAMILLES, combien = 8 } = 
             rng.shuffle([vrais[i % vrais.length], faux[i % faux.length]])
                 .forEach(f => suite.push(f));
         }
-        suite.slice(0, combienIci).forEach(forme => questions.push({
+        suite.slice(0, combienIci).forEach((forme, rang) => questions.push({
             famille: 'reconnaitre', forme: normaliser(forme),
-            reponse: plier(forme).ok, profil: profil(forme)
+            reponse: plier(forme).ok, profil: profil(forme),
+            symboles: avecSymboles(rang)
         }));
     }
 
@@ -360,12 +368,79 @@ export function preparerSerie(rng, { familles = ORDRE_FAMILLES, combien = 8 } = 
             const depart = rng.pick(cases);
             questions.push({
                 famille: 'opposees', forme, depart,
-                reponse: faceOpposee(forme, depart), profil: profil(forme)
+                reponse: faceOpposee(forme, depart), profil: profil(forme),
+                symboles: avecSymboles(i)
             });
         }
     }
 
     return questions;
+}
+
+// --- LES SYMBOLES DES FACES ---------------------------------------------------
+//
+// Rémy : « pour le patron, on pourrait mettre les symboles sur toutes les faces,
+// pas qu'une seule (mais au départ un seul) ».
+//
+// POURQUOI CELA CHANGE L'EXERCICE. Une fois plié, un cube dont les six faces
+// portent un symbole se LIT : « en face du ★, c'est le ▲ » se vérifie d'un coup
+// d'œil, on tourne autour et l'on retrouve chaque carré. Sans symboles, il
+// n'y a que des couleurs — qui disent quelles faces sont opposées, jamais
+// laquelle vient d'où. Et pendant le dépliage, un symbole est la seule chose
+// qu'on puisse SUIVRE des yeux d'une face jusqu'à sa case.
+//
+// MAIS PAS TOUT DE SUITE, et Rémy a raison de le préciser : six symboles sur un
+// patron qu'on découvre, c'est six choses à regarder avant d'avoir compris
+// qu'il faut plier. La première figure de chaque famille garde donc le marquage
+// d'avant — le ★ tout seul là où il y en avait un, rien là où il n'y en avait
+// pas —, et les suivantes portent les six.
+//
+// DES FORMES, PAS DES LETTRES. Un A et un V se confondent dès qu'une face est
+// vue de biais ou à l'envers ; un rond et un triangle, jamais. Ils s'impriment
+// aussi en noir et blanc, ce que six couleurs ne font pas.
+
+/** Le carré qu'on désigne dans « quelle face sera en face ? ». */
+export const MARQUE = '\u2605';                                   // ★
+
+/**
+ * Les cinq autres, plus une en réserve quand aucun carré n'est marqué.
+ *
+ * TOUS TIENNENT DANS UN MIROIR, et ce n'est pas un détail depuis qu'on tourne
+ * autour du cube : une face vue de derrière montre son symbole retourné. Un ▲
+ * retourné reste un ▲, un ♥ reste un ♥ ; un ▼ deviendrait un ▲, et deux faces
+ * porteraient le même signe selon d'où on les regarde. Pas de croix de refus
+ * non plus (✗) : sur un exercice où l'on répond juste ou faux, un carré marqué
+ * d'une croix se lit comme une correction.
+ */
+export const SYMBOLES = ['\u25cf', '\u25b2', '\u25a0', '\u25c6', '\u2665', '\u271a'];
+
+/**
+ * LE SYMBOLE DE CHAQUE CARRÉ, dans l'ordre de lecture de la figure.
+ *
+ * De haut en bas, de gauche à droite : c'est l'ordre où l'œil les rencontre, et
+ * celui qu'on dicterait à voix haute. Le carré marqué, s'il y en a un, garde
+ * son étoile et ne consomme pas de symbole.
+ *
+ * @param {Array<[number,number]>} forme
+ * @param {?string} depart - la case marquée, ou rien
+ * @returns {Record<string,string>} case → symbole
+ */
+export function symbolesDe(forme, depart = null) {
+    const out = {};
+    let i = 0;
+    forme.slice()
+        .sort((A, B) => (A[1] - B[1]) || (A[0] - B[0]))
+        .forEach(([x, y]) => {
+            const k = cle(x, y);
+            out[k] = (k === depart) ? MARQUE : SYMBOLES[i++];
+        });
+    return out;
+}
+
+/** Ce que porte chaque carré d'une question — le minimum, ou les six. */
+export function marquesDe(q) {
+    if (q.symboles) return symbolesDe(q.forme, q.famille === 'opposees' ? q.depart : null);
+    return q.famille === 'opposees' ? { [q.depart]: MARQUE } : {};
 }
 
 /**

@@ -15,7 +15,8 @@ import { makeRng } from '../js/core/ids.js';
 import {
     HEXOMINOS, PATRONS, FAUX, FAMILLES, ORDRE_FAMILLES, CONSIGNES,
     plier, faceOpposee, opposee, profil, difficulte, polyominos,
-    canonique, normaliser, preparerSerie, arbrePliage
+    canonique, normaliser, preparerSerie, arbrePliage,
+    SYMBOLES, MARQUE, symbolesDe, marquesDe
 } from '../js/core/patrons.js';
 
 const cle = ([x, y]) => `${x},${y}`;
@@ -323,4 +324,87 @@ test('UN SEUL TRAIT PAR ARÊTE — les carrés sont COLLÉS', () => {
     // décalerait les carrés les uns par rapport aux autres.
     assert.match(src, /outline:\s*var\(--trait\) solid/);
     assert.doesNotMatch(src, /\.pa-face \{[^}]*border:\s*var\(--trait\)/);
+});
+
+
+// --- LES SYMBOLES DES FACES ----------------------------------------------------
+//
+// Rémy : « pour le patron on pourrait mettre les symboles sur toutes les faces,
+// pas qu'une seule (mais au départ un seul) ».
+
+test('SIX SYMBOLES, UN PAR CARRÉ, ET L\'ÉTOILE SUR LE CARRÉ MARQUÉ', () => {
+    const forme = normaliser(CROIX);
+    const cases = forme.map(cle);
+    // Sans carré marqué : les six symboles, tous différents.
+    const sans = symbolesDe(forme);
+    assert.deepEqual(Object.keys(sans).sort(), cases.slice().sort());
+    assert.equal(new Set(Object.values(sans)).size, 6, 'deux carrés portent le même signe');
+    assert.equal(Object.values(sans).includes(MARQUE), false, 'l’étoile sans carré marqué');
+
+    // Avec : l'étoile prend sa place et ne consomme pas de symbole.
+    for (const depart of cases) {
+        const avec = symbolesDe(forme, depart);
+        assert.equal(avec[depart], MARQUE, `${depart} devrait porter l’étoile`);
+        assert.equal(new Set(Object.values(avec)).size, 6, `${depart} : un signe en double`);
+    }
+});
+
+test('LES SYMBOLES SE LISENT DANS UN MIROIR — le cube tourne', () => {
+    // Une face vue de derrière montre son symbole retourné. Un ▲ et un ▼
+    // deviendraient le même signe selon d'où on regarde, et deux faces
+    // porteraient alors le même nom.
+    const PIEGES = ['\u25bc', '\u25c0', '\u25b6', '\u25e2', '\u25e3', '\u25e4', '\u25e5'];
+    PIEGES.forEach(c => assert.equal(SYMBOLES.includes(c), false,
+        `${c} est le miroir d’un autre symbole`));
+    // Et aucune croix de refus : sur un exercice où l'on répond juste ou faux,
+    // un carré marqué d'une croix se lit comme une correction.
+    ['\u2717', '\u2718', '\u2716', '\u274c'].forEach(c =>
+        assert.equal(SYMBOLES.includes(c), false, `${c} se lit comme « faux »`));
+    assert.equal(SYMBOLES.length, 6);
+    assert.equal(new Set([...SYMBOLES, MARQUE]).size, 7);
+});
+
+test('AU DÉPART UN SEUL, ENSUITE LES SIX', () => {
+    // « mais au départ un seul » : la première figure de chaque famille garde
+    // le marquage d'avant — l'étoile toute seule là où il y en avait une, rien
+    // là où il n'y en avait pas.
+    const serie = preparerSerie(makeRng('sym'), {});
+    const premiers = {};
+    serie.forEach(q => {
+        if (premiers[q.famille] === undefined) {
+            premiers[q.famille] = true;
+            assert.equal(q.symboles, false, `${q.famille} : la première porte déjà les six`);
+            const m = marquesDe(q);
+            assert.equal(Object.keys(m).length, q.famille === 'opposees' ? 1 : 0,
+                `${q.famille} : ${Object.keys(m).length} marques sur la première figure`);
+            if (q.famille === 'opposees') assert.equal(m[q.depart], MARQUE);
+            return;
+        }
+        assert.equal(q.symboles, true, `${q.famille} : une suivante sans symboles`);
+        assert.equal(Object.keys(marquesDe(q)).length, 6);
+    });
+    assert.deepEqual(Object.keys(premiers).sort(), ['opposees', 'reconnaitre']);
+});
+
+test('LE RÉGLAGE FORCE LES DEUX EXTRÊMES', () => {
+    preparerSerie(makeRng('u'), { symboles: 'un' })
+        .forEach(q => assert.equal(q.symboles, false));
+    preparerSerie(makeRng('t'), { symboles: 'tous' }).forEach(q => {
+        assert.equal(q.symboles, true);
+        assert.equal(Object.keys(marquesDe(q)).length, 6);
+    });
+});
+
+test('LA CHORÉGRAPHIE MEURT AVEC SA FIGURE', () => {
+    // Le jeton n'avançait qu'au DÉPART d'une chorégraphie : en passant à la
+    // figure suivante — qui n'en lance aucune, n'étant pas encore pliée —
+    // celle d'avant se croyait vivante et repliait le patron neuf EN COULEURS,
+    // c'est-à-dire en donnant les faces opposées avant qu'on ait répondu.
+    // Mesuré à l'écran sur la figure 2. Le jeton avance donc à chaque redessin.
+    const src = readFileSync(new URL('../js/games/patrons.js', import.meta.url), 'utf8');
+    const dessine = src.slice(src.indexOf('    dessiner() {'), src.indexOf('    async montrerLePli'));
+    assert.match(dessine, /\+\+this\.jetonPli/,
+        'le redessin n’invalide plus la chorégraphie en cours');
+    assert.match(dessine, /montrerLePli\(jeton\)/, 'la chorégraphie ne reçoit plus son jeton');
+    assert.doesNotMatch(src, /async montrerLePli\(\)/, 'le jeton doit venir du redessin');
 });
