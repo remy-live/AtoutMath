@@ -223,19 +223,53 @@ export class ProgrammeConstruction extends BaseGame {
                     margin: 0 auto;
                 }
                 .pc-consigne b { color: var(--text-main); }
+                /* LES DEUX FIGURES RESTENT CÔTE À CÔTE, MÊME SUR UN TÉLÉPHONE.
+                   Rémy : « sur portable les dessins prennent trop de place, il
+                   faudrait pouvoir tout voir. » Mesuré sur un écran de
+                   393 × 852 : empilées, les deux cadres prenaient 481 pixels
+                   des 766 du plateau — soit les deux tiers — et la barre des
+                   phrases commençait à 853, c'est-à-dire SOUS l'écran. On
+                   n'écrivait donc pas le programme, on faisait défiler.
+
+                   Et les mettre côte à côte n'est pas un pis-aller : l'exercice
+                   consiste à COMPARER ce qu'on voulait et ce qu'on a tracé.
+                   Deux dessins l'un sous l'autre se comparent en faisant deux
+                   fois l'aller-retour ; côte à côte, d'un coup d'œil. On ne les
+                   empile plus qu'en dessous de 330 pixels, où une colonne ne
+                   tiendrait plus une figure lisible. */
                 .pc-figures { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 0 0 auto; }
-                @container (max-width: 460px) { .pc-figures { grid-template-columns: 1fr; } }
+                @container (max-width: 330px) { .pc-figures { grid-template-columns: 1fr; } }
                 .pc-cadre {
                     border: 1.5px solid var(--border-color, #d7dae3); border-radius: 12px;
                     background: var(--card-bg, #fff); padding: 6px; position: relative;
+                    /* Le cadre devient sa propre référence de largeur : c'est
+                       lui qui doit dire au dessin sa hauteur, pas la fenêtre. */
+                    container-type: inline-size;
                 }
                 .pc-cadre--but { border-style: dashed; }
                 .pc-cadre--ok { border-color: var(--success); }
+                /* L'ÉTIQUETTE TIENT SUR UNE LIGNE, quelle que soit la largeur du
+                   cadre. « Ce que ton programme trace » passait à deux lignes
+                   dans un cadre de 162 pixels — mesuré : 150 px de texte pour
+                   152 de place — et la seconde ligne retombait DANS le dessin.
+                   Elle rétrécit plutôt que de se replier : une étiquette est un
+                   nom, pas une phrase. */
                 .pc-etiq {
-                    position: absolute; top: -9px; left: 10px; padding: 0 6px; font-size: 11px;
+                    position: absolute; top: -9px; left: 10px; padding: 0 6px;
+                    font-size: min(11px, 6cqw); white-space: nowrap;
                     font-weight: 700; background: var(--card-bg, #fff); color: var(--text-muted);
                 }
-                .pc-svg { width: 100%; height: clamp(100px, 26vh, 250px); display: block; }
+                /* LA HAUTEUR SUIT LA LARGEUR DU CADRE, et plus la fenêtre.
+                   Le monde du dessin fait 100 sur 70 : un cadre de 155 pixels
+                   de large n'a besoin que de 108 de haut, et une hauteur de
+                   222 posée en « vh » lui donnait deux fois le nécessaire — du
+                   blanc au-dessus et au-dessous de la figure, pris sur la place
+                   du programme. Le plafond en « vh » reste, pour qu'un grand
+                   écran ne fabrique pas un dessin d'un demi-mètre. */
+                .pc-svg {
+                    width: 100%; display: block;
+                    height: min(clamp(90px, 26vh, 250px), 70cqw);
+                }
                 .pc-trait { stroke: var(--primary); stroke-width: 0.5; fill: none; stroke-linecap: round; }
                 .pc-trait--aide { stroke: var(--text-muted); stroke-width: 0.3; opacity: .55; }
                 /* LE CODAGE — angle droit, tirets d'égalité, chevrons du
@@ -444,7 +478,14 @@ export class ProgrammeConstruction extends BaseGame {
         else this.dessinerArbre(niv, lu, r);
     }
 
-    /** Les phrases posées, et celles qu'on peut encore poser. */
+    /**
+     * Les phrases posées, et celles qu'on peut encore poser.
+     *
+     * ON NE DIT PAS « À DROITE ». Sous 560 pixels la grille passe à une seule
+     * colonne et la banque tombe SOUS la zone d'écriture : sur le téléphone de
+     * l'élève, « choisis les phrases à droite » désignait le vide. « Dans la
+     * liste » est vrai dans les deux dispositions.
+     */
     dessinerComposition(niv) {
         const lignes = this.texte.split('\n').filter(l => l.trim());
         this.poseEl.className = `pc-pose${lignes.length ? '' : ' pc-pose--vide'}`;
@@ -455,8 +496,8 @@ export class ProgrammeConstruction extends BaseGame {
                     <span class="pc-posee-t">${enAttribut(l)}</span>
                     <span class="pc-posee-x" aria-hidden="true">✕</span>
                 </button>`).join('')
-            : '<span>Ton programme s\'écrit ici. Choisis les phrases à droite, '
-                + 'dans l\'ordre où il faut les faire.</span>';
+            : '<span>Ton programme s\'écrit ici. Choisis les phrases dans la '
+                + 'liste, dans l\'ordre où il faut les faire.</span>';
 
         // UNE PHRASE DÉJÀ POSÉE RESTE VISIBLE, ÉTEINTE. La retirer de la banque
         // ferait bouger toutes les autres sous le doigt à chaque clic, et
@@ -514,7 +555,7 @@ export class ProgrammeConstruction extends BaseGame {
                     </button>`;
             }).join('')
             : '<span>Ton programme s\'écrit ici, phrase après phrase. '
-                + 'Choisis les mots à droite.</span>';
+                + 'Choisis les mots dans la liste.</span>';
 
         const chemin = this.chemin || null;
         const b = branches(chemin, {
