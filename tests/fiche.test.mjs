@@ -1155,19 +1155,36 @@ test('blocs : UN RETOUR À LA LIGNE VOULU N\'EST PAS UNE COUPURE', () => {
         .map(q => Math.round(q.x))).size, 1, 'un trou coupé en deux ramène à une colonne');
 });
 
-test('blocs : LE NOMBRE DE COLONNES DEMANDÉ N\'EST PAS RABAISSÉ PAR GOÛT', () => {
-    // Vingt puissances à quatre colonnes : la moitié n'a pas la place d'écrire
-    // sa réponse au bout de la ligne, et toutes descendent alors sous leur
-    // énoncé. La feuille reste régulière et remplie ; elle est simplement plus
-    // dense que celle à trois colonnes que la règle automatique préférait.
-    // Rémy a relu la fiche et écrit « fais 4 colonnes par défaut » : c'est lui
-    // qui tranche cette question-là.
-    const qs = Array.from({ length: 20 }, (_, i) => ({ texte: `10⁻${i % 9} × 10⁸ =`, reponse: '10⁸' }));
-    const { pages } = composerBlocs([{ titre: 'Puissances', colonnes: 4, questions: qs }], {}, mesurer);
-    const xs = new Set(pages[0].items.filter(i => i.type === 'q').map(q => Math.round(q.x)));
-    assert.equal(xs.size, 4, 'quatre colonnes, comme demandé');
-    // « auto », lui, garde son arbitrage : il n'a personne pour trancher.
-    const auto = composerBlocs([{ titre: 'Puissances', questions: qs }], {}, mesurer);
-    assert.ok(new Set(auto.pages[0].items.filter(i => i.type === 'q')
-        .map(q => Math.round(q.x))).size <= 4);
+/** Les pointillés sont-ils AU BOUT de l'énoncé, ou sur la ligne du dessous ? */
+const surLaLigne = (q) => !!q.rep && q.rep.x > q.texteX + 1;
+
+test('blocs : LA RÉPONSE AU BOUT DE LA LIGNE PASSE AVANT LE NOMBRE DE COLONNES', () => {
+    // Quand il ne reste pas de quoi écrire derrière le « = », toutes les
+    // réponses descendent sous leur énoncé — la feuille reste régulière, mais
+    // les pointillés ne sont plus là où la main les cherche. Rémy, deux fois le
+    // même jour et sur deux fiches : « mets les pointillés après le = et pas à
+    // la ligne ». Une colonne de moins les y remet, et il n'en faut qu'une.
+    // Des énoncés de longueurs mêlées, comme sur une vraie fiche : à quatre
+    // colonnes, les longs n'ont plus la place et les courts l'ont encore.
+    const qs = Array.from({ length: 12 }, (_, i) => ({
+        texte: `9${'9'.repeat(i % 2 ? 11 : 8)} =`, reponse: '7'
+    }));
+    const { pages } = composerBlocs([{ titre: 'T', colonnes: 4, questions: qs }], {}, mesurer);
+    const items = pages[0].items.filter(i => i.type === 'q');
+    assert.equal(new Set(items.map(q => Math.round(q.x))).size, 3, 'une colonne de moins');
+    assert.ok(items.every(surLaLigne), 'et la réponse au bout de chaque ligne');
+});
+
+test('blocs : LA LONGUEUR DES POINTILLÉS SUIT LA RÉPONSE ATTENDUE', () => {
+    // Onze millimètres, c'est la place de « 137 » écrit à la main ; c'est une
+    // de trop pour « 7 ». Une cellule qui laisse huit millimètres derrière le
+    // « = » peut porter la réponse courte, et la renvoyer sous l'énoncé coûte
+    // une ligne à chaque question. La borne ne monte jamais au-dessus de
+    // `repMin` : elle ne fait que descendre, et pour les réponses courtes.
+    const pose = (reponse) => composerBlocs([{ titre: 'T', colonnes: 3,
+        questions: Array.from({ length: 9 }, () => ({ texte: 'Calcule 999999999 =', reponse })) }],
+    {}, mesurer).pages[0].items.filter(i => i.type === 'q');
+    // Le même énoncé, la même largeur de colonne : seule la réponse change.
+    assert.ok(pose('7').every(surLaLigne), 'une réponse courte tient au bout de la ligne');
+    assert.ok(pose('135 248').every(q => !surLaLigne(q)), 'une réponse longue descend');
 });

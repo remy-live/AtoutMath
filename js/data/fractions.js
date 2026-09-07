@@ -301,7 +301,7 @@ export const fractionsExercises = [
         id: 'frac-somme-posee', title: 'Poser une Addition de Fractions',
         cree: '2026-08-20',
         consignePapier: 'Mets au même dénominateur, puis calcule.',
-        colonnesPapier: 3,
+        colonnesPapier: 2,
         generatorId: 'frac.somme-progressive', activityId: 'fraction-somme',
         // « Pas besoin de simplifier dans un premier temps » : le résultat brut
         // suffit, et mettre au même dénominateur est déjà tout l'exercice.
@@ -341,7 +341,12 @@ export const fractionsExercises = [
         // ne se répond pas par une fraction posée au bout des pointillés du
         // calcul : « il lui reste 4/5 du mur à peindre » est la réponse, et
         // c'est elle qu'on note.
-        lignesReponsePapier: 1,
+        // DEUX LIGNES : LE CALCUL, PUIS LA PHRASE. Rémy, deux fois — « mets une
+        // ligne pour la phrase réponse », « laisse une ligne sous les questions
+        // pour répondre ». Une seule ligne servait au calcul de fractions, et
+        // la phrase réponse que la consigne réclame n'avait nulle part où
+        // aller.
+        lignesReponsePapier: 2,
         generatorId: 'frac.probleme', activityId: 'fraction-somme',
         params: {
             operation: 'les-deux', simplifier: 'non',

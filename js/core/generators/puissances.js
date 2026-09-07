@@ -101,7 +101,17 @@ function etapeEcrire(rng) {
     const n = rng.pick([3, 4, 5, 6, 2, -2, -3, -4]);
     const valeur = valeurPuissance(n);
     return {
+        // « 0,001 = 10 PUISSANCE COMBIEN ? » S'ÉCRIT AUTREMENT SUR LE PAPIER.
+        // Rémy : « quand tu mets 0,001 = 10 puissance combien, écris plutôt
+        // 0,001 = 10^... ». Six mots de français pour une notation qui tient
+        // en trois signes — et surtout, la notation est CE QU'ON APPREND :
+        // l'élève doit reconnaître l'exposant à sa place, en haut à droite,
+        // pas le nommer. Le « ^ » n'est pas de la typographie mathématique,
+        // c'est un PANNEAU : il dit que les pointillés qui suivent sont un
+        // exposant et non un facteur — « 0,001 = 10 ......... » se lirait comme
+        // un produit. C'est l'écriture que Rémy a donnée lui-même.
         prompt: `${aff(valeur)} = 10 puissance combien ?`,
+        papier: `${aff(valeur)} = 10^`,
         html: `<div class="game-question"><span class="nb-highlight">${aff(valeur)}</span> = 10<sup>?</sup></div>`,
         answer: String(n),
         choices: [
@@ -153,8 +163,22 @@ function etapeReconnaitre(rng) {
         // ces écritures ? » sans les écritures est une question à laquelle
         // personne ne peut répondre. On les recopie donc dans le texte, dans
         // un ordre tiré au sort mais reproductible.
-        papier: `Laquelle de ces écritures est une écriture scientifique : `
-            + `${rng.shuffle(quatre.slice()).join('   ;   ')} ?`,
+        //
+        // ET SUR LEUR PROPRE LIGNE. Rémy, deux fois : « tu marques la question
+        // et en dessous, les 4 propositions écartées », puis « toujours pas le
+        // retour à la ligne pour le QCM ». À la suite de la question, les
+        // quatre écritures faisaient un énoncé de cent dix caractères qui ne
+        // tenait dans aucune colonne : la feuille retombait à une seule, pour
+        // vingt et une questions sur trois pages. À la ligne, la question fait
+        // sa largeur et les propositions la leur — et l'on en range trois de
+        // front, ce qu'il demandait aussi.
+        // Et le séparateur ne fait JAMAIS trois espaces d'affilée : c'est à cela
+        // que la mise en page reconnaît un trou à remplir, et elle posait une
+        // ligne de pointillés entre chaque proposition. Rémy : « sans
+        // pointillés ». Deux espaces et un point médian écartent autant, sans
+        // rien promettre.
+        papier: 'Laquelle de ces écritures est une écriture scientifique ?\n'
+            + `${rng.shuffle(quatre.slice()).join('  ·  ')}`,
         answer: bonne,
         choices: [
             { value: bonne, correct: true },

@@ -824,17 +824,17 @@ export function composerBlocs(exos, opts, mesurer) {
             // centimètre et demi, l'élève n'a plus la place d'y poser un nombre
             // à deux chiffres. Une colonne de moins lui rend cette place.
             if (cellules.some(c => c.tableau && c.tableau.serre)) { cols--; continue; }
-            // ET CETTE RÈGLE-LÀ NE VAUT QUE POUR « auto ».
+            // ET CELLE-CI VAUT POUR TOUT LE MONDE, RÉGLAGE COMPRIS.
             //
-            // Les deux précédentes protègent d'une feuille sur laquelle on ne
-            // peut plus écrire ; celle-ci arbitre une QUESTION DE MISE EN PAGE
-            // — réponses sur la ligne à trois colonnes, ou réponses dessous à
-            // quatre. Les deux se remplissent. Quand le professeur a nommé son
-            // nombre de colonnes, il a tranché cette question-là, et la
-            // rabaisser en silence lui donne une feuille qu'il n'a pas
-            // demandée sans lui dire pourquoi. Rémy a relu le catalogue fiche
-            // par fiche pour les écrire, ces nombres.
-            if (auto && cols > 2 && exerciceHomogene(cellules) && !reponsesRegulieres(cellules)) { cols--; continue; }
+            // Je l'avais réservée au mode automatique : le professeur ayant
+            // nommé son nombre de colonnes, il me semblait avoir tranché
+            // lui-même la question — réponses sur la ligne à trois colonnes,
+            // ou réponses sous l'énoncé à quatre. Rémy a vu la feuille et
+            // tranché dans l'autre sens : « mets les pointillés après le = et
+            // pas à la ligne », deux fois le même jour, sur deux fiches. La
+            // réponse AU BOUT DE LA LIGNE passe donc avant le nombre de
+            // colonnes ; celui-ci cède d'une unité, et il n'en faut qu'une.
+            if (cols > 2 && exerciceHomogene(cellules) && !reponsesRegulieres(cellules)) { cols--; continue; }
             break;
         }
         // Faute de mieux, on aligne par le bas : toutes les réponses dessous.
@@ -908,8 +908,24 @@ export function composerBlocs(exos, opts, mesurer) {
             // Dès que `lignesReponse` est demandé, on descend donc toujours
             // sous l'énoncé. Sans réglage, rien ne change.
             const placeDemandee = Math.round(Number(o.lignesReponse) || 0) > 0;
+            // LA PLACE QU'IL FAUT DÉPEND DE CE QU'ON ÉCRIT DEDANS.
+            //
+            // `repMin` vaut onze millimètres — de quoi poser deux ou trois
+            // chiffres à la main. C'est la bonne mesure pour « 137 » et une de
+            // trop pour « 32 » : sur une fiche à quatre colonnes, huit
+            // millimètres restaient derrière le « = » et toutes les réponses
+            // passaient à la ligne du dessous. Rémy, sur deux fiches le même
+            // jour : « mets les pointillés après le = et pas à la ligne »,
+            // « mets les pointillés après le = ».
+            //
+            // On mesure donc la réponse ATTENDUE, comme le fait déjà le trou
+            // d'un énoncé (voir `texteImprime`), et l'on ne demande jamais PLUS
+            // que `repMin` : la borne ne peut que descendre, et seulement pour
+            // les réponses courtes.
+            const besoinRep = Math.min(o.repMin,
+                Math.max(6, mes(String(q.reponse ?? ''), o.taille) + 3));
             const memeLigne = !placeDemandee && !trou && !choix && !tableau && lignes.length === 1
-                && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= o.repMin;
+                && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= besoinRep;
             // LES FRACTIONS S'ÉCRIVENT EN COLONNE, comme au tableau : le
             // numérateur au-dessus du trait, le dénominateur dessous. Il leur
             // faut donc plus d'une ligne de hauteur, et le texte descend

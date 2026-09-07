@@ -814,7 +814,7 @@ export const geometrieExercises = [
         // de points correspondants. C'est la définition, et c'est elle qu'on
         // travaille.
         id: 'geo-pavage', title: 'Symétrique par Rapport à Quoi ?',
-        colonnesPapier: 4,
+        colonnesPapier: 3,
         cree: '2026-08-18',
         // UNE RÉVISION SE NOTE QUAND L'EXERCICE CHANGE DE NATURE, jamais pour
         // une faute d'orthographe : sinon la liste devient un journal de

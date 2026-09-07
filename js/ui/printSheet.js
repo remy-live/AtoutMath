@@ -51,7 +51,7 @@ import { GLYPHES, egyptianSvgCadre, placerGlyphes } from '../core/figures.js';
 import { tracesDe, branchesCroix, TAILLE_CROIX } from '../core/cercleFigure.js';
 import { pourPdf, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
     optionsPolycopie, teindreDoc, poserTeinte, teindreHtml, encre,
-    ficheEnPortrait, reglerFichePortrait, fermerAutreFiche
+    ficheEnPortrait, reglerFichePortrait, fermerAutreFiche, mesureur
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
 // Les réglages qu'on ne règle qu'une fois se rangent derrière un repli.
@@ -149,7 +149,7 @@ const ENCRE = { trait: [26, 32, 44], grille: [176, 182, 197], donnee: [238, 240,
  * Renvoie des millimètres ; l'aperçu multiplie par son échelle, le PDF les
  * utilise tels quels.
  */
-function calculerFiche(cols, rows, colles = false) {
+function calculerFiche(cols, rows, colles = false, proportions = null) {
     // BLOCS COLLÉS : les cartes à découper se touchent par leur bordure.
     //
     // Rémy : « pour le memory des tables, COLLE les cartes par leur bordure,
@@ -164,24 +164,48 @@ function calculerFiche(cols, rows, colles = false) {
     // qui sert à CHOISIR la disposition à partir d'un simple « combien ». Deux
     // copies de cette arithmétique, et la taille annoncée au professeur cesse
     // un jour de correspondre à la feuille.
-    const { gapX, gapY, titreH, zone, slotW, slotH, board } = mesuresSlot(PAGE, cols, rows, colles);
+    const { gapX, gapY, titreH, zone, slotW, slotH, board, cote } =
+        mesuresSlot(PAGE, cols, rows, colles, proportions);
     const y0 = zone.y;
     const H = zone.h;
+
+    // LES COLONNES SE RESSERRENT SUR LE DESSIN QU'ELLES PORTENT.
+    //
+    // Rémy, sur les disques et sur les pendules : « il y a trop d'espace entre
+    // les colonnes du poly », « laisse moins d'espaces entre les colonnes ».
+    //
+    // Le blanc ne venait pas de la gouttière — six millimètres — mais de ce qui
+    // restait DEDANS. Un bloc carré tient dans le plus petit des deux côtés de
+    // son emplacement ; quand c'est la HAUTEUR qui bride (cinq pendules sur
+    // trois rangées : 51 mm de large, 49,3 de haut), chaque emplacement garde
+    // près de deux millimètres de largeur morte, invisible mais bien là. Avec
+    // les gouttières, cela faisait près de huit millimètres entre deux
+    // dessins pour six annoncés, et la feuille avait l'air de se disperser.
+    //
+    // On pose donc les colonnes sur la LARGEUR DU DESSIN, pas sur celle de
+    // l'emplacement, et l'on recentre la planche entière : les écarts valent
+    // exactement la gouttière, et le reste passe dans les marges, où le blanc
+    // ne se remarque pas. Rien ne bouge quand le dessin remplit déjà sa
+    // largeur — c'est le cas ordinaire —, ni sur les planches collées, dont
+    // les blocs doivent se toucher.
+    const large = colles ? slotW : Math.min(slotW, Math.max(cote || 0, board));
+    const x0 = PAGE.marge + Math.max(0, (zone.w - (cols * large + (cols - 1) * gapX)) / 2);
+    const pasX = large + gapX;
 
     const slots = [];
     for (let j = 0; j < rows; j++) {
         for (let i = 0; i < cols; i++) {
-            const xSlot = PAGE.marge + i * (slotW + gapX);
+            const xSlot = x0 + i * pasX;
             const ySlot = y0 + j * (slotH + gapY);
             slots.push({
-                titre: { x: xSlot + slotW / 2, y: ySlot + titreH - 1.2 },
+                titre: { x: xSlot + large / 2, y: ySlot + titreH - 1.2 },
                 // Le carré inscrit, pour les grilles carrées…
-                x: xSlot + (slotW - board) / 2,
+                x: xSlot + (large - board) / 2,
                 y: ySlot + titreH + (slotH - titreH - board) / 2,
                 taille: board,
                 // … et la boîte complète, pour les treillis larges (Garam) :
                 // un emplacement carré y donnerait des cases minuscules.
-                boite: { x: xSlot, y: ySlot + titreH, w: slotW, h: slotH - titreH }
+                boite: { x: xSlot, y: ySlot + titreH, w: large, h: slotH - titreH }
             });
         }
     }
@@ -189,12 +213,12 @@ function calculerFiche(cols, rows, colles = false) {
     // tracer sans redéfinir la mise en page ailleurs.
     const traits = [];
     for (let i = 1; i < cols; i++) {
-        const x = PAGE.marge + i * (slotW + gapX) - gapX / 2;
+        const x = x0 + i * pasX - gapX / 2;
         traits.push({ x1: x, y1: y0 - 1, x2: x, y2: y0 + H });
     }
     for (let j = 1; j < rows; j++) {
         const y = y0 + j * (slotH + gapY) - gapY / 2;
-        traits.push({ x1: PAGE.marge, y1: y, x2: PAGE.w - PAGE.marge, y2: y });
+        traits.push({ x1: x0 - gapX / 2, y1: y, x2: x0 + cols * pasX - gapX / 2, y2: y });
     }
     return { slots, board, traits };
 }
@@ -1048,11 +1072,26 @@ function traitNotation(g, solution) {
     return origineAGauche ? { x1: g.xa, x2: g.xFin } : { x1: g.xb, x2: g.xDebut };
 }
 
-/** L'énoncé du bloc, dans les trois sens. */
+/**
+ * L'énoncé du bloc, dans les trois sens.
+ *
+ * « COMMENT SE LIT [RA) ? » NE DIT PAS CE QU'ON ATTEND — Rémy : « je ne
+ * comprends pas la question ». Il a raison, et pour deux raisons à la fois.
+ *
+ * D'abord la réponse a l'air d'être la question : on répond « la demi-droite
+ * [RA) », et l'on a l'impression de recopier ce qu'on vient de lire. Ensuite,
+ * sur la feuille, le bloc n'a PAS de figure — les deux autres sens en ont
+ * une —, et l'élève cherche ce qu'il devrait regarder.
+ *
+ * On demande donc ce qu'on veut vraiment : « nomme [RA) en toutes lettres ».
+ * C'est la même demande que sur la fiche de questions, en plus court — l'énoncé
+ * d'un bloc tient sur UNE ligne et ne se coupe pas : « écris en toutes lettres
+ * ce que désigne [RA) », la phrase de l'autre feuille, sortait du cadre.
+ */
 function enonceNotation(m) {
     const e = ECRITURES_NOTATION[m.objet](m.a, m.b);
     if (m.sens === 'ecrire') return 'Comment note-t-on cette figure ?';
-    if (m.sens === 'dire') return `Comment se lit ${e} ?`;
+    if (m.sens === 'dire') return `Nomme ${e} en toutes lettres.`;
     return `Trace ${ECRITURES_NOTATION[m.objet](m.a, m.b)}.`;
 }
 
@@ -11952,9 +11991,17 @@ function trigoPreviewHtml(item, slot, k, solution) {
     // Les lignes à remplir.
     let y = g.cadre.y + g.cadre.h + 2;
     g.lignes.forEach(l => {
+        const lib = libelleTrigo(l, (t) => largeurTrigo(t, 2.9));
         out += `<text x="${T(g.b.x + 1)}" y="${T(y + 3)}" font-size="${T(2.9)}" fill="#2d3748"
-            font-family="${police}">${echapper(l.etiquette)}</text>`;
-        const xDebut = g.b.x + 1 + largeurTrigo(l.etiquette, 2.9) + 2;
+            font-family="${police}">${echapper(lib.texte)}</text>`;
+        if (lib.xLettre !== null) {
+            const cx = g.b.x + 1 + lib.xLettre + lib.largeurLettre / 2;
+            const haut = y + 3 - 2.9 * 0.92;
+            out += `<path d="M ${T(cx - 0.75)} ${T(haut + 0.7)} L ${T(cx)} ${T(haut)}
+                L ${T(cx + 0.75)} ${T(haut + 0.7)}" fill="none" stroke="#2d3748"
+                stroke-width="${T(0.24)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+        }
+        const xDebut = g.b.x + 1 + largeurTrigo(lib.texte, 2.9) + 2;
         out += `<line x1="${T(xDebut)}" y1="${T(y + 4)}" x2="${T(g.b.x + g.b.w - 1)}" y2="${T(y + 4)}"
             stroke="#b0b6c5" stroke-width="${T(0.22)}" stroke-dasharray="${T(0.9)} ${T(0.9)}"/>`;
         if (solution) {
@@ -11969,15 +12016,55 @@ function trigoPreviewHtml(item, slot, k, solution) {
 }
 
 /**
- * La largeur d'un texte, en millimètres, à la louche.
+ * LE LIBELLÉ D'UNE LIGNE À REMPLIR, AVEC SON CHAPEAU ET SES DEUX-POINTS.
  *
- * L'aperçu ne peut pas mesurer un texte SVG avant de l'avoir posé, et le PDF a
- * `getTextWidth`. Un facteur de 0,52 sur la taille de police approche Helvetica
- * à mieux qu'un millimètre sur ces étiquettes-là — vérifié en comparant les
- * deux rendus : la ligne pointillée commence au même endroit sur l'écran et sur
- * la feuille.
+ * Rémy : « n'oublie pas le ":" après côté opposé à l'angle B. Mets un chapeau à
+ * l'angle B. » Deux demandes, et la seconde n'est pas cosmétique : « B » tout
+ * seul désigne un POINT, « B̂ » désigne l'angle en ce point. Écrire l'un pour
+ * l'autre dans le chapitre où l'on apprend justement à ne pas les confondre
+ * revient à enseigner la confusion.
+ *
+ * Le chapeau ne peut pas s'écrire : les polices du PDF n'ont pas de circonflexe
+ * combinable, et la table de caractères ne monte pas jusque-là (voir
+ * `pourPdf`). On le TRACE — deux traits au-dessus de la lettre, comme au
+ * tableau —, et l'aperçu comme la feuille le posent au même endroit puisqu'ils
+ * partent des mêmes mesures.
+ *
+ * @returns {{texte:string, xLettre:number|null, largeurLettre:number}} le texte
+ *   complet et, s'il y a un chapeau, où poser ses deux traits.
  */
-const largeurTrigo = (texte, taille) => String(texte || '').length * taille * 0.52;
+function libelleTrigo(ligne, mesurer) {
+    const lettre = ligne.chapeau ? String(ligne.chapeau) : '';
+    const avant = lettre ? `${ligne.etiquette} ` : ligne.etiquette;
+    const texte = `${avant}${lettre} :`;
+    return {
+        texte,
+        xLettre: lettre ? mesurer(avant) : null,
+        largeurLettre: lettre ? mesurer(lettre) : 0
+    };
+}
+
+/**
+ * La largeur d'un texte, en millimètres — POUR DE VRAI.
+ *
+ * C'était un facteur : `longueur × taille × 0,52`, « qui approche Helvetica à
+ * mieux qu'un millimètre ». Sur une étiquette de vingt-cinq caractères l'écart
+ * monte à huit, et cela ne se voyait pas tant qu'on ne s'en servait que pour
+ * savoir OÙ COMMENCENT les pointillés — à un millimètre près, personne ne
+ * regarde. Il a fallu poser un accent circonflexe AU-DESSUS D'UNE LETTRE
+ * précise pour que l'erreur devienne visible : le chapeau atterrissait après
+ * les deux-points.
+ *
+ * Le PDF sait mesurer (`getTextWidth`) ; l'aperçu aussi, par le canevas — c'est
+ * `mesureur`, la même mesure Helvetica que le reste de la fiche. On mesure donc
+ * des deux côtés, et les deux rendus tombent au même endroit parce qu'ils
+ * mesurent la même chose au lieu de l'estimer pareil.
+ */
+let mesureCanvas = null;
+const largeurTrigo = (texte, taille) => {
+    if (!mesureCanvas) mesureCanvas = mesureur();
+    return mesureCanvas(String(texte || ''), taille);
+};
 
 function dessinerTrigoPdf(doc, item, slot, solution) {
     const g = geoTrigo(item, slot);
@@ -12007,9 +12094,20 @@ function dessinerTrigoPdf(doc, item, slot, solution) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     g.lignes.forEach(l => {
+        const lib = libelleTrigo(l, (t) => doc.getTextWidth(pourPdf(t)));
         doc.setTextColor(...ENCRE.texte);
-        doc.text(l.etiquette, g.b.x + 1, y + 3);
-        const xDebut = g.b.x + 1 + doc.getTextWidth(l.etiquette) + 2;
+        doc.text(pourPdf(lib.texte), g.b.x + 1, y + 3);
+        if (lib.xLettre !== null) {
+            const cx = g.b.x + 1 + lib.xLettre + lib.largeurLettre / 2;
+            const haut = y + 3 - 8.5 * 0.3528 * 0.92;   // 8,5 pt en millimètres
+            doc.setDrawColor(...ENCRE.texte);
+            doc.setLineWidth(0.24);
+            doc.setLineJoin('round');
+            doc.setLineCap('round');
+            doc.line(cx - 0.75, haut + 0.7, cx, haut);
+            doc.line(cx, haut, cx + 0.75, haut + 0.7);
+        }
+        const xDebut = g.b.x + 1 + doc.getTextWidth(pourPdf(lib.texte)) + 2;
         doc.setDrawColor(...ENCRE.grille);
         doc.setLineWidth(0.22);
         doc.setLineDashPattern([0.9, 0.9], 0);
@@ -14825,7 +14923,8 @@ function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSoluti
     // L'ENCRE DU MODE CHOISI EST POSÉE SUR LE DOCUMENT, une fois : les deux
     // cents endroits qui écrivent une couleur n'ont rien à en savoir.
     const doc = teindreDoc(new jsPDF({ orientation: ficheEnPortrait() ? 'portrait' : 'landscape', unit: 'mm', format: 'a4' }));
-    const { slots, traits } = calculerFiche(cols, rows, !!rendu.blocsColles);
+    const { slots, traits } = calculerFiche(cols, rows, !!rendu.blocsColles,
+        typeof rendu.proportions === 'function' ? rendu.proportions(items) : rendu.proportions);
 
     // La mention de licence ne s'ajoute qu'aux fiches qui montrent des pièces.
     const avecPieces = rendu === RENDUS.mat || rendu === RENDUS.echiquier;
@@ -15034,7 +15133,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         apercu.style.width = `${PAGE.w * k}px`;
         apercu.style.height = `${PAGE.h * k}px`;
 
-        const { slots, traits } = calculerFiche(cols, rows, !!rendu.blocsColles);
+        const { slots, traits } = calculerFiche(cols, rows, !!rendu.blocsColles, proportionsDe());
         const en = PAGE.marge * k;
         let html = `
             <div class="fp-entete fp-entete--partage" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">

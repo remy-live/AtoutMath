@@ -383,27 +383,30 @@ test('sans colonnes déclarées, rien ne change', () => {
     assert.deepEqual(dispositionEnColonnes(0, rendu, PAGE, {}), rendu.disposition);
 });
 
-test('LES QUARANTE-SIX COLONNES DE LA REVUE SONT DANS LE CATALOGUE', () => {
+test('LES COLONNES DES REVUES SONT DANS LE CATALOGUE', () => {
     // La revue du 7 septembre 2026, exercice par exercice. On ne vérifie pas
     // ici la mise en page — elle se regarde à l'écran — mais que la demande a
     // bien été REPORTÉE : c'est ce qui se perd d'une relecture à l'autre.
     const VOULU = {
-        'num-parties': 2, 'num-egypte': 3, 'num-arrondi': 1, 'num-graduations': 3,
+        'num-parties': 2, 'num-egypte': 3, 'num-arrondi': 1, 'num-graduations': 2,
         'num-relatifs': 2, 'alg-balance': 4, 'alg-fonctions': 2,
-        'num-litteral-puissances': 4, 'num-puissances-prefixes': 3,
+        'num-litteral-puissances': 3, 'num-puissances-prefixes': 3,
         'num-puissances-calcul': 4, 'calc-prio': 1, 'calc-prio-relatifs': 4,
         'calc-prio-cascade': 4, 'calc-poser': 5, 'calc-poser-multiplication': 4,
         'calc-poser-division': 4, 'log-tasuko': 4, 'voc-mot-code': 2,
-        'logi-puissance4': 3, 'logi-sim': 4, 'voc-mots-caches': 2,
+        'logi-puissance4': 3, 'logi-sim': 3, 'voc-mots-caches': 2,
         'logi-logigramme': 3, 'logi-hashi': 3, 'logi-slitherlink': 4,
         'logi-futoshiki': 4, 'logi-carre-magique': 4, 'logi-hexagrille': 4,
         'logi-colorier-nombres': 4, 'frac-pizza': 3, 'geo-angles-manquants': 5,
         'geo-programme-construction': 4, 'geo-notation': 4, 'geo-repere-placer': 3,
         'geo-symetrie-quadrillage': 4, 'geo-transfo-quadrillage': 4,
-        'geo-translation-fleche': 4, 'geo-pavage': 4, 'geo-angles': 3,
+        'geo-translation-fleche': 4, 'geo-pavage': 3, 'geo-angles': 3,
         'geo-relier-points': 3, 'geo-solides-denombrer': 3, 'geo-dedale-forme': 2,
         'geo-mat-echecs': 4, 'geo-trigo-cotes': 4, 'mes-disque': 5,
-        'mes-grandeurs-composees': 3, 'mes-heure': 5
+        'mes-grandeurs-composees': 2, 'mes-heure': 5,
+        // Deuxième relecture, le même jour : ces deux-là n'étaient pas
+        // dans la première liste.
+        'num-puissances-transformer': 2, 'frac-somme-posee': 2
     };
     for (const [id, n] of Object.entries(VOULU)) {
         const exo = exercices.find(e => e.id === id);

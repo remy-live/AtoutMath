@@ -1508,7 +1508,7 @@ export const calculExercises = [
         // coloriées de deux couleurs, un triangle monochrome est INÉVITABLE.
         // Le match nul n'existe pas, et c'est démontrable.
         id: 'logi-sim',
-        colonnesPapier: 4,
+        colonnesPapier: 3,
         printable: 'sim', printGeneratorId: 'jeux.plateaux-fiche',
         printParams: { jeu: 'sim' }, title: 'Le Sim',
         cree: '2026-08-19',
@@ -2263,6 +2263,13 @@ export const calculExercises = [
         // histoires — courtes, mélangées, et c'est justement le mélange qui
         // empêche de reconnaître l'opération sans lire.
         id: 'num-problemes', title: 'Histoires en Pagaille',
+        // DEUX LIGNES SOUS CHAQUE HISTOIRE. Rémy : « laisse une ligne en
+        // pointillés sous chaque question pour écrire les calculs ». Il n'y en
+        // avait aucune : la réponse se posait au bout de l'énoncé, sur les
+        // pointillés d'une question ordinaire — or un problème ne se répond pas
+        // au bout d'une ligne, il se POSE. Deux, parce que la consigne en
+        // demande deux : « écris ton calcul, puis la réponse avec son unité ».
+        lignesReponsePapier: 2,
         cree: '2026-08-11',
         activityId: 'problemes',
         // C'est l'exercice qui appelle le plus la feuille : un problème se

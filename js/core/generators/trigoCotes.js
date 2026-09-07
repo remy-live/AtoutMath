@@ -123,8 +123,16 @@ export const trigoCotesGenerator = {
                         // « Le côté opposé À L'ANGLE  » : l'étiquette rappelle de quel angle
                         // on parle, sinon la feuille se lit comme si « opposé » était une
                         // propriété du côté.
+                        //
+                        // ET L'ANGLE PORTE SON CHAPEAU. Rémy : « mets un chapeau à
+                        // l'angle B ». « B » tout seul est un POINT ; c'est « B̂ » qui
+                        // est un angle, et l'accent circonflexe est justement la
+                        // notation qu'on installe dans ce chapitre-là. Il voyage à
+                        // part de l'étiquette parce qu'aucune police du PDF ne le
+                        // porte : la feuille le TRACE au-dessus de la lettre.
                         etiquette: role === ROLES.HYPOTENUSE
-                            ? 'Hypoténuse' : `Côté ${COURTS[role]} à l'angle ${A}`,
+                            ? 'Hypoténuse' : `Côté ${COURTS[role]} à l'angle`,
+                        chapeau: role === ROLES.HYPOTENUSE ? null : A,
                         solution: `[${r[role]}]`
                     })),
                 memo: formule ? MEMO : null,

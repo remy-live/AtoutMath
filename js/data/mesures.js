@@ -194,7 +194,7 @@ export const mesuresExercises = [
         title: 'Les Grandeurs Composées',
         generatorId: 'mes.grandeurs-composees', activityId: 'numpad',
         consignePapier: 'Relis l\'unité : la barre « / » se lit « pour un ». Écris le calcul, puis la réponse avec son unité.',
-        colonnesPapier: 3,
+        colonnesPapier: 2,
         lignesReponsePapier: 2,
         skills: ['mes.grandeurs.composees'],
         params: { chercher: 'melange' },

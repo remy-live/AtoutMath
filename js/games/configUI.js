@@ -2704,8 +2704,20 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     // marche ? » à quelqu'un qui ne sait pas encore combien de marches il a. Le
     // panneau se lit donc dans l'ordre où l'on décide : de quoi parlent les
     // questions, combien il y en a, comment l'élève y répond.
+    //
+    // ET « AVANT LA STRUCTURE » VEUT DIRE AVANT LA FRISE, où qu'elle soit.
+    //
+    // La frise des marches est le contenu d'un réglage ORDINAIRE — « Les étapes
+    // travaillées » —, elle vivait donc parmi les champs libres, c'est-à-dire
+    // AU-DESSUS du bloc de longueur. Le panneau annonçait ainsi « ce que
+    // l'élève travaillera, sur 26 questions » et son ruban découpé en cinq
+    // tranches, quatre écrans avant qu'on puisse voir d'où sortait le 26.
+    // Rémy : « le nombre de questions est peut-être à mettre au-dessus ».
+    // Un réglage qui DÉCOUPE le total passe donc sous lui, toujours.
     const valeurDe = (p) => (current[p.id] !== undefined ? current[p.id] : p.default);
-    const libre = schema.filter(p => !p.groupe);
+    const decoupeLeTotal = (p) => p && p.type === 'marches';
+    const libre = schema.filter(p => !p.groupe && !decoupeLeTotal(p));
+    const apresLongueur = schema.filter(p => !p.groupe && decoupeLeTotal(p));
     const groupes = schema.filter(p => p.groupe);
 
     content.innerHTML = `
@@ -2720,6 +2732,11 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
             <div class="cfg-group-title">Longueur de l'étape</div>
             <div id="cfg-champ-seuil">${blocLongueur}</div>
         </div>
+
+        ${apresLongueur.length ? `<div class="cfg-group">
+            <div class="cfg-group-title">La progression</div>
+            ${champsSchema(apresLongueur, valeurDe)}
+        </div>` : ''}
 
         ${groupes.length ? `<div class="cfg-group">
             ${champsSchema(groupes, valeurDe, { titres: TITRES_GROUPE })}
@@ -3006,7 +3023,12 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     // découpe CE nombre de questions en tranches (« 3 à deux propositions, 5 à
     // quatre, 2 au clavier ») : le réglage qu'il découpe doit se lire au-dessus
     // de lui, sinon le ruban parle d'un total qu'on n'a pas encore vu.
-    const libre = schema.filter(p => !p.groupe);
+    //
+    // Et la frise des MARCHES découpe ce même nombre : elle passe donc sous
+    // lui elle aussi, comme dans le panneau du constructeur.
+    const decoupeLeTotal = (p) => p && p.type === 'marches';
+    const libre = schema.filter(p => !p.groupe && !decoupeLeTotal(p));
+    const apresLongueur = schema.filter(p => !p.groupe && decoupeLeTotal(p));
     const groupes = schema.filter(p => p.groupe);
 
     content.innerHTML = `
@@ -3024,6 +3046,7 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
         min: Math.max(1, Math.min(MIN_QUESTIONS, nbConseille)),
         max: MAX_QUESTIONS, value: nbConseille
     })}
+        ${champsSchema(apresLongueur, valeurDe)}
         ${champsSchema(groupes, valeurDe, { titres: TITRES_ELEVE })}
         ${impression}`;
 

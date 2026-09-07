@@ -249,7 +249,7 @@ export const numerationExercises = [
         id: 'num-graduations',
         cree: '2026-08-17',
         consignePapier: "Écris l'abscisse du point.",
-        colonnesPapier: 3,
+        colonnesPapier: 2,
         title: 'La Loupe sur la Droite',
         // SUR LE PAPIER, L'AXE SE DESSINE. Sans rendu imprimé, la feuille
         // sortait la question toute seule — « Sur l'axe ci-dessus, écris
@@ -757,7 +757,7 @@ export const numerationExercises = [
         id: 'num-litteral-puissances',
         cree: '2026-08-28',
         consignePapier: "Réduis chaque expression. Attention : on ne regroupe que ce qui a le même exposant.",
-        colonnesPapier: 4,
+        colonnesPapier: 3,
         title: 'Carrés, Cubes et Réduction',
         generatorId: 'num.litteral.puissances', activityId: 'litteral-saisie',
 
@@ -853,7 +853,7 @@ export const numerationExercises = [
         // Trois marches — fabriquer, revenir au décimal, comparer — et un seul
         // verbe qui les couvre toutes les trois.
         consignePapier: 'Complète.',
-        colonnesPapier: 3,
+        colonnesPapier: 2,
         generatorId: 'num.puissances-transformer', activityId: 'buttons',
         skills: ['num.puissances.scientifique'],
         motsClefs: ['écriture scientifique', 'notation scientifique', 'puissances de 10',
