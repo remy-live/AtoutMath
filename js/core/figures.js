@@ -296,7 +296,15 @@ export function placerGlyphes(symboles, o = {}) {
         largeur = Math.max(largeur, col);
         dansLaLigne++;
     });
-    return { cases, lignes: Math.max(1, ligne + 1), largeur: Math.max(1, largeur) };
+    // OÙ FINIT LA DERNIÈRE LIGNE — et non où finit la plus longue. Ce qui vient
+    // APRÈS le nombre (un signe égal, des pointillés) se pose au bout de ce
+    // qu'on vient d'écrire ; sur un nombre replié, la dernière ligne est
+    // souvent plus courte que la première, et s'aligner sur la plus large
+    // laisserait un blanc entre les glyphes et le « = ».
+    return {
+        cases, lignes: Math.max(1, ligne + 1), largeur: Math.max(1, largeur),
+        largeurDerniere: Math.max(1, col)
+    };
 }
 
 /**
@@ -337,8 +345,8 @@ export const hauteurPlan = (plan) =>
  * @param {Array} symboles
  * @param {number} [cell] la taille de case, dans l'unité de la boîte
  */
-export function egyptianSvgCadre(symboles, cell = 44) {
-    const plan = placerGlyphes(symboles);
+export function egyptianSvgCadre(symboles, cell = 44, o = {}) {
+    const plan = placerGlyphes(symboles, o);
     const W = plan.largeur * cell;
     const H = hauteurPlan(plan) * cell;
     const echelle = (cell / 32).toFixed(4);

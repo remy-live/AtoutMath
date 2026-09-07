@@ -149,7 +149,7 @@ const ENCRE = { trait: [26, 32, 44], grille: [176, 182, 197], donnee: [238, 240,
  * Renvoie des millimètres ; l'aperçu multiplie par son échelle, le PDF les
  * utilise tels quels.
  */
-function calculerFiche(cols, rows, colles = false, proportions = null) {
+function calculerFiche(cols, rows, colles = false, proportions = null, serrer = false) {
     // BLOCS COLLÉS : les cartes à découper se touchent par leur bordure.
     //
     // Rémy : « pour le memory des tables, COLLE les cartes par leur bordure,
@@ -185,10 +185,18 @@ function calculerFiche(cols, rows, colles = false, proportions = null) {
     // On pose donc les colonnes sur la LARGEUR DU DESSIN, pas sur celle de
     // l'emplacement, et l'on recentre la planche entière : les écarts valent
     // exactement la gouttière, et le reste passe dans les marges, où le blanc
-    // ne se remarque pas. Rien ne bouge quand le dessin remplit déjà sa
-    // largeur — c'est le cas ordinaire —, ni sur les planches collées, dont
-    // les blocs doivent se toucher.
-    const large = colles ? slotW : Math.min(slotW, Math.max(cote || 0, board));
+    // ne se remarque pas.
+    //
+    // ET C'EST LE RENDU QUI LE DEMANDE, jamais la mise en page toute seule.
+    // Beaucoup de blocs ne dessinent pas « une figure » : ils remplissent leur
+    // boîte — un nombre, un signe égal, une ligne de pointillés qui court
+    // jusqu'au bord. Rétrécir la boîte de ceux-là ne resserre rien, cela leur
+    // retire de la place : les nombres des pharaons, mesurés avec la règle
+    // appliquée d'office, se retrouvaient sur deux colonnes de six centimètres
+    // au milieu d'une page de vingt-huit. `serrerColonnes` est donc déclaré
+    // par les rendus dont le dessin a une largeur PROPRE, plus étroite que son
+    // emplacement — et par eux seuls.
+    const large = (colles || !serrer) ? slotW : Math.min(slotW, Math.max(cote || 0, board));
     const x0 = PAGE.marge + Math.max(0, (zone.w - (cols * large + (cols - 1) * gapX)) / 2);
     const pasX = large + gapX;
 
@@ -1340,7 +1348,17 @@ function geoMotCode(item, slot) {
     // LA CLÉ D'ABORD : c'est elle qui a une taille imposée — une case où l'on
     // écrit une lettre à la main ne descend pas sous cinq millimètres. Ce qui
     // reste va à la grille, qui sait se réduire.
-    const coteCle = Math.max(5, Math.min(9, (b.w - 2) / Math.max(9, Math.ceil(n / 2))));
+    //
+    // ET SUR UNE SEULE RANGÉE. Rémy : « mets toute la ligne de lettres à
+    // trouver sur une seule ligne ». La case se calculait sur la MOITIÉ des
+    // numéros — donc pour deux rangées —, et l'on obtenait quinze cases puis
+    // quatre, une rangée bancale sous la grille. Deux gains d'un coup : la clé
+    // se lit d'un trait, comme l'alphabet qu'elle est, et les seize
+    // millimètres que la seconde rangée prenait reviennent à la grille, que
+    // Rémy voulait « plus grande ». Le plancher de cinq millimètres tient
+    // encore à vingt-six numéros sur un bloc pleine largeur : on n'écrit pas
+    // une lettre à la main dans moins que cela.
+    const coteCle = Math.max(5, Math.min(9, (b.w - 2) / Math.max(9, n)));
     const parLigne = Math.min(n, Math.max(1, Math.floor((b.w - 2) / coteCle)));
     const lignesCle = Math.ceil(n / parLigne);
     // Chaque rangée de clé porte sa case ET son numéro écrit dessous.
@@ -1987,7 +2005,15 @@ function geometrieLogi(item, boite) {
     const bandeDe = (cote) => Math.max(libellesMin, Math.min(cote * 1.5, 34));
     const etiqDe = (cote) => Math.max(11, Math.min(boite.w * 0.13, Math.max(17, cote * 1.1), 34));
 
-    const texteW = Math.max(58, Math.min(boite.w * 0.44, 118));
+    // LA COLONNE DE TEXTE NE PREND JAMAIS PLUS DE LA MOITIÉ DU BLOC.
+    //
+    // Son plancher valait 58 mm quelle que soit la largeur du bloc. Sur une
+    // planche de trois colonnes — celle que Rémy demande —, le bloc en fait 89
+    // : il en restait 25 pour la grille, soit des cases de quatre millimètres
+    // où l'on doit cocher et barrer. Rémy : « les logigrammes vont sur les
+    // textes, tu pourrais les faire un peu plus grands ». Le plancher est donc
+    // relatif : la moitié du bloc, jamais plus, et la grille prend le reste.
+    const texteW = Math.max(Math.min(58, boite.w * 0.5), Math.min(boite.w * 0.44, 118));
     const texteH = hauteurTexteLogi(p, boite.w);
     /** La plus grande case qui tienne, pour une bande d'étiquettes donnée. */
     const cases = (largeur, hautDispo, etiqL, bandeL) => Math.min(
@@ -5771,8 +5797,17 @@ function geoRepere(item, slot) {
     // c'est là qu'on écrit, et deux millimètres de plus par case, ce sont deux
     // millimètres de pointillés en plus.
     const b = slot.boite || { x: slot.x, w: slot.taille };
+    // LE CORPS DU TABLEAU, ÉCRIT UNE FOIS POUR LES DEUX RENDUS.
+    //
+    // Rémy : « écris les points dans le tableau un peu plus grand ». Il valait
+    // un tiers de la hauteur d'un rang — deux millimètres huit sur un bloc de
+    // huit centimètres —, et c'est pourtant la seule chose à LIRE du bloc : le
+    // repère, lui, est vide tant que l'élève n'a rien tracé. Une case de rang
+    // fait huit millimètres de haut et trois centimètres de large ; « A (5 ; 2) »
+    // à 3,8 mm y tient largement, et se lit à bout de bras.
+    const corpsTab = Math.max(2.4, hRang * 0.46);
     return {
-        m, mini, pas, cote, listeH, cols, rows, hRang,
+        m, mini, pas, cote, listeH, cols, rows, hRang, corpsTab,
         listeY: slot.y + cote + slot.taille * 0.03,
         xGauche: slot.x + (slot.taille - cote) / 2,
         tabX: b.x, tabW: b.w,
@@ -5875,7 +5910,7 @@ function reperePreviewHtml(item, slot, k, solution) {
     html += `<div class="fx-rp-tab" style="left:${g.tabX * k}px; top:${g.listeY * k}px;
         width:${g.tabW * k}px; height:${(g.hRang * g.rows) * k}px;
         grid-template-columns:repeat(${g.cols}, 1fr);
-        font-size:${g.hRang * 0.34 * k}px">${cellules}</div>`;
+        font-size:${g.corpsTab * k}px">${cellules}</div>`;
     return html;
 }
 
@@ -5942,7 +5977,7 @@ function dessinerRepPdf(doc, item, slot, solution) {
         doc.line(g.tabX, y, g.tabX + g.tabW, y);
     }
 
-    doc.setFontSize(Math.max(5, g.hRang * 0.95));
+    doc.setFontSize(g.corpsTab / 0.3528);
     // LES POINTILLÉS REMPLISSENT LA PLACE, ils ne sont pas comptés d'avance.
     // Une longueur fixe est soit trop courte pour écrire un nombre à deux
     // chiffres, soit assez longue pour sortir de sa case.
@@ -6883,14 +6918,30 @@ function geoRectangle(item, slot, tous) {
     const hautMax = Math.max(m.l, ...metas.map(x => Number(x.l) || 0));
     const ech = Math.min(dispoW / grand, dispoH / Math.max(1, hautMax));
     const w = m.L * ech, h = m.l * ech;
+    // LA RÉPONSE SE POSE SOUS LA FIGURE, PAS AU FOND DU BLOC.
+    //
+    // Rémy : « il y a trop d'espace entre la figure et le périmètre à
+    // calculer ». La ligne était collée au bas de l'emplacement et la figure
+    // centrée dans ce qui restait : sur un rectangle plat — 2 cm sur 8, le cas
+    // le plus fréquent —, cela ouvrait deux centimètres de blanc entre le
+    // dessin et la question qui le concerne, et l'œil ne les rattachait plus
+    // l'un à l'autre.
+    //
+    // On réserve donc la hauteur de la PLUS HAUTE figure de la feuille, on y
+    // pose toutes les autres SUR LA MÊME LIGNE DE BASE — comme des objets sur
+    // une étagère, ce qui garde les cotes et les réponses alignées d'un bloc à
+    // l'autre —, et l'on centre l'ensemble dans le bloc. Le blanc restant
+    // passe au-dessus et au-dessous du groupe, où il ne sépare plus rien.
+    const hautGroupe = hautMax * ech + coteH + 1;
+    const haussee = Math.max(0, (zone - hautGroupe) / 2);
     return {
         m, lignes, ligneH, w, h, b,
         // La police des cotes ne dépend plus d'un carré qui n'existe pas :
         // elle suit la hauteur du bloc, comme le reste.
         police: Math.max(2.1, Math.min(b.h * 0.075, 3.6)),
         x: b.x + coteW + (dispoW - w) / 2,
-        y: b.y + (dispoH - h) / 2,
-        x0: b.x, ligneY: b.y + zone
+        y: b.y + haussee + (hautMax * ech - h),
+        x0: b.x, ligneY: b.y + haussee + hautGroupe
     };
 }
 
@@ -7641,7 +7692,17 @@ function hexagrillePreviewHtml(item, slot, k, solution) {
             stroke="#5a687e" stroke-width="${T(0.35)}"/>`;
         // La pointe : deux traits, comme partout ailleurs sur la feuille — un
         // marqueur SVG ne se retrouve pas dans le PDF.
-        const l = 2.6 * g.echelle;
+        //
+        // ET SA LONGUEUR EST EN UNITÉS DU DESSIN, PAS EN MILLIMÈTRES. Rémy,
+        // deux revues de suite : « les bouts des flèches sont minuscules »,
+        // « l'extrémité des flèches est tout petit ». Elle l'était, et par
+        // deux fois : `2,6 × echelle` était une longueur en MILLIMÈTRES qu'on
+        // repassait ensuite dans `X()`, lequel remultiplie par l'échelle — la
+        // pointe rapetissait donc comme le CARRÉ de la réduction. Sur un bloc
+        // de six centimètres et demi, cela faisait quatre dixièmes de
+        // millimètre : un trait de crayon, pas une flèche. Une pointe se
+        // mesure sur ce qu'elle désigne : la moitié du rayon d'une case.
+        const l = R_HEXA * 0.5;
         const nx = -q.uy, ny = q.ux;
         [1, -1].forEach(sens => {
             svg += `<line x1="${X(q.x2)}" y1="${Y(q.y2)}"
@@ -7689,7 +7750,7 @@ function dessinerHexagrillePdf(doc, item, slot, solution) {
         doc.setDrawColor(90, 104, 126);
         doc.setLineWidth(0.35);
         doc.line(X(q.x1), Y(q.y1), X(q.x2), Y(q.y2));
-        const l = 2.6 * g.echelle;
+        const l = R_HEXA * 0.5;   // voir l'aperçu : en unités du dessin
         const nx = -q.uy, ny = q.ux;
         [1, -1].forEach(sens => {
             doc.line(X(q.x2), Y(q.y2),
@@ -8556,7 +8617,16 @@ function geoMots(item, slot) {
     const listeW = Math.max(listeMin, b.w - coteA - 8);
     // Empilée : les mots passent SOUS la grille, sur plusieurs colonnes.
     const parCol = Math.max(3, Math.ceil(m.mots.length / (seulsMots ? 3 : 2)));
-    const listeH = parCol * (seulsMots ? 6.1 : 4.6) + 2;
+    // EMPILÉE, LA LISTE S'ÉCRIT PLUS PETIT — et la grille prend ce qu'elle
+    // rend. Rémy : « tu peux écrire les mots à trouver un peu plus petit et
+    // rendre la grille un peu plus grande ». Sous la grille, la liste n'a pas
+    // besoin d'être franche : elle tient sur trois colonnes larges, et c'est la
+    // GRILLE qu'on regarde de loin. L'interligne suit le corps au lieu d'être
+    // un nombre écrit à part — deux chiffres à tenir d'accord finissent
+    // toujours par diverger.
+    const tailleEmpile = seulsMots ? 9.5 : 8;
+    const ligneEmpile = tailleEmpile * 0.3528 * 1.5;
+    const listeH = parCol * ligneEmpile + 2;
     const coteB = Math.max(10, Math.min(b.w, b.h - listeH - 3));
     const empile = coteB > coteA + 2;
     const cote = empile ? coteB : coteA;
@@ -8586,7 +8656,7 @@ function geoMots(item, slot) {
     const tailleQuiTient = (largeur) =>
         (largeur - 4) / Math.max(1, leMotLePlusLong * 0.3528 * 0.62);
     const plancher = seulsMots ? 11.5 : 8.5;
-    const taille = empile ? plancher
+    const taille = empile ? tailleEmpile
         : Math.max(plancher, Math.min(seulsMots ? 20 : 13, tailleQuiTient(listeW)));
     // LE NOMBRE DE COLONNES SUIT LE MOT LE PLUS LONG, pas un chiffre décidé
     // d'avance. Trois colonnes fixes convenaient à « ANGLE » et « SOMME » ;
@@ -9903,9 +9973,9 @@ function geoEgypte(item, slot, tous) {
     // placement, calculé au même endroit (core/figures.js). Un rang par ligne
     // donnait au nombre l'allure d'un tableau de numération, et la feuille ne
     // disait pas la même chose que le jeu.
-    const plan = placerGlyphes(m.symboles);
+    let plan = placerGlyphes(m.symboles);
     const INTERLIGNE = 0.16;
-    const hautCases = plan.lignes + (plan.lignes - 1) * INTERLIGNE;
+    let hautCases = plan.lignes + (plan.lignes - 1) * INTERLIGNE;
     // La ligne de réponse, en bas, prend sa part de la hauteur.
     const hDispo = b.h - 8;
     // « ÉCRIS 32 100 EN HIÉROGLYPHES » : LE NOMBRE EST L'ÉNONCÉ, PAS LA
@@ -9922,7 +9992,8 @@ function geoEgypte(item, slot, tous) {
     // maintenant la colonne de gauche, le « = » les suit, et les pointillés
     // courent à leur droite — sur la MÊME ligne de base.
     const ecrire = m.sens === 'ecrire';
-    const texte = ecrire ? `${nombreEspace(m.total)}  =` : '';
+    // LE NOMBRE SEUL : le signe égal se pose à part, juste après lui.
+    const texte = ecrire ? nombreEspace(m.total) : '';
     // UNE COLONNE DE MÊME LARGEUR POUR TOUS LES NOMBRES DE LA FEUILLE.
     //
     // Rémy : « la présentation des hiéroglyphes est curieuse ». Elle l'était :
@@ -9938,7 +10009,17 @@ function geoEgypte(item, slot, tous) {
     // pas la hauteur — sept symboles dans la moitié d'un bloc donnent des
     // signes de six millimètres. Ce qui reste — un quart de bloc, soit deux
     // bons centimètres — suffit largement à écrire « 10 033 ».
+    //
+    // EN « LIRE », CE N'EST PLUS UNE PART DU BLOC MAIS LA LARGEUR DES SIGNES.
+    // Rémy : « le = juste après les hiéroglyphes ». Une colonne fixe met le
+    // signe égal au même endroit d'un bloc à l'autre — c'est joli en colonne,
+    // et cela ouvre un blanc de deux centimètres derrière un nombre court. Ce
+    // qu'on lit alors, ce n'est plus « ▯▯▯ = …… », c'est un dessin, puis du
+    // vide, puis une équation. Le signe suit donc les glyphes ; ce qui reste à
+    // droite est la ligne à remplir, et c'est ELLE qui a une longueur
+    // minimale — pas la place du dessin.
     const PART_GLYPHES = 0.72;
+    const REPONSE_MIN = 22;
     const largeurTexte = b.w * (ecrire ? LARGEUR_NOMBRE : PART_GLYPHES);
     // Le corps est calculé sur le PLUS LONG nombre possible — « 1 000 000  = »,
     // douze signes — et non sur celui qu'on a sous la main : sinon un nombre
@@ -9954,7 +10035,9 @@ function geoEgypte(item, slot, tous) {
     // signe égal ; le plafond passe de seize à vingt millimètres, parce qu'ils
     // ne partagent plus la hauteur avec une ligne de réponse posée dessous.
     const LARGEUR_EGAL = 7;
-    const largeurGlyphes = ecrire ? b.w - largeurTexte : largeurTexte - LARGEUR_EGAL;
+    const largeurGlyphes = ecrire
+        ? b.w - largeurTexte
+        : b.w - 2 - LARGEUR_EGAL - REPONSE_MIN;
     // UN BÂTON A LA MÊME TAILLE PARTOUT SUR LA FEUILLE.
     //
     // Rémy : « il faut que les nombres de pharaons soient écrits à la même
@@ -9972,24 +10055,59 @@ function geoEgypte(item, slot, tous) {
     // l'appliquer aux glyphes. La référence est le nombre le plus large DE
     // CETTE FEUILLE — pas un pire cas théorique à trente-six signes, qui
     // rapetisserait tout le monde pour un nombre qui n'y est pas.
-    const plans = (tous && tous.length ? tous : [item])
-        .map(it => placerGlyphes((it.meta && it.meta.symboles) || []));
-    const refLargeur = Math.max(plan.largeur, ...plans.map(x => x.largeur));
-    const refHaut = Math.max(hautCases,
-        ...plans.map(x => x.lignes + (x.lignes - 1) * INTERLIGNE));
-    const cell = Math.min(
-        largeurGlyphes / (refLargeur + 0.3),
-        hDispo / (refHaut + 0.3),
-        ecrire ? 16 : 20
-    );
+    //
+    // ET LE NOMBRE DE SIGNES PAR LIGNE SE CHOISIT, IL N'EST PLUS FIXÉ À DOUZE.
+    //
+    // Rémy : « trop petits les hiéroglyphes ». Ils l'étaient, et pour une
+    // raison arithmétique : à douze signes par ligne, le nombre le plus large
+    // de la feuille tenait sur UNE ligne de neuf cases, la largeur bridait
+    // tout le monde — et les deux tiers de la hauteur du bloc restaient
+    // blancs. Replier à six signes par ligne double la hauteur employée et,
+    // MESURÉ sur une feuille de trois colonnes, fait passer la case de 6,4 mm
+    // à 10,9. Le pli qui convient dépend de la feuille : on essaie tous les
+    // replis et l'on garde celui qui donne les plus grands signes. C'est le
+    // même calcul que celui de la disposition, à l'échelle d'un bloc.
+    const items = (tous && tous.length ? tous : [item]);
+    const cellPour = (mpl) => {
+        const ps = items.map(it => placerGlyphes((it.meta && it.meta.symboles) || [],
+            { maxParLigne: mpl }));
+        const refL = Math.max(...ps.map(x => x.largeur));
+        const refH = Math.max(...ps.map(x => x.lignes + (x.lignes - 1) * INTERLIGNE));
+        return Math.min(largeurGlyphes / (refL + 0.3), hDispo / (refH + 0.3), ecrire ? 16 : 20);
+    };
+    let parLigne = 12, cell = cellPour(12);
+    for (let mpl = 11; mpl >= 3; mpl--) {
+        const c = cellPour(mpl);
+        if (c > cell + 1e-6) { cell = c; parLigne = mpl; }
+    }
+    plan = placerGlyphes(m.symboles, { maxParLigne: parLigne });
+    hautCases = plan.lignes + (plan.lignes - 1) * INTERLIGNE;
     // La ligne de base : sous les glyphes en « lire », sous le nombre en
     // « écrire ». Dans les deux cas, TOUT est dessus.
     const hautGlyphes = hautCases * cell;
+    const x0 = b.x + 1 + (ecrire ? largeurTexte : 0);   // en « écrire », rien n'y est dessiné
+    // Le signe égal, puis la ligne à remplir : collés aux glyphes en « lire »,
+    // à la colonne du nombre en « écrire ».
+    //
+    // LE NOMBRE EST CALÉ À GAUCHE, et le « = » le suit. Rémy : « mets le nombre
+    // bien à gauche ». Il était calé à DROITE d'une colonne fixe, pour que les
+    // signes égal tombent en colonne d'un bloc à l'autre — mais la colonne fait
+    // quatre centimètres et « 13 » y flottait au milieu du bloc, précédé de
+    // trois centimètres de rien. Le nombre commence donc au bord, comme sur un
+    // cahier, et le « = » vient au bout de ce qu'on vient d'écrire — la même
+    // règle que pour les hiéroglyphes de l'autre sens.
+    const xEgal = ecrire
+        ? b.x + 1 + largeurTrigo(texte, corpsTexte) + 1.5
+        : x0 + plan.largeurDerniere * cell + 1.5;
+    const xReponse = Math.min(xEgal + LARGEUR_EGAL, b.x + b.w - 12);
     return {
         m, b, plan, cell, interligne: INTERLIGNE, ecrire, texte, largeurTexte, corpsTexte,
-        largeurEgal: LARGEUR_EGAL,
+        // Le signe égal a le corps de ce qu'il relie : celui du nombre quand
+        // c'est un nombre qu'on écrit, une taille de lecture sinon.
+        corpsEgal: ecrire ? corpsTexte : 4.4,
+        largeurEgal: LARGEUR_EGAL, parLigne, xEgal, xReponse,
         rangs: plan.lignes, colonnes: plan.largeur, hautCases,
-        x0: b.x + 1 + (ecrire ? largeurTexte : 0),
+        x0,
         y0: b.y + 1,
         yReponse: b.y + 2 + hautGlyphes,
         // Les glyphes sont dessinés dans une case de 24 × 32.
@@ -10020,7 +10138,8 @@ function egyptePreviewHtml(item, slot, k, solution, _rang, tous) {
         // sous un dessin qui ne le touchait pas.
         html += `<div style="position:absolute; left:${g.x0 * k}px; top:${g.y0 * k}px;
             width:${(g.colonnes * g.cell) * k}px; height:${(g.hautCases * g.cell) * k}px;
-            color:#1a202c">${egyptianSvgCadre(m.symboles.map(s => ({ value: s.value, n: s.n })))
+            color:#1a202c">${egyptianSvgCadre(m.symboles.map(s => ({ value: s.value, n: s.n })),
+        44, { maxParLigne: g.parLigne })
         .replace('<svg ', '<svg style="width:100%;height:100%" ')}</div>`;
     }
     // L'énoncé du sens « écrire » : le nombre, puis le signe d'égalité, à
@@ -10032,9 +10151,9 @@ function egyptePreviewHtml(item, slot, k, solution, _rang, tous) {
         // et l'on ne lisait plus une phrase mais deux étages. Le rembourrage
         // du bas vaut la descente de la police : c'est ce qui pose la ligne
         // de base du texte exactement sur le trait.
-        html += `<div style="position:absolute; left:${g.b.x * k}px;
-            top:${(g.yReponse - 8) * k}px; width:${g.largeurTexte * k}px; height:${8 * k}px;
-            display:flex; align-items:flex-end; justify-content:flex-end;
+        html += `<div style="position:absolute; left:${(g.b.x + 1) * k}px;
+            top:${(g.yReponse - 8) * k}px; width:${(g.xEgal - g.b.x - 1) * k}px; height:${8 * k}px;
+            display:flex; align-items:flex-end; justify-content:flex-start;
             padding-bottom:${g.corpsTexte * 0.21 * k}px; box-sizing:border-box;
             font-weight:800; color:#1a202c; font-size:${g.corpsTexte * k}px;
             white-space:nowrap">${echapperSheet(g.texte)}</div>`;
@@ -10042,17 +10161,17 @@ function egyptePreviewHtml(item, slot, k, solution, _rang, tous) {
     // LE SIGNE ÉGAL APRÈS LES GLYPHES. Sans lui, la ligne de pointillés posée à
     // droite d'un dessin ne dit pas ce qu'on attend ; avec, on lit « ▯▯▯ = … »
     // exactement comme on l'écrirait au cahier.
-    if (!g.ecrire) {
+    {
         html += `<div style="position:absolute;
-            left:${(g.b.x + g.largeurTexte - g.largeurEgal) * k}px;
-            top:${(g.yReponse - 7) * k}px; width:${g.largeurEgal * k}px; height:${7 * k}px;
+            left:${g.xEgal * k}px;
+            top:${(g.yReponse - 8) * k}px; width:${g.largeurEgal * k}px; height:${8 * k}px;
             display:flex; align-items:flex-end; justify-content:center;
-            padding-bottom:${1 * k}px; box-sizing:border-box;
-            font-weight:800; color:#1a202c; font-size:${4.4 * k}px">=</div>`;
+            padding-bottom:${g.corpsEgal * 0.21 * k}px; box-sizing:border-box;
+            font-weight:800; color:#1a202c; font-size:${g.corpsEgal * k}px">=</div>`;
     }
     const bas = m.sens === 'lire' ? (solution ? nombreEspace(m.total) : '') : '';
-    html += `<div style="position:absolute; left:${(g.b.x + g.largeurTexte) * k}px;
-        top:${g.yReponse * k}px; width:${(g.b.w - g.largeurTexte) * k}px; height:${6 * k}px;
+    html += `<div style="position:absolute; left:${g.xReponse * k}px;
+        top:${g.yReponse * k}px; width:${(g.b.x + g.b.w - g.xReponse) * k}px; height:${6 * k}px;
         display:flex; align-items:center; justify-content:flex-start;
         border-top:1px dotted #9aa3b2; font-weight:800;
         color:${solution ? '#6e7684' : '#1a202c'};
@@ -10093,7 +10212,15 @@ function dessinerEgyptePdf(doc, item, slot, solution, _c, _rang, tous) {
     }
     doc.setDrawColor(...ENCRE.grille);
     doc.setLineWidth(0.3);
-    doc.line(g.b.x + g.largeurTexte, g.yReponse, g.b.x + g.b.w, g.yReponse);
+    doc.line(g.xReponse, g.yReponse, g.b.x + g.b.w, g.yReponse);
+
+    // LE SIGNE ÉGAL — QUE LE PDF NE TRAÇAIT PAS. L'aperçu le posait, la feuille
+    // non : on relisait « ▯▯▯ ……… » là où l'écran avait promis « ▯▯▯ = ……… ».
+    // Un aperçu qui ment fait imprimer deux fois.
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.corpsEgal / 0.3528);
+    doc.setTextColor(...ENCRE.trait);
+    doc.text('=', g.xEgal + g.largeurEgal / 2, g.yReponse, { align: 'center' });
 
     if (g.ecrire) {
         doc.setFont('helvetica', 'bold');
@@ -10101,7 +10228,7 @@ function dessinerEgyptePdf(doc, item, slot, solution, _c, _rang, tous) {
         doc.setFontSize(g.corpsTexte / 0.3528);
         doc.setTextColor(...ENCRE.trait);
         // La même ligne de base qu'à l'aperçu : le trait.
-        doc.text(pourPdf(g.texte), g.b.x + g.largeurTexte - 1, g.yReponse, { align: 'right' });
+        doc.text(pourPdf(g.texte), g.b.x + 1, g.yReponse, { align: 'left' });
     }
 
     const bas = m.sens === 'lire' ? (solution ? nombreEspace(m.total) : '') : '';
@@ -10109,7 +10236,7 @@ function dessinerEgyptePdf(doc, item, slot, solution, _c, _rang, tous) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(...(solution ? ENCRE.gris : ENCRE.trait));
-    doc.text(pourPdf(bas), g.b.x + g.largeurTexte + 2, g.yReponse + 5, { align: 'left' });
+    doc.text(pourPdf(bas), g.xReponse + 2, g.yReponse + 5, { align: 'left' });
     doc.setTextColor(...ENCRE.trait);
 }
 
@@ -14277,6 +14404,10 @@ export const RENDUS = {
         },
         previewGrille: disquePreviewHtml,
         pdfGrille: dessinerDisquePdf,
+        // Rémy : « il y a trop d'espace entre les colonnes de disque du poly ».
+        // Un disque et sa ligne de réponse ont une largeur propre, plus étroite
+        // que l'emplacement dès que la hauteur bride — voir `serrerColonnes`.
+        serrerColonnes: true,
         nomBloc: 'Disque',
         disposition: { cols: 3, rows: 3, maxCols: 4, maxRows: 4 },
         proportions: { w: 1, h: 0.8 },
@@ -14572,6 +14703,10 @@ export const RENDUS = {
             : 'Écris sous chaque pendule l\'heure qu\'elle affiche. La PETITE aiguille donne '
                 + 'les heures, la GRANDE donne les minutes — et chaque nombre du cadran vaut '
                 + 'CINQ minutes pour la grande.'),
+        // Rémy : « laisse moins d'espaces entre les colonnes ». Un cadran est
+        // carré et la hauteur le bride : la largeur qui reste dans
+        // l'emplacement est du blanc — voir `serrerColonnes`.
+        serrerColonnes: true,
         previewGrille: horlogePreviewHtml,
         pdfGrille: dessinerHorlogePdf,
         nomBloc: 'Pendule',
@@ -14924,7 +15059,8 @@ function construirePdf(jsPDF, rendu, items, cols, rows, titre = null, sansSoluti
     // cents endroits qui écrivent une couleur n'ont rien à en savoir.
     const doc = teindreDoc(new jsPDF({ orientation: ficheEnPortrait() ? 'portrait' : 'landscape', unit: 'mm', format: 'a4' }));
     const { slots, traits } = calculerFiche(cols, rows, !!rendu.blocsColles,
-        typeof rendu.proportions === 'function' ? rendu.proportions(items) : rendu.proportions);
+        typeof rendu.proportions === 'function' ? rendu.proportions(items) : rendu.proportions,
+        !!rendu.serrerColonnes);
 
     // La mention de licence ne s'ajoute qu'aux fiches qui montrent des pièces.
     const avecPieces = rendu === RENDUS.mat || rendu === RENDUS.echiquier;
@@ -15133,7 +15269,8 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         apercu.style.width = `${PAGE.w * k}px`;
         apercu.style.height = `${PAGE.h * k}px`;
 
-        const { slots, traits } = calculerFiche(cols, rows, !!rendu.blocsColles, proportionsDe());
+        const { slots, traits } = calculerFiche(cols, rows, !!rendu.blocsColles, proportionsDe(),
+            !!rendu.serrerColonnes);
         const en = PAGE.marge * k;
         let html = `
             <div class="fp-entete fp-entete--partage" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">
