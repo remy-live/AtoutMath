@@ -1470,3 +1470,32 @@ export function pdfSolutions(pdf, page, o) {
     }
     pdf.setFont('helvetica', 'normal');
 }
+
+// UNE SEULE FENÊTRE D'APERÇU À L'ÉCRAN.
+//
+// Rémy : « quand on change d'exercice et que l'aperçu est activé, il ne faut
+// pas qu'il y ait deux fenêtres d'aperçu les unes sur les autres. »
+//
+// Il y a DEUX fenêtres d'aperçu, parce qu'il y a deux natures de fiche : une
+// GRILLE se dessine, une QUESTION s'écrit sur une ligne. Chacune a la sienne,
+// et aucune ne fermait l'autre. Mesuré en passant d'un exercice à grille à un
+// exercice écrit :
+//
+//     1. fiche GRILLE ouverte  : [print-sheet-modal]
+//     2. puis une fiche ÉCRITE : [print-sheet-modal, print-questions-modal]
+//     3. retour à la GRILLE    : [print-sheet-modal, print-questions-modal]
+//
+// Les deux restaient là, l'une par-dessus l'autre, à la même hauteur de pile —
+// c'est donc l'ordre du document qui décidait laquelle se voyait, et l'on
+// pouvait très bien régler la fiche du dessous en croyant régler celle du
+// dessus. Cela se produisait partout, pas seulement sous la barre de passe.
+//
+// Chacune referme l'autre en s'ouvrant : il ne peut plus y en avoir deux.
+export function fermerAutreFiche(sauf) {
+    ['print-sheet-modal', 'print-questions-modal']
+        .filter(id => id !== sauf)
+        .forEach(id => {
+            const m = document.getElementById(id);
+            if (m) m.style.display = 'none';
+        });
+}

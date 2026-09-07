@@ -38,7 +38,7 @@ import { espacerMilliers } from '../core/nombres.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
     apercuSolutions, pdfSolutions, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
-    teindreDoc, poserTeinte, teindreHtml, optionsPolycopie
+    teindreDoc, poserTeinte, teindreHtml, optionsPolycopie, fermerAutreFiche
 } from './ficheRendu.js';
 
 // Ancrée ou détachée : le choix se retient, et il est le même pour les deux
@@ -634,6 +634,8 @@ export function ouvrirFicheQuestions(exo, params, chargerJsPDF, opts = {}) {
     // De quoi se redessiner quand la fenêtre change de taille : l'aperçu
     // calcule son échelle sur la largeur disponible.
     modal._flotRendre = () => rendre();
+    // Une seule fenêtre d'aperçu — voir `fermerAutreFiche`.
+    fermerAutreFiche('print-questions-modal');
     modal.style.display = 'flex';
     // ANCRÉE PAR DÉFAUT, POUR TOUT LE MONDE — Y COMPRIS SOUS LA BARRE DE PASSE.
     // Rémy : « quand la barre de début test (le banc de test), la modale

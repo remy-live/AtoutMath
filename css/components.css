@@ -216,6 +216,20 @@
 /* --- MODALES --- */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100000; justify-content: center; align-items: center; backdrop-filter: blur(8px); }
 .modal-overlay--top { z-index: 999999; }
+/* AU-DESSUS DE LA FICHE, QUAND ELLE EST LÀ.
+   Rémy : « les paramètres, quand j'utilise la barre de debug et que je fais
+   l'aperçu, sur l'exercice ne fonctionne pas. »
+   Ils fonctionnaient : on ne pouvait pas les voir. La fiche à imprimer est une
+   « modal-overlay--top », à 999999 ; le panneau de réglages est une
+   « modal-overlay » ordinaire, à 100000. Ouvert pendant que l'aperçu papier
+   accompagne une passe, il s'ouvrait donc DERRIÈRE la fiche — invisible et
+   intouchable. Mesuré : panneau 100000, fiche 999999.
+   Il ne monte que le temps qu'il faut : la classe est posée à l'ouverture
+   quand une fiche est à l'écran, et retirée sinon — sans quoi le bouton
+   « Fiche d'exercices à imprimer… » du panneau ouvrirait une fiche qui
+   passerait dessous. On reste sous la barre de passe (1000002), qui doit
+   rester atteignable pour changer d'exercice. */
+.modal-overlay--sur-fiche { z-index: 1000001; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; }
 .modal-title { margin: 0; font-size: 1.5rem; color: var(--primary); }
 .modal-title--neutral { color: var(--text-main); }

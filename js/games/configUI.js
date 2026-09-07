@@ -3060,6 +3060,15 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     if (partir) partir.textContent = auteur ? 'Relancer' : 'Jouer !';
     rafraichirApercu(content);
     wireTips(content);
+    // LE PANNEAU PASSE AU-DESSUS DE LA FICHE QUAND ELLE EST À L'ÉCRAN.
+    // Voir `.modal-overlay--sur-fiche` : l'aperçu papier qui accompagne une
+    // passe est à 999999, ce panneau à 100000 — il s'ouvrait derrière, et
+    // « les paramètres ne fonctionnaient pas » parce qu'on ne les voyait pas.
+    modal.classList.toggle('modal-overlay--sur-fiche',
+        ['print-sheet-modal', 'print-questions-modal'].some(id => {
+            const f = document.getElementById(id);
+            return f && getComputedStyle(f).display !== 'none';
+        }));
     modal.style.display = 'flex';
     // Après l'affichage : une boîte encore masquée mesure zéro.
     requestAnimationFrame(() => marquerFondu(content));

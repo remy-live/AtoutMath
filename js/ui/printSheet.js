@@ -51,7 +51,7 @@ import { GLYPHES, egyptianSvgCadre, placerGlyphes } from '../core/figures.js';
 import { tracesDe, branchesCroix, TAILLE_CROIX } from '../core/cercleFigure.js';
 import { pourPdf, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
     optionsPolycopie, teindreDoc, poserTeinte, teindreHtml, encre,
-    ficheEnPortrait, reglerFichePortrait
+    ficheEnPortrait, reglerFichePortrait, fermerAutreFiche
 } from './ficheRendu.js';
 import { equiperFenetre } from './flottant.js';
 // Les réglages qu'on ne règle qu'une fois se rangent derrière un repli.
@@ -15199,6 +15199,8 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     // replier ou tirer le coin change la largeur disponible, et l'aperçu
     // calcule son échelle dessus.
     modal._flotRendre = () => rendre();
+    // Une seule fenêtre d'aperçu — voir `fermerAutreFiche`.
+    fermerAutreFiche('print-sheet-modal');
     modal.style.display = 'flex';
     // ANCRÉE PAR DÉFAUT, POUR TOUT LE MONDE — Y COMPRIS SOUS LA BARRE DE PASSE.
     // Rémy : « quand la barre de début test (le banc de test), la modale
