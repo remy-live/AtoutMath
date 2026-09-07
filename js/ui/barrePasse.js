@@ -43,8 +43,25 @@ let debrancherGlisse = null;
 let rangCourant = 0;
 let minuteurNote = null;
 
-/** L'ordre de la barre : le catalogue entier, dans son ordre à lui. */
-const listeBarre = () => exercices;
+/**
+ * L'ORDRE DE LA BARRE : DU PLUS ANCIEN AU PLUS RÉCENT.
+ *
+ * Rémy : « range les exercices par l'ordre croissant de leur création. »
+ *
+ * La barre suivait l'ordre du CATALOGUE, c'est-à-dire l'ordre des fichiers de
+ * données — un ordre qui n'a de sens pour personne, et surtout pas pour celui
+ * qui passe les cent soixante-six exercices un par un. Les voir arriver dans
+ * l'ordre où ils ont été écrits, c'est retrouver la mémoire qu'on en a : « le
+ * suivant, c'est celui d'avant-hier ». Et cela met les nouveautés à la FIN,
+ * là où on les cherche à la fin d'une passe.
+ *
+ * C'est la date de CRÉATION qui classe, pas la dernière révision : un exercice
+ * de juillet retouché hier remonterait en tête, et l'on ne le retrouverait plus
+ * là où on l'a rangé dans sa tête.
+ */
+const dateDe = (e) => (e && e.cree) || '0';
+const listeBarre = () => exercices.slice().sort((a, b) =>
+    dateDe(a).localeCompare(dateDe(b)) || String(a.title).localeCompare(String(b.title)));
 const exoCourant = () => listeBarre()[rangCourant];
 
 /** La version affichée par la page — elle voyage avec la consigne. */
@@ -81,6 +98,7 @@ function fermerBarre() {
     // La fenêtre d'aperçu appartient à la barre : elle s'en va avec elle.
     apercuFlottant = false;
     fermerApercuFlottant();
+    fermerListe();
     if (debrancherGlisse) { debrancherGlisse(); debrancherGlisse = null; }
     if (barre) barre.remove();
     barre = null;
@@ -89,9 +107,14 @@ function fermerBarre() {
 function ouvrirBarre() {
     const suite = listeBarre();
     if (!suite.length) return;
-    let repris = 0;
-    try { repris = Number(window.localStorage.getItem(CLE_RANG)) || 0; } catch (e) { repris = 0; }
-    rangCourant = Math.max(0, Math.min(suite.length - 1, repris));
+    // ON RETIENT L'EXERCICE, PAS SON NUMÉRO. Un rang n'a de sens que dans une
+    // liste figée : l'ordre vient de changer (il suit maintenant les dates de
+    // création) et il changera encore à chaque exercice ajouté. Reprendre au
+    // rang 87 aurait rouvert un autre exercice que celui qu'on avait laissé.
+    let repris = '';
+    try { repris = window.localStorage.getItem(CLE_RANG) || ''; } catch (e) { repris = ''; }
+    const trouve = suite.findIndex(e => e.id === repris);
+    rangCourant = trouve >= 0 ? trouve : 0;
 
     barre = document.createElement('div');
     barre.id = 'banc-barre';
@@ -102,8 +125,16 @@ function ouvrirBarre() {
             aria-label="Déplacer la barre de passe">⠿</button>
         <button type="button" class="bb-btn" data-prec title="Exercice précédent"
             aria-label="Exercice précédent">◀</button>
-        <button type="button" class="bb-titre" data-jouer
-            title="Rejouer cet exercice"><span data-nom></span><b data-compte></b></button>
+        <!-- LE TITRE OUVRE LA LISTE. Rémy : « si on clique sur l'exercice on a
+             une liste déroulante avec les exercices ». Il cliquait dessus pour
+             SAUTER quelque part, et cela relançait l'exercice affiché — c'est
+             ce que font déjà les flèches. Avancer de cent trente rangs à coups
+             de ▶ pour retrouver un exercice, c'est cent trente lancements de
+             jeu. -->
+        <button type="button" class="bb-titre" data-liste aria-haspopup="listbox"
+            aria-expanded="false" title="Choisir un exercice dans la liste"
+            ><span data-nom></span><b data-compte></b><span class="bb-chevron"
+            aria-hidden="true">▾</span></button>
         <button type="button" class="bb-btn" data-suiv title="Exercice suivant"
             aria-label="Exercice suivant">▶</button>
         <button type="button" class="bb-btn" data-fiche title="Voir la fiche à imprimer"
@@ -128,6 +159,21 @@ function ouvrirBarre() {
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/>
                 <path d="M4 20h16"/></svg></button>
+        <!-- LA POUBELLE DU CARNET, REVENUE. Rémy : « il n'y a plus la poubelle
+             pour enlever le journal ». Elle existait sur l'ancienne barre du
+             banc d'essai et s'est perdue quand le banc a été retiré — sa règle
+             de style, elle, était restée dans la feuille, ce qui dit assez que
+             c'est un oubli et non une décision. On vide le carnet AVANT une
+             passe, pour que les remarques qu'on va écrire soient celles de
+             cette passe-là ; aller la chercher au fond de l'écran de revue,
+             c'est justement quitter la barre. -->
+        <button type="button" class="bb-btn bb-btn--vider" data-vider
+            title="Vider le carnet de la revue et repartir du début"
+            aria-label="Vider le carnet de la revue">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 6.5h16"/><path d="M9.5 6.5V4h5v2.5"/>
+                <path d="M6.5 6.5 7.5 20h9l1-13.5"/><path d="M10.5 10v6M13.5 10v6"/></svg></button>
         <button type="button" class="bb-btn bb-btn--fermer" data-fermer title="Fermer la barre"
             aria-label="Fermer la barre">✕</button>`;
     document.body.appendChild(barre);
@@ -144,11 +190,12 @@ function ouvrirBarre() {
 
     barre.querySelector('[data-prec]').onclick = () => aller(-1);
     barre.querySelector('[data-suiv]').onclick = () => aller(1);
-    barre.querySelector('[data-jouer]').onclick = () => lancerCourant();
+    barre.querySelector('[data-liste]').onclick = () => basculerListe();
     barre.querySelector('[data-fiche]').onclick = () => basculerApercuFlottant();
     barre.querySelector('[data-atelier]').onclick = () => ouvrirAtelierIci();
     majBoutonFiche();
     barre.querySelector('[data-export]').onclick = () => telechargerBilan();
+    barre.querySelector('[data-vider]').onclick = () => viderLeCarnet();
     barre.querySelector('[data-fermer]').onclick = () => fermerBarre();
 
     const champ = barre.querySelector('[data-note]');
@@ -164,12 +211,121 @@ function ouvrirBarre() {
     peindreBarre();
 }
 
+/**
+ * LA LISTE DÉROULANTE — sauter à un exercice sans passer par tous les autres.
+ *
+ * Rémy : « si on clique sur l'exercice on a une liste déroulante avec les
+ * exercices. Range les exercices par l'ordre croissant de leur création. »
+ *
+ * Elle porte la DATE de chaque exercice, et ce n'est pas décoratif : un ordre
+ * qu'on ne peut pas vérifier ressemble à un désordre. Elle marque aussi les
+ * exercices DÉJÀ ANNOTÉS d'un point — au milieu d'une passe, savoir où l'on
+ * s'est arrêté vaut mieux que de compter les rangs.
+ *
+ * Elle s'ouvre VERS LE HAUT quand la barre est en bas de l'écran, ce qui est sa
+ * place par défaut : une liste qui déborde sous le bord de la fenêtre ne se
+ * déroule pas, elle disparaît.
+ */
+function basculerListe() {
+    const ouverte = barre.querySelector('.bb-liste');
+    if (ouverte) { fermerListe(); return; }
+
+    const suite = listeBarre();
+    const titre = barre.querySelector('[data-liste]');
+    const liste = document.createElement('div');
+    liste.className = 'bb-liste';
+    liste.setAttribute('role', 'listbox');
+    liste.innerHTML = suite.map((exo, i) => {
+        const f = ficheDe(revue, exo.id);
+        const note = f && f.remarque ? '<span class="bb-l-note" title="Déjà annoté">•</span>' : '';
+        return `<button type="button" class="bb-l${i === rangCourant ? ' bb-l--ici' : ''}"
+            role="option" aria-selected="${i === rangCourant}" data-rang="${i}">
+            <span class="bb-l-n">${i + 1}</span>
+            <span class="bb-l-date">${enTexte(exo.cree || '—')}</span>
+            <span class="bb-l-nom">${enTexte(exo.title)}</span>${note}</button>`;
+    }).join('');
+    barre.appendChild(liste);
+    titre.setAttribute('aria-expanded', 'true');
+
+    // Ouverte vers le haut ou vers le bas, selon la place réelle sous la barre.
+    const r = barre.getBoundingClientRect();
+    liste.classList.toggle('bb-liste--haut', r.bottom + 260 > window.innerHeight);
+
+    liste.querySelectorAll('[data-rang]').forEach(b => {
+        b.onclick = () => {
+            const i = Number(b.dataset.rang);
+            fermerListe();
+            allerA(i);
+        };
+    });
+    // On se pose SUR l'exercice courant : dans une liste de cent soixante-six,
+    // le premier regard doit tomber là où l'on est.
+    const ici = liste.querySelector('.bb-l--ici');
+    if (ici) ici.scrollIntoView({ block: 'center' });
+    setTimeout(() => document.addEventListener('pointerdown', surClicDehors, true), 0);
+}
+
+function fermerListe() {
+    if (!barre) return;
+    const l = barre.querySelector('.bb-liste');
+    if (l) l.remove();
+    const t = barre.querySelector('[data-liste]');
+    if (t) t.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', surClicDehors, true);
+}
+
+function surClicDehors(e) {
+    if (!barre || barre.contains(e.target)) return;
+    fermerListe();
+}
+
+const enTexte = (x) => String(x ?? '')
+    .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/**
+ * VIDER LE CARNET — et le dire avant, parce que c'est irréversible.
+ *
+ * Ce qu'on efface, ce sont les remarques et les décisions de CET appareil. Ce
+ * qui a déjà été exporté ou reporté dans le code n'est pas touché, et c'est la
+ * phrase qui rassure : on vide un brouillon, pas un travail.
+ */
+function viderLeCarnet() {
+    ecrireNote(true);
+    window.appConfirm('Vider le carnet',
+        'Effacer toutes les remarques et les décisions de cet appareil, '
+        + 'et repartir du premier exercice ?<br><br>'
+        + 'Ce qui a déjà été téléchargé ou reporté dans le code n\'est pas touché.',
+        async () => {
+            revue = nouvelleRevue({ version: versionChargee(), date: Date.now() });
+            garder();
+            rangCourant = 0;
+            retenirLaPlace();
+            fermerListe();
+            peindreBarre();
+            suivreApercuFlottant();
+            const { showToast } = await import('./modal.js');
+            showToast('Carnet vidé — on repart du premier exercice.', 'success');
+        });
+}
+
+/** Où l'on en est, pour la prochaine séance. */
+function retenirLaPlace() {
+    const exo = exoCourant();
+    try { window.localStorage.setItem(CLE_RANG, exo ? exo.id : ''); } catch (e) { /* privé */ }
+}
+
 /** On change d'exercice — la remarque en cours part au carnet AVANT. */
 function aller(pas) {
+    const suite = listeBarre();
+    allerA((rangCourant + pas + suite.length) % suite.length);
+}
+
+/** Le même geste, mais à une place choisie : c'est ce que fait la liste. */
+function allerA(rang) {
     ecrireNote(true);
     const suite = listeBarre();
-    rangCourant = (rangCourant + pas + suite.length) % suite.length;
-    try { window.localStorage.setItem(CLE_RANG, String(rangCourant)); } catch (e) { /* privé */ }
+    rangCourant = Math.max(0, Math.min(suite.length - 1, rang));
+    retenirLaPlace();
     peindreBarre();
     suivreApercuFlottant();
     lancerCourant();

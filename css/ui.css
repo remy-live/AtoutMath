@@ -1062,6 +1062,10 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
        est à 999999, son panneau de réglages à 1000001. */
     position: fixed; z-index: 1000002;
     width: min(760px, calc(100vw - 16px));
+    /* `fixed` sert deux fois : la barre reste à l'écran, ET elle devient le
+       repère de sa liste déroulante, qui se pose en `absolute` par rapport à
+       elle. Sans ce repère, la liste se placerait par rapport à la page et
+       flotterait n'importe où dès qu'on déplace la barre. */
     display: flex; align-items: center; gap: 6px;
     padding: 6px 8px; border-radius: 12px;
     background: var(--bg-panel); border: 1px solid var(--border);
@@ -1087,7 +1091,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .bb-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
 .bb-btn--fermer:hover, .bb-btn--vider:hover { background: var(--danger); border-color: var(--danger); }
-/* Le titre est un bouton : le toucher relance l'exercice qu'on regarde. */
+/* Le titre est un bouton : il ouvre la LISTE des exercices. */
 .bb-titre {
     flex: 0 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 7px;
     padding: 4px 9px; border: 1px solid transparent; border-radius: 8px;
@@ -1097,6 +1101,44 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .bb-titre span { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
 .bb-titre b { flex: 0 0 auto; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .bb-titre:hover { border-color: var(--border); background: var(--bg-hover); }
+.bb-chevron { flex: 0 0 auto; color: var(--text-muted); font-size: 10px; }
+
+/* --- LA LISTE DÉROULANTE DE LA BARRE DE PASSE ------------------------------
+   Rémy : « si on clique sur l'exercice on a une liste déroulante avec les
+   exercices ». Cent soixante-six lignes : elle défile, et elle s'ouvre du côté
+   où il y a la place — vers le haut quand la barre est en bas, ce qui est sa
+   position par défaut. */
+.bb-liste {
+    position: absolute; left: 8px; right: 8px; z-index: 1;
+    top: calc(100% + 6px); max-height: min(52vh, 420px); overflow-y: auto;
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 5px; border-radius: 10px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .3);
+}
+.bb-liste--haut { top: auto; bottom: calc(100% + 6px); }
+.bb-l {
+    display: flex; align-items: baseline; gap: 8px; text-align: left;
+    padding: 5px 8px; border: 0; border-radius: 7px; cursor: pointer;
+    background: transparent; color: var(--text-main); font: inherit; font-size: 13px;
+}
+.bb-l:hover { background: var(--bg-hover); }
+/* Celui qu'on regarde : on doit le retrouver d'un coup d'œil dans une liste
+   qui fait dix écrans de haut. */
+.bb-l--ici { background: color-mix(in srgb, var(--primary) 16%, transparent); font-weight: 800; }
+.bb-l-n {
+    flex: 0 0 auto; min-width: 2.4em; text-align: right;
+    color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: .85em;
+}
+.bb-l-date {
+    flex: 0 0 auto; color: var(--text-muted);
+    font-variant-numeric: tabular-nums; font-size: .85em;
+}
+.bb-l-nom { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+/* Un point pour « déjà annoté » : au milieu d'une passe, c'est ce qu'on
+   cherche — où l'on s'est arrêté. */
+.bb-l-note { flex: 0 0 auto; color: var(--success); font-weight: 900; }
 /* LA REMARQUE PREND TOUTE LA PLACE QUI RESTE : c'est elle qu'on vient écrire,
    pas les boutons qu'on vient regarder. */
 .bb-note {
