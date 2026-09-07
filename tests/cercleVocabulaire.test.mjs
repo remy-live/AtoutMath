@@ -344,3 +344,40 @@ test('ce que l\'élève écrit se compare à ce que l\'item attend', () => {
     }
     assert.ok(vus >= 10, `trop peu de questions « trouver » éprouvées : ${vus}`);
 });
+
+test('SUR LE PAPIER, UNE FIGURE PORTE PLUSIEURS QUESTIONS', () => {
+    // Rémy : « pose plusieurs questions pour une même figure ». La figure porte
+    // DÉJÀ trois tracés nommés — celui qu'on demande et deux voisins tirés pour
+    // la confusion. Sur l'écran les voisins ne servent qu'à rendre la question
+    // difficile ; sur le papier, il n'y a aucune raison de ne pas les demander
+    // aussi. Et c'est plus exigeant, pas moins : nommer le diamètre ET la corde
+    // de la même figure oblige à les distinguer.
+    let vues = 0;
+    for (let i = 0; i < 20; i++) {
+        const it = cercleVocabulaireGenerator.generate({ sens: 'nommer' },
+            { index: i, total: 20, rng: makeRng(`c${i}`), papier: true });
+        const q = it.meta.questions;
+        assert.ok(Array.isArray(q) && q.length >= 2, `${q && q.length} question(s)`);
+        // La première est celle de l'écran.
+        assert.equal(q[0].reponse, it.meta.reponse);
+        assert.equal(q[0].objet, it.meta.objet);
+        // Chacune nomme un tracé RÉELLEMENT dessiné, et sa réponse est un mot
+        // du chapitre.
+        assert.equal(q.length, it.meta.spec.elements.length);
+        q.forEach((x, j) => {
+            assert.ok(x.objet, 'le tracé est désigné');
+            assert.ok(MOTS_CERCLE.some(m => m.nom === x.reponse), `« ${x.reponse} » n'est pas un mot`);
+            assert.equal(x.reponse,
+                (MOTS_CERCLE.find(m => m.id === it.meta.spec.elements[j].type) || {}).nom);
+        });
+        vues++;
+    }
+    assert.equal(vues, 20);
+});
+
+test('l\'écran garde sa question unique', () => {
+    const it = cercleVocabulaireGenerator.generate({ sens: 'nommer' },
+        { index: 0, total: 10, rng: makeRng('x') });
+    assert.equal(it.meta.questions, null);
+    assert.equal(it.meta.enoncePapier, null);
+});

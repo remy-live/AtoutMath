@@ -62,6 +62,92 @@ export const FAMILLES = [
 ];
 
 /**
+ * LE CODAGE DES DIAGONALES, famille par famille.
+ *
+ * Rémy, deux revues de suite : « code-les avec les diagonales », puis « tu as
+ * oublié le codage sur les quadrilatères avec les diagonales du pdf ». Les
+ * figures de l'organigramme étaient des silhouettes grises — un losange se
+ * reconnaissait à sa forme, ce qui est exactement ce qu'on ne veut PAS
+ * enseigner : c'est le codage qui dit la propriété, pas l'allure du dessin.
+ *
+ * Et les diagonales, précisément, parce que ce sont ELLES que l'organigramme
+ * met en jeu — « qui a ses diagonales de même longueur », « qui a ses
+ * diagonales perpendiculaires », « qui a ses diagonales se coupant en leur
+ * milieu ». La figure porte donc la réponse à la question qu'on lui pose, et
+ * l'élève qui hésite entre deux cases n'a qu'à regarder le dessin.
+ *
+ * LA CONVENTION EST CELLE DU CAHIER, et elle se lit sans légende : des marques
+ * IDENTIQUES sur deux segments disent qu'ils sont égaux.
+ *
+ *  · Parallélogramme — une marque sur les deux moitiés de la première
+ *    diagonale, deux sur les moitiés de la seconde : chaque diagonale est
+ *    coupée en son milieu, et les deux n'ont pas la même longueur.
+ *  · Rectangle — LA MÊME marque sur les quatre moitiés : elles sont toutes
+ *    égales, ce qui dit d'un seul geste le milieu ET l'égalité des longueurs.
+ *  · Losange — comme le parallélogramme, plus l'angle droit au centre.
+ *  · Carré — les quatre moitiés égales, plus l'angle droit : il est rectangle
+ *    ET losange, et son codage le montre.
+ */
+export const CODAGE_DIAGONALES = {
+    parallelogramme: { marques: [1, 2] },
+    rectangle: { marques: [1, 1] },
+    losange: { marques: [1, 2], droit: true },
+    carre: { marques: [1, 1], droit: true }
+};
+
+/**
+ * Le tracé du codage, en coordonnées de la figure (0…100) — comme `figure`.
+ *
+ * Les deux rendus (l'aperçu en SVG, la feuille au PDF) partent des mêmes
+ * segments : un codage dessiné deux fois finirait par différer, et sur une
+ * fiche de géométrie c'est le dessin qui ment en premier.
+ *
+ * @param {Array<[number,number]>} figure - les quatre sommets, dans l'ordre
+ * @param {string} id                     - l'identifiant de la famille
+ * @returns {{diagonales:Array, marques:Array, droit:Array|null}|null}
+ */
+export function codageDiagonales(figure, id) {
+    const c = CODAGE_DIAGONALES[id];
+    if (!c || !Array.isArray(figure) || figure.length !== 4) return null;
+    const P = figure.map(([x, y]) => ({ x, y }));
+    // Le centre est le milieu d'une diagonale — c'est vrai de toutes les
+    // familles codées ici, et c'est justement ce qu'on code.
+    const O = { x: (P[0].x + P[2].x) / 2, y: (P[0].y + P[2].y) / 2 };
+    const unite = (a, b) => {
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const n = Math.hypot(dx, dy) || 1;
+        return { x: dx / n, y: dy / n };
+    };
+    const LONG = 7;     // longueur d'une marque
+    const ECART = 3.4;  // entre deux marques d'une même paire
+    const marques = [];
+    [[P[0], O], [O, P[2]], [P[1], O], [O, P[3]]].forEach((seg, k) => {
+        const combien = c.marques[k < 2 ? 0 : 1];
+        const m = { x: (seg[0].x + seg[1].x) / 2, y: (seg[0].y + seg[1].y) / 2 };
+        const u = unite(seg[0], seg[1]);
+        const n = { x: -u.y, y: u.x };
+        for (let j = 0; j < combien; j++) {
+            const d = (j - (combien - 1) / 2) * ECART;
+            const cx = m.x + u.x * d, cy = m.y + u.y * d;
+            marques.push([
+                { x: cx - n.x * LONG / 2, y: cy - n.y * LONG / 2 },
+                { x: cx + n.x * LONG / 2, y: cy + n.y * LONG / 2 }
+            ]);
+        }
+    });
+    // L'angle droit au centre : le petit carré du cahier, ouvert vers le
+    // sommet A et le sommet B pour qu'il tombe toujours DANS la figure.
+    const T = 8;
+    const u = unite(O, P[0]), v = unite(O, P[1]);
+    const droit = c.droit ? [
+        { x: O.x + u.x * T, y: O.y + u.y * T },
+        { x: O.x + (u.x + v.x) * T, y: O.y + (u.y + v.y) * T },
+        { x: O.x + v.x * T, y: O.y + v.y * T }
+    ] : null;
+    return { diagonales: [[P[0], P[2]], [P[1], P[3]]], marques, droit };
+}
+
+/**
  * LES TREIZE CONDITIONS, ET LES SEPT CHEMINS QU'ELLES OUVRENT.
  *
  * Rémy, sur sa fiche : cinq cases de figures, treize cartes de conditions, et

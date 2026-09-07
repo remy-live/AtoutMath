@@ -422,6 +422,15 @@ export const geometrieExercises = [
         // sais que / Or / Donc » et la place d'écrire. Une fiche de Pythagore
         // qui se corrige par un nombre n'apprend pas ce qu'on note.
         generatorId: 'geo.pythagore', printable: 'pythagore',
+        // ET LA FEUILLE PORTE LA FIGURE, pas seulement l'énoncé. Rémy :
+        // « n'hésite pas à faire des énoncés avec figures ». Le réglage existait
+        // — « le texte ET la figure » — et la fiche ne le demandait pas : elle
+        // sortait six énoncés en toutes lettres et six colonnes de blanc à leur
+        // gauche. Or traduire l'énoncé en figure est le premier geste du
+        // chapitre ; la donner toute faite libère le temps pour le second, qui
+        // est de choisir entre additionner et soustraire les carrés. Le
+        // professeur garde les trois choix dans le panneau.
+        printParams: { presentation: 'les-deux' },
         sansRevision: true,
         skills: ['geo.pythagore'],
         params: { niveau: 'progressif' },

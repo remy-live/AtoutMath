@@ -302,7 +302,7 @@ export const pavageGenerator = {
         const trouve = chercher(rng, t, especes)
             || chercher(rng, t, ['axe', 'point'])
             || secours();
-        const { pieces, de, vers, bon } = trouve;
+        const { pieces, de, vers, bon, autres = [] } = trouve;
 
         const noms = pieces.map((_, i) => LETTRES[i]);
         const faux = leurres(rng, bon, pieces, de, vers, t, t.candidats - 1);
@@ -314,6 +314,44 @@ export const pavageGenerator = {
             ...el, id: `el${i}`, nom: nommerCandidat(el.genre, i)
         }));
         const juste = candidats.find(c => memeElement(c, bon));
+
+        // PLUSIEURS QUESTIONS POUR UN MÊME PAVAGE — sur le papier.
+        //
+        // Rémy : « tu peux poser plusieurs questions pour un même schéma ». Un
+        // pavage occupe le tiers d'une feuille, porte quatre pièces nommées et
+        // trois ou quatre éléments candidats : n'en tirer qu'une question, c'est
+        // laisser trois pièces à ne rien faire.
+        //
+        // ET LA SECONDE QUESTION PORTE SUR UN AUTRE ÉLÉMENT quand c'est
+        // possible. Deux questions dont la réponse est la même droite ne
+        // demandent qu'une fois le même travail ; deux réponses différentes
+        // obligent à relire la figure — et le leurre de la première question
+        // devient la bonne réponse de la seconde, ce qui interdit d'y répondre
+        // par élimination.
+        //
+        // ET SI SA RÉPONSE N'EST PAS DÉJÀ SUR LA FIGURE, ON L'Y AJOUTE. Les
+        // éléments dessinés sont la bonne réponse et trois leurres tirés au
+        // hasard : que l'un d'eux soit justement l'axe d'une AUTRE paire est
+        // une coïncidence, et l'on n'obtenait de seconde question qu'un pavage
+        // sur six. Un candidat de plus ne coûte rien — il est nommé comme les
+        // autres, et il est maintenant utile deux fois.
+        const autresQuestions = [];
+        if (ctx.papier) {
+            const rangees = autres.slice().sort((a, b) =>
+                Number(memeElement(a.bon, bon)) - Number(memeElement(b.bon, bon)));
+            for (const p2 of rangees) {
+                if (p2.de === vers && p2.vers === de) continue;   // la même, à l'envers
+                if (memeElement(p2.bon, bon)) continue;           // la même réponse
+                let c = candidats.find(x => memeElement(x, p2.bon));
+                if (!c) {
+                    c = { ...p2.bon, id: `el${candidats.length}`,
+                        nom: nommerCandidat(p2.bon.genre, candidats.length) };
+                    candidats.push(c);
+                }
+                autresQuestions.push({ de: p2.de, vers: p2.vers, idJuste: c.id, bon: p2.bon });
+                break;
+            }
+        }
 
         const svg = quadrillageSvg({
             largeur: t.l, hauteur: t.h, repere: true,
@@ -362,7 +400,11 @@ export const pavageGenerator = {
                 largeur: t.l, hauteur: t.h,
                 pieces, noms, de, vers,
                 candidats, bon, idJuste: juste.id,
-                genre: bon.genre
+                genre: bon.genre,
+                // La liste complète des questions de la feuille : la première
+                // est celle de l'écran, les suivantes n'existent que sur papier.
+                questions: ctx.papier
+                    ? [{ de, vers, idJuste: juste.id, bon }, ...autresQuestions] : null
             }
         });
     }
@@ -390,7 +432,11 @@ function chercher(rng, t, especes) {
         const parEspece = especes
             .map(g => paires.filter(p => p.bon.genre === g))
             .filter(liste => liste.length);
-        return { pieces, ...rng.pick(rng.pick(parEspece)) };
+        // ET L'ON RAPPORTE LES AUTRES PAIRES. La feuille en pose deux ou trois
+        // par pavage — voir `questions` plus bas —, et elles doivent venir du
+        // MÊME pavage : c'est tout l'intérêt, l'élève ne relit pas la figure.
+        const choisie = rng.pick(rng.pick(parEspece));
+        return { pieces, ...choisie, autres: paires.filter(p => p !== choisie) };
     }
     return null;
 }

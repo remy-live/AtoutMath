@@ -7,6 +7,8 @@ import { makeRng } from '../js/core/ids.js';
 import { exercices, paramSchemaOf } from '../js/data/catalog.js';
 import { getGenerator } from '../js/core/registry.js';
 import { surPapier, aSonMot, reglagesDeFiche, valeursDeDepart } from '../js/core/reglagesFiche.js';
+import { FAMILLES, codageDiagonales } from '../js/core/quadrilateres.js';
+import { RENDUS } from '../js/ui/printSheet.js';
 import {
     GOUTTIERE, zoneUtile, mesuresSlot, capaciteMax, choisirDisposition, coteLisible,
     dispositionDuRendu, dispositionEnColonnes, lignesQuiRemplissent
@@ -413,4 +415,70 @@ test('LES COLONNES DES REVUES SONT DANS LE CATALOGUE', () => {
         assert.ok(exo, `${id} : exercice introuvable`);
         assert.equal(exo.colonnesPapier, n, `${id} : Rémy en veut ${n}`);
     }
+});
+
+// --- Le codage des diagonales de l'organigramme -------------------------------
+
+test('LES FIGURES DE L\'ORGANIGRAMME PORTENT LE CODAGE DE LEURS DIAGONALES', () => {
+    // Rémy, deux revues de suite : « code-les avec les diagonales », puis « tu
+    // as oublié le codage sur les quadrilatères avec les diagonales du pdf ».
+    // Ce sont les diagonales que l'organigramme met en jeu — « qui a ses
+    // diagonales de même longueur », « perpendiculaires », « se coupant en leur
+    // milieu » —, et la figure doit porter la réponse à la question posée.
+    const fig = (id) => (FAMILLES.find(f => f.id === id) || {}).figure;
+
+    // Le quadrilatère quelconque n'a AUCUNE propriété : rien à coder.
+    assert.equal(codageDiagonales(fig('quadrilatere'), 'quadrilatere'), null);
+
+    for (const id of ['parallelogramme', 'rectangle', 'losange', 'carre']) {
+        const c = codageDiagonales(fig(id), id);
+        assert.ok(c, `${id} : pas de codage`);
+        assert.equal(c.diagonales.length, 2, `${id} : les deux diagonales`);
+        // Une marque par demi-diagonale au moins : c'est ce qui dit le milieu.
+        assert.ok(c.marques.length >= 4, `${id} : ${c.marques.length} marques`);
+    }
+    // LE RECTANGLE ET LE CARRÉ PORTENT LA MÊME MARQUE PARTOUT — quatre demies
+    // égales, donc même longueur ET même milieu, d'un seul geste. Le
+    // parallélogramme et le losange en portent deux sortes : leurs diagonales
+    // se coupent en leur milieu sans être égales.
+    assert.equal(codageDiagonales(fig('rectangle'), 'rectangle').marques.length, 4);
+    assert.equal(codageDiagonales(fig('carre'), 'carre').marques.length, 4);
+    assert.equal(codageDiagonales(fig('parallelogramme'), 'parallelogramme').marques.length, 6);
+    assert.equal(codageDiagonales(fig('losange'), 'losange').marques.length, 6);
+
+    // L'ANGLE DROIT AU CENTRE, et seulement là où il existe.
+    assert.ok(codageDiagonales(fig('losange'), 'losange').droit);
+    assert.ok(codageDiagonales(fig('carre'), 'carre').droit);
+    assert.equal(codageDiagonales(fig('rectangle'), 'rectangle').droit, null);
+    assert.equal(codageDiagonales(fig('parallelogramme'), 'parallelogramme').droit, null);
+});
+
+// --- Une fiche de grilles qui tient sur plusieurs feuilles ---------------------
+
+test('LE MEMORY SE DONNE PAR FEUILLES PLEINES', () => {
+    // Rémy : « mets 8 paires ou 16 paires (2 pages du coup) ou 24 paires
+    // (3 pages) ». Une fiche de grilles tenait sur UNE page — et pour un jeu à
+    // découper c'est une limite arbitraire : les cartes du second feuillet se
+    // découpent exactement comme celles du premier.
+    const memory = RENDUS.memory;
+    assert.ok(memory.plusieursPages, 'le rendu accepte plusieurs feuilles');
+    const dispo = dispositionDuRendu(memory);
+    const parPage = dispo.cols * dispo.rows;
+    assert.equal(parPage, 8, 'huit paires remplissent une feuille');
+    // Neuf n'est pas un nombre de memory : on étale les cartes en rectangle, et
+    // quatre colonnes de paires font huit cartes de front.
+    assert.equal(dispo.cols, 4);
+    assert.equal(dispo.colonnes, 4, 'le vœu que `choisirDisposition` suivra');
+    const d = choisirDisposition(parPage, dispo, PAGE, { colles: true, proportions: memory.proportions });
+    assert.equal(d.cols, 4, 'quatre colonnes de paires');
+    // Seize paires font deux feuilles, vingt-quatre en font trois.
+    assert.equal(Math.ceil(16 / parPage), 2);
+    assert.equal(Math.ceil(24 / parPage), 3);
+});
+
+test('les autres fiches restent sur une seule feuille', () => {
+    // La pagination est déclarée par le rendu, jamais devinée : une planche de
+    // sudokus ou de disques n'a aucune raison de déborder sur une seconde page.
+    const paginees = Object.entries(RENDUS).filter(([, r]) => r && r.plusieursPages);
+    assert.deepEqual(paginees.map(([k]) => k), ['memory']);
 });

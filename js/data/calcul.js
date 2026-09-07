@@ -1426,6 +1426,11 @@ export const calculExercises = [
         // garder la main — est souvent la première fois qu'un enfant renonce à
         // un gain immédiat par calcul.
         id: 'logi-pipopipette', title: 'La Pipopipette',
+        // LE PDF DU JEU — Rémy : « on pourrait faire le pdf ». La pipopipette
+        // est née sur du papier (Édouard Lucas, 1889) : la feuille lui rend son
+        // support, et c'est le jeu qu'on donne en fin d'heure ou à emporter.
+        printable: 'pipopipette', printGeneratorId: 'jeux.plateaux-fiche',
+        printParams: { jeu: 'pipopipette', colonnes: 5, rangees: 4 },
         cree: '2026-08-19',
         activityId: 'pipopipette', horsProgression: true, sansRevision: true,
         deuxJoueurs: true,

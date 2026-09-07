@@ -25,6 +25,7 @@ import {
     bande, recoupage
 } from '../js/core/fractionsEquivalentes.js';
 import { makeRng } from '../js/core/ids.js';
+import { fracEgaliteGenerator } from '../js/core/generators/fractionsEquivalentes.js';
 
 const graines = (n) => Array.from({ length: n }, (_, i) => makeRng(`frac${i}`));
 
@@ -798,4 +799,23 @@ test('la simplification ajoute sa ligne, et le complément a la sienne', () => {
     assert.deepEqual(etapesPosees({ type: 'complement', ka: 9, kb: 1 }), ['entier', 'calcul']);
     assert.deepEqual(etapesPosees({ type: 'complement', ka: 9, kb: 1, simplifie: true }),
         ['entier', 'calcul', 'simplifiee']);
+});
+
+test('LE CORRIGÉ ÉCRIT L\'ÉGALITÉ ENTIÈRE, PAS LE SEUL NOMBRE MANQUANT', () => {
+    // Rémy : « mets les fractions en colonnes dans la solution ». Le corrigé
+    // alignait « 9 », « 15 », « 10 » — une colonne de nombres dont on ne sait
+    // plus, en corrigeant, de quelle fraction ils viennent. L'égalité complète
+    // se met d'ailleurs en colonnes toute seule : la feuille empile les
+    // fractions dès qu'elle en reconnaît une.
+    for (let i = 0; i < 20; i++) {
+        const it = fracEgaliteGenerator.generate({ bandes: 0 },
+            { index: i, total: 20, rng: makeRng(`sol${i}`) });
+        const e = it.meta.egalite;
+        assert.equal(it.reponsePapier, `${e.gauche.n}/${e.gauche.d} = ${e.droite.n}/${e.droite.d}`);
+        // Deux fractions : c'est ce que la mise en page reconnaît pour les
+        // empiler (voir `porteUneFraction`).
+        assert.equal((it.reponsePapier.match(/\d+\/\d+/g) || []).length, 2);
+        // Et l'égalité est vraie.
+        assert.equal(e.gauche.n * e.droite.d, e.droite.n * e.gauche.d);
+    }
 });

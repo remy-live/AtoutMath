@@ -347,3 +347,42 @@ test('les motifs sont ceux des pavages de fiches, et tous connexes', () => {
         assert.equal(vues.size, m.length, 'motif en morceaux');
     });
 });
+
+test('SUR LE PAPIER, UN PAVAGE PORTE PLUSIEURS QUESTIONS', () => {
+    // Rémy : « tu peux poser plusieurs questions pour un même schéma ». Un
+    // pavage occupe le tiers d'une feuille et porte quatre pièces nommées :
+    // n'en tirer qu'une question, c'est laisser trois pièces à ne rien faire.
+    let avecDeux = 0;
+    for (let i = 0; i < 25; i++) {
+        const it = G.generate({}, { index: i, total: 25, rng: makeRng(`pp${i}`), papier: true });
+        const q = it.meta.questions;
+        assert.ok(Array.isArray(q) && q.length >= 1, 'une liste de questions');
+        // La première est celle de l'écran : le même item raconte la même
+        // chose des deux côtés.
+        assert.equal(q[0].de, it.meta.de);
+        assert.equal(q[0].vers, it.meta.vers);
+        for (const x of q) {
+            // Chaque réponse est un élément DESSINÉ sur la figure : sans cela,
+            // la question n'aurait pas de réponse à désigner.
+            const c = it.meta.candidats.find(el => el.id === x.idJuste);
+            assert.ok(c, 'la réponse est un candidat de la figure');
+            assert.ok(memeElement(c, x.bon), 'et c\'est le bon');
+            // Et c'est bien une symétrie : la pièce `de` se transforme en `vers`.
+            const el = elementUnique(it.meta.pieces[x.de], it.meta.pieces[x.vers],
+                it.meta.largeur, it.meta.hauteur);
+            assert.ok(el && memeElement(el, x.bon), 'la paire est bien symétrique par cet élément');
+        }
+        if (q.length >= 2) {
+            avecDeux++;
+            // LA SECONDE PORTE SUR UN AUTRE ÉLÉMENT : deux questions dont la
+            // réponse est la même droite ne demandent qu'une fois le travail.
+            assert.ok(!memeElement(q[1].bon, q[0].bon), 'deux réponses différentes');
+        }
+    }
+    assert.ok(avecDeux >= 20, `${avecDeux}/25 pavages à deux questions — on en veut presque partout`);
+});
+
+test('l\'écran, lui, n\'en pose qu\'une', () => {
+    const it = G.generate({}, { index: 0, total: 10, rng: makeRng('e') });
+    assert.equal(it.meta.questions, null);
+});

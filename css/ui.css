@@ -657,6 +657,19 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     font-family: Helvetica, Arial, 'Liberation Sans', sans-serif;
 }
 .fp-apercu * { font-family: Helvetica, Arial, 'Liberation Sans', sans-serif; }
+/* PLUSIEURS FEUILLES : le cadre n'est plus la page, il les porte.
+   Une fiche de grilles tenait sur une seule feuille ; le memory des tables en
+   demande trois quand on veut vingt-quatre paires. Le papier — le blanc, le
+   filet, l'ombre — passe alors de la boîte à chaque feuille, et la boîte se
+   contente de les empiler. */
+.fp-apercu--pages {
+    background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible;
+}
+.fp-feuille {
+    position: absolute; left: 0; background: #fff; overflow: hidden;
+    border: 1px solid var(--border); border-radius: 4px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .18);
+}
 .fp-entete {
     /* `relative` n'aurait aucun sens ici : la boîte est déjà positionnée, donc
        elle sert de repère à la croix qui efface le titre. */

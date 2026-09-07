@@ -83,6 +83,11 @@ export const PLI = {
     regarde: 1000,  // le temps de voir le cube fermé
     tour: 2200,     // le tour autour du cube
     angle: 150,     // de combien de degrés on en fait le tour
+    // ET DE COMBIEN ON BASCULE PENDANT CE TOUR. Le cadrage part de −24° :
+    // quarante-quatre degrés de plus amènent le regard à +20, c'est-à-dire
+    // sous le cube. Le dessus se voit au départ, le dessous à l'arrivée, et
+    // les quatre autres faces défilent entre les deux.
+    angleX: 44,
     entre: 450,     // le souffle entre deux gestes
     deplie: 1600,   // le retour à plat, couleurs gardées
     replie: 1200    // et l'on referme
@@ -166,12 +171,19 @@ export class Patrons extends BaseGame {
                        fois plié : la translation s'annule d'elle-même. */
                     transform: translate(calc(var(--dx, 0) * var(--s) * var(--plat, 1)),
                                          calc(var(--dy, 0) * var(--s) * var(--plat, 1)))
-                               rotateX(var(--vx, 0deg))
+                               rotateX(calc(var(--vx, 0deg) + var(--tourx, 0deg)))
                                rotateY(calc(var(--vy, 0deg) + var(--tour, 0deg)));
                     /* « --tour » EST LE TOURNE-DISQUE. Rémy : « fais aussi des
                        rotations doucement autour du cube ». Il s'AJOUTE au
                        point de vue au lieu de le remplacer : le cadrage de
                        trois quarts reste le cadrage, et l'on tourne autour.
+                       « --tourx » BASCULE EN PLUS. Rémy, plus tard : « pour
+                       l'animation, fais une rotation aussi autour de y ». Le
+                       tour ne tournait qu'autour d'un axe : sur un cube, cela
+                       montre quatre faces et jamais le dessus ni le dessous —
+                       or ce sont justement les deux que l'on cherche quand on
+                       demande quelle face est opposée à quelle autre. En
+                       basculant AUSSI, les six passent devant les yeux.
                        « --duree » mène les deux transitions — celle du monde et
                        celle des carrés —, si bien qu'un pli et un tour se
                        règlent d'un seul endroit, chorégraphie par chorégraphie.
@@ -419,8 +431,12 @@ export class Patrons extends BaseGame {
      *   1. LE PLI, SANS TOURNER. On voit les carrés se lever, et rien d'autre.
      *   2. UNE PAUSE. Le cube fermé est ce qu'on est venu voir ; il faut le
      *      temps de le voir.
-     *   3. LE TOUR, DOUCEMENT, autour du cube fermé. C'est là que le volume se
-     *      lit — et que les six carrés cessent d'être six carrés.
+     *   3. LE TOUR, DOUCEMENT, autour du cube fermé — et EN BASCULANT. C'est là
+     *      que le volume se lit, et que les six carrés cessent d'être six
+     *      carrés. Rémy : « pour l'animation, fais une rotation aussi autour de
+     *      y ». Un seul axe montre quatre faces sur six : le dessus et le
+     *      dessous restaient cachés, ceux-là mêmes qu'on cherche quand la
+     *      question porte sur des faces opposées.
      *   4. ON DÉPLIE, PUIS ON REPLIE, revenu de face. Les couleurs restent : on
      *      suit des yeux le carré qu'on cherchait, qui redescend à sa place.
      *
@@ -438,7 +454,7 @@ export class Patrons extends BaseGame {
             && this.mondeEl && this.mondeEl.isConnected;
 
         // 1. Le pli, sans tourner.
-        this.appliquerPli(true, false, { duree: `${PLI.pli}ms`, tour: 0 });
+        this.appliquerPli(true, false, { duree: `${PLI.pli}ms`, tour: 0, tourX: 0 });
         // 2. On attend un peu.
         await dors(PLI.pli + PLI.regarde);
         // L'aperçu du catalogue s'arrête là : ses vignettes durent deux
@@ -446,15 +462,17 @@ export class Patrons extends BaseGame {
         if (this.isDemo || !vivant()) return;
 
         // 3. Le tour, doucement, autour du cube fermé.
-        this.appliquerPli(true, false, { duree: `${PLI.tour}ms`, tour: PLI.angle });
+        this.appliquerPli(true, false,
+            { duree: `${PLI.tour}ms`, tour: PLI.angle, tourX: PLI.angleX });
         await dors(PLI.tour + PLI.entre);
         if (!vivant()) return;
 
         // 4. On déplie — de face, couleurs gardées — puis on replie.
-        this.appliquerPli(false, false, { couleurs: true, duree: `${PLI.deplie}ms`, tour: 0 });
+        this.appliquerPli(false, false,
+            { couleurs: true, duree: `${PLI.deplie}ms`, tour: 0, tourX: 0 });
         await dors(PLI.deplie + PLI.entre);
         if (!vivant()) return;
-        this.appliquerPli(true, false, { duree: `${PLI.replie}ms`, tour: 0 });
+        this.appliquerPli(true, false, { duree: `${PLI.replie}ms`, tour: 0, tourX: 0 });
     }
 
     /** Un carré, et tout ce qui pend après lui. */
@@ -486,7 +504,7 @@ export class Patrons extends BaseGame {
      * @param {boolean} plie - l'angle d'arrivée
      * @param {boolean} sec - poser l'état sans le montrer arriver
      */
-    appliquerPli(plie, sec, { couleurs = plie, tour = 0, duree = null } = {}) {
+    appliquerPli(plie, sec, { couleurs = plie, tour = 0, tourX = 0, duree = null } = {}) {
         const m = this.mondeEl;
         if (!m) return;
         const verre = !!couleurs && !!this.question && this.question.famille === 'opposees';
@@ -497,6 +515,7 @@ export class Patrons extends BaseGame {
         m.style.setProperty('--vy', plie ? '32deg' : '0deg');
         m.style.setProperty('--plat', plie ? '0' : '1');
         m.style.setProperty('--tour', `${tour}deg`);
+        m.style.setProperty('--tourx', `${tourX}deg`);
         m.classList.toggle('pa-monde--verre', verre);
         m.querySelectorAll('[data-case]').forEach(el => {
             const k = el.dataset.case;

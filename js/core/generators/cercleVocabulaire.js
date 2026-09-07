@@ -336,12 +336,12 @@ export const cercleVocabulaireGenerator = {
         // entière. Ces mots-là se nomment.
         return (sens === 'trouver' && !GLOBAUX.has(mot.id))
             ? itemTrouver(rng, mot, liste)
-            : itemNommer(rng, mot, liste);
+            : itemNommer(rng, mot, liste, !!ctx.papier);
     }
 };
 
 /** On met un élément en gras, et l'élève dit ce qu'il représente. */
-function itemNommer(rng, mot, liste) {
+function itemNommer(rng, mot, liste, papier = false) {
     // Le surligné D'ABORD, pour qu'il reçoive les premières lettres : « [OA] »
     // se lit mieux que « [OF] », et c'est la question qu'on va poser.
     const elements = nommerPoints(tirerLisible(rng,
@@ -378,7 +378,26 @@ function itemNommer(rng, mot, liste) {
         // propositions — seulement à `meta`.
         meta: {
             mot: mot.id, sens: 'nommer', spec, reponse: mot.nom,
-            objet: FORMES[mot.id].ecrire(noms), enonce, theme: `cercle-${mot.id}`
+            objet: FORMES[mot.id].ecrire(noms), enonce, theme: `cercle-${mot.id}`,
+            // PLUSIEURS QUESTIONS POUR UNE MÊME FIGURE — sur le papier.
+            //
+            // Rémy : « pose plusieurs questions pour une même figure ». La
+            // figure porte DÉJÀ trois tracés nommés : le trait qu'on demande,
+            // et deux voisins tirés pour la confusion — la corde à côté du
+            // diamètre, l'arc à côté de la corde. Sur l'écran, les deux
+            // voisins ne servent qu'à rendre la question difficile ; sur le
+            // papier, où l'on ne surligne rien, il n'y a aucune raison de ne
+            // pas les demander aussi. Trois réponses au lieu d'une, pour un
+            // cercle de sept centimètres qui prend le sixième de la feuille.
+            //
+            // Et c'est plus exigeant, pas moins : nommer le diamètre ET la
+            // corde de la même figure oblige à les distinguer, ce qui est
+            // exactement la difficulté du chapitre.
+            enoncePapier: papier ? 'Écris ce que représente chaque tracé.' : null,
+            questions: papier ? elements.map(e => ({
+                objet: FORMES[e.type].ecrire(e.noms),
+                reponse: (MOTS_CERCLE.find(m => m.id === e.type) || mot).nom
+            })) : null
         }
     });
 }

@@ -117,6 +117,17 @@ export const fracEgaliteGenerator = {
                        </div>`
             },
             answer: e.reponse,
+            // LE CORRIGÉ ÉCRIT L'ÉGALITÉ ENTIÈRE, PAS LE SEUL NOMBRE MANQUANT.
+            //
+            // Rémy : « mets les fractions en colonnes dans la solution ». Le
+            // corrigé alignait « 9 », « 15 », « 10 » — une colonne de nombres
+            // dont on ne sait plus, en corrigeant, à quelle question ils
+            // répondent ni de quelle fraction ils viennent. Rendre l'égalité
+            // complète, c'est aussi la faire écrire EN COLONNES : la feuille
+            // empile les fractions dès qu'elle en reconnaît une (voir
+            // `porteUneFraction`), et le corrigé d'un exercice de fractions
+            // doit s'écrire comme l'exercice.
+            reponsePapier: `${e.gauche.n}/${e.gauche.d} = ${e.droite.n}/${e.droite.d}`,
             explanation: `${e.gauche.n}/${e.gauche.d} = ${e.droite.n}/${e.droite.d} : on `
                 + `${e.sens === 'agrandir' ? 'multiplie' : 'divise'} le numérateur ET le `
                 + `dénominateur par ${e.facteur}. La fraction ne change pas de valeur.`,
