@@ -3306,6 +3306,10 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    libellé et son champ : l'œil devait traverser le panneau pour relier les
    deux. On le borne à une largeur de lecture, et les deux colonnes se
    retrouvent côte à côte. */
+/* HORS TÉLÉPHONE, PAS DE POIGNÉE : la fenêtre est centrée, elle ne vient pas
+   du bas, et un trait gris en haut n'y voudrait rien dire. */
+.tiroir-poignee { display: none; }
+
 #student-config-modal .modal-panel-sm-left {
     width: min(430px, 92vw);
 }
@@ -4283,12 +4287,25 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
        posé plutôt qu'un alignement qui commence nulle part. */
     #student-config-modal .cfg-chips { justify-content: center; }
     #student-config-modal .cfg-field--wide .cfg-label { justify-content: center; margin-bottom: 6px; }
-    /* La poignée : elle dit « ça vient du bas » sans une ligne de texte. */
-    #student-config-modal .modal-panel-sm-left::before {
-        content: ''; align-self: center; flex-shrink: 0;
-        width: 42px; height: 4px; border-radius: 999px;
-        background: var(--border); margin-bottom: 4px;
+    /* LA POIGNÉE SE PREND. Rémy : « Les tiroirs ne se glissent pas en bas,
+       il faut appuyer sur Annuler. » Elle était un pseudo-élément — un trait
+       gris qui disait « ça vient du bas » et qu'aucun doigt ne pouvait
+       attraper. Une affordance qui ment coûte plus cher que pas d'affordance
+       du tout. C'est maintenant un vrai élément (voir js/ui/tiroir.js), large
+       de toute la feuille et haut de 22 pixels de zone sensible pour un trait
+       de 4 : on l'attrape au pouce sans regarder.
+       « touch-action: none » est ce qui permet de TIRER au lieu de faire
+       défiler la page sous le doigt. */
+    #student-config-modal .tiroir-poignee {
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; height: 22px; margin: -4px 0 2px;
+        cursor: grab; touch-action: none;
     }
+    #student-config-modal .tiroir-poignee::before {
+        content: ''; width: 42px; height: 4px; border-radius: 999px;
+        background: var(--border);
+    }
+    #student-config-modal .tiroir-poignee:active { cursor: grabbing; }
     #student-config-modal .modal-title { font-size: 1.12rem; }
     /* Le sous-titre n'apprend rien à qui a déjà le panneau sous les yeux. */
     #student-config-modal .modal-text--center { display: none; }

@@ -239,6 +239,26 @@ body.mobile-view #builder-properties-panel {
 body.mobile-view #builder-properties-panel.mob-open {
     transform: translateY(0);
 }
+/* LA POIGNÉE DU PANNEAU DES PROPRIÉTÉS.
+   Le panneau défile tout entier : posée dans le flux et rien de plus, elle
+   partirait vers le haut au premier glissement, et l'on ne pourrait plus
+   refermer sans être remonté d'abord. Collante, elle reste sous le pouce.
+   ELLE SE RANGE SOUS LA CROIX, pas dessus. Le panneau réserve déjà soixante
+   pixels en haut pour le bouton de fermeture ; une bande pleine largeur posée
+   dans cette réserve recouvrait la croix et la rendait inappuyable — mesuré,
+   Playwright refusait le clic. Dans le flux, la poignée arrive à 60 pixels,
+   sous la croix ; une fois le panneau défilé, la croix est partie avec le
+   contenu et la poignée reste seule en haut. */
+body.mobile-view #builder-properties-panel .tiroir-poignee {
+    display: flex; align-items: center; justify-content: center;
+    position: sticky; top: 0; z-index: 3;
+    height: 26px; margin: 0 -20px 8px; padding: 0;
+    background: var(--bg-panel); cursor: grab; touch-action: none;
+}
+body.mobile-view #builder-properties-panel .tiroir-poignee::before {
+    content: ''; width: 42px; height: 4px; border-radius: 999px;
+    background: var(--border);
+}
 #builder-properties-panel { width: 300px; display: flex; flex-direction: column; padding: 20px; background: var(--bg-panel); overflow-y: auto; border-left: 1px solid var(--border); }
 
 /* --- ÉCRANS MOYENS (téléphone en paysage, petite tablette) ---

@@ -1205,8 +1205,17 @@ export function selectStep(stepId) {
         <div id="builder-config-content"></div>`;
     panel.classList.add('mob-open');
 
+    const fermerProps = () => panel.classList.remove('mob-open');
     const close = document.getElementById('mob-close-props');
-    if (close) close.onclick = () => panel.classList.remove('mob-open');
+    if (close) close.onclick = fermerProps;
+    // ON POUSSE CE TIROIR AUSSI. Rémy : « Les tiroirs ne se glissent pas en bas,
+    // il faut appuyer sur Annuler. » Le panneau des propriétés monte du bas sur
+    // téléphone, exactement comme les réglages ; il n'a pas de voile — il occupe
+    // tout l'écran —, donc la poignée est le seul geste, et la croix reste.
+    import('./tiroir.js').then(({ rendreTirable }) => {
+        rendreTirable(panel, fermerProps,
+            { actif: () => document.body.classList.contains('mobile-view') });
+    });
 
     // LE MODE DU PARCOURS VOYAGE AVEC L'ÉTAPE. En évaluation, « bonnes réponses
     // exigées » n'a pas de sens — une interrogation se note, elle ne se valide

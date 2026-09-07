@@ -3042,7 +3042,22 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
     // et un aperçu en retard d'un geste ne vaut rien.
     brancherMarches(content, schema, current, exo.id || '');
 
-    document.getElementById('btn-student-config-cancel').onclick = () => { modal.style.display = 'none'; };
+    // ON POUSSE LE TIROIR POUR LE REFERMER — Rémy : « Les tiroirs ne se
+    // glissent pas en bas, il faut appuyer sur Annuler. » Trois gestes le
+    // ferment maintenant : la poignée qu'on tire, le voile qu'on touche, et le
+    // bouton qui était déjà là. Le module ne décide de rien : il demande la
+    // fermeture, et c'est la même ligne que le bouton exécute.
+    const fermerReglages = () => { modal.style.display = 'none'; };
+    import('../ui/tiroir.js').then(({ rendreTirable }) => {
+        // Sur un grand écran la fenêtre est CENTRÉE : il n'y a pas de tiroir à
+        // pousser, et la poignée y est masquée. Le voile, lui, ferme partout —
+        // c'est ce que fait déjà toute autre fenêtre de l'application
+        // (voir `showModal` dans ui/modal.js), et fermer ici vaut « Annuler » :
+        // les réglages ne s'appliquent qu'au bouton « Jouer ».
+        rendreTirable(modal.querySelector('.modal-panel-sm-left'), fermerReglages,
+            { fond: modal, actif: () => window.matchMedia('(max-width: 700px)').matches });
+    });
+    document.getElementById('btn-student-config-cancel').onclick = fermerReglages;
     document.getElementById('btn-student-config-start').onclick = () => {
         modal.style.display = 'none';
         onStart({

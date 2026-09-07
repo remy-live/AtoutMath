@@ -529,8 +529,14 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
     }
 
     function brancher() {
+        const fermerPanneau = () => panel.classList.remove('mob-open');
         const close = panel.querySelector('#mob-close-props');
-        if (close) close.onclick = () => panel.classList.remove('mob-open');
+        if (close) close.onclick = fermerPanneau;
+        // Le même tiroir que les propriétés d'étape — voir js/ui/tiroir.js.
+        import('./tiroir.js').then(({ rendreTirable }) => {
+            rendreTirable(panel, fermerPanneau,
+                { actif: () => document.body.classList.contains('mobile-view') });
+        });
 
         const sel = panel.querySelector('[data-mode]');
         if (sel) sel.onchange = () => {
