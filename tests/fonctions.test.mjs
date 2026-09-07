@@ -86,7 +86,9 @@ test('LE PROGRAMME DE CALCUL EST BIEN LA FONCTION, dite autrement', () => {
         assert.equal(it.answer, a * Number(m[1]) + b, it.prompt.text);
         // La multiplication vient d'abord : « ajoute 3 puis multiplie par 2 »
         // serait une AUTRE fonction, et l'écriture affichée serait fausse.
-        assert.match(it.prompt.text, /1\. multiplie par/, it.prompt.text);
+        // Depuis que chaque étape a sa ligne, « choisis un nombre » porte le
+        // numéro 1 et l'opération le numéro 2 — voir `itemProgramme`.
+        assert.match(it.prompt.text, /^2\. Multiplie par /m, it.prompt.text);
     }
 });
 
@@ -338,4 +340,43 @@ test('LA PAIRE ÉCHANGÉE EST NOMMÉE, pas seulement refusée', () => {
         assert.equal(evaluate(it, `${g}|${d}`).correct, true);
     }
     assert.ok(vus > 10, `${vus} questions à deux trous vues`);
+});
+
+// --- UN PROGRAMME DE CALCUL EST UNE LISTE ------------------------------------
+//
+// Rémy, capture d'un téléphone à l'appui : « Va à la ligne à chaque étape ».
+//
+// L'énoncé tenait sur une seule phrase — « choisis un nombre ; 1. multiplie par
+// 5 ; 2. ajoute 1. Quel résultat… ». Sur un écran étroit elle se repliait à des
+// endroits qui ne sont pas les siens : « 1. multiplie par », retour, « 5 ;
+// 2. ajoute 1. Quel résultat ». Le point-virgule est le seul indice de la
+// coupure, et il se perd au milieu d'un mur de mots.
+test('CHAQUE ÉTAPE DU PROGRAMME A SA LIGNE, à l\'écran comme sur la feuille', () => {
+    for (const it of suite(60, { quoi: 'programme' }, 'lignes')) {
+        const lignes = it.prompt.text.split('\n').map(l => l.trim()).filter(Boolean);
+        // En-tête, les étapes, puis la question. Trois ou quatre étapes selon
+        // que la fonction ajoute quelque chose ou non.
+        assert.ok(lignes.length >= 4, it.prompt.text);
+        assert.equal(lignes[0], 'Programme de calcul :');
+        assert.match(lignes[1], /^1\. Choisis un nombre$/);
+        assert.match(lignes[lignes.length - 1], /^Quel résultat obtient-on en partant de /);
+
+        const etapes = lignes.slice(1, -1);
+        etapes.forEach((l, i) => {
+            // Numérotées à la suite, une par ligne, sans point-virgule ni
+            // « puis » : ce sont ces mots-là qui recollaient les étapes.
+            assert.match(l, new RegExp(`^${i + 1}\\. `), it.prompt.text);
+            assert.equal(/[;]|\bpuis\b/.test(l), false, `« ${l} » porte deux étapes`);
+        });
+
+        // L'écran dit la même chose avec une vraie liste : c'est elle qui
+        // aligne les numéros, et l'alignement est ce qui montre qu'on descend
+        // une étape à la fois.
+        assert.match(it.prompt.html, /<ol class="fn-prog">/);
+        const li = it.prompt.html.match(/<li>/g) || [];
+        assert.equal(li.length, etapes.length, it.prompt.html);
+        // Et la question reste HORS de la liste : ce n'est pas une étape.
+        assert.ok(it.prompt.html.indexOf('</ol>') < it.prompt.html.indexOf('Quel résultat'),
+            it.prompt.html);
+    }
 });

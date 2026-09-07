@@ -72,6 +72,9 @@ function programmeDe(a, b) {
     return out;
 }
 
+/** « multiplie par 5 » en tête de ligne : « Multiplie par 5 ». */
+const majuscule = (t) => String(t).charAt(0).toUpperCase() + String(t).slice(1);
+
 /** « 3 × (−2) » : un produit par un négatif se parenthèse, sinon on lit « 3 × − 2 ». */
 const facteur = (x) => (x < 0 ? `(${nb(x)})` : nb(x));
 
@@ -437,19 +440,47 @@ function itemImage(rng, a, b, f, ecrit) {
     });
 }
 
-/** SUIVRE UN PROGRAMME DE CALCUL — la porte d'entrée du chapitre. */
+/**
+ * SUIVRE UN PROGRAMME DE CALCUL — la porte d'entrée du chapitre.
+ *
+ * UNE ÉTAPE PAR LIGNE. Rémy, capture d'un téléphone à l'appui : « Va à la
+ * ligne à chaque étape ».
+ *
+ * L'énoncé tenait sur une seule phrase — « choisis un nombre ; 1. multiplie
+ * par 5 ; 2. ajoute 1. Quel résultat… » —, et sur un écran étroit elle se
+ * repliait sur quatre lignes dont AUCUNE ne correspondait à une étape : on
+ * lisait « 1. multiplie par », retour, « 5 ; 2. ajoute 1. Quel résultat ».
+ * Le point-virgule est le seul indice de la coupure, et il se perd au milieu
+ * d'un mur de mots.
+ *
+ * Or un programme de calcul EST une liste. C'est ainsi qu'il est écrit au
+ * tableau, dans le manuel et au contrôle, et cette forme n'est pas une
+ * décoration : elle dit qu'on fait les opérations DANS L'ORDRE, une par une,
+ * en écrivant le résultat de chacune — ce qui est précisément la consigne du
+ * premier indice.
+ */
 function itemProgramme(rng, a, b, f) {
     const x = rng.int(1, 9);
     const etapes = programmeDe(a, b);
-    const liste = etapes.map((e, i) => `${i + 1}. ${e.dit}`).join(' ; ');
+    // LA LISTE, UNE ÉTAPE PAR LIGNE — et « choisis un nombre » en est une.
+    // C'est la première du programme : elle dit d'où l'on part, et la numéroter
+    // comme les autres évite un décalage entre l'écran, qui numérote tout seul
+    // avec sa liste, et le papier, qui écrit les numéros à la main.
+    const lignes = ['Choisis un nombre', ...etapes.map(e => majuscule(e.dit))];
+    const demande = `Quel résultat obtient-on en partant de ${x} ?`;
     let courant = x;
     const detail = etapes
         .map(e => { courant = e.faire(courant); return `${e.dit} → ${nb(courant)}`; })
         .join(', puis ');
     return item(rng, {
         quoi: 'programme', reponse: f(x),
-        texte: `Programme de calcul : choisis un nombre ; ${liste}. Quel résultat obtient-on `
-            + `en partant de ${x} ?`,
+        // Sur la feuille, un retour à la ligne EST un retour à la ligne : la
+        // mise en page du papier découpe l'énoncé sur les « \n ».
+        texte: `Programme de calcul :\n`
+            + `${lignes.map((l, i) => `${i + 1}. ${l}`).join('\n')}\n${demande}`,
+        html: `<div class="game-question">Programme de calcul :
+            <ol class="fn-prog">${lignes.map(l => `<li>${l}</li>`).join('')}</ol>
+            ${demande}</div>`,
         hints: [
             'Fais les étapes DANS L\'ORDRE, une par une, en écrivant le résultat de chacune.',
             `On part de ${x}, on ${etapes[0].dit} : ${nb(etapes[0].faire(x))}.`,

@@ -528,3 +528,15 @@
     border-bottom-width: 3px;
 }
 .np-trou--plein { letter-spacing: normal; }
+
+/* UN PROGRAMME DE CALCUL EST UNE LISTE. Rémy : « va à la ligne à chaque
+   étape ». Écrit d'un trait, il se repliait sur un écran étroit à des endroits
+   qui ne sont pas les siens — « 1. multiplie par », retour, « 5 ; 2. ajoute 1 ».
+   La liste est CENTRÉE EN BLOC mais alignée à gauche à l'intérieur : centrer
+   chaque ligne ferait perdre l'alignement des numéros, qui est justement ce
+   qui dit qu'on descend une étape à la fois. */
+.fn-prog {
+    display: inline-block; text-align: left; margin: 6px 0; padding-left: 1.5em;
+    line-height: 1.5;
+}
+.fn-prog li { margin: 2px 0; }
