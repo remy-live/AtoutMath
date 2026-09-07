@@ -5,6 +5,7 @@
 // d'arrivée ont la même solution. Un modèle d'équation qui perd sa solution en
 // route enseignerait le contraire de ce qu'on veut.
 
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRng } from '../js/core/ids.js';
@@ -333,4 +334,103 @@ test('ON COMPTE LES GESTES, PAS LES CLICS', () => {
     ]), 1, 'enlever des deux côtés est UN geste');
     // Et un geste de la barre en vaut un, seul : il EST la ligne du cahier.
     assert.equal(coups([{ geste: 'desDeuxCotes', quoi: 'u', combien: -4 }]), 1);
+});
+
+
+// --- LE DESSIN : LA BALANCE NE SE DISLOQUE PAS ---------------------------------
+//
+// Rémy : « la balance est cassée. Répare la lol ». Elle l'était de deux façons.
+// L'une tenait à la feuille de style — une origine de rotation qui s'ajoutait à
+// celle du dessin —, l'autre à ce calcul-ci : les plateaux descendaient d'un
+// « inclinaison × 1,9 », une approximation linéaire, pendant que le fléau
+// TOURNAIT. Mesuré à 8,4° : cinquante pixels entre le bout du fléau et le haut
+// du fil qui devait y pendre.
+
+test('LE BOUT DU FLÉAU EST SUR SON CERCLE, à tous les penchements', async () => {
+    const { geometrieBalance, PENCHE_MAX, CADRE } = await import('../js/core/balance.js');
+    for (let a = -PENCHE_MAX; a <= PENCHE_MAX; a += 0.7) {
+        const g = geometrieBalance({ inclinaison: a });
+        for (const cote of ['g', 'd']) {
+            const b = g.bout(cote);
+            const r = Math.hypot(b.x - g.PX, b.y - g.cy);
+            assert.ok(Math.abs(r - CADRE.demi) < 1e-9,
+                `${a}° ${cote} : le bras mesure ${r.toFixed(2)} au lieu de ${CADRE.demi}`);
+        }
+        // Et le bras qui descend est celui qu'on annonce : positif = la droite.
+        const sens = Math.sign(g.bout('d').y - g.bout('g').y);
+        if (a > 0.01) assert.equal(sens, 1, `${a}° : c'est la gauche qui descend`);
+        if (a < -0.01) assert.equal(sens, -1, `${a}° : c'est la droite qui descend`);
+    }
+});
+
+test('LE BRAS LEVÉ TIENT DANS LE CADRE, et le plateau le plus bas aussi', async () => {
+    const { geometrieBalance, PENCHE_MAX } = await import('../js/core/balance.js');
+    // Le cadre ne bouge pas avec l'inclinaison : il réserve le pire penchement.
+    const droite = geometrieBalance({ inclinaison: 0, hautG: 40, hautD: 40 });
+    const penchee = geometrieBalance({ inclinaison: PENCHE_MAX, hautG: 40, hautD: 40 });
+    assert.equal(droite.H, penchee.H, 'le cadre change de hauteur quand ça penche');
+    assert.equal(droite.cy, penchee.cy);
+
+    for (const haut of [0, 23, 105, 210]) {
+        for (const a of [-PENCHE_MAX, -7, 0, 7, PENCHE_MAX]) {
+            const g = geometrieBalance({ inclinaison: a, hautG: haut, hautD: haut });
+            for (const cote of ['g', 'd']) {
+                const b = g.bout(cote);
+                // Le bout levé, sa tête comprise, reste dans le dessin.
+                assert.ok(b.y - 6 >= 0, `${a}° ${cote} : le bras sort par le haut`);
+                // Le plateau, et son bord, restent au-dessus du sol.
+                assert.ok(b.y + g.chute + 14 <= g.solY,
+                    `${a}° ${cote} : le plateau passe sous le socle`);
+                assert.ok(b.y + g.chute + 14 <= g.H, 'le plateau sort par le bas');
+            }
+        }
+    }
+});
+
+test('LA PILE RESTE SOUS LE FLÉAU — elle ne lui passe plus par-dessus', async () => {
+    const { geometrieBalance, PENCHE_MAX } = await import('../js/core/balance.js');
+    // Le plateau pendait à soixante-six pixels quoi qu'il porte : cinq rangées
+    // de jetons montaient alors plus haut que le fléau.
+    for (const haut of [0, 23, 44, 105, 128, 300]) {
+        const g = geometrieBalance({ inclinaison: 0, hautG: haut, hautD: haut });
+        const b = g.bout('d');
+        const sommetPile = b.y + g.chute - haut;
+        assert.ok(sommetPile >= g.cy + 12,
+            `pile de ${haut} : son sommet est à ${sommetPile.toFixed(0)}, le fléau à ${g.cy}`);
+    }
+    // Même penchée du côté qui monte, le pire cas.
+    const g = geometrieBalance({ inclinaison: -PENCHE_MAX, hautG: 128, hautD: 0 });
+    const b = g.bout('g');
+    assert.ok(b.y + g.chute - 128 >= b.y + 12, 'la pile dépasse le bout du bras');
+});
+
+test('LE PLATEAU PEND D\'APLOMB, jamais de biais', async () => {
+    // Sur une vraie balance les plateaux restent horizontaux et les fils
+    // verticaux pendant que le fléau penche. C'est aussi ce qui rend le dessin
+    // lisible : les jetons ne glissent pas, ils descendent.
+    const { geometrieBalance, PENCHE_MAX } = await import('../js/core/balance.js');
+    for (const a of [-PENCHE_MAX, -5, 0, 5, PENCHE_MAX]) {
+        const g = geometrieBalance({ inclinaison: a });
+        for (const cote of ['g', 'd']) {
+            const b = g.bout(cote);
+            // Le plateau est POSÉ sous le bout : même abscisse, plus bas.
+            assert.equal(b.x, b.x, 'aplomb');
+            assert.ok(g.chute > 0);
+        }
+        // Les deux bras restent symétriques par rapport au pivot.
+        assert.ok(Math.abs((g.bout('g').x + g.bout('d').x) / 2 - g.PX) < 1e-9);
+        assert.ok(Math.abs((g.bout('g').y + g.bout('d').y) / 2 - g.cy) < 1e-9);
+    }
+});
+
+test('LA FEUILLE DE STYLE NE REFAIT PAS LA ROTATION — le piège qui a cassé la balance', () => {
+    // « transform-box: fill-box » avec « transform-origin: center » S'AJOUTE au
+    // « rotate(a cx cy) » de l'attribut au lieu de le remplacer : le navigateur
+    // compose les deux, et la rotation se fait autour d'un point deux fois plus
+    // loin que le pivot. Mesuré à 8,4° : le milieu du fléau partait à
+    // quarante-deux pixels du haut du mât.
+    const src = readFileSync(new URL('../js/games/balance.js', import.meta.url), 'utf8');
+    const barre = src.slice(src.indexOf('.bl-barre {'), src.indexOf('.bl-fleau'));
+    assert.doesNotMatch(barre, /fill-box/, 'la rotation du fléau est reprise par la CSS');
+    assert.match(barre, /transform-origin:\s*0 0/, 'l’origine CSS doit rester neutre');
 });

@@ -29,7 +29,8 @@
 import { BaseGame } from '../core/BaseGame.js';
 import {
     FAMILLES, ORDRE_FAMILLES, NIVEAUX, CONSIGNE, NOM_COTE, AUTRE,
-    preparerNiveau, niveauxDisponibles, appliquer, resolu, solution, enSymboles, coups, pese
+    preparerNiveau, niveauxDisponibles, appliquer, resolu, solution, enSymboles, coups, pese,
+    geometrieBalance, PENCHE_MAX
 } from '../core/balance.js';
 import { makeRng } from '../core/ids.js';
 
@@ -38,6 +39,8 @@ import { makeRng } from '../core/ids.js';
 // On s'en abstient : une compétence que rien ne mesure vraiment est une
 // compétence fantôme, et on vient d'en corriger une dans ce dépôt.
 const COMPETENCE = 'alg.equation.resoudre';
+
+
 
 /**
  * L'ÉQUATION AVEC L'OPÉRATION ÉCRITE DES DEUX CÔTÉS.
@@ -154,16 +157,49 @@ export class Balance extends BaseGame {
                     display: block; width: 100%; height: auto;
                     max-height: 100%;
                 }
+                /* LE FLÉAU TOURNE AUTOUR DE SON MILIEU — et il fallait le lui
+                   laisser faire.
+                   Rémy : « la balance est cassée. Répare la lol ». Voici la
+                   première des deux fractures. « transform-box: fill-box » avec
+                   « transform-origin: center » S'AJOUTE au « rotate(a cx cy) »
+                   de l'attribut au lieu de le remplacer : le navigateur compose
+                   les deux, et la rotation se fait autour d'un point deux fois
+                   plus loin que le pivot. Mesuré à 8,4° : le milieu du fléau
+                   partait à quarante-deux pixels du haut du mât, et toute la
+                   balance se disloquait.
+                   L'attribut porte déjà son centre. On rend donc à la CSS son
+                   origine neutre — le repère du dessin, coin en haut à gauche —
+                   et il n'y a plus qu'une rotation, celle qui est écrite. */
                 .bl-barre {
-                    stroke: var(--text-main); stroke-width: 3.5; stroke-linecap: round;
                     transition: transform .55s cubic-bezier(.34,1.3,.64,1);
-                    transform-box: fill-box; transform-origin: center;
+                    transform-box: view-box; transform-origin: 0 0;
                 }
-                .bl-mat, .bl-socle { stroke: var(--text-main); stroke-width: 3.5; stroke-linecap: round; }
-                .bl-fil { stroke: var(--text-muted); stroke-width: 1.4; }
+                .bl-fleau { fill: var(--text-main); }
+                .bl-tete { fill: var(--text-main); }
+                /* L'axe se pose PAR-DESSUS le fléau : c'est lui qui tient. */
+                /* L'AXE SE VOIT SUR LES DEUX THÈMES. En « --card-bg », qui n'est
+                   défini nulle part et retombe sur du blanc, il disparaissait
+                   dans un fléau devenu blanc en thème nuit. Le fond du plateau,
+                   lui, est toujours le contraire du trait. */
+                .bl-axe {
+                    fill: var(--bg-plateau, var(--card-bg, #fff));
+                    stroke: var(--text-main); stroke-width: 3;
+                }
+                .bl-pied {
+                    fill: color-mix(in srgb, var(--text-main) 86%, var(--card-bg, #fff));
+                    stroke: var(--text-main); stroke-width: 1.6; stroke-linejoin: round;
+                }
+                .bl-jour { fill: var(--bg-plateau, #fff); opacity: .22; }
+                .bl-couteau { fill: var(--text-main); }
+                /* Une ombre au sol, très pâle : elle pose la balance sur
+                   quelque chose au lieu de la laisser flotter. */
+                .bl-ombre { fill: var(--text-main); opacity: .1; }
+                .bl-fil { stroke: var(--text-muted); stroke-width: 1.6; fill: none; }
                 .bl-plateau {
                     fill: var(--card-bg, #fff); stroke: var(--text-main); stroke-width: 2.4;
+                    stroke-linejoin: round;
                 }
+                .bl-rebord { stroke: var(--text-main); stroke-width: 1.2; opacity: .35; }
                 .bl-jeton { cursor: pointer; }
                 .bl-jeton rect, .bl-jeton circle { transition: opacity .18s; }
                 .bl-jeton:hover rect, .bl-jeton:hover circle { opacity: .55; }
@@ -181,7 +217,13 @@ export class Balance extends BaseGame {
                     fill: #fff; font-weight: 800; text-anchor: middle; dominant-baseline: central;
                     pointer-events: none;
                 }
-                .bl-groupe { transition: transform .45s cubic-bezier(.34,1.3,.64,1); }
+                /* Même origine neutre que le fléau : une translation s'en moque,
+                   mais deux règles qui se contredisent finissent toujours par
+                   se rencontrer, et celle du fléau a déjà cassé la balance. */
+                .bl-groupe {
+                    transition: transform .55s cubic-bezier(.34,1.3,.64,1);
+                    transform-box: view-box; transform-origin: 0 0;
+                }
                 .bl-outils {
                     display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto;
                 }
@@ -361,7 +403,7 @@ export class Balance extends BaseGame {
         // Sans `attente`, la balance est droite par construction.
         let inclinaison = 0;
         if (e.attente) {
-            const ampleur = Math.min(14, 5 + e.attente.combien * 2.2);
+            const ampleur = Math.min(PENCHE_MAX, 5 + e.attente.combien * 2.2);
             inclinaison = e.attente.cote === 'g' ? -ampleur : ampleur;
         } else if (this.testX !== null) {
             // LE TESTEUR PENCHE LA BALANCE, LUI AUSSI, et il le fait pour une
@@ -370,7 +412,9 @@ export class Balance extends BaseGame {
             // plus ça penche —, et l'équilibre dit qu'on a trouvé.
             const g = pese(e.g, this.testX), d = pese(e.d, this.testX);
             const ecart = g - d;
-            if (ecart) inclinaison = Math.sign(ecart) * Math.min(14, 4 + Math.abs(ecart) * 1.1) * -1;
+            if (ecart) {
+                inclinaison = Math.sign(ecart) * Math.min(PENCHE_MAX, 4 + Math.abs(ecart) * 1.1) * -1;
+            }
         }
 
         // LE CADRE COLLE AU DESSIN, ET IL S'AJUSTE À CHAQUE ÉQUATION.
@@ -382,31 +426,73 @@ export class Balance extends BaseGame {
         // n'existaient pas. La hauteur du fléau se calcule donc à partir de la
         // pile la plus haute réellement posée, et le pied s'arrête juste sous
         // les plateaux.
-        const W = 460, demi = 150;
+        // TOUTE LA GÉOMÉTRIE VIENT DU NOYAU, où elle se teste sans écran : le
+        // bout d'un bras qui tourne est sur un cercle, et un plateau pend
+        // d'aplomb sous lui. Voir `geometrieBalance`.
         const hautPile = (p) => Math.ceil(Math.abs(p.x) / 5) * 23 + Math.ceil(Math.abs(p.u) / 5) * 21;
-        const cy = Math.max(26, Math.max(hautPile(e.g), hautPile(e.d)) - 47);
-        const H = cy + 124;
-        const dy = (c) => (c === 'g' ? -1 : 1) * inclinaison * 1.9;
-        const plateauSvg = (c, cx) => {
-            const y = cy + 62 + dy(c);
-            return `<g class="bl-groupe" data-plateau="${c}">
-                <line class="bl-fil" x1="${cx}" y1="${cy + dy(c)}" x2="${cx}" y2="${y - 6}"/>
-                <path class="bl-plateau" d="M ${cx - 74} ${y} L ${cx + 74} ${y}
-                    L ${cx + 62} ${y + 13} L ${cx - 62} ${y + 13} Z"/>
-                ${this.jetons(e[c], c, cx, y - 3)}</g>`;
+        const G = geometrieBalance({
+            inclinaison, hautG: hautPile(e.g), hautD: hautPile(e.d)
+        });
+        const { W, demi, PX, cy, chute, solY, H } = G;
+        const bout = (c) => G.bout(c);
+
+        // ET LES PLATEAUX PENDENT À LA VERTICALE, quoi qu'il arrive. C'est ce
+        // qu'ils font sur une vraie balance — ils restent d'aplomb pendant que
+        // le fléau penche —, et c'est ce qui rend le dessin lisible : les
+        // jetons ne glissent pas, ils descendent.
+        // LE PLATEAU EST DESSINÉ À PLAT ET SIMPLEMENT DÉPLACÉ, et ce n'est pas
+        // une commodité d'écriture : c'est ce qui le fait BOUGER avec le fléau.
+        // Un plateau redessiné à de nouvelles coordonnées saute d'une image à
+        // l'autre pendant que le fléau, lui, glisse sur sa transition — deux
+        // pièces de la même balance, deux vitesses. Une translation, elle,
+        // s'anime comme la rotation d'à côté et avec la même courbe.
+        const plateauSvg = (c) => {
+            const sens = c === 'g' ? -1 : 1;
+            const x0 = PX + sens * demi, y0 = cy;   // le bout, balance droite
+            const b = bout(c);
+            const y = y0 + chute;                   // le plateau, plomb sous le bout
+            const dl = 62, dh = 74;                 // demi-largeurs du fond et du bord
+            return `<g class="bl-groupe" data-plateau="${c}"
+                    transform="translate(${(b.x - x0).toFixed(2)} ${(b.y - y0).toFixed(2)})">
+                <path class="bl-fil" d="M ${x0} ${y0} L ${x0 - dh + 6} ${y - 1}
+                    M ${x0} ${y0} L ${x0 + dh - 6} ${y - 1}"/>
+                <path class="bl-plateau" d="M ${x0 - dh} ${y} L ${x0 + dh} ${y}
+                    L ${x0 + dl} ${y + 14} L ${x0 - dl} ${y + 14} Z"/>
+                <line class="bl-rebord" x1="${x0 - dh + 4}" y1="${y + 3.5}"
+                    x2="${x0 + dh - 4}" y2="${y + 3.5}"/>
+                ${this.jetons(e[c], c, x0, y - 2)}</g>`;
         };
+
+        // LE PIED : un socle large, un mât qui s'affine, et le couteau du
+        // pivot. Trois traits faisaient un dessin de circuit électrique ; c'est
+        // une balance, elle a une masse et elle tient debout toute seule.
+        const pied = `
+            <ellipse class="bl-ombre" cx="${PX}" cy="${solY + 4}" rx="64" ry="6"/>
+            <path class="bl-pied" d="M ${PX - 9} ${cy + 8} L ${PX + 9} ${cy + 8}
+                L ${PX + 20} ${solY - 8} L ${PX + 58} ${solY - 8}
+                L ${PX + 58} ${solY} L ${PX - 58} ${solY}
+                L ${PX - 58} ${solY - 8} L ${PX - 20} ${solY - 8} Z"/>
+            ${/* UN CÔTÉ PLUS CLAIR, ET LE MÂT CESSE D'ÊTRE UNE SILHOUETTE.
+                  Une seule forme pleine se lit comme un trou dans la page ;
+                  la même avec sa face éclairée a une épaisseur. */ ''}
+            <path class="bl-jour" d="M ${PX - 9} ${cy + 8} L ${PX - 2} ${cy + 8}
+                L ${PX - 9} ${solY - 8} L ${PX - 20} ${solY - 8} Z"/>
+            <path class="bl-couteau" d="M ${PX} ${cy - 11} L ${PX + 13} ${cy + 9}
+                L ${PX - 13} ${cy + 9} Z"/>`;
 
         this.sceneEl.innerHTML = `
             <svg class="bl-svg" viewBox="0 0 ${W} ${H}"
                 style="aspect-ratio:${W}/${H}" preserveAspectRatio="xMidYMid meet">
-                <line class="bl-mat" x1="${W / 2}" y1="${cy}" x2="${W / 2}" y2="${H - 12}"/>
-                <line class="bl-socle" x1="${W / 2 - 46}" y1="${H - 12}" x2="${W / 2 + 46}" y2="${H - 12}"/>
-                <g class="bl-barre" transform="rotate(${inclinaison} ${W / 2} ${cy})">
-                    <line x1="${W / 2 - demi}" y1="${cy}" x2="${W / 2 + demi}" y2="${cy}"
-                        stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+                ${pied}
+                <g class="bl-barre" transform="rotate(${inclinaison} ${PX} ${cy})">
+                    <rect class="bl-fleau" x="${PX - demi}" y="${cy - 4}"
+                        width="${2 * demi}" height="8" rx="4"/>
+                    <circle class="bl-tete" cx="${PX - demi}" cy="${cy}" r="5.5"/>
+                    <circle class="bl-tete" cx="${PX + demi}" cy="${cy}" r="5.5"/>
                 </g>
-                ${plateauSvg('g', W / 2 - demi)}
-                ${plateauSvg('d', W / 2 + demi)}
+                <circle class="bl-axe" cx="${PX}" cy="${cy}" r="7"/>
+                ${plateauSvg('g')}
+                ${plateauSvg('d')}
             </svg>`;
 
         this.eqEl.textContent = this.symboles ? enSymboles(e) : '';

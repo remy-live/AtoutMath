@@ -386,6 +386,62 @@ export function niveauxDisponibles(familles) {
     return NIVEAUX.map((n, i) => (ok.has(n.famille) ? i : -1)).filter(i => i >= 0);
 }
 
+// --- LA GÉOMÉTRIE DU DESSIN ---------------------------------------------------
+//
+// Rémy : « la balance est cassée. Répare la lol ». Elle l'était de deux façons,
+// et l'une des deux tenait à un calcul faux : les plateaux descendaient d'un
+// « inclinaison × 1,9 » — une approximation linéaire — pendant que le fléau
+// TOURNAIT. Mesuré à 8,4° : cinquante pixels entre le bout du fléau et le haut
+// du fil qui devait y pendre.
+//
+// Ce calcul vit donc ici, sans écran, où il se vérifie : le bout d'un bras qui
+// tourne est sur un cercle, et un plateau pend d'aplomb sous lui.
+
+/** Le penchement maximum, en degrés. Au-delà, les plateaux se chevauchent. */
+export const PENCHE_MAX = 14;
+
+/** La largeur du dessin et la demi-longueur du fléau, en unités du cadre. */
+export const CADRE = { W: 460, demi: 150 };
+
+/**
+ * TOUTE LA GÉOMÉTRIE D'UNE BALANCE, de haut en bas.
+ *
+ * @param {Object} o
+ * @param {number} o.inclinaison - en degrés, positif = la droite descend
+ * @param {number} o.hautG - hauteur de la pile de gauche, en unités du cadre
+ * @param {number} o.hautD - hauteur de la pile de droite
+ */
+export function geometrieBalance({ inclinaison = 0, hautG = 0, hautD = 0 } = {}) {
+    const { W, demi } = CADRE;
+    const PX = W / 2;
+    const rad = inclinaison * Math.PI / 180;
+
+    // LE BRAS LEVÉ D'ABORD : le fléau monte autant qu'il descend, et le cadre
+    // doit lui laisser la place. On réserve la montée du PIRE penchement, pas
+    // de celui du moment — un cadre qui changerait de hauteur à chaque geste
+    // ferait sauter toute la balance.
+    const monteeMax = Math.ceil(demi * Math.sin(PENCHE_MAX * Math.PI / 180));
+    const cy = monteeMax + 10;
+
+    // PUIS LA CHUTE DU PLATEAU, qui suit la pile la plus haute. À soixante-six
+    // pixels fixes, une pile de cinq rangées montait PLUS HAUT que le fléau et
+    // lui passait par-dessus.
+    const chute = Math.max(66, Math.max(hautG, hautD) + 16);
+
+    // ET LE SOL, sous le plateau le plus bas : des plateaux qui descendraient
+    // sous leur propre socle ne ressembleraient plus à rien.
+    const solY = cy + monteeMax + chute + 30;
+
+    return {
+        W, demi, PX, cy, chute, solY, H: solY + 12, inclinaison,
+        /** Le bout d'un bras : sur le cercle de rayon `demi` autour du pivot. */
+        bout(cote) {
+            const sens = cote === 'g' ? -1 : 1;
+            return { x: PX + sens * demi * Math.cos(rad), y: cy + sens * demi * Math.sin(rad) };
+        }
+    };
+}
+
 /**
  * LA CONSIGNE NE DONNE PAS LA MÉTHODE.
  *
