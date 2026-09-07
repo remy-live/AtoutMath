@@ -70,6 +70,26 @@ const TEINTES = [
  */
 const SENS = { '1,0': 'est', '-1,0': 'ouest', '0,1': 'sud', '0,-1': 'nord' };
 
+/**
+ * LE MINUTAGE DE LA CHORÉGRAPHIE, en millisecondes — voir `montrerLePli`.
+ *
+ * Tout est ici pour qu'on puisse ralentir ou accélérer sans relire le code :
+ * « doucement » est un réglage, pas une opinion. Le total commande aussi
+ * l'attente avant la question suivante — une figure qui change au milieu d'un
+ * tour serait pire que pas de tour du tout.
+ */
+export const PLI = {
+    pli: 1200,      // le premier pli, sans tourner
+    regarde: 1000,  // le temps de voir le cube fermé
+    tour: 2200,     // le tour autour du cube
+    angle: 150,     // de combien de degrés on en fait le tour
+    entre: 450,     // le souffle entre deux gestes
+    deplie: 1600,   // le retour à plat, couleurs gardées
+    replie: 1200    // et l'on referme
+};
+export const PLI_TOTAL = PLI.pli + PLI.regarde + PLI.tour + PLI.entre
+    + PLI.deplie + PLI.entre + PLI.replie;
+
 const enTexte = (s) => String(s ?? '')
     .replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -85,6 +105,7 @@ export class Patrons extends BaseGame {
         });
         this.rang = 0;
         this.plie = false;       // le pliage a-t-il été montré pour cette question ?
+        this.jetonPli = 0;       // pour couper une chorégraphie qui n'a plus lieu d'être
         this.fini = false;
     }
 
@@ -144,8 +165,18 @@ export class Patrons extends BaseGame {
                        fois plié : la translation s'annule d'elle-même. */
                     transform: translate(calc(var(--dx, 0) * var(--s) * var(--plat, 1)),
                                          calc(var(--dy, 0) * var(--s) * var(--plat, 1)))
-                               rotateX(var(--vx, 0deg)) rotateY(var(--vy, 0deg));
-                    transition: transform .9s cubic-bezier(.34, .01, .2, 1);
+                               rotateX(var(--vx, 0deg))
+                               rotateY(calc(var(--vy, 0deg) + var(--tour, 0deg)));
+                    /* « --tour » EST LE TOURNE-DISQUE. Rémy : « fais aussi des
+                       rotations doucement autour du cube ». Il s'AJOUTE au
+                       point de vue au lieu de le remplacer : le cadrage de
+                       trois quarts reste le cadrage, et l'on tourne autour.
+                       « --duree » mène les deux transitions — celle du monde et
+                       celle des carrés —, si bien qu'un pli et un tour se
+                       règlent d'un seul endroit, chorégraphie par chorégraphie.
+                       (Pas d'accent grave dans ce commentaire : il est DANS un
+                       gabarit JavaScript, et le premier le refermerait.) */
+                    transition: transform var(--duree, .9s) cubic-bezier(.34, .01, .2, 1);
                 }
                 /* DES CARRÉS CARRÉS, ET QUI SE TOUCHENT VRAIMENT.
                    Rémy : « utilise des carrés non arrondis. J'ai l'impression
@@ -161,21 +192,36 @@ export class Patrons extends BaseGame {
                    cela s'accumulait le long d'une chaîne de carrés.
 
                    Le trait est donc un « outline », qui ne fait PAS partie de la
-                   boîte : la géométrie redevient exacte, et le contour se
-                   dessine à l'intérieur grâce au décalage négatif. Les coins
-                   sont vifs, comme un patron découpé aux ciseaux. */
+                   boîte : la géométrie redevient exacte. Les coins sont vifs,
+                   comme un patron découpé aux ciseaux.
+
+                   ET LE TRAIT EST CENTRÉ SUR L'ARÊTE, PAS POSÉ EN DEDANS.
+                   Rémy : « les carrés ne sont pas collés. » Mesuré à trois fois
+                   la taille : les arêtes INTÉRIEURES faisaient deux pixels, le
+                   bord extérieur un seul. Chaque carré traçait son trait chez
+                   lui ; à une arête partagée, les deux traits se rangeaient
+                   côte à côte au lieu de se confondre — et un patron dont les
+                   plis sont deux fois plus gras que sa silhouette se lit comme
+                   six carrés posés l'un contre l'autre, pas comme une seule
+                   feuille.
+
+                   Avec un décalage d'un DEMI-trait, la moitié du trait déborde :
+                   les deux voisins écrivent alors exactement au même endroit et
+                   n'en font qu'un. Une seule épaisseur partout, dedans comme
+                   dehors — et la géométrie ne bouge pas, un « outline » ne
+                   participant jamais à la mise en page. */
                 .pa-face {
                     --trait: 1.5px;
                     position: absolute; width: var(--s); height: var(--s);
                     box-sizing: border-box; border: none;
                     outline: var(--trait) solid var(--text-main);
-                    outline-offset: calc(-1 * var(--trait));
+                    outline-offset: calc(-0.5 * var(--trait));
                     background: var(--card-bg, #fff);
                     transform-style: preserve-3d;
                     /* Une face vue de dos reste peinte : sinon, la moitié du
                        cube disparaît dès qu'il tourne. */
                     backface-visibility: visible;
-                    transition: transform .9s cubic-bezier(.34, .01, .2, 1),
+                    transition: transform var(--duree, .9s) cubic-bezier(.34, .01, .2, 1),
                                 background-color .5s ease, outline-color .3s ease;
                     display: flex; align-items: center; justify-content: center;
                 }
@@ -329,9 +375,62 @@ export class Patrons extends BaseGame {
         this.appliquerPli(false, true);
         if (this.plie) {
             requestAnimationFrame(() => requestAnimationFrame(() => {
-                if (this.mondeEl && this.mondeEl.isConnected) this.appliquerPli(true, false);
+                if (this.mondeEl && this.mondeEl.isConnected) this.montrerLePli();
             }));
         }
+    }
+
+    /**
+     * LA CHORÉGRAPHIE DU PLI — quatre temps, et l'ordre est celui de Rémy.
+     *
+     * « Les carrés ne sont pas collés quand tu plies. Fais aussi des rotations
+     * doucement autour du cube, et tu plies et déplies. La première fois tu
+     * plies sans tourner. Tu attends un peu et tu fais ce que je te demande. »
+     *
+     * POURQUOI L'ORDRE COMPTE. Un pli et un tour lancés ensemble se brouillent :
+     * on ne sait plus si un carré se lève ou si c'est la scène qui glisse. On
+     * fait donc UNE chose à la fois.
+     *
+     *   1. LE PLI, SANS TOURNER. On voit les carrés se lever, et rien d'autre.
+     *   2. UNE PAUSE. Le cube fermé est ce qu'on est venu voir ; il faut le
+     *      temps de le voir.
+     *   3. LE TOUR, DOUCEMENT, autour du cube fermé. C'est là que le volume se
+     *      lit — et que les six carrés cessent d'être six carrés.
+     *   4. ON DÉPLIE, PUIS ON REPLIE, revenu de face. Les couleurs restent : on
+     *      suit des yeux le carré qu'on cherchait, qui redescend à sa place.
+     *
+     * MESURÉ : les charnières ne s'écartent d'AUCUN pixel à aucun moment du
+     * pli — c'était déjà vrai. Ce qui donnait « pas collés », c'était le trait
+     * intérieur deux fois plus gras que le bord (voir la feuille de style) et
+     * un pli trop rapide pour qu'on suive un carré des yeux.
+     */
+    async montrerLePli() {
+        const jeton = ++this.jetonPli;
+        const dors = (ms) => new Promise(ok => setTimeout(ok, ms));
+        // La chorégraphie meurt avec sa question : changer de figure, revenir en
+        // arrière ou fermer le jeu la coupe net, au lieu de la laisser jouer sur
+        // la figure suivante.
+        const vivant = () => this.isRunning && this.jetonPli === jeton
+            && this.mondeEl && this.mondeEl.isConnected;
+
+        // 1. Le pli, sans tourner.
+        this.appliquerPli(true, false, { duree: `${PLI.pli}ms`, tour: 0 });
+        // 2. On attend un peu.
+        await dors(PLI.pli + PLI.regarde);
+        // L'aperçu du catalogue s'arrête là : ses vignettes durent deux
+        // secondes, une chorégraphie de huit n'y tiendrait pas.
+        if (this.isDemo || !vivant()) return;
+
+        // 3. Le tour, doucement, autour du cube fermé.
+        this.appliquerPli(true, false, { duree: `${PLI.tour}ms`, tour: PLI.angle });
+        await dors(PLI.tour + PLI.entre);
+        if (!vivant()) return;
+
+        // 4. On déplie — de face, couleurs gardées — puis on replie.
+        this.appliquerPli(false, false, { couleurs: true, duree: `${PLI.deplie}ms`, tour: 0 });
+        await dors(PLI.deplie + PLI.entre);
+        if (!vivant()) return;
+        this.appliquerPli(true, false, { duree: `${PLI.replie}ms`, tour: 0 });
     }
 
     /** Un carré, et tout ce qui pend après lui. */
@@ -361,15 +460,17 @@ export class Patrons extends BaseGame {
      * @param {boolean} plie - l'angle d'arrivée
      * @param {boolean} sec - poser l'état sans le montrer arriver
      */
-    appliquerPli(plie, sec) {
+    appliquerPli(plie, sec, { couleurs = plie, tour = 0, duree = null } = {}) {
         const m = this.mondeEl;
         if (!m) return;
-        const verre = !!plie && !!this.question && this.question.famille === 'opposees';
+        const verre = !!couleurs && !!this.question && this.question.famille === 'opposees';
         if (sec) m.style.transition = 'none';
+        if (duree) m.style.setProperty('--duree', duree);
         m.style.setProperty('--a', plie ? '90deg' : '0deg');
         m.style.setProperty('--vx', plie ? '-24deg' : '0deg');
         m.style.setProperty('--vy', plie ? '32deg' : '0deg');
         m.style.setProperty('--plat', plie ? '0' : '1');
+        m.style.setProperty('--tour', `${tour}deg`);
         m.classList.toggle('pa-monde--verre', verre);
         m.querySelectorAll('[data-case]').forEach(el => {
             const k = el.dataset.case;
@@ -377,7 +478,12 @@ export class Patrons extends BaseGame {
             el.classList.toggle('pa-face--double', !!(plie && dbl));
             // LA COULEUR N'APPARAÎT QU'APRÈS LE PLIAGE. Avant, elle donnerait la
             // réponse : deux carrés de la même teinte se font face.
-            el.style.backgroundColor = (plie && !dbl)
+            // LES COULEURS RESTENT PENDANT QU'ON DÉPLIE, et c'est tout ce
+            // qu'on est venu voir : chaque carré redescend à sa place, et l'on
+            // suit des yeux celui qu'on cherchait. Elles n'apparaissent
+            // toujours pas AVANT le pli — deux carrés de même teinte se font
+            // face, ce serait donner la réponse.
+            el.style.backgroundColor = (couleurs && !dbl)
                 ? TEINTES[this.faces[k]] + (verre ? 'b0' : '') : '';
             // LE CARRÉ EN TROP NE SE COUCHE PAS. Première tentative : le
             // soulever d'un vingtième de carré le long de sa normale. Mesuré à
@@ -496,10 +602,11 @@ export class Patrons extends BaseGame {
             this.choisie = null;
             this.note('');
             this.dessiner();
-            // Le pliage dure neuf dixièmes de seconde : partir au bout de
-            // 2,1 s ne laissait qu'un instant pour REGARDER le cube fermé, qui
-            // est pourtant tout ce qu'on est venu voir.
-        }, 3000);
+            // ON ATTEND QUE LA CHORÉGRAPHIE SOIT FINIE, et pas une seconde de
+            // moins. Elle plie, tourne autour du cube, déplie et replie : une
+            // figure qui changerait au milieu du tour serait pire que pas de
+            // tour du tout. Le compte se lit dans `PLI`, à côté d'elle.
+        }, PLI_TOTAL + 700);
     }
 
     note(texte, ton) {

@@ -9,6 +9,8 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import {
     HEXOMINOS, PATRONS, FAUX, FAMILLES, ORDRE_FAMILLES, CONSIGNES,
@@ -272,4 +274,53 @@ test('LA RACINE EST LIBRE : n\'importe quel carré peut rester posé', () => {
     // Une racine qu'on ne trouve pas dans la figure ne casse rien : on repart
     // du premier carré.
     assert.equal(arbrePliage(forme, '99,99').racine, cle(forme[0]));
+});
+
+
+// --- LA CHORÉGRAPHIE DU PLI ----------------------------------------------------
+//
+// Rémy : « Les carrés ne sont pas collés quand tu plies. Fais aussi des
+// rotations doucement autour du cube, et tu plies et déplies. La première fois
+// tu plies sans tourner. Tu attends un peu et tu fais ce que je te demande. »
+
+test('LE PREMIER PLI NE TOURNE PAS, ET LE TOUR VIENT APRÈS', async () => {
+    const { PLI, PLI_TOTAL } = await import('../js/games/patrons.js');
+    // Quatre temps, dans cet ordre : plier, regarder, tourner, déplier/replier.
+    assert.ok(PLI.pli > 0 && PLI.regarde > 0, 'il faut un pli, puis une pause');
+    // « Doucement » : un tour de plus d'un huitième de seconde par dizaine de
+    // degrés. Sous ce seuil, on ne suit plus une face des yeux.
+    assert.ok(PLI.tour / PLI.angle > 12,
+        `${PLI.angle}° en ${PLI.tour} ms : c'est un pivotement, pas un tour`);
+    // Un vrai tour : de quoi voir l'autre côté du cube.
+    assert.ok(PLI.angle >= 120, `${PLI.angle}° ne montre pas le derrière du cube`);
+    assert.equal(PLI_TOTAL,
+        PLI.pli + PLI.regarde + PLI.tour + PLI.entre + PLI.deplie + PLI.entre + PLI.replie);
+});
+
+test('LA FIGURE NE CHANGE PAS AU MILIEU DU TOUR', () => {
+    // Le passage à la question suivante doit attendre la fin de la
+    // chorégraphie : une figure qui se remplace pendant qu'on tourne autour du
+    // cube serait pire que pas de tour du tout.
+    const src = readFileSync(new URL('../js/games/patrons.js', import.meta.url), 'utf8');
+    assert.match(src, /\}, PLI_TOTAL \+ \d+\);/,
+        'l’attente avant la question suivante ne se déduit plus de PLI_TOTAL');
+});
+
+test('UN SEUL TRAIT PAR ARÊTE — les carrés sont COLLÉS', () => {
+    // Mesuré à trois fois la taille : les arêtes intérieures faisaient deux
+    // pixels et le bord extérieur un seul, parce que chaque carré traçait son
+    // trait CHEZ LUI. Un patron dont les plis sont deux fois plus gras que sa
+    // silhouette se lit comme six carrés posés côte à côte.
+    //
+    // Le demi-décalage fait déborder la moitié du trait : deux voisins écrivent
+    // alors au même endroit et n'en font qu'un. Le test garde ce demi, parce
+    // qu'un « -1 » remis là par mégarde redonnerait exactement le défaut de
+    // départ, sans que rien ne le signale.
+    const src = readFileSync(new URL('../js/games/patrons.js', import.meta.url), 'utf8');
+    assert.match(src, /outline-offset:\s*calc\(-0\.5 \* var\(--trait\)\)/,
+        'le trait n’est plus centré sur l’arête');
+    // Et il reste un « outline » : une bordure rentrerait dans la boîte et
+    // décalerait les carrés les uns par rapport aux autres.
+    assert.match(src, /outline:\s*var\(--trait\) solid/);
+    assert.doesNotMatch(src, /\.pa-face \{[^}]*border:\s*var\(--trait\)/);
 });
