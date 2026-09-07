@@ -35,6 +35,17 @@ export const SENS = ['E', 'S', 'O', 'N'];
 /** Ce qu'une case peut contenir. */
 export const VIDE = '.';
 export const MUR = '#';
+/**
+ * LA MINE — la case que le rayon ne doit pas traverser.
+ *
+ * Rémy, après avoir joué : « les rayons et les miroirs sont hyper faciles, tu
+ * ne peux pas compliquer un peu ». Les murs ne compliquaient rien : ils
+ * arrêtent le rayon, donc ils se contentent d'annuler un trajet qu'on n'avait
+ * pas choisi. La mine, elle, se met SUR le trajet qu'on serait tenté de
+ * prendre — celui qu'on obtient en oubliant de tourner — et rend la faute
+ * visible au lieu de la rendre stérile.
+ */
+export const MINE = 'x';
 export const MIROIRS = ['/', '\\'];
 
 /**
@@ -61,64 +72,121 @@ export function refleter(sens, contenu) {
 /**
  * FAIRE COURIR LE RAYON, ET DIRE OÙ IL S'ARRÊTE.
  *
- * Quatre fins possibles, et l'écran les distingue toutes : il touche la cible,
- * il sort de la grille, il se perd dans un mur, ou il tourne en rond. La
- * dernière n'arrive qu'avec quatre miroirs bien placés, mais elle arrive — et
- * sans le compteur de pas, la boucle serait infinie.
+ * PLUSIEURS CRISTAUX, ET UN SEUL TRAJET POUR LES ALLUMER TOUS.
  *
- * @param {Object} g - { n, cases, source: {x, y, sens}, cible: {x, y} }
- * @returns {{chemin: Array, fin: string, touche: boolean}}
+ * Rémy, après avoir joué : « les rayons et les miroirs sont hyper faciles, tu
+ * ne peux pas compliquer un peu ». Avec une seule cible, il suffit de regarder
+ * par où elle peut être atteinte et de remonter — c'est un exercice à une
+ * inconnue. Avec deux ou trois cristaux, il faut trouver un trajet qui passe
+ * par TOUS, dans un ordre qu'on ne choisit pas : le rayon ne revient pas en
+ * arrière, donc l'ordre est imposé par la géométrie, et c'est là qu'il y a
+ * quelque chose à chercher.
+ *
+ * LE RAYON TRAVERSE DONC LES CRISTAUX au lieu de s'arrêter au premier. Un
+ * cristal n'est pas un mur : il s'allume au passage. C'est ce qui rend
+ * l'enchaînement possible, et c'est aussi ce qui se voit — trois cristaux
+ * allumés d'un seul trait.
+ *
+ * Cinq fins possibles, et l'écran les distingue toutes : tous les cristaux
+ * allumés, le rayon sort de la grille, il se perd dans un mur, il touche une
+ * mine, ou il tourne en rond. La dernière est impossible (voir le test), mais
+ * sans le compteur de pas la boucle serait infinie.
+ *
+ * @param {Object} g - { n, cases, source: {x, y, sens}, cibles: [{x, y}] }
+ * @returns {{chemin: Array, fin: string, touche: boolean, allumees: Set}}
  *   `chemin` liste les segments parcourus : de quoi tracer le trait à l'écran.
  */
 export function tracer(g) {
     const chemin = [];
+    const cibles = listeCibles(g);
+    const allumees = new Set();
     let sens = g.source.sens;
     let x = g.source.x;
     let y = g.source.y;
     const vus = new Set();
+    const rendre = (fin) => ({ chemin, fin, allumees, touche: allumees.size === cibles.length });
     // Une case peut être traversée deux fois — une fois à l'horizontale, une
     // fois à la verticale —, et ce n'est PAS une boucle. C'est le couple
     // (case, direction) qui doit rester unique.
     for (let pas = 0; pas < g.n * g.n * 4 + 8; pas++) {
-        if (x < 0 || y < 0 || x >= g.n || y >= g.n) return { chemin, fin: 'sortie', touche: false };
+        if (x < 0 || y < 0 || x >= g.n || y >= g.n) return rendre('sortie');
         const cle = `${x},${y},${sens}`;
-        if (vus.has(cle)) return { chemin, fin: 'boucle', touche: false };
+        if (vus.has(cle)) return rendre('boucle');
         vus.add(cle);
         const i = y * g.n + x;
         const quoi = g.cases[i];
-        if (quoi === MUR) return { chemin, fin: 'mur', touche: false };
+        if (quoi === MUR) return rendre('mur');
+        // LA MINE ARRÊTE TOUT, ET ELLE ANNULE CE QUI PRÉCÈDE. Un trajet qui
+        // allume deux cristaux puis explose n'est pas à moitié réussi : c'est
+        // exactement la faute qu'on veut faire voir.
+        if (quoi === MINE) { allumees.clear(); return rendre('mine'); }
         const avant = sens;
         sens = refleter(sens, quoi);
         chemin.push({ x, y, entre: avant, sort: sens });
-        // LA CIBLE EST TOUCHÉE DÈS QU'ON Y ENTRE, avant tout rebond : un miroir
-        // sur la cible n'aurait aucun sens, et la générer ainsi serait un
-        // piège gratuit.
-        if (g.cible && x === g.cible.x && y === g.cible.y) {
-            return { chemin, fin: 'cible', touche: true };
+        // UN CRISTAL S'ALLUME AU PASSAGE, avant tout rebond : un miroir posé
+        // sur un cristal n'aurait aucun sens, et l'écran l'interdit.
+        const k = cibles.findIndex(c => c.x === x && c.y === y);
+        if (k >= 0) {
+            allumees.add(k);
+            if (allumees.size === cibles.length) return rendre('cible');
         }
         const [dx, dy] = PAS[sens];
         x += dx; y += dy;
     }
-    return { chemin, fin: 'boucle', touche: false };
+    return rendre('boucle');
 }
+
+/**
+ * LES CRISTAUX D'UNE GRILLE, toujours sous forme de liste.
+ *
+ * Les premières grilles n'en avaient qu'un, écrit `cible` au singulier. Le
+ * garder ferait deux formes pour la même chose, et un jour l'une des deux
+ * serait oubliée quelque part.
+ */
+export const listeCibles = (g) => (g.cibles && g.cibles.length ? g.cibles
+    : (g.cible ? [g.cible] : []));
+
+/** Cette case porte-t-elle un cristal ? */
+export const estCible = (g, x, y) => listeCibles(g).some(c => c.x === x && c.y === y);
 
 /** Combien de miroirs l'élève a posés (les fixes ne comptent pas). */
 export const miroirsPoses = (cases, fixes) =>
     cases.filter((c, i) => MIROIRS.includes(c) && !fixes[i]).length;
 
 /**
- * LES CINQ NIVEAUX, ET CHACUN AJOUTE UNE SEULE CHOSE.
+ * SEPT NIVEAUX, ET CHACUN AJOUTE UNE SEULE CHOSE.
  *
- * Un miroir, deux, trois — puis les murs, qui interdisent le trajet évident, et
- * enfin des miroirs DÉJÀ POSÉS, qu'on ne peut pas bouger : il faut alors
- * composer avec le rebond d'un autre, ce qui est la vraie difficulté du genre.
+ * Rémy, après avoir joué la première version : « les rayons et les miroirs sont
+ * hyper faciles, tu ne peux pas compliquer un peu ». Il avait raison, et la
+ * raison est précise : avec UN cristal, on regarde par où il peut être atteint
+ * et l'on remonte — c'est un problème à une inconnue, qui se voit d'un coup
+ * d'œil sur cinq cases de côté. Quatre choses le rendent difficile, et elles
+ * arrivent une par une :
+ *
+ *   · LE NOMBRE DE VIRAGES, jusqu'à six : après le deuxième rebond, on ne
+ *     devine plus, on suit.
+ *   · PLUSIEURS CRISTAUX dans le MÊME trajet. C'est le vrai saut. Le rayon ne
+ *     revient jamais en arrière : l'ordre dans lequel il les rencontre est
+ *     imposé par la géométrie, et il faut le trouver avant de poser quoi que
+ *     ce soit.
+ *   · LES MINES, posées là où l'on file tout droit si l'on oublie de tourner.
+ *     Un mur annule un trajet qu'on n'avait pas choisi ; une mine punit
+ *     exactement l'erreur qu'on allait faire.
+ *   · LES MIROIRS VISSÉS, qu'on ne peut pas bouger : il faut composer avec le
+ *     rebond d'un autre, ce qui est la vraie difficulté du genre.
+ *
+ * Les grilles montent à neuf de côté. Ce n'est pas la taille qui fait la
+ * difficulté — on l'a vu avec le circuit d'eau —, mais elle est nécessaire :
+ * six virages ne tiennent pas dans cinq cases.
  */
 export const MARCHES_LASER = [
-    { id: 'un', nom: 'Un miroir', n: 5, virages: 1, murs: 0, fixes: 0 },
-    { id: 'deux', nom: 'Deux miroirs', n: 5, virages: 2, murs: 0, fixes: 0 },
-    { id: 'trois', nom: 'Trois miroirs', n: 6, virages: 3, murs: 0, fixes: 0 },
-    { id: 'murs', nom: 'Avec des murs', n: 6, virages: 3, murs: 4, fixes: 0 },
-    { id: 'fixes', nom: 'Des miroirs déjà posés', n: 7, virages: 4, murs: 3, fixes: 1 }
+    { id: 'un', nom: '1. Un miroir', n: 5, virages: 1, cibles: 1 },
+    { id: 'deux', nom: '2. Deux miroirs', n: 6, virages: 2, cibles: 1 },
+    { id: 'trois', nom: '3. Trois miroirs', n: 7, virages: 3, cibles: 1, murs: 3 },
+    { id: 'deuxCristaux', nom: '4. Deux cristaux', n: 7, virages: 3, cibles: 2, murs: 3 },
+    { id: 'mines', nom: '5. Attention aux mines', n: 8, virages: 4, cibles: 2, murs: 3, mines: 3 },
+    { id: 'troisCristaux', nom: '6. Trois cristaux', n: 8, virages: 5, cibles: 3, murs: 4, mines: 3 },
+    { id: 'fixes', nom: '7. Des miroirs vissés', n: 9, virages: 6, cibles: 3, murs: 5, mines: 4, fixes: 2 }
 ];
 
 /**
@@ -166,6 +234,14 @@ function unTirage(rng, marche, n) {
     const cases = new Array(n * n).fill(VIDE);
     const surLeTrajet = new Set();
     const marques = [];
+    // LES CANDIDATS À DEVENIR CRISTAUX : chaque case DROITE du trajet, virages
+    // exclus. Un cristal sur un virage se poserait sur le miroir, ce que
+    // l'écran interdit — et ce serait de toute façon une case qu'on ne peut
+    // pas rater, donc un cristal qui n'apprend rien.
+    const droites = [];
+    // Et les cases où l'on part tout droit au lieu de tourner : c'est là que
+    // les mines valent quelque chose.
+    const toutDroit = [];
 
     for (let v = 0; v <= marche.virages; v++) {
         const dernier = v === marche.virages;
@@ -176,12 +252,18 @@ function unTirage(rng, marche, n) {
         const long = rng.int(1, Math.min(place, dernier ? place : place - 1));
         for (let k = 0; k < long; k++) {
             surLeTrajet.add(`${x},${y}`);
+            if (k > 0 || v === 0) droites.push({ x, y });
             const [dx, dy] = PAS[sens];
             x += dx; y += dy;
         }
         if (x < 0 || y < 0 || x >= n || y >= n) return null;
         if (surLeTrajet.has(`${x},${y}`)) return null;      // le trajet se recoupe
         if (dernier) break;
+        // LA CASE D'APRÈS, DANS LE MÊME SENS : celle où l'on file si l'on
+        // oublie de poser le miroir. Une mine posée là punit l'oubli au lieu
+        // de le laisser sans conséquence.
+        const [ax, ay] = PAS[sens];
+        toutDroit.push({ x: x + ax, y: y + ay });
         // Le virage : on tourne d'un quart de tour, à droite ou à gauche.
         const suivant = tourner(sens, rng.int(0, 1) ? 1 : -1);
         const m = miroirPour(sens, suivant);
@@ -192,19 +274,43 @@ function unTirage(rng, marche, n) {
         sens = suivant;
     }
 
-    const cible = { x, y };
-    if (cible.x === source.x && cible.y === source.y) return null;
+    const fin = { x, y };
+    if (fin.x === source.x && fin.y === source.y) return null;
 
-    // LES MURS SE POSENT HORS DU TRAJET, et l'un d'eux au moins doit BARRER la
-    // ligne droite qui part de la source : sinon ils décorent au lieu de gêner.
+    // LES CRISTAUX : le dernier est au bout du trajet, les autres se prennent
+    // sur les portions droites, dans l'ordre où le rayon les rencontre. Cet
+    // ordre EST la difficulté : le rayon ne revient pas en arrière, donc il
+    // n'y a qu'un enchaînement possible, et il faut le trouver.
+    const combien = Math.max(1, marche.cibles || 1);
+    const cibles = [fin];
+    const pool = droites.filter(c => !surLeVirage(c, marques, n) && !memeCase(c, source));
+    for (let k = 1; k < combien && pool.length; k++) {
+        const c = pool.splice(rng.int(0, pool.length - 1), 1)[0];
+        if (!cibles.some(z => memeCase(z, c))) cibles.push(c);
+    }
+    if (cibles.length < combien) return null;
+
+    const surUneCible = (cx, cy) => cibles.some(c => c.x === cx && c.y === cy);
+
+    // LES MURS ET LES MINES SE POSENT HORS DU TRAJET. Les mines d'abord, et
+    // sur les cases « tout droit » : ce sont elles qui ont un sens.
     const cases2 = cases.slice();
+    const libre = (cx, cy) => cx >= 0 && cy >= 0 && cx < n && cy < n
+        && !surLeTrajet.has(`${cx},${cy}`) && !surUneCible(cx, cy)
+        && cases2[cy * n + cx] === VIDE;
+    let posees = 0;
+    for (const c of toutDroit) {
+        if (posees >= (marche.mines || 0)) break;
+        if (!libre(c.x, c.y)) continue;
+        cases2[c.y * n + c.x] = MINE;
+        posees += 1;
+    }
+    if ((marche.mines || 0) && !posees) return null;   // des mines qui ne gênent rien
+
     if (marche.murs) {
         const libres = [];
         for (let i = 0; i < n * n; i++) {
-            const cx = i % n, cy = Math.floor(i / n);
-            if (surLeTrajet.has(`${cx},${cy}`)) continue;
-            if (cx === cible.x && cy === cible.y) continue;
-            libres.push(i);
+            if (libre(i % n, Math.floor(i / n))) libres.push(i);
         }
         for (let k = 0; k < marche.murs && libres.length; k++) {
             cases2[libres.splice(rng.int(0, libres.length - 1), 1)[0]] = MUR;
@@ -215,23 +321,30 @@ function unTirage(rng, marche, n) {
     const fixes = new Array(n * n).fill(false);
     const depart = cases2.slice();
     marques.forEach(({ i }) => { depart[i] = VIDE; });
-    for (let k = 0; k < Math.min(marche.fixes, marques.length - 1); k++) {
+    // `fixes` peut être absent d'un niveau : sans ce zéro, `Math.min` rendait
+    // NaN et le budget n'était plus un nombre — mesuré sur six niveaux sur
+    // sept, et l'écran affichait « NaN miroir à poser ».
+    const vissés = Math.max(0, Math.min(marche.fixes || 0, marques.length - 1));
+    for (let k = 0; k < vissés; k++) {
         depart[marques[k].i] = marques[k].m;
         fixes[marques[k].i] = true;
     }
 
-    const budget = marques.length - Math.min(marche.fixes, marques.length - 1);
-    const grille = { n, cases: depart, fixes, source, cible, budget, solution: cases2 };
+    const budget = marques.length - vissés;
+    const grille = { n, cases: depart, fixes, source, cibles, budget, solution: cases2 };
     // GARDE-FOU : la grille tirée DOIT se résoudre avec sa propre solution. Le
-    // trajet a été construit pas à pas, mais un mur mal placé ou un virage au
-    // ras du bord peuvent l'avoir cassé — mieux vaut le voir ici que devant un
-    // élève.
+    // trajet a été construit pas à pas, mais un mur mal placé, une mine ou un
+    // virage au ras du bord peuvent l'avoir cassé — mieux vaut le voir ici que
+    // devant un élève.
     if (!tracer({ ...grille, cases: cases2 }).touche) return null;
-    // Et le rayon ne doit PAS déjà toucher la cible sans rien poser, sauf s'il
-    // n'y a rien à poser.
+    // Et le rayon ne doit PAS déjà tout allumer sans rien poser, sauf s'il n'y
+    // a rien à poser.
     if (budget > 0 && tracer(grille).touche) return null;
     return grille;
 }
+
+const memeCase = (a, b) => a.x === b.x && a.y === b.y;
+const surLeVirage = (c, marques, n) => marques.some(m => m.i === c.y * n + c.x);
 
 /** La distance au bord dans cette direction, en cases. */
 function jusquAuBord(x, y, sens, n) {
@@ -264,8 +377,11 @@ export function poserMiroir(g, i) {
     if (i === g.source.y * g.n + g.source.x) {
         return { cases: g.cases, refus: 'C\'est la case de départ du rayon.' };
     }
-    if (i === g.cible.y * g.n + g.cible.x) {
-        return { cases: g.cases, refus: 'C\'est la cible : le rayon doit y arriver, pas y rebondir.' };
+    if (estCible(g, i % g.n, Math.floor(i / g.n))) {
+        return { cases: g.cases, refus: 'C\'est un cristal : le rayon le traverse, il n\'y rebondit pas.' };
+    }
+    if (g.cases[i] === MINE || g.solution[i] === MINE) {
+        return { cases: g.cases, refus: 'Une mine : le rayon ne doit pas passer par là.' };
     }
     const cases = g.cases.slice();
     const suite = { [VIDE]: MIROIRS[0], [MIROIRS[0]]: MIROIRS[1], [MIROIRS[1]]: VIDE };
@@ -289,8 +405,18 @@ export function poserMiroir(g, i) {
 export const DIT_LA_FIN = {
     sortie: 'Le rayon sort de la grille.',
     mur: 'Le rayon se perd dans un mur.',
+    mine: 'Le rayon touche une mine : tout est à refaire.',
     boucle: 'Le rayon tourne en rond : il ne sortira jamais de sa boucle.',
-    cible: 'Le rayon atteint la cible.'
+    cible: 'Tous les cristaux sont allumés.'
 };
 
-export const CONSIGNE = 'Pose les miroirs pour amener le rayon sur la cible.';
+/** Ce qui reste à allumer, dit en français. */
+export function ditLeReste(g, r) {
+    const total = listeCibles(g).length;
+    const faits = r.allumees ? r.allumees.size : 0;
+    if (total <= 1 || !faits) return DIT_LA_FIN[r.fin] || '';
+    return `${DIT_LA_FIN[r.fin] || ''} ${faits} ${faits > 1 ? 'cristaux' : 'cristal'} `
+        + `sur ${total} allumé${faits > 1 ? 's' : ''}.`;
+}
+
+export const CONSIGNE = 'Pose les miroirs pour allumer tous les cristaux.';

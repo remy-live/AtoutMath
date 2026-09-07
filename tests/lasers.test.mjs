@@ -20,8 +20,8 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import {
-    VIDE, MUR, MIROIRS, SENS, refleter, miroirPour, tracer, tourner,
-    poserMiroir, miroirsPoses, MARCHES_LASER, tirerNiveau
+    VIDE, MUR, MINE, MIROIRS, SENS, refleter, miroirPour, tracer, tourner,
+    poserMiroir, miroirsPoses, MARCHES_LASER, tirerNiveau, listeCibles
 } from '../js/core/lasers.js';
 import { lasersGenerator } from '../js/core/generators/lasers.js';
 
@@ -220,4 +220,150 @@ test('l\'explication dit le trajet sans donner les cases', () => {
         assert.doesNotMatch(it.explanation, /\d+\s*,\s*\d+/, 'une case nommée dans l\'explication');
         assert.match(it.explanation, /quart de tour/);
     }
+});
+
+// --- CE QUI REND LE JEU DIFFICILE -------------------------------------------
+//
+// Rémy, après avoir joué la première version : « les rayons et les miroirs sont
+// hyper faciles, tu ne peux pas compliquer un peu ». Il avait raison, et la
+// raison est précise : avec UN cristal, on regarde par où il peut être atteint
+// et l'on remonte — un problème à une inconnue. Deux choses le rendent
+// autrement plus dur, et ce sont elles qu'on tient ici.
+
+test('PLUSIEURS CRISTAUX, ET UN SEUL TRAJET POUR LES ALLUMER TOUS', () => {
+    // Le rayon TRAVERSE un cristal au lieu de s'y arrêter : sans cela, aucun
+    // enchaînement ne serait possible et le second cristal serait inatteignable.
+    const n = 5;
+    const g = {
+        n, cases: new Array(n * n).fill(VIDE), fixes: [],
+        source: { x: 0, y: 0, sens: 'E' },
+        cibles: [{ x: 1, y: 0 }, { x: 3, y: 0 }]
+    };
+    const r = tracer(g);
+    assert.equal(r.allumees.size, 2, 'le rayon doit traverser le premier cristal');
+    assert.equal(r.touche, true);
+    assert.equal(r.fin, 'cible');
+
+    // Et il ne suffit pas d'en allumer UN : tant qu'il en reste, c'est raté.
+    const rate = tracer({ ...g, cibles: [{ x: 1, y: 0 }, { x: 1, y: 4 }] });
+    assert.equal(rate.allumees.size, 1);
+    assert.equal(rate.touche, false, 'un cristal sur deux n\'est pas une réussite');
+    assert.equal(rate.fin, 'sortie');
+});
+
+test('LA MINE ARRÊTE TOUT, ET ELLE ANNULE CE QUI PRÉCÈDE', () => {
+    // Un trajet qui allume deux cristaux puis explose n'est pas à moitié
+    // réussi : c'est exactement la faute qu'on veut faire voir.
+    const n = 5;
+    const cases = new Array(n * n).fill(VIDE);
+    cases[3] = MINE;                       // (3,0)
+    const g = {
+        n, cases, fixes: [], source: { x: 0, y: 0, sens: 'E' },
+        cibles: [{ x: 1, y: 0 }, { x: 4, y: 0 }]
+    };
+    const r = tracer(g);
+    assert.equal(r.fin, 'mine');
+    assert.equal(r.allumees.size, 0, 'la mine annule les cristaux déjà allumés');
+    assert.equal(r.touche, false);
+    // Et l'on ne pose pas un miroir sur une mine : ce serait s'en servir comme
+    // d'une case ordinaire.
+    assert.ok(poserMiroir({ ...g, solution: cases, budget: 3 }, 3).refus);
+});
+
+test('LA DIFFICULTÉ MONTE VRAIMENT, niveau après niveau', () => {
+    // Un « niveau 7 » qui demanderait le même travail que le niveau 2 serait
+    // une promesse non tenue. On mesure donc ce qui fait le travail : le nombre
+    // de miroirs à poser, le nombre de cristaux, la taille de la grille.
+    const poids = MARCHES_LASER.map(m =>
+        (m.virages || 0) * 2 + ((m.cibles || 1) - 1) * 3 + (m.mines ? 2 : 0) + (m.fixes || 0));
+    for (let i = 1; i < poids.length; i++) {
+        assert.ok(poids[i] > poids[i - 1],
+            `${MARCHES_LASER[i].nom} n'est pas plus dur que ${MARCHES_LASER[i - 1].nom}`);
+    }
+    // Et le dernier niveau porte tout ce que le jeu sait faire.
+    const dernier = MARCHES_LASER[MARCHES_LASER.length - 1];
+    assert.ok(dernier.cibles >= 3 && dernier.mines >= 1 && dernier.fixes >= 1 && dernier.murs >= 1,
+        'le dernier niveau doit réunir cristaux, mines, murs et miroirs vissés');
+    assert.ok(MARCHES_LASER.some(m => (m.cibles || 1) > 1), 'aucun niveau à plusieurs cristaux');
+});
+
+test('les grilles à plusieurs cristaux se résolvent, et pas par hasard', () => {
+    const aPlusieurs = MARCHES_LASER.filter(m => (m.cibles || 1) > 1);
+    assert.ok(aPlusieurs.length >= 3);
+    for (const marche of aPlusieurs) {
+        for (let k = 0; k < 30; k++) {
+            const g = tirerNiveau(makeRng(`multi-${marche.id}-${k}`), marche);
+            assert.ok(g, `${marche.nom} : tirage impossible`);
+            assert.equal(listeCibles(g).length, marche.cibles, `${marche.nom} : mauvais compte`);
+            const r = tracer({ ...g, cases: g.solution });
+            assert.equal(r.touche, true, `${marche.nom} : la solution n'allume pas tout`);
+            assert.equal(r.allumees.size, marche.cibles);
+            // AUCUN CRISTAL SUR UN MIROIR : le rayon le traverserait ET
+            // rebondirait dessus, ce qui ne veut rien dire.
+            listeCibles(g).forEach(c => {
+                const q = g.solution[c.y * g.n + c.x];
+                assert.ok(!MIROIRS.includes(q) && q !== MUR && q !== MINE,
+                    `${marche.nom} : un cristal sur « ${q} »`);
+            });
+            // Et la grille de départ n'allume pas déjà tout.
+            assert.equal(tracer(g).touche, false, `${marche.nom} : gagnée d'avance`);
+        }
+    }
+});
+
+test('ON NE GAGNE PLUS EN TÂTONNANT — et c\'est mesuré', () => {
+    // Rémy : « les rayons et les miroirs sont hyper faciles ». La difficulté
+    // d'un jeu de ce genre ne se décrète pas, elle se MESURE : on fait jouer un
+    // tâtonneur aveugle — il pose le premier miroir qui allume un cristal de
+    // plus, sans jamais rien prévoir — et l'on compte ce qu'il réussit.
+    //
+    // Sur la première version, il gagnait partout : c'est exactement ce que
+    // Rémy a senti en jouant. Il faut donc que les derniers niveaux lui
+    // résistent, sans quoi « niveau 7 » n'est qu'une étiquette.
+    const tatonner = (g) => {
+        let cases = g.cases.slice();
+        let poses = 0;
+        let mieux = tracer({ ...g, cases }).allumees.size;
+        for (let tour = 0; tour < 12; tour++) {
+            if (tracer({ ...g, cases }).touche) return true;
+            if (poses >= g.budget) return false;
+            let bouge = false;
+            for (let i = 0; i < cases.length && !bouge; i++) {
+                if (cases[i] !== VIDE || g.fixes[i]) continue;
+                for (const m of MIROIRS) {
+                    const essai = cases.slice();
+                    essai[i] = m;
+                    const r = tracer({ ...g, cases: essai });
+                    if (r.touche || r.allumees.size > mieux) {
+                        cases = essai; poses += 1; mieux = r.allumees.size; bouge = true; break;
+                    }
+                }
+            }
+            if (!bouge) return false;
+        }
+        return tracer({ ...g, cases }).touche;
+    };
+
+    const taux = MARCHES_LASER.map(marche => {
+        let gagne = 0;
+        for (let k = 0; k < 40; k++) {
+            const g = tirerNiveau(makeRng(`tat-${marche.id}-${k}`), marche);
+            if (g && tatonner(g)) gagne += 1;
+        }
+        return gagne / 40;
+    });
+
+    // Le premier niveau DOIT se tâtonner : c'est celui où l'on apprend la
+    // règle, et un débutant a le droit d'essayer.
+    assert.ok(taux[0] > 0.8, `niveau 1 : ${Math.round(taux[0] * 100)} % — trop dur pour débuter`);
+    // Les trois derniers, non : là, il faut prévoir le trajet.
+    taux.slice(-3).forEach((t, k) => {
+        assert.ok(t < 0.6, `${MARCHES_LASER[MARCHES_LASER.length - 3 + k].nom} : `
+            + `${Math.round(t * 100)} % au tâtonnement — encore trop facile`);
+    });
+    // Et la courbe descend : chaque tiers de la progression résiste davantage.
+    const debut = (taux[0] + taux[1]) / 2;
+    const fin = taux.slice(-2).reduce((a, b) => a + b, 0) / 2;
+    assert.ok(fin < debut - 0.4, `de ${Math.round(debut * 100)} % à ${Math.round(fin * 100)} % : `
+        + 'la difficulté ne monte pas assez');
 });

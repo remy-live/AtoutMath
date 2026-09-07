@@ -912,9 +912,20 @@ function initDebugToolbar() {
     if (btnSol) btnSol.onclick = async () => {
         const { showToast } = await import('./ui/modal.js');
         const r = await runnerCourant();
-        const jeu = r && r.handle && r.handle.jeu;
-        if (!jeu || typeof jeu.montrerSolution !== 'function' || !jeu.montrerSolution()) {
-            showToast(jeu ? 'Ce jeu ne sait pas montrer sa solution.' : 'Aucun jeu en cours.', 'warning');
+        // IL Y A DEUX SORTES DE MENEURS, ET ON N'EN REGARDAIT QU'UNE.
+        //
+        // Un JEU est rangé dans `handle.jeu` ; une ACTIVITÉ, elle, EST le
+        // `handle` — son `mount` rend directement l'objet. Le bouton ne
+        // cherchait que la première forme : le corrigé ne s'est donc jamais
+        // affiché pour aucune activité, alors que plusieurs savent le montrer
+        // (le circuit d'eau, le rayon et les miroirs). Trouvé en essayant de
+        // vérifier qu'une grille de laser était bien soluble : le bouton ne
+        // faisait rien, sans un mot.
+        const porteur = [r && r.handle && r.handle.jeu, r && r.handle]
+            .find(x => x && typeof x.montrerSolution === 'function');
+        if (!porteur || !porteur.montrerSolution()) {
+            showToast(r ? 'Cet exercice ne sait pas montrer sa solution.' : 'Aucun exercice en cours.',
+                'warning');
         }
     };
 }

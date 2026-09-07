@@ -28,7 +28,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import {
-    VIDE, MUR, MIROIRS, PAS, tracer, poserMiroir, miroirsPoses, DIT_LA_FIN
+    VIDE, MUR, MINE, MIROIRS, PAS, tracer, poserMiroir, miroirsPoses, ditLeReste
 } from '../lasers.js';
 
 /** Le côté d'une case dans le dessin : tout le reste s'exprime en fractions. */
@@ -59,7 +59,7 @@ export function mount(container, session) {
         const m = item.meta;
         g = {
             n: m.n, cases: [...m.depart], fixes: [...m.fixes],
-            source: m.source, cible: m.cible, budget: m.budget, solution: m.solution
+            source: m.source, cibles: m.cibles, budget: m.budget, solution: m.solution
         };
         fini = false;
         render();
@@ -107,14 +107,24 @@ export function mount(container, session) {
         </g>`;
     }
 
-    /** La cible : un cristal qui s'allume quand le rayon l'atteint. */
-    function cibleSvg(touche) {
-        const [cx, cy] = centre(g.cible.x, g.cible.y);
-        return `<g class="la-cible${touche ? ' la-cible--allumee' : ''}"
-            transform="translate(${cx} ${cy})">
-            <path d="M0,-30 L24,0 L0,30 L-24,0 Z"/>
-            <path class="la-cible-coeur" d="M0,-15 L12,0 L0,15 L-12,0 Z"/>
-        </g>`;
+    /**
+     * LES CRISTAUX, allumés un par un.
+     *
+     * Chacun porte son NUMÉRO D'ORDRE quand il y en a plusieurs — non pour dire
+     * dans quel ordre les prendre (ce serait donner la réponse), mais pour
+     * qu'on puisse en parler et compter ceux qui restent. C'est le rayon qui
+     * impose l'ordre, pas le dessin.
+     */
+    function ciblesSvg(allumees) {
+        return g.cibles.map((c, k) => {
+            const [cx, cy] = centre(c.x, c.y);
+            const on = allumees.has(k);
+            return `<g class="la-cible${on ? ' la-cible--allumee' : ''}"
+                transform="translate(${cx} ${cy})">
+                <path d="M0,-30 L24,0 L0,30 L-24,0 Z"/>
+                <path class="la-cible-coeur" d="M0,-15 L12,0 L0,15 L-12,0 Z"/>
+            </g>`;
+        }).join('');
     }
 
     function caseSvg(i) {
@@ -125,6 +135,19 @@ export function mount(container, session) {
         if (quoi === MUR) {
             return `<rect class="la-mur" x="${x * C + 6}" y="${y * C + 6}"
                 width="${C - 12}" height="${C - 12}" rx="8"/>`;
+        }
+        // LA MINE : une étoile hérissée, qui ne ressemble à rien d'autre sur la
+        // grille. Un rond rouge se serait confondu avec un cristal éteint, et
+        // c'est justement la case qu'il ne faut pas confondre.
+        if (quoi === MINE) {
+            const branches = [];
+            for (let k = 0; k < 8; k++) {
+                const a = (k * Math.PI) / 4;
+                const r1 = k % 2 ? 12 : 26;
+                branches.push(`${(cx + Math.cos(a) * r1).toFixed(1)},${(cy + Math.sin(a) * r1).toFixed(1)}`);
+            }
+            return `<g class="la-mine"><polygon points="${branches.join(' ')}"/>
+                <circle cx="${cx}" cy="${cy}" r="6"/></g>`;
         }
         if (!MIROIRS.includes(quoi)) return '';
         // UN MIROIR EST UN TRAIT ÉPAIS AVEC UN DOS. Le trait fin seul se
@@ -149,6 +172,8 @@ export function mount(container, session) {
                 <div class="la-context">${item.prompt.html}</div>
                 <div class="la-barre">
                     <div class="la-compteur" data-compteur></div>
+                    ${g.cibles.length > 1
+        ? '<div class="la-compteur la-compteur--cristaux" data-cristaux></div>' : ''}
                     <button type="button" class="la-btn-doux" data-recommencer>Tout enlever</button>
                 </div>
                 <div class="la-board" style="--la-n:${g.n}" role="group"
@@ -203,13 +228,26 @@ export function mount(container, session) {
         ray.setAttribute('points', traitDuRayon(r));
         ray.classList.toggle('la-rayon--arrive', r.touche);
         container.querySelector('[data-source]').innerHTML = sourceSvg();
-        container.querySelector('[data-cible]').innerHTML = cibleSvg(r.touche);
+        container.querySelector('[data-cible]').innerHTML = ciblesSvg(r.allumees);
 
         const reste = g.budget - miroirsPoses(g.cases, g.fixes);
         const c = container.querySelector('[data-compteur]');
         c.innerHTML = `<b>${reste}</b> <span>miroir${reste > 1 ? 's' : ''} `
             + `à poser sur ${g.budget}</span>`;
         c.classList.toggle('la-compteur--vide', reste === 0);
+        // LE COMPTE DES CRISTAUX, quand il y en a plus d'un : c'est le second
+        // chiffre du jeu, et sans lui on ne sait pas si l'on progresse.
+        const cr = container.querySelector('[data-cristaux]');
+        if (cr) {
+            // L'ACCORD SUIT LE NOMBRE ALLUMÉ, PAS LE TOTAL. Écrit à l'envers,
+            // cela donnait « 1 cristaux sur 2 allumé » — vu à l'écran, et c'est
+            // le genre de faute qu'un professeur de mathématiques ne laisse pas
+            // passer plus qu'un autre.
+            const k = r.allumees.size;
+            cr.innerHTML = `<b>${k}</b> <span>${k > 1 ? 'cristaux' : 'cristal'} `
+                + `sur ${g.cibles.length} allumé${k > 1 ? 's' : ''}</span>`;
+            cr.classList.toggle('la-compteur--plein', k === g.cibles.length);
+        }
         return r;
     }
 
@@ -234,7 +272,7 @@ export function mount(container, session) {
         // rien tant qu'il reste des miroirs à poser — commenter un trajet
         // inachevé serait reprocher de ne pas avoir fini.
         if (r.touche) { terminer(); return; }
-        if (miroirsPoses(g.cases, g.fixes) >= g.budget) statut(DIT_LA_FIN[r.fin] || '', 'ko');
+        if (miroirsPoses(g.cases, g.fixes) >= g.budget) statut(ditLeReste(g, r), 'ko');
     }
 
     function brancherCases() {
@@ -250,7 +288,8 @@ export function mount(container, session) {
             // le budget jouable : on essaie, on voit qu'on s'est trompé de
             // trajet, on repart en sachant où l'on va. Les miroirs vissés
             // restent — ils ne sont pas à nous.
-            g = { ...g, cases: g.cases.map((c, i) => (g.fixes[i] ? c : (c === MUR ? MUR : VIDE))) };
+            g = { ...g, cases: g.cases.map((c, i) => (g.fixes[i] ? c
+                : ((c === MUR || c === MINE) ? c : VIDE))) };
             statut('');
             peindre();
         };
@@ -263,7 +302,8 @@ export function mount(container, session) {
         container.querySelector('.la-board').classList.add('la-board--ok');
         const result = session.submit('rayon-arrive');
         if (result.ignored) return;
-        statut('Le rayon touche la cible !', 'ok');
+        statut(g.cibles.length > 1
+            ? `Les ${g.cibles.length} cristaux sont allumés !` : 'Le cristal est allumé !', 'ok');
         result.dismissed.then(() => {
             if (destroyed) return;
             if (result.revealed) { montrerSolution(); regTimeout(renderNext, 2600); return; }

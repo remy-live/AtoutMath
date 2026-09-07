@@ -592,6 +592,26 @@ export const geometrieExercises = [
         // jusqu'à ce que ça marche : le raisonnement disparaîtrait derrière
         // l'essai. Le nombre de miroirs est donc exactement celui qu'il faut, et
         // le geste qui dépasserait est refusé avec sa raison.
+        //
+        // LE BUDGET N'A PAS SUFFI. Rémy, après avoir joué la première
+        // version : « les rayons et les miroirs sont hyper faciles, tu ne peux
+        // pas compliquer un peu ». Il avait raison, et la raison est précise :
+        // avec UN cristal, on regarde par où il peut être atteint et l'on
+        // remonte — un problème à une inconnue. Trois choses ont été ajoutées,
+        // et la première est le vrai saut : PLUSIEURS CRISTAUX dans le même
+        // trajet. Le rayon ne revient jamais en arrière, donc l'ordre dans
+        // lequel il les rencontre est imposé par la figure, et il faut le
+        // trouver avant de poser quoi que ce soit. Ensuite les MINES, posées
+        // là où l'on file tout droit en oubliant de tourner — un mur annule un
+        // trajet qu'on n'avait pas choisi, une mine punit l'erreur qu'on
+        // allait faire. Enfin les miroirs VISSÉS, avec lesquels il faut
+        // composer.
+        //
+        // Mesuré, parce qu'une difficulté se mesure : un tâtonneur aveugle —
+        // qui pose le premier miroir allumant un cristal de plus, sans jamais
+        // rien prévoir — gagnait 100 % des grilles de la première version. Il
+        // en gagne encore 100 % au niveau 1, ce qui est voulu, et 25 % au
+        // niveau 6. Le test le vérifie à chaque livraison.
         id: 'geo-lasers', title: 'Le Rayon et les Miroirs',
         cree: '2026-09-06',
         generatorId: 'logique.lasers', activityId: 'lasers',
@@ -612,12 +632,16 @@ export const geometrieExercises = [
             + "poser un miroir : une première fois pour « / », une deuxième pour « \\ », une "
             + "troisième pour l'enlever. UN MIROIR FAIT FAIRE UN QUART DE TOUR au rayon — « / » "
             + "envoie vers le HAUT ce qui allait à droite, « \\ » l'envoie vers le BAS. Ton but : "
-            + "amener le rayon sur le cristal. Le nombre de miroirs est COMPTÉ, et c'est ce qui "
-            + "fait l'exercice : on ne peut pas en semer partout, il faut prévoir le trajet "
-            + "avant de poser. La difficulté n'est jamais un rebond, c'est d'en enchaîner deux "
-            + "ou trois — après le premier miroir, raisonne sur la NOUVELLE direction, pas sur "
-            + "celle du départ. Le moyen sûr est de suivre le rayon du doigt, case après case. "
-            + "Rien à valider : le cristal s'allume tout seul quand le rayon l'atteint."
+            + "allumer TOUS les cristaux, et le rayon les traverse — un cristal n'est pas un mur. "
+            + "C'est là qu'est la difficulté : le rayon ne revient JAMAIS en arrière, donc l'ordre "
+            + "dans lequel il rencontre les cristaux n'est pas au choix, il est imposé par la "
+            + "figure. Trouve-le avant de poser quoi que ce soit. Le nombre de miroirs est COMPTÉ : "
+            + "on ne peut pas en semer partout. Méfie-toi des ÉTOILES ROUGES : ce sont des mines, "
+            + "et elles sont posées exactement là où le rayon file quand on oublie de le faire "
+            + "tourner — s'il en touche une, tout s'éteint. Les blocs gris, eux, arrêtent le rayon, "
+            + "et les miroirs DORÉS sont vissés : ils ne bougent pas, il faut faire avec leur "
+            + "rebond. Le moyen sûr est de suivre le rayon du doigt, case après case. Rien à "
+            + "valider : les cristaux s'allument tout seuls quand le rayon les atteint."
     },
 
     {

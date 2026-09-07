@@ -59,9 +59,15 @@ export const lasersGenerator = {
         const vrai = replie || marche;
 
         const combien = g.budget;
+        const cristaux = g.cibles.length;
+        // LA CONSIGNE DIT LES DEUX NOMBRES, et c'est nécessaire : combien de
+        // miroirs on a, et combien de cristaux il faut allumer. Le second est
+        // ce que Rémy est venu chercher en trouvant le jeu trop facile — un
+        // seul cristal se remonte à l'œil, trois demandent un trajet.
+        const quoi = cristaux === 1 ? 'le cristal' : `les ${cristaux} cristaux`;
         const consigne = combien === 1
-            ? 'Pose LE miroir qui amène le rayon sur la cible.'
-            : `Pose tes ${combien} miroirs pour amener le rayon sur la cible.`;
+            ? `Pose LE miroir qui allume ${quoi}.`
+            : `Pose tes ${combien} miroirs pour allumer ${quoi}.`;
 
         return makeItem({
             seed: rng.seed,
@@ -71,8 +77,8 @@ export const lasersGenerator = {
             prompt: {
                 text: consigne,
                 html: `<div class="game-question la-consigne">${combien === 1
-                    ? 'Pose <b>le miroir</b> qui amène le rayon sur la cible.'
-                    : `Pose tes <b>${combien} miroirs</b> pour amener le rayon sur la cible.`}</div>`
+                    ? `Pose <b>le miroir</b> qui allume ${quoi}.`
+                    : `Pose tes <b>${combien} miroirs</b> pour allumer <b>${quoi}</b>.`}</div>`
             },
             // LA RÉPONSE EST UN ÉTAT, PAS UNE GRILLE PARTICULIÈRE.
             //
@@ -84,17 +90,24 @@ export const lasersGenerator = {
             // écran.
             answer: 'rayon-arrive',
             hints: [
-                'Suis le rayon du doigt depuis sa source : à quel endroit faudrait-il qu’il tourne ?',
+                cristaux > 1
+                    ? 'Cherche d’abord DANS QUEL ORDRE le rayon peut rencontrer les cristaux : '
+                        + 'il ne revient jamais en arrière.'
+                    : 'Suis le rayon du doigt depuis sa source : à quel endroit faudrait-il qu’il tourne ?',
                 'Un miroir « / » envoie vers le haut ce qui allait à droite ; « \\ » l’envoie vers le bas.',
-                'Regarde la cible : par où le rayon peut-il y arriver — par la gauche, par le bas ?'
+                'Regarde le cristal : par où le rayon peut-il y arriver — par la gauche, par le bas ?'
             ],
             explanation: `Le rayon part vers ${enToutesLettres(g.source.sens)} et doit tourner `
-                + `${combien} fois : chaque miroir lui fait faire un quart de tour.`,
+                + `${combien} fois : chaque miroir lui fait faire un quart de tour. `
+                + (cristaux > 1
+                    ? 'L’ordre des cristaux n’est pas au choix — le rayon ne revient jamais '
+                        + 'en arrière.'
+                    : ''),
             difficulty: 1 + MARCHES_LASER.indexOf(vrai),
             meta: {
                 marche: vrai.id, titre: vrai.nom,
                 n: g.n, depart: g.cases, solution: g.solution, fixes: g.fixes,
-                source: g.source, cible: g.cible, budget: combien,
+                source: g.source, cibles: g.cibles, budget: combien, cristaux,
                 // Le trajet de la solution, en clair : c'est la seule
                 // description lisible d'une grille, pour les tests et l'aperçu.
                 trajet: tracer({ ...g, cases: g.solution }).chemin.map(c => `${c.x},${c.y}`)

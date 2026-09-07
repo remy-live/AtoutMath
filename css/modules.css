@@ -4914,6 +4914,10 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 /* Plus un seul miroir en réserve : le compteur le dit avant que le geste soit
    refusé, sinon le refus paraît arbitraire. */
 .la-compteur--vide { background: color-mix(in srgb, var(--danger) 14%, var(--bg-panel)); }
+/* Le second compteur : les cristaux allumés. Il vire au vert quand ils y sont
+   tous — c'est la seule chose à vérifier, et elle se lit en un chiffre. */
+.la-compteur--cristaux { background: color-mix(in srgb, #38bdf8 14%, var(--bg-panel)); }
+.la-compteur--plein { background: color-mix(in srgb, var(--success) 20%, var(--bg-panel)); }
 .la-btn-doux {
     border: 1.5px solid var(--border); background: var(--bg-panel);
     color: var(--text-muted); border-radius: 10px; padding: 5px 12px;
@@ -4955,6 +4959,11 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 
 .la-quadrillage line { stroke: rgba(255, 255, 255, .09); stroke-width: 2; }
 .la-mur { fill: #33445c; stroke: #22314a; stroke-width: 3; }
+/* LA MINE : une étoile hérissée, qui ne ressemble à rien d'autre sur la grille.
+   Un rond rouge se serait confondu avec un cristal éteint, et c'est justement
+   la case qu'il ne faut pas confondre. */
+.la-mine polygon { fill: #7f1d1d; stroke: #ef4444; stroke-width: 3; stroke-linejoin: round; }
+.la-mine circle { fill: #ef4444; }
 
 /* LE MIROIR : une face claire, un dos sombre. Le trait fin seul se confondait
    avec le rayon quand les deux se croisaient. */

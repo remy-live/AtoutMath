@@ -771,8 +771,10 @@ const BASE = {
             + 'HAUT, et ce qui allait vers le haut repart vers la droite. Le miroir « \\ » est '
             + 'l’autre diagonale, et échange la droite et le BAS. La difficulté n’est jamais un '
             + 'rebond, c’est d’en enchaîner deux ou trois : après le premier miroir, il faut '
-            + 'raisonner sur la NOUVELLE direction, pas sur celle de départ. Le moyen sûr est de '
-            + 'suivre le rayon du doigt, case après case.'
+            + 'raisonner sur la NOUVELLE direction, pas sur celle de départ. Et quand il y a '
+            + 'plusieurs points à atteindre, l’ordre n’est pas au choix : un rayon ne revient '
+            + 'jamais en arrière, donc la figure impose par lequel on commence. Le moyen sûr est '
+            + 'de suivre le rayon du doigt, case après case.'
     },
     'geo.transfo.reconnaitre': {
         label: 'Reconnaître la transformation',
