@@ -1025,25 +1025,50 @@ function vraieQuestion(exoId, p, params) {
  * générateur a fait. Une interface qui promet ce qu'elle ne tiendra pas est
  * pire qu'une interface pauvre : elle apprend à se méfier d'elle.
  *
- * TROIS TIRAGES, ET LE PLUS GRAND. Certains générateurs varient d'une question
- * à l'autre ; un seul échantillon fixerait le plafond sur un tirage maigre.
+ * PLUSIEURS TIRAGES, ET LE PLUS GRAND. Certains générateurs varient d'une
+ * question à l'autre ; un seul échantillon fixerait le plafond sur un tirage
+ * maigre.
+ *
+ * ON SONDE TOUT L'EXERCICE, PAS SON DÉBUT — et c'est une erreur qu'il a fallu
+ * mesurer pour voir.
+ *
+ * Les trois premiers tirages suffisent à un exercice homogène. Sur une
+ * PROGRESSION, ils tombent tous dans la première marche, qui est par
+ * construction la plus facile — donc celle qui offre le moins de propositions.
+ * Mesuré sur « Multiplier des Relatifs, pas à pas », vingt-quatre questions :
+ *
+ *     2 2 2 2 2 2 2 2 2 2 4 4 4 4 4 4 4 4 4 4 4 4 4 4
+ *
+ * Les dix premières demandent seulement « positif ou négatif ? » — deux
+ * réponses. Le plafond était donc fixé à DEUX pour tout l'exercice : « 4
+ * propositions » devenait impossible à choisir, et une frise qui en portait
+ * une, enregistrée avant, était silencieusement rabattue sur deux. Le
+ * professeur réglait quatre et voyait deux, sans un mot.
+ *
+ * On échantillonne donc sur toute la longueur — jusqu'à huit tirages répartis
+ * du premier au dernier rang, avec le total dans le contexte pour que la
+ * progression avance vraiment. Huit suffisent : au-delà, on paie des tirages
+ * pour un nombre qui ne bouge plus.
  */
 const plafonds = new Map();
 
-function plafondPropositions(exoId, params) {
+function plafondPropositions(exoId, params, total = 10) {
     if (!exoId) return null;
-    const cle = exoId + '|' + JSON.stringify(params || {});
+    const n = Math.max(1, Math.round(Number(total) || 10));
+    const cle = `${exoId}|${n}|${JSON.stringify(params || {})}`;
     if (plafonds.has(cle)) return plafonds.get(cle);
     let max = null;
     try {
         const exo = getExerciseById(exoId);
         const gen = exo && exo.generatorId ? getGenerator(exo.generatorId) : null;
         if (gen && gen.generate) {
-            for (let i = 0; i < 3; i++) {
+            const combien = Math.min(n, 8);
+            for (let k = 0; k < combien; k++) {
+                const i = combien < 2 ? 0 : Math.round(k * (n - 1) / (combien - 1));
                 const it = gen.generate({ ...(exo.params || {}), ...params },
-                    { index: i, rng: makeRng(`plafond-${exoId}-${i}`) });
-                const n = (it && Array.isArray(it.choices)) ? it.choices.length : 0;
-                if (n > (max || 0)) max = n;
+                    { index: i, total: n, rng: makeRng(`plafond-${exoId}-${i}`) });
+                const q = (it && Array.isArray(it.choices)) ? it.choices.length : 0;
+                if (q > (max || 0)) max = q;
             }
         }
     } catch { max = null; }
@@ -1058,8 +1083,8 @@ function plafondPropositions(exoId, params) {
  * vaudrait exactement le plus grand nombre déjà proposé, et deux entrées qui
  * font la même chose sous deux noms différents ne sont pas un choix.
  */
-function modesPossibles(exoId, params) {
-    const max = plafondPropositions(exoId, params);
+function modesPossibles(exoId, params, total = 10) {
+    const max = plafondPropositions(exoId, params, total);
     if (!max) return MODES_ZONE.map(m => m.cle);
     return MODES_ZONE
         .filter(m => m.clavier || (m.propositions !== null && m.propositions <= max))
@@ -1226,7 +1251,7 @@ export function apercuAideHtml(params, total, exoId = '', choisie = 0, reglable 
     // montrer, parce qu'il n'y en a pas un seul.
     if (!ecrites) return reglable ? choixProgression(true) : '';
 
-    const possibles = modesPossibles(exoId, params);
+    const possibles = modesPossibles(exoId, params, total);
     // ON MONTRE CE QUI SE PASSERA, pas ce qui a été demandé : un mode enregistré
     // que l'exercice ne sait plus tenir s'affiche au plus proche en dessous.
     const zones = ecrites.map(z => ({ ...z, mode: modeTenable(z.mode, possibles) }));
@@ -1278,9 +1303,23 @@ export function apercuAideHtml(params, total, exoId = '', choisie = 0, reglable 
             <i></i><b>${m.nom}</b><em>${z.n === 1 ? de : `${de} à ${a}`}</em></button>`;
     }).join('');
 
+    // DEUX FRISES, DEUX TITRES. Rémy : « Comment gères-tu les étapes et les
+    // propositions de réponse (QCM 2, 4, clavier) ? J'ai du mal à comprendre. »
+    //
+    // Il y a de quoi : les deux frises portaient EXACTEMENT le même titre —
+    // « Ce que l'élève verra, sur 24 questions » —, la même forme, la même
+    // largeur proportionnelle au nombre de questions. Et le nombre écrit dans
+    // une bande ne dit pas la même chose sur les deux : un nombre de QUESTIONS
+    // sur la frise des marches, un nombre de PROPOSITIONS sur celle-ci. Deux
+    // bandes marquées « 2 » qui veulent dire deux choses différentes, sous un
+    // titre identique : personne ne peut deviner laquelle règle quoi.
+    //
+    // Les deux réglages sont pourtant indépendants et se disent en un mot :
+    // l'une dit CE QU'ON TRAVAILLE, l'autre COMMENT ON RÉPOND.
+    //
     // Le titre parle à celui qui lit : un écran d'élève qui parlerait d'un
     // élève à la troisième personne parlerait de quelqu'un d'autre que lui.
-    const qui = reglable ? 'Ce que l\'élève verra' : 'Ce que tu verras';
+    const qui = reglable ? 'Comment l\'élève répondra' : 'Comment tu répondras';
 
     return `${reglable ? choixProgression(false) : ''}
         <div class="cfg-apercu-titre">
@@ -2070,7 +2109,7 @@ document.addEventListener('click', (e) => {
     const total = totalDe(hote);
     const zones = zonesDe(hote, total);
     const i = zoneChoisie(hote, zones);
-    const poss = modesPossibles(hote.dataset.exo || '', paramsAide(hote));
+    const poss = modesPossibles(hote.dataset.exo || '', paramsAide(hote), total);
 
     // LE RANG 2 · 3 · 4 · CLAVIER : on désigne, on ne parcourt plus.
     if (btn.dataset.zmode !== undefined) {
@@ -2130,7 +2169,7 @@ document.addEventListener('click', (e) => {
     // ON RABAT SUR CE QUE L'EXERCICE SAIT FAIRE. Un modèle est écrit une fois
     // pour tout le catalogue ; « QCM 4 » sur un exercice qui n'a que deux
     // réponses possibles doit donner deux, pas une promesse.
-    const poss = modesPossibles(hote.dataset.exo || '', paramsAide(hote));
+    const poss = modesPossibles(hote.dataset.exo || '', paramsAide(hote), total);
     const tenables = zones.map(z => ({ ...z, mode: modeTenable(z.mode, poss) }));
     ecrireZonesSansSauter(hote, normaliserZones(tenables, total), 0);
 });
@@ -2436,8 +2475,12 @@ function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params 
 
     const reglages = reglagesDeMarche(schema, z, params);
 
+    // « CE QU'IL TRAVAILLERA », et pas « ce qu'il verra » — voir le titre de la
+    // frise de l'aide, qui portait le même mot. Celle-ci dit le CONTENU, l'autre
+    // la FORME de la réponse ; ce sont deux réglages indépendants, et ils se
+    // croisent sur chaque question.
     return `<div class="cfg-apercu-titre">
-            <span>Ce que l’élève verra, sur ${total} question${total > 1 ? 's' : ''}</span>
+            <span>Ce que l’élève travaillera, sur ${total} question${total > 1 ? 's' : ''}</span>
         </div>
         <div class="cfg-scene" data-scene-marches data-marche-ici="${i}">
             <div class="cfg-bulle" data-bulle style="--cfg-bulle-x:${centre}">
