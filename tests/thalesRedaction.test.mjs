@@ -1,6 +1,7 @@
 // La rédaction de Thalès : « Je sais que… Or… Donc… »
 
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import '../js/core/activities/index.js';
@@ -269,12 +270,31 @@ test('LA CORRECTION DE LA FICHE EST LA RÉDACTION ENTIÈRE', () => {
     const gen = getGenerator('geo.thales.redaction.fiche');
     const it = gen.generate({}, { rng: makeRng('corrige') });
     assert.deepEqual(it.meta.redaction.map(b => b.titre), ['Je sais que', 'Or', 'Donc']);
-    // Autant de lignes de cadre qu'il en faut pour écrire la solution.
-    const compte = { 'Je sais que': LIGNES_CADRE.sais, Or: LIGNES_CADRE.or, Donc: LIGNES_CADRE.donc };
-    it.meta.redaction.forEach(b => {
-        assert.ok(b.lignes.length <= compte[b.titre],
-            `${b.titre} : ${b.lignes.length} lignes de solution pour ${compte[b.titre]} lignes de cadre`);
-    });
+
+    // LE CADRE DE L'ÉLÈVE ET LE CADRE DU CORRIGÉ NE SE MESURENT PAS PAREIL, et
+    // c'est le « Donc » qui l'a montré. Rémy : « pour le DONC il suffit d'une
+    // ligne ». Sur une copie, oui : « AD = (4 × 10) ÷ 8 = 5 cm » tient sur une
+    // ligne. Mais la feuille de SOLUTIONS écrit la démonstration en trois temps
+    // — la formule isolée, les nombres remplacés, la conclusion avec l'unité —
+    // parce que c'est ce qu'on veut faire relire. Le cadre du corrigé se mesure
+    // donc sur ce qu'il contient ; celui de l'élève sur la place qu'on lui
+    // laisse pour écrire.
+    const aEcrire = { 'Je sais que': LIGNES_CADRE.sais, Or: LIGNES_CADRE.or, Donc: LIGNES_CADRE.donc };
+    assert.deepEqual(aEcrire, { 'Je sais que': 3, Or: 5, Donc: 1 },
+        'les comptes de lignes de Rémy ont changé');
+    // Le « Je sais que » et le « Or » accueillent la solution telle quelle : ce
+    // sont les deux cadres où la copie et le corrigé disent la même chose.
+    const par = Object.fromEntries(it.meta.redaction.map(b => [b.titre, b.lignes.length]));
+    assert.ok(par['Je sais que'] <= aEcrire['Je sais que']);
+    // Le « Or » compte une égalité de fractions pour deux interlignes : trois
+    // lignes de texte, cinq d'écriture.
+    assert.equal(par.Or, 3);
+    // Et le « Donc » déborde volontairement du cadre de l'élève : c'est
+    // `geoThalesRedaction` qui donne au corrigé la hauteur qu'il lui faut.
+    assert.ok(par.Donc > aEcrire.Donc);
+    const src = readFileSync(new URL('../js/ui/printSheet.js', import.meta.url), 'utf8');
+    assert.match(src, /solution \? lignesDuCorrige\(c\.titre\) : LIGNES_CADRE_Q\[c\.cle\]/,
+        'le corrigé ne se mesure plus sur son contenu');
     // Et la dernière ligne conclut, avec l'unité.
     const donc = it.meta.redaction[2].lignes;
     assert.match(donc[donc.length - 1], /cm$/);
@@ -317,8 +337,7 @@ test('LA FIGURE DE L\'ÉCRAN ET CELLE DU PAPIER SONT LA MÊME', () => {
 // Un bouton, lui, n'ouvre aucun clavier et reçoit quand même les touches d'un
 // vrai clavier : « il faudrait aussi pouvoir taper l'égalité » — l'autre
 // demande de Rémy, plus ancienne — tient toujours au bureau.
-test('AUCUNE CASE DE L\'ÉGALITÉ N\'EST UN CHAMP DE SAISIE', async () => {
-    const { readFileSync } = await import('node:fs');
+test('AUCUNE CASE DE L\'ÉGALITÉ N\'EST UN CHAMP DE SAISIE', () => {
     const src = readFileSync(new URL('../js/games/thalesRedaction.js', import.meta.url), 'utf8');
 
     // La case de l'égalité : un bouton, et rien d'autre.
@@ -340,4 +359,50 @@ test('AUCUNE CASE DE L\'ÉGALITÉ N\'EST UN CHAMP DE SAISIE', async () => {
     // Et la consigne dit le geste qu'on attend.
     assert.match(src, /touche une case, puis la longueur/,
         'la consigne parle encore de taper');
+});
+
+// --- LA MISE EN PAGE DU POLYCOPIÉ -------------------------------------------
+//
+// Rémy : « De base sur le poly mets 3 colonnes par défaut ou la possibilité de
+// mettre la rédaction à droite de la figure. »
+//
+// Son « ou » est un vrai ou, et c'est le point. Une colonne de trois fait
+// 89 mm de large : la rédaction posée à droite n'y disposerait que de 44 mm
+// pour écrire « Les droites (DE) et (CB) sont parallèles » à la main. Les deux
+// mises en page répondent au même problème — la feuille à une seule
+// démonstration gaspillait la page — mais ne se cumulent pas. Le choix se fait
+// donc sur la PLACE, et le professeur peut forcer l'une ou l'autre.
+test('LE POLY TIENT TROIS DÉMONSTRATIONS, ET LA RÉDACTION SE RANGE OÙ IL Y A LA PLACE', () => {
+    const src = readFileSync(new URL('../js/ui/printSheet.js', import.meta.url), 'utf8');
+    const rendu = src.slice(src.indexOf("    'thales-redaction': {"),
+        src.indexOf("    'thales-redaction': {") + 1800);
+
+    // Trois colonnes par défaut.
+    assert.match(rendu, /disposition: \{ cols: 3, rows: 1/, 'le poly n\'est plus à trois colonnes');
+    assert.match(rendu, /parLigneDefaut: 3/);
+
+    // La bascule se décide sur la largeur restante, pas au hasard.
+    const geo = src.slice(src.indexOf('function geoThalesRedaction'),
+        src.indexOf('LA DOUBLE FLÈCHE D\'UNE COTE'));
+    assert.match(geo, /W_ECRITURE = 70/, 'la largeur minimale d\'écriture a disparu');
+    assert.match(geo, /m\.mise === 'droite' \? true/, 'on ne peut plus forcer « à droite »');
+    assert.match(geo, /m\.mise === 'dessous' \? false/, 'on ne peut plus forcer « dessous »');
+
+    // Et l'énoncé se plie à la largeur du bloc : sur trois colonnes, écrit d'un
+    // seul trait, il sortait du bloc pour se poser sur la figure du voisin.
+    assert.match(geo, /couperEnLignes\(m\.enonce/, 'l\'énoncé ne se plie plus');
+    assert.ok(!/doc\.text\(pourPdf\(m\.enonce\)/.test(src), 'le PDF écrit encore l\'énoncé d\'un trait');
+
+    // Le réglage existe, avec les trois valeurs, et c'est « selon la place » par défaut.
+    const gen = getGenerator('geo.thales.redaction.fiche');
+    const mise = gen.params.find(p => p.id === 'mise');
+    assert.ok(mise, 'le réglage « Où va la rédaction » n\'existe pas');
+    assert.equal(mise.default, 'auto');
+    assert.deepEqual(mise.options.map(o => o.value), ['auto', 'droite', 'dessous']);
+    // Ce qui est demandé se retrouve sur l'item : c'est lui que la feuille lit.
+    ['auto', 'droite', 'dessous'].forEach(v => {
+        assert.equal(gen.generate({ mise: v }, { rng: makeRng(`m${v}`) }).meta.mise, v);
+    });
+    // Une valeur inconnue retombe sur l'automatique, jamais sur rien.
+    assert.equal(gen.generate({ mise: 'bidon' }, { rng: makeRng('mx') }).meta.mise, 'auto');
 });

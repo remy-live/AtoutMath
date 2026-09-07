@@ -35,15 +35,28 @@ import { trio, redactionComplete } from '../thalesRedaction.js';
 const CHERCHABLES = ['AD', 'AE', 'DE'];
 
 /**
- * COMBIEN DE LIGNES DANS CHAQUE CADRE — la rédaction attendue, comptée.
+ * COMBIEN DE LIGNES DANS CHAQUE CADRE — comptées par Rémy, sur ses copies.
  *
- * « Je sais que » : deux hypothèses, une par ligne.
- * « Or » : la phrase d'annonce, l'égalité des trois rapports, puis la même
- *          chiffrée. Une égalité de fractions s'écrit haut : on lui donne deux
- *          interlignes.
- * « Donc » : le produit en croix isolé, le calcul posé, la conclusion.
+ * « Pour le DONC du Thalès sur le poly il suffit d'une ligne, 3 lignes pour le
+ * JE SAIS QUE et 5 lignes pour le OR. »
+ *
+ * J'avais compté à l'envers pour deux cadres sur trois, et c'est la même erreur
+ * dans les deux sens : j'avais compté des LIGNES DE RÉDACTION là où il faut
+ * compter des LIGNES DE COPIE.
+ *
+ *  · JE SAIS QUE — j'en donnais deux, une par hypothèse. Mais une hypothèse
+ *    s'écrit « Les droites (DE) et (CB) sont parallèles » : à la main, dans un
+ *    cadre qui fait un tiers de la largeur d'une feuille, cela déborde. Trois.
+ *  · OR — cinq, et c'est le seul que j'avais juste : l'annonce, l'égalité des
+ *    trois rapports, puis la même chiffrée, et une égalité de fractions écrite
+ *    à la main occupe deux interlignes.
+ *  · DONC — j'en donnais trois : le produit en croix, le calcul, la conclusion.
+ *    Rémy en veut UNE. Sur une copie, cela s'écrit « AD = (4 × 10) ÷ 8 = 5 cm »
+ *    et tient sur une ligne. Les trois lignes que je réservais laissaient un
+ *    grand blanc au bas de la feuille, et un blanc dans un cadre fait croire
+ *    qu'il manque quelque chose.
  */
-export const LIGNES_CADRE = { sais: 2, or: 5, donc: 3 };
+export const LIGNES_CADRE = { sais: 3, or: 5, donc: 1 };
 
 export const thalesRedactionFicheGenerator = {
     id: 'geo.thales.redaction.fiche',
@@ -60,6 +73,19 @@ export const thalesRedactionFicheGenerator = {
                 { value: 'melange', label: 'Les deux, mélangées' },
                 { value: 'emboites', label: 'Triangles emboîtés seulement' },
                 { value: 'papillon', label: 'Papillon seulement' }
+            ]
+        },
+        {
+            // Rémy : « De base sur le poly mets 3 colonnes par défaut ou la
+            // possibilité de mettre la rédaction à droite de la figure. »
+            id: 'mise', type: 'select', label: 'Où va la rédaction', default: 'auto',
+            aide: 'Automatique : à droite de la figure quand le bloc est assez large '
+                + 'pour écrire à la main, dessous quand on serre trois démonstrations '
+                + 'par feuille. Les deux autres forcent la mise en page.',
+            options: [
+                { value: 'auto', label: 'Selon la place' },
+                { value: 'droite', label: 'À droite de la figure' },
+                { value: 'dessous', label: 'Sous la figure' }
             ]
         },
         {
@@ -109,6 +135,7 @@ export const thalesRedactionFicheGenerator = {
             meta: {
                 f, cherche, donnees, figure, enonce,
                 rappel: p.rappel !== false,
+                mise: ['droite', 'dessous'].includes(p.mise) ? p.mise : 'auto',
                 redaction: redactionComplete(f, cherche)
             }
         });

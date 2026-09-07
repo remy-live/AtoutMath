@@ -11046,61 +11046,122 @@ function geoOrganigramme(item, slot) {
 // écart au segment — et se trace ici au PDF, là-bas en SVG.
 
 /** La figure, l'énoncé et les trois cadres, posés dans le bloc. */
-function geoThalesRedaction(item, slot) {
+function geoThalesRedaction(item, slot, solution = false) {
     const b = boiteDe(slot);
     const m = item.meta;
 
-    // L'ÉNONCÉ D'ABORD : sa hauteur dépend de sa longueur, et tout le reste se
-    // partage ce qui reste.
-    const hEnonce = 9;
+    /**
+     * LE CORRIGÉ NE SE MESURE PAS SUR LA COPIE DE L'ÉLÈVE.
+     *
+     * Rémy veut UNE ligne pour le « Donc », et il a raison : sur une copie,
+     * « AD = (4 × 10) ÷ 8 = 5 cm » tient sur une ligne. Mais la feuille de
+     * solutions, elle, écrit la démonstration en TROIS temps — la formule
+     * isolée, les nombres remplacés, la conclusion avec l'unité — parce que
+     * c'est ce qu'on veut que l'élève relise. Le cadre du corrigé se mesure
+     * donc sur ce qu'il contient, pas sur la place qu'on laisse pour écrire.
+     * Sans cela, le « Donc » corrigé débordait de son cadre de deux lignes.
+     */
+    const lignesDuCorrige = (titre) => {
+        const l = (m.redaction.find(r => r.titre === titre) || {}).lignes || [];
+        return l.reduce((n, x) =>
+            n + (EN_FRACTIONS.test(String(x).trim()) ? LIGNES_FRACTION : 1), 0);
+    };
+
+    // L'ÉNONCÉ SE PLIE À LA LARGEUR DU BLOC, et c'est nouveau.
+    //
+    // Il était tracé d'un seul trait, sur une ligne. Cela tenait tant qu'il y
+    // avait UNE démonstration par feuille : 190 millimètres de large, l'énoncé
+    // en fait cent. Sur trois colonnes il n'en reste que soixante, et la phrase
+    // sortait du bloc pour se poser sur la figure du voisin. Une largeur de
+    // caractère de 1,6 mm à ce corps-là (mesurée : « Helvetica 9 pt » donne à
+    // peu près la moitié du corps par caractère).
+    const largeurCar = 1.6;
+    const enonceLignes = couperEnLignes(m.enonce, Math.max(18, Math.floor(b.w / largeurCar)), 4);
+    const hEnonce = 5 + (enonceLignes.length - 1) * 4;
 
     // LES CADRES SE DIMENSIONNENT SUR LA RÉDACTION ATTENDUE, pas sur un tiers de
-    // page chacun. Le « Or » demande cinq lignes — l'annonce, l'égalité des
-    // rapports, la même chiffrée —, le « Je sais que » deux, le « Donc » trois.
-    // Un cadre trop court fait écrire en petit dans la marge ; un cadre trop
-    // long fait croire qu'il manque quelque chose.
+    // page chacun. Les comptes sont ceux de Rémy — trois, cinq, une — et le
+    // pourquoi de chacun est écrit dans `LIGNES_CADRE`. Un cadre trop court fait
+    // écrire en petit dans la marge ; un cadre trop long fait croire qu'il
+    // manque quelque chose.
     const cadres = [
-        { cle: 'sais', titre: 'Je sais que', lignes: LIGNES_CADRE_Q.sais,
-            aide: 'ce que dit l’énoncé' },
-        { cle: 'or', titre: 'Or', lignes: LIGNES_CADRE_Q.or,
-            aide: 'ce que dit le cours' },
-        { cle: 'donc', titre: 'Donc', lignes: LIGNES_CADRE_Q.donc,
-            aide: 'ce qu’on en déduit' }
-    ];
+        { cle: 'sais', titre: 'Je sais que', aide: 'ce que dit l’énoncé' },
+        { cle: 'or', titre: 'Or', aide: 'ce que dit le cours' },
+        { cle: 'donc', titre: 'Donc', aide: 'ce qu’on en déduit' }
+    ].map(c => ({
+        ...c,
+        lignes: Math.max(1, solution ? lignesDuCorrige(c.titre) : LIGNES_CADRE_Q[c.cle])
+    }));
     const totalLignes = cadres.reduce((n, c) => n + c.lignes, 0);
     const H_TITRE = 5;      // la bande du titre, au-dessus des lignes
     const MARGE = 2.5;      // entre deux cadres
+    const hFixe = cadres.length * (H_TITRE + MARGE + 2);
 
-    // La figure prend ce qui reste, mais jamais plus du tiers du bloc : une
-    // figure géante sur une page où l'on doit ÉCRIRE est un contresens.
-    const hFixe = hEnonce + cadres.length * (H_TITRE + MARGE + 2);
+    // DEUX MISES EN PAGE, ET LE « OU » DE RÉMY EST UN VRAI OU : « mets 3
+    // colonnes par défaut OU la possibilité de mettre la rédaction à droite de
+    // la figure ». Ce sont bien deux réponses au même problème — la feuille à
+    // une seule démonstration gaspillait la page —, et elles ne se cumulent
+    // pas : une colonne de trois fait 89 mm de large, la rédaction posée à
+    // droite n'y disposerait que de 44 mm pour écrire « Les droites (DE) et
+    // (CB) sont parallèles » à la main. Illisible.
+    //
+    // LE CHOIX SE FAIT DONC SUR LA PLACE, PAS SUR UN GOÛT. Il faut au moins
+    // 70 mm pour écrire une hypothèse à la main sans la couper n'importe où, et
+    // 34 pour que la figure reste une figure. Quand le bloc est assez large
+    // pour les deux — une ou deux démonstrations par feuille — la rédaction va
+    // à droite ; sinon elle passe dessous. Le professeur garde la main dans
+    // « Où va la rédaction » : le réglage force l'une ou l'autre.
+    const GOUTTIERE = 3;
+    const W_ECRITURE = 70;   // de quoi écrire une hypothèse à la main
+    const W_FIGURE_MIN = 34; // en dessous, la figure n'est plus lisible
+    const aDroite = m.mise === 'droite' ? true
+        : m.mise === 'dessous' ? false
+            : b.w - W_ECRITURE - GOUTTIERE >= W_FIGURE_MIN;
+
+    // La colonne d'écriture, et la place laissée à la figure.
+    const wCadres = aDroite
+        ? Math.min(Math.max(W_ECRITURE, b.w * 0.55), b.w - GOUTTIERE - 26)
+        : b.w;
+    const xCadres = aDroite ? b.x + b.w - wCadres : b.x;
+    const wFigure = aDroite ? b.w - wCadres - GOUTTIERE : b.w * 0.62;
+
+    const yCorps = b.y + hEnonce;
+    const hCorps = b.h - hEnonce;
     const hLigneMin = 5.5;  // de quoi écrire à la main
-    const restePourFigure = b.h - hFixe - totalLignes * hLigneMin;
-    const hFigure = Math.max(24, Math.min(b.h * 0.32, restePourFigure));
-    const hLigne = (b.h - hFixe - hFigure) / totalLignes;
+    // À DROITE, la rédaction dispose de toute la hauteur, et la figure aussi.
+    // DESSOUS, elles se la partagent — et la figure ne prend jamais plus du
+    // tiers du bloc : une figure géante sur une page où l'on doit ÉCRIRE est un
+    // contresens.
+    const hFigure = aDroite
+        ? hCorps
+        : Math.max(24, Math.min(hCorps * 0.36, hCorps - hFixe - totalLignes * hLigneMin));
+    const hLigne = ((aDroite ? hCorps : hCorps - hFigure - 2) - hFixe) / totalLignes;
 
     // LA FIGURE GARDE SES PROPORTIONS. Étirée à la largeur du bloc, un papillon
     // devient un accordéon et les cotes ne longent plus leur segment.
     const vue = m.figure.vue;
-    const echelle = Math.min((b.w * 0.62) / vue.w, hFigure / vue.h);
+    const echelle = Math.min(wFigure / vue.w, hFigure / vue.h);
     const figW = vue.w * echelle, figH = vue.h * echelle;
-    const figX = b.x + (b.w - figW) / 2, figY = b.y + hEnonce;
+    const figX = aDroite
+        ? b.x + (wFigure - figW) / 2
+        : b.x + (b.w - figW) / 2;
+    // Posée à droite, la figure se centre en hauteur sur la colonne d'écriture.
+    const figY = aDroite ? yCorps + (hCorps - figH) / 2 : yCorps;
     /** Un point de la figure, en millimètres sur la page. */
     const F = (q) => ({ x: figX + (q.x - vue.x0) * echelle, y: figY + (q.y - vue.y0) * echelle });
 
-    // Les cadres, empilés sous la figure.
-    let y = b.y + hEnonce + hFigure + 2;
+    let y = aDroite ? yCorps : yCorps + hFigure + 2;
     const boites = cadres.map(c => {
         // DEUX MILLIMÈTRES DE PLUS QUE LES LIGNES : sans eux, la dernière
         // ligne d'écriture tombait exactement sur le bord du cadre et se
         // confondait avec lui — on croyait le cadre plus court d'une ligne.
         const h = H_TITRE + c.lignes * hLigne + 2;
-        const box = { ...c, x: b.x, y, w: b.w, h, hLigne, hTitre: H_TITRE };
+        const box = { ...c, x: xCadres, y, w: wCadres, h, hLigne, hTitre: H_TITRE };
         y += h + MARGE;
         return box;
     });
 
-    return { b, m, F, echelle, figX, figY, figW, figH, hEnonce, boites, hLigne };
+    return { b, m, F, echelle, figX, figY, figW, figH, hEnonce, enonceLignes, boites, hLigne };
 }
 
 /**
@@ -11256,14 +11317,16 @@ function dessinerFractionsPdf(doc, ligne, x, yBase, corps, rgb) {
 }
 
 function thalesRedactionPreviewHtml(item, slot, k, solution) {
-    const g = geoThalesRedaction(item, slot);
+    const g = geoThalesRedaction(item, slot, solution);
     const T = (v) => (v * k).toFixed(2);
     const m = g.m;
     let out = '';
 
-    // L'énoncé.
-    out += `<text x="${T(g.b.x)}" y="${T(g.b.y + 4)}" font-size="${T(3.1)}"
-        font-family="Helvetica, Arial, sans-serif" fill="#1a202c">${echapper(m.enonce)}</text>`;
+    // L'énoncé, plié à la largeur du bloc — voir `geoThalesRedaction`.
+    g.enonceLignes.forEach((l, i) => {
+        out += `<text x="${T(g.b.x)}" y="${T(g.b.y + 4 + i * 4)}" font-size="${T(3.1)}"
+            font-family="Helvetica, Arial, sans-serif" fill="#1a202c">${echapper(l)}</text>`;
+    });
 
     // La figure : traits, cotes, lettres.
     const COULEUR = { droite: '#4a5568', base: '#2b6cb0', para: '#2f855a' };
@@ -11340,14 +11403,14 @@ function thalesRedactionPreviewHtml(item, slot, k, solution) {
 }
 
 function dessinerThalesRedactionPdf(doc, item, slot, solution) {
-    const g = geoThalesRedaction(item, slot);
+    const g = geoThalesRedaction(item, slot, solution);
     const m = g.m;
 
-    // L'énoncé.
+    // L'énoncé, plié à la largeur du bloc — voir `geoThalesRedaction`.
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(...ENCRE.trait);
-    doc.text(pourPdf(m.enonce), g.b.x, g.b.y + 4);
+    g.enonceLignes.forEach((l, i) => doc.text(pourPdf(l), g.b.x, g.b.y + 4 + i * 4));
 
     // La figure.
     const COULEUR = { droite: [74, 85, 104], base: [43, 108, 176], para: [47, 133, 90] };
@@ -13149,14 +13212,19 @@ export const RENDUS = {
         previewGrille: thalesRedactionPreviewHtml,
         pdfGrille: dessinerThalesRedactionPdf,
         nomBloc: 'Démonstration', nomBlocs: 'démonstrations',
-        // UNE PAR PAGE PAR DÉFAUT, ET C'EST LE SUJET MÊME. Une démonstration
-        // de Thalès occupe une demi-page dans un cahier : dix lignes d'écriture
-        // à la main, plus la figure. En serrer quatre sur une feuille donnerait
-        // des cadres où l'on n'écrit qu'en abrégé — c'est-à-dire l'inverse de ce
-        // qu'on travaille ici.
-        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
-        parLigneDefaut: 1,
-        // Plus haut que large : la figure en haut, les trois cadres dessous.
+        // TROIS PAR FEUILLE PAR DÉFAUT — Rémy : « De base sur le poly mets 3
+        // colonnes par défaut ».
+        //
+        // Une par page était le bon compte tant que la rédaction s'empilait
+        // SOUS la figure : la démonstration faisait alors toute la hauteur de
+        // la feuille. Posée à CÔTÉ, elle en fait la moitié, et trois colonnes
+        // tiennent sans que personne écrive en abrégé — c'est le même nombre de
+        // lignes, dans une colonne trois fois plus étroite mais trois fois plus
+        // haute. Le professeur qui préfère l'ancienne mise en page la retrouve
+        // dans « Où va la rédaction » et redescend à une ou deux par feuille.
+        disposition: { cols: 3, rows: 1, maxCols: 3, maxRows: 2 },
+        parLigneDefaut: 3,
+        // Plus haut que large : trois colonnes étroites sur toute la hauteur.
         proportions: { w: 1, h: 1.45 },
         titreAGauche: true
     },
