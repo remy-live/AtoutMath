@@ -396,6 +396,29 @@ export function leurresDe(t) {
 
 const VUE = 200;
 
+/** Le corps des cotes dans le cadre. */
+const TAILLE_COTE = 15;
+
+/**
+ * LE PLUS GROS CORPS QUE LA MISE EN PAGE PUISSE IMPOSER — et c'est lui qui
+ * décide du cadre.
+ *
+ * Sur un petit plateau, `css/modules.css` grossit les cotes DANS le viewBox :
+ * le dessin rétrécit à l'écran, l'écriture doit donc grandir dans le cadre
+ * pour rester lisible. Le dernier cran monte à 21 px.
+ *
+ * Le cadre est calculé une fois, à la génération, sans rien savoir de l'écran.
+ * S'il était taillé sur les 15 px du cas ordinaire, la cote sortirait du cadre
+ * dès qu'un téléphone la grossit — et comme `.fig-svg` laisse déborder, elle
+ * irait s'écrire par-dessus ce qu'il y a autour. On réserve donc la place du
+ * PIRE cas ; il en coûte sept pour cent de cercle sur un grand écran, et cela
+ * évite une cote qui déménage selon la taille de la fenêtre.
+ *
+ * (Les deux valeurs sont liées : si la feuille de style monte plus haut, ce
+ * nombre monte avec elle. Un test du dépôt le vérifie.)
+ */
+export const TAILLE_COTE_MAX = 21;
+
 /**
  * LE DISQUE, AVEC LE SEGMENT QU'ON DONNE — et lui seul.
  *
@@ -439,13 +462,44 @@ export function figureDisqueSvg(t) {
     const nx = Math.sin(th), ny = -Math.cos(th);   // la normale, vers l'extérieur
     const ex = mx + nx * 13, ey = my + ny * 13;
 
-    return `<svg viewBox="0 0 ${VUE} ${VUE}" class="dsq-fig fig-svg" role="img"
+    // LE CADRE ÉPOUSE LE DESSIN.
+    //
+    // Rémy, sur son téléphone : « C'est petit non ? » Mesuré sur un écran de
+    // 393 px : la boîte de la figure faisait 351 × 161, et le cercle 109 × 109.
+    // Deux gaspillages, l'un dans l'autre.
+    //
+    // Celui-ci est le premier : le cadre valait 200 × 200 pour un dessin qui
+    // tient dans 139 — trente pixels de blanc de chaque côté, soit un tiers de
+    // la largeur donnée à rien. Le plafond de hauteur s'applique au CADRE,
+    // pas au dessin : ce blanc était payé en taille de cercle.
+    //
+    // On mesure donc ce qu'on trace, au lieu de réserver au jugé. Le cadre
+    // reste CARRÉ et centré : un cadre qui changerait de forme selon la
+    // longueur de la cote ferait sauter le cercle d'une question à l'autre.
+    const demiTexte = texte.length * TAILLE_COTE_MAX * 0.3;
+    const coins = [];
+    for (const sl of [1, -1]) {
+        for (const sh of [1, -1]) {
+            coins.push({
+                x: ex + Math.cos(th) * demiTexte * sl + nx * TAILLE_COTE_MAX * 0.6 * sh,
+                y: ey + Math.sin(th) * demiTexte * sl + ny * TAILLE_COTE_MAX * 0.6 * sh
+            });
+        }
+    }
+    // Le nom du centre, posé en bas à gauche du point, compte aussi.
+    coins.push({ x: c - 9 - 7, y: c + 14 + 4 });
+    const debord = coins.reduce((m, p2) =>
+        Math.max(m, Math.abs(p2.x - c), Math.abs(p2.y - c)), R + 2);
+    const demi = Math.ceil(debord) + 3;
+    const vb = `${c - demi} ${c - demi} ${2 * demi} ${2 * demi}`;
+
+    return `<svg viewBox="${vb}" class="dsq-fig fig-svg" role="img"
         aria-label="Disque de ${parDiametre ? 'diamètre' : 'rayon'} ${texte}">
         <style>
             .dsq-bord { stroke: #2b6cb0; stroke-width: 2.6; fill: #ebf4ff; }
             .dsq-trait { stroke: #c05621; stroke-width: 2.4; }
             .dsq-centre { fill: #2b6cb0; }
-            .dsq-cote { font-size: 15px; font-weight: 800; fill: #9c4221; }
+            .dsq-cote { font-size: ${TAILLE_COTE}px; font-weight: 800; fill: #9c4221; }
             .dsq-nom { font-size: 13px; font-weight: 800; fill: #2b6cb0; }
         </style>
         <circle cx="${c}" cy="${c}" r="${R}" class="dsq-bord"/>

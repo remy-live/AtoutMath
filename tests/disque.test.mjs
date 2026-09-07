@@ -21,8 +21,9 @@ import { makeRng } from '../js/core/ids.js';
 import {
     MARCHES_DISQUE, ETAPES_EXACTES, PI_COLLEGE, arrondiStable, arrondir, decimalesDe,
     tirerDisque, enonceDe, reponseDe, uniteDe, expliquer, indicesDe, leurresDe,
-    figureDisqueSvg, FORMULE_PERIMETRE, FORMULE_AIRE, diagnosticsArrondi
+    figureDisqueSvg, FORMULE_PERIMETRE, FORMULE_AIRE, diagnosticsArrondi, TAILLE_COTE_MAX
 } from '../js/core/disque.js';
+import { readFileSync } from 'node:fs';
 import { evaluate } from '../js/core/items.js';
 import { disqueGenerator } from '../js/core/generators/disque.js';
 
@@ -264,4 +265,49 @@ test('CHAQUE ÉTAPE COCHÉE EST JOUÉE, et la figure part avec la question', () 
         assert.ok(['mes.perimetre.disque', 'mes.aire.disque'].includes(it.skillId));
     }
     assert.deepEqual([...vues].sort(), [...ETAPES].sort());
+});
+
+
+// --- La taille du dessin -------------------------------------------------------
+
+test('LE CADRE ÉPOUSE LE DESSIN — pas un tiers de blanc autour', () => {
+    // Rémy, sur son téléphone : « C'est petit non ? » Mesuré alors : boîte de
+    // 351 × 161, cercle de 109. Le cadre valait 200 pour un dessin qui tient
+    // dans 139 — et le plafond de hauteur s'applique au CADRE, donc ce blanc
+    // était payé en taille de cercle.
+    //
+    // Le cercle doit occuper l'essentiel du cadre. Sous 85 %, on recommence à
+    // payer du vide.
+    for (const m of MARCHES_DISQUE) {
+        for (let k = 0; k < 20; k++) {
+            const t = tirerDisque(makeRng(`cadre${m.id}${k}`), m.id);
+            const svg = figureDisqueSvg(t);
+            const vb = /viewBox="([^"]+)"/.exec(svg);
+            assert.ok(vb, 'pas de viewBox');
+            const [x, y, w, h] = vb[1].split(' ').map(Number);
+            assert.equal(w, h, 'le cadre reste carré : sinon le cercle saute d’une question à l’autre');
+            // Le cercle a pour rayon 68 dans le repère du dessin.
+            assert.ok(136 / w >= 0.85, `${m.id} : le cercle n’occupe que ${Math.round(136 / w * 100)} % du cadre`);
+            // Et il tient dedans, bord compris.
+            const r = /<circle cx="([\d.]+)" cy="([\d.]+)" r="68"/.exec(svg);
+            assert.ok(r, 'cercle introuvable');
+            const [, cx, cy] = r.map(Number);
+            assert.ok(cx - 69 >= x && cy - 69 >= y, `${m.id} : le cercle sort du cadre`);
+            assert.ok(cx + 69 <= x + w && cy + 69 <= y + h, `${m.id} : le cercle sort du cadre`);
+        }
+    }
+});
+
+test('LE CADRE RÉSERVE LA PLACE DE LA PLUS GROSSE COTE — celle du téléphone', () => {
+    // Le cadre est calculé une fois, à la génération, sans rien savoir de
+    // l'écran ; mais la feuille de style GROSSIT les cotes dans le viewBox sur
+    // un petit plateau. Si les deux valeurs se désaccordent, la cote sort du
+    // cadre — et `.fig-svg` laisse déborder, donc elle irait s'écrire par-dessus
+    // ce qu'il y a autour, sans que rien ne prévienne.
+    const css = readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8');
+    const tailles = [...css.matchAll(/\.dsq-cote\s*\{[^}]*font-size:\s*(\d+)px/g)]
+        .map(m => Number(m[1]));
+    assert.ok(tailles.length >= 2, 'les paliers du téléphone ont disparu');
+    assert.equal(Math.max(...tailles), TAILLE_COTE_MAX,
+        `la feuille de style monte à ${Math.max(...tailles)} px, le cadre en réserve ${TAILLE_COTE_MAX}`);
 });

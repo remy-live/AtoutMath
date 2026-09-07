@@ -745,11 +745,23 @@
     .numpad-context { --fig-plafond: max(140px, 21cqh); --fig-etirement: 1; }
     .numpad-context .fig-label { font-size: 24px; }
     .numpad-context .fig-dim { stroke-width: 2.2; }
+    /* LE DISQUE AVAIT ÉTÉ OUBLIÉ DE CETTE LISTE, et c'est la seconde moitié du
+       « c'est petit non ? » de Rémy. Ses étiquettes portent leurs propres
+       classes (`dsq-cote`, `dsq-nom`) : elles restaient donc à 15 px dans un
+       cadre réduit à 161, soit douze pixels à l'écran — « 5 cm » écrit plus
+       petit que la légende d'une photo. La règle est la même que pour les
+       autres figures : le dessin rétrécit, l'écriture grossit. */
+    .numpad-context .dsq-cote { font-size: 19px; }
+    .numpad-context .dsq-nom { font-size: 17px; }
+    .numpad-context .dsq-bord { stroke-width: 3.2; }
+    .numpad-context .dsq-trait { stroke-width: 3; }
 }
 @container plateau (max-width: 719px) and (max-height: 560px) {
     .numpad-context { --fig-plafond: max(130px, 19cqh); --fig-etirement: 1; }
     .numpad-context .fig-label { font-size: 28px; }
     .numpad-context .fig-dim { stroke-width: 3; }
+    .numpad-context .dsq-cote { font-size: 21px; }
+    .numpad-context .dsq-nom { font-size: 18px; }
 }
 
 /* --- Figures ------------------------------------------------
