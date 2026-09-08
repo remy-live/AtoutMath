@@ -696,7 +696,13 @@ export function composerBlocs(exos, opts, mesurer) {
             // suivante. C'est exactement ce que faisait le corrigé des
             // grenouilles, coincé derrière celui de la Tour de Hanoï.
             const hauteurPleine = () => Math.max(60, basPage - haut() - enteteH - entreRangees);
-            let hauteurBloc2 = exo.grillePleine ? hauteurPleine() : cote * ratio;
+            // UN BLOC PEUT AVOIR UN PLANCHER, et la proportion ne le dit pas.
+            // Neuf lignes à écrire à la main ne se serrent pas : sous un
+            // certain nombre de millimètres, le rendu déborde sur la rangée
+            // suivante au lieu de rétrécir. Voir `hauteurMin` sur le rendu de
+            // la rédaction de Thalès.
+            let hauteurBloc2 = exo.grillePleine ? hauteurPleine()
+                : Math.max(cote * ratio, Number(exo.grilleHauteurMin) || 0);
             if (iExo > 0 && page.items.length && y > haut()) y += o.entreExercices - o.entreQuestions;
             if (page.items.length && y + enteteH + hauteurBloc2 > basPage) nouvellePage();
             if (exo.grillePleine) hauteurBloc2 = hauteurPleine();

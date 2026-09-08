@@ -4399,9 +4399,30 @@ const vignettesParking = (m) => [
 ];
 
 /** La voiture de la fiche : la même qu'à l'écran. */
+/**
+ * LA VOITURE PORTE SA LETTRE, et la couleur n'est qu'un confort.
+ *
+ * Rémy, sur le PDF : « pour les voitures un peu foncé ». Elles l'étaient, et
+ * le filtre n'était pas seul en cause : leur palette est SOMBRE avant toute
+ * conversion — le bleu (47, 95, 208) a une clarté de 87, le rouge (224, 74,
+ * 58) de 92 —, et la vitre, un gris neutre à 66, tombe plus bas encore que
+ * la carrosserie. En niveaux de gris, les huit voitures deviennent huit
+ * taches identiques : on ne sait plus laquelle va à droite et laquelle à
+ * gauche, et c'est TOUT ce qu'il faut savoir pour jouer.
+ *
+ * C'est la règle de la maison, écrite en tête de ce fichier et tenue partout
+ * ailleurs : la couleur ajoute du confort, elle ne porte jamais
+ * l'information. Le plateau marque déjà ses places « B » et « R » ; les
+ * voitures ne marquaient rien. Elles portent maintenant la même lettre, en
+ * blanc sur la vitre — la partie la plus sombre du dessin, donc lisible quel
+ * que soit le mode d'impression.
+ *
+ * Et la carrosserie s'éclaircit, pour que la vitre s'y détache : une voiture
+ * n'est pas un aplat, c'est un contour, quatre roues et un toit.
+ */
 function voitureSvgFiche(bleue) {
     const fonce = bleue ? '#1c3a8a' : '#8f1f14';
-    const clair = bleue ? '#2f5fd0' : '#e04a3a';
+    const clair = bleue ? '#8fb4f2' : '#f2a79b';
     return `<svg viewBox="0 0 60 100" preserveAspectRatio="xMidYMid meet">
         <rect x="2" y="12" width="8" height="18" rx="3" fill="#2d3748"/>
         <rect x="50" y="12" width="8" height="18" rx="3" fill="#2d3748"/>
@@ -4409,7 +4430,10 @@ function voitureSvgFiche(bleue) {
         <rect x="50" y="66" width="8" height="18" rx="3" fill="#2d3748"/>
         <rect x="6" y="4" width="48" height="92" rx="16" fill="${clair}"
             stroke="${fonce}" stroke-width="3"/>
-        <rect x="14" y="30" width="32" height="30" rx="7" fill="#4a5568"/></svg>`;
+        <rect x="14" y="30" width="32" height="30" rx="7" fill="#4a5568"/>
+        <text x="30" y="52" text-anchor="middle" fill="#ffffff"
+            font-family="Helvetica, Arial, sans-serif" font-size="20"
+            font-weight="700">${bleue ? 'B' : 'R'}</text></svg>`;
 }
 
 function parkingPreviewHtml(item, slot, k, solution) {
@@ -4466,7 +4490,7 @@ function parkingPreviewHtml(item, slot, k, solution) {
 }
 
 /** La voiture en formes simples, pour le PDF. */
-function dessinerVoiturePdf(doc, x, y, w, h, fonce, clair, aplat) {
+function dessinerVoiturePdf(doc, x, y, w, h, fonce, clair, aplat, lettre) {
     doc.setFillColor(...(aplat ? clair : [255, 255, 255]));
     doc.setDrawColor(...fonce);
     doc.setLineWidth(0.4);
@@ -4481,14 +4505,21 @@ function dessinerVoiturePdf(doc, x, y, w, h, fonce, clair, aplat) {
     doc.setDrawColor(...fonce);
     doc.setLineWidth(0.25);
     doc.roundedRect(x + w * 0.24, y + h * 0.3, w * 0.52, h * 0.3, w * 0.1, w * 0.1, 'FD');
+    // LA LETTRE SUR LA VITRE — voir `voitureSvgFiche`. Blanche sur le toit
+    // sombre quand il y a des aplats, sombre sur le toit clair sinon : dans
+    // les deux cas c'est le contraste le plus franc du dessin.
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(h * 0.26 / 0.3528);
+    doc.setTextColor(...(aplat ? [255, 255, 255] : fonce));
+    doc.text(pourPdf(lettre), x + w / 2, y + h * 0.52, { align: 'center' });
 }
 
 function dessinerParkingPdf(doc, item, slot, solution) {
     if (solution) return dessinerParkingSolutionPdf(doc, item, slot);
     const g = geoParking(item, slot);
     const aplat = polycopieEnCouleur();
-    const BLEU = [[28, 58, 138], [47, 95, 208]];
-    const ROUGE = [[143, 31, 20], [224, 74, 58]];
+    const BLEU = [[28, 58, 138], [143, 180, 242]];
+    const ROUGE = [[143, 31, 20], [242, 167, 155]];
     const P = g.plateau;
 
     // LE BITUME SUIT LA FORME DU PLATEAU, case par case. Un rectangle plein
@@ -4539,7 +4570,7 @@ function dessinerParkingPdf(doc, item, slot, solution) {
         doc.roundedRect(x + d * 0.04, y + d * 0.04, d * 0.92, d * 0.92, 1.2, 1.2, 'FD');
         const wv = d * 0.5;
         dessinerVoiturePdf(doc, x + (d - wv) / 2, y + d * 0.13, wv, d * 0.74,
-            ...(bleue ? BLEU : ROUGE), aplat);
+            ...(bleue ? BLEU : ROUGE), aplat, bleue ? 'B' : 'R');
     }
 
     vignettesParking(g.m).forEach((v, j) => {
@@ -13916,6 +13947,26 @@ export const RENDUS = {
         parLigneDefaut: 3,
         // Plus haut que large : trois colonnes étroites sur toute la hauteur.
         proportions: { w: 1, h: 1.45 },
+        // ET CE BLOC A UN PLANCHER, QUE LA PROPORTION NE DIT PAS.
+        //
+        // Rémy, sur une feuille de parcours : « le thalès bugge ». Il buggait :
+        // le « Or » et le « Donc » de la première rangée s'imprimaient PAR-DESSUS
+        // les énoncés et les figures de la seconde.
+        //
+        // MESURÉ, et l'écart est net : sur trois colonnes d'un parcours, la
+        // proportion donnait un emplacement de 83,1 mm et le bloc en demandait
+        // 113. Ce 113 n'est pas négociable, il s'additionne : 9 mm d'énoncé
+        // replié, 24 de figure, 28,5 pour les trois bandeaux de cadre, et
+        // 49,5 pour les neuf lignes à écrire — à 5,5 mm, l'interligne en dessous
+        // duquel une main d'élève n'écrit plus. Un rendu qui ne peut pas se
+        // serrer davantage doit le DIRE ; la proportion, elle, ne parle que de
+        // forme, et se laisse écraser quand la page manque.
+        //
+        // Sur sa propre feuille le défaut n'existait pas — `rows: 1` lui donne
+        // la page entière —, et à une ou deux démonstrations par ligne la
+        // proportion tombe déjà sur 113 : ce plancher ne change donc rien
+        // ailleurs, il rattrape le seul cas où elle passait dessous.
+        hauteurMin: 113,
         titreAGauche: true
     },
 

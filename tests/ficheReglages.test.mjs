@@ -9,6 +9,7 @@ import { getGenerator } from '../js/core/registry.js';
 import { surPapier, aSonMot, reglagesDeFiche, valeursDeDepart } from '../js/core/reglagesFiche.js';
 import { FAMILLES, codageDiagonales } from '../js/core/quadrilateres.js';
 import { RENDUS } from '../js/ui/printSheet.js';
+import { encre } from '../js/ui/ficheRendu.js';
 import {
     GOUTTIERE, zoneUtile, mesuresSlot, capaciteMax, choisirDisposition, coteLisible,
     dispositionDuRendu, dispositionEnColonnes, lignesQuiRemplissent
@@ -481,4 +482,61 @@ test('les autres fiches restent sur une seule feuille', () => {
     // sudokus ou de disques n'a aucune raison de déborder sur une seconde page.
     const paginees = Object.entries(RENDUS).filter(([, r]) => r && r.plusieursPages);
     assert.deepEqual(paginees.map(([k]) => k), ['memory']);
+});
+
+// LE FILTRE NOIR ET BLANC NE DOIT PLUS FAIRE DE NOIR AVEC DES COULEURS.
+//
+// Rémy, sur quatre feuilles d'affilée : « les blocs scratch sont tout noir »,
+// « le tangram hyper foncé », « pour les grenouilles c'est pas top », « pour
+// les voitures un peu foncé ». La pénalité de saturation n'avait pas de
+// plafond : sur un aplat franc elle retranchait plus de cent dix, et le rouge,
+// le bleu et l'orange tombaient EXACTEMENT sur le même 25.
+test('AUCUN APLAT FRANC NE SORT EN NOIR DU MODE NIVEAUX DE GRIS', () => {
+    const francs = {
+        'bleu Scratch': [76, 151, 255], 'jaune Scratch': [255, 171, 25],
+        'jaune événement': [255, 191, 0], 'rouge vif': [229, 57, 53],
+        'vert vif': [67, 160, 71], 'bleu vif': [30, 136, 229],
+        'orange': [245, 124, 0]
+    };
+    const gris = {};
+    for (const [nom, rvb] of Object.entries(francs)) {
+        const g = encre(rvb, 'gris')[0];
+        // 70 : au-dessous, un texte noir posé dessus ne se lit plus, et l'aplat
+        // se confond avec le trait qui l'entoure.
+        assert.ok(g >= 70, `${nom} sort à ${g} — c'est du noir`);
+        gris[nom] = g;
+    }
+    // Et les trois qui se confondaient ne se confondent plus.
+    const trois = [gris['rouge vif'], gris['bleu vif'], gris['orange']];
+    assert.equal(new Set(trois).size, 3, `rouge, bleu et orange : ${trois.join(', ')}`);
+});
+
+// L'AUTRE MOITIÉ DU CONTRAT, celle que le filtre tenait déjà : une encre
+// traverse sans bouger, et deux pastels de même clarté restent distincts.
+test('le filtre ne touche ni aux gris ni au texte, et sépare toujours les pastels', () => {
+    for (const neutre of [[150, 150, 150], [255, 255, 255], [90, 90, 90], [40, 40, 40]]) {
+        assert.equal(encre(neutre, 'gris')[0], neutre[0],
+            `le gris ${neutre[0]} ne doit pas bouger`);
+    }
+    // L'encre du texte (26, 32, 44) n'est pas tout à fait neutre — un soupçon
+    // de bleu —, et elle doit rester noire : c'est elle qui se pose SUR les
+    // aplats qu'on vient d'éclaircir.
+    assert.ok(encre([26, 32, 44], 'gris')[0] <= 30, 'le texte doit rester noir');
+    // Les deux exemples du commentaire d'origine : un jaune et un vert de même
+    // clarté, qu'une luminance nue rendrait identiques.
+    const jaune = encre([253, 224, 160], 'gris')[0];
+    const vert = encre([200, 236, 218], 'gris')[0];
+    assert.ok(Math.abs(jaune - vert) >= 15,
+        `pastels confondus : ${jaune} et ${vert}`);
+});
+
+// Rémy : « le thalès bugge ». Le « Or » et le « Donc » d'une rangée
+// s'imprimaient par-dessus la rangée suivante : sur trois colonnes d'un
+// parcours, l'emplacement mesurait 83,1 mm et le bloc en demandait 113.
+test('la rédaction de Thalès déclare le plancher qu\'elle ne peut pas franchir', () => {
+    const rendu = RENDUS['thales-redaction'];
+    // 9 mm d'énoncé replié + 24 de figure + 2 d'écart + 28,5 de bandeaux
+    // + 9 lignes à 5,5 mm : le compte est de 113.
+    assert.ok(Number(rendu.hauteurMin) >= 113,
+        `hauteurMin vaut ${rendu.hauteurMin}, il en faut 113`);
 });

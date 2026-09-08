@@ -130,10 +130,56 @@ const borne = (v) => Math.max(0, Math.min(255, Math.round(v)));
  * sépare deux pastels de même clarté sans toucher aux gris — un gris n'a pas
  * de saturation, il traverse le filtre inchangé.
  */
+/**
+ * ET LA PÉNALITÉ S'ARRÊTE : UNE COULEUR FRANCHE N'EST PAS DE L'ENCRE NOIRE.
+ *
+ * Rémy, sur quatre feuilles d'affilée : « les blocs scratch sont tout noir »,
+ * « le tangram hyper foncé », « pour les grenouilles c'est pas top », « pour
+ * les voitures un peu foncé ».
+ *
+ * MESURÉ, ET LE CHIFFRE EST SANS APPEL. La pénalité valait `chroma × 0,6`
+ * sans plafond ; sur un aplat franc, le chroma dépasse 180 et l'on retranchait
+ * plus de cent dix. Résultat, en niveaux de gris :
+ *
+ *     bleu Scratch #4C97FF  ->  35        rouge vif (229, 57, 53)  ->  25
+ *     jaune Scratch #FFAB19 ->  40        bleu vif  (30, 136, 229) ->  25
+ *     jaune Scratch #FFBF00 ->  38        orange    (245, 124, 0)  ->  25
+ *
+ * Tout est noir, et le rouge, le bleu et l'orange tombent EXACTEMENT sur le
+ * même 25 : trois couleurs qu'on avait choisies pour se distinguer sortaient
+ * du même pot d'encre. Une grenouille rouge devenait une tache où l'on ne
+ * voyait plus ses yeux, qui sont pourtant noirs par-dessus.
+ *
+ * DEUX CORRECTIONS, ET AUCUNE NE TOUCHE À CE QUE LE FILTRE FAISAIT BIEN :
+ *
+ *  · LA PÉNALITÉ PLAFONNE. Elle est là pour séparer deux PASTELS de même
+ *    clarté — le jaune (253, 224, 160) et le vert (200, 236, 218) du même
+ *    schéma —, et le chroma d'un pastel ne dépasse guère cent. Au-delà, elle
+ *    ne sépare plus rien : elle écrase. On la borne donc à ce que le pastel
+ *    demande, et les deux exemples du commentaire d'origine tombent toujours
+ *    sur 171 et 204, comme avant.
+ *
+ *  · UN APLAT NE DESCEND PAS AU RAS DU NOIR. Plus une couleur est franche,
+ *    plus on la relève : un socle proportionnel à la saturation, nul sur un
+ *    gris — qui traverse donc le filtre inchangé, comme le texte et les
+ *    traits — et complet sur une couleur d'aplat. Les mêmes six couleurs
+ *    sortent maintenant à 122, 150, 160, 83, 104 et 121 : plus rien n'est
+ *    noir, et les trois qui se confondaient se distinguent.
+ */
+const CHROMA_PASTEL = 95;   // au-delà, la pénalité ne sépare plus, elle écrase
+const SOCLE_APLAT = 55;     // le gris le plus sombre qu'un aplat franc atteigne
+
 function grisDe(rvb) {
     const y = LUM[0] * rvb[0] + LUM[1] * rvb[1] + LUM[2] * rvb[2];
     const chroma = Math.max(...rvb.slice(0, 3)) - Math.min(...rvb.slice(0, 3));
-    return borne(Math.max(25, y - chroma * 0.6));
+    const brut = y - Math.min(chroma, CHROMA_PASTEL) * 0.6;
+    // Combien cette couleur est-elle une COULEUR plutôt qu'une encre ? Zéro
+    // sur un gris, un sur un aplat franc — et le passage est progressif, sans
+    // quoi deux nuances voisines sauteraient de part et d'autre du seuil.
+    const part = Math.max(0, Math.min(1,
+        (chroma - CHROMA_ENCRE) / (CHROMA_PASTEL + 15 - CHROMA_ENCRE)));
+    const socle = SOCLE_APLAT * part;
+    return borne(Math.max(25, socle + brut * (255 - socle) / 255));
 }
 
 /**

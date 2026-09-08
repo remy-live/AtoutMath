@@ -1150,6 +1150,8 @@ export function ouvrirFicheParcours(chemin) {
                     // lignes) : on la résout ici, pas plus loin.
                     grilleRatio: e.grille
                         ? (proportionsRendu(RENDUS[e.grille], tire)?.h ?? 1) : 1,
+                    // Le plancher que le rendu s'est fixé, quand il en a un.
+                    grilleHauteurMin: e.grille ? (RENDUS[e.grille].hauteurMin ?? 0) : 0,
                     // « PLEIN » : LA PAGE ENTIÈRE. Ce n'est pas une proportion
                     // — voir `hauteurBloc2` dans core/fiche.js : la hauteur
                     // d'un bloc plein est ce qui RESTE sous son bandeau, et
