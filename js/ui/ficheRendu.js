@@ -444,23 +444,121 @@ const HORS_TABLE = {
  * Le découpage est commun à l'aperçu et au PDF pour que les deux tombent au
  * même endroit — c'est toute la raison d'être de ce module.
  */
+/**
+ * CE QUE LA POLICE DU PDF NE SAIT PAS ÉCRIRE, ON LE DESSINE.
+ *
+ * Rémy, sur la feuille imprimée : le chapitre du disque écrivait « on garde le
+ * pi » et « Périmètre exact = 16pi cm ». Deux lettres latines à la place du
+ * symbole, sur l'exercice qui apprend justement à écrire 25π.
+ *
+ * La cause est dans `pourPdf` et elle est ancienne : les polices standard d'un
+ * PDF n'ont que le jeu Windows-1252, où il n'y a ni π ni les exposants au-delà
+ * de ³. On les translittérait — « pi », « 10^4 » — pour éviter que jsPDF ne
+ * bascule la ligne entière en UTF-16 et n'imprime du charabia. Le remède
+ * marchait, mais il faisait écrire à la feuille une notation que le cours
+ * corrige.
+ *
+ * ON LES SORT DONC DE LA LIGNE, comme on le fait déjà pour le « à peu près
+ * égal » — voir `signePresque`, qui le TRACE faute de pouvoir l'écrire. π est
+ * écrit avec la police Symbol, qui est l'une des quatorze polices que tout
+ * lecteur de PDF possède : le « p » de Symbol EST un π. Et un exposant se pose
+ * plus petit et plus haut, ce qui est sa définition.
+ *
+ * L'APERÇU N'AVAIT PAS LE DÉFAUT : le navigateur, lui, sait écrire π et ⁴. Ce
+ * changement fait donc simplement dire au PDF ce que l'écran montrait déjà.
+ */
+const RE_EXPOSANT = '([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B]+)';
+
 export function morceauxLigne(ligne, avecFractions) {
     const out = [];
     // Le motif vient de core/fiche.js : l'aperçu, le PDF et la mesure des
     // colonnes doivent découper AU MÊME ENDROIT, sinon la fiche se compose sur
     // une largeur et s'imprime sur une autre.
+    const hors = `(\u2248)|(\u03C0)|${RE_EXPOSANT}`;
     const re = avecFractions
-        ? new RegExp(`${RE_FRACTION().source}|(\\u2248)`, 'g')
-        : /(\u2248)/g;
+        ? new RegExp(`${RE_FRACTION().source}|${hors}`, 'g')
+        : new RegExp(hors, 'g');
+    // Où tombent nos trois groupes, selon que la fraction en occupe deux avant.
+    const d = avecFractions ? 2 : 0;
     let dernier = 0, m;
     while ((m = re.exec(ligne))) {
         if (m.index > dernier) out.push({ texte: ligne.slice(dernier, m.index) });
-        if (m[0] === '\u2248') out.push({ presque: true });
+        if (m[d + 1]) out.push({ presque: true });
+        else if (m[d + 2]) out.push({ pi: true });
+        else if (m[d + 3]) out.push({ haut: m[d + 3] });
         else out.push({ num: m[1], den: m[2] });
         dernier = m.index + m[0].length;
     }
     if (dernier < ligne.length) out.push({ texte: ligne.slice(dernier) });
     return out.length ? out : [{ texte: ligne }];
+}
+
+/** Le π du PDF : le « p » de la police Symbol, qui en est un. */
+export function dessinerPi(pdf, x, y) {
+    const avant = pdf.getFont();
+    pdf.setFont('symbol', 'normal');
+    pdf.text('p', x, y);
+    const w = pdf.getTextWidth('p');
+    pdf.setFont(avant.fontName, avant.fontStyle);
+    return w;
+}
+
+/**
+ * ÉCRIRE UNE CHAÎNE QUELCONQUE, π ET EXPOSANTS COMPRIS, et rendre sa largeur.
+ *
+ * `dessinerLigne` fait déjà cela pour les questions écrites, parce qu'elle
+ * connaît leurs fractions. Les rendus à grilles, eux, appellent `doc.text`
+ * directement : c'est par là que « 16π cm » sortait en « 16pi cm ». Ils ont
+ * maintenant la même porte, sans avoir à connaître les fractions.
+ *
+ * `align: 'center'` est géré ici plutôt que passé à jsPDF : une chaîne écrite
+ * en plusieurs morceaux ne peut pas se centrer morceau par morceau, il faut
+ * mesurer l'ensemble d'abord.
+ */
+export function texteRiche(pdf, texte, x, y, taille, o = {}) {
+    const morceaux = morceauxLigne(String(texte ?? ''), false);
+    const large = (m) => (m.texte !== undefined ? pdf.getTextWidth(pourPdf(m.texte))
+        : m.pi ? largeurPi(pdf)
+            : m.haut ? largeurExposant(pdf, m.haut, taille)
+                : taille * 1.25);
+    const total = morceaux.reduce((n, m) => n + large(m), 0);
+    let cx = o.align === 'center' ? x - total / 2 : o.align === 'right' ? x - total : x;
+    for (const m of morceaux) {
+        if (m.texte !== undefined) { const t = pourPdf(m.texte); pdf.text(t, cx, y); }
+        else if (m.pi) dessinerPi(pdf, cx, y);
+        else if (m.haut) dessinerExposant(pdf, m.haut, cx, y, taille);
+        else signePresque(pdf, cx + taille * 0.15, y, taille);
+        cx += large(m);
+    }
+    return total;
+}
+
+/** La largeur d'un π, sans l'écrire — pour centrer avant de dessiner. */
+function largeurPi(pdf) {
+    const avant = pdf.getFont();
+    pdf.setFont('symbol', 'normal');
+    const w = pdf.getTextWidth('p');
+    pdf.setFont(avant.fontName, avant.fontStyle);
+    return w;
+}
+
+/** Idem pour un bloc d'exposants. */
+function largeurExposant(pdf, bloc, taille) {
+    const t = [...bloc].map(c => EXPOSANTS_HAUT[c] ?? c).join('');
+    pdf.setFontSize(taille * 0.68 / 0.3528);
+    const w = pdf.getTextWidth(t);
+    pdf.setFontSize(taille / 0.3528);
+    return w;
+}
+
+/** Un bloc d'exposants : plus petit, et posé plus haut. C'est sa définition. */
+export function dessinerExposant(pdf, bloc, x, y, taille) {
+    const t = [...bloc].map(c => EXPOSANTS_HAUT[c] ?? c).join('');
+    pdf.setFontSize(taille * 0.68 / 0.3528);
+    pdf.text(t, x, y - taille * 0.34);
+    const w = pdf.getTextWidth(t);
+    pdf.setFontSize(taille / 0.3528);
+    return w;
 }
 
 /** Trace le signe « à peu près égal » : deux vagues, puisqu'on ne peut l'écrire. */
@@ -498,6 +596,10 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
         } else if (m.presque) {
             signePresque(pdf, x + o.taille * 0.15, y, o.taille);
             x += o.taille * 1.25;
+        } else if (m.pi) {
+            x += dessinerPi(pdf, x, y);
+        } else if (m.haut) {
+            x += dessinerExposant(pdf, m.haut, x, y, o.taille);
         } else {
             const w = largeurFraction(pdf, m);
             // L'ÉTAGE À REMPLIR, en pointillés : le même trait qu'ailleurs sur
@@ -1382,7 +1484,8 @@ export function pdfItems(pdf, page, o) {
             pdf.setFontSize(o.tailleConsigne * 2.83);
             pdf.setTextColor(...ENCRE.gris);
             it.lignes.forEach((ligne, i) => {
-                pdf.text(pourPdf(ligne), it.x + 1, it.y + o.tailleConsigne + i * o.tailleConsigne * 1.45);
+                texteRiche(pdf, ligne, it.x + 1,
+                    it.y + o.tailleConsigne + i * o.tailleConsigne * 1.45, o.tailleConsigne);
             });
             continue;
         }

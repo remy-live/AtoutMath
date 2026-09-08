@@ -1166,8 +1166,13 @@ test('blocs : LA RÉPONSE AU BOUT DE LA LIGNE PASSE AVANT LE NOMBRE DE COLONNES'
     // la ligne ». Une colonne de moins les y remet, et il n'en faut qu'une.
     // Des énoncés de longueurs mêlées, comme sur une vraie fiche : à quatre
     // colonnes, les longs n'ont plus la place et les courts l'ont encore.
+    // Les longueurs sont RÉGLÉES SUR LE PLANCHER de `besoinRep` : il faut que
+    // les courts tiennent au bout de la ligne et que les longs n'y tiennent
+    // plus. Le plancher est passé de six à huit millimètres — six ne laissait
+    // pas de quoi écrire, voir `besoinRep` dans core/fiche.js —, et l'énoncé
+    // court a été raccourci d'autant.
     const qs = Array.from({ length: 12 }, (_, i) => ({
-        texte: `9${'9'.repeat(i % 2 ? 11 : 8)} =`, reponse: '7'
+        texte: `9${'9'.repeat(i % 2 ? 11 : 6)} =`, reponse: '7'
     }));
     const { pages } = composerBlocs([{ titre: 'T', colonnes: 4, questions: qs }], {}, mesurer);
     const items = pages[0].items.filter(i => i.type === 'q');

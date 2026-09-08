@@ -50,7 +50,7 @@ import { etapesParking } from '../core/parking.js';
 import { relire as relirePriorites } from '../core/priorites.js';
 import { GLYPHES, egyptianSvgCadre, placerGlyphes } from '../core/figures.js';
 import { tracesDe, branchesCroix, TAILLE_CROIX } from '../core/cercleFigure.js';
-import { pourPdf, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
+import { pourPdf, texteRiche, polycopieEnCouleur, modePolycopie, reglerModePolycopie,
     optionsPolycopie, teindreDoc, poserTeinte, teindreHtml, encre,
     ficheEnPortrait, reglerFichePortrait, fermerAutreFiche, mesureur
 } from './ficheRendu.js';
@@ -3173,13 +3173,47 @@ function geometrieRedaction(item, boite) {
         const by = loin > 0 ? d.y2 - 3 * dy : d.y1 + 3 * dy;
         return dedans(bx + nx * 3.6 * sens, by + ny * 3.6 * sens + 1.1);
     };
+    // DEUX NOMS NE S'ÉCRIVENT PAS L'UN SUR L'AUTRE.
+    //
+    // Rémy, sur le PDF : à la question 532, « (d3) » et « (d1) » étaient
+    // imprimés au même endroit, illisibles tous les deux. Chaque nom était
+    // placé pour SA droite, puis ramené dans la boîte par `dedans` — et quand
+    // deux droites finissent du même côté, les deux ramenés tombent sur le
+    // même coin. On ne le voyait pas venir parce que chacun, pris seul, était
+    // bien placé.
+    //
+    // On les écarte donc APRÈS, en descendant celui qui arrive sur un voisin —
+    // et en remontant s'il n'y a plus de place en bas. Un nom déplacé de quatre
+    // millimètres désigne encore sa droite ; deux noms superposés n'en
+    // désignent aucune.
+    const ECART_Y = 4, ECART_X = 11;
+    const ecarter = (liste) => {
+        const poses = [];
+        for (const n of liste) {
+            let { x, y } = n;
+            for (let essai = 0; essai < 8; essai++) {
+                const gene = poses.find(q => Math.abs(q.x - x) < ECART_X && Math.abs(q.y - y) < ECART_Y);
+                if (!gene) break;
+                y = gene.y + ECART_Y;
+                if (y > zoneFig.y + figH - 0.5) y = gene.y - ECART_Y;
+            }
+            const place = dedans(x, y);
+            poses.push({ ...n, ...place });
+        }
+        return poses;
+    };
     return {
         p1, p2, perp, angle, angle2, reciproque,
-        noms: [
+        noms: ecarter([
             { ...bout(p1, -1), texte: `(${f.noms.p1})` },
             { ...bout(p2, 1), texte: `(${f.noms.p2})` },
-            { ...dedans(perp.x2 + nx * 1.5, perp.y2 + ny * 1.5 + 3.2), texte: `(${f.noms.perp})` }
-        ],
+            // ET LE NOM DE LA PERPENDICULAIRE S'ÉCARTE DE SON PROPRE TRAIT.
+            // Posé à un millimètre et demi de son bout, il était barré par la
+            // droite qu'il nomme. On le pousse le long de la NORMALE — donc de
+            // côté, jamais dans le prolongement —, de quoi passer à côté du
+            // trait sans quitter la figure.
+            { ...dedans(perp.x2 + nx * 4.5, perp.y2 + ny * 4.5 + 2.6), texte: `(${f.noms.perp})` }
+        ]),
         // LES LIGNES À REMPLIR, COMPTÉES UNE PAR UNE.
         //
         // On répartissait en « parts » — Je sais que 1, Or 2, Donc 1 — et on
@@ -3967,7 +4001,14 @@ function geoBrahma(item, slot) {
             w: socleW, h: socleH },
         largConduit, hConduit,
         // La ligne de découpe, et la colonne des pièces à droite.
+        //
+        // ELLE S'ARRÊTE OÙ FINISSENT LES PIÈCES. Rémy, sur le PDF : le trait
+        // descendait sur toute la hauteur du bloc et traversait la vignette
+        // « Autorisé », qui, elle, s'étale sur toute la largeur sous le
+        // plateau. On y lisait un ciseau là où il n'y a rien à couper — et la
+        // vignette qu'il barrait est justement celle qui montre le coup permis.
         xCoupe: b.x + largePlateau + 2,
+        hCoupe: hHaut,
         pieces: { x: b.x + largePlateau + 6, w: b.w - largePlateau - 8, y: b.y, h: hHaut },
         yVignettes: b.y + hHaut + 6,
         taille
@@ -4061,7 +4102,7 @@ function dessinerBrahmaPdf(doc, item, slot, solution) {
     doc.setDrawColor(...ENCRE.gris);
     doc.setLineWidth(0.3);
     if (doc.setLineDashPattern) doc.setLineDashPattern([1.4, 1.2], 0);
-    doc.line(g.xCoupe, g.b.y, g.xCoupe, g.b.y + g.b.h);
+    doc.line(g.xCoupe, g.b.y, g.xCoupe, g.b.y + g.hCoupe);
     if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
 
     doc.setFont('helvetica', 'bold');
@@ -6287,8 +6328,25 @@ function geoHorloge(item, slot) {
     const ligneH = slot.taille * 0.20;
     const cote = slot.taille - ligneH;
     const r = cote * 0.44;
+    // LA COURONNE DES MINUTES DEMANDE UN CADRAN, PAS UN TIMBRE.
+    //
+    // Rémy, sur le PDF : les pendules étaient illisibles. Mesuré : à cinq
+    // par ligne, le rayon tombe à 8,5 mm et les « 5, 10, 15… » s'écrivent en
+    // 1,3 mm — douze nombres à deux chiffres serrés sur un anneau de 6,6 mm de
+    // rayon, par-dessus les heures qui sont juste dedans. On ne lit plus deux
+    // couronnes, on lit une tache.
+    //
+    // Le rendu dit déjà « six par page » et se plafonne à quatre colonnes ;
+    // c'est le descripteur qui en demande cinq, et Rémy l'a voulu — un test
+    // l'épingle. On ne touche donc pas au nombre de pendules : on retire ce qui
+    // ne tient pas. Les heures, elles, reprennent l'anneau extérieur qu'elles
+    // occupaient avant qu'on y pose les minutes, et redeviennent lisibles.
+    //
+    // Le seuil est celui de la lisibilité : 1,9 mm de corps, en dessous duquel
+    // un nombre à deux chiffres ne se lit plus sur une photocopie.
+    const reperes = !!(item.meta && item.meta.reperes) && r * 0.155 >= 1.9;
     return {
-        cote, ligneH, r,
+        cote, ligneH, r, reperes,
         cx: slot.x + slot.taille / 2, cy: slot.y + cote / 2,
         ligneY: slot.y + cote, x0: slot.x
     };
@@ -6335,12 +6393,12 @@ function horlogePreviewHtml(item, slot, k, solution) {
     }
     for (let n = 1; n <= 12; n++) {
         const ang = n / 12 * Math.PI * 2 - Math.PI / 2;
-        const rr = g.r * (m.reperes ? 0.55 : 0.74);
+        const rr = g.r * (g.reperes ? 0.55 : 0.74);
         d += `<text x="${T(g.cx + Math.cos(ang) * rr)}" y="${T(g.cy + Math.sin(ang) * rr)}"
               text-anchor="middle" dominant-baseline="central"
               font-size="${T(g.r * 0.24)}" font-weight="700" fill="${cChiffres}">${n}</text>`;
     }
-    if (m.reperes) {
+    if (g.reperes) {
         for (let n = 0; n < 12; n++) {
             const ang = n / 12 * Math.PI * 2 - Math.PI / 2;
             const rr = g.r * 0.78;
@@ -6416,11 +6474,11 @@ function dessinerHorlogePdf(doc, item, slot, solution) {
     doc.setFontSize(Math.max(5, g.r * 0.24 * 2.6));
     for (let n = 1; n <= 12; n++) {
         const ang = n / 12 * Math.PI * 2 - Math.PI / 2;
-        const rr = g.r * (m.reperes ? 0.55 : 0.74);
+        const rr = g.r * (g.reperes ? 0.55 : 0.74);
         doc.text(String(n), g.cx + Math.cos(ang) * rr, g.cy + Math.sin(ang) * rr + g.r * 0.08,
             { align: 'center' });
     }
-    if (m.reperes) {
+    if (g.reperes) {
         doc.setFontSize(Math.max(4, g.r * 0.155 * 2.6));
         // Les repères de minutes en VERT : ce sont ceux de la grande aiguille,
         // et l'élève doit faire le lien entre les deux d'un coup d'œil.
@@ -7511,10 +7569,13 @@ function ligneReponseFigurePdf(doc, g, q, solution, champ, unite) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(Math.max(6.5, Math.min(g.ligneH * 1.4, 11)));
     doc.setTextColor(...ENCRE.texte);
-    const etiquette = pourPdf(`${q.etiquette} ${q.signe || '='}`);
-    doc.text(etiquette, x0, y);
-    const xr = x0 + doc.getTextWidth(etiquette) + 2;
-    if (solution) { doc.text(pourPdf(q.valeur), xr, y); return; }
+    // π ET EXPOSANTS S'ÉCRIVENT ICI. « Périmètre exact = 16π cm » passait par
+    // `pourPdf`, qui ne sait pas les écrire et les translittère : la feuille
+    // imprimait « 16pi cm² ». Voir `texteRiche`.
+    const corps = Math.max(6.5, Math.min(g.ligneH * 1.4, 11)) * 0.3528;
+    const etiquette = `${q.etiquette} ${q.signe || '='}`;
+    const xr = x0 + texteRiche(doc, etiquette, x0, y, corps) + 2;
+    if (solution) { texteRiche(doc, q.valeur, xr, y, corps); return; }
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...ENCRE.gris);
     doc.text(pourPdf(`.............. ${unite || ''}`.trim()), xr, y);
@@ -7703,7 +7764,8 @@ function dessinerDisquePdf(doc, item, slot, solution, champ, rang, tous) {
         { align: 'center', angle: -s.angle });
     // LA QUESTION EN TÊTE DE CASE, avant la figure.
     doc.setFontSize(g.police * 2.97);
-    doc.text(pourPdf(titreDisque(g.m)), g.cx, g.titreY + g.police * 0.35, { align: 'center' });
+    texteRiche(doc, titreDisque(g.m), g.cx, g.titreY + g.police * 0.35,
+        g.police * 2.97 * 0.3528, { align: 'center' });
 
     const q = demandeDisque(g.m);
     ligneReponseFigurePdf(doc, g, q, solution, champ, q.unite);
@@ -13397,7 +13459,27 @@ function geoTableauCroise(item, slot) {
     // case du haut en bas et venait toucher les traits.
     const haut = rh * 0.52;
     const corpsLib = Math.min(haut, tailleQuiRentre(libelles, wLib - 1.6, 8));
+    // LES EN-TÊTES TROP LONGS S'ABRÈGENT au lieu de déborder.
+    //
+    // Rémy, sur le PDF : « Septembre », « Novembre », « Décembre » et
+    // « Vendredi » mordaient sur la colonne voisine. `tailleQuiRentre` a un
+    // plancher de 3 mm — en dessous on n'imprime plus, on tache — et son
+    // commentaire disait déjà que le plancher « reste préférable à un
+    // "Septembre" qui déborde ». C'était un choix par défaut, pas une
+    // solution : à ce plancher, neuf lettres réclament 16,2 mm et la colonne
+    // n'en fait pas toujours autant.
+    //
+    // Un tableau de vraie vie abrège : « Sept. », « Vend. ». On coupe donc au
+    // nombre de lettres qui tient, et le point dit que le mot continue. Les
+    // libellés courts — « Lundi », « 6e », « Total » — ne bougent pas.
+    const teteQuiTient = (mot, corps) => {
+        const large = (t) => t.length * corps * 0.6;
+        if (large(mot) <= wCol - 0.8) return mot;
+        const n = Math.max(2, Math.floor((wCol - 0.8) / (corps * 0.6)) - 1);
+        return n < mot.length ? `${mot.slice(0, n)}.` : mot;
+    };
     const corpsTete = Math.min(haut, tailleQuiRentre([...m.colonnes, 'Total'], wCol - 0.8, 8));
+    const tetes = [...m.colonnes, 'Total'].map(t => teteQuiTient(String(t), corpsTete));
     const corpsNb = Math.min(haut, tailleQuiRentre(m.valeurs.flat().map(String), wCol - 1.4, 8));
 
     const x0 = b.x;
@@ -13405,7 +13487,7 @@ function geoTableauCroise(item, slot) {
     const xDe = (c) => x0 + wLib + c * wCol;    // c de 0 à C
     const yDe = (r) => y0 + rh + r * rh;        // la ligne d'en-tête est au-dessus
     return { b, m, rh, corpsLib, corpsTete, corpsNb, corpsTexte, lignesTexte,
-        wLib, wCol, x0, y0, xDe, yDe, hEnonce };
+        tetes, wLib, wCol, x0, y0, xDe, yDe, hEnonce };
 }
 
 /**
@@ -13453,8 +13535,7 @@ function tableauCroisePreviewHtml(item, slot, k, solution) {
                 stroke="#8a90a0" stroke-width="${(0.25 * k).toFixed(2)}"/>`;
         }
     }
-    m.colonnes.forEach((c, i) => { d += centre(g.xDe(i) + g.wCol / 2, g.y0 + g.rh / 2, c, g.corpsTete); });
-    d += centre(g.xDe(m.C) + g.wCol / 2, g.y0 + g.rh / 2, 'Total', g.corpsTete);
+    g.tetes.forEach((c, i) => { d += centre(g.xDe(i) + g.wCol / 2, g.y0 + g.rh / 2, c, g.corpsTete); });
     [...m.lignes, 'Total'].forEach((l, r) => {
         d += `<text x="${T(g.x0 + 0.8)}" y="${T(g.yDe(r) + g.rh / 2)}" fill="#1a202c" font-weight="700"
             font-size="${(g.corpsLib * k).toFixed(2)}" dominant-baseline="central"
@@ -13500,10 +13581,9 @@ function dessinerTableauCroisePdf(doc, item, slot, solution) {
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(pt(g.corpsTete));
-    m.colonnes.forEach((c, i) => {
+    g.tetes.forEach((c, i) => {
         doc.text(pourPdf(c), g.xDe(i) + g.wCol / 2, g.y0 + g.rh / 2, { align: 'center', baseline: 'middle' });
     });
-    doc.text('Total', g.xDe(m.C) + g.wCol / 2, g.y0 + g.rh / 2, { align: 'center', baseline: 'middle' });
 
     doc.setFontSize(pt(g.corpsLib));
     [...m.lignes, 'Total'].forEach((l, r) => {
@@ -14089,7 +14169,23 @@ export const RENDUS = {
         pdfGrille: dessinerTableauCroisePdf,
         nomBloc: 'Tableau', nomBlocs: 'tableaux',
         // Large et bas : un tableau se lit en largeur, et l'énoncé le surmonte.
-        proportions: { w: 1.6, h: 1 },
+        //
+        // ET LA HAUTEUR SUIT LE NOMBRE DE LIGNES TIRÉES. Rémy, sur le PDF : un
+        // tiers de page blanc entre deux rangées de tableaux. La proportion
+        // était fixe — le bloc faisait toujours la largeur d'une demi-page en
+        // hauteur, 91 mm —, alors qu'un tableau de trois lignes en occupe
+        // quarante-cinq. Le reste était du blanc, réservé pour un tableau à
+        // sept lignes qui n'était pas sur la feuille.
+        //
+        // Le compte : deux lignes de plus que les lignes de données — l'en-tête
+        // et le total —, à 8,5 mm chacune au maximum, plus une quinzaine de
+        // millimètres d'énoncé. Rapporté à la largeur d'un bloc à deux par
+        // ligne (91 mm), cela fait le rapport ci-dessous. On garde un plancher :
+        // sous 0,45, l'énoncé sur deux lignes ne tiendrait plus.
+        proportions: (items) => {
+            const lignes = Math.max(...(items || []).map(it => ((it.meta || {}).R ?? 2) + 2), 4);
+            return { w: 1.6, h: Math.max(0.45, Math.min(1, (lignes * 8.5 + 16) / 91)) };
+        },
         disposition: { cols: 2, rows: 3, maxCols: 2, maxRows: 4 },
         parLigneDefaut: 2
     },

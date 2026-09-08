@@ -9,7 +9,7 @@ import { getGenerator } from '../js/core/registry.js';
 import { surPapier, aSonMot, reglagesDeFiche, valeursDeDepart } from '../js/core/reglagesFiche.js';
 import { FAMILLES, codageDiagonales } from '../js/core/quadrilateres.js';
 import { RENDUS } from '../js/ui/printSheet.js';
-import { encre } from '../js/ui/ficheRendu.js';
+import { encre, morceauxLigne } from '../js/ui/ficheRendu.js';
 import {
     GOUTTIERE, zoneUtile, mesuresSlot, capaciteMax, choisirDisposition, coteLisible,
     dispositionDuRendu, dispositionEnColonnes, lignesQuiRemplissent
@@ -539,4 +539,44 @@ test('la rédaction de Thalès déclare le plancher qu\'elle ne peut pas franchi
     // + 9 lignes à 5,5 mm : le compte est de 113.
     assert.ok(Number(rendu.hauteurMin) >= 113,
         `hauteurMin vaut ${rendu.hauteurMin}, il en faut 113`);
+});
+
+// LE PDF ÉCRIVAIT « pi » ET « 10^4 ». Rémy, sur la feuille du disque :
+// « Périmètre exact = 16pi cm », sur le chapitre qui apprend à écrire 25π.
+// Les polices standard d'un PDF n'ont ni π ni les exposants au-delà de ³ ; on
+// les translittérait. Ils sortent maintenant de la ligne pour être DESSINÉS,
+// comme le « à peu près égal » l'est depuis toujours.
+test('π ET LES EXPOSANTS SORTENT DE LA LIGNE POUR ÊTRE DESSINÉS', () => {
+    const m = morceauxLigne('Aire = 25π cm² et 10⁻³', false);
+    assert.ok(m.some(x => x.pi), `π reste dans le texte : ${JSON.stringify(m)}`);
+    const hauts = m.filter(x => x.haut).map(x => x.haut);
+    assert.deepEqual(hauts, ['²', '⁻³'], `exposants mal découpés : ${JSON.stringify(hauts)}`);
+    // Et le reste du texte est intact, sans π ni exposant qui traîne.
+    const texte = m.filter(x => x.texte !== undefined).map(x => x.texte).join('');
+    assert.equal(texte, 'Aire = 25 cm et 10');
+});
+
+// La couronne des minutes d'une pendule demande un cadran, pas un timbre : à
+// cinq par ligne le rayon tombe à 8,5 mm et les « 5, 10, 15… » s'écrivent en
+// 1,3 mm, par-dessus les heures.
+test('la pendule ne porte ses minutes que si elles se lisent', () => {
+    const geo = RENDUS.horloge;
+    assert.ok(geo, 'le rendu de la pendule doit exister');
+    // Le rendu se plafonne à quatre colonnes, et le descripteur en demande cinq
+    // (revue du 7 septembre) : c'est ce cas-là qu'il fallait rendre lisible.
+    assert.equal(geo.disposition.maxCols, 4);
+    const heure = exercices.find(e => e.printable === 'horloge');
+    assert.equal(heure.colonnesPapier, 5, 'Rémy en veut cinq, on ne touche pas au compte');
+});
+
+// Rémy, sur le PDF : « Septembre », « Novembre », « Décembre » et « Vendredi »
+// mordaient sur la colonne voisine, et un tiers de page restait blanc sous
+// chaque rangée de tableaux.
+test('le tableau à double entrée règle sa hauteur sur ses lignes', () => {
+    const p = RENDUS['tableau-croise'].proportions;
+    assert.equal(typeof p, 'function', 'la proportion doit suivre les grilles tirées');
+    const petit = p([{ meta: { R: 2 } }, { meta: { R: 2 } }]).h;
+    const grand = p([{ meta: { R: 7 } }]).h;
+    assert.ok(grand > petit, `${grand} devrait dépasser ${petit}`);
+    assert.ok(petit >= 0.45 && grand <= 1, `hors bornes : ${petit} et ${grand}`);
 });

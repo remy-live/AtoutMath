@@ -943,8 +943,23 @@ export function composerBlocs(exos, opts, mesurer) {
             // d'un énoncé (voir `texteImprime`), et l'on ne demande jamais PLUS
             // que `repMin` : la borne ne peut que descendre, et seulement pour
             // les réponses courtes.
+            // ET LE PLANCHER EST CELUI DE LA MAIN, PAS CELUI DU TEXTE.
+            //
+            // Rémy, sur le PDF : « Réponds en h. ‥‥ » — six millimètres de
+            // pointillés collés au bord de la page, sur lesquels on n'écrit
+            // rien. Le plancher valait six : c'est la largeur de la réponse la
+            // plus courte qu'on puisse MESURER, mais ce n'est pas la réponse
+            // qu'il faut loger, c'est l'écriture d'un élève.
+            //
+            // HUIT, ET PAS DAVANTAGE. C'est le chiffre que le test des
+            // pointillés nomme déjà — « une cellule qui laisse huit millimètres
+            // derrière le "=" peut porter la réponse courte » —, et il vient
+            // d'une règle de Rémy qu'on ne casse pas : « mets les pointillés
+            // après le = et pas à la ligne ». Monter plus haut renverrait sous
+            // l'énoncé des réponses qu'il veut au bout de la ligne. Ce qui ne
+            // tient pas dans huit descend, et y trouve toute la largeur.
             const besoinRep = Math.min(o.repMin,
-                Math.max(6, mes(String(q.reponse ?? ''), o.taille) + 3));
+                Math.max(8, mes(String(q.reponse ?? ''), o.taille) + 3));
             const memeLigne = !placeDemandee && !trou && !choix && !tableau && lignes.length === 1
                 && cellW - gouttiereNum - mes(lignes[0], o.taille) - 2 >= besoinRep;
             // LES FRACTIONS S'ÉCRIVENT EN COLONNE, comme au tableau : le
