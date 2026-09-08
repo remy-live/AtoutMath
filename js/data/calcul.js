@@ -568,23 +568,36 @@ export const calculExercises = [
         cree: '2026-07-26',
         consignePapier: "Calcule.",
         colonnesPapier: 3,
-        title: 'Chasse aux Taupes',
+        // LE TITRE DIT LE GESTE, PAS L'ANIMAL. Rémy, en regardant le robot :
+        // « Ce n'est pas des taupes, mets "Je touche ici" » — et ce n'en est
+        // pas, en effet : ce qui sort du trou est un disque coloré qui porte un
+        // nombre, et qui redescend au bout de deux secondes et demie. « Chasse »
+        // était de surcroît le quatrième du catalogue, après la Chasse au
+        // Chiffre, la Chasse aux Zéros et le Chasseur de Diviseurs.
+        //
+        // « ATTRAPE » PARCE QUE ÇA S'ÉCHAPPE. C'est toute la différence avec un
+        // QCM, et aucun titre ne la portait : le nombre ne se choisit pas, il se
+        // prend avant qu'il ne replonge. La consigne le dit maintenant.
+        title: 'Attrape le Résultat',
         generatorId: 'calc.mixte', activityId: 'moles',
         params: { operations: ['+', '-'], max: 20, timeLimit: 60, minScore: 10 },
+        // Le mot d'avant reste cherchable : on a appelé ce jeu « les taupes »
+        // pendant des mois, et c'est encore par là qu'on le cherchera.
+        motsClefs: ['taupes', 'calcul mental', 'rapidité'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        instruction: "Tape sur la taupe qui porte le bon résultat !"
+        instruction: "Touche le disque qui porte le bon résultat — avant qu'il ne redescende !"
     },
     {
         id: 'calc-moles-tables',
         cree: '2026-07-28',
         consignePapier: "Calcule.",
         colonnesPapier: 3,
-        title: 'Taupes des Tables',
+        title: 'Attrape le Produit',
         generatorId: 'calc.mult.fact', activityId: 'moles',
         params: { tables: [6, 7, 8, 9], timeLimit: 60, minScore: 10 },
-        motsClefs: ['tables', 'multiplication'],
+        motsClefs: ['tables', 'multiplication', 'taupes'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        instruction: "Tape sur la taupe qui porte le bon produit !"
+        instruction: "Touche le disque qui porte le bon produit — avant qu'il ne redescende !"
     },
 
     // --- Jeux autonomes : logique de plateau propre, contenu interne ---

@@ -165,19 +165,43 @@ test('le catalogue réel répond aux recherches qu\'on tapera vraiment', () => {
         // remontait devant Angle Master, qui porte pourtant le mot en toutes
         // lettres dans sa consigne. Voir `POINTS.racineTitre`.
         ['rapporteur', 'geo-angles'],
-        // « Taupes des Tables » COMMENCE par le mot : il passe devant
-        // « Chasse aux Taupes », qui ne fait que le contenir. C'est la règle,
-        // et c'est le bon classement.
-        ['taupes', 'calc-moles-tables']
+        // « Carreaux et Surfaces » COMMENCE par le mot : il passe devant
+        // « Le Symétrique aux Carreaux », qui ne fait que le contenir. C'est la
+        // règle, et c'est le bon classement.
+        //
+        // (Cette paire remplace « taupes », qui la portait avant que les deux
+        // exercices ne soient rebaptisés « Attrape le Résultat » et « Attrape
+        // le Produit ». Le mot d'avant est passé en `motsClefs` : il continue
+        // de les trouver, mais ne dit plus rien du classement par le titre.)
+        ['carreaux', 'mes-aire']
     ];
     for (const [requete, id] of attendus) {
         const r = chercher(fiches, requete);
         assert.ok(r.length, `« ${requete} » ne trouve rien`);
         assert.equal(r[0].fiche.id, id, `« ${requete} » ne met pas ${id} en tête`);
     }
-    // Les deux exercices de taupes sortent bien tous les deux.
-    const taupes = chercher(fiches, 'taupes', { max: 20 }).map(r => r.fiche.id);
-    assert.ok(taupes.includes('calc-arcade-moles'), 'Chasse aux Taupes manque à l\'appel');
+    // Les deux exercices aux carreaux sortent bien tous les deux.
+    const carreaux = chercher(fiches, 'carreaux', { max: 20 }).map(r => r.fiche.id);
+    assert.ok(carreaux.includes('geo-symetrie-quadrillage'),
+        'Le Symétrique aux Carreaux manque à l\'appel');
+});
+
+// LE MOT D'AVANT DOIT CONTINUER DE TROUVER. « Chasse aux Taupes » et « Taupes
+// des Tables » ont été rebaptisés « Attrape le Résultat » et « Attrape le
+// Produit » : le dessin n'a jamais montré de taupe, et « chasse » servait déjà
+// trois autres titres. Mais on a appelé ce jeu « les taupes » pendant des mois.
+// Le mot est donc passé en `motsClefs` — c'est exactement à cela qu'ils
+// servent —, et ce test le vérifie plutôt que de le laisser à la relecture.
+test('un exercice rebaptisé se retrouve encore par son ancien nom', () => {
+    const fiches = exercices.map(e => preparer({
+        id: e.id, titre: e.title,
+        chemin: e.tags.chemin || [], niveaux: e.tags.niveaux || [],
+        motsCles: e.motsClefs || [], texte: e.instruction || ''
+    }));
+    const trouves = chercher(fiches, 'taupes', { max: 20 }).map(r => r.fiche.id);
+    for (const id of ['calc-arcade-moles', 'calc-moles-tables']) {
+        assert.ok(trouves.includes(id), `« taupes » ne trouve plus ${id}`);
+    }
 });
 
 test('aucun titre du catalogue ne devient introuvable par son propre nom', () => {

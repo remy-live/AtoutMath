@@ -388,7 +388,7 @@ export const numerationExercises = [
         generatorId: 'num.complement', activityId: 'moles',
         params: { cible: [100, 1000], timeLimit: 60, minScore: 10 },
         tags: { chemin: [D, MENTAL], niveaux: [SIXIEME] },
-        instruction: "Tape la taupe qui porte le complément à 100 ou à 1 000 !"
+        instruction: "Touche le disque qui porte le complément à 100 ou à 1 000 — avant qu'il ne redescende !"
     },
     {
         id: 'num-parite', title: 'Pair ou Impair',

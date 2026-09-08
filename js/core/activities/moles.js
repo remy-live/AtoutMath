@@ -1,22 +1,30 @@
-// Activité « chasse aux taupes ».
+// Activité « attraper le bon nombre » : des disques sortent des trous.
 //
-// Le contenu vient d'un générateur : les taupes portent la bonne réponse ou
+// LE NOM DU FICHIER DIT ENCORE `moles`, ET LE JEU NE DIT PLUS « taupe ».
+// Rémy, en regardant le robot : « Ce n'est pas des taupes, mets "Je touche
+// ici" ». Ce n'en est pas, en effet — ce qui sort du trou est un disque coloré
+// portant un nombre —, et les deux exercices s'appellent maintenant « Attrape
+// le Résultat » et « Attrape le Produit ». L'identifiant d'activité, le nom du
+// fichier et les classes CSS restent `moles` : personne ne les lit, et les
+// renommer casserait les descripteurs pour rien.
+//
+// Le contenu vient d'un générateur : les disques portent la bonne réponse ou
 // l'un des distracteurs typés de l'item — le jeu sait donc faire travailler
 // les fractions ou les aires sans une ligne de plus.
 //
 // Réécriture du rythme : l'ancienne boucle ajoutait une CHAÎNE de minuteurs à
 // chaque nouvelle question sans éteindre la précédente — au fil de la partie,
-// les taupes finissaient par clignoter frénétiquement. Ici un seul métronome,
-// coupé et relancé proprement, et JUSQU'À TROIS taupes sorties en même temps :
-// il faut chercher la bonne, pas cliquer la seule qui dépasse. Le défilement
+// les disques finissaient par clignoter frénétiquement. Ici un seul métronome,
+// coupé et relancé proprement, et JUSQU'À TROIS disques sortis en même temps :
+// il faut chercher le bon, pas cliquer le seul qui dépasse. Le défilement
 // se fige pendant qu'une correction est ouverte.
 
 import { regTimeout, regInterval } from '../timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
 const HOLES = 9;
-const SORTIES_MAX = 3;       // taupes visibles en même temps
-const DUREE_SORTIE = 2600;   // temps qu'une taupe reste dehors
+const SORTIES_MAX = 3;       // disques visibles en même temps
+const DUREE_SORTIE = 2600;   // temps qu'un disque reste dehors
 const CADENCE = 850;         // rythme d'apparition
 
 export function mount(container, session, opts = {}) {
@@ -30,7 +38,7 @@ export function mount(container, session, opts = {}) {
     container.innerHTML = `
         <div class="moles-wrap">
             <div class="moles-question" data-question></div>
-            <div class="moles-grid" role="group" aria-label="Grille de taupes">
+            <div class="moles-grid" role="group" aria-label="Grille des nombres">
                 ${Array.from({ length: HOLES }, (_, i) => `
                     <button type="button" class="mole-hole" data-hole="${i}" aria-label="Trou ${i + 1}">
                         <span class="mole" data-mole></span>
@@ -42,8 +50,17 @@ export function mount(container, session, opts = {}) {
     const holes = [...container.querySelectorAll('.mole-hole')];
     // Par trou : la valeur affichée et si c'est la bonne réponse.
     const sorties = Array(HOLES).fill(null);
+    // LE TROU QUE LE ROBOT TIENT — et lui seul ne redescend pas.
+    //
+    // Mesuré à l'aperçu : un disque reste dehors 2 600 ms, et la démonstration
+    // met 900 ms à laisser sortir les distracteurs, puis 1 600 ms à dire « je
+    // touche ici ». Le doigt arrivait donc À LA SECONDE où le bon disque
+    // replongeait, et le robot désignait un trou vide en annonçant la réponse.
+    // Pendant qu'il explique, ce qu'il montre doit rester visible.
+    let tenu = -1;
 
     function toutRentrer() {
+        tenu = -1;
         holes.forEach((h, i) => {
             sorties[i] = null;
             h.querySelector('[data-mole]').classList.remove('mole--up', 'mole--ok', 'mole--ko');
@@ -76,7 +93,7 @@ export function mount(container, session, opts = {}) {
         return sorties.filter(Boolean).map(s => s.value);
     }
 
-    /** Fait sortir une taupe d'un trou libre, bonne réponse ou distracteur. */
+    /** Fait sortir un disque d'un trou libre, bonne réponse ou distracteur. */
     function sortir() {
         const libres = holes.map((_, i) => i).filter(i => !sorties[i]);
         const dehors = sorties.filter(Boolean).length;
@@ -108,11 +125,12 @@ export function mount(container, session, opts = {}) {
         mole.classList.remove('mole--ok', 'mole--ko');
         mole.classList.add('mole--up');
 
-        // Chaque taupe a SA durée de sortie, puis rentre — sauf si la partie
+        // Chaque disque a SA durée de sortie, puis rentre — sauf si la partie
         // est figée par une correction (elle attendra la reprise).
         const gen = generation;
         const rentrer = () => {
             if (destroyed || gen !== generation || !sorties[idx] || sorties[idx] !== choix) return;
+            if (idx === tenu) return;   // le robot est en train de le montrer
             if (session.locked) { regTimeout(rentrer, 600); return; }
             sorties[idx] = null;
             mole.classList.remove('mole--up');
@@ -133,7 +151,7 @@ export function mount(container, session, opts = {}) {
             mole.classList.add(result.correct ? 'mole--ok' : 'mole--ko');
             sorties[idx] = null;   // frappée : elle ne rentrera pas d'elle-même
             // La correction se ferme à la main : l'élève ne doit pas rater
-            // l'explication parce qu'une taupe est ressortie.
+            // l'explication parce qu'un disque est ressorti.
             result.dismissed.then(() => {
                 if (destroyed) return;
                 if (result.correct) regTimeout(nextItem, 350);
@@ -145,7 +163,7 @@ export function mount(container, session, opts = {}) {
         };
     });
 
-    // Démonstration : de mauvaises taupes sortent, le robot les IGNORE, puis
+    // Démonstration : de mauvais disques sortent, le robot les IGNORE, puis
     // frappe la bonne — c'est le discernement qu'on montre, pas le réflexe.
     async function lancerDemo() {
         if (!cursor) cursor = createDemoCursor();
@@ -166,6 +184,7 @@ export function mount(container, session, opts = {}) {
             mole.classList.remove('mole--ok', 'mole--ko');
             mole.classList.add('mole--up');
         }
+        tenu = bonIdx;
         // « CE N'EST PAS DES TAUPES, METS "JE TOUCHE ICI" » — Rémy, en regardant
         // le robot. Il a raison, et c'est un défaut d'ÉCRAN autant que de mot :
         // rien ne sort d'un trou, on voit des ronds gris et un rond bleu qui

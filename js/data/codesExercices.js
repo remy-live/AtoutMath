@@ -79,8 +79,8 @@ export const CODES_EXERCICES = {
     'calc-poser-multiplication':  'MU',   // Poser une multiplication
     'calc-poser-division':        'PD',   // Poser une division
     'calc-arcade-sprint':         'SC',   // Sprint Chrono
-    'calc-arcade-moles':          'CT',   // Chasse aux Taupes
-    'calc-moles-tables':          'TT',   // Taupes des Tables
+    'calc-arcade-moles':          'CT',   // Attrape le Résultat (ex-Chasse aux Taupes)
+    'calc-moles-tables':          'TT',   // Attrape le Produit (ex-Taupes des Tables)
     'calc-arcade-shooter':        'MM',   // Météorites Mathématiques
     'calc-math-memory':           'MT',   // Memory des Tables
     'calc-labyrinthe':            'LM',   // Labyrinthe Mathématique

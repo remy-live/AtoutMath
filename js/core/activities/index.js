@@ -369,7 +369,7 @@ registerActivity({
 
 registerActivity({
     id: 'moles',
-    label: 'Chasse aux taupes',
+    label: 'Attraper le bon nombre',
     accepts: ['choice'],
     supports: { timed: true, autonomous: false, demo: true },
     load: () => import('./moles.js')
