@@ -138,7 +138,25 @@ export const fonctionsGenerator = {
         // continuent de valoir pour le reste, et la case cochée compte.
         const oubliees = demandes.filter(k => !pondere.includes(k));
         const melange = [...pondere, ...oubliees];
-        const quoi = rng.pick(melange.length ? melange : demandes);
+        // LE ROBOT COMMENCE PAR CALCULER UNE IMAGE. Rémy : « Commence par des
+        // calculs d'images pour le robot ».
+        //
+        // C'est le geste fondateur du chapitre — on REMPLACE x par le nombre,
+        // puis on calcule — et tout le reste s'y adosse : l'antécédent est ce
+        // calcul remonté à l'envers, le tableau en est une rangée, le programme
+        // la même chose dite en mots. Une démonstration qui ouvrirait sur
+        // « f(3) = 11, est-ce une image ou un antécédent ? » parlerait d'un
+        // vocabulaire dont l'élève ne sait pas encore ce qu'il désigne.
+        //
+        // Les DEUX premières, et pas seulement la première : une image vue une
+        // fois est un exemple, vue deux fois c'est une méthode. Ensuite le
+        // mélange reprend — le robot doit aussi montrer qu'on demandera autre
+        // chose. Et si le professeur n'a pas coché « calculer une image », on
+        // ne la lui impose pas : la démonstration montre SON exercice.
+        const debutRobot = ctx && ctx.demo && (Number(ctx.index) || 0) < 2
+            && demandes.includes('image');
+        const quoi = debutRobot ? 'image'
+            : rng.pick(melange.length ? melange : demandes);
 
         const a = rng.pick([2, 3, 4, 5, -2, -3, 2, 3]);
         const b = rng.pick([-9, -7, -5, -4, -3, -1, 1, 2, 3, 4, 5, 6, 8]);

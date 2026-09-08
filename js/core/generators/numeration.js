@@ -31,6 +31,52 @@ function randomDecimal(rng, { intDigits = 4, decDigits = 2 } = {}) {
 const RANKS_ENTIER = [0, 1, 2, 3];
 const RANKS_DECIMAL = [-1, -2, -3];
 
+/**
+ * LE TABLEAU DE NUMÉRATION, À LA DEMANDE.
+ *
+ * Rémy, en revue de la Chasse au Chiffre : « pour cet exercice, on pourrait
+ * proposer un bouton pour afficher un tableau de numération pour placer son
+ * nombre ».
+ *
+ * IL EST VIDE, ET C'EST TOUT L'INTÉRÊT. Un tableau où le nombre serait déjà
+ * posé donnerait la réponse à lire dans une case : l'exercice n'existerait
+ * plus. Ce qu'on rend disponible, c'est l'OUTIL — les colonnes, leur ordre, la
+ * virgule à sa place — pour que l'élève y pose son nombre lui-même, du doigt
+ * ou sur son brouillon. C'est le geste que le premier indice commande déjà
+ * (« Place 3 407,52 dans le tableau ») et qu'aucun écran ne montrait.
+ *
+ * LA VIRGULE EST UNE FRONTIÈRE, PAS UNE COLONNE. Elle est dessinée sur le bord
+ * entre unités et dixièmes, comme dans le jeu du glissement (js/games/
+ * virgule.js) : les deux exercices du chapitre disent alors la même chose du
+ * même objet, et l'élève qui passe de l'un à l'autre reconnaît son tableau.
+ *
+ * ET LES DEUX CÔTÉS NE SE RESSEMBLENT PAS. La partie décimale est teintée :
+ * c'est exactement la confusion du chapitre — dizaines contre dixièmes — et
+ * une couleur dit d'un coup d'œil de quel côté de la virgule on regarde.
+ */
+const COLONNES_TABLEAU = [
+    { court: 'milliers', dec: false },
+    { court: 'centaines', dec: false },
+    { court: 'dizaines', dec: false },
+    { court: 'unités', dec: false },
+    { court: 'dixièmes', dec: true },
+    { court: 'centièmes', dec: true },
+    { court: 'millièmes', dec: true }
+];
+
+const TABLEAU_HTML = `<div class="tn-cadre"><table class="tn-tab"><thead><tr>${
+    COLONNES_TABLEAU.map(c => `<th class="${c.dec ? 'tn-dec' : ''}${
+        c.court === 'unités' ? ' tn-avant-virgule' : ''}">${c.court}</th>`).join('')
+}</tr></thead><tbody><tr>${
+    COLONNES_TABLEAU.map(c => `<td class="${c.dec ? 'tn-dec' : ''}${
+        c.court === 'unités' ? ' tn-avant-virgule' : ''}"></td>`).join('')
+}</tr></tbody></table></div>
+<p class="tn-mot">Pose ton nombre : un chiffre par colonne, en partant de la virgule.</p>`;
+
+const OUTIL_TABLEAU = {
+    id: 'tableau', label: 'Tableau de numération', html: TABLEAU_HTML
+};
+
 export const chiffreRangGenerator = {
     id: 'num.chiffre-rang',
     label: 'Chiffre d\'un rang donné',
@@ -92,7 +138,7 @@ export const chiffreRangGenerator = {
             ],
             explanation: `Dans ${affiche}, le chiffre des ${RANK_NAMES[rank]} est ${answer}.`,
             difficulty: rank < 0 ? 3 : 2,
-            meta: { value, rank, decimal: false }
+            meta: { value, rank, decimal: false, outils: [OUTIL_TABLEAU] }
         });
     }
 };

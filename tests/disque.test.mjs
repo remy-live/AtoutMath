@@ -236,6 +236,50 @@ test('l\'explication porte la réponse, et les indices ne la donnent pas', () =>
     }
 });
 
+// Rémy : « Le robot n'aide pas et j'aimerai qu'il aide sur un calcul d'aire et
+// de périmètre exact ». Le robot prononce le DERNIER indice juste avant de
+// répondre : c'est donc lui qui doit porter l'opération, avec le rayon de la
+// question — et sans le résultat, que l'élève finit.
+test('LE DERNIER INDICE POSE LE CALCUL, avec le rayon, et pas le résultat', () => {
+    for (const marche of ETAPES) {
+        if (marche === 'formule') continue;
+        for (let k = 0; k < 25; k++) {
+            const t = tirerDisque(makeRng(`c-${marche}-${k}`), marche);
+            const dernier = indicesDe(t)[2];
+            const r = String(t.r).replace('.', ',');
+            const attendu = t.surLAire ? `π × ${r} × ${r}` : `2 × π × ${r}`;
+            assert.ok(dernier.includes(attendu),
+                `${marche} : « ${attendu} » absent de « ${dernier} »`);
+            // Le résultat n'y est pas : ni la valeur exacte, ni l'arrondie.
+            const exactNu = t.exact.split(' ')[0];
+            assert.equal(dernier.includes(exactNu), false,
+                `${marche} : le dernier indice donne la réponse « ${exactNu} »`);
+        }
+    }
+});
+
+// « Une surface se mesure en cm² » se lisait sous une question qui portait sur
+// un périmètre : sur l'étape des formules, les trois phrases étaient les mêmes
+// des deux côtés.
+test('SUR L\'ÉTAPE DES FORMULES, LES INDICES PARLENT DE LA GRANDEUR DEMANDÉE', () => {
+    let vuAire = 0, vuPerimetre = 0;
+    for (let k = 0; k < 60; k++) {
+        const t = tirerDisque(makeRng(`f-${k}`), 'formule');
+        const [premier, second] = indicesDe(t);
+        if (t.surLAire) {
+            vuAire++;
+            assert.ok(/aire/i.test(premier), `aire : « ${premier} »`);
+            assert.ok(/cm²/.test(second), `aire : « ${second} »`);
+        } else {
+            vuPerimetre++;
+            assert.ok(/périmètre/i.test(premier), `périmètre : « ${premier} »`);
+            assert.equal(/cm²/.test(second), false, `périmètre : « ${second} »`);
+        }
+    }
+    // Les deux sortes sortent : sinon le test ne vérifierait qu'une moitié.
+    assert.ok(vuAire > 5 && vuPerimetre > 5, `${vuAire} aires, ${vuPerimetre} périmètres`);
+});
+
 test('LES FAUSSES RÉPONSES SONT TOUTES DIFFÉRENTES, ET AUCUNE N\'EST LA BONNE', () => {
     for (const marche of ETAPES) {
         for (let k = 0; k < 40; k++) {

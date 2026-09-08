@@ -134,11 +134,29 @@ class Labyrinthe extends BaseGame {
             if (!bonne) return;
             const cible = this.grid[bonne.y][bonne.x];
             const calcul = (this.calcEl?.innerText || '').replace(/\s*=\s*\?\s*$/, '').trim();
+            // LA BULLE SE POSE SUR LA CASE OÙ L'ON VA, PAS AU MILIEU DU PLATEAU.
+            //
+            // Rémy : « la bulle de dialogue n'est pas au niveau du curseur du
+            // joueur ». Elle était accrochée au PLATEAU entier : elle
+            // atterrissait au centre, à trois cases du héros, et sa pointe
+            // désignait une case au hasard. Accrochée à la case visée, elle
+            // dit où l'on va — et une seconde plus tard le héros y est, donc
+            // elle est bien au niveau du joueur.
+            const cellule = this.boardEl?.children[bonne.y * this.boardSize + bonne.x];
             this.demoCursor?.say(
                 calcul ? `${calcul}, ça fait ${cible.displayedNumber} : je vais là.`
                     : `Je cherche ${cible.displayedNumber}.`,
-                this.boardEl);
-            this.tryMoveTo(bonne.x, bonne.y);
+                cellule || this.heroEl || this.boardEl);
+            // ON DIT D'ABORD, ON BOUGE ENSUITE — et la bulle s'efface en
+            // bougeant. Le déplacement change le calcul affiché : la bulle,
+            // qui restait deux secondes de plus, annonçait alors « 7 × 5 »
+            // au-dessus d'un « 10 × 3 » tout neuf. Le robot avait l'air de
+            // dire n'importe quoi, et c'est le seul moment où il explique.
+            regTimeout(() => {
+                if (this.isGameOver || this.demoGate.paused) return;
+                this.demoCursor?.hideBubble();
+                this.tryMoveTo(bonne.x, bonne.y);
+            }, 1500);
         };
 
         // Un premier pas rapide pour que la vignette du catalogue montre déjà

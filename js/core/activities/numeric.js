@@ -9,6 +9,7 @@
 import { regTimeout } from '../timers.js';
 import { espacerMilliers, FINE } from '../nombres.js';
 import { hintBar, wireHint } from './choice.js';
+import { barreOutils, boiteOutils, brancherOutils } from './outils.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
 const DIGITS = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
@@ -76,7 +77,15 @@ function premiereRespiration(t) {
 function phraseCalcul(item, cible) {
     const indices = item.hints || [];
     const dernier = indices.length > 1 ? indices[indices.length - 1] : null;
-    if (tientEnUneBulle(dernier)) return `${dernier.trim()} Je tape ${cible}.`;
+    // LE POINT MANQUANT. Beaucoup de derniers indices sont un CALCUL, et un
+    // calcul ne se termine pas par un point : « f(-3) = -9 + 5 = -4 ». Collé
+    // devant « Je tape », cela donnait « = -4 Je tape -4. », qu'on lit comme
+    // une seule phrase avant de comprendre. On ferme donc la phrase nous-mêmes
+    // quand le générateur ne l'a pas fait.
+    if (tientEnUneBulle(dernier)) {
+        const d = dernier.trim();
+        return `${/[.!?:]$/.test(d) ? d : `${d}.`} Je tape ${cible}.`;
+    }
     return `Je tape ${cible} chiffre par chiffre.`;
 }
 
@@ -133,28 +142,30 @@ export function mount(container, session, opts = {}) {
     }
 
     /**
-     * LES OUTILS DE L'EXERCICE — un rappel, jamais une réponse.
-     *
-     * Rémy, sur Temps / Distance / Vitesse : « on pourrait avoir un bouton
-     * schéma et un bouton formule (mais pas valable tout le temps) ».
-     *
-     * « PAS VALABLE TOUT LE TEMPS » EST LA CLÉ, et c'est pour cela que c'est
-     * l'ITEM qui les déclare et non l'activité : un rappel de formule n'a de
-     * sens que là où il y a une formule, un schéma que là où il y a une
-     * situation à dessiner. Un exercice qui n'en propose pas n'affiche rien.
-     *
-     * ILS SONT GRATUITS, et c'est un choix. Un indice DIT quelque chose sur la
-     * question posée, et se paie donc en points ; ces outils-là remettent
-     * l'énoncé en image ou rappellent ce qui est écrit au tableau pour toute
-     * la classe. La grandeur cherchée y porte un « ? » : ils ne résolvent rien.
-     */
-    /**
      * Une proposition se touche, et le retour est celui de partout : la bonne
      * passe à la question suivante, la mauvaise laisse la correction s'ouvrir.
      */
     function brancherPropositions(item) {
+        brancherOutils(container, item);
+        // LE ROBOT SAIT AUSSI RÉPONDRE À UN QCM.
+        //
+        // Rémy, sur le disque : « Le robot n'aide pas et j'aimerai qu'il aide
+        // sur un calcul d'aire et de périmètre exact ». Il n'aidait pas parce
+        // qu'il ne faisait RIEN : cette branche renvoyait avant d'atteindre la
+        // démonstration, et l'aperçu du Périmètre et l'Aire du Disque restait
+        // sur sa première question, sans curseur ni bulle, jusqu'à ce qu'on le
+        // ferme. Les quatre premières étapes du disque demandent une valeur
+        // exacte — « 25π cm² » — et se répondent donc parmi quatre propositions
+        // : c'était tout le début de l'exercice.
+        //
+        // Ce n'est pas propre au disque. Toute question à propositions posée
+        // dans le pavé tombait ici : l'escalier adaptatif qui redescend en QCM,
+        // et les générateurs qui alternent les deux formes.
+        if (session.isDemo) {
+            if (!session.frozen) runDemoChoix(item);
+            return;
+        }
         wireHint(container, session);
-        brancherOutils(item);
         const boutons = [...container.querySelectorAll('[data-choix-i]')];
         boutons.forEach(btn => {
             btn.onclick = () => {
@@ -178,41 +189,6 @@ export function mount(container, session, opts = {}) {
         });
     }
 
-    function barreOutils(item) {
-        const outils = (item.meta && item.meta.outils) || [];
-        if (!outils.length) return '';
-        return `<div class="np-outils">${outils.map((o, i) =>
-            `<button type="button" class="np-outil-btn" data-outil-i="${i}"
-                aria-expanded="false">${echapperTexte(o.label)}</button>`).join('')}</div>`;
-    }
-
-    function brancherOutils(item) {
-        const outils = (item.meta && item.meta.outils) || [];
-        const boite = container.querySelector('[data-outil]');
-        if (!outils.length || !boite) return;
-        let ouvert = -1;
-        const montrer = (i) => {
-            ouvert = i;
-            // LE PANNEAU PORTE SON NOM ET SA CROIX. Sur téléphone il recouvre
-            // le plateau — le bouton qui l'a ouvert est dessous, et sans cette
-            // croix on ne saurait plus comment revenir à la question.
-            boite.innerHTML = i < 0 ? '' : `<div class="np-outil-tete">
-                <b>${echapperTexte(outils[i].label)}</b>
-                <button type="button" class="np-outil-fermer" data-outil-fermer
-                    aria-label="Fermer">✕</button></div>${outils[i].html}`;
-            boite.hidden = i < 0;
-            const croix = boite.querySelector('[data-outil-fermer]');
-            if (croix) croix.onclick = () => montrer(-1);
-            container.querySelectorAll('[data-outil-i]').forEach(b =>
-                b.setAttribute('aria-expanded', String(Number(b.dataset.outilI) === i)));
-        };
-        container.querySelectorAll('[data-outil-i]').forEach(btn => {
-            // Le même bouton referme : deux panneaux ouverts l'un sur l'autre
-            // pousseraient le pavé numérique hors de l'écran.
-            btn.onclick = () => montrer(ouvert === Number(btn.dataset.outilI)
-                ? -1 : Number(btn.dataset.outilI));
-        });
-    }
 
     function render(item) {
         const unit = item.meta && item.meta.unit ? item.meta.unit : '';
@@ -276,7 +252,7 @@ export function mount(container, session, opts = {}) {
                     ${avis ? `<div class="numpad-avis">${avis}</div>` : ''}
                     ${item.prompt.html}
                     ${barreOutils(item)}
-                    <div class="np-outil" data-outil hidden></div></div>
+                    ${boiteOutils(item)}</div>
                 <div class="numpad-panel">
                     ${propositions(item) ? `<div class="np-choix" role="group"
                         aria-label="Propositions">${item.choices.map((c, i) =>
@@ -409,7 +385,7 @@ export function mount(container, session, opts = {}) {
         }
 
         wireHint(container, session);
-        brancherOutils(item);
+        brancherOutils(container, item);
 
         const validate = () => {
             if (destroyed) return;
@@ -508,6 +484,76 @@ export function mount(container, session, opts = {}) {
      * les explications précédentes, n'avait rien à rappeler — il paraissait
      * cassé alors qu'il n'y avait simplement pas un mot à revoir.
      */
+    /**
+     * LA DÉMONSTRATION SUR DES PROPOSITIONS : dire, montrer, toucher.
+     *
+     * Le même déroulé que le QCM (voir `runDemo` dans choice.js), mais posé
+     * dans le pavé : l'énoncé et sa figure sont à gauche, les propositions à
+     * droite, et c'est cette disposition-là que le robot parcourt.
+     *
+     * IL DIT LE CALCUL AVANT DE CHOISIR. Le dernier indice POSE l'opération —
+     * « L'aire vaut π × r × r, et r vaut 5 » —, et c'est cela qu'il faut
+     * entendre AVANT de voir une main se poser sur « 25π ». Montrer la bonne
+     * case sans dire pourquoi n'apprend rien à qui ne le savait pas déjà, et
+     * l'élève qui regarde l'aperçu est exactement celui-là.
+     *
+     * ET IL MONTRE LA FIGURE, comme partout ailleurs : `data-montrer` désigne
+     * le rayon sur le disque, et la bulle vient s'y accrocher pendant qu'on en
+     * parle. C'est le même canal générique que la saisie au clavier — aucune
+     * figure n'est nommée ici.
+     */
+    async function runDemoChoix(item) {
+        const boutons = [...container.querySelectorAll('[data-choix-i]')];
+        const i = (item.choices || []).findIndex(c => c.correct);
+        const el = boutons[i];
+        if (!el) { regTimeout(renderNext, DEMO_SPEED.between); return; }
+
+        if (!cursor) cursor = createDemoCursor();
+        if (!gate) gate = createDemoGate(container);
+
+        // LA BULLE NE SE POSE PAS SUR CE DONT ELLE PARLE. Ancrée aux
+        // propositions, elle recouvrait les deux premières — dont la bonne, que
+        // le doigt allait chercher. On déclare donc intouchables l'énoncé, sa
+        // figure et le groupe de propositions : la bulle se range autour.
+        cursor.protegerZone([container.querySelector('.numpad-context'),
+            container.querySelector('.np-choix')].filter(Boolean));
+
+        if (!await gate.waitTurn() || destroyed) return;
+        if (!await cursor.pause(600) || destroyed) return;
+
+        const contexte = container.querySelector('.numpad-context');
+        cursor.say(phraseDepart(item), contexte || container);
+        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+
+        const montre = container.querySelector('[data-montrer]');
+        const indiceFigure = (item.hints || [])[1];
+        if (montre && tientEnUneBulle(indiceFigure)) {
+            if (!await gate.waitTurn() || destroyed) return;
+            cursor.say(indiceFigure.trim(), montre);
+            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        }
+
+        // LE CALCUL, ET IL DÉSIGNE LES PROPOSITIONS EN LE DISANT : c'est parmi
+        // elles qu'on va chercher le résultat, et la bulle le dit en pointant
+        // là où le doigt ira.
+        const dernier = (item.hints || [])[2] || (item.hints || [])[1];
+        if (tientEnUneBulle(dernier)) {
+            if (!await gate.waitTurn() || destroyed) return;
+            cursor.say(dernier.trim(), el.parentElement || el);
+            if (!await cursor.pause(DEMO_SPEED.press) || destroyed) return;
+        }
+
+        if (!await gate.waitTurn() || destroyed) return;
+        if (!await cursor.tap(el, 480) || destroyed) return;
+        el.classList.add('np-choix-btn--ok', 'demo-target');
+        boutons.forEach(b => { b.disabled = true; });
+
+        if (!await gate.waitTurn() || destroyed) return;
+        cursor.say(phraseFin(item), el);
+        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        renderNext();
+    }
+
     async function runDemo(target, setBuffer, screen, item) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);

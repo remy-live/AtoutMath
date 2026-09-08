@@ -150,7 +150,21 @@ export class ItemSession {
             total: this.nbItems || null,
             // Certains générateurs posent une question différente selon ce que
             // l'activité sait afficher (placer un point vs lire ses coordonnées).
-            preferredKind: this.preferredKind
+            preferredKind: this.preferredKind,
+            // C'EST LE ROBOT QUI JOUE, et un générateur peut vouloir le savoir.
+            //
+            // Rémy, sur les Fonctions : « Commence par des calculs d'images
+            // pour le robot ». La démonstration n'est pas une partie : c'est le
+            // moment où l'on montre CE QU'ON DEMANDE, à quelqu'un qui ne le
+            // sait pas encore. Un exercice qui pose sept sortes de questions
+            // tirées au sort ouvrait donc une fois sur sept sur la plus dure —
+            // et le robot expliquait un antécédent à un élève qui n'avait pas
+            // encore vu calculer une image.
+            //
+            // Le drapeau ne change rien à la partie de l'élève : c'est
+            // exactement la même logique que `papier`, où le générateur sait
+            // pour qui il écrit sans que l'écran en soit modifié.
+            demo: this.isDemo
         });
 
         // Une activité qui ne sait afficher que des choix peut quand même

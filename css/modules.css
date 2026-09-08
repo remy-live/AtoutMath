@@ -1207,6 +1207,35 @@
 }
 .np-outil svg { max-width: 100%; height: auto; }
 
+/* LE TABLEAU DE NUMÉRATION, ouvert par le bouton de la Chasse au Chiffre.
+   Il est VIDE : c'est l'élève qui y place son nombre. Les colonnes sont donc
+   toutes de la même largeur — un chiffre par case — et la seule chose que le
+   dessin ajoute est la frontière de la virgule, en rouge, entre les unités et
+   les dixièmes. Le panneau des outils centre son contenu et peut être étroit
+   sur téléphone : le cadre défile alors horizontalement plutôt que d'écraser
+   sept colonnes en sept traits. */
+.tn-cadre { width: 100%; overflow-x: auto; display: flex; justify-content: center; }
+.tn-tab {
+    border-collapse: collapse; margin: 2px auto; table-layout: fixed;
+    border: 2px solid var(--border); border-radius: 8px;
+}
+.tn-tab th, .tn-tab td {
+    border: 1px solid var(--border); width: 3.1em; padding: 0;
+    text-align: center; vertical-align: middle;
+}
+.tn-tab th {
+    font-size: .66rem; font-weight: 700; color: var(--text-muted);
+    line-height: 1.15; padding: 5px 2px; white-space: nowrap;
+}
+.tn-tab td { height: 2.4em; }
+.tn-tab .tn-dec { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+/* La virgule ne vit pas DANS une colonne : elle SÉPARE les unités des
+   dixièmes. On la dessine donc sur le bord droit de la colonne des unités —
+   et le sélecteur doit être aussi précis que celui des cellules ordinaires,
+   sinon la bordure grise de « th, td » l'emporte et le trait disparaît. */
+.tn-tab .tn-avant-virgule { border-right: 3px solid var(--danger); }
+.tn-mot { margin: 8px 0 0; font-size: .78rem; color: var(--text-muted); line-height: 1.35; }
+
 /* LES TROIS MOTS DE L'ARRONDI. Même besoin que le rappel de π ci-dessous : le
    panneau des outils centre son contenu, et une définition en trois points se
    lit alignée à gauche. L'encadrement, lui, est la figure — il se centre. */

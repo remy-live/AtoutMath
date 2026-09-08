@@ -211,25 +211,53 @@ export function expliquer(t) {
     }
 }
 
-/** Trois indices, du sens vers le calcul, sans jamais poser le résultat. */
+/**
+ * Trois indices, du sens vers le calcul, sans jamais poser le résultat.
+ *
+ * LE TROISIÈME POSE L'OPÉRATION, ET C'EST LUI QUE LE ROBOT DIT.
+ *
+ * Rémy : « Le robot n'aide pas et j'aimerai qu'il aide sur un calcul d'aire et
+ * de périmètre exact ». Il disait « La valeur exacte garde le π : on écrit le
+ * nombre devant, puis π » — une règle d'ÉCRITURE, vraie, et qui ne calcule
+ * rien. L'élève qui ne sait pas trouver 25π n'a pas un problème de notation.
+ *
+ * Le calcul y est donc écrit avec le rayon de la question — « π × 5 × 5 » —,
+ * et le résultat n'y est pas : c'est la dernière marche que l'élève fait
+ * lui-même. C'est exactement ce que fait le dernier indice partout ailleurs
+ * (voir `phraseCalcul` dans activities/numeric.js, qui le prononce juste avant
+ * de répondre).
+ *
+ * ET LE PREMIER INDICE PARLE DE LA GRANDEUR QU'ON DEMANDE. Sur l'étape des
+ * formules, les trois phrases étaient les mêmes pour l'aire et pour le
+ * périmètre : on lisait donc « Une surface se mesure en cm² » sous une question
+ * qui portait sur un périmètre. L'indice doit dire quelque chose de CETTE
+ * question ; le rappel des deux formules, lui, reste commun — c'est justement
+ * de choisir entre elles qu'il s'agit.
+ */
 export function indicesDe(t) {
+    const surLAire = t.surLAire;
     if (t.marche === 'formule') {
         return [
-            'Un périmètre est une longueur ; une aire est une surface.',
-            'Une surface se mesure en cm² : sa formule porte donc un carré.',
+            surLAire
+                ? 'Une aire est une SURFACE : la place que le disque occupe.'
+                : 'Un périmètre est une LONGUEUR : le tour du disque.',
+            surLAire
+                ? 'Une surface se mesure en cm² : sa formule porte donc un carré.'
+                : 'Une longueur se mesure en cm : sa formule ne porte pas de carré.',
             'Périmètre : 2 × π × r. Aire : π × r × r.'
         ];
     }
-    const surLAire = t.surLAire;
+    const r = ecrireNombre(t.r);
     return [
         surLAire ? 'L’aire d’un disque vaut π × r × r.' : 'Le périmètre d’un disque vaut 2 × π × r.',
         t.marche === 'diametre'
             ? `Le rayon est la moitié du diamètre : ${ecrireNombre(t.d)} ÷ 2.`
-            : `Ici le rayon vaut ${ecrireNombre(t.r)} ${t.unite}.`,
+            : `Ici le rayon vaut ${r} ${t.unite}.`,
         ETAPES_EXACTES.includes(t.marche)
-            ? 'La valeur exacte garde le π : on écrit le nombre devant, puis π.'
-            : `Prends la calculatrice, et arrondis ${t.decimales ? 'au dixième' : 'à l’unité'} `
-                + 'à la fin — jamais avant.'
+            ? `Pose le calcul : ${surLAire ? `π × ${r} × ${r}` : `2 × π × ${r}`}. `
+                + 'Multiplie les nombres entre eux, et garde le π derrière.'
+            : `Calculatrice : ${surLAire ? `π × ${r} × ${r}` : `2 × π × ${r}`}, `
+                + `et arrondis ${t.decimales ? 'au dixième' : 'à l’unité'} à la fin — jamais avant.`
     ];
 }
 

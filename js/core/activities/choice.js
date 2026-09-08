@@ -14,6 +14,7 @@ import { regTimeout } from '../timers.js';
 import { state } from '../state.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { aideSelonEtat, reduireChoix } from '../aide.js';
+import { barreOutils, boiteOutils, brancherOutils } from './outils.js';
 
 /**
  * Ce que le robot dit avant de choisir, et après avoir choisi.
@@ -247,7 +248,13 @@ export function mount(container, session, opts = {}) {
         const context = opts.context ? opts.context(item) : '';
         const mot = avisRetour ? `<div class="choice-avis">${avisRetour}</div>` : '';
         avisRetour = '';
-        container.innerHTML = `${mot}${item.prompt.html}${context}${wrapped}${hintBar(session)}`;
+        // LES OUTILS S'INTERCALENT ENTRE L'ÉNONCÉ ET LES PROPOSITIONS.
+        // Rémy, sur la Chasse au Chiffre : « on pourrait proposer un bouton
+        // pour afficher un tableau de numération pour placer son nombre ». Le
+        // rappel parle de CE QU'ON LIT : il se range du côté de l'énoncé, et
+        // non sous les bulles où il passerait pour une quatrième réponse.
+        container.innerHTML = `${mot}${item.prompt.html}${barreOutils(item)}`
+            + `${boiteOutils(item)}${context}${wrapped}${hintBar(session)}`;
 
         const cells = [...container.querySelectorAll(`[data-idx]`)];
 
@@ -275,6 +282,7 @@ export function mount(container, session, opts = {}) {
         }
 
         wireHint(container, session);
+        brancherOutils(container, item);
         // « Montre-moi » sur les choix : en plus du texte, la bonne case
         // s'illumine — l'élève n'a plus qu'à faire le geste dessus.
         wireShowMe(container, session, {

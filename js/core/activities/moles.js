@@ -166,7 +166,14 @@ export function mount(container, session, opts = {}) {
             mole.classList.remove('mole--ok', 'mole--ko');
             mole.classList.add('mole--up');
         }
-        cursor.say(`La bonne réponse est ${item.answer} : je ne frappe QUE cette taupe-là.`, holes[bonIdx]);
+        // « CE N'EST PAS DES TAUPES, METS "JE TOUCHE ICI" » — Rémy, en regardant
+        // le robot. Il a raison, et c'est un défaut d'ÉCRAN autant que de mot :
+        // rien ne sort d'un trou, on voit des ronds gris et un rond bleu qui
+        // porte un nombre. Le robot parlait d'un animal que personne n'a sous
+        // les yeux, et « je ne frappe QUE cette taupe-là » demandait de deviner
+        // laquelle. Il montre ce qu'il fait, avec le mot du geste : il touche,
+        // et il touche ICI — la bulle pointe le rond dont elle parle.
+        cursor.say(`La bonne réponse est ${item.answer} : je touche ici.`, holes[bonIdx]);
         if (!await cursor.pause(1600) || destroyed || gen !== generation) return;
         if (!await cursor.tap(holes[bonIdx]) || destroyed || gen !== generation) return;
         holes[bonIdx].querySelector('[data-mole]').classList.add('mole--ok');

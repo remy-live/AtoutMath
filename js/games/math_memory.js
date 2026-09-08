@@ -123,14 +123,38 @@ class MathMemory extends BaseGame {
         const cols = meilleuresColonnes(n, largeur, hauteur, gap);
         const { largeurCarte, hauteurCarte } = mesurerCarte(n, cols, largeur, hauteur, gap);
 
-        this.gridEl.style.setProperty('--mem-gap', `${gap.toFixed(1)}px`);
-        this.gridEl.style.setProperty('--mem-w', `${largeurCarte.toFixed(1)}px`);
-        this.gridEl.style.setProperty('--mem-h', `${hauteurCarte.toFixed(1)}px`);
+        // LES TROIS MESURES SONT ARRONDIES ENSEMBLE, ET LE PLATEAU SE CALCULE
+        // SUR LES VALEURS ARRONDIES.
+        //
+        // Rémy : « avec le robot sur ordi on ne voit pas toutes les cartes ».
+        // MESURÉ, sur une fenêtre de 1440 × 780 : cartes de 216,5 px, six par
+        // rangée, plateau annoncé à 1368,8 — et six cartes en occupent 1369,0.
+        // DEUX DIXIÈMES DE PIXEL de trop : la sixième passait à la ligne, le
+        // plateau se rangeait en 5 + 5 + 2 au lieu de 6 + 6, sa hauteur montait
+        // à 887 px dans une arène qui en fait 632, et l'arène — qui masque ce
+        // qui déborde — coupait le tiers des cartes. Invisible à l'œil sur le
+        // code, imparable à l'écran.
+        //
+        // Le plateau se calcule donc sur les nombres RÉELLEMENT écrits dans le
+        // style, plus un demi-pixel de battement : ce qui est arrondi d'un côté
+        // doit l'être de l'autre, sans quoi les deux ne parlent pas de la même
+        // largeur.
+        // EN PIXELS ENTIERS, et c'est ce qui referme le trou pour de bon. Un
+        // dixième de pixel écrit dans une variable CSS se rend en sous-pixels,
+        // et la comparaison « six cartes tiennent-elles ? » se joue alors sur
+        // des arrondis que personne ne contrôle. Des entiers, et la somme est
+        // la somme.
+        const w = Math.floor(largeurCarte);
+        const h = Math.floor(hauteurCarte);
+        const e = Math.round(gap);
+        this.gridEl.style.setProperty('--mem-gap', `${e}px`);
+        this.gridEl.style.setProperty('--mem-w', `${w}px`);
+        this.gridEl.style.setProperty('--mem-h', `${h}px`);
         // Le plateau est bridé à la largeur d'une rangée pleine : c'est ce qui
         // fait passer les cartes à la ligne au bon endroit, la dernière rangée
         // se centrant alors d'elle-même.
         this.gridEl.style.setProperty('--mem-largeur-plateau',
-            `${(largeurCarte * cols + gap * (cols - 1)).toFixed(1)}px`);
+            `${w * cols + e * (cols - 1) + 2}px`);
         // Le texte suit la carte : « 10 × 10 » fait sept caractères, on vise
         // donc un peu moins du quart de la largeur, borné pour rester lisible.
         const police = Math.max(11, Math.min(30, Math.min(largeurCarte * 0.23, hauteurCarte * 0.42)));
