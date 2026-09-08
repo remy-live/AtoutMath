@@ -719,6 +719,7 @@ export function composerBlocs(exos, opts, mesurer) {
             }
             y += o.apresBandeau;
 
+            const tousLesBlocs = grilles.map(g => g.item);
             for (let debut = 0; debut < grilles.length; debut += parLigne) {
                 const rangee = grilles.slice(debut, debut + parLigne);
                 if (y + hauteurBloc2 + entreRangees > basPage) {
@@ -748,6 +749,20 @@ export function composerBlocs(exos, opts, mesurer) {
                         // calculs du 33 ». Le rang est celui du tirage, pas
                         // celui de la page : c'est lui qui indexe les retouches.
                         exoId: exo.id ?? null, iQ: debut + i,
+                        // TOUS LES BLOCS DE L'EXERCICE, ATTACHÉS À CHACUN.
+                        //
+                        // Plusieurs rendus se règlent sur l'ENSEMBLE de la
+                        // feuille et non sur le bloc qu'ils dessinent : les
+                        // hiéroglyphes pour que le même bâton fasse la même
+                        // taille partout, les disques et les rectangles pour
+                        // que la plus grande figure donne l'échelle des
+                        // autres. La fiche d'un exercice seul leur passait la
+                        // liste ; celle d'un parcours ne la passait pas, et
+                        // chaque bloc se calculait tout seul — d'où des signes
+                        // deux fois plus petits d'une case à l'autre et des
+                        // lignes de réponse à des hauteurs différentes.
+                        // Rémy : « pourquoi ce décalage ? »
+                        tous: tousLesBlocs,
                         x: gx, y, taille: cote,
                         // La boîte complète, pour les treillis larges (Garam)
                         // et les blocs qui ne sont pas carrés du tout.

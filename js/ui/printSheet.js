@@ -7141,7 +7141,7 @@ function geoRectangle(item, slot, tous) {
     // commune à tous les blocs — c'est elle qui fait qu'un 4 cm se voit plus
     // court qu'un 10 cm, et sur une fiche de géométrie c'est le dessin qui
     // ment en premier —, mais elle n'est plus bridée par un cas absent.
-    const metas = (tous && tous.length ? tous : [item]).map(it => it.meta || {});
+    const metas = blocsVoisins(item, slot, tous).map(it => it.meta || {});
     const hautMax = Math.max(m.l, ...metas.map(x => Number(x.l) || 0));
     const ech = Math.min(dispoW / grand, dispoH / Math.max(1, hautMax));
     const w = m.L * ech, h = m.l * ech;
@@ -7303,7 +7303,7 @@ function geoTriangle(item, slot, tous) {
     const dispoW = Math.max(6, b.w - 2 * marge);
     const dispoH = Math.max(6, zone - 2 * marge);
 
-    const metas = (tous && tous.length ? tous : [item]).map(it => it.meta || {});
+    const metas = blocsVoisins(item, slot, tous).map(it => it.meta || {});
     const etendues = metas.map(x => etendueTriangle(x));
     const grandW = Math.max(...etendues.map(e => e.w), 1);
     const grandH = Math.max(...etendues.map(e => e.h), 1);
@@ -7515,7 +7515,7 @@ function geoDisque(item, slot, tous) {
     const marge = police * 1.6;
     const dispo = Math.max(6, Math.min(b.w, zone) - 2 * marge);
 
-    const metas = (tous && tous.length ? tous : [item]).map(it => it.meta || {});
+    const metas = blocsVoisins(item, slot, tous).map(it => it.meta || {});
     const grand = Math.max(...metas.map(x => Number(x.r) || 1), 1);
     // « QUELLE FORMULE ? » NE PARLE D'AUCUN DISQUE PARTICULIER : sa figure porte
     // « r », pas une mesure. La dessiner à l'échelle du rayon tiré ferait deux
@@ -7541,7 +7541,15 @@ function geoDisque(item, slot, tous) {
 
 /** La question, en trois mots, écrite en tête de case. */
 function titreDisque(m) {
-    if (m.marche === 'formule') return 'Quelle formule ?';
+    // LAQUELLE DES DEUX ? Rémy, sur la feuille : « tu demandes quelle formule,
+    // mais est-ce l'aire ou le périmètre ? » La case disait « Quelle
+    // formule ? » et rien d'autre — deux blocs voisins posaient donc la même
+    // question, l'un attendant 2 × π × r et l'autre π × r × r, et l'élève ne
+    // pouvait pas savoir lequel était lequel. L'écran, lui, l'a toujours dit :
+    // « Quelle formule donne le périmètre d'un disque de rayon r ? »
+    if (m.marche === 'formule') {
+        return m.surLAire ? 'Formule de l’aire ?' : 'Formule du périmètre ?';
+    }
     const exact = DISQUE_EXACTES.includes(m.marche);
     return `${m.surLAire ? 'Aire' : 'Périmètre'}${exact ? ' exact' : ' arrondi'}${m.surLAire && exact ? 'e' : ''} ?`;
 }
@@ -10175,6 +10183,29 @@ function tracesDuGlyphe(valeur) {
     return out;
 }
 
+/**
+ * LES BLOCS AVEC LESQUELS CELUI-CI PARTAGE SON ÉCHELLE.
+ *
+ * Quatre rendus ne se règlent pas sur le bloc qu'ils dessinent mais sur toute
+ * la feuille : les hiéroglyphes, pour que le même bâton fasse la même taille
+ * partout ; les disques, les rectangles et les triangles, pour que la plus
+ * grande figure donne l'échelle des autres.
+ *
+ * DEUX FEUILLES LES APPELLENT, ET UNE SEULE LEUR DISAIT. La fiche d'un
+ * exercice seul passe la liste en dernier argument (voir l'appel de
+ * `previewGrille`) ; celle d'un parcours ne la passait pas du tout, et chaque
+ * bloc se calculait alors comme s'il était seul — d'où des signes deux fois
+ * plus petits d'une case à l'autre, et des lignes de réponse à des hauteurs
+ * différentes. Rémy : « pourquoi ce décalage ? » La liste voyage maintenant
+ * aussi dans l'emplacement, et l'on regarde les deux.
+ */
+function blocsVoisins(item, slot, tous) {
+    if (tous && tous.length) return tous;
+    const dansLEmplacement = slot && slot.tous;
+    if (dansLEmplacement && dansLEmplacement.length) return dansLEmplacement;
+    return [item];
+}
+
 // --- LES NOMBRES DES PHARAONS, SUR LE PAPIER ------------------------------------
 
 /**
@@ -10254,7 +10285,22 @@ function geoEgypte(item, slot, tous) {
     // droite est la ligne à remplir, et c'est ELLE qui a une longueur
     // minimale — pas la place du dessin.
     const PART_GLYPHES = 0.72;
-    const REPONSE_MIN = 22;
+    // LA LIGNE DE RÉPONSE PREND CE QU'IL LUI FAUT, PAS UN MILLIMÈTRE DE PLUS.
+    //
+    // Elle était fixée à 22 mm — la place d'« 1 000 000 », le plus long nombre
+    // que l'exercice sache produire. Mais une feuille réglée « jusqu'à 10 000 »
+    // n'écrit jamais que six signes, et les cinq millimètres de rien qu'on
+    // gardait au bout étaient pris aux glyphes : ce sont eux que la LARGEUR
+    // bride, et Rémy l'a déjà dit deux fois — « utilise bien la largeur »,
+    // « trop petits les hiéroglyphes ».
+    //
+    // On mesure donc sur le plus long nombre DE CETTE FEUILLE, comme on le
+    // fait déjà pour la taille des signes et pour le corps du nombre. Douze
+    // millimètres au plancher : en dessous, on n'écrit plus, on coince.
+    const CORPS_REPONSE = 4.2;
+    const plusLongTotal = Math.max(...blocsVoisins(item, slot, tous)
+        .map(it => nombreEspace((it.meta || {}).total ?? 0).length));
+    const REPONSE_MIN = Math.max(12, plusLongTotal * CORPS_REPONSE * 0.55 + 3);
     const largeurTexte = b.w * (ecrire ? LARGEUR_NOMBRE : PART_GLYPHES);
     // Le corps est calculé sur le PLUS LONG nombre possible — « 1 000 000  = »,
     // douze signes — et non sur celui qu'on a sous la main : sinon un nombre
@@ -10291,32 +10337,43 @@ function geoEgypte(item, slot, tous) {
     // CETTE FEUILLE — pas un pire cas théorique à trente-six signes, qui
     // rapetisserait tout le monde pour un nombre qui n'y est pas.
     //
-    // ET LE NOMBRE DE SIGNES PAR LIGNE SE CHOISIT, IL N'EST PLUS FIXÉ À DOUZE.
+    // UN NOMBRE S'ÉCRIT SUR UNE SEULE LIGNE. Rémy : « il faut que les
+    // hiéroglyphes soient sur la même ligne. »
     //
-    // Rémy : « trop petits les hiéroglyphes ». Ils l'étaient, et pour une
-    // raison arithmétique : à douze signes par ligne, le nombre le plus large
-    // de la feuille tenait sur UNE ligne de neuf cases, la largeur bridait
-    // tout le monde — et les deux tiers de la hauteur du bloc restaient
-    // blancs. Replier à six signes par ligne double la hauteur employée et,
-    // MESURÉ sur une feuille de trois colonnes, fait passer la case de 6,4 mm
-    // à 10,9. Le pli qui convient dépend de la feuille : on essaie tous les
-    // replis et l'on garde celui qui donne les plus grands signes. C'est le
-    // même calcul que celui de la disposition, à l'échelle d'un bloc.
-    const items = (tous && tous.length ? tous : [item]);
-    const cellPour = (mpl) => {
-        const ps = items.map(it => placerGlyphes((it.meta && it.meta.symboles) || [],
-            { maxParLigne: mpl }));
-        const refL = Math.max(...ps.map(x => x.largeur));
-        const refH = Math.max(...ps.map(x => x.lignes + (x.lignes - 1) * INTERLIGNE));
-        return Math.min(largeurGlyphes / (refL + 0.3), hDispo / (refH + 0.3), ecrire ? 16 : 20);
-    };
-    let parLigne = 12, cell = cellPour(12);
-    for (let mpl = 11; mpl >= 3; mpl--) {
-        const c = cellPour(mpl);
-        if (c > cell + 1e-6) { cell = c; parLigne = mpl; }
-    }
+    // On repliait, et pour une bonne raison : à douze signes par ligne les
+    // signes étaient bornés par la largeur, les deux tiers de la hauteur du
+    // bloc restaient blancs, et Rémy avait dit « trop petits les
+    // hiéroglyphes ». Replier à six doublait la case — mesuré, de 6,4 mm à
+    // 10,9 sur une feuille de trois colonnes.
+    //
+    // MAIS UN NOMBRE REPLIÉ N'EST PLUS UN NOMBRE. « ⟩⟩ 𓍢𓍢𓍢𓍢 » sur une
+    // ligne et « | | » sur la suivante, ce sont deux paquets de signes qu'il
+    // faut additionner ensemble alors que la mise en page les sépare — et
+    // c'est précisément le geste que l'exercice apprend. Le blanc gagné en
+    // hauteur se payait en lisibilité.
+    //
+    // La vraie réponse à « trop petits » n'était pas le pli, c'était la
+    // LARGEUR DU BLOC : le rendu dit déjà « jamais trois colonnes », et c'est
+    // ce plafond-là qui garde les signes grands (voir `disposition.maxCols`).
+    const items = blocsVoisins(item, slot, tous);
+    const parLigne = Infinity;
+    const plans = items.map(it => placerGlyphes((it.meta && it.meta.symboles) || [],
+        { maxParLigne: parLigne }));
+    const refL = Math.max(...plans.map(x => x.largeur));
+    const refH = Math.max(...plans.map(x => x.lignes + (x.lignes - 1) * INTERLIGNE));
+    const cell = Math.min(largeurGlyphes / (refL + 0.3), hDispo / (refH + 0.3), ecrire ? 16 : 20);
     plan = placerGlyphes(m.symboles, { maxParLigne: parLigne });
-    hautCases = plan.lignes + (plan.lignes - 1) * INTERLIGNE;
+    // TOUS LES BLOCS DE LA FEUILLE PARTAGENT LEUR LIGNE DE BASE.
+    //
+    // Rémy, sur les nombres à écrire en hiéroglyphes : « pourquoi ce décalage ? »
+    // La hauteur se calculait sur les glyphes de CE bloc-ci, si bien que deux
+    // questions voisines n'avaient pas leurs pointillés à la même hauteur. Et
+    // dans le sens « écrire », c'était absurde deux fois : rien n'y est dessiné,
+    // et pourtant la place d'un dessin absent décalait le nombre.
+    //
+    // La hauteur est donc celle du PLUS HAUT de la feuille — la même pour tous,
+    // comme le corps du nombre et la taille des signes le sont déjà.
+    hautCases = refH;
     // La ligne de base : sous les glyphes en « lire », sous le nombre en
     // « écrire ». Dans les deux cas, TOUT est dessus.
     const hautGlyphes = hautCases * cell;
@@ -14811,11 +14868,19 @@ export const RENDUS = {
         consigne: (items) => {
             const exact = (items || []).some(it => DISQUE_EXACTES.includes((it.meta || {}).marche));
             const arrondi = (items || []).some(it => !DISQUE_EXACTES.includes((it.meta || {}).marche));
+            // LA CONSIGNE NE DONNE PAS LA RÉPONSE D'UNE QUESTION DE LA FEUILLE.
+            //
+            // Le rappel « Périmètre = 2 × π × r, aire = π × r × r » aide à
+            // CALCULER une valeur exacte, et c'est très bien quand c'est ce
+            // qu'on demande. Mais la première étape du chapitre demande
+            // justement LA FORMULE : quand elle est sur la même feuille, le
+            // rappel est la réponse, imprimée trois centimètres plus haut.
+            const demandeLaFormule = (items || []).some(it => (it.meta || {}).marche === 'formule');
             const commun = 'La mesure donnée est écrite sur la figure — regarde bien s\'il '
                 + 's\'agit du RAYON ou du DIAMÈTRE. ';
             if (exact && !arrondi) {
-                return `${commun}Donne la valeur EXACTE : on garde le π, on n\'arrondit pas. `
-                    + 'Périmètre = 2 × π × r, aire = π × r × r.';
+                return `${commun}Donne la valeur EXACTE : on garde le π, on n\'arrondit pas.`
+                    + (demandeLaFormule ? '' : ' Périmètre = 2 × π × r, aire = π × r × r.');
             }
             if (arrondi && !exact) {
                 return `${commun}Donne la valeur ARRONDIE : le périmètre au dixième, l\'aire à `

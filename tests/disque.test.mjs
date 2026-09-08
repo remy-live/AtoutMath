@@ -18,6 +18,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
+import { RENDUS } from '../js/ui/printSheet.js';
 import {
     MARCHES_DISQUE, ETAPES_EXACTES, PI_COLLEGE, arrondiStable, arrondir, decimalesDe,
     tirerDisque, enonceDe, reponseDe, uniteDe, expliquer, indicesDe, leurresDe,
@@ -372,4 +373,24 @@ test('LA COTE DU RAYON EST UNE LONGUEUR, JAMAIS UNE AIRE', () => {
         if (it.meta.surLAire) vuesAires++;
     }
     assert.ok(vuesAires > 0, 'on doit avoir croisé des questions d\'aire');
+});
+
+// Rémy, sur la feuille : « tu demandes quelle formule, mais est-ce l'aire ou le
+// périmètre ? » La case ne le disait pas, et la consigne, elle, donnait les deux
+// formules — c'est-à-dire la réponse, imprimée trois centimètres plus haut.
+test('LA CONSIGNE NE RAPPELLE PAS LES FORMULES QUAND LA FEUILLE LES DEMANDE', () => {
+    const item = (marche) => ({ meta: { marche } });
+    const consigne = RENDUS.disque.consigne;
+
+    // Une feuille de valeurs exactes SANS la question des formules : le rappel
+    // sert à calculer, il reste.
+    const sansFormule = consigne([item('perimetre-exact'), item('aire-exacte')]);
+    assert.ok(/2 × π × r/.test(sansFormule), `le rappel manque : « ${sansFormule} »`);
+
+    // La même feuille AVEC la question des formules : le rappel est la réponse.
+    const avecFormule = consigne([item('formule'), item('perimetre-exact')]);
+    assert.equal(/2 × π × r/.test(avecFormule), false,
+        `la consigne donne la réponse : « ${avecFormule} »`);
+    assert.equal(/π × r × r/.test(avecFormule), false,
+        `la consigne donne la réponse : « ${avecFormule} »`);
 });

@@ -701,6 +701,14 @@ export function apercuItems(page, k, o) {
                 html += r.previewGrille(it.item,
                     { x: it.x, y: it.y, taille: it.taille, boite: it.boite,
                         numero: r.numeroInterne ? it.n : null,
+                        // CE QUE LE BLOC A AUTOUR DE LUI. Quatre rendus se
+                        // règlent sur l'ensemble de l'exercice — l'échelle des
+                        // figures, la taille des hiéroglyphes, la ligne de base
+                        // commune. La feuille d'un exercice seul leur passe la
+                        // liste en argument ; ici elle voyage dans
+                        // l'emplacement, qui est déjà le sac de ce qu'un rendu
+                        // peut vouloir savoir de sa place.
+                        tous: it.tous || null, rang: it.iQ ?? null,
                         // DE QUELLE GRILLE IL S'AGIT, pour les rendus qui
                         // savent se faire récrire (`retoucheGrille`). Posé dans
                         // l'emplacement plutôt qu'en argument de plus : les
@@ -1346,7 +1354,8 @@ export function pdfItems(pdf, page, o) {
                     : null;
                 r.pdfGrille(pdf, it.item,
                     { x: it.x, y: it.y, taille: it.taille, boite: it.boite,
-                        numero: r.numeroInterne ? it.n : null },
+                        numero: r.numeroInterne ? it.n : null,
+                        tous: it.tous || null, rang: it.iQ ?? null },
                     !!o.solution, champ);
             }
             continue;
