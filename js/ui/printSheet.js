@@ -2093,8 +2093,8 @@ const largeurTexte = (s, pt) => String(s).length * pt * 0.48 * 0.3528;
  */
 const policeTexteLogi = (largeur) => Math.min(Math.max(8, largeur * 0.075), 11.5);
 
-function hauteurTexteLogi(p, largeur) {
-    const pt = policeTexteLogi(largeur);
+function hauteurTexteLogi(p, largeur, corps) {
+    const pt = corps || policeTexteLogi(largeur);
     const lignes = (s, taille, l) => Math.max(1, Math.ceil(largeurTexte(s, taille) / Math.max(10, l)));
     let h = pt * 0.5 + lignes(p.decor, pt * 0.95, largeur) * pt * 0.45 + 1.5;
     p.indices.forEach((ind, k) => {
@@ -2170,7 +2170,17 @@ function geometrieLogi(item, boite) {
     // de magazine ; les mettre côte à côte pour gagner un millimètre de case
     // change la feuille sans que personne l'ait demandé.
     const empile = coteB >= coteA * 0.85;
-    const cote = Math.max(3, empile ? coteB : coteA);
+    // ET LA GRILLE NE DÉPASSE PAS NON PLUS. `ajuster` converge en deux passes,
+    // ce qui suffit presque toujours : la bande d'étiquettes grandit avec les
+    // cases, et si la dernière passe la fait grandir encore, la somme
+    // « bandeau + bande + cases » repasse au-dessus de la place. Douze pixels
+    // de trop, et le bandeau des lignes s'imprimait sur la rangée suivante.
+    // On finit donc par une vérification, qui ne peut que réduire.
+    const placeH = boite.h - (empile ? texteH + 3 : 0);
+    let cote = Math.max(3, empile ? coteB : coteA);
+    for (let i = 0; i < 4 && bandeau + bandeDe(cote) + ny * cote > placeH; i++) {
+        cote = Math.max(3, (placeH - bandeau - bandeDe(cote)) / ny);
+    }
     const etiq = etiqDe(cote);
     const entete = bandeau + bandeDe(cote);
     const largeurTotale = bandeau + etiq + cote * nx;
@@ -2190,8 +2200,29 @@ function geometrieLogi(item, boite) {
         y0: yZone + entete + 1,
         empile, indicesW,
         // Le corps du texte suit la largeur qui lui est vraiment donnée.
-        pt: policeTexteLogi(indicesW)
+        // ET IL NE DÉPASSE PAS DU BLOC. La hauteur du texte se mesurait sur la
+        // largeur du BLOC, alors qu'en côte à côte il s'écrit dans une colonne
+        // deux fois plus étroite : deux fois plus de lignes, et l'histoire du
+        // premier logigramme descendait par-dessus le titre du quatrième. On
+        // rétrécit donc le corps jusqu'à ce que le texte tienne dans la place
+        // qu'il a — la même règle que partout ailleurs sur cette feuille, et
+        // celle qui manquait ici.
+        pt: corpsTexteLogi(p, indicesW, empile ? texteH : boite.h)
     };
+}
+
+/**
+ * LE CORPS QUI FAIT TENIR L'HISTOIRE ET SES INDICES DANS LA PLACE DONNÉE.
+ *
+ * On part de ce que la largeur permet, et l'on descend tant que ça déborde —
+ * jamais sous sept points, en dessous desquels un indice ne se lit plus.
+ */
+function corpsTexteLogi(p, largeur, hauteur) {
+    let pt = policeTexteLogi(largeur);
+    for (let i = 0; i < 8 && pt > 7 && hauteurTexteLogi(p, largeur, pt) > hauteur; i++) {
+        pt *= 0.92;
+    }
+    return Math.max(7, pt);
 }
 
 const logiVisible = (r, c) => r === 0 || c < r;
@@ -14109,7 +14140,14 @@ export const RENDUS = {
         // la page entière —, et à une ou deux démonstrations par ligne la
         // proportion tombe déjà sur 113 : ce plancher ne change donc rien
         // ailleurs, il rattrape le seul cas où elle passait dessous.
-        hauteurMin: 113,
+        //
+        // CENT DIX-NEUF, ET NON CENT TREIZE. Le premier compte supposait un
+        // énoncé sur DEUX lignes. « (DE) // (CB). On donne AE = 20 cm, AB = 24
+        // cm, AC = 30 cm. Calcule AD. » en prend trois dans une colonne de
+        // cinquante-sept millimètres, et la sonde des feuilles de parcours
+        // rattrapait encore six pixels de débordement. Une ligne d'énoncé de
+        // plus, et la marge qui va avec.
+        hauteurMin: 119,
         titreAGauche: true
     },
 
@@ -15562,6 +15600,20 @@ export const RENDUS = {
         // Assez haut pour la grille et ses indices, assez court pour en poser
         // DEUX sur une page : un logigramme par feuille serait du gâchis.
         proportions: { w: 1, h: 0.47 },
+        // ET UN PLANCHER, comme la rédaction de Thalès.
+        //
+        // Mesuré dans un parcours à trois par ligne : le bloc tombait à 26,9 mm
+        // de haut, les cases atteignaient leur plancher de 3 mm — on ne coche
+        // ni ne barre dans trois millimètres — et le bandeau des lignes
+        // s'imprimait par-dessus la rangée suivante. Une proportion ne parle
+        // que de forme et se laisse écraser ; ce qu'il faut ici est une
+        // hauteur.
+        //
+        // Le compte : la bande du haut et ses étiquettes (16 mm), puis neuf
+        // rangées de cases — trois catégories de trois valeurs, le format le
+        // plus courant — à six millimètres, la plus petite case où un crayon
+        // pose une croix sans déborder. Soit soixante-dix.
+        hauteurMin: 70,
         parLigneDefaut: 1,
         // SUR LA FICHE AUTONOME : deux colonnes, une seule rangée. La page est
         // en paysage, un logigramme est HAUT (son énigme au-dessus de sa

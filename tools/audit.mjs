@@ -445,6 +445,159 @@ async function tourHorsLigne(nav) {
     return { combien: 2, soucis };
 }
 
+/**
+ * LES FEUILLES DE PARCOURS — l'angle mort de cet audit, et il a coûté cher.
+ *
+ * `tourDesFiches` ouvre la fiche de chaque exercice SEUL : quatre-vingt-trois
+ * feuilles, et elles sont propres. Mais un exercice ne s'imprime presque jamais
+ * seul — il s'imprime dans un parcours, à côté de dix autres, dans un bloc que
+ * la mise en page lui a taillé. Et c'est là, et là seulement, que vivaient tous
+ * les défauts que Rémy a trouvés lui-même, un PDF de cent soixante-dix-huit
+ * pages à la main :
+ *
+ *   · le rang du bloc ne passait pas, et les six teintes n'en faisaient qu'une ;
+ *   · la liste des voisins non plus, et les hiéroglyphes sortaient de tailles
+ *     différentes, les disques de 8 et de 11 cm dessinés identiques ;
+ *   · la rédaction de Thalès débordait de trente millimètres sur la rangée
+ *     suivante ;
+ *   · la frise des marches restait vide dans la roue de l'aperçu.
+ *
+ * Quatre défauts de la même famille, aucun visible sur la feuille d'un exercice
+ * seul. D'où cette passe, qui compose une feuille de parcours par exercice et y
+ * vérifie deux choses.
+ *
+ * UN : RIEN NE DÉBORDE SUR LA RANGÉE SUIVANTE. Les numéros disent où commence
+ * chaque rangée ; un élément qui commence avant la frontière et finit après
+ * dessine chez le voisin. On innocente le mobilier de page — ce qui traverse la
+ * feuille de bord à bord ne déborde de rien — et les conteneurs qui ENVELOPPENT
+ * la rangée suivante : ils la contiennent, ils ne la recouvrent pas.
+ *
+ * DEUX : CHAQUE PANNEAU DE RÉGLAGE EST GARNI. Un exercice dont le générateur
+ * déclare des réglages doit les montrer ; et un exercice à progression doit
+ * montrer sa frise, celle qui dit ce que l'élève travaillera. C'est très
+ * exactement ce qui manquait, et l'audit ouvrait déjà les panneaux de l'ÉDITEUR
+ * d'étape sans jamais ouvrir ceux de l'APERÇU.
+ *
+ * CE VÉRIFICATEUR A ÉTÉ CALIBRÉ SUR UN DÉFAUT CONNU. On a remis le débordement
+ * de Thalès, vérifié qu'il le voyait — trente-huit pixels —, puis on l'a
+ * retiré. Un vérificateur qui n'a jamais rien attrapé ne prouve rien : c'est
+ * arrivé la veille, avec une première version qui filtrait sur le style en
+ * ligne au lieu du style calculé et ne voyait donc aucun élément.
+ */
+async function tourDesFeuillesParcours(p, seau) {
+    const ids = await p.evaluate(async () => {
+        const { exercices } = await import('/js/data/catalog.js');
+        const { getGenerator } = await import('/js/core/registry.js');
+        await import('/js/core/activities/index.js');
+        return exercices.filter(e => e.printable || e.printGeneratorId
+            || (getGenerator(e.generatorId) || {}).ecrit).map(e => e.id);
+    });
+    const liste = OPT.rapide ? ids.filter((_, i) => i % 5 === 0) : ids;
+    const soucis = [];
+    for (const id of liste) {
+        seau.length = 0;
+        const lance = await p.evaluate(async (id) => {
+            try {
+                // ON MASQUE, ON NE SUPPRIME PAS. Arracher la modale du DOM
+                // laisse le moteur de modales avec une référence morte, et la
+                // passe suivante — celle des panneaux — se casse sur un
+                // « Cannot read properties of null ». C'est ce que fait déjà
+                // `tourDesFiches`, et pour la même raison.
+                document.querySelectorAll('.modal-overlay').forEach(m => { m.style.display = 'none'; });
+                const { ouvrirFicheParcours } = await import('/js/ui/printParcours.js');
+                ouvrirFicheParcours({ steps: [{ exerciseId: id, nbItems: 6 }] });
+                return '';
+            } catch (e) { return 'LANCEMENT: ' + String(e.message || e).slice(0, 150); }
+        }, id);
+        if (lance) { soucis.push({ id, quoi: [lance] }); continue; }
+        await p.waitForTimeout(700);
+        const quoi = await p.evaluate(() => {
+            // LA MODALE VISIBLE, ET ELLE SEULE. On en masque une par exercice
+            // sans les retirer (voir plus haut) : `querySelector` rendrait la
+            // PREMIÈRE, c'est-à-dire la plus ancienne, et l'on vérifierait
+            // cent trente fois la même vieille feuille.
+            const vives = [...document.querySelectorAll('.modal-overlay')]
+                .filter(m => m.style.display !== 'none');
+            const hote = vives[vives.length - 1] || document;
+            const apercu = hote.querySelector('.fp-apercu');
+            if (!apercu || !apercu.children.length) return ['APERÇU VIDE'];
+            const out = [];
+            for (const page of [...apercu.children]) {
+                const rp = page.getBoundingClientRect();
+                const nums = [...page.querySelectorAll('.fx-grille-num, .fx-num')];
+                if (nums.length < 2) continue;
+                const rangees = [];
+                for (const n of nums) {
+                    const y = Math.round(n.getBoundingClientRect().top);
+                    const r = rangees.find(x => Math.abs(x.y - y) < 6);
+                    if (r) r.n.push(n); else rangees.push({ y, n: [n] });
+                }
+                rangees.sort((a, b) => a.y - b.y);
+                for (let i = 0; i + 1 < rangees.length && !out.length; i++) {
+                    const suivante = rangees[i + 1];
+                    for (const e of page.querySelectorAll('*')) {
+                        const r = e.getBoundingClientRect();
+                        if (!r.width || !r.height) continue;
+                        if (r.width > rp.width * 0.8) continue;
+                        if (r.top >= suivante.y - 3 || r.bottom <= suivante.y + 3) continue;
+                        if (suivante.n.some(n => e.contains(n))) continue;
+                        out.push(`DÉBORDE de ${Math.round(r.bottom - suivante.y)} px sur la `
+                            + `rangée suivante (${e.tagName.toLowerCase()}.${
+                                (e.className.baseVal ?? e.className ?? '').toString().split(' ')[0]})`);
+                        break;
+                    }
+                }
+                if (out.length) break;
+            }
+            return out;
+        });
+        // Le panneau de réglage de cet exercice : garni, et sa frise remplie.
+        const roue = await p.evaluate(async (id) => {
+            const { getExerciseById, paramSchemaOf } = await import('/js/data/catalog.js');
+            const { getGenerator } = await import('/js/core/registry.js');
+            const exo = getExerciseById(id);
+            const gen = getGenerator(exo.printGeneratorId || exo.generatorId) || {};
+            const attendus = ((gen.params || []).filter(x => x && x.papier !== false)).length;
+            const aMarches = (gen.params || []).some(x => x && x.type === 'marches')
+                || (paramSchemaOf(exo) || []).some(x => x && x.type === 'marches');
+            document.querySelectorAll('.pp-roue-panneau').forEach(n => n.remove());
+            const vives = [...document.querySelectorAll('.modal-overlay')]
+                .filter(m => m.style.display !== 'none');
+            const hote = vives[vives.length - 1] || document;
+            const b = [...hote.querySelectorAll('.fp-apercu button')]
+                .find(x => x.dataset.reglage !== undefined);
+            if (!b) return attendus ? ['PAS D’ENGRENAGE dans l’aperçu'] : [];
+            b.click();
+            await new Promise(r => setTimeout(r, 250));
+            const n = document.querySelector('.pp-roue-panneau');
+            if (!n) return ['LE PANNEAU DE RÉGLAGE NE S’OUVRE PAS'];
+            const contenu = n.querySelector('[data-r-contenu]');
+            const champs = contenu ? contenu.querySelectorAll('[data-param]').length : 0;
+            const dits = [];
+            if (attendus && !champs) dits.push(`PANNEAU VIDE : ${attendus} réglage(s) attendu(s)`);
+            if (aMarches) {
+                const barre = n.querySelector('[data-barre-marches]');
+                if (!barre || !barre.children.length) dits.push('FRISE VIDE : la barre des marches ne se remplit pas');
+            }
+            n.remove();
+            return dits;
+        }, id);
+        const tout = [...quoi, ...roue, ...new Set(seau)];
+        if (tout.length) soucis.push({ id, quoi: tout });
+    }
+    // ON REND L'APPLICATION COMME ON L'A TROUVÉE. Cette passe ouvre une modale
+    // par exercice ; la laisser en place fait échouer la passe des panneaux,
+    // qui cherche des boutons cachés dessous — mesuré : « onglet Code, Cannot
+    // read properties of null ». Un vérificateur qui casse le suivant ne
+    // vérifie plus rien.
+    await p.evaluate(() => {
+        document.querySelectorAll('.pp-roue-panneau').forEach(n => n.remove());
+        document.querySelectorAll('.modal-overlay').forEach(m => { m.style.display = 'none'; });
+    });
+    await p.waitForTimeout(200);
+    return { combien: liste.length, soucis };
+}
+
 // --- Le tour complet -----------------------------------------------------------
 
 const nav = await chromium.launch({ executablePath: CHROMIUM });
@@ -456,6 +609,7 @@ const tours = [
     ['exercices', await tourDuCatalogue(p, seau)],
     ['fiches papier', await tourDesFiches(p, seau)],
     ['étapes de parcours', await tourDesEtapes(p, seau)],
+    ['feuilles de parcours', await tourDesFeuillesParcours(p, seau)],
     ['panneaux', await tourDesPanneaux(p, seau)],
     ['hors ligne', await tourHorsLigne(nav)]
 ];
