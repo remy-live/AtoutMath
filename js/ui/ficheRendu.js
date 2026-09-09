@@ -474,18 +474,30 @@ export function morceauxLigne(ligne, avecFractions) {
     // Le motif vient de core/fiche.js : l'aperçu, le PDF et la mesure des
     // colonnes doivent découper AU MÊME ENDROIT, sinon la fiche se compose sur
     // une largeur et s'imprime sur une autre.
-    const hors = `(\u2248)|(\u03C0)|${RE_EXPOSANT}`;
+    // ON RECONNAÎT LE MORCEAU À CE QU'IL EST, PAS À SON NUMÉRO DE GROUPE.
+    //
+    // Première version : je comptais les groupes — deux pour la fraction, puis
+    // les miens derrière. C'était faux, et sur la feuille cela donnait
+    // « Combien vaut 10 undefined/undefined ? » : le motif d'un ÉTAGE de
+    // fraction porte lui-même des parenthèses, si bien que « les miens »
+    // tombaient ailleurs que là où je les attendais, et tout exposant repartait
+    // dans la branche des fractions avec deux étages vides.
+    //
+    // Le texte capturé, lui, ne ment pas : un « ≈ » est un « ≈ », un π est un
+    // π, et un bloc d'exposants ne contient que des exposants. Le reste est une
+    // fraction, et ses deux étages sont les deux premiers groupes — ceux qui
+    // marchaient déjà avant qu'on touche à ce motif.
+    const hors = `\u2248|\u03C0|${RE_EXPOSANT}`;
     const re = avecFractions
         ? new RegExp(`${RE_FRACTION().source}|${hors}`, 'g')
         : new RegExp(hors, 'g');
-    // Où tombent nos trois groupes, selon que la fraction en occupe deux avant.
-    const d = avecFractions ? 2 : 0;
+    const queDesExposants = new RegExp(`^${RE_EXPOSANT}$`);
     let dernier = 0, m;
     while ((m = re.exec(ligne))) {
         if (m.index > dernier) out.push({ texte: ligne.slice(dernier, m.index) });
-        if (m[d + 1]) out.push({ presque: true });
-        else if (m[d + 2]) out.push({ pi: true });
-        else if (m[d + 3]) out.push({ haut: m[d + 3] });
+        if (m[0] === '\u2248') out.push({ presque: true });
+        else if (m[0] === '\u03C0') out.push({ pi: true });
+        else if (queDesExposants.test(m[0])) out.push({ haut: m[0] });
         else out.push({ num: m[1], den: m[2] });
         dernier = m.index + m[0].length;
     }
