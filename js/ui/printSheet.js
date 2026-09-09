@@ -5229,7 +5229,7 @@ function facesCubesPapier(g) {
 function cubesPreviewHtml(item, slot, k, solution, rang) {
     const g = geoCubes(item, slot);
     const T = (v) => (v * k).toFixed(2);
-    const encre = teinteCube(rang);
+    const encre = teinteCube(rangDuBloc(slot, rang));
     const d = facesCubesPapier(g).map(([nom, pts]) => `<polygon
         points="${pts.map(p => `${T(p.x)},${T(p.y)}`).join(' ')}"
         fill="rgb(${encre[nom].join(',')})" stroke="rgb(${encre.arete.join(',')})"
@@ -5243,7 +5243,7 @@ function cubesPreviewHtml(item, slot, k, solution, rang) {
 
 function dessinerCubesPdf(doc, item, slot, solution, _c, rang) {
     const g = geoCubes(item, slot);
-    const encre = teinteCube(rang);
+    const encre = teinteCube(rangDuBloc(slot, rang));
     doc.setLineWidth(g.trait);
     doc.setLineJoin('round');
     doc.setDrawColor(...encre.arete);
@@ -7323,6 +7323,23 @@ const TEINTES_FIGURE = [
     { trait: [13, 148, 136], fond: [204, 251, 241] }     // sarcelle
 ];
 const teinteFigure = (i) => TEINTES_FIGURE[(i || 0) % TEINTES_FIGURE.length];
+
+/**
+ * LE RANG DU BLOC — d'où qu'il vienne.
+ *
+ * Rémy : « quand le poly est en couleur, n'hésite pas à mettre des couleurs
+ * différentes ». Elles y étaient déjà : six teintes, une par figure, choisies
+ * sur le RANG du bloc. Sur la feuille d'un exercice seul, elles tournaient
+ * bien ; dans un parcours, tous les triangles sortaient du même bleu.
+ *
+ * La raison est celle du mois dernier, au mot près : la feuille de parcours ne
+ * passait pas le rang. Elle le pose maintenant dans l'emplacement — comme la
+ * liste des voisins, voir `blocsVoisins` —, et l'on regarde les deux. Sans ce
+ * rang, `teinteFigure(undefined)` rendait toujours la première teinte, et six
+ * couleurs n'en faisaient qu'une.
+ */
+const rangDuBloc = (slot, rang) => (Number.isFinite(rang) ? rang
+    : (slot && Number.isFinite(slot.rang) ? slot.rang : 0));
 const rvbCss = (c) => `rgb(${c.join(',')})`;
 
 function rectanglePreviewHtml(item, slot, k, solution, rang, tous) {
@@ -7332,7 +7349,7 @@ function rectanglePreviewHtml(item, slot, k, solution, rang, tous) {
     // Le périmètre est un TOUR : c'est le trait qu'on colore, et l'intérieur
     // reste presque blanc. L'aire est une SURFACE : c'est elle qu'on remplit.
     const couleur = polycopieEnCouleur();
-    const t = teinteFigure(rang);
+    const t = teinteFigure(rangDuBloc(slot, rang));
     const remplit = m.demande.includes('aire');
     let d = `<rect x="${T(g.x)}" y="${T(g.y)}" width="${T(g.w)}" height="${T(g.h)}"
              fill="${couleur ? rvbCss(t.fond) : 'none'}"
@@ -7365,7 +7382,7 @@ function dessinerRectanglePdf(doc, item, slot, solution, champ, rang, tous) {
     const g = geoRectangle(item, slot, tous);
     const m = g.m;
     const couleur = polycopieEnCouleur();
-    const t = teinteFigure(rang);
+    const t = teinteFigure(rangDuBloc(slot, rang));
     const remplit = m.demande.includes('aire');
 
     if (couleur) {
@@ -7527,7 +7544,7 @@ function trianglePreviewHtml(item, slot, k, solution, rang, tous) {
     const g = geoTriangle(item, slot, tous);
     const T = (v) => (v * k).toFixed(2);
     const couleur = polycopieEnCouleur();
-    const t = teinteFigure(rang);
+    const t = teinteFigure(rangDuBloc(slot, rang));
     const trait = couleur ? rvbCss(t.trait) : '#1a202c';
 
     let d = `<polygon points="${[g.P.A, g.P.B, g.P.C].map(p => `${T(p.x)},${T(p.y)}`).join(' ')}"
@@ -7565,7 +7582,7 @@ function trianglePreviewHtml(item, slot, k, solution, rang, tous) {
 function dessinerTrianglePdf(doc, item, slot, solution, champ, rang, tous) {
     const g = geoTriangle(item, slot, tous);
     const couleur = polycopieEnCouleur();
-    const t = teinteFigure(rang);
+    const t = teinteFigure(rangDuBloc(slot, rang));
 
     if (couleur) { doc.setDrawColor(...t.trait); doc.setFillColor(...t.fond); }
     else { doc.setDrawColor(...ENCRE.trait); doc.setFillColor(255, 255, 255); }
@@ -7755,7 +7772,7 @@ function disquePreviewHtml(item, slot, k, solution, rang, tous) {
     const g = geoDisque(item, slot, tous);
     const T = (v) => (v * k).toFixed(2);
     const couleur = polycopieEnCouleur();
-    const t = teinteFigure(rang);
+    const t = teinteFigure(rangDuBloc(slot, rang));
     const s = segmentDisque(g);
 
     let d = `<circle cx="${T(g.cx)}" cy="${T(g.cy)}" r="${T(g.R)}"
@@ -7783,7 +7800,7 @@ function disquePreviewHtml(item, slot, k, solution, rang, tous) {
 function dessinerDisquePdf(doc, item, slot, solution, champ, rang, tous) {
     const g = geoDisque(item, slot, tous);
     const couleur = polycopieEnCouleur();
-    const t = teinteFigure(rang);
+    const t = teinteFigure(rangDuBloc(slot, rang));
     const s = segmentDisque(g);
 
     if (couleur) { doc.setDrawColor(...t.trait); doc.setFillColor(...t.fond); }

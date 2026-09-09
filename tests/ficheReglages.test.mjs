@@ -580,3 +580,21 @@ test('le tableau à double entrée règle sa hauteur sur ses lignes', () => {
     assert.ok(grand > petit, `${grand} devrait dépasser ${petit}`);
     assert.ok(petit >= 0.45 && grand <= 1, `hors bornes : ${petit} et ${grand}`);
 });
+
+// Rémy : « quand le poly est en couleur, n'hésite pas à mettre des couleurs
+// différentes ». Les six teintes existaient et ne servaient pas : dans un
+// parcours, le RANG du bloc n'arrivait pas jusqu'au rendu, `teinteFigure`
+// recevait `undefined` et tout sortait de la première teinte.
+test('LA FEUILLE DE PARCOURS DONNE À CHAQUE BLOC SON RANG ET SES VOISINS', () => {
+    const src = fs.readFileSync('js/ui/ficheRendu.js', 'utf8');
+    for (const clef of ['tous:', 'rang:']) {
+        // Deux fois : une pour l'aperçu, une pour le PDF.
+        const n = (src.match(new RegExp(clef.replace(':', '\\s*:'), 'g')) || []).length;
+        assert.ok(n >= 2, `« ${clef} » n'est posé que ${n} fois dans l'emplacement`);
+    }
+    const sheet = fs.readFileSync('js/ui/printSheet.js', 'utf8');
+    assert.ok(/rangDuBloc\(slot, rang\)/.test(sheet),
+        'les rendus doivent lire le rang depuis l\'emplacement aussi');
+    assert.equal((sheet.match(/teinteFigure\(rang\)/g) || []).length, 0,
+        'plus aucun rendu ne doit lire le rang positionnel seul');
+});
