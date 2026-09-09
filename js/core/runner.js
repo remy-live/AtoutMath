@@ -28,6 +28,7 @@ import { computeRuns } from './projections.js';
 import { uuid } from './ids.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
 import { reglerCalculatrice, signalerNouvelleQuestion } from '../ui/calculatrice.js';
+import { filtrerEtapes, peutSauter } from './seanceDistante.js';
 
 export class Runner {
     /**
@@ -43,7 +44,20 @@ export class Runner {
     constructor(cfg) {
         const { path, steps, missing } = hydratePath(cfg.path);
         this.path = path;
-        this.steps = steps;
+        // L'EXERCICE RETIRÉ PAR LE PROFESSEUR N'EXISTE PAS.
+        //
+        // Rémy : « pouvoir supprimer […] un exercice au cas où un exercice
+        // plante et empeche la progression. » On le retire ICI, à la
+        // construction du parcours, et non plus loin en le grisant sur la
+        // carte : un exercice grisé se clique quand même, et l'élève de
+        // sixième qui tombe sur celui qui plante y retourne trois fois.
+        //
+        // LA GARDE : si le filtre vidait le parcours entier, on le laisse
+        // intact. Un parcours vide n'est pas un parcours — il afficherait
+        // « toutes les étapes sont faites » à un élève qui n'a rien fait, ce
+        // qui est pire que l'exercice qui plante.
+        const restantes = filtrerEtapes(steps);
+        this.steps = restantes.length ? restantes : steps;
         this.missing = missing;
         this.policy = resolvePolicy(path.policy);
         this.deviceMode = cfg.deviceMode || 'none';
@@ -574,6 +588,7 @@ export class Runner {
         }
 
         state.activeExo = step.exercise;
+        this.majBoutonPasser(step);
         // La calculatrice n'est offerte que là où l'exercice le dit, et une
         // fenêtre ouverte à l'étape d'avant se referme si la suivante ne
         // l'autorise pas.
@@ -1165,6 +1180,85 @@ export class Runner {
     }
 
     /**
+     * LE BOUTON « PASSER » N'APPARAÎT QUE SUR PERMISSION.
+     *
+     * Il ne suffit pas qu'il soit rare : il doit être IMPOSSIBLE tant que le
+     * professeur ne l'a pas autorisé pour cet exercice-là. Un bouton « passer »
+     * offert partout deviendrait le bouton qu'on presse dès que c'est
+     * difficile, et le parcours ne voudrait plus rien dire.
+     */
+    majBoutonPasser(step) {
+        const bouton = document.getElementById('btn-passer-exo');
+        if (!bouton) return;
+        const permis = !!(step && step.exercise && peutSauter(step.exercise.id));
+        bouton.hidden = !permis;
+        bouton.onclick = permis ? () => this.passerEtape() : null;
+    }
+
+    /**
+     * PASSER L'ÉTAPE, SUR PERMISSION DU PROFESSEUR.
+     *
+     * Rémy : « autoriser le saut d'un exercice au cas où un exercice plante et
+     * empeche la progression ».
+     *
+     * L'étape est marquée FAITE — c'est tout le but, débloquer la suite — mais
+     * elle n'apporte AUCUNE TENTATIVE. Or la note s'agrège à partir des
+     * tentatives, groupées par étape (`gradeRun`) : une étape sans tentative
+     * n'entre pas dans le calcul. Le saut ne compte donc ni pour ni contre
+     * l'élève, ce qui est exactement juste — il n'a pas raté cet exercice, il
+     * ne l'a pas fait parce qu'il ne marchait pas.
+     *
+     * `passe: true` reste dans le journal : le professeur doit pouvoir
+     * distinguer, en relisant, une étape franchie d'une étape sautée.
+     */
+    passerEtape() {
+        if (!this.step) return false;
+        const step = this.step;
+        const required = seuilRequis(step);
+
+        this.teardownStep();
+        this.step = null;
+
+        if (!this.essai) journal.emit(EventTypes.STEP_COMPLETED, {
+            runId: this.runId,
+            pathId: this.path.id,
+            stepId: step.stepId,
+            title: step.title,
+            weight: step.weight,
+            bonus: !!step.bonus,
+            exerciseId: step.exercise.id,
+            questions: 0,
+            solved: 0,
+            required,
+            passed: true,
+            passe: true
+        });
+
+        this.faites.add(step.stepId);
+        if (this.isStudentPath) {
+            state.markStudentPathStepCompleted(step.stepId, {
+                runId: this.runId, solved: 0, required, questions: 0,
+                passed: true, passe: true
+            });
+        } else {
+            import('../ui/ouverture.js').then(m => m.noterOuverture(step.stepId))
+                .catch(() => { /* la carte s'affichera sans la fête */ });
+        }
+
+        this.index++;
+        while (this.steps[this.index]
+            && (this.steps[this.index].bonus || this.steps[this.index].facultatif)) {
+            this.index++;
+        }
+        // ON REVIENT À LA CARTE, et non sur l'écran de bilan d'étape : il n'y a
+        // rien à bilan-er, et « bravo, 0 sur 5 » serait absurde. La carte
+        // montre l'étape franchie et la suivante ouverte, ce qui est tout ce
+        // que l'élève a besoin de savoir.
+        this.showPathMap();
+        return true;
+    }
+
+    /**
      * Les jeux de récompense actuellement ouverts, par leur `stepId`.
      *
      * Hors parcours assigné, il n'y a pas de progrès enregistré à consulter :
@@ -1412,6 +1506,7 @@ export class Runner {
     // --- Fin ----------------------------------------------------------------
 
     teardownStep() {
+        this.majBoutonPasser(null);
         this.stopTimer();
         if (this.handle && this.handle.destroy) this.handle.destroy();
         this.handle = null;

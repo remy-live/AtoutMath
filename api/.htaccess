@@ -4,10 +4,28 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [QSA,L]
 
-# La configuration contient les identifiants de base : jamais servie.
-<FilesMatch "^(config\.php|.*\.sql)$">
+# CE QUI NE DOIT JAMAIS ÊTRE SERVI.
+#
+#   · config.php contient le secret de signature et, en MySQL, le mot de passe
+#     de la base ;
+#   · les fichiers .sql et .sqlite SONT la base — un GET dessus, et l'on repart
+#     avec les prénoms de la classe et tout son travail. C'est le danger propre
+#     à l'installation « un fichier », et c'est ici qu'on le ferme. Le dossier
+#     api/data/ porte en plus son propre .htaccess, et le fichier un nom tiré
+#     au hasard : voir protegerDossier() dans install.php.
+#   · .derniere-purge est le témoin de la purge quotidienne.
+<FilesMatch "^(config\.php|\.derniere-purge|.*\.(sql|sqlite|sqlite-wal|sqlite-shm|db))$">
     Require all denied
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
 </FilesMatch>
+
+# Le dossier des données, refusé dans son entier. Redondant avec le .htaccess
+# qu'install.php y dépose, et c'est voulu : si le dossier est recréé à la main,
+# la protection tient quand même.
+RedirectMatch 403 ^.*/data/.*$
 
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"

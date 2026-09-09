@@ -11,14 +11,17 @@ node_modules/
 
 # Contient les identifiants de base de données et le secret applicatif.
 api/config.php
+# La base SQLite et ses journaux : des données d'élèves, jamais dans le dépôt.
+api/*.sqlite
+api/*.sqlite-wal
+api/*.sqlite-shm
+api/data/
+# Le témoin de la purge quotidienne : une date, propre à l'installation.
+api/.derniere-purge
 balayage.md
 
 # Les harnais Playwright jetables. Ils doivent vivre SOUS le dépôt — un
 # script placé ailleurs ne sait pas résoudre « playwright » —, mais ils ne
 # valent que le temps d'une vérification et n'ont rien à faire dans
 # l'historique.
-tools/tmp/
-
-# Les harnais Playwright jetables : sous le dépôt pour résoudre « playwright »,
-# mais ils ne valent que le temps d'une vérification.
 tools/tmp/

@@ -34,6 +34,8 @@ import { initGamificationEngine } from './core/gamification.js';
 import { initGamificationUI } from './ui/gamificationUI.js';
 import { initSync } from './core/sync.js';
 import { initSyncUI } from './ui/syncUI.js';
+import { initSeanceDistante } from './core/seanceDistante.js';
+import { initSeanceDistanteUI } from './ui/seanceDistanteUI.js';
 import { initPleinEcran } from './ui/fullscreen.js';
 import { initBilanExercice } from './ui/accueilUI.js';
 import { rendreAujourdhui } from './ui/aujourdhui.js';
@@ -71,6 +73,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     await state.load();
     await seedExamplePath();
+    // LE VERROU DE LA CLASSE S'APPLIQUE AVANT LE PREMIER DESSIN.
+    //
+    // On relit l'état de séance connu AVANT `refreshViews()` : sinon l'élève
+    // d'une classe verrouillée voit le catalogue entier pendant la
+    // demi-seconde que met la synchro à répondre — c'est-à-dire exactement ce
+    // que le verrou doit empêcher. La synchro, elle, le rafraîchira ensuite.
+    await initSeanceDistante();
+    initSeanceDistanteUI();
     initSync();
 
     // Cohérence du catalogue : mieux vaut un avertissement au démarrage

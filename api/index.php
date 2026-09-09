@@ -8,6 +8,8 @@ declare(strict_types=1);
  *
  *   POST /join                 rattacher un appareil à une classe (élève)
  *   POST /sync                 pousser/tirer des événements (élève)
+ *   POST /session              l'état de séance seul (verrou, mot, déblocages)
+ *   POST /messages/read        « j'ai lu ce mot »
  *   POST /teacher/login        connexion professeur
  *   POST /teacher/classes      créer/lister des classes
  *   POST /teacher/paths        enregistrer/lister des parcours
@@ -22,6 +24,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/projections.php';
 require_once __DIR__ . '/lib/grading.php';
+require_once __DIR__ . '/lib/seance.php';
 
 applyCors();
 
@@ -32,6 +35,8 @@ $route = '/' . trim(substr($path, strlen($base)), '/');
 switch ($route) {
     case '/join':            handleJoin(); break;
     case '/sync':            handleSync(); break;
+    case '/session':         handleSession(); break;
+    case '/messages/read':   handleMessagesRead(); break;
     case '/teacher/login':   handleTeacherLogin(); break;
     case '/teacher/classes': handleTeacherClasses(); break;
     case '/teacher/paths':   handleTeacherPaths(); break;
@@ -78,9 +83,17 @@ function handleJoin(): void
     $stmt->execute([$class['id'], $name]);
     $student = $stmt->fetch();
 
+    // L'ÉLÈVE MIS DE CÔTÉ NE SE RATTACHE PLUS. C'est le seul endroit où l'on
+    // refuse vraiment : ailleurs on se contente de dire au client de se tenir
+    // tranquille. Ici, refuser est la seule façon d'empêcher qu'un jeton neuf
+    // soit délivré à quelqu'un que le professeur vient d'écarter.
+    if ($student && !empty($student['blocked'])) {
+        fail(403, 'student_blocked', "Ton professeur a mis ton accès en pause. Préviens-le.");
+    }
+
     $token = newToken();
     if ($student) {
-        db()->prepare('UPDATE students SET token_hash = ?, last_seen_at = NOW() WHERE id = ?')
+        db()->prepare('UPDATE students SET token_hash = ?, last_seen_at = ' . sqlMaintenant() . ' WHERE id = ?')
             ->execute([hashToken($token), $student['id']]);
         $studentId = $student['id'];
     } else {
@@ -88,13 +101,50 @@ function handleJoin(): void
         db()->prepare('INSERT INTO students (id, class_id, first_name, token_hash) VALUES (?, ?, ?, ?)')
             ->execute([$studentId, $class['id'], $name, hashToken($token)]);
     }
+    // LE JETON S'AJOUTE, IL NE REMPLACE PAS. Se rattacher à la maison ne doit
+    // pas faire taire l'ordinateur de l'école, qui aurait encore du travail à
+    // remonter. Voir la table `student_tokens` dans `lib/schema.php`.
+    db()->prepare(sqlInsereSansDoublon() . ' INTO student_tokens (token_hash, student_id) VALUES (?, ?)')
+        ->execute([hashToken($token), $studentId]);
+    elaguerJetons($studentId);
 
     respond([
         'studentId' => $studentId,
         'token' => $token,
         'classCode' => $class['join_code'],
         'className' => $class['name'],
+        // L'état de séance dès le rattachement : si la classe est déjà
+        // verrouillée, l'élève ne doit pas voir le catalogue une seule seconde.
+        'session' => etatDeSeance(['id' => $studentId, 'class_id' => $class['id'], 'blocked' => 0]),
     ]);
+}
+
+/**
+ * ON N'EN GARDE QUE CINQ.
+ *
+ * Sans borne, chaque rattachement laisserait une ligne pour toujours : un élève
+ * qui saisit son prénom vingt fois dans l'année en aurait vingt valides, et
+ * chacune est une clé qui ouvre son compte. Cinq couvre largement le cas réel —
+ * l'ordinateur de la salle, la tablette de la classe, celui de la maison — et
+ * le sixième rattachement fait tomber le plus ancien, c'est-à-dire l'appareil
+ * dont on ne se sert plus.
+ */
+function elaguerJetons(string $studentId, int $garde = 5): void
+{
+    $stmt = db()->prepare(
+        'SELECT token_hash FROM student_tokens WHERE student_id = ?
+         ORDER BY created_at DESC, token_hash DESC'
+    );
+    $stmt->execute([$studentId]);
+    $tous = array_column($stmt->fetchAll(), 'token_hash');
+    $trop = array_slice($tous, $garde);
+    if (!$trop) {
+        return;
+    }
+    $del = db()->prepare('DELETE FROM student_tokens WHERE token_hash = ?');
+    foreach ($trop as $t) {
+        $del->execute([$t]);
+    }
 }
 
 /**
@@ -123,7 +173,7 @@ function handleSync(): void
     $pdo->beginTransaction();
     try {
         $insert = $pdo->prepare(
-            'INSERT IGNORE INTO events (id, student_id, device_id, type, ts, payload) VALUES (?, ?, ?, ?, ?, ?)'
+            sqlInsereSansDoublon() . ' INTO events (id, student_id, device_id, type, ts, payload) VALUES (?, ?, ?, ?, ?, ?)'
         );
         foreach ($incoming as $e) {
             $id = (string) ($e['id'] ?? '');
@@ -176,8 +226,37 @@ function handleSync(): void
         'events' => $events,
         'cursor' => $maxSeq,
         'assignments' => assignmentsFor($student),
+        // L'ÉTAT DE SÉANCE VOYAGE AVEC LA SYNCHRO, et non dans une requête à
+        // part. Le client synchronise déjà toutes les cinq minutes et à chaque
+        // rafale de réponses : lui faire demander le verrou séparément
+        // doublerait le trafic d'une classe entière pour la même information.
+        'session' => etatDeSeance($student),
         'serverTs' => (int) (microtime(true) * 1000),
     ]);
+}
+
+/**
+ * L'état de séance seul.
+ *
+ * La synchro le porte déjà, mais elle est débrayée pendant huit secondes après
+ * chaque réponse et ne part pas si le journal est vide. Quand le professeur
+ * verrouille sa classe au milieu de l'heure, il veut que ça se voie tout de
+ * suite : le client interroge donc cette route-ci, qui ne touche à rien.
+ */
+function handleSession(): void
+{
+    $student = requireStudent();
+    rateLimit('session_' . $student['id'], 120);
+    respond(['session' => etatDeSeance($student)]);
+}
+
+/** « J'ai lu le mot. » */
+function handleMessagesRead(): void
+{
+    $student = requireStudent();
+    $body = jsonBody();
+    $ids = is_array($body['ids'] ?? null) ? $body['ids'] : [];
+    respond(['read' => marquerLus($student, $ids)]);
 }
 
 function assignmentsFor(array $student): array
@@ -263,8 +342,8 @@ function handleTeacherPaths(): void
         }
         $id = (string) ($path['id'] ?? uuidv4());
         db()->prepare(
-            'INSERT INTO paths (id, teacher_id, name, data) VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE name = VALUES(name), data = VALUES(data)'
+            'INSERT INTO paths (id, teacher_id, name, data) VALUES (?, ?, ?, ?) '
+            . sqlSurConflit('id', ['name', 'data'])
         )->execute([$id, $teacher['id'], $path['name'], json_encode($path, JSON_UNESCAPED_UNICODE)]);
         respond(['pathId' => $id]);
     }
