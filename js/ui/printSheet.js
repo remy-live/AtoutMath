@@ -1171,7 +1171,21 @@ function geoNotation(item, slot) {
         xDebut: x0 + largeur * NOT_BORD, xFin: x0 + largeur * (1 - NOT_BORD),
         // La croix, et la lettre au-dessus d'elle.
         r: Math.max(1.2, Math.min(figH * 0.14, 2.2)),
-        taille: Math.max(2.4, Math.min(enonceH * 0.62, 4)),
+        // L'ÉNONCÉ TIENT DANS SA BANDE, ou il rétrécit.
+        //
+        // Rémy, sur le PDF : « Comment note-t-on cette fi » — la phrase
+        // s'arrêtait au milieu d'un mot. La bande de l'énoncé fait une seule
+        // ligne et ne se replie pas ; le corps, lui, ne regardait que la
+        // HAUTEUR de la bande. À quatre blocs par ligne, trente-deux
+        // caractères ne tiennent pas dans quarante millimètres, et le reste
+        // était coupé — une question tronquée ne se répond pas.
+        //
+        // On borne donc aussi par la LARGEUR. Un caractère d'Helvetica fait
+        // environ la moitié de son corps ; le plancher de 2,4 mm reste, et en
+        // dessous c'est la fiche qui a trop de colonnes, pas la phrase qui est
+        // trop longue.
+        taille: Math.max(2.4, Math.min(enonceH * 0.62, 4,
+            (largeur - 1) / (enonceNotation(m).length * 0.5))),
         // Les lignes où l'on écrit : une pour une notation, deux pour une
         // lecture en toutes lettres — « la demi-droite d'origine A passant
         // par B » ne tient pas sur une seule.
@@ -5773,9 +5787,36 @@ function geoPythagoreFiche(item, slot) {
     // Trois lignes d'énoncé, plus la hauteur de la lettre du sommet du HAUT,
     // qui se pose au-dessus du triangle : sans elle, le « P » venait s'écrire
     // dans la dernière ligne de l'énoncé.
-    const hautTexte = lesDeux ? corps * 5 : 0;
+    // ET QUAND LES DEUX NE TIENNENT PAS, C'EST LA FIGURE QUI RESTE.
+    //
+    // Rémy, sur le PDF : l'énoncé et le triangle s'imprimaient l'un sur
+    // l'autre — « Le triangle RST est rectangle en T, avec RS = 13 cm et
+    // ST = 12 cm. Calcule RT, en cm. » traversé par le dessin. « Fais soit la
+    // figure, soit l'énoncé, mais n'oublie pas de demander ce que l'on
+    // calcule. »
+    //
+    // MESURÉ : on réservait CINQ lignes au texte. Dans la colonne de gauche
+    // d'un bloc à deux par ligne — trente-deux pour cent d'un demi-page, soit
+    // vingt-neuf millimètres —, cet énoncé-là en prend six. La sixième tombait
+    // donc dans la figure, et la figure sur elle.
+    //
+    // On compte maintenant les lignes au lieu de les supposer. Si ce qui reste
+    // ne fait plus une figure — vingt-deux millimètres, en dessous desquels un
+    // triangle coté n'est plus lisible —, le texte s'efface et la figure
+    // reste : elle porte les longueurs, l'angle droit, le « ? », et la ligne
+    // « Calcule … » qui dit ce qu'on cherche. Rien n'est perdu, et le réglage
+    // « Le texte ET la figure » garde son sens partout où la place existe.
+    const lignesEnonce = lesDeux
+        ? couperEnLignes(enoncePythagore(item), Math.max(10, gaucheW / (corps * 0.5)), corps).length
+        : 0;
+    const voulu = lignesEnonce ? (lignesEnonce + 2) * corps : 0;
+    const FIGURE_MIN = 22;
+    const tientLesDeux = lesDeux
+        && b.h - corps * 0.9 - voulu - basMarge >= FIGURE_MIN;
+    const avecTexte = lesDeux && tientLesDeux;
+    const hautTexte = avecTexte ? voulu : 0;
     return {
-        b, schema, lesDeux, gaucheW, corps, pas,
+        b, schema, lesDeux: avecTexte, gaucheW, corps, pas,
         figX: b.x + gaucheMarge, figY: b.y + corps * 0.9 + hautTexte,
         figW: Math.max(6, gaucheW - gaucheMarge - corps * 1.6),
         figH: Math.max(6, b.h - corps * 0.9 - hautTexte - basMarge),
@@ -12805,7 +12846,12 @@ function organigrammePreviewHtml(item, slot, k, solution) {
         // ET ELLE EST PLUS GRANDE. Rémy : « fais les figures plus grandes dans
         // les cadres du poly ». À la moitié de la case, un carré de dix
         // millimètres portait un codage illisible ; il en fait dix-huit.
-        const fw = Math.min(g.caseW * 0.72, hd * 0.94), fh = fw;
+        // PUIS ENCORE PLUS GRANDE : « tu peux encore faire les figures un peu
+        // plus grand ». La case est plus large que haute, et c'est la hauteur
+        // qui bridait — la largeur, elle, restait en réserve. Le codage d'un
+        // losange, quatre marques et deux arcs, se lit d'autant mieux qu'il est
+        // grand : on passe de dix-huit millimètres à vingt-deux.
+        const fw = Math.min(g.caseW * 0.86, hd * 1.06), fh = fw;
         const fx = c.x - fw / 2, fy = y + (hd - fh) / 2;
         const F = (pt) => ({ x: fx + (pt.x / 100) * fw, y: fy + (pt.y / 100) * fh });
         const d = fam.figure.map((pt, i) =>
@@ -13075,7 +13121,7 @@ function dessinerOrganigrammePdf(doc, item, slot, solution) {
         // hauteur avec une police plancher de 5 points, débordait dessous —
         // mesuré sur le premier PDF, « Parallélogramme » chevauchait le trait
         // qui descend vers la rangée suivante.
-        const fw = Math.min(g.caseW * 0.72, hd * 0.94), fh = fw;   // voir l'aperçu
+        const fw = Math.min(g.caseW * 0.86, hd * 1.06), fh = fw;   // voir l'aperçu
         const fx = c.x - fw / 2, fy = y + (hd - fh) / 2;
         const pts = fam.figure.map(pt => [fx + (pt[0] / 100) * fw, fy + (pt[1] / 100) * fh]);
         doc.setFillColor(...rvbHex(FIGURE_Q));

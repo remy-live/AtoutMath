@@ -27,7 +27,7 @@ import { hydratePath } from '../core/path.js';
 import { ficheSvg, refaireSvg, telechargerSvg } from './icones.js';
 import { generateurDeFiche } from '../core/registry.js';
 import { paramSchemaOf } from '../data/catalog.js';
-import { fieldHtml, readParams, wireTips } from '../games/configUI.js';
+import { fieldHtml, readParams, wireTips, brancherMarches } from '../games/configUI.js';
 import { makeRng } from '../core/ids.js';
 import { espacerMilliers } from '../core/nombres.js';
 import { composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction } from '../core/fiche.js';
@@ -1036,6 +1036,25 @@ export function ouvrirFicheParcours(chemin) {
         const contenu = panneau.querySelector('[data-r-contenu]');
         if (contenu) {
             wireTips(contenu);
+            // LA FRISE DES MARCHES SE BRANCHE, elle ne se dessine pas toute
+            // seule.
+            //
+            // Rémy, sur l'aperçu : « les réglages du n° 9-10-11 ne fonctionnent
+            // toujours pas, ça ne s'affiche pas ». Les trois sont des exercices
+            // à PROGRESSION — À Peu Près, Par Défaut par Excès Arrondi, La
+            // Loupe sur la Droite —, et `fieldHtml` dessine bien leurs cases à
+            // cocher. Mais la barre qui montre ce que le partage donne est
+            // laissée VIDE par le modèle : c'est le panneau qui la remplit,
+            // parce que lui seul connaît le nombre de questions du moment.
+            //
+            // C'est exactement le défaut que Rémy avait déjà signalé sur
+            // l'éditeur d'étape — « on ne peut pas faire les réglages des
+            // étapes, tout décocher ne fonctionne pas. Où est la frise ? » —
+            // et qu'on a corrigé là-bas sans voir qu'il vivait aussi ici. Une
+            // seule ligne manquait, et un audit qui ouvre les panneaux de
+            // l'éditeur ne regarde pas ceux de l'aperçu.
+            brancherMarches(contenu, schema, e.params, id);
+
             const relire = () => {
                 Object.assign(e.params, readParams(contenu, schema));
                 oublier(id);
