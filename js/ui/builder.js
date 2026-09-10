@@ -70,6 +70,25 @@ function initClassesPanel() {
     const btn = document.getElementById('btn-classes');
     if (!btn) return;
     btn.onclick = async () => {
+        // DEUX ÉCRANS, ET C'EST LE SERVEUR QUI DÉCIDE LEQUEL.
+        //
+        // Rémy : « le "Mes classes" de la zone professeur est tellement nul, il
+        // faut un vrai espace et là dans cet espace, je ne peux rien
+        // configurer ». Le vrai espace existe maintenant — mais il ne peut
+        // exister QUE s'il y a un serveur en face : sans serveur, il n'y a ni
+        // classe, ni élève, ni billet, et rien à configurer.
+        //
+        // Identifié auprès d'un serveur, on ouvre l'espace. Sinon, l'ancien
+        // panneau reste : c'est le mode hors ligne, celui d'un professeur qui
+        // fait tourner le logiciel sur son portable et importe les fichiers de
+        // progression à la main. Il est toujours juste, il n'est simplement
+        // plus le principal.
+        const { jetonProf } = await import('../core/verrouProf.js');
+        if (jetonProf()) {
+            const { ouvrirEspaceClasses } = await import('./espaceClasses.js');
+            ouvrirEspaceClasses();
+            return;
+        }
         const { ouvrirClasses } = await import('./classesUI.js');
         ouvrirClasses();
     };

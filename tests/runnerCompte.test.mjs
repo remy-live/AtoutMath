@@ -243,3 +243,53 @@ test('un jeu qui rendrait toujours « vrai » ne fait pas tourner la boucle sans
     Runner.prototype.allerAEtape.call(r, 3);
     assert.ok(appels <= 5, `la boucle a tourné ${appels} fois`);
 });
+
+test('UNE ÉTAPE CHRONOMÉTRÉE S\'ARRÊTE AUSSI AU NOMBRE DE QUESTIONS PROMIS', () => {
+    // Rémy : « quand on a fait 5 questions sur 5, la question suivante
+    // s'affiche et l'exercice se ferme ».
+    //
+    // Le second visage du même défaut, et le plus grave. Le compte n'arrêtait
+    // l'étape QUE si aucun chronomètre ne portait sur elle — et la portée
+    // « étape » est celle qu'on obtient en tapant simplement une durée dans le
+    // constructeur, sans rien choisir. Mesuré au navigateur sur trois questions
+    // et quarante secondes : les questions 4, 5 et 6 sont posées et répondues
+    // pendant que l'en-tête affiche « 3 / 3 questions », l'affichage étant
+    // plafonné. Cela ne s'arrêtait qu'à l'expiration du temps.
+    //
+    // LE COMPTE EST UNE PROMESSE : on annonce trois questions, on en pose
+    // trois. Le chronomètre garde le droit d'arrêter PLUS TÔT — c'est son
+    // métier —, jamais celui de faire durer au-delà.
+    const r = faussaireRunner(3);
+    r.currentTimeLimit = 40;
+    r.timerScope = 'etape';
+
+    for (let i = 0; i < 3; i++) Runner.prototype.onAttempt.call(r, victoire());
+    assert.equal(r.etapeClose, true,
+        'trois questions sur trois : l\'étape se ferme, chronomètre ou pas');
+    // (La conclusion elle-même est différée d'une seconde et demie, le temps de
+    // lire la correction : ce qu'on vérifie ici est la décision, prise tout de
+    // suite, et non le minuteur qui la porte.)
+
+    // Et une quatrième réponse arrivée dans l'intervalle ne compte plus.
+    Runner.prototype.onAttempt.call(r, victoire());
+    assert.equal(r.itemsResolved.size, 3, 'quatre réponses, trois comptées');
+});
+
+test('un exercice « au temps » garde son plafond de sécurité', () => {
+    // Le mode « le plus possible en cinq minutes » ne s'exprime PAS par
+    // l'absence de compte : il pose `sansTotal` (l'en-tête n'annonce alors
+    // aucun total) et un plafond large de questions, garde-fou explicite pour
+    // que la session ne s'arrête pas d'elle-même avant la fin du temps. Voir
+    // `enEtape` dans core/mesExercices.js.
+    //
+    // Ce test dit que la correction ci-dessus ne casse pas ce mode : le plafond
+    // reste un plafond, et c'est le chronomètre qui arrête en pratique.
+    const r = faussaireRunner(40);
+    r.currentTimeLimit = 300;
+    r.timerScope = 'etape';
+    r.step.sansTotal = true;
+
+    for (let i = 0; i < 12; i++) Runner.prototype.onAttempt.call(r, victoire());
+    assert.equal(r.etapeClose, false, 'douze questions en cinq minutes : on continue');
+    assert.equal(r.itemsResolved.size, 12);
+});

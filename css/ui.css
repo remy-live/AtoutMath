@@ -1,3 +1,282 @@
+/* ═══ MES CLASSES — l'espace du professeur ═══════════════════════════════════
+
+   Rémy : « fais moi qqch de classe, de beau, de simple ».
+
+   TROIS PARTIS PRIS, ET RIEN D'AUTRE :
+
+   · DE L'AIR. L'ancien panneau empilait des pastilles sur toute la largeur ;
+     celui-ci respire, parce qu'un écran qu'on ouvre en pleine séance doit se
+     lire d'un coup d'œil, pas se déchiffrer ;
+   · UNE SEULE COULEUR VIVE, celle de l'application. Le vert ne sert qu'à une
+     chose — dire qu'un élève est là en ce moment —, et le rouge qu'à ce qui ne
+     se défait pas. Une couleur qui sert à deux choses n'en dit plus aucune ;
+   · TOUT EN VARIABLES DE THÈME. Cet écran suit le thème sombre, le thème clair
+     et le thème bleu sans une ligne de plus, parce qu'il ne pose aucune couleur
+     en dur — sauf le vert de présence, qui doit rester le même partout.        */
+
+.ec { display: flex; flex-direction: column; min-height: 420px; }
+
+/* --- L'en-tête ------------------------------------------------------------ */
+.ec-tete {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; padding: 22px 26px 18px;
+    background: var(--bg-app); border-bottom: 1px solid var(--border);
+}
+.ec-tete-gauche { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.ec-tete-droite { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.ec-titre {
+    margin: 0; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em;
+    color: var(--text-main); line-height: 1.15;
+}
+.ec-sous {
+    margin: 4px 0 0; font-size: .88rem; color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.ec-sous-sep { opacity: .45; }
+.ec-qui {
+    font-size: .82rem; font-weight: 700; color: var(--text-muted);
+    background: var(--bg-hover); border-radius: 999px; padding: 5px 12px;
+    white-space: nowrap;
+}
+.ec-retour, .ec-fermer {
+    background: none; border: 1px solid transparent; border-radius: 10px;
+    color: var(--text-muted); cursor: pointer; font: inherit;
+    line-height: 1; padding: 6px 10px; transition: .15s;
+}
+.ec-retour { font-size: 1.15rem; margin-top: 2px; }
+.ec-fermer { font-size: 1.5rem; padding: 2px 10px 5px; }
+.ec-retour:hover, .ec-fermer:hover { background: var(--bg-hover); color: var(--text-main); }
+
+/* --- Les cartes de classe ------------------------------------------------- */
+.ec-grille {
+    display: grid; gap: 14px; padding: 22px 26px 26px;
+    grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
+}
+.ec-carte {
+    display: flex; flex-direction: column; gap: 12px; text-align: left;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 15px; padding: 16px 17px; cursor: pointer;
+    font: inherit; color: inherit;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.ec-carte:hover, .ec-carte:focus-visible {
+    transform: translateY(-2px); box-shadow: var(--shadow-md);
+    border-color: var(--primary); outline: none;
+}
+.ec-carte-haut { display: flex; align-items: baseline; gap: 8px; justify-content: space-between; }
+.ec-carte-nom {
+    font-size: 1.06rem; font-weight: 750; color: var(--text-main);
+    overflow-wrap: anywhere;
+}
+.ec-niveau {
+    font-size: .72rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+    background: var(--tag-niv-bg); color: var(--tag-niv-txt); white-space: nowrap;
+}
+.ec-carte-code { display: flex; flex-direction: column; gap: 3px; }
+.ec-code-eti {
+    font-size: .68rem; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--text-muted); font-weight: 700;
+}
+/* LE CODE EST GROS PARCE QU'ON LE DICTE. C'est le seul chiffre de cet écran
+   qu'on lit à voix haute devant trente élèves. */
+.ec-code {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 1.32rem; font-weight: 700; letter-spacing: .14em;
+    color: var(--primary);
+}
+.ec-code--petit { font-size: .95rem; letter-spacing: .09em; }
+/* Le code est un bouton parce qu'on le copie ; il ne doit pas en avoir l'air. */
+.ec-code--copie {
+    background: none; border: none; padding: 0; cursor: pointer; font-family: inherit;
+    text-align: left; border-radius: 6px; transition: .15s;
+}
+.ec-code--copie:hover { background: var(--bg-hover); box-shadow: 0 0 0 5px var(--bg-hover); }
+.ec-carte-bas { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ec-eff { font-size: .85rem; color: var(--text-muted); font-weight: 600; }
+.ec-pastille {
+    font-size: .7rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    background: var(--bg-hover); color: var(--text-muted);
+}
+.ec-pastille--pause { background: #fef3c7; color: #92400e; }
+.ec-pastille--mot { background: var(--tag-dom-bg); color: var(--tag-dom-txt); }
+
+.ec-carte--ajout {
+    align-items: center; justify-content: center; gap: 8px;
+    border-style: dashed; color: var(--text-muted); font-weight: 700;
+    min-height: 132px; background: transparent;
+}
+.ec-plus { font-size: 1.7rem; line-height: 1; color: var(--primary); }
+
+/* --- Les onglets ---------------------------------------------------------- */
+.ec-onglets {
+    display: flex; gap: 4px; padding: 0 26px;
+    border-bottom: 1px solid var(--border); background: var(--bg-app);
+}
+.ec-onglet {
+    background: none; border: none; border-bottom: 2.5px solid transparent;
+    color: var(--text-muted); cursor: pointer; font: inherit; font-weight: 700;
+    font-size: .92rem; padding: 12px 14px 10px; margin-bottom: -1px; transition: .15s;
+}
+.ec-onglet:hover { color: var(--text-main); }
+.ec-onglet--actif { color: var(--primary); border-bottom-color: var(--primary); }
+
+.ec-corps { padding: 20px 26px 26px; }
+
+/* --- Le direct ------------------------------------------------------------ */
+.ec-compte { margin: 0 0 14px; font-weight: 700; color: var(--text-main); }
+.ec-rangs { display: flex; flex-direction: column; gap: 6px; }
+.ec-rang {
+    display: grid; align-items: center; gap: 12px;
+    grid-template-columns: 10px minmax(120px, 1.1fr) minmax(0, 1.6fr) auto auto;
+    padding: 9px 13px; border-radius: 11px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+}
+.ec-rang--ici { border-color: color-mix(in srgb, #10b981 45%, var(--border)); }
+.ec-rang--ecarte { opacity: .5; }
+/* Le vert de présence ne vient PAS du thème : « il est là » doit se voir de la
+   même façon sur les trois thèmes, et c'est la seule information de cet écran
+   qui change toute seule sous les yeux du professeur. */
+.ec-point {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--border); flex-shrink: 0;
+}
+.ec-point--vert { background: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, .18); }
+.ec-rang-qui { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ec-rang-qui b { color: var(--text-main); overflow-wrap: anywhere; }
+.ec-rang-quand { font-size: .76rem; color: var(--text-muted); }
+.ec-rang-quoi { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ec-exo {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem;
+    color: var(--text-main); overflow-wrap: anywhere;
+}
+.ec-score {
+    font-weight: 700; font-size: .88rem; color: var(--text-muted);
+    white-space: nowrap;
+}
+.ec-score--bien { color: var(--success); }
+
+/* --- Tableaux, listes, aperçu --------------------------------------------- */
+.ec-table { width: 100%; border-collapse: collapse; margin: 6px 0 18px; }
+.ec-table th {
+    text-align: left; font-size: .72rem; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--text-muted); font-weight: 700;
+    padding: 7px 10px; border-bottom: 1px solid var(--border);
+}
+.ec-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.ec-table tr:last-child td { border-bottom: none; }
+.ec-table code {
+    font-size: .86rem; background: var(--bg-hover); padding: 2px 7px;
+    border-radius: 6px; color: var(--text-main);
+}
+.ec-tr-ecarte { opacity: .55; }
+.ec-actions { text-align: right; white-space: nowrap; }
+
+/* L'APERÇU SE DISTINGUE PAR SA COULEUR DE LIGNE, et non par une icône : on le
+   lit en diagonale, trente lignes d'un coup, et l'on veut voir tout de suite
+   s'il y a du rouge. */
+.ec-sort--neuf td:first-child { box-shadow: inset 3px 0 0 var(--success); }
+.ec-sort--rattache td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
+.ec-sort--deplace td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.ec-sort--connu { opacity: .62; }
+.ec-sort--attention td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
+.ec-sort--refus td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
+.ec-sort--refus { opacity: .75; }
+
+.ec-puces { display: flex; flex-wrap: wrap; gap: 7px; }
+.ec-puce {
+    background: var(--bg-hover); color: var(--text-main); border-radius: 999px;
+    padding: 5px 12px; font-size: .85rem; font-weight: 600;
+}
+
+/* --- La séance ------------------------------------------------------------ */
+.ec-cartes-reglages {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+}
+.ec-bloc {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 15px; padding: 16px 18px;
+}
+.ec-h3 {
+    margin: 0 0 6px; font-size: .98rem; font-weight: 750; color: var(--text-main);
+}
+.ec-champ-ligne { display: flex; gap: 8px; flex-wrap: wrap; }
+.ec-champ {
+    flex: 1 1 180px; min-width: 0; padding: 9px 12px; font: inherit;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    background: var(--bg-app); color: var(--text-main);
+}
+.ec-champ:focus { outline: none; border-color: var(--primary); }
+
+/* --- Boutons -------------------------------------------------------------- */
+.ec-outils { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+.ec-bouton {
+    font: inherit; font-weight: 700; font-size: .88rem; cursor: pointer;
+    padding: 9px 16px; border-radius: 10px; border: 1.5px solid var(--primary);
+    background: var(--primary); color: #fff; transition: .15s;
+}
+.ec-bouton:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+.ec-bouton--doux {
+    background: var(--bg-panel); color: var(--text-main); border-color: var(--border);
+}
+.ec-bouton--doux:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+.ec-bouton--rouge { background: var(--bg-panel); color: var(--danger); border-color: var(--danger); }
+.ec-bouton--rouge:hover { background: var(--danger); color: #fff; }
+.ec-bouton--grand { padding: 12px 24px; font-size: 1rem; margin-top: 6px; }
+
+.ec-mini {
+    font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer;
+    padding: 4px 9px; margin-left: 5px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    color: var(--text-muted); transition: .15s;
+}
+.ec-mini:hover { background: var(--bg-hover); color: var(--text-main); }
+.ec-mini--rouge:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+/* --- Vides, notes, alertes ------------------------------------------------ */
+.ec-vide { padding: 40px 26px; text-align: center; color: var(--text-muted); }
+.ec-vide--invite { max-width: 520px; margin: 0 auto; line-height: 1.65; }
+.ec-vide-grand {
+    font-size: 1.15rem; font-weight: 750; color: var(--text-main); margin: 0 0 8px;
+}
+.ec-note { font-size: .8rem; color: var(--text-muted); }
+.ec-note--bloc { margin: 0 0 12px; line-height: 1.6; }
+.ec-alerte {
+    margin: 16px 26px 0; padding: 11px 15px; border-radius: 11px;
+    background: color-mix(in srgb, var(--danger) 10%, var(--bg-panel));
+    border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+    color: var(--text-main); font-weight: 600; font-size: .88rem;
+}
+
+/* --- Le pied -------------------------------------------------------------- */
+.ec-pied {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 14px 26px 18px; border-top: 1px solid var(--border);
+    background: var(--bg-app); margin-top: auto;
+}
+.ec-lien {
+    background: none; border: none; padding: 0; cursor: pointer; font: inherit;
+    font-size: .85rem; font-weight: 650; color: var(--primary); text-decoration: none;
+}
+.ec-lien:hover { text-decoration: underline; }
+.ec-pied-sep { color: var(--text-muted); opacity: .5; }
+
+/* --- Sur téléphone -------------------------------------------------------- */
+@media (max-width: 560px) {
+    .ec-tete, .ec-onglets, .ec-corps, .ec-grille, .ec-pied, .ec-alerte {
+        padding-left: 15px; padding-right: 15px;
+    }
+    .ec-alerte { margin-left: 15px; margin-right: 15px; }
+    .ec-titre { font-size: 1.18rem; }
+    .ec-qui { display: none; }
+    /* Le rang se replie sur deux lignes : le nom et la présence d'abord, ce
+       qu'il fait ensuite. Un tableau à cinq colonnes sur un téléphone se lit
+       en zoomant, c'est-à-dire pas du tout. */
+    .ec-rang { grid-template-columns: 10px 1fr auto; row-gap: 4px; }
+    .ec-rang-quoi { grid-column: 2 / -1; }
+    .ec-table th:nth-child(4), .ec-table td:nth-child(4) { display: none; }
+}
+
 /* La FORME du code, écrite à côté de son nom. Les deux portes demandaient
    « un code » sans dire lequel : Rémy a collé un code de séance dans la case
    du billet, et le refus qui suivait l'envoyait vérifier son billet. */

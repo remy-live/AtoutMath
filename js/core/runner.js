@@ -857,18 +857,44 @@ export class Runner {
 
         this.updateProgress();
 
-        // Un chrono « par question » ne pilote pas la fin d'étape : c'est
-        // toujours le nombre de questions qui l'arrête.
-        const chronoPiloteLEtape = this.currentTimeLimit && this.timerScope !== 'question';
-        if (!chronoPiloteLEtape && this.itemsResolved.size >= this.step.nbItems) {
+        // LE NOMBRE DE QUESTIONS ARRÊTE TOUJOURS L'ÉTAPE — le chronomètre peut
+        // seulement l'arrêter PLUS TÔT.
+        //
+        // Ce n'était pas le cas, et c'est le second visage du défaut de Rémy :
+        // « quand on a fait 5 questions sur 5, la question suivante s'affiche ».
+        // Une étape qui portait un chronomètre à l'échelle de l'étape — la
+        // portée par DÉFAUT, celle qu'on obtient en tapant simplement une durée
+        // dans le constructeur — laissait le compte de côté et attendait
+        // l'expiration du temps. Mesuré sur trois questions et quarante
+        // secondes : les questions 4, 5 et 6 sont posées et répondues pendant
+        // que l'en-tête affiche « 3 / 3 questions », parce que l'affichage,
+        // lui, est plafonné. Ce n'est pas un clignotement de trois dixièmes de
+        // seconde : c'est sans fin, jusqu'à ce que le temps tombe.
+        //
+        // LE COMPTE EST UNE PROMESSE. L'écran annonce « 3 questions » ; en
+        // poser six est un mensonge, et l'élève rapide n'a aucune raison
+        // d'attendre devant une septième qui ne compte plus. Un exercice « le
+        // plus possible en deux minutes » se dit autrement, et il se dit déjà :
+        // l'étape porte alors `sansTotal`, et l'en-tête n'annonce aucun total.
+        //
+        // Le chronomètre garde ce qui lui revient : il coupe quand le temps est
+        // écoulé, avant le compte (`runTimerCycle` appelle `endStep`).
+        if (this.itemsResolved.size >= this.step.nbItems) {
             // ON FERME LA SESSION TOUT DE SUITE, la conclusion s'affiche après.
             //
-            // Le délai laissait à l'élève le temps de lire la correction de la
-            // dernière question — mais l'activité, elle, enchaînait dès qu'il
-            // l'avait fermée : une question de trop apparaissait, et le bilan
-            // pouvait la compter. Le drapeau est posé ICI, de façon synchrone,
-            // donc avant tout `dismissed.then` : la dernière question reste à
-            // l'écran, figée, jusqu'à la conclusion.
+            // Le délai laisse à l'élève le temps de lire la correction de la
+            // dernière question. L'activité, elle, enchaînait dès qu'il l'avait
+            // fermée : une question de trop apparaissait, et le bilan pouvait
+            // la compter.
+            //
+            // LE DRAPEAU EST POSÉ ICI, DE FAÇON SYNCHRONE — donc avant tout
+            // `dismissed.then`. Mais il ne suffisait pas : rendre le même item
+            // n'empêche pas une activité de le REDESSINER, c'est-à-dire de le
+            // vider. Ce qui tient vraiment la promesse « la dernière question
+            // reste à l'écran, figée », c'est `sansSuite()` dans
+            // `itemSession.submit()` — la promesse d'enchaînement n'est plus
+            // tenue à personne — et, pour le saut d'auteur qui ne passe pas par
+            // elle, la garde `if (this.etapeClose)` dans `sauterQuestion`.
             this.etapeClose = true;
             if (this.session) this.session.termine = true;
             regTimeout(() => this.endStep(), 1500);
@@ -993,6 +1019,16 @@ export class Runner {
             });
             if (this.session && !verdict) this.session.locked = true;
             if (uneEtape) { this.updateStepNavigation(); return true; }
+            // LE SAUT D'AUTEUR PASSE PAR LA MÊME PORTE QUE L'ÉLÈVE.
+            //
+            // `state.recordAttempt` ci-dessus a fait remonter la tentative
+            // jusqu'à `onAttempt`, qui a pu poser `etapeClose` : c'était la
+            // dernière question de l'étape. Appeler `showNext()` malgré tout,
+            // c'est afficher la question de trop — celle que Rémy voyait
+            // clignoter — et par son propre outil, la palette « suivant ✓ / ✗ ».
+            // La conclusion est déjà programmée : il n'y a rien à montrer de
+            // plus, l'écran garde la question qu'on vient de trancher.
+            if (this.etapeClose) { this.updateStepNavigation(); return true; }
             if (this.handle && this.handle.showNext) this.handle.showNext();
             return true;
         }
