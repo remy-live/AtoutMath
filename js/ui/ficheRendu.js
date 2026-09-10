@@ -834,6 +834,34 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
     return morceauxLigne(ligne, avecFractions).map(m => {
         if (m.texte !== undefined) return texteHtml(m.texte);
         if (m.presque) return '<span class="fx-presque">&#8776;</span>';
+        // π ET LES EXPOSANTS — SANS QUOI L'APERÇU LES PREND POUR DES FRACTIONS.
+        //
+        // Rémy, capture à l'appui : « j'ai toujours le bug ». Sur l'aperçu,
+        // « 3a² + 2a² » s'affichait « 3a undefined/undefined + 2a
+        // undefined/undefined ».
+        //
+        // La cause n'était plus celle d'avant. `morceauxLigne` a appris à
+        // sortir π et les exposants de la ligne (pour que le PDF puisse les
+        // ÉCRIRE au lieu de les translittérer), et `dessinerLigne` — le chemin
+        // du PDF — a reçu les deux branches qu'il fallait. CE CHEMIN-CI, celui
+        // de l'aperçu, ne les a pas reçues : tout ce qui n'était ni du texte
+        // ni un « ≈ » tombait dans la branche des fractions, où `m.num` et
+        // `m.den` n'existent pas. D'où deux « undefined » empilés.
+        //
+        // La leçon vaut d'être écrite : `morceauxLigne` a maintenant QUATRE
+        // sortes de morceaux et TROIS lecteurs (l'aperçu, le PDF, la mesure).
+        // Ajouter une sorte sans faire le tour des trois, c'est reproduire ce
+        // bug — et il ne se voit que sur une feuille, à l'écran d'un élève.
+        if (m.pi) return '<span class="fx-pi">&#960;</span>';
+        // Le navigateur sait écrire « ² » ; mais au-delà de ³ les polices ne
+        // suivent pas toutes, et l'on verrait un carré vide. Un `<sup>` avec le
+        // chiffre ordinaire se lit partout — et c'est exactement ce que le PDF
+        // dessine de son côté : plus petit, plus haut.
+        if (m.haut) {
+            return '<sup class="fx-haut">'
+                + echapper([...m.haut].map(c => EXPOSANTS_HAUT[c] ?? c).join(''))
+                + '</sup>';
+        }
         // UN ÉTAGE VIDE EST UN TROU, et un trou se dessine en pointillés — sans
         // quoi la place à remplir, faite d'espaces, disparaîtrait purement et
         // simplement dans le HTML.

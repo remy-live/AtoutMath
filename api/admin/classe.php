@@ -235,8 +235,10 @@ $messages = array_map(function ($m) {
 enTete($classe['name'], $prof, 'classes');
 ?>
 <h1><?= h($classe['name']) ?> <span class="code" style="margin-left:10px"><?= h($classe['join_code']) ?></span></h1>
-<p class="gris-clair">Les élèves ouvrent l'application, cliquent sur ☁️, et saisissent
-ce code puis leur prénom. Rien d'autre — pas de mot de passe.</p>
+<p class="gris-clair">Les élèves ouvrent le site et entrent par l'une des deux
+portes : leur <b>identifiant et code</b> — c'est la liste que vous fournissez —
+ou bien ce <b>code de classe</b> et leur prénom.
+<a href="eleves.php?id=<?= h($id) ?>">Gérer la liste et imprimer les billets →</a></p>
 
 <div class="carte">
     <h2>Le verrou</h2>

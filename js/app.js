@@ -36,6 +36,8 @@ import { initSync } from './core/sync.js';
 import { initSyncUI } from './ui/syncUI.js';
 import { initSeanceDistante } from './core/seanceDistante.js';
 import { initSeanceDistanteUI } from './ui/seanceDistanteUI.js';
+import { modeLibre } from './core/portail.js';
+import { initPortail, majPortail } from './ui/portailUI.js';
 import { initPleinEcran } from './ui/fullscreen.js';
 import { initBilanExercice } from './ui/accueilUI.js';
 import { rendreAujourdhui } from './ui/aujourdhui.js';
@@ -93,7 +95,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     initBasculeRangement();
     refreshViews();
     setSidebarMode('drill');
-    setTopNavMode('grid');
+    // SANS MODE LIBRE, ON N'OUVRE PAS SUR LE CATALOGUE. Il serait masqué dans
+    // la barre et affiché dans la page — deux affirmations contraires sur le
+    // même écran. L'élève arrive donc sur son parcours ; le professeur, lui,
+    // garde le catalogue, c'est son atelier.
+    setTopNavMode(modeLibre() || state.isTeacherMode ? 'grid' : 'path');
     initGridFilters();
     initRechercheUI(refreshCatalogViews);
     initBuilder();
@@ -182,6 +188,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     // pour un élève qui n'a peut-être aucune séance. On dessine donc tout de
     // suite, et la carte s'ajoute quand elle est connue.
     initMaSeance();
+
+    // LA PORTE EN DERNIER, quand tout ce qu'elle interroge est chargé : le
+    // profil (est-il rattaché ?), le journal (a-t-il un parcours ?), et le
+    // rôle. Posée plus tôt, elle se montrerait à un élève qui a déjà sa séance,
+    // le temps que l'état arrive.
+    initPortail();
 });
 
 /**
@@ -828,6 +840,9 @@ function initDebugToolbar() {
     const basculerRole = () => {
         state.isTeacherMode = !state.isTeacherMode;
         syncRole();
+        // Le professeur retrouve son catalogue ; l'élève qui revient à sa place
+        // le reperd, et retrouve la porte s'il n'a rien à faire.
+        majPortail();
         document.body.classList.toggle('teacher-mode', state.isTeacherMode);
         setTopNavMode(state.isTeacherMode ? 'teacher' : 'grid');
         refreshViews();

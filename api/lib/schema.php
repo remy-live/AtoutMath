@@ -73,11 +73,40 @@ function migrer(?PDO $pdo = null): void
     // index aveugle, seule façon de retrouver « l'élève qui s'appelle Léa »
     // sans pouvoir lire le prénom. En SQLite, TEXT ne borne rien, mais le
     // chiffré est plus long que le clair : en MySQL il faut de la place.
+    //
+    // LA LISTE FOURNIE PAR LE PROFESSEUR. Rémy : « pour la connexion, fais aussi
+    // une connexion avec identifiant et code élève, je fournirai la liste. »
+    //
+    // Deux façons d'entrer coexistent, et elles ne protègent pas la même chose :
+    //
+    //   · CODE DE CLASSE + PRÉNOM — l'élève se déclare. Rien à préparer, mais
+    //     n'importe qui connaissant le code peut se dire « Léa ».
+    //   · IDENTIFIANT + CODE — le professeur a écrit la liste. Seul celui qui
+    //     est dessus entre, et sous le nom qu'on lui a donné.
+    //
+    // `login` est un nom de personne : il est CHIFFRÉ comme le prénom, et cherché
+    // par son index aveugle `login_key`.
+    //
+    // LE CODE EST CHIFFRÉ, PAS HACHÉ, et c'est un choix qu'il faut assumer.
+    // Haché, il serait plus orthodoxe — mais alors PERSONNE ne pourrait le
+    // relire, y compris Rémy, et un élève qui perd son billet au milieu de
+    // l'heure obligerait à en tirer un neuf, ce qui invalide le billet qu'il
+    // retrouvera dans sa poche cinq minutes plus tard. Un professeur doit
+    // pouvoir RÉIMPRIMER sa liste.
+    //
+    // Le prix est faible et il est connu : celui qui tient la base ET la clé
+    // lit les codes. Mais celui-là lit déjà les prénoms, les réponses et les
+    // messages — il a tout, et un code d'entrée de plus ne change pas sa
+    // situation. Ce que le chiffrement protège ici, c'est le fichier qui part
+    // seul, et de ce danger-là le code est protégé comme le reste.
     $tables['students'] = "
         id             $id,
         class_id       $ref,
         first_name     " . ($sqlite ? 'TEXT NOT NULL' : 'VARCHAR(255) NOT NULL') . ",
         first_name_key " . ($sqlite ? 'TEXT NULL' : 'CHAR(64) NULL') . ",
+        login          " . ($sqlite ? 'TEXT NULL' : 'VARCHAR(255) NULL') . ",
+        login_key      " . ($sqlite ? 'TEXT NULL' : 'CHAR(64) NULL') . ",
+        access_code    $txtNull,
         token_hash   $txt,
         -- Un élève peut être mis de côté sans être effacé : il ne peut plus
         -- se rattacher, mais son travail reste lisible jusqu'à la purge.
@@ -200,6 +229,9 @@ function migrer(?PDO $pdo = null): void
     foreach ([
         'idx_students_class'   => 'students(class_id)',
         'idx_students_prenom'  => 'students(class_id, first_name_key)',
+        // L'identifiant se cherche SANS code de classe : c'est tout l'intérêt
+        // pour l'élève, deux champs au lieu de trois. L'index est donc global.
+        'idx_students_login'   => 'students(login_key)',
         'idx_students_token'   => 'students(token_hash)',
         'idx_tokens_student'   => 'student_tokens(student_id)',
         'idx_events_student'   => 'events(student_id, seq)',
@@ -226,7 +258,10 @@ function migrer(?PDO $pdo = null): void
     foreach ([
         'classes'  => ['locked' => $bool, 'notice' => $txtNull],
         'students' => ['blocked' => $bool,
-                       'first_name_key' => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL'],
+                       'first_name_key' => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
+                       'login'          => $sqlite ? 'TEXT NULL' : 'VARCHAR(255) NULL',
+                       'login_key'      => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
+                       'access_code'    => $txtNull],
     ] as $table => $colonnes) {
         foreach ($colonnes as $col => $type) {
             try {

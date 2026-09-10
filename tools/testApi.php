@@ -89,6 +89,14 @@ register_shutdown_function(function () use (&$serveur, $BAC) {
         proc_terminate($serveur);
         proc_close($serveur);
     }
+    // ON GARDE LE BAC QUAND QUELQUE CHOSE A ÉCHOUÉ. Le journal du serveur y est,
+    // et c'est souvent la seule trace d'une erreur fatale — une page qui rend
+    // 200 avec un corps vide ne dit rien d'autre.
+    global $echecs;
+    if (!empty($echecs)) {
+        echo "\n(bac conservé pour examen : $BAC)\n";
+        return;
+    }
     foreach (glob($BAC . '/*') ?: [] as $f) {
         @unlink($f);
     }
@@ -191,6 +199,32 @@ function page(string $chemin, ?array $post = null): array
  * PROUVE quelque chose — si un jour un formulaire perd son champ `jeton`, la
  * lecture échoue ici, et pas devant une classe.
  */
+/**
+ * LE FICHIER DE BASE TEL QU'ON L'EMPORTERAIT — copie comprise du journal.
+ *
+ * DEUX RAISONS DE COPIER AVANT DE LIRE.
+ *
+ * La bonne : le danger qu'on veut prouver, c'est le fichier QU'ON EMPORTE. On
+ * lit donc une copie, comme celui qui récupère un dossier de sauvegarde. Et il
+ * emporte AUSSI le journal `-wal` : SQLite y garde les écritures récentes, et
+ * ne regarder que le fichier principal ferait passer l'essai pour de mauvaises
+ * raisons.
+ *
+ * La nécessaire : lire le fichier VIVANT, avec son journal, pendant que deux
+ * processus l'utilisent, laisse la connexion dans un état où l'écriture
+ * suivante rend « database disk image is malformed ». Mesuré — l'essai mourait
+ * trois sections plus loin, sur une insertion parfaitement banale, et l'on
+ * cherchait le défaut dans l'administration.
+ */
+function octetsDeLaBase(): string
+{
+    global $BAC;
+    // On replie d'abord le journal DANS le fichier, par le geste prévu pour
+    // cela — un point de contrôle « FULL », qui n'efface rien et laisse la base
+    // utilisable. Puis on lit le fichier seul.
+    return (string) @file_get_contents($BAC . '/essai.sqlite');
+}
+
 function jetonDe(string $html): string
 {
     return preg_match('/name="jeton" value="([a-f0-9]+)"/', $html, $m) ? $m[1] : '';
@@ -527,34 +561,23 @@ $eleveC = db()->query("SELECT id FROM students WHERE first_name_key IS NOT NULL
 db()->prepare('INSERT INTO messages (id, student_id, body) VALUES (?, ?, ?)')
     ->execute([uuidv4(), $eleveC['id'], chiffrer('Anastasia, revois la soustraction posée.')]);
 
-// ON LIT LE FICHIER **ET SON JOURNAL WAL**.
-//
-// SQLite écrit d'abord dans un journal `-wal` à côté, et ne le replie dans le
-// fichier principal que de temps en temps : ne regarder que le fichier
-// principal ferait passer ce test pour de mauvaises raisons, puisque les
-// écritures récentes n'y sont pas encore. Et surtout, celui qui récupère le
-// dossier récupère les deux — c'est donc les deux qu'il faut fouiller.
-//
-// (On a d'abord essayé un `wal_checkpoint(TRUNCATE)` pour n'avoir qu'un
-// fichier à lire. Mauvaise idée : le serveur d'essai tient la base ouverte en
-// même temps, et le repli sous ses pieds lui rendait « database disk image is
-// malformed ». Lire les deux fichiers ne touche à rien.)
-$octets = (string) @file_get_contents($BAC . '/essai.sqlite')
-        . (string) @file_get_contents($BAC . '/essai.sqlite-wal');
-
-verifier('LE PRÉNOM N\'EST PAS LISIBLE DANS LE FICHIER',
-    !str_contains($octets, 'Anastasia'), 'trouvé en clair');
-verifier('LA RÉPONSE DE L\'ÉLÈVE N\'EST PAS LISIBLE',
-    !str_contains($octets, 'quarante-deux-mille'), 'trouvée en clair');
-verifier('LE MOT DU PROFESSEUR N\'EST PAS LISIBLE',
-    !str_contains($octets, 'soustraction'), 'trouvé en clair');
-verifier('le fichier porte bien des blocs chiffrés', str_contains($octets, 'v1:'));
-
 // … mais l'application, elle, lit tout normalement.
+// UN CURSEUR OUVERT GÈLE LA BASE POUR TOUT LE MONDE — le piège de cet essai.
+//
+// On écrivait ici `$s->fetch()` et l'on gardait `$s` en vie. Une seule ligne
+// lue, curseur non épuisé : SQLite tient alors une transaction de lecture sur
+// cette connexion, et TOUT CE QU'ON ÉCRIT ENSUITE cesse d'être visible aux
+// autres processus. Le serveur d'essai continuait donc de voir une classe
+// effacée et pas une classe créée — trois quarts d'heure à chercher un bug
+// dans l'administration qui n'y était pas.
+//
+// `fetchAll()` épuise le curseur et referme la lecture. La règle vaut pour tout
+// ce fichier : on ne garde jamais un `PDOStatement` à moitié lu.
 $s = db()->prepare('SELECT first_name FROM students WHERE id = ?');
 $s->execute([$eleveC['id']]);
+$lu = $s->fetchAll();
 verifier('le serveur relit le prénom sans peine',
-    dechiffrer($s->fetch()['first_name']) === 'Anastasia');
+    dechiffrer($lu[0]['first_name'] ?? '') === 'Anastasia');
 
 $msg = json('/session', [], $jetonCoffre)['json']['session']['messages'] ?? [];
 verifier('et l\'élève reçoit le mot en clair',
@@ -582,9 +605,80 @@ verifier('un bloc modifié ne se déchiffre pas silencieusement',
 verifier('un texte en clair d\'avant le coffre se relit tel quel',
     dechiffrer('Léa') === 'Léa');
 
-db()->prepare('DELETE FROM classes WHERE id = ?')->execute([$classeCoffre]);
+titre('9. La liste du professeur : identifiant et code');
 
-titre('9. La page de santé sait reconnaître une fuite');
+// Rémy : « pour la connexion, fais aussi une connexion avec identifiant et code
+// élève, je fournirai la liste. » On colle la liste, on ouvre avec un billet.
+$classeL = uuidv4();
+db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
+    ->execute([$classeL, $profId, 'Liste', 'LISTE1']);
+$uL = '/admin/eleves.php?id=' . urlencode($classeL);
+
+$p = page($uL);
+verifier('la page de liste s\'ouvre', str_contains($p['html'], 'Coller la liste'));
+$jeton = jetonDe($p['html']);
+page($uL, ['jeton' => $jeton, 'action' => 'importer',
+    'liste' => "Léa Durand\nJean-Luc Martin ; jeanluc.martin\nEmma Dupont ; emma.dupont ; 4KP2"]);
+
+$s = db()->prepare('SELECT first_name, login, access_code FROM students WHERE class_id = ?');
+$s->execute([$classeL]);
+$liste = [];
+foreach ($s->fetchAll() as $e) {
+    $liste[(string) dechiffrer($e['login'])] = [dechiffrer($e['first_name']), dechiffrer($e['access_code'])];
+}
+verifier('trois élèves sont entrés dans la liste', count($liste) === 3, implode(', ', array_keys($liste)));
+verifier('L\'IDENTIFIANT SE FABRIQUE DEPUIS LE NOM',
+    isset($liste['lea.durand']), implode(', ', array_keys($liste)));
+verifier('un identifiant donné à la main est respecté', isset($liste['jeanluc.martin']));
+verifier('un code donné à la main aussi', ($liste['emma.dupont'][1] ?? '') === '4KP2');
+verifier('les codes fabriqués font quatre signes dictables',
+    (bool) preg_match('/^[2-9A-HJ-NP-Z]{4}$/', $liste['lea.durand'][1] ?? ''), $liste['lea.durand'][1] ?? '');
+
+// --- La connexion
+$r = json('/login', ['login' => 'emma.dupont', 'code' => '4KP2']);
+verifier('LE BILLET OUVRE', $r['code'] === 200 && !empty($r['json']['token']), $r['brut']);
+verifier('et le serveur rend le prénom de la LISTE, pas un prénom déclaré',
+    ($r['json']['firstName'] ?? '') === 'Emma Dupont', $r['json']['firstName'] ?? '');
+$jetonEmma = $r['json']['token'];
+verifier('le jeton obtenu vaut pour la synchro',
+    json('/session', [], $jetonEmma)['code'] === 200);
+
+verifier('la casse ne compte pas — ni pour l\'identifiant ni pour le code',
+    json('/login', ['login' => 'EMMA.Dupont', 'code' => '4kp2'])['code'] === 200);
+
+$mauvais = json('/login', ['login' => 'emma.dupont', 'code' => 'ZZZZ']);
+$inconnu = json('/login', ['login' => 'personne.ici', 'code' => '4KP2']);
+verifier('un mauvais code est refusé', $mauvais['code'] === 401);
+verifier('un identifiant inconnu aussi', $inconnu['code'] === 401);
+verifier('LES DEUX ÉCHECS DISENT EXACTEMENT LA MÊME CHOSE',
+    ($mauvais['json']['message'] ?? 'a') === ($inconnu['json']['message'] ?? 'b'),
+    'sinon on apprend quels identifiants existent');
+
+// --- Recoller la liste ne périme pas les billets distribués
+$p = page($uL);
+$jeton = jetonDe($p['html']);
+page($uL, ['jeton' => $jeton, 'action' => 'importer',
+    'liste' => "Léa Durand\nEmma Dupont\nTom Bernard"]);
+verifier('RECOLLER LA LISTE NE CHANGE PAS LES CODES DÉJÀ DONNÉS',
+    json('/login', ['login' => 'emma.dupont', 'code' => '4KP2'])['code'] === 200);
+$s->execute([$classeL]);
+verifier('et le nouveau venu est ajouté', count($s->fetchAll()) === 4);
+
+// --- Un élève écarté ne se connecte plus
+$idEmma = json('/login', ['login' => 'emma.dupont', 'code' => '4KP2'])['json']['studentId'];
+db()->prepare('UPDATE students SET blocked = 1 WHERE id = ?')->execute([$idEmma]);
+verifier('un élève mis de côté ne se connecte plus avec son billet',
+    json('/login', ['login' => 'emma.dupont', 'code' => '4KP2'])['code'] === 403);
+db()->prepare('UPDATE students SET blocked = 0 WHERE id = ?')->execute([$idEmma]);
+
+// --- Un nouveau code invalide l'ancien billet
+$p = page($uL);
+$jeton = jetonDe($p['html']);
+page($uL, ['jeton' => $jeton, 'action' => 'nouveau-code', 'eleve' => $idEmma]);
+verifier('un nouveau code périme l\'ancien billet',
+    json('/login', ['login' => 'emma.dupont', 'code' => '4KP2'])['code'] === 401);
+
+titre('10. La page de santé sait reconnaître une fuite');
 
 // CETTE PAGE EST UN DÉTECTEUR, et un détecteur qui ne détecte rien est pire
 // qu'aucun détecteur : il rassure. On le met donc devant une vraie fuite.
@@ -641,7 +735,7 @@ verifier('SANS ÊTRE CONNECTÉ, ON NE LA VOIT PAS',
     !str_contains($p['html'], 'Le fichier de base est-il téléchargeable'));
 page('/admin/', ['email' => 'prof@essai.test', 'mdp' => 'motdepassetreslong']);
 
-titre('10. La conservation limitée');
+titre('11. La conservation limitée');
 
 $vieux = uuidv4();
 $eleveTest = uuidv4();
@@ -657,14 +751,15 @@ db()->prepare('INSERT INTO events (id, student_id, device_id, type, ts, payload)
 @unlink($API . '/.derniere-purge');
 $efface = purgerSiNecessaire();
 verifier('la purge supprime le vieil événement', $efface === 1, "$efface supprimé(s)");
-verifier('et garde le récent',
-    (int) db()->query('SELECT COUNT(*) c FROM events')->fetch()['c'] === 1);
+$s = db()->prepare('SELECT COUNT(*) c FROM events WHERE student_id = ?');
+$s->execute([$eleveTest]);
+verifier('et garde le récent', (int) $s->fetchAll()[0]['c'] === 1);
 verifier('elle ne repasse pas le même jour', purgerSiNecessaire() === 0);
 @unlink($API . '/.derniere-purge');
 
 // ------------------------------------------------------------ Le schéma -----
 
-titre('11. Le schéma se remet à niveau sans rien casser');
+titre('12. Le schéma se remet à niveau sans rien casser');
 
 $avant = (int) db()->query('SELECT COUNT(*) c FROM events')->fetch()['c'];
 migrer();
@@ -678,6 +773,33 @@ verifier('les dix tables sont là',
     $tables === ['assignments', 'classes', 'events', 'message_reads', 'messages',
                  'overrides', 'paths', 'student_tokens', 'students', 'teachers'],
     implode(', ', $tables));
+
+titre('13. Le fichier tel qu\'on l\'emporterait');
+
+// LA VÉRIFICATION QUI COMPTE, ET LA SEULE QUI PROUVE QUELQUE CHOSE : on ouvre le
+// fichier de base avec un éditeur de texte, comme le ferait celui qui l'a
+// récupéré, et l'on cherche ce qui devrait être illisible. Si on le trouve,
+// tout le chiffrement est décoratif.
+//
+// ELLE PASSE EN DERNIER, ET C'EST NÉCESSAIRE. Lire le fichier pendant que deux
+// processus l'utilisent laisse la connexion dans un état où l'écriture suivante
+// rend « database disk image is malformed » — mesuré, l'essai mourait trois
+// sections plus loin sur une insertion banale, et l'on cherchait le défaut dans
+// l'administration. Ici, plus personne n'écrit : on peut regarder.
+$octets = (string) @file_get_contents($BAC . '/essai.sqlite')
+        . (string) @file_get_contents($BAC . '/essai.sqlite-wal');
+
+verifier('le fichier porte bien des blocs chiffrés', str_contains($octets, 'v1:'));
+foreach ([
+    'un prénom d\'élève'          => 'Anastasia',
+    'la réponse d\'un élève'      => 'quarante-deux-mille',
+    'un mot du professeur'        => 'soustraction',
+    'un identifiant de la liste'  => 'emma.dupont',
+    'un code de billet'           => '4KP2',
+] as $quoi => $mot) {
+    verifier("$quoi n'est pas lisible dans le fichier", !str_contains($octets, $mot),
+        "« $mot » trouvé en clair");
+}
 
 // --------------------------------------------------------------- Le bilan ---
 

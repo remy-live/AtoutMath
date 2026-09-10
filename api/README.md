@@ -142,6 +142,11 @@ rafraîchit toute seule toutes les vingt secondes (jamais pendant que vous
   l'effacer.
 - **Effacer** : les élèves, ou la classe entière. Il faut écrire `EFFACER`.
 
+**`eleves.php`** — la liste de la classe. On y colle sa liste (un élève par
+ligne ; le nom suffit), et l'on imprime les **billets** à découper : prénom,
+identifiant, code. Recoller la liste ne change aucun code déjà donné — les
+billets distribués restent valables ; seuls les nouveaux venus en reçoivent un.
+
 **`sante.php`** — le contrôle de l'installation, **sur votre hébergement**.
 Le serveur va chercher ses propres fichiers par le web, comme le ferait un
 inconnu, et vous dit ce qui revient : la base est-elle téléchargeable ? la
@@ -219,7 +224,8 @@ Tout est en `POST` JSON (les proxys d'établissement mettent volontiers les
 
 | Route | Authentification | Rôle |
 |---|---|---|
-| `/join` | — | rattacher un appareil à une classe |
+| `/join` | — | rattacher un appareil à une classe (code de classe + prénom) |
+| `/login` | — | identifiant + code élève (la liste du professeur) |
 | `/sync` | jeton élève | pousser / tirer des événements, + l'état de séance |
 | `/session` | jeton élève | l'état de séance seul (verrou, consigne, mots, déblocages) |
 | `/messages/read` | jeton élève | « j'ai lu ce mot » |
@@ -278,7 +284,14 @@ manœuvre.
 
 ## Identification des élèves
 
-Volontairement sans mot de passe : **code de classe + prénom**. Un élève qui
+**Deux portes, et elles ne protègent pas la même chose.**
+
+**Identifiant + code** — la liste que vous fournissez (`admin/eleves.php`). Seul
+celui qui est sur la liste entre, et sous le nom que vous lui avez donné. C'est
+la bonne porte quand le travail compte. Deux champs pour l'élève : ni adresse de
+serveur, ni code de classe — l'identifiant suffit à le retrouver.
+
+**Code de classe + prénom** — sans préparation. Un élève qui
 saisit le même prénom dans la même classe retrouve son compte, ce qui permet de
 passer de l'école à la maison sans procédure. Chaque rattachement **ajoute** un
 jeton sans détruire les précédents (jusqu'à cinq) : l'ordinateur de l'école

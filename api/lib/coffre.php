@@ -164,6 +164,56 @@ function normaliserPrenom(string $prenom): string
 }
 
 /**
+ * L'IDENTIFIANT D'UN ÉLÈVE — « lea.durand ».
+ *
+ * Rémy fournit la liste ; l'identifiant en est tiré, ou donné par lui. Sans
+ * accent, sans majuscule, sans espace : c'est ce qu'un élève de sixième tape
+ * sans se tromper, et c'est ce qu'on peut comparer sans surprise. Le trait
+ * d'union d'un prénom composé reste — le retirer ferait deux mots, et l'on ne
+ * saurait plus où commence le nom.
+ *
+ * (Le même calcul existe côté navigateur dans `js/core/rattachement.js` :
+ * `cleEleve`. Les deux doivent donner le même résultat, sans quoi un élève
+ * tapant exactement son identifiant serait le seul à ne pas se retrouver.)
+ */
+function identifiantDe(string $nom): string
+{
+    $n = normaliserPrenom($nom);
+    $n = preg_replace('/[._]+/', ' ', $n) ?? $n;
+    $n = preg_replace('/[^a-z0-9- ]/', '', $n) ?? $n;
+    $n = trim(preg_replace('/\s+/', ' ', $n) ?? $n);
+    return str_replace(' ', '.', $n);
+}
+
+/** L'index aveugle d'un identifiant : cherchable, et muet. */
+function empreinteLogin(string $login): string
+{
+    return hash_hmac('sha256', identifiantDe($login),
+        hash_hmac('sha256', 'login', cleDonnees(), true));
+}
+
+/**
+ * UN CODE ÉLÈVE, DICTABLE ET RECOPIABLE.
+ *
+ * Quatre signes sur l'alphabet sans 0/O ni 1/I — le même que les codes de
+ * classe, et pour la même raison : il se lit sur un bout de papier photocopié,
+ * parfois de travers. Un peu plus d'un million de possibilités : de quoi rendre
+ * l'essai au hasard sans intérêt, d'autant que la limitation de débit veille.
+ *
+ * Ce n'est pas un mot de passe et cela n'en a pas la prétention : c'est un
+ * billet d'entrée, qu'on distribue et qu'on remplace si besoin.
+ */
+function codeEleve(int $longueur = 4): string
+{
+    $alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    $out = '';
+    for ($i = 0; $i < $longueur; $i++) {
+        $out .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+    }
+    return $out;
+}
+
+/**
  * TRIER DES PRÉNOMS QU'ON VIENT DE DÉCHIFFRER.
  *
  * `ORDER BY first_name` ne veut plus rien dire sur du texte chiffré : il

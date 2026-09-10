@@ -7,6 +7,7 @@ declare(strict_types=1);
  * Surface volontairement réduite :
  *
  *   POST /join                 rattacher un appareil à une classe (élève)
+ *   POST /login                identifiant + code élève (liste du professeur)
  *   POST /sync                 pousser/tirer des événements (élève)
  *   POST /session              l'état de séance seul (verrou, mot, déblocages)
  *   POST /messages/read        « j'ai lu ce mot »
@@ -35,6 +36,7 @@ $route = '/' . trim(substr($path, strlen($base)), '/');
 
 switch ($route) {
     case '/join':            handleJoin(); break;
+    case '/login':           handleLogin(); break;
     case '/sync':            handleSync(); break;
     case '/session':         handleSession(); break;
     case '/messages/read':   handleMessagesRead(); break;
@@ -121,6 +123,80 @@ function handleJoin(): void
         // L'état de séance dès le rattachement : si la classe est déjà
         // verrouillée, l'élève ne doit pas voir le catalogue une seule seconde.
         'session' => etatDeSeance(['id' => $studentId, 'class_id' => $class['id'], 'blocked' => 0]),
+    ]);
+}
+
+/**
+ * CONNEXION PAR IDENTIFIANT ET CODE — la liste du professeur.
+ *
+ * Rémy : « pour la connexion, fais aussi une connexion avec identifiant et code
+ * élève, je fournirai la liste. »
+ *
+ * DEUX CHAMPS, PAS TROIS. On ne demande pas le code de la classe : l'identifiant
+ * suffit à retrouver l'élève, puisque le professeur les a écrits lui-même et
+ * qu'ils sont uniques. C'est une frappe de moins pour un élève de sixième, et
+ * une dictée de moins pour le professeur.
+ *
+ * CE QUE CELA CHANGE PAR RAPPORT AU CODE DE CLASSE. Avec `/join`, l'élève se
+ * DÉCLARE : qui connaît le code de la classe peut se dire « Léa ». Ici, seul
+ * celui qui est sur la liste entre, et sous le nom qu'on lui a donné. C'est la
+ * bonne porte quand le travail compte.
+ *
+ * LE MESSAGE D'ÉCHEC EST LE MÊME DANS LES DEUX CAS — identifiant inconnu ou
+ * code faux. Distinguer apprendrait à un curieux quels identifiants existent,
+ * c'est-à-dire la liste de la classe.
+ */
+function handleLogin(): void
+{
+    $body = jsonBody();
+    $login = trim((string) ($body['login'] ?? ''));
+    $code  = strtoupper(trim((string) ($body['code'] ?? '')));
+
+    rateLimit('login_eleve_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 30);
+
+    if ($login === '' || $code === '') {
+        fail(400, 'missing_fields', 'Identifiant et code obligatoires.');
+    }
+
+    $stmt = db()->prepare(
+        'SELECT s.*, c.name AS class_name, c.join_code, c.archived
+         FROM students s JOIN classes c ON c.id = s.class_id
+         WHERE s.login_key = ? LIMIT 1'
+    );
+    $stmt->execute([empreinteLogin($login)]);
+    $student = $stmt->fetch();
+
+    // Une seconde d'attente sur l'échec : de quoi rendre l'essai en boucle
+    // inintéressant, sans que l'élève qui se trompe une fois le remarque.
+    // `hash_equals` et non `===` : la comparaison ne doit pas s'arrêter au
+    // premier signe qui diffère, sinon le TEMPS de la réponse dit combien de
+    // signes étaient bons.
+    $attendu = $student ? (string) dechiffrer($student['access_code']) : '';
+    if (!$student || $attendu === '' || !hash_equals(strtoupper($attendu), $code)) {
+        sleep(1);
+        fail(401, 'bad_login', "Identifiant ou code incorrect. Vérifie ton billet, ou demande à ton professeur.");
+    }
+    if (!empty($student['blocked'])) {
+        fail(403, 'student_blocked', "Ton professeur a mis ton accès en pause. Préviens-le.");
+    }
+    if (!empty($student['archived'])) {
+        fail(403, 'class_archived', "Cette classe est fermée.");
+    }
+
+    $token = newToken();
+    db()->prepare('UPDATE students SET token_hash = ?, last_seen_at = ' . sqlMaintenant() . ' WHERE id = ?')
+        ->execute([hashToken($token), $student['id']]);
+    db()->prepare(sqlInsereSansDoublon() . ' INTO student_tokens (token_hash, student_id) VALUES (?, ?)')
+        ->execute([hashToken($token), $student['id']]);
+    elaguerJetons($student['id']);
+
+    respond([
+        'studentId' => $student['id'],
+        'token' => $token,
+        'classCode' => $student['join_code'],
+        'className' => $student['class_name'],
+        'firstName' => dechiffrer($student['first_name']),
+        'session' => etatDeSeance($student),
     ]);
 }
 

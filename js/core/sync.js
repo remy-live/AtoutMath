@@ -153,6 +153,37 @@ export async function joinClass({ apiUrl, classCode, firstName }) {
 }
 
 /**
+ * SE CONNECTER AVEC SON IDENTIFIANT ET SON CODE — la liste du professeur.
+ *
+ * Rémy : « pour la connexion, fais aussi une connexion avec identifiant et code
+ * élève, je fournirai la liste. »
+ *
+ * DEUX CHAMPS, PAS TROIS : le code de la classe n'est pas demandé, l'identifiant
+ * suffit à retrouver l'élève. Et contrairement à `joinClass`, l'élève ne se
+ * DÉCLARE pas — il est reconnu. Le prénom vient du serveur, celui que le
+ * professeur a écrit sur sa liste.
+ */
+export async function loginEleve({ apiUrl, login, code }) {
+    await setSyncConfig({ apiUrl, enabled: true });
+    const data = await api('/login', {
+        login: String(login).trim(),
+        code: String(code).trim().toUpperCase(),
+        deviceId: getDeviceId()
+    });
+    await attachRemote(getActiveProfileId(), {
+        studentId: data.studentId,
+        token: data.token,
+        classCode: data.classCode,
+        className: data.className,
+        login: String(login).trim(),
+        lastSyncAt: null
+    });
+    if (data.session) appliquerEtat(data.session);
+    await syncNow({ silent: true });
+    return data;
+}
+
+/**
  * Un aller-retour de synchronisation.
  * @returns {Promise<{pushed:number, pulled:number}|null>}
  */

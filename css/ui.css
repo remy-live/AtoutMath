@@ -1,3 +1,91 @@
+/* --- LA PORTE D'ENTRÉE ---
+   Rémy : « quand on va sur le site, il faut un espace d'identification et une
+   zone code. Pour le moment, je ne veux pas encore mettre de mode libre. »
+   Voir js/core/portail.js. */
+
+.portail {
+    position: fixed; inset: 0;
+    /* SOUS LES FENÊTRES ET SOUS LA COUCHE DE JEU (9999 et 10000). La porte
+       s'efface d'elle-même dès qu'un parcours s'ouvre ; elle ne doit jamais
+       s'interposer devant un exercice ni devant une fenêtre de réglages. */
+    z-index: 9000;
+    background: var(--bg-app, #f6f7fb);
+    overflow-y: auto;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px 18px;
+}
+.portail-boite { width: min(880px, 100%); }
+.portail-titre {
+    text-align: center; font-size: 2rem; margin: 0 0 6px; color: var(--text-main);
+    letter-spacing: -.02em;
+}
+.portail-sous { text-align: center; color: var(--text-muted); margin: 0 0 26px; }
+
+.portail-portes { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 700px) { .portail-portes { grid-template-columns: 1fr; } }
+
+.portail-porte {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px;
+}
+.portail-porte h2 { font-size: 1.1rem; margin: 0 0 4px; color: var(--text-main); }
+.portail-aide { color: var(--text-muted); font-size: .9rem; margin: 0 0 14px; line-height: 1.45; }
+.portail-porte label {
+    display: block; font-weight: 600; font-size: .88rem; color: var(--text-main);
+    margin-bottom: 12px;
+}
+.portail-porte input {
+    display: block; width: 100%; margin-top: 5px; padding: 11px 12px;
+    border: 1px solid var(--border); border-radius: 10px;
+    font: inherit; font-size: 1rem; background: var(--bg-app); color: var(--text-main);
+    box-sizing: border-box;
+}
+/* Le code de classe se dicte en majuscules : autant l'écrire ainsi, quoi que
+   tape l'élève — c'est une frappe de moins et un doute de moins. */
+#portail-classe { text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+.portail-bouton {
+    width: 100%; margin-top: 4px; padding: 12px; border: none; border-radius: 10px;
+    background: var(--primary); color: #fff; font: inherit; font-weight: 700;
+    font-size: 1rem; cursor: pointer;
+}
+.portail-bouton:disabled { opacity: .6; cursor: default; }
+.portail-etat { margin: 10px 0 0; font-size: .9rem; color: var(--text-muted); min-height: 1.2em; }
+.portail-etat--erreur { color: var(--danger, #dc2626); }
+
+/* La seconde porte, repliée. Elle marche aussi bien, mais elle ne dit pas qui
+   travaille : on la montre à qui la cherche, pas à toute la classe. */
+.portail-repli { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+.portail-repli summary {
+    cursor: pointer; color: var(--text-muted); font-size: .88rem;
+    list-style: none; padding: 2px 0;
+}
+.portail-repli summary::-webkit-details-marker { display: none; }
+.portail-repli summary::before { content: '▸ '; }
+.portail-repli[open] summary::before { content: '▾ '; }
+.portail-repli summary:hover { color: var(--text-main); }
+.portail-repli > label:first-of-type { margin-top: 12px; }
+.portail-bouton--doux { background: var(--bg-app); color: var(--text-main);
+    border: 1px solid var(--border); font-weight: 600; }
+
+.portail-pied { text-align: center; margin: 24px 0 0; }
+.portail-lien {
+    background: none; border: none; font: inherit; font-size: .88rem;
+    color: var(--text-muted); text-decoration: underline; cursor: pointer; padding: 4px;
+}
+.portail-lien:hover { color: var(--text-main); }
+
+/* SANS MODE LIBRE, LE CATALOGUE N'EST PAS UNE PORTE. Les mêmes règles que le
+   verrou de classe, pour la même raison — sauf qu'ici c'est un choix de
+   l'application, pas une consigne du professeur. « Code », « Parcours » et
+   « Profil » restent : c'est par le code que le travail arrive. */
+body.sans-mode-libre #top-btn-grid,
+body.sans-mode-libre #mob-btn-grid,
+body.sans-mode-libre #mob-btn-drill-acc,
+body.sans-mode-libre #btn-toggle-sidebar,
+body.sans-mode-libre #sidebar,
+body.sans-mode-libre #debug-toolbar,
+body.sans-mode-libre #rangement-bascule { display: none !important; }
+
 /* --- LA SÉANCE PILOTÉE PAR LE PROFESSEUR ---
    Voir js/core/seanceDistante.js. Le serveur dit ce que la classe a le droit de
    voir ; ces règles-là le dessinent. */
