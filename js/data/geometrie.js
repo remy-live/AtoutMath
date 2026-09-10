@@ -2,7 +2,6 @@ import { TAGS } from './tags.js';
 // Les paliers du quadrilatère qui se transforme viennent du noyau : deux listes
 // d'options qui se répondent finissent toujours par diverger.
 import { PALIERS as MORPH_PALIERS } from '../core/quadriMorph.js';
-import { STATUS } from './status.js';
 
 // Les anciens exercices « grille » (cases à cliquer dans un quadrillage) sont
 // remplacés par un vrai repère du plan : axes fléchés, origine, graduations
@@ -1700,6 +1699,7 @@ export const geometrieExercises = [
     },
     {
         id: 'geo-repere-relatifs-lire', title: 'Coordonnées Négatives',
+        cree: '2026-08-03',
         generatorId: 'geo.repere', activityId: 'repere-lecture',
         params: { relatifs: 'relatives', max: 5, mode: 'lire' },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.REPERAGE], niveaux: [TAGS.NIVEAU.CINQUIEME] },
@@ -1710,7 +1710,8 @@ export const geometrieExercises = [
         // C'est aussi ce que le mode apprentissage du sprint utilise pour ses
         // deux premiers paliers — la difficulté d'un apprentissage n'est pas
         // seulement dans les réglages, elle est dans le jeu qu'on affronte.
-        id: 'geo-notations', status: STATUS.TEST, title: 'Segment, Droite, Demi-droite',
+        id: 'geo-notations', title: 'Segment, Droite, Demi-droite',
+        cree: '2026-08-03',
         generatorId: 'geo.notations', activityId: 'buttons',
         params: { sens: 'mixte', longueur: 'oui' },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.NOTATIONS], niveaux: [TAGS.NIVEAU.SIXIEME] },
@@ -1718,7 +1719,8 @@ export const geometrieExercises = [
         apprentissage: NOTATIONS_APPRENTISSAGE
     },
     {
-        id: 'geo-notations-sprint', status: STATUS.TEST, title: 'Sprint des Notations',
+        id: 'geo-notations-sprint', title: 'Sprint des Notations',
+        cree: '2026-08-03',
         generatorId: 'geo.notations', activityId: 'sprint',
         params: { sens: 'mixte', longueur: 'oui' },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.NOTATIONS], niveaux: [TAGS.NIVEAU.SIXIEME] },

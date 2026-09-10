@@ -302,6 +302,30 @@ L'outil **refuse de fabriquer** un paquet quand un fichier écrit n'est pas
 encore suivi par git : sans cela, on corrige, on transfère, et le correctif
 n'est pas dedans.
 
+### Deux portes, deux mots de passe ? Non : un seul
+
+- **`api/admin/index.php`** — la console : classes, listes d'élèves, billets,
+  conduite de séance, santé. Adresse électronique + mot de passe choisis à
+  l'installation.
+- **Le bouton « Je suis le professeur » de l'application** — il ouvre le
+  catalogue, le constructeur de parcours et les corrigés. **Il demande les mêmes
+  identifiants**, vérifiés par `/teacher/login`, et garde un jeton dans le
+  navigateur pour ne pas les redemander à chaque fois.
+
+> **C'était un vrai trou.** Cette bascule retournait un booléen dans le
+> navigateur sans rien demander à personne — et « Je suis le professeur » est
+> écrit en toutes lettres au bas de la porte d'entrée. Tant que le logiciel
+> tournait sur l'ordinateur de Rémy, c'était sans conséquence ; le jour où il est
+> en ligne et où trente élèves ont l'adresse, n'importe lequel d'entre eux
+> obtenait le catalogue entier.
+
+Le mot de passe n'est **jamais** comparé dans la page : un secret vérifié en
+JavaScript est un secret publié. Et la décision « faut-il un verrou ? » se prend
+sur le protocole de la page, pas sur la joignabilité du serveur — sans quoi une
+API momentanément tombée ouvrirait tout grand, exactement au mauvais moment.
+Sur un fichier ouvert en local (`file://`), il n'y a ni classe ni adresse à
+donner : la bascule y reste libre.
+
 ### Le contrôle après publication, fait tout seul
 
 Il n'y a plus de geste à faire après une publication : `tools/controleEnLigne.mjs`

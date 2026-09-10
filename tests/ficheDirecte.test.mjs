@@ -338,7 +338,9 @@ test('LE RÔLE SE LIT EN HAUT, ET SE RETOURNE D\'UN CLIC', () => {
     const src = fsLire('../js/app.js');
     // LES DEUX BOUTONS PARTAGENT LE MÊME GESTE : deux commandes pour un état,
     // c'est deux occasions de le désaccorder.
-    assert.match(src, /const basculerRole = \(\) =>/);
+    // `async` depuis que le passage en mode professeur demande un mot de passe :
+    // la garde attend le serveur avant de retourner l'état.
+    assert.match(src, /const basculerRole = async \(\) =>/);
     assert.match(src, /if \(btnRole\) btnRole\.onclick = basculerRole/);
     assert.match(src, /if \(btnRoleDbg\) btnRoleDbg\.onclick = basculerRole/);
     // Et le mot change avec le rôle.

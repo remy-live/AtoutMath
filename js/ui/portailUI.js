@@ -18,24 +18,14 @@
 
 import { joinClass, loginEleve } from '../core/sync.js';
 import { applyCode } from './studentCodeUI.js';
-import { modeLibre, portailNecessaire } from '../core/portail.js';
+import { modeLibre, portailNecessaire, adresseApiDeduite } from '../core/portail.js';
 import { state } from '../core/state.js';
 
 const ID = 'portail';
 
-/**
- * L'ADRESSE DE L'API, DÉDUITE DE CELLE DE LA PAGE.
- *
- * Le dépôt se dépose à la racine : le site élève est à `/`, l'API à `/api`.
- * Servi depuis un sous-dossier (`/atoutmath/`), on suit le même chemin. En
- * développement, la page est sur un port et l'API sur un autre : on garde alors
- * ce que la synchronisation connaît déjà, d'où le paramètre.
- */
-export function adresseApiDeduite(cfgConnue = '') {
-    if (cfgConnue) return cfgConnue;
-    const base = window.location.pathname.replace(/\/[^/]*$/, '');
-    return window.location.origin + (base === '/' ? '' : base) + '/api';
-}
+// L'adresse de l'API se déduit dans le noyau : le verrou du professeur en a
+// besoin aussi, et un module du noyau ne doit pas importer une page.
+export { adresseApiDeduite } from '../core/portail.js';
 
 export function initPortail() {
     // LA PORTE SE REFERME TOUTE SEULE quand l'élève a de quoi travailler. Le
@@ -212,9 +202,17 @@ function dessiner() {
     if (libre) libre.onclick = () => { fermerPortail(); };
 
     document.getElementById('portail-prof').onclick = () => {
-        const bascule = document.getElementById('btn-role');
-        fermerPortail();
-        if (bascule) bascule.click();
+        // ON NE FERME PAS LA PORTE AVANT DE SAVOIR SI ELLE S'OUVRE.
+        //
+        // Elle se fermait ici, puis la bascule se déclenchait. Depuis que le
+        // mode professeur demande un mot de passe, cet ordre était un piège :
+        // un élève curieux cliquait, renonçait devant la fenêtre — et se
+        // retrouvait dans l'application sans la porte, donc sans aucun moyen
+        // d'entrer. Mesuré dans un navigateur, le jour même du verrou.
+        //
+        // C'est `majPortail()`, appelée par la bascule, qui referme la porte —
+        // et seulement si l'on est vraiment passé professeur.
+        document.getElementById('btn-role')?.click();
     };
 
     document.getElementById('portail-login').focus();

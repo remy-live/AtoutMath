@@ -85,3 +85,21 @@ export function portailNecessaire() {
     } catch (e) { /* pas d'URL lisible : on montre la porte */ }
     return true;
 }
+
+/**
+ * L'ADRESSE DE L'API, DÉDUITE DE CELLE DE LA PAGE.
+ *
+ * Le dépôt se dépose à la racine : le site élève est à `/`, l'API à `/api`.
+ * Servi depuis un sous-dossier (`/atoutmath/`), on suit le même chemin. En
+ * développement, la page est sur un port et l'API sur un autre : on garde alors
+ * ce que la synchronisation connaît déjà, d'où le paramètre.
+ *
+ * ELLE VIT DANS LE NOYAU ET NON DANS LA PORTE D'ENTRÉE, parce que le verrou du
+ * professeur en a besoin lui aussi — et qu'un module du noyau qui importerait
+ * une page d'interface prendrait tout le portail avec lui.
+ */
+export function adresseApiDeduite(cfgConnue = '') {
+    if (cfgConnue) return cfgConnue;
+    const base = window.location.pathname.replace(/\/[^/]*$/, '');
+    return window.location.origin + (base === '/' ? '' : base) + '/api';
+}

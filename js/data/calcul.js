@@ -1,4 +1,5 @@
 import { TAGS } from './tags.js';
+import { STATUS } from './status.js';
 import { REGLAGE_SAISIE } from '../ui/champsGrille.js';
 import { NIVEAUX as NIVEAUX_CHANTIER } from '../core/chantier.js';
 // Les dominos empruntent leurs questions aux autres notions : la liste des
@@ -776,41 +777,6 @@ export const calculExercises = [
         instruction: "Un shoot'em up : glisse pour piloter, le canon tire tout seul — doigt posé pour charger le rayon lourd, double tape pour la bombe NOVA. Deux épreuves de calcul alternent : les MURS (franchis la porte du bon résultat) et les CONVOIS (place-toi sous le transporteur du bon résultat pour l'abattre). Chaque bonne porte ouvre le secteur suivant, plus dur : chasseurs, plongeurs kamikazes, blindés, tireurs d'élite — et tout ce qui te touche fait mal."
     },
     {
-        id: 'calc-garam', status: STATUS.TEST, title: 'Garam',
-        generatorId: 'logique.garam', activityId: 'garam',
-        printable: 'garam',
-        params: { nbQuestions: 3, taille: 'petit', operations: ['add', 'sub', 'mul'], difficulte: 'facile' },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Complète les cases pour que toutes les égalités soient vraies. Deux cases collées forment un nombre à deux chiffres.",
-        apprentissage: {
-            intro: "Le Garam est un treillis d'égalités : chaque case appartient à deux calculs à la fois, et c'est ce croisement qui donne la solution.",
-            regles: [
-                {
-                    titre: 'Toutes les égalités doivent être vraies',
-                    texte: "On lit chaque ligne et chaque colonne de chiffres comme un calcul complet. Commence par celles auxquelles il ne manque qu'une case.",
-                    exemple: '<span class="lec-calcul">7 − <b class="lec-vide">?</b> = 3</span>'
-                        + '<span class="lec-fleche" aria-hidden="true">→</span>'
-                        + '<span class="lec-calcul">7 − <b class="lec-ok">4</b> = 3</span>'
-                },
-                {
-                    titre: 'Chaque case sert deux fois',
-                    texte: "Une case appartient à une égalité horizontale ET à une égalité verticale. Ce qu'une case t'apprend d'un côté, tu le réutilises de l'autre.",
-                    exemple: ''
-                },
-                {
-                    titre: 'Deux cases collées font un nombre à deux chiffres',
-                    texte: "Quand deux cases se touchent sans signe entre elles, elles s'écrivent l'une après l'autre : un 1 et un 2 côte à côte, cela fait 12, pas 3.",
-                    exemple: '<span class="lec-suite"><b>1</b><b>2</b></span><span class="lec-fleche" aria-hidden="true">=</span><span class="lec-calcul">12</span>'
-                }
-            ],
-            paliers: [
-                { titre: 'Découverte', overrides: { taille: 'petit', operations: ['add'], difficulte: 'facile' }, nbItems: 1 },
-                { titre: 'On s\'entraîne', overrides: { taille: 'petit', operations: ['add', 'sub'], difficulte: 'facile' }, nbItems: 2 },
-                { titre: 'Défi', overrides: { taille: 'petit', operations: ['add', 'sub', 'mul'], difficulte: 'moyen' }, nbItems: 2 }
-            ]
-        }
-    },
-    {
         id: 'calc-escadrille', title: 'Escadrille des Tables',
         cree: '2026-08-05',
         activityId: 'escadrille', skills: ['num.mult.table.*'],
@@ -860,7 +826,38 @@ export const calculExercises = [
         printable: 'garam',
         params: { nbQuestions: 2, taille: 'complet', operations: ['add', 'sub', 'mul'], difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Le Garam des fiches officielles : quatre blocs d'égalités reliés par des ponts. Complète les cases avec des chiffres pour que TOUTES les égalités soient vraies, horizontales comme verticales. Une égalité verticale dépasse toujours dix : son résultat s'écrit sur deux cases empilées, dizaines au-dessus, unités en dessous — et la case du bas sert aussi à l'égalité horizontale."
+        instruction: "Le Garam des fiches officielles : quatre blocs d'égalités reliés par des ponts. Complète les cases avec des chiffres pour que TOUTES les égalités soient vraies, horizontales comme verticales. Une égalité verticale dépasse toujours dix : son résultat s'écrit sur deux cases empilées, dizaines au-dessus, unités en dessous — et la case du bas sert aussi à l'égalité horizontale.",
+        // LE MODE APPRENTISSAGE, repris de la branche principale : le Garam
+        // est exactement l'exercice qui le mérite — une règle qu'on ne devine
+        // pas, et qu'on ne devrait pas avoir à deviner en même temps que la
+        // réponse.
+        apprentissage: {
+            intro: "Le Garam est un treillis d'égalités : chaque case appartient à deux calculs à la fois, et c'est ce croisement qui donne la solution.",
+            regles: [
+                {
+                    titre: 'Toutes les égalités doivent être vraies',
+                    texte: "On lit chaque ligne et chaque colonne de chiffres comme un calcul complet. Commence par celles auxquelles il ne manque qu'une case.",
+                    exemple: '<span class="lec-calcul">7 − <b class="lec-vide">?</b> = 3</span>'
+                        + '<span class="lec-fleche" aria-hidden="true">→</span>'
+                        + '<span class="lec-calcul">7 − <b class="lec-ok">4</b> = 3</span>'
+                },
+                {
+                    titre: 'Chaque case sert deux fois',
+                    texte: "Une case appartient à une égalité horizontale ET à une égalité verticale. Ce qu'une case t'apprend d'un côté, tu le réutilises de l'autre.",
+                    exemple: ''
+                },
+                {
+                    titre: 'Deux cases collées font un nombre à deux chiffres',
+                    texte: "Quand deux cases se touchent sans signe entre elles, elles s'écrivent l'une après l'autre : un 1 et un 2 côte à côte, cela fait 12, pas 3.",
+                    exemple: '<span class="lec-suite"><b>1</b><b>2</b></span><span class="lec-fleche" aria-hidden="true">=</span><span class="lec-calcul">12</span>'
+                }
+            ],
+            paliers: [
+                { titre: 'Découverte', overrides: { taille: 'demi', operations: ['add'], difficulte: 'facile' }, nbItems: 1 },
+                { titre: 'On s\'entraîne', overrides: { taille: 'demi', operations: ['add', 'sub'], difficulte: 'facile' }, nbItems: 2 },
+                { titre: 'Défi', overrides: { taille: 'demi', operations: ['add', 'sub', 'mul'], difficulte: 'moyen' }, nbItems: 2 }
+            ]
+        }
     },
     {
         id: 'calc-course', title: 'Course Mathématique',

@@ -373,10 +373,35 @@ async function tourDesPanneaux(p, seau) {
         ['par chapitres', '[data-rangement="chapitre"]'], ['par domaines', '[data-rangement="domaine"]']
     ]) await essai(nom, () => clic(sel));
 
+    // LE VERROU DU PROFESSEUR NOUS FERME LA PORTE, ET IL A RAISON.
+    //
+    // Depuis que la bascule demande un mot de passe, ce clic ouvrait une
+    // fenêtre au lieu de passer professeur — et TOUT le reste de cette passe,
+    // qui n'existe que pour lui, ne trouvait plus rien à cliquer. L'audit
+    // annonçait « 13 panneaux, rien à signaler » là où il en vérifiait 26 la
+    // veille : il passait en ne trouvant rien, la pire façon de passer.
+    //
+    // On se donne donc un jeton, comme un professeur déjà identifié. On
+    // n'affaiblit rien — le verrou lui-même est éprouvé dans
+    // `tests/verrouProf.test.mjs` et dans un navigateur ; ici on vérifie les
+    // panneaux, pas la serrure.
+    await p.evaluate(() => localStorage.setItem('atoutmath-prof',
+        JSON.stringify({ token: 'audit.audit', displayName: 'Audit' })));
     await essai('bascule en professeur', async () => {
         await clic('#btn-role');
         await p.waitForTimeout(800);
     });
+    // ET L'ON VÉRIFIE QUE ÇA A MARCHÉ. Sans ce garde-fou, la panne ci-dessus
+    // se reproduirait en silence à la prochaine évolution du verrou.
+    const estProf = await p.evaluate(async () => {
+        const s = await import('/js/core/state.js');
+        return !!s.state.isTeacherMode;
+    });
+    if (!estProf) {
+        soucis.push({ id: 'bascule en professeur',
+            quoi: ['le mode professeur ne s\'est pas activé — la suite de cette '
+                 + 'passe ne vérifie rien'] });
+    }
     // UN PARCOURS D'ABORD, SINON LA MOITIÉ DE LA BARRE N'EXISTE PAS.
     //
     // Les commandes qui appartiennent au parcours — mode & barème, tester,

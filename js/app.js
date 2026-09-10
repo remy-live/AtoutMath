@@ -11,6 +11,7 @@ import { initConsoleCapture, openConsoleModal } from './ui/consoleLog.js';
 initConsoleCapture();
 
 import { state } from './core/state.js';
+import { jetonProf, verrouActif } from './core/verrouProf.js';
 import { journal } from './core/journal.js';
 import { clearEngines } from './core/timers.js';
 import { destroyAllDemoCursors, marquerDemo } from './core/demoPointer.js';
@@ -908,7 +909,21 @@ function initDebugToolbar() {
         }
         if (nomRole) nomRole.textContent = prof ? 'Prof' : 'Élève';
     };
-    const basculerRole = () => {
+    // ON NE PASSE PROFESSEUR QU'EN MONTRANT PATTE BLANCHE.
+    //
+    // Rémy, le site en ligne : « l'accès prof n'est pas protégé, je ne sais pas
+    // où m'identifier ». La bascule retournait un booléen sans rien demander —
+    // et « Je suis le professeur » est écrit en toutes lettres au bas de la
+    // porte d'entrée. N'importe quel élève y avait le catalogue entier, le
+    // constructeur de parcours et les corrigés.
+    //
+    // Le retour à l'espace élève, lui, reste libre : se restreindre soi-même
+    // n'a jamais demandé d'autorisation.
+    const basculerRole = async () => {
+        if (!state.isTeacherMode && verrouActif() && !jetonProf()) {
+            const { demanderProf } = await import('./ui/verrouProfUI.js');
+            if (!await demanderProf()) return;
+        }
         state.isTeacherMode = !state.isTeacherMode;
         syncRole();
         // Le professeur retrouve son catalogue ; l'élève qui revient à sa place
