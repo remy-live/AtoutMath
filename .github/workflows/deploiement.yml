@@ -26,11 +26,24 @@
 # POURQUOI SFTP ET NON FTP. La plupart des hébergeurs proposent les deux ; le
 # FTP simple fait voyager le mot de passe en clair. Le port 22 est celui du SFTP.
 #
-# ET POURQUOI CE FICHIER PLUTÔT QU'UN HÉBERGEUR « BRANCHÉ SUR GIT ». Parce qu'il
-# rend le choix de l'hébergeur indifférent : tout hébergement qui donne un accès
-# SFTP devient, avec ce fichier, un hébergement qui se met à jour tout seul à
-# chaque poussée. On choisit donc sur le prix et sur le lieu, pas sur la
-# présence d'un bouton GitHub dans le panneau d'administration.
+# ET SI L'HÉBERGEUR EST LUI-MÊME BRANCHÉ SUR GIT ? Rémy l'a fait chez OVH.
+# Les deux circuits cohabitent, à une condition : NE PAS RENSEIGNER LES SECRETS
+# SFTP. Sans `HEBERGEUR_HOTE`, la tâche « publier » s'arrête d'elle-même, et
+# deux transferts n'écrivent pas dans le même dossier.
+#
+# CE QU'ON PERD ALORS, ET COMMENT ON LE RÉCUPÈRE. Le déploiement d'un hébergeur
+# publie ce qui est sur la branche, testé ou non : la barrière « les tests
+# d'abord » disparaît. On la remet à l'autre bout, et c'est même mieux :
+#
+#   · l'hébergeur suit `refonte-architecture` ;
+#   · on ne pousse jamais directement dessus — on y arrive par une demande de
+#     fusion, que ce fichier teste (déclencheur `pull_request`) ;
+#   · dans Settings → Branches, on exige que ces tests passent avant de pouvoir
+#     fusionner (« Require status checks to pass »).
+#
+# La branche que l'hébergeur déploie ne contient alors, par construction, que du
+# code testé. Le bouton « Merge » devient la barrière, et il est gris tant que
+# c'est rouge.
 
 name: Tests et publication
 
@@ -203,5 +216,11 @@ jobs:
           # contrôle vérifie que c'est bien CELUI-LÀ qui est servi, et non la
           # version d'avant restée en place parce que le transfert a échoué en
           # silence.
+          # `--attendre` : le contrôle laisse au déploiement le temps d'arriver
+          # avant de crier. Notre transfert SFTP est terminé quand on arrive
+          # ici ; un déploiement lancé par l'hébergeur (OVH branché sur git)
+          # part de son côté et met le temps qu'il met. Sans cette attente, le
+          # contrôle serait orange à chaque fois — donc plus lu du tout.
           node tools/controleEnLigne.mjs "$SITE" \
+            --attendre=240 \
             --version="$(grep -om1 '?v=[0-9]\+' index.html | tr -dc '0-9')"

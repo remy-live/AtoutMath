@@ -62,6 +62,7 @@
 //   node tools/controleEnLigne.mjs https://mon-site.fr
 //   node tools/controleEnLigne.mjs https://mon-site.fr --json
 //   node tools/controleEnLigne.mjs https://mon-site.fr --version=665
+//   node tools/controleEnLigne.mjs https://mon-site.fr --version=665 --attendre=180
 //   node tools/controleEnLigne.mjs https://mon-site.fr --strict   (l'orange échoue aussi)
 //
 // SORTIE : 0 si rien de rouge, 1 s'il y a du rouge, 2 si le site est injoignable.
@@ -189,8 +190,25 @@ async function controler() {
     // 2 — QUELLE VERSION EST EN LIGNE ? La question que se pose vraiment celui
     //     qui vient de pousser un correctif : « est-il arrivé ? ». On lit le
     //     numéro de cache de la page servie, et on le compare à celui du dépôt.
-    const enLigne = (accueil.corps.match(/\?v=(\d+)/) || [])[1] || '';
+    //
+    //     ON LAISSE AU TRANSFERT LE TEMPS D'ARRIVER (`--attendre`). Le SFTP que
+    //     nous pilotons se termine avant qu'on ne regarde ; un déploiement
+    //     lancé par l'hébergeur, lui, part de son côté et met le temps qu'il
+    //     met. Sans cette attente, le contrôle annoncerait « v670 en ligne,
+    //     v671 attendue » à chaque fois — un orange permanent, donc un orange
+    //     qu'on cesse de lire, donc pas de contrôle du tout.
     const attendue = valeur('version') || versionLocale();
+    let enLigne = (accueil.corps.match(/\?v=(\d+)/) || [])[1] || '';
+    const patience = Math.max(0, parseInt(valeur('attendre') || '0', 10) || 0);
+    if (attendue && enLigne && enLigne !== attendue && patience > 0) {
+        const fin = Date.now() + patience * 1000;
+        while (Date.now() < fin && enLigne !== attendue) {
+            await new Promise(r => setTimeout(r, 15000));
+            const r = await voir('/');
+            const vu = (r.corps.match(/\?v=(\d+)/) || [])[1];
+            if (vu) enLigne = vu;
+        }
+    }
     if (!enLigne) {
         dire('?', 'Quelle version est en ligne ?', 'illisible dans la page servie');
     } else if (attendue && enLigne === attendue) {
