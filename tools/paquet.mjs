@@ -48,6 +48,8 @@
 // USAGE
 //   node tools/paquet.mjs                  → tools/tmp/atoutmath-vNNN.zip
 //   node tools/paquet.mjs --depuis=<commit> → seulement ce qui a changé depuis
+//   node tools/paquet.mjs --depuis=<commit> --avec=a,b → et ces fichiers-là en plus,
+//                                            même s'ils n'ont pas changé
 //   node tools/paquet.mjs --sortie=/chemin/mon.zip
 
 import { execFileSync } from 'node:child_process';
@@ -91,6 +93,29 @@ if (depuis) {
     // `git diff` les liste, mais seuls ceux qui existent encore nous
     // intéressent — un fichier supprimé n'a rien à faire dans une archive.
     fichiers = fichiers.filter(f => changes.has(f));
+
+    // UN FICHIER QUI N'A PAS CHANGÉ MAIS QUI N'EST JAMAIS ARRIVÉ.
+    //
+    // Le cas est arrivé, et il n'est pas rare : le `.htaccess` de la racine
+    // manquait sur le site de Rémy — son rapport le disait « NON » — parce que
+    // FileZilla saute les fichiers cachés sans le dire. Il n'avait pas changé
+    // depuis sa version, donc aucun paquet différentiel ne le lui aurait
+    // apporté ; et `deposer.php`, lui, ne saute rien.
+    //
+    //   node tools/paquet.mjs --depuis=<commit> --avec=.htaccess,api/.htaccess
+    //
+    // On ne le fait PAS tout seul : un différentiel qui emporterait
+    // silencieusement autre chose que ce qui a changé ne serait plus un
+    // différentiel, et l'on ne saurait plus ce qu'on dépose.
+    const avec = valeur('avec').split(',').map(x => x.trim()).filter(Boolean);
+    for (const f of avec) {
+        if (!suivis.includes(f)) {
+            console.error(`\n  « ${f} » n'est pas suivi par git : rien à emporter.`);
+            process.exit(1);
+        }
+        if (!fichiers.includes(f)) fichiers.push(f);
+    }
+
     if (!fichiers.length) {
         console.error(`Rien n'a changé depuis ${depuis}.`);
         process.exit(1);
