@@ -9,6 +9,7 @@ import { getGenerator } from '../js/core/registry.js';
 import { surPapier, aSonMot, reglagesDeFiche, valeursDeDepart } from '../js/core/reglagesFiche.js';
 import { FAMILLES, codageDiagonales } from '../js/core/quadrilateres.js';
 import { RENDUS } from '../js/ui/printSheet.js';
+import { sourceDesFiches } from './helpers.mjs';
 import { encre, morceauxLigne } from '../js/ui/ficheRendu.js';
 import {
     GOUTTIERE, zoneUtile, mesuresSlot, capaciteMax, choisirDisposition, coteLisible,
@@ -592,7 +593,9 @@ test('LA FEUILLE DE PARCOURS DONNE À CHAQUE BLOC SON RANG ET SES VOISINS', () =
         const n = (src.match(new RegExp(clef.replace(':', '\\s*:'), 'g')) || []).length;
         assert.ok(n >= 2, `« ${clef} » n'est posé que ${n} fois dans l'emplacement`);
     }
-    const sheet = fs.readFileSync('js/ui/printSheet.js', 'utf8');
+    // Tout le dossier des fiches : le code a été découpé par famille, et cette
+    // question-là ne porte sur aucune famille en particulier.
+    const sheet = sourceDesFiches();
     assert.ok(/rangDuBloc\(slot, rang\)/.test(sheet),
         'les rendus doivent lire le rang depuis l\'emplacement aussi');
     assert.equal((sheet.match(/teinteFigure\(rang\)/g) || []).length, 0,

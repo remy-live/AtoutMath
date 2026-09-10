@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
+import { sourceDesFiches } from './helpers.mjs';
 import '../js/core/activities/index.js';
 import { makeRng } from '../js/core/ids.js';
 import { getExerciseById } from '../js/data/catalog.js';
@@ -292,7 +293,9 @@ test('LA CORRECTION DE LA FICHE EST LA RÉDACTION ENTIÈRE', () => {
     // Et le « Donc » déborde volontairement du cadre de l'élève : c'est
     // `geoThalesRedaction` qui donne au corrigé la hauteur qu'il lui faut.
     assert.ok(par.Donc > aEcrire.Donc);
-    const src = readFileSync(new URL('../js/ui/printSheet.js', import.meta.url), 'utf8');
+    // Le rendu vit désormais dans `js/ui/fiches/theoremes.js` : on lit tout le
+    // dossier, pour que ce test ne dépende pas de la famille qui l'héberge.
+    const src = sourceDesFiches();
     assert.match(src, /solution \? lignesDuCorrige\(c\.titre\) : LIGNES_CADRE_Q\[c\.cle\]/,
         'le corrigé ne se mesure plus sur son contenu');
     // Et la dernière ligne conclut, avec l'unité.
@@ -373,7 +376,7 @@ test('AUCUNE CASE DE L\'ÉGALITÉ N\'EST UN CHAMP DE SAISIE', () => {
 // démonstration gaspillait la page — mais ne se cumulent pas. Le choix se fait
 // donc sur la PLACE, et le professeur peut forcer l'une ou l'autre.
 test('LE POLY TIENT TROIS DÉMONSTRATIONS, ET LA RÉDACTION SE RANGE OÙ IL Y A LA PLACE', () => {
-    const src = readFileSync(new URL('../js/ui/printSheet.js', import.meta.url), 'utf8');
+    const src = sourceDesFiches();
     const rendu = src.slice(src.indexOf("    'thales-redaction': {"),
         src.indexOf("    'thales-redaction': {") + 1800);
 
