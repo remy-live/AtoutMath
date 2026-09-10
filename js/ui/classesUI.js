@@ -21,6 +21,8 @@
 // tableau de bord qui se trompe avec assurance fait plus de dégâts qu'un
 // tableau vide.
 
+import { bandeauServeurHtml, classesDuServeur, creerClasseServeur } from './classesServeur.js';
+import { demander } from './demander.js';
 import { showModal, showToast, showConfirm } from './modal.js';
 import { globalStore } from '../core/store.js';
 import {
@@ -232,12 +234,38 @@ function detailHtml(e) {
         ${erreurs}`;
 }
 
+// Les classes du serveur, telles qu'on les a vues la dernière fois. `null` veut
+// dire « pas encore demandé », et ne s'affiche pas comme « aucune classe ».
+let classesServeur = null;
+
 function ecranHtml() {
     const c = classeActive();
     const onglets = classes.map(x =>
         `<button type="button" class="cl-onglet${x.id === classeActiveId ? ' cl-onglet--actif' : ''}"
             data-classe="${x.id}">${esc(x.nom)}
             <span class="cl-onglet-n">${(x.eleves || []).length}</span></button>`).join('');
+
+    // LE VRAI EN PREMIER. Les classes du serveur — celles qui ont des élèves,
+    // un code, des billets — passent AVANT la grille d'analyse locale. Rémy a
+    // dû chercher où étaient ses classes : elles sont désormais la première
+    // chose que l'écran montre.
+    const serveur = bandeauServeurHtml(classesServeur);
+
+    // ET L'ANCIEN ÉCRAN S'EFFACE QUAND LE SERVEUR RÉPOND.
+    //
+    // Les afficher tous les deux donnait DEUX titres « Mes classes » et DEUX
+    // boutons « + Nouvelle classe » dans la même fenêtre, dont un qui crée une
+    // classe que personne ne connaîtra jamais. Rémy : « le Mes classes de la
+    // zone professeur est tellement nul ».
+    //
+    // L'écran local n'a de sens que SANS serveur : il vit de fichiers que les
+    // élèves envoyaient un par un, ce que la synchronisation a remplacé. On le
+    // garde donc pour ce cas-là, et pour les classes locales déjà importées —
+    // repliées, pour qu'on puisse encore les lire sans qu'elles encombrent.
+    const avecServeur = classesServeur !== null;
+    if (avecServeur && !classes.length) {
+        return serveur;
+    }
 
     const barre = `<div class="cl-barre-onglets">${onglets}
         <button type="button" class="cl-onglet cl-onglet--plus" data-nouvelle>+ Nouvelle classe</button></div>`;
@@ -253,12 +281,19 @@ function ecranHtml() {
                 Tout effacer</button>
         </div>` : '';
 
+    // Replié quand le serveur est là : c'est une archive, plus un outil.
+    const ouvre = avecServeur ? '' : ' open';
+    const repli = (dedans) => avecServeur
+        ? `<details class="cl-repli"${ouvre}><summary>Classes locales, importées de fichiers
+             (${classes.length})</summary>${dedans}</details>`
+        : dedans;
+
     if (!c) {
-        return barre + demo + `<p class="cl-vide">Crée une classe, puis dépose les fichiers de progression
+        return serveur + repli(barre + demo + `<p class="cl-vide">Crée une classe, puis dépose les fichiers de progression
             que tes élèves t'ont envoyés — un fichier par élève.</p>
             <p class="cl-vide">Pour voir à quoi ressemble l'écran plein, tu peux aussi
             <button type="button" class="cl-lien" data-demo>charger cinq classes de
-            démonstration</button>. Elles s'effacent d'un clic.</p>`;
+            démonstration</button>. Elles s'effacent d'un clic.</p>`);
     }
 
     const b = bilanClasse(c);
@@ -271,7 +306,7 @@ function ecranHtml() {
     // droite, celle de l'élève qu'on survole s'affiche pendant qu'on balaie,
     // sans jamais disputer la place au tableau.
     const premier = eleve || [...b.eleves].sort((a, z) => a.nom.localeCompare(z.nom, 'fr'))[0];
-    return barre + demo + `
+    return serveur + repli(barre + demo + `
         <div class="cl-tete">
             <p class="cl-resume">${esc(b.phrase)}</p>
             <div class="cl-actions">
@@ -303,7 +338,7 @@ function ecranHtml() {
                 <button type="button" class="cl-fermer-detail" data-ferme aria-label="Fermer le détail">×</button>
             </div>
             ${detailHtml(eleve)}
-        </div>` : ''}`;
+        </div>` : ''}`);
 }
 
 // --- Actions ----------------------------------------------------------------
@@ -454,7 +489,7 @@ function brancher(racine) {
     };
 
     racine.onclick = async (ev) => {
-        const el = ev.target.closest('[data-classe],[data-nouvelle],[data-ajouter],[data-coller],[data-supprimer],'
+        const el = ev.target.closest('[data-classe-serveur-nouvelle],[data-classe],[data-nouvelle],[data-ajouter],[data-coller],[data-supprimer],'
             + '[data-ouvre],[data-ferme],[data-retirer],[data-renommer],[data-demo],'
             + '[data-effacer-demo],[data-voir]');
         if (!el) return;
@@ -496,9 +531,31 @@ function brancher(racine) {
             });
         }
 
+        // La classe du SERVEUR : celle qui aura un code, des billets, des élèves.
+        if ('classeServeurNouvelle' in el.dataset) {
+            const nom = await demander('Nom de la classe', {
+                valeur: '', max: 60, placeholder: '6e B',
+                aide: 'Elle recevra un code à dicter, et une liste où coller vos élèves.',
+                bouton: 'Créer la classe'
+            });
+            if (!nom) return;
+            try {
+                const liste = await creerClasseServeur(nom);
+                if (liste) classesServeur = liste;
+            } catch (err) {
+                const { showToast } = await import('./modal.js');
+                showToast(String(err.message || err), 'error');
+            }
+            return rafraichir();
+        }
+
         if (el.dataset.classe) { classeActiveId = el.dataset.classe; eleveOuvertId = null; return rafraichir(); }
         if ('nouvelle' in el.dataset) {
-            const nom = prompt('Nom de la classe ?', 'Ma classe');
+            const nom = await demander('Nom de la classe', {
+                valeur: 'Ma classe', max: 60,
+                aide: 'Celui que vous lui donnez en salle des professeurs : 6e B, 5e 3…',
+                bouton: 'Créer la classe'
+            });
             if (nom === null) return;
             const c = creerClasse(nom);
             classes = [...classes, c];
@@ -538,7 +595,9 @@ function brancher(racine) {
             const c = classeActive();
             const eleve = (c.eleves || []).find(e => e.id === el.dataset.renommer);
             if (!c || !eleve) return;
-            const nom = prompt('Nom de l\'élève ?', eleve.nom);
+            const nom = await demander('Nom de l\'élève', {
+                valeur: eleve.nom, max: 60, bouton: 'Renommer'
+            });
             if (nom === null) return;
             return majClasse(renommerEleve(c, eleve.id, nom));
         }
@@ -563,5 +622,17 @@ export async function ouvrirClasses() {
     };
     brancher(racine);
     rafraichir();
+
+    // LES CLASSES DU SERVEUR ARRIVENT APRÈS COUP, ET L'ÉCRAN S'OUVRE AVANT.
+    // Attendre le réseau pour afficher quoi que ce soit, c'est offrir une
+    // fenêtre vide à qui vient de cliquer — et sur le réseau d'un collège,
+    // « après » peut vouloir dire trois secondes. On montre donc tout de
+    // suite, et l'on redessine quand la réponse est là.
+    classesDuServeur().then((liste) => {
+        if (liste === null) return;      // pas identifié, ou serveur muet
+        classesServeur = liste;
+        rafraichir();
+    });
+
     return modal;
 }

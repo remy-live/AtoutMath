@@ -1,3 +1,94 @@
+/* Les classes locales, repliées quand le serveur répond : une archive, plus
+   un outil. On les garde lisibles sans qu'elles encombrent. */
+.cl-repli { margin-top: 14px; border-top: 1px solid var(--border, #e2e8f0); padding-top: 12px; }
+.cl-repli > summary {
+    cursor: pointer; font-size: .86rem; font-weight: 700;
+    color: var(--text-muted, #64748b); list-style: none; padding: 4px 0;
+}
+.cl-repli > summary::before { content: '▸ '; }
+.cl-repli[open] > summary::before { content: '▾ '; }
+.cl-repli > summary::-webkit-details-marker { display: none; }
+
+/* ====================================================================== */
+/* DEMANDER QUELQUE CHOSE, ET LES VRAIES CLASSES                          */
+/*                                                                        */
+/* Rémy : « tu utilises des alert et prompt, on évite ! » et « j'ai dû    */
+/* chercher où étaient mes classes ». Deux reproches, deux blocs.         */
+/* ====================================================================== */
+
+/* --- La fenêtre qui remplace `prompt()` -------------------------------- */
+.demander {
+    position: fixed; inset: 0; z-index: 2000001;
+    background: rgba(15, 23, 42, .55);
+    display: flex; align-items: center; justify-content: center; padding: 18px;
+}
+.demander-boite {
+    background: var(--bg-panel, #fff); color: var(--text-main, #1a202c);
+    border-radius: 18px; padding: 22px; width: min(430px, 100%);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, .35);
+}
+.demander-boite h2 { margin: 0 0 14px; font-size: 1.1rem; }
+.demander-boite input {
+    width: 100%; padding: 11px 13px; font: inherit;
+    border: 2px solid var(--border, #cbd5e1); border-radius: 11px;
+    background: var(--bg-app, #f6f7fb); color: inherit;
+}
+.demander-boite input:focus { outline: none; border-color: var(--primary, #4f46e5); }
+.demander-aide { margin: 9px 0 0; font-size: .85rem; color: var(--text-muted, #64748b); }
+.demander-boutons { display: flex; gap: 10px; margin-top: 16px; }
+.demander-bouton {
+    flex: 1; font: inherit; font-weight: 700; padding: 11px 16px;
+    border: none; border-radius: 11px; cursor: pointer;
+    background: var(--primary, #4f46e5); color: #fff;
+}
+.demander-bouton--doux { background: var(--border, #e2e8f0); color: var(--text-main, #1a202c); }
+
+/* --- Les classes du serveur, en tête de « Mes classes » ---------------- */
+.cls-serveur {
+    background: var(--bg-app, #f6f7fb); border: 1px solid var(--border, #e2e8f0);
+    border-radius: 14px; padding: 15px; margin-bottom: 16px;
+}
+.cls-serveur--absent { border-color: #fcd34d; background: #fffbeb; }
+.cls-serveur--absent p { margin: 0 0 6px; font-size: .92rem; }
+.cls-serveur-titre { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.cls-serveur-titre b { font-size: 1.02rem; }
+.cls-serveur-qui { color: var(--text-muted, #64748b); font-size: .92rem; font-weight: 600; margin-right: auto; }
+.cls-serveur-note { margin: 10px 0 0; font-size: .85rem; color: var(--text-muted, #64748b); }
+.cls-btn {
+    font: inherit; font-weight: 700; font-size: .86rem; padding: 8px 14px;
+    border: none; border-radius: 10px; cursor: pointer;
+    background: var(--primary, #4f46e5); color: #fff;
+}
+/* Les cartes se rangent d'elles-mêmes : trois de front sur un écran de
+   bureau, une seule sur un téléphone — sans point de rupture à deviner. */
+.cls-serveur > div:not(.cls-serveur-titre) { }
+.cls-serveur { display: block; }
+.cls-serveur .cls-carte {
+    display: inline-block; vertical-align: top; width: 100%;
+    max-width: 260px; margin: 0 10px 10px 0;
+    background: var(--bg-panel, #fff); border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px; padding: 12px 13px;
+}
+.cls-carte-haut { display: flex; align-items: baseline; gap: 8px; }
+.cls-nom { font-size: 1rem; }
+.cls-n { margin-left: auto; font-size: .8rem; color: var(--text-muted, #64748b); }
+.cls-code { margin: 9px 0; display: flex; align-items: center; gap: 8px; }
+.cls-code-eti { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em;
+                color: var(--text-muted, #64748b); }
+.cls-code code {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 800;
+    letter-spacing: .12em; background: #eef2ff; color: #3730a3;
+    padding: 3px 9px; border-radius: 7px;
+}
+.cls-verrou { font-size: .82rem; color: #b45309; margin-bottom: 8px; font-weight: 600; }
+.cls-liens { display: flex; gap: 8px; flex-wrap: wrap; }
+.cls-lien {
+    font-size: .84rem; font-weight: 700; text-decoration: none;
+    padding: 7px 11px; border-radius: 9px;
+    background: var(--primary, #4f46e5); color: #fff;
+}
+.cls-lien--doux { background: var(--border, #e2e8f0); color: var(--text-main, #1a202c); }
+
 /* ====================================================================== */
 /* LE VERROU DU PROFESSEUR                                                */
 /*                                                                        */

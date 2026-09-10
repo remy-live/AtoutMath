@@ -8,6 +8,7 @@
 //  - la remédiation part de la compétence et de ses prérequis, et rejoue les
 //    questions ratées à l'identique grâce à leur graine.
 
+import { demander } from './demander.js';
 import { state } from '../core/state.js';
 // La leçon mise en page — voir `ui/leconHtml.js`.
 import { leconHtml } from './leconHtml.js';
@@ -651,7 +652,10 @@ function initProfileSwitcher() {
     const btn = document.getElementById('btn-add-profile');
     if (btn) {
         btn.onclick = async () => {
-            const name = prompt('Prénom de l\'élève :');
+            const name = await demander('Prénom de l\'élève', {
+                max: 40, bouton: 'Créer le profil',
+                placeholder: 'Léa'
+            });
             if (!name) return;
             const p = await createProfile(name.trim());
             await state.switchProfile(p.id);
