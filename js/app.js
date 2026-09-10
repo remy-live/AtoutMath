@@ -1319,3 +1319,7 @@ function genererTentativesExemple() {
     journal.flush();
     import('./ui/modal.js').then(m => m.showToast('Données d\'exemple et « Parcours découverte » générés.', 'success'));
 }
+
+// LE DÉMARRAGE A EU LIEU. Le garde-fou d'index.html attend ce drapeau :
+// sans lui, il affiche au bout de six secondes ce qui a manqué.
+window.__atoutmathDemarre = true;

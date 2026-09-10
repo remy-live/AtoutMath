@@ -67,8 +67,16 @@ $cleDehors = is_string(getenv('ATOUTMATH_CLE')) && strlen((string) getenv('ATOUT
 $constats[] = $cleDehors
     ? constat('ok', 'Clé de chiffrement', "hors de config.php (variable d'environnement)")
     : constat('!', 'Clé de chiffrement', 'dans config.php, à côté de la base',
-        "Cela suffit contre un fichier de base récupéré seul. Pour que la clé ne voyage "
-        . "jamais avec la base, déplacez la valeur data_key dans SetEnv ATOUTMATH_CLE.");
+        // LE CONSEIL D'AVANT ÉTAIT LE MAUVAIS, et le rapport de Rémy l'a montré :
+        // tout en vert, sauf cette ligne, qui l'envoyait déplacer la clé dans
+        // `SetEnv ATOUTMATH_CLE`. Or ce fichier-là vit dans `www/` lui aussi —
+        // une copie du site emporte la clé exactement comme avant. Ce qui change
+        // vraiment les choses, c'est de sortir LA BASE du dossier servi.
+        "Cela suffit contre un fichier de base récupéré seul : la clé est dans un autre "
+        . "fichier, et ce fichier est refusé par le serveur. "
+        . "<b>Ce qui protégerait vraiment, c'est de ranger la base hors du dossier web</b> — "
+        . "elle n'y serait plus protégée par une règle, mais par l'absence de chemin. "
+        . "<a href=\"ranger.php\">Le faire en un clic</a>.");
 
 // L'installeur traîne-t-il encore ?
 $installeur = is_file(dirname(__DIR__) . '/install.php');

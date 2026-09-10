@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=675">
-    <link rel="stylesheet" href="css/layout.css?v=675">
-    <link rel="stylesheet" href="css/ui.css?v=675">
-    <link rel="stylesheet" href="css/games.css?v=675">
-    <link rel="stylesheet" href="css/components.css?v=675">
-    <link rel="stylesheet" href="css/modules.css?v=675">
+    <link rel="stylesheet" href="css/base.css?v=676">
+    <link rel="stylesheet" href="css/layout.css?v=676">
+    <link rel="stylesheet" href="css/ui.css?v=676">
+    <link rel="stylesheet" href="css/games.css?v=676">
+    <link rel="stylesheet" href="css/components.css?v=676">
+    <link rel="stylesheet" href="css/modules.css?v=676">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1224,6 +1224,51 @@
     <!-- TOAST NOTIFICATION -->
     <div id="toast-container"></div>
 
+    <!-- UNE PAGE BLANCHE NE DIT RIEN, ET C'EST LE PIRE DES DÉFAUTS.
+         Rémy, son site en ligne : « peut-être que quelque chose m'échappe ».
+         Il voyait une page vide, la barre du haut, et la palette de débogage —
+         rien d'autre. Un seul module manquant (un fichier oublié par le
+         transfert, un 404) fait échouer TOUT le graphe des imports, en
+         silence : le navigateur écrit une ligne rouge dans une console que
+         personne n'ouvre, et la page reste blanche.
+         On surveille donc le démarrage, et s'il n'a pas eu lieu, on DIT
+         POURQUOI — avec le nom du fichier qui manque. -->
+    <script>
+        window.__atoutmathDemarre = false;
+        window.__atoutmathErreurs = [];
+        // Un module qui ne se charge pas ne lève pas d'exception attrapable :
+        // il déclenche un `error` sur la balise. On écoute donc en capture,
+        // seule façon de voir passer ces événements-là.
+        window.addEventListener('error', (e) => {
+            const quoi = e && e.target && (e.target.src || e.target.href);
+            window.__atoutmathErreurs.push(quoi
+                ? 'fichier introuvable : ' + String(quoi).replace(location.origin, '')
+                : (e && e.message) || 'erreur inconnue');
+        }, true);
+
+        setTimeout(() => {
+            if (window.__atoutmathDemarre) return;
+            const vus = [...new Set(window.__atoutmathErreurs)].slice(0, 6);
+            const el = document.createElement('div');
+            el.setAttribute('style', 'position:fixed;inset:0;z-index:2147483647;'
+                + 'background:#fff;color:#1a202c;padding:28px;overflow:auto;'
+                + 'font:15px/1.55 system-ui,-apple-system,sans-serif');
+            el.innerHTML = '<h1 style="font-size:1.3rem;margin:0 0 10px">'
+                + "L'application n'a pas démarré</h1>"
+                + '<p>Le site est bien en ligne, mais un fichier au moins manque ou '
+                + "n'a pas pu être lu. C'est presque toujours un transfert incomplet : "
+                + 'retransférez le dossier <code>js/</code> en entier.</p>'
+                + (vus.length
+                    ? '<p><b>Ce qui a échoué :</b></p><ul><li>'
+                        + vus.map(x => String(x).replace(/[<>&]/g, '')).join('</li><li>')
+                        + '</li></ul>'
+                    : '<p>Aucun détail : ouvrez la console du navigateur (F12) '
+                        + 'et regardez les lignes rouges.</p>')
+                + '<p style="color:#64748b">Si vous venez de mettre à jour, videz d\'abord '
+                + 'le cache : <b>Ctrl+Maj+R</b> (ou &#8984;+Maj+R).</p>';
+            document.body.appendChild(el);
+        }, 6000);
+    </script>
     <script type="module" src="js/app.js"></script>
     <script>
         // Init theme immediately to prevent flash
