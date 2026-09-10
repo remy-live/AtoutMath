@@ -17,6 +17,22 @@ declare(strict_types=1);
  *   POST /teacher/assign       assigner un parcours à une classe
  *   POST /teacher/report       bilan d'une classe (notes recalculées)
  *   POST /teacher/student      détail d'un élève
+ *   POST /teacher/class        conduire une classe : renommer, verrouiller,
+ *                              consigne, vider, supprimer
+ *   POST /teacher/roster       la liste : lire, aperçu, importer, codes, retirer
+ *   POST /teacher/live         qui travaille en ce moment, et sur quoi
+ *   POST /teacher/message      un mot à la classe ou à un élève
+ *   POST /teacher/signup       créer un second professeur (par le premier)
+ *
+ * LES CINQ DERNIÈRES ONT ÉTÉ AJOUTÉES POUR L'APPLICATION. Rémy : « j'aimerai
+ * ne pas passer par admin et dans atout math sans passer par la zone admin ».
+ * Il ne pouvait pas : tous les gestes qui ÉCRIVENT n'existaient que dans les
+ * pages `api/admin/`, derrière un cookie de session que le jeton de
+ * l'application n'ouvre pas. L'API savait créer une classe, et rien d'autre.
+ *
+ * ELLES NE DUPLIQUENT AUCUNE LOGIQUE : ce qui décide et ce qui écrit vit dans
+ * `lib/eleves.php`, et les pages d'administration s'en servent désormais aussi.
+ * Deux écrans, une seule mise en œuvre — voir l'en-tête de ce fichier-là.
  *
  * Tout est en POST/JSON pour éviter la mise en cache intempestive des GET par
  * les proxys d'établissement, fréquents en milieu scolaire.
@@ -27,6 +43,7 @@ require_once __DIR__ . '/lib/projections.php';
 require_once __DIR__ . '/lib/grading.php';
 require_once __DIR__ . '/lib/seance.php';
 require_once __DIR__ . '/lib/coffre.php';
+require_once __DIR__ . '/lib/eleves.php';
 
 applyCors();
 
@@ -46,6 +63,11 @@ switch ($route) {
     case '/teacher/assign':  handleTeacherAssign(); break;
     case '/teacher/report':  handleTeacherReport(); break;
     case '/teacher/student': handleTeacherStudent(); break;
+    case '/teacher/class':   handleTeacherClass(); break;
+    case '/teacher/roster':  handleTeacherRoster(); break;
+    case '/teacher/live':    handleTeacherLive(); break;
+    case '/teacher/message': handleTeacherMessage(); break;
+    case '/teacher/signup':  handleTeacherSignup(); break;
     case '/health':          respond(['ok' => true]); break;
     default:                 fail(404, 'not_found', 'Route inconnue : ' . $route);
 }
@@ -401,7 +423,19 @@ function handleTeacherClasses(): void
     $teacher = requireTeacher();
     $body = jsonBody();
 
-    if (($body['action'] ?? 'list') === 'create') {
+    // UNE ACTION INCONNUE N'EST PAS UNE LISTE. Mesuré : `{action:"delete"}`
+    // rendait 200 avec la liste des classes, et la classe existait toujours —
+    // un écran qui croirait supprimer afficherait « supprimé » sans que rien ne
+    // le soit. On refuse ce qu'on ne sait pas faire, et l'on dit où aller.
+    $action = (string) ($body['action'] ?? 'list');
+    if (!in_array($action, ['list', 'create'], true)) {
+        fail(400, 'bad_action', 'Action inconnue : ' . $action
+            . '. Renommer, mettre en pause, vider ou supprimer une classe se '
+            . 'fait sur /teacher/class.');
+    }
+
+    $creee = null;
+    if ($action === 'create') {
         $name = trim((string) ($body['name'] ?? 'Nouvelle classe'));
         $id = uuidv4();
         // Boucle courte : collision de code improbable mais pas impossible.
@@ -414,6 +448,18 @@ function handleTeacherClasses(): void
                 if ($i === 4) fail(500, 'code_collision', 'Impossible de générer un code de classe.');
             }
         }
+        // ON REND LA CLASSE QU'ON VIENT DE CRÉER, EXPRESSÉMENT.
+        //
+        // L'appelant la cherchait en tête de la liste, triée par date de
+        // création décroissante. Mesuré : deux classes créées dans la même
+        // seconde se départagent au hasard, et l'écran ouvre la mauvaise —
+        // c'est ainsi qu'un essai a collé trente élèves dans la classe d'à
+        // côté. Une seconde de précision ne suffit pas à identifier quelque
+        // chose ; un identifiant, si.
+        $q = db()->prepare('SELECT * FROM classes WHERE id = ?');
+        $q->execute([$id]);
+        $creee = $q->fetch() ?: null;
+        if ($creee) $creee['student_count'] = 0;
     }
 
     $stmt = db()->prepare(
@@ -421,7 +467,7 @@ function handleTeacherClasses(): void
          FROM classes c WHERE c.teacher_id = ? ORDER BY c.created_at DESC'
     );
     $stmt->execute([$teacher['id']]);
-    respond(['classes' => $stmt->fetchAll()]);
+    respond(['classes' => $stmt->fetchAll(), 'creee' => $creee]);
 }
 
 function handleTeacherPaths(): void
@@ -628,6 +674,357 @@ function handleTeacherStudent(): void
         'score' => scoreOf($events),
         'timeSeconds' => timeOf($events),
     ]);
+}
+
+/**
+ * LA CLASSE DONT ON PARLE, ET LA PREUVE QU'ELLE EST À NOUS.
+ *
+ * Toutes les routes qui suivent commencent par là, et aucune ne s'en dispense :
+ * l'identifiant vient du navigateur, donc de quelqu'un — on ne le croit pas.
+ * Voir la section « Deux professeurs sur le même serveur » de
+ * `tools/testApi.php` : c'est exactement cette vérification-là qui manquait à
+ * `/teacher/assign`, et le collègue posait du travail dans la classe d'à côté.
+ */
+function classeDuProf(array $teacher, array $body): array
+{
+    $classId = (string) ($body['classId'] ?? '');
+    $stmt = db()->prepare('SELECT * FROM classes WHERE id = ? AND teacher_id = ?');
+    $stmt->execute([$classId, $teacher['id']]);
+    $classe = $stmt->fetch() ?: null;
+    if (!$classe) fail(404, 'class_not_found', 'Classe introuvable.');
+    return $classe;
+}
+
+/**
+ * CONDUIRE UNE CLASSE — renommer, verrouiller, poser une consigne, vider,
+ * supprimer.
+ *
+ * Une seule route pour cinq gestes, et c'est délibéré : ils portent tous sur la
+ * même chose, ils demandent tous la même vérification d'appartenance, et cinq
+ * adresses différentes n'auraient rien clarifié — elles auraient seulement
+ * multiplié par cinq les endroits où oublier `classeDuProf()`.
+ */
+function handleTeacherClass(): void
+{
+    $teacher = requireTeacher();
+    $body = jsonBody();
+    $classe = classeDuProf($teacher, $body);
+    $action = (string) ($body['action'] ?? '');
+
+    if ($action === 'rename') {
+        $nom = trim((string) ($body['name'] ?? ''));
+        if ($nom === '') fail(400, 'bad_name', 'Il faut un nom.');
+        db()->prepare('UPDATE classes SET name = ?, level = ? WHERE id = ?')
+            ->execute([mb_substr($nom, 0, 80),
+                       ($body['level'] ?? null) ?: null, $classe['id']]);
+        respond(['ok' => true, 'dit' => 'Classe renommée.']);
+    }
+
+    if ($action === 'lock') {
+        $on = !empty($body['locked']) ? 1 : 0;
+        db()->prepare('UPDATE classes SET locked = ? WHERE id = ?')->execute([$on, $classe['id']]);
+        respond(['ok' => true, 'locked' => (bool) $on, 'dit' => $on
+            ? 'Classe en pause : les élèves ne voient plus que ce que vous leur donnez.'
+            : 'Classe rouverte : les élèves retrouvent tout le catalogue.']);
+    }
+
+    if ($action === 'notice') {
+        $mot = trim((string) ($body['notice'] ?? ''));
+        db()->prepare('UPDATE classes SET notice = ? WHERE id = ?')
+            ->execute([$mot !== '' ? mb_substr($mot, 0, 300) : null, $classe['id']]);
+        respond(['ok' => true, 'dit' => $mot === ''
+            ? 'Consigne retirée.' : 'Consigne affichée à toute la classe.']);
+    }
+
+    // LES DEUX GESTES SANS RETOUR DEMANDENT LE MOT ÉCRIT, comme dans les pages
+    // d'administration. Une fenêtre « êtes-vous sûr ? » se clique sans lire ;
+    // taper EFFACER demande de s'arrêter une seconde, et c'est tout ce qu'on
+    // veut : pas empêcher, faire réfléchir.
+    if ($action === 'empty' || $action === 'delete') {
+        if (trim((string) ($body['confirmation'] ?? '')) !== 'EFFACER') {
+            fail(400, 'confirmation', 'Écrivez EFFACER pour confirmer.');
+        }
+        $s = db()->prepare('SELECT COUNT(*) AS n FROM students WHERE class_id = ?');
+        $s->execute([$classe['id']]);
+        $n = (int) ($s->fetch()['n'] ?? 0);
+        // La cascade emporte événements, jetons, mots et déblocages : c'est ce
+        // qui rend vraie la phrase « je détruirai la liste des élèves ».
+        db()->prepare('DELETE FROM students WHERE class_id = ?')->execute([$classe['id']]);
+        if ($action === 'delete') {
+            db()->prepare('DELETE FROM classes WHERE id = ?')->execute([$classe['id']]);
+            // « et ses 0 élève(s) » se lit mal, et se lit souvent : on supprime
+            // le plus souvent une classe qu'on vient de vider.
+            respond(['ok' => true, 'supprimee' => true,
+                     'dit' => 'La classe « ' . $classe['name'] . ' » a été effacée'
+                        . ($n ? ', avec ses ' . $n . ' élève(s)' : '') . '.']);
+        }
+        respond(['ok' => true, 'dit' => $n . ' élève(s) effacés. La classe reste, vide.']);
+    }
+
+    fail(400, 'bad_action', 'Action inconnue : ' . $action);
+}
+
+/**
+ * LA LISTE D'UNE CLASSE — lire, prévoir, importer, refaire les codes, retirer.
+ *
+ * Rémy : « j'espère qu'on pourra importer des CSV et ou du presse papier et je
+ * peux choisir un mdp générique pour tous mes élèves et je peux leur recréer un
+ * mdp ». Tout cela existait dans `api/admin/eleves.php` ; ici, c'est la MÊME
+ * mise en œuvre appelée depuis l'application — `lib/eleves.php`, pas une copie.
+ */
+function handleTeacherRoster(): void
+{
+    $teacher = requireTeacher();
+    $body = jsonBody();
+    $classe = classeDuProf($teacher, $body);
+    $action = (string) ($body['action'] ?? 'list');
+
+    if ($action === 'apercu') {
+        // RIEN N'EST ÉCRIT ICI, et c'est tout l'intérêt : le professeur voit
+        // d'abord ce qui va se passer, ligne par ligne, puis confirme.
+        $apercu = apercuDeListe(
+            (string) ($body['texte'] ?? ''),
+            trim((string) ($body['codeCommun'] ?? '')),
+            $classe['id'], (string) $teacher['id']
+        );
+        if (!$apercu) fail(400, 'rien_compris', "Aucun élève reconnu dans ce que vous avez donné.");
+        respond(['apercu' => $apercu]);
+    }
+
+    if ($action === 'importer') {
+        // On relit la liste NORMALISÉE rendue par l'aperçu, jamais le collage
+        // d'origine : l'import ne peut donc pas comprendre autre chose que ce
+        // qui a été montré.
+        $bilan = importerListe((string) ($body['liste'] ?? ''), $classe['id'], (string) $teacher['id']);
+        respond(['bilan' => $bilan, 'dit' => phraseDImport($bilan),
+                 'eleves' => rosterLisible($classe['id'])]);
+    }
+
+    if ($action === 'code') {
+        if (!nouveauCodePourEleve((string) ($body['studentId'] ?? ''), $classe['id'])) {
+            fail(404, 'student_not_found', 'Élève introuvable.');
+        }
+        respond(['ok' => true, 'dit' => "Nouveau code tiré. L'ancien billet ne vaut plus rien.",
+                 'eleves' => rosterLisible($classe['id'])]);
+    }
+
+    if ($action === 'codes') {
+        $commun = trim((string) ($body['codeCommun'] ?? ''));
+        if ($commun !== '' && !preg_match('/^[A-Za-z0-9]{3,12}$/', $commun)) {
+            fail(400, 'bad_code', 'Le code commun doit faire de 3 à 12 lettres ou chiffres.');
+        }
+        $n = refaireLesCodes($classe['id'], $commun);
+        respond(['ok' => true, 'eleves' => rosterLisible($classe['id']),
+                 'dit' => $n . ' code(s) refaits. Réimprimez les billets : les anciens '
+                    . 'ne valent plus rien.']);
+    }
+
+    if ($action === 'retirer') {
+        $qui = retirerEleve((string) ($body['studentId'] ?? ''), $classe['id']);
+        if ($qui === '') fail(404, 'student_not_found', 'Élève introuvable.');
+        respond(['ok' => true, 'dit' => $qui . ' a été retiré, avec tout son travail.',
+                 'eleves' => rosterLisible($classe['id'])]);
+    }
+
+    if ($action === 'bloquer') {
+        $on = !empty($body['blocked']) ? 1 : 0;
+        db()->prepare('UPDATE students SET blocked = ? WHERE id = ? AND class_id = ?')
+            ->execute([$on, (string) ($body['studentId'] ?? ''), $classe['id']]);
+        respond(['ok' => true, 'eleves' => rosterLisible($classe['id']),
+                 'dit' => $on ? 'Élève mis de côté : il ne peut plus se rattacher.'
+                              : 'Élève réactivé.']);
+    }
+
+    if ($action !== 'list') fail(400, 'bad_action', 'Action inconnue : ' . $action);
+
+    respond([
+        'classe' => [
+            'id' => $classe['id'], 'name' => $classe['name'],
+            'joinCode' => $classe['join_code'], 'level' => $classe['level'],
+            'locked' => (bool) $classe['locked'], 'notice' => $classe['notice'],
+        ],
+        'eleves' => rosterLisible($classe['id']),
+        // Un code proposé d'avance pour « le même pour toute la classe » : il
+        // n'a plus qu'à le garder. Confortable, c'est aussi n'avoir rien à
+        // inventer devant trente élèves qui attendent.
+        'codePropose' => codeEleve(4),
+    ]);
+}
+
+/**
+ * LA LISTE TELLE QUE L'APPLICATION LA MONTRE.
+ *
+ * On ne rend QUE ce qui s'affiche : prénom, identifiant, code, dernière venue,
+ * mise de côté. Le jeton, l'empreinte du prénom et celle de l'identifiant
+ * restent au serveur — ils ne servent à rien à l'écran, et ce qui ne sort pas
+ * ne fuit pas.
+ */
+function rosterLisible(string $classeId): array
+{
+    return array_map(fn ($e) => [
+        'id' => $e['id'],
+        'prenom' => $e['first_name'],
+        'login' => $e['login'],
+        'code' => $e['code'],
+        'vu' => $e['last_seen_at'] ? (int) $e['last_seen_at'] : null,
+        'ecarte' => !empty($e['blocked']),
+        // Un élève entré par le code de la classe n'a pas de billet : c'est
+        // exactement ceux-là que le professeur cherche quand il recolle sa
+        // liste, puisque l'import va les rattacher à leur travail.
+        'sansBillet' => (string) $e['login'] === '',
+    ], elevesDeLaClasse($classeId));
+}
+
+/**
+ * LE DIRECT : qui travaille en ce moment, et sur quoi.
+ *
+ * C'est `derniereActivite()` — la même que la page d'administration, descendue
+ * dans `lib/` pour que les deux écrans disent la même chose. Quarante
+ * événements par élève, pas tout le journal : la page se rafraîchit toutes les
+ * vingt secondes pour trente élèves, et il faut que cela reste gratuit.
+ */
+function handleTeacherLive(): void
+{
+    $teacher = requireTeacher();
+    $body = jsonBody();
+    $classe = classeDuProf($teacher, $body);
+
+    $rangs = [];
+    foreach (elevesDeLaClasse($classe['id']) as $e) {
+        $a = derniereActivite($e['id']);
+        $rangs[] = [
+            'id' => $e['id'],
+            'prenom' => $e['first_name'],
+            'vu' => $e['last_seen_at'] ? (int) $e['last_seen_at'] : null,
+            'ecarte' => !empty($e['blocked']),
+            'exo' => $a['exo'],
+            'parcours' => $a['parcours'],
+            'justes' => $a['justes'],
+            'total' => $a['total'],
+            'quand' => $a['quand'],
+        ];
+    }
+    respond([
+        'classe' => ['id' => $classe['id'], 'name' => $classe['name'],
+                     'locked' => (bool) $classe['locked'], 'notice' => $classe['notice']],
+        // L'HEURE DU SERVEUR, ET NON CELLE DU NAVIGATEUR. « en ligne » se
+        // décide en comparant deux instants ; s'ils viennent de deux horloges
+        // différentes, une tablette mal réglée fait disparaître toute la classe.
+        'maintenant' => time(),
+        'eleves' => $rangs,
+    ]);
+}
+
+/**
+ * UN MOT À LA CLASSE, OU À UN ÉLÈVE.
+ *
+ * Cinq cents signes au plus : c'est un mot au tableau, pas un courrier. Et
+ * l'accusé de lecture voyage avec, parce que la question que le professeur se
+ * pose vraiment est « l'a-t-il vu ? ».
+ */
+function handleTeacherMessage(): void
+{
+    $teacher = requireTeacher();
+    $body = jsonBody();
+    $classe = classeDuProf($teacher, $body);
+
+    if (($body['action'] ?? 'send') === 'list') {
+        $s = db()->prepare(
+            'SELECT m.*, st.first_name,
+                    (SELECT COUNT(*) FROM message_reads r WHERE r.message_id = m.id) AS lus
+             FROM messages m
+             LEFT JOIN students st ON st.id = m.student_id
+             WHERE m.class_id = ? OR m.student_id IN (SELECT id FROM students WHERE class_id = ?)
+             ORDER BY m.created_at DESC LIMIT 12'
+        );
+        $s->execute([$classe['id'], $classe['id']]);
+        respond(['messages' => array_map(fn ($m) => [
+            'id' => $m['id'],
+            'corps' => dechiffrer($m['body']),
+            'pour' => $m['student_id'] ? dechiffrer($m['first_name']) : null,
+            'lus' => (int) $m['lus'],
+            'quand' => $m['created_at'],
+        ], $s->fetchAll())]);
+    }
+
+    $corps = trim((string) ($body['body'] ?? ''));
+    if ($corps === '') fail(400, 'vide', 'Le mot est vide.');
+    $pour = (string) ($body['studentId'] ?? '');
+
+    if ($pour === '') {
+        db()->prepare('INSERT INTO messages (id, class_id, body) VALUES (?, ?, ?)')
+            ->execute([uuidv4(), $classe['id'], chiffrer(mb_substr($corps, 0, 500))]);
+        respond(['ok' => true, 'dit' => 'Mot envoyé à toute la classe.']);
+    }
+
+    // L'identifiant vient du navigateur : on vérifie que l'élève est bien de
+    // cette classe avant de lui écrire.
+    $s = db()->prepare('SELECT first_name FROM students WHERE id = ? AND class_id = ?');
+    $s->execute([$pour, $classe['id']]);
+    $eleve = $s->fetch() ?: null;
+    if (!$eleve) fail(404, 'student_not_found', 'Élève introuvable.');
+    db()->prepare('INSERT INTO messages (id, student_id, body) VALUES (?, ?, ?)')
+        ->execute([uuidv4(), $pour, chiffrer(mb_substr($corps, 0, 500))]);
+    respond(['ok' => true, 'dit' => 'Mot envoyé à ' . dechiffrer($eleve['first_name']) . '.']);
+}
+
+/**
+ * CRÉER UN SECOND PROFESSEUR.
+ *
+ * Rémy : « oui j'ai un compte admin mais pas un compte professeur, comment
+ * j'ajoute un prof » — puis « que je puisse créer un professeur ».
+ *
+ * IL N'Y AVAIT AUCUN CHEMIN. `install.php` refuse de tourner une seconde fois
+ * (et c'est bien : il fabriquerait une clé de chiffrement neuve, donc rendrait
+ * la base illisible), `motdepasse.php` dépanne un compte mais n'en crée pas, et
+ * `tools/admin.php` exige la ligne de commande — que l'hébergement mutualisé
+ * d'un professeur n'offre pas.
+ *
+ * QUI A LE DROIT ? UN PROFESSEUR DÉJÀ EN PLACE, et c'est la seule règle qui
+ * tienne sans inventer des rôles dont personne n'a besoin aujourd'hui. Le
+ * premier compte naît à l'installation ; les suivants naissent de la main d'un
+ * collègue qui est déjà entré. Il n'y a pas d'inscription libre : un serveur de
+ * classe n'est pas un service en ligne, et une page qui crée des comptes sans
+ * rien demander est une porte ouverte, pas une fonctionnalité.
+ *
+ * ET LES CLOISONS TIENNENT ENSUITE : le professeur créé ne voit que ses propres
+ * classes, ne peut ni lire ni modifier celles des autres (voir la section
+ * « Deux professeurs sur le même serveur » de `tools/testApi.php`). Créer un
+ * collègue, ce n'est pas lui donner les clés de sa propre classe.
+ */
+function handleTeacherSignup(): void
+{
+    $parrain = requireTeacher();
+    $body = jsonBody();
+
+    $nom = trim((string) ($body['displayName'] ?? ''));
+    $email = mb_strtolower(trim((string) ($body['email'] ?? '')));
+    $mdp = (string) ($body['password'] ?? '');
+
+    if ($nom === '') fail(400, 'bad_name', 'Il faut un nom à afficher.');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        fail(400, 'bad_email', "Cette adresse ne ressemble pas à une adresse de courriel.");
+    }
+    // DOUZE SIGNES, comme partout ailleurs dans ce logiciel. Ce mot de passe
+    // ouvre l'administration ET l'espace professeur de l'application : il n'y
+    // en a qu'un, il vaut la peine d'être long.
+    if (mb_strlen($mdp) < 12) {
+        fail(400, 'bad_password', 'Le mot de passe doit faire au moins douze caractères.');
+    }
+
+    // La comparaison est insensible à la casse : c'est ce qui avait enfermé
+    // Rémy dehors quand il tapait son adresse avec une majuscule.
+    $s = db()->prepare('SELECT id FROM teachers WHERE LOWER(email) = LOWER(?)');
+    $s->execute([$email]);
+    if ($s->fetch()) fail(409, 'deja_pris', 'Un professeur utilise déjà cette adresse.');
+
+    $id = uuidv4();
+    db()->prepare('INSERT INTO teachers (id, display_name, email, password_hash) VALUES (?, ?, ?, ?)')
+        ->execute([$id, mb_substr($nom, 0, 80), $email, password_hash($mdp, PASSWORD_DEFAULT)]);
+
+    respond(['ok' => true, 'teacherId' => $id,
+             'dit' => $nom . ' peut maintenant se connecter avec ' . $email . '.',
+             'parrain' => $parrain['display_name']]);
 }
 
 function eventsOfStudent(string $studentId): array

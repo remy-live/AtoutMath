@@ -25,6 +25,10 @@ require_once __DIR__ . '/_socle.php';
 require_once __DIR__ . '/../lib/projections.php';
 require_once __DIR__ . '/../lib/seance.php';
 require_once __DIR__ . '/../lib/coffre.php';
+// `derniereActivite()` a quitté cette page pour `lib/eleves.php` : le
+// direct de l'application s'en sert exactement de la même façon, et une
+// seconde version aurait fini par répondre autre chose.
+require_once __DIR__ . '/../lib/eleves.php';
 
 $prof = profConnecte();
 $id = (string) ($_GET['id'] ?? '');
@@ -151,52 +155,6 @@ $s->execute([$id]);
 // Déchiffrer d'abord, trier ensuite : `ORDER BY` sur du texte chiffré trierait
 // des vecteurs d'initialisation tirés au hasard. Voir `lib/coffre.php`.
 $eleves = trierParPrenom(array_map('eleveLisible', $s->fetchAll()));
-
-/**
- * CE QUE CHACUN FAIT EN CE MOMENT.
- *
- * On remonte les quarante derniers événements et l'on répond à trois
- * questions, dans l'ordre où le professeur se les pose en marchant dans les
- * rangs : sur quel parcours est-il ? sur quel exercice ? et est-ce que ça
- * marche ?
- *
- * Quarante, et pas tout le journal : un élève qui travaille depuis une heure a
- * quelques centaines d'événements, et l'on relit cette fonction toutes les
- * vingt secondes pour trente élèves. Quarante suffisent largement à couvrir
- * l'exercice en cours, et bornent le coût de la page.
- */
-function derniereActivite(string $eleveId): array
-{
-    $s = db()->prepare(
-        'SELECT type, ts, payload FROM events WHERE student_id = ?
-         ORDER BY seq DESC LIMIT 40'
-    );
-    $s->execute([$eleveId]);
-    $lignes = $s->fetchAll();
-
-    $exo = null; $parcours = null; $justes = 0; $total = 0; $quand = null;
-    foreach ($lignes as $l) {
-        $p = json_decode((string) dechiffrer($l['payload']), true) ?: [];
-        $cet = $p['exerciseId'] ?? $p['exoId'] ?? null;
-        if ($exo === null && $cet) {
-            $exo = $cet;
-            $quand = (int) $l['ts'];
-        }
-        if ($parcours === null && !empty($p['pathName'])) {
-            $parcours = (string) $p['pathName'];
-        }
-        // On ne compte que l'exercice EN COURS : « 7 sur 10 » ne veut rien dire
-        // s'il mélange l'exercice d'avant.
-        if ($cet && $cet === $exo && $l['type'] === 'attempt') {
-            $total++;
-            if (!empty($p['correct'])) {
-                $justes++;
-            }
-        }
-    }
-    return ['exo' => $exo, 'parcours' => $parcours, 'justes' => $justes,
-            'total' => $total, 'quand' => $quand, 'combien' => count($lignes)];
-}
 
 $activites = [];
 $exercicesVus = [];

@@ -36,6 +36,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/_socle.php';
 require_once __DIR__ . '/../lib/coffre.php';
 require_once __DIR__ . '/../lib/liste.php';
+// TOUT CE QUI DÉCIDE ET TOUT CE QUI ÉCRIT VIT DANS `lib/eleves.php`, et
+// nulle part ailleurs : cette page et les routes JSON de l'application
+// s'en servent toutes les deux. Deux écrans, une seule mise en œuvre —
+// sans quoi l'un des deux abîmerait un jour des données d'élèves sans
+// qu'on sache lequel.
+require_once __DIR__ . '/../lib/eleves.php';
 
 $prof = profConnecte();
 $id = (string) ($_GET['id'] ?? '');
@@ -49,76 +55,6 @@ if (!$classe) {
 $retour = 'eleves.php?id=' . urlencode($id);
 
 // ---------------------------------------------------------------- Le décor --
-
-/**
- * CE QUI VA SE PASSER POUR CETTE LIGNE — la même décision à l'aperçu et à
- * l'import, écrite une seule fois.
- *
- * Écrire deux fois cette logique — une version qui prédit, une version qui
- * agit — c'est se garantir qu'elles finiront par diverger, et qu'un aperçu
- * annoncera un jour autre chose que ce qui sera fait. C'est exactement le genre
- * de trahison qu'un aperçu ne peut pas se permettre : il ne vaut que si l'on
- * peut s'y fier les yeux fermés.
- *
- * @return array{sort:string,eleve:?array,dit:string}
- */
-function sortDeLaLigne(array $l, string $classeId, string $profId): array
-{
-    // 1 — Cet identifiant existe-t-il déjà, ici ou ailleurs ?
-    $s = db()->prepare('SELECT id, class_id, first_name FROM students WHERE login_key = ? LIMIT 1');
-    $s->execute([empreinteLogin($l['login'])]);
-    $parLogin = $s->fetchAll()[0] ?? null;
-
-    if ($parLogin && $parLogin['class_id'] === $classeId) {
-        return ['sort' => 'connu', 'eleve' => $parLogin,
-                'dit' => 'déjà dans la liste — son code ne change pas'];
-    }
-    if ($parLogin) {
-        // Dans une autre classe. Si c'est une des miennes, je peux le déplacer.
-        $c = db()->prepare('SELECT name, teacher_id FROM classes WHERE id = ?');
-        $c->execute([$parLogin['class_id']]);
-        $autre = $c->fetchAll()[0] ?? null;
-        if ($autre && $autre['teacher_id'] === $profId) {
-            return ['sort' => 'deplace', 'eleve' => $parLogin,
-                    'dit' => 'vient de « ' . $autre['name'] . ' » — sera déplacé ici avec son travail'];
-        }
-        return ['sort' => 'refuse', 'eleve' => null,
-                'dit' => 'identifiant déjà pris — changez-le (par ex. en ajoutant une initiale)'];
-    }
-
-    // 2 — LE RATTACHEMENT, et c'est la correction qui compte. Un élève entré
-    //     par le code de la classe n'a pas d'identifiant : on le reconnaît à
-    //     son prénom, DANS CETTE CLASSE, et on lui donne le sien au lieu de
-    //     créer un second élève qui n'aurait fait aucun exercice.
-    $s = db()->prepare(
-        'SELECT id, first_name, login, login_key FROM students
-          WHERE class_id = ? AND first_name_key = ? LIMIT 1'
-    );
-    $s->execute([$classeId, empreintePrenom($l['nom'])]);
-    $parPrenom = $s->fetchAll()[0] ?? null;
-    if ($parPrenom && (string) $parPrenom['login_key'] === '') {
-        return ['sort' => 'rattache', 'eleve' => $parPrenom,
-                'dit' => 'entré par le code de la classe — il garde son travail et reçoit un billet'];
-    }
-    // MÊME NOM, IDENTIFIANT DIFFÉRENT. C'est le plus souvent la même personne
-    // écrite dans l'autre sens — la liste disait « NGUYÊN ; Maëlle », elle dit
-    // aujourd'hui « Maëlle Nguyên ». On ne crée pas un second élève, et on ne
-    // change pas non plus son identifiant en douce : un billet est distribué.
-    // On le dit, et le professeur tranche.
-    if ($parPrenom) {
-        return ['sort' => 'homonyme', 'eleve' => $parPrenom,
-                'dit' => 'déjà dans la liste sous « ' . dechiffrer($parPrenom['login'])
-                    . ' » — ignoré. Si c\'est un homonyme, donnez-lui un identifiant dans votre liste.'];
-    }
-
-    return ['sort' => 'nouveau', 'eleve' => null, 'dit' => 'nouvel élève'];
-}
-
-/** Le code à donner à cette ligne : celui de la liste, ou un tirage. */
-function codeDeLaLigne(array $l): string
-{
-    return $l['code'] !== '' ? $l['code'] : codeEleve();
-}
 
 $apercu = null;   // ['lignes' => [...], 'ignorees' => [...], 'texte' => '…']
 
@@ -152,79 +88,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             redirige($retour, 'Le code commun doit faire de 3 à 12 lettres ou chiffres.');
         }
 
-        $lu = lireListe($texte, $commun);
-        if (!$lu['lignes']) {
+        $apercu = apercuDeListe($texte, $commun, $id, (string) $prof['id']);
+        if (!$apercu) {
             redirige($retour, "Aucun élève reconnu dans ce que vous avez donné.");
         }
-        $apercu = $lu + ['texte' => ecrireListe($lu['lignes'])];
     }
 
     // --- Écrire pour de bon, à partir de la liste normalisée de l'aperçu
     if ($action === 'importer') {
         // On relit la liste normalisée : plus aucune devinette, et donc aucune
         // chance que l'import comprenne autre chose que ce qui a été montré.
-        $lu = lireListe((string) ($_POST['liste'] ?? ''));
-        $ajoutes = 0; $connus = 0; $rattaches = 0; $deplaces = 0; $refus = [];
-
-        foreach ($lu['lignes'] as $l) {
-            $sort = sortDeLaLigne($l, $id, (string) $prof['id']);
-
-            if ($sort['sort'] === 'refuse' || $sort['sort'] === 'homonyme') {
-                $refus[] = $l['login'];
-                continue;
-            }
-            if ($sort['sort'] === 'connu') {
-                // Le nom peut avoir été corrigé ; le code, jamais. Un billet
-                // distribué ne se périme pas parce qu'on recolle la liste.
-                db()->prepare('UPDATE students SET first_name = ?, first_name_key = ? WHERE id = ?')
-                    ->execute([chiffrer($l['nom']), empreintePrenom($l['nom']), $sort['eleve']['id']]);
-                $connus++;
-                continue;
-            }
-            if ($sort['sort'] === 'deplace') {
-                db()->prepare('UPDATE students SET class_id = ?, first_name = ?, first_name_key = ? WHERE id = ?')
-                    ->execute([$id, chiffrer($l['nom']), empreintePrenom($l['nom']), $sort['eleve']['id']]);
-                $deplaces++;
-                continue;
-            }
-            if ($sort['sort'] === 'rattache') {
-                db()->prepare(
-                    'UPDATE students SET first_name = ?, first_name_key = ?, login = ?, login_key = ?,
-                                         access_code = ? WHERE id = ?'
-                )->execute([chiffrer($l['nom']), empreintePrenom($l['nom']),
-                            chiffrer($l['login']), empreinteLogin($l['login']),
-                            chiffrer(codeDeLaLigne($l)), $sort['eleve']['id']]);
-                $rattaches++;
-                continue;
-            }
-            db()->prepare(
-                'INSERT INTO students (id, class_id, first_name, first_name_key,
-                                       login, login_key, access_code, token_hash)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-            )->execute([uuidv4(), $id, chiffrer($l['nom']), empreintePrenom($l['nom']),
-                        chiffrer($l['login']), empreinteLogin($l['login']),
-                        chiffrer(codeDeLaLigne($l)),
-                        // Pas encore de jeton : il naîtra à la première connexion.
-                        hash('sha256', uuidv4())]);
-            $ajoutes++;
-        }
-
-        $bouts = [];
-        if ($ajoutes)   $bouts[] = "$ajoutes ajouté(s)";
-        if ($rattaches) $bouts[] = "$rattaches rattaché(s) à leur travail";
-        if ($deplaces)  $bouts[] = "$deplaces déplacé(s) depuis une autre classe";
-        if ($connus)    $bouts[] = "$connus déjà là, code inchangé";
-        if ($refus)     $bouts[] = 'refusés : ' . implode(', ', array_slice($refus, 0, 5));
-        redirige($retour, $bouts ? ucfirst(implode(' · ', $bouts)) . '.' : 'Rien à faire.');
+        $bilan = importerListe((string) ($_POST['liste'] ?? ''), $id, (string) $prof['id']);
+        redirige($retour, phraseDImport($bilan));
     }
 
     // --- Un nouveau code pour un élève
     if ($action === 'nouveau-code') {
-        $s = db()->prepare('SELECT id FROM students WHERE id = ? AND class_id = ?');
-        $s->execute([(string) ($_POST['eleve'] ?? ''), $id]);
-        if ($s->fetchAll()) {
-            db()->prepare('UPDATE students SET access_code = ? WHERE id = ?')
-                ->execute([chiffrer(codeEleve()), (string) $_POST['eleve']]);
+        if (nouveauCodePourEleve((string) ($_POST['eleve'] ?? ''), $id)) {
             redirige($retour, "Nouveau code tiré. L'ancien billet ne vaut plus rien.");
         }
         redirige($retour);
@@ -237,29 +117,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         if ($memeCode && !preg_match('/^[A-Za-z0-9]{3,12}$/', $commun)) {
             redirige($retour, 'Le code commun doit faire de 3 à 12 lettres ou chiffres.');
         }
-        $s = db()->prepare('SELECT id FROM students WHERE class_id = ? AND login_key IS NOT NULL AND login_key <> \'\'');
-        $s->execute([$id]);
-        $tous = $s->fetchAll();
-        $maj = db()->prepare('UPDATE students SET access_code = ? WHERE id = ?');
-        foreach ($tous as $e) {
-            $maj->execute([chiffrer($memeCode ? strtoupper($commun) : codeEleve()), $e['id']]);
-        }
-        redirige($retour, count($tous) . ' code(s) refaits. Réimprimez les billets : '
+        $n = refaireLesCodes($id, $memeCode ? $commun : '');
+        redirige($retour, $n . ' code(s) refaits. Réimprimez les billets : '
             . 'les anciens ne valent plus rien.');
     }
 
     // --- Retirer un élève de la liste
     if ($action === 'retirer') {
-        $eleve = (string) ($_POST['eleve'] ?? '');
-        $s = db()->prepare('SELECT first_name FROM students WHERE id = ? AND class_id = ?');
-        $s->execute([$eleve, $id]);
-        $qui = $s->fetchAll()[0] ?? null;
-        if ($qui) {
-            // Les jetons, les événements, les mots, les déblocages partent avec
-            // lui : toutes les tables le référencent en ON DELETE CASCADE. C'est
-            // ce qui rend vraie la phrase « je détruirai la liste des élèves ».
-            db()->prepare('DELETE FROM students WHERE id = ?')->execute([$eleve]);
-            redirige($retour, dechiffrer($qui['first_name']) . ' a été retiré, avec tout son travail.');
+        $qui = retirerEleve((string) ($_POST['eleve'] ?? ''), $id);
+        if ($qui !== '') {
+            redirige($retour, $qui . ' a été retiré, avec tout son travail.');
         }
         redirige($retour);
     }
@@ -270,14 +137,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 }
 
 // ------------------------------------------------------------------ Lecture --
-$s = db()->prepare('SELECT * FROM students WHERE class_id = ?');
-$s->execute([$id]);
-$eleves = trierParPrenom(array_map(function ($e) {
-    $e['first_name'] = dechiffrer($e['first_name']);
-    $e['login']      = dechiffrer($e['login']);
-    $e['code']       = dechiffrer($e['access_code']);
-    return $e;
-}, $s->fetchAll()));
+$eleves = elevesDeLaClasse($id);
 
 $avecListe = array_values(array_filter($eleves, fn ($e) => (string) $e['login'] !== ''));
 $sansListe = array_values(array_filter($eleves, fn ($e) => (string) $e['login'] === ''));
@@ -300,7 +160,11 @@ enTete('Liste de ' . $classe['name'], $prof, 'classes');
     <table>
         <tr><th>Élève</th><th>Identifiant</th><th>Code</th><th>Ce qui va se passer</th></tr>
         <?php foreach ($apercu['lignes'] as $l):
-            $sort = sortDeLaLigne($l, $id, (string) $prof['id']); ?>
+            // Le sort est DÉJÀ décidé — `apercuDeListe` l'a calculé avec la
+            // fonction que l'import utilisera. Le recalculer ici rouvrirait
+            // précisément la porte qu'on vient de fermer : deux décisions pour
+            // une seule question.
+            $sort = ['sort' => $l['sort'], 'dit' => $l['dit']]; ?>
         <tr class="sort-<?= h($sort['sort']) ?>">
             <td><b><?= h($l['nom']) ?></b></td>
             <td><code><?= h($l['login']) ?></code></td>

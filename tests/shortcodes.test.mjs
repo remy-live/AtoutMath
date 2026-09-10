@@ -463,3 +463,63 @@ test('LE PROFESSEUR DOIT POUVOIR LIRE POURQUOI SON LIEN EST LONG', () => {
     assert.deepEqual(Shortcodes.raisonsDuCodeLong(makePath('x', [], defaultPolicy())),
         ['le parcours est vide']);
 });
+
+// --- L'identité d'un parcours reçu par code ---------------------------------
+
+test('le même code redonne le même identifiant de parcours', () => {
+    // Rémy : « quand j'ai fait un parcours en tant qu'élève et que je l'ai fini
+    // ou non ma progression ne s'enregistre pas j'ai l'impression ».
+    //
+    // Elle s'enregistrait, et personne ne pouvait la retrouver : le code ne
+    // transporte aucun identifiant, et `makePath` en tirait un au hasard à
+    // chaque lecture. La progression est rattachée à l'identifiant du dernier
+    // parcours assigné — celle de la veille restait donc rangée sous un
+    // identifiant que plus rien ne désignait, et l'élève recommençait à zéro.
+    const p = makePath('Devoir de lundi', [
+        makeStep('calc-add', {}, { nbItems: 5 }),
+        makeStep('calc-sub', {}, { nbItems: 8 })
+    ], defaultPolicy());
+
+    const lien = Shortcodes.encodePath(p);
+    const lundi = Shortcodes.decodePath(lien);
+    const mardi = Shortcodes.decodePath(lien);
+    assert.ok(lundi.id, 'un parcours décodé a un identifiant');
+    assert.equal(lundi.id, mardi.id,
+        'le même code, deux jours de suite, doit désigner le même parcours');
+
+    // Et les étapes portent les mêmes noms, sinon les étapes faites ne se
+    // rattacheraient toujours à rien.
+    assert.deepEqual(lundi.steps.map(s => s.stepId), mardi.steps.map(s => s.stepId));
+});
+
+test('un code court est stable lui aussi, et deux contenus différents ne se confondent pas', () => {
+    const court = Shortcodes.encodePath(
+        makePath('Court', [makeStep('calc-add', {}, { nbItems: 5 })], defaultPolicy()));
+    assert.equal(Shortcodes.decodePath(court).id, Shortcodes.decodePath(court).id);
+
+    // Une question de plus, et c'est un autre travail : les progressions ne
+    // doivent pas se mélanger.
+    const autre = Shortcodes.encodePath(
+        makePath('Court', [makeStep('calc-add', {}, { nbItems: 6 })], defaultPolicy()));
+    assert.notEqual(Shortcodes.decodePath(court).id, Shortcodes.decodePath(autre).id);
+
+    // Le NOM, lui, ne compte pas : il se refabrique à partir des titres du
+    // catalogue pour un code court, et renommer un exercice ne doit pas
+    // effacer le travail de trente élèves.
+    const memeContenuAutreNom = Shortcodes.encodePath(
+        makePath('Un tout autre nom', [makeStep('calc-add', {}, { nbItems: 5 })], defaultPolicy()));
+    assert.equal(Shortcodes.decodePath(memeContenuAutreNom).id,
+        Shortcodes.decodePath(court).id);
+});
+
+test('un barème différent fait un parcours différent', () => {
+    // Deux fois les mêmes exercices, une fois en entraînement et une fois en
+    // interrogation : ce n'est pas le même travail, et l'élève ne doit pas
+    // ouvrir son devoir « déjà fait ».
+    const etapes = () => [makeStep('calc-add', {}, { nbItems: 10 })];
+    const entrainement = Shortcodes.decodePath(
+        Shortcodes.encodePath(makePath('A', etapes(), defaultPolicy())));
+    const interro = Shortcodes.decodePath(
+        Shortcodes.encodePath(makePath('A', etapes(), evaluationPolicy())));
+    assert.notEqual(entrainement.id, interro.id);
+});

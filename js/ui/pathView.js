@@ -798,8 +798,35 @@ function teacherPathsSection() {
             // parcours lui-même qui s'en charge : il s'ouvre sur sa carte,
             // plein écran, et c'est l'élève qui donne le départ. Une fenêtre
             // d'aperçu par-dessus aurait montré deux fois la même chose.
+
+            // UN PARCOURS LANCÉ D'ICI COMPTE, LUI AUSSI — s'il y a la place.
+            //
+            // Rémy : « quand j'ai fait un parcours en tant qu'élève et que je
+            // l'ai fini ou non ma progression ne s'enregistre pas ». Ces
+            // parcours-ci partaient sans assignation : les étapes finies
+            // allaient bien au journal, mais sous un identifiant qu'aucun
+            // `PATH_ASSIGNED` ne désignait. `computeAssignedPath` ne les voyait
+            // donc jamais, et la carte restait vierge au lancement suivant.
+            //
+            // ON N'ÉCRASE PAS LE TRAVAIL DONNÉ PAR LE PROFESSEUR. C'est la
+            // tablette prêtée : un élève qui essaie un parcours préparé sur le
+            // poste ne doit pas perdre le devoir qu'on lui a assigné. On
+            // n'adopte donc ce parcours que si la place est libre — sinon on le
+            // joue quand même, exactement comme avant.
+            if (!state.studentPath) {
+                state.setStudentPath(normalized.steps, {
+                    pathId: normalized.id,
+                    name: normalized.name || p.name,
+                    policy: resolvePolicy(normalized.policy)
+                });
+            }
             const { Runner } = await import('../core/runner.js');
-            new Runner({ path: normalized, deviceMode: 'none' }).start();
+            new Runner({
+                path: normalized,
+                deviceMode: 'none',
+                isStudentPath: state.studentPath
+                    && state.studentPath.pathId === normalized.id
+            }).start();
         };
         card.appendChild(btn);
         list.appendChild(card);

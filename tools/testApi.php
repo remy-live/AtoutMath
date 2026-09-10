@@ -1369,6 +1369,183 @@ verifier('et nous modifions bien notre propre parcours',
 verifier('une assignation sans classe ni élève est refusée',
     json('/teacher/assign', ['pathId' => $notreParcours], $jetonNotre)['code'] === 400);
 
+titre('12 nonies. L\'espace professeur, depuis l\'application');
+
+// TOUT CE QUI SE FAISAIT DANS `api/admin/` SE FAIT MAINTENANT AUSSI D'ICI.
+//
+// Rémy : « en fait j'aimerai ne pas passer par admin et dans atout math sans
+// passer par la zone admin ». Il ne le pouvait pas : les pages
+// d'administration s'ouvrent avec un cookie de session PHP, que le jeton de
+// l'application n'obtient pas — et surtout, TOUS les gestes qui écrivent
+// n'existaient que là-bas. L'API savait créer une classe, et rien d'autre.
+//
+// CE QUI COMPTE ICI N'EST PAS QUE LES ROUTES RÉPONDENT : c'est qu'elles
+// répondent LA MÊME CHOSE que les pages. Elles appellent les mêmes fonctions —
+// `lib/eleves.php` — et ces vérifications-là sont ce qui empêchera qu'un jour
+// l'une des deux se mette à faire autrement.
+
+// ON PREND LA CLASSE QUE LE SERVEUR DIT AVOIR CRÉÉE, et non la première de la
+// liste : le tri se fait sur une date à la seconde, et deux classes créées dans
+// la même seconde se départagent au hasard. Mesuré ici même — l'essai collait
+// ses trente élèves dans la classe d'une section précédente.
+$cl = json('/teacher/classes', ['action' => 'create', 'name' => 'Classe de l\'app'],
+    $jetonNotre)['json']['creee'] ?? [];
+$idApp = $cl['id'] ?? '';
+verifier('l\'application crée une classe et reçoit son code', $idApp !== '' && !empty($cl['join_code']));
+
+// --- La liste : coller, prévoir, écrire ---
+$r = json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonNotre);
+verifier('la liste part vide, avec un code proposé d\'avance',
+    $r['code'] === 200 && $r['json']['eleves'] === [] && !empty($r['json']['codePropose']));
+
+$colle = "DUPONT;Emma\nNGUYÊN;Maëlle\nBernard Tom;tom.b;7777\n";
+$ap = json('/teacher/roster',
+    ['classId' => $idApp, 'action' => 'apercu', 'texte' => $colle], $jetonNotre)['json']['apercu'] ?? [];
+verifier('l\'aperçu lit les trois lignes et fabrique les identifiants',
+    count($ap['lignes'] ?? []) === 3
+    && ($ap['lignes'][0]['login'] ?? '') !== '' && ($ap['lignes'][0]['sort'] ?? '') === 'nouveau');
+verifier('L\'APERÇU N\'ÉCRIT RIEN',
+    json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonNotre)['json']['eleves'] === []);
+
+$r = json('/teacher/roster',
+    ['classId' => $idApp, 'action' => 'importer', 'liste' => $ap['texte']], $jetonNotre);
+$listeApp = $r['json']['eleves'] ?? [];
+verifier('l\'import écrit les trois élèves, chacun avec son billet',
+    count($listeApp) === 3
+    && !array_filter($listeApp, fn ($e) => $e['login'] === '' || $e['code'] === ''),
+    $r['json']['dit'] ?? '');
+verifier('le code écrit dans la liste est respecté',
+    (bool) array_filter($listeApp, fn ($e) => $e['login'] === 'tom.b' && $e['code'] === '7777'));
+
+// Recoller la même liste : c'est le geste qu'un professeur fait sans y penser,
+// et il ne doit rien casser — ni doubler les élèves, ni refaire leurs codes.
+$ap2 = json('/teacher/roster',
+    ['classId' => $idApp, 'action' => 'apercu', 'texte' => $colle], $jetonNotre)['json']['apercu'];
+verifier('recoller la même liste annonce « déjà là » pour les trois',
+    count(array_filter($ap2['lignes'], fn ($l) => $l['sort'] === 'connu')) === 3);
+
+$avant = $listeApp[0]['code'];
+$r = json('/teacher/roster',
+    ['classId' => $idApp, 'action' => 'code', 'studentId' => $listeApp[0]['id']], $jetonNotre);
+verifier('un nouveau code pour un seul élève',
+    (($r['json']['eleves'][0]['code'] ?? '') !== $avant));
+
+$r = json('/teacher/roster',
+    ['classId' => $idApp, 'action' => 'codes', 'codeCommun' => 'RENTREE'], $jetonNotre);
+verifier('le même code pour toute la classe — « un mdp générique pour tous mes élèves »',
+    count(array_unique(array_column($r['json']['eleves'], 'code'))) === 1
+    && $r['json']['eleves'][0]['code'] === 'RENTREE');
+verifier('un code commun impossible est refusé',
+    json('/teacher/roster',
+        ['classId' => $idApp, 'action' => 'codes', 'codeCommun' => 'a b'], $jetonNotre)['code'] === 400);
+
+verifier('retirer un élève le retire vraiment',
+    count(json('/teacher/roster',
+        ['classId' => $idApp, 'action' => 'retirer', 'studentId' => $listeApp[2]['id']],
+        $jetonNotre)['json']['eleves']) === 2);
+
+// --- Conduire la classe ---
+verifier('renommer une classe',
+    json('/teacher/class',
+        ['classId' => $idApp, 'action' => 'rename', 'name' => 'Classe renommée'], $jetonNotre)['code'] === 200);
+verifier('mettre la classe en pause',
+    json('/teacher/class',
+        ['classId' => $idApp, 'action' => 'lock', 'locked' => true], $jetonNotre)['json']['locked'] === true);
+verifier('poser une consigne',
+    json('/teacher/class',
+        ['classId' => $idApp, 'action' => 'notice', 'notice' => 'Exercice 3 page 42'], $jetonNotre)['code'] === 200);
+$r = json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonNotre);
+verifier('et tout cela se relit',
+    ($r['json']['classe']['name'] ?? '') === 'Classe renommée'
+    && ($r['json']['classe']['locked'] ?? null) === true
+    && ($r['json']['classe']['notice'] ?? '') === 'Exercice 3 page 42');
+
+// --- Le direct et les mots ---
+$r = json('/teacher/live', ['classId' => $idApp], $jetonNotre);
+verifier('le direct rend les rangs ET l\'heure du serveur',
+    // L'heure vient du SERVEUR et non du navigateur : « en ligne » se décide en
+    // comparant deux instants, et une tablette mal réglée ferait autrement
+    // disparaître toute la classe de l'écran.
+    $r['code'] === 200 && count($r['json']['eleves'] ?? []) === 2
+    && ($r['json']['maintenant'] ?? 0) > 1000000000);
+
+$resteApp = json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonNotre)['json']['eleves'];
+verifier('un mot à toute la classe',
+    json('/teacher/message', ['classId' => $idApp, 'body' => 'On commence page 42.'], $jetonNotre)['code'] === 200);
+verifier('un mot à un seul élève',
+    json('/teacher/message',
+        ['classId' => $idApp, 'studentId' => $resteApp[0]['id'], 'body' => 'Viens me voir.'], $jetonNotre)['code'] === 200);
+verifier('les mots se relisent, avec pour qui ils étaient',
+    count(json('/teacher/message', ['classId' => $idApp, 'action' => 'list'], $jetonNotre)['json']['messages']) === 2);
+verifier('un mot vide est refusé',
+    json('/teacher/message', ['classId' => $idApp, 'body' => '   '], $jetonNotre)['code'] === 400);
+
+// --- Ce qu'un autre professeur ne peut pas faire de ces routes-là non plus ---
+verifier('le collègue ne lit pas la liste de cette classe',
+    json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonAutre)['code'] === 404);
+verifier('le collègue ne voit pas son direct',
+    json('/teacher/live', ['classId' => $idApp], $jetonAutre)['code'] === 404);
+verifier('le collègue ne lui écrit pas',
+    json('/teacher/message', ['classId' => $idApp, 'body' => 'coucou'], $jetonAutre)['code'] === 404);
+verifier('le collègue ne la supprime pas',
+    json('/teacher/class',
+        ['classId' => $idApp, 'action' => 'delete', 'confirmation' => 'EFFACER'], $jetonAutre)['code'] === 404);
+
+// --- Les deux gestes sans retour demandent le mot écrit ---
+verifier('vider sans écrire EFFACER est refusé',
+    json('/teacher/class', ['classId' => $idApp, 'action' => 'empty'], $jetonNotre)['code'] === 400);
+verifier('avec le mot écrit, la classe se vide et reste',
+    json('/teacher/class',
+        ['classId' => $idApp, 'action' => 'empty', 'confirmation' => 'EFFACER'], $jetonNotre)['code'] === 200
+    && json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonNotre)['json']['eleves'] === []);
+verifier('et la supprimer la fait disparaître',
+    (json('/teacher/class',
+        ['classId' => $idApp, 'action' => 'delete', 'confirmation' => 'EFFACER'],
+        $jetonNotre)['json']['supprimee'] ?? false) === true
+    && json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonNotre)['code'] === 404);
+
+// UNE ACTION INCONNUE N'EST PAS UNE LISTE. Mesuré avant correction :
+// `{action:"delete"}` sur /teacher/classes rendait 200 avec la liste, et la
+// classe existait toujours. Un écran qui aurait cru supprimer aurait affiché
+// « supprimé » sans que rien ne le soit.
+verifier('une action inconnue sur /teacher/classes est refusée, pas avalée',
+    json('/teacher/classes', ['action' => 'delete'], $jetonNotre)['code'] === 400);
+
+titre('12 decies. Créer un second professeur');
+
+// Rémy : « oui j'ai un compte admin mais pas un compte professeur, comment
+// j'ajoute un prof », puis « que je puisse créer un professeur ».
+//
+// IL N'Y AVAIT AUCUN CHEMIN : `install.php` refuse de tourner deux fois,
+// `motdepasse.php` dépanne mais ne crée pas, `tools/admin.php` veut la ligne de
+// commande. Le droit d'en créer un appartient à un professeur DÉJÀ en place :
+// pas d'inscription libre sur un serveur de classe.
+
+verifier('sans jeton, personne ne crée de professeur',
+    json('/teacher/signup',
+        ['displayName' => 'X', 'email' => 'x@y.fr', 'password' => 'douzecaracteres'])['code'] === 401);
+verifier('un mot de passe de moins de douze signes est refusé',
+    json('/teacher/signup',
+        ['displayName' => 'Alice', 'email' => 'alice@essai.test', 'password' => 'court'],
+        $jetonNotre)['code'] === 400);
+verifier('une adresse qui n\'en est pas une est refusée',
+    json('/teacher/signup',
+        ['displayName' => 'Alice', 'email' => 'pas-une-adresse', 'password' => 'douzecaracteres'],
+        $jetonNotre)['code'] === 400);
+verifier('le professeur est créé',
+    json('/teacher/signup',
+        ['displayName' => 'Alice Martin', 'email' => 'Alice@Essai.TEST', 'password' => 'douzecaracteres'],
+        $jetonNotre)['code'] === 200);
+verifier('la même adresse, écrite autrement, est refusée ensuite',
+    json('/teacher/signup',
+        ['displayName' => 'Bis', 'email' => 'alice@essai.test', 'password' => 'douzecaracteres'],
+        $jetonNotre)['code'] === 409);
+$jetonAlice = json('/teacher/login',
+    ['email' => 'alice@essai.test', 'password' => 'douzecaracteres'])['json']['token'] ?? '';
+verifier('et il se connecte avec son adresse, quelle qu\'en soit la casse', $jetonAlice !== '');
+verifier('le professeur créé commence avec zéro classe',
+    json('/teacher/classes', ['action' => 'list'], $jetonAlice)['json']['classes'] === []);
+
 titre('13. Le fichier tel qu\'on l\'emporterait');
 
 // LA VÉRIFICATION QUI COMPTE, ET LA SEULE QUI PROUVE QUELQUE CHOSE : on ouvre le

@@ -436,6 +436,61 @@ function compactStep(s) {
     return out;
 }
 
+/**
+ * L'IDENTITÉ D'UN PARCOURS REÇU PAR CODE, C'EST SON CONTENU.
+ *
+ * Rémy : « quand j'ai fait un parcours en tant qu'élève et que je l'ai fini ou
+ * non, ma progression ne s'enregistre pas j'ai l'impression pour le parcours ».
+ *
+ * ELLE S'ENREGISTRAIT — ET PERSONNE NE POUVAIT PLUS LA RETROUVER. Un code ne
+ * transporte aucun identifiant : `compact()` n'en écrit pas. À chaque lecture,
+ * `makePath()` en tirait donc un AU HASARD. Le même code saisi le lendemain
+ * fabriquait, pour le journal, un AUTRE parcours : les étapes faites la veille
+ * étaient toujours là, rangées sous l'ancien identifiant, mais
+ * `computeAssignedPath` ne rattache que celles qui portent l'identifiant du
+ * dernier parcours assigné. L'élève retrouvait sa carte vierge et recommençait
+ * à l'étape 1.
+ *
+ * ON DÉRIVE DONC L'IDENTIFIANT DU CONTENU. Le même code, deux jours de suite,
+ * sur deux appareils, désigne le même parcours — donc la même progression. Sans
+ * rien ajouter au code, ce qui compte : les codes déjà dictés continuent de se
+ * lire, et les codes courts restent courts.
+ *
+ * LE NOM RESTE HORS DE L'EMPREINTE. Pour une chaîne courte, il se refabrique à
+ * partir des titres du catalogue : renommer un exercice ne doit pas effacer le
+ * travail de trente élèves.
+ *
+ * CE QU'IL FAUT SAVOIR ET ASSUMER :
+ *   · deux parcours au contenu RIGOUREUSEMENT identique partagent désormais une
+ *     progression. C'est cohérent — même travail, même avancement — mais si
+ *     Rémy redonne exactement les mêmes exercices une seconde fois, la carte
+ *     s'ouvrira « déjà faite ». Un exercice de plus, un barème différent, un
+ *     nombre de questions différent, et ce sont deux parcours distincts ;
+ *   · la correction n'est PAS rétroactive : les étapes déjà écrites sous un
+ *     identifiant tiré au hasard restent orphelines. Aucun élève n'ayant encore
+ *     utilisé le logiciel, cela ne coûte rien aujourd'hui.
+ */
+function identifierParLeContenu(path) {
+    if (!path) return path;
+    // On repart de la forme compacte : c'est elle qui définit ce qui voyage,
+    // donc ce qui fait qu'un parcours est LE MÊME. S'en écarter, ce serait
+    // fabriquer une seconde définition à côté, qui divergerait un jour.
+    const { n, ...contenu } = compact(path);
+    const texte = JSON.stringify(contenu);
+    // FNV-1a sur 32 bits : court, sans dépendance, et stable d'un moteur à
+    // l'autre. Ce n'est pas une empreinte cryptographique et n'a pas à l'être —
+    // personne ne gagne rien à fabriquer une collision avec le parcours d'un
+    // autre élève, et une collision fortuite demanderait des milliards de
+    // parcours différents dans le même navigateur.
+    let h = 0x811c9dc5;
+    for (let i = 0; i < texte.length; i++) {
+        h ^= texte.charCodeAt(i);
+        h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    path.id = 'path_c' + h.toString(36).toUpperCase();
+    return path;
+}
+
 function expand(obj) {
     // On repart de la politique du mode, puis on applique ce qui voyageait.
     const p = obj.p || {};
@@ -540,7 +595,8 @@ export const Shortcodes = {
         const trimmed = String(code).trim();
         try {
             if (trimmed.startsWith(PREFIX)) {
-                return expand(JSON.parse(fromBase64Url(trimmed.slice(PREFIX.length))));
+                return identifierParLeContenu(
+                    expand(JSON.parse(fromBase64Url(trimmed.slice(PREFIX.length)))));
             }
             const chaine = decouperChaine(trimmed);
             if (chaine) {
@@ -559,7 +615,7 @@ export const Shortcodes = {
                         timeLimit: null, forceSeed: null
                     };
                 });
-                return path;
+                return identifierParLeContenu(path);
             }
             // UN CODE QU'ON NE SAIT PAS LIRE REND null, JAMAIS UN PARCOURS VIDE.
             // L'ancien décodeur ignorait en silence ce qu'il ne reconnaissait
@@ -567,7 +623,7 @@ export const Shortcodes = {
             // avoir réussi. Refuser franchement, c'est le message d'erreur que
             // l'élève doit voir.
             const ancien = decodeLegacy(trimmed);
-            return (ancien && ancien.steps.length) ? ancien : null;
+            return (ancien && ancien.steps.length) ? identifierParLeContenu(ancien) : null;
         } catch (e) {
             console.warn('[shortcodes] code illisible', e);
             return null;
