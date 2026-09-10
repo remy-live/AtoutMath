@@ -153,6 +153,40 @@ export function etatRecompenses(path, progres = {}) {
  * reste à faire, jamais « tu n'as pas le droit » : un verrou qui n'explique
  * pas ce qu'il attend est vécu comme une punition.
  */
+/**
+ * LE PARCOURS EST-IL FINI ?
+ *
+ * Rémy : « Il faut aussi pouvoir autoriser une zone de jeu si l'élève a fini le
+ * parcours. »
+ *
+ * « FINI » VEUT DIRE CE QUE L'ÉCRAN DE L'ÉLÈVE APPELLE FINI, et rien d'autre :
+ * la bannière « 🎉 Parcours terminé ! Bravo. » tombe sur `prochaineObligatoire
+ * === -1`, c'est-à-dire « plus aucune étape obligatoire à faire ». C'est cette
+ * règle-là qu'on reprend, littéralement, en appelant la même fonction.
+ *
+ * ON A FAILLI PRENDRE L'AUTRE, ET C'EÛT ÉTÉ UN PIÈGE. `toutOuvert` — le travail
+ * fait ET au niveau demandé (75 % par défaut) — ouvre les jeux-cadeaux POSÉS
+ * DANS un parcours, ce qui est autre chose : le professeur les y met justement
+ * pour récompenser un niveau. S'en servir ici ferait dire deux choses au même
+ * écran. Mesuré : deux étapes validées à 3/5 et 4/5 donnent `prochaineObligatoire
+ * = -1` — donc « Parcours terminé ! Bravo » — et `toutOuvert = false` — donc
+ * « Finis ton parcours ». Le même écran félicitait l'élève et lui reprochait de
+ * n'avoir pas fini.
+ *
+ * ET LE MESSAGE DU VERROU RESTE VRAI. « Finis ton parcours, et les jeux
+ * s'ouvrent » décrit exactement ce qu'il faut faire ; avec un seuil caché, il
+ * aurait menti à l'élève qui a tout fait sans tout réussir — et un verrou qui
+ * ment est le défaut que ce module refuse par ailleurs.
+ *
+ * @param {object} path     le parcours (ses étapes)
+ * @param {object} progres  { completed: string[], resultats: {} }
+ */
+export function parcoursFini(path, progres = {}) {
+    const steps = (path && path.steps) || [];
+    if (!steps.length) return false;
+    return prochaineObligatoire(steps, new Set(progres.completed || [])) === -1;
+}
+
 export function direRecompense(jeu, seuil) {
     const pourcent = Math.round(seuil * 100);
     switch (jeu.raison) {

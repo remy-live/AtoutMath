@@ -1,3 +1,31 @@
+/* --- LA SALLE DE JEUX de l'accueil élève -----------------------------------
+   Rémy : « Il faut aussi pouvoir autoriser une zone de jeu si l'élève a fini le
+   parcours. »
+
+   ELLE SE VOIT FERMÉE AUTANT QU'OUVERTE. Une récompense qu'on ignore n'en est
+   pas une : la carte grise qui dit « elle s'ouvre quand ton parcours est fini »
+   est ce qui transforme la récompense en raison de continuer. */
+.auj-salle {
+    margin: 14px 0 4px; padding: 14px 16px; border-radius: 16px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+}
+.auj-salle--fermee {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg-hover); border-style: dashed; opacity: .82;
+}
+.auj-salle-tete { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.auj-salle-ico { font-size: 1.5rem; line-height: 1; }
+.auj-salle-dit { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.auj-salle-dit b { color: var(--text-main); font-size: 1rem; }
+.auj-salle-dit span { color: var(--text-muted); font-size: .86rem; }
+.auj-salle-jeux { display: flex; gap: 8px; flex-wrap: wrap; }
+.auj-jeu {
+    font: inherit; font-weight: 700; font-size: .88rem; cursor: pointer;
+    padding: 9px 15px; border-radius: 11px; border: 1.5px solid var(--primary);
+    background: var(--primary); color: #fff; transition: transform .14s, box-shadow .14s;
+}
+.auj-jeu:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+
 /* ═══ MES CLASSES — l'espace du professeur ═══════════════════════════════════
 
    Rémy : « fais moi qqch de classe, de beau, de simple ».

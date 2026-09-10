@@ -253,6 +253,14 @@ export function raisonsDuCodeLong(path) {
     if (p.bonusSeuil !== undefined && p.bonusSeuil !== SEUIL_DEFAUT) {
         out.push('le seuil qui ouvre les jeux de récompense a été déplacé');
     }
+    // UNE REPRISE NE TIENT PAS DANS UNE CHAÎNE COURTE, et il ne faut surtout
+    // pas qu'elle passe à la trappe : c'est elle, et elle seule, qui distingue
+    // un rattrapage du travail d'origine. Sans elle dans le code, l'élève qui
+    // tape le code du rattrapage retombe sur le parcours qu'il a déjà raté, et
+    // son bilan va se ranger avec celui de la première fois.
+    if (p.reprise) {
+        out.push('c\'est un rattrapage, et il doit se distinguer du travail d\'origine');
+    }
     p.steps.forEach((s, i) => {
         const r = raisonEtape(s);
         if (r) out.push(`étape ${i + 1} : ${r}`);
@@ -308,6 +316,11 @@ function chaineCourte(path) {
     // Le seuil qui ouvre les jeux de récompense ne voyage pas dans la chaîne :
     // s'il a été déplacé, il doit voyager en entier.
     if (p.bonusSeuil !== undefined && p.bonusSeuil !== SEUIL_DEFAUT) return '';
+    // LA GRAINE DE REPRISE NON PLUS. Un rattrapage a les mêmes étapes que le
+    // travail d'origine : sa chaîne courte serait donc RIGOUREUSEMENT la même,
+    // et l'élève qui la tape retomberait sur le parcours qu'il vient de rater.
+    // Le format complet, lui, sait porter la graine.
+    if (p.reprise) return '';
     let out = '';
     for (const s of p.steps) {
         if (!etapeSimple(s)) return '';
@@ -378,6 +391,18 @@ function compact(path) {
     const base = politiqueDuMode(pol.mode);
 
     const out = { n: p.name, s: p.steps.map(compactStep) };
+    // LA REPRISE : ce qui distingue un rattrapage du travail d'origine.
+    //
+    // Un rattrapage est le MÊME travail, redonné à ceux qui l'ont raté — et son
+    // bilan ne doit surtout pas ramasser celui de la séance d'origine, sans
+    // quoi le professeur verrait « refait » ce qui n'a jamais été refait. On
+    // distinguait les deux par un identifiant neuf sur la copie ; mais un
+    // identifiant ne voyage pas dans un code, et l'élève qui tape le code du
+    // rattrapage retombait donc exactement sur le parcours d'origine.
+    //
+    // Cette graine-ci, elle, voyage. C'est le seul champ de la forme compacte
+    // qui ne décrit pas le travail : il décrit l'ACTE de le redonner.
+    if (p.reprise) out.r = p.reprise;
     // Le seuil qui ouvre les jeux de récompense du parcours.
     if (p.bonusSeuil !== undefined && p.bonusSeuil !== SEUIL_DEFAUT) out.b = p.bonusSeuil;
 
@@ -469,9 +494,17 @@ function compactStep(s) {
  *   · la correction n'est PAS rétroactive : les étapes déjà écrites sous un
  *     identifiant tiré au hasard restent orphelines. Aucun élève n'ayant encore
  *     utilisé le logiciel, cela ne coûte rien aujourd'hui.
+ *
+ * ET C'EST L'IDENTITÉ DE PARTOUT, PAS SEULEMENT DE L'ÉLÈVE. Une séance donnée
+ * l'écrit elle aussi (`core/seances.js`), et le panneau « À qui ce parcours est
+ * donné » compare la même chose (`ui/parcoursClasses.js`). Sans quoi le
+ * professeur et l'élève désigneraient le même travail par deux noms : le bilan
+ * de la séance ne retiendrait aucun de ses travaux, et la case ne se cocherait
+ * jamais. Mesuré exactement ainsi avant cette mise en commun — « runs retenus :
+ * [] » pour une classe qui avait pourtant travaillé.
  */
-function identifierParLeContenu(path) {
-    if (!path) return path;
+export function identiteDeParcours(path) {
+    if (!path) return '';
     // On repart de la forme compacte : c'est elle qui définit ce qui voyage,
     // donc ce qui fait qu'un parcours est LE MÊME. S'en écarter, ce serait
     // fabriquer une seconde définition à côté, qui divergerait un jour.
@@ -487,7 +520,13 @@ function identifierParLeContenu(path) {
         h ^= texte.charCodeAt(i);
         h = Math.imul(h, 0x01000193) >>> 0;
     }
-    path.id = 'path_c' + h.toString(36).toUpperCase();
+    return 'path_c' + h.toString(36).toUpperCase();
+}
+
+/** Pose cette identité sur le parcours, et le rend. */
+function identifierParLeContenu(path) {
+    if (!path) return path;
+    path.id = identiteDeParcours(path);
     return path;
 }
 
@@ -512,6 +551,7 @@ function expand(obj) {
     }
     const path = makePath(obj.n || 'Parcours partagé', [], resolvePolicy(pol));
     if (obj.b !== undefined) path.bonusSeuil = obj.b;
+    if (obj.r) path.reprise = obj.r;
     path.steps = (obj.s || []).map((s, i) => ({
         stepId: `sc_${i}`,
         exerciseId: s.e,

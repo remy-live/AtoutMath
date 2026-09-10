@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { seancesDeDemo, PARCOURS_DEMO, classesDeDemo, CLASSES_DEMO, PROFILS } from '../js/core/demoClasses.js';
+import { identiteDeParcours } from '../js/core/shortcodes.js';
 import { bilanEleve } from '../js/core/bilan.js';
 import { computeMastery } from '../js/core/mastery.js';
 import { computeAttempts, computeErrors } from '../js/core/projections.js';
@@ -274,7 +275,11 @@ test('CHAQUE CLASSE DE DÉMONSTRATION A UN BILAN DE SÉANCE, pas seulement la pr
 
     seances.forEach((s, i) => {
         const classe = classes[i];
-        assert.equal(s.pathId, PARCOURS_DEMO.id, `${classe.nom} : mauvais parcours`);
+        // La séance et les journaux des élèves citent la MÊME identité — celle
+        // du contenu, pas l'`id` de rangement. C'est cet accord-là qui fait
+        // qu'un bilan trouve son travail ; le rompre le viderait en silence.
+        assert.equal(s.pathId, identiteDeParcours(PARCOURS_DEMO),
+            `${classe.nom} : mauvais parcours`);
         const actifs = (classe.eleves || []).filter(e => aTravaille(s, e.evenements || []));
         assert.ok(actifs.length > classe.eleves.length * 0.6,
             `${classe.nom} : seulement ${actifs.length}/${classe.eleves.length} dans la fenêtre`);

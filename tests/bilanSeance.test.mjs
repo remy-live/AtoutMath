@@ -9,10 +9,20 @@ import './helpers.mjs';
 import { EventTypes as A } from '../js/core/journal.js';
 import { donnerSeance, clore } from '../js/core/seances.js';
 import { bilanClasse } from '../js/core/bilan.js';
+import { identiteDeParcours } from '../js/core/shortcodes.js';
 import {
     exercicesDe, runsDeLaSeance, evenementsDeLaSeance, aTravaille,
     bilanEleveSeance, bilanSeance
 } from '../js/core/bilanSeance.js';
+
+// L'IDENTITÉ SOUS LAQUELLE L'ÉLÈVE ÉCRIT SON TRAVAIL.
+//
+// Ce n'est pas `parcours.id` : ce dernier est l'identifiant d'atelier du
+// professeur, connu de son seul navigateur. La séance, elle, porte l'identité
+// de CONTENU — celle que l'élève recalcule du code dicté —, et c'est elle qui
+// se retrouve dans les runs. Les faire diverger, c'est reproduire le défaut
+// qu'on vient de corriger : le bilan ne retenait aucun travail.
+const ID = (p) => identiteDeParcours(p);
 
 const H = 3600000;
 const T0 = Date.parse('2026-03-10T08:00:00Z');
@@ -63,11 +73,11 @@ test('LE BILAN DE SÉANCE IGNORE CE QUI A ÉTÉ FAIT AVANT ET APRÈS', () => {
         { ouvreLe: T0, donneeLe: T0 });
 
     const avant = run({
-        runId: 'r_octobre', pathId: 'p_geo', debut: T0 - 90 * 24 * H,
+        runId: 'r_octobre', pathId: ID(parcours), debut: T0 - 90 * 24 * H,
         skill: 'geo.angles.mesure', exerciseId: 'geo-angles-nommer', justes: 0, faux: 10
     });
     const pendant = run({
-        runId: 'r_seance', pathId: 'p_geo', debut: T0 + H,
+        runId: 'r_seance', pathId: ID(parcours), debut: T0 + H,
         skill: 'geo.angles.mesure', exerciseId: 'geo-angles-nommer', justes: 9, faux: 1
     });
 
@@ -90,7 +100,7 @@ test('UN AUTRE PARCOURS PENDANT L\'HEURE NE COMPTE PAS', () => {
     // bilan d'une séance de géométrie.
     const seance = donnerSeance({ id: 'c1' }, parcours, { ouvreLe: T0 });
     const geo = run({
-        runId: 'r1', pathId: 'p_geo', debut: T0 + H,
+        runId: 'r1', pathId: ID(parcours), debut: T0 + H,
         skill: 'geo.angles.mesure', exerciseId: 'geo-angles-nommer', justes: 8, faux: 0
     });
     const frac = run({
@@ -113,7 +123,7 @@ test('LE RUN NE SE COUPE PAS EN DEUX — sinon « fini » devient « abandonné 
     seance = clore(seance, T0 + H);
 
     const tardif = run({
-        runId: 'r_tardif', pathId: 'p_geo', debut: T0 + H - 60000,
+        runId: 'r_tardif', pathId: ID(parcours), debut: T0 + H - 60000,
         skill: 'geo.angles.mesure', exerciseId: 'geo-angles-nommer', justes: 6, faux: 0
     });
     // Ses dernières réponses tombent APRÈS la clôture.
@@ -128,7 +138,7 @@ test('LE RUN NE SE COUPE PAS EN DEUX — sinon « fini » devient « abandonné 
     // En revanche, celui qui S'Y MET après la clôture ne compte pas : il
     // s'entraîne, il ne fait plus la séance.
     const apres = run({
-        runId: 'r_apres', pathId: 'p_geo', debut: T0 + 3 * H,
+        runId: 'r_apres', pathId: ID(parcours), debut: T0 + 3 * H,
         skill: 'geo.angles.mesure', exerciseId: 'geo-angles-nommer', justes: 6, faux: 0
     });
     assert.equal(evenementsDeLaSeance(seance, apres).length, 0);
@@ -138,7 +148,7 @@ test('LA SÉANCE DONNÉE À UN GROUPE N\'AFFICHE QUE CE GROUPE', () => {
     // Huit élèves sur vingt-six, et dix-huit lignes vides feraient croire à
     // dix-huit absents. La différenciation doit se lire, pas s'excuser.
     const evA = run({
-        runId: 'r1', pathId: 'p_geo', debut: T0 + H,
+        runId: 'r1', pathId: ID(parcours), debut: T0 + H,
         skill: 'geo.angles.mesure', exerciseId: 'geo-angles-nommer', justes: 5, faux: 3
     });
     const classe = classeDeux(evA, []);
@@ -157,11 +167,11 @@ test('LE BILAN DIT COMBIEN ONT COMMENCÉ, ce qui n\'est pas combien ont répondu
     // Ouvrir sans rien valider et ne pas ouvrir du tout sont deux situations
     // différentes : l'une est un blocage, l'autre une absence.
     const evA = run({
-        runId: 'r1', pathId: 'p_geo', debut: T0 + H,
+        runId: 'r1', pathId: ID(parcours), debut: T0 + H,
         skill: 'geo.angles.mesure', exerciseId: 'geo-angles-nommer', justes: 4, faux: 4
     });
     // Bruno a ouvert la séance et n'a rien répondu.
-    const evB = [{ id: 'x', type: A.RUN_STARTED, ts: T0 + H, payload: { runId: 'r2', pathId: 'p_geo' } }];
+    const evB = [{ id: 'x', type: A.RUN_STARTED, ts: T0 + H, payload: { runId: 'r2', pathId: ID(parcours) } }];
 
     const classe = classeDeux(evA, evB);
     const seance = donnerSeance(classe, parcours, { ouvreLe: T0 });
@@ -188,7 +198,7 @@ test('« A-T-IL TRAVAILLÉ » DÉCIDE D\'AFFICHER UN LIEN BILAN', () => {
     assert.equal(aTravaille(seance, []), false);
     assert.equal(runsDeLaSeance(seance, []).size, 0);
     const ev = run({
-        runId: 'r1', pathId: 'p_geo', debut: T0 + H,
+        runId: 'r1', pathId: ID(parcours), debut: T0 + H,
         skill: 'geo.angles.mesure', exerciseId: 'geo-angles-nommer', justes: 2, faux: 0
     });
     assert.equal(aTravaille(seance, ev), true);
@@ -202,7 +212,7 @@ test('LE MOT DU PROFESSEUR SUIT L\'ÉLÈVE DANS SON BILAN', () => {
     // Rémy pose le mot pendant la séance ; il n'a d'intérêt que là où on relit
     // l'élève.
     const evA = run({
-        runId: 'r1', pathId: 'p_geo', debut: T0 + H,
+        runId: 'r1', pathId: ID(parcours), debut: T0 + H,
         skill: 'geo.angles.mesure', exerciseId: 'geo-angles-nommer', justes: 7, faux: 1
     });
     const classe = classeDeux(evA, []);
@@ -232,11 +242,11 @@ test('LE TABLEAU DE SÉANCE EST COURT — c\'est tout l\'intérêt', () => {
     });
     const jour = [
         ...run({
-            runId: 'j1', pathId: 'p_geo', debut: T0 + H,
+            runId: 'j1', pathId: ID(parcours), debut: T0 + H,
             skill: 'geo.angles.mesure', exerciseId: 'geo-angles-nommer', justes: 6, faux: 2
         }),
         ...run({
-            runId: 'j2', pathId: 'p_geo', debut: T0 + H + 1200000,
+            runId: 'j2', pathId: ID(parcours), debut: T0 + H + 1200000,
             skill: 'geo.angles.relations', exerciseId: 'geo-angles-manquants', justes: 3, faux: 5
         })
     ];
@@ -272,12 +282,16 @@ test('LE BILAN D\'UN RATTRAPAGE NE RAMASSE PAS LE TRAVAIL DE LA SÉANCE D\'ORIGI
     const origine = donnerSeance({ id: 'c1', nom: '5e B' }, parcours);
     // Le travail de la séance d'origine : deux justes, six faux.
     const eleve = { id: 'e1', nom: 'Zoé', evenements: run({
-        runId: 'r1', pathId: parcours.id, debut: T0 + H,
+        runId: 'r1', pathId: ID(parcours), debut: T0 + H,
         skill: 'num.prio', exerciseId: 'geo-angles-nommer', justes: 2, faux: 6
     }) };
 
-    // Le rattrapage : même contenu, identifiant neuf.
-    const copie = { ...parcours, id: 'p_rattrapage', name: 'Les angles — rattrapage' };
+    // LE RATTRAPAGE : même contenu, mais une GRAINE DE REPRISE — c'est elle qui
+    // en fait un autre travail. Un identifiant neuf ne suffisait pas : il ne
+    // voyage pas dans le code dicté, et l'élève qui tapait le code du
+    // rattrapage retombait sur le parcours d'origine.
+    const copie = { ...parcours, id: 'p_rattrapage', reprise: 'r_essai',
+                    name: 'Les angles — rattrapage' };
     const rattrapage = donnerSeance({ id: 'c1', nom: '5e B' }, copie, { eleveIds: ['e1'] });
 
     // Rien n'a encore été refait : le bilan du rattrapage doit être VIDE.
@@ -288,7 +302,7 @@ test('LE BILAN D\'UN RATTRAPAGE NE RAMASSE PAS LE TRAVAIL DE LA SÉANCE D\'ORIGI
 
     // L'élève refait le travail : c'est le rattrapage qui bouge, pas l'origine.
     eleve.evenements = [...eleve.evenements, ...run({
-        runId: 'r2', pathId: copie.id, debut: T0 + 48 * H,
+        runId: 'r2', pathId: ID(copie), debut: T0 + 48 * H,
         skill: 'num.prio', exerciseId: 'geo-angles-nommer', justes: 7, faux: 1
     })];
     assert.equal(bilanEleveSeance(rattrapage, eleve).questions, 8);

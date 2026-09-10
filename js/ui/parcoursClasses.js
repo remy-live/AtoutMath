@@ -35,7 +35,7 @@
 
 import { showToast, showConfirm, showAlert, showModal } from './modal.js';
 import { MODES, resolvePolicy } from '../core/policy.js';
-import { Shortcodes } from '../core/shortcodes.js';
+import { Shortcodes, identiteDeParcours } from '../core/shortcodes.js';
 import {
     donnerSeance, seancesDe, etatSeance, direSeance, ETATS,
     clore, rouvrir, retirer, remettre, estRetiree, elevesDe,
@@ -305,7 +305,10 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
 
     const classes = await lireClasses();
     let seances = await lireSeances();
-    const pathId = parcours.id;
+    // ON COMPARE L'IDENTITÉ DU TRAVAIL, celle que la séance a écrite et que
+    // l'élève recalcule de son code — et non l'identifiant d'atelier, qui ne
+    // vaut que dans la bibliothèque de ce navigateur-ci.
+    const pathId = identiteDeParcours(parcours);
 
     const dessiner = () => {
         const mode = resolvePolicy(parcours.policy).mode;
@@ -514,16 +517,26 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 // UNE COPIE DU PARCOURS, AVEC UN IDENTIFIANT NEUF — voir
                 // `etatClasse`. Le rattrapage est un AUTRE acte : son bilan ne
                 // doit pas ramasser le travail de la séance d'origine.
+                // LA GRAINE VOYAGE, L'IDENTIFIANT NON. Changer seulement `id`
+                // ne suffisait pas : un identifiant ne tient pas dans un code,
+                // et l'élève qui tape le code du rattrapage retombait donc sur
+                // le parcours d'origine — mêmes étapes, même barème, donc même
+                // identité de contenu. `reprise` est écrite DANS le code, ce
+                // qui fait du rattrapage un autre travail des deux côtés.
+                const graine = 'r_' + Math.random().toString(36).slice(2, 10);
                 const copie = {
                     ...parcours,
                     id: 'p_' + Math.random().toString(36).slice(2, 10),
+                    reprise: graine,
                     name: `${parcours.name || 'Parcours'} — rattrapage`
                 };
                 const seance = donnerSeance(contexte.classe, copie, {
                     code: Shortcodes.encodePath(copie),
                     eleveIds: choisis
                 });
-                seance.origine = parcours.id;
+                // On retrouve l'origine par la même identité que partout
+                // ailleurs — celle du contenu, pas celle de l'atelier.
+                seance.origine = identiteDeParcours(parcours);
                 seances = [...seances, seance];
                 await enregistrer();
                 modal.close();

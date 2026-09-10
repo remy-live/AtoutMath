@@ -131,7 +131,11 @@ export function ouvrirSeance(seance, { autoStart = true } = {}) {
         showToast(`${missing.length} activité(s) de cette séance n'existent plus.`, 'error');
     }
     state.setStudentPath(path.steps, {
-        pathId: path.id,
+        // L'IDENTITÉ QUE LA SÉANCE PORTE, et non celle de la copie du parcours.
+        // C'est la même que celle qu'un camarade obtiendra en tapant le code :
+        // les deux chemins doivent inscrire le travail sous le même nom, sinon
+        // le bilan du professeur n'en retient qu'un.
+        pathId: seance.pathId || path.id,
         name: seance.titre || path.name,
         // LE CODE VOYAGE AVEC LA SÉANCE : il est déjà calculé au moment où le
         // professeur donne. On le reprend tel quel plutôt que d'en refabriquer

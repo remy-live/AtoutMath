@@ -15,6 +15,7 @@ import {
     , retirer, remettre, estRetiree
 } from '../js/core/seances.js';
 import { makePath, makeStep } from '../js/core/path.js';
+import { identiteDeParcours } from '../js/core/shortcodes.js';
 import { creerClasse } from '../js/core/classes.js';
 
 const CLASSE = creerClasse('6ᵉ A', '6e');
@@ -33,7 +34,11 @@ test('DONNER UN PARCOURS À UNE CLASSE NE CRÉE PAS UN PARCOURS DE PLUS', () => 
     assert.equal(s.classeId, CLASSE.id);
     assert.equal(s.classeNom, '6ᵉ A');
     assert.equal(s.titre, 'Fractions — séance 1');
-    assert.equal(s.pathId, PARCOURS.id);
+    // L'IDENTITÉ DU TRAVAIL, ET NON L'IDENTIFIANT D'ATELIER. La séance écrit
+    // celle que l'élève recalculera de son code : c'est la condition pour que
+    // le bilan retrouve ses travaux, quel que soit le chemin par lequel il est
+    // arrivé au parcours.
+    assert.equal(s.pathId, identiteDeParcours(PARCOURS));
     assert.ok(s.id && s.id !== PARCOURS.id, 'la séance a sa propre identité');
     // Le même parcours donné à deux classes : deux séances, un seul modèle.
     const t = donnerSeance(AUTRE, PARCOURS);

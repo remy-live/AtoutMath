@@ -168,6 +168,11 @@ export function normalizePath(raw, name = 'Parcours') {
         version: PATH_VERSION,
         name: raw.name || name,
         policy: resolvePolicy(raw.policy),
+        // LA GRAINE DE REPRISE SURVIT À LA NORMALISATION. C'est elle qui
+        // distingue un rattrapage du travail d'origine — dans le code dicté
+        // comme dans le journal. La perdre ici, c'est faire du rattrapage une
+        // copie exacte de l'original, dont il ramasserait le bilan.
+        ...(raw.reprise ? { reprise: raw.reprise } : {}),
         steps: steps.map((s, i) => legacyStep(s, i))
     };
 }

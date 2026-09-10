@@ -957,8 +957,11 @@ function startCardDemo(exo, box) {
 }
 
 // La grille se rafraîchit quand les verrous changent : réglage du professeur,
-// ou fin de séance (un jeu a pu se débloquer grâce aux réponses gagnées).
-['gameAccess_updated', 'sequence_completed'].forEach(evt => {
+// fin de séance (un jeu a pu se débloquer grâce aux réponses gagnées), ou
+// avancée du parcours — en mode « les jeux s'ouvrent quand le parcours est
+// fini », c'est l'étape validée qui ouvre la salle, et la carte doit cesser
+// d'annoncer « Finis ton parcours » à l'instant où il l'est.
+['gameAccess_updated', 'sequence_completed', 'studentPath_updated'].forEach(evt => {
     document.addEventListener(evt, () => {
         const wrapper = document.getElementById('main-wrapper');
         if (wrapper && wrapper.style.display !== 'none' && !state.isTeacherMode) initGridFilters();

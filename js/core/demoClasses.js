@@ -33,6 +33,7 @@ import { EventTypes } from './journal.js';
 import { makeStep, PATH_VERSION } from './path.js';
 import { defaultPolicy } from './policy.js';
 import { donnerSeance } from './seances.js';
+import { identiteDeParcours } from './shortcodes.js';
 
 /**
  * LES PRÉNOMS. Volontairement variés et volontairement banals : ce sont des
@@ -348,7 +349,8 @@ export function classesDeDemo({ seed = 'demo', jours = 3 } = {}) {
             // du parcours de démonstration et l'on voit cinq classes cochées,
             // chacune avec son bilan. Cinq pathId différents auraient donné
             // cinq panneaux vides.
-            const eleve = creerEleve(nom, journalDe(profil, r, { debut: t0, pathId: PARCOURS_DEMO.id }));
+            const eleve = creerEleve(nom, journalDe(profil, r,
+                { debut: t0, pathId: identiteDeParcours(PARCOURS_DEMO) }));
             eleve.profil = profil.id;
             eleve.demo = true;
             return eleve;
@@ -366,8 +368,11 @@ export function classesDeDemo({ seed = 'demo', jours = 3 } = {}) {
  * c'est tout ce qu'ils ont fait, ça pourra être très lourd » : ici, six
  * colonnes au lieu de tout l'historique.
  *
- * SON IDENTIFIANT EST FIXE. Les journaux des élèves le citent ; le tirer au
- * hasard casserait le lien entre le parcours et le travail qu'on lui rattache.
+ * SON IDENTITÉ EST FIXE, et c'est celle du CONTENU. Les journaux des élèves la
+ * citent, et la séance l'écrit : les deux doivent tomber d'accord, sans quoi le
+ * bilan de la démonstration serait vide — voir `identiteDeParcours`, qui est
+ * l'identité d'un parcours partout dans le logiciel. L'`id` ci-dessous n'est
+ * plus qu'un nom de rangement, il ne sert à aucun rapprochement.
  */
 export const PARCOURS_DEMO = {
     id: 'demo_path',

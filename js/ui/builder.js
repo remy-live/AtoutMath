@@ -158,17 +158,31 @@ function openGameAccessModal(cfg, save, isGame) {
             <div class="cfg-group">
                 <div class="cfg-group-title">Jeux à débloquer</div>
                 <label class="cfg-check">
-                    <input type="radio" name="access-mode" value="libre" ${cfg.mode !== 'progression' ? 'checked' : ''}>
+                    <input type="radio" name="access-mode" value="libre" ${!['progression', 'parcours'].includes(cfg.mode) ? 'checked' : ''}>
                     Tous les jeux sont accessibles librement
+                </label>
+                <!-- LE MODE QUE RÉMY A DEMANDÉ : « il faut aussi pouvoir
+                     autoriser une zone de jeu si l'élève a fini le parcours ».
+                     Il est en deuxième position, avant le compteur cumulé, et
+                     c'est délibéré : c'est celui qui a un sens en classe. Le
+                     travail du jour se referme chaque fois qu'on en donne un
+                     nouveau, donc la récompense se remérite — au lieu d'être
+                     acquise une fois pour toutes en octobre. -->
+                <label class="cfg-check">
+                    <input type="radio" name="access-mode" value="parcours" ${cfg.mode === 'parcours' ? 'checked' : ''}>
+                    Les jeux s'ouvrent quand l'élève a fini son parcours
                 </label>
                 <label class="cfg-check">
                     <input type="radio" name="access-mode" value="progression" ${cfg.mode === 'progression' ? 'checked' : ''}>
-                    Les jeux se débloquent avec le travail de l'élève
+                    Les jeux se débloquent au fil des bonnes réponses
                 </label>
                 <div class="cfg-field">
                     <label class="cfg-label" for="access-step">Bonnes réponses par jeu débloqué</label>
                     <input type="number" id="access-step" class="cfg-input cfg-input--num" min="5" max="500" value="${cfg.unlockStep}">
                 </div>
+                <p class="modal-text" style="margin:6px 0 0">Sans parcours en cours, rien
+                   n'est fermé : on ne punit pas un élève de n'avoir pas fini un travail
+                   qu'on ne lui a pas donné.</p>
             </div>
 
             <div class="cfg-group">

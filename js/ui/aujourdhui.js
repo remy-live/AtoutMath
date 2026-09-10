@@ -27,7 +27,7 @@ import { state } from '../core/state.js';
 import {
     exercices, estRevisable, getExerciseById, filterByStatus
 } from '../data/catalog.js';
-import { accessOf } from '../core/gameAccess.js';
+import { accessOf, getAccessConfig, isGame } from '../core/gameAccess.js';
 import { fusionnerDoublons } from '../core/carnet.js';
 import { planDuJour } from '../core/aujourdhui.js';
 import { startErrorReview } from '../core/remediation.js';
@@ -192,6 +192,7 @@ export function rendreAujourdhui() {
                 <em>${echapper(r.sous)}</em></span>
             </button>`).join('')}
         </div>
+        ${salleDeJeuxHtml()}
         ${lienRejoindreHtml()}
         <button type="button" class="auj-explorer" data-explorer>
             <span data-explorer-mot>Explorer tous les exercices</span>
@@ -204,6 +205,12 @@ export function rendreAujourdhui() {
     if (go && a) go.onclick = () => lancer(a);
     b.querySelectorAll('[data-raccourci]').forEach(t => {
         t.onclick = () => allerA(t.dataset.raccourci);
+    });
+    b.querySelectorAll('[data-jeu]').forEach(t => {
+        t.onclick = () => {
+            const exo = getExerciseById(t.dataset.jeu);
+            if (exo) openGameLayer(exo, false);
+        };
     });
     const explorer = b.querySelector('[data-explorer]');
     if (explorer) explorer.onclick = () => basculerCatalogue();
@@ -239,6 +246,65 @@ function lancer(a) {
     if (a.genre === 'revision') return startErrorReview(a.questions);
     const exo = getExerciseById(a.exoId);
     if (exo) openGameLayer(exo, false);
+}
+
+/**
+ * LA SALLE DE JEUX — ce qu'on gagne à finir son parcours.
+ *
+ * Rémy : « Il faut aussi pouvoir autoriser une zone de jeu si l'élève a fini le
+ * parcours. »
+ *
+ * ELLE N'EXISTE QUE DANS CE MODE-LÀ. Le réglage « les jeux s'ouvrent quand
+ * l'élève a fini son parcours » crée une promesse ; il fallait un endroit où la
+ * tenir. Sans lui, le déverrouillage n'aurait été visible que dans le
+ * catalogue, derrière le bouton « Explorer tous les exercices » — c'est-à-dire
+ * nulle part, pour un élève de sixième qui vient de finir son travail.
+ *
+ * ON MONTRE LA PORTE FERMÉE, ET PAS SEULEMENT LA PORTE OUVERTE. Une récompense
+ * qu'on ignore n'en est pas une : tant que le parcours n'est pas fini, la carte
+ * est là, grise, et dit ce qu'il reste à faire. C'est ce qui la transforme en
+ * raison de continuer.
+ *
+ * QUATRE JEUX, PAS QUARANTE. Le catalogue entier est à un bouton de là pour qui
+ * veut chercher ; ici, on offre de quoi choisir sans hésiter.
+ */
+function salleDeJeuxHtml() {
+    if (getAccessConfig().mode !== 'parcours') return '';
+
+    const jeux = exercices.filter(isGame);
+    if (!jeux.length) return '';
+    const ouverte = accessOf(jeux[0]).status === 'libre';
+
+    if (!ouverte) {
+        return `<div class="auj-salle auj-salle--fermee">
+            <span class="auj-salle-ico" aria-hidden="true">🔒</span>
+            <div class="auj-salle-dit">
+                <b>La salle de jeux</b>
+                <span>Elle s'ouvre quand ton parcours est fini.</span>
+            </div>
+        </div>`;
+    }
+
+    // On tire les quatre premiers jeux ouverts du catalogue : le même ordre
+    // pour tout le monde, donc un écran qui ne change pas d'une fois sur
+    // l'autre — un élève doit pouvoir retrouver « celui d'hier ».
+    const offerts = jeux.filter(e => accessOf(e).status === 'libre').slice(0, 4);
+    if (!offerts.length) return '';
+
+    return `<div class="auj-salle">
+        <div class="auj-salle-tete">
+            <span class="auj-salle-ico" aria-hidden="true">🎉</span>
+            <div class="auj-salle-dit">
+                <b>La salle de jeux est ouverte !</b>
+                <span>Ton parcours est fini — à toi de jouer.</span>
+            </div>
+        </div>
+        <div class="auj-salle-jeux">
+            ${offerts.map(e => `<button type="button" class="auj-jeu" data-jeu="${echapper(e.id)}">
+                ${echapper(e.title)}
+            </button>`).join('')}
+        </div>
+    </div>`;
 }
 
 /**

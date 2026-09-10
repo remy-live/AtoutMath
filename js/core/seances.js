@@ -35,6 +35,7 @@
 
 import { shortId } from './ids.js';
 import { normalizePath } from './path.js';
+import { identiteDeParcours } from './shortcodes.js';
 
 /**
  * L'ÉTAT D'UNE SÉANCE, et il n'y en a que trois.
@@ -80,7 +81,19 @@ export function donnerSeance(classe, parcours, opts = {}) {
         // Le nom du parcours au moment où on l'a donné : le renommer ensuite ne
         // doit pas réécrire l'histoire de la classe.
         titre: opts.titre || path.name || 'Séance',
-        pathId: path.id,
+        // L'IDENTITÉ DU TRAVAIL, PAS CELLE DE L'ATELIER.
+        //
+        // On écrivait ici `path.id`, l'identifiant que le parcours porte dans
+        // la bibliothèque du professeur. L'élève, lui, reçoit un CODE — et le
+        // code ne transporte aucun identifiant : il en dérive un de son
+        // contenu. Les deux côtés désignaient donc le même travail par deux
+        // noms, et le bilan de la séance ne retenait aucun des travaux de la
+        // classe. Mesuré : « runs retenus : [] » pour des élèves qui avaient
+        // pourtant tout fait.
+        //
+        // `identiteDeParcours` est LA définition, celle-là même dont le code se
+        // sert (core/shortcodes.js). Deux appareils, deux chemins, un seul nom.
+        pathId: identiteDeParcours(path),
         // LA COPIE, et non la référence — voir l'en-tête du module.
         path,
         // Le code de partage, quand il y en a un. Il reste facultatif : dans une
