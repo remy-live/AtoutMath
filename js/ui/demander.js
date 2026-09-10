@@ -89,3 +89,64 @@ export function demander(titre, opts = {}) {
         champ.select();
     });
 }
+
+/**
+ * DEMANDER UN TEXTE LONG — une liste d'élèves, par exemple.
+ *
+ * `window.prompt()` offre UNE LIGNE. Pour y coller trente noms, c'est une
+ * plaisanterie : on ne voit que le dernier, on ne peut rien relire, et le
+ * moindre retour à la ligne valide la fenêtre au lieu de descendre d'un rang.
+ * Rémy collait sa classe là-dedans.
+ *
+ * @param {string} titre
+ * @param {object} [opts]
+ * @param {string} [opts.aide]
+ * @param {string} [opts.bouton]
+ * @param {string} [opts.placeholder]
+ * @param {number} [opts.lignes]
+ * @returns {Promise<string|null>}
+ */
+export function demanderTexte(titre, opts = {}) {
+    return new Promise((resoudre) => {
+        document.getElementById(ID)?.remove();
+
+        const el = document.createElement('div');
+        el.id = ID;
+        el.className = 'demander';
+        el.innerHTML = `
+          <div class="demander-boite demander-boite--large" role="dialog" aria-modal="true"
+               aria-labelledby="demander-titre">
+            <h2 id="demander-titre"></h2>
+            <p class="demander-aide" id="demander-aide"></p>
+            <textarea id="demander-zone" spellcheck="false"></textarea>
+            <div class="demander-boutons">
+              <button id="demander-ok" class="demander-bouton"></button>
+              <button id="demander-non" class="demander-bouton demander-bouton--doux">Annuler</button>
+            </div>
+          </div>`;
+        document.body.appendChild(el);
+
+        el.querySelector('#demander-titre').textContent = titre;
+        el.querySelector('#demander-ok').textContent = opts.bouton || 'Valider';
+        const aide = el.querySelector('#demander-aide');
+        aide.textContent = opts.aide || '';
+        aide.hidden = !opts.aide;
+
+        const zone = el.querySelector('#demander-zone');
+        zone.rows = opts.lignes || 10;
+        if (opts.placeholder) zone.placeholder = opts.placeholder;
+
+        const fermer = (v) => { el.remove(); resoudre(v); };
+        el.querySelector('#demander-ok').onclick = () => {
+            const v = zone.value.trim();
+            if (!v) { zone.focus(); return; }
+            fermer(v);
+        };
+        el.querySelector('#demander-non').onclick = () => fermer(null);
+        // ENTRÉE NE VALIDE PAS ICI, et c'est tout l'intérêt : dans une liste,
+        // la touche Entrée sert à passer à l'élève suivant.
+        zone.onkeydown = (e) => { if (e.key === 'Escape') fermer(null); };
+        el.onclick = (e) => { if (e.target === el) fermer(null); };
+        zone.focus();
+    });
+}

@@ -922,6 +922,65 @@ verifier('et il change bien de classe, sans doublon',
 verifier('son billet marche toujours après le déplacement',
     json('/login', ['login' => 'yanis.ferrand', 'code' => 'CLASSE6'])['code'] === 200);
 
+titre('12 septies. Le guichet des mises à jour reste fermé');
+
+// Rémy : « deposer.php n'est pas sécurisé ? »
+//
+// Il l'était — et c'était insuffisant. Cette page écrit des fichiers PHP :
+// qui la tient tient le serveur. Toute sa sécurité reposait sur UN mot de
+// passe, le même que celui de l'administration. Volé, on ne perdait plus
+// seulement les données des élèves : on perdait le site, avec de quoi y
+// installer n'importe quoi.
+
+require_once $API . '/lib/guichet.php';
+
+fermerGuichet();
+verifier('par défaut, le guichet est FERMÉ', !guichetOuvert(),
+    'une porte ouverte toute l\'année n\'a jamais servi à personne');
+verifier('et il ne reste aucune minute', guichetMinutes() === 0);
+
+ouvrirGuichet();
+verifier('le professeur peut l\'ouvrir', guichetOuvert());
+$m = guichetMinutes();
+verifier('pour une demi-heure, pas davantage', $m > 25 && $m <= 30, (string) $m);
+
+// LE TEMPS QUI PASSE LE REFERME. C'est la moitié de l'intérêt : on oublie
+// toujours de refermer, et une porte qu'on oublie n'est plus une porte.
+ecrireReglage(GUICHET_CLE, (string) (time() - 10));
+verifier('IL SE REFERME TOUT SEUL quand l\'heure est passée', !guichetOuvert());
+
+ouvrirGuichet();
+fermerGuichet();
+verifier('et l\'on peut le refermer à la main', !guichetOuvert());
+
+// LE JOURNAL. Il ne sert pas à surveiller Rémy : il sert à ce qu'il VOIE un
+// dépôt qu'il n'a pas fait.
+inscrireDepot('atoutmath-maj-v679.zip', 14);
+$j = derniersDepots();
+verifier('chaque dépôt laisse une trace',
+    count($j) >= 1 && ($j[0]['quoi'] ?? '') === 'atoutmath-maj-v679.zip'
+    && (int) ($j[0]['n'] ?? 0) === 14);
+verifier('avec l\'adresse d\'où il vient — la seule chose qui distingue « moi » de « pas moi »',
+    ($j[0]['ou'] ?? '') !== '');
+
+for ($i = 0; $i < 25; $i++) {
+    inscrireDepot("essai-$i.zip", $i);
+}
+verifier('le journal ne garde que les vingt derniers', count(derniersDepots()) === 20,
+    (string) count(derniersDepots()));
+
+// ET DEPOSER.PHP EN TIENT COMPTE. On relit le fichier plutôt que de le
+// charger : il s'exécute entièrement, et l'on veut vérifier la RÈGLE, pas
+// jouer la page.
+$depose = (string) file_get_contents(dirname(__DIR__) . '/deposer.php');
+verifier('deposer.php consulte le guichet',
+    str_contains($depose, 'guichetOuvert()')
+    && str_contains($depose, '($connecte && $guichet)'),
+    'sinon le second tour de clef ne sert à rien');
+verifier('et il inscrit ce qu\'il a posé', str_contains($depose, 'inscrireDepot('));
+
+fermerGuichet();
+
 titre('12 sexies. Se connecter, et rentrer quand on est enfermé dehors');
 
 // Rémy, enfermé dehors sur son propre site : « mon mail et code ne

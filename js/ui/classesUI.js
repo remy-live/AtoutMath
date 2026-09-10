@@ -22,7 +22,7 @@
 // tableau vide.
 
 import { bandeauServeurHtml, classesDuServeur, creerClasseServeur } from './classesServeur.js';
-import { demander } from './demander.js';
+import { demander, demanderTexte } from './demander.js';
 import { showModal, showToast, showConfirm } from './modal.js';
 import { globalStore } from '../core/store.js';
 import {
@@ -262,7 +262,7 @@ function ecranHtml() {
     // élèves envoyaient un par un, ce que la synchronisation a remplacé. On le
     // garde donc pour ce cas-là, et pour les classes locales déjà importées —
     // repliées, pour qu'on puisse encore les lire sans qu'elles encombrent.
-    const avecServeur = classesServeur !== null;
+    const avecServeur = Array.isArray(classesServeur);
     if (avecServeur && !classes.length) {
         return serveur;
     }
@@ -412,9 +412,11 @@ async function collerLaListe() {
     if (!c) return showToast('Choisis d\'abord une classe.', 'error');
 
     const { lireListe } = await import('../core/pronote.js');
-    const texte = window.prompt(
-        `Colle ici la liste de « ${c.nom} », un élève par ligne.\n`
-        + 'Les colonnes en trop (classe, identifiant) sont ignorées.', '');
+    const texte = await demanderTexte(`La liste de « ${c.nom} »`, {
+        aide: 'Un élève par ligne. Les colonnes en trop (classe, identifiant) sont ignorées.',
+        placeholder: 'Léa Durand\nTom Bernard\nMaëlle Nguyên',
+        lignes: 12, bouton: 'Lire la liste'
+    });
     if (texte === null) return;
 
     const { eleves, ignorees } = lireListe(texte);
@@ -629,7 +631,8 @@ export async function ouvrirClasses() {
     // « après » peut vouloir dire trois secondes. On montre donc tout de
     // suite, et l'on redessine quand la réponse est là.
     classesDuServeur().then((liste) => {
-        if (liste === null) return;      // pas identifié, ou serveur muet
+        // On garde AUSSI les échecs : c'est eux qui portent la raison, et
+        // c'est la raison qu'il faut afficher.
         classesServeur = liste;
         rafraichir();
     });

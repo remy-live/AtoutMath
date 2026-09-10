@@ -1,3 +1,14 @@
+.demander-boite--large { width: min(560px, 100%); }
+.demander-boite textarea {
+    width: 100%; padding: 11px 13px; font: inherit;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9rem;
+    line-height: 1.55; resize: vertical; min-height: 160px;
+    border: 2px solid var(--border, #cbd5e1); border-radius: 11px;
+    background: var(--bg-app, #f6f7fb); color: inherit;
+}
+.demander-boite textarea:focus { outline: none; border-color: var(--primary, #4f46e5); }
+.demander-boite--large .demander-aide { margin: 0 0 10px; }
+
 /* Les classes locales, repliées quand le serveur répond : une archive, plus
    un outil. On les garde lisibles sans qu'elles encombrent. */
 .cl-repli { margin-top: 14px; border-top: 1px solid var(--border, #e2e8f0); padding-top: 12px; }

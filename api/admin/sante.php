@@ -29,6 +29,7 @@ require_once __DIR__ . '/_socle.php';
 require_once __DIR__ . '/../lib/seance.php';
 require_once __DIR__ . '/../lib/coffre.php';
 require_once __DIR__ . '/../lib/sante.php';
+require_once __DIR__ . '/../lib/guichet.php';
 
 $prof = profConnecte();
 
@@ -39,6 +40,20 @@ if (($_POST['action'] ?? '') === 'effacer-installeur') {
     redirige('sante.php', $ok
         ? "install.php est effacé."
         : "Impossible de l'effacer : supprimez api/install.php par FTP.");
+}
+
+// --- Le guichet des mises à jour ------------------------------------------
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    exigerJeton();
+    if (($_POST['guichet'] ?? '') === 'ouvrir') {
+        ouvrirGuichet();
+        redirige('sante.php', 'Guichet ouvert pour trente minutes.');
+    }
+    if (($_POST['guichet'] ?? '') === 'fermer') {
+        fermerGuichet();
+        redirige('sante.php', 'Guichet refermé.');
+    }
+    redirige('sante.php');
 }
 
 $api = adresseApi();
@@ -181,6 +196,45 @@ et regarde ce qui revient.</p>
     </form>
 </div>
 <?php endif; ?>
+
+<div class="carte <?= guichetOuvert() ? '' : '' ?>">
+    <h2>Mises à jour par le navigateur</h2>
+    <?php $reste = guichetMinutes(); ?>
+    <?php if ($reste > 0): ?>
+        <p><b>Guichet ouvert</b> — il se referme dans <?= (int) $reste ?> minute<?= $reste > 1 ? 's' : '' ?>.
+           <a href="../../deposer.php">Aller déposer l'archive</a>.</p>
+        <form method="post">
+            <input type="hidden" name="jeton" value="<?= h(jeton()) ?>">
+            <input type="hidden" name="guichet" value="fermer">
+            <button class="gris">Refermer tout de suite</button>
+        </form>
+    <?php else: ?>
+        <p class="gris-clair" style="margin-top:0"><code>deposer.php</code> écrit des
+        fichiers sur le site : <b>qui l'obtient obtient le serveur</b>. Il reste donc
+        fermé, et votre mot de passe seul ne suffit pas à l'ouvrir — il faut aussi
+        ce bouton, et le guichet se referme de lui-même après trente minutes.</p>
+        <form method="post">
+            <input type="hidden" name="jeton" value="<?= h(jeton()) ?>">
+            <input type="hidden" name="guichet" value="ouvrir">
+            <button>Ouvrir pour trente minutes</button>
+        </form>
+    <?php endif; ?>
+
+    <?php $depots = derniersDepots(); ?>
+    <?php if ($depots): ?>
+        <p class="gris-clair" style="margin-top:14px"><b>Derniers dépôts.</b>
+           Si l'un d'eux n'est pas de vous, changez votre mot de passe.</p>
+        <table>
+            <tr><th>Quand (UTC)</th><th>Archive</th><th>Fichiers</th><th>Depuis</th></tr>
+            <?php foreach (array_slice($depots, 0, 6) as $d): ?>
+            <tr><td class="gris-clair"><?= h((string) ($d['quand'] ?? '')) ?></td>
+                <td><?= h((string) ($d['quoi'] ?? '')) ?></td>
+                <td><?= (int) ($d['n'] ?? 0) ?></td>
+                <td class="gris-clair"><?= h((string) ($d['ou'] ?? '')) ?></td></tr>
+            <?php endforeach; ?>
+        </table>
+    <?php endif; ?>
+</div>
 
 <div class="carte">
     <h2>Mettre le site à jour</h2>

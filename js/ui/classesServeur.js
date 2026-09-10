@@ -33,7 +33,7 @@
 // et le refaire ici serait le refaire moins bien. On donne le chemin, on ne
 // duplique pas la maison.
 
-import { jetonProf, nomDuProf } from '../core/verrouProf.js';
+import { jetonProf, nomDuProf, oublierProf } from '../core/verrouProf.js';
 import { adresseApiDeduite } from '../core/portail.js';
 
 /** L'adresse de l'administration, déduite comme celle de l'API. */
@@ -50,7 +50,7 @@ export function adresseAdmin() {
  */
 export async function classesDuServeur() {
     const j = jetonProf();
-    if (!j || !j.token) return null;
+    if (!j || !j.token) return { pourquoi: 'pas-identifie' };
     try {
         const r = await fetch(adresseApiDeduite() + '/teacher/classes', {
             method: 'POST',
@@ -58,11 +58,20 @@ export async function classesDuServeur() {
             body: JSON.stringify({ action: 'list' }),
             signal: AbortSignal.timeout(8000)
         });
-        if (!r.ok) return null;
+        // UN JETON PÉRIMÉ N'EST PAS UNE ABSENCE DE JETON, et les confondre
+        // envoyait Rémy se reconnecter alors qu'il venait de le faire.
+        // Le serveur change de secret quand on réinstalle : les jetons émis
+        // avant ne valent plus rien, et il faut le DIRE.
+        if (r.status === 401 || r.status === 403) {
+            oublierProf();
+            return { pourquoi: 'jeton-perime' };
+        }
+        if (!r.ok) return { pourquoi: 'serveur', code: r.status };
         const data = await r.json();
-        return Array.isArray(data.classes) ? data.classes : null;
-    } catch {
-        return null;
+        if (!Array.isArray(data.classes)) return { pourquoi: 'reponse' };
+        return data.classes;
+    } catch (e) {
+        return { pourquoi: 'reseau' };
     }
 }
 
@@ -90,11 +99,29 @@ const esc = (s) => String(s == null ? '' : s)
  * @param {Array|null} liste  ce que rend `classesDuServeur()`
  */
 export function bandeauServeurHtml(liste) {
-    if (liste === null) {
-        // Pas identifié : on ne se tait pas, on dit où sont les classes.
-        return `<div class="cls-serveur cls-serveur--absent">
-            <p><b>Vos classes sont sur le serveur.</b> Identifiez-vous pour les voir ici :
-               cliquez sur <b>Élève / Prof</b> en haut à gauche.</p>
+    // DIRE CE QUI S'EST VRAIMENT PASSÉ, ET NON « identifiez-vous » À TOUT
+    // HASARD. Rémy s'était identifié, voyait pourtant « identifiez-vous », et
+    // n'avait aucun moyen de comprendre. Un message qui se trompe fait perdre
+    // plus de temps qu'un message absent.
+    if (!Array.isArray(liste)) {
+        const pourquoi = (liste && liste.pourquoi) || 'pas-identifie';
+        const phrases = {
+            'pas-identifie': ['<b>Vos classes sont sur le serveur.</b> Identifiez-vous pour '
+                + 'les voir ici : cliquez sur <b>Élève / Prof</b> en haut à gauche.'],
+            'jeton-perime': ['<b>Votre connexion a expiré.</b> Cela arrive après une '
+                + 'réinstallation du site : les anciennes connexions ne valent plus rien.',
+                'Repassez en <b>Élève</b> puis en <b>Prof</b> pour retaper votre mot de passe.'],
+            'serveur': ['<b>Le serveur a refusé la demande</b> (code '
+                + ((liste && liste.code) || '?') + '). Vos classes existent, mais on ne '
+                + 'peut pas les lire d\'ici pour l\'instant.'],
+            'reponse': ['<b>Le serveur a répondu autre chose que ce qu\'on attendait.</b> '
+                + 'Le site est peut-être à moitié à jour : reposez l\'archive complète.'],
+            'reseau': ['<b>Le serveur ne répond pas.</b> Vérifiez la connexion — vos classes '
+                + 'sont intactes, on ne les voit simplement pas.'],
+        };
+        const dit = (phrases[pourquoi] || phrases['pas-identifie'])
+            .map(x => `<p>${x}</p>`).join('');
+        return `<div class="cls-serveur cls-serveur--absent">${dit}
             <p class="cls-serveur-note">Celles ci-dessous sont des classes locales, propres
                à ce navigateur — elles ne connaissent aucun élève.</p>
         </div>`;

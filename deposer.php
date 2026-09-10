@@ -231,6 +231,32 @@ if (DEPOSER_ESSAI) {
 
 $installe = is_file(RACINE_SITE . '/api/config.php');
 
+// LE GUICHET — un second tour de clef, et il n'est pas de trop.
+//
+// Rémy : « deposer.php n'est pas sécurisé ? » Il l'était, et c'était
+// insuffisant : cette page écrit des fichiers PHP, donc qui la tient tient le
+// serveur — et toute sa sécurité reposait sur UN mot de passe. Volé, on ne
+// perdait plus seulement les données des élèves : on perdait le site.
+//
+// Elle ne fait donc plus rien tant que le professeur ne l'a pas ouverte depuis
+// l'administration, et le guichet se referme tout seul après une demi-heure.
+// Deux clics avant chaque mise à jour ; en échange, un mot de passe volé ne
+// suffit plus — il faut l'avoir PENDANT la demi-heure.
+//
+// Enveloppé : une base injoignable ne doit pas transformer cette page en écran
+// blanc, c'est justement celle qu'on vient chercher quand tout va mal.
+$guichet = true;
+$minutes = 0;
+if ($installe) {
+    try {
+        require_once RACINE_SITE . '/api/lib/guichet.php';
+        $guichet = guichetOuvert();
+        $minutes = guichetMinutes();
+    } catch (Throwable $t) {
+        $guichet = true;   // voir guichetOuvert() : on n'enferme pas dehors
+    }
+}
+
 session_set_cookie_params([
     'lifetime' => 0, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax',
     'secure' => (($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off'),
@@ -255,7 +281,7 @@ $apercu = null;
 $fait = null;
 $choisie = '';
 
-if (!$installe || $connecte) {
+if (!$installe || ($connecte && $guichet)) {
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         if (!hash_equals($jeton, (string) ($_POST['jeton'] ?? ''))) {
             $erreur = 'Formulaire expiré. Rechargez la page.';
@@ -311,6 +337,9 @@ if (!$installe || $connecte) {
                     $erreur = 'Archive introuvable.';
                 } else {
                     $fait = poserArchive($chemin);
+                    if (function_exists('inscrireDepot')) {
+                        inscrireDepot($nom, (int) ($fait['ecrits'] ?? 0));
+                    }
                     if (($_POST['effacer'] ?? '') === 'oui' && !$fait['erreurs']) {
                         @unlink($chemin);
                     }
@@ -366,7 +395,21 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; background: #eef2f
 <?php if ($mot): ?><div class="mot"><?= e($mot) ?></div><?php endif; ?>
 <?php if ($erreur): ?><div class="erreur"><?= e($erreur) ?></div><?php endif; ?>
 
-<?php if ($installe && !$connecte): ?>
+<?php if ($installe && $connecte && !$guichet): ?>
+
+    <div class="carte">
+        <h2>Le guichet est fermé</h2>
+        <p>Vous êtes bien connecté — mais cette page reste close tant que vous ne
+           l'avez pas ouverte, et elle se referme d'elle-même après une demi-heure.</p>
+        <p><b>Pourquoi.</b> Elle écrit des fichiers sur le site : qui l'obtient obtient
+           le serveur. Un mot de passe volé ne doit pas suffire — il faut l'avoir
+           pendant la demi-heure où vous mettez à jour.</p>
+        <p><a class="bouton" href="api/admin/sante.php">Ouvrir le guichet</a></p>
+        <p class="gris">Dans l'administration : <b>Santé</b> → « Mises à jour par le
+           navigateur ».</p>
+    </div>
+
+<?php elseif ($installe && !$connecte): ?>
 
     <div class="carte">
         <h2>Connectez-vous d'abord</h2>
