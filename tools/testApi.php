@@ -769,9 +769,9 @@ verifier('migrer() est idempotent', (int) db()->query('SELECT COUNT(*) c FROM ev
 $tables = array_column(db()->query(
     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
 )->fetchAll(), 'name');
-verifier('les dix tables sont là',
+verifier('les onze tables sont là',
     $tables === ['assignments', 'classes', 'events', 'message_reads', 'messages',
-                 'overrides', 'paths', 'student_tokens', 'students', 'teachers'],
+                 'overrides', 'paths', 'reglages', 'student_tokens', 'students', 'teachers'],
     implode(', ', $tables));
 
 titre('12 bis. La liste : lire un vrai fichier de professeur');
@@ -921,6 +921,70 @@ verifier('et il change bien de classe, sans doublon',
     count($ou) === 1 && $ou[0]['class_id'] === $classeG);
 verifier('son billet marche toujours après le déplacement',
     json('/login', ['login' => 'yanis.ferrand', 'code' => 'CLASSE6'])['code'] === 200);
+
+titre('12 quater. La mise à jour répare une base déjà installée');
+
+// L'EMPREINTE DU PRÉNOM A CHANGÉ DE DÉFINITION — elle trie les mots, pour que
+// « NGUYÊN Maëlle » et « Maëlle Nguyên » désignent la même élève. Les
+// empreintes DÉJÀ ÉCRITES, elles, ont été calculées autrement.
+//
+// Sans réparation, une base installée avant la mise à jour se retrouve avec des
+// empreintes que plus aucune recherche ne retrouve : l'élève qui se rattache
+// avec son prénom n'est pas reconnu, et l'on crée un second compte vierge à
+// côté de celui qui a travaillé. C'est le bogue du doublon, ressuscité par sa
+// propre correction — et cette fois sur les données réelles.
+
+$classeM = uuidv4();
+db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
+    ->execute([$classeM, $profId, 'Migration', 'MIGRE1']);
+
+// L'ancienne empreinte : la même, SANS le tri des mots.
+$ancienne = static fn (string $nom): string => hash_hmac(
+    'sha256', normaliserPrenom($nom),
+    hash_hmac('sha256', 'index', cleDonnees(), true)
+);
+
+$idsM = [];
+foreach (['Léa Durand', 'Tom Bernard', 'Maëlle Nguyên'] as $nom) {
+    $idsM[$nom] = uuidv4();
+    db()->prepare('INSERT INTO students (id, class_id, first_name, first_name_key, token_hash)
+                   VALUES (?, ?, ?, ?, ?)')
+        ->execute([$idsM[$nom], $classeM, chiffrer($nom), $ancienne($nom), hash('sha256', uuidv4())]);
+}
+// On efface la marque : la base redevient « celle d'avant la mise à jour ».
+db()->prepare('DELETE FROM reglages WHERE cle = ?')->execute(['empreintes_prenom_triees']);
+
+$retrouve = static function (string $nom) use ($classeM): int {
+    $s = db()->prepare('SELECT COUNT(*) c FROM students WHERE class_id = ? AND first_name_key = ?');
+    $s->execute([$classeM, empreintePrenom($nom)]);
+    return (int) $s->fetchAll()[0]['c'];
+};
+
+verifier('AVANT, une base d\'hier a des empreintes introuvables',
+    $retrouve('Léa Durand') === 0, 'sinon cet essai ne prouve rien');
+
+migrer();   // c'est ce que fait la mise à jour, à la première visite
+
+verifier('LA MISE À JOUR RÉPARE LES EMPREINTES', $retrouve('Léa Durand') === 1);
+verifier('et les autres avec', $retrouve('Tom Bernard') === 1 && $retrouve('Maëlle Nguyên') === 1);
+verifier('L\'ORDRE DES MOTS NE COMPTE PLUS — c\'était tout l\'objet',
+    $retrouve('NGUYÊN Maëlle') === 1, 'la forme de Pronote doit retrouver l\'élève');
+
+$s = db()->prepare('SELECT COUNT(*) c FROM students WHERE class_id = ?');
+$s->execute([$classeM]);
+verifier('aucun élève n\'a été dédoublé', (int) $s->fetchAll()[0]['c'] === 3);
+
+// La réparation ne doit pas se rejouer : recalculer trente empreintes à chaque
+// visite de l'administration serait du gaspillage, et la marque est là pour ça.
+$s = db()->prepare('SELECT valeur FROM reglages WHERE cle = ?');
+$s->execute(['empreintes_prenom_triees']);
+verifier('la marque dit que c\'est fait, et combien', ($s->fetchAll()[0]['valeur'] ?? '') !== '');
+
+migrer(); migrer();
+$s = db()->prepare('SELECT COUNT(*) c FROM students WHERE class_id = ?');
+$s->execute([$classeM]);
+verifier('DEUX MIGRATIONS DE PLUS NE CASSENT RIEN', (int) $s->fetchAll()[0]['c'] === 3,
+    'une migration doit pouvoir se rejouer sans fin');
 
 titre('12 ter. Le dépôt d\'archive : ce qu\'il refuse d\'écrire');
 

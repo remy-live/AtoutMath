@@ -212,6 +212,18 @@ function migrer(?PDO $pdo = null): void
     //   · `retire`   — l'exercice disparaît du parcours, comme s'il n'y était
     //                  pas ; c'est le geste quand un exercice plante vraiment.
     // La portée est la classe (tout le monde) ou un élève (lui seul).
+    // UNE TABLE POUR RETENIR CE QUI A DÉJÀ ÉTÉ FAIT.
+    //
+    // Les migrations de STRUCTURE se rejouent sans risque : « ajoute cette
+    // colonne » échoue proprement quand elle est là. Les migrations de DONNÉES,
+    // non — recalculer trente empreintes est inutile la deuxième fois, et
+    // certaines réparations seraient franchement fausses si on les rejouait.
+    // D'où ce registre, minuscule et suffisant : une clé, une valeur.
+    $tables['reglages'] = "
+        cle    " . ($sqlite ? 'TEXT NOT NULL PRIMARY KEY' : 'VARCHAR(64) NOT NULL PRIMARY KEY') . ",
+        valeur TEXT NOT NULL,
+        maj    $date";
+
     $tables['overrides'] = "
         id          $id,
         class_id    $refNull,
@@ -269,4 +281,65 @@ function migrer(?PDO $pdo = null): void
             } catch (Throwable $t) { /* déjà là */ }
         }
     }
+
+    reparerEmpreintesPrenom($pdo);
+}
+
+/**
+ * REMETTRE À JOUR LES EMPREINTES DE PRÉNOM D'UNE BASE DÉJÀ INSTALLÉE.
+ *
+ * `empreintePrenom()` trie désormais les mots du nom avant de calculer, pour
+ * que « NGUYÊN Maëlle » et « Maëlle Nguyên » désignent la même élève — c'est ce
+ * qui empêche l'import d'une liste Pronote de dédoubler celles qui étaient
+ * entrées par le code de la classe.
+ *
+ * MAIS LES EMPREINTES DÉJÀ ÉCRITES, ELLES, ONT ÉTÉ CALCULÉES AUTREMENT. Sans
+ * cette réparation, une base installée avant la mise à jour se retrouve avec
+ * des empreintes que plus aucune recherche ne retrouve : l'élève qui se
+ * rattache avec son prénom n'est pas reconnu, et l'on crée un second compte,
+ * vierge, à côté de celui qui a travaillé. C'est EXACTEMENT le bogue qu'on
+ * venait de corriger, ressuscité par la correction elle-même — et sur les
+ * données réelles, pas sur une base d'essai.
+ *
+ * On recalcule donc, une fois, à la première migration qui suit la mise à
+ * jour. C'est possible parce que le prénom est CHIFFRÉ et non haché : on peut
+ * le relire. Ce choix, fait pour que le professeur puisse réimprimer un billet,
+ * rend aussi ses données réparables — un hachage, lui, aurait condamné cette
+ * base à rester incohérente.
+ */
+function reparerEmpreintesPrenom(PDO $pdo): void
+{
+    require_once __DIR__ . '/coffre.php';
+    $marque = 'empreintes_prenom_triees';
+
+    try {
+        $s = $pdo->prepare('SELECT valeur FROM reglages WHERE cle = ?');
+        $s->execute([$marque]);
+        if ($s->fetchAll()) {
+            return;   // déjà fait
+        }
+    } catch (Throwable $t) {
+        return;   // pas de table `reglages` : rien à réparer non plus
+    }
+
+    $faits = 0;
+    try {
+        $lignes = $pdo->query('SELECT id, first_name FROM students')->fetchAll();
+        $maj = $pdo->prepare('UPDATE students SET first_name_key = ? WHERE id = ?');
+        foreach ($lignes as $l) {
+            $clair = dechiffrer($l['first_name']);
+            if ($clair === null || $clair === '') {
+                continue;
+            }
+            $maj->execute([empreintePrenom($clair), $l['id']]);
+            $faits++;
+        }
+    } catch (Throwable $t) {
+        // Une base illisible ne doit pas empêcher le reste de fonctionner : on
+        // ne pose pas la marque, la réparation sera retentée au prochain coup.
+        return;
+    }
+
+    $pdo->prepare(sqlInsereSansDoublon() . ' INTO reglages (cle, valeur) VALUES (?, ?)')
+        ->execute([$marque, (string) $faits]);
 }
