@@ -24,6 +24,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/_socle.php';
 require_once __DIR__ . '/../lib/projections.php';
 require_once __DIR__ . '/../lib/seance.php';
+require_once __DIR__ . '/../lib/coffre.php';
 
 $prof = profConnecte();
 $id = (string) ($_GET['id'] ?? '');
@@ -61,17 +62,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         if ($corps !== '') {
             if ($pour === 'classe') {
                 db()->prepare('INSERT INTO messages (id, class_id, body) VALUES (?, ?, ?)')
-                    ->execute([uuidv4(), $id, mb_substr($corps, 0, 500)]);
+                    ->execute([uuidv4(), $id, chiffrer(mb_substr($corps, 0, 500))]);
                 redirige($retour, 'Message envoyé à toute la classe.');
             }
             // On vérifie que l'élève est bien DE CETTE CLASSE : l'identifiant
             // vient du formulaire, donc du navigateur, donc on ne le croit pas.
             $s = db()->prepare('SELECT first_name FROM students WHERE id = ? AND class_id = ?');
             $s->execute([$pour, $id]);
-            $eleve = $s->fetch();
+            $eleve = eleveLisible($s->fetch());
             if ($eleve) {
                 db()->prepare('INSERT INTO messages (id, student_id, body) VALUES (?, ?, ?)')
-                    ->execute([uuidv4(), $pour, mb_substr($corps, 0, 500)]);
+                    ->execute([uuidv4(), $pour, chiffrer(mb_substr($corps, 0, 500))]);
                 redirige($retour, 'Message envoyé à ' . $eleve['first_name'] . '.');
             }
         }
@@ -117,7 +118,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         // l'effacement, et il doit être immédiat et total.
         $s = db()->prepare('SELECT first_name FROM students WHERE id = ? AND class_id = ?');
         $s->execute([(string) ($_POST['eleve'] ?? ''), $id]);
-        $nom = $s->fetch()['first_name'] ?? null;
+        $nom = dechiffrer($s->fetch()['first_name'] ?? null);
         db()->prepare('DELETE FROM students WHERE id = ? AND class_id = ?')
             ->execute([(string) ($_POST['eleve'] ?? ''), $id]);
         redirige($retour, $nom ? "$nom et tout son travail ont été effacés." : 'Élève effacé.');
@@ -145,9 +146,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 }
 
 // ------------------------------------------------------------------ Lecture
-$s = db()->prepare('SELECT * FROM students WHERE class_id = ? ORDER BY first_name');
+$s = db()->prepare('SELECT * FROM students WHERE class_id = ?');
 $s->execute([$id]);
-$eleves = $s->fetchAll();
+// Déchiffrer d'abord, trier ensuite : `ORDER BY` sur du texte chiffré trierait
+// des vecteurs d'initialisation tirés au hasard. Voir `lib/coffre.php`.
+$eleves = trierParPrenom(array_map('eleveLisible', $s->fetchAll()));
 
 /**
  * CE QUE CHACUN FAIT EN CE MOMENT.
@@ -173,7 +176,7 @@ function derniereActivite(string $eleveId): array
 
     $exo = null; $parcours = null; $justes = 0; $total = 0; $quand = null;
     foreach ($lignes as $l) {
-        $p = json_decode((string) $l['payload'], true) ?: [];
+        $p = json_decode((string) dechiffrer($l['payload']), true) ?: [];
         $cet = $p['exerciseId'] ?? $p['exoId'] ?? null;
         if ($exo === null && $cet) {
             $exo = $cet;
@@ -212,7 +215,7 @@ $s = db()->prepare(
      ORDER BY o.created_at DESC'
 );
 $s->execute([$id, $id]);
-$reglages = $s->fetchAll();
+$reglages = array_map('eleveLisible', $s->fetchAll());
 
 $s = db()->prepare(
     'SELECT m.*, st.first_name,
@@ -223,7 +226,11 @@ $s = db()->prepare(
      ORDER BY m.created_at DESC LIMIT 12'
 );
 $s->execute([$id, $id]);
-$messages = $s->fetchAll();
+$messages = array_map(function ($m) {
+    $m['first_name'] = dechiffrer($m['first_name']);
+    $m['body'] = dechiffrer($m['body']);
+    return $m;
+}, $s->fetchAll());
 
 enTete($classe['name'], $prof, 'classes');
 ?>

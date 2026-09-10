@@ -48,6 +48,7 @@ file_put_contents($CONFIG, "<?php\nreturn " . var_export([
     'db_driver'       => 'sqlite',
     'db_file'         => $BAC . '/essai.sqlite',
     'app_secret'      => bin2hex(random_bytes(32)),
+    'data_key'        => bin2hex(random_bytes(32)),
     'allowed_origins' => [],
     'retention_days'  => 30,
 ], true) . ";\n");
@@ -57,6 +58,7 @@ putenv('ATOUTMATH_CONFIG=' . $CONFIG);
 
 require_once $API . '/lib/schema.php';
 require_once $API . '/lib/seance.php';
+require_once $API . '/lib/coffre.php';
 
 migrer();
 
@@ -496,7 +498,88 @@ verifier('la classe est supprimée',
 
 // ------------------------------------------------------------- La purge -----
 
-titre('8. La conservation limitée');
+titre('8. Le coffre : ce qui est écrit sur le disque');
+
+// LA VÉRIFICATION QUI COMPTE, ET LA SEULE QUI PROUVE QUELQUE CHOSE : on ouvre
+// le fichier de base avec un éditeur de texte, comme le ferait celui qui l'a
+// récupéré, et l'on cherche les prénoms. S'ils y sont, tout le reste du
+// chiffrement est décoratif.
+$eleveCoffre = uuidv4();
+$classeCoffre = uuidv4();
+db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
+    ->execute([$classeCoffre, $profId, 'Coffre', 'COFFRE']);
+$r = json('/join', ['classCode' => 'COFFRE', 'firstName' => 'Anastasia']);
+$jetonCoffre = $r['json']['token'] ?? '';
+verifier('une élève se rattache à la classe d\'essai', $jetonCoffre !== '');
+
+json('/sync', ['deviceId' => 'd', 'cursor' => 0, 'events' => [[
+    'id' => uuidv4(), 'type' => 'attempt', 'ts' => (int) (microtime(true) * 1000),
+    'payload' => ['exerciseId' => 'num-rang', 'reponseEleve' => 'quarante-deux-mille'],
+]]], $jetonCoffre);
+
+$eleveC = db()->query("SELECT id FROM students WHERE first_name_key IS NOT NULL
+                       AND class_id = '$classeCoffre'")->fetch();
+db()->prepare('INSERT INTO messages (id, student_id, body) VALUES (?, ?, ?)')
+    ->execute([uuidv4(), $eleveC['id'], chiffrer('Anastasia, revois la soustraction posée.')]);
+
+// ON LIT LE FICHIER **ET SON JOURNAL WAL**.
+//
+// SQLite écrit d'abord dans un journal `-wal` à côté, et ne le replie dans le
+// fichier principal que de temps en temps : ne regarder que le fichier
+// principal ferait passer ce test pour de mauvaises raisons, puisque les
+// écritures récentes n'y sont pas encore. Et surtout, celui qui récupère le
+// dossier récupère les deux — c'est donc les deux qu'il faut fouiller.
+//
+// (On a d'abord essayé un `wal_checkpoint(TRUNCATE)` pour n'avoir qu'un
+// fichier à lire. Mauvaise idée : le serveur d'essai tient la base ouverte en
+// même temps, et le repli sous ses pieds lui rendait « database disk image is
+// malformed ». Lire les deux fichiers ne touche à rien.)
+$octets = (string) @file_get_contents($BAC . '/essai.sqlite')
+        . (string) @file_get_contents($BAC . '/essai.sqlite-wal');
+
+verifier('LE PRÉNOM N\'EST PAS LISIBLE DANS LE FICHIER',
+    !str_contains($octets, 'Anastasia'), 'trouvé en clair');
+verifier('LA RÉPONSE DE L\'ÉLÈVE N\'EST PAS LISIBLE',
+    !str_contains($octets, 'quarante-deux-mille'), 'trouvée en clair');
+verifier('LE MOT DU PROFESSEUR N\'EST PAS LISIBLE',
+    !str_contains($octets, 'soustraction'), 'trouvé en clair');
+verifier('le fichier porte bien des blocs chiffrés', str_contains($octets, 'v1:'));
+
+// … mais l'application, elle, lit tout normalement.
+$s = db()->prepare('SELECT first_name FROM students WHERE id = ?');
+$s->execute([$eleveC['id']]);
+verifier('le serveur relit le prénom sans peine',
+    dechiffrer($s->fetch()['first_name']) === 'Anastasia');
+
+$msg = json('/session', [], $jetonCoffre)['json']['session']['messages'] ?? [];
+verifier('et l\'élève reçoit le mot en clair',
+    str_contains($msg[0]['body'] ?? '', 'soustraction'), json_encode($msg));
+
+// L'index aveugle : on retrouve l'élève sans savoir lire son prénom, et les
+// majuscules et les accents ne créent plus de doublons.
+$r = json('/join', ['classCode' => 'COFFRE', 'firstName' => 'ANASTASIA']);
+verifier('« ANASTASIA » RETROUVE LE COMPTE DE « Anastasia »',
+    ($r['json']['studentId'] ?? '') === $eleveC['id']);
+$r = json('/join', ['classCode' => 'COFFRE', 'firstName' => '  anastasia ']);
+verifier('les espaces en trop et la casse aussi',
+    ($r['json']['studentId'] ?? '') === $eleveC['id']);
+verifier('et cela n\'a créé qu\'une seule élève',
+    (int) db()->query("SELECT COUNT(*) c FROM students WHERE class_id = '$classeCoffre'")
+        ->fetch()['c'] === 1);
+
+$r = json('/join', ['classCode' => 'COFFRE', 'firstName' => 'Anastasia B.']);
+verifier('mais « Anastasia B. » reste une autre élève',
+    ($r['json']['studentId'] ?? '') !== $eleveC['id']);
+
+// Une clé qui change ne doit pas rendre du charabia lisible.
+verifier('un bloc modifié ne se déchiffre pas silencieusement',
+    dechiffrer('v1:' . base64_encode(random_bytes(60))) === null);
+verifier('un texte en clair d\'avant le coffre se relit tel quel',
+    dechiffrer('Léa') === 'Léa');
+
+db()->prepare('DELETE FROM classes WHERE id = ?')->execute([$classeCoffre]);
+
+titre('9. La conservation limitée');
 
 $vieux = uuidv4();
 $eleveTest = uuidv4();
@@ -519,7 +602,7 @@ verifier('elle ne repasse pas le même jour', purgerSiNecessaire() === 0);
 
 // ------------------------------------------------------------ Le schéma -----
 
-titre('9. Le schéma se remet à niveau sans rien casser');
+titre('10. Le schéma se remet à niveau sans rien casser');
 
 $avant = (int) db()->query('SELECT COUNT(*) c FROM events')->fetch()['c'];
 migrer();

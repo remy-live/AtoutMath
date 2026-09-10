@@ -58,6 +58,7 @@ seule :
 | `api/data/.htaccess` | refuse tout. Marche sous Apache, pas sous Nginx. |
 | un nom tiré au hasard | `atoutmath-<16 signes>.sqlite`. Ne dépend d'aucune configuration : sans l'adresse exacte, le fichier est introuvable. |
 | `api/.htaccess` | refuse `config.php`, `*.sql`, `*.sqlite*` et tout `data/`. |
+| le **chiffrement** du contenu | ce qui reste quand les trois précédentes ont échoué — voir ci-dessous. |
 
 **Sous Nginx**, ajoutez en plus :
 
@@ -69,6 +70,49 @@ location /api/ { try_files $uri /api/index.php$is_args$args; }
 
 Vous pouvez aussi ranger la configuration **hors de la racine web** et
 l'indiquer par `SetEnv ATOUTMATH_CONFIG /home/vous/config.php`.
+
+### Le contenu est chiffré
+
+Prénoms, réponses des élèves et messages du professeur sont écrits en
+**AES-256-GCM** (`lib/coffre.php`). Un fichier de base récupéré ne rend rien de
+lisible.
+
+**Soyons précis sur ce que cela protège**, parce qu'un chiffrement mal compris
+rassure plus qu'il ne défend.
+
+- **Protégé** : le fichier qui part seul — un `.htaccess` que l'hébergeur
+  ignore, une sauvegarde automatique récupérée par quelqu'un, un dossier
+  indexé, un disque de serveur revendu.
+- **Non protégé** : quelqu'un qui lit `config.php` **en plus** du fichier de
+  base. La clé y est, et il déchiffre tout. C'est inévitable : le serveur doit
+  pouvoir lire ses propres données pour afficher une console de séance, donc la
+  clé doit être à sa portée. Aucun chiffrement au repos ne résout cela.
+
+C'est donc la **quatrième couche du même mur**, celle qui reste debout quand
+les autres sont tombées — et c'est exactement ce qu'on attend d'une dernière
+couche.
+
+**Pour que la clé ne voyage plus avec la base**, retirez `data_key` de
+`config.php` et posez-la dans l'environnement :
+
+```apache
+SetEnv ATOUTMATH_CLE une_valeur_aleatoire_longue
+```
+
+Attention : **perdre la clé, c'est perdre les données.** Elles ne se
+déchiffrent qu'avec elle.
+
+Le chiffrement rend illisible ce qui identifie et ce qui est personnel. Restent
+en clair les choses qui ne le sont pas et dont la base a besoin pour chercher :
+le nom de la classe, son code, les identifiants d'exercices, les horodatages.
+
+**Et comment cherche-t-on un prénom qu'on ne peut pas lire ?** À côté du prénom
+chiffré, une empreinte HMAC du prénom normalisé — un *index aveugle* : stable,
+donc cherchable ; à sens unique, donc muette. En passant, cela corrige un
+défaut : « LÉA », « léa » et « Léa » créaient trois comptes distincts, et
+l'élève qui tapait son prénom en minuscules à la maison ne retrouvait pas son
+travail de l'école. C'est désormais la même élève — mais « Léa B. » reste bien
+distincte de « Léa », puisque c'est ainsi qu'on sépare deux homonymes.
 
 ## L'administration — `api/admin/`
 
@@ -125,10 +169,15 @@ php tools/testApi.php
 
 Lance un vrai serveur PHP sur une base jetable et le pilote par HTTP, comme le
 feraient le navigateur du professeur et celui de l'élève — cookies de session
-et jeton anti-rejeu compris. Soixante-quatre vérifications, dont celles qui
-comptent : *verrouiller la classe arrive-t-il jusqu'à l'élève*, *le mot
+et jeton anti-rejeu compris. Soixante-dix-sept vérifications, dont celles
+qui comptent : *verrouiller la classe arrive-t-il jusqu'à l'élève*, *le mot
 individuel n'est-il lisible que par lui*, *l'effacement emporte-t-il vraiment
-tout*. Rien n'est touché de l'installation réelle.
+tout* — et la preuve du coffre : **on ouvre le fichier de base avec un éditeur
+de texte, comme le ferait celui qui l'a récupéré, et l'on y cherche les
+prénoms** (journal WAL compris, puisqu'il part avec le dossier). S'ils y
+étaient, tout le reste du chiffrement serait décoratif.
+
+Rien n'est touché de l'installation réelle.
 
 ## Pourquoi ce modèle de données
 
@@ -185,6 +234,9 @@ se rattache plus, et personne ne lit le travail d'un autre.
   ses jetons. En SQLite, tout effacer c'est aussi supprimer un fichier.
 - **Portabilité** : `/teacher/student` exporte les données d'un élève ;
   `php tools/admin.php export-class CODE` sort un CSV des notes.
+- **Chiffrement au repos** : prénoms, réponses et messages sont chiffrés dans
+  la base (AES-256-GCM). Voir plus haut ce que cela protège, et ce que cela ne
+  protège pas.
 - **Hébergement** : choisissez un hébergeur dans l'Union européenne.
 - **Registre des traitements** : un traitement de données d'élèves relève du
   registre de l'établissement. Prévenez le chef d'établissement et le DPO avant
@@ -193,6 +245,8 @@ se rattache plus, et personne ne lit le travail d'un autre.
 ## Sécurité
 
 - Requêtes préparées partout, aucune concaténation SQL.
+- Données d'élèves chiffrées dans la base (AES-256-GCM), recherche par index
+  aveugle HMAC.
 - Jetons élèves stockés hachés (SHA-256) ; jetons professeurs signés en HMAC ;
   mot de passe professeur en `password_hash`, douze caractères minimum.
 - Session PHP pour l'administration, cookie `HttpOnly` + `SameSite=Lax`,

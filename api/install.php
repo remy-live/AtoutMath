@@ -77,7 +77,12 @@ function diagnostics(): array
         'ok'   => PHP_VERSION_ID >= 80000,
         'dit'  => PHP_VERSION,
     ];
-    foreach (['pdo' => 'PDO', 'json' => 'JSON', 'mbstring' => 'mbstring'] as $ext => $nom) {
+    // `openssl` est REQUIS, et non pas « souhaitable » : c'est lui qui chiffre
+    // les prénoms et le travail des élèves dans la base (voir lib/coffre.php).
+    // Sans lui, l'installation écrirait en clair sans le dire, ce qui est
+    // exactement le genre de silence qu'on ne veut pas.
+    foreach (['pdo' => 'PDO', 'json' => 'JSON', 'mbstring' => 'mbstring',
+              'openssl' => 'openssl (chiffrement)'] as $ext => $nom) {
         $out[] = ['quoi' => "Extension $nom", 'ok' => extension_loaded($ext), 'dit' => extension_loaded($ext) ? 'présente' : 'absente'];
     }
     $sqlite = extension_loaded('pdo_sqlite');
@@ -123,6 +128,11 @@ if (!$deja && !$bloquant && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         'db_user'         => trim((string) ($_POST['db_user'] ?? '')),
         'db_pass'         => (string) ($_POST['db_pass'] ?? ''),
         'app_secret'      => bin2hex(random_bytes(32)),
+        // LA CLÉ QUI CHIFFRE LES DONNÉES D'ÉLÈVES. Séparée du secret de
+        // signature pour qu'elle puisse être déplacée seule — dans une
+        // variable d'environnement `ATOUTMATH_CLE`, par exemple, et alors le
+        // fichier de base et sa clé ne voyagent plus ensemble.
+        'data_key'        => bin2hex(random_bytes(32)),
         'allowed_origins' => array_values(array_filter(array_map('trim', explode(',', $origine)))),
         'retention_days'  => max(1, (int) ($_POST['retention'] ?? 30)),
     ];
@@ -226,6 +236,7 @@ code { background: #f1f5f9; padding: 1px 5px; border-radius: 5px; font-size: .9e
             <li>Base : <?= htmlspecialchars($resume['moteur']) ?></li>
             <li>Professeur : <?= htmlspecialchars($resume['prof']) ?></li>
             <li>Purge automatique après <?= htmlspecialchars($resume['purge']) ?></li>
+            <li>Prénoms, réponses et messages <b>chiffrés</b> dans la base (AES-256-GCM)</li>
         </ul>
         <?php if (!empty($resume['sqlite'])): ?>
         <p><small><b>Le fichier de base est protégé</b> par un <code>.htaccess</code>
@@ -234,6 +245,12 @@ code { background: #f1f5f9; padding: 1px 5px; border-radius: 5px; font-size: .9e
            son adresse. <b>Sous Nginx</b>, ajoutez tout de même :
            <code>location ~ /api/data/ { deny all; }</code>.</small></p>
         <?php endif; ?>
+        <p><small><b>Et son contenu est chiffré</b> : les prénoms, les réponses
+           des élèves et vos messages sont écrits en AES-256-GCM. Un fichier de
+           base qui partirait quand même ne rendrait rien de lisible — sauf à
+           emporter <code>config.php</code> avec, puisque la clé y est. Pour les
+           séparer pour de bon, déplacez la valeur <code>data_key</code> dans une
+           variable d'environnement <code>ATOUTMATH_CLE</code>.</small></p>
         <p>Il reste UNE chose à faire : effacer cette page, pour que personne
            d'autre ne puisse l'ouvrir.</p>
         <form method="post"><input type="hidden" name="effacer" value="oui">

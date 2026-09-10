@@ -25,6 +25,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/coffre.php';
 
 /** Un horodatage de la base (UTC) vers des millisecondes, comme le journal. */
 function msDepuisSql(?string $quand): ?int
@@ -66,7 +67,7 @@ function etatDeSeance(array $eleve): array
     $s->execute([$eleve['id'], $eleve['id'], $eleve['class_id']]);
     $messages = array_map(fn ($m) => [
         'id'    => $m['id'],
-        'body'  => $m['body'],
+        'body'  => dechiffrer($m['body']),
         'ts'    => msDepuisSql($m['created_at']),
         'scope' => $m['student_id'] ? 'student' : 'class',
     ], $s->fetchAll());

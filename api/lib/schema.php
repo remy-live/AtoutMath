@@ -69,10 +69,15 @@ function migrer(?PDO $pdo = null): void
         created_at $date,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 
+    // `first_name` est CHIFFRÉ (voir lib/coffre.php) ; `first_name_key` est son
+    // index aveugle, seule façon de retrouver « l'élève qui s'appelle Léa »
+    // sans pouvoir lire le prénom. En SQLite, TEXT ne borne rien, mais le
+    // chiffré est plus long que le clair : en MySQL il faut de la place.
     $tables['students'] = "
-        id           $id,
-        class_id     $ref,
-        first_name   $txt,
+        id             $id,
+        class_id       $ref,
+        first_name     " . ($sqlite ? 'TEXT NOT NULL' : 'VARCHAR(255) NOT NULL') . ",
+        first_name_key " . ($sqlite ? 'TEXT NULL' : 'CHAR(64) NULL') . ",
         token_hash   $txt,
         -- Un élève peut être mis de côté sans être effacé : il ne peut plus
         -- se rattacher, mais son travail reste lisible jusqu'à la purge.
@@ -194,6 +199,7 @@ function migrer(?PDO $pdo = null): void
 
     foreach ([
         'idx_students_class'   => 'students(class_id)',
+        'idx_students_prenom'  => 'students(class_id, first_name_key)',
         'idx_students_token'   => 'students(token_hash)',
         'idx_tokens_student'   => 'student_tokens(student_id)',
         'idx_events_student'   => 'events(student_id, seq)',
@@ -219,7 +225,8 @@ function migrer(?PDO $pdo = null): void
     // essaie, et l'échec veut dire « elle y est déjà ».
     foreach ([
         'classes'  => ['locked' => $bool, 'notice' => $txtNull],
-        'students' => ['blocked' => $bool],
+        'students' => ['blocked' => $bool,
+                       'first_name_key' => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL'],
     ] as $table => $colonnes) {
         foreach ($colonnes as $col => $type) {
             try {

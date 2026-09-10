@@ -26,6 +26,17 @@ return [
     //   php -r "echo bin2hex(random_bytes(32));"
     'app_secret' => 'a_changer_par_une_valeur_aleatoire_longue',
 
+    // CHIFFRE LES DONNÉES D'ÉLÈVES dans la base : prénoms, réponses, messages
+    // (AES-256-GCM, voir lib/coffre.php). Générez-la comme ci-dessus.
+    //
+    // La perdre, c'est perdre les données : elles ne se déchiffrent qu'avec
+    // elle. En changer revient donc à effacer tout ce qui a été écrit avant.
+    //
+    // POUR QUE LA CLÉ NE VOYAGE PAS AVEC LA BASE, retirez cette ligne et posez
+    // la clé dans l'environnement : `SetEnv ATOUTMATH_CLE …`. C'est la seule
+    // façon qu'un fichier de base récupéré seul reste illisible.
+    'data_key' => 'a_changer_par_une_autre_valeur_aleatoire_longue',
+
     // Origines autorisées à appeler l'API depuis un navigateur.
     // Laissez vide si l'application est servie par le même domaine.
     'allowed_origins' => [

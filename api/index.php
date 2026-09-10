@@ -25,6 +25,7 @@ require_once __DIR__ . '/lib/db.php';
 require_once __DIR__ . '/lib/projections.php';
 require_once __DIR__ . '/lib/grading.php';
 require_once __DIR__ . '/lib/seance.php';
+require_once __DIR__ . '/lib/coffre.php';
 
 applyCors();
 
@@ -79,8 +80,11 @@ function handleJoin(): void
         fail(404, 'class_not_found', 'Aucune classe avec ce code.');
     }
 
-    $stmt = db()->prepare('SELECT * FROM students WHERE class_id = ? AND first_name = ? LIMIT 1');
-    $stmt->execute([$class['id'], $name]);
+    // On cherche sur l'INDEX AVEUGLE, pas sur le prénom : le prénom est chiffré
+    // et ne se compare pas. Voir `lib/coffre.php`.
+    $empreinte = empreintePrenom($name);
+    $stmt = db()->prepare('SELECT * FROM students WHERE class_id = ? AND first_name_key = ? LIMIT 1');
+    $stmt->execute([$class['id'], $empreinte]);
     $student = $stmt->fetch();
 
     // L'ÉLÈVE MIS DE CÔTÉ NE SE RATTACHE PLUS. C'est le seul endroit où l'on
@@ -98,8 +102,9 @@ function handleJoin(): void
         $studentId = $student['id'];
     } else {
         $studentId = uuidv4();
-        db()->prepare('INSERT INTO students (id, class_id, first_name, token_hash) VALUES (?, ?, ?, ?)')
-            ->execute([$studentId, $class['id'], $name, hashToken($token)]);
+        db()->prepare('INSERT INTO students (id, class_id, first_name, first_name_key, token_hash)
+                       VALUES (?, ?, ?, ?, ?)')
+            ->execute([$studentId, $class['id'], chiffrer($name), $empreinte, hashToken($token)]);
     }
     // LE JETON S'AJOUTE, IL NE REMPLACE PAS. Se rattacher à la maison ne doit
     // pas faire taire l'ordinateur de l'école, qui aurait encore du travail à
@@ -187,7 +192,9 @@ function handleSync(): void
                 substr((string) ($e['deviceId'] ?? $deviceId), 0, 64),
                 substr($type, 0, 32),
                 (int) ($e['ts'] ?? 0),
-                json_encode($e['payload'] ?? [], JSON_UNESCAPED_UNICODE),
+                // LA CHARGE EST CHIFFRÉE : c'est là que vivent les réponses de
+                // l'élève, ses erreurs et ses hésitations.
+                chiffrer(json_encode($e['payload'] ?? [], JSON_UNESCAPED_UNICODE)),
             ]);
             // Accusé de réception même si la ligne existait déjà : dans les deux
             // cas le serveur détient l'événement, le client peut l'oublier.
@@ -217,7 +224,7 @@ function handleSync(): void
             'type' => $row['type'],
             'ts' => (int) $row['ts'],
             'deviceId' => $row['device_id'],
-            'payload' => json_decode($row['payload'], true) ?: [],
+            'payload' => json_decode((string) dechiffrer($row['payload']), true) ?: [],
         ];
     }
 
@@ -385,9 +392,11 @@ function handleTeacherReport(): void
     $class = $stmt->fetch();
     if (!$class) fail(404, 'class_not_found', 'Classe introuvable.');
 
-    $stmt = db()->prepare('SELECT id, first_name, last_seen_at FROM students WHERE class_id = ? ORDER BY first_name');
+    $stmt = db()->prepare('SELECT id, first_name, last_seen_at FROM students WHERE class_id = ?');
     $stmt->execute([$classId]);
-    $students = $stmt->fetchAll();
+    // Le tri se fait après déchiffrement : `ORDER BY` sur du texte chiffré
+    // trierait des vecteurs d'initialisation tirés au hasard.
+    $students = trierParPrenom(array_map('eleveLisible', $stmt->fetchAll()));
 
     $rows = [];
     foreach ($students as $s) {
@@ -455,7 +464,7 @@ function handleTeacherStudent(): void
          WHERE s.id = ? AND c.teacher_id = ? LIMIT 1'
     );
     $stmt->execute([$studentId, $teacher['id']]);
-    $student = $stmt->fetch();
+    $student = eleveLisible($stmt->fetch());
     if (!$student) fail(404, 'student_not_found', 'Élève introuvable.');
 
     $events = eventsOfStudent($studentId);
@@ -480,6 +489,6 @@ function eventsOfStudent(string $studentId): array
         'type' => $r['type'],
         'ts' => (int) $r['ts'],
         'deviceId' => $r['device_id'],
-        'payload' => json_decode($r['payload'], true) ?: [],
+        'payload' => json_decode((string) dechiffrer($r['payload']), true) ?: [],
     ], $stmt->fetchAll());
 }
