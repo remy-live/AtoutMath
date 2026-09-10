@@ -142,6 +142,76 @@ rafraîchit toute seule toutes les vingt secondes (jamais pendant que vous
   l'effacer.
 - **Effacer** : les élèves, ou la classe entière. Il faut écrire `EFFACER`.
 
+**`sante.php`** — le contrôle de l'installation, **sur votre hébergement**.
+Le serveur va chercher ses propres fichiers par le web, comme le ferait un
+inconnu, et vous dit ce qui revient : la base est-elle téléchargeable ? la
+configuration est-elle lisible ? HTTPS est-il actif ? la purge passe-t-elle ?
+
+C'est la seule vérification qui vaille, parce que c'est la seule qui ait lieu
+*là où les élèves travailleront*. Le `.htaccess` a bien été essayé sous un vrai
+Apache — les chemins sensibles répondent 403 — mais sur une autre machine que
+la vôtre ; un hébergeur en `AllowOverride None`, un serveur Nginx, ou un
+transfert FTP qui a sauté les fichiers commençant par un point rendraient la
+base téléchargeable sans que rien ne s'en aperçoive.
+
+**Et quand elle ne sait pas, elle le dit.** Certains hébergements interdisent
+au serveur de s'appeler lui-même : la réponse est alors « je n'ai pas pu
+vérifier », jamais « c'est protégé ». Un contrôle qui verdit par défaut ne vaut
+rien — c'est pourquoi le raisonnement vit dans `lib/sante.php`, séparé de la
+page, et qu'on le met à l'épreuve devant de vraies fuites fabriquées dans
+`tools/testApi.php`.
+
+## Mettre le site à jour
+
+**Oui, les mises à jour se font comme sur GitHub — parce qu'elles partent de
+GitHub.** On pousse le code sur la branche principale, et une minute plus tard
+le site en ligne est à jour. Rien à transférer à la main.
+
+C'est `.github/workflows/deploiement.yml`, en deux temps :
+
+1. **Les tests tournent d'abord** — `npm test` (le logiciel) puis
+   `php tools/testApi.php` (le serveur). Ils tournent aussi sur chaque demande
+   de fusion, hébergement configuré ou non.
+2. **La publication ne part que si les tests passent**, et seulement depuis la
+   branche principale.
+
+À configurer une seule fois, dans *Settings → Secrets and variables → Actions* :
+
+| | |
+|---|---|
+| `HEBERGEUR_HOTE` | l'adresse SFTP donnée par l'hébergeur |
+| `HEBERGEUR_UTILISATEUR` | l'identifiant SFTP |
+| `HEBERGEUR_MOTDEPASSE` | son mot de passe |
+| `HEBERGEUR_DOSSIER` *(variable)* | le chemin sur le serveur, `/` par défaut |
+
+Tant que `HEBERGEUR_HOTE` n'existe pas, la publication s'arrête d'elle-même
+avec un message : un dépôt sans hébergement configuré n'affiche pas d'échec
+rouge à chaque poussée.
+
+### Ce qu'une mise à jour ne touche jamais
+
+**`api/config.php` et `api/data/` ne sont pas dans le dépôt** — ils sont créés
+sur le serveur par l'installation. Une republication ne peut donc ni les
+remplacer ni les effacer : c'est ce qui rend la mise à jour sans danger pour
+la clé de chiffrement et pour le travail des classes.
+
+> ⚠ C'est aussi pourquoi `delete_remote_files` **doit rester à `false`** dans
+> le workflow. Un transfert qui « fait le ménage » prendrait ces deux-là pour
+> des intrus et les effacerait : on perdrait la clé **et** la base en une
+> publication de routine.
+
+Une mise à jour qui ajoute une table s'applique d'elle-même : `migrer()` remet
+le schéma à niveau chaque fois que vous ouvrez l'administration. Aucune
+manœuvre, aucune migration à lancer.
+
+Ce qui n'est pas transféré est listé dans `.deployignore` : tests, outils de
+mesure, notes, dépendances de développement. Le serveur ne reçoit que ce qu'un
+navigateur télécharge.
+
+**Après une publication, un seul geste** : ouvrir `api/admin/sante.php`. Elle
+signalera notamment que `install.php` est revenu — c'est normal, il sert aux
+nouvelles installations — et un bouton l'efface.
+
 ## Points d'entrée de l'API
 
 Tout est en `POST` JSON (les proxys d'établissement mettent volontiers les
@@ -169,13 +239,18 @@ php tools/testApi.php
 
 Lance un vrai serveur PHP sur une base jetable et le pilote par HTTP, comme le
 feraient le navigateur du professeur et celui de l'élève — cookies de session
-et jeton anti-rejeu compris. Soixante-dix-sept vérifications, dont celles
+et jeton anti-rejeu compris. Quatre-vingt-dix vérifications, dont celles
 qui comptent : *verrouiller la classe arrive-t-il jusqu'à l'élève*, *le mot
 individuel n'est-il lisible que par lui*, *l'effacement emporte-t-il vraiment
 tout* — et la preuve du coffre : **on ouvre le fichier de base avec un éditeur
 de texte, comme le ferait celui qui l'a récupéré, et l'on y cherche les
 prénoms** (journal WAL compris, puisqu'il part avec le dossier). S'ils y
 étaient, tout le reste du chiffrement serait décoratif.
+
+Le contrôle de santé y est mis à l'épreuve devant de vraies fuites
+fabriquées : une base servie en 200, une configuration dont le code source
+part en clair, une vérification qui échoue — et l'on vérifie qu'il crie, qu'il
+nuance, et qu'il ne verdit jamais par défaut.
 
 Rien n'est touché de l'installation réelle.
 

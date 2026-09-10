@@ -1,0 +1,15 @@
+# CES FICHIERS NE SE DEMANDENT PAS, ILS S'INCLUENT.
+#
+# `lib/` ne contient aucun point d'entrée : tout y est appelé par `index.php` ou
+# par l'administration. Une requête directe dessus n'a donc jamais de raison
+# légitime — et si PHP venait à ne plus s'exécuter (module désactivé, mauvaise
+# mise à jour de l'hébergeur), Apache servirait le CODE SOURCE en clair.
+#
+# Mesuré : sans PHP, `GET /api/lib/db.php` renvoie 200 et le contenu du fichier.
+# Ce n'est pas un secret — les secrets sont dans `config.php`, refusé par
+# ailleurs — mais donner la carte de la maison à qui veut la lire n'apporte rien.
+Require all denied
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

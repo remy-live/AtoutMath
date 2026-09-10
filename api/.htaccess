@@ -14,13 +14,18 @@ RewriteRule ^ index.php [QSA,L]
 #     api/data/ porte en plus son propre .htaccess, et le fichier un nom tiré
 #     au hasard : voir protegerDossier() dans install.php.
 #   · .derniere-purge est le témoin de la purge quotidienne.
-<FilesMatch "^(config\.php|\.derniere-purge|.*\.(sql|sqlite|sqlite-wal|sqlite-shm|db))$">
+<FilesMatch "^(config\.php|\.derniere-purge|_.*\.php|.*\.(sql|sqlite|sqlite-wal|sqlite-shm|db))$">
     Require all denied
     <IfModule !mod_authz_core.c>
         Order allow,deny
         Deny from all
     </IfModule>
 </FilesMatch>
+
+# Les dossiers qui ne contiennent aucun point d'entrée. Redondant avec le
+# .htaccess déposé dans chacun, et c'est voulu : deux verrous valent mieux
+# qu'un sur les fichiers qu'on ne doit jamais servir.
+RedirectMatch 403 ^.*/(lib|tools)/.*$
 
 # Le dossier des données, refusé dans son entier. Redondant avec le .htaccess
 # qu'install.php y dépose, et c'est voulu : si le dossier est recréé à la main,

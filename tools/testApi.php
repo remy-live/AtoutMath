@@ -59,6 +59,7 @@ putenv('ATOUTMATH_CONFIG=' . $CONFIG);
 require_once $API . '/lib/schema.php';
 require_once $API . '/lib/seance.php';
 require_once $API . '/lib/coffre.php';
+require_once $API . '/lib/sante.php';
 
 migrer();
 
@@ -76,7 +77,11 @@ $serveur = proc_open(
     $API,
     // On ne passe que des chaînes : `$_SERVER` contient `argv`, un tableau,
     // et `proc_open` s'en plaint bruyamment.
-    ['ATOUTMATH_CONFIG' => $CONFIG, 'PATH' => getenv('PATH') ?: '/usr/bin:/bin']
+    // PLUSIEURS OUVRIERS, et c'est indispensable ici : la page de santé
+    // interroge le serveur SUR LUI-MÊME. Avec un seul processus, cette requête
+    // attendrait la fin de celle qui l'a lancée — c'est-à-dire pour toujours.
+    ['ATOUTMATH_CONFIG' => $CONFIG, 'PATH' => getenv('PATH') ?: '/usr/bin:/bin',
+     'PHP_CLI_SERVER_WORKERS' => '4']
 );
 
 register_shutdown_function(function () use (&$serveur, $BAC) {
@@ -579,7 +584,64 @@ verifier('un texte en clair d\'avant le coffre se relit tel quel',
 
 db()->prepare('DELETE FROM classes WHERE id = ?')->execute([$classeCoffre]);
 
-titre('9. La conservation limitée');
+titre('9. La page de santé sait reconnaître une fuite');
+
+// CETTE PAGE EST UN DÉTECTEUR, et un détecteur qui ne détecte rien est pire
+// qu'aucun détecteur : il rassure. On le met donc devant une vraie fuite.
+//
+// Le serveur d'essai est le serveur intégré de PHP : il ne lit aucun
+// `.htaccess` et sert donc TOUT, fichier de base compris. C'est exactement le
+// cas d'un hébergement mal réglé — et la page doit le dire en rouge.
+$p = page('/admin/sante.php');
+verifier('la page de santé s\'ouvre', str_contains($p['html'], 'Santé de l\'installation'));
+verifier('elle rend compte du chiffrement', str_contains($p['html'], 'AES-256-GCM actif'));
+verifier('elle voit que la page d\'installation n\'est pas là',
+    str_contains($p['html'], 'effacée'));
+
+// ── ON MET LE DÉTECTEUR DEVANT DE VRAIES FUITES ──────────────────────────
+//
+// Fabriquer un hébergement mal réglé pour de bon coûterait un serveur de plus
+// à chaque essai. On donne donc au raisonnement la réponse HTTP qu'un tel
+// serveur rendrait, et l'on regarde ce qu'il en conclut. C'est possible parce
+// que la décision vit dans `lib/sante.php`, séparée de la page qui l'affiche.
+
+$fuite = verdictBase(['code' => 200, 'corps' => "SQLite format 3\0…", 'erreur' => ''], 'http://x/data/b.sqlite');
+verifier('UNE BASE SERVIE EN 200 EST CRIÉE EN ROUGE',
+    $fuite['etat'] === 'x' && str_contains($fuite['dit'], 'REPARTIR AVEC LA BASE'), $fuite['etat']);
+
+$refus = verdictBase(['code' => 403, 'corps' => '', 'erreur' => ''], 'http://x/data/b.sqlite');
+verifier('un 403 est vert', $refus['etat'] === 'ok');
+
+$muet = verdictBase(['code' => 0, 'corps' => '', 'erreur' => 'timeout'], 'http://x/data/b.sqlite');
+verifier('UNE VÉRIFICATION IMPOSSIBLE NE VERDIT PAS', $muet['etat'] === '?', $muet['etat']);
+verifier('et elle dit à l\'utilisateur comment vérifier lui-même',
+    str_contains($muet['faire'], 'dans un navigateur'));
+
+$ailleurs = verdictBase([], '', false);
+verifier('une base rangée hors du web est verte, et pour la bonne raison',
+    $ailleurs['etat'] === 'ok' && str_contains($ailleurs['dit'], 'hors du dossier'));
+
+$source = verdictConfig(['code' => 200, 'corps' => "<?php\nreturn ['app_secret'…", 'erreur' => ''], 'http://x/config.php');
+verifier('UNE CONFIGURATION SERVIE EN SOURCE EST CRIÉE EN ROUGE', $source['etat'] === 'x');
+
+$execute = verdictConfig(['code' => 200, 'corps' => '', 'erreur' => ''], 'http://x/config.php');
+verifier('une configuration exécutée par PHP est orange, ni verte ni rouge',
+    $execute['etat'] === '!', $execute['etat']);
+
+$bloque = verdictConfig(['code' => 403, 'corps' => '', 'erreur' => ''], 'http://x/config.php');
+verifier('une configuration refusée est verte', $bloque['etat'] === 'ok');
+
+verifier('le code source d\'une bibliothèque servie est signalé',
+    verdictInterne(['code' => 200, 'corps' => '<?php declare', 'erreur' => ''])['etat'] === '!');
+
+// Et elle est bien derrière la connexion : c'est une carte des faiblesses.
+page('/admin/index.php?deconnexion=1');
+$p = page('/admin/sante.php');
+verifier('SANS ÊTRE CONNECTÉ, ON NE LA VOIT PAS',
+    !str_contains($p['html'], 'Le fichier de base est-il téléchargeable'));
+page('/admin/', ['email' => 'prof@essai.test', 'mdp' => 'motdepassetreslong']);
+
+titre('10. La conservation limitée');
 
 $vieux = uuidv4();
 $eleveTest = uuidv4();
@@ -602,7 +664,7 @@ verifier('elle ne repasse pas le même jour', purgerSiNecessaire() === 0);
 
 // ------------------------------------------------------------ Le schéma -----
 
-titre('10. Le schéma se remet à niveau sans rien casser');
+titre('11. Le schéma se remet à niveau sans rien casser');
 
 $avant = (int) db()->query('SELECT COUNT(*) c FROM events')->fetch()['c'];
 migrer();

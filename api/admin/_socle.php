@@ -142,6 +142,7 @@ body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 
 header { background: #1e293b; color: #fff; padding: 12px 20px; display: flex;
          align-items: center; gap: 18px; flex-wrap: wrap; }
 header b { font-size: 1.05rem; }
+header nav { display: flex; gap: 16px; }
 header nav a { color: #cbd5e1; text-decoration: none; font-weight: 600; }
 header nav a.ici, header nav a:hover { color: #fff; }
 header .qui { margin-left: auto; color: #94a3b8; font-size: .88rem; }
@@ -191,6 +192,7 @@ button.petit { padding: 5px 10px; font-size: .85rem; }
   <b>AtoutMath</b>
   <nav>
     <a href="index.php" class="<?= $ici === 'classes' ? 'ici' : '' ?>">Mes classes</a>
+    <a href="sante.php" class="<?= $ici === 'sante' ? 'ici' : '' ?>">Santé</a>
   </nav>
   <span class="qui"><?= h($prof['display_name']) ?> ·
     <a href="index.php?deconnexion=1">se déconnecter</a></span>

@@ -9,6 +9,8 @@
 .github
 node_modules
 tests
+# Les réglages de l'assistant : sans intérêt pour le site, et rien à exposer.
+.claude
 tools
 outils
 imports
