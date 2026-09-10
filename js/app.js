@@ -224,6 +224,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     // rôle. Posée plus tôt, elle se montrerait à un élève qui a déjà sa séance,
     // le temps que l'état arrive.
     initPortail();
+
+    // L'ÉCRAN EST MONTÉ. Le drapeau du bas de ce fichier — `__atoutmathDemarre`
+    // — dit seulement que le MODULE s'est chargé : il est posé à l'évaluation,
+    // donc AVANT que ce gestionnaire ne tourne. C'est ce qu'il faut au
+    // garde-fou d'index.html (un module qui ne charge pas ne le pose jamais),
+    // mais c'est trompeur pour qui veut savoir si l'application est prête.
+    //
+    // Mesuré à nos dépens : un essai de bout en bout lisait le rôle du
+    // professeur juste après `__atoutmathDemarre` et le trouvait parfois
+    // absent — non parce qu'il ne se restaure pas, mais parce que rien
+    // n'était encore monté. D'où ce second drapeau, qui ne ment pas.
+    window.__atoutmathPret = true;
+    document.dispatchEvent(new CustomEvent('atoutmath_pret'));
 });
 
 /**

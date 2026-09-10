@@ -135,3 +135,36 @@ test('UN RATTRAPAGE EST UN AUTRE TRAVAIL, JUSQUE DANS SON CODE', () => {
     // Un parcours ordinaire, lui, n'a pas de graine : rien ne change pour lui.
     assert.equal(identiteDeParcours(parcours), identiteDeParcours(unParcours('autre nom')));
 });
+
+test('L\'ÉLÈVE RATTACHÉ TRAVAILLE SOUS LE NOM DE SA SÉANCE', () => {
+    // LE CHEMIN LE PLUS COURANT, ET LE DERNIER À AVOIR ÉTÉ RECOLLÉ.
+    //
+    // `ouvrirSeance` écrivait l'assignation sous `seance.pathId` — l'identité
+    // de contenu — puis lançait le meneur sur `seance.path`, la COPIE du
+    // parcours, qui porte encore l'identifiant d'atelier du professeur. Or le
+    // meneur tamponne `this.path.id` sur tout ce qu'il écrit au journal :
+    // `run_started`, `step_completed`, `run_finished`.
+    //
+    // L'élève rattaché travaillait donc sous un nom que son assignation ne
+    // portait pas. Deux conséquences, et ce sont exactement les deux dont Rémy
+    // s'est plaint : sa progression ne se rattachait à rien au rechargement
+    // suivant, et le bilan de la séance ne retenait aucun de ses travaux —
+    // « runs retenus (rattachement) : [] » — alors que le MÊME travail fait par
+    // le code dicté était bien compté.
+    const parcours = unParcours();
+    const seance = donnerSeance({ id: 'c1', nom: '6e B' }, parcours,
+        { code: Shortcodes.encodePath(parcours) });
+
+    // La copie garde son identifiant d'atelier : c'est normal, elle range le
+    // parcours dans la bibliothèque du professeur.
+    assert.equal(seance.path.id, parcours.id);
+    // Mais la séance, elle, porte l'identité du travail.
+    assert.notEqual(seance.pathId, seance.path.id,
+        'les deux noms diffèrent bien — c\'est là que le piège était');
+
+    // Ce que `ouvrirSeance` remet au meneur doit porter le nom de la séance.
+    const pourLeMeneur = { ...seance.path, id: seance.pathId || seance.path.id };
+    assert.equal(pourLeMeneur.id, seance.pathId);
+    // Donc le même que celui d'un camarade arrivé par le code.
+    assert.equal(pourLeMeneur.id, Shortcodes.decodePath(seance.code).id);
+});

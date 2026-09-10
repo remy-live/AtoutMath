@@ -209,6 +209,31 @@ function elevesDeLaClasse(string $classeId): array
     }, $s->fetchAll()));
 }
 
+/**
+ * L'INSTANT OÙ ON L'A VU, EN SECONDES — et non le texte que la base range.
+ *
+ * `last_seen_at` est écrit par `datetime('now')` : c'est une CHAÎNE
+ * « 2026-09-11 02:31:05 », en UTC. La caster en entier donne 2026 — l'année —,
+ * ce qui, comparé à une heure UNIX, place tous les élèves au premier janvier
+ * 1970 et éteint définitivement la pastille « en ligne ».
+ *
+ * Mesuré exactement ainsi, sur l'essai de bout en bout : le direct montrait
+ * bien Léo sur son exercice avec 2 sur 2, et le disait absent.
+ *
+ * Les pages d'administration font déjà cette conversion de leur côté
+ * (`strtotime($quand . ' UTC')`) ; on la fait ici une fois pour toutes, pour
+ * que les routes JSON ne rendent que des secondes — le navigateur n'a alors
+ * plus rien à deviner du format de la base.
+ */
+function instantDe(?string $quand): ?int
+{
+    if ($quand === null || $quand === '') {
+        return null;
+    }
+    $t = strtotime($quand . ' UTC');
+    return $t === false ? null : $t;
+}
+
 /** Un nouveau code pour un élève. Rend faux s'il n'est pas dans cette classe. */
 function nouveauCodePourEleve(string $eleveId, string $classeId): bool
 {

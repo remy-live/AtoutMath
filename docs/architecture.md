@@ -399,6 +399,36 @@ exercices disparus. `normalizePath()` convertit les anciens parcours.
 Les codes de partage encodent le parcours entier — politique et barème compris
 — en base64url. Les anciens codes à deux lettres restent décodables.
 
+### L'identité d'un parcours est son CONTENU
+
+Un parcours voyage par trois chemins, et il faut qu'ils se reconnaissent : le
+professeur **donne** une séance à une classe, l'élève rattaché **ouvre** sa
+séance depuis l'accueil, l'élève sur un poste inconnu **tape** le code dicté.
+Les trois écrivent au journal sous un `pathId`.
+
+Or **un code ne transporte aucun identifiant** : il ne porte que le travail.
+Chacun s'en fabriquait donc un dans son coin — au hasard côté élève, l'`id`
+d'atelier côté professeur. Résultat mesuré : la progression de l'élève
+disparaissait dès qu'il ressaisissait le même code, et le bilan d'une séance ne
+retenait aucun des travaux de la classe (« runs retenus : `[]` »).
+
+`identiteDeParcours(path)` — une empreinte FNV-1a de la forme compacte, nom
+exclu — est **la** définition, partout :
+
+| Qui | Écrit | Où |
+|---|---|---|
+| `donnerSeance` | `pathId: identiteDeParcours(path)` | `core/seances.js` |
+| `decodePath` | `path.id = identiteDeParcours(path)` | `core/shortcodes.js` |
+| `ouvrirSeance` | le meneur reçoit `{...seance.path, id: seance.pathId}` | `ui/maSeance.js` |
+| `parcoursClasses` | compare `s.pathId === identiteDeParcours(parcours)` | `ui/parcoursClasses.js` |
+
+Le **nom** est hors de l'empreinte : renommer une séance ne doit pas couper
+trente élèves de leur progression. Une **graine de reprise** (`reprise`, champ
+`r` de la forme compacte) est le seul champ qui ne décrit pas le travail : elle
+décrit l'ACTE de le redonner, et c'est ce qui fait d'un rattrapage un autre
+parcours — jusque dans son code, qui passe alors obligatoirement en format
+long.
+
 ---
 
 ## 9. Le serveur PHP est optionnel
@@ -411,6 +441,37 @@ recevoir des événements, et en renvoyer.
 POST /sync  { deviceId, cursor, events[] }
          →  { accepted[], events[], cursor, assignments[] }
 ```
+
+### L'espace professeur ne passe plus par une autre porte
+
+Rémy : « j'aimerai ne pas passer par admin et dans atout math sans passer par
+la zone admin ». Il ne le pouvait pas : les pages `api/admin/` s'ouvrent avec
+un cookie de session PHP que le jeton de l'application n'obtient pas, et
+surtout **tous** les gestes qui écrivent n'existaient que là-bas.
+
+Les routes JSON couvrent maintenant la conduite d'une classe, toutes derrière
+`requireTeacher()` :
+
+```
+POST /teacher/class    rename | lock | notice | empty | delete
+POST /teacher/roster   list | apercu | importer | code | codes | retirer | bloquer
+POST /teacher/live     qui travaille, sur quoi, avec quelle réussite
+POST /teacher/message  un mot à la classe ou à un élève, avec les accusés
+POST /teacher/signup   créer un second professeur (par un professeur en place)
+```
+
+**Une seule mise en œuvre, deux écrans.** Tout ce qui décide et tout ce qui
+écrit vit dans `api/lib/eleves.php` — le sort d'une ligne de liste, l'aperçu,
+l'import, les codes, le retrait, le direct — et les pages d'administration s'en
+servent désormais elles aussi. Elles ne font plus que présenter. Écrire deux
+fois cette logique, c'est se garantir qu'elles divergeront, et le jour venu on
+ne saura pas laquelle des deux a abîmé des données d'élèves.
+
+**Les cloisons entre professeurs sont vérifiées, route par route** (section
+« Deux professeurs sur le même serveur » de `tools/testApi.php`). Cinq étaient
+percées et sont fermées : `/teacher/assign` ne vérifiait ni la classe ni
+l'élève visés, `/teacher/paths` laissait écraser le parcours d'un collègue par
+son seul identifiant, `/teacher/student` rendait 500 au lieu de 404.
 
 Identification des élèves : **code de classe + prénom**, sans mot de passe —
 c'est ce qui permet de passer de l'école à la maison sans procédure. Le
@@ -439,6 +500,28 @@ Ce qui est couvert, et pourquoi c'est précisément ça :
 
 Le test des générateurs a immédiatement trouvé un vrai défaut (propositions en
 double, et un distracteur parfois égal à la bonne réponse).
+
+### Trois couches, et l'essai qui les fait se parler
+
+`npm test` vérifie la page, `php tools/testApi.php` vérifie l'API et la base.
+Chacune de son côté — et personne ne vérifiait qu'elles se PARLENT.
+
+```
+node tools/boutEnBout.mjs      # monte le site lui-même, puis le traverse
+```
+
+Un serveur PHP, une base SQLite neuve, un vrai navigateur, deux contextes
+séparés — le poste du professeur et celui de l'élève. Le professeur
+s'identifie, crée sa classe, colle sa liste, obtient les billets, donne un
+parcours ; l'élève entre avec son identifiant et son code, fait le travail, se
+synchronise ; le professeur regarde son bilan et son direct. On compte aussi
+les fenêtres natives du navigateur : il doit y en avoir zéro.
+
+Il a servi dès le premier jour. Il a trouvé que la pastille « en ligne » ne
+s'allumait jamais : `last_seen_at` est une chaîne de date que l'API rendait
+telle quelle, et la caster en entier donnait l'année. Le direct montrait
+l'élève sur son exercice avec 2 sur 2, et le disait absent — un défaut
+qu'aucun essai d'une seule couche ne pouvait voir.
 
 ### Ce qu'un test sous Node ne peut pas voir
 

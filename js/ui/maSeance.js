@@ -121,7 +121,21 @@ function parcoursCharge() {
  */
 export function ouvrirSeance(seance, { autoStart = true } = {}) {
     if (!seance || !seance.path) return false;
-    const path = seance.path;
+
+    // LE PARCOURS PREND L'IDENTITÉ DE SA SÉANCE, ET C'EST INDISPENSABLE.
+    //
+    // La copie du parcours rangée dans la séance porte encore l'identifiant
+    // d'ATELIER du professeur ; la séance, elle, porte l'identité de CONTENU —
+    // celle que l'élève au code recalcule. Le meneur, lui, tamponne
+    // `this.path.id` sur TOUT ce qu'il écrit au journal : `run_started`,
+    // `step_completed`, `run_finished`.
+    //
+    // Sans cette ligne, l'élève rattaché travaillait donc sous un nom que son
+    // assignation ne portait pas : sa progression ne se rattachait à rien au
+    // rechargement suivant, et le bilan de la séance ne retenait aucun de ses
+    // travaux. Mesuré : « runs retenus (rattachement) : [] » alors que le même
+    // travail fait par le code dicté était bien compté.
+    const path = { ...seance.path, id: seance.pathId || seance.path.id };
     const { steps, missing } = hydratePath(path);
     if (!steps.length) {
         showToast('Ce travail n\'est plus disponible sur cet appareil.', 'error');

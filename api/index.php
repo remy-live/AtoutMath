@@ -607,7 +607,8 @@ function handleTeacherReport(): void
         $rows[] = [
             'studentId' => $s['id'],
             'firstName' => $s['first_name'],
-            'lastSeenAt' => $s['last_seen_at'],
+            // En secondes, comme partout ailleurs dans l'API : voir `instantDe`.
+            'lastSeenAt' => instantDe($s['last_seen_at']),
             'totalQuestions' => count($attempts),
             'successRate' => count($attempts)
                 ? round(count(array_filter($attempts, fn($a) => !empty($a['correct']))) / count($attempts), 3)
@@ -866,7 +867,7 @@ function rosterLisible(string $classeId): array
         'prenom' => $e['first_name'],
         'login' => $e['login'],
         'code' => $e['code'],
-        'vu' => $e['last_seen_at'] ? (int) $e['last_seen_at'] : null,
+        'vu' => instantDe($e['last_seen_at']),
         'ecarte' => !empty($e['blocked']),
         // Un élève entré par le code de la classe n'a pas de billet : c'est
         // exactement ceux-là que le professeur cherche quand il recolle sa
@@ -895,7 +896,7 @@ function handleTeacherLive(): void
         $rangs[] = [
             'id' => $e['id'],
             'prenom' => $e['first_name'],
-            'vu' => $e['last_seen_at'] ? (int) $e['last_seen_at'] : null,
+            'vu' => instantDe($e['last_seen_at']),
             'ecarte' => !empty($e['blocked']),
             'exo' => $a['exo'],
             'parcours' => $a['parcours'],
