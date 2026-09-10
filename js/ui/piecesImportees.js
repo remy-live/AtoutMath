@@ -1,6 +1,6 @@
 // LES PIÈCES D'ÉCHECS — fichier ENGENDRÉ, ne pas modifier à la main.
 //
-// Écrit par « node outils/importerPlanche.mjs icons/pieces/Chess_Pieces_Sprite.svg ».
+// Écrit par « node outils/importerPlanche.mjs icones/pieces/Chess_Pieces_Sprite.svg ».
 //
 // Pièces : Cburnett, Wikimedia Commons, CC BY-SA 3.0
 //

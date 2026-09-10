@@ -285,7 +285,7 @@ export function notationSvg({ objet = 'segment', p = 'A', q = 'B' } = {}) {
  * LES SEPT HIÉROGLYPHES, DESSINÉS PAR RÉMY.
  *
  * Ils ne sont pas redessinés à la main dans le code : ce sont ses tracés,
- * exportés depuis son dessin (`icons/hieroglyphes-source.svg`) et simplement
+ * exportés depuis son dessin (`icones/hieroglyphes-source.svg`) et simplement
  * remis à l'échelle d'une case de 24 × 32. UNE SEULE échelle pour les sept,
  * pas une par glyphe : il les a dessinés à la bonne taille les uns par rapport
  * aux autres, et un bâton normalisé à la hauteur d'un têtard n'est plus un

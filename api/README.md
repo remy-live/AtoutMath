@@ -243,6 +243,40 @@ Ce qui n'est pas transféré est listé dans `.deployignore` : tests, outils de
 mesure, notes, dépendances de développement. Le serveur ne reçoit que ce qu'un
 navigateur télécharge.
 
+### Si l'hébergeur déploie depuis git
+
+Rémy : « j'ai connecté mon ovh avec git. Qu'est-ce que cela va changer ? »
+
+Cela change **ce qui arrive dans `www/`**. Le transfert SFTP filtre par
+`.deployignore` et monte 543 fichiers. Un déploiement git ne connaît pas ce
+fichier : il pose **le dépôt**, soit 794 fichiers — et, selon la façon dont
+l'hébergeur s'y prend, `.git/` avec.
+
+Trois conséquences, et la première est sérieuse :
+
+1. **`.git/` téléchargeable = tout le code source, et tous ses états passés.**
+   Sur un dépôt privé, c'est la fuite intégrale. Des robots demandent
+   `/.git/config` en permanence, précisément pour trouver ça.
+2. Les tests, les outils, les notes et les imports se retrouvent en ligne :
+   du poids, et de la surface exposée.
+3. **`api/config.php` et `api/data/` ne sont pas dans le dépôt.** Un
+   déploiement qui « fait le ménage » (`git clean`, ou une réécriture complète
+   du dossier) les prendrait pour des intrus — on perdrait la clé de
+   chiffrement **et** la base.
+
+Le **`.htaccess` de la racine** ferme les deux premiers points, quelle que soit
+la façon de publier. Le troisième ne se ferme pas par un fichier : il faut
+vérifier, avant le premier déploiement, que l'hébergeur n'efface pas ce qu'il
+ne connaît pas — et **sauvegarder `api/config.php` et `api/data/` d'abord**.
+
+> **Une surprise mesurée au passage.** La configuration par défaut d'Apache sur
+> Debian et Ubuntu contient `Alias /icons/ "/usr/share/apache2/icons/"`. Tout
+> `/icons/…` est donc détourné vers les icônes du serveur, et **aucun
+> `.htaccess` ne peut le rattraper** — l'alias agit avant que le nôtre ne soit
+> lu. Nos icônes répondaient 404 : pas d'installation sur l'écran d'accueil,
+> pas de vignette. Le dossier s'appelle **`icones/`** depuis, et le contrôle en
+> ligne vérifie que l'icône se charge.
+
 ### Poser le site sans client FTP : `deposer.php`
 
 L'explorateur de fichiers d'un hébergeur sait très bien transférer *un* fichier ;

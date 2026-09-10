@@ -330,6 +330,51 @@ async function controler() {
         dire('ok', 'Reste-t-il une archive à la racine ?', 'non');
     }
 
+    // 5 quater — LE DÉPÔT LUI-MÊME EST-IL EN LIGNE ?
+    //
+    // Rémy : « j'ai connecté mon ovh avec git ». Un déploiement git pose le
+    // DÉPÔT, pas le site : 794 fichiers au lieu de 543, et selon la façon dont
+    // l'hébergeur s'y prend, `.git/` avec. L'historique complet devient alors
+    // téléchargeable — sur un dépôt privé, c'est la fuite intégrale du code.
+    // Des robots demandent `/.git/config` à longueur de journée, exactement
+    // pour trouver ça : c'est donc la première chose à vérifier.
+    const gitCfg = await voir('/.git/config');
+    const devFichier = await voir('/package.json');
+    const servi = (r) => r.code === 200 && r.corps.length > 0;
+    if (servi(gitCfg)) {
+        dire('x', 'Le dépôt git est-il exposé ?',
+             'OUI — /.git/config se télécharge, donc tout l\'historique du code',
+             "Le fichier <code>.htaccess</code> de la racine doit être en place. S'il y est "
+             + "et que cela ne change rien, l'hébergeur n'applique pas les .htaccess : "
+             + 'demandez <code>AllowOverride All</code>, ou déployez hors du dossier web.');
+    } else if (servi(devFichier)) {
+        dire('!', 'Le dépôt git est-il exposé ?',
+             "non, mais les fichiers de développement le sont (package.json se lit)",
+             'Le .htaccess de la racine est absent ou partiellement appliqué.');
+    } else {
+        dire('ok', 'Le dépôt git est-il exposé ?',
+             `non — .git répond ${gitCfg.code}, les fichiers de travail aussi`);
+    }
+
+    // 5 quinquies — LES ICÔNES DE L'APPLICATION SE CHARGENT-ELLES ?
+    //
+    // MESURÉ, ET CE FUT UNE SURPRISE : la configuration par défaut d'Apache sur
+    // Debian et Ubuntu contient `Alias /icons/ "/usr/share/apache2/icons/"`.
+    // Tout `/icons/…` est donc détourné vers les icônes d'Apache, et AUCUN
+    // `.htaccess` ne peut le rattraper — l'alias agit avant que le nôtre ne
+    // soit seulement lu. Nos icônes répondaient 404, donc pas d'installation
+    // sur l'écran d'accueil, pas de vignette. Le dossier s'appelle `icones/`
+    // depuis, et ce contrôle est là pour que la panne ne revienne pas en
+    // silence par un autre chemin.
+    const icone = await voir('/icones/icon-192.png', { methode: 'HEAD' });
+    if (icone.code === 200) {
+        dire('ok', "L'application s'installe-t-elle ?", 'oui — son icône se charge');
+    } else {
+        dire('!', "L'application s'installe-t-elle ?",
+             `l'icône répond ${icone.code || icone.erreur}`,
+             "Sans elle, pas de vignette sur l'écran d'accueil de la tablette.");
+    }
+
     // 6 — LA CONFIGURATION EST-ELLE LISIBLE ? Elle porte le secret de signature
     //     ET la clé de chiffrement de la base. C'est le fichier le plus grave.
     const cfg = await voir('/api/config.php');
