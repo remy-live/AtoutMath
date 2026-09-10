@@ -922,6 +922,64 @@ verifier('et il change bien de classe, sans doublon',
 verifier('son billet marche toujours après le déplacement',
     json('/login', ['login' => 'yanis.ferrand', 'code' => 'CLASSE6'])['code'] === 200);
 
+titre('12 quinquies. Le rapport ne dit aucun secret');
+
+// Rémy : « fais une page avec toutes les infos dont tu as besoin ».
+//
+// UN RAPPORT DE DIAGNOSTIC EST FAIT POUR ÊTRE ENVOYÉ — par courriel, dans une
+// conversation, peut-être à quelqu'un d'autre un jour. C'est précisément ce qui
+// le rend dangereux : la page la plus utile du logiciel est aussi celle qui,
+// mal écrite, publierait la clé de chiffrement en un clic.
+//
+// On ne relit donc pas le code pour s'en assurer : on OUVRE LA PAGE et l'on
+// cherche les secrets dedans. La configuration d'essai porte des valeurs
+// reconnaissables, et un élève au prénom improbable est en base.
+
+$p = page('/admin/rapport.php');
+verifier('la page de rapport s\'ouvre', str_contains($p['html'], 'RAPPORT ATOUTMATH'),
+    'code ' . $p['code']);
+
+$secret = (string) (config()['app_secret'] ?? '');
+$cle    = (string) (config()['data_key'] ?? '');
+verifier('LE SECRET DE SIGNATURE N\'Y EST PAS',
+    $secret !== '' && !str_contains($p['html'], $secret));
+verifier('LA CLÉ DE CHIFFREMENT N\'Y EST PAS',
+    $cle === '' || !str_contains($p['html'], $cle));
+verifier('mais leur LONGUEUR y est — c\'est ce qu\'on veut savoir',
+    (bool) preg_match('/app_secret\s*:\s*\d+ signes/', $p['html']));
+
+// Un prénom d'élève : le rapport compte, il ne nomme pas.
+$r = json('/join', ['classCode' => 'FICHI1', 'firstName' => 'Zéphyrin Kwiatkowski']);
+verifier('un élève au prénom reconnaissable est en base', ($r['json']['studentId'] ?? '') !== '');
+$p = page('/admin/rapport.php');
+verifier('AUCUN PRÉNOM D\'ÉLÈVE N\'Y EST',
+    !str_contains($p['html'], 'Zéphyrin') && !str_contains($p['html'], 'Kwiatkowski'));
+verifier('mais le NOMBRE d\'élèves y est',
+    (bool) preg_match('/élèves\s*:\s*\d+/u', $p['html']));
+
+// Le nom du fichier de base est tiré au hasard EXPRÈS : l'écrire dans un
+// rapport qu'on colle quelque part annulerait cette précaution.
+$fichier = basename((string) (config()['db_file'] ?? ''));
+verifier('LE NOM DU FICHIER DE BASE N\'Y EST PAS',
+    $fichier === '' || !str_contains($p['html'], $fichier), $fichier);
+
+// Et ce qu'on lui demande vraiment doit y être.
+foreach (['PHP', 'upload_max_filesize', 'pdo_sqlite', 'racine web', 'moteur de base'] as $attendu) {
+    verifier("le rapport dit « $attendu »", str_contains($p['html'], $attendu));
+}
+
+// La page est réservée au professeur : la liste des extensions et des chemins
+// d'un serveur est ce qu'un intrus regarde en premier.
+$avant = $BAC . '/cookies.txt';
+$garde = @file_get_contents($avant);
+@unlink($avant);
+$anonyme = page('/admin/rapport.php');
+verifier('SANS CONNEXION, ON N\'OBTIENT PAS LE RAPPORT',
+    !str_contains($anonyme['html'], 'RAPPORT ATOUTMATH'));
+if ($garde !== false) {
+    file_put_contents($avant, $garde);
+}
+
 titre('12 quater. La mise à jour répare une base déjà installée');
 
 // L'EMPREINTE DU PRÉNOM A CHANGÉ DE DÉFINITION — elle trie les mots, pour que

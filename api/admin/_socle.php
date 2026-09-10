@@ -193,6 +193,7 @@ button.petit { padding: 5px 10px; font-size: .85rem; }
   <nav>
     <a href="index.php" class="<?= $ici === 'classes' ? 'ici' : '' ?>">Mes classes</a>
     <a href="sante.php" class="<?= $ici === 'sante' ? 'ici' : '' ?>">Santé</a>
+    <a href="rapport.php" class="<?= $ici === 'rapport' ? 'ici' : '' ?>">Rapport</a>
   </nav>
   <span class="qui"><?= h($prof['display_name']) ?> ·
     <a href="index.php?deconnexion=1">se déconnecter</a></span>
