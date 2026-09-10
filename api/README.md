@@ -187,7 +187,8 @@ C'est `.github/workflows/deploiement.yml`, en deux temps :
 | `HEBERGEUR_HOTE` | l'adresse SFTP donnée par l'hébergeur |
 | `HEBERGEUR_UTILISATEUR` | l'identifiant SFTP |
 | `HEBERGEUR_MOTDEPASSE` | son mot de passe |
-| `HEBERGEUR_DOSSIER` *(variable)* | le chemin sur le serveur, `/` par défaut |
+| `HEBERGEUR_DOSSIER` *(variable)* | le chemin sur le serveur, `/` par défaut — chez OVH : `/www` |
+| `SITE_ADRESSE` *(variable)* | l'adresse publique du site, pour le contrôle automatique |
 
 Tant que `HEBERGEUR_HOTE` n'existe pas, la publication s'arrête d'elle-même
 avec un message : un dépôt sans hébergement configuré n'affiche pas d'échec
@@ -213,9 +214,54 @@ Ce qui n'est pas transféré est listé dans `.deployignore` : tests, outils de
 mesure, notes, dépendances de développement. Le serveur ne reçoit que ce qu'un
 navigateur télécharge.
 
-**Après une publication, un seul geste** : ouvrir `api/admin/sante.php`. Elle
-signalera notamment que `install.php` est revenu — c'est normal, il sert aux
-nouvelles installations — et un bouton l'efface.
+### Le contrôle après publication, fait tout seul
+
+Il n'y a plus de geste à faire après une publication : `tools/controleEnLigne.mjs`
+va voir le site **de dehors** et échoue bruyamment si quelque chose cloche.
+
+```
+node tools/controleEnLigne.mjs https://mon-site.fr
+```
+
+Il vérifie dix choses : le site répond et c'est bien AtoutMath ; la version
+servie est celle qu'on vient de publier ; HTTPS ; l'API vit (donc PHP s'exécute,
+la réécriture d'URL marche et la base est configurée) ; l'administration
+s'affiche ; `config.php`, `api/lib/`, `_socle.php` sont refusés ; le dossier des
+données est verrouillé ; le mode hors ligne est en place.
+
+> **La vérification qui compte** demande un fichier de base **qui n'existe pas**
+> sous `api/data/`. Si l'hébergeur applique nos `.htaccess`, il répond `403`
+> avant même de chercher le fichier ; s'il ne les applique pas, il cherche, ne
+> trouve pas, et répond `404`. Ce `404` ressemble à une bonne nouvelle et n'en
+> est pas une : il prouve que la serrure ne fonctionne pas, et donc que la vraie
+> base — dont le nom est tiré au hasard, mais qui existe — serait servie à qui
+> demanderait son nom. C'est le seul moyen d'essayer la serrure sans publier la
+> clé. Mesuré dans les deux sens : voir l'en-tête du fichier.
+
+**Pourquoi de dehors plutôt que par `sante.php`.** La page de santé tourne *sur*
+l'hébergement et lui demande d'aller chercher ses propres fichiers — ce que
+beaucoup d'hébergements interdisent. Elle répond alors « je n'ai pas pu
+vérifier », honnêtement, mais sans rien prouver. Depuis GitHub, on est vraiment
+le visiteur inconnu, celui contre qui on se protège.
+
+`sante.php` reste utile pour ce qu'elle seule voit de l'intérieur — notamment
+que `install.php` est revenu avec le transfert, ce qui est normal, et qu'un
+bouton efface.
+
+### La ronde du matin
+
+Du lundi au vendredi, avant la première heure de cours, le même contrôle tourne
+tout seul et n'envoie un courriel que s'il trouve quelque chose.
+
+Ce n'est pas une redondance : ce qu'il guette ne vient pas d'une poussée. Un
+certificat qui expire, une version de PHP retirée par l'hébergeur, une mise à
+jour du serveur qui n'applique plus les `.htaccess` — aucun de ces accidents ne
+serait vu par un contrôle déclenché par une publication. On l'apprendrait devant
+la classe.
+
+> GitHub n'exécute les tâches programmées que sur la **branche par défaut** du
+> dépôt. Le fichier `deploiement.yml` doit donc y vivre pour que la ronde ait
+> lieu.
 
 ## Points d'entrée de l'API
 

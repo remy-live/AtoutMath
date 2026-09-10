@@ -42,6 +42,21 @@ on:
   pull_request:
   # Et à la demande, depuis l'onglet Actions — pour republier sans rien changer.
   workflow_dispatch:
+  # LA RONDE DU MATIN. Du lundi au vendredi à 6 h 10 (heure française d'été),
+  # avant la première heure de cours, on va voir si le site est debout. Rien
+  # n'est publié : on regarde, et l'on ne dit rien s'il n'y a rien à dire.
+  #
+  # POURQUOI SURVEILLER UN SITE QUI NE CHANGE PAS. Parce que c'est L'HÉBERGEMENT
+  # qui change tout seul : un certificat qui expire, une version de PHP retirée,
+  # une mise à jour du serveur qui n'applique plus les .htaccess. Aucun de ces
+  # accidents ne vient d'une poussée, donc aucun ne serait vu par les contrôles
+  # qui suivent une poussée. On l'apprendrait devant la classe.
+  #
+  # GitHub n'exécute les tâches programmées QUE sur la branche par défaut du
+  # dépôt (`refonte-architecture`) : c'est là que ce fichier doit vivre pour que
+  # la ronde ait lieu.
+  schedule:
+    - cron: '10 4 * * 1-5'
 
 concurrency:
   # UNE SEULE PUBLICATION À LA FOIS. Deux transferts simultanés vers le même
@@ -55,6 +70,9 @@ jobs:
   # ------------------------------------------------------------------ Tests --
   tests:
     name: Tests
+    # La ronde du matin ne teste rien : le code n'a pas bougé depuis la veille.
+    # Elle ne fait que regarder le site en ligne.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -131,10 +149,59 @@ jobs:
           delete_remote_files: false
           exclude_file: .deployignore
 
-      # APRÈS LA PUBLICATION, IL RESTE UN GESTE, ET UN SEUL : ouvrir
-      # `api/admin/sante.php`. Cette page-là vérifie SUR L'HÉBERGEMENT que le
-      # fichier de base n'est pas téléchargeable — ce qu'aucun test d'ici ne
-      # peut prouver, puisqu'il ne tourne pas là-bas.
-      - name: Rappeler le contrôle de santé
-        if: steps.config.outputs.pret == 'oui'
-        run: echo "::notice::Site publié. Ouvrez api/admin/sante.php pour vérifier l'installation sur l'hébergement."
+  # ------------------------------------------------------------- Vérification --
+  #
+  # Rémy : « et on peut automatiser cela ? »
+  #
+  # « Cela », c'était le dernier geste manuel : ouvrir `api/admin/sante.php`
+  # après chaque publication et regarder si tout est vert. Ce travail-là est
+  # désormais fait par `tools/controleEnLigne.mjs`, et il est fait DE DEHORS.
+  #
+  # C'est même mieux que la page de santé, et pour une raison de fond :
+  # `sante.php` demande au serveur d'aller chercher ses propres fichiers, ce que
+  # beaucoup d'hébergements interdisent — la page répond alors « je n'ai pas pu
+  # vérifier », honnêtement, mais sans rien prouver. Ici, GitHub est vraiment le
+  # visiteur inconnu, celui contre qui on se protège.
+  #
+  # SI CE CONTRÔLE ÉCHOUE, GitHub envoie un courriel. C'est tout ce qu'on
+  # demande à une surveillance : se taire quand tout va bien, et prévenir une
+  # fois quand ça ne va plus.
+  verifier:
+    name: Vérifier le site en ligne
+    needs: publier
+    # `always()` est indispensable : sans lui, cette tâche serait sautée en même
+    # temps que `publier` — or la ronde du matin ne publie rien et doit
+    # justement s'exécuter seule.
+    if: >-
+      always()
+      && github.event_name != 'pull_request'
+      && (needs.publier.result == 'success' || github.event_name == 'schedule')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Contrôler
+        env:
+          SITE: ${{ vars.SITE_ADRESSE }}
+        run: |
+          if [ -z "$SITE" ]; then
+            echo "::notice::Variable SITE_ADRESSE absente — pas de contrôle en ligne."
+            echo "Renseignez-la dans Settings → Secrets and variables → Actions → Variables,"
+            echo "par exemple : https://atoutmath.fr"
+            exit 0
+          fi
+          # LE SITE VIENT D'ÊTRE TRANSFERTÉ : on laisse à l'hébergement le temps
+          # d'écrire les derniers fichiers avant de lui demander des comptes.
+          # Mesuré une fois, arbitraire ensuite — mais un faux rouge le matin
+          # coûte plus cher que dix secondes d'attente.
+          [ "${{ github.event_name }}" = "schedule" ] || sleep 10
+          # `--version` : le numéro de cache que ce dépôt vient de publier. Le
+          # contrôle vérifie que c'est bien CELUI-LÀ qui est servi, et non la
+          # version d'avant restée en place parce que le transfert a échoué en
+          # silence.
+          node tools/controleEnLigne.mjs "$SITE" \
+            --version="$(grep -om1 '?v=[0-9]\+' index.html | tr -dc '0-9')"
