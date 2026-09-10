@@ -40,7 +40,8 @@ import {
     mesClasses, creerClasse, listeDeClasse, apercuDeListe, importerListe,
     nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, leDirect,
     renommerClasse, mettreEnPause, poserConsigne, viderClasse, supprimerClasse,
-    envoyerUnMot, creerUnProfesseur, estEnLigne, depuis
+    envoyerUnMot, creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
+    lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis
 } from '../core/espaceProf.js';
 import { adresseAdmin } from './classesServeur.js';
 import { getExerciseById } from '../data/catalog.js';
@@ -82,7 +83,8 @@ function arreterLeBattement() {
 
 export async function ouvrirEspaceClasses() {
     vue = { ou: 'classes', classes: null, erreur: '', classe: null, onglet: 'direct',
-            liste: null, direct: null, apercu: null, occupe: false };
+            liste: null, direct: null, apercu: null, profs: null, reglages: null,
+            occupe: false };
 
     // PAS DE BANDEAU DE FENÊTRE : l'écran porte son propre en-tête, qui dit à
     // la fois où l'on est et par où l'on revient. Deux barres empilées, c'était
@@ -131,8 +133,57 @@ export async function ouvrirEspaceClasses() {
 // --- Le dessin --------------------------------------------------------------
 
 function ecranHtml() {
+    if (vue.ou === 'profs') return profsHtml();
     if (vue.ou === 'classe' && vue.classe) return classeHtml();
     return classesHtml();
+}
+
+/**
+ * LES PROFESSEURS DU SERVEUR.
+ *
+ * Rémy : « que je puisse créer un professeur ».
+ *
+ * ON MONTRE LA LISTE, ET PAS SEULEMENT LE BOUTON QUI AJOUTE. Une porte qui
+ * s'ouvre doit pouvoir se refermer : créer un collègue était possible et le
+ * défaire ne l'était pas — la seule issue passait par la ligne de commande,
+ * qu'un hébergement mutualisé n'offre pas. Une adresse mal tapée restait donc
+ * là pour toujours, avec le droit d'en créer d'autres.
+ */
+function profsHtml() {
+    const liste = vue.profs;
+    const jeSuisLeFondateur = !!vue.fondateur;
+    let corps;
+    if (!liste) {
+        corps = '<div class="ec-vide">On regarde…</div>';
+    } else {
+        corps = `<table class="ec-table">
+            <thead><tr><th>Professeur</th><th>Adresse</th><th>Classes</th><th></th></tr></thead>
+            <tbody>${liste.map(t => `
+            <tr>
+                <td><b>${esc(t.nom)}</b>${t.moi ? ' <span class="ec-note">(vous)</span>' : ''}</td>
+                <td><code>${esc(t.email)}</code></td>
+                <td class="ec-note">${t.classes || 0}</td>
+                <td class="ec-actions">${(t.moi || !jeSuisLeFondateur) ? ''
+                    : `<button type="button" class="ec-mini ec-mini--rouge"
+                               data-retirer-prof="${esc(t.id)}" data-nom="${esc(t.nom)}"
+                               data-classes="${t.classes || 0}">retirer</button>`}</td>
+            </tr>`).join('')}</tbody>
+        </table>`;
+    }
+    return enTeteHtml('Les professeurs', 'Ceux qui peuvent ouvrir ce serveur', true) + messageHtml()
+        + `<div class="ec-corps">
+            ${jeSuisLeFondateur ? `<div class="ec-outils">
+                <button type="button" class="ec-bouton" data-nouveau-prof>+ Ajouter un professeur</button>
+            </div>` : ''}
+            ${corps}
+            <p class="ec-note ec-note--bloc">Chacun ne voit que SES classes : il ne peut ni lire
+               ni modifier les vôtres.
+               ${jeSuisLeFondateur
+                    ? 'Retirer quelqu\'un vous laisse le choix — reprendre ses classes, ou les '
+                      + 'effacer avec leurs élèves.'
+                    : 'Ajouter ou retirer un compte revient au professeur qui a installé le '
+                      + 'site : ces gestes-là touchent au serveur entier, pas à une classe.'}</p>
+        </div>`;
 }
 
 /** L'en-tête, commun aux deux écrans : qui l'on est, et par où l'on revient. */
@@ -222,7 +273,7 @@ function carteClasseHtml(c) {
 function piedHtml() {
     return `
     <footer class="ec-pied">
-        <button type="button" class="ec-lien" data-nouveau-prof>+ Ajouter un professeur</button>
+        <button type="button" class="ec-lien" data-profs>Les professeurs</button>
         <span class="ec-pied-sep">·</span>
         <!-- LES PAGES D'ADMINISTRATION EXISTENT TOUJOURS, et c'est voulu :
              elles marchent sans JavaScript, sur le poste de l'établissement,
@@ -468,6 +519,27 @@ function seanceHtml() {
         </section>
 
         <section class="ec-bloc">
+            <h3 class="ec-h3">Débloquer un exercice</h3>
+            <p class="ec-note ec-note--bloc">Pour un élève coincé : autoriser le saut fait
+               apparaître un bouton « passer » — l'étape ne compte alors ni pour ni contre lui.
+               Le retirer l'enlève du parcours de tout le monde.</p>
+            <div class="ec-champ-ligne">
+                <input type="text" id="ec-exo" class="ec-champ" maxlength="80"
+                       placeholder="calc-add" list="ec-exos"
+                       data-valide-sur-entree="data-saut">
+                <datalist id="ec-exos">
+                    ${((vue.direct && vue.direct.eleves) || [])
+                        .map(e => e.exo).filter(Boolean)
+                        .filter((x, i, t) => t.indexOf(x) === i)
+                        .map(x => `<option value="${esc(x)}">${esc(nomDExercice(x))}</option>`).join('')}
+                </datalist>
+                <button type="button" class="ec-bouton" data-saut>Autoriser le saut</button>
+                <button type="button" class="ec-bouton ec-bouton--doux" data-retire>Le retirer</button>
+            </div>
+            ${reglagesHtml()}
+        </section>
+
+        <section class="ec-bloc">
             <h3 class="ec-h3">La classe elle-même</h3>
             <div class="ec-outils">
                 <button type="button" class="ec-bouton ec-bouton--doux" data-renommer>Renommer</button>
@@ -477,6 +549,20 @@ function seanceHtml() {
             <p class="ec-note ec-note--bloc">Vider et supprimer emportent le travail des élèves,
                et c'est sans retour : on vous demandera d'écrire <b>EFFACER</b>.</p>
         </section>
+    </div>`;
+}
+
+/** Les réglages d'exercice en vigueur, avec de quoi les défaire. */
+function reglagesHtml() {
+    const r = vue.reglages;
+    if (!r || !r.length) return '';
+    return `<div class="ec-puces ec-puces--reglages">
+        ${r.map(x => `<span class="ec-puce">
+            ${x.mode === 'retire' ? '⊘' : '↷'} ${esc(nomDExercice(x.exerciseId))}
+            ${x.pour ? '· ' + esc(x.pour) : '· toute la classe'}
+            <button type="button" class="ec-mini" data-annuler-reglage="${esc(x.id)}"
+                    title="Annuler ce réglage">×</button>
+        </span>`).join('')}
     </div>`;
 }
 
@@ -506,7 +592,9 @@ async function brancher(e, redessiner) {
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
         + '[data-imprimer], [data-consigne], [data-consigne-off], [data-mot-classe],'
         + '[data-mot-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
-        + '[data-nouveau-prof]');
+        + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
+        + '[data-profs],'
+        + '[data-annuler-reglage]');
     if (!el) return;
     const d = el.dataset;
 
@@ -524,6 +612,16 @@ async function brancher(e, redessiner) {
         redessiner();
         return r;
     };
+
+    if (d.profs !== undefined) {
+        vue.ou = 'profs'; vue.profs = null; vue.erreur = '';
+        redessiner();
+        const l = await lesProfesseurs();
+        if (l.erreur) vue.erreur = l.erreur;
+        else { vue.profs = l.professeurs; vue.fondateur = !!l.vousEtesLeFondateur; }
+        redessiner();
+        return;
+    }
 
     if (d.retour !== undefined) {
         arreterLeBattement();
@@ -575,6 +673,33 @@ async function brancher(e, redessiner) {
     }
 
     if (d.nouveauProf !== undefined) return nouveauProfesseur(redessiner);
+
+    if (d.retirerProf) {
+        const n = Number(d.classes) || 0;
+        // ON DEMANDE CE QU'ON FAIT DE SES CLASSES AVANT DE RIEN TOUCHER. Un
+        // collègue qui part laisse des élèves et une année de travail : les
+        // effacer par défaut serait une catastrophe silencieuse.
+        let quoi = 'reprendre', mot = '';
+        if (n) {
+            const rep = await demander(`${d.nom} a ${n} classe(s). Qu'en fait-on ?`, {
+                valeur: 'REPRENDRE', bouton: 'Continuer',
+                aide: 'Écrivez REPRENDRE pour les reprendre à votre nom, avec les élèves et '
+                    + 'leur travail — ou EFFACER pour tout supprimer, ce qui est sans retour.'
+            });
+            const v = (rep || '').trim().toUpperCase();
+            if (v !== 'REPRENDRE' && v !== 'EFFACER') return;
+            if (v === 'EFFACER') { quoi = 'effacer'; mot = 'EFFACER'; }
+        } else if (!await demander(`Retirer ${d.nom} ?`, {
+            valeur: 'RETIRER', bouton: 'Retirer',
+            aide: 'Il ne pourra plus se connecter. Écrivez RETIRER pour confirmer.'
+        }).then(x => (x || '').trim().toUpperCase() === 'RETIRER')) return;
+
+        await fait(retirerUnProfesseur(d.retirerProf, quoi, mot), () => { vue.profs = null; });
+        const l = await lesProfesseurs();
+        if (!l.erreur) { vue.profs = l.professeurs; vue.fondateur = !!l.vousEtesLeFondateur; }
+        redessiner();
+        return;
+    }
 
     // --- Les gestes qui demandent une classe ouverte ---
     const cid = vue.classe && vue.classe.id;
@@ -660,6 +785,24 @@ async function brancher(e, redessiner) {
     }
 
     if (d.imprimer !== undefined) return imprimerLesBillets();
+
+    if (d.saut !== undefined || d.retire !== undefined) {
+        const champ = document.getElementById('ec-exo');
+        const exo = champ ? champ.value.trim() : '';
+        if (!exo) { showToast('Écrivez l\'identifiant de l\'exercice.', 'info'); return; }
+        await fait(reglerUnExercice(cid, exo, d.retire !== undefined ? 'retire' : 'saut'), (r) => {
+            vue.reglages = r.reglages || vue.reglages;
+            if (champ) champ.value = '';
+        });
+        return;
+    }
+
+    if (d.annulerReglage) {
+        await fait(annulerUnReglage(cid, d.annulerReglage), (r) => {
+            vue.reglages = r.reglages || [];
+        });
+        return;
+    }
 
     if (d.consigne !== undefined) {
         const champ = document.getElementById('ec-consigne');
@@ -748,9 +891,10 @@ async function brancher(e, redessiner) {
 async function rafraichirClasse(redessiner) {
     const cid = vue.classe && vue.classe.id;
     if (!cid) return;
-    const [l, d] = await Promise.all([listeDeClasse(cid), leDirect(cid)]);
+    const [l, d, r] = await Promise.all([listeDeClasse(cid), leDirect(cid), lesReglages(cid)]);
     if (l.erreur) vue.erreur = l.erreur; else { vue.liste = l; vue.erreur = ''; }
     if (!d.erreur) vue.direct = d;
+    if (!r.erreur) vue.reglages = r.reglages || [];
     redessiner();
 }
 
@@ -869,5 +1013,7 @@ async function nouveauProfesseur(redessiner) {
             + 'ni modifier les vôtres. Donnez-lui cette adresse et le mot de passe que '
             + 'vous venez de choisir.'
     });
+    const l = await lesProfesseurs();
+    if (!l.erreur) { vue.profs = l.professeurs; vue.fondateur = !!l.vousEtesLeFondateur; }
     if (redessiner) redessiner();
 }

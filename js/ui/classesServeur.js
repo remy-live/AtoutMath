@@ -127,6 +127,21 @@ export function bandeauServeurHtml(liste) {
         </div>`;
     }
 
+    // LES DEUX LIENS QUI MENAIENT D'ICI VERS L'ADMINISTRATION ONT DISPARU, et
+    // c'est une bonne nouvelle : conduire la séance et tenir la liste se font
+    // maintenant DANS l'application (voir ui/espaceClasses.js), sans redemander
+    // le mot de passe. Y laisser des liens vers des pages qui réclament une
+    // autre connexion, ce serait renvoyer Rémy exactement là d'où on vient de
+    // le sortir.
+    //
+    // L'adresse ne sert donc plus qu'au lien du bas : la santé du site et les
+    // sauvegardes n'ont pas d'équivalent dans l'application, et n'en auront
+    // pas — ces pages-là doivent marcher sans JavaScript, le jour où justement
+    // plus rien ne marche.
+    //
+    // (Et l'on écrit ceci HORS du gabarit : un accent grave dans un commentaire
+    // HTML posé dans un littéral de gabarit le referme. C'est arrivé en
+    // écrivant ces lignes-ci.)
     const admin = esc(adresseAdmin());
     const cartes = liste.map(c => `
         <div class="cls-carte">
@@ -139,12 +154,6 @@ export function bandeauServeurHtml(liste) {
                 <code>${esc(c.join_code)}</code>
             </div>
             ${Number(c.locked) ? '<div class="cls-verrou">⏸ classe en pause</div>' : ''}
-            <div class="cls-liens">
-                <a class="cls-lien" target="_blank" rel="noopener"
-                   href="${admin}classe.php?id=${encodeURIComponent(c.id)}">Conduire la séance</a>
-                <a class="cls-lien cls-lien--doux" target="_blank" rel="noopener"
-                   href="${admin}eleves.php?id=${encodeURIComponent(c.id)}">Liste &amp; billets</a>
-            </div>
         </div>`).join('');
 
     return `<div class="cls-serveur">

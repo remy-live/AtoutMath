@@ -457,8 +457,23 @@ POST /teacher/class    rename | lock | notice | empty | delete
 POST /teacher/roster   list | apercu | importer | code | codes | retirer | bloquer
 POST /teacher/live     qui travaille, sur quoi, avec quelle réussite
 POST /teacher/message  un mot à la classe ou à un élève, avec les accusés
-POST /teacher/signup   créer un second professeur (par un professeur en place)
+POST /teacher/signup   list | create | remove — les comptes de professeurs
+POST /teacher/override saut autorisé, exercice retiré, annulation
 ```
+
+**Le modèle d'équipe tient en une phrase** : tous les professeurs sont égaux
+**devant leurs classes** — chacun ne voit que les siennes, personne ne touche à
+celles d'un autre —, et **un seul est responsable de l'installation**. Deux
+gestes ne concernent pas une classe mais le serveur entier : créer ou retirer
+un compte, et ouvrir le guichet des mises à jour (qui écrit des fichiers PHP,
+donc donne le site). Ils reviennent au **fondateur**, qui se *déduit* — le
+compte le plus ancien, celui qu'`install.php` a créé — plutôt que de s'écrire
+dans une colonne qui pourrait se désaccorder avec la réalité. Rien à migrer, et
+le fondateur ne peut pas se perdre : on refuse de retirer le dernier
+professeur, et lui seul retire quelqu'un.
+
+Retirer un collègue **ne détruit rien par défaut** : ses classes, ses élèves et
+leur travail passent au fondateur. Les effacer demande le mot écrit.
 
 **Une seule mise en œuvre, deux écrans.** Tout ce qui décide et tout ce qui
 écrit vit dans `api/lib/eleves.php` — le sort d'une ligne de liste, l'aperçu,

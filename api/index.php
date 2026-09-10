@@ -22,7 +22,8 @@ declare(strict_types=1);
  *   POST /teacher/roster       la liste : lire, aperçu, importer, codes, retirer
  *   POST /teacher/live         qui travaille en ce moment, et sur quoi
  *   POST /teacher/message      un mot à la classe ou à un élève
- *   POST /teacher/signup       créer un second professeur (par le premier)
+ *   POST /teacher/signup       lister, créer, retirer un professeur
+ *   POST /teacher/override     autoriser le saut d'un exercice, ou le retirer
  *
  * LES CINQ DERNIÈRES ONT ÉTÉ AJOUTÉES POUR L'APPLICATION. Rémy : « j'aimerai
  * ne pas passer par admin et dans atout math sans passer par la zone admin ».
@@ -68,6 +69,7 @@ switch ($route) {
     case '/teacher/live':    handleTeacherLive(); break;
     case '/teacher/message': handleTeacherMessage(); break;
     case '/teacher/signup':  handleTeacherSignup(); break;
+    case '/teacher/override': handleTeacherOverride(); break;
     case '/health':          respond(['ok' => true]); break;
     default:                 fail(404, 'not_found', 'Route inconnue : ' . $route);
 }
@@ -997,6 +999,121 @@ function handleTeacherSignup(): void
 {
     $parrain = requireTeacher();
     $body = jsonBody();
+    $action = (string) ($body['action'] ?? 'create');
+
+    // CRÉER ET RETIRER UN PROFESSEUR REGARDENT LE SERVEUR, PAS UNE CLASSE.
+    //
+    // C'était ouvert à tout professeur, donc sans fin : le collègue ajouté
+    // hier ajoutait le compte de demain, qui ajoutait le suivant. Ces deux
+    // gestes-là appartiennent à celui qui a installé le site — voir
+    // `professeurFondateur`, qui le déduit du compte le plus ancien plutôt que
+    // de l'écrire dans une colonne qui pourrait se désaccorder.
+    //
+    // LISTER RESTE OUVERT À TOUS, et c'est voulu : savoir qui d'autre travaille
+    // sur ce serveur n'est pas un pouvoir, c'est une politesse.
+    if (($action === 'create' || $action === 'remove') && !estLeFondateur($parrain)) {
+        fail(403, 'pas_le_fondateur',
+            "Seul le professeur qui a installé le site ajoute ou retire des comptes.");
+    }
+
+    // ── LISTER ────────────────────────────────────────────────────────────────
+    //
+    // On ne rend QUE ce qui s'affiche : le nom, l'adresse, la date d'arrivée et
+    // le nombre de classes. Jamais l'empreinte du mot de passe — elle ne sert à
+    // rien à l'écran, et ce qui ne sort pas ne fuit pas.
+    if ($action === 'list') {
+        $q = db()->query(
+            'SELECT t.id, t.display_name, t.email, t.created_at,
+                    (SELECT COUNT(*) FROM classes c WHERE c.teacher_id = t.id) AS classes
+             FROM teachers t ORDER BY t.created_at'
+        );
+        $fondateur = professeurFondateur();
+        respond([
+            // L'ÉCRAN DOIT SAVOIR CE QU'IL PEUT OFFRIR. Montrer « + Ajouter un
+            // professeur » à qui recevra un refus, c'est promettre pour rien.
+            'vousEtesLeFondateur' => $fondateur !== null && $fondateur === $parrain['id'],
+            'professeurs' => array_map(fn ($t) => [
+            'id' => $t['id'],
+            'nom' => $t['display_name'],
+            'email' => $t['email'],
+            'depuis' => instantDe($t['created_at']),
+            'classes' => (int) $t['classes'],
+            // « c'est vous » : l'écran doit pouvoir empêcher de se retirer
+            // soi-même AVANT de faire le voyage jusqu'au serveur.
+            'moi' => $t['id'] === $parrain['id'],
+            'fondateur' => $t['id'] === $fondateur,
+        ], $q->fetchAll())]);
+    }
+
+    // ── RETIRER ───────────────────────────────────────────────────────────────
+    //
+    // UNE PORTE QUI S'OUVRE DOIT POUVOIR SE REFERMER. Créer un collègue était
+    // possible et le défaire ne l'était pas : la seule issue passait par la
+    // ligne de commande, qu'un hébergement mutualisé n'offre pas. Un compte
+    // créé par erreur — une adresse mal tapée — restait donc là pour toujours,
+    // avec le droit d'en créer d'autres.
+    if ($action === 'remove') {
+        $id = (string) ($body['teacherId'] ?? '');
+        if ($id === $parrain['id']) {
+            fail(400, 'pas_soi_meme', 'On ne se retire pas soi-même : il faudrait '
+                . 'qu\'un collègue le fasse.');
+        }
+        $q = db()->prepare('SELECT * FROM teachers WHERE id = ?');
+        $q->execute([$id]);
+        $qui = $q->fetch() ?: null;
+        if (!$qui) fail(404, 'inconnu', "Ce professeur n'existe pas.");
+
+        // ON NE VIDE JAMAIS LE SERVEUR DE SES PROFESSEURS. Il resterait des
+        // classes et des élèves que plus personne ne pourrait ouvrir.
+        if ((int) db()->query('SELECT COUNT(*) AS n FROM teachers')->fetch()['n'] <= 1) {
+            fail(400, 'dernier', 'C\'est le dernier professeur du serveur.');
+        }
+
+        $s = db()->prepare('SELECT COUNT(*) AS n FROM classes WHERE teacher_id = ?');
+        $s->execute([$id]);
+        $combien = (int) ($s->fetch()['n'] ?? 0);
+
+        // SES CLASSES NE DISPARAISSENT PAS AVEC LUI, SAUF SI ON LE DIT.
+        //
+        // C'est le cas d'un collègue qui part : on reprend ses classes, avec
+        // les élèves et leur travail. Les effacer demande le mot écrit, comme
+        // partout ailleurs — trente élèves et une année de travail ne partent
+        // pas sur un clic.
+        $quoi = (string) ($body['classes'] ?? 'reprendre');
+        if ($combien && $quoi === 'effacer') {
+            if (trim((string) ($body['confirmation'] ?? '')) !== 'EFFACER') {
+                fail(400, 'confirmation', 'Écrivez EFFACER pour effacer ses '
+                    . $combien . ' classe(s) et leurs élèves.');
+            }
+            db()->prepare('DELETE FROM classes WHERE teacher_id = ?')->execute([$id]);
+        } elseif ($combien) {
+            db()->prepare('UPDATE classes SET teacher_id = ? WHERE teacher_id = ?')
+                ->execute([$parrain['id'], $id]);
+        }
+        // Ses parcours suivent ses classes : ils ne valent rien tout seuls, et
+        // les laisser derrière ferait grossir la base d'objets sans propriétaire.
+        db()->prepare('UPDATE paths SET teacher_id = ? WHERE teacher_id = ?')
+            ->execute([$parrain['id'], $id]);
+        db()->prepare('DELETE FROM teachers WHERE id = ?')->execute([$id]);
+
+        respond(['ok' => true, 'dit' => $qui['display_name'] . ' a été retiré'
+            . ($combien
+                ? ($quoi === 'effacer'
+                    ? ", avec ses $combien classe(s) et leurs élèves."
+                    : " ; vous reprenez ses $combien classe(s).")
+                : '.')]);
+    }
+
+    if ($action !== 'create') fail(400, 'bad_action', 'Action inconnue : ' . $action);
+
+    // UNE IDENTITÉ NE SE CRÉE PAS À LA CHAÎNE. C'est la seule route du serveur
+    // qui fabrique un compte, et c'était la seule sans limite de débit — /join,
+    // /login, /sync et /teacher/login en ont toutes une.
+    //
+    // ELLE NE PORTE QUE SUR LA CRÉATION. Lister n'est qu'une lecture, et
+    // retirer est déjà borné par le fondateur ; les compter ici aurait fermé la
+    // porte au professeur qui range ses comptes de fin d'année.
+    rateLimit('signup_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 10);
 
     $nom = trim((string) ($body['displayName'] ?? ''));
     $email = mb_strtolower(trim((string) ($body['email'] ?? '')));
@@ -1026,6 +1143,88 @@ function handleTeacherSignup(): void
     respond(['ok' => true, 'teacherId' => $id,
              'dit' => $nom . ' peut maintenant se connecter avec ' . $email . '.',
              'parrain' => $parrain['display_name']]);
+}
+
+/**
+ * AUTORISER LE SAUT D'UN EXERCICE, OU LE RETIRER DU PARCOURS.
+ *
+ * C'était le DERNIER geste de séance enfermé dans les pages d'administration :
+ * tout le reste — la pause, la consigne, les mots, la liste, les codes — avait
+ * sa route, celui-ci non. Un professeur qui voulait débloquer un élève coincé
+ * devait donc quitter l'application et retaper son mot de passe, pour un geste
+ * qui se fait en marchant dans les rangs.
+ *
+ * DEUX MODES, ET ILS NE DISENT PAS LA MÊME CHOSE :
+ *   · `saut`   — l'exercice reste, un bouton « passer » apparaît. L'élève qui
+ *                s'y casse les dents continue, et l'étape ne compte ni pour ni
+ *                contre lui : elle n'a aucune tentative, donc aucun poids ;
+ *   · `retire` — l'exercice sort du parcours. Personne ne le voit plus.
+ *
+ * L'un ou l'autre vise TOUTE LA CLASSE ou UN SEUL ÉLÈVE — c'est la
+ * différenciation, et c'est le cas courant : « toi, tu peux sauter celui-là ».
+ */
+function handleTeacherOverride(): void
+{
+    $teacher = requireTeacher();
+    $body = jsonBody();
+    $classe = classeDuProf($teacher, $body);
+    $action = (string) ($body['action'] ?? 'add');
+
+    if ($action === 'cancel') {
+        // On borne la suppression à NOS réglages : l'identifiant vient du
+        // navigateur, donc de quelqu'un.
+        $q = db()->prepare(
+            'DELETE FROM overrides WHERE id = ? AND (class_id = ? OR student_id IN
+             (SELECT id FROM students WHERE class_id = ?))'
+        );
+        $q->execute([(string) ($body['overrideId'] ?? ''), $classe['id'], $classe['id']]);
+        respond(['ok' => true, 'dit' => 'Réglage retiré : l\'exercice redevient obligatoire.',
+                 'reglages' => overridesDeLaClasse($classe['id'])]);
+    }
+
+    if ($action === 'list') {
+        respond(['reglages' => overridesDeLaClasse($classe['id'])]);
+    }
+
+    $exo = trim((string) ($body['exerciseId'] ?? ''));
+    if ($exo === '') fail(400, 'bad_exercise', 'Il faut désigner un exercice.');
+    $mode = ($body['mode'] ?? 'saut') === 'retire' ? 'retire' : 'saut';
+
+    $studentId = (string) ($body['studentId'] ?? '');
+    if ($studentId !== '') {
+        $q = db()->prepare('SELECT id FROM students WHERE id = ? AND class_id = ?');
+        $q->execute([$studentId, $classe['id']]);
+        if (!$q->fetch()) fail(404, 'student_not_found', 'Élève introuvable.');
+    }
+
+    db()->prepare('INSERT INTO overrides (id, class_id, student_id, exercise_id, mode)
+                   VALUES (?, ?, ?, ?, ?)')
+        ->execute([uuidv4(), $studentId ? null : $classe['id'], $studentId ?: null,
+                   mb_substr($exo, 0, 80), $mode]);
+
+    respond(['ok' => true, 'reglages' => overridesDeLaClasse($classe['id']),
+             'dit' => $mode === 'retire'
+                ? "L'exercice « $exo » est retiré du parcours."
+                : "Le saut de « $exo » est autorisé : un bouton « passer » apparaîtra."]);
+}
+
+/** Les réglages d'exercice en vigueur dans cette classe, du plus récent au plus ancien. */
+function overridesDeLaClasse(string $classeId): array
+{
+    $s = db()->prepare(
+        'SELECT o.*, st.first_name FROM overrides o
+         LEFT JOIN students st ON st.id = o.student_id
+         WHERE o.class_id = ? OR o.student_id IN (SELECT id FROM students WHERE class_id = ?)
+         ORDER BY o.created_at DESC'
+    );
+    $s->execute([$classeId, $classeId]);
+    return array_map(fn ($o) => [
+        'id' => $o['id'],
+        'exerciseId' => $o['exercise_id'],
+        'mode' => $o['mode'],
+        'pour' => $o['student_id'] ? dechiffrer($o['first_name']) : null,
+        'quand' => instantDe($o['created_at']),
+    ], $s->fetchAll());
 }
 
 function eventsOfStudent(string $studentId): array

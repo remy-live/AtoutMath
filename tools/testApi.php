@@ -1546,6 +1546,143 @@ verifier('et il se connecte avec son adresse, quelle qu\'en soit la casse', $jet
 verifier('le professeur créé commence avec zéro classe',
     json('/teacher/classes', ['action' => 'list'], $jetonAlice)['json']['classes'] === []);
 
+titre('12 undecies. Débloquer un exercice, et refermer la porte des professeurs');
+
+// DEUX PORTES QUI MANQUAIENT ENCORE, trouvées en cherchant à réfuter le travail
+// de la nuit — c'est-à-dire en cherchant ce qui restait ouvert.
+
+// ── LE DERNIER GESTE DE SÉANCE ENFERMÉ DANS LES PAGES PHP.
+//
+// La pause, la consigne, les mots, la liste, les codes avaient tous leur route.
+// Autoriser le saut d'un exercice — le geste qu'on fait en marchant dans les
+// rangs, pour l'élève coincé — obligeait encore à quitter l'application et à
+// retaper son mot de passe.
+
+$cl2 = json('/teacher/classes', ['action' => 'create', 'name' => 'Classe à débloquer'],
+    $jetonNotre)['json']['creee'] ?? [];
+$idDeb = $cl2['id'] ?? '';
+verifier('une classe pour l\'essai', $idDeb !== '');
+
+$r = json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'add', 'exerciseId' => 'calc-add', 'mode' => 'saut'],
+    $jetonNotre);
+verifier('le saut d\'un exercice s\'autorise depuis l\'application',
+    $r['code'] === 200 && count($r['json']['reglages'] ?? []) === 1, $r['json']['dit'] ?? '');
+
+$r = json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'add', 'exerciseId' => 'calc-sub', 'mode' => 'retire'],
+    $jetonNotre);
+verifier('un exercice se retire du parcours',
+    count($r['json']['reglages'] ?? []) === 2
+    && in_array('retire', array_column($r['json']['reglages'], 'mode'), true));
+
+$premier = ($r['json']['reglages'][0]['id'] ?? '');
+$r = json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'cancel', 'overrideId' => $premier], $jetonNotre);
+verifier('et un réglage s\'annule', count($r['json']['reglages'] ?? []) === 1);
+
+verifier('un réglage sans exercice est refusé',
+    json('/teacher/override', ['classId' => $idDeb, 'action' => 'add'], $jetonNotre)['code'] === 400);
+verifier('le collègue ne règle rien chez nous',
+    json('/teacher/override',
+        ['classId' => $idDeb, 'action' => 'add', 'exerciseId' => 'calc-add'],
+        $jetonAutre)['code'] === 404);
+
+// ── UNE PORTE QUI S'OUVRE DOIT POUVOIR SE REFERMER.
+//
+// Créer un collègue était possible ; le défaire ne l'était pas. La seule issue
+// passait par la ligne de commande, qu'un hébergement mutualisé n'offre pas :
+// un compte créé sur une adresse mal tapée restait là pour toujours, avec le
+// droit d'en créer d'autres.
+
+// ── LE MODÈLE : TOUS ÉGAUX DEVANT LEURS CLASSES, UN SEUL RESPONSABLE DU SERVEUR.
+//
+// Rémy demandait quel modèle proposer pour « un prof qui gère un établissement,
+// une équipe ». Créer et retirer un compte ne regardent pas une classe : ils
+// regardent l'installation entière. Laissés à tout le monde, ils n'étaient
+// bornés par rien — le collègue ajouté hier ajoutait le compte de demain.
+//
+// Le fondateur se DÉDUIT (le compte le plus ancien, celui qu'`install.php` a
+// créé), il ne s'écrit pas : rien à migrer, et rien qui puisse se désaccorder
+// avec la réalité.
+$r = json('/teacher/signup', ['action' => 'list'], $jetonNotre);
+$profs = $r['json']['professeurs'] ?? [];
+verifier('on peut voir qui peut ouvrir ce serveur', count($profs) >= 3,
+    implode(', ', array_column($profs, 'email')));
+verifier('et savoir lequel on est',
+    count(array_filter($profs, fn ($t) => !empty($t['moi']))) === 1);
+verifier('sans jamais montrer une empreinte de mot de passe',
+    !array_filter($profs, fn ($t) => isset($t['password_hash'])));
+
+verifier('on ne se retire pas soi-même',
+    json('/teacher/signup',
+        ['action' => 'remove', 'teacherId' => $profId], $jetonNotre)['code'] === 400);
+
+// Le collègue peut LIRE la liste — savoir qui travaille là n'est pas un pouvoir
+// —, mais il ne crée ni ne retire personne.
+verifier('un collègue voit qui d\'autre est sur le serveur',
+    json('/teacher/signup', ['action' => 'list'], $jetonAutre)['code'] === 200);
+verifier('mais il ne crée pas de professeur',
+    json('/teacher/signup', ['action' => 'create', 'displayName' => 'Intrus',
+        'email' => 'intrus@essai.test', 'password' => 'douzecaracteres'],
+        $jetonAutre)['code'] === 403);
+verifier('et il n\'en retire aucun',
+    json('/teacher/signup',
+        ['action' => 'remove', 'teacherId' => $profId], $jetonAutre)['code'] === 403);
+
+// Le professeur créé plus haut n'a aucune classe : il se retire simplement.
+$alice = array_values(array_filter($profs, fn ($t) => $t['email'] === 'alice@essai.test'))[0] ?? null;
+verifier('le professeur créé cette nuit est bien là', $alice !== null);
+if ($alice) {
+    $r = json('/teacher/signup',
+        ['action' => 'remove', 'teacherId' => $alice['id']], $jetonNotre);
+    verifier('et il se retire', $r['code'] === 200, $r['json']['dit'] ?? '');
+    verifier('il ne peut plus se connecter',
+        json('/teacher/login',
+            ['email' => 'alice@essai.test', 'password' => 'douzecaracteres'])['code'] === 401);
+}
+
+// Celui qui a des classes : on choisit ce qu'on en fait, et l'on ne les efface
+// pas par mégarde.
+json('/teacher/signup', ['action' => 'create', 'displayName' => 'Partant',
+    'email' => 'partant@essai.test', 'password' => 'douzecaracteres'], $jetonNotre);
+$jetonPartant = json('/teacher/login',
+    ['email' => 'partant@essai.test', 'password' => 'douzecaracteres'])['json']['token'] ?? '';
+$saClasse = json('/teacher/classes',
+    ['action' => 'create', 'name' => 'La classe du partant'], $jetonPartant)['json']['creee'] ?? [];
+verifier('le partant a bien une classe à lui', !empty($saClasse['id']));
+
+$lui = array_values(array_filter(
+    json('/teacher/signup', ['action' => 'list'], $jetonNotre)['json']['professeurs'],
+    fn ($t) => $t['email'] === 'partant@essai.test'))[0] ?? null;
+verifier('sa classe est comptée dans la liste', ($lui['classes'] ?? 0) === 1);
+
+verifier('effacer ses classes sans écrire EFFACER est refusé',
+    json('/teacher/signup',
+        ['action' => 'remove', 'teacherId' => $lui['id'], 'classes' => 'effacer'],
+        $jetonNotre)['code'] === 400);
+
+$r = json('/teacher/signup',
+    ['action' => 'remove', 'teacherId' => $lui['id'], 'classes' => 'reprendre'], $jetonNotre);
+verifier('on reprend ses classes plutôt que de les perdre', $r['code'] === 200,
+    $r['json']['dit'] ?? '');
+$miennes = array_column(json('/teacher/classes', ['action' => 'list'], $jetonNotre)['json']['classes'], 'name');
+verifier('« La classe du partant » est maintenant à nous',
+    in_array('La classe du partant', $miennes, true), implode(' / ', $miennes));
+
+// ── ET L'ON NE VIDE JAMAIS LE SERVEUR DE SES PROFESSEURS.
+$reste = json('/teacher/signup', ['action' => 'list'], $jetonNotre)['json']['professeurs'];
+foreach ($reste as $t) {
+    if (!empty($t['moi'])) continue;
+    json('/teacher/signup',
+        ['action' => 'remove', 'teacherId' => $t['id'], 'classes' => 'reprendre'], $jetonNotre);
+}
+$dernier = json('/teacher/signup', ['action' => 'list'], $jetonNotre)['json']['professeurs'];
+verifier('il en reste un, et il ne peut pas se retirer lui-même',
+    count($dernier) === 1
+    && json('/teacher/signup',
+        ['action' => 'remove', 'teacherId' => $dernier[0]['id']], $jetonNotre)['code'] === 400);
+
 titre('13. Le fichier tel qu\'on l\'emporterait');
 
 // LA VÉRIFICATION QUI COMPTE, ET LA SEULE QUI PROUVE QUELQUE CHOSE : on ouvre le

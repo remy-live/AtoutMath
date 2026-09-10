@@ -46,6 +46,17 @@ if (($_POST['action'] ?? '') === 'effacer-installeur') {
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     exigerJeton();
     if (($_POST['guichet'] ?? '') === 'ouvrir') {
+        // LE GUICHET DONNE LE SITE, PAS UNE CLASSE. `deposer.php` écrit des
+        // fichiers PHP : qui l'ouvre peut remplacer le logiciel, et lire par là
+        // tout ce qui appartient aux autres professeurs. C'est donc un geste de
+        // l'installation, comme créer un compte — il revient à celui qui a
+        // installé le site. Voir `professeurFondateur` dans lib/db.php : le
+        // modèle tient en une phrase, tous égaux devant leurs classes, un seul
+        // responsable du serveur.
+        if (!estLeFondateur($prof)) {
+            redirige('sante.php', "Seul le professeur qui a installé le site "
+                . "ouvre le guichet des mises à jour.");
+        }
         ouvrirGuichet();
         redirige('sante.php', 'Guichet ouvert pour trente minutes.');
     }

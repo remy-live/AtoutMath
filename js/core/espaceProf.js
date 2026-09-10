@@ -115,7 +115,23 @@ export const envoyerUnMot = (classId, body, studentId = '') =>
 export const lesMots = (classId) => auServeur('/teacher/message', { classId, action: 'list' });
 
 export const creerUnProfesseur = (displayName, email, password) =>
-    auServeur('/teacher/signup', { displayName, email, password });
+    auServeur('/teacher/signup', { action: 'create', displayName, email, password });
+export const lesProfesseurs = () => auServeur('/teacher/signup', { action: 'list' });
+/**
+ * @param {string} teacherId
+ * @param {'reprendre'|'effacer'} classes  ce qu'on fait de ses classes
+ * @param {string} confirmation            'EFFACER', exigé pour `effacer`
+ */
+export const retirerUnProfesseur = (teacherId, classes = 'reprendre', confirmation = '') =>
+    auServeur('/teacher/signup', { action: 'remove', teacherId, classes, confirmation });
+
+/** Les réglages d'exercice d'une classe : saut autorisé, exercice retiré. */
+export const lesReglages = (classId) =>
+    auServeur('/teacher/override', { classId, action: 'list' });
+export const reglerUnExercice = (classId, exerciseId, mode, studentId = '') =>
+    auServeur('/teacher/override', { classId, action: 'add', exerciseId, mode, studentId });
+export const annulerUnReglage = (classId, overrideId) =>
+    auServeur('/teacher/override', { classId, action: 'cancel', overrideId });
 
 /**
  * EST-IL LÀ EN CE MOMENT ?

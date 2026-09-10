@@ -241,6 +241,49 @@ function requireTeacher(): array
     return $teacher;
 }
 
+/**
+ * LE PROFESSEUR FONDATEUR — celui qui a installé le site.
+ *
+ * Rémy : « Ce serait quoi idéalement pour toi, le modèle, un prof qui gère un
+ * établissement, une équipe, on se répartit les classes ou quoi faire dans un
+ * premier temps ».
+ *
+ * VOICI LE MODÈLE, ET IL TIENT EN UNE PHRASE : tous les professeurs sont égaux
+ * DEVANT LEURS CLASSES — chacun ne voit que les siennes, personne ne touche à
+ * celles d'un autre —, et UN SEUL est responsable de l'INSTALLATION.
+ *
+ * POURQUOI IL EN FAUT UN. Deux gestes ne concernent pas une classe mais le
+ * serveur entier : créer ou retirer un compte de professeur, et ouvrir le
+ * guichet des mises à jour — qui écrit des fichiers PHP, donc donne le site.
+ * Les laisser à tout le monde, c'est n'avoir aucune porte : le collègue qu'on
+ * ajoute aujourd'hui peut demain en ajouter dix, ou remplacer le logiciel.
+ *
+ * ON NE L'ÉCRIT PAS EN BASE, ON LE DÉDUIT : c'est le compte le plus ancien,
+ * celui que `install.php` a créé — donc celui de la personne qui possède
+ * l'hébergement. Rien à migrer, rien à régler, rien qui puisse se désaccorder
+ * avec la réalité. Et il ne peut pas se perdre : on refuse de retirer le
+ * dernier professeur, et seul le fondateur retire quelqu'un.
+ */
+function professeurFondateur(): ?string
+{
+    try {
+        // `created_at` à la seconde ne départage pas deux comptes nés dans la
+        // même : l'identifiant tranche, et il tranche toujours pareil.
+        $q = db()->query('SELECT id FROM teachers ORDER BY created_at, id LIMIT 1');
+        $id = $q->fetchColumn();
+        return $id === false ? null : (string) $id;
+    } catch (Throwable $t) {
+        return null;
+    }
+}
+
+/** Ce professeur est-il celui qui a installé le site ? */
+function estLeFondateur(array $prof): bool
+{
+    $f = professeurFondateur();
+    return $f !== null && $f === ($prof['id'] ?? null);
+}
+
 function signTeacher(string $teacherId): string
 {
     return hash_hmac('sha256', $teacherId, config()['app_secret']);

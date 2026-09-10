@@ -211,6 +211,7 @@
 .ec-sort--refus { opacity: .75; }
 
 .ec-puces { display: flex; flex-wrap: wrap; gap: 7px; }
+.ec-puces--reglages .ec-puce { display: inline-flex; align-items: center; gap: 6px; }
 .ec-puce {
     background: var(--bg-hover); color: var(--text-main); border-radius: 999px;
     padding: 5px 12px; font-size: .85rem; font-weight: 600;
