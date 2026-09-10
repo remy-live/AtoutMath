@@ -75,7 +75,12 @@ function diagnostics(): array
     $out[] = [
         'quoi' => 'PHP 8.0 ou plus récent',
         'ok'   => PHP_VERSION_ID >= 80000,
-        'dit'  => PHP_VERSION,
+        // 8.1 et au-delà sont encore suivis ; 8.0 marche, mais ne reçoit plus
+        // de correctifs de sécurité depuis novembre 2023. On installe quand
+        // même — refuser serait pire — mais on le dit.
+        'dit'  => PHP_VERSION . (PHP_VERSION_ID < 80100
+            ? ' — cette version n\'est plus suivie, demandez 8.2 à votre hébergeur'
+            : ''),
     ];
     // `openssl` est REQUIS, et non pas « souhaitable » : c'est lui qui chiffre
     // les prénoms et le travail des élèves dans la base (voir lib/coffre.php).
@@ -96,6 +101,31 @@ function diagnostics(): array
         'quoi' => 'Dossier accessible en écriture',
         'ok'   => is_writable(RACINE),
         'dit'  => is_writable(RACINE) ? RACINE : 'lecture seule : ' . RACINE,
+    ];
+
+    // --- CE QUI N'EMPÊCHE PAS D'INSTALLER, MAIS QU'IL FAUT SAVOIR AVANT.
+    //
+    // Ces deux-là ne bloquent rien : le logiciel s'installe et fonctionne sans
+    // eux. Mais leur absence se découvre AU PIRE MOMENT si on ne la dit pas
+    // ici — `zip` le jour de la première mise à jour, quand on a déjà tout
+    // effacé et tout retransféré ; `curl` devant une page de santé qui répond
+    // « je n'ai pas pu vérifier » sans qu'on sache pourquoi.
+    //
+    // Un diagnostic qui ne parle que du bloquant laisse croire que tout ira
+    // bien. On dit donc aussi ce qui marchera moins bien, et pourquoi.
+    $out[] = [
+        'quoi' => 'Extension zip (mises à jour par le navigateur)',
+        'ok'   => true,
+        'dit'  => extension_loaded('zip')
+            ? 'présente — deposer.php pourra ouvrir les archives'
+            : 'ABSENTE : les mises à jour devront passer par FTP',
+    ];
+    $out[] = [
+        'quoi' => 'Extension curl (contrôles de sécurité)',
+        'ok'   => true,
+        'dit'  => extension_loaded('curl')
+            ? 'présente'
+            : 'absente : la page Santé se rabattra sur un autre moyen',
     ];
     return $out;
 }
