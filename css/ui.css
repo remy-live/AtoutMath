@@ -1,3 +1,11 @@
+/* La FORME du code, écrite à côté de son nom. Les deux portes demandaient
+   « un code » sans dire lequel : Rémy a collé un code de séance dans la case
+   du billet, et le refus qui suivait l'envoyait vérifier son billet. */
+.portail-forme {
+    font-weight: 500; font-size: .74rem; color: var(--text-muted, #64748b);
+    margin-left: 6px; letter-spacing: 0;
+}
+
 .demander-boite--large { width: min(560px, 100%); }
 .demander-boite textarea {
     width: 100%; padding: 11px 13px; font: inherit;

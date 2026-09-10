@@ -100,3 +100,34 @@ test('L\'APPLICATION N\'OUVRE PLUS SUR LE CATALOGUE', () => {
     const app = fs.readFileSync('js/app.js', 'utf8');
     assert.match(app, /setTopNavMode\(modeLibre\(\) \|\| state\.isTeacherMode \? 'grid' : 'path'\)/);
 });
+
+test('UN CODE DE SÉANCE DANS LA CASE DU BILLET EST RECONNU, PAS REFUSÉ', () => {
+    // Rémy s'y est pris lui-même : « ALX-BAB-SPV-… » collé dans la case du
+    // billet. Le serveur aurait répondu « Identifiant ou code incorrect » —
+    // une phrase vraie et parfaitement inutile, qui envoie vérifier le billet
+    // alors que c'est de case qu'on s'est trompé.
+    const src = fs.readFileSync(new URL('../js/ui/portailUI.js', import.meta.url), 'utf8');
+    assert.match(src, /ressembleAUneSeance/, 'la forme du code doit être reconnue');
+
+    // La règle, telle qu'elle est écrite : un tiret, ou plus de douze signes.
+    // Un code de billet ne peut être ni l'un ni l'autre — quatre signes pris
+    // dans un alphabet qui n'a pas de tiret.
+    const ressemble = (code) => /-/.test(code) || code.length > 12;
+    ['ALX-BAB-SPV-', 'M2-abcdefghijklmnop', 'K7QP-2'].forEach(c =>
+        assert.ok(ressemble(c), `« ${c} » est un code de séance`));
+    ['4KP2', 'ABCD', 'X7Y9', '23456789ABCD'].forEach(c =>
+        assert.ok(!ressemble(c), `« ${c} » est un code de billet`));
+
+    // ET ON LE DÉPLACE, on ne se contente pas de le dire : rester devant une
+    // case qu'on vient de nous dire fausse, c'est encore du travail pour
+    // l'élève — et c'est nous qui avons mal rangé les cases.
+    assert.match(src, /portail-code'\)\.value = code/,
+        'le code doit être recopié dans la bonne case');
+});
+
+test('CHAQUE CASE DIT LA FORME DU CODE QU\'ELLE ATTEND', () => {
+    // Les deux portes demandaient « un code », sans jamais dire lequel.
+    const src = fs.readFileSync(new URL('../js/ui/portailUI.js', import.meta.url), 'utf8');
+    assert.match(src, /4 signes/, 'la case du billet doit annoncer sa forme');
+    assert.match(src, /long, avec des tirets/, 'celle de la séance aussi');
+});

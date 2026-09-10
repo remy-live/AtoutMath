@@ -74,7 +74,7 @@ function dessiner() {
             <label>Identifiant
               <input id="portail-login" type="text" autocomplete="username" spellcheck="false"
                      maxlength="60" placeholder="lea.durand"></label>
-            <label>Code
+            <label>Code <span class="portail-forme">4 signes</span>
               <input id="portail-code-eleve" type="text" autocomplete="off" spellcheck="false"
                      maxlength="12" placeholder="4KP2"></label>
             <button id="portail-connecter" class="portail-bouton">Entrer</button>
@@ -102,7 +102,7 @@ function dessiner() {
             <h2>J'ai un code de séance</h2>
             <p class="portail-aide">Le code que ton professeur vient de dicter,
                ou le lien qu'il t'a envoyé.</p>
-            <label>Code de la séance
+            <label>Code de la séance <span class="portail-forme">long, avec des tirets</span>
               <input id="portail-code" type="text" autocomplete="off" spellcheck="false"
                      placeholder="colle le code ici"></label>
             <button id="portail-ouvrir" class="portail-bouton">Ouvrir le parcours</button>
@@ -164,12 +164,40 @@ function dessiner() {
         dire('portail-etat-code', "Ce code ne correspond à aucun parcours. Vérifie-le avec ton professeur.", true);
     };
 
+    /**
+     * CE CODE EST-IL UN CODE DE SÉANCE, GLISSÉ DANS LA MAUVAISE CASE ?
+     *
+     * Rémy s'y est pris lui-même : il a collé « ALX-BAB-SPV-… » dans la case du
+     * billet. Les deux portes demandent « un code », et rien ne disait lequel.
+     * Le serveur aurait répondu « Identifiant ou code incorrect » — une phrase
+     * vraie, et parfaitement inutile : elle envoie vérifier le billet alors
+     * que c'est de case qu'on s'est trompé.
+     *
+     * LES DEUX FORMES NE SE RESSEMBLENT PAS, et c'est ce qui permet de trancher
+     * sans rien demander au serveur. Un code de billet fait quatre signes pris
+     * dans un alphabet sans tiret ; un code de séance est long et porte des
+     * tirets. On ne devine pas : on reconnaît.
+     */
+    const ressembleAUneSeance = (code) => /-/.test(code) || code.length > 12;
+
     // --- Se connecter avec son billet
     const connecter = async () => {
         const login = val('portail-login');
         const code = val('portail-code-eleve');
         if (!login || !code) {
             return dire('portail-etat-login', 'Il faut ton identifiant ET ton code.', true);
+        }
+        if (ressembleAUneSeance(code)) {
+            // On ne se contente pas de le dire : on le DÉPLACE. Rester devant
+            // une case qu'on vient de nous dire fausse, c'est encore du travail
+            // pour l'élève — et c'est nous qui avons mal rangé les cases.
+            document.getElementById('portail-code').value = code;
+            document.getElementById('portail-code-eleve').value = '';
+            dire('portail-etat-login',
+                "Ça, c'est un code de séance : je l'ai mis dans l'autre case, à droite.", true);
+            dire('portail-etat-code', 'Clique sur « Ouvrir le parcours ».');
+            document.getElementById('portail-code').focus();
+            return;
         }
         const bouton = document.getElementById('portail-connecter');
         bouton.disabled = true;
