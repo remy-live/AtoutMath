@@ -142,10 +142,39 @@ rafraîchit toute seule toutes les vingt secondes (jamais pendant que vous
   l'effacer.
 - **Effacer** : les élèves, ou la classe entière. Il faut écrire `EFFACER`.
 
-**`eleves.php`** — la liste de la classe. On y colle sa liste (un élève par
-ligne ; le nom suffit), et l'on imprime les **billets** à découper : prénom,
-identifiant, code. Recoller la liste ne change aucun code déjà donné — les
-billets distribués restent valables ; seuls les nouveaux venus en reçoivent un.
+**`eleves.php`** — la liste de la classe : coller ou déposer, **voir**,
+confirmer, imprimer.
+
+*Faire entrer la liste.* On colle depuis le presse-papier, ou on dépose un
+fichier `.csv` tel qu'il sort de Pronote ou d'un tableur. Point-virgule, virgule
+ou tabulation ; ligne d'en-tête ou non ; cellules entre guillemets ; accents
+d'Excel (Windows-1252) et BOM : tout est lu sans rien préparer. Le nom seul
+suffit — l'identifiant se fabrique (`Léa Durand` → `lea.durand`). La forme
+`DURAND;Léa` est reconnue comme un nom en deux colonnes, pas comme un
+identifiant.
+
+*L'aperçu.* Lire une liste de professeur demande des devinettes, et aucune n'est
+sûre. **Rien n'est écrit avant confirmation** : la page montre d'abord, ligne par
+ligne, ce qui va se passer — « nouvel élève », « déjà dans la liste, code
+inchangé », « entré par le code de la classe, il garde son travail », « vient de
+la 5e B, sera déplacé ici ». La même fonction décide à l'aperçu et à l'import,
+pour qu'ils ne puissent pas diverger.
+
+*Les codes.* Un code différent par élève (conseillé), ou **le même code pour
+toute la classe** si vous le demandez — la page dit alors en une ligne ce que
+cela coûte : les identifiants étant prévisibles, un élève peut entrer à la place
+d'un autre. On refait le code **d'un élève** ou **de toute la classe** en un
+geste ; les anciens billets cessent aussitôt de valoir.
+
+*Le reste.* Recoller la liste ne change aucun code déjà donné. Un élève se
+**retire** (son travail part avec lui, en cascade). Un élève inscrit dans une
+autre de vos classes se **déplace** au lieu d'être refusé.
+
+> **Le doublon d'autrefois.** L'ancienne page conseillait d'ajouter à la liste
+> les élèves entrés par le code de la classe. Ce conseil créait un second élève :
+> le travail sur l'un, le billet sur l'autre. Ils sont maintenant reconnus par
+> leur nom — dans l'ordre écrit ou dans l'autre, `NGUYÊN;Maëlle` valant
+> `Maëlle Nguyên` — et rattachés à ce qu'ils ont déjà fait.
 
 **`sante.php`** — le contrôle de l'installation, **sur votre hébergement**.
 Le serveur va chercher ses propres fichiers par le web, comme le ferait un
@@ -213,6 +242,29 @@ manœuvre, aucune migration à lancer.
 Ce qui n'est pas transféré est listé dans `.deployignore` : tests, outils de
 mesure, notes, dépendances de développement. Le serveur ne reçoit que ce qu'un
 navigateur télécharge.
+
+### Poser le site à la main : le paquet
+
+Pour le premier jour, ou pour un hébergement sans SFTP automatisé :
+
+```
+node tools/paquet.mjs
+```
+
+Un `.zip` daté de la version, à décompresser et à déposer **tel quel dans
+`www/`** — les fichiers sont à la racine de l'archive, sans dossier qui les
+enveloppe, pour qu'un glisser-déposer suffise.
+
+La liste des fichiers vient de `git ls-files`, et c'est ce qui rend le paquet
+sûr : `api/config.php` et `api/data/` sont dans `.gitignore`, ils ne *peuvent*
+donc pas s'y trouver. Un balayage du disque, lui, emporterait la clé de
+chiffrement et la base le jour où l'on prépare un paquet depuis une machine où
+le site tourne. Le même `.deployignore` que la publication automatique retire
+ensuite les tests, les outils et les notes.
+
+L'outil **refuse de fabriquer** un paquet quand un fichier écrit n'est pas
+encore suivi par git : sans cela, on corrige, on transfère, et le correctif
+n'est pas dedans.
 
 ### Le contrôle après publication, fait tout seul
 

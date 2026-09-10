@@ -138,7 +138,21 @@ function dechiffrer(?string $range): ?string
  */
 function empreintePrenom(string $prenom): string
 {
-    return hash_hmac('sha256', normaliserPrenom($prenom),
+    // L'ORDRE DES MOTS NE COMPTE PAS, et cela vient d'un vrai accident.
+    //
+    // Un export de Pronote donne « NGUYÊN ; Maëlle » ; l'élève, elle, a tapé
+    // « Maëlle Nguyên » en entrant par le code de la classe. Deux écritures du
+    // même nom, deux empreintes différentes — donc, à l'import de la liste, une
+    // seconde Maëlle, vierge de tout travail, à côté de celle qui avait
+    // travaillé. Mesuré en conduisant la page dans un navigateur : « 4 élèves
+    // ajoutés » là où l'on en attendait trois.
+    //
+    // On trie donc les mots avant de calculer l'empreinte. L'identifiant, lui,
+    // garde l'ordre écrit (`identifiantDe`) : c'est ce que l'élève lira sur son
+    // billet, et il doit ressembler à son nom.
+    $mots = explode(' ', normaliserPrenom($prenom));
+    sort($mots, SORT_STRING);
+    return hash_hmac('sha256', implode(' ', $mots),
         hash_hmac('sha256', 'index', cleDonnees(), true));
 }
 

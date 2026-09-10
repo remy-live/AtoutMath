@@ -774,6 +774,154 @@ verifier('les dix tables sont là',
                  'overrides', 'paths', 'student_tokens', 'students', 'teachers'],
     implode(', ', $tables));
 
+titre('12 bis. La liste : lire un vrai fichier de professeur');
+
+// Rémy : « j'espère qu'on pourra importer des CSV et ou du presse-papier et je
+// peux choisir un mdp générique pour tous mes élèves et je peux leur recréer un
+// mdp », « il faut qqch de confortable et facile ».
+//
+// CONFORTABLE, ÇA SE PROUVE AVEC DE VRAIS FORMATS. On ne lui donne pas une
+// liste écrite pour l'occasion : on lui donne ce que crachent Pronote et Excel,
+// point-virgule, en-tête, guillemets, BOM et accents Windows-1252 compris.
+
+require_once $API . '/lib/liste.php';
+
+$formats = [
+    'un nom par ligne'          => ["Léa Durand\nTom Bernard", ['lea.durand', 'tom.bernard']],
+    'la forme de Pronote'       => ["NOM;Prénom\nDURAND;Léa\nBERNARD;Tom", ['durand.lea', 'bernard.tom']],
+    'un CSV anglais à virgules' => ["name,login\nLea Durand,lea.durand", ['lea.durand']],
+    'des tabulations'           => ["Léa Durand\tlea.durand\t4KP2", ['lea.durand']],
+    'une cellule entre guillemets' => ["\"Martin, Jean\";jean.martin", ['jean.martin']],
+    'un BOM et des accents Excel'  => ["\xEF\xBB\xBFL\xE9a Durand", ['lea.durand']],
+    'des lignes vides et un commentaire' => ["# ma classe\n\nLéa Durand\n\n", ['lea.durand']],
+];
+foreach ($formats as $quoi => [$texte, $attendus]) {
+    $lu = lireListe($texte);
+    verifier("elle lit $quoi",
+        array_column($lu['lignes'], 'login') === $attendus,
+        implode(', ', array_column($lu['lignes'], 'login')));
+}
+verifier("l'en-tête n'entre pas dans la classe comme un élève",
+    array_column(lireListe("Élève\nLéa Durand")['lignes'], 'login') === ['lea.durand']);
+verifier('deux fois le même nom donnent deux identifiants distincts',
+    array_column(lireListe("Léa Durand\nLéa Durand")['lignes'], 'login') === ['lea.durand', 'lea.durand2']);
+
+// L'ALLER-RETOUR DE L'APERÇU. Ce qui est montré est réécrit sous forme
+// normalisée, puis relu à la confirmation : si les deux lectures divergeaient,
+// l'aperçu mentirait — il annoncerait une chose et l'import en ferait une autre.
+$a = lireListe("NOM;Prénom\nDURAND;Léa\nBERNARD;Tom")['lignes'];
+verifier("CE QUE L'APERÇU MONTRE EST EXACTEMENT CE QUI SERA ÉCRIT",
+    lireListe(ecrireListe($a))['lignes'] === $a);
+
+// --- Par la page, maintenant : l'aperçu n'écrit rien, la confirmation écrit.
+$classeF = uuidv4();
+db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
+    ->execute([$classeF, $profId, 'Fichiers', 'FICHI1']);
+$uF = '/admin/eleves.php?id=' . urlencode($classeF);
+$compteF = function () use ($classeF) {
+    $s = db()->prepare('SELECT COUNT(*) c FROM students WHERE class_id = ?');
+    $s->execute([$classeF]);
+    return (int) $s->fetchAll()[0]['c'];
+};
+
+$jeton = jetonDe(page($uF)['html']);
+// DES NOMS QUI N'EXISTENT NULLE PART AILLEURS dans cet essai — la section 9 a
+// déjà une Léa Durand dans une autre classe, et l'aperçu proposerait alors de
+// la déplacer. C'est le bon comportement, mais ce n'est pas ce qu'on mesure ici.
+$p = page($uF, ['jeton' => $jeton, 'action' => 'apercu', 'liste' => "Élise Vasseur\nNoé Perrin"]);
+verifier("L'APERÇU MONTRE AVANT D'ÉCRIRE", str_contains($p['html'], 'Voici ce qui va se passer'));
+verifier("et il n'a rien écrit", $compteF() === 0);
+verifier('il annonce les deux élèves comme nouveaux',
+    substr_count($p['html'], 'nouvel élève') === 2,
+    'vu ' . substr_count($p['html'], 'nouvel élève') . ' fois');
+
+page($uF, ['jeton' => $jeton, 'action' => 'importer', 'liste' => "Élise Vasseur;elise.vasseur;\nNoé Perrin;noe.perrin;"]);
+verifier('la confirmation écrit les deux élèves', $compteF() === 2);
+
+// --- LE DOUBLON D'AUTREFOIS. Une élève entrée par le code de la classe, puis
+//     ajoutée à la liste : l'ancienne page en faisait DEUX, le travail sur
+//     l'une et le billet sur l'autre. Mesuré à l'époque, vérifié ici.
+$r = json('/join', ['classCode' => 'FICHI1', 'firstName' => 'Maëlle Nguyên']);
+$idMaelle = $r['json']['studentId'] ?? '';
+json('/sync', ['events' => [['id' => uuidv4(), 'type' => 'ATTEMPT', 'ts' => time() * 1000,
+    'deviceId' => 'pc', 'payload' => ['exerciseId' => 'x', 'correct' => true]]]], $r['json']['token']);
+verifier('une élève entre par le code de la classe et travaille', $compteF() === 3);
+
+$jeton = jetonDe(page($uF)['html']);
+$p = page($uF, ['jeton' => $jeton, 'action' => 'apercu', 'liste' => 'Maëlle Nguyên']);
+verifier("L'APERÇU ANNONCE LE RATTACHEMENT, pas une création",
+    str_contains($p['html'], 'il garde son travail'), 'sinon on recrée un doublon');
+page($uF, ['jeton' => $jeton, 'action' => 'importer', 'liste' => "Maëlle Nguyên;maelle.nguyen;"]);
+verifier('ELLE N\'EST PAS DÉDOUBLÉE', $compteF() === 3);
+$s = db()->prepare('SELECT id, login FROM students WHERE class_id = ? AND first_name_key = ?');
+$s->execute([$classeF, empreintePrenom('Maëlle Nguyên')]);
+$m = $s->fetchAll();
+verifier('c\'est bien LA MÊME élève qui reçoit le billet',
+    count($m) === 1 && $m[0]['id'] === $idMaelle);
+$s = db()->prepare('SELECT COUNT(*) c FROM events WHERE student_id = ?');
+$s->execute([$idMaelle]);
+verifier('et son travail est toujours là', (int) $s->fetchAll()[0]['c'] >= 1);
+
+// --- LE CODE COMMUN. Rémy : « je peux choisir un mdp générique pour tous mes
+//     élèves ». Il l'a demandé, il l'a — avec un mot de prudence dans la page.
+$jeton = jetonDe(page($uF)['html']);
+page($uF, ['jeton' => $jeton, 'action' => 'apercu', 'genre_code' => 'commun',
+    'code_commun' => 'sixieme', 'liste' => "Sacha Roy\nYanis Ferrand"]);
+page($uF, ['jeton' => $jeton, 'action' => 'importer',
+    'liste' => "Sacha Roy;sacha.roy;SIXIEME\nYanis Ferrand;yanis.ferrand;SIXIEME"]);
+verifier('LE CODE COMMUN OUVRE POUR L\'UN', json('/login', ['login' => 'sacha.roy', 'code' => 'SIXIEME'])['code'] === 200);
+verifier('et pour l\'autre', json('/login', ['login' => 'yanis.ferrand', 'code' => 'sixieme'])['code'] === 200);
+verifier('la page prévient de ce que cela coûte',
+    str_contains(page($uF)['html'], 'entre à sa place'));
+
+// --- REFAIRE TOUS LES CODES D'UN COUP.
+$jeton = jetonDe(page($uF)['html']);
+page($uF, ['jeton' => $jeton, 'action' => 'codes-classe', 'genre_code' => 'chacun']);
+verifier('REFAIRE LES CODES PÉRIME TOUS LES ANCIENS BILLETS',
+    json('/login', ['login' => 'sacha.roy', 'code' => 'SIXIEME'])['code'] === 401);
+$s = db()->prepare('SELECT access_code FROM students WHERE class_id = ? AND login_key IS NOT NULL AND login_key <> \'\'');
+$s->execute([$classeF]);
+$codes = array_map(fn ($e) => dechiffrer($e['access_code']), $s->fetchAll());
+verifier('et « un code différent pour chacun » en donne bien autant que d\'élèves',
+    count(array_unique($codes)) === count($codes), implode(' ', $codes));
+
+$jeton = jetonDe(page($uF)['html']);
+page($uF, ['jeton' => $jeton, 'action' => 'codes-classe', 'genre_code' => 'commun', 'code_commun' => 'CLASSE6']);
+verifier('« le même pour tous » donne bien le même à tous',
+    json('/login', ['login' => 'sacha.roy', 'code' => 'CLASSE6'])['code'] === 200
+    && json('/login', ['login' => 'yanis.ferrand', 'code' => 'CLASSE6'])['code'] === 200);
+
+// --- RETIRER UN ÉLÈVE. Impossible avant : un départ en cours d'année restait
+//     dans la liste pour toujours.
+$idSacha = json('/login', ['login' => 'sacha.roy', 'code' => 'CLASSE6'])['json']['studentId'];
+$avant = $compteF();
+$jeton = jetonDe(page($uF)['html']);
+page($uF, ['jeton' => $jeton, 'action' => 'retirer', 'eleve' => $idSacha]);
+verifier('UN ÉLÈVE PEUT ÊTRE RETIRÉ', $compteF() === $avant - 1);
+verifier('et son billet ne vaut plus rien',
+    json('/login', ['login' => 'sacha.roy', 'code' => 'CLASSE6'])['code'] === 401);
+$s = db()->prepare('SELECT COUNT(*) c FROM student_tokens WHERE student_id = ?');
+$s->execute([$idSacha]);
+verifier('ses jetons sont partis avec lui', (int) $s->fetchAll()[0]['c'] === 0);
+
+// --- DÉPLACER UN ÉLÈVE D'UNE CLASSE À L'AUTRE. Refusé sans recours avant.
+$classeG = uuidv4();
+db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
+    ->execute([$classeG, $profId, 'Cinquième', 'CINQU1']);
+$uG = '/admin/eleves.php?id=' . urlencode($classeG);
+$jeton = jetonDe(page($uG)['html']);
+$p = page($uG, ['jeton' => $jeton, 'action' => 'apercu', 'liste' => 'Yanis Ferrand;yanis.ferrand']);
+verifier('L\'APERÇU PROPOSE DE DÉPLACER, il ne refuse plus',
+    str_contains($p['html'], 'sera déplacé ici'), 'sinon un changement de classe est sans issue');
+page($uG, ['jeton' => $jeton, 'action' => 'importer', 'liste' => 'Yanis Ferrand;yanis.ferrand;']);
+$s = db()->prepare('SELECT class_id FROM students WHERE login_key = ?');
+$s->execute([empreinteLogin('yanis.ferrand')]);
+$ou = $s->fetchAll();
+verifier('et il change bien de classe, sans doublon',
+    count($ou) === 1 && $ou[0]['class_id'] === $classeG);
+verifier('son billet marche toujours après le déplacement',
+    json('/login', ['login' => 'yanis.ferrand', 'code' => 'CLASSE6'])['code'] === 200);
+
 titre('13. Le fichier tel qu\'on l\'emporterait');
 
 // LA VÉRIFICATION QUI COMPTE, ET LA SEULE QUI PROUVE QUELQUE CHOSE : on ouvre le
