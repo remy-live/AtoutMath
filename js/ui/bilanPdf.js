@@ -29,6 +29,7 @@
 // disent la même chose.
 
 import { chargerJsPDF } from './printSheet.js';
+import { ecrireSymboles } from './ficheRendu.js';
 import { consigneDe, consigneClasse } from '../core/bilan.js';
 import { LEVELS } from '../core/mastery.js';
 
@@ -304,7 +305,11 @@ function consignes(doc, f, bilan) {
  */
 export async function exporterBilanPdf(bilan, opts = {}) {
     const jsPDF = await chargerJsPDF();
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    // Le bilan écrit lui aussi des ⊥, des ≠ et des √ — ce sont des noms de
+    // compétences et des extraits d'énoncés. Sans cette ligne, il les
+    // remplacerait par « ? » : `pourPdf` ne les translittère plus, puisque le
+    // PDF sait maintenant les tracer.
+    const doc = ecrireSymboles(new jsPDF({ unit: 'mm', format: 'a4' }));
     const f = feuille(doc);
 
     const quand = new Date().toLocaleDateString('fr-FR',

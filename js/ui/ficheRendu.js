@@ -311,9 +311,118 @@ export function teindreHtml(html, mode = modePolycopie()) {
  * les quelque deux cents endroits qui posent une couleur n'ont rien à savoir
  * du mode choisi. C'est ce qui rend les quatre modes tenables.
  */
+/**
+ * ÉCRIRE LES SYMBOLES QUE LA POLICE DU TEXTE NE CONNAÎT PAS.
+ *
+ * Cent cinquante endroits appellent `doc.text`. Les faire tous passer par une
+ * fonction nouvelle aurait été cent cinquante occasions d'en oublier un — et
+ * l'oubli ne se serait vu que sur une feuille imprimée, en classe. On pose donc
+ * le traitement SUR LE DOCUMENT, une fois : chaque appel en profite, y compris
+ * ceux qu'on écrira l'an prochain.
+ *
+ * LE CHEMIN RAPIDE D'ABORD, ET C'EST CE QUI REND LA CHOSE SÛRE. Une chaîne sans
+ * symbole part vers le `text` d'origine sans avoir été touchée : l'immense
+ * majorité des feuilles sort donc EXACTEMENT comme avant, au point près. Seules
+ * les chaînes qui s'imprimaient « _|_ » ou « V25 » empruntent le chemin neuf.
+ *
+ * L'ALIGNEMENT DEMANDE DE MESURER AVANT DE TRACER. Un texte centré ou aligné à
+ * droite ne peut pas se dessiner morceau par morceau de gauche à droite sans
+ * savoir où commencer : on mesure donc chaque morceau AVEC SA POLICE, on
+ * additionne, et l'on en déduit le point de départ. C'est aussi pour cela que
+ * `getTextWidth` est appelé après `setFont` et jamais avant.
+ */
+export function ecrireSymboles(doc) {
+    if (!doc || doc.__symboles) return doc;
+    doc.__symboles = true;
+
+    const brut = doc.text;
+    if (typeof brut !== 'function') return doc;
+
+    // Un point typographique en millimètres : la taille de police se dit en
+    // points, les coordonnées en millimètres.
+    const PT = 25.4 / 72;
+
+    /** Découpe « (AB) ⊥ (CD) » en morceaux homogènes. */
+    const morceaux = (t) => {
+        const out = [];
+        let courant = '';
+        for (const c of t) {
+            const genre = SYMBOLE[c] ? 'symbole' : (INDICES[c] ? 'indice' : 'texte');
+            if (genre === 'texte') { courant += c; continue; }
+            if (courant) { out.push({ genre: 'texte', t: courant }); courant = ''; }
+            out.push(genre === 'symbole'
+                ? { genre, t: SYMBOLE[c][0], mille: SYMBOLE[c][1] }
+                : { genre, t: INDICES[c] });
+        }
+        if (courant) out.push({ genre: 'texte', t: courant });
+        return out;
+    };
+
+    // On N'INTERROGE PAS jsPDF pour un glyphe Symbol : il rendrait 580 pour
+    // tous. La largeur vient de la table mesurée ci-dessus.
+    const largeur = (m, taille) => (m.genre === 'symbole'
+        ? m.mille / 1000 * taille * PT
+        : doc.getTextWidth(m.t) * (m.genre === 'indice' ? 0.68 : 1));
+
+    const ecrireUne = (texte, x, y, options) => {
+        const police = doc.getFont();
+        const taille = doc.getFontSize();
+        const parts = morceaux(texte);
+        const larges = parts.map(m => largeur(m, taille));
+        const total = larges.reduce((a, b) => a + b, 0);
+
+        const align = (options && options.align) || 'left';
+        let cx = align === 'center' ? x - total / 2 : (align === 'right' ? x - total : x);
+
+        // Les options qui décident du placement sont consommées ici : on passe
+        // désormais un point de départ absolu, donc plus rien à aligner.
+        const reste = { ...(options || {}) };
+        delete reste.align;
+        delete reste.maxWidth;
+
+        parts.forEach((m, i) => {
+            if (m.genre === 'symbole') {
+                doc.setFont('symbol', 'normal');
+                brut.call(doc, m.t, cx, y, reste);
+                doc.setFont(police.fontName, police.fontStyle);
+            } else if (m.genre === 'indice') {
+                // Plus petit, et posé plus bas — c'est la définition d'un indice.
+                doc.setFontSize(taille * 0.68);
+                brut.call(doc, m.t, cx, y + taille * PT * 0.20, reste);
+                doc.setFontSize(taille);
+            } else {
+                brut.call(doc, m.t, cx, y, reste);
+            }
+            cx += larges[i];
+        });
+    };
+
+    doc.text = function (texte, x, y, options, ...suite) {
+        // Chemin rapide : rien à faire, on ne touche à rien.
+        const chaine = typeof texte === 'string';
+        const liste = Array.isArray(texte);
+        if (!chaine && !liste) return brut.call(this, texte, x, y, options, ...suite);
+        const concerne = chaine ? ECRITS.test(texte) : texte.some(l => ECRITS.test(String(l)));
+        if (!concerne) return brut.call(this, texte, x, y, options, ...suite);
+
+        if (chaine) {
+            ecrireUne(texte, x, y, options);
+            return this;
+        }
+        // UN TABLEAU DE LIGNES — ce que rend `splitTextToSize`. jsPDF avance
+        // d'une hauteur de ligne entre chaque ; on refait le même pas, et il a
+        // été vérifié contre le sien (voir tools/tmp, essai des trois lignes).
+        const pas = doc.getLineHeight() / doc.internal.scaleFactor;
+        texte.forEach((l, i) => ecrireUne(String(l), x, y + i * pas, options));
+        return this;
+    };
+    return doc;
+}
+
 export function teindreDoc(doc) {
     if (!doc || doc.__teinte) return doc;
     doc.__teinte = true;
+    ecrireSymboles(doc);
     ['setFillColor', 'setDrawColor', 'setTextColor'].forEach(nom => {
         const brut = doc[nom];
         if (typeof brut !== 'function') return;
@@ -400,6 +509,76 @@ export const ENCRE = {
  * confier au PDF. Les symboles vraiment utiles à une fiche de mathématiques —
  * × ÷ ° ² ³ ½ « » — sont dans la table, eux, et passent intacts.
  */
+/**
+ * CE QUE LA POLICE SYMBOL SAIT ÉCRIRE, ET QUE HELVETICA NE SAIT PAS.
+ *
+ * Rémy imprimait « les droites sont _|_ », « 5 =/= 3 », « V25 = 5 ». Trois
+ * notations fausses sur des feuilles de mathématiques — et la troisième est
+ * particulièrement gênante, puisque « V » est aussi un nom de point.
+ *
+ * On a d'abord cherché à embarquer une police Unicode complète dans le PDF.
+ * C'était inutile. LES QUATORZE POLICES QUE TOUT LECTEUR DE PDF POSSÈDE
+ * comprennent Symbol, et Symbol contient déjà tout ce qui manque : on s'en
+ * servait DÉJÀ pour π (« le p de Symbol EST un π »), sans voir qu'elle avait
+ * aussi ⊥, ≠, √, ≤, ≥, →, ←, ≡, ∞, ∈, ∠.
+ *
+ * Zéro octet à télécharger, aucune licence à joindre, et surtout AUCUN RISQUE
+ * SUR LES MÉTRIQUES : le reste du texte continue d'être écrit en Helvetica,
+ * dont les largeurs règlent la mise en page de quatre-vingts feuilles.
+ * Embarquer une police pour tout le document aurait décalé chaque ligne.
+ *
+ * LES CODES ONT ÉTÉ MESURÉS, pas recopiés d'une table : on les a écrits dans
+ * un PDF d'essai qu'on a regardé glyphe par glyphe (`tools/tmp/symboles.pdf`).
+ * Ce qui n'est PAS ici — ° × ÷ ± — y est aussi, mais Helvetica les a : les
+ * écrire en Symbol les rendrait étrangers au reste de la ligne.
+ */
+/*
+ * ET LEURS LARGEURS, MESURÉES — car jsPDF ne les connaît pas.
+ *
+ * `getTextWidth` rendait 580 millièmes de cadratin POUR TOUS LES GLYPHES
+ * Symbol : la bibliothèque n'embarque pas les métriques de cette police et
+ * sert une valeur par défaut. Les premiers essais s'en ressentaient — un blanc
+ * de trop après chaque symbole, visible à l'œil sur « 25 π cm² ».
+ *
+ * On les a donc mesurées dans un vrai PDF : le même glyphe écrit une fois puis
+ * onze fois dans un seul appel, et l'on compare le bord droit des deux encres.
+ * C'est le PDF lui-même qui avance, avec la vraie largeur de la police ; la
+ * différence divisée par dix EST l'avance. Une page par glyphe, sans quoi les
+ * signes en deux traits (≤ ≥ ≡) brouillent le découpage.
+ *
+ * Le second nombre est donc une mesure, pas une table recopiée — et elle tombe
+ * bien sur les valeurs d'Adobe, ce qui est rassurant pour les deux.
+ */
+const SYMBOLE = {
+    '\u22A5': ['^', 658],        // ⊥ perpendiculaire
+    '\u2260': ['\u00B9', 548],   // ≠
+    '\u2264': ['\u00A3', 548],   // ≤
+    '\u2265': ['\u00B3', 548],   // ≥
+    '\u221A': ['\u00D6', 548],   // √
+    '\u2192': ['\u00AE', 986],   // →
+    '\u2190': ['\u00AC', 986],   // ←
+    '\u2248': ['\u00BB', 548],   // ≈
+    '\u2261': ['\u00BA', 548],   // ≡
+    '\u221E': ['\u00A5', 713],   // ∞
+    '\u2208': ['\u00CE', 713],   // ∈
+    '\u2220': ['\u00D0', 768],   // ∠
+    '\u03C0': ['p', 548]          // π
+};
+
+/**
+ * LES INDICES — u₁, u₂, aₙ.
+ *
+ * Ils étaient aplatis en « u1 », ce qui n'est pas la même chose : « u1 » est
+ * un nom de variable, « u₁ » est le premier terme d'une suite. Symbol ne les
+ * a pas non plus, mais un indice n'est pas un caractère : c'est un chiffre
+ * ORDINAIRE écrit plus petit et plus bas. On le dessine donc, exactement comme
+ * on dessine déjà les exposants.
+ */
+const INDICES = {
+    '\u2080': '0', '\u2081': '1', '\u2082': '2', '\u2083': '3', '\u2084': '4',
+    '\u2085': '5', '\u2086': '6', '\u2087': '7', '\u2088': '8', '\u2089': '9'
+};
+
 const HORS_TABLE = {
     // L'ESPACE FINE INSÉCABLE des milliers (« 62 307 ») n'existe pas en
     // WinAnsi : elle sortait en « ? » au milieu de chaque grand nombre. On la
@@ -407,12 +586,9 @@ const HORS_TABLE = {
     // d'un seul tenant, il respire seulement un peu plus.
     '\u202F': '\u00A0',
     '\u2212': '-',      // le vrai signe moins
-    '\u2192': '->', '\u2190': '<-',
-    '\u2248': '~',      // « à peu près égal »
-    '\u22A5': '_|_',    // perpendiculaire
-    '\u2260': '=/=', '\u2264': '<=', '\u2265': '>=',
-    '\u2081': '1', '\u2082': '2', '\u2083': '3', '\u2084': '4', '\u2085': '5',
-    '\u2086': '6', '\u2087': '7', '\u2088': '8', '\u2089': '9', '\u2080': '0',
+    // ⊥ ≠ ≤ ≥ √ → ← ≈ ≡ ∞ ∈ ∠ π ne sont plus translittérés : ils sont ÉCRITS,
+    // avec la police Symbol. Voir la table SYMBOLE et `ecrireSymboles`.
+    // Les indices ₀-₉ ne le sont plus non plus : ils sont dessinés.
     '\u1D49': 'e',      // le « e » de « 2ᵉ »
     // Le « r » de « 1ʳᵉ » : sans lui, « La 1ʳᵉ lettre de l'alphabet »
     // s'imprimait « La 1?e lettre », un point d'interrogation au milieu
@@ -421,7 +597,6 @@ const HORS_TABLE = {
     '\u2610': '[ ]', '\u2611': '[x]',
     '\u2153': '1/3', '\u2154': '2/3', '\u00BC': '1/4', '\u00BE': '3/4',
     '\u2218': 'o', '\u2032': "'", '\u2033': '"',
-    '\u2261': '=', '\u221A': 'V', '\u03C0': 'pi',
     // Les fl\u00E8ches de rotation du chat g\u00E9om\u00E8tre. \u00AB \u00E0 droite \u00BB est d\u00E9j\u00E0 \u00E9crit \u00E0
     // c\u00F4t\u00E9 : la fl\u00E8che est un ornement, et un \u00AB ? \u00BB au milieu d'un programme
     // de construction se lit comme une donn\u00E9e manquante.
@@ -702,13 +877,24 @@ const exposantsLisibles = (t) => t.replace(
             : bloc);
     });
 
+/** Les caractères que `ecrireSymboles` sait dessiner : ils traversent pourPdf. */
+const ECRITS = new RegExp('[' + Object.keys(SYMBOLE).join('') + Object.keys(INDICES).join('') + ']');
+
 export function pourPdf(texte) {
     let t = exposantsLisibles(typographieFr(texte));
     for (const [de, a] of Object.entries(HORS_TABLE)) t = t.split(de).join(a);
     // Filet de sécurité : tout ce qui reste au-dessus de la table y passe.
     // Un point d'interrogation vaut mieux qu'une ligne entière illisible.
-    return t.replace(/[^\u0000-\u00FF\u0152\u0153\u0160\u0161\u0178\u017D\u017E\u0192\u02C6\u02DC\u2013\u2014\u2018\u2019\u201A\u201C\u201D\u201E\u2020\u2021\u2022\u2026\u2030\u2039\u203A\u20AC\u2122]/g, '?');
+    //
+    // LES SYMBOLES MATHÉMATIQUES EN SONT EXEMPTÉS depuis qu'on sait les écrire :
+    // ils traversent intacts et c'est `ecrireSymboles`, posé sur le document,
+    // qui les rend au moment du tracé. Un document qui n'aurait pas reçu ce
+    // traitement les verrait remplacés par « ? » — d'où le passage par
+    // `teindreDoc`, qui l'applique à toutes les fiches.
+    return t.replace(/[^\u0000-\u00FF\u0152\u0153\u0160\u0161\u0178\u017D\u017E\u0192\u02C6\u02DC\u2013\u2014\u2018\u2019\u201A\u201C\u201D\u201E\u2020\u2021\u2022\u2026\u2030\u2039\u203A\u20AC\u2122]/g,
+        (c) => (ECRITS.test(c) ? c : '?'));
 }
+
 
 export const echapper = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 

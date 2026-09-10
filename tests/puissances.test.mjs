@@ -126,6 +126,40 @@ test('SUR LE PAPIER, LES EXPOSANTS SURVIVENT — et les cm² aussi', () => {
     assert.ok(!pourPdf('10⁴').includes('?'), 'plus aucun point d\'interrogation');
 });
 
+test('LES SYMBOLES MATHÉMATIQUES TRAVERSENT pourPdf — le PDF sait les écrire', () => {
+    // Rémy imprimait « les droites sont _|_ », « 5 =/= 3 », « V25 = 5 ». Trois
+    // notations fausses sur des feuilles de mathématiques, et la troisième est
+    // la pire : « V » est aussi un nom de point.
+    //
+    // La police Symbol, présente dans tout lecteur de PDF et déjà utilisée pour
+    // π, contient ⊥ ≠ √ ≤ ≥ → ← ≈ ≡ ∞ ∈ ∠. `pourPdf` ne les remplace donc plus :
+    // il les laisse passer, et `ecrireSymboles` les trace au bon moment.
+    for (const signe of ['⊥', '≠', '≤', '≥', '√', '→', '←', '≈', '≡', '∞', '∈', '∠', 'π']) {
+        assert.equal(pourPdf(`a ${signe} b`), `a ${signe} b`,
+            `${signe} doit traverser intact`);
+    }
+
+    // Les anciennes translittérations ne doivent plus apparaître nulle part.
+    for (const laid of ['_|_', '=/=', '<=', '>=', '->', '<-']) {
+        assert.ok(!pourPdf('(AB) ⊥ (CD), 5 ≠ 3, 2 ≤ x ≥ 1, a → b ← c').includes(laid),
+            `« ${laid} » ne doit plus être écrit`);
+    }
+    assert.ok(!/\bV25\b/.test(pourPdf('√25 = 5')), '« V25 » ne doit plus être écrit');
+    assert.ok(!pourPdf('√25 = 5').includes('?'), 'et rien ne tombe dans le filet à « ? »');
+
+    // Les indices : « u1 » est un nom de variable, « u₁ » est le premier terme
+    // d'une suite. Ce n'est pas la même chose, et ils se dessinent.
+    assert.equal(pourPdf('u₀, u₁, u₉'), 'u₀, u₁, u₉');
+
+    // CE QUI RESTE TRANSLITTÉRÉ, et c'est voulu : Symbol ne l'a pas.
+    assert.equal(pourPdf('a ☐ b'), 'a [ ] b');
+    assert.equal(pourPdf('2 − 1'), '2 - 1');           // le vrai signe moins
+    assert.equal(pourPdf('62\u202F307'), '62\u00A0307'); // l'espace fine des milliers
+
+    // Et le filet de sécurité tient toujours pour le reste.
+    assert.ok(pourPdf('a \u4E2D b').includes('?'), 'un idéogramme reste un « ? »');
+});
+
 // --- La progression -------------------------------------------------------------
 
 test('les sept marches montent dans l\'ordre, et se partagent l\'exercice', () => {
