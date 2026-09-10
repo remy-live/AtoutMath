@@ -26,8 +26,28 @@
 // Un dossier enveloppant donnerait `www/AtoutMath/index.html`, et le site
 // répondrait 404 sans qu'on comprenne pourquoi.
 //
+// LE PAQUET DE MISE À JOUR, QUAND L'ARCHIVE COMPLÈTE EST TROP LOURDE.
+//
+// Rémy : « je transfère tout via filezilla c'est ça ? »
+//
+// Non — et `--depuis` est ce qui permet de répondre non. Un hébergement
+// mutualisé plafonne souvent l'envoi par le navigateur à deux mégaoctets ;
+// l'archive complète en fait plus du double, d'où le détour par un client FTP
+// pour UN fichier. Un paquet qui ne contient que ce qui a changé depuis la
+// version installée passe, lui, sans détour : `deposer.php` remplace les
+// fichiers du même nom et laisse les autres en place, c'est exactement ce
+// qu'il faut.
+//
+// DEUX RÉSERVES, ÉCRITES ICI PARCE QU'ELLES NE SE DEVINENT PAS :
+//   · un paquet différentiel NE SERT PAS à une première installation — il n'y
+//     a rien à compléter. L'outil le dit à l'écran ;
+//   · il ne peut pas exprimer une SUPPRESSION. Un fichier renommé laisse
+//     l'ancien en place sur le serveur. Sans gravité — plus rien ne le
+//     réclame — mais il faut le savoir plutôt que de le découvrir.
+//
 // USAGE
 //   node tools/paquet.mjs                  → tools/tmp/atoutmath-vNNN.zip
+//   node tools/paquet.mjs --depuis=<commit> → seulement ce qui a changé depuis
 //   node tools/paquet.mjs --sortie=/chemin/mon.zip
 
 import { execFileSync } from 'node:child_process';
@@ -58,7 +78,24 @@ const exclus = fs.readFileSync(path.join(RACINE, '.deployignore'), 'utf8')
     .filter(l => l && !l.startsWith('#'));
 
 const garde = (f) => !exclus.some(e => f === e || f.startsWith(e + '/'));
-const fichiers = suivis.filter(garde);
+let fichiers = suivis.filter(garde);
+
+// --- Ce qui a changé depuis une version donnée, s'il en est question
+const depuis = valeur('depuis');
+if (depuis) {
+    const changes = new Set(
+        execFileSync('git', ['diff', '--name-only', '-z', depuis, 'HEAD'], { cwd: RACINE })
+            .toString('utf8').split('\0').filter(Boolean)
+    );
+    // On garde AUSSI les fichiers non suivis à l'époque et ajoutés depuis :
+    // `git diff` les liste, mais seuls ceux qui existent encore nous
+    // intéressent — un fichier supprimé n'a rien à faire dans une archive.
+    fichiers = fichiers.filter(f => changes.has(f));
+    if (!fichiers.length) {
+        console.error(`Rien n'a changé depuis ${depuis}.`);
+        process.exit(1);
+    }
+}
 
 // --- Une dernière barrière, et elle est volontairement bête.
 //
@@ -101,7 +138,8 @@ const version = (fs.readFileSync(path.join(RACINE, 'index.html'), 'utf8')
     .match(/\?v=(\d+)/) || [])[1] || 'x';
 
 const sortie = path.resolve(valeur('sortie')
-    || path.join(RACINE, 'tools', 'tmp', `atoutmath-v${version}.zip`));
+    || path.join(RACINE, 'tools', 'tmp',
+        depuis ? `atoutmath-maj-v${version}.zip` : `atoutmath-v${version}.zip`));
 fs.mkdirSync(path.dirname(sortie), { recursive: true });
 fs.rmSync(sortie, { force: true });
 
@@ -121,11 +159,19 @@ console.log(`  ${path.basename(sortie)}`);
 console.log(`  ${fichiers.length} fichiers · ${ko} Ko · version ${version}`);
 console.log(`  ${sortie}`);
 console.log('');
-console.log('  Ce qui est dedans : le site, l\'API, l\'administration, l\'installateur.');
-console.log('  Ce qui n\'y est pas : la configuration, la base, les tests, les outils.');
-console.log('');
-console.log('  À FAIRE, DANS CET ORDRE :');
-console.log('   1. décompresser, tout sélectionner, déposer dans www/ ;');
-console.log('   2. ouvrir https://votre-site/api/install.php — TOUT DE SUITE ;');
-console.log('   3. ouvrir https://votre-site/api/admin/sante.php.');
+if (depuis) {
+    console.log(`  MISE À JOUR SEULE : ce qui a changé depuis ${depuis}.`);
+    console.log('  Elle complète une installation existante — elle ne suffit PAS');
+    console.log('  à en créer une, et elle ne supprime aucun fichier.');
+    console.log('');
+    console.log('  À FAIRE : ouvrir https://votre-site/deposer.php et l\'envoyer.');
+} else {
+    console.log('  Ce qui est dedans : le site, l\'API, l\'administration, l\'installateur.');
+    console.log('  Ce qui n\'y est pas : la configuration, la base, les tests, les outils.');
+    console.log('');
+    console.log('  À FAIRE, DANS CET ORDRE :');
+    console.log('   1. décompresser, tout sélectionner, déposer dans www/ ;');
+    console.log('   2. ouvrir https://votre-site/api/install.php — TOUT DE SUITE ;');
+    console.log('   3. ouvrir https://votre-site/api/admin/sante.php.');
+}
 console.log('');
