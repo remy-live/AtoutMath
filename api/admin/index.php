@@ -35,7 +35,18 @@ $erreur = '';
 if (empty($_SESSION['prof']) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $email = trim((string) ($_POST['email'] ?? ''));
     $mdp   = (string) ($_POST['mdp'] ?? '');
-    $stmt = db()->prepare('SELECT * FROM teachers WHERE email = ? LIMIT 1');
+    // L'ADRESSE SE COMPARE SANS TENIR COMPTE DES MAJUSCULES.
+    //
+    // Rémy, enfermé dehors : « mon mail et code ne fonctionnent pas ». Une
+    // adresse électronique ne distingue pas la casse — personne au monde ne
+    // considère « Prof@College.fr » et « prof@college.fr » comme deux boîtes
+    // différentes. Mais `WHERE email = ?` le faisait, et le message de refus
+    // est le même dans les deux cas, exprès : impossible de comprendre qu'on
+    // s'est simplement trompé de majuscule.
+    //
+    // `LOWER()` des deux côtés : la comparaison suit enfin ce que tout le
+    // monde croit qu'elle fait.
+    $stmt = db()->prepare('SELECT * FROM teachers WHERE LOWER(email) = LOWER(?) LIMIT 1');
     $stmt->execute([$email]);
     $prof = $stmt->fetch();
     // LA MÊME PHRASE DANS LES DEUX CAS. Dire « cette adresse n'existe pas »

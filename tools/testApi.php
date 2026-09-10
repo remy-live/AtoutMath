@@ -922,6 +922,72 @@ verifier('et il change bien de classe, sans doublon',
 verifier('son billet marche toujours après le déplacement',
     json('/login', ['login' => 'yanis.ferrand', 'code' => 'CLASSE6'])['code'] === 200);
 
+titre('12 sexies. Se connecter, et rentrer quand on est enfermé dehors');
+
+// Rémy, enfermé dehors sur son propre site : « mon mail et code ne
+// fonctionnent pas ».
+
+// LA CASSE DE L'ADRESSE. Personne au monde ne considère « Prof@College.fr » et
+// « prof@college.fr » comme deux boîtes différentes — mais `WHERE email = ?` le
+// faisait. Et comme le refus dit la même phrase dans les deux cas, exprès, il
+// était impossible de comprendre qu'on s'était trompé de majuscule.
+$r = json('/teacher/login', ['email' => 'prof@essai.test', 'password' => 'motdepassetreslong']);
+verifier('la connexion du professeur fonctionne', $r['code'] === 200, $r['brut']);
+$r = json('/teacher/login', ['email' => 'PROF@Essai.TEST', 'password' => 'motdepassetreslong']);
+verifier('L\'ADRESSE NE DISTINGUE PLUS LES MAJUSCULES', $r['code'] === 200, $r['brut']);
+$r = json('/teacher/login', ['email' => 'prof@essai.test', 'password' => 'MOTDEPASSETRESLONG']);
+verifier('mais le mot de passe, lui, les distingue toujours', $r['code'] === 401);
+
+// LA PAGE DE DÉPANNAGE. Elle ne fait rien tant qu'un fichier témoin n'est pas
+// posé À LA MAIN dans api/ — ce qui demande le FTP, donc les identifiants de
+// l'hébergement. Celui qui les a peut déjà tout écrire sur ce site : on
+// n'ouvre aucune porte qui ne le soit déjà pour lui.
+$temoin = $API . '/MOTDEPASSE-OUI';
+@unlink($temoin);
+$p = page('/motdepasse.php');
+verifier('SANS LE TÉMOIN, la page de dépannage ne montre aucun compte',
+    !str_contains($p['html'], 'Le compte à dépanner')
+    && str_contains($p['html'], 'Prouvez d\'abord'));
+verifier('et elle prévient du piège qui détruirait la base',
+    str_contains($p['html'], 'Cela détruirait tout'),
+    '« effacez config.php et réinstallez » perd la clé, donc toutes les données');
+
+// Une tentative de changement SANS témoin ne doit rien changer.
+$s = db()->prepare('SELECT password_hash FROM teachers WHERE id = ?');
+$s->execute([$profId]);
+$avant = (string) $s->fetchAll()[0]['password_hash'];
+page('/motdepasse.php', ['prof' => $profId, 'mdp' => 'pirate123456', 'mdp2' => 'pirate123456']);
+$s->execute([$profId]);
+verifier('ET UNE DEMANDE ENVOYÉE À LA MAIN NE CHANGE RIEN NON PLUS',
+    (string) $s->fetchAll()[0]['password_hash'] === $avant);
+
+// Avec le témoin, en revanche, on peut se dépanner.
+touch($temoin);
+$p = page('/motdepasse.php');
+verifier('avec le témoin, la page propose les comptes',
+    str_contains($p['html'], 'Le compte à dépanner')
+    && str_contains($p['html'], 'prof@essai.test'));
+page('/motdepasse.php', ['prof' => $profId, 'mdp' => 'unmotdepasseneuf', 'mdp2' => 'unmotdepasseneuf']);
+
+verifier('LE NOUVEAU MOT DE PASSE OUVRE',
+    json('/teacher/login', ['email' => 'prof@essai.test', 'password' => 'unmotdepasseneuf'])['code'] === 200);
+verifier('et l\'ancien ne vaut plus rien',
+    json('/teacher/login', ['email' => 'prof@essai.test', 'password' => 'motdepassetreslong'])['code'] === 401);
+verifier('LE TÉMOIN EST EFFACÉ — la porte se referme derrière soi',
+    !is_file($temoin), 'sinon elle resterait entrebâillée et l\'on n\'y penserait plus');
+
+// Ce qui compte le plus : la clé n'a pas bougé, donc les données se relisent.
+$s = db()->prepare('SELECT first_name FROM students WHERE class_id = ? LIMIT 1');
+$s->execute([$classeL]);
+$prenom = $s->fetchAll()[0]['first_name'] ?? '';
+verifier('ET LES DONNÉES SE DÉCHIFFRENT TOUJOURS',
+    $prenom !== '' && dechiffrer($prenom) !== null,
+    'un dépannage qui perd la clé rend la base illisible pour toujours');
+
+// On remet le mot de passe d'origine : les sections suivantes s'en servent.
+db()->prepare('UPDATE teachers SET password_hash = ? WHERE id = ?')
+    ->execute([password_hash('motdepassetreslong', PASSWORD_DEFAULT), $profId]);
+
 titre('12 quinquies. Le rapport ne dit aucun secret');
 
 // Rémy : « fais une page avec toutes les infos dont tu as besoin ».
