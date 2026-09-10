@@ -243,6 +243,42 @@ Ce qui n'est pas transféré est listé dans `.deployignore` : tests, outils de
 mesure, notes, dépendances de développement. Le serveur ne reçoit que ce qu'un
 navigateur télécharge.
 
+### Poser le site sans client FTP : `deposer.php`
+
+L'explorateur de fichiers d'un hébergeur sait très bien transférer *un* fichier ;
+il sait mal en transférer **537**, répartis en quarante dossiers, sans en perdre
+un — et un fichier perdu au milieu de `js/ui/fiches/` ne se voit pas, il se
+découvre en cours.
+
+On renverse donc : **deux fichiers** passent par l'interface web
+(`deposer.php` et l'archive), et le serveur fait le reste. Une archive est
+complète ou ne s'ouvre pas ; il n'y a pas d'oubli possible.
+
+1. transférer `deposer.php` et le `.zip` dans `www/` ;
+2. ouvrir `https://votre-site/deposer.php`, vérifier l'aperçu, poser ;
+3. ouvrir `api/install.php` **tout de suite** ;
+4. ouvrir `api/admin/sante.php`.
+
+L'archive peut aussi être **envoyée depuis le navigateur**, si elle tient sous le
+plafond de transfert de l'hébergement — la page l'affiche et dit quoi faire
+sinon. Pour les mises à jour suivantes, seule l'archive change.
+
+**Qui a le droit de s'en servir**, puisqu'un script qui écrit des fichiers PHP
+sur un site public est ce qu'un intrus rêve de trouver :
+
+- *site déjà installé* → il faut être **connecté comme professeur** ; sinon la
+  page ne fait rien d'autre que renvoyer vers la connexion, y compris contre une
+  requête envoyée à la main ;
+- *site encore vide* → elle fonctionne sans connexion, parce qu'il n'y a personne
+  à qui demander de se connecter. La fenêtre est exactement celle d'`install.php`,
+  ouverte au même moment et pour la même raison — d'où le « tout de suite ».
+
+**Ce qu'il refuse d'écrire, quelle que soit l'archive** : tout chemin qui remonte
+(`../`), absolu ou porteur d'une lettre de lecteur — la faille dite *zip slip* —
+ainsi que `api/config.php` et `api/data/`. Éprouvé avec une archive piégée : trois
+entrées sur quatre refusées et nommées dans l'aperçu, aucune évasion, clé et base
+intactes, le fichier légitime écrit.
+
 ### Poser le site à la main : le paquet
 
 Pour le premier jour, ou pour un hébergement sans SFTP automatisé :

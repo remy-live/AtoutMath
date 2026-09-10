@@ -922,6 +922,102 @@ verifier('et il change bien de classe, sans doublon',
 verifier('son billet marche toujours après le déplacement',
     json('/login', ['login' => 'yanis.ferrand', 'code' => 'CLASSE6'])['code'] === 200);
 
+titre('12 ter. Le dépôt d\'archive : ce qu\'il refuse d\'écrire');
+
+// Rémy : « sur ovh j'ai une interface web pour le transfert de fichiers ? »
+//
+// `deposer.php` existe pour qu'un seul fichier passe par cette interface au
+// lieu de cinq cents. Il écrit donc des fichiers PHP sur un site public — ce
+// qu'un intrus rêve de trouver. Ses refus sont la seule chose qui le rende
+// acceptable, et ils se vérifient ici plutôt que dans un navigateur.
+//
+// `DEPOSER_ESSAI` charge ses décisions sans afficher la page : un fichier qui
+// ne s'exécute que tout entier ne se met pas à l'épreuve.
+define('DEPOSER_ESSAI', true);
+require_once dirname(__DIR__) . '/deposer.php';
+
+$acceptes = [
+    'index.html'               => 'index.html',
+    'js/ui/fiches/nombres.js'  => 'js/ui/fiches/nombres.js',
+    './api/index.php'          => 'api/index.php',
+];
+foreach ($acceptes as $donne => $attendu) {
+    verifier("il accepte $donne", cheminSur($donne) === $attendu, (string) cheminSur($donne));
+}
+
+// LA FAILLE DITE « ZIP SLIP » : une entrée d'archive dont le nom remonte hors
+// du dossier prévu. Elle a déjà servi à déposer des fichiers dans des dossiers
+// système par de simples archives.
+$refuses = [
+    'la remontée par ../'        => '../../../etc/passwd',
+    'un chemin absolu'           => '/etc/passwd',
+    'une lettre de lecteur'      => 'C:\\windows\\x',
+    'la remontée déguisée'       => 'a/../../b',
+    'la remontée au milieu'      => 'api/../config.php',
+    'LA CLÉ DE CHIFFREMENT'      => 'api/config.php',
+    'LA BASE DES ÉLÈVES'         => 'api/data/atoutmath-1234.sqlite',
+    'un nom vide'                => '',
+];
+foreach ($refuses as $quoi => $donne) {
+    verifier("il refuse $quoi", cheminSur($donne) === null, (string) cheminSur($donne));
+}
+
+// Et il le fait aussi À L'ÉCRITURE, pas seulement à la lecture : on pose une
+// vraie archive piégée dans un vrai dossier, et l'on regarde les dégâts.
+if (class_exists('ZipArchive')) {
+    $bacDepot = $BAC . '/depot';
+    @mkdir($bacDepot . '/api/data', 0777, true);
+    file_put_contents($bacDepot . '/api/config.php', 'LA VRAIE CONFIG');
+    file_put_contents($bacDepot . '/api/data/base.sqlite', 'LA VRAIE BASE');
+
+    $piege = $BAC . '/piege.zip';
+    $z = new ZipArchive();
+    $z->open($piege, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $z->addFromString('../evasion.txt', 'je suis sorti');
+    $z->addFromString('api/config.php', 'volé');
+    $z->addFromString('api/data/base.sqlite', 'écrasée');
+    $z->addFromString('legitime.txt', 'ok');
+    $z->close();
+
+    $lu = lireArchive($piege);
+    verifier("l'aperçu ne retient qu'une entrée sur quatre",
+        count($lu['fichiers']) === 1 && count($lu['refuses']) === 3,
+        count($lu['fichiers']) . ' gardée(s), ' . count($lu['refuses']) . ' refusée(s)');
+
+    // `poserArchive` écrit dans RACINE_SITE, qui est le dépôt lui-même : on ne
+    // peut donc pas la lancer telle quelle ici. On rejoue la même boucle, avec
+    // la même fonction de décision — c'est elle qui protège, et c'est elle
+    // qu'on met à l'épreuve.
+    $z = new ZipArchive();
+    $z->open($piege);
+    $ecrits = 0;
+    for ($i = 0; $i < $z->numFiles; $i++) {
+        $sur = cheminSur((string) $z->getNameIndex($i));
+        if ($sur === null) {
+            continue;
+        }
+        @mkdir(dirname($bacDepot . '/' . $sur), 0777, true);
+        file_put_contents($bacDepot . '/' . $sur, (string) $z->getFromIndex($i));
+        $ecrits++;
+    }
+    $z->close();
+
+    verifier('un seul fichier est écrit', $ecrits === 1, (string) $ecrits);
+    verifier("AUCUNE ÉVASION hors du dossier", !is_file(dirname($bacDepot) . '/evasion.txt'));
+    verifier('LA CLÉ DE CHIFFREMENT EST INTACTE',
+        file_get_contents($bacDepot . '/api/config.php') === 'LA VRAIE CONFIG');
+    verifier('LA BASE DES ÉLÈVES EST INTACTE',
+        file_get_contents($bacDepot . '/api/data/base.sqlite') === 'LA VRAIE BASE');
+    verifier('et le fichier légitime, lui, est bien écrit',
+        is_file($bacDepot . '/legitime.txt'));
+}
+
+// Une archive qui n'en est pas une ne doit pas faire tomber la page.
+file_put_contents($BAC . '/pasunzip.zip', 'ceci est du texte');
+$lu = lireArchive($BAC . '/pasunzip.zip');
+verifier("une archive abîmée est refusée avec une phrase, pas une erreur",
+    $lu['erreur'] !== '' && $lu['fichiers'] === [], $lu['erreur']);
+
 titre('13. Le fichier tel qu\'on l\'emporterait');
 
 // LA VÉRIFICATION QUI COMPTE, ET LA SEULE QUI PROUVE QUELQUE CHOSE : on ouvre le
