@@ -50,6 +50,14 @@
 //     quel, contient le mot « installation ». Réponse plausible et fausse.
 //     Corrigé : « PHP ne s'exécute pas » passe maintenant avant tout le reste.
 //
+//   · Deux sites posés à la main, l'un installé et l'autre non, l'archive
+//     laissée à la racine du premier :
+//       site non installé → « deposer.php accepte une archive SANS CONNEXION »
+//                           et « /atoutmath-v668.zip se télécharge » ;
+//       site installé     → « deposer.php exige la connexion du professeur »
+//                           et « pas d'archive à la racine ».
+//     Les deux constats neufs disent donc vrai dans les deux sens.
+//
 // USAGE
 //   node tools/controleEnLigne.mjs https://mon-site.fr
 //   node tools/controleEnLigne.mjs https://mon-site.fr --json
@@ -268,6 +276,58 @@ async function controler() {
         dire('ok', "L'administration s'affiche-t-elle ?", `elle redirige (${admin.code}) — connexion demandée`);
     } else {
         dire('!', "L'administration s'affiche-t-elle ?", `code ${admin.code || admin.erreur}`);
+    }
+
+    // 5 bis — LA PORTE DE SERVICE EST-ELLE REFERMÉE ?
+    //
+    // `deposer.php` écrit des fichiers PHP sur le site : c'est exactement ce
+    // qu'un intrus cherche. Il ne doit rien proposer à un visiteur anonyme dès
+    // lors que le site est installé. La vérification est simple et sans appel :
+    // on regarde, sans cookie, s'il montre son formulaire d'envoi.
+    const depot = await voir('/deposer.php');
+    if (depot.code === 404) {
+        dire('ok', 'La porte de service est-elle refermée ?',
+             "deposer.php n'est pas sur le serveur");
+    } else if (/<\?php/.test(depot.corps)) {
+        dire('x', 'La porte de service est-elle refermée ?',
+             'NON — le code de deposer.php est servi en clair');
+    } else if (/Connectez-vous d'abord/.test(depot.corps)) {
+        dire('ok', 'La porte de service est-elle refermée ?',
+             'oui — deposer.php exige la connexion du professeur');
+    } else if (/Envoyer l'archive|type="file"/.test(depot.corps)) {
+        dire('x', 'La porte de service est-elle refermée ?',
+             "NON — deposer.php accepte une archive SANS CONNEXION",
+             "Cela veut dire que <code>api/config.php</code> est absent : le site n'est "
+             + "pas installé, et n'importe qui peut y déposer des fichiers. "
+             + "Installez immédiatement, ou effacez <code>deposer.php</code>.");
+    } else {
+        dire('?', 'La porte de service est-elle refermée ?',
+             `deposer.php répond ${depot.code || depot.erreur}`);
+    }
+
+    // 5 ter — RESTE-T-IL UNE ARCHIVE À LA RACINE ?
+    //
+    // Après un dépôt à la main, le `.zip` reste souvent dans `www/`. Le code
+    // n'est pas un secret — le dépôt est public — mais c'est cinq mégaoctets
+    // offerts à qui les demande, et surtout le signe que le ménage n'a pas été
+    // fait. Le transfert automatique, lui, n'efface rien : il resterait là des
+    // mois. On le cherche par son nom, celui que fabrique tools/paquet.mjs.
+    const nomsProbables = [
+        attendue ? `/atoutmath-v${attendue}.zip` : '',
+        enLigne ? `/atoutmath-v${enLigne}.zip` : '',
+    ].filter((v, i, t) => v && t.indexOf(v) === i);
+    let archive = '';
+    for (const nom of nomsProbables) {
+        const r = await voir(nom, { methode: 'HEAD' });
+        if (r.code === 200) { archive = nom; break; }
+    }
+    if (archive) {
+        dire('!', 'Reste-t-il une archive à la racine ?',
+             `oui — ${archive} se télécharge`,
+             'Effacez-la : le transfert automatique ne fait pas le ménage, elle resterait '
+             + 'là indéfiniment.');
+    } else {
+        dire('ok', 'Reste-t-il une archive à la racine ?', 'non');
     }
 
     // 6 — LA CONFIGURATION EST-ELLE LISIBLE ? Elle porte le secret de signature
