@@ -91,7 +91,13 @@ function pourcent(x) { return Math.round((x || 0) * 100) + ' %'; }
  */
 function etatClasse(classe, seances, pathId, maintenant = Date.now()) {
     const toutes = seancesDe(seances, classe.id);
-    const siennes = toutes.filter(s => s.pathId === pathId);
+    // UN PARCOURS SANS IDENTIFIANT N'EST DONNÉ À PERSONNE — la ceinture, en
+    // plus des bretelles. `normalizePath` en pose désormais un à tout parcours
+    // qui n'en a pas, mais si jamais l'un passait à travers, `null === null`
+    // le montrerait « donné » à toutes les classes ayant reçu un autre parcours
+    // sans identifiant. Une comparaison d'inconnus ne vaut rien : on ne la fait
+    // pas plutôt que d'y croire.
+    const siennes = pathId ? toutes.filter(s => s.pathId === pathId) : [];
     const vivante = siennes.find(s => !estRetiree(s)) || null;
     const retiree = siennes.find(s => estRetiree(s)) || null;
     const seance = vivante || retiree;

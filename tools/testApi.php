@@ -1265,6 +1265,110 @@ $lu = lireArchive($BAC . '/pasunzip.zip');
 verifier("une archive abîmée est refusée avec une phrase, pas une erreur",
     $lu['erreur'] !== '' && $lu['fichiers'] === [], $lu['erreur']);
 
+titre('12 octies. Deux professeurs sur le même serveur');
+
+// LA CLOISON ENTRE COLLÈGUES, ET POURQUOI ELLE SE VÉRIFIE MAINTENANT.
+//
+// Rémy : « Ce serait quoi idéalement pour toi, le modèle, un prof qui gère un
+// établissement, une équipe, on se répartit les classes ou quoi faire dans un
+// premier temps ». Il est seul sur son serveur aujourd'hui. Le jour où un
+// collègue s'y installe, la question devient : que peut-il voir, et que
+// peut-il changer, de ce qui n'est pas à lui ?
+//
+// TROIS PORTES ÉTAIENT OUVERTES, mesurées sur ce serveur-ci :
+//   · `/teacher/assign` vérifiait que le PARCOURS était à nous, jamais la
+//     CLASSE ni l'ÉLÈVE à qui on le donnait — donc B pouvait poser du travail
+//     dans la classe de A, et les élèves de A l'auraient reçu à la synchro
+//     suivante sans que personne ne puisse dire d'où il venait ;
+//   · `/teacher/paths` en `save` faisait un `ON CONFLICT(id) DO UPDATE` qui ne
+//     regardait que l'identifiant : B, connaissant l'identifiant d'un parcours
+//     de A, en réécrivait le contenu — et `teacher_id` ne bougeant pas, A
+//     restait propriétaire d'un parcours qui n'était plus le sien ;
+//   · `/teacher/student` rendait 500 (et non 404) sur l'élève d'un autre :
+//     `fetch()` rend `false`, que `eleveLisible(?array)` refuse en mode strict.
+//     Rien ne fuyait, mais « le serveur est cassé » n'est pas la réponse à
+//     « cet élève n'est pas le vôtre ».
+//
+// Ces vérifications ne coûtent rien à un professeur seul. Elles coûteraient
+// très cher à ne pas avoir le premier jour où ils sont deux.
+
+$autreId = uuidv4();
+db()->prepare('INSERT INTO teachers (id, display_name, email, password_hash) VALUES (?, ?, ?, ?)')
+    ->execute([$autreId, 'Collègue', 'collegue@essai.test',
+               password_hash('unautremotdepasse', PASSWORD_DEFAULT)]);
+
+// LE COMPTEUR DE DÉBIT N'EST PAS CE QU'ON MESURE ICI. `/teacher/login` est
+// limité à dix appels par minute et par adresse (api/index.php), et les
+// sections précédentes en ont déjà usé — dont trois exprès avec de mauvais mots
+// de passe. Sans ce coup d'éponge, les deux connexions ci-dessous rendaient 429
+// et toute la section échouait pour une raison qui n'a rien à voir avec les
+// cloisons. On remet donc le compteur à zéro, et on le laisse compter la suite.
+$tribu = substr(hash('sha256', (string) (config()['app_secret'] ?? '')), 0, 12);
+foreach (glob(sys_get_temp_dir() . '/atoutmath_rl_' . $tribu . '/*') ?: [] as $f) {
+    @unlink($f);
+}
+
+$jetonNotre = json('/teacher/login',
+    ['email' => 'prof@essai.test', 'password' => 'motdepassetreslong'])['json']['token'] ?? '';
+$jetonAutre = json('/teacher/login',
+    ['email' => 'collegue@essai.test', 'password' => 'unautremotdepasse'])['json']['token'] ?? '';
+verifier('les deux professeurs obtiennent chacun leur jeton',
+    $jetonNotre !== '' && $jetonAutre !== '');
+
+// Le décor : une classe et un parcours à NOUS, un parcours à LUI.
+$notreClasse = json('/teacher/classes',
+    ['action' => 'create', 'name' => 'Classe à garder'], $jetonNotre)['json']['classes'][0]['id'] ?? '';
+$notreParcours = json('/teacher/paths', ['action' => 'save',
+    'path' => ['name' => 'Parcours à garder', 'version' => 2, 'steps' => []]],
+    $jetonNotre)['json']['pathId'] ?? '';
+$sonParcours = json('/teacher/paths', ['action' => 'save',
+    'path' => ['name' => 'Parcours du collègue', 'version' => 2, 'steps' => []]],
+    $jetonAutre)['json']['pathId'] ?? '';
+verifier('le décor est planté (une classe, deux parcours)',
+    $notreClasse !== '' && $notreParcours !== '' && $sonParcours !== '');
+
+verifier('le collègue ne lit pas le bilan de notre classe',
+    json('/teacher/report', ['classId' => $notreClasse], $jetonAutre)['code'] === 404);
+
+verifier('le collègue ne donne pas de travail à notre classe',
+    json('/teacher/assign',
+        ['pathId' => $sonParcours, 'classId' => $notreClasse], $jetonAutre)['code'] === 404);
+
+// L'élève existe vraiment : c'est le sien qu'on protège, pas une ligne vide.
+$eleveATester = db()->query(
+    "SELECT s.id FROM students s LIMIT 1")->fetchColumn();
+if ($eleveATester) {
+    verifier('le collègue ne lit pas le détail d\'un de nos élèves',
+        json('/teacher/student', ['studentId' => $eleveATester], $jetonAutre)['code'] === 404);
+    verifier('le collègue ne donne pas de travail à un de nos élèves',
+        json('/teacher/assign',
+            ['pathId' => $sonParcours, 'studentId' => $eleveATester], $jetonAutre)['code'] === 404);
+}
+
+// L'écrasement par identifiant : la porte la plus discrète des trois.
+json('/teacher/paths', ['action' => 'save',
+    'path' => ['id' => $notreParcours, 'name' => 'ÉCRASÉ', 'version' => 2, 'steps' => []]],
+    $jetonAutre);
+$s = db()->prepare('SELECT name, teacher_id FROM paths WHERE id = ?');
+$s->execute([$notreParcours]);
+$apres = $s->fetch() ?: [];
+verifier('le collègue n\'écrase pas notre parcours par son identifiant',
+    ($apres['name'] ?? '') === 'Parcours à garder', 'nom en base : ' . ($apres['name'] ?? '?'));
+
+// Et l'on vérifie que la fermeture n'a rien cassé pour le professeur légitime.
+verifier('nous, en revanche, donnons bien du travail à notre classe',
+    json('/teacher/assign',
+        ['pathId' => $notreParcours, 'classId' => $notreClasse], $jetonNotre)['code'] === 200);
+verifier('et nous modifions bien notre propre parcours',
+    json('/teacher/paths', ['action' => 'save',
+        'path' => ['id' => $notreParcours, 'name' => 'Parcours retouché',
+                   'version' => 2, 'steps' => []]], $jetonNotre)['code'] === 200);
+
+// Une assignation qui ne vise personne n'a jamais servi à rien : elle restait
+// en base sans jamais être lue, et l'écran disait pourtant « donné ».
+verifier('une assignation sans classe ni élève est refusée',
+    json('/teacher/assign', ['pathId' => $notreParcours], $jetonNotre)['code'] === 400);
+
 titre('13. Le fichier tel qu\'on l\'emporterait');
 
 // LA VÉRIFICATION QUI COMPTE, ET LA SEULE QUI PROUVE QUELQUE CHOSE : on ouvre le

@@ -150,6 +150,12 @@ export function normalizePath(raw, name = 'Parcours') {
         return {
             bonusSeuil: SEUIL_DEFAUT,
             ...raw,
+            // UN PARCOURS SANS IDENTIFIANT EN REÇOIT UN ICI, ET NULLE PART
+            // AILLEURS. Le format v2 recopiait l'objet tel quel : un parcours né
+            // sans identifiant en restait dépourvu pour toujours, y compris
+            // après enregistrement et rechargement. Voir `state.currentPath` :
+            // c'est de là que venaient tous les `null`.
+            id: raw.id || 'path_' + shortId(8),
             policy: resolvePolicy(raw.policy),
             steps: (raw.steps || []).map(normalizeStep)
         };

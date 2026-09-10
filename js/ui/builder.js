@@ -15,7 +15,7 @@
 import { exercices, getExerciseById, paramSchemaOf } from '../data/catalog.js';
 import { state } from '../core/state.js';
 import { Shortcodes } from '../core/shortcodes.js';
-import { makeStep, normalizePath, totalItems } from '../core/path.js';
+import { makePath, makeStep, normalizePath, totalItems } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
 import { communDe, appliquerAuxEtapes } from '../core/reglagesGroupes.js';
 import { MAX_ETAPE } from '../core/seuilEtape.js';
@@ -1436,7 +1436,11 @@ function initToolbar() {
     const btnNew = document.getElementById('btn-new-path');
     if (btnNew) {
         const repartirDeZero = () => {
-            state.currentPath = { id: null, version: 2, name: 'Nouveau parcours', policy: resolvePolicy(null), steps: [] };
+            // `makePath` pose l'identifiant, la version, la politique et le
+            // seuil de bonus. Le faire à la main ici, c'était en oublier un —
+            // et c'est l'identifiant qui manquait, celui dont l'absence faisait
+            // cocher la mauvaise classe (voir `state.currentPath`).
+            state.currentPath = makePath('Nouveau parcours');
             state.currentPathId = null;
             selectedStepId = null;
             const input = document.getElementById('path-name-input');

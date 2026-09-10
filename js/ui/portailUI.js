@@ -45,12 +45,45 @@ export function majPortail() {
     // JavaScript, c'est un oubli au premier redessin.
     document.body.classList.toggle('sans-mode-libre', !modeLibre() && !state.isTeacherMode);
 
-    if (!portailNecessaire()) {
+    const ilFaut = portailNecessaire();
+    seSouvenir(ilFaut);
+    leverLeVoile();
+
+    if (!ilFaut) {
         fermerPortail();
         return;
     }
     if (document.getElementById(ID)) return;
     dessiner();
+}
+
+/**
+ * LE SOUVENIR DE LA DERNIÈRE RÉPONSE — la seule chose qu'on puisse lire avant
+ * le premier pixel.
+ *
+ * `portailNecessaire()` interroge le profil et le journal, qui vivent dans
+ * IndexedDB : au chargement, la réponse n'arrive qu'après deux cent cinquante
+ * modules. L'écran, lui, est peint bien avant — d'où l'application visible une
+ * seconde avant la porte, que Rémy voyait à chaque lancement.
+ *
+ * On écrit donc ici, dans localStorage — lisible synchroniquement —, ce qu'on
+ * vient de décider ; le bloc en tête de `index.html` le relit au chargement
+ * suivant et voile ou non en conséquence.
+ *
+ * IL A LE DROIT DE SE TROMPER, ET C'EST POURQUOI IL EST SÉPARÉ DE LA DÉCISION.
+ * Le premier chargement après un rattachement voilera pour rien pendant une
+ * seconde ; celui qui suit ne voilera plus. Un souvenir faux coûte une seconde
+ * d'écran uni, jamais un accès indu : c'est `portailNecessaire()`, et lui seul,
+ * qui décide de montrer la porte.
+ */
+function seSouvenir(ilFaut) {
+    try { localStorage.setItem('atoutmath-porte', ilFaut ? 'oui' : 'non'); }
+    catch (e) { /* navigation privée : on voilera par défaut, ce qui est le bon défaut */ }
+}
+
+/** On rend la page. Le voile a fait son travail : la décision est prise. */
+function leverLeVoile() {
+    document.documentElement.classList.remove('avant-porte');
 }
 
 export function fermerPortail() {

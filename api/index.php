@@ -435,6 +435,27 @@ function handleTeacherPaths(): void
             fail(400, 'bad_path', 'Parcours invalide.');
         }
         $id = (string) ($path['id'] ?? uuidv4());
+
+        // UN IDENTIFIANT DE PARCOURS N'EST PAS UN DROIT D'ÉCRITURE DESSUS.
+        //
+        // Mesuré (tools/testApi.php, « B n'écrase pas le parcours de A ») : le
+        // professeur B envoyait `save` avec l'identifiant d'un parcours de A,
+        // et l'`ON CONFLICT(id) DO UPDATE` réécrivait le nom et le contenu —
+        // la colonne `teacher_id`, elle, ne bougeait pas, si bien que A gardait
+        // la propriété d'un parcours dont B avait remplacé les étapes. Rien ne
+        // le lui aurait dit : ses élèves auraient simplement reçu autre chose.
+        //
+        // Le conflit ne portait que sur l'identifiant, jamais sur le
+        // propriétaire. On regarde donc AVANT d'écrire : un parcours qui existe
+        // et qui n'est pas à nous n'est pas un conflit à résoudre, c'est une
+        // porte fermée.
+        $dejaLa = db()->prepare('SELECT teacher_id FROM paths WHERE id = ?');
+        $dejaLa->execute([$id]);
+        $proprietaire = $dejaLa->fetchColumn();
+        if ($proprietaire !== false && $proprietaire !== $teacher['id']) {
+            fail(403, 'path_not_yours', "Ce parcours appartient à un autre professeur.");
+        }
+
         db()->prepare(
             'INSERT INTO paths (id, teacher_id, name, data) VALUES (?, ?, ?, ?) '
             . sqlSurConflit('id', ['name', 'data'])
@@ -458,8 +479,44 @@ function handleTeacherAssign(): void
     $stmt->execute([$pathId, $teacher['id']]);
     if (!$stmt->fetch()) fail(404, 'path_not_found', 'Parcours introuvable.');
 
+    // ON VÉRIFIAIT LE PARCOURS, PAS CEUX À QUI ON LE DONNE — et c'est le
+    // mauvais côté de la barrière.
+    //
+    // Mesuré : le professeur B envoyait `assign` avec SON parcours et
+    // l'identifiant d'une classe de A ; le serveur répondait 200, et les élèves
+    // de A recevaient à leur prochaine synchronisation un travail donné par
+    // quelqu'un qui n'est pas leur professeur. Rémy demandait « un prof qui
+    // gère un établissement, une équipe, on se répartit les classes » : c'est
+    // exactement le jour où cette porte compte. Aujourd'hui il est seul sur son
+    // serveur, donc personne n'en a souffert — ce n'est pas une raison de la
+    // laisser ouverte, c'est la raison de la fermer maintenant, pendant qu'il
+    // n'y a rien à réparer derrière.
+    //
+    // Les deux cibles sont vérifiées, et par la même règle : la classe doit
+    // être à nous, l'élève doit être dans une de nos classes.
+    $studentId = $body['studentId'] ?? null;
+    if ($classId !== null && $classId !== '') {
+        $q = db()->prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?');
+        $q->execute([$classId, $teacher['id']]);
+        if (!$q->fetch()) fail(404, 'class_not_found', 'Classe introuvable.');
+    }
+    if ($studentId !== null && $studentId !== '') {
+        $q = db()->prepare(
+            'SELECT s.id FROM students s JOIN classes c ON c.id = s.class_id
+             WHERE s.id = ? AND c.teacher_id = ?'
+        );
+        $q->execute([$studentId, $teacher['id']]);
+        if (!$q->fetch()) fail(404, 'student_not_found', 'Élève introuvable.');
+    }
+    // Une assignation qui ne vise NI classe NI élève ne vise personne : elle
+    // resterait en base sans jamais être servie. On la refuse plutôt que de
+    // laisser croire qu'un travail a été donné.
+    if (($classId === null || $classId === '') && ($studentId === null || $studentId === '')) {
+        fail(400, 'no_target', 'Il faut désigner une classe ou un élève.');
+    }
+
     db()->prepare('INSERT INTO assignments (id, path_id, class_id, student_id, due_at) VALUES (?, ?, ?, ?, ?)')
-        ->execute([uuidv4(), $pathId, $classId, $body['studentId'] ?? null, $body['dueAt'] ?? null]);
+        ->execute([uuidv4(), $pathId, $classId ?: null, $studentId ?: null, $body['dueAt'] ?? null]);
 
     respond(['ok' => true]);
 }
@@ -551,8 +608,14 @@ function handleTeacherStudent(): void
          WHERE s.id = ? AND c.teacher_id = ? LIMIT 1'
     );
     $stmt->execute([$studentId, $teacher['id']]);
-    $student = eleveLisible($stmt->fetch());
-    if (!$student) fail(404, 'student_not_found', 'Élève introuvable.');
+    // `fetch()` rend `false`, jamais `null`, quand il n'y a pas de ligne — et
+    // `eleveLisible(?array)` en mode strict refuse `false` : la requête d'un
+    // professeur sur un élève qui n'est pas le sien rendait 500, c'est-à-dire
+    // « le serveur est cassé », là où il fallait lire « cet élève n'existe pas
+    // pour vous ». Mesuré : code 500 sur l'élève d'un autre professeur.
+    $ligne = $stmt->fetch() ?: null;
+    if (!$ligne) fail(404, 'student_not_found', 'Élève introuvable.');
+    $student = eleveLisible($ligne);
 
     $events = eventsOfStudent($studentId);
     $runs = runsOf($events);

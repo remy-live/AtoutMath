@@ -344,6 +344,36 @@ html.depuis-code::after {
    restent cachées tant qu'on y est. */
 html.depuis-code.parcours-pret::after { content: none; }
 
+/* --- AVANT LA PORTE : ON NE MONTRE PAS LA MAISON -----------------------------
+   Rémy : « quand le site se lance, il y a l'interface […] qui s'affiche avant
+   d'afficher la porte ».
+
+   MÊME MÉCANIQUE QUE `depuis-code`, ET POUR LA MÊME RAISON : `visibility`
+   plutôt que `display`, pour que rien ne saute quand on rend la main et que les
+   mesures des barres restent justes.
+
+   LA PALETTE D'AUTEUR EST DE LA PARTIE, elle. Elle vit à z-index 100000 — au-
+   dessus de tout, c'est son métier — et flottait donc AU-DESSUS du voile :
+   mesuré sur `?code=…`, on lisait « Chargement du parcours… » avec la palette
+   par-dessus. Un élève qui arrive sur la porte d'entrée n'a rien à faire d'une
+   palette d'outils d'auteur ; on la voile aussi.
+
+   LE VOILE NE DIT RIEN. Contrairement au chargement d'un parcours, où l'attente
+   a un objet qu'on peut nommer, ici on ne sait pas encore ce qui va s'afficher :
+   annoncer « Ouverture… » puis montrer une porte d'identification serait deux
+   messages pour un seul geste. Un fond uni de la couleur de l'application, et
+   c'est tout : la page a l'air de se charger, parce que c'est ce qu'elle fait. */
+html.avant-porte #top-navbar,
+html.avant-porte #app-body,
+html.avant-porte #bottom-nav,
+html.avant-porte #debug-toolbar { visibility: hidden; }
+
+html.avant-porte::after {
+    content: "";
+    position: fixed; inset: 0; z-index: 40;
+    background: var(--bg-app, #f7f8fc);
+}
+
 /* --- UN VOLET DE L'ATELIER ---------------------------------------------------
 
    La page chargée dans un cadre de l'Atelier (`?atelier=jeu|demo|fiche`) ne

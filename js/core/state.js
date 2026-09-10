@@ -13,6 +13,9 @@
 // aucun effet : il faut émettre un événement.
 
 import { LocalStore } from './store.js';
+// `ids.js` n'a aucune dépendance : on peut l'appeler ici sans entraîner
+// `path.js`, qui tirerait le catalogue entier dans le noyau.
+import { shortId } from './ids.js';
 import { journal, EventTypes } from './journal.js';
 import { initIdentity, getActiveProfileId, getDeviceId, namespaceFor } from './profile.js';
 import {
@@ -55,7 +58,21 @@ function appliquerStylePoint(style) {
 export const state = {
     // --- Session (transitoire, non persisté) ---
     // Parcours en cours d'édition (format v2 : étapes = références + surcharges).
-    currentPath: { id: null, version: 2, name: 'Mon Parcours', policy: null, steps: [] },
+    // L'IDENTIFIANT NAÎT AVEC LE PARCOURS, IL NE S'AJOUTE PAS APRÈS COUP.
+    //
+    // Rémy : « quand je charge un parcours, l'association a la même classe est
+    // tjs validée ».
+    //
+    // IL AVAIT SOUS LES YEUX UNE COLLISION D'IDENTIFIANTS VIDES. Ce parcours-ci
+    // naissait avec `id: null`, et rien ne le remplissait jamais : toute séance
+    // fabriquée depuis l'atelier partait donc avec `pathId: null`. Le panneau
+    // « À qui ce parcours est donné » coche une classe quand la séance porte le
+    // même identifiant que le parcours ouvert — et `null === null` est vrai.
+    // Autrement dit, chaque parcours sans identifiant se croyait donné à toutes
+    // les classes qui avaient reçu n'importe quel autre parcours sans
+    // identifiant. Ce n'était pas une mémoire de la dernière classe : c'était
+    // deux inconnus qui se prenaient pour le même.
+    currentPath: { id: 'path_' + shortId(8), version: 2, name: 'Mon Parcours', policy: null, steps: [] },
     currentPathId: null,
     isTeacherMode: false,
     isMobileView: false,

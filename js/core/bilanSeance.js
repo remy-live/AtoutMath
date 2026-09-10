@@ -59,7 +59,14 @@ export function runsDeLaSeance(seance, evenements = []) {
         if (e.type !== A.RUN_STARTED) continue;
         const p = e.payload || {};
         if (!p.runId) continue;
-        if (pathId && p.pathId !== pathId) continue;
+        // LE FILTRE S'APPLIQUE MÊME QUAND L'IDENTIFIANT MANQUE — sinon il ne
+        // filtre plus rien. Une séance sans `pathId` ramassait TOUS les runs de
+        // l'élève, d'où des bilans où figurait le travail d'un autre parcours.
+        // C'était le même défaut que la case cochée à tort, vu d'un autre côté :
+        // on comparait deux inconnus et l'on prenait le silence pour un accord.
+        // Les parcours ont tous un identifiant désormais ; si l'un n'en a pas,
+        // sa séance ne réclame aucun travail plutôt que de réclamer tout.
+        if (p.pathId !== pathId) continue;
         if (!comptePourLaNote(seance, e.ts)) continue;
         gardes.add(p.runId);
     }

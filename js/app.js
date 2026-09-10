@@ -37,7 +37,7 @@ import { initSync } from './core/sync.js';
 import { initSyncUI } from './ui/syncUI.js';
 import { initSeanceDistante } from './core/seanceDistante.js';
 import { initSeanceDistanteUI } from './ui/seanceDistanteUI.js';
-import { modeLibre } from './core/portail.js';
+import { modeLibre, estRattache } from './core/portail.js';
 import { initPortail, majPortail } from './ui/portailUI.js';
 import { initPleinEcran } from './ui/fullscreen.js';
 import { initBilanExercice } from './ui/accueilUI.js';
@@ -76,6 +76,31 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     await state.load();
     await seedExamplePath();
+
+    // LE PROFESSEUR RESTE PROFESSEUR D'UN CHARGEMENT À L'AUTRE.
+    //
+    // Rémy : « j'aimerai ne pas passer par admin et dans atout math sans passer
+    // par la zone admin ».
+    //
+    // `state.isTeacherMode` est une valeur de session, jamais enregistrée :
+    // seule la bascule l'écrivait. Conséquence mesurée — Rémy s'identifiait,
+    // travaillait, rechargeait la page… et retombait sur la porte d'entrée des
+    // élèves, avec son mot de passe à retaper. Le jeton, lui, était toujours là
+    // dans le navigateur : on savait qui il était, on faisait simplement comme
+    // si on l'avait oublié.
+    //
+    // ON NE RESTAURE PAS LE RÔLE SI UN ÉLÈVE EST RATTACHÉ SUR CE NAVIGATEUR.
+    // C'est le cas de la tablette prêtée : le professeur s'y est identifié une
+    // fois pour préparer la séance, l'élève la reprend ensuite. Le profil de
+    // l'élève passe devant — et le professeur, lui, n'a qu'un clic à faire.
+    //
+    // CE N'EST PAS UN AFFAIBLISSEMENT DU VERROU : le jeton n'existe que parce
+    // que le serveur a vérifié le mot de passe, et ce qu'il ouvre ici — le
+    // catalogue, l'atelier — est déjà ce qu'il ouvrait avant le rechargement.
+    if (!state.isTeacherMode && jetonProf() && !estRattache()) {
+        state.isTeacherMode = true;
+        document.body.classList.add('teacher-mode');
+    }
     // LE VERROU DE LA CLASSE S'APPLIQUE AVANT LE PREMIER DESSIN.
     //
     // On relit l'état de séance connu AVANT `refreshViews()` : sinon l'élève
@@ -100,6 +125,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // la barre et affiché dans la page — deux affirmations contraires sur le
     // même écran. L'élève arrive donc sur son parcours ; le professeur, lui,
     // garde le catalogue, c'est son atelier.
+    // Le rôle a pu être restauré plus haut depuis le jeton : `state.isTeacherMode`
+    // est donc déjà juste ici, et le professeur retrouve son atelier au lieu de
+    // l'écran « Parcours » d'un élève.
     setTopNavMode(modeLibre() || state.isTeacherMode ? 'grid' : 'path');
     initGridFilters();
     initRechercheUI(refreshCatalogViews);

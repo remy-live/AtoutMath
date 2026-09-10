@@ -15,6 +15,21 @@ import { getWeakTables } from './stats.js';
 import { defaultPolicy } from './policy.js';
 import { etatDepart, apresReponse } from './aide.js';
 
+/**
+ * UNE PROMESSE QUI NE SE RÉSOUT JAMAIS, et c'est exactement ce qu'on veut.
+ *
+ * Les activités enchaînent sur `result.dismissed` : « quand l'élève a fermé le
+ * retour, question suivante ». Quand il n'y a PAS de question suivante, la
+ * réponse honnête n'est pas « tout de suite » ni « dans une seconde » : c'est
+ * « jamais ». Une promesse en suspens le dit sans qu'aucune activité ait à
+ * connaître la règle.
+ *
+ * Elle n'est retenue par personne d'autre que l'activité qui l'attend, et le
+ * meneur détruit celle-ci une seconde et demie plus tard : le ramasse-miettes
+ * emporte l'ensemble. On ne laisse pas un minuteur derrière soi.
+ */
+const sansSuite = () => new Promise(() => { /* volontairement sans issue */ });
+
 export class ItemSession {
     /**
      * @param {Object} cfg
@@ -114,11 +129,16 @@ export class ItemSession {
         // une onzième question s'affichait dans l'intervalle, et si elle était
         // répondue assez vite, le bilan comptait onze questions sur dix.
         //
-        // Le garde-fou est ici plutôt que dans les quatorze activités qui
-        // appellent `next()` : la question en cours reste affichée, verrouillée
-        // (`locked` n'est pas relâché), donc rien ne peut plus être ni tiré ni
-        // enregistré. Le temps que la conclusion arrive, l'écran montre la
-        // dernière question et sa correction — ce qu'on voulait voir.
+        // Le garde-fou est ici plutôt que dans les vingt-huit activités qui
+        // appellent `next()` : rien de neuf n'est tiré, et `locked` n'étant pas
+        // relâché, rien ne peut plus être enregistré.
+        //
+        // IL EMPÊCHE DE TIRER, PAS DE REDESSINER — et c'est la moitié qui
+        // manquait. Une activité qui reçoit le même item le repeint quand même,
+        // donc vidé : voir « LA DERNIÈRE QUESTION NE PASSE LA MAIN À PERSONNE »
+        // dans `submit()`, où l'on coupe l'enchaînement lui-même. Les deux
+        // ensemble tiennent la promesse d'origine : le temps que la conclusion
+        // arrive, l'écran montre la dernière question et sa correction.
         if (this.termine) return this.item;
 
         const seed = this.forceSeed || randomSeed();
@@ -337,7 +357,35 @@ export class ItemSession {
                 });
             }
         }
-        result.dismissed = dismissed;
+        // LA DERNIÈRE QUESTION NE PASSE LA MAIN À PERSONNE.
+        //
+        // Rémy : « j'ai l'impression que quand on a fait 5 questions sur 5, la
+        // question suivante s'affiche et l'exercice se ferme ».
+        //
+        // CE N'EST PAS UNE IMPRESSION, ET LE GARDE-FOU DE `next()` NE SUFFISAIT
+        // PAS. Mesuré au navigateur sur un exercice à cinq questions : après la
+        // cinquième réponse, `next()` est bien rappelé une sixième fois, il rend
+        // bien le MÊME item — mais l'activité, elle, le REDESSINE. Or redessiner
+        // une question, c'est la vider : les bulles reviennent non cliquées, le
+        // pavé se rouvre vide, et l'élève voit passer trois dixièmes de seconde
+        // une question neuve qu'on lui reprend aussitôt. Pour un QCM arrivé en
+        // haut de l'escalier de l'aide, c'est pire : le redessin bascule sur le
+        // pavé numérique, donc un AUTRE écran.
+        //
+        // DEUX MINUTEURS QUI SE CROISENT, voilà l'origine : le bandeau « Bonne
+        // réponse » se referme à 1,2 s (ui/gameFeedbackUI.js) et résout
+        // `dismissed` ; la conclusion de l'étape, elle, est programmée à 1,5 s
+        // (core/runner.js). Entre les deux, les vingt-huit activités enchaînent
+        // — toutes par cette promesse, aucune par autre chose.
+        //
+        // C'EST DONC ICI QUE CELA SE RÈGLE, en un seul endroit plutôt que dans
+        // vingt-huit. Quand le meneur a posé `termine` — il vient de le faire,
+        // pendant le `state.recordAttempt` ci-dessus —, il n'y a plus de suite à
+        // promettre : on rend une promesse qui ne se résout pas. Le bandeau se
+        // referme quand même (il a son propre minuteur), l'écran garde la
+        // dernière question et la réponse qu'on y a mise, et la conclusion
+        // arrive par-dessus. Rien ne clignote.
+        result.dismissed = this.termine ? sansSuite() : dismissed;
 
         // L'escalier ne bouge qu'une fois la question CLOSE : une première
         // réponse fausse suivie d'une bonne au deuxième essai est un seul

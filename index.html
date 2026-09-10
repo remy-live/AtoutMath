@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=680">
-    <link rel="stylesheet" href="css/layout.css?v=680">
-    <link rel="stylesheet" href="css/ui.css?v=680">
-    <link rel="stylesheet" href="css/games.css?v=680">
-    <link rel="stylesheet" href="css/components.css?v=680">
-    <link rel="stylesheet" href="css/modules.css?v=680">
+    <link rel="stylesheet" href="css/base.css?v=681">
+    <link rel="stylesheet" href="css/layout.css?v=681">
+    <link rel="stylesheet" href="css/ui.css?v=681">
+    <link rel="stylesheet" href="css/games.css?v=681">
+    <link rel="stylesheet" href="css/components.css?v=681">
+    <link rel="stylesheet" href="css/modules.css?v=681">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -83,6 +83,56 @@
         if (/[?&]code=/.test(location.search)) {
             document.documentElement.classList.add('depuis-code');
         }
+    </script>
+    <!-- LA PORTE AVANT L'INTERFACE, ET NON L'INVERSE.
+         Rémy : « quand le site se lance, il y a l'interface sur laquelle on
+         travaille depuis tout le temps qui s'affiche avant d'afficher la
+         porte ».
+
+         MESURÉ : barre du haut peinte à 42 ms, porte créée à 795 ms — sept
+         cent cinquante millisecondes de catalogue, de compteur d'étoiles et de
+         palette d'auteur offertes à un élève qui n'est même pas identifié. Et
+         c'est la mesure LOCALE ; sur l'hébergement, avec deux cent cinquante
+         modules à télécharger, c'est bien pire.
+
+         POURQUOI ON NE PEUT PAS SIMPLEMENT DÉCIDER PLUS TÔT : la porte dépend
+         de trois choses — le profil de l'élève, son parcours, le rôle — et
+         toutes les trois vivent dans IndexedDB, qui n'a AUCUNE lecture
+         synchrone. Au premier pixel, on ne peut donc pas savoir.
+
+         ON NE DÉCIDE PAS : ON SE SOUVIENT. `majPortail()` écrit dans
+         localStorage, qui se lit synchroniquement, ce qu'il a décidé la
+         dernière fois. Au chargement suivant on relit ce souvenir avant le
+         premier pixel. Il peut se tromper une fois — le jour où l'élève se
+         rattache pour la première fois — et il se corrige de lui-même dès que
+         l'application a la vraie réponse.
+
+         LE VOILE SE LÈVE TOUT SEUL, quoi qu'il arrive. Un module qui ne charge
+         pas laisserait sinon un écran vide définitif, ce qui est pire que
+         l'éclair qu'on corrige. -->
+    <script>
+        (function () {
+            var lire = function (c) {
+                try { return localStorage.getItem(c); } catch (e) { return null; }
+            };
+            var p;
+            try { p = new URLSearchParams(location.search); } catch (e) { p = null; }
+            // Quatre raisons de ne rien voiler, toutes lisibles tout de suite.
+            if (p && (p.get('code') || p.get('atelier'))) return;  // ont déjà leur règle
+            if (lire('atoutmath-mode-libre') === '1') return;      // mode libre sur ce poste
+            if (lire('atoutmath-prof')) return;                    // le poste du professeur
+            if (lire('atoutmath-porte') === 'non') return;         // la dernière fois : pas de porte
+
+            var racine = document.documentElement;
+            racine.classList.add('avant-porte');
+            var lever = function () { racine.classList.remove('avant-porte'); };
+            // Le filet : au-delà de quatre secondes, l'application est en panne
+            // ou le réseau est à genoux. Dans les deux cas on rend la page —
+            // le garde-fou de démarrage, plus bas, dira ce qui a manqué.
+            setTimeout(lever, 4000);
+            window.addEventListener('error', lever, true);
+            window.__leverLeVoile = lever;
+        })();
     </script>
     <script src="vendor/localforage/localforage.min.js"></script>
     <script src="vendor/confetti/confetti.browser.js"></script>
@@ -1248,6 +1298,9 @@
 
         setTimeout(() => {
             if (window.__atoutmathDemarre) return;
+            // Le voile d'avant-porte se lève AVANT ce panneau : il masque les
+            // barres, et il masquerait aussi bien l'explication de la panne.
+            document.documentElement.classList.remove('avant-porte');
             const vus = [...new Set(window.__atoutmathErreurs)].slice(0, 6);
             const el = document.createElement('div');
             el.setAttribute('style', 'position:fixed;inset:0;z-index:2147483647;'
