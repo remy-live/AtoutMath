@@ -4,62 +4,272 @@
    `100vh` de l'autre règle : décalée vers le bas par la barre de débogage, elle
    dépassait alors de sa propre hauteur sous la fenêtre et rognait le bas du
    pavé numérique sur téléphone. */
-#game-header { min-height: 70px; display: flex; justify-content: space-between; align-items: center; padding: 10px 25px; border-bottom: 1px solid rgba(0,0,0,0.05); background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); position: relative; }
+#game-header { min-height: 70px; display: flex; justify-content: space-between; align-items: center; padding: 10px 25px; border-bottom: 1px solid rgba(0,0,0,0.05); background: var(--bg-verre); backdrop-filter: blur(10px); position: relative; }
 #game-title { font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin-top: 5px; flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 15px; }
 
-.game-header-actions { display: flex; gap: 10px; margin-left: auto; }
-.game-icon-btn { font-size: 1.2rem; padding: 6px; border-radius: 50%; transition: 0.2s; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.game-header-actions { display: flex; gap: 10px; margin-left: auto; flex-shrink: 0; }
+.game-icon-btn { font-size: 1.2rem; padding: 6px; border-radius: 50%; transition: 0.2s; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-shrink: 0; }
 .game-icon-btn--warn { background: #fef08a; border: 1px solid #fde047; color: #854d0e; }
 .game-icon-btn--info { background: var(--bg-app); border: 1px solid var(--border); color: var(--primary); }
+.game-icon-btn--neutre { background: var(--bg-app); border: 1px solid var(--border); color: var(--text-muted); }
 .game-icon-btn--danger { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+/* UN BOUTON `hidden` DOIT DISPARAÎTRE, et `display: flex` ci-dessus le
+   ramenait. Rémy : « La calculatrice n'a pas à être dans les exercices autre
+   que Pythagore, et le problème de temps distance vitesse. » Elle n'y était
+   pas, en principe : `reglerCalculatrice` posait bien `hidden` sur son
+   bouton à chaque exercice. Mais la règle du navigateur — [hidden] { display:
+   none } — pèse moins qu'une classe, et celle-ci imposait `flex` : l'attribut
+   était mis, et le bouton restait à l'écran sur les soixante-cinq exercices.
+   Le genre de panne qu'on ne trouve qu'en mesurant, parce que le code, lui,
+   fait exactement ce qu'il annonce. */
+.game-icon-btn[hidden] { display: none; }
 
 #game-progress-container { position: relative; flex: 1; max-width: 250px; height: 24px; margin: 0 15px; background: var(--border); border-radius: 12px; overflow: hidden; display: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
 #game-progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.3s ease; border-radius: 12px; }
 #game-progress-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.5); z-index: 2; pointer-events: none; }
 
-#demo-overlay-banner { display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 30px; font-size: 0.9rem; z-index: 10001; align-items: center; justify-content: center; gap: 10px; width: max-content; max-width: 90vw; }
-#demo-overlay-banner svg { flex-shrink: 0; }
-#demo-banner-text { line-height: 1.4; }
-
-/* Commandes du robot. Sur fond sombre : des pastilles claires, assez grandes
-   pour être atteintes au doigt sur tablette. */
-.demo-controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-.demo-controls[hidden] { display: none; }
-.demo-ctrl {
-    display: inline-flex; align-items: center; justify-content: center;
-    min-width: 30px; height: 30px; padding: 0 6px;
-    border: 1px solid rgba(255,255,255,.28); border-radius: 9px;
-    background: rgba(255,255,255,.12); color: #fff;
-    font-family: inherit; font-size: .78rem; font-weight: 700;
-    cursor: pointer; transition: background .15s, opacity .15s;
+/* Dans le FLUX, sous l'en-tête, et non en absolu par-dessus : la bannière
+   recouvrait la croix de fermeture et le titre sur téléphone et tablette —
+   impossible de quitter l'aperçu. En statique, elle pousse le plateau au lieu
+   de recouvrir quoi que ce soit. */
+/* Une SEULE ligne par défaut, dépliable d'un appui.
+   La consigne complète y tenait en entier : sur téléphone elle occupait sept
+   lignes, soit le quart de l'écran, poussait le plateau vers le bas (les
+   boutons de validation passaient sous la barre du navigateur) et répétait
+   mot pour mot la consigne que le jeu affiche déjà au-dessus de sa grille. */
+#demo-overlay-banner {
+    display: none; position: static; align-self: center;
+    margin: 6px auto 0; background: rgba(0,0,0,0.82); color: white;
+    padding: 6px 8px 6px 14px; border-radius: 24px; font-size: 0.82rem;
+    align-items: center; justify-content: center; gap: 8px;
+    width: max-content; max-width: min(94vw, 98%); flex-shrink: 0;
+    cursor: pointer;
 }
-.demo-ctrl:hover:not(:disabled) { background: rgba(255,255,255,.26); }
-.demo-ctrl:disabled { opacity: .35; cursor: default; }
-.demo-ctrl--actif { background: var(--primary); border-color: var(--primary); }
-.demo-ctrl--txt { font-variant-numeric: tabular-nums; }
-.btn-stop-demo { margin-left: 10px; background: var(--primary); color: white; padding: 5px 12px; border-radius: 15px; font-weight: bold; transition: 0.2s; border: none; cursor: pointer; flex-shrink: 0; }
+#demo-overlay-banner svg { flex-shrink: 0; }
+#demo-banner-text {
+    line-height: 1.35; text-align: left; min-width: 0;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+#demo-overlay-banner.demo-banner--ouvert { border-radius: 16px; }
+#demo-overlay-banner.demo-banner--ouvert #demo-banner-text { -webkit-line-clamp: 6; }
+/* Chevron : il dit qu'il y a plus à lire dessous. */
+#demo-banner-plus {
+    flex-shrink: 0; opacity: .65; font-size: .9rem; line-height: 1;
+    transition: transform .2s;
+}
+#demo-overlay-banner.demo-banner--ouvert #demo-banner-plus { transform: rotate(180deg); }
+.btn-stop-demo { background: var(--primary); color: white; padding: 5px 12px; border-radius: 15px; font-weight: bold; transition: 0.2s; border: none; cursor: pointer; flex-shrink: 0; white-space: nowrap; }
 .btn-stop-demo:hover { background: var(--primary-hover); }
 
-.canvas-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle at center, #ffffff 0%, var(--bg-app) 100%); position: relative; padding: 20px; overflow: hidden; }
-.game-question { font-size: 2.2rem; font-weight: 800; margin-bottom: 40px; text-align: center; color: var(--text-main); text-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.canvas-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle at center, var(--bg-plateau) 0%, var(--bg-app) 100%); position: relative; padding: 20px; overflow: hidden; }
+
+/* ============================================================================
+   QUAND LA HAUTEUR MANQUE, CE N'EST PAS LE DESSIN QUI DOIT PAYER.
+   ============================================================================
+   Rémy, une capture par jeu : « sur iPhone pas de labyrinthe », « il n'y a
+   plus le schéma », « il n'y a pas de rapporteur », « il n'y a rien pour les
+   réponses », « la grille du robot est trop petite et les boutons trop gros ».
+   Un seul défaut, quinze symptômes.
+
+   Chaque jeu est bâti pareil : un bandeau, une ZONE DE DESSIN en
+   `flex: 1 1 auto; min-height: 0`, des commandes en `flex: 0 0 auto`. Tant que
+   l'écran est haut, la zone de dessin prend tout ce qui reste — c'est ce qu'on
+   veut. Mais dès qu'il manque de la place, elle est LE SEUL ENFANT QUI PEUT
+   RÉTRÉCIR : elle absorbe tout le déficit, à elle seule, pendant que les
+   boutons gardent leur taille au pixel près. Mesuré sur L'Automate : la grille
+   du robot passe de 447 px à 90 px entre un écran de 852 px et un de 440, et
+   les trois boutons ne bougent pas d'un cheveu. À `min-height: 0`, rien
+   n'empêche d'aller jusqu'à zéro — et le jeu perd son plateau sans le dire.
+
+   Un écran court n'est pas rare : il suffit d'agrandir le texte dans les
+   réglages de l'iPhone pour que la fenêtre passe sous 560 px de haut.
+
+   La règle, désormais, dans tous les jeux :
+     — la zone de dessin a un PLANCHER (`min-height`), jamais 0 ;
+     — l'enveloppe DÉFILE (`overflow-y: auto`) au lieu de rogner ce qui
+       dépasse : mieux vaut faire glisser l'écran que perdre la moitié du jeu.
+   ========================================================================= */
+/* L'ÉNONCÉ SE MET À LA TAILLE DE L'ÉCRAN. Figé à 2,2 rem, « Chiffre des
+   unités de mille de 5 076,854 ? » tombait sur trois lignes au milieu d'un
+   téléphone, et le nombre — la seule chose à regarder — se retrouvait coupé
+   d'un côté à l'autre. La coupure est confiée à `balance` (des lignes de
+   longueur voisine, pas une longue et une orpheline) et le nombre lui-même ne
+   se coupe jamais. */
+/* LA QUESTION GRANDIT AVEC LE PLATEAU. En `vw` plafonné à 2,2 rem, elle
+   faisait 35 px aussi bien sur un téléphone que sur un écran de 27 pouces :
+   c'est la seule chose que l'élève doit lire, et c'était la plus petite. Les
+   unités de conteneur la rapportent au plateau, et la borne en hauteur évite
+   qu'un énoncé de trois lignes ne mange l'écran sur un plateau bas. */
+.game-question {
+    /* PLAFOND ABAISSÉ. À 3,6 rem, deux lignes d'énoncé remplissaient la moitié
+       haute de l'écran et écrasaient tout le reste. La question doit dominer,
+       pas régner. */
+    font-size: clamp(1.3rem, min(6.8cqw, 9cqh, 5.4vw + 14px), 2.9rem); font-weight: 800;
+    margin-bottom: clamp(16px, 4vh, 40px); text-align: center;
+    color: var(--text-main); text-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    text-wrap: balance; line-height: 1.25; max-width: 26ch; margin-inline: auto;
+}
+/* LA MÊME TAILLE POUR « 7 × 8 » ET POUR UNE PHRASE EST FORCÉMENT FAUSSE POUR
+   L'UNE DES DEUX. Rémy : « globalement les énoncés ont une police énorme. »
+   Un calcul mental se lit d'un coup d'œil et doit dominer l'écran ; « Par
+   rapport à quoi la pièce A est-elle le symétrique de la pièce C ? » fait
+   soixante-dix caractères, et à la même taille cela prend le tiers supérieur
+   de l'écran — la FIGURE, qui est ce qu'il faut vraiment regarder, se
+   retrouvant reléguée dessous, plus petite que la question qui la commente.
+   La question doit dominer, pas régner : plus elle est longue, plus elle se
+   calme, et plus elle laisse de place à ce dont elle parle. Le palier est posé
+   par `ui/enonce.js`, qui compte les caractères du TEXTE. */
+.game-question--moyen {
+    font-size: clamp(1.2rem, min(5.4cqw, 7.4cqh, 4.2vw + 12px), 2.25rem);
+    max-width: 30ch;
+}
+.game-question--long {
+    font-size: clamp(1.05rem, min(4.2cqw, 5.6cqh, 3.1vw + 10px), 1.75rem);
+    max-width: 40ch; margin-bottom: clamp(12px, 2.6vh, 26px);
+}
+.game-question--tres-long {
+    font-size: clamp(.95rem, min(3.4cqw, 4.6cqh, 2.3vw + 9px), 1.4rem);
+    max-width: 56ch; margin-bottom: clamp(10px, 2.2vh, 22px);
+    font-weight: 700; line-height: 1.35;
+}
+.game-question .nb-highlight,
+.game-question b { white-space: nowrap; }
+/* Le morceau d'énoncé que la démonstration désigne (« 8 × 6 » dans
+   « 8 × 6 + 3 »). Invisible tant que le robot n'en parle pas : il ne doit pas
+   souffler la priorité à l'élève qui cherche seul. */
+.game-question [data-vise] { white-space: nowrap; }
+/* Cerclé, il devient un bloc : sur un texte en ligne, le cadre se referme mal
+   et déborde sur les lignes voisines. */
+.game-question .demo-cible { display: inline-block; }
+
+/* --- LA CONSIGNE ET L'EXPRESSION NE SONT PAS LA MÊME CHOSE -------------------
+   « Écris cette expression plus simplement » se lit UNE fois par exercice ;
+   « 4 × y » se lit à chaque question, et c'est lui qu'on doit voir de loin.
+   Collés sur une ligne, ils se lisaient « plus simplement4 × y ». La consigne
+   passe donc dessus, en petit, et l'expression garde toute la taille de
+   l'énoncé. Sert au calcul littéral et aux produits de relatifs. */
+.game-question .lit-consigne,
+.game-question .rel-q {
+    display: block; font-size: .48em; font-weight: 700;
+    color: var(--text-muted); letter-spacing: .01em; line-height: 1.3;
+    margin-bottom: .35em;
+}
+.game-question .lit-expr {
+    display: block; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+/* Pour les relatifs, l'ordre est inverse : le produit d'abord, la question
+   dessous — c'est le calcul qu'on regarde, la question ne change jamais. */
+.game-question .rel-q { margin: .3em 0 0; }
+
+/* LE SYMBOLE D'UN PRÉFIXE EST UNE ÉTIQUETTE, pas un mot.
+   « Le symbole n se lit comment ? » : le n se perd dans la phrase, et l'on ne
+   sait plus s'il s'agit du symbole ou d'un article. Encadré comme sur un
+   emballage, il redevient l'objet de la question — et la casse, qui vaut un
+   milliard entre « m » et « M », se voit enfin. */
+.game-question .pf-sym {
+    display: inline-block; margin-top: .1em;
+    padding: .08em .34em; border-radius: .16em;
+    border: .06em solid var(--border);
+    background: var(--bg-panel);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    font-weight: 700; letter-spacing: 0;
+}
 
 /* Objets du jeu */
-.bubble-container { display: flex; gap: 25px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 600px; }
-.bubble { width: 110px; height: 110px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #8b5cf6) !important; color: white !important; font-size: 2.2rem; font-weight: 700; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4); border: 4px solid rgba(255,255,255,0.2); }
-.bubble:hover { transform: translateY(-8px) scale(1.05); box-shadow: 0 15px 35px rgba(79, 70, 229, 0.5); }
+/* LES BULLES TIENNENT TOUTES SUR UNE LIGNE.
+   À 110 px de large et 25 px d'écart, quatre bulles réclament 515 px : sur un
+   téléphone il en passait trois, et la quatrième tombait seule en dessous —
+   laid, et trompeur, parce que ce retour à la ligne suggère un groupement qui
+   n'existe pas. La bulle se dimensionne donc sur la place disponible DIVISÉE
+   PAR LE NOMBRE de propositions, que choice.js passe en `--n`. Sur un grand
+   écran le calcul dépasse 110 px et la bulle garde sa taille d'origine. */
+/* ET ELLES PRENNENT LA PLACE QU'ON LEUR DONNE.
+   Rémy, tablette en main : « je trouve que tu ne profites pas de l'espace de
+   l'écran, c'est souvent trop petit ». Le plafond était à 110 px — la taille
+   d'une bulle sur un téléphone — et il ne bougeait plus au-delà : sur un iPad
+   de 820 px de large, deux bulles de 110 px flottaient au milieu de mille
+   pixels de vide. Le plafond monte à 220, et une deuxième borne en HAUTEUR
+   (34cqh) empêche deux bulles sur un écran très large de devenir des ballons.
+   Le cadre de simulation du téléphone, lui, garde ses 110 px : c'est un
+   téléphone qu'on y regarde. */
+/* LA TAILLE SE CALCULE SUR LA LARGEUR QU'ON A VRAIMENT, ET NON SUR LE PLATEAU.
+   Rémy, capture à l'appui : « dommage que ça aille en ligne » — quatre
+   propositions rangées trois puis une. Mesuré sur un écran de 2000 px : la
+   bulle valait 220 px (calculée sur 100cqw, la largeur du PLATEAU) alors que la
+   rangée, elle, est plafonnée à 900 px. Quatre bulles de 220 et trois
+   gouttières font 964 : la quatrième passait à la ligne. Le plafond entrait
+   donc dans la mise en page sans entrer dans le calcul. On calcule maintenant
+   sur `min(96cqw, 900px)` — la largeur réellement disponible —, et les quatre
+   tiennent toujours sur une ligne, à toutes les tailles d'écran. */
+.bubble-container {
+    --n: 4; --ecart: clamp(8px, 2.4cqw, 28px);
+    --large: min(96cqw, 900px);
+    /* Les 4 px de marge évitent qu'un arrondi au demi-pixel ne fasse tomber la
+       dernière bulle à la ligne alors que le compte est juste. */
+    /* Le plafond est une VARIABLE parce qu'il se relit ailleurs : sur un grand
+       plateau, une bulle de 220 px à côté d'une figure devenait le sujet de
+       l'écran. Rémy : « figure hyper petite pour l'ordinateur et bulle
+       grosse ». C'est le seul chiffre qui change là-bas ; le calcul, lui,
+       reste le même partout. */
+    --bulle-max: 220px;
+    --bulle: min(var(--bulle-max), 34cqh,
+        calc((var(--large) - 4px - (var(--n) - 1) * var(--ecart)) / var(--n)));
+    display: flex; gap: var(--ecart); flex-wrap: wrap; justify-content: center;
+    width: 100%; max-width: var(--large);
+}
+.device-simulator .bubble-container, .tablet-simulator .bubble-container {
+    --bulle: min(110px,
+        calc((var(--large) - 4px - (var(--n) - 1) * var(--ecart)) / var(--n)));
+}
+.bubble { width: var(--bulle); height: var(--bulle); flex: 0 0 auto;
+    font-size: min(2.2rem, calc(var(--bulle) * .4)); border-radius: 50%; background: linear-gradient(135deg, var(--primary), #8b5cf6) !important; color: white !important; font-weight: 700; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4); border: 4px solid rgba(255,255,255,0.2); }
+/* LE SURVOL N'EXISTE PAS AU DOIGT.
+   Rémy : « un jeton est mis en évidence alors qu'on a cliqué sur rien —
+   c'était juste celui de la question précédente ». Un navigateur tactile garde
+   l'état :hover sur le dernier élément touché jusqu'au prochain contact
+   ailleurs ; la bulle de la question suivante, dessinée à la place de celle
+   qu'on venait de toucher, héritait donc du halo et du relief. L'élève lisait
+   une réponse déjà désignée, avant même d'avoir répondu.
+   Le survol est réservé aux appareils qui en ont un — souris ou trackpad. */
+@media (hover: hover) and (pointer: fine) {
+    .bubble:hover { transform: translateY(-8px) scale(1.05); box-shadow: 0 15px 35px rgba(79, 70, 229, 0.5); }
+}
 .bubble:active { transform: translateY(2px) scale(0.95); }
 
-.bubble.demo-target, .prio-btn.demo-target, .grid-cell.demo-target, .missing-cell.demo-target { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5), 0 0 25px var(--warning) !important; transform: scale(1.15) !important; background: linear-gradient(135deg, var(--warning), #fbbf24) !important; color: white !important; border-color: white !important;}
+.bubble.demo-target, .prio-btn.demo-target, .grid-cell.demo-target, .missing-cell.demo-target, .ad-choix-btn.demo-target { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5), 0 0 25px var(--warning) !important; transform: scale(1.15) !important; background: linear-gradient(135deg, var(--warning), #fbbf24) !important; color: white !important; border-color: white !important;}
+
+/* CE DONT LE ROBOT PARLE, DANS L'ÉNONCÉ.
+   La bulle pointait « 6 × 6 » dans « 6 × 6 − 8 » : la pointe tombait entre
+   deux chiffres, et rien ne disait où commençait le morceau. Un surlignage,
+   comme au feutre sur un cahier — il s'allume le temps de l'explication, et
+   s'éteint dès qu'on passe à la réponse. */
+.demo-vise {
+    background: linear-gradient(180deg, transparent 12%, rgba(250, 204, 21, .55) 12%);
+    border-radius: 5px; padding: 0 .12em; box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    animation: demo-vise-pouls 1.6s ease-in-out infinite;
+}
+@keyframes demo-vise-pouls {
+    0%, 100% { filter: none; }
+    50% { filter: brightness(1.12) saturate(1.2); }
+}
+@media (prefers-reduced-motion: reduce) { .demo-vise { animation: none; } }
 
 /* Grille Tactile (Chasseur) */
 .tactile-grid { display: grid; grid-template-columns: repeat(5, 60px); grid-template-rows: repeat(5, 60px); gap: 6px; background: rgba(255,255,255,0.5); border: 1px solid var(--border); padding: 10px; border-radius: 16px; box-shadow: var(--shadow-lg); backdrop-filter: blur(5px); }
 .grid-cell { background: white; cursor: pointer; display: flex; justify-content: center; align-items: center; border-radius: 8px; font-weight: 700; font-size: 1.2rem; color: var(--text-main); box-shadow: var(--shadow-sm); transition: 0.2s; border: 2px solid transparent; }
+@media (hover: hover) and (pointer: fine) {
 .grid-cell:hover { transform: scale(1.05); border-color: var(--primary); color: var(--primary); box-shadow: var(--shadow-md); z-index: 2; }
+}
 
 /* Grille Facteur Manquant */
 .missing-grid { display: grid; grid-template-columns: repeat(4, 70px); gap: 12px; margin-top: 30px; }
-.missing-cell { background: var(--bg-panel); border: 2px solid var(--border); border-radius: 12px; font-size: 1.6rem; font-weight: 800; width: 70px; height: 70px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow-sm); color: var(--text-main); }
+.missing-cell { --taille-case: 1.6rem; background: var(--bg-panel); border: 2px solid var(--border); border-radius: 12px; font-size: var(--taille-case); font-weight: 800; width: 70px; height: 70px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow-sm); color: var(--text-main); }
+@media (hover: hover) and (pointer: fine) {
 .missing-cell:hover { transform: translateY(-3px); border-color: var(--primary); color: var(--primary); box-shadow: var(--shadow-md); }
+}
 
 /* Table de Pythagore */
 .pytha-question { margin-bottom: 15px; }
@@ -71,8 +281,31 @@
 .pytha-cell--target { background: var(--warning); color: white; font-size: 1.1rem; font-weight: 800; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4); }
 
 /* Boutons Priorité */
-.prio-btn { display: block; width: 100%; max-width: 320px; padding: 20px; margin: 12px auto; font-size: 1.4rem; background: var(--bg-panel); border: 2px solid var(--border); border-radius: 12px; font-weight: 700; color: var(--text-main); text-align: center; transition: all 0.2s ease; box-shadow: var(--shadow-sm); cursor: pointer; }
+/* LA RÉPONSE SE LIT AUSSI BIEN QUE LA QUESTION. Elle grandit donc avec
+   l'écran, comme l'énoncé — figée à 1,4 rem, elle devenait minuscule sur un
+   grand écran où l'énoncé, lui, montait à cinquante-huit pixels. Et la boîte
+   s'élargit : trois cent vingt pixels au milieu de mille trois cents, c'était
+   un timbre-poste posé sur une affiche. */
+/* ET ELLE SUIT LA PLUS PETITE DIMENSION, PAS LA LARGEUR.
+   Rémy : « les boutons débordent un tout petit peu sur tablette en paysage et
+   en plein écran ». MESURÉ sur 1152 × 553 : `2.2vw` donne vingt-cinq pixels
+   parce que l'écran est LARGE, mais c'est la HAUTEUR qui manque — la figure,
+   l'énoncé et quatre boutons ne tiennent pas dans cinq cent cinquante-trois
+   pixels, et les deux derniers sortaient de cent soixante-trois pixels sous le
+   cadre. En `vmin`, la réponse grandit sur un grand écran comme avant, et se
+   serre dès qu'une des deux dimensions se serre. */
+.prio-btn {
+    --taille-choix: clamp(1.05rem, 3.2vmin + 6px, 2rem);
+    display: block; width: 100%; max-width: min(480px, 100%);
+    padding: clamp(9px, 1.6vmin + 6px, 22px); margin: clamp(5px, 1.2vmin, 12px) auto;
+    font-size: var(--taille-choix);
+    background: var(--bg-panel); border: 2px solid var(--border); border-radius: 12px;
+    font-weight: 700; color: var(--text-main); text-align: center;
+    transition: all 0.2s ease; box-shadow: var(--shadow-sm); cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
 .prio-btn:hover { border-color: var(--primary); transform: translateX(5px); box-shadow: var(--shadow-md); color: var(--primary); }
+}
 
 /* --- HOVER PREVIEW DEMO MODAL --- */
 #hover-demo-box {
@@ -81,8 +314,13 @@
 }
 #hover-demo-box .hd-header { background: linear-gradient(90deg, var(--accent), #1e293b); color: white; padding: 12px 20px; font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 .hd-subtitle { color: #cbd5e1; font-weight: normal; font-size: 0.75rem; }
-.hd-canvas-wrap { flex-grow: 1; position: relative; overflow: hidden; background: radial-gradient(circle at center, #ffffff 0%, var(--bg-app) 100%); }
-#hover-demo-canvas { position: absolute; top: 0; left: 0; width: 850px; height: 600px; transform: scale(0.4); transform-origin: top left; display: flex; flex-direction: column; justify-content: center; align-items: center; background: transparent; padding: 20px; box-sizing: border-box; }
+.hd-canvas-wrap { flex-grow: 1; position: relative; overflow: hidden; background: radial-gradient(circle at center, var(--bg-plateau) 0%, var(--bg-app) 100%); }
+/* Vignette de survol. Elle est déclarée conteneur `plateau` comme la zone de
+   jeu et la vignette de carte : sans ça, une mise en page qui interroge
+   `plateau` (le démineur, Garam, les relatifs…) retombe sur les dimensions de
+   la FENÊTRE, et se dessine à la taille du plein écran dans une boîte de
+   850 × 600 réduite à 40 %. */
+#hover-demo-canvas { container-type: size; container-name: plateau; position: absolute; top: 0; left: 0; width: 850px; height: 600px; transform: scale(0.4); transform-origin: top left; display: flex; flex-direction: column; justify-content: center; align-items: center; background: transparent; padding: 20px; box-sizing: border-box; }
 #hover-demo-canvas .game-question { margin-bottom: 20px; }
 
 /* --- FEEDBACK & ANIMATIONS --- */
@@ -105,11 +343,13 @@
 /* --- RESPONSIVE ADJUSTMENTS --- */
 @media (max-width: 600px) {
     .game-question { font-size: 1.6rem; margin-bottom: 20px; }
-    .bubble { width: 80px; height: 80px; font-size: 1.6rem; }
     .tactile-grid { grid-template-columns: repeat(5, 50px); grid-template-rows: repeat(5, 50px); gap: 4px; padding: 8px; }
     .missing-grid { grid-template-columns: repeat(3, 60px); gap: 10px; }
     .missing-cell { width: 60px; height: 60px; font-size: 1.4rem; }
-    .prio-btn { width: 100%; font-size: 1.2rem; padding: 15px; }
+    /* Sur un petit écran, la variable suffit : elle descend déjà à 1,2 rem.
+       Réécrire `font-size` ici casserait les paliers d'étiquette longue, qui
+       la multiplient. */
+    .prio-btn { width: 100%; }
     .glass-panel { width: 90% !important; padding: 20px; }
     .pytha-table { max-width: 340px; gap: 2px; }
     .pytha-cell { font-size: 0.65rem; border-radius: 4px; }
@@ -127,3 +367,183 @@
 .device-simulator .pytha-cell { font-size: 0.65rem; border-radius: 4px; }
 .device-simulator .pytha-cell--target { font-size: 0.85rem; }
 
+
+
+/* --- LA BANDE DU ROBOT ------------------------------------------------------
+   La bannière d'aperçu et les commandes (Arrière / Pause / Un pas / Vitesse)
+   occupaient deux rangées empilées au-dessus du plateau. Sur un jeu d'arcade
+   en 700 px de haut, cela retirait près d'un tiers de la surface de jeu — et
+   c'est précisément le plateau que la démonstration sert à montrer. Elles
+   partagent maintenant une ligne dès qu'elles y tiennent, et se replient l'une
+   sous l'autre seulement quand la largeur manque. */
+#demo-strip {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 6px 10px; flex-shrink: 0; padding: 0 6px;
+}
+#demo-strip:empty { display: none; }
+#demo-strip #demo-overlay-banner { margin: 0; }
+/* Écran court : tout maigrit d'un cran. Le plateau prime. */
+@media (max-height: 620px) {
+    #demo-strip { gap: 4px 8px; }
+    #demo-strip #demo-overlay-banner { padding: 3px 6px 3px 10px; font-size: .74rem; }
+}
+
+/* --- LES COMMANDES DU ROBOT REMPLACENT LE TITRE -----------------------------
+   Rémy : « quand le robot intervient, cela décale tout vers le bas. Je pense
+   que la toolbar des commandes devrait se superposer en haut là où il y a le
+   titre, le robot, le bouton de plein écran, sans prendre de place en plus. »
+
+   Le titre et la progression n'apprennent rien pendant une démonstration : on
+   vient de lancer l'exercice, et le robot ne marque pas de points. Ils cèdent
+   donc leur place, la hauteur de l'en-tête ne bouge pas, et le plateau ne
+   saute plus sous les doigts au premier mot du robot.
+
+   Les COMMANDES DE DROITE, elles, ne cèdent jamais : la croix de fermeture et
+   « plein écran » restent là où l'élève les a vues. */
+.jeu--demo #game-title,
+.jeu--demo #game-progress-container { display: none !important; }
+#game-header #demo-controls-host {
+    display: flex; align-items: center; min-width: 0; flex: 1 1 auto;
+}
+#game-header #demo-controls-host .demo-controls {
+    margin: 0; flex-wrap: nowrap; justify-content: flex-start; min-width: 0;
+    /* En tout dernier recours — un écran de 320 px, quatre commandes et deux
+       navigations du professeur — la barre défile plutôt que de repousser la
+       croix de fermeture hors de l'écran.
+       ET ELLE DOIT POUVOIR RÉTRÉCIR POUR CELA. La règle générale de la barre
+       porte « flex-shrink: 0 » — elle vaut sous le plateau, où la barre a
+       toute la largeur. Dans l'en-tête, elle empêchait le défilement de
+       servir : mesuré sur un écran de 320 pixels, les commandes occupaient
+       133 pixels dans une colonne de 120 et passaient PAR-DESSUS les boutons
+       de droite, de 8 à 141 contre 124 à 312. */
+    flex-shrink: 1; max-width: 100%;
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+}
+#game-header #demo-controls-host .demo-controls::-webkit-scrollbar { display: none; }
+#game-header #demo-controls-host .demo-ctrl-btn { flex-shrink: 0; }
+
+/* --- Réponses en CARTES ------------------------------------
+   Une bulle ronde est parfaite pour « 42 » et ridicule pour « 17 billes
+   rouges » : le texte s'y recroqueville. Dès qu'une proposition est une
+   phrase, choice.js bascule tout le groupe ici — deux cartes par ligne,
+   arrondies comme le reste, et de la même famille de couleurs que les
+   bulles pour qu'on reconnaisse « ce sur quoi on tape ». */
+.choice-cartes {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(9px, 2vw, 14px); width: 100%; max-width: 560px; margin-inline: auto;
+}
+.choice-carte {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    min-height: clamp(56px, 11vw, 74px); padding: 12px 14px;
+    border-radius: 18px; border: 3px solid rgba(255,255,255,.22);
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    color: #fff; font-weight: 700; font-size: clamp(.95rem, 3.4vw, 1.25rem);
+    line-height: 1.25; text-wrap: balance; cursor: pointer;
+    box-shadow: 0 8px 20px rgba(79, 70, 229, .34);
+    transition: all .25s cubic-bezier(.4, 0, .2, 1);
+    -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) and (pointer: fine) {
+.choice-carte:hover { transform: translateY(-4px); box-shadow: 0 13px 28px rgba(79, 70, 229, .45); }
+}
+.choice-carte:active { transform: translateY(2px) scale(.98); }
+/* Trois propositions : la dernière prend toute la ligne plutôt que de
+   rester orpheline dans une demi-largeur. */
+.choice-carte:last-child:nth-child(odd) { grid-column: 1 / -1; }
+/* Les classes de taille des bulles ne s'appliquent pas ici : la carte
+   grandit avec son texte au lieu de le rapetisser. */
+.choice-carte.choice--l, .choice-carte.choice--xl, .choice-carte.choice--xxl { font-size: clamp(.95rem, 3.4vw, 1.25rem); }
+/* Le retour de correction doit se VOIR sur la carte : les styles en ligne
+   posés par choice.js ne peuvent rien contre un dégradé, qui est une image
+   de fond et non une couleur. On le dit donc ici. */
+.choice-carte.choice--ok {
+    background: linear-gradient(135deg, #34d399, #16a34a) !important;
+    box-shadow: 0 8px 20px rgba(22, 163, 74, .4);
+}
+.choice-carte.choice--ko {
+    background: linear-gradient(135deg, #f87171, #dc2626) !important;
+    box-shadow: 0 8px 20px rgba(220, 38, 38, .35);
+}
+.choice-carte.demo-target {
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, .5), 0 0 25px var(--warning) !important;
+    transform: scale(1.05) !important;
+    background: linear-gradient(135deg, var(--warning), #fbbf24) !important;
+    border-color: #fff !important;
+}
+/* DEUX CARTES PAR LIGNE, MÊME SUR UN TÉLÉPHONE ÉTROIT. Le repli à une colonne
+   se déclenchait à 330 px — c'est-à-dire sur les iPhone que Rémy utilise pour
+   tester —, et quatre propositions empilées poussaient « Un indice » et
+   « Montre-moi » hors de l'écran. Une carte de moitié de 326 px fait encore
+   150 px : « 707,452 » y tient trois fois. On ne retombe à une colonne que sur
+   les écrans vraiment minuscules. */
+@media (max-width: 260px) {
+    .choice-cartes { grid-template-columns: 1fr; }
+}
+
+/* --- LE TABLEAU DE VALEURS D'UNE FONCTION -----------------------------------
+   Rémy, devant l'énoncé aplati : « je ne comprends pas… bizarre ». Il était
+   écrit en texte, aligné à coups d'espaces ; l'écran replie les espaces et
+   avale les retours à la ligne, et l'on lisait « x : −2 2 3 5 f(x) : ? 7 9 13 ».
+   Or lire un tableau — une colonne, un couple — est exactement ce que
+   l'exercice travaille. */
+.fn-valeurs {
+    border-collapse: collapse; margin: 8px auto 4px;
+    font-weight: 800; font-size: clamp(.95rem, 2.6vw, 1.15rem);
+}
+.fn-valeurs th,
+.fn-valeurs td {
+    border: 1.5px solid var(--border); padding: 5px 12px; text-align: center;
+    min-width: 2.6em;
+}
+.fn-valeurs th {
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
+    color: var(--primary); text-align: right; min-width: 0;
+}
+
+/* LA CARTE RAPPELÉE, DANS SA FENÊTRE. Les styles de l'organigramme sont posés
+   par le jeu dans un <style> — qui vaut pour tout le document —, donc la
+   fenêtre en profite. Il ne manque que le cadre : une boîte au format du plan,
+   dans laquelle les cases se placent en pourcentage comme dans le jeu. */
+.qd-carte-fenetre {
+    position: relative; width: 100%; margin: 0 auto;
+    container-type: size;
+}
+
+/* LA PHRASE À COMPLÉTER. Rémy : « fais des phrases du genre : f(3) = 1, … est
+   l'image de … par la fonction f. Car là tes questions sont faciles. » Elle a
+   sa ligne et son trou souligné : c'est la phrase qu'on écrira au contrôle, et
+   la voir en entier est déjà la moitié du travail. */
+.fn-phrase {
+    display: inline-block; margin-top: 6px; font-weight: 800;
+    font-size: clamp(1rem, 3vw, 1.2rem); line-height: 1.5;
+}
+.fn-phrase u {
+    text-decoration: none; border-bottom: 2px solid var(--primary);
+    color: var(--primary); letter-spacing: .06em;
+}
+/* UN TROU EST UNE CASE QU'ON TOUCHE. Rémy : « dans la phrase enlève les deux
+   chiffres, on peut les compléter grâce au f(x) ». Deux trous au lieu d'un :
+   il faut donc pouvoir dire DANS LEQUEL on écrit, et le voir. La case visée
+   est pleine et pâle ; les autres attendent. */
+.np-trou {
+    cursor: pointer; display: inline-block; min-width: 2.4em; text-align: center;
+    padding: 0 .15em; border-radius: 6px 6px 0 0;
+    white-space: pre;
+}
+.np-trou--vise {
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    border-bottom-width: 3px;
+}
+.np-trou--plein { letter-spacing: normal; }
+
+/* UN PROGRAMME DE CALCUL EST UNE LISTE. Rémy : « va à la ligne à chaque
+   étape ». Écrit d'un trait, il se repliait sur un écran étroit à des endroits
+   qui ne sont pas les siens — « 1. multiplie par », retour, « 5 ; 2. ajoute 1 ».
+   La liste est CENTRÉE EN BLOC mais alignée à gauche à l'intérieur : centrer
+   chaque ligne ferait perdre l'alignement des numéros, qui est justement ce
+   qui dit qu'on descend une étape à la fois. */
+.fn-prog {
+    display: inline-block; text-align: left; margin: 6px 0; padding-left: 1.5em;
+    line-height: 1.5;
+}
+.fn-prog li { margin: 2px 0; }

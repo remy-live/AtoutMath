@@ -67,7 +67,10 @@ test('décomposition : les termes redonnent bien le total', () => {
 test('lettres : l\'écriture proposée correspond à la réponse', () => {
     for (let i = 0; i < 120; i++) {
         const it = lettresGenerator.generate({ max: 1000000, decimaux: 'non' }, ctx(i));
-        assert.equal(it.prompt.text, `Écris en chiffres : ${spellInteger(it.meta.n)}`);
+        // Sur le papier l'énoncé est nu : la consigne « Écris en chiffres »
+        // est écrite UNE fois en tête de l'exercice, pas devant chaque nombre,
+        // et la question se termine par le signe égal comme dans un cahier.
+        assert.equal(it.prompt.text, `${spellInteger(it.meta.n)} =`);
         assert.equal(Number(it.answer), it.meta.n);
     }
 });

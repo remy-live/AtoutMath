@@ -1,8 +1,19 @@
 /* --- VARIABLES --- */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+/* La police est servie AVEC l'application (vendor/outfit) et non depuis Google
+   Fonts : derrière le filtre d'un établissement ou hors ligne, la requête
+   échouait et toute l'interface changeait de tête. */
+@import url('../vendor/outfit/outfit.css');
 
 :root {
     --bg-app: #f8fafc; --bg-panel: #ffffff; --bg-hover: #f1f5f9;
+    /* Le cœur du plateau : un halo plus clair que le fond. En thème
+       sombre il doit être plus clair SANS devenir blanc, sinon le texte
+       clair du plateau se dissout dedans. */
+    --bg-plateau: #ffffff;
+    /* Les barres « verre dépoli » : blanches en clair, ardoise en sombre.
+       Codées en dur, elles restaient blanches en thème nuit — et le titre,
+       lui, passait au blanc : on lisait un bandeau vide. */
+    --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #ffffff; --bg-sidebar-hover: #f1f5f9;
     --text-main: #0f172a; --text-muted: #64748b; 
     --text-sidebar: #0f172a; --text-sidebar-muted: #64748b;
@@ -15,7 +26,18 @@
     --tag-dom-bg: #dbeafe; --tag-dom-txt: #2563eb;
     --tag-sous-bg: #f3e8ff; --tag-sous-txt: #9333ea;
     
-    --sidebar-width: 320px; --bottom-nav-height: 60px;
+    --sidebar-width: 320px;
+    /* La barre basse intègre la zone sûre d'iOS (encoche basse / indicateur
+       d'accueil) : sans elle, ses boutons tombaient sous la barre du système. */
+    --bottom-nav-height: calc(60px + env(safe-area-inset-bottom, 0px));
+    /* LA PART DU TIROIR QUI DÉPASSE, tiroir fermé. Elle valait 52 pixels écrits
+       en dur à trois endroits — la transformation CSS, la place réservée sous
+       le parcours, et deux calculs de traction. La poignée, elle, mesure ce que
+       son texte lui donne : 50 pixels au réglage normal d'un iPhone, 60 quand
+       l'affichage est agrandi. Écrite en dur, la bande se faisait donc rogner
+       de huit pixels chez qui grossit le texte. La vraie hauteur est mesurée au
+       chargement et posée ici ; 52 reste le repli avant la mesure. */
+    --tiroir-poignee: 52px;
     
     /* Modern Shadows */
     --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04);
@@ -25,6 +47,8 @@
 
 :root[data-theme="dark"] {
     --bg-app: #0f172a; --bg-panel: #1e293b; --bg-hover: #334155;
+    --bg-plateau: #1e2a44;
+    --bg-verre: rgba(15, 23, 42, .86);
     --bg-sidebar: #1e293b; --bg-sidebar-hover: #334155;
     --text-main: #f8fafc; --text-muted: #94a3b8; 
     --text-sidebar: #f8fafc; --text-sidebar-muted: #94a3b8;
@@ -41,6 +65,7 @@
 
 :root[data-theme="ocean"] {
     --bg-app: #e0f2fe; --bg-panel: #f0f9ff; --bg-hover: #bae6fd;
+    --bg-plateau: #ffffff; --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #f0f9ff; --bg-sidebar-hover: #bae6fd;
     --text-main: #0c4a6e; --text-muted: #0369a1; 
     --text-sidebar: #0c4a6e; --text-sidebar-muted: #0369a1;
@@ -56,6 +81,7 @@
 
 :root[data-theme="forest"] {
     --bg-app: #f0fdf4; --bg-panel: #f8fafc; --bg-hover: #dcfce7;
+    --bg-plateau: #ffffff; --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #f8fafc; --bg-sidebar-hover: #dcfce7;
     --text-main: #14532d; --text-muted: #15803d; 
     --text-sidebar: #14532d; --text-sidebar-muted: #15803d;
@@ -71,6 +97,7 @@
 
 :root[data-theme="sunset"] {
     --bg-app: #fffbeb; --bg-panel: #fff; --bg-hover: #fef3c7;
+    --bg-plateau: #ffffff; --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #fff; --bg-sidebar-hover: #fef3c7;
     --text-main: #78350f; --text-muted: #b45309; 
     --text-sidebar: #78350f; --text-sidebar-muted: #b45309;
@@ -85,5 +112,43 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; }
-body { display: flex; flex-direction: column; height: 100vh; width: 100vw; overflow: hidden; background-color: var(--bg-app); color: var(--text-main); }
+/* `dvh` (avec repli `vh`) : sur iPhone, 100vh mesure la fenêtre SANS la barre
+   d'outils de Safari — le bas de page, dont la navigation basse, se retrouvait
+   caché derrière. L'unité dynamique suit la fenêtre réellement visible. */
+body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; background-color: var(--bg-app); color: var(--text-main); }
 button { cursor: pointer; border: none; background: none; }
+
+/* ═══════════ DEUX TAPES RAPIDES NE DOIVENT PAS ZOOMER LA PAGE ═══════════
+   Rémy : « mon fils a joué au jeu de l'horloge et en tapant deux fois
+   rapidement sur le plus, cela a zoomé ».
+
+   C'EST LE DOUBLE-TAP DU NAVIGATEUR, et il est exactement dans le chemin de
+   cet exercice : pour passer de 3 h 05 à 3 h 37, on appuie trente-deux fois
+   sur « + » — vite. Deux appuis rapprochés sur le même bouton, c'est un
+   double-tap, et le navigateur zoome sur ce qu'il croit être un paragraphe.
+
+   LE `user-scalable=no` DE L'EN-TÊTE NE LE FAIT PAS, ET NE L'A JAMAIS FAIT.
+   Safari sur iOS l'IGNORE depuis iOS 10, délibérément : interdire le zoom
+   ferme l'application à qui voit mal, et Apple a tranché que ce n'était pas au
+   site de le décider. La balise donnait donc l'illusion d'une protection.
+
+   `touch-action: manipulation` est le bon outil, et il est chirurgical : il
+   retire le double-tap-pour-zoomer, et RIEN D'AUTRE. Le défilement continue,
+   le pincement pour zoomer aussi — l'accessibilité est intacte, c'est
+   seulement le geste accidentel qui disparaît.
+
+   Les surfaces qu'on fait glisser (le compas, les bornes de la frise, les
+   pièces du tangram) déclarent `touch-action: none`, plus restrictif : elles
+   gardent leur réglage, qui est posé plus loin et plus précisément. */
+button, [role="button"], input, select, textarea, label, summary, a {
+    touch-action: manipulation;
+}
+/* ET DEUX TAPES NE DOIVENT PAS SÉLECTIONNER UN MOT NON PLUS. Sur un bouton,
+   le double-tap surligne son texte en bleu — sur « + », c'est le signe
+   lui-même qui devient une sélection, et il faut toucher ailleurs pour s'en
+   défaire. On ne le retire QUE sur les commandes : le texte d'un énoncé, lui,
+   doit rester copiable. */
+button, [role="button"], label, summary {
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}

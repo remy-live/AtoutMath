@@ -1,0 +1,948 @@
+// DEUX EXERCICES SUR LA MÊME RÈGLE : compléter une égalité, et additionner.
+//
+// Rémy : « un exercice où il faut compléter l'égalité entre fractions, exemple
+// 3/2 = 33/… », et « un exercice d'addition de fractions progressif, avec
+// d'abord des dénominateurs multiples puis après trouver le PPCM ».
+//
+// Ce sont deux faces d'une seule règle — multiplier haut et bas par le même
+// nombre ne change pas la fraction — et c'est pour cela qu'ils partagent leur
+// noyau (`core/fractionsEquivalentes.js`). L'élève qui sait compléter une
+// égalité sait déjà mettre au même dénominateur : il ne lui reste qu'à le
+// faire deux fois de suite.
+//
+// « TOUJOURS DES FRACTIONS EN COLONNES » : à l'écran comme sur le papier, une
+// fraction s'écrit numérateur sur dénominateur, séparés d'un trait. La barre
+// oblique est une commodité de clavier, pas une écriture mathématique — d'où
+// `fractions: true`, que la fiche imprimée lit pour composer les colonnes, et
+// le HTML en `.fraction` pour l'écran.
+
+import { makeItem } from '../items.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
+import {
+    tirerEgalite, etapesEgalite, tirerEgalesOuNon, etapesEgalesOuNon,
+    NIVEAUX_SOMME, tirerCalcul, tirerComplement, ecrireFraction,
+    fractionHtml, egaliteFlecheeHtml
+} from '../fractionsEquivalentes.js';
+
+/** Une fraction en colonne, telle qu'on l'écrit au tableau. */
+const fracHtml = (n, d, classe = '') => fractionHtml(n, d, classe);
+
+/** La même, avec un côté vide : c'est ce qu'on demande d'écrire. */
+function fracTrou(n, d, trou) {
+    const vide = '<span class="frac-trou" aria-label="nombre manquant">?</span>';
+    return fracHtml(trou === 'numerateur' ? vide : n, trou === 'denominateur' ? vide : d,
+        'fraction--trou');
+}
+
+// --- Compléter une égalité ---------------------------------------------------
+
+export const fracEgaliteGenerator = {
+    id: 'frac.egalite',
+    label: 'Compléter une égalité de fractions',
+    skills: ['num.frac.equivalentes'],
+    answerKinds: ['numeric'],
+    ecrit: true,
+    fractions: true,
+    params: [
+        {
+            id: 'sens', type: 'select', label: 'Dans quel sens', default: 'les-deux',
+            aide: 'Agrandir se fait par une multiplication et se lit presque tout seul. '
+                + 'Simplifier demande de TROUVER le facteur au lieu de le lire — c\'est la '
+                + 'même règle, mais c\'est là que les élèves butent.',
+            options: [
+                { value: 'agrandir', label: 'Agrandir seulement (× un nombre)' },
+                { value: 'simplifier', label: 'Simplifier seulement (÷ un nombre)' },
+                { value: 'les-deux', label: 'Les deux, au hasard' }
+            ]
+        },
+        {
+            id: 'trou', type: 'select', label: 'Le nombre à trouver', default: 'les-deux',
+            options: [
+                { value: 'numerateur', label: 'Toujours le numérateur' },
+                { value: 'denominateur', label: 'Toujours le dénominateur' },
+                { value: 'les-deux', label: 'L\'un ou l\'autre' }
+            ]
+        },
+        {
+            id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 12, min: 2, max: 30,
+            aide: 'Jusqu\'où va la multiplication. À 12, on reste dans les tables ; au-delà, '
+                + 'l\'exercice devient aussi un calcul.'
+        },
+        { id: 'maxBase', type: 'number', label: 'Dénominateur de départ maximum', default: 9, min: 2, max: 20 },
+        {
+            id: 'bandes', type: 'number', label: 'Questions avec les bandes', default: 3, min: 0, max: 10,
+            aide: 'Les premières questions montrent deux bandes, la seconde découpée : on '
+                + 'compte au lieu de multiplier, et les nombres restent petits. Ensuite les '
+                + 'bandes disparaissent.'
+        }
+    ],
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        // LES PREMIÈRES QUESTIONS SE COMPTENT, LES SUIVANTES SE CALCULENT.
+        //
+        // Deux bandes de même longueur, la seconde découpée : la réponse se LIT
+        // en comptant les parts. C'est la marche zéro — celle où l'on constate
+        // que les deux écritures désignent la même longueur. Puis les bandes
+        // s'en vont, et il faut multiplier.
+        //
+        // Pendant la phase du comptage, la fraction reste PROPRE et les nombres
+        // petits : au-delà d'une vingtaine de parts, compter n'est plus une
+        // méthode, c'est une corvée.
+        const avecBandes = (ctx.index || 0) < Number(params.bandes ?? 3);
+        const e = tirerEgalite(rng, {
+            sens: params.sens || 'les-deux',
+            trou: params.trou || 'les-deux',
+            propre: avecBandes,
+            // Dix-huit parts au plus dans la bande du bas : au-delà, sur un
+            // téléphone, chaque part fait dix pixels et l'on ne compte plus,
+            // on devine.
+            maxBase: avecBandes ? 6 : (Number(params.maxBase) || 9),
+            maxFacteur: avecBandes ? 3 : (Number(params.maxFacteur) || 12)
+        });
+
+        const texte = `${e.gauche.n}/${e.gauche.d} = `
+            + (e.trou === 'numerateur' ? `?/${e.droite.d}` : `${e.droite.n}/?`);
+
+        return makeItem({
+            seed: rng.seed, generatorId: 'frac.egalite', skillId: 'num.frac.equivalentes',
+            answerKind: 'numeric',
+            prompt: {
+                text: texte,
+                html: `<div class="frac-egalite">
+                        ${fracHtml(e.gauche.n, e.gauche.d)}
+                        <span class="frac-signe">=</span>
+                        ${fracTrou(e.droite.n, e.droite.d, e.trou)}
+                       </div>`
+            },
+            answer: e.reponse,
+            // LE CORRIGÉ ÉCRIT L'ÉGALITÉ ENTIÈRE, PAS LE SEUL NOMBRE MANQUANT.
+            //
+            // Rémy : « mets les fractions en colonnes dans la solution ». Le
+            // corrigé alignait « 9 », « 15 », « 10 » — une colonne de nombres
+            // dont on ne sait plus, en corrigeant, à quelle question ils
+            // répondent ni de quelle fraction ils viennent. Rendre l'égalité
+            // complète, c'est aussi la faire écrire EN COLONNES : la feuille
+            // empile les fractions dès qu'elle en reconnaît une (voir
+            // `porteUneFraction`), et le corrigé d'un exercice de fractions
+            // doit s'écrire comme l'exercice.
+            reponsePapier: `${e.gauche.n}/${e.gauche.d} = ${e.droite.n}/${e.droite.d}`,
+            explanation: `${e.gauche.n}/${e.gauche.d} = ${e.droite.n}/${e.droite.d} : on `
+                + `${e.sens === 'agrandir' ? 'multiplie' : 'divise'} le numérateur ET le `
+                + `dénominateur par ${e.facteur}. La fraction ne change pas de valeur.`,
+            hints: avecBandes
+                ? ['Les deux bandes font la MÊME longueur : ce que tu cherches se compte.',
+                    ...etapesEgalite(e)]
+                : etapesEgalite(e),
+            difficulty: (avecBandes ? 1 : 3) + (e.sens === 'simplifier' ? 1 : 0),
+            meta: { egalite: e, avecBandes, decimal: false }
+        });
+    }
+};
+
+// --- EST-CE LA MÊME FRACTION ? -------------------------------------------------
+//
+// Rémy : « je ne veux pas de duel, juste un exercice d'égalité de fractions à
+// dénominateur multiple ».
+//
+// LES DEUX EXERCICES D'À CÔTÉ DONNENT L'ÉGALITÉ ; CELUI-CI LA MET EN DOUTE.
+// « L'Égalité à Compléter » et « Par Combien ? » affichent un signe = et
+// demandent un nombre : l'élève sait d'avance que les deux fractions SONT
+// égales, il n'a plus qu'à retrouver comment. Ici les deux fractions sont
+// écrites en entier, on ne dit rien, et la question est celle du cours. Il
+// faut FAIRE le geste pour pouvoir répondre, au lieu de l'appliquer parce
+// qu'on nous a dit de l'appliquer.
+//
+// LA MOITIÉ DU TRAVAIL EST DANS LES FAUSSES ÉGALITÉS. Une fausse paire tirée
+// au hasard se refuse d'un coup d'œil et n'apprend rien ; celles-ci sont les
+// quatre erreurs qu'on lit sur les copies (voir `FAUTES_EGALITE` dans le
+// noyau), et c'est ce qui permet de NOMMER la faute au lieu de dire « non ».
+//
+// DEUX PROPOSITIONS, ET L'ESCALIER DE L'AIDE NE S'APPLIQUE PAS. Une question
+// par oui ou par non n'a pas de version « à quatre propositions », et « oui »
+// ne se tape pas au clavier : l'activité le voit toute seule (la réponse n'est
+// pas un nombre) et reste sur les deux boutons.
+
+// LES QUATRE MARCHES. Rémy, devant « 15/8 et 105/56 » posé en PREMIÈRE
+// question : « gros calcul pour un départ ». Il avait raison, et le défaut
+// n'était pas dans le tirage : l'exercice n'avait AUCUNE progression, donc la
+// première question était tirée dans le même sac que la dernière.
+//
+// CE QUI MONTE ICI, C'EST LE CALCUL, PAS L'IDÉE. L'idée est la même du début à
+// la fin — mettre au même dénominateur, puis comparer. Doubler se fait de
+// tête ; multiplier par sept un numérateur à deux chiffres ne se fait plus de
+// tête, et à ce moment-là l'élève ne travaille plus les fractions, il pose une
+// multiplication par-dessus. Les trois premières marches restent donc sous
+// l'unité, où le numérateur ne peut pas dépasser le dénominateur.
+const MARCHES_EGALES = [
+    { id: 'doubler', titre: 'Doubler ou tripler', minF: 2, maxF: 3, maxB: 6, propre: true },
+    { id: 'tables', titre: 'Dans les tables', minF: 2, maxF: 5, maxB: 7, propre: true },
+    { id: 'jusqua-dix', titre: 'Jusqu’à dix', minF: 2, maxF: 10, maxB: 8, propre: true },
+    {
+        id: 'plus-grandes', titre: 'Des fractions plus grandes que 1',
+        minF: 2, maxF: 10, maxB: 8, propre: false
+    }
+];
+const LISTE_EGALES = MARCHES_EGALES.map((m, i) => ({ id: m.id, nom: `${i + 1}. ${m.titre}`, groupe: null }));
+const PAR_MARCHE_EGALES = 3;
+const marcheEgalesDe = (id) => MARCHES_EGALES.find(m => m.id === id) || MARCHES_EGALES[0];
+
+export const fracEgalesGenerator = {
+    id: 'frac.egales',
+    label: 'Ces deux fractions sont-elles égales ?',
+    skills: ['num.frac.equivalentes'],
+    answerKinds: ['choice'],
+    ecrit: true,
+    fractions: true,
+    conseil: (p) => conseilProgression(
+        marchesCochees(p, LISTE_EGALES).length, PAR_MARCHE_EGALES),
+    params: [
+        paramMarches({ marches: LISTE_EGALES, mot: 'marche' }),
+        {
+            id: 'sens', type: 'select', label: 'Dans quel sens', default: 'agrandir',
+            aide: 'En agrandissant, la grosse fraction est à droite et l\'élève multiplie : '
+                + 'c\'est le geste du cours. En simplifiant, elle est à gauche, et c\'est là '
+                + 'qu\'on bute.',
+            options: [
+                { value: 'agrandir', label: 'La petite fraction d\'abord (× un nombre)' },
+                { value: 'simplifier', label: 'La grande fraction d\'abord (÷ un nombre)' },
+                { value: 'les-deux', label: 'Les deux, au hasard' }
+            ]
+        },
+        // CES DEUX-LÀ SONT DES PLAFONDS, PAS DES CONSIGNES. La marche donne la
+        // forme de la question ; ces réglages la bornent par-dessus, pour la
+        // classe où même « jusqu'à dix » est trop. Les baisser n'enlève donc
+        // pas la progression, cela l'écrase vers le bas.
+        {
+            id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 10, min: 2, max: 20,
+            aide: 'Le plus grand facteur qu’une marche pourra utiliser. À 10 on reste dans '
+                + 'les tables ; au-delà, la question devient aussi une multiplication à poser.'
+        },
+        {
+            id: 'maxBase', type: 'number', label: 'Dénominateur de départ maximum',
+            default: 8, min: 2, max: 20,
+            aide: 'Le plus petit des deux dénominateurs. Il se combine au facteur : 8 et 10 '
+                + 'donnent déjà des quatre-vingtièmes.'
+        }
+    ],
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        // LES MARCHES COCHÉES SE PARTAGENT LES QUESTIONS — voir
+        // core/progression.js. Le nombre de questions se règle à part.
+        const m = marcheEgalesDe(marcheAuRang(
+            ctx.index ?? 0, marchesCochees(params, LISTE_EGALES),
+            totalDe(ctx, params), params, PAR_MARCHE_EGALES));
+        const plafondF = Number(params.maxFacteur) || 10;
+        const plafondB = Number(params.maxBase) || 8;
+        const e = tirerEgalesOuNon(rng, {
+            sens: params.sens || 'agrandir',
+            propre: m.propre,
+            minFacteur: Math.min(m.minF, plafondF),
+            maxFacteur: Math.min(m.maxF, plafondF),
+            maxBase: Math.min(m.maxB, plafondB)
+        });
+
+        const juste = e.base.n * e.facteur;
+        const grand = e.grande.d, petit = e.petite.d;
+        // CE QUI EST ÉCRIT DU CÔTÉ OÙ L'ÉLÈVE CALCULE : la grande fraction
+        // quand on agrandit, la petite quand on simplifie. C'est ce nombre-là
+        // qui est faux, et c'est de lui qu'il faut parler.
+        const ecrite = e.sens === 'agrandir'
+            ? `${e.grande.n}/${grand}` : `${e.petite.n}/${petit}`;
+
+        // LE CORRIGÉ SE RETOURNE AVEC LA QUESTION. Le premier jet écrivait
+        // toujours « le dénominateur a bien été MULTIPLIÉ par 2 » — faux
+        // devant 14/16 et 14/8, où l'élève a divisé 16 par 2. Un corrigé qui
+        // décrit un geste que l'élève n'a pas fait ne se reconnaît pas ; il se
+        // subit.
+        const verbe = e.sens === 'agrandir' ? 'multiplié' : 'divisé';
+        const geste = e.sens === 'agrandir' ? 'AJOUTANT' : 'RETRANCHANT';
+        const gesteNu = e.sens === 'agrandir' ? 'ajouter' : 'retrancher';
+        const contraire = e.sens === 'agrandir' ? 'MULTIPLIER' : 'DIVISER';
+        const de = e.sens === 'agrandir' ? petit : grand;
+        const vers = e.sens === 'agrandir' ? grand : petit;
+
+        // POURQUOI C'EST NON, dans les mots de la faute commise. « Ce n'est pas
+        // la même fraction » est vrai et ne sert à rien : ce qui sert, c'est de
+        // reconnaître SON erreur dans la phrase.
+        const POURQUOI = {
+            'ajout': `On est passé de ${de} à ${vers} en ${geste} ${Math.abs(grand - petit)}, `
+                + `et on a fait pareil en haut. Mais ${gesteNu} le même nombre des deux côtés `
+                + `CHANGE la fraction — c'est ${contraire} qui ne la change pas.`,
+            'une-ligne': `Le dénominateur a bien été ${verbe} par ${e.facteur}, pas le `
+                + `numérateur : le geste n'est fait qu'à moitié.`,
+            'table-voisine': `Il y a un cran d'écart dans la table : de ${petit} à ${grand} `
+                + `on multiplie par ${e.facteur}, pas par ${e.facteur - 1}.`,
+            'une-part': 'Il s\'en faut d\'une seule part — et c\'est pour cela qu\'il faut '
+                + 'poser le calcul au lieu de regarder.'
+        };
+        const pourquoiNon = e.faute ? POURQUOI[e.faute.id] : '';
+
+        // ET LA VÉRITÉ, UNE FOIS. Elle porte la bonne égalité et nomme ce qui
+        // est écrit : dire deux fois le même nombre — « donc 9/8 = 63/56. Il
+        // aurait fallu écrire 63/56 » — dilue la seule ligne qu'on relira.
+        const verite = `${e.base.n}/${petit} = ${juste}/${grand} : ${ecrite} n'est pas la `
+            + 'même fraction.';
+
+        const explication = e.vrai
+            ? `Oui. ${e.base.d} × ${e.facteur} = ${grand} et ${e.base.n} × ${e.facteur} = `
+                + `${juste} : on a multiplié le numérateur ET le dénominateur par le même `
+                + `nombre, donc la fraction n'a pas changé de valeur. On l'a seulement `
+                + `coupée en parts ${e.facteur} fois plus fines.`
+            : `Non. ${pourquoiNon} ${verite}`;
+
+        return makeItem({
+            seed: rng.seed,
+            generatorId: 'frac.egales',
+            skillId: 'num.frac.equivalentes',
+            answerKind: 'choice',
+            prompt: {
+                text: `${e.gauche.n}/${e.gauche.d} et ${e.droite.n}/${e.droite.d} : `
+                    + 'ces deux fractions sont-elles égales ?',
+                html: `<div class="game-question">Ces deux fractions sont-elles égales&nbsp;?</div>`
+                    + `<div class="frac-egalite">
+                        ${fracHtml(e.gauche.n, e.gauche.d)}
+                        <span class="frac-doute" aria-label="égales ?">?</span>
+                        ${fracHtml(e.droite.n, e.droite.d)}
+                       </div>`,
+                // SUR LE PAPIER, LA QUESTION EST LES DEUX FRACTIONS. La
+                // consigne est déjà en tête de l'exercice, et la recopier
+                // sous chaque numéro mangeait toute la case : la fiche
+                // n'affichait plus une seule fraction, rien que « Entoure OUI
+                // ou NON » vingt fois. La feuille empile un `a/b` en colonnes
+                // toute seule (`porteUneFraction`), donc il suffit de les
+                // écrire. Deux espaces au plus entre les mots : trois
+                // d'affilée, et la feuille y dessine un trou à remplir.
+                papier: `${e.gauche.n}/${e.gauche.d} et ${e.droite.n}/${e.droite.d}`
+                    + ' — OUI ou NON ?'
+            },
+            answer: e.vrai ? 'oui' : 'non',
+            choices: [
+                {
+                    value: 'oui', label: 'Oui', correct: e.vrai,
+                    why: e.vrai ? undefined : pourquoiNon
+                },
+                {
+                    value: 'non', label: 'Non', correct: !e.vrai,
+                    why: e.vrai
+                        ? `Elles sont pourtant égales : ${e.base.d} × ${e.facteur} = ${grand} `
+                            + `et ${e.base.n} × ${e.facteur} = ${juste}. Multiplier le haut et `
+                            + `le bas par le même nombre ne change pas une fraction.`
+                        : undefined
+                }
+            ],
+            hints: etapesEgalesOuNon(e),
+            explanation: explication,
+            // Simplifier demande de trouver le facteur au lieu de le lire, et
+            // « il s'en faut d'une part » ne se voit pas : ces deux-là montent
+            // d'un cran.
+            difficulty: 2 + (e.sens === 'simplifier' ? 1 : 0)
+                + (e.faute && e.faute.id === 'une-part' ? 1 : 0),
+            meta: {
+                egalite: e, vrai: e.vrai, faute: e.faute ? e.faute.id : null,
+                facteur: e.facteur, sens: e.sens,
+                marche: m.id, titre: m.titre
+            }
+        });
+    }
+};
+
+// --- PAR COMBIEN ? ------------------------------------------------------------
+//
+// Rémy : « il faudrait un exercice du style 2/3 = 22/… On demande par combien
+// il faut multiplier ou diviser. Toujours les fractions en colonnes. »
+//
+// C'EST LA MARCHE QUE « L'ÉGALITÉ À COMPLÉTER » ENJAMBE. Devant 2/3 = 22/…,
+// l'élève à qui l'on demande le dénominateur peut répondre par plusieurs
+// chemins, dont un mauvais qui marche souvent : reconnaître une table, ajouter
+// la même différence en haut et en bas, essayer. Lui demander LE FACTEUR le
+// force à faire le seul geste qui compte — regarder ce qui est écrit DES DEUX
+// CÔTÉS de la même ligne (ici les numérateurs, 2 et 22), et voir par combien on
+// passe de l'un à l'autre. Le reste du chapitre en découle.
+//
+// LE TROU RESTE VISIBLE, et c'est nécessaire : sans lui, l'égalité serait
+// entièrement écrite et la question deviendrait une simple division. Avec lui,
+// une seule ligne est lisible — c'est celle-là qu'il faut savoir trouver.
+//
+// ON DEMANDE UN NOMBRE, PAS UN SIGNE. « ×11 » et « ÷11 » ne s'écrivent pas au
+// pavé numérique, et surtout ce n'est pas la question : le sens se LIT (les
+// nombres grandissent ou rapetissent), le facteur se CHERCHE. La consigne dit
+// donc lequel des deux gestes on fait, et l'élève donne le nombre.
+
+/**
+ * DEUX ÉTAPES, ET LA SECONDE EST CELLE QU'ON ÉCRIT AU CAHIER.
+ *
+ * Rémy : « il faudrait rajouter une étape, celle de compléter le numérateur et
+ * le dénominateur. On laisse les flèches, l'élève doit taper dans les cases des
+ * flèches par quoi il doit diviser ou multiplier, et après on met la réponse. »
+ *
+ * La première étape DEMANDE le facteur, et l'égalité est écrite en entier :
+ * c'est un exercice de lecture. La seconde l'UTILISE — on écrit le facteur sur
+ * les deux arcs, puis on s'en sert pour compléter le nombre qui manque. C'est
+ * la même figure, un geste de plus, et c'est exactement le pas qui sépare
+ * « je vois le facteur » de « je sais m'en servir ».
+ */
+export const MARCHES_FACTEUR = [
+    { id: 'facteur', nom: '1. Par combien ?' },
+    { id: 'completer', nom: '2. Par combien, puis complète' }
+];
+
+export const fracFacteurGenerator = {
+    id: 'frac.facteur',
+    label: 'Par combien multiplie-t-on ?',
+    skills: ['num.frac.equivalentes'],
+    answerKinds: ['numeric', 'text'],
+    ecrit: true,
+    fractions: true,
+    conseil: (p) => conseilProgression(marchesCochees(p, MARCHES_FACTEUR).length),
+    params: [
+        {
+            id: 'sens', type: 'select', label: 'Dans quel sens', default: 'agrandir',
+            aide: 'On commence par agrandir : c\'est le geste qu\'on fait pour mettre au même '
+                + 'dénominateur. Simplifier est le même raisonnement à l\'envers — les nombres '
+                + 'rapetissent, donc on divise.',
+            options: [
+                { value: 'agrandir', label: 'Multiplier seulement' },
+                { value: 'simplifier', label: 'Diviser seulement' },
+                { value: 'les-deux', label: 'Les deux mélangés' }
+            ]
+        },
+        paramMarches({ marches: MARCHES_FACTEUR, mot: 'étape' }),
+        {
+            // LE CÔTÉ CACHÉ SERT DEUX FOIS : sur la fiche, où il n'y a pas
+            // d'arc et où le trou tient lieu de flèche ; et à la seconde
+            // étape, où c'est justement lui qu'on complète.
+            id: 'trou', type: 'select', label: 'Le côté qu\'on cache',
+            default: 'les-deux',
+            aide: 'Le côté caché décide de la ligne qu\'il faut lire : cacher le dénominateur '
+                + 'oblige à travailler sur les numérateurs, et l\'inverse. À la première '
+                + 'étape, il ne vaut que pour la feuille imprimée.',
+            options: [
+                { value: 'denominateur', label: 'Le dénominateur (on lit les numérateurs)' },
+                { value: 'numerateur', label: 'Le numérateur (on lit les dénominateurs)' },
+                { value: 'les-deux', label: 'L\'un ou l\'autre' }
+            ]
+        },
+        {
+            id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 12, min: 2, max: 30,
+            aide: 'À 12 on reste dans les tables. Au-delà, trouver le facteur devient aussi une '
+                + 'division à poser — c\'est un autre exercice.'
+        },
+        { id: 'maxBase', type: 'number', label: 'Dénominateur de départ maximum', default: 9, min: 2, max: 20 }
+    ],
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        const p = params || {};
+        const marche = marcheAuRang(ctx.index ?? 0, marchesCochees(params, MARCHES_FACTEUR),
+            totalDe(ctx, params), params);
+        const complete = marche === 'completer';
+        const tirage = () => tirerEgalite(rng, {
+            sens: p.sens || 'agrandir',
+            trou: p.trou || 'les-deux',
+            maxBase: Number(p.maxBase) || 9,
+            maxFacteur: Number(p.maxFacteur) || 12
+        });
+        // ON ÉCARTE LES ÉGALITÉS OÙ LE FACTEUR EST AUSSI L'UN DES NOMBRES
+        // ÉCRITS À DROITE.
+        //
+        // « 1/7 = 5/35 » : le facteur vaut 5, et 5 est déjà écrit au
+        // numérateur. L'élève qui recopie un nombre au hasard tombe juste, et
+        // l'exercice ne mesure plus rien. Cela arrive dès qu'une ligne part de
+        // 1 ; on retire le tirage, on ne le corrige pas.
+        const copiable = (x) => String(x.facteur) === String(x.droite.n)
+            || String(x.facteur) === String(x.droite.d);
+        let e = tirage();
+        for (let essai = 0; essai < 40 && copiable(e); essai++) e = tirage();
+
+        // LES DEUX LIGNES SONT ÉCRITES, ET C'EST LE POINT DE LA FIGURE : on
+        // lit celle qu'on veut, les deux donnent le même nombre. L'aide part
+        // donc du haut, parce que c'est là qu'on lit d'abord.
+        const depart = e.gauche.n;
+        const arrivee = e.droite.n;
+        const divise = e.sens === 'simplifier';
+        // LA LIGNE QU'ON PEUT LIRE À LA SECONDE ÉTAPE : celle dont les deux
+        // nombres sont écrits. C'est elle qui donne le facteur ; l'autre est
+        // celle qu'on complète.
+        const lisible = e.trou === 'numerateur' ? 'du BAS' : 'du HAUT';
+        const litDe = e.trou === 'numerateur' ? e.gauche.d : e.gauche.n;
+        const litA = e.visible;
+        const manquant = e.reponse;
+        // LA CONSIGNE TIENT SUR UNE LIGNE ET DEMIE. « Écris sur les flèches par
+        // combien on DIVISE, puis complète la fraction » en prenait trois sur
+        // un plateau étroit, au-dessus d'une figure deux fois plus petite
+        // qu'elle : on lisait la consigne, pas l'égalité.
+        const consigne = complete
+            ? (divise
+                ? 'Écris sur les flèches par combien on DIVISE, puis complète.'
+                : 'Écris sur les flèches par combien on MULTIPLIE, puis complète.')
+            : (divise
+                ? 'Par combien faut-il DIVISER pour passer d\'une fraction à l\'autre ?'
+                : 'Par combien faut-il MULTIPLIER pour passer d\'une fraction à l\'autre ?');
+        // SUR LE PAPIER, L'ÉGALITÉ RESTE TROUÉE. Rémy avait tranché pour la
+        // fiche : « propose simple 3/2 = …/22, c'est tout. » Les arcs ne
+        // s'impriment pas — la fiche n'a pas de figure, juste une ligne de
+        // texte —, et sans eux c'est le trou qui donne le sens de lecture.
+        const texte = `${e.gauche.n}/${e.gauche.d} = `
+            + (e.trou === 'numerateur' ? `?/${e.droite.d}` : `${e.droite.n}/?`);
+
+        return makeItem({
+            seed: rng.seed, generatorId: 'frac.facteur', skillId: 'num.frac.equivalentes',
+            answerKind: 'numeric',
+            prompt: {
+                text: `${consigne} ${texte}`,
+                // SUR LE PAPIER, RIEN QUE L'ÉGALITÉ. Rémy : « pour l'exercice
+                // par combien, la fiche d'exercice n'est pas bonne, propose
+                // simple 3/2 = …/22, c'est tout. » La ligne portait en plus un
+                // « × … » à droite : la consigne en tête de l'exercice dit
+                // déjà qu'on cherche un facteur, et ces trois espaces avant le
+                // signe se transformaient en un SECOND trou à remplir, juste à
+                // côté de celui de la fraction. Deux trous pour une réponse.
+                papier: texte,
+                // L'ACTIVITÉ DESSINE LA FIGURE ELLE-MÊME — les cases doivent
+                // être cliquables — et elle a besoin de la consigne SEULE, sans
+                // l'égalité que `text` lui accole pour le carnet et la fiche.
+                consigne,
+                html: `<div class="game-question">${consigne}</div>`
+                    + egaliteFlecheeHtml({
+                        gauche: e.gauche, droite: e.droite,
+                        signe: divise ? '\u00f7' : '\u00d7',
+                        // À la seconde étape, la figure garde son trou : c'est
+                        // lui qu'on remplit une fois le facteur écrit.
+                        trou: complete ? e.trou : null
+                    })
+            },
+            // LA RÉPONSE DE LA SECONDE ÉTAPE EST UN TRIPLET, et c'est voulu :
+            // les deux arcs ET le nombre. Écrire le bon nombre en bas avec un
+            // facteur faux sur les flèches, ou deux facteurs différents sur les
+            // deux arcs, ce n'est pas la même chose que d'avoir juste — et
+            // l'activité sait le dire.
+            answerKind: complete ? 'text' : 'numeric',
+            answer: complete ? `${e.facteur}/${e.facteur}/${manquant}` : e.facteur,
+            // SUR LE PAPIER, LES DEUX ÉTAPES POSENT LA MÊME QUESTION — et c'est
+            // nécessaire.
+            //
+            // La feuille n'a pas d'arc : les deux étapes y impriment la même
+            // ligne, « 3/2 = …/22 ». Si le corrigé donnait le facteur pour
+            // l'une et le nombre manquant pour l'autre, deux questions
+            // IDENTIQUES à l'œil auraient deux réponses différentes, et l'élève
+            // ne pourrait pas savoir laquelle on lui demande. La fiche s'en
+            // tient donc à sa consigne — « par combien faut-il multiplier ? » —
+            // et la seconde étape est un exercice d'écran, là où les flèches
+            // existent.
+            reponsePapier: complete ? String(e.facteur) : '',
+            hints: complete
+                ? [
+                    `Une seule ligne est écrite des deux côtés : celle ${lisible}.`,
+                    `On y passe de ${litDe} à ${litA} : c'est le nombre des deux flèches.`,
+                    `${litDe} ${divise ? '÷' : '×'} ${e.facteur} = ${litA}, `
+                        + `donc l'autre ligne suit le même chemin.`
+                ]
+                : [
+                    'Les deux flèches portent le MÊME nombre : suis celle du haut.',
+                    `En haut, on passe de ${depart} à ${arrivee}.`,
+                    `${depart} ${divise ? '÷' : '×'} ${e.facteur} = ${arrivee}.`
+                ],
+            explanation: `En haut : ${depart} ${divise ? '÷' : '×'} ${e.facteur} = ${arrivee}. `
+                + `En bas : ${e.gauche.d} ${divise ? '÷' : '×'} ${e.facteur} = ${e.droite.d}. `
+                + `Les deux flèches portent le même nombre — c'est ce qui fait que la fraction `
+                + `ne change pas de valeur.`,
+            // Diviser est le même raisonnement lu à l'envers, et c'est celui
+            // qu'on rate : les nombres rapetissent, l'habitude dit « multiplie ».
+            // Compléter demande un geste de plus que lire.
+            difficulty: (divise ? 3 : 2) + (complete ? 1 : 0),
+            meta: {
+                marche, egalite: e, facteur: e.facteur, sens: e.sens, decimal: false,
+                // Ce dont l'activité a besoin pour dessiner et pour juger.
+                gauche: e.gauche, droite: e.droite, trou: e.trou,
+                manquant, signe: divise ? '\u00f7' : '\u00d7', complete
+            }
+        });
+    }
+};
+
+// --- Poser une addition (ou une soustraction) ---------------------------------
+
+// COMBIEN DE QUESTIONS AVANT DE MONTER D'UNE MARCHE.
+//
+// L'exercice fait dix questions par défaut. À deux questions par marche, les
+// trois premières marches en prennent six et la dernière — celle du PPCM,
+// celle qui se travaille — garde les quatre autres. C'est le bon partage :
+// les trois premières préparent, la quatrième est le sujet.
+//
+// C'EST MAINTENANT UN RÉGLAGE, et c'est cet écran-là que Rémy montrait :
+// « quand on a une progression, il faudrait pouvoir choisir aussi la
+// répartition non ? ». Deux reste le défaut ; voir core/progression.js.
+const PAR_MARCHE = 2;
+
+const NIVEAU = Object.fromEntries(NIVEAUX_SOMME.map(n => [n.id, n]));
+
+/** Les marches telles que le panneau les coche, dans l'ordre de la leçon. */
+const LISTE_MARCHES = NIVEAUX_SOMME.map((n, i) => ({ id: n.id, nom: `${i + 1}. ${n.nom}`, groupe: null }));
+const TEMPS = {};
+const MOT = 'marche';
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'niveau' };
+
+/** La marche : celle où le partage fait tomber cette question-là. */
+function marcheDe(params, index, total = 0) {
+    return marcheAuRang(index || 0, marchesCochees(params, LISTE_MARCHES, ANCIEN),
+        total, params, PAR_MARCHE);
+}
+
+// --- LE DESSIN DE L'INDICE ---------------------------------------------------
+//
+// Rémy, au banc iPhone, sur les histoires de fractions : « l'indice est
+// incompréhensible. Pourquoi ne pas avoir un petit schéma ? C'est quelque chose
+// que nous n'avons pas mis dans les indices alors que c'est souvent plus
+// parlant. »
+//
+// « Écris l'entier en 6èmes avant de retirer » suppose qu'on a compris ce
+// qu'est l'entier — c'est-à-dire exactement ce qui bloque. Une bande coupée en
+// six, dont cinq sont coloriées et la sixième hachurée, ne le suppose pas :
+// elle le montre. Et la bande n'est pas un ornement, c'est la définition même
+// d'une fraction : autant de parts prises sur autant de parts égales.
+
+/** Une bande coupée en `d` parts, dont `n` sont coloriées. */
+function bandeIndice(n, d, { reste = false } = {}) {
+    const W = 240, H = 26, pas = W / d;
+    const parts = Array.from({ length: d }, (_, i) => {
+        const pleine = i < n;
+        const teinte = pleine ? 'var(--primary)' : (reste ? 'var(--warning, #f59e0b)' : 'none');
+        const opacite = pleine ? '.55' : (reste ? '.42' : '0');
+        return `<rect x="${(i * pas).toFixed(2)}" y="1" width="${pas.toFixed(2)}" height="${H}"`
+            + ` fill="${teinte}" fill-opacity="${opacite}"`
+            + ' stroke="currentColor" stroke-width="1.2"/>';
+    }).join('');
+    return `<svg viewBox="0 0 ${W} ${H + 2}" role="img"`
+        + ` aria-label="Une bande coupée en ${d} parts, dont ${n} sont coloriées">${parts}</svg>`;
+}
+
+/** Le schéma du premier indice, s'il y en a un pour ce calcul-là. */
+function schemaIndice(c) {
+    if (c.type === 'complement') {
+        return `${bandeIndice(c.b.n, c.commun, { reste: true })}
+            <p class="fs-legende">Le tout, c'est les ${c.commun} parts : ${c.commun}/${c.commun}.
+            ${c.b.n} sont prises (en bleu). Ce qui reste, c'est l'orange —
+            et ça se compte en ${c.commun}èmes.</p>`;
+    }
+    if (c.a.d === c.b.d) {
+        return `${bandeIndice(c.a.n, c.a.d)}${bandeIndice(c.b.n, c.b.d)}
+            <p class="fs-legende">Les parts ont déjà la même taille : il suffit de compter
+            combien on en a en tout.</p>`;
+    }
+    return `${bandeIndice(c.a.n, c.a.d)}${bandeIndice(c.b.n, c.b.d)}
+        <p class="fs-legende">Les deux bandes font la même longueur, mais leurs parts n'ont pas
+        la même taille : on ne peut pas les compter ensemble. Il faut recouper les deux
+        en ${c.commun}èmes.</p>`;
+}
+
+/** Le corps d'un item de calcul posé — partagé avec les problèmes. */
+function itemDeCalcul(c, rng, {
+    generatorId, skillId, marche, enonce = '', enonceTexte = '', question = '',
+    avecCalcul = true
+}) {
+    const op = c.signe === '−' ? '−' : '+';
+    const reponse = c.simplifie
+        ? `${c.reduit.n}/${c.reduit.d}`
+        : `${c.brut.n}/${c.brut.d}`;
+    // L'ENTIER N'A PAS DE DÉNOMINATEUR : « 1 − 4/9 », jamais « 1/1 − 4/9 ».
+    const texte = `${ecrireFraction(c.a)} ${op} ${ecrireFraction(c.b)} = ?`;
+    return makeItem({
+        seed: rng.seed, generatorId, skillId,
+        answerKind: 'text',
+        prompt: {
+            // Le texte nu : c'est lui qui part sur la feuille et dans le
+            // carnet d'erreurs. Y laisser l'HTML de l'énoncé imprimait les
+            // balises.
+            // Sans énoncé, le calcul EST la question : on ne peut pas le
+            // retirer. Avec un énoncé, il n'est qu'une aide, et le réglage
+            // décide.
+            text: enonceTexte
+                ? (avecCalcul ? `${enonceTexte} (${texte})` : enonceTexte)
+                : texte,
+            html: `<div class="frac-egalite">
+                    ${enonce ? `<p class="frac-enonce">${enonce}</p>` : ''}
+                    ${c.a.d === 1 ? `<span class="frac-entier">${c.a.n}</span>`
+        : fracHtml(c.a.n, c.a.d)}
+                    <span class="frac-signe">${op}</span>
+                    ${fracHtml(c.b.n, c.b.d)}
+                    <span class="frac-signe">=</span>
+                    <span class="frac-trou" aria-label="résultat à écrire">?</span>
+                   </div>`
+        },
+        answer: reponse,
+        hints: (c.type === 'complement'
+            ? ['Le tout, c\'est TOUTES les parts : écris l\'entier en '
+                + `${c.commun}èmes avant de retirer.`]
+            : [(NIVEAU[marche] || {}).aide || '',
+                `Cherche un nombre à la fois dans la table de ${c.a.d} et dans celle de ${c.b.d}.`]
+        ).concat(c.etapes).filter(Boolean),
+        // LE PREMIER INDICE SE DESSINE. Rémy : « l'indice est incompréhensible ;
+        // pourquoi ne pas avoir un petit schéma ? c'est souvent plus parlant ».
+        // Une phrase qui dit « écris l'entier en 6èmes » suppose qu'on a déjà
+        // compris ce qu'est l'entier ; une bande coupée en six, dont cinq sont
+        // coloriées, le MONTRE.
+        schemas: [schemaIndice(c)],
+        explanation: c.etapes.join(' '),
+        explicationPapier: `${ecrireFraction(c.a)} ${op} ${ecrireFraction(c.b)} = `
+            + `${c.aReduit.n}/${c.commun} ${op} ${c.bReduit.n}/${c.commun} = ${c.brut.n}/${c.commun}`
+            + (c.simplifie ? ` = ${reponse}.` : '.'),
+        difficulty: c.type === 'complement'
+            ? 2 : 2 + NIVEAUX_SOMME.findIndex(n => n.id === marche),
+        meta: { calcul: c, marche, enonce, enonceTexte, question }
+    });
+}
+
+const PARAM_OPERATION = {
+    id: 'operation', type: 'select', label: 'L\'opération', default: 'somme',
+    aide: 'La soustraction ne demande rien de plus au dénominateur, mais elle empêche '
+        + 'de répondre au flair. Le résultat reste toujours positif.',
+    options: [
+        { value: 'somme', label: 'Additions seulement' },
+        { value: 'difference', label: 'Soustractions seulement' },
+        { value: 'les-deux', label: 'Les deux mélangées' }
+    ]
+};
+
+const PARAM_SIMPLIFIER = {
+    id: 'simplifier', type: 'select', label: 'Simplifier le résultat', default: 'non',
+    aide: 'Au départ, on s\'arrête au résultat brut : mettre au même dénominateur est '
+        + 'déjà tout l\'exercice. La ligne s\'ajoute quand c\'est acquis.',
+    options: [
+        { value: 'non', label: 'Non — on s\'arrête au résultat' },
+        { value: 'oui', label: 'Oui — une ligne de plus' }
+    ]
+};
+
+export const fracSommeProgressiveGenerator = {
+    id: 'frac.somme-progressive',
+    label: 'Additionner des fractions (calcul posé)',
+    skills: ['num.frac.denominateur-commun'],
+    answerKinds: ['text'],
+    ecrit: true,
+    fractions: true,
+    // Quatre marches à deux questions : huit suffisaient, et le défaut de dix
+    // les couvrait. Dès qu'on demande trois ou quatre questions par marche, il
+    // en faut douze ou seize — sans ce conseil, le réglage n'aurait fait que
+    // tronquer la progression plus tôt. Voir core/duree.js.
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length, PAR_MARCHE),
+    params: [
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        }),
+        PARAM_OPERATION,
+        PARAM_SIMPLIFIER,
+        {
+            id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 10, min: 4, max: 10,
+            aide: 'On ne dépasse pas dix : l\'aide est la table de Pythagore, et elle s\'arrête '
+                + 'à dix. Un dénominateur qui n\'y figure pas rendrait l\'aide muette au moment '
+                + 'où elle sert.'
+        }
+    ],
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        const marche = marcheDe(params, ctx.index, totalDe(ctx, params));
+        const c = tirerCalcul(rng, {
+            niveau: marche,
+            maxDen: Math.min(10, Number(params.maxDen) || 10),
+            operation: params.operation || 'somme'
+        });
+        c.simplifie = params.simplifier === 'oui' && c.aSimplifiable;
+        return itemDeCalcul(c, rng, {
+            generatorId: 'frac.somme-progressive',
+            skillId: 'num.frac.denominateur-commun',
+            marche
+        });
+    }
+};
+
+// --- Les mêmes calculs, mais en histoires -------------------------------------
+//
+// Rémy : « on propose un exercice où il y a des énoncés très simples où on
+// additionne ou soustrait des fractions ». TRÈS SIMPLES est la consigne, et
+// c'est la difficile : un énoncé de problème ajoute une lecture, et la lecture
+// ne doit pas devenir l'exercice. Une phrase, deux fractions, une question —
+// et surtout un CONTEXTE où la fraction se voit (une tarte, un bidon, un
+// trajet), jamais un habillage décoratif posé sur un calcul.
+
+// « ÉCRIS LES FRACTIONS EN FRACTION COLONNE », y compris au milieu d'une
+// phrase. Une fraction en colonne est un `inline-flex` : elle se pose dans le
+// texte comme un mot, sans casser la ligne de base.
+//
+// Deux formes, et c'est nécessaire : l'HTML pour l'écran, et le texte nu pour
+// la feuille imprimée et le carnet d'erreurs — où « 5/9 » se recompose en
+// colonnes tout seul (`fractions: true`), alors qu'une balise `<span>` s'y
+// imprimerait telle quelle.
+const colonneHtml = (f) => '<span class="fraction frac-dans-texte">'
+    + `<span class="fraction-num">${f.n}</span>`
+    + `<span class="fraction-den">${f.d}</span></span>`;
+const nuHtml = (f) => `${f.n}/${f.d}`;
+
+const HISTOIRES = [
+    {
+        quoi: 'tarte',
+        somme: (a, b) => `Léa mange ${a} de la tarte, puis ${b}. Quelle part de la tarte a-t-elle mangée&nbsp;?`,
+        difference: (a, b) => `Il restait ${a} de la tarte. On en mange ${b}. Quelle part reste-t-il&nbsp;?`
+    },
+    {
+        quoi: 'arrosoir',
+        somme: (a, b) => `Un arrosoir contient ${a} de litre. On y verse ${b} de litre. Combien contient-il&nbsp;?`,
+        difference: (a, b) => `Un bidon contient ${a} de litre. On en verse ${b} de litre. Combien reste-t-il&nbsp;?`
+    },
+    {
+        // Un trajet, c'est le TOUT : « Malo doit parcourir 8/9 du trajet » ne
+        // veut rien dire. Une différence honnête, ici, compare deux marcheurs.
+        quoi: 'trajet',
+        somme: (a, b) => `Sur son trajet, Malo parcourt ${a} à pied, puis ${b} à vélo. Quelle part du trajet a-t-il faite&nbsp;?`,
+        difference: (a, b) => `Malo a fait ${a} du trajet, Zoé en a fait ${b}. Quelle part du trajet Malo a-t-il faite en plus&nbsp;?`
+    },
+    {
+        quoi: 'ruban',
+        somme: (a, b) => `On colle bout à bout un ruban de ${a} de mètre et un autre de ${b} de mètre. Quelle longueur obtient-on&nbsp;?`,
+        difference: (a, b) => `Un ruban mesure ${a} de mètre. On en coupe ${b} de mètre. Quelle longueur reste-t-il&nbsp;?`
+    },
+    {
+        // « 5/9 du jardin SONT semés » mais « 1/9 du jardin EST semé » : on
+        // tourne la phrase pour que l'accord ne dépende pas du numérateur tiré.
+        quoi: 'jardin',
+        somme: (a, b) => `Papi sème des radis sur ${a} du jardin et des carottes sur ${b}. Quelle part du jardin est semée&nbsp;?`,
+        difference: (a, b) => `On a semé ${a} du jardin. Une taupe en abîme ${b}. Quelle part reste semée&nbsp;?`
+    },
+    {
+        quoi: 'récréation',
+        somme: (a, b) => `Zoé travaille ${a} d'heure, puis encore ${b} d'heure. Combien de temps a-t-elle travaillé&nbsp;?`,
+        difference: (a, b) => `La récréation dure ${a} d'heure. Il s'en est déjà écoulé ${b}. Combien reste-t-il&nbsp;?`
+    },
+    {
+        quoi: 'chocolat',
+        somme: (a, b) => `Nino mange ${a} de la plaquette de chocolat, et son frère ${b}. Quelle part ont-ils mangée à eux deux&nbsp;?`,
+        difference: (a, b) => `Il reste ${a} de la plaquette de chocolat. Nino en mange ${b}. Quelle part reste-t-il&nbsp;?`
+    },
+    {
+        quoi: 'billes',
+        somme: (a, b) => `Sur ses billes, Sacha en donne ${a} à Lou et ${b} à Anna. Quelle part de ses billes a-t-il donnée&nbsp;?`,
+        difference: (a, b) => `Sacha a gagné ${a} des billes du sac, Lou en a gagné ${b}. Quelle part Sacha a-t-il gagnée en plus&nbsp;?`
+    },
+    {
+        quoi: 'peinture',
+        somme: (a, b) => `Le peintre couvre ${a} du mur le matin et ${b} l'après-midi. Quelle part du mur a-t-il peinte&nbsp;?`,
+        difference: (a, b) => `Le peintre a couvert ${a} du mur. La pluie en abîme ${b}. Quelle part reste peinte&nbsp;?`
+    },
+    {
+        quoi: 'argent de poche',
+        somme: (a, b) => `Lou dépense ${a} de son argent de poche en bandes dessinées et ${b} en bonbons. Quelle part a-t-elle dépensée&nbsp;?`,
+        difference: (a, b) => `Lou avait mis de côté ${a} de son argent de poche. Elle en dépense ${b}. Quelle part lui reste-t-il&nbsp;?`
+    }
+];
+
+// LE COMPLÉMENT À UN, EN HISTOIRES.
+//
+// Rémy : « il a fait 4/9 du trajet, combien lui reste-t-il ? en expliquant
+// qu'on fait 1 − 4/9 = 9/9 − 4/9 = 5/9 ». C'est le cas le plus facile — un
+// seul dénominateur — et pourtant celui qui fait buter : il faut d'abord voir
+// que le TOUT s'écrit en neuvièmes. Les contextes sont donc les plus concrets
+// possibles : un livre qu'on lit, un puzzle qu'on monte, une bouteille qu'on
+// vide. Le « reste », là, se voit.
+const COMPLEMENTS = [
+    { quoi: 'trajet', dit: (a) => `Malo a parcouru ${a} du trajet. Quelle part lui reste-t-il à faire&nbsp;?` },
+    { quoi: 'livre', dit: (a) => `Zoé a lu ${a} de son livre. Quelle part lui reste-t-il à lire&nbsp;?` },
+    { quoi: 'puzzle', dit: (a) => `Nino a monté ${a} de son puzzle. Quelle part lui reste-t-il à monter&nbsp;?` },
+    // « Remplie aux 3/4 » se dit, « remplie aux 1/4 » non : l'article s'accorde
+    // avec le numérateur, qu'on tire au hasard. On tourne la phrase.
+    { quoi: 'bouteille', dit: (a) => `On a rempli ${a} de la bouteille. Quelle part reste-t-il à remplir&nbsp;?` },
+    { quoi: 'pizza', dit: (a) => `On a mangé ${a} de la pizza. Quelle part reste-t-il dans le carton&nbsp;?` },
+    { quoi: 'mur', dit: (a) => `Le peintre a couvert ${a} du mur. Quelle part lui reste-t-il à peindre&nbsp;?` },
+    { quoi: 'devoirs', dit: (a) => `Lou a fait ${a} de ses devoirs. Quelle part lui reste-t-il à faire&nbsp;?` },
+    { quoi: 'course', dit: (a) => `Sacha a couru ${a} de la course. Quelle part lui reste-t-il à courir&nbsp;?` },
+    { quoi: 'jardin', dit: (a) => `Papi a semé ${a} du jardin. Quelle part reste-t-il à semer&nbsp;?` },
+    { quoi: 'gâteau', dit: (a) => `Il ne reste que ${a} du gâteau. Quelle part a été mangée&nbsp;?` }
+];
+
+export const fracProblemeGenerator = {
+    id: 'frac.probleme',
+    label: 'Problèmes de fractions (addition et soustraction)',
+    skills: ['num.frac.denominateur-commun', 'num.probleme.fraction'],
+    answerKinds: ['text'],
+    ecrit: true,
+    fractions: true,
+    // Les compléments à UN passent AVANT la progression et ne comptent pas
+    // dedans : il faut donc les ajouter au compte, sinon régler « 3 questions
+    // “combien reste-t-il ?” » mangerait trois marches sur quatre.
+    conseil: (p) => {
+        // Les compléments à UN passent AVANT la progression et ne comptent pas
+        // dedans : il faut donc les ajouter au compte.
+        const avant = Math.max(0, Number((p && p.complements) ?? 3) || 0);
+        return avant + conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length, PAR_MARCHE);
+    },
+    params: [
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: MOT, ancien: ANCIEN
+        }),
+        { ...PARAM_OPERATION, default: 'les-deux' },
+        PARAM_SIMPLIFIER,
+        {
+            id: 'complements', type: 'number', label: 'Questions « combien reste-t-il ? »',
+            default: 3, min: 0, max: 10,
+            aide: 'Les premières questions sont des compléments à 1 : « il a parcouru 4/9 du '
+                + 'trajet, combien lui reste-t-il ? ». Un seul dénominateur, mais il faut voir '
+                + 'que 1 = 9/9.'
+        },
+        { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 10, min: 4, max: 10 },
+        // ÉCRIRE LE CALCUL, OU LE FAIRE CHERCHER. Rémy : « pour histoire de
+        // fraction, mets une option pour écrire ou non le calcul ». L'énoncé
+        // portait toujours « (1 − 1/5 = …) » entre parenthèses : c'est une
+        // béquille utile au début — elle dit quelle opération poser — et une
+        // réponse donnée d'avance ensuite, puisque tout le travail du problème
+        // est justement de TROUVER le calcul.
+        {
+            id: 'calcul', type: 'checkbox', label: 'Écrire le calcul dans l\'énoncé',
+            default: true,
+            aide: 'Décoché, l\'énoncé s\'arrête à la question : c\'est à l\'élève de poser '
+                + 'l\'opération. C\'est le même exercice, une marche plus haut.'
+        }
+    ],
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        const maxDen = Math.min(10, Number(params.maxDen) || 10);
+        const avecCalcul = (params || {}).calcul !== false;
+        const index = ctx.index || 0;
+
+        // ON COMMENCE PAR LE RESTE. Un seul dénominateur, une seule idée : le
+        // tout, c'est toutes les parts. Puis les deux fractions arrivent, et
+        // avec elles le dénominateur commun.
+        if (index < Number(params.complements ?? 3)) {
+            const c = tirerComplement(rng, { maxDen });
+            c.simplifie = params.simplifier === 'oui' && c.aSimplifiable;
+            const h = rng.pick(COMPLEMENTS);
+            return itemDeCalcul(c, rng, {
+                generatorId: 'frac.probleme',
+                skillId: 'num.frac.denominateur-commun',
+                marche: 'complement',
+                enonce: h.dit(colonneHtml(c.b)),
+                enonceTexte: h.dit(nuHtml(c.b)).replace(/&nbsp;/g, ' '),
+                question: h.quoi, avecCalcul
+            });
+        }
+
+        const marche = marcheDe(params, index - Number(params.complements ?? 3),
+            Math.max(1, totalDe(ctx, params) - Number(params.complements ?? 3)));
+        const c = tirerCalcul(rng, {
+            niveau: marche,
+            maxDen,
+            operation: params.operation || 'les-deux'
+        });
+        c.simplifie = params.simplifier === 'oui' && c.aSimplifiable;
+
+        const h = rng.pick(HISTOIRES);
+        const dit = c.signe === '−' ? h.difference : h.somme;
+        const enonce = dit(colonneHtml(c.a), colonneHtml(c.b));
+        const enonceTexte = dit(nuHtml(c.a), nuHtml(c.b)).replace(/&nbsp;/g, ' ');
+
+        return itemDeCalcul(c, rng, {
+            generatorId: 'frac.probleme',
+            skillId: 'num.frac.denominateur-commun',
+            marche, enonce, enonceTexte, question: h.quoi, avecCalcul
+        });
+    }
+};

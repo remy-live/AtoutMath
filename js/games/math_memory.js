@@ -1,7 +1,9 @@
 import { regTimeout, regInterval } from '../core/timers.js';
 import { BaseGame } from '../core/BaseGame.js';
+import { createDemoGate, dureeDemo } from '../core/demoPointer.js';
 import { generateMultFact } from '../core/generators.js';
 import { getWeakTables } from '../core/stats.js';
+import { meilleuresColonnes, mesurerCarte } from './memoryLayout.js';
 
 class MathMemory extends BaseGame {
     render() {
@@ -13,31 +15,48 @@ class MathMemory extends BaseGame {
                     display: flex;
                     flex-direction: column;
                     align-items: center;
-                    justify-content: center;
+                    justify-content: safe center;
                     background: var(--bg-app);
-                    padding: 20px;
+                    /* Marge du bas renforcée : le plateau remplit la hauteur,
+                       et sans elle la dernière rangée passait sous la barre
+                       basse de Safari (ou sous la palette de débogage). */
+                    padding: clamp(6px, 2vmin, 20px);
+                    padding-bottom: calc(clamp(6px, 2vmin, 20px) + env(safe-area-inset-bottom, 0px) + 14px);
                     box-sizing: border-box;
+                    overflow: hidden;
                 }
+                /* Rangées souples plutôt que grille rigide : une dernière
+                   rangée incomplète se retrouve CENTRÉE, ce qui la fait
+                   paraître voulue au lieu d'oubliée à gauche. Largeur du
+                   plateau, taille des cartes et du texte sont posées par
+                   disposer() d'après le cadre réellement mesuré. */
                 .memory-grid {
-                    display: grid;
-                    gap: 15px;
-                    max-width: 800px;
-                    width: 100%;
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: var(--mem-gap, 10px);
+                    justify-content: center;
+                    align-content: center;
+                    max-width: var(--mem-largeur-plateau, 100%);
                 }
                 .memory-card {
                     background: var(--bg-panel);
                     border: 2px solid var(--border);
                     border-radius: 12px;
-                    height: 80px;
+                    flex: 0 0 auto;
+                    width: var(--mem-w, 80px);
+                    height: var(--mem-h, 64px);
+                    box-sizing: border-box;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 1.5rem;
+                    font-size: var(--mem-font, 1.5rem);
                     font-weight: bold;
+                    white-space: nowrap;   /* « 8 × 6 » ne se coupe jamais en deux */
                     color: var(--text-main);
                     cursor: pointer;
                     transition: transform 0.3s, background 0.3s, opacity 0.3s;
                     user-select: none;
+                    -webkit-user-select: none;
                     box-shadow: var(--shadow-sm);
                     transform-style: preserve-3d;
                 }
@@ -49,7 +68,20 @@ class MathMemory extends BaseGame {
                 }
                 .memory-card.matched {
                     opacity: 0;
+                    transform: scale(0.4);
                     pointer-events: none;
+                }
+                .memory-particle {
+                    position: fixed;
+                    width: 10px; height: 10px;
+                    border-radius: 50%;
+                    pointer-events: none;
+                    z-index: 10005;
+                    animation: memoryBurst .7s ease-out forwards;
+                }
+                @keyframes memoryBurst {
+                    0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+                    100% { opacity: 0; transform: translate(var(--px), var(--py)) scale(.3); }
                 }
                 .memory-card.error {
                     background: var(--danger);
@@ -62,20 +94,80 @@ class MathMemory extends BaseGame {
                     75% { transform: translateX(5px); }
                 }
             </style>
-            <div class="memory-arena">
+            <div class="memory-arena" id="memory-arena">
                 <div class="memory-grid" id="memory-grid"></div>
             </div>
         `;
         this.gridEl = this.container.querySelector('#memory-grid');
+        this.arenaEl = this.container.querySelector('#memory-arena');
+
+        // Rotation de l'appareil, ouverture du clavier, redimensionnement du
+        // cadre d'aperçu : la disposition se recalcule à chaque fois.
+        this.observer = new ResizeObserver(() => this.disposer());
+        this.observer.observe(this.arenaEl);
+    }
+
+    /** Pose largeur du plateau, taille des cartes et du texte d'après le cadre réel. */
+    disposer() {
+        if (!this.gridEl || !this.arenaEl || !this.cards || !this.cards.length) return;
+        const n = this.cards.length;
+        const style = getComputedStyle(this.arenaEl);
+        const largeur = this.arenaEl.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        const hauteur = this.arenaEl.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+        if (largeur <= 0 || hauteur <= 0) return;
+
+        // Sur un cadre étroit (téléphone en portrait), un écart généreux mange
+        // la place utile : il se resserre avec la largeur.
+        const gap = Math.max(5, Math.min(14, largeur / 40));
+
+        const cols = meilleuresColonnes(n, largeur, hauteur, gap);
+        const { largeurCarte, hauteurCarte } = mesurerCarte(n, cols, largeur, hauteur, gap);
+
+        // LES TROIS MESURES SONT ARRONDIES ENSEMBLE, ET LE PLATEAU SE CALCULE
+        // SUR LES VALEURS ARRONDIES.
+        //
+        // Rémy : « avec le robot sur ordi on ne voit pas toutes les cartes ».
+        // MESURÉ, sur une fenêtre de 1440 × 780 : cartes de 216,5 px, six par
+        // rangée, plateau annoncé à 1368,8 — et six cartes en occupent 1369,0.
+        // DEUX DIXIÈMES DE PIXEL de trop : la sixième passait à la ligne, le
+        // plateau se rangeait en 5 + 5 + 2 au lieu de 6 + 6, sa hauteur montait
+        // à 887 px dans une arène qui en fait 632, et l'arène — qui masque ce
+        // qui déborde — coupait le tiers des cartes. Invisible à l'œil sur le
+        // code, imparable à l'écran.
+        //
+        // Le plateau se calcule donc sur les nombres RÉELLEMENT écrits dans le
+        // style, plus un demi-pixel de battement : ce qui est arrondi d'un côté
+        // doit l'être de l'autre, sans quoi les deux ne parlent pas de la même
+        // largeur.
+        // EN PIXELS ENTIERS, et c'est ce qui referme le trou pour de bon. Un
+        // dixième de pixel écrit dans une variable CSS se rend en sous-pixels,
+        // et la comparaison « six cartes tiennent-elles ? » se joue alors sur
+        // des arrondis que personne ne contrôle. Des entiers, et la somme est
+        // la somme.
+        const w = Math.floor(largeurCarte);
+        const h = Math.floor(hauteurCarte);
+        const e = Math.round(gap);
+        this.gridEl.style.setProperty('--mem-gap', `${e}px`);
+        this.gridEl.style.setProperty('--mem-w', `${w}px`);
+        this.gridEl.style.setProperty('--mem-h', `${h}px`);
+        // Le plateau est bridé à la largeur d'une rangée pleine : c'est ce qui
+        // fait passer les cartes à la ligne au bon endroit, la dernière rangée
+        // se centrant alors d'elle-même.
+        this.gridEl.style.setProperty('--mem-largeur-plateau',
+            `${w * cols + e * (cols - 1) + 2}px`);
+        // Le texte suit la carte : « 10 × 10 » fait sept caractères, on vise
+        // donc un peu moins du quart de la largeur, borné pour rester lisible.
+        const police = Math.max(11, Math.min(30, Math.min(largeurCarte * 0.23, hauteurCarte * 0.42)));
+        this.gridEl.style.setProperty('--mem-font', `${police.toFixed(1)}px`);
     }
 
     startGameLoop() {
         this.pairsFound = 0;
-        // `pairs` d'abord : c'est le réglage que le catalogue expose (« Nombre
+        // `pairs` D'ABORD : c'est le réglage que le catalogue expose (« Nombre
         // de paires »), et le seul qui parvienne jusqu'ici — `nbQuestions` est
         // retenu en amont par le moteur de parcours, qui en fait son nombre
         // d'items. Le plateau restait donc à six paires quoi qu'on choisisse.
-        const voulues = Math.min(this.params.pairs || this.params.nbQuestions || 6, 12); // Max 12 pairs (24 cards) for space
+        this.targetPairs = Math.min(this.params.pairs || this.params.nbQuestions || 6, 12); // Max 12 pairs (24 cards) for space
 
         this.cards = [];
         this.firstPick = null;
@@ -90,12 +182,22 @@ class MathMemory extends BaseGame {
         // Écarter les produits déjà pris rend du même coup les questions
         // distinctes : deux fois la même question donnerait le même produit.
         const pairsData = [];
-        const produits = new Set();
-        for (let essais = 0; produits.size < voulues && essais < 300; essais++) {
-            const { t, m, ans, concept } = generateMultFact(this.params.tables, weakTables);
-            if (produits.has(ans)) continue;
-            produits.add(ans);
-            const uid = produits.size - 1;
+        // Jamais deux paires avec le MÊME résultat sur un plateau : « 3 × 4 »
+        // retourné avec le 12 de « 2 × 6 » serait mathématiquement juste mais
+        // compté faux — une erreur que l'élève ne peut pas comprendre.
+        const answersUsed = new Set();
+        for(let i = 0; i < this.targetPairs; i++) {
+            let fact = null;
+            for (let tries = 0; tries < 60; tries++) {
+                const candidate = generateMultFact(this.params.tables, weakTables);
+                if (!answersUsed.has(candidate.ans)) { fact = candidate; break; }
+            }
+            // Plus de résultat inédit disponible (tables trop restreintes) :
+            // on arrête le plateau ici plutôt que d'introduire un doublon.
+            if (!fact) break;
+            answersUsed.add(fact.ans);
+            const { t, m, ans, concept } = fact;
+            const uid = i;
 
             pairsData.push({ type: 'question', text: `${t} × ${m}`, uid, t, m, ans, concept });
             pairsData.push({ type: 'answer', text: `${ans}`, uid, t, m, ans, concept });
@@ -105,9 +207,11 @@ class MathMemory extends BaseGame {
         // tourner en rond ou de réintroduire un doublon.
         this.targetPairs = pairsData.length / 2;
 
-        // Setup Grid CSS
-        const cols = this.targetPairs > 8 ? 6 : (this.targetPairs > 4 ? 4 : 3);
-        this.gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+        // PAS DE `gridTemplateColumns` ICI. Le nombre de colonnes se décide
+        // dans `disposer()`, à partir de la taille réelle du cadre — un plateau
+        // figé à six colonnes coupait les cartes sur un écran étroit. Poser la
+        // valeur ici la ferait gagner une fois sur deux, selon l'ordre des
+        // appels.
 
         // Shuffle
         pairsData.sort(() => Math.random() - 0.5);
@@ -125,14 +229,24 @@ class MathMemory extends BaseGame {
             this.gridEl.appendChild(el);
             this.cards.push({ el, data, isMatched: false });
         });
+
+        this.disposer();
+    }
+
+    destroy() {
+
+        if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
+        if (this.observer) { this.observer.disconnect(); this.observer = null; }
+        super.destroy();
     }
 
     runDemoSequence() {
+        this.demoGate = createDemoGate(this.container);
         this.startGameLoop();
 
         let step = 0;
         const tour = () => {
-            if (!this.isRunning || this.lockBoard) return;
+            if (!this.isRunning || this.lockBoard || this.demoGate.paused) return;
 
             const hiddenCards = this.cards.filter(c => !c.isMatched && c.el.classList.contains('hidden'));
             if (hiddenCards.length < 2) return;
@@ -146,7 +260,7 @@ class MathMemory extends BaseGame {
             }
 
             c1.el.click();
-            regTimeout(() => { if (this.isRunning) c2.el.click(); }, 600);
+            regTimeout(() => { if (this.isRunning) c2.el.click(); }, dureeDemo(950));
             step++;
         };
 
@@ -154,8 +268,33 @@ class MathMemory extends BaseGame {
         // entièrement face cachée, et attendre le premier tour d'intervalle
         // laissait trois secondes de cartes muettes — assez pour que la
         // vignette du catalogue ne montre jamais que des dos de cartes.
-        regTimeout(tour, 250);
-        regInterval(tour, 2600);
+        regTimeout(tour, dureeDemo(350));
+        regInterval(tour, dureeDemo(3600));
+    }
+
+    /**
+     * Éclat de particules à l'endroit où la paire disparaît. En `position:
+     * fixed` sur <body> : les cartes s'effacent, les particules leur survivent
+     * le temps de l'animation, puis se retirent elles-mêmes.
+     */
+    spawnParticles(cardEl) {
+        const rect = cardEl.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const colors = ['#f43f5e', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
+        for (let i = 0; i < 14; i++) {
+            const p = document.createElement('div');
+            p.className = 'memory-particle';
+            const angle = (Math.PI * 2 * i) / 14 + Math.random() * 0.5;
+            const dist = 40 + Math.random() * 55;
+            p.style.left = `${cx}px`;
+            p.style.top = `${cy}px`;
+            p.style.background = colors[i % colors.length];
+            p.style.setProperty('--px', `${Math.cos(angle) * dist}px`);
+            p.style.setProperty('--py', `${Math.sin(angle) * dist}px`);
+            document.body.appendChild(p);
+            regTimeout(() => p.remove(), 750);
+        }
     }
 
     handleCardClick(el, data) {
@@ -181,6 +320,8 @@ class MathMemory extends BaseGame {
             
             regTimeout(() => {
                 if(!this.isRunning) return;
+                this.spawnParticles(this.firstPick.el);
+                this.spawnParticles(secondPick.el);
                 this.firstPick.el.classList.add('matched');
                 secondPick.el.classList.add('matched');
                 this.firstPick = null;

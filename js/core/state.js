@@ -13,11 +13,14 @@
 // aucun effet : il faut émettre un événement.
 
 import { LocalStore } from './store.js';
+// `ids.js` n'a aucune dépendance : on peut l'appeler ici sans entraîner
+// `path.js`, qui tirerait le catalogue entier dans le noyau.
+import { shortId } from './ids.js';
 import { journal, EventTypes } from './journal.js';
 import { initIdentity, getActiveProfileId, getDeviceId, namespaceFor } from './profile.js';
 import {
     computeScore, computeTime, computeBadges, computeAttempts, computeErrors,
-    countCorrect, computeAssignedPath, errorKeyOf
+    countCorrect, computeAssignedPath, errorKeyOf, computeExploits, computeVerrousOuverts
 } from './projections.js';
 import { computeMastery } from './mastery.js';
 import { conceptToSkill, deriveSkillFromLegacy } from './compat.js';
@@ -55,7 +58,21 @@ function appliquerStylePoint(style) {
 export const state = {
     // --- Session (transitoire, non persisté) ---
     // Parcours en cours d'édition (format v2 : étapes = références + surcharges).
-    currentPath: { id: null, version: 2, name: 'Mon Parcours', policy: null, steps: [] },
+    // L'IDENTIFIANT NAÎT AVEC LE PARCOURS, IL NE S'AJOUTE PAS APRÈS COUP.
+    //
+    // Rémy : « quand je charge un parcours, l'association a la même classe est
+    // tjs validée ».
+    //
+    // IL AVAIT SOUS LES YEUX UNE COLLISION D'IDENTIFIANTS VIDES. Ce parcours-ci
+    // naissait avec `id: null`, et rien ne le remplissait jamais : toute séance
+    // fabriquée depuis l'atelier partait donc avec `pathId: null`. Le panneau
+    // « À qui ce parcours est donné » coche une classe quand la séance porte le
+    // même identifiant que le parcours ouvert — et `null === null` est vrai.
+    // Autrement dit, chaque parcours sans identifiant se croyait donné à toutes
+    // les classes qui avaient reçu n'importe quel autre parcours sans
+    // identifiant. Ce n'était pas une mémoire de la dernière classe : c'était
+    // deux inconnus qui se prenaient pour le même.
+    currentPath: { id: 'path_' + shortId(8), version: 2, name: 'Mon Parcours', policy: null, steps: [] },
     currentPathId: null,
     isTeacherMode: false,
     isMobileView: false,
@@ -89,8 +106,18 @@ export const state = {
 
     // --- Contenu professeur (persisté tel quel) ---
     teacherPaths: [],
+    // LES EXERCICES QUE L'ÉLÈVE SE DONNE À LUI-MÊME. Rangés avec le contenu et
+    // non avec la progression : c'est un choix, pas un résultat. Ils vivent
+    // dans le profil de l'élève et ne partent dans aucun code de parcours —
+    // Rémy : « le prof ne les connaît pas, c'est propre à l'élève ».
+    mesExercices: [],
     teacherFolders: [],
     selectedNiveaux: [],
+    // Filtre « à deux » : volontairement NON persisté. C'est un filtre de
+    // circonstance — « qu'est-ce qu'on peut faire à deux, là, maintenant ? » —
+    // et le retrouver actif à la connexion suivante ferait croire à un
+    // catalogue vide.
+    aDeuxSeuls: false,
 
     // --- Progression (dérivée du journal, lecture seule) ---
     get score() { return memo('score', () => computeScore(journal.all())); },
@@ -125,6 +152,10 @@ export const state = {
     get timeSpentPerGame() { return memo('time', () => computeTime(journal.all())).perExercise; },
     get studentPath() { return memo('assigned', () => computeAssignedPath(journal.all())); },
     get correctCount() { return memo('correct', () => countCorrect(journal.all())); },
+    // LES ÉTAPES SOUS CLÉ QUE L'ÉLÈVE A OUVERTES, et jusqu'à quand. Voir
+    // core/verrou.js — la clé n'ouvre pas pour toujours.
+    get verrousOuverts() { return memo('verrous', () => computeVerrousOuverts(journal.all())); },
+    get exploits() { return memo('exploits', () => computeExploits(journal.all())); },
 
     // --- Cycle de vie -------------------------------------------------------
 
@@ -153,6 +184,7 @@ export const state = {
         this.teacherFolders = (await profileStore.get('teacherFolders', [])) || [];
         this.selectedNiveaux = (await profileStore.get('selectedNiveaux', [])) || [];
         this.catalogFilter = (await profileStore.get('catalogFilter', 'tout')) || 'tout';
+        this.mesExercices = (await profileStore.get('mesExercices', [])) || [];
         this.stylePoint = (await profileStore.get('stylePoint', 'croix')) || 'croix';
         appliquerStylePoint(this.stylePoint);
 
@@ -164,7 +196,7 @@ export const state = {
     _announce() {
         ['score_updated', 'badges_updated', 'errors_updated', 'attempts_updated',
             'teacherPaths_updated', 'teacherFolders_updated', 'time_updated',
-            'studentPath_updated'].forEach(evt => document.dispatchEvent(new CustomEvent(evt)));
+            'studentPath_updated', 'mesExercices_updated'].forEach(evt => document.dispatchEvent(new CustomEvent(evt)));
     },
 
     getStore() {
@@ -213,9 +245,22 @@ export const state = {
             hintsUsed: a.hintsUsed || ctx.hintsUsed || 0,
             misconception: a.misconception || null,
             explanation: a.explanation || '',
-            points: a.points || 0
+            points: a.points || 0,
+            // Une ÉTAPE d'une opération posée : elle compte aux statistiques
+            // et au carnet, jamais au compteur de questions du parcours.
+            partiel: !!a.partiel
         };
         journal.emit(EventTypes.ATTEMPT, payload);
+        // Le chronomètre du contexte REPART à zéro.
+        //
+        // Les jeux autonomes — Nova, Tetris, le labyrinthe… — n'ont pas de
+        // session d'items : ils appellent `recordAttempt` sans `msElapsed`, et
+        // le repli ci-dessus mesurait le temps depuis le début de l'ÉTAPE. La
+        // vingt-cinquième réponse d'une partie de dix minutes rapportait donc
+        // dix minutes, et le bilan, qui additionne, affichait « 135 min » pour
+        // une séance qui en avait duré douze. Chaque tentative doit rapporter
+        // l'intervalle depuis la précédente.
+        if (ctx && ctx.startedAt) ctx.startedAt = Date.now();
         invalidate();
         document.dispatchEvent(new CustomEvent('attempts_updated'));
         if (payload.points) document.dispatchEvent(new CustomEvent('score_updated'));
@@ -274,6 +319,38 @@ export const state = {
         if (profileStore) await profileStore.set('catalogFilter', filter);
     },
 
+    // --- Les exercices personnels de l'élève --------------------------------
+    //
+    // Trois écritures, toutes passant par le noyau `core/mesExercices.js` :
+    // la règle (pas de doublon, on garde le meilleur score) s'y trouve et s'y
+    // teste, ici on ne fait que ranger.
+
+    async ajouterExercicePerso(entree) {
+        if (!entree) return this.mesExercices;
+        const { ajouter } = await import('./mesExercices.js');
+        this.mesExercices = ajouter(this.mesExercices, { ...entree, cree: Date.now() });
+        await this._rangerMesExercices();
+        return this.mesExercices;
+    },
+
+    async retirerExercicePerso(id) {
+        const { retirer } = await import('./mesExercices.js');
+        this.mesExercices = retirer(this.mesExercices, id);
+        await this._rangerMesExercices();
+        return this.mesExercices;
+    },
+
+    async noterExercicePerso(id, taux) {
+        const { noterResultat } = await import('./mesExercices.js');
+        this.mesExercices = noterResultat(this.mesExercices, id, taux);
+        await this._rangerMesExercices();
+        return this.mesExercices;
+    },
+
+    async _rangerMesExercices() {
+        if (profileStore) await profileStore.set('mesExercices', this.mesExercices);
+        document.dispatchEvent(new CustomEvent('mesExercices_updated'));
+    },
     async setStylePoint(style) {
         this.stylePoint = STYLES_POINT.includes(style) ? style : 'croix';
         appliquerStylePoint(this.stylePoint);
@@ -295,10 +372,32 @@ export const state = {
         document.dispatchEvent(new CustomEvent('studentPath_updated'));
     },
 
+    /**
+     * L'ÉLÈVE VIENT DE DONNER LA BONNE CLÉ.
+     *
+     * On écrit au journal, et non dans un réglage : l'ouverture se synchronise
+     * alors toute seule entre les appareils, et le professeur voit à quelle
+     * heure sa clé a servi — ce qui est précisément ce qu'on veut savoir d'une
+     * interrogation.
+     */
+    ouvrirVerrou(sel, jusqua) {
+        if (!sel) return;
+        journal.emit(EventTypes.VERROU_OUVERT, { sel, jusqua: jusqua === undefined ? null : jusqua });
+        invalidate();
+        document.dispatchEvent(new CustomEvent('studentPath_updated'));
+    },
+
     markStudentPathStepCompleted(stepId, extra = {}) {
         const path = this.studentPath;
         if (!path || (path.completed || []).includes(stepId)) return;
         journal.emit(EventTypes.STEP_COMPLETED, { pathId: path.pathId, stepId, ...extra });
+        // ON ANNONCE L'ÉTAPE QU'ON VIENT D'OUVRIR : la carte s'en servira pour
+        // montrer la route se tracer au lieu de l'afficher déjà tracée (voir
+        // ui/ouverture.js). Un ÉVÉNEMENT et non un appel : le noyau ne connaît
+        // pas l'interface, et n'a pas à savoir qu'il existe une carte.
+        // L'ordre compte — l'annonce précède `studentPath_updated`, qui
+        // provoque le redessin.
+        document.dispatchEvent(new CustomEvent('path_step_opened', { detail: stepId }));
         invalidate();
         document.dispatchEvent(new CustomEvent('studentPath_updated'));
     },

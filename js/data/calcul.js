@@ -1,5 +1,10 @@
 import { TAGS } from './tags.js';
 import { STATUS } from './status.js';
+import { REGLAGE_SAISIE } from '../ui/champsGrille.js';
+import { NIVEAUX as NIVEAUX_CHANTIER } from '../core/chantier.js';
+// Les dominos empruntent leurs questions aux autres notions : la liste des
+// sources est tenue là où elle est vérifiée, pas recopiée ici.
+import { SOURCES as SOURCES_DOMINOS } from '../core/generators/dominos.js';
 
 // `status` absent = validé. Ne sont marqués que les exercices qui ne le sont
 // pas encore — ici les jeux autonomes, qui n'ont pas été portés sur le contrat
@@ -16,124 +21,674 @@ import { STATUS } from './status.js';
 
 export const calculExercises = [
     {
-        id: 'calc-add', title: 'Additions Mystères',
+        id: 'calc-add',
+        cree: '2026-07-26',
+        consignePapier: "Calcule.",
+        colonnesPapier: 4,
+        title: 'Additions Mystères',
         generatorId: 'calc.addition', activityId: 'bubbles',
         params: { max: 10 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Trouve la somme des deux nombres affichés et sélectionne la bonne bulle."
     },
     {
-        id: 'calc-sub', title: 'Soustractions Éclair',
+        id: 'calc-sub',
+        cree: '2026-07-28',
+        consignePapier: "Calcule.",
+        colonnesPapier: 4,
+        title: 'Soustractions Éclair',
         generatorId: 'calc.soustraction', activityId: 'bubbles',
+        // La seconde moitié se répond au pavé : reconnaître 13 parmi trois
+        // nombres n'est pas produire 13.
         params: { max: 20 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Calcule la différence et clique sur la bonne bulle."
     },
     {
-        id: 'calc-mult-flash', title: 'Flash Mult',
+        id: 'calc-mult-flash',
+        cree: '2026-07-26',
+        consignePapier: "Calcule.",
+        colonnesPapier: 4,
+        title: 'Flash Mult',
         generatorId: 'calc.mult.fact', activityId: 'bubbles',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
         instruction: "Choisis la bulle qui contient le résultat correct de la multiplication."
     },
     {
-        id: 'calc-pythagore', title: 'Table de Pythagore',
+        id: 'calc-pythagore',
+        cree: '2026-07-26',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
+        title: 'Table de Pythagore',
         generatorId: 'calc.mult.fact', activityId: 'pythagore',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
-        instruction: "Repère la ligne et la colonne surlignées dans la table, puis clique sur le bon résultat."
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Le résultat est donné, la table est vide : clique une case dont ligne × colonne fait ce résultat. Toutes les décompositions justes sont acceptées (6×7 comme 7×6)."
     },
     {
-        id: 'calc-mult-missing', title: 'Facteur Manquant',
-        generatorId: 'calc.mult.missing', activityId: 'digicode',
+        id: 'calc-mult-missing',
+        cree: '2026-07-26',
+        revisions: [
+            {
+                date: '2026-08-19',
+                quoi: 'Des bulles comme tous les autres exercices à propositions : il était le '
+                    + 'seul à porter de petites cases carrées, héritées d\'un digicode qui '
+                    + 'n\'avait plus de clavier à montrer.'
+            }
+        ],
+        consignePapier: "Complète.",
+        colonnesPapier: 4,
+        title: 'Facteur Manquant',
+        // DES BULLES, COMME SES DIX-HUIT VOISINS. Rémy : « la présentation
+        // avec les bulles ou rectangle de choix n'est pas la même ». Il était
+        // le SEUL exercice à propositions à sortir du lot, avec la variante
+        // « digicode » — de petites cases blanches carrées là où Flash Mult,
+        // Divisions Express et Sprint Chrono posent tous de grandes bulles.
+        //
+        // La métaphore du digicode se tenait quand la grille montrait tout un
+        // clavier de chiffres, comme un code de porte. Elle ne se tient plus
+        // depuis que l'aide progressive n'affiche que deux propositions puis
+        // quatre : deux petits carrés ne sont pas un digicode, ce sont deux
+        // boutons ratés.
+        generatorId: 'calc.mult.missing', activityId: 'bubbles',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Trouve le nombre manquant dans l'égalité et sélectionne-le sur le digicode."
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Trouve le nombre manquant dans l'égalité, puis choisis-le parmi les propositions. "
+            + "Pour y arriver, on ne multiplie pas au hasard : on DIVISE. Le facteur cherché, "
+            + "c'est le résultat divisé par le facteur connu — et c'est ce raccourci qu'on veut "
+            + "voir s'installer, parce qu'il est la table lue à l'envers."
     },
     {
-        id: 'calc-division', title: 'Divisions Express',
+        id: 'calc-division',
+        cree: '2026-07-28',
+        consignePapier: "Calcule.",
+        colonnesPapier: 4,
+        title: 'Divisions Express',
         generatorId: 'calc.division', activityId: 'bubbles',
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Trouve le quotient exact de la division affichée."
     },
     {
-        id: 'calc-prio', title: 'Prio-Bot Express',
+        id: 'calc-prio',
+        cree: '2026-07-26',
+        consignePapier: "Quelle opération faut-il effectuer en premier ?",
+        colonnesPapier: 1,
+        title: 'Prio-Bot Express',
         generatorId: 'calc.priorites', activityId: 'buttons',
-        params: { mode: 'operation' },
+        // Le niveau et la taille des nombres se règlent : les expressions
+        // venaient de quatre gabarits fixes, à trois nombres de moins de dix.
+        params: { mode: 'operation', niveau: 2, parentheses: false, grands: false },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
+                options: [
+                    { value: 1, label: '1 — Trois nombres, deux opérations' },
+                    { value: 2, label: '2 — Jusqu\'à quatre nombres' },
+                    { value: 3, label: '3 — Les parenthèses arrivent' },
+                    { value: 4, label: '4 — Deux groupes de parenthèses' }
+                ]
+            },
+            {
+                id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
+                aide: 'Les nombres montent jusqu\'à 20 : la règle est la même, mais '
+                    + 'elle ne se devine plus de tête.'
+            },
+            {
+                id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: false,
+                aide: 'Elles n\'apparaissent qu\'à partir de la difficulté 3.'
+            }
+        ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME] },
         instruction: "Sélectionne l'opération à effectuer en premier selon les règles de priorité."
     },
     {
-        id: 'calc-prio-resultat', title: 'Prio-Bot Calcul',
+        // LES PARENTHÈSES, À PART. Rémy : « tu m'en fais un autre avec des
+        // parenthèses ». C'est bien un autre exercice, et non un réglage caché
+        // du premier : la règle change de nature. « × et ÷ avant + et − » se
+        // décide en regardant les SIGNES ; « les parenthèses d'abord » se
+        // décide en regardant la FORME, avant même de lire les signes. Un
+        // élève peut tenir la seconde et rater la première, ou l'inverse — et
+        // c'est ce qu'on veut voir séparément.
+        id: 'calc-prio-parentheses',
+        cree: '2026-08-15',
+        consignePapier: "Quelle opération faut-il effectuer en premier ?",
+        colonnesPapier: 2,
+        title: 'Prio-Bot Parenthèses',
+        generatorId: 'calc.priorites', activityId: 'buttons',
+        params: { mode: 'operation', niveau: 3, parentheses: true, grands: false },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté', default: 3,
+                options: [
+                    { value: 3, label: '3 — Un groupe de parenthèses' },
+                    { value: 4, label: '4 — Deux groupes, ou un groupe de trois nombres' }
+                ]
+            },
+            {
+                id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
+                aide: 'Les nombres montent jusqu\'à 20.'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Les parenthèses passent AVANT tout le reste — avant même les multiplications. "
+            + "S'il y en a plusieurs, on commence par le groupe le plus intérieur. Sélectionne "
+            + "l'opération à effectuer en premier."
+    },
+    {
+        id: 'calc-prio-resultat',
+        cree: '2026-07-28',
+        consignePapier: "Calcule en respectant les priorités, et détaille.",
+        colonnesPapier: 2,
+        title: 'Prio-Bot Calcul',
         generatorId: 'calc.priorites', activityId: 'bubbles',
-        params: { mode: 'resultat' },
+        params: { mode: 'resultat', niveau: 2, progressif: true },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Calcule l'expression en respectant les priorités opératoires."
     },
+    {
+        // LES DEUX CHAPITRES QUI SE PIÈGENT L'UN L'AUTRE. Rémy : « on va coupler
+        // deux exercices, celui de priorités opératoires et aussi les nombres
+        // relatifs. Tu le rajoutes en exercice à part. »
+        //
+        // À PART, ET NON UNE CASE À COCHER DU PREMIER. Mêlé aux séries de
+        // priorités pures, on n'aurait jamais su ce qui coince : la règle de
+        // priorité, la règle des signes, ou leur rencontre. Séparé, il a sa
+        // compétence et sa ligne au bilan — et le professeur voit lequel des
+        // deux il doit reprendre.
+        id: 'calc-prio-relatifs',
+        cree: '2026-09-02',
+        consignePapier: "Calcule en respectant les priorités, écris les calculs. Attention aux signes.",
+        colonnesPapier: 4,
+        title: 'Prio-Bot Relatifs',
+        // LA CASCADE, ET NON LE QCM. Rémy : « sur les Prio-Bot relatifs, ne
+        // mets pas de QCM mais plutôt des calculs en ligne par étape ».
+        //
+        // Il a raison, et pour une raison qui tient à ce chapitre-là. La faute
+        // des relatifs se commet À UNE LIGNE PRÉCISE : on calcule 3 × (−2)
+        // correctement, puis on recopie « 5 − 6 » au lieu de « 5 − (−6) ». Le
+        // QCM ne voit que le résultat final — il dit « faux » sans pouvoir dire
+        // où. La cascade s'arrête sur la ligne fautive, et c'est là que la
+        // règle des signes se corrige.
+        //
+        // LE GÉNÉRATEUR RESTE, POUR LE PAPIER : les distracteurs qu'il fabrique
+        // — l'ordre de gauche à droite, le signe du produit oublié, les deux
+        // moins qui ne s'annulent pas — n'ont plus d'emploi à l'écran, mais
+        // c'est lui qui sait tirer une expression avec des négatifs.
+        activityId: 'priorites',
+        printable: 'priorites', printGeneratorId: 'calc.priorites-fiche',
+        printParams: { relatifs: true },
+        skills: ['num.prio.relatifs'],
+        params: { niveau: 2, parentheses: false, relatifs: true },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté', echelle: true,
+                options: [
+                    { value: 1, label: '1 — Deux opérations, sans parenthèses', court: '1' },
+                    { value: 2, label: '2 — Jusqu\'à trois opérations', court: '2' },
+                    { value: 3, label: '3 — Les parenthèses arrivent', court: '3' },
+                    { value: 4, label: '4 — Deux groupes de parenthèses', court: '4' }
+                ],
+                default: 2
+            },
+            {
+                id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses',
+                aide: 'Sans elles, seule la rencontre des deux règles est en jeu : '
+                    + 'la priorité désigne l\'opération, les signes la calculent.',
+                default: false
+            }
+        ],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Calcule l'expression en respectant les priorités — et cette fois les nombres "
+            + "peuvent être négatifs. Fais les trois pas dans l'ordre : la règle de priorité "
+            + "DÉSIGNE l'opération, la règle des signes la CALCULE, puis on réécrit la ligne "
+            + "entière. Le « − » collé à un nombre entre parenthèses est son SIGNE, pas une "
+            + "opération : dans 5 − 3 × (−2), il n'y a que deux opérations. Et soustraire un "
+            + "nombre négatif revient à ajouter son opposé : 5 − (−6) = 5 + 6 = 11."
+    },
+    {
+        // LA RÉÉCRITURE LIGNE À LIGNE. Les deux exercices ci-dessus posent la
+        // question en QCM : quelle opération, ou quel résultat. Celui-ci fait
+        // ÉCRIRE la suite du calcul — et c'est là qu'apparaît la faute qui
+        // coûte vraiment des points : calculer 4 × 5 juste, puis oublier le
+        // « − 2 » en passant à la ligne. Un QCM ne la voit jamais.
+        id: 'calc-prio-cascade', title: 'Priorités : ligne par ligne',
+        colonnesPapier: 4,
+        cree: '2026-08-14',
+        activityId: 'priorites',
+        // Sur le papier, c'est le MÊME exercice en plus exigeant : à l'écran
+        // la machine recopie le reste de la ligne, sur la feuille personne ne
+        // le fait à la place de l'élève — et c'est là qu'on perd ses points.
+        printable: 'priorites', printGeneratorId: 'calc.priorites-fiche',
+        // PAS DE `printParams` ICI. Il ÉCRASE les réglages du panneau
+        // (`{...params, ...printParams}` dans printSheet.js) : y répéter
+        // `puissances: false` rendait la case « Avec des puissances » sans
+        // effet sur la feuille — on la cochait, et le PDF sortait sans une
+        // seule puissance. Les trois réglages viennent du panneau, et `params`
+        // ci-dessous porte déjà les valeurs par défaut.
+        consignePapier: 'Calcule en respectant les priorités, écris les calculs.',
+        skills: ['num.prio'],
+        params: { niveau: 2, parentheses: true, puissances: false },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté', echelle: true,
+                options: [
+                    { value: 1, label: '1 — Deux opérations, sans parenthèses', court: '1' },
+                    { value: 2, label: '2 — Jusqu\'à trois opérations', court: '2' },
+                    { value: 3, label: '3 — Les parenthèses arrivent', court: '3' },
+                    { value: 4, label: '4 — Deux groupes de parenthèses', court: '4' }
+                ],
+                default: 2
+            },
+            {
+                id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses',
+                aide: 'Sans elles, seule la règle « × et ÷ avant + et − » est en jeu — et le tirage garantit qu\'un calcul de gauche à droite donne toujours faux.',
+                default: true
+            },
+            {
+                // LES PUISSANCES DANS LA CASCADE. Rémy : « des priorités avec les
+                // puissances. Tu as déjà un moteur hyper complet sur les priorités. »
+                // C'est un RÉGLAGE de l'exercice existant, pas un second exercice :
+                // la règle qu'on ajoute — la puissance avant le × — n'a de sens
+                // qu'au milieu de toutes les autres.
+                id: 'puissances', type: 'checkbox', label: 'Avec des puissances',
+                aide: 'Ajoute une ou deux puissances dans les expressions. Elles se calculent après '
+                    + 'les parenthèses et avant les multiplications.',
+                default: false
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Clique sur l'opération qu'il faut faire EN PREMIER : elle se souligne. Donne son résultat dans le trou, et la ligne suivante s'écrit — en RECOPIANT tout le reste. C'est la recopie qui coûte des points en contrôle, pas la règle : on calcule 4 × 5 correctement, et on oublie le « − 2 ». Avec le réglage « Avec des puissances », un cran s'ajoute à la règle : les parenthèses d'abord, PUIS les puissances, puis les multiplications et les divisions, et enfin les additions et les soustractions. Une puissance se clique comme un signe — c'est elle, l'opération."
+    },
+    {
+        // LE COMPTE EST BON. Le tirage est fabriqué à l'endroit : le compte est
+        // donc toujours atteignable, et l'on sait en combien d'opérations —
+        // c'est le réglage de difficulté. Les grandes plaques sont garanties :
+        // 25, 50, 75 et 100 sont celles dont les multiples doivent devenir des
+        // réflexes.
+        id: 'calc-compte-est-bon', title: 'Le Compte est Bon',
+        cree: '2026-08-14',
+        activityId: 'compte-est-bon',
+        // SUR LE PAPIER, c'est l'exercice d'origine : on cherche au crayon,
+        // on rature, on recommence — ce que l'écran ne remplace pas.
+        printable: 'compte', printGeneratorId: 'calc.compte-fiche',
+        printParams: { operations: 3, grands: 1 },
+        consignePapier: 'Trouve le compte. Une opération par ligne.',
+        skills: ['num.calc.tri'],
+        // DEUX OPÉRATIONS PAR DÉFAUT, pas trois. Le compte est bon est un jeu
+        // d'adultes : à trois opérations, l'élève de CM2 cherche à l'aveugle et
+        // renonce avant d'avoir rien calculé. À deux, il voit le chemin, il le
+        // pose, il gagne — et c'est en gagnant qu'on accepte d'en faire trois.
+        params: { operations: 2, tous: false, grands: 1 },
+        paramSchema: [
+            {
+                id: 'operations', type: 'select', label: 'Opérations pour y arriver',
+                aide: 'C\'est le vrai réglage de difficulté : chaque opération de plus multiplie le nombre de chemins à essayer.',
+                options: [
+                    { value: 2, label: '2 — pour commencer' },
+                    { value: 3, label: '3' },
+                    { value: 4, label: '4' },
+                    { value: 5, label: '5 — le tirage complet' }
+                ],
+                default: 2
+            },
+            {
+                id: 'tous', type: 'checkbox', label: 'Utiliser TOUTES les plaques',
+                aide: 'Atteindre le compte ne suffit plus : il ne doit rien rester sur la table. Cela impose cinq opérations, et transforme « trouve un chemin » en « trouve LE chemin ».',
+                default: false
+            },
+            {
+                id: 'grands', type: 'select', label: 'Grandes plaques (25, 50, 75, 100)',
+                options: [
+                    { value: 1, label: 'Une au moins' },
+                    { value: 2, label: 'Deux au moins' }
+                ],
+                default: 1
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Touche une plaque, un signe, une seconde plaque — puis ÉCRIS le résultat toi-même : la machine ne calcule jamais à ta place. Deux règles seulement : jamais de nombre négatif, et une division doit tomber juste. Une plaque ne sert qu'une fois, et le résultat obtenu revient sur la table."
+    },
+    {
+        // UN SEUL « POSER », le signe est un réglage. Le geste enseigné est le
+        // même — aligner les nombres, puis descendre colonne par colonne — et
+        // c'est justement ce qu'on veut faire sentir : ce qui change entre + et
+        // −, ce n'est pas la méthode, c'est l'endroit où se note la retenue.
+        // Les deux règles sont dites dans la consigne, l'une après l'autre.
+        id: 'calc-poser', title: 'Poser une opération',
+        colonnesPapier: 5,
+        cree: '2026-08-14',
+        revisions: [
+            {
+                date: '2026-08-19',
+                quoi: 'À l\'addition, l\'ordre des lignes est libre : 47 + 128 et 128 + 47 sont la '
+                    + 'même opération posée. La soustraction, elle, garde son ordre.'
+            }
+        ],
+        activityId: 'poser-operation',
+        // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
+        // imprime les nombres déjà en colonnes et laisse toute la place
+        // d'écrire les retenues. « Pose et effectue » est l'exercice le plus
+        // banal d'une feuille de calcul — et il manquait.
+        //
+        // `printParams` ÉCRASE les réglages de l'écran (`{...params,
+        // ...printParams}` dans printSheet.js) : tout ce qu'on y répète devient
+        // un réglage sans effet sur la feuille. On n'y laisse donc QUE ce que
+        // l'écran ne règle pas — l'opération, la taille et le nombre de termes
+        // viennent maintenant du panneau, comme on s'y attend en le réglant.
+        printable: 'pose', printGeneratorId: 'calc.poser-fiche',
+        printParams: { retenue: true },
+        consignePapier: 'Effectue ces opérations posées.',
+        skills: ['num.add.entiers'],
+        params: { operation: '+', decimales: false, chiffres: 3, termes: 2 },
+        paramSchema: [
+            {
+                id: 'operation', type: 'select', label: 'Opération',
+                options: [
+                    { value: '+', label: 'Addition' },
+                    { value: '-', label: 'Soustraction' }
+                ],
+                default: '+'
+            },
+            {
+                id: 'decimales', type: 'checkbox', label: 'Nombres à virgule',
+                aide: 'On aligne sur la virgule, pas sur le bord droit. Les deux nombres n\'ont pas '
+                    + 'le même nombre de décimales, sinon la difficulté s\'efface. La '
+                    + 'multiplication, elle, ne s\'aligne pas.',
+                default: false
+            },
+            {
+                id: 'chiffres', type: 'select', label: 'Taille des nombres',
+                options: [
+                    { value: 2, label: '2 chiffres' },
+                    { value: 3, label: '3 chiffres' },
+                    { value: 4, label: '4 chiffres' }
+                ],
+                default: 3
+            },
+            {
+                id: 'termes', type: 'select', label: 'Combien de nombres',
+                aide: 'À trois nombres, la retenue peut valoir 2 — et le petit rond le sait. Sans effet sur une soustraction.',
+                options: [
+                    { value: 2, label: 'Deux' },
+                    { value: 3, label: 'Trois' }
+                ],
+                default: 2
+            }
+        ],
+        motsClefs: ['addition posée', 'soustraction posée', 'retenue', 'colonnes', 'aligner'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "D'abord ALIGNER : fais glisser chaque NOMBRE ENTIER dans la grille. Attrape-le par n'importe lequel de ses chiffres — celui que tu tiens tombe dans la colonne que tu survoles, et les autres suivent. Un fantôme te montre où il tomberait avant que tu lâches. Les unités sous les unités : c'est la virgule qui aligne, pas le bord droit. Puis calculer, colonne par colonne, en partant de la droite. Dans une ADDITION, la retenue s'écrit dans le petit rond EN HAUT de la colonne suivante — à deux nombres elle vaut 0 ou 1, à trois elle peut valoir 2. Dans une SOUSTRACTION, quand le chiffre du haut est trop petit, on lui ajoute dix — et pour ne rien changer, on ajoute un au chiffre du BAS de la colonne suivante : la retenue se note contre le nombre du dessous."
+    },
+    {
+        // POSER UNE MULTIPLICATION. Une LIGNE par chiffre du multiplicateur,
+        // décalée d'un rang à chaque fois, puis l'addition des lignes. Et une
+        // retenue qui ne se comporte pas comme celle de l'addition : elle
+        // s'ajoute APRÈS le produit, jamais au chiffre avant de multiplier.
+        // C'est l'erreur qu'on ne voit pas si l'on ne fait écrire que le total.
+        id: 'calc-poser-multiplication', title: 'Poser une multiplication',
+        colonnesPapier: 4,
+        cree: '2026-08-14',
+        revisions: [
+            {
+                date: '2026-08-19',
+                quoi: 'Une touche ⌫ pour reprendre le dernier chiffre — il n\'y en avait aucune — '
+                    + 'et le libre qui s\'ouvre à qui vient de poser une multiplication entière '
+                    + 'sans une faute.'
+            }
+        ],
+        activityId: 'poser-multiplication',
+        // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
+        // imprime les nombres déjà en colonnes et laisse toute la place
+        // d'écrire les retenues. « Pose et effectue » est l'exercice le plus
+        // banal d'une feuille de calcul — et il manquait.
+        printable: 'pose', printGeneratorId: 'calc.poser-fiche',
+        // On n'y laisse QUE ce que l'écran ne règle pas : répéter `chiffres`
+        // ici en faisait un réglage sans effet, et le professeur qui passait
+        // le premier nombre à quatre chiffres retrouvait trois sur sa feuille.
+        printParams: { operation: '×', retenue: true },
+        consignePapier: 'Effectue ces multiplications posées.',
+        skills: ['num.mult.sens'],
+        params: { chiffres: 3, chiffresB: 2, decimales: false, verification: 'merite' },
+        paramSchema: [
+            {
+                id: 'chiffres', type: 'select', label: 'Taille du premier nombre',
+                options: [
+                    { value: 2, label: '2 chiffres' },
+                    { value: 3, label: '3 chiffres' },
+                    { value: 4, label: '4 chiffres' }
+                ],
+                default: 3
+            },
+            {
+                id: 'chiffresB', type: 'select', label: 'Taille du multiplicateur',
+                aide: 'À un chiffre, il n\'y a qu\'une ligne et aucune addition : c\'est par là qu\'on commence. Chaque chiffre de plus ajoute une ligne, et un décalage.',
+                options: [
+                    { value: 1, label: '1 chiffre — une seule ligne' },
+                    { value: 2, label: '2 chiffres — deux lignes' },
+                    { value: 3, label: '3 chiffres — trois lignes' }
+                ],
+                default: 2
+            },
+            {
+                id: 'decimales', type: 'checkbox', label: 'Nombres à virgule',
+                aide: 'La virgule ne sert à RIEN pendant le calcul : on multiplie les entiers, et on la place à la fin en comptant les décimales des deux facteurs. C\'est une étape de plus à l\'écran.',
+                default: false
+            },
+            {
+                id: 'verification', type: 'select', label: 'Quand corriger', default: 'merite',
+                aide: 'Au fur et à mesure, un chiffre faux est refusé dès qu\'il est tapé. À la fin, '
+                    + 'on pose la multiplication entière avant qu\'elle soit relue. Le défaut passe '
+                    + 'de l\'un à l\'autre selon les réussites.',
+                options: [
+                    { value: 'merite', label: 'Guidé, puis libre quand c\'est réussi' },
+                    { value: 'fin', label: 'Toujours libre : à la fin de chaque ligne' },
+                    { value: 'immediate', label: 'Toujours guidé : à chaque chiffre tapé' }
+                ]
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Une ligne par chiffre du multiplicateur, en commençant par les unités. Attention à la retenue : elle s'ajoute APRÈS le produit — 2 × 4 + 2, et jamais (2 + 2) × 4. Écris-la dans le petit rond, elle doit se voir. Chaque ligne suivante se DÉCALE d'une colonne, parce que son chiffre vaut des dizaines, puis des centaines : les points marquent les colonnes sautées. On additionne enfin les lignes, et s'il y a des virgules, on les compte à la toute fin."
+    },
+    {
+        // POSER UNE DIVISION. La potence, et la même étape recommencée :
+        // j'abaisse, je cherche combien de fois, je multiplie, je soustrais.
+        // Le rang du chiffre abaissé donne le rang du chiffre du quotient —
+        // d'où la virgule du quotient, qu'on récite d'ordinaire sans la
+        // comprendre.
+        id: 'calc-poser-division', title: 'Poser une division',
+        colonnesPapier: 4,
+        cree: '2026-08-14',
+        activityId: 'poser-division',
+        // SUR LE PAPIER, c'est le même exercice sans l'alignement : la fiche
+        // imprime les nombres déjà en colonnes et laisse toute la place
+        // d'écrire les retenues. « Pose et effectue » est l'exercice le plus
+        // banal d'une feuille de calcul — et il manquait.
+        printable: 'pose', printGeneratorId: 'calc.poser-fiche',
+        printParams: { operation: '÷', retenue: true },
+        consignePapier: 'Effectue ces divisions posées.',
+        skills: ['num.div.quotient'],
+        params: { chiffres: 3, diviseurMax: 9, decimalesQuotient: 0 },
+        paramSchema: [
+            {
+                id: 'chiffres', type: 'select', label: 'Taille du dividende',
+                options: [
+                    { value: 2, label: '2 chiffres' },
+                    { value: 3, label: '3 chiffres' },
+                    { value: 4, label: '4 chiffres' }
+                ],
+                default: 3
+            },
+            {
+                id: 'diviseurMax', type: 'select', label: 'Diviseur',
+                aide: 'Jusqu\'à 9, tout se lit dans les tables. Au-delà, il faut estimer — c\'est un autre travail, et il vient plus tard.',
+                options: [
+                    { value: 5, label: 'Jusqu\'à 5' },
+                    { value: 9, label: 'Jusqu\'à 9 — dans les tables' },
+                    { value: 25, label: 'Jusqu\'à 25 — à deux chiffres' }
+                ],
+                default: 9
+            },
+            {
+                id: 'decimalesQuotient', type: 'select', label: 'Quotient décimal',
+                aide: 'À zéro, la division tombe juste et l\'on s\'arrête au quotient entier. Sinon on continue en abaissant des zéros — et la virgule du quotient tombe pile quand on abaisse celle du dividende.',
+                options: [
+                    { value: 0, label: 'Non — division exacte' },
+                    { value: 1, label: 'Un chiffre après la virgule' },
+                    { value: 2, label: 'Deux chiffres après la virgule' }
+                ],
+                default: 0
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "La potence, et toujours la même étape : j'abaisse un chiffre, je cherche combien de fois le diviseur tient dedans, je multiplie, je soustrais. Trois réponses par étape, dans cet ordre. La vérification qui ne trompe pas : le reste est TOUJOURS plus petit que le diviseur — s'il est plus grand, c'est que le chiffre du quotient était trop petit. Et le chiffre du quotient se place à la colonne du chiffre qu'on vient d'abaisser : c'est pour cela que la virgule du quotient tombe pile quand on abaisse celle du dividende."
+    },
+
 
     // --- Arcade : mêmes notions, autre présentation ---
     {
-        id: 'calc-arcade-sprint', title: 'Sprint Chrono',
+        id: 'calc-arcade-sprint',
+        cree: '2026-07-26',
+        consignePapier: "Calcule.",
+        colonnesPapier: 4,
+        title: 'Sprint Chrono',
         generatorId: 'calc.mixte', activityId: 'bubbles',
         params: { operations: ['+', '-'], max: 20, timeLimit: 60, minScore: 10 },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Réponds au plus grand nombre de calculs possible avant la fin du chronomètre !"
     },
     {
-        id: 'calc-arcade-moles', title: 'Chasse aux Taupes',
+        id: 'calc-arcade-moles',
+        cree: '2026-07-26',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
+        // LE TITRE DIT LE GESTE, PAS L'ANIMAL. Rémy, en regardant le robot :
+        // « Ce n'est pas des taupes, mets "Je touche ici" » — et ce n'en est
+        // pas, en effet : ce qui sort du trou est un disque coloré qui porte un
+        // nombre, et qui redescend au bout de deux secondes et demie. « Chasse »
+        // était de surcroît le quatrième du catalogue, après la Chasse au
+        // Chiffre, la Chasse aux Zéros et le Chasseur de Diviseurs.
+        //
+        // « ATTRAPE » PARCE QUE ÇA S'ÉCHAPPE. C'est toute la différence avec un
+        // QCM, et aucun titre ne la portait : le nombre ne se choisit pas, il se
+        // prend avant qu'il ne replonge. La consigne le dit maintenant.
+        title: 'Attrape le Résultat',
         generatorId: 'calc.mixte', activityId: 'moles',
         params: { operations: ['+', '-'], max: 20, timeLimit: 60, minScore: 10 },
+        // Le mot d'avant reste cherchable : on a appelé ce jeu « les taupes »
+        // pendant des mois, et c'est encore par là qu'on le cherchera.
+        motsClefs: ['taupes', 'calcul mental', 'rapidité'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        instruction: "Tape sur la taupe qui porte le bon résultat !"
+        instruction: "Touche le disque qui porte le bon résultat — avant qu'il ne redescende !"
     },
     {
-        id: 'calc-moles-tables', title: 'Taupes des Tables',
+        id: 'calc-moles-tables',
+        cree: '2026-07-28',
+        consignePapier: "Calcule.",
+        colonnesPapier: 3,
+        title: 'Attrape le Produit',
         generatorId: 'calc.mult.fact', activityId: 'moles',
         params: { tables: [6, 7, 8, 9], timeLimit: 60, minScore: 10 },
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        instruction: "Tape sur la taupe qui porte le bon produit !"
+        motsClefs: ['tables', 'multiplication', 'taupes'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Touche le disque qui porte le bon produit — avant qu'il ne redescende !"
     },
 
     // --- Jeux autonomes : logique de plateau propre, contenu interne ---
+    //
+    // UN JEU AUSSI DIT CE QU'IL TRAVAILLE. Sans générateur pour la porter, la
+    // compétence se déclare ici, à la main. Elle ne change rien au bilan — une
+    // tentative est rattachée à la compétence de SA question, pas à celle de
+    // l'exercice — mais elle décide de trois choses : la leçon que le mode
+    // Apprentissage propose avant de jouer, la présence du jeu dans « des
+    // exercices pour cette compétence », et sa place dans la remédiation.
+    //
+    // Les jeux qui ne travaillent aucune notion du programme — Othello, les
+    // Dames, les Échecs — le disent par `horsProgression: true`. C'est le seul
+    // autre choix possible : un exercice muet est refusé par les tests.
     {
-        id: 'calc-arcade-shooter', status: STATUS.TEST, title: 'Météorites Mathématiques',
-        activityId: 'shooter',
-        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], difficulty: 'medium' },
+        id: 'calc-arcade-shooter', title: 'Météorites Mathématiques',
+        cree: '2026-07-26',
+        activityId: 'shooter', skills: ['num.mult.table.*'],
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], difficulty: 'medium', leurres: 3 },
         paramSchema: [
             { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-            { id: 'difficulty', type: 'select', label: 'Difficulté', options: ['easy', 'medium', 'hard'], default: 'medium' }
+            {
+                // « easy / medium / hard » s'affichait tel quel, en anglais, et
+                // ne disait pas de QUOI il s'agissait : ce réglage ne change
+                // pas les tables, il change la vitesse d'approche.
+                id: 'difficulty', type: 'select', label: 'Vitesse des météorites', default: 'medium',
+                aide: 'C\'est le temps qu\'on a pour calculer avant de tirer. Trop rapide, l\'élève vise ce qui arrive au lieu de viser ce qui est faux.',
+                options: [
+                    { value: 'tres-lente', label: 'Très lente — tout le temps de calculer' },
+                    { value: 'easy', label: 'Lente' },
+                    { value: 'medium', label: 'Normale' },
+                    { value: 'hard', label: 'Rapide' }
+                ]
+            },
+            {
+                id: 'leurres', type: 'select', label: 'Météorites par question', default: 3,
+                options: [
+                    { value: 2, label: '3 météorites' },
+                    { value: 3, label: '4 météorites' },
+                    { value: 4, label: '5 météorites' },
+                    { value: 5, label: '6 météorites' }
+                ]
+            }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
-        instruction: "Détruis la météorite qui porte le bon résultat en cliquant dessus !"
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        instruction: "Ton vaisseau suit ta souris (ou ton doigt). Tire sur toutes les météorites qui portent un MAUVAIS résultat, et attrape la BONNE réponse avec ton vaisseau !"
     },
     {
-        id: 'calc-math-memory', status: STATUS.TEST, title: 'Memory des Tables',
-        activityId: 'memory',
+        id: 'calc-math-memory', title: 'Memory des Tables',
+        cree: '2026-07-26',
+        activityId: 'memory', skills: ['num.mult.table.*'],
+        // SUR LE PAPIER, ON FABRIQUE LE JEU. Page 1 : les cartes, une paire par
+        // bloc — le calcul et son résultat. Page 2 : les dos, aux mêmes
+        // emplacements. On découpe, on colle dos à dos (ou l'on imprime en
+        // recto-verso), et le paquet resservira toute l'année.
+        printable: 'memory', printGeneratorId: 'calc.memory-fiche',
+        printParams: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], maxFacteur: 10 },
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], pairs: 6 },
         paramSchema: [
             { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
             { id: 'pairs', type: 'select', label: 'Nombre de paires', options: [4, 6, 8, 10], default: 6 }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Associe chaque opération à son résultat pour nettoyer le plateau !"
     },
     {
-        id: 'calc-labyrinthe', status: STATUS.TEST, title: 'Labyrinthe Mathématique',
-        activityId: 'labyrinthe',
+        id: 'calc-labyrinthe', title: 'Labyrinthe Mathématique',
+        cree: '2026-07-26',
+        activityId: 'labyrinthe', skills: ['num.mult.table.*'],
         params: { timeLimit: 60, timeReduction: 5, operations: ['*'], tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
         paramSchema: [
             { id: 'timeLimit', type: 'number', label: 'Temps initial (s)', default: 60 },
             { id: 'timeReduction', type: 'number', label: 'Temps perdu par niveau (s)', default: 5 },
-            { id: 'operations', type: 'multiselect', label: 'Opérations', options: ['+', '-', '*', '/'], default: ['*'] },
+            { id: 'operations', type: 'multiselect', label: 'Opérations', options: [{ value: '+', label: '+ addition' }, { value: '-', label: '− soustraction' }, { value: '*', label: '× multiplication' }, { value: '/', label: '÷ division' }], default: ['*'] },
             { id: 'tables', type: 'multiselect', label: 'Tables (si multiplication)', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Déplace-toi vers la case contenant la bonne réponse pour atteindre la sortie."
     },
     {
-        id: 'calc-mathodu', status: STATUS.TEST, title: 'Mathdoku',
+        id: 'calc-mathodu', title: 'Mathdoku',
+        cree: '2026-07-30',
         generatorId: 'logique.mathodu', activityId: 'kenken',
+        // Une erreur de placement dans une grille ne se révise pas : « case B3 »
+        // n'est pas une question qu'on peut reposer hors de SA grille. Comme le
+        // sudoku et le binairo, le Mathdoku entraîne le raisonnement, pas une
+        // connaissance ; ses entrées noyaient un carnet qui doit se lire vite.
+        sansRevision: true,
         // Fiche imprimable : des grilles à raturer, pour travailler sur papier.
         printable: 'mathdoku',
         // 3 grilles par défaut : une grille est une « question » longue, dix
@@ -168,8 +723,10 @@ export const calculExercises = [
         }
     },
     {
-        id: 'calc-binairo', status: STATUS.TEST, title: 'Binairo',
+        id: 'calc-binairo', title: 'Binairo',
+        cree: '2026-07-30',
         generatorId: 'logique.binairo', activityId: 'binairo',
+        sansRevision: true,
         printable: 'binairo',
         params: { nbQuestions: 3, taille: 6, difficulte: 'facile' },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
@@ -203,12 +760,77 @@ export const calculExercises = [
         }
     },
     {
-        id: 'calc-garam', status: STATUS.TEST, title: 'Garam',
-        generatorId: 'logique.garam', activityId: 'garam',
-        printable: 'garam',
-        params: { nbQuestions: 3, taille: 'petit', operations: ['add', 'sub', 'mul'], difficulte: 'facile' },
+        id: 'calc-nova', title: 'Nova',
+        cree: '2026-08-06',
+        activityId: 'nova', skills: ['num.mult.table.*'],
+        params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], lives: 3, entrePortes: 18 },
+        paramSchema: [
+            // Le réglage de la saisie clavier est déclaré sur l'ACTIVITÉ ;
+            // un paramSchema explicite le masquerait, on le reprend donc ici.
+            REGLAGE_SAISIE,
+            { id: 'tables', type: 'multiselect', label: 'Tables des portes', options: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+            { id: 'lives', type: 'number', label: 'Vies', min: 1, max: 5, default: 3 },
+            { id: 'entrePortes', type: 'number', label: 'Secondes entre deux murs', min: 8, max: 40, default: 18 }
+        ],
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Un shoot'em up : glisse pour piloter, le canon tire tout seul — doigt posé pour charger le rayon lourd, double tape pour la bombe NOVA. Deux épreuves de calcul alternent : les MURS (franchis la porte du bon résultat) et les CONVOIS (place-toi sous le transporteur du bon résultat pour l'abattre). Chaque bonne porte ouvre le secteur suivant, plus dur : chasseurs, plongeurs kamikazes, blindés, tireurs d'élite — et tout ce qui te touche fait mal."
+    },
+    {
+        id: 'calc-escadrille', title: 'Escadrille des Tables',
+        cree: '2026-08-05',
+        activityId: 'escadrille', skills: ['num.mult.table.*'],
+        params: { table: 7, lives: 3, rythme: 'lent' },
+        paramSchema: [
+            {
+                id: 'table', type: 'select', label: 'Table à défendre', default: 7,
+                options: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => ({ value: n, label: `Table de ${n}` }))
+            },
+            { id: 'lives', type: 'number', label: 'Vies', min: 1, max: 5, default: 3 },
+            {
+                id: 'rythme', type: 'select', label: 'Rythme', default: 'lent',
+                options: [
+                    { value: 'lent', label: 'Lent (temps de calculer)' },
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'rapide', label: 'Rapide' }
+                ]
+            }
+        ],
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Une escadrille descend, chaque appareil portant un nombre. Abats tout ce qui n'est PAS dans la table choisie et laisse passer les multiples — ce sont des amis. Glisse pour piloter, tape pour tirer. Tirer sur un ami coûte une vie ; laisser un intrus atteindre la base aussi."
+    },
+    {
+        id: 'calc-sudoku', title: 'Sudoku',
+        cree: '2026-08-04',
+        generatorId: 'logique.sudoku', activityId: 'sudoku',
+        // Le sudoku se fait très bien sur papier — c'est même là qu'il est né.
+        printable: 'sudoku',
+        sansRevision: true,
+        params: { nbQuestions: 2, taille: 6, difficulte: 'facile' },
+        // LES TAILLES SE CHERCHENT. Rémy : « y a-t-il des sudoku 4×4 ? » — il y
+        // en a depuis le début, c'est le premier choix du réglage « Taille de
+        // la grille », mais rien dans la fiche ne portait le mot. Un réglage
+        // qu'on ne trouve qu'en ouvrant l'exercice au hasard n'existe qu'à
+        // moitié.
+        motsClefs: ['sudoku', '4x4', '6x6', '9x9', 'carré latin', 'grille', 'logique',
+            'déduction', 'chiffres'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
-        instruction: "Complète les cases pour que toutes les égalités soient vraies. Deux cases collées forment un nombre à deux chiffres.",
+        instruction: "Chaque chiffre ne doit apparaître qu'une seule fois par ligne, par colonne et par bloc. Trois tailles au choix : 4 × 4 (blocs de 2 × 2) pour découvrir, 6 × 6, puis le 9 × 9 classique. Commence par les cases où un seul chiffre est encore possible : chacune en débloque d'autres."
+    },
+    {
+        id: 'calc-garam', title: 'Garam',
+        cree: '2026-07-30',
+        generatorId: 'logique.garam', activityId: 'garam',
+        sansRevision: true,
+        printable: 'garam',
+        params: { nbQuestions: 2, taille: 'complet', operations: ['add', 'sub', 'mul'], difficulte: 'facile' },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Le Garam des fiches officielles : quatre blocs d'égalités reliés par des ponts. Complète les cases avec des chiffres pour que TOUTES les égalités soient vraies, horizontales comme verticales. Une égalité verticale dépasse toujours dix : son résultat s'écrit sur deux cases empilées, dizaines au-dessus, unités en dessous — et la case du bas sert aussi à l'égalité horizontale.",
+        // LE MODE APPRENTISSAGE, repris de la branche principale : le Garam
+        // est exactement l'exercice qui le mérite — une règle qu'on ne devine
+        // pas, et qu'on ne devrait pas avoir à deviner en même temps que la
+        // réponse.
         apprentissage: {
             intro: "Le Garam est un treillis d'égalités : chaque case appartient à deux calculs à la fois, et c'est ce croisement qui donne la solution.",
             regles: [
@@ -231,21 +853,25 @@ export const calculExercises = [
                 }
             ],
             paliers: [
-                { titre: 'Découverte', overrides: { taille: 'petit', operations: ['add'], difficulte: 'facile' }, nbItems: 1 },
-                { titre: 'On s\'entraîne', overrides: { taille: 'petit', operations: ['add', 'sub'], difficulte: 'facile' }, nbItems: 2 },
-                { titre: 'Défi', overrides: { taille: 'petit', operations: ['add', 'sub', 'mul'], difficulte: 'moyen' }, nbItems: 2 }
+                { titre: 'Découverte', overrides: { taille: 'demi', operations: ['add'], difficulte: 'facile' }, nbItems: 1 },
+                { titre: 'On s\'entraîne', overrides: { taille: 'demi', operations: ['add', 'sub'], difficulte: 'facile' }, nbItems: 2 },
+                { titre: 'Défi', overrides: { taille: 'demi', operations: ['add', 'sub', 'mul'], difficulte: 'moyen' }, nbItems: 2 }
             ]
         }
     },
     {
-        id: 'calc-course', status: STATUS.TEST, title: 'Course Mathématique',
-        activityId: 'course',
+        id: 'calc-course', title: 'Course Mathématique',
+        cree: '2026-07-26',
+        activityId: 'course', skills: ['num.mult.table.*'],
         // Plus de `internalStudentConfig` : les réglages du jeu (voies, calculs)
         // étaient définis dans le schéma mais inatteignables — ni l'élève ni le
         // professeur ne pouvaient les changer, le jeu démarrait toujours sur
         // trois voies de tables de multiplication.
         params: { mode: 'survival', lanes: 3, speed: 3, operations: ['mul'] },
         paramSchema: [
+            // Le réglage de la saisie clavier est déclaré sur l'ACTIVITÉ ;
+            // un paramSchema explicite le masquerait, on le reprend donc ici.
+            REGLAGE_SAISIE,
             {
                 id: 'mode', type: 'select', label: 'Mode de jeu', default: 'survival',
                 options: [
@@ -257,14 +883,19 @@ export const calculExercises = [
             { id: 'lanes', type: 'number', label: 'Nombre de voies', default: 3, min: 2, max: 5 },
             { id: 'speed', type: 'number', label: 'Vitesse de départ', default: 3, min: 2, max: 8 },
             {
+                // Les puces portent l'OPÉRATION, pas son nom. « Tables de
+                // multiplication » tient sur toute une ligne et se lit moins
+                // vite que « 7 × 8 » : un exemple dit le type de calcul en
+                // trois caractères, et six réglages tiennent alors sur deux
+                // rangées au lieu de quatre.
                 id: 'operations', type: 'multiselect', label: 'Types de calcul', default: ['mul'],
                 options: [
-                    { value: 'mul', label: 'Tables de multiplication' },
-                    { value: 'div', label: 'Divisions' },
-                    { value: '+9', label: 'Ajouter / retirer 9' },
-                    { value: 'c10', label: 'Compléments à 10' },
-                    { value: 'rel', label: 'Nombres relatifs' },
-                    { value: 'dec', label: 'Multiplier par 10 ou 0,1' }
+                    { value: 'mul', label: '7 × 8', aide: 'Tables de multiplication' },
+                    { value: 'div', label: '56 ÷ 7', aide: 'Divisions' },
+                    { value: '+9', label: '+9 / −9', aide: 'Ajouter ou retirer 9' },
+                    { value: 'c10', label: '? + 3 = 10', aide: 'Compléments à 10' },
+                    { value: 'rel', label: '−3 + 5', aide: 'Nombres relatifs' },
+                    { value: 'dec', label: '× 10 / × 0,1', aide: 'Multiplier par 10 ou par 0,1' }
                 ]
             }
         ],
@@ -272,25 +903,1696 @@ export const calculExercises = [
         instruction: "Dirige le véhicule vers la bonne réponse pour continuer la course !"
     },
     {
-        id: 'calc-tetris', status: STATUS.TEST, title: 'Math Tetris',
-        activityId: 'tetris',
+        id: 'calc-tetris', title: 'Math Tetris',
+        cree: '2026-07-26',
+        activityId: 'tetris', skills: ['num.mult.table.*'],
         params: { tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], speed: 1000 },
         paramSchema: [
             { id: 'tables', type: 'multiselect', label: 'Tables', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
             { id: 'speed', type: 'number', label: 'Vitesse de chute (ms)', default: 1000 }
         ],
-        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL, TAGS.THEME.TABLES], niveaux: [TAGS.NIVEAU.SIXIEME] },
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Combine les blocs pour que leur produit donne la cible demandée !"
     },
     {
-        id: 'calc-math-crush', status: STATUS.TEST, title: 'Math Crush',
-        activityId: 'crush',
+        id: 'calc-vault', title: 'Le Coffre-Fort',
+        cree: '2026-08-04',
+        // « Propose toujours le milieu de la zone possible » : c'est la
+        // dichotomie, et le jeu ne fait que ça.
+        activityId: 'vault', skills: ['num.logique.dichotomie'],
+        params: { maxNumber: 100, attempts: 10 },
+        paramSchema: [
+            { id: 'maxNumber', type: 'select', label: 'Code entre 1 et…', options: [50, 100, 200, 500, 1000], default: 100 },
+            { id: 'attempts', type: 'number', label: 'Essais par coffre', default: 10, min: 4, max: 15 }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Trouve le code secret ! À chaque essai, le coffre répond « c'est plus » ou « c'est moins ». Astuce de champion : propose toujours le milieu de la zone possible."
+    },
+    {
+        id: 'calc-duel', title: 'Duel des Tables (à deux)',
+        cree: '2026-08-07',
+        revisions: [{
+            date: '2026-08-19',
+            quoi: 'Un renvoi réussi se VOIT — anneau d\'impact et camp qui flashe ; la brique porte '
+                + 'la couleur de celui qui l\'a envoyée ; le rythme se règle (tranquille par défaut) ; '
+                + 'et un mode où chacun compose son calcul au clavier avant de le lancer.'
+        }, {
+            date: '2026-08-20',
+            quoi: 'UNE SEULE RANGÉE DE CHIFFRES, partout — c\'est la demande, et je l\'avais reprise '
+                + 'd\'une main en repliant le pavé en deux rangées « pour élargir les touches ». Le '
+                + 'couloir récupère soixante pixels par camp. Ce qu\'on tape s\'affiche dans un écran '
+                + 'encadré aux couleurs du camp, visible avant même d\'avoir tapé. Et sur un téléphone '
+                + 'couché, les camps ne pivotent plus d\'un quart de tour : la bande n\'y faisait que '
+                + 'cent soixante-dix pixels de profondeur et tout y était tronqué.'
+        }],
+        activityId: 'duel', skills: ['num.mult.table.*'],
+        params: {
+            tables: [2, 3, 4, 5, 6, 7, 8, 9, 10], cible: 7, operations: 'mul',
+            envoi: 'auto', rythme: 'tranquille'
+        },
+        paramSchema: [
+            { id: 'tables', type: 'multiselect', label: 'Tables jouables', options: [2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
+            { id: 'cible', type: 'select', label: 'Partie en', options: [5, 7, 11], default: 7 },
+            {
+                id: 'envoi', type: 'select', label: 'Qui fabrique le calcul ?',
+                aide: 'En automatique, la machine tire un produit dans les tables choisies. En '
+                    + 'composé, celui qui frappe tape lui-même son calcul — un des deux facteurs '
+                    + 'doit rester dans les tables.',
+                options: [
+                    { value: 'auto', label: 'La machine tire le calcul' },
+                    { value: 'compose', label: 'Le joueur compose sa brique' }
+                ],
+                default: 'auto'
+            },
+            {
+                id: 'rythme', type: 'select', label: 'Rythme de la balle',
+                aide: 'La vitesse de départ, mais aussi jusqu\'où la balle accélère. Tranquille '
+                    + 'laisse le temps de lire et de taper ; Rapide s\'adresse à qui connaît déjà '
+                    + 'ses tables.',
+                options: [
+                    { value: 'tranquille', label: 'Tranquille — on a le temps de penser' },
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'rapide', label: 'Rapide — pour qui sait ses tables' }
+                ],
+                default: 'tranquille'
+            },
+            {
+                id: 'operations', type: 'select', label: 'Opérations',
+                aide: 'Sans effet en mode composé : on n\'y compose que des multiplications.',
+                options: [
+                    { value: 'mul', label: 'Multiplications seules' },
+                    { value: 'muldiv', label: 'Multiplications et divisions' }
+                ],
+                default: 'mul'
+            }
+        ],
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        deuxJoueurs: true,
+        instruction: "À DEUX, sur une tablette posée à plat entre vous. Le serveur choisit une table, puis la balle fait des allers-retours : celui qui la reçoit tape le résultat avant qu'elle n'atteigne sa ligne. Elle accélère à chaque renvoi. Rien n'est enregistré dans le carnet — c'est un duel."
+    },
+    {
+        id: 'calc-arpenteurs', title: 'Les Arpenteurs',
+        cree: '2026-08-10',
+        // Clôturer une parcelle rectangulaire, c'est lire un produit comme une
+        // aire : les deux compétences travaillent ensemble, sur le même geste.
+        activityId: 'arpenteurs', skills: ['num.mult.table.*', 'mes.aire.rectangle'],
+        deuxJoueurs: true,
+        // À deux sur un seul compte : attribuer les coups de l'un aux
+        // statistiques de l'autre ne voudrait rien dire. Rien n'est enregistré,
+        // comme pour le Duel des Tables.
+        sansRevision: true,
+        params: { terrain: 'moyen', table: 10, bandes: false, joueurs: 2, forceIA: 'normal' },
+        paramSchema: [
+            {
+                id: 'joueurs', type: 'select', label: 'Qui joue ?',
+                aide: 'Contre l\'ordinateur, il cherche les parcelles qui abîment le moins le '
+                    + 'terrain. Seul, on clôture jusqu\'à ce que plus rien ne rentre, et la partie '
+                    + 'se juge à la surface conquise.',
+                options: [
+                    { value: 2, label: 'À deux, sur la même tablette' },
+                    { value: 'ia', label: 'Contre l\'ordinateur' },
+                    { value: 1, label: 'Seul, contre le terrain' }
+                ],
+                default: 2
+            },
+            {
+                id: 'forceIA', type: 'select', label: 'Force de l\'ordinateur', default: 'normal',
+                aide: 'Débutant pose au hasard, Normal cherche les bords et les clôtures, Fort '
+                    + 'prend toujours la meilleure parcelle. Sans effet quand on joue seul.',
+                options: [
+                    { value: 'debutant', label: 'Débutant — joue au hasard' },
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'fort', label: 'Fort — ne laisse rien' }
+                ]
+            },
+            {
+                id: 'terrain', type: 'select', label: 'Taille du terrain',
+                options: [
+                    { value: 'petit', label: '18 × 12 — partie rapide' },
+                    { value: 'moyen', label: '24 × 16' },
+                    { value: 'grand', label: '30 × 20 — partie longue' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'table', type: 'select', label: 'Nombres tirés',
+                aide: 'Les nombres viennent de la table de Pythagore. En s\'arrêtant à 7, les parcelles restent petites et la partie plus longue.',
+                options: [
+                    { value: 7, label: 'Jusqu\'à 7 × 7' },
+                    { value: 10, label: 'Toute la table (jusqu\'à 10 × 10)' }
+                ],
+                default: 10
+            },
+            {
+                id: 'bandes', type: 'checkbox', label: 'Autoriser les bandes d\'une case',
+                aide: 'Une bande de 1 case de large reste presque toujours posable : la fin de partie devient un remplissage mécanique, sans plus rien à décomposer.',
+                default: false
+            }
+        ],
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "À DEUX sur la même tablette, ou CONTRE L'ORDINATEUR. Un nombre de la table de Pythagore tombe — 36 — et celui dont c'est le tour clôture une parcelle de 36 cases : 6 × 6, 4 × 9, 3 × 12, comme il veut, où il veut. Glisse le doigt d'un coin à l'autre : l'aire s'affiche pendant le tracé. Le premier qui ne peut plus poser a perdu. Rien n'est enregistré dans le profil : c'est un duel."
+    },
+    {
+        // LES ANAGRAMMES DU VOCABULAIRE. Rémy : « j'aimerais bien aussi un
+        // anagramme de mot mathématique, par exemple RACER est l'anagramme de
+        // CARRE. » Les mots cachés font chercher des LETTRES dans une grille ;
+        // ici on a déjà toutes les lettres, et c'est le MOT DU COURS qu'on
+        // cherche — celui que la définition décrit. Deux exercices voisins,
+        // deux travaux différents, un seul lexique.
+        id: 'voc-anagrammes',
+        // Sur le papier, on écrit le mot dans les cases : personne ne valide,
+        // donc on s'engage. Rémy : « tu pourrais faire un pdf ».
+        printable: 'anagrammes', printGeneratorId: 'voc.anagrammes-fiche',
+        printParams: { theme: 'tout', nbMots: 8 }, title: 'Anagrammes du Vocabulaire',
+        cree: '2026-08-19',
+        activityId: 'anagrammes', skills: ['voc.mathematique'],
+        // Un mot cherché puis trouvé n'a rien à réviser : ce qui compte est de
+        // l'avoir rencontré. Les essais restent au compteur de la séance.
+        sansRevision: true,
+        params: { theme: 'tout', niveauMax: 3, longueurMin: 4, definition: 'toujours', nbQuestions: 8 },
+        paramSchema: [
+            {
+                id: 'theme', type: 'select', label: 'Vocabulaire',
+                options: [
+                    { value: 'tout', label: 'Tout le vocabulaire' },
+                    { value: 'geometrie', label: 'Géométrie' },
+                    { value: 'angles', label: 'Le vocabulaire des angles' },
+                    { value: 'nombres', label: 'Les nombres' },
+                    { value: 'calcul', label: 'Les opérations' },
+                    { value: 'mesures', label: 'Grandeurs et mesures' }
+                ],
+                default: 'tout'
+            },
+            {
+                id: 'definition', type: 'select', label: 'La définition',
+                aide: 'Affichée d\'emblée, on reconnaît le mot du cours et on le compose. Différée, '
+                    + 'il faut d\'abord chercher dans les lettres : c\'est bien plus difficile.',
+                options: [
+                    { value: 'toujours', label: 'Donnée tout de suite' },
+                    { value: 'apres', label: 'Après un premier essai' },
+                    { value: 'jamais', label: 'Jamais — les lettres seules' }
+                ],
+                default: 'toujours'
+            },
+            {
+                id: 'longueurMin', type: 'select', label: 'Longueur des mots',
+                aide: 'Les mots courts se retrouvent en essayant ; à partir de sept lettres, on ne peut plus procéder au hasard — il faut avoir le mot en tête.',
+                options: [
+                    { value: 4, label: 'À partir de 4 lettres' },
+                    { value: 6, label: 'À partir de 6 lettres' },
+                    { value: 8, label: 'À partir de 8 lettres — les mots longs' }
+                ],
+                default: 4
+            },
+            {
+                id: 'niveauMax', type: 'select', label: 'Jusqu\'à quel niveau',
+                options: [
+                    { value: 1, label: 'Le vocabulaire de base' },
+                    { value: 2, label: 'Jusqu\'au cycle 3' },
+                    { value: 3, label: 'Tout, collège compris' }
+                ],
+                default: 3
+            },
+            {
+                // COMBIEN DE MOTS. Rémy : « on devrait pouvoir choisir le
+                // nombre de mots ». Le compte n'était réglable que dans le
+                // constructeur de parcours, côté professeur : en jeu libre,
+                // l'élève subissait le défaut. `nbQuestions` est lu par
+                // `launchFreePlay` (games/engine.js), qui s'en sert comme
+                // nombre d'étapes de la séance.
+                id: 'nbQuestions', type: 'select', label: 'Combien de mots',
+                aide: 'Une séance courte tient en cinq mots ; au-delà de quinze, l\'attention retombe avant la fin.',
+                options: [
+                    { value: 5, label: '5 mots — une séance courte' },
+                    { value: 8, label: '8 mots' },
+                    { value: 12, label: '12 mots' },
+                    { value: 20, label: '20 mots — la série longue' }
+                ],
+                default: 8
+            }
+        ],
+        motsClefs: ['anagramme', 'vocabulaire', 'lettres', 'mots', 'lexique'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Les lettres d'un mot de mathématiques, dans le désordre — RACER, c'est CARRE. Elles y sont TOUTES, et chacune une seule fois : le tas se vide exactement quand le mot est écrit. Lis la définition, puis pose les lettres une à une ; touche une lettre déjà posée pour la reprendre. L'indice découvre le début du mot, jamais une lettre au milieu — on ne saurait pas où la rattacher."
+    },
+    {
+        // LES MOTS CROISÉS. Rémy : « des mots croisés — par exemple sur le
+        // vocabulaire d'angle. Il faut que la grille soit optimisée. Ou sur le
+        // vocabulaire des opérations. » Une grille où les mots ne se touchent
+        // presque pas est une liste de définitions déguisée : on répond dans
+        // le désordre et rien n'aide rien. Le générateur fabrique donc une
+        // dizaine de grilles et garde la plus SERRÉE — c'est le chaînage qui
+        // fait l'exercice.
+        id: 'voc-mots-croises',
+        // Une grille de mots croisés EST un objet de papier ; l'écran n'en est
+        // qu'une transcription. Rémy : « on pourrait avoir un pdf ».
+        printable: 'motscroises', printGeneratorId: 'voc.mots-croises-fiche',
+        printParams: { theme: 'angles', nbMots: 10, niveauMax: 3, lettresDonnees: 0 }, title: 'Mots Croisés Mathématiques',
+        cree: '2026-08-19',
+        activityId: 'mots-croises', skills: ['voc.mathematique'],
+        sansRevision: true,
+        params: { theme: 'angles', niveauMax: 3, nbMots: 10 },
+        paramSchema: [
+            {
+                id: 'theme', type: 'select', label: 'Vocabulaire',
+                aide: 'Une grille sur UN chapitre vaut mieux qu\'une grille sur tout : les mots se ressemblent, se croisent mieux, et la révision porte sur une leçon précise.',
+                options: [
+                    { value: 'angles', label: 'Le vocabulaire des angles' },
+                    { value: 'calcul', label: 'Les opérations' },
+                    { value: 'geometrie', label: 'Géométrie' },
+                    { value: 'nombres', label: 'Les nombres' },
+                    { value: 'mesures', label: 'Grandeurs et mesures' },
+                    { value: 'tout', label: 'Tout le vocabulaire' }
+                ],
+                default: 'angles'
+            },
+            {
+                id: 'nbMots', type: 'select', label: 'Nombre de mots',
+                aide: 'Plus il y a de mots, plus la grille est grande — et plus elle se croise. Six mots tiennent sur un téléphone ; quatorze demandent une tablette.',
+                options: [
+                    { value: 6, label: '6 mots — grille courte' },
+                    { value: 10, label: '10 mots' },
+                    { value: 14, label: '14 mots — grille de journal' }
+                ],
+                default: 10
+            },
+            {
+                id: 'niveauMax', type: 'select', label: 'Jusqu\'à quel niveau',
+                options: [
+                    { value: 1, label: 'Le vocabulaire de base' },
+                    { value: 2, label: 'Jusqu\'au cycle 3' },
+                    { value: 3, label: 'Tout, collège compris' }
+                ],
+                default: 3
+            }
+        ],
+        motsClefs: ['mots croisés', 'vocabulaire', 'définitions', 'grille', 'lexique', 'angles'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Une grille de mots croisés dont toutes les définitions portent sur le même chapitre. Touche une case pour viser le mot qui passe par elle ; touche-la une seconde fois pour passer à l'autre sens. Les lettres se tapent sur le pavé du bas — une case fait une lettre, et le clavier de la tablette recouvrirait la grille. On ne répond pas dans l'ordre des numéros : on commence par le mot dont on est sûr, et chaque lettre posée en donne d'autres aux mots qui le croisent. « Vérifier » ne montre que les lettres FAUSSES."
+    },
+    {
+        // LE TASUKO. Rémy : « Fais un tasuko » — un jeu qui « mélange des
+        // mécaniques de Sudoku, de recherche de mots et de calcul de sommes ».
+        //
+        // J'AVAIS COMPRIS DE TRAVERS, ET SA CAPTURE DU VRAI JEU L'A PROUVÉ. Je
+        // lisais « les additions de deux nombres » comme des additions écrites
+        // sur trois cases — deux termes et leur résultat. Non : les pièces sont
+        // des DOMINOS de deux cases, et ce qui les rend justes n'est pas écrit
+        // dans la grille — ce sont leurs SOMMES qui doivent faire 1, 2, 3, …
+        // jusqu'à n, chacune une seule fois. La démonstration tient en une
+        // ligne : sur sa capture, le total des seize chiffres valait 36,
+        // c'est-à-dire exactement 1+2+⋯+8. Voir js/core/tasuko.js.
+        //
+        // ET C'EST LE SUDOKU QUI APPARAÎT LÀ. Le joueur ne cherche plus « une
+        // addition qui marche » — il en verrait trente — il cherche OÙ CASER
+        // UNE SOMME DONNÉE. Deux lectures se répondent, exactement comme le
+        // chiffre-dans-la-case et la case-pour-le-chiffre d'un sudoku : « ce
+        // 4-là n'a plus qu'un voisin possible » et « le 7 ne peut se faire qu'à
+        // cet endroit ».
+        id: 'log-tasuko', title: 'Tasuko',
+        colonnesPapier: 4,
+        cree: '2026-08-25',
+        activityId: 'tasuko', skills: ['num.logique.tasuko'],
+        sansRevision: true,
+        printable: 'tasuko', printGeneratorId: 'log.tasuko-fiche',
+        printParams: { taille: 'moyenne' },
+        params: { taille: 'moyenne' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Taille de la grille',
+                aide: 'La difficulté vient du nombre de pièges — des paires justes qui volent un '
+                    + 'chiffre à une autre —, pas des calculs. Plus la grille est grande, plus il y '
+                    + 'en a.',
+                options: [
+                    { value: 'petite', label: '4 × 3 — six sommes, pour découvrir' },
+                    { value: 'moyenne', label: '4 × 4 — huit sommes, la grille du vrai jeu' },
+                    { value: 'grande', label: '6 × 4 — douze sommes' },
+                    { value: 'geante', label: '6 × 6 — dix-huit sommes' }
+                ],
+                default: 'moyenne'
+            }
+        ],
+        motsClefs: ['tasuko', 'sommes', 'paires', 'dominos', 'additions', 'grille',
+            'découpage', 'logique', 'calcul mental', 'pavage', 'sudoku'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Relie les cases VOISINES deux par deux — côte à côte ou l'une sur l'autre, jamais en diagonale. Les sommes obtenues doivent faire 1, 2, 3… jusqu'au bout : sur une grille de seize cases, ce sont huit paires et les sommes de 1 à 8, chacune une seule fois. Et TOUS les chiffres doivent servir. Touche une case, puis sa voisine ; touche une paire déjà tracée pour l'effacer. NE CHERCHE PAS UNE ADDITION QUI TOMBE JUSTE — il y en a partout — pars de la liste des sommes qui restent et demande-toi où celle-ci peut bien tenir. C'est le raisonnement du sudoku, dans les deux sens : « le 7, il ne peut se faire qu'ici » et « ce 4-là n'a plus qu'un seul voisin possible ». Une paire juste peut être au mauvais endroit — elle vole un chiffre, ou refait une somme déjà employée — et le jeu te le dira en rouge plutôt que de la refuser. « Un indice » te montre laquelle des deux lectures conclut."
+    },
+    {
+        // LA PYRAMIDE DE NOMBRES — la jumelle arithmétique de la pyramide de
+        // mots, et le second des « deux jeux dans ces styles ».
+        //
+        // UNE SEULE RÈGLE, LUE DANS LES DEUX SENS, et c'est tout l'exercice :
+        // vers le haut on additionne, vers le bas on SOUSTRAIT. L'élève qui n'a
+        // jamais fait que des additions bute à la première case creuse du bas ;
+        // celui qui a compris que soustraire, c'est chercher ce qui manque, la
+        // remplit sans hésiter. C'est la leçon des « nombres à trous », posée
+        // sur un objet qu'on a envie de finir.
+        id: 'calc-pyramide-nombres', title: 'La Pyramide des Nombres',
+        cree: '2026-08-25',
+        activityId: 'pyramide-nombres', skills: ['num.pyramide-additive'],
+        sansRevision: true,
+        printable: 'pyramideNombres', printGeneratorId: 'calc.pyramide-nombres-fiche',
+        printParams: { taille: 'moyenne', difficulte: 'melange' },
+        params: { taille: 'moyenne', difficulte: 'melange' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Hauteur de la pyramide',
+                aide: 'Plus la pyramide est haute, plus une erreur du bas se paie cher en haut. Les '
+                    + 'nombres de la base sont donc plus petits quand on monte.',
+                options: [
+                    { value: 'petite', label: '4 étages — pour découvrir' },
+                    { value: 'moyenne', label: '5 étages' },
+                    { value: 'grande', label: '6 étages — le sommet passe 100' }
+                ],
+                default: 'moyenne'
+            },
+            {
+                id: 'difficulte', type: 'select', label: 'Où sont les trous',
+                aide: 'Base donnée, on ne fait qu\'additionner. Trous dans la base, il faut '
+                    + 'soustraire pour redescendre. C\'est ce réglage qui change la nature de '
+                    + 'l\'exercice.',
+                options: [
+                    { value: 'addition', label: 'La base est donnée — on ne fait qu\'additionner' },
+                    { value: 'melange', label: 'Des trous partout — il faut aussi soustraire' },
+                    { value: 'soustraction', label: 'Surtout le haut — beaucoup de soustractions' }
+                ],
+                default: 'melange'
+            }
+        ],
+        motsClefs: ['pyramide', 'addition', 'soustraction', 'somme', 'calcul mental',
+            'nombres à trous', 'triangle', 'additive'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Chaque case est la SOMME DES DEUX DU DESSOUS. Touche une case, tape le nombre. La règle se lit dans les deux sens, et c'est là tout l'exercice : vers le HAUT on additionne — 7 et 5 donnent 12 —, vers le BAS on SOUSTRAIT — si le dessus vaut 12 et l'une des deux du dessous 7, l'autre vaut 12 − 7. Ne remplis pas la pyramide dans l'ordre : cherche un petit TRIANGLE où deux cases sur trois sont déjà là, et complète la troisième. Il y en a toujours un, et chaque case remplie en ouvre d'autres. Une vérification qui vaut la peine : plus on monte, plus les nombres grossissent — une case plus petite que l'une des deux du dessous est forcément fausse. « Un indice » ne remplit rien : il te montre le triangle et écrit le calcul."
+    },
+    {
+        // LE MASTERMIND. Rémy : « Et un master mind ».
+        //
+        // UN JEU QUI NE SE JOUE PAS SEUL, et c'est justement ce que l'écran
+        // apporte : l'adversaire. Quelqu'un doit cacher un code et compter sans
+        // se tromper — et c'est le COMPTE qui est difficile, pas le code.
+        //
+        // SUR LE PAPIER, ON IMPRIME LA PARTIE DÉJÀ JOUÉE et l'on demande le
+        // code. Le jeu devient un exercice de logique pure — et il y gagne : à
+        // l'écran on s'en tire en tâtonnant, sur la feuille il faut raisonner,
+        // parce qu'il n'y a plus d'essai à dépenser.
+        id: 'log-mastermind', title: 'Mastermind',
+        cree: '2026-08-25',
+        activityId: 'mastermind', skills: ['num.logique.mastermind'],
+        sansRevision: true,
+        printable: 'mastermind', printGeneratorId: 'log.mastermind-fiche',
+        printParams: { format: 'moyen', repetitions: true },
+        params: { format: 'moyen', repetitions: true },
+        paramSchema: [
+            {
+                id: 'format', type: 'select', label: 'Taille du code',
+                aide: 'C\'est la palette qui fait la difficulté, pas le nombre de cases : quatre '
+                    + 'cases et quatre couleurs font 256 codes, quatre cases et six couleurs en '
+                    + 'font 1 296.',
+                options: [
+                    { value: 'facile', label: '4 cases, 4 couleurs — pour découvrir' },
+                    { value: 'moyen', label: '4 cases, 6 couleurs — le jeu classique' },
+                    { value: 'difficile', label: '5 cases, 8 couleurs — le vrai casse-tête' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'repetitions', type: 'boolean', label: 'Une couleur peut se répéter',
+                aide: 'Sans répétition, le jeu est nettement plus facile. Avec, une couleur vue '
+                    + 'deux fois dans la proposition mais une seule dans le code ne compte qu\'une '
+                    + 'fois.',
+                default: true
+            }
+        ],
+        motsClefs: ['mastermind', 'code', 'couleurs', 'déduction', 'logique', 'éliminer',
+            'bien placés', 'mal placés', 'jetons'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Un code de couleurs est caché. Compose une proposition en touchant les pastilles du bas, puis « Proposer ». On te répond par deux nombres : combien de jetons sont de la bonne couleur À LA BONNE PLACE, et combien sont de la bonne couleur MAIS AILLEURS. On ne devine pas un code, on l'ÉLIMINE : le premier essai ne sert pas à trouver mais à savoir — deux couleurs seulement, et tu sauras déjà combien il y en a de chacune. Ensuite, le total « bien placés + mal placés » ne parle QUE des couleurs : s'il vaut 2, il y a exactement deux jetons de ces couleurs-là dans le code, où qu'ils soient. Une réponse à zéro est la plus précieuse : elle raye d'un coup toutes les couleurs de la ligne. « Un indice » ne donne jamais une couleur au hasard — il montre une case déjà DÉMONTRÉE par tes essais précédents."
+    },
+    {
+        // LA PYRAMIDE. Rémy, avec la page de son « Coin des jeux
+        // mathématiques » : « Deux jeux dans ces styles. » Celui-ci en est un —
+        // « à chaque ligne, tu rajoutes une lettre pour faire un nouveau mot »,
+        // et surtout « les lettres PEUVENT ÊTRE MÉLANGÉES ».
+        //
+        // C'EST CETTE DERNIÈRE PHRASE QUI EN FAIT DES MATHÉMATIQUES. Sans elle,
+        // on colle une lettre au bout du mot précédent et trois essais
+        // suffisent. Avec elle, il faut reconnaître un ENSEMBLE de lettres sous
+        // un ordre nouveau — CODE, CORDE, DECORS —, c'est-à-dire penser
+        // arrangement : le dénombrement qu'on retrouvera en troisième.
+        id: 'voc-pyramide', title: 'La Pyramide des Mots',
+        cree: '2026-08-25',
+        activityId: 'pyramide', skills: ['voc.anagramme'],
+        sansRevision: true,
+        printable: 'pyramide', printGeneratorId: 'voc.pyramide-fiche',
+        printParams: { hauteur: 6, difficulte: 'moyen' },
+        params: { hauteur: 6, difficulte: 'moyen' },
+        paramSchema: [
+            {
+                id: 'hauteur', type: 'select', label: 'Hauteur de la pyramide',
+                aide: 'Ce n\'est pas la hauteur qui fait la difficulté, c\'est le nombre de lignes À TROUVER : une pyramide de sept lignes dont quatre sont écrites est plus facile qu\'une de quatre lignes toute vide.',
+                options: [
+                    { value: 4, label: '4 lignes — pour découvrir' },
+                    { value: 5, label: '5 lignes' },
+                    { value: 6, label: '6 lignes — comme dans la revue' },
+                    { value: 7, label: '7 lignes — la grande' }
+                ],
+                default: 6
+            },
+            {
+                id: 'difficulte', type: 'select', label: 'Lignes déjà écrites',
+                aide: 'Les lignes données sont toujours les premières : chaque mot se cherche à '
+                    + 'partir du précédent, et un trou au milieu couperait la chaîne.',
+                options: [
+                    { value: 'facile', label: 'Facile — la moitié est écrite' },
+                    { value: 'moyen', label: 'Moyen — les deux premières lignes' },
+                    { value: 'difficile', label: 'Difficile — le sommet seul' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['pyramide', 'mots', 'anagramme', 'lettres', 'vocabulaire', 'escalier',
+            'définitions', 'arrangement', 'jeu de lettres'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "À chaque ligne, une lettre de plus : le mot du dessous reprend TOUTES les lettres du dessus, plus une — mais pas forcément dans le même ordre. La définition de gauche dit lequel. Touche une ligne pour y écrire, puis tape les lettres. Le vrai geste du jeu est celui-ci : n'essaie pas de coller une lettre au bout du mot précédent. Écris ses lettres EN DÉSORDRE — le jeu te les montre déjà mélangées sous la pyramide —, ajoute la nouvelle, et cherche l'arrangement qui colle à la définition. « Un indice » ne donne pas le mot : il donne la lettre qui arrive, et c'est presque toujours assez."
+    },
+    {
+        // LE MOT CODÉ. Rémy : « fais-moi aussi le jeu (par thématique ou
+        // mélange) du jeu que je t'ai montré avec les lettres et les chiffres ».
+        // C'est celui qu'il fabrique à la main pour ses fiches : chaque lettre
+        // remplacée par un numéro, le même partout, et un alphabet à
+        // reconstituer.
+        //
+        // CE N'EST PAS UN MOTS CROISÉS SANS DÉFINITIONS. On n'y cherche pas un
+        // mot mais un ALPHABET, et une lettre trouvée se pose d'un coup dans
+        // toute la grille : c'est ce ricochet qui fait le jeu, et c'est pour
+        // cela que l'état est un dictionnaire numéro → lettre, pas des cases.
+        id: 'voc-mot-code', title: 'Le Mot Codé',
+        colonnesPapier: 2,
+        cree: '2026-08-25',
+        activityId: 'mot-code', skills: ['voc.mathematique'],
+        sansRevision: true,
+        printable: 'motcode', printGeneratorId: 'voc.mot-code-fiche',
+        printParams: { theme: 'litteral', taille: 'moyenne', niveauMax: 3 },
+        params: { theme: 'litteral', niveauMax: 3, taille: 'moyenne', aide: 'normale' },
+        paramSchema: [
+            {
+                id: 'theme', type: 'select', label: 'Vocabulaire',
+                aide: 'Sur un seul chapitre, l\'élève reconnaît le mot par le sens autant que par la '
+                    + 'déduction. Mélangé, il ne reste que la déduction — c\'est plus dur.',
+                options: [
+                    { value: 'litteral', label: 'Le calcul littéral' },
+                    { value: 'angles', label: 'Le vocabulaire des angles' },
+                    { value: 'calcul', label: 'Les opérations' },
+                    { value: 'geometrie', label: 'Géométrie' },
+                    { value: 'nombres', label: 'Les nombres' },
+                    { value: 'mesures', label: 'Grandeurs et mesures' },
+                    { value: 'tout', label: 'Mélange de tout le vocabulaire' }
+                ],
+                default: 'litteral'
+            },
+            {
+                id: 'taille', type: 'select', label: 'Taille de la grille', echelle: true,
+                aide: 'La grille est un ANNEAU : un cadre de bandes, le centre laissé vide. Ce qu\'on règle, c\'est le nombre de bandes par côté — donc le nombre de mots, et la largeur de l\'alphabet à retrouver.',
+                options: [
+                    { value: 'petite', label: 'Petite — 8 mots', court: 'Petite' },
+                    { value: 'moyenne', label: 'Moyenne — 12 mots', court: 'Moyenne' },
+                    { value: 'grande', label: 'Grande — 16 mots', court: 'Grande' }
+                ],
+                default: 'moyenne'
+            },
+            {
+                id: 'aide', type: 'select', label: 'Lettres offertes', echelle: true,
+                aide: 'La part de l\'alphabet donnée d\'avance pour démarrer. Les lettres les plus '
+                    + 'fréquentes remplissent beaucoup de cases : une part modeste suffit.',
+                options: [
+                    { value: 'large', label: 'Généreuse — on démarre vite', court: 'Généreuse' },
+                    { value: 'normale', label: 'Une amorce', court: 'Amorce' },
+                    { value: 'mince', label: 'Le strict minimum', court: 'Minimum' }
+                ],
+                default: 'normale'
+            },
+            {
+                id: 'niveauMax', type: 'select', label: 'Jusqu\'à quel niveau', echelle: true,
+                options: [
+                    { value: 1, label: 'Le vocabulaire de base' },
+                    { value: 2, label: 'Jusqu\'au cycle 3' },
+                    { value: 3, label: 'Tout, collège compris' }
+                ],
+                default: 3
+            },
+        ],
+        motsClefs: ['mot codé', 'codeword', 'code', 'lettres', 'chiffres', 'vocabulaire',
+            'grille', 'lexique', 'déduction'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Chaque lettre de la grille est remplacée par un numéro, le MÊME partout : le 14 est toujours la même lettre. Les mots se lisent en anneau autour du cadre — une flèche marque le début de chacun et le sens dans lequel il se lit. LA CLÉ, sous la grille, COMMENCE PAR UN MOT : ses lettres sont déjà posées partout où leur numéro reparaît, et c'est de là qu'on part. Une lettre qui ne paraît qu'une seule fois dans toute la grille est écrite en clair, sans numéro : elle ne se devinerait pas. Touche un numéro — dans la grille ou dans la clé —, puis la lettre que tu crois qu'il cache : elle se pose d'un coup dans toutes les cases qui portent ce numéro. Deux numéros différents ne peuvent jamais cacher la même lettre : les lettres déjà employées s'estompent sur le clavier. « Vérifier » ne montre que les numéros FAUX."
+    },
+    {
+        // LE CHASSEUR DE DIVISEURS. Rémy : « je pense à un jeu un peu futuriste
+        // pour travailler la décomposition et la divisibilité, où il y a des
+        // nombres qui arrivent et on peut tirer des diviseurs dessus. Exemple
+        // 30 : on peut tirer 6, du coup ça se transforme en 5, et on ne peut
+        // capturer que les nombres premiers. »
+        //
+        // C'est la décomposition en facteurs premiers jouée à l'envers : on ne
+        // l'écrit pas, on la FAIT — et le bilan de fin de partie la réécrit
+        // comme au tableau, à côté du chemin réellement pris.
+        id: 'calc-diviseurs', title: 'Le Chasseur de Diviseurs',
+        cree: '2026-08-19',
+        activityId: 'diviseurs', skills: ['num.arith.decomposition'],
+        params: { niveau: 'facile', boucliers: 3 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Les facteurs en jeu',
+                aide: 'Au premier niveau, les critères de divisibilité par 2, 3 et 5 suffisent. Au '
+                    + 'dernier, il faut chercher un facteur 7, 11 ou 13 en essayant.',
+                options: Object.entries({
+                    facile: 'Les tables — facteurs 2, 3 et 5',
+                    moyen: 'Jusqu\'à 7 — les critères ne suffisent plus',
+                    difficile: 'Jusqu\'à 13 — il faut chercher'
+                }).map(([value, label]) => ({ value, label })),
+                default: 'facile'
+            },
+            {
+                id: 'boucliers', type: 'select', label: 'Boucliers',
+                aide: 'Un tir qui ne divise pas coûte un bouclier — sans quoi la stratégie gagnante serait de tirer 2, puis 3, puis 4, jusqu\'à ce que ça passe, et le jeu n\'enseignerait plus la divisibilité mais la patience.',
+                options: [
+                    { value: 3, label: '3 — la partie va vite' },
+                    { value: 5, label: '5' },
+                    { value: 8, label: '8 — on a le droit de chercher' }
+                ],
+                default: 3
+            }
+        ],
+        motsClefs: ['diviseurs', 'décomposition', 'facteurs premiers', 'divisibilité', 'premiers', 'arcade'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Des nombres descendent. On ne les détruit pas : on les CASSE. Compose un diviseur au pavé, appuie sur FEU, et le nombre se divise — tire 6 sur 30, il devient 5. Un nombre PREMIER s'allume en jaune : lui seul se capture, en tirant son propre nombre dessus. Un tir qui ne divise pas coûte un bouclier, et le message dit toujours ce qui reste : « 7 ne divise pas 30, il reste 2 ». À la fin, l'écran réécrit tout ce que tu as cassé — c'est la décomposition en facteurs premiers."
+    },
+    {
+        // LA PIPOPIPETTE. Rémy : « j'aimerai bien le jeu pipopipette ». Le jeu
+        // d'Édouard Lucas (1889) — et un vrai problème de PARITÉ : passé la
+        // moitié de la partie, le plateau se découpe en chaînes de carrés, et
+        // celui qui doit en ouvrir une la donne tout entière. Le « double
+        // croix » — laisser deux carrés au lieu d'en prendre quatre, pour
+        // garder la main — est souvent la première fois qu'un enfant renonce à
+        // un gain immédiat par calcul.
+        id: 'logi-pipopipette', title: 'La Pipopipette',
+        // LE PDF DU JEU — Rémy : « on pourrait faire le pdf ». La pipopipette
+        // est née sur du papier (Édouard Lucas, 1889) : la feuille lui rend son
+        // support, et c'est le jeu qu'on donne en fin d'heure ou à emporter.
+        printable: 'pipopipette', printGeneratorId: 'jeux.plateaux-fiche',
+        printParams: { jeu: 'pipopipette', colonnes: 5, rangees: 4 },
+        cree: '2026-08-19',
+        activityId: 'pipopipette', horsProgression: true, sansRevision: true,
+        deuxJoueurs: true,
+        params: { mode: 'ia', niveau: 'moyen', taille: 'moyen' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                options: [
+                    { value: 'ia', label: 'Une partie contre l\'ordinateur' },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'niveau', type: 'select', label: 'Niveau de l\'ordinateur',
+                aide: 'Deux réglages en un : jusqu\'où l\'ordinateur calcule, et sa part de coups joués au hasard — c\'est elle qui le rend battable.',
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'taille', type: 'select', label: 'Taille du plateau',
+                aide: 'Un petit plateau se finit en cinq minutes et laisse déjà voir les chaînes ; le grand est une vraie partie.',
+                options: [
+                    { value: 'petit', label: '3 × 3 carrés — partie rapide' },
+                    { value: 'moyen', label: '5 × 4 carrés' },
+                    { value: 'grand', label: '7 × 6 carrés — partie longue' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['pipopipette', 'petits carrés', 'lucas', 'parité', 'deux joueurs'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Trace un trait entre deux points voisins. Celui qui pose le QUATRIÈME côté d'un carré le marque à son nom — et il REJOUE. Tout le jeu est là : poser le troisième côté d'un carré l'offre à l'adversaire, et comme il rejoue, il prend toute la file derrière. En fin de partie, il ne reste que des chaînes, et celui qui doit en ouvrir une la donne entièrement : on compte donc les chaînes avant de poser."
+    },
+    {
+        // LE PUISSANCE 4. « Et aussi le puissance 4. » Le jeton TOMBE : on ne
+        // choisit pas la case, on choisit la colonne — et poser sous une case
+        // gagnante la donne à l'adversaire.
+        id: 'logi-puissance4',
+        colonnesPapier: 3,
+        // Un plateau vide à imprimer : deux élèves, deux crayons de couleur.
+        printable: 'puissance4', printGeneratorId: 'jeux.plateaux-fiche',
+        printParams: { jeu: 'puissance4', colonnes: 7, rangees: 6 }, title: 'Puissance 4',
+        cree: '2026-08-19',
+        activityId: 'puissance4', horsProgression: true, sansRevision: true,
+        deuxJoueurs: true,
+        params: { mode: 'ia', niveau: 'moyen' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                options: [
+                    { value: 'ia', label: 'Une partie contre l\'ordinateur' },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'niveau', type: 'select', label: 'Niveau de l\'ordinateur',
+                aide: 'Deux réglages en un : jusqu\'où l\'ordinateur calcule, et sa part de coups joués au hasard — c\'est elle qui le rend battable.',
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['puissance 4', 'aligner', 'quatre', 'deux joueurs', 'connect'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Touche une colonne : ton jeton tombe au fond. Le premier qui en aligne QUATRE gagne — en ligne, en colonne ou en diagonale. Ce qui rend le jeu difficile est la gravité : on ne choisit pas la case, et poser un jeton sous une case gagnante la donne à l'adversaire. Le centre vaut plus que les bords, parce que c'est par là que passent le plus d'alignements possibles."
+    },
+    {
+        // LE SIM. « Et le sim. » Un jeu qu'on ne gagne pas, qu'on ÉVITE de
+        // perdre — et surtout une illustration jouable du théorème de Ramsey :
+        // R(3,3) = 6, donc sur les quinze arêtes d'un hexagone complet
+        // coloriées de deux couleurs, un triangle monochrome est INÉVITABLE.
+        // Le match nul n'existe pas, et c'est démontrable.
+        id: 'logi-sim',
+        colonnesPapier: 3,
+        printable: 'sim', printGeneratorId: 'jeux.plateaux-fiche',
+        printParams: { jeu: 'sim' }, title: 'Le Sim',
+        cree: '2026-08-19',
+        activityId: 'sim', horsProgression: true, sansRevision: true,
+        deuxJoueurs: true,
+        params: { mode: 'ia', niveau: 'moyen' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                options: [
+                    { value: 'ia', label: 'Une partie contre l\'ordinateur' },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'niveau', type: 'select', label: 'Niveau de l\'ordinateur',
+                aide: 'Deux réglages en un : jusqu\'où l\'ordinateur calcule, et sa part de coups joués au hasard — c\'est elle qui le rend battable.',
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['sim', 'triangle', 'ramsey', 'graphe', 'deux joueurs', 'hexagone'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME] },
+        instruction: "Six points, et les quinze segments qui les relient tous. Chacun son tour, on colorie un segment de SA couleur — et celui qui forme le premier un triangle de sa propre couleur A PERDU. On ne cherche donc pas à construire, on cherche à ne pas construire, ce qui est déroutant. Et l'on ne peut pas y couper indéfiniment : sur quinze segments de deux couleurs, un triangle d'une seule couleur est inévitable. C'est un théorème (Ramsey, R(3,3) = 6), et il se vérifie à la main."
+    },
+    {
+        id: 'voc-mots-caches', title: 'Mots Cachés Mathématiques',
+        colonnesPapier: 2,
+        cree: '2026-08-10',
+        activityId: 'motscaches', skills: ['voc.mathematique'],
+        // SUR LE PAPIER, PERSONNE NE VALIDE : il faut entourer, donc être sûr.
+        // Et la fiche sait faire ce que l'écran ne fait pas — ne donner que les
+        // DÉFINITIONS, et laisser retrouver le mot du cours avant de le
+        // chercher dans la grille.
+        printable: 'motscaches', printGeneratorId: 'voc.mots-caches-fiche',
+        printParams: { theme: 'tout', taille: 12, nbMots: 10, indices: 'mots', diagonales: true },
+        // Les erreurs n'ont rien à réviser ici : un tracé raté est un essai, pas
+        // une faute, et le jeu n'en enregistre aucun.
+        sansRevision: true,
+        params: { theme: 'tout', taille: 12, nbMots: 10, diagonales: true, envers: false },
+        paramSchema: [
+            {
+                id: 'theme', type: 'select', label: 'Vocabulaire',
+                options: [
+                    { value: 'tout', label: 'Tout le vocabulaire' },
+                    { value: 'geometrie', label: 'Géométrie' },
+                    { value: 'angles', label: 'Le vocabulaire des angles' },
+                    { value: 'nombres', label: 'Les nombres' },
+                    { value: 'calcul', label: 'Les opérations' },
+                    { value: 'mesures', label: 'Grandeurs et mesures' }
+                ],
+                default: 'tout'
+            },
+            {
+                id: 'taille', type: 'select', label: 'Taille de la grille',
+                options: [
+                    { value: 10, label: '10 × 10' },
+                    { value: 12, label: '12 × 12' },
+                    { value: 14, label: '14 × 14' },
+                    { value: 16, label: '16 × 16 — pour les mots longs' }
+                ],
+                default: 12
+            },
+            {
+                id: 'nbMots', type: 'select', label: 'Nombre de mots',
+                options: [
+                    { value: 6, label: '6 mots' },
+                    { value: 10, label: '10 mots' },
+                    { value: 14, label: '14 mots' }
+                ],
+                default: 10
+            },
+            {
+                id: 'diagonales', type: 'checkbox', label: 'Mots en diagonale',
+                aide: 'Sans les diagonales, la grille se lit uniquement en lignes et en colonnes — nettement plus facile.',
+                default: true
+            },
+            {
+                id: 'envers', type: 'checkbox', label: 'Mots écrits à l\'envers',
+                aide: 'De droite à gauche et de bas en haut : à réserver aux élèves qui trouvent la grille trop rapide.',
+                default: false
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Glisse ton doigt de la première à la dernière lettre pour tracer un mot. Chaque mot trouvé affiche SA DÉFINITION : c'est le vocabulaire que ton cours emploie sans toujours l'expliquer. Le bouton 💡 fait l'inverse — il donne la définition, à toi de retrouver le mot."
+    },
+    {
+        id: 'calc-chantier', title: 'Le Chantier des Blocs',
+        cree: '2026-08-10',
+        activityId: 'chantier', skills: ['num.mult.table.*'],
+        params: { depart: 'ch1' },
+        paramSchema: [
+            {
+                id: 'depart', type: 'select', label: 'Commencer au niveau',
+                aide: 'Les niveaux s\'enchaînent tout seuls, du plus court au plus long ; ce réglage sert à reprendre plus loin ou à montrer directement un niveau à deux résultats identiques.',
+                // La liste se CONSTRUIT depuis les niveaux, et chaque ligne
+                // porte sa longueur de solution : cent titres dans un menu
+                // déroulant ne se choisissent pas sans savoir lequel demande
+                // trois poussées et lequel en demande douze. Recopiée à la
+                // main, la liste avait déjà divergé une fois.
+                options: NIVEAUX_CHANTIER.map((n, i) => ({ value: n.id, label: `${i + 1} · ${n.titre} — ${n.coups} coup${n.coups > 1 ? 's' : ''}` })),
+                default: 'ch1'
+            }
+        ],
+        motsClefs: ['tables', 'multiplication'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Chaque bloc porte une multiplication, chaque dalle creuse porte un résultat. Un bloc poussé GLISSE jusqu'au premier obstacle : s'il s'arrête sur la dalle qui porte son résultat, il se pose — et devient lui-même un mur. Touche un bloc, puis la case d'arrivée (ou balaye du doigt). Sur les derniers niveaux, deux blocs valent la même chose : le calcul ne suffit plus, il faut choisir lequel va où."
+    },
+    {
+        // Trois jeux de plateau, un seul moteur d'affichage (games/plateau.js)
+        // et une seule IA (core/ia.js). Les règles, testées sans navigateur,
+        // vivent chacune dans leur module — les échecs validés au perft.
+        //
+        // HORS PROGRESSION, ET ASSUMÉ. Othello, les Dames et les Échecs
+        // n'entraînent aucune notion du programme : ce sont des jeux de la
+        // réserve, ceux qu'on donne en récompense ou en fin d'heure. Le
+        // déclarer est obligatoire — un exercice qui ne dit rien est refusé.
+        id: 'logi-othello', title: 'Othello',
+        cree: '2026-08-11',
+        activityId: 'othello', horsProgression: true,
+        params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                aide: 'Le mode Exercice ne joue pas de partie : il pose une position figée et '
+                    + 'demande le mat. Cent neuf positions, de la plus simple à la plus difficile.',
+                options: [
+                    { value: 'ia', label: "Une partie contre l'ordinateur" },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' },
+                    { value: 'exercice', label: 'Exercices : mat en un, mat en deux' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'depart', type: 'select', label: 'Où commencer les exercices',
+                aide: 'La progression est dans le matériel : on commence par une dame qui fait tout le travail, on finit par deux tours qui doivent se coordonner en deux coups.',
+                options: [
+                    { value: 'debut', label: 'Au début — la dame qui mate seule' },
+                    { value: 'milieu', label: 'Plus loin — tours et cavaliers' },
+                    { value: 'deux', label: 'Directement aux mats en deux coups' }
+                ],
+                default: 'debut'
+            },
+            {
+                id: 'niveau', type: 'select', label: "Niveau de l'ordinateur",
+                aide: "Deux réglages en un : jusqu'où l'ordinateur calcule, et sa part de coups joués au hasard — c'est elle qui le rend battable.",
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Un pion posé ENCADRE : tous les pions adverses pris entre lui et un autre de tes pions se retournent. On ne joue que là où l'on retourne au moins un pion — les cases allumées te les montrent. À la fin, celui qui a le plus de pions gagne. Les coins ne se reprennent jamais : vise-les, et méfie-toi des cases qui les touchent."
+    },
+    {
+        id: 'logi-dames', title: 'Jeu de Dames',
+        cree: '2026-08-11',
+        activityId: 'dames', horsProgression: true,
+        params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                aide: 'Le mode Exercice ne joue pas de partie : il pose une position figée et '
+                    + 'demande le mat. Cent neuf positions, de la plus simple à la plus difficile.',
+                options: [
+                    { value: 'ia', label: "Une partie contre l'ordinateur" },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' },
+                    { value: 'exercice', label: 'Exercices : mat en un, mat en deux' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'depart', type: 'select', label: 'Où commencer les exercices',
+                aide: 'La progression est dans le matériel : on commence par une dame qui fait tout le travail, on finit par deux tours qui doivent se coordonner en deux coups.',
+                options: [
+                    { value: 'debut', label: 'Au début — la dame qui mate seule' },
+                    { value: 'milieu', label: 'Plus loin — tours et cavaliers' },
+                    { value: 'deux', label: 'Directement aux mats en deux coups' }
+                ],
+                default: 'debut'
+            },
+            {
+                id: 'niveau', type: 'select', label: "Niveau de l'ordinateur",
+                aide: "Deux réglages en un : jusqu'où l'ordinateur calcule, et sa part de coups joués au hasard — c'est elle qui le rend battable.",
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Les vraies règles françaises, sur le damier 10 × 10 : la prise est OBLIGATOIRE, et quand plusieurs rafles sont possibles, on joue celle qui prend le PLUS de pièces — compte avant de bouger. Le pion avance tout droit mais prend aussi en arrière ; arrivé au bout, il devient dame, et la dame vole sur toute la diagonale. Touche une pièce : ses coups s'allument."
+    },
+    {
+        id: 'logi-echecs', title: 'Échecs',
+        cree: '2026-08-11',
+        // La partie elle-même n'est pas au programme. Le REPÉRAGE l'est, et
+        // c'est l'exercice « mat en un » qui le travaille, pas celui-ci.
+        activityId: 'echecs', horsProgression: true,
+        // L'ÉCHIQUIER EST UN REPÈRE. « e4 » n'est pas du jargon : c'est une
+        // lettre de colonne et un chiffre de ligne, la même chose qu'un couple
+        // de coordonnées — et qu'un B3 de tableur.
+        printable: 'echiquier', printGeneratorId: 'logi.echecs-fiche',
+        printParams: { quoi: 'melange', pieces: 4 },
+        consignePapier: "La lettre d'abord, le chiffre ensuite : e4.",
+        params: { mode: 'ia', niveau: 'moyen', depart: 'debut' },
+        paramSchema: [
+            {
+                id: 'mode', type: 'select', label: 'Ce qu\'on fait',
+                aide: 'Le mode Exercice ne joue pas de partie : il pose une position figée et '
+                    + 'demande le mat. Cent neuf positions, de la plus simple à la plus difficile.',
+                options: [
+                    { value: 'ia', label: "Une partie contre l'ordinateur" },
+                    { value: 'deux', label: 'Une partie à deux sur le même écran' },
+                    { value: 'exercice', label: 'Exercices : mat en un, mat en deux' }
+                ],
+                default: 'ia'
+            },
+            {
+                id: 'depart', type: 'select', label: 'Où commencer les exercices',
+                aide: 'La progression est dans le matériel : on commence par une dame qui fait tout le travail, on finit par deux tours qui doivent se coordonner en deux coups.',
+                options: [
+                    { value: 'debut', label: 'Au début — la dame qui mate seule' },
+                    { value: 'milieu', label: 'Plus loin — tours et cavaliers' },
+                    { value: 'deux', label: 'Directement aux mats en deux coups' }
+                ],
+                default: 'debut'
+            },
+            {
+                id: 'niveau', type: 'select', label: "Niveau de l'ordinateur",
+                aide: "Deux réglages en un : jusqu'où l'ordinateur calcule, et sa part de coups joués au hasard — c'est elle qui le rend battable.",
+                options: [
+                    { value: 'facile', label: 'Débutant — il se trompe souvent' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'fort', label: 'Fort — il ne se trompe plus' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME] },
+        instruction: "Trois usages. UNE PARTIE, contre l'ordinateur ou à deux : touche une pièce, ses coups s'allument, touche la case d'arrivée. Toutes les règles y sont, roque et prise en passant compris. Ou bien les EXERCICES : cent neuf positions figées où les Blancs jouent et matent, rangées du plus simple au plus difficile. Un mat, c'est un échec dont le roi ne peut pas sortir — ni fuir, ni parer en s'interposant, ni prendre la pièce qui attaque. Quand ton coup n'est pas le bon, on ne te donne pas la réponse : on te dit ce qui manque. Et méfie-toi du PAT — les Noirs sans coup mais SANS être en échec, c'est une partie nulle, pas une victoire."
+    },
+    {
+        // LE LOGIGRAMME. Un seul exercice, six niveaux : c'est la MÊME grille de
+        // déduction qui grandit, et l'élève retrouve à chaque fois les deux
+        // règles qu'il connaît déjà. Un exercice par niveau aurait éparpillé
+        // dans le catalogue ce qui est une seule progression.
+        id: 'logi-logigramme', title: 'Le Logigramme',
+        colonnesPapier: 3,
+        cree: '2026-08-12',
+        activityId: 'logigramme',
+        // Le générateur ne sert PAS à l'écran (l'activité mène son propre jeu) :
+        // il sert au PAPIER. Un logigramme se fait d'abord au crayon, en rayant
+        // et en revenant en arrière — c'est un des exercices qui gagnent le
+        // plus à sortir de l'écran.
+        generatorId: 'logique.logigramme', printable: 'logigramme',
+        sansRevision: true,
+        skills: ['num.logique.logigramme'],
+        params: { niveau: 1, auto: false },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Niveau',
+                options: [
+                    { value: 1, label: '1 — Découverte · 3 lignes, 2 listes' },
+                    { value: 2, label: '2 — Trois amis, deux listes · indices croisés' },
+                    { value: 3, label: '3 — Quatre à croiser · plus rien de donné' },
+                    { value: 4, label: '4 — Plus grand, plus petit · comparaisons' },
+                    { value: 5, label: '5 — L\'écart exact · différences chiffrées' },
+                    { value: 6, label: '6 — Cinq, et rien de donné · avec des « soit… soit… »' }
+                ],
+                default: 1
+            },
+            {
+                id: 'auto', type: 'bool', label: 'Barrer la ligne automatiquement',
+                // Personne ne barre une case à la place de l'élève sur du papier :
+                // c'est justement le travail qu'on lui demande de faire à la main.
+                papier: false,
+                default: false
+            },
+            {
+                id: 'theme', type: 'select', label: 'Histoire',
+                options: [
+                    { value: '', label: 'Au hasard' },
+                    { value: 'gouter', label: 'Le goûter d\'anniversaire' },
+                    { value: 'mediatheque', label: 'À la médiathèque' },
+                    { value: 'potager', label: 'Le potager de l\'école' },
+                    { value: 'kermesse', label: 'La kermesse' },
+                    { value: 'club', label: 'Le club du mercredi' }
+                ],
+                default: ''
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME] },
+        instruction: "On croise des listes : chaque personne a UNE valeur dans chaque colonne, et chaque valeur ne sert qu'une fois. Clique une case pour la barrer (impossible), clique encore pour la cocher (certain). Deux règles suffisent : dès qu'une case est cochée, sa ligne et sa colonne se barrent ; et s'il ne reste qu'une case non barrée dans une ligne, c'est elle. On ne devine JAMAIS — si rien ne s'impose, c'est qu'un indice n'a pas encore été relu."
+    },
+    {
+        // LE PEINTRE. D'après Skweek, le jeu de Loriciels : une bête rose
+        // repeint le sol en marchant dessus. Ici chaque dalle porte un calcul
+        // et le niveau annonce sa règle : marcher sur une dalle qui la vérifie
+        // la repeint, marcher sur une autre la fait s'effriter. Soixante
+        // dalles, soixante calculs — et l'élève TRIE en se déplaçant au lieu
+        // de répondre.
+        //
+        // L'identifiant reste « calc-skweek » : le renommer effacerait les
+        // statistiques et les parcours déjà enregistrés sous ce nom.
+        id: 'calc-skweek', title: 'Le Peintre',
+        cree: '2026-08-12',
+        activityId: 'skweek',
+        sansRevision: true,
+        skills: ['num.calc.tri'],
+        params: { niveau: 1, vies: 3, ennemis: 'non' },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Niveau de départ',
+                options: [
+                    { value: 1, label: '1 — Les résultats pairs' },
+                    { value: 2, label: '2 — Les multiples de 3' },
+                    { value: 3, label: '3 — Les multiples de 5' },
+                    { value: 4, label: '4 — Plus grands que 30' },
+                    { value: 5, label: '5 — Les multiples de 4' },
+                    { value: 6, label: '6 — Entre 20 et 40' }
+                ],
+                default: 1
+            },
+            {
+                id: 'vies', type: 'select', label: 'Vies',
+                options: [
+                    { value: 3, label: '3 vies' },
+                    { value: 5, label: '5 vies' }
+                ],
+                default: 3
+            },
+            {
+                id: 'ennemis', type: 'select', label: 'Les blobs verts',
+                aide: 'Au doigt, esquiver un blob pendant qu\'on calcule fait un jeu d\'adresse '
+                    + 'plutôt qu\'un jeu de calcul. Retirés par défaut ; au clavier, ils rendent les '
+                    + 'derniers niveaux plus vifs.',
+                options: [
+                    { value: 'non', label: 'Pas de blobs — que du calcul' },
+                    { value: 'oui', label: 'Avec les blobs, à partir du niveau 2' }
+                ],
+                default: 'non'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "La règle est écrite en haut : repeins SEULEMENT les dalles dont le calcul la vérifie. Marcher sur une bonne dalle la repeint en rose ; marcher sur une autre la fait s'effriter et tu perds du terrain. Lis avant d'avancer ! Flèches du clavier, croix tactile ou glissé sur le terrain. Les blobs verts sont retirés par défaut — le réglage les rend, et alors le bouton TIR les élimine, tandis que le bouton 🎯 (ou MAJ + flèche au clavier) tourne la tête SANS avancer : on vise un blob sans repeindre au passage une dalle qu'on n'avait pas choisie."
+    },
+    {
+        // LE HASHI — Hashiwokakero, « construire des ponts ». Rémy : « je
+        // voulais le hashi ». Des îles numérotées, des ponts droits, et trois
+        // règles qui se tiennent : le compte de chaque île, jamais de
+        // croisement, et TOUT d'un seul tenant. C'est cette dernière qui en
+        // fait un exercice de raisonnement et pas un exercice d'addition.
+        //
+        // La grille est fabriquée puis VÉRIFIÉE : solution unique, et — sauf en
+        // difficile — trouvable par propagation pure, sans jamais essayer.
+        id: 'logi-hashi', title: 'Le Hashi',        cree: '2026-08-25',
+        colonnesPapier: 3,
+        activityId: 'hashi',
+        generatorId: 'logique.hashi-fiche', printable: 'hashi',
+        printGeneratorId: 'logique.hashi-fiche',
+        printParams: { taille: 'moyen', difficulte: 'moyen' },
+        sansRevision: true,
+        skills: ['num.logique.hashi'],
+        params: { taille: 'moyen', difficulte: 'moyen' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Taille de la grille',
+                aide: 'C\'est le nombre d\'îles qui fait la durée, pas le nombre de cases : une petite grille se fait en cinq minutes, une grande occupe un quart d\'heure.',
+                options: [
+                    { value: 'petit', label: '7 × 7 — 9 îles' },
+                    { value: 'moyen', label: '9 × 9 — 14 îles' },
+                    { value: 'grand', label: '12 × 12 — 18 îles' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'difficulte', type: 'select', label: 'Difficulté',
+                aide: 'La difficulté est une densité de ponts : plus il y en a, plus la grille se '
+                    + 'déduit vite. En difficile elle est clairsemée, et la règle « tout d\'un seul '
+                    + 'tenant » devient nécessaire.',
+                options: [
+                    { value: 'facile', label: 'Facile — beaucoup de ponts' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'difficile', label: 'Difficile — il faut raisonner sur l\'ensemble' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['hashi', 'hashiwokakero', 'ponts', 'iles', 'îles', 'bridges',
+            'logique', 'énigme', 'connexité', 'graphe'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Relie les îles par des ponts droits, horizontaux ou verticaux. Le chiffre d'une île dit COMBIEN de ponts y arrivent. Deux ponts au plus entre deux îles, et jamais de croisement. Touche deux îles voisines pour poser un pont, encore une fois pour le doubler, encore une fois pour l'enlever — ou touche directement un pont existant. Une île finie verdit, une île qui déborde rougit. Et n'oublie pas la dernière règle, celle qui tranche quand les chiffres ne suffisent plus : à la fin, on doit pouvoir aller de n'importe quelle île à n'importe quelle autre."
+    },
+    {
+        // LE SLITHERLINK. Une seule boucle fermée sur un quadrillage de points,
+        // dictée par des chiffres qui comptent les côtés. Deux règles suffisent
+        // — le chiffre et le point — et jamais besoin de deviner : la grille
+        // est fabriquée pour se déduire par propagation pure.
+        id: 'logi-slitherlink', title: 'Le Slitherlink',
+        colonnesPapier: 4,
+        cree: '2026-08-13',
+        activityId: 'slitherlink',
+        generatorId: 'logique.slitherlink', printable: 'slitherlink',
+        sansRevision: true,
+        skills: ['num.logique.slitherlink'],
+        params: { taille: 'moyen', difficulte: 'moyen' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Taille de la grille',
+                options: [
+                    { value: 'petit', label: '5 \u00d7 5' },
+                    { value: 'moyen', label: '7 \u00d7 7' },
+                    { value: 'grand', label: '10 \u00d7 8' }
+                ],
+                default: 'moyen'
+            },
+            {
+                id: 'difficulte', type: 'select', label: 'Difficult\u00e9',
+                options: [
+                    { value: 'facile', label: 'Facile \u2014 beaucoup de chiffres' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'difficile', label: 'Difficile \u2014 peu de chiffres' }
+                ],
+                default: 'moyen'
+            }
+        ],
+        motsClefs: ['slitherlink', 'boucle', 'loop the loop', 'points', 'segments',
+            'logique', 'énigme', 'tracé', 'fil unique'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Trace UNE seule boucle ferm\u00e9e qui ne se croise ni ne se touche. Chaque chiffre dit combien des quatre c\u00f4t\u00e9s de sa case font partie de la boucle ; une case sans chiffre ne dit rien. Touche un segment pour le tracer, encore une fois pour le barrer d'une croix, encore une fois pour l'effacer \u2014 et glisse le doigt pour encha\u00eener. Un point porte toujours deux segments ou aucun."
+    },
+    {
+        // LE FUTOSHIKI. Un carré latin sous inégalités : le puzzle qui fait de
+        // la COMPARAISON un outil de déduction. Généré à solution unique,
+        // résoluble par propagation pure — jamais d'essai-erreur.
+        id: 'logi-futoshiki', title: 'Le Futoshiki',
+        colonnesPapier: 4,
+        cree: '2026-08-12',
+        activityId: 'futoshiki',
+        generatorId: 'logique.futoshiki', printable: 'futoshiki',
+        sansRevision: true,
+        skills: ['num.logique.futoshiki'],
+        params: { taille: 4, difficulte: 'facile' },
+        paramSchema: [
+            {
+                id: 'taille', type: 'select', label: 'Taille',
+                options: [
+                    { value: 4, label: '4 \u00d7 4' },
+                    { value: 5, label: '5 \u00d7 5' },
+                    { value: 6, label: '6 \u00d7 6' }
+                ],
+                default: 4
+            },
+            {
+                id: 'difficulte', type: 'select', label: 'Difficult\u00e9',
+                aide: 'En facile, un tiers des cases est déjà rempli. En difficile, il ne reste que '
+                    + 'les indices strictement nécessaires : c\'est le vrai futoshiki, et c\'est bien '
+                    + 'plus dur.',
+                options: [
+                    { value: 'facile', label: 'Facile \u2014 des chiffres pour commencer' },
+                    { value: 'moyen', label: 'Moyen' },
+                    { value: 'difficile', label: 'Difficile \u2014 le strict n\u00e9cessaire' }
+                ],
+                default: 'facile'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Chaque chiffre une fois par ligne et par colonne, comme un sudoku — mais les signes < et > entre les cases doivent être respectés. Un signe ÉLIMINE : la case du petit côté ne peut pas porter le plus grand chiffre. Pour écrire : touche une case et son chiffre monte (1, 2, 3… puis vide), ou glisse un chiffre du pavé dessus."
+    },
+    {
+        // LE CARRÉ MAGIQUE. Trente soustractions à trous qui se donnent la
+        // main : on cherche la ligne où il ne manque qu'une case, on soustrait
+        // de la somme magique, et chaque case écrite en débloque d'autres. Le
+        // générateur garantit la résolubilité par déduction pure.
+        id: 'logi-carre-magique', title: 'Le Carré Magique',
+        colonnesPapier: 4,
+        cree: '2026-08-12',
+        activityId: 'carre-magique',
+        generatorId: 'logique.carre-magique', printable: 'carre-magique',
+        sansRevision: true,
+        skills: ['num.logique.carre-magique'],
+        params: { taille: 3, difficulte: 'normal' },
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Toutes les lignes, colonnes ET diagonales font la même somme — elle est affichée. Cherche une ligne où il ne manque qu'une case : additionne ce que tu connais, soustrais de la somme magique, écris. Chaque case trouvée en débloque d'autres. On ne devine jamais."
+    },
+    {
+        // L'HEXAGRILLE. À côté du carré magique, elle apporte ce qu'il n'a
+        // pas : des files de LONGUEURS DIFFÉRENTES, chacune avec sa propre
+        // somme. Une somme de 3 sur deux cases ne laisse aucun choix, et c'est
+        // par là qu'on entre. On ne récite pas une somme magique, on croise
+        // des décompositions.
+        id: 'logi-hexagrille', title: 'L\'Hexagrille',
+        colonnesPapier: 4,
+        cree: '2026-08-17',
+        revisions: [{
+            date: '2026-08-19',
+            quoi: 'Les flèches vont maintenant du nombre jusqu\'au bord de la première case, '
+                + 'le total courant « déjà 8 » a disparu — il rendait la soustraction gratuite — '
+                + 'et un appui sur un nombre éclaire la file qu\'il désigne.'
+        }],
+        activityId: 'hexagrille',
+        // SUR LE PAPIER AUSSI. Rémy, banc d'essai : « Pas de pdf ». Neuf
+        // cases, huit sommes, aucune manipulation : la grille se cherche très
+        // bien au crayon — mieux, même, parce qu'on y rature. La feuille
+        // dessine la MÊME figure que l'écran, calculée au même endroit.
+        printable: 'hexagrille', printGeneratorId: 'logi.hexagrille-fiche',
+        consignePapier: 'Place les chiffres de 1 à 9, un par case.',
+        sansRevision: true,
+        skills: ['num.logique.hexagrille'],
+        params: { niveau: 'facile' },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté', default: 'facile',
+                aide: 'La difficulté tient au nombre d\'appuis — cases déjà écrites et flèches '
+                    + 'données —, pas aux calculs. Chaque grille reste résoluble sans jamais '
+                    + 'deviner.',
+                options: [
+                    { value: 'facile', label: 'Trois cases données' },
+                    { value: 'moyen', label: 'Une seule case donnée' },
+                    { value: 'difficile', label: 'Aucune case donnée' }
+                ]
+            }
+        ],
+        motsClefs: ['hexagrille', 'sommes', 'logique', 'addition'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Les neuf cases portent les chiffres de 1 à 9, chacun une seule fois. Chaque flèche donne la somme de la file qu'elle désigne. On ne devine jamais : on cherche une file où il ne manque QU'UNE case, on additionne ce qu'on y a déjà, et on soustrait de la somme visée. Les files courtes sont les plus bavardes — une somme de 3 sur deux cases, c'est 1 et 2, et rien d'autre."
+    },
+    {
+        // LES BONS CHEMINS. Rémy est parti d'une fiche : une grille de nombres,
+        // un D dans un coin, un A dans l'autre, et « trouve le bon chemin en
+        // multipliant les chiffres le long du chemin ».
+        //
+        // CE QUE ÇA TRAVAILLE VRAIMENT, c'est la DÉCOMPOSITION EN FACTEURS.
+        // Chercher 240 au hasard est désespérant ; voir que 240 = 2⁴ × 3 × 5,
+        // donc que le 3 est forcément sur le chemin et que le 7 ne peut pas y
+        // être, transforme la fouille en raisonnement. Le jeu pousse dans ce
+        // sens : il écrit la décomposition de la cible, il dit à chaque pas ce
+        // qu'il RESTE à faire, et il arrête net dès que le produit courant ne
+        // divise plus la cible — parce qu'à partir de là, plus aucun chemin ne
+        // peut aboutir.
+        //
+        // La règle des DIAGONALES ne figurait pas sur la fiche : on l'a
+        // retrouvée en vérifiant ses six cibles. Sans les diagonales, la
+        // première (« Trouve 8 ») est impossible. Un test le démontre.
+        id: 'calc-bons-chemins', title: 'Les Bons Chemins',
+        cree: '2026-08-31',
+        activityId: 'bons-chemins',
+        // SUR LE PAPIER AUSSI, et c'est même sa forme d'origine : une grille
+        // par bloc, la cible dessous, le chemin se trace au crayon.
+        printable: 'bons-chemins', printGeneratorId: 'logique.bons-chemins',
+        consignePapier: 'Trouve le chemin de D à A dont le produit vaut le nombre écrit dessous.',
+        sansRevision: true,
+        skills: ['num.arith.decomposition'],
+        params: { palier: 'moyen' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'La difficulté', default: 'moyen',
+                aide: 'Ce qui rend la recherche difficile, c\'est la longueur du chemin : deux '
+                    + 'nombres se voient d\'un coup d\'œil, cinq obligent à casser la cible en '
+                    + 'facteurs.',
+                options: [
+                    { value: 'facile', label: '3 × 3 — deux ou trois nombres' },
+                    { value: 'moyen', label: '3 × 3 — la fiche d\'origine' },
+                    { value: 'difficile', label: '3 × 3 — le grand tour' },
+                    { value: 'grand', label: '4 × 4 — la grande grille' }
+                ]
+            }
+        ],
+        motsClefs: ['chemin', 'produit', 'multiplication', 'facteurs', 'décomposition', 'diviseurs'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Pars du D, rejoins le A, et multiplie les nombres que tu traverses : le produit doit tomber exactement sur le nombre demandé. Tu peux aller sur n'importe quelle case voisine, EN DIAGONALE AUSSI, mais jamais deux fois sur la même case. Ne cherche pas au hasard : casse d'abord la cible en facteurs. 240 = 2 × 2 × 2 × 2 × 3 × 5 te dit qu'il y a forcément un 3 sur le chemin, et qu'un 7 n'y sera jamais. Et souviens-toi qu'une multiplication ne fait que grandir : si ton produit ne divise plus la cible, c'est fichu, reviens en arrière."
+    },
+    {
+        // 2048. Un jeu de puissances de deux qui n'a pas besoin d'être
+        // déguisé : chaque fusion est un doublement énoncé, et chaque coup
+        // s'anticipe. Le robot montre la seule chose qui compte : on ne glisse
+        // pas au hasard, on cherche AVANT quelles tuiles vont se retrouver.
+        id: 'calc-2048', title: '2048',
+        cree: '2026-08-12',
+        activityId: 'deuxmille',
+        sansRevision: true,
+        skills: ['num.calc.doublements'],
+        params: { objectif: 2048 },
+        paramSchema: [
+            {
+                id: 'objectif', type: 'select', label: 'Objectif',
+                options: [
+                    { value: 256, label: 'La tuile 256 — partie courte' },
+                    { value: 512, label: 'La tuile 512' },
+                    { value: 1024, label: 'La tuile 1024' },
+                    { value: 2048, label: 'La tuile 2048 — le vrai défi' }
+                ],
+                default: 2048
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Glisse la grille dans une des quatre directions : tout se tasse, et deux tuiles égales fusionnent en leur double. Chaque tuile ne fusionne qu'une fois par coup. Ne joue pas au hasard : avant de glisser, cherche quelles tuiles vont se retrouver — c'est du calcul mental déguisé en réflexe."
+    },
+    {
+        // LES DOMINOS. Le jeu ne fabrique aucune question : il emprunte une
+        // notion du catalogue et en fait une chaîne. Un seul exercice, dix-sept
+        // jeux de dominos — et le jour où l'on ajoute un générateur qui écrit
+        // ses questions, il suffit de l'inscrire dans la liste des sources.
+        id: 'logi-dominos', title: 'Les Dominos',
+        cree: '2026-08-12',
+        activityId: 'dominos',
+        // Le générateur sert au PAPIER : la planche de pièces à découper, qui
+        // est l'usage historique de ce jeu en classe.
+        generatorId: 'jeu.dominos', printable: 'dominos',
+        sansRevision: true,
+        skills: ['num.logique.dominos'],
+        params: { source: 'calc.mult.fact', pieces: 9 },
+        paramSchema: [
+            {
+                id: 'source', type: 'select', label: 'Notion',
+                options: SOURCES_DOMINOS.map(s => ({ value: s.id, label: s.label })),
+                default: 'calc.mult.fact'
+            },
+            {
+                id: 'pieces', type: 'select', label: 'Longueur de la chaîne',
+                options: [
+                    { value: 7, label: '7 dominos — 6 calculs' },
+                    { value: 9, label: '9 dominos — 8 calculs' },
+                    { value: 11, label: '11 dominos — 10 calculs' },
+                    { value: 13, label: '13 dominos — 12 calculs' }
+                ],
+                default: 9
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Une pièce porte une question à droite et la réponse d'une AUTRE question à gauche. On lit le bout ouvert de la chaîne, on calcule dans sa tête, et on cherche ce résultat à gauche d'une pièce de la réserve — il n'y en a qu'une, car deux questions n'ont jamais la même réponse. Quand la dernière pièce porte ARRIVÉE et que la réserve est vide, tout est juste : personne n'a besoin de te le dire."
+    },
+    // --- Colorier par les nombres ---
+    // Rémy : « on pourrait faire un paint by numbers où on donne le nombre de
+    // cases à colorier. Il faut commencer par hyper simple. »
+    //
+    // CE N'EST PAS UN COLORIAGE, c'est une déduction — et le calcul du
+    // RECOUVREMENT en est le cœur : un bloc de 4 dans une ligne de 5 couvre les
+    // mêmes 3 cases où qu'on le pose, et 4 + 4 − 5 = 3 le dit. L'élève ne
+    // devine jamais ; il calcule ce qu'il sait déjà.
+    //
+    // TOUTE GRILLE PROPOSÉE SE TERMINE PAR DÉDUCTION SEULE, vérifié à la
+    // génération. Un nonogramme tiré au hasard réclame très souvent un
+    // essai-erreur à quinze coups de profondeur : un élève qui bloque là-dessus
+    // ne bloque pas sur une notion, il bloque sur une grille mal faite.
+    {
+        id: 'logi-colorier-nombres',        title: 'Colorier par les Nombres',
+        colonnesPapier: 4,
+        cree: '2026-09-02',
+        activityId: 'colorier-nombres', skills: ['num.logique.colorier'],
+        // SUR LE PAPIER, ET C'EST L'EXERCICE QUI LE DEMANDE LE PLUS. Rémy :
+        // « pour colorier par les nombres, on ne pourrait pas faire un pdf ». À
+        // l'écran on tapote une case ; sur la feuille on colorie au crayon et
+        // l'on BARRE ce qu'on sait blanc — le geste que la méthode réclame, et
+        // celui qu'on oublie devant un écran.
+        printGeneratorId: 'logique.colorier-nombres',
+        printable: 'colorier',
+        consignePapier: 'Colorie les blocs donnés par les nombres. Barre les cases que tu sais blanches.',
+        sansRevision: true,
+        params: { palier: 'decouverte' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'Grille', default: 'decouverte',
+                aide: 'Cinq sur cinq avec un seul bloc par ligne et par colonne : il n\'y a qu\'à '
+                    + 'compter. Le palier suivant coupe les blocs en deux, et il faut croiser '
+                    + 'lignes et colonnes.',
+                options: [
+                    { value: 'decouverte', label: 'Cinq sur cinq, un seul bloc par ligne' },
+                    { value: 'simple', label: 'Cinq sur cinq, plusieurs blocs' },
+                    { value: 'image', label: 'Dix sur dix : ça dessine quelque chose' }
+                ]
+            }
+        ],
+        motsClefs: ['colorier', 'paint by numbers', 'nonogramme', 'picross', 'logimage',
+            'grille', 'blocs', 'déduction', 'coloriage', 'logique'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Les nombres écrits devant chaque ligne et au-dessus de chaque colonne donnent la longueur des BLOCS coloriés, dans l'ordre, séparés d'au moins une case blanche. « 2 1 » veut dire : un bloc de deux, puis au moins une blanche, puis un bloc d'un. ON NE DEVINE JAMAIS, on cherche ce qui est CERTAIN. Commence par les grands nombres : un bloc large ne peut pas beaucoup bouger. Dans une ligne de 5, un bloc de 4 ne se pose que de deux façons, et les deux couvrent les mêmes 3 cases du milieu — c'est le RECOUVREMENT, et il se calcule : bloc + bloc − largeur. Un 4 sur 5 donne 3 cases sûres, un 3 en donne 1, un 2 n'en donne aucune. Regarde aussi les cas évidents : si la somme des blocs vaut la largeur, la ligne est pleine ; si l'indice est 0, elle est entièrement blanche — et c'est souvent le renseignement le plus utile de la grille. BARRE LES CASES QUE TU SAIS BLANCHES : une croix vaut autant qu'une case coloriée, parce qu'elle interdit des placements et fait avancer la déduction. Enfin, quand une ligne ne dit plus rien, croise : ce que tu viens de poser renseigne les colonnes qu'elle traverse."
+    },
+    {
+        id: 'logi-demineur', title: 'Le Démineur',
+        cree: '2026-08-07',
+        activityId: 'demineur', skills: ['num.logique.demineur'],
+        sansRevision: true,
+        params: { niveau: 'debutant', vies: 3 },
+        paramSchema: [
+            {
+                id: 'vies', type: 'select', label: 'Vies',
+                options: [
+                    { value: 1, label: '1 — à l\'ancienne, une mine et c\'est fini' },
+                    { value: 3, label: '3 vies' },
+                    { value: 5, label: '5 vies' }
+                ],
+                default: 3
+            },
+            {
+                id: 'niveau', type: 'select', label: 'Grille',
+                options: [
+                    { value: 'debutant', label: 'Débutant · 9 × 9 · 10 mines' },
+                    { value: 'confirme', label: 'Confirmé · 12 × 12 · 22 mines' },
+                    { value: 'expert', label: 'Expert · 16 × 16 · 46 mines' }
+                ],
+                default: 'debutant'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Les règles du démineur d'origine. Chaque chiffre compte les mines des 8 cases voisines : appui long (ou clic droit) pour poser un drapeau, 💡 pour faire expliquer la prochaine déduction certaine."
+    },
+    {
+        id: 'calc-math-crush', title: 'Math Crush',
+        cree: '2026-07-26',
+        // Le réglage par défaut est l'addition ; la table est là dès qu'on
+        // bascule le mode, et les deux compétences se valent pour la leçon.
+        activityId: 'crush', skills: ['num.add.entiers', 'num.mult.table.*'],
         params: { mode: 'addition', difficulty: 'progressive' },
         paramSchema: [
-            { id: 'mode', type: 'select', label: 'Opération', options: ['addition', 'multiplication'], default: 'addition' },
-            { id: 'difficulty', type: 'select', label: 'Difficulté', options: ['progressive', 'difficile'], default: 'progressive' }
+            {
+                id: 'mode', type: 'select', label: 'Opération', echelle: true,
+                aide: 'L\'opération choisie est écrite partout : dans le jeton à côté de la cible, '
+                    + 'dans le calcul en cours, et entre deux gemmes de la chaîne.',
+                options: ['addition', 'multiplication'], default: 'addition'
+            },
+            { id: 'difficulty', type: 'select', label: 'Difficulté', echelle: true, options: ['progressive', 'difficile'], default: 'progressive' }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
-        instruction: "Glisse ton doigt sur les blocs adjacents pour atteindre la cible."
+        instruction: "Glisse ton doigt d'une gemme à l'autre, en passant par des cases VOISINES, pour atteindre la cible. Le jeton coloré à côté de la cible dit l'opération : + pour additionner, × pour multiplier — et le signe se pose entre chaque paire de gemmes pendant que tu traces. Le calcul s'écrit en entier sous la cible : il devient rouge dès que tu dépasses. Une erreur coûte deux secondes, une réussite en rend autant que ta chaîne compte de gemmes."
+    },
+    {
+        // LE BOUTON SCHÉMA EST L'EXERCICE. Un problème ne se rate presque
+        // jamais faute de savoir calculer : il se rate faute de savoir QUELLE
+        // opération faire. Alors l'élève attrape un mot — « en tout », « de
+        // plus » — et le mot décide à sa place. Le schéma est la seule chose
+        // qui puisse reprendre cette décision : il est donc gratuit, sans
+        // pénalité et sans condition. Le cacher derrière un coût apprendrait à
+        // s'en passer, exactement l'inverse du but.
+        // « Histoires en pagaille » et non « atelier des problèmes » : les
+        // élèves ont bien assez de problèmes comme ça, et le mot suffit à
+        // fermer la porte avant d'avoir lu la première ligne. Ce sont des
+        // histoires — courtes, mélangées, et c'est justement le mélange qui
+        // empêche de reconnaître l'opération sans lire.
+        id: 'num-problemes', title: 'Histoires en Pagaille',
+        // DEUX LIGNES SOUS CHAQUE HISTOIRE. Rémy : « laisse une ligne en
+        // pointillés sous chaque question pour écrire les calculs ». Il n'y en
+        // avait aucune : la réponse se posait au bout de l'énoncé, sur les
+        // pointillés d'une question ordinaire — or un problème ne se répond pas
+        // au bout d'une ligne, il se POSE. Deux, parce que la consigne en
+        // demande deux : « écris ton calcul, puis la réponse avec son unité ».
+        lignesReponsePapier: 2,
+        cree: '2026-08-11',
+        activityId: 'problemes',
+        // C'est l'exercice qui appelle le plus la feuille : un problème se
+        // relit, se souligne, se schématise dans la marge. Sur le papier on
+        // ÉCRIT la réponse — reconnaître la bonne dans une liste de quatre
+        // n'est pas la trouver.
+        printGeneratorId: 'num.problemes-fiche',
+        consignePapier: "Lis chaque énoncé, écris ton calcul, puis la réponse avec son unité.",
+        colonnesPapier: 1,
+        params: { niveau: 'tout', familles: [] },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Familles proposées',
+                aide: "Filtre les types de situations selon le niveau. « Toutes » brasse les onze familles : c'est ce qui empêche l'élève de reconnaître l'opération à la place de l'énoncé.",
+                options: [
+                    { value: 'tout', label: 'Toutes les familles' },
+                    { value: 'CM2', label: 'CM2 — réunir, changer, comparer, grouper' },
+                    { value: '6ème', label: '6ème' },
+                    { value: '5ème', label: '5ème — proportionnalité, durées, deux étapes' }
+                ],
+                default: 'tout'
+            },
+            {
+                id: 'familles', type: 'multiselect', deroulant: true, tout: 'familles',
+                label: 'Familles précises (facultatif)',
+                aide: 'Coche les familles à travailler ; aucune cochée = toutes. L\'opération '
+                    + 'demandée est rappelée entre parenthèses, pour isoler par exemple les '
+                    + 'problèmes de durée.',
+                options: [
+                    { value: 'composition', label: 'Réunir deux quantités (+)' },
+                    { value: 'complement', label: 'Trouver la part qui manque (−)' },
+                    { value: 'transformation', label: 'Un changement (gagner, perdre, dépenser) (+ ou −)' },
+                    { value: 'comparaison', label: 'Comparer deux quantités (−)' },
+                    { value: 'groupes', label: 'Des groupes tous pareils (×)' },
+                    { value: 'partage', label: 'Partager équitablement (÷)' },
+                    { value: 'quotition', label: 'Combien de paquets, et le reste (÷ et reste)' },
+                    { value: 'proportion', label: 'Le prix de plusieurs articles (×)' },
+                    { value: 'fraction', label: 'Une fraction d\'une quantité (÷ puis ×)' },
+                    { value: 'duree', label: 'Des horaires et des durées (+ ou −)' },
+                    { value: 'deuxEtapes', label: 'Deux étapes : la monnaie rendue (× puis −)' }
+                ],
+                default: []
+            }
+        ],
+        skills: ['num.probleme.composition', 'num.probleme.transformation',
+            'num.probleme.comparaison', 'num.probleme.multiplication',
+            'num.probleme.division', 'num.probleme.proportion',
+            'num.probleme.fraction', 'num.probleme.duree', 'num.probleme.etapes'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PROBLEMES], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction: "Lis l'histoire, puis la question — ce sont deux lectures différentes, et c'est la question qu'on oublie. Les nombres de l'énoncé sont en gras : ce sont les données. Si tu hésites sur l'opération, appuie sur « Voir le schéma » : il est fait pour ça, il ne coûte rien, et c'est lui qui doit décider — pas le mot « en tout » ni le mot « de plus ». Chaque mauvaise réponse te dit quelle erreur elle correspond."
+    },
+    {
+        // « DANS UN TABLEAU DE PROPORTIONNALITÉ, ON MULTIPLIE TOUJOURS PAR LE
+        // MÊME NOMBRE. » Tant que cette phrase n'est pas installée, l'élève
+        // complète en AJOUTANT l'écart de la colonne voisine — et ça donne
+        // juste assez souvent pour ne pas l'alerter. Le bouton « Montrer le
+        // lien » existe pour que chercher le coefficient devienne le premier
+        // geste, pas le dernier recours.
+        id: 'num-proportion-tableau', title: 'Tableau de Proportionnalité',
+        cree: '2026-08-11',
+        activityId: 'proportion',
+        // Le seul de ces exercices qui se photocopie tel quel : deux lignes,
+        // des cases vides, et le lien à retrouver.
+        printable: 'proportion', printGeneratorId: 'num.proportion-fiche',
+        params: { niveau: 'facile' },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté',
+                aide: 'En facile, le coefficient est entier et on ne complète que la ligne du bas. '
+                    + 'Plus haut, le tableau se complète aussi vers le haut, et le coefficient peut '
+                    + 'être décimal ou plus petit que 1.',
+                options: [
+                    { value: 'facile', label: 'Coefficient entier, 2 cases en bas' },
+                    { value: 'moyen', label: 'Coefficient décimal, 3 cases dans les deux sens' },
+                    { value: 'difficile', label: '5 colonnes, 4 cases, coefficients difficiles' }
+                ],
+                default: 'facile'
+            }
+        ],
+        skills: ['num.proportion.tableau'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PROBLEMES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Touche une case bleue, tape le nombre au pavé, puis ✓. La colonne surlignée en jaune est complète : c'est elle qui donne le lien entre les deux lignes. Le piège à éviter : compléter en ajoutant l'écart d'une colonne à l'autre. Dans un tableau de proportionnalité, on passe d'une ligne à l'autre en MULTIPLIANT, toujours par le même nombre. Appuie sur « Montrer le lien » pour faire apparaître ce coefficient — et la valeur pour 1, qui est l'autre chemin."
+    },
+    {
+        // LES POURCENTAGES, DANS L'ORDRE QUE RÉMY A DICTÉ.
+        //
+        // « Calculer une réduction, calculer une augmentation, se rendre compte
+        // que 120 % c'est multiplié par 1,20, que prendre 80 % [c'est] 0,20 [de
+        // moins] ; puis des exercices avec des calculs de réduction et le calcul
+        // final, des exercices avec des augmentations, puis des exercices avec
+        // les taxes […] il faut les explications très simples. »
+        //
+        // Sept étapes, et le pivot est au milieu. Les quatre dernières — la
+        // réduction, le prix soldé, le prix augmenté, la TVA — sont la MÊME
+        // multiplication habillée de quatre phrases : c'est ce que l'élève doit
+        // finir par voir, et c'est pour cela qu'elles se cochent séparément.
+        // Une classe qui découvre ne fait que les trois premières ; une classe
+        // qui révise coche tout et retrouve la TVA en dernier.
+        id: 'num-pourcentages', title: 'Pourcentages',
+        cree: '2026-09-06',
+        generatorId: 'num.pourcentages', activityId: 'numpad',
+        // LA FEUILLE DEMANDE LE CALCUL ET LA PHRASE, PAS LE NOMBRE.
+        //
+        // Rémy : « Énoncé : Réponds aux questions. Tu écriras le calcul et une
+        // phrase réponse. » C'est la différence entre l'écran et le papier :
+        // le pavé numérique ne peut recevoir qu'un nombre, la copie reçoit un
+        // raisonnement — et c'est le raisonnement qu'on note.
+        //
+        // Deux lignes pleine largeur, donc : une pour le calcul, une pour la
+        // phrase. Le trait s'arrêtait au ras de la question, ce qui laissait
+        // trois centimètres pour écrire « 140 × 0,60 = 84, le manteau coûte
+        // 84 € ».
+        consignePapier: 'Réponds aux questions. Tu écriras le calcul et une phrase réponse.',
+        lignesReponsePapier: 2,
+        skills: ['num.pourcentage.part', 'num.pourcentage.coefficient', 'num.pourcentage.variation'],
+        motsClefs: ['pourcentage', 'réduction', 'solde', 'augmentation', 'TVA', 'taxe',
+            'coefficient', 'prix', 'proportionnalité'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PROBLEMES],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Sept étapes, dans l'ordre du chapitre : prendre un pourcentage, "
+            + "reconnaître le coefficient d'une hausse puis d'une baisse, calculer une "
+            + "réduction, le prix soldé, le prix augmenté, et enfin la TVA. Tout tient sur "
+            + "une seule idée : le prix de départ vaut 100 %, donc +20 % se multiplie par "
+            + "1,20 et −20 % par 0,80. Les nombres tombent toujours juste — on n'apprend "
+            + "pas le sens d'un coefficient en même temps que la division décimale. "
+            + "Chaque étape a sa propre façon de répondre : les deux étapes du coefficient "
+            + "se posent bien parmi quatre propositions, les calculs de prix se tapent."
+    },
+    {
+        // LE POINT À POINT. Les pastilles ne portent pas de numéro : elles
+        // portent un CALCUL, et son résultat donne le rang. Chercher « celui
+        // qui vaut 13 » retourne le geste habituel — on part du résultat et
+        // l'on balaie les opérations — et l'élève calcule vingt fois de tête
+        // sans qu'on le lui demande, parce qu'il veut voir l'image.
+        id: 'calc-point-a-point', title: 'Le Point à Point',
+        cree: '2026-08-14',
+        activityId: 'point-a-point',
+        // SUR LE PAPIER, c'est l'exercice d'origine : on cherche au crayon,
+        // on rature, on recommence — ce que l'écran ne remplace pas.
+        printable: 'pointapoint', printGeneratorId: 'calc.point-a-point-fiche',
+        printParams: { dessin: '', famille: 'melange' },
+        consignePapier: 'Relie les points dans l’ordre des résultats.',
+        sansRevision: true,
+        skills: ['num.calc.recherche'],
+        params: { dessin: '', famille: 'melange', verification: 'immediate' },
+        paramSchema: [
+            {
+                id: 'famille', type: 'select', label: 'Calculs sur les points',
+                options: [
+                    { value: 'melange', label: 'Mélange — les quatre opérations' },
+                    { value: 'addition', label: 'Additions' },
+                    { value: 'soustraction', label: 'Soustractions' },
+                    { value: 'tables', label: 'Tables de multiplication' },
+                    { value: 'doubles', label: 'Doubles et moitiés' }
+                ],
+                default: 'melange'
+            },
+            {
+                id: 'dessin', type: 'select', label: 'Image à faire apparaître',
+                options: [
+                    { value: '', label: 'Au hasard — surprise' },
+                    { value: 'maison', label: 'La maison (11 points)' },
+                    { value: 'poisson', label: 'Le poisson (9 points)' },
+                    { value: 'etoile', label: 'L\'étoile (10 points)' },
+                    { value: 'voilier', label: 'Le voilier (12 points)' },
+                    { value: 'fusee', label: 'La fusée (11 points)' },
+                    { value: 'chat', label: 'Le chat (12 points)' },
+                    { value: 'cle', label: 'La clé (16 points)' }
+                ],
+                default: ''
+            },
+            {
+                id: 'verification', type: 'select', label: 'Correction',
+                aide: 'Au fur et à mesure, un mauvais point est refusé tout de suite, sans dire '
+                    + 'lequel il fallait. À la fin, tout passe et les fautes se découvrent au bout '
+                    + ': c\'est un contrôle.',
+                options: [
+                    { value: 'immediate', label: 'Au fur et à mesure' },
+                    { value: 'fin', label: 'À la fin — plus difficile' }
+                ],
+                default: 'immediate'
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME] },
+        instruction: "Les points ne sont pas numérotés : chacun porte un calcul, et son résultat donne son rang. Cherche le calcul qui vaut 1, clique dessus ; puis celui qui vaut 2, et ainsi de suite. Le truc, c'est de ne pas calculer les vingt étiquettes une par une : demande-toi d'abord ce que le nombre cherché peut être — 12, c'est 3 × 4, le double de 6, 10 + 2 — puis balaie le dessin. À la fin, les calculs s'effacent et l'image reste."
+    },
+    {
+        // LES PETITES AILES. Rémy : « J'adorerai le jeu Tiny Wings sur
+        // iPhone. »
+        //
+        // UNE SEULE TOUCHE, ET LES MATHS DANS LE DÉCOR. Poser une question au
+        // clavier arrêterait le vol : c'est un jeu à une touche, il doit le
+        // rester. Alors une consigne est annoncée — « avale les multiples de
+        // 7 » — et les nombres flottent au-dessus des collines. Décider en une
+        // fraction de seconde si 63 convient EST le jeu, et c'est exactement
+        // l'automatisme qu'on veut installer.
+        //
+        // LE RELIEF EST UNE SOMME DE SINUS, donc on connaît sa pente ET sa
+        // courbure exactement. C'est la courbure qui décide du décollage :
+        // suivre le sol demande une accélération vers le bas de v² fois la
+        // courbure, et si la gravité ne fournit pas autant, l'oiseau part tout
+        // droit. Aucun saut à programmer.
+        id: 'jeu-petites-ailes', title: 'Les Petites Ailes',
+        cree: '2026-08-25',
+        // PAS DE COMPÉTENCE, ET C'EST VOULU. Rémy : « n'en fais pas un jeu
+        // mathématiques […] c'est plus un jeu de réflexe ». Lui accrocher une
+        // compétence pour la forme mentirait deux fois : à l'élève, qui
+        // croirait travailler quelque chose, et au professeur, dont le bilan se
+        // remplirait de lignes qui ne mesurent rien. C'est une récréation, elle
+        // se range en « Adresse et réflexes ».
+        activityId: 'petites-ailes', skills: [], horsProgression: true,
+        sansRevision: true,
+        params: {},
+        motsClefs: ['petites ailes', 'tiny wings', 'oiseau', 'collines', 'vol', 'arcade',
+            'réflexe', 'adresse', 'mondes', 'vitesse', 'récréation'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DEFIS, TAGS.SOUS_DOMAINE.ADRESSE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "UNE SEULE TOUCHE, et il n'y a rien à calculer : c'est un jeu d'adresse. Appuie — clic, doigt ou barre d'ESPACE — pour PLONGER, relâche pour planer. Appuie dans la DESCENTE : tu prends de la vitesse, et la jauge du bas te le montre. Relâche avant le sommet : la bosse te met en l'air, et tu sautes toute la côte suivante. C'est là que la vitesse se fabrique, nulle part ailleurs — rester collé au sol te fait payer chaque montée. Et il faut aller vite, parce que LA NUIT COURT DERRIÈRE TOI : si elle te rattrape, la partie s'arrête. Les étoiles la repoussent un peu ; franchir une frontière de monde la repousse beaucoup. Il y a six mondes, chacun plus haut, plus serré et plus pressé que le précédent — le but est d'aller voir le suivant."
     }
 ];

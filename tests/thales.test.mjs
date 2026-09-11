@@ -1,0 +1,509 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import './helpers.mjs';
+import { makeRng } from '../js/core/ids.js';
+import '../js/core/activities/index.js';
+import {
+    CONFIGURATIONS, creerThales, longueurTexte, egaliteThales, FAUSSES_EGALITES,
+    sontParalleles, rapportsCompares, calculThales, pointsThales, pointsReels
+} from '../js/core/thales.js';
+import {
+    thalesGenerator, ORDRE_THALES, ETAPES_THALES, marcheThales, figureThalesSvg,
+    egaliteEnColonnes, figureThalesElements
+} from '../js/core/generators/thales.js';
+import { getExerciseById, paramSchemaOf } from '../js/data/catalog.js';
+
+const TAILLES = ['AB', 'AC', 'BC', 'AE', 'AD', 'DE'];
+
+// --- La figure -----------------------------------------------------------------
+
+test('toute figure fabriquée est un vrai triangle, aux longueurs lisibles', () => {
+    for (const config of ['emboites', 'papillon']) {
+        for (let i = 0; i < 300; i++) {
+            const f = creerThales({ config, rng: makeRng(`${config}-${i}`) });
+            if (!f) continue;
+            // L'INÉGALITÉ TRIANGULAIRE : une figure impossible se voit dès
+            // qu'on la dessine, et on ne la dessinerait pas juste.
+            assert.ok(f.BC < f.AB + f.AC && f.BC > Math.abs(f.AB - f.AC),
+                `${config} : triangle impossible ${f.AB}/${f.AC}/${f.BC}`);
+            // AU PLUS UNE DÉCIMALE. Un énoncé de géométrie qui demande
+            // d'arrondir n'enseigne plus Thalès, il enseigne la calculatrice.
+            TAILLES.forEach(n => assert.ok(
+                Math.abs(f[n] * 10 - Math.round(f[n] * 10)) < 1e-9,
+                `${config} : ${n} = ${f[n]} n'est pas lisible`));
+            // Les trois rapports sont bien égaux — c'est le théorème.
+            assert.ok(Math.abs(f.AE / f.AB - f.AD / f.AC) < 1e-12);
+            assert.ok(Math.abs(f.AE / f.AB - f.DE / f.BC) < 1e-12);
+            // Et le petit triangle est vraiment plus petit.
+            assert.ok(f.AE < f.AB && f.AD < f.AC && f.DE < f.BC);
+        }
+    }
+});
+
+test('le papillon est les emboîtés avec le signe changé', () => {
+    const e = pointsThales(1, 0.5);
+    const p = pointsThales(-1, 0.5);
+    // Même A, mêmes B et C ; E et D sont symétriques par rapport à A.
+    assert.deepEqual(e.A, p.A);
+    assert.equal(Math.round(e.E.x + p.E.x), Math.round(2 * e.A.x));
+    assert.equal(Math.round(e.E.y + p.E.y), Math.round(2 * e.A.y));
+    // Emboîtés : E est du même côté que B. Papillon : de l'autre.
+    assert.ok((e.E.y - e.A.y) * (e.B.y - e.A.y) > 0);
+    assert.ok((p.E.y - p.A.y) * (p.B.y - p.A.y) < 0);
+});
+
+test('LA FIGURE EST ÉTALÉE, MAIS ELLE NE MENT PAS SUR L\'ORDRE', () => {
+    // À un quart, le petit triangle d'un papillon devient un timbre et les
+    // lettres se superposent. On étale donc les rapports — par une
+    // transformation AFFINE, la même pour les deux côtés, ce qui conserve
+    // l'égalité et l'ordre. C'est ce qui permet à la figure d'une réciproque
+    // de rester honnête.
+    const part = (P, n, S) => Math.hypot(P[n].x - P.A.x, P[n].y - P.A.y)
+        / Math.hypot(P[S].x - P.A.x, P[S].y - P.A.y);
+    const egaux = pointsThales(1, 0.25, 0.25);
+    assert.ok(Math.abs(part(egaux, 'E', 'B') - part(egaux, 'D', 'C')) < 1e-9,
+        'deux rapports égaux doivent rester égaux sur le dessin');
+    const differents = pointsThales(1, 0.25, 0.4);
+    assert.ok(part(differents, 'E', 'B') < part(differents, 'D', 'C'),
+        'l\'ordre des deux rapports doit être conservé');
+    // Et le petit triangle reste visible, même à un rapport minuscule.
+    assert.ok(part(pointsThales(1, 0.05), 'E', 'B') > 0.3);
+});
+
+test('LA FIGURE D\'UNE RÉCIPROQUE SUIT LES LONGUEURS DONNÉES', () => {
+    // Sinon elle dessine (DE) parallèle à (BC) alors que la réponse est « non »,
+    // et la figure affirme le contraire du corrigé.
+    const f = creerThales({ config: 'emboites', rng: makeRng('recip') });
+    const faussee = { ...f, AD: f.AD + 1 };
+    const P = pointsReels(faussee);
+    const part = (n, S) => Math.hypot(P[n].x - P.A.x, P[n].y - P.A.y)
+        / Math.hypot(P[S].x - P.A.x, P[S].y - P.A.y);
+    assert.ok(Math.abs(part('E', 'B') - part('D', 'C')) > 1e-6,
+        'la figure devrait montrer deux rapports différents');
+    assert.equal(sontParalleles(faussee), false);
+});
+
+// --- Le théorème et sa réciproque ------------------------------------------------
+
+test('la réciproque compare des FRACTIONS, pas des arrondis', () => {
+    // 1/3 n'est pas 0,33 : une comparaison décimale déclarerait parallèle ce
+    // qui ne l'est pas.
+    assert.ok(sontParalleles({ AE: 1, AB: 3, AD: 2, AC: 6 }));
+    assert.equal(sontParalleles({ AE: 1, AB: 3, AD: 0.33, AC: 1 }), false);
+    assert.ok(sontParalleles({ AE: 4, AB: 6, AD: 6, AC: 9 }));
+    assert.equal(sontParalleles({ AE: 4, AB: 6, AD: 6, AC: 10 }), false);
+
+    const r = rapportsCompares({ AE: 4, AB: 6, AD: 6, AC: 10 });
+    assert.equal(r.premier, '2/3');
+    assert.equal(r.second, '3/5');
+});
+
+test('le calcul donne la longueur exacte, et les trois lignes du cahier', () => {
+    for (let i = 0; i < 200; i++) {
+        const f = creerThales({ config: 'emboites', rng: makeRng(`c${i}`) });
+        if (!f) continue;
+        for (const cherche of ['AD', 'AE', 'DE', 'BC']) {
+            const c = calculThales(f, cherche);
+            assert.ok(Math.abs(c.valeur - f[cherche]) < 1e-9,
+                `${cherche} : ${c.valeur} au lieu de ${f[cherche]}`);
+            assert.equal(c.lignes.length, 3);
+            assert.ok(c.lignes[0].includes('parallèles'));
+            assert.ok(c.lignes[2].includes('cm'));
+        }
+    }
+});
+
+test('les fausses égalités nomment chacune une confusion précise', () => {
+    // Un distracteur muet n'apprend rien au carnet d'erreurs.
+    assert.ok(FAUSSES_EGALITES.length >= 3);
+    const vues = new Set();
+    FAUSSES_EGALITES.forEach(e => {
+        assert.notEqual(e.texte, egaliteThales(), 'une fausse égalité est la vraie');
+        assert.ok(e.pourquoi.length > 40, `« ${e.texte} » : explication trop courte`);
+        assert.ok(!vues.has(e.texte), 'deux fausses égalités identiques');
+        vues.add(e.texte);
+    });
+    // La plus fréquente doit y être : le RESTE au lieu du TOUT.
+    assert.ok(FAUSSES_EGALITES.some(e => e.texte.includes('EB')));
+});
+
+test('les longueurs s\'écrivent à la française', () => {
+    assert.equal(longueurTexte(7), '7');
+    assert.equal(longueurTexte(7.5), '7,5');
+    assert.equal(longueurTexte(7.0), '7');
+});
+
+// --- Les trois marches -----------------------------------------------------------
+
+test('on ne commence pas par calculer, et l\'on finit par la réciproque', () => {
+    // Rémy : « On se fiche si c'est en papillon ou en triangle imbriqué. Ne
+    // mets pas cette partie. » La marche « reconnaître la configuration » a
+    // donc disparu — nommer la figure ne fait pas partie du chapitre.
+    assert.deepEqual(ORDRE_THALES, ['egalite', 'calculer', 'reciproque']);
+    ORDRE_THALES.forEach((id, i) => assert.equal(ETAPES_THALES[id].rang, i + 1));
+    assert.equal(ETAPES_THALES.configuration, undefined);
+    // Neuf questions pour trois marches : trois chacune.
+    assert.equal(marcheThales({}, 0, 9), 'egalite');
+    assert.equal(marcheThales({}, 3, 9), 'calculer');
+    assert.equal(marcheThales({}, 6, 9), 'reciproque');
+    // PLUS DE CYCLE : les marches cochées se partagent le total, donc aucune
+    // ne déborde et redescendre au bas de l'escalier n'aurait plus de sens.
+    // Une question de rab, s'il y en a une, reste en haut.
+    assert.equal(marcheThales({}, 9, 9), 'reciproque');
+    // Cocher une seule case y reste, et un parcours enregistré du temps du
+    // menu se relit encore.
+    assert.equal(marcheThales({ marches: ['calculer'] }, 0, 9), 'calculer');
+    assert.equal(marcheThales({ etape: 'calculer' }, 0, 9), 'calculer');
+    // Un réglage enregistré avant la suppression ne doit pas casser l'exercice.
+    assert.equal(marcheThales({ etape: 'configuration' }, 0, 9), 'egalite');
+});
+
+test('chaque question est complète, et sa figure tient dans son cadre', () => {
+    for (const marche of ORDRE_THALES) {
+        for (let i = 0; i < 60; i++) {
+            const it = thalesGenerator.generate({ etape: marche, config: 'melange' },
+                { rng: makeRng(`q-${marche}-${i}`), index: 0 });
+            assert.ok(it, `${marche} : aucune question`);
+            assert.equal(it.meta.etape, marche);
+            assert.ok(it.explanation.length > 40, `${marche} : corrigé trop court`);
+            assert.ok(it.hints.length >= 2, `${marche} : pas assez d'aides`);
+            // La figure est dans l'énoncé HTML, avec ses cinq points nommés.
+            assert.ok(it.prompt.html.includes('<svg'), `${marche} : pas de figure`);
+            ['A', 'B', 'C', 'E', 'D'].forEach(n =>
+                assert.ok(it.prompt.html.includes(`>${n}</text>`), `${marche} : point ${n}`));
+            if (it.answerKind === 'choice') {
+                assert.equal(it.choices.filter(c => c.correct).length, 1);
+                it.choices.filter(c => !c.correct).forEach(c =>
+                    assert.ok(c.why && c.why.length > 20, `${marche} : distracteur muet`));
+            } else {
+                assert.equal(it.answerKind, 'numeric');
+                assert.ok(Number.isFinite(it.answer));
+            }
+            // Le papier doit se suffire à lui-même — la fiche porte la figure,
+            // mais l'énoncé doit dire ce qu'on demande.
+            assert.ok(it.prompt.papier.length > 20, `${marche} : énoncé papier trop court`);
+            // Et la fiche a besoin des points et des longueurs.
+            assert.ok(it.meta.points.A && it.meta.points.D);
+            TAILLES.forEach(n => assert.ok(it.meta.longueurs[n] > 0));
+        }
+    }
+});
+
+test('« calculer » demande bien une longueur qu\'on peut trouver', () => {
+    for (let i = 0; i < 200; i++) {
+        const it = thalesGenerator.generate({ etape: 'calculer' },
+            { rng: makeRng(`k${i}`), index: 0 });
+        // Les trois longueurs de l'énoncé, plus l'inconnue.
+        assert.equal(it.meta.cotes.length, 3);
+        assert.ok(!it.meta.cotes.includes(it.explanation.split(' ')[0]));
+        // La réponse est bien celle du corrigé.
+        const m = it.explanation.match(/= ([\d,]+) cm\.$/);
+        assert.ok(m, `corrigé sans résultat : ${it.explanation}`);
+        assert.equal(Number(m[1].replace(',', '.')), it.answer);
+    }
+});
+
+test('« la réciproque » dit non à peu près une fois sur deux', () => {
+    // Si c'était toujours parallèle, l'élève répondrait « oui » sans calculer.
+    let non = 0;
+    const total = 300;
+    for (let i = 0; i < total; i++) {
+        const it = thalesGenerator.generate({ etape: 'reciproque' },
+            { rng: makeRng(`r${i}`), index: 0 });
+        if (it.choices.find(c => c.correct).value.startsWith('Non')) non++;
+    }
+    assert.ok(non > total * 0.3 && non < total * 0.7,
+        `« non » tombe ${non} fois sur ${total}`);
+});
+
+test('le réglage de configuration est respecté', () => {
+    for (const config of ['emboites', 'papillon']) {
+        const vus = new Set();
+        for (let i = 0; i < 40; i++) {
+            vus.add(thalesGenerator.generate({ etape: 'progressif', config },
+                { rng: makeRng(`cf${i}`), index: i }).meta.config);
+        }
+        assert.deepEqual([...vus], [config]);
+    }
+    const melange = new Set();
+    for (let i = 0; i < 60; i++) {
+        melange.add(thalesGenerator.generate({ etape: 'progressif', config: 'melange' },
+            { rng: makeRng(`ml${i}`), index: i }).meta.config);
+    }
+    assert.equal(melange.size, 2, 'le mélange doit tirer les deux');
+});
+
+test('la figure SVG ne porte une cote que là où elle tient', () => {
+    // UNE COTE PORTE LA MESURE, PAS LE NOM DU SEGMENT. Elle s'écrivait
+    // « AB = 12 » ; Rémy a demandé l'unité sur la feuille, et « AB = 12 cm » ne
+    // tenait plus — trois autres tests l'ont refusée d'un coup. On écrit donc
+    // « 12 cm », qui est la convention du dessin technique : le segment est
+    // nommé par ses extrémités, écrites juste à côté. On compte donc les cotes
+    // au lieu de les chercher par leur nom.
+    const combien = (svg) => (svg.match(/class="th-cote"/g) || []).length;
+    const f = creerThales({ config: 'emboites', rng: makeRng('cotes') });
+    assert.equal(combien(figureThalesSvg(f)), 0, 'aucune cote demandée, aucune écrite');
+    const cotee = figureThalesSvg(f, ['AB', 'AC']);
+    assert.equal(combien(cotee), 2, 'les deux cotes demandées doivent être écrites');
+    // Et elles portent la mesure, avec son unité.
+    assert.match(cotee, /class="th-cote"[^>]*>\d[\d,]* cm</, 'la cote doit porter son unité');
+
+    // Une cote sur un segment minuscule se poserait sur la lettre du point.
+    // Depuis l'étalement des rapports le cas ne se produit plus tout seul, on
+    // le fabrique donc à la main pour vérifier que le garde-fou tient.
+    const degeneree = { ...f, points: { ...f.points, E: { x: f.points.A.x + 3, y: f.points.A.y + 3 } } };
+    assert.equal(combien(figureThalesSvg(degeneree, ['AE'])), 0,
+        'un segment trop court ne porte pas sa cote');
+    // Et sur une figure normale, la cote de AE tient bien.
+    assert.equal(combien(figureThalesSvg(f, ['AE'])), 1,
+        'l\'étalement doit rendre toutes les cotes des figures fabriquées lisibles');
+});
+
+// --- Le rangement -----------------------------------------------------------------
+
+test('Thalès est au catalogue, imprimable, avec ses deux réglages', () => {
+    const e = getExerciseById('geo-thales');
+    assert.ok(e, 'geo-thales manque au catalogue');
+    assert.deepEqual(e.skills, ['geo.thales']);
+    assert.equal(e.printable, 'thales', 'la fiche doit porter la figure');
+    const schema = paramSchemaOf(e);
+    // LES CASES, PLUS LE MENU — Rémy : « il faudrait pouvoir choisir les
+    // niveaux par checkbox ». La liste s'ouvre tout cochée, et l'on décoche.
+    const cases = schema.find(p => p.type === 'marches');
+    assert.ok(cases, 'le réglage des marches manque');
+    assert.equal(cases.marches.length, ORDRE_THALES.length);
+    assert.deepEqual(cases.default, ORDRE_THALES);
+    assert.equal(schema.find(p => p.id === 'config').options.length, 3);
+    assert.ok(e.instruction.length > 500, 'consigne trop courte');
+    assert.ok(/emboîtés/i.test(e.instruction) && /papillon/i.test(e.instruction));
+    assert.ok(Object.keys(CONFIGURATIONS).length === 2);
+});
+
+// --- LES LETTRES NE TOUCHENT PLUS LES TRAITS ------------------------------------
+//
+// Rémy : « Les lettres se supperpose aux trait. Ne met pas de rond pour le
+// point. »
+//
+// C'est une propriété GÉOMÉTRIQUE, donc elle se mesure — et c'est la seule
+// façon honnête de dire que le défaut est corrigé. Un œil sur trois captures
+// d'écran ne prouve rien : la figure change à chaque question, et c'est
+// justement pour cela que les décalages écrits à la main finissaient par
+// tomber sur un trait.
+//
+// On relit le SVG produit, on reconstruit la BOÎTE de chaque étiquette à
+// partir de son ancrage, et on mesure sa distance à chacun des six segments.
+
+/** Les segments tracés, relus dans le SVG lui-même. */
+function segmentsDuSvg(svg) {
+    // LES SEGMENTS DE LA FIGURE, PAS CEUX DES COTES. Une double flèche est
+    // faite de lignes elle aussi — ligne de cote et lignes d'attache —, et il
+    // est NORMAL qu'une étiquette de cote touche la sienne : elle est écrite
+    // pour elle. On ne garde donc que les traits de la figure, reconnaissables
+    // à leur classe.
+    return [...svg.matchAll(
+        /<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)" class="(th-[a-z]+)"/g)]
+        .filter(m => ['th-droite', 'th-base', 'th-para'].includes(m[5]))
+        .map(m => ({ p: { x: +m[1], y: +m[2] }, q: { x: +m[3], y: +m[4] } }));
+}
+
+/** Les étiquettes, avec leur boîte réelle — ancrage et ligne de base compris. */
+/**
+ * Les étiquettes du dessin, avec les QUATRE COINS de leur boîte.
+ *
+ * Quatre coins et non deux : depuis que les cotes sont couchées le long de leur
+ * flèche (Rémy : « écris les longueurs dont la direction est la même que les
+ * flèches »), une boîte alignée sur les axes ne dit plus où est l'encre. Elle
+ * en déclarerait dégagée une qui traverse un trait en biais, et inversement.
+ */
+function etiquettesDuSvg(svg) {
+    const blocs = [...svg.matchAll(/<text\b([^>]*)>([^<]*)<\/text>/g)];
+    return blocs.map(m => {
+        const att = m[1], texte = m[2];
+        const lire = (nom) => {
+            const r = new RegExp(nom + '="([^"]*)"').exec(att);
+            return r ? r[1] : null;
+        };
+        const cls = lire('class') || '';
+        if (!/th-(nom|cote)/.test(cls)) return null;
+        const x = +lire('x'), y = +lire('y');
+        const taille = /th-nom/.test(cls) ? 7 : 6;
+        const large = texte.length * taille * 0.56;
+
+        const tr = lire('transform');
+        const rot = tr ? /rotate\(([-\d.]+)/.exec(tr) : null;
+        const angle = rot ? (+rot[1]) * Math.PI / 180 : 0;
+
+        // Le point d'ancrage et la boîte AUTOUR de lui, avant rotation.
+        let g, d, h, b;
+        if (/dominant-baseline="central"/.test(att)) {
+            // Une cote : centrée sur son point, dans les deux sens.
+            g = -large / 2; d = large / 2;
+            h = -taille * 0.5; b = taille * 0.5;
+        } else {
+            const ancre = lire('text-anchor') || 'start';
+            g = ancre === 'start' ? 0 : ancre === 'end' ? -large : -large / 2;
+            d = g + large;
+            // Un texte SVG s'aligne sur le PIED de ses lettres.
+            h = -taille * 0.72; b = taille * 0.2;
+        }
+        const c = Math.cos(angle), s2 = Math.sin(angle);
+        const coins = [[g, h], [d, h], [d, b], [g, b]].map(([u, v]) => ({
+            x: x + u * c - v * s2,
+            y: y + u * s2 + v * c
+        }));
+        // Et l'enveloppe droite, pour qui veut seulement savoir si l'étiquette
+        // tient dans le cadre du dessin.
+        return {
+            texte, taille, coins,
+            x0: Math.min(...coins.map(c => c.x)), x1: Math.max(...coins.map(c => c.x)),
+            y0: Math.min(...coins.map(c => c.y)), y1: Math.max(...coins.map(c => c.y))
+        };
+    }).filter(Boolean);
+}
+
+/** Distance d'un point à un segment. */
+function distSegment(c, p, q) {
+    const dx = q.x - p.x, dy = q.y - p.y;
+    const l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, ((c.x - p.x) * dx + (c.y - p.y) * dy) / l2)) : 0;
+    return Math.hypot(c.x - (p.x + t * dx), c.y - (p.y + t * dy));
+}
+
+/** Distance d'une boîte à un segment : la plus courte sur son contour et son aire. */
+function distBoiteSegment(b, s) {
+    let d = Infinity;
+    // Un échantillonnage de la boîte suffit et ne peut pas se tromper dans le
+    // sens dangereux : il ne déclare jamais « loin » ce qui est traversé. Les
+    // coins étant donnés dans l'ordre du contour, on interpole DANS le
+    // quadrilatère — ce qui marche aussi bien tourné que droit.
+    const [A, B, C, D] = b.coins;
+    for (let i = 0; i <= 8; i++) {
+        for (let j = 0; j <= 3; j++) {
+            const u = i / 8, v = j / 3;
+            const haut = { x: A.x + (B.x - A.x) * u, y: A.y + (B.y - A.y) * u };
+            const bas = { x: D.x + (C.x - D.x) * u, y: D.y + (C.y - D.y) * u };
+            const c = { x: haut.x + (bas.x - haut.x) * v, y: haut.y + (bas.y - haut.y) * v };
+            d = Math.min(d, distSegment(c, s.p, s.q));
+        }
+    }
+    return d;
+}
+
+test('aucune lettre, aucune cote ne se pose sur un trait', () => {
+    let pire = Infinity, pireOu = '';
+    for (const config of ['emboites', 'papillon']) {
+        for (let i = 0; i < 120; i++) {
+            const f = creerThales({ config, rng: makeRng(`lettre-${config}-${i}`) });
+            if (!f) continue;
+            // Le pire cas : TOUTES les cotes écrites en même temps.
+            const svg = figureThalesSvg(f, TAILLES);
+            const segments = segmentsDuSvg(svg);
+            assert.equal(segments.length, 6, 'six segments tracés');
+            const etiquettes = etiquettesDuSvg(svg);
+            assert.equal(etiquettes.length, 11, `${config}/${i} : 5 lettres + 6 cotes`);
+            for (const e of etiquettes) {
+                for (const s of segments) {
+                    const d = distBoiteSegment(e, s);
+                    if (d < pire) { pire = d; pireOu = `${config}/${i} « ${e.texte} »`; }
+                }
+            }
+        }
+    }
+    // Le trait le plus épais fait 1,5 unité, donc 0,75 de part et d'autre de
+    // son axe : au-delà de 1,5 aucune étiquette ne peut le toucher, quelle que
+    // soit l'approximation de largeur de police. On mesure aujourd'hui 2,6 au
+    // pire — la marge est réelle, pas ajustée au seuil.
+    assert.ok(pire > 1.5, `étiquette collée au trait : ${pireOu}, à ${pire.toFixed(2)}`);
+});
+
+test('le point n\'a plus de rond, et la figure tient dans sa boîte', () => {
+    for (const config of ['emboites', 'papillon']) {
+        for (let i = 0; i < 40; i++) {
+            const f = creerThales({ config, rng: makeRng(`rond-${config}-${i}`) });
+            if (!f) continue;
+            const svg = figureThalesSvg(f, TAILLES);
+            assert.ok(!svg.includes('<circle'), 'un rond traîne encore sur un point');
+            const vb = svg.match(/viewBox="([-\d.]+) ([-\d.]+) ([-\d.]+) ([-\d.]+)"/);
+            assert.ok(vb, 'pas de viewBox');
+            const [x0, y0, w, h] = vb.slice(1).map(Number);
+            for (const e of etiquettesDuSvg(svg)) {
+                assert.ok(e.x0 >= x0 - 0.5 && e.x1 <= x0 + w + 0.5,
+                    `${config}/${i} : « ${e.texte} » sort du cadre en largeur`);
+                assert.ok(e.y0 >= y0 - 0.5 && e.y1 <= y0 + h + 0.5,
+                    `${config}/${i} : « ${e.texte} » sort du cadre en hauteur`);
+            }
+        }
+    }
+});
+
+// --- LES FRACTIONS EN COLONNE ---------------------------------------------------
+
+test('l\'égalité se dessine en fractions, sans jamais perdre son texte', () => {
+    // Rémy : « Ecris les fraction en colonne. » Le TEXTE reste la clé de la
+    // réponse — il est comparé à `answer` et enregistré dans le carnet —, le
+    // dessin n'est que ce qu'on montre.
+    const html = egaliteEnColonnes('AE/AB = AD/AC = DE/BC');
+    const lu = html.replace(/<[^>]*>/g, ' ');
+    assert.ok(!lu.includes('/'), `une barre oblique traîne encore : ${lu}`);
+    ['AE', 'AB', 'AD', 'AC', 'DE', 'BC'].forEach(n =>
+        assert.ok(html.includes(`>${n}<`), `${n} manque`));
+    assert.equal((html.match(/fraction-num/g) || []).length, 3);
+    assert.equal((html.match(/fraction-den/g) || []).length, 3);
+    assert.equal((html.match(/th-eg-signe/g) || []).length, 2);
+
+    for (let i = 0; i < 60; i++) {
+        const it = thalesGenerator.generate({ etape: 'egalite' },
+            { rng: makeRng(`eg${i}`), index: 0 });
+        it.choices.forEach(c => {
+            assert.match(String(c.value), /^[A-Z]{2}\/[A-Z]{2}( = [A-Z]{2}\/[A-Z]{2}){2}$/,
+                'la clé de réponse doit rester du texte');
+            assert.ok(String(c.label).includes('fraction-den'), 'la proposition doit être dessinée');
+            assert.equal(c.texte, c.value, 'le robot lit le texte, pas le dessin');
+        });
+        assert.equal(it.answer, it.choices.find(c => c.correct).value);
+    }
+});
+
+
+test('LES COTES SONT COLLÉES À LEUR SEGMENT', () => {
+    // Rémy, capture à l'appui : « on pourrait rapprocher les flèches en haut ».
+    // Mesuré avant : sur un papillon, la cote du bas se posait à 3 unités de son
+    // segment et celles du haut à 16 et 22. La cause n'était pas la place — la
+    // cote de [AE] commence AU POINT A, où quatre droites se croisent, donc son
+    // premier point est forcément près de la branche voisine, à tout écart. On
+    // ne mesure donc plus que le MILIEU de la ligne de cote ; sa boîte de texte,
+    // elle, garde toute sa pénalité.
+    //
+    // CE TEST NE VÉRIFIE PAS UN NOMBRE, IL VÉRIFIE UNE INTENTION : la plupart
+    // des cotes doivent être au plus près. Celles qui s'écartent le font pour
+    // une raison — sur les emboîtés, [AE] est un morceau de [AB] et leurs deux
+    // flèches se superposeraient.
+    const dist = (c, p, q) => {
+        const dx = q.x - p.x, dy = q.y - p.y, l2 = dx * dx + dy * dy;
+        const t = l2 ? Math.max(0, Math.min(1, ((c.x - p.x) * dx + (c.y - p.y) * dy) / l2)) : 0;
+        return Math.hypot(c.x - (p.x + t * dx), c.y - (p.y + t * dy));
+    };
+    let collees = 0, total = 0, pire = 0;
+    for (const config of ['emboites', 'papillon']) {
+        for (let i = 0; i < 40; i++) {
+            const f = creerThales({ config, rng: makeRng(`colle-${config}-${i}`) });
+            if (!f) continue;
+            const e = figureThalesElements(f, ['AE', 'AB', 'BC']);
+            for (const c of e.cotes) {
+                const mid = { x: (c.p1.x + c.q1.x) / 2, y: (c.p1.y + c.q1.y) / 2 };
+                const d = dist(mid, c.p, c.q);
+                total++;
+                if (d <= 4) collees++;
+                pire = Math.max(pire, d);
+            }
+        }
+    }
+    // MESURÉ : 193 cotes sur 240 sont à trois unités de leur segment, la
+    // médiane est à 3. Les autres s'écartent parce que deux cotes se
+    // superposeraient — sur les emboîtés, [AE] est un morceau de [AB] —, et la
+    // plus lointaine est à 22 unités sur une figure qui en fait 100. On garde
+    // donc une borne LARGE : ce test protège l'intention, pas un réglage.
+    assert.ok(collees / total > 0.75,
+        `seulement ${collees}/${total} cotes collées à leur segment`);
+    assert.ok(pire <= 24, `une cote à ${pire.toFixed(1)} unités de son segment`);
+});

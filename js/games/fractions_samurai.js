@@ -1,0 +1,561 @@
+// Le Samouraï des Fractions : rendre une fraction irréductible.
+//
+// Porté depuis l'ancien projet (imports/maths-legacy/games/fractions). On
+// décompose le numérateur et le dénominateur en produits (36/48 = 12×3 / 12×4),
+// puis on BARRE le facteur commun d'un coup de sabre — le geste même de la
+// simplification écrite au tableau. Cinq rangs de samouraï : divisieur simple
+// (tables de 2, 5, 10), décomposition libre, grands nombres en plusieurs
+// étapes, pièges (fractions déjà irréductibles → bouclier), puis le chrono.
+//
+// Chaque fraction menée à l'irréductible est une réussite sur la compétence
+// num.frac.simplification ; chaque erreur est expliquée (mauvais diviseur,
+// produit faux, piège manqué). Le robot cherche le facteur commun à voix
+// haute, remplit la décomposition, barre les facteurs — pause et pas-à-pas.
+
+import { BaseGame } from '../core/BaseGame.js';
+import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../ui/paveTactile.js';
+import { regTimeout } from '../core/timers.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+
+const SKILL = 'num.frac.simplification';
+
+const NIVEAUX = {
+    1: { nom: "L'Apprenti", mode: 'simple', facteurs: [2, 5, 10], pieges: false, chrono: false },
+    2: { nom: 'Le Forgeron', mode: 'decompose', facteurs: [2, 3, 4, 5, 6, 8, 9], pieges: false, chrono: false },
+    3: { nom: 'Le Voyageur', mode: 'decompose', facteurs: [6, 8, 9, 10, 12, 15, 20], pieges: false, chrono: false },
+    4: { nom: 'Le Gardien', mode: 'decompose', facteurs: [3, 4, 5, 6, 7, 8, 9], pieges: true, chrono: false },
+    5: { nom: 'Maître Samouraï', mode: 'decompose', facteurs: [2, 3, 4, 5, 6, 7, 8, 9, 11, 12], pieges: true, chrono: true }
+};
+
+const pgcd = (a, b) => b === 0 ? a : pgcd(b, a % b);
+
+// Le garde-fou du bouton « Fraction suivante » : neuf secondes, c'est trois
+// fois le temps de lire une égalité, et assez peu pour qu'une séance laissée
+// en plan finisse quand même.
+const PAUSE_LECTURE = 9000;
+
+class FracSamurai extends BaseGame {
+    render() {
+        this.level = Math.min(5, Math.max(1, parseInt(this.params.startLevel) || 1));
+        this.goal = parseInt(this.params.goal) || 4;
+        this.score = 0;
+        this.victoires = 0;
+
+        this.container.innerHTML = `
+            <style>
+                /* PLEIN CADRE, comme les autres jeux à thème (le labyrinthe, Nova).
+                   Rémy : « on a l'impression que c'est mal intégré, comme si
+                   c'était une iframe. » Il y avait de quoi : un panneau sombre
+                   de 441 px flottait au milieu d'une page claire, avec sa
+                   propre barre de titre répétant celle de l'application. Le dojo
+                   occupe désormais toute la zone de jeu, et le titre disparaît
+                   — il est déjà écrit en haut de l'écran. */
+                .sam-wrap { position: absolute; inset: 0; display: flex; flex-direction: column;
+                    background: linear-gradient(160deg, #1a1a2e, #2d1b36); font-family: 'Outfit', sans-serif;
+                    overflow: hidden; container-type: size; }
+                .sam-top { display: flex; justify-content: center; align-items: center; padding: clamp(6px, 1.6cqh, 12px) 16px; color: #fff; flex-wrap: wrap; gap: 6px 22px; }
+                .sam-rang { font-weight: 900; font-size: 1.1rem; color: #fcc419; }
+                .sam-score { font-weight: 700; }
+                .sam-avance { font-weight: 800; color: #fcc419; font-variant-numeric: tabular-nums; }
+                .sam-timer { height: 8px; background: rgba(255,255,255,.12); margin: 8px 16px 0; border-radius: 4px; overflow: hidden; display: none; }
+                .sam-timer-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #ff6b6b, #fcc419); }
+                /* La carte ne s'étire plus sur toute la hauteur du dojo : elle se
+                   pose au milieu, à la taille de ce qu'elle contient. Étirée, elle
+                   laissait 250 px de vide au-dessus de la fraction et autant en
+                   dessous — d'où le sentiment d'une page vide dans un cadre. */
+                .sam-card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+                    border-radius: 20px; margin: auto; padding: clamp(14px, 3cqh, 28px) clamp(16px, 4cqw, 34px);
+                    width: min(560px, 92cqw); box-sizing: border-box;
+                    display: flex; flex-direction: column; align-items: center; justify-content: center;
+                    gap: clamp(10px, 2.2cqh, 18px); transition: transform .08s, border-color .3s; }
+                .sam-eq { display: flex; align-items: center; gap: clamp(8px, 2.4cqw, 14px); flex-wrap: wrap; justify-content: center; }
+                .sam-frac { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+                .sam-num, .sam-den { font-size: clamp(1.5rem, min(6.5cqh, 9cqw), 3.2rem); font-weight: 900; color: #fff; display: flex; align-items: center; gap: 6px; }
+                .sam-bar { width: 100%; min-width: 56px; height: 4px; background: #fff; border-radius: 2px; }
+                /* L'ÉGALITÉ FINALE : le départ pâlit, la simplifiée s'allume.
+                   Les deux restent EN COLONNE — c'est l'écriture du cours. */
+                .sam-frac--pale { opacity: .5; }
+                .sam-frac--gagne .sam-num, .sam-frac--gagne .sam-den { color: #51cf66; }
+                .sam-frac--gagne .sam-bar { background: #51cf66; }
+                .sam-frac--gagne { animation: sam-gagne .45s ease-out; }
+                @keyframes sam-gagne { from { transform: scale(.7); opacity: 0; } }
+                @media (prefers-reduced-motion: reduce) { .sam-frac--gagne { animation: none; } }
+                .sam-egal { font-size: clamp(1.5rem, min(6.5cqh, 9cqw), 3.2rem); color: #fcc419; font-weight: 900; }
+                .sam-mini { width: clamp(40px, 6cqw, 54px); height: clamp(32px, 8cqh, 46px); font-size: clamp(.95rem, 3.6cqh, 1.3rem); text-align: center; border-radius: 8px; border: 2px solid rgba(255,255,255,.3); background: rgba(0,0,0,.3); color: #fff; font-weight: 700; }
+                .sam-mini:focus { outline: none; border-color: #fcc419; }
+                .sam-fois { color: #aaa; font-size: 1.3rem; }
+                .sam-msg { min-height: 1.6em; font-size: clamp(.82rem, 3cqh, 1.02rem); font-weight: 700; text-align: center; padding: 0 10px; }
+                .sam-msg.ok { color: #51cf66; } .sam-msg.ko { color: #ff6b6b; } .sam-msg.info { color: #74c0fc; }
+                .sam-controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+                .sam-btn { border: none; border-radius: 10px; padding: clamp(6px, 2.4cqh, 12px) clamp(14px, 3cqw, 22px); font-size: clamp(.86rem, 3cqh, 1.05rem); font-weight: 900; cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,.4); font-family: inherit; }
+                .sam-btn:active { transform: translateY(3px); box-shadow: none; }
+                .sam-ok { background: #fcc419; color: #1a1a2e; }
+                .sam-shield { background: #364fc7; color: #fff; }
+                .sam-input1 { width: clamp(64px, 9cqw, 90px); height: clamp(34px, 9cqh, 50px); font-size: clamp(1rem, 4cqh, 1.5rem); text-align: center; border-radius: 10px; border: 2px solid rgba(255,255,255,.3); background: rgba(0,0,0,.3); color: #fff; font-weight: 900; }
+                .sam-input1:focus { outline: none; border-color: #fcc419; }
+                /* Quel champ le pavé tactile remplit-il ? */
+                .sam-vise { outline: 2px solid #fcc419; outline-offset: 1px; }
+                .sam-facteur { padding: 0 4px; position: relative; }
+                .sam-cible { cursor: pointer; border-radius: 6px; }
+                .sam-cible:hover { background: rgba(252,196,25,.25); }
+                .sam-barre { color: #888; }
+                .sam-barre::after { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 4px; background: #ff6b6b; border-radius: 2px; transform: rotate(-18deg); box-shadow: 0 0 8px #ff6b6b; }
+            </style>
+            <div class="sam-wrap">
+                <div class="sam-top">
+                    <span class="sam-rang" data-rang></span>
+                    <span class="sam-avance" data-prog></span>
+                    <span class="sam-score">Score : <b data-score>0</b></span>
+                </div>
+                <div class="sam-timer" data-timer><div class="sam-timer-bar" data-timer-bar></div></div>
+                <div class="sam-card" data-card>
+                    <div class="sam-eq" data-eq></div>
+                    <div class="sam-msg" data-msg></div>
+                    <div class="sam-controls" data-controls></div>
+                </div>
+            </div>`;
+
+        this.ui = {
+            rang: this.container.querySelector('[data-rang]'),
+            score: this.container.querySelector('[data-score]'),
+            prog: this.container.querySelector('[data-prog]'),
+            timer: this.container.querySelector('[data-timer]'),
+            timerBar: this.container.querySelector('[data-timer-bar]'),
+            card: this.container.querySelector('[data-card]'),
+            eq: this.container.querySelector('[data-eq]'),
+            msg: this.container.querySelector('[data-msg]'),
+            controls: this.container.querySelector('[data-controls]')
+        };
+
+        // Entrée = le bouton principal, comme au clavier d'une calculatrice.
+        this.onKey = (e) => {
+            if (e.key === 'Enter' && !this.isDemo) {
+                const btn = this.container.querySelector('.sam-ok');
+                if (btn) btn.click();
+            }
+        };
+        document.addEventListener('keydown', this.onKey);
+        this.majTete();
+    }
+
+    startGameLoop() {
+        this.nouvelleFraction();
+    }
+
+    majTete() {
+        this.ui.rang.textContent = `Niv ${this.level} — ${NIVEAUX[this.level].nom}`;
+        this.ui.score.textContent = this.score;
+        // « Sur iPhone la progression est nulle : écris juste 2/15, ce sera
+        // suffisant. » Un filet de six pixels sur un écran de trois cent
+        // soixante-quinze ne dit rien ; deux nombres se lisent d'un coup.
+        this.ui.prog.textContent = `${this.victoires} / ${this.goal}`;
+        this.ui.timer.style.display = NIVEAUX[this.level].chrono ? 'block' : 'none';
+    }
+
+    message(txt, cls) {
+        this.ui.msg.textContent = txt;
+        this.ui.msg.className = 'sam-msg ' + (cls || '');
+    }
+
+    secousse() {
+        this.ui.card.style.transform = 'translateX(10px)';
+        regTimeout(() => { if (this.ui.card) this.ui.card.style.transform = 'translateX(-10px)'; }, 60);
+        regTimeout(() => { if (this.ui.card) this.ui.card.style.transform = ''; }, 120);
+    }
+
+    // --- Tirage -------------------------------------------------------------
+
+    nouvelleFraction() {
+        if (!this.isRunning) return;
+        clearInterval(this.timerInterval);
+        const cfg = NIVEAUX[this.level];
+        this.estIrreductible = false;
+
+        if (cfg.pieges && Math.random() < 0.3) {
+            // Piège : deux nombres premiers entre eux — il n'y a RIEN à couper.
+            this.estIrreductible = true;
+            const premiers = [2, 3, 5, 7, 11, 13, 17, 19];
+            let p1 = premiers[Math.floor(Math.random() * premiers.length)];
+            let p2 = premiers[Math.floor(Math.random() * premiers.length)];
+            while (p1 === p2) p2 = premiers[Math.floor(Math.random() * premiers.length)];
+            if (Math.random() > 0.5) { p1 = Math.floor(Math.random() * 15) + 4; p2 = p1 + 1; }
+            this.num = p1; this.den = p2;
+        } else {
+            const f = cfg.facteurs[Math.floor(Math.random() * cfg.facteurs.length)];
+            let m1 = Math.floor(Math.random() * 9) + 2;
+            let m2 = Math.floor(Math.random() * 9) + 2;
+            while (m1 === m2) m2 += 1;
+            if (Math.random() > 0.6) { m1 *= 2; m2 *= 2; }
+            this.num = f * m1;
+            this.den = f * m2;
+        }
+        if (this.num > this.den) [this.num, this.den] = [this.den, this.num];
+        this.fractionDepart = `${this.num}/${this.den}`;
+
+        this.montrerSaisie();
+        if (cfg.chrono && !this.isDemo) this.lancerChrono();
+    }
+
+    /**
+     * AU DOIGT, LES CHAMPS NE REÇOIVENT RIEN. Rémy, sur iPhone : « on ne peut
+     * taper le nombre ». Les champs sont créés puis mis au point par le code,
+     * hors de tout geste de l'élève : iOS n'ouvre pas son clavier dessus. Le
+     * pavé, lui, écrit dans le champ touché en dernier — ou dans le premier,
+     * tant qu'on n'a touché à rien.
+     */
+    brancherPave() {
+        if (!auDoigt()) return;
+        if (this.pave) { this.pave.detruire(); this.pave = null; }
+        const champs = [...this.container.querySelectorAll('.sam-input1, .sam-mini')];
+        if (!champs.length) return;
+        champs.forEach(c => {
+            sansClavierSysteme(c);
+            c.addEventListener('pointerdown', () => {
+                this.champVise = c;
+                champs.forEach(e => e.classList.toggle('sam-vise', e === c));
+            });
+        });
+        this.champVise = champs[0];
+        champs[0].classList.add('sam-vise');
+        this.pave = poserPaveTactile(this.ui.controls.parentElement, {
+            champ: () => (this.champVise && this.champVise.isConnected ? this.champVise : champs[0]),
+            maxLong: 3,
+            valider: () => {
+                const b = this.ui.controls.querySelector('[data-couper], [data-verifier]');
+                if (b) b.click();
+            }
+        });
+    }
+
+    montrerSaisie() {
+        const cfg = NIVEAUX[this.level];
+        this.message('');
+        if (cfg.mode === 'simple') {
+            this.ui.eq.innerHTML = `
+                <div class="sam-frac"><div class="sam-num">${this.num}</div><div class="sam-bar"></div><div class="sam-den">${this.den}</div></div>`;
+            this.ui.controls.innerHTML = `
+                <input type="number" class="sam-input1" data-simple placeholder="?" autocomplete="off">
+                <button type="button" class="sam-btn sam-ok" data-couper>⚔️ Couper</button>`;
+            this.ui.controls.querySelector('[data-couper]').onclick = () => this.verifierSimple();
+            this.message('Trouve un diviseur commun aux deux nombres.', 'info');
+            if (!this.isDemo) regTimeout(() => this.ui.controls.querySelector('[data-simple]')?.focus(), 60);
+            this.brancherPave();
+        } else {
+            this.ui.eq.innerHTML = `
+                <div class="sam-frac"><div class="sam-num">${this.num}</div><div class="sam-bar"></div><div class="sam-den">${this.den}</div></div>
+                <div class="sam-egal">=</div>
+                <div class="sam-frac">
+                    <div class="sam-num"><input class="sam-mini" data-n1 type="number"><span class="sam-fois">×</span><input class="sam-mini" data-n2 type="number"></div>
+                    <div class="sam-bar"></div>
+                    <div class="sam-den"><input class="sam-mini" data-d1 type="number"><span class="sam-fois">×</span><input class="sam-mini" data-d2 type="number"></div>
+                </div>`;
+            let html = `<button type="button" class="sam-btn sam-ok" data-verifier>⚔️ Vérifier</button>`;
+            if (cfg.pieges) html += `<button type="button" class="sam-btn sam-shield" data-bouclier>🛡️ Irréductible</button>`;
+            this.ui.controls.innerHTML = html;
+            this.ui.controls.querySelector('[data-verifier]').onclick = () => this.verifierDecomposition();
+            const bouclier = this.ui.controls.querySelector('[data-bouclier]');
+            if (bouclier) bouclier.onclick = () => this.utiliserBouclier();
+            this.message('Décompose chaque nombre pour faire apparaître un facteur commun.', 'info');
+            if (!this.isDemo) regTimeout(() => this.ui.eq.querySelector('[data-n1]')?.focus(), 60);
+            this.brancherPave();
+        }
+    }
+
+    // --- Validation ---------------------------------------------------------
+
+    verifierSimple() {
+        const inp = this.ui.controls.querySelector('[data-simple]');
+        const val = parseInt(inp.value, 10);
+        if (!val) return;
+        if (val > 1 && this.num % val === 0 && this.den % val === 0) {
+            this.facteurCommun = val;
+            this.phaseSabre(val, this.num / val, val, this.den / val);
+        } else {
+            this.message(`${val} ne divise pas les deux nombres à la fois.`, 'ko');
+            this.secousse();
+            this.onWrongAnswer(null, {
+                questionText: `Simplifier ${this.fractionDepart}`,
+                input: val, expected: `un diviseur commun de ${this.num} et ${this.den}`,
+                concept: SKILL,
+                customMessage: `${val} n'est pas un diviseur commun : il faut un nombre qui divise ${this.num} ET ${this.den}. Pense aux tables : ${this.num} et ${this.den} y apparaissent-ils tous les deux ?`
+            });
+            inp.value = ''; inp.focus();
+        }
+    }
+
+    verifierDecomposition() {
+        if (this.estIrreductible) {
+            this.message('Piège ! Elle est déjà irréductible : il fallait le bouclier 🛡️.', 'ko');
+            this.secousse();
+            this.score = Math.max(0, this.score - 5);
+            this.majTete();
+            this.onWrongAnswer(null, {
+                questionText: `Simplifier ${this.fractionDepart}`,
+                input: 'décomposition', expected: 'irréductible',
+                concept: SKILL,
+                customMessage: `${this.num} et ${this.den} n'ont aucun diviseur commun (à part 1) : la fraction ${this.fractionDepart} est déjà irréductible. Quand rien ne se simplifie, lève le bouclier !`
+            });
+            return;
+        }
+        const lire = (sel) => parseInt(this.ui.eq.querySelector(sel).value, 10);
+        const n1 = lire('[data-n1]'), n2 = lire('[data-n2]'), d1 = lire('[data-d1]'), d2 = lire('[data-d2]');
+        if (!n1 || !n2 || !d1 || !d2) return;
+
+        if (n1 * n2 !== this.num || d1 * d2 !== this.den) {
+            const faux = n1 * n2 !== this.num
+                ? `${n1} × ${n2} = ${n1 * n2}, pas ${this.num}` : `${d1} × ${d2} = ${d1 * d2}, pas ${this.den}`;
+            this.message('Erreur de calcul dans la décomposition.', 'ko');
+            this.secousse();
+            this.onWrongAnswer(null, {
+                questionText: `Décomposer ${this.fractionDepart}`,
+                input: `${n1}×${n2} / ${d1}×${d2}`, expected: `${this.num} en haut, ${this.den} en bas`,
+                concept: SKILL,
+                customMessage: `${faux}. Chaque produit doit redonner exactement le nombre de départ.`
+            });
+            return;
+        }
+        let f = null;
+        if (n1 === d1 || n1 === d2) f = n1;
+        else if (n2 === d1 || n2 === d2) f = n2;
+
+        if (f && f > 1) {
+            this.facteurCommun = f;
+            this.phaseSabre(n1, n2, d1, d2);
+        } else {
+            this.message('Calcul juste, mais aucun facteur en double : rien à barrer !', 'ko');
+            this.secousse();
+            this.onWrongAnswer(null, {
+                questionText: `Décomposer ${this.fractionDepart}`,
+                input: `${n1}×${n2} / ${d1}×${d2}`, expected: 'le même facteur en haut et en bas',
+                concept: SKILL,
+                customMessage: `Les produits sont justes, mais on ne peut barrer que ce qui apparaît EN HAUT ET EN BAS. Cherche une décomposition où le même nombre figure au numérateur et au dénominateur — ici, ${pgcd(this.num, this.den)} marche.`
+            });
+        }
+    }
+
+    utiliserBouclier() {
+        if (this.estIrreductible) {
+            this.message(`Bien vu ! ${this.fractionDepart} est irréductible.`, 'ok');
+            this.reussite(15, `${this.fractionDepart} reconnue irréductible`);
+        } else {
+            this.message('Non : on peut encore simplifier !', 'ko');
+            this.secousse();
+            this.score = Math.max(0, this.score - 5);
+            this.majTete();
+            this.onWrongAnswer(null, {
+                questionText: `Simplifier ${this.fractionDepart}`,
+                input: 'bouclier (irréductible)', expected: `simplifier par ${pgcd(this.num, this.den)}`,
+                concept: SKILL,
+                customMessage: `${this.num} et ${this.den} sont tous les deux divisibles par ${pgcd(this.num, this.den)} : la fraction se simplifie encore. Le bouclier ne sert que quand il n'y a AUCUN diviseur commun.`
+            });
+        }
+    }
+
+    // --- Le coup de sabre ---------------------------------------------------
+
+    phaseSabre(n1, n2, d1, d2) {
+        clearInterval(this.timerInterval);
+        this.ui.controls.innerHTML = '';
+        this.message('Coupe les deux facteurs identiques !', 'ok');
+        const rend = (v) => v === this.facteurCommun
+            ? `<span class="sam-facteur sam-cible" data-cible>${v}</span>`
+            : `<span class="sam-facteur">${v}</span>`;
+        this.ui.eq.innerHTML = `
+            <div class="sam-frac" style="opacity:.5"><div class="sam-num">${this.num}</div><div class="sam-bar"></div><div class="sam-den">${this.den}</div></div>
+            <div class="sam-egal">=</div>
+            <div class="sam-frac">
+                <div class="sam-num">${rend(n1)}<span class="sam-fois">×</span>${rend(n2)}</div>
+                <div class="sam-bar"></div>
+                <div class="sam-den">${rend(d1)}<span class="sam-fois">×</span>${rend(d2)}</div>
+            </div>`;
+        this.barres = 0;
+        this.ui.eq.querySelectorAll('[data-cible]').forEach(el => {
+            el.onclick = () => this.sabrer(el);
+        });
+    }
+
+    sabrer(el) {
+        if (el.classList.contains('sam-barre')) return;
+        el.classList.add('sam-barre');
+        el.classList.remove('sam-cible');
+        this.barres++;
+        if (this.barres >= 2) regTimeout(() => this.finDeManche(), 600);
+    }
+
+    finDeManche() {
+        if (!this.isRunning) return;
+        this.num /= this.facteurCommun;
+        this.den /= this.facteurCommun;
+        if (pgcd(this.num, this.den) === 1) {
+            this.montrerResultat();
+            this.message('Irréductible : plus aucun diviseur commun.', 'ok');
+            this.reussite(10, `${this.fractionDepart} → ${this.num}/${this.den}`);
+        } else {
+            this.message('Bien ! Mais ce n\'est pas fini : simplifie encore.', 'info');
+            regTimeout(() => {
+                if (!this.isRunning) return;
+                this.montrerSaisie();
+                if (NIVEAUX[this.level].chrono && !this.isDemo) this.lancerChrono();
+            }, 1400);
+        }
+    }
+
+    /**
+     * L'ÉGALITÉ FINALE, ÉCRITE COMME AU TABLEAU.
+     *
+     * Rémy : « quand tu mets l'égalité après avoir trouvé la réponse, écris
+     * les fractions en colonne ». Elle n'existait que dans la phrase du bas —
+     * « 36/48 = 3/4 » —, avec des barres obliques, c'est-à-dire dans la seule
+     * écriture qu'on demande à l'élève de ne PAS employer. Le panneau du jeu
+     * sait déjà dessiner une fraction en colonne : c'est lui qui la porte
+     * maintenant, la fraction de départ pâlie à gauche, la simplifiée en vert.
+     */
+    montrerResultat() {
+        const [n0, d0] = String(this.fractionDepart).split('/');
+        const frac = (n, d, cls) => `<div class="sam-frac ${cls}">`
+            + `<div class="sam-num">${n}</div><div class="sam-bar"></div>`
+            + `<div class="sam-den">${d}</div></div>`;
+        this.ui.eq.innerHTML = frac(n0, d0, 'sam-frac--pale')
+            + '<div class="sam-egal">=</div>'
+            + frac(this.num, this.den, 'sam-frac--gagne');
+    }
+
+    reussite(pts, resume) {
+        const points = pts * this.level;
+        this.score += points;
+        this.victoires++;
+        this.onCorrectAnswer(null, SKILL, {
+            points,
+            questionText: `Simplifier ${this.fractionDepart}`,
+            given: resume, expected: resume
+        });
+        this.ui.card.style.borderColor = '#51cf66';
+        const monte = this.victoires >= this.goal && this.level < 5;
+        if (monte) {
+            this.level++;
+            this.victoires = 0;
+            this.message(`⚔️ Tu deviens ${NIVEAUX[this.level].nom} !`, 'ok');
+        }
+        this.majTete();
+
+        // ON NE PASSE PAS À LA SUITE SANS LE DIRE.
+        //
+        // Rémy : « attends un peu avant de passer à la question suivante,
+        // quitte à appuyer sur un bouton ». Une seconde et demie, c'est le
+        // temps de voir l'égalité disparaître, pas celui de la lire — et
+        // l'égalité simplifiée est justement ce qu'on vient de fabriquer.
+        // L'élève passe quand il a fini de regarder ; un minuteur long reste
+        // en garde-fou pour qu'une séance abandonnée ne se bloque pas.
+        const passer = () => {
+            if (this.passe || !this.isRunning) return;
+            this.passe = true;
+            this.ui.card.style.borderColor = '';
+            this.nouvelleFraction();
+        };
+        this.passe = false;
+        if (this.isDemo) { regTimeout(passer, monte ? 2000 : 1400); return; }
+        this.ui.controls.innerHTML =
+            '<button type="button" class="sam-btn sam-ok" data-suivante data-neuf>'
+            + 'Fraction suivante ▶</button>';
+        this.ui.controls.querySelector('[data-suivante]').onclick = passer;
+        regTimeout(passer, PAUSE_LECTURE);
+    }
+
+    lancerChrono() {
+        clearInterval(this.timerInterval);
+        let l = 100;
+        this.ui.timerBar.style.width = '100%';
+        this.timerInterval = setInterval(() => {
+            l -= 0.25;
+            this.ui.timerBar.style.width = l + '%';
+            if (l <= 0) {
+                clearInterval(this.timerInterval);
+                this.message('Temps écoulé !', 'ko');
+                this.onWrongAnswer(null, {
+                    questionText: `Simplifier ${this.fractionDepart}`,
+                    input: '(trop lent)', expected: `simplifier par ${this.estIrreductible ? '— (irréductible)' : pgcd(this.num, this.den)}`,
+                    concept: SKILL,
+                    customMessage: this.estIrreductible
+                        ? `Le chrono a sonné. ${this.fractionDepart} était un piège : déjà irréductible, il fallait vite lever le bouclier.`
+                        : `Le chrono a sonné. Astuce de rapidité : teste d'abord les petits diviseurs (2 si les deux sont pairs, 5 s'ils finissent par 0 ou 5).`
+                });
+                regTimeout(() => { if (this.isRunning) this.nouvelleFraction(); }, 1400);
+            }
+        }, 50);
+    }
+
+    // --- Robot : il cherche le facteur commun à voix haute -------------------
+
+    async runDemoSequence() {
+        this.nouvelleFraction();
+        const cursor = createDemoCursor();
+        this.demoCursor = cursor;
+        const gate = createDemoGate(this.ui.card);
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+
+        if (!await cursor.pause(1200) || !this.isRunning) return fin();
+
+        while (this.isRunning && this.isDemo) {
+            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            const g = pgcd(this.num, this.den);
+            const cfg = NIVEAUX[this.level];
+
+            if (this.estIrreductible) {
+                cursor.say(`${this.num}/${this.den} : je cherche un diviseur commun… ${this.num} et ${this.den} n'en ont AUCUN. C'est un piège : la fraction est déjà irréductible, je lève le bouclier !`, this.ui.eq);
+                if (!await cursor.pause(2600) || !this.isRunning) return fin();
+                const bouclier = this.ui.controls.querySelector('[data-bouclier]');
+                if (!bouclier || !await cursor.tap(bouclier, 320)) return fin();
+                this.utiliserBouclier();
+            } else if (cfg.mode === 'simple') {
+                cursor.say(`${this.num}/${this.den} : les deux nombres sont dans la table de ${g}. Je coupe par ${g}.`, this.ui.eq);
+                if (!await cursor.pause(2200) || !this.isRunning) return fin();
+                const inp = this.ui.controls.querySelector('[data-simple]');
+                if (!inp || !await cursor.tap(inp, 260)) return fin();
+                inp.value = g;
+                const btn = this.ui.controls.querySelector('[data-couper]');
+                if (!btn || !await cursor.tap(btn, 320)) return fin();
+                this.verifierSimple();
+            } else {
+                cursor.say(`${this.num}/${this.den} : le facteur commun est ${g}, car ${this.num} = ${g} × ${this.num / g} et ${this.den} = ${g} × ${this.den / g}. J'écris la décomposition.`, this.ui.eq);
+                if (!await cursor.pause(2800) || !this.isRunning) return fin();
+                const valeurs = [['[data-n1]', g], ['[data-n2]', this.num / g], ['[data-d1]', g], ['[data-d2]', this.den / g]];
+                for (const [sel, v] of valeurs) {
+                    const inp = this.ui.eq.querySelector(sel);
+                    if (!inp || !await cursor.tap(inp, 220)) return fin();
+                    inp.value = v;
+                }
+                const btn = this.ui.controls.querySelector('[data-verifier]');
+                if (!btn || !await cursor.tap(btn, 320)) return fin();
+                this.verifierDecomposition();
+            }
+
+            // Phase sabre éventuelle : barrer les deux facteurs identiques.
+            if (!this.estIrreductible) {
+                if (!await cursor.pause(900) || !this.isRunning) return fin();
+                const cibles = [...this.ui.eq.querySelectorAll('[data-cible]')];
+                if (cibles.length) {
+                    cursor.say(`Le ${this.facteurCommun} est en haut ET en bas : je le barre des deux côtés — il se simplifie.`, this.ui.eq);
+                    if (!await cursor.pause(1600) || !this.isRunning) return fin();
+                    for (const c of cibles.slice(0, 2)) {
+                        if (!await cursor.tap(c, 300)) return fin();
+                        this.sabrer(c);
+                    }
+                }
+            }
+            if (!await cursor.pause(DEMO_SPEED.between + 800) || !this.isRunning) return fin();
+        }
+        fin();
+    }
+
+    destroy() {
+        if (this.demoCursor) { this.demoCursor.destroy(); this.demoCursor = null; }
+        document.removeEventListener('keydown', this.onKey);
+        super.destroy();
+    }
+}
+
+export function engineFracSamurai(container, isDemo, params) {
+    const game = new FracSamurai(container, isDemo, params, 'frac-samurai');
+    game.start();
+    return game;
+}

@@ -3,6 +3,8 @@ import { numerationExercises } from './numeration.js';
 import { fractionsExercises } from './fractions.js';
 import { geometrieExercises } from './geometrie.js';
 import { mesuresExercises } from './mesures.js';
+import { donneesExercises } from './donnees.js';
+import { defisExercises } from './defis.js';
 import { getGenerator, getActivity } from '../core/registry.js';
 import { matchSkills } from './skills.js';
 import { STATUS } from './status.js';
@@ -12,7 +14,9 @@ export const exercices = [
     ...calculExercises,
     ...fractionsExercises,
     ...geometrieExercises,
-    ...mesuresExercises
+    ...mesuresExercises,
+    ...donneesExercises,
+    ...defisExercises
 ];
 
 export const domaines = [...new Set(exercices.map(e => e.tags.chemin[0]))].sort();
@@ -59,6 +63,34 @@ export function countByStatus(list) {
 const legacyMap = {
     e1: 'calc-add', e2: 'geom-grid', e3: 'calc-prio', e4: 'calc-mult-flash', e5: 'calc-mult-missing'
 };
+
+/**
+ * Un exercice se RÉVISE-T-IL ?
+ *
+ * Non pour les jeux de pure logique — sudoku, binairo, démineur. Y « rater une
+ * question » n'a pas de sens : il n'y a pas de question, il y a une grille, et
+ * la rejouer à l'identique reviendrait à redonner la même grille déjà résolue.
+ * Ces jeux entraînent le raisonnement, pas une connaissance qu'on révise à la
+ * demande — et leurs entrées noyaient un carnet qui doit se lire en dix
+ * secondes.
+ */
+export function estRevisable(exoOuId) {
+    const exo = typeof exoOuId === 'string' ? getExerciseById(exoOuId) : exoOuId;
+    return !(exo && exo.sansRevision);
+}
+
+/**
+ * « À deux » : il faut être DEUX devant le même écran pour y jouer.
+ *
+ * Ce n'est ni un domaine ni un niveau — c'est une condition matérielle, et
+ * elle mérite sa propre marque : un élève seul qui ouvre un duel se retrouve
+ * devant un jeu qu'il ne peut pas jouer, et le professeur qui cherche une
+ * activité de fin d'heure ne sait pas lesquelles s'y prêtent.
+ */
+export function estADeux(exoOuId) {
+    const exo = typeof exoOuId === 'string' ? getExerciseById(exoOuId) : exoOuId;
+    return !!(exo && exo.deuxJoueurs);
+}
 
 export function getExerciseById(id) {
     return exercices.find(e => e.id === (legacyMap[id] || id)) || null;

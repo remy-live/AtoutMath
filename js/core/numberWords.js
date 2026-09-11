@@ -9,6 +9,8 @@
 // Orthographe traditionnelle (celle de la fiche de cours) : traits d'union à
 // l'intérieur des dizaines composées, espaces ailleurs.
 
+import { espacerMilliers } from './nombres.js';
+
 const UNITS = [
     'zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
     'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize',
@@ -136,12 +138,20 @@ export function digitAtRank(value, rank) {
     return Number(decPart[i] || 0);
 }
 
-/** Format français : espace fine tous les 3 chiffres, virgule décimale. */
+/**
+ * Format français : espace fine INSÉCABLE tous les 3 chiffres, virgule décimale.
+ *
+ * L'espace était une espace ORDINAIRE : « 123 456 » se coupait en fin de ligne
+ * et l'on croyait lire deux nombres. Et la partie décimale n'était pas groupée
+ * du tout, alors que les rangs se comptent depuis la virgule dans les deux
+ * sens — 3,141 592 6, pas 3,1415926.
+ *
+ * La règle vit désormais dans core/nombres.js, une seule fois : l'écran, la
+ * saisie et la fiche imprimée ne peuvent plus en appliquer trois versions.
+ */
 export function formatFr(value, decimals = null) {
     const fixed = decimals === null ? String(value) : value.toFixed(decimals);
-    const [i, d] = fixed.split('.');
-    const grouped = i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-    return d ? `${grouped},${d}` : grouped;
+    return espacerMilliers(fixed.replace('.', ','));
 }
 
 /** Retire les zéros inutiles : 040,0 → 40 ; 0001,120 → 1,12. */

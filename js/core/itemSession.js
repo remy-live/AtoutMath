@@ -9,10 +9,26 @@
 // dans tous les jeux.
 
 import { makeRng, randomSeed } from './ids.js';
-import { evaluate, hintAt, toChoices } from './items.js';
+import { evaluate, hintAt, schemaAt, toChoices } from './items.js';
 import { state } from './state.js';
 import { getWeakTables } from './stats.js';
 import { defaultPolicy } from './policy.js';
+import { etatDepart, apresReponse } from './aide.js';
+
+/**
+ * UNE PROMESSE QUI NE SE RÉSOUT JAMAIS, et c'est exactement ce qu'on veut.
+ *
+ * Les activités enchaînent sur `result.dismissed` : « quand l'élève a fermé le
+ * retour, question suivante ». Quand il n'y a PAS de question suivante, la
+ * réponse honnête n'est pas « tout de suite » ni « dans une seconde » : c'est
+ * « jamais ». Une promesse en suspens le dit sans qu'aucune activité ait à
+ * connaître la règle.
+ *
+ * Elle n'est retenue par personne d'autre que l'activité qui l'attend, et le
+ * meneur détruit celle-ci une seconde et demie plus tard : le ramasse-miettes
+ * emporte l'ensemble. On ne laisse pas un minuteur derrière soi.
+ */
+const sansSuite = () => new Promise(() => { /* volontairement sans issue */ });
 
 export class ItemSession {
     /**
@@ -24,7 +40,9 @@ export class ItemSession {
      * @param {string} [cfg.runId]
      * @param {string} [cfg.stepId]
      * @param {boolean} [cfg.isDemo]
+     * @param {boolean} [cfg.sansTrace] - essai du professeur : rien au journal
      * @param {boolean} [cfg.frozen]  - aperçu immobile : la question est dessinée, rien ne se joue
+     * @param {number} [cfg.nbItems]   - nombre de questions prévu pour l'étape
      * @param {string} [cfg.forceSeed] - rejoue exactement une question passée
      * @param {'choice'|'numeric'|'point'} [cfg.preferredKind] - genre attendu par l'activité
      */
@@ -36,15 +54,21 @@ export class ItemSession {
         this.runId = cfg.runId || null;
         this.stepId = cfg.stepId || null;
         this.isDemo = !!cfg.isDemo;
+        // SANS TRACE : la session se joue normalement — on répond, on gagne des
+        // points à l'écran, la correction s'affiche —, mais RIEN n'est écrit au
+        // journal. C'est le mode d'essai du professeur, et ce n'est pas
+        // `isDemo`, qui rend en plus la main au robot et gèle la saisie : un
+        // essai se joue à la main, c'est tout son intérêt.
+        this.sansTrace = !!cfg.sansTrace;
         // Une vignette de catalogue montre une question, pas une animation :
         // 45 démonstrations lancées en même temps rameraient sur une tablette.
         this.frozen = !!cfg.frozen;
-        // Démonstration COMMENTÉE : le robot explique son raisonnement à voix
-        // haute. Réservée au plein écran — dans une vignette de catalogue, la
-        // bulle serait plus grande que le jeu qu'elle commente.
-        this.narration = !!cfg.narration;
         this.forceSeed = cfg.forceSeed || null;
         this.preferredKind = cfg.preferredKind || null;
+        // Le nombre de questions prévu pour l'étape, quand on le connaît. La
+        // session ne l'utilise pas elle-même — c'est le Runner qui arrête —,
+        // mais une activité qui change de forme en cours de route en a besoin.
+        this.nbItems = Number(cfg.nbItems) || null;
 
         this.item = null;
         this.attemptIndex = 0;
@@ -56,6 +80,17 @@ export class ItemSession {
         // Graines des questions déjà posées, dans l'ordre : permet de revenir
         // en arrière et de rejouer une question à l'identique.
         this.history = [];
+        // L'ESCALIER DE L'AIDE VIT SUR LA SESSION, pas sur l'activité.
+        //
+        // Il doit survivre au passage du QCM au pavé numérique — c'est même
+        // tout l'intérêt : un élève qui bute deux fois en tapant doit pouvoir
+        // récupérer ses propositions. Posé dans l'activité, l'état serait perdu
+        // au moment précis où il sert. Mis à jour ici, il vaut pour toutes les
+        // activités sans qu'aucune ait à y penser.
+        this.escalier = etatDepart();
+        // Posé par le meneur quand le quota de questions est atteint : voir
+        // `next()`. Tant qu'il est faux, la session sert normalement.
+        this.termine = false;
         this._listeners = { item: [], result: [], finish: [] };
     }
 
@@ -85,6 +120,27 @@ export class ItemSession {
 
     /** Génère (ou régénère) la question suivante. */
     next() {
+        // LA SÉRIE EST FINIE : ON NE POSE PLUS RIEN.
+        //
+        // Rémy : « au bout de 10 questions, s'il y en avait 10, il ne faut pas
+        // en relancer une ». C'est exactement ce qui arrivait. Le meneur
+        // programmait la conclusion 1,5 s après la dernière réponse, et
+        // l'activité, elle, enchaînait dès que l'élève fermait la correction :
+        // une onzième question s'affichait dans l'intervalle, et si elle était
+        // répondue assez vite, le bilan comptait onze questions sur dix.
+        //
+        // Le garde-fou est ici plutôt que dans les vingt-huit activités qui
+        // appellent `next()` : rien de neuf n'est tiré, et `locked` n'étant pas
+        // relâché, rien ne peut plus être enregistré.
+        //
+        // IL EMPÊCHE DE TIRER, PAS DE REDESSINER — et c'est la moitié qui
+        // manquait. Une activité qui reçoit le même item le repeint quand même,
+        // donc vidé : voir « LA DERNIÈRE QUESTION NE PASSE LA MAIN À PERSONNE »
+        // dans `submit()`, où l'on coupe l'enchaînement lui-même. Les deux
+        // ensemble tiennent la promesse d'origine : le temps que la conclusion
+        // arrive, l'écran montre la dernière question et sa correction.
+        if (this.termine) return this.item;
+
         const seed = this.forceSeed || randomSeed();
         this.forceSeed = null; // le rejeu ne vaut que pour la première question
         this.history.push(seed);
@@ -94,9 +150,41 @@ export class ItemSession {
             rng,
             weakTables: this.policy.adaptive ? getWeakTables() : [],
             difficulty: this.params.difficulty || null,
+            // Rang de la question dans la série, à partir de 0.
+            //
+            // La plupart des générateurs tirent au sort et n'en ont que faire.
+            // Mais un générateur qui porte une PROGRESSION — Le Chat Géomètre
+            // enchaîne douze figures dans un ordre choisi — a besoin de savoir
+            // où l'on en est, sinon il repose éternellement la première.
+            // `history` contient déjà la graine de la question en cours.
+            index: Math.max(0, this.history.length - 1),
+            // ET COMBIEN IL Y EN AURA EN TOUT, quand on le sait.
+            //
+            // Rémy, sur le réglage des progressions : « le nombre de questions
+            // dépend des marches ». C'était vrai, et à l'envers : un générateur
+            // qui ne connaît que son rang ne peut que compter — deux questions,
+            // je monte —, donc la longueur de l'exercice découlait du nombre de
+            // marches. En lui donnant le TOTAL, les marches peuvent se le
+            // partager, et c'est le professeur qui règle la longueur. Voir
+            // core/progression.js.
+            total: this.nbItems || null,
             // Certains générateurs posent une question différente selon ce que
             // l'activité sait afficher (placer un point vs lire ses coordonnées).
-            preferredKind: this.preferredKind
+            preferredKind: this.preferredKind,
+            // C'EST LE ROBOT QUI JOUE, et un générateur peut vouloir le savoir.
+            //
+            // Rémy, sur les Fonctions : « Commence par des calculs d'images
+            // pour le robot ». La démonstration n'est pas une partie : c'est le
+            // moment où l'on montre CE QU'ON DEMANDE, à quelqu'un qui ne le
+            // sait pas encore. Un exercice qui pose sept sortes de questions
+            // tirées au sort ouvrait donc une fois sur sept sur la plus dure —
+            // et le robot expliquait un antécédent à un élève qui n'avait pas
+            // encore vu calculer une image.
+            //
+            // Le drapeau ne change rien à la partie de l'élève : c'est
+            // exactement la même logique que `papier`, où le générateur sait
+            // pour qui il écrit sans que l'écran en soit modifié.
+            demo: this.isDemo
         });
 
         // Une activité qui ne sait afficher que des choix peut quand même
@@ -111,6 +199,11 @@ export class ItemSession {
         this.eliminated = new Set();
         this.locked = false;
         this.startedAt = Date.now();
+        // Point de départ du prochain INTERVALLE. Chaque tentative rapporte le
+        // temps écoulé depuis la précédente, pas depuis le début de la
+        // question : sans cela, une question trouvée au troisième essai
+        // comptait trois fois sa durée réelle dans le temps de séance.
+        this.dernierEssaiAt = this.startedAt;
 
         // Contexte lu par state.recordAttempt (y compris pour les jeux
         // historiques qui appellent encore state.celebrate directement).
@@ -155,11 +248,14 @@ export class ItemSession {
         if (!this.policy.hints || !this.item) return null;
         const h = hintAt(this.item, this.hintIndex);
         if (h === null) return null;
+        // Le dessin de CET indice-ci, avant que l'index n'avance. L'écran le
+        // pose sous le texte s'il y en a un (voir `wireHint`).
+        this.schemaIndice = schemaAt(this.item, this.hintIndex);
         this.hintIndex++;
-        state.noteHintUsed();
+        if (!this.sansTrace) state.noteHintUsed();
         // L'indice reste affiché jusqu'à ce que l'élève le ferme : c'est un
         // texte à lire, pas une notification.
-        this.lastFeedback = announce({ kind: 'hint', msg: h });
+        this.lastFeedback = announce({ kind: 'hint', msg: h, schema: this.schemaIndice });
         return h;
     }
 
@@ -174,6 +270,14 @@ export class ItemSession {
         }
 
         const verdict = evaluate(this.item, given);
+        // Diagnostic calculé par l'ACTIVITÉ.
+        //
+        // `evaluate` ne sait diagnostiquer que les items à propositions : il
+        // lit le « pourquoi » attaché au distracteur choisi. Une activité qui
+        // juge elle-même — le Chat Géomètre compare un tracé à une figure —
+        // sait dire bien mieux ce qui ne va pas (« il te manque un côté »)
+        // qu'une explication générique. Elle le passe ici.
+        if (opts.misconception && !verdict.correct) verdict.misconception = opts.misconception;
         const isFirstTry = this.attemptIndex === 0;
 
         // Barème des points : plein tarif au premier essai, réduit ensuite,
@@ -186,7 +290,11 @@ export class ItemSession {
             points = Math.max(1, Math.round(base * retryFactor * hintFactor));
         }
 
-        if (!this.isDemo) {
+        const maintenant = Date.now();
+        const intervalle = maintenant - (this.dernierEssaiAt || this.startedAt);
+        this.dernierEssaiAt = maintenant;
+
+        if (!this.isDemo && !this.sansTrace) {
             state.recordAttempt({
                 correct: verdict.correct,
                 given,
@@ -196,7 +304,7 @@ export class ItemSession {
                 itemSeed: this.item.seed,
                 generatorId: this.generator.id,
                 attemptIndex: this.attemptIndex,
-                msElapsed: Date.now() - this.startedAt,
+                msElapsed: intervalle,
                 hintsUsed: this.hintIndex,
                 misconception: verdict.misconception,
                 explanation: this.item.explanation,
@@ -230,15 +338,66 @@ export class ItemSession {
             if (verdict.correct) {
                 dismissed = announce({ kind: 'success', points, element: opts.element });
             } else if (this.policy.showCorrection) {
+                // EN INTERROGATION, TROIS RÉGIMES (voir CORRECTIONS dans
+                // policy.js). « reponse » donne la bonne réponse et se tait :
+                // l'élève ne repart pas avec son erreur, mais on ne lui fait
+                // pas cours pendant qu'on le mesure. « robot » ajoute
+                // l'explication — c'est le devoir formatif que Rémy décrit :
+                // « si c'est en mode interrogation il faut une explication de
+                // la part du robot ».
+                const sec = this.policy.correction === 'reponse'
+                    ? `La bonne réponse était : ${this.item.answer}`
+                    : (verdict.misconception || this.item.explanation);
                 dismissed = announce({
                     kind: 'error',
                     isError: true,
-                    msg: verdict.misconception || this.item.explanation,
-                    misconception: verdict.misconception ? this.item.explanation : null
+                    msg: sec,
+                    misconception: (this.policy.correction !== 'reponse' && verdict.misconception)
+                        ? this.item.explanation : null
                 });
             }
         }
-        result.dismissed = dismissed;
+        // LA DERNIÈRE QUESTION NE PASSE LA MAIN À PERSONNE.
+        //
+        // Rémy : « j'ai l'impression que quand on a fait 5 questions sur 5, la
+        // question suivante s'affiche et l'exercice se ferme ».
+        //
+        // CE N'EST PAS UNE IMPRESSION, ET LE GARDE-FOU DE `next()` NE SUFFISAIT
+        // PAS. Mesuré au navigateur sur un exercice à cinq questions : après la
+        // cinquième réponse, `next()` est bien rappelé une sixième fois, il rend
+        // bien le MÊME item — mais l'activité, elle, le REDESSINE. Or redessiner
+        // une question, c'est la vider : les bulles reviennent non cliquées, le
+        // pavé se rouvre vide, et l'élève voit passer trois dixièmes de seconde
+        // une question neuve qu'on lui reprend aussitôt. Pour un QCM arrivé en
+        // haut de l'escalier de l'aide, c'est pire : le redessin bascule sur le
+        // pavé numérique, donc un AUTRE écran.
+        //
+        // DEUX MINUTEURS QUI SE CROISENT, voilà l'origine : le bandeau « Bonne
+        // réponse » se referme à 1,2 s (ui/gameFeedbackUI.js) et résout
+        // `dismissed` ; la conclusion de l'étape, elle, est programmée à 1,5 s
+        // (core/runner.js). Entre les deux, les vingt-huit activités enchaînent
+        // — toutes par cette promesse, aucune par autre chose.
+        //
+        // C'EST DONC ICI QUE CELA SE RÈGLE, en un seul endroit plutôt que dans
+        // vingt-huit. Quand le meneur a posé `termine` — il vient de le faire,
+        // pendant le `state.recordAttempt` ci-dessus —, il n'y a plus de suite à
+        // promettre : on rend une promesse qui ne se résout pas. Le bandeau se
+        // referme quand même (il a son propre minuteur), l'écran garde la
+        // dernière question et la réponse qu'on y a mise, et la conclusion
+        // arrive par-dessus. Rien ne clignote.
+        result.dismissed = this.termine ? sansSuite() : dismissed;
+
+        // L'escalier ne bouge qu'une fois la question CLOSE : une première
+        // réponse fausse suivie d'une bonne au deuxième essai est un seul
+        // verdict, pas deux — sinon un élève à deux essais descendrait puis
+        // remonterait dans la même question.
+        if (result.done && !this.isDemo) {
+            this.escalier = apresReponse(this.escalier, {
+                reussi: verdict.correct,
+                duPremierCoup: isFirstTry,
+                avecIndice: this.hintIndex > 0
+            });
+        }
 
         this.locked = result.done;
         this._fire('result', result);
@@ -247,7 +406,28 @@ export class ItemSession {
 
     finish() {
         state.attemptContext = null;
-        this._fire('finish', { answered: this.answered, correct: this.correctCount });
+        const bilan = {
+            answered: this.answered,
+            correct: this.correctCount,
+            exerciseId: this.exercise ? this.exercise.id : null,
+            exerciseTitle: this.exercise ? this.exercise.title : '',
+            // La leçon de la dernière question : c'est elle qu'on redonnera si
+            // l'exercice a été loupé, et c'est le générateur qui la connaît.
+            lecon: (this.item && this.item.meta && this.item.meta.texteLecon) || '',
+            // ON NE PROPOSE PAS DE REFAIRE UNE INTERROGATION. Le bilan de fin
+            // d'exercice offrait « Recommencer avec le robot » quel que soit le
+            // régime : après un devoir noté, c'est un contresens — et l'élève
+            // qui voit le bouton en déduit, à raison, que sa note ne comptait
+            // pas. Le régime voyage donc avec le bilan.
+            evaluation: this.policy.mode === 'evaluation'
+        };
+        this._fire('finish', bilan);
+        // Le noyau annonce, il n'affiche pas. L'interface décide s'il y a
+        // quelque chose à dire — et l'aperçu du catalogue, qui termine lui
+        // aussi des sessions sans qu'on y ait répondu, n'ouvre rien.
+        if (!this.isDemo && !this.frozen) {
+            document.dispatchEvent(new CustomEvent('session_finished', { detail: bilan }));
+        }
     }
 }
 

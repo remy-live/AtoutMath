@@ -43,21 +43,68 @@ export function initGameFeedbackUI() {
 }
 
 // --- Réussite : brève, sans action requise ----------------------------------
+//
+// En BANDEAU au sommet du plateau, pas en carte centrée : la carte recouvrait
+// l'exercice au moment précis où l'élève veut voir ce qu'il vient de réussir
+// (la ligne complétée, la figure, l'opération posée).
+
+const ICON_OK_SM = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+
+/**
+ * LE HOCHEMENT DE TÊTE SUR CE QU'ON VIENT DE RÉUSSIR — et il dépend de la
+ * taille de la cible.
+ *
+ * Rémy, sur « L'Égalité à Compléter » : « quand on met la bonne réponse,
+ * l'image grossit et redevient normale ». Mesuré au navigateur : la scène
+ * passait de 1036 x 820 à 1140 x 902 pendant quatorze images, puis revenait.
+ * C'était `element.style.transform = 'scale(1.1)'` posé en dur et retiré
+ * 200 ms plus tard, SANS transition : deux sauts, pas une animation.
+ *
+ * Le geste était pensé pour une petite cible — la carte de QCM qu'on vient de
+ * toucher, le champ qu'on vient de remplir —, et là il est juste : il DÉSIGNE
+ * ce qui a été validé. Mais deux activités passent leur scène entière
+ * (`fractionsBandes`, `traceNotation`), et gonfler de 10 % un dessin de mille
+ * pixels déplace tout ce que l'élève regarde, au moment précis où il veut le
+ * regarder.
+ *
+ * On garde donc le gonflement pour ce qu'on peut désigner d'un coup d'œil, et
+ * l'on entoure le reste d'un halo — qui se voit à n'importe quelle taille et
+ * ne bouge rien. Le seuil est en PIXELS et non en proportion : ce qui compte
+ * est le déplacement que l'œil subit, pas le rapport de tailles.
+ */
+const GRANDE_CIBLE = 320;
+
+function marquerReussi(el) {
+    let boite;
+    try { boite = el.getBoundingClientRect(); } catch (e) { boite = null; }
+    const grande = !boite || Math.max(boite.width, boite.height) > GRANDE_CIBLE;
+    const classe = grande ? 'fb-reussi-halo' : 'fb-reussi';
+    // On retire d'abord : deux bonnes réponses de suite sur le même élément
+    // (une cascade de fractions, un pavé) ne relanceraient pas l'animation,
+    // et la seconde réussite passerait inaperçue.
+    el.classList.remove('fb-reussi', 'fb-reussi-halo');
+    void el.offsetWidth;
+    el.classList.add(classe);
+    setTimeout(() => el.classList.remove(classe), 700);
+}
 
 function showSuccess(d, done) {
     const msg = SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)];
-    const points = d.points
-        ? `<div class="fb-points">+${d.points} points</div>` : '';
+    const points = d.points ? `<span class="fb-toast-points">+${d.points}</span>` : '';
 
-    const card = build(`
-        <div class="fb-icon fb-icon--ok">${ICON_OK}</div>
-        <div class="fb-title">${msg}</div>${points}`, 'fb-card--ok');
+    if (current) close(current);
+    const host = document.querySelector('#game-layer .canvas-area')
+        || document.getElementById('game-layer') || document.body;
+    const card = document.createElement('div');
+    card.className = 'fb-toast fb-toast--ok';
+    card.setAttribute('role', 'status');
+    card.setAttribute('aria-live', 'assertive');
+    card.innerHTML = `<span class="fb-toast-icon">${ICON_OK_SM}</span><span>${msg}</span>${points}`;
+    host.appendChild(card);
+    current = card;
 
-    if (d.element) {
-        d.element.style.transform = 'scale(1.1)';
-        setTimeout(() => { d.element.style.transform = ''; }, 200);
-    }
-    setTimeout(() => { close(card); done(); }, 1100);
+    if (d.element) marquerReussi(d.element);
+    setTimeout(() => { close(card); done(); }, 1200);
 }
 
 // --- Erreur ou indice : attend la fermeture ---------------------------------
@@ -65,12 +112,17 @@ function showSuccess(d, done) {
 function showDismissable(d, done, isHint) {
     const label = isHint ? 'Indice' : 'Ce n\'est pas ça';
     const detail = d.misconception && d.misconception !== d.msg
-        ? `<div class="fb-detail">${escapeHtml(d.misconception)}</div>` : '';
+        ? `<div class="fb-detail">${messageHtml(d.misconception)}</div>` : '';
+
+    // LE DESSIN DE L'INDICE, s'il en a un — voir `schemas` dans les items.
+    // Il vient du générateur, jamais de l'élève : on le pose tel quel.
+    const schema = d.schema ? `<div class="hint-schema">${d.schema}</div>` : '';
 
     const card = build(`
         <div class="fb-icon ${isHint ? 'fb-icon--hint' : 'fb-icon--ko'}">${isHint ? ICON_HINT : ICON_KO}</div>
         <div class="fb-label">${label}</div>
-        <div class="fb-message">${escapeHtml(d.msg || '')}</div>
+        <div class="fb-message">${messageHtml(d.msg)}</div>
+        ${schema}
         ${detail}
         <button type="button" class="fb-close">${isHint ? 'Merci !' : 'J\'ai compris'}</button>`,
         isHint ? 'fb-card--hint' : 'fb-card--ko', true);
@@ -92,7 +144,8 @@ function showDismissable(d, done, isHint) {
 function showTransient(d, done, isHint) {
     const card = build(`
         <div class="fb-icon ${isHint ? 'fb-icon--hint' : 'fb-icon--ko'}">${isHint ? ICON_HINT : ICON_KO}</div>
-        <div class="fb-message">${escapeHtml(d.msg || '')}</div>`,
+        <div class="fb-message">${messageHtml(d.msg)}</div>
+        ${d.schema ? `<div class="hint-schema">${d.schema}</div>` : ''}`,
         isHint ? 'fb-card--hint' : 'fb-card--ko');
     setTimeout(() => { close(card); done(); }, 2200);
 }
@@ -159,4 +212,29 @@ function close(card) {
 
 function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// Un exemple chiffré annoncé par « : » passe à la ligne.
+//
+// « Un zéro tout à gauche de la partie entière ne change rien : 032,12 =
+// 32,12. » tenait sur trois lignes de téléphone, et la coupure tombait au
+// milieu de l'égalité — « 032,12 = » d'un côté, « 32,12. » de l'autre. La
+// règle et son exemple sont deux choses : on les sépare.
+//
+// Strictement : seule une fin de phrase FAITE DE CHIFFRES bascule. « … : il ne
+// reste que le 6. » ou « … : 17,070 garde son zéro du milieu. » restent en
+// ligne, ce sont des phrases, pas des exemples.
+const EXEMPLE_CHIFFRE = /^[\d\s.,;=+×÷*/<>−–-]+\.?$/;
+
+function messageHtml(texte) {
+    const brut = String(texte == null ? '' : texte);
+    const coupe = brut.lastIndexOf(' : ');
+    if (coupe > 0) {
+        const exemple = brut.slice(coupe + 3).trim();
+        if (exemple && EXEMPLE_CHIFFRE.test(exemple)) {
+            return escapeHtml(brut.slice(0, coupe) + ' :')
+                + `<span class="fb-exemple">${escapeHtml(exemple)}</span>`;
+        }
+    }
+    return escapeHtml(brut);
 }

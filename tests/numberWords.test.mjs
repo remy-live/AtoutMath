@@ -76,10 +76,17 @@ test('suppression des zéros inutiles', () => {
 });
 
 test('groupement par tranches de trois', () => {
-    assert.equal(formatFr(123456), '123 456');
-    assert.equal(formatFr(1000), '1 000');
-    assert.equal(formatFr(123456789876), '123 456 789 876');
-    assert.equal(formatFr(2730.5), '2 730,5');
+    // L'ESPACE EST UNE FINE INSÉCABLE (U+202F), pas une espace ordinaire :
+    // « 123 456 » ne doit jamais se couper en fin de ligne, sinon on croit
+    // lire deux nombres.
+    const F = '\u202F';
+    assert.equal(formatFr(123456), `123${F}456`);
+    assert.equal(formatFr(1000), `1${F}000`);
+    assert.equal(formatFr(123456789876), `123${F}456${F}789${F}876`);
+    assert.equal(formatFr(2730.5), `2${F}730,5`);
+    // Et la partie décimale se groupe DEPUIS LA VIRGULE : les rangs se
+    // comptent dans les deux sens à partir d'elle.
+    assert.equal(formatFr(3.1415926, 7), `3,141${F}592${F}6`);
 });
 
 test('nombres exprimés en unités d\'un rang', () => {

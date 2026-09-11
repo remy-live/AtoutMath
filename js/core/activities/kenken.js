@@ -14,9 +14,9 @@
 import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
-import { creerNarrateur } from '../demoNarration.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { OPS } from '../generators/kenken.js';
+import { contenuCase, brancherChamps, saisieActive } from '../../ui/champsGrille.js';
 
 // Le vérificateur est LIMITÉ : vérifier doit rester un choix qui se paie, pas
 // un oracle qu'on presse après chaque case.
@@ -25,7 +25,6 @@ const VERIFICATIONS_PAR_GRILLE = 3;
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let cursor = null;
-    let narrateur = null;
 
     let item = null;
     let grille = [];          // valeurs saisies, 0 = vide
@@ -58,6 +57,7 @@ export function mount(container, session, opts = {}) {
         const cageDe = Array.from({ length: n }, () => Array(n).fill(-1));
         cages.forEach((cage, i) => cage.cells.forEach(p => { cageDe[p.r][p.c] = i; }));
 
+        const avecChamp = saisieActive(session.params);
         const cellsHtml = [];
         for (let r = 0; r < n; r++) {
             for (let c = 0; c < n; c++) {
@@ -75,10 +75,14 @@ export function mount(container, session, opts = {}) {
                 const donnee = verrous[r][c];
                 cellsHtml.push(`
                     <div class="kk-cell ${bords} ${donnee ? 'kk-given' : ''}" role="button"
-                         tabindex="${donnee ? -1 : 0}" data-r="${r}" data-c="${c}" data-cage="${ci}"
+                         tabindex="${(donnee || avecChamp) ? -1 : 0}" data-r="${r}" data-c="${c}" data-cage="${ci}"
                          aria-label="Case ligne ${r + 1}, colonne ${c + 1}">
                         ${premiere ? `<span class="kk-label">${cage.label}</span>` : ''}
-                        <span class="kk-val">${donnee ? cage.target : ''}</span>
+                        ${contenuCase({
+        valeur: donnee ? cage.target : '', donnee, champ: avecChamp,
+        aria: `Ligne ${r + 1}, colonne ${c + 1}`,
+        motif: `[${item.meta.lo}-${item.meta.hi}]`
+    })}
                     </div>`);
             }
         }
@@ -114,6 +118,9 @@ export function mount(container, session, opts = {}) {
 
         brancherCases();
         brancherPalette();
+        // Le guidage se pose après les branchements : il écrit dans le statut,
+        // que `poser` remet à zéro.
+        regTimeout(() => guider(), 0);
         brancherVerificateur();
         brancherValidation();
         brancherIndices();
@@ -123,19 +130,75 @@ export function mount(container, session, opts = {}) {
 
     const celluleEl = (r, c) => container.querySelector(`.kk-cell[data-r="${r}"][data-c="${c}"]`);
 
+    /** Allume la zone qui explique le coup — une cage, une ligne ou une colonne. */
+    function montrerZone(zone) {
+        effacerZone();
+        if (!zone) return;
+        const n = item.meta.n;
+        const cases = zone.type === 'cage' ? zone.cells
+            : zone.type === 'ligne'
+                ? Array.from({ length: n }, (_, c) => ({ r: zone.r, c }))
+                : Array.from({ length: n }, (_, r) => ({ r, c: zone.c }));
+        cases.forEach(({ r, c }) => celluleEl(r, c)?.classList.add('kk-zone'));
+    }
+
+    function effacerZone() {
+        container.querySelectorAll('.kk-zone').forEach(e => e.classList.remove('kk-zone'));
+    }
+
+    /**
+     * LE MODE TUTORIEL — le jeu ne se contente pas d'être facile, il GUIDE.
+     *
+     * Rémy : « il faut vraiment que le robot soit clair et commencer avec des
+     * niveaux hyper faciles, quitte à mettre dans les options un mode
+     * tutoriel ». Une grille facile reste une page blanche pour qui n'a jamais
+     * vu de mathdoku : on ne sait pas par où entrer. Ici la zone à traiter est
+     * toujours allumée, avec sa raison, et l'élève n'a qu'à poser le chiffre —
+     * puis à regarder ce que cela débloque.
+     */
+    const enTutoriel = () => item.meta.difficulte === 'tutoriel' && !session.isDemo;
+
+    function guider() {
+        if (!enTutoriel() || session.locked) return;
+        const coup = prochainCoupKenken(grille, item.meta);
+        if (!coup) { effacerZone(); return; }
+        montrerZone(coup.zone);
+        celluleEl(coup.r, coup.c)?.classList.add('kk-cage--indice');
+        statut(coup.motif, 'aide');
+    }
+
     function poser(r, c, valeur) {
         if (verrous[r][c] || session.locked) return;
         grille[r][c] = valeur;
         const el = celluleEl(r, c);
-        el.querySelector('.kk-val').textContent = valeur || '';
+        const boite = el.querySelector('.kk-val');
+        const texte = valeur ? String(valeur) : '';
+        if (boite.tagName === 'INPUT') { if (boite.value !== texte) boite.value = texte; }
+        else boite.textContent = texte;
         // Toute édition invalide les marques du vérificateur et des indices :
         // elles décrivaient un état qui n'existe plus.
         container.querySelectorAll('.kk-cell--conflit, .kk-cage--faux, .kk-cage--indice')
             .forEach(e => e.classList.remove('kk-cell--conflit', 'kk-cage--faux', 'kk-cage--indice'));
         statut('');
+        // EN TUTORIEL, LA ZONE SUIVANTE S'ALLUME TOUTE SEULE : c'est ce qui
+        // fait voir qu'une case remplie en débloque une autre.
+        if (enTutoriel()) guider();
     }
 
     function brancherCases() {
+        brancherChamps(container, {
+            bloque: () => session.locked,
+            cleDe: (champ) => {
+                const cell = champ.closest('.kk-cell');
+                return `${cell.dataset.r},${cell.dataset.c}`;
+            },
+            poser: (cle, brut) => {
+                const [r, c] = cle.split(',').map(Number);
+                if (brut === '') { poser(r, c, 0); return; }
+                const v = Number(brut);
+                if (v >= item.meta.lo && v <= item.meta.hi) poser(r, c, v);
+            }
+        });
         container.querySelectorAll('.kk-cell').forEach(el => {
             const r = Number(el.dataset.r), c = Number(el.dataset.c);
             if (verrous[r][c]) return;
@@ -144,8 +207,9 @@ export function mount(container, session, opts = {}) {
                 const v = grille[r][c];
                 poser(r, c, v === 0 ? lo : (v >= hi ? 0 : v + 1));
             };
-            el.onclick = cycle;
-            el.onkeydown = (e) => {
+            const aChamp = !!el.querySelector('.kk-champ');
+            el.onclick = aChamp ? null : cycle;
+            el.onkeydown = aChamp ? null : (e) => {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycle(); }
                 else if (/^[0-9]$/.test(e.key)) {
                     const v = Number(e.key);
@@ -330,214 +394,45 @@ export function mount(container, session, opts = {}) {
         el.className = `kk-status${ton ? ` kk-status--${ton}` : ''}`;
     }
 
-    // --- Le raisonnement du robot ---------------------------------------------
-    //
-    // Remplir la grille dans l'ordre de lecture ne montrait RIEN : on voyait la
-    // solution apparaître, jamais comment on la trouve. Le robot cherche donc
-    // le prochain coup comme on l'apprend à un élève, et dit à voix haute la
-    // règle qui le lui donne — en désignant ce qu'il regarde.
-    //
-    // Chaque raison est VÉRIFIÉE contre la solution avant d'être prononcée :
-    // une justification fausse serait pire que pas de justification.
-
-    const cageDeCase = (r, c) =>
-        item.meta.cages.find(k => k.cells.some(p => p.r === r && p.c === c)) || null;
-
-    /** Valeurs déjà posées sur la ligne et la colonne de la case. */
-    function dejaVues(r, c) {
-        const { n } = item.meta;
-        const ligne = [], colonne = [];
-        for (let i = 0; i < n; i++) {
-            if (i !== c && grille[r][i]) ligne.push(grille[r][i]);
-            if (i !== r && grille[i][c]) colonne.push(grille[i][c]);
-        }
-        return { ligne, colonne };
-    }
-
-    /** Valeurs encore admissibles pour la case, au seul titre du carré latin. */
-    function possibles(r, c) {
-        const { lo, hi } = item.meta;
-        const { ligne, colonne } = dejaVues(r, c);
-        const prises = new Set([...ligne, ...colonne]);
-        const out = [];
-        for (let v = lo; v <= hi; v++) if (!prises.has(v)) out.push(v);
-        return out;
-    }
-
     /**
-     * Toutes les façons de compléter une cage, compte tenu de ce qui est déjà
-     * posé — arithmétique de la cage ET carré latin. Les cages font au plus
-     * quatre cases : l'énumération exhaustive est immédiate et sans piège.
+     * Démonstration : le robot joue les coups dans l'ordre où ils se
+     * déduisent — cage presque finie, ligne à une case, colonne à une case —
+     * et explique chaque déduction dans une bulle. Pause et pas-à-pas
+     * permettent de suivre le raisonnement à son rythme.
      */
-    function completions(cage) {
-        const { lo, hi } = item.meta;
-        const vides = cage.cells.filter(p => !grille[p.r][p.c]);
-        const posees = cage.cells.filter(p => grille[p.r][p.c]).map(p => grille[p.r][p.c]);
-        const out = [];
-
-        const essayer = (i, choix) => {
-            if (i === vides.length) {
-                const vals = [...posees, ...choix];
-                if (cage.op === null ? vals[0] === cage.target
-                    : OPS[cage.op].calc(vals) === cage.target) out.push(choix.slice());
-                return;
-            }
-            const { r, c } = vides[i];
-            for (let v = lo; v <= hi; v++) {
-                if (!possibles(r, c).includes(v)) continue;
-                // Deux cases d'une même cage peuvent partager une ligne : le
-                // carré latin les interdit d'être égales.
-                const conflit = choix.some((autre, j) =>
-                    autre === v && (vides[j].r === r || vides[j].c === c));
-                if (conflit) continue;
-                choix.push(v);
-                essayer(i + 1, choix);
-                choix.pop();
-            }
-        };
-        essayer(0, []);
-        return { vides, completions: out };
-    }
-
-    const liste = (vals) => {
-        const t = [...new Set(vals)].sort((a, b) => a - b);
-        return t.length > 1 ? `${t.slice(0, -1).join(', ')} et ${t[t.length - 1]}` : String(t[0] || '');
-    };
-
-    /**
-     * Le prochain coup et sa raison, de la règle la plus lisible à la plus fine.
-     * @returns {{r,c,valeur,phrase,cage?,croix?}|null}
-     */
-    function prochainCoup() {
-        const { n, solution } = item.meta;
-        const vides = [];
-        for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (!grille[r][c]) vides.push({ r, c });
-        if (!vides.length) return null;
-
-        // 1. Le carré latin suffit : tout est pris sauf une valeur.
-        for (const { r, c } of vides) {
-            const p = possibles(r, c);
-            if (p.length === 1 && p[0] === solution[r][c]) {
-                const { ligne, colonne } = dejaVues(r, c);
-                return {
-                    r, c, valeur: p[0], croix: true,
-                    phrase: `Sur cette ligne et cette colonne, il y a déjà ${liste([...ligne, ...colonne])}. `
-                        + `Il ne reste que ${p[0]}.`
-                };
-            }
-        }
-
-        // 2. Une cage à laquelle il ne manque qu'une case : l'opération donne
-        //    directement le compte.
-        for (const cage of item.meta.cages) {
-            if (cage.op === null) continue;
-            const manquantes = cage.cells.filter(p => !grille[p.r][p.c]);
-            if (manquantes.length !== 1) continue;
-            const { r, c } = manquantes[0];
-            const { completions: sols } = completions(cage);
-            const valeurs = new Set(sols.map(s => s[0]));
-            if (valeurs.size !== 1 || !valeurs.has(solution[r][c])) continue;
-            const posees = cage.cells.filter(p => grille[p.r][p.c]).map(p => grille[p.r][p.c]);
-            return {
-                r, c, valeur: solution[r][c], cage,
-                phrase: `Cette zone fait ${cage.label} et j'y ai déjà ${liste(posees)} : `
-                    + `il manque ${solution[r][c]}.`
-            };
-        }
-
-        // 3. La cage tout entière, croisée avec la ligne et la colonne : une
-        //    seule valeur y tient encore pour cette case.
-        for (const cage of item.meta.cages) {
-            if (cage.op === null) continue;
-            const { vides: cases, completions: sols } = completions(cage);
-            if (!sols.length) continue;
-            for (let i = 0; i < cases.length; i++) {
-                const valeurs = new Set(sols.map(s => s[i]));
-                const { r, c } = cases[i];
-                if (valeurs.size !== 1 || !valeurs.has(solution[r][c])) continue;
-                return {
-                    r, c, valeur: solution[r][c], cage, croix: true,
-                    phrase: `Dans cette zone à ${cage.label}, en tenant compte de la ligne et de la `
-                        + `colonne, cette case ne peut être que ${solution[r][c]}.`
-                };
-            }
-        }
-
-        // 4. Rien d'évident : on avance sur la case la plus contrainte, et on
-        //    le dit — annoncer une déduction qu'on n'a pas faite serait mentir.
-        const cible = vides
-            .map(p => ({ ...p, p: possibles(p.r, p.c) }))
-            .sort((a, b) => a.p.length - b.p.length)[0];
-        return {
-            r: cible.r, c: cible.c, valeur: solution[cible.r][cible.c], croix: true,
-            phrase: `Ici, ${liste(cible.p)} restent possibles. En regardant la suite de la grille, `
-                + `c'est ${solution[cible.r][cible.c]} qui convient.`
-        };
-    }
-
-    function eclairer(coup) {
-        eteindre();
-        if (coup.cage) coup.cage.cells.forEach(({ r, c }) => celluleEl(r, c).classList.add('kk-cage--indice'));
-        if (coup.croix) {
-            const { n } = item.meta;
-            for (let i = 0; i < n; i++) {
-                if (i !== coup.c) celluleEl(coup.r, i).classList.add('kk-cell--regarde');
-                if (i !== coup.r) celluleEl(i, coup.c).classList.add('kk-cell--regarde');
-            }
-        }
-    }
-
-    function eteindre() {
-        container.querySelectorAll('.kk-cage--indice, .kk-cell--regarde')
-            .forEach(el => el.classList.remove('kk-cage--indice', 'kk-cell--regarde'));
-    }
-
-    function poserDemo(r, c) {
-        grille[r][c] = item.meta.solution[r][c];
-        const el = celluleEl(r, c);
-        el.querySelector('.kk-val').textContent = grille[r][c];
-        el.classList.add('demo-target');
-    }
-
-    // Combien de coups sont commentés avant de passer à la main levée. La
-    // méthode s'apprend sur quelques cases ; les onze suivantes ne feraient
-    // que répéter, et une démonstration d'une minute n'est plus regardée.
-    const COUPS_COMMENTES = 5;
-
-    /** Démonstration : le robot déduit, explique, puis remplit. */
     async function runDemo() {
+        const { n, solution } = item.meta;
         if (!cursor) cursor = createDemoCursor();
-        if (session.narration && !narrateur) narrateur = creerNarrateur();
+        // La bulle se pose AUTOUR de la grille, jamais dessus : elle
+        // couvrait la ligne de chiffres sur laquelle porte l'explication.
+        cursor.protegerZone(container.querySelector('.kk-board'));
+        const gate = createDemoGate(container.querySelector('.kenken-layout') || container);
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
-        const plateau = container.querySelector('.kk-board');
-        if (narrateur && !await narrateur.dire(
-            `La règle : ${item.explanation}`, plateau)) return;
-        if (!await cursor.pause(narrateur ? 200 : 600) || destroyed) return;
-
-        for (let i = 0; ; i++) {
-            const coup = prochainCoup();
+        if (!await cursor.pause(600) || destroyed) return fin();
+        while (!destroyed) {
+            const coup = prochainCoupKenken(grille, item.meta);
             if (!coup) break;
-            const commente = narrateur && i < COUPS_COMMENTES;
+            if (!await gate.waitTurn() || destroyed) return fin();
             const el = celluleEl(coup.r, coup.c);
-            if (!el) break;
-
-            if (commente) {
-                eclairer(coup);
-                if (!await narrateur.dire(coup.phrase, el) || destroyed) { eteindre(); return; }
-            }
-            if (!await cursor.tap(el, commente ? 340 : 200) || destroyed) { eteindre(); return; }
-            poserDemo(coup.r, coup.c);
-            eteindre();
-
-            if (narrateur && i === COUPS_COMMENTES - 1) {
-                if (!await narrateur.dire('Le reste se déduit de la même façon, case après case.', plateau)) return;
-            }
+            if (!el) return fin();
+            // LE ROBOT MONTRE CE QU'IL REGARDE AVANT DE CONCLURE : la zone
+            // s'allume pendant qu'il l'explique, sinon la phrase parle d'un
+            // endroit que l'élève doit d'abord retrouver.
+            montrerZone(coup.zone);
+            cursor.say(coup.motif, el);
+            if (!await cursor.pause(900) || destroyed) return fin();
+            if (!await cursor.tap(el, 340) || destroyed) return fin();
+            effacerZone();
+            grille[coup.r][coup.c] = solution[coup.r][coup.c];
+            el.querySelector('.kk-val').textContent = solution[coup.r][coup.c];
+            el.classList.add('demo-target');
+            if (!await cursor.pause(900) || destroyed) return fin();
         }
-
-        plateau.classList.add('kk-board--ok');
-        if (narrateur) {
-            if (!await narrateur.dire('Grille terminée : chaque zone donne son résultat.', plateau)) return;
-        } else if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        fin();
+        if (destroyed) return;
+        container.querySelector('.kk-board').classList.add('kk-board--ok');
+        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }
 
@@ -549,9 +444,80 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
-            if (narrateur) { narrateur.detruire(); narrateur = null; }
             container.innerHTML = '';
             session.finish();
         }
+    };
+}
+
+/**
+ * Le prochain coup déductible d'un Mathdoku, avec la règle qui le justifie.
+ * Ordre des règles : cage à une seule case restante (l'opération impose la
+ * valeur), puis ligne ou colonne où il ne manque qu'un chiffre, puis, à
+ * défaut, la plus petite cage inachevée par élimination.
+ */
+function prochainCoupKenken(grille, meta) {
+    const { n, lo, hi, cages, solution } = meta;
+
+    // Les zones d'UNE case ne sont pas listées ici : l'activité les pose et les
+    // verrouille à l'ouverture (voir plus haut), parce qu'il n'y a rien à y
+    // calculer. C'est ce qui rend le tutoriel — moitié de zones d'une case —
+    // à moitié rempli d'avance.
+
+    // 1. Une cage où il ne reste qu'une case vide : l'opération la donne.
+    for (const cage of cages) {
+        if (cage.op === null) continue;
+        const videsCage = cage.cells.filter(({ r, c }) => grille[r][c] === 0);
+        if (videsCage.length !== 1) continue;
+        const { r, c } = videsCage[0];
+        const v = solution[r][c];
+        const remplies = cage.cells.filter(p => grille[p.r][p.c] !== 0)
+            .map(p => grille[p.r][p.c]);
+        return {
+            r, c, v, zone: { type: 'cage', cells: cage.cells },
+            motif: remplies.length
+                ? `Zone « ${cage.label} » : avec ${remplies.join(' et ')} déjà posé${remplies.length > 1 ? 's' : ''}, seul ${v} donne ${cage.target}.`
+                : `Zone « ${cage.label} » : une seule case, elle vaut ${cage.target}.`
+        };
+    }
+
+    // 2. Ligne ou colonne où il ne manque qu'une valeur.
+    for (let r = 0; r < n; r++) {
+        const vides = [];
+        for (let c = 0; c < n; c++) if (grille[r][c] === 0) vides.push(c);
+        if (vides.length === 1) {
+            const c = vides[0], v = solution[r][c];
+            return {
+                r, c, v, zone: { type: 'ligne', r },
+                motif: `Dans cette ligne, il ne manque plus que le ${v} — chaque chiffre de `
+                    + `${lo} à ${hi} y apparaît une fois et une seule.`
+            };
+        }
+    }
+    for (let c = 0; c < n; c++) {
+        const vides = [];
+        for (let r = 0; r < n; r++) if (grille[r][c] === 0) vides.push(r);
+        if (vides.length === 1) {
+            const r = vides[0], v = solution[r][c];
+            return {
+                r, c, v, zone: { type: 'colonne', c },
+                motif: `Dans cette colonne, il ne manque plus que le ${v}.`
+            };
+        }
+    }
+
+    // 3. La plus petite cage inachevée, par élimination.
+    const cage = cages
+        .filter(cg => cg.cells.some(({ r, c }) => grille[r][c] === 0))
+        .sort((a, b) => a.cells.length - b.cells.length)[0];
+    if (!cage) return null;
+    const { r, c } = cage.cells.find(p => grille[p.r][p.c] === 0);
+    const v = solution[r][c];
+    return {
+        r, c, v, zone: { type: 'cage', cells: cage.cells },
+        motif: cage.op === null
+            ? `Cette case est donnée : ${cage.target}.`
+            : `Zone « ${cage.label} » : ${v} est la seule valeur qui aille à la fois avec la `
+                + 'ligne, la colonne et l\'opération de la zone.'
     };
 }

@@ -1,0 +1,685 @@
+// LES FONCTIONS — la notation, et les deux mots qu'on inverse.
+//
+// Rémy : « et des exercices sur les fonctions ».
+//
+// CE CHAPITRE SE JOUE SUR DEUX MOTS. « f(3) = 11 » se lit « 11 est l'IMAGE de
+// 3 », et donc « 3 est un ANTÉCÉDENT de 11 ». Les élèves les échangent, et ce
+// n'est pas de l'étourderie : rien dans l'écriture ne dit lequel est lequel, il
+// faut avoir compris que la fonction PART de x et ARRIVE à f(x). Tout le reste
+// du chapitre — tableaux, courbes, programmes de calcul — s'écroule si ces deux
+// mots ne sont pas tenus.
+//
+// D'OÙ UN TYPE DE QUESTION QUI NE CALCULE RIEN. « f(3) = 11. Quelle est l'image
+// de 3 ? » n'a aucun calcul : la réponse est écrite. Elle vérifie seulement
+// qu'on lit l'égalité dans le bon sens — et c'est là que les points se perdent.
+//
+// CHERCHER UN ANTÉCÉDENT, C'EST REMONTER LE PROGRAMME À L'ENVERS. C'est la
+// deuxième idée du chapitre, et elle est plus profonde qu'elle n'en a l'air :
+// calculer une image, c'est appliquer les opérations dans l'ordre ; chercher un
+// antécédent, c'est les défaire dans l'ordre inverse, en remplaçant chacune par
+// son contraire. On garde donc les fonctions AFFINES pour les antécédents — le
+// carré en a deux, et « un antécédent » deviendrait ambigu.
+
+import { makeItem } from '../items.js';
+
+/**
+ * LE MOINS EST TYPOGRAPHIQUE PARTOUT.
+ *
+ * Le clavier écrit un trait d'union : plus court que le signe moins, et posé
+ * plus bas que la barre du plus. Tant qu'il est seul on ne le remarque pas ;
+ * dès qu'il voisine un « − » dans la même ligne — « f(x) = −3x − 3. Calcule
+ * f(-3). » — la différence saute aux yeux et l'énoncé a l'air bâclé. TOUT
+ * nombre affiché passe donc par ici, y compris dans les indices et les
+ * explications. La réponse attendue, elle, reste un nombre : l'élève tape ce
+ * qu'il veut, c'est la valeur qui est comparée.
+ */
+const nb = (v) => String(v).replace('-', '−');
+const fr = (x) => String(Math.round(x * 1000) / 1000).replace('.', ',').replace('-', '−');
+
+/**
+ * LES PROGRAMMES DE CALCUL, qui sont la porte d'entrée du chapitre en
+ * quatrième. Chaque étape porte son opération DIRECTE et son opération
+ * INVERSE : c'est cette paire qui permet de remonter, et c'est elle qu'on
+ * montre dans l'explication.
+ */
+const ETAPES = {
+    fois: (a) => ({
+        dit: `multiplie par ${nb(a)}`, inverse: `divise par ${nb(a)}`,
+        faire: (x) => x * a, defaire: (y) => y / a
+    }),
+    plus: (b) => ({
+        dit: `ajoute ${nb(b)}`, inverse: `enlève ${nb(b)}`,
+        faire: (x) => x + b, defaire: (y) => y - b
+    }),
+    moins: (b) => ({
+        dit: `enlève ${nb(b)}`, inverse: `ajoute ${nb(b)}`,
+        faire: (x) => x - b, defaire: (y) => y + b
+    })
+};
+
+/** L'écriture d'une fonction affine, sans les « 1x » ni les « + −3 ». */
+function ecrireAffine(a, b) {
+    const partA = a === 1 ? 'x' : (a === -1 ? '−x' : `${a < 0 ? '−' : ''}${Math.abs(a)}x`);
+    if (b === 0) return partA;
+    return `${partA} ${b > 0 ? '+' : '−'} ${Math.abs(b)}`;
+}
+
+/** Le programme de calcul équivalent : ×a puis ±b, dans cet ordre. */
+function programmeDe(a, b) {
+    const out = [ETAPES.fois(a)];
+    if (b > 0) out.push(ETAPES.plus(b));
+    else if (b < 0) out.push(ETAPES.moins(-b));
+    return out;
+}
+
+/** « multiplie par 5 » en tête de ligne : « Multiplie par 5 ». */
+const majuscule = (t) => String(t).charAt(0).toUpperCase() + String(t).slice(1);
+
+/** « 3 × (−2) » : un produit par un négatif se parenthèse, sinon on lit « 3 × − 2 ». */
+const facteur = (x) => (x < 0 ? `(${nb(x)})` : nb(x));
+
+export const fonctionsGenerator = {
+    id: 'alg.fonctions',
+    label: 'Les fonctions',
+    skills: ['alg.fonction.image'],
+    answerKinds: ['numeric'],
+    ecrit: true,
+    params: [
+        {
+            // ON COCHE CE QU'ON VEUT — Rémy : « Pourquoi pour les fonctions je
+            // n'ai pas les cases à cocher pour choisir ce que je veux ? »
+            //
+            // C'était un menu : une sorte à la fois, ou « Mélangé », c'est-à
+            // -dire les sept. Entre les deux, rien — et c'est justement entre
+            // les deux qu'on enseigne. « Calculer une image » et « chercher un
+            // antécédent » forment la séance où l'on oppose les deux sens de la
+            // marche ; « lire » et « compléter la phrase » forment celle du
+            // vocabulaire. Le menu obligeait à choisir une seule chose ou tout.
+            id: 'quoi', type: 'multiselect', deroulant: true, tout: 'questions',
+            label: 'Ce qu\'on demande',
+            default: ['lire', 'phrase', 'image', 'programme', 'tableau',
+                'tableau-complet', 'antecedent'],
+            aide: 'Coche ce que la séance travaille ; tout coché, les questions alternent. '
+                + 'Lire ne demande aucun calcul ; chercher un antécédent est le plus dur, '
+                + 'il faut remonter le programme à l\'envers.',
+            options: [
+                { value: 'lire', label: 'Lire une égalité (image ou antécédent ?)' },
+                { value: 'phrase', label: 'Compléter la phrase (… est l\'image de …)' },
+                { value: 'image', label: 'Calculer une image' },
+                { value: 'programme', label: 'Suivre un programme de calcul' },
+                { value: 'tableau', label: 'Compléter un tableau de valeurs' },
+                { value: 'tableau-complet', label: 'Remplir TOUT le tableau' },
+                { value: 'antecedent', label: 'Chercher un antécédent' }
+            ]
+        }
+    ],
+
+    generate(params, ctx) {
+        const rng = ctx.rng;
+        const p = params || {};
+        // POUR QUI ON ÉCRIT — et cela change le mélange, voir MELANGE ci-dessous.
+        const papier = !!(ctx && ctx.papier);
+        // CE QUE LE PROFESSEUR A COCHÉ, puis le MÉLANGE réduit à ce qu'il a
+        // coché. Le mélange porte des poids — la phrase revient plus souvent
+        // que le tableau, voir MELANGE ci-dessous —, et ces poids restent
+        // valables sur un sous-ensemble : on filtre la liste pondérée au lieu
+        // de tirer à plat. Quand la sélection ne rencontre pas le mélange —
+        // « compléter un tableau » n'existe pas sur le papier —, on tire
+        // uniformément parmi ce qui a été coché, plutôt que de rendre une
+        // question que personne n'a demandée.
+        const demandes = sortesDemandees(p.quoi);
+        const pondere = (papier ? MELANGE_PAPIER : MELANGE_ECRAN)
+            .filter(k => demandes.includes(k));
+        // UNE CASE COCHÉE DOIT POUVOIR SORTIR. Le mélange ne porte pas les
+        // sept sortes : « lire une égalité » n'était pas dans celui du papier,
+        // et « compléter un tableau » n'y est toujours pas. Cocher l'une des
+        // deux ne donnait alors RIEN d'elle — un réglage qui ne fait rien ment
+        // au professeur. Ce qui manque au mélange y entre une fois : les poids
+        // continuent de valoir pour le reste, et la case cochée compte.
+        const oubliees = demandes.filter(k => !pondere.includes(k));
+        const melange = [...pondere, ...oubliees];
+        // LE ROBOT COMMENCE PAR CALCULER UNE IMAGE. Rémy : « Commence par des
+        // calculs d'images pour le robot ».
+        //
+        // C'est le geste fondateur du chapitre — on REMPLACE x par le nombre,
+        // puis on calcule — et tout le reste s'y adosse : l'antécédent est ce
+        // calcul remonté à l'envers, le tableau en est une rangée, le programme
+        // la même chose dite en mots. Une démonstration qui ouvrirait sur
+        // « f(3) = 11, est-ce une image ou un antécédent ? » parlerait d'un
+        // vocabulaire dont l'élève ne sait pas encore ce qu'il désigne.
+        //
+        // Les DEUX premières, et pas seulement la première : une image vue une
+        // fois est un exemple, vue deux fois c'est une méthode. Ensuite le
+        // mélange reprend — le robot doit aussi montrer qu'on demandera autre
+        // chose. Et si le professeur n'a pas coché « calculer une image », on
+        // ne la lui impose pas : la démonstration montre SON exercice.
+        const debutRobot = ctx && ctx.demo && (Number(ctx.index) || 0) < 2
+            && demandes.includes('image');
+        const quoi = debutRobot ? 'image'
+            : rng.pick(melange.length ? melange : demandes);
+
+        const a = rng.pick([2, 3, 4, 5, -2, -3, 2, 3]);
+        const b = rng.pick([-9, -7, -5, -4, -3, -1, 1, 2, 3, 4, 5, 6, 8]);
+        const f = (x) => a * x + b;
+        const ecrit = `f(x) = ${ecrireAffine(a, b)}`;
+
+        if (quoi === 'lire') return itemLire(rng, a, b, f, ecrit);
+        if (quoi === 'phrase') return itemPhrase(rng, a, b, f, ecrit, papier);
+        if (quoi === 'tableau-complet') return itemTableauComplet(rng, a, b, f, ecrit);
+        if (quoi === 'antecedent') return itemAntecedent(rng, a, b, f, ecrit);
+        if (quoi === 'programme') return itemProgramme(rng, a, b, f);
+        if (quoi === 'tableau') return itemTableau(rng, a, b, f, ecrit);
+        return itemImage(rng, a, b, f, ecrit);
+    }
+};
+
+/** Les sept sortes de questions, dans l'ordre du réglage. */
+export const SORTES = ['lire', 'phrase', 'image', 'programme', 'tableau',
+    'tableau-complet', 'antecedent'];
+
+/**
+ * CE QUE LE PROFESSEUR A COCHÉ, remis au propre.
+ *
+ * On accepte une liste (le réglage d'aujourd'hui), une chaîne séparée par des
+ * virgules (ce que rend un formulaire), et une sorte seule (ce que les tests et
+ * les anciens parcours écrivent). Rien de coché — ou l'ancien « melange », qui
+ * n'est plus une sorte — vaut TOUT coché : un exercice sans question n'existe
+ * pas, et une case oubliée ne doit pas rendre l'étape vide.
+ */
+export function sortesDemandees(brut) {
+    const liste = (Array.isArray(brut) ? brut : String(brut ?? '').split(','))
+        .map(s => String(s).trim())
+        .filter(s => SORTES.includes(s));
+    return liste.length ? [...new Set(liste)] : [...SORTES];
+}
+
+/**
+ * DEUX MÉLANGES, PARCE QU'UN ÉCRAN ET UNE FEUILLE NE POSENT PAS LA MÊME QUESTION.
+ *
+ * Rémy, en regardant le PDF : « question trop triviale ».
+ *
+ * À L'ÉCRAN, une question facile n'est pas une question perdue : elle arrive
+ * dans une série chronométrée, où reconnaître d'un coup d'œil de quel côté de
+ * l'égalité on part EST l'exercice — c'est même le seul endroit où l'on peut
+ * s'entraîner à ce réflexe-là. La PHRASE revient donc souvent, et « calcule
+ * f(3) » sert de respiration entre deux.
+ *
+ * SUR LA FEUILLE, il n'y a ni chronomètre ni série : l'élève a le temps, il
+ * relit, il vérifie. Une question qui ne demande que de lire l'énoncé dans le
+ * bon sens ne lui coûte rien — c'est une ligne de plus à recopier. La feuille
+ * garde donc ce qui demande un CALCUL ou un RAISONNEMENT : le tableau complet
+ * (quatre images à la suite, où les fautes de signe reviennent en série),
+ * l'antécédent (remonter le programme à l'envers), et la phrase — mais celle
+ * dont le nombre manquant n'est écrit nulle part.
+ *
+ * Ce qui pèse le moins sur le papier : « lire une égalité », qui n'y demande
+ * rien, et le tableau à UN trou, qui est une image habillée en tableau et que
+ * le tableau complet fait quatre fois mieux. Ils n'en sont plus EXCLUS pour
+ * autant : depuis que le professeur coche ce qu'il veut, une case cochée doit
+ * sortir — voir `oubliees` dans `generate`. Ce mélange dit les POIDS ; les
+ * cases disent QUOI.
+ */
+const MELANGE_ECRAN = ['phrase', 'image', 'programme', 'tableau', 'antecedent',
+    'image', 'phrase', 'tableau-complet'];
+const MELANGE_PAPIER = ['phrase', 'tableau-complet', 'antecedent', 'phrase',
+    'image', 'antecedent', 'tableau-complet', 'programme'];
+
+/**
+ * L'ÉNONCÉ D'UNE FONCTION TIENT SUR DEUX LIGNES.
+ *
+ * Rémy : « pour les fonctions, tu vois, écris "soit f(x) = 3x + 5" puis va à
+ * la ligne. » La DÉFINITION de la fonction et la QUESTION qu'on pose dessus
+ * sont deux choses. La définition, on la relit à chaque étape du calcul ;
+ * collée en tête de la question, il faut aller la rechercher au milieu d'une
+ * phrase à chaque fois. Au tableau, personne n'écrit autrement : la fonction
+ * sur une ligne, ce qu'on demande sur la suivante.
+ *
+ * (Et « Soit f(x) = … » suffit : « Soit la fonction f(x) = … » ajoute trois
+ * mots que la notation dit déjà.)
+ */
+const enonceFonction = (ecrit, question) => `Soit ${ecrit}.\n${question}`;
+
+/** Le même énoncé pour l'écran, où le retour à la ligne se dit `<br>`. */
+const enonceFonctionHtml = (ecrit, question) =>
+    `<div class="game-question">Soit <b>${ecrit}</b>.<br>${question}</div>`;
+
+/** LIRE UNE ÉGALITÉ : aucun calcul, seulement le sens des deux mots. */
+function itemLire(rng, a, b, f, ecrit) {
+    const x = rng.int(2, 9);
+    const y = f(x);
+    const versImage = rng.bool();
+    const texte = versImage
+        ? `On sait que f(${x}) = ${nb(y)}. Quelle est l'image de ${x} par f ?`
+        : `On sait que f(${x}) = ${nb(y)}. Donne un antécédent de ${nb(y)} par f.`;
+    return item(rng, {
+        quoi: 'lire', texte, reponse: versImage ? y : x,
+        hints: [
+            'Il n\'y a RIEN à calculer : la réponse est déjà écrite dans l\'énoncé. '
+                + 'La seule question est de la lire dans le bon sens.',
+            'Une fonction PART du nombre entre parenthèses et ARRIVE au résultat. Dans '
+                + `f(${x}) = ${nb(y)}, on part de ${x} et on arrive à ${nb(y)}.`,
+            versImage ? `L'image de ${x}, c'est ce qu'on obtient : ${nb(y)}.`
+                : `Un antécédent de ${nb(y)}, c'est ce d'où l'on part : ${x}.`
+        ],
+        explanation: `f(${x}) = ${nb(y)} se lit : « ${nb(y)} est l'image de ${x} », et donc `
+            + `aussi « ${x} est un antécédent de ${nb(y)} ». On part du nombre entre `
+            + 'parenthèses, on arrive au résultat.',
+        difficulty: 1
+    });
+}
+
+/**
+ * COMPLÉTER LA PHRASE — et c'est Rémy qui a dit pourquoi elle manquait.
+ *
+ * « Fais des phrases du genre : f(3) = 1 … est l'image de … par la fonction f.
+ * Ou … est un antécédent de … par la fonction f. Car là tes questions sont
+ * faciles. »
+ *
+ * IL A RAISON, ET LE DÉFAUT ÉTAIT DE FORME. « On sait que f(3) = 1, quelle est
+ * l'image de 3 ? » se répond sans avoir compris : la réponse est l'un des deux
+ * nombres écrits juste au-dessus, et le hasard en donne un sur deux. La PHRASE,
+ * elle, oblige à ranger les deux nombres — et c'est exactement le geste qu'on
+ * rate en contrôle, parce qu'« image » et « antécédent » se disent dans le même
+ * souffle et se rangent à l'envers l'un de l'autre.
+ *
+ * DEUX FAÇONS DE LA POSER, ET LA SECONDE FERME LA PORTE AU HASARD :
+ *
+ *   · ON DONNE L'ÉGALITÉ. « f(3) = 1. Complète : … est l'image de 3 par f. »
+ *     Les deux nombres sont sous les yeux ; il n'y a qu'à les ranger. C'est la
+ *     forme de Rémy, et c'est la première marche.
+ *   · ON DONNE LA FONCTION. « Soit f(x) = 3x + 5. Complète : … est un
+ *     antécédent de 17 par f. » Le nombre manquant n'est écrit nulle part : il
+ *     faut le CALCULER, et il faut d'abord avoir compris de quel côté on part.
+ *     Deviner ne sert plus à rien.
+ *
+ * ET LES QUATRE COMBINAISONS SONT TIRÉES : image ou antécédent, trou à gauche
+ * ou à droite. Un élève qui a retenu « la réponse est toujours le résultat » se
+ * fait prendre à la première phrase où le trou est de l'autre côté.
+ */
+function itemPhrase(rng, a, b, f, ecrit, papier) {
+    // ON ÉVITE LE POINT FIXE, et il n'est pas si rare : avec f(x) = 2x − 3,
+    // f(3) = 3. « 3 est l'image de 3 » se complète juste dans les deux sens, et
+    // la question qu'on pose — dans quel ORDRE vont les deux nombres — n'a
+    // alors plus de réponse à donner. C'est vrai de la phrase à un trou ; c'est
+    // pire à deux, où la paire échangée serait comptée juste.
+    const choix = [-3, -2, 1, 2, 3, 4, 5, 6];
+    const utiles = choix.filter(v => f(v) !== v);
+    const x = rng.pick(utiles.length ? utiles : choix);
+    const y = f(x);
+    const versImage = rng.bool();          // « … est l'image de … » ou « … est un antécédent de … »
+    const trouAGauche = rng.bool();        // quel pointillé porte la réponse
+    // ON DONNE f(x) = y, OU SEULEMENT f. Sur la feuille, deux fois sur trois on
+    // ne donne QUE la fonction : avec l'égalité sous les yeux, il n'y a qu'à
+    // ranger deux nombres déjà écrits, et l'élève qui a le temps de réfléchir
+    // n'a rien à réfléchir. L'écran, lui, garde l'équilibre : c'est là qu'on
+    // s'entraîne au réflexe de lecture, pas ici.
+    const avecEgalite = papier ? rng.pick([false, false, true]) : rng.bool();
+
+    // Dans « A est l'image de B », A est le résultat et B le départ.
+    // Dans « A est un antécédent de B », c'est l'inverse.
+    const gauche = versImage ? y : x;
+    const droite = versImage ? x : y;
+    const dit = versImage ? 'est l\'image de' : 'est un antécédent de';
+    // DEUX TROUS QUAND L'ÉGALITÉ EST DONNÉE — Rémy : « Dans la phrase enlève
+    // les deux chiffres, on peut les compléter grâce au f(x) ».
+    //
+    // Il a encore raison, et c'est la moitié du travail que j'avais laissée
+    // faite. « On sait que f(4) = 1. Complète : … est l'image de 4 par f » ne
+    // pose que la moitié de la question : le 4 est déjà rangé, il ne reste
+    // qu'un nombre à mettre, et comme il n'y en a que deux à l'écran, le
+    // trouver ne prouve rien. Avec les DEUX trous, l'élève doit ranger la
+    // paire entière — et ranger la paire, c'est exactement le geste qu'on
+    // rate en contrôle.
+    //
+    // On ne le fait QUE si l'égalité est donnée : sans elle, un des deux
+    // nombres n'est écrit nulle part et se calcule ; deux trous n'auraient
+    // alors aucun point d'appui.
+    const deuxTrous = avecEgalite;
+    const TROU = '. . . . .';
+    const phrase = deuxTrous
+        ? `${TROU} ${dit} ${TROU} par la fonction f.`
+        : (trouAGauche
+            ? `${TROU} ${dit} ${nb(droite)} par la fonction f.`
+            : `${nb(gauche)} ${dit} ${TROU} par la fonction f.`);
+    // SUR LE PAPIER, LE TROU EST UN BLANC, PAS DES POINTS.
+    //
+    // Rémy : « des lignes en pointillé qui ne servent à rien ». Elles venaient
+    // de là : la feuille reconnaît un trou dans un énoncé à une SUITE
+    // D'ESPACES — elle y pose alors la ligne à remplir, à l'endroit exact où
+    // l'on écrit. Des points de suspension écrits à la main ne sont pas un
+    // trou pour elle : elle imprimait donc la phrase telle quelle, ET deux
+    // lignes de pointillés dessous. Deux endroits pour une seule réponse.
+    const blanc = '            ';
+    // ET LA PHRASE EST PLUS COURTE SUR LA FEUILLE : « par f », non « par la
+    // fonction f ». Ce n'est pas une économie de mots pour elle-même. La
+    // colonne d'une fiche à deux colonnes fait huit centimètres ; la phrase
+    // longue y tient sur deux lignes, et une phrase à trous coupée en deux
+    // fait REDESCENDRE toute la feuille à une seule colonne — la moitié du
+    // papier pour vingt questions. À l'écran, où la place ne manque pas, la
+    // phrase reste entière : c'est là qu'on apprend à la dire.
+    const phrasePapier = deuxTrous
+        ? `${blanc}${dit}${blanc}par f.`
+        : (trouAGauche
+            ? `${blanc}${dit} ${nb(droite)} par f.`
+            : `${nb(gauche)} ${dit}${blanc}par f.`);
+    // LA RÉPONSE À DEUX TROUS S'ÉCRIT « gauche|droite ». La barre n'est pas une
+    // fantaisie : c'est ce que le pavé renvoie quand la question porte
+    // plusieurs cases, et c'est aussi ce qui permet de reconnaître la faute
+    // qui compte — la paire ÉCHANGÉE.
+    // Les nombres BRUTS, avec le trait d'union du clavier : c'est ce que le
+    // pavé renvoie. `nb()` met le vrai signe moins, qui est fait pour être LU.
+    const reponse = deuxTrous
+        ? `${gauche}|${droite}`
+        : (trouAGauche ? gauche : droite);
+
+    // CE QU'ON DONNE EN TÊTE. Avec l'égalité, tout est là et il n'y a qu'à
+    // ranger ; sans elle, le nombre manquant se calcule.
+    const tete = avecEgalite ? `On sait que f(${nb(x)}) = ${nb(y)}.` : `Soit ${ecrit}.`;
+    const question = `Complète la phrase :\n${phrase}`;
+    // À l'écran, un trou est une case qu'on touche : `data-trou` la désigne, et
+    // le pavé y écrit — voir « plusieurs trous » dans activities/numeric.js.
+    const caseHtml = (i) => `<u class="np-trou" data-trou="${i}">&nbsp;&nbsp;?&nbsp;&nbsp;</u>`;
+    const htmlPhrase = `<div class="game-question">${avecEgalite
+        ? `On sait que <b>f(${nb(x)}) = ${nb(y)}</b>.`
+        : `Soit <b>${ecrit}</b>.`}<br>Complète la phrase :<br>
+        <span class="fn-phrase">${deuxTrous
+        ? `${caseHtml(0)} ${dit} ${caseHtml(1)} par la fonction f.`
+        : (trouAGauche
+            ? `${caseHtml(0)} ${dit} ${nb(droite)} par la fonction f.`
+            : `${nb(gauche)} ${dit} ${caseHtml(0)} par la fonction f.`)}</span></div>`;
+
+    // L'aide ne donne jamais le nombre : elle donne le SENS de la marche.
+    const sens = 'Une fonction PART du nombre entre parenthèses et ARRIVE au résultat : dans '
+        + `f(${nb(x)}) = ${nb(y)}, on part de ${nb(x)} et l'on arrive à ${nb(y)}.`;
+    const rangement = versImage
+        ? 'Dans « A est l\'image de B », A est ce qu\'on OBTIENT et B ce d\'où l\'on PART.'
+        : 'Dans « A est un antécédent de B », A est ce d\'où l\'on PART et B ce qu\'on OBTIENT.';
+    const calcul = avecEgalite
+        ? `Les deux nombres sont écrits : f(${nb(x)}) = ${nb(y)}. Il n'y a qu'à les ranger `
+            + `dans le bon ordre — c'est ${nb(gauche)}, puis ${nb(droite)}.`
+        : (versImage === trouAGauche
+            ? `Il faut calculer : f(${nb(x)}) = ${nb(a)} × ${facteur(x)} `
+                + `${b > 0 ? '+' : '−'} ${Math.abs(b)} = ${nb(y)}.`
+            : `Il faut remonter : quel nombre a pour image ${nb(y)} ? C'est ${nb(x)}.`);
+
+    return item(rng, {
+        quoi: versImage ? 'phrase' : 'phrase-antecedent',
+        reponse,
+        // Deux trous : la réponse n'est plus un nombre mais une PAIRE RANGÉE.
+        sorte: deuxTrous ? 'text' : 'numeric',
+        trous: deuxTrous ? 2 : 1,
+        // LA FAUTE QUI COMPTE EST L'ÉCHANGE, et elle a un nom. Un élève qui
+        // écrit la paire à l'envers n'a pas « faux » : il a mis l'image à la
+        // place de l'antécédent, et c'est cela qu'il faut lui dire.
+        diagnostics: deuxTrous ? [{
+            value: `${droite}|${gauche}`,
+            why: `Tu as échangé les deux. ${rangement} Or f(${nb(x)}) = ${nb(y)} `
+                + `part de ${nb(x)} et arrive à ${nb(y)}.`
+        }] : null,
+        texte: `${tete} ${question}`,
+        html: htmlPhrase,
+        papier: `${tete}\nComplète :\n${phrasePapier}`,
+        // La colonne des solutions écrit les nombres comme partout ailleurs
+        // sur cette feuille : bruts. Mélanger « −3 » et « -3 » dans la même
+        // colonne se voit.
+        reponsePapier: deuxTrous ? `${gauche} … ${droite}` : '',
+        hints: [rangement, sens, calcul],
+        explanation: `f(${nb(x)}) = ${nb(y)} se lit dans les deux sens : « ${nb(y)} est `
+            + `l'image de ${nb(x)} par f » et « ${nb(x)} est un antécédent de ${nb(y)} par f ». `
+            + (deuxTrous
+                ? `La phrase se complétait donc par ${nb(gauche)}, puis ${nb(droite)}.`
+                : `Ici la phrase demandait ${nb(reponse)}.`),
+        difficulty: avecEgalite ? 2 : 3
+    });
+}
+
+/**
+ * REMPLIR TOUT LE TABLEAU — Rémy : « tu peux demander de remplir tout le
+ * tableau si on donne la fonction ».
+ *
+ * Le tableau à un seul trou pose UNE image, habillée en tableau. Le tableau
+ * complet en pose quatre, et il enseigne autre chose : à la troisième colonne,
+ * l'élève ne réécrit plus le calcul, il l'automatise — et c'est là qu'on voit
+ * les fautes de signe, parce qu'elles reviennent en série. C'est aussi le
+ * format du contrôle, et celui de la feuille : quatre colonnes vides sous une
+ * fonction donnée.
+ *
+ * À L'ÉCRAN, ON DEMANDE UNE COLONNE À LA FOIS. Le pavé numérique rend UN
+ * nombre : on remplit donc les trois premières colonnes pour l'élève et on lui
+ * demande la dernière — la même question, avec trois exemples déjà faits sous
+ * les yeux. Sur le papier, où l'on écrit ce qu'on veut, le tableau est vide en
+ * entier, et la correction donne les quatre valeurs.
+ */
+function itemTableauComplet(rng, a, b, f, ecrit) {
+    const xs = rng.shuffle([-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]).slice(0, 4).sort((u, v) => u - v);
+    const ys = xs.map(f);
+    const cellules = (lot) => lot.map(v => `<td>${v}</td>`).join('');
+    // LE TABLEAU DE LA FEUILLE — dessiné, pas écrit. Une case vide est une case
+    // à remplir : c'est la mise en page qui trace le quadrillage, et c'est elle
+    // qui décide de ne poser aucun pointillé dessous, puisque la place pour
+    // répondre est DANS le tableau.
+    const tableauPapier = {
+        lignes: [['x', ...xs.map(nb)], ['f(x)', ...xs.map(() => '')]]
+    };
+    // À l'écran, les trois premières sont données : c'est la dernière qu'on demande.
+    const montrees = ys.map((y, i) => (i === ys.length - 1 ? '?' : nb(y)));
+    const html = enonceFonctionHtml(ecrit, 'Complète le tableau de valeurs.')
+        + `<table class="fn-valeurs"><tbody>
+            <tr><th>x</th>${cellules(xs.map(nb))}</tr>
+            <tr><th>f(x)</th>${cellules(montrees)}</tr>
+        </tbody></table>`;
+    const dernier = xs[xs.length - 1];
+    const detail = xs.map((x, i) => `f(${nb(x)}) = ${nb(ys[i])}`).join(' ; ');
+
+    return item(rng, {
+        quoi: 'tableau-complet', reponse: ys[ys.length - 1],
+        texte: enonceFonction(ecrit,
+            `Complète le tableau de valeurs.\nx : ${xs.map(nb).join(' | ')}\n`
+            + `f(x) : ${montrees.join(' | ')}`),
+        html,
+        papier: enonceFonction(ecrit, 'Complète TOUT le tableau de valeurs.'),
+        tableau: tableauPapier,
+        // LE CORRIGÉ DOIT DONNER LES QUATRE. La feuille pose quatre cases,
+        // l'écran n'en demande qu'une — sans cela, le corrigé imprimait la
+        // dernière valeur, seule, en face d'une question qui en posait quatre.
+        reponsePapier: xs.map((v, i) => `f(${nb(v)}) = ${nb(ys[i])}`).join(' ; '),
+        hints: [
+            'Une colonne à la fois : on remplace x par le nombre du haut, on calcule, '
+                + 'on écrit le résultat en dessous.',
+            `Pour la dernière colonne, x = ${nb(dernier)}.`,
+            `f(${nb(dernier)}) = ${nb(a)} × ${facteur(dernier)} ${b > 0 ? '+' : '−'} `
+                + `${Math.abs(b)} = ${nb(ys[ys.length - 1])}`
+        ],
+        explanation: `Chaque colonne est un couple (x ; f(x)) : ${detail}.`,
+        difficulty: 3
+    });
+}
+
+/** CALCULER UNE IMAGE : on remplace x, on calcule. */
+function itemImage(rng, a, b, f, ecrit) {
+    const x = rng.pick([-3, -2, 0, 1, 2, 3, 4, 5, 6, 10]);
+    const signe = b > 0 ? '+' : '−';
+    return item(rng, {
+        quoi: 'image', reponse: f(x),
+        texte: enonceFonction(ecrit, `Calcule f(${nb(x)}).`),
+        html: enonceFonctionHtml(ecrit, `Calcule f(${nb(x)}).`),
+        hints: [
+            `Calculer f(${nb(x)}), c'est REMPLACER x par ${nb(x)} dans l'écriture de f, `
+                + 'puis calculer.',
+            `f(${nb(x)}) = ${nb(a)} × ${facteur(x)} ${signe} ${Math.abs(b)}`,
+            `f(${nb(x)}) = ${nb(a * x)} ${signe} ${Math.abs(b)} = ${nb(f(x))}`
+        ],
+        explanation: `On remplace x par ${nb(x)} : f(${nb(x)}) = ${nb(a)} × ${facteur(x)} `
+            + `${signe} ${Math.abs(b)} = ${nb(f(x))}. Donc ${nb(f(x))} est l'image de ${nb(x)}.`,
+        difficulty: 2
+    });
+}
+
+/**
+ * SUIVRE UN PROGRAMME DE CALCUL — la porte d'entrée du chapitre.
+ *
+ * UNE ÉTAPE PAR LIGNE. Rémy, capture d'un téléphone à l'appui : « Va à la
+ * ligne à chaque étape ».
+ *
+ * L'énoncé tenait sur une seule phrase — « choisis un nombre ; 1. multiplie
+ * par 5 ; 2. ajoute 1. Quel résultat… » —, et sur un écran étroit elle se
+ * repliait sur quatre lignes dont AUCUNE ne correspondait à une étape : on
+ * lisait « 1. multiplie par », retour, « 5 ; 2. ajoute 1. Quel résultat ».
+ * Le point-virgule est le seul indice de la coupure, et il se perd au milieu
+ * d'un mur de mots.
+ *
+ * Or un programme de calcul EST une liste. C'est ainsi qu'il est écrit au
+ * tableau, dans le manuel et au contrôle, et cette forme n'est pas une
+ * décoration : elle dit qu'on fait les opérations DANS L'ORDRE, une par une,
+ * en écrivant le résultat de chacune — ce qui est précisément la consigne du
+ * premier indice.
+ */
+function itemProgramme(rng, a, b, f) {
+    const x = rng.int(1, 9);
+    const etapes = programmeDe(a, b);
+    // LA LISTE, UNE ÉTAPE PAR LIGNE — et « choisis un nombre » en est une.
+    // C'est la première du programme : elle dit d'où l'on part, et la numéroter
+    // comme les autres évite un décalage entre l'écran, qui numérote tout seul
+    // avec sa liste, et le papier, qui écrit les numéros à la main.
+    const lignes = ['Choisis un nombre', ...etapes.map(e => majuscule(e.dit))];
+    const demande = `Quel résultat obtient-on en partant de ${x} ?`;
+    let courant = x;
+    const detail = etapes
+        .map(e => { courant = e.faire(courant); return `${e.dit} → ${nb(courant)}`; })
+        .join(', puis ');
+    return item(rng, {
+        quoi: 'programme', reponse: f(x),
+        // Sur la feuille, un retour à la ligne EST un retour à la ligne : la
+        // mise en page du papier découpe l'énoncé sur les « \n ».
+        texte: `Programme de calcul :\n`
+            + `${lignes.map((l, i) => `${i + 1}. ${l}`).join('\n')}\n${demande}`,
+        html: `<div class="game-question">Programme de calcul :
+            <ol class="fn-prog">${lignes.map(l => `<li>${l}</li>`).join('')}</ol>
+            ${demande}</div>`,
+        hints: [
+            'Fais les étapes DANS L\'ORDRE, une par une, en écrivant le résultat de chacune.',
+            `On part de ${x}, on ${etapes[0].dit} : ${nb(etapes[0].faire(x))}.`,
+            `Puis on continue : ${detail}.`
+        ],
+        explanation: `En partant de ${x} : ${detail}. Ce programme est la fonction `
+            + `f(x) = ${ecrireAffine(a, b)}, et l'on vient de calculer f(${x}) = ${nb(f(x))}.`,
+        difficulty: 2
+    });
+}
+
+/**
+ * COMPLÉTER UN TABLEAU DE VALEURS : la fonction, vue comme une machine.
+ *
+ * LE TABLEAU EST UN VRAI TABLEAU, et il a fallu que Rémy le voie pour qu'on
+ * s'en aperçoive. Il était écrit en texte, aligné à coups d'espaces — ce qui
+ * marche dans un terminal et nulle part ailleurs : l'écran replie les espaces
+ * et avale les retours à la ligne, et l'énoncé arrivait en une bouillie,
+ * « x : −2 2 3 5 f(x) : ? 7 9 13 ». Or c'est précisément LIRE UN TABLEAU qu'on
+ * travaille ici : une colonne, un couple.
+ */
+function itemTableau(rng, a, b, f, ecrit) {
+    const xs = rng.shuffle([-2, -1, 0, 1, 2, 3, 4, 5]).slice(0, 4).sort((u, v) => u - v);
+    const trou = rng.int(0, xs.length - 1);
+    const ligne = xs.map((x, i) => (i === trou ? '?' : nb(f(x))));
+    // SUR LE PAPIER, DES BARRES PLUTÔT QUE DES ESPACES. La feuille n'aligne pas
+    // en colonnes non plus — c'est du texte suivi —, mais une barre verticale
+    // sépare les cases sans ambiguïté, quelle que soit la police.
+    const tableau = `x : ${xs.map(nb).join(' | ')}\nf(x) : ${ligne.join(' | ')}`;
+    // Sur la feuille, le même tableau se DESSINE, et la case manquante est vide
+    // plutôt que marquée d'un « ? » : un point d'interrogation dans une case
+    // qu'on doit remplir se retrouve barré ou entouré par la réponse.
+    const tableauPapier = {
+        lignes: [['x', ...xs.map(nb)], ['f(x)', ...xs.map((v, i) => (i === trou ? '' : nb(f(v))))]]
+    };
+    const x0 = xs[trou];
+    const cellules = (lot) => lot.map(v => `<td>${v}</td>`).join('');
+    // ESPACE INSÉCABLE DEVANT LE DEUX-POINTS : sans lui, il se retrouve seul en
+    // tête de la deuxième ligne quand l'énoncé se replie.
+    const html = enonceFonctionHtml(ecrit, 'Complète le tableau : quelle valeur remplace le « ? » ?')
+        + `<table class="fn-valeurs"><tbody>
+            <tr><th>x</th>${cellules(xs.map(nb))}</tr>
+            <tr><th>f(x)</th>${cellules(ligne)}</tr>
+        </tbody></table>`;
+    return item(rng, {
+        quoi: 'tableau', reponse: f(x0),
+        texte: enonceFonction(ecrit, `Complète le tableau : quelle valeur remplace le « ? » ?\n${tableau}`),
+        html,
+        papier: enonceFonction(ecrit, 'Complète le tableau de valeurs.'),
+        tableau: tableauPapier,
+        hints: [
+            'Un tableau de valeurs, c\'est une image par colonne : la ligne du haut donne x, '
+                + 'celle du bas donne f(x).',
+            `La colonne manquante est celle de x = ${nb(x0)}. Remplace x par ${nb(x0)}.`,
+            `f(${nb(x0)}) = ${nb(a)} × ${facteur(x0)} ${b > 0 ? '+' : '−'} ${Math.abs(b)} `
+                + `= ${nb(f(x0))}`
+        ],
+        explanation: `Chaque colonne est un couple (x ; f(x)). Ici x = ${nb(x0)}, donc `
+            + `f(${nb(x0)}) = ${nb(f(x0))} : ${nb(f(x0))} est l'image de ${nb(x0)}.`,
+        difficulty: 2
+    });
+}
+
+/** CHERCHER UN ANTÉCÉDENT : remonter le programme à l'envers. */
+function itemAntecedent(rng, a, b, f, ecrit) {
+    // On part de l'antécédent pour que l'image tombe juste : chercher
+    // l'antécédent de 7 quand la division ne tombe pas transformerait un
+    // exercice de raisonnement en exercice de fractions.
+    const x = rng.pick([-3, -2, 1, 2, 3, 4, 5, 6]);
+    const y = f(x);
+    const etapes = programmeDe(a, b);
+    const remonte = [...etapes].reverse();
+    let courant = y;
+    const detail = remonte
+        .map(e => { courant = e.defaire(courant); return `${e.inverse} → ${fr(courant)}`; })
+        .join(', puis ');
+    return item(rng, {
+        quoi: 'antecedent', reponse: x,
+        texte: enonceFonction(ecrit, `Quel nombre a pour image ${nb(y)} ? `
+            + `(autrement dit : trouve un antécédent de ${nb(y)})`),
+        html: enonceFonctionHtml(ecrit, `Quel nombre a pour image ${nb(y)} ? `
+            + `(autrement dit : trouve un antécédent de ${nb(y)})`),
+        hints: [
+            'Calculer une image, c\'est faire les opérations DANS L\'ORDRE. Chercher un '
+                + 'antécédent, c\'est les DÉFAIRE dans l\'ordre inverse.',
+            `Le programme de f est : ${etapes.map(e => e.dit).join(', puis ')}. `
+                + 'Pour remonter, on fait le contraire, en commençant par la fin : '
+                + `${remonte.map(e => e.inverse).join(', puis ')}.`,
+            `On part de ${nb(y)} : ${detail}.`
+        ],
+        explanation: `On remonte le programme à l'envers. En partant de ${nb(y)} : ${detail}. `
+            + `Vérification : f(${nb(x)}) = ${nb(y)}, donc ${nb(x)} est bien un antécédent `
+            + `de ${nb(y)}.`,
+        difficulty: 3
+    });
+}
+
+function item(rng, { quoi, texte, html, papier, tableau, reponse, reponsePapier,
+    hints, explanation, difficulty, sorte, trous, diagnostics }) {
+    return makeItem({
+        seed: rng.seed,
+        generatorId: 'alg.fonctions',
+        // « phrase-antecedent » compte lui aussi dans la compétence
+        // « antécédent » : c'est le même geste, posé autrement. Un `===` nu
+        // l'aurait rangé dans « image », et le bilan aurait menti.
+        skillId: quoi.includes('antecedent') ? 'alg.fonction.antecedent' : 'alg.fonction.image',
+        // « text » quand la réponse est une PAIRE — voir `itemPhrase` et les
+        // « plusieurs trous » du pavé. Partout ailleurs, un nombre.
+        answerKind: sorte || 'numeric',
+        diagnostics: diagnostics || null,
+        // `html` n'existe que là où l'énoncé porte un DESSIN — ici le tableau de
+        // valeurs. Ailleurs, `text` suffit et l'écran l'habille lui-même.
+        prompt: {
+            text: texte, papier: papier || texte,
+            // Le tableau ne concerne QUE la feuille : l'écran, lui, en pose un
+            // vrai en HTML, qui se met en forme tout seul.
+            ...(tableau ? { tableau } : {}),
+            ...(html ? { html } : {})
+        },
+        answer: reponse,
+        reponsePapier: reponsePapier || '',
+        hints,
+        explanation,
+        difficulty,
+        meta: { quoi, theme: `fonction-${quoi}`, ...(trous > 1 ? { trous } : {}) }
+    });
+}

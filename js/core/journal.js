@@ -23,6 +23,12 @@ export const EventTypes = {
     TIME_SPENT: 'time_spent',
     BADGE_GRANTED: 'badge_granted',
     PATH_ASSIGNED: 'path_assigned',
+    // UNE ÉTAPE SOUS CLÉ VIENT D'ÊTRE OUVERTE. C'est un événement du journal
+    // comme les autres, et pas un réglage à part : il se synchronise donc tout
+    // seul entre les appareils de l'élève, et le professeur voit à quelle heure
+    // sa clé a été utilisée — ce qui est exactement ce qu'il veut savoir d'une
+    // interrogation. Charge utile : { sel, jusqua }.
+    VERROU_OUVERT: 'verrou_ouvert',
     HINT_USED: 'hint_used',
     BONUS: 'bonus',                     // points hors question (migration, récompense)
     SNAPSHOT: 'snapshot'                // agrégat de compactage (voir compact())

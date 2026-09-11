@@ -14,9 +14,7 @@
 // notations de géométrie que les tables ou les fractions.
 
 import { regTimeout } from '../timers.js';
-import { createDemoCursor } from '../demoPointer.js';
-import { creerNarrateur } from '../demoNarration.js';
-import { demoChoix } from '../demoScript.js';
+import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
 import { hintBar, wireHint } from './choice.js';
 
 const DEPART = 9000;        // temps accordé à la première question (ms)
@@ -27,7 +25,6 @@ const RESPIRATION = 1.22;   // desserrage après une erreur ou un temps écoulé
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let cursor = null;
-    let narrateur = null;
     let item = null;
 
     let budget = DEPART;
@@ -158,14 +155,9 @@ export function mount(container, session, opts = {}) {
             barre.style.animation = 'none';
             barre.style.transform = 'scaleX(0.72)';
             if (!session.frozen) {
-                // Quand le robot commente, la jauge ne descend pas : une
-                // explication dure plus longtemps qu'une question, et la voir
-                // se vider donnerait à croire que le temps est écoulé.
-                if (!session.narration) {
-                    barre.style.transform = '';
-                    barre.style.animation = `sprint-fondre ${DEPART}ms linear forwards`;
-                }
-                demonstration(tuiles);
+                barre.style.transform = '';
+                barre.style.animation = `sprint-fondre ${DEPART}ms linear forwards`;
+                demonstration(tuiles, choices);
             }
             return;
         }
@@ -249,15 +241,14 @@ export function mount(container, session, opts = {}) {
     }
     document.addEventListener('keydown', auClavier);
 
-    async function demonstration(tuiles) {
+    async function demonstration(tuiles, choices) {
+        const el = tuiles[choices.findIndex(c => c.correct)];
+        if (!el) { regTimeout(suivante, DEMO_SPEED.between); return; }
         if (!cursor) cursor = createDemoCursor();
-        if (session.narration && !narrateur) narrateur = creerNarrateur();
-        const fini = await demoChoix({
-            narrateur, cursor, item, cellules: tuiles,
-            question: scene.querySelector('.game-question'),
-            apresChoix: (el) => el.classList.add('sprint-tuile--ok')
-        });
-        if (!fini || destroyed) return;
+        if (!await cursor.pause(500) || destroyed) return;
+        if (!await cursor.tap(el) || destroyed) return;
+        el.classList.add('sprint-tuile--ok');
+        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         suivante();
     }
 
@@ -272,7 +263,6 @@ export function mount(container, session, opts = {}) {
             if (chrono) { clearTimeout(chrono); chrono = null; }
             document.removeEventListener('keydown', auClavier);
             if (cursor) { cursor.destroy(); cursor = null; }
-            if (narrateur) { narrateur.detruire(); narrateur = null; }
             container.innerHTML = '';
             session.finish();
         }

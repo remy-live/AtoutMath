@@ -11,14 +11,20 @@
 // remplacer « Faux ! » par « tu as additionné au lieu de multiplier ».
 
 import { makeItem, finalizeChoices } from '../items.js';
+import { tirerExpression, operationPrioritaire, naif, critiquer, ecrire } from '../priorites.js';
+import { souligner } from '../fiche.js';
 
 // --- Addition ---------------------------------------------------------------
 
 export const additionGenerator = {
     id: 'calc.addition',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Addition de deux entiers',
     skills: ['num.add.entiers'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'max', type: 'number', label: 'Plus grand terme', default: 10, min: 5, max: 100 },
         { id: 'retenue', type: 'select', label: 'Retenue', options: ['libre', 'avec', 'sans'], default: 'libre' }
@@ -69,9 +75,13 @@ function retenueOk(a, b, mode) {
 
 export const soustractionGenerator = {
     id: 'calc.soustraction',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Soustraction de deux entiers',
     skills: ['num.sub.entiers'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'max', type: 'number', label: 'Plus grand nombre', default: 20, min: 10, max: 100 }
     ],
@@ -110,12 +120,29 @@ export const soustractionGenerator = {
 
 export const multFactGenerator = {
     id: 'calc.mult.fact',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Table de multiplication',
     skills: ['num.mult.table.*'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        { id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 10, min: 5, max: 12 }
+        // « FACTEUR MAXIMUM » N'A PLUS DE CHAMP. Rémy : « pas la peine de mettre
+        // le nombre de facteur maximum, juste les cases à cocher. »
+        //
+        // Il a raison, et la preuve était déjà dans le fichier : le générateur
+        // voisin — « Facteur manquant », le même exercice à l'envers — n'a
+        // jamais eu ce réglage, et personne ne l'a jamais réclamé. Une table
+        // de multiplication VA DE UN À DIX ; c'est ce que l'élève apprend par
+        // cœur et ce que le professeur veut faire réviser. Douze ne sert
+        // qu'aux tables anglo-saxonnes, cinq ne sert à rien.
+        //
+        // Le réglage reste, caché : il vaut dix, le générateur le lit, et un
+        // parcours ancien qui portait onze continue de fonctionner.
+        { id: 'maxFacteur', type: 'number', label: 'Facteur maximum', default: 10,
+            min: 5, max: 12, cache: true }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
@@ -163,9 +190,13 @@ function pickWeighted(rng, allowed, weak) {
 
 export const multMissingGenerator = {
     id: 'calc.mult.missing',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Facteur manquant',
     skills: ['num.mult.facteur-manquant'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'tables', type: 'multiselect', label: 'Tables à travailler', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] }
     ],
@@ -196,8 +227,12 @@ export const multMissingGenerator = {
             answerKind: 'choice',
             prompt: {
                 text: eq.replace('?', '...'),
+                // `data-vise` désigne l'ÉGALITÉ, pas le titre : c'est elle que
+                // la démonstration doit cercler en disant « combien de fois 4
+                // tient-il dans 24 ? ». Sans repère, le robot entourait
+                // « Facteur Manquant » — le nom du jeu.
                 html: `<div class="game-question" style="margin-bottom:0;">Facteur Manquant</div>
-                       <div style="font-size:2.2rem; font-weight:bold; color:var(--primary);">${eq}</div>`
+                       <div data-vise style="font-size:2.2rem; font-weight:bold; color:var(--primary);">${eq}</div>`
             },
             answer: missing,
             choices,
@@ -217,9 +252,13 @@ export const multMissingGenerator = {
 
 export const divisionGenerator = {
     id: 'calc.division',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Division (quotient exact)',
     skills: ['num.div.quotient'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'tables', type: 'multiselect', label: 'Diviseurs', options: [2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] }
     ],
@@ -253,64 +292,249 @@ export const divisionGenerator = {
 };
 
 // --- Priorités opératoires --------------------------------------------------
+//
+// LES EXPRESSIONS VIENNENT DU NOYAU, plus de gabarits écrits ici.
+//
+// Cet exercice ne connaissait que quatre formes — « a + b × c » et ses trois
+// sœurs — avec des nombres de 2 à 9. Ni parenthèses, ni quatre termes, ni
+// division : trois réglages de moins que la fiche papier du même sujet, qui
+// s'appuie, elle, sur core/priorites.js depuis toujours. Rémy : « avoir la
+// possibilité d'avoir des calculs plus grands, et tu m'en fais un autre avec
+// des parenthèses ».
+//
+// On tire donc par `tirerExpression`, comme la fiche : même moteur, mêmes
+// garanties (toutes les étapes tombent juste, aucun négatif en cours de
+// route, et sans parenthèses le calcul de gauche à droite donne toujours une
+// AUTRE réponse — sinon l'élève qui ignore la règle tombe juste par hasard).
 
-const PRIORITY_TEMPLATES = [
-    (a, b, c) => ({ eq: `${a} + ${b} × ${c}`, right: `${b} × ${c}`, wrong: `${a} + ${b}`, value: a + b * c }),
-    (a, b, c) => ({ eq: `${a} × ${b} + ${c}`, right: `${a} × ${b}`, wrong: `${b} + ${c}`, value: a * b + c }),
-    (a, b, c) => ({ eq: `${a} - ${b} × ${c}`, right: `${b} × ${c}`, wrong: `${a} - ${b}`, value: a - b * c }),
-    (a, b, c) => ({ eq: `${a} × ${b} - ${c}`, right: `${a} × ${b}`, wrong: `${b} - ${c}`, value: a * b - c })
-];
+/**
+ * Les opérations lisibles dans l'expression, chacune avec ses deux opérandes
+ * TELS QU'ILS SONT ÉCRITS.
+ *
+ * Un opérande n'est pas toujours un nombre : dans « (2 × 7) + 8 », le membre
+ * gauche du « + » est le groupe entier. En n'acceptant que des nombres, on ne
+ * trouvait qu'UNE opération dans une expression parenthésée — et le QCM
+ * n'avait plus qu'une seule case à cocher.
+ */
+function bornerGauche(jetons, i) {
+    const j = jetons[i - 1];
+    if (!j) return -1;
+    if (j.type === 'n') return i - 1;
+    if (j.type !== ')') return -1;
+    let prof = 0;
+    for (let k = i - 1; k >= 0; k--) {
+        if (jetons[k].type === ')') prof++;
+        else if (jetons[k].type === '(' && --prof === 0) return k;
+    }
+    return -1;
+}
+
+function bornerDroite(jetons, i) {
+    const j = jetons[i + 1];
+    if (!j) return -1;
+    if (j.type === 'n') return i + 1;
+    if (j.type !== '(') return -1;
+    let prof = 0;
+    for (let k = i + 1; k < jetons.length; k++) {
+        if (jetons[k].type === '(') prof++;
+        else if (jetons[k].type === ')' && --prof === 0) return k;
+    }
+    return -1;
+}
+
+function fragmentsDe(jetons) {
+    const out = [];
+    for (let i = 0; i < jetons.length; i++) {
+        if (jetons[i].type !== 'op') continue;
+        const g = bornerGauche(jetons, i), d = bornerDroite(jetons, i);
+        if (g < 0 || d < 0) continue;
+        out.push({ index: i, texte: ecrire(jetons.slice(g, d + 1)) });
+    }
+    return out;
+}
+
+/**
+ * LA CASCADE DU CAHIER, EN COLONNE ET AVEC DES « = ».
+ *
+ * Rémy : « des = et non des flèches, souligner le calcul prioritaire, les
+ * calculs en colonne ». Le corrigé écrivait tout sur une ligne, séparé par des
+ * flèches — « 9 + 2 × 5 − 7 -> 9 + 10 − 7 -> 19 − 7 -> 12 ». Ce n'est pas ce
+ * qu'on demande d'écrire : au cahier, chaque étape va à la ligne, sous la
+ * précédente, précédée d'un signe égal — parce que ces expressions SONT égales,
+ * et que c'est toute la leçon. Sur chaque ligne, l'opération qu'on va faire est
+ * soulignée : c'est elle qui est prioritaire, et c'est tout ce que la règle
+ * demande de voir.
+ */
+function cascadePapier(lignes) {
+    if (!lignes || !lignes.length) return '';
+    const nombre = (v) => String(v).replace('.', ',');
+    const signe = (op) => (op === '-' ? '−' : op);
+    return lignes.map((l, i) => {
+        let texte = l.texte;
+        const f = lignes[i + 1] && lignes[i + 1].fait;
+        if (f && f.gauche !== null && f.droite !== null) {
+            const morceau = `${nombre(f.gauche)} ${signe(f.op)} ${nombre(f.droite)}`;
+            const ou = texte.indexOf(morceau);
+            // Introuvable : on n'invente pas de soulignement. Une ligne sans
+            // marque vaut mieux qu'une marque au mauvais endroit.
+            if (ou >= 0) {
+                texte = texte.slice(0, ou) + souligner(morceau)
+                    + texte.slice(ou + morceau.length);
+            }
+        }
+        return (i === 0 ? '' : '= ') + texte;
+    }).join('\n');
+}
 
 export const prioriteGenerator = {
     id: 'calc.priorites',
     label: 'Priorités opératoires',
     skills: ['num.prio'],
     answerKinds: ['choice'],
+    ecrit: true,
     params: [
-        { id: 'mode', type: 'select', label: 'Question posée', options: ['operation', 'resultat'], default: 'operation' }
+        { id: 'mode', type: 'select', label: 'Question posée', options: ['operation', 'resultat'], default: 'operation' },
+        {
+            id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
+            options: [
+                { value: 1, label: '1 — Trois nombres, deux opérations' },
+                { value: 2, label: '2 — Jusqu\'à quatre nombres' },
+                { value: 3, label: '3 — Les parenthèses arrivent' },
+                { value: 4, label: '4 — Deux groupes de parenthèses' }
+            ]
+        },
+        {
+            id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: false,
+            aide: 'Sans elles, seule la règle « × et ÷ avant + et − » est en jeu. '
+                + 'Elles n\'apparaissent qu\'à partir de la difficulté 3.'
+        },
+        {
+            id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
+            aide: 'Les nombres montent jusqu\'à 20 et le résultat jusqu\'à 2 000 : '
+                + 'la règle est la même, mais elle ne se devine plus de tête.'
+        },
+        {
+            id: 'progressif', type: 'checkbox', label: 'Commencer plus facile', default: false,
+            aide: 'Les premières questions restent à trois nombres et deux opérations, puis la '
+                + 'difficulté monte jusqu\'à celle réglée au-dessus. On installe la règle avant '
+                + 'de la compliquer.'
+        }
     ],
+
     generate(params, ctx) {
         const rng = ctx.rng;
-        const a = rng.int(2, 9), b = rng.int(2, 9), c = rng.int(2, 9);
-        const tpl = PRIORITY_TEMPLATES[rng.int(0, PRIORITY_TEMPLATES.length - 1)](a, b, c);
+        params = params || {};
+        const grands = !!params.grands;
+        // LA DIFFICULTÉ MONTE. Rémy : « je trouve les calculs un peu durs quand
+        // même dès le départ ». La première question d'une série sert à
+        // reconnaître la règle — « × avant + » — pas à la manier sur quatre
+        // nombres ; on part donc du cran le plus simple et l'on rejoint le
+        // niveau réglé au bout de quelques questions.
+        const plafondNiveau = Math.max(1, Math.min(4, Number(params.niveau) || 2));
+        const niveau = params.progressif
+            ? Math.min(plafondNiveau,
+                1 + Math.floor((Number(ctx.index) || 0) / 4))
+            : plafondNiveau;
+        const e = tirerExpression({
+            rng,
+            niveau,
+            parentheses: !!params.parentheses,
+            imposer: !!params.parentheses,
+            max: grands ? 20 : 9,
+            plafond: grands ? 2000 : 400
+        });
+        const p = operationPrioritaire(e.jetons);
+        const tous = fragmentsDe(e.jetons);
+        const bon = tous.find(f => f.index === (p && p.index));
+        const prioritaire = bon ? bon.texte : tous[0].texte;
+        const valeurPrio = p && p.valeur !== null ? p.valeur : null;
+        // Le morceau d'énoncé que le robot montrera. `data-vise` ne change
+        // rien à l'affichage : c'est la démonstration qui le fait ressortir,
+        // au moment exact où elle en parle.
+        const marque = e.texte.replace(prioritaire, `<span data-vise>${prioritaire}</span>`);
+        const commun = {
+            seed: rng.seed, generatorId: 'calc.priorites', skillId: 'num.prio',
+            answerKind: 'choice',
+            meta: {
+                eq: e.texte, right: prioritaire, value: e.resultat,
+                etapes: e.etapes, avecParentheses: e.avecParentheses,
+                theme: e.texte
+            }
+        };
 
         // Deux façons d'interroger la même compétence : identifier l'opération
         // prioritaire, ou calculer le résultat. La seconde est plus exigeante.
         if (params.mode === 'resultat') {
-            const naive = evalLeftToRight(tpl.eq);
+            // Le distracteur le plus instructif est le résultat de celui qui
+            // calcule de gauche à droite : il révèle exactement la règle
+            // manquante. Avec des parenthèses il n'existe pas — on ne lit pas
+            // « (3 + 4) × 5 » de gauche à droite —, et le remplissage prend le
+            // relais.
+            const naive = naif(e.jetons);
             return makeItem({
-                seed: rng.seed, generatorId: 'calc.priorites', skillId: 'num.prio',
-                answerKind: 'choice',
-                prompt: { text: `${tpl.eq} = ?`, html: `<div class="game-question">${tpl.eq} = ?</div>` },
-                answer: tpl.value,
+                ...commun,
+                prompt: {
+                    text: `${e.texte} = ?`,
+                    papier: `${e.texte} =`,
+                    html: `<div class="game-question">${marque} = ?</div>`
+                },
+                answer: e.resultat,
                 choices: finalizeChoices(rng, [
-                    { value: tpl.value, correct: true },
-                    { value: naive, why: 'Tu as calculé de gauche à droite : la multiplication passe avant.' },
-                    { value: tpl.value + b }
-                ], { count: 3, filler: r => tpl.value + r.int(2, 12) }),
-                hints: [`Commence par ${tpl.right}.`, `${tpl.right} = ${evalSimple(tpl.right)}.`],
-                explanation: `On calcule d'abord ${tpl.right} = ${evalSimple(tpl.right)}, donc ${tpl.eq} = ${tpl.value}.`,
-                difficulty: 4,
-                meta: tpl
+                    { value: e.resultat, correct: true },
+                    naive !== null && naive !== e.resultat
+                        ? { value: naive, why: 'Tu as calculé de gauche à droite : la multiplication et la division passent avant.' }
+                        : null
+                ].filter(Boolean), {
+                    count: 3,
+                    // JAMAIS DE DISTRACTEUR NÉGATIF. Les priorités s'apprennent
+                    // avant les relatifs : proposer « −7 » comme réponse
+                    // possible à « 7 − 2 × 2 + 2 » introduit une notion qui
+                    // n'est pas encore là, et n'apprend rien de la règle.
+                    filler: (r) => {
+                        const d = r.int(1, 12);
+                        return (e.resultat - d >= 1 && r.bool(0.5)) ? e.resultat - d : e.resultat + d;
+                    }
+                }),
+                hints: [
+                    `Commence par ${prioritaire}.`,
+                    valeurPrio !== null ? `${prioritaire} = ${valeurPrio}.` : (p ? p.raison : '')
+                ].filter(Boolean),
+                explanation: valeurPrio !== null
+                    ? `On calcule d'abord ${prioritaire} = ${valeurPrio}, donc ${e.texte} = ${e.resultat}.`
+                    : `${e.texte} = ${e.resultat}.`,
+                difficulty: Math.min(5, 2 + e.etapes),
+                explicationPapier: cascadePapier(e.lignes)
             });
         }
 
+        // Les autres opérations de l'expression font les distracteurs : elles
+        // sont VISIBLES dans l'énoncé, donc chacune est une réponse qu'un
+        // élève donne vraiment. Un nombre tiré au hasard ne l'est pas.
+        // Et chacune porte SA raison, pas une raison générique : « il reste des
+        // parenthèses », « elle passe avant les additions », « à priorité
+        // égale on va de gauche à droite ». C'est le noyau qui la donne — les
+        // trois phrases SONT la leçon.
+        const autres = tous.filter(f => f.texte !== prioritaire)
+            .map(f => ({ value: f.texte, why: critiquer(e.jetons, f.index) || '' }));
         return makeItem({
-            seed: rng.seed, generatorId: 'calc.priorites', skillId: 'num.prio',
-            answerKind: 'choice',
+            ...commun,
             prompt: {
-                text: `Quelle opération est prioritaire dans ${tpl.eq} ?`,
-                html: `<div class="game-question">Priorité ?<br><span style="color:var(--primary)">${tpl.eq}</span></div>`
+                text: `Quelle opération est prioritaire dans ${e.texte} ?`,
+                papier: `Dans ${e.texte}, quelle opération d'abord ?`,
+                // Ici, l'opération prioritaire EST la réponse : on ne désigne
+                // que l'expression entière, jamais le morceau cherché.
+                html: `<div class="game-question">Priorité ?<br><span data-vise style="color:var(--primary)">${e.texte}</span></div>`
             },
-            answer: tpl.right,
-            choices: finalizeChoices(rng, [
-                { value: tpl.right, correct: true },
-                { value: tpl.wrong, why: 'On ne calcule pas de gauche à droite : la multiplication est prioritaire.' }
-            ], { count: 2 }),
-            hints: ['Cherche la multiplication ou la division.', `C'est ${tpl.right}.`],
-            explanation: `La multiplication est prioritaire sur l'addition et la soustraction : on calcule d'abord ${tpl.right}.`,
-            difficulty: 3,
-            meta: tpl
+            answer: prioritaire,
+            choices: finalizeChoices(rng,
+                [{ value: prioritaire, correct: true }, ...autres],
+                { count: Math.min(4, 1 + autres.length) }),
+            hints: [
+                e.avecParentheses ? 'Regarde d\'abord les parenthèses.' : 'Cherche la multiplication ou la division.',
+                `C'est ${prioritaire}.`
+            ],
+            explanation: `${p ? p.raison : ''} On calcule d'abord ${prioritaire}.`.trim(),
+            difficulty: e.avecParentheses ? 4 : 3
         });
     }
 };
@@ -330,13 +554,36 @@ const MIXTE_SOURCES = {
 
 export const mixteGenerator = {
     id: 'calc.mixte',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Calcul mental varié',
     skills: ['num.add.entiers', 'num.sub.entiers', 'num.div.quotient', 'num.mult.table.*'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
-        { id: 'operations', type: 'multiselect', label: 'Opérations', options: ['+', '-', '*', '/'], default: ['+', '-'] },
-        { id: 'tables', type: 'multiselect', label: 'Tables (si × ou ÷)', options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
-        { id: 'max', type: 'number', label: 'Plus grand terme (si + ou −)', default: 20, min: 5, max: 100 }
+        { id: 'operations', type: 'multiselect', label: 'Opérations', options: [
+            // Le SYMBOLE seul, et le nom en infobulle. Écrits en toutes
+            // lettres, les quatre opérations prenaient deux rangées à elles
+            // seules et repoussaient les tables hors de l'écran. « + − × ÷ »
+            // sont les signes que l'élève lit dans l'exercice : ils n'ont
+            // besoin d'aucune traduction.
+            { value: '+', label: '+', aide: 'Addition' },
+            { value: '-', label: '−', aide: 'Soustraction' },
+            { value: '*', label: '×', aide: 'Multiplication' },
+            { value: '/', label: '÷', aide: 'Division' }
+        ], default: ['+', '-'] },
+        {
+            id: 'tables', type: 'multiselect', label: 'Tables',
+            options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], default: [2, 3, 4, 5, 6, 7, 8, 9, 10],
+            // « (si × ou ÷) » : la condition tenait dans le libellé, à charge
+            // pour le lecteur de la vérifier lui-même. Elle se vérifie ici.
+            visibleSi: (r) => (r.operations || ['+', '-']).some(o => o === '*' || o === '/')
+        },
+        {
+            id: 'max', type: 'number', label: 'Plus grand terme', default: 20, min: 5, max: 100,
+            visibleSi: (r) => (r.operations || ['+', '-']).some(o => o === '+' || o === '-')
+        }
     ],
     generate(params, ctx) {
         const ops = (params.operations && params.operations.length) ? params.operations : ['+', '-'];
@@ -349,26 +596,3 @@ export const mixteGenerator = {
     }
 };
 
-function evalSimple(expr) {
-    const m = /^(\d+)\s*([+\-×*])\s*(\d+)$/.exec(expr.replace(/\s+/g, ' ').trim());
-    if (!m) return NaN;
-    const [, x, op, y] = m;
-    const a = Number(x), b = Number(y);
-    if (op === '+') return a + b;
-    if (op === '-') return a - b;
-    return a * b;
-}
-
-// Résultat qu'obtiendrait un élève qui ignore les priorités : c'est le
-// distracteur le plus instructif, il révèle exactement la règle manquante.
-function evalLeftToRight(eq) {
-    const tokens = eq.split(' ');
-    let acc = Number(tokens[0]);
-    for (let i = 1; i < tokens.length; i += 2) {
-        const op = tokens[i], v = Number(tokens[i + 1]);
-        if (op === '+') acc += v;
-        else if (op === '-') acc -= v;
-        else acc *= v;
-    }
-    return acc;
-}

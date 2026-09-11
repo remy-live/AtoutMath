@@ -8,11 +8,14 @@
     margin-bottom: 15px;
 }
 
+/* Le trait sous le titre passe sous TOUT l'en-tete (titre + bouton), sinon il
+   s'arretait au milieu de la ligne. Voir .error-group-head dans modules.css. */
+.error-group-head { border-bottom: 1px solid var(--border); }
+
 .error-group-title {
     margin: 0 0 10px 0;
     color: var(--primary);
     font-size: 1.1rem;
-    border-bottom: 1px solid var(--border);
     padding-bottom: 5px;
 }
 
@@ -79,24 +82,78 @@
 .empty-msg { margin: auto; color: var(--text-muted); text-align: center; }
 
 /* --- STATS / PROFIL --- */
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
-.stat-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 10px; }
-.stat-label { color: var(--text-muted); font-size: 0.9rem; font-weight: 600; }
-.stat-value { font-size: 1.4rem; font-weight: 700; }
-.stat-value--accent { font-size: 1.2rem; color: var(--accent); }
+/* TROIS CARTES CÔTE À CÔTE, MÊME SUR UN TÉLÉPHONE. En `auto-fit` avec un
+   minimum de 200 px, elles s'empilaient dès 390 px de large : 370 pixels de
+   haut pour trois chiffres, et l'élève n'atteignait ses onglets qu'après avoir
+   fait défiler tout un écran. Trois colonnes serrées les tiennent en une
+   bande — c'est un résumé, pas le contenu de la page. */
+.stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+.stat-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stat-label { color: var(--text-muted); font-size: clamp(.7rem, 2.6vw, .9rem); font-weight: 600; }
+.stat-value { font-size: clamp(1rem, 4vw, 1.4rem); font-weight: 700; overflow-wrap: break-word; }
+
+.stat-value--accent { font-size: clamp(.82rem, 3vw, 1.2rem); color: var(--accent); }
 .stat-value--success { color: var(--success); }
 .stat-value--primary { color: var(--primary); }
 
 .profile-container { max-width: 800px; margin: 0 auto; width: 100%; }
-.profile-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
+.profile-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+/* L'étoile n'a pas besoin de trois centimètres : c'est le NOMBRE qu'on lit. */
+.profile-header .profile-score-block { display: flex; align-items: baseline; gap: 6px; text-align: right; }
 .profile-score-block { text-align: right; }
-.profile-score-emoji { font-size: 3rem; margin-bottom: 5px; }
+.profile-score-emoji { font-size: 1.5rem; margin-bottom: 0; }
 .profile-score-value { color: var(--primary); font-size: 1.8rem; font-weight: 700; }
 .profile-score-label { color: var(--text-muted); font-size: 0.9rem; }
 
-.view-heading-title { font-size: 2.5rem; color: var(--text-main); margin-bottom: 10px; }
-.view-heading-subtitle { font-size: 1.1rem; color: var(--text-muted); }
+/* La ligne d'identité : le libellé, les profils, le bouton — tout sur une
+   rangée. Le titre de section et son paragraphe prenaient soixante-quatre
+   pixels pour présenter une puce. */
+.profile-qui { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.profile-qui-label { font-weight: 800; color: var(--text-main); font-size: .95rem; }
+.profile-qui .profile-switcher { margin: 0; }
+
+/* `clamp` : 2.5rem débordait de l'écran d'un téléphone — « Mon Parcours
+   Actuel » se coupait. Le titre suit la largeur disponible. */
+.view-heading-title { font-size: clamp(1.5rem, 6vw, 2.5rem); color: var(--text-main); margin-bottom: 10px; overflow-wrap: break-word; }
+.view-heading-subtitle { font-size: clamp(.95rem, 3.4vw, 1.1rem); color: var(--text-muted); }
 #view-path .view-heading-subtitle { margin-bottom: 40px; }
+
+/* --- LES ONGLETS DU PROFIL ---------------------------------------------------
+   Quatre sections empilées faisaient près de quatre mille pixels de haut, dont
+   mille cinq cents pour le seul carnet d'erreurs. En onglets, chacune tient sur
+   un écran. La barre COLLE EN HAUT quand on fait défiler : sur un carnet long,
+   revenir en arrière pour changer d'onglet est précisément le geste qu'on veut
+   éviter. */
+.prof-onglets {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin: 28px 0 18px; padding: 6px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow-sm);
+}
+.prof-onglet-btn {
+    flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 9px 14px; border: 0; border-radius: 10px;
+    background: transparent; color: var(--text-muted);
+    font: inherit; font-weight: 700; font-size: .95rem; cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+}
+.prof-onglet-btn:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+.prof-onglet-btn--actif { background: var(--primary); color: #fff; }
+/* Le compteur DIT S'IL Y A QUELQUE CHOSE À VOIR avant qu'on clique. Vide, il
+   disparaît : un « 0 » posé sur un onglet se lit comme une erreur. */
+.prof-onglet-compte {
+    min-width: 1.5em; padding: 1px 6px; border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    color: var(--primary); font-size: .78rem; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.prof-onglet-btn--actif .prof-onglet-compte { background: rgba(255, 255, 255, .25); color: #fff; }
+.prof-onglet-compte[hidden] { display: none; }
+.prof-panneau[hidden] { display: none; }
+/* De quoi passer SOUS la barre d'onglets collante quand on saute au carnet
+   depuis le bouton du haut. */
+#error-log-container { scroll-margin-top: 96px; }
 
 .section-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
 .section-title { color: var(--text-main); margin: 0 0 20px 0; }
@@ -135,13 +192,44 @@
 .preview-mode-group { display: flex; align-items: center; gap: 5px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
 .preview-mode-btn { padding: 6px; border: none; background: transparent; color: var(--text-muted); border-radius: 6px; cursor: pointer; }
 .preview-mode-btn.active { background: var(--primary); color: white; }
-#btn-test-sequence { background: var(--primary); color: white; border: none; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; padding: 8px 15px; }
-#btn-generate-code { background: var(--success); color: white; border: none; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; }
-.builder-header-actions { display: flex; gap: 10px; }
+/* « TESTER » ET « CODE ÉLÈVE » N'ONT PLUS DE RÈGLE À EUX, et c'est ce qui les
+   répare. Ces deux lignes dataient du temps où les boutons portaient leur
+   libellé ; elles leur donnaient un fond, une police et un `padding: 8px 15px`
+   que `.toolbar-icon-btn--primary` / `--success` fournissent désormais.
+
+   ELLES FAISAIENT DEUX DÉGÂTS. Le premier se voyait : sélecteur d'ID, donc
+   plus spécifique que `.toolbar-icon-btn[hidden]` — leur `display: flex`
+   l'emportait, et les deux boutons restaient à l'écran sur un parcours vide.
+   Rémy : « l'icône play et lien n'apparaissent que lorsque l'on charge un
+   parcours. » Le second aussi : le `padding` horizontal rendait le bouton
+   « Tester » plus large que tous ses voisins, seul carré de la barre à ne pas
+   être carré. */
+.builder-header-actions { display: flex; gap: 10px; align-items: center; }
+/* Sur téléphone, les neuf outils — désormais tous en icône seule — tiennent
+   sur UNE ligne compacte au lieu des deux rangées de boutons à libellé. */
+@media (max-width: 700px) {
+    .path-header-toggle { gap: 8px 6px; margin-bottom: 12px; }
+    .path-header-left, .builder-header-actions { gap: 6px; }
+    .toolbar-icon-btn { width: 36px; height: 36px; border-radius: 10px; }
+}
 
 /* --- MODALES --- */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100000; justify-content: center; align-items: center; backdrop-filter: blur(8px); }
 .modal-overlay--top { z-index: 999999; }
+/* AU-DESSUS DE LA FICHE, QUAND ELLE EST LÀ.
+   Rémy : « les paramètres, quand j'utilise la barre de debug et que je fais
+   l'aperçu, sur l'exercice ne fonctionne pas. »
+   Ils fonctionnaient : on ne pouvait pas les voir. La fiche à imprimer est une
+   « modal-overlay--top », à 999999 ; le panneau de réglages est une
+   « modal-overlay » ordinaire, à 100000. Ouvert pendant que l'aperçu papier
+   accompagne une passe, il s'ouvrait donc DERRIÈRE la fiche — invisible et
+   intouchable. Mesuré : panneau 100000, fiche 999999.
+   Il ne monte que le temps qu'il faut : la classe est posée à l'ouverture
+   quand une fiche est à l'écran, et retirée sinon — sans quoi le bouton
+   « Fiche d'exercices à imprimer… » du panneau ouvrirait une fiche qui
+   passerait dessous. On reste sous la barre de passe (1000002), qui doit
+   rester atteignable pour changer d'exercice. */
+.modal-overlay--sur-fiche { z-index: 1000001; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; }
 .modal-title { margin: 0; font-size: 1.5rem; color: var(--primary); }
 .modal-title--neutral { color: var(--text-main); }
@@ -151,6 +239,18 @@
 .modal-text { color: var(--text-muted); font-size: 1rem; margin: 0; }
 .modal-text--center { text-align: center; }
 .uc-message { color: var(--text-main); font-size: 1.1rem; margin: 0; }
+/* LA MODALE DE BASE.
+   Cette classe était employée par l'accueil et le bilan sans exister dans
+   aucune feuille : le texte se collait donc aux bords, et le bouton touchait
+   le cadre. Les variantes -sm / -md / -lg posaient chacune leur padding de
+   leur côté ; la classe nue, elle, n'en avait aucun. */
+.modal-panel {
+    width: min(520px, calc(100vw - 32px));
+    padding: clamp(20px, 4.5vw, 30px);
+    display: flex; flex-direction: column; gap: 14px;
+    max-height: calc(100dvh - 32px); overflow-y: auto;
+}
+
 .modal-panel-sm { width: 400px; padding: 30px; display: flex; flex-direction: column; gap: 20px; text-align: center; }
 .modal-panel-sm-left { width: 400px; padding: 30px; display: flex; flex-direction: column; gap: 20px; text-align: left; }
 .modal-panel-settings { width: 350px; padding: 25px; display: flex; flex-direction: column; gap: 15px; }
@@ -177,5 +277,258 @@
 /* La disposition de #student-config-content est posée dans modules.css, avec
    les autres règles des formulaires de configuration. */
 #config-content { display: flex; flex-direction: column; gap: 10px; }
-#toast-container { display: none; position: fixed; bottom: 20px; right: 20px; z-index: 10000; flex-direction: column; gap: 10px; }
+/* LE BANDEAU DE CONFIRMATION.
+   Ancré en bas à droite sur grand écran ; sur téléphone il est ancré aux DEUX
+   bords et centré. Ancré au seul bord droit, un message long grandissait vers
+   la gauche jusqu'à toucher le bord de l'écran : 20 px de marge à droite, zéro
+   à gauche. Et il se pose AU-DESSUS de la barre du bas, qu'il recouvrait. */
+#toast-container {
+    display: none; position: fixed; bottom: 20px; right: 20px; left: auto;
+    z-index: 10000; flex-direction: column; align-items: flex-end; gap: 10px;
+    pointer-events: none;
+}
+#toast-container > * { max-width: 100%; box-sizing: border-box; }
+body.mobile-view #toast-container {
+    left: 12px; right: 12px; align-items: center;
+    bottom: calc(var(--bottom-nav-height) + 12px);
+}
+@media (max-width: 700px) {
+    #toast-container { left: 12px; right: 12px; align-items: center; }
+}
 #btn-new-folder { padding: 4px 8px; font-size: 0.9rem; }
+
+
+/* --- « CE TABLEAU DÉFILE » -------------------------------------
+   Un tableau plus large que l'écran se coupe net au bord droit, et rien
+   ne dit qu'il continue : on croit avoir tout vu. Le dégradé n'apparaît
+   QUE quand il y a réellement quelque chose à droite (variable posée par
+   `js/ui/defilement.js`), sinon il ment dans l'autre sens.
+
+   `mask-image` plutôt qu'un ::after posé par-dessus : un pseudo-élément
+   dans un conteneur qui défile se déplace avec le contenu, donc glisse
+   hors du cadre au premier mouvement. */
+.defile-x { position: relative; }
+.defile-x[data-suite="droite"],
+.defile-x[data-suite="deux"] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+}
+.defile-x[data-suite="gauche"] {
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to left, #000 calc(100% - 26px), transparent 100%);
+}
+.defile-x[data-suite="deux"] {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 26px, #000 calc(100% - 26px), transparent 100%);
+}
+
+/* --- HABILLAGE COMMUN DES EXERCICES ----------------------------
+   Voir js/ui/gameChrome.js. Ces classes remplacent les copies que chaque
+   exercice s'était écrites : un bandeau, un bouton d'aide, un pavé, des
+   cartes de réponse. Elles sont ici et non dans le <style> d'un jeu pour
+   qu'une correction profite à tous — c'était le contraire jusqu'ici. */
+
+.jeu-haut {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    flex-wrap: wrap; width: 100%; flex: 0 0 auto;
+    font-size: clamp(11px, 2.6cqw, 14px); font-weight: 700;
+}
+.jeu-score { color: var(--text-muted); font-weight: 600; }
+.jeu-btn {
+    border: 1px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); border-radius: 9px; cursor: pointer;
+    font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
+}
+.jeu-btn:hover { background: var(--bg-hover); }
+
+/* LE BOUTON D'AIDE. Même mot, même ampoule, même couleur, partout — c'est
+   ce qui permet de le reconnaître sans le relire. */
+.jeu-aide {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 2px solid var(--primary); border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
+    color: var(--primary); font: inherit; font-weight: 800;
+    font-size: clamp(12px, 2.9cqw, 15px); padding: 7px 16px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.jeu-aide:hover { background: color-mix(in srgb, var(--primary) 18%, var(--bg-panel)); }
+.jeu-aide svg { flex: 0 0 auto; }
+
+.jeu-pave {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: clamp(5px, 1.4cqw, 9px); width: 100%; max-width: 400px; flex: 0 0 auto;
+    margin-inline: auto;
+}
+.jeu-touche {
+    padding: clamp(9px, 2.4cqw, 13px) 0; border-radius: 12px;
+    border: 2px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); font: inherit; font-weight: 800;
+    font-size: clamp(15px, 3.6cqw, 20px); cursor: pointer;
+    box-shadow: 0 3px 0 rgba(15, 23, 42, .12);
+    -webkit-tap-highlight-color: transparent;
+}
+.jeu-touche:active { transform: translateY(3px); box-shadow: none; }
+.jeu-touche--ok { border-color: var(--success); color: var(--success); }
+.jeu-touche--eff { border-color: var(--warning); color: var(--warning); }
+
+.jeu-cartes {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(8px, 2cqw, 13px); width: 100%; max-width: 560px;
+    flex: 0 0 auto; margin-inline: auto;
+}
+.jeu-carte {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    min-height: clamp(52px, 10cqw, 70px); padding: 11px 13px;
+    border-radius: 18px; border: 3px solid rgba(255, 255, 255, .22);
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    color: #fff; font-weight: 800; font-size: clamp(.95rem, 3.2cqw, 1.25rem);
+    line-height: 1.2; text-wrap: balance; cursor: pointer;
+    box-shadow: 0 7px 18px rgba(79, 70, 229, .32);
+    transition: all .22s cubic-bezier(.4, 0, .2, 1);
+    -webkit-tap-highlight-color: transparent;
+}
+.jeu-carte:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px rgba(79, 70, 229, .42); }
+.jeu-carte:active:not(:disabled) { transform: translateY(2px) scale(.98); }
+.jeu-carte:disabled { cursor: default; }
+.jeu-carte--ok { background: linear-gradient(135deg, #34d399, #16a34a); box-shadow: 0 8px 20px rgba(22, 163, 74, .4); }
+.jeu-carte--ko { background: linear-gradient(135deg, #f87171, #dc2626); box-shadow: 0 8px 20px rgba(220, 38, 38, .35); }
+.jeu-carte--eteinte { opacity: .32; }
+@media (max-width: 330px) { .jeu-cartes { grid-template-columns: 1fr; } }
+
+.jeu-bulle { display: inline-block; padding: 6px 14px; border-radius: 14px; font-weight: 700; }
+.jeu-bulle--ok { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
+.jeu-bulle--ko { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+
+/* Le mouvement en moins pour qui le demande : le système le dit, on
+   l'écoute. Les animations d'un exercice ne sont jamais l'exercice. */
+@media (prefers-reduced-motion: reduce) {
+    .jeu-carte, .jeu-touche, .jeu-aide { transition-duration: .01ms !important; }
+}
+
+/* --- LE CARNET D'ERREURS, dans la barre du haut ----------------
+   La pastille ne s'affiche que s'il y a quelque chose dedans : un « 0 »
+   permanent est du bruit, et on cesse de le regarder. */
+.carnet-btn { position: relative; overflow: visible; }
+.carnet-pastille {
+    position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px;
+    padding: 0 4px; border-radius: 999px; background: var(--danger); color: #fff;
+    font-size: 10px; font-weight: 800; line-height: 18px; text-align: center;
+    box-shadow: 0 0 0 2px var(--bg-app); pointer-events: none;
+}
+.carnet-pastille[hidden] { display: none; }
+
+/* Arriver sur la page ne suffit pas : il faut voir OÙ on vient d'arriver.
+   Un halo bref, puis plus rien — un surlignage permanent deviendrait un décor. */
+.carnet-vu {
+    animation: carnet-halo 1.6s ease-out;
+    border-radius: 14px;
+}
+@keyframes carnet-halo {
+    0%, 60% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 34%, transparent); }
+    100% { box-shadow: 0 0 0 4px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .carnet-vu { animation: none; }
+}
+
+/* --- LE PANNEAU D'AIDE (le « ? ») -------------------------------------------
+   Trois onglets à la place d'un paragraphe unique. Rémy : « la mise en forme
+   est maladroite, ça ne revient pas à la ligne ». Les rappels de cours étaient
+   des `<span>` dans un `<p>` : rien ne pouvait revenir à la ligne, et la
+   consigne, l'exemple et la leçon avaient tous le même poids typographique. */
+.aide-panneau {
+    width: min(560px, 94vw); max-height: min(80vh, 700px);
+    padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;
+    text-align: left;
+}
+.aide-panneau .modal-title { font-size: 1.15rem; }
+
+.aide-onglets {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border); padding-bottom: 10px;
+}
+.aide-onglet {
+    border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-muted);
+    border-radius: 999px; padding: 7px 14px; font: inherit; font-weight: 700;
+    font-size: .84rem; cursor: pointer; min-height: 38px;
+}
+.aide-onglet--actif { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* Le corps défile, jamais le panneau : les onglets et « Compris ! » doivent
+   rester en place pendant qu'on lit une leçon de quinze lignes. */
+.aide-corps { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+
+/* L'ESSENTIEL EN GRAND, LE DÉTAIL EN DESSOUS. La première phrase dit ce qu'il
+   faut faire ; les suivantes parlent des réglages et des variantes. Les
+   afficher du même poids, c'est demander de lire cinq lignes pour trouver la
+   première. */
+.aide-essentiel {
+    margin: 0 0 12px; font-size: 1.06rem; font-weight: 600; line-height: 1.5;
+    color: var(--text-main);
+}
+.aide-details, .aide-lecons { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.aide-details li, .aide-lecons li { line-height: 1.5; color: var(--text-muted); font-size: .93rem; }
+.aide-lecons li { color: var(--text-main); }
+.aide-details-p { margin: 0 0 14px; line-height: 1.5; color: var(--text-muted); font-size: .93rem; }
+.aide-vide { margin: 0; color: var(--text-muted); font-style: italic; }
+
+/* --- L'exemple, dévoilé une étape à la fois --- */
+.aide-exemple-intro { margin: 0 0 10px; font-size: .82rem; color: var(--text-muted); }
+.aide-question {
+    background: var(--bg-app); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; font-size: 1.3rem; font-weight: 800; text-align: center;
+    margin-bottom: 12px; overflow-wrap: anywhere;
+}
+.aide-etapes { margin: 0 0 12px; padding-left: 22px; display: grid; gap: 10px; }
+.aide-etapes li { line-height: 1.5; }
+/* Chaque étape arrive : sans cela, une ligne de plus apparaît d'un coup au
+   milieu du texte et l'on ne voit pas laquelle est neuve. */
+.aide-etapes li:last-child { animation: aide-arrive .28s ease-out; }
+@keyframes aide-arrive { from { opacity: 0; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .aide-etapes li:last-child { animation: none; } }
+
+.aide-reponse {
+    background: color-mix(in srgb, var(--success, #16a34a) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--success, #16a34a) 40%, transparent);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;
+}
+.aide-reponse strong { font-size: 1.25rem; }
+.aide-reponse p { margin: 6px 0 0; font-size: .9rem; color: var(--text-muted); line-height: 1.45; }
+.aide-reponse-etiq {
+    display: block; font-size: .68rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--success, #16a34a); margin-bottom: 2px;
+}
+
+.aide-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.aide-btn {
+    border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+    border-radius: 10px; padding: 9px 15px; font: inherit; font-weight: 700;
+    font-size: .88rem; cursor: pointer; min-height: 42px;
+}
+.aide-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+@media (max-width: 560px) {
+    .aide-panneau { padding: 16px; }
+    .aide-onglet { padding: 7px 11px; font-size: .78rem; }
+    .aide-question { font-size: 1.1rem; }
+}
+
+/* LE CADEAU DES JEUX, dans la liste qu'on glisse vers le parcours. Rémy :
+   « si c'est un jeu récompense, dans la liste des exercices que l'on drag, on
+   voit un cadeau ». Discret — c'est un repère, pas une décoration : il ne doit
+   pas concurrencer le titre, qui est ce qu'on lit. */
+.nav-item-cadeau {
+    flex: 0 0 auto; font-size: .82rem; line-height: 1;
+    opacity: .8; margin-right: 1px;
+}
+
+/* UNE ÉTAPE DE RÉCOMPENSE SE RECONNAÎT DANS LA LISTE. Le cadeau la marque, et
+   un liseré vert la range du côté du plaisir plutôt que du travail — c'est
+   exactement ce qu'elle est. */
+.path-step-cadeau { flex: 0 0 auto; font-size: .9rem; line-height: 1; }
+.path-step--bonus { border-left: 3px solid #2f855a; }
+
+/* LE JEU QUI VIENT DE S'OUVRIR, sur l'écran de fin d'étape. Vert comme les
+   récompenses de la carte : l'élève doit faire le lien entre les deux écrans
+   sans qu'on le lui écrive. */
+.run-screen-text--cadeau { color: #2f855a; font-weight: 700; }

@@ -11,9 +11,35 @@
 // connaissance des notions ici.
 
 import { regTimeout } from '../timers.js';
-import { createDemoCursor } from '../demoPointer.js';
-import { creerNarrateur } from '../demoNarration.js';
-import { demoChoix } from '../demoScript.js';
+import { state } from '../state.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { aideSelonEtat, reduireChoix } from '../aide.js';
+import { barreOutils, boiteOutils, brancherOutils } from './outils.js';
+
+/**
+ * Ce que le robot dit avant de choisir, et après avoir choisi.
+ *
+ * On fait entendre l'indice et l'explication que le générateur fournit déjà —
+ * c'est le raisonnement de l'exercice, pas une phrase de remplissage. Mais une
+ * bulle se lit à 340 ms le mot : une explication de trois lignes fige la
+ * démonstration au point qu'on la croit plantée. On ne dit donc à voix haute
+ * que ce qui tient en une respiration ; le texte long reste dans la
+ * correction, où l'élève le lit à son rythme.
+ */
+const COURT = 110;
+const tientEnUneBulle = (t) => typeof t === 'string' && t.trim() && t.trim().length <= COURT;
+
+function phraseDepart(item) {
+    const indice = (item.hints || [])[0];
+    if (tientEnUneBulle(indice)) return indice.trim();
+    return 'Je lis la question en entier avant de regarder les réponses.';
+}
+
+function phraseFin(item, el) {
+    if (tientEnUneBulle(item.explanation)) return item.explanation.trim();
+    const r = (el.textContent || '').trim();
+    return r && r.length <= 22 ? `La réponse est ${r}.` : 'C\'est celle-là.';
+}
 
 const VARIANTS = {
     bubbles: { itemClass: 'bubble', containerClass: 'bubble-container' },
@@ -23,43 +49,212 @@ const VARIANTS = {
     // visuel d'une réponse chiffrée. Des tuiles compactes alignées se lisent
     // comme la ligne d'égalité qu'on cherche à compléter.
     signs: { itemClass: 'sign-tile', containerClass: 'sign-row' },
-    coords: { itemClass: 'coord-tile', containerClass: 'coord-row' }
+    coords: { itemClass: 'coord-tile', containerClass: 'coord-row' },
+    // Des cartes, pour les réponses qui sont des PHRASES : « 17 billes
+    // rouges », « il en reste 4 ». Voir `estLong` plus bas — on n'y passe que
+    // quand c'est nécessaire.
+    cartes: { itemClass: 'choice-carte', containerClass: 'choice-cartes' }
 };
 
 const DELAYS = { success: 1200, reveal: 1500, pause: 1500 };
+
+/**
+ * Le morceau d'énoncé que le premier indice commente, ou l'énoncé entier.
+ *
+ * `data-vise` est explicite (l'opération prioritaire de « 8 × 6 + 3 ») ;
+ * `nb-highlight` est le nombre que la plupart des générateurs de numération
+ * mettent déjà en avant — c'est très exactement ce dont l'indice parle.
+ */
+function viseDansEnonce(container) {
+    return container.querySelector('[data-vise]')
+        || container.querySelector('.game-question .nb-highlight')
+        || container.querySelector('.game-question')
+        || container.querySelector('.question-prompt')
+        || container;
+}
 
 export function mount(container, session, opts = {}) {
     const variant = VARIANTS[opts.variant] || VARIANTS.bubbles;
     let destroyed = false;
     // Un seul pointeur pour toute la démonstration : recréé à chaque question,
-    // il repartirait du coin de l'écran à chaque fois. Même chose pour la
-    // bulle de parole.
+    // il repartirait du coin de l'écran à chaque fois.
     let cursor = null;
-    let narrateur = null;
+    let gate = null;
+
+    // LE QCM S'ARRÊTE, ET L'ÉLÈVE DONNE SA RÉPONSE.
+    //
+    // Rémy, sur les Soustractions Éclair et Flash Mult : « à la fin de
+    // l'exercice, demander la réponse » ; et plus tôt : « on pourrait proposer
+    // à l'élève de donner sa proposition au bout de la moitié de l'exercice ».
+    //
+    // C'est la bonne façon de sortir du QCM. Reconnaître 42 parmi trois
+    // nombres n'est pas produire 42 : on peut éliminer, deviner, revenir. Mais
+    // commencer d'emblée au clavier ferme la porte à l'élève qui hésite. On
+    // fait donc les deux dans la même séance — le QCM porte, puis se retire.
+    //
+    // Le passage est SANS RETOUR : une fois au pavé, on y reste. Alterner
+    // ferait croire à une sanction (« tu as bien répondu, donc c'est plus
+    // dur »), là où c'est simplement la seconde moitié de l'exercice.
+    //
+    // LE NOMBRE DE PROPOSITIONS EST LA MARCHE D'AVANT, et il vient du même
+    // endroit. Deux propositions, c'est la bonne réponse contre l'erreur du
+    // chapitre : la question la plus nette qu'on puisse poser, et celle par
+    // laquelle il faut commencer. `core/aide.js` décide des deux ensemble —
+    // ici on ne fait qu'appliquer.
+    let releve = null;                     // l'activité qui a pris la main
+    let moduleEnCours = null;              // et quel module c'est
+    let aide = { propositions: null, clavier: false };
+    // Le mot qui accompagne un changement de forme. Vide la plupart du temps.
+    let avisRetour = '';
+
+    /**
+     * EN ÉVALUATION, L'AIDE NE SUIT PERSONNE.
+     *
+     * L'escalier adaptatif est un outil d'entraînement : il donne à chacun le
+     * soutien dont il a besoin, et c'est très bien tant qu'on apprend. Noter
+     * une classe où l'un a répondu parmi deux propositions et l'autre au
+     * clavier ne compare plus rien — la note mesurerait l'aide reçue autant
+     * que le savoir. En évaluation, on revient donc au calendrier : le même
+     * pour tous, annoncé d'avance.
+     */
+    const etatAdaptatif = () => (session.policy && session.policy.mode === 'evaluation')
+        ? null : session.escalier;
+    const totalPrevu = () => Math.max(2, session.nbItems
+        || Number(session.params && session.params.nbQuestions) || 10);
+
+    /**
+     * QUELLE ACTIVITÉ DOIT POSER CETTE QUESTION ?
+     *
+     * `null` : le QCM, ici même. Sinon le module qui prend la main.
+     *
+     * Deux raisons de céder la place. La première est l'ESCALIER : arrivé en
+     * haut, on ne choisit plus, on produit — un nombre se tape sur un pavé,
+     * une notation comme [AB) se compose symbole par symbole. C'est le
+     * générateur qui le dit (`meta.composable`), pas l'activité qui le devine :
+     * « quelle opération est prioritaire » se répond « 5 × 7 », qui ne se tape
+     * pas sur un pavé.
+     *
+     * La seconde est qu'une question peut n'avoir AUCUNE forme « à choisir ».
+     * « Trace [AB) » ne se pose pas en quatre vignettes : c'est ce QCM-là que
+     * Rémy trouvait bête, parce qu'on le résout en comparant des images sans
+     * jamais lire les crochets. L'item le déclare (`saisieSeule`), et le tracé
+     * prend la main dès la première question — il n'y a pas de marche plus
+     * basse où redescendre.
+     */
+    const MODULES = { notation: './notationSaisie.js', trace: './traceNotation.js' };
+    function moduleVoulu(item, aideIci) {
+        const m = (item && item.meta) || {};
+        const compose = MODULES[m.composable];
+        if (m.saisieSeule) return compose || null;
+        if (!aideIci.clavier) return null;
+        if (compose) return compose;
+        const chiffrable = item.answer !== null && item.answer !== ''
+            && Number.isFinite(Number(item.answer));
+        return chiffrable ? './numeric.js' : null;
+    }
+
+    const AVIS = {
+        './numeric.js': 'À toi d\'écrire : plus de propositions, tu tapes le résultat.',
+        './notationSaisie.js': 'À toi d\'écrire : tu poses toi-même les deux symboles.',
+        './traceNotation.js': ''
+    };
 
     function renderNext() {
         if (destroyed) return;
         const item = session.next();
+        // `history` contient déjà la graine de la question en cours : c'est son
+        // rang, à partir de 1.
+        const rang = session.history.length;
+        aide = aideSelonEtat(session.params || {}, etatAdaptatif(), rang, totalPrevu());
+        const voulu = moduleVoulu(item, aide);
+        if (!releve && voulu) return passerALaMain(item, voulu, AVIS[voulu] || '');
         render(item);
     }
 
+    /** L'exercice change de forme : une autre activité prend la main. */
+    async function passerALaMain(item, module, avis) {
+        const mod = await import(module);
+        if (destroyed) return;
+        if (cursor) { cursor.destroy(); cursor = null; }
+        if (gate) { gate.destroy(); gate = null; }
+        moduleEnCours = module;
+        releve = mod.mount(container, session, { item, avis, rendreLaMain });
+    }
+
+    /**
+     * ET ON PEUT REDESCENDRE — c'est le filet, pas une sanction.
+     *
+     * Le passage au pavé était sans retour, et c'était défendable tant que
+     * l'escalier suivait un calendrier : on ne redescendait pas parce qu'on ne
+     * savait pas quand il l'aurait fallu. Maintenant que l'escalier suit
+     * l'élève, ne pas redescendre le laisserait échouer jusqu'au bout d'un
+     * exercice dont il avait réussi la première moitié — reconnaître 42 parmi
+     * quatre nombres et PRODUIRE 42 sont deux choses différentes, et c'est
+     * précisément là que ça casse.
+     *
+     * L'activité qui a la main appelle ceci avant chaque question ; si l'on
+     * rend `true`, elle s'arrête là et le QCM reprend.
+     */
+    function rendreLaMain(item) {
+        if (destroyed) return false;
+        const suite = aideSelonEtat(session.params || {}, etatAdaptatif(),
+            session.history.length, totalPrevu());
+        const voulu = moduleVoulu(item, suite);
+        // La question suivante veut la MÊME activité : rien à faire, elle
+        // continue. C'est le cas ordinaire d'un exercice qui a atteint le haut
+        // de l'escalier.
+        if (voulu === moduleEnCours) return false;
+        aide = suite;
+        if (releve && releve.destroy) releve.destroy();
+        releve = null;
+        moduleEnCours = null;
+        // Elle en veut une AUTRE — un exercice qui mêle les sens change de
+        // forme d'une question à l'autre : « trace [AB) » se dessine, « (AB)
+        // se lit… » se choisit. On rend la main, et `renderNext` du QCM
+        // n'ayant pas eu lieu, c'est ici qu'on aiguille.
+        if (voulu) { passerALaMain(item, voulu, AVIS[voulu] || ''); return true; }
+        avisRetour = 'On reprend avec des propositions : ça va revenir.';
+        render(item);
+        return true;
+    }
+
     function render(item) {
-        const choices = item.choices || [];
+        const choices = reduireChoix(item.choices || [], aide.propositions);
+        // BULLES OU CARTES ? Une bulle ronde est parfaite pour « 42 » et
+        // ridicule pour « 17 billes rouges » : le texte se recroqueville ou
+        // déborde. Dès qu'une seule proposition est longue, tout le groupe
+        // passe en cartes rectangulaires posées deux par deux. On ne le décide
+        // pas exercice par exercice — c'est le CONTENU qui le décide, donc ça
+        // reste juste le jour où un générateur allonge ses libellés.
+        const habillage = (variant === VARIANTS.bubbles && choices.some(c => estLong(c.label)))
+            ? VARIANTS.cartes : variant;
         // « 100 000 » ne tient pas dans une bulle prévue pour « 42 ». On adapte
         // la taille du texte à la longueur du contenu plutôt que de le laisser
         // déborder ou se couper.
         const itemsHtml = choices.map((c, i) => `
-            <div class="${variant.itemClass} ${lengthClass(c.label)}" role="button" tabindex="0"
+            <div class="${habillage.itemClass} ${lengthClass(c.label)}" role="button" tabindex="0"
                  data-idx="${i}" data-val="${escapeAttr(c.value)}">${c.label}</div>`).join('');
 
-        const wrapped = variant.containerClass
-            ? `<div class="${variant.containerClass}">${itemsHtml}</div>`
+        // Le nombre de propositions est passé à la mise en page : c'est lui
+        // qui décide de la taille des bulles pour qu'elles tiennent TOUTES SUR
+        // UNE LIGNE. Trois en haut et une orpheline en dessous, c'est laid, et
+        // surtout ça suggère un groupement qui n'existe pas.
+        const wrapped = habillage.containerClass
+            ? `<div class="${habillage.containerClass}" style="--n:${choices.length}">${itemsHtml}</div>`
             : itemsHtml;
 
         // `context` permet à une variante d'ajouter un support visuel entre
         // l'énoncé et les propositions (table de Pythagore, schéma…).
         const context = opts.context ? opts.context(item) : '';
-        container.innerHTML = `${item.prompt.html}${context}${wrapped}${hintBar(session)}`;
+        const mot = avisRetour ? `<div class="choice-avis">${avisRetour}</div>` : '';
+        avisRetour = '';
+        // LES OUTILS S'INTERCALENT ENTRE L'ÉNONCÉ ET LES PROPOSITIONS.
+        // Rémy, sur la Chasse au Chiffre : « on pourrait proposer un bouton
+        // pour afficher un tableau de numération pour placer son nombre ». Le
+        // rappel parle de CE QU'ON LIT : il se range du côté de l'énoncé, et
+        // non sous les bulles où il passerait pour une quatrième réponse.
+        container.innerHTML = `${mot}${item.prompt.html}${barreOutils(item)}`
+            + `${boiteOutils(item)}${context}${wrapped}${hintBar(session)}`;
 
         const cells = [...container.querySelectorAll(`[data-idx]`)];
 
@@ -68,18 +263,34 @@ export function mount(container, session, opts = {}) {
         const slot = container.querySelector('.compare-slot');
         const fillSlot = (el, correct) => {
             if (!slot) return;
-            slot.textContent = el.textContent;
+            // ON RECOPIE LA PROPOSITION TELLE QU'ELLE EST ÉCRITE, pas le texte
+            // qu'elle contient. Rémy, au banc iPhone, sur l'addition de
+            // fractions : « quand ça écrit la réponse à côté du =, ça ne
+            // l'écrit pas en fraction ». La bulle porte bien 7 sur 11 en
+            // colonne ; `textContent` en tirait « 711 ». La case s'élargit
+            // alors, une fraction n'ayant pas la forme d'un signe « < ».
+            slot.innerHTML = el.innerHTML;
+            slot.classList.toggle('compare-slot--riche', !!slot.querySelector('.fraction'));
             slot.classList.add('compare-slot--filled');
             slot.classList.toggle('compare-slot--ok', correct);
             slot.classList.toggle('compare-slot--ko', !correct);
         };
 
         if (session.isDemo) {
-            if (!session.frozen) runDemo(item, cells, slot, fillSlot);
+            if (!session.frozen) runDemo(cells, choices, slot, fillSlot, item);
             return;
         }
 
         wireHint(container, session);
+        brancherOutils(container, item);
+        // « Montre-moi » sur les choix : en plus du texte, la bonne case
+        // s'illumine — l'élève n'a plus qu'à faire le geste dessus.
+        wireShowMe(container, session, {
+            highlight: () => {
+                const good = cells[choices.findIndex(c => c.correct)];
+                if (good) good.classList.add('demo-target');
+            }
+        });
 
         const answer = (el) => {
             if (destroyed || el.dataset.eliminated === '1') return;
@@ -130,24 +341,70 @@ export function mount(container, session, opts = {}) {
     }
 
     /**
-     * Démonstration : on montre le RAISONNEMENT, puis le geste.
+     * Démonstration : on montre le GESTE, pas seulement la bonne case.
      *
-     * Le geste compte — quand l'exercice se joue au glisser-déposer, c'est lui
-     * l'objet de l'apprentissage — mais il ne dit pas pourquoi cette case-là.
-     * Le déroulé commenté (méthode, erreur écartée, conclusion) vit dans
-     * `demoScript`, commun à toutes les activités à propositions.
+     * Quand l'exercice se joue au glisser-déposer, c'est ce geste qui est
+     * l'objet de l'apprentissage — le voir sauter d'une question à l'autre
+     * n'apprenait rien. Le pointeur va donc chercher la tuile, la traîne
+     * jusqu'à l'emplacement vide et l'y dépose, puis on laisse la ligne
+     * complétée à l'écran le temps de la relire.
      */
-    async function runDemo(item, cells, slot, fillSlot) {
-        if (!cursor) cursor = createDemoCursor();
-        if (session.narration && !narrateur) narrateur = creerNarrateur();
+    async function runDemo(cells, choices, slot, fillSlot, item) {
+        const el = cells[choices.findIndex(c => c.correct)];
+        if (!el) { regTimeout(renderNext, DEMO_SPEED.between); return; }
 
-        const fini = await demoChoix({
-            narrateur, cursor, item, cellules: cells,
-            question: container.querySelector('.game-question'),
-            versEmplacement: (opts.dragToSlot && slot) ? slot : null,
-            apresChoix: (el) => fillSlot(el, true)
-        });
-        if (!fini || destroyed) return;
+        if (!cursor) cursor = createDemoCursor();
+        if (!gate) gate = createDemoGate(container);
+
+        // LA BULLE NE SE POSE PAS SUR CE DONT ELLE PARLE. « 28,97 ≈ ? » se lit
+        // sous une explication qui recouvrait précisément le nombre : le robot
+        // cachait la seule chose à regarder. Tout ce qui n'est pas la barre
+        // d'aide — énoncé, support, propositions — est déclaré intouchable, et
+        // la bulle se range autour.
+        cursor.protegerZone([...container.children].filter(el => !el.classList.contains('hint-bar')));
+
+        if (!await gate.waitTurn() || destroyed) return;
+        if (!await cursor.pause(600) || destroyed) return;
+
+        // LE ROBOT DIT POURQUOI. Il se contentait de poser le doigt sur la
+        // bonne case : montrer LAQUELLE est juste sans dire pourquoi n'apprend
+        // rien à qui ne le savait pas déjà — et l'élève qui suit la
+        // démonstration est exactement celui-là. Accessoirement, « Arrière »
+        // rappelle les explications passées : sans une seule explication, il
+        // n'avait rien à rappeler et semblait cassé.
+        // IL MONTRE CE DONT IL PARLE. « Commence par 8 × 6 » laissait l'élève
+        // chercher où sont ces 8 × 6 dans « 8 × 6 + 3 » — c'est pourtant TOUTE
+        // la question. Un générateur peut désigner le morceau d'énoncé sur
+        // lequel porte son premier indice (`data-vise`) ; à défaut, c'est
+        // l'énoncé entier qui est cerclé, et jamais le vide.
+        // ET IL LE SURLIGNE. Pointer la bulle vers « 6 × 6 » ne suffisait pas :
+        // dans « 6 × 6 − 8 », la pointe tombe entre deux chiffres et l'on ne
+        // sait pas où commence le morceau dont on parle. Rémy : « le robot ne
+        // montre pas le bon calcul ». Le fragment visé s'allume donc pendant
+        // qu'on en parle, et s'éteint quand on passe à la réponse — sans quoi
+        // la feuille garderait un surlignage qui ne veut plus rien dire.
+        const cible = viseDansEnonce(container);
+        if (cible !== container) cible.classList.add('demo-vise');
+        cursor.say(phraseDepart(item), cible);
+        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await gate.waitTurn() || destroyed) return;
+
+        // Le surlignage tient PENDANT le trajet du doigt : la bulle affiche
+        // encore « Commence par 4 × 2 » tout le temps que le pointeur met à
+        // rejoindre la réponse, et l'éteindre avant laissait la phrase parler
+        // d'un morceau d'énoncé qui ne s'allumait plus.
+        const fait = (opts.dragToSlot && slot)
+            ? await cursor.dragFromTo(el, slot)
+            : await cursor.tap(el);
+        cible.classList.remove('demo-vise');
+        if (!fait || destroyed) return;
+
+        el.classList.add('demo-target');
+        fillSlot(el, true);
+
+        if (!await gate.waitTurn() || destroyed) return;
+        cursor.say(phraseFin(item, el), el);
+        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }
 
@@ -156,12 +413,20 @@ export function mount(container, session, opts = {}) {
     return {
         // Passer d'une question à l'autre sans répondre : utilisé par le
         // chronomètre par question et par la navigation du professeur.
-        showNext: renderNext,
-        showPrevious() { if (session.rewind()) renderNext(); },
+        // Une fois le pavé en place, c'est LUI qui répond au professeur : deux
+        // activités qui pilotent le même conteneur en même temps se marchent
+        // dessus, et `session.finish()` appelé deux fois clôt la séance deux
+        // fois.
+        showNext() { (releve || { showNext: renderNext }).showNext(); },
+        showPrevious() {
+            if (releve) return releve.showPrevious();
+            if (session.rewind()) renderNext();
+        },
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
-            if (narrateur) { narrateur.detruire(); narrateur = null; }
+            if (gate) { gate.destroy(); gate = null; }
+            if (releve) { const r = releve; releve = null; return r.destroy(); }
             container.innerHTML = '';
             session.finish();
         }
@@ -262,18 +527,49 @@ function styleFeedback(el, correct, variant) {
     }
 }
 
-// Bouton d'aide : présent seulement si la politique l'autorise et si l'item
-// propose des indices. En évaluation, il n'apparaît pas du tout.
+// Barre d'aide : l'indice (si la politique l'autorise et si l'item en
+// propose) et, en mode apprentissage, le bouton « Montre-moi » — l'aide
+// maximale : la réponse est révélée et expliquée, puis l'élève fait le geste
+// lui-même. En évaluation, rien de tout cela n'apparaît.
+
+/** « Montre-moi » disponible ? Pas en démo, pas sur les grilles (le
+ *  vérificateur et les indices de zone y jouent déjà ce rôle). */
+function canShowMe(session) {
+    return !!(session.policy && session.policy.showMe && !session.isDemo
+        && session.current && session.current.answerKind !== 'grid');
+}
+
+/** La réponse sous sa forme lisible par l'élève. */
+function answerLabelOf(item) {
+    if (item.choices) {
+        const good = item.choices.find(c => c.correct);
+        // `texte` l'emporte sur `label` : une proposition peut être un DESSIN
+        // (les notations [AB], (AB), [AB) se choisissent sur un schéma), et
+        // « la réponse est <svg…> » ne dirait rien à personne.
+        if (good && good.texte) return String(good.texte);
+        if (good) return String(good.label !== undefined ? good.label : good.value);
+    }
+    if (item.answerKind === 'point' && item.meta && item.meta.x !== undefined) {
+        return `(${item.meta.x} ; ${item.meta.y})`;
+    }
+    return String(item.answer);
+}
+
 export function hintBar(session) {
-    if (!session.hintsAvailable) return '';
-    return `<div class="hint-bar">
-        <button type="button" class="btn-hint" data-hint>
+    const showMe = canShowMe(session);
+    if (!session.hintsAvailable && !showMe) return '';
+    return `<div class="hint-bar"><div class="hint-btns">
+        ${session.hintsAvailable ? `<button type="button" class="btn-hint" data-hint>
             <span aria-hidden="true">💡</span> Un indice
-        </button>
-    </div>`;
+        </button>` : ''}
+        ${showMe ? `<button type="button" class="btn-hint btn-showme" data-showme>
+            <span aria-hidden="true">🤝</span> Montre-moi
+        </button>` : ''}
+    </div></div>`;
 }
 
 export function wireHint(container, session) {
+    wireShowMe(container, session);
     const btn = container.querySelector('[data-hint]');
     if (!btn) return;
     btn.onclick = () => {
@@ -284,22 +580,208 @@ export function wireHint(container, session) {
             box = document.createElement('div');
             box.className = 'hint-text';
             box.setAttribute('role', 'status');
-            btn.parentElement.appendChild(box);
+            btn.parentElement.parentElement.appendChild(box);
         }
         box.textContent = h;
+        // LE DESSIN DE L'INDICE, s'il en a un. Rémy : « pourquoi ne pas avoir
+        // un petit schéma ? c'est souvent plus parlant ». Le HTML vient du
+        // générateur, pas de l'élève : il est de confiance.
+        if (session.schemaIndice) {
+            const dessin = document.createElement('div');
+            dessin.className = 'hint-schema';
+            dessin.innerHTML = session.schemaIndice;
+            box.appendChild(dessin);
+        }
         if (!session.hintsAvailable) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; }
     };
+}
+
+/**
+ * « Montre-moi » : révèle la réponse et son explication, sans répondre à la
+ * place de l'élève — c'est encore lui qui clique, tape ou place. L'usage est
+ * tracé comme une aide (gratuite en apprentissage).
+ *
+ * Deux réglages pour les activités où « la réponse » n'est pas le bon secours :
+ *   - `message(item)` remplace le texte. Sur le rapporteur, annoncer « la
+ *     réponse est 20 » ne sert à rien — l'énoncé la donne déjà — alors que
+ *     montrer le GESTE, puis inviter à lire la graduation, est tout l'exercice.
+ *   - `enPage` affiche ce texte SOUS les commandes plutôt qu'en carte posée
+ *     sur le plateau : une aide qui recouvre l'animation qu'elle commente ne
+ *     s'explique pas elle-même.
+ *
+ * @param {{highlight?:()=>void, message?:(item:Object)=>string, enPage?:boolean}} [opts]
+ */
+export function wireShowMe(container, session, opts = {}) {
+    const btn = container.querySelector('[data-showme]');
+    if (!btn) return;
+
+    const dire = (msg, detail) => {
+        if (opts.enPage) {
+            let box = container.querySelector('.hint-text');
+            if (!box) {
+                box = document.createElement('div');
+                box.className = 'hint-text';
+                box.setAttribute('role', 'status');
+                btn.parentElement.parentElement.appendChild(box);
+            }
+            box.textContent = msg;
+        } else {
+            document.dispatchEvent(new CustomEvent('game_feedback', {
+                detail: { kind: 'hint', msg, misconception: detail || null }
+            }));
+        }
+    };
+
+    // DEUX APPUIS, ET LE PREMIER N'EST PAS LA RÉPONSE.
+    //
+    // Rémy : « le problème du montre-moi est qu'il donne toujours la réponse. »
+    //
+    // Il a raison, et le défaut était dans le principe même du bouton : un
+    // élève bloqué et un élève pressé appuyaient sur le même bouton et
+    // recevaient la même chose — le résultat, tout de suite. Rien n'était
+    // demandé entre les deux, donc le chemin le plus court pour finir
+    // l'exercice passait par ce bouton, à chaque question.
+    //
+    // Le premier appui montre donc COMMENT ON FAIT sur cette question-là — le
+    // dernier indice, celui que le générateur a écrit comme l'aide la plus
+    // explicite avant le résultat. Le bouton change alors de nom et dit
+    // franchement ce qu'il fera ensuite : « Donne-moi la réponse ». Rien n'est
+    // retiré à personne — on est en mode apprentissage, la réponse reste à un
+    // appui — mais elle devient un choix, et non le comportement par défaut.
+    //
+    // Le module de l'aide (`ui/aideExercice.js`) dit déjà la même chose de son
+    // exemple : « un exemple entièrement affiché est une correction : on la
+    // lit, on ne la cherche pas ».
+    //
+    // CERTAINES ACTIVITÉS N'ONT PAS DE PREMIÈRE MARCHE, et il ne faut pas leur
+    // en inventer une : quand le jeu passe son propre `message` (le rapporteur
+    // POSE l'outil au lieu d'annoncer une mesure), ce message EST déjà la
+    // méthode, et un appui suffit.
+    const methode = () => {
+        if (opts.message) return null;
+        const hints = (session.current && session.current.hints) || [];
+        // Le dernier indice, sauf s'il se contente d'annoncer la réponse — ce
+        // qui ferait deux appuis pour le même résultat.
+        for (let i = hints.length - 1; i >= 0; i--) {
+            const h = String(hints[i] || '').trim();
+            if (h && !donneLaReponse(h, session.current)) return h;
+        }
+        return null;
+    };
+
+    let montre = false;
+    btn.onclick = () => {
+        const item = session.current;
+        if (!item || session.locked) return;
+        state.noteHintUsed();
+
+        if (!montre) {
+            const m = methode();
+            if (m) {
+                montre = true;
+                btn.innerHTML = '<span aria-hidden="true">🤝</span> Donne-moi la réponse';
+                // La méthode vaut tous les indices : on ne rejoue pas
+                // l'escalier après l'avoir sauté.
+                session.hintIndex = Math.max(session.hintIndex, (item.hints || []).length);
+                dire(m, null);
+                // PAS DE `highlight` ICI : sur un QCM, il allume la bonne case.
+                // Montrer la méthode ET désigner la réponse du doigt serait
+                // exactement le bouton qu'on vient de corriger.
+                return;
+            }
+        }
+
+        btn.disabled = true;
+        // Révéler vaut tous les indices : en entraînement, les points de la
+        // question s'en ressentent ; en apprentissage (pénalité nulle), non.
+        session.hintIndex = Math.max(session.hintIndex, (item.hints || []).length, 2);
+        const msg = opts.message
+            ? opts.message(item)
+            : `La réponse est « ${answerLabelOf(item)} ». À toi de la jouer !`;
+        dire(msg, item.explanation || null);
+        if (opts.highlight) opts.highlight();
+    };
+}
+
+/**
+ * Cet indice-là annonce-t-il simplement le résultat ?
+ *
+ * Plusieurs générateurs finissent leur escalier par « Ces deux angles sont
+ * supplémentaires. » ou « Le calcul : 12 ÷ 4 = 3. » — c'est un dernier recours
+ * légitime dans l'escalier des indices, mais ce n'est pas une MÉTHODE : le
+ * proposer au premier appui de « Montre-moi » ferait deux boutons pour la même
+ * chose. On le reconnaît à ce qu'il porte la réponse et presque rien d'autre.
+ */
+function donneLaReponse(texte, item) {
+    if (!item) return false;
+    const rep = answerLabelOf(item).trim();
+    if (!rep || rep.length > 40) return false;
+    const nu = (v) => String(v).toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!nu(texte).includes(nu(rep))) return false;
+    // Il la contient : reste à savoir s'il ne fait QUE la contenir. Un indice
+    // qui explique en quarante mots et cite la réponse au passage reste une
+    // méthode ; une phrase de dix mots construite autour d'elle n'en est pas.
+    return nu(texte).length <= nu(rep).length + 45;
 }
 
 function escapeAttr(v) {
     return String(v).replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
+/** Le texte visible d'un libellé, balises et espaces multiples retirés. */
+function texteNu(label) {
+    return String(label).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Un libellé assez long pour qu'une bulle ronde ne convienne plus.
+ *
+ * Deux critères, parce qu'ils ne disent pas la même chose : au-delà de neuf
+ * caractères, ça ne tient plus dans un rond ; et dès qu'il y a un espace, on
+ * lit une PHRASE — « 17 billes » — qui appelle un rectangle, même courte.
+ */
+/**
+ * Une bulle ronde tient « 42 », pas « 12 345 ».
+ *
+ * Le seuil se déduit de la mise en page : quatre bulles sur une ligne font
+ * environ soixante-quinze pixels de large sur un téléphone, soit cinq
+ * caractères lisibles. Au-delà, on passe aux cartes rectangulaires posées deux
+ * par deux — c'est la règle convenue, et elle vaut aussi pour les nombres, pas
+ * seulement pour les phrases.
+ */
+/**
+ * UNE FRACTION EMPILÉE N'EST PAS UNE PHRASE. Écrite en colonne, « 17/10 »
+ * occupe deux étages et pas dix caractères — mais le texte nu de son balisage
+ * donne « 17 10 », espace compris, et la règle du dessus la classait avec « 17
+ * billes rouges ». Les quatre propositions d'une addition de fractions
+ * partaient alors en cartes, une par ligne sur un téléphone étroit : Rémy les
+ * voulait sur la même ligne, et elles y tiennent très bien. Ce sont ses deux
+ * étages, pris séparément, qui disent si elle entre dans un rond.
+ */
+const FRACTION_SEULE = /^\s*<span class="fraction">\s*<span class="fraction-num">([^<]*)<\/span>\s*<span class="fraction-den">([^<]*)<\/span>\s*<\/span>\s*$/;
+function fractionSeule(label) {
+    const m = FRACTION_SEULE.exec(String(label));
+    return m ? { num: m[1].trim(), den: m[2].trim() } : null;
+}
+
+function estLong(label) {
+    const f = fractionSeule(label);
+    if (f) return f.num.length > 3 || f.den.length > 3;
+    const t = texteNu(label);
+    return t.length > 5 || /\s/.test(t);
+}
+
 /** Classe de taille selon la longueur du libellé (balises HTML exclues). */
 function lengthClass(label) {
-    const n = String(label).replace(/<[^>]*>/g, '').replace(/\s/g, '').length;
-    if (n >= 8) return 'choice--xxl';
-    if (n >= 6) return 'choice--xl';
-    if (n >= 4) return 'choice--l';
-    return '';
+    // Une fraction se mesure à son étage le plus large, pas à la somme des deux.
+    const f = fractionSeule(label);
+    const n = f ? Math.max(f.num.length, f.den.length)
+        : String(label).replace(/<[^>]*>/g, '').replace(/\s/g, '').length;
+    // `choice--frac` prévient la mise en page qu'il y a deux étages à loger :
+    // une fraction se règle sur la HAUTEUR disponible, pas sur sa longueur.
+    const frac = f ? 'choice--frac ' : '';
+    if (n >= 8) return frac + 'choice--xxl';
+    if (n >= 6) return frac + 'choice--xl';
+    if (n >= 4) return frac + 'choice--l';
+    return frac.trim();
 }

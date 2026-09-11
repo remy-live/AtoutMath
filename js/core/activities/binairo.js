@@ -12,8 +12,8 @@
 import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
-import { creerNarrateur } from '../demoNarration.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { contenuCase, brancherChamps, saisieActive } from '../../ui/champsGrille.js';
 
 const VERIFICATIONS_PAR_GRILLE = 3;
 const VIDE = -1;
@@ -21,7 +21,6 @@ const VIDE = -1;
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let cursor = null;
-    let narrateur = null;
 
     let item = null;
     let grille = [];
@@ -41,14 +40,23 @@ export function mount(container, session, opts = {}) {
         verrous = givens.map(ligne => ligne.map(v => v !== null));
 
         const cellsHtml = [];
+        const avecChamp = saisieActive(session.params);
         for (let r = 0; r < n; r++) {
             for (let c = 0; c < n; c++) {
                 const donnee = verrous[r][c];
+                // L'ORDRE DES CHAMPS EST CELUI DE LA LECTURE — la boucle
+                // parcourt les lignes puis les colonnes, donc le DOM aussi,
+                // donc la touche Tab aussi. C'est ce que Rémy demande : « pour
+                // le binairo, l'ordre des champs est important, de haut en bas,
+                // de gauche à droite ».
                 cellsHtml.push(`
                     <div class="kk-cell bn-cell ${donnee ? 'kk-given' : ''}" role="button"
-                         tabindex="${donnee ? -1 : 0}" data-r="${r}" data-c="${c}"
+                         tabindex="${(donnee || avecChamp) ? -1 : 0}" data-r="${r}" data-c="${c}"
                          aria-label="Case ligne ${r + 1}, colonne ${c + 1}">
-                        <span class="kk-val">${donnee ? grille[r][c] : ''}</span>
+                        ${contenuCase({
+        valeur: donnee ? grille[r][c] : '', donnee, champ: avecChamp,
+        aria: `Ligne ${r + 1}, colonne ${c + 1}`, motif: '[01]'
+    })}
                     </div>`);
             }
         }
@@ -94,13 +102,27 @@ export function mount(container, session, opts = {}) {
     function poser(r, c, valeur) {
         if (verrous[r][c] || session.locked) return;
         grille[r][c] = valeur;
-        celluleEl(r, c).querySelector('.kk-val').textContent = valeur === VIDE ? '' : valeur;
+        const boite = celluleEl(r, c).querySelector('.kk-val');
+        const texte = valeur === VIDE ? '' : String(valeur);
+        if (boite.tagName === 'INPUT') { if (boite.value !== texte) boite.value = texte; }
+        else boite.textContent = texte;
         container.querySelectorAll('.kk-cell--conflit, .kk-cage--faux, .kk-cage--indice')
             .forEach(e => e.classList.remove('kk-cell--conflit', 'kk-cage--faux', 'kk-cage--indice'));
         statut('');
     }
 
     function brancherCases() {
+        brancherChamps(container, {
+            bloque: () => session.locked,
+            cleDe: (champ) => {
+                const cell = champ.closest('.kk-cell');
+                return `${cell.dataset.r},${cell.dataset.c}`;
+            },
+            poser: (cle, brut) => {
+                const [r, c] = cle.split(',').map(Number);
+                poser(r, c, brut === '' ? VIDE : Number(brut));
+            }
+        });
         container.querySelectorAll('.kk-cell').forEach(el => {
             const r = Number(el.dataset.r), c = Number(el.dataset.c);
             if (verrous[r][c]) return;
@@ -108,8 +130,12 @@ export function mount(container, session, opts = {}) {
                 const v = grille[r][c];
                 poser(r, c, v === VIDE ? 0 : (v === 0 ? 1 : VIDE));
             };
-            el.onclick = cycle;
-            el.onkeydown = (e) => {
+            // Avec un champ, cliquer sert à écrire dedans, et c'est le champ
+            // seul qui traite la frappe : deux écouteurs sur la même touche
+            // reposaient la valeur deux fois.
+            const aChamp = !!el.querySelector('.kk-champ');
+            el.onclick = aChamp ? null : cycle;
+            el.onkeydown = aChamp ? null : (e) => {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycle(); }
                 else if (e.key === '0' || e.key === '1') poser(r, c, Number(e.key));
                 else if (e.key === 'Backspace' || e.key === 'Delete') poser(r, c, VIDE);
@@ -304,89 +330,39 @@ export function mount(container, session, opts = {}) {
         el.className = `kk-status${ton ? ` kk-status--${ton}` : ''}`;
     }
 
-    // --- Le raisonnement du robot ---------------------------------------------
-    //
-    // Le Binairo tient en trois règles, et chacune se voit. Le robot cherche la
-    // case que l'une d'elles impose, la nomme, puis la remplit — plutôt que de
-    // recopier la solution de gauche à droite.
-
-    const ligneDe = (r) => item.meta.solution[r].map((_, c) => grille[r][c]);
-    const colonneDe = (c) => item.meta.solution.map((_, r) => grille[r][c]);
-
-    function coupDansSerie(vals, i, sens) {
-        // « deux pareils côte à côte » puis « X _ X » : les deux formes du
-        // « jamais trois de suite ».
-        const v = (k) => (k >= 0 && k < vals.length ? vals[k] : VIDE);
-        if (v(i - 1) !== VIDE && v(i - 1) === v(i - 2)) {
-            return { valeur: 1 - v(i - 1), phrase: `Deux ${v(i - 1)} se suivent déjà ${sens} : jamais trois de suite, donc ici c'est ${1 - v(i - 1)}.` };
-        }
-        if (v(i + 1) !== VIDE && v(i + 1) === v(i + 2)) {
-            return { valeur: 1 - v(i + 1), phrase: `Deux ${v(i + 1)} se suivent juste après ${sens} : cette case est donc un ${1 - v(i + 1)}.` };
-        }
-        if (v(i - 1) !== VIDE && v(i - 1) === v(i + 1)) {
-            return { valeur: 1 - v(i - 1), phrase: `Un ${v(i - 1)} de chaque côté ${sens} : mettre un troisième ferait trois à la suite, donc c'est ${1 - v(i - 1)}.` };
-        }
-        const zeros = vals.filter(x => x === 0).length;
-        const uns = vals.filter(x => x === 1).length;
-        const moitie = vals.length / 2;
-        if (zeros === moitie) return { valeur: 1, phrase: `Cette ${sens.replace('sur ', '')} a déjà ses ${moitie} zéros : tout le reste est des 1.` };
-        if (uns === moitie) return { valeur: 0, phrase: `Cette ${sens.replace('sur ', '')} a déjà ses ${moitie} uns : tout le reste est des 0.` };
-        return null;
-    }
-
-    /** Le prochain coup et sa raison, vérifiée contre la solution. */
-    function prochainCoup() {
-        const { n, solution } = item.meta;
-        const vides = [];
-        for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (grille[r][c] === VIDE) vides.push({ r, c });
-        if (!vides.length) return null;
-
-        for (const { r, c } of vides) {
-            for (const essai of [
-                () => coupDansSerie(ligneDe(r), c, 'sur cette ligne'),
-                () => coupDansSerie(colonneDe(c), r, 'sur cette colonne')
-            ]) {
-                const coup = essai();
-                if (coup && coup.valeur === solution[r][c]) return { r, c, ...coup };
-            }
-        }
-
-        const { r, c } = vides[0];
-        return {
-            r, c, valeur: solution[r][c],
-            phrase: `Aucune règle ne tranche seule ici : en croisant les lignes et les colonnes, c'est ${solution[r][c]}.`
-        };
-    }
-
-    const COUPS_COMMENTES = 5;
-
+    /**
+     * Le robot ne remplit plus les cases dans l'ordre de lecture : il joue les
+     * coups dans l'ordre où ils se DÉDUISENT, et dit à chaque fois quelle
+     * règle il applique. C'est la différence entre montrer la solution et
+     * montrer comment on la trouve.
+     */
     async function runDemo() {
+        const { n, solution } = item.meta;
         if (!cursor) cursor = createDemoCursor();
-        if (session.narration && !narrateur) narrateur = creerNarrateur();
-        const plateau = container.querySelector('.kk-board');
+        // La bulle se pose AUTOUR de la grille, jamais dessus : elle
+        // couvrait la ligne de chiffres sur laquelle porte l'explication.
+        cursor.protegerZone(container.querySelector('.bn-board, .kk-board'));
+        const gate = createDemoGate(container.querySelector('.kenken-layout') || container);
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
-        if (narrateur && !await narrateur.dire(`La règle : ${item.explanation}`, plateau)) return;
-        if (!await cursor.pause(narrateur ? 200 : 600) || destroyed) return;
-
-        for (let i = 0; ; i++) {
-            const coup = prochainCoup();
+        if (!await cursor.pause(600) || destroyed) return fin();
+        while (!destroyed) {
+            const coup = prochainCoupBinairo(grille, n, solution);
             if (!coup) break;
+            if (!await gate.waitTurn() || destroyed) return fin();
             const el = celluleEl(coup.r, coup.c);
-            if (!el) break;
-            const commente = narrateur && i < COUPS_COMMENTES;
-            if (commente && !await narrateur.dire(coup.phrase, el)) return;
-            if (!await cursor.tap(el, commente ? 320 : 200) || destroyed) return;
-            grille[coup.r][coup.c] = coup.valeur;
-            el.querySelector('.kk-val').textContent = coup.valeur;
+            if (!el) return fin();
+            cursor.say(coup.motif, el);
+            if (!await cursor.tap(el, 340) || destroyed) return fin();
+            grille[coup.r][coup.c] = coup.v;
+            el.querySelector('.kk-val').textContent = coup.v;
             el.classList.add('demo-target');
-            if (narrateur && i === COUPS_COMMENTES - 1
-                && !await narrateur.dire('La suite se déduit de la même façon.', plateau)) return;
+            if (!await cursor.pause(900) || destroyed) return fin();
         }
-
-        plateau.classList.add('kk-board--ok');
-        if (narrateur) {
-            if (!await narrateur.dire('Grille terminée.', plateau)) return;
-        } else if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        fin();
+        if (destroyed) return;
+        container.querySelector('.kk-board').classList.add('kk-board--ok');
+        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }
 
@@ -398,9 +374,95 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
-            if (narrateur) { narrateur.detruire(); narrateur = null; }
             container.innerHTML = '';
             session.finish();
         }
     };
+}
+
+/**
+ * Le prochain coup DÉDUCTIBLE et la règle qui le justifie.
+ *
+ * Les règles sont essayées dans l'ordre où on les enseigne :
+ *   1. deux chiffres identiques qui se suivent → les extrémités portent l'autre ;
+ *   2. un trou entre deux identiques → le milieu porte l'autre ;
+ *   3. une ligne ou colonne qui a déjà tous ses 0 (ou ses 1) → le reste se complète.
+ * S'il n'y a plus rien de déductible par ces règles (rare), on retombe sur la
+ * solution avec un motif d'élimination — jamais de coup silencieux.
+ */
+function prochainCoupBinairo(grille, n, solution) {
+    const vide = (r, c) => r >= 0 && r < n && c >= 0 && c < n && grille[r][c] === VIDE;
+    const val = (r, c) => (r >= 0 && r < n && c >= 0 && c < n) ? grille[r][c] : VIDE;
+
+    // Règle 1 : X X _  (dans les quatre orientations, horizontal et vertical).
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        if (!vide(r, c)) continue;
+        for (const [dr, dc] of [[0, 1], [1, 0]]) {
+            for (const sens of [-1, 1]) {
+                const v1 = val(r + sens * dr, c + sens * dc);
+                const v2 = val(r + 2 * sens * dr, c + 2 * sens * dc);
+                if (v1 !== VIDE && v1 === v2 && solution[r][c] === 1 - v1) {
+                    return {
+                        r, c, v: 1 - v1,
+                        motif: `Deux ${v1} se suivent : jamais trois identiques, je pose un ${1 - v1}.`
+                    };
+                }
+            }
+        }
+    }
+
+    // Règle 2 : X _ X — le milieu ne peut pas former un triple.
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        if (!vide(r, c)) continue;
+        for (const [dr, dc] of [[0, 1], [1, 0]]) {
+            const avant = val(r - dr, c - dc);
+            const apres = val(r + dr, c + dc);
+            if (avant !== VIDE && avant === apres && solution[r][c] === 1 - avant) {
+                return {
+                    r, c, v: 1 - avant,
+                    motif: `Un ${avant} de chaque côté : un ${avant} au milieu ferait trois identiques, je pose un ${1 - avant}.`
+                };
+            }
+        }
+    }
+
+    // Règle 3 : ligne ou colonne qui a déjà son compte d'un chiffre.
+    const moitie = n / 2;
+    for (let r = 0; r < n; r++) {
+        for (const v of [0, 1]) {
+            if (grille[r].filter(x => x === v).length !== moitie) continue;
+            const c = grille[r].findIndex(x => x === VIDE);
+            if (c !== -1 && solution[r][c] === 1 - v) {
+                return {
+                    r, c, v: 1 - v,
+                    motif: `Cette ligne a déjà tous ses ${v} (${moitie} sur ${n} cases) : je complète avec des ${1 - v}.`
+                };
+            }
+        }
+    }
+    for (let c = 0; c < n; c++) {
+        const colonne = Array.from({ length: n }, (_, r) => grille[r][c]);
+        for (const v of [0, 1]) {
+            if (colonne.filter(x => x === v).length !== moitie) continue;
+            const r = colonne.findIndex(x => x === VIDE);
+            if (r !== -1 && solution[r][c] === 1 - v) {
+                return {
+                    r, c, v: 1 - v,
+                    motif: `Cette colonne a déjà tous ses ${v} : je complète avec des ${1 - v}.`
+                };
+            }
+        }
+    }
+
+    // Rien de déductible par les règles simples : première case vide, par
+    // élimination sur la solution.
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        if (grille[r][c] === VIDE) {
+            return {
+                r, c, v: solution[r][c],
+                motif: `Par élimination, seul un ${solution[r][c]} convient ici sans casser l'équilibre.`
+            };
+        }
+    }
+    return null;
 }

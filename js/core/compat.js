@@ -16,7 +16,7 @@ const CONCEPT_MAP = {
 /** "mult:7" -> "num.mult.table.7" ; "addition" -> "num.add.entiers". */
 export function conceptToSkill(concept) {
     if (!concept) return null;
-    if (concept.startsWith('num.') || concept.startsWith('geo.') || concept.startsWith('mes.')) {
+    if (concept.startsWith('num.') || concept.startsWith('geo.') || concept.startsWith('mes.') || concept.startsWith('don.')) {
         return concept; // déjà un identifiant de compétence
     }
     const m = /^mult:(\d+)$/.exec(concept);

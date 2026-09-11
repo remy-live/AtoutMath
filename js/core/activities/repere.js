@@ -11,14 +11,12 @@
 import { regTimeout } from '../timers.js';
 import { repereSvg, marqueurPoint } from '../figures.js';
 import { hintBar, wireHint } from './choice.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
-import { creerNarrateur } from '../demoNarration.js';
-import { direLaMethode, direLaConclusion } from '../demoScript.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 
 export function mount(container, session) {
     let destroyed = false;
     let cursor = null;
-    let narrateur = null;
+    let gate = null;
 
     function renderNext() {
         if (destroyed) return;
@@ -27,18 +25,24 @@ export function mount(container, session) {
 
     function render(item) {
         const { max, relatifs } = item.meta;
+        // Une boîte de mise en page autour des trois morceaux : le plateau est
+        // le CONTENEUR des requêtes de taille, et un élément ne peut pas
+        // interroger son propre conteneur. Sans elle, la règle qui met le
+        // repère à côté de l'énoncé en paysage ne s'appliquerait jamais.
         container.innerHTML = `
-            ${item.prompt.html}
-            <div class="figure-wrap figure-wrap--interactive">
-                ${repereSvg({ max, relatifs, interactive: true })}
-            </div>
-            ${hintBar(session)}`;
+            <div class="rep-layout">
+                ${item.prompt.html}
+                <div class="figure-wrap figure-wrap--interactive">
+                    ${repereSvg({ max, relatifs, interactive: true })}
+                </div>
+                ${hintBar(session)}
+            </div>`;
 
         const svg = container.querySelector('svg');
         const target = svg.querySelector(`.rep-hit[data-c="${item.answer}"]`);
 
         if (session.isDemo) {
-            if (!session.frozen) runDemo(svg, target);
+            if (!session.frozen) runDemo(svg, target, item);
             return;
         }
 
@@ -49,6 +53,10 @@ export function mount(container, session) {
             const result = session.submit(hit.dataset.c, { element: hit });
             if (result.ignored) return;
 
+            // La grille se fige : plus de survol collé au doigt sur le nœud
+            // qu'on vient de toucher, plus de second appui pendant la
+            // correction. Voir `.rep-svg--repondu`.
+            svg.classList.add('rep-svg--repondu');
             if (result.correct) markPoint(svg, hit, 'ok');
             else markPoint(svg, hit, 'ko', formatCoord(hit.dataset.c));
 
@@ -78,6 +86,8 @@ export function mount(container, session) {
         const cy = hit.getAttribute('cy');
         const ns = 'http://www.w3.org/2000/svg';
 
+        // Une croix, comme sur la fiche imprimée et comme au tableau : elle
+        // désigne le nœud du quadrillage au lieu de le recouvrir.
         // Même marque que les points tracés par les figures : le point que
         // l'élève pose doit s'écrire comme celui qu'on lui montre.
         const marque = document.createElementNS(ns, 'g');
@@ -98,19 +108,26 @@ export function mount(container, session) {
 
     // Démonstration : le pointeur parcourt le repère jusqu'au nœud cherché.
     // Voir le trajet, c'est voir qu'on lit d'abord l'abscisse puis l'ordonnée.
-    async function runDemo(svg, target) {
+    async function runDemo(svg, target, item) {
         if (!target) { regTimeout(renderNext, DEMO_SPEED.between); return; }
         if (!cursor) cursor = createDemoCursor();
-        if (session.narration && !narrateur) narrateur = creerNarrateur();
-        const enonce = container.querySelector('.game-question');
+        if (!gate) gate = createDemoGate(container);
+        if (!await gate.waitTurn() || destroyed) return;
+        if (!await cursor.pause(600) || destroyed) return;
 
-        if (!await direLaMethode(narrateur, session.current, enonce) || destroyed) return;
-        if (!await cursor.pause(narrateur ? 250 : 600) || destroyed) return;
+        // La règle de lecture, DITE avant le geste. Le pointeur allait droit au
+        // point : on voyait où, jamais comment — or « d'abord l'abscisse, puis
+        // l'ordonnée » est exactement ce qui s'oublie.
+        cursor.say(phraseDepart(item), container.querySelector('.figure-wrap') || container);
+        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+
+        if (!await gate.waitTurn() || destroyed) return;
         if (!await cursor.tap(target) || destroyed) return;
         markPoint(svg, target, 'demo');
-        if (narrateur) {
-            if (!await direLaConclusion(narrateur, session.current, target) || destroyed) return;
-        } else if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+
+        if (!await gate.waitTurn() || destroyed) return;
+        cursor.say(phraseFin(item), target);
+        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }
 
@@ -122,7 +139,7 @@ export function mount(container, session) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
-            if (narrateur) { narrateur.detruire(); narrateur = null; }
+            if (gate) { gate.destroy(); gate = null; }
             container.innerHTML = '';
             session.finish();
         }
@@ -132,4 +149,24 @@ export function mount(container, session) {
 function formatCoord(raw) {
     const [x, y] = String(raw).split(',');
     return `(${x} ; ${y})`;
+}
+
+/**
+ * Ce que le robot dit. L'indice et l'explication du générateur d'abord — c'est
+ * le raisonnement de l'exercice ; une phrase de secours ensuite, quand ils sont
+ * trop longs pour une bulle (on lit à 340 ms le mot : trois lignes figent la
+ * démonstration au point qu'on la croit plantée).
+ */
+const COURT = 110;
+const tientEnUneBulle = (t) => typeof t === 'string' && t.trim() && t.trim().length <= COURT;
+
+function phraseDepart(item) {
+    const indice = (item.hints || [])[0];
+    if (tientEnUneBulle(indice)) return indice.trim();
+    return 'On lit d\'abord l\'abscisse, en marchant sur l\'axe horizontal.';
+}
+
+function phraseFin(item) {
+    if (tientEnUneBulle(item.explanation)) return item.explanation.trim();
+    return `Puis l'ordonnée, en montant : ${formatCoord(item.answer)}.`;
 }

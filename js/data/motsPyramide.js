@@ -1,0 +1,191 @@
+// LE LEXIQUE DE LA PYRAMIDE — des mots qui s'emboîtent.
+//
+// Rémy : « Deux jeux dans ces styles », avec la page de son « Coin des jeux
+// mathématiques » : une pyramide où « à chaque ligne, tu rajoutes une lettre
+// pour faire un nouveau mot », et où « les lettres peuvent être mélangées ».
+//
+// CE N'EST PAS UNE LISTE DE VOCABULAIRE, C'EST UN GRAPHE. Un mot de n + 1
+// lettres est le fils d'un mot de n lettres quand il a exactement ses lettres,
+// plus une. O → ON → NOM → MONT → MONTE → MONTRE. Le noyau (core/pyramide.js)
+// explore ce graphe et fabrique les pyramides tout seul : on n'écrit pas ici
+// des pyramides, on écrit les BARREAUX, et toutes celles qu'ils permettent
+// existent d'un coup.
+//
+// ON ARRIVE SUR UN MOT DE MATHS, ET C'EST LE CHEMIN QUI EST EN FRANÇAIS.
+//
+// Rémy : « Le but était tout de même d'avoir à la fin des mots
+// mathématiques. » On avait conclu l'inverse — la contrainte est terrible, il
+// faut un mot à chaque longueur et chacun anagramme du précédent, et le
+// lexique des mathématiques est bien trop petit pour la porter d'un bout à
+// l'autre. C'est vrai pour TOUTE la pyramide. Ce n'est pas vrai pour son
+// SOMMET, et c'est ce qu'il demandait.
+//
+// La méthode est alors simple : on part d'un mot de maths et l'on redescend en
+// lui retirant une lettre à chaque fois, jusqu'à retomber sur un mot qui est
+// déjà là. ANE → ANGE → ANGLE → ANGLES. ILE → LIEN → LIGNE → LIGNES. DO → DOT
+// → DOIT → DROIT → DROITE. UN → UNI → NUIT → UNITE → UNITES. Les barreaux du
+// milieu sont du français courant — il le faut bien —, mais on arrive sur
+// ANGLES, LIGNES, DROITE, UNITES, CARRES, ARETES, RAYONS, TERMES.
+//
+// Le drapeau `maths` marque ces mots-là ; `creerPyramide` cherche d'abord une
+// pyramide qui finit sur l'un d'eux. Ce que le jeu travaille reste l'anagramme
+// — donc le dénombrement des arrangements, qu'on retrouvera en troisième —,
+// mais il laisse un mot du cours en haut de l'affiche.
+//
+// LES MOTS SONT EN MAJUSCULES SANS ACCENT. C'est ce que l'élève écrit dans les
+// cases, et c'est ce qui permet de comparer des lettres sans se demander si É
+// et E sont la même. La définition, elle, est en français normal.
+//
+// LES DÉFINITIONS SE LISENT SANS LE MOT. « Elle donne l'heure » et non « une
+// montre est un objet qui… » : c'est une devinette, pas un dictionnaire.
+
+/** @typedef {{mot: string, def: string}} MotPyramide */
+
+/** @type {MotPyramide[]} */
+export const LEXIQUE_PYRAMIDE = [
+    // --- Deux lettres ---------------------------------------------------------
+    { mot: 'AS', def: 'La plus forte carte du jeu.' },
+    { mot: 'AN', def: 'Douze mois.' },
+    { mot: 'ON', def: 'Pronom indéfini.' },
+    { mot: 'OR', def: 'Le métal jaune et précieux.' },
+    { mot: 'DO', def: 'Note de musique.' },
+    { mot: 'SE', def: 'Pronom : il … lave.' },
+    { mot: 'ET', def: 'Petit mot qui relie deux choses.' },
+    { mot: 'EN', def: 'Il vit … France.' },
+    { mot: 'IL', def: 'Pronom : … court.' },
+    { mot: 'SI', def: 'La septième note de la gamme.' },
+    { mot: 'TA', def: 'À toi : … règle.' },
+    { mot: 'MA', def: 'À moi : … gomme.' },
+    { mot: 'OS', def: 'On en a plus de deux cents dans le corps.' },
+    { mot: 'RE', def: 'La note juste après le do.' },
+    { mot: 'UN', def: 'Le premier des nombres entiers.' },
+    { mot: 'LE', def: 'Article défini masculin.' },
+    { mot: 'DU', def: 'Il vient … marché.' },
+    { mot: 'NE', def: 'Il … dort pas.' },
+    { mot: 'AI', def: 'J’… faim.' },
+
+    // --- Trois lettres --------------------------------------------------------
+    { mot: 'SAC', def: 'On y met ses affaires pour partir.' },
+    { mot: 'NOM', def: 'Ce qui te désigne, avec ton prénom.' },
+    { mot: 'NOA', def: 'Prénom masculin.' },
+    { mot: 'ODE', def: 'Poème lyrique.' },
+    { mot: 'SEL', def: 'On en met dans l’eau des pâtes.' },
+    { mot: 'LIT', def: 'Pour dormir.' },
+    { mot: 'ART', def: 'La peinture, la musique, la danse…' },
+    { mot: 'SOL', def: 'Ce sur quoi on marche — et une note.' },
+    { mot: 'MAL', def: 'Le contraire du bien.' },
+    { mot: 'MER', def: 'Grande étendue d’eau salée.' },
+    { mot: 'ROI', def: 'Il porte une couronne.' },
+    { mot: 'SOI', def: 'Chacun pour …' },
+    { mot: 'TES', def: 'À toi : … cahiers.' },
+    { mot: 'ANE', def: 'Il a de longues oreilles et il est têtu.' },
+    { mot: 'NEZ', def: 'Au milieu du visage.' },
+    { mot: 'NUL', def: 'Un score de zéro à zéro : un match …' },
+    { mot: 'EAU', def: 'On la boit, et elle bout à 100 °C.' },
+    { mot: 'AMI', def: 'On l’invite à son anniversaire.' },
+    { mot: 'TAS', def: 'Un gros paquet en désordre.' },
+    { mot: 'CAS', def: 'Une situation, un exemple à étudier.' },
+    { mot: 'ILE', def: 'Une terre entourée d’eau.' },
+    { mot: 'DUR', def: 'Le contraire de mou.' },
+    { mot: 'ELU', def: 'Choisi par un vote.' },
+    { mot: 'MUR', def: 'Il sépare deux pièces.' },
+    { mot: 'RUE', def: 'On y marche, entre les maisons.' },
+    { mot: 'SUD', def: 'Le contraire du nord.' },
+
+    // Les barreaux ajoutés pour atteindre un sommet mathématique.
+    { mot: 'AIR', def: 'Ce qu’on respire.' },
+    { mot: 'DOT', def: 'Ce qu’une mariée apportait autrefois.' },
+    { mot: 'UNI', def: 'D’une seule couleur, sans motif.' },
+
+    // --- Quatre lettres -------------------------------------------------------
+    { mot: 'CASE', def: 'Un carré du quadrillage.' },
+    { mot: 'MONT', def: 'Une montagne.' },
+    { mot: 'CODE', def: 'Pour ouvrir un cadenas.' },
+    { mot: 'ILES', def: 'Des terres entourées d’eau.' },
+    { mot: 'LITS', def: 'Il y en a deux dans la chambre.' },
+    { mot: 'RATS', def: 'Ils rongent tout dans la cave.' },
+    { mot: 'SOLE', def: 'Un poisson tout plat.' },
+    { mot: 'LAME', def: 'Le tranchant du couteau.' },
+    { mot: 'ZONE', def: 'Une région, une portion d’espace.' },
+    { mot: 'LAIT', def: 'Blanc, il vient de la vache.' },
+    { mot: 'SOIR', def: 'Après l’après-midi.' },
+    { mot: 'ANSE', def: 'La poignée du panier.' },
+    { mot: 'TRES', def: 'Beaucoup : il est … grand.' },
+    { mot: 'MERE', def: 'Elle est la maman.' },
+    { mot: 'LUNE', def: 'Elle tourne autour de la Terre.' },
+    { mot: 'NOYA', def: 'Verbe se noyer, au passé simple.' },
+    { mot: 'AIRE', def: 'La mesure de la surface d’une figure.', maths: true },
+    { mot: 'NOTE', def: 'Do, ré, mi… ou le résultat du contrôle.' },
+    { mot: 'ROSE', def: 'Une fleur à épines, et une couleur.' },
+    { mot: 'AILE', def: 'L’oiseau en a deux.' },
+    { mot: 'MOTS', def: 'On en met bout à bout pour faire une phrase.' },
+    { mot: 'CODES', def: 'Plusieurs suites secrètes de chiffres.' },
+
+    // Les barreaux ajoutés pour atteindre un sommet mathématique.
+    { mot: 'ANGE', def: 'Il a des ailes et une auréole.' },
+    { mot: 'LIEN', def: 'Ce qui relie deux choses.' },
+    { mot: 'DOIT', def: 'Il … partir : c’est obligatoire.' },
+    { mot: 'NUIT', def: 'Entre le soir et le matin.' },
+
+    // --- Cinq lettres ---------------------------------------------------------
+    { mot: 'CASER', def: 'Ranger, mettre à sa place.' },
+    { mot: 'MONTE', def: 'Il grimpe l’escalier : il …' },
+    { mot: 'CORDE', def: 'Elle relie deux points d’un cercle.', maths: true },
+    { mot: 'PILES', def: 'Elles donnent du courant à la télécommande.' },
+    { mot: 'LISTE', def: 'Une énumération, l’une sous l’autre.' },
+    { mot: 'ASTRE', def: 'Une étoile, un corps du ciel.' },
+    { mot: 'SOCLE', def: 'Le support sur lequel pose la statue.' },
+    { mot: 'LAMES', def: 'Les tranchants des couteaux.' },
+    { mot: 'LATIN', def: 'La langue des Romains.' },
+    { mot: 'SORTI', def: 'Il est … de la maison.' },
+    { mot: 'SANTE', def: 'Le médecin s’en occupe.' },
+    { mot: 'RITES', def: 'Des cérémonies qu’on répète.' },
+    { mot: 'TERME', def: 'Chaque nombre d’une somme.', maths: true },
+    { mot: 'RAYON', def: 'Moitié d’un diamètre.', maths: true },
+    { mot: 'CORDES', def: 'Le violon en a quatre.', maths: true },
+
+    // Cinq lettres, et déjà des mots du cours.
+    { mot: 'AIRES', def: 'On les compare pour savoir quelle figure est la plus grande.', maths: true },
+    { mot: 'ANGLE', def: 'Deux demi-droites qui partent du même point.', maths: true },
+    { mot: 'LIGNE', def: 'Un trait, ou une rangée du tableau.', maths: true },
+    { mot: 'DROIT', def: 'Sans le moindre virage.' },
+    { mot: 'UNITE', def: 'Le chiffre le plus à droite d’un nombre entier.', maths: true },
+
+    // --- Six lettres ----------------------------------------------------------
+    { mot: 'CARTES', def: 'Il y en a cinquante-deux dans le jeu.' },
+    { mot: 'MONTRE', def: 'Elle donne l’heure au poignet.' },
+    { mot: 'DECORS', def: 'Les paysages peints du théâtre.' },
+    { mot: 'SIMPLE', def: 'Pas compliqué du tout.' },
+    { mot: 'TOILES', def: 'Les tableaux du peintre.' },
+    { mot: 'ANTRES', def: 'Des cavernes, des repaires.' },
+    { mot: 'CLONES', def: 'Des copies parfaitement identiques.' },
+    { mot: 'CALMES', def: 'Tranquilles, sans agitation.' },
+    { mot: 'SORTIE', def: 'La porte par où l’on s’en va.' },
+    { mot: 'TRISTE', def: 'Le contraire de gai.' },
+    { mot: 'METIER', def: 'Le travail qu’on fait pour vivre.' },
+    { mot: 'CRAYON', def: 'Il te sert maintenant.' },
+
+    // LES SOMMETS MATHÉMATIQUES. Rémy : « Le but était tout de même d'avoir à
+    // la fin des mots mathématiques. » Chacun est atteint depuis un mot du
+    // lexique en lui ajoutant une lettre — c'est ainsi qu'on les a choisis.
+    { mot: 'ANGLES', def: 'On les mesure au rapporteur.', maths: true },
+    { mot: 'LIGNES', def: 'Les rangées d’un tableau, de gauche à droite.', maths: true },
+    { mot: 'DROITE', def: 'Elle passe par deux points et ne s’arrête jamais.', maths: true },
+    { mot: 'UNITES', def: 'Les dizaines, puis elles.', maths: true },
+    { mot: 'CARRES', def: 'Quatre côtés égaux et quatre angles droits.', maths: true },
+    { mot: 'ARETES', def: 'Les bords d’un cube, là où deux faces se rencontrent.', maths: true },
+    { mot: 'RAYONS', def: 'Du centre du cercle jusqu’au bord.', maths: true },
+    { mot: 'TERMES', def: 'Les nombres qu’on additionne.', maths: true },
+    { mot: 'TRACES', def: 'Ce que fait le crayon quand il suit la règle.', maths: true },
+    { mot: 'ECARTS', def: 'Les différences entre deux valeurs.', maths: true },
+
+    // --- Sept lettres ---------------------------------------------------------
+    // Le sommet de la plus haute pyramide. Il en faut peu : à ce niveau, chaque
+    // mot est atteint par une dizaine de chemins différents.
+    { mot: 'ETOILES', def: 'Elles brillent la nuit.' },
+    { mot: 'PARENTS', def: 'Ton père et ta mère.' },
+    { mot: 'CRAYONS', def: 'Ceux de la trousse.' },
+    { mot: 'METIERS', def: 'Les professions.' },
+    { mot: 'MONTRES', def: 'Plusieurs pendules de poignet.' },
+    { mot: 'DROITES', def: 'Deux parallèles n’en font jamais qu’une paire.', maths: true }
+];
