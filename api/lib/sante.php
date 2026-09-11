@@ -93,6 +93,88 @@ function allerVoir(string $url): array
             'erreur' => $corps === false ? 'requête impossible' : ''];
 }
 
+/**
+ * S'INTERROGER SOI-MÊME AVEC UN JETON, et regarder s'il arrive.
+ *
+ * C'est la seule façon de savoir, sur CE serveur-ci, si l'en-tête
+ * `Authorization` parvient jusqu'à PHP. On ne peut pas le déduire de la version
+ * d'Apache ni de celle de PHP : cela dépend du module qui les relie et des
+ * réglages de l'hébergeur. Alors on essaie pour de bon.
+ *
+ * @return array{code:int,corps:string,erreur:string}
+ */
+function allerVoirAvecJeton(string $url, string $jeton, array $corpsJson = []): array
+{
+    if (!function_exists('curl_init')) {
+        // `file_get_contents` sait poser un en-tête, mais pas lire le code de
+        // retour proprement partout. Sans curl on ne mesure pas — et l'on dit
+        // « je ne sais pas » plutôt que d'inventer un verdict.
+        return ['code' => 0, 'corps' => '', 'erreur' => 'curl absent'];
+    }
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($corpsJson, JSON_UNESCAPED_UNICODE),
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json',
+                                   'Authorization: Bearer ' . $jeton],
+        CURLOPT_TIMEOUT        => 6,
+        CURLOPT_CONNECTTIMEOUT => 4,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => 0,
+        CURLOPT_USERAGENT      => 'AtoutMath/controle',
+    ]);
+    $corps = curl_exec($ch);
+    $err = curl_error($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return ['code' => $code, 'corps' => (string) $corps, 'erreur' => $err];
+}
+
+/**
+ * L'EN-TÊTE D'AUTORISATION ARRIVE-T-IL ?
+ *
+ * LA PANNE QUI NE SE VOIT NULLE PART. Quand PHP tourne en CGI, FastCGI ou
+ * php-fpm — la quasi-totalité des hébergements mutualisés —, Apache garde
+ * l'en-tête `Authorization` pour lui et ne le transmet pas. On se connecte
+ * alors parfaitement — le mot de passe voyage dans le CORPS de la requête —, on
+ * reçoit un jeton, et tout appel suivant est refusé.
+ *
+ * CE QUE LE PROFESSEUR VOIT : « identifiez-vous » à la seconde où il vient de
+ * s'identifier, ses classes introuvables, et — bien pire, parce que silencieux —
+ * les élèves qui travaillent sans que rien ne remonte jamais.
+ *
+ * On ne pouvait pas le deviner : aucune page n'était en échec, aucun journal ne
+ * disait rien. D'où cette sonde, qui ESSAIE plutôt que de supposer.
+ */
+function verdictAutorisation(array $r): array
+{
+    if ($r['code'] === 200) {
+        return constat('ok', "L'en-tête d'autorisation",
+            'il parvient jusqu\'à PHP — professeurs et élèves peuvent se connecter');
+    }
+    if ($r['code'] === 401 || $r['code'] === 403) {
+        return constat('x', "L'en-tête d'autorisation",
+            'il est perdu en route (réponse ' . $r['code'] . ')',
+            "C'est Apache qui le garde pour lui, ce qu'il fait par défaut quand PHP tourne en "
+            . "CGI ou php-fpm. Conséquence : vous vous connectez, puis tout vous est refusé — "
+            . "et les élèves travaillent sans que rien ne remonte. Le fichier api/.htaccess "
+            . "livré avec cette version le répare (trois règles, selon ce que votre hébergeur "
+            . "autorise) : vérifiez qu'il est bien présent et à jour. S'il l'est déjà et que "
+            . "ce constat reste rouge, demandez à l'hébergeur d'activer « CGIPassAuth » ou de "
+            . "transmettre l'en-tête Authorization.");
+    }
+    if ($r['erreur'] !== '' || $r['code'] === 0) {
+        return constat('?', "L'en-tête d'autorisation",
+            'vérification impossible (' . ($r['erreur'] ?: 'pas de réponse') . ')',
+            "Le serveur n'arrive pas à s'interroger lui-même ; cela n'a rien à voir avec le "
+            . "site vu de l'extérieur.");
+    }
+    return constat('!', "L'en-tête d'autorisation",
+        'réponse inattendue (' . $r['code'] . ')',
+        "Ni un refus ni un accord : regardez ce que répond /api/teacher/classes.");
+}
+
 /** Le fichier de base est-il rangé DANS le dossier servi par le web ? */
 function baseDansLeWeb(): bool
 {

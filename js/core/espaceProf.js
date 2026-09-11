@@ -46,18 +46,39 @@ export async function auServeur(route, corps = {}) {
             + 'on ne les voit simplement pas d\'ici pour l\'instant.' };
     }
 
-    // UN JETON PÉRIMÉ N'EST PAS UNE ABSENCE DE JETON. Le serveur change de
-    // secret quand on réinstalle : les jetons émis avant ne valent plus rien, et
-    // il faut le DIRE plutôt que d'envoyer se reconnecter quelqu'un qui vient
-    // de le faire.
+    let data = null;
+    try { data = await r.json(); } catch (e) { data = null; }
+
+    // DEUX REFUS QUI SE RESSEMBLENT, ET QU'IL NE FAUT SURTOUT PAS CONFONDRE.
+    //
+    // Le serveur distingue « jeton manquant » de « jeton invalide », et cette
+    // nuance-là vaut une semaine de tâtonnements.
+    //
+    //   · `bad_token` — le jeton est arrivé et ne vaut rien. C'est le cas après
+    //     une réinstallation, qui change le secret de signature : on l'oublie,
+    //     et l'on demande de se reconnecter. C'est juste ;
+    //   · `no_token` — le serveur n'a RIEN REÇU, alors qu'on vient de l'envoyer.
+    //     Le jeton est donc bon : il s'est perdu EN ROUTE. C'est ce que fait
+    //     Apache par défaut quand PHP tourne en CGI ou php-fpm — il garde
+    //     l'en-tête `Authorization` pour son propre système d'authentification.
+    //
+    // ON NE JETTE PLUS UN JETON QUI N'A RIEN FAIT. Le confondre avec l'autre
+    // cas envoyait Rémy retaper son mot de passe à chaque écran, pour rien : la
+    // connexion réussissait (le mot de passe voyage dans le CORPS de la
+    // requête), et l'appel suivant échouait encore. Une boucle sans issue, et
+    // rien à l'écran pour la comprendre.
     if (r.status === 401 || r.status === 403) {
+        const pourquoi = data && data.error;
+        if (pourquoi === 'no_token') {
+            return { erreur: "Le serveur n'a pas reçu votre identification, alors qu'elle a "
+                + 'bien été envoyée : elle se perd entre Apache et PHP. Votre mot de passe '
+                + "n'y est pour rien — inutile de le retaper. Ouvrez la page de Santé : la "
+                + "ligne « L'en-tête d'autorisation » le dit et explique quoi faire." };
+        }
         oublierProf();
         return { erreur: 'Votre connexion a expiré — cela arrive après une réinstallation '
             + 'du site. Repassez en mode élève puis en mode professeur.' };
     }
-
-    let data = null;
-    try { data = await r.json(); } catch (e) { data = null; }
     if (!r.ok) {
         // Le serveur explique lui-même ce qu'il refuse, et il le fait en
         // français : on n'a rien de mieux à écrire par-dessus.

@@ -154,6 +154,21 @@ if ($dbFichier !== '') {
 $constats[] = verdictConfig($reponses['config'], $essais['config']);
 $constats[] = verdictInterne($reponses['lib']);
 
+// LA SONDE QUI ESSAIE POUR DE BON. On se fabrique un jeton de professeur — le
+// nôtre, celui de la session en cours — et l'on s'interroge soi-même avec. Si
+// la réponse est 200, l'en-tête `Authorization` traverse ; si c'est 401, il est
+// perdu en route, et rien de ce qui demande un jeton ne peut fonctionner : ni
+// vos classes, ni la synchronisation des élèves.
+//
+// C'EST LA SEULE FAÇON DE SAVOIR. Cela ne se déduit ni de la version d'Apache
+// ni de celle de PHP : cela dépend du module qui les relie et des réglages de
+// l'hébergeur. On essaie donc, plutôt que de supposer.
+$constats[] = verdictAutorisation(allerVoirAvecJeton(
+    $api . '/teacher/classes',
+    $prof['id'] . '.' . signTeacher((string) $prof['id']),
+    ['action' => 'list']
+));
+
 $graves = count(array_filter($constats, fn ($c) => $c['etat'] === 'x'));
 $tiedes = count(array_filter($constats, fn ($c) => $c['etat'] === '!'));
 $flous  = count(array_filter($constats, fn ($c) => $c['etat'] === '?'));

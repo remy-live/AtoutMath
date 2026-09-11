@@ -187,8 +187,27 @@ function hashToken(string $token): string
 
 function bearerToken(): ?string
 {
+    // ON CHERCHE LE JETON À QUATRE ENDROITS, ET CE N'EST PAS DE LA PRUDENCE
+    // EXCESSIVE : c'est le nombre d'endroits où Apache peut l'avoir rangé.
+    //
+    // Quand PHP tourne en CGI, FastCGI ou php-fpm — la quasi-totalité des
+    // hébergements mutualisés —, Apache garde l'en-tête `Authorization` pour
+    // son propre système d'authentification et ne le passe pas à PHP. Le
+    // `.htaccess` de `api/` le recopie donc dans une variable d'environnement,
+    // par deux chemins différents selon les modules disponibles ; l'un ressort
+    // en `HTTP_AUTHORIZATION`, l'autre en `REDIRECT_HTTP_AUTHORIZATION`.
+    //
+    // CE QUE COÛTAIT L'OUBLI : on se connecte très bien — le mot de passe
+    // voyage dans le corps de la requête —, on reçoit un jeton, et tout appel
+    // suivant est refusé par 401. Le professeur lit « identifiez-vous » à la
+    // seconde où il vient de s'identifier ; l'élève travaille et sa
+    // synchronisation échoue sans un mot. Voir la sonde « l'en-tête
+    // d'autorisation » de la page de Santé, qui le MESURE au lieu d'espérer.
     $headers = function_exists('getallheaders') ? getallheaders() : [];
-    $auth = $headers['Authorization'] ?? $headers['authorization'] ?? ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+    $auth = $headers['Authorization']
+        ?? $headers['authorization']
+        ?? ($_SERVER['HTTP_AUTHORIZATION']
+        ?? ($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? ''));
     if (preg_match('/^Bearer\s+(\S+)$/i', (string) $auth, $m)) {
         return $m[1];
     }

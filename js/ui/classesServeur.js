@@ -63,6 +63,12 @@ export async function classesDuServeur() {
         // Le serveur change de secret quand on réinstalle : les jetons émis
         // avant ne valent plus rien, et il faut le DIRE.
         if (r.status === 401 || r.status === 403) {
+            // « JETON MANQUANT » N'EST PAS « JETON INVALIDE » — voir le long
+            // commentaire de `auServeur` dans core/espaceProf.js. Si le serveur
+            // dit n'avoir rien reçu alors qu'on vient de l'envoyer, c'est qu'il
+            // s'est perdu entre Apache et PHP : le jeton est bon, on le garde.
+            const data = await r.json().catch(() => null);
+            if (data && data.error === 'no_token') return { pourquoi: 'entete-perdu' };
             oublierProf();
             return { pourquoi: 'jeton-perime' };
         }
@@ -108,6 +114,10 @@ export function bandeauServeurHtml(liste) {
         const phrases = {
             'pas-identifie': ['<b>Vos classes sont sur le serveur.</b> Identifiez-vous pour '
                 + 'les voir ici : cliquez sur <b>Élève / Prof</b> en haut à gauche.'],
+            'entete-perdu': ["<b>Le serveur n'a pas reçu votre identification</b>, alors "
+                + "qu'elle a bien été envoyée : elle se perd entre Apache et PHP.",
+                'Votre mot de passe n\'y est pour rien. Ouvrez la page de <b>Santé</b> : '
+                + 'la ligne « L\'en-tête d\'autorisation » le dit et explique quoi faire.'],
             'jeton-perime': ['<b>Votre connexion a expiré.</b> Cela arrive après une '
                 + 'réinstallation du site : les anciennes connexions ne valent plus rien.',
                 'Repassez en <b>Élève</b> puis en <b>Prof</b> pour retaper votre mot de passe.'],

@@ -215,12 +215,32 @@ function messageHtml() {
 
 function classesHtml() {
     const n = Array.isArray(vue.classes) ? vue.classes.length : 0;
-    const sous = vue.classes === null
-        ? 'On regarde…'
-        : (n ? `${n} classe${n > 1 ? 's' : ''} sur ce serveur` : 'Aucune classe pour l\'instant');
+    // ON NE DIT PAS « AUCUNE CLASSE » QUAND ON N'A PAS PU REGARDER.
+    //
+    // C'est la différence entre « je sais qu'il n'y en a pas » et « je ne sais
+    // pas », et les confondre coûte cher : l'écran proposait « Créez votre
+    // première classe » à un professeur qui en a deux mais dont la requête
+    // venait d'échouer. Il en aurait créé une en double, avec un code de plus à
+    // dicter, sans jamais comprendre pourquoi.
+    const raté = vue.erreur && vue.classes === null;
+    const sous = raté
+        ? 'On n\'a pas pu lire vos classes'
+        : (vue.classes === null
+            ? 'On regarde…'
+            : (n ? `${n} classe${n > 1 ? 's' : ''} sur ce serveur`
+                 : 'Aucune classe pour l\'instant'));
 
     let corps;
-    if (vue.classes === null && !vue.erreur) {
+    if (raté) {
+        corps = `<div class="ec-vide ec-vide--invite">
+            <p class="ec-vide-grand">Vos classes sont intactes.</p>
+            <p>C'est la lecture qui a échoué, pas elles. Rien n'a été perdu, et
+               il n'y a rien à recréer.</p>
+            <button type="button" class="ec-bouton ec-bouton--grand" data-reessayer>
+                Réessayer
+            </button>
+        </div>`;
+    } else if (vue.classes === null) {
         corps = '<div class="ec-vide">On regarde ce que le serveur a…</div>';
     } else if (!n) {
         // L'ÉCRAN VIDE EST UNE INVITATION, PAS UN CONSTAT. C'est le premier
@@ -593,7 +613,7 @@ async function brancher(e, redessiner) {
         + '[data-imprimer], [data-consigne], [data-consigne-off], [data-mot-classe],'
         + '[data-mot-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
-        + '[data-profs],'
+        + '[data-profs], [data-reessayer],'
         + '[data-annuler-reglage]');
     if (!el) return;
     const d = el.dataset;
@@ -612,6 +632,15 @@ async function brancher(e, redessiner) {
         redessiner();
         return r;
     };
+
+    if (d.reessayer !== undefined) {
+        vue.erreur = ''; vue.classes = null;
+        redessiner();
+        const l = await mesClasses();
+        if (l.erreur) vue.erreur = l.erreur; else vue.classes = l;
+        redessiner();
+        return;
+    }
 
     if (d.profs !== undefined) {
         vue.ou = 'profs'; vue.profs = null; vue.erreur = '';

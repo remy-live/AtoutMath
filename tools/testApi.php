@@ -1683,6 +1683,75 @@ verifier('il en reste un, et il ne peut pas se retirer lui-même',
     && json('/teacher/signup',
         ['action' => 'remove', 'teacherId' => $dernier[0]['id']], $jetonNotre)['code'] === 400);
 
+titre('12 duodecies. L\'en-tête d\'autorisation, mesuré au lieu d\'être supposé');
+
+// LA PANNE QUI NE SE VOYAIT NULLE PART, et qui rendait le serveur inutile.
+//
+// Quand PHP tourne en CGI, FastCGI ou php-fpm — la quasi-totalité des
+// hébergements mutualisés, et celui de Rémy —, Apache GARDE l'en-tête
+// `Authorization` pour son propre système d'authentification et ne le passe pas
+// à PHP. On se connecte alors parfaitement (le mot de passe voyage dans le
+// CORPS de la requête, aucun en-tête n'est nécessaire), on reçoit un jeton, et
+// TOUT appel suivant est refusé par 401.
+//
+// Ce que Rémy voyait : « identifiez-vous » à la seconde où il venait de
+// s'identifier. Ce qu'il ne voyait PAS, et qui était pire : ses élèves auraient
+// travaillé sans que rien ne remonte jamais.
+//
+// Aucune page n'était en échec, aucun journal ne disait rien. D'où une sonde
+// qui ESSAIE — et d'où cet essai, qui éprouve la sonde dans les deux sens.
+
+$jetonSonde = $profId . '.' . signTeacher((string) $profId);
+
+// ── LE CAS QUI MARCHE : l'en-tête passe (c'est le serveur intégré de PHP, qui
+//    ne retire rien).
+$r = allerVoirAvecJeton($BASE . '/teacher/classes', $jetonSonde, ['action' => 'list']);
+verifier('quand l\'en-tête passe, la sonde répond 200', $r['code'] === 200, 'code ' . $r['code']);
+$v = verdictAutorisation($r);
+verifier('et le verdict est vert', $v['etat'] === 'ok', $v['dit']);
+
+// ── LE CAS DE RÉMY : l'en-tête est perdu en route. On le reproduit en envoyant
+//    la même requête SANS l'en-tête — c'est exactement ce que PHP reçoit quand
+//    Apache l'a gardé pour lui.
+$sansEnTete = json('/teacher/classes', ['action' => 'list']);
+verifier('sans l\'en-tête, le serveur refuse', $sansEnTete['code'] === 401,
+    'code ' . $sansEnTete['code']);
+$vRouge = verdictAutorisation(['code' => 401, 'corps' => '', 'erreur' => '']);
+verifier('ET LA SONDE LE CRIE EN ROUGE', $vRouge['etat'] === 'x', $vRouge['dit']);
+verifier('en disant quoi faire, et pas seulement que c\'est cassé',
+    str_contains($vRouge['faire'], '.htaccess') && str_contains($vRouge['faire'], 'CGIPassAuth'));
+
+// ── ET ELLE NE VERDIT PAS QUAND ELLE N'A PAS PU MESURER. Une vérification
+//    impossible n'est pas une bonne nouvelle : c'est l'absence de nouvelle.
+foreach ([['code' => 0, 'corps' => '', 'erreur' => 'connexion refusée'],
+          ['code' => 0, 'corps' => '', 'erreur' => '']] as $cas) {
+    $v = verdictAutorisation($cas);
+    verifier('une vérification impossible reste « ? »', $v['etat'] === '?', $v['dit']);
+}
+verifier('et une réponse inattendue n\'est ni verte ni rouge',
+    verdictAutorisation(['code' => 500, 'corps' => '', 'erreur' => ''])['etat'] === '!');
+
+// ── LE JETON LUI-MÊME DOIT RESTER BON. La sonde forge le jeton exactement comme
+//    `/teacher/login` le fait : si les deux divergeaient un jour, elle
+//    annoncerait une panne qui n'existe pas.
+$jetonVrai = json('/teacher/login',
+    ['email' => 'prof@essai.test', 'password' => 'motdepassetreslong'])['json']['token'] ?? '';
+verifier('la sonde forge le même jeton que la connexion', $jetonVrai === $jetonSonde);
+
+// ── ET LE `.htaccess` LIVRÉ PORTE BIEN LA RÉPARATION. On ne peut pas exécuter
+//    Apache ici ; on peut vérifier que les règles sont là, et qu'on n'a pas posé
+//    celle qui peut éteindre le site.
+$ht = (string) @file_get_contents($API . '/.htaccess');
+verifier('api/.htaccess recopie l\'en-tête par SetEnvIf',
+    str_contains($ht, 'SetEnvIf Authorization'));
+verifier('et par la règle de réécriture',
+    str_contains($ht, 'E=HTTP_AUTHORIZATION:%{HTTP:Authorization}'));
+verifier('ON N\'Y POSE PAS CGIPassAuth, qui rendrait 500 si l\'hébergeur l\'interdit',
+    !preg_match('/^\s*CGIPassAuth/mi', $ht));
+verifier('et `bearerToken` lit aussi la variable de repli',
+    str_contains((string) @file_get_contents($API . '/lib/db.php'),
+        'REDIRECT_HTTP_AUTHORIZATION'));
+
 titre('13. Le fichier tel qu\'on l\'emporterait');
 
 // LA VÉRIFICATION QUI COMPTE, ET LA SEULE QUI PROUVE QUELQUE CHOSE : on ouvre le
