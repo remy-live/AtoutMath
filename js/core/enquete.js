@@ -369,6 +369,18 @@ function indicesVraisPour(scene, solution, nb, rng, lieuInterdit = null) {
         }
         bruts.push({ type: 'bord', a, oui: estAuBord(solution[a], scene.taille) });
         for (const lettre of Object.keys(scene.lieux)) {
+            // NI « X N'EST PAS DANS <le lieu de l'objet> » NON PLUS.
+            //
+            // Pris séparément c'est un indice honnête. Mis bout à bout, c'est la
+            // réponse : sur la scène à trois, « Léa n'est pas dans le préau » et
+            // « Malik n'est pas dans le préau » désignent Jade sans qu'on ait
+            // placé personne. Mesuré : c'est exactement ce qui est sorti de la
+            // première grille ouverte par un code dicté.
+            //
+            // AUCUN INDICE NE PARLE DONC DU LIEU DE L'OBJET, dans un sens ni
+            // dans l'autre. Le coupable ne s'obtient qu'en plaçant tout le
+            // monde, puis en lisant le plan — les deux temps du jeu.
+            if (lettre === lieuInterdit) continue;
             if (lettre !== lieuDe(scene, solution[a])) {
                 bruts.push({ type: 'pasDansLieu', a, lieu: lettre });
             }

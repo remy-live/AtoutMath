@@ -96,9 +96,14 @@ test('AUCUN INDICE NE VEND LA MÈCHE', () => {
     // est sorti dès la première grille tirée sur la scène à cinq.
     for (const { scene, seed, e } of TOUTES) {
         for (const ind of e.indices) {
-            const donne = ind.type === 'dansLieu' && ind.lieu === e.lieuDeLObjet;
-            assert.ok(!donne,
-                `${scene.id}/${seed} : « ${ind.dit(e.noms)} » donne la réponse`);
+            // NI DANS UN SENS NI DANS L'AUTRE. « X est dans le préau » donne le
+            // coupable en une ligne ; « X n'est pas dans le préau », répété
+            // pour tous sauf un, le donne aussi — par élimination, et sans
+            // qu'on ait placé personne. Mesuré sur la scène à trois.
+            const parleDuLieu = (ind.type === 'dansLieu' || ind.type === 'pasDansLieu')
+                && ind.lieu === e.lieuDeLObjet;
+            assert.ok(!parleDuLieu,
+                `${scene.id}/${seed} : « ${ind.dit(e.noms)} » parle du lieu de l'objet`);
         }
     }
 });
