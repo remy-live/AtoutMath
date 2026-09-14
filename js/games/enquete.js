@@ -59,7 +59,21 @@ class Enquete extends BaseGame {
                     display: flex; gap: 16px; flex-wrap: wrap;
                     align-items: flex-start; justify-content: center;
                 }
-                .eq-plan { display: grid; gap: 2px; flex: none; }
+                /* LE PLAN NE S'ÉTIRE PAS, ET IL A FALLU LE MESURER POUR LE VOIR.
+                   Rémy : « l'écart n'est pas égal ». Il avait raison, et l'œil seul
+                   ne dit pas de combien : mesuré au navigateur, les cases faisaient
+                   bien 78 × 78, mais les écarts valaient 16,9 px entre les colonnes
+                   et 2 px entre les rangées. Les colonnes étaient déclarées en
+                   auto, et une grille distribue sa largeur restante aux pistes
+                   auto — les rangées, elles, ne reçoivent rien puisque la hauteur
+                   n'est pas contrainte. Un quadrillage qui n'est pas carré dans un
+                   exercice de repérage, c'est le comble : « deux cases à droite »
+                   n'a plus la même longueur que « deux cases en bas ».
+                   width:max-content retire la largeur restante à distribuer. */
+                .eq-plan {
+                    display: grid; gap: 2px; flex: none;
+                    width: max-content; justify-content: start;
+                }
                 .eq-tete {
                     display: flex; align-items: center; justify-content: center;
                     font-size: .78rem; font-weight: 800; color: var(--text-muted);
@@ -218,7 +232,7 @@ class Enquete extends BaseGame {
         // rangée »). Sans les numéros, l'élève doit compter du regard pour
         // vérifier ce qu'on lui reproche — et se replaçer dans un quadrillage
         // est précisément une des choses qu'il vient apprendre ici.
-        this.planEl.style.gridTemplateColumns = `auto repeat(${n}, auto)`;
+        this.planEl.style.gridTemplateColumns = `auto repeat(${n}, max-content)`;
         this.planEl.innerHTML = '';
         const coin = document.createElement('div');
         coin.className = 'eq-tete';

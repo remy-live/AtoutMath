@@ -980,6 +980,24 @@ async function rafraichirClasse(redessiner) {
  * ON NE REDESSINE QUE L'ONGLET DU DIRECT. Redessiner l'écran entier effacerait
  * ce que le professeur est en train de taper dans « le mot au tableau ».
  */
+/**
+ * DIX SECONDES, ET C'EST LA MOITIÉ DE CE QUE C'ÉTAIT.
+ *
+ * Rémy : « je ne peux pas avoir un aperçu en temps réel de la progression des
+ * élèves ».
+ *
+ * Le délai total qu'il constatait était la SOMME de trois attentes : l'élève
+ * pousse son journal quatre secondes après une réponse, le professeur relit
+ * toutes les dix, et — c'était le gros du problème — la première des deux ne
+ * partait jamais dans la session où l'élève s'était connecté (voir `initSync`).
+ * Corrigées ensemble, elles donnent une quinzaine de secondes au pire.
+ *
+ * ON NE DESCEND PAS PLUS BAS. Le direct ne bat que pendant que l'onglet « Le
+ * direct » est ouvert ; le raccourcir encore ferait une requête par seconde
+ * pour voir bouger un compteur que l'œil ne suit pas si vite.
+ */
+const BATTEMENT_MS = 10000;
+
 function lancerLeBattement(redessiner) {
     arreterLeBattement();
     battement = setInterval(async () => {
@@ -991,7 +1009,7 @@ function lancerLeBattement(redessiner) {
         vue.direct = d;
         const zone = document.querySelector('#ec-racine .ec-corps');
         if (zone) zone.innerHTML = directHtml();
-    }, 20000);
+    }, BATTEMENT_MS);
 }
 
 // --- Les billets à imprimer -------------------------------------------------

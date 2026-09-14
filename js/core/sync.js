@@ -19,9 +19,24 @@ import { getActiveProfile, getDeviceId, attachRemote, getActiveProfileId } from 
 import { appliquerEtat } from './seanceDistante.js';
 
 const CONFIG_KEY = 'syncConfig';
-const PUSH_DEBOUNCE_MS = 8000;
+const PUSH_DEBOUNCE_MS = 4000;
 const PERIODIC_MS = 5 * 60 * 1000;
-const SEANCE_MS = 20 * 1000;
+
+// L'ONGLET AU PREMIER PLAN N'A PAS LE MÊME BESOIN QUE CELUI QU'ON A QUITTÉ.
+//
+// Rémy : « Les mots envoyés ne le sont pas en temps réels ».
+//
+// Dix secondes quand l'élève a l'application sous les yeux : c'est le délai
+// au-delà duquel « arrêtez tout, on corrige au tableau » arrive après que la
+// classe a déjà tourné la page. Une minute quand l'onglet est en arrière-plan :
+// il n'y a personne pour lire, et trente onglets oubliés ne doivent pas
+// travailler le serveur pour rien.
+//
+// CE QUE ÇA COÛTE, puisque c'est la vraie question sur un hébergement mutualisé :
+// trente élèves au travail font trois requêtes par seconde, et chacune est une
+// lecture indexée qui ne touche à rien. C'est moins qu'une page d'accueil.
+const SEANCE_VISIBLE_MS = 10 * 1000;
+const SEANCE_CACHE_MS = 60 * 1000;
 
 let config = { apiUrl: '', enabled: false };
 let pushTimer = null;
@@ -38,9 +53,33 @@ export async function setSyncConfig(next) {
     return config;
 }
 
+/**
+ * LES BOUCLES NE S'INSTALLAIENT JAMAIS POUR UN ÉLÈVE QUI VENAIT DE SE CONNECTER.
+ *
+ * Rémy : « Les mots envoyés ne le sont pas en temps réels ». Ils ne l'étaient pas
+ * du tout — ils n'arrivaient JAMAIS dans la session où l'élève s'était connecté.
+ *
+ * `initSync()` tourne au démarrage de l'application. À cet instant l'élève n'est
+ * pas encore rattaché : `isActive()` est faux, la fonction rendait la main, et
+ * AUCUN écouteur ni AUCUN minuteur n'était posé. L'élève se connectait ensuite
+ * par la porte ; `loginEleve` faisait une synchro unique et s'arrêtait là. Plus
+ * rien ne partait, plus rien n'arrivait, jusqu'au rechargement de la page — où
+ * tout se remettait à marcher, ce qui rendait le défaut introuvable à la main.
+ *
+ * MESURÉ AVANT CORRECTION, sur un vrai serveur : le professeur envoie un mot,
+ * `/session` le rend immédiatement quand on l'interroge à la main, et l'élève ne
+ * le voit pas au bout de trente secondes. Le serveur était innocent depuis le
+ * début.
+ *
+ * On appelle donc `initSync()` À NOUVEAU après chaque rattachement, et la
+ * fonction se garde d'installer deux fois ses boucles.
+ */
+let boucles = false;
+
 export async function initSync() {
     config = (await globalStore.get(CONFIG_KEY, config)) || config;
-    if (!isActive()) return;
+    if (!isActive() || boucles) return;
+    boucles = true;
 
     // On pousse peu après une réponse (le temps qu'une rafale se termine),
     // à intervalle régulier, et systématiquement quand l'onglet passe en
@@ -54,13 +93,23 @@ export async function initSync() {
 
     // L'ÉTAT DE SÉANCE SE DEMANDE PLUS SOUVENT QUE LE JOURNAL NE S'ENVOIE.
     // Cinq minutes, c'est le bon rythme pour des événements — c'est beaucoup
-    // trop long pour un « arrêtez tout, on corrige au tableau ». Une requête
-    // par élève toutes les vingt secondes, c'est une lecture indexée : pour
-    // trente élèves, moins de deux requêtes par seconde sur l'heure entière.
-    setInterval(rafraichirSeance, SEANCE_MS);
+    // trop long pour un « arrêtez tout, on corrige au tableau ».
+    //
+    // LE RYTHME SUIT L'ATTENTION : dix secondes quand l'onglet est devant
+    // l'élève, une minute quand il est derrière. Un seul minuteur court, qui
+    // décide à chaque tour — deux minuteurs qu'on allume et qu'on éteint se
+    // seraient dédoublés au premier aller-retour d'onglet.
+    let dernier = 0;
+    setInterval(() => {
+        const attendu = document.visibilityState === 'visible'
+            ? SEANCE_VISIBLE_MS : SEANCE_CACHE_MS;
+        if (Date.now() - dernier < attendu) return;
+        dernier = Date.now();
+        rafraichirSeance();
+    }, 2000);
     // Et au retour sur l'onglet : c'est le moment où l'élève relève la tête.
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') rafraichirSeance();
+        if (document.visibilityState === 'visible') { dernier = Date.now(); rafraichirSeance(); }
     });
 
     syncNow({ silent: true });
@@ -149,6 +198,10 @@ export async function joinClass({ apiUrl, classCode, firstName }) {
     // verrouillée, l'élève ne doit pas voir le catalogue le temps d'un aller-retour.
     if (data.session) appliquerEtat(data.session);
     await syncNow({ silent: false });
+    // LE RATTACHEMENT RÉVEILLE LES BOUCLES. Sans cette ligne, l'élève qui
+    // vient d'entrer n'envoie plus rien et ne reçoit plus rien jusqu'au
+    // rechargement de sa page : voir le préambule d'`initSync`.
+    await initSync();
     return data;
 }
 
@@ -180,6 +233,10 @@ export async function loginEleve({ apiUrl, login, code }) {
     });
     if (data.session) appliquerEtat(data.session);
     await syncNow({ silent: true });
+    // LE RATTACHEMENT RÉVEILLE LES BOUCLES. Sans cette ligne, l'élève qui
+    // vient d'entrer n'envoie plus rien et ne reçoit plus rien jusqu'au
+    // rechargement de sa page : voir le préambule d'`initSync`.
+    await initSync();
     return data;
 }
 

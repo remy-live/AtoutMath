@@ -251,6 +251,49 @@ ok('le direct le montre en ligne, sur son exercice',
     !!leoDirect && (bilan.direct.maintenant - (leoDirect.vu || 0)) <= 120 && !!leoDirect.exo,
     leoDirect ? `${leoDirect.prenom} · ${leoDirect.exo} · ${leoDirect.justes}/${leoDirect.total}` : 'introuvable');
 
+// ────────────── 3 bis. LE MOT DU PROFESSEUR, SANS RECHARGER ──────────
+//
+// Rémy : « Les mots envoyés ne le sont pas en temps réels ».
+//
+// Ils ne l'étaient pas du tout : ils n'arrivaient JAMAIS dans la session où
+// l'élève venait de se connecter. `initSync()` tourne au démarrage, constate que
+// l'élève n'est pas encore rattaché, et rendait la main sans poser le moindre
+// minuteur ; `loginEleve` faisait ensuite une synchro unique et s'arrêtait là.
+// Tout se remettait à marcher au rechargement suivant — ce qui rendait le
+// défaut introuvable à la main.
+//
+// CE CONTRÔLE NE RECHARGE DONC PAS LA PAGE, et c'est tout son intérêt. L'élève
+// est entré par la porte quelques lignes plus haut et n'a rien fait d'autre.
+console.log('\nUN MOT, DANS LA SESSION OÙ L\'ÉLÈVE VIENT D\'ENTRER');
+console.log('─'.repeat(64));
+
+await eleve.evaluate(() => {
+    window.__mot = null;
+    document.addEventListener('seance_distante', (e) => {
+        if (!window.__mot && e.detail && (e.detail.messages || []).length) {
+            window.__mot = { quand: Date.now(), texte: e.detail.messages[0].body };
+        }
+    });
+});
+const departDuMot = Date.now();
+const envoi = await prof.evaluate(async (classId) => {
+    const { envoyerUnMot } = await import('./js/core/espaceProf.js');
+    return envoyerUnMot(classId, 'Arrêtez tout, on corrige au tableau.');
+}, classe.id);
+ok('le serveur accepte le mot', !envoi.erreur, envoi.erreur || envoi.dit);
+
+let motRecu = null;
+for (let i = 0; i < 40 && !motRecu; i++) {
+    await eleve.waitForTimeout(500);
+    motRecu = await eleve.evaluate(() => window.__mot);
+}
+ok('L\'ÉLÈVE LE REÇOIT SANS AVOIR RECHARGÉ', !!motRecu,
+    motRecu ? `en ${((motRecu.quand - departDuMot) / 1000).toFixed(1)} s — « ${motRecu.texte} »`
+        : 'rien au bout de 20 s');
+ok('et il arrive en moins de quinze secondes',
+    !!motRecu && (motRecu.quand - departDuMot) < 15000,
+    motRecu ? ((motRecu.quand - departDuMot) / 1000).toFixed(1) + ' s' : '—');
+
 // ──────────────────── 4. LES DEUX RÔLES DANS LE MÊME NAVIGATEUR ─────────────
 //
 // Rémy : « comment je pourrais simuler un mode élève et prof simultané, pour
