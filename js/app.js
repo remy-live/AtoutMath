@@ -40,6 +40,7 @@ import { initSeanceDistanteUI } from './ui/seanceDistanteUI.js';
 import { modeLibre, estRattache } from './core/portail.js';
 import { initPortail, majPortail } from './ui/portailUI.js';
 import { initPosteEleve } from './ui/posteEleve.js';
+import { initParcoursServeur, ecouterLesAssignations } from './core/parcoursServeur.js';
 import { initPleinEcran } from './ui/fullscreen.js';
 import { initBilanExercice } from './ui/accueilUI.js';
 import { rendreAujourdhui } from './ui/aujourdhui.js';
@@ -111,6 +112,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     await initSeanceDistante();
     initSeanceDistanteUI();
     initSync();
+
+    // LES PARCOURS ET LE SERVEUR, DANS LES DEUX SENS.
+    //
+    // Côté professeur : tout parcours enregistré monte au serveur, sans qu'on
+    // le demande. Côté élève : ce que le serveur assigne devient une vraie
+    // séance, lisible par les écrans qui existent déjà.
+    //
+    // Les deux sont posés ici, et chacun ne fait rien s'il n'est pas concerné :
+    // la veille se tait sans jeton de professeur, l'écoute se tait sans
+    // rattachement. Un seul appel, pas deux chemins de démarrage à tenir.
+    initParcoursServeur();
+    ecouterLesAssignations();
 
     // Cohérence du catalogue : mieux vaut un avertissement au démarrage
     // qu'un échec silencieux au lancement d'un exercice.

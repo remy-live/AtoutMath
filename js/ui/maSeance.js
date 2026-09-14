@@ -53,6 +53,21 @@ export async function lireLiens() {
     return (await globalStore.get(CLE_LIENS, {})) || {};
 }
 
+/**
+ * POSER LE LIEN DU PROFIL ACTIF.
+ *
+ * Exporté pour le rattachement VENU DU SERVEUR : l'élève entré par son billet
+ * est déjà rattaché côté serveur, et lui redemander de choisir sa classe et son
+ * prénom dans une liste qu'il n'a pas serait absurde. Voir
+ * `core/parcoursServeur.js`.
+ */
+export async function poserLeLien(lien) {
+    const liens = await lireLiens();
+    liens[getActiveProfileId()] = lien;
+    await ecrireLiens(liens);
+    return lien;
+}
+
 async function ecrireLiens(liens) {
     await globalStore.set(CLE_LIENS, liens);
     document.dispatchEvent(new CustomEvent('rattachement_updated'));
