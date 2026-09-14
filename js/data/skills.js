@@ -532,6 +532,14 @@ const BASE = {
         descriptor: 'Retrouver une suite de couleurs cach\u00e9e \u00e0 partir du nombre de jetons bien plac\u00e9s et mal plac\u00e9s.',
         lesson: "ON NE DEVINE PAS UN CODE, ON L'\u00c9LIMINE. Au d\u00e9part il y a beaucoup de codes possibles \u2014 1296 pour quatre cases et six couleurs \u2014 et chaque r\u00e9ponse en supprime une partie. Le bon r\u00e9flexe n'est donc pas « quel code est-ce ? » mais « lesquels sont encore possibles ? ». Trois id\u00e9es suffisent. D'abord, le PREMIER essai ne sert pas \u00e0 trouver, il sert \u00e0 savoir : deux couleurs seulement, et la r\u00e9ponse dit d\u00e9j\u00e0 combien il y en a de chacune. Ensuite, le total \u00ab bien plac\u00e9s + mal plac\u00e9s \u00bb ne parle QUE des couleurs, pas des places : s'il vaut 2, il y a exactement deux jetons de ces couleurs-l\u00e0 dans le code, o\u00f9 qu'ils soient. Enfin, une r\u00e9ponse \u00e0 z\u00e9ro est la plus pr\u00e9cieuse de toutes : elle raye d'un coup toutes les couleurs de cette ligne. Attention \u00e0 un pi\u00e8ge : quand une couleur para\u00eet deux fois dans ta proposition mais une seule fois dans le code, elle ne compte qu'une fois \u2014 chaque jeton cach\u00e9 ne sert qu'\u00e0 un jeton propos\u00e9."
     },
+    'num.logique.enquete': {
+        label: 'Déduire sur un plan',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Placer des personnages sur un quadrillage à partir d\'indices de position.',
+        lesson: "DEUX RÈGLES, ET ELLES NE BOUGENT JAMAIS : un seul personnage par rangée, un seul par colonne. Poser quelqu'un, c'est donc interdire toute une rangée et toute une colonne à tous les autres — c'est là qu'est la force de ce jeu, et c'est la première chose à se dire. Ensuite, le vocabulaire du plan : le nord est en HAUT, le sud en bas, l'ouest à gauche, l'est à droite ; « à côté » veut dire par un côté, jamais en diagonale ; et le nombre de pas se compte en se déplaçant comme dans un couloir — deux cases à droite et une en bas font trois pas, pas un. Enfin la méthode, qui est celle de tous les jeux de déduction : on n'écrit que ce qui est CERTAIN. Devant un indice, on ne cherche pas où quelqu'un est, on cherche où il NE PEUT PAS être, et l'on barre. Quand il ne reste qu'une case pour quelqu'un, ou qu'une personne pour une case, c'est gagné — même si aucun indice ne l'a dit en toutes lettres. Et si rien ne s'impose, ce n'est jamais qu'il faut deviner : c'est qu'un indice n'a pas encore été croisé avec un autre."
+    },
     'num.logique.logigramme': {
         label: 'Déduire dans un logigramme',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

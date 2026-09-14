@@ -539,6 +539,51 @@ une sortie qui ne laisse rien derrière elle.
 
 ---
 
+## 9 ter. L'Enquête : une grille de déduction à solution unique
+
+Rémy : « Connais tu aussi le jeu murdoku », puis « ne l'appelle pas comme cela ».
+
+Le Murdoku est un jeu de Manuel Garand, déposé, avec ses grilles et ses
+illustrations : on ne le copie pas, et le nom n'est pas repris. Le **mécanisme**,
+lui, appartient à la famille des grilles de déduction — une bijection à retrouver
+sous contraintes —, qui est vieille comme les mathématiques récréatives. Décor de
+collège, objet égaré plutôt que meurtre.
+
+**Ce qu'il apporte, et que le logigramme n'a pas : un plan.** Le logigramme croise
+des listes ; ici on croise des *positions* — rangée, colonne, points cardinaux,
+distance en nombre de pas. C'est du repérage autant que de la logique.
+
+**La règle**, en deux phrases : un personnage par rangée et un par colonne ; celui
+qui se trouve dans le même lieu que l'objet est celui qui l'a emporté.
+
+**La garantie centrale : une seule solution, prouvée par énumération.** Un
+placement est un couple de permutations, donc il y en a `n! × n!` — 36 à trois
+personnages, 576 à quatre, 14 400 à cinq. Assez peu pour les compter **tous**, à
+chaque grille fabriquée. On empile des indices vrais jusqu'à ce qu'un seul
+placement survive, puis on retire un à un ceux dont on peut se passer. Une grille
+à deux solutions ferait dire au logiciel qu'un raisonnement juste est faux : c'est
+exactement le contraire de ce qu'on enseigne.
+
+Trois pièges fermés, tous mesurés plutôt que supposés :
+
+* **l'indice qui vend la mèche.** « Léa est dans les vestiaires » alors que l'objet
+  y est retrouvé : vrai, minimal, et il clôt l'enquête en une ligne. Sorti dès la
+  première grille tirée sur la scène à cinq ; il est désormais exclu de la réserve ;
+* **le français.** « au ouest de Ismaël », « plus près de le tableau » : des fautes
+  qu'aucun test de logique ne voit et que l'élève lit. `deL()` et `dePrenom()`
+  contractent et élident, et un test balaie toutes les phrases de toutes les scènes ;
+* **l'aide qui ne dit rien.** Avec *tous* les indices, chaque personnage est forcé —
+  c'est la définition d'une solution unique. Répondre « la place de Malik est
+  décidée » ne dirait donc rien de plus que « cette grille se résout ». L'aide
+  cherche le **plus petit paquet** d'indices qui suffise (un, puis deux, trois,
+  quatre) ; si rien ne se place, elle descend d'un cran et désigne l'indice qui
+  *barre* le plus de cases à quelqu'un — le geste du logigramme.
+
+`js/core/enquete.js` (noyau, testable sans navigateur) · `js/games/enquete.js`
+(l'écran) · exercice `logi-enquete`, code court `EN`.
+
+---
+
 ## 10. Tests
 
 Les fonctions pures sont testées sous Node, sans navigateur ni build :

@@ -116,6 +116,7 @@ export const CODES_EXERCICES = {
     'logi-hashi':                 'HA',   // Le Hashi
     'logi-slitherlink':           'SL',   // Le Slitherlink
     'logi-futoshiki':             'FU',   // Le Futoshiki
+    'logi-enquete':               'EN',   // L'Enquête
     'logi-carre-magique':         'MG',   // Le Carré Magique
     'logi-hexagrille':            'HX',   // L'Hexagrille
     'calc-bons-chemins':          'BC',   // Les Bons Chemins

@@ -779,6 +779,9 @@ const legacy = [
     ['deuxmille', '2048 (doublements)', 'deuxmille', 'engineDeuxMille'],
     ['carre-magique', 'Le Carré Magique', 'carreMagique', 'engineCarreMagique', 'grille', 4],
     ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki', 'grille', 3],
+    // L'enquête se compte en ENQUÊTES : une partie, c'est un plan entièrement
+    // reconstitué PUIS le coupable nommé ; rien ne se valide avant.
+    ['enquete', 'L\'Enquête', 'enquete', 'engineEnquete', 'enquête', 3],
     ['hexagrille', 'L\'Hexagrille (1 à 9, sommes fléchées)', 'hexagrille', 'engineHexagrille', 'grille', 3],
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],

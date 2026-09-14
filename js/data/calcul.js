@@ -2092,6 +2092,50 @@ export const calculExercises = [
         instruction: "Chaque chiffre une fois par ligne et par colonne, comme un sudoku — mais les signes < et > entre les cases doivent être respectés. Un signe ÉLIMINE : la case du petit côté ne peut pas porter le plus grand chiffre. Pour écrire : touche une case et son chiffre monte (1, 2, 3… puis vide), ou glisse un chiffre du pavé dessus."
     },
     {
+        // L'ENQUÊTE. Rémy : « Connais tu aussi le jeu murdoku », puis « ne
+        // l'appelle pas comme cela ».
+        //
+        // Le Murdoku est un jeu de Manuel Garand, déposé, avec ses grilles et
+        // ses illustrations : on ne le copie pas. Le MÉCANISME, lui, est celui
+        // des grilles de déduction, vieux comme les mathématiques récréatives
+        // — une bijection à retrouver sous contraintes. On le reprend avec un
+        // décor de collège et un objet égaré : trente élèves de quatrième, ce
+        // n'est pas le public d'un roman noir.
+        //
+        // CE QU'IL APPORTE, ET QUE LE LOGIGRAMME N'A PAS : un PLAN. Le
+        // logigramme croise des listes ; ici on croise des POSITIONS — rangée,
+        // colonne, les quatre points cardinaux, la distance en nombre de pas.
+        // C'est du repérage autant que de la logique, et les deux se tiennent.
+        //
+        // UNE SEULE SOLUTION, GARANTIE PAR ÉNUMÉRATION. Le noyau compte TOUS les
+        // placements possibles — 36, 576 ou 14 400 selon la taille — et ne rend
+        // la grille que si un seul survit aux indices. Puis il retire un à un
+        // les indices dont on peut se passer. Voir core/enquete.js.
+        id: 'logi-enquete', title: "L'Enquête",
+        cree: '2026-09-14',
+        activityId: 'enquete',
+        sansRevision: true,
+        skills: ['num.logique.enquete'],
+        params: { niveau: 1 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'La scène',
+                aide: 'La taille de la grille EST la difficulté : trois personnages se placent '
+                    + 'presque de tête, cinq demandent d\'éliminer méthodiquement case par case.',
+                options: [
+                    { value: 1, label: '1 — La récréation · 3 × 3, trois personnages' },
+                    { value: 2, label: '2 — Le bâtiment B · 4 × 4, quatre personnages' },
+                    { value: 3, label: "3 — L'heure du déjeuner · 5 × 5, cinq personnages" }
+                ],
+                default: 1
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        motsClefs: ['enquête', 'enquete', 'déduction', 'deduction', 'logique', 'plan',
+            'repérage', 'reperage', 'nord', 'sud', 'est', 'ouest', 'indices', 'coupable'],
+        instruction: "Un objet a disparu. Chaque personnage occupe une case, et il n'y en a qu'UN par rangée et qu'UN par colonne : poser quelqu'un interdit donc toute sa rangée et toute sa colonne aux autres. Touche un prénom, puis la case où tu le places ; touche-le sur le plan pour le reprendre. Le nord est en haut, l'ouest à gauche ; « à côté » veut dire par un côté, jamais en diagonale. Tous les indices sont vrais, et ensemble ils ne laissent qu'une seule disposition possible : on ne devine jamais, on élimine. Quand tout le monde est placé, il reste à lire le plan — qui était seul dans le lieu où l'on a retrouvé l'objet ?"
+    },
+    {
         // LE CARRÉ MAGIQUE. Trente soustractions à trous qui se donnent la
         // main : on cherche la ligne où il ne manque qu'une case, on soustrait
         // de la somme magique, et chaque case écrite en débloque d'autres. Le
