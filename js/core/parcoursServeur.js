@@ -290,9 +290,25 @@ export function ecouterLesAssignations() {
     ecoute = true;
     document.addEventListener('assignments_received', async (e) => {
         const r = await recevoirLesAssignations(e.detail);
-        if (r.ecrites) {
-            // Les écrans de l'élève se redessinent sur cet événement-là.
-            document.dispatchEvent(new CustomEvent('seances_updated'));
-        }
+        if (!r.ecrites) return;
+        // ON N'ARRACHE PAS L'ÉCRAN D'UN ÉLÈVE QUI TRAVAILLE.
+        //
+        // `seances_updated` fait redessiner l'accueil. Or une séance peut
+        // arriver À N'IMPORTE QUEL MOMENT — la synchronisation tourne toutes
+        // les dix secondes —, donc y compris au milieu d'une question. Le
+        // redessin emportait alors le conteneur du meneur, et l'exercice en
+        // cours s'arrêtait net, sans un mot.
+        //
+        // Mesuré : le harnais de bout en bout, qui fait travailler un élève
+        // pendant que le professeur lui donne une séance, est tombé une fois
+        // sur deux — « la question n'arrive pas » — dès que ce chemin a été
+        // branché. En classe, ç'aurait été un élève sur deux qui perd sa
+        // question, et personne pour comprendre pourquoi.
+        //
+        // La séance est DÉJÀ ÉCRITE quand on arrive ici : ne pas annoncer ne
+        // perd rien, cela ne fait que retarder l'affichage jusqu'au moment où
+        // l'élève relève la tête.
+        if (state.activeSequenceRunner) return;
+        document.dispatchEvent(new CustomEvent('seances_updated'));
     });
 }

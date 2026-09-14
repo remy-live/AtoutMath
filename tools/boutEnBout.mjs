@@ -158,6 +158,22 @@ const entre = await eleve.evaluate(() => ({
 }));
 ok('son billet l\'ouvre', !entre.porte, entre.etat);
 
+// ON ATTEND QUE LA SÉANCE DU SERVEUR SOIT ARRIVÉE AVANT DE FAIRE TRAVAILLER.
+//
+// Le professeur a assigné le parcours quelques lignes plus haut ; l'élève la
+// reçoit à sa première synchronisation, ce qui fait redessiner son accueil. Si
+// l'on installe le meneur pendant ce redessin, le conteneur qu'il vient de
+// prendre est remplacé sous lui et la première question n'arrive jamais —
+// mesuré : un passage sur cinq tombait ici, et toujours à cet endroit.
+//
+// C'est aussi une vérification en soi : la séance doit arriver SANS code dicté.
+const seanceArrivee = await eleve.waitForFunction(async () => {
+    const { lireSeances } = await import('./js/ui/donnerSeance.js');
+    return (await lireSeances()).length > 0;
+}, null, { timeout: 25000 }).then(() => true).catch(() => false);
+ok('la séance donnée arrive chez l\'élève, sans code dicté', seanceArrivee);
+await eleve.waitForTimeout(900);
+
 // Il travaille : les deux étapes du devoir.
 const travail = await eleve.evaluate(async (code) => {
     const { Shortcodes } = await import('./js/core/shortcodes.js');
@@ -194,18 +210,42 @@ for (const i of [0, 1]) {
     }
     await eleve.waitForFunction(() => window.__r && window.__r.session && window.__r.session.item,
         { timeout: 20000 });
+    // ON ATTEND UNE CONDITION, PAS UNE DURÉE.
+    //
+    // Cette boucle attendait 1,7 s après chaque réponse. Elle a marché tant que
+    // la page ne faisait rien d'autre ; le jour où l'élève s'est mis à
+    // synchroniser toutes les dix secondes et à recevoir des séances, elle est
+    // tombée une fois sur trois — « les deux étapes sont enregistrées » avec une
+    // seule étape. Un harnais qui tombe au hasard ne garde plus rien : on cesse
+    // de le croire, et c'est le jour où il a raison qu'on l'ignore.
+    //
+    // On repère donc la question POSÉE, on répond, et l'on attend qu'elle ait
+    // changé — ou que l'étape se soit close.
     for (let q = 0; q < 2; q++) {
-        const rep = await eleve.evaluate(() => (window.__r.session && window.__r.session.item)
-            ? String(window.__r.session.item.answer) : null);
-        if (!rep) break;
+        // ENTRE DEUX QUESTIONS, `session.item` EST NUL PENDANT UN INSTANT.
+        // Lire à ce moment-là et conclure « il n'y a plus de question » était
+        // la dernière source de hasard : la seconde question de l'étape était
+        // sautée une fois sur trois, et l'étape ne se clôturait jamais.
+        const encore = await eleve.waitForFunction(
+            () => !!(window.__r && window.__r.session && window.__r.session.item),
+            null, { timeout: 10000 }).then(() => true).catch(() => false);
+        if (!encore) break;
+        const avant = await eleve.evaluate(() => {
+            const it = window.__r.session.item;
+            return String(it.id || it.prompt || it.answer);
+        });
+        const rep = await eleve.evaluate(() => String(window.__r.session.item.answer));
         await eleve.evaluate((r) => {
             const el = [...document.querySelectorAll('.bubble, .choice, button, [data-value]')]
                 .find(x => (x.textContent || '').trim() === r || x.getAttribute('data-value') === r);
             if (el) el.click();
         }, rep);
-        await eleve.waitForTimeout(1700);
+        await eleve.waitForFunction((a) => {
+            const it = window.__r && window.__r.session && window.__r.session.item;
+            return !it || String(it.id || it.prompt || it.answer) !== a;
+        }, avant, { timeout: 15000 }).catch(() => { /* la dernière question ferme l'étape */ });
     }
-    await eleve.waitForTimeout(2400);
+    await eleve.waitForTimeout(1500);
     await eleve.evaluate(() => { if (window.__r && window.__r.finish) window.__r.finish(true); });
     await eleve.waitForTimeout(500);
 }
