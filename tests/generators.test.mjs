@@ -187,6 +187,22 @@ test('la comparaison de réponses tolère les formats usuels', () => {
     assert.ok(sameAnswer(' 3,5 ', '3.5'));
     assert.ok(sameAnswer('>', '>'));
     assert.ok(!sameAnswer('12', '13'));
+    assert.ok(sameAnswer('62 307', '62307'), 'les groupes de trois chiffres se lisent');
+});
+
+test('DEUX FRACTIONS DE MÊME NUMÉRATEUR NE SONT PAS ÉGALES', () => {
+    // Le bug le plus cher trouvé au banc d'essai. `parseFloat('16/24')` rend
+    // 16 : il lit le début et abandonne le reste. La comparaison de secours
+    // déclarait donc 16/24 égal à 16/12 — et l'addition de fractions
+    // félicitait l'élève qui avait additionné les dénominateurs, c'est-à-dire
+    // exactement le distracteur que l'exercice cherche à débusquer.
+    assert.ok(!sameAnswer('16/24', '16/12'));
+    assert.ok(!sameAnswer('5/12', '5/6'));
+    assert.ok(!sameAnswer('3/4', '3/8'));
+    assert.ok(sameAnswer('7/11', '7/11'), 'la même fraction reste la même');
+    // Et rien d'autre ne passe non plus par un préfixe numérique.
+    assert.ok(!sameAnswer('12 cm', '12 m'));
+    assert.ok(!sameAnswer('3 h 20', '3 h 45'));
 });
 
 test('comparer des fractions : la méthode annoncée correspond à la situation', () => {
@@ -216,5 +232,103 @@ test('comparer des fractions : la méthode annoncée correspond à la situation'
         // L'énoncé et la réponse restent cohérents.
         const attendu = n1 / d1 > n2 / d2 ? '>' : (n1 / d1 < n2 / d2 ? '<' : '=');
         assert.equal(item.answer, attendu);
+    }
+});
+
+// --- Ce que le robot désigne dans l'énoncé -----------------------------------
+//
+// Le premier indice d'une démonstration parle d'un MORCEAU de l'énoncé :
+// « Commence par 8 × 6 » dans « 8 × 6 + 3 », « combien de fois 4 tient-il dans
+// 24 » sur l'égalité « ? × 4 = 24 ». L'activité de choix cercle l'élément
+// `data-vise` s'il existe ; ces tests garantissent qu'il existe, qu'il désigne
+// la bonne chose, et qu'il ne change rien à ce que l'élève lit.
+
+/** Le texte affiché, balises retirées — ce que l'élève voit vraiment. */
+const texteVisible = (html) => html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+
+/** Le contenu du premier élément marqué `data-vise`. */
+const partieVisee = (html) => (/<[a-z]+ data-vise[^>]*>([^<]*)</.exec(html) || [])[1];
+
+test('priorités, mode résultat : le robot désigne l\'opération à faire d\'abord', () => {
+    for (let i = 0; i < 200; i++) {
+        const item = prioriteGenerator.generate({ mode: 'resultat' }, { rng: makeRng('prio_r_' + i) });
+        const html = item.prompt.html;
+        // Le morceau désigné est exactement l'opération prioritaire, celle dont
+        // parle le premier indice.
+        assert.equal(partieVisee(html), item.meta.right, html);
+        assert.equal(item.hints[0], `Commence par ${item.meta.right}.`);
+        // Et l'énoncé lu reste le même : le balisage ne souffle rien.
+        assert.equal(texteVisible(html), `${item.meta.eq} = ?`);
+    }
+});
+
+test('priorités, mode opération : on ne désigne jamais la réponse cherchée', () => {
+    for (let i = 0; i < 200; i++) {
+        const item = prioriteGenerator.generate({ mode: 'operation' }, { rng: makeRng('prio_o_' + i) });
+        const vise = partieVisee(item.prompt.html);
+        // Ici la bonne réponse EST l'opération prioritaire : le robot ne peut
+        // désigner que l'expression entière, sous peine de tout donner.
+        assert.equal(vise, item.meta.eq);
+        assert.notEqual(vise, item.meta.right);
+    }
+});
+
+test('facteur manquant : le robot désigne l\'égalité, pas le titre du jeu', () => {
+    for (let i = 0; i < 100; i++) {
+        const item = multMissingGenerator.generate({ tables: [3, 4, 8] }, { rng: makeRng('fm_' + i) });
+        const vise = partieVisee(item.prompt.html);
+        assert.ok(vise && /[×x]/.test(vise) && vise.includes('='),
+            `le morceau désigné doit être l'égalité, reçu : ${vise}`);
+        assert.ok(!/Facteur/.test(vise), 'le titre du jeu n\'est pas l\'énoncé');
+    }
+});
+
+// --- La fiche « périmètre et aire » ------------------------------------------
+//
+// Sur le papier, la figure est dessinée, et le dessin peut mentir : deux
+// rectangles à la même échelle doivent avoir des tailles différentes si leurs
+// dimensions diffèrent. Ces trois tests gardent ce qui rend le dessin honnête.
+
+import { rectangleFicheGenerator } from '../js/core/generators/rectangleFiche.js';
+
+test('un rectangle de fiche n\'est jamais un carré, et sa longueur se voit', () => {
+    for (let i = 0; i < 300; i++) {
+        const it = rectangleFicheGenerator.generate({ max: 12, quoi: 'les-deux' },
+            { rng: makeRng('rc_' + i) });
+        const { L, l, max } = it.meta;
+        assert.notEqual(L, l, 'un carré ferait croire que les deux côtés se valent');
+        assert.ok(l < L, `${L} × ${l} : la largeur doit être la plus petite`);
+        // L'échelle de la fiche est commune : sous 60 % du maximum, la figure
+        // serait un timbre-poste à côté de ses voisines.
+        assert.ok(L >= Math.ceil(max * 0.6) && L <= max, `longueur hors plage : ${L}`);
+        assert.ok(l <= Math.floor(L * 0.7), `${L} × ${l} : trop proche du carré`);
+    }
+});
+
+test('périmètre et aire sont ceux du rectangle dessiné', () => {
+    for (let i = 0; i < 200; i++) {
+        const it = rectangleFicheGenerator.generate({ max: 10, quoi: 'les-deux', unite: 'm' },
+            { rng: makeRng('rcv_' + i) });
+        const { L, l, u, perimetre, aire } = it.meta;
+        assert.equal(u, 'm');
+        assert.equal(perimetre, 2 * (L + l));
+        assert.equal(aire, L * l);
+        // La page des solutions se lit sur cette chaîne : les deux réponses,
+        // chacune avec SON unité — c'est là que se joue la confusion.
+        assert.equal(it.answer, `${perimetre} m | ${aire} m²`);
+    }
+});
+
+test('la fiche ne resert pas deux fois le même rectangle', () => {
+    // On simule ce que fait la modale : chaque nouvelle grille reçoit la liste
+    // de ce qui a déjà été tiré.
+    for (let essai = 0; essai < 40; essai++) {
+        const vus = [];
+        for (let k = 0; k < 6; k++) {
+            const it = rectangleFicheGenerator.generate({ max: 10 },
+                { rng: makeRng(`rcd_${essai}_${k}`), themesExclus: vus });
+            vus.push(it.meta.theme);
+        }
+        assert.equal(new Set(vus).size, vus.length, `doublon sur la feuille : ${vus}`);
     }
 });

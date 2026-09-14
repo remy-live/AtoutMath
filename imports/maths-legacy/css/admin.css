@@ -1,0 +1,106 @@
+/* css/admin.css */
+
+.admin-container {
+    display: flex;
+    height: calc(100vh - 80px); /* Hauteur moins le header */
+    overflow: hidden;
+}
+
+/* COLONNE GAUCHE & DROITE */
+.sidebar, .properties-panel {
+    width: 250px;
+    background: var(--bg-color);
+    border-right: var(--border-thick);
+    padding: 20px;
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+}
+.properties-panel {
+    border-right: none;
+    border-left: var(--border-thick);
+    width: 300px;
+}
+
+/* ZONE CENTRALE */
+.editor-area {
+    flex: 1;
+    background: #000; /* Contraste fort */
+    padding: 20px;
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+}
+
+/* ÉLÉMENTS DRAGGABLES (Bibliothèque) */
+.draggable-item {
+    background: var(--window-bg);
+    border: var(--border-thin);
+    padding: 15px;
+    margin-bottom: 10px;
+    cursor: grab;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+}
+.draggable-item:active { cursor: grabbing; }
+
+/* ZONE DE DROP (La liste) */
+.drop-zone {
+    flex: 1;
+    border: 2px dashed #555;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 15px;
+}
+.drop-zone.drag-over { background: #222; border-color: var(--accent); }
+
+
+/* L'élément en cours de déplacement */
+.path-step.dragging {
+    opacity: 0.5;
+    background: #eaddcf;
+    border: 2px dashed var(--ink-color);
+}
+
+/* La zone de drop doit accepter les événements de souris */
+.drop-zone {
+    min-height: 200px; /* Hauteur min pour pouvoir déposer même si vide */
+    position: relative;
+}
+
+/* On change le curseur pour montrer qu'on peut bouger */
+.path-step {
+    cursor: grab; 
+    /* ... le reste de ton style path-step ... */
+}
+.path-step:active {
+    cursor: grabbing;
+}
+
+/* ÉLÉMENTS DANS LE PARCOURS */
+.path-step {
+    background: var(--window-bg);
+    border: var(--border-thick);
+    padding: 15px;
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer;
+    position: relative;
+}
+.path-step:hover { border-color: var(--accent); }
+.path-step.selected { 
+    background: var(--accent); 
+    color: white; 
+    border-color: white;
+}
+
+/* FORMULAIRE */
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; font-size: 0.8rem; margin-bottom: 5px; opacity: 0.7; }
+.form-group input, .form-group select { 
+    width: 100%; 
+    padding: 8px; 
+    background: var(--window-bg); 
+    border: var(--border-thin); 
+    font-family: var(--font-main);
+    box-sizing: border-box;
+}
+
+.hint { font-size: 0.8rem; font-style: italic; opacity: 0.6; text-align: center; }

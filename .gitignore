@@ -1,6 +1,27 @@
 .DS_Store
+# SANS LA BARRE OBLIQUE. « node_modules/ » n'ignore qu'un RÉPERTOIRE : un lien
+# symbolique de ce nom — celui que pose un environnement de développement pour
+# emprunter les paquets d'ailleurs — passait au travers et se retrouvait
+# committé. Sur le runner de GitHub Pages, sa cible n'existe pas : le tar de
+# l'artéfact s'arrêtait sur « File removed before we read it », et le
+# déploiement échouait en cinq secondes.
+node_modules
 node_modules/
 .claude/settings.local.json
 
 # Contient les identifiants de base de données et le secret applicatif.
 api/config.php
+# La base SQLite et ses journaux : des données d'élèves, jamais dans le dépôt.
+api/*.sqlite
+api/*.sqlite-wal
+api/*.sqlite-shm
+api/data/
+# Le témoin de la purge quotidienne : une date, propre à l'installation.
+api/.derniere-purge
+balayage.md
+
+# Les harnais Playwright jetables. Ils doivent vivre SOUS le dépôt — un
+# script placé ailleurs ne sait pas résoudre « playwright » —, mais ils ne
+# valent que le temps d'une vérification et n'ont rien à faire dans
+# l'historique.
+tools/tmp/

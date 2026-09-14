@@ -17,96 +17,533 @@
 
 import { regTimeout } from './timers.js';
 
+// Les durées de base d'un GESTE montré. Elles ont été relevées d'un bon tiers :
+// mesuré sur une démonstration de Nova, le robot enchaînait ses explications à
+// 250 ms par mot — le rythme d'un adulte qui relit un texte qu'il connaît, pas
+// celui d'un élève qui découvre une consigne et regarde en même temps ce qui se
+// passe à l'écran.
 export const DEMO_SPEED = {
-    move: 750,      // trajet d'un point à un autre
-    press: 260,     // enfoncement
-    settle: 520,    // temps de lecture après un appui
-    drag: 1050,     // un glissement se montre plus lentement qu'un déplacement
-    between: 1500   // pause avant la question suivante
+    move: 950,      // trajet d'un point à un autre
+    press: 330,     // enfoncement
+    settle: 900,    // temps de lecture après un appui
+    drag: 1350,     // un glissement se montre plus lentement qu'un déplacement
+    between: 2500   // pause avant la question suivante
 };
 
-// --- Pilotage de la démonstration -------------------------------------------
-//
-// Pause et vitesse sont GLOBALES, et non propres à un curseur : il n'y a jamais
-// qu'une démonstration à l'écran, et les commandes doivent pouvoir agir dessus
-// sans savoir quel module la joue.
-//
-// Tout passe par `wait()` : chaque attente est un objet qu'on sait geler et
-// relancer avec le temps qui lui restait. Une durée figée dans un `setTimeout`
-// ne se met pas en pause — c'est pour cela que les attentes sont réifiées.
+// --- Vitesse globale des démonstrations -------------------------------------
+// Un même robot va trop vite pour l'un, trop lentement pour l'autre : le
+// facteur multiplie TOUTES les durées (trajets, pauses, lectures) et se
+// retient d'une session à l'autre.
+// L'ordre du tableau est l'ordre du cycle : le premier clic RALENTIT — c'est
+// presque toujours ce qu'on cherche quand on touche à la vitesse d'une démo.
+// Le facteur 1 est désormais le rythme POSÉ décrit plus haut. « ⚡ Rapide »
+// retrouve à peu près l'ancienne allure, pour qui connaît déjà le jeu et veut
+// seulement revoir un passage.
+const VITESSES = [
+    { facteur: 1, signe: '▶', mot: 'Normal' },
+    { facteur: 1.5, signe: '🐢', mot: 'Lent' },
+    { facteur: 0.7, signe: '⚡', mot: 'Rapide' }
+];
 
+let facteurVitesse = (() => {
+    // LA LECTURE EST PROTÉGÉE, comme l'écriture l'est déjà deux lignes plus
+    // bas. Un navigateur en navigation privée peut refuser `getItem` — et
+    // comme cet appel est au CHARGEMENT du module, l'exception emportait tout
+    // le robot avec elle, sans rapport avec la démonstration en cours.
+    let brut = null;
+    try { brut = globalThis.localStorage?.getItem('mathbox-demo-speed'); } catch { brut = null; }
+    const v = parseFloat(brut);
+    if (!(v > 0)) return 1;
+    if (VITESSES.some(o => o.facteur === v)) return v;
+    // Les anciens facteurs (1,7 et 0,6) ne sont plus dans la liste. On les
+    // rattache au plus proche plutôt que de les oublier : quelqu'un qui avait
+    // demandé « lent » ne doit pas se retrouver en normal — c'est-à-dire plus
+    // vite qu'il ne l'avait choisi.
+    return VITESSES.reduce((a, o) =>
+        Math.abs(o.facteur - v) < Math.abs(a - v) ? o.facteur : a, VITESSES[0].facteur);
+})();
+
+export function setDemoSpeedFactor(f) {
+    facteurVitesse = f;
+    try { globalThis.localStorage?.setItem('mathbox-demo-speed', String(f)); } catch { /* stockage plein ou privé */ }
+}
+
+/**
+ * Une durée de démonstration, à l'échelle choisie par l'utilisateur.
+ *
+ * Les jeux qui pilotent leur robot avec leurs propres minuteurs — la course,
+ * Math Crush, le Memory, le Tetris — écrivaient des durées en dur : le
+ * réglage de vitesse n'avait aucun effet sur eux, et on ne pouvait pas les
+ * ralentir. Elles passent maintenant toutes par ici.
+ */
+export function dureeDemo(ms) {
+    return Math.round(ms * facteurVitesse);
+}
+
+// --- Mode muet ---------------------------------------------------------------
+// Les vignettes d'aperçu (survol du catalogue, cartes, mode présentation)
+// jouent la démonstration en miniature : une bulle d'explication posée sur
+// <body> y recouvrirait toute la page — et survivait à la vignette. En muet,
+// le robot joue sans parler ; le plein écran garde ses bulles.
+let muet = false;
+
+/**
+ * LA PAUSE EST UN ÉTAT DU MODULE, PAS UN SECRET DE LA BARRE — et « Un pas » ne
+ * marchait pas à cause de cela.
+ *
+ * Rémy : « j'ai l'impression que le pas suivant du robot (le bouton) ne
+ * fonctionne pas. » Mesuré : sur l'addition, la bulle ne bougeait pas après
+ * trois appuis ; sur le quadrilatère qui se transforme, elle avançait une fois
+ * sur trois.
+ *
+ * DEUX CAUSES, ET LA SECONDE EST LA PIRE :
+ *
+ *  · UNE LIBÉRATION PERDUE. « Un pas » relâchait les attentes EN COURS ; s'il
+ *    n'y en avait aucune — le robot était alors dans un simple délai —, l'appui
+ *    tombait dans le vide, et il fallait appuyer une seconde fois. Un jeton
+ *    d'avance corrige cela : libéré sans personne à libérer, il est GARDÉ, et
+ *    la prochaine attente le consomme aussitôt.
+ *
+ *  · LA PAUSE NE METTAIT PAS EN PAUSE. Les délais du robot — `cur.pause()`, la
+ *    quasi-totalité de son temps — sont de simples minuteurs, qui ignoraient
+ *    l'état de la barre. Le robot continuait donc son texte pendant la pause, et
+ *    « Un pas » ne pouvait rien avancer puisque rien n'attendait. Un minuteur
+ *    qui arrive à échéance pendant la pause se met désormais dans la file, avec
+ *    les autres.
+ *
+ * La file est commune aux deux — les tours de parole et les délais —, et « Un
+ * pas » en libère EXACTEMENT un : c'est ce qui fait qu'un appui vaut un pas.
+ */
 let enPause = false;
-let vitesse = 1;              // 1 = allure de référence ; 0.5 = deux fois plus lent
-const attentes = new Set();   // attentes en cours, tous curseurs confondus
+/** Un pas est en cours : on court jusqu'à la PROCHAINE explication. */
+let pasEnCours = false;
+const fileDAttente = [];
 
-/** @param {number} v - multiplicateur d'allure (0.25 à 3) */
-export function reglerVitesseDemo(v) {
-    vitesse = Math.max(0.25, Math.min(3, Number(v) || 1));
-    return vitesse;
+/**
+ * Attendre son tour. Pendant un pas, on ne s'arrête à rien : c'est la prochaine
+ * explication qui refermera la porte — voir `marquerExplication`.
+ */
+function attendreLaReprise() {
+    if (!enPause || pasEnCours) return Promise.resolve();
+    return new Promise(res => fileDAttente.push(res));
 }
 
-export function vitesseDemo() { return vitesse; }
-export function estEnPause() { return enPause; }
-
-/** Bascule (sans argument) ou force la pause. @returns {boolean} état obtenu */
-export function pauserDemo(valeur) {
-    const cible = valeur === undefined ? !enPause : !!valeur;
-    if (cible === enPause) return enPause;
-    enPause = cible;
-    [...attentes].forEach(a => (enPause ? a.geler() : a.repartir()));
-    return enPause;
+/** Reprendre : tout le monde repart. */
+function reprendreTout() {
+    enPause = false;
+    pasEnCours = false;
+    fileDAttente.splice(0).forEach(res => res());
 }
 
 /**
- * Coupe court à toutes les attentes en cours, sans détruire les curseurs.
+ * UNE EXPLICATION VIENT D'ÊTRE DITE : le pas est consommé.
  *
- * C'est ce qui permet de changer de question pendant une démonstration : la
- * boucle qui la joue est une fonction `async` suspendue sur un `await`, et
- * seule une attente résolue à `false` la fait renoncer. Sans cela, l'ancienne
- * démonstration continuerait de piloter la nouvelle question.
+ * C'est ce qui donne son sens au bouton — « un pas » veut dire « la phrase
+ * suivante », pas « le prochain point d'attente ». Entre deux phrases il y en a
+ * DEUX, un délai de lecture et un tour de parole ; un jeton par attente aurait
+ * demandé deux appuis par phrase, ce qui était le défaut d'à côté.
  */
-export function interrompreDemo() {
-    [...attentes].forEach(a => a.fin(false));
+function marquerExplication() {
+    pasEnCours = false;
 }
 
 /**
- * Attente pausable et soumise à la vitesse, hors curseur.
+ * UN PAS : on coupe court à ce que le robot est en train d'attendre.
  *
- * C'est le battement de toute la démonstration : la bulle de parole du
- * narrateur s'en sert comme le pointeur, donc « pause » arrête la phrase en
- * cours de lecture et « ×0,5 » laisse le double du temps pour la lire.
+ * ET C'ÉTAIT LÀ LE VRAI DÉFAUT, mesuré à la sonde : la file d'attente restait
+ * VIDE et les jetons s'empilaient — 1, 2, 3, 4 — sans que rien n'avance. Le
+ * robot n'attendait pas son tour : il attendait le TEMPS DE LECTURE de sa
+ * phrase. Une explication de deux cents caractères se lit en treize secondes ;
+ * pendant ces treize secondes, « Un pas » n'avait rien à libérer, et l'on
+ * concluait — comme Rémy — que le bouton ne marchait pas.
  *
- * @param {number} ms
- * @param {(a:Object)=>void} [suivre] - reçoit l'attente, pour la dénouer
- * @returns {Promise<boolean>} false si elle a été interrompue
+ * On presse donc le délai en cours. C'est exactement ce que le bouton veut
+ * dire : « j'ai lu, la suite. »
  */
-export function attendreDemo(ms, suivre = null) {
-    const duree = Math.max(0, Math.round(ms / vitesse));
-    return new Promise(resolve => {
-        const a = {
-            reste: duree,
-            debut: 0,
-            timer: null,
-            fin(ok) {
-                if (a.timer) { clearTimeout(a.timer); a.timer = null; }
-                attentes.delete(a);
-                resolve(ok);
-            },
-            geler() {
-                if (!a.timer) return;
-                clearTimeout(a.timer);
-                a.timer = null;
-                a.reste = Math.max(0, a.reste - (Date.now() - a.debut));
-            },
-            repartir() {
-                a.debut = Date.now();
-                a.timer = regTimeout(() => a.fin(true), a.reste);
+function unPas() {
+    enPause = true;
+    pasEnCours = true;
+    // Tout ce qui attendait repart : le pas court jusqu'à la prochaine phrase.
+    fileDAttente.splice(0).forEach(res => res());
+    curseursVivants.forEach(c => { if (c.hater) c.hater(); });
+}
+export function setDemoMuet(v) { muet = !!v; }
+
+// --- Temps de lecture d'une bulle --------------------------------------------
+//
+// Chaque jeu attendait une durée FIXE après avoir fait parler le robot — la
+// même pour « Je tape 40 » que pour « Cette ligne a déjà tous ses 1 (3 sur 6
+// cases) : je complète avec des 0. ». Les explications longues disparaissaient
+// donc avant d'être lues : c'est ça, « ça va trop vite ».
+//
+// La durée se calcule maintenant sur le TEXTE. Après un `say()`, la prochaine
+// pause du jeu ne peut pas se terminer avant que la bulle ait eu le temps
+// d'être lue — les pauses déjà écrites dans les jeux s'allongent d'elles-mêmes
+// quand la phrase est longue, sans qu'aucune n'ait à être retouchée.
+
+/**
+ * Le temps laissé pour lire une bulle.
+ *
+ * 340 ms par mot, soit environ 175 mots à la minute : c'est le rythme d'un
+ * élève de dix ans qui lit une consigne — 230 ms (260 mots/minute) était celui
+ * d'un adulte qui relit un texte qu'il a écrit. Et l'élève ne fait pas que
+ * lire : il regarde aussi ce que le robot est en train de faire.
+ *
+ * Le PLAFOND comptait autant que la cadence. À 7 s, une explication de trente
+ * mots — le Gardien, la faille, le pilotage de Nova — était coupée net à
+ * 226 ms par mot : les phrases qui avaient le plus besoin de temps étaient
+ * précisément celles qu'on rognait. Il monte à 14 s.
+ */
+export function tempsDeLecture(texte) {
+    const mots = String(texte).trim().split(/\s+/).filter(Boolean).length;
+    return Math.max(2200, Math.min(14000, 700 + mots * 340));
+}
+
+// Tous les pointeurs vivants. `clearEngines()` coupe les minuteurs d'une
+// démonstration interrompue, mais l'ÉLÉMENT du curseur, posé sur <body>,
+// restait affiché : on fermait l'aperçu et une flèche fantôme continuait de
+// flotter sur l'écran. Ce registre permet de les balayer tous à la fermeture.
+const curseursVivants = new Set();
+
+/** Détruit tous les pointeurs de démonstration encore à l'écran. */
+export function destroyAllDemoCursors() {
+    [...curseursVivants].forEach(c => c.destroy());
+    curseursVivants.clear();
+    document.querySelectorAll('.demo-cible').forEach(el => el.classList.remove('demo-cible'));
+    // Ceinture et bretelles : un curseur créé par un module rechargé (autre
+    // instance de ce fichier) ne serait pas dans le registre. La bulle vit
+    // elle aussi sur <body> : sans ce balayage, une explication du robot
+    // restait affichée après la fermeture du jeu.
+    //
+    // La BARRE DE COMMANDES est balayée ici aussi. Elle n'a pas de registre —
+    // chaque démonstration détient la sienne et la détruit en terminant — mais
+    // une démonstration lancée par `launchPreview` n'est tenue par aucun
+    // parcours : en passant d'un aperçu à une vraie partie, personne
+    // n'appelait son `destroy()`. On se retrouvait à jouer pour de bon avec
+    // « ⏮ Arrière · ⏸ Pause · ⏭ Un pas » posés en travers de l'en-tête.
+    document.querySelectorAll('.demo-cursor, .demo-bubble, .demo-controls').forEach(el => el.remove());
+    marquerDemo();
+    // Une barre retirée alors qu'elle tenait le jeu en pause le laisserait
+    // gelé pour toujours : on relâche le gel avec elle.
+    document.dispatchEvent(new CustomEvent('demo_pause', { detail: false }));
+}
+
+/**
+ * Barre de commande d'une démonstration : pause / lecture et pas-à-pas.
+ *
+ * Le robot appelle `waitTurn()` avant chaque coup. En lecture, la promesse se
+ * résout tout de suite ; en pause, elle attend « Un pas » (qui libère UN coup
+ * puis rebloque) ou « Reprendre ». On peut ainsi suivre une déduction à son
+ * rythme, ce qu'un défilement continu ne permet pas.
+ */
+/**
+ * Où poser la barre de commandes.
+ *
+ * En fin de plateau — là où les jeux la demandaient — elle finissait hors de
+ * l'écran en paysage (546 px sur un écran de 390) et sous la palette de
+ * débogage en portrait : impossible de mettre l'explication en pause. En plein
+ * écran, elle rejoint donc la bannière d'aperçu, tout en haut. Les vignettes
+ * du catalogue, elles, gardent leur hôte local.
+ */
+function hoteDeBarre(host) {
+    const partage = document.getElementById('demo-controls-host');
+    const couche = document.getElementById('game-layer');
+    // `offsetParent` vaut null sur un élément en `position: fixed` — c'est le
+    // cas de la couche de jeu : on interroge donc le style calculé.
+    const enPleinEcran = couche && getComputedStyle(couche).display !== 'none';
+    return (partage && enPleinEcran) ? partage : host;
+}
+
+/**
+ * LA BARRE DU ROBOT PREND LA PLACE DU TITRE, elle ne s'ajoute pas.
+ *
+ * Rémy : « quand le robot intervient, cela décale tout vers le bas ». La bande
+ * s'insérait entre l'en-tête et le plateau : le jeu descendait d'une centaine
+ * de pixels au premier mot du robot et remontait à la fin — sur une tablette,
+ * la case qu'on visait se dérobait sous le doigt. Or l'en-tête porte, pendant
+ * une démonstration, deux choses dont personne n'a besoin : le TITRE (on sait
+ * à quoi on joue, on vient de le lancer) et la PROGRESSION (le robot ne
+ * compte pas de points). La bande s'installe à leur place, et la hauteur ne
+ * bouge pas d'un pixel.
+ */
+export function marquerDemo() {
+    const couche = document.getElementById('game-layer');
+    if (!couche) return;
+    // Une seule source de vérité, relue à chaque changement : la bande est là
+    // s'il y a quelque chose DEDANS — la bannière d'aperçu, ou la barre de
+    // commandes. Un drapeau tenu à la main se serait désynchronisé au premier
+    // chemin oublié, et l'en-tête serait resté amputé de son titre.
+    const banniere = document.getElementById('demo-overlay-banner');
+    const visible = banniere && getComputedStyle(banniere).display !== 'none';
+    const commandes = document.querySelector('#demo-controls-host > .demo-controls');
+    couche.classList.toggle('jeu--demo', !!(visible || commandes));
+}
+
+// --- Un pas en arrière -------------------------------------------------------
+//
+// Rejouer un GESTE à l'envers est impossible : le robot a déjà tapé le 40 dans
+// la cellule, tourné le rapporteur, fait tomber la pièce — l'état du plateau
+// ne se remonte pas. Ce qu'on rate quand « ça va trop vite », ce n'est pas le
+// geste, c'est la PHRASE qui l'explique. « En arrière » remet donc la
+// démonstration en pause et réaffiche l'explication précédente, autant de fois
+// qu'on remonte. Reprendre repart du point où le robot en était.
+const journalDiscours = [];
+let reculDiscours = 0;
+let curseurParlant = null;
+
+function noterDiscours(texte, cible, curseur) {
+    journalDiscours.push({ texte, cible });
+    if (journalDiscours.length > 60) journalDiscours.shift();
+    reculDiscours = 0;
+    curseurParlant = curseur;
+}
+
+/**
+ * Le curseur par lequel faire parler un rappel.
+ *
+ * `curseurParlant` est celui qui a dit la dernière phrase — mais il a pu être
+ * détruit depuis : plusieurs activités refont leur curseur à chaque question,
+ * et « Arrière » se retrouvait alors muet, sans que rien ne l'explique. On
+ * repêche donc n'importe quel curseur encore vivant : l'historique, lui, est
+ * commun.
+ */
+function porteVoix() {
+    if (curseurParlant && !curseurParlant.destroyed) return curseurParlant;
+    for (const c of curseursVivants) if (!c.destroyed && !c.discret) return c;
+    return null;
+}
+
+/** @returns {boolean} faux quand on est déjà à la première explication. */
+function revoirPrecedent() {
+    const voix = porteVoix();
+    if (!voix) return false;
+    const i = journalDiscours.length - 2 - reculDiscours;
+    if (i < 0) return false;
+    reculDiscours++;
+    curseurParlant = voix;
+    const d = journalDiscours[i];
+    // L'ancre a pu disparaître entre-temps (case effacée, fruit tranché) : la
+    // bulle se recale alors sur le pointeur plutôt que de viser le vide.
+    voix.say(d.texte, d.cible && document.contains(d.cible) ? d.cible : null, true);
+    return true;
+}
+
+// --- Bulle rangée au lieu de bulle flottante ---------------------------------
+//
+// Sur grand écran, une bulle à pointe posée à côté de la case est ce qu'il y a
+// de plus clair : elle DÉSIGNE. Sur un téléphone, il n'y a pas de « à côté » —
+// la grille occupe toute la largeur, et la bulle finit forcément par-dessus.
+// Elle se range alors dans l'emplacement partagé du haut, ce qui POUSSE le
+// plateau vers le bas au lieu de le recouvrir, et la case dont on parle est
+// cerclée pour garder le lien.
+function ancrerLesBulles() {
+    const hote = document.getElementById('demo-strip');
+    const couche = document.getElementById('game-layer');
+    if (!hote || !couche || getComputedStyle(couche).display === 'none') return false;
+    return window.innerWidth <= 760 || window.innerHeight <= 620;
+}
+
+let cibleMarquee = null;
+
+/** Cercle la case dont le robot parle, et décercle la précédente. */
+function marquerCible(cible) {
+    if (cibleMarquee && cibleMarquee !== cible) cibleMarquee.classList.remove('demo-cible');
+    cibleMarquee = null;
+    if (cible && cible.classList && document.contains(cible)) {
+        cible.classList.add('demo-cible');
+        cibleMarquee = cible;
+    }
+}
+
+/** Commande inerte : une vignette de catalogue n'a pas à porter de barre. */
+const BARRE_MUETTE = {
+    get paused() { return false; },
+    async waitTurn() { return true; },
+    async wait(ms) { await new Promise(r => setTimeout(r, Math.max(0, ms))); return true; },
+    destroy() {}
+};
+
+export function createDemoGate(host) {
+    // En muet (vignettes du catalogue, mode présentation), la démonstration
+    // n'est pas pilotable : une barre Pause/Un pas/Vitesse tassée dans une
+    // carte de 170 px ne servirait qu'à la défigurer.
+    if (muet) return BARRE_MUETTE;
+
+    let destroyed = false;
+    // La barre lit et écrit l'état du module : c'est le même robot qu'elle
+    // pilote, et il l'attend ailleurs qu'ici (voir `attendre`).
+    reprendreTout();
+    // Les délais du robot en cours. Séparés des attentes de pause : reprendre
+    // ne doit pas escamoter le temps qu'il reste à patienter.
+    const minuteurs = new Set();
+
+    // Nouvelle démonstration, nouvel historique : « en arrière » ne doit pas
+    // remonter dans les explications d'une question déjà quittée.
+    journalDiscours.length = 0;
+    reculDiscours = 0;
+
+    const bar = document.createElement('div');
+    bar.className = 'demo-controls';
+    // SIGNE ET MOT SÉPARÉS. Les quatre commandes réunies font 290 px de large :
+    // dans l'en-tête d'un téléphone il en reste 228 une fois la croix de
+    // fermeture servie, et elles se repliaient sur quatre rangées de 27 px —
+    // le décalage qu'on venait justement de supprimer, revenu par la fenêtre.
+    // Le mot se retire tout seul quand la place manque ; le signe, lui, reste :
+    // ⏮ ⏸ ⏭ se lisent sans légende sur n'importe quel lecteur.
+    const commande = (attr, signe, mot, aide) => `
+        <button type="button" class="demo-ctrl-btn" ${attr} title="${aide}" aria-label="${aide}"
+            ><span class="demo-ctrl-signe" aria-hidden="true">${signe}</span
+            ><span class="demo-ctrl-mot">${mot}</span></button>`;
+    bar.innerHTML =
+        commande('data-demo-back', '⏮', 'Arrière', 'Revoir l\'explication précédente') +
+        commande('data-demo-pause', '⏸', 'Pause', 'Mettre la démonstration en pause') +
+        commande('data-demo-step', '⏭', 'Un pas', 'Avancer d\'un pas') +
+        commande('data-demo-speed', '▶', 'Normal', 'Vitesse de la démonstration');
+    const hote = hoteDeBarre(host);
+    // La bande occupe l'en-tête tant que le robot est là : c'est ce qui lui
+    // évite de pousser le plateau vers le bas.
+    if (hote.id === 'demo-controls-host') marquerDemo();
+    // Une seule barre à la fois dans l'emplacement partagé : les activités qui
+    // recréent leur commande à chaque question y empileraient sinon autant de
+    // barres que de questions jouées.
+    hote.querySelectorAll(':scope > .demo-controls').forEach(v => v.remove());
+    hote.appendChild(bar);
+
+    // Vitesse : un bouton qui fait le tour Lent → Normal → Rapide, et
+    // retient le choix pour les prochaines démonstrations.
+    const btnVitesse = bar.querySelector('[data-demo-speed]');
+    // Écrire dans les deux fentes plutôt que dans le bouton : `textContent`
+    // aurait effacé le signe et le mot du même coup, et la barre serait
+    // redevenue illisible dès qu'on touche à la vitesse.
+    const habiller = (btn, signe, mot) => {
+        btn.querySelector('.demo-ctrl-signe').textContent = signe;
+        btn.querySelector('.demo-ctrl-mot').textContent = mot;
+    };
+    const majVitesse = () => {
+        const v = VITESSES.find(o => o.facteur === facteurVitesse) || VITESSES[1];
+        habiller(btnVitesse, v.signe, v.mot);
+        btnVitesse.classList.toggle('demo-ctrl-btn--active', v.facteur !== 1);
+    };
+    btnVitesse.onclick = () => {
+        const i = VITESSES.findIndex(o => o.facteur === facteurVitesse);
+        setDemoSpeedFactor(VITESSES[(i + 1) % VITESSES.length].facteur);
+        majVitesse();
+    };
+    majVitesse();
+
+    const btnPause = bar.querySelector('[data-demo-pause]');
+    const poserPause = (etat) => {
+        const paused = etat;
+        if (paused) enPause = true; else reprendreTout();
+        habiller(btnPause, paused ? '▶' : '⏸', paused ? 'Reprendre' : 'Pause');
+        btnPause.classList.toggle('demo-ctrl-btn--active', paused);
+        // La pause doit arrêter LE JEU, pas seulement le robot.
+        //
+        // Elle ne bloquait que les `waitTurn()` du commentaire : dans un jeu
+        // d'arcade, le vaisseau continuait de voler, les vagues d'arriver et
+        // les vies de tomber pendant qu'on lisait l'explication. On revenait
+        // sur une partie méconnaissable — la pause « plantait » la partie.
+        // L'événement laisse chaque jeu geler ce qu'il sait geler ; les
+        // activités au tour par tour, elles, n'ont rien à faire.
+        document.dispatchEvent(new CustomEvent('demo_pause', { detail: paused }));
+    };
+
+    btnPause.onclick = () => poserPause(!enPause);
+    bar.querySelector('[data-demo-step]').onclick = () => {
+        // « Un pas » implique la pause, et libère EXACTEMENT une attente — ou
+        // garde un jeton s'il n'y en a aucune, pour que l'appui ne soit jamais
+        // perdu. C'était le défaut : un appui sur deux tombait dans le vide.
+        poserPause(true);
+        unPas();
+    };
+
+    const btnBack = bar.querySelector('[data-demo-back]');
+    btnBack.onclick = () => {
+        // Remonter suppose de s'arrêter : sinon le robot recouvrirait la bulle
+        // rappelée par la suivante avant qu'on ait fini de la lire.
+        if (!enPause) poserPause(true);
+        if (revoirPrecedent()) return;
+        // ON NE SE TAIT PAS. Le bouton se grisait 700 ms, et rien d'autre : sur
+        // la première explication — ou quand la démonstration n'avait pas encore
+        // commencé à parler — on appuyait, il ne se passait rien, et on en
+        // concluait que le bouton ne marchait pas. Une phrase vaut mieux qu'un
+        // clignotement : elle dit POURQUOI.
+        const voix = porteVoix();
+        // En « rejeu » : ce rappel ne doit pas entrer dans l'historique, sinon
+        // il deviendrait lui-même l'explication précédente.
+        if (voix) voix.say(journalDiscours.length
+            ? 'C\'est la première explication : on ne remonte pas plus haut.'
+            : 'Le robot n\'a encore rien expliqué : laisse-le commencer.', null, true);
+        btnBack.disabled = true;
+        regTimeout(() => { btnBack.disabled = false; }, 900);
+    };
+
+    return {
+        get paused() { return enPause; },
+        async waitTurn() {
+            if (destroyed) return false;
+            await attendreLaReprise();
+            return !destroyed;
+        },
+        /**
+         * ATTENDRE UN MOMENT, PUIS SON TOUR.
+         *
+         * Cinq démonstrations appelaient déjà cette méthode — le Compte est
+         * Bon, les priorités, le tableau de conversion et les deux poses
+         * d'opération — et elle n'existait pas. Le robot mourait sur son
+         * PREMIER `await`, dans un `catch` qui disait « démonstration coupée » :
+         * pas d'erreur en console, pas de curseur à l'écran, rien. On ne
+         * pouvait qu'en conclure, comme Rémy, que « le robot ne fonctionne
+         * pas ».
+         *
+         * L'attente est coupée net si la barre est détruite — inutile de faire
+         * parler un robot qu'on vient de fermer — et elle rend la main
+         * seulement quand la pause est levée.
+         */
+        async wait(ms) {
+            if (destroyed) return false;
+            // UN DÉLAI QUI N'EN EST PAS UN NE PASSE PAS INAPERÇU. Cinq jeux
+            // écrivaient « gate.wait(2500 * DEMO_SPEED) » — mais DEMO_SPEED est
+            // un TABLEAU de durées nommées, pas un facteur : le produit valait
+            // NaN, `setTimeout` le prenait pour zéro, et le robot jouait toute
+            // sa démonstration en quelques millisecondes. Rien à voir à
+            // l'écran, aucune erreur : « le robot ne fonctionne pas ».
+            // On rattrape ici ce qui n'est pas un nombre, plutôt que de laisser
+            // le prochain appel douteux repasser sans bruit.
+            const duree = Number.isFinite(ms) ? Math.max(0, ms) : DEMO_SPEED.settle;
+            // Et l'allure choisie par le professeur s'applique aussi à ces
+            // pauses-là : « Lent » ne ralentissait que les déplacements.
+            await new Promise((res) => {
+                let t;
+                const fini = () => { clearTimeout(t); minuteurs.delete(fini); res(); };
+                t = setTimeout(fini, duree * facteurVitesse);
+                minuteurs.add(fini);
+            });
+            // Puis son tour : si l'on a mis en pause pendant l'attente, le
+            // robot reste arrêté jusqu'à la reprise.
+            return this.waitTurn();
+        },
+        destroy() {
+            destroyed = true;
+            // Une barre détruite en pause laisserait le jeu gelé pour de bon —
+            // et, depuis que la pause est un état du module, elle gèlerait
+            // aussi la démonstration SUIVANTE.
+            if (enPause) {
+                document.dispatchEvent(new CustomEvent('demo_pause', { detail: false }));
             }
-        };
-        attentes.add(a);
-        if (suivre) suivre(a);
-        if (!enPause) a.repartir();
-    });
+            // Et un robot qu'on ferme ne doit pas continuer à parler dans le
+            // vide pendant les deux secondes de son dernier délai.
+            [...minuteurs].forEach(f => f());
+            minuteurs.clear();
+            reprendreTout();
+            bar.remove();
+            // Le titre revient — mais seulement si plus aucune barre n'occupe
+            // l'en-tête : une activité qui refait sa barre à chaque question
+            // détruit l'ancienne APRÈS avoir créé la nouvelle, et le titre
+            // clignoterait à chaque fois.
+            marquerDemo();
+        }
+    };
 }
 
 /**
@@ -115,9 +552,15 @@ export function attendreDemo(ms, suivre = null) {
  * `regTimeout`, donc une démonstration interrompue ne laisse rien en vol.
  */
 export function createDemoCursor() {
+    // Un curseur créé en mode muet (vignettes d'aperçu) reste DISCRET pour
+    // toute sa vie : ni flèche ni bulle. Douze cartes qui montent leurs
+    // aperçus en même temps lançaient douze robots — autant de flèches et de
+    // bulles qui traversaient l'écran le temps du gel des vignettes.
+    const discret = muet;
     const el = document.createElement('div');
     el.className = 'demo-cursor';
     el.setAttribute('aria-hidden', 'true');
+    if (discret) el.style.display = 'none';
     el.innerHTML = `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
             <path d="M5 2.5 L5 19 L9.2 15.2 L11.9 21.2 L14.6 20 L12 14.2 L18 14 Z"
                   fill="#111827" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
@@ -126,40 +569,39 @@ export function createDemoCursor() {
 
     let destroyed = false;
     let ghost = null;
+    let bulle = null;
+    // Instant avant lequel la bulle en cours n'a pas fini d'être lue.
+    let finDeLecture = 0;
+    // Zone que la bulle ne doit pas recouvrir (voir `protegerZone`).
+    let zoneProtegee = null;
     // Les attentes en cours, pour les dénouer à la destruction : une promesse
     // jamais résolue retiendrait indéfiniment la fonction qui l'attend.
     const pending = new Set();
 
-    function wait(ms) {
+    /** Attente brute, déjà à l'échelle de la vitesse choisie. */
+    function attendre(ms) {
         if (destroyed) return Promise.resolve(false);
-        const duree = Math.max(0, Math.round(ms / vitesse));
         return new Promise(resolve => {
-            const a = {
-                reste: duree,
-                debut: 0,
-                timer: null,
-                fin(ok) {
-                    if (a.timer) { clearTimeout(a.timer); a.timer = null; }
-                    attentes.delete(a);
-                    pending.delete(a);
-                    resolve(ok);
-                },
-                geler() {
-                    if (!a.timer) return;
-                    clearTimeout(a.timer);
-                    a.timer = null;
-                    a.reste = Math.max(0, a.reste - (Date.now() - a.debut));
-                },
-                repartir() {
-                    a.debut = Date.now();
-                    a.timer = regTimeout(() => a.fin(!destroyed), a.reste);
-                }
+            let fini = false;
+            const done = (ok) => {
+                if (fini) return;
+                fini = true;
+                pending.delete(done);
+                resolve(ok);
             };
-            attentes.add(a);
-            pending.add(a);
-            if (!enPause) a.repartir();
+            pending.add(done);
+            // LE DÉLAI ÉCOULÉ NE SUFFIT PLUS : il faut aussi que la barre ait
+            // rendu la main. Sans quoi la pause ne mettait rien en pause — voir
+            // `enPause` en tête de fichier. Et « Un pas » peut couper court au
+            // délai lui-même : voir `hater` plus bas.
+            regTimeout(() => {
+                if (fini) return;
+                attendreLaReprise().then(() => done(!destroyed));
+            }, Math.max(0, ms));
         });
     }
+
+    const wait = (ms) => attendre(ms * facteurVitesse);
 
     function place(x, y, ms) {
         el.style.transitionDuration = `${ms}ms`;
@@ -171,12 +613,167 @@ export function createDemoCursor() {
         return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     }
 
-    return {
+    /** Place la flèche sur la cible sans rien attendre (voir `say`). */
+    function suivreDuRegard(cible) {
+        if (!document.contains(cible)) return;
+        const { x, y } = centerOf(cible);
+        if (!el.dataset.placed) {
+            el.dataset.placed = '1';
+            place(x, y, 0);
+            el.classList.add('demo-cursor--visible');
+            return;
+        }
+        place(x, y, 280 * facteurVitesse);
+    }
+
+    const api = {
         get destroyed() { return destroyed; },
+        // Un curseur discret (vignette d'aperçu) ne parle pas : il ne peut donc
+        // pas servir de porte-voix au bouton « Arrière ».
+        get discret() { return discret; },
+
+        /**
+         * Bulle d'explication accrochée au pointeur : le robot dit POURQUOI il
+         * joue ce coup. Elle reste affichée jusqu'au prochain `say()` ou à
+         * `hideBubble()`, pour laisser le temps de lire.
+         */
+        say(texte, cible = null, rejeu = false) {
+            if (destroyed || !texte || muet || discret) return;
+            // Le pas demandé est arrivé à destination : la phrase suivante est
+            // à l'écran, le robot se rebloque à sa prochaine attente.
+            if (!rejeu) marquerExplication();
+            // `rejeu` : rappel d'une explication passée par le bouton
+            // « Arrière ». Le noter rallongerait l'historique à l'infini et
+            // ferait perdre le fil du retour en arrière.
+            if (!rejeu) noterDiscours(texte, cible, api);
+            if (!bulle) {
+                bulle = document.createElement('div');
+                bulle.className = 'demo-bubble';
+                bulle.setAttribute('role', 'status');
+                document.body.appendChild(bulle);
+            }
+            bulle.textContent = texte;
+            bulle.classList.add('demo-bubble--on');
+            // La prochaine pause du jeu ne s'achèvera pas avant ce moment.
+            finDeLecture = performance.now() + tempsDeLecture(texte) * facteurVitesse;
+
+            // Écran étroit : la bulle se RANGE au-dessus du plateau au lieu de
+            // flotter dessus. Sur un sudoku ou un binairo de téléphone, elle
+            // recouvrait la première ligne de la grille — c'est-à-dire les
+            // chiffres dont l'explication parle. Impossible de suivre un
+            // raisonnement dont on cache les prémisses. Le lien avec la case
+            // n'est pas perdu : elle est cerclée pendant que le robot parle.
+            marquerCible(cible);
+            // Le pointeur SUIT la phrase, immédiatement.
+            //
+            // La flèche ne bougeait qu'au `moveTo()` suivant, lequel attend
+            // d'abord la fin de la lecture : pendant toute la phrase, elle
+            // restait posée sur la case PRÉCÉDENTE alors que la bulle — et
+            // maintenant le cercle — désignaient la nouvelle. Trois indications
+            // contradictoires à l'écran. Pointer n'est pas agir : la flèche se
+            // place tout de suite, seul l'APPUI attend la fin de la lecture.
+            if (cible && cible.getBoundingClientRect) suivreDuRegard(cible);
+            if (ancrerLesBulles()) {
+                // Rangée SOUS l'en-tête, pas dedans. Les commandes du robot
+                // sont montées dans l'en-tête pour ne rien décaler ; une bulle
+                // de six lignes posée à côté d'elles y aurait fait passer
+                // l'en-tête de 49 à 189 px, soit exactement le décalage qu'on
+                // venait de supprimer.
+                const hote = document.getElementById('demo-strip');
+                if (bulle.parentElement !== hote) hote.appendChild(bulle);
+                bulle.classList.add('demo-bubble--rangee');
+                bulle.classList.remove('demo-bubble--dessous');
+                bulle.style.left = bulle.style.top = '';
+                return;
+            }
+            if (bulle.parentElement !== document.body) document.body.appendChild(bulle);
+            bulle.classList.remove('demo-bubble--rangee');
+
+            const ancre = cible ? centerOf(cible) : positionActuelle();
+            requestAnimationFrame(() => {
+                if (!bulle) return;
+                const b = bulle.getBoundingClientRect();
+                const marge = 10;
+                // Plancher haut : sous la bannière et les commandes du robot,
+                // qu'une bulle posée par-dessus rendait illisibles.
+                //
+                // On mesure la BARRE autant que son hôte. L'emplacement partagé
+                // ne se met pas en page (rectangle nul) : le plancher retombait
+                // sur 10 px, et la bulle se posait pile sur « Pause » et « Un
+                // pas » — les deux boutons dont on a besoin quand on trouve
+                // qu'une explication va trop vite.
+                const margeHaut = Math.max(marge, ...['#game-header', '#demo-strip', '.demo-controls']
+                    .map(sel => {
+                        const el = document.querySelector(sel);
+                        const r = el && el.getBoundingClientRect();
+                        return r && r.height > 0 ? r.bottom + 8 : 0;
+                    }));
+
+                const centrerSurAncre = () => Math.max(marge,
+                    Math.min(ancre.x - b.width / 2, window.innerWidth - b.width - marge));
+
+                // Zone protégée (la grille du jeu) : la bulle se pose AUTOUR,
+                // jamais dessus. Sans elle, l'explication du sudoku couvrait la
+                // ligne de chiffres sur laquelle porte le raisonnement.
+                const zr = rectProtege();
+                let pose = null;
+                if (zr) {
+                    const tient = (l, t) => l >= marge && l + b.width <= window.innerWidth - marge
+                        && t >= margeHaut && t + b.height <= window.innerHeight - marge;
+                    const essais = [
+                        { l: centrerSurAncre(), t: zr.top - b.height - 12, cote: false, dessous: false },
+                        { l: centrerSurAncre(), t: zr.bottom + 12, cote: false, dessous: true },
+                        { l: zr.right + 12, t: ancre.y - b.height / 2, cote: true },
+                        { l: zr.left - b.width - 12, t: ancre.y - b.height / 2, cote: true }
+                    ];
+                    pose = essais.find(e => tient(e.l, e.t)) || null;
+                }
+
+                if (!pose) {
+                    let top = ancre.y - b.height - 46;
+                    const dessous = top < margeHaut;
+                    if (dessous) top = ancre.y + 40;
+                    pose = { l: centrerSurAncre(), t: top, cote: false, dessous };
+                }
+
+                // La pointe vise l'ancre même quand la bulle a été ramenée
+                // dans la fenêtre, et bascule en haut quand la bulle est
+                // passée dessous — sinon elle désignait le vide. Posée SUR LE
+                // CÔTÉ, elle n'en porte pas : c'est la case cerclée qui
+                // désigne, une pointe horizontale ne montrerait rien.
+                const pointe = Math.max(14, Math.min(ancre.x - pose.l, b.width - 14));
+                bulle.style.setProperty('--bulle-pointe', `${Math.round(pointe)}px`);
+                bulle.classList.toggle('demo-bubble--cote', !!pose.cote);
+                bulle.classList.toggle('demo-bubble--dessous', !pose.cote && !!pose.dessous);
+                bulle.style.left = `${Math.round(pose.l)}px`;
+                bulle.style.top = `${Math.round(pose.t)}px`;
+            });
+        },
+
+        /**
+         * Déclare la zone que la bulle ne doit jamais recouvrir — la grille du
+         * jeu, typiquement. À appeler une fois, après le rendu du plateau.
+         *
+         * On accepte une LISTE d'éléments, et pas seulement un plateau unique :
+         * dans un exercice à propositions, ce qu'il ne faut pas cacher est
+         * l'énoncé ET les réponses, qui n'ont aucun ancêtre commun autre que
+         * toute la zone de jeu. C'est leur enveloppe qui est protégée.
+         */
+        protegerZone(cible) { zoneProtegee = cible || null; },
+
+        hideBubble() {
+            if (bulle) bulle.classList.remove('demo-bubble--on');
+            marquerCible(null);
+            finDeLecture = 0;
+        },
 
         /** Amène le pointeur au centre de l'élément et attend d'y être. */
         async moveTo(target, ms = DEMO_SPEED.move) {
             if (destroyed || !target) return false;
+            // Le robot ne part pas agir tant que son explication n'a pas eu le
+            // temps d'être lue : il patiente sur place, la bulle affichée.
+            const restant = finDeLecture - performance.now();
+            if (restant > 0 && !await attendre(restant)) return false;
             const { x, y } = centerOf(target);
             // Premier positionnement : sans transition, sinon le pointeur
             // traverse l'écran depuis son coin d'origine.
@@ -186,10 +783,7 @@ export function createDemoCursor() {
                 el.classList.add('demo-cursor--visible');
                 return wait(220);
             }
-            // La transition dure le temps RÉELLEMENT attendu : au ralenti, un
-            // pointeur qui arrive en 750 ms puis attend une seconde n'a pas
-            // ralenti, il s'est mis à saccader.
-            place(x, y, Math.round(ms / vitesse));
+            place(x, y, ms * facteurVitesse);
             return wait(ms);
         },
 
@@ -231,7 +825,7 @@ export function createDemoCursor() {
             ghost.style.height = `${r.height}px`;
             ghost.style.left = `${r.left}px`;
             ghost.style.top = `${r.top}px`;
-            ghost.style.setProperty('transition-duration', `${Math.round(ms / vitesse)}ms`, 'important');
+            ghost.style.setProperty('transition-duration', `${ms * facteurVitesse}ms`, 'important');
             document.body.appendChild(ghost);
             source.classList.add('drag-source');
 
@@ -243,7 +837,7 @@ export function createDemoCursor() {
             ghost.style.left = `${to.x - r.width / 2}px`;
             ghost.style.top = `${to.y - r.height / 2}px`;
             target.classList.add('compare-slot--hover');
-            place(to.x, to.y, Math.round(ms / vitesse));
+            place(to.x, to.y, ms * facteurVitesse);
 
             if (!await wait(ms + 120)) return false;
 
@@ -254,15 +848,65 @@ export function createDemoCursor() {
             return !destroyed;
         },
 
-        /** Pause de lecture, interruptible comme le reste. */
-        pause(ms = DEMO_SPEED.settle) { return wait(ms); },
+        /**
+         * Pause de lecture, interruptible comme le reste. Elle ne peut pas
+         * s'achever avant que la bulle affichée ait eu le temps d'être lue :
+         * c'est ce qui allonge automatiquement les explications longues.
+         */
+        pause(ms = DEMO_SPEED.settle) {
+            const restant = finDeLecture - performance.now();
+            return attendre(Math.max(ms * facteurVitesse, restant));
+        },
+
+        /**
+         * COUPER COURT À CE QU'ON ATTEND — c'est « Un pas ».
+         *
+         * Le robot passe l'essentiel de son temps à laisser lire sa phrase. Ce
+         * temps-là n'est pas un tour de parole qu'on pourrait libérer : c'est un
+         * minuteur. On le termine donc d'autorité, et le robot enchaîne.
+         *
+         * @returns {boolean} vrai si quelque chose attendait vraiment
+         */
+        hater() {
+            if (!pending.size) return false;
+            [...pending].forEach(done => done(!destroyed));
+            return true;
+        },
 
         destroy() {
             destroyed = true;
-            [...pending].forEach(a => a.fin(false));
+            curseursVivants.delete(api);
+            if (curseurParlant === api) curseurParlant = null;
+            marquerCible(null);
+            pending.forEach(done => done(false));
             pending.clear();
             if (ghost) { ghost.remove(); ghost = null; }
+            if (bulle) { bulle.remove(); bulle = null; }
             el.remove();
         }
     };
+
+    /** L'enveloppe des éléments protégés, ou null s'il n'y en a aucun de vivant. */
+    function rectProtege() {
+        const liste = (Array.isArray(zoneProtegee) ? zoneProtegee : [zoneProtegee])
+            .filter(e => e && e.getBoundingClientRect && document.contains(e));
+        let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity;
+        for (const e of liste) {
+            const q = e.getBoundingClientRect();
+            if (!q.width && !q.height) continue;   // élément replié : il ne cache rien
+            l = Math.min(l, q.left); t = Math.min(t, q.top);
+            r = Math.max(r, q.right); b = Math.max(b, q.bottom);
+        }
+        return l === Infinity ? null : { left: l, top: t, right: r, bottom: b };
+    }
+
+    // La position courante du pointeur, pour ancrer la bulle quand aucun
+    // élément cible n'est fourni.
+    function positionActuelle() {
+        const r = el.getBoundingClientRect();
+        return { x: r.left, y: r.top };
+    }
+
+    curseursVivants.add(api);
+    return api;
 }

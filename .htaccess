@@ -1,0 +1,67 @@
+# CE QUI N'EST PAS DU SITE NE DOIT PAS ÊTRE SERVI PAR LE SITE.
+#
+# Rémy : « j'ai connecté mon ovh avec git. Qu'est-ce que cela va changer ? »
+#
+# CELA CHANGE CE QUI ARRIVE DANS `www/`, ET C'EST TOUT LE SUJET DE CE FICHIER.
+#
+# Le transfert SFTP que nous avions écrit ne monte que ce qu'un navigateur
+# télécharge : 543 fichiers, filtrés par `.deployignore`. Un déploiement git,
+# lui, ne connaît pas ce fichier — il pose LE DÉPÔT, c'est-à-dire 794 fichiers.
+# Les 251 de différence sont les tests, les outils de mesure, les notes, les
+# imports de travail. Rien de secret, mais rien qui ait sa place en ligne : du
+# poids, et surtout de la surface offerte.
+#
+# ET SURTOUT `.git/`. Si l'hébergeur clonait le dépôt DANS le dossier servi,
+# l'historique complet devient téléchargeable à l'adresse du site. Sur un dépôt
+# public, ce n'est qu'un doublon ; sur un dépôt PRIVÉ — ce que Rémy s'apprête à
+# faire — c'est la fuite intégrale du code source, et de tous ses états passés.
+# C'est une négligence classique, et elle se scanne en masse : des robots
+# demandent `/.git/config` à longueur de journée, précisément pour trouver ça.
+#
+# CE FICHIER PROTÈGE DANS LES DEUX CAS. Avec le transfert SFTP, ces dossiers ne
+# montent pas : les règles ne servent à rien, et ne coûtent rien. Avec un
+# déploiement git, elles sont la seule chose qui les referme. Une protection qui
+# ne dépend pas de la façon dont on publie est une protection qui tient.
+
+# --- L'historique du dépôt, et les fichiers de travail de git ---------------
+RedirectMatch 404 ^/(.*/)?\.git(/|$)
+RedirectMatch 404 ^/(.*/)?\.github(/|$)
+
+# 404 ET NON 403, ET C'EST DÉLIBÉRÉ. Un 403 confirme que le fichier existe —
+# « il y a bien un .git ici, mais on me le refuse ». Un 404 ne dit rien. Pour
+# les dossiers du site (api/, lib/) le 403 est le bon choix : personne n'a de
+# doute sur leur existence. Pour ce qui ne devrait pas être là, autant ne rien
+# répondre du tout.
+
+# --- Ce qui sert à DÉVELOPPER, jamais à jouer -------------------------------
+RedirectMatch 404 ^/(tests|tools|outils|imports|docs|node_modules|\.claude)(/|$)
+
+# --- Les fichiers de racine qui n'appartiennent pas au site -----------------
+<FilesMatch "^(package(-lock)?\.json|\.deployignore|\.gitignore|\.gitattributes|AtoutMath\.command|.*\.mjs)$">
+    Require all denied
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# --- `.well-known` RESTE OUVERT, et il ne faut surtout pas l'oublier --------
+#
+# C'est par là que passe le renouvellement du certificat HTTPS (Let's Encrypt
+# dépose un jeton dans `.well-known/acme-challenge/`). Une règle qui refuserait
+# tous les dossiers commençant par un point emporterait celui-là avec les
+# autres — et le site perdrait son certificat quatre-vingt-dix jours plus tard,
+# sans que personne ne fasse le lien avec un `.htaccess` écrit un mardi de
+# septembre. C'est pourquoi les règles ci-dessus nomment ce qu'elles refusent
+# au lieu de refuser tout ce qui commence par un point. Il n'y a donc AUCUNE
+# règle à écrire pour `.well-known` : elle serait le meilleur moyen de casser
+# ce qu'on croit protéger.
+
+# --- Les en-têtes qui ne coûtent rien ---------------------------------------
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set Referrer-Policy "same-origin"
+</IfModule>
+
+# Pas de listage de dossier : sans index, on ne montre pas le contenu.
+Options -Indexes

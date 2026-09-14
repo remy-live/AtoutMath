@@ -64,6 +64,35 @@ export function countCorrect(events) {
     return n;
 }
 
+/**
+ * Compteurs d'exploits : ce qu'il faut savoir pour décerner les médailles.
+ *
+ * Rassemblés en une seule passe plutôt que calculés badge par badge : le
+ * journal peut compter des dizaines de milliers d'événements, et le moteur de
+ * médailles est appelé à chaque réponse.
+ *
+ * `serie` est la plus longue suite de bonnes réponses consécutives — la seule
+ * mesure qui distingue « répond juste la moitié du temps » de « ne se trompe
+ * plus ». `rapides` ne compte que les réponses justes obtenues en moins de
+ * trois secondes : la vitesse sans la justesse ne vaut rien.
+ */
+export function computeExploits(events) {
+    const jours = new Set(), exercices = new Set();
+    let rapides = 0, serie = 0, courante = 0;
+    for (const e of events) {
+        if (e.type !== A.ATTEMPT) continue;
+        const p = e.payload;
+        jours.add(new Date(e.ts).toISOString().slice(0, 10));
+        if (p.exerciseId) exercices.add(p.exerciseId);
+        if (p.correct) {
+            courante++;
+            if (courante > serie) serie = courante;
+            if (p.msElapsed > 0 && p.msElapsed < 3000) rapides++;
+        } else courante = 0;
+    }
+    return { jours: jours.size, exercices: exercices.size, rapides, serie };
+}
+
 // Clé d'identité d'une question, pour regrouper les erreurs répétées sur le
 // même item et savoir laquelle a été corrigée.
 export function errorKeyOf(p) {
@@ -182,6 +211,25 @@ export function latestFinishedRun(events, pathId = null) {
 }
 
 /** Parcours actuellement assigné à l'élève (dernier PATH_ASSIGNED gagne). */
+/**
+ * LES ÉTAPES SOUS CLÉ ACTUELLEMENT OUVERTES — { sel du verrou : fin }.
+ *
+ * On garde l'ouverture la plus LONGUE pour un même verrou, jamais la dernière :
+ * un élève qui retape la clé en fin d'heure ne doit pas raccourcir ce qui lui
+ * restait, ni le rallonger. `null` veut dire sans limite.
+ */
+export function computeVerrousOuverts(events) {
+    const out = {};
+    for (const e of events) {
+        if (e.type !== A.VERROU_OUVERT || !e.payload || !e.payload.sel) continue;
+        const { sel, jusqua = null } = e.payload;
+        if (!Object.prototype.hasOwnProperty.call(out, sel)) { out[sel] = jusqua; continue; }
+        if (out[sel] === null || jusqua === null) { out[sel] = null; continue; }
+        out[sel] = Math.max(out[sel], jusqua);
+    }
+    return out;
+}
+
 export function computeAssignedPath(events) {
     let assigned = null;
     for (const e of events) {
@@ -190,10 +238,25 @@ export function computeAssignedPath(events) {
     if (!assigned) return null;
 
     const done = new Set();
+    // Le DÉTAIL de chaque étape, pas seulement « faite » : les jeux de
+    // récompense s'ouvrent sur un TAUX de réussite, et « terminée » ne dit pas
+    // à quel point. On garde le meilleur passage de chaque étape — un élève
+    // qui recommence pour se rattraper doit voir son rattrapage compter.
+    const resultats = {};
     for (const e of events) {
-        if (e.type === A.STEP_COMPLETED && e.payload.pathId === assigned.pathId) {
-            done.add(e.payload.stepId);
+        if (e.type !== A.STEP_COMPLETED || e.payload.pathId !== assigned.pathId) continue;
+        const { stepId, solved = 0, required = 1, questions = 0, passed } = e.payload;
+        // `passed` absent = l'ancien marqueur « étape validée », émis par
+        // state.markStudentPathStepCompleted et seulement quand elle l'est.
+        // Seul un `passed: false` explicite — le runner sur un échec — ne
+        // valide pas l'étape.
+        if (passed !== false) done.add(stepId);
+        const ancien = resultats[stepId];
+        const posees = Math.max(1, questions || required);
+        const taux = solved / posees;
+        if (!ancien || taux > ancien.solved / Math.max(1, ancien.questions || ancien.required)) {
+            resultats[stepId] = { solved, required, questions: posees, passed: !!passed };
         }
     }
-    return { ...assigned, completed: [...done] };
+    return { ...assigned, completed: [...done], resultats };
 }

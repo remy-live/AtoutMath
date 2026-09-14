@@ -12,8 +12,7 @@
 import { regTimeout } from '../timers.js';
 import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
-import { createDemoCursor, DEMO_SPEED } from '../demoPointer.js';
-import { creerNarrateur } from '../demoNarration.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { OPS_GARAM } from '../generators/garam.js';
 
 const VERIFICATIONS_PAR_GRILLE = 3;
@@ -33,7 +32,6 @@ function casesDe(eq) {
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let cursor = null;
-    let narrateur = null;
 
     let item = null;
     let valeurs = [];   // par indice de case ; VIDE = -1 (0 est une valeur !)
@@ -52,9 +50,19 @@ export function mount(container, session, opts = {}) {
         valeurs = givens.map(v => (v === null ? VIDE : v));
         verrous = givens.map(v => v !== null);
 
+        // Les deux cases d'un résultat double s'ACCOLENT VERTICALEMENT, comme
+        // sur les fiches : le résultat d'une verticale s'écrit de haut en bas,
+        // dizaines puis unités, et les deux cases doivent se lire comme un
+        // seul nombre.
+        const dizaines = new Set(), unites = new Set();
+        structure.equations.forEach(eq => {
+            if (eq.z2 !== undefined) { dizaines.add(eq.z); unites.add(eq.z2); }
+        });
+
         const cellsHtml = structure.cells.map((pos, i) => {
             const donnee = verrous[i];
-            return `<div class="kk-cell ga-cell ${donnee ? 'kk-given' : ''}" role="button"
+            const accole = dizaines.has(i) ? ' ga-cell--diz' : (unites.has(i) ? ' ga-cell--uni' : '');
+            return `<div class="kk-cell ga-cell${accole} ${donnee ? 'kk-given' : ''}" role="button"
                  tabindex="${donnee ? -1 : 0}" data-i="${i}"
                  style="grid-row:${pos.r + 1}; grid-column:${pos.c + 1};"
                  aria-label="Case ${i + 1}">
@@ -64,6 +72,22 @@ export function mount(container, session, opts = {}) {
         const signesHtml = structure.signes.map(sg =>
             `<span class="ga-signe" style="grid-row:${sg.r + 1}; grid-column:${sg.c + 1};">${sg.glyphe}</span>`);
 
+        // Le treillis authentique est COMPACT : les pistes qui ne portent que
+        // des SIGNES sont deux fois plus étroites que celles des cases. La
+        // règle vaut dans les deux sens — la rangée des unités d'un résultat
+        // vertical est collée à celle des dizaines, sans rangée de signes
+        // entre elles, donc à hauteur pleine bien que de rang impair.
+        const piste = (n, occupe) => Array.from({ length: n }, (_, i) => occupe(i) ? '1fr' : '0.5fr');
+        const colW = piste(structure.cols, c => structure.cells.some(p => p.c === c));
+        const rowH = piste(structure.rows, r => structure.cells.some(p => p.r === r));
+        const somme = (arr) => arr.reduce((s, v) => s + parseFloat(v), 0);
+        // `--ga-unites` = la largeur du plateau en « pistes de case ». Les
+        // chiffres s'y accrochent : sur un Garam géant, une taille de police
+        // calée sur la hauteur du CONTENEUR débordait des cases de 19 px.
+        const gabarit = `--ga-ratio:${(somme(colW) / somme(rowH)).toFixed(3)};`
+            + `--ga-unites:${somme(colW).toFixed(1)};`
+            + `grid-template-columns:${colW.join(' ')};grid-template-rows:${rowH.join(' ')};`;
+
         const jetons = [];
         for (let v = 0; v <= 9; v++) jetons.push(`<button type="button" class="kk-chip ga-chip" data-chip="${v}">${v}</button>`);
         jetons.push(`<button type="button" class="kk-chip ga-chip kk-chip--gomme" data-chip=""
@@ -72,7 +96,7 @@ export function mount(container, session, opts = {}) {
         container.innerHTML = `
             <div class="kenken-layout">
                 <div class="kenken-context">${item.prompt.html}</div>
-                <div class="ga-board" style="--ga-rows:${structure.rows}; --ga-cols:${structure.cols};"
+                <div class="ga-board" style="${gabarit}"
                      role="group" aria-label="Treillis de Garam">
                     ${cellsHtml.join('')}${signesHtml.join('')}
                 </div>
@@ -264,87 +288,82 @@ export function mount(container, session, opts = {}) {
         el.className = `kk-status${ton ? ` kk-status--${ton}` : ''}`;
     }
 
-    // --- Le raisonnement du robot ---------------------------------------------
-    //
-    // Le Garam se résout par les égalités auxquelles il ne manque qu'une case :
-    // le robot cherche celle-là, écrit l'égalité avec son trou, puis la
-    // complète. C'est exactement le geste qu'on demande à l'élève.
-
-    /** L'égalité, telle qu'on la lirait à voix haute. */
-    function ecrire(eq) {
-        const v = (i) => (valeurs[i] === VIDE ? '?' : valeurs[i]);
-        const droite = eq.z2 !== undefined ? `${v(eq.z)}${v(eq.z2)}` : `${v(eq.z)}`;
-        return `${v(eq.a)} ${OPS_GARAM[eq.op].symbole} ${v(eq.b)} = ${droite}`;
-    }
-
-    /** Le prochain coup et sa raison, vérifiée contre la solution. */
-    function prochainCoup() {
-        const { structure, solution } = item.meta;
-        const candidates = structure.equations
-            .map(eq => ({ eq, vides: casesDe(eq).filter(i => valeurs[i] === VIDE) }))
-            .filter(x => x.vides.length === 1);
-
-        if (candidates.length) {
-            const { eq, vides } = candidates[0];
-            const i = vides[0];
-            return {
-                i, valeur: solution[i], eq,
-                phrase: `Il ne manque qu'une case à cette égalité : ${ecrire(eq)}. Donc ${solution[i]}.`
-            };
-        }
-
-        const i = valeurs.findIndex(v => v === VIDE);
-        if (i < 0) return null;
-        const eq = item.meta.structure.equations.find(e => casesDe(e).includes(i)) || null;
-        return {
-            i, valeur: solution[i], eq,
-            phrase: eq
-                ? `Deux cases manquent encore ici (${ecrire(eq)}) : je pars de ${solution[i]}, que les autres égalités confirment.`
-                : `Je place ${solution[i]}.`
-        };
-    }
-
-    const COUPS_COMMENTES = 4;
-
+    // Le robot résout COMME ON RÉSOUT UN GARAM : il cherche une égalité où il
+    // ne manque qu'une case, dit le calcul qui la donne, la remplit — et
+    // chaque case posée en débloque d'autres. Pause et pas-à-pas compris.
     async function runDemo() {
+        const { structure, solution } = item.meta;
         if (!cursor) cursor = createDemoCursor();
-        if (session.narration && !narrateur) narrateur = creerNarrateur();
-        const plateau = container.querySelector('.ga-board');
+        // La bulle se pose AUTOUR de la grille, jamais dessus : elle
+        // couvrait la ligne de chiffres sur laquelle porte l'explication.
+        cursor.protegerZone(container.querySelector('.ga-board, .kk-board'));
+        const gate = createDemoGate(container.querySelector('.kk-actions') || container);
+        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
 
-        if (narrateur && !await narrateur.dire(`La règle : ${item.explanation}`, plateau)) return;
-        if (!await cursor.pause(narrateur ? 200 : 600) || destroyed) return;
-
-        for (let k = 0; ; k++) {
-            const coup = prochainCoup();
-            if (!coup) break;
-            const el = celluleEl(coup.i);
-            if (!el) break;
-            const commente = narrateur && k < COUPS_COMMENTES;
-
-            if (commente) {
-                if (coup.eq) casesDe(coup.eq).forEach(j => celluleEl(j).classList.add('kk-cage--indice'));
-                if (!await narrateur.dire(coup.phrase, el)) { eteindreDemo(); return; }
+        const lit = (i) => (valeurs[i] === VIDE ? '?' : valeurs[i]);
+        const cibleDe = () => {
+            // L'égalité résoluble : une seule case vide parmi les siennes.
+            for (const eq of structure.equations) {
+                const vides = casesDe(eq).filter(i => valeurs[i] === VIDE);
+                if (vides.length === 1) return { eq, idx: vides[0] };
             }
-            if (!await cursor.tap(el, commente ? 320 : 200) || destroyed) { eteindreDemo(); return; }
-            valeurs[coup.i] = coup.valeur;
-            el.querySelector('.kk-val').textContent = coup.valeur;
+            // Un résultat vertical peut manquer TOUT ENTIER — ses deux
+            // chiffres à la fois. Les deux opérandes suffisent : on pose les
+            // dizaines, puis les unités. C'est ce que fait un élève, et sans
+            // ce cas le robot sautait ces cases sans un mot.
+            for (const eq of structure.equations) {
+                if (eq.z2 === undefined) continue;
+                if (valeurs[eq.a] === VIDE || valeurs[eq.b] === VIDE) continue;
+                if (valeurs[eq.z] === VIDE) return { eq, idx: eq.z };
+                if (valeurs[eq.z2] === VIDE) return { eq, idx: eq.z2 };
+            }
+            return null;
+        };
+        const phraseDe = (eq, idx) => {
+            const sym = OPS_GARAM[eq.op].symbole;
+            const double = eq.z2 !== undefined;
+            const cible = double ? `${lit(eq.z)}${lit(eq.z2)}` : `${lit(eq.z)}`;
+            const v = solution[idx];
+            if (idx === eq.a) return `? ${sym} ${lit(eq.b)} = ${cible} : je cherche le nombre de départ → ${v}.`;
+            if (idx === eq.b) return `${lit(eq.a)} ${sym} ? = ${cible} : je remonte le calcul → ${v}.`;
+            const T = double ? 10 * solution[eq.z] + solution[eq.z2] : solution[eq.z];
+            if (double && idx === eq.z) return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ${T} : ça dépasse dix, donc les DIZAINES vont dans la case du dessus → ${v}.`;
+            if (double) return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ${T} : les UNITÉS vont juste en dessous → ${v}.`;
+            return `${lit(eq.a)} ${sym} ${lit(eq.b)} = ? : je calcule → ${v}.`;
+        };
+
+        if (!await cursor.pause(600) || destroyed) return fin();
+        cursor.say('Je cherche une égalité où il ne manque qu\'UNE case : elle se calcule à coup sûr.',
+            container.querySelector('.ga-board'));
+        if (!await cursor.pause(2000) || destroyed) return fin();
+
+        let prochaine;
+        while ((prochaine = cibleDe())) {
+            if (!await gate.waitTurn() || destroyed) return fin();
+            const { eq, idx } = prochaine;
+            const el = celluleEl(idx);
+            if (!el) return fin();
+            cursor.say(phraseDe(eq, idx), el);
+            if (!await cursor.pause(2100) || destroyed) return fin();
+            if (!await cursor.tap(el, 320) || destroyed) return fin();
+            valeurs[idx] = solution[idx];
+            el.querySelector('.kk-val').textContent = solution[idx];
             el.classList.add('demo-target');
-            eteindreDemo();
-
-            if (narrateur && k === COUPS_COMMENTES - 1
-                && !await narrateur.dire('Les autres égalités se complètent de la même façon.', plateau)) return;
         }
-
-        plateau.classList.add('kk-board--ok');
-        if (narrateur) {
-            if (!await narrateur.dire('Toutes les égalités sont justes.', plateau)) return;
-        } else if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        // Filet : si une case restait (jamais en théorie), on la pose sans bruit.
+        for (let i = 0; i < valeurs.length; i++) {
+            if (valeurs[i] !== VIDE) continue;
+            const el = celluleEl(i);
+            if (!el || !await cursor.tap(el, 300) || destroyed) return fin();
+            valeurs[i] = solution[i];
+            el.querySelector('.kk-val').textContent = solution[i];
+        }
+        cursor.say('Toutes les égalités sont vraies : le Garam est terminé !',
+            container.querySelector('.ga-board'));
+        container.querySelector('.ga-board').classList.add('kk-board--ok');
+        if (!await cursor.pause(DEMO_SPEED.between + 600) || destroyed) return fin();
+        fin();
         renderNext();
-    }
-
-    function eteindreDemo() {
-        container.querySelectorAll('.kk-cage--indice')
-            .forEach(el => el.classList.remove('kk-cage--indice'));
     }
 
     renderNext();
@@ -355,7 +374,6 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }
-            if (narrateur) { narrateur.detruire(); narrateur = null; }
             container.innerHTML = '';
             session.finish();
         }

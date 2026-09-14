@@ -1,0 +1,277 @@
+// Le quadrilatère qui se transforme : une propriété est une contrainte.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import './helpers.mjs';
+import '../js/core/activities/index.js';
+import { makeRng } from '../js/core/ids.js';
+import { getExerciseById } from '../js/data/catalog.js';
+import { FAMILLES } from '../js/core/quadrilateres.js';
+import {
+    PROPRIETES, PALIERS, CADRE, proprieteDe, caracteresDe, familleApres, familleDeCaracteres,
+    nommerFigure, poserFigure, figureDeDepart, ecarts, genererDefi, poser, cheminDe
+} from '../js/core/quadriMorph.js';
+import { figureSvg, legendeDuCodage } from '../js/games/quadriMorph.js';
+
+const ids = PROPRIETES.map(p => p.id);
+
+/** Toutes les combinaisons de zéro, une ou deux propriétés. */
+const combinaisons = () => {
+    const out = [[]];
+    ids.forEach((a, i) => {
+        out.push([a]);
+        ids.slice(i + 1).forEach(b => out.push([a, b]));
+    });
+    return out;
+};
+
+test('LA FIGURE OBTENUE EST VRAIMENT CELLE QU\'ON ANNONCE', () => {
+    // C'EST LE TEST QUI PORTE TOUT L'EXERCICE. La question posée à l'élève est
+    // « que va devenir la figure ? » : si le solveur s'arrêtait à mi-chemin —
+    // un parallélogramme dont les côtés font encore quatorze degrés d'écart, un
+    // rectangle dont l'angle n'est droit qu'à deux degrés près —, la bonne
+    // réponse serait fausse, et l'élève aurait raison contre le logiciel.
+    // On relit donc CHAQUE figure produite, pour chaque combinaison possible.
+    const depart = figureDeDepart(makeRng('portant'));
+    let vues = 0;
+    for (const lot of combinaisons()) {
+        const P = poserFigure(depart, lot);
+        assert.equal(nommerFigure(P), familleApres(lot),
+            `${lot.join(' + ') || '(rien)'} : la figure dessinée n'est pas celle annoncée`);
+        vues++;
+    }
+    assert.ok(vues >= 28, `trop peu de combinaisons éprouvées : ${vues}`);
+});
+
+test('LA FIGURE NE TRICHE PAS : elle est le cas GÉNÉRIQUE de sa famille', () => {
+    // Un losange qui aurait « l'air » carré rendrait la question injuste :
+    // l'élève répondrait « carré » et il aurait raison de le répondre. Le
+    // solveur repousse donc tout ce qu'on ne lui a pas demandé, et l'écart doit
+    // se VOIR — pas seulement dépasser la tolérance de lecture.
+    const depart = figureDeDepart(makeRng('generique'));
+    const cas = [
+        { lot: ['quatreCotesEgaux'], loin: 'droit', mot: 'un losange ne doit pas avoir l\'air carré' },
+        { lot: ['opposesParalleles', 'unAngleDroit'], loin: 'egaux', mot: 'un rectangle n\'est pas un carré' },
+        { lot: ['opposesParalleles'], loin: 'droit', mot: 'un parallélogramme n\'a pas d\'angle droit' },
+        { lot: [], loin: 'par1', mot: 'le quadrilatère quelconque n\'a aucune paire parallèle' },
+        { lot: [], loin: 'par2', mot: 'ni la seconde paire — le trapèze n\'est pas au programme' }
+    ];
+    cas.forEach(({ lot, loin, mot }) => {
+        const e = ecarts(poserFigure(depart, lot));
+        // 0,12 de sinus fait sept degrés, 0,06 de longueur fait six unités sur
+        // cent : au-delà, l'œil tranche sans hésiter.
+        const seuil = loin === 'egaux' ? 0.06 : 0.12;
+        assert.ok(Math.abs(e[loin]) > seuil, `${mot} (écart ${e[loin].toFixed(3)})`);
+    });
+});
+
+test('LA FIGURE RESTE DESSINABLE — aucun quadrilatère aplati', () => {
+    // Sans garde-fou, la façon la moins coûteuse de rendre deux côtés
+    // parallèles est de les faire disparaître : le solveur écrasait la figure
+    // jusqu'au segment, et l'élève regardait un trait.
+    const depart = figureDeDepart(makeRng('plat'));
+    for (const lot of combinaisons()) {
+        const P = poserFigure(depart, lot);
+        P.forEach(([x, y]) => {
+            assert.ok(Number.isFinite(x) && Number.isFinite(y), `${lot} : point invalide`);
+            assert.ok(x >= 0 && x <= CADRE && y >= 0 && y <= CADRE, `${lot} : hors cadre`);
+        });
+        const cotes = P.map((p, i) => {
+            const q = P[(i + 1) % 4];
+            return Math.hypot(q[0] - p[0], q[1] - p[1]);
+        });
+        assert.ok(Math.min(...cotes) > 14, `${lot} : un côté de ${Math.min(...cotes).toFixed(1)}`);
+    }
+});
+
+test('L\'ORDRE DE POSE NE CHANGE PAS LA FIGURE FINALE', () => {
+    // La géométrie ne se souvient pas de la chronologie : « diagonales
+    // perpendiculaires » puis « côtés opposés parallèles » doit donner un
+    // losange, exactement comme l'ordre inverse.
+    ids.forEach((a, i) => ids.slice(i + 1).forEach(b => {
+        assert.equal(familleApres([a, b]), familleApres([b, a]), `${a} / ${b}`);
+    }));
+});
+
+test('CE QUI NE DIT RIEN TOUT SEUL LE DIT DANS UN PARALLÉLOGRAMME', () => {
+    // C'est la découverte du chapitre, et l'exercice est fait pour elle.
+    assert.equal(familleApres(['diagonalesPerpendiculaires']), 'quadrilatere');
+    assert.equal(familleApres(['opposesParalleles', 'diagonalesPerpendiculaires']), 'losange');
+    assert.equal(familleApres(['diagonalesEgales']), 'quadrilatere');
+    assert.equal(familleApres(['opposesParalleles', 'diagonalesEgales']), 'rectangle');
+    // Un angle droit tout seul ne fait rien non plus : il faut le parallélogramme.
+    assert.equal(familleApres(['unAngleDroit']), 'quadrilatere');
+    assert.equal(familleApres(['opposesParalleles', 'unAngleDroit']), 'rectangle');
+    // Et l'exercice le DIT, au lieu de laisser croire que le clic a raté.
+    ['diagonalesEgales', 'diagonalesPerpendiculaires'].forEach(id =>
+        assert.ok(proprieteDe(id).seule.length > 40, id));
+});
+
+test('TROIS CHEMINS MÈNENT AU PARALLÉLOGRAMME, et c\'est un théorème', () => {
+    ['opposesParalleles', 'cotesOpposesEgaux', 'diagonalesMilieu'].forEach(id =>
+        assert.equal(familleApres([id]), 'parallelogramme', id));
+    // Les deux qui ne vont pas de soi portent leur mot d'étonnement.
+    ['cotesOpposesEgaux', 'diagonalesMilieu'].forEach(id =>
+        assert.ok(proprieteDe(id).surprise.length > 40, id));
+});
+
+test('AUCUNE IMPASSE : toute combinaison a une figure', () => {
+    // Toutes les vignettes sont des propriétés « en plus », et le carré les
+    // vérifie toutes : l'élève ne peut jamais se coincer, quoi qu'il pose.
+    const depart = figureDeDepart(makeRng('impasse'));
+    const P = poserFigure(depart, ids);
+    assert.equal(nommerFigure(P), 'carre', 'toutes les propriétés ensemble font le carré');
+    // Et la famille ne remonte JAMAIS : une contrainte de plus ne peut que
+    // rétrécir. C'est le sens même de l'arbre.
+    const rang = (f) => FAMILLES.find(x => x.id === f).rang;
+    let etat = { posees: [], points: depart, famille: 'quadrilatere' };
+    for (const id of ids) {
+        const suite = poser(etat, id);
+        assert.ok(rang(suite.famille) >= rang(etat.famille),
+            `${id} : la famille est remontée de ${etat.famille} à ${suite.famille}`);
+        etat = { ...etat, ...suite };
+    }
+});
+
+test('le quadrilatère de départ n\'a VRAIMENT rien de particulier', () => {
+    // Tiré au hasard, il tombait une fois sur cinq sur deux côtés presque
+    // parallèles — et l'élève le croyait déjà rangé avant d'avoir rien posé.
+    for (let i = 0; i < 25; i++) {
+        const P = figureDeDepart(makeRng('depart' + i));
+        assert.equal(nommerFigure(P), 'quadrilatere', `graine ${i}`);
+        const e = ecarts(P);
+        assert.ok(Math.abs(e.par1) > 0.1 && Math.abs(e.par2) > 0.1, `graine ${i} : trop parallèle`);
+    }
+});
+
+test('le chemin dans l\'arbre suit ce qu\'on a posé', () => {
+    assert.deepEqual(cheminDe([]), ['quadrilatere']);
+    assert.deepEqual(cheminDe(['opposesParalleles']), ['quadrilatere', 'parallelogramme']);
+    assert.deepEqual(cheminDe(['quatreCotesEgaux', 'unAngleDroit']),
+        ['quadrilatere', 'losange', 'carre']);
+    // Une propriété qui ne change rien n'ajoute pas de case : on ne descend
+    // pas deux fois la même marche.
+    assert.deepEqual(cheminDe(['opposesParalleles', 'cotesOpposesEgaux']),
+        ['quadrilatere', 'parallelogramme']);
+});
+
+test('poser une propriété déjà vraie le DIT au lieu de ne rien faire', () => {
+    const depart = figureDeDepart(makeRng('deja'));
+    const apres = poser({ posees: ['quatreCotesEgaux'], points: poserFigure(depart, ['quatreCotesEgaux']), famille: 'losange' },
+        'opposesParalleles');
+    assert.equal(apres.famille, 'losange');
+    assert.equal(apres.nouveau, false);
+    assert.match(apres.mot, /DÉJÀ/);
+});
+
+test('chaque palier offre des vignettes qui existent, et de quoi descendre', () => {
+    for (const [nom, P] of Object.entries(PALIERS)) {
+        assert.ok(P.cartes.length >= 4, nom);
+        P.cartes.forEach(id => assert.ok(proprieteDe(id), `${nom} : vignette inconnue ${id}`));
+        assert.ok(P.poses >= 1 && P.poses <= P.cartes.length, nom);
+        const defi = genererDefi({ rng: makeRng(nom), palier: nom });
+        // Les vignettes déjà posées au départ ne sont pas offertes : les
+        // reposer ne dirait que « c'était déjà vrai ».
+        assert.equal(defi.cartes.length, P.cartes.length - defi.deja.length, nom);
+        assert.ok(defi.cartes.length >= 3, `${nom} : il reste trop peu à poser`);
+    }
+});
+
+test('ON NE PART PAS TOUJOURS DU QUADRILATÈRE QUELCONQUE', () => {
+    // Rémy : « ce serait bien de pas forcément partir du quadrilatère ». Le
+    // palier des diagonales le réclamait sans qu'on le voie : des diagonales
+    // perpendiculaires dans un quadrilatère quelconque ne donnent rien du
+    // cours, et l'élève qui commence toujours de zéro répondait
+    // « quadrilatère » trois fois de suite.
+    for (const [nom, P] of Object.entries(PALIERS)) {
+        for (let i = 0; i < 12; i++) {
+            const defi = genererDefi({ rng: makeRng(`${nom}-${i}`), palier: nom });
+            // LA FIGURE DE DÉPART EST VRAIMENT CE QU'ON ANNONCE : c'est elle
+            // qu'on montre nommée à l'élève avant qu'il pose quoi que ce soit.
+            assert.equal(nommerFigure(defi.depart), defi.famille, `${nom} ${i}`);
+            assert.equal(defi.famille, familleApres(defi.deja), `${nom} ${i}`);
+            assert.deepEqual(defi.posees, defi.deja, `${nom} ${i}`);
+        }
+    }
+    // Le premier palier, lui, part TOUJOURS de zéro : c'est là qu'on découvre
+    // qu'une propriété rétrécit une famille, et il faut la plus large.
+    assert.deepEqual(PALIERS.decouverte.departs, [[]]);
+    // Les autres proposent au moins un départ déjà rangé.
+    ['chemin', 'diagonales', 'tout'].forEach(nom =>
+        assert.ok(PALIERS[nom].departs.some(d => d.length), nom));
+});
+
+test('la même graine redonne la même figure', () => {
+    const a = genererDefi({ rng: makeRng('pareil'), palier: 'chemin' });
+    const b = genererDefi({ rng: makeRng('pareil'), palier: 'chemin' });
+    assert.deepEqual(a.depart, b.depart);
+    assert.deepEqual(a.cartes, b.cartes);
+});
+
+test('LE TRAPÈZE A DISPARU, et les cinq familles restent atteignables', () => {
+    // Rémy : « enlève le trapèze, ce n'est pas au programme ». Sa vignette part
+    // avec lui : sans trapèze, « une seule paire parallèle » ne changerait plus
+    // la famille, et l'élève verrait la figure bouger sans que le nom bouge —
+    // exactement le contraire de ce que l'exercice enseigne.
+    assert.equal(ids.includes('unePaireParallele'), false);
+    assert.equal(familleDeCaracteres({ par1: true, par2: false, egaux: false, droit: false }),
+        'quadrilatere', 'une seule paire parallèle ne fait aucune figure du cours');
+    // Toute la hiérarchie du collège tient à quatre questions. Si l'une des cinq
+    // familles devenait inatteignable, l'arbre aurait un trou.
+    const atteintes = new Set();
+    [[], ['opposesParalleles'], ['opposesParalleles', 'unAngleDroit'],
+        ['quatreCotesEgaux'], ['quatreCotesEgaux', 'unAngleDroit']]
+        .forEach(lot => atteintes.add(familleApres(lot)));
+    assert.equal(atteintes.size, 5, 'les cinq familles doivent être atteignables');
+    FAMILLES.forEach(f => assert.ok(atteintes.has(f.id), `${f.id} est inatteignable`));
+    // Et les caractères se composent sans se contredire.
+    const c = caracteresDe(['quatreCotesEgaux', 'unAngleDroit']);
+    assert.deepEqual(c, { par1: true, par2: true, egaux: true, droit: true });
+    assert.equal(familleDeCaracteres(c), 'carre');
+});
+
+test('l\'exercice du catalogue tient debout', () => {
+    const exo = getExerciseById('geo-quadri-morph');
+    assert.ok(exo, 'l\'exercice doit être au catalogue');
+    assert.equal(exo.activityId, 'quadri-morph');
+    exo.paramSchema.find(p => p.id === 'palier').options.forEach(o => {
+        assert.ok(PALIERS[o.value], `palier inconnu : ${o.value}`);
+        assert.equal(o.label, PALIERS[o.value].label, `le libellé de ${o.value} a divergé du noyau`);
+    });
+});
+
+test('la légende n\'explique que les marques réellement dessinées', () => {
+    assert.equal(legendeDuCodage([]), '', 'aucune marque, aucune légende');
+    assert.match(legendeDuCodage(['opposesParalleles']), /parallèles/);
+    assert.equal(/angle droit/.test(legendeDuCodage(['opposesParalleles'])), false);
+    assert.match(legendeDuCodage(['unAngleDroit']), /angle droit/);
+    assert.match(legendeDuCodage(['diagonalesEgales']), /diagonales/);
+    assert.match(legendeDuCodage(['quatreCotesEgaux']), /même longueur/);
+});
+
+test('chaque vignette de diagonale pose SA marque, pas seulement les diagonales', () => {
+    // Deux traits pointillés disaient qu'il était question des diagonales, pas
+    // ce qu'on en exigeait : « égales », « même milieu » et « perpendiculaires »
+    // donnaient exactement le même dessin.
+    const P = figureDeDepart(makeRng('diag'));
+    const dessins = ['diagonalesEgales', 'diagonalesMilieu', 'diagonalesPerpendiculaires']
+        .map(id => figureSvg(P, [id]));
+    assert.equal(new Set(dessins).size, 3, 'les trois marques doivent différer');
+    dessins.forEach(d => assert.match(d, /#9467bd/));
+});
+
+test('LA FIGURE SE DÉFORME AU DÉPÔT, ET LE NOM NE SE LIT PAS SUR LE DESSIN', () => {
+    // Rémy : « quand tu transformes la figure fais-le dès que l'on dépose. Et
+    // il faut alors deviner. » La question porte donc sur la figure OBTENUE :
+    // c'est son codage qu'il faut savoir lire, et rien dans le SVG ne doit
+    // écrire le nom de la famille.
+    const depart = figureDeDepart(makeRng('nommer'));
+    const etat = { posees: [], points: depart, famille: 'quadrilatere' };
+    const suite = poser(etat, 'quatreCotesEgaux');
+    assert.equal(suite.famille, 'losange');
+    const svg = figureSvg(suite.points, suite.posees);
+    ['Losange', 'losange', 'Carré', 'Parallélogramme'].forEach(mot =>
+        assert.equal(svg.includes(mot), false, `le dessin ne doit pas écrire « ${mot} »`));
+    // Mais il porte de quoi le trouver : quatre côtés marqués égaux.
+    assert.equal((svg.match(/#d62728/g) || []).length, 4, 'les quatre traits d\'égalité');
+});

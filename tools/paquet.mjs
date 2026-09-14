@@ -1,0 +1,202 @@
+#!/usr/bin/env node
+// LE PAQUET À TRANSFÉRER — un zip, et rien de plus.
+//
+// Rémy : « Pourras-tu me préparer un zip que je transfère directement ? »
+//
+// Oui. Le circuit GitHub → SFTP reste la bonne façon de vivre au long cours ;
+// ce paquet-ci est pour le premier jour, et pour les jours où l'on veut poser
+// le site à la main sans dépendre de rien.
+//
+// LA LISTE DES FICHIERS VIENT DE GIT, ET C'EST LA SÉCURITÉ DE TOUT LE RESTE.
+// On n'énumère pas le dossier : on prend `git ls-files`, c'est-à-dire ce que le
+// dépôt suit. Or `api/config.php` (la clé de chiffrement) et `api/data/` (la
+// base, donc le travail des classes) sont dans `.gitignore` — ils ne PEUVENT
+// donc pas se retrouver dans le paquet. Un balayage du disque, lui, les
+// emporterait le jour où l'on prépare un paquet depuis une machine où le site
+// tourne. Ce n'est pas une précaution théorique : c'est le fichier que l'on
+// enverrait par courriel sans y penser.
+//
+// Puis on retire ce que `.deployignore` retire déjà de la publication : tests,
+// outils de mesure, notes, dépendances de développement. Le serveur ne reçoit
+// que ce qu'un navigateur télécharge — c'est du poids en moins, et surtout de
+// la surface exposée en moins.
+//
+// LES FICHIERS SONT À LA RACINE DU ZIP, sans dossier qui les enveloppe. C'est
+// délibéré : on ouvre l'archive, on sélectionne tout, on dépose dans `www/`.
+// Un dossier enveloppant donnerait `www/AtoutMath/index.html`, et le site
+// répondrait 404 sans qu'on comprenne pourquoi.
+//
+// LE PAQUET DE MISE À JOUR, QUAND L'ARCHIVE COMPLÈTE EST TROP LOURDE.
+//
+// Rémy : « je transfère tout via filezilla c'est ça ? »
+//
+// Non — et `--depuis` est ce qui permet de répondre non. Un hébergement
+// mutualisé plafonne souvent l'envoi par le navigateur à deux mégaoctets ;
+// l'archive complète en fait plus du double, d'où le détour par un client FTP
+// pour UN fichier. Un paquet qui ne contient que ce qui a changé depuis la
+// version installée passe, lui, sans détour : `deposer.php` remplace les
+// fichiers du même nom et laisse les autres en place, c'est exactement ce
+// qu'il faut.
+//
+// DEUX RÉSERVES, ÉCRITES ICI PARCE QU'ELLES NE SE DEVINENT PAS :
+//   · un paquet différentiel NE SERT PAS à une première installation — il n'y
+//     a rien à compléter. L'outil le dit à l'écran ;
+//   · il ne peut pas exprimer une SUPPRESSION. Un fichier renommé laisse
+//     l'ancien en place sur le serveur. Sans gravité — plus rien ne le
+//     réclame — mais il faut le savoir plutôt que de le découvrir.
+//
+// USAGE
+//   node tools/paquet.mjs                  → tools/tmp/atoutmath-vNNN.zip
+//   node tools/paquet.mjs --depuis=<commit> → seulement ce qui a changé depuis
+//   node tools/paquet.mjs --depuis=<commit> --avec=a,b → et ces fichiers-là en plus,
+//                                            même s'ils n'ont pas changé
+//   node tools/paquet.mjs --sortie=/chemin/mon.zip
+
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const RACINE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+const args = process.argv.slice(2);
+const valeur = (nom) => {
+    const p = args.find(a => a.startsWith(`--${nom}=`));
+    return p ? p.slice(nom.length + 3) : '';
+};
+
+// --- Ce qu'on emporte
+
+const suivis = execFileSync('git', ['ls-files', '-z'], { cwd: RACINE })
+    .toString('utf8').split('\0').filter(Boolean);
+
+// `.deployignore` liste des chemins et des dossiers, un par ligne, `#` en
+// commentaire. On applique la même règle que le transfert SFTP, pour que le
+// paquet et la publication automatique déposent EXACTEMENT la même chose : deux
+// chemins qui divergent, c'est un jour où l'on corrige un bogue qui n'existe
+// que sur l'un des deux.
+const exclus = fs.readFileSync(path.join(RACINE, '.deployignore'), 'utf8')
+    .split('\n').map(l => l.trim())
+    .filter(l => l && !l.startsWith('#'));
+
+const garde = (f) => !exclus.some(e => f === e || f.startsWith(e + '/'));
+let fichiers = suivis.filter(garde);
+
+// --- Ce qui a changé depuis une version donnée, s'il en est question
+const depuis = valeur('depuis');
+if (depuis) {
+    const changes = new Set(
+        execFileSync('git', ['diff', '--name-only', '-z', depuis, 'HEAD'], { cwd: RACINE })
+            .toString('utf8').split('\0').filter(Boolean)
+    );
+    // On garde AUSSI les fichiers non suivis à l'époque et ajoutés depuis :
+    // `git diff` les liste, mais seuls ceux qui existent encore nous
+    // intéressent — un fichier supprimé n'a rien à faire dans une archive.
+    fichiers = fichiers.filter(f => changes.has(f));
+
+    // UN FICHIER QUI N'A PAS CHANGÉ MAIS QUI N'EST JAMAIS ARRIVÉ.
+    //
+    // Le cas est arrivé, et il n'est pas rare : le `.htaccess` de la racine
+    // manquait sur le site de Rémy — son rapport le disait « NON » — parce que
+    // FileZilla saute les fichiers cachés sans le dire. Il n'avait pas changé
+    // depuis sa version, donc aucun paquet différentiel ne le lui aurait
+    // apporté ; et `deposer.php`, lui, ne saute rien.
+    //
+    //   node tools/paquet.mjs --depuis=<commit> --avec=.htaccess,api/.htaccess
+    //
+    // On ne le fait PAS tout seul : un différentiel qui emporterait
+    // silencieusement autre chose que ce qui a changé ne serait plus un
+    // différentiel, et l'on ne saurait plus ce qu'on dépose.
+    const avec = valeur('avec').split(',').map(x => x.trim()).filter(Boolean);
+    for (const f of avec) {
+        if (!suivis.includes(f)) {
+            console.error(`\n  « ${f} » n'est pas suivi par git : rien à emporter.`);
+            process.exit(1);
+        }
+        if (!fichiers.includes(f)) fichiers.push(f);
+    }
+
+    if (!fichiers.length) {
+        console.error(`Rien n'a changé depuis ${depuis}.`);
+        process.exit(1);
+    }
+}
+
+// --- Une dernière barrière, et elle est volontairement bête.
+//
+// Les deux règles ci-dessus suffisent. Celle-ci existe parce que le jour où
+// l'une des deux se casse — un `.gitignore` mal repris, un `.deployignore`
+// renommé — on ne s'en apercevrait qu'après avoir envoyé la clé de chiffrement
+// à quelqu'un. Le prix d'un test redondant est nul ; le prix de son absence,
+// non.
+const interdits = fichiers.filter(f =>
+    f === 'api/config.php' || f.startsWith('api/data/') ||
+    /\.(sqlite|sqlite-wal|sqlite-shm|db|sql)$/.test(f));
+if (interdits.length) {
+    console.error("ARRÊT — ces fichiers ne doivent jamais quitter le serveur :\n  "
+        + interdits.join('\n  '));
+    process.exit(1);
+}
+
+// --- LE FICHIER ÉCRIT MAIS PAS ENCORE AJOUTÉ À GIT.
+//
+// Prendre la liste dans git est ce qui garantit qu'aucun secret ne part ; c'est
+// aussi ce qui fait qu'un fichier tout neuf, écrit il y a dix minutes et pas
+// encore ajouté, N'EST PAS DANS LE PAQUET. Le piège est parfait : on corrige,
+// on fabrique le zip, on transfère, et le correctif n'y est pas. Mesuré en
+// fabriquant ce paquet même — `api/lib/liste.php` manquait à l'appel.
+//
+// On ne devine pas à sa place : on le dit, et l'on refuse.
+const oublies = execFileSync('git', ['ls-files', '-z', '--others', '--exclude-standard'],
+    { cwd: RACINE }).toString('utf8').split('\0').filter(Boolean).filter(garde);
+if (oublies.length && !args.includes('--tel-quel')) {
+    console.error("ARRÊT — ces fichiers existent mais ne sont pas suivis par git,");
+    console.error("        et ne seraient donc PAS dans le paquet :\n  "
+        + oublies.join('\n  '));
+    console.error("\n  Ajoutez-les (git add), ou passez --tel-quel pour les ignorer sciemment.");
+    process.exit(1);
+}
+
+// --- Le numéro de version, lu là où il est écrit
+
+const version = (fs.readFileSync(path.join(RACINE, 'index.html'), 'utf8')
+    .match(/\?v=(\d+)/) || [])[1] || 'x';
+
+const sortie = path.resolve(valeur('sortie')
+    || path.join(RACINE, 'tools', 'tmp',
+        depuis ? `atoutmath-maj-v${version}.zip` : `atoutmath-v${version}.zip`));
+fs.mkdirSync(path.dirname(sortie), { recursive: true });
+fs.rmSync(sortie, { force: true });
+
+// `-X` : pas d'attributs propres à cette machine dans l'archive. `-@` : la
+// liste des fichiers arrive par l'entrée standard, ce qui évite une ligne de
+// commande de 783 noms — et les ennuis de guillemets qui vont avec.
+execFileSync('zip', ['-q', '-X', '-9', sortie, '-@'], {
+    cwd: RACINE,
+    input: fichiers.join('\n'),
+});
+
+const taille = fs.statSync(sortie).size;
+const ko = (taille / 1024).toFixed(0);
+
+console.log('');
+console.log(`  ${path.basename(sortie)}`);
+console.log(`  ${fichiers.length} fichiers · ${ko} Ko · version ${version}`);
+console.log(`  ${sortie}`);
+console.log('');
+if (depuis) {
+    console.log(`  MISE À JOUR SEULE : ce qui a changé depuis ${depuis}.`);
+    console.log('  Elle complète une installation existante — elle ne suffit PAS');
+    console.log('  à en créer une, et elle ne supprime aucun fichier.');
+    console.log('');
+    console.log('  À FAIRE : ouvrir https://votre-site/deposer.php et l\'envoyer.');
+} else {
+    console.log('  Ce qui est dedans : le site, l\'API, l\'administration, l\'installateur.');
+    console.log('  Ce qui n\'y est pas : la configuration, la base, les tests, les outils.');
+    console.log('');
+    console.log('  À FAIRE, DANS CET ORDRE :');
+    console.log('   1. décompresser, tout sélectionner, déposer dans www/ ;');
+    console.log('   2. ouvrir https://votre-site/api/install.php — TOUT DE SUITE ;');
+    console.log('   3. ouvrir https://votre-site/api/admin/sante.php.');
+}
+console.log('');

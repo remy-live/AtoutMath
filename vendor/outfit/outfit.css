@@ -1,0 +1,11 @@
+/* La police Outfit, servie avec l'application.
+   Elle venait de Google Fonts : derrière le filtre d'un établissement, la
+   requête échoue et toute l'application change de tête. Six graisses, en
+   woff2 latin, c'est 120 Ko — le prix d'une page qui a toujours le même
+   visage, réseau ou pas. */
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 300; font-display: swap; src: url('./outfit-latin-300-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 400; font-display: swap; src: url('./outfit-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 500; font-display: swap; src: url('./outfit-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 600; font-display: swap; src: url('./outfit-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 700; font-display: swap; src: url('./outfit-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 800; font-display: swap; src: url('./outfit-latin-800-normal.woff2') format('woff2'); }

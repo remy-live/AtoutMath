@@ -16,10 +16,12 @@
 import { journal } from './journal.js';
 import { globalStore } from './store.js';
 import { getActiveProfile, getDeviceId, attachRemote, getActiveProfileId } from './profile.js';
+import { appliquerEtat } from './seanceDistante.js';
 
 const CONFIG_KEY = 'syncConfig';
 const PUSH_DEBOUNCE_MS = 8000;
 const PERIODIC_MS = 5 * 60 * 1000;
+const SEANCE_MS = 20 * 1000;
 
 let config = { apiUrl: '', enabled: false };
 let pushTimer = null;
@@ -50,7 +52,19 @@ export async function initSync() {
     window.addEventListener('online', () => syncNow({ silent: true }));
     setInterval(() => syncNow({ silent: true }), PERIODIC_MS);
 
+    // L'ÉTAT DE SÉANCE SE DEMANDE PLUS SOUVENT QUE LE JOURNAL NE S'ENVOIE.
+    // Cinq minutes, c'est le bon rythme pour des événements — c'est beaucoup
+    // trop long pour un « arrêtez tout, on corrige au tableau ». Une requête
+    // par élève toutes les vingt secondes, c'est une lecture indexée : pour
+    // trente élèves, moins de deux requêtes par seconde sur l'heure entière.
+    setInterval(rafraichirSeance, SEANCE_MS);
+    // Et au retour sur l'onglet : c'est le moment où l'élève relève la tête.
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') rafraichirSeance();
+    });
+
     syncNow({ silent: true });
+    rafraichirSeance();
 }
 
 export function isActive() {
@@ -61,6 +75,39 @@ export function isActive() {
 function schedulePush() {
     if (!isActive() || pushTimer) return;
     pushTimer = setTimeout(() => { pushTimer = null; syncNow({ silent: true }); }, PUSH_DEBOUNCE_MS);
+}
+
+/**
+ * UN APPEL À L'API AVEC LE JETON DE L'ÉLÈVE.
+ *
+ * Exporté parce que l'état de séance a deux besoins que la synchro ne couvre
+ * pas : dire « j'ai lu ce mot », et redemander l'état tout de suite quand le
+ * professeur vient de verrouiller. Passer par ici plutôt que par un `fetch`
+ * ailleurs garde en un seul endroit l'adresse du serveur et le jeton.
+ */
+export async function apiEleve(chemin, corps) {
+    const profile = getActiveProfile();
+    if (!isActive()) throw new Error('Pas de classe rattachée.');
+    return api(chemin, corps, profile.remote.token);
+}
+
+/**
+ * L'ÉTAT DE SÉANCE, TOUT DE SUITE.
+ *
+ * La synchro le porte déjà, mais elle attend huit secondes après une réponse et
+ * ne part pas si le journal est vide. Quand le professeur verrouille sa classe
+ * au milieu de l'heure, il veut que ça se voie : on interroge donc la route
+ * dédiée, qui ne touche à rien et ne coûte qu'une lecture.
+ */
+export async function rafraichirSeance() {
+    if (!isActive() || !navigator.onLine) return null;
+    try {
+        const res = await apiEleve('/session', {});
+        return res && res.session ? appliquerEtat(res.session) : null;
+    } catch (err) {
+        console.info('[sync] état de séance indisponible :', err.message);
+        return null;
+    }
 }
 
 async function api(path, body, token) {
@@ -98,7 +145,41 @@ export async function joinClass({ apiUrl, classCode, firstName }) {
         className: data.className,
         lastSyncAt: null
     });
+    // Le verrou s'applique AVANT la première synchro : si la classe est déjà
+    // verrouillée, l'élève ne doit pas voir le catalogue le temps d'un aller-retour.
+    if (data.session) appliquerEtat(data.session);
     await syncNow({ silent: false });
+    return data;
+}
+
+/**
+ * SE CONNECTER AVEC SON IDENTIFIANT ET SON CODE — la liste du professeur.
+ *
+ * Rémy : « pour la connexion, fais aussi une connexion avec identifiant et code
+ * élève, je fournirai la liste. »
+ *
+ * DEUX CHAMPS, PAS TROIS : le code de la classe n'est pas demandé, l'identifiant
+ * suffit à retrouver l'élève. Et contrairement à `joinClass`, l'élève ne se
+ * DÉCLARE pas — il est reconnu. Le prénom vient du serveur, celui que le
+ * professeur a écrit sur sa liste.
+ */
+export async function loginEleve({ apiUrl, login, code }) {
+    await setSyncConfig({ apiUrl, enabled: true });
+    const data = await api('/login', {
+        login: String(login).trim(),
+        code: String(code).trim().toUpperCase(),
+        deviceId: getDeviceId()
+    });
+    await attachRemote(getActiveProfileId(), {
+        studentId: data.studentId,
+        token: data.token,
+        classCode: data.classCode,
+        className: data.className,
+        login: String(login).trim(),
+        lastSyncAt: null
+    });
+    if (data.session) appliquerEtat(data.session);
+    await syncNow({ silent: true });
     return data;
 }
 
@@ -129,6 +210,9 @@ export async function syncNow({ silent = false } = {}) {
         await journal.flush();
 
         await attachRemote(profile.id, { cursor: res.cursor, lastSyncAt: Date.now() });
+
+        // Ce que le professeur pilote : verrou, consigne, mots, déblocages.
+        if (res.session) appliquerEtat(res.session);
 
         if (res.assignments) {
             document.dispatchEvent(new CustomEvent('assignments_received', { detail: res.assignments }));

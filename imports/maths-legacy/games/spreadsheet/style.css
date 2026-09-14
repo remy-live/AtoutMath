@@ -1,0 +1,132 @@
+/* games/spreadsheet/style.css */
+
+.sp-game {
+    font-family: 'Segoe UI', sans-serif;
+    text-align: center;
+    user-select: none;
+    padding: 10px;
+    color: #333;
+    position: relative; /* Pour le debug btn */
+}
+
+/* MENU NIVEAUX */
+.sp-menu {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 15px;
+}
+
+.sp-level-btn {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 15px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.8em;
+    opacity: 0.7;
+    transition: 0.2s;
+}
+.sp-level-btn.active { background-color: #007bff; transform: scale(1.1); opacity: 1; box-shadow: 0 0 8px rgba(0,123,255,0.4); }
+
+/* BARRE DE PROGRESSION (5 réussites) */
+.sp-progress-bar {
+    width: 200px;
+    height: 10px;
+    background: #e9ecef;
+    border-radius: 5px;
+    margin: 0 auto 15px auto;
+    overflow: hidden;
+}
+.sp-progress-fill {
+    height: 100%;
+    background: #28a745;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* CONTENEUR JEU */
+.sp-container {
+    display: inline-block;
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+}
+
+.sp-consigne {
+    font-size: 1.1em; margin-bottom: 20px;
+    color: #333; background: #eef;
+    padding: 10px; border-radius: 6px;
+    border-left: 4px solid #007bff;
+    text-align: left;
+    min-width: 300px;
+}
+.target { font-weight: bold; color: #d63384; font-family: monospace; }
+.code { font-family: monospace; background: #eee; padding: 2px 4px; border-radius: 3px; border: 1px solid #ccc; color: #d63384; font-weight: bold; font-size: 0.9em;}
+
+/* GRILLE - PLUS PETITE ET CARRÉE */
+.sp-grid {
+    display: grid;
+    width: fit-content;
+    /* 30px pour les entêtes, 40px pour les cases */
+    grid-template-columns: 30px repeat(5, 40px);
+    gap: 1px; background-color: #ccc; border: 1px solid #999;
+    margin: 0 auto;
+}
+
+.sp-cell {
+    background-color: white; height: 40px; /* Carré 40x40 */
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; position: relative;
+    box-sizing: border-box;
+}
+.sp-header { 
+    background-color: #f0f0f0; font-weight: bold; color: #666; font-size: 11px;
+}
+/* Entêtes de lignes (A, B, C...) moins larges */
+.sp-cell.sp-header:first-child { width: 30px; } 
+
+/* INPUTS */
+.sp-cell input {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border: none; padding-left: 2px; text-align: center;
+    font-family: 'Consolas', monospace; font-size: 12px;
+    outline: none; background: transparent; z-index: 10;
+}
+.sp-cell input:focus {
+    z-index: 100; background-color: white; border: 2px solid #007bff;
+}
+
+/* ETATS VISUELS */
+.read-only-input { background-color: #f8f9fa !important; color: #555; cursor: default; font-weight: bold;}
+.valid-input { color: #155724; font-weight: bold; background-color: #d4edda !important; }
+.invalid-input { color: #721c24; background-color: #f8d7da !important; }
+.selected-zone { background-color: #cce5ff !important; }
+.hover-effect:hover { background-color: #e2e6ea; cursor: pointer; }
+
+/* PALETTE */
+.sp-palette-box { display: none; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 10px; }
+.sp-palette { display: flex; gap: 8px; }
+.color-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #eee; cursor: pointer; }
+.color-btn.selected { border-color: #333; transform: scale(1.2); }
+
+.c-red { background-color: #ff6b6b; } .c-blue { background-color: #4dabf7; } 
+.c-green { background-color: #51cf66; } .c-yellow { background-color: #fcc419; } 
+.c-black { background-color: #333; } .c-white { background-color: white; }
+
+#dual-grid-container { display: none; gap: 15px; justify-content: center; margin-top: 15px; flex-wrap: wrap;}
+
+/* BOUTON DEBUG INVISIBLE */
+#sp-debug-btn {
+    position: fixed;
+    bottom: 0; left: 0;
+    width: 30px; height: 30px;
+    background: transparent;
+    z-index: 9999;
+    cursor: default;
+}
+#sp-debug-btn:active { background: red; opacity: 0.5; } /* Feedback visuel quand on clique */

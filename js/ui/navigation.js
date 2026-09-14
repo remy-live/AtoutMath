@@ -1,7 +1,38 @@
-import { exercices, domaines, filterByStatus, statusOf, STATUS, STATUS_LABELS } from '../data/catalog.js';
+import { exercices, domaines, filterByStatus, statusOf, estADeux, STATUS, STATUS_LABELS } from '../data/catalog.js';
+import { TAGS } from '../data/tags.js';
 import { clearEngines } from '../core/timers.js';
+import { destroyAllDemoCursors } from '../core/demoPointer.js';
+import { accessOf, lockLabel, isGame } from '../core/gameAccess.js';
 import { state } from '../core/state.js';
 import { launchPreview, openGameLayer } from '../games/engine.js';
+import { correspond } from '../core/recherche.js';
+import { estJeuCatalogue } from '../core/revue.js';
+import { cheminsDe, modeRangement, setModeRangement, RANGEMENTS, HORS_CHAPITRE } from '../core/rangement.js';
+import { ficheDe } from './rechercheUI.js';
+
+// L'APERÇU AU SURVOL, ET SA MISE À MORT.
+//
+// `clearEngines()` ne coupe que les minuteurs déclarés par `regInterval` — les
+// jeux historiques ouvrent les leurs directement, et y survivaient. On quittait
+// une carte, la vignette se cachait, mais la course continuait de rafraîchir un
+// tableau de bord que la vignette suivante venait d'effacer : une erreur par
+// seconde dans la console, jusqu'au rechargement de la page.
+//
+// On garde donc l'instance et on la DÉTRUIT. Le jeton règle le cas de celui qui
+// passe vite : quand l'aperçu finit de monter alors que la souris est déjà
+// repartie, il est détruit à l'arrivée au lieu de rester en fond.
+let apercuSurvol = null;
+let jetonSurvol = 0;
+
+function couperApercuSurvol() {
+    jetonSurvol++;
+    const h = apercuSurvol;
+    apercuSurvol = null;
+    if (h && typeof h.destroy === 'function') {
+        try { h.destroy(); } catch (e) { /* déjà démonté */ }
+    }
+    clearEngines();
+}
 
 export function createLibraryItem(exo) {
     const item = document.createElement('div');
@@ -9,9 +40,46 @@ export function createLibraryItem(exo) {
     item.style.display = 'flex';
     item.style.justifyContent = 'space-between';
     item.style.alignItems = 'center';
+    item.style.gap = '6px';
+
+    // Œil d'aperçu : sur un écran tactile, il n'y a ni survol ni appui long
+    // fiable — ce bouton est le seul moyen de voir l'exercice avant de
+    // l'ajouter au parcours.
+    const btnEye = document.createElement('button');
+    btnEye.className = 'teacher-only exo-item-eye';
+    btnEye.title = `Aperçu de ${exo.title}`;
+    btnEye.setAttribute('aria-label', `Aperçu de ${exo.title}`);
+    btnEye.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    btnEye.onclick = (e) => {
+        e.stopPropagation();
+        if (!state.isTeacherMode) return;
+        couperApercuSurvol();
+        document.getElementById('hover-demo-box').style.display = 'none';
+        openGameLayer(exo, true);
+    };
+    item.appendChild(btnEye);
+
+    // UN CADEAU SUR LES JEUX. Rémy : « si c'est un jeu récompense, dans la
+    // liste des exercices que l'on drag, on voit un cadeau ». Un jeu du
+    // catalogue — une activité sans générateur, donc rien à corriger — est le
+    // seul candidat à devenir une récompense de fin de parcours ; le professeur
+    // doit pouvoir les repérer dans une liste de deux cents lignes sans les
+    // ouvrir un par un.
+    if (estJeuCatalogue(exo)) {
+        const cadeau = document.createElement('span');
+        cadeau.className = 'nav-item-cadeau';
+        cadeau.textContent = '🎁';
+        cadeau.title = 'Un jeu : il peut servir de récompense dans un parcours.';
+        cadeau.setAttribute('aria-hidden', 'true');
+        item.appendChild(cadeau);
+    }
 
     const titleSpan = document.createElement('span');
     titleSpan.textContent = exo.title;
+    titleSpan.style.flex = '1';
+    titleSpan.style.minWidth = '0';
     item.appendChild(titleSpan);
 
     const btnAdd = document.createElement('button');
@@ -29,6 +97,9 @@ export function createLibraryItem(exo) {
         if (!state.isTeacherMode) return;
         // Une étape est une référence à l'exercice, pas une copie de celui-ci.
         import('./builder.js').then(module => module.addStep(exo.id));
+        // Sur téléphone, la colonne du parcours est hors de vue quand on
+        // parcourt le catalogue : sans ce retour, l'ajout semblait muet.
+        import('./modal.js').then(m => m.showToast(`« ${exo.title} » ajouté au parcours`, 'success'));
     };
     item.appendChild(btnAdd);
 
@@ -37,14 +108,20 @@ export function createLibraryItem(exo) {
     item.ondragstart = (e) => {
         if(!state.isTeacherMode) { e.preventDefault(); return; }
         e.dataTransfer.setData('text/plain', exo.id);
-        clearEngines(); document.getElementById('hover-demo-box').style.display = 'none';
+        couperApercuSurvol(); document.getElementById('hover-demo-box').style.display = 'none';
     };
 
-    // Pas d'aperçu au doigt depuis la bibliothèque : un appui d'une demi-seconde
+    // PAS D'APERÇU AU DOIGT DEPUIS LA BIBLIOTHÈQUE. Un appui d'une demi-seconde
     // — un doigt qui s'attarde, un défilement qui démarre avant que `touchmove`
     // ne parte — ouvrait l'aperçu plein écran sans que le professeur ait rien
     // demandé. Sur tablette, l'aperçu se demande dans la grille, par l'œil puis
-    // le bouton lecture de la carte.
+    // le bouton lecture de la carte. Le geste du doigt sert maintenant à autre
+    // chose, juste en dessous.
+    //
+    // Glisser-déposer AU DOIGT vers le parcours : l'API HTML5 ci-dessus ne
+    // fonctionne qu'à la souris. Sur tablette, on refait le geste avec les
+    // Pointer Events — fantôme sous le doigt, dépôt sur la colonne du milieu.
+    enableTouchDragToPath(item, () => import('./builder.js').then(m => m.addStep(exo.id)));
 
     item.onclick = () => {
         if(!state.isTeacherMode) {
@@ -82,18 +159,120 @@ export function createLibraryItem(exo) {
             hdBox.style.left = `${rect.right + 20}px`;
             hdBox.style.display = 'flex';
 
-            // Aperçu autonome dans la vignette : aucune donnée n'est enregistrée.
-            launchPreview(exo, document.getElementById('hover-demo-canvas'));
+            // Aperçu autonome dans la vignette : aucune donnée n'est
+            // enregistrée, et le robot joue en muet — ses bulles couvriraient
+            // la page entière.
+            const jeton = ++jetonSurvol;
+            launchPreview(exo, document.getElementById('hover-demo-canvas'), null, { muet: true })
+                .then(h => {
+                    if (jeton !== jetonSurvol) {
+                        if (h && typeof h.destroy === 'function') h.destroy();
+                        return;
+                    }
+                    apercuSurvol = h;
+                });
         }, 500);
     };
 
     item.onmouseleave = () => {
         clearTimeout(hoverTimer);
         document.getElementById('hover-demo-box').style.display = 'none';
-        clearEngines(); // Stoppe la démo en cours
+        couperApercuSurvol();     // détruit l'instance, pas seulement ses minuteurs déclarés
+        destroyAllDemoCursors();  // ... et balaie sa flèche et sa bulle
     };
 
     return item;
+}
+
+/**
+ * Glisser-déposer tactile d'un exercice vers la colonne du parcours.
+ *
+ * Un appui long (220 ms) arme le glissement — un doigt qui bouge tout de
+ * suite fait défiler la liste, comme d'habitude. Une fois armé, un fantôme
+ * suit le doigt et le dépôt sur la colonne du milieu ajoute l'étape.
+ */
+/**
+ * Glisser au doigt vers le parcours.
+ *
+ * @param {HTMLElement} item
+ * @param {Function} auDepot - ce qu'on ajoute une fois lâché sur la colonne.
+ *   Une fonction et non un exercice : le même geste sert à déposer un exercice
+ *   et à déposer un CHAPITRE ENTIER, et deux implémentations du même
+ *   glissement finiraient par ne plus se comporter pareil.
+ */
+function enableTouchDragToPath(item, auDepot) {
+    let armTimer = null;
+    let dragging = false;
+    let ghost = null;
+    let start = null;
+
+    const pathBox = () => document.getElementById('path-container');
+
+    const cleanup = () => {
+        clearTimeout(armTimer); armTimer = null;
+        dragging = false; start = null;
+        if (ghost) { ghost.remove(); ghost = null; }
+        const box = pathBox();
+        if (box) box.classList.remove('drag-over');
+        item.classList.remove('drag-source');
+    };
+
+    // `passive: false` obligatoire : c'est le `preventDefault()` sur touchmove
+    // qui empêche la liste de défiler PENDANT le glissement — et lui seul.
+    item.addEventListener('touchmove', (e) => {
+        if (dragging && e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    item.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' || !state.isTeacherMode) return;
+        start = { x: e.clientX, y: e.clientY };
+        armTimer = setTimeout(() => {
+            dragging = true;
+            item.classList.add('drag-source');
+            const r = item.getBoundingClientRect();
+            ghost = item.cloneNode(true);
+            ghost.classList.add('drag-ghost');
+            ghost.style.width = `${r.width}px`;
+            ghost.style.left = `${r.left}px`;
+            ghost.style.top = `${r.top}px`;
+            document.body.appendChild(ghost);
+            if (navigator.vibrate) navigator.vibrate(12);
+        }, 220);
+    });
+
+    item.addEventListener('pointermove', (e) => {
+        if (!start) return;
+        const dx = e.clientX - start.x, dy = e.clientY - start.y;
+        if (!dragging) {
+            // Le doigt est parti avant l'appui long : c'est un défilement.
+            if (Math.hypot(dx, dy) > 10) { clearTimeout(armTimer); start = null; }
+            return;
+        }
+        ghost.style.left = `${e.clientX - ghost.offsetWidth / 2}px`;
+        ghost.style.top = `${e.clientY - 24}px`;
+        const box = pathBox();
+        if (box) {
+            const r = box.getBoundingClientRect();
+            const over = e.clientX >= r.left && e.clientX <= r.right
+                && e.clientY >= r.top && e.clientY <= r.bottom;
+            box.classList.toggle('drag-over', over);
+        }
+    });
+
+    const finish = (e) => {
+        if (dragging) {
+            const box = pathBox();
+            if (box) {
+                const r = box.getBoundingClientRect();
+                const over = e.clientX >= r.left && e.clientX <= r.right
+                    && e.clientY >= r.top && e.clientY <= r.bottom;
+                if (over) auDepot();
+            }
+        }
+        cleanup();
+    };
+    item.addEventListener('pointerup', finish);
+    item.addEventListener('pointercancel', cleanup);
 }
 
 /**
@@ -108,11 +287,12 @@ function statusBadge(exo) {
     return `<span class="tag tag-btn tag-status tag-status--${s}">${STATUS_LABELS[s]}</span>`;
 }
 
+// Le catalogue se resserre avec EXACTEMENT la règle des suggestions : sans
+// accents, mot à mot, la consigne en dernier recours. Deux règles différentes
+// donneraient le spectacle absurde d'une suggestion visible au-dessus d'un
+// catalogue qui prétend n'avoir rien trouvé.
 function matchesSearch(exo, query) {
-    const q = (query || '').trim().toLowerCase();
-    if (!q) return true;
-    const haystack = [exo.title, ...(exo.tags.chemin || []), ...(exo.tags.niveaux || [])].join(' ').toLowerCase();
-    return haystack.includes(q);
+    return correspond(ficheDe(exo), query);
 }
 
 export function getFilteredExercises() {
@@ -125,41 +305,129 @@ export function getFilteredExercises() {
     if (state.selectedNiveaux && state.selectedNiveaux.length > 0) {
         list = list.filter(e => e.tags.niveaux && e.tags.niveaux.some(n => state.selectedNiveaux.includes(n)));
     }
+    if (state.aDeuxSeuls) {
+        list = list.filter(e => estADeux(e));
+    }
     if (state.searchQuery) {
         list = list.filter(e => matchesSearch(e, state.searchQuery));
     }
     return list;
 }
 
-export function initSidebarSearch() {
-    const input = document.getElementById('sidebar-search-input');
-    if (!input) return;
-    input.oninput = () => {
-        state.searchQuery = input.value;
-        initAccordion();
-        renderDrilldown();
-        initGridFilters();
-    };
+/** Ce que la recherche doit rafraîchir derrière elle, à chaque frappe. */
+export function refreshCatalogViews() {
+    initAccordion();
+    renderDrilldown();
+    initGridFilters();
 }
 
 // Un exercice "appartient" au noeud `path` si les premiers segments de son
 // chemin correspondent exactement à `path`. Selon la longueur de son chemin,
 // il est soit une feuille de ce noeud (chemin.length === path.length), soit
 // rangé dans un sous-dossier plus profond (chemin[path.length] donne son nom).
+// UN EXERCICE PEUT AVOIR PLUSIEURS CHEMINS. Rangé par domaine il n'en a qu'un,
+// mais rangé par chapitre il peut appartenir à deux chapitres — Pythagore aux
+// racines carrées et aux triangles rectangles. Les trois fonctions ci-dessous
+// raisonnent donc sur une liste de chemins : « au moins un de ses chemins
+// passe par ce dossier ».
 function matchesPath(exo, path) {
-    return path.every((v, i) => exo.tags.chemin[i] === v);
+    return cheminsDe(exo).some(ch => path.every((v, i) => ch[i] === v));
 }
 
 function getNodeLeaves(filtered, path) {
-    return filtered.filter(e => matchesPath(e, path) && e.tags.chemin.length === path.length);
+    return filtered.filter(e =>
+        cheminsDe(e).some(ch => ch.length === path.length && path.every((v, i) => ch[i] === v)));
 }
 
 function getNodeSubKeys(filtered, path) {
-    return [...new Set(
-        filtered
-            .filter(e => matchesPath(e, path) && e.tags.chemin.length > path.length)
-            .map(e => e.tags.chemin[path.length])
-    )].sort();
+    const clefs = new Set();
+    filtered.forEach(e => cheminsDe(e).forEach(ch => {
+        if (ch.length > path.length && path.every((v, i) => ch[i] === v)) clefs.add(ch[path.length]);
+    }));
+    // Deux exceptions à l'ordre alphabétique. Les NIVEAUX suivent la
+    // scolarité — CM2 avant la 6ᵉ, et non après la 4ᵉ comme le voudrait
+    // l'alphabet. Et « Hors chapitre » ferme la marche : c'est une corbeille à
+    // trier, pas un chapitre, elle n'a rien à faire entre « Fractions » et
+    // « Ordre ».
+    const rangNiveau = Object.values(TAGS.NIVEAU);
+    return [...clefs].sort((a, b) => {
+        if (a === HORS_CHAPITRE) return 1;
+        if (b === HORS_CHAPITRE) return -1;
+        const ia = rangNiveau.indexOf(a), ib = rangNiveau.indexOf(b);
+        if (ia !== -1 && ib !== -1) return ia - ib;
+        return a.localeCompare(b, 'fr');
+    });
+}
+
+/**
+ * La bascule « Domaines / Chapitres » au-dessus de l'arbre.
+ *
+ * Changer de rangement remet la navigation à la racine : le dossier ouvert
+ * — « Numérique › Calcul Mental » — n'existe pas dans l'autre rangement, et
+ * l'y laisser afficherait une grille vide sans dire pourquoi.
+ */
+export function initBasculeRangement() {
+    const boite = document.getElementById('rangement-bascule');
+    if (!boite) return;
+    const boutons = [...boite.querySelectorAll('.rang-btn')];
+
+    const peindre = () => {
+        const mode = modeRangement();
+        boutons.forEach(b => {
+            const actif = b.dataset.rangement === mode;
+            b.classList.toggle('active', actif);
+            b.setAttribute('aria-pressed', String(actif));
+        });
+    };
+
+    boutons.forEach(b => {
+        b.onclick = () => {
+            if (b.dataset.rangement === modeRangement()) return;
+            setModeRangement(b.dataset.rangement);
+            state.navStack = [];
+            peindre();
+            refreshCatalogViews();
+        };
+    });
+
+    // Le classement change dans l'écran des chapitres pendant que l'arbre est
+    // affiché derrière : il doit suivre, sans quoi le professeur croit que sa
+    // case n'a rien fait.
+    document.addEventListener('chapitres_updated', () => {
+        if (modeRangement() === RANGEMENTS.CHAPITRE) refreshCatalogViews();
+    });
+
+    peindre();
+}
+
+/**
+ * Les exercices d'un dossier, sous-dossiers compris, dans l'ordre du catalogue.
+ * C'est ce qu'on ajoute quand on lâche un chapitre entier sur le parcours.
+ */
+export function exercicesDuDossier(path) {
+    return getFilteredExercises().filter(e => matchesPath(e, path));
+}
+
+/**
+ * GLISSER UN CHAPITRE ENTIER DANS LE PARCOURS.
+ *
+ * « Je choisis mon chapitre, je le tire dans le parcours, et bam. » Le dossier
+ * porte l'information dans un type à part (`text/dossier`) : la colonne du
+ * milieu sait ainsi tout de suite qu'on lui donne un lot et non un exercice,
+ * et peut demander confirmation avant d'y verser vingt étapes.
+ */
+function rendreDossierDeposable(sommaire, path) {
+    sommaire.draggable = true;
+    sommaire.ondragstart = (e) => {
+        if (!state.isTeacherMode) { e.preventDefault(); return; }
+        // Sans cela, le navigateur remonte au parent et croit qu'on déplace
+        // l'exercice sélectionné à l'intérieur du dossier.
+        e.stopPropagation();
+        e.dataTransfer.setData('text/dossier', path.join(' > '));
+        e.dataTransfer.effectAllowed = 'copy';
+    };
+    enableTouchDragToPath(sommaire, () =>
+        import('./builder.js').then(m => m.ajouterLeDossier(path)));
 }
 
 export function initAccordion() {
@@ -188,11 +456,13 @@ export function initAccordion() {
             // Sur le clic, et non sur `toggle` : restaurer les dossiers ouverts
             // après un filtrage émet des `toggle` en série, qui feraient
             // dériver le dossier courant sans que personne n'ait rien demandé.
-            det.querySelector('summary').onclick = () => {
+            const sommaire = det.querySelector('summary');
+            sommaire.onclick = () => {
                 if (det.open) return;   // le clic précède l'ouverture
                 state.navStack = childPath.slice();
                 syncGridToSidebar();
             };
+            rendreDossierDeposable(sommaire, childPath);
             renderNode(det, childPath);
             container.appendChild(det);
         });
@@ -220,12 +490,34 @@ export function renderDrilldown() {
     const filtered = getFilteredExercises();
     const path = state.navStack;
 
+    // Une recherche montre les exercices EUX-MÊMES, à plat : on tape un nom
+    // pour le trouver, pas pour apprendre dans quel dossier il est rangé —
+    // sur téléphone, l'ancien comportement donnait un catalogue « vide ».
+    if (state.searchQuery && state.searchQuery.trim()) {
+        back.style.display = 'none';
+        bread.textContent = `${filtered.length} résultat${filtered.length > 1 ? 's' : ''}`;
+        filtered.forEach(exo => content.appendChild(createLibraryItem(exo)));
+        if (!filtered.length) {
+            content.innerHTML = '<div class="empty-state-msg">Aucun exercice ne correspond à cette recherche.</div>';
+        }
+        return;
+    }
+
     back.style.display = path.length === 0 ? 'none' : 'block';
-    bread.textContent = path.length === 0 ? 'Domaines' : path[path.length - 1];
+    // À la racine, le fil d'Ariane annonce le rangement en cours : « Domaines »
+    // au-dessus d'une liste de niveaux se lirait comme une erreur.
+    bread.textContent = path.length === 0
+        ? (modeRangement() === RANGEMENTS.CHAPITRE ? 'Chapitres' : 'Domaines')
+        : path[path.length - 1];
 
     getNodeSubKeys(filtered, path).forEach(key => {
         const b = document.createElement('button'); b.className = 'drill-item'; b.innerHTML = `<span>${key}</span><span>›</span>`;
         b.onclick = () => { state.navStack.push(key); renderDrilldown(); syncGridToSidebar(); };
+        // LE DOSSIER SE GLISSE ICI AUSSI. C'est même la vue par défaut — celle
+        // où l'on tombe en ouvrant l'application. N'avoir rendu déplaçables
+        // que les dossiers de l'arbre revenait à livrer le geste dans l'écran
+        // où personne ne le cherche.
+        rendreDossierDeposable(b, [...path, key]);
         content.appendChild(b);
     });
 
@@ -274,7 +566,8 @@ export function initGridFilters() {
         container.className = 'grid-container';
 
         dansLeDossier
-            .filter(exo => actifs.length === 0 || actifs.includes(exo.tags.chemin[path.length]))
+            .filter(exo => actifs.length === 0
+                || cheminsDe(exo).some(ch => actifs.includes(ch[path.length])))
             .forEach(exo => container.appendChild(createCard(exo)));
 
         main.appendChild(container);
@@ -301,7 +594,78 @@ export function initGridFilters() {
         fd.appendChild(eyeButton(renderCards));
     }
 
+    renderNiveauRow();
     renderCards();
+}
+
+/**
+ * La rangée des NIVEAUX.
+ *
+ * Le niveau est le premier tri de tout le monde — un professeur cherche « ce
+ * que je peux donner en 6e », un élève « ce qui est de mon année ». Il n'avait
+ * pourtant qu'un menu déroulant dans le panneau latéral, c'est-à-dire nulle
+ * part sur téléphone. Il prend sa propre rangée, à côté des domaines, et les
+ * deux se lisent de la même façon.
+ *
+ * Les niveaux proposés sont ceux qui EXISTENT dans le catalogue courant : une
+ * pastille « 3e » sur laquelle il n'y a rien à trouver serait un cul-de-sac.
+ */
+function renderNiveauRow() {
+    const fn = document.getElementById('filters-niveau');
+    if (!fn) return;
+    fn.innerHTML = '';
+
+    const dispo = [];
+    filterByStatus(exercices, { only: state.catalogFilter, teacher: state.isTeacherMode })
+        .forEach(e => (e.tags.niveaux || []).forEach(n => { if (!dispo.includes(n)) dispo.push(n); }));
+    // L'ordre du référentiel, pas l'ordre d'apparition dans le catalogue : on
+    // veut CP → CM2 → 6e → 5e, pas l'ordre dans lequel les fichiers ont été
+    // écrits.
+    const ordre = Object.values(TAGS.NIVEAU);
+    dispo.sort((a, b) => ordre.indexOf(a) - ordre.indexOf(b));
+
+    // La pastille « à deux » vit dans CETTE rangée, pas dans une troisième :
+    // elle ne concerne qu'une poignée d'exercices, et une ligne de tags de plus
+    // coûterait à tout le monde la place qu'elle ne rend qu'à eux.
+    const duos = filterByStatus(exercices, { only: state.catalogFilter, teacher: state.isTeacherMode })
+        .filter(e => estADeux(e)).length;
+
+    const ligne = document.getElementById('filter-row-niveau');
+    if (ligne) ligne.hidden = dispo.length < 2 && !duos;
+
+    dispo.forEach(n => {
+        const btn = document.createElement('button');
+        btn.className = 'tag-btn tag-niveau';
+        btn.textContent = n;
+        if (state.selectedNiveaux && state.selectedNiveaux.includes(n)) btn.classList.add('active');
+        btn.onclick = () => {
+            const sel = state.selectedNiveaux ? state.selectedNiveaux.slice() : [];
+            const i = sel.indexOf(n);
+            if (i >= 0) sel.splice(i, 1); else sel.push(n);
+            state.selectedNiveaux = sel;
+            // Le niveau filtre TOUT le catalogue : l'arbre de gauche et la
+            // grille de droite doivent repartir ensemble.
+            initAccordion();
+            renderDrilldown();
+            initGridFilters();
+        };
+        fn.appendChild(btn);
+    });
+
+    if (duos) {
+        const duo = document.createElement('button');
+        duo.className = 'tag-btn tag-duo';
+        duo.textContent = `👥 À deux (${duos})`;
+        duo.title = 'Ne montrer que les activités qui se jouent à deux sur le même écran';
+        if (state.aDeuxSeuls) duo.classList.add('active');
+        duo.onclick = () => {
+            state.aDeuxSeuls = !state.aDeuxSeuls;
+            initAccordion();
+            renderDrilldown();
+            initGridFilters();
+        };
+        fn.appendChild(duo);
+    }
 }
 
 /* --- Aperçus dans les cartes --------------------------------
@@ -325,6 +689,7 @@ function stopCardDemo(restaurer = true) {
         .forEach(b => b.classList.remove('card-preview--live'));
     if (en && en.handle && typeof en.handle.destroy === 'function') en.handle.destroy();
     clearEngines();
+    destroyAllDemoCursors();
     // La carte reprend son aperçu figé, sinon elle reste sur l'image où la
     // démonstration s'est arrêtée.
     if (restaurer && en && en.box && en.box.isConnected) mountFrozen(en.exo, en.box);
@@ -368,6 +733,18 @@ function createCard(exo) {
     card.className = 'card';
     const niveauxStr = exo.tags.niveaux ? exo.tags.niveaux.join(' - ') : '';
 
+    // Verrous du jeu libre : la carte reste visible — l'élève doit voir ce qui
+    // l'attend — mais elle annonce sa condition au lieu de se lancer.
+    const acces = state.isTeacherMode ? { status: 'libre' } : accessOf(exo);
+    if (acces.status !== 'libre') {
+        card.classList.add('card--locked');
+        const lock = document.createElement('div');
+        lock.className = 'card-lock';
+        lock.innerHTML = `<span class="card-lock-icon" aria-hidden="true">🔒</span>
+            <span class="card-lock-label">${lockLabel(acces)}</span>`;
+        card.appendChild(lock);
+    }
+
     const title = document.createElement('div');
     title.className = 'card-title';
     title.textContent = exo.title;
@@ -393,8 +770,13 @@ function createCard(exo) {
 
     const tags = document.createElement('div');
     tags.className = 'card-tags';
+    // La pastille « jeu » n'est pas une donnée du catalogue : elle se déduit
+    // de l'activité (autonome = jeu). Impossible d'oublier de la poser en
+    // ajoutant un jeu, ou de la laisser sur un exercice devenu classique.
     tags.innerHTML = `<span class="tag tag-btn tag-niveau">${niveauxStr}</span>
         <span class="tag tag-btn tag-domaine">${exo.tags.chemin[0]}</span>
+        ${isGame(exo) ? '<span class="tag tag-btn tag-jeu">🎮 jeu</span>' : ''}
+        ${estADeux(exo) ? '<span class="tag tag-btn tag-duo">👥 à deux</span>' : ''}
         ${statusBadge(exo)}`;
 
     if (state.previewsOn) {
@@ -482,10 +864,10 @@ function prepareStage(box, stage) {
     appliquerEchelle(stage, large, large / LARGEUR_REF);
 }
 
-function appliquerEchelle(stage, large, k) {
+function appliquerEchelle(stage, large, k, decalageY = 0) {
     stage.style.transformOrigin = 'top left';
     stage.style.transform =
-        `translateX(${Math.round((large - LARGEUR_REF * k) / 2)}px) scale(${k.toFixed(4)})`;
+        `translate(${Math.round((large - LARGEUR_REF * k) / 2)}px, ${Math.round(decalageY)}px) scale(${k.toFixed(4)})`;
 }
 
 // Largeur à laquelle la question est COMPOSÉE avant d'être réduite. Composer
@@ -514,11 +896,43 @@ function fitPreview(box, stage) {
 
     // `container-type: size` isole la hauteur du contenu : `scrollHeight`
     // renverrait celle du conteneur. On mesure donc les enfants eux-mêmes.
-    const haut0 = stage.getBoundingClientRect().top;
-    const bas = [...stage.children]
-        .reduce((m, el) => Math.max(m, el.getBoundingClientRect().bottom - haut0), 0);
+    //
+    // Et on mesure les DEUX bords, pas seulement le bas. Le contenu d'une
+    // activité est centré verticalement : plus haut que la scène, il déborde
+    // AUTANT par le haut que par le bas. En ne regardant que le bas, on
+    // sous-estimait la hauteur réelle de moitié — la vignette restait trop
+    // grande, et l'énoncé se retrouvait coupé au ras du cadre. On aligne
+    // ensuite le sommet du contenu sur celui de la vignette : ce qui dépasse
+    // dépasse en bas, là où c'est le décor, jamais sur la question.
+    const zero = stage.getBoundingClientRect().top;
+    // EN PROFONDEUR, pas seulement les enfants directs. Beaucoup d'activités
+    // posent un unique conteneur à la taille de la scène, et c'est SON contenu
+    // qui déborde : mesurée au premier niveau, la vignette paraissait tenir et
+    // on en voyait les deux tiers. Le parcours est borné (nombre de nœuds, et
+    // distance) pour rester bon marché et pour qu'une particule partie au loin
+    // ne réduise pas toute la vignette à un timbre.
+    const stageH = stage.getBoundingClientRect().height || haut;
+    let sommet = Infinity, bas = 0, budget = 400;
+    const visiter = (el) => {
+        for (const enfant of el.children) {
+            if (budget-- <= 0) return;
+            const r = enfant.getBoundingClientRect();
+            if (r.width >= 1 || r.height >= 1) {
+                const t = r.top - zero, b = r.bottom - zero;
+                if (b > -stageH * 2 && t < stageH * 3) {
+                    sommet = Math.min(sommet, t);
+                    bas = Math.max(bas, b);
+                }
+            }
+            if (enfant.children.length) visiter(enfant);
+        }
+    };
+    visiter(stage);
+    if (!isFinite(sommet)) sommet = 0;
+    const hauteurContenu = Math.max(bas - Math.min(sommet, 0), 1);
 
-    appliquerEchelle(stage, large, Math.min(large / LARGEUR_REF, haut / Math.max(bas, 1)));
+    const k = Math.min(large / LARGEUR_REF, haut / hauteurContenu);
+    appliquerEchelle(stage, large, k, Math.min(sommet, 0) * -k);
 }
 
 function startCardDemo(exo, box) {
@@ -529,7 +943,7 @@ function startCardDemo(exo, box) {
     const stage = box.querySelector('.card-preview-stage') || box;
     prepareStage(box, stage);
     box.classList.add('card-preview--live');
-    const p = launchPreview(exo, stage);
+    const p = launchPreview(exo, stage, null, { muet: true });
     const enregistre = (handle) => {
         // Une démonstration a pu être arrêtée pendant le chargement du module.
         if (jeton !== demoJeton || !box.isConnected) {
@@ -541,6 +955,18 @@ function startCardDemo(exo, box) {
     };
     if (p && p.then) p.then(enregistre); else enregistre(p);
 }
+
+// La grille se rafraîchit quand les verrous changent : réglage du professeur,
+// fin de séance (un jeu a pu se débloquer grâce aux réponses gagnées), ou
+// avancée du parcours — en mode « les jeux s'ouvrent quand le parcours est
+// fini », c'est l'étape validée qui ouvre la salle, et la carte doit cesser
+// d'annoncer « Finis ton parcours » à l'instant où il l'est.
+['gameAccess_updated', 'sequence_completed', 'studentPath_updated'].forEach(evt => {
+    document.addEventListener(evt, () => {
+        const wrapper = document.getElementById('main-wrapper');
+        if (wrapper && wrapper.style.display !== 'none' && !state.isTeacherMode) initGridFilters();
+    });
+});
 
 export function setSidebarMode(m) {
     ['drill', 'acc'].forEach(k => {
@@ -581,6 +1007,12 @@ export function setTopNavMode(m) {
     } else if (m === 'grid') {
         if(document.getElementById('main-wrapper')) document.getElementById('main-wrapper').style.display = 'flex';
         initGridFilters();
+        // L'ÉCRAN D'ARRIVÉE SE REDESSINE À CHAQUE RETOUR. Ses comptes — erreurs
+        // à revoir, étapes faites — ont pu changer pendant l'exercice, et un
+        // accueil qui annonce « 3 à revoir » alors qu'on vient d'en corriger
+        // deux ment. Chargé à la demande : la navigation ne doit pas dépendre
+        // d'un module qui, lui, se sert d'elle.
+        import('./aujourdhui.js').then(m => m.rendreAujourdhui()).catch(() => { });
     } else if (m === 'path') {
         if(document.getElementById('view-path')) document.getElementById('view-path').style.display = 'flex';
         import('./pathView.js').then(module => module.renderStudentPathView());

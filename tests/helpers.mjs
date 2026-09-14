@@ -5,6 +5,8 @@
 // charger sous Node, ce qui permet de tester les fonctions pures sans
 // navigateur ni outil de build.
 
+import fs from 'node:fs';
+
 if (typeof globalThis.document === 'undefined') {
     globalThis.document = {
         addEventListener() { },
@@ -60,3 +62,28 @@ export function event(type, payload = {}, ts = Date.now()) {
 }
 
 export const DAY = 86400000;
+
+/**
+ * LE CODE DES FICHES, EN UN SEUL TEXTE.
+ *
+ * Plusieurs tests inspectent la SOURCE des rendus — « ce rendu lit-il bien le
+ * rang depuis son emplacement ? », « le corrigé se mesure-t-il encore sur son
+ * contenu ? ». Ce sont de bonnes questions et il n'y a pas d'autre façon de les
+ * poser : elles portent sur la manière d'écrire, pas sur un résultat.
+ *
+ * Elles lisaient `printSheet.js`. Le fichier faisait seize mille lignes ; il a
+ * été découpé par famille (voir `tools/decouperPrintSheet.mjs`), et ces tests
+ * se sont mis à lire une façade vide — ils passaient au vert en ne trouvant
+ * rien, ce qui est la pire façon de passer.
+ *
+ * On lit donc TOUT le dossier. Un rendu qui déménagerait demain d'une famille
+ * à l'autre ne fera pas mentir ces tests.
+ */
+export function sourceDesFiches() {
+    const dossier = new URL('../js/ui/fiches/', import.meta.url);
+    const morceaux = fs.readdirSync(dossier)
+        .filter(f => f.endsWith('.js')).sort()
+        .map(f => fs.readFileSync(new URL(f, dossier), 'utf8'));
+    morceaux.push(fs.readFileSync(new URL('../js/ui/printSheet.js', import.meta.url), 'utf8'));
+    return morceaux.join('\n');
+}

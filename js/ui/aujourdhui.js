@@ -1,0 +1,349 @@
+// L'ÉCRAN D'ARRIVÉE DE L'ÉLÈVE — le dessin.
+//
+// Rémy : « l'écran d'accueil d'AtoutMath […] pour pas faire peur avec tout ce
+// qu'on peut y lire, que ce soit simple. Par exemple Duolingo est rassurant. »
+//
+// TOUTES LES DÉCISIONS VIVENT DANS `core/aujourdhui.js`, testé sans navigateur.
+// Ce fichier ne fait que peindre, et brancher trois boutons.
+//
+// CE QU'ON A ENLEVÉ, ET OÙ C'EST PARTI. Rien n'est supprimé — le catalogue, les
+// filtres, l'arbre des domaines, le carnet et la carte du parcours existent
+// tous encore, et se rejoignent en un geste. Ils ne sont simplement plus la
+// PREMIÈRE chose qu'on voit :
+//
+//   · les deux rangées de filtres et la grille de soixante cartes attendent
+//     derrière « Explorer tous les exercices » ;
+//   · le carnet d'erreurs et la carte du parcours deviennent deux tuiles
+//     nommées, avec leur compte ;
+//   · la modale d'arrivée disparaît. Ce qu'elle disait — la révision proposée,
+//     le conseil du jour — est maintenant DANS la page : on le lit si on veut,
+//     on ne le congédie pas pour arriver au travail.
+//
+// UNE FOIS LE CATALOGUE OUVERT, IL LE RESTE. L'élève qui a cliqué « Explorer »
+// a dit ce qu'il voulait ; le lui refermer au retour de chaque exercice serait
+// lui redemander vingt fois par séance.
+
+import { state } from '../core/state.js';
+import {
+    exercices, estRevisable, getExerciseById, filterByStatus
+} from '../data/catalog.js';
+import { accessOf, getAccessConfig, isGame } from '../core/gameAccess.js';
+import { fusionnerDoublons } from '../core/carnet.js';
+import { planDuJour } from '../core/aujourdhui.js';
+import { startErrorReview } from '../core/remediation.js';
+import { openGameLayer } from '../games/engine.js';
+import { instantane, ouvrirMaSeance, ouvrirMesSeances, ouvrirRejoindre } from './maSeance.js';
+
+const CLE_PREMIERE = 'mathbox-derniere-visite';
+const CLE_CATALOGUE = 'mathbox-catalogue-ouvert';
+
+const lire = (cle) => { try { return localStorage.getItem(cle); } catch (e) { return null; } };
+const ecrire = (cle, v) => { try { localStorage.setItem(cle, v); } catch (e) { /* privé */ } };
+
+/**
+ * TROIS EXERCICES À PROPOSER, ET ILS NE SONT PAS TIRÉS AU HASARD.
+ *
+ * On veut quelque chose que l'élève PEUT faire tout de suite : un exercice
+ * verrouillé proposé en grand sur l'écran d'accueil serait une porte fermée
+ * peinte en bleu. On garde donc ce qui est ouvert, et l'on préfère son niveau
+ * quand il en a choisi un.
+ */
+function suggestions() {
+    const ouverts = filterByStatus(exercices, { only: 'valide', teacher: false })
+        .filter(e => accessOf(e).status === 'libre');
+    const niveaux = state.selectedNiveaux || [];
+    const monNiveau = niveaux.length
+        ? ouverts.filter(e => (e.tags.niveaux || []).some(n => niveaux.includes(n)))
+        : [];
+    const source = monNiveau.length ? monNiveau : ouverts;
+    // LE MÊME TOUTE LA JOURNÉE. Un exercice proposé qui change à chaque
+    // rechargement se lit comme un tirage au sort, pas comme un conseil.
+    const jour = Math.floor(Date.now() / 86400000);
+    const debut = source.length ? jour % source.length : 0;
+    return source.slice(debut).concat(source.slice(0, debut));
+}
+
+/** Le parcours assigné, sous la forme que le noyau attend. */
+function parcoursAssigne() {
+    const a = state.studentPath;
+    if (!a || !Array.isArray(a.steps)) return null;
+    return {
+        name: a.name,
+        completed: a.completed || [],
+        steps: a.steps.map(s => ({
+            stepId: s.stepId,
+            bonus: !!s.bonus,
+            titre: (getExerciseById(s.exerciseId) || {}).title || ''
+        }))
+    };
+}
+
+function anneauHtml(faites, total) {
+    const part = total ? Math.max(0, Math.min(1, faites / total)) : 0;
+    // Un `conic-gradient` plutôt qu'un SVG : c'est un anneau de progression, il
+    // n'a ni trait ni forme à animer, et une seule propriété le décrit.
+    // LE COMPTE EST DANS UN SEUL ENFANT, et ce n'est pas une coquetterie de
+    // balisage : c'est ce qui permet de le CENTRER sans le couper en deux. Le
+    // disque range ses enfants ; avec deux enfants — le nombre fait et le
+    // « / total » — il les empilait ou les collait au bord. Enveloppés
+    // ensemble, ils forment une seule ligne de texte, qui se centre comme un
+    // bloc et garde sa base commune. Voir `.auj-anneau i` dans css/modules.css.
+    return `<div class="auj-anneau" style="--auj-part:${(part * 100).toFixed(1)}%">
+        <i><b>${faites}<span>/${total}</span></b></i></div>`;
+}
+
+function echapper(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** Le bloc lui-même, posé une fois pour toutes en tête du corps principal. */
+function boite() {
+    let b = document.getElementById('accueil-aujourdhui');
+    if (b) return b;
+    const hote = document.getElementById('main-wrapper');
+    if (!hote) return null;
+    b = document.createElement('section');
+    b.id = 'accueil-aujourdhui';
+    b.className = 'auj';
+    hote.insertBefore(b, hote.firstChild);
+    return b;
+}
+
+export function catalogueOuvert() {
+    return lire(CLE_CATALOGUE) === '1';
+}
+
+/**
+ * OUVRIR OU FERMER LE CATALOGUE — la grille, ses filtres, ET SA COLONNE.
+ *
+ * La marque est posée sur le `body` et non sur la grille : ce n'est pas
+ * seulement la grille qui attend derrière « Explorer », c'est aussi le panneau
+ * de gauche — bascule « Clic / Arbre », menu des niveaux, recherche, onglets
+ * « Domaines / Chapitres », arbre des domaines. Cinq commandes de catalogue à
+ * côté d'un écran qui n'en montre pas : c'était la moitié de ce qui « faisait
+ * peur », et elles n'ont rien à faire là tant qu'on n'a pas demandé le
+ * catalogue.
+ */
+export function poserCatalogue(ouvert) {
+    document.body.classList.toggle('auj-catalogue-ouvert', !!ouvert);
+    ecrire(CLE_CATALOGUE, ouvert ? '1' : '0');
+}
+
+/** Le catalogue, ouvert d'où qu'on le demande (le bouton ☰, par exemple). */
+export function ouvrirCatalogue() {
+    if (catalogueOuvert()) return;
+    poserCatalogue(true);
+    majMotExplorer();
+}
+
+/**
+ * Dessine — et rebranche — l'écran d'arrivée.
+ *
+ * Appelé au démarrage et à chaque retour au catalogue : les comptes (erreurs
+ * ouvertes, étapes faites) ont pu changer pendant l'exercice, et un accueil qui
+ * annonce « 3 à revoir » alors qu'on vient d'en corriger deux ment.
+ */
+export function rendreAujourdhui() {
+    if (state.isTeacherMode) return;
+    const b = boite();
+    if (!b) return;
+
+    const plan = planDuJour({
+        maintenant: Date.now(),
+        premiere: lire(CLE_PREMIERE) === null,
+        parcours: parcoursAssigne(),
+        // Doublons fusionnés : « 26 questions de ton carnet t'ont résisté »
+        // pour deux calculs ratés seize fois chacun est un chiffre faux, et
+        // « Réviser 10 questions » rejouait dix fois le même (core/carnet.js).
+        erreurs: fusionnerDoublons(
+            (state.errorHistory || []).filter(e => estRevisable(e.exoId))),
+        tentatives: (state.attemptHistory || [])
+            .map(a => ({ ts: a.timestamp || a.ts, correct: !!a.correct })),
+        suggestions: suggestions(),
+        nbExercices: filterByStatus(exercices, { only: 'valide', teacher: false }).length,
+        // LA SÉANCE DONNÉE PAR LE PROFESSEUR — l'instantané, pas une lecture.
+        // L'accueil se dessine d'un trait ; `maSeance.js` relit le stockage en
+        // fond et redemande un dessin quand il a du neuf.
+        seance: instantane().etat
+    });
+
+    const a = plan.action;
+    b.innerHTML = `
+        <h1 class="auj-salut">${echapper(plan.salut)}</h1>
+        <p class="auj-phrase">${echapper(plan.phrase)}</p>
+        ${a ? `<div class="auj-carte auj-carte--${a.genre}">
+            ${a.total ? anneauHtml(a.faites, a.total) : '<div class="auj-embleme" aria-hidden="true">'
+        + (a.genre === 'revision' ? '📓' : '✨') + '</div>'}
+            <div class="auj-dit">
+                <b>${echapper(a.titre)}</b>
+                <span>${echapper(a.sous)}</span>
+                <!-- LE MOT DU PROFESSEUR, s'il y en a un, DANS la carte : c'est
+                     là que l'élève regarde, et un message rangé ailleurs n'est
+                     pas un message. -->
+                ${a.mot ? `<em class="auj-mot">« ${echapper(a.mot)} »</em>` : ''}
+            </div>
+            <button type="button" class="auj-go" data-go>${echapper(a.bouton)}</button>
+        </div>` : ''}
+        <div class="auj-tuiles">
+            ${plan.raccourcis.map(r => `<button type="button" class="auj-tuile" data-raccourci="${r.id}">
+                <span class="auj-tuile-ico" aria-hidden="true">${r.icone}</span>
+                <span class="auj-tuile-dit"><b>${echapper(r.titre)}</b>
+                <em>${echapper(r.sous)}</em></span>
+            </button>`).join('')}
+        </div>
+        ${salleDeJeuxHtml()}
+        ${lienRejoindreHtml()}
+        <button type="button" class="auj-explorer" data-explorer>
+            <span data-explorer-mot>Explorer tous les exercices</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                 stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"/></svg>
+        </button>`;
+
+    const go = b.querySelector('[data-go]');
+    if (go && a) go.onclick = () => lancer(a);
+    b.querySelectorAll('[data-raccourci]').forEach(t => {
+        t.onclick = () => allerA(t.dataset.raccourci);
+    });
+    b.querySelectorAll('[data-jeu]').forEach(t => {
+        t.onclick = () => {
+            const exo = getExerciseById(t.dataset.jeu);
+            if (exo) openGameLayer(exo, false);
+        };
+    });
+    const explorer = b.querySelector('[data-explorer]');
+    if (explorer) explorer.onclick = () => basculerCatalogue();
+    const rejoindre = b.querySelector('[data-rejoindre]');
+    if (rejoindre) rejoindre.onclick = () => ouvrirRejoindre();
+
+    poserCatalogue(catalogueOuvert());
+    majMotExplorer();
+}
+
+function majMotExplorer() {
+    const mot = document.querySelector('[data-explorer-mot]');
+    const bouton = document.querySelector('[data-explorer]');
+    if (!mot || !bouton) return;
+    const ouvert = catalogueOuvert();
+    mot.textContent = ouvert ? 'Masquer le catalogue' : 'Explorer tous les exercices';
+    bouton.classList.toggle('auj-explorer--ouvert', ouvert);
+}
+
+function basculerCatalogue() {
+    const ouvrir = !catalogueOuvert();
+    poserCatalogue(ouvrir);
+    majMotExplorer();
+    if (ouvrir) {
+        const cible = document.getElementById('filter-bar');
+        if (cible && cible.scrollIntoView) cible.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function lancer(a) {
+    if (a.genre === 'seance') return ouvrirMaSeance();
+    if (a.genre === 'parcours') return allerA('parcours');
+    if (a.genre === 'revision') return startErrorReview(a.questions);
+    const exo = getExerciseById(a.exoId);
+    if (exo) openGameLayer(exo, false);
+}
+
+/**
+ * LA SALLE DE JEUX — ce qu'on gagne à finir son parcours.
+ *
+ * Rémy : « Il faut aussi pouvoir autoriser une zone de jeu si l'élève a fini le
+ * parcours. »
+ *
+ * ELLE N'EXISTE QUE DANS CE MODE-LÀ. Le réglage « les jeux s'ouvrent quand
+ * l'élève a fini son parcours » crée une promesse ; il fallait un endroit où la
+ * tenir. Sans lui, le déverrouillage n'aurait été visible que dans le
+ * catalogue, derrière le bouton « Explorer tous les exercices » — c'est-à-dire
+ * nulle part, pour un élève de sixième qui vient de finir son travail.
+ *
+ * ON MONTRE LA PORTE FERMÉE, ET PAS SEULEMENT LA PORTE OUVERTE. Une récompense
+ * qu'on ignore n'en est pas une : tant que le parcours n'est pas fini, la carte
+ * est là, grise, et dit ce qu'il reste à faire. C'est ce qui la transforme en
+ * raison de continuer.
+ *
+ * QUATRE JEUX, PAS QUARANTE. Le catalogue entier est à un bouton de là pour qui
+ * veut chercher ; ici, on offre de quoi choisir sans hésiter.
+ */
+function salleDeJeuxHtml() {
+    if (getAccessConfig().mode !== 'parcours') return '';
+
+    const jeux = exercices.filter(isGame);
+    if (!jeux.length) return '';
+    const ouverte = accessOf(jeux[0]).status === 'libre';
+
+    if (!ouverte) {
+        return `<div class="auj-salle auj-salle--fermee">
+            <span class="auj-salle-ico" aria-hidden="true">🔒</span>
+            <div class="auj-salle-dit">
+                <b>La salle de jeux</b>
+                <span>Elle s'ouvre quand ton parcours est fini.</span>
+            </div>
+        </div>`;
+    }
+
+    // On tire les quatre premiers jeux ouverts du catalogue : le même ordre
+    // pour tout le monde, donc un écran qui ne change pas d'une fois sur
+    // l'autre — un élève doit pouvoir retrouver « celui d'hier ».
+    const offerts = jeux.filter(e => accessOf(e).status === 'libre').slice(0, 4);
+    if (!offerts.length) return '';
+
+    return `<div class="auj-salle">
+        <div class="auj-salle-tete">
+            <span class="auj-salle-ico" aria-hidden="true">🎉</span>
+            <div class="auj-salle-dit">
+                <b>La salle de jeux est ouverte !</b>
+                <span>Ton parcours est fini — à toi de jouer.</span>
+            </div>
+        </div>
+        <div class="auj-salle-jeux">
+            ${offerts.map(e => `<button type="button" class="auj-jeu" data-jeu="${echapper(e.id)}">
+                ${echapper(e.title)}
+            </button>`).join('')}
+        </div>
+    </div>`;
+}
+
+/**
+ * LE LIEN DE RATTACHEMENT, tout en bas et tout petit.
+ *
+ * Il ne s'affiche que là où il sert : sur l'appareil qui connaît des classes.
+ * Ailleurs — le téléphone de l'élève, où AtoutMath vit tout seul —, il n'y a
+ * aucune classe à rejoindre, et une porte qui ne mène nulle part est pire
+ * qu'une porte absente. Une fois rattaché, il devient une simple ligne d'état :
+ * on doit pouvoir vérifier qui l'on est, et se détromper.
+ */
+function lienRejoindreHtml() {
+    const { lien, classes, pret } = instantane();
+    if (!pret) return '';
+    if (lien) {
+        return `<p class="auj-classe">Tu travailles comme
+            <b>${echapper(lien.nom)}</b> · ${echapper(lien.classeNom)}
+            <button type="button" class="auj-lien" data-rejoindre>changer</button></p>`;
+    }
+    if (!classes.length) return '';
+    return `<p class="auj-classe"><button type="button" class="auj-lien" data-rejoindre>
+        Rejoindre ma classe</button> pour recevoir le travail de ton professeur.</p>`;
+}
+
+function allerA(quoi) {
+    if (quoi === 'seance') return ouvrirMesSeances();
+    // ON CLIQUE L'ONGLET, ON N'APPELLE PAS `setTopNavMode`. Ce module est
+    // importé PAR la navigation — pour se redessiner au retour d'un exercice —
+    // et l'importer en retour ferait un cercle. Le bouton, lui, fait déjà
+    // exactement ce qu'il faut, y compris marquer l'onglet actif.
+    if (quoi === 'parcours') {
+        const btn = document.getElementById('top-btn-path');
+        if (btn) btn.click();
+        return;
+    }
+    if (quoi === 'erreurs') {
+        const btn = document.getElementById('btn-open-errors');
+        if (btn) btn.click();
+        return;
+    }
+    if (!catalogueOuvert()) basculerCatalogue();
+}

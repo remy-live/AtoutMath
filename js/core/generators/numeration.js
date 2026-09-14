@@ -31,11 +31,58 @@ function randomDecimal(rng, { intDigits = 4, decDigits = 2 } = {}) {
 const RANKS_ENTIER = [0, 1, 2, 3];
 const RANKS_DECIMAL = [-1, -2, -3];
 
+/**
+ * LE TABLEAU DE NUMÉRATION, À LA DEMANDE.
+ *
+ * Rémy, en revue de la Chasse au Chiffre : « pour cet exercice, on pourrait
+ * proposer un bouton pour afficher un tableau de numération pour placer son
+ * nombre ».
+ *
+ * IL EST VIDE, ET C'EST TOUT L'INTÉRÊT. Un tableau où le nombre serait déjà
+ * posé donnerait la réponse à lire dans une case : l'exercice n'existerait
+ * plus. Ce qu'on rend disponible, c'est l'OUTIL — les colonnes, leur ordre, la
+ * virgule à sa place — pour que l'élève y pose son nombre lui-même, du doigt
+ * ou sur son brouillon. C'est le geste que le premier indice commande déjà
+ * (« Place 3 407,52 dans le tableau ») et qu'aucun écran ne montrait.
+ *
+ * LA VIRGULE EST UNE FRONTIÈRE, PAS UNE COLONNE. Elle est dessinée sur le bord
+ * entre unités et dixièmes, comme dans le jeu du glissement (js/games/
+ * virgule.js) : les deux exercices du chapitre disent alors la même chose du
+ * même objet, et l'élève qui passe de l'un à l'autre reconnaît son tableau.
+ *
+ * ET LES DEUX CÔTÉS NE SE RESSEMBLENT PAS. La partie décimale est teintée :
+ * c'est exactement la confusion du chapitre — dizaines contre dixièmes — et
+ * une couleur dit d'un coup d'œil de quel côté de la virgule on regarde.
+ */
+const COLONNES_TABLEAU = [
+    { court: 'milliers', dec: false },
+    { court: 'centaines', dec: false },
+    { court: 'dizaines', dec: false },
+    { court: 'unités', dec: false },
+    { court: 'dixièmes', dec: true },
+    { court: 'centièmes', dec: true },
+    { court: 'millièmes', dec: true }
+];
+
+const TABLEAU_HTML = `<div class="tn-cadre"><table class="tn-tab"><thead><tr>${
+    COLONNES_TABLEAU.map(c => `<th class="${c.dec ? 'tn-dec' : ''}${
+        c.court === 'unités' ? ' tn-avant-virgule' : ''}">${c.court}</th>`).join('')
+}</tr></thead><tbody><tr>${
+    COLONNES_TABLEAU.map(c => `<td class="${c.dec ? 'tn-dec' : ''}${
+        c.court === 'unités' ? ' tn-avant-virgule' : ''}"></td>`).join('')
+}</tr></tbody></table></div>
+<p class="tn-mot">Pose ton nombre : un chiffre par colonne, en partant de la virgule.</p>`;
+
+const OUTIL_TABLEAU = {
+    id: 'tableau', label: 'Tableau de numération', html: TABLEAU_HTML
+};
+
 export const chiffreRangGenerator = {
     id: 'num.chiffre-rang',
     label: 'Chiffre d\'un rang donné',
     skills: ['num.numeration.rang'],
     answerKinds: ['choice', 'numeric'],
+    ecrit: true,
     params: [
         { id: 'partie', type: 'select', label: 'Rangs interrogés', options: ['entière', 'décimale', 'les deux'], default: 'les deux' },
         { id: 'decimales', type: 'number', label: 'Nombre de décimales', default: 3, min: 1, max: 3 }
@@ -79,15 +126,19 @@ export const chiffreRangGenerator = {
                     : null,
                 { value: parLaGauche, why: 'Les rangs se comptent à partir de la virgule, pas depuis le début du nombre.' }
             ].filter(Boolean), { count: 4, filler: r => r.int(0, 9) }),
+            // UN INDICE QUI COMMANDE DOIT NOMMER SUR QUOI. « Place le nombre
+            // dans le tableau » ne désigne rien — et c'est le PREMIER indice,
+            // donc la phrase que le robot prononce, sans montrer quoi que ce
+            // soit. On nomme le nombre ET la colonne à lire.
             hints: [
-                'Place le nombre dans le tableau de numération, colonne par colonne.',
+                `Place ${affiche} dans le tableau de numération : la colonne des ${RANK_NAMES[rank]}.`,
                 rank >= 0
                     ? 'Les unités sont juste à gauche de la virgule, puis dizaines, centaines…'
                     : 'Juste à droite de la virgule : dixièmes, puis centièmes, puis millièmes.'
             ],
             explanation: `Dans ${affiche}, le chiffre des ${RANK_NAMES[rank]} est ${answer}.`,
             difficulty: rank < 0 ? 3 : 2,
-            meta: { value, rank, decimal: false }
+            meta: { value, rank, decimal: false, outils: [OUTIL_TABLEAU] }
         });
     }
 };
@@ -99,12 +150,41 @@ export const partiesGenerator = {
     label: 'Partie entière et partie décimale',
     skills: ['num.decimal.parties'],
     answerKinds: ['choice'],
-    params: [],
+    ecrit: true,
+    // DEUX RÉGLAGES, PARCE QU'ILS FONT DEUX EXERCICES DIFFÉRENTS. Une série
+    // qui ne demande QUE la partie décimale se corrige d'un coup d'œil et
+    // s'installe dans la tête ; mélangée, elle oblige à relire la question à
+    // chaque ligne — ce n'est pas le même moment de la séance. Et le nombre de
+    // décimales fait toute la difficulté : 12,4 et 12,405 ne se lisent pas
+    // pareil. Sans ces réglages, l'exercice était le seul du catalogue à ne
+    // rien proposer sur la fiche.
+    params: [
+        {
+            id: 'quoi', type: 'select', label: 'Ce qu\'on demande', default: 'melange',
+            options: [
+                { value: 'entiere', label: 'La partie entière' },
+                { value: 'decimale', label: 'La partie décimale' },
+                { value: 'melange', label: 'Les deux, mélangées' }
+            ]
+        },
+        {
+            id: 'decimales', type: 'select', label: 'Chiffres après la virgule', default: '2-3',
+            options: [
+                { value: '1', label: 'Un seul — 12,4' },
+                { value: '2', label: 'Deux — 12,45' },
+                { value: '3', label: 'Trois — 12,456' },
+                { value: '2-3', label: 'Deux ou trois' }
+            ]
+        }
+    ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const decDigits = rng.int(2, 3);
+        const p = params || {};
+        const combien = String(p.decimales || '2-3');
+        const decDigits = combien === '2-3' ? rng.int(2, 3) : Math.min(3, Math.max(1, +combien || 2));
         const { value, intPart, decPart } = randomDecimal(rng, { intDigits: rng.int(2, 3), decDigits });
-        const cherchePartieEntiere = rng.bool();
+        const quoi = ['entiere', 'decimale'].includes(p.quoi) ? p.quoi : 'melange';
+        const cherchePartieEntiere = quoi === 'melange' ? rng.bool() : quoi === 'entiere';
 
         const decStr = `0,${String(decPart).padStart(decDigits, '0')}`;
         const answer = cherchePartieEntiere ? String(intPart) : decStr;
@@ -147,15 +227,48 @@ export const zerosGenerator = {
     label: 'Supprimer les zéros inutiles',
     skills: ['num.decimal.zeros'],
     answerKinds: ['numeric', 'choice'],
-    params: [],
+    ecrit: true,
+    // LES DEUX ZÉROS NE S'APPRENNENT PAS EN MÊME TEMPS. Celui de gauche
+    // (032,4) se comprend tout de suite ; celui de droite (32,40) demande
+    // d'avoir admis que la partie décimale se lit de gauche à droite, et c'est
+    // là que se logent les erreurs. Les séparer, c'est pouvoir travailler l'un
+    // sans l'autre — et un exercice qui n'offre aucun réglage ne le permet pas.
+    params: [
+        {
+            id: 'ou', type: 'select', label: 'Où sont les zéros inutiles', default: 'deux',
+            options: [
+                { value: 'gauche', label: 'Devant le nombre — 032,4' },
+                { value: 'droite', label: 'À la fin des décimales — 32,40' },
+                { value: 'deux', label: 'Des deux côtés' }
+            ]
+        },
+        {
+            id: 'nombres', type: 'select', label: 'Nombres', default: 'melange',
+            options: [
+                { value: 'decimaux', label: 'Décimaux seulement' },
+                { value: 'entiers', label: 'Entiers seulement' },
+                { value: 'melange', label: 'Mélangés' }
+            ]
+        }
+    ],
     generate(params, ctx) {
         const rng = ctx.rng;
+        const p = params || {};
+        let ou = ['gauche', 'droite', 'deux'].includes(p.ou) ? p.ou : 'deux';
+        const nombres = ['decimaux', 'entiers'].includes(p.nombres) ? p.nombres : 'melange';
+        // UN ENTIER N'A PAS DE ZÉRO INUTILE À DROITE : 320 vaut 320, et en
+        // retirer le zéro changerait le nombre. Les deux réglages se
+        // contredisent donc parfois, et c'est « à la fin des décimales » qui
+        // l'emporte — c'est celui qu'on a choisi exprès.
+        const decimal = ou === 'droite' ? true
+            : (nombres === 'entiers' ? false : (nombres === 'decimaux' ? true : rng.bool()));
+        if (!decimal && ou === 'deux') ou = 'gauche';
         // On fabrique un nombre propre, puis on l'habille de zéros inutiles.
-        const base = rng.bool()
+        const base = decimal
             ? `${rng.int(1, 99)},${rng.int(1, 99)}`
             : String(rng.int(2, 400));
-        const zerosGauche = '0'.repeat(rng.int(1, 3));
-        const zerosDroite = base.includes(',') ? '0'.repeat(rng.int(1, 2)) : '';
+        const zerosGauche = ou === 'droite' ? '' : '0'.repeat(rng.int(1, 3));
+        const zerosDroite = (decimal && ou !== 'gauche') ? '0'.repeat(rng.int(1, 2)) : '';
         const affiche = `${zerosGauche}${base}${zerosDroite}`;
         const answer = stripUselessZeros(affiche);
 
@@ -168,7 +281,7 @@ export const zerosGenerator = {
             seed: rng.seed, generatorId: 'num.zeros', skillId: 'num.decimal.zeros',
             answerKind: 'numeric',
             prompt: {
-                text: `Écris ${affiche} sans les zéros inutiles.`,
+                text: `${affiche} =`,
                 html: `<div class="game-question">Enlève les zéros inutiles<br>
                        <span class="nb-highlight nb-highlight--lg">${affiche}</span></div>`
             },
@@ -206,6 +319,7 @@ export const conversionGenerator = {
     label: 'Convertir des unités de numération',
     skills: ['num.numeration.conversion'],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [
         { id: 'decimaux', type: 'select', label: 'Inclure dixièmes et centièmes', options: ['oui', 'non'], default: 'non' }
     ],
@@ -248,6 +362,7 @@ export const decompositionGenerator = {
     label: 'Décomposer un nombre',
     skills: ['num.numeration.decomposition'],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [
         { id: 'sens', type: 'select', label: 'Sens', options: ['recomposer', 'terme manquant', 'libre'], default: 'libre' }
     ],
@@ -305,6 +420,7 @@ export const lettresGenerator = {
     label: 'Écriture en lettres',
     skills: ['num.ecriture.lettres'],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [
         { id: 'max', type: 'select', label: 'Jusqu\'à', options: [1000, 100000, 1000000], default: 100000 },
         { id: 'decimaux', type: 'select', label: 'Rangs décimaux', options: ['non', 'parfois', 'toujours'], default: 'non' }
@@ -326,8 +442,8 @@ export const lettresGenerator = {
                 seed: rng.seed, generatorId: 'num.lettres', skillId: 'num.ecriture.lettres',
                 answerKind: 'numeric',
                 prompt: {
-                    text: `Écris en chiffres : ${mots}`,
-                    html: `<div class="game-question">Écris en chiffres<br><span class="nb-words">${mots}</span></div>`
+                    text: `${mots} =`,
+                    html: `<div class="game-question"><span class="nb-consigne">Écris en chiffres</span><br><span class="nb-words">${mots}</span></div>`
                 },
                 answer,
                 hints: [
@@ -348,8 +464,8 @@ export const lettresGenerator = {
             seed: rng.seed, generatorId: 'num.lettres', skillId: 'num.ecriture.lettres',
             answerKind: 'numeric',
             prompt: {
-                text: `Écris en chiffres : ${mots}`,
-                html: `<div class="game-question">Écris en chiffres<br><span class="nb-words">${mots}</span></div>`
+                text: `${mots} =`,
+                html: `<div class="game-question"><span class="nb-consigne">Écris en chiffres</span><br><span class="nb-words">${mots}</span></div>`
             },
             answer: n,
             choices: finalizeChoices(rng, [
@@ -375,6 +491,7 @@ export const ordreGrandeurGenerator = {
     label: 'Ordre de grandeur',
     skills: ['num.ordre-grandeur'],
     answerKinds: ['choice'],
+    ecrit: true,
     params: [
         { id: 'decimaux', type: 'select', label: 'Nombres décimaux', options: ['oui', 'non'], default: 'non' }
     ],
@@ -407,11 +524,21 @@ export const ordreGrandeurGenerator = {
                 html: `<div class="game-question"><span class="nb-highlight">${affiche}</span> &asymp; ?</div>`
             },
             answer,
+            // QUATRE PROPOSITIONS, demande de Rémy. Avec trois, une élimination
+            // suffisait : on écarte le nombre manifestement trop grand, il en
+            // reste deux, et l'on tranche à pile ou face. La quatrième est
+            // l'erreur symétrique de la troisième — un rang en dessous plutôt
+            // qu'un rang au-dessus : il faut alors vraiment compter les zéros.
             choices: finalizeChoices(rng, [
                 { value: answer, label: formatFr(answer), correct: true },
                 { value: voisin, label: formatFr(voisin), why: 'Ce n\'est pas le nombre rond le plus proche : regarde de quel côté il penche.' },
-                { value: answer * 10, label: formatFr(answer * 10), why: 'Attention au nombre de zéros.' }
-            ], { count: 3 }),
+                { value: answer * 10, label: formatFr(answer * 10), why: 'Attention au nombre de zéros : c\'est un rang trop haut.' },
+                {
+                    value: Number((answer / 10).toFixed(2)),
+                    label: formatFr(Number((answer / 10).toFixed(2))),
+                    why: 'Attention au nombre de zéros : c\'est un rang trop bas.'
+                }
+            ], { count: 4 }),
             hints: [
                 'Un ordre de grandeur, c\'est le nombre rond le plus proche.',
                 'Il sert à vérifier qu\'on n\'a pas fait une erreur grossière.'
@@ -430,7 +557,12 @@ export const EGYPTE = [
     { value: 10, nom: 'anse' },
     { value: 100, nom: 'corde enroulée' },
     { value: 1000, nom: 'fleur de lotus' },
-    { value: 10000, nom: 'doigt' }
+    { value: 10000, nom: 'doigt' },
+    // Les deux derniers rangs existent aussi, et ce sont les plus beaux à
+    // montrer : le têtard, dont le Nil charriait des milliers après la crue,
+    // et le dieu Heh qui tient les années dans ses bras levés.
+    { value: 100000, nom: 'têtard' },
+    { value: 1000000, nom: 'dieu Heh' }
 ];
 
 export const egypteGenerator = {
@@ -439,7 +571,8 @@ export const egypteGenerator = {
     skills: ['num.numeration.egypte'],
     answerKinds: ['numeric', 'choice'],
     params: [
-        { id: 'max', type: 'select', label: 'Jusqu\'à', options: [1000, 10000, 50000], default: 10000 }
+        { id: 'max', type: 'select', label: 'Jusqu\'à',
+          options: [1000, 10000, 100000, 1000000], default: 10000 }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
@@ -472,7 +605,8 @@ export const egypteGenerator = {
                 { value: total * 10, label: formatFr(total * 10), why: 'Attention à la valeur de chaque symbole.' }
             ], { count: 3 }),
             hints: [
-                'Chaque symbole a une valeur : bâton 1, anse 10, corde 100, lotus 1 000, doigt 10 000.',
+                `Chaque symbole a sa valeur : ${EGYPTE.filter(x => x.value <= max)
+                    .map(x => `${x.nom} ${formatFr(x.value)}`).join(', ')}.`,
                 `Additionne : ${ordonne.map(s => `${s.n} × ${formatFr(s.value)}`).join(' + ')}.`
             ],
             explanation: `${ordonne.map(s => `${s.n} × ${formatFr(s.value)}`).join(' + ')} = ${formatFr(total)}.`,
@@ -486,9 +620,13 @@ export const egypteGenerator = {
 
 export const complementGenerator = {
     id: 'num.complement',
+    // RÉFLEXE : la répétition EST l'exercice. Voir core/duree.js — vingt
+    // questions, pas dix, parce qu'un automatisme ne se construit pas en dix.
+    duree: 'reflexe',
     label: 'Compléments à 10, 100, 1000',
     skills: ['num.complement'],
     answerKinds: ['numeric', 'choice'],
+    ecrit: true,
     params: [
         { id: 'cible', type: 'multiselect', label: 'Compléter à', options: [10, 100, 1000], default: [10, 100] }
     ],
@@ -534,6 +672,7 @@ export const pariteGenerator = {
     label: 'Pair ou impair',
     skills: ['num.parite'],
     answerKinds: ['choice'],
+    ecrit: true,
     params: [
         { id: 'max', type: 'number', label: 'Nombre maximum', default: 99, min: 20, max: 999 }
     ],

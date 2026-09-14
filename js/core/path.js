@@ -14,16 +14,60 @@
 import { getExerciseById } from '../data/catalog.js';
 import { resolvePolicy, defaultPolicy } from './policy.js';
 import { shortId } from './ids.js';
+import { questionsConseillees } from './duree.js';
+import { getGenerator } from './registry.js';
+import { SEUIL_DEFAUT } from './recompenses.js';
+import { seuilConseille } from './seuilEtape.js';
 
 export const PATH_VERSION = 2;
+
+/**
+ * Le nombre de questions que CET exercice conseille.
+ *
+ * La même règle vivait déjà dans `shortcodes.js`, sous le nom `telQuel` : deux
+ * copies d'un même défaut finissent toujours par diverger, et celle-ci décidait
+ * de ce qu'un élève verrait.
+ */
+export function questionsConseilleesDe(exerciseId) {
+    const exo = getExerciseById(exerciseId);
+    if (!exo) return 10;
+    return questionsConseillees(
+        exo.generatorId ? getGenerator(exo.generatorId) : null,
+        exo.params || {}, { activite: exo.activityId });
+}
 
 export function makeStep(exerciseId, overrides = {}, opts = {}) {
     return {
         stepId: opts.stepId || 's_' + shortId(6),
         exerciseId,
         overrides: { ...overrides },
-        nbItems: opts.nbItems || 10,
-        threshold: opts.threshold !== undefined ? opts.threshold : null, // null => tout réussir
+        // LE COMPTE NATUREL DE L'EXERCICE, PAS DIX POUR TOUT LE MONDE.
+        //
+        // Rémy : « par défaut propose 20 questions lorsque ce sont des
+        // calculs ». C'était déjà le cas quand on passait par le bouton
+        // « ajouter », qui calculait le conseil et le passait ici — mais
+        // partout ailleurs (un parcours importé, un code élève, une étape
+        // fabriquée par du code) le dix en dur reprenait la main. Et comme dix
+        // est une valeur VRAIE, le repli `step.nbItems || conseil` du panneau
+        // ne se déclenchait jamais : il n'y avait aucun moyen de distinguer
+        // « dix, parce que le professeur l'a voulu » de « dix, faute de mieux ».
+        //
+        // Le conseil vit dans l'exercice : vingt pour un réflexe de calcul,
+        // douze pour une grille de mots croisés, quarante pour un duel. On le
+        // demande donc ici, une fois pour toutes.
+        nbItems: opts.nbItems || questionsConseilleesDe(exerciseId),
+        // SEPT SUR DIX PAR DÉFAUT. Rémy : « de base, mets 70 % de bonnes
+        // réponses exigées comme réglage par défaut. » L'étape ne demandait
+        // rien : « aller au bout » validait un élève qui s'était trompé
+        // partout. Voir `seuilConseille` dans core/seuilEtape.js.
+        //
+        // `null` reste possible et veut dire AUCUNE EXIGENCE — c'est ce dont
+        // l'évaluation et les jeux de récompense ont besoin, eux se notent ou
+        // se gagnent, ils ne se valident pas. Mais ce n'est plus le défaut :
+        // il faut désormais le demander, en décochant le quota.
+        threshold: opts.threshold !== undefined
+            ? opts.threshold
+            : seuilConseille(opts.nbItems || questionsConseilleesDe(exerciseId)),
         // Nom propre à l'étape, quand il apprend quelque chose que le titre de
         // l'exercice ne dit pas — le palier d'un mode apprentissage, par
         // exemple (« Découverte », « Défi »).
@@ -32,7 +76,43 @@ export function makeStep(exerciseId, overrides = {}, opts = {}) {
         timeLimit: opts.timeLimit || null,
         // Rejeu exact d'une question passée : la graine suffit à la régénérer,
         // on n'a donc jamais besoin de stocker son contenu.
-        forceSeed: opts.forceSeed || null
+        forceSeed: opts.forceSeed || null,
+        // LE TEMPS BORNE, PAS LE NOMBRE. Posé par les exercices que l'élève se
+        // donne « pour cinq minutes » : le nombre de questions n'est alors
+        // qu'un garde-fou interne, et l'en-tête ne doit pas l'annoncer comme
+        // un total à atteindre. Voir `updateProgress` dans le meneur.
+        sansTotal: !!opts.sansTotal,
+        // UNE ÉTAPE-JEU n'est pas du travail : elle ne compte ni dans les
+        // exercices à faire, ni dans la note, et elle ne s'ouvre qu'une fois
+        // le travail qui la précède réussi. Voir core/recompenses.js.
+        bonus: !!opts.bonus,
+        // UNE ÉTAPE FACULTATIVE SE PROPOSE, ELLE NE BARRE PAS LA ROUTE.
+        //
+        // Rémy : « ce serait cool de pouvoir sélectionner plusieurs exercices
+        // pour les rendre non obligatoires ou en récompense. Par contre c'est
+        // chronologique : si les 2 premiers sont obligatoires et le 3 et 4 non
+        // obligatoires, il faut réussir le 1 et 2 pour ouvrir le 3 et 4 et
+        // pouvoir faire le 5. »
+        //
+        // La règle tient donc en une phrase, et c'est ce qui la rend sûre :
+        // une étape s'ouvre quand toutes les étapes OBLIGATOIRES qui la
+        // précèdent sont faites. Une facultative n'entre pas dans ce compte —
+        // elle s'ouvre en même temps que la suite, et l'élève choisit.
+        //
+        // Ce n'est pas l'ordre libre, qui ouvre TOUT dès le début : ici l'ordre
+        // reste, seule l'obligation tombe.
+        facultatif: !!opts.facultatif,
+        // UNE ÉTAPE PEUT NE S'OUVRIR QU'EN CLASSE. Rémy : « il ne faut pas
+        // vraiment que l'élève ait accès aux interros à la maison, mais il
+        // peut très bien avoir accès à la séquence avant mon cours. »
+        //
+        // Le verrou porte une EMPREINTE de clé, jamais la clé : un parcours
+        // voyage dans un lien, et un lien se décode. Voir core/verrou.js.
+        verrou: opts.verrou || null,
+        // Et l'autre face de la même idée : une étape qui n'existe pas encore.
+        // C'est ce qui permet de distribuer la séquence entière d'avance et de
+        // la laisser s'ouvrir séance après séance.
+        ouvertureLe: opts.ouvertureLe || null
     };
 }
 
@@ -42,6 +122,8 @@ export function makePath(name = 'Nouveau parcours', steps = [], policy = null) {
         version: PATH_VERSION,
         name,
         policy: policy || defaultPolicy(),
+        // Le niveau de réussite qui ouvre les jeux de récompense du parcours.
+        bonusSeuil: SEUIL_DEFAUT,
         steps
     };
 }
@@ -65,7 +147,18 @@ export function normalizePath(raw, name = 'Parcours') {
     }
 
     if (raw.version === PATH_VERSION) {
-        return { ...raw, policy: resolvePolicy(raw.policy), steps: (raw.steps || []).map(normalizeStep) };
+        return {
+            bonusSeuil: SEUIL_DEFAUT,
+            ...raw,
+            // UN PARCOURS SANS IDENTIFIANT EN REÇOIT UN ICI, ET NULLE PART
+            // AILLEURS. Le format v2 recopiait l'objet tel quel : un parcours né
+            // sans identifiant en restait dépourvu pour toujours, y compris
+            // après enregistrement et rechargement. Voir `state.currentPath` :
+            // c'est de là que venaient tous les `null`.
+            id: raw.id || 'path_' + shortId(8),
+            policy: resolvePolicy(raw.policy),
+            steps: (raw.steps || []).map(normalizeStep)
+        };
     }
 
     // Objet { name, data: [...] } tel que stocké par l'ancien navigateur de parcours.
@@ -75,6 +168,11 @@ export function normalizePath(raw, name = 'Parcours') {
         version: PATH_VERSION,
         name: raw.name || name,
         policy: resolvePolicy(raw.policy),
+        // LA GRAINE DE REPRISE SURVIT À LA NORMALISATION. C'est elle qui
+        // distingue un rattrapage du travail d'origine — dans le code dicté
+        // comme dans le journal. La perdre ici, c'est faire du rattrapage une
+        // copie exacte de l'original, dont il ramasserait le bilan.
+        ...(raw.reprise ? { reprise: raw.reprise } : {}),
         steps: steps.map((s, i) => legacyStep(s, i))
     };
 }
@@ -90,14 +188,22 @@ function legacyStep(s, i) {
         weight: s.weight || 1,
         timeLimit: p.timeLimit || null,
         forceSeed: p.forceSeed || null,
-        forceQuestion: p.forceQuestion || null
+        forceQuestion: p.forceQuestion || null,
+        bonus: !!s.bonus,
+        facultatif: !!s.facultatif
     };
 }
 
 function normalizeStep(s) {
     return {
-        weight: 1, nbItems: 10, threshold: null, timeLimit: null,
+        weight: 1, nbItems: 10, threshold: null, timeLimit: null, bonus: false,
+        facultatif: false, verrou: null, ouvertureLe: null,
         ...s,
+        bonus: !!s.bonus,
+        // UN JEU DE RÉCOMPENSE EST FACULTATIF PAR NATURE : il ne se fait pas
+        // pour ouvrir la suite, il se gagne. Le dire ici évite d'avoir à y
+        // penser partout où l'on compte ce qui barre la route.
+        facultatif: !!s.facultatif || !!s.bonus,
         overrides: s.overrides || {}
     };
 }
@@ -138,12 +244,17 @@ export function hydratePath(path) {
     return { path: normalized, steps, missing };
 }
 
-/** Total des poids, pour afficher la répartition du barème dans l'éditeur. */
+/**
+ * Total des poids, pour afficher la répartition du barème dans l'éditeur.
+ * Les jeux de récompense en sont exclus : on ne note pas une récompense.
+ */
 export function totalWeight(path) {
-    return (path.steps || []).reduce((s, st) => s + (st.weight || 1), 0) || 1;
+    return (path.steps || []).filter(st => !st.bonus)
+        .reduce((s, st) => s + (st.weight || 1), 0) || 1;
 }
 
-/** Nombre total de questions d'un parcours. */
+/** Nombre total de questions d'un parcours — hors jeux de récompense. */
 export function totalItems(path) {
-    return (path.steps || []).reduce((s, st) => s + (st.nbItems || 0), 0);
+    return (path.steps || []).filter(st => !st.bonus)
+        .reduce((s, st) => s + (st.nbItems || 0), 0);
 }

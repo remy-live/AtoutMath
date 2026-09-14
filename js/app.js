@@ -5,26 +5,44 @@
 // configuration et les compétences travaillées). D'où cet import en premier.
 import './core/activities/index.js';
 
+// La capture de console s'installe AVANT tout le reste : une erreur survenue
+// au démarrage est précisément celle qu'on veut pouvoir relire.
+import { initConsoleCapture, openConsoleModal } from './ui/consoleLog.js';
+initConsoleCapture();
+
 import { state } from './core/state.js';
+import { jetonProf, verrouActif } from './core/verrouProf.js';
 import { journal } from './core/journal.js';
 import { clearEngines } from './core/timers.js';
+import { destroyAllDemoCursors, marquerDemo } from './core/demoPointer.js';
 import { openGameLayer, openDemo } from './games/engine.js';
 import { validateCatalog } from './core/registry.js';
-import { exercices, countByStatus, STATUS_LABELS, STATUS_CYCLE } from './data/catalog.js';
+import { exercices, countByStatus, STATUS_LABELS, STATUS_CYCLE, estRevisable, getExerciseById } from './data/catalog.js';
+import { isGame } from './core/gameAccess.js';
+import { questionsOuvertes } from './core/carnet.js';
 import {
     initAccordion, renderDrilldown, initGridFilters, syncGridToSidebar,
-    setSidebarMode, setTopNavMode, initSidebarSearch
+    setSidebarMode, setTopNavMode, refreshCatalogViews, initBasculeRangement
 } from './ui/navigation.js';
+import { initRechercheUI } from './ui/rechercheUI.js';
 import { initBuilder } from './ui/builder.js';
 import { initDebugBar } from './ui/debugBar.js';
 import { initImportExport } from './core/importExport.js';
-import { initProfileUI } from './ui/profileUI.js';
+import { initProfileUI, ouvrirCarnet } from './ui/profileUI.js';
 import { initStudentCodeUI, applyCode } from './ui/studentCodeUI.js';
 import { initGameFeedbackUI } from './ui/gameFeedbackUI.js';
 import { initGamificationEngine } from './core/gamification.js';
 import { initGamificationUI } from './ui/gamificationUI.js';
 import { initSync } from './core/sync.js';
 import { initSyncUI } from './ui/syncUI.js';
+import { initSeanceDistante } from './core/seanceDistante.js';
+import { initSeanceDistanteUI } from './ui/seanceDistanteUI.js';
+import { modeLibre, estRattache } from './core/portail.js';
+import { initPortail, majPortail } from './ui/portailUI.js';
+import { initPleinEcran } from './ui/fullscreen.js';
+import { initBilanExercice } from './ui/accueilUI.js';
+import { rendreAujourdhui } from './ui/aujourdhui.js';
+import { initMaSeance } from './ui/maSeance.js';
 
 // Confirmation universelle, utilisée par plusieurs vues.
 window.appConfirm = (title, message, onConfirm) => {
@@ -51,11 +69,46 @@ function refreshViews() {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
+    initDeviceMode();
     initGamificationEngine();
     initGamificationUI();
     initGameFeedbackUI();
 
     await state.load();
+    await seedExamplePath();
+
+    // LE PROFESSEUR RESTE PROFESSEUR D'UN CHARGEMENT À L'AUTRE.
+    //
+    // Rémy : « j'aimerai ne pas passer par admin et dans atout math sans passer
+    // par la zone admin ».
+    //
+    // `state.isTeacherMode` est une valeur de session, jamais enregistrée :
+    // seule la bascule l'écrivait. Conséquence mesurée — Rémy s'identifiait,
+    // travaillait, rechargeait la page… et retombait sur la porte d'entrée des
+    // élèves, avec son mot de passe à retaper. Le jeton, lui, était toujours là
+    // dans le navigateur : on savait qui il était, on faisait simplement comme
+    // si on l'avait oublié.
+    //
+    // ON NE RESTAURE PAS LE RÔLE SI UN ÉLÈVE EST RATTACHÉ SUR CE NAVIGATEUR.
+    // C'est le cas de la tablette prêtée : le professeur s'y est identifié une
+    // fois pour préparer la séance, l'élève la reprend ensuite. Le profil de
+    // l'élève passe devant — et le professeur, lui, n'a qu'un clic à faire.
+    //
+    // CE N'EST PAS UN AFFAIBLISSEMENT DU VERROU : le jeton n'existe que parce
+    // que le serveur a vérifié le mot de passe, et ce qu'il ouvre ici — le
+    // catalogue, l'atelier — est déjà ce qu'il ouvrait avant le rechargement.
+    if (!state.isTeacherMode && jetonProf() && !estRattache()) {
+        state.isTeacherMode = true;
+        document.body.classList.add('teacher-mode');
+    }
+    // LE VERROU DE LA CLASSE S'APPLIQUE AVANT LE PREMIER DESSIN.
+    //
+    // On relit l'état de séance connu AVANT `refreshViews()` : sinon l'élève
+    // d'une classe verrouillée voit le catalogue entier pendant la
+    // demi-seconde que met la synchro à répondre — c'est-à-dire exactement ce
+    // que le verrou doit empêcher. La synchro, elle, le rafraîchira ensuite.
+    await initSeanceDistante();
+    initSeanceDistanteUI();
     initSync();
 
     // Cohérence du catalogue : mieux vaut un avertissement au démarrage
@@ -65,28 +118,205 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     initNiveauFilter();
     initImportExport();
+    initBasculeRangement();
     refreshViews();
     setSidebarMode('drill');
-    setTopNavMode('grid');
+    // SANS MODE LIBRE, ON N'OUVRE PAS SUR LE CATALOGUE. Il serait masqué dans
+    // la barre et affiché dans la page — deux affirmations contraires sur le
+    // même écran. L'élève arrive donc sur son parcours ; le professeur, lui,
+    // garde le catalogue, c'est son atelier.
+    // Le rôle a pu être restauré plus haut depuis le jeton : `state.isTeacherMode`
+    // est donc déjà juste ici, et le professeur retrouve son atelier au lieu de
+    // l'écran « Parcours » d'un élève.
+    setTopNavMode(modeLibre() || state.isTeacherMode ? 'grid' : 'path');
     initGridFilters();
-    initSidebarSearch();
+    initRechercheUI(refreshCatalogViews);
     initBuilder();
     initStudentCodeUI();
     initProfileUI();
     initSyncUI();
     initGameControls();
     initNavButtons();
+    initPleinEcran();
     initReglagesAffichage();
     initDebugToolbar();
+    initMenuBarreHaute();
+    // Le bilan de fin d'exercice s'abonne AVANT qu'un exercice puisse être
+    // lancé par un lien de parcours.
+    initBilanExercice();
 
-    // Parcours partagé par lien.
+    // PARCOURS PARTAGÉ PAR LIEN — et l'application reste cachée jusqu'à lui.
+    //
+    // Rémy : « quand il y a un code dans l'URL, il faut charger tout de suite
+    // le parcours et pas voir l'interface ». Le drapeau est posé dans la page
+    // elle-même, avant le premier rendu (voir `depuis-code` dans index.html) ;
+    // ici on ne fait que le LEVER, dans les deux cas où il le faut : le
+    // parcours est à l'écran, ou le code ne vaut rien et l'élève doit pouvoir
+    // se servir de l'application.
+    // L'ATELIER OUVRE SES VOLETS DANS DES CADRES, ET CHACUN EST UNE VRAIE
+    // INSTANCE. Rémy : « on pourrait un super debug avec séparation de l'écran :
+    // une où on a l'aperçu avec option, une où on a le jeu, une où on a les
+    // options, une où le robot agit. »
+    //
+    // Le jeu vit dans une COUCHE PLEIN ÉCRAN (`#game-layer`) : le poser dans un
+    // quart d'écran demanderait de le rendre redimensionnable, et l'on
+    // testerait alors une mise en page qui n'existe nulle part ailleurs. Un
+    // cadre, lui, EST un écran — le jeu s'y déploie exactement comme sur un
+    // appareil de cette taille, ce qui est précisément ce qu'on veut regarder.
+    //
+    // Chaque volet demande donc la même page avec `?atelier=…`, et cette
+    // fonction-là est tout ce qu'il a fallu ajouter au démarrage.
+    const cadreAtelier = new URLSearchParams(window.location.search).get('atelier');
+    if (cadreAtelier) {
+        import('./ui/atelier.js').then(m => m.ouvrirVoletAtelier(cadreAtelier,
+            new URLSearchParams(window.location.search)));
+    }
+
     const code = new URLSearchParams(window.location.search).get('code');
-    if (code) applyCode(code, { autoStart: true });
+    if (code) {
+        const ouvert = applyCode(code, { autoStart: true });
+        if (!ouvert) {
+            document.documentElement.classList.remove('depuis-code', 'parcours-pret');
+        } else {
+            // Le voile s'efface quand la couche de jeu est vraiment dessinée :
+            // les modules du parcours se chargent en différé, et lever le voile
+            // avant eux montrerait un écran vide en guise de parcours.
+            const attendre = () => {
+                const gl = document.getElementById('game-layer');
+                if (gl && gl.style.display && gl.style.display !== 'none') {
+                    document.documentElement.classList.add('parcours-pret');
+                    return;
+                }
+                if (Date.now() - depart > 8000) {
+                    document.documentElement.classList.remove('depuis-code', 'parcours-pret');
+                    return;
+                }
+                requestAnimationFrame(attendre);
+            };
+            const depart = Date.now();
+            requestAnimationFrame(attendre);
+        }
+    }
 
-    window.showGameConfigUI = (step, onSave, containerId = 'builder-config-content') => {
-        import('./games/configUI.js').then(m => m.renderGameConfigUI(step, onSave, containerId));
+    window.showGameConfigUI = (step, onSave, containerId = 'builder-config-content', opts) => {
+        import('./games/configUI.js').then(m => m.renderGameConfigUI(step, onSave, containerId, opts));
     };
+
+    // L'ÉCRAN D'ARRIVÉE PASSE EN DERNIER : il lit le carnet d'erreurs et le
+    // parcours assigné, donc après `state.load()`.
+    //
+    // LA MODALE DE BIENVENUE A DISPARU AVEC LUI. Rémy : « quand l'élève arrive
+    // là, ça fait peur ». Une fenêtre à congédier AVANT de voir l'écran est la
+    // première marche de trop — et tout ce qu'elle disait (la révision
+    // proposée, le conseil du jour) se lit maintenant DANS la page, où on le
+    // prend si l'on veut.
+    rendreAujourdhui();
+
+    // LA SÉANCE DU PROFESSEUR ARRIVE APRÈS COUP, et c'est voulu. Lire les
+    // classes et les séances passe par le stockage ; attendre cette lecture
+    // pour dessiner l'accueil le ferait apparaître avec un temps de retard,
+    // pour un élève qui n'a peut-être aucune séance. On dessine donc tout de
+    // suite, et la carte s'ajoute quand elle est connue.
+    initMaSeance();
+
+    // LA PORTE EN DERNIER, quand tout ce qu'elle interroge est chargé : le
+    // profil (est-il rattaché ?), le journal (a-t-il un parcours ?), et le
+    // rôle. Posée plus tôt, elle se montrerait à un élève qui a déjà sa séance,
+    // le temps que l'état arrive.
+    initPortail();
+
+    // L'ÉCRAN EST MONTÉ. Le drapeau du bas de ce fichier — `__atoutmathDemarre`
+    // — dit seulement que le MODULE s'est chargé : il est posé à l'évaluation,
+    // donc AVANT que ce gestionnaire ne tourne. C'est ce qu'il faut au
+    // garde-fou d'index.html (un module qui ne charge pas ne le pose jamais),
+    // mais c'est trompeur pour qui veut savoir si l'application est prête.
+    //
+    // Mesuré à nos dépens : un essai de bout en bout lisait le rôle du
+    // professeur juste après `__atoutmathDemarre` et le trouvait parfois
+    // absent — non parce qu'il ne se restaure pas, mais parce que rien
+    // n'était encore monté. D'où ce second drapeau, qui ne ment pas.
+    window.__atoutmathPret = true;
+    document.dispatchEvent(new CustomEvent('atoutmath_pret'));
 });
+
+/**
+ * LE MENU DES OUTILS RARES, en haut à droite.
+ *
+ * Rémy : « il y a pas mal de boutons en haut ». Le thème, la classe et la
+ * sauvegarde s'ouvrent trois fois par an ; ils n'ont pas à occuper la barre que
+ * l'élève regarde tous les jours. Ils gardent leurs identifiants — tout ce qui
+ * les branche ailleurs continue de fonctionner —, ils ont seulement changé de
+ * place et gagné un nom.
+ *
+ * Le menu se ferme sur un clic dehors, sur Échap, et sur son propre contenu :
+ * un menu qui reste ouvert derrière la fenêtre qu'il vient d'ouvrir est un
+ * menu qu'on referme à la main.
+ */
+function initMenuBarreHaute() {
+    const btn = document.getElementById('btn-nav-plus');
+    const liste = document.getElementById('nav-menu-liste');
+    if (!btn || !liste) return;
+    const poser = (ouvert) => {
+        liste.hidden = !ouvert;
+        btn.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+    };
+    btn.onclick = (e) => { e.stopPropagation(); poser(liste.hidden); };
+    liste.addEventListener('click', () => poser(false));
+    document.addEventListener('click', (e) => {
+        if (!liste.hidden && !e.target.closest('.nav-menu')) poser(false);
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !liste.hidden) poser(false);
+    });
+}
+
+// --- Détection de l'appareil ------------------------------------------------
+//
+// Sur un téléphone, l'application démarre directement en présentation
+// portable — l'élève n'a pas à connaître la bascule 📱 de la palette
+// d'auteur. Le choix manuel (via cette bascule) est mémorisé et l'emporte
+// ensuite sur la détection.
+
+function initDeviceMode() {
+    const choixMemorise = () => {
+        try { return localStorage.getItem('mathbox-device'); } catch (e) { return null; }
+    };
+
+    // Téléphone en PORTRAIT : écran étroit et pointeur tactile. Une fenêtre
+    // de bureau réduite garde sa présentation, une tablette aussi — et un
+    // téléphone tourné en paysage repasse en présentation deux colonnes.
+    const telephonePortrait = () => window.innerWidth <= 700
+        && window.matchMedia('(pointer: coarse)').matches;
+
+    const appliquer = () => {
+        const choix = choixMemorise();
+        state.isMobileView = choix ? choix === 'mobile' : telephonePortrait();
+        document.body.classList.toggle('mobile-view', state.isMobileView);
+        document.body.style.overflowX = state.isMobileView ? 'hidden' : '';
+        if (state.isMobileView) {
+            // En présentation portable, un panneau à la fois : sans panneau
+            // actif, l'écran démarrait VIDE. L'élève arrive sur la grille
+            // d'exercices ; la barre basse mène au reste.
+            const main = document.getElementById('main-area');
+            const sidebar = document.getElementById('sidebar');
+            if (main && sidebar && !main.classList.contains('mob-active')
+                && !sidebar.classList.contains('mob-active')) {
+                main.classList.add('mob-active');
+            }
+        }
+    };
+
+    appliquer();
+
+    // Rotation portrait ↔ paysage : la présentation suit, tant qu'aucun
+    // choix manuel (bascule 📱) n'a été mémorisé.
+    let minuteur = null;
+    window.addEventListener('resize', () => {
+        if (choixMemorise()) return;
+        clearTimeout(minuteur);
+        minuteur = setTimeout(appliquer, 250);
+    });
+}
 
 // --- Filtre par niveau ------------------------------------------------------
 
@@ -140,16 +370,74 @@ function initNiveauFilter() {
 // --- Couche de jeu ----------------------------------------------------------
 
 function initGameControls() {
+    // Contexte du parcours en cours au moment où le robot est activé : le mode
+    // démonstration remplace l'activité, mais il ne doit pas FAIRE PERDRE le
+    // parcours — en sortant de la démo, on reprend à la même étape.
+    let demoReturn = null;
+
+    const captureRunnerContext = () => {
+        const r = state.activeSequenceRunner;
+        if (!r || !r.step) return null;
+        return {
+            path: r.path,
+            startIndex: r.index,
+            deviceMode: r.deviceMode,
+            isStudentPath: r.isStudentPath,
+            allowStepNavigation: r.allowStepNavigation,
+            // On revient d'une démonstration : l'écran « leçon + robot » du
+            // mode apprentissage n'a pas à être reproposé pour cette étape.
+            skipIntro: true
+        };
+    };
+
+    const resumeOrFreePlay = () => {
+        const back = demoReturn;
+        demoReturn = null;
+        const banner = document.getElementById('demo-overlay-banner');
+        if (banner) banner.style.display = 'none';
+        marquerDemo();
+        if (back) {
+            import('./core/runner.js').then(({ Runner }) => new Runner(back).start());
+        } else {
+            openGameLayer(state.activeExo, false);
+        }
+    };
+
     const close = document.getElementById('btn-close-game');
     if (close) {
         close.onclick = () => {
+            demoReturn = null;
             if (state.activeSequenceRunner) state.activeSequenceRunner.abort();
             clearEngines();
+            // Le curseur de démonstration vit sur <body>, pas dans la couche de
+            // jeu : sans ce balayage, il restait affiché après la fermeture.
+            destroyAllDemoCursors();
             journal.flush();
+            // La calculatrice flotte sur <body>, pas dans la couche de jeu :
+            // sans ce balayage elle resterait posée sur la page d'accueil.
+            import('./ui/calculatrice.js').then(m => m.reglerCalculatrice(null));
+            // ET LE FANTÔME D'UN JETON QU'ON GLISSAIT, pour la même raison —
+            // c'est le TROISIÈME élément posé sur <body> qu'il faut balayer ici.
+            // Rémy a vu le mot « Quadrilatère » rester en haut de l'écran, puis
+            // le suivre sur la pizza et sur les fonctions : un fantôme
+            // d'organigramme qui avait survécu à son propre exercice.
+            import('./core/activities/paletteDrag.js').then(m => m.nettoyerFantomes());
             const gl = document.getElementById('game-layer');
             gl.classList.remove('device-simulator', 'tablet-simulator');
             gl.style.display = 'none';
+            // ON REND L'APPLICATION quand l'élève referme un parcours ouvert
+            // par lien : elle était cachée pour qu'il ne la voie pas AVANT son
+            // parcours, pas pour la lui interdire après.
+            document.documentElement.classList.remove('depuis-code', 'parcours-pret');
         };
+    }
+
+    // LA CALCULATRICE. Le bouton n'est visible que sur les exercices qui
+    // l'autorisent — c'est `reglerCalculatrice` qui le décide à chaque étape.
+    const calc = document.getElementById('btn-game-calc');
+    if (calc) {
+        calc.onclick = () => import('./ui/calculatrice.js')
+            .then(m => m.basculerCalculatrice());
     }
 
     const demo = document.getElementById('btn-toggle-demo');
@@ -157,10 +445,21 @@ function initGameControls() {
         demo.onclick = () => {
             const banner = document.getElementById('demo-overlay-banner');
             const inDemo = banner && banner.style.display === 'flex';
+            if (!inDemo) demoReturn = captureRunnerContext() || demoReturn;
             if (state.activeSequenceRunner) state.activeSequenceRunner.abort();
             clearEngines();
-            if (inDemo) openGameLayer(state.activeExo, false);
+            destroyAllDemoCursors();
+            if (inDemo) resumeOrFreePlay();
             else openDemo(state.activeExo);
+        };
+    }
+
+    // La consigne du bandeau tient sur une ligne ; un appui la déplie.
+    const bandeau = document.getElementById('demo-overlay-banner');
+    if (bandeau) {
+        bandeau.onclick = (e) => {
+            if (e.target.closest('#btn-start-real-game')) return;
+            bandeau.classList.toggle('demo-banner--ouvert');
         };
     }
 
@@ -168,20 +467,18 @@ function initGameControls() {
     if (startReal) {
         startReal.onclick = () => {
             clearEngines();
-            const banner = document.getElementById('demo-overlay-banner');
-            if (banner) banner.style.display = 'none';
-            openGameLayer(state.activeExo, false);
+            destroyAllDemoCursors();
+            resumeOrFreePlay();
         };
     }
 
+    // L'AIDE VIT DANS SON PROPRE MODULE. Trois onglets — la consigne, un
+    // exemple déroulé pas à pas, la leçon — et un exemple engendré par le
+    // générateur de l'exercice : cela ne tient plus dans une poignée de lignes
+    // ici, et cela se teste séparément.
     const instr = document.getElementById('btn-show-instruction');
     if (instr) {
-        instr.onclick = () => {
-            const exo = state.activeExo;
-            document.getElementById('instruction-text').textContent =
-                exo && exo.instruction ? exo.instruction : 'Aucune consigne disponible pour cet exercice.';
-            document.getElementById('instruction-modal').style.display = 'flex';
-        };
+        instr.onclick = () => import('./ui/aideExercice.js').then(m => m.ouvrirAide());
     }
     const instrClose = document.getElementById('btn-instruction-close');
     if (instrClose) instrClose.onclick = () => {
@@ -190,6 +487,39 @@ function initGameControls() {
 }
 
 // --- Navigation -------------------------------------------------------------
+
+/**
+ * LE COMPTE DE LA PASTILLE.
+ *
+ * Il doit dire EXACTEMENT ce que l'élève trouvera en ouvrant le carnet, sinon
+ * la pastille ment : on compte donc comme le carnet le fait à l'ouverture —
+ * les erreurs révisables, non corrigées, hors jeux d'arcade (qui y sont
+ * repliées derrière une case à cocher décochée par défaut).
+ */
+function majPastilleCarnet() {
+    const pastille = document.getElementById('carnet-compte');
+    if (!pastille) return;
+    let n = 0;
+    try {
+        // ON COMPTE DES QUESTIONS, PAS DES GRAINES. Le journal distingue « 2 + 3
+        // × 4 » tiré sous seize graines différentes ; la pastille annonçait donc
+        // « 26 » pour deux calculs à revoir (voir core/carnet.js).
+        n = questionsOuvertes((state.errorHistory || []).filter(e => {
+            if (e.corrected || !estRevisable(e.exoId)) return false;
+            const exo = e.exoId ? getExerciseById(e.exoId) : null;
+            return !(exo && isGame(exo));
+        })).length;
+    } catch { n = 0; }
+    pastille.textContent = n > 99 ? '99+' : String(n);
+    pastille.hidden = n === 0;
+    const btn = document.getElementById('btn-open-errors');
+    if (btn) {
+        const t = n === 0 ? 'Mes erreurs à revoir'
+            : `${n} erreur${n > 1 ? 's' : ''} à revoir`;
+        btn.title = t;
+        btn.setAttribute('aria-label', t);
+    }
+}
 
 // --- Paramètres d'affichage -------------------------------------------------
 
@@ -270,6 +600,31 @@ function initNavButtons() {
         if (btn) btn.onclick = () => setSidebarMode(k);
     });
 
+    // LE CARNET D'ERREURS. Il vivait au fond de la page « profil », après les
+    // statistiques et les badges : personne n'y descendait. Le bouton ouvre la
+    // vue ET amène le carnet sous les yeux, ce qui n'est pas la même chose que
+    // « la page contient l'information ».
+    const carnet = document.getElementById('btn-open-errors');
+    if (carnet) {
+        majPastilleCarnet();
+        ['errors_updated', 'attempts_updated', 'error_corrected']
+            .forEach(evt => document.addEventListener(evt, majPastilleCarnet));
+        carnet.onclick = () => {
+            setTopNavMode('profile');
+            // L'onglet AVANT la section : le carnet vit dans le quatrième
+            // panneau de la page profil, et un `scrollIntoView` sur un élément
+            // `hidden` ne fait rien du tout (voir ui/profileUI.js).
+            ouvrirCarnet();
+        };
+    }
+
+    // LES ÉTOILES DE LA BARRE. Elles disent le score, la page « profil » dit
+    // d'où il vient (niveau, XP, badges, statistiques) : ce n'est pas un
+    // doublon, c'est un titre et son chapitre — encore faut-il que l'un mène à
+    // l'autre. Sans ce clic, le compteur était un cul-de-sac.
+    const etoiles = document.getElementById('btn-score');
+    if (etoiles) etoiles.onclick = () => setTopNavMode('profile');
+
     ['grid', 'path', 'profile'].forEach(k => {
         const top = document.getElementById('top-btn-' + k);
         if (top) top.onclick = () => setTopNavMode(k);
@@ -288,20 +643,188 @@ function initNavButtons() {
         };
     });
 
-    const codeBtn = document.getElementById('top-btn-code');
-    if (codeBtn) codeBtn.onclick = () => {
+    // LE CODE S'OUVRE DE DEUX ENDROITS, et il le faut : l'onglet du haut
+    // disparaît sous 900 px de large, et c'est justement sur téléphone qu'un
+    // élève cherche le code que le professeur vient de dicter.
+    const ouvrirCode = () => {
         document.getElementById('code-modal').style.display = 'flex';
         const input = document.getElementById('student-code-input');
-        if (input) input.focus();
+        if (input) { input.value = ''; input.focus(); }
     };
+    ['top-btn-code', 'mob-btn-code'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.onclick = ouvrirCode;
+    });
+
+    // Tiroir du catalogue (professeur sur téléphone) : la poignée et le ☰
+    // ouvrent et ferment la même feuille coulissante.
+    const setDrawer = (ouvert) => {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('drawer-open', ouvert);
+        sidebar.style.transform = '';
+        sidebar.style.transition = '';
+        const handle = document.getElementById('drawer-handle');
+        if (handle) handle.setAttribute('aria-expanded', String(ouvert));
+    };
+    const toggleDrawer = () => {
+        setDrawer(!document.getElementById('sidebar').classList.contains('drawer-open'));
+    };
+
+    // La poignée se TIRE, comme un vrai tiroir : la feuille suit le doigt et
+    // se cale ouverte ou fermée au relâcher. Indispensable sur iPhone, où la
+    // barre de Safari (en bas de l'écran) avale volontiers un simple tap au
+    // bord — le glissement, lui, est capturé par la poignée. Le tap reste
+    // possible, et le ☰ aussi.
+    const handle = document.getElementById('drawer-handle');
+    if (handle) {
+        // LA POIGNÉE MESURE CE QUE SON TEXTE LUI DONNE. Voir `--tiroir-poignee`
+        // dans base.css : la même hauteur sert à la transformation du tiroir, à
+        // la place réservée sous le parcours et aux calculs de traction. Elle
+        // était écrite « 52 » à ces trois endroits ; la poignée, elle, fait 50
+        // pixels au réglage normal d'un iPhone et 60 quand l'affichage est
+        // agrandi — et huit pixels de bande passaient alors sous l'écran.
+        const mesurerPoignee = () => {
+            const h = Math.round(handle.getBoundingClientRect().height);
+            if (h > 20) document.documentElement.style.setProperty('--tiroir-poignee', `${h}px`);
+        };
+        const hauteurPoignee = () => parseFloat(getComputedStyle(document.documentElement)
+            .getPropertyValue('--tiroir-poignee')) || 52;
+        mesurerPoignee();
+        window.addEventListener('resize', mesurerPoignee);
+        // LA POIGNÉE N'EXISTE QU'EN MODE PROFESSEUR SUR TÉLÉPHONE : au premier
+        // chargement elle est cachée, sa hauteur vaut zéro, et une mesure prise
+        // là ne vaut rien. On la remesure dès qu'elle prend sa taille.
+        if (window.ResizeObserver) new ResizeObserver(mesurerPoignee).observe(handle);
+
+        /**
+         * LA BANDE NE VOLE PLUS LE GESTE DE LA PAGE.
+         *
+         * Rémy, capture du constructeur de parcours à l'appui : « Je n'arrive
+         * pas à descendre. »
+         *
+         * MESURÉ, sur un écran de 660 pixels utiles : un balayage vers le haut
+         * qui PART de la bande « 📚 Catalogue d'exercices » donne « défilement
+         * 0 / 120 » — la page ne bouge pas d'un pixel, le catalogue s'ouvre par
+         * -dessus. Le même geste quarante pixels plus haut donne « 120 / 120 ».
+         * La bande fait toute la largeur, cinquante pixels de haut, dans le
+         * tiers bas de l'écran : c'est exactement là que se pose le pouce de
+         * qui tient son téléphone d'une main.
+         *
+         * Elle avait ses raisons — `touch-action: none` est ce qui permet de
+         * TIRER le tiroir au lieu de le taper — mais elle prenait le geste même
+         * quand la page avait encore de quoi défiler.
+         *
+         * LA RÈGLE EST CELLE DES FEUILLES COULISSANTES : le tiroir ne prend le
+         * geste QUE lorsque la page dessous ne peut plus aller dans ce sens.
+         * On défile d'abord jusqu'au bout du parcours ; alors seulement, en
+         * continuant, le catalogue monte. Plus rien n'est hors d'atteinte, et
+         * la traction reste possible — c'est le même doigt, qui continue.
+         */
+        const zonePage = () => document.getElementById('app-body');
+        const resteEnBas = (z) => z.scrollHeight - z.clientHeight - z.scrollTop;
+
+        let departY = null, dernierY = null, mode = null, vientDeTirer = false;
+
+        handle.addEventListener('pointerdown', (e) => {
+            departY = e.clientY;
+            dernierY = e.clientY;
+            mode = null;
+            try { handle.setPointerCapture(e.pointerId); } catch (err) { /* Safari ancien */ }
+        });
+
+        handle.addEventListener('pointermove', (e) => {
+            if (departY === null) return;
+            const sidebar = document.getElementById('sidebar');
+            const dy = e.clientY - departY;
+            if (mode === null) {
+                if (Math.abs(dy) < 8) return;
+                // Tiroir ouvert : il est le sujet du geste, comme avant.
+                // Tiroir fermé : la page passe d'abord, si elle a où aller.
+                const z = zonePage();
+                const ouvert = sidebar.classList.contains('drawer-open');
+                const pageAOu = !ouvert && z
+                    && ((dy < 0 && resteEnBas(z) > 1) || (dy > 0 && z.scrollTop > 1));
+                mode = pageAOu ? 'page' : 'tiroir';
+            }
+            if (mode === 'page') {
+                const z = zonePage();
+                z.scrollTop -= e.clientY - dernierY;
+                dernierY = e.clientY;
+                // La page est arrivée au bout : le doigt n'a pas à se relever,
+                // c'est le tiroir qui prend la suite.
+                if (resteEnBas(z) <= 1 && e.clientY - departY < 0) {
+                    mode = 'tiroir';
+                    departY = e.clientY;
+                }
+                return;
+            }
+            const h = sidebar.offsetHeight;
+            const ferme = h - hauteurPoignee();
+            const base = sidebar.classList.contains('drawer-open') ? 0 : ferme;
+            const off = Math.max(0, Math.min(base + (e.clientY - departY), ferme));
+            sidebar.style.transition = 'none';
+            sidebar.style.transform = `translateY(${off}px)`;
+        });
+
+        const finTraction = (e) => {
+            if (departY === null) return;
+            const sidebar = document.getElementById('sidebar');
+            if (mode === 'tiroir') {
+                const h = sidebar.offsetHeight;
+                const ferme = h - hauteurPoignee();
+                const base = sidebar.classList.contains('drawer-open') ? 0 : ferme;
+                const off = Math.max(0, Math.min(base + (e.clientY - departY), ferme));
+                setDrawer(off < ferme / 2);
+            }
+            // Un geste, quel qu'il soit, n'est pas un tap : le clic synthétisé
+            // qui suit ne doit pas basculer le tiroir par-dessus.
+            if (mode) {
+                vientDeTirer = true;
+                setTimeout(() => { vientDeTirer = false; }, 400);
+            }
+            departY = null; dernierY = null; mode = null;
+        };
+        handle.addEventListener('pointerup', finTraction);
+        handle.addEventListener('pointercancel', () => {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.style.transform = '';
+            sidebar.style.transition = '';
+            departY = null; dernierY = null; mode = null;
+        });
+
+        // Le tap simple bascule — sauf s'il conclut une traction (le clic
+        // synthétisé suivrait le pointerup et annulerait le geste).
+        handle.addEventListener('click', () => {
+            if (vientDeTirer) return;
+            toggleDrawer();
+        });
+    }
 
     const toggleSidebar = () => {
         const sidebar = document.getElementById('sidebar');
         const mobile = window.innerWidth <= 768 || document.body.classList.contains('mobile-view');
+        // En professeur sur téléphone, le catalogue est un tiroir : le ☰
+        // l'ouvre et le ferme, comme sa poignée.
+        if (mobile && state.isTeacherMode) return toggleDrawer();
         sidebar.classList.toggle(mobile ? 'mob-active' : 'collapsed');
     };
     const burger = document.getElementById('btn-toggle-sidebar');
-    if (burger) burger.onclick = toggleSidebar;
+    // ☰ OUVRE LE CATALOGUE S'IL EST FERMÉ. Le panneau de gauche attend derrière
+    // « Explorer » sur l'écran d'arrivée de l'élève ; sans cela, le bouton du
+    // menu basculerait un panneau que le CSS garde caché — un bouton qui ne
+    // fait rien, ce qui est pire qu'un bouton absent.
+    if (burger) {
+        burger.onclick = () => {
+            if (!state.isTeacherMode) {
+                import('./ui/aujourdhui.js').then(m => {
+                    if (!m.catalogueOuvert()) return m.ouvrirCatalogue();
+                    toggleSidebar();
+                }).catch(toggleSidebar);
+                return;
+            }
+            toggleSidebar();
+        };
+    }
 
     initMobileDrillToggle();
     initTheme();
@@ -311,6 +834,11 @@ function initMobileDrillToggle() {
     const btn = document.getElementById('mob-btn-drill-acc');
     if (!btn) return;
     btn.onclick = () => {
+        // Le catalogue attend derrière « Explorer » sur l'écran d'arrivée : ce
+        // bouton-ci le demande explicitement, donc il l'ouvre.
+        if (!state.isTeacherMode) {
+            import('./ui/aujourdhui.js').then(m => m.ouvrirCatalogue()).catch(() => { });
+        }
         const sidebar = document.getElementById('sidebar');
         const wasActive = sidebar.classList.contains('mob-active');
         sidebar.classList.add('mob-active');
@@ -359,6 +887,17 @@ function etiquette(btn, texte) {
 function initDebugToolbar() {
     initDebugBar();
 
+    // Version affichée = celle des fichiers RÉELLEMENT chargés, lue sur
+    // l'URL de la feuille de style. Si le téléphone montre un vieux numéro,
+    // c'est que le cache (ou le service worker) sert encore l'ancienne
+    // version — recharger une seconde fois suffit en général.
+    const versionEl = document.getElementById('db-version');
+    if (versionEl) {
+        const lien = document.querySelector('link[href*="base.css"]');
+        const m = lien && lien.getAttribute('href').match(/v=(\d+)/);
+        versionEl.textContent = m ? `v${m[1]}` : '';
+    }
+
     const btnMobile = document.getElementById('db-toggle-mobile');
     if (btnMobile) {
         const syncMobile = () => {
@@ -368,6 +907,9 @@ function initDebugToolbar() {
         syncMobile();
         btnMobile.onclick = () => {
             state.isMobileView = !state.isMobileView;
+            // Le choix manuel est mémorisé : il l'emporte sur la détection
+            // automatique aux prochains démarrages.
+            try { localStorage.setItem('mathbox-device', state.isMobileView ? 'mobile' : 'desktop'); } catch (e) { }
             syncMobile();
             document.body.classList.toggle('mobile-view', state.isMobileView);
             document.body.style.overflowX = state.isMobileView ? 'hidden' : '';
@@ -375,30 +917,98 @@ function initDebugToolbar() {
         };
     }
 
-    const btnRole = document.getElementById('db-toggle-role');
-    if (btnRole) {
-        const syncRole = () => {
-            etiquette(btnRole, `Mode : ${state.isTeacherMode ? 'professeur' : 'élève'}`);
-            btnRole.classList.toggle('active', state.isTeacherMode);
-        };
+    // LE RÔLE SE DIT EN HAUT, PAS DANS LA PALETTE DE TEST.
+    //
+    // Rémy : « sur l'interface prof ou et élèves, j'ai l'impression que ce
+    // n'est pas clair ». Le basculement n'existait que dans la palette noire du
+    // banc d'essai, où seule l'infobulle disait le rôle — et l'on n'ouvre pas
+    // une palette de développeur pour savoir qui l'on est. Or ce commutateur
+    // change TOUT : les onglets disparaissent, la vue devient le constructeur
+    // de parcours, les exercices en test se montrent. Il lui faut donc une
+    // pastille en haut à gauche, à côté du nom de l'application, qui dise
+    // « Élève » ou « Prof » et se retourne d'un clic.
+    //
+    // LES DEUX BOUTONS PARTAGENT LE MÊME GESTE. La palette garde le sien — il
+    // sert pendant les passes de test, où l'on bascule vingt fois — mais tous
+    // deux appellent la même bascule et se resynchronisent ensemble : deux
+    // commandes pour un état, c'est deux occasions de le désaccorder.
+    const btnRoleDbg = document.getElementById('db-toggle-role');
+    const btnRole = document.getElementById('btn-role');
+    const nomRole = document.getElementById('role-badge-nom');
+    const syncRole = () => {
+        const prof = !!state.isTeacherMode;
+        if (btnRoleDbg) {
+            etiquette(btnRoleDbg, `Mode : ${prof ? 'professeur' : 'élève'}`);
+            btnRoleDbg.classList.toggle('active', prof);
+        }
+        if (btnRole) {
+            btnRole.classList.toggle('role-badge--prof', prof);
+            btnRole.setAttribute('aria-pressed', prof ? 'true' : 'false');
+            etiquette(btnRole, prof
+                ? 'Espace professeur — cliquer pour revenir à l\'espace élève'
+                : 'Espace élève — cliquer pour passer à l\'espace professeur');
+        }
+        if (nomRole) nomRole.textContent = prof ? 'Prof' : 'Élève';
+    };
+    // ON NE PASSE PROFESSEUR QU'EN MONTRANT PATTE BLANCHE.
+    //
+    // Rémy, le site en ligne : « l'accès prof n'est pas protégé, je ne sais pas
+    // où m'identifier ». La bascule retournait un booléen sans rien demander —
+    // et « Je suis le professeur » est écrit en toutes lettres au bas de la
+    // porte d'entrée. N'importe quel élève y avait le catalogue entier, le
+    // constructeur de parcours et les corrigés.
+    //
+    // Le retour à l'espace élève, lui, reste libre : se restreindre soi-même
+    // n'a jamais demandé d'autorisation.
+    const basculerRole = async () => {
+        if (!state.isTeacherMode && verrouActif() && !jetonProf()) {
+            const { demanderProf } = await import('./ui/verrouProfUI.js');
+            if (!await demanderProf()) return;
+        }
+        state.isTeacherMode = !state.isTeacherMode;
         syncRole();
-        btnRole.onclick = () => {
-            state.isTeacherMode = !state.isTeacherMode;
-            syncRole();
-            document.body.classList.toggle('teacher-mode', state.isTeacherMode);
-            setTopNavMode(state.isTeacherMode ? 'teacher' : 'grid');
-            refreshViews();
-        };
-    }
+        // Le professeur retrouve son catalogue ; l'élève qui revient à sa place
+        // le reperd, et retrouve la porte s'il n'a rien à faire.
+        majPortail();
+        document.body.classList.toggle('teacher-mode', state.isTeacherMode);
+        setTopNavMode(state.isTeacherMode ? 'teacher' : 'grid');
+        refreshViews();
+    };
+    syncRole();
+    if (btnRoleDbg) btnRoleDbg.onclick = basculerRole;
+    if (btnRole) btnRole.onclick = basculerRole;
 
     initStatusFilter();
 
     const btnClear = document.getElementById('db-clear-storage');
     if (btnClear) {
         btnClear.onclick = () => {
-            window.appConfirm('Réinitialisation', 'Effacer toutes les données locales de ce poste ?', async () => {
+            window.appConfirm('Réinitialisation',
+                'Effacer toutes les données locales de ce poste ?<br><br>'
+                + '<b>Le carnet de la revue est conservé.</b> Une passe s\'étale sur '
+                + 'plusieurs soirées, et ce bouton sert justement à repartir d\'un profil '
+                + 'propre POUR continuer à tester.', async () => {
+                // LE CARNET D'AUTEUR SURVIT À LA VIDANGE. Ce n'est pas une
+                // donnée d'élève : le perdre en vidant un profil de test
+                // coûterait plusieurs soirées de relevés.
+                //
+                // ET C'EST BIEN LE CARNET DE LA REVUE qu'on garde. On gardait
+                // encore celui du banc d'essai — une clef morte depuis que le
+                // banc a été retiré —, si bien que ce bouton effaçait
+                // exactement ce qu'il promettait de préserver : les décisions,
+                // les remarques de la barre de passe et le tri du quotidien.
+                const GARDES = ['mathbox-revue', 'atoutmath.quotidien.verdicts'];
+                const carnets = {};
+                GARDES.forEach(k => {
+                    try { carnets[k] = window.localStorage.getItem(k); } catch (e) { /* privé */ }
+                });
                 if (typeof localforage !== 'undefined') await localforage.clear();
-                try { window.localStorage.clear(); } catch (e) { /* mode privé */ }
+                try {
+                    window.localStorage.clear();
+                    GARDES.forEach(k => {
+                        if (carnets[k]) window.localStorage.setItem(k, carnets[k]);
+                    });
+                } catch (e) { /* mode privé */ }
                 window.location.reload();
             });
         };
@@ -406,6 +1016,140 @@ function initDebugToolbar() {
 
     const btnFake = document.getElementById('db-fake-data');
     if (btnFake) btnFake.onclick = generateSampleData;
+
+    const btnConsole = document.getElementById('db-console');
+    if (btnConsole) btnConsole.onclick = () => openConsoleModal();
+
+    // La poubelle du journal : elle dit combien de lignes elle a emportées,
+    // sinon on ne sait pas si elle a fait quelque chose.
+    const btnVider = document.getElementById('db-vider-journal');
+    if (btnVider) btnVider.onclick = async () => {
+        const { viderJournal } = await import('./ui/consoleLog.js');
+        const n = viderJournal();
+        const { showToast } = await import('./ui/modal.js');
+        showToast(n ? `Journal vidé — ${n} ligne${n > 1 ? 's' : ''} effacée${n > 1 ? 's' : ''}.`
+            : 'Le journal était déjà vide.', n ? 'success' : 'warning', 2200);
+    };
+
+    // Les nouveautés : la liste de ce qui vient d'arriver, avec de quoi
+    // l'essayer et de quoi en voir la fiche.
+    const btnNeuf = document.getElementById('db-nouveautes');
+    if (btnNeuf) btnNeuf.onclick = async () => {
+        const { openNouveautesModal } = await import('./ui/nouveautesUI.js');
+        openNouveautesModal();
+    };
+
+    // La revue du catalogue : chargée à la demande. C'est un outil d'auteur, il
+    // n'a aucune raison de peser sur le démarrage d'un élève.
+    const btnRevue = document.getElementById('db-revue');
+    if (btnRevue) btnRevue.onclick = () => import('./ui/revue.js').then(m => m.ouvrirRevue());
+
+    // La barre de passe : la revue en une ligne, posée par-dessus le jeu. On
+    // l'allume et on l'éteint du même bouton.
+    const btnBarre = document.getElementById('db-banc-barre');
+    if (btnBarre) btnBarre.onclick = () => import('./ui/barrePasse.js').then(m => m.basculerBarrePasse());
+
+    // L'ATELIER : les trois vues d'un exercice côte à côte, et les réglages qui
+    // les redessinent toutes. Chargé à la demande, comme le reste de la palette.
+    const btnAtelier = document.getElementById('db-atelier');
+    if (btnAtelier) btnAtelier.onclick = () => import('./ui/atelier.js').then(m => m.basculerAtelier());
+
+    // Passer la question en cours, ou revenir sur la précédente, quel que soit
+    // l'exercice. Reculer manquait : on dépassait d'un cran la question qu'on
+    // voulait examiner et il fallait relancer l'exercice depuis le début.
+    // LA PALETTE PILOTE L'EXERCICE QU'ON REGARDE, MÊME S'IL EST DANS L'ATELIER.
+    //
+    // Rémy : « synchronise la barre de debug et l'Atelier. » L'Atelier joue dans
+    // des cadres, et tous les boutons de mise au point lisaient le runner de
+    // CETTE page — vide dès qu'on ouvre l'Atelier. On cliquait sur « question
+    // suivante » et l'on recevait « aucun exercice en cours », devant un
+    // exercice qui tournait sous les yeux. Voir ui/cadreAtelier.js.
+    const runnerCourant = async () => {
+        const { runnerEnJeu } = await import('./ui/cadreAtelier.js');
+        return runnerEnJeu(state.activeSequenceRunner);
+    };
+
+    const naviguer = (methode, rate, argument) => async () => {
+        const { showToast } = await import('./ui/modal.js');
+        const runner = await runnerCourant();
+        const arg = typeof argument === 'function' ? await argument() : undefined;
+        if (!runner || typeof runner[methode] !== 'function' || !runner[methode](arg)) {
+            showToast(runner ? rate : 'Aucun exercice en cours.', 'warning');
+        }
+    };
+    const btnSkip = document.getElementById('db-skip');
+    // LE SAUT OBÉIT À L'INTERRUPTEUR de la palette : neutre, compté juste, ou
+    // compté faux. Le régime est relu à chaque clic — on le change en cours
+    // d'exercice, c'est même tout l'intérêt.
+    if (btnSkip) btnSkip.onclick = naviguer('sauterQuestion', 'Impossible d\'avancer ici.',
+        () => import('./ui/debugBar.js').then(m => m.verdictDuSaut()));
+    const btnBack = document.getElementById('db-back');
+    if (btnBack) btnBack.onclick = naviguer('revenirQuestion', 'Cet exercice ne sait pas revenir en arrière.');
+
+    // LA LIGNE DES ÉTAPES : ce que l'exercice contient, et de quoi y aller. Elle
+    // ne s'ouvre que sur un exercice qui MÈNE ses propres étapes ; ailleurs on
+    // le dit, plutôt que de poser une fenêtre vide.
+    const btnEtapes = document.getElementById('db-etapes');
+    if (btnEtapes) btnEtapes.onclick = async () => {
+        const { basculerPlanEtapes } = await import('./ui/planEtapes.js');
+        if (basculerPlanEtapes()) return;
+        const { showToast } = await import('./ui/modal.js');
+        showToast(await runnerCourant()
+            ? 'Cet exercice n\'a pas d\'étapes internes : le « suivant » passe de question en question.'
+            : 'Aucun exercice en cours.', 'warning');
+    };
+
+    // LES RÉGLAGES DE L'EXERCICE EN COURS. C'est la MÊME fenêtre que celle
+    // d'avant-partie — celle que l'élève voit —, et c'est le but : ce qu'on
+    // règle ici est ce qu'il aura. Elle se rouvre sur les réglages COURANTS de
+    // l'étape, pas sur ceux du catalogue, sinon chaque ouverture effacerait le
+    // réglage précédent et l'on ne pourrait jamais en essayer deux à la suite.
+    const btnParams = document.getElementById('db-params');
+    if (btnParams) btnParams.onclick = async () => {
+        const { showToast } = await import('./ui/modal.js');
+        const runner = await runnerCourant();
+        const step = runner && runner.steps[runner.index];
+        if (!step || !step.exercise) return showToast('Aucun exercice en cours.', 'warning');
+        const { ouvrirReglagesAvantPartie } = await import('./games/configUI.js');
+        ouvrirReglagesAvantPartie(
+            { ...step.exercise, params: { ...step.params, nbQuestions: step.nbItems } },
+            (params) => {
+                runner.rejouerAvec(params);
+                showToast('Exercice relancé avec les nouveaux réglages.', 'success', 2500);
+            },
+            // En AUTEUR : la bande d'aide se règle au lieu de se regarder.
+            { role: 'auteur' });
+        // « AFFINER… » S'OUVRE D'OFFICE POUR L'AUTEUR. C'est là que vivent les
+        // deux réglages que Rémy nomme — le nombre de propositions et le
+        // passage au clavier —, repliés parce qu'un parent qui distribue des
+        // tablettes n'en a pas besoin. Celui qui met l'exercice au point,
+        // si : il vient pour eux.
+        document.querySelectorAll('#student-config-content details.cfg-affiner')
+            .forEach(d => { d.open = true; });
+    };
+
+    // La solution : chaque jeu décide s'il sait la montrer. Aucun ne la donne
+    // à l'élève — le bouton n'existe que dans la palette d'auteur.
+    const btnSol = document.getElementById('db-solution');
+    if (btnSol) btnSol.onclick = async () => {
+        const { showToast } = await import('./ui/modal.js');
+        const r = await runnerCourant();
+        // IL Y A DEUX SORTES DE MENEURS, ET ON N'EN REGARDAIT QU'UNE.
+        //
+        // Un JEU est rangé dans `handle.jeu` ; une ACTIVITÉ, elle, EST le
+        // `handle` — son `mount` rend directement l'objet. Le bouton ne
+        // cherchait que la première forme : le corrigé ne s'est donc jamais
+        // affiché pour aucune activité, alors que plusieurs savent le montrer
+        // (le circuit d'eau, le rayon et les miroirs). Trouvé en essayant de
+        // vérifier qu'une grille de laser était bien soluble : le bouton ne
+        // faisait rien, sans un mot.
+        const porteur = [r && r.handle && r.handle.jeu, r && r.handle]
+            .find(x => x && typeof x.montrerSolution === 'function');
+        if (!porteur || !porteur.montrerSolution()) {
+            showToast(r ? 'Cet exercice ne sait pas montrer sa solution.' : 'Aucun exercice en cours.',
+                'warning');
+        }
+    };
 }
 
 /**
@@ -420,25 +1164,55 @@ function initStatusFilter() {
     const btn = document.getElementById('db-filter-status');
     if (!btn) return;
 
-    const ICONS = { tout: '🎯', test: '🔧', valide: '✅', brouillon: '📦' };
+    // Un tracé par état, dans le même trait que les autres icônes de la
+    // palette : cible, clé, coche, carton. L'émoji rendait ce bouton — le seul
+    // qui change d'aspect — dépendant du jeu de glyphes du système.
+    const ICONS = {
+        tout: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/>',
+        test: '<path d="M14.5 4.5a4 4 0 0 0 5 5L21 8v5l-8.5 8.5a2.5 2.5 0 0 1-3.5 0l-2.5-2.5a2.5 2.5 0 0 1 0-3.5L15 7"/>',
+        valide: '<path d="M4.5 12.5 10 18 19.5 6.5"/>',
+        brouillon: '<path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5M12 13v7"/>'
+    };
     const NAMES = { tout: 'Tout', ...STATUS_LABELS };
 
-    const render = () => {
-        const filter = state.catalogFilter || 'tout';
+    // Les états HABITÉS, « tout » toujours en tête.
+    //
+    // Le bouton faisait défiler les quatre états sans regarder s'il y avait
+    // quelque chose dedans. Depuis que Rémy a ouvert tout le catalogue
+    // (« ouvre-les tous »), « en test » et « non validé » comptent zéro
+    // exercice : deux clics sur quatre menaient à une page blanche, sans rien
+    // dire de plus que le nombre déjà écrit sur le bouton. On saute ce qui est
+    // vide — et si le catalogue se repeuple un jour, l'état revient tout seul.
+    const cycle = () => {
         const counts = countByStatus(exercices);
+        return STATUS_CYCLE.filter(e => e === 'tout' || counts[e] > 0);
+    };
+
+    const render = () => {
+        const counts = countByStatus(exercices);
+        const filter = state.catalogFilter || 'tout';
         const n = filter === 'tout' ? exercices.length : counts[filter];
-        btn.textContent = ICONS[filter];
+        btn.innerHTML = `<svg viewBox="0 0 24 24">${ICONS[filter] || ICONS.tout}</svg>`;
         etiquette(btn, `Catalogue : ${NAMES[filter]} (${n}) — cliquer pour changer d'état`);
         btn.classList.toggle('active', filter !== 'tout');
     };
 
     btn.onclick = async () => {
-        const i = STATUS_CYCLE.indexOf(state.catalogFilter || 'tout');
-        await state.setCatalogFilter(STATUS_CYCLE[(i + 1) % STATUS_CYCLE.length]);
+        const suite = cycle();
+        const i = suite.indexOf(state.catalogFilter || 'tout');
+        await state.setCatalogFilter(suite[(i + 1) % suite.length]);
         render();
         refreshViews();
         initGridFilters();
     };
+
+    // Un filtre GARDÉ d'une session précédente peut désigner un état devenu
+    // vide. Le corriger seulement à l'affichage ferait mentir le bouton : le
+    // catalogue, lui, lit `state.catalogFilter` et resterait nu. On remet donc
+    // l'état pour de bon, puis on redessine.
+    if (state.catalogFilter && !cycle().includes(state.catalogFilter)) {
+        state.setCatalogFilter('tout').then(() => { render(); refreshViews(); });
+    }
 
     render();
 }
@@ -446,9 +1220,113 @@ function initStatusFilter() {
 /**
  * Jeu de données de démonstration : produit de vraies tentatives via le
  * journal, donc statistiques, maîtrise, carnet d'erreurs et bilans se
- * remplissent exactement comme en usage réel.
+ * remplissent exactement comme en usage réel. Génère aussi un parcours
+ * d'exemple complet — enregistré côté professeur ET assigné à l'élève —
+ * pour tester la carte des mondes, le mode apprentissage et le reste sans
+ * rien construire à la main.
  */
-function generateSampleData() {
+/**
+ * Construit le « Parcours découverte » : cinq étapes variées en mode
+ * apprentissage. C'est le parcours d'exemple livré avec l'application.
+ */
+async function buildDiscoveryPath() {
+    const [{ makeStep, makePath }, { apprentissagePolicy }] = await Promise.all([
+        import('./core/path.js'), import('./core/policy.js')
+    ]);
+    const steps = [
+        makeStep('calc-add', {}, { nbItems: 5, threshold: 3 }),
+        makeStep('calc-mult-flash', {}, { nbItems: 5, threshold: 3 }),
+        makeStep('frac-compare', { memeDenominateur: 'identiques' }, { nbItems: 5, threshold: 3 }),
+        makeStep('mes-perimetre', {}, { nbItems: 4, threshold: 3 }),
+        makeStep('calc-prio-resultat', {}, { nbItems: 5, threshold: 3 })
+    ];
+    return makePath('Parcours découverte', steps, apprentissagePolicy());
+}
+
+/**
+ * LE PARCOURS « TOUT SUR PAPIER » : un exemplaire de CHAQUE exercice qui sait
+ * s'imprimer, dans l'ordre du catalogue.
+ *
+ * Il sert à vérifier la fiche d'un seul coup d'œil — orientation, colonnes,
+ * champs remplissables, corrigés — sans composer la même séance à la main à
+ * chaque essai. Il se construit à partir du CATALOGUE et non d'une liste
+ * écrite ici : un exercice imprimable ajouté demain y entrera tout seul, et
+ * aucun exercice retiré n'y laissera un trou.
+ */
+async function buildPrintablePath() {
+    const [{ makeStep, makePath }, { exercices }, { getGenerator }] = await Promise.all([
+        import('./core/path.js'), import('./data/catalog.js'), import('./core/registry.js')
+    ]);
+    const surPapier = exercices.filter(e => {
+        if (e.printable) return true;
+        const gen = e.generatorId ? getGenerator(e.generatorId) : null;
+        return !!(gen && gen.ecrit);
+    });
+    // Peu de questions par exercice : la fiche doit rester feuilletable. Six
+    // grilles, en revanche, plutôt que deux : c'est le nombre qui permet
+    // d'essayer les mises en page à trois, quatre ou six par ligne. Avec deux
+    // grilles seulement, « quatre par ligne » ne peut rien montrer.
+    const steps = surPapier.map(e => makeStep(e.id, {}, { nbItems: 6, threshold: 1 }));
+    return makePath(`Tout sur papier (${steps.length} exercices)`, steps);
+}
+
+/**
+ * Au premier lancement (aucun parcours sur ce poste), un parcours d'exemple
+ * est créé d'office : l'élève le trouve dans « Mon Parcours » sous « Parcours
+ * du professeur », et le professeur dans 📂 Mes Parcours — de quoi tout
+ * essayer sans rien construire.
+ */
+async function seedExamplePath() {
+    // Le parcours de découverte n'a lieu d'être que sur un poste vierge : on ne
+    // va pas reposer un exemple devant un professeur qui a déjà bâti ses
+    // séances.
+    if (!state.teacherPaths.length) {
+        const path = await buildDiscoveryPath();
+        state.saveTeacherPath(path.name, path);
+    }
+    // « TOUT SUR PAPIER », EN REVANCHE, SE POSE TOUJOURS.
+    //
+    // Il était à l'intérieur du « poste vierge » : un professeur qui avait créé
+    // ne serait-ce qu'un parcours ne l'a donc jamais vu. Or c'est la feuille de
+    // vérification — celle qui contient tous les exercices imprimables du
+    // catalogue, pour regarder la présentation de chacun. Elle doit être là, et
+    // à jour, à chaque démarrage.
+    await semerParcoursPapier();
+}
+
+/**
+ * Pose (ou remet à jour) le parcours « Tout sur papier ». Son contenu suit le
+ * catalogue : on le RECALCULE au lieu de le laisser vieillir, sinon un
+ * exercice imprimable ajouté après coup manquerait à la vérification.
+ */
+async function semerParcoursPapier() {
+    const papier = await buildPrintablePath();
+    const ancien = state.teacherPaths.find(p => /^Tout sur papier/.test(p.name));
+    if (ancien) state.updateTeacherPath(ancien.id, papier.name, papier);
+    else state.saveTeacherPath(papier.name, papier);
+}
+
+async function generateSampleData() {
+    if (!state.teacherPaths.some(p => p.name === 'Parcours découverte')) {
+        const path = await buildDiscoveryPath();
+        state.saveTeacherPath(path.name, path);
+    }
+
+    await semerParcoursPapier();
+
+    // Assigné à l'élève : la carte des mondes de « Mon Parcours » se remplit
+    // comme si un code avait été saisi.
+    const saved = state.teacherPaths.find(p => p.name === 'Parcours découverte');
+    if (saved && (!state.studentPath || !state.studentPath.steps || !state.studentPath.steps.length)) {
+        state.setStudentPath(saved.data.steps, {
+            pathId: saved.data.id, name: saved.name, policy: saved.data.policy
+        });
+    }
+
+    genererTentativesExemple();
+}
+
+function genererTentativesExemple() {
     const now = Date.now();
     const DAY = 86400000;
     const scenario = [
@@ -480,5 +1358,9 @@ function generateSampleData() {
 
     state.addTime('calc-mult-flash', 640);
     journal.flush();
-    import('./ui/modal.js').then(m => m.showToast('Données de démonstration générées.', 'success'));
+    import('./ui/modal.js').then(m => m.showToast('Données d\'exemple et « Parcours découverte » générés.', 'success'));
 }
+
+// LE DÉMARRAGE A EU LIEU. Le garde-fou d'index.html attend ce drapeau :
+// sans lui, il affiche au bout de six secondes ce qui a manqué.
+window.__atoutmathDemarre = true;

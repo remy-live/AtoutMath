@@ -1,11 +1,114 @@
 /* --- ARCHITECTURE GENERALE --- */
 /* Plein écran : la palette d'outils est flottante, elle ne prend plus de
    place dans le flux et n'a donc plus de hauteur à déduire. */
-#app-container { flex-grow: 1; position: relative; overflow: hidden; height: 100vh; background: var(--bg-app); display: flex; flex-direction: column; }
+#app-container { flex-grow: 1; position: relative; overflow: hidden; height: 100vh; height: 100dvh; background: var(--bg-app); display: flex; flex-direction: column; }
 
-#top-navbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 50; flex-shrink: 0; }
+#top-navbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: var(--bg-verre); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 50; flex-shrink: 0; }
+/* Écran court (téléphone en paysage) : la barre haute s'amincit pour laisser
+   le maximum de hauteur au contenu. */
+@media (max-height: 480px) {
+    #top-navbar { height: 46px; padding: 0 12px; }
+    #top-navbar .title { font-size: 1.1rem; }
+}
 .nav-left, .nav-center, .nav-right { display: flex; align-items: center; gap: 15px; }
 .nav-center { flex-grow: 1; justify-content: center; }
+
+/* La barre haute ne doit JAMAIS déborder.
+   Sur un téléphone étroit, le titre gardait sa largeur pleine et poussait la
+   pastille d'étoile hors du cadre : `#app-container` étant en `overflow:
+   hidden`, elle était coupée net au lieu de se réduire. Le titre est le seul
+   élément qui accepte de rétrécir — les icônes, elles, sont des cibles
+   tactiles et gardent leur taille. */
+.nav-left { min-width: 0; }
+
+/* --- QUI EST DEVANT L'ÉCRAN ------------------------------------------------
+   Rémy : « sur l'interface prof ou et élèves, j'ai l'impression que ce n'est
+   pas clair ». La pastille dit le rôle en un mot, à côté du nom de
+   l'application — c'est-à-dire au premier endroit où va l'œil.
+
+   ELLE CHANGE DE COULEUR, PAS SEULEMENT DE MOT. « Élève » se lit en gris
+   discret : c'est l'état normal, celui qu'on ne doit pas remarquer. « Prof »
+   s'allume : on est dans un mode qui montre les exercices en test et remplace
+   la vue par le constructeur de parcours, et l'on doit s'en souvenir avant de
+   tendre la tablette à un enfant. Le point coloré fait le même travail pour qui
+   ne distingue pas les deux teintes. */
+.role-badge {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    padding: 3px 10px 3px 8px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg-app);
+    color: var(--text-muted); font: inherit; font-size: .78rem; font-weight: 800;
+    cursor: pointer; transition: .15s; white-space: nowrap;
+}
+.role-badge:hover { border-color: var(--text-muted); color: var(--text-main); }
+.role-badge-point {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: currentColor; opacity: .55;
+}
+.role-badge--prof {
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    border-color: var(--primary); color: var(--primary);
+}
+.role-badge--prof .role-badge-point { opacity: 1; }
+/* Sur un téléphone, le mot tombe et le point reste : il suffit à dire le rôle,
+   et la barre haute n'a pas un pixel à perdre. */
+@media (max-width: 430px) {
+    .role-badge { padding: 4px; gap: 0; }
+    .role-badge span:not(.role-badge-point) { display: none; }
+    .role-badge-point { width: 9px; height: 9px; }
+}
+#top-navbar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-right { flex-shrink: 0; }
+
+/* --- LES OUTILS RARES, DERRIÈRE UN SEUL BOUTON -----------------------------
+   Rémy : « quand l'élève arrive là, ça fait peur ! […] il y a pas mal de
+   boutons en haut ». Six icônes muettes alignées, ce sont six questions
+   posées avant d'avoir vu le premier exercice — et aucune ne porte son nom.
+   Dans le menu, elles en retrouvent un ; dehors ne restent que le carnet
+   (ce qu'on vient revoir), le plein écran et le score (ce qu'on vient
+   gagner). */
+.nav-menu { position: relative; flex-shrink: 0; }
+.nav-menu-liste {
+    position: absolute; right: 0; top: calc(100% + 8px); z-index: 100005;
+    min-width: 210px; padding: 6px; border-radius: 14px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    display: flex; flex-direction: column; gap: 2px;
+}
+/* Le piège de `[hidden]` : la règle du navigateur a une spécificité de zéro et
+   perdrait contre la ligne au-dessus. */
+.nav-menu-liste[hidden] { display: none; }
+.nav-menu-item {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 9px 11px; border: 0; border-radius: 10px;
+    background: none; color: var(--text-main);
+    font: inherit; font-weight: 600; font-size: .92rem;
+    text-align: left; cursor: pointer; white-space: nowrap;
+}
+.nav-menu-item:hover, .nav-menu-item:focus-visible { background: var(--bg-hover); }
+.nav-menu-item svg { flex: 0 0 auto; opacity: .7; }
+/* Le bouton PLEIN ÉCRAN s'ajoute à une rangée déjà pleine. Plutôt que de le
+   reléguer dans un menu — un bouton qu'il faut chercher n'est pas « toujours
+   accessible » — on resserre : les icônes maigrissent d'un cran et la pastille
+   de score perd son rembourrage. Le nom de l'application, lui, reste entier :
+   c'est la seule chose de cette barre qui ne se devine pas. */
+@media (max-width: 480px) {
+    #top-navbar { padding: 0 10px; }
+    .nav-left { gap: 8px; }
+    #top-navbar .nav-right { gap: 5px; }
+    #top-navbar .title { font-size: 1.05rem; }
+    #top-navbar .btn-icon { padding: 3px; }
+    #top-navbar .btn-icon--sm svg { width: 18px; height: 18px; }
+    .score-display { font-size: .88rem; padding: 3px 7px; gap: 3px; }
+    .score-display svg { width: 13px; height: 13px; }
+}
+/* En dessous de 360 px, cinq icônes plus une pastille ne tiennent plus quoi
+   qu'on fasse : la sauvegarde et la synchronisation, qui ne servent qu'une
+   fois de temps en temps, cèdent la place. Elles restent atteignables depuis
+   le menu latéral. */
+@media (max-width: 359px) {
+    #top-navbar #btn-open-import-export-student { display: none; }
+    #top-navbar .btn-icon--sm svg { width: 17px; height: 17px; }
+}
 
 #app-body { display: flex; flex-grow: 1; overflow: hidden; flex-direction: row; position: relative; }
 
@@ -13,8 +116,8 @@
 #sidebar.collapsed { width: 0 !important; border-right: none; }
 #sidebar header { display: none; } /* Logo is moved to top-navbar */
 #main-area { display: flex; flex-direction: column; flex-grow: 1; position: relative; overflow: hidden; background: var(--bg-app); }
-#main-area > header { display: flex; align-items: center; padding: 15px 25px; gap: 15px; border-bottom: 1px solid var(--border); min-height: 50px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); z-index: 10; }
-#bottom-nav { height: var(--bottom-nav-height); background: var(--bg-panel); border-top: 1px solid var(--border); width: 100%; position: absolute; bottom: 0; z-index: 100; justify-content: space-around; }
+#main-area > header { display: flex; align-items: center; padding: 15px 25px; gap: 15px; border-bottom: 1px solid var(--border); min-height: 50px; flex-shrink: 0; background: var(--bg-verre); backdrop-filter: blur(12px); z-index: 10; }
+#bottom-nav { height: var(--bottom-nav-height); box-sizing: border-box; padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--bg-panel); border-top: 1px solid var(--border); width: 100%; position: absolute; bottom: 0; z-index: 100; justify-content: space-around; }
 
 /* =========================================================
    GESTION DU LAYOUT (MOBILE ON vs OFF)
@@ -59,19 +162,76 @@ body.mobile-view.teacher-mode #sidebar, body.mobile-view.teacher-mode #main-area
 body.mobile-view.teacher-mode #main-area { order: 1; flex: none !important; height: auto !important; overflow: visible !important; }
 body.mobile-view.teacher-mode #sidebar { order: 2; border-top: 2px solid var(--border); border-right: none; flex: 1 !important; }
 
+/* --- TIROIR DU CATALOGUE (professeur sur téléphone) ---
+   L'empilement parcours-puis-catalogue obligeait à défiler sans fin pour
+   ajouter un exercice. Le catalogue devient une FEUILLE COULISSANTE : le
+   parcours reste à l'écran, la poignée « 📚 Catalogue » dépasse en bas, un
+   appui ouvre le tiroir aux deux tiers — on ajoute (toast de confirmation)
+   en gardant le parcours en tête, puis on rabat. Le ☰ l'ouvre aussi. */
+body.mobile-view.teacher-mode #sidebar {
+    position: fixed; left: 0; right: 0; top: auto;
+    bottom: var(--bottom-nav-height);
+    height: 64vh; height: min(64dvh, 540px);
+    transform: translateY(calc(100% - var(--tiroir-poignee)));
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 4000;
+    border-radius: 18px 18px 0 0;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -12px 34px rgba(15, 23, 42, 0.22);
+    background: var(--bg-panel);
+}
+body.mobile-view.teacher-mode #sidebar.drawer-open { transform: translateY(0); }
+/* DE LA PLACE SOUS LE PARCOURS pour que la poignée ne cache rien — la hauteur
+   de la poignée, ET une marge de confort. Mesuré : 124 pixels réservés pour
+   112 occupés, soit douze pixels d'écart. Douze pixels, c'est rien : une
+   poignée un peu plus haute, et le bas de la dernière carte passait sous la
+   bande sans qu'on puisse aller le chercher — car sur un parcours court, TOUT
+   le défilement disponible vient de cette réserve. */
+body.mobile-view.teacher-mode #app-body {
+    padding-bottom: calc(var(--bottom-nav-height) + var(--tiroir-poignee) + 24px);
+}
+
+.drawer-handle { display: none; }
+body.mobile-view.teacher-mode .drawer-handle {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    width: 100%; padding: 10px 0 12px; flex-shrink: 0;
+    background: none; border: none; cursor: grab;
+    color: var(--text-main); font-weight: 700; font-size: .95rem;
+    /* La poignée se tire : sans cela, Safari transforme le glissement en
+       défilement de page et le tiroir ne bouge jamais. */
+    touch-action: none;
+    user-select: none; -webkit-user-select: none;
+}
+body.mobile-view.teacher-mode .drawer-handle:active { cursor: grabbing; }
+.drawer-grip {
+    width: 44px; height: 5px; border-radius: 3px;
+    background: var(--border);
+}
+
 /* --- LAYOUT DU BUILDER --- */
 body.mobile-view .desktop-only { display: none !important; }
-#builder-view { display: none; flex-direction: row; padding: 0; height: 100%; width: 100%; }
+/* LA HAUTEUR DES VUES DE #main-area.
+   « height: 100% » se mesurait sur #main-area TOUT ENTIER, en-tête compris :
+   la vue descendait donc systématiquement d'une hauteur d'en-tête sous le bas
+   de l'écran, et ce bout-là était rogné par « overflow: hidden ». Dans le
+   builder, cela mangeait la fin du panneau de propriétés — on pouvait faire
+   défiler le panneau, mais ses derniers champs restaient hors de la fenêtre,
+   inatteignables. « flex: 1 » prend la place qui reste vraiment, et
+   « min-height: 0 » autorise la vue à se serrer sous son contenu, sans quoi
+   elle repousse à nouveau tout le monde vers le bas. */
+#builder-view { display: none; flex-direction: row; padding: 0; flex: 1 1 auto; min-height: 0; width: 100%; }
 body.mobile-view #builder-view { flex-direction: column; }
-#builder-center-col { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); }
-#view-path { display: none; flex-direction: column; padding: 40px; height: 100%; overflow-y: auto; align-items: center; }
-#view-profile { display: none; flex-direction: column; padding: 40px; height: 100%; overflow-y: auto; }
+#builder-center-col { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; border-right: 1px solid var(--border); }
+#view-path { display: none; flex-direction: column; padding: clamp(14px, 4vw, 40px); flex: 1 1 auto; min-height: 0; overflow-y: auto; align-items: center; }
+#view-profile { display: none; flex-direction: column; padding: clamp(14px, 4vw, 40px); flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+/* Le contenu du parcours ne doit jamais dépasser la largeur du téléphone. */
+#view-path > *, #view-profile > * { max-width: 100%; min-width: 0; }
 body.mobile-view #builder-center-col { flex: none !important; height: auto !important; border-right: none !important; }
 body.mobile-view #path-collapsible-wrapper { display: block; }
 body.mobile-view #path-toggle-icon { display: block !important; }
 
-body.mobile-view #builder-properties-panel { 
-    position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important;
+body.mobile-view #builder-properties-panel {
+    position: fixed; top: 0; left: 0; width: 100vw !important; height: 100vh !important; height: 100dvh !important;
     background: var(--bg-panel); z-index: 100000;
     transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: none !important; padding-top: 60px; /* Space for close btn */
@@ -79,17 +239,72 @@ body.mobile-view #builder-properties-panel {
 body.mobile-view #builder-properties-panel.mob-open {
     transform: translateY(0);
 }
+/* LA POIGNÉE DU PANNEAU DES PROPRIÉTÉS.
+   Le panneau défile tout entier : posée dans le flux et rien de plus, elle
+   partirait vers le haut au premier glissement, et l'on ne pourrait plus
+   refermer sans être remonté d'abord. Collante, elle reste sous le pouce.
+   ELLE SE RANGE SOUS LA CROIX, pas dessus. Le panneau réserve déjà soixante
+   pixels en haut pour le bouton de fermeture ; une bande pleine largeur posée
+   dans cette réserve recouvrait la croix et la rendait inappuyable — mesuré,
+   Playwright refusait le clic. Dans le flux, la poignée arrive à 60 pixels,
+   sous la croix ; une fois le panneau défilé, la croix est partie avec le
+   contenu et la poignée reste seule en haut. */
+body.mobile-view #builder-properties-panel .tiroir-poignee {
+    display: flex; align-items: center; justify-content: center;
+    position: sticky; top: 0; z-index: 3;
+    height: 26px; margin: 0 -20px 8px; padding: 0;
+    background: var(--bg-panel); cursor: grab; touch-action: none;
+}
+body.mobile-view #builder-properties-panel .tiroir-poignee::before {
+    content: ''; width: 42px; height: 4px; border-radius: 999px;
+    background: var(--border);
+}
 #builder-properties-panel { width: 300px; display: flex; flex-direction: column; padding: 20px; background: var(--bg-panel); overflow-y: auto; border-left: 1px solid var(--border); }
+
+/* --- ÉCRANS MOYENS (téléphone en paysage, petite tablette) ---
+   Trois colonnes fixes (catalogue 320 + parcours + propriétés 330) ne
+   tiennent pas sous 1024 px : le parcours était écrasé à rien. La barre
+   latérale s'amincit et le panneau de propriétés devient un VOLET qui
+   coulisse depuis la droite, ouvert d'un appui sur une étape. */
+@media (max-width: 1023px) {
+    body:not(.mobile-view) { --sidebar-width: 250px; }
+    body:not(.mobile-view) #builder-properties-panel {
+        position: fixed; top: 0; right: 0; bottom: 0;
+        height: 100dvh; width: min(380px, 92vw); z-index: 100000;
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: -12px 0 34px rgba(15, 23, 42, 0.22);
+        border-left: 1px solid var(--border); padding-top: 56px;
+    }
+    body:not(.mobile-view) #builder-properties-panel.mob-open { transform: translateX(0); }
+    body:not(.mobile-view) #builder-properties-panel .props-close {
+        display: flex; align-items: center; justify-content: center;
+    }
+    body:not(.mobile-view) #builder-center-col { border-right: none; }
+}
+#builder-center-col { min-width: 0; }
 
 /* --- ICONES SVG --- */
 svg { vertical-align: middle; }
 .btn-toggle svg { margin-right: 5px; }
 
 /* --- ZONE DE JEU PLEIN ECRAN --- */
-/* `inset: 0` plutôt que `100vw/100vh` : la couche épouse exactement la fenêtre
-   visible, sans dépendre d'unités que la barre d'adresse d'un téléphone fait
-   varier, et sans barre de défilement horizontale due à `100vw`. */
-#game-layer { display: none; position: fixed; inset: 0; background: var(--bg-app); z-index: 10000; flex-direction: column; }
+/* `inset: 0` NE SUFFIT PAS sur iPhone. Un élément `position: fixed` se cale
+   sur le bloc conteneur initial, c'est-à-dire la GRANDE fenêtre — celle qui
+   passe sous la barre d'adresse et sous la barre d'outils de Safari. La couche
+   mesurait donc 844 px là où l'élève n'en voyait que 734, et tout ce qui touche
+   les bords disparaissait : dans le Duel des Tables, la rangée de tables du
+   joueur du haut passait sous la barre d'adresse et le pavé de chiffres du
+   joueur du bas sous la barre d'outils — le jeu devenait injouable.
+   `100dvh` suit la fenêtre réellement visible, et le retrait de sécurité du
+   bas dégage la barre d'accueil des iPhone sans encoche matérielle. */
+#game-layer {
+    display: none; position: fixed; inset: 0;
+    height: 100vh; height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+    background: var(--bg-app); z-index: 10000; flex-direction: column;
+}
 
 /* SIMULATEUR APPAREIL (Mode Test Professeur) */
 #game-layer.device-simulator, #game-layer.tablet-simulator {
@@ -101,3 +316,106 @@ svg { vertical-align: middle; }
 }
 #game-layer.device-simulator { height: 90vh; width: 400px; max-height: 850px; }
 #game-layer.tablet-simulator { height: 80vh; width: 768px; max-height: 1024px; }
+
+/* --- UN CODE DANS L'URL : LE PARCOURS, ET RIEN D'AUTRE ---------------------
+   Rémy : « quand il y a un code dans l'URL, il faut charger tout de suite le
+   parcours et pas voir l'interface ».
+
+   ON CACHE, ON NE DÉMONTE PAS. `visibility` plutôt que `display` : la barre du
+   haut, le corps et la barre du bas gardent leur place, donc rien ne saute au
+   moment où l'on rend la main — et surtout leurs mesures restent justes, ce
+   dont le plateau de jeu a besoin pour se dimensionner. Le plateau et les
+   fenêtres, eux, ne sont pas concernés : c'est là que le parcours s'ouvre.
+
+   LE VOILE DIT QU'IL SE PASSE QUELQUE CHOSE. Un écran vide pendant qu'on
+   décode et qu'on charge les modules se lit comme une panne. */
+html.depuis-code #top-navbar,
+html.depuis-code #app-body,
+html.depuis-code #bottom-nav { visibility: hidden; }
+
+html.depuis-code::after {
+    content: "Chargement du parcours…";
+    position: fixed; inset: 0; z-index: 40;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-app, #f7f8fc); color: var(--text-muted, #6b7280);
+    font-weight: 700; font-size: 1rem;
+}
+/* Le voile s'efface dès que le parcours est à l'écran ; les barres, elles,
+   restent cachées tant qu'on y est. */
+html.depuis-code.parcours-pret::after { content: none; }
+
+/* --- AVANT LA PORTE : ON NE MONTRE PAS LA MAISON -----------------------------
+   Rémy : « quand le site se lance, il y a l'interface […] qui s'affiche avant
+   d'afficher la porte ».
+
+   MÊME MÉCANIQUE QUE `depuis-code`, ET POUR LA MÊME RAISON : `visibility`
+   plutôt que `display`, pour que rien ne saute quand on rend la main et que les
+   mesures des barres restent justes.
+
+   LA PALETTE D'AUTEUR EST DE LA PARTIE, elle. Elle vit à z-index 100000 — au-
+   dessus de tout, c'est son métier — et flottait donc AU-DESSUS du voile :
+   mesuré sur `?code=…`, on lisait « Chargement du parcours… » avec la palette
+   par-dessus. Un élève qui arrive sur la porte d'entrée n'a rien à faire d'une
+   palette d'outils d'auteur ; on la voile aussi.
+
+   LE VOILE NE DIT RIEN. Contrairement au chargement d'un parcours, où l'attente
+   a un objet qu'on peut nommer, ici on ne sait pas encore ce qui va s'afficher :
+   annoncer « Ouverture… » puis montrer une porte d'identification serait deux
+   messages pour un seul geste. Un fond uni de la couleur de l'application, et
+   c'est tout : la page a l'air de se charger, parce que c'est ce qu'elle fait. */
+html.avant-porte #top-navbar,
+html.avant-porte #app-body,
+html.avant-porte #bottom-nav,
+html.avant-porte #debug-toolbar { visibility: hidden; }
+
+html.avant-porte::after {
+    content: "";
+    position: fixed; inset: 0; z-index: 40;
+    background: var(--bg-app, #f7f8fc);
+}
+
+/* --- UN VOLET DE L'ATELIER ---------------------------------------------------
+
+   La page chargée dans un cadre de l'Atelier (`?atelier=jeu|demo|fiche`) ne
+   montre QUE ce qu'on lui demande : ni navigation, ni catalogue, ni palette
+   d'auteur — un cadre de quatre cents pixels n'a pas de place pour trois
+   barres, et ce qu'on y regarde n'est pas l'application, c'est l'exercice.
+
+   Les barres sont RETIRÉES (display:none) et non seulement masquées : dans un
+   cadre étroit, leur hauteur ferait mentir la mesure du plateau, et l'on
+   verrait déborder ce qui ne déborde pas. */
+html.volet-atelier #top-navbar,
+html.volet-atelier #app-body,
+html.volet-atelier #bottom-nav,
+html.volet-atelier #debug-toolbar { display: none !important; }
+
+/* LA BARRE DE PASSE RESTE DANS LE VOLET DU JEU.
+   Rémy : « dans l'Atelier, je perds ma barre de debug, je l'aime bien car on
+   peut passer les questions. » Elle disparaissait avec tout le reste de
+   l'application — et c'était une perte sèche : dans un cadre, la palette
+   commande LE jeu de ce cadre-là, ce qui est précisément ce qu'on veut régler.
+   ON N'EN GARDE QUE LA PASSE. Dix-huit icônes dans un quart d'écran ne se
+   visent pas, et la moitié n'aurait aucun sens ici : changer de rôle, vider la
+   sauvegarde ou rouvrir l'Atelier dans l'Atelier. Restent les six boutons
+   qu'on emploie devant un exercice — la solution, les réglages, la ligne des
+   étapes, reculer, avancer, et le régime du saut. Les autres volets, eux, n'ont pas de jeu à
+   commander : la feuille ne se saute pas, et le robot a sa propre barre. */
+html.volet-atelier--jeu #debug-toolbar { display: flex !important; }
+/* UN SEUL SÉLECTEUR, ET C'EST VOULU. La première écriture cachait tout puis
+   rallumait les cinq — et les rallumait EN VAIN : « …#db-tools > .debug-btn »
+   porte deux classes, « …#db-solution » une seule, donc la règle qui cache
+   gagnait. Mesuré : la barre s'affichait, large de 96 pixels, sans un seul
+   bouton. Un « :not() » ne se fait pas battre par lui-même. */
+html.volet-atelier--jeu #db-tools > .debug-btn:not(#db-solution):not(#db-params):not(#db-etapes):not(#db-back):not(#db-skip):not(#db-saut-mode) { display: none; }
+/* Six icônes tiennent sur une ligne : la grille à neuf colonnes de la palette
+   laisserait trois colonnes vides et une barre trop large pour un quart
+   d'écran. */
+html.volet-atelier--jeu .dbg-tools { grid-template-columns: repeat(6, auto); }
+html.volet-atelier, html.volet-atelier body { overflow: hidden; }
+/* La fiche à imprimer occupe le volet entier : dans un cadre, une modale
+   centrée sur fond sombre ne laisserait voir qu'un timbre-poste. */
+html.volet-atelier .modal-overlay { padding: 0; background: var(--bg-app); }
+html.volet-atelier .modal-overlay .glass-panel {
+    max-width: none; width: 100%; height: 100%; max-height: none;
+    border-radius: 0; border: 0;
+}

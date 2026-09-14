@@ -37,14 +37,20 @@ export function showRunReport(bilan, { onClose } = {}) {
 export function reportHtml(bilan, { compact = false } = {}) {
     const pct = Math.round(bilan.ratioPondere * 100);
 
-    const noteBlock = bilan.note !== null
+    // LA NOTE EXISTE, MAIS L'ÉLÈVE NE LA VOIT PAS FORCÉMENT. Rémy voulait
+    // pouvoir noter sans montrer : le devoir se rend en classe, la note se dit
+    // de vive voix, et l'écran n'annonce rien. On montre alors le taux de
+    // réussite, qui reste une information honnête et non un verdict chiffré.
+    const noteBlock = (bilan.note !== null && !bilan.noteCachee)
         ? `<div class="report-note">
                <div class="report-note-value">${formatNote(bilan.note)}<span class="report-note-scale">/${bilan.sur}</span></div>
                <div class="report-note-label">${labelForRule(bilan.regle)}</div>
            </div>`
         : `<div class="report-note report-note--nograde">
                <div class="report-note-value">${pct}<span class="report-note-scale">%</span></div>
-               <div class="report-note-label">de réussite</div>
+               <div class="report-note-label">${bilan.noteCachee
+                   ? 'de réussite — la note est enregistrée pour ton professeur'
+                   : 'de réussite'}</div>
            </div>`;
 
     const stats = `
@@ -189,7 +195,11 @@ function formatNote(n) {
 
 export function formatDuration(seconds) {
     if (!seconds) return '0s';
-    const m = Math.floor(seconds / 60), s = seconds % 60;
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor(seconds / 60) % 60, s = seconds % 60;
+    // Au-delà de l'heure, « 135 min 43 » ne se lit plus : personne ne compte
+    // en minutes une séance qui dure deux heures.
+    if (h > 0) return `${h} h ${m.toString().padStart(2, '0')}`;
     return m > 0 ? `${m} min ${s.toString().padStart(2, '0')}` : `${s}s`;
 }
 

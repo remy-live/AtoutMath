@@ -1,4 +1,5 @@
 import { BaseGame } from '../core/BaseGame.js';
+import { createDemoGate, dureeDemo } from '../core/demoPointer.js';
 import { state } from '../core/state.js';
 
 export function engineCourse(container, isDemo, params) {
@@ -209,6 +210,11 @@ class Course extends BaseGame {
         this.bonusX2 = 0; this.ralenti = 0;
         this.vehicule = chargerVehicule();
         this.feedback = { active:false, text:'', color:'', scale:0, life:0 };
+        // Correction écrite DANS la course, en bandeau haut : la carte de
+        // correction se posait en bas du circuit, pile là où arrivent la
+        // voiture et les portails. On lisait « Faux ! 3 × 3 = 9 » sans plus
+        // voir la route pendant deux secondes.
+        this.correction = { texte:'', life:0 };
         this.shake = 0; this.biome = 0;
         this.col = JSON.parse(JSON.stringify(biomes[0]));
         this.lastFailedOp = null; this.errorTriageCount = 0;
@@ -227,8 +233,17 @@ class Course extends BaseGame {
         this.container.innerHTML = `
             <style>
                 .course-wrapper { position: relative; width: 100%; height: 100%; display: flex; justify-content: center; background: var(--bg-app); font-family: 'Outfit', Courier, monospace; color: var(--text-main); overflow: hidden; touch-action: none; }
-                .course-wrapper #course-cvs { background: transparent; border-left: 2px solid var(--border); border-right: 2px solid var(--border); max-width: 750px; width: 100%; height: 100%; display: block; }
-                .course-hud { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 750px; height: 100%; pointer-events: none; display: none; flex-direction: column; z-index:5; }
+                /* LA ROUTE PREND LA LARGEUR QU'ON LUI DONNE. Rémy : « la course
+                   mathématique sur tablette ne prend pas toute la surface ».
+                   Elle était plafonnée à 750 px — sur un iPad couché de 1180,
+                   deux bandes grises de deux cents pixels de chaque côté. Le
+                   plafond monte, borné par la hauteur pour qu'une route ne
+                   devienne pas plus large que longue. Les voies étant tracées
+                   en proportion, la route plus large donne des voies plus
+                   larges : des cibles plus faciles à viser au doigt. */
+                .course-wrapper { --course-large: min(980px, 96cqw, 118cqh); }
+                .course-wrapper #course-cvs { background: transparent; border-left: 2px solid var(--border); border-right: 2px solid var(--border); max-width: var(--course-large); width: 100%; height: 100%; display: block; }
+                .course-hud { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: var(--course-large); height: 100%; pointer-events: none; display: none; flex-direction: column; z-index:5; }
                 .course-hud.active { display: flex; }
                 .course-hud-top { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.9); border-bottom: 2px solid var(--border); }
                 .course-hud-info { display: flex; gap: 15px; font-weight: bold; font-size: 1.2rem; align-items: center; color: var(--text-main); }
@@ -368,13 +383,15 @@ class Course extends BaseGame {
     }
 
     runDemoSequence() {
+        this.demoGate = createDemoGate(this.container);
         this.startGameLoop();
         this.setupGame(false, this.params);
         this.demoInterval = setInterval(() => {
+            if (this.demoGate.paused) return;
             if (this.gameState === 'race') {
                 this.p.lane = Math.floor(Math.random() * this.laneCount);
             }
-        }, 1000);
+        }, dureeDemo(1600));
     }
 
     setupEventListeners() {
@@ -468,6 +485,8 @@ class Course extends BaseGame {
     }
 
     destroy() {
+
+        if (this.demoGate) { this.demoGate.destroy(); this.demoGate = null; }
         super.destroy();
         window.removeEventListener('resize', this.handleResize);
         document.removeEventListener('keydown', this.handleKeyDown);
@@ -682,9 +701,17 @@ class Course extends BaseGame {
         }
     }
     updateHUD() {
-        this.container.querySelector('#course-hud-score').textContent = this.score;
+        const sEl = this.container.querySelector('#course-hud-score');
         const lEl = this.container.querySelector('#course-disp-lives');
         const tEl = this.container.querySelector('#course-disp-timer');
+        // LE TABLEAU DE BORD A DISPARU SOUS NOS PIEDS.
+        //
+        // Ça arrive quand l'écran de la course est effacé sans qu'on nous
+        // l'ait dit : une vignette d'aperçu remplacée par une autre, une vue
+        // qu'on quitte. Le minuteur, lui, tourne toujours — et il criait une
+        // erreur par seconde jusqu'au rechargement de la page. On coupe.
+        if (!sEl || !lEl || !tEl) { this.pause(); return; }
+        sEl.textContent = this.score;
         if(this.mode === 'chrono') {
             lEl.style.display = 'none'; tEl.style.display = 'inline-block'; tEl.textContent = this.timeLeft + 's';
         } else if (this.mode === 'sprint') {
@@ -832,6 +859,11 @@ class Course extends BaseGame {
         this.feedback={active:true,text:t,color:this.couleurCanevas(c),scale:0.5,life:60};
     }
 
+    /** Bandeau de correction en haut du circuit, ~2,5 s à 60 images/s. */
+    montrerCorrection(texte) {
+        this.correction = { texte, life: 150 };
+    }
+
     handleCollision(o) {
         if(o.type === 'star') {
             const gain = 50 * this.multiplier * (this.bonusX2 > 0 ? 2 : 1);
@@ -907,17 +939,28 @@ class Course extends BaseGame {
                 this.lastFailedOp = this.question.op;
                 this.errorTriageCount = 3; 
 
+                // Plus de « FAUX ! » en travers du circuit. Cette bannière de
+                // 500 px se posait au MILIEU de la route, pile là où arrivent
+                // la voiture et les portails suivants : on pilotait à l'aveugle
+                // pendant une seconde, et elle ne disait même pas la réponse.
+                // Le bandeau du haut la remplace — discret, et il corrige.
+                let penalite = '';
                 if(this.mode === 'chrono') {
                     this.timeLeft = Math.max(0, this.timeLeft - 5);
                     this.updateHUD();
-                    this.triggerFeedback("-5s", "var(--danger)");
+                    penalite = '   −5 s';
                 } else {
                     this.lives--;
-                    this.triggerFeedback("FAUX!", "var(--danger)");
                     if(this.lives<=0) setTimeout(()=>this.endGame(),500);
                 }
-                // Record error with BaseGame
-                this.onWrongAnswer(null, { input: o.val, expected: this.question.r, operation: this.question.qText });
+                // `silencieux` : la tentative part au journal, mais SANS carte
+                // de correction — c'est le bandeau qui l'affiche, sans masquer
+                // la route.
+                this.montrerCorrection(`${this.question.qText} = ${this.question.r}${penalite}`);
+                this.onWrongAnswer(null, {
+                    input: o.val, expected: this.question.r,
+                    operation: this.question.qText, silencieux: true
+                });
             }
         }
         this.updateHUD();
@@ -1001,6 +1044,7 @@ class Course extends BaseGame {
         if(this.objects.filter(o=>o.type==='gate').length === 0) this.spawnQ();
 
         if(this.feedback.active) { this.feedback.scale+=(1-this.feedback.scale)*0.2; this.feedback.life--; if(this.feedback.life<=0)this.feedback.active=false; }
+        if(this.correction?.life > 0) this.correction.life--;
         if(this.shake>0)this.shake--;
     }
 
@@ -1214,6 +1258,31 @@ class Course extends BaseGame {
             c.fillStyle = '#fff'; c.beginPath(); c.moveTo(cx-10, cy+100); c.lineTo(cx, cy+130+Math.random()*20); c.lineTo(cx+10, cy+100); c.fill();
         }
 
+        // Bandeau de correction : EN HAUT, là où il n'y a ni voiture ni
+        // portails. La carte générique se posait en bas et recouvrait la zone
+        // de jeu au moment précis où il faut regarder la route.
+        if(this.correction?.life > 0){
+            const t = this.correction.texte;
+            c.save();
+            c.font = `800 ${Math.max(15, Math.min(24, w * 0.055))}px 'Inter', sans-serif`;
+            c.textAlign = 'center'; c.textBaseline = 'middle';
+            const lw = c.measureText(t).width;
+            // SOUS le tableau de bord : celui-ci est un panneau HTML opaque
+            // posé sur le haut du canevas, et le bandeau se dessinait derrière
+            // — invisible. On lit sa hauteur réelle plutôt que de la deviner.
+            const barre = this.container.querySelector('.course-hud-top');
+            const dy = barre ? barre.getBoundingClientRect().height : 0;
+            const bw = Math.min(w - 24, lw + 36), bh = 36, bx = (w - bw) / 2, by = dy + 6;
+            // Fondu sur la dernière demi-seconde : le bandeau s'efface, il ne
+            // disparaît pas d'un coup au milieu d'une lecture.
+            c.globalAlpha = Math.min(1, this.correction.life / 30);
+            c.fillStyle = 'rgba(15,23,42,.88)';
+            c.beginPath(); drawRound(c, bx, by, bw, bh, 12); c.fill();
+            c.strokeStyle = '#f87171'; c.lineWidth = 2; c.stroke();
+            c.fillStyle = '#fff'; c.fillText(t, w / 2, by + bh / 2 + 1);
+            c.restore();
+        }
+
         if(this.feedback.active){
             c.save(); c.translate(w/2,h/2); c.scale(this.feedback.scale,this.feedback.scale); c.rotate(-0.1);
             c.fillStyle=this.feedback.color; c.strokeStyle='#fff'; c.lineWidth=5; c.shadowColor='rgba(0,0,0,0.3)'; c.shadowBlur=20;
@@ -1228,7 +1297,9 @@ class Course extends BaseGame {
             if (this.rafId) cancelAnimationFrame(this.rafId);
             return;
         }
-        this.update();
+        // Pause d'explication : on dessine encore, mais le monde n'avance
+        // plus. La course continuait sinon de défiler sous la bulle du robot.
+        if (!this.gelDemo) this.update();
         this.draw();
         this.rafId = requestAnimationFrame(this.loop);
     }

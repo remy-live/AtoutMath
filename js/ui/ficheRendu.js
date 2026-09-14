@@ -1,0 +1,1885 @@
+// LE RENDU D'UNE FICHE EN BLOCS — une seule fois, pour l'aperçu ET le PDF.
+//
+// core/fiche.js décide où va chaque chose, en millimètres. Ici on ne fait que
+// dessiner ces items deux fois : en HTML positionné pour l'aperçu, en jsPDF
+// pour le fichier. Les deux dessins lisent les MÊMES coordonnées — c'est la
+// garantie que ce qu'on voit à l'écran est ce que sort l'imprimante.
+//
+// Ce module est partagé par la fiche d'un exercice (printQuestions) et la
+// fiche d'un parcours (printParcours) : même papier, même trait, même bandeau.
+
+import { A4, morceauxReponse, typographieFr, couperEnLignes } from '../core/fiche.js';
+import { refaireSvg, croixSvg } from './icones.js';
+import { RE_FRACTION, etageEstUnTrou } from '../core/fiche.js';
+// Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
+// pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
+import { RENDUS } from './printSheet.js';
+
+/**
+ * L'ENCRE DU POLYCOPIÉ — QUATRE MODES, UN SEUL FILTRE.
+ *
+ * Rémy : « je trouve que tu te sers peu de la couleur quand on demande le
+ * polycopié en couleur. Mets 4 modes : couleur intense (beaucoup de couleur
+ * mais tout en restant sobre et lisible), couleur, niveau de gris, noir et
+ * blanc. »
+ *
+ * Le piège serait d'écrire quatre palettes. Il y a dans ces fiches une
+ * cinquantaine de dessins, chacun avec ses teintes choisies pour lui ; les
+ * quadrupler serait quatre fois plus de choses à garder d'accord, et trois
+ * versions sur quatre finiraient fausses. On garde donc UNE palette — celle
+ * qui est déjà écrite dans chaque rendu — et l'on pose un FILTRE devant
+ * l'encre. Le mode ne change pas ce qu'on dessine, il change comment ça sort.
+ *
+ *   · COULEUR INTENSE — chaque teinte s'écarte de son propre gris. C'est la
+ *     saturation, rien d'autre : les couleurs restent les leurs, elles
+ *     s'affirment. Sobre par construction, puisqu'on ne change ni la teinte ni
+ *     la clarté d'ensemble.
+ *   · COULEUR — la palette telle qu'elle est écrite.
+ *   · NIVEAU DE GRIS — chaque teinte tombe sur sa luminance. Les aplats
+ *     restent, les couleurs partent : c'est une photocopie couleur.
+ *   · NOIR ET BLANC — les aplats eux-mêmes ne sont plus dessinés. C'est le
+ *     mode le plus ancien de cette maison, celui pour lequel chaque figure
+ *     porte AUSSI une marque de forme (symbole, trame, étiquette) : la couleur
+ *     ajoute du confort, elle ne porte jamais l'information à elle seule.
+ *
+ * PROPRIÉTÉ UTILE : le filtre ne touche que ce qui est réellement coloré. Un
+ * gris a la même luminance que lui-même et ne s'écarte de rien — le cadre de
+ * la feuille, les pointillés, le texte noir traversent les quatre modes sans
+ * bouger. Seul change ce qui avait une couleur.
+ *
+ * Le choix est GLOBAL — mémorisé d'une fiche à l'autre, on ne le refait pas
+ * dix fois — et RÉGLABLE FICHE PAR FICHE, puisque c'est le même sélecteur qui
+ * l'affiche et le change.
+ */
+// QUATRE MODES, ET CHACUN A UN MÉTIER — ce qui n'était pas le cas.
+//
+// Rémy : « comment est-ce que le mode couleur intense pourrait être pertinent,
+// car pour l'instant il n'y a pas grand-chose ? » Le diagnostic était juste, et
+// la cause n'était pas dans le filtre : il n'y avait presque rien à intensifier.
+// Les fiches sont dessinées en encres sobres, parce qu'elles sont pensées pour
+// la photocopieuse de l'établissement ; saturer du gris bleuté ne donne que du
+// gris bleuté un peu plus franc.
+//
+// Le mode devient donc ce dont il manquait : celui de l'AFFICHE. Ce qu'on
+// projette au tableau ou qu'on punaise au mur ne passe par aucune
+// photocopieuse — la couleur y est un outil de lecture, pas une décoration, et
+// c'est le seul contexte où on peut lui confier une information (les colonnes
+// d'un tableau de conversion, les codages d'une figure).
+//
+// Les trois autres gardent leur métier : « Couleur » pour l'imprimante de la
+// maison, « Niveaux de gris » pour une photocopie soignée, « Noir et blanc »
+// pour celle du couloir — et c'est le défaut, parce qu'une feuille pensée pour
+// elle marche partout.
+export const MODES_POLYCOPIE = [
+    { id: 'nb', label: 'Noir et blanc — la photocopieuse' },
+    { id: 'gris', label: 'Niveaux de gris' },
+    { id: 'couleur', label: 'Couleur — l\'imprimante' },
+    { id: 'intense', label: 'Affiche — projeter ou punaiser' }
+];
+
+/** Les quatre choix, prêts à poser dans un `<select>`. */
+export function optionsPolycopie() {
+    return MODES_POLYCOPIE
+        .map(m => `<option value="${m.id}">${m.label}</option>`).join('');
+}
+
+const CLE_MODE = 'mathbox-polycopie-mode';
+let modeEnMemoire = null;
+
+export function modePolycopie() {
+    if (modeEnMemoire !== null) return modeEnMemoire;
+    let v = null;
+    try { v = window.localStorage.getItem(CLE_MODE); } catch (e) { v = null; }
+    // Par défaut : NOIR ET BLANC. C'est ce qui sort de la photocopieuse de
+    // l'établissement, et une feuille pensée pour elle marche partout.
+    modeEnMemoire = MODES_POLYCOPIE.some(m => m.id === v) ? v : 'nb';
+    return modeEnMemoire;
+}
+
+export function reglerModePolycopie(id) {
+    modeEnMemoire = MODES_POLYCOPIE.some(m => m.id === id) ? id : 'nb';
+    try { window.localStorage.setItem(CLE_MODE, modeEnMemoire); } catch (e) { /* privé */ }
+}
+
+/**
+ * DESSINE-T-ON LES APLATS ? C'est la seule question que les rendus se posent,
+ * et elle ne se pose qu'en noir et blanc : les trois autres modes dessinent
+ * tout, le filtre s'occupe du reste.
+ */
+export function polycopieEnCouleur() {
+    return modePolycopie() !== 'nb';
+}
+
+// Les coefficients de la luminance sRGB — les mêmes que ceux des filtres CSS
+// `grayscale()` et `saturate()`, pour que l'aperçu à l'écran et le PDF
+// tombent sur la même nuance.
+const LUM = [0.2126, 0.7152, 0.0722];
+const borne = (v) => Math.max(0, Math.min(255, Math.round(v)));
+
+/**
+ * LE GRIS D'UNE COULEUR — pas sa luminance nue.
+ *
+ * La luminance seule ne marche pas, et cela se voit à la première fiche : le
+ * jaune d'un angle donné (253, 224, 160) et le vert de celui qu'on cherche
+ * (200, 236, 218) ont la MÊME clarté. Passés à la moulinette, ils tombent sur
+ * le même gris et la figure devient illisible — deux teintes choisies pour
+ * différer par la TEINTE ne peuvent pas se distinguer par la clarté.
+ *
+ * On retranche donc une part de la saturation : plus une couleur est franche,
+ * plus elle pèse d'encre. C'est ce que fait une photocopieuse honnête, et cela
+ * sépare deux pastels de même clarté sans toucher aux gris — un gris n'a pas
+ * de saturation, il traverse le filtre inchangé.
+ */
+/**
+ * ET LA PÉNALITÉ S'ARRÊTE : UNE COULEUR FRANCHE N'EST PAS DE L'ENCRE NOIRE.
+ *
+ * Rémy, sur quatre feuilles d'affilée : « les blocs scratch sont tout noir »,
+ * « le tangram hyper foncé », « pour les grenouilles c'est pas top », « pour
+ * les voitures un peu foncé ».
+ *
+ * MESURÉ, ET LE CHIFFRE EST SANS APPEL. La pénalité valait `chroma × 0,6`
+ * sans plafond ; sur un aplat franc, le chroma dépasse 180 et l'on retranchait
+ * plus de cent dix. Résultat, en niveaux de gris :
+ *
+ *     bleu Scratch #4C97FF  ->  35        rouge vif (229, 57, 53)  ->  25
+ *     jaune Scratch #FFAB19 ->  40        bleu vif  (30, 136, 229) ->  25
+ *     jaune Scratch #FFBF00 ->  38        orange    (245, 124, 0)  ->  25
+ *
+ * Tout est noir, et le rouge, le bleu et l'orange tombent EXACTEMENT sur le
+ * même 25 : trois couleurs qu'on avait choisies pour se distinguer sortaient
+ * du même pot d'encre. Une grenouille rouge devenait une tache où l'on ne
+ * voyait plus ses yeux, qui sont pourtant noirs par-dessus.
+ *
+ * DEUX CORRECTIONS, ET AUCUNE NE TOUCHE À CE QUE LE FILTRE FAISAIT BIEN :
+ *
+ *  · LA PÉNALITÉ PLAFONNE. Elle est là pour séparer deux PASTELS de même
+ *    clarté — le jaune (253, 224, 160) et le vert (200, 236, 218) du même
+ *    schéma —, et le chroma d'un pastel ne dépasse guère cent. Au-delà, elle
+ *    ne sépare plus rien : elle écrase. On la borne donc à ce que le pastel
+ *    demande, et les deux exemples du commentaire d'origine tombent toujours
+ *    sur 171 et 204, comme avant.
+ *
+ *  · UN APLAT NE DESCEND PAS AU RAS DU NOIR. Plus une couleur est franche,
+ *    plus on la relève : un socle proportionnel à la saturation, nul sur un
+ *    gris — qui traverse donc le filtre inchangé, comme le texte et les
+ *    traits — et complet sur une couleur d'aplat. Les mêmes six couleurs
+ *    sortent maintenant à 122, 150, 160, 83, 104 et 121 : plus rien n'est
+ *    noir, et les trois qui se confondaient se distinguent.
+ */
+const CHROMA_PASTEL = 95;   // au-delà, la pénalité ne sépare plus, elle écrase
+const SOCLE_APLAT = 55;     // le gris le plus sombre qu'un aplat franc atteigne
+
+function grisDe(rvb) {
+    const y = LUM[0] * rvb[0] + LUM[1] * rvb[1] + LUM[2] * rvb[2];
+    const chroma = Math.max(...rvb.slice(0, 3)) - Math.min(...rvb.slice(0, 3));
+    const brut = y - Math.min(chroma, CHROMA_PASTEL) * 0.6;
+    // Combien cette couleur est-elle une COULEUR plutôt qu'une encre ? Zéro
+    // sur un gris, un sur un aplat franc — et le passage est progressif, sans
+    // quoi deux nuances voisines sauteraient de part et d'autre du seuil.
+    const part = Math.max(0, Math.min(1,
+        (chroma - CHROMA_ENCRE) / (CHROMA_PASTEL + 15 - CHROMA_ENCRE)));
+    const socle = SOCLE_APLAT * part;
+    return borne(Math.max(25, socle + brut * (255 - socle) / 255));
+}
+
+/**
+ * COULEUR INTENSE — ce qui est coloré s'affirme, ce qui est de l'encre ne bouge pas.
+ *
+ * Rémy : « le mode couleur intense n'amène pas grand chose ». Mesuré sur les
+ * soixante-cinq fiches imprimables : quatre-vingt-neuf pour cent de l'encre
+ * posée sur une feuille a une saturation quasi nulle — c'est le noir du texte,
+ * le gris des grilles, le blanc cassé des fonds. L'ancienne règle multipliait
+ * l'écart au gris par 1,45 SANS DISTINCTION : elle dépensait donc l'essentiel
+ * de son effet à teinter le texte et les traits en bleu — un voile sale, tout
+ * le contraire du « sobre » demandé — et il ne restait presque rien pour les
+ * onze pour cent réellement colorés. D'où l'impression, juste, qu'il ne se
+ * passe pas grand-chose.
+ *
+ * DEUX CORRECTIONS, ET LA SECONDE DÉCOULE DE LA PREMIÈRE :
+ *
+ *  · LA FORCE SUIT LA SATURATION, pas l'écart au gris. Un bleu ardoise et un
+ *    vert d'eau ont le même écart au gris ; l'un est une encre, l'autre est
+ *    une couleur, et c'est la saturation — l'écart RAPPORTÉ à ce que la
+ *    clarté permet — qui les sépare. En dessous d'un quart, on ne touche à
+ *    rien ; au-delà de sept dixièmes, on pousse à fond.
+ *  · ON POUSSE DEUX FOIS PLUS FORT, et sans que la teinte vire. Une teinte
+ *    claire qu'on sature butte sur 255 dans son canal dominant : elle change
+ *    alors de couleur au lieu de s'affirmer. On l'APPROFONDIT donc d'abord —
+ *    d'autant plus qu'elle est claire — puis on borne le facteur à ce que les
+ *    trois canaux acceptent. La teinte est conservée exactement ; seule sa
+ *    vivacité change. C'est ce que fait un imprimeur, et c'est ce qui reste
+ *    lisible.
+ */
+const CHROMA_ENCRE = 34;   // en dessous, c'est de l'encre, pas une couleur
+const SAT_PLANCHER = 0.25; // saturation à partir de laquelle on commence
+const SAT_PLAFOND = 0.70;  // saturation à partir de laquelle on pousse à fond
+const POUSSEE = 0.95;      // jusqu'à presque deux fois plus saturé
+
+function intensifier(rvb) {
+    const c = rvb.slice(0, 3);
+    const y = LUM[0] * c[0] + LUM[1] * c[1] + LUM[2] * c[2];
+    const haut = Math.max(...c), bas = Math.min(...c);
+    const chroma = haut - bas;
+    if (chroma < CHROMA_ENCRE) return c;
+    // LA SATURATION AU SENS HSL : l'écart au gris rapporté à ce que la clarté
+    // AUTORISE. Un gris ardoise moyen a beaucoup de place et n'en occupe pas ;
+    // un pastel clair en a peu et la remplit — c'est bien lui, la couleur.
+    const place = Math.max(1, 255 - Math.abs(2 * y - 255));
+    const sat = chroma / place;
+    const force = 1 + POUSSEE * Math.max(0, Math.min(1,
+        (sat - SAT_PLANCHER) / (SAT_PLAFOND - SAT_PLANCHER)));
+    if (force <= 1.001) return c;
+
+    // JUSQU'OÙ ON PEUT POUSSER SANS FAIRE VIRER LA TEINTE. Multiplier les
+    // écarts au gris conserve exactement la teinte — mais seulement tant que
+    // les trois canaux restent entre 0 et 255. Dès qu'un canal butte, il
+    // s'écrase et la couleur change : un jaune pâle poussé trop loin devient
+    // orange. On calcule donc le plus grand facteur admissible, et l'on prend
+    // le plus petit des deux — ce qu'on voulait, ce qu'on peut.
+    const dHaut = haut - y, dBas = y - bas;
+    // La clarté qui laisse le plus de place aux deux bouts à la fois.
+    const ideale = 255 * dBas / chroma;
+    // ON N'ÉCLAIRCIT JAMAIS. Sur du papier blanc, une couleur qu'on éclaircit
+    // pour la saturer se lit moins bien, pas mieux — et « sobre » était la
+    // consigne. Une teinte déjà sombre et franche (un ocre dont le bleu est
+    // à zéro) est donc rendue telle quelle : il n'y a plus rien à en tirer
+    // sans la trahir.
+    const kMax = ideale <= y ? 255 / chroma : y / Math.max(1, dBas);
+    const k = Math.max(1, Math.min(force, kMax));
+    if (k <= 1.001) return c;
+
+    // La clarté la plus proche de l'originale qui laisse passer ce facteur.
+    const base = Math.min(y, 255 - k * dHaut);
+    return [0, 1, 2].map(i => borne(base + (c[i] - y) * k));
+}
+
+/**
+ * Filtre une couleur [r, v, b] selon le mode courant.
+ *
+ * CE QUI SÉPARE « NIVEAU DE GRIS » DE « NOIR ET BLANC » N'EST PAS ICI.
+ * On avait essayé : en noir et blanc, effacer les aplats colorés et ne garder
+ * que le trait. La règle est juste, mais elle est INDÉCIDABLE à partir de la
+ * couleur seule — l'encre presque noire de la feuille (26, 32, 44) et le bleu
+ * pâle d'un angle-relais (222, 226, 245) ont la même saturation, et l'une doit
+ * rester quand l'autre doit partir. Les points d'une grille de slitherlink ont
+ * disparu de la feuille avant qu'on s'en aperçoive.
+ *
+ * La distinction se décide donc là où l'on SAIT ce qu'on dessine : dans chaque
+ * rendu, qui demande `polycopieEnCouleur()` et remplace alors son aplat par un
+ * contour, une trame ou un symbole. C'est ce que font déjà la plupart d'entre
+ * eux — c'est la règle de la maison depuis le début.
+ */
+export function encre(rvb, mode = modePolycopie()) {
+    if (!Array.isArray(rvb) || rvb.length < 3) return rvb;
+    if (mode === 'couleur') return rvb;
+    if (mode === 'intense') return intensifier(rvb);
+    const g = grisDe(rvb);
+    return [g, g, g];
+}
+
+/**
+ * LE MÊME FILTRE, PASSÉ SUR L'APERÇU HTML.
+ *
+ * L'aperçu est fabriqué en une chaîne par chaque rendu, puis posé d'un coup
+ * dans la page : cette chaîne EST la porte unique qu'on cherchait. On y
+ * remplace chaque couleur écrite, quelle que soit sa forme — `#abc`, `#aabbcc`
+ * ou `rgb(1, 2, 3)` —, et l'écran tombe alors exactement sur la nuance du PDF.
+ * Un filtre CSS n'aurait pas suffi : `grayscale()` est linéaire, il ne sait
+ * pas retrancher la saturation.
+ */
+const RE_COULEUR = /(#(?:[0-9a-f]{3}|[0-9a-f]{6})\b)|rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*([^)]*)\)/gi;
+
+export function teindreHtml(html, mode = modePolycopie()) {
+    if (mode === 'couleur' || typeof html !== 'string') return html;
+    return html.replace(RE_COULEUR, (tout, hex, r, v, b, suite, index, chaine) => {
+        const rvb = hex
+            ? (hex.length === 4 ? [...hex.slice(1)].map(c => parseInt(c + c, 16))
+                : [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)))
+            : [+r, +v, +b];
+        const t = encre(rvb, mode);
+        if (hex) return '#' + t.map(x => x.toString(16).padStart(2, '0')).join('');
+        const reste = (suite || '').replace(/^\s*,\s*/, '').trim();
+        return reste ? `rgba(${t.join(', ')}, ${reste})` : `rgb(${t.join(', ')})`;
+    });
+}
+
+/**
+ * LE MÊME FILTRE, POSÉ SUR LE DOCUMENT PDF LUI-MÊME.
+ *
+ * jsPDF n'a que trois portes par où une couleur entre : le remplissage, le
+ * trait et le texte. On les habille une fois, à la création du document, et
+ * les quelque deux cents endroits qui posent une couleur n'ont rien à savoir
+ * du mode choisi. C'est ce qui rend les quatre modes tenables.
+ */
+/**
+ * ÉCRIRE LES SYMBOLES QUE LA POLICE DU TEXTE NE CONNAÎT PAS.
+ *
+ * Cent cinquante endroits appellent `doc.text`. Les faire tous passer par une
+ * fonction nouvelle aurait été cent cinquante occasions d'en oublier un — et
+ * l'oubli ne se serait vu que sur une feuille imprimée, en classe. On pose donc
+ * le traitement SUR LE DOCUMENT, une fois : chaque appel en profite, y compris
+ * ceux qu'on écrira l'an prochain.
+ *
+ * LE CHEMIN RAPIDE D'ABORD, ET C'EST CE QUI REND LA CHOSE SÛRE. Une chaîne sans
+ * symbole part vers le `text` d'origine sans avoir été touchée : l'immense
+ * majorité des feuilles sort donc EXACTEMENT comme avant, au point près. Seules
+ * les chaînes qui s'imprimaient « _|_ » ou « V25 » empruntent le chemin neuf.
+ *
+ * L'ALIGNEMENT DEMANDE DE MESURER AVANT DE TRACER. Un texte centré ou aligné à
+ * droite ne peut pas se dessiner morceau par morceau de gauche à droite sans
+ * savoir où commencer : on mesure donc chaque morceau AVEC SA POLICE, on
+ * additionne, et l'on en déduit le point de départ. C'est aussi pour cela que
+ * `getTextWidth` est appelé après `setFont` et jamais avant.
+ */
+export function ecrireSymboles(doc) {
+    if (!doc || doc.__symboles) return doc;
+    doc.__symboles = true;
+
+    const brut = doc.text;
+    if (typeof brut !== 'function') return doc;
+
+    // Un point typographique en millimètres : la taille de police se dit en
+    // points, les coordonnées en millimètres.
+    const PT = 25.4 / 72;
+
+    /** Découpe « (AB) ⊥ (CD) » en morceaux homogènes. */
+    const morceaux = (t) => {
+        const out = [];
+        let courant = '';
+        for (const c of t) {
+            const genre = SYMBOLE[c] ? 'symbole' : (INDICES[c] ? 'indice' : 'texte');
+            if (genre === 'texte') { courant += c; continue; }
+            if (courant) { out.push({ genre: 'texte', t: courant }); courant = ''; }
+            out.push(genre === 'symbole'
+                ? { genre, t: SYMBOLE[c][0], mille: SYMBOLE[c][1] }
+                : { genre, t: INDICES[c] });
+        }
+        if (courant) out.push({ genre: 'texte', t: courant });
+        return out;
+    };
+
+    // On N'INTERROGE PAS jsPDF pour un glyphe Symbol : il rendrait 580 pour
+    // tous. La largeur vient de la table mesurée ci-dessus.
+    const largeur = (m, taille) => (m.genre === 'symbole'
+        ? m.mille / 1000 * taille * PT
+        : doc.getTextWidth(m.t) * (m.genre === 'indice' ? 0.68 : 1));
+
+    const ecrireUne = (texte, x, y, options) => {
+        const police = doc.getFont();
+        const taille = doc.getFontSize();
+        const parts = morceaux(texte);
+        const larges = parts.map(m => largeur(m, taille));
+        const total = larges.reduce((a, b) => a + b, 0);
+
+        const align = (options && options.align) || 'left';
+        let cx = align === 'center' ? x - total / 2 : (align === 'right' ? x - total : x);
+
+        // Les options qui décident du placement sont consommées ici : on passe
+        // désormais un point de départ absolu, donc plus rien à aligner.
+        const reste = { ...(options || {}) };
+        delete reste.align;
+        delete reste.maxWidth;
+
+        parts.forEach((m, i) => {
+            if (m.genre === 'symbole') {
+                doc.setFont('symbol', 'normal');
+                brut.call(doc, m.t, cx, y, reste);
+                doc.setFont(police.fontName, police.fontStyle);
+            } else if (m.genre === 'indice') {
+                // Plus petit, et posé plus bas — c'est la définition d'un indice.
+                doc.setFontSize(taille * 0.68);
+                brut.call(doc, m.t, cx, y + taille * PT * 0.20, reste);
+                doc.setFontSize(taille);
+            } else {
+                brut.call(doc, m.t, cx, y, reste);
+            }
+            cx += larges[i];
+        });
+    };
+
+    doc.text = function (texte, x, y, options, ...suite) {
+        // Chemin rapide : rien à faire, on ne touche à rien.
+        const chaine = typeof texte === 'string';
+        const liste = Array.isArray(texte);
+        if (!chaine && !liste) return brut.call(this, texte, x, y, options, ...suite);
+        const concerne = chaine ? ECRITS.test(texte) : texte.some(l => ECRITS.test(String(l)));
+        if (!concerne) return brut.call(this, texte, x, y, options, ...suite);
+
+        if (chaine) {
+            ecrireUne(texte, x, y, options);
+            return this;
+        }
+        // UN TABLEAU DE LIGNES — ce que rend `splitTextToSize`. jsPDF avance
+        // d'une hauteur de ligne entre chaque ; on refait le même pas, et il a
+        // été vérifié contre le sien (voir tools/tmp, essai des trois lignes).
+        const pas = doc.getLineHeight() / doc.internal.scaleFactor;
+        texte.forEach((l, i) => ecrireUne(String(l), x, y + i * pas, options));
+        return this;
+    };
+    return doc;
+}
+
+export function teindreDoc(doc) {
+    if (!doc || doc.__teinte) return doc;
+    doc.__teinte = true;
+    ecrireSymboles(doc);
+    ['setFillColor', 'setDrawColor', 'setTextColor'].forEach(nom => {
+        const brut = doc[nom];
+        if (typeof brut !== 'function') return;
+        doc[nom] = function (...args) {
+            if (args.length >= 3 && args.every(v => typeof v === 'number')) {
+                return brut.apply(this, encre(args.slice(0, 3)).concat(args.slice(3)));
+            }
+            if (args.length === 1 && typeof args[0] === 'string' && /^#[0-9a-f]{6}$/i.test(args[0])) {
+                const h = args[0].slice(1);
+                const t = encre([0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)));
+                return brut.call(this, '#' + t.map(v => v.toString(16).padStart(2, '0')).join(''));
+            }
+            return brut.apply(this, args);
+        };
+    });
+    return doc;
+}
+
+/**
+ * LE MÊME FILTRE POUR L'APERÇU, en une classe.
+ *
+ * L'aperçu est du HTML : ses couleurs sont écrites dans deux cents styles en
+ * ligne, et il n'existe aucune porte unique où les intercepter. Mais le
+ * navigateur en a une — `filter`. `saturate()` et `grayscale()` font
+ * exactement le calcul ci-dessus, avec les mêmes coefficients : l'écran montre
+ * donc la nuance que l'imprimante sortira.
+ */
+export function classeTeinte(mode = modePolycopie()) {
+    return `fx-teinte fx-teinte--${mode}`;
+}
+
+/** Pose (ou remplace) la teinte courante sur un élément d'aperçu. */
+export function poserTeinte(el) {
+    if (!el || !el.classList) return;
+    [...el.classList].forEach(c => { if (c.startsWith('fx-teinte')) el.classList.remove(c); });
+    classeTeinte().split(' ').forEach(c => el.classList.add(c));
+}
+
+/**
+ * PORTRAIT OU PAYSAGE, POUR LES FICHES À GRILLES.
+ *
+ * Elles sortaient toutes en paysage : c'est la bonne orientation pour six
+ * pendules ou neuf rectangles, et la mauvaise pour un treillis de Garam, plus
+ * haut que large. Rémy : « on ne pourrait pas choisir l'orientation ». Le
+ * choix se retient, comme celui de la couleur — un professeur qui imprime en
+ * portrait le fait pour une série de feuilles, pas pour une seule.
+ */
+const CLE_ORIENTATION = 'mathbox-fiche-portrait';
+let portraitEnMemoire = null;
+
+export function ficheEnPortrait() {
+    if (portraitEnMemoire !== null) return portraitEnMemoire;
+    let v = null;
+    try { v = window.localStorage.getItem(CLE_ORIENTATION); } catch (e) { v = null; }
+    portraitEnMemoire = v === '1';
+    return portraitEnMemoire;
+}
+
+export function reglerFichePortrait(oui) {
+    portraitEnMemoire = !!oui;
+    try { window.localStorage.setItem(CLE_ORIENTATION, oui ? '1' : '0'); } catch (e) { /* privé */ }
+}
+
+export const ENCRE = {
+    texte: [30, 41, 59],
+    gris: [110, 118, 132],
+    trait: [26, 32, 44],
+    pointille: [168, 176, 191],
+    bandeau: [238, 241, 245],
+    bandeauTrait: [203, 210, 220]
+};
+
+/**
+ * LE TEXTE TEL QUE LE PDF SAIT L'ÉCRIRE.
+ *
+ * Les polices standard d'un PDF (Helvetica et compagnie) n'ont qu'un jeu de
+ * caractères : celui de Windows-1252. Dès qu'une chaîne contient AUTRE CHOSE,
+ * jsPDF bascule la chaîne ENTIÈRE en UTF-16 — mais la police, elle, ne sait
+ * pas la relire, et chaque caractère sort en deux glyphes de hasard. C'est
+ * ainsi que « 5 + ? = 10 → 5 » s'imprimait « 5 + ? = 1 0 !' 5 » : un seul
+ * caractère hors table, et toute la ligne était perdue.
+ *
+ * On remplace donc ces caractères par leur équivalent lisible AVANT de les
+ * confier au PDF. Les symboles vraiment utiles à une fiche de mathématiques —
+ * × ÷ ° ² ³ ½ « » — sont dans la table, eux, et passent intacts.
+ */
+/**
+ * CE QUE LA POLICE SYMBOL SAIT ÉCRIRE, ET QUE HELVETICA NE SAIT PAS.
+ *
+ * Rémy imprimait « les droites sont _|_ », « 5 =/= 3 », « V25 = 5 ». Trois
+ * notations fausses sur des feuilles de mathématiques — et la troisième est
+ * particulièrement gênante, puisque « V » est aussi un nom de point.
+ *
+ * On a d'abord cherché à embarquer une police Unicode complète dans le PDF.
+ * C'était inutile. LES QUATORZE POLICES QUE TOUT LECTEUR DE PDF POSSÈDE
+ * comprennent Symbol, et Symbol contient déjà tout ce qui manque : on s'en
+ * servait DÉJÀ pour π (« le p de Symbol EST un π »), sans voir qu'elle avait
+ * aussi ⊥, ≠, √, ≤, ≥, →, ←, ≡, ∞, ∈, ∠.
+ *
+ * Zéro octet à télécharger, aucune licence à joindre, et surtout AUCUN RISQUE
+ * SUR LES MÉTRIQUES : le reste du texte continue d'être écrit en Helvetica,
+ * dont les largeurs règlent la mise en page de quatre-vingts feuilles.
+ * Embarquer une police pour tout le document aurait décalé chaque ligne.
+ *
+ * LES CODES ONT ÉTÉ MESURÉS, pas recopiés d'une table : on les a écrits dans
+ * un PDF d'essai qu'on a regardé glyphe par glyphe (`tools/tmp/symboles.pdf`).
+ * Ce qui n'est PAS ici — ° × ÷ ± — y est aussi, mais Helvetica les a : les
+ * écrire en Symbol les rendrait étrangers au reste de la ligne.
+ */
+/*
+ * ET LEURS LARGEURS, MESURÉES — car jsPDF ne les connaît pas.
+ *
+ * `getTextWidth` rendait 580 millièmes de cadratin POUR TOUS LES GLYPHES
+ * Symbol : la bibliothèque n'embarque pas les métriques de cette police et
+ * sert une valeur par défaut. Les premiers essais s'en ressentaient — un blanc
+ * de trop après chaque symbole, visible à l'œil sur « 25 π cm² ».
+ *
+ * On les a donc mesurées dans un vrai PDF : le même glyphe écrit une fois puis
+ * onze fois dans un seul appel, et l'on compare le bord droit des deux encres.
+ * C'est le PDF lui-même qui avance, avec la vraie largeur de la police ; la
+ * différence divisée par dix EST l'avance. Une page par glyphe, sans quoi les
+ * signes en deux traits (≤ ≥ ≡) brouillent le découpage.
+ *
+ * Le second nombre est donc une mesure, pas une table recopiée — et elle tombe
+ * bien sur les valeurs d'Adobe, ce qui est rassurant pour les deux.
+ */
+const SYMBOLE = {
+    '\u22A5': ['^', 658],        // ⊥ perpendiculaire
+    '\u2260': ['\u00B9', 548],   // ≠
+    '\u2264': ['\u00A3', 548],   // ≤
+    '\u2265': ['\u00B3', 548],   // ≥
+    '\u221A': ['\u00D6', 548],   // √
+    '\u2192': ['\u00AE', 986],   // →
+    '\u2190': ['\u00AC', 986],   // ←
+    '\u2248': ['\u00BB', 548],   // ≈
+    '\u2261': ['\u00BA', 548],   // ≡
+    '\u221E': ['\u00A5', 713],   // ∞
+    '\u2208': ['\u00CE', 713],   // ∈
+    '\u2220': ['\u00D0', 768],   // ∠
+    '\u03C0': ['p', 548]          // π
+};
+
+/**
+ * LES INDICES — u₁, u₂, aₙ.
+ *
+ * Ils étaient aplatis en « u1 », ce qui n'est pas la même chose : « u1 » est
+ * un nom de variable, « u₁ » est le premier terme d'une suite. Symbol ne les
+ * a pas non plus, mais un indice n'est pas un caractère : c'est un chiffre
+ * ORDINAIRE écrit plus petit et plus bas. On le dessine donc, exactement comme
+ * on dessine déjà les exposants.
+ */
+const INDICES = {
+    '\u2080': '0', '\u2081': '1', '\u2082': '2', '\u2083': '3', '\u2084': '4',
+    '\u2085': '5', '\u2086': '6', '\u2087': '7', '\u2088': '8', '\u2089': '9'
+};
+
+const HORS_TABLE = {
+    // L'ESPACE FINE INSÉCABLE des milliers (« 62 307 ») n'existe pas en
+    // WinAnsi : elle sortait en « ? » au milieu de chaque grand nombre. On la
+    // remplace par l'insécable ordinaire, qui, elle, y est — le nombre reste
+    // d'un seul tenant, il respire seulement un peu plus.
+    '\u202F': '\u00A0',
+    '\u2212': '-',      // le vrai signe moins
+    // ⊥ ≠ ≤ ≥ √ → ← ≈ ≡ ∞ ∈ ∠ π ne sont plus translittérés : ils sont ÉCRITS,
+    // avec la police Symbol. Voir la table SYMBOLE et `ecrireSymboles`.
+    // Les indices ₀-₉ ne le sont plus non plus : ils sont dessinés.
+    '\u1D49': 'e',      // le « e » de « 2ᵉ »
+    // Le « r » de « 1ʳᵉ » : sans lui, « La 1ʳᵉ lettre de l'alphabet »
+    // s'imprimait « La 1?e lettre », un point d'interrogation au milieu
+    // d'une définition qui en pose déjà une.
+    '\u02B3': 'r',
+    '\u2610': '[ ]', '\u2611': '[x]',
+    '\u2153': '1/3', '\u2154': '2/3', '\u00BC': '1/4', '\u00BE': '3/4',
+    '\u2218': 'o', '\u2032': "'", '\u2033': '"',
+    // Les fl\u00E8ches de rotation du chat g\u00E9om\u00E8tre. \u00AB \u00E0 droite \u00BB est d\u00E9j\u00E0 \u00E9crit \u00E0
+    // c\u00F4t\u00E9 : la fl\u00E8che est un ornement, et un \u00AB ? \u00BB au milieu d'un programme
+    // de construction se lit comme une donn\u00E9e manquante.
+    '\u21BB': '', '\u21BA': ''
+};
+
+/**
+ * UNE LIGNE D'ÉNONCÉ, DÉCOUPÉE EN MORCEAUX QUI NE SE DESSINENT PAS PAREIL.
+ *
+ * Deux choses ne s'écrivent pas comme du texte ordinaire sur une fiche de
+ * mathématiques :
+ *
+ *   · LA FRACTION. « 5/7 » n'est pas la façon dont on l'écrit à la main ni au
+ *     tableau : le numérateur va au-dessus d'un trait, le dénominateur
+ *     dessous. Un élève de sixième qui ne voit jamais que la barre oblique
+ *     finit par croire que c'est une division déguisée.
+ *   · LE SIGNE ≈. Il n'existe pas dans les polices standard d'un PDF : il en
+ *     sortait une seule vaguelette. On le TRACE donc, deux vagues, à la main.
+ *
+ * Le découpage est commun à l'aperçu et au PDF pour que les deux tombent au
+ * même endroit — c'est toute la raison d'être de ce module.
+ */
+/**
+ * CE QUE LA POLICE DU PDF NE SAIT PAS ÉCRIRE, ON LE DESSINE.
+ *
+ * Rémy, sur la feuille imprimée : le chapitre du disque écrivait « on garde le
+ * pi » et « Périmètre exact = 16pi cm ». Deux lettres latines à la place du
+ * symbole, sur l'exercice qui apprend justement à écrire 25π.
+ *
+ * La cause est dans `pourPdf` et elle est ancienne : les polices standard d'un
+ * PDF n'ont que le jeu Windows-1252, où il n'y a ni π ni les exposants au-delà
+ * de ³. On les translittérait — « pi », « 10^4 » — pour éviter que jsPDF ne
+ * bascule la ligne entière en UTF-16 et n'imprime du charabia. Le remède
+ * marchait, mais il faisait écrire à la feuille une notation que le cours
+ * corrige.
+ *
+ * ON LES SORT DONC DE LA LIGNE, comme on le fait déjà pour le « à peu près
+ * égal » — voir `signePresque`, qui le TRACE faute de pouvoir l'écrire. π est
+ * écrit avec la police Symbol, qui est l'une des quatorze polices que tout
+ * lecteur de PDF possède : le « p » de Symbol EST un π. Et un exposant se pose
+ * plus petit et plus haut, ce qui est sa définition.
+ *
+ * L'APERÇU N'AVAIT PAS LE DÉFAUT : le navigateur, lui, sait écrire π et ⁴. Ce
+ * changement fait donc simplement dire au PDF ce que l'écran montrait déjà.
+ */
+const RE_EXPOSANT = '([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B]+)';
+
+export function morceauxLigne(ligne, avecFractions) {
+    const out = [];
+    // Le motif vient de core/fiche.js : l'aperçu, le PDF et la mesure des
+    // colonnes doivent découper AU MÊME ENDROIT, sinon la fiche se compose sur
+    // une largeur et s'imprime sur une autre.
+    // ON RECONNAÎT LE MORCEAU À CE QU'IL EST, PAS À SON NUMÉRO DE GROUPE.
+    //
+    // Première version : je comptais les groupes — deux pour la fraction, puis
+    // les miens derrière. C'était faux, et sur la feuille cela donnait
+    // « Combien vaut 10 undefined/undefined ? » : le motif d'un ÉTAGE de
+    // fraction porte lui-même des parenthèses, si bien que « les miens »
+    // tombaient ailleurs que là où je les attendais, et tout exposant repartait
+    // dans la branche des fractions avec deux étages vides.
+    //
+    // Le texte capturé, lui, ne ment pas : un « ≈ » est un « ≈ », un π est un
+    // π, et un bloc d'exposants ne contient que des exposants. Le reste est une
+    // fraction, et ses deux étages sont les deux premiers groupes — ceux qui
+    // marchaient déjà avant qu'on touche à ce motif.
+    const hors = `\u2248|\u03C0|${RE_EXPOSANT}`;
+    const re = avecFractions
+        ? new RegExp(`${RE_FRACTION().source}|${hors}`, 'g')
+        : new RegExp(hors, 'g');
+    const queDesExposants = new RegExp(`^${RE_EXPOSANT}$`);
+    let dernier = 0, m;
+    while ((m = re.exec(ligne))) {
+        if (m.index > dernier) out.push({ texte: ligne.slice(dernier, m.index) });
+        if (m[0] === '\u2248') out.push({ presque: true });
+        else if (m[0] === '\u03C0') out.push({ pi: true });
+        else if (queDesExposants.test(m[0])) out.push({ haut: m[0] });
+        else out.push({ num: m[1], den: m[2] });
+        dernier = m.index + m[0].length;
+    }
+    if (dernier < ligne.length) out.push({ texte: ligne.slice(dernier) });
+    return out.length ? out : [{ texte: ligne }];
+}
+
+/** Le π du PDF : le « p » de la police Symbol, qui en est un. */
+export function dessinerPi(pdf, x, y) {
+    const avant = pdf.getFont();
+    pdf.setFont('symbol', 'normal');
+    pdf.text('p', x, y);
+    const w = pdf.getTextWidth('p');
+    pdf.setFont(avant.fontName, avant.fontStyle);
+    return w;
+}
+
+/**
+ * ÉCRIRE UNE CHAÎNE QUELCONQUE, π ET EXPOSANTS COMPRIS, et rendre sa largeur.
+ *
+ * `dessinerLigne` fait déjà cela pour les questions écrites, parce qu'elle
+ * connaît leurs fractions. Les rendus à grilles, eux, appellent `doc.text`
+ * directement : c'est par là que « 16π cm » sortait en « 16pi cm ». Ils ont
+ * maintenant la même porte, sans avoir à connaître les fractions.
+ *
+ * `align: 'center'` est géré ici plutôt que passé à jsPDF : une chaîne écrite
+ * en plusieurs morceaux ne peut pas se centrer morceau par morceau, il faut
+ * mesurer l'ensemble d'abord.
+ */
+export function texteRiche(pdf, texte, x, y, taille, o = {}) {
+    const morceaux = morceauxLigne(String(texte ?? ''), false);
+    const large = (m) => (m.texte !== undefined ? pdf.getTextWidth(pourPdf(m.texte))
+        : m.pi ? largeurPi(pdf)
+            : m.haut ? largeurExposant(pdf, m.haut, taille)
+                : taille * 1.25);
+    const total = morceaux.reduce((n, m) => n + large(m), 0);
+    let cx = o.align === 'center' ? x - total / 2 : o.align === 'right' ? x - total : x;
+    for (const m of morceaux) {
+        if (m.texte !== undefined) { const t = pourPdf(m.texte); pdf.text(t, cx, y); }
+        else if (m.pi) dessinerPi(pdf, cx, y);
+        else if (m.haut) dessinerExposant(pdf, m.haut, cx, y, taille);
+        else signePresque(pdf, cx + taille * 0.15, y, taille);
+        cx += large(m);
+    }
+    return total;
+}
+
+/** La largeur d'un π, sans l'écrire — pour centrer avant de dessiner. */
+function largeurPi(pdf) {
+    const avant = pdf.getFont();
+    pdf.setFont('symbol', 'normal');
+    const w = pdf.getTextWidth('p');
+    pdf.setFont(avant.fontName, avant.fontStyle);
+    return w;
+}
+
+/** Idem pour un bloc d'exposants. */
+function largeurExposant(pdf, bloc, taille) {
+    const t = [...bloc].map(c => EXPOSANTS_HAUT[c] ?? c).join('');
+    pdf.setFontSize(taille * 0.68 / 0.3528);
+    const w = pdf.getTextWidth(t);
+    pdf.setFontSize(taille / 0.3528);
+    return w;
+}
+
+/** Un bloc d'exposants : plus petit, et posé plus haut. C'est sa définition. */
+export function dessinerExposant(pdf, bloc, x, y, taille) {
+    const t = [...bloc].map(c => EXPOSANTS_HAUT[c] ?? c).join('');
+    pdf.setFontSize(taille * 0.68 / 0.3528);
+    pdf.text(t, x, y - taille * 0.34);
+    const w = pdf.getTextWidth(t);
+    pdf.setFontSize(taille / 0.3528);
+    return w;
+}
+
+/** Trace le signe « à peu près égal » : deux vagues, puisqu'on ne peut l'écrire. */
+function signePresque(pdf, x, y, taille) {
+    const l = taille * 0.9, h = taille * 0.2;
+    pdf.setLineWidth(taille * 0.08);
+    pdf.setDrawColor(...ENCRE.texte);
+    for (const dy of [-taille * 0.58, -taille * 0.16]) {
+        // Une vague, c'est une courbe en S : deux points de contrôle opposés.
+        pdf.lines([[l * 0.3, -h * 2.2, l * 0.7, h * 2.2, l, 0]], x, y + dy, [1, 1], 'S', false);
+    }
+}
+
+/** La largeur qu'occupera une fraction empilée. */
+function largeurFraction(pdf, m) {
+    // Un étage vide n'a pas de largeur propre : on lui donne celle de son
+    // vis-à-vis, plus une marge — un trait de trois millimètres sous un
+    // dénominateur à deux chiffres ne se remplit pas.
+    const large = (t, autre) => (etageEstUnTrou(t)
+        ? Math.max(pdf.getTextWidth(autre), 5) : pdf.getTextWidth(t));
+    return Math.max(large(m.num, m.den), large(m.den, m.num)) + 1.6;
+}
+
+/**
+ * Une ligne d'énoncé dans le PDF, morceau par morceau. Rend l'abscisse
+ * atteinte, ce qui permettrait d'enchaîner.
+ */
+function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
+    let x = x0;
+    for (const m of morceauxLigne(ligne, avecFractions)) {
+        if (m.texte !== undefined) {
+            const t = pourPdf(m.texte);
+            pdf.text(t, x, y);
+            x += pdf.getTextWidth(t);
+        } else if (m.presque) {
+            signePresque(pdf, x + o.taille * 0.15, y, o.taille);
+            x += o.taille * 1.25;
+        } else if (m.pi) {
+            x += dessinerPi(pdf, x, y);
+        } else if (m.haut) {
+            x += dessinerExposant(pdf, m.haut, x, y, o.taille);
+        } else {
+            const w = largeurFraction(pdf, m);
+            // L'ÉTAGE À REMPLIR, en pointillés : le même trait qu'ailleurs sur
+            // la feuille, mais posé DANS la fraction, à son étage.
+            const etagePdf = (t, yEtage) => {
+                if (!etageEstUnTrou(t)) {
+                    pdf.text(t, x + (w - pdf.getTextWidth(t)) / 2, yEtage);
+                    return;
+                }
+                pointilles(pdf, x + 0.6, yEtage + o.taille * 0.06, w - 1.2);
+            };
+            // LE TRAIT EST LA LIGNE D'ÉCRITURE. On le posait un tiers de corps
+            // plus haut, et la fraction entière flottait au-dessus du texte :
+            // le numéro de la question et le « + » paraissaient écrits une
+            // ligne plus bas. Numérateur dessus, dénominateur dessous, à
+            // distance égale du trait.
+            const yTrait = y;
+            etagePdf(m.num, yTrait - o.taille * 0.28);
+            etagePdf(m.den, yTrait + o.taille * 0.98);
+            pdf.setLineWidth(0.28);
+            pdf.setDrawColor(...ENCRE.texte);
+            pdf.line(x + 0.4, yTrait, x + w - 0.4, yTrait);
+            x += w;
+        }
+    }
+    return x;
+}
+
+/**
+ * La même ligne en HTML, pour l'aperçu.
+ *
+ * LE TROU EST DESSINÉ DANS LA LIGNE, pas posé par-dessus. On le plaçait en
+ * absolu, à l'abscisse calculée par la mise en page ; mais l'aperçu et la
+ * fonction de mesure ne tombent jamais au pixel près sur une longue amorce, et
+ * le trait dérivait vers la gauche à mesure que l'énoncé s'allongeait. Écrit à
+ * sa place dans le texte, il ne peut plus dériver du tout.
+ */
+function ligneHtml(ligne, avecFractions, opts = {}) {
+    // LE TROU RESTE SUR LA LIGNE D'ÉCRITURE, y compris entre deux fractions :
+    // depuis que le trait de fraction s'y pose lui aussi, le signe attendu et
+    // le trait sont à la même hauteur sans qu'on ait à relever le trou.
+    const trouCls = 'fx-trou' + (opts.champs ? ' fx-trou--champ' : '');
+    const texteHtml = (t) => echapper(t).replace(/ {3,}/g,
+        (blanc) => `<span class="${trouCls}">${blanc}</span>`);
+    return morceauxLigne(ligne, avecFractions).map(m => {
+        if (m.texte !== undefined) return texteHtml(m.texte);
+        if (m.presque) return '<span class="fx-presque">&#8776;</span>';
+        // π ET LES EXPOSANTS — SANS QUOI L'APERÇU LES PREND POUR DES FRACTIONS.
+        //
+        // Rémy, capture à l'appui : « j'ai toujours le bug ». Sur l'aperçu,
+        // « 3a² + 2a² » s'affichait « 3a undefined/undefined + 2a
+        // undefined/undefined ».
+        //
+        // La cause n'était plus celle d'avant. `morceauxLigne` a appris à
+        // sortir π et les exposants de la ligne (pour que le PDF puisse les
+        // ÉCRIRE au lieu de les translittérer), et `dessinerLigne` — le chemin
+        // du PDF — a reçu les deux branches qu'il fallait. CE CHEMIN-CI, celui
+        // de l'aperçu, ne les a pas reçues : tout ce qui n'était ni du texte
+        // ni un « ≈ » tombait dans la branche des fractions, où `m.num` et
+        // `m.den` n'existent pas. D'où deux « undefined » empilés.
+        //
+        // La leçon vaut d'être écrite : `morceauxLigne` a maintenant QUATRE
+        // sortes de morceaux et TROIS lecteurs (l'aperçu, le PDF, la mesure).
+        // Ajouter une sorte sans faire le tour des trois, c'est reproduire ce
+        // bug — et il ne se voit que sur une feuille, à l'écran d'un élève.
+        if (m.pi) return '<span class="fx-pi">&#960;</span>';
+        // Le navigateur sait écrire « ² » ; mais au-delà de ³ les polices ne
+        // suivent pas toutes, et l'on verrait un carré vide. Un `<sup>` avec le
+        // chiffre ordinaire se lit partout — et c'est exactement ce que le PDF
+        // dessine de son côté : plus petit, plus haut.
+        if (m.haut) {
+            return '<sup class="fx-haut">'
+                + echapper([...m.haut].map(c => EXPOSANTS_HAUT[c] ?? c).join(''))
+                + '</sup>';
+        }
+        // UN ÉTAGE VIDE EST UN TROU, et un trou se dessine en pointillés — sans
+        // quoi la place à remplir, faite d'espaces, disparaîtrait purement et
+        // simplement dans le HTML.
+        const etage = (t) => (etageEstUnTrou(t)
+            ? `<span class="${trouCls}">${echapper(t)}</span>` : echapper(t));
+        return `<span class="fx-frac"><span class="fx-frac-n">${etage(m.num)}</span>`
+            + `<span class="fx-frac-d">${etage(m.den)}</span></span>`;
+    }).join('');
+}
+
+/** Les exposants en l'air, et leur chiffre ordinaire. */
+const EXPOSANTS_HAUT = {
+    '\u2070': '0', '\u00B9': '1', '\u00B2': '2', '\u00B3': '3', '\u2074': '4',
+    '\u2075': '5', '\u2076': '6', '\u2077': '7', '\u2078': '8', '\u2079': '9',
+    '\u207B': '-'
+};
+// Seuls ¹ ² ³ existent dans la police du PDF. Les autres — ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ ⁰ et le
+// moins en exposant — n'y sont pas, et sortaient en points d'interrogation :
+// « 10⁴ » devenait « 10? » sur la feuille, ce qui rend un exercice sur les
+// puissances de 10 rigoureusement inutilisable.
+const IMPRIMABLE_EN_HAUT = new Set(['\u00B9', '\u00B2', '\u00B3']);
+
+/**
+ * LES EXPOSANTS, ÉCRITS AVEC UN CHAPEAU QUAND LA POLICE NE SAIT PAS LES LEVER.
+ *
+ * On traite le bloc d'exposants ENTIER, pas chaque caractère : « 10⁻³ » doit
+ * donner « 10^-3 » et non « 10^-^3 ».
+ *
+ * CE QUI SUIT UN CHIFFRE EST UNE PUISSANCE, ce qui suit une lettre est une
+ * unité. Sur une même feuille, « 10³ » et « 10⁴ » doivent s'écrire pareil, donc
+ * on convertit les deux — alors que « cm² » et « n² » n'ont rien à voir avec ce
+ * problème et restent intacts.
+ */
+const exposantsLisibles = (t) => t.replace(
+    /(.?)([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B]+)/g,
+    (_, avant, bloc) => {
+        const puissance = /\d/.test(avant);
+        const tout = [...bloc].every(c => IMPRIMABLE_EN_HAUT.has(c));
+        return avant + (puissance || !tout
+            ? `^${[...bloc].map(c => EXPOSANTS_HAUT[c]).join('')}`
+            : bloc);
+    });
+
+/** Les caractères que `ecrireSymboles` sait dessiner : ils traversent pourPdf. */
+const ECRITS = new RegExp('[' + Object.keys(SYMBOLE).join('') + Object.keys(INDICES).join('') + ']');
+
+export function pourPdf(texte) {
+    let t = exposantsLisibles(typographieFr(texte));
+    for (const [de, a] of Object.entries(HORS_TABLE)) t = t.split(de).join(a);
+    // Filet de sécurité : tout ce qui reste au-dessus de la table y passe.
+    // Un point d'interrogation vaut mieux qu'une ligne entière illisible.
+    //
+    // LES SYMBOLES MATHÉMATIQUES EN SONT EXEMPTÉS depuis qu'on sait les écrire :
+    // ils traversent intacts et c'est `ecrireSymboles`, posé sur le document,
+    // qui les rend au moment du tracé. Un document qui n'aurait pas reçu ce
+    // traitement les verrait remplacés par « ? » — d'où le passage par
+    // `teindreDoc`, qui l'applique à toutes les fiches.
+    return t.replace(/[^\u0000-\u00FF\u0152\u0153\u0160\u0161\u0178\u017D\u017E\u0192\u02C6\u02DC\u2013\u2014\u2018\u2019\u201A\u201C\u201D\u201E\u2020\u2021\u2022\u2026\u2030\u2039\u203A\u20AC\u2122]/g,
+        (c) => (ECRITS.test(c) ? c : '?'));
+}
+
+
+export const echapper = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+/** Largeur d'un texte en mm, métriques Helvetica (la police du PDF). */
+export function mesureur() {
+    const c = document.createElement('canvas').getContext('2d');
+    return (texte, taille) => {
+        c.font = `${taille * 100}px Helvetica, Arial, sans-serif`;
+        return c.measureText(texte).width / 100;
+    };
+}
+
+/** L'engrenage de l'aperçu — dessiné, pas un emoji : il doit rester net. */
+const ROUE = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+
+/** Le libellé d'un bandeau d'exercice. */
+const titreExo = (it) => `Exercice ${it.n} — ${it.titre}${it.suite ? ' (suite)' : ''}`;
+
+// --- Aperçu HTML -------------------------------------------------------------
+
+/** Les items d'une page, en HTML positionné. `k` = pixels par millimètre. */
+/**
+ * UN TABLEAU, TRACÉ — les traits d'abord, le texte ensuite.
+ *
+ * On dessine des LIGNES, pas des cases bordées. Douze cases à bordure font
+ * vingt-quatre traits dont la moitié se superposent : à l'échelle de l'aperçu,
+ * un pixel d'écart et le tableau prend l'air d'un croquis. Et surtout, l'aperçu
+ * doit montrer EXACTEMENT ce que le PDF imprimera — or le PDF, lui, ne sait
+ * tracer que des lignes.
+ */
+function tableauApercu(t, k, o) {
+    const trait = (x, y, w, h) => `<div class="fq-tab-trait" style="left:${x * k}px; top:${y * k}px;
+        width:${Math.max(w * k, 1)}px; height:${Math.max(h * k, 1)}px"></div>`;
+    const nl = t.lignes.length;
+    let html = '';
+    for (let i = 0; i <= nl; i++) html += trait(t.x, t.y + i * t.hLigne, t.w, 0.3);
+    let x = t.x;
+    for (let c = 0; c <= t.larg.length; c++) {
+        html += trait(x, t.y, 0.3, t.h);
+        x += t.larg[c] || 0;
+    }
+    t.lignes.forEach((ligne, i) => {
+        let cx = t.x;
+        ligne.forEach((texte, c) => {
+            const w = t.larg[c] || 0;
+            const mot = String(texte ?? '');
+            // La première colonne porte le NOM de la rangée (« f(x) ») : en
+            // gras, comme dans un manuel — c'est ce qui distingue l'étiquette
+            // de la valeur, et le tableau se lit alors sans le relire.
+            if (mot) {
+                html += `<div class="fq-tab-case${c === 0 ? ' fq-tab-case--tete' : ''}"
+                    style="left:${cx * k}px; top:${(t.y + i * t.hLigne) * k}px;
+                    width:${w * k}px; height:${t.hLigne * k}px;
+                    font-size:${o.taille * k}px">${echapper(mot)}</div>`;
+            }
+            cx += w;
+        });
+    });
+    return html;
+}
+
+export function apercuItems(page, k, o) {
+    let html = '';
+    for (const it of page.items) {
+        if (it.type === 'exo') {
+            // L'ENGRENAGE N'EXISTE QUE DANS L'APERÇU.
+            //
+            // Les réglages d'un exercice — combien de questions, sur combien de
+            // colonnes, numéroté ou non — vivaient dans une liste, à côté de la
+            // feuille : on réglait d'un côté et l'on regardait de l'autre, en
+            // cherchant à chaque fois quelle ligne de la liste correspondait au
+            // bandeau qu'on avait sous les yeux. Le bouton est donc SUR le
+            // bandeau.
+            //
+            // Il n'est posé que si l'appelant le demande (`o.reglable`), et
+            // l'appelant, c'est l'aperçu : le PDF passe par `pdfItems`, qui ne
+            // connaît pas ce bouton et ne peut donc pas l'imprimer.
+            const roue = (o.reglable && it.id && !it.suite)
+                ? `<button type="button" class="fx-roue" data-reglage="${echapper(it.id)}"
+                     title="Réglages de cet exercice"
+                     aria-label="Réglages de « ${echapper(it.titre)} »">${ROUE}</button>`
+                : '';
+            // L'ORDRE SE CHANGE SUR LE BANDEAU, LUI AUSSI.
+            //
+            // Rémy : « la fiche du parcours est vraiment chargée ». La charge
+            // venait d'un doublon : une LISTE des exercices au-dessus de
+            // l'aperçu, qui montrait exactement les mêmes six lignes que
+            // l'aperçu montrait en dessous, avec les mêmes réglages — le code
+            // devait même les resynchroniser à la main. Tout ce que la liste
+            // savait faire existait déjà sur la feuille (le titre se retouche,
+            // la consigne se retouche, l'engrenage règle le reste) SAUF une
+            // chose : l'ordre. On la lui donne, et la liste n'a plus de raison
+            // d'être.
+            //
+            // DEUX FLÈCHES, ET PAS UN GLISSÉ. Sur la tablette de Rémy, tirer un
+            // bandeau de trois centimètres de haut à travers une feuille A4
+            // réduite est un geste qu'on rate ; deux boutons ne se ratent pas.
+            const rang = o.ordre ? o.ordre.indexOf(it.id) : -1;
+            const fleches = (o.reglable && rang >= 0 && !it.suite && o.ordre.length > 1)
+                ? `<button type="button" class="fx-rang" data-monter="${echapper(it.id)}"
+                     ${rang === 0 ? 'disabled' : ''} title="Monter d'un cran"
+                     aria-label="Monter « ${echapper(it.titre)} »">▲</button>
+                   <button type="button" class="fx-rang" data-descendre="${echapper(it.id)}"
+                     ${rang === o.ordre.length - 1 ? 'disabled' : ''} title="Descendre d'un cran"
+                     aria-label="Descendre « ${echapper(it.titre)} »">▼</button>`
+                : '';
+            // LE TITRE SE RETOUCHE D'UN CLIC (dans l'aperçu seulement). Le
+            // titre du catalogue est celui de l'exercice ; sur une feuille, le
+            // professeur écrit ce qu'il veut — « Exercice 1 — Les tables »
+            // n'est pas forcément le nom qu'a l'exercice dans l'application.
+            const modifiable = o.retouchable && it.id && !it.suite;
+            html += `<div class="fx-bandeau" style="left:${it.x * k}px; top:${it.y * k}px;
+                width:${it.w * k}px; height:${it.h * k}px; font-size:${o.taille * k * 1.02}px">
+                <span${modifiable ? ` class="fx-retouche" data-titre-exo="${echapper(it.id)}"`
+                    + ' title="Cliquer pour changer le titre de cet exercice"' : ''}>${echapper(titreExo(it))}</span>
+                ${it.points ? `<span class="fx-points">… / ${it.points}</span>` : ''}
+                ${fleches}${roue}</div>`;
+            continue;
+        }
+        if (it.type === 'consigne') {
+            const cons = (o.retouchable && it.id)
+                ? `class="fx-consigne fx-retouche" data-consigne-exo="${echapper(it.id)}"`
+                    + ' title="Cliquer pour changer la consigne"'
+                : 'class="fx-consigne"';
+            it.lignes.forEach((ligne, i) => {
+                html += `<div ${cons} style="left:${(it.x + 1) * k}px;
+                    top:${(it.y + i * o.tailleConsigne * 1.45) * k}px; width:${it.w * k}px;
+                    font-size:${o.tailleConsigne * k}px">${echapper(ligne)}</div>`;
+            });
+            continue;
+        }
+        if (it.type === 'grille') {
+            const r = RENDUS[it.cle];
+            if (r) {
+                // `n` vaut null quand le professeur a décoché la numérotation
+                // de cet exercice : on n'écrit alors rien du tout.
+                //
+                // CERTAINS BLOCS PLACENT LEUR NUMÉRO EUX-MÊMES. Une cascade de
+                // priorités s'écrit « 1. 2 × 6 + 7 − 2 » sur une seule ligne,
+                // comme dans un cahier ; le numéro posé au-dessus lui faisait
+                // perdre une ligne entière et cassait l'alignement. Le rendu le
+                // reçoit alors dans son emplacement, et le pose où il veut.
+                if (it.n != null && !r.numeroInterne) {
+                    html += `<div class="fx-grille-num" style="left:${it.x * k}px; top:${(it.y - 3.4) * k}px;
+                        font-size:${o.tailleConsigne * k}px">${it.n}.</div>`;
+                }
+                html += r.previewGrille(it.item,
+                    { x: it.x, y: it.y, taille: it.taille, boite: it.boite,
+                        numero: r.numeroInterne ? it.n : null,
+                        // CE QUE LE BLOC A AUTOUR DE LUI. Quatre rendus se
+                        // règlent sur l'ensemble de l'exercice — l'échelle des
+                        // figures, la taille des hiéroglyphes, la ligne de base
+                        // commune. La feuille d'un exercice seul leur passe la
+                        // liste en argument ; ici elle voyage dans
+                        // l'emplacement, qui est déjà le sac de ce qu'un rendu
+                        // peut vouloir savoir de sa place.
+                        tous: it.tous || null, rang: it.iQ ?? null,
+                        // DE QUELLE GRILLE IL S'AGIT, pour les rendus qui
+                        // savent se faire récrire (`retoucheGrille`). Posé dans
+                        // l'emplacement plutôt qu'en argument de plus : les
+                        // rendus qui n'en font rien n'ont pas à le connaître.
+                        exoId: it.exoId ?? null, iQ: it.iQ ?? null,
+                        retouchable: !!(o.retouchable && r.retoucheGrille) },
+                    k, !!o.solution, !!o.champs && !o.solution);
+            }
+            continue;
+        }
+        // type 'q'
+        if (it.n != null) {
+            // LE NUMÉRO EST SUR LA LIGNE DE L'ÉNONCÉ, pas au-dessus. Il était
+            // posé à `y` quand le texte commençait à `y + dy` : dès qu'une
+            // question réservait de la place pour une fraction, le « 6. » se
+            // retrouvait un demi-interligne plus haut que sa phrase.
+            html += `<div class="fq-num" style="left:${it.x * k}px; top:${(it.y + (it.dy || 0)) * k}px; font-size:${o.taille * k}px">${it.n}.</div>`;
+        }
+        // LES DEUX GESTES SUR UNE QUESTION, AU SURVOL.
+        //
+        // On ne retouche PAS le texte d'une question : sa réponse vient du
+        // générateur, pas de l'énoncé. Réécrire « 7 × 8 = » en « 9 × 8 = »
+        // laisserait la page des solutions écrire 56 — une fiche dont le
+        // corrigé ment est pire que pas de fiche. On peut en revanche la
+        // retirer, ou en retirer une autre au sort : les deux gardent l'énoncé
+        // et sa réponse ensemble.
+        //
+        // Comme l'engrenage des exercices, ces boutons n'existent que dans
+        // l'aperçu : le PDF passe par `pdfItems`, qui ne les connaît pas.
+        // LA ZONE DE LA QUESTION EST AUSSI CE QU'ON CLIQUE POUR LA RÉCRIRE.
+        //
+        // Elle couvre exactement le texte, et elle est au-dessus de lui : deux
+        // cibles superposées se voleraient les clics — l'une des deux gagne
+        // toujours, et ce serait celle qu'on ne veut pas. Une seule zone,
+        // donc : ses deux boutons d'abord, et le reste ouvre l'éditeur.
+        if (o.reglable && it.exoId != null && it.iQ != null) {
+            const recrire = o.retouchable
+                ? ` fx-retouche" data-txt-exo="${echapper(it.exoId)}" data-txt-rang="${it.iQ}"`
+                    + ' title="Cliquer pour récrire cette question'
+                : '';
+            html += `<div class="fx-qgestes${recrire}"
+                style="left:${it.x * k}px; top:${it.y * k}px;
+                width:${(it.texteW + (it.texteX - it.x)) * k}px; height:${Math.max(it.lignes.length * o.interligne, o.interligne) * k}px">
+                <button type="button" class="fx-qgeste" data-q-neuf="${echapper(it.exoId)}" data-q-rang="${it.iQ}"
+                    title="Retirer une autre question au sort à cette place"
+                    aria-label="Remplacer la question ${it.n ?? it.iQ + 1}">${refaireSvg(13)}</button>
+                <button type="button" class="fx-qgeste fx-qgeste--sup" data-q-sup="${echapper(it.exoId)}" data-q-rang="${it.iQ}"
+                    title="Retirer cette question de la fiche"
+                    aria-label="Supprimer la question ${it.n ?? it.iQ + 1}">${croixSvg(12)}</button>
+            </div>`;
+        }
+        // ET L'ÉNONCÉ LUI-MÊME SE RETOUCHE. Rémy : « il faudrait aller sur le
+        // texte et avoir la possibilité de changer la question ». C'était
+        // refusé jusqu'ici parce qu'une question réécrite laisserait le
+        // corrigé répondre à l'ancienne — une fiche dont les solutions mentent
+        // est pire que pas de fiche. L'éditeur demande donc les DEUX : l'énoncé
+        // et sa réponse, dans le même geste.
+        it.lignes.forEach((ligne, i) => {
+            html += `<div class="fq-ligne"
+                style="left:${it.texteX * k}px; top:${(it.y + (it.dy || 0) + i * o.interligne) * k}px;
+                width:${it.texteW * k}px; font-size:${o.taille * k}px">${ligneHtml(ligne, it.fractions, o)}</div>`;
+        });
+        if (it.choix) {
+            html += `<div class="fq-choix" style="left:${it.texteX * k}px; top:${it.choixY * k}px;
+                font-size:${o.taille * k * .9}px">${it.choix.map(c => '☐ ' + echapper(c)).join('&nbsp;&nbsp;')}</div>`;
+        }
+        if (it.tableau) html += tableauApercu(it.tableau, k, o);
+        if (it.rep && !it.rep.dansLeTexte) {
+            // AVEC CHAMPS, la place à remplir est une boîte, pas un trait :
+            // l'aperçu doit montrer ce que l'élève verra dans son lecteur PDF,
+            // sinon le professeur découvre la différence à l'impression.
+            // Autant de traits que la fiche en réserve : on écrit SUR des
+            // lignes, on n'écrit pas dans une marge. Et cela vaut AUSSI avec
+            // les champs : une fiche remplissable s'imprime aussi, et sans ses
+            // lignes elle devient une page de questions et de blancs.
+            const nRep = Math.max(1, Math.round(it.rep.lignes || 1));
+            const pasRep = it.rep.pas || 0;
+            if (o.champs) {
+                html += `<div class="fx-champ" style="left:${it.rep.x * k}px; top:${it.rep.champY * k}px;
+                    width:${it.rep.w * k}px; height:${(it.rep.h + (nRep - 1) * pasRep) * k}px"></div>`;
+            }
+            const yTrait = o.champs ? it.rep.champY + it.rep.h : it.rep.y;
+            for (let i = 0; i < nRep; i++) {
+                html += `<div class="fq-reponse" style="left:${it.rep.x * k}px;
+                    top:${(yTrait + i * pasRep) * k}px; width:${it.rep.w * k}px"></div>`;
+            }
+        }
+    }
+    return html;
+}
+
+/** L'en-tête d'une page d'aperçu (titre, Nom/Date, filet). */
+/**
+ * LES CHAMPS D'IDENTITÉ DE L'EN-TÊTE, et la place qu'il leur faut.
+ *
+ * Un « Nom » qui n'a que quatre centimètres de pointillés reçoit une écriture
+ * tassée ou un nom coupé : la largeur est ici une donnée pédagogique, pas une
+ * décoration. Le professeur choisit LESQUELS il imprime — une fiche
+ * d'entraînement n'a pas besoin de la classe, un contrôle si.
+ */
+export const CHAMPS_ENTETE = {
+    nom: { label: 'Nom', large: 44 },
+    prenom: { label: 'Prénom', large: 36 },
+    classe: { label: 'Classe', large: 18 },
+    date: { label: 'Date', large: 24 }
+};
+export const CHAMPS_DEFAUT = ['nom', 'date'];
+
+/**
+ * Les champs demandés, dans l'ordre du modèle, AVEC LA LARGEUR QUI TIENT.
+ *
+ * Quatre champs demandent plus que la ligne n'offre une fois la case de la
+ * note posée. On les rétrécit tous du même facteur plutôt que d'en laisser
+ * tomber un : un professeur qui coche « Classe » et ne la voit pas imprimée
+ * croit à un bogue — et c'en est un.
+ *
+ * Jamais sous douze millimètres : au-dessous, on n'écrit plus un prénom, on
+ * l'entasse.
+ */
+function champsDe(liste, place) {
+    const champs = (Array.isArray(liste) ? liste : CHAMPS_DEFAUT).filter(c => CHAMPS_ENTETE[c]);
+    if (!champs.length || !place) return champs.map(c => ({ id: c, ...CHAMPS_ENTETE[c] }));
+    // L'étiquette « Prénom : » et l'écart entre deux champs : mesurés au plus
+    // juste, ils suffisent à ne pas promettre une place qui n'existe pas.
+    const fixe = champs.reduce((s, c) => s + CHAMPS_ENTETE[c].label.length * 1.9 + 8, 0);
+    const voulu = champs.reduce((s, c) => s + CHAMPS_ENTETE[c].large, 0);
+    const k = Math.min(1, Math.max(0, place - fixe) / Math.max(1, voulu));
+    return champs.map(c => ({
+        id: c, label: CHAMPS_ENTETE[c].label,
+        large: Math.max(12, CHAMPS_ENTETE[c].large * k)
+    }));
+}
+
+/**
+ * LE CARTOUCHE « NOTE / COMMENTAIRE » : un tableau à deux colonnes, sous
+ * l'en-tête de la première page.
+ *
+ * La petite case « … / 20 » en haut à droite disait la note et rien d'autre.
+ * Or ce qu'un professeur rend à un élève, ce n'est pas un chiffre : c'est un
+ * chiffre ET une phrase. Sans place prévue, l'appréciation s'écrit en travers
+ * de la première question, ou pas du tout.
+ *
+ * Les deux colonnes sont indépendantes : une fiche d'entraînement peut ne
+ * vouloir que le commentaire, un contrôle rapide que la note.
+ *
+ *   { note: bool, commentaire: bool, sur: 20 }  →  null si aucune des deux.
+ */
+export const CARTOUCHE_H = 17;   // mm réservés à l'ensemble, air compris
+
+/**
+ * LE TITRE ET LA LIGNE D'IDENTITÉ, EN MILLIMÈTRES DEPUIS LA MARGE HAUTE.
+ *
+ * Rémy : « il faudrait qu'il y ait de l'espace entre le titre et le dessous ».
+ * Il avait raison, et de deux façons. Le titre fait 4,8 mm de haut : posé à
+ * 5,6 mm de la marge, ses jambages descendaient à 6,8 mm quand les « Nom : »
+ * commençaient à 8. Un millimètre : à l'écran, les deux lignes se touchent, et
+ * dès qu'on clique le titre le liseré de saisie vient s'asseoir sur le « Nom ».
+ *
+ * ON A DONC ÉCARTÉ PAR LES DEUX BOUTS plutôt que de tout pousser vers le bas :
+ * le titre monte de 0,8 mm, l'identité descend de 0,8 mm. L'écart passe de 5 à
+ * 6,6 mm — un tiers de plus — et le filet, lui, ne bouge que de 0,6 mm : la
+ * hauteur réservée à l'en-tête (`enteteH`) n'a pas à changer, et aucune fiche
+ * ne se repagine.
+ *
+ * CES DEUX NOMBRES SERVENT AU PDF ET À L'APERÇU. Le second recopie le premier
+ * — un aperçu qui n'est pas à la place de la feuille ne sert à rien —, et le
+ * test vérifie qu'ils ne divergent pas.
+ */
+export const TITRE_Y = 4.8;
+export const IDENTITE_Y = 11.4;
+
+/** Le filet qui ferme l'en-tête, avec et sans champs d'identité. */
+/**
+ * OÙ TOMBE LE FILET SOUS L'EN-TÊTE.
+ *
+ * Rémy : « dans la fiche du parcours, il faudrait aussi pouvoir supprimer
+ * carrément la place du titre de la feuille. » Vider le champ retirait déjà le
+ * TEXTE — mais pas sa PLACE : neuf millimètres et demi de blanc restaient
+ * réservés en haut de chaque feuille, plus les vingt et un millimètres
+ * d'en-tête que la mise en page réservait quoi qu'il arrive. Sur une fiche de
+ * jeu à découper, c'est une bande perdue en travers de la page.
+ *
+ * Le titre a maintenant sa hauteur PROPRE, qu'on retire quand il n'y a rien à
+ * écrire. Et quand il n'y a ni titre ni champs d'identité, il ne reste rien à
+ * souligner : le filet lui-même disparaît (voir `hauteurEntete1`).
+ */
+export const HAUTEUR_TITRE = 6.4;
+
+export const filetY = (avecChamps, avecTitre = true) => {
+    const base = avecChamps ? 14.1 : 9.6;
+    return avecTitre ? base : base - HAUTEUR_TITRE;
+};
+
+/**
+ * DU PDF À L'APERÇU : LE PDF POSE UNE LIGNE DE BASE, LE HTML POSE UN HAUT.
+ *
+ * L'écart entre les deux est la MONTÉE de la police — l'interligne de tête plus
+ * l'ascendante —, et elle ne dépend que du corps. On la nomme ici pour que
+ * l'aperçu se déduise du PDF au lieu d'être réglé à part : deux séries de
+ * nombres qui doivent rester d'accord finissent toujours par ne plus l'être.
+ *
+ * Le filet, lui, se décale d'un demi-millimètre : le PDF trace une ligne SUR sa
+ * coordonnée, le HTML pose une bordure haute qui s'épaissit vers le bas.
+ */
+const MONTEE_TITRE = 4.6;      // pour un corps de 4,8 mm
+const MONTEE_IDENTITE = 2.8;   // pour un corps de 3,3 mm
+const FILET_HTML = 0.5;
+
+export function cartoucheDe(entete = {}, interrogation = false) {
+    const note = entete.note ?? interrogation;
+    const com = entete.commentaire ?? false;
+    if (!note && !com) return null;
+    return { note: !!note, commentaire: !!com, sur: entete.noteSur || 20 };
+}
+
+/**
+ * La hauteur d'en-tête à réserver sur la PREMIÈRE page, cartouche compris.
+ *
+ * @param {Object}  [entete]  pour rendre à la page la place du titre absent —
+ *                            et, s'il n'y a pas non plus de champ d'identité,
+ *                            celle du filet.
+ */
+/**
+ * LA CONSIGNE DE LA FEUILLE — celle qui vaut pour tout le devoir.
+ *
+ * Rémy : « ajoute un plus en dessous pour pouvoir mettre des consignes ».
+ * Chaque exercice a déjà la sienne ; il manquait celle du haut — « Calculatrice
+ * interdite », « Rédige tes réponses », « Tu as 45 minutes ». Elle se dit une
+ * fois, en tête, et elle ne se range dans aucun exercice.
+ *
+ * Deux lignes au plus : au-delà, ce n'est plus une consigne, c'est un texte, et
+ * il mange la place des questions.
+ */
+export const HAUTEUR_CONSIGNE_FEUILLE = 4.6;
+export const MAX_LIGNES_CONSIGNE = 2;
+
+/** Les lignes de la consigne de feuille, coupées à la largeur utile. */
+export function lignesConsigneFeuille(texte, page, mesurer) {
+    const t = String(texte || '').trim();
+    if (!t) return [];
+    const P = page || A4;
+    const lignes = mesurer
+        ? couperEnLignes(t, P.w - 2 * P.marge, 3.4, mesurer)
+        : [t];
+    return lignes.slice(0, MAX_LIGNES_CONSIGNE);
+}
+
+export function hauteurEntete1(page, cartouche, entete = null) {
+    const P = page || A4;
+    let h = P.enteteH;
+    if (entete) {
+        const avecTitre = !!String(entete.titre || '').trim();
+        const avecChamps = (entete.champs || []).length > 0;
+        if (!avecTitre) h -= HAUTEUR_TITRE;
+        // Ni titre ni identité : il ne reste plus rien à souligner. On garde de
+        // quoi ne pas coller le premier exercice au bord — deux millimètres,
+        // la marge de sécurité de toutes les imprimantes.
+        if (!avecTitre && !avecChamps) h = Math.min(h, 2);
+        // La consigne de feuille vit SOUS le filet : elle s'ajoute, elle ne
+        // remplace rien. On la COUPE ici plutôt que de croire un nombre de
+        // lignes passé de l'extérieur — deux endroits qui comptent les mêmes
+        // lignes finissent toujours par ne plus compter pareil.
+        h += lignesConsigneFeuille(entete.consigne, P, entete.mesurer).length
+            * HAUTEUR_CONSIGNE_FEUILLE;
+    }
+    return Math.max(0, h) + (cartouche ? CARTOUCHE_H : 0);
+}
+
+/** Les deux colonnes du cartouche, en mm : [{x, w, label, valeur}]. */
+function colonnesCartouche(P, c) {
+    const L = P.w - 2 * P.marge;
+    // La note tient dans trente millimètres ; tout le reste va au commentaire,
+    // qui en a bien plus besoin — on n'écrit pas « Il faut apprendre les
+    // tables de multiplication » dans deux centimètres.
+    const noteW = c.commentaire ? 30 : L;
+    const cols = [];
+    if (c.note) cols.push({ x: 0, w: noteW, label: 'Note', valeur: `… / ${c.sur}` });
+    if (c.commentaire) {
+        cols.push({
+            x: c.note ? noteW : 0, w: c.note ? L - noteW : L,
+            label: 'Commentaire', valeur: ''
+        });
+    }
+    return cols;
+}
+
+/**
+ * L'en-tête d'une page.
+ *
+ * LE TITRE EST CENTRÉ, et il ne dit QUE le titre. Il portait autrefois une
+ * mention « — Interrogation » ajoutée par le logiciel : c'est au professeur
+ * d'écrire ce qu'est sa feuille, pas au générateur de le décider pour lui.
+ *
+ * Le titre a sa ligne, l'identité la sienne, et le cartouche — s'il est
+ * demandé — vient sous le filet, sur toute la largeur.
+ *
+ * @param {Object} [entete] - { champs: ['nom','date'] }
+ * @param {Object|null} note - le cartouche, sur la première page seulement.
+ */
+export function apercuEntete(k, titre, sousTitre, note, page, entete = {}) {
+    const P = page || A4;
+    const champs = champsDe(entete.champs, P.w - 2 * P.marge);
+    // CHAQUE PARTIE DE L'EN-TÊTE SE NOMME, pour qu'on puisse la toucher.
+    //
+    // Rémy : « on pourrait améliorer cela en passant par l'apercu plutôt que
+    // des options ». Le titre, les champs d'identité, la case note et la case
+    // commentaire sont DESSINÉS là, sous les yeux du professeur : les régler
+    // par des cases à cocher rangées dans un repli, c'est décrire de loin ce
+    // qu'on a devant soi. Ces marques sont la prise ; `ui/ficheDirecte.js` s'en
+    // sert pour rendre l'aperçu manipulable, et rien d'autre ne les regarde —
+    // le PDF ne les voit même pas.
+    const lignes = champs.map(c => `<span class="fp-champ" data-fiche="champ"
+        data-champ="${c.id}" title="Cliquer pour retirer ce champ"><i>${c.label} :</i>
+        <u style="width:${c.large * k}px"></u></span>`).join('');
+    // UN TITRE ABSENT REND SA PLACE. Sans lui, le filet et les champs remontent
+    // de la hauteur d'une ligne de titre ; sans titre NI champs, il n'y a plus
+    // rien à souligner et le filet lui-même s'efface.
+    const titreLa = !!String(titre || '').trim() || !!sousTitre;
+    const yFilet = P.marge + filetY(champs.length > 0, titreLa) + FILET_HTML;
+    // Le cadre est haut de treize millimètres : deux lignes d'écriture adulte.
+    const hCadre = CARTOUCHE_H - 4;
+    const cadre = note ? colonnesCartouche(P, note).map(c => `
+        <div class="fp-cart" data-fiche="cartouche" data-case="${c.label === 'Note' ? 'note' : 'commentaire'}"
+             title="Cliquer pour retirer cette case"
+             style="left:${(P.marge + c.x) * k}px; top:${(yFilet + 2) * k}px;
+             width:${c.w * k}px; height:${hCadre * k}px">
+            <i style="font-size:${2.9 * k}px">${c.label}</i>
+            <b style="font-size:${4.6 * k}px">${echapper(c.valeur)}</b>
+        </div>`).join('') : '';
+    // UN TITRE VIDE NE LAISSE PAS DE BANDEAU VIDE : la ligne disparaît, et
+    // les champs d'identité remontent d'autant.
+    const avecTitre = titreLa;
+    const lignesCons = lignesConsigneFeuille(entete.consigne, P, entete.mesurer);
+    // UN TITRE EFFACÉ NE LAISSE PLUS DE FANTÔME EN TRAVERS DU « Nom ».
+    //
+    // Rémy : « quand on clique sur la croix, ça ne le supprime pas forcément ».
+    // Il avait raison, et ce n'était pas une impression : la ligne d'identité
+    // remonte de la hauteur du titre quand il n'y en a pas — c'est voulu, la
+    // place rendue est le but — mais la boîte du titre, elle, restait à SON
+    // altitude. Le gris pâle « Titre de la feuille » venait donc s'asseoir
+    // exactement sur « Nom : ……… ». On croyait avoir effacé, et l'on voyait
+    // toujours un titre.
+    //
+    // Sans titre, il n'y a plus de boîte du tout. Le chemin du retour est un
+    // « + Titre », posé par `ficheDirecte` au bout de la ligne d'identité, avec
+    // les autres « + » — c'est là qu'on cherche déjà ce qu'on peut ajouter.
+    return `
+        ${avecTitre ? `<div class="fp-entete" data-fiche="titre"
+            title="Cliquer pour écrire le titre de la feuille"
+            style="left:${P.marge * k}px; right:${P.marge * k}px;
+            top:${(P.marge + TITRE_Y - MONTEE_TITRE) * k}px; font-size:${4.8 * k}px">
+            <b>${echapper(titre || '')
+            + (sousTitre ? (titre ? ' — ' : '') + echapper(sousTitre) : '')}</b>
+        </div>` : ''}
+        <div class="fp-identite${champs.length ? '' : ' fp-identite--vide'}"
+            data-fiche="identite" style="left:${P.marge * k}px;
+            right:${P.marge * k}px;
+            top:${(P.marge + IDENTITE_Y - MONTEE_IDENTITE - (avecTitre ? 0 : HAUTEUR_TITRE)) * k}px;
+            font-size:${3.3 * k}px;
+            gap:${5 * k}px">${lignes}</div>
+        ${avecTitre || champs.length ? `<div class="fp-ligne"
+            style="left:${P.marge * k}px; right:${P.marge * k}px; top:${yFilet * k}px;"></div>` : ''}
+        ${cadre}
+        ${lignesCons.length ? `<div class="fp-consigne-feuille" data-fiche="consigne-feuille"
+            title="Cliquer pour récrire la consigne de la feuille"
+            style="left:${P.marge * k}px; right:${P.marge * k}px;
+            top:${(yFilet + 1.6 + (note ? CARTOUCHE_H - 3 : 0)) * k}px;
+            font-size:${3.4 * k}px; line-height:${HAUTEUR_CONSIGNE_FEUILLE * k}px"
+            >${lignesCons.map(l => echapper(l)).join('<br>')}</div>` : ''}`;
+}
+
+// --- PDF ---------------------------------------------------------------------
+
+export function entetePdf(pdf, titre, sousTitre, bareme, note, page, entete = {}) {
+    const P = page || A4;
+    const champs = champsDe(entete.champs, P.w - 2 * P.marge);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(14.5);
+    pdf.setTextColor(...ENCRE.texte);
+    // LE TITRE A SA LIGNE, ET IL EST CENTRÉ : c'est le titre du devoir, pas une
+    // étiquette de classeur. Il ne porte que ce que le professeur a écrit.
+    const droite = P.w - P.marge;
+    // Un titre vide ne laisse pas de ligne vide sur la feuille : on n'écrit
+    // rien du tout. L'en-tête est facultatif, y compris au PDF.
+    const ligneTitre = `${titre || ''}${sousTitre ? ((titre || '') ? ' — ' : '') + sousTitre : ''}`.trim();
+    if (ligneTitre) {
+        pdf.splitTextToSize(pourPdf(ligneTitre), droite - P.marge).slice(0, 1)
+            .forEach(l => pdf.text(l, P.w / 2, P.marge + TITRE_Y, { align: 'center' }));
+    }
+
+    // LA CONSIGNE DE LA FEUILLE, sous le filet — celle qui vaut pour tout le
+    // devoir : « Calculatrice interdite », « Tu as 45 minutes ». Voir
+    // `lignesConsigneFeuille`. Elle est posée après le filet et le cartouche,
+    // par `entetePdfConsigne`, pour ne pas dépendre de l'ordre de dessin ici.
+
+    // L'IDENTITÉ SUR SA PROPRE LIGNE, chaque champ avec sa longueur : un
+    // « Nom » de quatre centimètres reçoit une écriture tassée ou un nom coupé.
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8.6);
+    pdf.setTextColor(...ENCRE.gris);
+    let x = P.marge;
+    // Les champs remontent de la hauteur du titre quand il n'y en a pas : c'est
+    // la même règle que le filet, et les deux doivent bouger ensemble sous
+    // peine de voir « Nom : » traverser le trait.
+    const yIdentite = P.marge + IDENTITE_Y - (ligneTitre ? 0 : HAUTEUR_TITRE);
+    champs.forEach(({ label, large }) => {
+        const etiquette = pourPdf(`${label} :`);
+        pdf.text(etiquette, x, yIdentite);
+        x += pdf.getTextWidth(etiquette) + 1.5;
+        pointilles(pdf, x, yIdentite + 0.3, large);
+        x += large + 5;
+    });
+    pdf.setTextColor(...ENCRE.texte);
+    pdf.setDrawColor(...ENCRE.trait);
+    pdf.setLineWidth(0.4);
+    const yFilet = P.marge + filetY(champs.length > 0, !!ligneTitre);
+    // Ni titre ni identité : plus rien à souligner. Un filet seul en haut d'une
+    // feuille de jeu à découper est une barre qui ne veut rien dire.
+    if (ligneTitre || champs.length) pdf.line(P.marge, yFilet, droite, yFilet);
+
+    // LE CARTOUCHE, sur toute la largeur : la note à gauche dans sa colonne
+    // étroite, l'appréciation à droite dans tout ce qui reste. Un tableau, pas
+    // deux cases posées côte à côte : le trait du milieu se partage.
+    let yBas = yFilet;
+    if (note) {
+        const hCadre = CARTOUCHE_H - 4;
+        const y0 = yFilet + 2;
+        pdf.setLineWidth(0.5);
+        colonnesCartouche(P, note).forEach((c) => {
+            pdf.rect(P.marge + c.x, y0, c.w, hCadre, 'S');
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(7);
+            pdf.setTextColor(...ENCRE.gris);
+            pdf.text(pourPdf(c.label), P.marge + c.x + 1.8, y0 + 3.2);
+            if (c.valeur) {
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(13);
+                pdf.text(pourPdf(c.valeur), P.marge + c.x + c.w / 2, y0 + 9.6, { align: 'center' });
+            }
+        });
+        pdf.setTextColor(...ENCRE.texte);
+        yBas = y0 + hCadre;
+    }
+    if (bareme) {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8.6);
+        pdf.setTextColor(...ENCRE.gris);
+        pdf.text(pourPdf(bareme), P.marge, yBas + 4.4);
+        pdf.setTextColor(...ENCRE.texte);
+    }
+    // LA CONSIGNE DE LA FEUILLE, en dessous de tout le reste — voir
+    // `lignesConsigneFeuille`. En italique, comme les consignes d'exercice :
+    // c'est le même genre de phrase, et l'œil ne la confond pas avec un énoncé.
+    const lignesCons = lignesConsigneFeuille(entete.consigne, P, entete.mesurer);
+    if (lignesCons.length) {
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(9.6);
+        pdf.setTextColor(...ENCRE.gris);
+        lignesCons.forEach((l, i) => {
+            pdf.text(pourPdf(l), P.marge, yBas + 4.6 + i * HAUTEUR_CONSIGNE_FEUILLE);
+        });
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(...ENCRE.texte);
+    }
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(160, 165, 175);
+    pdf.text('Fiche générée par AtoutMath', P.w / 2, P.h - 4, { align: 'center' });
+    // LA PAGINATION EST EN BAS, PAS DANS LE TITRE. « Contrôle n° 3 — page 2/4 »
+    // au milieu d'un titre centré, c'est le titre qui n'est plus centré.
+    if (entete.pagination) {
+        pdf.text(pourPdf(entete.pagination), P.w - P.marge, P.h - 4, { align: 'right' });
+    }
+    pdf.setTextColor(...ENCRE.texte);
+}
+
+function pointilles(pdf, x, y, largeur) {
+    pdf.setDrawColor(...ENCRE.pointille);
+    pdf.setLineWidth(0.25);
+    pdf.setLineDashPattern([0.7, 1.1], 0);
+    pdf.line(x, y, x + largeur, y);
+    pdf.setLineDashPattern([], 0);
+}
+
+/**
+ * UN CHAMP DE SAISIE dans le PDF — un vrai champ de formulaire AcroForm, pas
+ * un rectangle dessiné. L'élève ouvre le fichier, clique, tape sa réponse,
+ * enregistre et rend le PDF : la fiche se remplit à l'écran sans imprimante.
+ *
+ * jsPDF fournit `AcroFormTextField` sur le module UMD (`window.jspdf`). S'il
+ * manque — build allégé, version ancienne — on retombe sur les pointillés :
+ * une fiche imprimable vaut mieux qu'une erreur au téléchargement.
+ */
+function champSaisie(pdf, rep, index) {
+    // COMBIEN DE LIGNES ON A RÉSERVÉES. « 3 lignes — Je sais que… » demande de
+    // la place pour rédiger ; en cochant « champs remplissables », on n'en
+    // obtenait qu'UNE, et deux lignes de blanc dessous. La mise en page les
+    // comptait pourtant bien — c'est le dessin qui les oubliait, et seulement
+    // dans cette branche-là. Une fiche remplissable n'est pas une fiche
+    // amputée : c'est la même feuille, avec un curseur en plus.
+    const lignes = Math.max(1, Math.round(rep.lignes || 1));
+    const pas = rep.pas || 0;
+    const traits = () => {
+        for (let i = 0; i < lignes; i++) pointilles(pdf, rep.x, rep.champY + rep.h + i * pas, rep.w);
+    };
+    const Champ = (typeof window !== 'undefined' && window.jspdf && window.jspdf.AcroFormTextField)
+        || (pdf.AcroFormTextField);
+    if (typeof Champ !== 'function' || typeof pdf.addField !== 'function') {
+        for (let i = 0; i < lignes; i++) pointilles(pdf, rep.x, rep.y + i * pas, rep.w);
+        return false;
+    }
+    const champ = new Champ();
+    // Le champ couvre TOUTE la zone réservée, pas seulement sa première ligne.
+    champ.Rect = [rep.x, rep.champY, rep.w, rep.h + (lignes - 1) * pas];
+    // Le nom doit être UNIQUE dans le document : deux champs homonymes sont un
+    // seul champ pour un lecteur PDF, et taper dans l'un remplit l'autre.
+    champ.fieldName = rep.nom ? `${rep.nom}_${index}` : `reponse_${index}`;
+    champ.fontSize = 10;
+    // Sur plusieurs lignes, le champ doit accepter les retours : sans cela, une
+    // rédaction en trois temps s'écrit sur une seule ligne qui défile.
+    champ.multiline = lignes > 1;
+    pdf.addField(champ);
+    // Le champ lui-même n'a pas de bordure visible à l'impression : on pose un
+    // trait sous chaque ligne, pour que la fiche imprimée reste utilisable au
+    // stylo — c'est le même document qu'on remplit à l'écran ou à la main.
+    traits();
+    return true;
+}
+
+/**
+ * UNE CASE DE GRILLE REMPLISSABLE.
+ *
+ * Une fiche remplissable qui s'arrête aux questions écrites laisse l'élève sur
+ * ordinateur devant un sudoku qu'il ne peut pas remplir — c'est-à-dire devant
+ * un dessin. Les grilles reçoivent donc les mêmes champs, une case à la fois,
+ * et sans trait sous le champ : la case EST déjà le cadre.
+ */
+// UN COMPTEUR QUI NE REPART JAMAIS À ZÉRO. `pdfItems` est appelé une fois par
+// PAGE : un compteur local rendait « case_1 » sur chaque page, et deux champs
+// homonymes ne font qu'un seul champ pour un lecteur PDF — l'élève tapait dans
+// une case du premier sudoku et voyait son chiffre apparaître dans le second.
+let compteurChamps = 0;
+
+function champCase(pdf, x, y, w, h, nom) {
+    const Champ = (typeof window !== 'undefined' && window.jspdf && window.jspdf.AcroFormTextField)
+        || (pdf.AcroFormTextField);
+    if (typeof Champ !== 'function' || typeof pdf.addField !== 'function') return false;
+    const champ = new Champ();
+    champ.Rect = [x, y, w, h];
+    champ.fieldName = nom;
+    champ.fontSize = Math.max(6, Math.min(16, h * 2.2));
+    champ.multiline = false;
+    champ.textAlign = 'center';
+    pdf.addField(champ);
+    return true;
+}
+
+/**
+ * LE MÊME TABLEAU, DANS LE PDF — au millimètre près, par construction : la
+ * géométrie vient de la composition, qui l'a calculée UNE fois pour les deux
+ * rendus. Ce que le professeur voit dans l'aperçu est ce qui sort de
+ * l'imprimante, y compris quand les cases ont dû se resserrer.
+ */
+function tableauPdf(pdf, t, o) {
+    pdf.setDrawColor(...ENCRE.trait);
+    pdf.setLineWidth(0.3);
+    const nl = t.lignes.length;
+    for (let i = 0; i <= nl; i++) pdf.line(t.x, t.y + i * t.hLigne, t.x + t.w, t.y + i * t.hLigne);
+    let x = t.x;
+    for (let c = 0; c <= t.larg.length; c++) {
+        pdf.line(x, t.y, x, t.y + t.h);
+        x += t.larg[c] || 0;
+    }
+    pdf.setFontSize(o.taille * 2.83);
+    pdf.setTextColor(...ENCRE.texte);
+    t.lignes.forEach((ligne, i) => {
+        let cx = t.x;
+        ligne.forEach((texte, c) => {
+            const w = t.larg[c] || 0;
+            const mot = String(texte ?? '');
+            const y = t.y + i * t.hLigne;
+            if (mot) {
+                pdf.setFont('helvetica', c === 0 ? 'bold' : 'normal');
+                // Centré dans la case, et posé sur la ligne de base : un nombre
+                // collé au trait du bas se lit comme s'il appartenait à la
+                // rangée du dessous.
+                pdf.text(pourPdf(mot), cx + w / 2, y + t.hLigne / 2 + o.taille * 0.38,
+                    { align: 'center' });
+            } else if (o.champs && !o.solution) {
+                // UNE CASE VIDE EST UNE CASE OÙ L'ON ÉCRIT — au stylo sur la
+                // feuille imprimée, au clavier dans le PDF remplissable.
+                champCase(pdf, cx + 0.4, y + 0.4, w - 0.8, t.hLigne - 0.8,
+                    `case_${++compteurChamps}`);
+            }
+            cx += w;
+        });
+    });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(...ENCRE.texte);
+}
+
+/** Les items d'une page, dans le PDF. */
+export function pdfItems(pdf, page, o) {
+    let nChamp = 0;
+    for (const it of page.items) {
+        if (it.type === 'exo') {
+            pdf.setFillColor(...ENCRE.bandeau);
+            pdf.setDrawColor(...ENCRE.bandeauTrait);
+            pdf.setLineWidth(0.2);
+            pdf.roundedRect(it.x, it.y, it.w, it.h, 1.2, 1.2, 'FD');
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(o.taille * 2.9);
+            pdf.setTextColor(...ENCRE.texte);
+            pdf.text(pourPdf(titreExo(it)), it.x + 3, it.y + it.h / 2 + o.taille * 0.42);
+            if (it.points) {
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(o.taille * 2.5);
+                pdf.setTextColor(...ENCRE.gris);
+                pdf.text(`… / ${it.points}`, it.x + it.w - 3, it.y + it.h / 2 + o.taille * 0.42, { align: 'right' });
+            }
+            continue;
+        }
+        if (it.type === 'consigne') {
+            pdf.setFont('helvetica', 'italic');
+            pdf.setFontSize(o.tailleConsigne * 2.83);
+            pdf.setTextColor(...ENCRE.gris);
+            it.lignes.forEach((ligne, i) => {
+                texteRiche(pdf, ligne, it.x + 1,
+                    it.y + o.tailleConsigne + i * o.tailleConsigne * 1.45, o.tailleConsigne);
+            });
+            continue;
+        }
+        if (it.type === 'grille') {
+            const r = RENDUS[it.cle];
+            if (r) {
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(o.tailleConsigne * 2.83);
+                pdf.setTextColor(...ENCRE.gris);
+                if (it.n != null && !r.numeroInterne) pdf.text(`${it.n}.`, it.x, it.y - 1.2);
+                // Le rendu de la grille appelle ce crayon pour chaque case
+                // vide, quand la fiche est déclarée remplissable.
+                const champ = (o.champs && !o.solution)
+                    ? (x, y, w, h) => champCase(pdf, x, y, w, h, `case_${++compteurChamps}`)
+                    : null;
+                r.pdfGrille(pdf, it.item,
+                    { x: it.x, y: it.y, taille: it.taille, boite: it.boite,
+                        numero: r.numeroInterne ? it.n : null,
+                        tous: it.tous || null, rang: it.iQ ?? null },
+                    !!o.solution, champ);
+            }
+            continue;
+        }
+        pdf.setTextColor(...ENCRE.texte);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(o.taille * 2.83);
+        // Sur la MÊME ligne de base que la première ligne de l'énoncé : voir
+        // le commentaire de l'aperçu, plus haut.
+        if (it.n != null) pdf.text(`${it.n}.`, it.x, it.y + (it.dy || 0) + o.taille);
+        pdf.setFont('helvetica', 'normal');
+        it.lignes.forEach((ligne, i) => {
+            dessinerLigne(pdf, ligne, it.texteX, it.y + (it.dy || 0) + o.taille + i * o.interligne, o, it.fractions);
+        });
+        if (it.choix) {
+            // LES CASES À COCHER SONT DESSINÉES, pas écrites. Le caractère ☐
+            // n'existe pas dans les polices standard du PDF : il sortait en
+            // deux glyphes de hasard, et emportait toute la ligne de choix
+            // avec lui. Un carré tracé s'imprime partout et se coche mieux.
+            pdf.setFontSize(o.taille * 2.5);
+            const cote = o.taille * 0.82;
+            let cx = it.texteX;
+            for (const choix of it.choix) {
+                const mot = pourPdf(String(choix));
+                pdf.setDrawColor(...ENCRE.gris);
+                pdf.setLineWidth(0.22);
+                pdf.rect(cx, it.choixY + o.taille - cote, cote, cote, 'S');
+                pdf.setTextColor(...ENCRE.gris);
+                pdf.text(mot, cx + cote + 1.4, it.choixY + o.taille);
+                cx += cote + 1.4 + pdf.getTextWidth(mot) + 4;
+            }
+            pdf.setTextColor(...ENCRE.texte);
+        }
+        if (it.tableau) tableauPdf(pdf, it.tableau, o);
+        if (it.rep) {
+            if (o.champs) champSaisie(pdf, it.rep, ++nChamp);
+            else {
+                for (let i = 0; i < (it.rep.lignes || 1); i++) {
+                    pointilles(pdf, it.rep.x, it.rep.y + i * (it.rep.pas || 0), it.rep.w);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * LA PAGE DES SOLUTIONS — en aperçu et en PDF, écrite une seule fois.
+ *
+ * Ces deux fonctions vivaient en double, une copie dans la fiche d'un exercice
+ * et une dans la fiche d'un parcours. Corriger la présentation d'un corrigé
+ * demandait donc de la corriger deux fois — et la seconde se corrigeait un
+ * commit plus tard, ou pas du tout.
+ *
+ * LA RÉPONSE EST SOULIGNÉE. Sur un corrigé, ce qu'on cherche n'est pas la
+ * ligne, c'est le nombre DANS la ligne : « 92 202 = 90 000 + 2 000 + 200 + 2 »
+ * ne dit pas lequel des quatre nombres était la question. En gras ET souligné :
+ * le gras seul se perd sur une photocopie grise, le trait seul se confond avec
+ * la ligne à remplir d'un énoncé.
+ */
+export function apercuSolutions(page, k, o) {
+    let html = '';
+    for (const b of page.blocs) {
+        b.lignes.forEach((ligne, i) => {
+            const corps = morceauxReponse(ligne).map(m => {
+                // LES FRACTIONS S'EMPILENT ICI AUSSI. Le corrigé les écrivait
+                // « 5/7 » à la barre oblique, alors que la feuille de
+                // questions, elle, les empile : deux écritures de la même
+                // fraction dans le même document, et celle du corrigé n'est pas
+                // celle qu'on demande à l'élève.
+                const t = ligneHtml(m.texte, o.fractions, o);
+                if (m.souligne) return `<u class="fq-soul">${t}</u>`;
+                // LE BARÈME EST EN COULEUR, PAS EN GRAS. Le gras appartient à la
+                // réponse ; « 2 pts » en gras au bout d'une ligne se lit comme
+                // une partie de la réponse, et l'on corrige un 2 qui n'existe pas.
+                if (m.bareme) return `<span class="fq-bareme">${t}</span>`;
+                return m.reponse ? `<b class="fq-rep">${t}</b>` : t;
+            }).join('');
+            html += `<div class="fq-ligne" style="left:${b.x * k}px; top:${(b.y + i * o.interligne) * k}px;
+                width:${b.largeur * k}px; font-size:${o.taille * k}px">${corps}</div>`;
+        });
+    }
+    return html;
+}
+
+/**
+ * LA COULEUR DU BARÈME. Un violet franc : il ne doit ressembler à aucune des
+ * trois couleurs du raisonnement (bleu, rouge, vert), sans quoi « 2 pts » se
+ * lirait comme une amorce de rédaction.
+ */
+const BAREME_RVB = [124, 58, 237];
+
+export function pdfSolutions(pdf, page, o) {
+    pdf.setFontSize(o.taille * 2.83);
+    pdf.setTextColor(...ENCRE.texte);
+    for (const b of page.blocs) {
+        b.lignes.forEach((ligne, i) => {
+            const y = b.y + o.taille + i * o.interligne;
+            let x = b.x;
+            for (const m of morceauxReponse(ligne)) {
+                // LE GRAS SUFFIT. La réponse portait en plus un trait dessous ;
+                // en mode compact, où toute la ligne EST la réponse, la page
+                // entière se retrouvait soulignée.
+                pdf.setFont('helvetica', m.reponse ? 'bold' : 'normal');
+                // La même distinction que sur l'aperçu : le barème prend la
+                // couleur, la réponse garde le gras. `encre` la fait passer par
+                // le mode polycopie, donc elle grisera proprement si la feuille
+                // part en noir et blanc.
+                pdf.setTextColor(...(m.bareme ? encre(BAREME_RVB) : ENCRE.texte));
+                const depart = x;
+                x = dessinerLigne(pdf, m.texte, x, y, o, o.fractions);
+                // LE CALCUL PRIORITAIRE EST SOULIGNÉ. Le gras est déjà pris par
+                // la réponse : il faut une seconde emphase, et c'est celle qu'on
+                // trace au tableau sous l'opération qu'on va faire.
+                if (m.souligne) {
+                    pdf.setLineWidth(0.25);
+                    pdf.setDrawColor(...ENCRE.texte);
+                    pdf.line(depart, y + o.taille * 0.22, x, y + o.taille * 0.22);
+                }
+            }
+        });
+    }
+    pdf.setFont('helvetica', 'normal');
+}
+
+// UNE SEULE FENÊTRE D'APERÇU À L'ÉCRAN.
+//
+// Rémy : « quand on change d'exercice et que l'aperçu est activé, il ne faut
+// pas qu'il y ait deux fenêtres d'aperçu les unes sur les autres. »
+//
+// Il y a DEUX fenêtres d'aperçu, parce qu'il y a deux natures de fiche : une
+// GRILLE se dessine, une QUESTION s'écrit sur une ligne. Chacune a la sienne,
+// et aucune ne fermait l'autre. Mesuré en passant d'un exercice à grille à un
+// exercice écrit :
+//
+//     1. fiche GRILLE ouverte  : [print-sheet-modal]
+//     2. puis une fiche ÉCRITE : [print-sheet-modal, print-questions-modal]
+//     3. retour à la GRILLE    : [print-sheet-modal, print-questions-modal]
+//
+// Les deux restaient là, l'une par-dessus l'autre, à la même hauteur de pile —
+// c'est donc l'ordre du document qui décidait laquelle se voyait, et l'on
+// pouvait très bien régler la fiche du dessous en croyant régler celle du
+// dessus. Cela se produisait partout, pas seulement sous la barre de passe.
+//
+// Chacune referme l'autre en s'ouvrant : il ne peut plus y en avoir deux.
+export function fermerAutreFiche(sauf) {
+    ['print-sheet-modal', 'print-questions-modal']
+        .filter(id => id !== sauf)
+        .forEach(id => {
+            const m = document.getElementById(id);
+            if (m) m.style.display = 'none';
+        });
+}

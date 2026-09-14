@@ -6,13 +6,16 @@
 // chaque partie, sans raison).
 
 import { clearEngines } from '../core/timers.js';
+import { destroyAllDemoCursors, setDemoMuet, marquerDemo } from '../core/demoPointer.js';
 import { state } from '../core/state.js';
 import { getActivity, getGenerator } from '../core/registry.js';
-import { pauserDemo, reglerVitesseDemo, vitesseDemo, interrompreDemo } from '../core/demoPointer.js';
 import { ItemSession } from '../core/itemSession.js';
 import { makePath, makeStep } from '../core/path.js';
 import { defaultPolicy } from '../core/policy.js';
 import { paramSchemaOf } from '../data/catalog.js';
+import { questionsConseillees } from '../core/duree.js';
+import { accessOf, lockLabel } from '../core/gameAccess.js';
+import { surveillerEnonces } from '../ui/enonce.js';
 import { aApprentissage, construireApprentissage } from '../core/apprentissage.js';
 
 /**
@@ -22,24 +25,64 @@ import { aApprentissage, construireApprentissage } from '../core/apprentissage.j
  */
 export function openGameLayer(exo, startAsDemo) {
     if (!exo) return;
+    // L'ÉNONCÉ SE RÈGLE SUR SA LONGUEUR — voir `ui/enonce.js`. L'observateur
+    // est posé une fois pour toutes sur la zone de jeu : trente endroits
+    // écrivent une question, et les appeler un par un, c'est en oublier un.
+    surveillerEnonces(document.getElementById('game-board'));
 
     if (startAsDemo) return openDemo(exo);
+
+    // On quitte une démonstration : sa flèche, sa bulle et sa barre de
+    // commandes ne lui survivent pas. Le balayage est fait ICI, avant même le
+    // panneau de réglages, parce que ce panneau rend la main sans rien lancer
+    // — en mode professeur, personne n'atteignait le parcours qui nettoie.
+    destroyAllDemoCursors();
+
+    // Verrous du jeu libre (exercices réservés, jeux à débloquer). Seul le
+    // lancement LIBRE passe ici : les parcours du professeur, eux, lancent
+    // leurs étapes par le Runner et ne sont jamais bloqués.
+    if (!state.isTeacherMode) {
+        const acces = accessOf(exo);
+        if (acces.status !== 'libre') {
+            import('../ui/modal.js').then(m => m.showToast(`🔒 ${lockLabel(acces)}`, 'warning'));
+            return;
+        }
+    }
 
     // Réglages avant partie, si l'exercice en propose et qu'aucun n'est fourni.
     const schema = paramSchemaOf(exo);
     const needsConfig = schema.length > 0 && !exo.internalStudentConfig;
 
-    // Un exercice qui s'apprend passe TOUJOURS par la fenêtre de départ, même
-    // s'il n'a aucun réglage : c'est là qu'on propose la leçon, et la proposer
-    // est la moitié du travail.
-    if ((needsConfig || aApprentissage(exo)) && !state.isTeacherMode) {
+    // LA MÊME FENÊTRE POUR LES DEUX RÔLES, ET C'ÉTAIT UN VRAI TROU.
+    //
+    // Rémy : « L'exercice Loupe sur la droite : les paramètres ne fonctionnent
+    // pas. » Ce n'était pas la loupe : c'était TOUT exercice réglable ouvert
+    // depuis le catalogue en mode professeur. La branche prof appelait
+    // `window.showGameConfigUI`, qui écrit dans `builder-config-content` — le
+    // panneau du CONSTRUCTEUR DE PARCOURS. Depuis le catalogue, ce conteneur
+    // n'est pas dans la page : `renderGameConfigUI` sortait sans rien faire,
+    // aucune fenêtre ne s'ouvrait, et l'exercice ne partait même pas.
+    //
+    // Le contrat ne collait pas non plus : `renderGameConfigUI` prend une
+    // ÉTAPE de parcours et rend une étape modifiée, alors qu'on lui passait un
+    // exercice en attendant des réglages en retour. Même avec le bon
+    // conteneur, la partie serait partie avec un objet étape en guise de
+    // paramètres.
+    //
+    // Le panneau du constructeur reste ce qu'il est — le constructeur
+    // l'appelle lui-même, avec son étape et son conteneur. Ici, avant une
+    // partie libre, c'est la fenêtre de réglages, pour l'élève comme pour le
+    // professeur : mêmes réglages, même nombre de questions, même bouton
+    // « imprimer ». Rien ne justifiait deux chemins.
+    //
+    // ET UN EXERCICE QUI S'APPREND PASSE TOUJOURS PAR ICI, même s'il n'a
+    // aucun réglage : c'est là qu'on propose la leçon, et la proposer est la
+    // moitié du travail.
+    if (needsConfig || aApprentissage(exo)) {
         import('./configUI.js').then(m => {
-            m.showStudentConfigModal(exo, (params) => launchFreePlay(exo, params), () => lancerApprentissage(exo));
+            m.ouvrirReglagesAvantPartie(exo, (params) => launchFreePlay(exo, params),
+                { onApprendre: () => lancerApprentissage(exo) });
         });
-        return;
-    }
-    if (needsConfig && state.isTeacherMode && window.showGameConfigUI) {
-        window.showGameConfigUI(exo, (params) => launchFreePlay(exo, params));
         return;
     }
     launchFreePlay(exo, { ...(exo.params || {}) });
@@ -52,7 +95,15 @@ export function openGameLayer(exo, startAsDemo) {
  */
 function launchFreePlay(exo, params) {
     const { nbQuestions, successThreshold, timeLimit, ...overrides } = params || {};
-    const nbItems = nbQuestions || 10;
+    // COMBIEN D'UNITÉS FONT UNE SÉANCE.
+    //
+    // Le jeu libre posait dix, quoi qu'il arrive : dix paires (deux tables),
+    // dix grilles de sudoku (une heure et demie), dix parties d'échecs. Et il
+    // ignorait au passage les progressions, que le panneau du professeur
+    // savait pourtant calculer. Une seule fonction répond maintenant partout —
+    // voir `questionsConseillees` dans core/duree.js.
+    const nbItems = nbQuestions || questionsConseillees(
+        getGenerator(exo.generatorId), exo.params || {}, { activite: exo.activityId });
 
     const step = makeStep(exo.id, overrides, {
         nbItems,
@@ -63,12 +114,24 @@ function launchFreePlay(exo, params) {
     const path = makePath(exo.title, [step], defaultPolicy());
 
     import('../core/runner.js').then(({ Runner }) => {
-        const runner = new Runner({
-            path,
-            deviceMode: state.isTeacherMode ? (state.previewDeviceMode === 'desktop' ? 'none' : state.previewDeviceMode) : 'none'
-        });
+        const runner = new Runner({ path, deviceMode: cadreDe(exo) });
         runner.start();
     });
+}
+
+/**
+ * DANS QUEL CADRE ON LANCE.
+ *
+ * D'ordinaire c'est le simulateur du professeur qui décide, et un élève n'a
+ * pas de cadre du tout — il EST l'appareil. Mais la revue du catalogue veut
+ * lancer le MÊME exercice trois fois de suite, en téléphone, en tablette puis
+ * en plein écran, sans toucher au réglage global du professeur : elle le pose
+ * donc sur le descripteur qu'elle passe, et c'est celui-là qui gagne.
+ */
+export function cadreDe(exo) {
+    if (exo && exo.apercuAppareil) return exo.apercuAppareil;
+    if (!state.isTeacherMode) return 'none';
+    return state.previewDeviceMode === 'desktop' ? 'none' : state.previewDeviceMode;
 }
 
 /**
@@ -86,7 +149,10 @@ export function lancerApprentissage(exo) {
         new Runner({
             path: plan.path,
             lecon: plan.lecon,
-            deviceMode: state.isTeacherMode ? (state.previewDeviceMode === 'desktop' ? 'none' : state.previewDeviceMode) : 'none'
+            // Le cadre se demande à `cadreDe` comme partout ailleurs : la revue
+            // du catalogue le pose sur le descripteur, et une leçon lancée
+            // depuis elle doit s'afficher dans le même appareil que le reste.
+            deviceMode: cadreDe(exo)
         }).start();
     });
 }
@@ -99,100 +165,35 @@ export function openDemo(exo) {
     state.activeExo = exo;
     const gl = document.getElementById('game-layer');
     document.getElementById('game-title').textContent = exo.title;
+    // L'aperçu se regarde aussi dans un cadre de téléphone : c'est là que le
+    // robot désigne à côté de la case, parce que la mise en page a bougé.
+    gl.classList.remove('device-simulator', 'tablet-simulator');
+    const cadre = cadreDe(exo);
+    if (cadre === 'tablet') gl.classList.add('tablet-simulator');
+    else if (cadre === 'mobile') gl.classList.add('device-simulator');
     gl.style.display = 'flex';
 
     const banner = document.getElementById('demo-overlay-banner');
     if (banner) {
         const msg = document.getElementById('demo-banner-text');
-        if (msg) msg.textContent = `Mode Aperçu${exo.instruction ? ' : ' + exo.instruction : ''}`;
+        if (msg) msg.textContent = `Aperçu${exo.instruction ? ' : ' + exo.instruction : ' — le robot joue'}`;
+        // Repliée à chaque ouverture : une consigne dépliée la fois d'avant
+        // ne doit pas manger l'écran de l'aperçu suivant.
+        banner.classList.remove('demo-banner--ouvert');
+        const plus = document.getElementById('demo-banner-plus');
+        if (plus) plus.style.display = exo.instruction ? '' : 'none';
         banner.style.display = 'flex';
     }
     const progress = document.getElementById('game-progress-container');
     if (progress) progress.style.display = 'none';
+    // L'aperçu montre l'exercice TEL QUE l'élève le recevra, calculatrice
+    // comprise : c'est là qu'on vérifie qu'elle est offerte au bon endroit.
+    import('../ui/calculatrice.js').then(m => m.reglerCalculatrice(exo));
+    // La bande prend la place du titre : sans cet appel elle resterait
+    // invisible, et la bannière avec elle.
+    marquerDemo();
 
-    // Plein écran : le robot commente. C'est ici, et seulement ici, qu'il y a
-    // la place pour une bulle de parole et le temps de la lire.
-    brancherCommandesDemo(exo, launchPreview(exo, document.getElementById('game-board'), null, { narration: true }));
-}
-
-// Vitesses proposées, dans l'ordre du bouton. Le ralenti d'abord : c'est celui
-// qu'on cherche quand on commente une démonstration à voix haute.
-const VITESSES = [1, 0.5, 2];
-
-const ICONE_PAUSE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
-const ICONE_LECTURE = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>';
-
-/**
- * Commandes du « mode robot » : pause, vitesse, question précédente/suivante.
- *
- * Le robot enchaînait sans jamais s'arrêter : sur le Mathdoku, il remplit une
- * grille entière en quelques secondes, et il n'y avait aucun moyen de figer
- * l'image pour commenter un placement, ni de revoir celui qu'on venait de
- * manquer.
- */
-function brancherCommandesDemo(exo, promesse) {
-    const barre = document.getElementById('demo-controls');
-    if (!barre) return;
-
-    const activite = getActivity(exo.activityId);
-    // Les jeux autonomes (Tetris, Course, Labyrinthe…) jouent leur
-    // démonstration avec leurs propres minuteurs : ni le pointeur ni la
-    // navigation par question ne les pilotent. Des boutons sans effet
-    // vaudraient moins que pas de boutons du tout.
-    barre.hidden = !!(activite && activite.supports && activite.supports.autonomous);
-    if (barre.hidden) return;
-
-    const btnPause = document.getElementById('btn-demo-pause');
-    const btnVitesse = document.getElementById('btn-demo-speed');
-    const btnPrev = document.getElementById('btn-demo-prev');
-    const btnNext = document.getElementById('btn-demo-next');
-
-    const afficherPause = (enPause) => {
-        btnPause.innerHTML = enPause ? ICONE_LECTURE : ICONE_PAUSE;
-        btnPause.title = enPause ? 'Reprendre' : 'Mettre en pause';
-        btnPause.setAttribute('aria-label', btnPause.title);
-        btnPause.setAttribute('aria-pressed', String(enPause));
-        btnPause.classList.toggle('demo-ctrl--actif', enPause);
-    };
-    const afficherVitesse = () => {
-        const v = vitesseDemo();
-        btnVitesse.textContent = `×${v}`;
-        btnVitesse.classList.toggle('demo-ctrl--actif', v !== 1);
-    };
-
-    // Chaque ouverture repart de l'allure normale, en marche : la pause laissée
-    // par la démonstration précédente donnerait un écran figé sans explication.
-    pauserDemo(false);
-    reglerVitesseDemo(1);
-    afficherPause(false);
-    afficherVitesse();
-
-    btnPause.onclick = () => afficherPause(pauserDemo());
-    btnVitesse.onclick = () => {
-        reglerVitesseDemo(VITESSES[(VITESSES.indexOf(vitesseDemo()) + 1) % VITESSES.length]);
-        afficherVitesse();
-    };
-
-    btnPrev.disabled = btnNext.disabled = true;
-    Promise.resolve(promesse).then(handle => {
-        // Changer de question pendant une démonstration exige d'abord de
-        // dénouer celle qui joue : c'est une fonction suspendue sur un `await`,
-        // et elle continuerait sinon à piloter la question suivante.
-        const aller = (fn) => () => {
-            interrompreDemo();
-            pauserDemo(false);
-            afficherPause(false);
-            fn();
-        };
-        if (handle && handle.showPrevious) {
-            btnPrev.disabled = false;
-            btnPrev.onclick = aller(() => handle.showPrevious());
-        }
-        if (handle && handle.showNext) {
-            btnNext.disabled = false;
-            btnNext.onclick = aller(() => handle.showNext());
-        }
-    });
+    launchPreview(exo, document.getElementById('game-board'));
 }
 
 /**
@@ -222,10 +223,14 @@ function gelerApres(handle) {
 
 export function launchPreview(exo, container, params = null, opts = {}) {
     const frozen = !!opts.frozen;
+    // Une vignette (survol, carte, présentation) joue en muet : ses bulles,
+    // posées sur <body>, recouvriraient la page entière. Le plein écran
+    // (opts.muet absent) garde les explications du robot.
+    setDemoMuet(frozen || !!opts.muet);
     // Une vignette ne coupe pas les minuteurs des autres : elle vit dans son
     // propre conteneur et sera gelée individuellement. Une démonstration, si :
     // il n'en joue qu'une à la fois.
-    if (!frozen) clearEngines();
+    if (!frozen) { clearEngines(); destroyAllDemoCursors(); }
     container.innerHTML = '';
 
     const activity = getActivity(exo.activityId);
@@ -251,7 +256,6 @@ export function launchPreview(exo, container, params = null, opts = {}) {
         if (!generator) return null;
         const session = new ItemSession({
             generator, params: effective, exercise: exo, isDemo: true, frozen,
-            narration: !!opts.narration,
             preferredKind: activity.accepts[0]
         });
         return mod.mount(container, session, activity.mountOptions || {});

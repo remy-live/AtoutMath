@@ -148,3 +148,46 @@ test('sans barème, il n\'y a pas de calcul à montrer', () => {
     assert.equal(bilan.calcul, null);
     assert.equal(bilan.afficherCalcul, false);
 });
+
+// --- Temps de séance --------------------------------------------------------
+// `msElapsed` est un INTERVALLE : le temps écoulé depuis la tentative
+// précédente. C'est ce qui rend l'addition légitime.
+
+test('le temps de séance additionne les intervalles', () => {
+    const bilan = gradeRun(run([
+        a({ itemSeed: 'q1', msElapsed: 3000 }),
+        a({ itemSeed: 'q2', msElapsed: 5000 }),
+        a({ itemSeed: 'q3', msElapsed: 4000 })
+    ]), defaultPolicy());
+    assert.equal(bilan.tempsTotal, 12);
+    assert.equal(bilan.tempsMoyenParQuestion, 4);
+});
+
+test('plusieurs essais sur la même question ne comptent pas plusieurs fois sa durée', () => {
+    // L'élève cherche 4 s, se trompe, cherche 3 s de plus, trouve.
+    // La question a duré 7 s — pas 4 + 7 = 11 s.
+    const bilan = gradeRun(run([
+        a({ itemSeed: 'q1', correct: false, msElapsed: 4000 }),
+        a({ itemSeed: 'q1', correct: true, attemptIndex: 1, msElapsed: 3000 })
+    ]), defaultPolicy());
+    assert.equal(bilan.tempsTotal, 7);
+});
+
+test('une pause interminable ne gonfle pas le temps de séance', () => {
+    // Onglet laissé ouvert une heure entre deux questions : la question est
+    // plafonnée, sinon le bilan raconte les allées et venues de l'élève.
+    const bilan = gradeRun(run([
+        a({ itemSeed: 'q1', msElapsed: 6000 }),
+        a({ itemSeed: 'q2', msElapsed: 60 * 60 * 1000 })
+    ]), defaultPolicy());
+    assert.equal(bilan.tempsTotal, 6 + 300);
+});
+
+test('un temps absent ou négatif ne casse pas le total', () => {
+    const bilan = gradeRun(run([
+        a({ itemSeed: 'q1', msElapsed: undefined }),
+        a({ itemSeed: 'q2', msElapsed: -5000 }),
+        a({ itemSeed: 'q3', msElapsed: 8000 })
+    ]), defaultPolicy());
+    assert.equal(bilan.tempsTotal, 8);
+});

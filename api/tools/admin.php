@@ -17,6 +17,7 @@ if (PHP_SAPI !== 'cli') {
 require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/../lib/projections.php';
 require_once __DIR__ . '/../lib/grading.php';
+require_once __DIR__ . '/../lib/coffre.php';
 
 $command = $argv[1] ?? '';
 
@@ -57,17 +58,17 @@ switch ($command) {
         $class = $stmt->fetch();
         if (!$class) exit("Classe introuvable.\n");
 
-        $stmt = db()->prepare('SELECT id, first_name FROM students WHERE class_id = ? ORDER BY first_name');
+        $stmt = db()->prepare('SELECT id, first_name FROM students WHERE class_id = ?');
         $stmt->execute([$class['id']]);
 
         $out = fopen('php://output', 'w');
         fputcsv($out, ['Prénom', 'Parcours', 'Date', 'Note', 'Sur', 'Questions', 'Réussies']);
-        foreach ($stmt->fetchAll() as $s) {
+        foreach (trierParPrenom(array_map('eleveLisible', $stmt->fetchAll())) as $s) {
             $ev = db()->prepare('SELECT id, type, ts, payload FROM events WHERE student_id = ? ORDER BY ts');
             $ev->execute([$s['id']]);
             $events = array_map(fn($r) => [
                 'id' => $r['id'], 'type' => $r['type'], 'ts' => (int) $r['ts'],
-                'payload' => json_decode($r['payload'], true) ?: [],
+                'payload' => json_decode((string) dechiffrer($r['payload']), true) ?: [],
             ], $ev->fetchAll());
 
             foreach (runsOf($events) as $run) {

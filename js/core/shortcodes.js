@@ -6,17 +6,335 @@
 // les tables en lettres. Impossible de coder une politique, un barème, un
 // paramètre non numérique.
 //
+// La table écrite à la main est revenue depuis, mais pour une autre raison et
+// sans le défaut : elle ne sert plus qu'au CODE COURT (voir plus bas), elle
+// couvre tout le catalogue, et un test échoue si un exercice y manque. Rien
+// ne peut plus disparaître en silence.
+//
 // Format v2 : le parcours est sérialisé en JSON compact puis encodé en
 // base64url. Rien à maintenir quand on ajoute un exercice, et un parcours
 // complet (politique + barème + surcharges) tient dans un lien.
 //
 // Un code v2 commence par « M2- ». Les anciens codes restent décodables.
 
-import { normalizePath, makePath } from './path.js';
+import { normalizePath, makePath, questionsConseilleesDe } from './path.js';
 import { getExerciseById } from '../data/catalog.js';
-import { defaultPolicy, resolvePolicy } from './policy.js';
+import { defaultPolicy, resolvePolicy, apprentissagePolicy, evaluationPolicy, MODES } from './policy.js';
+import { SEUIL_DEFAUT } from './recompenses.js';
+import { seuilConseille } from './seuilEtape.js';
+import { CODES_EXERCICES, EXERCICE_PAR_IDENTITE } from '../data/codesExercices.js';
 
 const PREFIX = 'M2-';
+
+/**
+ * LE CODE COURT — TROIS LETTRES, pour l'usage le plus fréquent.
+ *
+ * « Fais l'exercice sur les relatifs ce soir » n'a pas besoin d'un parcours :
+ * c'est UN exercice, avec ses réglages d'usine. Le format complet coûtait
+ * pourtant 81 caractères de base64 — à recopier sur un téléphone, en devoirs,
+ * c'est une faute de frappe garantie et un élève qui abandonne.
+ *
+ * DEUX LETTRES D'IDENTITÉ, UNE LETTRE DE CONTRÔLE. Rémy : « pourquoi pas 2
+ * caractères, ça FAIT 26*26 possibilités de jeu ». C'est vrai : 23 lettres au
+ * carré font 529 places, largement de quoi loger les 139 exercices. Mais on a
+ * mesuré ce que deux lettres SEULES coûtaient, sur cette table-ci : sur les
+ * 6 116 façons de se tromper d'une lettre, 2 440 tombent sur un AUTRE exercice
+ * du catalogue. Deux fois sur cinq. Il s'ouvre sans un mot, l'élève travaille
+ * sagement la mauvaise chose, et personne ne le sait. (C'est même pire que le
+ * hasard, justement parce que les codes sont mnémoniques : les exercices d'une
+ * même famille se ressemblent, donc leurs codes se touchent.)
+ *
+ * On aurait pu allonger l'identité — plus de places, moins de voisins occupés.
+ * Mais rallonger ne fait que RARÉFIER la faute silencieuse, jamais disparaître.
+ * La troisième lettre, elle, ne porte aucune information : elle vérifie les
+ * deux autres, et ramène le risque à zéro. Une lettre de plus, et c'est une
+ * garantie au lieu d'une probabilité.
+ *
+ * CE QU'ELLE GARANTIT, exactement — et c'est démontrable, pas empirique :
+ *   • toute faute d'UNE lettre, à n'importe laquelle des trois places, est
+ *     rejetée (message d'erreur, jamais un mauvais exercice) ;
+ *   • l'inversion des deux lettres d'identité est rejetée aussi.
+ * CE QU'ELLE NE GARANTIT PAS, et il faut le dire : les CHIFFRES du nombre de
+ * questions ne sont pas protégés. « ARF-12 » mal recopié en « ARF-13 » donne
+ * treize questions au lieu de douze. C'est délibéré : l'exercice reste le bon,
+ * la faute est visible et sans gravité, et protéger le nombre coûterait une
+ * lettre de plus à dicter pour un risque qui ne fait pas travailler à côté.
+ * La démonstration tient à deux choses : l'alphabet compte 23 lettres, et 23
+ * est PREMIER. Le contrôle vaut (1×première + 2×deuxième) modulo 23 ; changer
+ * une lettre de d ≠ 0 change le contrôle de d ou de 2d, et ni l'un ni l'autre
+ * n'est nul modulo un nombre premier. Inverser les deux le change de
+ * (première − deuxième), nul seulement si les lettres étaient identiques —
+ * auquel cas il n'y a rien à inverser.
+ *
+ * L'alphabet écarte I, O et Q : recopiés à la main ils deviennent 1, 0 et O.
+ * Il ne contient AUCUN chiffre, et c'est utile deux fois — plus aucune
+ * confusion possible entre une lettre et un chiffre, et le nombre de questions
+ * écrit à la suite se sépare tout seul du code.
+ */
+const ALPHABET = 'ABCDEFGHJKLMNPRSTUVWXYZ';   // 23 lettres — 23 est premier
+const LONGUEUR_IDENTITE = 2;
+const LONGUEUR_COURT = LONGUEUR_IDENTITE + 1;
+
+/** La lettre qui vérifie les deux autres : (1×a + 2×b) modulo 23. */
+function lettreDeControle(identite) {
+    let somme = 0;
+    for (let i = 0; i < identite.length; i++) {
+        const rang = ALPHABET.indexOf(identite[i]);
+        if (rang < 0) return null;
+        somme += (i + 1) * rang;
+    }
+    return ALPHABET[somme % ALPHABET.length];
+}
+
+/**
+ * @returns {string} les trois lettres de l'exercice, ou '' s'il n'a pas encore
+ * d'identité dans la table. Le vide n'est pas une panne : l'appelant retombe
+ * alors sur le format complet, qui sait tout coder.
+ */
+export function codeCourt(exerciseId) {
+    const identite = CODES_EXERCICES[exerciseId];
+    if (!identite) return '';
+    const controle = lettreDeControle(identite);
+    return controle ? identite + controle : '';
+}
+
+/**
+ * LE NOMBRE DE QUESTIONS ÉCRIT APRÈS LE CODE, en clair : « TPW-12 ».
+ *
+ * En clair, et non encodé : c'est justement ce que le professeur veut pouvoir
+ * dicter et l'élève relire. Deux chiffres au plus — au-delà de quatre-vingt
+ * dix-neuf questions, ce n'est plus un devoir du soir.
+ *
+ * ET LE SÉPARATEUR NE COMPTE PAS. Un code écrit au tableau se recopie comme on
+ * l'entend : « TPW-12 », « tpw 12 », « TPW12 », un tiret long parce que le
+ * traitement de texte l'a changé. On ne lit donc pas un séparateur : le code
+ * n'a que des lettres, le nombre n'a que des chiffres, la coupure est là où
+ * les unes cèdent la place aux autres. Tout le reste tombe au nettoyage.
+ *
+ * ET PLUSIEURS EXERCICES S'ÉCRIVENT À LA SUITE : « ARF-12-TPW-20 ». Rémy :
+ * « pourquoi du coup les liens sont si grands lorsqu'on met par exemple deux
+ * exercices ? » Parce que le format complet transportait le NOM DE FICHIER de
+ * chaque exercice en toutes lettres — « num-relatifs-addition », vingt-et-un
+ * caractères, puis un tiers de plus une fois passé en base64. Deux exercices
+ * coûtaient 161 caractères. Depuis que chaque exercice a ses deux lettres, il
+ * n'y a plus de raison : on enchaîne les codes courts, et les mêmes 161
+ * caractères en font 13.
+ *
+ * La lecture reste sans ambiguïté SANS séparateur, et c'est ce qui permet au
+ * nettoyage de tout jeter : trois lettres, puis zéro à deux chiffres, et on
+ * recommence. « ARF12TPW20 » se relit aussi bien que « ARF-12 TPW-20 ».
+ */
+const MOTIF_ETAPE = /([A-Z]{3})([0-9]{0,2})/y;
+
+function decouperChaine(code) {
+    const brut = normaliserCourt(code);
+    if (!brut) return null;
+    const etapes = [];
+    let i = 0;
+    while (i < brut.length) {
+        MOTIF_ETAPE.lastIndex = i;
+        const m = MOTIF_ETAPE.exec(brut);
+        if (!m || m.index !== i) return null;
+        const identite = m[1].slice(0, LONGUEUR_IDENTITE);
+        // Le contrôle d'abord : un code faux doit être refusé, pas interprété.
+        if (m[1][LONGUEUR_IDENTITE] !== lettreDeControle(identite)) return null;
+        const exerciseId = EXERCICE_PAR_IDENTITE.get(identite);
+        if (!exerciseId || !getExerciseById(exerciseId)) return null;
+        const n = m[2] ? Number(m[2]) : null;
+        if (m[2] && !(n >= 1 && n <= 99)) return null;
+        etapes.push({ exerciseId, questions: n });
+        i = MOTIF_ETAPE.lastIndex;
+    }
+    return etapes.length ? etapes : null;
+}
+
+/** Le découpage d'un code à UN seul exercice, ou null. */
+function decouperCodeCourt(code) {
+    const etapes = decouperChaine(code);
+    return (etapes && etapes.length === 1) ? etapes[0] : null;
+}
+
+/**
+ * Le code tel qu'on l'écrit au tableau : « TP-W » se lit, « tpw » aussi.
+ *
+ * On ne remplace plus rien ici. L'ancien code mélangeait lettres et chiffres et
+ * devait deviner (« O » vaut-il zéro ?) ; celui-ci n'a que des lettres, et un
+ * caractère qui n'est pas de l'alphabet fait simplement échouer le code — ce
+ * qui est le bon comportement : mieux vaut « code inconnu » qu'un exercice pris
+ * au hasard.
+ */
+export const normaliserCourt = (code) => String(code || '')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+/**
+ * Le nombre d'unités d'un exercice laissé « tel quel ».
+ *
+ * Ce n'est plus dix pour tout le monde : une grille de sudoku, une partie
+ * d'échecs et une addition ne se comptent pas pareil. Le code court dit « cet
+ * exercice, tel quel » — encore faut-il que « tel quel » veuille dire la même
+ * chose à l'écriture et à la relecture.
+ */
+const telQuel = questionsConseilleesDe;
+
+/**
+ * Cette étape se réduit-elle à « cet exercice, tel quel » ?
+ *
+ * LE NOMBRE DE QUESTIONS NE DISQUALIFIE PLUS. Rémy : « pour envoyer un code
+ * juste sur un exercice avec le nombre de questions, comment fait-on ?
+ * L'idéal serait que le code soit hyper court. » Il n'y avait pas de moyen :
+ * changer le compte faisait basculer sur le format complet — quatre-vingts
+ * caractères de base64 pour la seule différence d'un nombre. On l'écrit donc
+ * APRÈS le code, en clair : « TPW-12 », six caractères qu'on dicte encore.
+ *
+ * Le seuil suit la règle des 70 % comme partout ailleurs : il n'est pas dans
+ * le code parce qu'il se recalcule. Encore faut-il que celui de l'étape SOIT
+ * celui-là : sinon le code mentirait sur ce qu'il rend, et on repasse au
+ * format complet.
+ */
+/**
+ * CE QUI, DANS UNE ÉTAPE, EMPÊCHE LE CODE COURT — dit en français.
+ *
+ * Rémy : « pour le lien donné dans la partie prof, j'ai du mal à comprendre
+ * quand est-ce que tu utilises le code court et le code long ». La règle
+ * existait, elle n'était écrite nulle part où il puisse la lire : le bouton
+ * disait « Lien copié » et se taisait. Une condition qui décide en silence est
+ * une condition qu'on ne peut pas apprendre — donc chaque refus porte
+ * désormais sa phrase, et l'écran la montre.
+ *
+ * @returns {string} la raison, ou '' si l'étape se dicte.
+ */
+function raisonEtape(s) {
+    if (!s || !s.exerciseId) return 'cette étape n\'a pas d\'exercice';
+    if (s.overrides && Object.keys(s.overrides).length) {
+        return 'ses réglages ont été modifiés (par exemple « seulement les tables de 7 »)';
+    }
+    if ((s.weight || 1) !== 1) return 'elle a un coefficient';
+    if (s.timeLimit) return 'elle est chronométrée';
+    // Une étape-jeu, une étape sans total, une graine imposée : trois choses
+    // que la chaîne ne sait pas dire. Les taire ferait d'un jeu de récompense
+    // un exercice ordinaire — c'est le format complet qui doit prendre.
+    if (s.bonus) return 'c\'est un jeu de récompense';
+    // NON OBLIGATOIRE, C'EST TOUT LE PARCOURS QUI CHANGE : l'étape s'ouvre sans
+    // barrer la route, et celles d'après s'ouvrent avec elle. Trois lettres ne
+    // savent pas le dire, et le taire rendrait l'étape obligatoire à l'arrivée.
+    if (s.facultatif) return 'elle n\'est pas obligatoire';
+    if (s.sansTotal) return 'elle ne compte pas dans le total';
+    if (s.forceSeed) return 'elle rejoue une série précise';
+    if (!codeCourt(s.exerciseId)) return 'cet exercice n\'a pas encore de code à trois lettres';
+    const n = s.nbItems || telQuel(s.exerciseId);
+    if (!Number.isInteger(n) || n < 1 || n > 99) {
+        return 'son nombre de questions ne tient pas en deux chiffres';
+    }
+    const seuilAttendu = seuilConseille(n);
+    const seuil = (s.threshold === null || s.threshold === undefined) ? seuilAttendu : s.threshold;
+    if (seuil !== seuilAttendu) return 'son seuil de réussite a été déplacé';
+    return '';
+}
+
+function etapeSimple(s) {
+    return !raisonEtape(s);
+}
+
+/**
+ * POURQUOI CE PARCOURS N'A PAS DE CODE COURT — la liste, pour l'écran.
+ *
+ * Vide, cela veut dire que le code court suffit. Sinon chaque ligne nomme une
+ * chose qui doit voyager et que trois lettres ne savent pas dire : c'est la
+ * réponse exacte à « quand est-ce que tu utilises l'un ou l'autre ».
+ */
+export function raisonsDuCodeLong(path) {
+    const p = normalizePath(path);
+    const out = [];
+    if (!p.steps || !p.steps.length) return ['le parcours est vide'];
+    if (!politiqueOrdinaire(p.policy)) {
+        out.push('les réglages de la séance ne sont pas ceux d\'usine : mode, aides, '
+            + 'nombre d\'essais, correction, barème ou ordre des étapes');
+    }
+    if (p.bonusSeuil !== undefined && p.bonusSeuil !== SEUIL_DEFAUT) {
+        out.push('le seuil qui ouvre les jeux de récompense a été déplacé');
+    }
+    // UNE REPRISE NE TIENT PAS DANS UNE CHAÎNE COURTE, et il ne faut surtout
+    // pas qu'elle passe à la trappe : c'est elle, et elle seule, qui distingue
+    // un rattrapage du travail d'origine. Sans elle dans le code, l'élève qui
+    // tape le code du rattrapage retombe sur le parcours qu'il a déjà raté, et
+    // son bilan va se ranger avec celui de la première fois.
+    if (p.reprise) {
+        out.push('c\'est un rattrapage, et il doit se distinguer du travail d\'origine');
+    }
+    p.steps.forEach((s, i) => {
+        const r = raisonEtape(s);
+        if (r) out.push(`étape ${i + 1} : ${r}`);
+    });
+    return out;
+}
+
+/** La politique est-elle celle d'usine ? Sinon elle doit voyager, donc base64. */
+/**
+ * La séance est-elle réglée d'usine ? Si oui, la chaîne courte suffit.
+ *
+ * ELLE SE COMPARE CLÉ PAR CLÉ, sur la liste que le format complet sait
+ * écrire. Elle vérifiait quatre réglages nommés — le mode, les aides, les
+ * essais, la note — et laissait passer tout le reste : le jour où l'on a
+ * ajouté « l'élève choisit l'ordre des étapes », un parcours qui l'utilisait
+ * partait en chaîne courte, qui ne sait pas le dire, et arrivait chez le
+ * collègue verrouillé dans l'ordre. Sans un mot. Une liste nommée en dur ne
+ * peut que se démoder : celle-ci suit CLES_POLITIQUE, donc tout réglage
+ * partageable est couvert le jour où il naît.
+ */
+function politiqueOrdinaire(policy) {
+    const pol = resolvePolicy(policy);
+    const def = resolvePolicy(defaultPolicy());
+    if (pol.mode !== def.mode || pol.grading) return false;
+    for (const cle of Object.keys(CLES_POLITIQUE)) {
+        // `showCorrection` se déduit de `correction` : le comparer deux fois
+        // ne peut que se contredire (voir `compact`).
+        if (cle === 'showCorrection' && pol.correction) continue;
+        if (!memeValeur(pol[cle], def[cle])) return false;
+    }
+    return true;
+}
+
+/**
+ * Le parcours écrit en codes courts enchaînés, ou '' s'il n'y tient pas.
+ *
+ * CE QUI NE TIENT PAS DANS LA CHAÎNE, et pourquoi c'est le bon partage :
+ * une surcharge (« seulement les tables de 7 »), un barème, un mode
+ * apprentissage, un temps limité, un coefficient — tout cela change ce que
+ * l'élève reçoit et doit donc voyager. Le format complet le fait. La chaîne
+ * courte ne prétend coder que ce qu'on peut dicter : des exercices, dans un
+ * ordre, avec leur nombre de questions.
+ *
+ * LE NOM DU PARCOURS N'Y EST PAS. C'est le seul vrai renoncement : « Révisions
+ * du chapitre 3 » pesait à lui seul 30 des 117 octets. À la relecture, le nom
+ * se refait à partir des exercices — moins joli, mais un élève qui reçoit
+ * « ARF-12-TPW-20 » au lieu de 178 caractères de lien y gagne largement.
+ */
+function chaineCourte(path) {
+    const p = normalizePath(path);
+    if (!p.steps || !p.steps.length) return '';
+    if (!politiqueOrdinaire(p.policy)) return '';
+    // Le seuil qui ouvre les jeux de récompense ne voyage pas dans la chaîne :
+    // s'il a été déplacé, il doit voyager en entier.
+    if (p.bonusSeuil !== undefined && p.bonusSeuil !== SEUIL_DEFAUT) return '';
+    // LA GRAINE DE REPRISE NON PLUS. Un rattrapage a les mêmes étapes que le
+    // travail d'origine : sa chaîne courte serait donc RIGOUREUSEMENT la même,
+    // et l'élève qui la tape retomberait sur le parcours qu'il vient de rater.
+    // Le format complet, lui, sait porter la graine.
+    if (p.reprise) return '';
+    let out = '';
+    for (const s of p.steps) {
+        if (!etapeSimple(s)) return '';
+        const code = codeCourt(s.exerciseId);
+        // Pas d'identité pour cet exercice ? On ne bricole pas un code
+        // approximatif : le format complet sait tout coder, il prend le relais.
+        if (!code) return '';
+        const n = s.nbItems || telQuel(s.exerciseId);
+        // « ARF » quand c'est l'exercice tel quel, « ARF-12 » quand le
+        // professeur a choisi le nombre de questions.
+        out += (out ? '-' : '') + code + (n === telQuel(s.exerciseId) ? '' : `-${n}`);
+    }
+    return out;
+}
 
 // --- base64url ---------------------------------------------------------------
 
@@ -34,28 +352,89 @@ function fromBase64Url(code) {
     return new TextDecoder().decode(bytes);
 }
 
-// Représentation compacte : clés courtes, et on n'émet que ce qui diffère des
-// valeurs par défaut. Un parcours simple tient en une trentaine de caractères.
+/**
+ * REPRÉSENTATION COMPACTE : clés courtes, et on n'émet QUE ce qui diffère.
+ *
+ * Rémy : « est-ce qu'au niveau des options ça couvre tout ? » Non, ça ne
+ * couvrait pas tout, et c'était silencieux — un contrôle partagé arrivait chez
+ * le collègue avec la bonne note sur 10 mais l'arrondi, les pénalités, le
+ * régime de correction et « ne pas montrer la note » remis d'usine. Neuf
+ * réglages passaient à la trappe. On ne liste donc plus les champs à la main :
+ * on COMPARE la politique à celle de son mode, et tout écart voyage.
+ *
+ * « Diffère » veut dire : diffère de la politique DU MODE, pas de celle
+ * d'usine. C'est ce que `resolvePolicy` refera à la relecture — elle repart de
+ * la politique du mode et applique ce qu'on lui donne. Encoder par rapport à
+ * autre chose produirait un parcours qui ne se relit pas comme il s'écrit.
+ */
+const CLES_POLITIQUE = {
+    hints: 'h', maxAttemptsPerItem: 'a', correction: 'c', showCorrection: 'sc',
+    adaptive: 'ad', shuffleSteps: 'sh', ordreLibre: 'ol', allowRetryStep: 'rs', pointsPerItem: 'pi',
+    hintPenalty: 'hp', showMe: 'sm', guided: 'gd'
+};
+const CLES_BAREME = {
+    scale: 's', rule: 'r', penalties: 'p', arrondi: 'a',
+    showCalculation: 'sc', note: 'n'
+};
+
+const memeValeur = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+function politiqueDuMode(mode) {
+    return mode === MODES.EVALUATION ? evaluationPolicy()
+        : mode === MODES.APPRENTISSAGE ? apprentissagePolicy()
+            : defaultPolicy();
+}
+
 function compact(path) {
     const p = normalizePath(path);
     const pol = resolvePolicy(p.policy);
-    const def = defaultPolicy();
+    const base = politiqueDuMode(pol.mode);
 
     const out = { n: p.name, s: p.steps.map(compactStep) };
+    // LA REPRISE : ce qui distingue un rattrapage du travail d'origine.
+    //
+    // Un rattrapage est le MÊME travail, redonné à ceux qui l'ont raté — et son
+    // bilan ne doit surtout pas ramasser celui de la séance d'origine, sans
+    // quoi le professeur verrait « refait » ce qui n'a jamais été refait. On
+    // distinguait les deux par un identifiant neuf sur la copie ; mais un
+    // identifiant ne voyage pas dans un code, et l'élève qui tape le code du
+    // rattrapage retombait donc exactement sur le parcours d'origine.
+    //
+    // Cette graine-ci, elle, voyage. C'est le seul champ de la forme compacte
+    // qui ne décrit pas le travail : il décrit l'ACTE de le redonner.
+    if (p.reprise) out.r = p.reprise;
+    // Le seuil qui ouvre les jeux de récompense du parcours.
+    if (p.bonusSeuil !== undefined && p.bonusSeuil !== SEUIL_DEFAUT) out.b = p.bonusSeuil;
 
     const polOut = {};
-    if (pol.mode !== def.mode) polOut.m = pol.mode;
-    if (pol.hints !== def.hints) polOut.h = pol.hints ? 1 : 0;
-    if (pol.maxAttemptsPerItem !== def.maxAttemptsPerItem) polOut.a = pol.maxAttemptsPerItem;
+    if (pol.mode !== defaultPolicy().mode) polOut.m = pol.mode;
+    for (const [cle, court] of Object.entries(CLES_POLITIQUE)) {
+        // `showCorrection` se DÉDUIT de `correction` : l'écrire aussi ne peut
+        // que se contredire. On le laisse à `resolvePolicy`.
+        if (cle === 'showCorrection' && pol.correction) continue;
+        if (!memeValeur(pol[cle], base[cle])) polOut[court] = pol[cle];
+    }
     if (pol.grading) {
-        polOut.g = {
-            s: pol.grading.scale || null,
-            r: pol.grading.rule || 'firstTry'
-        };
+        const bBase = base.grading || {};
+        const g = {};
+        for (const [cle, court] of Object.entries(CLES_BAREME)) {
+            if (!memeValeur(pol.grading[cle], bBase[cle])) g[court] = pol.grading[cle];
+        }
+        // Un barème sur un mode qui n'en a pas d'usine doit exister même vide,
+        // sinon la relecture croirait qu'il n'y a pas de note du tout.
+        polOut.g = g;
+    } else if (base.grading) {
+        polOut.g = null;   // le professeur a retiré la note d'une évaluation
     }
     if (Object.keys(polOut).length) out.p = polOut;
     return out;
 }
+
+const CLES_ETAPE = {
+    nbItems: 'q', threshold: 't', weight: 'w', timeLimit: 'l',
+    forceSeed: 'f', sansTotal: 'st', bonus: 'b', facultatif: 'nb',
+    verrou: 'k', ouvertureLe: 'd'
+};
 
 function compactStep(s) {
     const out = { e: s.exerciseId };
@@ -63,19 +442,116 @@ function compactStep(s) {
     if (s.threshold !== null && s.threshold !== undefined) out.t = s.threshold;
     if (s.weight && s.weight !== 1) out.w = s.weight;
     if (s.timeLimit) out.l = s.timeLimit;
+    if (s.forceSeed) out.f = s.forceSeed;
+    // UNE ÉTAPE-JEU et UNE ÉTAPE SANS TOTAL ne sont pas des détails
+    // d'affichage : l'une ne compte ni dans le travail ni dans la note, l'autre
+    // change l'en-tête que l'élève lit. Les perdre change le parcours.
+    if (s.sansTotal) out.st = 1;
+    if (s.bonus) out.b = 1;
+    // Une étape non obligatoire voyage aussi : elle décide de ce qui ouvre la
+    // suite, donc la perdre en route change le parcours de l'élève.
+    if (s.facultatif && !s.bonus) out.nb = 1;
+    // LE VERROU VOYAGE, ET C'EST TOUT L'INTÉRÊT : le professeur pose la clé
+    // chez lui, distribue le code, et l'étape reste fermée sur trente machines
+    // jusqu'à ce qu'il la dicte. Ce qui voyage est l'EMPREINTE et son sel,
+    // jamais la clé — un lien se décode.
+    if (s.verrou && s.verrou.empreinte) out.k = s.verrou;
+    if (s.ouvertureLe) out.d = s.ouvertureLe;
     if (s.overrides && Object.keys(s.overrides).length) out.o = s.overrides;
     return out;
 }
 
+/**
+ * L'IDENTITÉ D'UN PARCOURS REÇU PAR CODE, C'EST SON CONTENU.
+ *
+ * Rémy : « quand j'ai fait un parcours en tant qu'élève et que je l'ai fini ou
+ * non, ma progression ne s'enregistre pas j'ai l'impression pour le parcours ».
+ *
+ * ELLE S'ENREGISTRAIT — ET PERSONNE NE POUVAIT PLUS LA RETROUVER. Un code ne
+ * transporte aucun identifiant : `compact()` n'en écrit pas. À chaque lecture,
+ * `makePath()` en tirait donc un AU HASARD. Le même code saisi le lendemain
+ * fabriquait, pour le journal, un AUTRE parcours : les étapes faites la veille
+ * étaient toujours là, rangées sous l'ancien identifiant, mais
+ * `computeAssignedPath` ne rattache que celles qui portent l'identifiant du
+ * dernier parcours assigné. L'élève retrouvait sa carte vierge et recommençait
+ * à l'étape 1.
+ *
+ * ON DÉRIVE DONC L'IDENTIFIANT DU CONTENU. Le même code, deux jours de suite,
+ * sur deux appareils, désigne le même parcours — donc la même progression. Sans
+ * rien ajouter au code, ce qui compte : les codes déjà dictés continuent de se
+ * lire, et les codes courts restent courts.
+ *
+ * LE NOM RESTE HORS DE L'EMPREINTE. Pour une chaîne courte, il se refabrique à
+ * partir des titres du catalogue : renommer un exercice ne doit pas effacer le
+ * travail de trente élèves.
+ *
+ * CE QU'IL FAUT SAVOIR ET ASSUMER :
+ *   · deux parcours au contenu RIGOUREUSEMENT identique partagent désormais une
+ *     progression. C'est cohérent — même travail, même avancement — mais si
+ *     Rémy redonne exactement les mêmes exercices une seconde fois, la carte
+ *     s'ouvrira « déjà faite ». Un exercice de plus, un barème différent, un
+ *     nombre de questions différent, et ce sont deux parcours distincts ;
+ *   · la correction n'est PAS rétroactive : les étapes déjà écrites sous un
+ *     identifiant tiré au hasard restent orphelines. Aucun élève n'ayant encore
+ *     utilisé le logiciel, cela ne coûte rien aujourd'hui.
+ *
+ * ET C'EST L'IDENTITÉ DE PARTOUT, PAS SEULEMENT DE L'ÉLÈVE. Une séance donnée
+ * l'écrit elle aussi (`core/seances.js`), et le panneau « À qui ce parcours est
+ * donné » compare la même chose (`ui/parcoursClasses.js`). Sans quoi le
+ * professeur et l'élève désigneraient le même travail par deux noms : le bilan
+ * de la séance ne retiendrait aucun de ses travaux, et la case ne se cocherait
+ * jamais. Mesuré exactement ainsi avant cette mise en commun — « runs retenus :
+ * [] » pour une classe qui avait pourtant travaillé.
+ */
+export function identiteDeParcours(path) {
+    if (!path) return '';
+    // On repart de la forme compacte : c'est elle qui définit ce qui voyage,
+    // donc ce qui fait qu'un parcours est LE MÊME. S'en écarter, ce serait
+    // fabriquer une seconde définition à côté, qui divergerait un jour.
+    const { n, ...contenu } = compact(path);
+    const texte = JSON.stringify(contenu);
+    // FNV-1a sur 32 bits : court, sans dépendance, et stable d'un moteur à
+    // l'autre. Ce n'est pas une empreinte cryptographique et n'a pas à l'être —
+    // personne ne gagne rien à fabriquer une collision avec le parcours d'un
+    // autre élève, et une collision fortuite demanderait des milliards de
+    // parcours différents dans le même navigateur.
+    let h = 0x811c9dc5;
+    for (let i = 0; i < texte.length; i++) {
+        h ^= texte.charCodeAt(i);
+        h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return 'path_c' + h.toString(36).toUpperCase();
+}
+
+/** Pose cette identité sur le parcours, et le rend. */
+function identifierParLeContenu(path) {
+    if (!path) return path;
+    path.id = identiteDeParcours(path);
+    return path;
+}
+
 function expand(obj) {
-    const pol = { ...defaultPolicy() };
-    if (obj.p) {
-        if (obj.p.m) pol.mode = obj.p.m;
-        if (obj.p.h !== undefined) pol.hints = !!obj.p.h;
-        if (obj.p.a) pol.maxAttemptsPerItem = obj.p.a;
-        if (obj.p.g) pol.grading = { scale: obj.p.g.s, rule: obj.p.g.r, penalties: { hint: 0.25, retry: 0.5 }, arrondi: 0.5 };
+    // On repart de la politique du mode, puis on applique ce qui voyageait.
+    const p = obj.p || {};
+    const pol = { ...politiqueDuMode(p.m) };
+    if (p.m) pol.mode = p.m;
+    for (const [cle, court] of Object.entries(CLES_POLITIQUE)) {
+        if (p[court] === undefined) continue;
+        // L'ancien format écrivait les booléens en 1/0 : il y a des liens dans
+        // la nature, ils doivent continuer de se lire.
+        pol[cle] = (typeof pol[cle] === 'boolean') ? !!p[court] : p[court];
+    }
+    if (p.g === null) {
+        pol.grading = null;
+    } else if (p.g) {
+        pol.grading = { ...(politiqueDuMode(p.m).grading || {}) };
+        for (const [cle, court] of Object.entries(CLES_BAREME)) {
+            if (p.g[court] !== undefined) pol.grading[cle] = p.g[court];
+        }
     }
     const path = makePath(obj.n || 'Parcours partagé', [], resolvePolicy(pol));
+    if (obj.b !== undefined) path.bonusSeuil = obj.b;
+    if (obj.r) path.reprise = obj.r;
     path.steps = (obj.s || []).map((s, i) => ({
         stepId: `sc_${i}`,
         exerciseId: s.e,
@@ -84,7 +560,12 @@ function expand(obj) {
         threshold: s.t !== undefined ? s.t : null,
         weight: s.w || 1,
         timeLimit: s.l || null,
-        forceSeed: null
+        forceSeed: s.f || null,
+        sansTotal: !!s.st,
+        bonus: !!s.b,
+        facultatif: !!s.nb || !!s.b,
+        verrou: s.k || null,
+        ouvertureLe: s.d || null
     }));
     return path;
 }
@@ -126,14 +607,26 @@ function decodeLegacy(code) {
 // --- API ---------------------------------------------------------------------
 
 export const Shortcodes = {
-    /** @returns {string} code partageable (préfixé M2-) */
+    /**
+     * @returns {string} code partageable — TROIS LETTRES par exercice quand le
+     * parcours n'est fait que d'exercices pris tels quels, le format complet
+     * dès qu'un réglage doit voyager.
+     */
     encodePath(path) {
         try {
-            return PREFIX + toBase64Url(JSON.stringify(compact(path)));
+            return chaineCourte(path) || PREFIX + toBase64Url(JSON.stringify(compact(path)));
         } catch (e) {
             console.error('[shortcodes] encodage impossible', e);
             return '';
         }
+    },
+
+    /**
+     * @returns {string[]} ce qui empêche le code court — vide s'il suffit.
+     * L'écran du professeur s'en sert pour DIRE pourquoi le lien est long.
+     */
+    raisonsDuCodeLong(path) {
+        try { return raisonsDuCodeLong(path); } catch (e) { return []; }
     },
 
     /** @returns {Object|null} parcours normalisé v2 */
@@ -142,13 +635,48 @@ export const Shortcodes = {
         const trimmed = String(code).trim();
         try {
             if (trimmed.startsWith(PREFIX)) {
-                return expand(JSON.parse(fromBase64Url(trimmed.slice(PREFIX.length))));
+                return identifierParLeContenu(
+                    expand(JSON.parse(fromBase64Url(trimmed.slice(PREFIX.length)))));
             }
-            return decodeLegacy(trimmed);
+            const chaine = decouperChaine(trimmed);
+            if (chaine) {
+                // LE NOM SE REFAIT à partir des exercices : il ne voyage pas
+                // dans la chaîne, mais l'élève doit lire autre chose que
+                // « Parcours partagé » en haut de son écran.
+                const titres = chaine.map(e => (getExerciseById(e.exerciseId) || {}).title || 'Exercice');
+                const path = makePath(titres.join(' + '), [], defaultPolicy());
+                path.steps = chaine.map((e, i) => {
+                    // Le nombre de questions écrit après le tiret, s'il y est —
+                    // et le seuil s'en déduit, comme partout ailleurs.
+                    const n = e.questions || telQuel(e.exerciseId);
+                    return {
+                        stepId: `sc_${i}`, exerciseId: e.exerciseId, overrides: {},
+                        nbItems: n, threshold: seuilConseille(n), weight: 1,
+                        timeLimit: null, forceSeed: null
+                    };
+                });
+                return identifierParLeContenu(path);
+            }
+            // UN CODE QU'ON NE SAIT PAS LIRE REND null, JAMAIS UN PARCOURS VIDE.
+            // L'ancien décodeur ignorait en silence ce qu'il ne reconnaissait
+            // pas et rendait un parcours sans aucune étape : l'appelant croyait
+            // avoir réussi. Refuser franchement, c'est le message d'erreur que
+            // l'élève doit voir.
+            const ancien = decodeLegacy(trimmed);
+            return (ancien && ancien.steps.length) ? identifierParLeContenu(ancien) : null;
         } catch (e) {
             console.warn('[shortcodes] code illisible', e);
             return null;
         }
+    },
+
+    /**
+     * L'exercice désigné par un code court à UN seul exercice, ou null.
+     * Une chaîne de plusieurs exercices n'en désigne pas un : elle rend null.
+     */
+    exerciceDuCodeCourt(code) {
+        const d = decouperCodeCourt(code);
+        return d ? (getExerciseById(d.exerciseId) || null) : null;
     },
 
     shareUrl(path) {

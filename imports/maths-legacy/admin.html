@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>MathBox - Admin Builder</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="logo">ADMIN MODE</div>
+        <div class="actions">
+            <button id="btn-export" class="btn-primary">💾 EXPORTER JSON</button>
+            <a href="index.html"><button class="btn-secondary">RETOUR JEU</button></a>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <aside class="sidebar">
+            <h3>JEUX DISPONIBLES</h3>
+            <p class="hint">Glisse les jeux vers la zone centrale</p>
+            <div id="library-list">
+                <div class="draggable-item" draggable="true" data-type="memory">
+                    🎴 MEMORY
+                </div>
+                <div class="draggable-item" draggable="true" data-type="dungeon">
+                    🏰 DONJON
+                </div>
+                </div>
+        </aside>
+
+        <main class="editor-area">
+            <h3>PARCOURS PÉDAGOGIQUE</h3>
+            <div id="path-container" class="drop-zone">
+                <p class="empty-msg">Dépose tes activités ici...</p>
+            </div>
+        </main>
+
+        <aside class="properties-panel" id="properties-panel">
+            <h3>PROPRIÉTÉS</h3>
+            <div id="form-container">
+                <p class="hint">Sélectionne une étape pour la modifier.</p>
+            </div>
+        </aside>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

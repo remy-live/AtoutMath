@@ -3,7 +3,8 @@ export function showToast(message, type = 'success', duration = 3000) {
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
-        container.style = "position:fixed; bottom:20px; right:20px; z-index:10000; display:flex; flex-direction:column; gap:10px;";
+        // Le placement est entièrement dans la feuille de style : centré et
+        // au-dessus de la barre du bas sur téléphone, en bas à droite ailleurs.
         document.body.appendChild(container);
     }
     container.style.display = 'flex';
@@ -17,8 +18,8 @@ export function showToast(message, type = 'success', duration = 3000) {
     
     const icon = isError ? iconError : iconSuccess;
     
-    toast.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><span>${icon}</span><span style="font-weight:600;">${message}</span></div>`;
-    toast.style = `background: ${bg}; color: white; padding: 12px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); min-width: 200px;`;
+    toast.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><span style="flex:0 0 auto; line-height:0;">${icon}</span><span style="font-weight:600; min-width:0;">${message}</span></div>`;
+    toast.style = `background: ${bg}; color: white; padding: 12px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); min-width: min(200px, 100%);`;
     
     container.appendChild(toast);
 
@@ -32,7 +33,15 @@ export function showToast(message, type = 'success', duration = 3000) {
 
 export function showModal(title, contentHTML, options = {}) {
     const overlay = document.createElement('div');
-    overlay.style = "position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(4px); animation: fadeIn 0.2s ease;";
+    // AU-DESSUS DE QUOI ? 9999 SUFFISAIT TANT QU'ON RESTAIT DANS LA PAGE.
+    //
+    // La couche de jeu (`#game-layer`) est à 10000 : une fenêtre ouverte DEPUIS
+    // un exercice se rangeait donc DERRIÈRE lui. Mesuré sur l'organigramme —
+    // le contre-exemple était bien dans le document, avec son texte et son
+    // dessin, et personne ne pouvait le voir. Un appelant qui sait qu'il est
+    // dans la couche de jeu passe donc son étage.
+    const etage = options.zIndex || 9999;
+    overlay.style = `position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:${etage}; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(4px); animation: fadeIn 0.2s ease;`;
     
     const width = options.width || '500px';
     
