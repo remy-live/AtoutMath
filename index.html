@@ -58,18 +58,83 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=688">
-    <link rel="stylesheet" href="css/layout.css?v=688">
-    <link rel="stylesheet" href="css/ui.css?v=688">
-    <link rel="stylesheet" href="css/games.css?v=688">
-    <link rel="stylesheet" href="css/components.css?v=688">
-    <link rel="stylesheet" href="css/modules.css?v=688">
+    <link rel="stylesheet" href="css/base.css?v=689">
+    <link rel="stylesheet" href="css/layout.css?v=689">
+    <link rel="stylesheet" href="css/ui.css?v=689">
+    <link rel="stylesheet" href="css/games.css?v=689">
+    <link rel="stylesheet" href="css/components.css?v=689">
+    <link rel="stylesheet" href="css/modules.css?v=689">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
          stockage retombe en mémoire et que le PDF devienne impossible à
          fabriquer. Une application qui se veut utilisable hors ligne ne peut
          pas dépendre d'un serveur qu'elle ne maîtrise pas. -->
+    <!-- LE POSTE ÉLÈVE — DEUX RÔLES DANS LE MÊME NAVIGATEUR.
+
+         Rémy : « comment je pourrais simuler un mode élève et prof simultané,
+         pour être sûr que ça fonctionne ».
+
+         Le problème n'est pas l'affichage, c'est le RANGEMENT. Le jeton du
+         professeur, le rattachement de l'élève et le souvenir de la porte
+         vivent tous dans `localStorage`, qui est commun à tout un navigateur
+         pour un même site. Ouvrir un second onglet ne donne donc pas un second
+         élève : il donne le MÊME, et se connecter d'un côté déconnecte l'autre.
+
+         ON NE TOUCHE PAS AUX QUATRE-VINGT-SIX ENDROITS QUI ÉCRIVENT. Avec
+         `?poste=1`, on remplace ici l'objet `localStorage` lui-même par un
+         objet qui préfixe toutes les clefs. Les modules chargés ensuite —
+         tous, sans exception, y compris le voile d'avant-porte juste dessous —
+         croient parler au stockage ordinaire ; ils parlent à un tiroir à part.
+         C'était la seule façon d'obtenir une isolation COMPLÈTE sans réécrire
+         trente fichiers, donc sans risquer d'en oublier un.
+
+         `clear()` N'EFFACE QUE LE TIROIR. La barre de mise au point propose
+         « tout effacer » ; sans cette précaution, ce bouton actionné depuis le
+         poste élève supprimerait la session du professeur dans l'autre
+         fenêtre. Une fonction de démonstration ne doit pas pouvoir faire ça.
+
+         IndexedDB est traité juste après le chargement de localforage : le
+         journal de l'élève est déjà rangé par profil, mais deux profils
+         identiques se marcheraient dessus. On lui donne donc sa propre base. -->
+    <script>
+        (function () {
+            var p;
+            try { p = new URLSearchParams(location.search); } catch (e) { return; }
+            if (!p || p.get('poste') !== '1') { return; }
+            var vrai;
+            try {
+                vrai = window.localStorage;
+                vrai.getItem('__sonde__');
+            } catch (e) { return; }   // navigation privée verrouillée : on laisse tel quel
+
+            var P = 'poste:';
+            var clefs = function () {
+                var l = [];
+                for (var i = 0; i < vrai.length; i++) {
+                    var k = vrai.key(i);
+                    if (k && k.indexOf(P) === 0) { l.push(k.slice(P.length)); }
+                }
+                return l;
+            };
+            var faux = {
+                getItem: function (c) { return vrai.getItem(P + c); },
+                setItem: function (c, v) { return vrai.setItem(P + c, v); },
+                removeItem: function (c) { return vrai.removeItem(P + c); },
+                key: function (i) { var l = clefs(); return i < l.length ? l[i] : null; },
+                clear: function () {
+                    clefs().forEach(function (c) { vrai.removeItem(P + c); });
+                }
+            };
+            Object.defineProperty(faux, 'length', { get: function () { return clefs().length; } });
+            try {
+                Object.defineProperty(window, 'localStorage', {
+                    value: faux, configurable: true, writable: false
+                });
+            } catch (e) { return; }
+            window.__posteEleve = true;
+        })();
+    </script>
     <!-- UN CODE DANS L'URL : ON NE MONTRE PAS L'APPLICATION.
          Rémy : « quand il y a un code dans l'URL, il faut charger tout de
          suite le parcours et pas voir l'interface ». L'élève qui suit le lien
@@ -135,6 +200,15 @@
         })();
     </script>
     <script src="vendor/localforage/localforage.min.js"></script>
+    <script>
+        // LE JOURNAL DU POSTE ÉLÈVE DANS SA PROPRE BASE. Il faut que ce soit
+        // ici : `localforage.config()` n'a d'effet qu'avant le premier accès
+        // aux données, et les modules qui en font vivent plus bas.
+        if (window.__posteEleve && typeof localforage !== 'undefined') {
+            try { localforage.config({ name: 'atoutmath-poste', storeName: 'poste' }); }
+            catch (e) { /* le préfixe de localStorage suffit déjà à séparer */ }
+        }
+    </script>
     <script src="vendor/confetti/confetti.browser.js"></script>
 </head>
 

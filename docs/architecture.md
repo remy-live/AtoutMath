@@ -495,6 +495,50 @@ compromis est assumé : ce n'est pas un dispositif d'examen surveillé. Voir
 
 ---
 
+## 9 bis. Le poste élève : deux rôles dans un seul navigateur
+
+Rémy : « comment je pourrais simuler un mode élève et prof simultané, pour être
+sûr que ça fonctionne ».
+
+Un second onglet ne suffit pas. Le jeton du professeur (`atoutmath-prof`), le
+rattachement de l'élève et le souvenir de la porte (`atoutmath-porte`) vivent
+dans `localStorage`, **commun à tout le navigateur pour un même site**. Se
+connecter en élève dans le second onglet déconnectait donc le professeur dans le
+premier — et réciproquement.
+
+**Le mécanisme tient en une ligne d'URL.** Avec `?poste=1`, un script placé tout
+en haut d'`index.html` — avant le voile d'avant-porte, avant localforage, avant
+le moindre module — remplace l'objet `window.localStorage` par un objet qui
+préfixe toutes les clefs par `poste:`. Les quatre-vingt-six endroits qui lisent
+ou écrivent n'ont pas été touchés : ils croient parler au stockage ordinaire.
+IndexedDB reçoit le même traitement, via `localforage.config()`.
+
+Trois précautions, qui ne se devinent pas :
+
+* `clear()` **n'efface que le tiroir préfixé**. La barre de mise au point
+  propose « tout effacer » ; sans cela, ce bouton actionné depuis le poste élève
+  supprimerait la session du professeur dans l'autre fenêtre ;
+* le billet voyage dans le **fragment** (`#billet=leo.r/2024`), jamais dans la
+  requête : un fragment n'est pas envoyé au serveur, donc le code d'un élève ne
+  peut pas se retrouver dans les journaux d'Apache. Il est effacé de la barre
+  d'adresse dès qu'il a servi ;
+* `window.open` est appelé **sans `await` préalable**, sinon il n'est plus
+  rattaché au clic et le navigateur le bloque comme une fenêtre surgissante.
+
+**Rien n'est simulé.** C'est la même application, le même serveur, un vrai
+billet : la porte s'ouvre pour de bon, le travail part pour de bon, et le
+professeur le voit arriver dans son direct. Un simulacre ne prouverait rien.
+
+Mesuré par `tools/boutEnBout.mjs`, dans **un seul contexte de navigateur** :
+après connexion de l'élève, le professeur rechargé a toujours son mode, son
+jeton et ses classes ; quatre clefs du professeur et trois du poste cohabitent,
+sans qu'aucune ne déborde.
+
+`js/ui/posteEleve.js` ne fait que le visible : le bandeau, le billet rempli, et
+une sortie qui ne laisse rien derrière elle.
+
+---
+
 ## 10. Tests
 
 Les fonctions pures sont testées sous Node, sans navigateur ni build :

@@ -251,6 +251,81 @@ ok('le direct le montre en ligne, sur son exercice',
     !!leoDirect && (bilan.direct.maintenant - (leoDirect.vu || 0)) <= 120 && !!leoDirect.exo,
     leoDirect ? `${leoDirect.prenom} · ${leoDirect.exo} · ${leoDirect.justes}/${leoDirect.total}` : 'introuvable');
 
+// ──────────────────── 4. LES DEUX RÔLES DANS LE MÊME NAVIGATEUR ─────────────
+//
+// Rémy : « comment je pourrais simuler un mode élève et prof simultané, pour
+// être sûr que ça fonctionne ».
+//
+// Tout ce qui précède utilise DEUX contextes de navigateur — deux profils,
+// deux stockages, l'équivalent de deux ordinateurs. C'est la situation réelle
+// de la classe, et ce n'est PAS celle de Rémy quand il veut essayer seul.
+//
+// Ici, on reste dans le contexte du PROFESSEUR : un seul stockage, celui qui
+// contient déjà son jeton. On ouvre une seconde page avec `?poste=1`, et l'on
+// vérifie que les deux tiennent debout EN MÊME TEMPS. Sans le tiroir préfixé
+// d'`index.html`, l'un des deux tombe — et c'est exactement ce qui se passait
+// avant : se connecter en élève éteignait le mode professeur de l'autre onglet.
+console.log('\nLES DEUX RÔLES, DANS UN SEUL NAVIGATEUR');
+console.log('─'.repeat(64));
+
+const poste = await ctxProf.newPage();
+poste.on('pageerror', e => erreurs.push('poste: ' + String(e).slice(0, 140)));
+poste.on('dialog', async d => { erreurs.push('FENÊTRE NATIVE: ' + d.message()); await d.dismiss(); });
+
+await poste.goto(`http://127.0.0.1:${PORT}/index.html?poste=1#billet=leo.r%2F2024`);
+await poste.waitForFunction(() => window.__atoutmathPret === true, { timeout: 20000 });
+await poste.waitForTimeout(3500);
+
+const côtéÉlève = await poste.evaluate(() => ({
+    tiroir: !!window.__posteEleve,
+    porte: !!document.getElementById('portail'),
+    bandeau: !!document.querySelector('.poste-bandeau'),
+    prof: document.body.classList.contains('teacher-mode'),
+    // L'adresse ne doit plus porter le code : il a servi, il s'efface.
+    adresse: location.hash
+}));
+ok('le poste élève range à part', côtéÉlève.tiroir);
+ok('le billet ouvre la porte tout seul', !côtéÉlève.porte, JSON.stringify(côtéÉlève));
+ok('le bandeau dit où l\'on est', côtéÉlève.bandeau);
+ok('il n\'est pas professeur', !côtéÉlève.prof);
+ok('le code a disparu de la barre d\'adresse', !côtéÉlève.adresse.includes('2024'),
+    côtéÉlève.adresse || '(vide)');
+
+// ET LE PROFESSEUR, LUI, EST TOUJOURS PROFESSEUR. C'est LA vérification : on
+// recharge sa page, dans le même navigateur, après que l'élève s'est connecté.
+await prof.reload();
+await prof.waitForFunction(() => window.__atoutmathPret === true, { timeout: 20000 });
+const côtéProf = await prof.evaluate(async () => {
+    const { jetonProf } = await import('./js/core/verrouProf.js');
+    const { mesClasses } = await import('./js/core/espaceProf.js');
+    const l = await mesClasses();
+    return { mode: document.body.classList.contains('teacher-mode'),
+             jeton: !!jetonProf(),
+             classes: Array.isArray(l) ? l.length : ('erreur: ' + l.erreur) };
+});
+ok('LE PROFESSEUR N\'A PAS ÉTÉ DÉCONNECTÉ', côtéProf.mode && côtéProf.jeton,
+    JSON.stringify(côtéProf));
+// Le nombre importe peu — le site d'essai en sert plusieurs. Ce qui compte est
+// qu'il LISE : une liste, et non le refus 401 qu'il recevait quand la seconde
+// fenêtre lui prenait son jeton.
+ok('et il lit toujours ses classes', typeof côtéProf.classes === 'number' && côtéProf.classes >= 1,
+    String(côtéProf.classes));
+
+// Les deux jeux de clefs cohabitent sans se voir. On regarde depuis la page du
+// PROFESSEUR, c'est-à-dire depuis le vrai `localStorage` : c'est le seul
+// endroit d'où l'on voit les deux tiroirs à la fois.
+const clefs = await prof.evaluate(() => {
+    const l = [];
+    for (let i = 0; i < localStorage.length; i++) l.push(localStorage.key(i));
+    return { prof: l.filter(k => k && !k.startsWith('poste:')),
+             poste: l.filter(k => k && k.startsWith('poste:')) };
+});
+ok('les deux tiroirs existent côte à côte, et sont distincts',
+    clefs.prof.some(k => k === 'atoutmath-prof') && clefs.poste.length > 0,
+    `professeur : ${clefs.prof.length} clef(s) · poste : ${clefs.poste.length}`);
+ok('aucune clef du poste ne déborde sur celles du professeur',
+    !clefs.prof.some(k => k.startsWith('poste:')));
+
 console.log('\n' + '─'.repeat(64));
 console.log('fenêtres natives et erreurs de page :', erreurs.length);
 erreurs.slice(0, 8).forEach(e => console.log('   ', e));

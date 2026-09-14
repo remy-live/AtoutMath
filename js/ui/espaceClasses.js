@@ -44,6 +44,7 @@ import {
     lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis
 } from '../core/espaceProf.js';
 import { adresseAdmin } from './classesServeur.js';
+import { adresseDuPoste } from './posteEleve.js';
 import { getExerciseById } from '../data/catalog.js';
 
 /**
@@ -394,6 +395,9 @@ function listeHtml() {
         <button type="button" class="ec-bouton ec-bouton--doux" data-imprimer>Imprimer les billets</button>
         <button type="button" class="ec-bouton ec-bouton--doux" data-codes-communs>Un même code pour tous</button>
         <button type="button" class="ec-bouton ec-bouton--doux" data-codes-chacun>Refaire tous les codes</button>` : ''}
+        <button type="button" class="ec-bouton ec-bouton--doux" data-poste=""
+                title="Une seconde fenêtre, vierge, qui se comporte comme le poste d'un élève"
+                >Ouvrir un poste élève</button>
     </div>`;
 
     if (!eleves.length) {
@@ -417,6 +421,9 @@ function listeHtml() {
             <td><span class="ec-code ec-code--petit">${esc(e.code)}</span></td>
             <td class="ec-note">${esc(depuis(e.vu, Math.floor(Date.now() / 1000)))}</td>
             <td class="ec-actions">
+                <button type="button" class="ec-mini" data-poste="${esc(e.login)}"
+                        data-poste-code="${esc(e.code || '')}"
+                        title="Ouvrir une seconde fenêtre qui se comporte comme son poste">son écran</button>
                 <button type="button" class="ec-mini" data-code="${esc(e.id)}"
                         title="Tirer un nouveau code : l'ancien billet ne vaudra plus rien">code</button>
                 <button type="button" class="ec-mini" data-ecarter="${esc(e.id)}"
@@ -613,7 +620,7 @@ async function brancher(e, redessiner) {
         + '[data-imprimer], [data-consigne], [data-consigne-off], [data-mot-classe],'
         + '[data-mot-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
-        + '[data-profs], [data-reessayer],'
+        + '[data-profs], [data-reessayer], [data-poste],'
         + '[data-annuler-reglage]');
     if (!el) return;
     const d = el.dataset;
@@ -632,6 +639,34 @@ async function brancher(e, redessiner) {
         redessiner();
         return r;
     };
+
+    // SE METTRE À LA PLACE D'UN ÉLÈVE, SANS QUITTER SA PLACE DE PROFESSEUR.
+    //
+    // Rémy : « comment je pourrais simuler un mode élève et prof simultané,
+    // pour être sûr que ça fonctionne ».
+    //
+    // On ouvre une seconde fenêtre sur la MÊME application et le MÊME serveur,
+    // avec le billet de cet élève-là. Elle range ce qu'elle sait dans un tiroir
+    // à part (voir le préambule d'`index.html`), si bien que les deux fenêtres
+    // ne se déconnectent pas l'une l'autre : le professeur peut regarder son
+    // direct d'un côté pendant que « l'élève » travaille de l'autre.
+    //
+    // ON N'ATTEND RIEN AVANT D'OUVRIR. `window.open` appelé après un `await`
+    // n'est plus rattaché au clic, et le navigateur le bloque comme une
+    // fenêtre surgissante. C'est pour cela que ce cas passe avant tous les
+    // autres, et qu'il ne demande rien au serveur.
+    if (d.poste !== undefined) {
+        const f = window.open(
+            adresseDuPoste({ login: d.poste, code: d.posteCode || '' }),
+            'atoutmath-poste-' + d.poste,
+            'width=980,height=860'
+        );
+        if (!f) {
+            showToast('Le navigateur a bloqu\u00e9 la seconde fen\u00eatre. Autorisez les '
+                + 'fen\u00eatres surgissantes pour ce site, puis r\u00e9essayez.', 'error');
+        }
+        return;
+    }
 
     if (d.reessayer !== undefined) {
         vue.erreur = ''; vue.classes = null;

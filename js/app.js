@@ -39,6 +39,7 @@ import { initSeanceDistante } from './core/seanceDistante.js';
 import { initSeanceDistanteUI } from './ui/seanceDistanteUI.js';
 import { modeLibre, estRattache } from './core/portail.js';
 import { initPortail, majPortail } from './ui/portailUI.js';
+import { initPosteEleve } from './ui/posteEleve.js';
 import { initPleinEcran } from './ui/fullscreen.js';
 import { initBilanExercice } from './ui/accueilUI.js';
 import { rendreAujourdhui } from './ui/aujourdhui.js';
@@ -224,6 +225,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     // rôle. Posée plus tôt, elle se montrerait à un élève qui a déjà sa séance,
     // le temps que l'état arrive.
     initPortail();
+
+    // LE POSTE ÉLÈVE, APRÈS LA PORTE ET PAS AVANT : c'est la porte qu'il
+    // remplit. Il ne fait rien du tout hors de la seconde fenêtre — le drapeau
+    // qu'il regarde n'est posé que par `?poste=1`.
+    initPosteEleve();
 
     // L'ÉCRAN EST MONTÉ. Le drapeau du bas de ce fichier — `__atoutmathDemarre`
     // — dit seulement que le MODULE s'est chargé : il est posé à l'évaluation,

@@ -2731,3 +2731,69 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     color: #fff; background: var(--primary); cursor: pointer;
 }
 .rt-ok:hover { filter: brightness(1.06); }
+
+/* ─────────────────────────────────────────────── LE POSTE ÉLÈVE ──────────
+   La seconde fenêtre, celle où le professeur se met à la place d'un élève.
+
+   LE BANDEAU EST EN BAS, ET C'EST RÉFLÉCHI. En haut, il aurait recouvert la
+   barre de l'application — donc changé ce qu'on est venu regarder. En bas, il
+   ne masque que la barre de navigation du bas, dont on ajoute la hauteur en
+   marge : l'écran de l'élève reste exactement l'écran de l'élève.
+
+   IL NE S'IMPRIME PAS : une fiche tirée depuis le poste élève doit être la
+   fiche de l'élève, pas une page barrée d'un bandeau orange. */
+.poste-bandeau {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 2147483000;
+    background: #7c2d12;
+    color: #fff;
+    box-shadow: 0 -2px 14px rgba(0, 0, 0, .28);
+    font-size: .9rem;
+}
+
+.poste-bandeau-dedans {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 10px 16px;
+}
+
+.poste-pastille {
+    flex: none;
+    background: #fb923c;
+    color: #431407;
+    font-weight: 800;
+    letter-spacing: .02em;
+    border-radius: 999px;
+    padding: 3px 12px;
+    white-space: nowrap;
+}
+
+.poste-texte { flex: 1 1 260px; line-height: 1.4; }
+.poste-texte b { color: #fed7aa; }
+
+.poste-sortir {
+    flex: none;
+    background: transparent;
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, .6);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.poste-sortir:hover { background: rgba(255, 255, 255, .14); }
+
+/* De quoi ne rien cacher du contenu qui se termine tout en bas. */
+html.poste-eleve body { padding-bottom: 64px; }
+
+@media print {
+    .poste-bandeau { display: none !important; }
+    html.poste-eleve body { padding-bottom: 0; }
+}
