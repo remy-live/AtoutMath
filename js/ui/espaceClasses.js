@@ -45,6 +45,7 @@ import {
 } from '../core/espaceProf.js';
 import { adresseAdmin } from './classesServeur.js';
 import { adresseDuPoste } from './posteEleve.js';
+import { versionLisible } from '../core/versionDuSite.js';
 import { getExerciseById } from '../data/catalog.js';
 
 /**
@@ -303,6 +304,14 @@ function piedHtml() {
         <a class="ec-lien" href="${esc(adresseAdmin())}index.php" target="_blank" rel="noopener">
             Santé du site &amp; sauvegardes
         </a>
+        <!-- LE NUMÉRO DE VERSION, ENFIN VISIBLE. Il manquait, et son absence a
+             coûté une demi-journée : Rémy regardait un écran, je lui décrivais un
+             bouton, et personne ne pouvait dire que son serveur servait encore
+             la version d'avant. Il est ici parce que c'est ici qu'on en a
+             besoin — sur l'écran du professeur, au moment où quelque chose ne
+             ressemble pas à ce qu'on lui a décrit. -->
+        <span class="ec-pied-version" title="La version que ce navigateur a reçue du serveur"
+              >${esc(versionLisible())}</span>
     </footer>`;
 }
 

@@ -2797,3 +2797,13 @@ html.poste-eleve body { padding-bottom: 64px; }
     .poste-bandeau { display: none !important; }
     html.poste-eleve body { padding-bottom: 0; }
 }
+
+/* Le numéro de version, discret mais lisible : on le cherche quand quelque
+   chose ne ressemble pas à ce qu'on attendait, pas le reste du temps. */
+.ec-pied-version {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    color: var(--texte-doux, #94a3b8);
+    font-size: .82rem;
+    letter-spacing: .02em;
+}
