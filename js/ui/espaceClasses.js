@@ -85,6 +85,29 @@ const esc = (s) => String(s == null ? '' : s)
 // redessiner sans se demander ce qu'on va perdre.
 let vue = null;
 
+/**
+ * PRÉVENIR QUAND L'ÉLÈVE N'EST PAS LÀ.
+ *
+ * Rémy : « L'indice envoyé ne semble pas passer ». Il passait — le harnais de
+ * bout en bout le vérifie à chaque essai, et il arrive en une seconde. Mais sa
+ * capture disait « 0 en ligne sur 30 » et « il y a 2 h » : l'indice était bien
+ * parti, il dormait sur le serveur, et personne n'était devant l'écran pour le
+ * recevoir.
+ *
+ * RIEN NE LE LUI DISAIT, et c'est le vrai défaut. « Indice soufflé à Alicia »
+ * laisse croire qu'elle l'a sous les yeux. Un message qui part vers quelqu'un
+ * d'absent n'est pas une panne — c'est un message en attente, et il faut le
+ * dire, sinon on croit que la fonction est cassée et on cesse de s'en servir.
+ */
+function direSiHorsLigne(eleveId, prenom, quoi) {
+    const d = vue.direct;
+    if (!d || !Array.isArray(d.eleves)) return;
+    const e = d.eleves.find(x => x.id === eleveId);
+    if (!e || estEnLigne(e.vu, d.maintenant)) return;
+    showToast(`${quoi} est parti, mais ${prenom || 'cet élève'} n'est pas en ligne `
+        + `(${depuis(e.vu, d.maintenant)}). Il le verra en se reconnectant.`, 'info');
+}
+
 /** Le minuteur du direct. On l'arrête en quittant : sinon il tourne pour rien. */
 let battement = null;
 
@@ -431,14 +454,33 @@ function directHtml() {
     // faire debout au fond de la salle.
     const cl = avancementDeClasse(eleves.map(e => e.avancement || null));
     const pourcent = Math.round(cl.fraction * 100);
-    const nomSeance = (eleves.find(e => e.avancement && e.avancement.pathName) || {}).avancement;
+    // CE QU'ILS FONT N'EST PAS CE QUE J'AI IMPOSÉ, ET IL FAUT LE DIRE.
+    //
+    // Rémy : « Dans la classe, on ne voit que le parcours découverte ». C'était
+    // exact et trompeur à la fois : ce titre est le nom du parcours que les
+    // élèves ont RÉELLEMENT ouvert — leur dernier travail —, pas celui qu'on
+    // leur a donné. Tant qu'aucune séance n'est imposée, chacun choisit dans sa
+    // liste, et le direct montre ce que fait la majorité. On nomme donc les
+    // deux, séparément, plutôt que de laisser croire que c'est la même chose.
+    const fait = (eleves.find(e => e.avancement && e.avancement.pathName) || {}).avancement;
+    const info = (vue.liste && vue.liste.classe) || {};
+    const imposee = info.impose_path_id
+        && (vue.seances && (vue.seances.seances || []).find(s => s.pathId === info.impose_path_id));
 
     return alarmeHtml(eleves, maintenant) + `
     <p class="ec-compte">${enLigne} en ligne sur ${eleves.length}
        <span class="ec-note">— actualisé tout seul</span></p>
+    ${info.impose_path_id
+        ? `<p class="ec-note ec-note--bloc ec-encours-fil">Séance en cours :
+            <b>${esc(imposee ? imposee.nom : 'une séance imposée')}</b> — elle s'ouvre toute
+            seule chez eux.</p>`
+        : `<p class="ec-note ec-note--bloc ec-encours-fil">Aucune séance imposée : chacun
+            choisit dans sa liste. Pour en imposer une, allez dans
+            <b>Les séances</b>.</p>`}
     <div class="ec-classe-avance">
         <div class="ec-classe-ligne">
-            <b>${nomSeance ? esc(nomSeance.pathName) : 'La séance'}</b>
+            <b>${fait ? esc(fait.pathName) : 'La séance'}</b>
+            <span class="ec-note">— ce qu'ils font</span>
             <span class="ec-classe-chiffres">
                 <span class="ec-pastille ec-pastille--fini">${cl.finis} ${
                     cl.finis > 1 ? 'ont fini' : 'a fini'}</span>
@@ -668,13 +710,40 @@ function seancesHtml() {
     }
     const impose = (vue.liste && vue.liste.classe && vue.liste.classe.impose_path_id) || null;
 
-    return `<p class="ec-note ec-note--bloc">De la plus récente à la plus ancienne.
-        Celle qui porte <b>imposée</b> s'ouvre toute seule chez les élèves.</p>
+    // CE QUE CET ÉCRAN DOIT DIRE AVANT TOUT AUTRE CHOSE.
+    //
+    // Rémy : « Comment sait-on qu'une classe fait un parcours ? […] est-ce
+    // qu'un élève a accès à tous les parcours que je définis pour la classe, et
+    // du coup le parcours actuel c'est lequel ? »
+    //
+    // LA RÉPONSE EST OUI, ET C'EST ELLE QUI CRÉE LE FLOU. Un élève reçoit
+    // TOUTES les séances données à sa classe et les voit dans sa liste ; il
+    // choisit. Sauf si l'une est IMPOSÉE : celle-là s'ouvre toute seule, et
+    // c'est elle « la séance en cours ».
+    //
+    // Sans cette phrase en tête de liste, on ne peut pas deviner la règle — et
+    // sans un bouton sur chaque ligne, on ne peut pas la changer là où on la
+    // lit. Le menu déroulant existait, au fond d'un autre onglet.
+    const enCours = liste.find(s => s.pathId === impose);
+    return `
+        <div class="ec-encours${enCours ? '' : ' ec-encours--aucune'}">
+            ${enCours
+                ? `<b>En ce moment : ${esc(enCours.nom)}</b>
+                   <span>Elle s'ouvre toute seule chez vos élèves, sans qu'ils aient rien à lancer.</span>
+                   <button type="button" class="ec-bouton ec-bouton--doux" data-imposer-rien>Ne plus rien imposer</button>`
+                : `<b>Aucune séance imposée</b>
+                   <span>Vos élèves voient TOUTES les séances ci-dessous et choisissent eux-mêmes.
+                         Pour qu'une seule s'ouvre toute seule, cliquez <b>mettre en cours</b>.</span>`}
+        </div>
+        <p class="ec-note ec-note--bloc">De la plus récente à la plus ancienne.</p>
         <div class="ec-seances">${liste.map(s => `
             <div class="ec-seance${s.pathId === impose ? ' ec-seance--imposee' : ''}">
                 <div class="ec-seance-haut">
                     <b>${esc(s.nom)}</b>
-                    ${s.pathId === impose ? '<span class="ec-pastille ec-pastille--impose">imposée</span>' : ''}
+                    ${s.pathId === impose
+                        ? '<span class="ec-pastille ec-pastille--impose">en cours</span>'
+                        : `<button type="button" class="ec-mini" data-mettre-en-cours="${esc(s.pathId)}"
+                                   data-nom="${esc(s.nom)}">mettre en cours</button>`}
                     <span class="ec-seance-quand">${esc(quandLisible(s.donneeLe))}</span>
                 </div>
                 <div class="ec-seance-bas">
@@ -1143,7 +1212,8 @@ async function brancher(e, redessiner) {
         + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
         + '[data-profs], [data-reessayer], [data-poste],'
-        + '[data-imposer], [data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
+        + '[data-imposer], [data-imposer-rien], [data-mettre-en-cours],'
+        + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage]');
     if (!el) return;
     const d = el.dataset;
@@ -1198,6 +1268,25 @@ async function brancher(e, redessiner) {
         return;
     }
 
+    // METTRE UNE SÉANCE EN COURS, DEPUIS LA LISTE DES SÉANCES.
+    //
+    // Le geste existait — un menu déroulant, au fond de l'onglet « En cours ».
+    // Rémy ne l'a pas trouvé, et il a raison de ne pas l'avoir cherché là : on
+    // choisit la séance du jour en regardant la liste des séances, pas en
+    // déroulant un menu ailleurs. Même route, même effet.
+    if (d.mettreEnCours) {
+        await fait(imposerLaSeance(vue.classe.id, d.mettreEnCours), () => {
+            if (vue.liste && vue.liste.classe) vue.liste.classe.impose_path_id = d.mettreEnCours;
+        });
+        return;
+    }
+    if (d.imposerRien !== undefined) {
+        await fait(imposerLaSeance(vue.classe.id, ''), () => {
+            if (vue.liste && vue.liste.classe) vue.liste.classe.impose_path_id = null;
+        });
+        return;
+    }
+
     if (d.chrono !== undefined) {
         const min = Number((document.getElementById('ec-chrono-min') || {}).value || 0);
         const quoi = (document.getElementById('ec-chrono-quoi') || {}).value || 'terminer';
@@ -1248,6 +1337,14 @@ async function brancher(e, redessiner) {
         vue.bilans = null; vue.seances = null;
         redessiner();
         await rafraichirClasse(redessiner);
+        // LE DIRECT DOIT POUVOIR NOMMER LA SÉANCE IMPOSÉE. Il ne connaît que
+        // son identifiant ; le nom est dans la liste des séances. On la
+        // demande en entrant plutôt qu'en arrivant sur son onglet — c'est une
+        // lecture courte, et sans elle le direct dirait « une séance imposée »
+        // au lieu de la nommer.
+        seancesDeLaClasse(c.id).then(r => {
+            if (!r.erreur) { vue.seances = r; redessiner(); }
+        });
         lancerLeBattement(redessiner);
         return;
     }
@@ -1516,6 +1613,7 @@ async function brancher(e, redessiner) {
         });
         if (!corps) return;
         await fait(envoyerUnMot(cid, corps, d.motEleve));
+        direSiHorsLigne(d.motEleve, d.prenom, 'Votre mot');
         return;
     }
 
@@ -1531,6 +1629,7 @@ async function brancher(e, redessiner) {
         const corps = await choisirIndice(d.prenom, indicesProposes(competence));
         if (!corps) return;
         await fait(soufflerUnIndice(cid, corps, d.indiceEleve));
+        direSiHorsLigne(d.indiceEleve, d.prenom, 'Ton indice');
         return;
     }
 

@@ -3461,3 +3461,40 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 @media (min-width: 701px) {
     #path-browser-modal .path-browser-name { max-width: 62%; }
 }
+
+/* ─────────────── LA SÉANCE EN COURS, DITE PLUTÔT QUE DEVINÉE ──────────────
+   Rémy : « Comment sait-on qu'une classe fait un parcours ? […] est-ce qu'un
+   élève a accès à tous les parcours que je définis pour la classe, et du coup
+   le parcours actuel c'est lequel ? »
+
+   La réponse est OUI — il les reçoit toutes et choisit —, et c'est elle qui
+   crée le flou. Sauf si l'une est IMPOSÉE : celle-là s'ouvre toute seule, et
+   c'est elle « la séance en cours ». Cette règle ne se devine pas : on l'écrit,
+   en haut de la liste et en haut du direct. */
+.ec-encours {
+    margin: 0 0 14px; padding: 11px 14px; border-radius: 12px;
+    background: var(--bg-panel);
+    border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+    border-left: 3px solid var(--primary);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px;
+}
+.ec-encours b { color: var(--text-main); }
+.ec-encours span { font-size: .84rem; color: var(--text-muted); flex: 1 1 260px; }
+.ec-encours button { margin-left: auto; }
+/* Aucune séance imposée n'est pas une panne : c'est un mode de travail, où
+   chacun choisit. On le dit sans alarmer. */
+.ec-encours--aucune { border-left-color: var(--border); border-color: var(--border); }
+.ec-encours-fil { margin-top: -8px; }
+
+/* LE TITRE EST UN BOUTON, ET IL DOIT RESTER UN TITRE. Un `<button>` porte par
+   défaut un fond, une bordure et la police du système : on les retire tous,
+   mais on garde le curseur et le retour au survol — sans quoi personne ne
+   devine qu'il se clique, ce qui était précisément le problème. */
+#top-navbar button.title {
+    background: none; border: none; padding: 0; font: inherit; color: inherit;
+    cursor: pointer; text-align: left;
+}
+#top-navbar button.title:hover { opacity: .78; }
+#top-navbar button.title:focus-visible {
+    outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 6px;
+}

@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=712">
-    <link rel="stylesheet" href="css/layout.css?v=712">
-    <link rel="stylesheet" href="css/ui.css?v=712">
-    <link rel="stylesheet" href="css/games.css?v=712">
-    <link rel="stylesheet" href="css/components.css?v=712">
-    <link rel="stylesheet" href="css/modules.css?v=712">
+    <link rel="stylesheet" href="css/base.css?v=713">
+    <link rel="stylesheet" href="css/layout.css?v=713">
+    <link rel="stylesheet" href="css/ui.css?v=713">
+    <link rel="stylesheet" href="css/games.css?v=713">
+    <link rel="stylesheet" href="css/components.css?v=713">
+    <link rel="stylesheet" href="css/modules.css?v=713">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -390,7 +390,15 @@
         <nav id="top-navbar">
             <div class="nav-left">
                 <button id="btn-toggle-sidebar" class="btn-icon" aria-label="Ouvrir/fermer le menu latéral">☰</button>
-                <div class="title">AtoutMath</div>
+                <!-- LE TITRE RAMÈNE À L'ACCUEIL. Rémy : « quand on clique sur
+                     AtoutMath en haut à gauche, on revient sur le site ; là le
+                     titre ne fait rien sur aucune zone (même administrative) ».
+                     C'était un `<div>` : rien à cliquer, rien au clavier, rien
+                     pour un lecteur d'écran. Or un logo en haut à gauche est
+                     le seul repère que tout le monde connaît pour sortir d'un
+                     endroit où l'on s'est perdu. -->
+                <button type="button" id="btn-accueil" class="title"
+                        title="Revenir à l'accueil" aria-label="Revenir à l'accueil">AtoutMath</button>
                 <!-- QUI EST DEVANT L'ÉCRAN. Rémy : « sur l'interface prof ou et
                      élèves, j'ai l'impression que ce n'est pas clair ». Le
                      basculement existait, mais dans la palette de test — une

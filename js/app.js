@@ -43,7 +43,7 @@ import { initPosteEleve } from './ui/posteEleve.js';
 import { initParcoursServeur, ecouterLesAssignations } from './core/parcoursServeur.js';
 import { initLeMoment } from './ui/leMoment.js';
 import { initBacASable } from './ui/bacASable.js';
-import { initDeconnexionUI } from './ui/deconnexionUI.js';
+import { initDeconnexionUI, initRetourAccueil } from './ui/deconnexionUI.js';
 import { initPleinEcran } from './ui/fullscreen.js';
 import { initBilanExercice } from './ui/accueilUI.js';
 import { rendreAujourdhui } from './ui/aujourdhui.js';
@@ -134,6 +134,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     initLeMoment();
     initBacASable();
     initDeconnexionUI();
+    initRetourAccueil();
 
     // Cohérence du catalogue : mieux vaut un avertissement au démarrage
     // qu'un échec silencieux au lancement d'un exercice.

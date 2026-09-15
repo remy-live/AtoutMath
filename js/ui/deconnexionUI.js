@@ -204,3 +204,33 @@ export function initDeconnexionUI() {
 
 /** Exposé pour les essais. */
 export { majBouton as rafraichirBoutonDeconnexion };
+
+/**
+ * LE TITRE RAMÈNE À L'ACCUEIL.
+ *
+ * Rémy : « quand on clique sur AtoutMath en haut à gauche, on revient sur le
+ * site ; là le titre ne fait rien sur aucune zone (même administrative) ».
+ *
+ * C'ÉTAIT UN `<div>`. Rien à cliquer, rien au clavier, rien pour un lecteur
+ * d'écran. Or un logo en haut à gauche est le seul repère que tout le monde
+ * connaît pour sortir d'un endroit où l'on s'est perdu — et « perdu » est
+ * exactement ce que Rémy décrit depuis deux jours en parlant de ces écrans.
+ *
+ * IL FERME CE QUI EST OUVERT AVANT DE NAVIGUER. Revenir à l'accueil en laissant
+ * la page des classes par-dessus ne ramène nulle part : on verrait le même
+ * écran et l'on croirait que le clic n'a rien fait — ce qui était déjà le cas.
+ */
+export function initRetourAccueil() {
+    const t = document.getElementById('btn-accueil');
+    if (!t) return;
+    t.onclick = async () => {
+        document.dispatchEvent(new CustomEvent('fermer_la_classe'));
+        document.querySelectorAll('.modal-overlay').forEach(m => {
+            if (m.offsetParent !== null) m.style.display = 'none';
+        });
+        try {
+            const { setTopNavMode } = await import('./navigation.js');
+            setTopNavMode(document.body.classList.contains('teacher-mode') ? 'path' : 'grid');
+        } catch (e) { /* la fermeture seule vaut déjà mieux que rien */ }
+    };
+}
