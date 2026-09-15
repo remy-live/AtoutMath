@@ -33,7 +33,7 @@
 // qui ouvre cet écran a trente élèves devant lui et vingt secondes. Les bilans
 // existent, ils sont ailleurs, et c'est très bien.
 
-import { showModal, showToast } from './modal.js';
+import { showToast } from './modal.js';
 import { demander, demanderTexte } from './demander.js';
 import { nomDuProf } from '../core/verrouProf.js';
 import {
@@ -83,29 +83,60 @@ function arreterLeBattement() {
 
 // --- Point d'entrée ---------------------------------------------------------
 
+/**
+ * REFERMER LA PIÈCE — appelé par la croix, par Échap, et par la porte
+ * « Préparer ». Le battement du direct s'arrête ici et nulle part ailleurs :
+ * une requête toutes les dix secondes qui survit à la sortie d'écran est
+ * exactement le genre de chose qu'on ne remarque jamais.
+ */
+export function fermerEspaceClasses() {
+    arreterLeBattement();
+    document.dispatchEvent(new CustomEvent('classe_fermee'));
+    const zone = document.getElementById('zone-classe');
+    if (zone) { zone.hidden = true; zone.innerHTML = ''; }
+    document.body.classList.remove('classe-ouverte');
+}
+
 export async function ouvrirEspaceClasses() {
     vue = { ou: 'classes', classes: null, erreur: '', classe: null, onglet: 'direct',
             liste: null, direct: null, apercu: null, profs: null, reglages: null,
             occupe: false };
 
-    // PAS DE BANDEAU DE FENÊTRE : l'écran porte son propre en-tête, qui dit à
-    // la fois où l'on est et par où l'on revient. Deux barres empilées, c'était
-    // exactement l'impression de « deux écrans l'un sur l'autre » que Rémy
-    // reprochait à l'ancien panneau.
-    const modal = showModal('', '<div id="ec-racine" class="ec"></div>',
-        { width: '1180px', onClose: arreterLeBattement });
+    // UNE PIÈCE, PAS UNE FENÊTRE.
+    //
+    // Rémy : « tu es toujours sur des popup, tu n'avais pas dit que tu
+    // travaillais en onglet ? ». C'était juste : la porte portait un nom, mais
+    // elle ouvrait encore une fenêtre par-dessus l'atelier.
+    //
+    // Une fenêtre est faite pour UNE décision courte : on la lit, on tranche,
+    // elle disparaît. Cet écran-ci a trois onglets, trente élèves et un direct
+    // qui bat toutes les dix secondes — on y passe l'heure. Il prend donc la
+    // place de l'atelier au lieu de se poser dessus : pas de voile gris, la
+    // barre du haut reste atteignable, et l'on revient par la porte
+    // « Préparer », au même endroit que l'aller.
+    const zone = document.getElementById('zone-classe');
+    if (!zone) return;
+    zone.innerHTML = '<div id="ec-racine" class="ec"></div>';
+    zone.hidden = false;
+    document.body.classList.add('classe-ouverte');
+    document.dispatchEvent(new CustomEvent('classe_ouverte'));
 
-    // La fenêtre met vingt pixels de marge autour de son contenu ; l'en-tête de
-    // cet écran va d'un bord à l'autre, et sa couleur de fond doit y aller
-    // aussi. On reprend donc la marge à notre compte.
-    const boite = modal.element.querySelector('div[style*="overflow-y"]');
-    if (boite) boite.style.padding = '0';
-
-    const racine = modal.element.querySelector('#ec-racine');
+    const partir = () => fermerEspaceClasses();
+    // LA PORTE « PRÉPARER » FERME CETTE PIÈCE, et elle le demande par un
+    // ÉVÉNEMENT plutôt qu'en important ce module.
+    //
+    // Elle l'importait, et la fermeture ne se faisait pas : le module se
+    // charge à la demande, et le clic partait avant qu'il ne soit là. Mesuré —
+    // la fonction appelée à la main refermait parfaitement, le même clic ne
+    // refermait rien. Un événement part tout de suite, et n'existe que tant que
+    // la pièce est ouverte : quand elle est fermée, personne n'écoute, et c'est
+    // exactement ce qu'on veut.
+    document.addEventListener('fermer_la_classe', partir, { once: true });
+    const racine = zone.querySelector('#ec-racine');
     const redessiner = () => { racine.innerHTML = ecranHtml(); };
 
     racine.addEventListener('click', (e) => {
-        if (e.target.closest('[data-fermer]')) { arreterLeBattement(); modal.close(); return; }
+        if (e.target.closest('[data-fermer]')) { partir(); return; }
         brancher(e, redessiner);
     });
     // ENTRÉE VALIDE LE CHAMP OÙ L'ON EST. Taper une consigne puis chercher le
@@ -119,7 +150,7 @@ export async function ouvrirEspaceClasses() {
     });
     // Échap ferme, comme partout ailleurs.
     racine.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') { arreterLeBattement(); modal.close(); }
+        if (e.key === 'Escape') partir();
     });
 
     redessiner();
@@ -129,7 +160,8 @@ export async function ouvrirEspaceClasses() {
     else vue.classes = liste;
     redessiner();
 
-    return modal;
+    // Il n'y a plus de fenêtre à rendre : la pièce est une section de la page.
+    return { fermer: partir };
 }
 
 // --- Le dessin --------------------------------------------------------------

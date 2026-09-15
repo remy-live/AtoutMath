@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=696">
-    <link rel="stylesheet" href="css/layout.css?v=696">
-    <link rel="stylesheet" href="css/ui.css?v=696">
-    <link rel="stylesheet" href="css/games.css?v=696">
-    <link rel="stylesheet" href="css/components.css?v=696">
-    <link rel="stylesheet" href="css/modules.css?v=696">
+    <link rel="stylesheet" href="css/base.css?v=697">
+    <link rel="stylesheet" href="css/layout.css?v=697">
+    <link rel="stylesheet" href="css/ui.css?v=697">
+    <link rel="stylesheet" href="css/games.css?v=697">
+    <link rel="stylesheet" href="css/components.css?v=697">
+    <link rel="stylesheet" href="css/modules.css?v=697">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -955,6 +955,28 @@
                     </div>
                 </div>
             </main>
+
+            <!-- LA CLASSE, EN VRAIE PAGE ET NON EN FENÊTRE.
+
+                 Rémy : « oui mais du coup tu es toujours sur des popup, tu
+                 n'avais pas dit que tu travaillais en onglet ? » — et il avait
+                 raison : j'avais déplacé la POIGNÉE sans déplacer la PIÈCE.
+                 La porte était nommée, mais elle ouvrait encore une fenêtre
+                 par-dessus l'atelier.
+
+                 Une fenêtre est faite pour UNE décision courte : on la lit, on
+                 tranche, elle disparaît. « La classe » a trois onglets, une
+                 liste de trente élèves, un direct qui bat toutes les dix
+                 secondes — on y passe l'heure. Ce n'est pas une fenêtre,
+                 c'est une pièce, et elle prend la place de l'atelier au lieu
+                 de se poser dessus.
+
+                 CE QUE ÇA CHANGE, ET QUI N'EST PAS QU'UNE AFFAIRE DE GOÛT : on
+                 ne se demande plus ce qu'il y a derrière, il n'y a plus de
+                 voile gris, la barre du haut reste atteignable, et revenir se
+                 fait par la porte « Préparer » — au même endroit que l'aller.
+                 Une fenêtre, elle, se ferme par une croix qu'il faut trouver. -->
+            <section id="zone-classe" hidden aria-label="La classe"></section>
         </div> <!-- END APP BODY -->
 
         <!-- NAVIGATION MOBILE BASSE -->

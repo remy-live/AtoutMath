@@ -2815,3 +2815,17 @@ html.poste-eleve body { padding-bottom: 64px; }
    derrière un engrenage, c'est-à-dire derrière le mot « réglages ». */
 .nav-center--prof { gap: 4px; }
 .nav-center--prof .top-nav-tab { font-weight: 700; }
+
+/* ── LA CLASSE EN PAGE, PAS EN FENÊTRE ─────────────────────────────────────
+   Elle prend la place de l'atelier plutôt que de se poser dessus : la barre
+   du haut reste atteignable, il n'y a pas de voile gris, et l'on revient par
+   la porte « Préparer », au même endroit que l'aller. */
+#zone-classe {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-y: auto;
+    background: var(--bg-app);
+}
+
+body.classe-ouverte #sidebar,
+body.classe-ouverte #main-area { display: none !important; }

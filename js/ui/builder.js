@@ -97,10 +97,17 @@ function initPortesProf() {
         if (b) b.click();
     };
     preparer.onclick = () => {
-        // Revenir à l'atelier, c'est fermer ce qui est par-dessus.
-        const fermer = document.querySelector('.modal-overlay .modal-close, #ec-racine')
-            && document.querySelector('.modal-overlay .modal-close');
-        if (fermer) fermer.click();
+        // Revenir à l'atelier, c'est refermer la pièce d'à côté — et c'est la
+        // pièce elle-même qui sait comment (arrêter le battement du direct,
+        // notamment). On le lui DEMANDE par un événement, on ne le fait pas à sa
+        // place : importer son module au moment du clic ne marchait pas, parce
+        // qu'il se charge à la demande et que le clic partait avant qu'il ne
+        // soit là. Mesuré — la fonction appelée à la main refermait
+        // parfaitement, le même clic ne refermait rien.
+        document.dispatchEvent(new CustomEvent('fermer_la_classe'));
+        const horsLigne = document.querySelector('#cl-racine');
+        const croix = horsLigne && document.querySelector('.modal-overlay .modal-close');
+        if (croix) croix.click();
         dire(false);
     };
 
@@ -109,9 +116,20 @@ function initPortesProf() {
     // du dépôt (tests/interfaceIds) m'a repris ici même : j'avais écrit
     // `classes-racine`, qui n'existe nulle part — la porte ne se serait jamais
     // allumée pour le panneau hors ligne, sans que rien ne le dise.
-    const regarder = () => dire(!!document.getElementById('ec-racine')
-        || !!document.getElementById('cl-racine'));
-    new MutationObserver(regarder).observe(document.body, { childList: true, subtree: false });
+    // LA PIÈCE EST UNE SECTION DE LA PAGE, pas une fenêtre : on regarde si elle
+    // est affichée. Le panneau hors ligne, lui, est resté une fenêtre — c'est
+    // un écran de dépannage, on n'y passe pas l'heure.
+    const regarder = () => {
+        const zone = document.getElementById('zone-classe');
+        dire((zone && !zone.hidden) || !!document.getElementById('cl-racine'));
+    };
+    // La pièce annonce ses allées et venues ; on relit alors le DOM, qui reste
+    // la source de vérité. Un observateur seul ne suffisait pas : afficher la
+    // section ne change qu'un attribut, et le surveiller sur tout le corps de
+    // page ferait relire à chaque frappe dans un champ.
+    document.addEventListener('classe_ouverte', regarder);
+    document.addEventListener('classe_fermee', regarder);
+    new MutationObserver(regarder).observe(document.body, { childList: true });
     regarder();
 }
 
