@@ -3352,26 +3352,33 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 
 /* ───────────────────── L'EXPLORATEUR DE PARCOURS ──────────────────────────
    Rémy : « l'explorateur de parcours va vite avoir ses limites. Il faudrait un
-   explorateur avec les derniers parcours édités. Il faut que ce soit bien
-   intégré, sobre, avec la date de modif […] une flèche pour avoir plus
-   d'info ».
+   explorateur avec les derniers parcours édités […] sobre, avec la date de
+   modif », puis, la première version vue : « évite la flèche, fais un mode plus
+   compact, avoir moins de marge ».
 
-   SOBRE VEUT DIRE : UNE LISTE QU'ON BALAIE, PAS UNE FICHE QU'ON LIT. Le nom,
-   ce qu'il contient en deux chiffres, depuis quand on n'y a pas touché. Tout
-   le reste est derrière la flèche. */
+   IL AVAIT RAISON DEUX FOIS. La flèche dépliait un panneau À CÔTÉ de la ligne
+   et non dessous — `.path-browser-item` est en `display: flex`, et j'y avais
+   ajouté un second enfant : il s'est rangé en colonne voisine, puis il est
+   sorti de la fenêtre. Et même réparée, elle n'avait pas sa place ici : une
+   popup est faite pour une décision qu'on prend et qu'on quitte, pas pour un
+   lieu où l'on reste à comparer.
+
+   ON COMPACTE DONC, ET ON NE DÉPLIE RIEN. Le nom, ce qu'il contient, depuis
+   quand : une ligne qu'on balaie. À cinquante parcours, ce qui compte est
+   combien on en voit d'un coup — pas ce qu'on peut ouvrir. */
 .pb-barre {
-    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-    margin: 0 0 14px;
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    margin: 0 0 10px;
 }
 .pb-chercher {
-    flex: 1 1 220px; min-width: 0; font: inherit; font-size: .92rem;
-    padding: 8px 12px; border-radius: 9px;
+    flex: 1 1 200px; min-width: 0; font: inherit; font-size: .86rem;
+    padding: 6px 10px; border-radius: 8px;
     border: 1px solid var(--border); background: var(--bg-app); color: var(--text-main);
 }
 .pb-tris { display: flex; gap: 4px; flex-shrink: 0; }
 .pb-tri {
-    font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
-    padding: 7px 12px; border-radius: 9px;
+    font: inherit; font-size: .76rem; font-weight: 600; cursor: pointer;
+    padding: 6px 10px; border-radius: 8px;
     border: 1px solid var(--border); background: var(--bg-app); color: var(--text-muted);
 }
 .pb-tri--actif {
@@ -3380,47 +3387,77 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     color: var(--primary);
 }
 
-.path-browser-ligne { display: flex; align-items: center; gap: 12px; width: 100%; }
-.path-browser-ligne > div:first-child { flex: 1; min-width: 0; }
-
-.pb-fleche {
-    background: none; border: none; cursor: pointer; font-size: .9rem;
-    color: var(--text-muted); padding: 6px 8px; border-radius: 7px; flex-shrink: 0;
+/* LE DÉGRAISSAGE. Les trois niveaux d'emboîtement — la liste, la section, la
+   fiche — portaient chacun leur marge : 10 + 15 + 12 px de padding et 8 px
+   entre les fiches. Sur une fenêtre de 700 px de haut, on voyait quatre
+   parcours. On en voit maintenant une dizaine, et c'est tout ce qu'on demande
+   à un explorateur. */
+#path-browser-list { gap: 6px; }
+#path-browser-modal .path-browser-root { padding: 0; }
+#path-browser-modal .path-browser-root-title {
+    font-size: .74rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--text-muted); margin-bottom: 6px;
 }
-.pb-fleche:hover { color: var(--text-main); background: var(--bg-app); }
-
-.pb-detail {
-    margin: 10px 0 2px; padding: 11px 13px;
-    background: var(--bg-app); border-radius: 10px;
-    border: 1px solid var(--border);
+#path-browser-modal .path-browser-item {
+    padding: 7px 10px; margin-bottom: 4px; border-radius: 8px; gap: 10px;
 }
-.pb-detail[hidden] { display: none; }
-/* DEUX COLONNES QUAND IL Y A LA PLACE, l'une sous l'autre sinon. Ce qu'il
-   contient et à qui il a été donné répondent à la même question posée
-   autrement : on les lit côte à côte. */
-.pb-colonnes {
-    display: grid; gap: 16px;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+#path-browser-modal .path-browser-name { font-size: .92rem; border-bottom-color: transparent; }
+#path-browser-modal .path-browser-name:focus { border-bottom-color: var(--border); }
+#path-browser-modal .path-browser-sub { font-size: .76rem; margin-top: 1px; }
+#path-browser-modal .path-browser-actions { gap: 5px; }
+/* La liste défile, la barre de recherche reste. Sans cela, chercher demande de
+   remonter — ce qui est exactement le geste qu'on essaie d'épargner. */
+#path-browser-modal #path-browser-list {
+    max-height: 58vh; overflow-y: auto; padding-right: 4px;
 }
-.pb-h5 {
-    margin: 0 0 7px; font-size: .74rem; font-weight: 800;
-    text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
+#path-browser-modal .path-folder { padding: 8px 10px; }
+#path-browser-modal .path-folder-body { margin-top: 6px; }
+/* LES BOUTONS COMMANDENT LA HAUTEUR DE LA LIGNE, pas le texte. Trois pastilles
+   rondes de 36 px imposaient 68 px de fiche quand le texte n'en demande que
+   38. On les ramène à la taille d'une ligne de texte : l'explorateur n'est pas
+   l'endroit où l'on vise au doigt, c'est celui où l'on cherche des yeux. */
+#path-browser-modal .path-browser-actions .btn-icon,
+#path-browser-modal .path-browser-actions .game-icon-btn {
+    width: 28px; height: 28px; padding: 4px; box-shadow: none;
 }
-.pb-etapes { margin: 0; padding-left: 20px; font-size: .84rem; line-height: 1.7; }
-.pb-etapes li { color: var(--text-main); }
-.pb-etape-n { color: var(--text-muted); font-size: .78rem; margin-left: 6px; }
-.pb-etape--jeu .pb-etape-nom { color: var(--text-muted); }
-.pb-jeu {
-    margin-left: 6px; font-size: .68rem; font-weight: 800; text-transform: uppercase;
-    color: var(--accent); letter-spacing: .04em;
+#path-browser-modal .path-browser-actions .btn-toggle {
+    padding: 4px 11px; font-size: .78rem;
 }
-.pb-classes { margin: 0; padding: 0; list-style: none; font-size: .84rem; }
-.pb-classes li {
-    display: flex; gap: 8px; align-items: baseline; padding: 3px 0;
-    border-bottom: 1px solid var(--border);
+#path-browser-modal .path-browser-name { line-height: 1.25; }
+#path-browser-modal .path-browser-sub { line-height: 1.2; }
+/* LE NOM ET LE RÉSUMÉ SUR LA MÊME LIGNE. Empilés, ils faisaient 52 px à eux
+   seuls — mesuré — et commandaient toute la hauteur de la fiche. Côte à côte,
+   ils en font vingt : « Fractions — 3 activités · 14 questions · modifié
+   aujourd'hui » se lit d'un trait, et l'on passe de sept parcours visibles à
+   une quinzaine. Ils repassent l'un sous l'autre quand la largeur manque. */
+@media (min-width: 701px) {
+    #path-browser-modal .path-browser-item > div:first-child {
+        display: flex; align-items: baseline; gap: 10px; flex-wrap: nowrap;
+        min-width: 0; flex: 1;
+    }
+    /* LE NOM NE CÈDE PAS LE PREMIER. Les deux étant élastiques, le résumé —
+       plus long — raflait la place et rognait le nom à cent pixels : « Un
+       parcours au nom plu… », mesuré, alors qu'il restait la moitié de la
+       ligne. Or c'est le NOM qu'on cherche. Il garde donc sa largeur
+       naturelle jusqu'à la moitié de la ligne, et c'est le résumé qui
+       s'abrège — il finit par « modifié hier », qu'on devine. */
+    #path-browser-modal .path-browser-name {
+        flex: 0 0 auto; max-width: 52%;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #path-browser-modal .path-browser-sub {
+        flex: 1 1 0; min-width: 0;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
 }
-.pb-classes li:last-child { border-bottom: none; }
-.pb-classe-nom { font-weight: 700; color: var(--text-main); }
-.pb-classe-n { color: var(--text-muted); font-size: .78rem; }
-.pb-classe-quand { margin-left: auto; color: var(--text-muted); font-size: .76rem; }
-.pb-vide { margin: 0; font-size: .84rem; color: var(--text-muted); font-style: italic; }
+/* SUR TÉLÉPHONE, ILS RESTENT L'UN SOUS L'AUTRE. À 390 px, une ligne à deux
+   ne laisse que cent pixels au nom : la compacité n'a plus d'objet si l'on ne
+   peut plus lire ce qu'on cherche. */
+/* LA FENÊTRE ÉTAIT TROP ÉTROITE POUR DEUX COLONNES. À 640 px, mettre le nom et
+   le résumé sur une ligne rognait « Équations du premier degré » — un nom
+   parfaitement ordinaire. Un explorateur qui coupe les noms qu'on cherche ne
+   sert à rien ; on lui donne la largeur qu'il demande. */
+#path-browser-modal .modal-panel-md { width: min(940px, 94vw); max-width: 94vw; }
+@media (min-width: 701px) {
+    #path-browser-modal .path-browser-name { max-width: 62%; }
+}

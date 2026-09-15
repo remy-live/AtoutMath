@@ -1647,9 +1647,6 @@ function initPathBrowser() {
  */
 let pbTri = 'recent';
 let pbRecherche = '';
-/** Les parcours dépliés, pour que le redessin ne les referme pas. */
-const pbOuverts = new Set();
-
 export function renderPathBrowser() {
     const list = document.getElementById('path-browser-list');
     if (!list) return;
@@ -1833,116 +1830,11 @@ function pathItem(p, resume = null) {
         renderPathBrowser();
     });
 
-    // LA FLÈCHE. Rémy : « on peut avoir une flèche pour avoir plus d'info ».
-    // Et à la question « le contenu, ou les classes ? » : « les deux ».
-    const fleche = document.createElement('button');
-    fleche.type = 'button';
-    fleche.className = 'pb-fleche';
-    fleche.setAttribute('aria-expanded', pbOuverts.has(p.id) ? 'true' : 'false');
-    fleche.setAttribute('aria-label', 'Voir le détail de ' + p.name);
-    fleche.textContent = pbOuverts.has(p.id) ? '▾' : '▸';
-
-    actions.append(share, load, del, fleche);
-
-    const ligne = document.createElement('div');
-    ligne.className = 'path-browser-ligne';
-    ligne.append(info, actions);
-
-    const detail = document.createElement('div');
-    detail.className = 'pb-detail';
-    detail.hidden = !pbOuverts.has(p.id);
-
-    const peindre = () => { detail.innerHTML = detailHtml(r); garnirLesClasses(detail, p.id); };
-    if (!detail.hidden) peindre();
-
-    fleche.onclick = () => {
-        const ouvert = pbOuverts.has(p.id);
-        if (ouvert) { pbOuverts.delete(p.id); detail.hidden = true; }
-        else { pbOuverts.add(p.id); peindre(); detail.hidden = false; }
-        fleche.textContent = ouvert ? '▸' : '▾';
-        fleche.setAttribute('aria-expanded', ouvert ? 'false' : 'true');
-    };
-
-    row.append(ligne, detail);
+    actions.append(share, load, del);
+    row.append(info, actions);
     return row;
 }
 
-const ech = (t) => String(t == null ? '' : t)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-/**
- * CE QU'IL Y A DERRIÈRE LA FLÈCHE — DEUX CHOSES, ET LA PREMIÈRE EST IMMÉDIATE.
- *
- * Ce que le parcours CONTIENT se lit sans réseau : c'est déjà dans la mémoire
- * du navigateur. À QUI il a été donné demande le serveur, donc arrive après —
- * on dessine d'abord ce qu'on sait, plutôt que de faire attendre les deux.
- *
- * Les deux répondent à la même question posée autrement : « est-ce bien
- * celui-là ? »
- */
-function detailHtml(r) {
-    const etapes = r.etapes.length
-        ? `<ol class="pb-etapes">${r.etapes.map(e => `
-            <li${e.bonus ? ' class="pb-etape--jeu"' : ''}>
-                <span class="pb-etape-nom">${ech(e.titre)}</span>
-                ${e.bonus ? '<span class="pb-jeu">jeu</span>'
-                    : `<span class="pb-etape-n">${e.questions} q</span>`}
-            </li>`).join('')}</ol>`
-        : '<p class="pb-vide">Ce parcours est vide.</p>';
-
-    return `
-        <div class="pb-colonnes">
-            <div class="pb-colonne">
-                <h5 class="pb-h5">Ce qu'il contient</h5>
-                ${etapes}
-            </div>
-            <div class="pb-colonne" data-classes>
-                <h5 class="pb-h5">À qui il a été donné</h5>
-                <p class="pb-vide">On regarde…</p>
-            </div>
-        </div>`;
-}
-
-/**
- * LES CLASSES QUI L'ONT REÇU — demandées au serveur, et seulement au dépliage.
- *
- * SANS SERVEUR, ON LE DIT PLUTÔT QUE DE LAISSER « On regarde… » POUR TOUJOURS.
- * Rémy travaille aussi sur la version statique, où il n'y a pas de serveur du
- * tout : une colonne qui attend indéfiniment y ferait croire à une panne.
- */
-async function garnirLesClasses(hote, pathId) {
-    const boite = hote.querySelector('[data-classes]');
-    if (!boite) return;
-    const dire = (html) => {
-        const h = boite.querySelector('h5');
-        boite.innerHTML = '';
-        if (h) boite.appendChild(h);
-        boite.insertAdjacentHTML('beforeend', html);
-    };
-    try {
-        const { jetonProf } = await import('../core/verrouProf.js');
-        if (!jetonProf()) {
-            dire('<p class="pb-vide">Hors ligne : les séances données vivent sur le serveur.</p>');
-            return;
-        }
-        const { auServeur } = await import('../core/espaceProf.js');
-        const r = await auServeur('/teacher/assign', { pathId, action: 'list' });
-        if (r.erreur) { dire(`<p class="pb-vide">${ech(r.erreur)}</p>`); return; }
-        const classes = r.classes || [];
-        if (!classes.length) {
-            dire('<p class="pb-vide">Pas encore donné.</p>');
-            return;
-        }
-        dire(`<ul class="pb-classes">${classes.map(c => `
-            <li>
-                <span class="pb-classe-nom">${ech(c.nom)}</span>
-                <span class="pb-classe-n">${c.effectif} élève${c.effectif > 1 ? 's' : ''}</span>
-                <span class="pb-classe-quand">${ech(quandLisible(c.donneeLe))}</span>
-            </li>`).join('')}</ul>`);
-    } catch (err) {
-        dire('<p class="pb-vide">Impossible de le demander au serveur pour l\'instant.</p>');
-    }
-}
 
 function dragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drop-target'); }
 function dragLeave(e) { e.currentTarget.classList.remove('drop-target'); }
