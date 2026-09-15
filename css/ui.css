@@ -2829,3 +2829,48 @@ html.poste-eleve body { padding-bottom: 64px; }
 
 body.classe-ouverte #sidebar,
 body.classe-ouverte #main-area { display: none !important; }
+
+/* ── LES PORTES DU PROFESSEUR SUR TÉLÉPHONE ────────────────────────────────
+   Rémy, capture d'un iPhone à l'appui : « Sur téléphone je ne vois pas où
+   faire les classes ».
+
+   Il ne les voyait pas parce qu'elles n'y étaient pas : une règle de mise en
+   page masque toute la zone centrale de la barre en mobile — elle a été écrite
+   pour les onglets de l'élève, qui ont leur barre du bas pour les remplacer.
+   Le professeur, lui, n'a pas de barre du bas : la règle lui retirait sa seule
+   porte, et il n'y avait plus AUCUN chemin vers ses classes depuis un
+   téléphone.
+
+   On les rend donc, sur une seconde ligne qui prend toute la largeur. Deux
+   portes nommées valent mieux qu'une barre courte : c'est la navigation, pas
+   une décoration, et un professeur qui fait cours avec son téléphone à la main
+   doit l'atteindre au pouce. */
+body.mobile-view #top-navbar { flex-wrap: wrap; height: auto; row-gap: 6px; }
+body.mobile-view #top-navbar .nav-center--prof {
+    display: flex !important;
+    flex: 1 0 100%;
+    justify-content: stretch;
+    gap: 6px;
+    padding-bottom: 4px;
+}
+body.mobile-view .nav-center--prof .top-nav-tab { flex: 1 1 0; justify-content: center; }
+
+/* Les portes du professeur GARDENT LEUR NOM sur téléphone.
+   Une règle générale réduit les onglets à leur icône en dessous d'une certaine
+   largeur (`font-size: 0`) : elle a été écrite pour les QUATRE onglets de
+   l'élève, qui ne tiendraient pas autrement. Le professeur n'en a que deux, et
+   c'est précisément le défaut qu'on vient de corriger — une icône seule n'est
+   devinable que par celui qui l'a dessinée. */
+body.mobile-view .nav-center--prof .top-nav-tab { font-size: .9rem; gap: 7px; }
+
+/* LA CLASSE PREND LA PLACE DE L'ATELIER, SUR TÉLÉPHONE AUSSI.
+   La mise en page mobile du professeur empile l'atelier et le catalogue avec
+   des `display: flex !important` plus spécifiques que notre règle : les deux
+   écrans se retrouvaient l'un sous l'autre, « Mes classes » puis « Mon
+   Parcours » dans la même page. On reprend la main en étant plus spécifique
+   qu'elles, plutôt qu'en ajoutant un !important de plus — qui n'aurait rien
+   changé, la spécificité tranchant avant lui. */
+body.mobile-view.teacher-mode.classe-ouverte #main-area,
+body.mobile-view.teacher-mode.classe-ouverte #sidebar,
+body.mobile-view.classe-ouverte #tiroir-catalogue,
+body.classe-ouverte #bottom-nav { display: none !important; }
