@@ -51,6 +51,7 @@ import { getExerciseById, skillsOf } from '../data/catalog.js';
 import { getSkill } from '../data/skills.js';
 import { indicesProposes } from '../core/indice.js';
 import { enBref, avancementDeClasse, depuisCombien } from '../core/avancement.js';
+import { lesAlarmes, trierPourLeMur, direLesAlarmes, vigilanceDe } from '../core/vigilance.js';
 
 /**
  * LE NOM DE L'EXERCICE, PAS SON IDENTIFIANT.
@@ -367,12 +368,14 @@ function classeHtml() {
 
     let corps = '';
     if (vue.onglet === 'direct') corps = directHtml();
+    else if (vue.onglet === 'mur') corps = murHtml();
     else if (vue.onglet === 'liste') corps = listeHtml();
     else corps = seanceHtml();
 
     return enTeteHtml(info.name || c.name, sous, true) + messageHtml() + `
     <nav class="ec-onglets">
         ${onglet('direct', 'Le direct')}
+        ${onglet('mur', 'Le mur')}
         ${onglet('liste', 'La liste')}
         ${onglet('seance', 'La séance')}
     </nav>
@@ -405,7 +408,7 @@ function directHtml() {
     const pourcent = Math.round(cl.fraction * 100);
     const nomSeance = (eleves.find(e => e.avancement && e.avancement.pathName) || {}).avancement;
 
-    return `
+    return alarmeHtml(eleves, maintenant) + `
     <p class="ec-compte">${enLigne} en ligne sur ${eleves.length}
        <span class="ec-note">— actualisé tout seul</span></p>
     <div class="ec-classe-avance">
@@ -463,11 +466,13 @@ function avanceHtml(av, quand, maintenant) {
 
 function rangHtml(e, maintenant) {
     const ici = estEnLigne(e.vu, maintenant);
+    const v = vigilanceDe(e, maintenant, { enPause: classeEnPause() });
     const score = e.total
         ? `<span class="ec-score${e.justes / e.total >= 0.7 ? ' ec-score--bien' : ''}">${e.justes} / ${e.total}</span>`
         : '';
     return `
-    <div class="ec-rang${ici ? ' ec-rang--ici' : ''}${e.ecarte ? ' ec-rang--ecarte' : ''}">
+    <div class="ec-rang${ici ? ' ec-rang--ici' : ''}${e.ecarte ? ' ec-rang--ecarte' : ''}${
+        v.etat === 'bloque' ? ' ec-rang--bloque' : (v.etat === 'ralenti' ? ' ec-rang--ralenti' : '')}">
         <span class="ec-point${ici ? ' ec-point--vert' : ''}"></span>
         <div class="ec-rang-qui">
             <b>${esc(e.prenom)}</b>
@@ -484,6 +489,115 @@ function rangHtml(e, maintenant) {
         <button type="button" class="ec-mini ec-mini--indice" data-indice-eleve="${esc(e.id)}"
                 data-prenom="${esc(e.prenom)}" data-exo="${esc(e.exo || '')}"
                 title="Lui souffler un coup de pouce, sans l'interrompre">indice</button>
+    </div>`;
+}
+
+/**
+ * LA CLASSE EST-ELLE EN PAUSE ?
+ *
+ * C'est la question qui décide si l'alarme d'inactivité a le droit de sonner.
+ * Quand Rémy met la classe en pause pour expliquer au tableau, personne ne
+ * répond — c'est le but, et trente alarmes à ce moment-là feraient éteindre la
+ * fonction le jour même.
+ */
+function classeEnPause() {
+    const ch = vue.direct && vue.direct.chrono;
+    const info = (vue.liste && vue.liste.classe) || vue.classe || {};
+    if (info.locked) return true;
+    if (!ch || ch.aZero !== 'pause') return false;
+    const maintenant = (vue.direct && vue.direct.maintenant) || Math.floor(Date.now() / 1000);
+    return ch.finAt <= maintenant;
+}
+
+/**
+ * LA BANDE D'ALARME — elle VA CHERCHER le professeur.
+ *
+ * Rémy : « un système "d'alarme si un élève est inactif" ».
+ *
+ * ELLE NOMME LES ÉLÈVES, et c'est tout ce qui la distingue d'un compteur.
+ * « 3 élèves sont arrêtés » oblige à chercher lesquels dans trente lignes —
+ * et pendant qu'on cherche, on ne va voir personne. Les règles qui décident
+ * QUI apparaît ici (et surtout qui n'y apparaît pas) sont dans
+ * js/core/vigilance.js, avec leurs raisons.
+ */
+function alarmeHtml(eleves, maintenant) {
+    const alarmes = lesAlarmes(eleves, maintenant, { enPause: classeEnPause() });
+    if (!alarmes.length) return '';
+    const dur = alarmes.some(a => a.etat === 'bloque');
+    return `<div class="ec-alarme${dur ? ' ec-alarme--dur' : ''}" role="status">
+        <span class="ec-alarme-oeil" aria-hidden="true">${dur ? '!' : '·'}</span>
+        <span class="ec-alarme-mot">${esc(direLesAlarmes(alarmes))}</span>
+    </div>`;
+}
+
+// --- Onglet « Le mur » ------------------------------------------------------
+
+/**
+ * LE MUR — toute la classe d'un seul regard.
+ *
+ * Rémy : « La possibilité d'avoir une zone où regarder les écrans des élèves ».
+ *
+ * CE MUR NE MONTRE PAS LES ÉCRANS, ET IL FAUT LE DIRE. Recopier trente écrans
+ * en direct demanderait un serveur qui n'existe pas ici — l'hébergement
+ * mutualisé de Rémy sert des pages PHP, il ne relaie pas trente flux — et
+ * poserait une question de vie privée qu'on ne règle pas en passant. Pour voir
+ * l'écran d'UN élève, il y a « son écran », dans l'onglet La liste : une
+ * seconde fenêtre qui se comporte comme son poste.
+ *
+ * CE QUE LE MUR MONTRE, C'EST L'ÉTAT DE TRENTE ÉLÈVES EN MÊME TEMPS — et c'est
+ * ce qu'on cherche vraiment en balayant une salle du regard : qui avance, qui
+ * s'est arrêté, qui a fini. Le direct répond à la même question en lignes ; le
+ * mur y répond en tuiles, ce qui tient sur un écran à trente et se lit sans
+ * lire.
+ *
+ * ET L'ORDRE N'EST PAS ALPHABÉTIQUE. On ne cherche pas un nom sur un mur, on
+ * cherche ce qui ne va pas : les ennuis passent devant.
+ */
+function murHtml() {
+    if (!vue.direct) return '<div class="ec-vide">On regarde la classe…</div>';
+    const { eleves, maintenant } = vue.direct;
+    if (!eleves.length) {
+        return `<div class="ec-vide ec-vide--invite">
+            <p class="ec-vide-grand">Personne dans cette classe pour l'instant.</p>
+        </div>`;
+    }
+    const enPause = classeEnPause();
+    const rangee = trierPourLeMur(eleves, maintenant, { enPause });
+
+    return alarmeHtml(eleves, maintenant)
+        + (enPause ? '<p class="ec-note ec-mur-pause">La classe est en pause : '
+            + 'personne ne répond, et c\'est normal.</p>' : '')
+        + `<div class="ec-mur">${rangee.map(v => tuileHtml(v)).join('')}</div>`
+        + `<p class="ec-mur-legende">
+            <span><i class="ec-pastel ec-pastel--bloque"></i>arrêté</span>
+            <span><i class="ec-pastel ec-pastel--ralenti"></i>ralentit</span>
+            <span><i class="ec-pastel ec-pastel--ok"></i>travaille</span>
+            <span><i class="ec-pastel ec-pastel--fini"></i>a fini</span>
+            <span><i class="ec-pastel ec-pastel--parti"></i>hors ligne</span>
+           </p>`;
+}
+
+function tuileHtml(v) {
+    const e = v.eleve;
+    const av = e.avancement || null;
+    const p = Math.round((av && av.fraction ? av.fraction : 0) * 100);
+    // Ce qu'on écrit sous le prénom : l'état d'abord quand il appelle un geste,
+    // l'avancement sinon. Une tuile de cette taille ne porte qu'une phrase.
+    const mot = v.etat === 'bloque' || v.etat === 'ralenti'
+        ? 'rien depuis ' + depuisCombien(v.silence)
+        : (v.etat === 'parti' ? 'hors ligne'
+            : (v.etat === 'pas-commence' ? 'pas commencé' : enBref(av)));
+    return `<div class="ec-tuile ec-tuile--${esc(v.etat)}" title="${esc(e.prenom)} — ${esc(v.pourquoi || mot)}">
+        <div class="ec-tuile-qui">${esc(e.prenom)}</div>
+        <div class="ec-tuile-jauge"><i style="width:${p}%"></i></div>
+        <div class="ec-tuile-mot">${esc(mot)}</div>
+        <div class="ec-tuile-actions">
+            <button type="button" class="ec-mini" data-mot-eleve="${esc(e.id)}"
+                    data-prenom="${esc(e.prenom)}" title="Lui écrire un mot">mot</button>
+            <button type="button" class="ec-mini ec-mini--indice" data-indice-eleve="${esc(e.id)}"
+                    data-prenom="${esc(e.prenom)}" data-exo="${esc(e.exo || '')}"
+                    title="Lui souffler un coup de pouce">indice</button>
+        </div>
     </div>`;
 }
 
@@ -883,7 +997,9 @@ async function brancher(e, redessiner) {
         redessiner();
         // Le direct ne bat que quand on le regarde : inutile d'interroger le
         // serveur toutes les vingt secondes pendant qu'on colle une liste.
-        if (d.onglet === 'direct') lancerLeBattement(redessiner);
+        // Le direct ET le mur battent : ce sont les deux écrans qui changent
+        // tout seuls sous les yeux du professeur.
+        if (d.onglet === 'direct' || d.onglet === 'mur') lancerLeBattement(redessiner);
         else arreterLeBattement();
         if (!vue.liste) await rafraichirClasse(redessiner);
         // LA BIBLIOTHÈQUE DU SERVEUR, pour savoir ce qu'on peut imposer. On ne

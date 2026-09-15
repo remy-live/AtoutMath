@@ -970,9 +970,15 @@ function handleTeacherLive(): void
             'avancement' => $a['avancement'],
         ];
     }
+    // LE MOMENT EN COURS VOYAGE AVEC LE DIRECT, et c'est ce qui empêche
+    // l'alarme d'inactivité de sonner trente fois pendant que le professeur
+    // parle au tableau : en pause, personne ne répond — c'est le but.
+    $chronoFin = $classe['chrono_fin'] ?? null;
     respond([
         'classe' => ['id' => $classe['id'], 'name' => $classe['name'],
                      'locked' => (bool) $classe['locked'], 'notice' => $classe['notice']],
+        'chrono' => $chronoFin ? ['finAt' => (int) $chronoFin,
+                                  'aZero' => $classe['chrono_a_zero'] ?: 'terminer'] : null,
         // L'HEURE DU SERVEUR, ET NON CELLE DU NAVIGATEUR. « en ligne » se
         // décide en comparant deux instants ; s'ils viennent de deux horloges
         // différentes, une tablette mal réglée fait disparaître toute la classe.
