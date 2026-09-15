@@ -963,6 +963,11 @@ function handleTeacherLive(): void
             'justes' => $a['justes'],
             'total' => $a['total'],
             'quand' => $a['quand'],
+            // OÙ IL EN EST DE SA SÉANCE — calculé avec les mêmes règles que
+            // chez l'élève (api/lib/projections.php ↔ js/core/avancement.js),
+            // sans quoi les deux écrans diraient deux choses du même élève à la
+            // même seconde.
+            'avancement' => $a['avancement'],
         ];
     }
     respond([

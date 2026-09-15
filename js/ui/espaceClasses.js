@@ -48,6 +48,7 @@ import { adresseAdmin } from './classesServeur.js';
 import { adresseDuPoste } from './posteEleve.js';
 import { versionLisible } from '../core/versionDuSite.js';
 import { getExerciseById } from '../data/catalog.js';
+import { enBref, avancementDeClasse, depuisCombien } from '../core/avancement.js';
 
 /**
  * LE NOM DE L'EXERCICE, PAS SON IDENTIFIANT.
@@ -389,11 +390,72 @@ function directHtml() {
         </div>`;
     }
     const enLigne = eleves.filter(e => estEnLigne(e.vu, maintenant)).length;
+
+    // L'AVANCEMENT DE LA CLASSE, EN UNE LIGNE ET TROIS NOMBRES.
+    //
+    // Rémy : « il faut que la séance soit facilement visible l'avancement ». La
+    // question qu'il se pose en fin d'exercice est « est-ce que je peux passer
+    // à la suite ? », et elle se tranche sur un seul chiffre : combien n'ont
+    // pas commencé. Trente barres individuelles ne la répondent pas — il faut
+    // les lire une à une, et c'est justement ce qu'on n'a pas le temps de
+    // faire debout au fond de la salle.
+    const cl = avancementDeClasse(eleves.map(e => e.avancement || null));
+    const pourcent = Math.round(cl.fraction * 100);
+    const nomSeance = (eleves.find(e => e.avancement && e.avancement.pathName) || {}).avancement;
+
     return `
     <p class="ec-compte">${enLigne} en ligne sur ${eleves.length}
        <span class="ec-note">— actualisé tout seul</span></p>
+    <div class="ec-classe-avance">
+        <div class="ec-classe-ligne">
+            <b>${nomSeance ? esc(nomSeance.pathName) : 'La séance'}</b>
+            <span class="ec-classe-chiffres">
+                <span class="ec-pastille ec-pastille--fini">${cl.finis} ${
+                    cl.finis > 1 ? 'ont fini' : 'a fini'}</span>
+                <span class="ec-pastille ec-pastille--cours">${cl.enCours} en cours</span>
+                <span class="ec-pastille${cl.pasCommence ? ' ec-pastille--rien' : ''}"
+                    >${cl.pasCommence} pas commencé</span>
+            </span>
+        </div>
+        <div class="ec-jauge" title="${pourcent} % du travail de la classe">
+            <i style="width:${pourcent}%"></i>
+        </div>
+    </div>
     <div class="ec-rangs">
         ${eleves.map(e => rangHtml(e, maintenant)).join('')}
+    </div>`;
+}
+
+/**
+ * LA BARRE D'UN ÉLÈVE, ET CE QU'ELLE DIT EN PLUS DE SE REMPLIR.
+ *
+ * Une barre seule ne distingue pas l'élève qui avance lentement de celui qui
+ * est bloqué depuis dix minutes — et c'est POURTANT LA SEULE DIFFÉRENCE QUI
+ * COMPTE : le premier n'a besoin de personne, le second attend qu'on vienne.
+ * On écrit donc à côté depuis combien de temps il n'a plus répondu.
+ *
+ * (L'alarme proprement dite — celle qui va CHERCHER le professeur au lieu
+ * d'attendre qu'il lise — reste à faire. Ici on ne fait que le dire.)
+ */
+function avanceHtml(av, quand, maintenant) {
+    if (!av) return '<span class="ec-note ec-pasparti">Pas commencé</span>';
+    const p = Math.round((av.fraction || 0) * 100);
+    const classe = av.etat === 'fini' ? ' ec-jauge--fini'
+        : (av.etat === 'abandonne' ? ' ec-jauge--arrete' : '');
+
+    // DEPUIS QUAND N'A-T-IL PLUS RÉPONDU. `quand` est l'instant du dernier
+    // événement portant un exercice — c'est-à-dire de la dernière réponse.
+    // On ne l'écrit que passé une minute et sur un travail en cours : sur un
+    // parcours terminé, « il y a 6 min » désignerait la dernière question d'un
+    // devoir rendu, ce qui n'inquiète personne et encombre la ligne.
+    const silence = (quand && maintenant && av.etat === 'en-cours')
+        ? Math.max(0, maintenant - Math.round(quand / 1000)) : 0;
+    const muet = silence >= 60
+        ? ` <span class="ec-silence">· rien depuis ${esc(depuisCombien(silence))}</span>` : '';
+
+    return `<div class="ec-avance">
+        <div class="ec-jauge ec-jauge--mince${classe}"><i style="width:${p}%"></i></div>
+        <span class="ec-avance-mot">${esc(enBref(av))}${muet}</span>
     </div>`;
 }
 
@@ -412,7 +474,7 @@ function rangHtml(e, maintenant) {
         <div class="ec-rang-quoi">
             ${e.exo ? `<span class="ec-exo">${esc(nomDExercice(e.exo))}</span>`
                     : '<span class="ec-note">—</span>'}
-            ${e.parcours ? `<span class="ec-note">${esc(e.parcours)}</span>` : ''}
+            ${avanceHtml(e.avancement, e.quand, maintenant)}
         </div>
         ${score}
         <button type="button" class="ec-mini" data-mot-eleve="${esc(e.id)}"

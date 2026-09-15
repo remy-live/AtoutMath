@@ -173,6 +173,10 @@ export function computeRuns(events) {
             runs.set(runId, {
                 runId, pathId: null, pathName: '', mode: 'entrainement',
                 startedAt: null, finishedAt: null, policy: null,
+                // Le plan annoncé au départ : combien d'étapes, et combien de
+                // questions chacune. C'est ce qui permet de dire « étape 2 sur
+                // 5 » ailleurs que dans l'écran qui mène la séance.
+                plan: [], stepCount: 0,
                 attempts: [], steps: [], aborted: false
             });
         }
@@ -187,6 +191,8 @@ export function computeRuns(events) {
             r.pathName = p.pathName || '';
             r.mode = p.mode || 'entrainement';
             r.policy = p.policy || null;
+            r.plan = Array.isArray(p.plan) ? p.plan : [];
+            r.stepCount = Number(p.stepCount) || r.plan.length;
             r.startedAt = e.ts;
         } else if (e.type === A.RUN_FINISHED) {
             const r = ensure(p.runId);

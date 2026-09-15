@@ -547,3 +547,54 @@
     line-height: 1.5;
 }
 .fn-prog li { margin: 2px 0; }
+
+/* ─────────────────────────── LE FIL DE LA SÉANCE ───────────────────────────
+   Où j'en suis dans mon parcours, sur toute la largeur, au-dessus de tout.
+
+   Rémy : « il faut que la séance soit facilement visible l'avancement ».
+
+   VINGT-SIX PIXELS, ET PAS UN DE PLUS. L'en-tête du jeu en fait déjà soixante-
+   dix, et Rémy a déjà dit ce qu'il pense de ce qui mange la hauteur : « quand
+   le robot intervient, cela décale tout vers le bas ». Un fil qui coûterait
+   une ligne de plateau serait un fil qu'on finit par couper.
+
+   ET SUR TÉLÉPHONE, LE NOM DU PARCOURS S'EFFACE. Il y a la place pour les
+   cases OU pour le titre, pas pour les deux ; les cases disent l'essentiel
+   sans qu'on ait à lire. */
+.fil {
+    display: flex; align-items: center; gap: 12px;
+    padding: 5px 25px; min-height: 26px;
+    background: var(--bg-verre); backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    font-size: 0.78rem; color: var(--text-muted);
+    flex-shrink: 0;
+}
+.fil[hidden] { display: none; }
+.fil-nom {
+    font-weight: 600; color: var(--text-main);
+    max-width: 30%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fil-pas-liste { display: flex; gap: 3px; flex: 1; min-width: 0; }
+.fil-pas {
+    flex: 1; height: 8px; border-radius: 4px; overflow: hidden;
+    background: var(--border); position: relative;
+}
+.fil-pas > i {
+    display: block; height: 100%; width: 0;
+    background: var(--success); border-radius: 4px;
+    transition: width 0.35s ease;
+}
+/* L'ÉTAPE EN COURS SE DISTINGUE DES ÉTAPES FAITES. Même remplissage partiel,
+   mais la couleur du travail plutôt que celle du fini : sans quoi une étape à
+   moitié pleine et une étape close se liraient pareil. */
+.fil-pas--ici { box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35); }
+.fil-pas--ici > i { background: linear-gradient(90deg, var(--primary), var(--accent)); }
+/* Une étape FAITE mais RATÉE. L'élève doit voir où revenir ; une case pleine
+   lui ferait croire qu'il peut passer à la suite. */
+.fil-pas--ratee > i { background: var(--warning); }
+.fil-ou { font-weight: 600; white-space: nowrap; }
+
+@media (max-width: 640px) {
+    .fil { padding: 4px 12px; gap: 8px; font-size: 0.72rem; }
+    .fil-nom { display: none; }
+}

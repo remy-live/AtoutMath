@@ -183,6 +183,54 @@
 }
 .ec-score--bien { color: var(--success); }
 
+/* --- L'avancement : la classe, puis chacun --------------------------------
+   Rémy : « il faut que la séance soit facilement visible l'avancement ».
+
+   LA LIGNE DE CLASSE PASSE AVANT LES TRENTE LIGNES D'ÉLÈVES, et c'est
+   délibéré. La question qu'on se pose en fin d'exercice — « est-ce que je peux
+   passer à la suite ? » — se tranche sur un chiffre, pas sur trente barres
+   qu'il faudrait lire une à une, debout au fond de la salle. */
+.ec-classe-avance {
+    margin: 0 0 14px; padding: 11px 14px; border-radius: 12px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+}
+.ec-classe-ligne {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 9px;
+}
+.ec-classe-ligne b { color: var(--text-main); }
+.ec-classe-chiffres { display: flex; gap: 7px; flex-wrap: wrap; }
+.ec-pastille {
+    font-size: .76rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    background: var(--bg-app); color: var(--text-muted); border: 1px solid var(--border);
+    white-space: nowrap;
+}
+.ec-pastille--fini { color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, var(--border)); }
+.ec-pastille--cours { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
+/* CELUI-LÀ SEUL EST ROUGE, et seulement s'il n'est pas à zéro. C'est le chiffre
+   qui décide : une classe où trois élèves n'ont rien ouvert n'est pas prête à
+   passer à la suite, quel que soit l'état des vingt-sept autres. */
+.ec-pastille--rien { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+
+.ec-jauge {
+    height: 10px; border-radius: 5px; background: var(--border); overflow: hidden;
+}
+.ec-jauge > i {
+    display: block; height: 100%; border-radius: 5px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transition: width .4s ease;
+}
+.ec-jauge--mince { height: 6px; }
+.ec-jauge--fini > i { background: var(--success); }
+.ec-jauge--arrete > i { background: var(--warning); }
+
+.ec-avance { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ec-avance-mot { font-size: .76rem; color: var(--text-muted); }
+.ec-pasparti { font-style: italic; }
+/* Le silence se voit sans crier : le professeur balaie trente lignes, et ce
+   sont les trois qui portent ce mot-là qu'il doit repérer sans les chercher. */
+.ec-silence { color: var(--warning); font-weight: 700; }
+
 /* --- Tableaux, listes, aperçu --------------------------------------------- */
 .ec-table { width: 100%; border-collapse: collapse; margin: 6px 0 18px; }
 .ec-table th {

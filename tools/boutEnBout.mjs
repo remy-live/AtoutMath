@@ -193,6 +193,9 @@ await eleve.evaluate(async () => {
 });
 await eleve.waitForTimeout(800);
 
+/** Ce que le fil de la séance montrait AU MILIEU du travail. */
+let filPendant = null;
+
 for (const i of [0, 1]) {
     await eleve.evaluate(async (k) => {
         const { Runner } = await import('./js/core/runner.js');
@@ -261,10 +264,40 @@ for (const i of [0, 1]) {
             }, avant, { timeout: 6000 }).then(() => true).catch(() => false);
         }
     }
+    // LE FIL DE LA SÉANCE, PENDANT QU'ELLE TOURNE — et pas après.
+    //
+    // C'est le seul moment où il se regarde : le meneur l'efface en se
+    // terminant. On le relève donc ICI, au milieu du travail, et l'on garde ce
+    // qu'il montrait.
+    if (i === 0) {
+        filPendant = await eleve.evaluate(async () => {
+            const el = document.getElementById('fil-seance');
+            const { dernierAvancement } = await import('./js/ui/filSeance.js');
+            const av = dernierAvancement();
+            return {
+                visible: !!el && !el.hidden,
+                hauteur: el ? Math.round(el.getBoundingClientRect().height) : 0,
+                nom: el ? (el.querySelector('.fil-nom') || {}).textContent : '',
+                ou: el ? (el.querySelector('.fil-ou') || {}).textContent : '',
+                cases: el ? el.querySelectorAll('.fil-pas').length : 0,
+                remplies: el ? [...el.querySelectorAll('.fil-pas > i')]
+                    .filter(x => parseFloat(x.style.width) > 0).length : 0,
+                questions: av ? av.questions : null,
+                etapes: av ? av.etapes : null
+            };
+        });
+    }
+
     await eleve.waitForTimeout(1500);
     await eleve.evaluate(() => { if (window.__r && window.__r.finish) window.__r.finish(true); });
     await eleve.waitForTimeout(500);
 }
+
+ok('LE FIL DE LA SÉANCE DIT OÙ ON EN EST, PENDANT QU\'ON Y EST',
+    !!filPendant && filPendant.visible && filPendant.cases >= 2
+        && /Étape \d+ sur \d+/.test(filPendant.ou || ''),
+    filPendant ? `${filPendant.nom} · ${filPendant.ou} · ${filPendant.cases} cases, `
+        + `${filPendant.remplies} entamée(s) · ${filPendant.hauteur} px` : 'jamais vu');
 
 const fait = await eleve.evaluate(async () => {
     const { state } = await import('./js/core/state.js');
@@ -306,6 +339,25 @@ const leoDirect = rangs.find(x => /Léo/i.test(x.prenom || ''));
 ok('le direct le montre en ligne, sur son exercice',
     !!leoDirect && (bilan.direct.maintenant - (leoDirect.vu || 0)) <= 120 && !!leoDirect.exo,
     leoDirect ? `${leoDirect.prenom} · ${leoDirect.exo} · ${leoDirect.justes}/${leoDirect.total}` : 'introuvable');
+
+// L'AVANCEMENT, CALCULÉ PAR LE SERVEUR SUR LES MÊMES ÉVÉNEMENTS.
+//
+// Rémy : « il faut que la séance soit facilement visible l'avancement ».
+//
+// Ce qui se vérifie ici n'est pas qu'un champ existe, mais que le SERVEUR sait
+// répondre à la question — combien d'étapes, combien faites, combien de
+// questions — à partir du seul journal qu'on lui a poussé. Les essais
+// `tests/avancementMiroir` prouvent que sa règle est celle de l'élève ; celui-ci
+// prouve que la règle s'applique aux vraies données, arrivées par le vrai
+// chemin, chiffrées et déchiffrées en route.
+const av = leoDirect && leoDirect.avancement;
+ok('LE SERVEUR SAIT OÙ EN EST L\'ÉLÈVE DANS SA SÉANCE',
+    !!av && av.etapes >= 2 && av.faites >= 1 && av.questions >= 2,
+    av ? `${av.faites}/${av.etapes} étape(s) · ${av.questions} question(s) · `
+        + `${Math.round((av.fraction || 0) * 100)} %` : 'aucun avancement');
+ok('et il le dit avec les mêmes nombres que chez l\'élève',
+    !!av && !!filPendant && av.etapes === filPendant.etapes,
+    av && filPendant ? `serveur ${av.etapes} étapes · élève ${filPendant.etapes}` : '—');
 
 // ────────────── 3 bis. LE MOT DU PROFESSEUR, SANS RECHARGER ──────────
 //

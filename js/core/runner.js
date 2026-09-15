@@ -29,6 +29,7 @@ import { uuid } from './ids.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
 import { reglerCalculatrice, signalerNouvelleQuestion } from '../ui/calculatrice.js';
 import { filtrerEtapes, peutSauter } from './seanceDistante.js';
+import { majFilSeance, cacherFilSeance } from '../ui/filSeance.js';
 
 export class Runner {
     /**
@@ -136,7 +137,24 @@ export class Runner {
             pathName: this.path.name,
             mode: this.policy.mode,
             policy: this.policy,
-            stepCount: this.steps.length
+            stepCount: this.steps.length,
+            // LE PARCOURS ANNONCE SON PLAN, ET C'EST CE QUI REND L'AVANCEMENT
+            // LISIBLE AILLEURS QU'ICI.
+            //
+            // Sans lui, personne d'autre que cet écran ne sait combien de
+            // questions la séance contient : le serveur voyait passer des
+            // tentatives sans savoir sur quel total, et le professeur lisait
+            // « calc-sub · 2/2 » sans pouvoir dire si l'élève avait fini ou
+            // s'il en était au premier dixième. Le plan tient en quelques
+            // dizaines d'octets et il voyage une fois, au départ.
+            plan: this.steps.map((s, i) => ({
+                rang: i,
+                stepId: s.stepId,
+                titre: s.title || '',
+                exerciseId: s.exercise ? s.exercise.id : null,
+                questions: Math.max(0, Math.floor(Number(s.nbItems) || 0)),
+                requis: seuilRequis(s)
+            }))
         });
 
         if (this.missing.length) {
@@ -144,6 +162,7 @@ export class Runner {
         }
 
         this.showLayer();
+        try { majFilSeance(); } catch (e) { /* idem */ }
         this.setupStepNavigation();
         // LA LEÇON PASSE DEVANT TOUT LE RESTE : quand une étape en porte une,
         // c'est elle l'entrée en matière — ni le briefing d'évaluation, ni la
@@ -1502,6 +1521,11 @@ export class Runner {
     // --- Progression --------------------------------------------------------
 
     updateProgress() {
+        // LE FIL DE LA SÉANCE SUIT LA MÊME CADENCE. Il répond à l'autre
+        // question — « combien d'étapes me reste-t-il ? » — et il la répond
+        // depuis le journal, avec la règle du serveur.
+        try { majFilSeance(); } catch (e) { /* le fil n'empêche jamais de jouer */ }
+
         const box = document.getElementById('game-progress-container');
         const bar = document.getElementById('game-progress-bar');
         const text = document.getElementById('game-progress-text');
@@ -1585,6 +1609,9 @@ export class Runner {
         this.step = null;
         this.hideStepNavigation();
         state.activeSequenceRunner = null;
+        // Le fil n'a rien à dire sur l'accueil : il s'efface en même temps que
+        // le parcours qu'il décrivait.
+        try { cacherFilSeance(); } catch (e) { /* idem */ }
 
         if (!this.essai) journal.emit(EventTypes.RUN_FINISHED, {
             runId: this.runId,
