@@ -120,6 +120,17 @@ export const ecarterEleve = (classId, studentId, blocked) =>
 
 export const leDirect = (classId) => auServeur('/teacher/live', { classId });
 
+/**
+ * LES SÉANCES D'UNE CLASSE — celles qu'on lui a données, de la plus récente
+ * à la plus ancienne.
+ *
+ * Rémy : « quand je clique sur une classe, il faut pouvoir voir la liste des
+ * séances attitrées ». L'information était en base depuis le début ; il
+ * manquait la porte pour la lire.
+ */
+export const seancesDeLaClasse = (classId) =>
+    auServeur('/teacher/assign', { classId, action: 'list' });
+
 export const renommerClasse = (classId, name, level) =>
     auServeur('/teacher/class', { classId, action: 'rename', name, level });
 export const mettreEnPause = (classId, locked) =>

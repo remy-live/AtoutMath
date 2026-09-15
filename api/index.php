@@ -542,6 +542,60 @@ function handleTeacherAssign(): void
     $pathId = (string) ($body['pathId'] ?? '');
     $classId = $body['classId'] ?? null;
 
+    // LIRE LES SÉANCES D'UNE CLASSE — ce qu'on ne pouvait pas faire.
+    //
+    // Rémy : « quand je clique sur une classe, il faut pouvoir voir la liste
+    // des séances attitrées, je trouve que c'est un peu confus ». Il avait
+    // raison, et la raison était simple : on savait DONNER un parcours à une
+    // classe, on ne savait pas dire lesquels elle avait reçus. L'information
+    // était en base depuis le début, sans porte pour la lire.
+    //
+    // ON REND AUSSI CE QUE LES ÉLÈVES EN ONT FAIT — combien l'ont ouvert, et
+    // combien l'ont terminé. Une liste de séances sans cela est un carnet de
+    // textes ; avec, c'est un tableau de bord.
+    if (($body['action'] ?? '') === 'list') {
+        if ($classId === null || $classId === '') fail(400, 'no_class', 'Quelle classe ?');
+        $q = db()->prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?');
+        $q->execute([$classId, $teacher['id']]);
+        if (!$q->fetch()) fail(404, 'class_not_found', 'Classe introuvable.');
+
+        $s = db()->prepare(
+            'SELECT a.id, a.path_id, a.due_at, a.created_at, p.name, p.updated_at, p.data
+               FROM assignments a JOIN paths p ON p.id = a.path_id
+              WHERE a.class_id = ?
+              ORDER BY a.created_at DESC'
+        );
+        $s->execute([$classId]);
+
+        $seances = [];
+        foreach ($s->fetchAll() as $a) {
+            // LE PARCOURS EST RANGÉ ENTIER, ENVELOPPE COMPRISE.
+            //
+            // `handleTeacherPaths` enregistre l'objet reçu tel quel — donc
+            // `{ id, name, data: { steps… } }` — et non le seul parcours. Les
+            // étapes sont un niveau plus bas que là où on les cherche
+            // naturellement, et les lire au mauvais endroit donnait « 0 étape ·
+            // 0 question » sur des parcours qui en ont douze. On lit les deux
+            // formes plutôt que de parier sur une : le jour où l'enveloppe
+            // disparaît, cette ligne ne cassera pas.
+            $brut = json_decode((string) $a['data'], true) ?: [];
+            $parcours = is_array($brut['data'] ?? null) ? $brut['data'] : $brut;
+            $etapes = is_array($parcours['steps'] ?? null) ? $parcours['steps'] : [];
+            $seances[] = [
+                'id'       => $a['id'],
+                'pathId'   => $a['path_id'],
+                'nom'      => $a['name'],
+                'donneeLe' => $a['created_at'],
+                'pourLe'   => $a['due_at'],
+                'etapes'   => count($etapes),
+                'questions' => array_sum(array_map(
+                    fn ($e) => (int) ($e['nbItems'] ?? 0), $etapes)),
+                'mode'     => $parcours['policy']['mode'] ?? 'entrainement',
+            ];
+        }
+        respond(['seances' => $seances]);
+    }
+
     $stmt = db()->prepare('SELECT id FROM paths WHERE id = ? AND teacher_id = ?');
     $stmt->execute([$pathId, $teacher['id']]);
     if (!$stmt->fetch()) fail(404, 'path_not_found', 'Parcours introuvable.');

@@ -42,6 +42,7 @@ import {
     mesClasses, creerClasse, listeDeClasse, apercuDeListe, importerListe,
     nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, leDirect,
     renommerClasse, mettreEnPause, poserConsigne, viderClasse, supprimerClasse,
+    seancesDeLaClasse,
     envoyerUnMot, soufflerUnIndice, reglerLeBac,
     creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
     lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis,
@@ -110,7 +111,7 @@ export function fermerEspaceClasses() {
 export async function ouvrirEspaceClasses() {
     vue = { ou: 'classes', classes: null, erreur: '', classe: null, onglet: 'direct',
             liste: null, direct: null, apercu: null, profs: null, reglages: null,
-            bilans: null, occupe: false };
+            bilans: null, seances: null, occupe: false };
 
     // UNE PIÈCE, PAS UNE FENÊTRE.
     //
@@ -391,14 +392,16 @@ function classeHtml() {
     else if (vue.onglet === 'mur') corps = murHtml();
     else if (vue.onglet === 'liste') corps = listeHtml();
     else if (vue.onglet === 'bilans') corps = bilansHtml();
+    else if (vue.onglet === 'seances') corps = seancesHtml();
     else corps = seanceHtml();
 
     return enTeteHtml(info.name || c.name, sous, true) + messageHtml() + `
     <nav class="ec-onglets">
         ${onglet('direct', 'Le direct')}
         ${onglet('mur', 'Le mur')}
-        ${onglet('liste', 'La liste')}
-        ${onglet('seance', 'La séance')}
+        ${onglet('seance', 'En cours')}
+        ${onglet('seances', 'Les séances')}
+        ${onglet('liste', 'La classe')}
         ${onglet('bilans', 'Les bilans')}
     </nav>
     <div class="ec-corps">${corps}</div>`;
@@ -629,6 +632,86 @@ function tuileHtml(v) {
     </div>`;
 }
 
+// --- Onglet « Les séances » -------------------------------------------------
+//
+// Rémy : « quand je clique sur une classe, il faut pouvoir voir la liste des
+// séances attitrées, je trouve que c'est un peu confus », puis : « il y a deux
+// choses, la classe (liste + paramètres), la liste des séances attitrées et la
+// séance en cours. On organise au mieux ».
+//
+// IL A NOMMÉ TROIS CHOSES, ET L'ÉCRAN N'EN DISTINGUAIT AUCUNE.
+//
+// Un onglet « La séance » mélangeait ce qui se passe MAINTENANT — la séance
+// imposée, le compte à rebours, le mot au tableau — avec les réglages de la
+// classe elle-même : la renommer, la mettre en pause, la vider, la supprimer.
+// Et la liste de ce qu'on avait DÉJÀ donné à cette classe n'existait nulle
+// part, alors que l'information dormait en base depuis le début.
+//
+// Les onglets répondent maintenant chacun à une question :
+//   · Le direct / Le mur — qui travaille en ce moment ?
+//   · En cours           — qu'est-ce que je pilote maintenant ?
+//   · Les séances        — qu'est-ce que je leur ai donné ?     ← celui-ci
+//   · La classe          — qui est dedans, et comment elle marche ?
+//   · Les bilans         — qu'est-ce que je reprends lundi ?
+
+function seancesHtml() {
+    if (vue.seances === null) return '<div class="ec-vide">On regarde ce qui a été donné…</div>';
+    if (vue.seances.erreur) return `<div class="ec-vide">${esc(vue.seances.erreur)}</div>`;
+
+    const liste = vue.seances.seances || [];
+    if (!liste.length) {
+        return `<div class="ec-vide ec-vide--invite">
+            <p class="ec-vide-grand">Aucune séance donnée à cette classe.</p>
+            <p>Ouvrez un parcours dans <b>Préparer</b>, et cochez cette classe
+               dans le panneau <b>À qui ce parcours est donné</b>.</p>
+        </div>`;
+    }
+    const impose = (vue.liste && vue.liste.classe && vue.liste.classe.impose_path_id) || null;
+
+    return `<p class="ec-note ec-note--bloc">De la plus récente à la plus ancienne.
+        Celle qui porte <b>imposée</b> s'ouvre toute seule chez les élèves.</p>
+        <div class="ec-seances">${liste.map(s => `
+            <div class="ec-seance${s.pathId === impose ? ' ec-seance--imposee' : ''}">
+                <div class="ec-seance-haut">
+                    <b>${esc(s.nom)}</b>
+                    ${s.pathId === impose ? '<span class="ec-pastille ec-pastille--impose">imposée</span>' : ''}
+                    <span class="ec-seance-quand">${esc(quandLisible(s.donneeLe))}</span>
+                </div>
+                <div class="ec-seance-bas">
+                    <span>${s.etapes} étape${s.etapes > 1 ? 's' : ''}</span>
+                    <span class="ec-sous-sep">·</span>
+                    <span>${s.questions} question${s.questions > 1 ? 's' : ''}</span>
+                    <span class="ec-sous-sep">·</span>
+                    <span>${esc(MODES[s.mode] || s.mode)}</span>
+                    ${s.pourLe ? `<span class="ec-sous-sep">·</span>
+                        <span>à rendre ${esc(quandLisible(s.pourLe))}</span>` : ''}
+                </div>
+            </div>`).join('')}</div>`;
+}
+
+const MODES = {
+    entrainement: 'entraînement', evaluation: 'évaluation',
+    apprentissage: 'apprentissage', revision: 'révision'
+};
+
+/**
+ * « hier », « il y a 3 jours », « le 12 septembre ».
+ *
+ * Le professeur ne cherche pas un horodatage : il cherche « c'est celle de la
+ * semaine dernière ». Au-delà d'une semaine, la date exacte redevient plus
+ * parlante que le compte des jours.
+ */
+function quandLisible(quand) {
+    if (!quand) return '';
+    const t = new Date(String(quand).replace(' ', 'T'));
+    if (isNaN(t)) return String(quand);
+    const jours = Math.floor((Date.now() - t.getTime()) / 86400000);
+    if (jours <= 0) return 'aujourd\'hui';
+    if (jours === 1) return 'hier';
+    if (jours < 7) return `il y a ${jours} jours`;
+    return 'le ' + t.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+}
+
 // --- Onglet « Les bilans » --------------------------------------------------
 //
 // LA ROUTE EXISTAIT, LA PORTE N'EXISTAIT PAS.
@@ -770,9 +853,10 @@ function listeHtml() {
     if (!eleves.length) {
         return outils + `<div class="ec-vide ec-vide--invite">
             <p class="ec-vide-grand">La liste est vide.</p>
-            <p>Collez-la depuis Pronote ou un tableur — un élève par ligne. On vous
-               montrera <b>ce qui va se passer</b> avant d'écrire quoi que ce soit.</p>
-        </div>`;
+            <p>Collez-la depuis Pronote ou un tableur — le fichier ENTIER, sans rien
+               nettoyer. On vous montrera <b>ce qui va se passer</b> avant d'écrire
+               quoi que ce soit.</p>
+        </div>` + reglagesClasseHtml();
     }
 
     return outils + (avec.length ? `
@@ -811,8 +895,35 @@ function listeHtml() {
        travail</b> au lieu d'être recréés à côté.</p>
     <div class="ec-puces">
         ${sans.map(e => `<span class="ec-puce">${esc(e.prenom)}</span>`).join('')}
-    </div>` : '');
+    </div>` : '')
+    + reglagesClasseHtml();
 }
+
+/**
+ * LES RÉGLAGES DE LA CLASSE, avec la classe.
+ *
+ * Rémy : « il y a deux choses, la classe (liste + paramètres), la liste des
+ * séances attitrées et la séance en cours ».
+ *
+ * Renommer, vider, supprimer ne sont PAS des gestes de séance : ils portent sur
+ * la classe elle-même, et ils vivaient pourtant au fond de l'onglet qui pilote
+ * l'heure en cours. On les remet là où on les cherche — avec la liste des
+ * élèves, c'est-à-dire avec la classe.
+ */
+function reglagesClasseHtml() {
+    return `
+    <section class="ec-bloc ec-bloc--reglages">
+        <h3 class="ec-h3">Réglages de la classe</h3>
+        <div class="ec-outils">
+            <button type="button" class="ec-bouton ec-bouton--doux" data-renommer>Renommer</button>
+            <button type="button" class="ec-bouton ec-bouton--doux" data-vider>Vider la liste</button>
+            <button type="button" class="ec-bouton ec-bouton--rouge" data-supprimer>Supprimer la classe</button>
+        </div>
+        <p class="ec-note ec-note--bloc">Vider et supprimer emportent le travail des élèves,
+           et c'est sans retour : on vous demandera d'écrire <b>EFFACER</b>.</p>
+    </section>`;
+}
+
 
 /**
  * L'APERÇU : ce qui va se passer, avant que quoi que ce soit soit écrit.
@@ -987,16 +1098,6 @@ function seanceHtml() {
             ${reglagesHtml()}
         </section>
 
-        <section class="ec-bloc">
-            <h3 class="ec-h3">La classe elle-même</h3>
-            <div class="ec-outils">
-                <button type="button" class="ec-bouton ec-bouton--doux" data-renommer>Renommer</button>
-                <button type="button" class="ec-bouton ec-bouton--doux" data-vider>Vider la liste</button>
-                <button type="button" class="ec-bouton ec-bouton--rouge" data-supprimer>Supprimer la classe</button>
-            </div>
-            <p class="ec-note ec-note--bloc">Vider et supprimer emportent le travail des élèves,
-               et c'est sans retour : on vous demandera d'écrire <b>EFFACER</b>.</p>
-        </section>
     </div>`;
 }
 
@@ -1144,7 +1245,7 @@ async function brancher(e, redessiner) {
         if (!c) return;
         vue.ou = 'classe'; vue.classe = c; vue.onglet = 'direct'; vue.parcours = null;
         vue.liste = null; vue.direct = null; vue.apercu = null; vue.erreur = '';
-        vue.bilans = null;
+        vue.bilans = null; vue.seances = null;
         redessiner();
         await rafraichirClasse(redessiner);
         lancerLeBattement(redessiner);
@@ -1169,6 +1270,14 @@ async function brancher(e, redessiner) {
         // C'est la lecture la plus lourde de toute l'API — elle reprojette le
         // journal entier de chaque élève — et elle n'a aucune raison de tourner
         // pendant qu'on regarde Le direct.
+        // LES SÉANCES DE CETTE CLASSE, demandées en arrivant sur leur onglet.
+        if (d.onglet === 'seances') {
+            vue.seances = null;
+            redessiner();
+            const r = await seancesDeLaClasse(vue.classe && vue.classe.id);
+            vue.seances = r.erreur ? { erreur: r.erreur } : r;
+            redessiner();
+        }
         if (d.onglet === 'bilans') {
             vue.bilans = null;
             redessiner();

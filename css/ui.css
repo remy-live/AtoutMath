@@ -3320,3 +3320,32 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 @media (hover: none) {
     .ec-carte-jeter { opacity: .5; }
 }
+
+/* ─────────────────────── LES SÉANCES D'UNE CLASSE ─────────────────────────
+   Rémy : « quand je clique sur une classe, il faut pouvoir voir la liste des
+   séances attitrées, je trouve que c'est un peu confus ». L'information était
+   en base depuis le début ; il manquait la porte pour la lire. */
+.ec-seances { display: flex; flex-direction: column; gap: 8px; }
+.ec-seance {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: 11px; padding: 10px 13px;
+}
+/* Celle qui s'ouvre toute seule chez les élèves se distingue : c'est la seule
+   de la liste qui agit en ce moment même. */
+.ec-seance--imposee { border-left-color: var(--primary); }
+.ec-seance-haut {
+    display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+}
+.ec-seance-haut b { color: var(--text-main); }
+.ec-seance-quand { margin-left: auto; font-size: .78rem; color: var(--text-muted); }
+.ec-seance-bas {
+    margin-top: 4px; font-size: .78rem; color: var(--text-muted);
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline;
+}
+.ec-pastille--impose {
+    color: var(--primary); border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+/* Les réglages de la classe ferment l'onglet « La classe » : on les cherche
+   après la liste, jamais avant. */
+.ec-bloc--reglages { margin-top: 22px; }
