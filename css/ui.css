@@ -3291,3 +3291,32 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     background: var(--primary); color: #fff;
 }
 .cl-bouton--doux { background: var(--bg-app); color: var(--text-main); border-color: var(--border); }
+
+/* La croix de suppression sur une carte de classe.
+   Rémy : « il faudrait pouvoir supprimer les classes ». Le geste existait à
+   l'intérieur de la classe — le bon endroit pour supprimer celle qu'on regarde,
+   le mauvais pour faire le ménage.
+
+   ELLE EST DISCRÈTE, ET C'EST DÉLIBÉRÉ. La carte entière se clique pour ENTRER
+   dans la classe : une croix voyante y serait un piège à fausse manœuvre. Elle
+   se révèle au survol, reste atteignable au doigt (32 px), et passe par la même
+   confirmation qu'ailleurs — écrire EFFACER. */
+.ec-carte { position: relative; }
+.ec-carte-jeter {
+    position: absolute; top: 8px; right: 8px;
+    width: 32px; height: 32px; border-radius: 8px;
+    border: none; background: transparent; color: var(--text-muted);
+    font-size: 1rem; line-height: 1; cursor: pointer;
+    opacity: 0; transition: opacity .15s, background .15s, color .15s;
+}
+.ec-carte:hover .ec-carte-jeter,
+.ec-carte:focus-within .ec-carte-jeter { opacity: .55; }
+.ec-carte-jeter:hover, .ec-carte-jeter:focus-visible {
+    opacity: 1; background: color-mix(in srgb, var(--danger) 14%, transparent);
+    color: var(--danger);
+}
+/* SUR UN ÉCRAN TACTILE, IL N'Y A PAS DE SURVOL : la croix y est toujours
+   visible, sinon elle n'existe pas du tout sur la tablette du professeur. */
+@media (hover: none) {
+    .ec-carte-jeter { opacity: .5; }
+}

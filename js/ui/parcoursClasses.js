@@ -127,7 +127,9 @@ const PUCE = {
 };
 
 function ligneClasseHtml(classe, info) {
-    const n = (classe.eleves || []).length;
+    // L'EFFECTIF VIENT DU SERVEUR, LA LISTE VIENDRA AU DÉPLIAGE. On ne charge
+    // pas trente élèves par classe pour afficher un nombre.
+    const n = (classe.eleves || []).length || Number(classe.effectif) || 0;
     const puce = info.etat ? PUCE[info.etat] : null;
     return `
     <div class="pc-classe${info.retiree ? ' pc-classe--retiree' : ''}" data-classe="${esc(classe.id)}">
@@ -158,6 +160,30 @@ function ligneClasseHtml(classe, info) {
         </div>`).join('')}
         <div class="pc-eleves" hidden></div>
     </div>`;
+}
+
+/**
+ * ALLER CHERCHER LES ÉLÈVES D'UNE CLASSE DU SERVEUR.
+ *
+ * Rendus à la forme que cet écran connaît — `{ id, nom }` — plutôt que celle du
+ * serveur. Une seule traduction, ici, plutôt qu'un `c.prenom || c.nom ||
+ * c.first_name` répété dans chaque gabarit.
+ *
+ * SI ÇA ÉCHOUE, ON REND UNE LISTE VIDE ET L'ÉCRAN LE DIT. Un dépliage qui
+ * resterait sur « On va chercher les élèves… » pour toujours est pire qu'un
+ * dépliage vide : on attend quelque chose qui ne viendra pas.
+ */
+async function elevesDeLaClasse(classe) {
+    try {
+        const { listeDeClasse } = await import('../core/espaceProf.js');
+        const r = await listeDeClasse(classe.id);
+        if (!r || r.erreur || !Array.isArray(r.eleves)) return [];
+        return r.eleves.map(e => ({
+            id: e.id, nom: e.prenom || e.nom || '?', login: e.login || '', code: e.code || ''
+        }));
+    } catch (err) {
+        return [];
+    }
 }
 
 /**
@@ -565,14 +591,21 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         };
 
         panel.querySelectorAll('[data-plier]').forEach(b => {
-            b.onclick = () => {
+            b.onclick = async () => {
                 const bloc = b.closest('.pc-classe');
                 const liste = bloc.querySelector('.pc-eleves');
                 const ouvert = !liste.hidden;
                 if (ouvert) { liste.hidden = true; b.textContent = '▸'; b.setAttribute('aria-expanded', 'false'); return; }
                 const classe = classes.find(c => c.id === b.dataset.plier);
-                liste.innerHTML = elevesHtml(classe, etatClasse(classe, seances, pathId));
+                // LA LISTE SE DEMANDE ICI, ET UNE SEULE FOIS. C'est le seul
+                // moment où elle sert, et la charger d'avance pour cinq classes
+                // ferait cent cinquante élèves qu'on ne regarde pas.
                 liste.hidden = false;
+                if (classe && classe.serveur && !(classe.eleves || []).length) {
+                    liste.innerHTML = '<p class="pc-vide">On va chercher les élèves…</p>';
+                    classe.eleves = await elevesDeLaClasse(classe);
+                }
+                liste.innerHTML = elevesHtml(classe, etatClasse(classe, seances, pathId));
                 b.textContent = '▾';
                 b.setAttribute('aria-expanded', 'true');
                 brancherBilansEleves(liste, classe);

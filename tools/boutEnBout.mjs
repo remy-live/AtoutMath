@@ -195,6 +195,8 @@ await eleve.waitForTimeout(800);
 
 /** Ce que le fil de la séance montrait AU MILIEU du travail. */
 let filPendant = null;
+/** Ce qu'on savait à la fin de chaque étape — pour expliquer un échec. */
+const journalDesEtapes = [];
 
 for (const i of [0, 1]) {
     await eleve.evaluate(async (k) => {
@@ -224,7 +226,26 @@ for (const i of [0, 1]) {
     //
     // On repère donc la question POSÉE, on répond, et l'on attend qu'elle ait
     // changé — ou que l'étape se soit close.
-    for (let q = 0; q < 2; q++) {
+    // ON RÉPOND JUSQU'À CE QUE L'ÉTAPE SE CLOSE, PAS DEUX FOIS.
+    //
+    // La boucle comptait ses deux questions et s'arrêtait là. Quand un clic ne
+    // trouvait pas sa bulle — la question se redessine entre le moment où l'on
+    // lit la réponse et celui où l'on cherche le bouton —, l'étape restait à
+    // une question sur deux et ne se clôturait jamais. Mesuré : un passage sur
+    // trois, avec « resolues: 1, attendues: 2 ».
+    //
+    // Un élève, lui, ne compte pas : il répond tant qu'on lui pose une question.
+    // On fait pareil, avec un plafond qui n'est là que pour ne pas tourner sans
+    // fin — et si on l'atteint, on le DIT.
+    const MAX_QUESTIONS = 12;
+    for (let q = 0; q < MAX_QUESTIONS; q++) {
+        // L'étape est close : plus rien à faire ici.
+        const close = await eleve.evaluate(async (k) => {
+            const { state } = await import('./js/core/state.js');
+            const p = state.studentPath;
+            return !!(p && (p.completed || []).includes('sc_' + k));
+        }, i).catch(() => false);
+        if (close) break;
         // ENTRE DEUX QUESTIONS, `session.item` EST NUL PENDANT UN INSTANT.
         // Lire à ce moment-là et conclure « il n'y a plus de question » était
         // la dernière source de hasard : la seconde question de l'étape était
@@ -289,6 +310,24 @@ for (const i of [0, 1]) {
     }
 
     await eleve.waitForTimeout(1500);
+    // CE QU'ON SAIT JUSTE AVANT DE CLORE L'ÉTAPE. Ce harnais tombait une fois
+    // sur trois sur « les deux étapes sont enregistrées », et un harnais qui
+    // tombe au hasard ne garde plus rien : on cesse de le croire, et c'est le
+    // jour où il a raison qu'on l'ignore. On relève donc de quoi trancher entre
+    // « l'étape ne s'est pas close » et « quelqu'un a remis le parcours à zéro ».
+    journalDesEtapes.push(await eleve.evaluate(async (k) => {
+        const { state } = await import('./js/core/state.js');
+        const r = window.__r;
+        return {
+            etape: k,
+            faites: state.studentPath ? [...(state.studentPath.completed || [])] : null,
+            resolues: r && r.itemsResolved ? r.itemsResolved.size : null,
+            reussies: r && r.itemsSolved ? r.itemsSolved.size : null,
+            attendues: r && r.step ? r.step.nbItems : null,
+            seuil: r && r.step ? r.step.threshold : null,
+            meneurVivant: !!state.activeSequenceRunner
+        };
+    }, i));
     await eleve.evaluate(() => { if (window.__r && window.__r.finish) window.__r.finish(true); });
     await eleve.waitForTimeout(500);
 }
@@ -304,7 +343,9 @@ const fait = await eleve.evaluate(async () => {
     return state.studentPath ? state.studentPath.completed : null;
 });
 ok('les deux étapes sont enregistrées chez l\'élève',
-    Array.isArray(fait) && fait.length === 2, JSON.stringify(fait));
+    Array.isArray(fait) && fait.length === 2,
+    JSON.stringify(fait) + (Array.isArray(fait) && fait.length === 2 ? ''
+        : ' · ce qu\'on savait à chaque étape : ' + JSON.stringify(journalDesEtapes)));
 
 // Il se synchronise — c'est ce que fait l'application toute seule.
 const synchro = await eleve.evaluate(async () => {

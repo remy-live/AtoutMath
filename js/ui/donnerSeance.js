@@ -27,9 +27,70 @@ import { Shortcodes } from '../core/shortcodes.js';
 const CLE_CLASSES = 'classes';
 const CLE_SEANCES = 'seances';
 
-export async function lireClasses() {
-    return (await globalStore.get(CLE_CLASSES, [])) || [];
+/**
+ * LES CLASSES DU PROFESSEUR — CELLES DU SERVEUR QUAND IL Y EN A UN.
+ *
+ * Rémy : « pourquoi je ne peux pas donner un parcours à d'autres classes, une
+ * seule apparaît ». Il en avait deux, et le panneau n'en montrait qu'une.
+ *
+ * IL Y AVAIT DEUX NOTIONS DE « CLASSE » DANS L'APPLICATION, ET CE PANNEAU
+ * LISAIT LA MAUVAISE.
+ *
+ *   · L'ANCIENNE, purement locale : une liste rangée sous la clé `classes` de
+ *     ce navigateur, héritée de l'époque où tout marchait hors ligne.
+ *   · LA VRAIE, sur le serveur : celles que le professeur crée et peuple par la
+ *     porte « La classe », avec ses trente élèves, leurs billets et leur
+ *     travail.
+ *
+ * `lireClasses()` rendait la première. Rémy créait ses classes dans la seconde.
+ * Le panneau montrait donc ce qui traînait d'un essai ancien — une classe — et
+ * pas celles qui existent. Aucune erreur ne s'affichait, ce qui est le pire des
+ * cas : rien ne dit qu'on regarde autre chose que ce qu'on croit.
+ *
+ * ON GARDE LE STOCK LOCAL EN REPLI, et seulement en repli : sans serveur,
+ * l'application doit continuer de marcher — c'est une promesse tenue depuis le
+ * début, et une salle sans réseau n'est pas un cas rare.
+ *
+ * LE COMPTE D'ÉLÈVES VIENT AVEC, mais pas la liste : trente élèves par classe,
+ * pour un panneau qui n'en montre aucun tant qu'on ne déplie pas, ce serait
+ * payer cher une information qu'on ne regarde pas. La liste se demande au
+ * dépliage (voir `elevesDeLaClasse` dans ui/parcoursClasses.js).
+ */
+let memoClasses = null;
+let memoQuand = 0;
+const MEMO_MS = 15000;
+
+export async function lireClasses({ fraiches = false } = {}) {
+    const local = async () => (await globalStore.get(CLE_CLASSES, [])) || [];
+
+    const { jetonProf } = await import('../core/verrouProf.js');
+    if (!jetonProf()) return local();
+
+    if (!fraiches && memoClasses && Date.now() - memoQuand < MEMO_MS) return memoClasses;
+
+    const { mesClasses } = await import('../core/espaceProf.js');
+    const d = await mesClasses();
+    if (d && d.erreur) {
+        // LE SERVEUR A REFUSÉ : on ne remplace pas ses classes par une liste
+        // locale qui n'a rien à voir. Mieux vaut un panneau vide, qui dit
+        // qu'il n'y a rien, qu'un panneau qui montre autre chose.
+        return memoClasses || [];
+    }
+    memoClasses = (Array.isArray(d) ? d : []).map(c => ({
+        id: c.id,
+        nom: c.name || c.nom || 'Classe',
+        code: c.join_code || '',
+        niveau: c.level || '',
+        effectif: Number(c.student_count) || 0,
+        eleves: [],              // demandés au dépliage, pas avant
+        serveur: true
+    }));
+    memoQuand = Date.now();
+    return memoClasses;
 }
+
+/** Après un changement de classe, la prochaine lecture doit aller au serveur. */
+export function oublierLesClasses() { memoClasses = null; memoQuand = 0; }
 
 export async function lireSeances() {
     return (await globalStore.get(CLE_SEANCES, [])) || [];

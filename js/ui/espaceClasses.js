@@ -36,6 +36,7 @@
 import { showToast } from './modal.js';
 import { demander, demanderTexte, choisirIndice } from './demander.js';
 import { choisirLesColonnes } from './collerListeUI.js';
+import { oublierLesClasses } from './donnerSeance.js';
 import { nomDuProf } from '../core/verrouProf.js';
 import {
     mesClasses, creerClasse, listeDeClasse, apercuDeListe, importerListe,
@@ -328,6 +329,21 @@ function carteClasseHtml(c) {
             <span class="ec-eff">${n} élève${n > 1 ? 's' : ''}</span>
             ${Number(c.locked) ? '<span class="ec-pastille ec-pastille--pause">en pause</span>' : ''}
             ${c.notice ? '<span class="ec-pastille ec-pastille--mot">consigne</span>' : ''}
+            <!-- SUPPRIMER DEPUIS LA LISTE, LÀ OÙ ON LES VOIT TOUTES.
+                 Rémy : « il faudrait pouvoir supprimer les classes ». Le geste
+                 existait — au fond de l'onglet « La séance », À L'INTÉRIEUR de
+                 la classe. C'est le bon endroit pour supprimer CELLE qu'on
+                 regarde, et le mauvais pour faire le ménage : ranger ses
+                 classes, c'est les voir toutes en même temps, et il fallait
+                 entrer dans chacune puis en ressortir.
+
+                 IL RESTE DISCRET, ET IL DEMANDE LE MÊME MOT ÉCRIT. Une croix
+                 sur une carte qu'on clique pour ENTRER est un piège à
+                 fausse manœuvre : elle est petite, à l'écart, et elle passe
+                 par la même confirmation qu'ailleurs — écrire EFFACER. -->
+            <button type="button" class="ec-carte-jeter" data-supprimer-carte="${esc(c.id)}"
+                    data-nom="${esc(c.name)}" title="Supprimer cette classe"
+                    aria-label="Supprimer la classe ${esc(c.name)}">✕</button>
         </div>
     </div>`;
 }
@@ -1026,7 +1042,7 @@ async function brancher(e, redessiner) {
         + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
         + '[data-profs], [data-reessayer], [data-poste],'
-        + '[data-imposer], [data-chrono], [data-chrono-off], [data-bac],'
+        + '[data-imposer], [data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage]');
     if (!el) return;
     const d = el.dataset;
@@ -1209,6 +1225,36 @@ async function brancher(e, redessiner) {
         await fait(retirerUnProfesseur(d.retirerProf, quoi, mot), () => { vue.profs = null; });
         const l = await lesProfesseurs();
         if (!l.erreur) { vue.profs = l.professeurs; vue.fondateur = !!l.vousEtesLeFondateur; }
+        redessiner();
+        return;
+    }
+
+    // SUPPRIMER DEPUIS LA LISTE — ET AVANT LE GARDE-FOU CI-DESSOUS.
+    //
+    // C'est tout l'intérêt du geste : on est justement dans la liste, donc
+    // AUCUNE classe n'est ouverte. Placée après `if (!cid) return`, cette
+    // branche n'était jamais atteinte — le clic ne faisait rien, sans erreur ni
+    // message, ce qui est la pire des pannes : rien ne dit qu'il s'est passé
+    // quelque chose. Mesuré au navigateur.
+    //
+    // Même route et même mot à écrire que depuis l'intérieur de la classe : on
+    // ne fabrique pas un second chemin plus permissif parce qu'il est plus
+    // pratique.
+    if (d.supprimerCarte) {
+        const mot = await demander(`Supprimer la classe « ${d.nom} » ?`, {
+            bouton: 'Supprimer', placeholder: 'EFFACER',
+            aide: 'La classe, ses élèves et tout leur travail disparaissent. '
+                + 'C\'est sans retour. Écrivez EFFACER pour confirmer.'
+        });
+        if ((mot || '').trim() !== 'EFFACER') return;
+        const r = await supprimerClasse(d.supprimerCarte, 'EFFACER');
+        if (r && r.erreur) { vue.erreur = r.erreur; redessiner(); return; }
+        showToast(r && r.dit ? r.dit : 'Classe supprimée.', 'info');
+        // Le panneau « À qui ce parcours est donné » lit la même liste : sans
+        // cet oubli, il montrerait encore la classe qu'on vient d'effacer.
+        oublierLesClasses();
+        const l = await mesClasses();
+        if (!l.erreur) vue.classes = l;
         redessiner();
         return;
     }
