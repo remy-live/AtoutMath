@@ -2807,3 +2807,11 @@ html.poste-eleve body { padding-bottom: 64px; }
     font-size: .82rem;
     letter-spacing: .02em;
 }
+
+/* ── LES PORTES DU PROFESSEUR ──────────────────────────────────────────────
+   Deux zones nommées, toujours visibles, au milieu de la barre du haut —
+   exactement là où l'élève a les siennes. Rémy : « j'ai l'impression que l'on
+   se perd un peu ». On se perdait parce que la moitié du métier était rangée
+   derrière un engrenage, c'est-à-dire derrière le mot « réglages ». */
+.nav-center--prof { gap: 4px; }
+.nav-center--prof .top-nav-tab { font-weight: 700; }

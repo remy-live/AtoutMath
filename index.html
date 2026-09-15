@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=695">
-    <link rel="stylesheet" href="css/layout.css?v=695">
-    <link rel="stylesheet" href="css/ui.css?v=695">
-    <link rel="stylesheet" href="css/games.css?v=695">
-    <link rel="stylesheet" href="css/components.css?v=695">
-    <link rel="stylesheet" href="css/modules.css?v=695">
+    <link rel="stylesheet" href="css/base.css?v=696">
+    <link rel="stylesheet" href="css/layout.css?v=696">
+    <link rel="stylesheet" href="css/ui.css?v=696">
+    <link rel="stylesheet" href="css/games.css?v=696">
+    <link rel="stylesheet" href="css/components.css?v=696">
+    <link rel="stylesheet" href="css/modules.css?v=696">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -407,6 +407,51 @@
                     <span id="role-badge-nom">Élève</span>
                 </button>
             </div>
+            <!-- LES PORTES DU PROFESSEUR, ENFIN VISIBLES.
+
+                 Rémy : « il faut que la zone classe, mon parcours, mes
+                 chapitres soient plus instinctives, plus simple, j'ai
+                 l'impression que l'on se perd un peu », puis, devant la
+                 capture de l'engrenage : « tu n'as rien changé ».
+
+                 TROIS DÉFAUTS, ET L'ENGRENAGE LES PORTAIT TOUS LES TROIS.
+
+                 Un engrenage veut dire « réglages ». Or « Mes classes » n'est
+                 pas un réglage : c'est la moitié du métier. L'y ranger disait
+                 à qui regarde que c'est accessoire.
+
+                 Une pièce de travail n'est pas un popup. « Mes classes » a
+                 trois onglets à lui tout seul ; un popup sert à UNE décision
+                 courte, et dès qu'il lui faut des onglets, c'est une pièce —
+                 qui a besoin d'une porte qu'on voit.
+
+                 Enfin les noms disaient l'OBJET, pas le MOMENT. « Mon
+                 Parcours », « Mes classes », « Mes chapitres » : trois
+                 possessifs. Un professeur ne se dit pas « je vais dans mes
+                 chapitres » ; il se dit « je prépare » ou « je fais cours ».
+
+                 Les chapitres, eux, ne sont pas un lieu : c'est une façon de
+                 TRIER le catalogue, et l'onglet « Chapitres » de la colonne de
+                 gauche le fait déjà. Il ne reste dans l'engrenage que de vrais
+                 réglages. -->
+            <div class="nav-center nav-center--prof teacher-only" role="tablist"
+                 aria-label="Les zones du professeur">
+                <button class="top-nav-tab active" id="top-btn-preparer" role="tab" aria-selected="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                    Préparer
+                </button>
+                <button class="top-nav-tab" id="top-btn-classe" role="tab" aria-selected="false">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    La classe
+                </button>
+            </div>
             <div class="nav-center student-only">
                 <button class="top-nav-tab active" id="top-btn-grid">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -690,7 +735,7 @@
                                 <button id="btn-classes" class="toolbar-icon-btn toolbar-icon-btn--outil" hidden title="Mes classes : suivre les progressions" aria-label="Mes classes">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                                 </button>
-                                <button id="btn-chapitres" class="toolbar-icon-btn toolbar-icon-btn--outil" hidden title="Mes chapitres : ranger les exercices" aria-label="Mes chapitres">
+                                <button id="btn-chapitres" class="toolbar-icon-btn toolbar-icon-btn--outil" hidden title="Organiser mes chapitres : ranger les exercices" aria-label="Organiser mes chapitres">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" /><path d="M9 13h6" /><path d="M9 17h3" /></svg>
                                 </button>
                                 <button id="btn-game-access" class="toolbar-icon-btn toolbar-icon-btn--outil" hidden title="Accès aux jeux : exercices libres, réservés ou à débloquer" aria-label="Accès aux jeux">
@@ -714,8 +759,8 @@
                             </button>
                             <div class="outils-enveloppe">
                                 <button id="btn-outils-prof" class="toolbar-icon-btn toolbar-icon-btn--outil"
-                                        title="Mes outils : classes, chapitres, accès aux jeux, données"
-                                        aria-label="Mes outils" aria-haspopup="true" aria-expanded="false">
+                                        title="Réglages : chapitres, accès aux jeux, données"
+                                        aria-label="Réglages" aria-haspopup="true" aria-expanded="false">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1.5" /><rect width="7" height="7" x="14" y="3" rx="1.5" /><rect width="7" height="7" x="3" y="14" rx="1.5" /><rect width="7" height="7" x="14" y="14" rx="1.5" /></svg>
                                 </button>
                                 <div id="outils-menu" class="outils-menu" hidden role="menu"></div>

@@ -54,6 +54,7 @@ export function initBuilder() {
     initPresentationMode();
     initGameAccessPanel();
     initClassesPanel();
+    initPortesProf();
     initChapitresPanel();
     initHistorique();
     initOutilsMenu();
@@ -65,6 +66,54 @@ export function initBuilder() {
 // Chargé à la demande : l'écran des classes lit tout le journal de chaque
 // élève pour recalculer les bilans, et un professeur qui monte un parcours
 // n'en a pas besoin.
+
+/**
+ * LES DEUX PORTES DU PROFESSEUR, EN HAUT, AVEC LEUR NOM.
+ *
+ * Elles ne font qu'appuyer sur les boutons qui existent déjà — c'est le même
+ * principe que le menu des réglages : aucune liste à tenir en double, et rien
+ * ne se désaccorde le jour où l'un des deux écrans change.
+ *
+ * LA PORTE ACTIVE DIT OÙ L'ON EST, et elle doit le dire même quand on revient
+ * par la croix de la fenêtre, pas par la porte. On surveille donc la PRÉSENCE
+ * de l'espace des classes à l'écran plutôt que les clics : un état qu'on
+ * déduit de ce qui est affiché ne peut pas mentir, alors qu'un état qu'on tient
+ * à la main finit toujours par diverger.
+ */
+function initPortesProf() {
+    const preparer = document.getElementById('top-btn-preparer');
+    const classe = document.getElementById('top-btn-classe');
+    if (!preparer || !classe) return;
+
+    const dire = (ouvert) => {
+        classe.classList.toggle('active', ouvert);
+        classe.setAttribute('aria-selected', String(ouvert));
+        preparer.classList.toggle('active', !ouvert);
+        preparer.setAttribute('aria-selected', String(!ouvert));
+    };
+
+    classe.onclick = () => {
+        const b = document.getElementById('btn-classes');
+        if (b) b.click();
+    };
+    preparer.onclick = () => {
+        // Revenir à l'atelier, c'est fermer ce qui est par-dessus.
+        const fermer = document.querySelector('.modal-overlay .modal-close, #ec-racine')
+            && document.querySelector('.modal-overlay .modal-close');
+        if (fermer) fermer.click();
+        dire(false);
+    };
+
+    // LES DEUX ÉCRANS DE CLASSE, et ils n'ont pas le même toit : `ec-racine`
+    // pour l'espace serveur, `cl-racine` pour le panneau hors ligne. Un garde-fou
+    // du dépôt (tests/interfaceIds) m'a repris ici même : j'avais écrit
+    // `classes-racine`, qui n'existe nulle part — la porte ne se serait jamais
+    // allumée pour le panneau hors ligne, sans que rien ne le dise.
+    const regarder = () => dire(!!document.getElementById('ec-racine')
+        || !!document.getElementById('cl-racine'));
+    new MutationObserver(regarder).observe(document.body, { childList: true, subtree: false });
+    regarder();
+}
 
 function initClassesPanel() {
     const btn = document.getElementById('btn-classes');
@@ -540,7 +589,10 @@ function majBoutonsHistorique() {
 // libellé, leur icône est clonée, et cliquer une ligne clique le bouton. Aucune
 // liste à tenir à jour en double, et un outil ajouté demain apparaît ici tout
 // seul dès qu'il porte la classe.
-const OUTILS = ['btn-classes', 'btn-chapitres', 'btn-game-access', 'btn-open-import-export-teacher'];
+// « Mes classes » N'EST PLUS ICI : elle a sa porte, en haut, avec son nom.
+// L'engrenage ne garde que ce qui est vraiment un réglage — ranger ses
+// chapitres, décider de l'accès aux jeux, entrer ou sortir ses données.
+const OUTILS = ['btn-chapitres', 'btn-game-access', 'btn-open-import-export-teacher'];
 
 function initOutilsMenu() {
     const btn = document.getElementById('btn-outils-prof');
