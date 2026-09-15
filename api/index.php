@@ -553,6 +553,34 @@ function handleTeacherAssign(): void
     // ON REND AUSSI CE QUE LES ÉLÈVES EN ONT FAIT — combien l'ont ouvert, et
     // combien l'ont terminé. Une liste de séances sans cela est un carnet de
     // textes ; avec, c'est un tableau de bord.
+    // L'AUTRE SENS : À QUI CE PARCOURS A-T-IL ÉTÉ DONNÉ ?
+    //
+    // Rémy, sur l'explorateur de parcours : « une flèche pour avoir plus
+    // d'info », et à la question « le contenu, ou les classes ? » — « les
+    // deux ». Le contenu, on l'a sous la main ; les classes, il fallait la
+    // route. C'est la même table lue par l'autre bout.
+    if (($body['action'] ?? '') === 'list' && $pathId !== '') {
+        $q = db()->prepare('SELECT id, name FROM paths WHERE id = ? AND teacher_id = ?');
+        $q->execute([$pathId, $teacher['id']]);
+        if (!$q->fetch()) fail(404, 'path_not_found', 'Parcours introuvable.');
+
+        $s = db()->prepare(
+            'SELECT a.id, a.class_id, a.due_at, a.created_at, c.name,
+                    (SELECT COUNT(*) FROM students st WHERE st.class_id = c.id) AS effectif
+               FROM assignments a JOIN classes c ON c.id = a.class_id
+              WHERE a.path_id = ? AND c.teacher_id = ?
+              ORDER BY a.created_at DESC'
+        );
+        $s->execute([$pathId, $teacher['id']]);
+        respond(['classes' => array_map(fn ($a) => [
+            'id'       => $a['class_id'],
+            'nom'      => $a['name'],
+            'effectif' => (int) $a['effectif'],
+            'donneeLe' => $a['created_at'],
+            'pourLe'   => $a['due_at'],
+        ], $s->fetchAll())]);
+    }
+
     if (($body['action'] ?? '') === 'list') {
         if ($classId === null || $classId === '') fail(400, 'no_class', 'Quelle classe ?');
         $q = db()->prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?');

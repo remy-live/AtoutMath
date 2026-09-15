@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=710">
-    <link rel="stylesheet" href="css/layout.css?v=710">
-    <link rel="stylesheet" href="css/ui.css?v=710">
-    <link rel="stylesheet" href="css/games.css?v=710">
-    <link rel="stylesheet" href="css/components.css?v=710">
-    <link rel="stylesheet" href="css/modules.css?v=710">
+    <link rel="stylesheet" href="css/base.css?v=711">
+    <link rel="stylesheet" href="css/layout.css?v=711">
+    <link rel="stylesheet" href="css/ui.css?v=711">
+    <link rel="stylesheet" href="css/games.css?v=711">
+    <link rel="stylesheet" href="css/components.css?v=711">
+    <link rel="stylesheet" href="css/modules.css?v=711">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1327,6 +1327,23 @@
                     <div class="path-browser-header-actions">
                         <button id="btn-new-folder" class="btn-toggle glass-btn">📁 Nouveau Dossier</button>
                         <button id="btn-close-path-browser" class="modal-close-btn" aria-label="Fermer">&times;</button>
+                    </div>
+                </div>
+                <!-- LA BARRE DE RECHERCHE ET LE TRI.
+                     Rémy : « l'explorateur de parcours va vite avoir ses
+                     limites. Il faudrait un explorateur avec les derniers
+                     parcours édités […] sobre, avec la date de modif ».
+                     À cinquante parcours, retrouver « celui de la semaine
+                     dernière » demandait de lire cinquante noms qui se
+                     ressemblent tous : « Fractions », « Fractions 2 »,
+                     « Fractions (bis) ». -->
+                <div class="pb-barre">
+                    <input type="search" id="pb-chercher" class="pb-chercher"
+                           placeholder="Chercher un parcours…" autocomplete="off"
+                           aria-label="Chercher un parcours par son nom">
+                    <div class="pb-tris" role="group" aria-label="Comment ranger">
+                        <button type="button" class="pb-tri pb-tri--actif" data-tri="recent">Derniers modifiés</button>
+                        <button type="button" class="pb-tri" data-tri="dossiers">Par dossier</button>
                     </div>
                 </div>
                 <div id="path-browser-list">

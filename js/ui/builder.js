@@ -25,6 +25,9 @@ import {
     direDuree, tensionDuree, PHRASES_TENSION
 } from '../core/dureeParcours.js';
 import { natureDe } from '../core/duree.js';
+import {
+    resumeDeParcours, derniersEdites, chercher, quandLisible, enBref
+} from '../core/explorateurParcours.js';
 import { chapitresDe } from '../core/chapitres.js';
 import {
     renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide
@@ -1628,10 +1631,67 @@ function initPathBrowser() {
     }
 }
 
+/**
+ * L'EXPLORATEUR — DEUX FAÇONS DE REGARDER LA MÊME CHOSE.
+ *
+ * Rémy : « l'explorateur de parcours va vite avoir ses limites. Il faudrait un
+ * explorateur avec les derniers parcours édités. Il faut que ce soit bien
+ * intégré, sobre, avec la date de modif et les informations ; on peut avoir une
+ * flèche pour avoir plus d'info ».
+ *
+ * LES DOSSIERS RESTENT, ET C'EST UNE DÉCISION. Il s'en sert ; les remplacer par
+ * un tri l'obligerait à refaire un rangement qu'il a déjà fait. Mais ils ne
+ * sont plus la SEULE entrée : « derniers modifiés » l'est devenue, parce que
+ * c'est la seule chose qu'on sait vraiment d'un parcours qu'on cherche — on y
+ * a touché récemment.
+ */
+let pbTri = 'recent';
+let pbRecherche = '';
+/** Les parcours dépliés, pour que le redessin ne les referme pas. */
+const pbOuverts = new Set();
+
 export function renderPathBrowser() {
     const list = document.getElementById('path-browser-list');
     if (!list) return;
+    brancherLaBarre();
     list.innerHTML = '';
+
+    if (!state.teacherPaths.length && !(state.teacherFolders || []).length) {
+        list.innerHTML = '<div class="empty-state-msg">Aucun parcours enregistré.</div>';
+        return;
+    }
+
+    // CHERCHER PASSE AVANT TOUT LE RESTE. Quand on tape un nom, on ne veut plus
+    // de dossiers ni de sections : on veut la liste de ce qui correspond.
+    if (pbRecherche.trim()) {
+        const trouves = chercherParcours(state.teacherPaths, pbRecherche);
+        if (!trouves.length) {
+            list.innerHTML = `<div class="empty-state-msg">Aucun parcours ne porte
+                « ${pbRecherche.replace(/[<>&]/g, '')} » dans son nom.</div>`;
+            return;
+        }
+        const bloc = document.createElement('div');
+        bloc.className = 'path-browser-root';
+        bloc.innerHTML = `<div class="path-browser-root-title">${trouves.length} trouvé${
+            trouves.length > 1 ? 's' : ''}</div>`;
+        trouves.forEach(p => bloc.appendChild(pathItem(p)));
+        list.appendChild(bloc);
+        return;
+    }
+
+    if (pbTri === 'recent') {
+        const ranges = derniersEdites(
+            state.teacherPaths.map(p => resumeDeParcours(p, normalizePath, getExerciseById)));
+        const bloc = document.createElement('div');
+        bloc.className = 'path-browser-root';
+        bloc.innerHTML = '<div class="path-browser-root-title">Du plus récemment modifié</div>';
+        ranges.forEach(r => {
+            const entree = state.teacherPaths.find(p => p.id === r.id);
+            if (entree) bloc.appendChild(pathItem(entree, r));
+        });
+        list.appendChild(bloc);
+        return;
+    }
 
     (state.teacherFolders || []).forEach(folder => {
         list.appendChild(folderBlock(folder));
@@ -1646,10 +1706,32 @@ export function renderPathBrowser() {
     rootBlock.innerHTML = '<div class="path-browser-root-title">Parcours (racine)</div>';
     rootPaths.forEach(p => rootBlock.appendChild(pathItem(p)));
     list.appendChild(rootBlock);
+}
 
-    if (!state.teacherPaths.length && !(state.teacherFolders || []).length) {
-        list.innerHTML = '<div class="empty-state-msg">Aucun parcours enregistré.</div>';
-    }
+/** Les parcours dont le nom correspond, les plus récents d'abord. */
+function chercherParcours(entrees, texte) {
+    const resumes = entrees.map(p => resumeDeParcours(p, normalizePath, getExerciseById));
+    const gardes = new Set(chercher(resumes, texte).map(r => r.id));
+    return derniersEdites(resumes.filter(r => gardes.has(r.id)))
+        .map(r => entrees.find(p => p.id === r.id))
+        .filter(Boolean);
+}
+
+let barreBranchee = false;
+function brancherLaBarre() {
+    if (barreBranchee) return;
+    const champ = document.getElementById('pb-chercher');
+    if (!champ) return;
+    barreBranchee = true;
+    champ.oninput = () => { pbRecherche = champ.value; renderPathBrowser(); };
+    document.querySelectorAll('[data-tri]').forEach(b => {
+        b.onclick = () => {
+            pbTri = b.dataset.tri;
+            document.querySelectorAll('[data-tri]').forEach(x =>
+                x.classList.toggle('pb-tri--actif', x === b));
+            renderPathBrowser();
+        };
+    });
 }
 
 function folderBlock(folder) {
@@ -1687,7 +1769,7 @@ function folderBlock(folder) {
     return box;
 }
 
-function pathItem(p) {
+function pathItem(p, resume = null) {
     const normalized = normalizePath(p.data, p.name);
     const policy = resolvePolicy(normalized.policy);
     const row = document.createElement('div');
@@ -1704,9 +1786,18 @@ function pathItem(p) {
     name.onblur = () => state.updateTeacherPath(p.id, name.textContent.trim(), null);
     name.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } };
 
+    // CE QU'ON LIT SANS DÉPLIER : ce qu'il contient, en quoi, et depuis quand
+    // on n'y a pas touché. Trois choses sur une ligne — Rémy dit « sobre ».
+    //
+    // L'ANCIENNE LIGNE DISAIT « 5 activités • Entraînement • 12/09/2026 ». Une
+    // date en chiffres demande de calculer ; « hier » se lit. Et le nombre de
+    // questions manquait, alors que c'est LUI qui dit si la séance tient dans
+    // l'heure.
+    const r = resume || resumeDeParcours(p, normalizePath, getExerciseById);
     const sub = document.createElement('div');
     sub.className = 'path-browser-sub';
-    sub.textContent = `${normalized.steps.length} activités • ${isEvaluation(policy) ? 'Évaluation' : 'Entraînement'} • ${new Date(p.timestamp).toLocaleDateString()}`;
+    sub.textContent = `${enBref(r)} · ${isEvaluation(policy) ? 'évaluation' : 'entraînement'}`
+        + (r.modifieLe ? ` · modifié ${quandLisible(r.modifieLe)}` : '');
 
     info.append(name, sub);
 
@@ -1742,9 +1833,115 @@ function pathItem(p) {
         renderPathBrowser();
     });
 
-    actions.append(share, load, del);
-    row.append(info, actions);
+    // LA FLÈCHE. Rémy : « on peut avoir une flèche pour avoir plus d'info ».
+    // Et à la question « le contenu, ou les classes ? » : « les deux ».
+    const fleche = document.createElement('button');
+    fleche.type = 'button';
+    fleche.className = 'pb-fleche';
+    fleche.setAttribute('aria-expanded', pbOuverts.has(p.id) ? 'true' : 'false');
+    fleche.setAttribute('aria-label', 'Voir le détail de ' + p.name);
+    fleche.textContent = pbOuverts.has(p.id) ? '▾' : '▸';
+
+    actions.append(share, load, del, fleche);
+
+    const ligne = document.createElement('div');
+    ligne.className = 'path-browser-ligne';
+    ligne.append(info, actions);
+
+    const detail = document.createElement('div');
+    detail.className = 'pb-detail';
+    detail.hidden = !pbOuverts.has(p.id);
+
+    const peindre = () => { detail.innerHTML = detailHtml(r); garnirLesClasses(detail, p.id); };
+    if (!detail.hidden) peindre();
+
+    fleche.onclick = () => {
+        const ouvert = pbOuverts.has(p.id);
+        if (ouvert) { pbOuverts.delete(p.id); detail.hidden = true; }
+        else { pbOuverts.add(p.id); peindre(); detail.hidden = false; }
+        fleche.textContent = ouvert ? '▸' : '▾';
+        fleche.setAttribute('aria-expanded', ouvert ? 'false' : 'true');
+    };
+
+    row.append(ligne, detail);
     return row;
+}
+
+const ech = (t) => String(t == null ? '' : t)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/**
+ * CE QU'IL Y A DERRIÈRE LA FLÈCHE — DEUX CHOSES, ET LA PREMIÈRE EST IMMÉDIATE.
+ *
+ * Ce que le parcours CONTIENT se lit sans réseau : c'est déjà dans la mémoire
+ * du navigateur. À QUI il a été donné demande le serveur, donc arrive après —
+ * on dessine d'abord ce qu'on sait, plutôt que de faire attendre les deux.
+ *
+ * Les deux répondent à la même question posée autrement : « est-ce bien
+ * celui-là ? »
+ */
+function detailHtml(r) {
+    const etapes = r.etapes.length
+        ? `<ol class="pb-etapes">${r.etapes.map(e => `
+            <li${e.bonus ? ' class="pb-etape--jeu"' : ''}>
+                <span class="pb-etape-nom">${ech(e.titre)}</span>
+                ${e.bonus ? '<span class="pb-jeu">jeu</span>'
+                    : `<span class="pb-etape-n">${e.questions} q</span>`}
+            </li>`).join('')}</ol>`
+        : '<p class="pb-vide">Ce parcours est vide.</p>';
+
+    return `
+        <div class="pb-colonnes">
+            <div class="pb-colonne">
+                <h5 class="pb-h5">Ce qu'il contient</h5>
+                ${etapes}
+            </div>
+            <div class="pb-colonne" data-classes>
+                <h5 class="pb-h5">À qui il a été donné</h5>
+                <p class="pb-vide">On regarde…</p>
+            </div>
+        </div>`;
+}
+
+/**
+ * LES CLASSES QUI L'ONT REÇU — demandées au serveur, et seulement au dépliage.
+ *
+ * SANS SERVEUR, ON LE DIT PLUTÔT QUE DE LAISSER « On regarde… » POUR TOUJOURS.
+ * Rémy travaille aussi sur la version statique, où il n'y a pas de serveur du
+ * tout : une colonne qui attend indéfiniment y ferait croire à une panne.
+ */
+async function garnirLesClasses(hote, pathId) {
+    const boite = hote.querySelector('[data-classes]');
+    if (!boite) return;
+    const dire = (html) => {
+        const h = boite.querySelector('h5');
+        boite.innerHTML = '';
+        if (h) boite.appendChild(h);
+        boite.insertAdjacentHTML('beforeend', html);
+    };
+    try {
+        const { jetonProf } = await import('../core/verrouProf.js');
+        if (!jetonProf()) {
+            dire('<p class="pb-vide">Hors ligne : les séances données vivent sur le serveur.</p>');
+            return;
+        }
+        const { auServeur } = await import('../core/espaceProf.js');
+        const r = await auServeur('/teacher/assign', { pathId, action: 'list' });
+        if (r.erreur) { dire(`<p class="pb-vide">${ech(r.erreur)}</p>`); return; }
+        const classes = r.classes || [];
+        if (!classes.length) {
+            dire('<p class="pb-vide">Pas encore donné.</p>');
+            return;
+        }
+        dire(`<ul class="pb-classes">${classes.map(c => `
+            <li>
+                <span class="pb-classe-nom">${ech(c.nom)}</span>
+                <span class="pb-classe-n">${c.effectif} élève${c.effectif > 1 ? 's' : ''}</span>
+                <span class="pb-classe-quand">${ech(quandLisible(c.donneeLe))}</span>
+            </li>`).join('')}</ul>`);
+    } catch (err) {
+        dire('<p class="pb-vide">Impossible de le demander au serveur pour l\'instant.</p>');
+    }
 }
 
 function dragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drop-target'); }
