@@ -53,6 +53,8 @@ import { getSkill } from '../data/skills.js';
 import { indicesProposes } from '../core/indice.js';
 import { enBref, avancementDeClasse, depuisCombien } from '../core/avancement.js';
 import { lesAlarmes, trierPourLeMur, direLesAlarmes, vigilanceDe } from '../core/vigilance.js';
+import { notionsAReprendre, resumeDeClasse, ordreDuBilan, enHeures } from '../core/bilanClasse.js';
+import { getSkill as laCompetence } from '../data/skills.js';
 
 /**
  * LE NOM DE L'EXERCICE, PAS SON IDENTIFIANT.
@@ -106,7 +108,7 @@ export function fermerEspaceClasses() {
 export async function ouvrirEspaceClasses() {
     vue = { ou: 'classes', classes: null, erreur: '', classe: null, onglet: 'direct',
             liste: null, direct: null, apercu: null, profs: null, reglages: null,
-            occupe: false };
+            bilans: null, occupe: false };
 
     // UNE PIÈCE, PAS UNE FENÊTRE.
     //
@@ -371,6 +373,7 @@ function classeHtml() {
     if (vue.onglet === 'direct') corps = directHtml();
     else if (vue.onglet === 'mur') corps = murHtml();
     else if (vue.onglet === 'liste') corps = listeHtml();
+    else if (vue.onglet === 'bilans') corps = bilansHtml();
     else corps = seanceHtml();
 
     return enTeteHtml(info.name || c.name, sous, true) + messageHtml() + `
@@ -379,6 +382,7 @@ function classeHtml() {
         ${onglet('mur', 'Le mur')}
         ${onglet('liste', 'La liste')}
         ${onglet('seance', 'La séance')}
+        ${onglet('bilans', 'Les bilans')}
     </nav>
     <div class="ec-corps">${corps}</div>`;
 }
@@ -606,6 +610,122 @@ function tuileHtml(v) {
                     title="Lui souffler un coup de pouce">indice</button>
         </div>
     </div>`;
+}
+
+// --- Onglet « Les bilans » --------------------------------------------------
+//
+// LA ROUTE EXISTAIT, LA PORTE N'EXISTAIT PAS.
+//
+// `/teacher/report` rend depuis longtemps, pour chaque élève, ses questions, sa
+// réussite, son temps, ses erreurs ouvertes et ses compétences faibles. AUCUN
+// ÉCRAN DE L'APPLICATION NE L'APPELAIT : on ne pouvait le lire qu'en passant
+// par les pages d'administration, c'est-à-dire en sortant de l'application —
+// et Rémy avait dit ce qu'il en pensait, « j'aimerai ne pas passer par admin ».
+//
+// MAIS BRANCHER LA ROUTE NE SUFFISAIT PAS. Trente lignes de chiffres sont la
+// MATIÈRE d'un bilan ; le bilan, c'est la phrase qu'on en tire. La question
+// qu'un professeur se pose en rentrant chez lui n'est pas « quel est le taux de
+// Léo » — il était là, il le sait. C'est « qu'est-ce que je reprends lundi, et
+// avec qui ». Ce qui suit répond à celle-là d'abord, et donne le tableau
+// ensuite.
+
+function bilansHtml() {
+    if (!vue.bilans) return '<div class="ec-vide">On rassemble les bilans…</div>';
+    if (vue.bilans.erreur) return `<div class="ec-vide">${esc(vue.bilans.erreur)}</div>`;
+
+    const lignes = vue.bilans.students || [];
+    if (!lignes.length) {
+        return `<div class="ec-vide ec-vide--invite">
+            <p class="ec-vide-grand">Aucun élève dans cette classe.</p></div>`;
+    }
+    const r = resumeDeClasse(lignes);
+    const notions = notionsAReprendre(lignes);
+
+    return resumeHtml(r) + reprendreHtml(notions, r.eleves) + tableauBilanHtml(lignes);
+}
+
+function resumeHtml(r) {
+    // « 0 % » se lit comme « tout est faux » ; quand personne n'a rien fait, il
+    // n'y a rien à dire, et c'est cela qu'on écrit.
+    const taux = r.reussite === null ? '—' : Math.round(r.reussite * 100) + ' %';
+    return `<div class="ec-bilan-resume">
+        ${chiffre(taux, 'de réussite', r.reussite !== null && r.reussite >= 0.7 ? 'bien' : '')}
+        ${chiffre(r.questions, r.questions > 1 ? 'questions' : 'question')}
+        ${chiffre(enHeures(r.secondes), 'de travail')}
+        ${chiffre(r.actifs + ' / ' + r.eleves, 'ont travaillé',
+            r.actifs < r.eleves ? 'alerte' : '')}
+        ${r.jamaisVenus ? chiffre(r.jamaisVenus, r.jamaisVenus > 1
+            ? 'ne sont jamais venus' : 'n\'est jamais venu', 'alerte') : ''}
+    </div>`;
+}
+
+const chiffre = (v, quoi, ton = '') => `<div class="ec-chiffre${ton ? ' ec-chiffre--' + ton : ''}">
+    <b>${esc(String(v))}</b><span>${esc(quoi)}</span></div>`;
+
+/**
+ * CE QU'IL FAUT REPRENDRE — le retournement du tableau.
+ *
+ * Une notion faible chez douze élèves appelle une leçon ; la même chez un seul
+ * appelle un accompagnement. Ce ne sont pas les mêmes lundis, et c'est pour
+ * cela qu'on range par nombre d'élèves et qu'on écrit ce nombre.
+ */
+function reprendreHtml(notions, combienDElevesEnTout) {
+    if (!notions.length) {
+        return '<p class="ec-note ec-note--bloc">Rien ne ressort comme fragile pour l\'instant — '
+            + 'il faut un peu de travail enregistré avant que ce bilan dise quelque chose.</p>';
+    }
+    return `<section class="ec-bloc ec-bloc--reprendre">
+        <h3 class="ec-h3">À reprendre</h3>
+        <p class="ec-note ec-note--bloc">Les notions fragiles, de la plus partagée à la
+           plus isolée. Ce qui touche la moitié de la classe se reprend au tableau ;
+           ce qui touche deux élèves se reprend avec eux.</p>
+        ${notions.slice(0, 8).map(n => {
+            const c = laCompetence(n.skillId);
+            const part = Math.round(100 * n.combien / Math.max(1, combienDElevesEnTout));
+            return `<div class="ec-reprendre">
+                <div class="ec-reprendre-haut">
+                    <b>${esc(c ? c.label : n.skillId)}</b>
+                    <span class="ec-reprendre-combien${part >= 40 ? ' ec-reprendre-combien--fort' : ''}"
+                        >${n.combien} élève${n.combien > 1 ? 's' : ''}</span>
+                </div>
+                <div class="ec-jauge ec-jauge--mince"><i style="width:${part}%"></i></div>
+                <div class="ec-reprendre-qui">${
+                    n.eleves.slice(0, 8).map(e => esc(e.firstName)).join(', ')
+                    + (n.eleves.length > 8 ? ` et ${n.eleves.length - 8} autres` : '')}</div>
+            </div>`;
+        }).join('')}
+    </section>`;
+}
+
+function tableauBilanHtml(lignes) {
+    return `<section class="ec-bloc">
+        <h3 class="ec-h3">Élève par élève</h3>
+        <p class="ec-note ec-note--bloc">Rangés par ce qui demande un geste, pas par
+           ordre alphabétique : ceux qui n'ont rien fait d'abord, puis les plus en
+           difficulté.</p>
+        <table class="ec-table ec-table--bilan">
+            <thead><tr>
+                <th>Élève</th><th>Questions</th><th>Réussite</th>
+                <th>Travail</th><th>Erreurs ouvertes</th><th>Dernière note</th>
+            </tr></thead>
+            <tbody>${ordreDuBilan(lignes).map(l => {
+                const rien = !(Number(l.totalQuestions) || 0);
+                const taux = l.successRate === null || l.successRate === undefined
+                    ? '—' : Math.round(l.successRate * 100) + ' %';
+                const note = l.lastNote
+                    ? `${esc(String(l.lastNote.note))} / ${esc(String(l.lastNote.sur))}` : '—';
+                return `<tr${rien ? ' class="ec-tr-rien"' : ''}>
+                    <td><b>${esc(l.firstName)}</b>${l.lastSeenAt ? ''
+                        : ' <span class="ec-note">(jamais venu)</span>'}</td>
+                    <td>${l.totalQuestions || 0}</td>
+                    <td class="${!rien && l.successRate < 0.5 ? 'ec-td-faible' : ''}">${taux}</td>
+                    <td class="ec-note">${esc(enHeures(l.timeSeconds))}</td>
+                    <td>${l.openErrors || 0}</td>
+                    <td>${note}</td>
+                </tr>`;
+            }).join('')}</tbody>
+        </table>
+    </section>`;
 }
 
 // --- Onglet « La liste » ----------------------------------------------------
@@ -1007,6 +1127,7 @@ async function brancher(e, redessiner) {
         if (!c) return;
         vue.ou = 'classe'; vue.classe = c; vue.onglet = 'direct'; vue.parcours = null;
         vue.liste = null; vue.direct = null; vue.apercu = null; vue.erreur = '';
+        vue.bilans = null;
         redessiner();
         await rafraichirClasse(redessiner);
         lancerLeBattement(redessiner);
@@ -1027,6 +1148,18 @@ async function brancher(e, redessiner) {
         // LA BIBLIOTHÈQUE DU SERVEUR, pour savoir ce qu'on peut imposer. On ne
         // la demande qu'en arrivant sur l'onglet qui s'en sert : le direct n'en
         // a que faire, et c'est la lecture la plus lourde de cet écran.
+        // LES BILANS SE DEMANDENT EN ARRIVANT SUR L'ONGLET, et une seule fois.
+        // C'est la lecture la plus lourde de toute l'API — elle reprojette le
+        // journal entier de chaque élève — et elle n'a aucune raison de tourner
+        // pendant qu'on regarde Le direct.
+        if (d.onglet === 'bilans') {
+            vue.bilans = null;
+            redessiner();
+            const r = await auServeur('/teacher/report',
+                { classId: vue.classe && vue.classe.id });
+            vue.bilans = r.erreur ? { erreur: r.erreur } : r;
+            redessiner();
+        }
         if (d.onglet === 'seance' && vue.parcours === null) {
             const r = await auServeur('/teacher/paths', { action: 'list' });
             vue.parcours = r.erreur ? [] : (r.paths || []).map(x => ({ id: x.id, name: x.name }));

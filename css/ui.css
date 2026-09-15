@@ -3163,3 +3163,41 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 }
 .bac-refus { margin: 0; font-size: 1rem; color: var(--text-main); }
 .ec-etat-bac { color: var(--text-muted); font-size: .88rem; align-self: center; }
+
+/* ─────────────────────────────── LES BILANS ───────────────────────────────
+   La route du serveur existait ; la porte n'existait pas. Mais un tableau de
+   trente lignes de chiffres n'est pas un bilan : la question qu'un professeur
+   se pose en rentrant chez lui est « qu'est-ce que je reprends lundi, et avec
+   qui ». « À reprendre » passe donc AVANT le tableau. */
+.ec-bilan-resume {
+    display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 18px;
+}
+.ec-chiffre {
+    flex: 1 1 130px; min-width: 0;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 11px 14px;
+    display: flex; flex-direction: column; gap: 1px;
+}
+.ec-chiffre b { font-size: 1.32rem; color: var(--text-main); line-height: 1.1; }
+.ec-chiffre span { font-size: .76rem; color: var(--text-muted); }
+.ec-chiffre--bien b { color: var(--success); }
+.ec-chiffre--alerte b { color: var(--warning); }
+
+.ec-bloc--reprendre { border-left: 3px solid var(--primary); }
+.ec-reprendre { margin: 0 0 12px; }
+.ec-reprendre-haut {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; margin-bottom: 5px;
+}
+.ec-reprendre-haut b { color: var(--text-main); }
+.ec-reprendre-combien {
+    font-size: .78rem; font-weight: 700; color: var(--text-muted); white-space: nowrap;
+}
+/* Au-delà de quatre élèves sur dix, ce n'est plus un accompagnement : c'est une
+   leçon à reprendre au tableau. La couleur dit ce changement de nature. */
+.ec-reprendre-combien--fort { color: var(--danger); }
+.ec-reprendre-qui { font-size: .76rem; color: var(--text-muted); margin-top: 4px; }
+
+.ec-table--bilan td { vertical-align: middle; }
+.ec-td-faible { color: var(--danger); font-weight: 700; }
+.ec-tr-rien { background: color-mix(in srgb, var(--warning) 8%, transparent); }
