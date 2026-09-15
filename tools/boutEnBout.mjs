@@ -235,15 +235,31 @@ for (const i of [0, 1]) {
             return String(it.id || it.prompt || it.answer);
         });
         const rep = await eleve.evaluate(() => String(window.__r.session.item.answer));
-        await eleve.evaluate((r) => {
-            const el = [...document.querySelectorAll('.bubble, .choice, button, [data-value]')]
-                .find(x => (x.textContent || '').trim() === r || x.getAttribute('data-value') === r);
-            if (el) el.click();
-        }, rep);
-        await eleve.waitForFunction((a) => {
-            const it = window.__r && window.__r.session && window.__r.session.item;
-            return !it || String(it.id || it.prompt || it.answer) !== a;
-        }, avant, { timeout: 15000 }).catch(() => { /* la dernière question ferme l'étape */ });
+
+        // UN CLIC QUI NE TROUVE PAS SA BULLE NE DIT RIEN, et c'est ce qui
+        // restait de hasard : la question se redessine entre le moment où l'on
+        // lit la réponse et celui où l'on cherche le bouton qui la porte. Le
+        // clic tombait alors dans le vide, la question ne changeait pas, on
+        // attendait quinze secondes pour rien, et l'étape se terminait à une
+        // question sur deux — un passage sur trois.
+        //
+        // On VÉRIFIE donc que le clic a produit son effet, et l'on réessaie
+        // jusqu'à trois fois en relisant le DOM à chaque fois.
+        let passe = false;
+        for (let essai = 0; essai < 3 && !passe; essai++) {
+            const touche = await eleve.evaluate((r) => {
+                const el = [...document.querySelectorAll('.bubble, .choice, button, [data-value]')]
+                    .find(x => (x.textContent || '').trim() === r || x.getAttribute('data-value') === r);
+                if (!el) return false;
+                el.click();
+                return true;
+            }, rep);
+            if (!touche) { await eleve.waitForTimeout(400); continue; }
+            passe = await eleve.waitForFunction((a) => {
+                const it = window.__r && window.__r.session && window.__r.session.item;
+                return !it || String(it.id || it.prompt || it.answer) !== a;
+            }, avant, { timeout: 6000 }).then(() => true).catch(() => false);
+        }
     }
     await eleve.waitForTimeout(1500);
     await eleve.evaluate(() => { if (window.__r && window.__r.finish) window.__r.finish(true); });
