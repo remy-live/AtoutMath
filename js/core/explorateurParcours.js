@@ -162,6 +162,89 @@ export function enBref(r) {
     return bouts.join(' · ');
 }
 
+/**
+ * CE QUE MONTRE L'EXPLORATEUR, SANS SAVOIR OÙ IL EST DESSINÉ.
+ *
+ * Rémy, après avoir vu la popup : « non, je voyais cela comme un explorateur
+ * intégré, un peu comme les exercices dans le tiroir de gauche ».
+ *
+ * L'EXPLORATEUR DESCEND DONC DANS LE TIROIR, et cette fonction est ce qui
+ * rendait le déménagement risqué : le choix des sections — chercher, ranger par
+ * date, ranger par dossier — était écrit AU MILIEU du dessin. Le sortir d'abord
+ * permet de le prouver une fois, puis de le dessiner où l'on veut.
+ *
+ * TROIS ÉTATS, ET LEUR ORDRE DE PRIORITÉ EST UNE DÉCISION. Chercher passe
+ * avant tout le reste : quand on tape un nom, on ne veut plus ni dossiers ni
+ * sections, on veut la liste de ce qui correspond. Le rangement choisi ne
+ * reprend la main qu'une fois le champ vidé.
+ *
+ * ON NE DÉPOSE PAS DANS UNE LISTE TRIÉE PAR DATE. Une section porte `depot`
+ * seulement quand y faire glisser un parcours veut dire quelque chose — un
+ * dossier, ou la racine. Dans « derniers modifiés », la place d'un parcours
+ * est décidée par l'horloge : l'y lâcher ne rangerait rien, et le laisser
+ * croire serait pire que de l'interdire.
+ *
+ * @param {Array}  entrees  state.teacherPaths
+ * @param {Array}  dossiers state.teacherFolders
+ * @param {object} opts     { tri: 'recent'|'dossiers', recherche, resumeur }
+ */
+export function vueDeLExplorateur(entrees, dossiers, opts = {}) {
+    const tri = opts.tri === 'dossiers' ? 'dossiers' : 'recent';
+    const recherche = String(opts.recherche || '').trim();
+    const resumeur = typeof opts.resumeur === 'function'
+        ? opts.resumeur
+        : (p) => resumeDeParcours(p);
+    const tous = (entrees || []).map(resumeur);
+
+    if (!tous.length && !(dossiers || []).length) {
+        return { mode: 'vide', sections: [], total: 0, message: 'Aucun parcours enregistré.' };
+    }
+
+    if (recherche) {
+        const trouves = derniersEdites(chercher(tous, recherche));
+        if (!trouves.length) {
+            return {
+                mode: 'recherche', sections: [], total: 0,
+                message: `Aucun parcours ne porte « ${recherche} » dans son nom.`
+            };
+        }
+        return {
+            mode: 'recherche', total: trouves.length,
+            sections: [{
+                id: 'recherche', depot: null, dossier: false,
+                titre: `${trouves.length} trouvé${trouves.length > 1 ? 's' : ''}`,
+                parcours: trouves
+            }]
+        };
+    }
+
+    if (tri === 'recent') {
+        return {
+            mode: 'recent', total: tous.length,
+            sections: [{
+                id: 'recent', depot: null, dossier: false,
+                titre: 'Du plus récemment modifié',
+                parcours: derniersEdites(tous)
+            }]
+        };
+    }
+
+    // PAR DOSSIER — ET DANS CHAQUE DOSSIER, LES DERNIERS MODIFIÉS D'ABORD. Un
+    // dossier rangé dans l'ordre où l'on y a déposé les parcours redemande au
+    // professeur de se souvenir de cet ordre-là ; il n'y a aucune raison que
+    // la règle change d'une vue à l'autre.
+    const sections = (dossiers || []).map(f => ({
+        id: f.id, depot: f.id, dossier: true, titre: f.name,
+        parcours: derniersEdites(tous.filter(r => r.dossier === f.id)),
+        vide: 'Dossier vide (glissez des parcours ici)'
+    }));
+    sections.push({
+        id: 'root', depot: 'root', dossier: false, titre: 'Parcours (racine)',
+        parcours: derniersEdites(tous.filter(r => !r.dossier || r.dossier === 'root'))
+    });
+    return { mode: 'dossiers', sections, total: tous.length };
+}
+
 /** Le titre d'un exercice, ou rien — jamais son identifiant déguisé en titre. */
 function titreDExercice(id, nommer) {
     if (!id) return '';

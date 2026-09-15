@@ -3354,31 +3354,65 @@ body.classe-ouverte #bottom-nav { display: none !important; }
    Rémy : « l'explorateur de parcours va vite avoir ses limites. Il faudrait un
    explorateur avec les derniers parcours édités […] sobre, avec la date de
    modif », puis, la première version vue : « évite la flèche, fais un mode plus
-   compact, avoir moins de marge ».
+   compact, avoir moins de marge », puis enfin, la popup sous les yeux : « non,
+   je voyais cela comme un explorateur intégré, un peu comme les exercices dans
+   le tiroir de gauche ».
 
-   IL AVAIT RAISON DEUX FOIS. La flèche dépliait un panneau À CÔTÉ de la ligne
-   et non dessous — `.path-browser-item` est en `display: flex`, et j'y avais
-   ajouté un second enfant : il s'est rangé en colonne voisine, puis il est
-   sorti de la fenêtre. Et même réparée, elle n'avait pas sa place ici : une
-   popup est faite pour une décision qu'on prend et qu'on quitte, pas pour un
-   lieu où l'on reste à comparer.
+   IL A EU RAISON LES TROIS FOIS, ET LA TROISIÈME EXPLIQUE LES DEUX AUTRES.
+   Une popup est faite pour une décision qu'on prend et qu'on quitte ; elle
+   recouvrait le parcours en construction et se refermait à chaque chargement.
+   Le tiroir, lui, est un LIEU : on y reste, on compare, on range. C'est ce que
+   demandaient déjà « moins de marge » et « pas de flèche » — un endroit qu'on
+   balaie des yeux, pas une fiche qu'on ouvre.
 
-   ON COMPACTE DONC, ET ON NE DÉPLIE RIEN. Le nom, ce qu'il contient, depuis
-   quand : une ligne qu'on balaie. À cinquante parcours, ce qui compte est
-   combien on en voit d'un coup — pas ce qu'on peut ouvrir. */
+   ET LA COLONNE EST ÉTROITE : 320 px, 250 sur petit écran. Tout ce qui tenait
+   sur une ligne de 940 px s'empile ici. Ce n'est pas une perte — c'est ce qui
+   rend la ligne lisible sur téléphone, où le même tiroir monte du bas. */
+
+/* Les deux contenus du tiroir : le catalogue, et les parcours. */
+.tiroir-onglets {
+    display: flex; gap: 4px; padding: 8px 10px 0;
+    flex-shrink: 0;
+}
+.tiroir-onglet {
+    flex: 1 1 0; font: inherit; font-size: .84rem; font-weight: 700;
+    cursor: pointer; padding: 8px 6px; border-radius: 9px 9px 0 0;
+    border: 1px solid transparent; border-bottom: none;
+    background: none; color: var(--text-muted);
+}
+.tiroir-onglet:hover { color: var(--text-main); }
+.tiroir-onglet--actif {
+    background: var(--bg-panel); border-color: var(--border);
+    color: var(--primary);
+}
+/* Le panneau visible prend toute la hauteur restante et défile seul : c'est ce
+   qui garde la barre de recherche en place pendant qu'on parcourt la liste. */
+.tiroir-panneau { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+/* `display: flex` BAT L'ATTRIBUT `hidden`. Le navigateur cache un élément
+   `hidden` par une règle de sa feuille à lui — la moins prioritaire de
+   toutes — et n'importe quel `display` écrit ici la renverse. Mesuré : les
+   deux panneaux s'affichaient l'un sous l'autre, le catalogue en haut et les
+   parcours écrasés en bas, alors que le JS avait bien posé `hidden`. */
+.tiroir-panneau[hidden] { display: none; }
+#tiroir-parcours { padding: 10px; gap: 8px; }
+
 .pb-barre {
-    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-    margin: 0 0 10px;
+    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+    flex-shrink: 0;
 }
 .pb-chercher {
-    flex: 1 1 200px; min-width: 0; font: inherit; font-size: .86rem;
+    flex: 1 1 100%; min-width: 0; font: inherit; font-size: .86rem;
     padding: 6px 10px; border-radius: 8px;
     border: 1px solid var(--border); background: var(--bg-app); color: var(--text-main);
 }
-.pb-tris { display: flex; gap: 4px; flex-shrink: 0; }
+.pb-chercher:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.pb-tris { display: flex; gap: 4px; width: 100%; }
 .pb-tri {
-    font: inherit; font-size: .76rem; font-weight: 600; cursor: pointer;
-    padding: 6px 10px; border-radius: 8px;
+    flex: 1 1 0; font: inherit; font-size: .74rem; font-weight: 600; cursor: pointer;
+    padding: 5px 6px; border-radius: 8px; white-space: nowrap;
     border: 1px solid var(--border); background: var(--bg-app); color: var(--text-muted);
 }
 .pb-tri--actif {
@@ -3386,81 +3420,93 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
     color: var(--primary);
 }
+/* « + Dossier » n'est pas un rangement : il agit. Il ne prend donc jamais
+   l'état actif, et se tient un peu en retrait de ses deux voisins. */
+.pb-tri--neuf { flex: 0 0 auto; color: var(--text-main); }
 
-/* LE DÉGRAISSAGE. Les trois niveaux d'emboîtement — la liste, la section, la
-   fiche — portaient chacun leur marge : 10 + 15 + 12 px de padding et 8 px
-   entre les fiches. Sur une fenêtre de 700 px de haut, on voyait quatre
-   parcours. On en voit maintenant une dizaine, et c'est tout ce qu'on demande
-   à un explorateur. */
-#path-browser-list { gap: 6px; }
-#path-browser-modal .path-browser-root { padding: 0; }
-#path-browser-modal .path-browser-root-title {
-    font-size: .74rem; font-weight: 800; text-transform: uppercase;
-    letter-spacing: .04em; color: var(--text-muted); margin-bottom: 6px;
+/* LA LISTE DÉFILE, LA BARRE RESTE. Sans cela, chercher demande de remonter —
+   ce qui est exactement le geste qu'on essaie d'épargner. */
+#path-browser-list {
+    flex: 1; min-height: 0; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 10px;
+    padding-right: 2px;
 }
-#path-browser-modal .path-browser-item {
-    padding: 7px 10px; margin-bottom: 4px; border-radius: 8px; gap: 10px;
+#tiroir-parcours .path-browser-root { padding: 0; display: block; }
+#tiroir-parcours .path-browser-root-title {
+    font-size: .7rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--text-muted); margin-bottom: 5px;
 }
-#path-browser-modal .path-browser-name { font-size: .92rem; border-bottom-color: transparent; }
-#path-browser-modal .path-browser-name:focus { border-bottom-color: var(--border); }
-#path-browser-modal .path-browser-sub { font-size: .76rem; margin-top: 1px; }
-#path-browser-modal .path-browser-actions { gap: 5px; }
-/* La liste défile, la barre de recherche reste. Sans cela, chercher demande de
-   remonter — ce qui est exactement le geste qu'on essaie d'épargner. */
-#path-browser-modal #path-browser-list {
-    max-height: 58vh; overflow-y: auto; padding-right: 4px;
+
+/* LA FICHE S'OUVRE EN CLIQUANT DESSUS, comme un exercice du catalogue juste
+   au-dessus. Elle se comporte donc comme lui : elle s'allume au survol et
+   glisse d'un cheveu vers la droite. */
+#tiroir-parcours .path-browser-item {
+    display: flex; align-items: flex-start; gap: 6px;
+    padding: 7px 9px; margin-bottom: 4px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    cursor: pointer; transition: all .18s ease;
 }
-#path-browser-modal .path-folder { padding: 8px 10px; }
-#path-browser-modal .path-folder-body { margin-top: 6px; }
-/* LES BOUTONS COMMANDENT LA HAUTEUR DE LA LIGNE, pas le texte. Trois pastilles
-   rondes de 36 px imposaient 68 px de fiche quand le texte n'en demande que
-   38. On les ramène à la taille d'une ligne de texte : l'explorateur n'est pas
-   l'endroit où l'on vise au doigt, c'est celui où l'on cherche des yeux. */
-#path-browser-modal .path-browser-actions .btn-icon,
-#path-browser-modal .path-browser-actions .game-icon-btn {
-    width: 28px; height: 28px; padding: 4px; box-shadow: none;
+#tiroir-parcours .path-browser-item:hover {
+    border-color: var(--primary); box-shadow: var(--shadow-sm); transform: translateX(2px);
 }
-#path-browser-modal .path-browser-actions .btn-toggle {
-    padding: 4px 11px; font-size: .78rem;
+#tiroir-parcours .path-browser-item:focus-visible {
+    outline: 2px solid var(--primary); outline-offset: 2px;
 }
-#path-browser-modal .path-browser-name { line-height: 1.25; }
-#path-browser-modal .path-browser-sub { line-height: 1.2; }
-/* LE NOM ET LE RÉSUMÉ SUR LA MÊME LIGNE. Empilés, ils faisaient 52 px à eux
-   seuls — mesuré — et commandaient toute la hauteur de la fiche. Côte à côte,
-   ils en font vingt : « Fractions — 3 activités · 14 questions · modifié
-   aujourd'hui » se lit d'un trait, et l'on passe de sept parcours visibles à
-   une quinzaine. Ils repassent l'un sous l'autre quand la largeur manque. */
-@media (min-width: 701px) {
-    #path-browser-modal .path-browser-item > div:first-child {
-        display: flex; align-items: baseline; gap: 10px; flex-wrap: nowrap;
-        min-width: 0; flex: 1;
+/* CELUI QU'ON ÉDITE SE DISTINGUE. Le tiroir reste ouvert à côté du parcours :
+   sans repère, on ne sait plus lequel des cinquante noms est celui qu'on a
+   sous les yeux à droite. */
+#tiroir-parcours .path-browser-item--ouvert {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 9%, var(--bg-panel));
+}
+#tiroir-parcours .path-browser-item > div:first-child { flex: 1; min-width: 0; }
+#tiroir-parcours .path-browser-name {
+    font-size: .88rem; font-weight: 600; line-height: 1.25;
+    border-bottom-color: transparent;
+    overflow-wrap: anywhere;
+}
+#tiroir-parcours .path-browser-name:focus {
+    border-bottom-color: var(--border); outline: none;
+}
+/* LE RÉSUMÉ TIENT SUR UNE LIGNE, ET S'ABRÈGE PLUTÔT QUE DE PASSER À LA SUIVANTE.
+   Il finit par « modifié hier », qu'on devine ; le nom, lui, ne se devine pas
+   et garde donc le droit de passer à la ligne. */
+#tiroir-parcours .path-browser-sub {
+    font-size: .73rem; line-height: 1.25; margin-top: 1px; color: var(--text-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* LES BOUTONS NE COMMANDENT PAS LA HAUTEUR DE LA LIGNE, le texte le fait.
+   Des pastilles de 36 px imposaient 68 px de fiche quand le texte n'en demande
+   que 38 : l'explorateur n'est pas l'endroit où l'on vise au doigt, c'est
+   celui où l'on cherche des yeux. */
+#tiroir-parcours .path-browser-actions { gap: 3px; flex-shrink: 0; }
+/* PARTAGER ET SUPPRIMER NE S'AFFICHENT QU'AU SURVOL, à la souris. Cinquante
+   corbeilles rouges alignées à droite, ce n'est pas « sobre » : ce sont deux
+   gestes rares qui criaient plus fort que les noms qu'on vient chercher. Au
+   doigt, où il n'y a pas de survol, elles restent visibles — un bouton qui
+   n'apparaît jamais n'existe pas.
+   ET ELLES NE CLIQUENT PAS TANT QU'ELLES NE SE VOIENT PAS : une corbeille
+   transparente qui supprime quand même est pire que pas de corbeille. */
+@media (hover: hover) and (pointer: fine) {
+    #tiroir-parcours .path-browser-actions {
+        opacity: 0; pointer-events: none; transition: opacity .15s ease;
     }
-    /* LE NOM NE CÈDE PAS LE PREMIER. Les deux étant élastiques, le résumé —
-       plus long — raflait la place et rognait le nom à cent pixels : « Un
-       parcours au nom plu… », mesuré, alors qu'il restait la moitié de la
-       ligne. Or c'est le NOM qu'on cherche. Il garde donc sa largeur
-       naturelle jusqu'à la moitié de la ligne, et c'est le résumé qui
-       s'abrège — il finit par « modifié hier », qu'on devine. */
-    #path-browser-modal .path-browser-name {
-        flex: 0 0 auto; max-width: 52%;
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    #path-browser-modal .path-browser-sub {
-        flex: 1 1 0; min-width: 0;
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    #tiroir-parcours .path-browser-item:hover .path-browser-actions,
+    #tiroir-parcours .path-browser-item:focus-within .path-browser-actions {
+        opacity: 1; pointer-events: auto;
     }
 }
-/* SUR TÉLÉPHONE, ILS RESTENT L'UN SOUS L'AUTRE. À 390 px, une ligne à deux
-   ne laisse que cent pixels au nom : la compacité n'a plus d'objet si l'on ne
-   peut plus lire ce qu'on cherche. */
-/* LA FENÊTRE ÉTAIT TROP ÉTROITE POUR DEUX COLONNES. À 640 px, mettre le nom et
-   le résumé sur une ligne rognait « Équations du premier degré » — un nom
-   parfaitement ordinaire. Un explorateur qui coupe les noms qu'on cherche ne
-   sert à rien ; on lui donne la largeur qu'il demande. */
-#path-browser-modal .modal-panel-md { width: min(940px, 94vw); max-width: 94vw; }
-@media (min-width: 701px) {
-    #path-browser-modal .path-browser-name { max-width: 62%; }
+#tiroir-parcours .path-browser-actions .btn-icon,
+#tiroir-parcours .path-browser-actions .game-icon-btn {
+    width: 26px; height: 26px; padding: 4px; box-shadow: none;
 }
+
+/* Les dossiers : un cadre léger, et une zone de dépôt qui s'allume. */
+#tiroir-parcours .path-folder { padding: 7px 8px; }
+#tiroir-parcours .path-folder-body { margin-top: 5px; }
+#tiroir-parcours .path-folder-name { font-size: .82rem; }
+#tiroir-parcours .path-folder-empty { font-size: .74rem; }
+
 
 /* ─────────────── LA SÉANCE EN COURS, DITE PLUTÔT QUE DEVINÉE ──────────────
    Rémy : « Comment sait-on qu'une classe fait un parcours ? […] est-ce qu'un

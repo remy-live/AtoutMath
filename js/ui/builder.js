@@ -26,8 +26,9 @@ import {
 } from '../core/dureeParcours.js';
 import { natureDe } from '../core/duree.js';
 import {
-    resumeDeParcours, derniersEdites, chercher, quandLisible, enBref
+    resumeDeParcours, vueDeLExplorateur, quandLisible, enBref
 } from '../core/explorateurParcours.js';
+import { initTiroirOnglets, montrerPanneau } from './tiroirParcours.js';
 import { chapitresDe } from '../core/chapitres.js';
 import {
     renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide
@@ -774,6 +775,11 @@ export function renderTeacherPath() {
     if (!pathBox) return;
     retenirLEtat();
     rafraichirLesMesures();
+    // Quatre endroits désélectionnent une étape — la supprimer, annuler, refaire,
+    // ouvrir un autre parcours — et tous les quatre redessinent ensuite. Le
+    // volet se raccorde donc ici, une fois, plutôt qu'en quatre exemplaires
+    // dont l'un finirait par manquer.
+    accorderLeVolet();
 
     // ON RETIRE EN VÉRIFIANT LE PARENT. Un champ de la barre qui perd le focus
     // pendant qu'on redessine peut avoir déjà emporté son bloc : `remove()`
@@ -1297,6 +1303,37 @@ function stepRow(step, index, policy) {
 
 // --- Sélection et propriétés ------------------------------------------------
 
+/**
+ * LES PARAMÈTRES NE SERVENT PAS TOUT LE TEMPS — ILS NE PRENNENT DONC PAS LA
+ * PLACE TOUT LE TEMPS.
+ *
+ * Rémy : « les paramètres ne servent pas tout le temps », « on pourrait voir
+ * pour utiliser l'espace ».
+ *
+ * Trois cent trente pixels étaient réservés à droite en permanence pour y
+ * afficher, la plupart du temps, la phrase « Sélectionnez une activité ». Un
+ * sixième de l'écran pour une invitation à cliquer ailleurs. Le volet se
+ * montre désormais quand une étape est choisie, et rend la place au parcours
+ * dès qu'on le referme — le même mécanisme qu'en tablette, où il coulissait
+ * déjà, mais sans recouvrir : sur grand écran, il pousse.
+ */
+export function fermerProprietes() {
+    const panel = document.getElementById('builder-properties-panel');
+    if (!panel) return;
+    panel.classList.remove('mob-open');
+    panel.dataset.pour = '';
+    // On vide : un panneau qui ressurgit avec les réglages de l'étape
+    // précédente le temps d'une image donne l'impression d'avoir cliqué à côté.
+    panel.innerHTML = '';
+}
+
+/** Refermer le volet des étapes, et lui seul, quand plus rien n'est choisi. */
+function accorderLeVolet() {
+    const panel = document.getElementById('builder-properties-panel');
+    if (!panel || panel.dataset.pour !== 'etape') return;
+    if (!selectedStepId) fermerProprietes();
+}
+
 export function selectStep(stepId) {
     const step = state.currentPath.steps.find(s => s.stepId === stepId);
     if (!step) return;
@@ -1309,9 +1346,13 @@ export function selectStep(stepId) {
         <button id="mob-close-props" class="props-close" aria-label="Fermer les propriétés">✕</button>
         <h3 class="props-title">Propriétés de l'étape</h3>
         <div id="builder-config-content"></div>`;
+    // QUI A OUVERT CE VOLET. Le même panneau sert aussi à « à qui ce parcours est
+    // donné » ; sans cette marque, redessiner le parcours refermerait sous les
+    // doigts du professeur une liste de classes qu'il était en train de cocher.
+    panel.dataset.pour = 'etape';
     panel.classList.add('mob-open');
 
-    const fermerProps = () => panel.classList.remove('mob-open');
+    const fermerProps = () => fermerProprietes();
     const close = document.getElementById('mob-close-props');
     if (close) close.onclick = fermerProps;
     // ON POUSSE CE TIROIR AUSSI. Rémy : « Les tiroirs ne se glissent pas en bas,
@@ -1617,17 +1658,31 @@ function direLEtat(quand) {
 // --- Navigateur de parcours -------------------------------------------------
 
 function initPathBrowser() {
+    initTiroirOnglets(renderPathBrowser);
+
+    // LE BOUTON « dossier » DE LA BARRE NE FAIT PLUS APPARAÎTRE UNE FENÊTRE :
+    // il AMÈNE au tiroir. Le geste est le même pour le professeur, et il ne
+    // perd plus son parcours de vue en cherchant à en ouvrir un autre. Sur
+    // téléphone, où le tiroir est rabattu, on le déplie aussi : y conduire
+    // sans l'ouvrir ne montrerait qu'une poignée.
     const btnOpen = document.getElementById('btn-open-path-browser');
-    const modal = document.getElementById('path-browser-modal');
-    if (btnOpen && modal) {
-        btnOpen.onclick = () => { renderPathBrowser(); modal.style.display = 'flex'; };
-        const close = document.getElementById('btn-close-path-browser');
-        if (close) close.onclick = () => { modal.style.display = 'none'; };
+    if (btnOpen) {
+        btnOpen.onclick = () => {
+            montrerPanneau('parcours', { ouvrir: true });
+            renderPathBrowser();
+        };
     }
 
     const btnFolder = document.getElementById('btn-new-folder');
     if (btnFolder) {
-        btnFolder.onclick = () => { state.addTeacherFolder('Nouveau dossier'); renderPathBrowser(); };
+        btnFolder.onclick = () => {
+            // UN DOSSIER NEUF NE SE VOIT PAS DANS « derniers modifiés » : cette
+            // vue-là ne montre que des parcours. On bascule donc sur le
+            // rangement par dossier, sinon le bouton paraît ne rien faire.
+            state.addTeacherFolder('Nouveau dossier');
+            reglerLeTri('dossiers');
+            renderPathBrowser();
+        };
     }
 }
 
@@ -1647,71 +1702,106 @@ function initPathBrowser() {
  */
 let pbTri = 'recent';
 let pbRecherche = '';
+
+/** Changer de rangement, boutons compris : deux états qui divergent mentent. */
+function reglerLeTri(tri) {
+    pbTri = tri;
+    boutonsDeTri().forEach(b => b.classList.toggle('pb-tri--actif', b.dataset.tri === tri));
+}
+
+/** LES BOUTONS DE TRI DE L'EXPLORATEUR, ET EUX SEULS.
+ *  `data-tri` sert aussi aux en-têtes de tableau de la revue : chercher dans
+ *  tout le document attachait à ces colonnes un clic qui redessinait
+ *  l'explorateur. On borne la recherche à la barre du tiroir. */
+function boutonsDeTri() {
+    const barre = document.querySelector('#tiroir-parcours .pb-tris');
+    return barre ? Array.from(barre.querySelectorAll('[data-tri]')) : [];
+}
+
 export function renderPathBrowser() {
     const list = document.getElementById('path-browser-list');
     if (!list) return;
     brancherLaBarre();
     list.innerHTML = '';
 
-    if (!state.teacherPaths.length && !(state.teacherFolders || []).length) {
-        list.innerHTML = '<div class="empty-state-msg">Aucun parcours enregistré.</div>';
-        return;
-    }
-
-    // CHERCHER PASSE AVANT TOUT LE RESTE. Quand on tape un nom, on ne veut plus
-    // de dossiers ni de sections : on veut la liste de ce qui correspond.
-    if (pbRecherche.trim()) {
-        const trouves = chercherParcours(state.teacherPaths, pbRecherche);
-        if (!trouves.length) {
-            list.innerHTML = `<div class="empty-state-msg">Aucun parcours ne porte
-                « ${pbRecherche.replace(/[<>&]/g, '')} » dans son nom.</div>`;
-            return;
-        }
-        const bloc = document.createElement('div');
-        bloc.className = 'path-browser-root';
-        bloc.innerHTML = `<div class="path-browser-root-title">${trouves.length} trouvé${
-            trouves.length > 1 ? 's' : ''}</div>`;
-        trouves.forEach(p => bloc.appendChild(pathItem(p)));
-        list.appendChild(bloc);
-        return;
-    }
-
-    if (pbTri === 'recent') {
-        const ranges = derniersEdites(
-            state.teacherPaths.map(p => resumeDeParcours(p, normalizePath, getExerciseById)));
-        const bloc = document.createElement('div');
-        bloc.className = 'path-browser-root';
-        bloc.innerHTML = '<div class="path-browser-root-title">Du plus récemment modifié</div>';
-        ranges.forEach(r => {
-            const entree = state.teacherPaths.find(p => p.id === r.id);
-            if (entree) bloc.appendChild(pathItem(entree, r));
-        });
-        list.appendChild(bloc);
-        return;
-    }
-
-    (state.teacherFolders || []).forEach(folder => {
-        list.appendChild(folderBlock(folder));
+    const vue = vueDeLExplorateur(state.teacherPaths, state.teacherFolders, {
+        tri: pbTri,
+        recherche: pbRecherche,
+        resumeur: (p) => resumeDeParcours(p, normalizePath, getExerciseById)
     });
 
-    const rootPaths = state.teacherPaths.filter(p => !p.folderId || p.folderId === 'root');
-    const rootBlock = document.createElement('div');
-    rootBlock.className = 'path-browser-root';
-    rootBlock.ondragover = dragOver;
-    rootBlock.ondragleave = dragLeave;
-    rootBlock.ondrop = (e) => dropOnFolder(e, 'root');
-    rootBlock.innerHTML = '<div class="path-browser-root-title">Parcours (racine)</div>';
-    rootPaths.forEach(p => rootBlock.appendChild(pathItem(p)));
-    list.appendChild(rootBlock);
+    if (!vue.sections.length) {
+        const vide = document.createElement('div');
+        vide.className = 'empty-state-msg';
+        vide.textContent = vue.message || '';
+        list.appendChild(vide);
+        return;
+    }
+
+    vue.sections.forEach(section => list.appendChild(blocDeSection(section)));
 }
 
-/** Les parcours dont le nom correspond, les plus récents d'abord. */
-function chercherParcours(entrees, texte) {
-    const resumes = entrees.map(p => resumeDeParcours(p, normalizePath, getExerciseById));
-    const gardes = new Set(chercher(resumes, texte).map(r => r.id));
-    return derniersEdites(resumes.filter(r => gardes.has(r.id)))
-        .map(r => entrees.find(p => p.id === r.id))
-        .filter(Boolean);
+/** Une section : un dossier, la racine, ou une liste triée qui n'accepte rien. */
+function blocDeSection(section) {
+    const bloc = document.createElement('div');
+    bloc.className = section.dossier ? 'path-folder' : 'path-browser-root';
+
+    // ON NE REND DÉPOSABLE QUE CE QUI RANGE QUELQUE CHOSE. Dans « récents »,
+    // la place d'un parcours est décidée par l'horloge : y lâcher une fiche
+    // ne rangerait rien, et un cadre de dépôt qui s'allume pour rien ment.
+    if (section.depot) {
+        bloc.ondragover = dragOver;
+        bloc.ondragleave = dragLeave;
+        bloc.ondrop = (e) => dropOnFolder(e, section.depot);
+    }
+
+    bloc.appendChild(section.dossier ? teteDeDossier(section) : titreDeSection(section.titre));
+
+    const corps = section.dossier ? document.createElement('div') : bloc;
+    if (section.dossier) corps.className = 'path-folder-body';
+
+    if (!section.parcours.length && section.vide) {
+        const rien = document.createElement('div');
+        rien.className = 'path-folder-empty';
+        rien.textContent = section.vide;
+        corps.appendChild(rien);
+    }
+    section.parcours.forEach(r => {
+        const entree = state.teacherPaths.find(p => p.id === r.id);
+        if (entree) corps.appendChild(pathItem(entree, r));
+    });
+
+    if (section.dossier) bloc.appendChild(corps);
+    return bloc;
+}
+
+function titreDeSection(texte) {
+    const t = document.createElement('div');
+    t.className = 'path-browser-root-title';
+    t.textContent = texte;
+    return t;
+}
+
+function teteDeDossier(section) {
+    const head = document.createElement('div');
+    head.className = 'path-folder-head';
+
+    const name = document.createElement('div');
+    name.className = 'path-folder-name';
+    name.contentEditable = 'true';
+    name.textContent = section.titre;
+    name.onblur = () => state.renameTeacherFolder(section.id, name.textContent.trim());
+    name.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } };
+
+    const del = iconButton('Supprimer le dossier', ICONS.trash, 'danger');
+    del.onclick = () => window.appConfirm('Suppression',
+        'Supprimer ce dossier ? Les parcours reviennent à la racine.', () => {
+            state.removeTeacherFolder(section.id);
+            renderPathBrowser();
+        });
+
+    head.append(name, del);
+    return head;
 }
 
 let barreBranchee = false;
@@ -1721,49 +1811,9 @@ function brancherLaBarre() {
     if (!champ) return;
     barreBranchee = true;
     champ.oninput = () => { pbRecherche = champ.value; renderPathBrowser(); };
-    document.querySelectorAll('[data-tri]').forEach(b => {
-        b.onclick = () => {
-            pbTri = b.dataset.tri;
-            document.querySelectorAll('[data-tri]').forEach(x =>
-                x.classList.toggle('pb-tri--actif', x === b));
-            renderPathBrowser();
-        };
+    boutonsDeTri().forEach(b => {
+        b.onclick = () => { reglerLeTri(b.dataset.tri); renderPathBrowser(); };
     });
-}
-
-function folderBlock(folder) {
-    const box = document.createElement('div');
-    box.className = 'path-folder';
-    box.ondragover = dragOver;
-    box.ondragleave = dragLeave;
-    box.ondrop = (e) => dropOnFolder(e, folder.id);
-
-    const head = document.createElement('div');
-    head.className = 'path-folder-head';
-
-    const name = document.createElement('div');
-    name.className = 'path-folder-name';
-    name.contentEditable = 'true';
-    name.textContent = folder.name;
-    name.onblur = () => state.renameTeacherFolder(folder.id, name.textContent.trim());
-    name.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } };
-
-    const del = iconButton('Supprimer le dossier', ICONS.trash, 'danger');
-    del.onclick = () => window.appConfirm('Suppression', 'Supprimer ce dossier ? Les parcours reviennent à la racine.', () => {
-        state.removeTeacherFolder(folder.id);
-        renderPathBrowser();
-    });
-
-    head.append(name, del);
-    box.appendChild(head);
-
-    const inner = document.createElement('div');
-    inner.className = 'path-folder-body';
-    const paths = state.teacherPaths.filter(p => p.folderId === folder.id);
-    if (!paths.length) inner.innerHTML = '<div class="path-folder-empty">Dossier vide (glissez des parcours ici)</div>';
-    paths.forEach(p => inner.appendChild(pathItem(p)));
-    box.appendChild(inner);
-    return box;
 }
 
 function pathItem(p, resume = null) {
@@ -1771,6 +1821,7 @@ function pathItem(p, resume = null) {
     const policy = resolvePolicy(normalized.policy);
     const row = document.createElement('div');
     row.className = 'path-browser-item';
+    row.dataset.parcours = p.id;
     row.draggable = true;
     row.ondragstart = (e) => { e.dataTransfer.setData('text/plain', p.id); row.style.opacity = '0.5'; };
     row.ondragend = () => { row.style.opacity = '1'; };
@@ -1791,10 +1842,22 @@ function pathItem(p, resume = null) {
     // questions manquait, alors que c'est LUI qui dit si la séance tient dans
     // l'heure.
     const r = resume || resumeDeParcours(p, normalizePath, getExerciseById);
+    // LA DATE PASSE DEVANT, ET « entraînement » DISPARAÎT. Mesuré dans le
+    // tiroir de 320 px : « 3 activités · 14 questions · 1 jeu · entraîne… » —
+    // la ligne se coupait juste avant la date, c'est-à-dire avant la seule
+    // chose que Rémy avait nommément demandée (« avec la date de modif »).
+    //
+    // « entraînement » EST LE CAS ORDINAIRE : l'écrire sur quarante-neuf fiches
+    // sur cinquante ne distingue rien. Seule l'évaluation se signale, parce
+    // qu'elle change ce que la séance veut dire. Et l'on ne répète pas
+    // « modifié » : « hier » ne peut pas se lire autrement.
     const sub = document.createElement('div');
     sub.className = 'path-browser-sub';
-    sub.textContent = `${enBref(r)} · ${isEvaluation(policy) ? 'évaluation' : 'entraînement'}`
-        + (r.modifieLe ? ` · modifié ${quandLisible(r.modifieLe)}` : '');
+    sub.textContent = [
+        isEvaluation(policy) ? 'évaluation' : '',
+        r.modifieLe ? quandLisible(r.modifieLe) : '',
+        enBref(r)
+    ].filter(Boolean).join(' · ');
 
     info.append(name, sub);
 
@@ -1811,18 +1874,36 @@ function pathItem(p, resume = null) {
         }
     };
 
-    const load = document.createElement('button');
-    load.className = 'btn-toggle glass-btn primary btn-toggle--sm';
-    load.textContent = 'Charger';
-    load.onclick = () => {
+    // ON OUVRE UN PARCOURS EN CLIQUANT DESSUS — comme un exercice du catalogue
+    // juste au-dessus, dans le même tiroir. Le bouton « Charger » disparait :
+    // il pesait soixante-dix pixels dans une colonne qui en fait trois cents,
+    // et il demandait de viser ce que la fiche entière offrait déjà.
+    //
+    // RIEN NE SE PERD EN OUVRANT. Le parcours en cours d'édition est enregistré
+    // à chaque modification — c'est ce que dit « Enregistré 14:32 » en haut. Un
+    // clic de trop se répare en rouvrant l'autre, et le tiroir est resté ouvert
+    // pour ça.
+    const ouvrir = () => {
         state.currentPathId = p.id;
         state.currentPath = normalizePath(p.data, p.name);
         selectedStepId = null;
         const input = document.getElementById('path-name-input');
         if (input) input.value = state.currentPath.name;
         renderTeacherPath();
-        document.getElementById('path-browser-modal').style.display = 'none';
+        marquerOuvert(p.id);
     };
+    row.onclick = (e) => {
+        // Le nom se renomme sur place et les boutons ont leur propre rôle :
+        // un clic qui les vise ne doit pas ouvrir le parcours par-dessus.
+        if (e.target.closest('.path-browser-name, .path-browser-actions')) return;
+        ouvrir();
+    };
+    row.tabIndex = 0;
+    row.onkeydown = (e) => {
+        if (e.target !== row) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ouvrir(); }
+    };
+    row.title = `Ouvrir « ${p.name} »`;
 
     const del = iconButton('Supprimer', ICONS.trash, 'danger');
     del.onclick = () => window.appConfirm('Suppression', 'Supprimer ce parcours définitivement ?', () => {
@@ -1830,9 +1911,20 @@ function pathItem(p, resume = null) {
         renderPathBrowser();
     });
 
-    actions.append(share, load, del);
+    actions.append(share, del);
     row.append(info, actions);
+    // CELUI QU'ON EST EN TRAIN D'ÉDITER SE DISTINGUE DES AUTRES. Le tiroir
+    // reste ouvert à côté du parcours : sans repère, on ne sait plus lequel
+    // des cinquante noms de la liste est celui qu'on a sous les yeux à droite.
+    if (p.id === state.currentPathId) row.classList.add('path-browser-item--ouvert');
     return row;
+}
+
+/** Souligner le parcours ouvert, sans tout redessiner. */
+function marquerOuvert(id) {
+    document.querySelectorAll('#path-browser-list .path-browser-item').forEach(el => {
+        el.classList.toggle('path-browser-item--ouvert', el.dataset.parcours === id);
+    });
 }
 
 

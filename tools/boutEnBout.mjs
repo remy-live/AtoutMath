@@ -237,7 +237,13 @@ for (const i of [0, 1]) {
     // Un élève, lui, ne compte pas : il répond tant qu'on lui pose une question.
     // On fait pareil, avec un plafond qui n'est là que pour ne pas tourner sans
     // fin — et si on l'atteint, on le DIT.
+    //
+    // ET QUAND ON S'ARRÊTE, ON DIT POURQUOI. Le journal disait « resolues: 1,
+    // attendues: 2 » sans jamais dire par où la boucle était sortie : étape
+    // close, plus de question posée, ou plafond atteint. Trois causes, trois
+    // corrections différentes — et aucun moyen de choisir.
     const MAX_QUESTIONS = 12;
+    let sortiePar = 'plafond';
     for (let q = 0; q < MAX_QUESTIONS; q++) {
         // L'étape est close : plus rien à faire ici.
         const close = await eleve.evaluate(async (k) => {
@@ -245,15 +251,28 @@ for (const i of [0, 1]) {
             const p = state.studentPath;
             return !!(p && (p.completed || []).includes('sc_' + k));
         }, i).catch(() => false);
-        if (close) break;
+        if (close) { sortiePar = 'etape close'; break; }
         // ENTRE DEUX QUESTIONS, `session.item` EST NUL PENDANT UN INSTANT.
         // Lire à ce moment-là et conclure « il n'y a plus de question » était
         // la dernière source de hasard : la seconde question de l'étape était
         // sautée une fois sur trois, et l'étape ne se clôturait jamais.
-        const encore = await eleve.waitForFunction(
+        //
+        // ET CE SILENCE-LÀ DURE PARFOIS PLUS DE DIX SECONDES. Sous charge — deux
+        // navigateurs, un serveur PHP et la suite d'essais sur la même machine
+        // —, construire la question suivante prend son temps ; la boucle
+        // concluait « il n'y a plus de question » et sortait au milieu de
+        // l'étape. On ne sort donc qu'après DEUX silences consécutifs, en
+        // vérifiant entre les deux que l'étape ne s'est pas close entre-temps.
+        let encore = await eleve.waitForFunction(
             () => !!(window.__r && window.__r.session && window.__r.session.item),
             null, { timeout: 10000 }).then(() => true).catch(() => false);
-        if (!encore) break;
+        if (!encore) {
+            await eleve.waitForTimeout(1200);
+            encore = await eleve.waitForFunction(
+                () => !!(window.__r && window.__r.session && window.__r.session.item),
+                null, { timeout: 10000 }).then(() => true).catch(() => false);
+        }
+        if (!encore) { sortiePar = 'plus de question pos\u00e9e'; break; }
         const avant = await eleve.evaluate(() => {
             const it = window.__r.session.item;
             return String(it.id || it.prompt || it.answer);
@@ -271,9 +290,26 @@ for (const i of [0, 1]) {
         // jusqu'à trois fois en relisant le DOM à chaque fois.
         let passe = false;
         for (let essai = 0; essai < 3 && !passe; essai++) {
+            // ON CHERCHE LA BULLE AVANT DE CHERCHER UN BOUTON — et c'est ce qui
+            // restait de hasard, mesuré : le journal disait « sortiePar:
+            // plafond, resolues: 0 » à la deuxième étape, une fois sur quatre.
+            //
+            // `querySelectorAll('.bubble, .choice, button, [data-value]')` rend
+            // les éléments dans l'ordre du DOCUMENT, pas dans l'ordre où on les
+            // a demandés. Le pavé tactile est écrit avant les réponses : quand
+            // la bonne réponse tenait sur un chiffre — « 7 » —, le clic tombait
+            // sur la TOUCHE 7 du pavé, qui écrit sans valider. La question ne
+            // changeait pas, on réessayait douze fois la même chose, et l'étape
+            // finissait à zéro question sur deux. Une réponse à deux chiffres
+            // passait, elle : d'où le « une fois sur quatre ».
             const touche = await eleve.evaluate((r) => {
-                const el = [...document.querySelectorAll('.bubble, .choice, button, [data-value]')]
-                    .find(x => (x.textContent || '').trim() === r || x.getAttribute('data-value') === r);
+                const porte = (x) => (x.textContent || '').trim() === r
+                    || x.getAttribute('data-value') === r;
+                const reponses = [...document.querySelectorAll('.bubble, .choice, [data-value]')]
+                    .filter(porte);
+                const el = reponses[0]
+                    || [...document.querySelectorAll('button')].filter(porte)
+                        .find(x => !x.closest('.pav-tactile'));
                 if (!el) return false;
                 el.click();
                 return true;
@@ -315,7 +351,10 @@ for (const i of [0, 1]) {
     // tombe au hasard ne garde plus rien : on cesse de le croire, et c'est le
     // jour où il a raison qu'on l'ignore. On relève donc de quoi trancher entre
     // « l'étape ne s'est pas close » et « quelqu'un a remis le parcours à zéro ».
-    journalDesEtapes.push(await eleve.evaluate(async (k) => {
+    // `sortiePar` se lit ici, du côté de Node : la boucle est à nous, pas à la
+    // page — le passer dans `evaluate` reviendrait à demander au navigateur ce
+    // que nous seuls savons.
+    journalDesEtapes.push({ sortiePar, ...await eleve.evaluate(async (k) => {
         const { state } = await import('./js/core/state.js');
         const r = window.__r;
         return {
@@ -327,7 +366,7 @@ for (const i of [0, 1]) {
             seuil: r && r.step ? r.step.threshold : null,
             meneurVivant: !!state.activeSequenceRunner
         };
-    }, i));
+    }, i) });
     await eleve.evaluate(() => { if (window.__r && window.__r.finish) window.__r.finish(true); });
     await eleve.waitForTimeout(500);
 }

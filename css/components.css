@@ -295,7 +295,6 @@ body.mobile-view #toast-container {
 @media (max-width: 700px) {
     #toast-container { left: 12px; right: 12px; align-items: center; }
 }
-#btn-new-folder { padding: 4px 8px; font-size: 0.9rem; }
 
 
 /* --- « CE TABLEAU DÉFILE » -------------------------------------

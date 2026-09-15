@@ -15,7 +15,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    quandLisible, instantDe, resumeDeParcours, derniersEdites, chercher, enBref
+    quandLisible, instantDe, resumeDeParcours, derniersEdites, chercher, enBref,
+    vueDeLExplorateur
 } from '../js/core/explorateurParcours.js';
 
 const JOUR = 86400000;
@@ -201,4 +202,86 @@ test('une recherche vide rend tout, elle ne cache rien', () => {
     assert.equal(chercher(l, '').length, 1);
     assert.equal(chercher(l, '   ').length, 1);
     assert.equal(chercher(null, 'x').length, 0);
+});
+
+// ─────────────────────────────── CE QUE MONTRE L'EXPLORATEUR ────────────────
+//
+// Rémy, après avoir vu la popup : « non, je voyais cela comme un explorateur
+// intégré, un peu comme les exercices dans le tiroir de gauche ».
+//
+// L'explorateur a changé d'endroit — il descend dans le tiroir de gauche. Ce
+// qu'il MONTRE ne doit pas avoir changé en déménageant : c'est précisément ce
+// que ces essais tiennent.
+
+const laVue = (o = {}) => vueDeLExplorateur(
+    o.parcours || [], o.dossiers || [],
+    { tri: o.tri, recherche: o.recherche, resumeur: (p) => resumeDeParcours(p) });
+
+const troisParcours = () => [
+    unParcours({ id: 'a', nom: 'Aires', quand: MAINTENANT - 2 * JOUR, dossier: 'd1' }),
+    unParcours({ id: 'b', nom: 'Fractions', quand: MAINTENANT, dossier: 'root' }),
+    unParcours({ id: 'c', nom: 'Équations', quand: MAINTENANT - 9 * JOUR, dossier: 'd1' })
+];
+
+test('CHERCHER PASSE AVANT LE RANGEMENT — une seule liste, pas des dossiers', () => {
+    // Quand on tape un nom, on ne veut plus ni dossiers ni sections : on veut
+    // la liste de ce qui correspond. Même en vue « par dossier ».
+    const v = laVue({ parcours: troisParcours(), dossiers: [{ id: 'd1', name: 'Géométrie' }],
+        tri: 'dossiers', recherche: 'fraction' });
+    assert.equal(v.mode, 'recherche');
+    assert.equal(v.sections.length, 1);
+    assert.deepEqual(v.sections[0].parcours.map(p => p.id), ['b']);
+    assert.equal(v.sections[0].titre, '1 trouvé');
+});
+
+test('une recherche sans réponse le dit avec le mot cherché', () => {
+    const v = laVue({ parcours: troisParcours(), recherche: 'trigonométrie' });
+    assert.equal(v.sections.length, 0);
+    assert.match(v.message, /« trigonométrie »/);
+});
+
+test('ON NE DÉPOSE PAS DANS UNE LISTE TRIÉE PAR DATE', () => {
+    // La place d'un parcours y est décidée par l'horloge : l'y lâcher ne
+    // rangerait rien, et le laisser croire serait pire que de l'interdire.
+    const v = laVue({ parcours: troisParcours(), tri: 'recent' });
+    assert.equal(v.sections.length, 1);
+    assert.equal(v.sections[0].depot, null);
+    assert.deepEqual(v.sections[0].parcours.map(p => p.id), ['b', 'a', 'c']);
+
+    // Les dossiers, eux, acceptent le dépôt — c'est là qu'on range.
+    const d = laVue({ parcours: troisParcours(), dossiers: [{ id: 'd1', name: 'Géométrie' }],
+        tri: 'dossiers' });
+    assert.deepEqual(d.sections.map(s => s.depot), ['d1', 'root']);
+});
+
+test('par dossier : chaque dossier, puis la racine, sans perdre un parcours', () => {
+    const v = laVue({ parcours: troisParcours(),
+        dossiers: [{ id: 'd1', name: 'Géométrie' }, { id: 'd2', name: 'Vide' }],
+        tri: 'dossiers' });
+    assert.deepEqual(v.sections.map(s => s.titre),
+        ['Géométrie', 'Vide', 'Parcours (racine)']);
+    // DANS UN DOSSIER AUSSI, LES DERNIERS MODIFIÉS D'ABORD : il n'y a aucune
+    // raison que la règle change d'une vue à l'autre.
+    assert.deepEqual(v.sections[0].parcours.map(p => p.id), ['a', 'c']);
+    assert.deepEqual(v.sections[1].parcours, []);
+    assert.deepEqual(v.sections[2].parcours.map(p => p.id), ['b']);
+    const compte = v.sections.reduce((n, s) => n + s.parcours.length, 0);
+    assert.equal(compte, 3, 'aucun parcours ne disparaît entre les sections');
+});
+
+test('un parcours sans dossier tombe à la racine, pas dans le vide', () => {
+    const sans = unParcours({ id: 'x', nom: 'Orphelin' });
+    delete sans.folderId;
+    const v = laVue({ parcours: [sans], tri: 'dossiers' });
+    assert.deepEqual(v.sections.at(-1).parcours.map(p => p.id), ['x']);
+});
+
+test('rien du tout se dit une seule fois, et sans section vide', () => {
+    const v = laVue({});
+    assert.equal(v.mode, 'vide');
+    assert.deepEqual(v.sections, []);
+    assert.equal(v.message, 'Aucun parcours enregistré.');
+    // Un dossier tout seul n'est PAS « rien » : il faut pouvoir y déposer.
+    assert.equal(laVue({ dossiers: [{ id: 'd1', name: 'Géométrie' }], tri: 'dossiers' }).mode,
+        'dossiers');
 });

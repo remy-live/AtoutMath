@@ -261,6 +261,30 @@ body.mobile-view #builder-properties-panel .tiroir-poignee::before {
 }
 #builder-properties-panel { width: 300px; display: flex; flex-direction: column; padding: 20px; background: var(--bg-panel); overflow-y: auto; border-left: 1px solid var(--border); }
 
+/* --- LE VOLET DES PARAMÈTRES, SUR GRAND ÉCRAN ---
+   Rémy : « les paramètres ne servent pas tout le temps », « on pourrait voir
+   pour utiliser l'espace », « évidemment sur portable ou tablette c'est
+   différent ».
+
+   Trois cent trente pixels étaient tenus en réserve à droite pour y écrire, la
+   plupart du temps, « Sélectionnez une activité » — un sixième de l'écran
+   pour une invitation à cliquer ailleurs. Le volet apparaît maintenant quand
+   une étape est choisie et rend la place au parcours dès qu'on le referme.
+
+   ET LE COMPORTEMENT DIFFÈRE AVEC L'ÉCRAN, comme Rémy le demande : sur grand
+   écran il POUSSE (on règle en voyant le parcours à côté), sous 1024 px il
+   RECOUVRE (il n'y a pas la place pour deux). La croix, elle, existe dans les
+   deux cas : c'est le geste qui rend l'espace. */
+@media (min-width: 1024px) {
+    body:not(.mobile-view) #builder-properties-panel { display: none; }
+    body:not(.mobile-view) #builder-properties-panel.mob-open {
+        display: flex; position: relative; padding-top: 20px;
+    }
+    body:not(.mobile-view) #builder-properties-panel .props-close {
+        display: flex; align-items: center; justify-content: center;
+    }
+}
+
 /* --- ÉCRANS MOYENS (téléphone en paysage, petite tablette) ---
    Trois colonnes fixes (catalogue 320 + parcours + propriétés 330) ne
    tiennent pas sous 1024 px : le parcours était écrasé à rien. La barre

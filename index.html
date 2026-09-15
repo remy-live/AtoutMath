@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=713">
-    <link rel="stylesheet" href="css/layout.css?v=713">
-    <link rel="stylesheet" href="css/ui.css?v=713">
-    <link rel="stylesheet" href="css/games.css?v=713">
-    <link rel="stylesheet" href="css/components.css?v=713">
-    <link rel="stylesheet" href="css/modules.css?v=713">
+    <link rel="stylesheet" href="css/base.css?v=714">
+    <link rel="stylesheet" href="css/layout.css?v=714">
+    <link rel="stylesheet" href="css/ui.css?v=714">
+    <link rel="stylesheet" href="css/games.css?v=714">
+    <link rel="stylesheet" href="css/components.css?v=714">
+    <link rel="stylesheet" href="css/modules.css?v=714">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -622,6 +622,25 @@
                     <span class="drawer-grip" aria-hidden="true"></span>
                     <span class="drawer-label">📚 Catalogue d'exercices</span>
                 </button>
+                <!-- LES DEUX CONTENUS DU TIROIR.
+                     Rémy, après avoir vu l'explorateur en popup : « non, je
+                     voyais cela comme un explorateur intégré, un peu comme les
+                     exercices dans le tiroir de gauche ».
+                     Il a raison, et c'est la même matière : à gauche vit ce
+                     qu'on PIOCHE pour construire — des exercices, et des
+                     parcours déjà faits. Une popup est faite pour une décision
+                     qu'on prend et qu'on quitte ; retrouver un parcours parmi
+                     cinquante est un lieu où l'on reste. -->
+                <div id="tiroir-onglets" class="tiroir-onglets teacher-only" role="tablist"
+                     aria-label="Ce que montre le tiroir">
+                    <button type="button" class="tiroir-onglet tiroir-onglet--actif" role="tab"
+                            data-tiroir="exercices" aria-selected="true"
+                            aria-controls="tiroir-exercices">Exercices</button>
+                    <button type="button" class="tiroir-onglet" role="tab"
+                            data-tiroir="parcours" aria-selected="false"
+                            aria-controls="tiroir-parcours">Mes parcours</button>
+                </div>
+                <div id="tiroir-exercices" class="tiroir-panneau" role="tabpanel">
                 <div class="sidebar-top-controls">
                     <div class="btn-group desktop-controls">
                         <button class="btn-toggle active" id="desk-btn-drill" title="Présentation par Clic">
@@ -675,6 +694,28 @@
                         <div id="breadcrumb"><button id="btn-back" aria-label="Retour">←</button><span id="breadcrumb-text">Domaines</span>
                         </div>
                         <div id="drill-content"></div>
+                    </div>
+                </div>
+                </div>
+
+                <!-- L'EXPLORATEUR DE PARCOURS, DANS LE TIROIR.
+                     La barre de recherche et le tri restent en haut pendant que
+                     la liste défile : chercher sans devoir remonter est
+                     exactement le geste qu'on essaie d'épargner. -->
+                <div id="tiroir-parcours" class="tiroir-panneau teacher-only" role="tabpanel" hidden>
+                    <div class="pb-barre">
+                        <input type="search" id="pb-chercher" class="pb-chercher"
+                               placeholder="Chercher un parcours…" autocomplete="off"
+                               aria-label="Chercher un parcours par son nom">
+                        <div class="pb-tris" role="group" aria-label="Comment ranger">
+                            <button type="button" class="pb-tri pb-tri--actif" data-tri="recent">Récents</button>
+                            <button type="button" class="pb-tri" data-tri="dossiers">Dossiers</button>
+                            <button type="button" id="btn-new-folder" class="pb-tri pb-tri--neuf"
+                                    title="Nouveau dossier" aria-label="Nouveau dossier">+ Dossier</button>
+                        </div>
+                    </div>
+                    <div id="path-browser-list">
+                        <!-- Liste injectée en JS -->
                     </div>
                 </div>
             </aside>
@@ -830,10 +871,13 @@
                     </div>
 
                     <!-- Colonne de Droite (Propriétés) -->
-                    <div id="builder-properties-panel">
-                        <div class="empty-msg">
-                            Sélectionnez une activité pour en modifier les propriétés.</div>
-                    </div>
+                    <!-- LE VOLET DES PARAMÈTRES NE PREND LA PLACE QUE QUAND IL SERT.
+                         Rémy : « les paramètres ne servent pas tout le temps »,
+                         « on pourrait voir pour utiliser l'espace ». Il est
+                         donc vide au repos, et se remplit d'un clic sur une
+                         étape — en poussant le parcours sur grand écran, en le
+                         recouvrant sur tablette et téléphone. -->
+                    <div id="builder-properties-panel"></div>
                 </div>
 
                 <!-- PARCOURS (ELEVE) -->
@@ -1326,39 +1370,6 @@
         </div>
 
     </div>
-
-        <!-- MODALE NAVIGATEUR DE PARCOURS -->
-        <div id="path-browser-modal" class="modal-overlay">
-            <div class="glass-panel modal-panel-md">
-                <div class="modal-header">
-                    <h3 class="modal-title">📂 Mes Parcours</h3>
-                    <div class="path-browser-header-actions">
-                        <button id="btn-new-folder" class="btn-toggle glass-btn">📁 Nouveau Dossier</button>
-                        <button id="btn-close-path-browser" class="modal-close-btn" aria-label="Fermer">&times;</button>
-                    </div>
-                </div>
-                <!-- LA BARRE DE RECHERCHE ET LE TRI.
-                     Rémy : « l'explorateur de parcours va vite avoir ses
-                     limites. Il faudrait un explorateur avec les derniers
-                     parcours édités […] sobre, avec la date de modif ».
-                     À cinquante parcours, retrouver « celui de la semaine
-                     dernière » demandait de lire cinquante noms qui se
-                     ressemblent tous : « Fractions », « Fractions 2 »,
-                     « Fractions (bis) ». -->
-                <div class="pb-barre">
-                    <input type="search" id="pb-chercher" class="pb-chercher"
-                           placeholder="Chercher un parcours…" autocomplete="off"
-                           aria-label="Chercher un parcours par son nom">
-                    <div class="pb-tris" role="group" aria-label="Comment ranger">
-                        <button type="button" class="pb-tri pb-tri--actif" data-tri="recent">Derniers modifiés</button>
-                        <button type="button" class="pb-tri" data-tri="dossiers">Par dossier</button>
-                    </div>
-                </div>
-                <div id="path-browser-list">
-                    <!-- Liste injectée en JS -->
-                </div>
-            </div>
-        </div>
 
         <!-- MODALE MODE & BARÈME DU PARCOURS -->
         <div id="path-policy-modal" class="modal-overlay">
