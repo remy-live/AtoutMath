@@ -176,7 +176,7 @@ export function computeRuns(events) {
                 // Le plan annoncé au départ : combien d'étapes, et combien de
                 // questions chacune. C'est ce qui permet de dire « étape 2 sur
                 // 5 » ailleurs que dans l'écran qui mène la séance.
-                plan: [], stepCount: 0,
+                plan: [], stepCount: 0, bac: false,
                 attempts: [], steps: [], aborted: false
             });
         }
@@ -191,6 +191,7 @@ export function computeRuns(events) {
             r.pathName = p.pathName || '';
             r.mode = p.mode || 'entrainement';
             r.policy = p.policy || null;
+            r.bac = !!p.bac;
             r.plan = Array.isArray(p.plan) ? p.plan : [];
             r.stepCount = Number(p.stepCount) || r.plan.length;
             r.startedAt = e.ts;

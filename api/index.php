@@ -790,6 +790,20 @@ function handleTeacherClass(): void
                      ($aZero === 'pause' ? 'met la classe en pause.' : 'termine la séance.')]);
     }
 
+    // LE BAC À SABLE DE CEUX QUI ONT FINI.
+    //
+    // Rémy : « un élève qui a fini peut avoir une zone bac à sable avec des
+    // jeux ». Il est OUVERT par défaut : une fonction qu'il faut allumer pour
+    // la découvrir n'est jamais découverte. Ce geste-ci sert à le FERMER, pour
+    // les heures où celui qui a fini doit relire ou aider son voisin.
+    if ($action === 'bac') {
+        $ferme = !empty($body['ferme']);
+        db()->prepare('UPDATE classes SET bac_ferme = ? WHERE id = ?')
+            ->execute([$ferme ? 1 : 0, $classe['id']]);
+        respond(['ok' => true, 'ferme' => $ferme,
+                 'dit' => $ferme ? 'Bac à sable fermé.' : 'Bac à sable ouvert.']);
+    }
+
     // LES DEUX GESTES SANS RETOUR DEMANDENT LE MOT ÉCRIT, comme dans les pages
     // d'administration. Une fenêtre « êtes-vous sûr ? » se clique sans lire ;
     // taper EFFACER demande de s'arrêter une seconde, et c'est tout ce qu'on
@@ -903,6 +917,7 @@ function handleTeacherRoster(): void
             'impose_path_id' => $classe['impose_path_id'] ?? null,
             'chrono_fin' => $classe['chrono_fin'] ?? null,
             'chrono_a_zero' => $classe['chrono_a_zero'] ?? null,
+            'bac_ferme' => (bool) ($classe['bac_ferme'] ?? 0),
         ],
         'eleves' => rosterLisible($classe['id']),
         // Un code proposé d'avance pour « le même pour toute la classe » : il

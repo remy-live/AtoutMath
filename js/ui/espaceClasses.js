@@ -40,7 +40,8 @@ import {
     mesClasses, creerClasse, listeDeClasse, apercuDeListe, importerListe,
     nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, leDirect,
     renommerClasse, mettreEnPause, poserConsigne, viderClasse, supprimerClasse,
-    envoyerUnMot, soufflerUnIndice, creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
+    envoyerUnMot, soufflerUnIndice, reglerLeBac,
+    creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
     lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis,
     imposerLaSeance, lancerLeChrono, arreterLeChrono, auServeur
 } from '../core/espaceProf.js';
@@ -500,6 +501,12 @@ function rangHtml(e, maintenant) {
  * répond — c'est le but, et trente alarmes à ce moment-là feraient éteindre la
  * fonction le jour même.
  */
+/** Le bac à sable est-il fermé pour cette classe ? (Ouvert par défaut.) */
+function bacDeLaClasse() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    return !!info.bac_ferme;
+}
+
 function classeEnPause() {
     const ch = vue.direct && vue.direct.chrono;
     const info = (vue.liste && vue.liste.classe) || vue.classe || {};
@@ -771,6 +778,21 @@ function seanceHtml() {
         </section>
 
         <section class="ec-bloc">
+            <h3 class="ec-h3">Le bac à sable</h3>
+            <p class="ec-note ec-note--bloc">Ce que fait un élève qui a fini avant les autres :
+               une petite liste de jeux — des mathématiques, mais qu'on joue — qu'on peut
+               lâcher en plein milieu quand la sonnerie tombe. Il ne s'ouvre
+               <b>qu'une fois la séance terminée</b>.</p>
+            <div class="ec-champ-ligne">
+                <span class="ec-etat-bac">${bacDeLaClasse()
+                    ? 'Fermé pour cette heure.' : 'Ouvert : celui qui a fini peut jouer.'}</span>
+                ${bacDeLaClasse()
+                    ? '<button type="button" class="ec-bouton" data-bac="0">Ouvrir le bac</button>'
+                    : '<button type="button" class="ec-bouton ec-bouton--doux" data-bac="1">Fermer le bac</button>'}
+            </div>
+        </section>
+
+        <section class="ec-bloc">
             <h3 class="ec-h3">Le mot au tableau</h3>
             <p class="ec-note ec-note--bloc">Il s'affiche chez tous les élèves de la classe,
                et il y reste jusqu'à ce que vous le retiriez.</p>
@@ -883,7 +905,7 @@ async function brancher(e, redessiner) {
         + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
         + '[data-profs], [data-reessayer], [data-poste],'
-        + '[data-imposer], [data-chrono], [data-chrono-off],'
+        + '[data-imposer], [data-chrono], [data-chrono-off], [data-bac],'
         + '[data-annuler-reglage]');
     if (!el) return;
     const d = el.dataset;
@@ -1207,6 +1229,13 @@ async function brancher(e, redessiner) {
         const corps = await choisirIndice(d.prenom, indicesProposes(competence));
         if (!corps) return;
         await fait(soufflerUnIndice(cid, corps, d.indiceEleve));
+        return;
+    }
+
+    if (d.bac !== undefined) {
+        await fait(reglerLeBac(cid, d.bac === '1'), (r) => {
+            if (vue.liste && vue.liste.classe) vue.liste.classe.bac_ferme = !!r.ferme;
+        });
         return;
     }
 

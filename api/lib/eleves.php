@@ -351,8 +351,16 @@ function derniereActivite(string $eleveId): array
     // événements se lit sans son `run_started` : il n'a alors pas de plan, et
     // l'avancement le dit en étapes plutôt qu'en questions — c'est moins
     // précis, ce n'est pas faux.
+    // ON SAUTE LES PARTIES DU BAC À SABLE. Une partie de Tetris ouverte après
+    // un devoir rendu est plus RÉCENTE que le devoir ; sans ce filtre, le
+    // professeur verrait « Étape 1 sur 1 » remplacer « Terminé — 18 / 24
+    // justes » et croirait sa classe repartie au travail.
     $runs = runsOf(array_reverse($pourLeRun));
-    $avancement = avancementDeRun($runs[0] ?? null);
+    $duTravail = null;
+    foreach ($runs as $r) {
+        if (empty($r['bac'])) { $duTravail = $r; break; }
+    }
+    $avancement = avancementDeRun($duTravail);
 
     return ['exo' => $exo, 'parcours' => $parcours, 'justes' => $justes,
             'total' => $total, 'quand' => $quand, 'combien' => count($lignes),

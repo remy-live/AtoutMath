@@ -152,6 +152,16 @@ export const lancerLeChrono = (classId, minutes, aZero = 'terminer') =>
 export const arreterLeChrono = (classId) =>
     auServeur('/teacher/class', { classId, action: 'chrono', minutes: 0 });
 
+/**
+ * OUVRIR OU FERMER LE BAC À SABLE de ceux qui ont fini.
+ *
+ * Rémy : « un élève qui a fini peut avoir une zone bac à sable avec des jeux ».
+ * Il est ouvert par défaut ; ce geste sert à le fermer, pour les heures où
+ * celui qui a fini doit relire ou aider son voisin.
+ */
+export const reglerLeBac = (classId, ferme) =>
+    auServeur('/teacher/class', { classId, action: 'bac', ferme: !!ferme });
+
 export const envoyerUnMot = (classId, body, studentId = '') =>
     auServeur('/teacher/message', { classId, body, studentId });
 

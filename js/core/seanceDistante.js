@@ -34,6 +34,9 @@ const VIDE = {
     messages: [], skippable: [], removed: [],
     // LE MOMENT EN COURS : la séance imposée, et le compte à rebours.
     impose: null, chrono: null,
+    // Le bac à sable de ceux qui ont fini. FERMÉ est le cas particulier :
+    // ouvert par défaut, une fonction qu'il faut allumer n'est pas découverte.
+    bacFerme: false,
     // L'HEURE DU SERVEUR au moment où il a répondu, et l'heure qu'il était ICI
     // à cet instant. Les deux ensemble donnent l'écart entre les horloges, et
     // c'est ce qui permet d'afficher le même chiffre sur trente appareils dont
@@ -108,6 +111,9 @@ export function estEcarte() {
 export function consigneDuProf() {
     return etat.notice || '';
 }
+
+/** Le professeur a-t-il fermé le bac à sable pour cette heure ? */
+export function bacFerme() { return !!etat.bacFerme; }
 
 export function messagesNonLus() {
     return Array.isArray(etat.messages) ? etat.messages.slice() : [];

@@ -51,10 +51,11 @@ function etatDeSeance(array $eleve): array
     // requireStudent(), pour que cette fonction soit utilisable seule (elle
     // l'est dans les tests, où l'on n'a pas de requête HTTP).
     $s = $pdo->prepare('SELECT name, join_code, locked, notice, impose_path_id,
-                              chrono_fin, chrono_a_zero FROM classes WHERE id = ?');
+                              chrono_fin, chrono_a_zero, bac_ferme FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
     $classe = $s->fetch() ?: ['name' => '', 'join_code' => '', 'locked' => 0, 'notice' => null,
-                              'impose_path_id' => null, 'chrono_fin' => null, 'chrono_a_zero' => null];
+                              'impose_path_id' => null, 'chrono_fin' => null,
+                              'chrono_a_zero' => null, 'bac_ferme' => 0];
 
     // LES MESSAGES NON LUS, adressés à lui ou à sa classe. « Non lus » et pas
     // « récents » : un élève qui arrive en retard doit voir le mot qu'on a
@@ -140,6 +141,9 @@ function etatDeSeance(array $eleve): array
         'locked'    => (bool) $classe['locked'],
         'notice'    => $classe['notice'] !== null && $classe['notice'] !== '' ? $classe['notice'] : null,
         'blocked'   => (bool) ($eleve['blocked'] ?? 0),
+        // LE BAC À SABLE : ouvert par défaut, et c'est délibéré. Une fonction
+        // qu'il faut allumer pour la découvrir n'est jamais découverte.
+        'bacFerme'  => (bool) ($classe['bac_ferme'] ?? 0),
         'messages'  => $messages,
         'skippable' => array_keys($saut),
         'removed'   => array_keys($retire),

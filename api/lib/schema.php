@@ -84,6 +84,11 @@ function migrer(?PDO $pdo = null): void
         impose_path_id $refNull,
         chrono_fin     " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
         chrono_a_zero  $txtNull,
+        --   · bac_ferme : le bac à sable de ceux qui ont fini. Ouvert par
+        --     défaut — une fonction qu'il faut allumer pour la découvrir n'est
+        --     jamais découverte. Il y a des heures où l'on veut que celui qui a
+        --     fini relise ou aide son voisin : c'est ce que ferme ce drapeau.
+        bac_ferme      $bool,
         created_at $date,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 
@@ -299,7 +304,8 @@ function migrer(?PDO $pdo = null): void
                        // de Rémy tourne depuis la rentrée.
                        'impose_path_id' => $refNull,
                        'chrono_fin'     => $sqlite ? 'INTEGER' : 'BIGINT NULL',
-                       'chrono_a_zero'  => $txtNull],
+                       'chrono_a_zero'  => $txtNull,
+                       'bac_ferme'      => $bool],
         'students' => ['blocked' => $bool,
                        'first_name_key' => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
                        'login'          => $sqlite ? 'TEXT NULL' : 'VARCHAR(255) NULL',

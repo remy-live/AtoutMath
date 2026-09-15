@@ -138,6 +138,11 @@ export class Runner {
             mode: this.policy.mode,
             policy: this.policy,
             stepCount: this.steps.length,
+            // UNE PARTIE DU BAC À SABLE N'EST PAS UNE SÉANCE, et il faut que le
+            // serveur puisse le savoir : sans ce drapeau, le professeur verrait
+            // « Étape 1 sur 1 » remplacer « Terminé — 18 / 24 justes » dès que
+            // l'élève ouvre un jeu, et croirait sa classe repartie au travail.
+            bac: !!this.path.bac,
             // LE PARCOURS ANNONCE SON PLAN, ET C'EST CE QUI REND L'AVANCEMENT
             // LISIBLE AILLEURS QU'ICI.
             //

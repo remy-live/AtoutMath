@@ -132,7 +132,7 @@ function runsOf(array $events): array
                 'runId' => $runId, 'pathId' => null, 'pathName' => '', 'mode' => 'entrainement',
                 'policy' => null, 'startedAt' => null, 'finishedAt' => null,
                 'aborted' => false, 'attempts' => [], 'steps' => [],
-                'plan' => [], 'stepCount' => 0,
+                'plan' => [], 'stepCount' => 0, 'bac' => false,
             ];
         }
     };
@@ -148,6 +148,7 @@ function runsOf(array $events): array
                 $runs[$runId]['pathName'] = $p['pathName'] ?? '';
                 $runs[$runId]['mode']     = $p['mode'] ?? 'entrainement';
                 $runs[$runId]['policy']   = $p['policy'] ?? null;
+                $runs[$runId]['bac']       = !empty($p['bac']);
                 $runs[$runId]['plan']      = is_array($p['plan'] ?? null) ? $p['plan'] : [];
                 $runs[$runId]['stepCount'] = (int) ($p['stepCount'] ?? count($runs[$runId]['plan']));
                 $runs[$runId]['startedAt'] = (int) $e['ts'];

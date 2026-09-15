@@ -66,10 +66,34 @@ function fil() {
  * d'histoire, et il n'y a aucune raison de tout reprojeter à chaque réponse.
  */
 export function avancementDuMoment(meneur = state.activeSequenceRunner) {
-    if (!meneur || !meneur.runId) return null;
-    const miens = journal.all().filter(e => e.payload && e.payload.runId === meneur.runId);
-    if (!miens.length) return null;
-    const run = computeRuns(miens).find(r => r.runId === meneur.runId);
+    if (meneur && meneur.runId) {
+        const miens = journal.all().filter(e => e.payload && e.payload.runId === meneur.runId);
+        const run = miens.length && computeRuns(miens).find(r => r.runId === meneur.runId);
+        if (run) return avancementDuRun(run);
+    }
+    return avancementDeLaDerniereSeance();
+}
+
+/**
+ * LA DERNIÈRE SÉANCE, MÊME QUAND ELLE EST CLOSE.
+ *
+ * Le meneur disparaît en se terminant : `state.activeSequenceRunner` retombe à
+ * `null` dès la dernière question répondue. Or c'est EXACTEMENT à ce
+ * moment-là qu'on a besoin de savoir où en est l'élève — c'est la porte du bac
+ * à sable qui le demande, et elle ne s'ouvre qu'une fois la séance finie.
+ *
+ * ON SAUTE LES PARTIES DU BAC, comme le serveur. Une partie de Tetris ouverte
+ * après un devoir rendu est plus récente que le devoir ; sans ce filtre, la
+ * porte se refermerait dès la première partie et l'élève ne pourrait plus en
+ * lancer une seconde.
+ *
+ * On ne relit que les derniers événements : le journal porte quatre mois
+ * d'histoire, et une séance en compte quelques dizaines.
+ */
+export function avancementDeLaDerniereSeance(combien = 400) {
+    const tous = journal.all();
+    const recents = tous.length > combien ? tous.slice(-combien) : tous;
+    const run = computeRuns(recents).find(r => !r.bac);
     return run ? avancementDuRun(run) : null;
 }
 
@@ -119,5 +143,7 @@ export function majFilSeance() {
 export function cacherFilSeance() {
     const el = document.getElementById('fil-seance');
     if (el) el.hidden = true;
-    dernier = null;
+    // ON NE PERD PAS LA MÉMOIRE DE CE QUI A ÉTÉ FAIT. Le fil s'efface parce
+    // qu'il n'a plus rien à dessiner ; l'avancement, lui, est encore la réponse
+    // à « as-tu fini ? » — et c'est la question que pose la porte du bac.
 }

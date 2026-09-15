@@ -1480,6 +1480,25 @@ verifier('les mots se relisent, avec pour qui ils étaient',
 verifier('un mot vide est refusé',
     json('/teacher/message', ['classId' => $idApp, 'body' => '   '], $jetonNotre)['code'] === 400);
 
+// --- Le bac à sable de ceux qui ont fini ------------------------------------
+//
+// Rémy : « un élève qui a fini peut avoir une zone bac à sable avec des jeux ».
+// Il est OUVERT par défaut, et c'est délibéré : une fonction qu'il faut allumer
+// pour la découvrir n'est jamais découverte.
+verifier('le bac à sable est ouvert sans qu\'on ait rien réglé',
+    json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'],
+        $jetonNotre)['json']['classe']['bac_ferme'] === false);
+verifier('le professeur peut le fermer',
+    json('/teacher/class', ['classId' => $idApp, 'action' => 'bac', 'ferme' => true],
+        $jetonNotre)['code'] === 200
+    && json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'],
+        $jetonNotre)['json']['classe']['bac_ferme'] === true);
+verifier('et le rouvrir',
+    json('/teacher/class', ['classId' => $idApp, 'action' => 'bac', 'ferme' => false],
+        $jetonNotre)['code'] === 200
+    && json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'],
+        $jetonNotre)['json']['classe']['bac_ferme'] === false);
+
 // --- L'indice : à UN élève, et jamais à la classe ---------------------------
 //
 // Rémy : « la possibilité de […] envoyer un indice ». Un indice soufflé à
