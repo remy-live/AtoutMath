@@ -1818,6 +1818,66 @@ foreach ([
         "« $mot » trouvé en clair");
 }
 
+// ------------------------------------------ LA BASE SE MET À JOUR TOUTE SEULE
+
+// CE CONTRÔLE VIENT D'UNE PANNE EN CLASSE, ET C'EST LA PLUS COÛTEUSE DE TOUTES.
+//
+// `migrer()` — qui ajoute les colonnes d'une version à l'autre — n'était appelé
+// que par `install.php`, `motdepasse.php` et les pages d'administration. JAMAIS
+// par `api/index.php`, c'est-à-dire jamais par l'application. Une mise à jour
+// déposée qui ajoutait une colonne laissait donc la base en arrière, et la
+// première requête qui nommait cette colonne partait en erreur SQL : le serveur
+// répondait 500, et l'élève lisait « Connexion impossible pour l'instant.
+// Préviens ton professeur. » Rémy l'a eu en classe, avec ses élèves devant lui.
+//
+// ON REPRODUIT DONC EXACTEMENT CELA : on retire une colonne récente de la base
+// en marche — c'est l'état d'un site mis à jour sans migration — et l'on vérifie
+// que l'API se répare toute seule au premier appel, sans qu'on ouvre quoi que
+// ce soit d'autre.
+$base = new PDO('sqlite:' . $BAC . '/essai.sqlite');
+$colonnes = fn () => array_column(
+    $base->query('PRAGMA table_info(classes)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+
+verifier('avant : la colonne récente est bien là',
+    in_array('bac_ferme', $colonnes(), true));
+
+$base->exec('ALTER TABLE classes DROP COLUMN bac_ferme');
+$base->exec("UPDATE reglages SET valeur = '0' WHERE cle = 'schema'");
+verifier('on remet la base dans l\'état d\'un site mis à jour sans migration',
+    !in_array('bac_ferme', $colonnes(), true));
+
+// Un simple appel de l'API doit suffire. N'importe lequel.
+$sante = json('/health', []);
+verifier('L\'API RÉPOND QUAND MÊME', $sante['code'] === 200, 'code ' . $sante['code']);
+verifier('ET ELLE A REMIS LA COLONNE TOUTE SEULE',
+    in_array('bac_ferme', $colonnes(), true),
+    'colonnes : ' . implode(', ', $colonnes()));
+
+// Et ce qui tombait en panne remarche : la connexion d'un élève.
+//
+// On en fabrique un NEUF plutôt que de réutiliser l'un des précédents : les
+// essais d'avant ont refait les codes de la classe, et un contrôle qui échoue
+// parce qu'un autre contrôle a fait son travail ne prouve rien.
+$cMaj = json('/teacher/classes', ['action' => 'create', 'name' => 'Après la mise à jour'],
+    $jetonNotre)['json'];
+$idMaj = '';
+foreach ($cMaj['classes'] ?? [] as $c) {
+    if (($c['name'] ?? '') === 'Après la mise à jour') { $idMaj = $c['id']; break; }
+}
+$apMaj = json('/teacher/roster',
+    ['classId' => $idMaj, 'action' => 'apercu', 'texte' => "NEUF;Léa\n", 'codeCommun' => ''],
+    $jetonNotre)['json'];
+json('/teacher/roster',
+    ['classId' => $idMaj, 'action' => 'importer', 'liste' => $apMaj['apercu']['texte']], $jetonNotre);
+$listeMaj = json('/teacher/roster', ['classId' => $idMaj, 'action' => 'list'],
+    $jetonNotre)['json']['eleves'][0] ?? null;
+
+$apresMaj = json('/login', ['login' => $listeMaj['login'] ?? '', 'code' => $listeMaj['code'] ?? '',
+    'deviceId' => 'd-maj']);
+verifier('UN ÉLÈVE PEUT SE CONNECTER APRÈS UNE MISE À JOUR',
+    $apresMaj['code'] === 200,
+    'code ' . $apresMaj['code'] . ' — c\'est exactement ce que Rémy a eu en classe');
+
 // --------------------------------------------------------------- Le bilan ---
 
 echo "\n" . str_repeat('─', 60) . "\n";

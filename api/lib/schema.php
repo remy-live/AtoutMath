@@ -16,12 +16,74 @@ declare(strict_types=1);
  * schéma qu'on applique depuis une page web est la seule installation possible
  * là-bas — et c'est aussi la plus simple partout ailleurs.
  *
- * `migrer()` est IDEMPOTENT : on peut l'appeler à chaque démarrage sans risque,
- * et c'est ce qu'on fait. Une mise à jour du logiciel qui ajoute une table
- * n'oblige alors à aucune manœuvre.
+ * `migrer()` est IDEMPOTENT : on peut l'appeler à chaque démarrage sans risque.
+ *
+ * CE COMMENTAIRE DISAIT « ET C'EST CE QU'ON FAIT ». C'ÉTAIT FAUX, ET ÇA A COÛTÉ
+ * UNE HEURE DE COURS. `migrer()` n'était appelé que par `install.php`,
+ * `motdepasse.php` et les pages d'administration — jamais par `api/index.php`,
+ * c'est-à-dire jamais par l'application elle-même. Une mise à jour déposée qui
+ * ajoutait une colonne laissait donc la base EN ARRIÈRE, et la première requête
+ * qui nommait cette colonne partait en erreur SQL : le serveur répondait 500,
+ * et l'élève lisait « Connexion impossible pour l'instant. Préviens ton
+ * professeur. » Rémy l'a eu en classe.
+ *
+ * `migrerSiNecessaire()` répare cela, et se paie d'une seule lecture par
+ * requête (voir plus bas).
  */
 
 require_once __DIR__ . '/db.php';
+
+/**
+ * LA VERSION DU SCHÉMA — à monter dès qu'on touche aux tables ou aux colonnes.
+ *
+ * C'est le seul geste qu'une modification de schéma demande : la migration se
+ * déclenche toute seule chez tout le monde, au premier appel de l'API après le
+ * dépôt du paquet.
+ */
+const VERSION_SCHEMA = 3;
+
+/**
+ * MIGRER, MAIS PAS À CHAQUE REQUÊTE.
+ *
+ * `migrer()` lance une quinzaine de `CREATE TABLE IF NOT EXISTS` et autant
+ * d'`ALTER TABLE` qui échouent volontairement quand la colonne est déjà là.
+ * C'est sans risque, mais le payer à chaque appel de l'API — trente élèves qui
+ * se synchronisent toutes les dix secondes — serait absurde sur un hébergement
+ * mutualisé.
+ *
+ * On garde donc la version appliquée dans `reglages`, et l'on ne migre que
+ * lorsqu'elle diffère : une lecture d'une ligne, sur une table d'une poignée
+ * d'entrées, en regard d'une mise à jour qui se fait toute seule.
+ *
+ * TOUTE ERREUR DE LECTURE VAUT « IL FAUT MIGRER ». Une base d'avant la table
+ * `reglages` doit être rattrapée, pas contournée.
+ */
+function migrerSiNecessaire(?PDO $pdo = null): bool
+{
+    $pdo = $pdo ?: db();
+    try {
+        $s = $pdo->prepare('SELECT valeur FROM reglages WHERE cle = ?');
+        $s->execute(['schema']);
+        $vu = $s->fetchColumn();
+        if ($vu !== false && (int) $vu === VERSION_SCHEMA) return false;
+    } catch (Throwable $t) {
+        // Pas de table `reglages` : base d'avant, ou base vide. On migre.
+    }
+
+    migrer($pdo);
+
+    try {
+        $maj = $pdo->prepare('UPDATE reglages SET valeur = ? WHERE cle = ?');
+        $maj->execute([(string) VERSION_SCHEMA, 'schema']);
+        if (!$maj->rowCount()) {
+            $pdo->prepare(sqlInsereSansDoublon() . ' INTO reglages (cle, valeur) VALUES (?, ?)')
+                ->execute(['schema', (string) VERSION_SCHEMA]);
+        }
+    } catch (Throwable $t) {
+        // On a migré, c'est l'essentiel. La marque se reposera au prochain coup.
+    }
+    return true;
+}
 
 function migrer(?PDO $pdo = null): void
 {

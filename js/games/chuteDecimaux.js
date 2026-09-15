@@ -32,6 +32,17 @@ import {
 
 const COMPETENCE = 'num.dec.encadrer';
 
+/**
+ * L'ESPACE ENTRE DEUX CASES, EN PIXELS.
+ *
+ * Partagé avec `--cd-espace` dans la feuille de style ci-dessous, et ce n'est
+ * pas une commodité : les traits de graduation se placent EN FONCTION de lui.
+ * Deux valeurs qui doivent s'accorder ne s'écrivent qu'une fois, sans quoi
+ * l'une bouge un jour et les nombres se décalent de leurs traits sans que
+ * personne ne comprenne pourquoi.
+ */
+const ESPACE = 3;
+
 /** Combien de secondes la brique met à tomber, selon le niveau. */
 const CHUTE = { 1: 14, 2: 13, 3: 12, 4: 12 };
 
@@ -75,8 +86,17 @@ class ChuteDecimaux extends BaseGame {
                 }
                 .cd-brique--juste { background: #10b981; box-shadow: 0 6px 16px rgba(16,185,129,.4); }
                 .cd-brique--faux { background: #dc2626; box-shadow: 0 6px 16px rgba(220,38,38,.4); }
-                .cd-droite { flex: none; padding: 0 4px 6px; }
-                .cd-cases { display: grid; gap: 3px; }
+                /* LA MARGE N'EST PAS DÉCORATIVE : elle loge les deux nombres
+                   des extrémités. Une graduation est une FRONTIÈRE, donc le
+                   premier nombre est centré sur le bord GAUCHE de la première
+                   case et le dernier sur le bord DROIT de la dernière : sans
+                   cette réserve, ils sortent de l'écran — mesuré à 27 px de
+                   débordement de chaque côté, par l'audit. */
+                .cd-droite {
+                    flex: none; padding: 0 var(--cd-marge, 26px) 6px;
+                    --cd-espace: 3px;
+                }
+                .cd-cases { display: grid; gap: var(--cd-espace); }
                 .cd-case {
                     /* LA DROITE GRADUÉE MÉRITE SA PLACE : c'est elle qu'on
                        regarde pour répondre, pas le ciel. Des cases hautes se
@@ -92,9 +112,18 @@ class ChuteDecimaux extends BaseGame {
                 .cd-case--bonne { background: #bbf7d0; }
                 .cd-case--ratee { background: #fecaca; }
                 .cd-axe { height: 3px; background: var(--text-main); border-radius: 2px; }
-                .cd-nombres { display: grid; font-size: clamp(.6rem, 2cqw, .82rem); }
+                /* ON NE MET PAS LES NOMBRES DANS UNE GRILLE, ON LES POSE SUR
+                   LEURS TRAITS. La grille demandait une colonne de plus que de
+                   cases et un décalage d'une demi-colonne — ce qui faisait
+                   dépasser la ligne des deux côtés. Chacun est maintenant placé
+                   à sa fraction exacte, et recentré sur lui-même. */
+                .cd-nombres {
+                    position: relative; height: 1.5em;
+                    font-size: clamp(.6rem, 2cqw, .82rem);
+                }
                 .cd-nombre {
-                    text-align: center; padding-top: 5px; font-variant-numeric: tabular-nums;
+                    position: absolute; top: 5px; transform: translateX(-50%);
+                    text-align: center; font-variant-numeric: tabular-nums;
                     color: var(--text-muted); white-space: nowrap;
                 }
                 .cd-nombre b { color: var(--text-main); }
@@ -199,12 +228,25 @@ class ChuteDecimaux extends BaseGame {
         // Une graduation est une FRONTIÈRE : la mettre au milieu d'une case
         // ferait lire « la case 3,1 » au lieu de « entre 3,1 et 3,2 », c'est-à-
         // dire exactement le contresens qu'on veut défaire.
-        this.nombresEl.style.gridTemplateColumns = `repeat(${t.combien + 1}, 1fr)`;
-        this.nombresEl.style.marginLeft = `calc(-50% / ${t.combien})`;
-        this.nombresEl.style.width = `calc(100% + 100% / ${t.combien})`;
-        this.nombresEl.innerHTML = t.graduations.map((g, i) =>
-            `<span class="cd-nombre">${(i === 0 || i === t.combien)
-                ? '<b>' + ecrire(g) + '</b>' : ecrire(g)}</span>`).join('');
+        // LA POSITION EXACTE D'UN TRAIT, ESPACES COMPRIS.
+        //
+        // Les cases sont séparées de ESPACE pixels. Le bord gauche de la case i
+        // n'est donc PAS à i/combien de la largeur : c'est i fois (la largeur
+        // disponible divisée par le nombre de cases), plus i espaces. Ignorer
+        // les espaces décalait les traits du milieu de trois pixels — mesuré —
+        // et trois pixels, sur un jeu dont tout le propos est de savoir de quel
+        // CÔTÉ d'un trait on tombe, sont trois pixels de trop.
+        //
+        // Le dernier trait est le bord DROIT de la dernière case, c'est-à-dire
+        // exactement 100 % : la formule ne vaut que pour les bords gauches.
+        const creux = (t.combien - 1) * ESPACE;
+        this.nombresEl.innerHTML = t.graduations.map((g, i) => {
+            const ou = i === t.combien
+                ? '100%'
+                : `calc(${i} * (100% - ${creux}px) / ${t.combien} + ${i * ESPACE}px)`;
+            return `<span class="cd-nombre" style="left:${ou}">${
+                (i === 0 || i === t.combien) ? '<b>' + ecrire(g) + '</b>' : ecrire(g)}</span>`;
+        }).join('');
 
         this.ciel.innerHTML = '';
         this.brique = document.createElement('div');

@@ -45,8 +45,27 @@ require_once __DIR__ . '/lib/grading.php';
 require_once __DIR__ . '/lib/seance.php';
 require_once __DIR__ . '/lib/coffre.php';
 require_once __DIR__ . '/lib/eleves.php';
+require_once __DIR__ . '/lib/schema.php';
 
 applyCors();
+
+// LA BASE SE MET À JOUR TOUTE SEULE, AU PREMIER APPEL APRÈS UN DÉPÔT.
+//
+// Elle ne le faisait pas : `migrer()` n'était appelé que par `install.php`,
+// `motdepasse.php` et les pages d'administration — jamais par l'API que
+// l'application utilise. Une mise à jour qui ajoutait une colonne laissait donc
+// la base en arrière, et la première requête qui nommait cette colonne partait
+// en erreur SQL. Le serveur répondait 500, et l'élève lisait « Connexion
+// impossible pour l'instant. Préviens ton professeur. » Rémy l'a eu en classe,
+// avec ses élèves devant lui.
+//
+// Le coût est d'une lecture d'une ligne par requête : voir
+// `migrerSiNecessaire()`, qui ne migre que si la version stockée a changé.
+//
+// SI LA MIGRATION ÉCHOUE, ON NE FAIT PAS TOMBER L'API. Une base sans droit
+// d'ALTER sur un hébergement bridé doit continuer à servir ce qu'elle sait
+// servir, plutôt que de refuser tout le monde à l'entrée.
+try { migrerSiNecessaire(); } catch (Throwable $t) { /* on sert quand même */ }
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $base = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');

@@ -332,7 +332,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 ${classes.length ? `<div class="pc-classes">
                     ${classes.map(c => ligneClasseHtml(c, infos.get(c.id))).join('')}
                 </div>` : `<p class="pc-vide">Vous n'avez pas encore de classe.
-                    Créez-en une dans <b>Mes outils → Mes classes</b>.</p>`}
+                    Créez-en une par la porte <b>La classe</b>, en haut.</p>`}
 
                 <p class="pc-compte" role="status" aria-live="polite">${donnees.length
                 ? `Donné à ${donnees.length} classe${donnees.length > 1 ? 's' : ''} — ${donnees

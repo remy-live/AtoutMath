@@ -66,8 +66,8 @@ export async function ouvrirDonnerSeance(parcours, onDonne) {
         // de donner un travail ; l'envoyer construire ses classes au milieu du
         // geste, c'est lui faire perdre le fil et le parcours. On lui dit où
         // aller, et il revient quand il est prêt.
-        return showAlert('Vous n\'avez pas encore de classe. Créez-en une dans '
-            + '<b>Mes outils → Mes classes</b>, puis revenez donner ce parcours.'
+        return showAlert('Vous n\'avez pas encore de classe. Créez-en une par la porte '
+            + '<b>La classe</b>, en haut, puis revenez donner ce parcours.'
             + '<br><br>En attendant, le bouton <b>lien</b> vous donne un code à dicter : '
             + 'il marche sans classe.');
     }
