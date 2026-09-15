@@ -485,6 +485,16 @@
 }
 .verrou-boite h2 { margin: 0 0 6px; font-size: 1.2rem; }
 .verrou-sous { margin: 0 0 16px; color: var(--text-muted, #64748b); font-size: .9rem; }
+/* L'AVERTISSEMENT PREND LA PLACE DE LA CONSIGNE, il ne s'ajoute pas à elle :
+   « tapez votre mot de passe » sous « il n'y a pas de serveur ici » serait deux
+   conseils contraires à la fois. Teinte d'attention, pas de rouge : rien n'a
+   échoué, on prévient avant. */
+.verrou-sous--alerte {
+    color: var(--text-main); font-weight: 600;
+    background: color-mix(in srgb, var(--warning) 14%, transparent);
+    border-left: 3px solid var(--warning);
+    border-radius: 0 8px 8px 0; padding: 9px 11px; text-align: left;
+}
 .verrou-boite label {
     display: block; font-weight: 700; font-size: .85rem; margin: 12px 0 4px;
 }

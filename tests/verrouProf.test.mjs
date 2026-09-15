@@ -13,6 +13,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import './helpers.mjs';
+import { pourquoiPasEntre } from '../js/core/verrouProf.js';
 
 const app = fs.readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
 const verrou = fs.readFileSync(new URL('../js/core/verrouProf.js', import.meta.url), 'utf8');
@@ -71,4 +72,71 @@ test('UN NAVIGATEUR SANS STOCKAGE NE FAIT PAS TOMBER LE VERROU', () => {
     const bloc = verrou.slice(i, i + 300);
     assert.match(bloc, /try\s*\{/, 'la lecture doit être protégée');
     assert.match(bloc, /catch/, 'et rendre null plutôt que lever');
+});
+
+// ─────────────────── CE QUE VEUT DIRE UN REFUS, EN FRANÇAIS ─────────────────
+//
+// Rémy, capture d'un collègue à qui il faisait essayer le site :
+// « Connexion impossible (code 405). » — « qqn a voulu se connecter… »
+//
+// LE MESSAGE DOIT DIRE À QUI LE LIT CE QU'IL DOIT FAIRE. Un numéro ne dit
+// rien ; pire, « Connexion impossible » juste sous un champ de mot de passe se
+// lit comme « mot de passe refusé », et l'on recommence dix fois un geste qui
+// ne pouvait pas marcher.
+//
+// 405 NE VENAIT PAS DU MOT DE PASSE. L'adresse de l'API se déduit de celle de
+// la page ; sur un hébergement de fichiers statiques il n'y a pas de PHP pour
+// répondre, et le POST tombe sur un hébergeur qui n'accepte que la lecture. Le
+// mot de passe n'avait été vérifié par personne — ce que le message doit dire,
+// autant pour rassurer que pour orienter vers la bonne adresse.
+
+test('405 ET 404 DISENT QU\'IL N\'Y A PAS DE SERVEUR, pas que le mot de passe est faux', () => {
+    // C'est le cas que Rémy a vu, et le seul où la réponse est « changez
+    // d'adresse » plutôt que « retapez votre mot de passe ».
+    for (const code of [404, 405, 501]) {
+        const dit = pourquoiPasEntre(code);
+        assert.match(dit, /n'a pas de serveur/, `code ${code}`);
+        assert.match(dit, /adresse en ligne/, `code ${code} : où aller`);
+        assert.ok(!/mot de passe incorrect/.test(dit), `code ${code} : n'accuse pas le mot de passe`);
+    }
+});
+
+test('ON DIT QUE LE MOT DE PASSE N\'EST PARTI NULLE PART', () => {
+    // Quelqu'un qui vient de taper son mot de passe dans un site qui répond
+    // une erreur se demande légitimement où il vient de l'envoyer.
+    assert.match(pourquoiPasEntre(405), /envoyé nulle part/);
+});
+
+test('un vrai refus reste un vrai refus', () => {
+    assert.equal(pourquoiPasEntre(401), 'Adresse ou mot de passe incorrect.');
+    assert.match(pourquoiPasEntre(403), /pas le droit/);
+    assert.match(pourquoiPasEntre(429), /Trop d'essais/);
+});
+
+test('une panne du serveur se distingue d\'une absence de serveur', () => {
+    // « réessayez dans un instant » est un conseil juste pour un 500 et faux
+    // pour un 405 : là, réessayer ne marchera jamais.
+    assert.match(pourquoiPasEntre(500), /Réessayez/);
+    assert.match(pourquoiPasEntre(503), /Réessayez/);
+    assert.ok(!/Réessayez/.test(pourquoiPasEntre(405)));
+});
+
+test('UN CODE QU\'ON NE SAIT PAS NOMMER GARDE SON NUMÉRO', () => {
+    // C'est précisément celui-là qu'il faut pouvoir citer : le cacher derrière
+    // « une erreur est survenue » priverait du seul indice.
+    assert.match(pourquoiPasEntre(418), /\(code 418\)/);
+});
+
+test('LA FENÊTRE PRÉVIENT AVANT QU\'ON TAPE SON MOT DE PASSE', () => {
+    // Laisser essayer, se tromper, recommencer, puis lire un numéro, c'est
+    // trois fois faire échouer quelqu'un pour une chose qu'on savait d'avance.
+    assert.match(fenetre, /serveurPresent\(\)/,
+        'la fenêtre doit demander si le serveur est là');
+    assert.match(fenetre, /verrou-sous--alerte/,
+        'et le dire à la place de la consigne');
+    // MAIS ELLE N'EMPÊCHE PAS D'ESSAYER : `serveurPresent` rend aussi faux
+    // quand le réseau hésite, et verrouiller le bouton enfermerait dehors un
+    // professeur parfaitement légitime.
+    assert.ok(!/verrou-ok'\)\.disabled = true;\s*\}\)/.test(fenetre),
+        'le bouton ne doit pas se verrouiller sur cet avertissement');
 });
