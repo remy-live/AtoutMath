@@ -31,7 +31,14 @@ const CLE = 'seanceDistante';
 const VIDE = {
     className: '', classCode: '',
     locked: false, notice: null, blocked: false,
-    messages: [], skippable: [], removed: []
+    messages: [], skippable: [], removed: [],
+    // LE MOMENT EN COURS : la séance imposée, et le compte à rebours.
+    impose: null, chrono: null,
+    // L'HEURE DU SERVEUR au moment où il a répondu, et l'heure qu'il était ICI
+    // à cet instant. Les deux ensemble donnent l'écart entre les horloges, et
+    // c'est ce qui permet d'afficher le même chiffre sur trente appareils dont
+    // aucun n'est réglé pareil. Un seul des deux ne servirait à rien.
+    maintenant: 0, recuA: 0
 };
 
 let etat = { ...VIDE };
@@ -73,10 +80,10 @@ export async function initSeanceDistante() {
  * fois ferait clignoter une consigne que personne n'a touchée. On compare donc
  * le contenu, pas la date.
  */
-export function appliquerEtat(nouveau) {
+export function appliquerEtat(nouveau, recuA = Math.floor(Date.now() / 1000)) {
     if (!nouveau || typeof nouveau !== 'object') return etat;
     const avant = JSON.stringify(etat);
-    etat = { ...VIDE, ...nouveau };
+    etat = { ...VIDE, ...nouveau, recuA };
     globalStore.set(CLE, etat).catch(() => {});
     if (JSON.stringify(etat) !== avant) prevenir();
     return etat;
@@ -112,6 +119,42 @@ export function messagesNonLus() {
  * net que de le laisser en place grisé — un élève de sixième essaierait quand
  * même de cliquer dessus.
  */
+/**
+ * LA SÉANCE IMPOSÉE — ce que l'élève doit ouvrir sans rien choisir.
+ * @returns {{pathId:string, name:string, path:object}|null}
+ */
+export function seanceImposee() {
+    return etat.impose || null;
+}
+
+/**
+ * COMBIEN DE SECONDES RESTE-T-IL, corrigé de l'écart entre les horloges.
+ *
+ * Le serveur envoie l'INSTANT de fin et l'heure qu'il était chez lui ; on note
+ * l'heure qu'il était ici à la réception. La différence est l'écart, et il ne
+ * bouge plus. Sans cette correction, une tablette réglée dix minutes en avance
+ * afficherait « temps écoulé » pendant que la classe travaille encore.
+ *
+ * @returns {{reste:number, aZero:string}|null} `reste` en secondes, jamais négatif
+ */
+export function tempsRestant(maintenant = Math.floor(Date.now() / 1000)) {
+    if (!etat.chrono || !etat.chrono.finAt) return null;
+    // ON NE CORRIGE QUE SI LES DEUX HEURES SONT DE VRAIES HEURES.
+    //
+    // L'écart n'a de sens que si le serveur a bien envoyé la sienne. Sur un
+    // serveur plus ancien — ou sur un état fabriqué à la main — le champ est
+    // absent, et le prendre pour zéro ferait croire à un décalage de
+    // cinquante-six ans : le compte à rebours afficherait alors n'importe quoi,
+    // ce qui est pire que de ne rien afficher. Un milliard et demi de secondes
+    // depuis 1970, c'est 2017 : en dessous, ce n'est pas une heure, c'est une
+    // valeur qui traîne.
+    const VRAIE_HEURE = 1.5e9;
+    const ecart = (etat.maintenant > VRAIE_HEURE && etat.recuA > VRAIE_HEURE)
+        ? (etat.maintenant - etat.recuA) : 0;
+    const reste = etat.chrono.finAt - (maintenant + ecart);
+    return { reste: Math.max(0, reste), aZero: etat.chrono.aZero || 'terminer' };
+}
+
 export function estRetire(exerciceId) {
     return !!exerciceId && etat.removed.includes(exerciceId);
 }

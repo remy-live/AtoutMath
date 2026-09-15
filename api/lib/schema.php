@@ -66,6 +66,24 @@ function migrer(?PDO $pdo = null): void
         locked     $bool,
         -- Le mot affiché à toute la classe, ou vide.
         notice     $txtNull,
+        -- LE MOMENT EN COURS. Rémy : « est-ce qu'il ne serait pas possible que
+        -- lorsque les élèves se connectent, j'impose la séance, comme cela ils
+        -- n'ont rien à lancer » et « pour le compte à rebours c'est pour
+        -- terminer la séance ou mettre en pause ».
+        --
+        -- TROIS COLONNES, ET PAS UNE TABLE : ce sont trois valeurs par classe,
+        -- qui ne s'empilent pas et dont on ne garde pas l'historique. Une table
+        -- \u00ab moments \u00bb obligerait \u00e0 chercher \u00ab le dernier \u00bb \u00e0 chaque lecture,
+        -- pour une information qui n'existe qu'au pr\u00e9sent.
+        --
+        --   · impose_path_id : le parcours que l'\u00e9l\u00e8ve ouvre TOUT SEUL en
+        --     arrivant. Vide = il choisit ;
+        --   · chrono_fin : quand le compte \u00e0 rebours atteint z\u00e9ro (UNIX) ;
+        --   · chrono_a_zero : 'terminer' ou 'pause' \u2014 R\u00e9my voulait les deux,
+        --     l'un pour ramasser les copies, l'autre pour reprendre la parole.
+        impose_path_id $refNull,
+        chrono_fin     " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
+        chrono_a_zero  $txtNull,
         created_at $date,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 
@@ -268,7 +286,13 @@ function migrer(?PDO $pdo = null): void
     // Les colonnes ajoutées après coup, pour une base déjà installée. On
     // essaie, et l'échec veut dire « elle y est déjà ».
     foreach ([
-        'classes'  => ['locked' => $bool, 'notice' => $txtNull],
+        'classes'  => ['locked' => $bool, 'notice' => $txtNull,
+                       // LE MOMENT EN COURS — voir la table `classes`. Ces
+                       // trois-là arrivent sur une base déjà installée : celle
+                       // de Rémy tourne depuis la rentrée.
+                       'impose_path_id' => $refNull,
+                       'chrono_fin'     => $sqlite ? 'INTEGER' : 'BIGINT NULL',
+                       'chrono_a_zero'  => $txtNull],
         'students' => ['blocked' => $bool,
                        'first_name_key' => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
                        'login'          => $sqlite ? 'TEXT NULL' : 'VARCHAR(255) NULL',

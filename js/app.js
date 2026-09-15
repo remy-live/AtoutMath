@@ -41,6 +41,7 @@ import { modeLibre, estRattache } from './core/portail.js';
 import { initPortail, majPortail } from './ui/portailUI.js';
 import { initPosteEleve } from './ui/posteEleve.js';
 import { initParcoursServeur, ecouterLesAssignations } from './core/parcoursServeur.js';
+import { initLeMoment } from './ui/leMoment.js';
 import { initPleinEcran } from './ui/fullscreen.js';
 import { initBilanExercice } from './ui/accueilUI.js';
 import { rendreAujourdhui } from './ui/aujourdhui.js';
@@ -124,6 +125,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     // rattachement. Un seul appel, pas deux chemins de démarrage à tenir.
     initParcoursServeur();
     ecouterLesAssignations();
+
+    // LE MOMENT : la séance imposée s'ouvre toute seule, le compte à rebours
+    // s'affiche, la pause couvre l'écran. Ne fait rien pour un élève qui n'est
+    // rattaché à aucune classe.
+    initLeMoment();
 
     // Cohérence du catalogue : mieux vaut un avertissement au démarrage
     // qu'un échec silencieux au lancement d'un exercice.

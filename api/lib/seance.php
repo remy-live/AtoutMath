@@ -50,9 +50,11 @@ function etatDeSeance(array $eleve): array
     // La classe : on la relit plutôt que de la faire porter par la jointure de
     // requireStudent(), pour que cette fonction soit utilisable seule (elle
     // l'est dans les tests, où l'on n'a pas de requête HTTP).
-    $s = $pdo->prepare('SELECT name, join_code, locked, notice FROM classes WHERE id = ?');
+    $s = $pdo->prepare('SELECT name, join_code, locked, notice, impose_path_id,
+                              chrono_fin, chrono_a_zero FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
-    $classe = $s->fetch() ?: ['name' => '', 'join_code' => '', 'locked' => 0, 'notice' => null];
+    $classe = $s->fetch() ?: ['name' => '', 'join_code' => '', 'locked' => 0, 'notice' => null,
+                              'impose_path_id' => null, 'chrono_fin' => null, 'chrono_a_zero' => null];
 
     // LES MESSAGES NON LUS, adressés à lui ou à sa classe. « Non lus » et pas
     // « récents » : un élève qui arrive en retard doit voir le mot qu'on a
@@ -92,6 +94,42 @@ function etatDeSeance(array $eleve): array
     }
     $saut = array_diff_key($saut, $retire);
 
+    // LA SÉANCE IMPOSÉE. Rémy : « est-ce qu'il ne serait pas possible que
+    // lorsque les élèves se connectent, j'impose la séance, comme cela ils
+    // n'ont rien à lancer ».
+    //
+    // ON ENVOIE LE PARCOURS ENTIER, pas seulement son identifiant. L'élève doit
+    // pouvoir l'ouvrir SANS deuxième aller-retour : au moment où il arrive en
+    // classe, trente appareils demandent la même chose en même temps, et le
+    // travail doit commencer, pas attendre.
+    $impose = null;
+    if (!empty($classe['impose_path_id'])) {
+        $q = $pdo->prepare('SELECT id, name, data FROM paths WHERE id = ?');
+        $q->execute([$classe['impose_path_id']]);
+        $p = $q->fetch();
+        if ($p) {
+            $impose = ['pathId' => $p['id'], 'name' => $p['name'],
+                       'path' => json_decode($p['data'], true)];
+        }
+    }
+
+    // LE COMPTE À REBOURS. Deux issues, parce que Rémy en voulait deux : « pour
+    // terminer la séance ou mettre en pause (pour faire un peu de cours par
+    // exemple ou pour parler) ».
+    //
+    // ON ENVOIE L'INSTANT DE FIN, PAS LE NOMBRE DE SECONDES QUI RESTENT. Une
+    // durée se périme entre le serveur et l'écran ; un instant, non. Chaque
+    // appareil décompte tout seul ensuite, et tous affichent la même chose même
+    // si leurs horloges diffèrent — on envoie aussi l'heure du serveur pour
+    // qu'ils puissent corriger l'écart.
+    $chrono = null;
+    if (!empty($classe['chrono_fin'])) {
+        $chrono = [
+            'finAt'  => (int) $classe['chrono_fin'],
+            'aZero'  => $classe['chrono_a_zero'] === 'pause' ? 'pause' : 'terminer',
+        ];
+    }
+
     return [
         'className' => $classe['name'],
         'classCode' => $classe['join_code'],
@@ -101,6 +139,9 @@ function etatDeSeance(array $eleve): array
         'messages'  => $messages,
         'skippable' => array_keys($saut),
         'removed'   => array_keys($retire),
+        'impose'    => $impose,
+        'chrono'    => $chrono,
+        'maintenant' => time(),
     ];
 }
 

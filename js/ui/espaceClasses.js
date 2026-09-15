@@ -41,7 +41,8 @@ import {
     nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, leDirect,
     renommerClasse, mettreEnPause, poserConsigne, viderClasse, supprimerClasse,
     envoyerUnMot, creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
-    lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis
+    lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis,
+    imposerLaSeance, lancerLeChrono, arreterLeChrono, auServeur
 } from '../core/espaceProf.js';
 import { adresseAdmin } from './classesServeur.js';
 import { adresseDuPoste } from './posteEleve.js';
@@ -549,6 +550,45 @@ function seanceHtml() {
     return `
     <div class="ec-cartes-reglages">
 
+        <!-- LE MOMENT : ce qui commence et ce qui s'arrête pour toute la classe.
+             Rémy : « lorsque les élèves se connectent, j'impose la séance,
+             comme cela ils n'ont rien à lancer » et « pour le compte à rebours
+             c'est pour terminer la séance ou mettre en pause ». -->
+        <section class="ec-bloc ec-bloc--fort">
+            <h3 class="ec-h3">Imposer la séance</h3>
+            <p class="ec-note ec-note--bloc">Le parcours choisi s'ouvre TOUT SEUL chez vos élèves
+               dès qu'ils arrivent : ils n'ont rien à lancer, rien à taper.</p>
+            <div class="ec-champ-ligne">
+                <select id="ec-impose" class="ec-champ">
+                    <option value="">— personne n'a rien d'imposé —</option>
+                    ${(vue.parcours || []).map(p => `<option value="${esc(p.id)}"${
+                        info.impose_path_id === p.id ? ' selected' : ''
+                    }>${esc(p.name)}</option>`).join('')}
+                </select>
+                <button type="button" class="ec-bouton" data-imposer>Imposer</button>
+            </div>
+            ${vue.parcours && !vue.parcours.length
+                ? '<p class="ec-note ec-note--bloc">Aucun parcours sur le serveur pour l\'instant : '
+                  + 'construisez-en un dans « Préparer », il montera tout seul.</p>' : ''}
+        </section>
+
+        <section class="ec-bloc ec-bloc--fort">
+            <h3 class="ec-h3">Le compte à rebours</h3>
+            <p class="ec-note ec-note--bloc">Il s'affiche en grand chez tous les élèves.
+               À zéro, au choix : on ramasse les copies, ou la classe s'arrête pour vous écouter —
+               et le travail est gardé, il revient là où il était.</p>
+            <div class="ec-champ-ligne">
+                <input type="number" id="ec-chrono-min" class="ec-champ ec-champ--court"
+                       min="1" max="180" value="10" aria-label="Minutes">
+                <select id="ec-chrono-quoi" class="ec-champ">
+                    <option value="terminer">À zéro : on termine la séance</option>
+                    <option value="pause">À zéro : on met en pause pour parler</option>
+                </select>
+                <button type="button" class="ec-bouton" data-chrono>Lancer</button>
+                <button type="button" class="ec-bouton ec-bouton--doux" data-chrono-off>Arrêter</button>
+            </div>
+        </section>
+
         <section class="ec-bloc">
             <h3 class="ec-h3">Le mot au tableau</h3>
             <p class="ec-note ec-note--bloc">Il s'affiche chez tous les élèves de la classe,
@@ -662,6 +702,7 @@ async function brancher(e, redessiner) {
         + '[data-mot-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
         + '[data-profs], [data-reessayer], [data-poste],'
+        + '[data-imposer], [data-chrono], [data-chrono-off],'
         + '[data-annuler-reglage]');
     if (!el) return;
     const d = el.dataset;
@@ -709,6 +750,25 @@ async function brancher(e, redessiner) {
         return;
     }
 
+    if (d.imposer !== undefined) {
+        const choix = document.getElementById('ec-impose');
+        const r = await fait(imposerLaSeance(vue.classe.id, choix ? choix.value : ''));
+        if (r && vue.liste && vue.liste.classe) vue.liste.classe.impose_path_id = choix.value || null;
+        return;
+    }
+
+    if (d.chrono !== undefined) {
+        const min = Number((document.getElementById('ec-chrono-min') || {}).value || 0);
+        const quoi = (document.getElementById('ec-chrono-quoi') || {}).value || 'terminer';
+        await fait(lancerLeChrono(vue.classe.id, min, quoi));
+        return;
+    }
+
+    if (d.chronoOff !== undefined) {
+        await fait(arreterLeChrono(vue.classe.id));
+        return;
+    }
+
     if (d.reessayer !== undefined) {
         vue.erreur = ''; vue.classes = null;
         redessiner();
@@ -742,7 +802,7 @@ async function brancher(e, redessiner) {
     if (d.ouvrir) {
         const c = (vue.classes || []).find(x => x.id === d.ouvrir);
         if (!c) return;
-        vue.ou = 'classe'; vue.classe = c; vue.onglet = 'direct';
+        vue.ou = 'classe'; vue.classe = c; vue.onglet = 'direct'; vue.parcours = null;
         vue.liste = null; vue.direct = null; vue.apercu = null; vue.erreur = '';
         redessiner();
         await rafraichirClasse(redessiner);
@@ -759,6 +819,14 @@ async function brancher(e, redessiner) {
         if (d.onglet === 'direct') lancerLeBattement(redessiner);
         else arreterLeBattement();
         if (!vue.liste) await rafraichirClasse(redessiner);
+        // LA BIBLIOTHÈQUE DU SERVEUR, pour savoir ce qu'on peut imposer. On ne
+        // la demande qu'en arrivant sur l'onglet qui s'en sert : le direct n'en
+        // a que faire, et c'est la lecture la plus lourde de cet écran.
+        if (d.onglet === 'seance' && vue.parcours === null) {
+            const r = await auServeur('/teacher/paths', { action: 'list' });
+            vue.parcours = r.erreur ? [] : (r.paths || []).map(x => ({ id: x.id, name: x.name }));
+            redessiner();
+        }
         return;
     }
 

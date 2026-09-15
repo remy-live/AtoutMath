@@ -131,6 +131,27 @@ export const viderClasse = (classId, confirmation) =>
 export const supprimerClasse = (classId, confirmation) =>
     auServeur('/teacher/class', { classId, action: 'delete', confirmation });
 
+/**
+ * IMPOSER UNE SÉANCE À LA CLASSE, ou rendre le choix.
+ *
+ * Rémy : « lorsque les élèves se connectent, j'impose la séance, comme cela ils
+ * n'ont rien à lancer ». Un identifiant vide lève l'imposition.
+ */
+export const imposerLaSeance = (classId, pathId) =>
+    auServeur('/teacher/class', { classId, action: 'imposer', pathId: pathId || '' });
+
+/**
+ * LE COMPTE À REBOURS, ET CE QU'IL FAIT À ZÉRO.
+ *
+ * `aZero` vaut 'terminer' (on ramasse les copies) ou 'pause' (on reprend la
+ * parole). Zéro minute l'arrête.
+ */
+export const lancerLeChrono = (classId, minutes, aZero = 'terminer') =>
+    auServeur('/teacher/class', { classId, action: 'chrono', minutes, aZero });
+
+export const arreterLeChrono = (classId) =>
+    auServeur('/teacher/class', { classId, action: 'chrono', minutes: 0 });
+
 export const envoyerUnMot = (classId, body, studentId = '') =>
     auServeur('/teacher/message', { classId, body, studentId });
 export const lesMots = (classId) => auServeur('/teacher/message', { classId, action: 'list' });

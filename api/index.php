@@ -739,6 +739,57 @@ function handleTeacherClass(): void
             ? 'Consigne retirée.' : 'Consigne affichée à toute la classe.']);
     }
 
+    // IMPOSER LA SÉANCE. Rémy : « est-ce qu'il ne serait pas possible que
+    // lorsque les élèves se connectent, j'impose la séance, comme cela ils
+    // n'ont rien à lancer ».
+    //
+    // ON VÉRIFIE QUE LE PARCOURS EST À NOUS. Sans cela, un identifiant de
+    // parcours suffirait à faire travailler la classe d'un collègue sur le
+    // sien — la même porte qu'on a fermée sur /teacher/assign, et elle doit
+    // être fermée ici aussi.
+    if ($action === 'imposer') {
+        $pathId = trim((string) ($body['pathId'] ?? ''));
+        if ($pathId === '') {
+            db()->prepare('UPDATE classes SET impose_path_id = NULL WHERE id = ?')
+                ->execute([$classe['id']]);
+            respond(['ok' => true, 'impose' => null,
+                     'dit' => 'La séance n\'est plus imposée : chacun choisit.']);
+        }
+        $q = db()->prepare('SELECT id, name FROM paths WHERE id = ? AND teacher_id = ?');
+        $q->execute([$pathId, $teacher['id']]);
+        $p = $q->fetch();
+        if (!$p) fail(404, 'path_not_found', 'Parcours introuvable.');
+        db()->prepare('UPDATE classes SET impose_path_id = ? WHERE id = ?')
+            ->execute([$pathId, $classe['id']]);
+        respond(['ok' => true, 'impose' => $pathId,
+                 'dit' => '« ' . $p['name'] . ' » s\'ouvre tout seul chez vos élèves.']);
+    }
+
+    // LE COMPTE À REBOURS, ET SES DEUX ISSUES. Rémy : « pour le compte à
+    // rebours c'est pour terminer la séance ou mettre en pause (pour faire un
+    // peu de cours par exemple ou pour parler) ».
+    //
+    // ON ENREGISTRE L'INSTANT DE FIN, jamais une durée. Une durée commence à
+    // vieillir dès qu'elle est écrite ; un élève qui arrive en retard, ou dont
+    // l'appareil se réveille, doit voir le temps qui reste VRAIMENT — pas celui
+    // qui restait quand le professeur a cliqué.
+    if ($action === 'chrono') {
+        $minutes = (int) ($body['minutes'] ?? 0);
+        if ($minutes <= 0) {
+            db()->prepare('UPDATE classes SET chrono_fin = NULL, chrono_a_zero = NULL WHERE id = ?')
+                ->execute([$classe['id']]);
+            respond(['ok' => true, 'chrono' => null, 'dit' => 'Compte à rebours arrêté.']);
+        }
+        if ($minutes > 180) fail(400, 'trop_long', 'Trois heures au plus.');
+        $aZero = ($body['aZero'] ?? 'terminer') === 'pause' ? 'pause' : 'terminer';
+        $fin = time() + $minutes * 60;
+        db()->prepare('UPDATE classes SET chrono_fin = ?, chrono_a_zero = ? WHERE id = ?')
+            ->execute([$fin, $aZero, $classe['id']]);
+        respond(['ok' => true, 'chrono' => ['finAt' => $fin, 'aZero' => $aZero],
+                 'dit' => $minutes . ' min — à zéro, on ' .
+                     ($aZero === 'pause' ? 'met la classe en pause.' : 'termine la séance.')]);
+    }
+
     // LES DEUX GESTES SANS RETOUR DEMANDENT LE MOT ÉCRIT, comme dans les pages
     // d'administration. Une fenêtre « êtes-vous sûr ? » se clique sans lire ;
     // taper EFFACER demande de s'arrêter une seconde, et c'est tout ce qu'on
@@ -845,6 +896,13 @@ function handleTeacherRoster(): void
             'id' => $classe['id'], 'name' => $classe['name'],
             'joinCode' => $classe['join_code'], 'level' => $classe['level'],
             'locked' => (bool) $classe['locked'], 'notice' => $classe['notice'],
+            // LE MOMENT EN COURS, pour que l'écran s'ouvre sur ce qui est
+            // VRAIMENT posé — et non sur des champs vides qu'il faudrait
+            // deviner. Un écran de réglages qui ne montre pas l'état actuel
+            // fait reposer deux fois le même réglage.
+            'impose_path_id' => $classe['impose_path_id'] ?? null,
+            'chrono_fin' => $classe['chrono_fin'] ?? null,
+            'chrono_a_zero' => $classe['chrono_a_zero'] ?? null,
         ],
         'eleves' => rosterLisible($classe['id']),
         // Un code proposé d'avance pour « le même pour toute la classe » : il
