@@ -35,6 +35,7 @@
 
 import { showToast } from './modal.js';
 import { demander, demanderTexte, choisirIndice } from './demander.js';
+import { choisirLesColonnes } from './collerListeUI.js';
 import { nomDuProf } from '../core/verrouProf.js';
 import {
     mesClasses, creerClasse, listeDeClasse, apercuDeListe, importerListe,
@@ -1219,12 +1220,25 @@ async function brancher(e, redessiner) {
     if (d.coller !== undefined) {
         const texte = await demanderTexte('Collez votre liste d\'élèves', {
             bouton: 'Voir ce qui va se passer', lignes: 12,
-            aide: 'Un élève par ligne. « DUPONT ; Emma » ou « Emma Dupont » : les deux '
-                + 'se lisent. Vous pouvez aussi coller directement depuis Pronote ou un tableur.',
-            placeholder: 'DUPONT;Emma\nNGUYÊN;Maëlle\nBernard Tom;tom.b;7777'
+            aide: 'Collez le fichier ENTIER, tel qu\'il sort de Pronote ou d\'un tableur — '
+                + 'toutes ses colonnes, sans rien nettoyer. Je vous montrerai le tableau et '
+                + 'les colonnes que j\'ai retenues, et vous corrigerez si je me trompe.',
+            placeholder: 'Élève\tNé(e) le\tClasse\tRégime\t…\nANDRIANTSITOHAINA Tiffany\t06/28/2013\t…'
         });
         if (!texte) return;
-        const r = await fait(apercuDeListe(cid, texte, ''));
+
+        // LE TABLEAU DES COLONNES S'INTERCALE ICI, et il ne remplace pas
+        // l'aperçu du serveur — il le PRÉCÈDE.
+        //
+        // Rémy colle un export de Pronote de vingt-deux colonnes ; le serveur,
+        // lui, sait très bien lire trois colonnes propres. On fait donc le
+        // travail de lecture ICI, sous ses yeux et avec son accord, puis on
+        // envoie au serveur une liste normalisée sur laquelle il n'a plus rien
+        // à deviner. Les identifiants manquants, les doublons et l'aperçu avant
+        // écriture restent son affaire, et ils marchaient déjà.
+        const normalisee = await choisirLesColonnes(texte);
+        if (!normalisee) return;
+        const r = await fait(apercuDeListe(cid, normalisee, ''));
         if (r && r.apercu) { vue.apercu = r.apercu; redessiner(); }
         return;
     }

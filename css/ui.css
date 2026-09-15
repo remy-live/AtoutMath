@@ -3233,3 +3233,61 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .dx-bouton--sortie { background: var(--danger); color: #fff; }
 .dx-bouton--sortie:disabled { opacity: .6; cursor: default; }
 .dx-bouton--doux { background: var(--bg-app); color: var(--text-main); border-color: var(--border); }
+
+/* ─────────────────── LE TABLEAU DES COLONNES (coller une liste) ────────────
+   Rémy : « tu me le présentes sous forme de tableau où tu sélectionnes
+   intelligemment les colonnes ou on peut les sélectionner ».
+
+   LE TABLEAU DÉFILE HORIZONTALEMENT, ET C'EST VOULU. Un export de Pronote a
+   vingt-deux colonnes ; les tasser pour qu'elles tiennent les rendrait toutes
+   illisibles, et c'est justement leur contenu qu'on demande au professeur de
+   juger. On garde donc des colonnes lisibles et on laisse glisser. */
+.cl-note { margin: 0 0 10px; font-size: .86rem; color: var(--text-muted); }
+.cl-table-cadre {
+    overflow-x: auto; border: 1px solid var(--border); border-radius: 10px;
+    max-height: 46vh;
+}
+.cl-table { border-collapse: collapse; font-size: .8rem; }
+.cl-table th, .cl-table td {
+    border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    padding: 5px 8px; text-align: left; white-space: nowrap;
+    max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+}
+.cl-table th {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--bg-panel); vertical-align: top;
+}
+/* Une colonne retenue se voit d'un coup d'œil : c'est la seule chose que le
+   professeur cherche en balayant l'en-tête. */
+.cl-th--pris { background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel)); }
+.cl-titre {
+    font-weight: 700; color: var(--text-main); margin-bottom: 4px;
+    max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+}
+.cl-select { font: inherit; font-size: .76rem; max-width: 190px; padding: 2px 4px; }
+.cl-table td { color: var(--text-muted); }
+
+.cl-sortie { margin: 14px 0 4px; }
+.cl-h4 { margin: 0 0 7px; font-size: .92rem; color: var(--text-main); }
+.cl-sortie-liste { margin: 0; padding-left: 18px; font-size: .88rem; line-height: 1.6; }
+.cl-sortie-liste code {
+    font-size: .8rem; background: var(--bg-app); padding: 1px 5px; border-radius: 5px;
+}
+.cl-code {
+    font-weight: 700; letter-spacing: .06em; color: var(--primary);
+}
+.cl-vide { margin: 0; font-size: .9rem; color: var(--warning); }
+/* Ce qu'on écarte s'affiche AVEC SA RAISON : un import qui avale une ligne en
+   silence est un import qu'on ne peut pas vérifier. */
+.cl-ecarte {
+    margin: 10px 0 0; font-size: .82rem; color: var(--text-muted);
+    background: var(--bg-app); border-radius: 8px; padding: 7px 10px;
+}
+.cl-ecarte em { font-style: italic; }
+.cl-boutons { display: flex; gap: 9px; margin-top: 16px; flex-wrap: wrap; }
+.cl-bouton {
+    font: inherit; font-weight: 700; padding: 10px 22px; border-radius: 10px;
+    cursor: pointer; border: 1px solid transparent;
+    background: var(--primary); color: #fff;
+}
+.cl-bouton--doux { background: var(--bg-app); color: var(--text-main); border-color: var(--border); }
