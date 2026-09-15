@@ -2092,6 +2092,50 @@ export const calculExercises = [
         instruction: "Chaque chiffre une fois par ligne et par colonne, comme un sudoku — mais les signes < et > entre les cases doivent être respectés. Un signe ÉLIMINE : la case du petit côté ne peut pas porter le plus grand chiffre. Pour écrire : touche une case et son chiffre monte (1, 2, 3… puis vide), ou glisse un chiffre du pavé dessus."
     },
     {
+        // LA CHUTE DES DÉCIMAUX. Rémy : « Je pensais à un jeu sympa, un
+        // [segment] en dessous séparé en 10, exemple 3 jusque 4, ça fait dix
+        // espaces. Des briques tombent du ciel et il faut les placer entre les
+        // graduations des axes. Exemple 3,15 le placer entre 3,1 et 3,2 ».
+        //
+        // C'EST L'ENCADREMENT, ET C'EST UNE DES CHOSES QUI RÉSISTENT LE PLUS.
+        // Un élève de sixième sait lire 3,15 ; il sait beaucoup moins dire entre
+        // quels dixièmes il tombe, et il se trompe d'une façon très précise :
+        // il lit « 15 » après la virgule et le place vers 3,5, parce qu'il
+        // traite la partie décimale comme un entier. Le jeu attaque exactement
+        // cette erreur — la brique ne peut se poser que dans un INTERVALLE, et
+        // un intervalle se désigne par ses deux bornes.
+        //
+        // TOUT EST COMPTÉ EN MILLIÈMES ENTIERS. 3,1 + 0,1 ne fait pas 3,2 en
+        // virgule flottante : il fait 3.3000000000000003. Une droite graduée
+        // calculée en flottants finit par afficher « 3,30000000000004 » au
+        // tableau, ou par refuser une réponse juste. Voir core/chuteDecimaux.js.
+        id: 'dec-chute', title: 'La Chute des Décimaux',
+        cree: '2026-09-15',
+        activityId: 'chute-decimaux',
+        sansRevision: true,
+        skills: ['num.dec.encadrer'],
+        params: { niveau: 1 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Le segment',
+                aide: 'Chaque niveau ne change QU\'UNE chose : d\'abord la partie entière, '
+                    + 'puis la finesse des graduations, puis le signe. Un niveau qui change '
+                    + 'deux choses à la fois ne dit pas laquelle n\'est pas comprise.',
+                options: [
+                    { value: 1, label: '1 — Des dixièmes, entre 0 et 1' },
+                    { value: 2, label: '2 — Des dixièmes, plus loin sur la droite' },
+                    { value: 3, label: '3 — Des centièmes' },
+                    { value: 4, label: '4 — Avec des nombres négatifs' }
+                ],
+                default: 1
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        motsClefs: ['encadrer', 'encadrement', 'décimaux', 'decimaux', 'droite graduée',
+            'graduation', 'dixième', 'centième', 'virgule', 'intervalle', 'briques', 'chute'],
+        instruction: "Une brique tombe du ciel avec un nombre écrit dessus. En bas, une droite graduée : elle va d'un nombre à un autre, coupée en dix morceaux. Touche le morceau où la brique doit se poser — celui qui est ENTRE les deux bonnes graduations. Pour 3,15, c'est entre 3,1 et 3,2 : c'est le PREMIER chiffre après la virgule qui décide, pas les suivants. Au clavier : ← → pour viser, Entrée pour poser. La brique tombe lentement, mais elle tombe."
+    },
+    {
         // L'ENQUÊTE. Rémy : « Connais tu aussi le jeu murdoku », puis « ne
         // l'appelle pas comme cela ».
         //

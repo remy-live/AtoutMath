@@ -532,6 +532,14 @@ const BASE = {
         descriptor: 'Retrouver une suite de couleurs cach\u00e9e \u00e0 partir du nombre de jetons bien plac\u00e9s et mal plac\u00e9s.',
         lesson: "ON NE DEVINE PAS UN CODE, ON L'\u00c9LIMINE. Au d\u00e9part il y a beaucoup de codes possibles \u2014 1296 pour quatre cases et six couleurs \u2014 et chaque r\u00e9ponse en supprime une partie. Le bon r\u00e9flexe n'est donc pas « quel code est-ce ? » mais « lesquels sont encore possibles ? ». Trois id\u00e9es suffisent. D'abord, le PREMIER essai ne sert pas \u00e0 trouver, il sert \u00e0 savoir : deux couleurs seulement, et la r\u00e9ponse dit d\u00e9j\u00e0 combien il y en a de chacune. Ensuite, le total \u00ab bien plac\u00e9s + mal plac\u00e9s \u00bb ne parle QUE des couleurs, pas des places : s'il vaut 2, il y a exactement deux jetons de ces couleurs-l\u00e0 dans le code, o\u00f9 qu'ils soient. Enfin, une r\u00e9ponse \u00e0 z\u00e9ro est la plus pr\u00e9cieuse de toutes : elle raye d'un coup toutes les couleurs de cette ligne. Attention \u00e0 un pi\u00e8ge : quand une couleur para\u00eet deux fois dans ta proposition mais une seule fois dans le code, elle ne compte qu'une fois \u2014 chaque jeton cach\u00e9 ne sert qu'\u00e0 un jeton propos\u00e9."
     },
+    'num.dec.encadrer': {
+        label: 'Encadrer un d\u00e9cimal entre deux graduations',
+        chemin: [D.NUMERIQUE, SD.DECIMAUX],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Dire entre quelles graduations tombe un nombre \u00e0 virgule.',
+        lesson: "UNE ERREUR TR\u00c8S PR\u00c9CISE, ET C'EST PRESQUE TOUJOURS LA M\u00caME : on lit ce qu'il y a apr\u00e8s la virgule comme un nombre entier. 3,15 devient « trois et quinze », donc on le place vers 3,5, ou m\u00eame apr\u00e8s 3,9. Or apr\u00e8s la virgule, chaque chiffre a sa place et son nom : le PREMIER dit les dixi\u00e8mes, le deuxi\u00e8me les centi\u00e8mes, le troisi\u00e8me les milli\u00e8mes. Pour savoir entre quels dixi\u00e8mes tombe un nombre, il suffit donc de regarder LE PREMIER chiffre apr\u00e8s la virgule, et rien d'autre : 3,15 commence par 1, il est donc entre 3,1 et 3,2 \u2014 quoi qu'il y ait derri\u00e8re. Le m\u00eame raisonnement d'un cran plus fin : pour les centi\u00e8mes on regarde les DEUX premiers chiffres, 3,157 est entre 3,15 et 3,16. Et une v\u00e9rification qui ne trompe jamais : le nombre cherch\u00e9 doit \u00eatre plus grand que la borne de gauche et plus petit que celle de droite. Si ce n'est pas le cas, ce n'est pas le bon intervalle. Attention enfin aux n\u00e9gatifs, o\u00f9 tout se renverse : \u22124,7 est \u00c0 GAUCHE de \u22124,6, parce que plus on descend, plus c'est petit."
+    },
     'num.logique.enquete': {
         label: 'Déduire sur un plan',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

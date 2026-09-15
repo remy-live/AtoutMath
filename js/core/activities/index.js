@@ -782,6 +782,8 @@ const legacy = [
     // L'enquête se compte en ENQUÊTES : une partie, c'est un plan entièrement
     // reconstitué PUIS le coupable nommé ; rien ne se valide avant.
     ['enquete', 'L\'Enquête', 'enquete', 'engineEnquete', 'enquête', 3],
+    // La chute se compte en BRIQUES posées : une brique, une question.
+    ['chute-decimaux', 'La Chute des Décimaux', 'chuteDecimaux', 'engineChuteDecimaux', 'brique', 10],
     ['hexagrille', 'L\'Hexagrille (1 à 9, sommes fléchées)', 'hexagrille', 'engineHexagrille', 'grille', 3],
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],
