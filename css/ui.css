@@ -670,6 +670,61 @@ body.classe-verrouillee #rangement-bascule { display: none !important; }
     font-weight: 700; padding: 11px 26px; border-radius: 10px; cursor: pointer;
 }
 
+/* ─────────────────────────── L'INDICE DU PROFESSEUR ───────────────────────
+   Rémy : « la possibilité de […] envoyer un indice ».
+
+   IL SE POSE À CÔTÉ DE LA QUESTION, IL NE SE MET PAS DEVANT. C'est toute la
+   différence avec le mot ci-dessus : une fenêtre qu'il faut acquitter est ce
+   qu'il faut pour « arrêtez tout, on corrige au tableau », et c'est exactement
+   ce qu'il ne faut pas pour « regarde la retenue ». On interromprait la pensée
+   qu'on veut aider.
+
+   EN BAS À DROITE, et pas en haut : le haut porte déjà le titre, la
+   progression, le chronomètre et le fil de la séance. Le bas à droite est le
+   seul coin qu'aucun exercice n'utilise — vérifié sur le catalogue.
+
+   ET ELLE NE VOLE JAMAIS LE FOCUS : un élève qui tape sa réponse doit pouvoir
+   continuer à taper pendant qu'elle apparaît. */
+.indices-prof {
+    position: fixed; right: 16px; z-index: 9000;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    display: flex; flex-direction: column; gap: 8px;
+    max-width: min(340px, calc(100vw - 32px));
+    pointer-events: none;
+}
+.indice-prof {
+    pointer-events: auto;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 12px; padding: 10px 13px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .16);
+    animation: indiceArrive .3s ease;
+}
+@keyframes indiceArrive {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+}
+.indice-prof--part { opacity: 0; transform: translateY(8px); transition: .25s ease; }
+.indice-prof-tete {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.indice-prof-qui {
+    font-size: .72rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--accent);
+}
+.indice-prof-fermer {
+    background: none; border: none; cursor: pointer; font-size: 1.15rem;
+    line-height: 1; color: var(--text-muted); padding: 0 2px;
+}
+.indice-prof-texte {
+    margin: 5px 0 0; font-size: .92rem; line-height: 1.45;
+    color: var(--text-main); white-space: pre-wrap;
+}
+/* Sur téléphone, il tient toute la largeur : à 340 px de carte sur un écran de
+   375, il resterait 35 px de marge d'un côté et zéro de l'autre. */
+@media (max-width: 480px) {
+    .indices-prof { left: 12px; right: 12px; max-width: none; }
+}
 /* LE BOUTON « PASSER CET EXERCICE ». Il n'existe que quand le professeur l'a
    autorisé pour cet exercice-là : c'est le geste de secours quand un exercice
    plante et bloque tout le parcours. En orange et non en rouge — ce n'est pas
@@ -2962,3 +3017,22 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .moment-pause-note { margin-top: 12px; font-size: .86rem; color: var(--text-muted, #64748b); }
 
 @media print { .moment, .moment-pause { display: none !important; } }
+
+/* Le bouton « indice » se distingue du bouton « mot » sans crier : ce sont deux
+   gestes différents, et la ligne d'un élève en porte déjà trois. */
+.ec-mini--indice { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+
+/* La fenêtre de choix d'un indice — plus large que « demander », parce qu'elle
+   porte des phrases entières et non un nom de classe. */
+.demander-boite--large { width: min(560px, calc(100vw - 32px)); }
+.indice-choix { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 14px; }
+.indice-choix-item {
+    text-align: left; font: inherit; font-size: .88rem; line-height: 1.4;
+    background: var(--bg-app); color: var(--text-main);
+    border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: 9px; padding: 8px 11px; cursor: pointer;
+}
+.indice-choix-item:hover { border-color: var(--accent); }
+/* Les coups de pouce universels ne parlent d'aucune notion : ils passent après,
+   et ils le montrent. */
+.indice-choix-item--doux { border-left-color: var(--border); color: var(--text-muted); }

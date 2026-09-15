@@ -18,7 +18,7 @@
 // En `fixed`, il aurait fallu tenir à jour un `padding-top` sur trois
 // dispositions différentes — et l'oublier une fois cache la barre de navigation.
 
-import { estVerrouille, estEcarte, consigneDuProf, messagesNonLus, direLu } from '../core/seanceDistante.js';
+import { estVerrouille, estEcarte, consigneDuProf, motsNonLus, indicesNonLus, direLu } from '../core/seanceDistante.js';
 import { showModal } from './modal.js';
 
 export function initSeanceDistanteUI() {
@@ -31,6 +31,7 @@ function rendre() {
     majVerrou(estVerrouille());
     majEcarte(estEcarte());
     montrerLesMots();
+    montrerLesIndices();
 }
 
 /* ------------------------------------------------------------------ Consigne */
@@ -119,7 +120,7 @@ function majEcarte(actif) {
  */
 function montrerLesMots() {
     if (document.getElementById('mot-du-prof')) return;   // il y en a déjà un
-    const mot = messagesNonLus()[0];
+    const mot = motsNonLus()[0];
     if (!mot) return;
 
     const corps = document.createElement('div');
@@ -151,5 +152,77 @@ function montrerLesMots() {
             // `direLu` retire le mot de l'état et redéclenche `rendre()`, qui
             // affichera le suivant s'il y en a un.
         };
+    }
+}
+
+/* ------------------------------------------------------------- Les indices */
+
+/**
+ * L'INDICE SE POSE À CÔTÉ, ET IL N'INTERROMPT RIEN.
+ *
+ * Rémy : « la possibilité de […] envoyer un indice ».
+ *
+ * TOUT CE QUI SUIT EXISTE PARCE QU'UN INDICE N'EST PAS UN MOT. Le mot ouvre
+ * une fenêtre qu'il faut acquitter — c'est ce qu'il faut pour « arrêtez tout,
+ * on corrige au tableau ». Faire pareil pour « regarde la retenue »
+ * détruirait la pensée qu'on veut aider : l'élève reviendrait à sa question
+ * après avoir cliqué, en ayant perdu le fil, et le professeur aurait nui en
+ * croyant aider.
+ *
+ * Donc : une carte en bas à droite, qui glisse, qui reste, et qu'on referme
+ * quand on veut. L'accusé de lecture part quand même — le professeur veut
+ * savoir si son coup de pouce est arrivé.
+ *
+ * ELLE NE VOLE PAS LE FOCUS. Un élève qui tape sa réponse au clavier doit
+ * pouvoir continuer à taper pendant que l'indice apparaît ; c'est pour cela
+ * qu'il n'y a ni `focus()` ni `autofocus` ici, et que `role="status"` le fait
+ * lire par une synthèse vocale sans couper la parole à autre chose.
+ */
+function montrerLesIndices() {
+    const liste = indicesNonLus();
+    let hote = document.getElementById('indices-du-prof');
+    if (!liste.length) { if (hote) hote.remove(); return; }
+
+    if (!hote) {
+        hote = document.createElement('div');
+        hote.id = 'indices-du-prof';
+        hote.className = 'indices-prof';
+        hote.setAttribute('role', 'status');
+        hote.setAttribute('aria-live', 'polite');
+        document.body.appendChild(hote);
+    }
+
+    // ON NE REDESSINE PAS CE QUI EST DÉJÀ LÀ. L'état de séance revient toutes
+    // les dix secondes ; réécrire la carte à chaque fois relancerait son
+    // animation d'entrée toutes les dix secondes, sous les yeux d'un élève qui
+    // essaie de lire.
+    const dejaLa = new Set([...hote.querySelectorAll('[data-indice]')]
+        .map(x => x.getAttribute('data-indice')));
+    for (const ind of liste) {
+        if (dejaLa.has(ind.id)) continue;
+        const carte = document.createElement('div');
+        carte.className = 'indice-prof';
+        carte.setAttribute('data-indice', ind.id);
+        carte.innerHTML = `
+            <div class="indice-prof-tete">
+                <span class="indice-prof-qui">Un coup de pouce</span>
+                <button type="button" class="indice-prof-fermer" aria-label="Fermer">×</button>
+            </div>
+            <p class="indice-prof-texte"></p>`;
+        // `textContent` : le professeur a tapé du texte dans un champ, et un
+        // champ de formulaire est du texte, jamais du balisage.
+        carte.querySelector('.indice-prof-texte').textContent = ind.body;
+        carte.querySelector('.indice-prof-fermer').onclick = () => {
+            carte.classList.add('indice-prof--part');
+            setTimeout(() => carte.remove(), 250);
+            direLu([ind.id]);
+        };
+        hote.appendChild(carte);
+    }
+
+    // Les indices déjà lus ailleurs (un autre appareil) disparaissent.
+    const vivants = new Set(liste.map(i => i.id));
+    for (const c of [...hote.querySelectorAll('[data-indice]')]) {
+        if (!vivants.has(c.getAttribute('data-indice'))) c.remove();
     }
 }

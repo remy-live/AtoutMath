@@ -1007,6 +1007,7 @@ function handleTeacherMessage(): void
         respond(['messages' => array_map(fn ($m) => [
             'id' => $m['id'],
             'corps' => dechiffrer($m['body']),
+            'genre' => ($m['genre'] ?? '') === 'indice' ? 'indice' : 'mot',
             'pour' => $m['student_id'] ? dechiffrer($m['first_name']) : null,
             'lus' => (int) $m['lus'],
             'quand' => $m['created_at'],
@@ -1016,10 +1017,24 @@ function handleTeacherMessage(): void
     $corps = trim((string) ($body['body'] ?? ''));
     if ($corps === '') fail(400, 'vide', 'Le mot est vide.');
     $pour = (string) ($body['studentId'] ?? '');
+    // MOT OU INDICE — deux façons d'arriver chez l'élève, pas deux tables. Le
+    // mot prend l'écran et demande un « J'ai lu » ; l'indice se pose à côté de
+    // la question sans rien interrompre. Tout le reste est identique, y compris
+    // l'accusé de lecture : le professeur veut savoir s'il a été vu.
+    $genre = ($body['genre'] ?? 'mot') === 'indice' ? 'indice' : 'mot';
 
     if ($pour === '') {
-        db()->prepare('INSERT INTO messages (id, class_id, body) VALUES (?, ?, ?)')
-            ->execute([uuidv4(), $classe['id'], chiffrer(mb_substr($corps, 0, 500))]);
+        // UN INDICE NE S'ENVOIE PAS À TOUTE LA CLASSE. Souffler la même chose à
+        // trente élèves dont vingt-cinq n'ont pas de difficulté, c'est leur
+        // donner la réponse — et le professeur qui voulait aider Léo aurait
+        // gâché l'exercice pour les autres. Ce geste-là s'appelle une consigne,
+        // et il existe déjà.
+        if ($genre === 'indice') {
+            fail(400, 'indice_classe',
+                'Un indice s\'adresse à un élève. Pour toute la classe, écrivez une consigne.');
+        }
+        db()->prepare('INSERT INTO messages (id, class_id, body, genre) VALUES (?, ?, ?, ?)')
+            ->execute([uuidv4(), $classe['id'], chiffrer(mb_substr($corps, 0, 500)), $genre]);
         respond(['ok' => true, 'dit' => 'Mot envoyé à toute la classe.']);
     }
 
@@ -1029,9 +1044,10 @@ function handleTeacherMessage(): void
     $s->execute([$pour, $classe['id']]);
     $eleve = $s->fetch() ?: null;
     if (!$eleve) fail(404, 'student_not_found', 'Élève introuvable.');
-    db()->prepare('INSERT INTO messages (id, student_id, body) VALUES (?, ?, ?)')
-        ->execute([uuidv4(), $pour, chiffrer(mb_substr($corps, 0, 500))]);
-    respond(['ok' => true, 'dit' => 'Mot envoyé à ' . dechiffrer($eleve['first_name']) . '.']);
+    db()->prepare('INSERT INTO messages (id, student_id, body, genre) VALUES (?, ?, ?, ?)')
+        ->execute([uuidv4(), $pour, chiffrer(mb_substr($corps, 0, 500)), $genre]);
+    respond(['ok' => true, 'dit' => ($genre === 'indice' ? 'Indice soufflé à ' : 'Mot envoyé à ')
+        . dechiffrer($eleve['first_name']) . '.']);
 }
 
 /**

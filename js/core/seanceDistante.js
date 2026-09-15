@@ -114,6 +114,21 @@ export function messagesNonLus() {
 }
 
 /**
+ * LES MOTS D'UN CÔTÉ, LES INDICES DE L'AUTRE — parce qu'ils ne s'affichent pas
+ * de la même façon.
+ *
+ * Le mot prend l'écran et se ferme d'un « J'ai lu » : c'est ce qu'il faut pour
+ * « arrêtez tout, on corrige au tableau ». L'indice se pose à CÔTÉ de la
+ * question : interrompre un élève pour lui souffler « regarde la retenue »
+ * détruirait exactement la pensée qu'on veut aider.
+ *
+ * Un message sans genre est un mot — c'est ce qu'ils étaient tous avant.
+ */
+const genreDe = (m) => (m && m.genre === 'indice' ? 'indice' : 'mot');
+export function motsNonLus() { return messagesNonLus().filter(m => genreDe(m) === 'mot'); }
+export function indicesNonLus() { return messagesNonLus().filter(m => genreDe(m) === 'indice'); }
+
+/**
  * L'EXERCICE RETIRÉ DU PARCOURS. Le geste du professeur qui a constaté qu'un
  * exercice plante : il disparaît, comme s'il n'y avait jamais été. C'est plus
  * net que de le laisser en place grisé — un élève de sixième essaierait quand

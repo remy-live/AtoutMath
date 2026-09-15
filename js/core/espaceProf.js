@@ -154,6 +154,19 @@ export const arreterLeChrono = (classId) =>
 
 export const envoyerUnMot = (classId, body, studentId = '') =>
     auServeur('/teacher/message', { classId, body, studentId });
+
+/**
+ * SOUFFLER UN INDICE À UN ÉLÈVE — et à un seul.
+ *
+ * Rémy : « la possibilité de […] envoyer un indice ».
+ *
+ * `studentId` n'a pas de valeur par défaut, contrairement au mot, et c'est
+ * délibéré : un indice envoyé à toute la classe est une réponse donnée à
+ * vingt-cinq élèves qui n'en avaient pas besoin. Le serveur le refuse aussi —
+ * on ne compte pas sur l'écran pour tenir une règle.
+ */
+export const soufflerUnIndice = (classId, body, studentId) =>
+    auServeur('/teacher/message', { classId, body, studentId, genre: 'indice' });
 export const lesMots = (classId) => auServeur('/teacher/message', { classId, action: 'list' });
 
 export const creerUnProfesseur = (displayName, email, password) =>

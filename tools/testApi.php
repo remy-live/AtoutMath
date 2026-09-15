@@ -1480,6 +1480,26 @@ verifier('les mots se relisent, avec pour qui ils étaient',
 verifier('un mot vide est refusé',
     json('/teacher/message', ['classId' => $idApp, 'body' => '   '], $jetonNotre)['code'] === 400);
 
+// --- L'indice : à UN élève, et jamais à la classe ---------------------------
+//
+// Rémy : « la possibilité de […] envoyer un indice ». Un indice soufflé à
+// trente élèves dont vingt-cinq n'avaient pas de difficulté, c'est la réponse
+// donnée à toute la classe — le professeur qui voulait aider Léo aurait gâché
+// l'exercice pour les autres. La règle est tenue ICI, au serveur, et pas
+// seulement par l'écran qui n'offre pas le bouton.
+verifier('un indice à un élève passe, et il se dit indice',
+    json('/teacher/message',
+        ['classId' => $idApp, 'studentId' => $resteApp[0]['id'],
+         'body' => 'Regarde la retenue.', 'genre' => 'indice'], $jetonNotre)['code'] === 200);
+verifier('UN INDICE À TOUTE LA CLASSE EST REFUSÉ',
+    json('/teacher/message',
+        ['classId' => $idApp, 'body' => 'Regarde la retenue.', 'genre' => 'indice'],
+        $jetonNotre)['code'] === 400);
+$lesMots = json('/teacher/message', ['classId' => $idApp, 'action' => 'list'], $jetonNotre)['json']['messages'];
+verifier('le genre se relit, et un ancien message reste un mot',
+    count(array_filter($lesMots, fn ($m) => ($m['genre'] ?? '') === 'indice')) === 1
+    && count(array_filter($lesMots, fn ($m) => ($m['genre'] ?? '') === 'mot')) === 2);
+
 // --- Ce qu'un autre professeur ne peut pas faire de ces routes-là non plus ---
 verifier('le collègue ne lit pas la liste de cette classe',
     json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'], $jetonAutre)['code'] === 404);

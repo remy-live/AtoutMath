@@ -60,7 +60,7 @@ function etatDeSeance(array $eleve): array
     // « récents » : un élève qui arrive en retard doit voir le mot qu'on a
     // envoyé à la classe il y a dix minutes.
     $s = $pdo->prepare(
-        'SELECT m.id, m.body, m.created_at, m.student_id
+        'SELECT m.id, m.body, m.genre, m.created_at, m.student_id
            FROM messages m
            LEFT JOIN message_reads r ON r.message_id = m.id AND r.student_id = ?
           WHERE (m.student_id = ? OR m.class_id = ?) AND r.message_id IS NULL
@@ -72,6 +72,10 @@ function etatDeSeance(array $eleve): array
         'body'  => dechiffrer($m['body']),
         'ts'    => msDepuisSql($m['created_at']),
         'scope' => $m['student_id'] ? 'student' : 'class',
+        // Un message sans genre est un MOT : c'est ce qu'ils étaient tous
+        // avant l'indice, et l'absence doit se lire comme l'ancien
+        // comportement plutôt que comme une valeur manquante.
+        'genre' => ($m['genre'] ?? '') === 'indice' ? 'indice' : 'mot',
     ], $s->fetchAll());
 
     // LES EXERCICES DÉBLOQUÉS. Un réglage pour la classe et un réglage pour

@@ -402,6 +402,78 @@ ok('et il arrive en moins de quinze secondes',
     !!motRecu && (motRecu.quand - departDuMot) < 15000,
     motRecu ? ((motRecu.quand - departDuMot) / 1000).toFixed(1) + ' s' : '—');
 
+// ──────────── 3 ter. L'INDICE SE POSE À CÔTÉ, IL NE PREND PAS L'ÉCRAN ──────
+//
+// Rémy : « la possibilité de […] envoyer un indice ».
+//
+// CE QUI SE VÉRIFIE ICI EST LA DIFFÉRENCE AVEC LE MOT, et c'est toute la
+// fonction. Le mot qui vient d'arriver a ouvert une fenêtre qu'il faut
+// acquitter : c'est ce qu'il faut pour « arrêtez tout ». Faire pareil pour
+// « regarde la retenue » interromprait la pensée qu'on veut aider — l'élève
+// cliquerait, reviendrait à sa question, et aurait perdu le fil. Le professeur
+// aurait nui en croyant aider.
+//
+// On envoie donc un indice et l'on vérifie DEUX choses : qu'il arrive, et
+// qu'aucune fenêtre ne s'est ouverte.
+console.log('\nUN INDICE, QUI NE COUPE PAS LE TRAVAIL');
+console.log('─'.repeat(64));
+
+// On solde le mot en cours : sa fenêtre est encore là, et l'on veut pouvoir
+// dire que ce qui suit n'en ouvre pas une nouvelle.
+await eleve.evaluate(async () => {
+    const { messagesNonLus, direLu } = await import('./js/core/seanceDistante.js');
+    await direLu(messagesNonLus().map(m => m.id));
+});
+await eleve.waitForTimeout(600);
+// ON NE COMPTE QUE CE QUI SE VOIT. La page garde une dizaine de voiles de
+// fenêtre en réserve, cachés ; les compter tous rendrait le contrôle vrai sans
+// rien prouver, puisque le nombre ne bougerait pas non plus si une fenêtre
+// s'ouvrait par-dessus l'une d'elles.
+const compterFenetres = () => document.evaluate ? [
+    ...document.querySelectorAll('.modal-overlay, #mot-du-prof, .demander')
+].filter(x => x.offsetParent !== null || getComputedStyle(x).position === 'fixed'
+    && getComputedStyle(x).display !== 'none').length : 0;
+const fenetresAvant = await eleve.evaluate(`(${compterFenetres})()`);
+
+const envoiIndice = await prof.evaluate(async ({ classId, eleveId }) => {
+    const { soufflerUnIndice } = await import('./js/core/espaceProf.js');
+    return soufflerUnIndice(classId, 'Regarde la retenue de la colonne des dizaines.', eleveId);
+}, { classId: classe.id, eleveId: (leoDirect || {}).id });
+ok('le serveur souffle l\'indice à cet élève-là', !envoiIndice.erreur,
+    envoiIndice.erreur || envoiIndice.dit);
+
+const refus = await prof.evaluate(async (classId) => {
+    const { soufflerUnIndice } = await import('./js/core/espaceProf.js');
+    return soufflerUnIndice(classId, 'Regarde la retenue.', '');
+}, classe.id);
+ok('UN INDICE À TOUTE LA CLASSE EST REFUSÉ', !!refus.erreur,
+    refus.erreur || 'accepté — c\'est la réponse donnée à vingt-cinq élèves qui n\'en avaient pas besoin');
+
+let carte = null;
+for (let i = 0; i < 40 && !carte; i++) {
+    await eleve.waitForTimeout(500);
+    carte = await eleve.evaluate(() => {
+        const c = document.querySelector('#indices-du-prof .indice-prof');
+        if (!c) return null;
+        const r = c.getBoundingClientRect();
+        return {
+            texte: (c.querySelector('.indice-prof-texte') || {}).textContent,
+            bas: Math.round(window.innerHeight - r.bottom),
+            droite: Math.round(window.innerWidth - r.right),
+            fenetres: [...document.querySelectorAll('.modal-overlay, #mot-du-prof, .demander')]
+                .filter(x => x.offsetParent !== null
+                    || (getComputedStyle(x).position === 'fixed'
+                        && getComputedStyle(x).display !== 'none')).length
+        };
+    });
+}
+ok('L\'INDICE ARRIVE, SANS RECHARGEMENT', !!carte,
+    carte ? `« ${carte.texte} »` : 'rien au bout de 20 s');
+ok('IL SE POSE À CÔTÉ, ET N\'OUVRE AUCUNE FENÊTRE',
+    !!carte && carte.fenetres === fenetresAvant,
+    carte ? `${carte.fenetres} fenêtre(s), comme avant (${fenetresAvant}) · `
+        + `posé à ${carte.bas} px du bas et ${carte.droite} px de la droite` : '—');
+
 // ──────────────────── 4. LES DEUX RÔLES DANS LE MÊME NAVIGATEUR ─────────────
 //
 // Rémy : « comment je pourrais simuler un mode élève et prof simultané, pour

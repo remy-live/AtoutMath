@@ -34,20 +34,22 @@
 // existent, ils sont ailleurs, et c'est très bien.
 
 import { showToast } from './modal.js';
-import { demander, demanderTexte } from './demander.js';
+import { demander, demanderTexte, choisirIndice } from './demander.js';
 import { nomDuProf } from '../core/verrouProf.js';
 import {
     mesClasses, creerClasse, listeDeClasse, apercuDeListe, importerListe,
     nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, leDirect,
     renommerClasse, mettreEnPause, poserConsigne, viderClasse, supprimerClasse,
-    envoyerUnMot, creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
+    envoyerUnMot, soufflerUnIndice, creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
     lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis,
     imposerLaSeance, lancerLeChrono, arreterLeChrono, auServeur
 } from '../core/espaceProf.js';
 import { adresseAdmin } from './classesServeur.js';
 import { adresseDuPoste } from './posteEleve.js';
 import { versionLisible } from '../core/versionDuSite.js';
-import { getExerciseById } from '../data/catalog.js';
+import { getExerciseById, skillsOf } from '../data/catalog.js';
+import { getSkill } from '../data/skills.js';
+import { indicesProposes } from '../core/indice.js';
 import { enBref, avancementDeClasse, depuisCombien } from '../core/avancement.js';
 
 /**
@@ -479,6 +481,9 @@ function rangHtml(e, maintenant) {
         ${score}
         <button type="button" class="ec-mini" data-mot-eleve="${esc(e.id)}"
                 data-prenom="${esc(e.prenom)}" title="Lui écrire un mot">mot</button>
+        <button type="button" class="ec-mini ec-mini--indice" data-indice-eleve="${esc(e.id)}"
+                data-prenom="${esc(e.prenom)}" data-exo="${esc(e.exo || '')}"
+                title="Lui souffler un coup de pouce, sans l'interrompre">indice</button>
     </div>`;
 }
 
@@ -761,7 +766,7 @@ async function brancher(e, redessiner) {
         + '[data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code],'
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
         + '[data-imprimer], [data-consigne], [data-consigne-off], [data-mot-classe],'
-        + '[data-mot-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
+        + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
         + '[data-profs], [data-reessayer], [data-poste],'
         + '[data-imposer], [data-chrono], [data-chrono-off],'
@@ -1071,6 +1076,21 @@ async function brancher(e, redessiner) {
         });
         if (!corps) return;
         await fait(envoyerUnMot(cid, corps, d.motEleve));
+        return;
+    }
+
+    // L'INDICE : on propose, on n'impose pas.
+    //
+    // Ce qu'on propose sort de la LEÇON de la compétence que l'exercice
+    // travaille — écrite une seule fois, dans js/data/skills.js, donc jamais
+    // désynchronisée de ce que l'élève lira dans l'aide. Le professeur garde le
+    // champ libre : c'est lui qui connaît son élève.
+    if (d.indiceEleve) {
+        const exo = d.exo ? getExerciseById(d.exo) : null;
+        const competence = exo ? getSkill((skillsOf(exo) || [])[0]) : null;
+        const corps = await choisirIndice(d.prenom, indicesProposes(competence));
+        if (!corps) return;
+        await fait(soufflerUnIndice(cid, corps, d.indiceEleve));
         return;
     }
 

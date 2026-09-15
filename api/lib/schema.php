@@ -200,11 +200,18 @@ function migrer(?PDO $pdo = null): void
     // individuellement ». Le message est tiré par l'élève à sa prochaine
     // synchro ; `read_at` dit s'il l'a vu, ce qui évite au professeur de
     // répéter à voix haute ce qu'il vient d'écrire.
+    //
+    // `genre` DISTINGUE LE MOT DE L'INDICE, et ce n'est pas une nuance
+    // d'affichage. Le mot prend l'écran et se ferme d'un bouton « J'ai lu » —
+    // c'est ce qu'il faut pour « arrêtez tout ». L'indice se pose à CÔTÉ de la
+    // question et n'interrompt rien — c'est ce qu'il faut pour « regarde la
+    // retenue », où interrompre détruirait la pensée qu'on veut aider.
     $tables['messages'] = "
         id         $id,
         student_id $refNull,
         class_id   $refNull,
         body       TEXT NOT NULL,
+        genre      $txtNull,
         created_at $date,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE";
@@ -298,6 +305,9 @@ function migrer(?PDO $pdo = null): void
                        'login'          => $sqlite ? 'TEXT NULL' : 'VARCHAR(255) NULL',
                        'login_key'      => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
                        'access_code'    => $txtNull],
+        // Le genre du message — voir la table `messages`. Une base installée
+        // avant l'indice n'a que des mots, et c'est bien ce que dit l'absence.
+        'messages' => ['genre' => $txtNull],
     ] as $table => $colonnes) {
         foreach ($colonnes as $col => $type) {
             try {
