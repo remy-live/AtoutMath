@@ -162,6 +162,27 @@ export async function donnerAuServeur(parcours, classId, opts = {}) {
 }
 
 /**
+ * REPRENDRE UNE SÉANCE À UNE CLASSE.
+ *
+ * Le pendant de `donnerAuServeur`, et il manquait : on savait donner, on ne
+ * savait pas reprendre. Décocher une classe effaçait la séance du navigateur
+ * du professeur et laissait l'assignation en base — les élèves auraient
+ * continué de recevoir un travail que leur professeur croit avoir repris.
+ *
+ * ON NE TOUCHE PAS AU TRAVAIL DÉJÀ FAIT : le journal est ailleurs. La séance
+ * quitte la liste des élèves, le bilan reste lisible.
+ */
+export async function retirerDuServeur(parcours, classId) {
+    if (!enPosteDeProf()) return { erreur: 'Pas identifié comme professeur.' };
+    if (!parcours || !parcours.id || !classId) return { erreur: 'Il manque le parcours ou la classe.' };
+    const r = await auServeur('/teacher/assign', {
+        action: 'retirer', pathId: parcours.id, classId
+    });
+    if (r.erreur) return r;
+    return { ok: true, retirees: r.retirees || 0 };
+}
+
+/**
  * LA VEILLE : tout enregistrement local part au serveur.
  *
  * On écoute l'événement plutôt que de modifier `state.savePaths()` : le noyau

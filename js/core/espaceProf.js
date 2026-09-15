@@ -87,6 +87,22 @@ export async function auServeur(route, corps = {}) {
     return data || {};
 }
 
+/**
+ * LA LISTE DES CLASSES A CHANGÉ — que ceux qui la gardent en mémoire l'oublient.
+ *
+ * `donnerSeance.js` garde la liste quinze secondes pour ne pas la redemander à
+ * chaque ouverture du panneau. Ce cache était vidé à la SUPPRESSION d'une
+ * classe, et nulle part ailleurs : une classe qu'on venait de créer n'existait
+ * pas encore pour le panneau « À qui ce parcours est donné », et rien ne
+ * disait pourquoi. On annonce donc le changement, et c'est à ceux qui gardent
+ * une copie d'écouter — le noyau n'a pas à connaître leurs caches.
+ */
+function laListeABouge() {
+    if (typeof document !== 'undefined') {
+        document.dispatchEvent(new CustomEvent('classes_updated'));
+    }
+}
+
 /** Les classes du professeur. Rend un tableau, ou `{ erreur }`. */
 export async function mesClasses() {
     const d = await auServeur('/teacher/classes', { action: 'list' });
@@ -101,6 +117,7 @@ export async function creerClasse(nom, niveau = '') {
     if (d.erreur) return d;
     // Le serveur rend expressément celle qu'il vient de créer : la chercher en
     // tête d'une liste triée à la seconde ouvrait parfois la mauvaise.
+    laListeABouge();
     return d.creee || { erreur: 'La classe a peut-être été créée : rechargez pour voir.' };
 }
 
@@ -132,7 +149,8 @@ export const seancesDeLaClasse = (classId) =>
     auServeur('/teacher/assign', { classId, action: 'list' });
 
 export const renommerClasse = (classId, name, level) =>
-    auServeur('/teacher/class', { classId, action: 'rename', name, level });
+    auServeur('/teacher/class', { classId, action: 'rename', name, level })
+        .then(r => { laListeABouge(); return r; });
 export const mettreEnPause = (classId, locked) =>
     auServeur('/teacher/class', { classId, action: 'lock', locked });
 export const poserConsigne = (classId, notice) =>
@@ -140,7 +158,8 @@ export const poserConsigne = (classId, notice) =>
 export const viderClasse = (classId, confirmation) =>
     auServeur('/teacher/class', { classId, action: 'empty', confirmation });
 export const supprimerClasse = (classId, confirmation) =>
-    auServeur('/teacher/class', { classId, action: 'delete', confirmation });
+    auServeur('/teacher/class', { classId, action: 'delete', confirmation })
+        .then(r => { laListeABouge(); return r; });
 
 /**
  * IMPOSER UNE SÉANCE À LA CLASSE, ou rendre le choix.

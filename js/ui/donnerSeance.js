@@ -92,6 +92,15 @@ export async function lireClasses({ fraiches = false } = {}) {
 /** Après un changement de classe, la prochaine lecture doit aller au serveur. */
 export function oublierLesClasses() { memoClasses = null; memoQuand = 0; }
 
+// ET L'ON N'ATTEND PLUS QUE QUELQU'UN PENSE À NOUS LE DIRE. `oublierLesClasses`
+// n'était appelée qu'au moment de supprimer une classe : créer une classe puis
+// ouvrir « À qui ce parcours est donné » dans les quinze secondes montrait une
+// liste sans elle, sans que rien ne l'explique. Le noyau annonce désormais que
+// la liste a bougé ; il suffit d'écouter.
+if (typeof document !== 'undefined') {
+    document.addEventListener('classes_updated', oublierLesClasses);
+}
+
 export async function lireSeances() {
     return (await globalStore.get(CLE_SEANCES, [])) || [];
 }

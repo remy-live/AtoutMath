@@ -126,10 +126,24 @@ const PUCE = {
     [ETATS.CLOSE]: ['Close', 'pc-calme']
 };
 
+/**
+ * COMBIEN D'ÉLÈVES DANS CETTE CLASSE — une seule définition, pour tout l'écran.
+ *
+ * Rémy : « il y a une incohérence ». Le panneau affichait « 4C · 30 » sur la
+ * ligne et « Donné à 1 classe — 0 élèves » trois lignes plus bas. Le même
+ * nombre était calculé de deux façons : la ligne retombait sur `effectif`, que
+ * le serveur envoie ; le total ne comptait que `eleves`, qui reste vide tant
+ * qu'on n'a pas déplié la classe. Deux calculs du même nombre finissent
+ * toujours par donner deux nombres.
+ */
+function combienDEleves(classe) {
+    return (classe && classe.eleves || []).length || Number(classe && classe.effectif) || 0;
+}
+
 function ligneClasseHtml(classe, info) {
     // L'EFFECTIF VIENT DU SERVEUR, LA LISTE VIENDRA AU DÉPLIAGE. On ne charge
     // pas trente élèves par classe pour afficher un nombre.
-    const n = (classe.eleves || []).length || Number(classe.effectif) || 0;
+    const n = combienDEleves(classe);
     const puce = info.etat ? PUCE[info.etat] : null;
     return `
     <div class="pc-classe${info.retiree ? ' pc-classe--retiree' : ''}" data-classe="${esc(classe.id)}">
@@ -137,6 +151,8 @@ function ligneClasseHtml(classe, info) {
             <label class="pc-case">
                 <input type="checkbox" data-donner="${esc(classe.id)}"${info.donnee ? ' checked' : ''}>
                 <span class="pc-nom">${esc(classe.nom)}</span>
+                ${classe.homonyme ? `<span class="pc-code"
+                    title="Deux classes portent ce nom : voici son code">${esc(classe.code || '?')}</span>` : ''}
             </label>
             <span class="pc-eff">${n}</span>
             ${puce ? `<span class="pc-puce ${puce[1]}">${puce[0]}</span>` : ''}
@@ -336,6 +352,17 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
     // vaut que dans la bibliothèque de ce navigateur-ci.
     const pathId = identiteDeParcours(parcours);
 
+    // DEUX CLASSES DU MÊME NOM NE DOIVENT PAS SE RESSEMBLER.
+    //
+    // Rémy avait deux « 4C » dans la liste — l'une à trente élèves, l'autre
+    // vide — et rien à l'écran ne permettait de dire laquelle est laquelle.
+    // Cocher au hasard, c'est donner le devoir à la classe d'à côté. On ne
+    // montre le code QUE dans ce cas : l'afficher partout ferait du bruit
+    // permanent pour un problème rare.
+    const parNom = new Map();
+    classes.forEach(c => parNom.set(c.nom, (parNom.get(c.nom) || 0) + 1));
+    classes.forEach(c => { c.homonyme = (parNom.get(c.nom) || 0) > 1; });
+
     const dessiner = () => {
         const mode = resolvePolicy(parcours.policy).mode;
         const infos = new Map(classes.map(c => [c.id, etatClasse(c, seances, pathId)]));
@@ -362,7 +389,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
 
                 <p class="pc-compte" role="status" aria-live="polite">${donnees.length
                 ? `Donné à ${donnees.length} classe${donnees.length > 1 ? 's' : ''} — ${donnees
-                    .reduce((n, c) => n + (c.eleves || []).length, 0)} élèves.`
+                    .reduce((n, c) => n + combienDEleves(c), 0)} élèves.`
                 : 'Pas encore donné. Cochez une classe.'}</p>
                 <div class="pc-rapport-zone" hidden></div>
             </div>`;
@@ -679,11 +706,60 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
     /**
      * COCHER DONNE, DÉCOCHER RETIRE — et la nuance est dans `retirer`.
      */
+    /**
+     * LE SERVEUR EST CE QUI DONNE VRAIMENT — le reste n'est qu'un affichage.
+     *
+     * Rémy, deux captures côte à côte : « il y a une incohérence ». Le panneau
+     * disait « 4C · En cours » ; l'onglet « Les séances » de la même 4C
+     * disait « Aucune séance donnée à cette classe ».
+     *
+     * LES DEUX DISAIENT VRAI, ET C'EST BIEN LE PROBLÈME. Cocher une classe
+     * n'écrivait QUE dans le navigateur du professeur : `ecrireSeances` range
+     * dans IndexedDB, et rien n'appelait `/teacher/assign`. L'onglet de la
+     * classe, lui, lit le serveur — il avait raison. Et les élèves reçoivent
+     * leurs séances par `/sync`, c'est-à-dire par la table que personne ne
+     * remplissait : le travail n'arrivait chez PERSONNE.
+     *
+     * `donnerAuServeur` existait, écrite et testée, et n'était appelée de
+     * nulle part. C'est ce raccordement-ci.
+     *
+     * ON DIT QUAND ÇA N'EST PAS PARTI. Une coche qui répond « Donné à 4C »
+     * sans que rien ne soit parti est exactement le mensonge qu'on répare :
+     * si le serveur refuse, on le nomme, et l'état local ne prétend pas le
+     * contraire.
+     */
+    async function auServeurDonner(classe) {
+        const { donnerAuServeur } = await import('../core/parcoursServeur.js');
+        const r = await donnerAuServeur(parcours, classe.id);
+        if (r && r.erreur) {
+            showToast(`${classe.nom} : le serveur n'a pas pris la séance — ${r.erreur}`, 'error');
+            return false;
+        }
+        return true;
+    }
+
+    async function auServeurRetirer(classe) {
+        const { retirerDuServeur } = await import('../core/parcoursServeur.js');
+        const r = await retirerDuServeur(parcours, classe.id);
+        if (r && r.erreur) {
+            showToast(`${classe.nom} : le serveur garde la séance — ${r.erreur}`, 'error');
+            return false;
+        }
+        return true;
+    }
+
     async function basculer(classe, caseEl) {
         if (!classe) return;
         const info = etatClasse(classe, seances, pathId);
 
         if (caseEl.checked) {
+            // ON MONTE D'ABORD, ON RANGE ENSUITE. Si le serveur refuse, la case
+            // revient où elle était : mieux vaut un geste qui n'a pas pris
+            // qu'un geste qui prétend avoir pris.
+            if (!await auServeurDonner(classe)) {
+                caseEl.checked = false;
+                return;
+            }
             if (info.retiree) {
                 // Elle existait, on la remet : les bilans reprennent leur place.
                 seances = seances.map(s => (s.id === info.seance.id ? remettre(s) : s));
@@ -697,7 +773,17 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 showToast(`Donné à ${classe.nom}.`, 'success');
             }
         } else if (info.seance) {
+            // RETIRER, C'EST RETIRER DE CHEZ LES ÉLÈVES. Sans cela, la séance
+            // quittait l'écran du professeur et restait en base : les élèves
+            // auraient continué de la recevoir à chaque synchronisation.
+            //
+            // MAIS APRÈS LA QUESTION, JAMAIS AVANT. La branche « personne n'a
+            // commencé » demande confirmation ; retirer du serveur en amont
+            // aurait fait qu'annuler laisse la séance chez le professeur et
+            // plus chez les élèves — c'est-à-dire exactement l'incohérence
+            // qu'on est en train de réparer, dans l'autre sens.
             if (info.travaille) {
+                if (!await auServeurRetirer(classe)) { caseEl.checked = true; return; }
                 // ON NE SUPPRIME PAS DU TRAVAIL. On retire, et on le dit.
                 seances = seances.map(s => (s.id === info.seance.id ? retirer(s) : s));
                 showToast(`${classe.nom} : séance retirée. Le bilan reste consultable.`, 'info');
@@ -714,6 +800,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 showConfirm(
                     `Retirer ce parcours à ${esc(classe.nom)} ? Personne n'a encore commencé.`,
                     async () => {
+                        if (!await auServeurRetirer(classe)) { dessiner(); return; }
                         seances = seances.filter(x => x.id !== info.seance.id);
                         await enregistrer();
                         dessiner();

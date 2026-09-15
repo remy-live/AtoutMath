@@ -2615,6 +2615,15 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .pc-eff { font-size: .78rem; color: var(--text-muted); flex: 0 0 auto; }
+/* LE CODE, SEULEMENT QUAND DEUX CLASSES PORTENT LE MÊME NOM. Deux « 4C »
+   indiscernables, c'est un devoir donné à la classe d'à côté. Partout
+   ailleurs il ferait du bruit permanent pour un problème rare. */
+.pc-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .68rem; letter-spacing: .06em; flex: 0 0 auto;
+    padding: 1px 5px; border-radius: 5px;
+    background: var(--bg-app); border: 1px solid var(--border); color: var(--text-muted);
+}
 
 .pc-puce {
     flex: 0 0 auto; font-size: .68rem; font-weight: 800; letter-spacing: .02em;

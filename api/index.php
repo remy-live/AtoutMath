@@ -624,6 +624,28 @@ function handleTeacherAssign(): void
         respond(['seances' => $seances]);
     }
 
+    // RETIRER UNE SÉANCE — ce qu'on ne savait pas faire non plus.
+    //
+    // On savait donner, on ne savait pas reprendre : décocher une classe dans
+    // « À qui ce parcours est donné » effaçait la séance du navigateur du
+    // professeur et laissait l'assignation en base. Les élèves auraient
+    // continué de recevoir un travail que leur professeur croit avoir repris.
+    //
+    // ON N'EFFACE QUE L'ASSIGNATION, JAMAIS LE TRAVAIL. Le journal des élèves
+    // est ailleurs et n'est pas touché : la séance quitte leur liste, le bilan
+    // reste lisible.
+    if (($body['action'] ?? '') === 'retirer') {
+        if ($pathId === '') fail(400, 'no_path', 'Quel parcours ?');
+        if ($classId === null || $classId === '') fail(400, 'no_class', 'Quelle classe ?');
+        $q = db()->prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?');
+        $q->execute([$classId, $teacher['id']]);
+        if (!$q->fetch()) fail(404, 'class_not_found', 'Classe introuvable.');
+
+        $d = db()->prepare('DELETE FROM assignments WHERE path_id = ? AND class_id = ?');
+        $d->execute([$pathId, $classId]);
+        respond(['ok' => true, 'retirees' => $d->rowCount()]);
+    }
+
     $stmt = db()->prepare('SELECT id FROM paths WHERE id = ? AND teacher_id = ?');
     $stmt->execute([$pathId, $teacher['id']]);
     if (!$stmt->fetch()) fail(404, 'path_not_found', 'Parcours introuvable.');
@@ -662,6 +684,38 @@ function handleTeacherAssign(): void
     // laisser croire qu'un travail a été donné.
     if (($classId === null || $classId === '') && ($studentId === null || $studentId === '')) {
         fail(400, 'no_target', 'Il faut désigner une classe ou un élève.');
+    }
+
+    // DONNER DEUX FOIS NE DONNE PAS DEUX FOIS.
+    //
+    // La case à cocher du panneau se décoche et se recoche ; chaque coche
+    // insérait une ligne de plus. L'élève recevait alors le même travail en
+    // deux exemplaires dans sa liste, et le professeur, en retirant, n'en
+    // enlevait qu'un — l'autre restait, invisible et actif.
+    //
+    // On met donc à jour l'existante plutôt que d'en ajouter une : c'est la
+    // même séance, avec peut-être un nouvel horaire.
+    //
+    // ET L'ON N'ÉCRIT PAS « class_id IS ? ». SQLite accepte `IS` avec un
+    // paramètre lié — c'est sa comparaison qui traite NULL comme une valeur
+    // ordinaire —, MySQL le refuse : son `IS` ne prend que TRUE, FALSE, NULL
+    // ou UNKNOWN. Cette API tourne sur les deux moteurs ; la requête serait
+    // passée verte dans tous les essais, qui sont en SQLite, et aurait échoué
+    // chez Rémy. On écrit donc les deux cas, où le NULL est écrit en dur.
+    if ($classId !== null && $classId !== '') {
+        $vue = db()->prepare(
+            'SELECT id FROM assignments WHERE path_id = ? AND class_id = ? AND student_id IS NULL');
+        $vue->execute([$pathId, $classId]);
+    } else {
+        $vue = db()->prepare(
+            'SELECT id FROM assignments WHERE path_id = ? AND student_id = ? AND class_id IS NULL');
+        $vue->execute([$pathId, $studentId]);
+    }
+    $deja = $vue->fetchColumn();
+    if ($deja !== false) {
+        db()->prepare('UPDATE assignments SET due_at = ? WHERE id = ?')
+            ->execute([$body['dueAt'] ?? null, $deja]);
+        respond(['ok' => true, 'deja' => true]);
     }
 
     db()->prepare('INSERT INTO assignments (id, path_id, class_id, student_id, due_at) VALUES (?, ?, ?, ?, ?)')
