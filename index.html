@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=705">
-    <link rel="stylesheet" href="css/layout.css?v=705">
-    <link rel="stylesheet" href="css/ui.css?v=705">
-    <link rel="stylesheet" href="css/games.css?v=705">
-    <link rel="stylesheet" href="css/components.css?v=705">
-    <link rel="stylesheet" href="css/modules.css?v=705">
+    <link rel="stylesheet" href="css/base.css?v=706">
+    <link rel="stylesheet" href="css/layout.css?v=706">
+    <link rel="stylesheet" href="css/ui.css?v=706">
+    <link rel="stylesheet" href="css/games.css?v=706">
+    <link rel="stylesheet" href="css/components.css?v=706">
+    <link rel="stylesheet" href="css/modules.css?v=706">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -547,6 +547,23 @@
                                 <polyline points="17 21 17 13 7 13 7 21" />
                                 <polyline points="7 3 7 8 15 8" />
                             </svg>Sauvegarder / Restaurer</button>
+                        <!-- SE DÉCONNECTER. Rémy : « Tu sais qu'on ne peut même pas
+                             se déconnecter ». C'était vrai : le jeton ne s'effaçait
+                             que lorsque le SERVEUR le refusait. Un professeur
+                             connecté sur l'ordinateur de la salle informatique y
+                             restait après la sonnerie, avec ses classes, sa liste
+                             et les codes de ses trente élèves ouverts au suivant.
+
+                             LE BOUTON NE S'AFFICHE QUE SI L'ON EST CONNECTÉ À
+                             QUELQUE CHOSE (voir ui/deconnexionUI.js) : proposer de
+                             se déconnecter à quelqu'un qui travaille hors ligne est
+                             une porte qui ne mène nulle part, et qui inquiète. -->
+                        <button id="btn-deconnexion" class="nav-menu-item nav-menu-item--sortie"
+                                role="menuitem" type="button" hidden>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+                            </svg><span id="btn-deconnexion-mot">Se déconnecter</span></button>
                     </div>
                 </div>
                 <!-- Plein écran : le même bouton existe dans l'en-tête de jeu.

@@ -3201,3 +3201,35 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .ec-table--bilan td { vertical-align: middle; }
 .ec-td-faible { color: var(--danger); font-weight: 700; }
 .ec-tr-rien { background: color-mix(in srgb, var(--warning) 8%, transparent); }
+
+/* ─────────────────────────── SE DÉCONNECTER ───────────────────────────────
+   Rémy : « Tu sais qu'on ne peut même pas se déconnecter ».
+
+   LE BOUTON EST EN BAS DU MENU, ET IL SE DISTINGUE. C'est le seul geste de ce
+   menu qu'on ne veut pas faire par erreur : on le sépare d'un filet, et son
+   libellé dit de QUOI on se déconnecte — sur une machine où le professeur et
+   l'élève passent l'un après l'autre, « se déconnecter » tout court laisse la
+   question ouverte, et c'est exactement la machine où l'on clique. */
+.nav-menu-item--sortie {
+    border-top: 1px solid var(--border); margin-top: 4px; padding-top: 9px;
+    color: var(--danger);
+}
+.nav-menu-item--sortie[hidden] { display: none; }
+
+.dx-mot { margin: 0 0 10px; font-size: 1rem; color: var(--text-main); }
+.dx-note { margin: 0 0 14px; font-size: .88rem; color: var(--text-muted); line-height: 1.45; }
+.dx-note--alerte { color: var(--warning); font-weight: 600; }
+.dx-case {
+    display: flex; gap: 9px; align-items: flex-start;
+    margin: 0 0 16px; font-size: .86rem; color: var(--text-main); cursor: pointer;
+}
+.dx-case input { margin-top: 2px; flex-shrink: 0; }
+.dx-case em { display: block; font-style: normal; color: var(--text-muted); font-size: .8rem; margin-top: 2px; }
+.dx-boutons { display: flex; gap: 9px; flex-wrap: wrap; }
+.dx-bouton {
+    font: inherit; font-weight: 700; padding: 10px 20px; border-radius: 10px;
+    cursor: pointer; border: 1px solid transparent;
+}
+.dx-bouton--sortie { background: var(--danger); color: #fff; }
+.dx-bouton--sortie:disabled { opacity: .6; cursor: default; }
+.dx-bouton--doux { background: var(--bg-app); color: var(--text-main); border-color: var(--border); }

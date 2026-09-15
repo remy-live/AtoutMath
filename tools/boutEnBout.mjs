@@ -474,6 +474,73 @@ ok('IL SE POSE À CÔTÉ, ET N\'OUVRE AUCUNE FENÊTRE',
     carte ? `${carte.fenetres} fenêtre(s), comme avant (${fenetresAvant}) · `
         + `posé à ${carte.bas} px du bas et ${carte.droite} px de la droite` : '—');
 
+// ─────────────────── 3 quater. SE DÉCONNECTER, DES DEUX CÔTÉS ──────────────
+//
+// Rémy : « Tu sais qu'on ne peut même pas se déconnecter ».
+//
+// C'était vrai, et c'était un trou complet : le jeton du professeur ne
+// s'effaçait que lorsque le SERVEUR le refusait. Un professeur connecté sur
+// l'ordinateur de la salle informatique y restait après la sonnerie, avec ses
+// classes, sa liste et les codes de ses trente élèves ouverts au suivant.
+//
+// CE QUI SE VÉRIFIE ICI N'EST PAS QUE LE JETON PART — une ligne suffirait.
+// C'est que la CLASSE part avec lui. La consigne, le verrou, la séance imposée
+// et le compte à rebours sont gardés SUR L'APPAREIL, exprès, pour survivre à
+// une coupure réseau ; sans les effacer en partant, l'élève suivant devant la
+// même machine se retrouve verrouillé par une classe dont il ne fait pas
+// partie, avec un compte à rebours qui n'est pas le sien.
+console.log('\nSE DÉCONNECTER, ET NE RIEN LAISSER AU SUIVANT');
+console.log('─'.repeat(64));
+
+// On pose une consigne, pour avoir quelque chose qui doit disparaître.
+await prof.evaluate(async (classId) => {
+    const { poserConsigne } = await import('./js/core/espaceProf.js');
+    await poserConsigne(classId, 'Exercice 4 page 112.');
+}, classe.id);
+// L'élève la reçoit à son prochain battement.
+await eleve.waitForFunction(
+    () => !!document.getElementById('consigne-prof'), null, { timeout: 25000 }
+).then(() => true).catch(() => false);
+
+const avantDeco = await eleve.evaluate(async () => {
+    const { quiEstLa } = await import('./js/ui/deconnexionUI.js');
+    const { etatSeance } = await import('./js/core/seanceDistante.js');
+    const { journal } = await import('./js/core/journal.js');
+    return { qui: quiEstLa().role, classe: etatSeance().className,
+             consigne: !!document.getElementById('consigne-prof'),
+             journal: journal.all().length };
+});
+ok('avant : l\'élève est rattaché, et la classe a posé sa consigne',
+    avantDeco.qui === 'eleve' && avantDeco.consigne, JSON.stringify(avantDeco));
+
+const deco = await eleve.evaluate(async () => {
+    const { deconnecterEleve } = await import('./js/core/sync.js');
+    return deconnecterEleve();
+});
+ok('la déconnexion envoie ce qui reste avant de partir', deco.parti,
+    deco.parti ? 'parti' : deco.reste + ' à envoyer');
+
+const apresDeco = await eleve.evaluate(async () => {
+    const { quiEstLa } = await import('./js/ui/deconnexionUI.js');
+    const { etatSeance } = await import('./js/core/seanceDistante.js');
+    const { journal } = await import('./js/core/journal.js');
+    return { qui: quiEstLa().role, classe: etatSeance().className,
+             consigne: !!document.getElementById('consigne-prof'),
+             verrou: document.body.classList.contains('classe-verrouillee'),
+             journal: journal.all().length };
+});
+ok('LE JETON DE L\'ÉLÈVE A DISPARU', apresDeco.qui === 'personne', apresDeco.qui);
+ok('LA CONSIGNE ET LE VERROU DE LA CLASSE AUSSI',
+    !apresDeco.consigne && !apresDeco.verrou && !apresDeco.classe,
+    JSON.stringify(apresDeco));
+ok('MAIS PAS SON TRAVAIL — se déconnecter n\'est pas s\'effacer',
+    apresDeco.journal >= avantDeco.journal,
+    `${apresDeco.journal} événement(s) gardés sur ${avantDeco.journal}`);
+
+// LE PROFESSEUR, LUI, SE DÉCONNECTE À LA TOUTE FIN DU HARNAIS — voir plus bas.
+// Le vérifier ici couperait le jeton dont les sections suivantes ont besoin :
+// un contrôle qui casse les contrôles d'après n'en est pas un.
+
 // ──────────────────── 4. LES DEUX RÔLES DANS LE MÊME NAVIGATEUR ─────────────
 //
 // Rémy : « comment je pourrais simuler un mode élève et prof simultané, pour
@@ -548,6 +615,36 @@ ok('les deux tiroirs existent côte à côte, et sont distincts',
     `professeur : ${clefs.prof.length} clef(s) · poste : ${clefs.poste.length}`);
 ok('aucune clef du poste ne déborde sur celles du professeur',
     !clefs.prof.some(k => k.startsWith('poste:')));
+
+// ─────────────── 5. LE PROFESSEUR QUITTE SON MODE — EN DERNIER ─────────────
+//
+// Ici et pas plus haut : ce contrôle coupe le jeton, et tout ce qui précède en
+// a besoin. Un contrôle qui casse les contrôles d'après n'en est pas un — je
+// l'ai appris en le plaçant au milieu.
+console.log('\nLE PROFESSEUR QUITTE SON MODE');
+console.log('─'.repeat(64));
+const profAvant = await prof.evaluate(async () => {
+    const { quiEstLa } = await import('./js/ui/deconnexionUI.js');
+    return quiEstLa().role;
+});
+await prof.evaluate(async () => {
+    const { oublierProf } = await import('./js/core/verrouProf.js');
+    oublierProf();
+});
+const profApres = await prof.evaluate(async () => {
+    const { quiEstLa } = await import('./js/ui/deconnexionUI.js');
+    const { jetonProf } = await import('./js/core/verrouProf.js');
+    return { role: quiEstLa().role, jeton: !!jetonProf() };
+});
+ok('LE PROFESSEUR PEUT QUITTER SON MODE, ET SON JETON PART',
+    profAvant === 'prof' && profApres.role !== 'prof' && !profApres.jeton,
+    `${profAvant} → ${profApres.role}`);
+ok('et le serveur le traite alors comme un inconnu',
+    (await prof.evaluate(async () => {
+        const { mesClasses } = await import('./js/core/espaceProf.js');
+        const r = await mesClasses();
+        return !!(r && r.erreur);
+    })), 'ses classes ne se lisent plus sans jeton');
 
 console.log('\n' + '─'.repeat(64));
 console.log('fenêtres natives et erreurs de page :', erreurs.length);

@@ -241,6 +241,57 @@ export async function loginEleve({ apiUrl, login, code }) {
 }
 
 /**
+ * SE DÉCONNECTER — le geste qui n'existait pas.
+ *
+ * Rémy : « Tu sais qu'on ne peut même pas se déconnecter ».
+ *
+ * ON ENVOIE D'ABORD, ET C'EST TOUT L'ORDRE DE CETTE FONCTION. Le journal pousse
+ * par lots avec quelques secondes de retard ; se détacher d'abord jetterait les
+ * dernières réponses — celles de la fin d'heure, qui sont toujours celles qu'on
+ * vient de se donner du mal à trouver. On garde donc le jeton jusqu'au bout :
+ * sans lui, l'envoi final n'aurait plus de quoi s'authentifier.
+ *
+ * `force` sert au cas hors ligne, où l'on ne PEUT pas sauver : on part quand
+ * même, mais seulement après avoir dit à l'élève combien il perd (voir
+ * `peutSeDeconnecter` dans core/deconnexion.js).
+ *
+ * @param {object} [opts] { force:boolean, effacerLeTravail:boolean }
+ * @returns {Promise<{parti:boolean, reste:number}>}
+ */
+export async function deconnecterEleve({ force = false, effacerLeTravail = false } = {}) {
+    const reste = () => journal.pending().filter(e => !e.local).length;
+
+    if (isActive() && reste()) {
+        try { await syncNow({ silent: true }); } catch (e) { /* on mesure après */ }
+    }
+    if (reste() && !force) return { parti: false, reste: reste() };
+
+    // La classe s'oublie AVANT le jeton : `oublierLaClasse` n'a besoin de rien
+    // d'autre que du stockage, et si la suite échoue, mieux vaut un appareil
+    // déverrouillé et encore identifié que l'inverse.
+    const { oublierLaClasse } = await import('./seanceDistante.js');
+    await oublierLaClasse();
+
+    if (effacerLeTravail) {
+        // SE DÉCONNECTER N'EST PAS S'EFFACER : on ne vient ici que si l'élève
+        // — ou le professeur à côté de lui, sur un poste partagé — l'a demandé.
+        try {
+            const { LocalStore } = await import('./store.js');
+            const { namespaceFor } = await import('./profile.js');
+            await new LocalStore(namespaceFor(getActiveProfileId())).clear();
+        } catch (e) { /* un stockage récalcitrant n'empêche pas de partir */ }
+    }
+
+    await attachRemote(getActiveProfileId(), {
+        studentId: null, token: null, classCode: null, className: null,
+        login: null, cursor: 0, lastSyncAt: null
+    });
+    await setSyncConfig({ enabled: false });
+    document.dispatchEvent(new CustomEvent('eleve_deconnecte'));
+    return { parti: true, reste: 0 };
+}
+
+/**
  * Un aller-retour de synchronisation.
  * @returns {Promise<{pushed:number, pulled:number}|null>}
  */

@@ -96,6 +96,33 @@ function prevenir() {
     document.dispatchEvent(new CustomEvent('seance_distante', { detail: { ...etat } }));
 }
 
+/**
+ * TOUT OUBLIER DE LA CLASSE — à la déconnexion, et nulle part ailleurs.
+ *
+ * LE PIÈGE EST INVISIBLE, ET IL FALLAIT CETTE FONCTION POUR LE FERMER. La
+ * consigne, le verrou, la séance imposée et le compte à rebours sont gardés SUR
+ * L'APPAREIL, exprès : c'est ce qui permet à un élève de continuer quand le
+ * réseau tombe. Mais sans les effacer en partant, le suivant qui s'assied
+ * devant la même machine se retrouve verrouillé par une classe dont il ne fait
+ * pas partie, avec un compte à rebours qui n'est pas le sien — et personne ne
+ * comprend pourquoi.
+ *
+ * On efface AUSSI la marque sur `<body>` : le verrou est une classe CSS, et une
+ * classe CSS ne disparaît pas parce que l'état qui l'a posée a disparu.
+ */
+export async function oublierLaClasse() {
+    etat = { ...VIDE };
+    await globalStore.set(CLE, null).catch(() => {});
+    if (typeof document !== 'undefined') {
+        document.body.classList.remove('classe-verrouillee');
+        document.getElementById('consigne-prof')?.remove();
+        document.getElementById('indices-du-prof')?.remove();
+        document.getElementById('le-moment')?.remove();
+        document.getElementById('le-moment-pause')?.remove();
+    }
+    prevenir();
+}
+
 export function etatSeance() {
     return { ...etat };
 }
