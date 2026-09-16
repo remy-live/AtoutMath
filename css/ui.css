@@ -160,6 +160,130 @@
     background: var(--bg-panel); border: 1px solid var(--border);
 }
 .ec-rang--ici { border-color: color-mix(in srgb, #10b981 45%, var(--border)); }
+
+/* ─────────── LA FICHE D'UN ÉLÈVE, DÉPLIÉE SOUS SA LIGNE ───────────────────
+   Rémy : « dans le direct, il faut aussi pouvoir cliquer sur l'élève, voir où
+   il en est, débloquer un exercice, envoyer un message ».
+
+   ELLE SE DÉPLIE, ELLE NE RECOUVRE RIEN. Cet écran se lit debout, au fond de la
+   salle ; si ouvrir la fiche d'un élève faisait perdre les vingt-neuf autres,
+   on ne l'ouvrirait pas pendant le cours — et un geste qu'on n'ose pas faire en
+   classe n'existe pas.
+
+   PAS DE CHEVRON DANS LA LIGNE. La ligne est une grille de cinq colonnes ; un
+   sixième enfant serait passé à la ligne suivante et aurait cassé l'alignement
+   des trente. L'ouverture se dit par le cadre, qui ne coûte aucune colonne. */
+/* LES DEUX BOUTONS TIENNENT DANS UNE SEULE CELLULE, et c'est une capture qui
+   l'a imposé. La ligne est une grille de CINQ colonnes ; avec le score, elle
+   comptait six enfants — « indice » passait à la ligne suivante, sous le prénom,
+   et la hauteur des trente lignes changeait selon qu'un élève avait répondu ou
+   non. Groupés, ils ne coûtent qu'une colonne. */
+.ec-rang-gestes { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+.ec-rang-hote { display: flex; flex-direction: column; }
+.ec-rang--cliquable { cursor: pointer; }
+.ec-rang--cliquable:hover { border-color: var(--primary); }
+.ec-rang--cliquable:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.ec-rang--cliquable[aria-expanded="true"] {
+    border-color: var(--primary);
+    border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+    background: color-mix(in srgb, var(--primary) 7%, var(--bg-panel));
+}
+.ec-fiche {
+    border: 1px solid var(--primary); border-top: none;
+    border-radius: 0 0 11px 11px;
+    background: color-mix(in srgb, var(--primary) 4%, var(--bg-panel));
+    padding: 12px 14px 13px;
+    display: flex; flex-direction: column; gap: 9px;
+}
+.ec-fiche-haut { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.ec-fiche-haut > div { flex: 1 1 200px; min-width: 0; }
+.ec-fiche-ou { margin: 0; font-weight: 700; color: var(--text-main); }
+.ec-fiche-silence {
+    flex: 0 0 auto; font-size: .78rem; font-weight: 600; color: var(--text-muted);
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--bg-app); border: 1px solid var(--border);
+}
+.ec-fiche-silence--trop {
+    color: var(--warning); border-color: color-mix(in srgb, var(--warning) 50%, var(--border));
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+
+/* LES ÉTAPES, UNE PAR UNE. Une étape ratée ne se distingue pas d'une réussie sur
+   une barre — or dire « continue » à un élève qui vient de rater l'étape
+   d'avant, c'est l'enfoncer. La forme porte donc l'information autant que la
+   couleur : plein, barré, cerné, vide. */
+.ec-fiche-pas-rangee { display: flex; flex-wrap: wrap; gap: 5px; }
+.ec-fiche-pas {
+    width: 26px; height: 26px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .74rem; font-weight: 700;
+    border: 1px solid var(--border); background: var(--bg-app); color: var(--text-muted);
+}
+.ec-fiche-pas--reussie {
+    background: color-mix(in srgb, #10b981 20%, var(--bg-panel));
+    border-color: color-mix(in srgb, #10b981 55%, var(--border)); color: var(--text-main);
+}
+.ec-fiche-pas--ratee {
+    background: color-mix(in srgb, var(--danger) 16%, var(--bg-panel));
+    border-color: color-mix(in srgb, var(--danger) 55%, var(--border)); color: var(--text-main);
+    text-decoration: line-through;
+}
+.ec-fiche-pas--en-cours {
+    border-color: var(--primary); color: var(--primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.ec-fiche-question { margin: 0; font-size: .84rem; color: var(--text-muted); }
+/* LE CONSEIL N'EST PAS UNE DÉCISION. On dit ce qu'on a vu — « bloqué depuis
+   douze minutes » — et c'est le professeur qui tranche. */
+.ec-fiche-conseil {
+    margin: 0; font-size: .84rem; font-weight: 600; color: var(--text-main);
+    border-left: 3px solid var(--warning); padding: 4px 0 4px 10px;
+}
+.ec-fiche-gestes { display: flex; flex-wrap: wrap; gap: 7px; }
+.ec-fiche-gestes .ec-bouton[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* ─────────── LA BARRE DE PILOTAGE, AU-DESSUS DES ÉLÈVES ────────────────────
+   Rémy : « je pense que dans le direct, c'est là qu'il faut gérer la séance,
+   pouvoir mettre en pause, envoyer un message commun ».
+
+   CE QUI EST TOUJOURS VISIBLE EST CE QU'ON FAIT EN COURS D'HEURE. Le reste se
+   replie : laisser six blocs de réglages ouverts repousserait les élèves sous
+   la ligne de flottaison, et c'est eux qu'on vient voir. */
+.ec-pilote {
+    display: flex; flex-direction: column; gap: 8px;
+    margin: 0 0 14px; padding: 10px 12px;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px;
+}
+.ec-pilote-rangee { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ec-pilote-groupe { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ec-pilote-groupe--large { flex: 1 1 260px; min-width: 0; }
+.ec-pilote-groupe--large .ec-champ { flex: 1 1 auto; min-width: 0; }
+.ec-pilote-btn {
+    font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer;
+    padding: 7px 12px; border-radius: 9px; white-space: nowrap;
+    background: var(--bg-app); border: 1px solid var(--border); color: var(--text-main);
+}
+.ec-pilote-btn:hover { border-color: var(--primary); color: var(--primary); }
+/* LA PAUSE ALLUMÉE SE VOIT DE LOIN. C'est le seul réglage de cette barre qui
+   change ce que TRENTE écrans montrent ; l'oublier allumé en fin d'heure, c'est
+   une classe qui ne peut plus rien ouvrir le lendemain. */
+.ec-pilote-btn--actif {
+    background: color-mix(in srgb, var(--warning) 18%, var(--bg-app));
+    border-color: var(--warning); color: var(--text-main);
+}
+.ec-pilote-btn--doux { color: var(--text-muted); }
+.ec-champ--mince { padding: 6px 8px; font-size: .82rem; }
+.ec-pilote-plus > summary {
+    cursor: pointer; font-size: .8rem; font-weight: 600; color: var(--text-muted);
+    padding: 3px 0;
+}
+.ec-pilote-plus > summary:hover { color: var(--primary); }
+.ec-pilote-plus-corps {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px; padding-top: 10px;
+}
+.ec-pilote-bloc { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ec-pilote-eti { font-size: .78rem; font-weight: 700; color: var(--text-main); }
 .ec-rang--ecarte { opacity: .5; }
 /* Le vert de présence ne vient PAS du thème : « il est là » doit se voir de la
    même façon sur les trois thèmes, et c'est la seule information de cet écran
