@@ -40,7 +40,7 @@ require_once __DIR__ . '/db.php';
  * déclenche toute seule chez tout le monde, au premier appel de l'API après le
  * dépôt du paquet.
  */
-const VERSION_SCHEMA = 3;
+const VERSION_SCHEMA = 4;
 
 /**
  * MIGRER, MAIS PAS À CHAQUE REQUÊTE.
@@ -144,6 +144,15 @@ function migrer(?PDO $pdo = null): void
         --   · chrono_a_zero : 'terminer' ou 'pause' \u2014 R\u00e9my voulait les deux,
         --     l'un pour ramasser les copies, l'autre pour reprendre la parole.
         impose_path_id $refNull,
+        --   · impose_jusqu_a : JUSQU'À QUAND elle s'impose (UNIX).
+        --
+        --     Rémy : « si je ne clos pas une séance, à la maison l'élève aura
+        --     toujours la séance en cours non ? » — oui, et sans fin. La
+        --     séance en cours n'avait pas de date de péremption : posée un
+        --     mardi matin et oubliée, elle s'ouvrait encore toute seule le
+        --     samedi. Un instant, et non un drapeau : c'est la seule forme qui
+        --     survit à un serveur qu'on ne redémarre jamais.
+        impose_jusqu_a " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
         chrono_fin     " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
         chrono_a_zero  $txtNull,
         --   · bac_ferme : le bac à sable de ceux qui ont fini. Ouvert par
@@ -365,6 +374,7 @@ function migrer(?PDO $pdo = null): void
                        // trois-là arrivent sur une base déjà installée : celle
                        // de Rémy tourne depuis la rentrée.
                        'impose_path_id' => $refNull,
+                       'impose_jusqu_a' => $sqlite ? 'INTEGER' : 'BIGINT NULL',
                        'chrono_fin'     => $sqlite ? 'INTEGER' : 'BIGINT NULL',
                        'chrono_a_zero'  => $txtNull,
                        'bac_ferme'      => $bool],

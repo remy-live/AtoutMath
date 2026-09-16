@@ -474,7 +474,7 @@ function directHtml() {
     ${info.impose_path_id
         ? `<p class="ec-note ec-note--bloc ec-encours-fil">Séance en cours :
             <b>${esc(imposee ? imposee.nom : 'une séance imposée')}</b> — elle s'ouvre toute
-            seule chez eux.</p>`
+            seule chez eux, ${esc(jusquaDit())}.</p>`
         : `<p class="ec-note ec-note--bloc ec-encours-fil">Aucune séance imposée : chacun
             choisit dans sa liste. Pour en imposer une, allez dans
             <b>Les séances</b>.</p>`}
@@ -649,6 +649,31 @@ const MOT_ETAPE = {
  * répond — c'est le but, et trente alarmes à ce moment-là feraient éteindre la
  * fonction le jour même.
  */
+/**
+ * JUSQU'À QUAND LA SÉANCE EN COURS S'IMPOSE — dit, et non deviné.
+ *
+ * Rémy : « si je ne clos pas une séance, à la maison l'élève aura toujours la
+ * séance en cours non ? » Elle s'éteint maintenant à la fin de la journée
+ * (voir `finDeLaJourneeScolaire` côté serveur) — encore faut-il le DIRE. Une
+ * règle qui agit sans s'annoncer se découvre le jour où elle surprend.
+ *
+ * ON ÉCRIT « ce soir » OU « demain matin », jamais une heure. « jusqu'à 03:00 »
+ * fait calculer ; « jusqu'à demain matin » se comprend sans rien faire, et
+ * c'est vrai pour les deux seuls moments où l'on pose une séance.
+ */
+function jusquaDit() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    const t = Number(info.impose_jusqu_a) || 0;
+    if (!t) return 'jusqu\'à ce que vous la retiriez';
+    const fin = new Date(t * 1000);
+    const nuit = new Date(fin);
+    nuit.setHours(0, 0, 0, 0);
+    // L'échéance tombe à 3 h : si c'est la nuit prochaine, on est encore « ce
+    // soir » ; sinon, l'élève la garde toute la soirée et elle s'arrête au matin.
+    const memeJour = nuit.getTime() <= Date.now();
+    return memeJour ? 'jusqu\'à tout à l\'heure' : 'jusqu\'à demain matin';
+}
+
 /** Le bac à sable est-il fermé pour cette classe ? (Ouvert par défaut.) */
 function bacDeLaClasse() {
     const info = (vue.liste && vue.liste.classe) || {};
@@ -811,7 +836,8 @@ function seancesHtml() {
         <div class="ec-encours${enCours ? '' : ' ec-encours--aucune'}">
             ${enCours
                 ? `<b>En ce moment : ${esc(enCours.nom)}</b>
-                   <span>Elle s'ouvre toute seule chez vos élèves, sans qu'ils aient rien à lancer.</span>
+                   <span>Elle s'ouvre toute seule chez vos élèves, sans qu'ils aient rien à
+                         lancer, ${esc(jusquaDit())}.</span>
                    <button type="button" class="ec-bouton ec-bouton--doux" data-imposer-rien>Ne plus rien imposer</button>`
                 : `<b>Aucune séance imposée</b>
                    <span>Vos élèves voient TOUTES les séances ci-dessous et choisissent eux-mêmes.
@@ -822,10 +848,18 @@ function seancesHtml() {
             <div class="ec-seance${s.pathId === impose ? ' ec-seance--imposee' : ''}">
                 <div class="ec-seance-haut">
                     <b>${esc(s.nom)}</b>
-                    ${s.pathId === impose
-                        ? '<span class="ec-pastille ec-pastille--impose">en cours</span>'
-                        : `<button type="button" class="ec-mini" data-mettre-en-cours="${esc(s.pathId)}"
-                                   data-nom="${esc(s.nom)}">mettre en cours</button>`}
+                    ${s.pour
+                        // À QUI, QUAND CE N'EST PAS TOUTE LA CLASSE. Rémy peut
+                        // maintenant donner à quelques élèves ; laisser la ligne
+                        // muette ferait croire que les trente l'ont reçu, et
+                        // c'est sur cette liste qu'il décide de ce qu'il rend.
+                        ? `<span class="ec-pastille ec-pastille--nomme">à ${esc(s.pour)}</span>`
+                        : ''}
+                    ${s.pour ? ''
+                        : (s.pathId === impose
+                            ? '<span class="ec-pastille ec-pastille--impose">en cours</span>'
+                            : `<button type="button" class="ec-mini" data-mettre-en-cours="${esc(s.pathId)}"
+                                       data-nom="${esc(s.nom)}">mettre en cours</button>`)}
                     <span class="ec-seance-quand">${esc(quandLisible(s.donneeLe))}</span>
                 </div>
                 <div class="ec-seance-bas">

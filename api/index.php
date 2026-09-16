@@ -572,13 +572,37 @@ function handleTeacherAssign(): void
               ORDER BY a.created_at DESC'
         );
         $s->execute([$pathId, $teacher['id']]);
-        respond(['classes' => array_map(fn ($a) => [
+        $lesClasses = array_map(fn ($a) => [
             'id'       => $a['class_id'],
             'nom'      => $a['name'],
             'effectif' => (int) $a['effectif'],
             'donneeLe' => $a['created_at'],
             'pourLe'   => $a['due_at'],
-        ], $s->fetchAll())]);
+        ], $s->fetchAll());
+
+        // ET LES ÉLÈVES NOMMÉS, dans la même réponse.
+        //
+        // Rémy : « il faudrait pouvoir, en cliquant sur la classe, ne le donner
+        // qu'à certains élèves ». L'écran doit alors savoir QUI l'a déjà — et
+        // cette vérité est ici, pas dans le navigateur du professeur. Une
+        // seconde requête pour la moitié de la même question ferait deux
+        // réponses à tenir d'accord ; la question est une, la réponse aussi.
+        $e = db()->prepare(
+            'SELECT a.student_id, a.created_at, a.due_at, st.first_name, st.class_id
+               FROM assignments a
+               JOIN students st ON st.id = a.student_id
+               JOIN classes c ON c.id = st.class_id
+              WHERE a.path_id = ? AND c.teacher_id = ?
+              ORDER BY a.created_at DESC'
+        );
+        $e->execute([$pathId, $teacher['id']]);
+        respond(['classes' => $lesClasses, 'eleves' => array_map(fn ($x) => [
+            'id'       => $x['student_id'],
+            'nom'      => dechiffrer($x['first_name']),
+            'classeId' => $x['class_id'],
+            'donneeLe' => $x['created_at'],
+            'pourLe'   => $x['due_at'],
+        ], $e->fetchAll())]);
     }
 
     if (($body['action'] ?? '') === 'list') {
@@ -587,13 +611,21 @@ function handleTeacherAssign(): void
         $q->execute([$classId, $teacher['id']]);
         if (!$q->fetch()) fail(404, 'class_not_found', 'Classe introuvable.');
 
+        // LES SÉANCES DE LA CLASSE, ET CELLES DONNÉES À QUELQUES-UNS DE SES
+        // ÉLÈVES. Sans la seconde moitié, un travail donné à trois élèves
+        // n'apparaîtrait nulle part chez le professeur — exactement le genre de
+        // séance fantôme qu'on vient de passer la journée à supprimer.
         $s = db()->prepare(
-            'SELECT a.id, a.path_id, a.due_at, a.created_at, p.name, p.updated_at, p.data
-               FROM assignments a JOIN paths p ON p.id = a.path_id
+            'SELECT a.id, a.path_id, a.due_at, a.created_at, a.student_id,
+                    p.name, p.updated_at, p.data, st.first_name
+               FROM assignments a
+               JOIN paths p ON p.id = a.path_id
+          LEFT JOIN students st ON st.id = a.student_id
               WHERE a.class_id = ?
+                 OR a.student_id IN (SELECT id FROM students WHERE class_id = ?)
               ORDER BY a.created_at DESC'
         );
-        $s->execute([$classId]);
+        $s->execute([$classId, $classId]);
 
         $seances = [];
         foreach ($s->fetchAll() as $a) {
@@ -613,6 +645,11 @@ function handleTeacherAssign(): void
                 'id'       => $a['id'],
                 'pathId'   => $a['path_id'],
                 'nom'      => $a['name'],
+                // À QUI : null pour toute la classe, le prénom sinon. L'écran
+                // doit pouvoir dire « à Léa » plutôt que de laisser croire que
+                // toute la classe l'a reçu.
+                'pour'     => $a['student_id'] ? dechiffrer($a['first_name']) : null,
+                'eleveId'  => $a['student_id'] ?: null,
                 'donneeLe' => $a['created_at'],
                 'pourLe'   => $a['due_at'],
                 'etapes'   => count($etapes),
@@ -636,11 +673,35 @@ function handleTeacherAssign(): void
     // reste lisible.
     if (($body['action'] ?? '') === 'retirer') {
         if ($pathId === '') fail(400, 'no_path', 'Quel parcours ?');
+        $pourQui = (string) ($body['studentId'] ?? '');
+
+        // ON REPREND À QUI L'ON A DONNÉ, et pas plus. Rémy : « pour l'instant on
+        // ne peut donner une séance qu'à une classe, ni à un groupe ni à un
+        // élève spécifique ». Une fois qu'on peut donner à l'un, il faut
+        // pouvoir reprendre à l'un : retirer la séance de la classe entière
+        // parce qu'on décoche un élève serait le pire des malentendus.
+        if ($pourQui !== '') {
+            $q = db()->prepare(
+                'SELECT s.id FROM students s JOIN classes c ON c.id = s.class_id
+                 WHERE s.id = ? AND c.teacher_id = ?'
+            );
+            $q->execute([$pourQui, $teacher['id']]);
+            if (!$q->fetch()) fail(404, 'student_not_found', 'Élève introuvable.');
+
+            $d = db()->prepare('DELETE FROM assignments WHERE path_id = ? AND student_id = ?');
+            $d->execute([$pathId, $pourQui]);
+            respond(['ok' => true, 'retirees' => $d->rowCount()]);
+        }
+
         if ($classId === null || $classId === '') fail(400, 'no_class', 'Quelle classe ?');
         $q = db()->prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?');
         $q->execute([$classId, $teacher['id']]);
         if (!$q->fetch()) fail(404, 'class_not_found', 'Classe introuvable.');
 
+        // RETIRER À LA CLASSE NE RETIRE PAS AUX ÉLÈVES NOMMÉS. Ce sont deux
+        // gestes distincts : « je ne le donne plus à toute la 4C » ne veut pas
+        // dire « j'enlève aussi le rattrapage de Léa ». On borne donc au
+        // `class_id`, et l'écran montre les deux séparément.
         $d = db()->prepare('DELETE FROM assignments WHERE path_id = ? AND class_id = ?');
         $d->execute([$pathId, $classId]);
         respond(['ok' => true, 'retirees' => $d->rowCount()]);
@@ -905,19 +966,29 @@ function handleTeacherClass(): void
     if ($action === 'imposer') {
         $pathId = trim((string) ($body['pathId'] ?? ''));
         if ($pathId === '') {
-            db()->prepare('UPDATE classes SET impose_path_id = NULL WHERE id = ?')
-                ->execute([$classe['id']]);
-            respond(['ok' => true, 'impose' => null,
+            db()->prepare('UPDATE classes SET impose_path_id = NULL, impose_jusqu_a = NULL
+                           WHERE id = ?')->execute([$classe['id']]);
+            respond(['ok' => true, 'impose' => null, 'jusqua' => null,
                      'dit' => 'La séance n\'est plus imposée : chacun choisit.']);
         }
         $q = db()->prepare('SELECT id, name FROM paths WHERE id = ? AND teacher_id = ?');
         $q->execute([$pathId, $teacher['id']]);
         $p = $q->fetch();
         if (!$p) fail(404, 'path_not_found', 'Parcours introuvable.');
-        db()->prepare('UPDATE classes SET impose_path_id = ? WHERE id = ?')
-            ->execute([$pathId, $classe['id']]);
-        respond(['ok' => true, 'impose' => $pathId,
-                 'dit' => '« ' . $p['name'] . ' » s\'ouvre tout seul chez vos élèves.']);
+        // ELLE S'ÉTEINT TOUTE SEULE À LA FIN DE LA JOURNÉE.
+        //
+        // Rémy : « si je ne clos pas une séance, à la maison l'élève aura
+        // toujours la séance en cours non ? » — oui, et sans fin. Une séance
+        // posée un mardi matin et oubliée s'ouvrait encore toute seule le
+        // samedi. Voir `finDeLaJourneeScolaire` : elle vaut jusqu'à trois
+        // heures du matin, pour ne pas se refermer au milieu d'une question
+        // chez l'élève qui finit à 23 h 50.
+        $jusqua = finDeLaJourneeScolaire();
+        db()->prepare('UPDATE classes SET impose_path_id = ?, impose_jusqu_a = ? WHERE id = ?')
+            ->execute([$pathId, $jusqua, $classe['id']]);
+        respond(['ok' => true, 'impose' => $pathId, 'jusqua' => $jusqua,
+                 'dit' => '« ' . $p['name'] . ' » s\'ouvre tout seul chez vos élèves '
+                        . 'jusqu\'à demain matin.']);
     }
 
     // LE COMPTE À REBOURS, ET SES DEUX ISSUES. Rémy : « pour le compte à
@@ -1069,7 +1140,11 @@ function handleTeacherRoster(): void
             // VRAIMENT posé — et non sur des champs vides qu'il faudrait
             // deviner. Un écran de réglages qui ne montre pas l'état actuel
             // fait reposer deux fois le même réglage.
-            'impose_path_id' => $classe['impose_path_id'] ?? null,
+            // ON RELIT PAR LA MÊME PORTE QUE L'ÉLÈVE. Rendre la colonne brute
+            // ferait dire « en cours » à l'écran du professeur pour une séance
+            // que ses élèves ne reçoivent plus depuis ce matin.
+            'impose_path_id' => imposeEncoreValide($classe),
+            'impose_jusqu_a' => $classe['impose_jusqu_a'] ?? null,
             'chrono_fin' => $classe['chrono_fin'] ?? null,
             'chrono_a_zero' => $classe['chrono_a_zero'] ?? null,
             'bac_ferme' => (bool) ($classe['bac_ferme'] ?? 0),

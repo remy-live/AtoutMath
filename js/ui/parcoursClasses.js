@@ -82,6 +82,28 @@ const NIVEAU_MOT = { NA: 'Non acquis', EC: 'En cours', A: 'Acquis', E: 'Expert' 
 function pourcent(x) { return Math.round((x || 0) * 100) + ' %'; }
 
 /**
+ * À QUI C'EST DONNÉ, EN UNE PHRASE — classes ET élèves nommés.
+ *
+ * Rémy pouvait donner à une classe, et à rien d'autre. Maintenant qu'il peut
+ * cocher trois noms, la phrase du bas doit les compter : « pas encore donné »
+ * sous trois cases cochées serait le genre de contradiction qui fait recocher.
+ */
+function direAQui(classes, combienNommes) {
+    const bouts = [];
+    if (classes.length) {
+        const eleves = classes.reduce((n, c) => n + combienDEleves(c), 0);
+        bouts.push(`${classes.length} classe${classes.length > 1 ? 's' : ''}`
+            + ` — ${eleves} élève${eleves > 1 ? 's' : ''}`);
+    }
+    if (combienNommes) {
+        bouts.push(`${combienNommes} élève${combienNommes > 1 ? 's' : ''} nommé${
+            combienNommes > 1 ? 's' : ''}`);
+    }
+    return bouts.length ? 'Donné à ' + bouts.join(', et à ') + '.'
+        : 'Pas encore donné. Cochez une classe, ou dépliez-la pour choisir des élèves.';
+}
+
+/**
  * L'ÉTAT D'UNE CLASSE VIS-À-VIS DE CE PARCOURS.
  *
  * Trois cas seulement, et ils commandent toute la ligne :
@@ -208,15 +230,45 @@ async function elevesDeLaClasse(classe) {
  * ON N'AFFICHE QUE LES ÉLÈVES CONCERNÉS quand la séance vise un groupe : dix-huit
  * lignes vides feraient croire à dix-huit absents.
  */
+/**
+ * LES ÉLÈVES DE LA CLASSE, AVEC LEUR PROPRE CASE.
+ *
+ * Rémy : « quand on donne la séance on le donne à la classe ; il faudrait
+ * pouvoir, en cliquant sur la classe, ne le donner qu'à certains élèves. En
+ * fait pour l'instant on ne peut donner une séance qu'à une classe, ni à un
+ * groupe ni à un élève spécifique. »
+ *
+ * UN GROUPE N'EST PAS UN OBJET, C'EST UNE POIGNÉE DE CASES. On aurait pu
+ * inventer des « groupes » à créer, à nommer, à tenir à jour quand un élève
+ * change de classe. Trois écrans de plus pour une chose qui change toutes les
+ * semaines. Cocher trois noms donne le même résultat et ne demande rien à
+ * ranger — c'est la même raison qui a fait préférer les dossiers de parcours
+ * à une arborescence.
+ *
+ * ET LA CASE DE LA CLASSE NE COMMANDE PAS CELLES DES ÉLÈVES. Quand toute la
+ * classe l'a reçu, chacun l'a : les cases individuelles deviennent alors
+ * inutiles, et on le DIT plutôt que de les cocher toutes — cocher trente cases
+ * qu'on ne peut pas décocher une à une serait un mensonge poli.
+ */
 function elevesHtml(classe, info) {
     const liste = info.seance ? elevesDe(info.seance, classe) : (classe.eleves || []);
     if (!liste.length) return '<p class="pc-vide">Aucun élève dans cette classe.</p>';
-    return [...liste]
+    const toute = info.donnee;
+    return (toute
+        ? '<p class="pc-vide pc-vide--note">Toute la classe l\'a reçu : chacun l\'a déjà.</p>'
+        : '<p class="pc-vide pc-vide--note">Cochez ceux à qui vous le donnez.</p>')
+        + [...liste]
         .sort((a, b) => String(a.nom).localeCompare(String(b.nom), 'fr'))
         .map(e => {
             const fait = info.seance && aTravaille(info.seance, e.evenements || []);
             const b = fait ? bilanEleveSeance(info.seance, e) : null;
+            const sien = (info.nommes || new Set()).has(e.id);
             return `<div class="pc-eleve">
+                <label class="pc-eleve-case">
+                    <input type="checkbox" data-donner-eleve="${esc(e.id)}"
+                           data-classe="${esc(classe.id)}" data-nom="${esc(e.nom)}"
+                           ${sien ? ' checked' : ''}${toute ? ' disabled' : ''}>
+                </label>
                 <span class="pc-eleve-nom">${esc(e.nom)}</span>
                 ${b ? `<span class="pc-chiffre">${b.questions} q · ${pourcent(b.reussite)}</span>` : ''}
                 ${b ? `<button type="button" class="pc-bilan" data-bilan-eleve="${esc(e.id)}"
@@ -347,6 +399,16 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
 
     const classes = await lireClasses();
     let seances = await lireSeances();
+    // QUI L'A DÉJÀ — demandé au serveur, pas deviné du navigateur. Le
+    // professeur a pu donner ce parcours depuis un autre poste ; son stock
+    // local n'en saurait rien, et les cases s'ouvriraient décochées.
+    let nommes = new Set();
+    const relireLesNommes = async () => {
+        const { aQuiEstDonne } = await import('../core/parcoursServeur.js');
+        const d = await aQuiEstDonne(parcours);
+        nommes = new Set((d.eleves || []).map(e => e.id));
+    };
+    await relireLesNommes();
     // ON COMPARE L'IDENTITÉ DU TRAVAIL, celle que la séance a écrite et que
     // l'élève recalcule de son code — et non l'identifiant d'atelier, qui ne
     // vaut que dans la bibliothèque de ce navigateur-ci.
@@ -365,7 +427,13 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
 
     const dessiner = () => {
         const mode = resolvePolicy(parcours.policy).mode;
-        const infos = new Map(classes.map(c => [c.id, etatClasse(c, seances, pathId)]));
+        const infos = new Map(classes.map(c => {
+            const info = etatClasse(c, seances, pathId);
+            // Les élèves de CETTE classe à qui on l'a donné nommément.
+            info.nommes = new Set((c.eleves || []).map(e => e.id).filter(id => nommes.has(id)));
+            info.combienNommes = [...nommes].length;
+            return [c.id, info];
+        }));
         const donnees = classes.filter(c => infos.get(c.id).donnee);
 
         panel.innerHTML = `
@@ -387,10 +455,8 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 </div>` : `<p class="pc-vide">Vous n'avez pas encore de classe.
                     Créez-en une par la porte <b>La classe</b>, en haut.</p>`}
 
-                <p class="pc-compte" role="status" aria-live="polite">${donnees.length
-                ? `Donné à ${donnees.length} classe${donnees.length > 1 ? 's' : ''} — ${donnees
-                    .reduce((n, c) => n + combienDEleves(c), 0)} élèves.`
-                : 'Pas encore donné. Cochez une classe.'}</p>
+                <p class="pc-compte" role="status" aria-live="polite">${
+                    direAQui(donnees, nommes.size)}</p>
                 <div class="pc-rapport-zone" hidden></div>
             </div>`;
         panel.classList.add('mob-open');
@@ -632,10 +698,14 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                     liste.innerHTML = '<p class="pc-vide">On va chercher les élèves…</p>';
                     classe.eleves = await elevesDeLaClasse(classe);
                 }
-                liste.innerHTML = elevesHtml(classe, etatClasse(classe, seances, pathId));
+                const info = etatClasse(classe, seances, pathId);
+                info.nommes = new Set((classe.eleves || []).map(x => x.id)
+                    .filter(id => nommes.has(id)));
+                liste.innerHTML = elevesHtml(classe, info);
                 b.textContent = '▾';
                 b.setAttribute('aria-expanded', 'true');
                 brancherBilansEleves(liste, classe);
+                brancherLesCasesEleves(liste, classe);
             };
         });
 
@@ -746,6 +816,52 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
             return false;
         }
         return true;
+    }
+
+    /**
+     * DONNER, OU REPRENDRE, À UN SEUL ÉLÈVE.
+     *
+     * Rémy : « il faudrait pouvoir, en cliquant sur la classe, ne le donner
+     * qu'à certains élèves. En fait pour l'instant on ne peut donner une séance
+     * qu'à une classe, ni à un groupe ni à un élève spécifique. »
+     *
+     * LE SERVEUR SAVAIT DÉJÀ VISER UN ÉLÈVE — `assignments.student_id` existe
+     * depuis le début, et `/sync` sert déjà « ma classe OU moi ». C'est encore
+     * l'écran qui ne le demandait jamais. Trois trous restaient de ce côté-ci :
+     * personne ne cochait, personne ne reprenait, et la liste des séances d'une
+     * classe ne montrait pas ce qu'on avait donné à quelques-uns.
+     *
+     * ON N'ÉCRIT PAS DE SÉANCE LOCALE ICI, et c'est une décision. La séance
+     * locale porte le bilan de CLASSE ; un travail donné à trois élèves n'est
+     * pas une séance de classe, et l'y ranger ferait compter vingt-sept
+     * absents comme « pas commencé » dans un tableau qui ne les concerne pas.
+     */
+    function brancherLesCasesEleves(liste, classe) {
+        liste.querySelectorAll('[data-donner-eleve]').forEach(c => {
+            c.onchange = async () => {
+                const id = c.dataset.donnerEleve;
+                const nom = c.dataset.nom || 'L\'élève';
+                const { donnerAuServeur, retirerDuServeur } =
+                    await import('../core/parcoursServeur.js');
+                c.disabled = true;
+                const r = c.checked
+                    ? await donnerAuServeur(parcours, null, { studentId: id })
+                    : await retirerDuServeur(parcours, null, id);
+                c.disabled = false;
+                if (r && r.erreur) {
+                    // ON REMET LA CASE OÙ ELLE ÉTAIT. Une case qui reste cochée
+                    // alors que rien n'est parti est exactement le mensonge
+                    // qu'on a mis la journée à débusquer.
+                    c.checked = !c.checked;
+                    showToast(`${nom} : ${r.erreur}`, 'error');
+                    return;
+                }
+                if (c.checked) nommes.add(id); else nommes.delete(id);
+                showToast(c.checked ? `Donné à ${nom}.` : `Repris à ${nom}.`,
+                    c.checked ? 'success' : 'info');
+                dessiner();
+            };
+        });
     }
 
     async function basculer(classe, caseEl) {

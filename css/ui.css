@@ -2800,6 +2800,14 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     display: flex; align-items: baseline; gap: 6px; font-size: .84rem;
     padding: 2px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
 }
+/* LA CASE D'UN ÉLÈVE. Rémy : « il faudrait pouvoir, en cliquant sur la classe,
+   ne le donner qu'à certains élèves ». Une poignée de cases plutôt qu'un objet
+   « groupe » à créer, nommer et tenir à jour : un groupe change toutes les
+   semaines, une case ne demande rien à ranger. */
+.pc-eleve-case { display: flex; align-items: center; flex: 0 0 auto; cursor: pointer; }
+.pc-eleve-case input { cursor: pointer; }
+.pc-eleve-case input:disabled { cursor: default; opacity: .45; }
+.pc-vide--note { font-size: .76rem; margin: 2px 0 6px; }
 .pc-eleve-nom { flex: 1 1 auto; min-width: 0; color: var(--text-main);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pc-chiffre { flex: 0 0 auto; font-size: .76rem; color: var(--text-muted); }
@@ -3488,6 +3496,16 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 }
 .ec-pastille--impose {
     color: var(--primary); border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+/* « à Léa » — une séance donnée à quelques élèves, pas à la classe. Sans cette
+   pastille, la ligne laisserait croire que les trente l'ont reçue, et c'est sur
+   cette liste que le professeur décide de ce qu'il ramasse. Et pas de
+   « mettre en cours » sur celle-là : la séance imposée vaut pour la classe
+   entière, l'imposer à partir d'un travail nommé le donnerait à tout le monde. */
+.ec-pastille--nomme {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    color: var(--primary);
+    border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
 }
 /* Les réglages de la classe ferment l'onglet « La classe » : on les cherche
    après la liste, jamais avant. */

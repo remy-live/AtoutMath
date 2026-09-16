@@ -162,6 +162,20 @@ export async function donnerAuServeur(parcours, classId, opts = {}) {
 }
 
 /**
+ * À QUI CE PARCOURS EST DONNÉ — les classes, ET les élèves nommés.
+ *
+ * L'écran ne peut pas cocher juste sans savoir qui l'a déjà, et cette vérité
+ * est au serveur : le navigateur du professeur ne sait rien de ce qu'il a donné
+ * depuis un autre poste.
+ */
+export async function aQuiEstDonne(parcours) {
+    if (!enPosteDeProf() || !parcours || !parcours.id) return { classes: [], eleves: [] };
+    const r = await auServeur('/teacher/assign', { pathId: parcours.id, action: 'list' });
+    if (r.erreur) return { classes: [], eleves: [], erreur: r.erreur };
+    return { classes: r.classes || [], eleves: r.eleves || [] };
+}
+
+/**
  * REPRENDRE UNE SÉANCE À UNE CLASSE.
  *
  * Le pendant de `donnerAuServeur`, et il manquait : on savait donner, on ne
@@ -172,11 +186,13 @@ export async function donnerAuServeur(parcours, classId, opts = {}) {
  * ON NE TOUCHE PAS AU TRAVAIL DÉJÀ FAIT : le journal est ailleurs. La séance
  * quitte la liste des élèves, le bilan reste lisible.
  */
-export async function retirerDuServeur(parcours, classId) {
+export async function retirerDuServeur(parcours, classId, studentId = '') {
     if (!enPosteDeProf()) return { erreur: 'Pas identifié comme professeur.' };
-    if (!parcours || !parcours.id || !classId) return { erreur: 'Il manque le parcours ou la classe.' };
+    if (!parcours || !parcours.id) return { erreur: 'Il manque le parcours.' };
+    if (!classId && !studentId) return { erreur: 'Il manque la classe ou l\'élève.' };
     const r = await auServeur('/teacher/assign', {
-        action: 'retirer', pathId: parcours.id, classId
+        action: 'retirer', pathId: parcours.id, classId: classId || null,
+        studentId: studentId || null
     });
     if (r.erreur) return r;
     return { ok: true, retirees: r.retirees || 0 };
