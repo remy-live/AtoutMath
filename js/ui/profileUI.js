@@ -698,7 +698,7 @@ function renderProfiles() {
                 showConfirm(`Supprimer le profil « ${p.name} » et toutes ses données ?`, async () => {
                     await deleteProfile(p.id);
                     location.reload();
-                });
+                }, { bouton: `Supprimer « ${p.name} »` });
             };
             chip.appendChild(del);
         }

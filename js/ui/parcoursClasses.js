@@ -920,7 +920,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                         seances = seances.filter(x => x.id !== info.seance.id);
                         await enregistrer();
                         dessiner();
-                    });
+                    }, { bouton: `Retirer à ${esc(classe.nom)}` });
                 return;
             }
         }

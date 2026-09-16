@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=728">
-    <link rel="stylesheet" href="css/layout.css?v=728">
-    <link rel="stylesheet" href="css/ui.css?v=728">
-    <link rel="stylesheet" href="css/games.css?v=728">
-    <link rel="stylesheet" href="css/components.css?v=728">
-    <link rel="stylesheet" href="css/modules.css?v=728">
+    <link rel="stylesheet" href="css/base.css?v=729">
+    <link rel="stylesheet" href="css/layout.css?v=729">
+    <link rel="stylesheet" href="css/ui.css?v=729">
+    <link rel="stylesheet" href="css/games.css?v=729">
+    <link rel="stylesheet" href="css/components.css?v=729">
+    <link rel="stylesheet" href="css/modules.css?v=729">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -865,7 +865,7 @@
                             </div>
                             <div id="path-container">
                                 <div class="empty-msg">Ajoutez des
-                                    activités depuis le catalogue.</div>
+                                    exercices depuis le catalogue.</div>
                             </div>
                         </div>
                     </div>
@@ -882,9 +882,14 @@
 
                 <!-- PARCOURS (ELEVE) -->
                 <div id="view-path" class="student-only">
-                    <h1 class="view-heading-title">Mon Parcours Actuel</h1>
-                    <p class="view-heading-subtitle">Suis les étapes validées
-                        par ton professeur.</p>
+                    <!-- PAS D'EN-TÊTE STATIQUE ICI.
+                         « Mon Parcours Actuel » prenait le sixième d'un écran de
+                         téléphone pour répéter ce que la première section dit
+                         mieux : elle porte le NOM de la séance et la classe.
+                         Et le sous-titre devenait faux dès que l'élève ajoutait
+                         ses propres exercices, ou qu'aucune séance ne lui était
+                         donnée. Un titre qui ment coûte plus qu'un titre
+                         absent. -->
 
                     <div id="student-path-container" class="path-timeline">
                         <!-- Rendu dynamique par js/ui/pathView.js à partir de state.studentPath -->
@@ -1183,14 +1188,14 @@
                     </div>
 
                     <div id="preview-step-nav" class="preview-step-nav" hidden>
-                        <button id="btn-preview-prev" class="game-icon-btn" title="Activité précédente" aria-label="Activité précédente">
+                        <button id="btn-preview-prev" class="game-icon-btn" title="Exercice précédent" aria-label="Exercice précédent">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <polyline points="15 18 9 12 15 6" />
                             </svg>
                         </button>
                         <span id="preview-step-label" class="preview-step-label">1 / 1</span>
-                        <button id="btn-preview-next" class="game-icon-btn" title="Activité suivante" aria-label="Activité suivante">
+                        <button id="btn-preview-next" class="game-icon-btn" title="Exercice suivant" aria-label="Exercice suivant">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <polyline points="9 18 15 12 9 6" />
@@ -1309,10 +1314,10 @@
                     <button id="btn-close-code" class="modal-close-btn" aria-label="Fermer">&times;</button>
                 </div>
                 <p class="modal-text">Saisis le code donné par ton professeur
-                    pour lancer une activité spécifique. Les majuscules, les
+                    pour ouvrir son parcours. Les majuscules, les
                     espaces et les tirets n'ont pas d'importance. Si tu te
                     trompes d'une lettre, le code sera refusé&nbsp;: il ne
-                    t'ouvrira jamais une autre activité par erreur.</p>
+                    t'ouvrira jamais un autre parcours par erreur.</p>
 
                 <!-- L'EXEMPLE MONTRE LES DEUX FORMES, ET IL EST VRAI : « SUD »
                      ouvre vraiment le Sudoku. Un code d'exercice fait trois
@@ -1381,7 +1386,7 @@
                     <button id="btn-close-path-policy" class="modal-close-btn" aria-label="Fermer">&times;</button>
                 </div>
                 <p class="modal-text">Un même parcours peut servir d'entraînement ou d'évaluation notée :
-                    ce sont les mêmes activités, avec des règles différentes.</p>
+                    ce sont les mêmes exercices, avec des règles différentes.</p>
                 <div id="builder-policy-content"></div>
                 <!-- Un vrai bouton de sortie : la croix en haut à droite ne se
                      voit pas sur un panneau qui remplit l'écran, et les

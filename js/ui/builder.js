@@ -290,7 +290,7 @@ function initPresentationMode() {
     if (!btn) return;
     btn.onclick = async () => {
         if (!state.currentPath.steps.length) {
-            showAlert('Ajoutez au moins une activité pour lancer la présentation.');
+            showAlert('Ajoutez au moins un exercice pour lancer la présentation.');
             return;
         }
         const [{ buildWorldMap }, { hydratePath }] = await Promise.all([
@@ -504,7 +504,8 @@ export async function ajouterLeDossier(path, rang) {
     if (lot.length > LOT_SANS_QUESTION) {
         showConfirm(
             `« ${nom} » contient ${lot.length} exercices. Les ajouter tous au parcours ?`,
-            verser
+            verser,
+            { bouton: `Ajouter les ${lot.length} exercices`, doux: true }
         );
         return;
     }
@@ -718,7 +719,7 @@ function pastilleDuree(steps) {
     el.textContent = `${d.mesurees === d.total && d.total ? '' : '≈ '}${direDuree(d.min, d.max)}`;
     el.title = PHRASES_TENSION[tension]
         + (d.mesurees
-            ? `\n${d.mesurees} activité${d.mesurees > 1 ? 's' : ''} sur ${d.total} : durée MESURÉE `
+            ? `\n${d.mesurees} exercice${d.mesurees > 1 ? 's' : ''} sur ${d.total} : durée MESURÉE `
               + 'sur les réponses déjà enregistrées.'
             : '\nEstimation d\'après la nature des exercices — elle se précisera '
               + 'dès que les élèves auront répondu.');
@@ -802,7 +803,7 @@ export function renderTeacherPath() {
         summary.innerHTML = '';
         if (steps.length) {
             const compte = document.createElement('span');
-            compte.textContent = `${steps.length} activité${steps.length > 1 ? 's' : ''}`
+            compte.textContent = `${steps.length} exercice${steps.length > 1 ? 's' : ''}`
                 + ` • ${totalItems(state.currentPath)} questions • `;
             summary.appendChild(compte);
             summary.appendChild(pastilleDuree(steps));
@@ -1490,7 +1491,7 @@ function initToolbar() {
     if (btnTest) {
         btnTest.onclick = () => {
             if (!state.currentPath.steps.length) {
-                showAlert('Ajoutez au moins une activité pour tester le parcours.');
+                showAlert('Ajoutez au moins un exercice pour tester le parcours.');
                 return;
             }
             runPath(state.currentPath, previewMode());
@@ -1501,7 +1502,7 @@ function initToolbar() {
     if (btnFiche) {
         btnFiche.onclick = () => {
             if (!state.currentPath.steps.length) {
-                showAlert('Ajoutez au moins une activité pour imprimer une fiche.');
+                showAlert('Ajoutez au moins un exercice pour imprimer une fiche.');
                 return;
             }
             import('./printParcours.js').then(m => m.ouvrirFicheParcours(state.currentPath));
@@ -1532,7 +1533,7 @@ function initToolbar() {
     if (btnCode) {
         btnCode.onclick = async () => {
             if (!state.currentPath.steps.length) {
-                showAlert('Ajoutez au moins une activité pour générer un code.');
+                showAlert('Ajoutez au moins un exercice pour générer un code.');
                 return;
             }
             // LE CODE COURT SE DIT À VOIX HAUTE. Trois lettres par exercice,
@@ -1604,9 +1605,10 @@ function initToolbar() {
             const nom = state.currentPath.name || 'Le parcours en cours';
             showConfirm(
                 `Commencer un nouveau parcours, vide ?<br><br>`
-                + `« ${escapeHtml(nom)} » (${n} activité${n > 1 ? 's' : ''}) est enregistré : `
+                + `« ${escapeHtml(nom)} » (${n} exercice${n > 1 ? 's' : ''}) est enregistré : `
                 + `vous le retrouverez dans <b>Mes Parcours</b> 📂.`,
-                repartirDeZero
+                repartirDeZero,
+                { bouton: 'Commencer un parcours vide', doux: true }
             );
         };
     }
@@ -1641,7 +1643,7 @@ function direLEtat(quand) {
     if (!quand) {
         el.textContent = 'Brouillon';
         el.className = 'path-etat path-etat--brouillon';
-        el.title = 'Ce parcours sera enregistré dès qu\'il aura une activité.';
+        el.title = 'Ce parcours sera enregistré dès qu\'il aura un exercice.';
         return;
     }
     const heure = `${String(quand.getHours()).padStart(2, '0')}:${String(quand.getMinutes()).padStart(2, '0')}`;

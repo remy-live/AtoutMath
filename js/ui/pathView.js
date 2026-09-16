@@ -177,7 +177,8 @@ export function renderStudentPathView() {
     container.appendChild(assignedSection());
     const teacher = teacherPathsSection();
     if (teacher) container.appendChild(teacher);
-    container.appendChild(recommendedSection());
+    const conseils = recommendedSection();
+    if (conseils) container.appendChild(conseils);
     // LES EXERCICES QUE L'ÉLÈVE SE DONNE viennent APRÈS ce qu'on lui demande :
     // le devoir d'abord, la séance conseillée ensuite, et enfin ce qu'il
     // choisit. L'ordre de la page est l'ordre des priorités.
@@ -222,7 +223,7 @@ function sectionSansParcours(box) {
     // ce qui manque.
     if (!etat || !etat.seance) {
         box.innerHTML = `
-            <h2 class="path-section-title">Ton travail</h2>
+            <h2 class="path-section-title">Pas de séance pour l'instant</h2>
             <div class="empty-state-msg">Ton professeur ne t'a rien donné pour le moment.
             S'il t'a dicté un code, tape-le avec le bouton « Code » en haut de l'écran.</div>`;
         return box;
@@ -230,7 +231,10 @@ function sectionSansParcours(box) {
 
     const dit = etat.close
         ? 'Sa fenêtre est fermée, mais tu peux encore la faire.'
-        : `${etat.total} étape${etat.total > 1 ? 's' : ''} à faire.`;
+        // « Étape » désigne une POSITION dans le parcours, pas une chose : on la
+        // garde là où elle dit ça (« étape 3 sur 5 », la carte), et l'on compte
+        // ici des EXERCICES, comme partout ailleurs.
+        : `${etat.total} exercice${etat.total > 1 ? 's' : ''} à faire.`;
     box.innerHTML = `
         <h2 class="path-section-title">${escapeHtml(etat.titre)}</h2>
         <p class="path-section-sub">${etat.classeNom ? escapeHtml(etat.classeNom) + ' · ' : ''}${dit}</p>`;
@@ -863,7 +867,7 @@ function teacherPathsSection() {
         card.innerHTML = `
             <div class="teacher-path-info">
                 <div class="teacher-path-name">${escapeHtml(p.name)}</div>
-                <div class="teacher-path-sub">${normalized.steps.length} activité${normalized.steps.length > 1 ? 's' : ''}
+                <div class="teacher-path-sub">${normalized.steps.length} exercice${normalized.steps.length > 1 ? 's' : ''}
                     • ${isEvaluation(policy) ? 'Évaluation' : 'Entraînement'}</div>
             </div>`;
 
@@ -916,22 +920,45 @@ function teacherPathsSection() {
 
 // --- 2. Séance conseillée ---------------------------------------------------
 
+/**
+ * CE QUE LE LOGICIEL CONSEILLE — et qui n'est PAS une séance.
+ *
+ * LE MOT « SÉANCE » APPARTIENT AU PROFESSEUR, et à lui seul. Cette section
+ * s'appelait « Ta séance du jour » ; l'accueil du catalogue appelle « Ta séance
+ * du jour » le travail RÉELLEMENT donné par le professeur. Deux écrans, le même
+ * titre, deux choses différentes — et sur celui-ci, c'est celle que le
+ * professeur n'a PAS donnée qui portait le plus gros bouton.
+ *
+ * Rémy lui-même a demandé, après des semaines sur ce logiciel : « une séance
+ * c'est un direct c'est cela ? » Si le vocabulaire fait hésiter celui qui l'a
+ * fabriqué, un élève de cinquième n'a aucune chance.
+ *
+ * LE LEXIQUE TENU PARTOUT, désormais, est de trois mots :
+ *   · un EXERCICE — ce qu'on ouvre et qu'on fait ;
+ *   · un PARCOURS — une suite d'exercices, l'objet que le professeur fabrique ;
+ *   · une SÉANCE — un parcours DONNÉ à une classe, à une date, avec ses trois
+ *     états (à venir, en cours, close).
+ * « Activité », « travail » et « étape » ne sont plus du vocabulaire élève.
+ *
+ * ET ON NE CONSEILLE RIEN À QUI N'A RIEN FAIT. « Choisie d'après tes
+ * résultats » posée devant un élève qui n'a aucun résultat est une phrase
+ * fausse, et elle mangeait la moitié de sa page le jour de la rentrée.
+ */
 function recommendedSection() {
     const box = document.createElement('section');
     box.className = 'path-section';
 
-    const recos = buildRecommendedPreview(3);
-    if (!recos.length) {
-        box.innerHTML = `
-            <h2 class="path-section-title">Ta séance du jour</h2>
-            <div class="empty-state-msg">Joue à quelques exercices : une séance sur mesure apparaîtra ici,
-            construite à partir de ce que tu maîtrises et de ce qui est à revoir.</div>`;
-        return box;
-    }
+    // Sans une seule tentative au journal, il n'y a rien à conseiller : on se
+    // tait plutôt que d'inventer trois conseils et de les dire mérités.
+    const aTravaille = (state.attemptHistory || []).length > 0;
+    const recos = aTravaille ? buildRecommendedPreview(3) : [];
+    // On rend `null` et non une section vide : une section vide garde sa marge
+    // et laisse un trou dans la page, ce qui se lit comme un défaut d'affichage.
+    if (!recos.length) return null;
 
     box.innerHTML = `
-        <h2 class="path-section-title">Ta séance du jour</h2>
-        <p class="path-section-sub">Choisie d'après tes résultats : ce qui est à revoir passe avant ce qui est nouveau.</p>`;
+        <h2 class="path-section-title">Ce que je te conseille</h2>
+        <p class="path-section-sub">D'après ce que tu as déjà fait : ce qui est à revoir passe avant ce qui est nouveau.</p>`;
 
     const list = document.createElement('div');
     list.className = 'reco-list';
@@ -966,7 +993,10 @@ function recommendedSection() {
 
     const all = document.createElement('button');
     all.className = 'btn-toggle active reco-start-all';
-    all.textContent = 'Lancer la séance complète';
+    // « Séance » est le mot du professeur : ce bouton lance TROIS EXERCICES que
+    // le logiciel propose, ce qui n'est pas la même chose et ne doit pas porter
+    // le même nom.
+    all.textContent = `Faire les ${recos.length} exercices`;
     all.onclick = () => startRecommendedSession(3);
     box.appendChild(all);
 

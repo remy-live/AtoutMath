@@ -169,7 +169,7 @@ async function applyImport(data, modal) {
             journal.merge(legacyToEvents(data, getActiveProfile().id));
             await journal.flush();
             showToast('Ancienne progression importée.', 'success');
-        });
+        }, { bouton: 'Importer cet historique', doux: true });
         return;
     }
 

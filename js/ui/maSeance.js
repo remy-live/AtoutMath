@@ -157,7 +157,7 @@ export function ouvrirSeance(seance, { autoStart = true } = {}) {
         return false;
     }
     if (missing.length) {
-        showToast(`${missing.length} activité(s) de cette séance n'existent plus.`, 'error');
+        showToast(`${missing.length} exercice(s) de cette séance n'existent plus.`, 'error');
     }
     state.setStudentPath(path.steps, {
         // L'IDENTITÉ QUE LA SÉANCE PORTE, et non celle de la copie du parcours.
@@ -299,7 +299,7 @@ export async function quitterMaClasse() {
         await ecrireLiens(detacher(await lireLiens(), getActiveProfileId()));
         showToast('Rattachement retiré.', 'success');
         await rafraichir();
-    });
+    }, { bouton: 'Me détacher de la classe' });
 }
 
 /* ═════════════════════════ LES SÉANCES PRÉCÉDENTES ═════════════════════════ */
@@ -324,7 +324,7 @@ export async function ouvrirMesSeances() {
                 <button type="button" class="rj-seance" data-seance="${esc(s.id)}">
                     <span class="rj-seance-nom">${esc(s.titre || (s.path && s.path.name) || 'Séance')}</span>
                     <span class="rj-seance-dit">${esc(direSeance(s))}
-                        · ${((s.path && s.path.steps) || []).length} activité(s)</span>
+                        · ${((s.path && s.path.steps) || []).length} exercice(s)</span>
                 </button>`).join('')}</div>
         </div>`, { width: '440px' });
     modal.element.querySelectorAll('[data-seance]').forEach(b => {

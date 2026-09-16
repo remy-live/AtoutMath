@@ -128,7 +128,7 @@ const esc = (t) => String(t == null ? '' : t)
  */
 export async function ouvrirDonnerSeance(parcours, onDonne) {
     if (!parcours || !(parcours.steps || []).length) {
-        return showAlert('Ajoutez au moins une activité avant de donner ce parcours.');
+        return showAlert('Ajoutez au moins un exercice avant de donner ce parcours.');
     }
     const classes = await lireClasses();
     if (!classes.length) {
@@ -159,7 +159,7 @@ export async function ouvrirDonnerSeance(parcours, onDonne) {
     const modal = showModal('Donner ce parcours', `
         <div class="ds-boite">
             <p class="ds-titre-parcours">${esc(parcours.name || 'Parcours')}
-                <span class="ds-n">${(parcours.steps || []).length} activités</span></p>
+                <span class="ds-n">${(parcours.steps || []).length} exercices</span></p>
 
             ${niveaux.map(n => groupeHtml(classesDuNiveau(classes, n),
         n.replace(/^(\d)e$/, '$1ᵉ'), n)).join('')}

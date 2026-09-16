@@ -102,17 +102,42 @@ export function showAlert(message) {
     }
 }
 
-export function showConfirm(message, onConfirm) {
+/**
+ * DEMANDER CONFIRMATION — en disant CE QU'ON VA FAIRE.
+ *
+ * Neuf fenêtres de confirmation, neuf fois le titre « Confirmation » et neuf
+ * fois le bouton rouge « Confirmer ». Supprimer une classe, retirer un élève,
+ * effacer un profil, verser vingt exercices dans un parcours : le même écran,
+ * mot pour mot. On lit le message, on clique « Confirmer », et si l'on s'est
+ * trompé de fenêtre rien ne l'a dit.
+ *
+ * UN BOUTON DOIT DIRE CE QUI VA SE PASSER. C'est la seule chose qu'on relit
+ * vraiment avant de cliquer — le reste, on l'a survolé. « Supprimer la classe »
+ * et « Retirer Léa » ne se confondent pas ; « Confirmer » et « Confirmer », si.
+ *
+ * L'appelant donne donc le verbe une fois, et il sert aux deux : au titre et
+ * au bouton. Deux endroits à remplir, c'est un des deux qu'on oublie.
+ *
+ * @param {string} message      ce qu'on s'apprête à faire, en une phrase
+ * @param {Function} onConfirm
+ * @param {object} [opts]
+ * @param {string} [opts.bouton] le verbe, à l'infinitif : « Supprimer la classe »
+ * @param {string} [opts.titre]  à défaut, c'est le verbe qui titre
+ * @param {boolean} [opts.doux]  vrai si le geste n'est pas destructeur
+ */
+export function showConfirm(message, onConfirm, opts = {}) {
+    const verbe = opts.bouton || 'Confirmer';
+    const couleur = opts.doux ? 'var(--primary)' : 'var(--danger)';
     const contentHTML = `
         <div style="text-align:center; padding:10px 0;">
             <p style="font-size:1.1rem; color:var(--text-main); margin-bottom:20px;">${message}</p>
-            <div style="display:flex; justify-content:center; gap:10px;">
-                <button class="confirm-cancel-btn" style="background:var(--bg-app); color:var(--text-main); border:1px solid var(--border); padding:10px 20px; border-radius:8px; font-size:1rem; cursor:pointer; font-family:inherit;">Annuler</button>
-                <button class="confirm-ok-btn" style="background:var(--danger); color:white; border:none; padding:10px 20px; border-radius:8px; font-size:1rem; cursor:pointer; font-family:inherit;">Confirmer</button>
+            <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+                <button class="confirm-cancel-btn" style="background:var(--bg-app); color:var(--text-main); border:1px solid var(--border); padding:10px 20px; border-radius:8px; font-size:1rem; cursor:pointer; font-family:inherit; min-height:44px;">Annuler</button>
+                <button class="confirm-ok-btn" style="background:${couleur}; color:white; border:none; padding:10px 20px; border-radius:8px; font-size:1rem; cursor:pointer; font-family:inherit; min-height:44px;">${verbe}</button>
             </div>
         </div>
     `;
-    const modal = showModal('Confirmation', contentHTML, { width: '400px' });
+    const modal = showModal(opts.titre || verbe, contentHTML, { width: '400px' });
     
     const cancelBtn = modal.element.querySelector('.confirm-cancel-btn');
     const okBtn = modal.element.querySelector('.confirm-ok-btn');

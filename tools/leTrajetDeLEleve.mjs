@@ -219,16 +219,21 @@ for (const app of APPAREILS) {
             .filter(vu).map(h => (h.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
         const boutons = [...document.querySelectorAll('button, a.btn, .tuile, .carte-jour')]
             .filter(vu).filter(b => (b.textContent || '').trim());
-        // LA SÉANCE SE CHERCHE PAR SA SECTION, pas par le nom du parcours.
-        // Premier jet : je cherchais un bouton portant « Calcul mental —
-        // rentrée », je n'en trouvais pas, et je comptais un frottement. Or la
-        // section s'appelle « Ta séance du jour » et elle est bien là : c'est
-        // le harnais qui cherchait le mauvais mot.
-        const section = [...document.querySelectorAll('.path-section')]
-            .find(x => /ta séance du jour/i.test(x.textContent || ''));
+        // LA SÉANCE EST LA PREMIÈRE SECTION, et elle porte SON nom.
+        //
+        // Deux jets ratés avant celui-ci, et les deux disent la même chose :
+        // le harnais ne doit pas chercher un libellé qu'il a décidé lui-même.
+        // Je cherchais d'abord « Calcul mental — rentrée » (le nom du
+        // parcours), puis « Ta séance du jour » (le titre d'alors) — qui
+        // désignait justement l'AUTRE chose, les conseils du logiciel, et qui
+        // a été renommé pour cette raison. Ce qui est stable, c'est la place :
+        // la séance du professeur ouvre la page, et elle a un bouton.
+        const section = [...document.querySelectorAll('#student-path-container .path-section')]
+            .filter(vu)
+            .find(x => [...x.querySelectorAll('button, a.btn')].some(vu));
         const seance = section
             ? [...section.querySelectorAll('button, a.btn')].filter(vu)[0]
-            : boutons.find(b => /rentrée|calcul mental/i.test(b.textContent || ''));
+            : null;
         const r = seance ? seance.getBoundingClientRect() : null;
         return {
             titres: titres.slice(0, 10),
@@ -244,7 +249,7 @@ for (const app of APPAREILS) {
     console.log(`   ce qu'il lit en haut : ${ecran.titres.join(' · ') || '(rien)'}`);
     console.log(`   boutons à l'écran : ${ecran.nbBoutons}`);
     if (!ecran.seanceVisible) {
-        frotte('la séance du jour ne porte pas son nom à l\'écran : il doit deviner où cliquer');
+        frotte('aucune séance ouvrable en haut de sa page : il doit deviner où cliquer');
     } else {
         console.log(`   sa séance est à ${ecran.seanceY} px du haut `
             + `(écran de ${ecran.hauteurEcran} px)`);
