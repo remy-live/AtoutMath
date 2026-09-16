@@ -33,6 +33,18 @@ export function showToast(message, type = 'success', duration = 3000) {
 
 export function showModal(title, contentHTML, options = {}) {
     const overlay = document.createElement('div');
+    // LA MÊME CLASSE QUE LES AUTRES FENÊTRES, et ce n'est pas cosmétique.
+    //
+    // Ce voile-ci n'en portait AUCUNE — il ne vivait que par ses styles en
+    // ligne. `ui/fenetre.js`, qui donne à chaque fenêtre son rôle, sa sortie
+    // par Échap, son piège au clavier et le retour du focus, cherche
+    // `.modal-overlay` : les neuf fenêtres déclarées dans la page étaient donc
+    // prises en charge, et toutes celles fabriquées ici ne l'étaient pas.
+    // Deux mécaniques pour la même chose, c'est une des deux qu'on oublie.
+    //
+    // Les styles en ligne posés juste en dessous l'emportent sur ceux de la
+    // classe — c'est la règle de la cascade —, l'allure ne change donc pas.
+    overlay.className = 'modal-overlay';
     // AU-DESSUS DE QUOI ? 9999 SUFFISAIT TANT QU'ON RESTAIT DANS LA PAGE.
     //
     // La couche de jeu (`#game-layer`) est à 10000 : une fenêtre ouverte DEPUIS

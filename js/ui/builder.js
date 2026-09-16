@@ -568,10 +568,29 @@ function appliquerEtat(etat) {
     enTrainDeRejouer = true;
     state.currentPath = etat.chemin;
     state.currentPathId = etat.cheminId;
-    selectedStepId = null;
+    // ANNULER NE DOIT PAS REFERMER LE PANNEAU QU'ON REMPLISSAIT.
+    //
+    // `selectedStepId = null` faisait qu'UN SEUL Ctrl+Z — celui qui défait le
+    // dernier réglage — vidait et refermait le volet des propriétés, et
+    // désurlignait l'étape. Mesuré : panneau ouvert sur « Addition de
+    // Fractions », deux clics sur « + », un Ctrl+Z → panneau fermé, vide, étape
+    // plus surlignée. Pour corriger un réglage de trop, le professeur devait
+    // retrouver son étape et tout rouvrir.
+    //
+    // Or annuler ne change pas ce qu'on REGARDE, seulement ce qu'on a fait. On
+    // ne lâche l'étape que si elle a réellement disparu du parcours — auquel cas
+    // le volet n'a plus d'objet.
+    const etapes = (state.currentPath && state.currentPath.steps) || [];
+    if (selectedStepId && !etapes.some(s => s.stepId === selectedStepId)) {
+        selectedStepId = null;
+    }
+    const aGarder = selectedStepId;
     const input = document.getElementById('path-name-input');
     if (input) input.value = state.currentPath.name || '';
     renderTeacherPath();
+    // `renderTeacherPath` redessine les rangées : le volet doit se remettre sur
+    // l'étape, avec ses valeurs d'APRÈS l'annulation.
+    if (aGarder) selectStep(aGarder);
     enTrainDeRejouer = false;
     majBoutonsHistorique();
 }

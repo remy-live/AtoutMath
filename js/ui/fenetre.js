@@ -193,12 +193,21 @@ export function initFenetres() {
     document.querySelectorAll(VOILE).forEach(brancher);
 
     // Les fenêtres fabriquées après coup — il y en a — doivent l'être aussi.
+    //
+    // ET CELLES QU'ON RETIRE, AUSSI. `showModal` ne cache pas son voile : il
+    // l'ARRACHE du document. Aucun attribut ne change, l'observateur d'attributs
+    // ne voit donc rien, et le focus ne revenait pas d'où il venait — le défaut
+    // même qu'on corrige ici, pour la moitié des fenêtres du logiciel.
     new MutationObserver((mutations) => {
         for (const m of mutations) {
             m.addedNodes.forEach(n => {
                 if (n.nodeType !== 1) return;
                 if (n.matches && n.matches(VOILE)) brancher(n);
                 if (n.querySelectorAll) n.querySelectorAll(VOILE).forEach(brancher);
+            });
+            m.removedNodes.forEach(n => {
+                if (n.nodeType !== 1 || !n.matches || !n.matches(VOILE)) return;
+                if (etats.get(n)) { etats.set(n, false); refermee(n); }
             });
         }
     }).observe(document.body, { childList: true, subtree: true });

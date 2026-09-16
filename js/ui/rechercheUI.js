@@ -88,6 +88,27 @@ export function initRechercheUI(onFiltre) {
         actif = -1;
     };
 
+    // LA LISTE DE SUGGESTIONS RECOUVRAIT LES BOUTONS « + » DES RÉSULTATS.
+    //
+    // Mesuré à 1440 × 900 : après avoir tapé « fraction », douze résultats dans
+    // la colonne et une boîte de suggestions de 299 × 340 px posée par-dessus.
+    // `document.elementFromPoint` au centre du « + » des SIX premiers résultats
+    // rendait la boîte, pas le bouton : le professeur voyait le « + », cliquait
+    // dessus, et choisissait une suggestion à la place.
+    //
+    // ON NE SUPPRIME PAS LA LISTE. Elle fait doublon avec les résultats, oui,
+    // mais elle porte la navigation au clavier — flèches et Entrée — qui est le
+    // seul chemin de quelqu'un qui ne se sert pas de la souris. On la referme
+    // quand le curseur DESCEND vers les résultats : celui qui va chercher un
+    // « + » l'a donc déjà fait disparaître avant de l'atteindre, et celui qui
+    // reste au clavier ne la perd jamais.
+    ['drill-content', 'view-accordion'].forEach(id => {
+        const zone = document.getElementById(id);
+        if (zone) zone.addEventListener('pointerenter', () => {
+            if (!liste.hidden) fermer();
+        });
+    });
+
     const surligner = (titre, q) => decouper(titre, q)
         .map(m => m.fort ? `<b>${echapper(m.texte)}</b>` : echapper(m.texte))
         .join('');
@@ -135,10 +156,24 @@ export function initRechercheUI(onFiltre) {
         if (!exo) return;
         fermer();
         input.blur();
-        // En mode professeur, on est en train de COMPOSER un parcours : la
-        // suggestion s'ouvre en aperçu, comme l'œil du catalogue. Côté élève,
-        // elle lance l'exercice — c'est ce qu'on venait chercher.
-        openGameLayer(exo, state.isTeacherMode);
+        // CE QU'ON VENAIT CHERCHER N'EST PAS LE MÊME DES DEUX CÔTÉS.
+        //
+        // Côté ÉLÈVE, on cherche un exercice pour le faire : Entrée le lance.
+        //
+        // Côté PROFESSEUR, on cherche un exercice pour l'AJOUTER — c'est tout
+        // le propos de l'atelier. Entrée ouvrait un aperçu plein cadre
+        // par-dessus la colonne du parcours : mesuré, une couche de 400 × 810
+        // px en z-index 100000, avec une démonstration animée et onze boutons
+        // de pilotage. Il fallait la refermer, retrouver sa ligne, puis cliquer
+        // le « + ». L'aperçu a déjà sa porte à lui — l'œil, sur chaque ligne du
+        // catalogue —, et il l'avait déjà avant cette touche-ci.
+        if (state.isTeacherMode) {
+            import('./builder.js').then(m => m.addStep(exo.id));
+            import('./modal.js').then(m =>
+                m.showToast(`« ${exo.title} » ajouté au parcours`, 'success'));
+            return;
+        }
+        openGameLayer(exo, false);
     };
 
     input.addEventListener('input', () => {
