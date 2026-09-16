@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=731">
-    <link rel="stylesheet" href="css/layout.css?v=731">
-    <link rel="stylesheet" href="css/ui.css?v=731">
-    <link rel="stylesheet" href="css/games.css?v=731">
-    <link rel="stylesheet" href="css/components.css?v=731">
-    <link rel="stylesheet" href="css/modules.css?v=731">
+    <link rel="stylesheet" href="css/base.css?v=732">
+    <link rel="stylesheet" href="css/layout.css?v=732">
+    <link rel="stylesheet" href="css/ui.css?v=732">
+    <link rel="stylesheet" href="css/games.css?v=732">
+    <link rel="stylesheet" href="css/components.css?v=732">
+    <link rel="stylesheet" href="css/modules.css?v=732">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1386,13 +1386,23 @@
                     <button id="btn-close-path-policy" class="modal-close-btn" aria-label="Fermer">&times;</button>
                 </div>
                 <p class="modal-text">Un même parcours peut servir d'entraînement ou d'évaluation notée :
-                    ce sont les mêmes exercices, avec des règles différentes.</p>
+                    ce sont les mêmes exercices, avec des règles différentes.
+                    <b>Chaque changement s'applique tout de suite.</b></p>
                 <div id="builder-policy-content"></div>
                 <!-- Un vrai bouton de sortie : la croix en haut à droite ne se
                      voit pas sur un panneau qui remplit l'écran, et les
-                     réglages sont déjà enregistrés au fur et à mesure. -->
+                     réglages sont déjà enregistrés au fur et à mesure.
+                     IL S'APPELAIT « VALIDER », ET IL NE VALIDAIT RIEN. Chaque
+                     réglage s'applique au moment où on le touche — mesuré :
+                     cliquer « Évaluation » change la politique du parcours
+                     AVANT même qu'on referme. Les deux sorties, la croix et ce
+                     bouton, font donc exactement la même chose ; l'une le
+                     disait, l'autre promettait une décision à prendre. Un
+                     professeur qui cherche « Annuler » après avoir changé
+                     d'avis ne le trouve pas — et pour cause, il n'existe pas.
+                     On dit ce qui se passe. -->
                 <div class="modal-actions-center">
-                    <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="btn-valider-path-policy">Valider</button>
+                    <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="btn-valider-path-policy">Fermer</button>
                 </div>
             </div>
         </div>

@@ -1225,6 +1225,24 @@ details[open] > summary .custom-chevron { transform: rotate(90deg); }
 /* Le titre coupe, et le titre entier reste accessible : l'attribut `title`
    pose l'infobulle du navigateur, et l'apercu epingle porte le nom en clair. */
 .exo-item-titre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* CE QU'ON A REGLE, SUR LA LIGNE DE L'ETAPE. Discret — c'est un repere, pas un
+   titre — mais coloré, parce que c'est la seule chose de cette ligne que le
+   professeur a decidee lui-meme. */
+.pstep-regle {
+    color: var(--primary-texte, var(--primary)); font-weight: 600;
+    max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* LES DEUX FLECHES D'ORDRE. Le meme chevron que partout, retourne pour celle
+   du haut : deux dessins pour deux sens, ce sont deux choses a tenir d'accord.
+   44 px, parce que le premier public de ces boutons est le doigt — sur
+   tablette, l'ordre des etapes ne pouvait pas changer du tout. */
+.pstep-ordre { min-width: 44px; min-height: 44px; }
+.pstep-ordre--haut svg { transform: rotate(180deg); }
+/* Desactivee, elle reste VISIBLE : elle dit ou l'on est dans la liste. La
+   faire disparaitre decalerait les autres boutons d'une rangee a l'autre. */
+.pstep-ordre:disabled { opacity: .3; cursor: default; }
 body.teacher-mode .exo-list-item { cursor: grab; }
 body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 

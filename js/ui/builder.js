@@ -31,7 +31,7 @@ import {
 import { initTiroirOnglets, montrerPanneau } from './tiroirParcours.js';
 import { chapitresDe } from '../core/chapitres.js';
 import {
-    renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide
+    renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide, direLesReglages
 } from '../games/configUI.js';
 import { lireZones, normaliserZones, zonesDuMode, modeZone } from '../core/aide.js';
 import { showToast, showAlert, showConfirm } from './modal.js';
@@ -561,6 +561,42 @@ function retenirLEtat() {
     if (!histoire) histoire = creerHistorique(etatDuParcours());
     else histoire.enregistrer(etatDuParcours());
     majBoutonsHistorique();
+}
+
+/**
+ * DÉPLACER UNE ÉTAPE D'UN CRAN — le geste que la tablette n'avait pas.
+ *
+ * L'ordre des étapes ne se changeait QUE par glisser-déposer HTML5
+ * (`row.draggable`), et cette API ne répond pas au doigt. Mesuré sur un
+ * contexte iPad 1024 × 1366 : appui long de 700 ms puis glissé en douze pas,
+ * l'ordre ne bougeait pas d'un millimètre. Sur tablette, un parcours se
+ * construisait donc dans l'ordre où l'on avait cliqué, définitivement.
+ *
+ * DEUX BOUTONS PLUTÔT QU'UN GLISSEMENT TACTILE, et c'est un choix. Le
+ * glissement au doigt existe déjà ailleurs (`enableTouchDragToPath`) et
+ * pourrait se rebrancher ici — mais il ne servirait qu'au doigt. Deux flèches
+ * servent au doigt, à la souris qui vise mal, et au CLAVIER : ce sont trois
+ * publics pour le même bouton, dont un qui n'avait aucun chemin du tout.
+ */
+export function deplacerEtape(stepId, sens) {
+    const steps = state.currentPath.steps;
+    const de = steps.findIndex(s => s.stepId === stepId);
+    if (de < 0) return false;
+    const vers = de + (sens < 0 ? -1 : 1);
+    if (vers < 0 || vers >= steps.length) return false;
+    const item = steps.splice(de, 1)[0];
+    steps.splice(vers, 0, item);
+    renderTeacherPath();
+    // ON REND LE CLAVIER À LA FLÈCHE QU'ON VIENT D'UTILISER. `renderTeacherPath`
+    // refait toutes les rangées : sans cela, celui qui déplace une étape de
+    // trois crans doit repartir du haut de la page à chaque cran.
+    requestAnimationFrame(() => {
+        const rangee = document.querySelector(`.path-step[data-step-id="${stepId}"]`);
+        const bouton = rangee && rangee.querySelector(`[data-sens="${sens < 0 ? 'haut' : 'bas'}"]`);
+        if (bouton && !bouton.disabled) bouton.focus();
+        else if (rangee) rangee.querySelector('[data-sens]')?.focus();
+    });
+    return true;
 }
 
 function appliquerEtat(etat) {
@@ -1260,6 +1296,21 @@ function stepRow(step, index, policy) {
             ? 'Mesuré sur les réponses déjà enregistrées, et non estimé.'
             : 'Estimation d\'après la nature de l\'exercice.'}">`
         + `${duree.mesure ? '' : '≈ '}${escapeHtml(direDuree(duree.min, duree.max))}</span>`);
+    // CE QU'ON A RÉGLÉ SE LIT SUR LA LIGNE, et non seulement dans le panneau.
+    //
+    // Mesuré : régler « Dénominateurs : identiques → différents » ne changeait
+    // rien au texte de la ligne — identique caractère par caractère. Un
+    // professeur qui relit sa séance de huit étapes ne pouvait pas savoir
+    // laquelle il avait touchée : il fallait les rouvrir une par une.
+    //
+    // Et la pastille ne s'affiche que s'il y a VRAIMENT quelque chose de réglé :
+    // depuis `reglagesQuiChangent`, `step.overrides` ne garde que les écarts
+    // réels, ce qui la rendrait bavarde si on la posait sur tout.
+    const regle = direLesReglages(step.overrides, paramSchemaOf(exo));
+    if (regle) {
+        morceaux.push(`<span class="pstep-regle" title="${escapeHtml(regle)}">`
+            + `⚙ ${escapeHtml(regle)}</span>`);
+    }
     dessous.innerHTML = morceaux.join('');
 
     // LA BANDE, EN MINIATURE, SUR LA LIGNE DE L'ÉTAPE.
@@ -1290,7 +1341,21 @@ function stepRow(step, index, policy) {
     const del = iconButton('Supprimer', ICONS.trash, 'danger');
     del.onclick = (e) => { e.stopPropagation(); removeStep(step.stepId); };
 
-    [preview, props, dup, del].forEach(b => actions.appendChild(b));
+    // LES DEUX FLÈCHES D'ORDRE, en tête : c'est le geste qu'on fait le plus
+    // souvent sur une étape déjà posée, et le seul qui n'existait pas au doigt.
+    const monter = iconButton('Monter cette étape', ICONS.chevron);
+    monter.classList.add('pstep-ordre', 'pstep-ordre--haut');
+    monter.dataset.sens = 'haut';
+    monter.disabled = index === 0;
+    monter.onclick = (e) => { e.stopPropagation(); deplacerEtape(step.stepId, -1); };
+
+    const descendre = iconButton('Descendre cette étape', ICONS.chevron);
+    descendre.classList.add('pstep-ordre');
+    descendre.dataset.sens = 'bas';
+    descendre.disabled = index === state.currentPath.steps.length - 1;
+    descendre.onclick = (e) => { e.stopPropagation(); deplacerEtape(step.stepId, 1); };
+
+    [monter, descendre, preview, props, dup, del].forEach(b => actions.appendChild(b));
 
     // Chevron de dépliage — visible seulement sur téléphone.
     //

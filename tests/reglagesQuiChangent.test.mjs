@@ -25,7 +25,7 @@ import { reglagesQuiChangent } from '../js/games/configUI.js';
 /** Un exercice du catalogue et le schéma qui peint son panneau. */
 const EXO = { id: 'frac-add', params: { maxDen: 12, memeDenominateur: 'identiques' } };
 const SCHEMA = [
-    { id: 'maxDen', type: 'number', default: 10 },
+    { id: 'maxDen', type: 'number', label: 'Dénominateur maximum', default: 10 },
     { id: 'memeDenominateur', type: 'select', default: 'libre' },
     { id: 'aide', type: 'select', default: 'progressive' },
     { id: 'repartition', type: 'select', default: 'auto' },
@@ -97,4 +97,56 @@ test('LE PANNEAU PASSE BIEN PAR CE FILTRE — sinon tout ce qui précède est d�
     assert.match(src,
         /const overrides = reglagesQuiChangent\(readParams\(content, schema\), exo, schema\)/,
         'commit() doit filtrer ce qu\'il enregistre');
+});
+
+// ─────────────── CE QU'ON A RÉGLÉ DOIT SE LIRE SUR LA LIGNE DE L'ÉTAPE ──────
+//
+// Mesuré par l'audit : régler « Dénominateurs : identiques → différents » ne
+// changeait RIEN au texte de la ligne — identique caractère par caractère. Le
+// professeur qui relit sa séance de huit étapes ne peut pas savoir laquelle il
+// a touchée : il doit les rouvrir une par une.
+
+import { direLesReglages } from '../js/games/configUI.js';
+
+test('ON ÉCRIT LE LIBELLÉ DU SCHÉMA, jamais la clé du code', () => {
+    // « memeDenominateur: differents » ne se lit pas. « Dénominateurs :
+    // différents » se lit — et c'est le mot que le professeur a lu en réglant.
+    const schema = [{ id: 'memeDenominateur', type: 'select', label: 'Dénominateurs',
+        options: [{ value: 'differents', label: 'différents' }, { value: 'libre', label: 'libre' }] }];
+    assert.equal(direLesReglages({ memeDenominateur: 'differents' }, schema),
+        'Dénominateurs : différents');
+});
+
+test('rien de réglé, rien d\'écrit', () => {
+    assert.equal(direLesReglages({}, SCHEMA), '');
+    assert.equal(direLesReglages(null, null), '');
+});
+
+test('LA LIGNE RESTE UNE LIGNE : on s\'arrête à deux, puis on compte', () => {
+    // Le détail complet vit dans le panneau, qui est fait pour ça.
+    const lu = direLesReglages(
+        { maxDen: 20, memeDenominateur: 'identiques', aide: 'aucune', clavier: false }, SCHEMA);
+    assert.match(lu, /\+2$/, lu);
+    assert.equal(lu.split(' · ').length, 2, lu);
+});
+
+test('un booléen se dit sans valeur, et sa négation se dit autrement', () => {
+    const schema = [{ id: 'clavier', type: 'bool', label: 'Clavier' }];
+    assert.equal(direLesReglages({ clavier: true }, schema), 'Clavier');
+    assert.equal(direLesReglages({ clavier: false }, schema), 'sans clavier');
+});
+
+test('UNE CLÉ HORS SCHÉMA N\'EST PAS INVENTÉE', () => {
+    // Les réglages posés marche par marche n'ont pas de nom lisible. Écrire
+    // « aide@m1 : progressive » sur la ligne serait pire que de se taire.
+    assert.equal(direLesReglages({ 'aide@m1': 'progressive' }, SCHEMA), '');
+    assert.equal(direLesReglages({ 'aide@m1': 'x', maxDen: 20 }, SCHEMA),
+        'Dénominateur maximum : 20');
+});
+
+test('LA LIGNE DE L\'ÉTAPE L\'AFFICHE — sinon tout ce qui précède est décoratif', async () => {
+    const fs = await import('node:fs');
+    const src = fs.readFileSync(new URL('../js/ui/builder.js', import.meta.url), 'utf8');
+    assert.match(src, /const regle = direLesReglages\(step\.overrides, paramSchemaOf\(exo\)\)/);
+    assert.match(src, /pstep-regle/);
 });

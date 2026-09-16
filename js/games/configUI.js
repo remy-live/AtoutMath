@@ -2329,6 +2329,52 @@ export function reglagesQuiChangent(lus, exo, schema) {
     return out;
 }
 
+/**
+ * CE QUI A ÉTÉ RÉGLÉ SUR CETTE ÉTAPE, EN CLAIR ET EN COURT.
+ *
+ * Mesuré : régler « Dénominateurs : identiques → différents » sur une étape ne
+ * changeait RIEN à sa ligne dans le parcours — texte strictement identique,
+ * comparé caractère par caractère. Le professeur qui relit sa séance de huit
+ * étapes ne peut pas savoir laquelle il a touchée : il doit les rouvrir une par
+ * une.
+ *
+ * ON ÉCRIT LE LIBELLÉ DU SCHÉMA, pas la clé du code. « memeDenominateur:
+ * differents » ne se lit pas ; « Dénominateurs : différents » se lit. Et l'on
+ * s'arrête à deux réglages : cette ligne doit rester une ligne, et celui qui
+ * veut le détail ouvre le panneau, qui est là pour ça.
+ *
+ * @param {object} overrides ce que l'étape a d'écart avec l'exercice
+ * @param {Array}  schema    le schéma qui nomme ces réglages
+ * @param {number} [combien] combien on en écrit avant de dire « +n »
+ * @returns {string} « Dénominateurs : différents · Maximum : 20 », ou ''
+ */
+export function direLesReglages(overrides, schema, combien = 2) {
+    const o = overrides || {};
+    const cles = Object.keys(o);
+    if (!cles.length) return '';
+    const parId = new Map((schema || []).filter(p => p && p.id).map(p => [p.id, p]));
+
+    const dire = (cle) => {
+        const p = parId.get(cle);
+        const v = o[cle];
+        // UNE CLÉ HORS SCHÉMA n'a pas de nom lisible — les réglages posés marche
+        // par marche, par exemple. On ne l'invente pas : on la compte, sans
+        // prétendre la nommer.
+        if (!p) return null;
+        const nom = p.label || cle;
+        if (p.type === 'bool' || typeof v === 'boolean') return v ? nom : `sans ${nom.toLowerCase()}`;
+        if (Array.isArray(v)) return v.length ? `${nom} : ${v.length} choisi${v.length > 1 ? 's' : ''}` : null;
+        const opt = (p.options || []).find(x => String(valeurOption(x)) === String(v));
+        return `${nom} : ${opt ? libelleOption(opt) : v}`;
+    };
+
+    const lisibles = cles.map(dire).filter(Boolean);
+    if (!lisibles.length) return '';
+    const montres = lisibles.slice(0, combien);
+    const reste = lisibles.length - montres.length;
+    return montres.join(' · ') + (reste > 0 ? ` +${reste}` : '');
+}
+
 export function readParams(root, schema) {
     const out = {};
     schema.forEach(param => {
