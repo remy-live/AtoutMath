@@ -200,6 +200,9 @@ export function renderStudentPathView() {
  *     « Aucun parcours assigné pour le moment. Saisis le code donné par ton
  *       professeur avec le bouton « Code » en haut de l'écran. »
  *
+ * — phrase qui, en plus, désignait un bouton qui se trouve EN BAS sur un
+ * téléphone. Elle a été remplacée par le bouton lui-même.
+ *
  * C'était faux. Sa séance était bien arrivée, mais elle ne s'affichait que sur
  * l'AUTRE accueil — celui du catalogue, que `aujourdhui.js` dessine — et cet
  * écran-ci ne regardait que `state.studentPath`, qui ne vaut quelque chose
@@ -222,10 +225,31 @@ function sectionSansParcours(box) {
     // disait la vérité — et l'on peut alors parler de code, puisque c'est bien
     // ce qui manque.
     if (!etat || !etat.seance) {
+        // ON N'ENVOIE PLUS CHERCHER UN BOUTON AILLEURS — ON LE MET ICI.
+        //
+        // Le message disait « le bouton Code en haut de l'écran ». Mesuré : sur
+        // un téléphone, ce bouton est en BAS — c'est `#mob-btn-code`, dans la
+        // barre du bas ; celui du haut disparaît sous 900 px de large. On
+        // envoyait donc un enfant de onze ans chercher au mauvais endroit, à
+        // l'instant précis où il ne trouve déjà rien.
+        //
+        // Dire « en bas sur téléphone, en haut sinon » serait une phrase de
+        // plus à tenir d'accord avec la mise en page. Le bouton est ICI, sous
+        // la phrase qui en parle, et il ouvre la même fenêtre que les deux
+        // autres.
         box.innerHTML = `
             <h2 class="path-section-title">Pas de séance pour l'instant</h2>
             <div class="empty-state-msg">Ton professeur ne t'a rien donné pour le moment.
-            S'il t'a dicté un code, tape-le avec le bouton « Code » en haut de l'écran.</div>`;
+            S'il t'a dicté un code, tape-le ici.</div>
+            <button type="button" class="btn-toggle active path-ouvrir-code" data-ouvrir-code>
+                J'ai un code</button>`;
+        const bouton = box.querySelector('[data-ouvrir-code]');
+        if (bouton) bouton.onclick = () => {
+            const fenetre = document.getElementById('code-modal');
+            if (fenetre) fenetre.style.display = 'flex';
+            const champ = document.getElementById('student-code-input');
+            if (champ) { champ.value = ''; champ.focus(); }
+        };
         return box;
     }
 

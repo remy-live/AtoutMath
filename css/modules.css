@@ -3391,6 +3391,11 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 /* Assez grand pour etre la premiere chose qu'on touche, au doigt comme a la
    souris : c'est le seul geste que l'eleve ait a faire sur cet ecran. */
 .path-ouvrir-seance { font-size: 1rem; padding: 12px 22px; min-height: 44px; }
+/* Le bouton du code a la même taille que celui de la séance : ce sont les deux
+   seuls gestes possibles sur cet écran, et ils ne s'y présentent jamais
+   ensemble. Il porte sa propre classe pour qu'on puisse les distinguer — dans
+   la feuille de style comme dans les épreuves. */
+.path-ouvrir-code { font-size: 1rem; padding: 12px 22px; min-height: 44px; margin-top: 12px; }
 .timeline-step-meta { font-size: .82rem; color: var(--text-muted); margin: 2px 0 8px; }
 .path-complete-banner {
     margin-top: 14px; padding: 12px; text-align: center; font-weight: 700;
@@ -8693,9 +8698,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
    qu'on a empilé six exercices de calcul et aucun de géométrie. */
 .path-step[data-domaine="Numérique"] { border-left-color: #6366f1; }
 .path-step[data-domaine="Géométrique"] { border-left-color: #0ea5e9; }
-.path-step[data-domaine="Grandeurs et Mesures"] { border-left-color: #f59e0b; }
+.path-step[data-domaine="Grandeurs et mesures"] { border-left-color: #f59e0b; }
 .path-step[data-domaine="Organisation de données"] { border-left-color: #10b981; }
-.path-step[data-domaine="Défis et Énigmes"] { border-left-color: #a855f7; }
+.path-step[data-domaine="Défis et énigmes"] { border-left-color: #a855f7; }
 
 @media (max-width: 700px) {
     .path-step-meta { margin-left: 0; }

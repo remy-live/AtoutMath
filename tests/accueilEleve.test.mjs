@@ -76,7 +76,13 @@ test('L\'ÉTAT VIDE HONNÊTE RESTE, pour l\'élève qui n\'a vraiment rien', () 
     // On ne remplace pas un mensonge par un silence : quand rien n'attend,
     // l'écran le dit — et c'est alors le bon moment de parler du code.
     assert.match(vue, /Ton professeur ne t'a rien donné pour le moment/);
-    assert.match(vue, /bouton « Code »/);
+    // ET L'ON NE L'ENVOIE PLUS CHERCHER AILLEURS. La phrase disait « le bouton
+    // Code en haut de l'écran » ; mesuré, sur un téléphone ce bouton est en BAS
+    // (`#mob-btn-code`), celui du haut disparaissant sous 900 px. Le bouton est
+    // maintenant posé sous la phrase qui en parle.
+    assert.ok(!/en haut de l'écran/.test(vue), 'on ne désigne plus une position');
+    assert.match(vue, /data-ouvrir-code/);
+    assert.match(vue, /J'ai un code/);
 });
 
 test('LA BIBLIOTHÈQUE DU PROFESSEUR NE S\'AFFICHE PAS CHEZ UN ÉLÈVE IDENTIFIÉ', () => {

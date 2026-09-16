@@ -54,6 +54,10 @@
 @media (max-width: 430px) {
     .role-badge { padding: 4px; gap: 0; }
     .role-badge span:not(.role-badge-point) { display: none; }
+    /* SAUF QUAND C'EST UN PRÉNOM. Le point de couleur dit le RÔLE ; il ne dira
+       jamais QUI. Voir la note dans app.js (`role-badge--nomme`). */
+    .role-badge--nomme { padding: 4px 10px; gap: 6px; }
+    .role-badge--nomme span:not(.role-badge-point) { display: inline; }
     .role-badge-point { width: 9px; height: 9px; }
 }
 #top-navbar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

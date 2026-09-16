@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=737">
-    <link rel="stylesheet" href="css/layout.css?v=737">
-    <link rel="stylesheet" href="css/ui.css?v=737">
-    <link rel="stylesheet" href="css/games.css?v=737">
-    <link rel="stylesheet" href="css/components.css?v=737">
-    <link rel="stylesheet" href="css/modules.css?v=737">
+    <link rel="stylesheet" href="css/base.css?v=738">
+    <link rel="stylesheet" href="css/layout.css?v=738">
+    <link rel="stylesheet" href="css/ui.css?v=738">
+    <link rel="stylesheet" href="css/games.css?v=738">
+    <link rel="stylesheet" href="css/components.css?v=738">
+    <link rel="stylesheet" href="css/modules.css?v=738">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -498,9 +498,15 @@
                     Profil
                 </button>
             </div>
-            <div class="nav-center teacher-only nav-center-editing-label">
-                Mode Édition de Parcours
-            </div>
+            <!-- CE BANDEAU DISAIT UNE TROISIÈME FOIS OÙ L'ON ÉTAIT.
+                 L'écran de préparation portait trois noms à deux cents pixels
+                 les uns des autres : « Mode Édition de Parcours » ici,
+                 « Construction de Parcours » en en-tête, et le nom du parcours
+                 lui-même juste en dessous. Trois façons de dire la même chose,
+                 c'est trois occasions de se demander si ce sont trois endroits.
+                 L'onglet « Préparer » est déjà allumé dans cette même barre :
+                 il dit où l'on est, et il le dit avec le mot que le professeur
+                 a cliqué pour y venir. -->
             <div class="nav-right">
                 <!-- LE CARNET D'ERREURS, atteignable en un geste. Il existait,
                      mais enterré au fond du profil : une erreur relue trois
@@ -602,7 +608,7 @@
                      le niveau, les XP et les badges qui l'expliquent ; le rendre
                      cliquable ne double pas cette page, il y conduit. -->
                 <button type="button" id="btn-score" class="score-display"
-                    title="Mes etoiles - voir mon profil" aria-label="Mes etoiles - voir mon profil">
+                    title="Mes points — voir mon profil" aria-label="Mes points — voir mon profil">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
@@ -647,7 +653,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="7"></rect><path d="M12 6v4"></path></svg>
                             Clic
                         </button>
-                        <button id="desk-btn-acc" class="btn-toggle" title="Présentation Arborescence">
+                        <button id="desk-btn-acc" class="btn-toggle" title="Présentation en arborescence">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="9" width="6" height="6" rx="1"></rect><rect x="16" y="3" width="6" height="6" rx="1"></rect><rect x="16" y="15" width="6" height="6" rx="1"></rect><path d="M8 12h4V6h4"></path><path d="M12 12v6h4"></path></svg>
                             Arbre
                         </button>
@@ -723,7 +729,9 @@
             <!-- ZONE PRINCIPALE -->
             <main id="main-area">
                 <header class="teacher-only">
-                    <div class="builder-header-label">Construction de Parcours
+                    <!-- Le nom de l'écran, et le seul : le même verbe que
+                         l'onglet qui y mène. -->
+                    <div class="builder-header-label">Préparer un parcours
                     </div>
                     <div class="flex-spacer"></div>
                 </header>
@@ -756,7 +764,7 @@
                         <div id="path-header-toggle" class="path-header-toggle">
                             <div class="path-header-left">
                                 <h2 class="path-header-title">
-                                    <input type="text" id="path-name-input" value="Mon Parcours" title="Cliquez pour modifier le nom" aria-label="Nom du parcours">
+                                    <input type="text" id="path-name-input" value="Nouveau parcours" title="Cliquez pour modifier le nom" aria-label="Nom du parcours">
                                     <span id="path-count-badge">0</span>
                                     <svg id="path-toggle-icon" class="collapsable-btn" xmlns="http://www.w3.org/2000/svg"
                                         width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -907,11 +915,18 @@
                              (« Voici un résumé de tes accomplissements ») n'a
                              pas été remplacé : il n'apprenait rien. -->
                         <div class="profile-header">
-                            <h1 class="view-heading-title">Mon Profil</h1>
+                            <h1 class="view-heading-title">Mon profil</h1>
                             <div class="profile-score-block">
                                 <div class="profile-score-emoji">⭐</div>
                                 <div id="profile-score-value" class="profile-score-value">0</div>
-                                <div class="profile-score-label">Points totaux</div>
+                                <!-- LE MÊME NOMBRE, LE MÊME MOT. Il s'appelait
+                                     « étoiles » dans la barre du haut, « Points
+                                     totaux » ici, et « XP » deux cartes plus
+                                     bas — alors que c'est LITTÉRALEMENT le même
+                                     nombre (le niveau vaut score ÷ 100). Un
+                                     élève qui en gagne ne peut pas savoir qu'il
+                                     regarde trois fois le même compteur. -->
+                                <div class="profile-score-label">Mes points</div>
                             </div>
                         </div>
 
@@ -919,17 +934,17 @@
                         <div class="stats-grid">
                             <div class="stat-card">
                                 <span class="stat-label">Niveau
-                                    Actuel</span>
+                                    actuel</span>
                                 <span id="profile-level" class="stat-value stat-value--accent">Apprenti</span>
                             </div>
                             <div class="stat-card">
                                 <span class="stat-label">Exercices
-                                    Réussis</span>
+                                    réussis</span>
                                 <span id="profile-correct-count" class="stat-value stat-value--success">0</span>
                             </div>
                             <div class="stat-card">
                                 <span class="stat-label">Temps de
-                                    Jeu</span>
+                                    jeu</span>
                                 <span id="profile-time-value" class="stat-value stat-value--primary">0s</span>
                             </div>
                         </div>
@@ -1202,7 +1217,7 @@
                             </svg>
                         </button>
                     </div>
-                    <button id="btn-toggle-demo" class="game-icon-btn game-icon-btn--warn" title="Mode Démonstration" aria-label="Mode Démonstration">
+                    <button id="btn-toggle-demo" class="game-icon-btn game-icon-btn--warn" title="Le robot joue l'exercice" aria-label="Le robot joue l'exercice">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <rect width="18" height="18" x="3" y="3" rx="2" />
@@ -1295,7 +1310,16 @@
                         <path d="M21 14h1" />
                         <path d="M12 3v-2" />
                     </svg>
-                    <span id="demo-banner-text">Mode Démonstration</span>
+                    <!-- LA MÊME CHOSE S'APPELAIT DE QUATRE FAÇONS : « Montre-moi »
+                         pour l'élève, « Mode démonstration » ici, « Aperçu » sur
+                         cette même bande quand elle s'ouvre, et « Le robot » dans
+                         l'Atelier. Le professeur ne pouvait pas deviner que les
+                         quatre désignent le petit personnage qui joue l'exercice
+                         tout seul. C'est « le robot », parce que c'est le nom que
+                         l'Atelier lui donne déjà et qu'il dit ce qu'on voit.
+                         « Montre-moi » reste : ce n'est pas le nom de la chose,
+                         c'est ce que l'élève lui DEMANDE. -->
+                    <span id="demo-banner-text">Le robot joue</span>
                     <span id="demo-banner-plus" aria-hidden="true">▾</span>
                     <button class="btn-stop-demo" id="btn-start-real-game">À moi de jouer !</button>
                 </div>

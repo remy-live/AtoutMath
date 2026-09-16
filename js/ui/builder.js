@@ -1511,7 +1511,7 @@ function initNameInput() {
     if (!input) return;
     input.onclick = (e) => e.stopPropagation();
     input.oninput = () => {
-        state.currentPath.name = input.value.trim() || 'Mon Parcours';
+        state.currentPath.name = input.value.trim() || 'Nouveau parcours';
         autoSavePath();
     };
 }

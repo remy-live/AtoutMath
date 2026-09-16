@@ -638,7 +638,21 @@ défauts qu'ils cherchent ne lèvent aucune erreur — ils laissent seulement un
 - une variable de couleur mal orthographiée (`var(--bg-main)` au lieu de
   `var(--bg-app)`) rend le panneau TRANSPARENT, sans rien casser.
 
-Un troisième fait de même pour le CONTRASTE (`contraste.test.mjs`).
+Un troisième fait de même pour le CONTRASTE (`contraste.test.mjs`), un
+quatrième pour le VOCABULAIRE (`lesMots.test.mjs`).
+
+### Les mots
+
+Une chose, un mot. Le compteur s'appelle **des points** — pas « étoiles »
+(l'étoile est le dessin), pas « XP » (c'est le même nombre : le niveau vaut
+score ÷ 100). Le personnage qui joue l'exercice tout seul s'appelle **le
+robot** — « Montre-moi » reste, mais c'est ce que l'élève lui DEMANDE, pas son
+nom. L'écran de préparation s'appelle **Préparer un parcours**, du verbe de
+l'onglet qui y mène.
+
+Et l'on écrit en français : majuscule au premier mot, et c'est tout.
+« Calcul mental », pas « Calcul Mental ». Les titres d'exercices font
+exception — ce sont des noms d'œuvres.
 
 ### Deux jetons par couleur : le fond et le texte
 

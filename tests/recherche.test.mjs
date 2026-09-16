@@ -224,9 +224,9 @@ test('les mots-clefs du catalogue se cherchent', () => {
     // n'y retrouvait plus les tables. Un mot-clef ne range rien — il se
     // cherche, et c'est tout ce qu'on lui demandait.
     const fiches = [
-        preparer({ id: 'a', titre: 'Flash Mult', chemin: ['Numérique', 'Calcul Mental'],
+        preparer({ id: 'a', titre: 'Flash Mult', chemin: ['Numérique', 'Calcul mental'],
             niveaux: ['6ème'], motsCles: ['tables', 'multiplication'], texte: '' }),
-        preparer({ id: 'b', titre: 'Additions Mystères', chemin: ['Numérique', 'Calcul Mental'],
+        preparer({ id: 'b', titre: 'Additions Mystères', chemin: ['Numérique', 'Calcul mental'],
             niveaux: ['6ème'], motsCles: [], texte: '' })
     ];
     const trouves = chercher(fiches, 'tables').map(r => r.fiche.id);

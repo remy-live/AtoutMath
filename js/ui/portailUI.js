@@ -207,11 +207,23 @@ function dessiner() {
           <section class="portail-porte">
             <h2>Je me connecte</h2>
             <p class="portail-aide">L'identifiant et le code de ton billet.</p>
+            <!-- DIRE AU TÉLÉPHONE QUEL CLAVIER OUVRIR.
+                 Un champ de texte ordinaire, sur un téléphone, arrive avec la
+                 majuscule automatique et la correction en marche. L'identifiant
+                 « lea.durand » se tapait donc « Lea.durand », que le serveur
+                 refuse ; et le code « 4KP2 », dicté en majuscules et écrit tel
+                 quel au tableau, se tapait « 4kp2 ». Deux refus d'entrée pour
+                 un réglage de clavier que personne, à onze ans, n'ira changer.
+                 L'attribut autocapitalize dit au clavier ce qu'on attend, champ par
+                 champ : rien pour un identifiant, des MAJUSCULES pour un code,
+                 le prénom en majuscule initiale pour un prénom. -->
             <label>Identifiant
               <input id="portail-login" type="text" autocomplete="username" spellcheck="false"
+                     autocapitalize="none" autocorrect="off"
                      maxlength="60" placeholder="lea.durand"></label>
             <label>Code <span class="portail-forme">4 signes</span>
               <input id="portail-code-eleve" type="text" autocomplete="off" spellcheck="false"
+                     autocapitalize="characters" autocorrect="off" inputmode="text"
                      maxlength="12" placeholder="4KP2"></label>
             <button id="portail-connecter" class="portail-bouton">Entrer</button>
             <p class="portail-etat" id="portail-etat-login"></p>
@@ -225,9 +237,11 @@ function dessiner() {
               <summary>Je n'ai pas de billet</summary>
               <label>Code de la classe
                 <input id="portail-classe" type="text" autocomplete="off" spellcheck="false"
+                       autocapitalize="characters" autocorrect="off" inputmode="text"
                        maxlength="12" placeholder="ABC123"></label>
               <label>Ton prénom
                 <input id="portail-prenom" type="text" autocomplete="given-name"
+                       autocapitalize="words" autocorrect="off"
                        maxlength="40" placeholder="Léa"></label>
               <button id="portail-rejoindre" class="portail-bouton portail-bouton--doux">Entrer avec le code de la classe</button>
               <p class="portail-etat" id="portail-etat-classe"></p>
@@ -239,7 +253,10 @@ function dessiner() {
             <p class="portail-aide">Le code que ton professeur vient de dicter,
                ou le lien qu'il t'a envoyé.</p>
             <label>Code de la séance <span class="portail-forme">long, avec des tirets</span>
+              <!-- Le code de séance distingue les majuscules des minuscules :
+                   la majuscule automatique le casserait à coup sûr. -->
               <input id="portail-code" type="text" autocomplete="off" spellcheck="false"
+                     autocapitalize="none" autocorrect="off"
                      placeholder="colle le code ici"></label>
             <button id="portail-ouvrir" class="portail-bouton">Ouvrir le parcours</button>
             <p class="portail-etat" id="portail-etat-code"></p>

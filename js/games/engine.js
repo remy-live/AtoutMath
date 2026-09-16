@@ -176,7 +176,9 @@ export function openDemo(exo) {
     const banner = document.getElementById('demo-overlay-banner');
     if (banner) {
         const msg = document.getElementById('demo-banner-text');
-        if (msg) msg.textContent = `Aperçu${exo.instruction ? ' : ' + exo.instruction : ' — le robot joue'}`;
+        // « Le robot joue » plutôt que « Aperçu » : c'est le nom que l'Atelier
+        // et le bouton de l'en-tête donnent tous deux à la même chose.
+        if (msg) msg.textContent = `Le robot joue${exo.instruction ? ' : ' + exo.instruction : ''}`;
         // Repliée à chaque ouverture : une consigne dépliée la fois d'avant
         // ne doit pas manger l'écran de l'aperçu suivant.
         banner.classList.remove('demo-banner--ouvert');

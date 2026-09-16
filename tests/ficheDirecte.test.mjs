@@ -353,7 +353,16 @@ test('LE RÔLE SE LIT EN HAUT, ET SE RETOURNE D\'UN CLIC', () => {
     // « Tu travailles comme … », vit sur l'écran d'accueil du catalogue,
     // c'est-à-dire celui où l'élève n'est jamais envoyé. La pastille, elle, est
     // sur tous les écrans, exercice compris.
-    assert.match(src, /nomRole\.textContent = prof \? 'Prof' : nomDeLEleve\(\)/);
+    assert.match(src, /const mot = prof \? 'Prof' : nomDeLEleve\(\);/);
+    assert.match(src, /nomRole\.textContent = mot;/);
+    // ET SUR UN TÉLÉPHONE, LE PRÉNOM RESTE LISIBLE. Une règle de mise en page
+    // cache le texte de la pastille sous 900 px : elle a été écrite quand la
+    // pastille disait « Élève » ou « Prof », un mot que le point de couleur
+    // dit déjà. Un PRÉNOM, le point ne le dira jamais. Mesuré : Alice entre
+    // avec son billet sur un téléphone, et son prénom n'apparaît nulle part.
+    assert.match(src, /role-badge--nomme/);
+    assert.match(fsLire('../css/layout.css'),
+        /\.role-badge--nomme span:not\(\.role-badge-point\) \{ display: inline; \}/);
     // Le repli reste « Élève » : un poste sans rattachement n'a pas de prénom
     // à donner, et une pastille vide serait pire que le mot générique.
     assert.match(src, /return prenom \? prenom\.trim\(\)[\s\S]{0,40}: 'Élève';/);

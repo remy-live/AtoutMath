@@ -1106,7 +1106,21 @@ function initDebugToolbar() {
         // La pastille, elle, est sur TOUS les écrans, y compris pendant
         // l'exercice. C'est le bon endroit — et il n'y a rien à ajouter à la
         // page pour l'occuper.
-        if (nomRole) nomRole.textContent = prof ? 'Prof' : nomDeLEleve();
+        const mot = prof ? 'Prof' : nomDeLEleve();
+        if (nomRole) nomRole.textContent = mot;
+        // ET SUR UN TÉLÉPHONE, LE PRÉNOM RESTE LISIBLE.
+        //
+        // Une règle de mise en page cache le texte de la pastille sous 900 px
+        // et ne laisse que le point de couleur. Elle a été écrite quand la
+        // pastille disait « Élève » ou « Prof » — un mot que le point dit déjà.
+        // Elle dit maintenant un PRÉNOM, que le point ne dira jamais.
+        //
+        // Mesuré : Alice entre avec son billet sur un téléphone, et son prénom
+        // n'apparaît NULLE PART sur l'écran (zéro occurrence). Sur l'ordinateur
+        // partagé de la salle, c'est la seule façon de savoir que l'application
+        // ne la prend pas pour l'élève de l'heure précédente.
+        if (btnRole) btnRole.classList.toggle('role-badge--nomme',
+            !prof && mot !== 'Élève');
     };
     // ON NE PASSE PROFESSEUR QU'EN MONTRANT PATTE BLANCHE.
     //

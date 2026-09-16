@@ -324,7 +324,7 @@ function getNodeSubKeys(filtered, path) {
  * La bascule « Domaines / Chapitres » au-dessus de l'arbre.
  *
  * Changer de rangement remet la navigation à la racine : le dossier ouvert
- * — « Numérique › Calcul Mental » — n'existe pas dans l'autre rangement, et
+ * — « Numérique › Calcul mental » — n'existe pas dans l'autre rangement, et
  * l'y laisser afficherait une grille vide sans dire pourquoi.
  */
 export function initBasculeRangement() {
