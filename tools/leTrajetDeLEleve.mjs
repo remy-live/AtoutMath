@@ -178,13 +178,11 @@ for (const app of APPAREILS) {
         frotte('rien pour « j\'ai perdu mon code » : l\'élève qui a perdu son billet '
             + 'ne peut rien faire seul');
     }
-    // LE CLAVIER NUMÉRIQUE SUR UN CHAMP DE CHIFFRES. Sans `inputmode`, le
-    // téléphone ouvre le clavier alphabétique pour taper « 2024 ».
-    const codeChamp = porte.champs.find(c => /code/.test(c.id));
-    if (app.hasTouch && codeChamp && !/numeric|tel/.test(codeChamp.mode)) {
-        frotte(`le champ du code n'appelle pas le clavier numérique `
-            + `(inputmode="${codeChamp.mode || 'absent'}") : l'élève tape 2024 sur un clavier de lettres`);
-    }
+    // PAS DE CLAVIER NUMÉRIQUE ICI, ET C'EST JUSTE. J'avais d'abord compté un
+    // frottement parce que le champ du code n'appelle pas `inputmode="numeric"`
+    // sur téléphone. C'était faux : le code d'un élève s'écrit « 4KP2 » — quatre
+    // signes, lettres comprises. Un clavier de chiffres l'empêcherait de taper
+    // son propre billet. Le harnais avait raison sur le fait, tort sur le sens.
 
     await el.fill('#portail-login', 'zoe.b');
     await el.fill('#portail-code-eleve', '2024');
@@ -221,8 +219,16 @@ for (const app of APPAREILS) {
             .filter(vu).map(h => (h.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
         const boutons = [...document.querySelectorAll('button, a.btn, .tuile, .carte-jour')]
             .filter(vu).filter(b => (b.textContent || '').trim());
-        // La séance : ce qui porte son nom.
-        const seance = boutons.find(b => /rentrée|calcul mental/i.test(b.textContent || ''));
+        // LA SÉANCE SE CHERCHE PAR SA SECTION, pas par le nom du parcours.
+        // Premier jet : je cherchais un bouton portant « Calcul mental —
+        // rentrée », je n'en trouvais pas, et je comptais un frottement. Or la
+        // section s'appelle « Ta séance du jour » et elle est bien là : c'est
+        // le harnais qui cherchait le mauvais mot.
+        const section = [...document.querySelectorAll('.path-section')]
+            .find(x => /ta séance du jour/i.test(x.textContent || ''));
+        const seance = section
+            ? [...section.querySelectorAll('button, a.btn')].filter(vu)[0]
+            : boutons.find(b => /rentrée|calcul mental/i.test(b.textContent || ''));
         const r = seance ? seance.getBoundingClientRect() : null;
         return {
             titres: titres.slice(0, 10),
@@ -260,13 +266,30 @@ for (const app of APPAREILS) {
     // LA BIBLIOTHÈQUE DU PROFESSEUR N'A RIEN À FAIRE LÀ.
     const chezLui = await el.evaluate(() => {
         const t = document.body.innerText || '';
+        const titres = [...document.querySelectorAll('.path-section-title')]
+            .map(h => (h.textContent || '').trim());
         return {
-            bibliotheque: /parcours du professeur|préparés sur ce poste/i.test(t),
+            bibliotheque: /préparés sur ce poste/i.test(t),
+            contredit: /aucun parcours assigné/i.test(t) && /ta séance du jour/i.test(t),
+            titreDouble: titres.filter(x => /^parcours du professeur$/i.test(x)).length,
             catalogue: !!document.querySelector('#sidebar .exo-list-item')
         };
     });
     if (chezLui.bibliotheque) {
         frotte('la bibliothèque du professeur s\'affiche sous sa séance');
+    }
+    // DEUX SECTIONS PORTENT LE MÊME TITRE, ET ELLES SE CONTREDISENT. Tout en
+    // haut, « Parcours du professeur » annonce « Aucun parcours assigné pour le
+    // moment — saisis le code donné par ton professeur », pendant qu'une séance
+    // l'attend plus bas. C'est la première chose que l'élève lit.
+    if (chezLui.contredit) {
+        frotte('tout en haut, « Parcours du professeur » dit « Aucun parcours assigné » '
+            + 'ALORS QUE la séance du jour est là, plus bas : c\'est la première '
+            + 'phrase que l\'élève lit, et elle est fausse');
+    }
+    if (chezLui.titreDouble > 1) {
+        frotte(`le titre « Parcours du professeur » apparaît ${chezLui.titreDouble} fois `
+            + 'sur le même écran, sur deux sections différentes');
     }
     finir();
 
@@ -274,16 +297,51 @@ for (const app of APPAREILS) {
     demarrer(`3. Répondre à la première question [${app.nom}]`,
         'Où tape-t-il ? Est-ce que ce qu\'il tape reste visible ?');
 
-    if (ecran.seanceVisible) {
-        await el.evaluate(() => {
-            const b = [...document.querySelectorAll('button, a.btn, .tuile, .carte-jour')]
-                .find(x => /rentrée|calcul mental/i.test(x.textContent || ''));
-            if (b) b.click();
-        });
-        if (etape) etape.clics++;
-        await el.waitForTimeout(3000);
-    }
+    // ON LANCE DEPUIS LA SECTION « Ta séance du jour », et l'on VÉRIFIE qu'un
+    // jeu a monté avant de juger quoi que ce soit. Au premier jet, mon clic
+    // n'ouvrait rien — l'étape durait zéro seconde — et je comptais malgré tout
+    // trois frottements sur un écran d'exercice qui n'était jamais apparu.
+    // Trois frottements inventés d'un coup : exactement ce que le harnais est
+    // censé ne pas faire.
+    const lance = await el.evaluate(() => {
+        const section = [...document.querySelectorAll('.path-section')]
+            .find(x => /ta séance du jour/i.test(x.textContent || ''));
+        const b = section && [...section.querySelectorAll('button, a.btn')]
+            .find(x => x.getBoundingClientRect().width > 0);
+        if (!b) return false;
+        b.scrollIntoView({ block: 'center' });
+        b.click();
+        return true;
+    });
+    if (lance && etape) etape.clics++;
+    await el.waitForTimeout(3500);
+    // Un parcours s'ouvre sur sa carte : c'est l'élève qui donne le départ.
+    const depart = await el.evaluate(() => {
+        const b = [...document.querySelectorAll('button')]
+            .filter(x => x.getBoundingClientRect().width > 0)
+            .find(x => /commencer|démarrer|c'est parti|go|lancer/i.test(x.textContent || ''));
+        if (!b) return false;
+        b.click();
+        return true;
+    });
+    if (depart && etape) etape.clics++;
+    await el.waitForTimeout(3000);
     await vue(el, `${app.nom}-4-exercice`);
+
+    // LE JEU EST-IL VRAIMENT LÀ ? Sans cette garde, tout ce qui suit décrit
+    // l'écran d'accueil en croyant décrire un exercice.
+    const monte = await el.evaluate(() => {
+        const z = document.getElementById('game-container') || document.querySelector('.game-layer');
+        const vu = z && z.getBoundingClientRect().width > 0 && z.children.length > 0;
+        return { vu: !!vu, ou: z ? (z.id || z.className) : '(aucune zone de jeu)' };
+    });
+    if (!monte.vu) {
+        console.log(`   le harnais n'a pas su ouvrir l'exercice (${monte.ou}) — `
+            + 'RIEN n\'est compté ici : on ne juge pas un écran qu\'on n\'a pas atteint');
+        finir();
+        await ctx.close();
+        continue;
+    }
 
     const jeu = await el.evaluate(() => {
         const vu = (e) => {
