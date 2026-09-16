@@ -2254,6 +2254,81 @@ function valeurChoisie(param, brut) {
     return param.type === 'number' ? Number(brut) : brut;
 }
 
+/**
+ * CE QUI A VRAIMENT ÉTÉ CHANGÉ — et rien d'autre.
+ *
+ * `readParams` relit TOUT le panneau : chaque case, chaque menu, chaque champ,
+ * qu'on y ait touché ou non. Le panneau écrivait donc l'intégralité du schéma
+ * dans `step.overrides` dès qu'on effleurait n'importe quoi — y compris le
+ * seul nombre de questions, qui n'est même pas un réglage de contenu.
+ *
+ * CE QUE ÇA COÛTAIT, MESURÉ. Deux exercices ajoutés, rien réglé : le code à
+ * dicter fait « DFP-AFL », sept caractères. UN clic sur le « + » du nombre de
+ * questions, et le code devient « M2-eyJuIjoiTW9uIFBhcmNvdXJz… », 214
+ * caractères — indictable. Et l'écran annonce « étape 2 : ses réglages ont été
+ * modifiés (par exemple seulement les tables de 7) », alors qu'aucun réglage de
+ * contenu n'a été touché : le professeur lit une accusation fausse et perd son
+ * code au tableau.
+ *
+ * C'est exactement ce que `core/shortcodes.js` voulait éviter — il y est écrit,
+ * en citant Rémy (« l'idéal serait que le code soit hyper court »), que LE
+ * NOMBRE DE QUESTIONS NE DISQUALIFIE PLUS le code court. Le panneau rendait
+ * cette intention inatteignable dès qu'on réglait ce nombre à la souris.
+ *
+ * LA BASE EST CELLE DU PEINTRE, PAS UNE AUTRE. Le panneau affiche
+ * `current[p.id] !== undefined ? current[p.id] : p.default`, avec
+ * `current = {...exo.params, ...overrides}`. Sans override, la valeur montrée
+ * est donc `exo.params[p.id]`, à défaut `p.default` — et c'est mot pour mot la
+ * règle appliquée ici. Deux définitions du « défaut » finiraient par diverger,
+ * et l'on troquerait un code long contre un exercice qui se joue autrement.
+ *
+ * @param {object} lus     ce que `readParams` a relu dans le panneau
+ * @param {object} exo     l'exercice du catalogue
+ * @param {Array}  schema  le schéma qui a peint le panneau
+ * @returns {object} les seules clés qui s'écartent de ce que l'exercice ferait
+ */
+export function reglagesQuiChangent(lus, exo, schema) {
+    const params = (exo && exo.params) || {};
+    const defauts = {};
+    (schema || []).forEach(p => {
+        if (!p || !p.id) return;
+        defauts[p.id] = params[p.id] !== undefined ? params[p.id] : p.default;
+    });
+
+    const pareil = (a, b) => {
+        if (a === b) return true;
+        // Les listes se comparent par leur contenu : deux tableaux d'égal
+        // contenu ne sont jamais `===`, et c'est le cas des cases à cocher.
+        if (Array.isArray(a) && Array.isArray(b)) {
+            return a.length === b.length && a.every((v, i) => String(v) === String(b[i]));
+        }
+        if (a === undefined || b === undefined) return false;
+        // Le DOM ne rend que du texte : « 12 » lu dans un champ vaut le 12 du
+        // catalogue. Sans cette règle, tout nombre paraîtrait modifié.
+        if (typeof a !== 'object' && typeof b !== 'object') return String(a) === String(b);
+        return JSON.stringify(a) === JSON.stringify(b);
+    };
+
+    const out = {};
+    Object.entries(lus || {}).forEach(([cle, valeur]) => {
+        const base = defauts[cle];
+        // LES CLÉS HORS SCHÉMA — `repartitionMarches` et les réglages posés
+        // marche par marche — n'ont pas de défaut déclaré. Vides, elles ne
+        // disent rien : les garder rallongerait le code pour un choix que
+        // personne n'a fait.
+        if (base === undefined) {
+            const vide = valeur === '' || valeur === null
+                || (Array.isArray(valeur) && !valeur.length);
+            if (vide) return;
+            if (params[cle] !== undefined && pareil(valeur, params[cle])) return;
+            out[cle] = valeur;
+            return;
+        }
+        if (!pareil(valeur, base)) out[cle] = valeur;
+    });
+    return out;
+}
+
 export function readParams(root, schema) {
     const out = {};
     schema.forEach(param => {
@@ -2874,7 +2949,10 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     brancherMarches(content, schema, current, exo.id || step.exerciseId);
 
     const commit = () => {
-        const overrides = readParams(content, schema);
+        // On n'enregistre que ce qui S'ÉCARTE de l'exercice : voir
+        // `reglagesQuiChangent`. Écrire tout le schéma rendait le code à dicter
+        // illisible au premier clic sur le nombre de questions.
+        const overrides = reglagesQuiChangent(readParams(content, schema), exo, schema);
         const nbItems = intVal('cfg-nbitems', 10);
         describeThreshold();
         toggleScope();
