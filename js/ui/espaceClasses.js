@@ -56,6 +56,7 @@ import { getSkill } from '../data/skills.js';
 import { indicesProposes } from '../core/indice.js';
 import { enBref, avancementDeClasse, depuisCombien } from '../core/avancement.js';
 import { lesAlarmes, trierPourLeMur, direLesAlarmes, vigilanceDe } from '../core/vigilance.js';
+import { enMinutes } from './leMoment.js';
 import { ficheDeLEleve, gestesPossibles, pourquoiDebloquer } from '../core/ficheEleve.js';
 import { notionsAReprendre, resumeDeClasse, ordreDuBilan, enHeures } from '../core/bilanClasse.js';
 import { getSkill as laCompetence } from '../data/skills.js';
@@ -495,8 +496,17 @@ function directHtml() {
         </div>
     </div>
     ${barrePiloteHtml()}
+    <!-- CEUX QU'IL FAUT ALLER VOIR SONT EN HAUT.
+         Le direct rangeait ses élèves par ordre alphabétique — celui de la
+         liste du professeur. Un élève arrêté dont le nom commence par V est
+         donc en bas, hors de l'écran, pendant que la bande d'alarme le nomme
+         en haut : on lit son prénom, on ne le trouve pas, on fait défiler.
+         Le tri par urgence existe déjà, il est écrit, éprouvé et documenté
+         (core/vigilance.js), et le MUR s'en sert depuis toujours. Le direct
+         ne l'appelait pas. -->
     <div class="ec-rangs">
-        ${eleves.map(e => rangHtml(e, maintenant)).join('')}
+        ${trierPourLeMur(eleves, maintenant, { enPause: classeEnPause() })
+            .map(v => rangHtml(v.eleve, maintenant)).join('')}
     </div>`;
 }
 
@@ -704,13 +714,46 @@ function classeEnPause() {
  * QUI apparaît ici (et surtout qui n'y apparaît pas) sont dans
  * js/core/vigilance.js, avec leurs raisons.
  */
+/**
+ * LE PRÉNOM DE L'ALARME MÈNE À L'ÉLÈVE.
+ *
+ * La bande nommait les élèves arrêtés — c'est tout son mérite, « 3 élèves sont
+ * arrêtés » obligerait à chercher lesquels — mais elle n'y menait pas. Le
+ * professeur lisait « Maryam n'a plus rien fait depuis 13 min », puis
+ * redescendait la chercher lui-même dans trente lignes, à la main, pendant que
+ * la classe travaille.
+ *
+ * ON NE TOUCHE PAS À LA PHRASE. `direLesAlarmes` décide de ce qui se dit et de
+ * comment — deux états qu'on ne mélange pas, le pluriel, les minutes — et c'est
+ * éprouvé. On se contente de rendre cliquables les prénoms qu'elle a écrits.
+ *
+ * LES BORNES DE MOT SONT INDISPENSABLES : sans elles, « Léa » transformerait
+ * aussi les trois premières lettres de « Léana », et le professeur qui vise
+ * l'une ouvrirait la fiche de l'autre.
+ */
+function prenomsCliquables(phrase, alarmes) {
+    let out = phrase;
+    // Du plus long au plus court : « Marie-Claire » avant « Marie », sinon le
+    // court découpe le long et le reste ne se retrouve plus.
+    [...alarmes]
+        .sort((a, b) => String(b.eleve.prenom || '').length - String(a.eleve.prenom || '').length)
+        .forEach(a => {
+            const nom = esc(String(a.eleve.prenom || '').trim());
+            if (!nom) return;
+            const motif = new RegExp(`(^|[^\\p{L}\\p{N}-])(${nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?![\\p{L}\\p{N}-])`, 'u');
+            out = out.replace(motif, (tout, avant, trouve) =>
+                `${avant}<button type="button" class="ec-alarme-qui" data-fiche="${esc(a.eleve.id)}">${trouve}</button>`);
+        });
+    return out;
+}
+
 function alarmeHtml(eleves, maintenant) {
     const alarmes = lesAlarmes(eleves, maintenant, { enPause: classeEnPause() });
     if (!alarmes.length) return '';
     const dur = alarmes.some(a => a.etat === 'bloque');
     return `<div class="ec-alarme${dur ? ' ec-alarme--dur' : ''}" role="status">
         <span class="ec-alarme-oeil" aria-hidden="true">${dur ? '!' : '·'}</span>
-        <span class="ec-alarme-mot">${esc(direLesAlarmes(alarmes))}</span>
+        <span class="ec-alarme-mot">${prenomsCliquables(esc(direLesAlarmes(alarmes)), alarmes)}</span>
     </div>`;
 }
 
@@ -1186,6 +1229,20 @@ function apercuHtml() {
 // gestes de début ou de fin d'heure, et les laisser ouverts repousserait les
 // élèves sous la ligne de flottaison.
 
+/**
+ * CE QU'IL RESTE AU CHRONO, EN SECONDES.
+ *
+ * On lit l'heure du SERVEUR (`vue.direct.maintenant`) et non celle du poste :
+ * c'est la même horloge que celle des élèves, et deux horloges pour un seul
+ * compte à rebours finissent toujours par afficher deux nombres différents —
+ * le professeur dirait « encore trente secondes » à une classe qui en voit dix.
+ */
+function resteDuChrono(ch) {
+    if (!ch || !ch.finAt) return 0;
+    const maintenant = (vue.direct && vue.direct.maintenant) || Math.floor(Date.now() / 1000);
+    return Math.max(0, ch.finAt - maintenant);
+}
+
 function barrePiloteHtml() {
     const info = (vue.liste && vue.liste.classe) || {};
     const ch = vue.direct && vue.direct.chrono;
@@ -1217,20 +1274,34 @@ function barrePiloteHtml() {
              rien dire. Le compte à rebours se referme donc dans son propre
              cadre, avec son nom écrit dessus. -->
         <div class="ec-pilote-rangee">
+            <!-- LE PROFESSEUR DOIT VOIR LE TEMPS QU'IL A LANCÉ.
+                 Il lançait un compte à rebours et ne le voyait JAMAIS : seuls
+                 ses élèves l'avaient à l'écran. Pendant que la classe regarde
+                 les secondes tomber, lui devait demander « il reste combien ? »
+                 — ou regarder l'écran d'un élève par-dessus son épaule.
+                 Quand il tourne, le champ de réglage cède donc la place au
+                 décompte lui-même, gros et lisible à bout de bras : ce n'est
+                 plus le moment de régler, c'est le moment de lire. -->
             <span class="ec-pilote-cadre" role="group" aria-label="Compte à rebours">
                 <span class="ec-pilote-eti">⏱ Compte à rebours</span>
+                ${enCours ? `
+                <b class="ec-chrono-reste${resteDuChrono(ch) <= 60 ? ' ec-chrono-reste--court' : ''}"
+                   role="timer" aria-live="off">${enMinutes(resteDuChrono(ch))}</b>
+                <span class="ec-pilote-mot-liant">${ch.quoi === 'pause'
+                    ? 'puis on s\'arrête' : 'puis on termine'}</span>
+                <button type="button" class="ec-pilote-btn ec-pilote-btn--actif"
+                        data-chrono-off>Arrêter</button>
+                ` : `
                 <input type="number" id="ec-chrono-min" class="ec-champ ec-champ--court"
-                       min="1" max="180" value="10" aria-label="Minutes">
+                       min="1" max="180" value="${vue.chronoMin || 10}" aria-label="Minutes">
                 <span class="ec-pilote-mot-liant">min,</span>
                 <select id="ec-chrono-quoi" class="ec-champ ec-champ--mince"
                         aria-label="Ce qui se passe à zéro">
                     <option value="terminer">puis on termine</option>
                     <option value="pause">puis on s'arrête</option>
                 </select>
-                ${enCours
-                    ? '<button type="button" class="ec-pilote-btn ec-pilote-btn--actif" '
-                      + 'data-chrono-off>Arrêter</button>'
-                    : '<button type="button" class="ec-pilote-btn" data-chrono>Lancer</button>'}
+                <button type="button" class="ec-pilote-btn" data-chrono>Lancer</button>
+                `}
             </span>
 
             <span class="ec-pilote-cadre">
@@ -1399,6 +1470,11 @@ async function brancher(e, redessiner) {
     if (d.chrono !== undefined) {
         const min = Number((document.getElementById('ec-chrono-min') || {}).value || 0);
         const quoi = (document.getElementById('ec-chrono-quoi') || {}).value || 'terminer';
+        // ON RETIENT LA DURÉE CHOISIE. Le champ revenait à 10 dès qu'on lançait,
+        // puis à 10 encore après l'arrêt : le professeur qui donne toujours
+        // sept minutes devait les retaper à chaque fois, et ne pouvait pas
+        // relire ce qu'il venait de lancer.
+        if (min > 0) vue.chronoMin = min;
         await fait(lancerLeChrono(vue.classe.id, min, quoi));
         return;
     }

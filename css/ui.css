@@ -1243,6 +1243,25 @@ details[open] > summary .custom-chevron { transform: rotate(90deg); }
 /* Desactivee, elle reste VISIBLE : elle dit ou l'on est dans la liste. La
    faire disparaitre decalerait les autres boutons d'une rangee a l'autre. */
 .pstep-ordre:disabled { opacity: .3; cursor: default; }
+
+/* LE PRENOM DE L'ALARME EST UN BOUTON. Il garde l'allure du texte qui
+   l'entoure — c'est une phrase, pas une barre d'outils — et se souligne pour
+   dire qu'on peut y aller. */
+.ec-alarme-qui {
+    background: none; border: none; padding: 0; margin: 0; font: inherit;
+    color: inherit; cursor: pointer; text-decoration: underline;
+    text-underline-offset: 3px; text-decoration-thickness: 2px;
+}
+.ec-alarme-qui:hover, .ec-alarme-qui:focus-visible { text-decoration-thickness: 3px; }
+
+/* LE DECOMPTE, LU A BOUT DE BRAS. Le professeur circule dans les rangs : ce
+   nombre doit se lire depuis le fond de la salle, pas de sa chaise. Chiffres a
+   chasse fixe, sinon il saute a chaque seconde. */
+.ec-chrono-reste {
+    font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    letter-spacing: .02em; color: var(--text-main); min-width: 4ch; text-align: center;
+}
+.ec-chrono-reste--court { color: var(--danger); }
 body.teacher-mode .exo-list-item { cursor: grab; }
 body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 
