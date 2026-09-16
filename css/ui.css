@@ -790,6 +790,21 @@ body.sans-mode-libre #rangement-bascule { display: none !important; }
     overflow-y: auto;
     z-index: 60;
 }
+/* LE BILLET PERIME. Meme place que la consigne — au-dessus de tout — mais la
+   couleur d'une alerte : ce n'est pas le professeur qui parle, c'est
+   l'application qui previent. Il se ferme, parce qu'un bandeau qu'on ne peut
+   pas faire taire finit par etre lu comme un decor. */
+.consigne-prof--alerte {
+    background: linear-gradient(90deg, #b45309, #d97706);
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    flex-wrap: wrap; max-height: none; text-align: center;
+}
+.consigne-fermer {
+    flex-shrink: 0; min-height: 32px; padding: 4px 14px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.55); background: rgba(255,255,255,.14);
+    color: #fff; font: inherit; font-size: .85rem; cursor: pointer;
+}
+.consigne-fermer:hover { background: rgba(255,255,255,.28); }
 
 /* LE VERROU — CE QU'IL FERME, ET CE QU'IL LAISSE OUVERT.
    Rémy : « qu'il n'ait accès qu'à ce que je leur donne. »
@@ -3150,7 +3165,12 @@ body.classe-ouverte #main-area { display: none !important; }
    une décoration, et un professeur qui fait cours avec son téléphone à la main
    doit l'atteindre au pouce. */
 body.mobile-view #top-navbar { flex-wrap: wrap; height: auto; row-gap: 6px; }
-body.mobile-view #top-navbar .nav-center--prof {
+/* ET SEULEMENT POUR LE PROFESSEUR. Le `!important` de la ligne suivante passait
+   par-dessus le garde `body:not(.teacher-mode) .teacher-only { display: none }`
+   : mesure faite, un ELEVE connecte sur telephone voyait « Preparer » et « La
+   classe » — les deux plus gros boutons de son ecran. Ajouter `.teacher-mode`
+   au selecteur rend sa force au garde. */
+body.mobile-view.teacher-mode #top-navbar .nav-center--prof {
     display: flex !important;
     flex: 1 0 100%;
     justify-content: stretch;

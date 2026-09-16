@@ -38,6 +38,19 @@ export function initPortail() {
     majPortail();
 }
 
+/**
+ * Écrire sous un champ de la porte.
+ *
+ * Au niveau du module, et non dans `dessiner()` : `majPortail` en a besoin
+ * aussi, pour dire à l'élève que son billet a été renouvelé.
+ */
+function dire(id, texte, erreur = false) {
+    const p = document.getElementById(id);
+    if (!p) return;
+    p.textContent = texte;
+    p.classList.toggle('portail-etat--erreur', erreur);
+}
+
 export function majPortail() {
     // Le catalogue disparaît de la barre tant que le mode libre est éteint.
     // Une classe sur `<body>`, et le CSS suit — la même mécanique que le
@@ -53,8 +66,62 @@ export function majPortail() {
         fermerPortail();
         return;
     }
-    if (document.getElementById(ID)) return;
-    dessiner();
+    if (!document.getElementById(ID)) dessiner();
+    // UN BILLET PÉRIMÉ SE DIT, il ne se devine pas. Sans ce mot, l'élève dont
+    // le professeur a renouvelé les billets retrouve la porte sans savoir
+    // pourquoi, et croit s'être trompé de touche.
+    if (billetPerime) {
+        billetPerime = false;
+        dire('portail-etat-login',
+            'Ton billet n\'est plus valable — ton professeur l\'a sans doute renouvelé. '
+            + 'Entre le nouveau : ton travail est gardé et repartira tout seul.', true);
+    }
+}
+
+// Posé par `core/sync.js` quand le serveur refuse le jeton. Un drapeau, et non
+// un appel direct : la porte n'est peut-être pas encore dessinée à ce
+// moment-là, et `majPortail()` est justement ce qui la dessine.
+let billetPerime = false;
+if (typeof document !== 'undefined') {
+    document.addEventListener('billet_perime', () => {
+        billetPerime = true;
+        direLeBilletPerime();
+    });
+}
+
+/**
+ * LE BANDEAU DU BILLET PÉRIMÉ — parce que la porte, souvent, ne reviendra pas.
+ *
+ * Premier jet : j'effaçais le rattachement et j'appelais `majPortail()`, en
+ * comptant sur la porte pour porter le message. Mesuré : elle ne s'affiche
+ * pas. `portailNecessaire()` s'éteint dès que l'élève a un parcours chargé
+ * (`aUneSeance()`), ce qui est précisément le cas de celui qui travaille — donc
+ * exactement celui qu'il fallait prévenir.
+ *
+ * ET C'EST TANT MIEUX AINSI. Lui jeter la porte au visage au milieu d'une
+ * question l'aurait arraché à son travail, ce que le reste de l'application se
+ * refuse à faire partout ailleurs. On l'avertit sans l'interrompre : il finit
+ * son exercice, son travail est gardé, et il demandera son nouveau billet à la
+ * fin de l'heure.
+ */
+function direLeBilletPerime() {
+    const hote = document.getElementById('app-container');
+    if (!hote || document.getElementById('billet-perime')) return;
+    const b = document.createElement('div');
+    b.id = 'billet-perime';
+    b.className = 'consigne-prof consigne-prof--alerte';
+    b.setAttribute('role', 'status');
+    const mot = document.createElement('span');
+    mot.textContent = 'Ton billet n\'est plus valable — ton professeur l\'a sans doute '
+        + 'renouvelé. Tu peux continuer : ton travail est gardé et repartira dès que '
+        + 'tu entreras avec le nouveau.';
+    const fermer = document.createElement('button');
+    fermer.type = 'button';
+    fermer.className = 'consigne-fermer';
+    fermer.textContent = 'J\'ai compris';
+    fermer.onclick = () => b.remove();
+    b.append(mot, fermer);
+    hote.insertBefore(b, hote.firstChild);
 }
 
 /**
@@ -151,12 +218,6 @@ function dessiner() {
     document.body.appendChild(el);
 
     const val = (id) => (document.getElementById(id).value || '').trim();
-    const dire = (id, texte, erreur = false) => {
-        const p = document.getElementById(id);
-        if (!p) return;
-        p.textContent = texte;
-        p.classList.toggle('portail-etat--erreur', erreur);
-    };
 
     // --- Rejoindre sa classe
     const rejoindre = async () => {

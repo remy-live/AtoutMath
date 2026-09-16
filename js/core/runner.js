@@ -200,6 +200,31 @@ export class Runner {
         const navQ = document.getElementById('preview-question-nav');
         if (nav) nav.hidden = !this.allowStepNavigation;
         if (navQ) navQ.hidden = !this.allowStepNavigation;
+
+        // LE BOUTON « MODE DÉMONSTRATION » N'EST PAS POUR L'ÉLÈVE.
+        //
+        // Il naissait visible et rien ne l'a jamais caché — mesuré : sur le
+        // téléphone d'un élève connecté, 44 × 44 px de jaune vif, le seul
+        // élément coloré de l'en-tête, à quatre pixels du « ? » de l'aide.
+        // Un appui, sans un mot de confirmation : le run en cours est avorté
+        // (`run_finished {aborted:true}` au journal), l'écran devient l'outil
+        // d'auteur — « ⏮ Arrière ⏸ Pause ⏭ Un pas ▶ Normal » — et le robot
+        // joue un énoncé neuf en disant sa réponse à voix haute. « À moi de
+        // jouer ! » n'annule rien : il ouvre un run NEUF, et les questions
+        // déjà réussies de l'étape sont à refaire.
+        //
+        // C'est pourtant écrit noir sur blanc dans le moteur (games/engine.js)
+        // que cet aperçu « est un outil de présentation POUR LE PROFESSEUR,
+        // pas une session de travail ». Il manquait seulement la ligne qui
+        // l'applique — celle-ci, jumelle de ses deux voisines ci-dessus.
+        //
+        // LES DEUX ACCÈS LÉGITIMES DE L'ÉLÈVE CONTINUENT DE MARCHER : « Regarder
+        // le robot d'abord » de l'écran de leçon et le bouton du panneau
+        // d'aide passent tous deux par `demoBtn.click()`, et `click()`
+        // déclenche le gestionnaire même sur un bouton caché. Eux savent
+        // revenir ; le bouton nu, non.
+        const demo = document.getElementById('btn-toggle-demo');
+        if (demo) demo.hidden = !(this.essai || this.allowStepNavigation);
         // L'en-tête change de plan quand ces deux navigations s'ajoutent :
         // sur un téléphone, les commandes ne tiennent plus à côté du titre et
         // débordaient — la croix de fermeture et l'aide sortaient de l'écran.

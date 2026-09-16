@@ -334,6 +334,38 @@ export async function syncNow({ silent = false } = {}) {
         }
         return result;
     } catch (err) {
+        // UN JETON REFUSÉ N'EST PAS UNE COUPURE DE RÉSEAU, et les confondre
+        // coûtait une heure de travail à un élève.
+        //
+        // Hors ligne, se taire est la bonne réponse : le réseau reviendra, les
+        // événements partiront. Mais quand le serveur répond 401 `bad_token` —
+        // le professeur a renouvelé les billets, l'élève a été retiré de la
+        // classe, la classe a été archivée —, il ne reviendra JAMAIS. L'élève
+        // continuait de travailler, la pastille restait discrète, et rien de ce
+        // qu'il faisait ne pouvait plus être envoyé. Il ne l'apprenait qu'en
+        // constatant, le lendemain, que le professeur n'avait rien reçu.
+        //
+        // ON NE JETTE PAS SON TRAVAIL POUR AUTANT : le journal est local et
+        // reste intact. On enlève le rattachement mort, on rouvre la porte, et
+        // ce qui est en attente repartira sous le nouveau billet.
+        if (/HTTP 401/.test(err.message) && /bad_token|no_token/.test(err.message)) {
+            console.warn('[sync] le serveur ne reconnaît plus ce billet');
+            try {
+                const { oublierLaClasse } = await import('./seanceDistante.js');
+                await oublierLaClasse();
+                await attachRemote(getActiveProfileId(), {
+                    studentId: null, token: null, classCode: null, className: null,
+                    login: null, cursor: 0, lastSyncAt: null
+                });
+                await setSyncConfig({ enabled: false });
+            } catch (e) { /* un stockage récalcitrant ne doit pas masquer le mot */ }
+            document.dispatchEvent(new CustomEvent('billet_perime'));
+            try {
+                const { majPortail } = await import('../ui/portailUI.js');
+                majPortail();
+            } catch (e) { /* la porte se redessinera au prochain écran */ }
+            return null;
+        }
         // Hors ligne ou serveur indisponible : ce n'est pas une erreur
         // applicative, les événements restent en attente pour plus tard.
         console.info('[sync] report de la synchronisation :', err.message);

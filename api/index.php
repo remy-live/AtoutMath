@@ -109,11 +109,23 @@ function handleJoin(): void
     $code = strtoupper(trim((string) ($body['classCode'] ?? '')));
     $name = trim((string) ($body['firstName'] ?? ''));
 
-    rateLimit('join_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 20);
+    // ON NE COMPTE PLUS PAR ADRESSE, ET C'EST UNE CORRECTION, PAS UN CONFORT.
+    //
+    // Une salle informatique sort par UNE adresse publique. À vingt entrées par
+    // minute, le vingt et unième élève d'une classe de trente était refusé — et
+    // le message lui disait qu'il avait fait trop d'essais, ce qui était faux :
+    // c'était son premier. Le professeur, lui, voyait un élève bloqué sans
+    // raison, et rien à l'écran ne pouvait le lui expliquer.
+    //
+    // Ce qu'on protège vraiment, c'est l'essai EN BOUCLE sur un seul code : on
+    // compte donc par code de classe. La borne par adresse reste, mais large —
+    // elle ne sert plus qu'à arrêter une machine devenue folle, pas une classe.
+    rateLimit('join_ip_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 300);
 
     if ($code === '' || $name === '') {
         fail(400, 'missing_fields', 'Code de classe et prénom obligatoires.');
     }
+    rateLimit('join_code_' . $code, 60);
     if (mb_strlen($name) > 80) {
         fail(400, 'name_too_long', 'Prénom trop long.');
     }
@@ -195,11 +207,16 @@ function handleLogin(): void
     $login = trim((string) ($body['login'] ?? ''));
     $code  = strtoupper(trim((string) ($body['code'] ?? '')));
 
-    rateLimit('login_eleve_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 30);
+    // MÊME RAISON QUE POUR `join` : trente élèves derrière une seule adresse,
+    // c'est une classe, pas une attaque. Le compte se fait par IDENTIFIANT —
+    // douze essais par minute sur un billet donné, ce qui laisse largement de
+    // quoi se tromper deux fois et ne laisse rien pour forcer quatre signes.
+    rateLimit('login_ip_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 300);
 
     if ($login === '' || $code === '') {
         fail(400, 'missing_fields', 'Identifiant et code obligatoires.');
     }
+    rateLimit('login_eleve_' . mb_strtolower($login), 12);
 
     $stmt = db()->prepare(
         'SELECT s.*, c.name AS class_name, c.join_code, c.archived
