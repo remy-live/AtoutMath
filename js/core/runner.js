@@ -143,6 +143,20 @@ export class Runner {
             // « Étape 1 sur 1 » remplacer « Terminé — 18 / 24 justes » dès que
             // l'élève ouvre un jeu, et croirait sa classe repartie au travail.
             bac: !!this.path.bac,
+            // CE QUI ÉTAIT DÉJÀ FAIT QUAND CE RUN A COMMENCÉ.
+            //
+            // Rémy : « quand je clique sur un élève qui a déjà fait 3 exercices,
+            // j'ai Étape 1/12 […] je redémarre au 3 et lui me dit étape 1/12 ».
+            //
+            // IL AVAIT RAISON, ET LE DÉFAUT ÉTAIT DANS CE QU'ON RACONTE, PAS
+            // DANS CE QU'ON FAIT. L'élève reprenait bien à la bonne étape —
+            // `state.studentPath.completed` la garde d'une fois sur l'autre.
+            // Mais reprendre ouvre un run NEUF, avec un identifiant neuf et
+            // aucune étape close à son actif : tout ce qui lit le journal
+            // (l'écran du professeur, le fil de la séance, la barre de classe)
+            // repartait donc de zéro. Le run annonce désormais son point de
+            // départ, comme il annonce déjà son plan.
+            dejaFaites: [...this.etapesFaites()],
             // LE PARCOURS ANNONCE SON PLAN, ET C'EST CE QUI REND L'AVANCEMENT
             // LISIBLE AILLEURS QU'ICI.
             //

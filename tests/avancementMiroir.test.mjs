@@ -88,8 +88,38 @@ const fin = (aborted = false) => ({
     payload: { runId: 'r1', pathId: 'p1', aborted }
 });
 
+/**
+ * REPRENDRE UNE SÉANCE : un run NEUF, qui annonce ce qui était déjà fait.
+ *
+ * Rémy : « quand je clique sur un élève qui a déjà fait 3 exercices, j'ai
+ * Étape 1/12 […] je redémarre au 3 et lui me dit étape 1/12 ».
+ */
+const reprise = (dejaFaites, etapes = 12, questions = 10) => ({
+    id: 'e0', type: 'run_started', ts: T0,
+    payload: { runId: 'r1', pathId: 'p1', pathName: 'Devoir du mardi',
+               mode: 'entrainement', stepCount: etapes, plan: plan(etapes, questions),
+               dejaFaites }
+});
+
 const HISTOIRES = {
     'à peine commencé': [debut(), question('sc_0', 0), question('sc_0', 1, false)],
+
+    // L'HISTOIRE DE RÉMY, TELLE QU'IL L'A VÉCUE : trois exercices faits, arrêté,
+    // repris. L'élève reprend bien au quatrième — c'est ce qu'on raconte qui
+    // repartait à zéro.
+    'reprise après trois exercices': [
+        reprise(['sc_0', 'sc_1', 'sc_2']), question('sc_3', 0), question('sc_3', 1)
+    ],
+
+    'reprise, puis une étape close dans le même run': [
+        reprise(['sc_0', 'sc_1', 'sc_2']), etape(3), question('sc_4', 0)
+    ],
+
+    // ON N'EN COMPTE PAS UNE DEUX FOIS : une étape reprise et refermée dans ce
+    // run-ci apparaît dans les deux listes, et c'est l'identifiant qui tranche.
+    'une étape déjà faite et refermée ne compte qu\'une fois': [
+        reprise(['sc_0', 'sc_1']), etape(1), question('sc_2', 0)
+    ],
 
     'au milieu du parcours': [
         debut(), etape(0), etape(1, 10, 9),

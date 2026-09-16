@@ -90,8 +90,27 @@ export function avancementDuRun(run, maintenant = Date.now()) {
     if (!run) return null;
     const plan = planDu(run);
     const finies = run.steps || [];
-    const faites = finies.length;
-    const reussies = finies.filter(s => s.passed !== false).length;
+
+    // CE QUI ÉTAIT DÉJÀ FAIT AVANT CE RUN COMPTE AUSSI.
+    //
+    // Rémy : « quand je clique sur un élève qui a déjà fait 3 exercices, j'ai
+    // Étape 1/12 […] je redémarre au 3 et lui me dit étape 1/12 ».
+    //
+    // REPRENDRE UNE SÉANCE OUVRE UN RUN NEUF. L'élève reprend bien à la bonne
+    // étape — le parcours assigné garde ses étapes validées d'une fois sur
+    // l'autre — mais le nouveau run n'avait aucune étape close à son actif, et
+    // tout ce qui lit le journal repartait de zéro. Le défaut était dans ce
+    // qu'on raconte, pas dans ce qu'on fait.
+    //
+    // ON N'EN COMPTE PAS UNE DEUX FOIS : une étape reprise et refermée dans ce
+    // run-ci apparaît dans les deux listes, et c'est l'identifiant qui tranche.
+    const dejaIds = (run.dejaFaites || []).filter(Boolean);
+    const closIci = new Set(finies.map(s => s.stepId).filter(Boolean));
+    const avant = dejaIds.filter(id => !closIci.has(id));
+    const faites = avant.length + finies.length;
+    // Une étape retenue dans `completed` est une étape VALIDÉE : elle compte
+    // comme réussie, et sa case se remplit.
+    const reussies = avant.length + finies.filter(s => s.passed !== false).length;
 
     // Les questions prévues : la somme du plan. Zéro quand on ne le connaît
     // pas — et l'on dira alors l'avancement en ÉTAPES, pas en questions.
@@ -119,8 +138,17 @@ export function avancementDuRun(run, maintenant = Date.now()) {
     // LES QUESTIONS FAITES : celles des étapes closes, plus celles de l'étape
     // en cours. On lit le `questions` de `step_completed` — c'est le décompte
     // du meneur lui-même, celui qui a servi à décider si l'étape passait.
-    const questionsCloses = finies.reduce((n, s) => n + (Number(s.questions) || 0), 0);
+    // LES QUESTIONS D'AVANT SE LISENT DANS LE PLAN, pas dans ce run : elles ont
+    // été répondues dans le précédent. Sans elles, la barre d'un élève qui a
+    // fait trois exercices sur douze repartirait à zéro en reprenant.
+    const questionsAvant = avant.reduce((n, _, i) =>
+        n + (Number((plan[i] || {}).questions) || 0), 0);
+    const questionsCloses = questionsAvant
+        + finies.reduce((n, s) => n + (Number(s.questions) || 0), 0);
     const questions = questionsCloses + (etapeEnCours ? poseesIci : 0);
+    // On ne sait PAS combien il en avait réussi avant : `completed` ne retient
+    // que « validée ». On ne l'invente pas — mieux vaut un compte de justes qui
+    // ne concerne que ce run qu'un chiffre fabriqué qui aurait l'air vrai.
     const justesCloses = finies.reduce((n, s) => n + (Number(s.solved) || 0), 0);
     const justes = justesCloses + (etapeEnCours ? justesIci : 0);
 
@@ -134,7 +162,7 @@ export function avancementDuRun(run, maintenant = Date.now()) {
         // ÉTAPE PAR ÉTAPE, RÉUSSIE OU NON. Le fil de l'élève en a besoin : une
         // case pleine sur une étape ratée lui ferait croire qu'il peut passer
         // à la suite sans y revenir.
-        detailEtapes: finies.map(s => s.passed !== false),
+        detailEtapes: [...avant.map(() => true), ...finies.map(s => s.passed !== false)],
         etapeEnCours,
         questions, prevues, justes,
         fraction: fractionDe({ fini, abandonne, faites, plan, prevues, questions, etapeEnCours }),

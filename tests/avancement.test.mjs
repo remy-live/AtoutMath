@@ -221,3 +221,71 @@ test('UNE CLASSE DONT LA MOITIÉ N\'A PAS COMMENCÉ N\'EST PAS À MI-PARCOURS', 
     assert.equal(c.fraction, 0.5);
     assert.equal(avancementDeClasse([]).fraction, 0);
 });
+
+// ──────────────── REPRENDRE UNE SÉANCE : LE COMPTE NE REPART PAS À ZÉRO ──────
+//
+// Rémy : « quand je clique sur un élève qui a déjà fait 3 exercices, j'ai
+// Étape 1/12 […] je redémarre au 3 et lui me dit étape 1/12 ».
+//
+// REPRENDRE OUVRE UN RUN NEUF, avec un identifiant neuf et aucune étape close à
+// son actif. L'élève, lui, reprend bien à la bonne étape : le parcours assigné
+// garde ses étapes validées d'une fois sur l'autre. Le défaut était donc dans
+// ce qu'on RACONTE, pas dans ce qu'on fait — et c'est le pire des deux, parce
+// qu'on décide sur ce qu'on lit.
+
+const planDeDouze = Array.from({ length: 12 }, (_, i) => ({
+    stepId: 'sc_' + i, titre: 'Étape ' + (i + 1), questions: 10, requis: 7
+}));
+
+const runRepris = (deja, steps = [], attempts = []) => ({
+    runId: 'r2', pathId: 'p1', pathName: 'Devoir du mardi',
+    plan: planDeDouze, stepCount: 12, dejaFaites: deja,
+    startedAt: 1000, finishedAt: null, aborted: false,
+    steps, attempts
+});
+
+test('TROIS EXERCICES FAITS, PUIS REPRIS : ON EST À L\'ÉTAPE 4, PAS À LA 1', () => {
+    const a = avancementDuRun(runRepris(['sc_0', 'sc_1', 'sc_2']), 2000);
+    assert.equal(a.faites, 3, 'trois étapes derrière lui');
+    assert.equal(a.etapes, 12);
+    // `rang` compte les étapes closes : la courante est la quatrième.
+    assert.equal(a.etapeEnCours.rang, 3);
+    assert.equal(a.etapeEnCours.titre, 'Étape 4');
+});
+
+test('LES CASES DÉJÀ FAITES SONT PLEINES, pas vides', () => {
+    // Une étape retenue dans `completed` est une étape VALIDÉE : la montrer
+    // « à venir » ferait croire à l'élève qu'il doit la refaire.
+    const a = avancementDuRun(runRepris(['sc_0', 'sc_1', 'sc_2']), 2000);
+    assert.deepEqual(a.detailEtapes, [true, true, true]);
+    assert.equal(a.reussies, 3);
+});
+
+test('ET LA BARRE NE REPART PAS À ZÉRO', () => {
+    // Trente questions répondues sur cent vingt : un quart. Avant, la barre
+    // d'un élève qui reprenait se vidait sous ses yeux.
+    const a = avancementDuRun(runRepris(['sc_0', 'sc_1', 'sc_2']), 2000);
+    assert.equal(a.prevues, 120);
+    assert.equal(a.questions, 30);
+    assert.equal(a.fraction, 0.25);
+});
+
+test('ON NE COMPTE PAS DEUX FOIS UNE ÉTAPE REPRISE ET REFERMÉE', () => {
+    // Elle apparaît dans les deux listes — celle du départ et celle de ce
+    // run — et c'est l'identifiant qui tranche. Sans cela, un parcours de
+    // douze étapes en afficherait treize faites.
+    const a = avancementDuRun(runRepris(['sc_0', 'sc_1'], [
+        { stepId: 'sc_1', questions: 10, solved: 9, passed: true }
+    ]), 2000);
+    assert.equal(a.faites, 2, 'deux, et non trois');
+    assert.equal(a.detailEtapes.length, 2);
+});
+
+test('un run sans point de départ se comporte comme avant', () => {
+    // La compatibilité compte : les runs déjà enregistrés n'ont pas ce champ,
+    // et ils doivent continuer de se lire exactement pareil.
+    const a = avancementDuRun(runRepris(undefined), 2000);
+    assert.equal(a.faites, 0);
+    assert.equal(a.etapeEnCours.rang, 0);
+    assert.deepEqual(a.detailEtapes, []);
+});

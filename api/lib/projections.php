@@ -132,7 +132,7 @@ function runsOf(array $events): array
                 'runId' => $runId, 'pathId' => null, 'pathName' => '', 'mode' => 'entrainement',
                 'policy' => null, 'startedAt' => null, 'finishedAt' => null,
                 'aborted' => false, 'attempts' => [], 'steps' => [],
-                'plan' => [], 'stepCount' => 0, 'bac' => false,
+                'plan' => [], 'stepCount' => 0, 'bac' => false, 'dejaFaites' => [],
             ];
         }
     };
@@ -151,6 +151,8 @@ function runsOf(array $events): array
                 $runs[$runId]['bac']       = !empty($p['bac']);
                 $runs[$runId]['plan']      = is_array($p['plan'] ?? null) ? $p['plan'] : [];
                 $runs[$runId]['stepCount'] = (int) ($p['stepCount'] ?? count($runs[$runId]['plan']));
+                $runs[$runId]['dejaFaites'] = is_array($p['dejaFaites'] ?? null)
+                    ? $p['dejaFaites'] : [];
                 $runs[$runId]['startedAt'] = (int) $e['ts'];
                 break;
             case 'run_finished':
@@ -251,8 +253,22 @@ function avancementDeRun(?array $run, ?int $maintenant = null): ?array
         $plan = array_fill(0, max(0, $combien), ['questions' => 0, 'requis' => 0, 'titre' => '']);
     }
     $finies  = $run['steps'] ?? [];
-    $faites  = count($finies);
-    $reussies = 0;
+
+    // CE QUI ÉTAIT DÉJÀ FAIT AVANT CE RUN COMPTE AUSSI — voir le module JS.
+    // Rémy : « j'ai Étape 1/12 alors que j'avais fait 3 exercices ». Reprendre
+    // une séance ouvre un run NEUF ; sans son point de départ, cet écran-ci
+    // repartait de zéro alors que l'élève reprenait à la bonne étape.
+    $closIci = [];
+    foreach ($finies as $s) if (!empty($s['stepId'])) $closIci[$s['stepId']] = true;
+    $avant = [];
+    foreach (($run['dejaFaites'] ?? []) as $id) {
+        if ($id && !isset($closIci[$id])) $avant[] = $id;
+    }
+
+    $faites  = count($avant) + count($finies);
+    // Une étape retenue dans `completed` est une étape VALIDÉE : elle compte
+    // comme réussie.
+    $reussies = count($avant);
     foreach ($finies as $s) if (($s['passed'] ?? true) !== false) $reussies++;
 
     $prevues = 0;
@@ -288,7 +304,11 @@ function avancementDeRun(?array $run, ?int $maintenant = null): ?array
         'justes'  => $justesIci,
     ] : null;
 
+    // LES QUESTIONS D'AVANT SE LISENT DANS LE PLAN : elles ont été répondues
+    // dans le run précédent. On ne sait PAS combien il en avait réussi —
+    // `completed` ne retient que « validée » — et l'on ne l'invente pas.
     $questionsCloses = 0; $justesCloses = 0;
+    foreach ($avant as $i => $_) $questionsCloses += (int) ($plan[$i]['questions'] ?? 0);
     foreach ($finies as $s) {
         $questionsCloses += (int) ($s['questions'] ?? 0);
         $justesCloses    += (int) ($s['solved'] ?? 0);
@@ -314,7 +334,9 @@ function avancementDeRun(?array $run, ?int $maintenant = null): ?array
         'reussies'  => $reussies,
         // Étape par étape, réussie ou non : le fil de l'élève en a besoin, et
         // Le direct s'en sert pour montrer OÙ ça a coincé.
-        'detailEtapes' => array_map(fn($s) => ($s['passed'] ?? true) !== false, $finies),
+        'detailEtapes' => array_merge(
+            array_fill(0, count($avant), true),
+            array_map(fn($s) => ($s['passed'] ?? true) !== false, $finies)),
         'etapeEnCours' => $etapeEnCours,
         'questions' => $questions,
         'prevues'   => $prevues,

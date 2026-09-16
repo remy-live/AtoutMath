@@ -255,9 +255,33 @@
     background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px;
 }
 .ec-pilote-rangee { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.ec-pilote-groupe { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.ec-pilote-groupe--large { flex: 1 1 260px; min-width: 0; }
-.ec-pilote-groupe--large .ec-champ { flex: 1 1 auto; min-width: 0; }
+
+/* CHAQUE COMMANDE EST UN OBJET, PAS UN CHAMP EN VRAC.
+   Rémy : « le bandeau rouvrir la classe avec le 10 le lancer à zéro on termine
+   le mot pour toute la classe est vraiment en bazar ».
+
+   IL AVAIT RAISON, ET LE DÉFAUT ÉTAIT DE N'AVOIR PAS DIT CE QUI VA ENSEMBLE.
+   Cinq commandes de rôles différents se suivaient sur une ligne, séparées par
+   le même écart : un « 10 » posé à côté d'un bouton « Pause » ne veut rien
+   dire, et l'œil n'a aucune raison de le rattacher au « Lancer » trois
+   éléments plus loin. Chaque groupe a donc un cadre et un NOM écrit dessus. */
+.ec-pilote-cadre {
+    display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
+    /* LE CADRE NE PREND QUE CE QU'IL LUI FAUT. Mesuré sur une capture : sans
+       cette borne, le champ « 10 » s'étirait sur un tiers de l'écran et le
+       « min, » finissait à trente centimètres du nombre qu'il qualifie. */
+    flex: 0 0 auto; max-width: 100%;
+    padding: 6px 10px; border-radius: 10px;
+    background: var(--bg-app); border: 1px solid var(--border);
+}
+.ec-pilote-cadre .ec-champ { flex: 0 0 auto; }
+.ec-pilote-cadre .ec-champ--court { width: 4.2rem; text-align: center; }
+.ec-pilote-cadre .ec-champ--mince { width: auto; }
+.ec-pilote-mot-liant { font-size: .8rem; color: var(--text-muted); }
+/* LE MOT À LA CLASSE PREND LA PLACE QUI RESTE : c'est le seul champ où l'on
+   écrit une phrase, et un champ trop court fait écrire des télégrammes. */
+.ec-pilote-mot { display: flex; gap: 6px; align-items: center; flex: 1 1 280px; min-width: 0; }
+.ec-pilote-mot .ec-champ { flex: 1 1 auto; min-width: 0; }
 .ec-pilote-btn {
     font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer;
     padding: 7px 12px; border-radius: 9px; white-space: nowrap;
@@ -273,10 +297,18 @@
 }
 .ec-pilote-btn--doux { color: var(--text-muted); }
 .ec-champ--mince { padding: 6px 8px; font-size: .82rem; }
+/* LE REPLI DOIT SE VOIR REPLIABLE. Une ligne de texte gris sous une barre de
+   boutons se lit comme une légende, pas comme une porte : le triangle est la
+   seule chose qui dise « il y a autre chose dessous ». */
 .ec-pilote-plus > summary {
     cursor: pointer; font-size: .8rem; font-weight: 600; color: var(--text-muted);
-    padding: 3px 0;
+    padding: 3px 0; list-style: none; display: flex; align-items: center; gap: 6px;
 }
+.ec-pilote-plus > summary::-webkit-details-marker { display: none; }
+.ec-pilote-plus > summary::before {
+    content: '\25b8'; display: inline-block; transition: transform .15s ease;
+}
+.ec-pilote-plus[open] > summary::before { transform: rotate(90deg); }
 .ec-pilote-plus > summary:hover { color: var(--primary); }
 .ec-pilote-plus-corps {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -284,6 +316,13 @@
 }
 .ec-pilote-bloc { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .ec-pilote-eti { font-size: .78rem; font-weight: 700; color: var(--text-main); }
+.ec-pilote-cadre .ec-pilote-eti { white-space: nowrap; }
+/* Sur téléphone, chaque cadre prend la largeur : à 390 px, deux cadres côte à
+   côte rognent les deux. */
+@media (max-width: 700px) {
+    .ec-pilote-cadre { flex: 1 1 100%; }
+    .ec-pilote-mot { flex: 1 1 100%; }
+}
 .ec-rang--ecarte { opacity: .5; }
 /* Le vert de présence ne vient PAS du thème : « il est là » doit se voir de la
    même façon sur les trois thèmes, et c'est la seule information de cet écran

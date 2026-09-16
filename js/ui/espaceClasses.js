@@ -624,6 +624,10 @@ function ficheHtml(e, maintenant) {
             <button type="button" class="ec-bouton ec-bouton--doux" data-indice-eleve="${esc(e.id)}"
                     data-prenom="${esc(e.prenom)}" data-exo="${esc(e.exo || '')}"${
                     g.indice ? '' : ' disabled'}>Coup de pouce</button>
+            <button type="button" class="ec-bouton ec-bouton--doux" data-voir-exo="${esc(e.exo || '')}"
+                    data-prenom="${esc(e.prenom)}"${g.indice ? '' : ' disabled'}
+                    title="Le m\u00eame exercice, ouvert chez vous. Les nombres sont tir\u00e9s au sort : ce n'est pas une copie de son \u00e9cran."
+                    >Voir son exercice</button>
             <button type="button" class="ec-bouton" data-saut-eleve="${esc(e.id)}"
                     data-exo="${esc(e.exo || '')}" data-prenom="${esc(e.prenom)}"${
                     g.debloquer ? '' : ' disabled'}
@@ -1195,29 +1199,52 @@ function barrePiloteHtml() {
                 ${info.locked ? '▶ Rouvrir la classe' : '⏸ Mettre en pause'}
             </button>
 
-            <span class="ec-pilote-groupe" role="group" aria-label="Compte à rebours">
-                <input type="number" id="ec-chrono-min" class="ec-champ ec-champ--court"
-                       min="1" max="180" value="10" aria-label="Minutes">
-                <select id="ec-chrono-quoi" class="ec-champ ec-champ--mince"
-                        aria-label="Ce qui se passe à zéro">
-                    <option value="terminer">à zéro : on termine</option>
-                    <option value="pause">à zéro : on s'arrête</option>
-                </select>
-                <button type="button" class="ec-pilote-btn" data-chrono>⏱ Lancer</button>
-                ${enCours ? '<button type="button" class="ec-pilote-btn ec-pilote-btn--doux" '
-                    + 'data-chrono-off>Arrêter</button>' : ''}
-            </span>
-
-            <span class="ec-pilote-groupe ec-pilote-groupe--large">
+            <span class="ec-pilote-mot">
                 <input type="text" id="ec-mot" class="ec-champ" maxlength="500"
                        placeholder="Un mot à toute la classe…"
+                       aria-label="Un mot à toute la classe"
                        data-valide-sur-entree="data-mot-classe">
                 <button type="button" class="ec-pilote-btn" data-mot-classe>Envoyer</button>
             </span>
         </div>
 
+        <!-- LE CHRONO EST UN OBJET, PAS QUATRE CHAMPS EN VRAC.
+             Rémy : « le bandeau rouvrir la classe avec le 10 le lancer à zéro
+             on termine le mot pour toute la classe est vraiment en bazar ».
+             Il avait raison : cinq commandes de rôles différents se suivaient
+             sur une seule ligne, et rien ne disait lesquelles allaient
+             ensemble — « 10 » tout seul à côté d'un bouton « Pause » ne veut
+             rien dire. Le compte à rebours se referme donc dans son propre
+             cadre, avec son nom écrit dessus. -->
+        <div class="ec-pilote-rangee">
+            <span class="ec-pilote-cadre" role="group" aria-label="Compte à rebours">
+                <span class="ec-pilote-eti">⏱ Compte à rebours</span>
+                <input type="number" id="ec-chrono-min" class="ec-champ ec-champ--court"
+                       min="1" max="180" value="10" aria-label="Minutes">
+                <span class="ec-pilote-mot-liant">min,</span>
+                <select id="ec-chrono-quoi" class="ec-champ ec-champ--mince"
+                        aria-label="Ce qui se passe à zéro">
+                    <option value="terminer">puis on termine</option>
+                    <option value="pause">puis on s'arrête</option>
+                </select>
+                ${enCours
+                    ? '<button type="button" class="ec-pilote-btn ec-pilote-btn--actif" '
+                      + 'data-chrono-off>Arrêter</button>'
+                    : '<button type="button" class="ec-pilote-btn" data-chrono>Lancer</button>'}
+            </span>
+
+            <span class="ec-pilote-cadre">
+                <span class="ec-pilote-eti">🧰 Bac à sable</span>
+                <span class="ec-pilote-mot-liant">${bacDeLaClasse()
+                    ? 'fermé pour cette heure' : 'ouvert à ceux qui ont fini'}</span>
+                ${bacDeLaClasse()
+                    ? '<button type="button" class="ec-pilote-btn" data-bac="0">Ouvrir</button>'
+                    : '<button type="button" class="ec-pilote-btn" data-bac="1">Fermer</button>'}
+            </span>
+        </div>
+
         <details class="ec-pilote-plus">
-            <summary>Le tableau, le bac à sable, dispenser toute la classe</summary>
+            <summary>Le mot au tableau · dispenser toute la classe d'un exercice</summary>
             <div class="ec-pilote-plus-corps">
 
                 <div class="ec-pilote-bloc">
@@ -1231,19 +1258,6 @@ function barrePiloteHtml() {
                         <button type="button" class="ec-bouton" data-consigne>Afficher</button>
                         ${info.notice ? '<button type="button" class="ec-bouton ec-bouton--doux" '
                             + 'data-consigne-off>Retirer</button>' : ''}
-                    </div>
-                </div>
-
-                <div class="ec-pilote-bloc">
-                    <span class="ec-pilote-eti">Le bac à sable</span>
-                    <p class="ec-note">Ce que fait un élève qui a fini avant les autres. Il ne
-                       s'ouvre qu'une fois sa séance terminée.</p>
-                    <div class="ec-champ-ligne">
-                        <span class="ec-etat-bac">${bacDeLaClasse()
-                            ? 'Fermé pour cette heure.' : 'Ouvert : celui qui a fini peut jouer.'}</span>
-                        ${bacDeLaClasse()
-                            ? '<button type="button" class="ec-bouton" data-bac="0">Ouvrir le bac</button>'
-                            : '<button type="button" class="ec-bouton ec-bouton--doux" data-bac="1">Fermer le bac</button>'}
                     </div>
                 </div>
 
@@ -1316,7 +1330,7 @@ async function brancher(e, redessiner) {
         + '[data-profs], [data-reessayer], [data-poste],'
         + '[data-imposer-rien], [data-mettre-en-cours],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
-        + '[data-annuler-reglage], [data-fiche], [data-saut-eleve]');
+        + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo]');
     if (!el) return;
     const d = el.dataset;
 
@@ -1659,6 +1673,30 @@ async function brancher(e, redessiner) {
     if (d.fiche !== undefined) {
         vue.fiche = vue.fiche === d.fiche ? null : d.fiche;
         redessiner();
+        return;
+    }
+
+    // ── VOIR CE QU'IL A SOUS LES YEUX ─────────────────────────────────────────
+    //
+    // Rémy : « quand on clique sur l'élève, il faudrait aussi pouvoir voir
+    // l'écran ».
+    //
+    // ON OUVRE SON EXERCICE, ET L'ON NE PRÉTEND PAS QUE C'EST SON ÉCRAN. Les
+    // nombres de chaque question sont tirés au sort chez l'élève ; ouvrir le
+    // même exercice ici donne le même TRAVAIL, pas la même question. Appeler
+    // cela « son écran » serait exactement le genre de petit mensonge d'écran
+    // qu'on passe ses journées à débusquer — le bouton dit donc « Voir son
+    // exercice », et son infobulle dit le reste.
+    //
+    // Un vrai miroir de son écran est un autre métier : il faudrait que
+    // l'élève envoie sa question au fil de l'eau, ce qui change ce qui voyage
+    // sur le réseau pendant l'heure. À décider ensemble.
+    if (d.voirExo !== undefined) {
+        if (!d.voirExo) { showToast('Il n\'est sur aucun exercice pour l\'instant.', 'info'); return; }
+        const exo = getExerciseById(d.voirExo);
+        if (!exo) { showToast('Cet exercice n\'est pas au catalogue.', 'error'); return; }
+        const { openGameLayer } = await import('../games/engine.js');
+        openGameLayer(exo, true);
         return;
     }
 
