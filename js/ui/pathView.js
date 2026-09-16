@@ -12,6 +12,8 @@
 
 import { state } from '../core/state.js';
 import { sectionMesExercices } from './mesExercicesUI.js';
+import { instantane, ouvrirSeance } from './maSeance.js';
+import { estRattache } from '../core/portail.js';
 import { getExerciseById } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
 import { hydratePath, normalizePath } from '../core/path.js';
@@ -186,17 +188,79 @@ export function renderStudentPathView() {
 
 // --- 1. Parcours assigné ----------------------------------------------------
 
+/**
+ * QUAND AUCUN PARCOURS N'EST CHARGÉ — et c'était le pire écran du logiciel.
+ *
+ * Mesuré (tools/leTrajetDeLEleve.mjs) : le professeur donne une séance à sa
+ * classe ; Zoé entre avec son billet ; l'application l'envoie sur cet
+ * écran-ci — `app.js` fait `setTopNavMode('path')` pour tout élève — et la
+ * PREMIÈRE PHRASE qu'elle lit est :
+ *
+ *     « Aucun parcours assigné pour le moment. Saisis le code donné par ton
+ *       professeur avec le bouton « Code » en haut de l'écran. »
+ *
+ * C'était faux. Sa séance était bien arrivée, mais elle ne s'affichait que sur
+ * l'AUTRE accueil — celui du catalogue, que `aujourdhui.js` dessine — et cet
+ * écran-ci ne regardait que `state.studentPath`, qui ne vaut quelque chose
+ * qu'une fois la séance OUVERTE. Une séance reçue mais pas encore ouverte
+ * n'existait donc nulle part ici.
+ *
+ * Le dégât n'est pas l'affichage : c'est qu'un enfant de onze ans à qui l'on
+ * dit « tu n'as rien » et qui a quelque chose lève la main — et c'est le
+ * professeur qui traverse la salle. Trente fois.
+ *
+ * ON NE REFAIT PAS LE CALCUL ICI. `maSeance.js` tient déjà l'état de la séance
+ * du moment, et `ouvrirSeance` est le chemin par lequel passe aussi un code
+ * dicté. Deux chemins vers le même parcours, ce sont deux comportements à
+ * tenir d'accord ; on emprunte celui qui existe.
+ */
+function sectionSansParcours(box) {
+    const etat = instantane().etat;
+
+    // RIEN À FAIRE, POUR DE VRAI. C'est le seul cas où le message d'avant
+    // disait la vérité — et l'on peut alors parler de code, puisque c'est bien
+    // ce qui manque.
+    if (!etat || !etat.seance) {
+        box.innerHTML = `
+            <h2 class="path-section-title">Ton travail</h2>
+            <div class="empty-state-msg">Ton professeur ne t'a rien donné pour le moment.
+            S'il t'a dicté un code, tape-le avec le bouton « Code » en haut de l'écran.</div>`;
+        return box;
+    }
+
+    const dit = etat.close
+        ? 'Sa fenêtre est fermée, mais tu peux encore la faire.'
+        : `${etat.total} étape${etat.total > 1 ? 's' : ''} à faire.`;
+    box.innerHTML = `
+        <h2 class="path-section-title">${escapeHtml(etat.titre)}</h2>
+        <p class="path-section-sub">${etat.classeNom ? escapeHtml(etat.classeNom) + ' · ' : ''}${dit}</p>`;
+
+    // LE MOT DU PROFESSEUR PASSE AVANT LE BOUTON. S'il a écrit quelque chose à
+    // CET élève, c'est la consigne : la lire après avoir cliqué serait la lire
+    // trop tard.
+    if (etat.mot) {
+        const mot = document.createElement('p');
+        mot.className = 'path-section-mot';
+        mot.textContent = `« ${etat.mot} »`;
+        box.appendChild(mot);
+    }
+
+    const btn = document.createElement('button');
+    btn.className = 'btn-toggle active path-ouvrir-seance';
+    btn.type = 'button';
+    btn.textContent = etat.commence ? 'Reprendre ma séance' : 'Commencer ma séance';
+    btn.onclick = () => ouvrirSeance(etat.seance);
+    box.appendChild(btn);
+    return box;
+}
+
 function assignedSection() {
     const box = document.createElement('section');
     box.className = 'path-section';
 
     const assigned = state.studentPath;
     if (!assigned || !assigned.steps || !assigned.steps.length) {
-        box.innerHTML = `
-            <h2 class="path-section-title">Parcours du professeur</h2>
-            <div class="empty-state-msg">Aucun parcours assigné pour le moment.
-            Saisis le code donné par ton professeur avec le bouton « Code » en haut de l'écran.</div>`;
-        return box;
+        return sectionSansParcours(box);
     }
 
     const path = normalizePath({ id: assigned.pathId, name: assigned.name, policy: assigned.policy, steps: assigned.steps, version: 2 });
@@ -767,11 +831,24 @@ function teacherPathsSection() {
     const paths = state.teacherPaths || [];
     if (!paths.length) return null;
 
+    // PAS CHEZ UN ÉLÈVE IDENTIFIÉ, et c'est la règle qui manquait.
+    //
+    // Mesuré : sur l'ordinateur de la salle, Zoé — entrée avec son billet —
+    // voyait sous sa séance « Tout sur papier (127 exercices) », un BROUILLON
+    // de Rémy, présenté comme « choisis-en un et lance-toi ! ». Cette section
+    // existe pour une bonne raison — en classe, le professeur construit et
+    // l'élève joue sur le même appareil — mais cette raison-là suppose un poste
+    // SANS élève rattaché. Dès qu'un billet a été présenté, le travail vient du
+    // serveur, et l'atelier du professeur ne regarde plus celui qui est assis.
+    if (estRattache()) return null;
+
     const box = document.createElement('section');
     box.className = 'path-section';
+    // « Parcours du professeur » était aussi le titre de la section du haut :
+    // deux sections, le même titre, et l'une disait le contraire de l'autre.
     box.innerHTML = `
-        <h2 class="path-section-title">Parcours du professeur</h2>
-        <p class="path-section-sub">Préparés sur ce poste — choisis-en un et lance-toi !</p>`;
+        <h2 class="path-section-title">Préparés sur cet ordinateur</h2>
+        <p class="path-section-sub">Des parcours d'essai, pour s'entraîner en attendant.</p>`;
 
     const list = document.createElement('div');
     list.className = 'teacher-path-list';
@@ -939,6 +1016,13 @@ function escapeHtml(s) {
 }
 
 document.addEventListener('studentPath_updated', renderStudentPathView);
+// LA SÉANCE ARRIVE PAR LA SYNCHRONISATION, à n'importe quel moment. Sans cette
+// ligne, l'élève déjà posé sur cet écran continuait de lire « ton professeur ne
+// t'a rien donné » jusqu'au prochain rechargement de la page.
+document.addEventListener('seances_updated', () => {
+    const view = document.getElementById('view-path');
+    if (view && view.style.display !== 'none') renderStudentPathView();
+});
 document.addEventListener('attempts_updated', () => {
     const view = document.getElementById('view-path');
     if (view && view.style.display !== 'none') renderStudentPathView();

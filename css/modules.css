@@ -3333,6 +3333,16 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .path-section-title { font-size: 1.3rem; color: var(--text-main); margin-bottom: 4px; }
 .path-section-sub { color: var(--text-muted); font-size: .94rem; margin-bottom: 16px; }
 .path-section-sub--eval { color: var(--tag-niv-txt); font-weight: 600; }
+/* LE MOT DU PROFESSEUR A CET ELEVE, au-dessus du bouton qui ouvre la seance :
+   c'est la consigne, et la lire apres avoir clique serait la lire trop tard. */
+.path-section-mot {
+    margin: 0 0 14px; padding: 10px 14px; border-left: 3px solid var(--primary);
+    background: var(--bg-hover); border-radius: 0 8px 8px 0;
+    color: var(--text-main); font-style: italic;
+}
+/* Assez grand pour etre la premiere chose qu'on touche, au doigt comme a la
+   souris : c'est le seul geste que l'eleve ait a faire sur cet ecran. */
+.path-ouvrir-seance { font-size: 1rem; padding: 12px 22px; min-height: 44px; }
 .timeline-step-meta { font-size: .82rem; color: var(--text-muted); margin: 2px 0 8px; }
 .path-complete-banner {
     margin-top: 14px; padding: 12px; text-align: center; font-weight: 700;
