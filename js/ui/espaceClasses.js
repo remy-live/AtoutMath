@@ -115,6 +115,9 @@ let battement = null;
 
 function arreterLeBattement() {
     if (battement) { clearInterval(battement); battement = null; }
+    // Le tic-tac du décompte part avec le battement : il n'a rien à faire sur
+    // un écran qu'on vient de quitter, et il chercherait un élément disparu.
+    arreterLeTicTac();
 }
 
 // --- Point d'entrée ---------------------------------------------------------
@@ -469,7 +472,19 @@ function directHtml() {
     const imposee = info.impose_path_id
         && (vue.seances && (vue.seances.seances || []).find(s => s.pathId === info.impose_path_id));
 
-    return alarmeHtml(eleves, maintenant) + `
+    // TROIS ZONES, ET C'EST LE BATTEMENT QUI L'EXIGE.
+    //
+    // Le battement de dix secondes réécrivait TOUT le direct, barre de pilotage
+    // comprise. Or cette barre porte des champs qu'on est en train de remplir :
+    // le mot à la classe, le mot au tableau, le nombre de minutes, et un
+    // `<details>` qu'on vient d'ouvrir. Écrire « Prenez le cahier rouge » prend
+    // plus de dix secondes : le texte disparaissait sous les doigts du
+    // professeur, et le repli se refermait avec.
+    //
+    // On sépare donc ce qui change TOUT SEUL — l'alarme, les compteurs, les
+    // rangs — de ce que le professeur MANIPULE. Le battement ne touche plus
+    // qu'au premier.
+    return `<div class="ec-direct-haut">` + alarmeHtml(eleves, maintenant) + `
     <p class="ec-compte">${enLigne} en ligne sur ${eleves.length}
        <span class="ec-note">— actualisé tout seul</span></p>
     ${info.impose_path_id
@@ -494,6 +509,7 @@ function directHtml() {
         <div class="ec-jauge" title="${pourcent} % du travail de la classe">
             <i style="width:${pourcent}%"></i>
         </div>
+    </div>
     </div>
     ${barrePiloteHtml()}
     <!-- CEUX QU'IL FAUT ALLER VOIR SONT EN HAUT.
@@ -1248,7 +1264,14 @@ function barrePiloteHtml() {
     const ch = vue.direct && vue.direct.chrono;
     const enCours = !!(ch && ch.finAt);
     return `
-    <div class="ec-pilote">
+    <!-- L'attribut data-forme dit ce qui, dans cette barre, changerait sa
+         STRUCTURE. Le battement s'en sert pour savoir s'il doit la refaire —
+         sinon il la laisse tranquille, avec le message qu'on est en train d'y
+         écrire. Elle le porte elle-même : posé après coup, il manquerait au
+         premier dessin, et le premier battement effacerait le premier message.
+         (Et pas de guillemet oblique dans ce commentaire : il est DANS un
+         gabarit, et le premier qu'on y pose ferme le gabarit.) -->
+    <div class="ec-pilote" data-forme="${esc(signatureDuPilote())}">
         <div class="ec-pilote-rangee">
             <button type="button" class="ec-pilote-btn${info.locked ? ' ec-pilote-btn--actif' : ''}"
                     data-pause="${info.locked ? '0' : '1'}"
@@ -1929,7 +1952,7 @@ async function rafraichirClasse(redessiner) {
     if (!cid) return;
     const [l, d, r] = await Promise.all([listeDeClasse(cid), leDirect(cid), lesReglages(cid)]);
     if (l.erreur) vue.erreur = l.erreur; else { vue.liste = l; vue.erreur = ''; }
-    if (!d.erreur) vue.direct = d;
+    if (!d.erreur) { vue.direct = d; noterLHeureDuServeur(d); }
     if (!r.erreur) vue.reglages = r.reglages || [];
     redessiner();
 }
@@ -1961,8 +1984,98 @@ async function rafraichirClasse(redessiner) {
  */
 const BATTEMENT_MS = 10000;
 
+/**
+ * CE QUE LE BATTEMENT A LE DROIT DE TOUCHER.
+ *
+ * Pas la barre de pilotage : elle porte des champs qu'on est en train de
+ * remplir. Écrire « Prenez le cahier rouge » prend plus de dix secondes, et le
+ * texte disparaissait sous les doigts du professeur — avec le repli qu'il
+ * venait d'ouvrir.
+ *
+ * La barre n'est refaite que si sa FORME a changé : la pause bascule, le bac
+ * s'ouvre, le compte à rebours démarre ou s'arrête. Ce sont des événements, pas
+ * un rythme — et trois d'entre eux viennent d'un geste du professeur, qui
+ * redessine déjà tout de son côté. Le quatrième, l'arrivée du chrono par le
+ * serveur, est celui qui justifie cette signature.
+ */
+function signatureDuPilote() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    const ch = vue.direct && vue.direct.chrono;
+    return [!!info.locked, !!bacDeLaClasse(), !!(ch && ch.finAt), (ch && ch.quoi) || ''].join('|');
+}
+
+function rafraichirLeDirect(zone) {
+    const haut = zone.querySelector('.ec-direct-haut');
+    const rangs = zone.querySelector('.ec-rangs');
+    const pilote = zone.querySelector('.ec-pilote');
+    // Pas encore la bonne structure — on vient d'arriver sur l'onglet : on
+    // dessine tout, une fois.
+    if (!haut || !rangs || !pilote) { zone.innerHTML = directHtml(); return; }
+
+    if (pilote.dataset.forme !== signatureDuPilote()) { zone.innerHTML = directHtml(); return; }
+
+    // On redessine le direct entier dans une boîte de côté, et l'on ne prend
+    // que les deux morceaux vivants. Écrire deux fois le même gabarit — un pour
+    // le tout, un pour les morceaux — serait deux vérités à tenir d'accord.
+    const boite = document.createElement('div');
+    boite.innerHTML = directHtml();
+    const hautNeuf = boite.querySelector('.ec-direct-haut');
+    const rangsNeufs = boite.querySelector('.ec-rangs');
+    if (hautNeuf) haut.innerHTML = hautNeuf.innerHTML;
+    if (rangsNeufs) rangs.innerHTML = rangsNeufs.innerHTML;
+}
+
+/**
+ * LE DÉCOMPTE BAT À LA SECONDE, et rien d'autre avec lui.
+ *
+ * Le battement du serveur tourne toutes les dix secondes : un compte à rebours
+ * qui n'en dépendrait que sauterait de dix en dix — « 06:52 », puis « 06:42 ».
+ * Ce n'est pas un compte à rebours, c'est une horloge cassée.
+ *
+ * Ce minuteur-ci ne touche donc QU'AU TEXTE du décompte. Il ne redessine rien,
+ * n'interroge pas le serveur, et disparaît avec l'écran. L'heure reste celle du
+ * serveur : on ne fait qu'en soustraire les secondes écoulées depuis.
+ */
+let tictac = null;
+
+/**
+ * L'ÉCART ENTRE L'HORLOGE DU SERVEUR ET CELLE DU POSTE, en secondes.
+ *
+ * Le compte à rebours est daté par le SERVEUR (`ch.finAt`), parce que c'est la
+ * même date pour les trente élèves et pour le professeur. Le tic-tac, lui, ne
+ * dispose que de l'horloge du poste. Un ordinateur de salle réglé à trois
+ * minutes près — cela existe, et personne ne s'en aperçoit jamais — afficherait
+ * donc trois minutes de moins que la classe.
+ *
+ * On note l'écart à chaque réponse du serveur, et le tic-tac s'en sert. C'est
+ * la seule façon d'avoir un seul compte à rebours dans la salle.
+ */
+let decalageHorloge = 0;
+function noterLHeureDuServeur(d) {
+    if (d && typeof d.maintenant === 'number') {
+        decalageHorloge = d.maintenant - Math.floor(Date.now() / 1000);
+    }
+}
+
+function arreterLeTicTac() { if (tictac) { clearInterval(tictac); tictac = null; } }
+
+function lancerLeTicTac() {
+    arreterLeTicTac();
+    tictac = setInterval(() => {
+        const el = document.querySelector('.ec-chrono-reste');
+        if (!el) return;
+        const ch = vue.direct && vue.direct.chrono;
+        if (!ch || !ch.finAt) return;
+        const reste = Math.max(0,
+            ch.finAt - (Math.floor(Date.now() / 1000) + decalageHorloge));
+        el.textContent = enMinutes(reste);
+        el.classList.toggle('ec-chrono-reste--court', reste <= 60);
+    }, 1000);
+}
+
 function lancerLeBattement(redessiner) {
     arreterLeBattement();
+    lancerLeTicTac();
     battement = setInterval(async () => {
         // LE MUR BAT AUSSI, et il ne battait pas.
         //
@@ -1983,13 +2096,16 @@ function lancerLeBattement(redessiner) {
         const d = await leDirect(cid);
         if (d.erreur) return;          // une panne passagère ne vide pas l'écran
         vue.direct = d;
+        noterLHeureDuServeur(d);
         const zone = document.querySelector('#ec-racine .ec-corps');
+        if (!zone) return;
         // ET L'ON REDESSINE L'ÉCRAN QU'ON REGARDE. En levant le garde sans
         // toucher à cette ligne, le mur se serait fait remplacer par le direct
         // au bout de dix secondes : le professeur aurait vu son écran changer
         // tout seul sous ses yeux, ce qui est un défaut plus grave que celui
         // qu'on corrige.
-        if (zone) zone.innerHTML = vue.onglet === 'mur' ? murHtml() : directHtml();
+        if (vue.onglet === 'mur') { zone.innerHTML = murHtml(); return; }
+        rafraichirLeDirect(zone);
     }, BATTEMENT_MS);
 }
 
