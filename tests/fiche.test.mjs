@@ -1193,3 +1193,82 @@ test('blocs : LA LONGUEUR DES POINTILLÉS SUIT LA RÉPONSE ATTENDUE', () => {
     assert.ok(pose('7').every(surLaLigne), 'une réponse courte tient au bout de la ligne');
     assert.ok(pose('135 248').every(q => !surLaLigne(q)), 'une réponse longue descend');
 });
+
+// ─────────── LE CORRIGÉ GARDE LES NUMÉROS DE LA FEUILLE ─────────────────────
+//
+// Rémy, corrigé en main : « je pense qu'il y a un bug […] j'ai l'impression
+// d'un problème d'ordre ».
+//
+// IL AVAIT RAISON DEUX FOIS, ET POUR LA MÊME CAUSE. Sa feuille portait
+// « Exercice 1 — Les Amis de Dix » (un appariement, questions 1 et 2), puis
+// « Exercice 2 — Amis de 10 » (questions 3 à 17). Son corrigé disait
+// « Exercice 1 — Amis de 10 », numéroté de 1 à 15.
+//
+// Un appariement se corrige sur son propre dessin : il n'entre donc pas dans
+// la liste des réponses écrites — mais il OCCUPE des numéros sur la feuille.
+// Le corrigé comptait sur SA liste à lui, et renvoyait le professeur à des
+// numéros que la feuille n'a pas.
+
+// Une page composée porte des BLOCS, dont chacun porte ses lignes déjà
+// coupées : le titre d'un exercice peut donc arriver en deux morceaux.
+const lignesDe = (sol) => sol.pages.flatMap(p =>
+    (p.blocs || []).map(b => (b.lignes || []).join(' ')));
+
+test('LE NUMÉRO D\'EXERCICE DU CORRIGÉ EST CELUI DE LA FEUILLE', () => {
+    // L'appariement est l'exercice 1 ; l'exercice écrit est le 2. Sans `rang`,
+    // le corrigé l'appelait « Exercice 1 » et l'on cherchait sur la mauvaise
+    // moitié de la page.
+    const sol = composerSolutions([], {
+        sections: [{ titre: 'Amis de 10', rang: 2, depart: 3,
+            questions: [{ texte: '8 + ', reponse: '2' }, { texte: '6 + ', reponse: '4' }] }]
+    }, mesurer);
+    assert.ok(lignesDe(sol).includes('Exercice 2 — Amis de 10'),
+        lignesDe(sol).join(' | '));
+});
+
+test('ET LES NUMÉROS DE QUESTION REPRENNENT LÀ OÙ LA FEUILLE LES A LAISSÉS', () => {
+    // « 1. 8 + 2 = 10 » ne renvoyait à rien : la feuille n'a pas de question 1
+    // dans cet exercice — elle commence à 3, après les deux appariements.
+    const sol = composerSolutions([], {
+        mode: 'compact',
+        sections: [{ titre: 'Amis de 10', rang: 2, depart: 3,
+            questions: [{ texte: '8 + ', reponse: '2' }, { texte: '6 + ', reponse: '4' }] }]
+    }, mesurer);
+    const lignes = lignesDe(sol).filter(t => /=|\d\./.test(t) && !/^Exercice/.test(t));
+    assert.ok(lignes[0].startsWith('3.'), lignes.join(' | '));
+    assert.ok(lignes[1].startsWith('4.'), lignes.join(' | '));
+});
+
+test('sans départ annoncé, le corrigé se comporte comme avant', () => {
+    // La compatibilité compte : une fiche sans appariement n'a rien à décaler,
+    // et les corrigés déjà imprimés ne doivent pas changer de numéros.
+    const sol = composerSolutions([], {
+        mode: 'compact',
+        sections: [{ titre: 'Additions', questions: [{ texte: '1 + 1 = ', reponse: '2' }] }]
+    }, mesurer);
+    assert.ok(lignesDe(sol).includes('Exercice 1 — Additions'));
+    assert.ok(lignesDe(sol).some(t => t.startsWith('1.')));
+});
+
+test('en numérotation PAR EXERCICE, chacun repart bien à 1', () => {
+    // Le départ annoncé ne doit pas écraser ce réglage-là : si la feuille
+    // numérote par exercice, elle commence à 1 partout, et le corrigé aussi.
+    const sol = composerSolutions([], {
+        mode: 'compact', numerotation: 'exercice',
+        sections: [{ titre: 'Amis de 10', rang: 2, depart: 3,
+            questions: [{ texte: '8 + ', reponse: '2' }] }]
+    }, mesurer);
+    assert.ok(lignesDe(sol).some(t => t.startsWith('1.')), lignesDe(sol).join(' | '));
+});
+
+test('LA FEUILLE RAPPORTE OÙ CHAQUE EXERCICE A COMMENCÉ À NUMÉROTER', () => {
+    // C'est la source unique : on rapporte ce qu'on a fait, on ne recalcule
+    // pas la règle ailleurs. Deux compteurs pour la même numérotation
+    // finissent par compter différemment — c'est ce qui venait d'arriver.
+    const mise = composerBlocs([
+        { titre: 'Les Amis de Dix', questions: [], grilles: [{}, {}] },
+        { titre: 'Amis de 10', questions: Array.from({ length: 3 },
+            (_, i) => ({ texte: `${i} + `, reponse: '1' })) }
+    ], {}, mesurer);
+    assert.deepEqual(mise.departs, [1, 3], JSON.stringify(mise.departs));
+});

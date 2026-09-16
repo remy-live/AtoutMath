@@ -579,6 +579,20 @@ export function composerBlocs(exos, opts, mesurer) {
     // Ce que « auto » a finalement décidé, exercice par exercice : l'interface
     // le rend au professeur, pour qu'il sache de quoi il part avant de forcer.
     const colonnesParExo = [];
+    // OÙ CHAQUE EXERCICE A COMMENCÉ À NUMÉROTER — et pourquoi on le rapporte.
+    //
+    // Rémy, corrigé en main : « je pense qu'il y a un bug […] j'ai l'impression
+    // d'un problème d'ordre ». Sur sa feuille, l'exercice d'appariement prenait
+    // les numéros 1 et 2, et les questions écrites commençaient à 3. Le corrigé,
+    // lui, ne reçoit QUE les exercices qui ont des questions écrites — un
+    // appariement se corrige sur son propre dessin — et repartait donc à 1.
+    // « 1. 8 + 2 = 10 » ne renvoyait à rien : la feuille n'a pas de question 1
+    // dans cet exercice.
+    //
+    // ON NE RECALCULE PAS LA RÈGLE AILLEURS, ON RAPPORTE CE QU'ON A FAIT. Deux
+    // compteurs pour la même numérotation finiraient par compter différemment —
+    // c'est exactement ce qui vient d'arriver.
+    const departsParExo = [];
 
     // On ne pousse JAMAIS une page vide : une feuille blanche au milieu d'un
     // PDF ressemble à une erreur d'impression, et le professeur la photocopie
@@ -600,6 +614,10 @@ export function composerBlocs(exos, opts, mesurer) {
         // le « 3. » tombe sur la bordure de la carte suivante, et il n'a rien à
         // y faire : ce qu'on découpe, on le mélange.
         const numerote = exo.numeroter !== false && !exo.blocsColles;
+        // Le premier numéro que CET exercice va poser sur la feuille. En
+        // numérotation par exercice, on repart à 1 : c'est dit juste après.
+        departsParExo[iExo] = numerote
+            ? (o.numerotation === 'exercice' ? 1 : numero + 1) : null;
         // LA GOUTTIÈRE DU NUMÉRO SUIT LA LARGEUR DE LA CELLULE. Sept
         // millimètres et demi devant « 12. » sont justes dans une colonne
         // large ; dans une cellule de vingt-deux millimètres — six colonnes de
@@ -1131,7 +1149,8 @@ export function composerBlocs(exos, opts, mesurer) {
     });
 
     if (page.items.length) pages.push(page);
-    return { pages, zone, opts: o, nbQuestions: total, page: page0, colonnes: colonnesParExo };
+    return { pages, zone, opts: o, nbQuestions: total, page: page0,
+        colonnes: colonnesParExo, departs: departsParExo };
 }
 
 /**
@@ -1288,7 +1307,21 @@ export function composerSolutions(questions, opts, mesurer) {
             const qs = sec.questions || [];
             if (!qs.length) return;
             const bareme = sec.points ? ` — ${sec.points} pt${sec.points > 1 ? 's' : ''}` : '';
-            items.push({ titre: true, texte: `Exercice ${i + 1} — ${sec.titre}${bareme}` });
+            // LE NUMÉRO D'EXERCICE EST CELUI DE LA FEUILLE, pas celui d'ici.
+            //
+            // Rémy : « j'ai l'impression d'un problème d'ordre ». Le corrigé ne
+            // reçoit que les exercices qui ont des questions écrites — un
+            // appariement se corrige sur son propre dessin — et il comptait
+            // 1, 2, 3 sur CETTE liste-là. Son « Exercice 1 » était donc
+            // l'exercice 2 de la feuille, et le professeur cherchait sur la
+            // mauvaise moitié de la page.
+            const rang = Number(sec.rang) || (i + 1);
+            items.push({ titre: true, texte: `Exercice ${rang} — ${sec.titre}${bareme}` });
+            // ET LES NUMÉROS DE QUESTION REPRENNENT LÀ OÙ LA FEUILLE LES A LAISSÉS.
+            // `depart` vient de `composerBlocs`, qui les a posés : on rapporte
+            // ce qui a été fait, on ne le recalcule pas — deux compteurs pour
+            // la même numérotation finissent par compter différemment.
+            if (Number(sec.depart) > 0) n = Number(sec.depart) - 1;
             if (o.numerotation === 'exercice') n = 0;
             const numerote = sec.numeroter !== false;
             // CE QUE VAUT UNE QUESTION. L'intertitre porte le total de
