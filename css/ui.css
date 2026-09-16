@@ -935,9 +935,14 @@ body.teacher-mode .student-only { display: none !important; }
 /* --- Palette d'outils d'auteur ------------------------------
    Flottante, déplaçable, repliable. En bandeau pleine largeur, elle recouvrait
    l'en-tête du jeu — c'est-à-dire précisément ce qu'elle sert à tester. */
+/* ÉTEINTE, SAUF DEMANDE. Voir js/core/outilsAuteur.js : la palette se montrait
+   à tout professeur identifié, avec « vider la sauvegarde locale » et
+   « générer des données d'exemple » en deuxième rangée. Elle attend maintenant
+   `body.outils-auteur`, que seul l'interrupteur des réglages (ou `?auteur=1`)
+   pose. Le `display: flex` vit donc dans la règle qui la rallume. */
 #debug-toolbar {
     position: fixed; top: 6px; left: 6px; z-index: 100000;
-    display: flex; align-items: center; gap: 3px;
+    display: none; align-items: center; gap: 3px;
     /* Elle ne peut pas être plus large que l'écran : à 436 px sur un
        téléphone de 390, elle débordait des deux côtés et il devenait
        impossible de la pousser hors du chemin.
@@ -982,6 +987,7 @@ body.teacher-mode .student-only { display: none !important; }
     scroll-snap-type: x proximity; overscroll-behavior-x: contain;
 }
 .dbg-tools::-webkit-scrollbar { display: none; }
+body.outils-auteur #debug-toolbar { display: flex; }
 #debug-toolbar.dbg--folded .dbg-tools { display: none; }
 .dbg-version, .dbg-fold, .dbg-grip { flex-shrink: 0; }
 
@@ -1158,6 +1164,67 @@ body.plein-ecran .pe-sortir { display: block; }
 .score-display b { font-weight: 700; }
 .score-display:hover { transform: translateY(-1px); border-color: var(--warning); box-shadow: var(--shadow); }
 .score-display:active { transform: translateY(0); }
+
+/* --- AU DOIGT, 44 PIXELS ----------------------------------------------------
+
+   MESURÉ, palette d'auteur éteinte, en professeur identifié : sur un téléphone
+   de 390 × 844, 18 cibles tactiles sur 29 font moins de 44 px ; sur une
+   tablette de 820 × 1180, 20 sur 25. Et ce ne sont pas des boutons obscurs :
+   ce sont TOUS ceux de la barre du haut — le rôle à 19 × 19, les trois icônes
+   de droite à 24 × 24, le titre à 20 px de haut.
+
+   POURQUOI 44. C'est la mesure que donnent Apple et Google, et elle ne vient
+   pas d'un goût : c'est la largeur moyenne de la pulpe d'un index adulte. En
+   dessous, on ne vise plus le bouton, on vise son centre — et l'on rate. Un
+   professeur qui circule dans les rangs avec son téléphone d'une main n'a pas
+   le loisir de viser.
+
+   POURQUOI SEULEMENT AU DOIGT. `pointer: coarse` demande à l'appareil quel est
+   son moyen de pointage principal. À la souris, le pointeur fait un pixel et
+   vise juste : élargir les icônes de la barre à 44 px sur un écran
+   d'ordinateur donnerait une barre du haut obèse pour rien.
+
+   ON ÉLARGIT LA ZONE, PAS LE DESSIN. Ce sont des `min-height` / `min-width` et
+   du remplissage — les icônes gardent leur taille, c'est le champ autour qui
+   grandit. Un bouton n'a pas besoin d'être GROS, il a besoin d'être ATTEIGNABLE. */
+@media (pointer: coarse) {
+    #top-navbar .btn-icon,
+    #top-navbar .btn-icon--sm { min-width: 44px; min-height: 44px; }
+    /* Le titre est un bouton — il ramène à l'accueil — mais il ne ressemble pas
+       à un bouton, donc on ne peut pas l'agrandir : on lui donne de la hauteur
+       de part et d'autre du texte, ce qui ne se voit pas et se touche. */
+    #top-navbar .title { min-height: 44px; display: inline-flex; align-items: center; }
+    .role-badge { min-height: 44px; min-width: 44px; justify-content: center; }
+    .top-nav-tab { min-height: 44px; }
+    .score-display { min-height: 44px; }
+    .tiroir-onglet { min-height: 44px; }
+    /* Sur tablette, les deux portes du professeur se replient sur leur icône
+       (règle des écrans moyens) : 40 px de large pour 44 de haut, c'est une
+       fente. On leur rend leur carré. */
+    .top-nav-tab { min-width: 44px; }
+    /* LES COMMANDES DE L'ATELIER, mesurées au même endroit : la bascule
+       Domaines / Chapitres à 28 px de haut, Clic / Arbre à 36, les quatre
+       boutons du parcours à 38 × 38, et la croix qui vide la recherche à
+       24 × 24 — la plus petite de l'écran, et celle qu'on vise le plus vite. */
+    .rang-btn, .btn-toggle { min-height: 44px; }
+    .toolbar-icon-btn { min-width: 44px; min-height: 44px; }
+    .rech-croix { min-width: 44px; min-height: 44px; }
+    /* LA PORTE D'ENTRÉE DE L'ÉLÈVE, mesurée sur un téléphone de 390 : deux
+       cibles trop petites, et ce sont les deux SEULES portes de secours —
+       « Je n'ai pas de billet », qui déplie la saisie du prénom, et « Je suis
+       le professeur ». Un enfant de onze ans qui n'arrive pas à ouvrir celle
+       qui le concerne reste devant un écran dont il ne sait rien faire. */
+    .portail-repli summary { min-height: 44px; display: flex; align-items: center; }
+    .portail-lien { min-height: 44px; }
+    /* Les commandes DES EXERCICES ont leur propre plancher, déjà écrit, déjà
+       pensé, et avec la liste d'exceptions qui va avec — voir modules.css,
+       « LE PLANCHER DES BOUTONS DE JEU ». En redoubler un ici donnerait deux
+       règles à tenir d'accord pour un seul chiffre. */
+    /* La barre du haut n'a plus 46 px de haut imposés : elle prend ce qu'il
+       faut. Sans cela, les 44 px demandés débordent d'une barre de 46 et les
+       boutons se rognent en silence. */
+    body.mobile-view #top-navbar { min-height: 52px; }
+}
 
 /* Sidebar - sélecteur de niveau */
 .sidebar-top-controls { padding: 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }

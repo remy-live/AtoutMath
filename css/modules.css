@@ -1163,6 +1163,33 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .reglage-nom { font-size: .82rem; font-weight: 700; }
 .reglage-note { font-size: .68rem; color: var(--text-muted); line-height: 1.25; text-align: center; }
 
+/* UN INTERRUPTEUR, PAS UNE CASE À COCHER. Une case dit « coché / décoché » —
+   deux états d'une case ; un interrupteur dit « allumé / éteint » — deux états
+   de la CHOSE, ce qui est la question posée. Le mot à côté (« Affichée » /
+   « Masquée ») porte l'état pour qui ne distingue pas les couleurs, et la
+   hauteur de 44 px en fait une cible tactile confortable — ce qui est bien le
+   moins pour l'interrupteur qui règle un problème de cibles tactiles. */
+.reglage-interrupteur {
+    display: flex; align-items: center; gap: 10px; align-self: flex-start;
+    min-height: 44px; padding: 6px 14px 6px 6px; border-radius: 999px;
+    border: 2px solid var(--border); background: var(--bg-app);
+    color: var(--text-main); font-family: inherit; font-size: .88rem; font-weight: 700;
+    cursor: pointer; transition: .15s;
+}
+.reglage-interrupteur:hover { border-color: var(--primary); }
+.reglage-interrupteur--actif { border-color: var(--primary); background: var(--tag-dom-bg); }
+.reglage-interrupteur-piste {
+    display: block; width: 46px; height: 28px; border-radius: 999px;
+    background: var(--border); position: relative; flex-shrink: 0; transition: .18s;
+}
+.reglage-interrupteur-piste > span {
+    position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35);
+    transition: .18s;
+}
+.reglage-interrupteur--actif .reglage-interrupteur-piste { background: var(--primary); }
+.reglage-interrupteur--actif .reglage-interrupteur-piste > span { left: 21px; }
+
 /* --- La marque d'un point ------------------------------------
    Les trois écritures sont dans le SVG ; `html[data-point]` en montre une.
    Changer d'habitude ne redessine donc aucune figure — et une figure déjà à
@@ -2242,9 +2269,26 @@ html[data-point="plus"] .pt-croix { display: none; }
        `btn-carre` remplace la devinette par une DÉCLARATION : le jeu dit
        lui-même « ce bouton est carré, sa hauteur est ma mise en page ». Le
        jour où un jeu ajoute une pastille ronde, il le dira aussi, et la règle
-       n'aura pas à changer. */
+       n'aura pas à changer.
+
+       LE PLANCHER EST PASSÉ DE 40 À 44 PX, ET C'EST MESURÉ. 44 est la cible
+       tactile que donnent Apple et Google — la largeur moyenne de la pulpe
+       d'un index. Un exercice sur six du catalogue (29 jeux) a été ouvert sur
+       un téléphone de 390 × 844 avant et après : sous 44 px, on passe de 2 à 0
+       cibles trop petites dans la plupart des jeux, le débordement horizontal
+       reste à 0 px partout, et les captures de la Balance, d'Angle Master, de
+       « Compter sur un solide » et du Mastermind — celui-là même qui avait été
+       déformé la première fois — ne montrent aucun bouton étiré. Les seuls
+       boutons plus hauts que larges après coup (38 × 44) sont des touches de
+       pavé numérique et deux loupes : la forme d'une touche, pas un ovale.
+
+       CE QUI RESTE SOUS 44 PX EST VOULU : les CASES DE GRILLE, exclues par la
+       liste ci-dessus — 102 cases de 27 px dans la table de Pythagore, 129 de
+       19 px dans les mots croisés, 64 de 41 px dans l'Othello. À 44 px, une
+       grille de dix colonnes ferait 440 px de large sur un écran qui en a 390 :
+       on casserait le jeu pour élargir un bouton. */
     #game-layer button:not(.game-icon-btn):not(.btn-carre):not([class*="case"]):not([class*="cell"]):not([class*="cellule"]):not([class*="touche"]) {
-        min-height: 40px;
+        min-height: 44px;
     }
 }
 /* Sur un téléphone tenu debout, les commandes ne tiennent plus à côté du

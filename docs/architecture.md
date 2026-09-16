@@ -650,6 +650,16 @@ si bien qu'ils se lisent et se fusionnent ensemble (`core/bancEssai.js`) :
 | **Banc d'essai** (palette d'auteur → ✓) | un humain, sur son appareil | ça marche, les indices, le robot, la fiche, la mise en page, le classement |
 | **Balayage** (`npm run balayage`) | la machine, sans surveillance | se lance sans erreur, dessine quelque chose, ne défile pas en largeur |
 
+LA PALETTE D'AUTEUR EST ÉTEINTE PAR DÉFAUT (`core/outilsAuteur.js`). Elle
+s'allume dans les réglages d'affichage — la roue crantée de la barre du haut,
+bloc « Palette d'outils d'auteur », visible du seul professeur — ou par
+l'adresse, `?auteur=1`, qui est la seule entrée depuis un téléphone où l'on
+n'ouvre pas de console. Le choix se retient par navigateur. Elle se montrait
+auparavant à tout professeur identifié : mesuré sur une tablette, elle
+fournissait à elle seule les dix plus petites cibles tactiles de l'écran, et
+proposait « vider la sauvegarde locale » à quelqu'un qui découvrait le
+logiciel.
+
 LA FICHE PART TOUTE VERTE, et l'on ne signale que les exceptions. Demander six
 verdicts sur cent exercices, c'est six cents gestes : la passe s'arrête au
 dixième. Or dans l'immense majorité des cas il n'y a rien à dire — et « rien à

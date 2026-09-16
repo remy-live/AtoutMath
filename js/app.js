@@ -41,6 +41,7 @@ import { initSyncUI } from './ui/syncUI.js';
 import { initSeanceDistante } from './core/seanceDistante.js';
 import { initSeanceDistanteUI } from './ui/seanceDistanteUI.js';
 import { modeLibre, estRattache } from './core/portail.js';
+import { outilsAuteur, reglerOutilsAuteur, appliquerOutilsAuteur } from './core/outilsAuteur.js';
 import { initPortail, majPortail } from './ui/portailUI.js';
 import { initPosteEleve } from './ui/posteEleve.js';
 import { initParcoursServeur, ecouterLesAssignations } from './core/parcoursServeur.js';
@@ -150,6 +151,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     // La croix et la zone sensible de l'aperçu : une seule fois pour la page,
     // et non une fois par rangée du catalogue — il y en a cent soixante-douze.
     initApercuTiroir();
+    // LA PALETTE D'AUTEUR EST ÉTEINTE TANT QU'ON NE L'A PAS DEMANDÉE. Posé ici,
+    // avant tout affichage : la classe doit être sur le corps du document au
+    // premier peinturage, sinon la palette apparaît puis disparaît.
+    appliquerOutilsAuteur();
     // Et les huit fenêtres deviennent de vraies fenêtres : rôle, Échap, piège
     // au clavier, retour du focus. Sans toucher à aucun de leurs appelants.
     initFenetres();
@@ -610,6 +615,35 @@ function apercuMarque(forme) {
                  stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none">${trace}</svg>`;
 }
 
+/**
+ * L'INTERRUPTEUR DE LA PALETTE D'AUTEUR — voir js/core/outilsAuteur.js.
+ *
+ * Il n'est proposé QU'AU PROFESSEUR : un élève n'a rien à faire d'une palette
+ * qui vide la sauvegarde locale, et lui montrer l'interrupteur, c'est encore
+ * lui montrer la palette.
+ *
+ * Le libellé dit ce qu'on obtient, pas ce qu'on active : « Palette d'outils
+ * d'auteur » est un nom d'objet, « pour préparer et tester les exercices » est
+ * ce à quoi elle sert — et « Elle n'est pas destinée à un usage en classe » est
+ * la seule phrase qui compte pour quelqu'un qui hésite.
+ */
+function blocOutilsAuteur() {
+    if (!state.isTeacherMode) return '';
+    const actif = outilsAuteur();
+    return `
+            <div class="reglage-bloc">
+                <div class="reglage-titre">Palette d'outils d'auteur</div>
+                <p class="reglage-aide">La petite palette noire flottante : passer une question,
+                   montrer la solution, ouvrir l'Atelier, essayer les derniers exercices.
+                   Elle sert à préparer et à tester ; elle n'est pas faite pour une heure de cours.</p>
+                <button type="button" class="reglage-interrupteur${actif ? ' reglage-interrupteur--actif' : ''}"
+                        data-outils-auteur aria-pressed="${actif}">
+                    <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>
+                    <span class="reglage-interrupteur-mot">${actif ? 'Affichée' : 'Masquée'}</span>
+                </button>
+            </div>`;
+}
+
 function initReglagesAffichage() {
     const modal = document.getElementById('config-modal');
     const contenu = document.getElementById('config-content');
@@ -631,7 +665,7 @@ function initReglagesAffichage() {
                             <span class="reglage-note">${m.aide}</span>
                         </button>`).join('')}
                 </div>
-            </div>`;
+            </div>` + blocOutilsAuteur();
 
         contenu.querySelectorAll('[data-point]').forEach(btn => {
             btn.onclick = async () => {
@@ -639,6 +673,11 @@ function initReglagesAffichage() {
                 dessiner();
             };
         });
+        const interrupteur = contenu.querySelector('[data-outils-auteur]');
+        if (interrupteur) interrupteur.onclick = () => {
+            reglerOutilsAuteur(!outilsAuteur());
+            dessiner();
+        };
     };
 
     ouvrir.onclick = () => { dessiner(); modal.style.display = 'flex'; };
