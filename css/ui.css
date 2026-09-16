@@ -1298,9 +1298,17 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .card:hover::before { opacity: 1; }
 
 /* Modals & Glassmorphism Buttons */
-.glass-panel { background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(255, 255, 255, 0.4); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border-radius: 16px; }
-.glass-btn { border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.9); border-radius: 8px; font-weight: 600; transition: 0.2s; }
-.glass-btn:hover { background: #fff; box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+/* LES FENETRES SUIVENT LE THEME, et jusqu'ici elles ne le suivaient pas.
+   Le fond etait ecrit en dur — rgba(255,255,255,.85) — pendant que le texte,
+   lui, prend `--text-main` et passe donc au blanc en theme sombre. Mesure
+   faite sur les NEUF fenetres du logiciel (tools/tmp/contrasteSombre.mjs) :
+   fond rgb(219,220,223), texte rgb(248,250,252), rapport de contraste 1,31.
+   Le seuil AA est 4,5 : on lisait un rectangle vide.
+   `--bg-verre` existait deja et est redefini dans les cinq themes (base.css) —
+   il ne manquait que de s'en servir. */
+.glass-panel { background: var(--bg-verre); border: 1px solid var(--border); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border-radius: 16px; color: var(--text-main); }
+.glass-btn { border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main); border-radius: 8px; font-weight: 600; transition: 0.2s; }
+.glass-btn:hover { background: var(--bg-hover); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
 .glass-btn.primary { background: var(--primary); color: white; border-color: transparent; }
 .glass-btn.primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); }
 

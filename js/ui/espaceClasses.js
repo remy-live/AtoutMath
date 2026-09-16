@@ -1888,14 +1888,32 @@ const BATTEMENT_MS = 10000;
 function lancerLeBattement(redessiner) {
     arreterLeBattement();
     battement = setInterval(async () => {
-        if (vue.ou !== 'classe' || vue.onglet !== 'direct' || vue.occupe) return;
+        // LE MUR BAT AUSSI, et il ne battait pas.
+        //
+        // La ligne d'appel dit « le direct ET le mur battent : ce sont les deux
+        // écrans qui changent tout seuls sous les yeux du professeur » — et ce
+        // garde-ci ne laissait passer que le direct. Le minuteur démarrait donc
+        // sur le mur et n'y faisait rien. Mesuré : les six tuiles relevées à
+        // t = 0 et à t = 35 s étaient identiques au caractère près, alors qu'un
+        // élève avait répondu entre les deux, et « rien depuis 14 min » restait
+        // « 14 min » indéfiniment — l'heure d'affichage était gelée avec.
+        //
+        // C'est le seul écran trié par urgence : figé, il désigne le mauvais
+        // élève, ce qui est pire que ne rien désigner du tout.
+        const surUnEcranVivant = vue.onglet === 'direct' || vue.onglet === 'mur';
+        if (vue.ou !== 'classe' || !surUnEcranVivant || vue.occupe) return;
         const cid = vue.classe && vue.classe.id;
         if (!cid) return;
         const d = await leDirect(cid);
         if (d.erreur) return;          // une panne passagère ne vide pas l'écran
         vue.direct = d;
         const zone = document.querySelector('#ec-racine .ec-corps');
-        if (zone) zone.innerHTML = directHtml();
+        // ET L'ON REDESSINE L'ÉCRAN QU'ON REGARDE. En levant le garde sans
+        // toucher à cette ligne, le mur se serait fait remplacer par le direct
+        // au bout de dix secondes : le professeur aurait vu son écran changer
+        // tout seul sous ses yeux, ce qui est un défaut plus grave que celui
+        // qu'on corrige.
+        if (zone) zone.innerHTML = vue.onglet === 'mur' ? murHtml() : directHtml();
     }, BATTEMENT_MS);
 }
 

@@ -231,7 +231,7 @@
    rester atteignable pour changer d'exercice. */
 .modal-overlay--sur-fiche { z-index: 1000001; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; }
-.modal-title { margin: 0; font-size: 1.5rem; color: var(--primary); }
+.modal-title { margin: 0; font-size: 1.5rem; color: var(--primary-texte, var(--primary)); }
 .modal-title--neutral { color: var(--text-main); }
 .modal-title--center { text-align: center; }
 .modal-title-bordered { margin: 0; padding-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.1); color: var(--text-main); }

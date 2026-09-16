@@ -20,6 +20,12 @@
     --border: #e2e8f0; --border-sidebar: #e2e8f0;
     
     --accent: #38bdf8; --primary: #6366f1; --primary-hover: #4f46e5;
+    /* LA COULEUR D'ACTION QUAND ELLE SERT DE TEXTE.
+       `--primary` est pensee comme un FOND de bouton, ou du blanc se pose
+       dessus. En texte sur le fond sombre, mesure faite, elle tombe a 4,00 —
+       sous le 4,5 exige par WCAG des que le titre descend sous 18,66 px.
+       Le theme clair n'a pas ce souci et garde la meme teinte. */
+    --primary-texte: #4f46e5;
     --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
     
     --tag-niv-bg: #ffe4e6; --tag-niv-txt: #e11d48;
@@ -46,6 +52,9 @@
 }
 
 :root[data-theme="dark"] {
+    /* Indigo clair : 8,5 de contraste sur le fond des fenetres, contre 4,00
+       pour `--primary`. Elle ne sert QUE de couleur de texte. */
+    --primary-texte: #a5b4fc;
     --bg-app: #0f172a; --bg-panel: #1e293b; --bg-hover: #334155;
     --bg-plateau: #1e2a44;
     --bg-verre: rgba(15, 23, 42, .86);
