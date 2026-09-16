@@ -997,6 +997,12 @@ function initDebugToolbar() {
         }
         state.isTeacherMode = !state.isTeacherMode;
         syncRole();
+        // ON ANNONCE LE CHANGEMENT DE RÔLE. L'écran de l'élève — consigne,
+        // verrou, mots du professeur — ne doit rien montrer en mode
+        // professeur ; sans cette annonce, il ne l'apprendrait qu'à la
+        // prochaine réponse du serveur, soit jusqu'à cinq minutes plus tard.
+        document.dispatchEvent(new CustomEvent('role_change',
+            { detail: { professeur: state.isTeacherMode } }));
         // Le professeur retrouve son catalogue ; l'élève qui revient à sa place
         // le reperd, et retrouve la porte s'il n'a rien à faire.
         majPortail();

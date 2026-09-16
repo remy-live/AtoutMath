@@ -162,6 +162,48 @@ export function motsNonLus() { return messagesNonLus().filter(m => genreDe(m) ==
 export function indicesNonLus() { return messagesNonLus().filter(m => genreDe(m) === 'indice'); }
 
 /**
+ * CE QUE VOIT L'ÉLÈVE — ET LE PROFESSEUR NE VOIT RIEN DE TOUT CELA.
+ *
+ * Rémy : « je teste chez moi Safari pour l'élève et Chrome pour moi ; quand
+ * j'envoie un mot genre Coucou, il apparaît en popup sur mon espace aussi ».
+ *
+ * SON NAVIGATEUR EST LES DEUX À LA FOIS, ET C'EST NORMAL. Une machine qui a
+ * servi à essayer le côté élève garde son rattachement — c'est voulu, c'est
+ * ce qui permet de continuer quand le réseau tombe. Elle continue donc de
+ * recevoir la consigne, le verrou et les mots de la classe, même pendant que
+ * son propriétaire est en mode professeur.
+ *
+ * ET RENVOYER À QUELQU'UN LE MOT QU'IL VIENT D'ÉCRIRE N'EST PAS QU'UNE GÊNE :
+ * la fenêtre ne se ferme que par « J'ai lu », et ce bouton POSE L'ACCUSÉ DE
+ * LECTURE. Le professeur, en se débarrassant de sa propre fenêtre, cochait
+ * lui-même le mot comme lu — sa console lui disait alors qu'un élève l'avait
+ * lu, ce qui était faux, et c'est sur cette coche qu'il décide de redire ou
+ * non la consigne à voix haute.
+ *
+ * LA RÈGLE EST DONC ÉCRITE ICI, EN UN SEUL ENDROIT, et non répartie dans les
+ * cinq affichages de l'écran. `rendre()` en faisait cinq appels indépendants ;
+ * un sixième ajouté demain aurait réintroduit le défaut sans que rien ne le
+ * dise. Ici, il n'y a qu'une porte, et elle est fermée d'un côté.
+ *
+ * ON NE JETTE RIEN, ON N'ACQUITTE RIEN : le professeur qui repasse côté élève
+ * — pour montrer quelque chose à la classe — retrouve tout intact.
+ *
+ * @param {object} [opts] { professeur: bool }
+ */
+export function ceQueVoitLEleve(opts = {}) {
+    if (opts.professeur) {
+        return { consigne: '', verrouille: false, ecarte: false, mots: [], indices: [] };
+    }
+    return {
+        consigne: consigneDuProf(),
+        verrouille: estVerrouille(),
+        ecarte: estEcarte(),
+        mots: motsNonLus(),
+        indices: indicesNonLus()
+    };
+}
+
+/**
  * L'EXERCICE RETIRÉ DU PARCOURS. Le geste du professeur qui a constaté qu'un
  * exercice plante : il disparaît, comme s'il n'y avait jamais été. C'est plus
  * net que de le laisser en place grisé — un élève de sixième essaierait quand
