@@ -32,6 +32,7 @@ import { initProfileUI, ouvrirCarnet } from './ui/profileUI.js';
 import { initStudentCodeUI, applyCode } from './ui/studentCodeUI.js';
 import { initGameFeedbackUI } from './ui/gameFeedbackUI.js';
 import { initApercuTiroir } from './ui/apercuTiroir.js';
+import { initFenetres } from './ui/fenetre.js';
 import { getActiveProfile } from './core/profile.js';
 import { initGamificationEngine } from './core/gamification.js';
 import { initGamificationUI } from './ui/gamificationUI.js';
@@ -149,6 +150,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // La croix et la zone sensible de l'aperçu : une seule fois pour la page,
     // et non une fois par rangée du catalogue — il y en a cent soixante-douze.
     initApercuTiroir();
+    // Et les huit fenêtres deviennent de vraies fenêtres : rôle, Échap, piège
+    // au clavier, retour du focus. Sans toucher à aucun de leurs appelants.
+    initFenetres();
     refreshViews();
     setSidebarMode('drill');
     // SANS MODE LIBRE, ON N'OUVRE PAS SUR LE CATALOGUE. Il serait masqué dans
