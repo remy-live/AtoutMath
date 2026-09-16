@@ -30,6 +30,7 @@ import {
 } from '../core/explorateurParcours.js';
 import { initTiroirOnglets, montrerPanneau } from './tiroirParcours.js';
 import { chapitresDe } from '../core/chapitres.js';
+import { nomPropose } from '../core/nomDeParcours.js';
 import {
     renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide, direLesReglages
 } from '../games/configUI.js';
@@ -1702,6 +1703,31 @@ export function autoSavePath() {
     if (!state.currentPath.steps.length && !state.currentPathId) {
         direLEtat(null);
         return;
+    }
+    // ON LUI DONNE UN NOM QUI DIT CE QU'IL CONTIENT, tant que personne ne l'a
+    // nommé. « Nouveau parcours » décrit l'ÉTAT — il vient d'être créé — et non
+    // le contenu ; l'état change à la seconde qui suit, le contenu reste. Deux
+    // essais dans la même semaine donnaient deux lignes strictement identiques
+    // dans la bibliothèque, sous-titre compris.
+    //
+    // APRÈS, ET NON AVANT : au moment où l'on crée un parcours, on ne sait pas
+    // encore ce qu'on va y mettre. Le professeur corrige s'il veut, le champ
+    // est juste au-dessus — et un nom écrit à la main n'est jamais écrasé.
+    const propose = nomPropose(state.currentPath, (id) => {
+        const exo = getExerciseById(id);
+        if (!exo) return [];
+        const chaps = chapitresDe(exo).map(c => c.nom).filter(Boolean);
+        // À DÉFAUT DE CHAPITRE, LE DOMAINE. Il vit dans `tags.chemin[0]` —
+        // « Numérique », « Géométrique » —, et non dans un champ `domain`, qui
+        // n'existe pas : mesuré sur un exercice du catalogue.
+        if (chaps.length) return chaps;
+        const chemin = (exo.tags && exo.tags.chemin) || [];
+        return chemin.length ? [chemin[0]] : [];
+    });
+    if (propose) {
+        state.currentPath.name = propose;
+        const champ = document.getElementById('path-name-input');
+        if (champ && champ.value !== propose) champ.value = propose;
     }
     const snapshot = JSON.parse(JSON.stringify(state.currentPath));
     if (!state.currentPathId) {
