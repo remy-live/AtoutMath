@@ -343,8 +343,22 @@ test('LE RÔLE SE LIT EN HAUT, ET SE RETOURNE D\'UN CLIC', () => {
     assert.match(src, /const basculerRole = async \(\) =>/);
     assert.match(src, /if \(btnRole\) btnRole\.onclick = basculerRole/);
     assert.match(src, /if \(btnRoleDbg\) btnRoleDbg\.onclick = basculerRole/);
-    // Et le mot change avec le rôle.
-    assert.match(src, /nomRole\.textContent = prof \? 'Prof' : 'Élève'/);
+    // ET LE MOT CHANGE AVEC LE RÔLE — mais côté élève, il dit maintenant SON
+    // PRÉNOM, et non plus « Élève ».
+    //
+    // « Élève » ne répond pas à la question que se pose un enfant devant
+    // l'ordinateur de la salle : « est-ce bien MOI ? ». Son prénom venait
+    // pourtant du serveur à chaque connexion — `/login` le rend depuis
+    // toujours — et le client le jetait ; la seule ligne qui l'affichait,
+    // « Tu travailles comme … », vit sur l'écran d'accueil du catalogue,
+    // c'est-à-dire celui où l'élève n'est jamais envoyé. La pastille, elle, est
+    // sur tous les écrans, exercice compris.
+    assert.match(src, /nomRole\.textContent = prof \? 'Prof' : nomDeLEleve\(\)/);
+    // Le repli reste « Élève » : un poste sans rattachement n'a pas de prénom
+    // à donner, et une pastille vide serait pire que le mot générique.
+    assert.match(src, /return prenom \? prenom\.trim\(\)[\s\S]{0,40}: 'Élève';/);
+    // Et elle se remet à jour quand le prénom arrive, c'est-à-dire APRÈS elle.
+    assert.match(src, /addEventListener\('profiles_updated', syncRole\)/);
 
     const css = fsLire('../css/layout.css');
     assert.match(css, /\.role-badge--prof/, 'la pastille ne change pas d\'aspect');

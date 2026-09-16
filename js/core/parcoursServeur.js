@@ -282,7 +282,11 @@ export async function recevoirLesAssignations(assignations) {
     // sur cet appareil — le cas de l'élève qui travaille chez lui.
     const monLien = {
         classeId, eleveId,
-        nom: profil.name || '', classeNom: distant.className || '', le: Date.now()
+        // LE PRÉNOM DU SERVEUR PASSE AVANT CELUI DU PROFIL LOCAL. Le profil
+        // s'appelle « Mon profil » tant que personne ne l'a renommé — et sur
+        // l'ordinateur de la salle, personne ne le renomme jamais.
+        nom: distant.firstName || profil.name || '',
+        classeNom: distant.className || '', le: Date.now()
     };
     if (JSON.stringify(liens[profil.id] || null) !== JSON.stringify(monLien)) {
         await poserLeLien(monLien);

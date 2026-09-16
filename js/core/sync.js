@@ -228,9 +228,23 @@ export async function loginEleve({ apiUrl, login, code }) {
         token: data.token,
         classCode: data.classCode,
         className: data.className,
+        // LE PRÉNOM VENAIT DÉJÀ DU SERVEUR, ET ON LE JETAIT. `/login` le rend
+        // depuis toujours ; personne ne le rangeait. L'élève voyait donc
+        // « Tu travailles comme Mon profil » — le nom par défaut du profil
+        // local — et rien, nulle part, ne lui confirmait qu'il travaillait bien
+        // sous son nom. Sur un poste partagé, c'est la seule question qui
+        // compte avant de commencer.
+        firstName: data.firstName || '',
         login: String(login).trim(),
         lastSyncAt: null
     });
+    // ET ON RENOMME LE PROFIL LOCAL. Le prénom rangé dans `remote` ne se voit
+    // qu'à l'endroit qui pense à le lire ; le nom du profil, lui, est déjà
+    // affiché partout où l'application dit « qui travaille ».
+    if (data.firstName) {
+        const { renameProfile } = await import('./profile.js');
+        await renameProfile(getActiveProfileId(), data.firstName);
+    }
     if (data.session) appliquerEtat(data.session);
     await syncNow({ silent: true });
     // LE RATTACHEMENT RÉVEILLE LES BOUCLES. Sans cette ligne, l'élève qui

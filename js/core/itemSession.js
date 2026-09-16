@@ -345,15 +345,51 @@ export class ItemSession {
                 // l'explication — c'est le devoir formatif que Rémy décrit :
                 // « si c'est en mode interrogation il faut une explication de
                 // la part du robot ».
-                const sec = this.policy.correction === 'reponse'
-                    ? `La bonne réponse était : ${this.item.answer}`
-                    : (verdict.misconception || this.item.explanation);
+                //
+                // ON NE DONNE PAS LA RÉPONSE TANT QU'IL LUI RESTE UN ESSAI.
+                //
+                // C'est le défaut que cet audit a trouvé, et il annulait à lui
+                // seul tout le dispositif du second essai : au PREMIER échec,
+                // l'élève recevait `item.explanation` — qui porte le calcul —
+                // ou « La bonne réponse était : … ». Le deuxième essai n'était
+                // plus un essai, c'était une recopie ; et le bouton « indice »,
+                // juste à côté, n'avait plus rien à offrir.
+                //
+                // Tant qu'il reste un essai, on lui rend ce qui l'aide à
+                // CHERCHER, dans cet ordre :
+                //   · le diagnostic de son erreur, quand le correcteur en a
+                //     posé un — « tu as oublié la retenue » nomme la faute sans
+                //     livrer le résultat ;
+                //   · à défaut, l'indice suivant, celui-là même qu'il aurait
+                //     obtenu en cliquant sur « Un indice » ;
+                //   · à défaut de tout, la seule phrase honnête : ce n'est pas
+                //     ça, recommence.
+                //
+                // L'explication complète reste pour le moment où elle sert
+                // vraiment : quand il n'a plus d'essai et repart avec sa
+                // question — c'est `exhausted`, calculé quelques lignes plus
+                // haut.
+                const encore = !exhausted && this.attemptsLeft > 0;
+                const prochainIndice = (encore && this.policy.hints && this.item)
+                    ? hintAt(this.item, this.hintIndex) : null;
+                let sec;
+                if (!encore) {
+                    sec = this.policy.correction === 'reponse'
+                        ? `La bonne réponse était : ${this.item.answer}`
+                        : (verdict.misconception || this.item.explanation);
+                } else {
+                    sec = verdict.misconception || prochainIndice
+                        || 'Ce n\'est pas ça. Il te reste un essai.';
+                }
                 dismissed = announce({
                     kind: 'error',
                     isError: true,
                     msg: sec,
-                    misconception: (this.policy.correction !== 'reponse' && verdict.misconception)
-                        ? this.item.explanation : null
+                    // Le second paragraphe — l'explication — ne se joint qu'une
+                    // fois les essais épuisés, pour la même raison.
+                    misconception: (!encore && this.policy.correction !== 'reponse'
+                        && verdict.misconception) ? this.item.explanation : null,
+                    essaisRestants: encore ? this.attemptsLeft : 0
                 });
             }
         }

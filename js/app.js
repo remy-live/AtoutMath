@@ -32,6 +32,7 @@ import { initProfileUI, ouvrirCarnet } from './ui/profileUI.js';
 import { initStudentCodeUI, applyCode } from './ui/studentCodeUI.js';
 import { initGameFeedbackUI } from './ui/gameFeedbackUI.js';
 import { initApercuTiroir } from './ui/apercuTiroir.js';
+import { getActiveProfile } from './core/profile.js';
 import { initGamificationEngine } from './core/gamification.js';
 import { initGamificationUI } from './ui/gamificationUI.js';
 import { initSync } from './core/sync.js';
@@ -966,6 +967,21 @@ function initDebugToolbar() {
     // sert pendant les passes de test, où l'on bascule vingt fois — mais tous
     // deux appellent la même bascule et se resynchronisent ensemble : deux
     // commandes pour un état, c'est deux occasions de le désaccorder.
+    /**
+     * Le prénom de l'élève rattaché, ou « Élève » à défaut.
+     *
+     * On lit le rattachement et non le nom du profil : le profil s'appelle
+     * « Mon profil » tant que personne ne l'a renommé, et sur l'ordinateur de
+     * la salle personne ne le renomme jamais.
+     */
+    const nomDeLEleve = () => {
+        try {
+            const p = getActiveProfile();
+            const prenom = (p && p.remote && p.remote.firstName) || '';
+            return prenom ? prenom.trim().split(/\s+/).pop() : 'Élève';
+        } catch (e) { return 'Élève'; }
+    };
+
     const btnRoleDbg = document.getElementById('db-toggle-role');
     const btnRole = document.getElementById('btn-role');
     const nomRole = document.getElementById('role-badge-nom');
@@ -982,7 +998,19 @@ function initDebugToolbar() {
                 ? 'Espace professeur — cliquer pour revenir à l\'espace élève'
                 : 'Espace élève — cliquer pour passer à l\'espace professeur');
         }
-        if (nomRole) nomRole.textContent = prof ? 'Prof' : 'Élève';
+        // LA PASTILLE DIT QUI TRAVAILLE, PAS SEULEMENT QUEL RÔLE.
+        //
+        // « Élève » ne répond pas à la question que se pose un enfant devant
+        // l'ordinateur de la salle : « est-ce bien MOI ? ». Son prénom
+        // n'apparaissait nulle part — mesuré : il venait pourtant du serveur à
+        // chaque connexion, et le client le jetait. La seule ligne qui le
+        // montrait, « Tu travailles comme … », vit sur l'écran d'accueil du
+        // catalogue, c'est-à-dire celui où l'élève n'est jamais envoyé.
+        //
+        // La pastille, elle, est sur TOUS les écrans, y compris pendant
+        // l'exercice. C'est le bon endroit — et il n'y a rien à ajouter à la
+        // page pour l'occuper.
+        if (nomRole) nomRole.textContent = prof ? 'Prof' : nomDeLEleve();
     };
     // ON NE PASSE PROFESSEUR QU'EN MONTRANT PATTE BLANCHE.
     //
@@ -1015,6 +1043,11 @@ function initDebugToolbar() {
         refreshViews();
     };
     syncRole();
+    // LE PRÉNOM ARRIVE APRÈS LA PASTILLE. L'élève entre, le serveur rend son
+    // nom, `renameProfile` et `attachRemote` annoncent tous deux
+    // `profiles_updated` — sans cette écoute, la pastille garderait « Élève »
+    // jusqu'au prochain rechargement, c'est-à-dire pendant toute l'heure.
+    document.addEventListener('profiles_updated', syncRole);
     if (btnRoleDbg) btnRoleDbg.onclick = basculerRole;
     if (btnRole) btnRole.onclick = basculerRole;
 
