@@ -15,22 +15,53 @@
        lui, passait au blanc : on lisait un bandeau vide. */
     --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #ffffff; --bg-sidebar-hover: #f1f5f9;
-    --text-main: #0f172a; --text-muted: #64748b; 
-    --text-sidebar: #0f172a; --text-sidebar-muted: #64748b;
+    /* LE GRIS DE SECOND PLAN, RELEVÉ D'UN CRAN. Mesuré : #64748b donnait 4,34
+       sur le gris de survol — sous les 4,5 exigés. Le fil d'Ariane, l'état
+       « Brouillon » d'un parcours et le message « Ajoutez des exercices… »
+       étaient dans ce cas, dans les cinq thèmes. Un cran plus foncé (plus
+       clair en thème sombre) suffit, et le texte reste manifestement second. */
+    --text-main: #0f172a; --text-muted: #5b6779; 
+    --text-sidebar: #0f172a; --text-sidebar-muted: #5b6779;
     --border: #e2e8f0; --border-sidebar: #e2e8f0;
     
-    --accent: #38bdf8; --primary: #6366f1; --primary-hover: #4f46e5;
+    /* LA COULEUR D'ACTION, D'UN CRAN PLUS SOUTENUE. Mesuré : du blanc sur
+       #6366f1 donne 4,47 — sous les 4,5 exigés. Or c'est la couleur de TOUS
+       les boutons pleins du logiciel : « Proposer », « Valider », « Ouvrir le
+       parcours », la pastille du compte, les onglets actifs du profil. Un
+       bouton dont on lit mal le verbe est un bouton qu'on n'ose pas appuyer.
+       #4f46e5 remonte à 6,29, et c'est déjà la teinte du survol : l'écart de
+       l'un à l'autre se reporte donc d'un cran. */
+    --accent: #38bdf8; --primary: #4f46e5; --primary-hover: #4338ca;
     /* LA COULEUR D'ACTION QUAND ELLE SERT DE TEXTE.
-       `--primary` est pensee comme un FOND de bouton, ou du blanc se pose
-       dessus. En texte sur le fond sombre, mesure faite, elle tombe a 4,00 —
-       sous le 4,5 exige par WCAG des que le titre descend sous 18,66 px.
-       Le theme clair n'a pas ce souci et garde la meme teinte. */
+       `--primary` est pensée comme un FOND de bouton, où du blanc se pose
+       dessus. En TEXTE, elle ne passe nulle part : mesuré sur l'écran
+       d'accueil du professeur, `#6366f1` donne 4,27 sur le fond de
+       l'application, 4,47 sur un panneau blanc, 3,27 sur un panneau sombre —
+       et la règle AA en demande 4,5 dès que le texte descend sous 18,66 px en
+       gras. Onze textes de la barre du haut et de l'atelier étaient dans ce
+       cas, dans les cinq thèmes.
+       CHAQUE THÈME A DONC SA VERSION TEXTE, de la même teinte et plus
+       contrastée. On garde deux jetons plutôt qu'un seul assombri, parce que
+       les deux usages n'ont pas la même contrainte : un FOND porte du blanc et
+       veut rester vif, un TEXTE se pose sur le fond et doit s'en détacher.
+       Et le thème sombre les veut carrément opposés — fond vif, texte pâle. */
     --primary-texte: #4f46e5;
     --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
+    /* LES COULEURS DE SENS, QUAND ELLES SERVENT DE TEXTE. Même partage que
+       pour l'indigo, et pour la même raison mesurée : le vert de réussite
+       donne 2,54 sur un panneau blanc, le bleu d'accent 2,14, l'orange
+       d'avertissement 2,15. Ce sont des couleurs pensées pour un FOND ou une
+       pastille, où elles sont éclatantes et justes ; en petit texte sur du
+       blanc, elles ne se lisent pas. Les versions « texte » gardent la teinte
+       et descendent jusqu'à passer. */
+    --success-texte: #047857; --accent-texte: #0369a1;
+    --warning-texte: #b45309; --danger-texte: #be123c;
     
-    --tag-niv-bg: #ffe4e6; --tag-niv-txt: #e11d48;
-    --tag-dom-bg: #dbeafe; --tag-dom-txt: #2563eb;
-    --tag-sous-bg: #f3e8ff; --tag-sous-txt: #9333ea;
+    /* Les étiquettes : mesuré, le rose du niveau donnait 3,91 sur son fond et
+       le bleu du domaine 4,24. Un cran plus foncé chacun. */
+    --tag-niv-bg: #ffe4e6; --tag-niv-txt: #be123c;
+    --tag-dom-bg: #dbeafe; --tag-dom-txt: #1d4ed8;
+    --tag-sous-bg: #f3e8ff; --tag-sous-txt: #7e22ce;
     
     --sidebar-width: 320px;
     /* La barre basse intègre la zone sûre d'iOS (encoche basse / indicateur
@@ -59,8 +90,13 @@
     --bg-plateau: #1e2a44;
     --bg-verre: rgba(15, 23, 42, .86);
     --bg-sidebar: #1e293b; --bg-sidebar-hover: #334155;
-    --text-main: #f8fafc; --text-muted: #94a3b8; 
-    --text-sidebar: #f8fafc; --text-sidebar-muted: #94a3b8;
+    /* En thème sombre, la version « texte » est PLUS CLAIRE que la couleur de
+       fond, et non plus foncée : c'est le même besoin — se détacher du fond —
+       et il va dans l'autre sens. */
+    --success-texte: #6ee7b7; --accent-texte: #7dd3fc;
+    --warning-texte: #fcd34d; --danger-texte: #fca5a5;
+    --text-main: #f8fafc; --text-muted: #b0bed2; 
+    --text-sidebar: #f8fafc; --text-sidebar-muted: #b0bed2;
     --border: #334155; --border-sidebar: #334155;
     
     --tag-niv-bg: #4c1d95; --tag-niv-txt: #e9d5ff;
@@ -76,12 +112,17 @@
     --bg-app: #e0f2fe; --bg-panel: #f0f9ff; --bg-hover: #bae6fd;
     --bg-plateau: #ffffff; --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #f0f9ff; --bg-sidebar-hover: #bae6fd;
-    --text-main: #0c4a6e; --text-muted: #0369a1; 
-    --text-sidebar: #0c4a6e; --text-sidebar-muted: #0369a1;
+    --text-main: #0c4a6e; --text-muted: #075985; 
+    --text-sidebar: #0c4a6e; --text-sidebar-muted: #075985;
     --border: #7dd3fc; --border-sidebar: #7dd3fc;
     
-    --accent: #0284c7; --primary: #0284c7; --primary-hover: #0369a1;
+    /* Du blanc sur #0284c7 donne 4,1 : le fond descend d'un cran, comme
+       l'indigo du thème clair, et le texte d'un cran de plus. */
+    --accent: #0284c7; --primary: #0369a1; --primary-hover: #075985;
+    --primary-texte: #075985;
     --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
+    --success-texte: #047857; --accent-texte: #0369a1;
+    --warning-texte: #b45309; --danger-texte: #be123c;
     
     --tag-niv-bg: #bfdbfe; --tag-niv-txt: #1e3a8a;
     --tag-dom-bg: #fed7aa; --tag-dom-txt: #9a3412;
@@ -92,12 +133,16 @@
     --bg-app: #f0fdf4; --bg-panel: #f8fafc; --bg-hover: #dcfce7;
     --bg-plateau: #ffffff; --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #f8fafc; --bg-sidebar-hover: #dcfce7;
-    --text-main: #14532d; --text-muted: #15803d; 
-    --text-sidebar: #14532d; --text-sidebar-muted: #15803d;
+    --text-main: #14532d; --text-muted: #166534; 
+    --text-sidebar: #14532d; --text-sidebar-muted: #166534;
     --border: #86efac; --border-sidebar: #86efac;
     
-    --accent: #16a34a; --primary: #16a34a; --primary-hover: #15803d;
+    /* Du blanc sur #16a34a donne 3,3 — le pire des cinq thèmes. */
+    --accent: #16a34a; --primary: #15803d; --primary-hover: #166534;
+    --primary-texte: #166534;
     --danger: #ef4444; --success: #22c55e; --warning: #f59e0b;
+    --success-texte: #047857; --accent-texte: #0369a1;
+    --warning-texte: #b45309; --danger-texte: #be123c;
     
     --tag-niv-bg: #bbf7d0; --tag-niv-txt: #14532d;
     --tag-dom-bg: #fef08a; --tag-dom-txt: #713f12;
@@ -108,16 +153,48 @@
     --bg-app: #fffbeb; --bg-panel: #fff; --bg-hover: #fef3c7;
     --bg-plateau: #ffffff; --bg-verre: rgba(255, 255, 255, .8);
     --bg-sidebar: #fff; --bg-sidebar-hover: #fef3c7;
-    --text-main: #78350f; --text-muted: #b45309; 
-    --text-sidebar: #78350f; --text-sidebar-muted: #b45309;
+    --text-main: #78350f; --text-muted: #92400e; 
+    --text-sidebar: #78350f; --text-sidebar-muted: #92400e;
     --border: #fcd34d; --border-sidebar: #fcd34d;
     
-    --accent: #ea580c; --primary: #ea580c; --primary-hover: #c2410c;
+    /* Du blanc sur #ea580c donne 3,56. */
+    --accent: #ea580c; --primary: #c2410c; --primary-hover: #9a3412;
+    --primary-texte: #9a3412;
     --danger: #e11d48; --success: #10b981; --warning: #d97706;
+    --success-texte: #047857; --accent-texte: #0369a1;
+    --warning-texte: #92400e; --danger-texte: #be123c;
     
     --tag-niv-bg: #fde68a; --tag-niv-txt: #78350f;
     --tag-dom-bg: #fecdd3; --tag-dom-txt: #881337;
     --tag-sous-bg: #e9d5ff; --tag-sous-txt: #4c1d95;
+}
+
+/* --- QUAND ON DEMANDE MOINS DE MOUVEMENT ------------------------------------
+
+   `prefers-reduced-motion` est un réglage du système d'exploitation. Les gens
+   qui l'activent ne le font pas par goût : un mouvement qui se répète sans fin
+   peut donner la nausée, déclencher une migraine, et chez une petite part des
+   gens une crise. Ce n'est pas un confort, c'est une demande médicale.
+
+   HUIT MÉDIAS-QUERIES ÉPARPILLÉES NE SUFFISENT PAS. Le logiciel en avait, et
+   chacune nommait UNE animation : la calculatrice, la croix du carnet, les
+   cartes de jeu. Or il y a onze animations sans fin dans les feuilles de
+   style, plus seize écrites dans des balises `<style>` de jeux, et la liste
+   grandit d'un exercice par jour. Nommer les animations une à une, c'est
+   garantir d'en oublier — et la liste ne sera jamais à jour.
+
+   ON NE COUPE QUE LA RÉPÉTITION, PAS L'ANIMATION. `animation-iteration-count:
+   1` laisse jouer une fois ce qui devait se répéter sans fin, et ne touche
+   à RIEN de ce qui ne jouait déjà qu'un coup — le retour de « c'est juste »,
+   une carte qui se retourne, une fenêtre qui apparaît. C'est la boucle qui
+   pose problème, pas le mouvement.
+
+   Cette règle ne remplace pas les huit autres : celles-ci coupent aussi des
+   transitions ou des transformations au toucher, ce que celle-ci ne fait pas.
+   Elle attrape ce qu'elles ne pouvaient pas nommer. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-iteration-count: 1 !important; }
+    html { scroll-behavior: auto !important; }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; }

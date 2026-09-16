@@ -50,13 +50,13 @@
     padding: 10px 22px; border-radius: 999px; pointer-events: none;
     background: var(--bg-panel); border: 2px solid #bbf7d0;
     box-shadow: 0 10px 26px rgba(15, 23, 42, .18);
-    font-weight: 800; font-size: 1.05rem; color: var(--success);
+    font-weight: 800; font-size: 1.05rem; color: var(--success-texte);
     white-space: nowrap; max-width: calc(100% - 24px);
     animation: fbToastDrop .28s cubic-bezier(.175, .885, .32, 1.275);
 }
 .fb-toast-icon { line-height: 0; display: flex; }
 .fb-toast-points {
-    font-size: .92rem; background: #dcfce7; color: var(--success);
+    font-size: .92rem; background: #dcfce7; color: var(--success-texte);
     padding: 2px 10px; border-radius: 999px;
 }
 .fb-toast.fb-card--leaving {
@@ -106,17 +106,17 @@
 .fb-card:not(.fb-card--blocking) { pointer-events: none; }
 
 .fb-icon { line-height: 0; }
-.fb-icon--ok { color: var(--success); }
-.fb-icon--ko { color: var(--danger); }
-.fb-icon--hint { color: var(--primary); }
+.fb-icon--ok { color: var(--success-texte); }
+.fb-icon--ko { color: var(--danger-texte); }
+.fb-icon--hint { color: var(--primary-texte); }
 
 .fb-label {
     font-size: .78rem; font-weight: 800; letter-spacing: .08em;
     text-transform: uppercase; color: var(--text-muted);
 }
-.fb-title { font-size: 1.45rem; font-weight: 800; color: var(--success); }
+.fb-title { font-size: 1.45rem; font-weight: 800; color: var(--success-texte); }
 .fb-points {
-    font-size: 1.02rem; font-weight: 700; color: var(--success);
+    font-size: 1.02rem; font-weight: 700; color: var(--success-texte);
     background: #dcfce7; padding: 4px 14px; border-radius: 12px;
 }
 /* `pre-line` : un indice peut REVENIR À LA LIGNE. Rémy, sur la carte d'indice
@@ -129,7 +129,7 @@
    milieu de l'égalité (« 032,12 = » d'un côté, « 32,12. » de l'autre). */
 .fb-exemple {
     display: block; margin-top: 8px; white-space: nowrap;
-    font-size: 1.15rem; font-weight: 800; color: var(--primary);
+    font-size: 1.15rem; font-weight: 800; color: var(--primary-texte);
     font-variant-numeric: tabular-nums;
 }
 .fb-detail .fb-exemple { font-size: 1rem; margin-top: 6px; }
@@ -231,7 +231,7 @@
     background: color-mix(in srgb, var(--success) 12%, var(--bg-hover));
     border-color: color-mix(in srgb, var(--success) 45%, var(--border));
 }
-.btn-showme:hover:not(:disabled) { border-color: var(--success); color: var(--success); }
+.btn-showme:hover:not(:disabled) { border-color: var(--success); color: var(--success-texte); }
 
 /* --- Mode apprentissage ------------------------------------ */
 
@@ -243,7 +243,7 @@
     font-size: .95rem; line-height: 1.5; font-weight: 500;
 }
 .learn-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 22px; }
-.run-screen--learn .run-screen-title { color: var(--primary); }
+.run-screen--learn .run-screen-title { color: var(--primary-texte); }
 
 .btn-hint {
     display: inline-flex; align-items: center; gap: 8px;
@@ -251,7 +251,7 @@
     border: 1px solid var(--border); border-radius: 999px;
     padding: 8px 18px; font-size: .95rem; font-weight: 600; transition: .2s;
 }
-.btn-hint:hover:not(:disabled) { background: var(--bg-panel); border-color: var(--primary); color: var(--primary); }
+.btn-hint:hover:not(:disabled) { background: var(--bg-panel); border-color: var(--primary); color: var(--primary-texte); }
 .btn-hint:disabled { opacity: .45; cursor: not-allowed; }
 
 .hint-text {
@@ -443,7 +443,7 @@
     display: flex; align-items: center; justify-content: center;
     font-variant-numeric: tabular-nums;
 }
-.numpad-key:hover { border-color: var(--primary); color: var(--primary); }
+.numpad-key:hover { border-color: var(--primary); color: var(--primary-texte); }
 .numpad-key:active {
     transform: translateY(2px);
     box-shadow: 0 0 0 var(--border), inset 0 2px 5px rgba(15, 23, 42, .12);
@@ -452,8 +452,8 @@
    d'accent, comme la touche d'effacement porte celle de l'avertissement. Sur
    un chapitre où le signe EST la question, il ne doit pas se confondre avec
    les dix touches qu'on enfonce sans réfléchir. */
-.numpad-key--signe { color: var(--primary); }
-.numpad-key--del { color: var(--warning); }
+.numpad-key--signe { color: var(--primary-texte); }
+.numpad-key--del { color: var(--warning-texte); }
 .numpad-key--del svg { width: clamp(20px, 3cqh, 25px); height: auto; }
 .numpad-key--ok {
     grid-column: 1 / -1; height: clamp(42px, 6.8cqh, 58px); margin-top: 4px;
@@ -924,7 +924,7 @@
 .egy-svg { max-height: clamp(90px, 22cqh, 200px); }
 
 /* Mises en valeur des énoncés de numération. */
-.nb-highlight { color: var(--primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nb-highlight { color: var(--primary-texte); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .nb-highlight--lg { display: inline-block; margin-top: 6px; font-size: 1.25em; }
 /* LE NOMBRE EN LETTRES EST L'ÉNONCÉ, PAS UNE NOTE DE BAS DE PAGE.
    Rémy, banc d'essai iPhone, sur « Des Lettres aux Chiffres » : « tellement
@@ -936,11 +936,11 @@
 .nb-consigne { font-size: .72em; font-weight: 700; color: var(--text-muted); }
 .nb-words {
     display: inline-block; margin-top: 6px; font-size: 1.1em;
-    font-weight: 800; color: var(--primary); line-height: 1.3; max-width: 20ch;
+    font-weight: 800; color: var(--primary-texte); line-height: 1.3; max-width: 20ch;
 }
 .nb-slot {
     display: inline-block; min-width: 1.6em; padding: 0 .2em;
-    border-bottom: 3px dashed var(--primary); color: var(--primary);
+    border-bottom: 3px dashed var(--primary); color: var(--primary-texte);
 }
 /* Grand dans le viewBox : le SVG est ensuite réduit pour tenir en hauteur,
    et les cotes doivent rester lisibles après cette réduction. */
@@ -955,7 +955,7 @@
 /* La couleur des marques de points est posée plus bas, avec `pt-marque`. */
 .not-name { fill: var(--text-main); font-size: 20px; font-weight: 800; }
 /* L'objet à écrire, dit en toutes lettres dans l'énoncé. */
-.not-cible { display: inline-block; margin-top: 6px; color: var(--primary); font-size: .92em; }
+.not-cible { display: inline-block; margin-top: 6px; color: var(--primary-texte); font-size: .92em; }
 .not-ecriture {
     display: inline-block; padding: 2px 12px; border-radius: 10px;
     background: var(--tag-dom-bg); color: var(--tag-dom-txt);
@@ -974,7 +974,7 @@
     display: flex; justify-content: space-between; align-items: center;
     width: min(520px, 100%); font-weight: 800; font-size: clamp(.78rem, 1.9cqh, .95rem);
 }
-.sprint-vitesse { color: var(--primary); }
+.sprint-vitesse { color: var(--primary-texte); }
 .sprint-vitesse--monte { animation: sprint-palier .5s ease-out; }
 @keyframes sprint-palier {
     0% { transform: scale(1); }
@@ -982,7 +982,7 @@
     100% { transform: scale(1); }
 }
 .sprint-serie { color: var(--text-muted); }
-.sprint-serie--chaude { color: var(--danger); }
+.sprint-serie--chaude { color: var(--danger-texte); }
 
 .sprint-jauge {
     width: min(520px, 100%); height: clamp(8px, 1.6cqh, 13px);
@@ -1106,20 +1106,20 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     font-weight: 800; font-size: .92rem; color: var(--text-main);
     position: relative;
 }
-.lec-suite b.lec-ok { border-color: var(--success); color: var(--success); background: #dcfce7; }
-.lec-suite b.lec-ko { border-color: var(--danger); color: var(--danger); background: #fee2e2; }
+.lec-suite b.lec-ok { border-color: var(--success); color: var(--success-texte); background: #dcfce7; }
+.lec-suite b.lec-ko { border-color: var(--danger); color: var(--danger-texte); background: #fee2e2; }
 .lec-suite b.lec-vide { color: var(--text-muted); border-style: dashed; }
 /* Le petit calcul dans le coin d'une zone, comme sur la vraie grille. */
 .lec-suite b.lec-coin::before {
     content: attr(data-coin); position: absolute; top: 1px; left: 3px;
-    font-size: .52rem; font-weight: 800; color: var(--primary);
+    font-size: .52rem; font-weight: 800; color: var(--primary-texte);
 }
 .lec-fleche { color: var(--text-muted); font-weight: 800; }
 .lec-calcul {
     font-weight: 800; color: var(--text-main); font-size: .98rem;
     background: var(--bg-app); border-radius: 8px; padding: 4px 10px;
 }
-.lec-calcul .lec-ok { color: var(--success); }
+.lec-calcul .lec-ok { color: var(--success-texte); }
 .lec-calcul .lec-vide { color: var(--text-muted); }
 .lec-figure { margin-top: 8px; max-width: 260px; }
 .lec-figure svg { width: 100%; height: auto; }
@@ -1159,7 +1159,7 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 }
 .reglage-option:hover { border-color: var(--primary); }
 .reglage-option--actif { border-color: var(--primary); background: var(--tag-dom-bg); }
-.reglage-dessin { line-height: 0; color: var(--primary); }
+.reglage-dessin { line-height: 0; color: var(--primary-texte); }
 .reglage-nom { font-size: .82rem; font-weight: 700; }
 .reglage-note { font-size: .68rem; color: var(--text-muted); line-height: 1.25; text-align: center; }
 
@@ -1209,7 +1209,7 @@ html[data-point="disque"] .pt-plus,
 html:not([data-point="plus"]) .pt-plus { display: none; }
 html[data-point="plus"] .pt-croix { display: none; }
 
-.rep-point { color: var(--primary); }
+.rep-point { color: var(--primary-texte); }
 .not-point { color: var(--text-main); }
 .rep-point-label { fill: var(--primary); font-size: 15px; font-weight: 800; }
 
@@ -1237,10 +1237,10 @@ html[data-point="plus"] .pt-croix { display: none; }
 
 /* Le marqueur posé par l'élève : c'est la COULEUR qui change, la forme reste
    celle qu'on a choisie globalement. */
-.rep-mark { color: var(--primary); }
-.rep-mark--ok { color: var(--success); }
-.rep-mark--ko { color: var(--danger); }
-.rep-mark--demo { color: var(--warning); }
+.rep-mark { color: var(--primary-texte); }
+.rep-mark--ok { color: var(--success-texte); }
+.rep-mark--ko { color: var(--danger-texte); }
+.rep-mark--demo { color: var(--warning-texte); }
 .rep-mark-label { font-size: 13px; font-weight: 800; }
 .rep-mark-label--ko { fill: var(--danger); }
 .rep-mark-label--demo { fill: var(--warning); }
@@ -1431,9 +1431,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     font-size: .82rem; padding: 6px 14px; min-height: 34px;
     transition: border-color .15s, color .15s;
 }
-.np-outil-btn:hover { border-color: var(--primary); color: var(--primary); }
+.np-outil-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 .np-outil-btn[aria-expanded="true"] {
-    border-color: var(--primary); color: var(--primary);
+    border-color: var(--primary); color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 8%, var(--bg-panel));
 }
 .np-outil {
@@ -1482,7 +1482,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 .arr-mots p:last-child { margin-bottom: 0; }
 .arr-mots-enc {
     text-align: center; font-size: 1.2rem; font-weight: 800;
-    color: var(--primary); margin: .5em 0 .7em !important;
+    color: var(--primary-texte); margin: .5em 0 .7em !important;
 }
 
 /* LE RAPPEL DE π. Rémy : « Rappelle la valeur de Pi au départ. » Le panneau
@@ -1495,7 +1495,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 .dsq-pi p:last-child { margin-bottom: 0; }
 .dsq-pi-val {
     text-align: center; font-size: 1.35rem; font-weight: 800;
-    color: var(--primary); letter-spacing: .01em;
+    color: var(--primary-texte); letter-spacing: .01em;
     margin: .5em 0 .7em !important;
 }
 /* Le bandeau du panneau : ce qu'on regarde, et de quoi refermer. Sur
@@ -1510,7 +1510,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     border-radius: 999px; cursor: pointer; font: inherit; font-weight: 800;
     width: 32px; height: 32px; line-height: 1; flex: 0 0 auto;
 }
-.np-outil-fermer:hover { border-color: var(--primary); color: var(--primary); }
+.np-outil-fermer:hover { border-color: var(--primary); color: var(--primary-texte); }
 
 /* LE PANNEAU PASSAIT SOUS LE PAVÉ NUMÉRIQUE. Rémy, banc d'essai iPhone :
    « le schéma est sous le pavé numérique », « idem pour les formules ».
@@ -1603,7 +1603,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     flex: 1 1 100%; text-align: center;
     font-size: .88rem; font-weight: 600; color: var(--text-muted);
 }
-.qd-compte--prete { color: var(--success); }
+.qd-compte--prete { color: var(--success-texte); }
 /* « Tout effacer » est une SORTIE DE SECOURS, pas une action du même rang que
    « Valider » : il se dessine en creux pour qu'on ne le prenne pas pour elle. */
 .qd-effacer {
@@ -1616,7 +1616,7 @@ html[data-point="plus"] .pt-croix { display: none; }
    essai visiblement tape au hasard —, l'aide qui debloque s'allume au lieu
    d'attendre qu'on la trouve. */
 .qd-film--appel {
-    border-color: var(--primary); color: var(--primary);
+    border-color: var(--primary); color: var(--primary-texte);
     animation: qd-appel 1.1s ease-in-out 3;
 }
 @keyframes qd-appel {
@@ -1638,7 +1638,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     cursor: pointer; box-shadow: var(--shadow-sm); transition: .15s;
     font-variant-numeric: tabular-nums; text-align: center;
 }
-.coord-tile:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.coord-tile:hover { border-color: var(--primary); color: var(--primary-texte); transform: translateY(-3px); box-shadow: var(--shadow-md); }
 
 /* --- Comparaison (< = >) ------------------------------------ */
 
@@ -1658,7 +1658,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     display: inline-flex; align-items: center; justify-content: center;
     width: 1.78em; height: 1.78em; flex: 0 0 auto; border-radius: .42em;
     border: 3px dashed var(--primary); opacity: .5;
-    color: var(--primary); transition: .18s;
+    color: var(--primary-texte); transition: .18s;
 }
 /* Cible de dépôt survolée : elle doit se voir sans ambiguïté au doigt. */
 .compare-slot--hover {
@@ -1672,8 +1672,8 @@ html[data-point="plus"] .pt-croix { display: none; }
     width: auto; height: auto; min-width: 1.78em; min-height: 1.78em;
     padding: .1em .34em; line-height: 1;
 }
-.compare-slot--ok { border-color: var(--success); color: var(--success); background: #dcfce7; }
-.compare-slot--ko { border-color: var(--danger); color: var(--danger); background: #fee2e2; }
+.compare-slot--ok { border-color: var(--success); color: var(--success-texte); background: #dcfce7; }
+.compare-slot--ko { border-color: var(--danger); color: var(--danger-texte); background: #fee2e2; }
 
 /* LES TROIS SIGNES RESTENT SUR UNE LIGNE. Sur un téléphone étroit, trois
    tuiles de 92 px et leurs deux gouttières dépassaient de quelques pixels : le
@@ -1688,7 +1688,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     flex: 0 1 92px; min-width: 0; max-width: 92px;
     aspect-ratio: 1; border-radius: 20px;
     display: flex; align-items: center; justify-content: center;
-    font-size: clamp(1.7rem, 9vw, 2.6rem); font-weight: 800; color: var(--primary);
+    font-size: clamp(1.7rem, 9vw, 2.6rem); font-weight: 800; color: var(--primary-texte);
     background: var(--bg-panel); border: 2px solid var(--border);
     box-shadow: var(--shadow-sm); cursor: grab; transition: .15s;
     touch-action: none;          /* le geste est capté, pas interprété en défilement */
@@ -1720,7 +1720,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 /* --- Fractions --------------------------------------------- */
 
 .frac-question { display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap; }
-.frac-gap { color: var(--primary); font-size: 2rem; font-weight: 700; }
+.frac-gap { color: var(--primary-texte); font-size: 2rem; font-weight: 700; }
 
 .fraction {
     display: inline-flex; flex-direction: column; align-items: center;
@@ -1758,7 +1758,7 @@ html[data-point="plus"] .pt-croix { display: none; }
    l'égalité se déforme selon que le nombre caché en fait un ou deux. */
 .frac-trou {
     display: inline-block; min-width: 1.4em;
-    color: var(--primary); font-weight: 800;
+    color: var(--primary-texte); font-weight: 800;
 }
 .fraction--trou .fraction-num,
 .fraction--trou .fraction-den { min-width: 1.4em; }
@@ -1840,7 +1840,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     transform: translate(-50%, -50%);
     padding: 0 .22em;
     background: var(--bg-plateau, var(--bg-app, #fff));
-    color: var(--primary); font-weight: 800;
+    color: var(--primary-texte); font-weight: 800;
     font-size: .52em; line-height: 1; white-space: nowrap;
 }
 
@@ -1873,7 +1873,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     border: 2px dashed color-mix(in srgb, var(--primary) 55%, transparent);
     border-radius: .22em;
     background: var(--bg-plateau, var(--bg-app, #fff));
-    color: var(--primary); font: inherit; font-weight: 800;
+    color: var(--primary-texte); font: inherit; font-weight: 800;
     line-height: 1.15; text-align: center; cursor: pointer;
 }
 .fe-case:hover { border-color: var(--primary); }
@@ -1912,7 +1912,7 @@ html[data-point="plus"] .pt-croix { display: none; }
    ne va pas pendant qu'on regarde encore ce qu'on a écrit. */
 .fe-note {
     min-height: 1.3em; margin: .4em 0 .2em; max-width: 34ch;
-    color: var(--danger); font-weight: 700; font-size: .92rem;
+    color: var(--danger-texte); font-weight: 700; font-size: .92rem;
     text-align: center; line-height: 1.3;
 }
 
@@ -1927,7 +1927,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     background: var(--bg-panel); color: var(--text-main);
     font-size: 1.25rem; font-weight: 800; cursor: pointer;
 }
-.fe-touche:hover { border-color: var(--primary); color: var(--primary); }
+.fe-touche:hover { border-color: var(--primary); color: var(--primary-texte); }
 .fe-touche--del { grid-column: span 2; }
 .fe-touche--ok {
     grid-column: span 3;
@@ -1945,7 +1945,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 .frac-doute {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 1.2em; font-weight: 800;
-    color: var(--primary);
+    color: var(--primary-texte);
 }
 
 /* UNE FRACTION DANS UNE BULLE tient sur deux étages : elle se règle sur le
@@ -2003,9 +2003,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     height: 100%; text-align: center; gap: 14px; padding: 30px;
 }
 .run-screen-icon { font-size: 3.4rem; }
-.run-screen-title { font-size: 2rem; color: var(--primary); margin: 0; }
-.run-screen-title--ok { color: var(--success); }
-.run-screen-title--ko { color: var(--warning); }
+.run-screen-title { font-size: 2rem; color: var(--primary-texte); margin: 0; }
+.run-screen-title--ok { color: var(--success-texte); }
+.run-screen-title--ko { color: var(--warning-texte); }
 .run-screen-text { font-size: 1.1rem; color: var(--text-main); max-width: 480px; line-height: 1.5; }
 .run-screen-btn { font-size: 1.25rem; padding: 14px 32px; margin-top: 10px; }
 
@@ -2027,7 +2027,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     text-align: center; flex: 0 0 auto;
     display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
-.run-carte-nom { font-size: 1.5rem; margin: 0; color: var(--primary); }
+.run-carte-nom { font-size: 1.5rem; margin: 0; color: var(--primary-texte); }
 .run-carte-sous { margin: 0; color: var(--text-muted); font-size: .95rem; }
 .run-carte-regle {
     margin: 0; font-size: .85rem; color: var(--text-muted);
@@ -2115,7 +2115,11 @@ html[data-point="plus"] .pt-croix { display: none; }
 .tablet-simulator #game-progress-container {
     grid-area: avance; margin: 0;
     width: 78px; min-width: 78px; max-width: 78px; height: 18px; border-radius: 9px;
-    background: color-mix(in srgb, var(--text-muted) 55%, var(--border));
+    /* MÊME SOCLE D'ARDOISE QUE LA GRANDE BARRE (voir games.css). Le mélange
+       d'ici donnait rgb(152,161,175) : « 0 / 10 » en blanc dessus tombait à
+       2,61 de contraste, et c'est la pastille qu'on lit sur un téléphone,
+       celle qui ne dit plus que le compte parce qu'elle fait 78 px. */
+    background: #475569;
 }
 .device-simulator #game-progress-text,
 .tablet-simulator #game-progress-text { font-size: .68rem; }
@@ -2429,7 +2433,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 /* Cinq dernières secondes : l'anneau et le nombre passent au rouge et
    battent — un signal, pas une surprise. */
 .timer--urgent .timer-ring-fill { stroke: var(--danger); }
-.timer--urgent .timer-value { color: var(--danger); animation: timerPulse .5s ease-in-out infinite; }
+.timer--urgent .timer-value { color: var(--danger-texte); animation: timerPulse .5s ease-in-out infinite; }
 @keyframes timerPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.16); } }
 
 /* --- Bilan (fin de parcours, profil, analyse prof) --------- */
@@ -2439,9 +2443,9 @@ html[data-point="plus"] .pt-croix { display: none; }
 .report-subtitle { text-align: center; color: var(--text-muted); margin-bottom: 18px; }
 
 .report-note { text-align: center; margin: 10px 0 6px; }
-.report-note-value { font-size: 3.4rem; font-weight: 800; color: var(--primary); line-height: 1; }
+.report-note-value { font-size: 3.4rem; font-weight: 800; color: var(--primary-texte); line-height: 1; }
 .report-note-scale { font-size: 1.4rem; color: var(--text-muted); font-weight: 600; }
-.report-note--nograde .report-note-value { color: var(--success); }
+.report-note--nograde .report-note-value { color: var(--success-texte); }
 .report-note-label { color: var(--text-muted); font-size: .92rem; margin-top: 4px; }
 .report-appreciation { text-align: center; color: var(--text-main); font-size: 1.05rem; margin: 12px 0 20px; }
 
@@ -2481,7 +2485,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 }
 .calcul-summary {
     padding: 12px 16px; cursor: pointer; font-weight: 600;
-    color: var(--primary); font-size: .95rem; list-style: none;
+    color: var(--primary-texte); font-size: .95rem; list-style: none;
 }
 .calcul-summary::-webkit-details-marker { display: none; }
 .calcul-summary::before { content: '▸ '; display: inline-block; transition: transform .15s; }
@@ -2499,7 +2503,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
     font-variant-numeric: tabular-nums; font-size: .98rem; color: var(--text-main);
 }
-.calcul-etape--final { font-weight: 800; color: var(--primary); font-size: 1.1rem; }
+.calcul-etape--final { font-weight: 800; color: var(--primary-texte); font-size: 1.1rem; }
 
 .report-section-title {
     font-size: 1rem; color: var(--text-muted); text-transform: uppercase;
@@ -2519,7 +2523,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 }
 .report-miss-q { font-weight: 700; color: var(--text-main); }
 .report-miss-a { font-size: .9rem; color: var(--text-muted); }
-.report-miss-why { font-size: .9rem; color: var(--warning); margin-top: 4px; }
+.report-miss-why { font-size: .9rem; color: var(--warning-texte); margin-top: 4px; }
 .report-replay-btn { margin-top: 14px; width: 100%; }
 .report-close-btn { min-width: 180px; }
 
@@ -2532,7 +2536,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     font-size: clamp(.78rem, 3vw, 1.15rem); font-weight: 700; color: var(--text-main);
     overflow-wrap: normal; word-break: keep-all; hyphens: none;
 }
-.profile-rank-level { color: var(--primary); }
+.profile-rank-level { color: var(--primary-texte); }
 .profile-xp-bar {
     margin-top: 10px; background: var(--bg-app); border: 1px solid var(--border);
     border-radius: 10px; height: 10px; max-width: 300px; overflow: hidden;
@@ -2594,13 +2598,13 @@ html[data-point="plus"] .pt-croix { display: none; }
     border-color: transparent; font-weight: 700; cursor: pointer;
 }
 .error-group-go:hover:not(.active) { background: var(--primary-hover); color: #fff; }
-.error-group-clean { color: var(--success) !important; font-weight: 600; }
+.error-group-clean { color: var(--success-texte) !important; font-weight: 600; }
 /* Les questions deja corrigees se replient : les laisser depliees apres une
    revision reussie, c'est laisser a l'ecran ce qu'on vient justement de
    reparer. Elles restent consultables, sur une ligne. */
 .error-group-done { margin-top: 12px; }
 .error-group-done > summary {
-    cursor: pointer; color: var(--success); font-size: .85rem; font-weight: 600;
+    cursor: pointer; color: var(--success-texte); font-size: .85rem; font-weight: 600;
     padding: 4px 0; list-style-position: inside;
 }
 .error-group-done > summary:hover { text-decoration: underline; }
@@ -2610,10 +2614,10 @@ html[data-point="plus"] .pt-croix { display: none; }
    colonne descendait sous 340 px. */
 .error-item-card { align-items: flex-start; gap: 8px; }
 .error-item-body { flex: 1; min-width: 0; }
-.error-given { color: var(--danger); }
-.error-expected { color: var(--success); }
-.error-repeat { color: var(--warning); font-weight: 700; font-size: .85rem; }
-.error-why { font-size: .88rem; color: var(--warning); margin-top: 4px; line-height: 1.4; }
+.error-given { color: var(--danger-texte); }
+.error-expected { color: var(--success-texte); }
+.error-repeat { color: var(--warning-texte); font-weight: 700; font-size: .85rem; }
+.error-why { font-size: .88rem; color: var(--warning-texte); margin-top: 4px; line-height: 1.4; }
 .error-skill { font-size: .78rem; color: var(--text-muted); margin-top: 3px; }
 
 .badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; }
@@ -2694,7 +2698,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 /* Annonce des récompenses : une seule modale, même quand plusieurs paliers
    tombent ensemble. */
 .badge-modal { text-align: center; padding: 6px 0; }
-.badge-modal-titre { color: var(--primary); font-size: 1.5rem; margin: 0 0 16px; }
+.badge-modal-titre { color: var(--primary-texte); font-size: 1.5rem; margin: 0 0 16px; }
 .badge-won-list { display: flex; flex-direction: column; gap: 9px; }
 .badge-won {
     display: flex; align-items: center; gap: 12px; text-align: left;
@@ -2722,7 +2726,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .md-tete-mesure { margin: 0; font-size: .86rem; line-height: 1.4; color: var(--text-muted); }
 .md-compteur { display: flex; align-items: baseline; gap: 6px; justify-content: center; margin-top: 4px; }
 .md-compteur-valeur {
-    font-size: 2rem; font-weight: 900; color: var(--primary); font-variant-numeric: tabular-nums;
+    font-size: 2rem; font-weight: 900; color: var(--primary-texte); font-variant-numeric: tabular-nums;
 }
 .md-compteur-sur { font-size: 1rem; font-weight: 800; color: var(--text-muted); }
 .md-reste { margin: 0; text-align: center; font-size: .88rem; color: var(--text-muted); }
@@ -2777,21 +2781,21 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .plan-detail > summary::-webkit-details-marker { display: none; }
 .plan-detail > summary::before { content: '▸\00a0'; }
 .plan-detail[open] > summary::before { content: '▾\00a0'; }
-.plan-detail > summary:hover { color: var(--primary); }
+.plan-detail > summary:hover { color: var(--primary-texte); }
 .plan-motif {
     font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .3px;
     border-radius: 999px; padding: 2px 8px;
     background: var(--tag-dom-bg); color: var(--tag-dom-txt);
 }
-.plan-motif--remediation { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
-.plan-motif--revision { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning); }
+.plan-motif--remediation { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger-texte); }
+.plan-motif--revision { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning-texte); }
 .plan-lecon { margin: 5px 0 0; font-size: .85rem; line-height: 1.4; color: var(--text-muted); }
 .plan-exos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .plan-exo {
     border: 1.5px solid var(--border); background: var(--bg-app); color: var(--text-main);
     border-radius: 999px; padding: 4px 11px; font-size: .78rem; font-weight: 700; cursor: pointer;
 }
-.plan-exo:hover { border-color: var(--primary); color: var(--primary); }
+.plan-exo:hover { border-color: var(--primary); color: var(--primary-texte); }
 
 /* Les erreurs venues des jeux, mises de côté sans être perdues. */
 .error-note-jeux {
@@ -2819,8 +2823,8 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 }
 .console-entete { display: flex; align-items: center; gap: 10px; }
 .console-pastille { border-radius: 999px; padding: 3px 10px; font-size: .78rem; font-weight: 800; }
-.console-pastille--ok { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
-.console-pastille--ko { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.console-pastille--ok { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success-texte); }
+.console-pastille--ko { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger-texte); }
 .console-lignes { font-size: .78rem; color: var(--text-muted); font-weight: 700; flex: 1; }
 .console-croix {
     width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
@@ -3407,7 +3411,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .reco-start-all { margin-top: 16px; width: 100%; }
 
 .last-run-card { display: flex; align-items: center; gap: 20px; padding: 18px; flex-wrap: wrap; }
-.last-run-value { font-size: 2.2rem; font-weight: 800; color: var(--primary); }
+.last-run-value { font-size: 2.2rem; font-weight: 800; color: var(--primary-texte); }
 .last-run-info { flex: 1; min-width: 160px; }
 .last-run-name { font-weight: 700; color: var(--text-main); }
 .last-run-sub { font-size: .85rem; color: var(--text-muted); }
@@ -3505,8 +3509,8 @@ html[data-theme="dark"] .tag-duo { background: rgba(167, 139, 250, .18); color: 
 .tag-status { font-weight: 700; }
 .tag-status--test { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .tag-status--brouillon { background: var(--bg-hover); color: var(--text-muted); border: 1px dashed var(--border); }
-.btn-icon--danger { color: var(--danger); }
-.btn-icon--primary { color: var(--primary); }
+.btn-icon--danger { color: var(--danger-texte); }
+.btn-icon--primary { color: var(--primary-texte); }
 
 .props-title { margin: 0 0 18px; font-size: 1.15rem; color: var(--text-main); }
 .props-close {
@@ -3547,7 +3551,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 
 /* --- Formulaires de configuration -------------------------- */
 
-.cfg-header { font-weight: 700; font-size: 1.05rem; color: var(--primary); margin-bottom: 6px; }
+.cfg-header { font-weight: 700; font-size: 1.05rem; color: var(--primary-texte); margin-bottom: 6px; }
 /* La consigne de l'exercice rappelle DE QUOI on règle les paramètres. */
 .cfg-desc { font-size: .82rem; color: var(--text-muted); line-height: 1.45; margin: 0 0 14px; }
 
@@ -3719,8 +3723,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    s'écrivait « Li / br / e ». Il ne se translate donc pas. */
 .cfg-cran:last-child { transform: none; text-align: right; }
 .cfg-tiret:last-child { transform: none; }
-.cfg-cran:hover { color: var(--primary); background: var(--primary-soft, #eceafd); }
-.cfg-cran--ici { color: var(--primary); font-size: .76rem; }
+.cfg-cran:hover { color: var(--primary-texte); background: var(--primary-soft, #eceafd); }
+.cfg-cran--ici { color: var(--primary-texte); font-size: .76rem; }
 
 /* LES QUATRE CARTES : L'APERÇU EST LA COMMANDE.
    Rémy, trois fois de suite : « on comprend rien pour le slide », « il faut le
@@ -3758,7 +3762,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     background: var(--primary-soft, #eceafd);
 }
 .cfg-prog-nom { font-weight: 800; font-size: .86rem; color: var(--text-main); }
-.cfg-prog--ici .cfg-prog-nom { color: var(--primary); }
+.cfg-prog--ici .cfg-prog-nom { color: var(--primary-texte); }
 .cfg-prog-dit { font-size: .71rem; line-height: 1.3; color: var(--text-muted); }
 
 /* LA FRISE DE PROGRESSION — voir `apercuAideHtml` dans games/configUI.js.
@@ -3990,8 +3994,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 /* Le `summary` est une boîte flex : sans cela son dessin se fait écraser à
    quatre pixels de large — mesuré. */
 .cfg-modeles-btn svg { flex: 0 0 auto; }
-.cfg-modeles-btn:hover { border-color: var(--primary); color: var(--primary); }
-.cfg-modeles[open] .cfg-modeles-btn { border-color: var(--primary); color: var(--primary); }
+.cfg-modeles-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+.cfg-modeles[open] .cfg-modeles-btn { border-color: var(--primary); color: var(--primary-texte); }
 .cfg-modeles-liste {
     position: absolute; right: 0; top: calc(100% + 6px); z-index: 5;
     min-width: 220px; padding: 8px; border-radius: 12px;
@@ -4008,7 +4012,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     font: inherit; font-size: .82rem; font-weight: 700; text-transform: none;
     letter-spacing: 0;
 }
-.cfg-modele:hover { background: var(--bg-hover); color: var(--primary); }
+.cfg-modele:hover { background: var(--bg-hover); color: var(--primary-texte); }
 
 /* LA BULLE : la vraie question du rang que la flèche montre.
 
@@ -4045,7 +4049,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 .cfg-bulle-rang {
     font-size: .66rem; font-weight: 800; letter-spacing: .04em;
-    text-transform: uppercase; color: var(--primary); margin-bottom: 4px;
+    text-transform: uppercase; color: var(--primary-texte); margin-bottom: 4px;
 }
 .cfg-bulle-q {
     font-weight: 800; font-size: .8rem; color: var(--text-main); line-height: 1.2;
@@ -4074,7 +4078,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-marches .cfg-bulle-choix { max-height: 2.5rem; overflow: hidden; }
 .cfg-bulle-choix b {
     font-size: .7rem; font-weight: 700; padding: 2px 6px; border-radius: 5px;
-    background: var(--primary-soft, #eceafd); color: var(--primary);
+    background: var(--primary-soft, #eceafd); color: var(--primary-texte);
     white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
 /* LE PAVÉ DOIT RESSEMBLER À UN PAVÉ. Étiré sur toute la largeur de la bulle,
@@ -4121,7 +4125,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     font-style: normal; font-weight: 800; color: var(--text-muted);
     font-variant-numeric: tabular-nums;
 }
-.cfg-leg--ici b, .cfg-leg--ici em { color: var(--primary); }
+.cfg-leg--ici b, .cfg-leg--ici em { color: var(--primary-texte); }
 
 /* LES COMMANDES DE LA ZONE CHOISIE — et d'elle seule.
    Rémy : « un bouton pour ajouter ou enlever le nombre de propositions ; on
@@ -4186,7 +4190,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     background: var(--danger, #dc2626); color: #fff; border-color: var(--danger, #dc2626);
 }
 .cfg-zplusmini { color: var(--text-muted); }
-.cfg-zplusmini:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.cfg-zplusmini:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
 .cfg-zx:disabled, .cfg-zplusmini:disabled { opacity: .3; cursor: default; }
 
 @media (max-width: 520px) {
@@ -4306,7 +4310,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 .cfg-etape-dit .cfg-duo-dit { padding: 0; }
 .cfg-duree {
-    font-size: .82rem; font-weight: 800; color: var(--primary);
+    font-size: .82rem; font-weight: 800; color: var(--primary-texte);
     white-space: nowrap;
 }
 /* Mesurée sur de vraies réponses, la durée n'est plus un pari : elle le dit
@@ -4459,7 +4463,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-dit {
     grid-column: 1 / -1;
     margin: 6px 0 0; font-size: .82rem; line-height: 1.4; text-align: left;
-    color: var(--primary); font-weight: 600; overflow-wrap: break-word;
+    color: var(--primary-texte); font-weight: 600; overflow-wrap: break-word;
 }
 .cfg-dit:empty { display: none; }
 
@@ -4699,7 +4703,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: inline-flex; align-items: center; justify-content: center;
     position: relative; transition: .15s;
 }
-.cfg-info:hover, .cfg-info:focus-visible { border-color: var(--primary); color: var(--primary); }
+.cfg-info:hover, .cfg-info:focus-visible { border-color: var(--primary); color: var(--primary-texte); }
 
 /* Placée dans <body> et en `fixed` : les panneaux qui défilent découpaient
    l'infobulle quand elle était rendue à l'intérieur.
@@ -4750,7 +4754,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     content: '✓'; display: inline-block; width: 1em; margin-right: 4px;
     opacity: 0; transition: opacity .15s; vertical-align: -1px;
 }
-.cfg-chip:hover { border-color: var(--primary); color: var(--primary); }
+.cfg-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
 .cfg-chip:has(input:checked) {
     border-color: var(--primary); background: var(--primary); color: #fff;
     box-shadow: var(--shadow-sm);
@@ -4899,7 +4903,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .analysis-sub { color: var(--text-muted); font-size: .86rem; }
 .analysis-kpis { display: flex; gap: 12px; }
 .analysis-kpi { background: var(--bg-app); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; text-align: center; }
-.analysis-kpi-value { font-size: 1.35rem; font-weight: 700; color: var(--primary); }
+.analysis-kpi-value { font-size: 1.35rem; font-weight: 700; color: var(--primary-texte); }
 .analysis-kpi-label { font-size: .76rem; color: var(--text-muted); }
 .analysis-skills { list-style: none; display: flex; flex-direction: column; gap: 9px; }
 .analysis-skills li { display: flex; align-items: center; gap: 12px; }
@@ -5054,7 +5058,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     padding: 8px 16px; font-size: .9rem; font-weight: 700; cursor: pointer;
     box-shadow: var(--shadow-sm); transition: .15s;
 }
-.demo-ctrl-btn:hover { border-color: var(--primary); color: var(--primary); }
+.demo-ctrl-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 /* « Arrière » à la première explication : rien à remonter, on le dit. */
 .demo-ctrl-btn:disabled { opacity: .4; cursor: default; border-color: var(--border); color: var(--text-main); }
 .demo-ctrl-btn--active { background: var(--primary); border-color: var(--primary); color: #fff; }
@@ -5261,13 +5265,13 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 .angles-input:focus { border-color: var(--primary); }
 .angles-target { font-size: 1.05rem; color: var(--text-main); }
-.angles-target b { color: var(--primary); font-size: 1.25rem; }
+.angles-target b { color: var(--primary-texte); font-size: 1.25rem; }
 .angles-built { color: var(--text-muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
-.btn-hint--on { border-color: var(--primary); color: var(--primary); background: var(--bg-panel); }
+.btn-hint--on { border-color: var(--primary); color: var(--primary-texte); background: var(--bg-panel); }
 
 /* Touche enfoncée par la démonstration : même retour visuel qu'un vrai appui. */
 .numpad-key--demo {
-    border-color: var(--primary) !important; color: var(--primary) !important;
+    border-color: var(--primary) !important; color: var(--primary-texte) !important;
     transform: translateY(2px) scale(.97);
 }
 
@@ -5342,7 +5346,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .kk-revealed { background: color-mix(in srgb, var(--warning) 16%, var(--bg-app)); cursor: default; }
 
 /* Marques du vérificateur et des indices — effacées à la moindre édition. */
-.kk-cell--conflit .kk-val { color: var(--danger); text-decoration: underline wavy var(--danger) 2px; }
+.kk-cell--conflit .kk-val { color: var(--danger-texte); text-decoration: underline wavy var(--danger) 2px; }
 .kk-cage--faux { background: #fee2e2; }
 .kk-cage--indice { background: #fef3c7; box-shadow: inset 0 0 0 3px var(--warning); }
 /* LA ZONE QUI EXPLIQUE LE COUP au mathdoku : la cage, la ligne ou la colonne
@@ -5351,7 +5355,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .kk-cell.kk-zone { background: #c7d7fe; }
 .kk-cell.kk-zone.kk-cage--indice { background: #fef3c7; }
 .kk-cell--visee { background: color-mix(in srgb, var(--primary) 18%, transparent); }
-.kk-cell--corrige .kk-val { color: var(--success); }
+.kk-cell--corrige .kk-val { color: var(--success-texte); }
 .kk-board--ok { border-color: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 35%, transparent); }
 .kk-board--secoue { animation: kkSecoue .35s ease; }
 @keyframes kkSecoue {
@@ -5377,9 +5381,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     touch-action: none;  /* le glisser ne doit pas défiler la page */
     transition: border-color .2s ease, transform .2s ease;
 }
-.kk-chip:hover { border-color: var(--primary); color: var(--primary); }
+.kk-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
 .kk-chip.drag-source { opacity: .35; }
-.kk-chip--gomme { color: var(--warning); }
+.kk-chip--gomme { color: var(--warning-texte); }
 
 .kk-actions { display: flex; gap: 10px; align-items: center; }
 .kk-btn-valider {
@@ -5392,8 +5396,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .kk-btn-verif:disabled { opacity: .45; cursor: not-allowed; }
 
 .kk-status { min-height: 1.3em; font-weight: 600; font-size: .95rem; color: var(--text-muted); text-align: center; }
-.kk-status--ok { color: var(--success); }
-.kk-status--ko { color: var(--danger); }
+.kk-status--ok { color: var(--success-texte); }
+.kk-status--ko { color: var(--danger-texte); }
 
 /* Plateau court (téléphone en paysage, vignette) : la grille cède en premier. */
 @container plateau (max-height: 500px) {
@@ -5418,11 +5422,11 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     box-shadow: 0 2px 0 rgba(15, 23, 42, .12);
     -webkit-tap-highlight-color: transparent;
 }
-.np-choix-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.np-choix-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
 .np-choix-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
 .np-choix-btn:disabled { cursor: default; }
-.np-choix-btn--ok { border-color: var(--success); color: var(--success); }
-.np-choix-btn--ko { border-color: var(--danger); color: var(--danger); }
+.np-choix-btn--ok { border-color: var(--success); color: var(--success-texte); }
+.np-choix-btn--ko { border-color: var(--danger); color: var(--danger-texte); }
 /* Celle qu'on vient d'essayer reste barrée et fermée : on ne la repropose pas
    au réflexe suivant. */
 .np-choix-btn--use { opacity: .45; text-decoration: line-through; }
@@ -5485,7 +5489,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     color: var(--text-muted); border-radius: 10px; padding: 5px 12px;
     cursor: pointer; font: inherit; font-size: .84rem; font-weight: 600;
 }
-.la-btn-doux:hover { border-color: var(--primary); color: var(--primary); }
+.la-btn-doux:hover { border-color: var(--primary); color: var(--primary-texte); }
 
 .la-board {
     position: relative;
@@ -5558,8 +5562,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     min-height: 2.2em; text-align: center; font-size: .92rem; line-height: 1.35;
     color: var(--text-muted); max-width: 30rem;
 }
-.la-status--ok { color: var(--success); font-weight: 700; }
-.la-status--ko { color: var(--danger); font-weight: 600; }
+.la-status--ok { color: var(--success-texte); font-weight: 700; }
+.la-status--ko { color: var(--danger-texte); font-weight: 600; }
 
 /* --- LE CIRCUIT D'EAU ----------------------------------------
    Rémy : « j'aimerais bien avoir un jeu dans ce style-là, il faut tourner des
@@ -5591,8 +5595,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: flex; align-items: baseline; gap: 6px;
     font-size: .9rem; font-weight: 700; color: var(--text-muted);
 }
-.tu-compteur b { font-size: 1.5rem; font-weight: 900; color: var(--primary); }
-.tu-compteur--depasse b { color: var(--danger); }
+.tu-compteur b { font-size: 1.5rem; font-weight: 900; color: var(--primary-texte); }
+.tu-compteur--depasse b { color: var(--danger-texte); }
 
 /* LE SENS EST UN MOT, PAS SEULEMENT UNE FLÈCHE. C'est ce que le jeu apprend en
    passant : « le sens des aiguilles d'une montre » se lit sur le bouton qu'on
@@ -5601,7 +5605,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: inline-flex; align-items: center; gap: 6px;
     padding: 6px 12px; border-radius: 999px; cursor: pointer;
     border: 2px solid var(--primary); background: var(--bg-panel);
-    color: var(--primary); font: inherit; font-size: .8rem; font-weight: 800;
+    color: var(--primary-texte); font: inherit; font-size: .8rem; font-weight: 800;
     -webkit-tap-highlight-color: transparent;
 }
 .tu-sens-icone { font-size: 1.25rem; line-height: 1; }
@@ -5677,8 +5681,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     color: var(--text-muted); font: inherit; font-size: .85rem; font-weight: 700;
 }
 .tu-status { min-height: 1.3em; font-weight: 600; font-size: .95rem; color: var(--text-muted); text-align: center; }
-.tu-status--ok { color: var(--success); }
-.tu-status--ko { color: var(--danger); }
+.tu-status--ok { color: var(--success-texte); }
+.tu-status--ko { color: var(--danger-texte); }
 
 /* Le mur de briques du fond s'assombrit en thème sombre : une grille orange vif
    sur un écran nocturne éblouit là où le jeu demande de l'attention. L'appli ne
@@ -5823,7 +5827,7 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     gap: clamp(4px, 1.2cqh, 12px); width: 100%; padding: 6px;
 }
 .pyt-question { margin: 0; }
-.pyt-cible { color: var(--warning); font-size: 1.25em; }
+.pyt-cible { color: var(--warning-texte); font-size: 1.25em; }
 .pyt-sous { font-size: .88rem; color: var(--text-muted); text-align: center; }
 .pyt-board {
     display: grid;
@@ -6034,7 +6038,7 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     border: 2px solid var(--border); background: var(--bg-app); color: var(--text-main);
     border-radius: 999px; padding: 5px 11px; font-weight: 700; font-size: .84rem; cursor: pointer;
 }
-.sc-chip:hover { border-color: var(--primary); color: var(--primary); }
+.sc-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
 .sc-pop-ok {
     background: var(--primary); color: #fff; border: none; border-radius: 10px;
     padding: 8px; font-weight: 800; cursor: pointer;
@@ -6307,7 +6311,7 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     font-family: inherit; cursor: pointer; font-variant-numeric: tabular-nums;
     box-shadow: 0 2px 0 rgba(15,23,42,.12);
 }
-.rl-choix-btn:hover { border-color: var(--primary); color: var(--primary); }
+.rl-choix-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 .rl-choix-btn:active { transform: translateY(2px); box-shadow: none; }
 
 /* TÉLÉPHONE : le pavé passe de quatre rangées à deux. Douze touches en trois
@@ -6479,7 +6483,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     min-height: 1.5em; font-size: 1.05rem; font-weight: 700;
     color: var(--text-muted); text-align: center;
 }
-.ad-calcul--montre { color: var(--primary); font-size: 1.35rem; }
+.ad-calcul--montre { color: var(--primary-texte); font-size: 1.35rem; }
 
 .ad-choix { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 .ad-choix-btn {
@@ -6489,7 +6493,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font-family: inherit; cursor: pointer; font-variant-numeric: tabular-nums;
     box-shadow: 0 2px 0 rgba(15,23,42,.12);
 }
-.ad-choix-btn:hover { border-color: var(--primary); color: var(--primary); }
+.ad-choix-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 .ad-choix-btn:active { transform: translateY(2px); box-shadow: none; }
 
 /* Le pavé gagne une touche virgule à la dernière marche : sans elle, l'élève
@@ -6574,7 +6578,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     -webkit-user-select: none; user-select: none;
     -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
 }
-.pp-etape--saisie .pp-grip { cursor: grabbing; color: var(--primary); }
+.pp-etape--saisie .pp-grip { cursor: grabbing; color: var(--primary-texte); }
 .pp-etape-num { color: var(--text-muted); font-weight: 700; min-width: 1.4em; }
 .pp-etape-nom { flex: 1; min-width: 0; }
 .pp-etape-unite { color: var(--text-muted); font-weight: 500; font-size: .85rem; }
@@ -6590,7 +6594,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     display: flex; align-items: center; justify-content: center;
     -webkit-tap-highlight-color: transparent;
 }
-.pp-fleche:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.pp-fleche:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
 .pp-fleche:disabled { opacity: .3; cursor: default; }
 
 /* --- LA LIGNE D'UNE ÉTAPE, ET SON TIROIR ---------------------------------
@@ -6690,12 +6694,12 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .cfg-on--actif { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 /* Le robot des modales : le MÊME dessin que le bouton « Mode démonstration ». */
-.ac-robot { color: var(--primary); display: flex; justify-content: center; line-height: 0; }
+.ac-robot { color: var(--primary-texte); display: flex; justify-content: center; line-height: 0; }
 .ac-panel .modal-title { font-size: clamp(1.25rem, 5vw, 1.6rem); line-height: 1.15; }
 .ac-panel .modal-actions-center { margin-top: 2px; gap: 10px; }
 .ac-robot svg { display: block; }
 .ac-conseil { display: flex; align-items: flex-start; gap: 8px; text-align: left; }
-.ac-ampoule { flex: none; color: var(--warning); margin-top: 1px; }
+.ac-ampoule { flex: none; color: var(--warning-texte); margin-top: 1px; }
 
 /* --- LISTE DÉPLIANTE DE CASES À COCHER -----------------------------------
    Pour les réglages dont les options sont des PHRASES et non des symboles :
@@ -6805,7 +6809,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* Une évaluation ne se découvre pas en cours de route : elle se signale. */
 .apercu-genre--eval {
     background: color-mix(in srgb, var(--warning) 16%, transparent);
-    border-color: var(--warning); color: var(--warning);
+    border-color: var(--warning); color: var(--warning-texte);
 }
 .apercu-regle { margin: 0; font-size: .86rem; color: var(--text-muted); }
 .apercu-styles {
@@ -7329,7 +7333,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     max-width: 22ch; white-space: normal; line-height: 1.25;
     color: var(--text-muted); font-weight: 600;
 }
-.world-node--cadeau .world-node-meta--cadeau { color: var(--warning); font-weight: 700; }
+.world-node--cadeau .world-node-meta--cadeau { color: var(--warning-texte); font-weight: 700; }
 
 /* La salle de jeux : les récompenses ouvertes, offertes d'un bloc. */
 .salle-jeux {
@@ -7762,8 +7766,8 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     box-shadow: var(--shadow-sm);
 }
 .pav-touche:active { transform: translateY(1px); background: var(--bg-app); }
-.pav-touche--eff { color: var(--accent); }
-.pav-touche--signe { color: var(--primary); }
+.pav-touche--eff { color: var(--accent-texte); }
+.pav-touche--signe { color: var(--primary-texte); }
 /* « x² » tient en deux caractères là où les autres touches n'en ont qu'un :
    sans cela, la touche du carré déborde de sa case sur un téléphone. */
 .pav-touche--carre { letter-spacing: -.02em; font-size: .92em; }
@@ -7811,7 +7815,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .nt-contexte { text-align: center; max-width: 560px; flex: 0 0 auto; }
 .nt-avis {
-    font-size: .9rem; font-weight: 700; color: var(--primary);
+    font-size: .9rem; font-weight: 700; color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;
 }
@@ -7920,7 +7924,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .ls-contexte { text-align: center; max-width: 560px; flex: 0 0 auto; }
 .ls-avis {
-    font-size: .9rem; font-weight: 700; color: var(--primary);
+    font-size: .9rem; font-weight: 700; color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;
 }
@@ -7968,7 +7972,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .ls-t:active { transform: scale(.92); background: var(--primary); color: #fff; }
 /* La lettre et ses puissances : ce sont elles le sujet de l'exercice. */
 .ls-t--lettre {
-    color: var(--primary); font-style: italic;
+    color: var(--primary-texte); font-style: italic;
     background: color-mix(in srgb, var(--primary) 8%, var(--bg-panel));
     border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
 }
@@ -8017,7 +8021,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .tn-contexte { text-align: center; max-width: 560px; flex: 0 0 auto; }
 .tn-avis {
-    font-size: .9rem; font-weight: 700; color: var(--primary);
+    font-size: .9rem; font-weight: 700; color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;
 }
@@ -8054,7 +8058,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    change : c'est ce va-et-vient qui fait comprendre la notation. */
 .tn-lecture {
     min-height: 1.6em; font-size: clamp(1.05rem, 4.4cqw, 1.5rem); font-weight: 900;
-    color: var(--primary); letter-spacing: .01em;
+    color: var(--primary-texte); letter-spacing: .01em;
 }
 .tn-lecture--vide { color: var(--text-muted); font-weight: 600; }
 .tn-valider {
@@ -8071,7 +8075,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    redescendre est un filet, pas une sanction, et le ton doit le dire. */
 .choice-avis {
     text-align: center; font-size: .9rem; font-weight: 700;
-    color: var(--primary); margin-bottom: 10px;
+    color: var(--primary-texte); margin-bottom: 10px;
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     border-radius: 10px; padding: 7px 12px;
 }
@@ -8092,7 +8096,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     color: var(--text-main); font-family: inherit; font-size: .9rem; font-weight: 700;
 }
 .cl-onglet:hover { background: var(--bg-hover); }
-.cl-onglet--actif { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--bg-app)); color: var(--primary); }
+.cl-onglet--actif { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--bg-app)); color: var(--primary-texte); }
 .cl-onglet-n {
     font-size: .74rem; font-weight: 800; padding: 1px 7px; border-radius: 999px;
     background: color-mix(in srgb, var(--text-muted) 18%, transparent);
@@ -8149,7 +8153,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     color: var(--text-main); text-decoration: underline; text-decoration-style: dotted;
     text-underline-offset: 3px;
 }
-.cl-nom:hover { color: var(--primary); }
+.cl-nom:hover { color: var(--primary-texte); }
 .cl-eleve-chiffre { margin-left: 8px; font-size: .76rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .cl-ligne--muette .cl-nom, .cl-ligne--muette .cl-eleve-chiffre { opacity: .5; }
 
@@ -8184,13 +8188,13 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     flex: 0 0 auto; min-width: 7em; background: none; border: none; padding: 0;
     cursor: pointer; font: inherit; font-weight: 800; color: var(--text-main); text-align: left;
 }
-.cl-phrase-nom:hover { color: var(--primary); }
+.cl-phrase-nom:hover { color: var(--primary-texte); }
 .cl-phrase-texte { flex: 1 1 260px; line-height: 1.45; color: var(--text-main); }
 .cl-detail-btn {
     flex: 0 0 auto; background: none; border: 1px solid var(--border); border-radius: 8px;
     padding: 3px 10px; cursor: pointer; font: inherit; font-size: .76rem; color: var(--text-muted);
 }
-.cl-detail-btn:hover { border-color: var(--primary); color: var(--primary); }
+.cl-detail-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 
 /* LE DÉTAIL, quand on l'ouvre. */
 .cl-detail-boite {
@@ -8261,7 +8265,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .chap-compteur {
     font-size: .82rem;
     font-weight: 700;
-    color: var(--warning);
+    color: var(--warning-texte);
     background: color-mix(in srgb, var(--warning) 14%, transparent);
     border: 1px solid color-mix(in srgb, var(--warning) 38%, transparent);
     border-radius: 999px;
@@ -8269,7 +8273,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font-variant-numeric: tabular-nums;
 }
 .chap-compteur--fini {
-    color: var(--success);
+    color: var(--success-texte);
     background: color-mix(in srgb, var(--success) 14%, transparent);
     border-color: color-mix(in srgb, var(--success) 38%, transparent);
 }
@@ -8334,7 +8338,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     cursor: pointer;
 }
 .chap-tete:hover { background: var(--bg-hover); border-color: var(--border); }
-.chap-num { font-size: .92rem; font-weight: 800; color: var(--primary); }
+.chap-num { font-size: .92rem; font-weight: 800; color: var(--primary-texte); }
 .chap-court { font-size: .6rem; line-height: 1.15; color: var(--text-muted); text-align: center; }
 .chap-tete--vide .chap-num { color: var(--text-muted); }
 
@@ -8399,7 +8403,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .chap-marque--propose {
     border: 1.5px dashed var(--warning);
     background: color-mix(in srgb, var(--warning) 12%, transparent);
-    color: var(--warning);
+    color: var(--warning-texte);
 }
 .chap-marque--oui { background: var(--primary); color: #fff; }
 @media (hover: hover) and (pointer: fine) {
@@ -8432,7 +8436,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     align-items: baseline;
     gap: 6px;
 }
-.chap-n { color: var(--primary); font-size: .78rem; font-variant-numeric: tabular-nums; }
+.chap-n { color: var(--primary-texte); font-size: .78rem; font-variant-numeric: tabular-nums; }
 .chap-liste { margin: 0; padding-left: 18px; font-size: .84rem; }
 .chap-comps { display: flex; flex-direction: column; gap: 6px; }
 .chap-comp {
@@ -8510,7 +8514,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .rang-btn.active {
     background: var(--bg-panel);
-    color: var(--primary);
+    color: var(--primary-texte);
     box-shadow: var(--shadow-sm);
 }
 @media (hover: hover) and (pointer: fine) {
@@ -8571,7 +8575,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .outils-item:hover { background: var(--bg-hover); }
 .outils-item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .outils-item svg { flex: none; margin-top: 2px; color: var(--text-muted); }
-.outils-item:hover svg { color: var(--primary); }
+.outils-item:hover svg { color: var(--primary-texte); }
 
 .outils-texte { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .outils-nom { font-size: .88rem; font-weight: 600; }
@@ -8605,7 +8609,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     border: 1px solid var(--border);
 }
 .path-etat--ok {
-    color: var(--success);
+    color: var(--success-texte);
     background: color-mix(in srgb, var(--success) 13%, transparent);
     border: 1px solid color-mix(in srgb, var(--success) 34%, transparent);
 }
@@ -8624,15 +8628,15 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     font-variant-numeric: tabular-nums;
 }
 .path-duree--courte {
-    color: var(--success);
+    color: var(--success-texte);
     background: color-mix(in srgb, var(--success) 13%, transparent);
 }
 .path-duree--seance {
-    color: var(--primary);
+    color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 13%, transparent);
 }
 .path-duree--longue {
-    color: var(--warning);
+    color: var(--warning-texte);
     background: color-mix(in srgb, var(--warning) 16%, transparent);
 }
 
@@ -8680,7 +8684,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 }
 /* Une durée MESURÉE n'est pas une estimation : elle se distingue. */
 .pstep-duree--mesure {
-    color: var(--primary);
+    color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     font-weight: 600;
 }
@@ -8883,7 +8887,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
     vertical-align: 2px;
 }
-.nv-pastille--neuf { background: rgba(22, 163, 74, .16); color: var(--success); }
+.nv-pastille--neuf { background: rgba(22, 163, 74, .16); color: var(--success-texte); }
 .nv-quoi { margin: 2px 0 0; font-size: .84rem; line-height: 1.4; color: var(--text-muted); }
 
 .nv-carte {
@@ -8900,7 +8904,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     background: var(--bg-panel); color: var(--text-main);
     font-size: .86rem; font-weight: 700; cursor: pointer; transition: border-color .15s;
 }
-.nv-btn:hover { border-color: var(--primary); color: var(--primary); }
+.nv-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 .nv-btn--primaire {
     background: linear-gradient(90deg, var(--primary), var(--accent));
     color: #fff; border-color: transparent;
@@ -9028,7 +9032,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
     align-items: center; gap: clamp(4px, 1.2cqh, 12px);
 }
-.fb-signe { font-size: clamp(1.4rem, 5cqw, 2.6rem); font-weight: 900; color: var(--primary); flex: 0 0 auto; }
+.fb-signe { font-size: clamp(1.4rem, 5cqw, 2.6rem); font-weight: 900; color: var(--primary-texte); flex: 0 0 auto; }
 .fb-signe--petit { font-size: clamp(1rem, 3cqw, 1.7rem); }
 .fb-legende {
     margin: 0; text-align: center; max-width: 46em; line-height: 1.35;
@@ -9045,7 +9049,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fb-layout--egalite .fb-frac { font-size: clamp(1.5rem, max(6cqw, 6cqh), 3.4rem); }
 .fb-frac .fraction-num, .fb-frac .fraction-den { text-align: center; }
 .fb-frac .fraction-den { border-top-width: 3px; padding-top: .06em; }
-.fb-frac--trou { color: var(--primary); }
+.fb-frac--trou { color: var(--primary-texte); }
 
 .fb-calcul { display: flex; flex-direction: column; align-items: center; gap: clamp(6px, 1.8cqh, 16px); }
 .fb-ligne, .fb-commun { display: flex; align-items: center; justify-content: center; gap: clamp(4px, 1.4cqw, 14px); flex-wrap: wrap; }
@@ -9057,7 +9061,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fb-case {
     min-width: 1.6em; min-height: 1.35em; padding: 0 .12em;
     border: 2px dashed var(--border); border-radius: 8px; background: transparent;
-    font: inherit; font-weight: 900; color: var(--primary); cursor: pointer;
+    font: inherit; font-weight: 900; color: var(--primary-texte); cursor: pointer;
     line-height: 1.15; -webkit-tap-highlight-color: transparent;
     transition: border-color .15s ease, background .15s ease, color .15s ease;
 }
@@ -9148,7 +9152,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
    l'élève reconnaisse, c'est numérateur sur dénominateur. Un `inline-flex` se
    pose dans le texte comme un mot, sans casser la ligne de base. */
 .frac-dans-texte {
-    font-size: 1.05em; font-weight: 800; color: var(--primary);
+    font-size: 1.05em; font-weight: 800; color: var(--primary-texte);
     margin: 0 .15em; vertical-align: middle; line-height: 1.05;
     font-variant-numeric: tabular-nums;
 }
@@ -9167,7 +9171,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     gap: clamp(4px, 1.4cqw, 12px); flex-wrap: wrap;
 }
 .fa-depart { font-size: clamp(1.2rem, max(4cqw, 4cqh), 2.2rem); font-weight: 800; }
-.fa-op { font-weight: 900; color: var(--primary); }
+.fa-op { font-weight: 900; color: var(--primary-texte); }
 .fa-op--mini { font-size: .8em; }
 
 /* LA FRACTION EN COLONNES, y compris quand elle contient des cases : le trait
@@ -9216,7 +9220,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fa-case {
     min-width: 1.7em; min-height: 1.3em; padding: 0 .12em;
     border: 2px dashed var(--border); border-radius: 8px; background: transparent;
-    font: inherit; font-weight: 900; color: var(--primary); cursor: pointer;
+    font: inherit; font-weight: 900; color: var(--primary-texte); cursor: pointer;
     line-height: 1.15; -webkit-tap-highlight-color: transparent;
     transition: border-color .15s ease, background .15s ease, color .15s ease;
 }
@@ -9224,8 +9228,8 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fa-case--active { border-color: var(--primary); border-style: solid;
                    background: color-mix(in srgb, var(--primary) 12%, transparent); }
 .fa-case--pleine { border-style: solid; }
-.fa-case--juste { color: var(--success); border-color: var(--success); border-style: solid; }
-.fa-case--faux { color: var(--danger); border-color: var(--danger); border-style: solid; }
+.fa-case--juste { color: var(--success-texte); border-color: var(--success); border-style: solid; }
+.fa-case--faux { color: var(--danger-texte); border-color: var(--danger); border-style: solid; }
 .fa-val { display: inline-block; min-width: 1ch; }
 .fa-case--active .fa-val::after { content: '_'; opacity: .5; }
 .fa-case--pleine .fa-val::after { content: none; }
@@ -9246,7 +9250,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     margin: 0 0 12px; text-align: center; line-height: 1.4;
     font-size: .92rem; color: var(--text-main);
 }
-.fa-table-mot b { color: var(--primary); }
+.fa-table-mot b { color: var(--primary-texte); }
 /* La modale n'est pas un conteneur de requête : la table se dimensionne en
    unités absolues, et déborde horizontalement plutôt que de se tasser. */
 .fa-table-boite { max-width: 100%; overflow-x: auto; display: flex; justify-content: center; }
@@ -9300,7 +9304,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fa-touche--ok:disabled { opacity: .45; cursor: default; }
 .fa-note {
     min-height: 2.2em; max-width: 40em; text-align: center; line-height: 1.3;
-    font-size: clamp(.7rem, max(2.2cqw, 2.2cqh), .9rem); color: var(--danger); font-weight: 600;
+    font-size: clamp(.7rem, max(2.2cqw, 2.2cqh), .9rem); color: var(--danger-texte); font-weight: 600;
 }
 
 /* En paysage large, le cahier et le pavé se mettent côte à côte : le calcul
@@ -9340,7 +9344,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fb-rang-bande--ok { animation: fb-devoile .45s ease both; }
 .fb-pile-egal {
     display: flex; justify-content: center; align-items: center;
-    font-size: clamp(1.1rem, 4cqw, 2rem); font-weight: 900; color: var(--primary);
+    font-size: clamp(1.1rem, 4cqw, 2rem); font-weight: 900; color: var(--primary-texte);
 }
 .fb-pile-vide { min-height: 0; }
 
@@ -9367,10 +9371,10 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fb-arcs .fb-pointe { fill: var(--primary); stroke: none; }
 .fb-fleche-mot {
     position: absolute; left: 50%; top: 0; transform: translate(-50%, -50%);
-    background: var(--bg-app); padding: 0 .35em; font-weight: 900; color: var(--primary);
+    background: var(--bg-app); padding: 0 .35em; font-weight: 900; color: var(--primary-texte);
     font-size: clamp(.85rem, max(3cqw, 3cqh), 1.35rem); white-space: nowrap;
 }
-.fb-fleche-mot--su { color: var(--success); animation: fb-devoile .4s ease both; }
+.fb-fleche-mot--su { color: var(--success-texte); animation: fb-devoile .4s ease both; }
 
 /* L'entier dans un calcul de fractions : « 1 », pas « 1/1 ». Il n'a pas de
    dénominateur — c'est justement ce qu'on va lui en donner un. */
@@ -9680,7 +9684,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     border: 1px solid var(--border); background: var(--bg-panel);
     color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1;
 }
-.mes-exo-oter:hover { color: var(--danger); border-color: var(--danger); }
+.mes-exo-oter:hover { color: var(--danger-texte); border-color: var(--danger); }
 .mes-exos-ajouter { margin-top: 14px; }
 
 /* La fenêtre d'ajout : on cherche, on choisit, on borne. Trois gestes, dans
@@ -9715,7 +9719,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     background: var(--bg-panel); color: var(--text-muted); cursor: pointer;
     font: inherit; font-size: .85rem; font-weight: 600;
 }
-.mes-ajout-onglet.is-actif { border-color: var(--primary); color: var(--primary); }
+.mes-ajout-onglet.is-actif { border-color: var(--primary); color: var(--primary-texte); }
 .mes-ajout-valeurs { display: flex; gap: 6px; flex-wrap: wrap; }
 .mes-ajout-valeur {
     min-width: 46px; padding: 8px 10px; border-radius: 10px;
@@ -9733,12 +9737,18 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     background: var(--bg-app); color: var(--text-main); cursor: pointer;
     font: inherit; font-weight: 700; text-align: left;
 }
-.recompense-jeu:hover { border-color: var(--primary); color: var(--primary); }
+.recompense-jeu:hover { border-color: var(--primary); color: var(--primary-texte); }
 .recompense-non { margin-top: 14px; }
 
 /* Étape bornée par le TEMPS : la barre n'a rien à remplir — on n'a pas de
    total —, elle laisse la place au seul compte des questions faites. */
+/* SANS SOCLE, PLUS DE BLANC. Le compte est écrit en blanc parce qu'il se pose
+   d'ordinaire sur l'ardoise ; la barre devenue transparente, il se retrouvait
+   blanc sur l'en-tête clair — invisible dans quatre thèmes sur cinq. */
 #game-progress-container.pg--sans-total { background: transparent; box-shadow: none; }
+#game-progress-container.pg--sans-total #game-progress-text {
+    color: var(--text-main); text-shadow: none;
+}
 
 
 /* ==========================================================================
@@ -9801,7 +9811,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 }
 .auj-lien {
     background: none; border: 0; padding: 0 2px; cursor: pointer;
-    color: var(--primary); font: inherit; font-weight: 800;
+    color: var(--primary-texte); font: inherit; font-weight: 800;
     text-decoration: underline; text-underline-offset: 2px;
 }
 .auj-lien:hover { filter: brightness(1.15); }
@@ -9817,14 +9827,14 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .rj-champ:focus { outline: none; border-color: var(--primary); }
 .rj-aide, .rj-vide, .rj-etat { color: var(--text-muted); font-size: .88rem; margin: 0; }
 .rj-etat:empty { display: none; }
-.rj-etat--attention { color: var(--warning); font-weight: 800; }
+.rj-etat--attention { color: var(--warning-texte); font-weight: 800; }
 .rj-deja {
     margin: 0; padding: 10px 12px; border-radius: 10px;
     background: var(--bg-hover); font-size: .9rem;
 }
 .rj-quitter {
     background: none; border: 0; padding: 0 2px; cursor: pointer;
-    color: var(--danger); font: inherit; font-weight: 800; text-decoration: underline;
+    color: var(--danger-texte); font: inherit; font-weight: 800; text-decoration: underline;
 }
 /* LA LISTE NE DÉPASSE JAMAIS QUATRE LIGNES VISIBLES : au-delà, on ne choisit
    plus, on cherche — et c'est le champ qui sert à ça. */
@@ -9843,7 +9853,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .auj-dit b { display: block; font-size: clamp(1.05rem, 2.6vw, 1.3rem); font-weight: 900; }
 .auj-dit span { opacity: .92; font-weight: 600; }
 .auj-go {
-    flex: 0 0 auto; background: #fff; color: var(--primary);
+    flex: 0 0 auto; background: #fff; color: var(--primary-texte);
     border: 0; border-radius: 999px; padding: 13px 28px;
     font: inherit; font-weight: 900; font-size: 1.02rem; cursor: pointer;
     transition: transform .12s;
@@ -9915,7 +9925,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     width: 100%; background: none; border: 0; padding: 10px;
     color: var(--text-muted); font: inherit; font-weight: 800; cursor: pointer;
 }
-.auj-explorer:hover { color: var(--primary); }
+.auj-explorer:hover { color: var(--primary-texte); }
 .auj-explorer svg { transition: transform .18s; }
 .auj-explorer--ouvert svg { transform: rotate(180deg); }
 
@@ -10056,7 +10066,7 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 
 /* Ce qu'il faut retenir. L'auteur l'écrit déjà en capitales : on ne fait que
    le rendre visible sans crier — la couleur porte, le gras suffit. */
-.lc-fort { font-weight: 800; color: var(--primary); }
+.lc-fort { font-weight: 800; color: var(--primary-texte); }
 
 /* UN CALCUL SE SAISIT SANS SE LIRE. « (−3) + (−4) = −7 » n'est pas une phrase :
    c'est un objet qu'on montre, et l'oeil doit pouvoir l'attraper d'un coup au
@@ -10065,8 +10075,12 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .lc-calc {
     display: inline-block;
     padding: 1px 7px; border-radius: 6px;
-    background: rgba(255, 255, 255, .72);
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+    /* LA PASTILLE SUIT LE THÈME. Un blanc translucide codé en dur restait
+       blanc en thème sombre, sous un texte devenu clair : mesuré, 1,22 de
+       contraste — le calcul disparaissait au milieu de la leçon, c'est-à-dire
+       exactement ce qu'on avait mis en valeur. */
+    background: color-mix(in srgb, var(--text-main) 8%, var(--bg-panel));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-main) 12%, transparent);
     font-variant-numeric: tabular-nums;
     font-weight: 700; white-space: nowrap;
 }
@@ -10083,7 +10097,7 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 }
 .lc-cas-nom {
     display: block; font-weight: 900; font-size: .82em;
-    letter-spacing: .03em; color: var(--primary); margin-bottom: 2px;
+    letter-spacing: .03em; color: var(--primary-texte); margin-bottom: 2px;
 }
 /* Le corps d'un cas commence par une majuscule : le titre a pris les
    deux-points qui l'introduisaient, et « on ajoute les distances » sans
@@ -10104,7 +10118,7 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
    ajouter un titre de plus. */
 .banc-q-fig {
     display: flex; justify-content: center; margin-bottom: 8px;
-    color: var(--primary);
+    color: var(--primary-texte);
 }
 .banc-q-fig svg { width: 84px; height: 84px; }
 .banc-q-exp {
@@ -10331,7 +10345,7 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .pp-fini:active { transform: scale(.97); }
 .pp-lien { padding: 8px 14px; font-size: .86rem; font-weight: 700; }
 .pp-outil--actif {
-    border-color: var(--primary); color: var(--primary);
+    border-color: var(--primary); color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 .pp-aide-mode { font-size: .82rem; opacity: .7; margin: 2px 0 0; text-align: center; }

@@ -10,7 +10,7 @@
 .game-header-actions { display: flex; gap: 10px; margin-left: auto; flex-shrink: 0; }
 .game-icon-btn { font-size: 1.2rem; padding: 6px; border-radius: 50%; transition: 0.2s; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-shrink: 0; }
 .game-icon-btn--warn { background: #fef08a; border: 1px solid #fde047; color: #854d0e; }
-.game-icon-btn--info { background: var(--bg-app); border: 1px solid var(--border); color: var(--primary); }
+.game-icon-btn--info { background: var(--bg-app); border: 1px solid var(--border); color: var(--primary-texte); }
 .game-icon-btn--neutre { background: var(--bg-app); border: 1px solid var(--border); color: var(--text-muted); }
 .game-icon-btn--danger { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
 /* UN BOUTON `hidden` DOIT DISPARAÎTRE, et `display: flex` ci-dessus le
@@ -24,8 +24,20 @@
    fait exactement ce qu'il annonce. */
 .game-icon-btn[hidden] { display: none; }
 
-#game-progress-container { position: relative; flex: 1; max-width: 250px; height: 24px; margin: 0 15px; background: var(--border); border-radius: 12px; overflow: hidden; display: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
-#game-progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.3s ease; border-radius: 12px; }
+/* LA PISTE EST SOMBRE, ET LE COMPTE EST BLANC DESSUS.
+   Mesuré au début d'un exercice, quand la barre est encore vide : « 0 / 10 »
+   en blanc sur `--border` donne 2,61 de contraste — il faut 4,5. L'ombre
+   portée qui était censée le sauver ne compte pas : une ombre floue ne
+   remplace pas un fond. Or c'est le seul endroit qui dit à l'élève où il en
+   est, et c'est au tout début qu'il le regarde le plus.
+   L'ardoise est écrite en dur et non prise à un jeton, parce qu'elle doit
+   tenir dans les cinq thèmes ET sous la partie remplie : c'est un SOCLE de
+   lisibilité, pas une couleur d'habillage. */
+#game-progress-container { position: relative; flex: 1; max-width: 250px; height: 24px; margin: 0 15px; background: #475569; border-radius: 12px; overflow: hidden; display: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.12); }
+/* Le dégradé finissait sur `--accent`, un bleu ciel où le blanc tombe à 2,14 :
+   une barre presque pleine redevenait illisible à son extrémité. Il finit
+   maintenant sur la version texte du même bleu — même famille, 5,93. */
+#game-progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent-texte)); transition: width 0.3s ease; border-radius: 12px; }
 #game-progress-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.5); z-index: 2; pointer-events: none; }
 
 /* Dans le FLUX, sous l'en-tête, et non en absolu par-dessus : la bannière
@@ -261,14 +273,14 @@
 .tactile-grid { display: grid; grid-template-columns: repeat(5, 60px); grid-template-rows: repeat(5, 60px); gap: 6px; background: rgba(255,255,255,0.5); border: 1px solid var(--border); padding: 10px; border-radius: 16px; box-shadow: var(--shadow-lg); backdrop-filter: blur(5px); }
 .grid-cell { background: white; cursor: pointer; display: flex; justify-content: center; align-items: center; border-radius: 8px; font-weight: 700; font-size: 1.2rem; color: var(--text-main); box-shadow: var(--shadow-sm); transition: 0.2s; border: 2px solid transparent; }
 @media (hover: hover) and (pointer: fine) {
-.grid-cell:hover { transform: scale(1.05); border-color: var(--primary); color: var(--primary); box-shadow: var(--shadow-md); z-index: 2; }
+.grid-cell:hover { transform: scale(1.05); border-color: var(--primary); color: var(--primary-texte); box-shadow: var(--shadow-md); z-index: 2; }
 }
 
 /* Grille Facteur Manquant */
 .missing-grid { display: grid; grid-template-columns: repeat(4, 70px); gap: 12px; margin-top: 30px; }
 .missing-cell { --taille-case: 1.6rem; background: var(--bg-panel); border: 2px solid var(--border); border-radius: 12px; font-size: var(--taille-case); font-weight: 800; width: 70px; height: 70px; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow-sm); color: var(--text-main); }
 @media (hover: hover) and (pointer: fine) {
-.missing-cell:hover { transform: translateY(-3px); border-color: var(--primary); color: var(--primary); box-shadow: var(--shadow-md); }
+.missing-cell:hover { transform: translateY(-3px); border-color: var(--primary); color: var(--primary-texte); box-shadow: var(--shadow-md); }
 }
 
 /* Table de Pythagore */
@@ -304,7 +316,7 @@
     transition: all 0.2s ease; box-shadow: var(--shadow-sm); cursor: pointer;
 }
 @media (hover: hover) and (pointer: fine) {
-.prio-btn:hover { border-color: var(--primary); transform: translateX(5px); box-shadow: var(--shadow-md); color: var(--primary); }
+.prio-btn:hover { border-color: var(--primary); transform: translateX(5px); box-shadow: var(--shadow-md); color: var(--primary-texte); }
 }
 
 /* --- HOVER PREVIEW DEMO MODAL --- */
@@ -343,12 +355,12 @@
 /* --- FEEDBACK & ANIMATIONS --- */
 #game-feedback {
     position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-    min-height: 40px; font-size: 1.3rem; font-weight: 600; text-align: center; color: var(--danger);
+    min-height: 40px; font-size: 1.3rem; font-weight: 600; text-align: center; color: var(--danger-texte);
     background: #fee2e2; padding: 12px 25px; border-radius: 12px; display: none; align-items: center; justify-content: center;
     box-shadow: var(--shadow-lg); border: 1px solid #fca5a5; max-width: 80%; z-index: 100000;
 }
 .celebration-anim {
-    position: absolute; font-size: 3rem; font-weight: 900; color: var(--success); text-shadow: 0 4px 10px rgba(34, 197, 94, 0.5);
+    position: absolute; font-size: 3rem; font-weight: 900; color: var(--success-texte); text-shadow: 0 4px 10px rgba(34, 197, 94, 0.5);
     animation: floatUp 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; z-index: 1000; pointer-events: none;
 }
 @keyframes floatUp {
@@ -514,7 +526,7 @@
 }
 .fn-valeurs th {
     background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
-    color: var(--primary); text-align: right; min-width: 0;
+    color: var(--primary-texte); text-align: right; min-width: 0;
 }
 
 /* LA CARTE RAPPELÉE, DANS SA FENÊTRE. Les styles de l'organigramme sont posés
@@ -536,7 +548,7 @@
 }
 .fn-phrase u {
     text-decoration: none; border-bottom: 2px solid var(--primary);
-    color: var(--primary); letter-spacing: .06em;
+    color: var(--primary-texte); letter-spacing: .06em;
 }
 /* UN TROU EST UNE CASE QU'ON TOUCHE. Rémy : « dans la phrase enlève les deux
    chiffres, on peut les compléter grâce au f(x) ». Deux trous au lieu d'un :

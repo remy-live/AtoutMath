@@ -638,6 +638,29 @@ défauts qu'ils cherchent ne lèvent aucune erreur — ils laissent seulement un
 - une variable de couleur mal orthographiée (`var(--bg-main)` au lieu de
   `var(--bg-app)`) rend le panneau TRANSPARENT, sans rien casser.
 
+Un troisième fait de même pour le CONTRASTE (`contraste.test.mjs`).
+
+### Deux jetons par couleur : le fond et le texte
+
+`--primary` est la couleur des FONDS de boutons, où se pose du blanc.
+`--primary-texte` est la même teinte, assez contrastée pour servir de TEXTE.
+Même partage pour `--success`, `--warning`, `--danger` et `--accent`.
+
+Ce n'est pas une élégance : c'est une mesure. Du blanc sur `#6366f1` donne 4,47
+de contraste et il en faut 4,5 ; la même couleur EN TEXTE sur le fond de
+l'application donne 4,27, et le vert de réussite tombe à 2,54 sur un panneau
+blanc. Les deux usages tirent dans des sens opposés — un fond veut rester vif,
+un texte veut se détacher — et une seule couleur ne peut pas les servir tous
+les deux. Le thème sombre le montre en clair : son fond est vif, son texte est
+pâle.
+
+Chaque thème définit ses cinq versions texte. `body.teacher-mode` impose
+l'indigo par-dessus le thème choisi, mais NE reprend PAS `--primary-texte` :
+sinon le thème sombre perdrait sa version pâle.
+
+Mesuré après correction, sur six écrans et dans les cinq thèmes : zéro texte
+sous le seuil AA (`tools/tmp/balayerContraste.mjs`).
+
 ### Le banc d'essai, et le balayage
 
 Le reste — est-ce que l'indice AIDE, est-ce que le robot montre la bonne façon

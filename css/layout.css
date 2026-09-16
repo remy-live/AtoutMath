@@ -46,7 +46,7 @@
 }
 .role-badge--prof {
     background: color-mix(in srgb, var(--primary) 14%, transparent);
-    border-color: var(--primary); color: var(--primary);
+    border-color: var(--primary); color: var(--primary-texte);
 }
 .role-badge--prof .role-badge-point { opacity: 1; }
 /* Sur un téléphone, le mot tombe et le point reste : il suffit à dire le rôle,

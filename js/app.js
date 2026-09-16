@@ -33,6 +33,7 @@ import { initStudentCodeUI, applyCode } from './ui/studentCodeUI.js';
 import { initGameFeedbackUI } from './ui/gameFeedbackUI.js';
 import { initApercuTiroir } from './ui/apercuTiroir.js';
 import { initFenetres } from './ui/fenetre.js';
+import { initCoucheDeJeu } from './ui/coucheDeJeu.js';
 import { getActiveProfile } from './core/profile.js';
 import { initGamificationEngine } from './core/gamification.js';
 import { initGamificationUI } from './ui/gamificationUI.js';
@@ -158,6 +159,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Et les huit fenêtres deviennent de vraies fenêtres : rôle, Échap, piège
     // au clavier, retour du focus. Sans toucher à aucun de leurs appelants.
     initFenetres();
+    // Et pendant un exercice, la page derrière cesse d'exister — pour le
+    // clavier comme pour un lecteur d'écran.
+    initCoucheDeJeu();
     refreshViews();
     setSidebarMode('drill');
     // SANS MODE LIBRE, ON N'OUVRE PAS SUR LE CATALOGUE. Il serait masqué dans
@@ -952,16 +956,49 @@ function initMobileDrillToggle() {
     };
 }
 
+/**
+ * LES CINQ THÈMES, ET CELUI OÙ L'ON EST.
+ *
+ * Le bouton disait « Changer de thème » et rien d'autre : cinq états derrière
+ * un seul mot. On ne savait ni où l'on était, ni où l'on allait, ni combien de
+ * fois il faudrait encore appuyer pour revenir à celui qu'on aimait bien. Un
+ * bouton qui cycle sans annoncer son cycle se manipule à l'aveugle — et pour
+ * qui lit l'écran à l'oreille, il n'annonçait strictement rien.
+ *
+ * Le nom du thème en cours s'écrit donc sur le bouton, et son étiquette dit ce
+ * que l'appui suivant fera. Ce sont des noms, pas des numéros : personne ne se
+ * dit « je veux le thème 3 ».
+ */
+const THEMES = [
+    { id: 'light', nom: 'Clair' },
+    { id: 'dark', nom: 'Sombre' },
+    { id: 'ocean', nom: 'Océan' },
+    { id: 'forest', nom: 'Forêt' },
+    { id: 'sunset', nom: 'Couchant' }
+];
+
 function initTheme() {
-    const themes = ['light', 'dark', 'ocean', 'forest', 'sunset'];
     const btn = document.getElementById('btn-toggle-theme');
+    const mot = document.getElementById('btn-theme-mot');
     if (!btn) return;
-    btn.onclick = () => {
-        const current = document.documentElement.getAttribute('data-theme') || 'light';
-        const next = themes[(themes.indexOf(current) + 1) % themes.length];
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('mathbox-theme', next);
+    const nomDe = (id) => (THEMES.find(t => t.id === id) || THEMES[0]).nom;
+    const peindre = () => {
+        const actuel = document.documentElement.getAttribute('data-theme') || 'light';
+        const i = THEMES.findIndex(t => t.id === actuel);
+        const suivant = THEMES[((i < 0 ? 0 : i) + 1) % THEMES.length];
+        if (mot) mot.textContent = `Thème : ${nomDe(actuel)}`;
+        btn.title = `Thème ${nomDe(actuel)} — passer à ${suivant.nom}`;
+        btn.setAttribute('aria-label', btn.title);
     };
+    btn.onclick = () => {
+        const actuel = document.documentElement.getAttribute('data-theme') || 'light';
+        const i = THEMES.findIndex(t => t.id === actuel);
+        const suivant = THEMES[((i < 0 ? 0 : i) + 1) % THEMES.length];
+        document.documentElement.setAttribute('data-theme', suivant.id);
+        try { localStorage.setItem('mathbox-theme', suivant.id); } catch (e) { /* privé */ }
+        peindre();
+    };
+    peindre();
 }
 
 // --- Barre de débogage ------------------------------------------------------
