@@ -90,6 +90,42 @@ if (typeof document !== 'undefined') {
 }
 
 /**
+ * LE LIEN QUI N'EST PAS ARRIVÉ ENTIER.
+ *
+ * Un code de parcours voyage dans une adresse : collée dans le cahier de
+ * textes, recopiée à la main, coupée en deux par une messagerie qui prend le
+ * tiret pour une fin de ligne. Quand il n'arrive pas entier, l'application
+ * s'ouvrait sur RIEN — pas de porte (`portailNecessaire()` voit un code dans
+ * l'adresse et s'efface), pas de parcours, pas un mot.
+ *
+ * ON RETIRE LE CODE DE L'ADRESSE, et c'est juste en soi : un code qui ne marche
+ * pas n'a rien à faire dans la barre d'adresse, où il se rejouerait à chaque
+ * rechargement. Mais on ne le jette pas — on le colle dans la case où l'élève
+ * aurait dû le taper. Il n'a plus qu'à comparer avec ce que son professeur a
+ * écrit, et à corriger le caractère qui manque.
+ *
+ * @param {string} code le code tel qu'il est arrivé, abîmé
+ */
+export function direCodeAbime(code) {
+    try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('code');
+        window.history.replaceState({}, '', url.toString());
+    } catch (e) { /* adresse illisible : la porte suffira */ }
+
+    majPortail();
+    // Après le dessin : `majPortail` vient peut-être de fabriquer la porte, et
+    // ses champs n'existaient pas une ligne plus haut.
+    requestAnimationFrame(() => {
+        const champ = document.getElementById('portail-code');
+        if (champ) { champ.value = String(code || ''); champ.focus(); champ.select(); }
+        dire('portail-etat-code',
+            'Ce lien n\'est pas arrivé entier. Compare-le avec celui que ton '
+            + 'professeur a donné, ou demande-lui le code.', true);
+    });
+}
+
+/**
  * LE BANDEAU DU BILLET PÉRIMÉ — parce que la porte, souvent, ne reviendra pas.
  *
  * Premier jet : j'effaçais le rattachement et j'appelais `majPortail()`, en
@@ -251,8 +287,36 @@ function dessiner() {
     const ouvrir = () => {
         const code = val('portail-code');
         if (!code) return dire('portail-etat-code', 'Colle le code que ton professeur a donné.', true);
+        // ON ESSAIE D'ABORD, ON CONSEILLE ENSUITE.
+        //
+        // Premier jet : j'écartais les codes de quatre signes AVANT d'essayer
+        // de les ouvrir. Deux erreurs d'un coup. D'abord un code de séance
+        // court existe — « SUD » en fait trois — et rien ne garantit qu'il n'y
+        // en aura jamais de quatre : je refusais donc peut-être un vrai
+        // parcours. Ensuite mon test réclamait l'alphabet du coffre, qui écarte
+        // le 0 et le 1 ; or le professeur écrit le code qu'il veut dans sa
+        // liste — Rémy a mis « 2024 », que mon test rejetait.
+        //
+        // L'ordre juste est celui-ci : le parcours d'abord, le conseil
+        // seulement quand il n'y a plus rien à ouvrir.
         if (applyCode(code, { autoStart: true })) {
             fermerPortail();
+            return;
+        }
+        // LE MIROIR DU RANGEMENT D'EN FACE. Un élève qui colle son billet ici
+        // lisait « Ce code ne correspond à aucun parcours » : une phrase vraie
+        // et parfaitement inutile, qui l'envoie douter de son billet alors
+        // qu'il s'est trompé de case. On DÉPLACE, comme de l'autre côté :
+        // c'est nous qui avons mis deux cases côte à côte.
+        if (ressembleAUnBillet(code)) {
+            const champBillet = document.getElementById('portail-code-eleve');
+            const champSeance = document.getElementById('portail-code');
+            if (champBillet) champBillet.value = code.toUpperCase();
+            if (champSeance) champSeance.value = '';
+            dire('portail-etat-code',
+                "Ça, c'est le code de ton billet : je l'ai mis à gauche.", true);
+            dire('portail-etat-login', 'Ajoute ton identifiant, puis « Entrer ».');
+            document.getElementById('portail-login')?.focus();
             return;
         }
         dire('portail-etat-code', "Ce code ne correspond à aucun parcours. Vérifie-le avec ton professeur.", true);
@@ -273,6 +337,22 @@ function dessiner() {
      * tirets. On ne devine pas : on reconnaît.
      */
     const ressembleAUneSeance = (code) => /-/.test(code) || code.length > 12;
+
+    /**
+     * ET L'INVERSE : un BILLET collé dans la case de la séance ?
+     *
+     * Le rangement automatique ne marchait que dans un sens. Un élève qui colle
+     * son billet — « 4KP2 » — dans la case « Code de la séance » lisait « Ce
+     * code ne correspond à aucun parcours. Vérifie-le avec ton professeur » :
+     * une phrase vraie et parfaitement inutile, qui l'envoie douter de son
+     * billet alors qu'il s'est trompé de case. Et le professeur reçoit la
+     * question.
+     *
+     * UN BILLET SE RECONNAÎT : quatre signes, sans tiret, pris dans l'alphabet
+     * du coffre — celui de `api/lib/coffre.php`, qui écarte exprès le 0, le 1,
+     * le I et le O pour qu'on ne confonde pas à la dictée.
+     */
+    const ressembleAUnBillet = (code) => /^[A-Z0-9]{4}$/.test(String(code).toUpperCase());
 
     // --- Se connecter avec son billet
     const connecter = async () => {
@@ -306,6 +386,18 @@ function dessiner() {
         } catch (err) {
             bouton.disabled = false;
             dire('portail-etat-login', messageClair(err), true);
+            // ON REMET L'ÉLÈVE EN ÉTAT DE RÉESSAYER, tout de suite.
+            //
+            // Le code refusé restait dans la case et le curseur repartait dans
+            // la page : pour retenter, il fallait viser le champ, tout
+            // sélectionner, effacer, puis retaper. Quatre gestes pour corriger
+            // quatre signes, et la classe entière attend.
+            //
+            // ON N'EFFACE QUE LE CODE. L'identifiant est presque toujours bon —
+            // c'est son prénom — et le retaper serait une punition pour une
+            // faute qu'il n'a pas commise.
+            const mauvaisCode = document.getElementById('portail-code-eleve');
+            if (mauvaisCode) { mauvaisCode.value = ''; mauvaisCode.focus(); }
         }
     };
 

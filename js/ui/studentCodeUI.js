@@ -44,7 +44,7 @@ export function applyCode(code, { autoStart = true } = {}) {
     const { steps, missing } = hydratePath(path);
     if (!steps.length) return false;
     if (missing.length) {
-        showToast(`${missing.length} activité(s) de ce parcours n'existent plus.`, 'error');
+        showToast(`${missing.length} exercice(s) de ce parcours n'existent plus.`, 'error');
     }
 
     state.setStudentPath(path.steps, {

@@ -211,6 +211,22 @@ window.addEventListener('DOMContentLoaded', async () => {
         const ouvert = applyCode(code, { autoStart: true });
         if (!ouvert) {
             document.documentElement.classList.remove('depuis-code', 'parcours-pret');
+            // UN LIEN ABÎMÉ EN ROUTE NE DOIT PAS OUVRIR UN ÉCRAN MUET.
+            //
+            // Un code de parcours voyage dans une adresse — collée dans le
+            // cahier de textes, recopiée à la main, coupée en deux par une
+            // messagerie qui le prend pour une fin de ligne. Quand il n'arrive
+            // pas entier, `applyCode` rend `false`, on retirait le voile… et
+            // c'était tout : l'élève se retrouvait dans l'application, sans
+            // porte — `portailNecessaire()` voit un code dans l'adresse et
+            // s'efface —, sans parcours, et sans un mot pour lui dire pourquoi.
+            //
+            // Il lui reste le code sous les yeux, dans la barre d'adresse. On
+            // le lui remet dans la main : la porte revient, le code est déjà
+            // collé dans la bonne case, et la phrase dit quoi faire.
+            import('./ui/portailUI.js').then(m => {
+                m.direCodeAbime(code);
+            });
         } else {
             // Le voile s'efface quand la couche de jeu est vraiment dessinée :
             // les modules du parcours se chargent en différé, et lever le voile
