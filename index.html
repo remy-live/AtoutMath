@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=721">
-    <link rel="stylesheet" href="css/layout.css?v=721">
-    <link rel="stylesheet" href="css/ui.css?v=721">
-    <link rel="stylesheet" href="css/games.css?v=721">
-    <link rel="stylesheet" href="css/components.css?v=721">
-    <link rel="stylesheet" href="css/modules.css?v=721">
+    <link rel="stylesheet" href="css/base.css?v=722">
+    <link rel="stylesheet" href="css/layout.css?v=722">
+    <link rel="stylesheet" href="css/ui.css?v=722">
+    <link rel="stylesheet" href="css/games.css?v=722">
+    <link rel="stylesheet" href="css/components.css?v=722">
+    <link rel="stylesheet" href="css/modules.css?v=722">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1332,11 +1332,13 @@
             </div>
         </div>
 
-        <!-- MODALE HOVER PREVIEW DEMO -->
+        <!-- L'APERÇU DU CATALOGUE. Survoler = jeter un œil ; cliquer = épingler,
+             et la vignette devient alors jouable jusqu'à ce qu'on la ferme. -->
         <div id="hover-demo-box">
             <div class="hd-header">
                 <span id="hd-title">Titre</span>
-                <span class="hd-subtitle">Aperçu direct</span>
+                <span class="hd-subtitle">Cliquez pour épingler</span>
+                <button type="button" class="hd-fermer" aria-label="Fermer l'aperçu">&times;</button>
             </div>
             <div class="hd-canvas-wrap">
                 <div id="hover-demo-canvas"></div>

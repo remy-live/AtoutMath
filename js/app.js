@@ -31,6 +31,7 @@ import { initImportExport } from './core/importExport.js';
 import { initProfileUI, ouvrirCarnet } from './ui/profileUI.js';
 import { initStudentCodeUI, applyCode } from './ui/studentCodeUI.js';
 import { initGameFeedbackUI } from './ui/gameFeedbackUI.js';
+import { initApercuTiroir } from './ui/apercuTiroir.js';
 import { initGamificationEngine } from './core/gamification.js';
 import { initGamificationUI } from './ui/gamificationUI.js';
 import { initSync } from './core/sync.js';
@@ -144,6 +145,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     initNiveauFilter();
     initImportExport();
     initBasculeRangement();
+    // La croix et la zone sensible de l'aperçu : une seule fois pour la page,
+    // et non une fois par rangée du catalogue — il y en a cent soixante-douze.
+    initApercuTiroir();
     refreshViews();
     setSidebarMode('drill');
     // SANS MODE LIBRE, ON N'OUVRE PAS SUR LE CATALOGUE. Il serait masqué dans
