@@ -85,10 +85,13 @@ test('AJOUTER UN EXERCICE PRÉVIENT, mais n\'interrompt plus', () => {
         BUILDER.indexOf('export function addStep') + 2200);
     assert.ok(!/if \(!document\.body\.classList\.contains\('mobile-view'\)\) selectStep/.test(bloc),
         'on n\'ouvre plus les réglages tout seul');
-    assert.match(bloc, /ajouté — tu peux le régler/);
-    assert.match(bloc, /bouton\.textContent = 'Régler';/,
-        'l\'avis offre le geste qu\'il annonce');
-    assert.match(bloc, /bouton\.onclick = \(\) => \{ selectStep\(step\.stepId\); avis\.remove\(\); \};/);
+    // ET L'AVIS N'OFFRE PLUS LE GESTE, IL LE DIT. Rémy, plus tard : « le régler
+    // ne fonctionne pas, mais ne le mets pas. On règle en cliquant. » Le bouton
+    // marchait chez moi — je l'ai mesuré — mais il durait six secondes et
+    // faisait 32 px de haut, sous la règle des 44. L'étape, elle, reste sous
+    // les yeux, et un clic dessus l'ouvre.
+    assert.match(bloc, /ajouté — clique dessus pour le régler/);
+    assert.ok(!/toast-action/.test(bloc), 'plus de bouton dans l\'avis');
 });
 
 test('la géométrie de l\'aperçu n\'est écrite qu\'une fois', () => {

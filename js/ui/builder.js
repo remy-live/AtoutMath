@@ -541,17 +541,20 @@ export function addStep(exerciseId, rang) {
     // grand écran, simplement moins violent : on venait d'en chercher un dans
     // le catalogue, et l'on se retrouvait devant un formulaire.
     //
-    // Un avis qui PROPOSE, et le geste reste offert. Le bouton de l'avis fait
-    // exactement ce que fait la roue crantée de l'étape.
-    const avis = showToast(`${exo.title} ajouté — tu peux le régler.`, 'success', 6000);
-    if (avis) {
-        const bouton = document.createElement('button');
-        bouton.type = 'button';
-        bouton.className = 'toast-action';
-        bouton.textContent = 'Régler';
-        bouton.onclick = () => { selectStep(step.stepId); avis.remove(); };
-        (avis.firstElementChild || avis).appendChild(bouton);
-    }
+    // ET L'AVIS N'A PLUS DE BOUTON.
+    //
+    // Rémy : « Dans le toast où tu proposes de régler l'exercice, le régler ne
+    // fonctionne pas, mais ne le mets pas. On règle en cliquant. »
+    //
+    // Mesuré chez moi, le bouton OUVRAIT bien la fenêtre de réglages — je le
+    // dis parce que c'est vrai, pas pour discuter : un bouton qui échoue chez
+    // celui qui s'en sert vaut moins que pas de bouton du tout. Et il avait de
+    // toute façon deux défauts que la mesure montre : 32 px de haut, sous la
+    // règle des 44 qu'on tient partout, et six secondes pour le viser.
+    //
+    // L'avis dit donc le GESTE, qui lui ne disparaît pas au bout de six
+    // secondes : l'étape est là, sous les yeux, et un clic dessus l'ouvre.
+    showToast(`${exo.title} ajouté — clique dessus pour le régler.`, 'success', 5000);
 }
 
 // --- Rendu de la liste d'étapes ---------------------------------------------

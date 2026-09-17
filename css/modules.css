@@ -1280,18 +1280,6 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .cat-compte-tout:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 @media (pointer: coarse) { .cat-compte-tout { min-height: 44px; } }
 
-/* Le bouton d'un avis : il fait ce que l'avis propose, sans avoir à aller le
-   chercher ailleurs. Blanc sur le fond de l'avis, qui est déjà coloré. */
-.toast-action {
-    flex: 0 0 auto; margin-left: 4px;
-    appearance: none; font: inherit; font-weight: 800; font-size: .85rem;
-    color: inherit; background: rgba(255, 255, 255, .22);
-    border: 1px solid rgba(255, 255, 255, .55); border-radius: 999px;
-    padding: 5px 13px; min-height: 32px; cursor: pointer;
-}
-.toast-action:hover { background: rgba(255, 255, 255, .34); }
-.toast-action:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-@media (pointer: coarse) { .toast-action { min-height: 44px; } }
 
 /* --- LES RÉGLAGES D'UNE ÉTAPE, EN FENÊTRE ------------------------------------
 
@@ -1903,10 +1891,18 @@ html[data-point="plus"] .pt-croix { display: none; }
    `transition: none` est indispensable : `.sign-tile` anime toutes ses
    propriétés, `left` et `top` compris, et le fantôme traînait derrière le
    doigt d'un sixième de seconde. */
+/* LE FANTÔME EST UN INDICE, PAS UN SOSIE.
+   Rémy : « je trouve que le fantôme lorsqu'on drag drop est vraiment trop ».
+   Il était à 95 % d'opacité et AGRANDI de 6 % : une copie pleine de la rangée,
+   posée pile sur l'endroit qu'on vise. On ne voyait plus où l'on déposait, ce
+   qui est tout ce qu'on regarde à ce moment-là.
+   Il devient translucide et légèrement PLUS PETIT que l'original — on tient
+   quelque chose, on ne le brandit pas — et il garde son ombre, qui suffit à le
+   décoller de la page. */
 .drag-ghost {
     position: fixed; z-index: 100001; pointer-events: none;
-    margin: 0; opacity: .95; transform: scale(1.06);
-    box-shadow: var(--shadow-lg); cursor: grabbing;
+    margin: 0; opacity: .5; transform: scale(.94);
+    box-shadow: var(--shadow-md); cursor: grabbing;
     transition: none !important;
 }
 

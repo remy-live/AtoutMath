@@ -10,6 +10,8 @@ import { estJeuCatalogue } from '../core/revue.js';
 import { cheminsDe, modeRangement, setModeRangement, RANGEMENTS, HORS_CHAPITRE } from '../core/rangement.js';
 import { ficheDe } from './rechercheUI.js';
 import { montrerApercu, fermerApercu, laisserPartir, retenir, glissementEnCours } from './apercuTiroir.js';
+import { pendantLeGlissement, arreterLeDefilement, brancherDefilementGlisse }
+    from './defilementGlisse.js';
 
 // L'APERÇU DU CATALOGUE VIT DANS SON PROPRE MODULE.
 //
@@ -88,6 +90,10 @@ export function createLibraryItem(exo) {
 
     // Interaction Éditeur vs Élève
     item.draggable = true;
+    // Le défilement pendant le glissement se branche sur le DOCUMENT, une fois
+    // pour toutes : l'API HTML5 n'envoie `dragover` qu'aux éléments qui
+    // l'acceptent, et l'on veut défiler où que le curseur passe.
+    brancherDefilementGlisse();
     item.ondragstart = (e) => {
         if(!state.isTeacherMode) { e.preventDefault(); return; }
         e.dataTransfer.setData('text/plain', exo.id);
@@ -189,6 +195,7 @@ function enableTouchDragToPath(item, auDepot) {
     const cleanup = () => {
         clearTimeout(armTimer); armTimer = null;
         dragging = false; start = null;
+        arreterLeDefilement();
         if (ghost) { ghost.remove(); ghost = null; }
         const box = pathBox();
         if (box) box.classList.remove('drag-over');
@@ -228,6 +235,10 @@ function enableTouchDragToPath(item, auDepot) {
         }
         ghost.style.left = `${e.clientX - ghost.offsetWidth / 2}px`;
         ghost.style.top = `${e.clientY - 24}px`;
+        // ON FAIT DÉFILER SOUS LE DOIGT. Sans cela, on ne peut déposer que sur
+        // ce qui est déjà à l'écran — et comme lâcher DÉPOSE, il faudrait
+        // d'abord déposer au mauvais endroit pour aller voir plus loin.
+        pendantLeGlissement(e.clientX, e.clientY);
         const box = pathBox();
         if (box) {
             const r = box.getBoundingClientRect();

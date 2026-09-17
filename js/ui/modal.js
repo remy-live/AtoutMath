@@ -36,9 +36,14 @@ export function showToast(message, type = 'success', duration = 3000) {
         toast.style.transition = '0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, duration);
-    // ON REND LE MESSAGE, pour que l'appelant puisse y brancher un bouton.
-    // Un avis qui dit « tu peux régler cet exercice » et n'offre pas de le
-    // faire demande un geste de plus à quelqu'un qu'on vient d'interrompre.
+    // ON REND LE MESSAGE — l'appelant peut vouloir le retirer plus tôt, ou
+    // l'interroger.
+    //
+    // IL SERVAIT À Y BRANCHER UN BOUTON, et ce n'est plus le cas. Rémy, sur
+    // l'avis qui proposait de régler l'exercice qu'on venait d'ajouter : « le
+    // régler ne fonctionne pas, mais ne le mets pas. On règle en cliquant. »
+    // Un avis dure six secondes ; ce qu'il propose doit donc être ce qu'on
+    // fait en le lisant, pas un geste qu'on aura peut-être envie de faire.
     return toast;
 }
 
