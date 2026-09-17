@@ -275,11 +275,96 @@ export function getFilteredExercises() {
     return list;
 }
 
+/**
+ * TOUT LE CATALOGUE VISIBLE PAR CE RÔLE — avant les filtres du professeur.
+ *
+ * C'est le dénominateur : « 140 exercices SUR 172 ». Il ne compte pas les
+ * brouillons pour un élève, parce qu'ils n'existent pas pour lui.
+ */
+/** Ce que le professeur a tapé se pose dans du HTML : on l'échappe. */
+const echapper = (t) => String(t == null ? '' : t)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function catalogueEntier() {
+    return filterByStatus(exercices, {
+        only: state.catalogFilter, teacher: state.isTeacherMode
+    });
+}
+
+/**
+ * DIRE CE QUE LES FILTRES GARDENT, ET COMMENT LES DÉFAIRE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * Rémy : « il faudrait des filtres pour afficher moins d'infos (surtout que
+ * puisque tu rajoutes un jeu par jour, ça va vite faire beaucoup) ».
+ *
+ * MESURÉ. 172 exercices ; l'arbre entièrement déplié fait 9 076 pixels dans
+ * une fenêtre de 595 — quinze écrans de défilement. Cocher « 6ème » ramène la
+ * liste de 172 à 140 lignes, et RIEN à l'écran ne le dit : ni le nombre, ni le
+ * filtre qui l'a fait. Le mot « 6ème » est écrit dans un menu replié.
+ *
+ * LE VRAI DÉGÂT N'EST PAS DE NE PAS SAVOIR : c'est de chercher. Un filtre coché
+ * la semaine dernière et oublié fait chercher un exercice qui est là, et l'on
+ * finit par croire qu'il n'existe pas. Une ligne qui dit « 140 sur 172 » et
+ * nomme ce qui manque coûte trois centimètres et supprime cette recherche.
+ *
+ * ET ELLE OFFRE LA SORTIE. « Tout afficher » défait tout d'un geste — le
+ * niveau, le duo, la recherche — au lieu de faire rouvrir trois menus.
+ */
+export function majCompteCatalogue() {
+    const el = document.getElementById('catalogue-compte');
+    if (!el) return null;
+
+    const total = catalogueEntier().length;
+    const gardes = getFilteredExercises().length;
+
+    const niveaux = (state.selectedNiveaux || []).slice();
+    const recherche = (state.searchQuery || '').trim();
+    const duo = !!state.aDeuxSeuls;
+    const actifs = niveaux.length + (recherche ? 1 : 0) + (duo ? 1 : 0);
+
+    // RIEN DE FILTRÉ : on ne dit rien. Un « 172 sur 172 » permanent est du
+    // bruit, et l'on cesse de lire une ligne qui ne change jamais.
+    if (!actifs) { el.hidden = true; el.innerHTML = ''; return { total, gardes, actifs }; }
+
+    // On NOMME ce qui filtre : « 6ème », « à deux », « “fraction” ». Dire
+    // seulement « 3 filtres actifs » obligerait à les rouvrir pour savoir
+    // lesquels — c'est-à-dire le geste qu'on veut éviter.
+    const quoi = [];
+    if (niveaux.length) quoi.push(niveaux.join(', '));
+    if (duo) quoi.push('à deux');
+    if (recherche) quoi.push(`« ${recherche} »`);
+
+    const mot = gardes > 1 ? 'exercices' : 'exercice';
+    el.hidden = false;
+    el.innerHTML = `<span class="cat-compte-nb">${gardes} ${mot}</span>`
+        + `<span class="cat-compte-sur"> sur ${total}</span>`
+        + `<span class="cat-compte-quoi"> · ${quoi.map(echapper).join(' · ')}</span>`
+        + ` <button type="button" class="cat-compte-tout" data-tout-afficher>Tout afficher</button>`;
+
+    const bouton = el.querySelector('[data-tout-afficher]');
+    if (bouton) bouton.onclick = () => {
+        state.selectedNiveaux = [];
+        state.aDeuxSeuls = false;
+        state.searchQuery = '';
+        // Le champ de recherche porte le texte : le vider dans l'état sans le
+        // vider à l'écran laisserait un mot écrit qui ne filtre plus rien.
+        const champ = document.getElementById('sidebar-search-input');
+        if (champ) champ.value = '';
+        const croix = document.getElementById('sidebar-search-clear');
+        if (croix) croix.hidden = true;
+        refreshCatalogViews();
+    };
+    return { total, gardes, actifs };
+}
+
 /** Ce que la recherche doit rafraîchir derrière elle, à chaque frappe. */
 export function refreshCatalogViews() {
     initAccordion();
     renderDrilldown();
     initGridFilters();
+    majCompteCatalogue();
 }
 
 // Un exercice "appartient" au noeud `path` si les premiers segments de son
@@ -604,11 +689,10 @@ function renderNiveauRow() {
             const i = sel.indexOf(n);
             if (i >= 0) sel.splice(i, 1); else sel.push(n);
             state.selectedNiveaux = sel;
-            // Le niveau filtre TOUT le catalogue : l'arbre de gauche et la
-            // grille de droite doivent repartir ensemble.
-            initAccordion();
-            renderDrilldown();
-            initGridFilters();
+            // Le niveau filtre TOUT le catalogue : l'arbre de gauche, la
+            // grille de droite et la ligne qui dit ce qui reste doivent
+            // repartir ensemble.
+            refreshCatalogViews();
         };
         fn.appendChild(btn);
     });
@@ -621,9 +705,7 @@ function renderNiveauRow() {
         if (state.aDeuxSeuls) duo.classList.add('active');
         duo.onclick = () => {
             state.aDeuxSeuls = !state.aDeuxSeuls;
-            initAccordion();
-            renderDrilldown();
-            initGridFilters();
+            refreshCatalogViews();
         };
         fn.appendChild(duo);
     }

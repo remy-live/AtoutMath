@@ -1145,6 +1145,29 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .cfg-apprendre-titre { font-weight: 800; font-size: .98rem; }
 .cfg-apprendre-note { font-size: .78rem; color: var(--text-muted); line-height: 1.35; }
 
+/* --- CE QUE LES FILTRES GARDENT ----------------------------------------------
+
+   Voir `majCompteCatalogue` dans js/ui/navigation.js. Une ligne discrète, et
+   qui ne s'affiche QUE si quelque chose filtre : un « 172 sur 172 » permanent
+   est du bruit, et l'on cesse de lire une ligne qui ne change jamais. */
+.cat-compte {
+    margin: 0; padding: 7px 12px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+    font-size: .8rem; line-height: 1.35; color: var(--text-muted);
+    background: var(--bg-hover); border-bottom: 1px solid var(--border);
+}
+.cat-compte-nb { font-weight: 800; color: var(--text-main); }
+.cat-compte-quoi { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-compte-tout {
+    margin-left: auto; appearance: none; font: inherit; font-size: .78rem;
+    font-weight: 700; color: var(--primary-texte);
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 11px; cursor: pointer; white-space: nowrap;
+}
+.cat-compte-tout:hover { border-color: var(--primary); }
+.cat-compte-tout:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+@media (pointer: coarse) { .cat-compte-tout { min-height: 44px; } }
+
 /* Le bouton d'un avis : il fait ce que l'avis propose, sans avoir à aller le
    chercher ailleurs. Blanc sur le fond de l'avis, qui est déjà coloré. */
 .toast-action {

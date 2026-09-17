@@ -22,7 +22,8 @@ import { isGame } from './core/gameAccess.js';
 import { questionsOuvertes } from './core/carnet.js';
 import {
     initAccordion, renderDrilldown, initGridFilters, syncGridToSidebar,
-    setSidebarMode, setTopNavMode, refreshCatalogViews, initBasculeRangement
+    setSidebarMode, setTopNavMode, refreshCatalogViews, initBasculeRangement,
+    majCompteCatalogue
 } from './ui/navigation.js';
 import { initRechercheUI } from './ui/rechercheUI.js';
 import { initBuilder } from './ui/builder.js';
@@ -414,6 +415,12 @@ function initNiveauFilter() {
             updateLabel();
             refreshViews();
             initGridFilters();
+            // ET LA LIGNE QUI DIT CE QUI RESTE. Ce menu-ci est la deuxième
+            // façon de choisir un niveau — l'autre est la rangée d'étiquettes
+            // au-dessus de la grille —, et elle avait sa propre liste de choses
+            // à rafraîchir. Une ligne oubliée dans l'une des deux, c'est un
+            // compte qui ment une fois sur deux.
+            majCompteCatalogue();
         };
 
         item.append(cb, document.createTextNode(niv));

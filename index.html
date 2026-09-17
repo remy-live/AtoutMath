@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=741">
-    <link rel="stylesheet" href="css/layout.css?v=741">
-    <link rel="stylesheet" href="css/ui.css?v=741">
-    <link rel="stylesheet" href="css/games.css?v=741">
-    <link rel="stylesheet" href="css/components.css?v=741">
-    <link rel="stylesheet" href="css/modules.css?v=741">
+    <link rel="stylesheet" href="css/base.css?v=742">
+    <link rel="stylesheet" href="css/layout.css?v=742">
+    <link rel="stylesheet" href="css/ui.css?v=742">
+    <link rel="stylesheet" href="css/games.css?v=742">
+    <link rel="stylesheet" href="css/components.css?v=742">
+    <link rel="stylesheet" href="css/modules.css?v=742">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -694,6 +694,15 @@
                     <button type="button" class="rang-btn" data-rangement="domaine">Domaines</button>
                     <button type="button" class="rang-btn" data-rangement="chapitre">Chapitres</button>
                 </div>
+                <!-- CE QUE LES FILTRES GARDENT, ET COMMENT LES DÉFAIRE.
+                     Rémy : « il faudrait des filtres pour afficher moins
+                     d'infos (surtout que puisque tu rajoutes un jeu par jour,
+                     ça va vite faire beaucoup) ». Mesuré : 172 exercices,
+                     9 076 px d'arbre déplié dans une fenêtre de 595 — quinze
+                     écrans de défilement. Cocher « 6ème » en retire 32, et
+                     RIEN à l'écran ne le disait. Un filtre qu'on a oublié
+                     d'enlever fait chercher un exercice qui est là. -->
+                <p id="catalogue-compte" class="cat-compte" role="status" aria-live="polite" hidden></p>
                 <div id="nav-container">
                     <div id="view-accordion"></div>
                     <div id="view-drilldown">

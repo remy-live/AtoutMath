@@ -658,6 +658,20 @@ l'étape doit se RELIRE (l'enregistrement remplace l'objet dans le parcours), et
 chaque fenêtre doit avoir son propre identifiant de conteneur (le voile d'une
 fenêtre fermée reste 200 ms, et `getElementById` rendait le mauvais).
 
+### Les filtres disent ce qu'ils gardent
+
+Le catalogue fait 172 exercices ; l'arbre entièrement déplié mesure 9 076 px
+dans une fenêtre de 595 — quinze écrans. Cocher « 6ème » en retire 32, et rien
+ne le disait : le mot vit dans un menu replié. Une ligne l'annonce maintenant
+(`majCompteCatalogue`, js/ui/navigation.js) : « 140 exercices sur 172 · 6ème ·
+Tout afficher ». Elle nomme CE QUI filtre — pas « 3 filtres actifs », qui
+obligerait à rouvrir trois menus — et elle ne s'affiche que si quelque chose
+filtre.
+
+Il y a DEUX façons de choisir un niveau : la rangée d'étiquettes au-dessus de la
+grille et le menu du panneau. Chacune avait sa propre liste de choses à
+rafraîchir ; elles passent maintenant par `refreshCatalogViews`.
+
 ### Les mots
 
 Une chose, un mot. Le compteur s'appelle **des points** — pas « étoiles »
