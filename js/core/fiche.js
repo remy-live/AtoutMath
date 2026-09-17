@@ -1067,7 +1067,38 @@ export function composerBlocs(exos, opts, mesurer) {
         for (let debut = 0; debut < cellules.length; debut += cols) {
             const rangee = cellules.slice(debut, debut + cols);
             const rangeeH = Math.max(...rangee.map(c => c.h));
-            if (y + rangeeH > basPage) {
+
+            // PAS DE VEUVE : UNE PAGE ENTIÈRE POUR UNE SEULE QUESTION.
+            //
+            // Mesuré en composant 287 pages — toutes les tailles d'exercice de
+            // 1 à 60 questions, en portrait, en paysage et en interrogation :
+            // trois fois, la DERNIÈRE rangée d'un exercice tombait seule sur
+            // une page neuve, sous un bandeau « (suite) ». Une feuille de
+            // photocopie pour une question, et le professeur qui la distribue
+            // le voit tout de suite.
+            //
+            // La règle typographique est vieille comme l'imprimerie : on ne
+            // laisse pas une ligne seule de l'autre côté du pli. Quand il ne
+            // reste que DEUX rangées et qu'elles ne tiennent pas ensemble ici,
+            // on les emmène toutes les deux sur la page suivante plutôt que
+            // d'en abandonner une.
+            //
+            // ON NE LE FAIT QUE SI LES DEUX TIENNENT SUR UNE PAGE VIDE :
+            // autrement on les repousserait indéfiniment, et la feuille
+            // n'aurait pas de fin. Et le coût est assumé : un blanc en bas de
+            // la page précédente, contre une page entière gaspillée.
+            const restantes = Math.ceil((cellules.length - debut) / cols);
+            let veuve = false;
+            if (restantes === 2) {
+                const derniere = cellules.slice(debut + cols);
+                const derniereH = Math.max(...derniere.map(c => c.h));
+                const ensemble = rangeeH + o.entreQuestions + derniereH;
+                veuve = (y + rangeeH <= basPage)          // celle-ci passerait…
+                    && (y + ensemble > basPage)           // …mais pas l'autre
+                    && (haut() + ensemble <= basPage);    // et les deux tiennent ailleurs
+            }
+
+            if (y + rangeeH > basPage || veuve) {
                 nouvellePage();
                 poserBandeau(true);
             }

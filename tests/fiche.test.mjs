@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
+import { readFileSync } from 'node:fs';
 import { A4, DEFAUTS, couperEnLignes, composerFiche, composerSolutions, RE_FRACTION, porteUneFraction, typographieFr } from '../js/core/fiche.js';
 
 // Un mesureur de service : chaque caractère vaut la moitié de la taille. Les
@@ -1271,4 +1272,64 @@ test('LA FEUILLE RAPPORTE OÙ CHAQUE EXERCICE A COMMENCÉ À NUMÉROTER', () => 
             (_, i) => ({ texte: `${i} + `, reponse: '1' })) }
     ], {}, mesurer);
     assert.deepEqual(mise.departs, [1, 3], JSON.stringify(mise.departs));
+});
+
+// --- Veuves et orphelines ---------------------------------------------------
+
+test('PAS DE PAGE ENTIÈRE POUR UNE SEULE QUESTION', async () => {
+    // Mesuré en composant 287 pages — toutes les tailles d'exercice de 1 à 60
+    // questions, en portrait, en paysage et en interrogation : trois fois, la
+    // DERNIÈRE rangée d'un exercice tombait seule sur une page neuve, sous un
+    // bandeau « (suite) ». Une feuille de photocopie pour une question.
+    //
+    // La règle est vieille comme l'imprimerie : on ne laisse pas une ligne
+    // seule de l'autre côté du pli.
+    const { composerBlocs, pageDe } = await import('../js/core/fiche.js');
+    const exo = (titre, n) => ({
+        id: titre.toLowerCase(), titre, consigne: 'Écris la réponse.',
+        questions: Array.from({ length: n }, (_, i) => ({ texte: `${i + 3} × ${i + 7} =` }))
+    });
+
+    const regimes = [
+        { orientation: 'portrait' },
+        { orientation: 'portrait', interrogation: true },
+        { orientation: 'paysage' }
+    ];
+    const veuves = [];
+    const orphelines = [];
+    let pages = 0;
+
+    for (const r of regimes) {
+        // On balaie les tailles : si une veuve est possible, elle tombe ici.
+        for (let n = 1; n <= 60; n++) {
+            const mise = composerBlocs([exo('Tables', 24), exo('Suite', n)],
+                { ...r, page: pageDe(r.orientation) }, mesurer);
+            mise.pages.forEach((page, i) => {
+                pages++;
+                const bandeaux = page.items.filter(x => x.type === 'exo');
+                const questions = page.items.filter(x => x.type === 'q');
+                if (bandeaux.length === 1 && bandeaux[0].suite && questions.length === 1) {
+                    veuves.push(`${r.orientation}${r.interrogation ? '/interro' : ''} n=${n} page ${i + 1}`);
+                }
+                // Une ORPHELINE : un bandeau seul en bas de page, sa première
+                // question sur la suivante. Le garde existait déjà ; on le tient.
+                const dernier = page.items.map(x => x.type).lastIndexOf('exo');
+                if (dernier >= 0 && !page.items.slice(dernier + 1)
+                    .filter(x => x.type !== 'consigne').length) {
+                    orphelines.push(`${r.orientation} n=${n} page ${i + 1}`);
+                }
+            });
+        }
+    }
+    assert.ok(pages > 250, `le balayage compose bien des pages (${pages})`);
+    assert.deepEqual(veuves, [], 'une page entière pour une question');
+    assert.deepEqual(orphelines, [], 'un bandeau seul en bas de page');
+});
+
+test('…et l\'on n\'emporte les deux dernières rangées que si elles tiennent', () => {
+    // Le garde ne doit pas repousser à l'infini : si les deux rangées ne
+    // tiennent pas ensemble sur une page VIDE, on ne bouge pas — sinon la
+    // feuille n'aurait pas de fin.
+    const src = readFileSync(new URL('../js/core/fiche.js', import.meta.url), 'utf8');
+    assert.match(src, /haut\(\) \+ ensemble <= basPage/);
 });
