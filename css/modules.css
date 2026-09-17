@@ -9074,7 +9074,14 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
     vertical-align: 2px;
 }
-.nv-pastille--neuf { background: rgba(22, 163, 74, .16); color: var(--success-texte); }
+/* MESURÉ, ET C'EST LE DERNIER POINT DE CONTRASTE DE L'AUDIT. Cet écran-ci —
+   « Essayer les derniers exercices » — n'était pas dans le balayage, parce
+   qu'on n'y entre que par la palette d'auteur. La pastille verte y donnait
+   4,41 en thème clair (il en faut 4,5) : `--success-texte` est assez foncé sur
+   du blanc, pas sur un fond lavé de vert. Un cran de plus, et l'on repasse à
+   6,2. Le thème sombre, lui, était déjà à 9,58 — ce sont ses jetons pâles. */
+.nv-pastille--neuf { background: rgba(22, 163, 74, .16); color: #065f46; }
+:root[data-theme="dark"] .nv-pastille--neuf { color: var(--success-texte); }
 .nv-quoi { margin: 2px 0 0; font-size: .84rem; line-height: 1.4; color: var(--text-muted); }
 
 .nv-carte {
