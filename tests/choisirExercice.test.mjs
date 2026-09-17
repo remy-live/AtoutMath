@@ -65,7 +65,7 @@ test('L\'APERÇU SUIT LA LISTE', () => {
     // un choix qu'on ne peut plus faire.
     assert.match(CX, /if \(montre && !g\.some\(e => e\.id === montre\)\)/);
     // Et la géométrie est la même que partout ailleurs, écrite une seule fois.
-    assert.match(CX, /import \{ adapterAuContenu \} from '\.\/apercuTiroir\.js';/);
+    assert.match(CX, /import \{ adapterAuContenu, ajusterDesQueDessine, motDeRelance \} from '\.\/apercuTiroir\.js';/);
 });
 
 test('CE QUE LE PROFESSEUR TAPE EST ÉCHAPPÉ', () => {

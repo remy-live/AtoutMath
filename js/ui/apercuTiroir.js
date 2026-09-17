@@ -65,6 +65,40 @@ let jeton = 0;            // celui qui passe vite : l'aperçu arrivé trop tard 
 let epingle = false;
 let minuteurSortie = null;
 let exoAffiche = null;
+let ancreAffichee = null; // la rangée à côté de laquelle la vignette est posée
+let enGlissement = false; // un exercice est en train d'être déposé dans le parcours
+
+/**
+ * PENDANT QU'ON GLISSE UN EXERCICE, PAS D'APERÇU.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « l'aperçu ne s'éteint pas quand on prend l'exercice pour le dragger
+ * et le dropper du coup c'est bloquant ».
+ *
+ * CE QUI SE PASSAIT, DANS L'ORDRE. Le curseur entre sur la rangée : un minuteur
+ * de 500 ms est armé. Avant qu'il n'ait sonné, le professeur appuie et tire —
+ * `dragstart` ferme la vignette, ce qui ne sert à rien puisqu'elle n'est pas
+ * encore ouverte, ET NE DÉSARME PAS LE MINUTEUR. Or pendant un glisser-déposer
+ * HTML5 le navigateur cesse d'envoyer les événements de souris : le
+ * `mouseleave` de la rangée n'arrive jamais. À 500 ms la vignette s'ouvre donc
+ * EN PLEIN GLISSER, posée à droite de la rangée — c'est-à-dire par-dessus la
+ * colonne du parcours — et plus rien ne la referme, puisque c'est `mouseleave`
+ * qui s'en chargeait.
+ *
+ * Elle est `z-index: 10000` et `pointer-events: auto` : le dépôt lui arrive
+ * dessus, elle n'en fait rien, et l'exercice n'entre pas dans le parcours.
+ * « Bloquant » est le mot juste.
+ *
+ * D'OÙ UN INTERRUPTEUR PLUTÔT QU'UNE FERMETURE DE PLUS. Fermer à `dragstart`
+ * ne suffit pas : ce qu'il faut, c'est que rien ne puisse OUVRIR tant que le
+ * geste dure. C'est le seul endroit d'où l'on tienne les deux — le minuteur de
+ * survol comme le clic qui épingle.
+ */
+export function glissementEnCours(oui) {
+    enGlissement = !!oui;
+    if (enGlissement) fermerApercu({ force: true });
+}
 
 const boite = () => document.getElementById('hover-demo-box');
 const toile = () => document.getElementById('hover-demo-canvas');
@@ -104,6 +138,7 @@ export function fermerApercu(opts = {}) {
     const b = boite();
     if (b) {
         b.style.display = 'none';
+        b.style.visibility = '';
         b.classList.remove('hd-epingle');
     }
     tuerLInstance();
@@ -126,6 +161,114 @@ export function laisserPartir() {
 export function retenir() {
     clearTimeout(minuteurSortie);
     minuteurSortie = null;
+}
+
+/**
+ * LE MOT QUE PORTE LE BOUTON DE RELANCE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « dans les aperçus […] on a que une question et on ne peut pas
+ * naviguer dans les questions en tant que prof ».
+ *
+ * MESURÉ, et c'est écrit dans le code depuis le début : `isDemo` « rend la main
+ * au robot et GÈLE LA SAISIE ». Un aperçu montre donc UNE question, tirée au
+ * hasard, et l'on ne peut ni y répondre ni passer à la suivante. Or c'est
+ * exactement ce qu'un professeur vient y chercher : un générateur tire des
+ * questions différentes, et juger l'exercice sur un seul tirage, c'est juger
+ * sur un échantillon de un.
+ *
+ * ON NE DÉGÈLE PAS LA SAISIE — ce serait un autre sujet, et un aperçu jouable
+ * a déjà son écran (l'œil, plein écran). ON RELANCE : un nouveau tirage, une
+ * nouvelle question. C'est le geste que Rémy décrit, et il marche pour les
+ * vingt-huit activités sans en toucher une seule.
+ *
+ * DEUX MOTS, PARCE QU'IL Y A DEUX CHOSES. Un exercice à générateur pose des
+ * questions : « Question suivante ». Un jeu du catalogue — Hanoï, Le Pousseur —
+ * n'en pose aucune, il distribue une partie : « Relancer ». Écrire
+ * « question suivante » sur la Tour de Hanoï serait faux.
+ */
+export const motDeRelance = (exo) => (exo && exo.generatorId)
+    ? 'Question suivante' : 'Relancer';
+
+/** Deux longueurs à six pour cent près — voir `proche`, ci-dessous. */
+const presqueEgal = (a, b) => Math.abs(a - b) / Math.max(1e-6, Math.abs(b)) < 0.06;
+
+/**
+ * COMBIEN DE TEMPS ON ATTEND LA PREMIÈRE IMAGE, en millisecondes.
+ *
+ * Mesuré : les jeux du catalogue dessinent quelque chose en moins de 50 ms,
+ * soit deux ou trois images. Ce plafond n'est donc pas un délai qu'on subit,
+ * c'est un abandon : passé ce temps, le jeu ne dessinera rien du tout et mieux
+ * vaut montrer un cadre vide qu'un cadre caché pour toujours.
+ */
+const PLAFOND_PREMIERE_IMAGE = 600;
+
+/** Quand on remesure, pour les jeux qui se déplient après leur première image. */
+const RETOUCHE = 700;
+
+const surLaProchaineImage = (fn) => (typeof requestAnimationFrame === 'function'
+    ? requestAnimationFrame(fn)
+    : setTimeout(() => fn(Date.now()), 16));
+
+/**
+ * NE RIEN MONTRER TANT QUE CE N'EST PAS À LA BONNE TAILLE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « dans le choisi un exercice c'est tout gros et après ça prend la
+ * bonne taille, idem pour l'aperçu quand on passe la souris ».
+ *
+ * MESURÉ, et il a raison deux fois. Dans la fenêtre de choix, le jeu s'affiche
+ * à sa taille logique dans un cadre de 358 × 300 : « La Chasse aux Zéros »
+ * occupe 358 × 763, soit DEUX FOIS ET DEMIE le cadre, et il reste ainsi 240 ms
+ * avant de se ranger. Dans la vignette de survol, c'est l'inverse — le jeu part
+ * à 40 % (324 × 224) et saute à 460 × 318 au bout d'un quart de seconde. Deux
+ * symptômes, une seule cause : ON MONTRAIT AVANT D'AVOIR MESURÉ.
+ *
+ * La mesure attendait 260 ms parce que je l'avais posée sur un `setTimeout`
+ * rond, sans vérifier quand le jeu dessine vraiment. Il dessine en moins de
+ * 50 ms. On n'avait donc aucune raison d'attendre : on regarde à chaque image
+ * si quelque chose est dessiné, on pose l'échelle dès que oui, et l'on révèle.
+ *
+ * LA SECONDE MESURE RESTE, parce qu'elle sert : « Le Symétrique aux Carreaux »
+ * continue de déplier son quadrillage après sa première image. Mais elle ne
+ * repose l'échelle que si elle a trouvé autre chose (voir `proche`) — sinon
+ * elle ne fait rien, et rien ne saute.
+ *
+ * @param {object} o
+ * @param {Function} o.ajuster  () => mesure|null — pose l'échelle, rend la mesure
+ * @param {Function} o.montrer  () => void — révèle le cadre, une fois ajusté
+ * @param {Function} [o.vivant] () => boolean — est-ce toujours cet aperçu-là ?
+ *                              Un professeur qui descend sa liste en ouvre dix
+ *                              en deux secondes ; sans cette garde, le neuvième
+ *                              se ferait redimensionner par le troisième.
+ */
+export function ajusterDesQueDessine({ ajuster, montrer, vivant = () => true }) {
+    let revelee = false;
+    let debut = null;
+    let premiere = null;
+    const reveler = () => {
+        if (revelee) return;
+        revelee = true;
+        try { montrer(); } catch (e) { /* le cadre est déjà parti */ }
+    };
+
+    const essai = (t) => {
+        if (!vivant()) return;
+        if (debut === null) debut = t;
+        premiere = ajuster();
+        if (premiere) { reveler(); return; }
+        if (t - debut < PLAFOND_PREMIERE_IMAGE) { surLaProchaineImage(essai); return; }
+        reveler();
+    };
+    surLaProchaineImage(essai);
+
+    setTimeout(() => {
+        if (!vivant()) return;
+        ajuster(premiere);
+        reveler();
+    }, RETOUCHE);
 }
 
 /**
@@ -153,10 +296,17 @@ export function retenir() {
  * l'onglet « Aperçu » des réglages d'une étape. Deux copies de vingt lignes de
  * géométrie finissent toujours par ne plus se comporter pareil.
  *
+ * `proche` EST CE QUI EMPÊCHE LE SOUBRESAUT. On remesure une seconde fois pour
+ * les jeux qui se déplient — mais la plupart ne se déplient pas, et leur
+ * seconde mesure ne diffère de la première que de quelques pixels. Reposer une
+ * échelle pour trois pour cent, c'est faire sauter la vignette sous les yeux du
+ * professeur pour rien. Si la nouvelle mesure ressemble à l'ancienne, on remet
+ * la transformation d'avant et l'on rend l'ancienne mesure : rien n'a bougé.
+ *
  * @returns {{l:number,h:number,ech:number}|null} l'étendue et l'échelle posées,
  *          ou `null` si le jeu n'a encore rien dessiné.
  */
-export function adapterAuContenu(t, { maxL, maxH, centrerDans = null }) {
+export function adapterAuContenu(t, { maxL, maxH, centrerDans = null, proche = null }) {
     if (!t) return null;
     const avant = t.style.transform;
     t.style.transform = 'none';
@@ -176,6 +326,17 @@ export function adapterAuContenu(t, { maxL, maxH, centrerDans = null }) {
     const l = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
     // Jamais d'agrandissement : un jeu tenant dans 300 px reste net à 300 px.
     const ech = Math.min(maxL / l, maxH / h, 1);
+
+    // SIX POUR CENT : au-dessous, l'œil ne verrait pas la correction, il ne
+    // verrait que le saut. Au-dessus, c'est que le jeu a vraiment fini de se
+    // déplier — et là, la nouvelle taille est la bonne, sauter vaut mieux que
+    // rester faux.
+    if (proche && presqueEgal(ech, proche.ech) && presqueEgal(l, proche.l)
+        && presqueEgal(h, proche.h)) {
+        t.style.transform = avant;
+        return proche;
+    }
+
     t.style.transformOrigin = 'top left';
     // CENTRER, QUAND LA BOÎTE EST PLUS GRANDE QUE LE JEU. Sans cela, un jeu
     // deux fois moins haut que son cadre se colle en haut à gauche et laisse un
@@ -190,9 +351,9 @@ export function adapterAuContenu(t, { maxL, maxH, centrerDans = null }) {
     return { l, h, ech };
 }
 
-function ajusterAuContenu() {
+function ajusterAuContenu(proche = null) {
     const b = boite(), t = toile();
-    if (!b || !t) return;
+    if (!b || !t) return null;
 
     // LE CONTENU COMMENCE SOUVENT AVANT LA TOILE, et il ne faut surtout pas le
     // ramener à zéro. J'avais d'abord écrit `x0 = Math.max(0, x0)`, en me
@@ -204,8 +365,9 @@ function ajusterAuContenu() {
     //
     // On prend donc l'étendue telle qu'elle est, négatifs compris : c'est la
     // seule qui décrive ce que le jeu dessine vraiment.
-    const m = adapterAuContenu(t, { maxL: BORNES.maxL, maxH: BORNES.maxH });
-    if (!m) return;
+    const m = adapterAuContenu(t, { maxL: BORNES.maxL, maxH: BORNES.maxH, proche });
+    if (!m) return null;
+    if (proche && m === proche) return m;   // rien n'a changé : on ne retaille rien
     const { l, h, ech } = m;
 
     const cadre = b.querySelector('.hd-canvas-wrap');
@@ -214,6 +376,7 @@ function ajusterAuContenu() {
     // La hauteur totale se déduit du cadre et de l'en-tête : la fixer ici
     // ferait mentir l'un des deux.
     b.style.height = 'auto';
+    return m;
 }
 
 /**
@@ -252,6 +415,9 @@ function placer(ancre) {
  * @returns {Promise<void>}
  */
 export async function montrerApercu(exo, ancre, opts = {}) {
+    // Le geste en cours n'est pas « regarder », c'est « déplacer ». Une vignette
+    // qui s'ouvre au milieu se met en travers du dépôt — voir `glissementEnCours`.
+    if (enGlissement) return;
     const b = boite(), t = toile();
     if (!b || !t) return;
     retenir();
@@ -270,6 +436,7 @@ export async function montrerApercu(exo, ancre, opts = {}) {
 
     tuerLInstance();
     exoAffiche = exo;
+    ancreAffichee = ancre;
     epingle = !!opts.epingler;
     b.classList.toggle('hd-epingle', epingle);
     majTitre(exo);
@@ -283,6 +450,11 @@ export async function montrerApercu(exo, ancre, opts = {}) {
     const cadre = b.querySelector('.hd-canvas-wrap');
     if (cadre) cadre.style.height = '';
     t.style.transform = 'scale(0.4)';
+    // ON L'OUVRE SANS LA MONTRER. `visibility` et non `display` : une boîte
+    // `display: none` n'a pas de dimensions, et c'est justement ce qu'on vient
+    // mesurer. Elle prend donc sa place, le jeu s'y dessine, on la taille — et
+    // elle n'apparaît qu'ensuite, à la bonne taille du premier coup d'œil.
+    b.style.visibility = 'hidden';
     b.style.display = 'flex';
     placer(ancre);
 
@@ -304,29 +476,51 @@ export async function montrerApercu(exo, ancre, opts = {}) {
 
     // ON MESURE DEUX FOIS, ET PAS UNE DE PLUS.
     //
-    // Ce n'est pas le rognage que la seconde passe corrige — celui-là venait
-    // d'ailleurs, et la mesure le dit : à une seule passe comme à deux, les
-    // douze jeux essayés tiennent entiers. C'est la FORME de la fenêtre.
-    // « Le Symétrique aux Carreaux » continue de déplier son quadrillage
-    // après sa première image : mesuré à 260 ms seulement, il obtient une
-    // boîte de 280 × 492 remplie à 83 % — haute, étroite, et pleine de vide.
-    // Remesuré à 960 ms, il obtient 460 × 262 remplie à 100 %.
+    // La PREMIÈRE arrive dès que le jeu a dessiné quelque chose — deux ou trois
+    // images, moins de 50 ms — et c'est elle qui décide de la taille. La boîte
+    // n'apparaît qu'à ce moment-là : elle n'est jamais vue de travers.
+    //
+    // La SECONDE arrive à 700 ms, pour ce qui se déplie : « Le Symétrique aux
+    // Carreaux » continue d'ouvrir son quadrillage après sa première image, et
+    // sans elle il resterait dans une boîte haute et étroite, pleine de vide.
+    // Elle ne repose l'échelle que si elle a trouvé autre chose.
     //
     // DEUX, et non « jusqu'à ce que ça se stabilise » : un jeu où quelque chose
     // tombe grandit indéfiniment, et la vignette rétrécirait à chaque image
-    // sous les yeux du professeur. Deux passes attrapent ce qui se met en
-    // place ; elles laissent de côté ce qui bouge pour toujours.
-    for (const delai of [260, 700]) {
-        await new Promise(r => setTimeout(r, delai));
-        if (monJeton !== jeton) return;
-        ajusterAuContenu();
-        placer(ancre);
-    }
+    // sous les yeux du professeur.
+    ajusterDesQueDessine({
+        vivant: () => monJeton === jeton,
+        ajuster: (proche) => { const m = ajusterAuContenu(proche); placer(ancre); return m; },
+        montrer: () => { b.style.visibility = ''; }
+    });
 }
 
 function majTitre(exo) {
     const titre = document.getElementById('hd-title');
     if (titre) titre.textContent = exo.title;
+    const relance = document.getElementById('hd-rejouer');
+    if (relance) relance.textContent = motDeRelance(exo);
+}
+
+/**
+ * REPRENDRE LA MÊME VIGNETTE AVEC UN AUTRE TIRAGE.
+ *
+ * On passe par `montrerApercu`, qui sait déjà tout faire — tuer le jeu
+ * précédent, remettre la boîte à sa taille par défaut, mesurer, révéler. Il
+ * faut seulement lui faire oublier ce qu'il montre, sans quoi ses deux gardes
+ * (« c'est déjà épinglé », « c'est le même qu'au survol ») le feraient
+ * renoncer : elles sont là pour ne pas redémarrer la partie qu'on regarde, et
+ * ici c'est précisément ce qu'on demande.
+ */
+export function rejouerApercu() {
+    if (!exoAffiche) return false;
+    const exo = exoAffiche;
+    const ancre = ancreAffichee;
+    const etaitEpingle = epingle;
+    epingle = false;
+    exoAffiche = null;
+    montrerApercu(exo, ancre, { epingler: etaitEpingle });
+    return true;
 }
 
 /**
@@ -343,10 +537,21 @@ export function initApercuTiroir() {
     const croix = b.querySelector('.hd-fermer');
     if (croix) croix.onclick = (e) => { e.stopPropagation(); fermerApercu({ force: true }); };
 
+    const relance = b.querySelector('#hd-rejouer');
+    if (relance) relance.onclick = (e) => { e.stopPropagation(); rejouerApercu(); };
+
     // LE CURSEUR QUI ARRIVE SUR LA VIGNETTE L'A CHOISIE. C'est le geste que le
     // relecteur décrivait : on va vers l'aperçu pour le regarder de près.
     b.addEventListener('mouseenter', retenir);
     b.addEventListener('mouseleave', laisserPartir);
+
+    // LE FILET DE SÉCURITÉ DU GLISSER. `dragend` sur la rangée d'origine suffit
+    // en temps normal ; on l'écoute aussi sur le document, et `drop` avec, parce
+    // qu'un interrupteur resté coincé sur « on » supprimerait les aperçus
+    // jusqu'au rechargement de la page — une panne bien pire que celle qu'on
+    // répare.
+    document.addEventListener('dragend', () => glissementEnCours(false), true);
+    document.addEventListener('drop', () => glissementEnCours(false), true);
 
     // ÉCHAP FERME, même épinglée. Une fenêtre sans sortie au clavier est une
     // fenêtre où l'on s'est fait enfermer.

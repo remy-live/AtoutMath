@@ -1231,6 +1231,24 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .cx2-apercu-cadre { position: relative; overflow: hidden; width: 100%; }
 .cx2-apercu-toile { position: absolute; inset: 0; transform-origin: top left; }
 
+/* RELANCER L'APERÇU — le mot exact est posé par le script (« Question
+   suivante » pour un générateur, « Relancer » pour un jeu). Une seule question
+   ne dit pas ce que l'exercice tire en moyenne. */
+.cx2-apercu-pied { width: 100%; display: flex; justify-content: center; padding-top: 10px; }
+.cx2-rejouer, .re-rejouer, .hd-rejouer {
+    min-height: 44px; padding: 0 16px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: .88rem; font-weight: 600; cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+}
+.cx2-rejouer:hover, .re-rejouer:hover, .hd-rejouer:hover {
+    background: var(--bg-hover); border-color: var(--primary);
+}
+.cx2-rejouer:focus-visible, .re-rejouer:focus-visible, .hd-rejouer:focus-visible {
+    outline: 2px solid var(--primary); outline-offset: 2px;
+}
+
 /* SUR UN ÉCRAN ÉTROIT, L'APERÇU PASSE SOUS LA LISTE. Deux colonnes de moins de
    trois cents pixels ne servent ni l'une ni l'autre. */
 @media (max-width: 860px) {
@@ -1300,6 +1318,7 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .re-apercu-note {
     margin: 0 0 12px; font-size: .85rem; color: var(--text-muted); line-height: 1.4;
 }
+.re-apercu-pied { display: flex; justify-content: center; padding-top: 12px; }
 /* Le cadre a une hauteur FIXE, posée par le script : sans elle, la fenêtre
    sauterait de taille à chaque changement de réglage — un jeu à six questions
    et un jeu à trente ne dessinent pas la même hauteur. */

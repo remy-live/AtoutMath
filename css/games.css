@@ -343,6 +343,22 @@
 .hd-fermer:hover { background: rgba(255,255,255,.35); }
 #hover-demo-box .hd-header { background: linear-gradient(90deg, var(--accent), #1e293b); color: white; padding: 12px 20px; font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 .hd-subtitle { color: #cbd5e1; font-weight: normal; font-size: 0.75rem; }
+/* LA BARRE DE RELANCE DE LA VIGNETTE. Elle est posée SOUS l'en-tête et non
+   au pied : le cadre change de hauteur à chaque mesure, et un pied qui suit
+   cette hauteur bougerait sous le curseur au moment où l'on va le cliquer.
+   La boîte a un fond clair en propre (voir #hover-demo-box) : on ne prend donc
+   pas les jetons de thème, qui donneraient du texte clair sur du blanc. */
+.hd-pied {
+    display: flex; justify-content: center; padding: 8px 12px 0;
+    background: transparent;
+}
+#hover-demo-box .hd-rejouer {
+    min-height: 36px; padding: 0 14px; font-size: .82rem;
+    background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1;
+}
+#hover-demo-box .hd-rejouer:hover { background: #e2e8f0; border-color: #94a3b8; }
+@media (pointer: coarse) { #hover-demo-box .hd-rejouer { min-height: 44px; } }
+
 .hd-canvas-wrap { flex-grow: 1; position: relative; overflow: hidden; height: 240px; background: radial-gradient(circle at center, var(--bg-plateau) 0%, var(--bg-app) 100%); }
 /* Vignette de survol. Elle est déclarée conteneur `plateau` comme la zone de
    jeu et la vignette de carte : sans ça, une mise en page qui interroge

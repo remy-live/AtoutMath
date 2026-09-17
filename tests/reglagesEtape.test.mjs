@@ -96,8 +96,8 @@ test('la géométrie de l\'aperçu n\'est écrite qu\'une fois', () => {
     // se comporter pareil : la vignette du catalogue et cet aperçu-ci
     // partagent la même.
     const tiroir = sansCommentaires(lire('js/ui/apercuTiroir.js'));
-    assert.match(tiroir, /export function adapterAuContenu\(t, \{ maxL, maxH, centrerDans = null \}\)/);
-    assert.match(RE, /import \{ adapterAuContenu \} from '\.\/apercuTiroir\.js';/);
+    assert.match(tiroir, /export function adapterAuContenu\(t, \{ maxL, maxH, centrerDans = null, proche = null \}\)/);
+    assert.match(RE, /import \{ adapterAuContenu, ajusterDesQueDessine, motDeRelance \} from '\.\/apercuTiroir\.js';/);
     // La vignette l'emploie aussi : sinon il y en aurait bien deux.
-    assert.match(tiroir, /const m = adapterAuContenu\(t, \{ maxL: BORNES\.maxL, maxH: BORNES\.maxH \}\);/);
+    assert.match(tiroir, /const m = adapterAuContenu\(t, \{ maxL: BORNES\.maxL, maxH: BORNES\.maxH, proche \}\);/);
 });

@@ -34,7 +34,7 @@ import { state } from '../core/state.js';
 import { showModal } from './modal.js';
 import { correspond } from '../core/recherche.js';
 import { ficheDe } from './rechercheUI.js';
-import { adapterAuContenu } from './apercuTiroir.js';
+import { adapterAuContenu, ajusterDesQueDessine, motDeRelance } from './apercuTiroir.js';
 
 /** La boîte de l'aperçu, dans la fenêtre. */
 const APERCU = { l: 360, h: 300 };
@@ -99,9 +99,17 @@ export function ouvrirChoixExercice({ ajouter } = {}) {
                 <div class="cx2-apercu">
                     <p class="cx2-apercu-vide">Choisis un exercice à gauche pour le voir ici.</p>
                     <div class="cx2-apercu-cadre" hidden><div class="cx2-apercu-toile"></div></div>
+                    <div class="cx2-apercu-pied" hidden>
+                        <button type="button" class="cx2-rejouer" data-rejouer>Question suivante</button>
+                    </div>
                 </div>
             </div>
-        </div>`, { width: '1020px', onClose: () => { ouverte = null; } });
+        </div>`, { width: '1020px', onClose: () => {
+            ouverte = null;
+            // La fenêtre part ; le jeu de l'aperçu, lui, continuerait de tourner
+            // dans le vide. `tour++` invalide en plus une mesure en route.
+            tour++; tuer();
+        } });
 
     ouverte = m;
     const el = m.element;
@@ -111,6 +119,8 @@ export function ouvrirChoixExercice({ ajouter } = {}) {
     const cadre = el.querySelector('.cx2-apercu-cadre');
     const toile = el.querySelector('.cx2-apercu-toile');
     const vide = el.querySelector('.cx2-apercu-vide');
+    const pied = el.querySelector('.cx2-apercu-pied');
+    const relance = el.querySelector('[data-rejouer]');
     cadre.style.height = `${APERCU.h}px`;
 
     let mot = '';
@@ -123,23 +133,59 @@ export function ouvrirChoixExercice({ ajouter } = {}) {
         return true;
     });
 
+    // CELUI QU'ON REGARDE MAINTENANT. Le professeur descend sa liste et en
+    // ouvre dix en deux secondes ; sans ce jeton, l'aperçu du troisième
+    // arriverait par-dessus celui du neuvième et le redimensionnerait.
+    let tour = 0;
+    // LE JEU PRÉCÉDENT, POUR LE TUER. `launchPreview` coupe les minuteurs
+    // déclarés par `regInterval`, mais les jeux historiques ouvrent les leurs
+    // directement : vider la toile ne les arrête pas, et ils continuent de
+    // rafraîchir un plateau qui n'existe plus. La vignette du catalogue a
+    // rencontré exactement cela, et le règle de la même façon.
+    let instance = null;
+    const tuer = () => {
+        const h = instance;
+        instance = null;
+        if (h && typeof h.destroy === 'function') { try { h.destroy(); } catch (e) { /* démonté */ } }
+    };
+
     const montrer = (exo) => {
         montre = exo.id;
+        tuer();
+        const monTour = ++tour;
         vide.hidden = true;
         cadre.hidden = false;
+        // UN AUTRE TIRAGE, SANS REFERMER. Un générateur pose des questions
+        // différentes ; l'aperçu n'en montrait qu'une, et rien ne permettait
+        // d'en voir une seconde. Le mot change selon l'exercice : un jeu du
+        // catalogue ne pose pas de question, il distribue une partie.
+        pied.hidden = false;
+        relance.textContent = motDeRelance(exo);
+        // CACHÉ LE TEMPS DE MESURER. Mesuré : sans cela « La Chasse aux Zéros »
+        // s'affiche en 358 × 763 dans un cadre de 358 × 300 — deux fois et
+        // demie trop grand — pendant 240 ms avant de se ranger.
+        cadre.style.visibility = 'hidden';
         toile.innerHTML = '';
         toile.style.transform = 'none';
-        import('../games/engine.js').then(({ launchPreview }) => {
-            launchPreview(exo, toile, null, { muet: true });
-            // Deux mesures : un jeu se pose en plusieurs temps. Même raison
-            // qu'ailleurs, même remède.
-            const ajuster = () => adapterAuContenu(toile, {
-                maxL: cadre.clientWidth || APERCU.l, maxH: cadre.clientHeight || APERCU.h,
-                centrerDans: { l: cadre.clientWidth || APERCU.l, h: cadre.clientHeight || APERCU.h }
+        import('../games/engine.js').then(async ({ launchPreview }) => {
+            const h = await launchPreview(exo, toile, null, { muet: true });
+            if (monTour !== tour) {
+                if (h && typeof h.destroy === 'function') { try { h.destroy(); } catch (e) { /* démonté */ } }
+                return;
+            }
+            instance = h;
+            ajusterDesQueDessine({
+                vivant: () => monTour === tour,
+                ajuster: (proche) => adapterAuContenu(toile, {
+                    maxL: cadre.clientWidth || APERCU.l, maxH: cadre.clientHeight || APERCU.h,
+                    centrerDans: { l: cadre.clientWidth || APERCU.l, h: cadre.clientHeight || APERCU.h },
+                    proche
+                }),
+                montrer: () => { cadre.style.visibility = ''; }
             });
-            setTimeout(ajuster, 260);
-            setTimeout(ajuster, 700);
         }).catch(() => {
+            if (monTour !== tour) return;
+            cadre.style.visibility = '';
             toile.innerHTML = '<p class="cx2-apercu-note">Cet exercice ne se montre pas en aperçu.</p>';
         });
     };
@@ -191,8 +237,14 @@ export function ouvrirChoixExercice({ ajouter } = {}) {
         // L'aperçu suit la liste : si ce qu'on montrait a disparu du filtre,
         // il ne reste pas à l'écran comme un choix qu'on ne peut plus faire.
         if (montre && !g.some(e => e.id === montre)) {
-            montre = null; cadre.hidden = true; vide.hidden = false; toile.innerHTML = '';
+            montre = null; tour++; tuer();
+            cadre.hidden = true; pied.hidden = true; vide.hidden = false; toile.innerHTML = '';
         }
+    };
+
+    relance.onclick = () => {
+        const exo = tous.find(x => x.id === montre);
+        if (exo) montrer(exo);
     };
 
     champ.oninput = () => { mot = champ.value.trim(); dessiner(); };

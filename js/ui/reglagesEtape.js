@@ -31,7 +31,7 @@
 // et il n'y a pas deux panneaux de réglages à tenir d'accord.
 
 import { showModal } from './modal.js';
-import { adapterAuContenu } from './apercuTiroir.js';
+import { adapterAuContenu, ajusterDesQueDessine, motDeRelance } from './apercuTiroir.js';
 
 /** La boîte de l'aperçu, en pixels. Large : c'est tout l'intérêt de la fenêtre. */
 const APERCU = { l: 620, h: 420 };
@@ -112,42 +112,68 @@ export function ouvrirReglagesEtape({ etape, exo, rendre, onClose } = {}) {
             <div class="re-apercu-cadre">
                 <div class="re-apercu-toile"></div>
             </div>
+            <div class="re-apercu-pied">
+                <button type="button" class="re-rejouer" data-rejouer>Question suivante</button>
+            </div>
         </div>`, { width: '820px', onClose: () => { ouverte = null; if (onClose) onClose(); } });
 
     ouverte = m;
     const el = m.element;
     const cadre = el.querySelector('.re-apercu-cadre');
     const toile = el.querySelector('.re-apercu-toile');
+    const relance = el.querySelector('[data-rejouer]');
+    // UN AUTRE TIRAGE. Les réglages se jugent sur plusieurs questions — c'est
+    // même tout l'objet de l'onglet : « une vraie question de l'exercice, avec
+    // les réglages que tu viens de choisir ». Une seule ne dit pas si le
+    // réglage tient.
+    if (relance) {
+        relance.textContent = motDeRelance(exo);
+        relance.onclick = () => monterApercu();
+    }
     cadre.style.height = `${APERCU.h}px`;
 
     // L'aperçu est-il à refaire ? Il l'est d'entrée : il n'a jamais été fait.
     let perime = true;
     let vue = 'reglages';
 
+    // Le tour en cours : on ouvre et referme l'onglet « Aperçu » plus vite que
+    // les jeux ne se montent, et la mesure d'un aperçu abandonné ne doit pas
+    // retomber sur le suivant.
+    let tour = 0;
+
     const monterApercu = () => {
         if (!toile) return;
         perime = false;
+        const monTour = ++tour;
         toile.innerHTML = '';
         toile.style.transform = 'none';
+        // CACHÉ LE TEMPS DE MESURER — même raison qu'ailleurs : le jeu se
+        // dessine à sa taille logique, qui n'a rien à voir avec le cadre.
+        if (cadre) cadre.style.visibility = 'hidden';
         // Les réglages courants de l'étape passent par-dessus ceux du
         // catalogue : c'est exactement ce que l'élève recevra.
         const courante = etape() || {};
         const params = { ...((exo && exo.params) || {}), ...(courante.overrides || {}) };
         import('../games/engine.js').then(({ launchPreview }) => {
             const p = launchPreview(exo, toile, params, { muet: true });
-            // DEUX MESURES, ET LA SECONDE COMPTE. Un jeu se pose en plusieurs
-            // temps — police chargée, images décodées, première question tirée.
-            // Mesurer une seule fois donne la taille d'un plateau à moitié
-            // dressé ; la vignette du catalogue a exactement le même problème
-            // et le règle de la même façon.
-            const ajuster = () => adapterAuContenu(toile, {
-                maxL: APERCU.l, maxH: cadre.clientHeight || APERCU.h,
-                centrerDans: { l: cadre.clientWidth || APERCU.l, h: cadre.clientHeight || APERCU.h }
+            // DEUX MESURES, ET LA PREMIÈRE DÉCIDE. Elle arrive dès que le jeu a
+            // dessiné quelque chose — moins de 50 ms — et c'est elle qui donne
+            // la taille ; le cadre n'apparaît qu'ensuite. La seconde, à 700 ms,
+            // rattrape ce qui se déplie après sa première image, et ne repose
+            // l'échelle que si elle a vraiment trouvé autre chose.
+            ajusterDesQueDessine({
+                vivant: () => monTour === tour,
+                ajuster: (proche) => adapterAuContenu(toile, {
+                    maxL: APERCU.l, maxH: cadre.clientHeight || APERCU.h,
+                    centrerDans: { l: cadre.clientWidth || APERCU.l, h: cadre.clientHeight || APERCU.h },
+                    proche
+                }),
+                montrer: () => { if (cadre) cadre.style.visibility = ''; }
             });
-            setTimeout(ajuster, 260);
-            setTimeout(ajuster, 700);
             return p;
         }).catch(() => {
+            if (monTour !== tour) return;
+            if (cadre) cadre.style.visibility = '';
             toile.innerHTML = '<p class="re-apercu-vide">Cet exercice ne se montre '
                 + 'pas en aperçu.</p>';
         });

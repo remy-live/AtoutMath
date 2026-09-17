@@ -9,7 +9,7 @@ import { correspond } from '../core/recherche.js';
 import { estJeuCatalogue } from '../core/revue.js';
 import { cheminsDe, modeRangement, setModeRangement, RANGEMENTS, HORS_CHAPITRE } from '../core/rangement.js';
 import { ficheDe } from './rechercheUI.js';
-import { montrerApercu, fermerApercu, laisserPartir, retenir } from './apercuTiroir.js';
+import { montrerApercu, fermerApercu, laisserPartir, retenir, glissementEnCours } from './apercuTiroir.js';
 
 // L'APERÇU DU CATALOGUE VIT DANS SON PROPRE MODULE.
 //
@@ -91,8 +91,19 @@ export function createLibraryItem(exo) {
     item.ondragstart = (e) => {
         if(!state.isTeacherMode) { e.preventDefault(); return; }
         e.dataTransfer.setData('text/plain', exo.id);
-        fermerApercu({ force: true });
+        // DÉSARMER LE MINUTEUR, PAS SEULEMENT FERMER. `fermerApercu` ne fermait
+        // rien du tout — la vignette n'était pas encore ouverte — et le minuteur
+        // de survol, lui, continuait de courir : il l'ouvrait à 500 ms, en plein
+        // glisser, par-dessus la colonne où l'on voulait déposer. Voir
+        // `glissementEnCours`, qui raconte la suite.
+        clearTimeout(hoverTimer);
+        glissementEnCours(true);
     };
+
+    // PENDANT UN GLISSER, LE NAVIGATEUR SE TAIT. Ni `mouseleave` ni `mouseenter`
+    // n'arrivent tant que le geste dure ; `dragend`, lui, arrive toujours — que
+    // l'on ait déposé ou renoncé. C'est donc lui qui rend l'aperçu au survol.
+    item.ondragend = () => { glissementEnCours(false); };
 
     // PAS D'APERÇU AU DOIGT DEPUIS LA BIBLIOTHÈQUE. Un appui d'une demi-seconde
     // — un doigt qui s'attarde, un défilement qui démarre avant que `touchmove`
@@ -131,6 +142,12 @@ export function createLibraryItem(exo) {
         if (!state.isTeacherMode) return;
         if (!matchMedia('(hover: hover)').matches) return;
         retenir();          // on revient : la sortie en cours est annulée
+        // ON DÉSARME AVANT DE RÉARMER. Deux `mouseenter` de suite sans
+        // `mouseleave` entre les deux — cela arrive dès qu'un événement est
+        // synthétisé, et c'est arrivé sous la sonde — perdaient la poignée du
+        // premier minuteur : plus personne ne pouvait l'annuler, et il ouvrait
+        // la vignette une demi-seconde plus tard, en dehors de tout survol.
+        clearTimeout(hoverTimer);
         hoverTimer = setTimeout(() => montrerApercu(exo, item), 500);
     };
 
