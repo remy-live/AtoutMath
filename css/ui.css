@@ -775,6 +775,12 @@
 }
 .portail-lien--porte:hover { border-color: var(--primary); background: var(--bg-hover); }
 .portail-lien--porte:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* Le numéro de version : discret, mais LISIBLE — c'est ce qu'on vient y lire
+   quand on doute que la mise à jour soit arrivée. */
+.portail-version {
+    text-align: center; margin: 14px 0 0;
+    font-size: .78rem; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
 
 /* SANS MODE LIBRE, LE CATALOGUE N'EST PAS UNE PORTE. Les mêmes règles que le
    verrou de classe, pour la même raison — sauf qu'ici c'est un choix de

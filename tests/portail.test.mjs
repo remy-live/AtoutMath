@@ -174,3 +174,16 @@ test('LE SOUS-TITRE NE COMPTE PLUS LES PORTES', () => {
     assert.ok(!/portail-sous">Entre par l'une des deux portes/.test(sansCommentaires));
     assert.match(sansCommentaires, /<p class="portail-sous">Choisis par où tu entres\.<\/p>/);
 });
+
+test('L\'ÉCRAN D\'ACCUEIL DIT QUELLE VERSION IL EST', () => {
+    // La question a coûté deux échanges : Rémy voyait un écran, je décrivais un
+    // bouton, et le bouton n'y était pas — son navigateur lui servait une
+    // version d'avant. Le numéro était déjà lisible dans la zone professeur ;
+    // il ne l'était pas ICI, sur le premier écran, celui qu'on a sous les yeux
+    // quand on se demande si la mise à jour est arrivée.
+    const src = fs.readFileSync(new URL('../js/ui/portailUI.js', import.meta.url), 'utf8');
+    assert.match(src, /import \{ versionLisible \} from '\.\.\/core\/versionDuSite\.js';/);
+    assert.match(src, /<p class="portail-version">\$\{versionLisible\(\)\}/);
+    // Et il dit AUSSI que c'est une copie d'essai, quand c'en est une.
+    assert.match(src, /copieDEssai\(\) \? ' · copie d\\'essai' : ''/);
+});

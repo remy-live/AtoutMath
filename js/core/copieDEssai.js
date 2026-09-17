@@ -34,12 +34,37 @@
 const MARQUE = 'atoutmath-copie-essai';
 
 /**
+ * DEUX SIGNES, ET LE SECOND NE PEUT PAS ÊTRE PÉRIMÉ.
+ *
+ * RÉMY, sur la copie publiée : « bah non.... je ne peux pas » — capture à
+ * l'appui, la fenêtre de mot de passe s'ouvrait alors que la copie d'essai ne
+ * doit en demander aucun. Le journal de publication prouve pourtant que la
+ * balise est dans le fichier publié : le workflow refuse de publier sans elle.
+ * Son navigateur lui servait donc un `index.html` plus ancien — cache HTTP ou
+ * service worker, peu importe lequel.
+ *
+ * LA LEÇON : faire dépendre une bascule d'UNE ligne injectée dans UN fichier,
+ * c'est la faire dépendre du fichier le plus susceptible d'être périmé. On
+ * ajoute donc un signe qui ne vient d'aucun fichier — L'ADRESSE.
+ *
+ * `*.github.io` est, par construction, un hébergement de fichiers statiques :
+ * il n'y exécute pas de PHP, donc il n'y a ni API, ni base, ni classe, ni élève.
+ * Y ouvrir l'atelier sans mot de passe ne donne accès à rien qui puisse être
+ * protégé. Et le vrai site est chez un hébergeur, sur son propre domaine : la
+ * règle ne peut pas l'atteindre.
+ *
  * @param {Document} [doc]
+ * @param {Location} [loc]
  * @returns {boolean} vrai seulement sur une copie d'essai publiée sans serveur.
  */
-export function copieDEssai(doc = (typeof document !== 'undefined' ? document : null)) {
+export function copieDEssai(doc = (typeof document !== 'undefined' ? document : null),
+                            loc = (typeof window !== 'undefined' ? window.location : null)) {
     try {
-        return !!(doc && doc.querySelector && doc.querySelector(`meta[name="${MARQUE}"]`));
+        if (doc && doc.querySelector && doc.querySelector(`meta[name="${MARQUE}"]`)) return true;
+    } catch (e) { /* document indisponible : on tente l'adresse */ }
+    try {
+        const hote = String((loc && loc.hostname) || '').toLowerCase();
+        return hote === 'github.io' || hote.endsWith('.github.io');
     } catch (e) {
         return false;
     }

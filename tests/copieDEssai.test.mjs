@@ -60,10 +60,34 @@ test('LA MARQUE LÈVE LE VERROU, ET ELLE SEULE', async () => {
     const faussaire = (present) => ({
         querySelector: (sel) => (present && /atoutmath-copie-essai/.test(sel) ? {} : null)
     });
-    assert.equal(copieDEssai(faussaire(true)), true);
-    assert.equal(copieDEssai(faussaire(false)), false);
-    // Un document absent ne doit pas lever le verrou par accident.
-    assert.equal(copieDEssai(null), false);
+    const ailleurs = { hostname: 'atoutmath.fr' };
+    assert.equal(copieDEssai(faussaire(true), ailleurs), true);
+    assert.equal(copieDEssai(faussaire(false), ailleurs), false);
+    // Ni document ni adresse : on ne lève rien par accident.
+    assert.equal(copieDEssai(null, null), false);
+});
+
+test('L\'ADRESSE EST LE SECOND SIGNE, ET IL NE PEUT PAS ÊTRE PÉRIMÉ', async () => {
+    // RÉMY, sur la copie publiée : « bah non.... je ne peux pas » — capture à
+    // l'appui, la fenêtre de mot de passe s'ouvrait. Or le journal de
+    // publication prouve que la balise EST dans le fichier publié : le workflow
+    // refuse de publier sans elle. Son navigateur lui servait donc un
+    // `index.html` plus ancien.
+    //
+    // LA LEÇON : faire dépendre une bascule d'UNE ligne injectée dans UN
+    // fichier, c'est la faire dépendre du fichier le plus susceptible d'être
+    // périmé. L'adresse, elle, ne vient d'aucun fichier.
+    const { copieDEssai } = await import('../js/core/copieDEssai.js?t=' + Math.random());
+    const nu = { querySelector: () => null };
+    for (const hote of ['remy-live.github.io', 'github.io', 'REMY-LIVE.GITHUB.IO']) {
+        assert.equal(copieDEssai(nu, { hostname: hote }), true, hote);
+    }
+    // ET ELLE NE PEUT PAS ATTEINDRE LE VRAI SITE. Un domaine qui CONTIENT
+    // « github.io » sans en être un sous-domaine ne doit rien ouvrir : c'est
+    // exactement la forme qu'aurait un domaine fabriqué pour tromper.
+    for (const hote of ['atoutmath.fr', 'github.io.pirate.fr', 'monsitegithub.io', '']) {
+        assert.equal(copieDEssai(nu, { hostname: hote }), false, hote);
+    }
 });
 
 test('LE VERROU CONSULTE LA MARQUE AVANT DE REGARDER LE PROTOCOLE', () => {

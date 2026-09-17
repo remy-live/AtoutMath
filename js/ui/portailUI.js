@@ -20,6 +20,7 @@ import { joinClass, loginEleve } from '../core/sync.js';
 import { applyCode } from './studentCodeUI.js';
 import { modeLibre, portailNecessaire, adresseApiDeduite } from '../core/portail.js';
 import { copieDEssai } from '../core/copieDEssai.js';
+import { versionLisible } from '../core/versionDuSite.js';
 import { state } from '../core/state.js';
 
 const ID = 'portail';
@@ -310,6 +311,13 @@ function dessiner() {
             + 'Entrer comme élève</button>' : ''}
           <button id="portail-prof" class="portail-lien portail-lien--porte">Je suis le professeur</button>
         </p>
+        <!-- QUELLE COPIE REGARDE-T-ON ? La question a coûté deux échanges :
+             Rémy voyait un écran, je décrivais un bouton, et le bouton n'y
+             était pas — son navigateur lui servait une version d'avant. Le
+             numéro était déjà lisible dans la zone professeur ; il ne l'était
+             pas ICI, c'est-à-dire sur le premier écran, celui qu'on a sous les
+             yeux quand on se demande si la mise à jour est arrivée. -->
+        <p class="portail-version">${versionLisible()}${copieDEssai() ? ' · copie d\'essai' : ''}</p>
       </div>`;
     document.body.appendChild(el);
 
