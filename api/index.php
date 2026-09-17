@@ -46,6 +46,8 @@ require_once __DIR__ . '/lib/seance.php';
 require_once __DIR__ . '/lib/coffre.php';
 require_once __DIR__ . '/lib/eleves.php';
 require_once __DIR__ . '/lib/schema.php';
+// `lireReglage` / `ecrireReglage` : le magasin clé/valeur du site.
+require_once __DIR__ . '/lib/guichet.php';
 
 applyCors();
 
@@ -89,6 +91,12 @@ switch ($route) {
     case '/teacher/message': handleTeacherMessage(); break;
     case '/teacher/signup':  handleTeacherSignup(); break;
     case '/teacher/override': handleTeacherOverride(); break;
+    // LES RÉGLAGES DU SITE. En lecture, la route est PUBLIQUE — et il le faut :
+    // le mode libre décide de ce qu'un visiteur voit sur la porte d'entrée,
+    // c'est-à-dire avant qu'il ait le moindre jeton. En écriture, il faut être
+    // professeur.
+    case '/reglages':         handleReglages(); break;
+    case '/teacher/reglages': handleTeacherReglages(); break;
     case '/health':          respond(['ok' => true]); break;
     default:                 fail(404, 'not_found', 'Route inconnue : ' . $route);
 }
@@ -1510,6 +1518,53 @@ function handleTeacherSignup(): void
  * L'un ou l'autre vise TOUTE LA CLASSE ou UN SEUL ÉLÈVE — c'est la
  * différenciation, et c'est le cas courant : « toi, tu peux sauter celui-là ».
  */
+/**
+ * LES RÉGLAGES DU SITE, EN LECTURE — sans jeton, pour tout le monde.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * POURQUOI PUBLIQUE. Le mode libre décide de ce que montre la PORTE D'ENTRÉE :
+ * une quatrième porte « Explorer les exercices », ou non. Un visiteur qui
+ * arrive n'a aucun jeton — il n'en aura un qu'après être entré. Une route
+ * protégée ne pourrait donc jamais répondre à la seule question qu'on lui pose.
+ *
+ * CE QU'ELLE DIT, ET RIEN D'AUTRE. Un booléen. Elle ne révèle ni classe, ni
+ * élève, ni professeur : savoir que le catalogue est ouvert, c'est exactement ce
+ * qu'on apprend en regardant l'écran d'accueil.
+ */
+function handleReglages(): void
+{
+    respond(['reglages' => [
+        'modeLibre' => lireReglage('site.modeLibre', '0') === '1',
+    ]]);
+}
+
+/**
+ * LES RÉGLAGES DU SITE, EN ÉCRITURE — professeur exigé.
+ *
+ * Rémy : « le mode libre, mets-le en bouton dans ma zone prof (qui est admin
+ * aussi du coup) ».
+ *
+ * TOUT PROFESSEUR PEUT LE CHANGER, et il faut le dire. C'est un réglage de
+ * SITE, pas de classe : l'allumer ouvre le catalogue aux élèves de tout le
+ * monde. Sur ce serveur-ci il n'y a qu'un professeur, et c'est lui l'admin —
+ * mais le jour où il y en aura trois, ce bouton sera à trois mains. La vraie
+ * réponse serait un rôle « fondateur », qui existe déjà pour les professeurs
+ * (`vousEtesLeFondateur`) ; on ne l'impose pas ici parce que cela enfermerait
+ * dehors un Rémy qui aurait créé son compte en second.
+ */
+function handleTeacherReglages(): void
+{
+    requireTeacher();
+    $body = jsonBody();
+    if (array_key_exists('modeLibre', $body)) {
+        ecrireReglage('site.modeLibre', $body['modeLibre'] ? '1' : '0');
+    }
+    respond(['ok' => true, 'reglages' => [
+        'modeLibre' => lireReglage('site.modeLibre', '0') === '1',
+    ]]);
+}
+
 function handleTeacherOverride(): void
 {
     $teacher = requireTeacher();

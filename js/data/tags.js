@@ -17,8 +17,21 @@
 
 export const TAGS = {
     DOMAINE: {
-        NUMERIQUE: "Numérique",
-        GEOMETRIQUE: "Géométrique",
+        // DEUX ADJECTIFS AU MILIEU DE TROIS GROUPES NOMINAUX.
+        //
+        // « Défis et énigmes », « Grandeurs et mesures », « Organisation de
+        // données » nomment des CHOSES ; « Numérique » et « Géométrique »
+        // qualifiaient un nom absent. Cinq rubriques de même rang, trois
+        // grammaires — et l'œil qui parcourt la colonne bute sans savoir sur
+        // quoi.
+        //
+        // On prend les mots des PROGRAMMES DE COLLÈGE, qui nomment ces deux
+        // thèmes « Nombres et calculs » et « Espace et géométrie ». Ce ne sont
+        // pas des synonymes choisis au hasard : c'est le vocabulaire que Rémy
+        // écrit déjà dans ses progressions, et celui que les élèves voient sur
+        // leurs manuels.
+        NUMERIQUE: "Nombres et calculs",
+        GEOMETRIQUE: "Espace et géométrie",
         GRANDEURS: "Grandeurs et mesures",
         DONNEES: "Organisation de données",
         // RÉMY : « j'aimerai ces deux jeux là en catégorie défi ou énigme ».

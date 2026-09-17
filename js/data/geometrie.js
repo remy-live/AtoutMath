@@ -227,7 +227,7 @@ export const geometrieExercises = [
         ],
         motsClefs: ['programme de construction', 'construire', 'segment', 'droite', 'cercle',
             'milieu', 'médiatrice', 'perpendiculaire', 'parallèle', 'intersection', 'rédiger'],
-        tags: { chemin: ['Géométrique', 'Repérage'], niveaux: ['6ème', '5ème'] },
+        tags: { chemin: ['Espace et géométrie', 'Repérage'], niveaux: ['6ème', '5ème'] },
         instruction: 'Une figure est dessinée : à toi d\'écrire le PROGRAMME qui la construit. '
             + 'Tu composes chaque phrase EN CLIQUANT, mot après mot : d\'abord « Place » ou '
             + '« Trace », puis ce que tu traces — « le segment [__] », « le cercle de centre _ '

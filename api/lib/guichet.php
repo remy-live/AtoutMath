@@ -89,6 +89,30 @@ function fermerGuichet(): void
     ecrireReglage(GUICHET_CLE, '0');
 }
 
+/**
+ * LIRE UN RÉGLAGE DU SITE.
+ *
+ * La table `reglages` est un magasin clé/valeur : elle sert au registre des
+ * migrations, au guichet de dépôt, et depuis peu aux réglages que le professeur
+ * pose lui-même (préfixés `site.`). Elle ne coûte rien et elle évite une table
+ * de plus pour trois lignes.
+ *
+ * On rend `$defaut` si la table n'existe pas — base d'avant une migration — ou
+ * si la clé n'a jamais été écrite. Un réglage absent n'est pas une panne : c'est
+ * un réglage qu'on n'a pas touché.
+ */
+function lireReglage(string $cle, ?string $defaut = null): ?string
+{
+    try {
+        $s = db()->prepare('SELECT valeur FROM reglages WHERE cle = ?');
+        $s->execute([$cle]);
+        $lignes = $s->fetchAll();
+    } catch (Throwable $t) {
+        return $defaut;
+    }
+    return $lignes ? (string) $lignes[0]['valeur'] : $defaut;
+}
+
 /** Écrire un réglage, qu'il existe déjà ou non. */
 function ecrireReglage(string $cle, string $valeur): void
 {

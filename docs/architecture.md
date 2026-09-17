@@ -682,6 +682,21 @@ CHERCHE : titres entiers, chemin complet, niveaux, aperçu à côté, et l'on
 ajoute sans la refermer. Elle n'a pas son propre catalogue — `filterByStatus`
 et `correspond` restent les seules autorités.
 
+### Le mode libre, et les réglages du site
+
+Le mode libre ouvre le catalogue aux élèves. C'est un réglage **de site**, tenu
+par le serveur (table `reglages`, clé `site.modeLibre`) et basculé par un bouton
+de la zone professeur, sous la liste des classes. Trois autorités, dans cet
+ordre : la dérogation locale `atoutmath-mode-libre` (l'outil de celui qui
+essaie), puis le serveur, puis la constante `MODE_LIBRE` (quand il n'y a pas de
+serveur du tout). Le verrou d'une classe reste prioritaire : ce réglage-ci ne
+passe pas par-dessus.
+
+La lecture (`POST /reglages`) est **publique** — la porte d'entrée décide de ce
+qu'elle montre avant que le visiteur ait le moindre jeton. L'écriture
+(`POST /teacher/reglages`) exige un professeur. Tout professeur peut le changer :
+c'est un réglage de site, et il n'y a pas de rôle « fondateur » exigé ici.
+
 ### Les mots
 
 Une chose, un mot. Le compteur s'appelle **des points** — pas « étoiles »
@@ -694,6 +709,12 @@ l'onglet qui y mène.
 Et l'on écrit en français : majuscule au premier mot, et c'est tout.
 « Calcul mental », pas « Calcul Mental ». Les titres d'exercices font
 exception — ce sont des noms d'œuvres.
+
+LES CINQ DOMAINES SONT CINQ GROUPES NOMINAUX. « Numérique » et « Géométrique »
+étaient deux adjectifs au milieu de trois noms ; ils portent maintenant les mots
+des programmes de collège — **Nombres et calculs**, **Espace et géométrie** —
+aux côtés de « Grandeurs et mesures », « Organisation de données » et « Défis et
+énigmes ».
 
 ### Deux jetons par couleur : le fond et le texte
 

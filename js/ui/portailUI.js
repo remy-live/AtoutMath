@@ -194,7 +194,33 @@ export function fermerPortail() {
     if (el) el.remove();
 }
 
+/**
+ * LE MODE LIBRE TEL QU'IL ÉTAIT QUAND LA PORTE A ÉTÉ DESSINÉE.
+ *
+ * La porte se dessine AVANT que le serveur ait dit si le catalogue est ouvert —
+ * c'est délibéré : attendre un aller-retour réseau pour afficher un écran
+ * d'accueil ferait payer à tout le monde, y compris hors ligne, un booléen.
+ * Quand la réponse arrive, il faut donc pouvoir redessiner — mais SEULEMENT si
+ * elle change quelque chose : redessiner pour rien effacerait l'identifiant que
+ * l'élève est en train de taper.
+ */
+let dessineeAvec = null;
+
+/**
+ * REDESSINER LA PORTE SI, ET SEULEMENT SI, LE MODE LIBRE A CHANGÉ.
+ *
+ * Appelée quand le serveur rend ses réglages (voir `core/reglagesSite.js`).
+ */
+export function porteASuivre() {
+    if (!document.getElementById(ID)) return false;
+    if (dessineeAvec === modeLibre()) return false;
+    fermerPortail();
+    majPortail();
+    return true;
+}
+
 function dessiner() {
+    dessineeAvec = modeLibre();
     const el = document.createElement('div');
     el.id = ID;
     el.className = 'portail';

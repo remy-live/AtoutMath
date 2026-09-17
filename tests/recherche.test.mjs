@@ -9,13 +9,13 @@ const F = (titre, chemin = [], niveaux = [], motsCles = [], texte = '') =>
     ({ titre, chemin, niveaux, motsCles, texte });
 
 const CATALOGUE = [
-    F('Duel de Fractions', ['Numérique', 'Fractions'], ['6ème'], []),
-    F('Addition de Fractions', ['Numérique', 'Fractions'], ['5ème'], []),
-    F('La Pizzeria des Fractions', ['Numérique', 'Fractions'], ['6ème', '5ème'], ['jeu'],
+    F('Duel de Fractions', ['Nombres et calculs', 'Fractions'], ['6ème'], []),
+    F('Addition de Fractions', ['Nombres et calculs', 'Fractions'], ['5ème'], []),
+    F('La Pizzeria des Fractions', ['Nombres et calculs', 'Fractions'], ['6ème', '5ème'], ['jeu'],
         'Une commande arrive : garnis la pizza selon les fractions demandées.'),
-    F('Dixièmes et Centièmes', ['Numérique', 'Numération'], ['6ème'], []),
-    F('Le Plan de Ville', ['Géométrique', 'Géométrie dans l\'espace'], ['CM2', '6ème'], ['jeu']),
-    F('Échecs', ['Numérique', 'Logique'], ['CM2', '6ème'], ['jeu', 'deux joueurs'])
+    F('Dixièmes et Centièmes', ['Nombres et calculs', 'Numération'], ['6ème'], []),
+    F('Le Plan de Ville', ['Espace et géométrie', 'Géométrie dans l\'espace'], ['CM2', '6ème'], ['jeu']),
+    F('Échecs', ['Nombres et calculs', 'Logique'], ['CM2', '6ème'], ['jeu', 'deux joueurs'])
 ];
 
 test('normaliser retire accents, apostrophes et ponctuation', () => {
@@ -89,10 +89,10 @@ test('on cherche aussi par niveau, par domaine et par mot-clé', () => {
 });
 
 test('un mot de la même famille suffit', () => {
-    // Le dossier s'appelle « Géométrique » : taper « geometrie » doit marcher.
+    // Le dossier s'appelle « Espace et géométrie » : taper « geometrie » doit marcher.
     // C'est le mot que le professeur a en tête, pas celui de l'arborescence.
     const r = chercher(CATALOGUE, 'geometrie').map(x => x.fiche.titre);
-    assert.ok(r.includes('Le Plan de Ville'), 'geometrie ne retrouve pas le dossier Géométrique');
+    assert.ok(r.includes('Le Plan de Ville'), 'geometrie ne retrouve pas le dossier Espace et géométrie');
     // Et dans l'autre sens.
     assert.ok(chercher(CATALOGUE, 'geometrique').length);
 });
@@ -224,9 +224,9 @@ test('les mots-clefs du catalogue se cherchent', () => {
     // n'y retrouvait plus les tables. Un mot-clef ne range rien — il se
     // cherche, et c'est tout ce qu'on lui demandait.
     const fiches = [
-        preparer({ id: 'a', titre: 'Flash Mult', chemin: ['Numérique', 'Calcul mental'],
+        preparer({ id: 'a', titre: 'Flash Mult', chemin: ['Nombres et calculs', 'Calcul mental'],
             niveaux: ['6ème'], motsCles: ['tables', 'multiplication'], texte: '' }),
-        preparer({ id: 'b', titre: 'Additions Mystères', chemin: ['Numérique', 'Calcul mental'],
+        preparer({ id: 'b', titre: 'Additions Mystères', chemin: ['Nombres et calculs', 'Calcul mental'],
             niveaux: ['6ème'], motsCles: [], texte: '' })
     ];
     const trouves = chercher(fiches, 'tables').map(r => r.fiche.id);
@@ -269,22 +269,22 @@ test('les titres retirés par regroupement mènent encore à leur exercice', () 
 test('UNE RACINE DE TITRE VAUT MOINS QU\'UN MOT ÉCRIT, UNE RACINE DE CHEMIN VAUT PLUS', () => {
     // La règle en deux fiches. « rapporteur » : l'une n'a que la racine dans
     // son titre, l'autre a le mot entier dans sa consigne — c'est la seconde
-    // qu'on cherche. Alors que « geometrie » sur un CHEMIN « Géométrique » est
+    // qu'on cherche. Alors que « geometrie » sur un CHEMIN « Espace et géométrie » est
     // une classification, et elle doit primer.
     const fiches = [
         preparer({ id: 'racine-titre', titre: 'Symétrique par Rapport à Quoi ?',
-            chemin: ['Géométrique', 'Transformations'], niveaux: [], motsCles: [], texte: '' }),
+            chemin: ['Espace et géométrie', 'Transformations'], niveaux: [], motsCles: [], texte: '' }),
         preparer({ id: 'mot-ecrit', titre: 'Angle Master',
-            chemin: ['Géométrique', 'Angles'], niveaux: [], motsCles: [],
+            chemin: ['Espace et géométrie', 'Angles'], niveaux: [], motsCles: [],
             texte: 'Le rapporteur se pose de travers, et c\'est en le redressant qu\'on apprend.' })
     ];
     assert.equal(chercher(fiches, 'rapporteur')[0].fiche.id, 'mot-ecrit');
 
     const parChemin = [
         preparer({ id: 'dans-le-dossier', titre: 'Le Plan de Ville',
-            chemin: ['Géométrique', 'Repérage'], niveaux: [], motsCles: [], texte: '' }),
+            chemin: ['Espace et géométrie', 'Repérage'], niveaux: [], motsCles: [], texte: '' }),
         preparer({ id: 'mention-de-passage', titre: 'Duel de Fractions',
-            chemin: ['Numérique', 'Fractions'], niveaux: [], motsCles: [],
+            chemin: ['Nombres et calculs', 'Fractions'], niveaux: [], motsCles: [],
             texte: 'Un peu de géométrie apparaît dans la troisième question.' })
     ];
     assert.equal(chercher(parChemin, 'geometrie')[0].fiche.id, 'dans-le-dossier');

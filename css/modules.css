@@ -8878,8 +8878,8 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 
 /* Le liseré de gauche dit le DOMAINE : dans vingt étapes, c'est ce qui montre
    qu'on a empilé six exercices de calcul et aucun de géométrie. */
-.path-step[data-domaine="Numérique"] { border-left-color: #6366f1; }
-.path-step[data-domaine="Géométrique"] { border-left-color: #0ea5e9; }
+.path-step[data-domaine="Nombres et calculs"] { border-left-color: #6366f1; }
+.path-step[data-domaine="Espace et géométrie"] { border-left-color: #0ea5e9; }
 .path-step[data-domaine="Grandeurs et mesures"] { border-left-color: #f59e0b; }
 .path-step[data-domaine="Organisation de données"] { border-left-color: #10b981; }
 .path-step[data-domaine="Défis et énigmes"] { border-left-color: #a855f7; }
@@ -9068,11 +9068,16 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 }
 /* Neuf ou revu : deux choses différentes. Un exercice REVU, on l'a déjà vu —
    ce qu'on veut savoir est ce qui a changé, et c'est la phrase en dessous. */
+/* 10,9 PX, C'ÉTAIT LA TAILLE D'UNE NOTE DE BAS DE PAGE — pour un mot qu'on
+   regarde en premier. Rémy l'a relevé : une capitale de onze pixels se devine
+   plus qu'elle ne se lit, et celle-ci est justement là pour ATTIRER l'œil sur
+   ce qui vient d'arriver. À .8rem (12,8 px) elle reste une pastille — le titre
+   à côté fait 15 px — et elle se lit sans se pencher. */
 .nv-pastille {
-    display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px;
+    display: inline-block; margin-right: 6px; padding: 2px 9px; border-radius: 999px;
     background: var(--tag-dom-bg); color: var(--tag-dom-txt);
-    font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
-    vertical-align: 2px;
+    font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+    vertical-align: 1px;
 }
 /* MESURÉ, ET C'EST LE DERNIER POINT DE CONTRASTE DE L'AUDIT. Cet écran-ci —
    « Essayer les derniers exercices » — n'était pas dans le balayage, parce

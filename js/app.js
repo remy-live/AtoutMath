@@ -38,13 +38,14 @@ import { initCoucheDeJeu } from './ui/coucheDeJeu.js';
 import { getActiveProfile } from './core/profile.js';
 import { initGamificationEngine } from './core/gamification.js';
 import { initGamificationUI } from './ui/gamificationUI.js';
-import { initSync } from './core/sync.js';
+import { initSync, getSyncConfig } from './core/sync.js';
 import { initSyncUI } from './ui/syncUI.js';
 import { initSeanceDistante } from './core/seanceDistante.js';
 import { initSeanceDistanteUI } from './ui/seanceDistanteUI.js';
-import { modeLibre, estRattache } from './core/portail.js';
+import { modeLibre, estRattache, adresseApiDeduite } from './core/portail.js';
+import { chargerReglagesSite } from './core/reglagesSite.js';
 import { outilsAuteur, reglerOutilsAuteur, appliquerOutilsAuteur } from './core/outilsAuteur.js';
-import { initPortail, majPortail } from './ui/portailUI.js';
+import { initPortail, majPortail, porteASuivre } from './ui/portailUI.js';
 import { initPosteEleve } from './ui/posteEleve.js';
 import { initParcoursServeur, ecouterLesAssignations } from './core/parcoursServeur.js';
 import { initLeMoment } from './ui/leMoment.js';
@@ -278,6 +279,23 @@ window.addEventListener('DOMContentLoaded', async () => {
     // pour un élève qui n'a peut-être aucune séance. On dessine donc tout de
     // suite, et la carte s'ajoute quand elle est connue.
     initMaSeance();
+
+    // LES RÉGLAGES DU SITE, DEMANDÉS AU SERVEUR — et on ne l'attend pas.
+    //
+    // Le mode libre décide de ce que montre la porte d'entrée. On pourrait donc
+    // attendre la réponse avant de dessiner ; ce serait payer un aller-retour
+    // réseau sur le démarrage de TOUT LE MONDE, y compris hors ligne, pour un
+    // booléen. On dessine avec ce qu'on sait — la dernière réponse connue, mise
+    // en cache — et la porte se redessine si le serveur dit autre chose.
+    chargerReglagesSite(adresseApiDeduite(getSyncConfig().apiUrl))
+        .catch(() => null);
+    document.addEventListener('reglages_site', () => {
+        // La porte est peut-être DÉJÀ dessinée : `majPortail` ne la refait pas
+        // toute seule — et c'est heureux, elle effacerait ce qu'on y tape.
+        // `porteASuivre` ne la refait que si le mode libre a vraiment changé.
+        if (!porteASuivre()) majPortail();
+        setTopNavMode(modeLibre() || state.isTeacherMode ? 'grid' : 'path');
+    });
 
     // LA PORTE EN DERNIER, quand tout ce qu'elle interroge est chargé : le
     // profil (est-il rattaché ?), le journal (a-t-il un parcours ?), et le

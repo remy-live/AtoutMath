@@ -122,6 +122,16 @@ export async function creerClasse(nom, niveau = '') {
 }
 
 export const listeDeClasse = (classId) => auServeur('/teacher/roster', { classId, action: 'list' });
+
+/**
+ * LES RÉGLAGES DU SITE — ceux qui valent pour tout le monde.
+ *
+ * Rémy : « le mode libre, mets-le en bouton dans ma zone prof ». Sans argument
+ * on lit ; avec, on écrit. La route rend l'état APRÈS écriture, ce qui évite
+ * de deviner : c'est le serveur qui dit où l'on en est, pas le bouton.
+ */
+export const reglagesDuSite = (changements = {}) =>
+    auServeur('/teacher/reglages', changements);
 export const apercuDeListe = (classId, texte, codeCommun) =>
     auServeur('/teacher/roster', { classId, action: 'apercu', texte, codeCommun });
 export const importerListe = (classId, liste) =>

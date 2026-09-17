@@ -46,8 +46,9 @@ import {
     envoyerUnMot, soufflerUnIndice, reglerLeBac,
     creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
     lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis,
-    imposerLaSeance, lancerLeChrono, arreterLeChrono, auServeur
+    imposerLaSeance, lancerLeChrono, arreterLeChrono, auServeur, reglagesDuSite
 } from '../core/espaceProf.js';
+import { noterReglagesSite } from '../core/reglagesSite.js';
 import { adresseAdmin } from './classesServeur.js';
 import { adresseDuPoste } from './posteEleve.js';
 import { versionLisible } from '../core/versionDuSite.js';
@@ -139,6 +140,9 @@ export function fermerEspaceClasses() {
 export async function ouvrirEspaceClasses() {
     vue = { ou: 'classes', classes: null, erreur: '', classe: null, onglet: 'direct',
             liste: null, direct: null, apercu: null, profs: null, reglages: null,
+            // Les réglages du SITE — `null` tant que le serveur n'a pas répondu,
+            // ce qui n'est pas la même chose que « tout est éteint ».
+            reglagesSite: null,
         // L'élève dont la fiche est dépliée dans Le direct — un seul à la fois.
         fiche: null,
             bilans: null, seances: null, occupe: false };
@@ -200,6 +204,18 @@ export async function ouvrirEspaceClasses() {
     if (liste.erreur) vue.erreur = liste.erreur;
     else vue.classes = liste;
     redessiner();
+
+    // LES RÉGLAGES DU SITE, APRÈS LES CLASSES. Ce sont les classes qu'on vient
+    // voir ; le mode libre est en bas de l'écran, et rien ne presse. Une seule
+    // requête, et l'interrupteur cesse d'annoncer « On regarde… ».
+    const r = await reglagesDuSite();
+    if (!r.erreur && r.reglages) {
+        vue.reglagesSite = r.reglages;
+        // Le reste de l'application l'apprend aussi : la porte d'entrée, la
+        // barre du haut. C'est le même réglage pour tout le monde.
+        noterReglagesSite(r.reglages);
+        redessiner();
+    }
 
     // Il n'y a plus de fenêtre à rendre : la pièce est une section de la page.
     return { fermer: partir };
@@ -340,7 +356,8 @@ function classesHtml() {
         </div>`;
     }
 
-    return enTeteHtml('Mes classes', esc(sous)) + messageHtml() + corps + piedHtml();
+    return enTeteHtml('Mes classes', esc(sous)) + messageHtml() + corps
+        + modeLibreHtml() + piedHtml();
 }
 
 function carteClasseHtml(c) {
@@ -377,6 +394,46 @@ function carteClasseHtml(c) {
                     aria-label="Supprimer la classe ${esc(c.name)}">✕</button>
         </div>
     </div>`;
+}
+
+/**
+ * LE MODE LIBRE — un réglage du SITE, pas d'une classe.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Rémy : « le mode libre, mets-le en bouton dans ma zone prof (qui est admin
+ * aussi du coup) ».
+ *
+ * CE QU'IL FAIT, ET CE QU'IL NE FAIT PAS. Allumé, le catalogue s'ouvre aux
+ * élèves : une quatrième porte « Explorer les exercices » sur l'écran d'accueil,
+ * l'onglet « Exercices », les 172 exercices. Éteint, l'élève ne voit que ce
+ * qu'on lui a donné.
+ *
+ * IL NE PASSE PAS PAR-DESSUS LE VERROU D'UNE CLASSE. Une classe verrouillée
+ * reste verrouillée, mode libre ou non — c'est le réglage le plus précis qui
+ * gagne, et c'est celui du professeur devant sa classe.
+ *
+ * POURQUOI ICI ET PAS DANS UNE CLASSE. Parce qu'il ne concerne pas une classe :
+ * il concerne le site. Le poser dans l'écran d'une classe laisserait croire
+ * qu'on l'allume pour les 5eB seulement.
+ */
+function modeLibreHtml() {
+    const actif = !!vue.reglagesSite && vue.reglagesSite.modeLibre === true;
+    const su = vue.reglagesSite === null;
+    return `
+    <section class="ec-bloc ec-bloc--site">
+        <h3 class="ec-h3">Le catalogue en libre accès</h3>
+        <p class="ec-note ec-note--bloc">Allumé, les élèves peuvent explorer les
+           172 exercices en dehors de ce que vous leur donnez. Une classe
+           verrouillée le reste : ce réglage-ci ne passe pas par-dessus.</p>
+        <button type="button" class="reglage-interrupteur${actif ? ' reglage-interrupteur--actif' : ''}"
+                data-mode-libre="${actif ? '1' : '0'}" aria-pressed="${actif}"
+                ${su ? 'disabled' : ''}>
+            <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>
+            <span class="reglage-interrupteur-mot">${su ? 'On regarde…'
+                : (actif ? 'Ouvert aux élèves' : 'Réservé à ce que vous donnez')}</span>
+        </button>
+    </section>`;
 }
 
 /** Le pied de page : les deux chemins qu'on ne veut pas cacher. */
@@ -1424,7 +1481,7 @@ async function brancher(e, redessiner) {
         + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
         + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
-        + '[data-profs], [data-reessayer], [data-poste],'
+        + '[data-profs], [data-reessayer], [data-poste], [data-mode-libre],'
         + '[data-imposer-rien], [data-mettre-en-cours],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo]');
@@ -1516,6 +1573,28 @@ async function brancher(e, redessiner) {
         const l = await mesClasses();
         if (l.erreur) vue.erreur = l.erreur; else vue.classes = l;
         redessiner();
+        return;
+    }
+
+    // LE MODE LIBRE — on bascule, et l'on croit le SERVEUR, pas le bouton.
+    //
+    // La route rend l'état après écriture. On pourrait inverser la valeur
+    // localement et redessiner tout de suite ; l'écran dirait alors « ouvert »
+    // même si le serveur a refusé, et le professeur croirait avoir ouvert le
+    // catalogue à trente élèves. On attend, on lit, on affiche ce qui EST.
+    if (d.modeLibre !== undefined) {
+        const cible = d.modeLibre !== '1';
+        await fait(reglagesDuSite({ modeLibre: cible }), (r) => {
+            vue.reglagesSite = r.reglages || vue.reglagesSite;
+            // L'application entière suit : la porte d'entrée, la barre du haut.
+            // Sans cet avis, le professeur verrait son propre écran inchangé et
+            // se demanderait si le bouton a marché.
+            noterReglagesSite(vue.reglagesSite);
+            showToast(cible
+                ? 'Le catalogue est ouvert aux élèves.'
+                : 'Le catalogue est refermé : les élèves ne voient que ce que vous donnez.',
+                'success');
+        });
         return;
     }
 
