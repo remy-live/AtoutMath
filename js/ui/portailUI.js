@@ -19,6 +19,7 @@
 import { joinClass, loginEleve } from '../core/sync.js';
 import { applyCode } from './studentCodeUI.js';
 import { modeLibre, portailNecessaire, adresseApiDeduite } from '../core/portail.js';
+import { copieDEssai } from '../core/copieDEssai.js';
 import { state } from '../core/state.js';
 
 const ID = 'portail';
@@ -303,8 +304,11 @@ function dessiner() {
              Il reste DISCRET — c'est l'écran des élèves, et ils sont trente
              pour un professeur — mais discret n'est pas illisible. -->
         <p class="portail-pied">
-          ${modeLibre() ? '<button id="portail-libre" class="portail-lien">Explorer les exercices</button>' : ''}
-          <button id="portail-prof" class="portail-lien portail-lien--prof">Je suis le professeur</button>
+          ${modeLibre() ? '<button id="portail-libre" class="portail-lien portail-lien--porte">'
+            + 'Explorer les exercices</button>' : ''}
+          ${copieDEssai() ? '<button id="portail-eleve-essai" class="portail-lien portail-lien--porte">'
+            + 'Entrer comme élève</button>' : ''}
+          <button id="portail-prof" class="portail-lien portail-lien--porte">Je suis le professeur</button>
         </p>
       </div>`;
     document.body.appendChild(el);
@@ -470,6 +474,30 @@ function dessiner() {
 
     const libre = document.getElementById('portail-libre');
     if (libre) libre.onclick = () => { fermerPortail(); };
+
+    // L'ÉLÈVE D'ESSAI, SUR LA COPIE SANS SERVEUR SEULEMENT.
+    //
+    // Rémy : « je n'ai rien de générique id password, mode élève/prof pour
+    // github, le but étant de tester ». Les deux portes ci-dessus demandent
+    // toutes deux le serveur ; sur une copie qui n'en a pas, aucune ne s'ouvre,
+    // et la moitié du logiciel restait inaccessible sur la copie faite pour
+    // l'essayer. Voir `entrerCommeEleveDEssai`, qui dit pourquoi on n'invente
+    // pas d'identifiant générique.
+    const eleveEssai = document.getElementById('portail-eleve-essai');
+    if (eleveEssai) eleveEssai.onclick = async () => {
+        eleveEssai.disabled = true;
+        try {
+            const { entrerCommeEleveDEssai } = await import('../core/copieDEssai.js');
+            await entrerCommeEleveDEssai();
+            fermerPortail();
+            // L'application se redessine autour de qui travaille : le nom dans
+            // la barre haute, l'accueil de l'élève, son parcours. Un simple
+            // `fermerPortail` laisserait l'écran du visiteur anonyme.
+            window.location.reload();
+        } catch (e) {
+            eleveEssai.disabled = false;
+        }
+    };
 
     document.getElementById('portail-prof').onclick = () => {
         // ON NE FERME PAS LA PORTE AVANT DE SAVOIR SI ELLE S'OUVRE.

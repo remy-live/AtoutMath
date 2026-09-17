@@ -74,3 +74,27 @@ test('LE COMPTEUR REDEVIENT LISIBLE SUR TÉLÉPHONE', () => {
     // Et les majuscules ne servaient à rien : il n'y a que des chiffres.
     assert.ok(!/\.preview-step-nav--question \.preview-step-label \{[^}]*text-transform/.test(CSS));
 });
+
+test('LE CADRE TÉLÉPHONE DU PROFESSEUR N\'EST PAS LE TÉLÉPHONE', () => {
+    // ET JE NE L'AVAIS PAS MESURÉ — c'est l'écran de la capture de Rémy. On
+    // regarde un cadre de téléphone DANS une fenêtre d'ordinateur : la requête
+    // média `(max-width: 430px)` ne s'applique donc pas, puisque c'est la
+    // largeur de la FENÊTRE qui compte. Les règles du simulateur gouvernaient
+    // seules, avec leur `nowrap`, et la barre des questions commençait à gauche
+    // de sa propre zone — hors du cadre.
+    assert.match(CSS, /\.device-simulator \.game-header-actions,\s*\n\.tablet-simulator \.game-header-actions \{[\s\S]{0,160}flex-wrap: wrap;/);
+});
+
+test('ON RETIRE LE DOUBLON PLUTÔT QUE DE RAPETISSER ENCORE', () => {
+    // Mesuré dans le cadre : 370 px disponibles pour 392 nécessaires, d'où un
+    // bouton renvoyé seul à la ligne suivante — ce qui se lit comme une erreur
+    // de mise en page. Il manquait 22 px.
+    //
+    // L'en-tête annonce « Étape 1 sur 3 » en toutes lettres à deux centimètres
+    // du « 1/3 » des flèches. On retire le second ; les flèches restent, et le
+    // compteur de QUESTIONS reste aussi — lui n'est écrit nulle part ailleurs.
+    assert.match(CSS, /\.device-simulator \.preview-step-nav:not\(\.preview-step-nav--question\) \.preview-step-label,/);
+    assert.match(CSS, /\.tablet-simulator \.preview-step-nav:not\(\.preview-step-nav--question\) \.preview-step-label \{\s*\n\s*display: none;/);
+    // Après : une seule rangée, rien hors du cadre, compteur de questions sur
+    // une ligne.
+});

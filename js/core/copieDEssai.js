@@ -47,3 +47,49 @@ export function copieDEssai(doc = (typeof document !== 'undefined' ? document : 
 
 /** Le nom de la balise, pour que le workflow et les épreuves parlent du même. */
 export const MARQUE_ESSAI = MARQUE;
+
+/**
+ * L'ÉLÈVE D'ESSAI — celui qui n'existe nulle part.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « je n'ai rien de générique id password, mode élève/prof pour github,
+ * le but étant de tester ».
+ *
+ * CE QUI MANQUAIT. J'avais ouvert la porte du professeur et laissé celle de
+ * l'élève fermée. Or les deux portes de l'écran d'accueil — « Je me connecte »
+ * et « J'ai un code de séance » — demandent toutes deux le serveur : sur une
+ * copie sans API, aucune ne s'ouvre. La moitié du logiciel était donc
+ * inaccessible sur la copie faite pour l'essayer.
+ *
+ * ON NE FABRIQUE PAS UN IDENTIFIANT GÉNÉRIQUE, ET C'EST DÉLIBÉRÉ. Un couple
+ * « eleve / 0000 » écrit quelque part serait un identifiant de plus à taper, à
+ * retenir, et surtout à retrouver un jour dans le vrai site. On entre d'un
+ * clic : il n'y a rien à vérifier, puisqu'il n'y a personne pour vérifier.
+ *
+ * COMMENT ÇA MARCHE. `estRattache()` ne regarde qu'une chose : le profil local
+ * porte-t-il un jeton ? On lui en pose un — `essai-local`, qui ne ressemble à
+ * aucun vrai jeton et n'ouvre rien nulle part — et la porte s'efface. La
+ * synchronisation, elle, ne part pas : `isActive()` exige EN PLUS une adresse
+ * d'API configurée, et il n'y en a pas. Aucune requête, aucun bruit.
+ *
+ * @param {string} prenom  le prénom affiché ; c'est celui qu'on verra partout.
+ */
+export async function entrerCommeEleveDEssai(prenom = 'Camille') {
+    const { getActiveProfileId, attachRemote, renameProfile } = await import('./profile.js');
+    const id = getActiveProfileId();
+    await attachRemote(id, {
+        studentId: 'essai-local',
+        token: 'essai-local',
+        classCode: 'ESSAI',
+        className: 'Classe d\'essai',
+        firstName: prenom,
+        login: 'essai',
+        cursor: 0,
+        lastSyncAt: null,
+        // Pour qui lirait ce profil plus tard en se demandant d'où il sort.
+        essai: true
+    });
+    await renameProfile(id, prenom);
+    return prenom;
+}

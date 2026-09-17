@@ -2328,9 +2328,30 @@ html[data-point="plus"] .pt-croix { display: none; }
 .tablet-simulator .pg-unite { display: none; }
 .device-simulator #game-timer,
 .tablet-simulator #game-timer { grid-area: chrono; width: 38px; height: 38px; margin: 0; }
+/* LE SIMULATEUR A LE MÊME PROBLÈME QUE LE TÉLÉPHONE, ET JE NE L'AVAIS PAS
+   MESURÉ. On regarde un cadre de téléphone DANS une fenêtre d'ordinateur : la
+   requête média `(max-width: 430px)` ne s'applique donc pas — c'est la largeur
+   de la FENÊTRE qui compte, pas celle du cadre — et ces règles-ci gouvernaient
+   seules, avec leur `nowrap`. Mesuré : la barre des questions commençait à
+   gauche de sa propre zone, c'est-à-dire hors du cadre.
+   Même remède qu'ailleurs : elles passent à la ligne plutôt que de sortir. */
 .device-simulator .game-header-actions,
 .tablet-simulator .game-header-actions {
-    grid-area: actions; justify-content: flex-end; flex-wrap: nowrap; gap: 6px; margin: 0;
+    grid-area: actions; justify-content: flex-end; flex-wrap: wrap;
+    gap: 4px; row-gap: 6px; margin: 0;
+}
+
+/* LE COMPTEUR D'ACTIVITÉS EST DÉJÀ ÉCRIT AU-DESSUS, EN TOUTES LETTRES.
+   Mesuré dans le cadre téléphone : 370 px disponibles pour 392 nécessaires,
+   d'où un bouton renvoyé seul à la ligne suivante — ce qui se lit comme une
+   erreur de mise en page. Il manquait 22 px.
+   Plutôt que de rapetisser encore quelque chose, on retire ce qui fait
+   DOUBLON : l'en-tête annonce « Étape 1 sur 3 » à deux centimètres de là, et
+   les flèches, elles, restent. Le compteur de QUESTIONS reste aussi — lui
+   n'est écrit nulle part ailleurs. */
+.device-simulator .preview-step-nav:not(.preview-step-nav--question) .preview-step-label,
+.tablet-simulator .preview-step-nav:not(.preview-step-nav--question) .preview-step-label {
+    display: none;
 }
 
 /* Vrai téléphone en plein écran.

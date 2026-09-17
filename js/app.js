@@ -307,6 +307,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     // un bandeau : ce qu'il faut savoir tient en une phrase, et on n'ampute pas
     // l'écran d'une barre fixe pour la dire.
     if (copieDEssai()) {
+        // LE CORPS PORTE LA MARQUE, pour que la feuille de style puisse en
+        // tenir compte — la pastille de rôle, notamment, doit garder son mot
+        // sur téléphone : sur une copie d'essai on passe d'un rôle à l'autre
+        // sans arrêt, et c'est le geste qu'on vient y faire.
+        try { document.body.classList.add('copie-essai'); } catch (e) { /* pas de corps */ }
         import('./ui/modal.js')
             .then(({ showToast }) => showToast(
                 'Copie d\'essai : aucun serveur, rien n\'est enregistré ni envoyé.',

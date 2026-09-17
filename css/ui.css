@@ -759,17 +759,22 @@
     color: var(--text-muted); text-decoration: underline; cursor: pointer; padding: 4px;
 }
 .portail-lien:hover { color: var(--text-main); }
-/* La porte du professeur : la règle des 44 px, un cadre qui dit « on peut
-   cliquer », et le contraste d'un texte qu'on doit pouvoir lire. Elle reste
-   sans fond plein : les deux portes des élèves gardent le premier rôle. */
-.portail-lien--prof {
+/* LES PORTES DU PIED SONT DES PORTES. « Je suis le professeur », « Explorer les
+   exercices », « Entrer comme élève » : toutes trois étaient des liens
+   soulignés gris de 26 px de haut sur ordinateur — sous le seuil des 44 px
+   qu'on tient partout ailleurs, et de la couleur qu'on réserve aux textes
+   secondaires. Elles se lisaient comme des mentions légales, et l'on ne
+   cherche pas une porte dans les mentions légales.
+   Elles restent SANS FOND PLEIN : les deux portes des élèves, au-dessus,
+   gardent le premier rôle. */
+.portail-lien--porte {
     min-height: 44px; padding: 0 18px; border-radius: 999px;
     border: 1px solid var(--border); background: var(--bg-panel);
     color: var(--text-main); text-decoration: none; font-weight: 600;
     transition: border-color .15s ease, background .15s ease;
 }
-.portail-lien--prof:hover { border-color: var(--primary); background: var(--bg-hover); }
-.portail-lien--prof:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.portail-lien--porte:hover { border-color: var(--primary); background: var(--bg-hover); }
+.portail-lien--porte:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 /* SANS MODE LIBRE, LE CATALOGUE N'EST PAS UNE PORTE. Les mêmes règles que le
    verrou de classe, pour la même raison — sauf qu'ici c'est un choix de

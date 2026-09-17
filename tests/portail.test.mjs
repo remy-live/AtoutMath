@@ -153,12 +153,15 @@ test('CHAQUE CASE DIT LA FORME DU CODE QU\'ELLE ATTEND', () => {
 test('LA PORTE DU PROFESSEUR SE VOIT ET SE CLIQUE', () => {
     const src = fs.readFileSync(new URL('../js/ui/portailUI.js', import.meta.url), 'utf8');
     const css = fs.readFileSync(new URL('../css/ui.css', import.meta.url), 'utf8');
-    assert.match(src, /class="portail-lien portail-lien--prof">Je suis le professeur</);
-    assert.match(css, /\.portail-lien--prof \{\s*\n\s*min-height: 44px;/);
+    assert.match(src, /class="portail-lien portail-lien--porte">Je suis le professeur</);
+    assert.match(css, /\.portail-lien--porte \{\s*\n\s*min-height: 44px;/);
     // Un cadre, pour qu'elle dise qu'on peut cliquer — mais pas de fond plein :
     // les deux portes des élèves gardent le premier rôle.
-    assert.match(css, /\.portail-lien--prof \{[\s\S]{0,300}border: 1px solid var\(--border\)/);
-    assert.ok(!/\.portail-lien--prof \{[\s\S]{0,300}background: var\(--primary\)/.test(css));
+    assert.match(css, /\.portail-lien--porte \{[\s\S]{0,300}border: 1px solid var\(--border\)/);
+    assert.ok(!/\.portail-lien--porte \{[\s\S]{0,300}background: var\(--primary\)/.test(css));
+    // Et « Explorer les exercices » est une porte au même titre : elle avait
+    // exactement le même défaut, pour exactement la même raison.
+    assert.match(src, /id="portail-libre" class="portail-lien portail-lien--porte">'\s*\n\s*\+ 'Explorer les exercices/);
 });
 
 test('LE SOUS-TITRE NE COMPTE PLUS LES PORTES', () => {

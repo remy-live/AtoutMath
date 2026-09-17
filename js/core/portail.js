@@ -26,6 +26,7 @@ import { getActiveProfile } from './profile.js';
 // Lecture SEULE d'un cache déjà rempli : pas de cycle d'import, et pas de
 // requête cachée derrière un appel qui a l'air gratuit.
 import { reglageSite } from './reglagesSite.js';
+import { copieDEssai } from './copieDEssai.js';
 
 /**
  * LE MODE LIBRE, QUAND IL N'Y A PAS DE SERVEUR DU TOUT.
@@ -62,6 +63,20 @@ export function modeLibre() {
     } catch (e) { /* stockage refusé : on passe à l'autorité suivante */ }
     const duServeur = reglageSite('modeLibre');
     if (typeof duServeur === 'boolean') return duServeur;
+    // SUR UNE COPIE D'ESSAI, LE REPLI EST « OUVERT », et il faut dire pourquoi.
+    //
+    // Rémy : « je n'ai rien de générique […] le but étant de tester ». Mesuré :
+    // l'élève d'essai arrivait sur « Pas de séance pour l'instant — ton
+    // professeur ne t'a rien donné ». Et pour cause : donner une séance passe
+    // par le serveur, et une copie d'essai n'en a pas. Le côté élève était donc
+    // atteignable mais vide — un cul-de-sac au lieu d'un essai.
+    //
+    // Le mode libre reste ce qu'il est partout ailleurs : éteint par défaut, et
+    // c'est le bouton de la zone professeur qui l'allume. Ici il n'y a ni
+    // serveur pour le tenir ni classe à protéger ; le repli est donc l'inverse,
+    // et les deux autorités du dessus continuent de primer — la dérogation
+    // locale comme le serveur, s'il venait à répondre.
+    if (copieDEssai()) return true;
     return MODE_LIBRE;
 }
 

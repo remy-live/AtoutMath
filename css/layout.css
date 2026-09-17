@@ -58,6 +58,13 @@
        jamais QUI. Voir la note dans app.js (`role-badge--nomme`). */
     .role-badge--nomme { padding: 4px 10px; gap: 6px; }
     .role-badge--nomme span:not(.role-badge-point) { display: inline; }
+    /* ET SUR UNE COPIE D'ESSAI, LE MOT RESTE TOUJOURS. Rémy : « je n'ai rien
+       de générique […] mode élève/prof pour github, le but étant de tester ».
+       Y passer d'un rôle à l'autre est justement ce qu'on vient y faire ; le
+       point de couleur, lui, ne dit pas dans quel rôle on est — il faut le
+       savoir d'avance pour le lire, ce qui est le contraire d'une étiquette. */
+    body.copie-essai .role-badge { padding: 4px 10px; gap: 6px; }
+    body.copie-essai .role-badge span:not(.role-badge-point) { display: inline; }
     .role-badge-point { width: 9px; height: 9px; }
 }
 #top-navbar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
