@@ -1145,6 +1145,100 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .cfg-apprendre-titre { font-weight: 800; font-size: .98rem; }
 .cfg-apprendre-note { font-size: .78rem; color: var(--text-muted); line-height: 1.35; }
 
+/* --- CHOISIR UN EXERCICE EN GRAND -------------------------------------------
+
+   Voir js/ui/choisirExercice.js. Mesuré : dans la colonne de 319 px, 51 titres
+   sur 172 sont rognés. Ici ils tiennent, le chemin complet est lisible, et
+   l'aperçu joue à côté. */
+.cx2 { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.cx2-barre { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.cx2-champ {
+    flex: 1 1 260px; display: flex; align-items: center; gap: 8px;
+    background: var(--bg-app); border: 1px solid var(--border);
+    border-radius: 999px; padding: 0 14px; min-height: 44px;
+}
+.cx2-loupe { line-height: 0; color: var(--text-muted); flex: 0 0 auto; }
+.cx2-recherche {
+    flex: 1 1 auto; min-width: 0; border: none; background: none;
+    font: inherit; color: var(--text-main); padding: 10px 0;
+}
+.cx2-recherche:focus { outline: none; }
+.cx2-champ:focus-within { border-color: var(--primary); }
+.cx2-niveaux { display: flex; flex-wrap: wrap; gap: 6px; }
+.cx2-niv {
+    appearance: none; font: inherit; font-size: .84rem; font-weight: 700;
+    color: var(--text-muted); background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 7px 14px; min-height: 36px; cursor: pointer;
+}
+.cx2-niv:hover { color: var(--text-main); border-color: var(--text-muted); }
+.cx2-niv--actif {
+    color: #fff; background: var(--primary); border-color: var(--primary);
+}
+.cx2-compte { margin: 0; font-size: .82rem; color: var(--text-muted); font-weight: 700; }
+/* AU DOIGT, 44 PX — y compris ici. Mesuré sur un téléphone : les pastilles de
+   niveau tombaient à 36 px et le champ de recherche à 40. La fenêtre sert
+   justement à choisir confortablement ; qu'elle soit la seule à ne pas tenir
+   la règle serait le comble. */
+@media (pointer: coarse) {
+    .cx2-niv { min-height: 44px; }
+    .cx2-recherche { padding: 13px 0; }
+}
+
+.cx2-corps { display: grid; grid-template-columns: 1fr 380px; gap: 16px; min-height: 0; }
+.cx2-liste {
+    list-style: none; margin: 0; padding: 0; max-height: 52vh; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 6px;
+}
+.cx2-item {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); padding: 4px 6px 4px 4px;
+}
+.cx2-item[aria-selected="true"] { border-color: var(--primary); background: var(--tag-dom-bg); }
+/* Le titre ENTIER, sur une ligne : c'est tout l'objet de cette fenêtre. Il a
+   la place ici — dans la colonne de gauche il ne l'avait pas. */
+.cx2-voir {
+    flex: 1 1 auto; min-width: 0; text-align: left; appearance: none;
+    background: none; border: none; font: inherit; cursor: pointer;
+    padding: 8px 10px; border-radius: 9px; min-height: 44px;
+    display: flex; flex-direction: column; gap: 2px;
+}
+.cx2-voir:hover { background: var(--bg-hover); }
+.cx2-titre { font-weight: 700; color: var(--text-main); font-size: .95rem; }
+.cx2-sous { font-size: .76rem; color: var(--text-muted); }
+.cx2-duo { margin-left: 6px; }
+.cx2-ajouter {
+    flex: 0 0 auto; appearance: none; font: inherit; font-size: .82rem;
+    font-weight: 800; color: #fff; background: var(--primary);
+    border: none; border-radius: 999px; padding: 9px 15px;
+    min-height: 44px; cursor: pointer; white-space: nowrap;
+}
+.cx2-ajouter:hover { background: var(--primary-hover); }
+.cx2-ajouter--fait { background: var(--success); }
+.cx2-rien { padding: 26px; text-align: center; color: var(--text-muted); }
+
+.cx2-apercu {
+    position: relative; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--bg-plateau); padding: 10px; min-height: 200px;
+}
+.cx2-apercu-vide, .cx2-apercu-note {
+    margin: 0; color: var(--text-muted); font-size: .86rem; text-align: center;
+    padding: 20px;
+}
+.cx2-apercu-cadre { position: relative; overflow: hidden; width: 100%; }
+.cx2-apercu-toile { position: absolute; inset: 0; transform-origin: top left; }
+
+/* SUR UN ÉCRAN ÉTROIT, L'APERÇU PASSE SOUS LA LISTE. Deux colonnes de moins de
+   trois cents pixels ne servent ni l'une ni l'autre. */
+@media (max-width: 860px) {
+    .cx2-corps { grid-template-columns: 1fr; }
+    .cx2-liste { max-height: 40vh; }
+    .cx2-apercu { min-height: 160px; }
+}
+
 /* --- CE QUE LES FILTRES GARDENT ----------------------------------------------
 
    Voir `majCompteCatalogue` dans js/ui/navigation.js. Une ligne discrète, et

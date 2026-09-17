@@ -672,6 +672,16 @@ Il y a DEUX façons de choisir un niveau : la rangée d'étiquettes au-dessus de
 grille et le menu du panneau. Chacune avait sa propre liste de choses à
 rafraîchir ; elles passent maintenant par `refreshCatalogViews`.
 
+### Choisir un exercice en grand
+
+La colonne de gauche reste le rangement qu'on parcourt du coin de l'œil en
+travaillant. Mais elle fait 319 px, et 51 titres sur 172 y sont rognés :
+« La Tour de Hanoï (Tour de Brahma) » tient dans 154 px quand il lui en faut
+233. Une fenêtre dédiée (`ui/choisirExercice.js`) sert au moment où l'on
+CHERCHE : titres entiers, chemin complet, niveaux, aperçu à côté, et l'on
+ajoute sans la refermer. Elle n'a pas son propre catalogue — `filterByStatus`
+et `correspond` restent les seules autorités.
+
 ### Les mots
 
 Une chose, un mot. Le compteur s'appelle **des points** — pas « étoiles »

@@ -1703,6 +1703,18 @@ function initToolbar() {
         };
     }
 
+    // LA FENÊTRE DE CHOIX, par ses deux portes : la loupe de la barre d'outils,
+    // et le bouton de l'état vide — c'est le moment où l'on en a le plus besoin.
+    const ouvrirLeChoix = () => {
+        import('./choisirExercice.js').then(({ ouvrirChoixExercice }) => {
+            ouvrirChoixExercice({ ajouter: (exo) => addStep(exo.id) });
+        });
+    };
+    ['btn-choisir-exo', 'btn-choisir-exo-vide'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.onclick = ouvrirLeChoix;
+    });
+
     const btnNew = document.getElementById('btn-new-path');
     if (btnNew) {
         const repartirDeZero = () => {
