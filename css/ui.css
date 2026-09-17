@@ -750,12 +750,26 @@
 .portail-bouton--doux { background: var(--bg-app); color: var(--text-main);
     border: 1px solid var(--border); font-weight: 600; }
 
-.portail-pied { text-align: center; margin: 24px 0 0; }
+.portail-pied {
+    display: flex; justify-content: center; align-items: center; gap: 10px;
+    flex-wrap: wrap; margin: 24px 0 0;
+}
 .portail-lien {
     background: none; border: none; font: inherit; font-size: .88rem;
     color: var(--text-muted); text-decoration: underline; cursor: pointer; padding: 4px;
 }
 .portail-lien:hover { color: var(--text-main); }
+/* La porte du professeur : la règle des 44 px, un cadre qui dit « on peut
+   cliquer », et le contraste d'un texte qu'on doit pouvoir lire. Elle reste
+   sans fond plein : les deux portes des élèves gardent le premier rôle. */
+.portail-lien--prof {
+    min-height: 44px; padding: 0 18px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    color: var(--text-main); text-decoration: none; font-weight: 600;
+    transition: border-color .15s ease, background .15s ease;
+}
+.portail-lien--prof:hover { border-color: var(--primary); background: var(--bg-hover); }
+.portail-lien--prof:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 /* SANS MODE LIBRE, LE CATALOGUE N'EST PAS UNE PORTE. Les mêmes règles que le
    verrou de classe, pour la même raison — sauf qu'ici c'est un choix de

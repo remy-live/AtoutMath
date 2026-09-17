@@ -131,3 +131,43 @@ test('CHAQUE CASE DIT LA FORME DU CODE QU\'ELLE ATTEND', () => {
     assert.match(src, /4 signes/, 'la case du billet doit annoncer sa forme');
     assert.match(src, /long, avec des tirets/, 'celle de la séance aussi');
 });
+
+// ─────────────── LA PORTE DU PROFESSEUR EST UNE PORTE ───────────────────────
+//
+// RÉMY, devant la copie d'essai en ligne : « mais comment j'entre sur github en
+// tant que prof ? »
+//
+// MESURÉ. La porte existait — « Je suis le professeur », sous les deux cartes —
+// mais c'était un lien souligné gris de 26 PX DE HAUT sur ordinateur : sous le
+// seuil des 44 px qu'on tient partout ailleurs, et de la couleur qu'on réserve
+// aux textes secondaires. Elle se lisait comme une note de bas de page, et l'on
+// ne cherche pas une porte dans les mentions légales.
+//
+// Après : 44 px sur les deux appareils, contraste 17,85, et le clic ouvre le
+// mode professeur (sur la copie d'essai, sans mot de passe — ailleurs, la
+// fenêtre d'identification s'ouvre, ce qui est le même geste).
+//
+// ELLE RESTE DISCRÈTE, et c'est voulu : c'est l'écran des élèves, ils sont
+// trente pour un professeur. Discret n'est pas illisible.
+
+test('LA PORTE DU PROFESSEUR SE VOIT ET SE CLIQUE', () => {
+    const src = fs.readFileSync(new URL('../js/ui/portailUI.js', import.meta.url), 'utf8');
+    const css = fs.readFileSync(new URL('../css/ui.css', import.meta.url), 'utf8');
+    assert.match(src, /class="portail-lien portail-lien--prof">Je suis le professeur</);
+    assert.match(css, /\.portail-lien--prof \{\s*\n\s*min-height: 44px;/);
+    // Un cadre, pour qu'elle dise qu'on peut cliquer — mais pas de fond plein :
+    // les deux portes des élèves gardent le premier rôle.
+    assert.match(css, /\.portail-lien--prof \{[\s\S]{0,300}border: 1px solid var\(--border\)/);
+    assert.ok(!/\.portail-lien--prof \{[\s\S]{0,300}background: var\(--primary\)/.test(css));
+});
+
+test('LE SOUS-TITRE NE COMPTE PLUS LES PORTES', () => {
+    // Il annonçait « l'une des deux portes » alors qu'il y en avait trois — la
+    // troisième étant justement celle du professeur. Et le compte change avec
+    // le mode libre : une phrase qui dépend d'un décompte finit par mentir.
+    const src = fs.readFileSync(new URL('../js/ui/portailUI.js', import.meta.url), 'utf8');
+    const sansCommentaires = src.replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.ok(!/portail-sous">Entre par l'une des deux portes/.test(sansCommentaires));
+    assert.match(sansCommentaires, /<p class="portail-sous">Choisis par où tu entres\.<\/p>/);
+});

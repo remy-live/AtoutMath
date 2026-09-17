@@ -227,7 +227,12 @@ function dessiner() {
     el.innerHTML = `
       <div class="portail-boite">
         <h1 class="portail-titre">AtoutMath</h1>
-        <p class="portail-sous">Entre par l'une des deux portes.</p>
+        <!-- ON NE COMPTE PLUS LES PORTES DANS LE SOUS-TITRE. Il disait « l'une
+             des deux » alors qu'il y en avait trois — la troisième étant
+             justement celle du professeur, en bas, en petit. Et le compte
+             change selon le mode libre. Une phrase qui dépend d'un décompte
+             finit toujours par mentir ; celle-ci dit ce qu'on fait ici. -->
+        <p class="portail-sous">Choisis par où tu entres.</p>
 
         <div class="portail-portes">
           <section class="portail-porte">
@@ -289,9 +294,17 @@ function dessiner() {
           </section>
         </div>
 
+        <!-- LA PORTE DU PROFESSEUR EST UNE PORTE, PAS UNE MENTION LÉGALE.
+             Rémy, devant la copie d'essai : « mais comment j'entre sur github
+             en tant que prof ? » Mesuré : un lien souligné gris de 26 px de
+             haut sur ordinateur, sous les deux cartes — sous le seuil des
+             44 px qu'on tient partout ailleurs, et de la couleur qu'on réserve
+             aux textes secondaires. Il se lisait comme une note de bas de page.
+             Il reste DISCRET — c'est l'écran des élèves, et ils sont trente
+             pour un professeur — mais discret n'est pas illisible. -->
         <p class="portail-pied">
-          ${modeLibre() ? '<button id="portail-libre" class="portail-lien">Explorer les exercices</button> · ' : ''}
-          <button id="portail-prof" class="portail-lien">Je suis le professeur</button>
+          ${modeLibre() ? '<button id="portail-libre" class="portail-lien">Explorer les exercices</button>' : ''}
+          <button id="portail-prof" class="portail-lien portail-lien--prof">Je suis le professeur</button>
         </p>
       </div>`;
     document.body.appendChild(el);
