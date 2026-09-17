@@ -1260,6 +1260,14 @@ body.plein-ecran .pe-sortir { display: block; }
 
 /* Sidebar - sélecteur de niveau */
 .sidebar-top-controls { padding: 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+/* SUR TÉLÉPHONE, LES DEUX FILTRES PARTAGENT UNE LIGNE.
+   Le niveau et le rangement répondent à deux questions voisines — « pour quelle
+   classe ? » et « rangé comment ? » —, et chacun tenait sa propre bande. Mesuré
+   sur un écran de 390 × 844 : 396 px avant le premier exercice, pour quatre
+   exercices visibles. Côte à côte, ils en rendent une cinquantaine. */
+body.mobile-view .sidebar-top-controls { flex-direction: row; align-items: center; }
+body.mobile-view .sidebar-top-controls > .select-wrap,
+body.mobile-view .sidebar-top-controls > #rangement-bascule { flex: 1 1 0; min-width: 0; }
 .select-wrap { position: relative; }
 #custom-niveau-select { width: 100%; padding: 8px 12px; border-radius: 8px; background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; }
 #cns-dropdown { display: none; flex-direction: column; gap: 4px; position: absolute; top: calc(100% - 5px); left: 10px; right: 10px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); z-index: 100; max-height: 250px; overflow-y: auto; padding: 5px; }
@@ -3326,6 +3334,34 @@ body.mobile-view.teacher-mode #top-navbar .nav-center--prof {
     padding-bottom: 4px;
 }
 body.mobile-view .nav-center--prof .top-nav-tab { flex: 1 1 0; justify-content: center; }
+
+/* ── TROIS RANGÉES POUR UNE BARRE, C'ÉTAIT DEUX DE TROP ────────────────────
+   Rémy, capture d'un téléphone : « la zone prof en portable est horrible […]
+   quelle place perdue en haut ».
+
+   MESURÉ sur un écran de 390 × 844 : la barre du haut faisait 149 pixels, soit
+   DIX-HUIT POUR CENT de l'écran, en trois rangées de 44 :
+       0 → 44    ☰, AtoutMath, la pastille de rôle
+      50 → 98    « Préparer » / « La classe »
+     104 → 148   ⋯, plein écran, réglages, ★
+   La cause est l'ORDRE du document : les onglets du professeur sont au milieu
+   et prennent toute la largeur (`flex: 1 0 100%`), ce qui rejette le groupe
+   d'icônes — pourtant court — sur une troisième ligne.
+
+   On les descend donc en DERNIER : le groupe d'icônes remonte à côté du logo,
+   et il ne reste que deux rangées. `order` ne touche pas au document, donc ni
+   la lecture d'écran ni la tabulation ne changent d'ordre. */
+body.mobile-view.teacher-mode #top-navbar .nav-left { order: 1; }
+body.mobile-view.teacher-mode #top-navbar .nav-right { order: 2; }
+body.mobile-view.teacher-mode #top-navbar .nav-center--prof { order: 3; }
+
+/* ET LE PLEIN ÉCRAN S'EFFACE, POUR QUE LES DEUX GROUPES TIENNENT ENSEMBLE.
+   Mesuré : 178 px à gauche et 218 à droite font 396, pour 370 disponibles —
+   vingt-six de trop, et la barre se remettait sur trois lignes. Ce bouton-ci
+   est celui qu'on retire : sur l'iPhone de Rémy il ne fait RIEN (Safari iOS
+   n'ouvre pas le plein écran), et un professeur qui prépare un parcours ne
+   cherche pas à masquer sa propre barre d'outils. L'élève, lui, le garde. */
+body.mobile-view.teacher-mode #top-navbar #btn-fullscreen { display: none; }
 
 /* Les portes du professeur GARDENT LEUR NOM sur téléphone.
    Une règle générale réduit les onglets à leur icône en dessous d'une certaine

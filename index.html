@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=757">
-    <link rel="stylesheet" href="css/layout.css?v=757">
-    <link rel="stylesheet" href="css/ui.css?v=757">
-    <link rel="stylesheet" href="css/games.css?v=757">
-    <link rel="stylesheet" href="css/components.css?v=757">
-    <link rel="stylesheet" href="css/modules.css?v=757">
+    <link rel="stylesheet" href="css/base.css?v=758">
+    <link rel="stylesheet" href="css/layout.css?v=758">
+    <link rel="stylesheet" href="css/ui.css?v=758">
+    <link rel="stylesheet" href="css/games.css?v=758">
+    <link rel="stylesheet" href="css/components.css?v=758">
+    <link rel="stylesheet" href="css/modules.css?v=758">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -667,6 +667,21 @@
                         <!-- Checkboxes will be injected here -->
                     </div>
                     </div>
+                    <!-- RANGER PAR DOMAINE OU PAR CHAPITRE. Le domaine dit de
+                         quoi parle l'exercice, le chapitre dit quand on s'en
+                         sert. Deux questions différentes, deux rangements du
+                         même catalogue.
+
+                         IL EST ICI, avec le choix du niveau, parce que ce sont
+                         DEUX FILTRES et qu'ils tiennent sur une ligne. Sur
+                         téléphone, chaque bande empilée coûte une ligne
+                         d'exercices : mesuré, il y avait 396 px de poignée,
+                         d'onglets et de filtres avant le premier exercice, pour
+                         quatre exercices visibles sur cent soixante-douze. -->
+                    <div id="rangement-bascule" class="rang-bascule" role="group" aria-label="Ranger le catalogue">
+                        <button type="button" class="rang-btn" data-rangement="domaine">Domaines</button>
+                        <button type="button" class="rang-btn" data-rangement="chapitre">Chapitres</button>
+                    </div>
                 </div>
                 <!-- LA RECHERCHE. La loupe dit ce qu'est ce champ sans le
                      dire ; la liste de suggestions s'ouvre sous lui au fil de
@@ -686,13 +701,6 @@
                     </div>
                     <ul id="sidebar-search-suggestions" class="rech-liste" role="listbox" hidden
                         aria-label="Suggestions d'exercices"></ul>
-                </div>
-                <!-- RANGER PAR DOMAINE OU PAR CHAPITRE. Le domaine dit de quoi
-                     parle l'exercice, le chapitre dit quand on s'en sert. Deux
-                     questions différentes, deux rangements du même catalogue. -->
-                <div id="rangement-bascule" class="rang-bascule" role="group" aria-label="Ranger le catalogue">
-                    <button type="button" class="rang-btn" data-rangement="domaine">Domaines</button>
-                    <button type="button" class="rang-btn" data-rangement="chapitre">Chapitres</button>
                 </div>
                 <!-- CE QUE LES FILTRES GARDENT, ET COMMENT LES DÉFAIRE.
                      Rémy : « il faudrait des filtres pour afficher moins

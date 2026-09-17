@@ -367,10 +367,49 @@ function initMenuBarreHaute() {
     const btn = document.getElementById('btn-nav-plus');
     const liste = document.getElementById('nav-menu-liste');
     if (!btn || !liste) return;
+    /**
+     * LE MENU RENTRE DANS L'ÉCRAN, TOUJOURS.
+     *
+     * Rémy, capture d'un téléphone : « il y a des choses tronquées ». On y lit
+     * « …urer » et « …sseur » collés au bord gauche — c'était ce menu-ci.
+     *
+     * MESURÉ sur un écran de 390 px : le panneau fait 242 px et se pose à
+     * x = −188. Cent quatre-vingt-huit pixels dehors, cinquante-quatre dedans.
+     * La cause tient en deux lignes de style : il est aligné à DROITE de son
+     * bouton (`right: 0`), et ce bouton-là est à dix pixels du bord GAUCHE.
+     *
+     * On ne remplace pas la règle — sur un grand écran, et dans les coins de
+     * droite, l'alignement à droite est le bon. On CORRIGE après coup, une fois
+     * qu'on peut mesurer : c'est la seule façon de traiter les deux bords et
+     * toutes les largeurs sans multiplier les cas particuliers.
+     */
+    const rentrerDansLEcran = () => {
+        liste.style.left = '';
+        liste.style.right = '';
+        const b = liste.getBoundingClientRect();
+        const marge = 8;
+        // Le panneau est positionné dans `.nav-menu` : un décalage se compte
+        // donc par rapport à ce parent, pas par rapport à la page.
+        const parent = liste.offsetParent || liste.parentElement;
+        const p = parent.getBoundingClientRect();
+        if (b.left < marge) {
+            liste.style.right = 'auto';
+            liste.style.left = `${marge - p.left}px`;
+        } else if (b.right > window.innerWidth - marge) {
+            liste.style.left = 'auto';
+            liste.style.right = `${p.right - (window.innerWidth - marge)}px`;
+        }
+        // Et s'il reste plus large que l'écran, on le laisse rétrécir plutôt
+        // que de choisir quel bord sacrifier.
+        liste.style.maxWidth = `${window.innerWidth - 2 * marge}px`;
+    };
+
     const poser = (ouvert) => {
         liste.hidden = !ouvert;
         btn.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+        if (ouvert) rentrerDansLEcran();
     };
+    window.addEventListener('resize', () => { if (!liste.hidden) rentrerDansLEcran(); });
     btn.onclick = (e) => { e.stopPropagation(); poser(liste.hidden); };
     liste.addEventListener('click', () => poser(false));
     document.addEventListener('click', (e) => {
@@ -816,6 +855,18 @@ function initNavButtons() {
         sidebar.style.transition = '';
         const handle = document.getElementById('drawer-handle');
         if (handle) handle.setAttribute('aria-expanded', String(ouvert));
+        // LA BANDE QUI RESTE AU-DESSUS DOIT SE LIRE COMME UN ARRIÈRE-PLAN.
+        //
+        // Le tiroir ouvert couvre presque tout l'écran ; il reste une trentaine
+        // de pixels du parcours au-dessus, et l'on y voyait la MOITIÉ d'un titre
+        // — « Préparer un parcours » coupé net dans la hauteur. Rémy, sur une
+        // capture : « il y a des choses tronquées ». Ce n'est pas la même chose
+        // qu'un texte coupé par erreur, mais ça se voit pareil.
+        //
+        // On voile donc ce qui passe derrière : une bande assombrie se lit comme
+        // « c'est dessous », et plus comme « c'est cassé ». Le voile sert aussi
+        // de zone à toucher pour refermer, ce qui est le geste qu'on cherche.
+        document.body.classList.toggle('tiroir-ouvert', ouvert);
     };
     const toggleDrawer = () => {
         setDrawer(!document.getElementById('sidebar').classList.contains('drawer-open'));
