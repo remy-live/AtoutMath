@@ -14,7 +14,6 @@
 
 import { exercices, getExerciseById, paramSchemaOf } from '../data/catalog.js';
 import { state } from '../core/state.js';
-import { Shortcodes } from '../core/shortcodes.js';
 import { makePath, makeStep, normalizePath, totalItems } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
 import { communDe, appliquerAuxEtapes } from '../core/reglagesGroupes.js';
@@ -1656,53 +1655,26 @@ function initToolbar() {
 
     const btnCode = document.getElementById('btn-generate-code');
     if (btnCode) {
-        btnCode.onclick = async () => {
+        btnCode.onclick = () => {
             if (!state.currentPath.steps.length) {
                 showAlert('Ajoutez au moins un exercice pour générer un code.');
                 return;
             }
-            // LE CODE COURT SE DIT À VOIX HAUTE. Trois lettres par exercice,
-            // et le nombre de questions à la suite quand le professeur l'a
-            // choisi : « ARF-12-TPW-20 » pour deux exercices, treize
-            // caractères là où le format complet en demandait 161. C'est
-            // celui qu'on écrit au tableau pour les devoirs. On le MONTRE
-            // toujours, même quand le lien part au presse-papiers — un élève
-            // qui n'a pas le lien doit pouvoir taper le code.
-            const code = Shortcodes.encodePath(state.currentPath);
-            const court = !code.startsWith('M2-');
-            // ET QUAND LE CODE EST LONG, ON DIT POURQUOI. Rémy : « pour le lien
-            // donné dans la partie prof, j'ai du mal à comprendre quand est-ce
-            // que tu utilises le code court et le code long ». La règle
-            // existait, elle n'était écrite nulle part où il puisse la lire :
-            // le bouton disait « Lien copié » et se taisait. Or elle est
-            // simple — le code court ne sait dicter que des exercices pris tels
-            // quels, avec leur nombre de questions ; tout le reste doit voyager
-            // en entier. Chaque chose qui l'empêche est maintenant nommée, et
-            // le professeur voit du même coup ce qu'il aurait à défaire pour
-            // obtenir un code qui se dicte.
-            const raisons = court ? [] : Shortcodes.raisonsDuCodeLong(state.currentPath);
-            try {
-                await navigator.clipboard.writeText(Shortcodes.shareUrl(state.currentPath));
-                showToast(court ? `Lien copié — code à dicter : ${code}`
-                    : 'Lien copié — code long (le parcours a des réglages)', 'success');
-                if (court) showAlert(`Code à dicter : <b style="font-size:1.6em">${code}</b>`
-                    + `<br><br>${code.length} caractères, à taper dans « J'ai un code ». `
-                    + 'Chaque groupe de trois lettres est un exercice, et la '
-                    + 'troisième vérifie les deux autres : si l\'élève en '
-                    + 'recopie une de travers, le code est refusé plutôt que de '
-                    + 'lui ouvrir autre chose.'
-                    + '<br>Le lien est aussi dans le presse-papiers.');
-                else showAlert('<b>Le lien est copié, mais il n\'y a pas de code à dicter '
-                    + 'pour ce parcours.</b>'
-                    + '<br><br>Un code court ne sait dire que ceci : des exercices, dans un '
-                    + 'ordre, avec leur nombre de questions — tout le reste au réglage '
-                    + 'd\'usine. Dès qu\'un réglage doit voyager, il faut le lien entier, '
-                    + 'sans quoi l\'élève recevrait autre chose que ce que vous avez préparé.'
-                    + '<br><br>Ici, ce qui l\'empêche :<ul style="text-align:left;margin:6px 0 0 1em">'
-                    + raisons.map(r => `<li>${r}</li>`).join('') + '</ul>');
-            } catch (e) {
-                showAlert(`Code du parcours :\n\n${code}`);
-            }
+            // ON MONTRE LE LIEN, ON NE LE GLISSE PLUS DANS LE PRESSE-PAPIERS.
+            //
+            // Rémy : « mais je n'ai pas trouvé ni le qr code ni le lien quand je
+            // clique sur le lien du parcours ». Il avait raison : le bouton
+            // copiait l'adresse et annonçait « Lien copié », sans jamais la
+            // montrer. Un lien qu'on ne voit pas ne se relit pas, ne se vérifie
+            // pas, ne s'envoie pas depuis un autre appareil — et si le
+            // presse-papiers a été refusé, il n'y a rien du tout.
+            //
+            // La fenêtre donne les trois formes du même travail : le code pour
+            // le tableau, le lien pour le cahier de textes, le QR pour les
+            // téléphones. Voir `ui/partagerParcours.js`.
+            import('./partagerParcours.js').then(({ ouvrirPartage }) => {
+                ouvrirPartage(state.currentPath);
+            });
         };
     }
 
@@ -2029,13 +2001,13 @@ function pathItem(p, resume = null) {
     actions.className = 'path-browser-actions';
 
     const share = iconButton('Partager', ICONS.share, 'primary');
-    share.onclick = async () => {
-        try {
-            await navigator.clipboard.writeText(Shortcodes.shareUrl(normalized));
-            showToast('Lien de partage copié !', 'success');
-        } catch (e) {
-            showAlert(`Code : ${Shortcodes.encodePath(normalized)}`);
-        }
+    // LA MÊME FENÊTRE QUE LA BARRE D'OUTILS, et non un second chemin. Celui-ci
+    // copiait le lien sans le montrer, et retombait sur le code seul quand la
+    // copie échouait : deux comportements pour un geste qui n'en a qu'un.
+    share.onclick = () => {
+        import('./partagerParcours.js').then(({ ouvrirPartage }) => {
+            ouvrirPartage(normalized, { nom: p.name });
+        });
     };
 
     // ON OUVRE UN PARCOURS EN CLIQUANT DESSUS — comme un exercice du catalogue
