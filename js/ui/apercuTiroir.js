@@ -142,10 +142,22 @@ export function retenir() {
  * exactement comme avant — et l'on ne change que la FENÊTRE qu'on ouvre
  * dessus : son échelle, et le coin par lequel on regarde.
  */
-function ajusterAuContenu() {
-    const b = boite(), t = toile();
-    if (!b || !t) return;
-
+/**
+ * METTRE UN JEU À L'ÉCHELLE DE LA BOÎTE QUI L'ACCUEILLE.
+ *
+ * Mesure l'étendue RÉELLE de ce qui est dessiné — pas la taille de la toile,
+ * qui ne veut rien dire tant que le jeu n'a pas fini de se poser — puis pose
+ * une mise à l'échelle et un décalage pour que tout tienne.
+ *
+ * Exportée parce que deux endroits en ont besoin : la vignette du catalogue et
+ * l'onglet « Aperçu » des réglages d'une étape. Deux copies de vingt lignes de
+ * géométrie finissent toujours par ne plus se comporter pareil.
+ *
+ * @returns {{l:number,h:number,ech:number}|null} l'étendue et l'échelle posées,
+ *          ou `null` si le jeu n'a encore rien dessiné.
+ */
+export function adapterAuContenu(t, { maxL, maxH, centrerDans = null }) {
+    if (!t) return null;
     const avant = t.style.transform;
     t.style.transform = 'none';
     const base = t.getBoundingClientRect();
@@ -156,7 +168,31 @@ function ajusterAuContenu() {
         x0 = Math.min(x0, r.x - base.x); y0 = Math.min(y0, r.y - base.y);
         x1 = Math.max(x1, r.right - base.x); y1 = Math.max(y1, r.bottom - base.y);
     });
-    if (x0 === Infinity) { t.style.transform = avant || 'scale(0.4)'; return; }
+    if (x0 === Infinity) { t.style.transform = avant || 'scale(0.4)'; return null; }
+
+    // LE CONTENU COMMENCE SOUVENT AVANT LA TOILE, et il ne faut surtout pas le
+    // ramener à zéro — voir la note ci-dessous, gardée telle quelle : elle dit
+    // pourquoi, et deux jeux l'ont prouvé.
+    const l = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
+    // Jamais d'agrandissement : un jeu tenant dans 300 px reste net à 300 px.
+    const ech = Math.min(maxL / l, maxH / h, 1);
+    t.style.transformOrigin = 'top left';
+    // CENTRER, QUAND LA BOÎTE EST PLUS GRANDE QUE LE JEU. Sans cela, un jeu
+    // deux fois moins haut que son cadre se colle en haut à gauche et laisse un
+    // grand vide sous lui — ce qui, dans une fenêtre de réglages, se lit comme
+    // « il manque quelque chose ». Le décalage est posé AVANT la mise à
+    // l'échelle, donc en pixels d'écran : c'est la boîte qu'on vise, pas le jeu.
+    const c = centrerDans
+        ? `translate(${Math.max(0, (centrerDans.l - l * ech) / 2)}px, `
+            + `${Math.max(0, (centrerDans.h - h * ech) / 2)}px) `
+        : '';
+    t.style.transform = `${c}scale(${ech}) translate(${-x0}px, ${-y0}px)`;
+    return { l, h, ech };
+}
+
+function ajusterAuContenu() {
+    const b = boite(), t = toile();
+    if (!b || !t) return;
 
     // LE CONTENU COMMENCE SOUVENT AVANT LA TOILE, et il ne faut surtout pas le
     // ramener à zéro. J'avais d'abord écrit `x0 = Math.max(0, x0)`, en me
@@ -168,13 +204,9 @@ function ajusterAuContenu() {
     //
     // On prend donc l'étendue telle qu'elle est, négatifs compris : c'est la
     // seule qui décrive ce que le jeu dessine vraiment.
-    const l = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
-
-    // Jamais d'agrandissement : un jeu tenant dans 300 px reste net à 300 px.
-    const ech = Math.min(BORNES.maxL / l, BORNES.maxH / h, 1);
-
-    t.style.transformOrigin = 'top left';
-    t.style.transform = `scale(${ech}) translate(${-x0}px, ${-y0}px)`;
+    const m = adapterAuContenu(t, { maxL: BORNES.maxL, maxH: BORNES.maxH });
+    if (!m) return;
+    const { l, h, ech } = m;
 
     const cadre = b.querySelector('.hd-canvas-wrap');
     b.style.width = `${Math.max(BORNES.minL, Math.round(l * ech))}px`;

@@ -1145,6 +1145,71 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .cfg-apprendre-titre { font-weight: 800; font-size: .98rem; }
 .cfg-apprendre-note { font-size: .78rem; color: var(--text-muted); line-height: 1.35; }
 
+/* Le bouton d'un avis : il fait ce que l'avis propose, sans avoir à aller le
+   chercher ailleurs. Blanc sur le fond de l'avis, qui est déjà coloré. */
+.toast-action {
+    flex: 0 0 auto; margin-left: 4px;
+    appearance: none; font: inherit; font-weight: 800; font-size: .85rem;
+    color: inherit; background: rgba(255, 255, 255, .22);
+    border: 1px solid rgba(255, 255, 255, .55); border-radius: 999px;
+    padding: 5px 13px; min-height: 32px; cursor: pointer;
+}
+.toast-action:hover { background: rgba(255, 255, 255, .34); }
+.toast-action:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+@media (pointer: coarse) { .toast-action { min-height: 44px; } }
+
+/* --- LES RÉGLAGES D'UNE ÉTAPE, EN FENÊTRE ------------------------------------
+
+   Voir js/ui/reglagesEtape.js. Deux onglets : les réglages, et un aperçu qui
+   tient compte de ce qu'on vient de cocher. La fenêtre est large parce que
+   c'est ce qui permet de montrer le jeu — une colonne de 330 px ne le pouvait
+   pas, et c'est pour cela que l'aperçu n'existait pas. */
+
+.re-onglets {
+    display: flex; gap: 6px; margin: -6px 0 14px;
+    border-bottom: 1px solid var(--border);
+}
+.re-onglet {
+    appearance: none; background: none; border: none; font: inherit;
+    font-weight: 700; font-size: .95rem; color: var(--text-muted);
+    padding: 9px 16px; min-height: 44px; cursor: pointer;
+    border-bottom: 3px solid transparent; margin-bottom: -1px;
+    transition: color .15s ease, border-color .15s ease;
+}
+.re-onglet:hover { color: var(--text-main); }
+.re-onglet--actif { color: var(--primary-texte); border-bottom-color: var(--primary); }
+.re-onglet:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; }
+
+.re-apercu-note {
+    margin: 0 0 12px; font-size: .85rem; color: var(--text-muted); line-height: 1.4;
+}
+/* Le cadre a une hauteur FIXE, posée par le script : sans elle, la fenêtre
+   sauterait de taille à chaque changement de réglage — un jeu à six questions
+   et un jeu à trente ne dessinent pas la même hauteur. */
+.re-apercu-cadre {
+    position: relative; overflow: hidden;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--bg-plateau);
+    display: flex; align-items: center; justify-content: center;
+}
+.re-apercu-toile {
+    position: absolute; inset: 0;
+    transform-origin: top left;
+    display: flex; align-items: center; justify-content: center;
+}
+.re-apercu-vide {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; color: var(--text-muted); font-size: .9rem;
+    text-align: center; padding: 20px;
+}
+/* SUR UN TÉLÉPHONE, L'APERÇU PREND CE QU'IL PEUT. Le script demande 420 px de
+   haut ; sur un écran de 844, la fenêtre entière n'en a pas tant une fois les
+   onglets et le titre posés. */
+@media (max-width: 620px) {
+    .re-apercu-cadre { height: 260px !important; }
+    .re-onglet { padding: 9px 12px; font-size: .9rem; }
+}
+
 /* --- Paramètres d'affichage ---------------------------------- */
 
 .reglage-bloc { display: flex; flex-direction: column; gap: 4px; }

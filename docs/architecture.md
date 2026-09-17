@@ -641,6 +641,23 @@ défauts qu'ils cherchent ne lèvent aucune erreur — ils laissent seulement un
 Un troisième fait de même pour le CONTRASTE (`contraste.test.mjs`), un
 quatrième pour le VOCABULAIRE (`lesMots.test.mjs`).
 
+### Le tunnel du professeur
+
+Chercher un exercice → l'ajouter → le régler → le voir. Rémy : « et hop là tu
+as un tunnel. »
+
+L'ajout PRÉVIENT (un avis avec un bouton « Régler ») au lieu d'ouvrir les
+réglages tout seul. Les réglages d'une étape s'ouvrent en FENÊTRE
+(`ui/reglagesEtape.js`) et non plus dans une troisième colonne — mesuré, elle
+prenait 330 px sur 1440 et poussait le parcours à 790 px ; il en fait 1120
+maintenant. La fenêtre a deux onglets : « Réglages » et « Aperçu », et l'aperçu
+joue une vraie question avec les réglages du moment.
+
+Deux pièges y ont coûté une mesure chacun, et sont tenus par des épreuves :
+l'étape doit se RELIRE (l'enregistrement remplace l'objet dans le parcours), et
+chaque fenêtre doit avoir son propre identifiant de conteneur (le voile d'une
+fenêtre fermée reste 200 ms, et `getElementById` rendait le mauvais).
+
 ### Les mots
 
 Une chose, un mot. Le compteur s'appelle **des points** — pas « étoiles »

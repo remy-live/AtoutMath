@@ -18,6 +18,7 @@ import { Shortcodes } from '../core/shortcodes.js';
 import { makePath, makeStep, normalizePath, totalItems } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
 import { communDe, appliquerAuxEtapes } from '../core/reglagesGroupes.js';
+import { ouvrirReglagesEtape, fermerReglagesEtape } from './reglagesEtape.js';
 import { MAX_ETAPE } from '../core/seuilEtape.js';
 import { creerHistorique } from '../core/historique.js';
 import {
@@ -528,11 +529,29 @@ export function addStep(exerciseId, rang) {
     const ou = Number.isInteger(rang) ? Math.max(0, Math.min(rang, steps.length)) : steps.length;
     steps.splice(ou, 0, step);
     renderTeacherPath();
-    // Pas sur téléphone : le panneau de propriétés s'y ouvre en PLEIN ÉCRAN,
-    // et chaque ajout depuis le tiroir recouvrait donc tout — impossible
-    // d'ajouter plusieurs exercices à la suite. Les propriétés s'ouvrent d'un
-    // appui sur l'étape, quand on en a besoin.
-    if (!document.body.classList.contains('mobile-view')) selectStep(step.stepId);
+
+    // ON PRÉVIENT, ON N'INTERROMPT PAS.
+    //
+    // Rémy : « on ajoute, et là paf, une notif qui te dit que tu peux régler
+    // l'exercice via un bouton réglages dédié ».
+    //
+    // Avant, l'ajout OUVRAIT les réglages tout seul — sauf sur téléphone, où
+    // l'on avait dû le désactiver parce qu'un panneau plein écran après chaque
+    // ajout empêchait d'en ajouter deux à la suite. Le défaut était le même sur
+    // grand écran, simplement moins violent : on venait d'en chercher un dans
+    // le catalogue, et l'on se retrouvait devant un formulaire.
+    //
+    // Un avis qui PROPOSE, et le geste reste offert. Le bouton de l'avis fait
+    // exactement ce que fait la roue crantée de l'étape.
+    const avis = showToast(`${exo.title} ajouté — tu peux le régler.`, 'success', 6000);
+    if (avis) {
+        const bouton = document.createElement('button');
+        bouton.type = 'button';
+        bouton.className = 'toast-action';
+        bouton.textContent = 'Régler';
+        bouton.onclick = () => { selectStep(step.stepId); avis.remove(); };
+        (avis.firstElementChild || avis).appendChild(bouton);
+    }
 }
 
 // --- Rendu de la liste d'étapes ---------------------------------------------
@@ -1333,7 +1352,11 @@ function stepRow(step, index, policy) {
     const preview = iconButton('Aperçu', ICONS.eye);
     preview.onclick = (e) => { e.stopPropagation(); testStep(index); };
 
-    const props = iconButton('Propriétés', ICONS.gear);
+    // « RÉGLAGES », PAS « PROPRIÉTÉS ». Rémy parle d'« un bouton réglages
+    // dédié » ; la fenêtre qui s'ouvre s'appelle « Réglages » dans son premier
+    // onglet, et la pastille sous l'étape porte déjà une roue crantée avec ce
+    // mot. Trois noms pour une roue crantée, c'était deux de trop.
+    const props = iconButton('Réglages', ICONS.gear);
     props.onclick = (e) => { e.stopPropagation(); selectStep(step.stepId); };
 
     const dup = iconButton('Dupliquer', ICONS.copy);
@@ -1404,6 +1427,10 @@ function stepRow(step, index, policy) {
  * déjà, mais sans recouvrir : sur grand écran, il pousse.
  */
 export function fermerProprietes() {
+    // Les réglages d'étape vivent maintenant dans une fenêtre ; le volet reste
+    // pour « à qui ce parcours est donné ». On ferme les deux, parce que les
+    // appelants de cette fonction veulent dire « range ce qui est ouvert ».
+    fermerReglagesEtape();
     const panel = document.getElementById('builder-properties-panel');
     if (!panel) return;
     panel.classList.remove('mob-open');
@@ -1421,46 +1448,56 @@ function accorderLeVolet() {
 }
 
 export function selectStep(stepId) {
-    const step = state.currentPath.steps.find(s => s.stepId === stepId);
+    let step = state.currentPath.steps.find(s => s.stepId === stepId);
     if (!step) return;
     selectedStepId = stepId;
 
-    const panel = document.getElementById('builder-properties-panel');
-    if (!panel) return;
-
-    panel.innerHTML = `
-        <button id="mob-close-props" class="props-close" aria-label="Fermer les propriétés">✕</button>
-        <h3 class="props-title">Propriétés de l'étape</h3>
-        <div id="builder-config-content"></div>`;
-    // QUI A OUVERT CE VOLET. Le même panneau sert aussi à « à qui ce parcours est
-    // donné » ; sans cette marque, redessiner le parcours refermerait sous les
-    // doigts du professeur une liste de classes qu'il était en train de cocher.
-    panel.dataset.pour = 'etape';
-    panel.classList.add('mob-open');
-
-    const fermerProps = () => fermerProprietes();
-    const close = document.getElementById('mob-close-props');
-    if (close) close.onclick = fermerProps;
-    // ON POUSSE CE TIROIR AUSSI. Rémy : « Les tiroirs ne se glissent pas en bas,
-    // il faut appuyer sur Annuler. » Le panneau des propriétés monte du bas sur
-    // téléphone, exactement comme les réglages ; il n'a pas de voile — il occupe
-    // tout l'écran —, donc la poignée est le seul geste, et la croix reste.
-    import('./tiroir.js').then(({ rendreTirable }) => {
-        rendreTirable(panel, fermerProps,
-            { actif: () => document.body.classList.contains('mobile-view') });
-    });
-
-    // LE MODE DU PARCOURS VOYAGE AVEC L'ÉTAPE. En évaluation, « bonnes réponses
-    // exigées » n'a pas de sens — une interrogation se note, elle ne se valide
-    // pas —, et le panneau retire la poignée du seuil.
-    renderGameConfigUI(step, (updated) => {
-        const i = state.currentPath.steps.findIndex(s => s.stepId === stepId);
-        if (i !== -1) {
-            state.currentPath.steps[i] = updated;
-            renderTeacherPath();
+    // LES RÉGLAGES S'OUVRENT EN FENÊTRE, PLUS DANS UNE TROISIÈME COLONNE.
+    //
+    // Rémy : « oublions le panneau latéral pour les réglages, ça surcharge trop
+    // l'écran […] une modale dans laquelle tu peux cocher / décocher, avoir un
+    // “tab” pour avoir un aperçu qui prenne en compte tes modifs ».
+    //
+    // Mesuré sur un écran de 1440 : le volet prenait 330 pixels — le quart de
+    // la largeur — et POUSSAIT le parcours qu'on était en train de régler. Et
+    // il ne pouvait pas montrer l'exercice : une colonne de 330 px n'a pas la
+    // place d'un plateau de jeu. La fenêtre, si — c'est elle qui rend l'aperçu
+    // possible, et l'aperçu est ce que Rémy demandait.
+    //
+    // ON NE DÉPLACE PAS LES RÉGLAGES EUX-MÊMES : `renderGameConfigUI` les
+    // dessine dans un élément qu'il trouve par identifiant, et la fenêtre lui
+    // donne le même. Deux panneaux de réglages à tenir d'accord, ce serait un
+    // de trop.
+    const exo = getExerciseById(step.exerciseId);
+    ouvrirReglagesEtape({
+        // L'ÉTAPE SE RELIT, ELLE NE SE GARDE PAS. Enregistrer un réglage
+        // REMPLACE l'objet dans `state.currentPath.steps` ; passer la référence
+        // d'aujourd'hui, c'est montrer l'étape d'hier. Mesuré : « Plus grand
+        // terme » ramené de 10 à 6, et l'aperçu tirait encore des 10.
+        etape: () => state.currentPath.steps.find(s => s.stepId === stepId),
+        exo,
+        rendre: (idConteneur, surChangement) => {
+            // LE MODE DU PARCOURS VOYAGE AVEC L'ÉTAPE. En évaluation, « bonnes
+            // réponses exigées » n'a pas de sens — une interrogation se note,
+            // elle ne se valide pas —, et le panneau retire la poignée du seuil.
+            renderGameConfigUI(step, (updated) => {
+                const i = state.currentPath.steps.findIndex(s => s.stepId === stepId);
+                if (i !== -1) {
+                    state.currentPath.steps[i] = updated;
+                    step = updated;
+                    renderTeacherPath();
+                }
+                if (surChangement) surChangement();
+            }, idConteneur, {
+                mode: (state.currentPath && state.currentPath.policy
+                    && state.currentPath.policy.mode) || null
+            });
+        },
+        onClose: () => {
+            selectedStepId = null;
+            document.querySelectorAll('.path-step').forEach(el =>
+                el.classList.remove('path-step--selected'));
         }
-    }, 'builder-config-content', {
-        mode: (state.currentPath && state.currentPath.policy && state.currentPath.policy.mode) || null
     });
 
     document.querySelectorAll('.path-step').forEach(el => {
