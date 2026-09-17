@@ -22,34 +22,26 @@ const nomTypeCodage = (type) => {
 
 // --- LES ANAGRAMMES SUR PAPIER ------------------------------------------------
 //
-// Une ligne par mot : les lettres mélangées à gauche, la définition, puis
-// autant de cases que de lettres. Les cases FONT l'exercice — sans elles on ne
-// sait pas quand on a fini, et « RACER » pourrait donner « CRAER ».
-
-function geoAnagrammes(item, slot) {
-    const b = boiteDe(slot);
-    const lignes = item.meta.lignes || [];
-    const n = Math.max(1, lignes.length);
-    const hLigne = Math.min(16, (b.h - 2) / n);
-    // La case doit rester lisible même sur le mot le plus long de la feuille.
-    const maxLettres = Math.max(4, ...lignes.map(l => l.mot.length));
-    const colMelange = b.w * 0.26;
-    const largeurCases = Math.min(b.w * 0.42, maxLettres * hLigne * 0.52);
-    const cote = largeurCases / maxLettres;
-    // UN SEUL CORPS POUR TOUTES LES DÉFINITIONS DE L'EXERCICE : celui de la
-    // plus longue. Calculé ligne par ligne, « Six faces carrées identiques »
-    // s'écrivait deux fois plus gros que la définition d'à côté, et la colonne
-    // avait l'air bricolée. C'est la même raison qui aligne les « = » de la
-    // fiche des pharaons : sur une feuille, l'irrégularité se voit avant le
-    // contenu.
-    const tailleDef = lignes.reduce((mini, l) => Math.min(mini, tailleDefinition(
-        hLigne,
-        Math.max(10, b.w * 0.74 - MARGE_DEF - cote * l.mot.length - 3),
-        String(l.def || '').length
-    )), hLigne * 0.30);
-    return { b, lignes, hLigne, colMelange, cote, maxLettres, tailleDef,
-        avecDef: item.meta.avecDef !== false };
-}
+// DEUX LIGNES PAR MOT, ET C'EST RÉMY QUI L'A DEMANDÉ :
+//
+//   « pour les anagrammes, aucun intérêt de mettre la définition sur plusieurs
+//     lignes. Tu écris le mot, puis les cases vides et à la ligne la définition
+//     en continu. »
+//
+// CE QU'IL Y AVAIT AVANT : trois colonnes sur une seule ligne — les lettres
+// mélangées, la définition, les cases. La définition héritait donc d'un tiers de
+// la largeur, et il fallait l'y faire entrer : on rapetissait le corps jusqu'à
+// ce que ça tienne, sur deux, trois, quatre lignes.
+//
+// MESURÉ SUR LE CAHIER D'UN PARCOURS, 96 définitions : 10 sur une ligne, 48 sur
+// deux, 32 sur trois, 6 sur quatre — dans une colonne de 121 pixels, écrites en
+// 9,6. Et pendant ce temps la PAGE faisait 700 pixels de large, dont le bloc
+// n'en recevait que 307 : 198 perdus à gauche, 196 à droite. Plus de la moitié
+// de la feuille pour rien, et la définition serrée dans un sixième.
+//
+// MAINTENANT : le mot mélangé et les cases se partagent la première ligne, la
+// définition prend la seconde POUR ELLE SEULE, sur toute la largeur du bloc —
+// et le bloc, lui, prend toute la largeur de la page (`grilleMax` plus bas).
 
 /**
  * LES LETTRES MÉLANGÉES TIENNENT DANS LEUR COLONNE. Écrites à taille fixe, un
@@ -62,41 +54,82 @@ function geoAnagrammes(item, slot) {
  * tout en CAPITALES GRASSES — un M fait 0,83 em, un O 0,78 —, et il faut y
  * ajouter l'interlettrage de 0,08 em qui aère la suite. La marge ensuite : il
  * n'y en avait aucune, si bien qu'un mot « qui tient tout juste » venait
- * toucher la définition. AVANCE couvre les deux, MARGE_DEF sépare.
+ * toucher les cases. AVANCE couvre les deux, MARGE_DEF sépare.
  */
 const AVANCE_MELANGE = 0.80;
 
 const MARGE_DEF = 3;
 
 /**
- * LA DÉFINITION TIENT DANS SA LIGNE, ET NE MORD PAS SUR LA SUIVANTE.
+ * LA HAUTEUR QU'ON S'AUTORISE POUR UNE ENTRÉE ENTIÈRE, mot ET définition.
  *
- * Rémy : « en anagramme, il y a toujours un souci de présentation ». Sur une
- * feuille de parcours, où le bloc est plus étroit, « Deux droites qui ne se
- * croisent jamais, même très loin » demandait trois lignes dans une place qui
- * n'en offrait que deux : la définition débordait sur le mot d'en dessous, et
- * deux textes se superposaient.
- *
- * Le corps se DÉDUIT de la place. Un texte de n signes écrit au corps t occupe
- * à peu près n × t / 2 en longueur ; il lui faut donc n × t / (2 × largeur)
- * lignes, chacune haute de 1,15 t. Poser que ce produit tient dans la hauteur
- * offerte donne directement t — une racine carrée, et plus aucune surprise.
+ * Vingt millimètres, et non quinze : sur la fiche d'un exercice seul, huit mots
+ * ne remplissaient que la moitié de la page et le reste était du blanc. Dans le
+ * cahier d'un parcours, ce plafond ne joue pas — c'est `proportions` qui réserve
+ * la hauteur du bloc, et l'entrée y vaut exactement ce qu'on lui a réservé.
  */
-function tailleDefinition(hLigne, largeur, n) {
-    const t = Math.sqrt(hLigne * 0.86 * Math.max(10, largeur) / (0.575 * Math.max(8, n)));
-    return Math.max(1.9, Math.min(hLigne * 0.30, t));
+const HAUTEUR_ENTREE_MAX = 20;
+
+/**
+ * COMMENT L'ENTRÉE SE PARTAGE, DE HAUT EN BAS.
+ *
+ * La définition COLLE à son mot, et le blanc se met APRÈS. Posée au milieu de
+ * ce qui restait, elle tombait à égale distance des deux mots et l'œil la
+ * rattachait au SUIVANT : on lisait « ESTER » puis, en dessous, la définition
+ * de « TNERNATR ». Sur une feuille où l'on cherche un mot, rattacher la
+ * définition au mauvais est pire que de ne pas la mettre.
+ */
+const PART_HAUT = 0.50;        // le mot mélangé et ses cases
+const PART_DEFINITION = 0.32;  // la définition, juste dessous
+                               // le reste — 18 % — sépare deux entrées
+
+/**
+ * LA DÉFINITION TIENT SUR UNE SEULE LIGNE, et c'est tout le changement.
+ *
+ * Elle dispose maintenant de la largeur ENTIÈRE du bloc : il n'y a plus de
+ * raison de la couper. On cherche donc le corps le plus grand qui fasse tenir
+ * la plus longue des définitions d'un seul tenant — un texte de n signes écrit
+ * au corps t occupe à peu près n × t / 2 —, borné par la hauteur qu'on lui a
+ * réservée.
+ *
+ * UN SEUL CORPS POUR TOUTES LES DÉFINITIONS DE L'EXERCICE : celui de la plus
+ * longue. Calculé ligne par ligne, « Six faces carrées identiques » s'écrirait
+ * deux fois plus gros que la définition d'à côté, et la colonne aurait l'air
+ * bricolée. C'est la même raison qui aligne les « = » de la fiche des pharaons :
+ * sur une feuille, l'irrégularité se voit avant le contenu.
+ */
+function tailleDefinition(hDef, largeur, nSignes) {
+    const tenu = largeur / (0.52 * Math.max(8, nSignes));
+    // Seule sur sa ligne, la définition peut occuper l'essentiel de la bande
+    // qu'on lui a donnée : il n'y a plus d'interligne à ménager.
+    return Math.max(1.9, Math.min(hDef * 0.82, tenu));
 }
 
-/** La largeur qui reste à la définition, une fois le mélange et les cases posés. */
-function largeurDefinition(g, ligne) {
-    return Math.max(10, g.b.w - g.colMelange - MARGE_DEF - g.cote * ligne.mot.length - 3);
-}
+function geoAnagrammes(item, slot) {
+    const b = boiteDe(slot);
+    const lignes = item.meta.lignes || [];
+    const n = Math.max(1, lignes.length);
+    const avecDef = item.meta.avecDef !== false;
+    const hEntree = Math.min(HAUTEUR_ENTREE_MAX, (b.h - 2) / n);
+    // Sans définition, le mot et ses cases prennent toute l'entrée : il n'y a
+    // rien à séparer.
+    const hDef = avecDef ? hEntree * PART_DEFINITION : 0;
+    const hHaut = avecDef ? hEntree * PART_HAUT : hEntree;
 
-function tailleMelange(g, ligne) {
-    const large = g.hLigne * 0.42;
-    const tenu = (g.colMelange - MARGE_DEF)
-        / Math.max(4, ligne.melange.length * AVANCE_MELANGE);
-    return Math.max(g.hLigne * 0.2, Math.min(large, tenu));
+    // La case doit rester lisible même sur le mot le plus long de la feuille.
+    const maxLettres = Math.max(4, ...lignes.map(l => l.mot.length));
+    // LA COLONNE DU MOT MÉLANGÉ se règle sur le plus long mélange de la feuille,
+    // pour que toutes les cases commencent à la même abscisse : sur une fiche,
+    // un alignement qui se perd se voit avant le contenu.
+    const maxMelange = Math.max(4, ...lignes.map(l => String(l.melange || '').length));
+    const tailleMel = Math.min(hHaut * 0.62, b.w * 0.30 / (maxMelange * AVANCE_MELANGE));
+    const colMelange = maxMelange * tailleMel * AVANCE_MELANGE + MARGE_DEF;
+    // Les cases prennent ce qui reste, sans jamais dépasser leur ligne.
+    const cote = Math.max(2.4, Math.min(hHaut * 0.78, (b.w - colMelange) / maxLettres));
+
+    const plusLongue = lignes.reduce((m, l) => Math.max(m, String(l.def || '').length), 8);
+    return { b, lignes, hEntree, hHaut, hDef, colMelange, cote, maxLettres,
+        tailleMel, tailleDef: tailleDefinition(hDef, b.w, plusLongue), avecDef };
 }
 
 function anagrammesPreviewHtml(item, slot, k, solution) {
@@ -104,65 +137,54 @@ function anagrammesPreviewHtml(item, slot, k, solution) {
     const T = (v) => (v * k).toFixed(2);
     let html = '';
     g.lignes.forEach((l, i) => {
-        const y = g.b.y + i * g.hLigne;
-        html += `<div class="fx-ana-mel" style="left:${T(g.b.x)}px; top:${T(y + g.hLigne * 0.18)}px;
-            width:${T(g.colMelange)}px; font-size:${T(tailleMelange(g, l))}px">${echapperSheet(l.melange)}</div>`;
-        if (g.avecDef) {
-            const largeurDef = largeurDefinition(g, l);
-            html += `<div class="fx-ana-def" style="left:${T(g.b.x + g.colMelange + MARGE_DEF)}px;
-                top:${T(y)}px; width:${T(largeurDef)}px; height:${T(g.hLigne)}px;
-                font-size:${T(g.tailleDef)}px">${echapperSheet(l.def)}</div>`;
-        }
-        const x0 = g.b.x + g.b.w - g.cote * l.mot.length;
+        const y = g.b.y + i * g.hEntree;
+        html += `<div class="fx-ana-mel" style="left:${T(g.b.x)}px; top:${T(y)}px;
+            width:${T(g.colMelange)}px; height:${T(g.hHaut)}px;
+            font-size:${T(g.tailleMel)}px">${echapperSheet(l.melange)}</div>`;
         for (let c = 0; c < l.mot.length; c++) {
-            html += `<div class="fx-ana-case" style="left:${T(x0 + c * g.cote)}px;
-                top:${T(y + g.hLigne * 0.12)}px; width:${T(g.cote)}px; height:${T(g.cote)}px;
+            html += `<div class="fx-ana-case" style="left:${T(g.b.x + g.colMelange + c * g.cote)}px;
+                top:${T(y + (g.hHaut - g.cote) / 2)}px; width:${T(g.cote)}px; height:${T(g.cote)}px;
                 font-size:${T(g.cote * 0.62)}px">${solution ? l.mot[c] : ''}</div>`;
+        }
+        if (g.avecDef) {
+            html += `<div class="fx-ana-def" style="left:${T(g.b.x)}px;
+                top:${T(y + g.hHaut)}px; width:${T(g.b.w)}px; height:${T(g.hDef)}px;
+                font-size:${T(g.tailleDef)}px">${echapperSheet(l.def)}</div>`;
         }
     });
     return html;
 }
 
+/**
+ * LE MÊME DESSIN, EN PDF. Il doit tomber au pixel près sur l'aperçu : c'est
+ * l'aperçu que le professeur règle, et le PDF qu'il distribue.
+ */
 function dessinerAnagrammesPdf(doc, item, slot, solution, champ) {
     const g = geoAnagrammes(item, slot);
     g.lignes.forEach((l, i) => {
-        const y = g.b.y + i * g.hLigne;
+        const y = g.b.y + i * g.hEntree;
+
+        // 1. LE MOT MÉLANGÉ, à gauche de sa ligne.
         doc.setFont('helvetica', 'bold');
         // LA MÊME TAILLE QU'À L'APERÇU. Elle valait « × 2,5 », une échelle
         // sans rapport avec le millimètre : le PDF écrivait plus petit que
         // l'aperçu, et c'est l'aperçu qui décidait des largeurs. 1 pt vaut
         // 0,3528 mm — c'est la conversion qu'emploie déjà le reste du module.
-        const taille = tailleMelange(g, l);
-        doc.setFontSize(taille / 0.3528);
+        doc.setFontSize(g.tailleMel / 0.3528);
         doc.setTextColor(...ENCRE.texte);
-        doc.text(pourPdf(l.melange), g.b.x, y + g.hLigne * 0.55,
-            { baseline: 'middle', charSpace: taille * 0.08 });
+        doc.text(pourPdf(l.melange), g.b.x, y + g.hHaut * 0.55,
+            { baseline: 'middle', charSpace: g.tailleMel * 0.08 });
 
-        if (g.avecDef) {
-            doc.setFont('helvetica', 'normal');
-            const largeur = largeurDefinition(g, l);
-            const taille = g.tailleDef;
-            doc.setFontSize(taille / 0.3528);
-            doc.setTextColor(...ENCRE.gris);
-            const morceaux = doc.splitTextToSize(pourPdf(l.def), largeur);
-            // Le paragraphe est CENTRÉ dans sa ligne, du haut vers le bas : au
-            // milieu, deux lignes débordaient d'un demi-interligne de chaque
-            // côté et venaient toucher les voisines.
-            const interligne = taille * 1.15;
-            const haut = y + (g.hLigne - morceaux.length * interligne) / 2 + taille * 0.85;
-            morceaux.forEach((part, j) => {
-                doc.text(part, g.b.x + g.colMelange + MARGE_DEF, haut + j * interligne);
-            });
-        }
-
-        const x0 = g.b.x + g.b.w - g.cote * l.mot.length;
+        // 2. LES CASES, à la suite du mot, toutes à la même abscisse d'une ligne
+        //    à l'autre : c'est la colonne du plus long mélange qui la fixe.
+        const x0 = g.b.x + g.colMelange;
+        const yc = y + (g.hHaut - g.cote) / 2;
         doc.setDrawColor(...ENCRE.trait);
         doc.setLineWidth(0.35);
-        doc.setFont('helvetica', 'bold');
         doc.setFontSize(Math.min(13, g.cote * 1.4));
         doc.setTextColor(...ENCRE.texte);
         for (let c = 0; c < l.mot.length; c++) {
-            const x = x0 + c * g.cote, yc = y + g.hLigne * 0.12;
+            const x = x0 + c * g.cote;
             doc.rect(x, yc, g.cote, g.cote, 'S');
             if (solution) {
                 doc.text(l.mot[c], x + g.cote / 2, yc + g.cote / 2,
@@ -170,6 +192,19 @@ function dessinerAnagrammesPdf(doc, item, slot, solution, champ) {
             } else if (champ) {
                 champ(x + g.cote * 0.1, yc + g.cote * 0.1, g.cote * 0.8, g.cote * 0.8);
             }
+        }
+
+        // 3. LA DÉFINITION, EN DESSOUS ET D'UN SEUL TENANT. Plus de découpe en
+        //    morceaux : son corps a été calculé pour qu'elle tienne sur la
+        //    largeur entière du bloc. Si un texte exceptionnellement long
+        //    débordait tout de même, `splitTextToSize` n'en garderait que la
+        //    première ligne plutôt que d'écrire par-dessus l'entrée suivante.
+        if (g.avecDef) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(g.tailleDef / 0.3528);
+            doc.setTextColor(...ENCRE.gris);
+            const morceaux = doc.splitTextToSize(pourPdf(l.def), g.b.w);
+            doc.text(morceaux[0], g.b.x, y + g.hHaut + g.hDef * 0.62, { baseline: 'middle' });
         }
     });
 }
@@ -1000,7 +1035,34 @@ export const RENDUS_MOTS = {
         pdfGrille: dessinerAnagrammesPdf,
         nomBloc: 'Liste', nomBlocs: 'listes',
         titreAGauche: true,
-        disposition: { cols: 1, rows: 1, maxCols: 2, maxRows: 2 },
+        // UNE LISTE PAR PAGE, ET PAS DEUX.
+        //
+        // Chaque entrée prend maintenant DEUX lignes — le mot avec ses cases,
+        // puis la définition. Deux listes empilées donnaient donc la moitié de
+        // la hauteur à chacune : mesuré sur la fiche d'un exercice seul, le mot
+        // mélangé tombait à 7,6 pixels et la définition à 5,1, illisibles l'un
+        // comme l'autre. Et deux listes CÔTE À CÔTE seraient pires encore :
+        // c'est la largeur entière qui permet à la définition de tenir sur une
+        // ligne.
+        disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
+        // LA LARGEUR DE LA PAGE, ET PAS LE CARRÉ PAR DÉFAUT.
+        //
+        // Rémy : « tu vois le gâchis de place ». Mesuré sur le cahier d'un
+        // parcours : la page fait 700 pixels, le bloc en recevait 307 — 198
+        // perdus à gauche, 196 à droite, plus de la moitié de la feuille. En
+        // cause, le plafond commun de `core/fiche.js`, qui inscrit un bloc dans
+        // un carré de 78 mm : juste pour un sudoku, absurde pour une liste de
+        // mots, qui est large et basse et dont la définition court sur la ligne.
+        grilleMax: 400,
+        // ET LA HAUTEUR SUIT LE NOMBRE DE MOTS, puisque chacun prend maintenant
+        // DEUX lignes : le mot avec ses cases, puis la définition. Quinze
+        // millimètres par entrée sur une largeur de page (182 mm en A4
+        // portrait), plafonnés pour qu'une liste de seize mots ne réclame pas
+        // plus d'une page — au-delà, c'est `hEntree` qui se resserre.
+        proportions: (items) => {
+            const n = Math.max(1, ...(items || []).map(it => ((it.meta || {}).lignes || []).length));
+            return { w: 1, h: Math.max(0.35, Math.min(1.2, (n * HAUTEUR_ENTREE_MAX + 2) / 182)) };
+        },
         parLigneDefaut: 1
     },
     motcode: {
@@ -1041,6 +1103,21 @@ export const RENDUS_MOTS = {
         // UNE GRILLE PAR PAGE : à deux, un 15 × 18 tombe sous trois millimètres
         // par case, et les définitions ne tiennent plus.
         disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 1 },
+        // LA LARGEUR DE LA PAGE. Même gâchis que pour les anagrammes, et plus
+        // visible encore : le bloc recevait 327 pixels sur 700, si bien que les
+        // définitions se serraient dans 117 pixels et prenaient QUATRE ou CINQ
+        // lignes chacune — 40 définitions sur 40 — pendant que la moitié de la
+        // feuille restait blanche. `disposerMotsCroises` sait déjà poser les
+        // listes à côté de la grille plutôt qu'en dessous : encore fallait-il
+        // lui donner la place de le faire.
+        grilleMax: 400,
+        // ET LA PAGE ENTIÈRE EN HAUTEUR. Sans cela le bloc restait un CARRÉ —
+        // 182 mm de haut pour 240 disponibles —, et les dernières définitions
+        // se faisaient couper net en bas : « Mesure plus de cent quatre-vingts
+        // degrés : il rentre vers l'in… ». Une grille par page était déjà la
+        // règle (`disposition` juste au-dessus) ; il manquait de le dire à la
+        // mise en page du cahier, qui raisonne en proportions.
+        proportions: 'plein',
         parLigneDefaut: 1
     },
     motscaches: {
