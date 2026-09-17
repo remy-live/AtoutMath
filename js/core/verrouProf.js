@@ -26,6 +26,7 @@
 // vérifiable, et un verrou qu'on ne peut pas vérifier n'en est pas un.
 
 import { adresseApiDeduite } from './portail.js';
+import { copieDEssai } from './copieDEssai.js';
 
 const CLE = 'atoutmath-prof';
 
@@ -91,6 +92,16 @@ export async function serveurPresent() {
  */
 export function verrouActif() {
     if (typeof window === 'undefined' || !window.location) return false;
+    // UNE COPIE D'ESSAI PUBLIÉE SANS SERVEUR EST LA TROISIÈME SITUATION, et
+    // elle n'existait pas quand cette fonction a été écrite. Elle est en
+    // `https:` comme un vrai site, mais il n'y a PERSONNE pour vérifier un mot
+    // de passe — et rien à protéger non plus : aucune base, aucun élève,
+    // aucune classe. Le verrou y fermerait l'atelier sans rien garder.
+    //
+    // La marque n'est écrite que par le workflow de publication, jamais dans
+    // le dépôt : voir `copieDEssai`, qui dit pourquoi c'est ce qui rend la
+    // dérogation sûre.
+    if (copieDEssai()) return false;
     return window.location.protocol === 'http:' || window.location.protocol === 'https:';
 }
 

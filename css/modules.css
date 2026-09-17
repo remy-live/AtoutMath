@@ -2403,19 +2403,38 @@ html[data-point="plus"] .pt-croix { display: none; }
     #game-layer.avec-nav-prof #game-header #game-title {
         -webkit-line-clamp: 1; font-size: .95rem;
     }
+    /* ELLES PRENNENT DEUX RANGÉES, PARCE QU'ELLES NE TIENNENT PAS SUR UNE.
+       Mesuré sur un téléphone de 390 px : à `nowrap`, la barre des questions
+       commençait à −83 px — son compteur et sa flèche « précédente » étaient
+       purement hors de l'écran, et c'est justement ce que le professeur vient
+       y lire. Les six pastilles réclament 430 px ; il y en a 390.
+       On a donc le choix entre rapetisser encore (le compteur était déjà à
+       9,9 px) et accepter une rangée de plus. Une rangée de plus, dans
+       l'aperçu du PROFESSEUR seulement : l'élève n'a aucune de ces commandes,
+       et son en-tête ne bouge pas d'un pixel. */
     #game-layer.avec-nav-prof .game-header-actions {
-        justify-content: flex-end; flex-wrap: nowrap; gap: 4px;
+        justify-content: flex-end; flex-wrap: wrap; gap: 4px; row-gap: 6px;
     }
     #game-layer.avec-nav-prof .preview-step-nav {
         background: transparent; border-color: transparent;
         padding: 0; margin: 0 2px 0 0; gap: 0;
     }
-    #game-layer.avec-nav-prof .preview-step-label { min-width: 30px; font-size: .72rem; }
+    /* La largeur gagnée sur « 1/12 » est rendue à la taille du texte : à
+       .62rem le compteur faisait 9,9 px de haut, ce qu'on ne lit pas d'un
+       coup d'œil en tenant un téléphone. */
+    #game-layer.avec-nav-prof .preview-step-label { min-width: 0; font-size: .74rem; }
     #game-layer.avec-nav-prof .preview-step-nav--question .preview-step-label {
-        min-width: 26px; font-size: .62rem;
+        min-width: 0; font-size: .74rem;
     }
-    #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn { width: 30px; height: 30px; }
-    #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn svg { width: 15px; height: 15px; }
+    /* Et la place gagnée en passant à la ligne est rendue AUX DOIGTS : ces
+       flèches étaient à 30 px, c'est-à-dire sous la règle des 44 qu'on tient
+       partout ailleurs. Elles la tenaient d'autant moins qu'elles sont
+       collées les unes aux autres. */
+    #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn { width: 36px; height: 36px; }
+    #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn svg { width: 17px; height: 17px; }
+    @media (pointer: coarse) {
+        #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn { width: 44px; height: 44px; }
+    }
 }
 
 /* Le bouton PLEIN ÉCRAN fait un quatrième rond dans cette rangée. Sur les
@@ -2582,7 +2601,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 /* Le compteur de questions reste affiché même en cadre étroit : c'est une
    information, pas un habillage. */
 .device-simulator .preview-step-label,
-.tablet-simulator .preview-step-label { min-width: 34px; font-size: .74rem; }
+.tablet-simulator .preview-step-label { min-width: 0; font-size: .76rem; }
 .device-simulator .game-icon-btn,
 .tablet-simulator .game-icon-btn { width: 32px; height: 32px; }
 .device-simulator .game-icon-btn svg,
@@ -2598,12 +2617,17 @@ html[data-point="plus"] .pt-croix { display: none; }
    flèches doublées que « piste précédente / suivante ». */
 .preview-step-nav--question { background: var(--tag-dom-bg); border-color: var(--tag-dom-txt); }
 .preview-step-nav--question .preview-step-label {
-    min-width: 0; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em;
-    color: var(--tag-dom-txt);
+    /* Ni majuscules ni interlettrage : il n'y a que des chiffres et une barre,
+       que l'un ne change pas et que l'autre ne fait qu'élargir. */
+    min-width: 0; font-size: .74rem; color: var(--tag-dom-txt);
 }
 .preview-step-label {
     font-size: .85rem; font-weight: 700; color: var(--text-muted);
     min-width: 44px; text-align: center; font-variant-numeric: tabular-nums;
+    /* UNE FRACTION NE SE COUPE PAS. Mesuré sur un téléphone de 390 px :
+       « 1 / 10 » tenait sur deux lignes dans 26 px. Rien, jamais, ne rend un
+       compteur plus lisible en le pliant en deux. */
+    white-space: nowrap;
 }
 .preview-step-nav .game-icon-btn:disabled { opacity: .3; cursor: not-allowed; }
 

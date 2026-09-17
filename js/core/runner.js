@@ -198,7 +198,12 @@ export class Runner {
     setupStepNavigation() {
         const nav = document.getElementById('preview-step-nav');
         const navQ = document.getElementById('preview-question-nav');
-        if (nav) nav.hidden = !this.allowStepNavigation;
+        // LA BARRE DES ACTIVITÉS N'A RIEN À DIRE QUAND IL N'Y EN A QU'UNE.
+        // Un exercice ouvert seul depuis le catalogue afficherait « 1/1 » entre
+        // deux flèches mortes : trois éléments d'en-tête pour une information
+        // qui n'en est pas une, sur un écran déjà serré.
+        const plusieurs = this.steps && this.steps.length > 1;
+        if (nav) nav.hidden = !this.allowStepNavigation || !plusieurs;
         if (navQ) navQ.hidden = !this.allowStepNavigation;
 
         // LE BOUTON « MODE DÉMONSTRATION » N'EST PAS POUR L'ÉLÈVE.
@@ -279,7 +284,18 @@ export class Runner {
         if (!label || !prev || !next) return;
 
         const position = Math.min(this.index, this.steps.length - 1);
-        label.textContent = `${position + 1} / ${this.steps.length}`;
+        // SANS ESPACES AUTOUR DE LA BARRE, et ce n'est pas de la coquetterie.
+        //
+        // Rémy : « dans le mode téléphone portable, en mode apercu, le 1/12 va
+        // à la ligne, trouve mieux ». Mesuré sur un téléphone de 390 px : le
+        // compteur de questions occupait 26 px de large pour 26 px de haut,
+        // c'est-à-dire DEUX LIGNES, et il fallait descendre la police à 9,9 px
+        // pour qu'il tienne. « 1/12 » au lieu de « 1 / 12 », c'est un quart de
+        // largeur en moins — de quoi le remonter à une taille lisible plutôt
+        // que de continuer à le rapetisser. Le `nowrap` de la feuille de style
+        // interdit en plus la coupure, qui n'a jamais de sens dans une
+        // fraction.
+        label.textContent = `${position + 1}/${this.steps.length}`;
         prev.disabled = position <= 0;
         next.disabled = position >= this.steps.length - 1;
 
@@ -296,7 +312,7 @@ export class Runner {
         const vue = this.session.history.length;
         const total = this.step ? this.step.nbItems : vue;
         const labelQ = document.getElementById('preview-question-label');
-        if (labelQ) labelQ.textContent = `${Math.min(vue, total)} / ${total}`;
+        if (labelQ) labelQ.textContent = `${Math.min(vue, total)}/${total}`;
 
         const prevQ = document.getElementById('btn-preview-prev-q');
         const nextQ = document.getElementById('btn-preview-next-q');

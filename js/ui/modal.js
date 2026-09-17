@@ -11,12 +11,19 @@ export function showToast(message, type = 'success', duration = 3000) {
 
     const toast = document.createElement('div');
     const isError = type === 'error';
-    const bg = isError ? 'var(--danger)' : 'var(--success)';
+    // UN TROISIÈME TON, PARCE QU'IL Y A UN TROISIÈME PROPOS. Vert avec une
+    // coche veut dire « c'est fait » ; rouge veut dire « ça a échoué ». Un avis
+    // qui dit seulement « voici où tu es » n'est ni l'un ni l'autre, et le
+    // dire en vert avec une coche, c'est le faire lire comme une réussite.
+    const isInfo = type === 'info';
+    const bg = isError ? 'var(--danger)' : (isInfo ? 'var(--primary)' : 'var(--success)');
     
     const iconSuccess = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
     const iconError = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
     
-    const icon = isError ? iconError : iconSuccess;
+    const iconInfo = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+
+    const icon = isError ? iconError : (isInfo ? iconInfo : iconSuccess);
     
     toast.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><span style="flex:0 0 auto; line-height:0;">${icon}</span><span style="font-weight:600; min-width:0;">${message}</span></div>`;
     toast.style = `background: ${bg}; color: white; padding: 12px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); min-width: min(200px, 100%);`;

@@ -49,12 +49,22 @@ test('UNE API EN PANNE N\'OUVRE PAS L\'ESPACE PROFESSEUR', () => {
     // Le piège serait de décider « pas de serveur, donc pas de verrou » : une
     // API momentanément tombée ouvrirait alors tout grand, exactement au
     // mauvais moment. `verrouActif` ne regarde que le protocole de la page.
-    const i = verrou.indexOf('export function verrouActif');
-    const bloc = verrou.slice(i, i + 400);
+    // ON LIT LE CORPS, PAS LES COMMENTAIRES. La fonction en porte désormais
+    // beaucoup — elle a trois situations à distinguer au lieu de deux — et
+    // compter les caractères bruts revenait à mesurer la longueur d'une
+    // explication.
+    const sansCommentaires = verrou.replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+    const i = sansCommentaires.indexOf('export function verrouActif');
+    const bloc = sansCommentaires.slice(i, i + 400);
     assert.doesNotMatch(bloc, /serveurPresent|fetch/,
         'la décision ne doit pas dépendre de la joignabilité du serveur');
     assert.match(bloc, /window\.location\.protocol/,
         'elle se prend sur le protocole de la page');
+    // LA SEULE DÉROGATION ADMISE est la copie d'essai publiée sans serveur,
+    // et elle tient à une balise que le dépôt ne contient pas — voir
+    // `tests/copieDEssai.test.mjs`, qui refuse qu'elle y entre.
+    assert.match(bloc, /if \(copieDEssai\(\)\) return false;/);
 });
 
 test('LA FENÊTRE DIT OÙ SONT LES CLASSES ET LES LISTES', () => {

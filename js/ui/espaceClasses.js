@@ -52,6 +52,7 @@ import { noterReglagesSite } from '../core/reglagesSite.js';
 import { adresseAdmin } from './classesServeur.js';
 import { adresseDuPoste } from './posteEleve.js';
 import { versionLisible } from '../core/versionDuSite.js';
+import { copieDEssai } from '../core/copieDEssai.js';
 import { getExerciseById, skillsOf } from '../data/catalog.js';
 import { getSkill } from '../data/skills.js';
 import { indicesProposes } from '../core/indice.js';
@@ -456,7 +457,7 @@ function piedHtml() {
              besoin — sur l'écran du professeur, au moment où quelque chose ne
              ressemble pas à ce qu'on lui a décrit. -->
         <span class="ec-pied-version" title="La version que ce navigateur a reçue du serveur"
-              >${esc(versionLisible())}</span>
+              >${esc(versionLisible())}${copieDEssai() ? ' · copie d\'essai' : ''}</span>
     </footer>`;
 }
 

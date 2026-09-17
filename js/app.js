@@ -12,6 +12,7 @@ initConsoleCapture();
 
 import { state } from './core/state.js';
 import { jetonProf, verrouActif } from './core/verrouProf.js';
+import { copieDEssai } from './core/copieDEssai.js';
 import { journal } from './core/journal.js';
 import { clearEngines } from './core/timers.js';
 import { destroyAllDemoCursors, marquerDemo } from './core/demoPointer.js';
@@ -296,6 +297,22 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (!porteASuivre()) majPortail();
         setTopNavMode(modeLibre() || state.isTeacherMode ? 'grid' : 'path');
     });
+
+    // ON DIT CE QU'EST CETTE COPIE, UNE FOIS, ET ON LAISSE TRAVAILLER.
+    //
+    // Une copie d'essai ressemble en tout point au vrai site — même adresse en
+    // `https:`, même écran — et pourtant rien de ce qu'on y fait n'existe
+    // ailleurs que dans ce navigateur. Quelqu'un qui y construirait un parcours
+    // en croyant le déposer chez lui le perdrait sans le savoir. Un avis, pas
+    // un bandeau : ce qu'il faut savoir tient en une phrase, et on n'ampute pas
+    // l'écran d'une barre fixe pour la dire.
+    if (copieDEssai()) {
+        import('./ui/modal.js')
+            .then(({ showToast }) => showToast(
+                'Copie d\'essai : aucun serveur, rien n\'est enregistré ni envoyé.',
+                'info', 7000))
+            .catch(() => null);
+    }
 
     // LA PORTE EN DERNIER, quand tout ce qu'elle interroge est chargé : le
     // profil (est-il rattaché ?), le journal (a-t-il un parcours ?), et le
