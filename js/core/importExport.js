@@ -46,6 +46,12 @@ export function exportData() {
     const payload = teacher
         ? {
             format: FORMAT, kind: 'teacher_content', exportedAt: Date.now(),
+            // POUR CELUI QUI OUVRE LE FICHIER DANS UN ÉDITEUR. `format` et
+            // `kind` disent à la MACHINE quoi en faire ; cette ligne-ci le dit
+            // à la personne. Elle ne coûte rien et évite la question « c'est
+            // quoi, ce fichier, et qu'est-ce que j'en fais ? »
+            aPropos: 'Fichier AtoutMath — parcours et dossiers du professeur. '
+                + 'Déposez-le sur la page d\'AtoutMath pour l\'importer.',
             teacherPaths: state.teacherPaths,
             teacherFolders: state.teacherFolders,
             // LE CLASSEMENT PAR CHAPITRE VOYAGE AVEC LES PARCOURS.
@@ -57,6 +63,8 @@ export function exportData() {
         }
         : {
             format: FORMAT, kind: 'student_progress', exportedAt: Date.now(),
+            aPropos: 'Fichier AtoutMath — progression d\'un élève. '
+                + 'Déposez-le sur la page d\'AtoutMath pour l\'importer.',
             profile: { id: profile.id, name: profile.name },
             // Le journal brut : tout est reconstructible à partir de là.
             events: journal.all().map(({ synced, ...e }) => e)
@@ -101,7 +109,17 @@ function handleFile(e, modal, input) {
     reader.readAsText(file);
 }
 
-async function applyImport(data, modal) {
+/**
+ * APPLIQUER UN FICHIER IMPORTÉ — quel que soit le chemin par lequel il arrive.
+ *
+ * Exporté depuis qu'on peut aussi DÉPOSER un fichier sur la page
+ * (`ui/deposerFichier.js`) : la fenêtre d'import et le dépôt doivent faire
+ * exactement la même chose, sans quoi l'un des deux prendrait du retard.
+ *
+ * @param {Object} data le contenu du fichier, déjà analysé
+ * @param {Element} [modal] la fenêtre à refermer, s'il y en a une
+ */
+export async function applyImport(data, modal) {
     const { showToast, showAlert, showConfirm } = await import('../ui/modal.js');
 
     // Contenu professeur (parcours et dossiers)

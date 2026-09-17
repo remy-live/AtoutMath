@@ -151,6 +151,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     initNiveauFilter();
     initImportExport();
+    // DÉPOSER UN FICHIER SUR LA PAGE SUFFIT À L'IMPORTER. Sans cela, le
+    // navigateur quitte l'application pour afficher le fichier déposé — et l'on
+    // croit que tout a disparu. Voir `ui/deposerFichier.js`.
+    import('./ui/deposerFichier.js').then(({ brancherDepotDeFichier }) => {
+        brancherDepotDeFichier();
+    }).catch(() => { /* le dépôt est un confort, pas une dépendance */ });
     initBasculeRangement();
     // La croix et la zone sensible de l'aperçu : une seule fois pour la page,
     // et non une fois par rangée du catalogue — il y en a cent soixante-douze.

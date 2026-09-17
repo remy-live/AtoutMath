@@ -10630,3 +10630,20 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     background: var(--primary); color: #fff; font-weight: 800;
     box-shadow: inset 0 0 0 2px #fff;
 }
+
+
+/* LE VOILE DU DÉPÔT DE FICHIER. Il ne sert qu'à dire « lâchez ici » : il couvre
+   tout, parce qu'on accepte le dépôt partout, et il laisse voir la page en
+   dessous pour qu'on sache qu'on n'a rien quitté. */
+#depot-fichier-voile {
+    position: fixed; inset: 0; z-index: 20000; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(37, 40, 61, .55); backdrop-filter: blur(2px);
+}
+#depot-fichier-voile > div {
+    background: #fff; color: #1a202c; border-radius: 16px; padding: 22px 30px;
+    font-size: 1.05rem; line-height: 1.5; text-align: center;
+    border: 3px dashed #6366f1; box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+    max-width: min(520px, 86vw);
+}
+#depot-fichier-voile b { font-size: 1.25rem; }
