@@ -664,12 +664,25 @@ export class Runner {
         // demie plus tard, et entre les deux plus rien ne compte.
         this.etapeClose = false;
 
+        // LE TITRE NE DIT PLUS L'ÉTAPE : LE FIL LE DIT DÉJÀ, ET MIEUX.
+        //
+        // Mesuré sur un téléphone, première question d'une séance de trois :
+        // l'élève lit TROIS nombres dans les quarante-cinq pixels du haut —
+        // « Étape 1 sur 3 » (le fil), « Additions Mystères (1/3) » (ici) et
+        // « 0 / 4 » (la pastille). Les deux premiers disent la MÊME chose dans
+        // deux écritures différentes ; le troisième en dit une autre, dans la
+        // même écriture que le deuxième. De quoi croire que « 1/3 » et « 0/4 »
+        // comptent la même sorte de chose.
+        //
+        // Le fil s'affiche exactement quand ce suffixe s'affichait — dès deux
+        // étapes (voir `majFilSeance`) —, il l'écrit en toutes lettres, et il
+        // le dessine en cases. Le suffixe est un reste d'avant le fil.
+        //
+        // ET LES DEUX POUVAIENT SE CONTREDIRE : le fil compte les étapes du RUN
+        // tel que le serveur les projette, le suffixe comptait les étapes de la
+        // liste brute. Un parcours à étape bonus les aurait fait diverger.
         const titleEl = document.getElementById('game-title');
-        if (titleEl) {
-            titleEl.textContent = this.steps.length > 1
-                ? `${step.title} (${this.index + 1}/${this.steps.length})`
-                : step.title;
-        }
+        if (titleEl) titleEl.textContent = step.title;
 
         state.activeExo = step.exercise;
         this.majBoutonPasser(step);

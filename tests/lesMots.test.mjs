@@ -87,3 +87,18 @@ test('les quatre titres de niveau aussi', () => {
         .some(m => /^[A-ZÉÈÀÊÎÔÛÇ]/.test(m) && !['de', 'des', 'du'].includes(m.toLowerCase())));
     assert.deepEqual(fautifs, []);
 });
+
+test('OÙ J\'EN SUIS NE SE DIT PAS DEUX FOIS', () => {
+    // Mesuré sur un téléphone, première question d'une séance de trois : trois
+    // nombres dans les quarante-cinq pixels du haut — « Étape 1 sur 3 » (le
+    // fil), « Additions Mystères (1/3) » (le titre) et « 0 / 4 » (la pastille).
+    // Les deux premiers disaient la même chose, dans deux écritures ; le
+    // troisième en disait une autre, dans la même écriture que le deuxième.
+    const runner = sansCommentairesJs(lire('js/core/runner.js'));
+    assert.ok(!/\$\{step\.title\} \(\$\{this\.index \+ 1\}\/\$\{this\.steps\.length\}\)/.test(runner),
+        'le titre de l\'exercice ne répète plus le numéro d\'étape');
+    assert.match(runner, /titleEl\.textContent = step\.title;/);
+    // Et le fil, lui, le dit — en toutes lettres et en cases.
+    const fil = sansCommentairesJs(lire('js/ui/filSeance.js'));
+    assert.match(fil, /Étape \$\{Math\.min\(av\.faites \+ 1, av\.etapes\)\} sur \$\{av\.etapes\}/);
+});

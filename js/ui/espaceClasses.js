@@ -1123,6 +1123,9 @@ function listeHtml() {
                 <button type="button" class="ec-mini" data-poste="${esc(e.login)}"
                         data-poste-code="${esc(e.code || '')}"
                         title="Ouvrir une seconde fenêtre qui se comporte comme son poste">son écran</button>
+                <button type="button" class="ec-mini" data-billet="${esc(e.id)}"
+                        title="Réimprimer CE billet, sans changer son code"
+                        >billet</button>
                 <button type="button" class="ec-mini" data-code="${esc(e.id)}"
                         title="Tirer un nouveau code : l'ancien billet ne vaudra plus rien">code</button>
                 <button type="button" class="ec-mini" data-ecarter="${esc(e.id)}"
@@ -1418,7 +1421,7 @@ async function brancher(e, redessiner) {
     const el = e.target.closest('[data-ouvrir], [data-retour], [data-onglet], [data-nouvelle-classe],'
         + '[data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code],'
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
-        + '[data-imprimer], [data-consigne], [data-consigne-off], [data-mot-classe],'
+        + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
         + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
         + '[data-profs], [data-reessayer], [data-poste],'
@@ -1820,6 +1823,13 @@ async function brancher(e, redessiner) {
     }
 
     if (d.imprimer !== undefined) return imprimerLesBillets();
+    // UN SEUL BILLET, POUR L'ÉLÈVE QUI A PERDU LE SIEN.
+    //
+    // « J'ai perdu mon code » arrive, et la seule réponse était de RETIRER le
+    // code — le bouton d'à côté en tire un nouveau, ce qui invalide l'ancien
+    // billet et oblige à tout réexpliquer. Or le code n'est pas perdu : il est
+    // écrit dans la colonne d'à côté. Ce qui manque, c'est le bout de papier.
+    if (d.billet) return imprimerLesBillets([d.billet]);
 
     if (d.saut !== undefined || d.retire !== undefined) {
         const champ = document.getElementById('ec-exo');
@@ -2120,8 +2130,18 @@ function lancerLeBattement(redessiner) {
  * Une page neuve ne contient QUE les billets, et l'on sait exactement ce qui
  * sortira de l'imprimante de la salle des profs.
  */
-function imprimerLesBillets() {
-    const eleves = ((vue.liste && vue.liste.eleves) || []).filter(e => !e.sansBillet);
+/**
+ * @param {string[]} [seulement] les identifiants à imprimer ; tous par défaut.
+ *   Un seul billet tient sur un tiers de page : c'est ce qu'on donne à l'élève
+ *   qui a perdu le sien, sans toucher à son code ni déranger les vingt-neuf
+ *   autres.
+ */
+function imprimerLesBillets(seulement) {
+    let eleves = ((vue.liste && vue.liste.eleves) || []).filter(e => !e.sansBillet);
+    if (seulement && seulement.length) {
+        const gardes = new Set(seulement);
+        eleves = eleves.filter(e => gardes.has(e.id));
+    }
     if (!eleves.length) { showToast('Aucun billet à imprimer.', 'info'); return; }
     const info = (vue.liste && vue.liste.classe) || vue.classe || {};
 
@@ -2147,8 +2167,11 @@ function imprimerLesBillets() {
       .pied { margin-top: 3mm; font-size: .72rem; color: #666; }
       @media print { .rien { display: none; } }
     </style></head><body>
-    <h1>Billets — ${esc(info.name || '')}</h1>
-    <p class="sous">À découper et à distribuer. L'élève tape son identifiant et son code
+    <h1>${eleves.length === 1 ? `Billet de ${esc(eleves[0].prenom)}` : 'Billets'}
+        — ${esc(info.name || '')}</h1>
+    <p class="sous">${eleves.length === 1
+        ? 'À redonner à cet élève. Son code n\'a pas changé : l\'ancien billet reste valable.'
+        : 'À découper et à distribuer.'} L'élève tape son identifiant et son code
        sur la page d'accueil du site.</p>
     <p class="rien"><button onclick="window.print()">Imprimer</button></p>
     <div class="billets">
