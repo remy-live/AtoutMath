@@ -99,7 +99,10 @@ export function leconsDe(liste, maximum = 3) {
  */
 export function ongletsPour({ exo, lecons = [] } = {}) {
     const onglets = [{ id: 'consigne', label: 'Ce qu\'il faut faire' }];
-    onglets.push({ id: 'exemple', label: peutMontrerUnExemple(exo) ? 'Un exemple' : 'Voir jouer' });
+    // « Le robot joue » plutôt que « Voir jouer » : c'est le nom que portent
+    // désormais la bande de démonstration et le bouton de l'en-tête, et l'élève
+    // doit reconnaître la même chose sous le même mot.
+    onglets.push({ id: 'exemple', label: peutMontrerUnExemple(exo) ? 'Un exemple' : 'Le robot joue' });
     if (lecons.length) onglets.push({ id: 'lecon', label: 'La leçon' });
     return onglets;
 }

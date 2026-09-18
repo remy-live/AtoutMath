@@ -14,7 +14,7 @@
 
 .error-group-title {
     margin: 0 0 10px 0;
-    color: var(--primary);
+    color: var(--primary-texte);
     font-size: 1.1rem;
     padding-bottom: 5px;
 }
@@ -45,7 +45,7 @@
 }
 
 .error-badge-corrected {
-    color: var(--success);
+    color: var(--success-texte);
     font-size: 0.8rem;
     border: 1px solid var(--success);
     padding: 2px 6px;
@@ -66,9 +66,12 @@
 
 .error-flat-title {
     font-weight: bold;
-    color: var(--primary);
+    color: var(--primary-texte);
     margin-bottom: 5px;
 }
+
+/* L'état vide donne le GESTE, pas seulement le constat. */
+.empty-cta { margin-top: 12px; font-size: .95rem; padding: 10px 18px; min-height: 44px; }
 
 .empty-state-msg {
     color: var(--text-muted);
@@ -92,9 +95,9 @@
 .stat-label { color: var(--text-muted); font-size: clamp(.7rem, 2.6vw, .9rem); font-weight: 600; }
 .stat-value { font-size: clamp(1rem, 4vw, 1.4rem); font-weight: 700; overflow-wrap: break-word; }
 
-.stat-value--accent { font-size: clamp(.82rem, 3vw, 1.2rem); color: var(--accent); }
-.stat-value--success { color: var(--success); }
-.stat-value--primary { color: var(--primary); }
+.stat-value--accent { font-size: clamp(.82rem, 3vw, 1.2rem); color: var(--accent-texte); }
+.stat-value--success { color: var(--success-texte); }
+.stat-value--primary { color: var(--primary-texte); }
 
 .profile-container { max-width: 800px; margin: 0 auto; width: 100%; }
 .profile-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
@@ -102,7 +105,7 @@
 .profile-header .profile-score-block { display: flex; align-items: baseline; gap: 6px; text-align: right; }
 .profile-score-block { text-align: right; }
 .profile-score-emoji { font-size: 1.5rem; margin-bottom: 0; }
-.profile-score-value { color: var(--primary); font-size: 1.8rem; font-weight: 700; }
+.profile-score-value { color: var(--primary-texte); font-size: 1.8rem; font-weight: 700; }
 .profile-score-label { color: var(--text-muted); font-size: 0.9rem; }
 
 /* La ligne d'identité : le libellé, les profils, le bouton — tout sur une
@@ -145,7 +148,7 @@
 .prof-onglet-compte {
     min-width: 1.5em; padding: 1px 6px; border-radius: 999px;
     background: color-mix(in srgb, var(--primary) 16%, transparent);
-    color: var(--primary); font-size: .78rem; font-weight: 800;
+    color: var(--primary-texte); font-size: .78rem; font-weight: 800;
     font-variant-numeric: tabular-nums;
 }
 .prof-onglet-btn--actif .prof-onglet-compte { background: rgba(255, 255, 255, .25); color: #fff; }
@@ -177,7 +180,7 @@
 .card--flush { flex-grow: 1; margin: 0; }
 .card--current { border-color: var(--primary); }
 .timeline-step-title { font-weight: bold; font-size: 1.1rem; }
-.timeline-step-title--active { color: var(--primary); }
+.timeline-step-title--active { color: var(--primary-texte); }
 .timeline-step-status { color: var(--text-muted); font-size: 0.9rem; }
 
 /* --- BUILDER (EDITEUR DE PARCOURS) --- */
@@ -185,7 +188,11 @@
 .path-header-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .path-header-title { margin: 0; font-size: 1.5rem; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
 #path-name-input { font-size: 1.5rem; font-weight: bold; color: var(--text-main); background: transparent; border: none; outline: none; border-bottom: 1px dashed var(--border); padding: 2px 0; min-width: 150px; max-width: 300px; }
-#path-count-badge { font-size: 0.9rem; background: var(--primary); color: white; padding: 2px 8px; border-radius: 12px; }
+/* Le fond est `--primary-hover` et non `--primary` : mesuré, du blanc sur
+   #6366f1 donne 4,47 — sous les 4,5 exigés pour un texte de cette taille. La
+   teinte d'un cran plus soutenue le remonte à 6,29, et une pastille de compte
+   est précisément un endroit où l'on veut lire un nombre du premier coup. */
+#path-count-badge { font-size: 0.9rem; background: var(--primary-hover); color: white; padding: 2px 8px; border-radius: 12px; }
 .btn-toggle--sm { padding: 4px 8px; font-size: 0.8rem; }
 #btn-new-path { margin-left: 10px; }
 .path-header-actions { display: flex; gap: 10px; }
@@ -231,7 +238,7 @@
    rester atteignable pour changer d'exercice. */
 .modal-overlay--sur-fiche { z-index: 1000001; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; }
-.modal-title { margin: 0; font-size: 1.5rem; color: var(--primary); }
+.modal-title { margin: 0; font-size: 1.5rem; color: var(--primary-texte, var(--primary)); }
 .modal-title--neutral { color: var(--text-main); }
 .modal-title--center { text-align: center; }
 .modal-title-bordered { margin: 0; padding-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.1); color: var(--text-main); }
@@ -295,7 +302,6 @@ body.mobile-view #toast-container {
 @media (max-width: 700px) {
     #toast-container { left: 12px; right: 12px; align-items: center; }
 }
-#btn-new-folder { padding: 4px 8px; font-size: 0.9rem; }
 
 
 /* --- « CE TABLEAU DÉFILE » -------------------------------------
@@ -347,7 +353,7 @@ body.mobile-view #toast-container {
     display: inline-flex; align-items: center; gap: 7px;
     border: 2px solid var(--primary); border-radius: 999px;
     background: color-mix(in srgb, var(--primary) 10%, var(--bg-panel));
-    color: var(--primary); font: inherit; font-weight: 800;
+    color: var(--primary-texte); font: inherit; font-weight: 800;
     font-size: clamp(12px, 2.9cqw, 15px); padding: 7px 16px; cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
@@ -368,8 +374,8 @@ body.mobile-view #toast-container {
     -webkit-tap-highlight-color: transparent;
 }
 .jeu-touche:active { transform: translateY(3px); box-shadow: none; }
-.jeu-touche--ok { border-color: var(--success); color: var(--success); }
-.jeu-touche--eff { border-color: var(--warning); color: var(--warning); }
+.jeu-touche--ok { border-color: var(--success); color: var(--success-texte); }
+.jeu-touche--eff { border-color: var(--warning); color: var(--warning-texte); }
 
 .jeu-cartes {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -396,8 +402,8 @@ body.mobile-view #toast-container {
 @media (max-width: 330px) { .jeu-cartes { grid-template-columns: 1fr; } }
 
 .jeu-bulle { display: inline-block; padding: 6px 14px; border-radius: 14px; font-weight: 700; }
-.jeu-bulle--ok { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); }
-.jeu-bulle--ko { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.jeu-bulle--ok { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success-texte); }
+.jeu-bulle--ko { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger-texte); }
 
 /* Le mouvement en moins pour qui le demande : le système le dit, on
    l'écoute. Les animations d'un exercice ne sont jamais l'exercice. */

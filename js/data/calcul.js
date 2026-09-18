@@ -2092,6 +2092,94 @@ export const calculExercises = [
         instruction: "Chaque chiffre une fois par ligne et par colonne, comme un sudoku — mais les signes < et > entre les cases doivent être respectés. Un signe ÉLIMINE : la case du petit côté ne peut pas porter le plus grand chiffre. Pour écrire : touche une case et son chiffre monte (1, 2, 3… puis vide), ou glisse un chiffre du pavé dessus."
     },
     {
+        // LA CHUTE DES DÉCIMAUX. Rémy : « Je pensais à un jeu sympa, un
+        // [segment] en dessous séparé en 10, exemple 3 jusque 4, ça fait dix
+        // espaces. Des briques tombent du ciel et il faut les placer entre les
+        // graduations des axes. Exemple 3,15 le placer entre 3,1 et 3,2 ».
+        //
+        // C'EST L'ENCADREMENT, ET C'EST UNE DES CHOSES QUI RÉSISTENT LE PLUS.
+        // Un élève de sixième sait lire 3,15 ; il sait beaucoup moins dire entre
+        // quels dixièmes il tombe, et il se trompe d'une façon très précise :
+        // il lit « 15 » après la virgule et le place vers 3,5, parce qu'il
+        // traite la partie décimale comme un entier. Le jeu attaque exactement
+        // cette erreur — la brique ne peut se poser que dans un INTERVALLE, et
+        // un intervalle se désigne par ses deux bornes.
+        //
+        // TOUT EST COMPTÉ EN MILLIÈMES ENTIERS. 3,1 + 0,1 ne fait pas 3,2 en
+        // virgule flottante : il fait 3.3000000000000003. Une droite graduée
+        // calculée en flottants finit par afficher « 3,30000000000004 » au
+        // tableau, ou par refuser une réponse juste. Voir core/chuteDecimaux.js.
+        id: 'dec-chute', title: 'La Chute des Décimaux',
+        cree: '2026-09-15',
+        activityId: 'chute-decimaux',
+        sansRevision: true,
+        skills: ['num.dec.encadrer'],
+        params: { niveau: 1 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Le segment',
+                aide: 'Chaque niveau ne change QU\'UNE chose : d\'abord la partie entière, '
+                    + 'puis la finesse des graduations, puis le signe. Un niveau qui change '
+                    + 'deux choses à la fois ne dit pas laquelle n\'est pas comprise.',
+                options: [
+                    { value: 1, label: '1 — Des dixièmes, entre 0 et 1' },
+                    { value: 2, label: '2 — Des dixièmes, plus loin sur la droite' },
+                    { value: 3, label: '3 — Des centièmes' },
+                    { value: 4, label: '4 — Avec des nombres négatifs' }
+                ],
+                default: 1
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        motsClefs: ['encadrer', 'encadrement', 'décimaux', 'decimaux', 'droite graduée',
+            'graduation', 'dixième', 'centième', 'virgule', 'intervalle', 'briques', 'chute'],
+        instruction: "Une brique tombe du ciel avec un nombre écrit dessus. En bas, une droite graduée : elle va d'un nombre à un autre, coupée en dix morceaux. Touche le morceau où la brique doit se poser — celui qui est ENTRE les deux bonnes graduations. Pour 3,15, c'est entre 3,1 et 3,2 : c'est le PREMIER chiffre après la virgule qui décide, pas les suivants. Au clavier : ← → pour viser, Entrée pour poser. La brique tombe lentement, mais elle tombe."
+    },
+    {
+        // L'ENQUÊTE. Rémy : « Connais tu aussi le jeu murdoku », puis « ne
+        // l'appelle pas comme cela ».
+        //
+        // Le Murdoku est un jeu de Manuel Garand, déposé, avec ses grilles et
+        // ses illustrations : on ne le copie pas. Le MÉCANISME, lui, est celui
+        // des grilles de déduction, vieux comme les mathématiques récréatives
+        // — une bijection à retrouver sous contraintes. On le reprend avec un
+        // décor de collège et un objet égaré : trente élèves de quatrième, ce
+        // n'est pas le public d'un roman noir.
+        //
+        // CE QU'IL APPORTE, ET QUE LE LOGIGRAMME N'A PAS : un PLAN. Le
+        // logigramme croise des listes ; ici on croise des POSITIONS — rangée,
+        // colonne, les quatre points cardinaux, la distance en nombre de pas.
+        // C'est du repérage autant que de la logique, et les deux se tiennent.
+        //
+        // UNE SEULE SOLUTION, GARANTIE PAR ÉNUMÉRATION. Le noyau compte TOUS les
+        // placements possibles — 36, 576 ou 14 400 selon la taille — et ne rend
+        // la grille que si un seul survit aux indices. Puis il retire un à un
+        // les indices dont on peut se passer. Voir core/enquete.js.
+        id: 'logi-enquete', title: "L'Enquête",
+        cree: '2026-09-14',
+        activityId: 'enquete',
+        sansRevision: true,
+        skills: ['num.logique.enquete'],
+        params: { niveau: 1 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'La scène',
+                aide: 'La taille de la grille EST la difficulté : trois personnages se placent '
+                    + 'presque de tête, cinq demandent d\'éliminer méthodiquement case par case.',
+                options: [
+                    { value: 1, label: '1 — La récréation · 3 × 3, trois personnages' },
+                    { value: 2, label: '2 — Le bâtiment B · 4 × 4, quatre personnages' },
+                    { value: 3, label: "3 — L'heure du déjeuner · 5 × 5, cinq personnages" }
+                ],
+                default: 1
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        motsClefs: ['enquête', 'enquete', 'déduction', 'deduction', 'logique', 'plan',
+            'repérage', 'reperage', 'nord', 'sud', 'est', 'ouest', 'indices', 'coupable'],
+        instruction: "Un objet a disparu. Chaque personnage occupe une case, et il n'y en a qu'UN par rangée et qu'UN par colonne : poser quelqu'un interdit donc toute sa rangée et toute sa colonne aux autres. Touche un prénom, puis la case où tu le places ; touche-le sur le plan pour le reprendre. Le nord est en haut, l'ouest à gauche ; « à côté » veut dire par un côté, jamais en diagonale. Tous les indices sont vrais, et ensemble ils ne laissent qu'une seule disposition possible : on ne devine jamais, on élimine. Quand tout le monde est placé, il reste à lire le plan — qui était seul dans le lieu où l'on a retrouvé l'objet ?"
+    },
+    {
         // LE CARRÉ MAGIQUE. Trente soustractions à trous qui se donnent la
         // main : on cherche la ligne où il ne manque qu'une case, on soustrait
         // de la somme magique, et chaque case écrite en débloque d'autres. Le

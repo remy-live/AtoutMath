@@ -18,19 +18,37 @@
 // En `fixed`, il aurait fallu tenir à jour un `padding-top` sur trois
 // dispositions différentes — et l'oublier une fois cache la barre de navigation.
 
-import { estVerrouille, estEcarte, consigneDuProf, messagesNonLus, direLu } from '../core/seanceDistante.js';
+import { ceQueVoitLEleve, direLu } from '../core/seanceDistante.js';
+import { state } from '../core/state.js';
 import { showModal } from './modal.js';
 
 export function initSeanceDistanteUI() {
     document.addEventListener('seance_distante', () => rendre());
+    // ET QUAND ON CHANGE DE RÔLE. Sans cela, le professeur qui repasse côté
+    // élève pour montrer quelque chose à sa classe n'aurait ni la consigne ni
+    // les mots tant que le serveur n'a pas reparlé — jusqu'à cinq minutes.
+    document.addEventListener('role_change', () => rendre());
     rendre();
 }
 
+/**
+ * LE PROFESSEUR NE VOIT RIEN DE L'ÉCRAN DE L'ÉLÈVE.
+ *
+ * Rémy : « quand j'envoie un mot genre Coucou, il apparaît en popup sur mon
+ * espace aussi ». Son navigateur avait servi à essayer le côté élève et en
+ * gardait le rattachement ; il recevait donc les mots de sa propre classe.
+ *
+ * La règle vit dans `ceQueVoitLEleve` et non ici : cette fonction faisait cinq
+ * appels indépendants, et un sixième ajouté demain aurait réintroduit le
+ * défaut. Une seule porte, fermée d'un côté.
+ */
 function rendre() {
-    majBandeau(consigneDuProf());
-    majVerrou(estVerrouille());
-    majEcarte(estEcarte());
-    montrerLesMots();
+    const vu = ceQueVoitLEleve({ professeur: !!state.isTeacherMode });
+    majBandeau(vu.consigne);
+    majVerrou(vu.verrouille);
+    majEcarte(vu.ecarte);
+    montrerLesMots(vu.mots);
+    montrerLesIndices(vu.indices);
 }
 
 /* ------------------------------------------------------------------ Consigne */
@@ -117,10 +135,25 @@ function majEcarte(actif) {
  * les montre donc l'une après l'autre : la suivante n'apparaît qu'une fois la
  * précédente acquittée.
  */
-function montrerLesMots() {
-    if (document.getElementById('mot-du-prof')) return;   // il y en a déjà un
-    const mot = messagesNonLus()[0];
-    if (!mot) return;
+/** La fenêtre ouverte, pour pouvoir la refermer sans passer par « J'ai lu ». */
+let motOuvert = null;
+
+function montrerLesMots(liste) {
+    const mot = (liste || [])[0];
+    // ON REFERME CE QUI NE DOIT PLUS ÊTRE LÀ. Le professeur qui bascule pendant
+    // qu'un mot est ouvert le verrait rester à l'écran, et ne pourrait s'en
+    // débarrasser qu'en posant un accusé de lecture faux — c'est-à-dire en
+    // faisant exactement ce qu'on vient de lui épargner.
+    //
+    // ON GARDE LE FERMOIR RENDU PAR `showModal`, ET C'EST LA SEULE FAÇON.
+    // Mesuré : le voile de `showModal` n'a AUCUNE classe, seulement des styles
+    // en ligne. Chercher un `.modal-overlay` parent ne trouvait donc rien, la
+    // fenêtre restait, et l'essai en deux navigateurs l'a dit.
+    if (!mot) {
+        if (motOuvert) { motOuvert.close(); motOuvert = null; }
+        return;
+    }
+    if (motOuvert || document.getElementById('mot-du-prof')) return;   // il y en a déjà un
 
     const corps = document.createElement('div');
     corps.id = 'mot-du-prof';
@@ -132,6 +165,7 @@ function montrerLesMots() {
 
     const titre = mot.scope === 'class' ? 'Message à toute la classe' : 'Message de ton professeur';
     const fenetre = showModal(titre, corps.outerHTML, { width: '460px', zIndex: 10050 });
+    motOuvert = fenetre;
 
     // UNE SEULE SORTIE : « J'ai lu ». La fenêtre ordinaire offre une croix et
     // se ferme au clic à côté ; ici, les deux mèneraient à fermer le mot sans
@@ -147,9 +181,81 @@ function montrerLesMots() {
     if (ok) {
         ok.onclick = async () => {
             fenetre.close();
+            motOuvert = null;
             await direLu([mot.id]);
             // `direLu` retire le mot de l'état et redéclenche `rendre()`, qui
             // affichera le suivant s'il y en a un.
         };
+    }
+}
+
+/* ------------------------------------------------------------- Les indices */
+
+/**
+ * L'INDICE SE POSE À CÔTÉ, ET IL N'INTERROMPT RIEN.
+ *
+ * Rémy : « la possibilité de […] envoyer un indice ».
+ *
+ * TOUT CE QUI SUIT EXISTE PARCE QU'UN INDICE N'EST PAS UN MOT. Le mot ouvre
+ * une fenêtre qu'il faut acquitter — c'est ce qu'il faut pour « arrêtez tout,
+ * on corrige au tableau ». Faire pareil pour « regarde la retenue »
+ * détruirait la pensée qu'on veut aider : l'élève reviendrait à sa question
+ * après avoir cliqué, en ayant perdu le fil, et le professeur aurait nui en
+ * croyant aider.
+ *
+ * Donc : une carte en bas à droite, qui glisse, qui reste, et qu'on referme
+ * quand on veut. L'accusé de lecture part quand même — le professeur veut
+ * savoir si son coup de pouce est arrivé.
+ *
+ * ELLE NE VOLE PAS LE FOCUS. Un élève qui tape sa réponse au clavier doit
+ * pouvoir continuer à taper pendant que l'indice apparaît ; c'est pour cela
+ * qu'il n'y a ni `focus()` ni `autofocus` ici, et que `role="status"` le fait
+ * lire par une synthèse vocale sans couper la parole à autre chose.
+ */
+function montrerLesIndices(liste) {
+    let hote = document.getElementById('indices-du-prof');
+    if (!(liste || []).length) { if (hote) hote.remove(); return; }
+
+    if (!hote) {
+        hote = document.createElement('div');
+        hote.id = 'indices-du-prof';
+        hote.className = 'indices-prof';
+        hote.setAttribute('role', 'status');
+        hote.setAttribute('aria-live', 'polite');
+        document.body.appendChild(hote);
+    }
+
+    // ON NE REDESSINE PAS CE QUI EST DÉJÀ LÀ. L'état de séance revient toutes
+    // les dix secondes ; réécrire la carte à chaque fois relancerait son
+    // animation d'entrée toutes les dix secondes, sous les yeux d'un élève qui
+    // essaie de lire.
+    const dejaLa = new Set([...hote.querySelectorAll('[data-indice]')]
+        .map(x => x.getAttribute('data-indice')));
+    for (const ind of liste) {
+        if (dejaLa.has(ind.id)) continue;
+        const carte = document.createElement('div');
+        carte.className = 'indice-prof';
+        carte.setAttribute('data-indice', ind.id);
+        carte.innerHTML = `
+            <div class="indice-prof-tete">
+                <span class="indice-prof-qui">Un coup de pouce</span>
+                <button type="button" class="indice-prof-fermer" aria-label="Fermer">×</button>
+            </div>
+            <p class="indice-prof-texte"></p>`;
+        // `textContent` : le professeur a tapé du texte dans un champ, et un
+        // champ de formulaire est du texte, jamais du balisage.
+        carte.querySelector('.indice-prof-texte').textContent = ind.body;
+        carte.querySelector('.indice-prof-fermer').onclick = () => {
+            carte.classList.add('indice-prof--part');
+            setTimeout(() => carte.remove(), 250);
+            direLu([ind.id]);
+        };
+        hote.appendChild(carte);
+    }
+
+    // Les indices déjà lus ailleurs (un autre appareil) disparaissent.
+    const vivants = new Set(liste.map(i => i.id));
+    for (const c of [...hote.querySelectorAll('[data-indice]')]) {
+        if (!vivants.has(c.getAttribute('data-indice'))) c.remove();
     }
 }

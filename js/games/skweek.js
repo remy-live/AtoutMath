@@ -42,6 +42,9 @@ const CASE_LISIBLE = 50;         // en dessous, « 61 − 19 » ne tient plus
 class Skweek extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'skweek');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.rng = makeRng(this.params.seed);
         this.niveauCourant = Number(this.params.niveau) || 1;
         this.viesDepart = Number(this.params.vies) || 3;

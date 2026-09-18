@@ -23,31 +23,60 @@
 
 import { state } from './state.js';
 import { getActiveProfile } from './profile.js';
+// Lecture SEULE d'un cache déjà rempli : pas de cycle d'import, et pas de
+// requête cachée derrière un appel qui a l'air gratuit.
+import { reglageSite } from './reglagesSite.js';
+import { copieDEssai } from './copieDEssai.js';
 
 /**
- * LE MODE LIBRE EST ÉTEINT.
+ * LE MODE LIBRE, QUAND IL N'Y A PAS DE SERVEUR DU TOUT.
  *
- * Le mettre à `true` rend le catalogue aux élèves : l'onglet « Exercices »
- * reparaît, et la porte d'entrée offre une troisième porte.
+ * Ce n'est plus LE réglage — c'est le repli. Le vrai vit sur le serveur, et le
+ * professeur le tient par un bouton de sa zone (voir `core/reglagesSite.js` et
+ * la route `/reglages`). Cette constante ne sert que là où il n'y a personne à
+ * qui demander : un AtoutMath posé sur une clé, un poste hors ligne au premier
+ * démarrage.
  */
 export const MODE_LIBRE = false;
 
 const CLE_ESSAI = 'atoutmath-mode-libre';
 
 /**
- * L'interrupteur, avec sa dérogation locale.
+ * L'INTERRUPTEUR, ET SES TROIS AUTORITÉS.
  *
- * `localStorage.setItem('atoutmath-mode-libre', '1')` l'allume dans CE
- * navigateur seulement. C'est ce qui permet à Rémy de regarder à quoi
- * ressemblerait le mode libre sans le donner à trente élèves d'un coup, et de
- * l'éteindre en refermant l'onglet privé.
+ *   1. LA DÉROGATION LOCALE (`atoutmath-mode-libre`) gagne sur tout, et c'est
+ *      voulu : c'est l'outil de celui qui essaie. Rémy regarde l'écran de
+ *      l'élève sans changer ce que trente élèves voient.
+ *   2. LE SERVEUR — le bouton de la zone professeur. C'est le vrai réglage, et
+ *      il vaut pour tout le monde.
+ *   3. LA CONSTANTE DU CODE, quand le serveur n'a jamais répondu.
+ *
+ * `reglageSite` ne va PAS sur le réseau : elle lit ce que la dernière réponse a
+ * laissé. Cette fonction est appelée à chaque dessin d'écran ; elle doit coûter
+ * une lecture de mémoire, pas une requête.
  */
 export function modeLibre() {
     try {
         const v = window.localStorage.getItem(CLE_ESSAI);
         if (v === '1') return true;
         if (v === '0') return false;
-    } catch (e) { /* stockage refusé : on s'en tient à la valeur du code */ }
+    } catch (e) { /* stockage refusé : on passe à l'autorité suivante */ }
+    const duServeur = reglageSite('modeLibre');
+    if (typeof duServeur === 'boolean') return duServeur;
+    // SUR UNE COPIE D'ESSAI, LE REPLI EST « OUVERT », et il faut dire pourquoi.
+    //
+    // Rémy : « je n'ai rien de générique […] le but étant de tester ». Mesuré :
+    // l'élève d'essai arrivait sur « Pas de séance pour l'instant — ton
+    // professeur ne t'a rien donné ». Et pour cause : donner une séance passe
+    // par le serveur, et une copie d'essai n'en a pas. Le côté élève était donc
+    // atteignable mais vide — un cul-de-sac au lieu d'un essai.
+    //
+    // Le mode libre reste ce qu'il est partout ailleurs : éteint par défaut, et
+    // c'est le bouton de la zone professeur qui l'allume. Ici il n'y a ni
+    // serveur pour le tenir ni classe à protéger ; le repli est donc l'inverse,
+    // et les deux autorités du dessus continuent de primer — la dérogation
+    // locale comme le serveur, s'il venait à répondre.
+    if (copieDEssai()) return true;
     return MODE_LIBRE;
 }
 

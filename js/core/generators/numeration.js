@@ -90,7 +90,19 @@ export const chiffreRangGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const decDigits = params.decimales || 3;
-        const { value } = randomDecimal(rng, { intDigits: 4, decDigits });
+        // UN NOMBRE ASSEZ VARIÉ POUR PORTER SES PROPRES LEURRES.
+        //
+        // Les propositions sont désormais tirées des chiffres DU NOMBRE (voir
+        // plus bas) : encore faut-il qu'il en ait quatre différents. « 8 888,88 »
+        // n'en a qu'un, et la question n'aurait plus qu'une seule proposition —
+        // elle serait d'ailleurs sans intérêt, puisque la réponse y est la même
+        // à tous les rangs. On retire donc, au plus dix fois : sur sept chiffres
+        // tirés au hasard, en avoir quatre distincts est le cas ordinaire.
+        let value;
+        for (let essai = 0; essai < 10; essai++) {
+            value = randomDecimal(rng, { intDigits: 4, decDigits }).value;
+            if (new Set(String(value).replace(/[^0-9]/g, '')).size >= 4) break;
+        }
 
         const pool = params.partie === 'entière' ? RANKS_ENTIER
             : params.partie === 'décimale' ? RANKS_DECIMAL
@@ -104,8 +116,54 @@ export const chiffreRangGenerator = {
         // sert justement à lever.
         const miroir = rank > 0 ? -rank : (rank < 0 ? -rank : null);
         const chiffreMiroir = miroir !== null ? digitAtRank(value, miroir) : null;
-        // Compter les rangs depuis la gauche au lieu de la droite.
-        const parLaGauche = digitAtRank(value, 3 - Math.min(rank, 3));
+        // LES CHIFFRES DU NOMBRE, DANS L'ORDRE OÙ ON LES LIT. C'est la chaîne
+        // affichée qu'on découpe, et non `String(value)` : un nombre comme
+        // 4 528,900 s'écrit « 4528.9 » en JavaScript, et les deux zéros de fin —
+        // que l'élève voit pourtant — disparaîtraient du jeu de leurres.
+        const chiffres = [...affiche.replace(/[^0-9]/g, '')].map(Number);
+
+        // COMPTER LES RANGS DEPUIS LA GAUCHE AU LIEU DE LA VIRGULE — la seconde
+        // erreur du chapitre, et un leurre qui doit donc exister.
+        //
+        // La formule d'avant, `3 - Math.min(rank, 3)`, sortait du nombre dès
+        // qu'on interrogeait un rang décimal : pour les millièmes elle demandait
+        // le rang 6 d'un nombre qui s'arrête au rang 3, et `digitAtRank` rendait
+        // alors 0. Mesuré : 985 leurres sur 12 000 étaient hors du nombre, et
+        // c'était TOUJOURS ce zéro-là. On compte donc les chiffres à partir de
+        // la gauche, ce qui est précisément l'erreur qu'on veut proposer, et
+        // rend forcément un chiffre du nombre.
+        const parLaGauche = chiffres[Math.min(chiffres.length - 1,
+            rank >= 0 ? rank : (-rank) - 1)];
+
+        // LES LEURRES SORTENT DU NOMBRE LUI-MÊME, ET DE NULLE PART AILLEURS.
+        //
+        // Retour d'un professeur, capture à l'appui : « Quel est le chiffre des
+        // unités de 8 788,13 ? » proposait 0, 8, 4, 7. Le 0 et le 4 ne SONT PAS
+        // dans le nombre. Un élève qui ignore tout du rang des unités les écarte
+        // d'un coup d'œil et il lui reste une chance sur deux — « 2 chiffres qui
+        // ne se trouvent pas dans les chiffres du nombre à analyser c'est trop
+        // facilitant, ça vide l'exo de sa substance ».
+        //
+        // Il a raison, et c'est exactement le reproche qu'un inspecteur ferait :
+        // la question ne mesurait plus la capacité à SITUER un rang, elle
+        // mesurait celle à reconnaître un chiffre déjà vu.
+        //
+        // MESURÉ sur 4 000 questions, en simulant l'élève qui ne sait rien du
+        // rang mais écarte les chiffres absents du nombre, puis répond au
+        // hasard parmi ce qui reste :
+        //
+        //     avant : 4 295 leurres sur 12 000 absents du nombre (36 %)
+        //             → 37 réussites sur 100, contre 25 au pur hasard
+        //     après : 0 leurre sur 12 000 absent du nombre
+        //             → 25 sur 100, c'est-à-dire le hasard et rien d'autre
+        //
+        // Douze points de réussite qui ne venaient d'aucun savoir : c'est cela,
+        // « vider l'exo de sa substance ».
+        //
+        // Les deux leurres écrits à la main ci-dessus en viennent déjà (le rang
+        // miroir, le comptage par la gauche) ; c'est le BOUCHE-TROU qui tirait
+        // un chiffre entre 0 et 9 sans regarder le nombre.
+        const autresChiffres = rng.shuffle([...new Set(chiffres)].filter(d => d !== answer));
 
         return makeItem({
             seed: rng.seed, generatorId: 'num.chiffre-rang', skillId: 'num.numeration.rang',
@@ -125,7 +183,7 @@ export const chiffreRangGenerator = {
                     }
                     : null,
                 { value: parLaGauche, why: 'Les rangs se comptent à partir de la virgule, pas depuis le début du nombre.' }
-            ].filter(Boolean), { count: 4, filler: r => r.int(0, 9) }),
+            ].filter(Boolean), { count: 4, filler: () => autresChiffres.pop() ?? null }),
             // UN INDICE QUI COMMANDE DOIT NOMMER SUR QUOI. « Place le nombre
             // dans le tableau » ne désigne rien — et c'est le PREMIER indice,
             // donc la phrase que le robot prononce, sans montrer quoi que ce

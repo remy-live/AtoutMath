@@ -113,14 +113,26 @@ test('un code de partage restitue le parcours, barème compris', () => {
     assert.equal(decoded.policy.maxAttemptsPerItem, 1);
 });
 
-test('les anciens codes à deux lettres restent décodables', () => {
-    // "AAF" = calc-add, 6 questions ; "ABEBC" = flash mult, 5 questions, tables 2 et 3
-    const path = Shortcodes.decodePath('AAF-ABEBC');
-    assert.equal(path.steps.length, 2);
-    assert.equal(path.steps[0].exerciseId, 'calc-add');
-    assert.equal(path.steps[0].nbItems, 6);
-    assert.equal(path.steps[1].exerciseId, 'calc-mult-flash');
-    assert.deepEqual(path.steps[1].overrides.tables, [2, 3]);
+test('les anciens codes à deux lettres ne se lisent plus', () => {
+    // CE TEST EXIGEAIT L'INVERSE, et il a fallu le retourner.
+    //
+    // « AAF-ABEBC » : deux lettres pour le jeu, une pour le nombre de questions,
+    // les suivantes pour les tables — le tout premier format, sans aucune lettre
+    // de contrôle. Il restait lu en dernier recours, après le format complet et
+    // la chaîne courte.
+    //
+    // Mesuré en essayant toutes les fautes d'une lettre sur les codes du
+    // catalogue : un code MODERNE refusé à juste titre — « AFL-08-00-ACBU » mal
+    // recopié — retombait sur ce décodeur-là, qui reconnaissait « AF » et
+    // rendait le Tir à l'Arc sur des tables tirées des caractères restants,
+    // chiffres compris. Il acceptait donc en silence tout ce que les lettres de
+    // contrôle venaient de refuser, et l'élève recevait un AUTRE exercice.
+    //
+    // Aucun élève n'a encore utilisé le logiciel et aucun code de ce format
+    // n'est dans la nature : on ne troque pas une garantie démontrable contre
+    // une compatibilité avec personne. Voir `js/core/shortcodes.js`.
+    assert.equal(Shortcodes.decodePath('AAF-ABEBC'), null);
+    assert.equal(Shortcodes.decodePath('AAF'), null);
 });
 
 test('un code corrompu est refusé sans planter', () => {

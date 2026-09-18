@@ -2,7 +2,7 @@
 //
 // Deux rangements, et un même arbre pour les afficher :
 //
-//   PAR DOMAINE   Numérique › Calcul Mental. C'est le rangement d'origine,
+//   PAR DOMAINE   Numérique › Calcul mental. C'est le rangement d'origine,
 //                 celui de la recherche : il dit de quoi parle l'exercice.
 //   PAR CHAPITRE  6ème › Fractions. C'est la progression du professeur : elle
 //                 dit QUAND on s'en sert. « Je choisis mon chapitre, et bam

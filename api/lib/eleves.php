@@ -32,6 +32,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/coffre.php';
 require_once __DIR__ . '/liste.php';
+require_once __DIR__ . '/projections.php';
 
 /**
  * CE QUI VA SE PASSER POUR CETTE LIGNE — la même décision à l'aperçu et à
@@ -294,30 +295,39 @@ function retirerEleve(string $eleveId, string $classeId): string
 }
 
 /**
- * CE QUE CHACUN FAIT EN CE MOMENT.
+ * CE QUE CHACUN FAIT EN CE MOMENT, ET OÙ IL EN EST.
  *
- * On remonte les quarante derniers événements et l'on répond à trois
- * questions, dans l'ordre où le professeur se les pose en marchant dans les
- * rangs : sur quel parcours est-il ? sur quel exercice ? et est-ce que ça
- * marche ?
+ * On remonte les derniers événements et l'on répond à quatre questions, dans
+ * l'ordre où le professeur se les pose en marchant dans les rangs : sur quel
+ * parcours est-il ? sur quel exercice ? est-ce que ça marche ? et — celle que
+ * Rémy réclamait — OÙ EN EST-IL DE SA SÉANCE ?
  *
- * Quarante, et pas tout le journal : un élève qui travaille depuis une heure a
- * quelques centaines d'événements, et l'on relit cette fonction toutes les
- * vingt secondes pour trente élèves. Quarante suffisent largement à couvrir
- * l'exercice en cours, et bornent le coût de la page.
+ * DEUX CENTS, ET PAS TOUT LE JOURNAL. Un élève qui travaille depuis une heure
+ * a quelques centaines d'événements, et l'on relit cette fonction toutes les
+ * dix secondes pour trente élèves. Deux cents couvrent largement la séance en
+ * cours — un parcours de cinq étapes à dix questions en produit une soixantaine,
+ * le double avec les seconds essais — et bornent le coût de la page.
+ *
+ * ET C'EST LA MÊME LECTURE QUI SERT AUX DEUX. L'avancement aurait pu se
+ * calculer à part ; ce serait une seconde requête par élève, soixante au lieu
+ * de trente à chaque battement, pour des lignes qu'on vient de déchiffrer.
  */
 function derniereActivite(string $eleveId): array
 {
     $s = db()->prepare(
         'SELECT type, ts, payload FROM events WHERE student_id = ?
-         ORDER BY seq DESC LIMIT 40'
+         ORDER BY seq DESC LIMIT 200'
     );
     $s->execute([$eleveId]);
     $lignes = $s->fetchAll();
 
     $exo = null; $parcours = null; $justes = 0; $total = 0; $quand = null;
+    // Les événements remis À L'ENDROIT pour la projection : `runsOf` lit une
+    // histoire, pas une pile.
+    $pourLeRun = [];
     foreach ($lignes as $l) {
         $p = json_decode((string) dechiffrer($l['payload']), true) ?: [];
+        $pourLeRun[] = ['type' => $l['type'], 'ts' => (int) $l['ts'], 'payload' => $p];
         $cet = $p['exerciseId'] ?? $p['exoId'] ?? null;
         if ($exo === null && $cet) {
             $exo = $cet;
@@ -335,6 +345,24 @@ function derniereActivite(string $eleveId): array
             }
         }
     }
+
+    // LE RUN LE PLUS RÉCENT, ET LUI SEUL. `runsOf` les rend déjà du plus récent
+    // au plus ancien. Un run coupé en deux par la limite de deux cents
+    // événements se lit sans son `run_started` : il n'a alors pas de plan, et
+    // l'avancement le dit en étapes plutôt qu'en questions — c'est moins
+    // précis, ce n'est pas faux.
+    // ON SAUTE LES PARTIES DU BAC À SABLE. Une partie de Tetris ouverte après
+    // un devoir rendu est plus RÉCENTE que le devoir ; sans ce filtre, le
+    // professeur verrait « Étape 1 sur 1 » remplacer « Terminé — 18 / 24
+    // justes » et croirait sa classe repartie au travail.
+    $runs = runsOf(array_reverse($pourLeRun));
+    $duTravail = null;
+    foreach ($runs as $r) {
+        if (empty($r['bac'])) { $duTravail = $r; break; }
+    }
+    $avancement = avancementDeRun($duTravail);
+
     return ['exo' => $exo, 'parcours' => $parcours, 'justes' => $justes,
-            'total' => $total, 'quand' => $quand, 'combien' => count($lignes)];
+            'total' => $total, 'quand' => $quand, 'combien' => count($lignes),
+            'avancement' => $avancement];
 }

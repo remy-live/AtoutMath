@@ -38,6 +38,9 @@ function drawRoundRect(ctx, x, y, width, height, radius) {
 class Tetris extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params);
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         
         // Une grille de 10 × 20, c'est la mesure du Tetris d'arcade — où les
         // cases sont des FORMES qu'on reconnaît de loin. Ici chaque case porte

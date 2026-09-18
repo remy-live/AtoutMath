@@ -31,7 +31,17 @@ const CLE = 'seanceDistante';
 const VIDE = {
     className: '', classCode: '',
     locked: false, notice: null, blocked: false,
-    messages: [], skippable: [], removed: []
+    messages: [], skippable: [], removed: [],
+    // LE MOMENT EN COURS : la séance imposée, et le compte à rebours.
+    impose: null, chrono: null,
+    // Le bac à sable de ceux qui ont fini. FERMÉ est le cas particulier :
+    // ouvert par défaut, une fonction qu'il faut allumer n'est pas découverte.
+    bacFerme: false,
+    // L'HEURE DU SERVEUR au moment où il a répondu, et l'heure qu'il était ICI
+    // à cet instant. Les deux ensemble donnent l'écart entre les horloges, et
+    // c'est ce qui permet d'afficher le même chiffre sur trente appareils dont
+    // aucun n'est réglé pareil. Un seul des deux ne servirait à rien.
+    maintenant: 0, recuA: 0
 };
 
 let etat = { ...VIDE };
@@ -73,10 +83,10 @@ export async function initSeanceDistante() {
  * fois ferait clignoter une consigne que personne n'a touchée. On compare donc
  * le contenu, pas la date.
  */
-export function appliquerEtat(nouveau) {
+export function appliquerEtat(nouveau, recuA = Math.floor(Date.now() / 1000)) {
     if (!nouveau || typeof nouveau !== 'object') return etat;
     const avant = JSON.stringify(etat);
-    etat = { ...VIDE, ...nouveau };
+    etat = { ...VIDE, ...nouveau, recuA };
     globalStore.set(CLE, etat).catch(() => {});
     if (JSON.stringify(etat) !== avant) prevenir();
     return etat;
@@ -84,6 +94,33 @@ export function appliquerEtat(nouveau) {
 
 function prevenir() {
     document.dispatchEvent(new CustomEvent('seance_distante', { detail: { ...etat } }));
+}
+
+/**
+ * TOUT OUBLIER DE LA CLASSE — à la déconnexion, et nulle part ailleurs.
+ *
+ * LE PIÈGE EST INVISIBLE, ET IL FALLAIT CETTE FONCTION POUR LE FERMER. La
+ * consigne, le verrou, la séance imposée et le compte à rebours sont gardés SUR
+ * L'APPAREIL, exprès : c'est ce qui permet à un élève de continuer quand le
+ * réseau tombe. Mais sans les effacer en partant, le suivant qui s'assied
+ * devant la même machine se retrouve verrouillé par une classe dont il ne fait
+ * pas partie, avec un compte à rebours qui n'est pas le sien — et personne ne
+ * comprend pourquoi.
+ *
+ * On efface AUSSI la marque sur `<body>` : le verrou est une classe CSS, et une
+ * classe CSS ne disparaît pas parce que l'état qui l'a posée a disparu.
+ */
+export async function oublierLaClasse() {
+    etat = { ...VIDE };
+    await globalStore.set(CLE, null).catch(() => {});
+    if (typeof document !== 'undefined') {
+        document.body.classList.remove('classe-verrouillee');
+        document.getElementById('consigne-prof')?.remove();
+        document.getElementById('indices-du-prof')?.remove();
+        document.getElementById('le-moment')?.remove();
+        document.getElementById('le-moment-pause')?.remove();
+    }
+    prevenir();
 }
 
 export function etatSeance() {
@@ -102,8 +139,68 @@ export function consigneDuProf() {
     return etat.notice || '';
 }
 
+/** Le professeur a-t-il fermé le bac à sable pour cette heure ? */
+export function bacFerme() { return !!etat.bacFerme; }
+
 export function messagesNonLus() {
     return Array.isArray(etat.messages) ? etat.messages.slice() : [];
+}
+
+/**
+ * LES MOTS D'UN CÔTÉ, LES INDICES DE L'AUTRE — parce qu'ils ne s'affichent pas
+ * de la même façon.
+ *
+ * Le mot prend l'écran et se ferme d'un « J'ai lu » : c'est ce qu'il faut pour
+ * « arrêtez tout, on corrige au tableau ». L'indice se pose à CÔTÉ de la
+ * question : interrompre un élève pour lui souffler « regarde la retenue »
+ * détruirait exactement la pensée qu'on veut aider.
+ *
+ * Un message sans genre est un mot — c'est ce qu'ils étaient tous avant.
+ */
+const genreDe = (m) => (m && m.genre === 'indice' ? 'indice' : 'mot');
+export function motsNonLus() { return messagesNonLus().filter(m => genreDe(m) === 'mot'); }
+export function indicesNonLus() { return messagesNonLus().filter(m => genreDe(m) === 'indice'); }
+
+/**
+ * CE QUE VOIT L'ÉLÈVE — ET LE PROFESSEUR NE VOIT RIEN DE TOUT CELA.
+ *
+ * Rémy : « je teste chez moi Safari pour l'élève et Chrome pour moi ; quand
+ * j'envoie un mot genre Coucou, il apparaît en popup sur mon espace aussi ».
+ *
+ * SON NAVIGATEUR EST LES DEUX À LA FOIS, ET C'EST NORMAL. Une machine qui a
+ * servi à essayer le côté élève garde son rattachement — c'est voulu, c'est
+ * ce qui permet de continuer quand le réseau tombe. Elle continue donc de
+ * recevoir la consigne, le verrou et les mots de la classe, même pendant que
+ * son propriétaire est en mode professeur.
+ *
+ * ET RENVOYER À QUELQU'UN LE MOT QU'IL VIENT D'ÉCRIRE N'EST PAS QU'UNE GÊNE :
+ * la fenêtre ne se ferme que par « J'ai lu », et ce bouton POSE L'ACCUSÉ DE
+ * LECTURE. Le professeur, en se débarrassant de sa propre fenêtre, cochait
+ * lui-même le mot comme lu — sa console lui disait alors qu'un élève l'avait
+ * lu, ce qui était faux, et c'est sur cette coche qu'il décide de redire ou
+ * non la consigne à voix haute.
+ *
+ * LA RÈGLE EST DONC ÉCRITE ICI, EN UN SEUL ENDROIT, et non répartie dans les
+ * cinq affichages de l'écran. `rendre()` en faisait cinq appels indépendants ;
+ * un sixième ajouté demain aurait réintroduit le défaut sans que rien ne le
+ * dise. Ici, il n'y a qu'une porte, et elle est fermée d'un côté.
+ *
+ * ON NE JETTE RIEN, ON N'ACQUITTE RIEN : le professeur qui repasse côté élève
+ * — pour montrer quelque chose à la classe — retrouve tout intact.
+ *
+ * @param {object} [opts] { professeur: bool }
+ */
+export function ceQueVoitLEleve(opts = {}) {
+    if (opts.professeur) {
+        return { consigne: '', verrouille: false, ecarte: false, mots: [], indices: [] };
+    }
+    return {
+        consigne: consigneDuProf(),
+        verrouille: estVerrouille(),
+        ecarte: estEcarte(),
+        mots: motsNonLus(),
+        indices: indicesNonLus()
+    };
 }
 
 /**
@@ -112,6 +209,42 @@ export function messagesNonLus() {
  * net que de le laisser en place grisé — un élève de sixième essaierait quand
  * même de cliquer dessus.
  */
+/**
+ * LA SÉANCE IMPOSÉE — ce que l'élève doit ouvrir sans rien choisir.
+ * @returns {{pathId:string, name:string, path:object}|null}
+ */
+export function seanceImposee() {
+    return etat.impose || null;
+}
+
+/**
+ * COMBIEN DE SECONDES RESTE-T-IL, corrigé de l'écart entre les horloges.
+ *
+ * Le serveur envoie l'INSTANT de fin et l'heure qu'il était chez lui ; on note
+ * l'heure qu'il était ici à la réception. La différence est l'écart, et il ne
+ * bouge plus. Sans cette correction, une tablette réglée dix minutes en avance
+ * afficherait « temps écoulé » pendant que la classe travaille encore.
+ *
+ * @returns {{reste:number, aZero:string}|null} `reste` en secondes, jamais négatif
+ */
+export function tempsRestant(maintenant = Math.floor(Date.now() / 1000)) {
+    if (!etat.chrono || !etat.chrono.finAt) return null;
+    // ON NE CORRIGE QUE SI LES DEUX HEURES SONT DE VRAIES HEURES.
+    //
+    // L'écart n'a de sens que si le serveur a bien envoyé la sienne. Sur un
+    // serveur plus ancien — ou sur un état fabriqué à la main — le champ est
+    // absent, et le prendre pour zéro ferait croire à un décalage de
+    // cinquante-six ans : le compte à rebours afficherait alors n'importe quoi,
+    // ce qui est pire que de ne rien afficher. Un milliard et demi de secondes
+    // depuis 1970, c'est 2017 : en dessous, ce n'est pas une heure, c'est une
+    // valeur qui traîne.
+    const VRAIE_HEURE = 1.5e9;
+    const ecart = (etat.maintenant > VRAIE_HEURE && etat.recuA > VRAIE_HEURE)
+        ? (etat.maintenant - etat.recuA) : 0;
+    const reste = etat.chrono.finAt - (maintenant + ecart);
+    return { reste: Math.max(0, reste), aZero: etat.chrono.aZero || 'terminer' };
+}
+
 export function estRetire(exerciceId) {
     return !!exerciceId && etat.removed.includes(exerciceId);
 }

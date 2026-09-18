@@ -18,6 +18,7 @@ import {
     cleParMarche, lireParMarche, ecrireParMarche, valeurParMarche
 } from '../core/progression.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
+import { reglagesQuiChangent as ecartsDeReglages } from '../core/reglagesDUsine.js';
 import { echelleDe, rangDans } from '../core/echelle.js';
 // Une graine FIXE pour l'aperçu : voir `vraieQuestion`.
 import { makeRng } from '../core/ids.js';
@@ -2254,6 +2255,76 @@ function valeurChoisie(param, brut) {
     return param.type === 'number' ? Number(brut) : brut;
 }
 
+/**
+ * CE QUI A VRAIMENT ÉTÉ CHANGÉ — et rien d'autre.
+ *
+ * `readParams` relit TOUT le panneau : chaque case, chaque menu, chaque champ,
+ * qu'on y ait touché ou non. Le panneau écrivait donc l'intégralité du schéma
+ * dans `step.overrides` dès qu'on effleurait n'importe quoi — y compris le
+ * seul nombre de questions, qui n'est même pas un réglage de contenu.
+ *
+ * CE QUE ÇA COÛTAIT, MESURÉ. Deux exercices ajoutés, rien réglé : le code à
+ * dicter fait « DFP-AFL », sept caractères. UN clic sur le « + » du nombre de
+ * questions, et le code devenait « M2-eyJuIjoiTW9uIFBhcmNvdXJz… », 214
+ * caractères — indictable. Et l'écran annonçait « étape 2 : ses réglages ont
+ * été modifiés », alors qu'aucun réglage de contenu n'avait été touché : le
+ * professeur lisait une accusation fausse et perdait son code au tableau.
+ *
+ * LA RÈGLE A DÉMÉNAGÉ DANS LE NOYAU (`core/reglagesDUsine.js`), parce que le
+ * code dicté en a besoin lui aussi : il écrit les réglages en lettres, et
+ * surtout il les RELIT en n'écrivant que les mêmes écarts. Deux définitions du
+ * « défaut » finiraient par diverger, et le parcours reçu par code n'aurait
+ * alors pas la même identité que celui qu'on a donné. Le panneau la ré-expose
+ * ici pour ceux qui l'appelaient déjà.
+ */
+export const reglagesQuiChangent = ecartsDeReglages;
+
+/**
+ * CE QUI A ÉTÉ RÉGLÉ SUR CETTE ÉTAPE, EN CLAIR ET EN COURT.
+ *
+ * Mesuré : régler « Dénominateurs : identiques → différents » sur une étape ne
+ * changeait RIEN à sa ligne dans le parcours — texte strictement identique,
+ * comparé caractère par caractère. Le professeur qui relit sa séance de huit
+ * étapes ne peut pas savoir laquelle il a touchée : il doit les rouvrir une par
+ * une.
+ *
+ * ON ÉCRIT LE LIBELLÉ DU SCHÉMA, pas la clé du code. « memeDenominateur:
+ * differents » ne se lit pas ; « Dénominateurs : différents » se lit. Et l'on
+ * s'arrête à deux réglages : cette ligne doit rester une ligne, et celui qui
+ * veut le détail ouvre le panneau, qui est là pour ça.
+ *
+ * @param {object} overrides ce que l'étape a d'écart avec l'exercice
+ * @param {Array}  schema    le schéma qui nomme ces réglages
+ * @param {number} [combien] combien on en écrit avant de dire « +n »
+ * @returns {string} « Dénominateurs : différents · Maximum : 20 », ou ''
+ */
+export function direLesReglages(overrides, schema, combien = 2) {
+    const o = overrides || {};
+    const cles = Object.keys(o);
+    if (!cles.length) return '';
+    const parId = new Map((schema || []).filter(p => p && p.id).map(p => [p.id, p]));
+
+    const dire = (cle) => {
+        const p = parId.get(cle);
+        const v = o[cle];
+        // UNE CLÉ HORS SCHÉMA n'a pas de nom lisible — les réglages posés marche
+        // par marche, par exemple. On ne l'invente pas : on la compte, sans
+        // prétendre la nommer.
+        if (!p) return null;
+        const nom = p.label || cle;
+        if (p.type === 'bool' || typeof v === 'boolean') return v ? nom : `sans ${nom.toLowerCase()}`;
+        if (Array.isArray(v)) return v.length ? `${nom} : ${v.length} choisi${v.length > 1 ? 's' : ''}` : null;
+        const opt = (p.options || []).find(x => String(valeurOption(x)) === String(v));
+        return `${nom} : ${opt ? libelleOption(opt) : v}`;
+    };
+
+    const lisibles = cles.map(dire).filter(Boolean);
+    if (!lisibles.length) return '';
+    const montres = lisibles.slice(0, combien);
+    const reste = lisibles.length - montres.length;
+    return montres.join(' · ') + (reste > 0 ? ` +${reste}` : '');
+}
+
 export function readParams(root, schema) {
     const out = {};
     schema.forEach(param => {
@@ -2874,7 +2945,10 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     brancherMarches(content, schema, current, exo.id || step.exerciseId);
 
     const commit = () => {
-        const overrides = readParams(content, schema);
+        // On n'enregistre que ce qui S'ÉCARTE de l'exercice : voir
+        // `reglagesQuiChangent`. Écrire tout le schéma rendait le code à dicter
+        // illisible au premier clic sur le nombre de questions.
+        const overrides = reglagesQuiChangent(readParams(content, schema), exo, schema);
         const nbItems = intVal('cfg-nbitems', 10);
         describeThreshold();
         toggleScope();

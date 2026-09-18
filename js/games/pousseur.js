@@ -35,6 +35,9 @@ const COMPETENCE = 'defi.pousseur';
 class Pousseur extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'pousseur');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.niveau = Number(this.params.niveau) || 1;
         this.graine = this.params.seed || 'sk';
         this.aides = 0;

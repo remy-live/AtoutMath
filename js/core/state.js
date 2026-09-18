@@ -72,7 +72,7 @@ export const state = {
     // les classes qui avaient reçu n'importe quel autre parcours sans
     // identifiant. Ce n'était pas une mémoire de la dernière classe : c'était
     // deux inconnus qui se prenaient pour le même.
-    currentPath: { id: 'path_' + shortId(8), version: 2, name: 'Mon Parcours', policy: null, steps: [] },
+    currentPath: { id: 'path_' + shortId(8), version: 2, name: 'Nouveau parcours', policy: null, steps: [] },
     currentPathId: null,
     isTeacherMode: false,
     isMobileView: false,

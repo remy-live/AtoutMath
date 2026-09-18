@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import '../js/core/activities/index.js';
@@ -7,7 +8,8 @@ import {
     MONDES, LONGUEUR_MONDE, TRANSITION, SOL_MOYEN, penteMax, ONDES, mondeDe, progressionMonde, relief, pas,
     etatInitial, semerEtoile, HAUT_ETOILE_MIN, HAUT_ETOILE_MAX,
     avancerNuit, rattrape, RECUL_ETOILE, RECUL_MONDE, qualiteAiles,
-    GRAVITE, GRAVITE_PLONGEE, VX_MIN, VX_MAX, FROTTEMENT_SOL, PESANTEUR_GLISSE_APPUI, quitteLeSol
+    GRAVITE, GRAVITE_PLONGEE, VX_MIN, VX_MAX, FROTTEMENT_SOL, PESANTEUR_GLISSE_APPUI, quitteLeSol,
+    POUSSEE, PESANTEUR_GLISSE
 } from '../js/core/petitesAiles.js';
 import { getExerciseById } from '../js/data/catalog.js';
 import { SKILLS } from '../js/data/skills.js';
@@ -214,7 +216,7 @@ test('UNE COLLINE REND CE QU\'ELLE A PRIS — le glissé se conserve', () => {
     const V0 = 700;
     let e = { x: depart, y: h0, vx: V0, vy: 0, auSol: true };
     const v0 = leLongDuSol(V0, relief(depart, g).pente);
-    let ecart = 0, haut = h0, perdu = 0;
+    let ecart = 0, haut = h0, perdu = 0, gagne = 0;
     for (let t = 0; t < 3; t += 1 / 60) {
         e = pas(e, 1 / 60, true, g);
         assert.ok(e.auSol, 'en appuyant, on ne décolle pas : le test ne mesure plus rien');
@@ -229,7 +231,15 @@ test('UNE COLLINE REND CE QU\'ELLE A PRIS — le glissé se conserve', () => {
         // correction : ce qui est mis à l'épreuve, c'est bien la conversion
         // exacte de la hauteur en vitesse.
         perdu += 2 * FROTTEMENT_SOL * v * v / 60;
-        const attendu = Math.sqrt(v0 * v0 - 2 * PESANTEUR_GLISSE_APPUI * (r.hauteur - h0) - perdu);
+        // ET LE BATTEMENT D'AILES AJOUTE, lui. C'est une énergie de plus dans
+        // le bilan — `v += POUSSEE·dt` fait monter v² de 2·v·POUSSEE·dt — et
+        // l'invariant qu'on éprouve n'est plus « ½v² + p·h se conserve » mais
+        // « ½v² + p·h se conserve AU BATTEMENT ET AU FROTTEMENT PRÈS ». Ce qui
+        // est mis à l'épreuve reste le même : la conversion exacte de la
+        // hauteur en vitesse, que l'ancienne formule ne savait pas tenir.
+        gagne += 2 * POUSSEE * v / 60;
+        const attendu = Math.sqrt(v0 * v0 - 2 * PESANTEUR_GLISSE_APPUI * (r.hauteur - h0)
+            - perdu + gagne);
         ecart = Math.max(ecart, Math.abs(v - attendu) / attendu);
     }
     // On a bien franchi une VRAIE bosse, pas une ondulation.
@@ -462,4 +472,86 @@ test('la consigne explique LE geste et LE but, qui sont tout le jeu', () => {
     assert.ok(/monde/i.test(e.instruction), 'les mondes ne sont pas annoncés');
     // Et plus un mot de multiples ni de carrés.
     assert.ok(!/multiple|diviseur|carré parfait/i.test(e.instruction));
+});
+
+// ─────────────── CE QUE RÉMY A DEMANDÉ, ET CE QUE ÇA A CHANGÉ ───────────────
+//
+// « pour les petites ailes, c'est un jeu, il faut que ça aille plus vite […]
+//   car là l'oiseau est tjs collé et avance quoiqu'il arrive (il monte même
+//   presque sans vitesse) et pas besoin de 5/6 obligatoire c'est un jeu ».
+//
+// MESURÉ AVANT, soixante secondes, quatre façons de jouer :
+//
+//   celui qui appuie au bon moment : 614 px/s, 39 vols, 59 % au sol
+//   celui qui appuie sans arrêt    : 280 px/s, ZÉRO vol, 100 % au sol
+//   celui qui n'appuie jamais      : 210 px/s, ZÉRO vol, 100 % au sol
+//   celui qui appuie au hasard     : 249 px/s, ZÉRO vol, 100 % au sol
+//
+// Le jeu était donc superbe pour qui connaissait le truc, et pour tous les
+// autres un oiseau collé au sol qui rampe. Décoller demande 285 px/s à la
+// crête la plus creuse : le joueur ordinaire plafonnait à 280 et ne décollait
+// JAMAIS. Un pixel manquait, et il manquait à tout le monde.
+//
+// MESURÉ APRÈS :
+//
+//   au bon moment  : 624 px/s, 42 vols   (le talent garde son avance)
+//   sans arrêt     : 484 px/s, 0 vol     (appuyer, c'est plonger : c'est juste)
+//   jamais         : 412 px/s, 18 vols
+//   au hasard      : 525 px/s, 41 vols
+//
+// Tout le monde va deux fois plus vite, et tout le monde vole — sauf celui qui
+// appuie sans relâche, et c'est la règle du jeu, pas un défaut.
+
+test('LE BATTEMENT D\'AILES DONNE UNE VITESSE À QUI NE SAIT PAS ENCORE JOUER', () => {
+    // Sans lui, le glissé conserve l'énergie : une colline rend ce qu'elle a
+    // pris, et sans l'asymétrie de l'appui, AUCUNE vitesse ne se fabrique.
+    assert.ok(POUSSEE > 0, 'il faut une source de vitesse qui ne se mérite pas');
+    const vol = (joue) => {
+        let e = etatInitial(1.9);
+        let somme = 0, n = 0, sauts = 0;
+        for (let t = 0; t < 60; t += 1 / 60) {
+            const auSol = e.auSol;
+            e = pas(e, 1 / 60, joue(e), 1.9);
+            if (auSol && !e.auSol) sauts++;
+            somme += e.vx; n++;
+        }
+        return { v: somme / n, sauts };
+    };
+    const jamais = vol(() => false);
+    assert.ok(jamais.v > 350,
+        `qui n'appuie jamais rampe à ${Math.round(jamais.v)} px/s`);
+    assert.ok(jamais.sauts > 4,
+        `qui n'appuie jamais ne décolle que ${jamais.sauts} fois : il est collé au sol`);
+    // ET LE TALENT GARDE SON AVANCE : le battement monte le plancher, il ne
+    // remplace pas le geste.
+    const bon = vol((e) => relief(e.x, 1.9).pente < 0);
+    assert.ok(bon.v > jamais.v * 1.3,
+        `le bon joueur ne fait que ${Math.round(bon.v)} contre ${Math.round(jamais.v)} :`
+        + ' le battement a mangé le jeu');
+});
+
+test('UNE CÔTE PEUT ARRÊTER L\'OISEAU — il n\'avance plus quoi qu\'il arrive', () => {
+    // Rémy : « il monte même presque sans vitesse ». C'était le plancher de
+    // vitesse : à 130, il relevait la vitesse pendant 21 à 23 % des images du
+    // joueur ordinaire, et faisait gravir les côtes à un oiseau sans élan.
+    assert.ok(VX_MIN < 60, `le plancher est à ${VX_MIN} : il porte encore le jeu`);
+    // Franchir une bosse demande une vraie vitesse, et la formule le dit :
+    // v = √(2 · p · h). Deux cents pixels de montée en demandent plus de 400.
+    const requis = Math.sqrt(2 * PESANTEUR_GLISSE * 200);
+    assert.ok(requis > 400,
+        `il ne faut que ${Math.round(requis)} px/s pour 200 px de montée`);
+    assert.ok(requis > VX_MIN * 5, 'le plancher permet encore de tout gravir');
+});
+
+test('LES PETITES AILES SE COMPTENT EN UNE PARTIE, PAS EN CINQ MONDES SUR SIX', () => {
+    // « pas besoin de 5/6 obligatoire c'est un jeu ». Six mondes comme unité,
+    // c'était six mondes à FRANCHIR, dont cinq exigés par le seuil de 70 % :
+    // on demandait de traverser presque tout le jeu pour qu'une récréation
+    // compte comme faite.
+    const src = fs.readFileSync(new URL('../js/core/activities/index.js', import.meta.url), 'utf8');
+    assert.match(src,
+        /\['petites-ailes', 'Les Petites Ailes', 'petitesAiles', 'enginePetitesAiles', 'partie', 1\]/);
+    // Comme la Tour de Hanoï, le Parking et la Pipopipette : une partie est un
+    // travail fini, pas la moitié d'un exercice.
+    assert.match(src, /\['tour-brahma',[^\]]+'tour', 1\]/);
 });

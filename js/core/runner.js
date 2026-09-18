@@ -29,6 +29,7 @@ import { uuid } from './ids.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
 import { reglerCalculatrice, signalerNouvelleQuestion } from '../ui/calculatrice.js';
 import { filtrerEtapes, peutSauter } from './seanceDistante.js';
+import { majFilSeance, cacherFilSeance } from '../ui/filSeance.js';
 
 export class Runner {
     /**
@@ -136,7 +137,43 @@ export class Runner {
             pathName: this.path.name,
             mode: this.policy.mode,
             policy: this.policy,
-            stepCount: this.steps.length
+            stepCount: this.steps.length,
+            // UNE PARTIE DU BAC À SABLE N'EST PAS UNE SÉANCE, et il faut que le
+            // serveur puisse le savoir : sans ce drapeau, le professeur verrait
+            // « Étape 1 sur 1 » remplacer « Terminé — 18 / 24 justes » dès que
+            // l'élève ouvre un jeu, et croirait sa classe repartie au travail.
+            bac: !!this.path.bac,
+            // CE QUI ÉTAIT DÉJÀ FAIT QUAND CE RUN A COMMENCÉ.
+            //
+            // Rémy : « quand je clique sur un élève qui a déjà fait 3 exercices,
+            // j'ai Étape 1/12 […] je redémarre au 3 et lui me dit étape 1/12 ».
+            //
+            // IL AVAIT RAISON, ET LE DÉFAUT ÉTAIT DANS CE QU'ON RACONTE, PAS
+            // DANS CE QU'ON FAIT. L'élève reprenait bien à la bonne étape —
+            // `state.studentPath.completed` la garde d'une fois sur l'autre.
+            // Mais reprendre ouvre un run NEUF, avec un identifiant neuf et
+            // aucune étape close à son actif : tout ce qui lit le journal
+            // (l'écran du professeur, le fil de la séance, la barre de classe)
+            // repartait donc de zéro. Le run annonce désormais son point de
+            // départ, comme il annonce déjà son plan.
+            dejaFaites: [...this.etapesFaites()],
+            // LE PARCOURS ANNONCE SON PLAN, ET C'EST CE QUI REND L'AVANCEMENT
+            // LISIBLE AILLEURS QU'ICI.
+            //
+            // Sans lui, personne d'autre que cet écran ne sait combien de
+            // questions la séance contient : le serveur voyait passer des
+            // tentatives sans savoir sur quel total, et le professeur lisait
+            // « calc-sub · 2/2 » sans pouvoir dire si l'élève avait fini ou
+            // s'il en était au premier dixième. Le plan tient en quelques
+            // dizaines d'octets et il voyage une fois, au départ.
+            plan: this.steps.map((s, i) => ({
+                rang: i,
+                stepId: s.stepId,
+                titre: s.title || '',
+                exerciseId: s.exercise ? s.exercise.id : null,
+                questions: Math.max(0, Math.floor(Number(s.nbItems) || 0)),
+                requis: seuilRequis(s)
+            }))
         });
 
         if (this.missing.length) {
@@ -144,6 +181,7 @@ export class Runner {
         }
 
         this.showLayer();
+        try { majFilSeance(); } catch (e) { /* idem */ }
         this.setupStepNavigation();
         // LA LEÇON PASSE DEVANT TOUT LE RESTE : quand une étape en porte une,
         // c'est elle l'entrée en matière — ni le briefing d'évaluation, ni la
@@ -160,8 +198,38 @@ export class Runner {
     setupStepNavigation() {
         const nav = document.getElementById('preview-step-nav');
         const navQ = document.getElementById('preview-question-nav');
-        if (nav) nav.hidden = !this.allowStepNavigation;
+        // LA BARRE DES ACTIVITÉS N'A RIEN À DIRE QUAND IL N'Y EN A QU'UNE.
+        // Un exercice ouvert seul depuis le catalogue afficherait « 1/1 » entre
+        // deux flèches mortes : trois éléments d'en-tête pour une information
+        // qui n'en est pas une, sur un écran déjà serré.
+        const plusieurs = this.steps && this.steps.length > 1;
+        if (nav) nav.hidden = !this.allowStepNavigation || !plusieurs;
         if (navQ) navQ.hidden = !this.allowStepNavigation;
+
+        // LE BOUTON « MODE DÉMONSTRATION » N'EST PAS POUR L'ÉLÈVE.
+        //
+        // Il naissait visible et rien ne l'a jamais caché — mesuré : sur le
+        // téléphone d'un élève connecté, 44 × 44 px de jaune vif, le seul
+        // élément coloré de l'en-tête, à quatre pixels du « ? » de l'aide.
+        // Un appui, sans un mot de confirmation : le run en cours est avorté
+        // (`run_finished {aborted:true}` au journal), l'écran devient l'outil
+        // d'auteur — « ⏮ Arrière ⏸ Pause ⏭ Un pas ▶ Normal » — et le robot
+        // joue un énoncé neuf en disant sa réponse à voix haute. « À moi de
+        // jouer ! » n'annule rien : il ouvre un run NEUF, et les questions
+        // déjà réussies de l'étape sont à refaire.
+        //
+        // C'est pourtant écrit noir sur blanc dans le moteur (games/engine.js)
+        // que cet aperçu « est un outil de présentation POUR LE PROFESSEUR,
+        // pas une session de travail ». Il manquait seulement la ligne qui
+        // l'applique — celle-ci, jumelle de ses deux voisines ci-dessus.
+        //
+        // LES DEUX ACCÈS LÉGITIMES DE L'ÉLÈVE CONTINUENT DE MARCHER : « Regarder
+        // le robot d'abord » de l'écran de leçon et le bouton du panneau
+        // d'aide passent tous deux par `demoBtn.click()`, et `click()`
+        // déclenche le gestionnaire même sur un bouton caché. Eux savent
+        // revenir ; le bouton nu, non.
+        const demo = document.getElementById('btn-toggle-demo');
+        if (demo) demo.hidden = !(this.essai || this.allowStepNavigation);
         // L'en-tête change de plan quand ces deux navigations s'ajoutent :
         // sur un téléphone, les commandes ne tiennent plus à côté du titre et
         // débordaient — la croix de fermeture et l'aide sortaient de l'écran.
@@ -216,7 +284,18 @@ export class Runner {
         if (!label || !prev || !next) return;
 
         const position = Math.min(this.index, this.steps.length - 1);
-        label.textContent = `${position + 1} / ${this.steps.length}`;
+        // SANS ESPACES AUTOUR DE LA BARRE, et ce n'est pas de la coquetterie.
+        //
+        // Rémy : « dans le mode téléphone portable, en mode apercu, le 1/12 va
+        // à la ligne, trouve mieux ». Mesuré sur un téléphone de 390 px : le
+        // compteur de questions occupait 26 px de large pour 26 px de haut,
+        // c'est-à-dire DEUX LIGNES, et il fallait descendre la police à 9,9 px
+        // pour qu'il tienne. « 1/12 » au lieu de « 1 / 12 », c'est un quart de
+        // largeur en moins — de quoi le remonter à une taille lisible plutôt
+        // que de continuer à le rapetisser. Le `nowrap` de la feuille de style
+        // interdit en plus la coupure, qui n'a jamais de sens dans une
+        // fraction.
+        label.textContent = `${position + 1}/${this.steps.length}`;
         prev.disabled = position <= 0;
         next.disabled = position >= this.steps.length - 1;
 
@@ -233,7 +312,7 @@ export class Runner {
         const vue = this.session.history.length;
         const total = this.step ? this.step.nbItems : vue;
         const labelQ = document.getElementById('preview-question-label');
-        if (labelQ) labelQ.textContent = `${Math.min(vue, total)} / ${total}`;
+        if (labelQ) labelQ.textContent = `${Math.min(vue, total)}/${total}`;
 
         const prevQ = document.getElementById('btn-preview-prev-q');
         const nextQ = document.getElementById('btn-preview-next-q');
@@ -601,12 +680,25 @@ export class Runner {
         // demie plus tard, et entre les deux plus rien ne compte.
         this.etapeClose = false;
 
+        // LE TITRE NE DIT PLUS L'ÉTAPE : LE FIL LE DIT DÉJÀ, ET MIEUX.
+        //
+        // Mesuré sur un téléphone, première question d'une séance de trois :
+        // l'élève lit TROIS nombres dans les quarante-cinq pixels du haut —
+        // « Étape 1 sur 3 » (le fil), « Additions Mystères (1/3) » (ici) et
+        // « 0 / 4 » (la pastille). Les deux premiers disent la MÊME chose dans
+        // deux écritures différentes ; le troisième en dit une autre, dans la
+        // même écriture que le deuxième. De quoi croire que « 1/3 » et « 0/4 »
+        // comptent la même sorte de chose.
+        //
+        // Le fil s'affiche exactement quand ce suffixe s'affichait — dès deux
+        // étapes (voir `majFilSeance`) —, il l'écrit en toutes lettres, et il
+        // le dessine en cases. Le suffixe est un reste d'avant le fil.
+        //
+        // ET LES DEUX POUVAIENT SE CONTREDIRE : le fil compte les étapes du RUN
+        // tel que le serveur les projette, le suffixe comptait les étapes de la
+        // liste brute. Un parcours à étape bonus les aurait fait diverger.
         const titleEl = document.getElementById('game-title');
-        if (titleEl) {
-            titleEl.textContent = this.steps.length > 1
-                ? `${step.title} (${this.index + 1}/${this.steps.length})`
-                : step.title;
-        }
+        if (titleEl) titleEl.textContent = step.title;
 
         state.activeExo = step.exercise;
         this.majBoutonPasser(step);
@@ -1502,6 +1594,11 @@ export class Runner {
     // --- Progression --------------------------------------------------------
 
     updateProgress() {
+        // LE FIL DE LA SÉANCE SUIT LA MÊME CADENCE. Il répond à l'autre
+        // question — « combien d'étapes me reste-t-il ? » — et il la répond
+        // depuis le journal, avec la règle du serveur.
+        try { majFilSeance(); } catch (e) { /* le fil n'empêche jamais de jouer */ }
+
         const box = document.getElementById('game-progress-container');
         const bar = document.getElementById('game-progress-bar');
         const text = document.getElementById('game-progress-text');
@@ -1585,6 +1682,9 @@ export class Runner {
         this.step = null;
         this.hideStepNavigation();
         state.activeSequenceRunner = null;
+        // Le fil n'a rien à dire sur l'accueil : il s'efface en même temps que
+        // le parcours qu'il décrivait.
+        try { cacherFilSeance(); } catch (e) { /* idem */ }
 
         if (!this.essai) journal.emit(EventTypes.RUN_FINISHED, {
             runId: this.runId,

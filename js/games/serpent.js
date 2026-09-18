@@ -47,6 +47,9 @@ const TOUCHES = {
 export class Serpent extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'serpent');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.rng = makeRng(this.params.graine);
         const depuis = Math.max(0, Math.min(NIVEAUX.length - 1, (this.params.depuis | 0)));
         this.rang = depuis;

@@ -15,14 +15,17 @@
 // base64url. Rien à maintenir quand on ajoute un exercice, et un parcours
 // complet (politique + barème + surcharges) tient dans un lien.
 //
-// Un code v2 commence par « M2- ». Les anciens codes restent décodables.
+// Un code v2 commence par « M2- ». Les codes du tout premier format, eux, ne se
+// lisent plus : ils rendaient fausse la garantie des lettres de contrôle (voir
+// la note plus bas, avant l'API).
 
 import { normalizePath, makePath, questionsConseilleesDe } from './path.js';
-import { getExerciseById } from '../data/catalog.js';
+import { getExerciseById, paramSchemaOf } from '../data/catalog.js';
 import { defaultPolicy, resolvePolicy, apprentissagePolicy, evaluationPolicy, MODES } from './policy.js';
 import { SEUIL_DEFAUT } from './recompenses.js';
 import { seuilConseille } from './seuilEtape.js';
 import { CODES_EXERCICES, EXERCICE_PAR_IDENTITE } from '../data/codesExercices.js';
+import { valeurDUsine, memeReglage } from './reglagesDUsine.js';
 
 const PREFIX = 'M2-';
 
@@ -98,6 +101,363 @@ export function codeCourt(exerciseId) {
     return controle ? identite + controle : '';
 }
 
+// --- LES RÉGLAGES DICTÉS -----------------------------------------------------
+
+/**
+ * ÉCRIRE LES RÉGLAGES EN LETTRES — l'idée est de Rémy, mot pour mot.
+ *
+ * « les réglages ont un ordre, si par exemple, je veux 8 questions, on pourrait
+ * avoir ATYA où A correspond à 1 question, B à 2 »
+ *
+ * CE QUE ÇA COÛTAIT AVANT, MESURÉ. Un seul exercice pris tel quel se dicte en
+ * quinze caractères. Le même avec UN réglage modifié — « seulement les tables
+ * de 7 » — basculait sur le format complet : 186 caractères, alors que le
+ * réglage lui-même ne pèse que 18 caractères de JSON. On payait 171 caractères
+ * pour transporter le reste du parcours en base64, et le code cessait d'être
+ * dictable. Rémy : « C'est fou qu'un réglage soit si long, comment ça se fait ? »
+ *
+ * LA FORME, ET POURQUOI ELLE EST AINSI :
+ *
+ *     LCR - 08 - 00 - CABK
+ *     │     │    │     │└─ la lettre de contrôle des réglages
+ *     │     │    │     └── une lettre (ou deux, ou trois) par réglage, DANS
+ *     │     │    │         L'ORDRE DE LA FICHE
+ *     │     │    └──────── la marque « des réglages suivent »
+ *     │     └───────────── huit questions, toujours sur DEUX chiffres
+ *     └─────────────────── l'exercice, comme avant
+ *
+ * TOUS LES RÉGLAGES, PAS SEULEMENT CELUI QUI CHANGE. Rémy a tranché : « le
+ * problème si un seul réglage change c'est que c'est lequel ». N'écrire que le
+ * réglage modifié obligerait à dire LEQUEL — donc à ajouter une lettre pour le
+ * désigner, ce qui coûte exactement ce qu'on croyait économiser. En les
+ * écrivant tous, la longueur ne dépend plus que de l'exercice : elle est la
+ * même à chaque fois, et un code trop court ou trop long se voit à l'œil.
+ *
+ * POURQUOI « 00 » PEUT SERVIR DE MARQUE : un nombre de questions vaut toujours
+ * entre 1 et 99, jamais 00. La place est donc libre, et elle ne l'est que là.
+ * (J'avais d'abord proposé « 0 » tout seul. Le découpeur m'a contredit :
+ * « LCR-8-0C » nettoyé donne « LCR80C », et les chiffres se prennent deux par
+ * deux — ça se lit « 80 questions ». C'est pour la même raison que le nombre
+ * s'écrit désormais sur deux chiffres dès qu'il y a des réglages.)
+ *
+ * LA LETTRE DE CONTRÔLE COÛTE UN CARACTÈRE ET ÉVITE DEUX SILENCES.
+ *
+ *   · UNE LETTRE MAL RECOPIÉE. Le code dicté est refusé, toujours : la somme
+ *     est pondérée par la position et prise modulo 23, qui est premier, donc
+ *     changer la i-ième lettre de d ≠ 0 change le contrôle de (i+1)·d, qui
+ *     n'est jamais nul tant que i+1 < 23 — et le plus gros exercice du
+ *     catalogue n'a que 7 lettres de réglages. Sans elle, l'élève travaillerait
+ *     sur les tables de 8 au lieu des 7, sans que rien ne le dise. C'est
+ *     exactement le silence que la troisième lettre de l'identité supprime,
+ *     et il n'y a pas de raison de l'accepter ici.
+ *   · UN SCHÉMA QUI A CHANGÉ. Le jour où j'insère une option au milieu d'une
+ *     liste, les rangs se décalent : un code dicté la veille désignerait un
+ *     AUTRE réglage. L'empreinte du schéma entre dans la somme, donc le code est
+ *     refusé. Deux garde-fous se relaient : d'abord la LONGUEUR, vérifiée avant
+ *     tout, ensuite le contrôle.
+ *
+ * CE QUE ÇA DONNE, MESURÉ, PAS ESTIMÉ. On essaie TOUTES les fautes d'une lettre
+ * sur les codes du catalogue — 12 760 fautes sur 147 codes : 12 760 refusées,
+ * aucune acceptée. Puis on modifie vraiment les schémas :
+ *
+ *     une option ajoutée EN FIN de liste   132 refusés · 3 acceptés, même sens
+ *     une option insérée EN TÊTE de liste  126 refusés · 9 acceptés, AUTRE sens
+ *
+ * Ajouter en fin est sans danger (les rangs déjà écrits ne bougent pas) et le
+ * code est tout de même refusé : c'est le prix, et il est du bon côté. Insérer
+ * en tête est le cas dangereux, et 9 codes sur 135 passent encore — un sur
+ * quinze, contre un sur vingt-trois en théorie. Ce n'est pas zéro, et je préfère
+ * l'écrire que le taire : une lettre ne peut pas porter plus de 23 valeurs.
+ * (Si cela devient gênant, la marque « 00 » peut porter l'empreinte sur deux
+ * chiffres au lieu d'être constante — même longueur, cent fois moins de
+ * passages. C'est un choix qui appartient à Rémy : « 00 » se dicte et
+ * s'explique, un nombre qui change ne veut rien dire pour lui.)
+ *
+ * CE QUI NE S'ÉCRIT PAS EN LETTRES : un réglage sans ensemble fini de valeurs
+ * (58 au catalogue — les champs libres « repartition », les réglages
+ * « marches », trois durées sans bornes), un réglage dont la valeur choisie
+ * n'est pas dans sa propre liste, et tout exercice dont les réglages
+ * demanderaient plus de dix lettres. Les premiers ne condamnent pas l'exercice :
+ * ils sortent du code, et écrire un code affirme qu'ils sont d'usine.
+ */
+const MARQUE_REGLAGES = '00';
+
+/**
+ * LA LONGUEUR QU'ON S'AUTORISE À DICTER, réglages seuls, contrôle non compris.
+ *
+ * Mesuré sur les 172 exercices : 31 tiennent en 1 lettre, 45 en 2, 39 en 3,
+ * 27 en 4, 16 en 5, 5 en 6, 2 en 7, et un seul en 8 — Sprint Chrono. Six
+ * exercices n'ont aucun réglage dictable ; les 166 autres en ont.
+ *
+ * Dix, donc : deux lettres de marge au-dessus du plus fourni d'aujourd'hui,
+ * pour qu'un réglage ajouté demain ne fasse pas disparaître le code d'un
+ * exercice sans prévenir — et une borne franche pour celui qui deviendrait
+ * déraisonnable. Dix lettres font un code de dix-huit caractères ; le format
+ * complet en demandait cent quatre-vingt-six.
+ */
+const LETTRES_MAX_REGLAGES = 10;
+
+/** Les options s'écrivent `{value, label}`, ou nues quand elles se suffisent. */
+const valeurOption = (o) => (o && typeof o === 'object') ? o.value : o;
+
+/**
+ * DE QUOI CE RÉGLAGE EST-IL FAIT ? — ou `null` s'il ne se compte pas.
+ *
+ * On ne devine pas d'après le type déclaré : un `select` sans options ne vaut
+ * rien, et un `number` sans bornes non plus. C'est la présence d'un ENSEMBLE
+ * FINI ET ORDONNÉ de valeurs qui décide, parce que c'est cela, et rien d'autre,
+ * qu'on sait numéroter.
+ */
+function formeDuReglage(p) {
+    if (!p || !p.id) return null;
+    if (p.type === 'multiselect') {
+        const options = Array.isArray(p.options) ? p.options : [];
+        // Au-delà de trente cases, le masque déborderait l'entier 32 bits de
+        // JavaScript — et 2³⁰ combinaisons demandent déjà sept lettres.
+        if (!options.length || options.length > 30) return null;
+        return { genre: 'multi', options, combien: Math.pow(2, options.length) };
+    }
+    if (Array.isArray(p.options) && p.options.length) {
+        return { genre: 'liste', options: p.options, combien: p.options.length };
+    }
+    if (p.type === 'checkbox' || p.type === 'bool' || p.type === 'boolean') {
+        return { genre: 'ouiNon', combien: 2 };
+    }
+    if (Number.isFinite(p.min) && Number.isFinite(p.max)) {
+        const pas = Number(p.step) || 1;
+        const combien = Math.floor((p.max - p.min) / pas) + 1;
+        return combien >= 1 ? { genre: 'nombre', min: p.min, pas, combien } : null;
+    }
+    return null;
+}
+
+/** Combien de lettres pour numéroter `combien` valeurs, en base 23. */
+function largeurPour(combien) {
+    let largeur = 1, capacite = ALPHABET.length;
+    while (capacite < combien) { capacite *= ALPHABET.length; largeur++; }
+    return largeur;
+}
+
+/** Le rang écrit en lettres, largeur fixe, la plus forte d'abord. */
+function enLettres(index, largeur) {
+    let mot = '';
+    for (let i = 0; i < largeur; i++) {
+        mot = ALPHABET[index % ALPHABET.length] + mot;
+        index = Math.floor(index / ALPHABET.length);
+    }
+    return mot;
+}
+
+/** Le rang relu, ou `null` si une lettre n'est pas de l'alphabet. */
+function indexDesLettres(mot) {
+    let index = 0;
+    for (const lettre of mot) {
+        const rang = ALPHABET.indexOf(lettre);
+        if (rang < 0) return null;
+        index = index * ALPHABET.length + rang;
+    }
+    return index;
+}
+
+/**
+ * LA VALEUR CHOISIE, RAMENÉE À SON RANG — ou `null` si elle n'en a pas.
+ *
+ * La comparaison se fait sur le TEXTE, comme partout ailleurs : le DOM ne rend
+ * que des chaînes, et le « 7 » relu dans un menu doit retrouver le 7 du
+ * catalogue. Une valeur qui n'est dans aucune option rend `null` — on ne
+ * bricole pas un rang approximatif, on repasse au format complet.
+ */
+function indexDeValeur(forme, valeur) {
+    const rangDansLesOptions = (v) =>
+        forme.options.findIndex(o => String(valeurOption(o)) === String(v));
+    switch (forme.genre) {
+        case 'multi': {
+            const choisies = Array.isArray(valeur) ? valeur
+                : (valeur === undefined || valeur === null || valeur === '') ? [] : [valeur];
+            let masque = 0;
+            for (const choix of choisies) {
+                const k = rangDansLesOptions(choix);
+                if (k < 0) return null;
+                masque |= (1 << k);
+            }
+            return masque;
+        }
+        case 'liste': {
+            const k = rangDansLesOptions(valeur);
+            return k < 0 ? null : k;
+        }
+        case 'ouiNon': {
+            const t = String(valeur);
+            if (valeur === true || t === 'true' || t === '1') return 1;
+            if (valeur === false || t === 'false' || t === '0'
+                || valeur === undefined || valeur === null) return 0;
+            return null;
+        }
+        case 'nombre': {
+            const n = Number(valeur);
+            if (!Number.isFinite(n)) return null;
+            const k = (n - forme.min) / forme.pas;
+            return (Number.isInteger(k) && k >= 0 && k < forme.combien) ? k : null;
+        }
+        default:
+            return null;
+    }
+}
+
+/** Le rang rendu à sa valeur — celle du catalogue, avec son type d'origine. */
+function valeurDIndex(forme, index) {
+    switch (forme.genre) {
+        case 'multi':
+            return forme.options.filter((o, k) => (index >> k) & 1).map(valeurOption);
+        case 'liste':
+            return valeurOption(forme.options[index]);
+        case 'ouiNon':
+            return index === 1;
+        case 'nombre':
+            return forme.min + index * forme.pas;
+        default:
+            return undefined;
+    }
+}
+
+/** FNV-1a sur 32 bits : court, sans dépendance, stable d'un moteur à l'autre. */
+function empreinte32(texte) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < texte.length; i++) {
+        h ^= texte.charCodeAt(i);
+        h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h;
+}
+
+const SCHEMAS_DICTES = new Map();
+
+/**
+ * LE SCHÉMA D'UN EXERCICE, PRÊT À DICTER — ou `null` s'il ne s'y prête pas.
+ *
+ * @returns {{pieces: Array, largeur: number, empreinte: number}|null}
+ */
+function schemaDicte(exo) {
+    if (!exo || !exo.id) return null;
+    if (SCHEMAS_DICTES.has(exo.id)) return SCHEMAS_DICTES.get(exo.id);
+    const retenir = (v) => { SCHEMAS_DICTES.set(exo.id, v); return v; };
+
+    const schema = (paramSchemaOf(exo) || []).filter(p => p && p.id);
+    if (!schema.length) return retenir(null);
+
+    // UN RÉGLAGE QUI NE S'ÉCRIT PAS NE CONDAMNE PAS L'EXERCICE — il doit
+    // seulement être resté d'usine.
+    //
+    // Mesuré : 58 réglages du catalogue n'ont pas d'ensemble fini de valeurs —
+    // les champs libres « repartition », les réglages « marches », trois durées
+    // sans bornes. Les refuser en bloc coûtait leur code court à 49 exercices
+    // sur 170, alors que la plupart de ces champs ne sont JAMAIS touchés. On les
+    // met donc hors du code : les lettres ne parlent que des réglages
+    // numérotables, et écrire un code affirme que les autres sont d'usine. Si
+    // le professeur en touche un, on repasse au format complet, qui les porte.
+    const pieces = [];
+    const horsCode = [];
+    let largeur = 0;
+    for (const p of schema) {
+        const forme = formeDuReglage(p);
+        if (!forme) { horsCode.push(p.id); continue; }
+        const l = largeurPour(forme.combien);
+        pieces.push({ p, forme, largeur: l });
+        largeur += l;
+    }
+    if (!pieces.length || largeur > LETTRES_MAX_REGLAGES) return retenir(null);
+
+    // L'EMPREINTE PORTE LA FORME, PAS LES MOTS. Les libellés peuvent être
+    // réécrits sans conséquence — ils ne décalent aucun rang. Les VALEURS et
+    // leur ordre, si : elles sont dans l'empreinte, et les toucher invalide les
+    // codes déjà dictés, ce qui est précisément le but. Les réglages hors du
+    // code n'y sont pas : ils ne peuvent pas changer le sens d'une lettre, et
+    // les inclure ferait refuser des codes parfaitement bons.
+    const forme = pieces.map(({ p }) => [
+        p.id, p.type || '',
+        Array.isArray(p.options) ? p.options.map(valeurOption) : null,
+        Number.isFinite(p.min) ? p.min : null,
+        Number.isFinite(p.max) ? p.max : null,
+        Number.isFinite(Number(p.step)) ? Number(p.step) : null
+    ]);
+    return retenir({ pieces, horsCode, largeur, empreinte: empreinte32(JSON.stringify(forme)) });
+}
+
+/** La lettre qui vérifie les réglages ET le schéma dont ils viennent. */
+function controleDesReglages(empreinte, lettres) {
+    let somme = empreinte % ALPHABET.length;
+    for (let i = 0; i < lettres.length; i++) {
+        const rang = ALPHABET.indexOf(lettres[i]);
+        if (rang < 0) return null;
+        somme += (i + 1) * rang;
+    }
+    return ALPHABET[somme % ALPHABET.length];
+}
+
+/**
+ * LES RÉGLAGES DE CETTE ÉTAPE, EN LETTRES — contrôle compris, ou `null`.
+ *
+ * On écrit TOUS les réglages du schéma, y compris ceux qu'on n'a pas touchés :
+ * leur valeur d'usine a un rang comme les autres. C'est ce qui donne au code sa
+ * longueur fixe.
+ */
+function lettresDeReglages(exo, overrides) {
+    const dicte = schemaDicte(exo);
+    if (!dicte) return null;
+    // TOUTE CLÉ QUI N'EST PAS UNE LETTRE DU CODE FAIT ÉCHOUER LE CODE, et la
+    // taire la perdrait en route : un champ libre, un réglage posé marche par
+    // marche, une dispense d'élève, une clé hors schéma. Le format complet, lui,
+    // les porte toutes.
+    const connus = new Set(dicte.pieces.map(x => x.p.id));
+    for (const cle of Object.keys(overrides || {})) if (!connus.has(cle)) return null;
+
+    let lettres = '';
+    for (const { p, forme, largeur } of dicte.pieces) {
+        const valeur = (overrides && overrides[p.id] !== undefined)
+            ? overrides[p.id] : valeurDUsine(exo, p);
+        const index = indexDeValeur(forme, valeur);
+        if (index === null || index >= forme.combien) return null;
+        lettres += enLettres(index, largeur);
+    }
+    const controle = controleDesReglages(dicte.empreinte, lettres);
+    return controle ? lettres + controle : null;
+}
+
+/**
+ * LES LETTRES RENDUES À DES RÉGLAGES — ou `null` si le mot ne convient pas.
+ *
+ * ON NE REND QUE LES ÉCARTS. C'est une exigence, pas une économie : l'identité
+ * d'un parcours se calcule sur son contenu (`identiteDeParcours`), surcharges
+ * comprises. Si le code relu posait les dix réglages d'un exercice là où le
+ * professeur n'en avait changé qu'un, les deux parcours ne porteraient pas le
+ * même nom — le panneau « À qui ce parcours est donné » ne cocherait jamais, et
+ * l'élève qui retape son code demain repartirait de l'étape 1.
+ */
+function reglagesDesLettres(exo, mot) {
+    const dicte = schemaDicte(exo);
+    if (!dicte) return null;
+    if (mot.length !== dicte.largeur + 1) return null;
+    const lettres = mot.slice(0, dicte.largeur);
+    if (controleDesReglages(dicte.empreinte, lettres) !== mot[dicte.largeur]) return null;
+
+    const out = {};
+    let i = 0;
+    for (const { p, forme, largeur } of dicte.pieces) {
+        const index = indexDesLettres(lettres.slice(i, i + largeur));
+        i += largeur;
+        if (index === null || index >= forme.combien) return null;
+        const valeur = valeurDIndex(forme, index);
+        if (!memeReglage(valeur, valeurDUsine(exo, p))) out[p.id] = valeur;
+    }
+    return out;
+}
+
+/** Combien de lettres de réglages cet exercice demande, contrôle compris. */
+export function largeurDesReglagesDictes(exerciseId) {
+    const dicte = schemaDicte(getExerciseById(exerciseId));
+    return dicte ? dicte.largeur + 1 : 0;
+}
+
 /**
  * LE NOMBRE DE QUESTIONS ÉCRIT APRÈS LE CODE, en clair : « TPW-12 ».
  *
@@ -121,10 +481,22 @@ export function codeCourt(exerciseId) {
  * caractères en font 13.
  *
  * La lecture reste sans ambiguïté SANS séparateur, et c'est ce qui permet au
- * nettoyage de tout jeter : trois lettres, puis zéro à deux chiffres, et on
- * recommence. « ARF12TPW20 » se relit aussi bien que « ARF-12 TPW-20 ».
+ * nettoyage de tout jeter : trois lettres, puis les chiffres, puis les lettres
+ * de réglages s'il y en a, et on recommence. « ARF12TPW20 » se relit aussi bien
+ * que « ARF-12 TPW-20 ».
+ *
+ * ET C'EST AUSSI LA RÉPONSE À RÉMY : « Mais pourquoi ne pas mettre LCR0800CAB ».
+ * Rien ne l'empêche — c'est même exactement ce que la machine lit, puisque
+ * `normaliserCourt` a déjà jeté les tirets. Ils ne sont là que pour l'œil qui
+ * recopie et la voix qui dicte.
+ *
+ * QUATRE CHIFFRES AU PLUS, ET JAMAIS TROIS. Zéro, un ou deux : c'est le nombre
+ * de questions, comme avant. Quatre : le nombre sur deux chiffres, puis la
+ * marque « 00 » qui annonce des réglages. Trois ne veut rien dire et se refuse,
+ * parce qu'on ne saurait pas où couper — « LCR800 » est-il quatre-vingts
+ * questions et un zéro égaré, ou huit questions et une marque tronquée ?
  */
-const MOTIF_ETAPE = /([A-Z]{3})([0-9]{0,2})/y;
+const MOTIF_ETAPE = /([A-Z]{3})([0-9]{0,4})/y;
 
 function decouperChaine(code) {
     const brut = normaliserCourt(code);
@@ -139,11 +511,31 @@ function decouperChaine(code) {
         // Le contrôle d'abord : un code faux doit être refusé, pas interprété.
         if (m[1][LONGUEUR_IDENTITE] !== lettreDeControle(identite)) return null;
         const exerciseId = EXERCICE_PAR_IDENTITE.get(identite);
-        if (!exerciseId || !getExerciseById(exerciseId)) return null;
-        const n = m[2] ? Number(m[2]) : null;
-        if (m[2] && !(n >= 1 && n <= 99)) return null;
-        etapes.push({ exerciseId, questions: n });
+        if (!exerciseId) return null;
+        const exo = getExerciseById(exerciseId);
+        if (!exo) return null;
         i = MOTIF_ETAPE.lastIndex;
+
+        const chiffres = m[2];
+        if (chiffres.length === 3) return null;   // voir MOTIF_ETAPE
+        const combien = chiffres.length === 4 ? chiffres.slice(0, 2) : chiffres;
+        const n = combien ? Number(combien) : null;
+        if (combien && !(n >= 1 && n <= 99)) return null;
+
+        let overrides = null;
+        if (chiffres.length === 4) {
+            if (chiffres.slice(2) !== MARQUE_REGLAGES) return null;
+            // LE CODE SE DÉLIMITE TOUT SEUL : c'est l'EXERCICE qui dit combien
+            // de lettres de réglages le suivent. Rien à compter, rien à
+            // séparer — et si l'exercice n'a pas de réglages dictables, le code
+            // est refusé au lieu de manger les lettres du suivant.
+            const dicte = schemaDicte(exo);
+            if (!dicte) return null;
+            overrides = reglagesDesLettres(exo, brut.slice(i, i + dicte.largeur + 1));
+            if (!overrides) return null;
+            i += dicte.largeur + 1;
+        }
+        etapes.push({ exerciseId, questions: n, overrides });
     }
     return etapes.length ? etapes : null;
 }
@@ -205,9 +597,6 @@ const telQuel = questionsConseilleesDe;
  */
 function raisonEtape(s) {
     if (!s || !s.exerciseId) return 'cette étape n\'a pas d\'exercice';
-    if (s.overrides && Object.keys(s.overrides).length) {
-        return 'ses réglages ont été modifiés (par exemple « seulement les tables de 7 »)';
-    }
     if ((s.weight || 1) !== 1) return 'elle a un coefficient';
     if (s.timeLimit) return 'elle est chronométrée';
     // Une étape-jeu, une étape sans total, une graine imposée : trois choses
@@ -221,6 +610,16 @@ function raisonEtape(s) {
     if (s.sansTotal) return 'elle ne compte pas dans le total';
     if (s.forceSeed) return 'elle rejoue une série précise';
     if (!codeCourt(s.exerciseId)) return 'cet exercice n\'a pas encore de code à trois lettres';
+    // LES RÉGLAGES VOYAGENT MAINTENANT DANS LE CODE — mais pas tous. Un réglage
+    // sans nombre fini de valeurs, une valeur qui n'est pas dans sa propre
+    // liste, une clé qui n'est pas au schéma : rien de tout cela ne sait
+    // s'écrire en lettres, et le taire donnerait à l'élève un autre exercice
+    // que celui qu'on a réglé.
+    if (s.overrides && Object.keys(s.overrides).length
+        && !lettresDeReglages(getExerciseById(s.exerciseId), s.overrides)) {
+        return 'un de ses réglages ne sait pas s\'écrire en lettres '
+            + '(trop de valeurs possibles, ou une valeur hors de sa liste)';
+    }
     const n = s.nbItems || telQuel(s.exerciseId);
     if (!Number.isInteger(n) || n < 1 || n > 99) {
         return 'son nombre de questions ne tient pas en deux chiffres';
@@ -329,6 +728,16 @@ function chaineCourte(path) {
         // approximatif : le format complet sait tout coder, il prend le relais.
         if (!code) return '';
         const n = s.nbItems || telQuel(s.exerciseId);
+        if (s.overrides && Object.keys(s.overrides).length) {
+            const lettres = lettresDeReglages(getExerciseById(s.exerciseId), s.overrides);
+            if (!lettres) return '';
+            // DEUX CHIFFRES, TOUJOURS, dès qu'il y a des réglages : le nombre
+            // et la marque se touchent une fois les tirets tombés, et « 8 »
+            // suivi de « 00 » se relirait « 80 ».
+            out += (out ? '-' : '')
+                + `${code}-${String(n).padStart(2, '0')}-${MARQUE_REGLAGES}-${lettres}`;
+            continue;
+        }
         // « ARF » quand c'est l'exercice tel quel, « ARF-12 » quand le
         // professeur a choisi le nombre de questions.
         out += (out ? '-' : '') + code + (n === telQuel(s.exerciseId) ? '' : `-${n}`);
@@ -509,18 +918,12 @@ export function identiteDeParcours(path) {
     // donc ce qui fait qu'un parcours est LE MÊME. S'en écarter, ce serait
     // fabriquer une seconde définition à côté, qui divergerait un jour.
     const { n, ...contenu } = compact(path);
-    const texte = JSON.stringify(contenu);
-    // FNV-1a sur 32 bits : court, sans dépendance, et stable d'un moteur à
-    // l'autre. Ce n'est pas une empreinte cryptographique et n'a pas à l'être —
-    // personne ne gagne rien à fabriquer une collision avec le parcours d'un
-    // autre élève, et une collision fortuite demanderait des milliards de
-    // parcours différents dans le même navigateur.
-    let h = 0x811c9dc5;
-    for (let i = 0; i < texte.length; i++) {
-        h ^= texte.charCodeAt(i);
-        h = Math.imul(h, 0x01000193) >>> 0;
-    }
-    return 'path_c' + h.toString(36).toUpperCase();
+    // Ce n'est pas une empreinte cryptographique et n'a pas à l'être — personne
+    // ne gagne rien à fabriquer une collision avec le parcours d'un autre élève,
+    // et une collision fortuite demanderait des milliards de parcours différents
+    // dans le même navigateur. C'est la même FNV-1a que celle du schéma des
+    // réglages : une seule dans le module, donc une seule à vérifier.
+    return 'path_c' + empreinte32(JSON.stringify(contenu)).toString(36).toUpperCase();
 }
 
 /** Pose cette identité sur le parcours, et le rend. */
@@ -570,39 +973,30 @@ function expand(obj) {
     return path;
 }
 
-// --- Décodage des anciens codes ---------------------------------------------
-
-const LEGACY_CODES = {
-    AA: 'calc-add', AB: 'calc-mult-flash', AC: 'calc-mult-missing', AD: 'geom-grid',
-    AE: 'calc-prio', AF: 'calc-arcade-shooter', AG: 'calc-math-memory', AH: 'calc-labyrinthe'
-};
-
-function letterToNum(ch) {
-    const c = ch.charCodeAt(0);
-    if (c >= 65 && c <= 90) return c - 64;
-    if (c >= 97 && c <= 122) return c - 70;
-    return 1;
-}
-
-function decodeLegacy(code) {
-    const steps = [];
-    code.split('-').forEach((part, i) => {
-        if (part.length < 3) return;
-        const exerciseId = LEGACY_CODES[part.substring(0, 2)];
-        if (!exerciseId || !getExerciseById(exerciseId)) return;
-        const nbItems = letterToNum(part.substring(2, 3));
-        const tablesChars = part.substring(3);
-        const overrides = {};
-        if (tablesChars.length) overrides.tables = [...tablesChars].map(letterToNum);
-        steps.push({
-            stepId: `lg_${i}`, exerciseId, overrides,
-            nbItems, threshold: null, weight: 1, timeLimit: null, forceSeed: null
-        });
-    });
-    const path = makePath('Parcours partagé', steps, defaultPolicy());
-    path.steps = steps;
-    return path;
-}
+// LES CODES D'AVANT LES TROIS LETTRES ONT ÉTÉ RETIRÉS — mesuré, pas décidé.
+//
+// Le tout premier format écrivait le jeu sur DEUX lettres (« AA » à « AH »), le
+// nombre de questions sur une lettre, les tables sur les suivantes. Il est resté
+// décodable en dernier recours, après le format complet et la chaîne courte.
+//
+// CE QU'IL COÛTAIT, MESURÉ EN ESSAYANT TOUTES LES FAUTES D'UNE LETTRE sur les
+// codes du catalogue : un code moderne REFUSÉ à juste titre — « AFL-08-00-ACBU »
+// avec une lettre mal recopiée — retombait sur ce décodeur-ci, qui reconnaissait
+// « AF » et rendait le Tir à l'Arc sur des tables tirées des caractères
+// restants, chiffres compris (tout caractère inconnu y valait 1). L'élève
+// recevait un AUTRE exercice, sans un mot.
+//
+// Autrement dit : ce décodeur-là rendait FAUSSE la garantie de la troisième
+// lettre. Tout ce que le contrôle refuse, il l'acceptait derrière. Et il ne
+// pouvait pas en être autrement : ce qui arrive jusqu'ici a DÉJÀ échoué au
+// contrôle — c'est-à-dire que c'est très probablement une faute de frappe, le
+// dernier cas où il faudrait deviner.
+//
+// Aucun élève n'a encore utilisé le logiciel et aucun code de ce format n'est
+// dans la nature. Le garder revenait à troquer une garantie démontrable contre
+// une compatibilité avec personne. Deux tests l'exigeaient — « un code d'avant
+// doit rester lisible » et « les anciens codes à deux lettres restent
+// décodables » : ils exigent maintenant l'inverse, et disent pourquoi.
 
 // --- API ---------------------------------------------------------------------
 
@@ -650,20 +1044,19 @@ export const Shortcodes = {
                     // et le seuil s'en déduit, comme partout ailleurs.
                     const n = e.questions || telQuel(e.exerciseId);
                     return {
-                        stepId: `sc_${i}`, exerciseId: e.exerciseId, overrides: {},
+                        stepId: `sc_${i}`, exerciseId: e.exerciseId,
+                        overrides: e.overrides || {},
                         nbItems: n, threshold: seuilConseille(n), weight: 1,
                         timeLimit: null, forceSeed: null
                     };
                 });
                 return identifierParLeContenu(path);
             }
-            // UN CODE QU'ON NE SAIT PAS LIRE REND null, JAMAIS UN PARCOURS VIDE.
-            // L'ancien décodeur ignorait en silence ce qu'il ne reconnaissait
-            // pas et rendait un parcours sans aucune étape : l'appelant croyait
-            // avoir réussi. Refuser franchement, c'est le message d'erreur que
-            // l'élève doit voir.
-            const ancien = decodeLegacy(trimmed);
-            return (ancien && ancien.steps.length) ? identifierParLeContenu(ancien) : null;
+            // UN CODE QU'ON NE SAIT PAS LIRE REND null, JAMAIS UN PARCOURS VIDE
+            // ET JAMAIS UN AUTRE EXERCICE. Refuser franchement, c'est le message
+            // d'erreur que l'élève doit voir — et c'est ce qui donne leur valeur
+            // à la lettre de contrôle de l'identité comme à celle des réglages.
+            return null;
         } catch (e) {
             console.warn('[shortcodes] code illisible', e);
             return null;

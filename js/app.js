@@ -12,6 +12,7 @@ initConsoleCapture();
 
 import { state } from './core/state.js';
 import { jetonProf, verrouActif } from './core/verrouProf.js';
+import { copieDEssai } from './core/copieDEssai.js';
 import { journal } from './core/journal.js';
 import { clearEngines } from './core/timers.js';
 import { destroyAllDemoCursors, marquerDemo } from './core/demoPointer.js';
@@ -22,7 +23,8 @@ import { isGame } from './core/gameAccess.js';
 import { questionsOuvertes } from './core/carnet.js';
 import {
     initAccordion, renderDrilldown, initGridFilters, syncGridToSidebar,
-    setSidebarMode, setTopNavMode, refreshCatalogViews, initBasculeRangement
+    setSidebarMode, setTopNavMode, refreshCatalogViews, initBasculeRangement,
+    majCompteCatalogue
 } from './ui/navigation.js';
 import { initRechercheUI } from './ui/rechercheUI.js';
 import { initBuilder } from './ui/builder.js';
@@ -31,14 +33,25 @@ import { initImportExport } from './core/importExport.js';
 import { initProfileUI, ouvrirCarnet } from './ui/profileUI.js';
 import { initStudentCodeUI, applyCode } from './ui/studentCodeUI.js';
 import { initGameFeedbackUI } from './ui/gameFeedbackUI.js';
+import { initApercuTiroir } from './ui/apercuTiroir.js';
+import { initFenetres } from './ui/fenetre.js';
+import { initCoucheDeJeu } from './ui/coucheDeJeu.js';
+import { getActiveProfile } from './core/profile.js';
 import { initGamificationEngine } from './core/gamification.js';
 import { initGamificationUI } from './ui/gamificationUI.js';
-import { initSync } from './core/sync.js';
+import { initSync, getSyncConfig } from './core/sync.js';
 import { initSyncUI } from './ui/syncUI.js';
 import { initSeanceDistante } from './core/seanceDistante.js';
 import { initSeanceDistanteUI } from './ui/seanceDistanteUI.js';
-import { modeLibre, estRattache } from './core/portail.js';
-import { initPortail, majPortail } from './ui/portailUI.js';
+import { modeLibre, estRattache, adresseApiDeduite } from './core/portail.js';
+import { chargerReglagesSite } from './core/reglagesSite.js';
+import { outilsAuteur, reglerOutilsAuteur, appliquerOutilsAuteur } from './core/outilsAuteur.js';
+import { initPortail, majPortail, porteASuivre } from './ui/portailUI.js';
+import { initPosteEleve } from './ui/posteEleve.js';
+import { initParcoursServeur, ecouterLesAssignations } from './core/parcoursServeur.js';
+import { initLeMoment } from './ui/leMoment.js';
+import { initBacASable } from './ui/bacASable.js';
+import { initDeconnexionUI, initRetourAccueil } from './ui/deconnexionUI.js';
 import { initPleinEcran } from './ui/fullscreen.js';
 import { initBilanExercice } from './ui/accueilUI.js';
 import { rendreAujourdhui } from './ui/aujourdhui.js';
@@ -111,6 +124,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     initSeanceDistanteUI();
     initSync();
 
+    // LES PARCOURS ET LE SERVEUR, DANS LES DEUX SENS.
+    //
+    // Côté professeur : tout parcours enregistré monte au serveur, sans qu'on
+    // le demande. Côté élève : ce que le serveur assigne devient une vraie
+    // séance, lisible par les écrans qui existent déjà.
+    //
+    // Les deux sont posés ici, et chacun ne fait rien s'il n'est pas concerné :
+    // la veille se tait sans jeton de professeur, l'écoute se tait sans
+    // rattachement. Un seul appel, pas deux chemins de démarrage à tenir.
+    initParcoursServeur();
+    ecouterLesAssignations();
+
+    // LE MOMENT : la séance imposée s'ouvre toute seule, le compte à rebours
+    // s'affiche, la pause couvre l'écran. Ne fait rien pour un élève qui n'est
+    // rattaché à aucune classe.
+    initLeMoment();
+    initBacASable();
+    initDeconnexionUI();
+    initRetourAccueil();
+
     // Cohérence du catalogue : mieux vaut un avertissement au démarrage
     // qu'un échec silencieux au lancement d'un exercice.
     const problems = validateCatalog(exercices);
@@ -118,7 +151,26 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     initNiveauFilter();
     initImportExport();
+    // DÉPOSER UN FICHIER SUR LA PAGE SUFFIT À L'IMPORTER. Sans cela, le
+    // navigateur quitte l'application pour afficher le fichier déposé — et l'on
+    // croit que tout a disparu. Voir `ui/deposerFichier.js`.
+    import('./ui/deposerFichier.js').then(({ brancherDepotDeFichier }) => {
+        brancherDepotDeFichier();
+    }).catch(() => { /* le dépôt est un confort, pas une dépendance */ });
     initBasculeRangement();
+    // La croix et la zone sensible de l'aperçu : une seule fois pour la page,
+    // et non une fois par rangée du catalogue — il y en a cent soixante-douze.
+    initApercuTiroir();
+    // LA PALETTE D'AUTEUR EST ÉTEINTE TANT QU'ON NE L'A PAS DEMANDÉE. Posé ici,
+    // avant tout affichage : la classe doit être sur le corps du document au
+    // premier peinturage, sinon la palette apparaît puis disparaît.
+    appliquerOutilsAuteur();
+    // Et les huit fenêtres deviennent de vraies fenêtres : rôle, Échap, piège
+    // au clavier, retour du focus. Sans toucher à aucun de leurs appelants.
+    initFenetres();
+    // Et pendant un exercice, la page derrière cesse d'exister — pour le
+    // clavier comme pour un lecteur d'écran.
+    initCoucheDeJeu();
     refreshViews();
     setSidebarMode('drill');
     // SANS MODE LIBRE, ON N'OUVRE PAS SUR LE CATALOGUE. Il serait masqué dans
@@ -177,6 +229,22 @@ window.addEventListener('DOMContentLoaded', async () => {
         const ouvert = applyCode(code, { autoStart: true });
         if (!ouvert) {
             document.documentElement.classList.remove('depuis-code', 'parcours-pret');
+            // UN LIEN ABÎMÉ EN ROUTE NE DOIT PAS OUVRIR UN ÉCRAN MUET.
+            //
+            // Un code de parcours voyage dans une adresse — collée dans le
+            // cahier de textes, recopiée à la main, coupée en deux par une
+            // messagerie qui le prend pour une fin de ligne. Quand il n'arrive
+            // pas entier, `applyCode` rend `false`, on retirait le voile… et
+            // c'était tout : l'élève se retrouvait dans l'application, sans
+            // porte — `portailNecessaire()` voit un code dans l'adresse et
+            // s'efface —, sans parcours, et sans un mot pour lui dire pourquoi.
+            //
+            // Il lui reste le code sous les yeux, dans la barre d'adresse. On
+            // le lui remet dans la main : la porte revient, le code est déjà
+            // collé dans la bonne case, et la phrase dit quoi faire.
+            import('./ui/portailUI.js').then(m => {
+                m.direCodeAbime(code);
+            });
         } else {
             // Le voile s'efface quand la couche de jeu est vraiment dessinée :
             // les modules du parcours se chargent en différé, et lever le voile
@@ -219,11 +287,54 @@ window.addEventListener('DOMContentLoaded', async () => {
     // suite, et la carte s'ajoute quand elle est connue.
     initMaSeance();
 
+    // LES RÉGLAGES DU SITE, DEMANDÉS AU SERVEUR — et on ne l'attend pas.
+    //
+    // Le mode libre décide de ce que montre la porte d'entrée. On pourrait donc
+    // attendre la réponse avant de dessiner ; ce serait payer un aller-retour
+    // réseau sur le démarrage de TOUT LE MONDE, y compris hors ligne, pour un
+    // booléen. On dessine avec ce qu'on sait — la dernière réponse connue, mise
+    // en cache — et la porte se redessine si le serveur dit autre chose.
+    chargerReglagesSite(adresseApiDeduite(getSyncConfig().apiUrl))
+        .catch(() => null);
+    document.addEventListener('reglages_site', () => {
+        // La porte est peut-être DÉJÀ dessinée : `majPortail` ne la refait pas
+        // toute seule — et c'est heureux, elle effacerait ce qu'on y tape.
+        // `porteASuivre` ne la refait que si le mode libre a vraiment changé.
+        if (!porteASuivre()) majPortail();
+        setTopNavMode(modeLibre() || state.isTeacherMode ? 'grid' : 'path');
+    });
+
+    // ON DIT CE QU'EST CETTE COPIE, UNE FOIS, ET ON LAISSE TRAVAILLER.
+    //
+    // Une copie d'essai ressemble en tout point au vrai site — même adresse en
+    // `https:`, même écran — et pourtant rien de ce qu'on y fait n'existe
+    // ailleurs que dans ce navigateur. Quelqu'un qui y construirait un parcours
+    // en croyant le déposer chez lui le perdrait sans le savoir. Un avis, pas
+    // un bandeau : ce qu'il faut savoir tient en une phrase, et on n'ampute pas
+    // l'écran d'une barre fixe pour la dire.
+    if (copieDEssai()) {
+        // LE CORPS PORTE LA MARQUE, pour que la feuille de style puisse en
+        // tenir compte — la pastille de rôle, notamment, doit garder son mot
+        // sur téléphone : sur une copie d'essai on passe d'un rôle à l'autre
+        // sans arrêt, et c'est le geste qu'on vient y faire.
+        try { document.body.classList.add('copie-essai'); } catch (e) { /* pas de corps */ }
+        import('./ui/modal.js')
+            .then(({ showToast }) => showToast(
+                'Copie d\'essai : aucun serveur, rien n\'est enregistré ni envoyé.',
+                'info', 7000))
+            .catch(() => null);
+    }
+
     // LA PORTE EN DERNIER, quand tout ce qu'elle interroge est chargé : le
     // profil (est-il rattaché ?), le journal (a-t-il un parcours ?), et le
     // rôle. Posée plus tôt, elle se montrerait à un élève qui a déjà sa séance,
     // le temps que l'état arrive.
     initPortail();
+
+    // LE POSTE ÉLÈVE, APRÈS LA PORTE ET PAS AVANT : c'est la porte qu'il
+    // remplit. Il ne fait rien du tout hors de la seconde fenêtre — le drapeau
+    // qu'il regarde n'est posé que par `?poste=1`.
+    initPosteEleve();
 
     // L'ÉCRAN EST MONTÉ. Le drapeau du bas de ce fichier — `__atoutmathDemarre`
     // — dit seulement que le MODULE s'est chargé : il est posé à l'évaluation,
@@ -256,10 +367,49 @@ function initMenuBarreHaute() {
     const btn = document.getElementById('btn-nav-plus');
     const liste = document.getElementById('nav-menu-liste');
     if (!btn || !liste) return;
+    /**
+     * LE MENU RENTRE DANS L'ÉCRAN, TOUJOURS.
+     *
+     * Rémy, capture d'un téléphone : « il y a des choses tronquées ». On y lit
+     * « …urer » et « …sseur » collés au bord gauche — c'était ce menu-ci.
+     *
+     * MESURÉ sur un écran de 390 px : le panneau fait 242 px et se pose à
+     * x = −188. Cent quatre-vingt-huit pixels dehors, cinquante-quatre dedans.
+     * La cause tient en deux lignes de style : il est aligné à DROITE de son
+     * bouton (`right: 0`), et ce bouton-là est à dix pixels du bord GAUCHE.
+     *
+     * On ne remplace pas la règle — sur un grand écran, et dans les coins de
+     * droite, l'alignement à droite est le bon. On CORRIGE après coup, une fois
+     * qu'on peut mesurer : c'est la seule façon de traiter les deux bords et
+     * toutes les largeurs sans multiplier les cas particuliers.
+     */
+    const rentrerDansLEcran = () => {
+        liste.style.left = '';
+        liste.style.right = '';
+        const b = liste.getBoundingClientRect();
+        const marge = 8;
+        // Le panneau est positionné dans `.nav-menu` : un décalage se compte
+        // donc par rapport à ce parent, pas par rapport à la page.
+        const parent = liste.offsetParent || liste.parentElement;
+        const p = parent.getBoundingClientRect();
+        if (b.left < marge) {
+            liste.style.right = 'auto';
+            liste.style.left = `${marge - p.left}px`;
+        } else if (b.right > window.innerWidth - marge) {
+            liste.style.left = 'auto';
+            liste.style.right = `${p.right - (window.innerWidth - marge)}px`;
+        }
+        // Et s'il reste plus large que l'écran, on le laisse rétrécir plutôt
+        // que de choisir quel bord sacrifier.
+        liste.style.maxWidth = `${window.innerWidth - 2 * marge}px`;
+    };
+
     const poser = (ouvert) => {
         liste.hidden = !ouvert;
         btn.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+        if (ouvert) rentrerDansLEcran();
     };
+    window.addEventListener('resize', () => { if (!liste.hidden) rentrerDansLEcran(); });
     btn.onclick = (e) => { e.stopPropagation(); poser(liste.hidden); };
     liste.addEventListener('click', () => poser(false));
     document.addEventListener('click', (e) => {
@@ -350,6 +500,12 @@ function initNiveauFilter() {
             updateLabel();
             refreshViews();
             initGridFilters();
+            // ET LA LIGNE QUI DIT CE QUI RESTE. Ce menu-ci est la deuxième
+            // façon de choisir un niveau — l'autre est la rangée d'étiquettes
+            // au-dessus de la grille —, et elle avait sa propre liste de choses
+            // à rafraîchir. Une ligne oubliée dans l'une des deux, c'est un
+            // compte qui ment une fois sur deux.
+            majCompteCatalogue();
         };
 
         item.append(cb, document.createTextNode(niv));
@@ -555,6 +711,35 @@ function apercuMarque(forme) {
                  stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none">${trace}</svg>`;
 }
 
+/**
+ * L'INTERRUPTEUR DE LA PALETTE D'AUTEUR — voir js/core/outilsAuteur.js.
+ *
+ * Il n'est proposé QU'AU PROFESSEUR : un élève n'a rien à faire d'une palette
+ * qui vide la sauvegarde locale, et lui montrer l'interrupteur, c'est encore
+ * lui montrer la palette.
+ *
+ * Le libellé dit ce qu'on obtient, pas ce qu'on active : « Palette d'outils
+ * d'auteur » est un nom d'objet, « pour préparer et tester les exercices » est
+ * ce à quoi elle sert — et « Elle n'est pas destinée à un usage en classe » est
+ * la seule phrase qui compte pour quelqu'un qui hésite.
+ */
+function blocOutilsAuteur() {
+    if (!state.isTeacherMode) return '';
+    const actif = outilsAuteur();
+    return `
+            <div class="reglage-bloc">
+                <div class="reglage-titre">Palette d'outils d'auteur</div>
+                <p class="reglage-aide">La petite palette noire flottante : passer une question,
+                   montrer la solution, ouvrir l'Atelier, essayer les derniers exercices.
+                   Elle sert à préparer et à tester ; elle n'est pas faite pour une heure de cours.</p>
+                <button type="button" class="reglage-interrupteur${actif ? ' reglage-interrupteur--actif' : ''}"
+                        data-outils-auteur aria-pressed="${actif}">
+                    <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>
+                    <span class="reglage-interrupteur-mot">${actif ? 'Affichée' : 'Masquée'}</span>
+                </button>
+            </div>`;
+}
+
 function initReglagesAffichage() {
     const modal = document.getElementById('config-modal');
     const contenu = document.getElementById('config-content');
@@ -576,7 +761,7 @@ function initReglagesAffichage() {
                             <span class="reglage-note">${m.aide}</span>
                         </button>`).join('')}
                 </div>
-            </div>`;
+            </div>` + blocOutilsAuteur();
 
         contenu.querySelectorAll('[data-point]').forEach(btn => {
             btn.onclick = async () => {
@@ -584,6 +769,11 @@ function initReglagesAffichage() {
                 dessiner();
             };
         });
+        const interrupteur = contenu.querySelector('[data-outils-auteur]');
+        if (interrupteur) interrupteur.onclick = () => {
+            reglerOutilsAuteur(!outilsAuteur());
+            dessiner();
+        };
     };
 
     ouvrir.onclick = () => { dessiner(); modal.style.display = 'flex'; };
@@ -665,6 +855,18 @@ function initNavButtons() {
         sidebar.style.transition = '';
         const handle = document.getElementById('drawer-handle');
         if (handle) handle.setAttribute('aria-expanded', String(ouvert));
+        // LA BANDE QUI RESTE AU-DESSUS DOIT SE LIRE COMME UN ARRIÈRE-PLAN.
+        //
+        // Le tiroir ouvert couvre presque tout l'écran ; il reste une trentaine
+        // de pixels du parcours au-dessus, et l'on y voyait la MOITIÉ d'un titre
+        // — « Préparer un parcours » coupé net dans la hauteur. Rémy, sur une
+        // capture : « il y a des choses tronquées ». Ce n'est pas la même chose
+        // qu'un texte coupé par erreur, mais ça se voit pareil.
+        //
+        // On voile donc ce qui passe derrière : une bande assombrie se lit comme
+        // « c'est dessous », et plus comme « c'est cassé ». Le voile sert aussi
+        // de zone à toucher pour refermer, ce qui est le geste qu'on cherche.
+        document.body.classList.toggle('tiroir-ouvert', ouvert);
     };
     const toggleDrawer = () => {
         setDrawer(!document.getElementById('sidebar').classList.contains('drawer-open'));
@@ -858,16 +1060,49 @@ function initMobileDrillToggle() {
     };
 }
 
+/**
+ * LES CINQ THÈMES, ET CELUI OÙ L'ON EST.
+ *
+ * Le bouton disait « Changer de thème » et rien d'autre : cinq états derrière
+ * un seul mot. On ne savait ni où l'on était, ni où l'on allait, ni combien de
+ * fois il faudrait encore appuyer pour revenir à celui qu'on aimait bien. Un
+ * bouton qui cycle sans annoncer son cycle se manipule à l'aveugle — et pour
+ * qui lit l'écran à l'oreille, il n'annonçait strictement rien.
+ *
+ * Le nom du thème en cours s'écrit donc sur le bouton, et son étiquette dit ce
+ * que l'appui suivant fera. Ce sont des noms, pas des numéros : personne ne se
+ * dit « je veux le thème 3 ».
+ */
+const THEMES = [
+    { id: 'light', nom: 'Clair' },
+    { id: 'dark', nom: 'Sombre' },
+    { id: 'ocean', nom: 'Océan' },
+    { id: 'forest', nom: 'Forêt' },
+    { id: 'sunset', nom: 'Couchant' }
+];
+
 function initTheme() {
-    const themes = ['light', 'dark', 'ocean', 'forest', 'sunset'];
     const btn = document.getElementById('btn-toggle-theme');
+    const mot = document.getElementById('btn-theme-mot');
     if (!btn) return;
-    btn.onclick = () => {
-        const current = document.documentElement.getAttribute('data-theme') || 'light';
-        const next = themes[(themes.indexOf(current) + 1) % themes.length];
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('mathbox-theme', next);
+    const nomDe = (id) => (THEMES.find(t => t.id === id) || THEMES[0]).nom;
+    const peindre = () => {
+        const actuel = document.documentElement.getAttribute('data-theme') || 'light';
+        const i = THEMES.findIndex(t => t.id === actuel);
+        const suivant = THEMES[((i < 0 ? 0 : i) + 1) % THEMES.length];
+        if (mot) mot.textContent = `Thème : ${nomDe(actuel)}`;
+        btn.title = `Thème ${nomDe(actuel)} — passer à ${suivant.nom}`;
+        btn.setAttribute('aria-label', btn.title);
     };
+    btn.onclick = () => {
+        const actuel = document.documentElement.getAttribute('data-theme') || 'light';
+        const i = THEMES.findIndex(t => t.id === actuel);
+        const suivant = THEMES[((i < 0 ? 0 : i) + 1) % THEMES.length];
+        document.documentElement.setAttribute('data-theme', suivant.id);
+        try { localStorage.setItem('mathbox-theme', suivant.id); } catch (e) { /* privé */ }
+        peindre();
+    };
+    peindre();
 }
 
 // --- Barre de débogage ------------------------------------------------------
@@ -932,6 +1167,21 @@ function initDebugToolbar() {
     // sert pendant les passes de test, où l'on bascule vingt fois — mais tous
     // deux appellent la même bascule et se resynchronisent ensemble : deux
     // commandes pour un état, c'est deux occasions de le désaccorder.
+    /**
+     * Le prénom de l'élève rattaché, ou « Élève » à défaut.
+     *
+     * On lit le rattachement et non le nom du profil : le profil s'appelle
+     * « Mon profil » tant que personne ne l'a renommé, et sur l'ordinateur de
+     * la salle personne ne le renomme jamais.
+     */
+    const nomDeLEleve = () => {
+        try {
+            const p = getActiveProfile();
+            const prenom = (p && p.remote && p.remote.firstName) || '';
+            return prenom ? prenom.trim().split(/\s+/).pop() : 'Élève';
+        } catch (e) { return 'Élève'; }
+    };
+
     const btnRoleDbg = document.getElementById('db-toggle-role');
     const btnRole = document.getElementById('btn-role');
     const nomRole = document.getElementById('role-badge-nom');
@@ -948,7 +1198,33 @@ function initDebugToolbar() {
                 ? 'Espace professeur — cliquer pour revenir à l\'espace élève'
                 : 'Espace élève — cliquer pour passer à l\'espace professeur');
         }
-        if (nomRole) nomRole.textContent = prof ? 'Prof' : 'Élève';
+        // LA PASTILLE DIT QUI TRAVAILLE, PAS SEULEMENT QUEL RÔLE.
+        //
+        // « Élève » ne répond pas à la question que se pose un enfant devant
+        // l'ordinateur de la salle : « est-ce bien MOI ? ». Son prénom
+        // n'apparaissait nulle part — mesuré : il venait pourtant du serveur à
+        // chaque connexion, et le client le jetait. La seule ligne qui le
+        // montrait, « Tu travailles comme … », vit sur l'écran d'accueil du
+        // catalogue, c'est-à-dire celui où l'élève n'est jamais envoyé.
+        //
+        // La pastille, elle, est sur TOUS les écrans, y compris pendant
+        // l'exercice. C'est le bon endroit — et il n'y a rien à ajouter à la
+        // page pour l'occuper.
+        const mot = prof ? 'Prof' : nomDeLEleve();
+        if (nomRole) nomRole.textContent = mot;
+        // ET SUR UN TÉLÉPHONE, LE PRÉNOM RESTE LISIBLE.
+        //
+        // Une règle de mise en page cache le texte de la pastille sous 900 px
+        // et ne laisse que le point de couleur. Elle a été écrite quand la
+        // pastille disait « Élève » ou « Prof » — un mot que le point dit déjà.
+        // Elle dit maintenant un PRÉNOM, que le point ne dira jamais.
+        //
+        // Mesuré : Alice entre avec son billet sur un téléphone, et son prénom
+        // n'apparaît NULLE PART sur l'écran (zéro occurrence). Sur l'ordinateur
+        // partagé de la salle, c'est la seule façon de savoir que l'application
+        // ne la prend pas pour l'élève de l'heure précédente.
+        if (btnRole) btnRole.classList.toggle('role-badge--nomme',
+            !prof && mot !== 'Élève');
     };
     // ON NE PASSE PROFESSEUR QU'EN MONTRANT PATTE BLANCHE.
     //
@@ -967,6 +1243,12 @@ function initDebugToolbar() {
         }
         state.isTeacherMode = !state.isTeacherMode;
         syncRole();
+        // ON ANNONCE LE CHANGEMENT DE RÔLE. L'écran de l'élève — consigne,
+        // verrou, mots du professeur — ne doit rien montrer en mode
+        // professeur ; sans cette annonce, il ne l'apprendrait qu'à la
+        // prochaine réponse du serveur, soit jusqu'à cinq minutes plus tard.
+        document.dispatchEvent(new CustomEvent('role_change',
+            { detail: { professeur: state.isTeacherMode } }));
         // Le professeur retrouve son catalogue ; l'élève qui revient à sa place
         // le reperd, et retrouve la porte s'il n'a rien à faire.
         majPortail();
@@ -975,6 +1257,11 @@ function initDebugToolbar() {
         refreshViews();
     };
     syncRole();
+    // LE PRÉNOM ARRIVE APRÈS LA PASTILLE. L'élève entre, le serveur rend son
+    // nom, `renameProfile` et `attachRemote` annoncent tous deux
+    // `profiles_updated` — sans cette écoute, la pastille garderait « Élève »
+    // jusqu'au prochain rechargement, c'est-à-dire pendant toute l'heure.
+    document.addEventListener('profiles_updated', syncRole);
     if (btnRoleDbg) btnRoleDbg.onclick = basculerRole;
     if (btnRole) btnRole.onclick = basculerRole;
 

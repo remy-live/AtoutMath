@@ -31,6 +31,9 @@ const NOMS = ['Joueur 1', 'Joueur 2'];
 class Duel extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'duel');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.partie = creerPartie({
             tables: tablesValides(this.params.tables),
             operations: this.params.operations === 'muldiv' ? ['mul', 'div'] : ['mul'],

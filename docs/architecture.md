@@ -495,6 +495,95 @@ compromis est assumé : ce n'est pas un dispositif d'examen surveillé. Voir
 
 ---
 
+## 9 bis. Le poste élève : deux rôles dans un seul navigateur
+
+Rémy : « comment je pourrais simuler un mode élève et prof simultané, pour être
+sûr que ça fonctionne ».
+
+Un second onglet ne suffit pas. Le jeton du professeur (`atoutmath-prof`), le
+rattachement de l'élève et le souvenir de la porte (`atoutmath-porte`) vivent
+dans `localStorage`, **commun à tout le navigateur pour un même site**. Se
+connecter en élève dans le second onglet déconnectait donc le professeur dans le
+premier — et réciproquement.
+
+**Le mécanisme tient en une ligne d'URL.** Avec `?poste=1`, un script placé tout
+en haut d'`index.html` — avant le voile d'avant-porte, avant localforage, avant
+le moindre module — remplace l'objet `window.localStorage` par un objet qui
+préfixe toutes les clefs par `poste:`. Les quatre-vingt-six endroits qui lisent
+ou écrivent n'ont pas été touchés : ils croient parler au stockage ordinaire.
+IndexedDB reçoit le même traitement, via `localforage.config()`.
+
+Trois précautions, qui ne se devinent pas :
+
+* `clear()` **n'efface que le tiroir préfixé**. La barre de mise au point
+  propose « tout effacer » ; sans cela, ce bouton actionné depuis le poste élève
+  supprimerait la session du professeur dans l'autre fenêtre ;
+* le billet voyage dans le **fragment** (`#billet=leo.r/2024`), jamais dans la
+  requête : un fragment n'est pas envoyé au serveur, donc le code d'un élève ne
+  peut pas se retrouver dans les journaux d'Apache. Il est effacé de la barre
+  d'adresse dès qu'il a servi ;
+* `window.open` est appelé **sans `await` préalable**, sinon il n'est plus
+  rattaché au clic et le navigateur le bloque comme une fenêtre surgissante.
+
+**Rien n'est simulé.** C'est la même application, le même serveur, un vrai
+billet : la porte s'ouvre pour de bon, le travail part pour de bon, et le
+professeur le voit arriver dans son direct. Un simulacre ne prouverait rien.
+
+Mesuré par `tools/boutEnBout.mjs`, dans **un seul contexte de navigateur** :
+après connexion de l'élève, le professeur rechargé a toujours son mode, son
+jeton et ses classes ; quatre clefs du professeur et trois du poste cohabitent,
+sans qu'aucune ne déborde.
+
+`js/ui/posteEleve.js` ne fait que le visible : le bandeau, le billet rempli, et
+une sortie qui ne laisse rien derrière elle.
+
+---
+
+## 9 ter. L'Enquête : une grille de déduction à solution unique
+
+Rémy : « Connais tu aussi le jeu murdoku », puis « ne l'appelle pas comme cela ».
+
+Le Murdoku est un jeu de Manuel Garand, déposé, avec ses grilles et ses
+illustrations : on ne le copie pas, et le nom n'est pas repris. Le **mécanisme**,
+lui, appartient à la famille des grilles de déduction — une bijection à retrouver
+sous contraintes —, qui est vieille comme les mathématiques récréatives. Décor de
+collège, objet égaré plutôt que meurtre.
+
+**Ce qu'il apporte, et que le logigramme n'a pas : un plan.** Le logigramme croise
+des listes ; ici on croise des *positions* — rangée, colonne, points cardinaux,
+distance en nombre de pas. C'est du repérage autant que de la logique.
+
+**La règle**, en deux phrases : un personnage par rangée et un par colonne ; celui
+qui se trouve dans le même lieu que l'objet est celui qui l'a emporté.
+
+**La garantie centrale : une seule solution, prouvée par énumération.** Un
+placement est un couple de permutations, donc il y en a `n! × n!` — 36 à trois
+personnages, 576 à quatre, 14 400 à cinq. Assez peu pour les compter **tous**, à
+chaque grille fabriquée. On empile des indices vrais jusqu'à ce qu'un seul
+placement survive, puis on retire un à un ceux dont on peut se passer. Une grille
+à deux solutions ferait dire au logiciel qu'un raisonnement juste est faux : c'est
+exactement le contraire de ce qu'on enseigne.
+
+Trois pièges fermés, tous mesurés plutôt que supposés :
+
+* **l'indice qui vend la mèche.** « Léa est dans les vestiaires » alors que l'objet
+  y est retrouvé : vrai, minimal, et il clôt l'enquête en une ligne. Sorti dès la
+  première grille tirée sur la scène à cinq ; il est désormais exclu de la réserve ;
+* **le français.** « au ouest de Ismaël », « plus près de le tableau » : des fautes
+  qu'aucun test de logique ne voit et que l'élève lit. `deL()` et `dePrenom()`
+  contractent et élident, et un test balaie toutes les phrases de toutes les scènes ;
+* **l'aide qui ne dit rien.** Avec *tous* les indices, chaque personnage est forcé —
+  c'est la définition d'une solution unique. Répondre « la place de Malik est
+  décidée » ne dirait donc rien de plus que « cette grille se résout ». L'aide
+  cherche le **plus petit paquet** d'indices qui suffise (un, puis deux, trois,
+  quatre) ; si rien ne se place, elle descend d'un cran et désigne l'indice qui
+  *barre* le plus de cases à quelqu'un — le geste du logigramme.
+
+`js/core/enquete.js` (noyau, testable sans navigateur) · `js/games/enquete.js`
+(l'écran) · exercice `logi-enquete`, code court `EN`.
+
+---
+
 ## 10. Tests
 
 Les fonctions pures sont testées sous Node, sans navigateur ni build :
@@ -549,6 +638,105 @@ défauts qu'ils cherchent ne lèvent aucune erreur — ils laissent seulement un
 - une variable de couleur mal orthographiée (`var(--bg-main)` au lieu de
   `var(--bg-app)`) rend le panneau TRANSPARENT, sans rien casser.
 
+Un troisième fait de même pour le CONTRASTE (`contraste.test.mjs`), un
+quatrième pour le VOCABULAIRE (`lesMots.test.mjs`).
+
+### Le tunnel du professeur
+
+Chercher un exercice → l'ajouter → le régler → le voir. Rémy : « et hop là tu
+as un tunnel. »
+
+L'ajout PRÉVIENT (un avis avec un bouton « Régler ») au lieu d'ouvrir les
+réglages tout seul. Les réglages d'une étape s'ouvrent en FENÊTRE
+(`ui/reglagesEtape.js`) et non plus dans une troisième colonne — mesuré, elle
+prenait 330 px sur 1440 et poussait le parcours à 790 px ; il en fait 1120
+maintenant. La fenêtre a deux onglets : « Réglages » et « Aperçu », et l'aperçu
+joue une vraie question avec les réglages du moment.
+
+Deux pièges y ont coûté une mesure chacun, et sont tenus par des épreuves :
+l'étape doit se RELIRE (l'enregistrement remplace l'objet dans le parcours), et
+chaque fenêtre doit avoir son propre identifiant de conteneur (le voile d'une
+fenêtre fermée reste 200 ms, et `getElementById` rendait le mauvais).
+
+### Les filtres disent ce qu'ils gardent
+
+Le catalogue fait 172 exercices ; l'arbre entièrement déplié mesure 9 076 px
+dans une fenêtre de 595 — quinze écrans. Cocher « 6ème » en retire 32, et rien
+ne le disait : le mot vit dans un menu replié. Une ligne l'annonce maintenant
+(`majCompteCatalogue`, js/ui/navigation.js) : « 140 exercices sur 172 · 6ème ·
+Tout afficher ». Elle nomme CE QUI filtre — pas « 3 filtres actifs », qui
+obligerait à rouvrir trois menus — et elle ne s'affiche que si quelque chose
+filtre.
+
+Il y a DEUX façons de choisir un niveau : la rangée d'étiquettes au-dessus de la
+grille et le menu du panneau. Chacune avait sa propre liste de choses à
+rafraîchir ; elles passent maintenant par `refreshCatalogViews`.
+
+### Choisir un exercice en grand
+
+La colonne de gauche reste le rangement qu'on parcourt du coin de l'œil en
+travaillant. Mais elle fait 319 px, et 51 titres sur 172 y sont rognés :
+« La Tour de Hanoï (Tour de Brahma) » tient dans 154 px quand il lui en faut
+233. Une fenêtre dédiée (`ui/choisirExercice.js`) sert au moment où l'on
+CHERCHE : titres entiers, chemin complet, niveaux, aperçu à côté, et l'on
+ajoute sans la refermer. Elle n'a pas son propre catalogue — `filterByStatus`
+et `correspond` restent les seules autorités.
+
+### Le mode libre, et les réglages du site
+
+Le mode libre ouvre le catalogue aux élèves. C'est un réglage **de site**, tenu
+par le serveur (table `reglages`, clé `site.modeLibre`) et basculé par un bouton
+de la zone professeur, sous la liste des classes. Trois autorités, dans cet
+ordre : la dérogation locale `atoutmath-mode-libre` (l'outil de celui qui
+essaie), puis le serveur, puis la constante `MODE_LIBRE` (quand il n'y a pas de
+serveur du tout). Le verrou d'une classe reste prioritaire : ce réglage-ci ne
+passe pas par-dessus.
+
+La lecture (`POST /reglages`) est **publique** — la porte d'entrée décide de ce
+qu'elle montre avant que le visiteur ait le moindre jeton. L'écriture
+(`POST /teacher/reglages`) exige un professeur. Tout professeur peut le changer :
+c'est un réglage de site, et il n'y a pas de rôle « fondateur » exigé ici.
+
+### Les mots
+
+Une chose, un mot. Le compteur s'appelle **des points** — pas « étoiles »
+(l'étoile est le dessin), pas « XP » (c'est le même nombre : le niveau vaut
+score ÷ 100). Le personnage qui joue l'exercice tout seul s'appelle **le
+robot** — « Montre-moi » reste, mais c'est ce que l'élève lui DEMANDE, pas son
+nom. L'écran de préparation s'appelle **Préparer un parcours**, du verbe de
+l'onglet qui y mène.
+
+Et l'on écrit en français : majuscule au premier mot, et c'est tout.
+« Calcul mental », pas « Calcul Mental ». Les titres d'exercices font
+exception — ce sont des noms d'œuvres.
+
+LES CINQ DOMAINES SONT CINQ GROUPES NOMINAUX. « Numérique » et « Géométrique »
+étaient deux adjectifs au milieu de trois noms ; ils portent maintenant les mots
+des programmes de collège — **Nombres et calculs**, **Espace et géométrie** —
+aux côtés de « Grandeurs et mesures », « Organisation de données » et « Défis et
+énigmes ».
+
+### Deux jetons par couleur : le fond et le texte
+
+`--primary` est la couleur des FONDS de boutons, où se pose du blanc.
+`--primary-texte` est la même teinte, assez contrastée pour servir de TEXTE.
+Même partage pour `--success`, `--warning`, `--danger` et `--accent`.
+
+Ce n'est pas une élégance : c'est une mesure. Du blanc sur `#6366f1` donne 4,47
+de contraste et il en faut 4,5 ; la même couleur EN TEXTE sur le fond de
+l'application donne 4,27, et le vert de réussite tombe à 2,54 sur un panneau
+blanc. Les deux usages tirent dans des sens opposés — un fond veut rester vif,
+un texte veut se détacher — et une seule couleur ne peut pas les servir tous
+les deux. Le thème sombre le montre en clair : son fond est vif, son texte est
+pâle.
+
+Chaque thème définit ses cinq versions texte. `body.teacher-mode` impose
+l'indigo par-dessus le thème choisi, mais NE reprend PAS `--primary-texte` :
+sinon le thème sombre perdrait sa version pâle.
+
+Mesuré après correction, sur six écrans et dans les cinq thèmes : zéro texte
+sous le seuil AA (`tools/tmp/balayerContraste.mjs`).
+
 ### Le banc d'essai, et le balayage
 
 Le reste — est-ce que l'indice AIDE, est-ce que le robot montre la bonne façon
@@ -560,6 +748,16 @@ si bien qu'ils se lisent et se fusionnent ensemble (`core/bancEssai.js`) :
 |---|---|---|
 | **Banc d'essai** (palette d'auteur → ✓) | un humain, sur son appareil | ça marche, les indices, le robot, la fiche, la mise en page, le classement |
 | **Balayage** (`npm run balayage`) | la machine, sans surveillance | se lance sans erreur, dessine quelque chose, ne défile pas en largeur |
+
+LA PALETTE D'AUTEUR EST ÉTEINTE PAR DÉFAUT (`core/outilsAuteur.js`). Elle
+s'allume dans les réglages d'affichage — la roue crantée de la barre du haut,
+bloc « Palette d'outils d'auteur », visible du seul professeur — ou par
+l'adresse, `?auteur=1`, qui est la seule entrée depuis un téléphone où l'on
+n'ouvre pas de console. Le choix se retient par navigateur. Elle se montrait
+auparavant à tout professeur identifié : mesuré sur une tablette, elle
+fournissait à elle seule les dix plus petites cibles tactiles de l'écran, et
+proposait « vider la sauvegarde locale » à quelqu'un qui découvrait le
+logiciel.
 
 LA FICHE PART TOUTE VERTE, et l'on ne signale que les exceptions. Demander six
 verdicts sur cent exercices, c'est six cents gestes : la passe s'arrête au

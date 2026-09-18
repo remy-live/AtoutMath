@@ -756,11 +756,21 @@ const legacy = [
     ['embouteillage', 'L\'Embouteillage', 'embouteillage', 'engineEmbouteillage', 'parking', 3],
     // Le pousseur se compte en ENTREPÔTS rangés, et le niveau monte entre chaque.
     ['pousseur', 'Le Pousseur', 'pousseur', 'enginePousseur', 'entrepôt', 3],
-    // LES PETITES AILES SE COMPTENT EN MONDES, depuis qu'il n'y a plus de
-    // nombres à avaler. Rémy : « on peut passer de monde à monde ». Il y en a
-    // six, et le compteur du bandeau est justement le but du jeu — « 2 / 6
-    // mondes » dit d'un coup d'œil où l'on en est.
-    ['petites-ailes', 'Les Petites Ailes', 'petitesAiles', 'enginePetitesAiles', 'monde', 6],
+    // LES PETITES AILES SE COMPTENT EN PARTIES, et plus en mondes.
+    //
+    // RÉMY : « pas besoin de 5/6 obligatoire c'est un jeu ».
+    //
+    // Six mondes comme unité, c'était six mondes À FRANCHIR — et le seuil de
+    // réussite (70 %) en exigeait CINQ. On demandait donc de traverser presque
+    // tout le jeu pour qu'une récréation compte comme faite. C'est un devoir
+    // déguisé en jeu, et c'est l'inverse de ce qu'il a demandé le jour où les
+    // nombres sont partis : « n'en fais pas un jeu mathématiques ».
+    //
+    // UNE PARTIE, comme la Tour de Hanoï, le Parking et la Pipopipette. Le
+    // compteur des mondes ne disparaît pas pour autant : il est DANS le jeu,
+    // sur son bandeau, où il est un but qu'on se donne et non une consigne
+    // qu'on subit.
+    ['petites-ailes', 'Les Petites Ailes', 'petitesAiles', 'enginePetitesAiles', 'partie', 1],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],
@@ -779,6 +789,11 @@ const legacy = [
     ['deuxmille', '2048 (doublements)', 'deuxmille', 'engineDeuxMille'],
     ['carre-magique', 'Le Carré Magique', 'carreMagique', 'engineCarreMagique', 'grille', 4],
     ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki', 'grille', 3],
+    // L'enquête se compte en ENQUÊTES : une partie, c'est un plan entièrement
+    // reconstitué PUIS le coupable nommé ; rien ne se valide avant.
+    ['enquete', 'L\'Enquête', 'enquete', 'engineEnquete', 'enquête', 3],
+    // La chute se compte en BRIQUES posées : une brique, une question.
+    ['chute-decimaux', 'La Chute des Décimaux', 'chuteDecimaux', 'engineChuteDecimaux', 'brique', 10],
     ['hexagrille', 'L\'Hexagrille (1 à 9, sommes fléchées)', 'hexagrille', 'engineHexagrille', 'grille', 3],
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],

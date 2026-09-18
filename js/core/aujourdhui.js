@@ -205,7 +205,7 @@ const TUILE_DE_LA_CARTE = { parcours: 'parcours', revision: 'erreurs', seance: '
  * a déjà son bouton.
  */
 export function raccourcisDuJour({
-    parcours, erreurs, nbExercices = 0, action = null, seance = null
+    parcours, erreurs, nbExercices = 0, action = null, seance = null, libre = true
 }) {
     const out = [];
     const dejaDit = action ? TUILE_DE_LA_CARTE[action.genre] : null;
@@ -236,7 +236,14 @@ export function raccourcisDuJour({
     // LA TUILE « EXPLORER » NE SERT QUE SI ELLE A DE LA COMPAGNIE. Seule, elle
     // double mot pour mot le bouton « Explorer tous les exercices » posé juste
     // dessous : deux portes côte à côte vers la même pièce, c'est une de trop.
-    if (out.length) {
+    //
+    // ET SEULEMENT SI L'ÉLÈVE A LE DROIT D'EXPLORER. Quand le mode libre est
+    // éteint, la porte lui refuse le catalogue et la feuille de style ferme le
+    // tiroir et l'onglet — cette tuile était la quatrième porte, restée ouverte
+    // à côté des trois autres fermées. Le paramètre est donné par l'appelant :
+    // ce noyau ne lit ni le stockage ni le réglage, il décide sur ce qu'on lui
+    // dit, et c'est ce qui le rend éprouvable.
+    if (out.length && libre) {
         out.push({
             id: 'catalogue', icone: '🧭', titre: 'Explorer',
             sous: nbExercices ? `${nbExercices} exercices` : 'Tout le catalogue'
@@ -250,13 +257,13 @@ export function planDuJour(faits) {
     const {
         maintenant = Date.now(), premiere = false, parcours = null,
         erreurs = [], tentatives = [], suggestions = [], nbExercices = 0,
-        seance = null
+        seance = null, libre = true
     } = faits || {};
     const action = actionDuJour({ parcours, erreurs, suggestions, seance });
     return {
         salut: premiere ? 'Bienvenue !' : salutation(maintenant),
         phrase: phraseDuJour({ maintenant, premiere, tentatives }),
         action,
-        raccourcis: raccourcisDuJour({ parcours, erreurs, nbExercices, action, seance })
+        raccourcis: raccourcisDuJour({ parcours, erreurs, nbExercices, action, seance, libre })
     };
 }

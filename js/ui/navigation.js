@@ -9,38 +9,21 @@ import { correspond } from '../core/recherche.js';
 import { estJeuCatalogue } from '../core/revue.js';
 import { cheminsDe, modeRangement, setModeRangement, RANGEMENTS, HORS_CHAPITRE } from '../core/rangement.js';
 import { ficheDe } from './rechercheUI.js';
+import { montrerApercu, fermerApercu, laisserPartir, retenir, glissementEnCours } from './apercuTiroir.js';
+import { pendantLeGlissement, arreterLeDefilement, brancherDefilementGlisse }
+    from './defilementGlisse.js';
 
-// L'APERÇU AU SURVOL, ET SA MISE À MORT.
+// L'APERÇU DU CATALOGUE VIT DANS SON PROPRE MODULE.
 //
-// `clearEngines()` ne coupe que les minuteurs déclarés par `regInterval` — les
-// jeux historiques ouvrent les leurs directement, et y survivaient. On quittait
-// une carte, la vignette se cachait, mais la course continuait de rafraîchir un
-// tableau de bord que la vignette suivante venait d'effacer : une erreur par
-// seconde dans la console, jusqu'au rechargement de la page.
-//
-// On garde donc l'instance et on la DÉTRUIT. Le jeton règle le cas de celui qui
-// passe vite : quand l'aperçu finit de monter alors que la souris est déjà
-// repartie, il est détruit à l'arrivée au lieu de rester en fond.
-let apercuSurvol = null;
-let jetonSurvol = 0;
-
-function couperApercuSurvol() {
-    jetonSurvol++;
-    const h = apercuSurvol;
-    apercuSurvol = null;
-    if (h && typeof h.destroy === 'function') {
-        try { h.destroy(); } catch (e) { /* déjà démonté */ }
-    }
-    clearEngines();
-}
+// Il ne s'agit plus d'une vignette qui suit la souris : elle s'épingle, elle se
+// ferme, et elle se taille sur le jeu qu'elle montre. Trois règles qui tiennent
+// ensemble et qu'on relit d'un bloc — voir `apercuTiroir.js`.
 
 export function createLibraryItem(exo) {
     const item = document.createElement('div');
     item.className = 'exo-list-item';
-    item.style.display = 'flex';
-    item.style.justifyContent = 'space-between';
-    item.style.alignItems = 'center';
-    item.style.gap = '6px';
+    // La mise en page vit dans la feuille de style, et pas ici : une hauteur de
+    // rangee fixee en CSS que quatre styles en ligne contredisent ne tient pas.
 
     // Œil d'aperçu : sur un écran tactile, il n'y a ni survol ni appui long
     // fiable — ce bouton est le seul moyen de voir l'exercice avant de
@@ -55,8 +38,7 @@ export function createLibraryItem(exo) {
     btnEye.onclick = (e) => {
         e.stopPropagation();
         if (!state.isTeacherMode) return;
-        couperApercuSurvol();
-        document.getElementById('hover-demo-box').style.display = 'none';
+        fermerApercu({ force: true });
         openGameLayer(exo, true);
     };
     item.appendChild(btnEye);
@@ -76,10 +58,13 @@ export function createLibraryItem(exo) {
         item.appendChild(cadeau);
     }
 
+    // LE TITRE SE COUPE, ET RESTE LISIBLE AUTREMENT. Un titre de 47 caracteres
+    // dans une colonne de 320 px tenait sur deux lignes ; l'infobulle et
+    // l'apercu epingle le rendent en entier quand on en a besoin.
     const titleSpan = document.createElement('span');
+    titleSpan.className = 'exo-item-titre';
     titleSpan.textContent = exo.title;
-    titleSpan.style.flex = '1';
-    titleSpan.style.minWidth = '0';
+    titleSpan.title = exo.title;
     item.appendChild(titleSpan);
 
     const btnAdd = document.createElement('button');
@@ -105,11 +90,26 @@ export function createLibraryItem(exo) {
 
     // Interaction Éditeur vs Élève
     item.draggable = true;
+    // Le défilement pendant le glissement se branche sur le DOCUMENT, une fois
+    // pour toutes : l'API HTML5 n'envoie `dragover` qu'aux éléments qui
+    // l'acceptent, et l'on veut défiler où que le curseur passe.
+    brancherDefilementGlisse();
     item.ondragstart = (e) => {
         if(!state.isTeacherMode) { e.preventDefault(); return; }
         e.dataTransfer.setData('text/plain', exo.id);
-        couperApercuSurvol(); document.getElementById('hover-demo-box').style.display = 'none';
+        // DÉSARMER LE MINUTEUR, PAS SEULEMENT FERMER. `fermerApercu` ne fermait
+        // rien du tout — la vignette n'était pas encore ouverte — et le minuteur
+        // de survol, lui, continuait de courir : il l'ouvrait à 500 ms, en plein
+        // glisser, par-dessus la colonne où l'on voulait déposer. Voir
+        // `glissementEnCours`, qui raconte la suite.
+        clearTimeout(hoverTimer);
+        glissementEnCours(true);
     };
+
+    // PENDANT UN GLISSER, LE NAVIGATEUR SE TAIT. Ni `mouseleave` ni `mouseenter`
+    // n'arrivent tant que le geste dure ; `dragend`, lui, arrive toujours — que
+    // l'on ait déposé ou renoncé. C'est donc lui qui rend l'aperçu au survol.
+    item.ondragend = () => { glissementEnCours(false); };
 
     // PAS D'APERÇU AU DOIGT DEPUIS LA BIBLIOTHÈQUE. Un appui d'une demi-seconde
     // — un doigt qui s'attarde, un défilement qui démarre avant que `touchmove`
@@ -123,62 +123,46 @@ export function createLibraryItem(exo) {
     // Pointer Events — fantôme sous le doigt, dépôt sur la colonne du milieu.
     enableTouchDragToPath(item, () => import('./builder.js').then(m => m.addStep(exo.id)));
 
+    // CLIQUER ÉPINGLE L'APERÇU — le geste que le relecteur demandait : « au clic
+    // sur la vignette, l'aperçu doit rester actif pour un test rapide ». Une
+    // vignette épinglée ne part plus qu'à la croix, et l'on peut y jouer.
+    //
+    // Côté élève, le clic ouvre le jeu en plein écran : lui n'a pas de parcours
+    // à construire, il n'a rien à comparer, il veut jouer.
     item.onclick = () => {
-        if(!state.isTeacherMode) {
-            // Clic Élève = Ouvre le jeu en plein écran, MODE JOUABLE FIRST
-            openGameLayer(exo, false);
-        }
+        if (!state.isTeacherMode) { openGameLayer(exo, false); return; }
+        if (!matchMedia('(hover: hover)').matches) return;   // au doigt, c'est l'œil
+        clearTimeout(hoverTimer);
+        montrerApercu(exo, item, { epingler: true });
     };
 
-    // Hover -> Auto Demo Teacher (Desktop)
+    // SURVOLER RESTE SURVOLER. Avec 172 exercices au catalogue, remplacer le
+    // coup d'œil par un clic transformerait un balayage en 172 clics.
+    //
     // Réservé aux pointeurs qui survolent vraiment : une tablette fabrique un
     // `mouseenter` au moment du contact, si bien qu'un simple appui déclenchait
     // la vignette — et `mouseleave` n'arrivant qu'au prochain appui ailleurs,
     // elle restait affichée.
     let hoverTimer;
-    item.onmouseenter = (e) => {
-        if(!state.isTeacherMode) return;
-        if(!matchMedia('(hover: hover)').matches) return;
-        hoverTimer = setTimeout(() => {
-            const hdBox = document.getElementById('hover-demo-box');
-            document.getElementById('hd-title').textContent = exo.title;
-            
-            // Positionnement intelligent
-            const rect = item.getBoundingClientRect();
-            const hdHeight = 280; // Correspond au css height
-            let topPos = rect.top - 20;
-            
-            // Si ça dépasse en bas
-            if (topPos + hdHeight > window.innerHeight) {
-                topPos = window.innerHeight - hdHeight - 20;
-            }
-            // Si ça dépasse en haut
-            if (topPos < 20) topPos = 20;
-
-            hdBox.style.top = `${topPos}px`;
-            hdBox.style.left = `${rect.right + 20}px`;
-            hdBox.style.display = 'flex';
-
-            // Aperçu autonome dans la vignette : aucune donnée n'est
-            // enregistrée, et le robot joue en muet — ses bulles couvriraient
-            // la page entière.
-            const jeton = ++jetonSurvol;
-            launchPreview(exo, document.getElementById('hover-demo-canvas'), null, { muet: true })
-                .then(h => {
-                    if (jeton !== jetonSurvol) {
-                        if (h && typeof h.destroy === 'function') h.destroy();
-                        return;
-                    }
-                    apercuSurvol = h;
-                });
-        }, 500);
+    item.onmouseenter = () => {
+        if (!state.isTeacherMode) return;
+        if (!matchMedia('(hover: hover)').matches) return;
+        retenir();          // on revient : la sortie en cours est annulée
+        // ON DÉSARME AVANT DE RÉARMER. Deux `mouseenter` de suite sans
+        // `mouseleave` entre les deux — cela arrive dès qu'un événement est
+        // synthétisé, et c'est arrivé sous la sonde — perdaient la poignée du
+        // premier minuteur : plus personne ne pouvait l'annuler, et il ouvrait
+        // la vignette une demi-seconde plus tard, en dehors de tout survol.
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(() => montrerApercu(exo, item), 500);
     };
 
     item.onmouseleave = () => {
         clearTimeout(hoverTimer);
-        document.getElementById('hover-demo-box').style.display = 'none';
-        couperApercuSurvol();     // détruit l'instance, pas seulement ses minuteurs déclarés
-        destroyAllDemoCursors();  // ... et balaie sa flèche et sa bulle
+        // ON NE FERME PAS SÈCHEMENT : le curseur est peut-être en route vers la
+        // vignette, à vingt pixels de là. `laisserPartir` accorde ce temps-là,
+        // et ne ferme rien du tout si la vignette est épinglée.
+        laisserPartir();
     };
 
     return item;
@@ -211,6 +195,7 @@ function enableTouchDragToPath(item, auDepot) {
     const cleanup = () => {
         clearTimeout(armTimer); armTimer = null;
         dragging = false; start = null;
+        arreterLeDefilement();
         if (ghost) { ghost.remove(); ghost = null; }
         const box = pathBox();
         if (box) box.classList.remove('drag-over');
@@ -250,6 +235,10 @@ function enableTouchDragToPath(item, auDepot) {
         }
         ghost.style.left = `${e.clientX - ghost.offsetWidth / 2}px`;
         ghost.style.top = `${e.clientY - 24}px`;
+        // ON FAIT DÉFILER SOUS LE DOIGT. Sans cela, on ne peut déposer que sur
+        // ce qui est déjà à l'écran — et comme lâcher DÉPOSE, il faudrait
+        // d'abord déposer au mauvais endroit pour aller voir plus loin.
+        pendantLeGlissement(e.clientX, e.clientY);
         const box = pathBox();
         if (box) {
             const r = box.getBoundingClientRect();
@@ -314,11 +303,96 @@ export function getFilteredExercises() {
     return list;
 }
 
+/**
+ * TOUT LE CATALOGUE VISIBLE PAR CE RÔLE — avant les filtres du professeur.
+ *
+ * C'est le dénominateur : « 140 exercices SUR 172 ». Il ne compte pas les
+ * brouillons pour un élève, parce qu'ils n'existent pas pour lui.
+ */
+/** Ce que le professeur a tapé se pose dans du HTML : on l'échappe. */
+const echapper = (t) => String(t == null ? '' : t)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function catalogueEntier() {
+    return filterByStatus(exercices, {
+        only: state.catalogFilter, teacher: state.isTeacherMode
+    });
+}
+
+/**
+ * DIRE CE QUE LES FILTRES GARDENT, ET COMMENT LES DÉFAIRE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * Rémy : « il faudrait des filtres pour afficher moins d'infos (surtout que
+ * puisque tu rajoutes un jeu par jour, ça va vite faire beaucoup) ».
+ *
+ * MESURÉ. 172 exercices ; l'arbre entièrement déplié fait 9 076 pixels dans
+ * une fenêtre de 595 — quinze écrans de défilement. Cocher « 6ème » ramène la
+ * liste de 172 à 140 lignes, et RIEN à l'écran ne le dit : ni le nombre, ni le
+ * filtre qui l'a fait. Le mot « 6ème » est écrit dans un menu replié.
+ *
+ * LE VRAI DÉGÂT N'EST PAS DE NE PAS SAVOIR : c'est de chercher. Un filtre coché
+ * la semaine dernière et oublié fait chercher un exercice qui est là, et l'on
+ * finit par croire qu'il n'existe pas. Une ligne qui dit « 140 sur 172 » et
+ * nomme ce qui manque coûte trois centimètres et supprime cette recherche.
+ *
+ * ET ELLE OFFRE LA SORTIE. « Tout afficher » défait tout d'un geste — le
+ * niveau, le duo, la recherche — au lieu de faire rouvrir trois menus.
+ */
+export function majCompteCatalogue() {
+    const el = document.getElementById('catalogue-compte');
+    if (!el) return null;
+
+    const total = catalogueEntier().length;
+    const gardes = getFilteredExercises().length;
+
+    const niveaux = (state.selectedNiveaux || []).slice();
+    const recherche = (state.searchQuery || '').trim();
+    const duo = !!state.aDeuxSeuls;
+    const actifs = niveaux.length + (recherche ? 1 : 0) + (duo ? 1 : 0);
+
+    // RIEN DE FILTRÉ : on ne dit rien. Un « 172 sur 172 » permanent est du
+    // bruit, et l'on cesse de lire une ligne qui ne change jamais.
+    if (!actifs) { el.hidden = true; el.innerHTML = ''; return { total, gardes, actifs }; }
+
+    // On NOMME ce qui filtre : « 6ème », « à deux », « “fraction” ». Dire
+    // seulement « 3 filtres actifs » obligerait à les rouvrir pour savoir
+    // lesquels — c'est-à-dire le geste qu'on veut éviter.
+    const quoi = [];
+    if (niveaux.length) quoi.push(niveaux.join(', '));
+    if (duo) quoi.push('à deux');
+    if (recherche) quoi.push(`« ${recherche} »`);
+
+    const mot = gardes > 1 ? 'exercices' : 'exercice';
+    el.hidden = false;
+    el.innerHTML = `<span class="cat-compte-nb">${gardes} ${mot}</span>`
+        + `<span class="cat-compte-sur"> sur ${total}</span>`
+        + `<span class="cat-compte-quoi"> · ${quoi.map(echapper).join(' · ')}</span>`
+        + ` <button type="button" class="cat-compte-tout" data-tout-afficher>Tout afficher</button>`;
+
+    const bouton = el.querySelector('[data-tout-afficher]');
+    if (bouton) bouton.onclick = () => {
+        state.selectedNiveaux = [];
+        state.aDeuxSeuls = false;
+        state.searchQuery = '';
+        // Le champ de recherche porte le texte : le vider dans l'état sans le
+        // vider à l'écran laisserait un mot écrit qui ne filtre plus rien.
+        const champ = document.getElementById('sidebar-search-input');
+        if (champ) champ.value = '';
+        const croix = document.getElementById('sidebar-search-clear');
+        if (croix) croix.hidden = true;
+        refreshCatalogViews();
+    };
+    return { total, gardes, actifs };
+}
+
 /** Ce que la recherche doit rafraîchir derrière elle, à chaque frappe. */
 export function refreshCatalogViews() {
     initAccordion();
     renderDrilldown();
     initGridFilters();
+    majCompteCatalogue();
 }
 
 // Un exercice "appartient" au noeud `path` si les premiers segments de son
@@ -363,7 +437,7 @@ function getNodeSubKeys(filtered, path) {
  * La bascule « Domaines / Chapitres » au-dessus de l'arbre.
  *
  * Changer de rangement remet la navigation à la racine : le dossier ouvert
- * — « Numérique › Calcul Mental » — n'existe pas dans l'autre rangement, et
+ * — « Numérique › Calcul mental » — n'existe pas dans l'autre rangement, et
  * l'y laisser afficherait une grille vide sans dire pourquoi.
  */
 export function initBasculeRangement() {
@@ -643,11 +717,10 @@ function renderNiveauRow() {
             const i = sel.indexOf(n);
             if (i >= 0) sel.splice(i, 1); else sel.push(n);
             state.selectedNiveaux = sel;
-            // Le niveau filtre TOUT le catalogue : l'arbre de gauche et la
-            // grille de droite doivent repartir ensemble.
-            initAccordion();
-            renderDrilldown();
-            initGridFilters();
+            // Le niveau filtre TOUT le catalogue : l'arbre de gauche, la
+            // grille de droite et la ligne qui dit ce qui reste doivent
+            // repartir ensemble.
+            refreshCatalogViews();
         };
         fn.appendChild(btn);
     });
@@ -660,9 +733,7 @@ function renderNiveauRow() {
         if (state.aDeuxSeuls) duo.classList.add('active');
         duo.onclick = () => {
             state.aDeuxSeuls = !state.aDeuxSeuls;
-            initAccordion();
-            renderDrilldown();
-            initGridFilters();
+            refreshCatalogViews();
         };
         fn.appendChild(duo);
     }

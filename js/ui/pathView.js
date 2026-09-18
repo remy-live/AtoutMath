@@ -12,6 +12,8 @@
 
 import { state } from '../core/state.js';
 import { sectionMesExercices } from './mesExercicesUI.js';
+import { instantane, ouvrirSeance } from './maSeance.js';
+import { estRattache } from '../core/portail.js';
 import { getExerciseById } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
 import { hydratePath, normalizePath } from '../core/path.js';
@@ -175,7 +177,8 @@ export function renderStudentPathView() {
     container.appendChild(assignedSection());
     const teacher = teacherPathsSection();
     if (teacher) container.appendChild(teacher);
-    container.appendChild(recommendedSection());
+    const conseils = recommendedSection();
+    if (conseils) container.appendChild(conseils);
     // LES EXERCICES QUE L'ÉLÈVE SE DONNE viennent APRÈS ce qu'on lui demande :
     // le devoir d'abord, la séance conseillée ensuite, et enfin ce qu'il
     // choisit. L'ordre de la page est l'ordre des priorités.
@@ -186,17 +189,106 @@ export function renderStudentPathView() {
 
 // --- 1. Parcours assigné ----------------------------------------------------
 
+/**
+ * QUAND AUCUN PARCOURS N'EST CHARGÉ — et c'était le pire écran du logiciel.
+ *
+ * Mesuré (tools/leTrajetDeLEleve.mjs) : le professeur donne une séance à sa
+ * classe ; Zoé entre avec son billet ; l'application l'envoie sur cet
+ * écran-ci — `app.js` fait `setTopNavMode('path')` pour tout élève — et la
+ * PREMIÈRE PHRASE qu'elle lit est :
+ *
+ *     « Aucun parcours assigné pour le moment. Saisis le code donné par ton
+ *       professeur avec le bouton « Code » en haut de l'écran. »
+ *
+ * — phrase qui, en plus, désignait un bouton qui se trouve EN BAS sur un
+ * téléphone. Elle a été remplacée par le bouton lui-même.
+ *
+ * C'était faux. Sa séance était bien arrivée, mais elle ne s'affichait que sur
+ * l'AUTRE accueil — celui du catalogue, que `aujourdhui.js` dessine — et cet
+ * écran-ci ne regardait que `state.studentPath`, qui ne vaut quelque chose
+ * qu'une fois la séance OUVERTE. Une séance reçue mais pas encore ouverte
+ * n'existait donc nulle part ici.
+ *
+ * Le dégât n'est pas l'affichage : c'est qu'un enfant de onze ans à qui l'on
+ * dit « tu n'as rien » et qui a quelque chose lève la main — et c'est le
+ * professeur qui traverse la salle. Trente fois.
+ *
+ * ON NE REFAIT PAS LE CALCUL ICI. `maSeance.js` tient déjà l'état de la séance
+ * du moment, et `ouvrirSeance` est le chemin par lequel passe aussi un code
+ * dicté. Deux chemins vers le même parcours, ce sont deux comportements à
+ * tenir d'accord ; on emprunte celui qui existe.
+ */
+function sectionSansParcours(box) {
+    const etat = instantane().etat;
+
+    // RIEN À FAIRE, POUR DE VRAI. C'est le seul cas où le message d'avant
+    // disait la vérité — et l'on peut alors parler de code, puisque c'est bien
+    // ce qui manque.
+    if (!etat || !etat.seance) {
+        // ON N'ENVOIE PLUS CHERCHER UN BOUTON AILLEURS — ON LE MET ICI.
+        //
+        // Le message disait « le bouton Code en haut de l'écran ». Mesuré : sur
+        // un téléphone, ce bouton est en BAS — c'est `#mob-btn-code`, dans la
+        // barre du bas ; celui du haut disparaît sous 900 px de large. On
+        // envoyait donc un enfant de onze ans chercher au mauvais endroit, à
+        // l'instant précis où il ne trouve déjà rien.
+        //
+        // Dire « en bas sur téléphone, en haut sinon » serait une phrase de
+        // plus à tenir d'accord avec la mise en page. Le bouton est ICI, sous
+        // la phrase qui en parle, et il ouvre la même fenêtre que les deux
+        // autres.
+        box.innerHTML = `
+            <h2 class="path-section-title">Pas de séance pour l'instant</h2>
+            <div class="empty-state-msg">Ton professeur ne t'a rien donné pour le moment.
+            S'il t'a dicté un code, tape-le ici.</div>
+            <button type="button" class="btn-toggle active path-ouvrir-code" data-ouvrir-code>
+                J'ai un code</button>`;
+        const bouton = box.querySelector('[data-ouvrir-code]');
+        if (bouton) bouton.onclick = () => {
+            const fenetre = document.getElementById('code-modal');
+            if (fenetre) fenetre.style.display = 'flex';
+            const champ = document.getElementById('student-code-input');
+            if (champ) { champ.value = ''; champ.focus(); }
+        };
+        return box;
+    }
+
+    const dit = etat.close
+        ? 'Sa fenêtre est fermée, mais tu peux encore la faire.'
+        // « Étape » désigne une POSITION dans le parcours, pas une chose : on la
+        // garde là où elle dit ça (« étape 3 sur 5 », la carte), et l'on compte
+        // ici des EXERCICES, comme partout ailleurs.
+        : `${etat.total} exercice${etat.total > 1 ? 's' : ''} à faire.`;
+    box.innerHTML = `
+        <h2 class="path-section-title">${escapeHtml(etat.titre)}</h2>
+        <p class="path-section-sub">${etat.classeNom ? escapeHtml(etat.classeNom) + ' · ' : ''}${dit}</p>`;
+
+    // LE MOT DU PROFESSEUR PASSE AVANT LE BOUTON. S'il a écrit quelque chose à
+    // CET élève, c'est la consigne : la lire après avoir cliqué serait la lire
+    // trop tard.
+    if (etat.mot) {
+        const mot = document.createElement('p');
+        mot.className = 'path-section-mot';
+        mot.textContent = `« ${etat.mot} »`;
+        box.appendChild(mot);
+    }
+
+    const btn = document.createElement('button');
+    btn.className = 'btn-toggle active path-ouvrir-seance';
+    btn.type = 'button';
+    btn.textContent = etat.commence ? 'Reprendre ma séance' : 'Commencer ma séance';
+    btn.onclick = () => ouvrirSeance(etat.seance);
+    box.appendChild(btn);
+    return box;
+}
+
 function assignedSection() {
     const box = document.createElement('section');
     box.className = 'path-section';
 
     const assigned = state.studentPath;
     if (!assigned || !assigned.steps || !assigned.steps.length) {
-        box.innerHTML = `
-            <h2 class="path-section-title">Parcours du professeur</h2>
-            <div class="empty-state-msg">Aucun parcours assigné pour le moment.
-            Saisis le code donné par ton professeur avec le bouton « Code » en haut de l'écran.</div>`;
-        return box;
+        return sectionSansParcours(box);
     }
 
     const path = normalizePath({ id: assigned.pathId, name: assigned.name, policy: assigned.policy, steps: assigned.steps, version: 2 });
@@ -767,11 +859,24 @@ function teacherPathsSection() {
     const paths = state.teacherPaths || [];
     if (!paths.length) return null;
 
+    // PAS CHEZ UN ÉLÈVE IDENTIFIÉ, et c'est la règle qui manquait.
+    //
+    // Mesuré : sur l'ordinateur de la salle, Zoé — entrée avec son billet —
+    // voyait sous sa séance « Tout sur papier (127 exercices) », un BROUILLON
+    // de Rémy, présenté comme « choisis-en un et lance-toi ! ». Cette section
+    // existe pour une bonne raison — en classe, le professeur construit et
+    // l'élève joue sur le même appareil — mais cette raison-là suppose un poste
+    // SANS élève rattaché. Dès qu'un billet a été présenté, le travail vient du
+    // serveur, et l'atelier du professeur ne regarde plus celui qui est assis.
+    if (estRattache()) return null;
+
     const box = document.createElement('section');
     box.className = 'path-section';
+    // « Parcours du professeur » était aussi le titre de la section du haut :
+    // deux sections, le même titre, et l'une disait le contraire de l'autre.
     box.innerHTML = `
-        <h2 class="path-section-title">Parcours du professeur</h2>
-        <p class="path-section-sub">Préparés sur ce poste — choisis-en un et lance-toi !</p>`;
+        <h2 class="path-section-title">Préparés sur cet ordinateur</h2>
+        <p class="path-section-sub">Des parcours d'essai, pour s'entraîner en attendant.</p>`;
 
     const list = document.createElement('div');
     list.className = 'teacher-path-list';
@@ -786,7 +891,7 @@ function teacherPathsSection() {
         card.innerHTML = `
             <div class="teacher-path-info">
                 <div class="teacher-path-name">${escapeHtml(p.name)}</div>
-                <div class="teacher-path-sub">${normalized.steps.length} activité${normalized.steps.length > 1 ? 's' : ''}
+                <div class="teacher-path-sub">${normalized.steps.length} exercice${normalized.steps.length > 1 ? 's' : ''}
                     • ${isEvaluation(policy) ? 'Évaluation' : 'Entraînement'}</div>
             </div>`;
 
@@ -839,22 +944,45 @@ function teacherPathsSection() {
 
 // --- 2. Séance conseillée ---------------------------------------------------
 
+/**
+ * CE QUE LE LOGICIEL CONSEILLE — et qui n'est PAS une séance.
+ *
+ * LE MOT « SÉANCE » APPARTIENT AU PROFESSEUR, et à lui seul. Cette section
+ * s'appelait « Ta séance du jour » ; l'accueil du catalogue appelle « Ta séance
+ * du jour » le travail RÉELLEMENT donné par le professeur. Deux écrans, le même
+ * titre, deux choses différentes — et sur celui-ci, c'est celle que le
+ * professeur n'a PAS donnée qui portait le plus gros bouton.
+ *
+ * Rémy lui-même a demandé, après des semaines sur ce logiciel : « une séance
+ * c'est un direct c'est cela ? » Si le vocabulaire fait hésiter celui qui l'a
+ * fabriqué, un élève de cinquième n'a aucune chance.
+ *
+ * LE LEXIQUE TENU PARTOUT, désormais, est de trois mots :
+ *   · un EXERCICE — ce qu'on ouvre et qu'on fait ;
+ *   · un PARCOURS — une suite d'exercices, l'objet que le professeur fabrique ;
+ *   · une SÉANCE — un parcours DONNÉ à une classe, à une date, avec ses trois
+ *     états (à venir, en cours, close).
+ * « Activité », « travail » et « étape » ne sont plus du vocabulaire élève.
+ *
+ * ET ON NE CONSEILLE RIEN À QUI N'A RIEN FAIT. « Choisie d'après tes
+ * résultats » posée devant un élève qui n'a aucun résultat est une phrase
+ * fausse, et elle mangeait la moitié de sa page le jour de la rentrée.
+ */
 function recommendedSection() {
     const box = document.createElement('section');
     box.className = 'path-section';
 
-    const recos = buildRecommendedPreview(3);
-    if (!recos.length) {
-        box.innerHTML = `
-            <h2 class="path-section-title">Ta séance du jour</h2>
-            <div class="empty-state-msg">Joue à quelques exercices : une séance sur mesure apparaîtra ici,
-            construite à partir de ce que tu maîtrises et de ce qui est à revoir.</div>`;
-        return box;
-    }
+    // Sans une seule tentative au journal, il n'y a rien à conseiller : on se
+    // tait plutôt que d'inventer trois conseils et de les dire mérités.
+    const aTravaille = (state.attemptHistory || []).length > 0;
+    const recos = aTravaille ? buildRecommendedPreview(3) : [];
+    // On rend `null` et non une section vide : une section vide garde sa marge
+    // et laisse un trou dans la page, ce qui se lit comme un défaut d'affichage.
+    if (!recos.length) return null;
 
     box.innerHTML = `
-        <h2 class="path-section-title">Ta séance du jour</h2>
-        <p class="path-section-sub">Choisie d'après tes résultats : ce qui est à revoir passe avant ce qui est nouveau.</p>`;
+        <h2 class="path-section-title">Ce que je te conseille</h2>
+        <p class="path-section-sub">D'après ce que tu as déjà fait : ce qui est à revoir passe avant ce qui est nouveau.</p>`;
 
     const list = document.createElement('div');
     list.className = 'reco-list';
@@ -889,7 +1017,10 @@ function recommendedSection() {
 
     const all = document.createElement('button');
     all.className = 'btn-toggle active reco-start-all';
-    all.textContent = 'Lancer la séance complète';
+    // « Séance » est le mot du professeur : ce bouton lance TROIS EXERCICES que
+    // le logiciel propose, ce qui n'est pas la même chose et ne doit pas porter
+    // le même nom.
+    all.textContent = `Faire les ${recos.length} exercices`;
     all.onclick = () => startRecommendedSession(3);
     box.appendChild(all);
 
@@ -939,6 +1070,13 @@ function escapeHtml(s) {
 }
 
 document.addEventListener('studentPath_updated', renderStudentPathView);
+// LA SÉANCE ARRIVE PAR LA SYNCHRONISATION, à n'importe quel moment. Sans cette
+// ligne, l'élève déjà posé sur cet écran continuait de lire « ton professeur ne
+// t'a rien donné » jusqu'au prochain rechargement de la page.
+document.addEventListener('seances_updated', () => {
+    const view = document.getElementById('view-path');
+    if (view && view.style.display !== 'none') renderStudentPathView();
+});
 document.addEventListener('attempts_updated', () => {
     const view = document.getElementById('view-path');
     if (view && view.style.display !== 'none') renderStudentPathView();
