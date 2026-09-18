@@ -93,6 +93,9 @@ function auCoeur(el, x, y) {
 class Ninja extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'ninja');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.mode = MODES[this.params.mode] ? this.params.mode : 'negatifs';
         this.def = MODES[this.mode];
         this.allure = allureDe(this.params);

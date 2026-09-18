@@ -39,6 +39,9 @@ const TEINTES = ['', '#2563eb', '#15803d', '#dc2626', '#6d28d9', '#b45309', '#0e
 class Demineur extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'demineur');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.niveau = niveauDe(this.params.niveau || 'debutant');
         // TROIS VIES, et une distinction qui fait tout le jeu : une mine
         // DÉDUCTIBLE coûte une vie, une mine que rien ne permettait de deviner

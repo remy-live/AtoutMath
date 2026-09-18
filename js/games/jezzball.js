@@ -22,6 +22,9 @@ const CIBLE = 75;
 class JezzBall extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'jezzball');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.rng = makeRng(this.params.seed);
         this.viesDepart = Number(this.params.vies) || 4;
         this.niveau = 1;

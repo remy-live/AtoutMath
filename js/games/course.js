@@ -189,6 +189,9 @@ function lerpColor(c1, c2, t) {
 class Course extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params);
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.records = { survival: 0, chrono: 0, sprint: 0 };
         this.gameState = 'menu';
         
