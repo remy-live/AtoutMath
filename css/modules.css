@@ -10647,3 +10647,52 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     max-width: min(520px, 86vw);
 }
 #depot-fichier-voile b { font-size: 1.25rem; }
+
+
+/* LES INFOBULLES — voir `js/ui/infobulle.js`.
+   Elles vivent dans une couche à elles, au-dessus de tout : une bulle qui
+   passe DERRIÈRE ce qu'elle explique ne sert à rien, et c'est l'un des trois
+   défauts que Rémy nommait (« ni recouvert ni coupé ni sortant de la zone
+   visible »). Les deux autres se règlent au placement, dans le module. */
+#infobulle-couche {
+    position: fixed; inset: 0; z-index: 2147483000;
+    pointer-events: none;
+}
+/* LA BULLE PREND LE PÔLE OPPOSÉ DE SON THÈME, et ne se fixe aucune couleur.
+   Mesuré, avec un fond figé à #1f2433 : 14,8 de contraste sur la page en
+   thème clair, mais 1,15 en thème SOMBRE — la page y est #0f172a, et la
+   bulle s'y dissolvait : il ne restait que son ombre pour la deviner.
+   `--text-main` sur `--bg-panel` est la paire de LECTURE de chaque thème,
+   donc déjà tenue au contraste ; retournée, elle donne une bulle qui se
+   détache partout : 17,1 en clair et en sombre, 8,2 dans le pire des cinq
+   (océan). Et elle suit les thèmes qu'on ajoutera sans rien y ajouter. */
+.infobulle {
+    position: fixed; pointer-events: none;
+    padding: 7px 11px; border-radius: 10px;
+    background: var(--bulle-fond, var(--text-main, #1f2433));
+    color: var(--bulle-texte, var(--bg-panel, #f6f7fb));
+    font-size: .84rem; font-weight: 600; line-height: 1.35;
+    letter-spacing: .01em;
+    box-shadow: 0 6px 22px rgba(15, 23, 42, .28);
+    /* Elle se replie plutôt que de déborder : la largeur est bornée par le
+       module, à l'écran près. */
+    white-space: normal; text-align: center;
+    opacity: 0; transform: translateY(3px);
+    transition: opacity .13s ease, transform .13s ease;
+}
+.infobulle--vue { opacity: 1; transform: translateY(0); }
+/* LA POINTE DÉSIGNE LE BOUTON, PAS LE MILIEU DE LA BULLE : quand la bulle a été
+   ramenée dans l'écran, les deux ne coïncident plus (voir `--pointe`). */
+.infobulle::after {
+    content: ''; position: absolute; left: var(--pointe, 50%);
+    margin-left: -5px; border: 5px solid transparent;
+}
+.infobulle[data-sens="dessus"]::after {
+    top: 100%; border-top-color: var(--bulle-fond, var(--text-main, #1f2433));
+}
+.infobulle[data-sens="dessous"]::after {
+    bottom: 100%; border-bottom-color: var(--bulle-fond, var(--text-main, #1f2433));
+}
+@media (prefers-reduced-motion: reduce) {
+    .infobulle { transition: none; }
+}

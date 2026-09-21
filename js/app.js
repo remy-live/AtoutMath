@@ -151,6 +151,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     initNiveauFilter();
     initImportExport();
+    // LES INFOBULLES DE LA PAGE, à la place de celles du navigateur : voir
+    // `ui/infobulle.js`. Branchées par délégation, donc valables aussi pour
+    // tout ce qui sera créé après.
+    import('./ui/infobulle.js').then(({ brancherInfobulles }) => {
+        brancherInfobulles();
+    }).catch(() => { /* l'infobulle est un confort, pas une dépendance */ });
     // DÉPOSER UN FICHIER SUR LA PAGE SUFFIT À L'IMPORTER. Sans cela, le
     // navigateur quitte l'application pour afficher le fichier déposé — et l'on
     // croit que tout a disparu. Voir `ui/deposerFichier.js`.
