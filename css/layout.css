@@ -65,6 +65,22 @@
        savoir d'avance pour le lire, ce qui est le contraire d'une étiquette. */
     body.copie-essai .role-badge { padding: 4px 10px; gap: 6px; }
     body.copie-essai .role-badge span:not(.role-badge-point) { display: inline; }
+    /* ET « PROF » RESTE ÉCRIT, POUR LA RAISON DITE TROIS LIGNES PLUS HAUT.
+       « le point de couleur ne dit pas dans quel rôle on est — il faut le
+       savoir d'avance pour le lire, ce qui est le contraire d'une étiquette. »
+       L'argument valait pour la copie d'essai ; il vaut partout.
+
+       MESURÉ sur 390 × 844, professeur : la pastille affichait 44 px et un
+       point, `role-badge-nom` contenait bien « Prof » en `display: none`.
+       L'état où l'on montre les exercices en test et où la vue devient le
+       constructeur est justement celui dont il faut se souvenir AVANT de
+       tendre l'appareil à un enfant. Trente pixels dans une barre où les
+       onglets de texte sont déjà cachés sur téléphone : c'est payable.
+
+       L'élève sans prénom, lui, garde le point seul : « Élève » est l'état
+       normal, celui qu'on ne doit pas remarquer. */
+    .role-badge--prof { padding: 4px 10px; gap: 6px; }
+    .role-badge--prof span:not(.role-badge-point) { display: inline; }
     .role-badge-point { width: 9px; height: 9px; }
 }
 #top-navbar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -204,6 +220,27 @@ body.mobile-view.teacher-mode #sidebar {
     background: var(--bg-panel);
 }
 body.mobile-view.teacher-mode #sidebar.drawer-open { transform: translateY(0); }
+/* ET LA BARRE DU BAS RESTE AU-DESSUS DU TIROIR REPLIÉ.
+   `bottom: var(--bottom-nav-height)` pose bien le tiroir SUR la barre ; c'est
+   la translation qui le fait redescendre par-dessus. Replié, il descend de
+   548 px et son bas passe de 784 à 1392 — la barre de navigation, opaque et à
+   z-index 100, se retrouve sous 658 px de panneau à z-index 4000.
+
+   MESURÉ sur 390 × 844, professeur, tiroir replié (`tools/tmp/troisTel2.mjs`),
+   en demandant qui reçoit le doigt au milieu de chaque onglet :
+
+                                          avant     après
+       onglets de la barre du bas pris    5 / 5     0 / 5
+
+   Cinq sur cinq : Explorer, Exercices, Code, Parcours et Profil. Toute la
+   navigation du téléphone, invisible et morte, en permanence — puisque le
+   tiroir est replié tant qu'on ne l'ouvre pas. Ce qu'on voyait à la place,
+   c'étaient les onglets DU TIROIR, qui tombent exactement au même endroit.
+
+   On ne touche pas à la translation, qui fait l'animation : on remonte la
+   barre au-dessus. Ouvert, le tiroir s'arrête à 784 et ne la recouvre plus —
+   la règle ne change donc rien à ce moment-là. */
+body.mobile-view.teacher-mode #bottom-nav { z-index: 4100; }
 /* LE VOILE DERRIÈRE LE TIROIR OUVERT. Voir `setDrawer` dans `js/app.js` : il
    dit « c'est dessous » au lieu de laisser croire à un titre coupé. Il commence
    sous la barre du haut, pour qu'on garde ses repères, et il s'efface en même

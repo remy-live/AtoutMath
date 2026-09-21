@@ -1364,9 +1364,17 @@ export class Runner {
         // Un bouton qui apparaît en silence en haut de l'écran, chez quelqu'un
         // qui a le nez sur sa question depuis dix minutes, n'apparaît pas.
         if (apparait && annoncer && !this.essai) {
+            // LA PHRASE COMPTE AUTANT QUE LE BOUTON. Rémy : « dis une phrase
+            // bienveillante. » Celui qui la lit vient de passer dix minutes à
+            // se cogner à la même question devant toute la classe : le
+            // message ne doit ni le féliciter — il n'a rien réussi — ni le
+            // consoler d'un échec qui n'en est pas un. Il doit dire ce qui se
+            // passe : son professeur a regardé, a décidé, et la suite
+            // l'attend.
             import('../ui/modal.js').then(({ showToast }) => showToast(
-                'Ton professeur t\'autorise à passer cet exercice — '
-                + 'le bouton « Passer ›› » est en haut de l\'écran.', 'info', 9000));
+                'Ton professeur a vu que celui-ci résiste : tu peux le passer '
+                + 'et continuer. Ce n\'est pas perdu, vous le reverrez ensemble. '
+                + 'Le bouton « Passer ›› » est en haut de l\'écran.', 'info', 11000));
         }
     }
 

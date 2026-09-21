@@ -220,6 +220,61 @@
     .toolbar-icon-btn { width: 36px; height: 36px; border-radius: 10px; }
 }
 
+/* DEUX BOÎTES QUI SE PARTAGENT UNE LIGNE NE SE PARTAGENT RIEN DU TOUT.
+   Rémy, capture d'iPhone : les icônes du constructeur sur deux rangées.
+
+   MESURÉ sur 390 × 844, parcours non chargé (`tools/tmp/barreOutils.mjs`) :
+       rangée 1 · le nom du parcours, 366 px de large
+       rangée 2 · les trois premiers outils, 144 px occupés, 222 px de vide
+       rangée 3 · les deux suivants,        94 px occupés, 272 px de vide
+   Trois rangées, dont deux aux trois quarts vides. La cause n'est pas la taille
+   des boutons — elle est que `.path-header-left` et `.builder-header-actions`
+   sont DEUX blocs, et qu'un bloc ne se coupe pas : le premier prend toute la
+   largeur à cause du titre, le second est chassé à la ligne avec ses deux
+   boutons, quelle que soit la place restante.
+
+   `display: contents` retire les deux boîtes du calcul sans toucher au HTML :
+   le titre et les boutons deviennent les éléments d'UNE seule liste. Le titre
+   garde sa ligne — c'est un champ de saisie, il a besoin de largeur —, et les
+   outils se rangent derrière lui.
+
+   Les deux boîtes gardent leurs écouteurs : `display: contents` n'enlève que la
+   BOÎTE, l'élément reste dans l'arbre et le `stopPropagation` de
+   `.builder-header-actions` continue d'empêcher le repli de la barre.
+
+   JUSQU'À 1000 PX, ET PAS AU-DELÀ. La tablette souffre du même découpage que le
+   téléphone — 570 px de colonne pour quatorze outils, dont une rangée entière
+   perdue par la coupure. Sur ordinateur, les deux groupes tiennent chacun leur
+   bout de barre (`space-between`), et cette composition-là est voulue : on ne
+   la défait pas pour gagner une rangée qui ne gêne personne. */
+@media (max-width: 1000px) {
+    .path-header-left, .builder-header-actions { display: contents; }
+    /* `space-between` étalerait les icônes sur toute la largeur, une à chaque
+       bout : elles se lisent groupées, comme une barre d'outils. */
+    .path-header-toggle { justify-content: flex-start; }
+    /* ET LE NOM DU PARCOURS PREND SA LIGNE. C'est un champ de saisie : laissé
+       dans le rang, il se fait écraser par les outils — et l'on nomme une
+       séance plus souvent qu'on ne le croit.
+
+       J'AI ESSAYÉ L'INVERSE SUR TABLETTE, en le laissant en ligne pour gagner
+       une rangée. MESURÉ : 3 rangées et 146 px, soit PIRE qu'avant. Le titre y
+       est large, il chasse tout ce qui le suit. La ligne à lui seul est ce qui
+       range les outils derrière.
+
+       MESURÉ, parcours de quatre exercices chargé, tous les outils visibles
+       (`tools/tmp/rangeesVraies.mjs`) :
+
+                            avant              après
+           téléphone 390    3 rangées, 139 px  2 rangées, 139 px
+           tablette  820    3 rangées, 141 px  2 rangées, 143 px
+           ordinateur 1280  2 rangées,  93 px  inchangé
+
+       La hauteur ne bouge donc pas. Ce qu'on gagne est ailleurs, et c'est ce que
+       Rémy voyait : une barre d'outils groupée au lieu de trois bouts de rangées
+       aux trois quarts vides, et un champ de nom qui fait toute la largeur. */
+    .path-header-title { flex: 1 1 100%; min-width: 0; }
+}
+
 /* --- MODALES --- */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100000; justify-content: center; align-items: center; backdrop-filter: blur(8px); }
 .modal-overlay--top { z-index: 999999; }

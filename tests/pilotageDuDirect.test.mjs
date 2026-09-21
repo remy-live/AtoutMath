@@ -136,7 +136,18 @@ test('LA PERMISSION DE SAUTER ARRIVE PENDANT QU\'IL EST DESSUS', () => {
 
 test('ET ON LE LUI DIT — UN BOUTON QUI APPARAÎT EN SILENCE N\'APPARAÎT PAS', () => {
     const r = lire('js/core/runner.js');
-    assert.match(r, /Ton professeur t\\'autorise à passer cet exercice/);
+    // RÉMY : « dis une phrase bienveillante ». La première version annonçait
+    // une PERMISSION — « Ton professeur t'autorise à passer cet exercice » —,
+    // ce qui laisse entendre qu'on lui accorde une dispense. L'enfant qui lit
+    // ce message vient de passer dix minutes sur la même question devant toute
+    // la classe. On nomme donc ce qui s'est passé, et ce qui suit.
+    assert.match(r, /Ton professeur a vu que celui-ci résiste : tu peux le passer/);
+    assert.match(r, /Ce n\\'est pas perdu, vous le reverrez ensemble/);
+    // Ni félicitation — il n'a rien réussi — ni consolation d'un échec qui n'en
+    // est pas un.
+    assert.ok(!/Bravo|Bien jou|Tant pis|Ce n\\'est pas grave/.test(r.slice(
+        r.indexOf('LA PHRASE COMPTE AUTANT QUE LE BOUTON'),
+        r.indexOf('LA PHRASE COMPTE AUTANT QUE LE BOUTON') + 900)));
     // Seulement quand il APPARAÎT : le battement de la séance repasse toutes
     // les dix secondes, et un message qui se répète est un message qu'on
     // n'écoute plus.

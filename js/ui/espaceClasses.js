@@ -523,7 +523,7 @@ function classeHtml() {
         ${onglet('direct', 'Le direct')}
         ${onglet('mur', 'Le mur')}
         ${onglet('seances', 'Les séances')}
-        ${onglet('liste', 'La classe')}
+        ${onglet('liste', 'Les élèves')}
         ${onglet('bilans', 'Les bilans')}
     </nav>
     <div class="ec-corps">${corps}</div>`;
@@ -746,8 +746,8 @@ function ficheHtml(e, maintenant) {
                     g.indice ? '' : ' disabled'}>Coup de pouce</button>
             <button type="button" class="ec-bouton ec-bouton--doux" data-voir-exo="${esc(e.exo || '')}"
                     data-prenom="${esc(e.prenom)}"${g.indice ? '' : ' disabled'}
-                    title="Le m\u00eame exercice, ouvert chez vous. Les nombres sont tir\u00e9s au sort : ce n'est pas une copie de son \u00e9cran."
-                    >Voir son exercice</button>
+                    title="Son \u00e9tape, avec SES r\u00e9glages, ouverte chez vous. Les nombres sont tir\u00e9s au sort : c'est le m\u00eame travail, pas la m\u00eame question. Pour voir ce qu'il a sous les yeux, c'est « Ouvrir son poste », dans Les \u00e9l\u00e8ves."
+                    >Son exercice, chez moi</button>
             <button type="button" class="ec-bouton" data-saut-eleve="${esc(e.id)}"
                     data-exo="${esc(e.exo || '')}" data-prenom="${esc(e.prenom)}"${
                     g.debloquer ? '' : ' disabled'}
@@ -878,8 +878,8 @@ function alarmeHtml(eleves, maintenant) {
  * en direct demanderait un serveur qui n'existe pas ici — l'hébergement
  * mutualisé de Rémy sert des pages PHP, il ne relaie pas trente flux — et
  * poserait une question de vie privée qu'on ne règle pas en passant. Pour voir
- * l'écran d'UN élève, il y a « son écran », dans l'onglet La liste : une
- * seconde fenêtre qui se comporte comme son poste.
+ * l'écran d'UN élève, il y a « Ouvrir son poste », dans l'onglet Les élèves :
+ * une seconde fenêtre qui se comporte comme son poste.
  *
  * CE QUE LE MUR MONTRE, C'EST L'ÉTAT DE TRENTE ÉLÈVES EN MÊME TEMPS — et c'est
  * ce qu'on cherche vraiment en balayant une salle du regard : qui avance, qui
@@ -1216,7 +1216,8 @@ function listeHtml() {
             <td class="ec-actions">
                 <button type="button" class="ec-mini" data-poste="${esc(e.login)}"
                         data-poste-code="${esc(e.code || '')}"
-                        title="Ouvrir une seconde fenêtre qui se comporte comme son poste">son écran</button>
+                        title="Une seconde fenêtre qui se comporte comme SON poste, connecté sous son nom. C'est plus fort que « Son exercice, chez moi » du Direct : ici vous êtes lui."
+                        >Ouvrir son poste</button>
                 <button type="button" class="ec-mini" data-billet="${esc(e.id)}"
                         title="Réimprimer CE billet, sans changer son code"
                         >billet</button>
@@ -1971,6 +1972,22 @@ async function brancher(e, redessiner) {
         redessiner();
         return;
     }
+
+    // ── DEUX GESTES VOISINS, DEUX NOMS QUI LE DISENT ────────────────────────
+    //
+    // En parcourant les écrans, j'ai d'abord cru tenir un doublon : « son
+    // écran » d'un côté, « Voir son exercice » de l'autre. C'en était presque
+    // l'inverse, et c'était pire — ce sont DEUX gestes différents, et c'est le
+    // plus puissant des deux qui portait le nom le plus vague :
+    //
+    //   Le direct  → « Son exercice, chez moi »  ouvre SON ÉTAPE, avec ses
+    //                réglages, sur VOTRE profil. Rien n'est enregistré.
+    //   Les élèves → « Ouvrir son poste »        ouvre une fenêtre connectée
+    //                SOUS SON NOM. Vous êtes lui.
+    //
+    // Un professeur qui cherche « voir ce qu'il fait » tombait sur le premier
+    // et ne découvrait jamais le second. Les noms disent maintenant ce que
+    // chacun fait, et chaque infobulle renvoie à l'autre.
 
     // ── VOIR CE QU'IL A SOUS LES YEUX ─────────────────────────────────────────
     //
