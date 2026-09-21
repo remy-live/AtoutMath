@@ -63,13 +63,18 @@ test('LE PROFESSEUR PEUT ENCORE IMPOSER L\'ORDRE D\'UNE INTERROGATION', () => {
 test('ET ON LE DIT À L\'ÉLÈVE — UN DROIT QU\'ON N\'ANNONCE PAS N\'EST PAS EXERCÉ', () => {
     // Celui que la règle est censée sauver est justement celui qui ne devinera
     // pas tout seul qu'il a le droit de sauter.
-    assert.match(describePolicy(evaluationPolicy()),
-        /Tu peux traiter les exercices dans l'ordre que tu veux\./);
+    assert.match(describePolicy(evaluationPolicy()), /L'ordre des exercices est libre\./);
     // Et la phrase disparaît quand le professeur rétablit l'ordre imposé :
     // sinon elle mentirait, ce qui est pire que se taire.
-    assert.ok(!/l'ordre que tu veux/.test(
+    assert.ok(!/ordre des exercices est libre/.test(
         describePolicy({ ...evaluationPolicy(), ordreLibre: false })));
-    assert.ok(!/l'ordre que tu veux/.test(describePolicy(defaultPolicy())));
+    assert.ok(!/ordre des exercices est libre/.test(describePolicy(defaultPolicy())));
+    // ET SANS TUTOIEMENT. La même phrase s'affiche dans le bandeau du
+    // professeur qui compose la séance — mesuré sur sa capture d'écran. Les
+    // quatre phrases de cette fonction servent deux lecteurs : aucune ne
+    // s'adresse à l'un des deux.
+    [describePolicy(evaluationPolicy()), describePolicy(defaultPolicy())]
+        .forEach(t => assert.ok(!/\btu\b|\bton\b|\btes\b/i.test(t), t));
 });
 
 // ── 2 · LA PRÉSENTATION, PAR SÉANCE ─────────────────────────────────────────

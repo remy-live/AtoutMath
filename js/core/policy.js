@@ -224,8 +224,15 @@ export function describePolicy(policy) {
         // L'ordre libre est le défaut des évaluations depuis que Rémy l'a
         // tranché ; l'élève bloqué sur le deuxième exercice ne le devinera pas
         // tout seul, et c'est justement lui que la règle est censée sauver.
-        const ordre = p.ordreLibre
-            ? ' Tu peux traiter les exercices dans l\'ordre que tu veux.' : '';
+        //
+        // SANS « TU ». J'avais d'abord écrit « Tu peux traiter les exercices
+        // dans l'ordre que tu veux » — et la capture du bandeau du professeur
+        // me l'a rendu en pleine figure : cette phrase s'affiche AUSSI chez
+        // lui, dans le résumé de la séance qu'il compose, où elle le tutoie.
+        // Les trois autres phrases de cette fonction sont impersonnelles
+        // depuis toujours, et pour cette raison-là exactement : elle sert deux
+        // lecteurs. L'élève comprend « l'ordre est libre » aussi bien.
+        const ordre = p.ordreLibre ? ' L\'ordre des exercices est libre.' : '';
         return `Évaluation : une seule réponse par question, sans aide.${note}${ordre}`;
     }
     if (isApprentissage(p)) {
