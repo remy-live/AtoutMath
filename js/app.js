@@ -734,10 +734,24 @@ function blocOutilsAuteur() {
     const actif = outilsAuteur();
     return `
             <div class="reglage-bloc">
-                <div class="reglage-titre">Palette d'outils d'auteur</div>
+                <!-- LE NOM QUE RÉMY EMPLOIE EST ENTRE PARENTHÈSES, ET C'EST
+                     LUI QUI COMPTE. Il l'a cherchée : « j'aimerais bien avoir
+                     encore les barres de debug ou pouvoir les réactiver
+                     quelque part ». L'interrupteur était là, à cet endroit
+                     exact, depuis qu'on l'a écrit — sous le nom « palette
+                     d'outils d'auteur », que personne ne tape dans sa tête.
+                     Un réglage qu'on ne trouve pas est un réglage qui
+                     n'existe pas : on met les deux mots. -->
+                <div class="reglage-titre">Palette d'outils d'auteur — la barre de debug</div>
                 <p class="reglage-aide">La petite palette noire flottante : passer une question,
                    montrer la solution, ouvrir l'Atelier, essayer les derniers exercices.
                    Elle sert à préparer et à tester ; elle n'est pas faite pour une heure de cours.</p>
+                <!-- ET L'ENTRÉE PAR L'ADRESSE, ÉCRITE. Elle existe depuis le
+                     début — elle a été faite pour son iPhone, où il n'y a pas
+                     de console — mais elle n'était écrite que dans un
+                     commentaire du code, c'est-à-dire nulle part pour lui. -->
+                <p class="reglage-aide">Depuis un téléphone, <code>?auteur=1</code> à la fin de
+                   l'adresse l'allume aussi, et <code>?auteur=0</code> l'éteint.</p>
                 <button type="button" class="reglage-interrupteur${actif ? ' reglage-interrupteur--actif' : ''}"
                         data-outils-auteur aria-pressed="${actif}">
                     <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>

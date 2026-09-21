@@ -53,10 +53,17 @@ export function billetDeLAdresse(hash = (typeof location !== 'undefined' ? locat
  * éprouver la porte elle-même — l'entrée par le code de la classe, le message
  * quand le code est faux, l'élève qui se trompe d'identifiant.
  */
-export function adresseDuPoste(eleve, base = 'index.html') {
-    if (!eleve || !eleve.login) return `${base}?poste=1`;
+export function adresseDuPoste(eleve, base = 'index.html', place = 1) {
+    // LA PLACE, c'est le tiroir de stockage — voir le script en tête de
+    // `index.html`. Elle n'a d'intérêt que pour le mur : plusieurs postes
+    // ouverts en même temps doivent ranger leurs clefs chacun de son côté,
+    // faute de quoi le dernier billet connecté déconnecte tous les autres.
+    // Bornée ici comme là-bas : une place hors des douze ferait retomber la
+    // page en poste ORDINAIRE, avec la session du professeur dedans.
+    const n = Math.max(1, Math.min(12, Math.floor(Number(place) || 1)));
+    if (!eleve || !eleve.login) return `${base}?poste=${n}`;
     const billet = encodeURIComponent(`${eleve.login}/${eleve.code || ''}`);
-    return `${base}?poste=1#billet=${billet}`;
+    return `${base}?poste=${n}#billet=${billet}`;
 }
 
 /**
@@ -140,7 +147,36 @@ function ech(t) {
     }[c]));
 }
 
-function bandeauHtml(qui) {
+/**
+ * DANS UN CADRE DU MUR, LE BANDEAU SE TAIT PRESQUE.
+ *
+ * MESURÉ sur le mur à quatre postes (`tools/tmp/murDesPostes.mjs`), le même
+ * bandeau dans la même largeur de case : 116 px, ramenés à 25. J'avais
+ * d'abord écrit 150 — un chiffre lu à l'œil sur une capture, c'est-à-dire pas
+ * un chiffre. Sur une case de 360 px de haut, c'est tout de même le tiers de
+ * ce qu'on est venu regarder qui revient.
+ *
+ * Et ce qu'il dit y est déjà dit deux fois : le mur écrit le nom de l'élève en
+ * tête de chaque case, et sa propre barre rappelle où l'on est.
+ *
+ * LE BOUTON PART AUSSI, et pas pour gagner de la place : « Fermer et oublier »
+ * appelle `window.close()`, qui ne ferme pas un cadre. Il ne resterait que le
+ * `location.replace` de secours, qui laisserait une case blanche sans que rien
+ * n'explique pourquoi. Le mur a « Recharger » sur chaque case et « Vider les
+ * tiroirs » pour tout le monde : les deux gestes existent, ailleurs et mieux.
+ */
+function dansUnCadre() {
+    try { return window.top !== window.self; } catch (e) { return true; }
+}
+
+function bandeauHtml(qui, cadre = false) {
+    if (cadre) {
+        return `
+    <div class="poste-bandeau-dedans poste-bandeau-dedans--cadre">
+        <span class="poste-pastille">Poste élève</span>
+        <span class="poste-texte">${qui ? `<b>${ech(qui)}</b>` : 'vierge'}</span>
+    </div>`;
+    }
     return `
     <div class="poste-bandeau-dedans">
         <span class="poste-pastille">Poste élève</span>
@@ -161,13 +197,17 @@ export function initPosteEleve() {
 
     const billet = remplirLeBillet();
 
+    const cadre = dansUnCadre();
+    if (cadre) document.documentElement.classList.add('poste-dans-cadre');
+
     const barre = document.createElement('div');
     barre.className = 'poste-bandeau';
     barre.setAttribute('role', 'status');
-    barre.innerHTML = bandeauHtml(billet ? billet.login : '');
+    barre.innerHTML = bandeauHtml(billet ? billet.login : '', cadre);
     document.body.appendChild(barre);
 
-    barre.querySelector('[data-poste-sortir]').addEventListener('click', async () => {
+    const sortir = barre.querySelector('[data-poste-sortir]');
+    if (sortir) sortir.addEventListener('click', async () => {
         await oublierLePoste();
         // `window.close()` n'obéit que si la fenêtre a été ouverte par un
         // script — ce qui est le cas quand on vient du bouton « son écran ».

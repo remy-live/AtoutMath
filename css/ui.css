@@ -3332,6 +3332,21 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 /* De quoi ne rien cacher du contenu qui se termine tout en bas. */
 html.poste-eleve body { padding-bottom: 64px; }
 
+/* DANS UN CADRE DU MUR, LE BANDEAU SE RÉDUIT À SON ÉTIQUETTE.
+   Voir `dansUnCadre` dans ui/posteEleve.js : mesuré dans la largeur d'une case,
+   116 px ramenés à 25, pour redire le nom que le mur écrit déjà en tête de
+   chaque case. On garde la pastille — un écran d'élève doit se reconnaître d'un coup
+   d'œil, même petit — et l'on rend le reste à ce qu'on est venu regarder. */
+.poste-bandeau-dedans--cadre {
+    gap: 7px; padding: 4px 9px; font-size: .78rem; max-width: none;
+    flex-wrap: nowrap; justify-content: flex-start;
+}
+.poste-bandeau-dedans--cadre .poste-pastille { padding: 1px 8px; font-size: .72rem; }
+.poste-bandeau-dedans--cadre .poste-texte {
+    flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+html.poste-dans-cadre body { padding-bottom: 30px; }
+
 @media print {
     .poste-bandeau { display: none !important; }
     html.poste-eleve body { padding-bottom: 0; }

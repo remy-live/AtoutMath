@@ -1189,7 +1189,19 @@ function listeHtml() {
         <button type="button" class="ec-bouton ec-bouton--doux" data-codes-chacun>Refaire tous les codes</button>` : ''}
         <button type="button" class="ec-bouton ec-bouton--doux" data-poste=""
                 title="Une seconde fenêtre, vierge, qui se comporte comme le poste d'un élève"
-                >Ouvrir un poste élève</button>
+                >Ouvrir un poste élève</button>${avec.length > 1 ? `
+        <!-- LE MUR DES POSTES. Rémy : « un mode qui m'ouvre […] une fenêtre
+             avec plusieurs iframes où ça ouvre des fenêtres d'élèves, pour
+             tester […] que je puisse voir ce que cela donne pour plusieurs
+             élèves. » Voir postes.html.
+
+             LES PREMIERS DE LA LISTE, et on le dit. Choisir lesquels
+             demanderait une case par ligne et un bouton « ouvrir la
+             sélection » — trois gestes de plus pour un outil d'essai. Pour un
+             élève précis, « Ouvrir son poste » est sur sa ligne. -->
+        <button type="button" class="ec-bouton ec-bouton--doux" data-mur-postes="4"
+                title="Une fenêtre qui montre les postes des ${Math.min(4, avec.length)} premiers élèves de la liste, côte à côte. Pour un élève précis, « Ouvrir son poste » est sur sa ligne."
+                >Ouvrir plusieurs postes</button>` : ''}
     </div>`;
 
     if (!eleves.length) {
@@ -1584,7 +1596,8 @@ async function brancher(e, redessiner) {
         + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
         + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
-        + '[data-profs], [data-reessayer], [data-poste], [data-mode-libre], [data-inscription-libre],'
+        + '[data-profs], [data-reessayer], [data-poste], [data-mur-postes],'
+        + '[data-mode-libre], [data-inscription-libre],'
         + '[data-imposer-rien], [data-mettre-en-cours],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo]');
@@ -1621,6 +1634,40 @@ async function brancher(e, redessiner) {
     // n'est plus rattaché au clic, et le navigateur le bloque comme une
     // fenêtre surgissante. C'est pour cela que ce cas passe avant tous les
     // autres, et qu'il ne demande rien au serveur.
+    // LE MUR DES POSTES — UNE SEULE FENÊTRE, PLUSIEURS CADRES.
+    //
+    // UNE et non plusieurs : un navigateur n'autorise qu'UNE fenêtre
+    // surgissante par geste de l'utilisateur. Quatre `window.open` d'affilée,
+    // et trois sont bloqués en silence — le professeur croirait à une panne.
+    if (d.murPostes !== undefined) {
+        const combien = Math.max(2, Math.min(10, Number(d.murPostes) || 4));
+        const liste = ((vue.liste && vue.liste.eleves) || [])
+            .filter(e => !e.sansBillet && e.login)
+            .slice(0, combien);
+        if (liste.length < 2) {
+            showToast('Il faut au moins deux élèves avec un billet pour ouvrir un mur.', 'info');
+            return;
+        }
+        // LES CODES DANS LE FRAGMENT, jamais dans la requête : un fragment ne
+        // part pas au serveur, donc ni journal, ni référent, ni historique
+        // d'intermédiaire. `postes.html` l'efface dès qu'il l'a lu.
+        const billets = liste.map(e => `${e.login}/${e.code || ''}`).join(',');
+        const f = window.open(
+            `postes.html#eleves=${encodeURIComponent(billets)}`,
+            'atoutmath-mur-postes',
+            'width=1400,height=900'
+        );
+        if (!f) {
+            showToast('Le navigateur a bloqu\u00e9 la fen\u00eatre. Autorisez les '
+                + 'fen\u00eatres surgissantes pour ce site, puis r\u00e9essayez.', 'error');
+            return;
+        }
+        showToast(`${liste.length} postes ouverts : ${liste.map(e => e.login).join(', ')}. `
+            + 'Chacun a son tiroir de stockage — leurs travaux arrivent dans votre Direct.',
+            'success', 8000);
+        return;
+    }
+
     if (d.poste !== undefined) {
         const f = window.open(
             adresseDuPoste({ login: d.poste, code: d.posteCode || '' }),

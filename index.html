@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=775">
-    <link rel="stylesheet" href="css/layout.css?v=775">
-    <link rel="stylesheet" href="css/ui.css?v=775">
-    <link rel="stylesheet" href="css/games.css?v=775">
-    <link rel="stylesheet" href="css/components.css?v=775">
-    <link rel="stylesheet" href="css/modules.css?v=775">
+    <link rel="stylesheet" href="css/base.css?v=776">
+    <link rel="stylesheet" href="css/layout.css?v=776">
+    <link rel="stylesheet" href="css/ui.css?v=776">
+    <link rel="stylesheet" href="css/games.css?v=776">
+    <link rel="stylesheet" href="css/components.css?v=776">
+    <link rel="stylesheet" href="css/modules.css?v=776">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -101,14 +101,31 @@
         (function () {
             var p;
             try { p = new URLSearchParams(location.search); } catch (e) { return; }
-            if (!p || p.get('poste') !== '1') { return; }
+            // PLUSIEURS POSTES À LA FOIS : `?poste=2`, `?poste=3`…
+            //
+            // Rémy : « un mode qui m'ouvre […] une fenêtre avec plusieurs
+            // iframes où ça ouvre des fenêtres d'élèves, pour tester […] que je
+            // puisse voir ce que cela donne pour plusieurs élèves. »
+            //
+            // Le préfixe était FIXE. Deux postes ouverts ensemble écrivaient
+            // donc dans le même tiroir : le second billet déconnectait le
+            // premier, et le mur aurait montré deux fois le même élève — ou
+            // pire, le travail de l'un sous le nom de l'autre. Le numéro entre
+            // dans le préfixe, et chaque case a le sien.
+            //
+            // LA PLACE 1 GARDE « poste: » SANS NUMÉRO. Ce n'est pas de la
+            // compatibilité — aucun élève n'utilise encore le logiciel — c'est
+            // que « Ouvrir son poste », le geste courant, n'a aucune raison de
+            // changer de tiroir le jour où l'on ajoute un mur.
+            var n = parseInt(p.get('poste'), 10);
+            if (!(n >= 1 && n <= 12)) { return; }
             var vrai;
             try {
                 vrai = window.localStorage;
                 vrai.getItem('__sonde__');
             } catch (e) { return; }   // navigation privée verrouillée : on laisse tel quel
 
-            var P = 'poste:';
+            var P = n === 1 ? 'poste:' : 'poste' + n + ':';
             var clefs = function () {
                 var l = [];
                 for (var i = 0; i < vrai.length; i++) {
@@ -133,6 +150,7 @@
                 });
             } catch (e) { return; }
             window.__posteEleve = true;
+            window.__postePlace = n;
         })();
     </script>
     <!-- UN CODE DANS L'URL : ON NE MONTRE PAS L'APPLICATION.
@@ -205,7 +223,13 @@
         // ici : `localforage.config()` n'a d'effet qu'avant le premier accès
         // aux données, et les modules qui en font vivent plus bas.
         if (window.__posteEleve && typeof localforage !== 'undefined') {
-            try { localforage.config({ name: 'atoutmath-poste', storeName: 'poste' }); }
+            // Même raison qu'au-dessus, et même règle : IndexedDB est commune à
+            // l'origine, donc chaque place lui faut sa base.
+            try {
+                var b = window.__postePlace > 1 ? 'atoutmath-poste' + window.__postePlace
+                    : 'atoutmath-poste';
+                localforage.config({ name: b, storeName: 'poste' });
+            }
             catch (e) { /* le préfixe de localStorage suffit déjà à séparer */ }
         }
     </script>
