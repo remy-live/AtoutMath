@@ -16,7 +16,7 @@ import { exercices, getExerciseById, paramSchemaOf, estNotable } from '../data/c
 import { state } from '../core/state.js';
 import { makePath, makeStep, normalizePath, totalItems } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
-import { poserLeBandeauDesOutils } from './bandeauOutils.js';
+import { poserLeBandeauDesOutils, basculerLeBandeauDesOutils } from './bandeauOutils.js';
 import { communDe, appliquerAuxEtapes } from '../core/reglagesGroupes.js';
 import { ouvrirReglagesEtape, fermerReglagesEtape } from './reglagesEtape.js';
 import { MAX_ETAPE } from '../core/seuilEtape.js';
@@ -1733,6 +1733,12 @@ function initToolbar() {
         const b = document.getElementById(id);
         if (b) b.onclick = ouvrirLeChoix;
     });
+
+    // LE « ? » DE LA BARRE. Rémy : « je mettrai éventuellement un petit ? à côté
+    // de nouveau parcours pour voir justement ce qui correspond aux icônes. »
+    // Voir ui/bandeauOutils.js : c'est lui qui rend « J'ai compris » sans regret.
+    const btnAide = document.getElementById('btn-aide-outils');
+    if (btnAide) btnAide.onclick = basculerLeBandeauDesOutils;
 
     const btnNew = document.getElementById('btn-new-path');
     if (btnNew) {

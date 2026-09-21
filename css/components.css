@@ -633,8 +633,15 @@ body.mobile-view #toast-container {
 .bandeau-outils-item svg {
     width: 17px; height: 17px; flex: none; color: var(--text-muted);
 }
+/* « J'ai compris » et le rappel sur la même ligne : la question « et si j'en ai
+   encore besoin ? » se pose au moment du clic, pas ailleurs. */
+.bandeau-outils-pied {
+    margin-top: 10px; display: flex; align-items: center;
+    gap: 10px; flex-wrap: wrap;
+}
+.bandeau-outils-rappel { font-size: .78rem; color: var(--text-muted); }
 .bandeau-outils-compris {
-    margin-top: 10px; padding: 6px 14px;
+    padding: 6px 14px;
     font: inherit; font-size: .82rem; font-weight: 700;
     color: var(--text-muted); cursor: pointer;
     background: var(--bg-panel); border: 1px solid var(--border); border-radius: 999px;
