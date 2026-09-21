@@ -12,7 +12,7 @@
 // dans des chaînes HTML. Les gestionnaires sont posés en JS, ce qui supprime
 // une dizaine de globales et rend l'échappement des données non négociable.
 
-import { exercices, getExerciseById, paramSchemaOf } from '../data/catalog.js';
+import { exercices, getExerciseById, paramSchemaOf, estNotable } from '../data/catalog.js';
 import { state } from '../core/state.js';
 import { makePath, makeStep, normalizePath, totalItems } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
@@ -889,6 +889,34 @@ export function renderTeacherPath() {
             summary.appendChild(regle);
         }
         summary.classList.toggle('path-summary--eval', isEvaluation(policy));
+        // CE QUI NE SE NOTERA PAS, DIT AVANT LA SÉANCE ET NON APRÈS.
+        //
+        // Rémy : « comment juges-tu un exercice comme l'organigramme des
+        // quadrilatères en mode évaluation ? » Il ne se juge pas : mesuré, 31
+        // exercices sur 172 ne peuvent produire aucune question ratée (voir
+        // SANS_NOTE dans `core/activities/index.js`). Mis dans une évaluation,
+        // ils rendent 20 à qui les traverse — et l'on ne s'en aperçoit qu'en
+        // relisant les copies.
+        //
+        // On ne les INTERDIT pas : un organigramme dans une interrogation est
+        // un choix légitime, on veut que l'élève le construise. On dit
+        // seulement que sa note ne viendra pas de là.
+        const muets = isEvaluation(policy)
+            ? steps.filter(st => {
+                const e = getExerciseById(st.exerciseId);
+                return e && !estNotable(e, st.overrides);
+            }) : [];
+        if (muets.length) {
+            const avis = document.createElement('div');
+            avis.className = 'path-avis-sans-note';
+            const noms = muets.map(st => (getExerciseById(st.exerciseId) || {}).title || '?');
+            avis.innerHTML = `<b>${muets.length} exercice${muets.length > 1 ? 's' : ''} `
+                + `ne compte${muets.length > 1 ? 'nt' : ''} pas dans la note :</b> `
+                + escapeHtml(noms.join(', ')) + '. '
+                + 'On y construit ou l\'on y réfléchit — il n\'y a pas de réponse à rater, '
+                + 'donc rien à compter. Ils restent au bilan par compétence.';
+            summary.appendChild(avis);
+        }
     }
 
     // LA BARRE DE SÉLECTION, EN TÊTE DE LISTE. Elle n'apparaît que lorsqu'une
@@ -1241,6 +1269,10 @@ function stepRow(step, index, policy) {
     // que le cadeau : c'est un réglage qui change ce que l'élève reçoit, et le
     // laisser caché dans un panneau, c'est le perdre de vue.
     if (step.facultatif && !step.bonus) row.classList.add('path-step--facultatif');
+    // HORS NOTE : seulement quand la séance NOTE. En entraînement, la question
+    // ne se pose pas, et une marque qui apparaît partout ne se lit plus.
+    const sansNote = isEvaluation(policy) && !estNotable(exo, step.overrides);
+    if (sansNote) row.classList.add('path-step--sans-note');
     title.innerHTML = `<span class="path-step-grip" aria-hidden="true">☰</span>`
         + (step.bonus ? '<span class="path-step-cadeau" title="Jeu de récompense : '
             + 'il ne compte pas dans la note et s\'ouvre quand le travail qui le '
@@ -1249,6 +1281,12 @@ function stepRow(step, index, policy) {
             ? '<span class="path-step-facult" title="Non obligatoire : elle s\'ouvre quand '
               + 'le travail obligatoire qui la précède est réussi, mais l\'élève peut passer '
               + 'à la suite sans la faire.">facultative</span>' : '')
+        // ET LAQUELLE, exactement. Le résumé dit combien ; sans la marque sur
+        // la ligne, le professeur doit les retrouver de tête dans vingt étapes.
+        + (sansNote ? '<span class="path-step-sansnote" title="Cet exercice ne produit '
+            + 'aucune question à rater : on y construit ou l\'on y réfléchit. Il ne '
+            + 'comptera pas dans la note, mais reste au bilan par compétence.">hors '
+            + 'note</span>' : '')
         + `<span class="path-step-name">${index + 1}. ${escapeHtml(exo.title)}</span>`;
     title.title = step.bonus ? `${exo.title} — jeu de récompense`
         : (step.facultatif ? `${exo.title} — non obligatoire` : exo.title);

@@ -2593,6 +2593,27 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     border: 1px solid var(--border); border-radius: 999px; padding: 1px 6px;
 }
 
+/* CE QUI NE SE NOTERA PAS, quand la séance note.
+   Rémy : « comment juges-tu un exercice comme l'organigramme des quadrilatères
+   en mode évaluation ? » Il ne se juge pas — et il faut le voir AVANT la
+   séance. La marque reprend l'orange d'avertissement, pas le rouge : ce n'est
+   pas une erreur, c'est un choix dont on doit connaître la conséquence. */
+.path-step-sansnote {
+    flex: 0 0 auto; font-size: .66rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--warning-texte);
+    border: 1px solid var(--warning); border-radius: 999px; padding: 1px 6px;
+}
+.path-avis-sans-note {
+    /* `.path-summary` est une ligne de texte, pas une grille : le bloc se pose
+       dessous en `block`, et non en élément de flex qui s'écraserait. */
+    display: block; margin-top: 6px; padding: 7px 10px;
+    border-radius: 9px; font-size: .78rem; line-height: 1.4;
+    color: var(--warning-texte);
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+}
+.path-avis-sans-note b { display: block; }
+
 /* --- LES RÉGLAGES GLOBAUX, deuxième ligne de la barre -----------------------
    Rémy : « on essaie de faire des réglages globaux. Rends cela simple. » Deux
    champs et un menu, sur une ligne qui se replie sur téléphone. Le filet du

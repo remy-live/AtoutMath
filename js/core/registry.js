@@ -120,6 +120,46 @@ export function parDefautDe(id) {
     return (a && a.parDefaut) || 10;
 }
 
+// --- CETTE ACTIVITÉ PRODUIT-ELLE UNE NOTE ? ---------------------------------
+//
+// RÉMY : « est-ce que tous les exercices sont vraiment évaluables ? »
+//
+// NON, ET IL FAUT POUVOIR LE DIRE. Une note est un compte de questions
+// ratées ; une activité qui ne peut RIEN rater n'en produit pas — elle rend 20
+// à qui la traverse, quoi qu'il fasse. MESURÉ en cherchant, dans chaque module,
+// une tentative fausse qui ne soit pas marquée `partiel`
+// (`tools/tmp/notable3.mjs`) : 28 exercices sur 172 sont dans ce cas.
+//
+// Ils ne sont pas ratés pour autant — ce sont des CONSTRUCTIONS et des
+// RÉFLEXIONS : un organigramme qu'on bâtit jusqu'à ce qu'il tienne, un
+// pousseur qu'on recommence, une partie contre l'ordinateur. Leur réussite
+// n'est pas un compte de bonnes réponses, et vouloir leur en tirer une note
+// donnerait justement le 20 de participation qu'on veut éviter.
+//
+// LE MARQUAGE SE LIT EN UN SEUL ENDROIT — voir `activities/index.js`. Le
+// disperser sur vingt-huit déclarations rendrait la liste illisible, et un test
+// la redérive du code pour qu'elle ne dérive pas.
+//
+// ET IL PEUT DÉPENDRE DES RÉGLAGES : les échecs, les dames et l'othello notent
+// en « mat en un, mat en deux » — un coup faux est un coup faux — mais pas en
+// « partie contre l'ordinateur », où il n'y a pas de bonne réponse, seulement
+// un vainqueur. La marque accepte donc une fonction des paramètres.
+export function declarerSansNote(id, quand = false) {
+    const a = activities.get(id);
+    if (!a) throw new Error(`[registry] activité inconnue : ${id}`);
+    a.notable = quand;
+}
+
+/**
+ * @param {string} id       identifiant d'activité
+ * @param {Object} [params] les réglages de CET exercice
+ */
+export function activiteNotable(id, params = {}) {
+    const a = activities.get(id);
+    if (!a || a.notable === undefined) return true;
+    return typeof a.notable === 'function' ? !!a.notable(params || {}) : !!a.notable;
+}
+
 export function getGenerator(id) {
     return generators.get(id) || null;
 }

@@ -5,7 +5,7 @@
 // `mount()` et l'inscrire ici. La compatibilité entre les deux se déduit des
 // manifestes, elle ne se code pas.
 
-import { registerGenerator, registerActivity } from '../registry.js';
+import { registerGenerator, registerActivity, declarerSansNote } from '../registry.js';
 import { REGLAGE_SAISIE } from '../../ui/champsGrille.js';
 
 import {
@@ -879,4 +879,43 @@ legacy.forEach(([id, label, file, fn, unite, parDefaut]) => {
         load: () => import(`../../games/${file}.js`)
     });
 });
+
+// --- CE QUI NE SE NOTE PAS --------------------------------------------------
+//
+// RÉMY : « comment juges-tu un exercice comme l'organigramme des quadrilatères
+// en mode évaluation ? Ma question générale est : est-ce que tous les exercices
+// sont vraiment évaluables ? »
+//
+// NON, ET C'EST MESURABLE. Une note compte des questions ratées ; une activité
+// qui ne peut RIEN rater rend 20 à qui la traverse. MESURÉ en cherchant, dans
+// chaque module, une tentative fausse qui ne soit pas marquée `partiel`
+// (`tools/tmp/notable3.mjs`) : 28 exercices sur 172, que voici.
+//
+// CE N'EST PAS UN DÉFAUT DE CES ACTIVITÉS. Ce sont des CONSTRUCTIONS et des
+// RÉFLEXIONS : l'organigramme se bâtit jusqu'à ce qu'il tienne, le pousseur se
+// recommence, les mots croisés se remplissent. « Raté » n'y veut rien dire, et
+// leur arracher une note donnerait précisément le 20 de participation qu'on
+// cherche à éviter. Elles gardent tout leur sens en entraînement, et elles
+// alimentent le bilan par compétence comme les autres.
+//
+// LA LISTE EST ICI, ET NULLE PART AILLEURS. Portée par chaque déclaration, elle
+// serait illisible ; `tests/exercicesNotables.test.mjs` la redérive du code à
+// chaque exécution, donc elle ne peut pas dériver en silence.
+const SANS_NOTE = [
+    'arpenteurs', 'balance', 'colorier-nombres', 'dedale', 'deuxmille', 'duel',
+    'embouteillage', 'grenouilles', 'mot-code', 'mots-croises', 'motscaches',
+    'parking', 'petites-ailes', 'pipopipette', 'pousseur', 'programme-construction',
+    'puissance4', 'pyramide', 'pyramide-nombres', 'quadrilateres', 'sans-croiser',
+    'serpent', 'sim', 'tableau-croise', 'tasuko', 'tetris', 'tour-brahma',
+    'trigo-cotes'
+];
+SANS_NOTE.forEach(id => declarerSansNote(id));
+
+// ET TROIS QUI DÉPENDENT DE LEUR RÉGLAGE. Les échecs, les dames et l'othello
+// notent en « mat en un, mat en deux » : un coup faux est un coup faux, et le
+// module le remonte comme tel. En « partie contre l'ordinateur » ou « à deux »,
+// il n'y a pas de bonne réponse — il y a un vainqueur. C'est le même exercice,
+// et il est notable ou non selon ce que le professeur a coché.
+['othello', 'dames', 'echecs'].forEach(id =>
+    declarerSansNote(id, (p) => p.mode === 'exercice'));
 

@@ -5,7 +5,7 @@ import { geometrieExercises } from './geometrie.js';
 import { mesuresExercises } from './mesures.js';
 import { donneesExercises } from './donnees.js';
 import { defisExercises } from './defis.js';
-import { getGenerator, getActivity } from '../core/registry.js';
+import { getGenerator, getActivity, activiteNotable } from '../core/registry.js';
 import { matchSkills } from './skills.js';
 import { STATUS } from './status.js';
 
@@ -90,6 +90,31 @@ export function estRevisable(exoOuId) {
 export function estADeux(exoOuId) {
     const exo = typeof exoOuId === 'string' ? getExerciseById(exoOuId) : exoOuId;
     return !!(exo && exo.deuxJoueurs);
+}
+
+/**
+ * CET EXERCICE PEUT-IL RENDRE AUTRE CHOSE QUE 20 ?
+ *
+ * RÉMY : « est-ce que tous les exercices sont vraiment évaluables ? »
+ *
+ * Une note compte des questions ratées. Un exercice à générateur en produit
+ * toujours — chaque item a une réponse attendue. Une activité, non : mesuré,
+ * 28 sur 172 ne peuvent rien rater (voir SANS_NOTE dans `activities/index.js`),
+ * et trois autres ne le peuvent que dans un de leurs réglages.
+ *
+ * On passe donc les RÉGLAGES de l'exercice, et pas seulement son identité :
+ * les échecs notent « mat en deux » et ne notent pas une partie. Et ce sont
+ * les réglages de L'ÉTAPE qui comptent quand il y en a — c'est là que le
+ * professeur a choisi, le catalogue ne donne que le défaut.
+ *
+ * @param {Object|string} exoOuId
+ * @param {Object} [reglages] les `overrides` de l'étape, s'il y en a
+ */
+export function estNotable(exoOuId, reglages = null) {
+    const exo = typeof exoOuId === 'string' ? getExerciseById(exoOuId) : exoOuId;
+    if (!exo) return true;
+    if (exo.generatorId) return true;
+    return activiteNotable(exo.activityId, { ...(exo.params || {}), ...(reglages || {}) });
 }
 
 export function getExerciseById(id) {
