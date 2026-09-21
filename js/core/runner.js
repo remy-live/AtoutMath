@@ -88,6 +88,20 @@ export class Runner {
         this.faites = new Set();
         this.startedAt = 0;
         this.handle = null;
+
+        // LA PERMISSION DE PASSER PEUT ARRIVER PENDANT QU'ON EST DESSUS.
+        //
+        // Rémy : « quand on dit à un élève qui galère trop "laisse tomber
+        // l'exercice", il faut qu'il soit prévenu. » Il l'était encore moins
+        // qu'il ne le croyait : `majBoutonPasser` n'était appelé qu'à
+        // l'OUVERTURE d'une étape, et personne n'écoutait `seance_distante`.
+        // Le professeur autorisait le saut pour l'élève qui bloque, l'élève
+        // continuait de bloquer, et le bouton n'apparaissait qu'à l'étape
+        // suivante — celle qu'il ne pouvait pas atteindre, puisqu'il était
+        // bloqué. La seule fonctionnalité faite pour débloquer quelqu'un ne
+        // l'atteignait jamais.
+        this._surSeance = () => this.majBoutonPasser(this.step, true);
+        document.addEventListener('seance_distante', this._surSeance);
         this.session = null;
         this.timerInterval = null;
         this.onExit = cfg.onExit || null;
@@ -1336,12 +1350,24 @@ export class Runner {
      * offert partout deviendrait le bouton qu'on presse dès que c'est
      * difficile, et le parcours ne voudrait plus rien dire.
      */
-    majBoutonPasser(step) {
+    majBoutonPasser(step, annoncer = false) {
         const bouton = document.getElementById('btn-passer-exo');
         if (!bouton) return;
         const permis = !!(step && step.exercise && peutSauter(step.exercise.id));
+        const apparait = permis && bouton.hidden;
         bouton.hidden = !permis;
         bouton.onclick = permis ? () => this.passerEtape() : null;
+
+        // ON LE LUI DIT. Rémy : « quand on dit à un élève qui galère trop
+        // "laisse tomber l'exercice", il faut qu'il soit prévenu. »
+        //
+        // Un bouton qui apparaît en silence en haut de l'écran, chez quelqu'un
+        // qui a le nez sur sa question depuis dix minutes, n'apparaît pas.
+        if (apparait && annoncer && !this.essai) {
+            import('../ui/modal.js').then(({ showToast }) => showToast(
+                'Ton professeur t\'autorise à passer cet exercice — '
+                + 'le bouton « Passer ›› » est en haut de l\'écran.', 'info', 9000));
+        }
     }
 
     /**
@@ -1678,6 +1704,10 @@ export class Runner {
 
     finish(aborted = false) {
         this.teardownStep();
+        // L'ÉCOUTE MEURT AVEC LE PARCOURS. Un runner fini qui écoute encore
+        // rallumerait un bouton dans une page où il n'y a plus d'étape — et
+        // dix parcours joués dans l'heure en laisseraient dix.
+        document.removeEventListener('seance_distante', this._surSeance);
         reglerCalculatrice(null);
         this.step = null;
         this.hideStepNavigation();

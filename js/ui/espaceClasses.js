@@ -54,6 +54,7 @@ import { adresseDuPoste } from './posteEleve.js';
 import { versionLisible } from '../core/versionDuSite.js';
 import { copieDEssai } from '../core/copieDEssai.js';
 import { getExerciseById, skillsOf } from '../data/catalog.js';
+import { state } from '../core/state.js';
 import { getSkill } from '../data/skills.js';
 import { indicesProposes } from '../core/indice.js';
 import { enBref, avancementDeClasse, depuisCombien } from '../core/avancement.js';
@@ -1421,15 +1422,21 @@ function barrePiloteHtml() {
                     <p class="ec-note">Pour un seul élève, cliquez sur son nom : c'est presque
                        toujours ce qu'il faut. Ici, c'est quand l'exercice lui-même pose problème.</p>
                     <div class="ec-champ-ligne">
-                        <input type="text" id="ec-exo" class="ec-champ" maxlength="80"
-                               placeholder="calc-add" list="ec-exos"
-                               data-valide-sur-entree="data-saut">
-                        <datalist id="ec-exos">
-                            ${((vue.direct && vue.direct.eleves) || [])
-                                .map(e => e.exo).filter(Boolean)
-                                .filter((x, i, t) => t.indexOf(x) === i)
-                                .map(x => `<option value="${esc(x)}">${esc(nomDExercice(x))}</option>`).join('')}
-                        </datalist>
+                        <!-- ON CHOISIT L'EXERCICE, ON NE L'ÉCRIT PLUS.
+                             Rémy : « il faudrait pouvoir de façon globale
+                             permettre de sauter un exercice ». On pouvait
+                             déjà — à condition de taper son IDENTIFIANT,
+                             « calc-add », dans un champ libre. Une liste
+                             déroulante sous les yeux et un identifiant à
+                             retenir de tête, ce n'est pas le même geste : le
+                             premier se fait en classe, le second se remet à
+                             plus tard. -->
+                        <select id="ec-exo" class="ec-champ"
+                                aria-label="L'exercice dont on dispense la classe">
+                            ${exercicesSousLaMain().map(x =>
+        `<option value="${esc(x.id)}">${esc(x.titre)}${x.ou ? ` — ${esc(x.ou)}` : ''}</option>`)
+        .join('') || '<option value="">Aucun exercice en cours</option>'}
+                        </select>
                         <button type="button" class="ec-bouton" data-saut>Autoriser le saut</button>
                         <button type="button" class="ec-bouton ec-bouton--doux" data-retire>Le retirer</button>
                     </div>
@@ -1456,6 +1463,65 @@ function reglagesHtml() {
 }
 
 // --- Les gestes -------------------------------------------------------------
+
+/**
+ * L'ÉTAPE DE LA SÉANCE QUI PORTE CET EXERCICE — avec ses réglages.
+ *
+ * RÉMY : « voir son exercice ne montre pas la même chose ».
+ *
+ * L'élève ne travaille pas l'exercice du CATALOGUE : il travaille l'étape que
+ * le professeur a réglée — les paliers cochés, le nombre de questions, la
+ * partie de la leçon. Ouvrir l'exercice nu montrerait autre chose que ce qu'il
+ * a sous les yeux, et c'est précisément ce que Rémy a photographié.
+ *
+ * ON CHERCHE D'ABORD DANS LA SÉANCE IMPOSÉE, puis dans les autres parcours du
+ * professeur : un même exercice peut figurer dans dix parcours avec dix
+ * réglages, et c'est celui de l'heure en cours qui a raison.
+ *
+ * Rend `null` quand on ne trouve rien — l'exercice a pu être lancé librement
+ * par l'élève. L'appelant le DIT alors, plutôt que de faire passer les
+ * réglages du catalogue pour les siens.
+ */
+function etapeDeLaSeance(exerciceId) {
+    if (!exerciceId) return null;
+    const info = (vue.liste && vue.liste.classe) || {};
+    const parcours = state.teacherPaths || [];
+    const imposee = info.impose_path_id
+        ? parcours.find(p => p && p.id === info.impose_path_id) : null;
+    const ordre = imposee ? [imposee, ...parcours.filter(p => p !== imposee)] : parcours;
+    for (const p of ordre) {
+        const etape = (p && p.steps || []).find(st => st && st.exerciseId === exerciceId);
+        if (etape) return etape;
+    }
+    return null;
+}
+
+/**
+ * LES EXERCICES QU'ON PEUT DISPENSER, NOMMÉS.
+ *
+ * Ceux de la séance donnée d'abord, DANS LEUR ORDRE — c'est celui du parcours,
+ * et le professeur pense « le troisième », pas « num-arrondi ». Puis ceux que
+ * des élèves ont ouverts sans être dans la séance, qui existent aussi.
+ */
+function exercicesSousLaMain() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    const imposee = info.impose_path_id
+        ? (state.teacherPaths || []).find(p => p && p.id === info.impose_path_id) : null;
+    const out = [];
+    const vus = new Set();
+    ((imposee && imposee.steps) || []).forEach((st, i) => {
+        const id = st && st.exerciseId;
+        if (!id || vus.has(id)) return;
+        vus.add(id);
+        out.push({ id, titre: `${i + 1}. ${nomDExercice(id)}` });
+    });
+    ((vue.direct && vue.direct.eleves) || []).forEach(e => {
+        if (!e.exo || vus.has(e.exo)) return;
+        vus.add(e.exo);
+        out.push({ id: e.exo, titre: nomDExercice(e.exo), ou: 'ouvert par un élève' });
+    });
+    return out;
+}
 
 async function brancher(e, redessiner) {
     // LE CODE SE COPIE SANS OUVRIR LA CLASSE. Il est DANS la carte, et la carte
@@ -1870,15 +1936,47 @@ async function brancher(e, redessiner) {
     // qu'on passe ses journées à débusquer — le bouton dit donc « Voir son
     // exercice », et son infobulle dit le reste.
     //
-    // Un vrai miroir de son écran est un autre métier : il faudrait que
+    // MAIS IL OUVRAIT LE ROBOT. Rémy, capture des deux écrans côte à côte :
+    // « voir son exercice ne montre pas la même chose ». Non : ce bouton
+    // appelait `openGameLayer(exo, true)`, et ce second argument s'appelle
+    // `startAsDemo`. Le professeur voyait donc LA DÉMONSTRATION — « Le robot
+    // joue : Les quadrilatères… », sur une autre étape que celle de l'élève —
+    // pendant que son élève glissait des noms dans un organigramme.
+    //
+    // Et même sans le robot, il aurait manqué l'essentiel : les RÉGLAGES. Le
+    // catalogue donne ses défauts ; l'élève, lui, travaille avec ce que le
+    // professeur a coché dans l'étape. On ouvre donc l'étape elle-même.
+    //
+    // Un vrai miroir de son écran reste un autre métier : il faudrait que
     // l'élève envoie sa question au fil de l'eau, ce qui change ce qui voyage
     // sur le réseau pendant l'heure. À décider ensemble.
     if (d.voirExo !== undefined) {
         if (!d.voirExo) { showToast('Il n\'est sur aucun exercice pour l\'instant.', 'info'); return; }
         const exo = getExerciseById(d.voirExo);
         if (!exo) { showToast('Cet exercice n\'est pas au catalogue.', 'error'); return; }
-        const { openGameLayer } = await import('../games/engine.js');
-        openGameLayer(exo, true);
+        const etape = etapeDeLaSeance(d.voirExo);
+        const [{ Runner }, { makeStep, makePath }, { politiquePerso }] = await Promise.all([
+            import('../core/runner.js'), import('../core/path.js'),
+            import('../core/mesExercices.js')
+        ]);
+        // AVEC SES RÉGLAGES À LUI, et une seule étape : ce qu'on ouvre doit
+        // être le travail qu'il a devant les yeux, pas l'exercice du catalogue.
+        const pas = makeStep(exo.id, (etape && etape.overrides) || {}, {
+            stepId: 'voir', nbItems: (etape && etape.nbItems) || 5, threshold: 0, bonus: true
+        });
+        const parcours = makePath(`Chez ${d.prenom || 'l\'élève'} — ${exo.title}`,
+            [pas], politiquePerso());
+        parcours.personnel = true;
+        // `essai` : RIEN N'EST ENREGISTRÉ. Le professeur qui regarde ne doit
+        // pas apparaître dans son propre direct, ni gonfler ses statistiques.
+        new Runner({
+            path: parcours, deviceMode: 'none', essai: true,
+            onExit: () => import('./navigation.js').then(m => m.setTopNavMode('path'))
+        }).start();
+        if (!etape) {
+            showToast('Réglages du catalogue : cet exercice n\'est pas dans la séance donnée.',
+                'info', 4000);
+        }
         return;
     }
 
@@ -2091,7 +2189,13 @@ const BATTEMENT_MS = 10000;
 function signatureDuPilote() {
     const info = (vue.liste && vue.liste.classe) || {};
     const ch = vue.direct && vue.direct.chrono;
-    return [!!info.locked, !!bacDeLaClasse(), !!(ch && ch.finAt), (ch && ch.quoi) || ''].join('|');
+    // LA SÉANCE DONNÉE EN FAIT PARTIE depuis que la liste « dispenser la classe »
+    // est peuplée par ses étapes : changer de séance change la liste, et la
+    // barre doit se refaire. On n'y met PAS les exercices ouverts par les
+    // élèves — ils changent à chaque minute du début de l'heure, et refaire la
+    // barre effacerait le mot que le professeur est en train d'écrire.
+    return [!!info.locked, !!bacDeLaClasse(), !!(ch && ch.finAt), (ch && ch.quoi) || '',
+        info.impose_path_id || ''].join('|');
 }
 
 function rafraichirLeDirect(zone) {

@@ -77,15 +77,28 @@ export function vigilanceDe(eleve, maintenant, contexte = {}) {
 
     const av = eleve.avancement || null;
     if (av && av.etat === 'fini') return dire('fini', 'il a terminé sa séance');
-    if (!av) return dire('pas-commence', 'il n\'a rien ouvert');
 
-    // LA PAUSE D'ABORD, avant tout calcul de silence : c'est le refus qui sauve
-    // la fonction. Trente alarmes pendant que le professeur parle au tableau, et
+    // ABSENT AVANT « PAS COMMENCÉ », ET C'EST L'ORDRE QUI COMPTE.
+    //
+    // Rémy : « dans l'onglet direct, ceux en ligne se mettent à la fin, c'est
+    // pas forcément très lisible. »
+    //
+    // Les deux états se confondaient : un élève qui n'a rien ouvert PARCE QU'IL
+    // N'EST PAS LÀ était rangé « pas commencé », au même titre que celui qui
+    // est assis devant son écran sans avoir cliqué. Or ce sont deux situations
+    // opposées — l'un n'appelle rien, l'autre appelle un mot. Et comme
+    // « pas commencé » passe avant « ça avance », une classe où trois élèves
+    // travaillent et vingt-sept ne sont pas venus les affichait… en bas.
+    //
+    // « Pas commencé » veut donc dire : IL EST LÀ et il n'a rien ouvert.
+    const absent = !eleve.vu || (maintenant - eleve.vu) > seuils.parti;
+    if (absent) return dire('parti', 'il n\'est pas en ligne');
+    if (!av) return dire('pas-commence', 'il est là, il n\'a rien ouvert');
+
+    // LA PAUSE, avant tout calcul de silence : c'est le refus qui sauve la
+    // fonction. Trente alarmes pendant que le professeur parle au tableau, et
     // il éteint tout le même jour.
     if (contexte.enPause) return dire('ok', 'la classe est en pause');
-
-    const absent = !eleve.vu || (maintenant - eleve.vu) > seuils.parti;
-    if (absent) return dire('parti', 'il n\'est plus en ligne');
 
     if (silence >= seuils.bloque) return dire('bloque', 'plus rien depuis longtemps');
     if (silence >= seuils.ralenti) return dire('ralenti', 'il ralentit');
@@ -95,8 +108,28 @@ export function vigilanceDe(eleve, maintenant, contexte = {}) {
 /** Ceux qui appellent un geste, et eux seuls. */
 const APPELLE = new Set(['bloque', 'ralenti']);
 
-/** Du plus urgent au moins urgent — et c'est l'ordre où l'on va les voir. */
-const RANG = { bloque: 0, ralenti: 1, parti: 2, 'pas-commence': 3, ok: 4, fini: 5, ecarte: 6 };
+/**
+ * DU PLUS URGENT AU MOINS URGENT — et c'est l'ordre où l'on va les voir.
+ *
+ * CEUX QUI SONT LÀ PASSENT DEVANT CEUX QUI N'Y SONT PAS. L'ancien ordre
+ * mettait « parti » et « pas commencé » AVANT « ça avance » : sur la capture de
+ * Rémy, une classe entière de « jamais venu » et, tout en bas, la seule élève
+ * en ligne. Le direct sert à piloter l'heure qui se déroule ; un élève qui
+ * n'est pas connecté n'appelle aucun geste, et il occupait le haut de l'écran.
+ *
+ * L'ordre suit donc ce qu'on peut FAIRE :
+ *   il faut y aller (bloqué, ralenti) · on les regarde travailler (ça avance,
+ *   il est là sans rien ouvrir, il a fini) · on ne peut rien pour eux
+ *   (pas en ligne, mis de côté).
+ *
+ * « A fini » reste du côté des présents : il appelle un geste, lui aussi —
+ * ouvrir le bac à sable, ou lui donner la suite.
+ */
+const RANG = {
+    bloque: 0, ralenti: 1,
+    ok: 2, 'pas-commence': 3, fini: 4,
+    parti: 5, ecarte: 6
+};
 
 /**
  * QUI A BESOIN QU'ON VIENNE, DANS L'ORDRE.
