@@ -2108,6 +2108,39 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
        exactement là où il doit être fiable. */
     font-family: Helvetica, Arial, sans-serif;
 }
+/* LA COUCHE DE DESSIN NE PREND PAS LES CLICS.
+   ─────────────────────────────────────────────
+   RÉMY, trois fois : « sur le 9, 10, 11 les paramètres ne sont toujours pas
+   accessibles. Depuis tout le temps ! »
+
+   Chaque page porte un `<svg>` en `position:absolute` qui occupe toute sa
+   surface et déborde (`overflow:visible`) : c'est là que se peignent la droite
+   graduée, le repère, les figures. Un SVG n'attrape le clic que là où il a
+   DESSINÉ quelque chose — d'où un défaut qui ne frappait que les exercices à
+   dessin, et seulement quand leur tracé passait par-dessus le bandeau du
+   dessus. L'engrenage était là, visible, et le clic tombait sur le trait d'une
+   droite numérique.
+
+   MESURÉ sur une fiche de neuf exercices, en amenant chaque élément sous les
+   yeux puis en demandant qui reçoit le clic (`tools/tmp/sondeSvg.mjs`) :
+   13 éléments cliquables sur 80 étaient inatteignables, et le voile n'en
+   épargnait aucune sorte —
+
+       2 engrenages + 4 flèches ▲▼   (« La Loupe sur la Droite », « Lire des
+                                       Coordonnées »)
+       7 textes à récrire            le bandeau dit « clique un titre, une
+                                     consigne ou un calcul pour le récrire »,
+                                     et sur ces exercices-là il mentait.
+
+   Après : 0 sur 80. Et les 48 couches de dessin de cette fiche ne contiennent
+   RIEN de cliquable — ni retouche, ni bouton, ni écouteur —, donc elles n'ont
+   aucune raison de prendre un clic.
+
+   POURQUOI JE NE L'AVAIS PAS VU : mes sondes cliquaient en JavaScript, ce qui
+   traverse tout. Un professeur, lui, clique avec une souris. Une mesure qui
+   n'emprunte pas le chemin de l'utilisateur ne mesure pas son problème. */
+.fq-page > svg { pointer-events: none; }
+
 /* LES PAGES DE SOLUTIONS SE REPÈRENT EN DÉFILANT. L'aperçu montre maintenant
    le document entier — questions puis corrigé — et sans marque on ne sait plus,
    à mi-défilement, de quel côté de la pile on se trouve. Un liseré suffit :
