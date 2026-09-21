@@ -779,7 +779,11 @@ function fromBase64Url(code) {
 const CLES_POLITIQUE = {
     hints: 'h', maxAttemptsPerItem: 'a', correction: 'c', showCorrection: 'sc',
     adaptive: 'ad', shuffleSteps: 'sh', ordreLibre: 'ol', allowRetryStep: 'rs', pointsPerItem: 'pi',
-    hintPenalty: 'hp', showMe: 'sm', guided: 'gd'
+    hintPenalty: 'hp', showMe: 'sm', guided: 'gd',
+    // La présentation voyage avec la séance, sinon le parcours envoyé par
+    // code n'aurait pas l'habillage que le professeur a choisi — et un
+    // réglage qui ne suit pas le lien n'est pas un réglage de la séance.
+    presentation: 'pv'
 };
 const CLES_BAREME = {
     scale: 's', rule: 'r', penalties: 'p', arrondi: 'a',

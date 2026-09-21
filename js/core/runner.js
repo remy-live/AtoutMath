@@ -596,12 +596,15 @@ export class Runner {
                 ${regle}
             </div>
             <div class="run-carte-scene"></div>`;
-        // L'habillage se change en cours de séance : carte des mondes, chemin
-        // d'étapes ou liste. C'est le même réglage que dans « Mon Parcours ».
-        ecran.querySelector('.run-carte-tete')
-            .appendChild(carte.barreDeStyles(() => this.showPathMap()));
+        // L'habillage se change en cours de séance : chemin d'étapes, carte des
+        // mondes ou liste. C'est le même réglage que dans « Mon Parcours » —
+        // et il n'apparaît QUE si la séance laisse le choix. Voir
+        // `presentationImposee` dans ui/pathView.js.
+        const boutonsDHabillage = carte.barreDeStyles(() => this.showPathMap(), this.policy);
+        if (boutonsDHabillage) ecran.querySelector('.run-carte-tete').appendChild(boutonsDHabillage);
 
         const rendu = carte.construireCarte(this.steps, {
+            style: carte.styleDeLaSeance(this.policy),
             doneIds: faites,
             currentIndex: prochaine,
             recompenses: parJeu,

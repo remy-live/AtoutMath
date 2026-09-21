@@ -108,21 +108,34 @@ function demanderLaCle(step, onOuvert) {
 
 // --- Style de présentation du parcours --------------------------------------
 // Trois habillages pour le même parcours : liste classique, carte des mondes
-// (façon jeu de plateforme) ou chemin vertical (façon Duolingo). Le choix est
-// un réglage du poste, rangé dans le localStorage.
+// (façon jeu de plateforme) ou chemin vertical (façon Duolingo).
+//
+// QUI CHOISIT ? LA SÉANCE D'ABORD, L'ÉLÈVE ENSUITE.
+//
+// Rémy : « il faudrait pouvoir peut-être choisir la présentation » — puis,
+// la proposition faite : « par séance, et par défaut celle façon duolingo ».
+//
+// Le choix appartenait au POSTE : rangé dans le localStorage du navigateur,
+// invisible du professeur, impossible à fixer pour une interrogation. Il
+// appartient maintenant à la séance (`policy.presentation`), et le réglage du
+// poste ne sert plus que dans deux cas : quand la séance dit « laisser l'élève
+// choisir », et hors séance, dans son propre parcours.
 
 const STYLE_KEY = 'mathbox-path-style';
+// L'ORDRE DE CETTE LISTE EST CELUI DES BOUTONS. Le chemin d'abord : c'est le
+// défaut, et le premier bouton est celui qu'on vise sans lire.
 const STYLES = [
-    { id: 'mondes', icon: '🗺️', label: 'Carte des mondes' },
     { id: 'chemin', icon: '🐾', label: 'Chemin d\'étapes' },
+    { id: 'mondes', icon: '🗺️', label: 'Carte des mondes' },
     { id: 'classique', icon: '📋', label: 'Liste classique' }
 ];
+const PAR_DEFAUT = 'chemin';
 
 function getPathStyle() {
     try {
         const v = localStorage.getItem(STYLE_KEY);
-        return STYLES.some(s => s.id === v) ? v : 'mondes';
-    } catch (e) { return 'mondes'; }
+        return STYLES.some(s => s.id === v) ? v : PAR_DEFAUT;
+    } catch (e) { return PAR_DEFAUT; }
 }
 
 /** Retient le choix d'habillage, sans rien redessiner. */
@@ -131,11 +144,38 @@ function memoriserStyle(id) {
 }
 
 /**
- * Les trois boutons d'habillage. `onChange` dit quoi redessiner : la vue
- * « Parcours » se refait entière, la carte d'une séance en cours se refait
- * seule — c'est le même choix, rangé au même endroit.
+ * L'habillage IMPOSÉ par la séance, ou `null` si elle rend la main à l'élève.
+ *
+ * Un parcours enregistré avant ce réglage n'a pas de `presentation` : il ne
+ * doit pas se mettre à imposer quoi que ce soit dans le dos de son auteur, et
+ * `resolvePolicy` lui donnera de toute façon le défaut du mode. On ne lit donc
+ * que ce qui est écrit, et `libre` veut dire libre.
  */
-export function barreDeStyles(onChange) {
+export function presentationImposee(policy) {
+    const v = policy && policy.presentation;
+    return STYLES.some(s => s.id === v) ? v : null;
+}
+
+/**
+ * L'habillage à employer pour CETTE séance : le sien, sinon celui du poste.
+ */
+export function styleDeLaSeance(policy) {
+    return presentationImposee(policy) || getPathStyle();
+}
+
+/**
+ * Les trois boutons d'habillage — ou RIEN quand la séance impose le sien.
+ *
+ * Laisser les boutons en place et ignorer les clics serait le pire des deux
+ * mondes : l'élève appuierait trois fois avant de comprendre qu'on lui ment.
+ * L'appelant teste donc le retour, qui vaut `null` dans ce cas.
+ *
+ * `onChange` dit quoi redessiner : la vue « Parcours » se refait entière, la
+ * carte d'une séance en cours se refait seule — c'est le même choix, rangé au
+ * même endroit.
+ */
+export function barreDeStyles(onChange, policy = null) {
+    if (presentationImposee(policy)) return null;
     const box = document.createElement('div');
     box.className = 'path-style-switcher';
     STYLES.forEach(s => {
@@ -151,8 +191,8 @@ export function barreDeStyles(onChange) {
     return box;
 }
 
-function styleSwitcher() {
-    return barreDeStyles(() => renderStudentPathView());
+function styleSwitcher(policy) {
+    return barreDeStyles(() => renderStudentPathView(), policy);
 }
 
 /**
@@ -313,7 +353,8 @@ function assignedSection() {
                 <p class="path-section-sub ${isEvaluation(policy) ? 'path-section-sub--eval' : ''}">${describePolicy(policy)}</p>
             </div>
         </div>`;
-    box.querySelector('.path-section-head').appendChild(styleSwitcher());
+    const boutonsDHabillage = styleSwitcher(policy);
+    if (boutonsDHabillage) box.querySelector('.path-section-head').appendChild(boutonsDHabillage);
 
     // LA ROUTE QUI S'OUVRE. On revient d'une étape réussie : plutôt que de
     // redessiner la carte déjà à jour — le pointillé devenu trait sans que
@@ -353,6 +394,9 @@ function assignedSection() {
         seuilRecompense: etatJeux.seuil,
         // L'élève choisit-il son ordre ? C'est une règle de la séance.
         ordreLibre: !!policy.ordreLibre,
+        // ET SON HABILLAGE AUSSI. `styleDeLaSeance` rend celui que la séance
+        // impose, ou celui du poste quand elle laisse le choix.
+        style: styleDeLaSeance(policy),
         ouverture,
         gagnes,
         onNodeClick: (i, statut) => {
@@ -741,7 +785,8 @@ export function construireCarte(steps, opts = {}) {
             : buildWorldMap(steps, o);
 }
 
-/** L'habillage actif, pour qui veut le lire sans le changer. */
+/** L'habillage du POSTE, pour qui veut le lire sans le changer. Hors séance,
+ *  c'est le seul qui existe ; dans une séance, voir `styleDeLaSeance`. */
 export { getPathStyle as styleDeParcours };
 
 /**

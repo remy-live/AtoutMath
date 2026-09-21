@@ -3293,6 +3293,25 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
             <input type="checkbox" id="cfg-ordre-libre" ${p.ordreLibre ? 'checked' : ''}>
             Laisser l'élève choisir l'ordre des étapes
         </label>
+        <!-- COMMENT LA SÉANCE SE PRÉSENTE. Rémy : « il faudrait pouvoir
+             peut-être choisir la présentation », puis « par séance, et par
+             défaut celle façon duolingo ».
+
+             Les trois habillages existaient, mais le choix vivait dans le
+             navigateur de l'élève : le professeur ne le voyait pas et ne
+             pouvait pas le fixer. Il est ici, sous l'ordre des étapes, parce
+             que les deux répondent à la même question — comment on traverse
+             la séance. -->
+        <div class="cfg-field cfg-field--wide">
+            <label class="cfg-label" for="cfg-presentation">Présentation</label>
+            <select id="cfg-presentation" class="cfg-input">
+                <option value="chemin" ${p.presentation === 'chemin' ? 'selected' : ''}>Chemin d'étapes (une étape après l'autre)</option>
+                <option value="mondes" ${p.presentation === 'mondes' ? 'selected' : ''}>Carte des mondes (façon jeu de plateau)</option>
+                <option value="classique" ${p.presentation === 'classique' ? 'selected' : ''}>Liste classique (titres et consignes)</option>
+                <option value="libre" ${p.presentation === 'libre' ? 'selected' : ''}>Laisser l'élève choisir</option>
+            </select>
+            <p class="cfg-help">Tant que vous en imposez une, les trois boutons d'habillage disparaissent de son écran : un bouton qui ne change rien est pire qu'un bouton absent.</p>
+        </div>
 
         <div class="cfg-group ${isEval ? '' : 'cfg-group--muted'}">
             <div class="cfg-group-title">Barème</div>
@@ -3385,6 +3404,7 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
             hints: document.getElementById('cfg-hints').checked,
             adaptive: document.getElementById('cfg-adaptive').checked,
             ordreLibre: document.getElementById('cfg-ordre-libre').checked,
+            presentation: (document.getElementById('cfg-presentation') || {}).value || base.presentation,
             // Ce que l'ordinateur fait après chaque réponse. `resolvePolicy`
             // en déduira `showCorrection` : c'est le mot qui commande.
             correction: (document.getElementById('cfg-correction') || {}).value || base.correction,
