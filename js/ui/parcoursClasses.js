@@ -425,7 +425,28 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
     classes.forEach(c => parNom.set(c.nom, (parNom.get(c.nom) || 0) + 1));
     classes.forEach(c => { c.homonyme = (parNom.get(c.nom) || 0) > 1; });
 
+    /**
+     * LES CLASSES DÉPLIÉES LE RESTENT APRÈS UN REDESSIN.
+     *
+     * Rémy : « quand on clique sur une classe à qui on donne la séance et qu'on
+     * ouvre pour avoir la liste d'élèves, dès qu'on coche un élève, la classe se
+     * referme, il faut sans arrêt rouvrir la classe pour avoir les élèves. »
+     *
+     * C'était exact, et la cause tient en une ligne : cocher un élève appelle
+     * `dessiner()`, qui refait `panel.innerHTML` en entier — et un panneau
+     * reconstruit naît replié. Le professeur qui donne le parcours à cinq élèves
+     * d'une classe rouvrait donc la classe cinq fois.
+     *
+     * On ne peut pas simplement ne plus redessiner : le panneau affiche des
+     * comptes (« 3 élèves nommés ») qui doivent suivre. On retient donc ce qui
+     * était ouvert, et on le rouvre — avec la position de défilement, sans quoi
+     * la liste remonterait en haut à chaque case cochée, ce qui revient au même
+     * pour la main qui vise.
+     */
     const dessiner = () => {
+        const etaientOuvertes = [...panel.querySelectorAll('[data-plier][aria-expanded="true"]')]
+            .map(b => b.dataset.plier);
+        const defilement = panel.scrollTop;
         const mode = resolvePolicy(parcours.policy).mode;
         const infos = new Map(classes.map(c => {
             const info = etatClasse(c, seances, pathId);
@@ -461,6 +482,16 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
             </div>`;
         panel.classList.add('mob-open');
         brancher();
+
+        // ON ROUVRE CE QUI ÉTAIT OUVERT, et l'on remet la liste où elle était.
+        // Les élèves sont déjà en mémoire (`classe.eleves`) : il n'y a pas de
+        // second aller-retour au serveur, seulement le dessin à refaire.
+        if (etaientOuvertes.length) {
+            Promise.all(etaientOuvertes.map(id => {
+                const b = panel.querySelector(`[data-plier="${id}"]`);
+                return b ? deplier(b) : null;
+            })).then(() => { panel.scrollTop = defilement; });
+        }
     };
 
     const zone = () => panel.querySelector('.pc-rapport-zone');
@@ -666,6 +697,34 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         };
     }
 
+    /**
+     * DÉPLIER UNE CLASSE : la liste de ses élèves, branchée.
+     *
+     * Sortie du gestionnaire de clic parce qu'on l'appelle aussi APRÈS un
+     * redessin, pour rouvrir ce qui l'était (voir `dessiner`). Deux copies de
+     * cette logique auraient divergé au premier bouton ajouté dans la liste.
+     */
+    async function deplier(b) {
+        const liste = b.closest('.pc-classe').querySelector('.pc-eleves');
+        const classe = classes.find(c => c.id === b.dataset.plier);
+        // LA LISTE SE DEMANDE ICI, ET UNE SEULE FOIS. C'est le seul moment où
+        // elle sert, et la charger d'avance pour cinq classes ferait cent
+        // cinquante élèves qu'on ne regarde pas.
+        liste.hidden = false;
+        if (classe && classe.serveur && !(classe.eleves || []).length) {
+            liste.innerHTML = '<p class="pc-vide">On va chercher les élèves…</p>';
+            classe.eleves = await elevesDeLaClasse(classe);
+        }
+        const info = etatClasse(classe, seances, pathId);
+        info.nommes = new Set((classe.eleves || []).map(x => x.id)
+            .filter(id => nommes.has(id)));
+        liste.innerHTML = elevesHtml(classe, info);
+        b.textContent = '▾';
+        b.setAttribute('aria-expanded', 'true');
+        brancherBilansEleves(liste, classe);
+        brancherLesCasesEleves(liste, classe);
+    }
+
     function brancher() {
         const fermerPanneau = () => panel.classList.remove('mob-open');
         const close = panel.querySelector('#mob-close-props');
@@ -684,28 +743,15 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         };
 
         panel.querySelectorAll('[data-plier]').forEach(b => {
-            b.onclick = async () => {
-                const bloc = b.closest('.pc-classe');
-                const liste = bloc.querySelector('.pc-eleves');
-                const ouvert = !liste.hidden;
-                if (ouvert) { liste.hidden = true; b.textContent = '▸'; b.setAttribute('aria-expanded', 'false'); return; }
-                const classe = classes.find(c => c.id === b.dataset.plier);
-                // LA LISTE SE DEMANDE ICI, ET UNE SEULE FOIS. C'est le seul
-                // moment où elle sert, et la charger d'avance pour cinq classes
-                // ferait cent cinquante élèves qu'on ne regarde pas.
-                liste.hidden = false;
-                if (classe && classe.serveur && !(classe.eleves || []).length) {
-                    liste.innerHTML = '<p class="pc-vide">On va chercher les élèves…</p>';
-                    classe.eleves = await elevesDeLaClasse(classe);
+            b.onclick = () => {
+                const liste = b.closest('.pc-classe').querySelector('.pc-eleves');
+                if (!liste.hidden) {
+                    liste.hidden = true;
+                    b.textContent = '▸';
+                    b.setAttribute('aria-expanded', 'false');
+                    return;
                 }
-                const info = etatClasse(classe, seances, pathId);
-                info.nommes = new Set((classe.eleves || []).map(x => x.id)
-                    .filter(id => nommes.has(id)));
-                liste.innerHTML = elevesHtml(classe, info);
-                b.textContent = '▾';
-                b.setAttribute('aria-expanded', 'true');
-                brancherBilansEleves(liste, classe);
-                brancherLesCasesEleves(liste, classe);
+                deplier(b);
             };
         });
 

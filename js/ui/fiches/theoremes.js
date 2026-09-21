@@ -44,7 +44,13 @@ import { trame as trameRaisonnement } from '../../core/raisonnement.js';
 // calcul en compte six — l'égalité, l'isolement du côté cherché, la
 // substitution, les deux carrés, la somme, la racine. Avec cinq, la dernière
 // tombait dans le vide, et c'était justement celle qui donne la réponse.
-const AMORCES = trameRaisonnement([2, 6, 1]);
+// SEPT ET NON SIX, depuis que le « Or » nomme le théorème avant de l'appliquer
+// (voir `redactionPapier`). Mesuré sur six mille tirages : le calcul fait cinq
+// lignes quand on cherche l'hypoténuse, SIX quand on cherche un côté de l'angle
+// droit — l'égalité, l'isolement, la substitution, les deux carrés, la somme,
+// la racine. Avec la phrase du théorème par-dessus, il en faut sept ; à six, la
+// dernière tombait dans le vide, et c'est elle qui donne la réponse.
+const AMORCES = trameRaisonnement([2, 7, 1]);
 
 /** L'énoncé en toutes lettres, tel que le générateur l'écrit pour le papier. */
 const enoncePythagore = (item) =>
@@ -486,7 +492,23 @@ function redactionPapier(item) {
     return [
         [`le triangle ${t.nom} est rectangle en ${t.sommets[t.angleDroit]},`,
             `avec ${donnees.join(' et ')}.`],
-        calc.lignes.map(ligneEnTextePythagore),
+        // LE « OR » NOMME LA PROPRIÉTÉ AVANT DE L'APPLIQUER.
+        //
+        // Rémy : « pour le théorème de Pythagore, tu oublies Or : d'après le
+        // théorème de Pythagore ». Il a raison, et c'est une perte d'un
+        // précédent réglage : quand les calculs sont remontés du « Donc » vers
+        // le « Or » — ils y appartiennent —, la phrase qui NOMME le théorème
+        // est partie avec l'ancienne récitation du cours.
+        //
+        // Or ce n'est pas la même chose. Réciter « dans un triangle rectangle,
+        // le carré de l'hypoténuse… » n'apprend rien sur CE triangle, et c'est
+        // ce qu'il avait fait retirer. Mais « d'après le théorème de
+        // Pythagore » est la JUSTIFICATION : c'est le mot qui relie ce qu'on
+        // sait à ce qu'on écrit, et sans lui la rédaction n'est plus une
+        // démonstration, c'est une suite de lignes. L'écran l'a toujours dit
+        // (`redactionComplete` dans core/pythagore.js) ; le papier l'avait
+        // perdu.
+        ['d\'après le théorème de Pythagore :', ...calc.lignes.map(ligneEnTextePythagore)],
         [`${calc.cherche} = ${calc.resultat} cm.`]
     ];
 }
