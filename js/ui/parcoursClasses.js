@@ -245,29 +245,55 @@ async function elevesDeLaClasse(classe) {
  * ranger — c'est la même raison qui a fait préférer les dossiers de parcours
  * à une arborescence.
  *
- * ET LA CASE DE LA CLASSE NE COMMANDE PAS CELLES DES ÉLÈVES. Quand toute la
- * classe l'a reçu, chacun l'a : les cases individuelles deviennent alors
- * inutiles, et on le DIT plutôt que de les cocher toutes — cocher trente cases
- * qu'on ne peut pas décocher une à une serait un mensonge poli.
+ * LA CASE DE LA CLASSE COCHE CELLES DES ÉLÈVES, ET L'ON PEUT DÉCOCHER.
+ *
+ * RÉMY : « quand on sélectionne une classe, ça sélectionne tous les élèves et
+ * on peut décocher. »
+ *
+ * C'ÉTAIT L'INVERSE, ET C'ÉTAIT UN CHOIX — écrit ici même : « cocher trente
+ * cases qu'on ne peut pas décocher une à une serait un mensonge poli ». Le
+ * raisonnement tenait à la base de données : une assignation vise une CLASSE ou
+ * un ÉLÈVE, jamais « la classe sauf lui ». Les cases étaient donc grisées, et
+ * retirer le travail à un seul élève était impossible.
+ *
+ * Sauf que le mensonge est venu par l'autre bout. Capture de Rémy : « Toute la
+ * classe l'a reçu : chacun l'a déjà » écrit AU-DESSUS de quatre cases
+ * décochées. Les deux moitiés de l'écran lisaient deux sources différentes —
+ * la phrase venait de la séance LOCALE, les cases de ce que le SERVEUR sert.
+ *
+ * ON CONVERTIT AU MOMENT OÙ L'ON DÉCOCHE. La classe entière l'a, on retire un
+ * élève : on retire la ligne de classe et l'on en pose une par élève restant.
+ * C'est exactement ce que le professeur vient de dire, et la base sait
+ * l'écrire — il fallait juste le faire au bon moment. La séance locale, elle,
+ * reste : vingt-huit élèves sur vingt-neuf, c'est encore la séance de la
+ * classe, et c'est d'elle que vient le bilan.
  */
 function elevesHtml(classe, info) {
     const liste = info.seance ? elevesDe(info.seance, classe) : (classe.eleves || []);
     if (!liste.length) return '<p class="pc-vide">Aucun élève dans cette classe.</p>';
-    const toute = info.donnee;
+    // CE QUE LE SERVEUR SERT, et non ce que la bibliothèque locale croit.
+    const toute = info.servieAuServeur;
+    const combien = (info.nommes || new Set()).size;
     return (toute
-        ? '<p class="pc-vide pc-vide--note">Toute la classe l\'a reçu : chacun l\'a déjà.</p>'
-        : '<p class="pc-vide pc-vide--note">Cochez ceux à qui vous le donnez.</p>')
+        ? '<p class="pc-vide pc-vide--note">Toute la classe l\'a reçu. '
+          + 'Décochez ceux à qui vous ne le donnez pas.</p>'
+        : (combien
+            ? `<p class="pc-vide pc-vide--note">${combien} élève${combien > 1 ? 's' : ''} sur `
+              + `${liste.length} l'${combien > 1 ? 'ont' : 'a'}. Cochez, décochez.</p>`
+            : '<p class="pc-vide pc-vide--note">Cochez ceux à qui vous le donnez.</p>'))
         + [...liste]
         .sort((a, b) => String(a.nom).localeCompare(String(b.nom), 'fr'))
         .map(e => {
             const fait = info.seance && aTravaille(info.seance, e.evenements || []);
             const b = fait ? bilanEleveSeance(info.seance, e) : null;
-            const sien = (info.nommes || new Set()).has(e.id);
+            // TOUTE LA CLASSE L'A : chacun l'a, donc chaque case est cochée.
+            // Elle n'est plus grisée — c'est tout l'objet de la correction.
+            const sien = toute || (info.nommes || new Set()).has(e.id);
             return `<div class="pc-eleve">
                 <label class="pc-eleve-case">
                     <input type="checkbox" data-donner-eleve="${esc(e.id)}"
                            data-classe="${esc(classe.id)}" data-nom="${esc(e.nom)}"
-                           ${sien ? ' checked' : ''}${toute ? ' disabled' : ''}>
+                           ${sien ? ' checked' : ''}>
                 </label>
                 <span class="pc-eleve-nom">${esc(e.nom)}</span>
                 ${b ? `<span class="pc-chiffre">${b.questions} q · ${pourcent(b.reussite)}</span>` : ''}
@@ -403,10 +429,17 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
     // professeur a pu donner ce parcours depuis un autre poste ; son stock
     // local n'en saurait rien, et les cases s'ouvriraient décochées.
     let nommes = new Set();
+    // ET LES CLASSES QUE LE SERVEUR SERT VRAIMENT. `info.donnee` vient de la
+    // séance LOCALE — c'est ce que le professeur voit dans sa bibliothèque —,
+    // et les deux peuvent diverger : c'est exactement ce que montrait la
+    // capture de Rémy, « Toute la classe l'a reçu » au-dessus de quatre cases
+    // décochées. Pour savoir qui a le travail, il faut demander à qui le donne.
+    let classesServies = new Set();
     const relireLesNommes = async () => {
         const { aQuiEstDonne } = await import('../core/parcoursServeur.js');
         const d = await aQuiEstDonne(parcours);
         nommes = new Set((d.eleves || []).map(e => e.id));
+        classesServies = new Set((d.classes || []).map(c => c.id));
     };
     await relireLesNommes();
     // ON COMPARE L'IDENTITÉ DU TRAVAIL, celle que la séance a écrite et que
@@ -718,6 +751,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         const info = etatClasse(classe, seances, pathId);
         info.nommes = new Set((classe.eleves || []).map(x => x.id)
             .filter(id => nommes.has(id)));
+        info.servieAuServeur = classesServies.has(classe.id);
         liste.innerHTML = elevesHtml(classe, info);
         b.textContent = '▾';
         b.setAttribute('aria-expanded', 'true');
@@ -882,6 +916,51 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
      * pas une séance de classe, et l'y ranger ferait compter vingt-sept
      * absents comme « pas commencé » dans un tableau qui ne les concerne pas.
      */
+    /**
+     * DÉCOCHER UN ÉLÈVE ALORS QUE TOUTE LA CLASSE L'A.
+     *
+     * La base ne sait pas écrire « la classe sauf lui » : une assignation vise
+     * une CLASSE ou un ÉLÈVE. On convertit donc — on retire la ligne de classe,
+     * et l'on en pose une par élève restant. Le geste du professeur est
+     * simple ; c'est ici que ça coûte, et c'est le bon endroit.
+     *
+     * LA SÉANCE LOCALE RESTE. Vingt-huit élèves sur vingt-neuf, c'est encore la
+     * séance de la classe, et c'est d'elle que vient le bilan.
+     */
+    async function convertirEnNominatif(classe, exclu) {
+        const { donnerAuServeur, retirerDuServeur } =
+            await import('../core/parcoursServeur.js');
+        const autres = (classe.eleves || []).filter(e => e.id !== exclu);
+        if (!autres.length) return { erreur: 'Cette classe n\'a aucun autre élève.' };
+
+        const r = await retirerDuServeur(parcours, classe.id);
+        if (r && r.erreur) return r;
+
+        // UN PAR UN, ET NON EN PARALLÈLE. J'ai d'abord écrit un `Promise.all`,
+        // pour ne pas faire attendre une demi-minute sur un geste qui doit
+        // paraître immédiat. MESURÉ contre un vrai serveur, sur une classe de
+        // six : cinq assignations lancées ensemble en posaient 4, puis 2, puis
+        // 4 — et sans jamais rendre d'erreur. Chaque appel MONTE le parcours
+        // avant d'assigner ; cinq montées simultanées du même parcours se
+        // marchent dessus, et les lignes se perdent en silence.
+        //
+        // Un résultat qui change d'une fois sur l'autre est un résultat faux,
+        // et il valait mieux le découvrir ici qu'un lundi matin avec une classe
+        // qui ne reçoit pas son travail.
+        let rates = 0;
+        for (const e of autres) {
+            const un = await donnerAuServeur(parcours, null, { studentId: e.id });
+            if (un && un.erreur) rates++;
+        }
+        // ON DIT CE QUI N'EST PAS PARTI. Un « c'est fait » sur vingt-huit
+        // réussites et deux échecs est le mensonge qu'on passe ses journées à
+        // débusquer.
+        return rates
+            ? { erreur: `${rates} élève${rates > 1 ? 's' : ''} n'${rates > 1 ? 'ont' : 'a'} pas `
+                + 'reçu le travail. Rouvrez la classe pour voir qui.' }
+            : { ok: true, combien: autres.length };
+    }
+
     function brancherLesCasesEleves(liste, classe) {
         liste.querySelectorAll('[data-donner-eleve]').forEach(c => {
             c.onchange = async () => {
@@ -892,7 +971,9 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 c.disabled = true;
                 const r = c.checked
                     ? await donnerAuServeur(parcours, null, { studentId: id })
-                    : await retirerDuServeur(parcours, null, id);
+                    : (classesServies.has(classe.id)
+                        ? await convertirEnNominatif(classe, id)
+                        : await retirerDuServeur(parcours, null, id));
                 c.disabled = false;
                 if (r && r.erreur) {
                     // ON REMET LA CASE OÙ ELLE ÉTAIT. Une case qui reste cochée
@@ -902,7 +983,11 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                     showToast(`${nom} : ${r.erreur}`, 'error');
                     return;
                 }
-                if (c.checked) nommes.add(id); else nommes.delete(id);
+                // ON RELIT CE QUE LE SERVEUR SERT, on ne le devine pas : la
+                // conversion vient de poser vingt-huit lignes et d'en retirer
+                // une, et deviner cet état de tête serait recommencer
+                // l'incohérence qu'on est en train de corriger.
+                await relireLesNommes();
                 showToast(c.checked ? `Donné à ${nom}.` : `Repris à ${nom}.`,
                     c.checked ? 'success' : 'info');
                 dessiner();
@@ -971,6 +1056,10 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
             }
         }
         await enregistrer();
+        // CE QUE LE SERVEUR SERT A CHANGÉ : les cases des élèves en dépendent
+        // maintenant (cocher la classe coche tout le monde). Sans cette
+        // relecture, la liste ouverte garderait l'état d'avant le clic.
+        await relireLesNommes();
         dessiner();
     }
 
