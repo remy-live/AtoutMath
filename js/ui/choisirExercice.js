@@ -29,7 +29,7 @@
 // fenêtre a sa propre recherche parce qu'on y cherche autrement (on tape un
 // mot, on regarde, on tape autre chose) ; tout le reste vient de là.
 
-import { exercices, filterByStatus, estADeux } from '../data/catalog.js';
+import { exercices, filterByStatus, estADeux, seJoueAussiADeux } from '../data/catalog.js';
 import { state } from '../core/state.js';
 import { showModal } from './modal.js';
 import { correspond } from '../core/recherche.js';
@@ -203,7 +203,10 @@ export function ouvrirChoixExercice({ ajouter } = {}) {
                 <button type="button" class="cx2-voir" data-voir="${echapper(e.id)}">
                     <span class="cx2-titre">${echapper(e.title)}</span>
                     <span class="cx2-sous">${echapper(chemin)}${niv ? ' — ' + echapper(niv) : ''}
-                        ${estADeux(e) ? '<span class="cx2-duo">👥 à deux</span>' : ''}</span>
+                        ${estADeux(e)
+                        ? '<span class="cx2-duo">👥 à deux</span>'
+                        : (seJoueAussiADeux(e)
+                            ? '<span class="cx2-duo cx2-duo--aussi">👥 aussi à deux</span>' : '')}</span>
                 </button>
                 <button type="button" class="cx2-ajouter" data-ajouter="${echapper(e.id)}"
                         title="Ajouter « ${echapper(e.title)} » au parcours">+ Ajouter</button>

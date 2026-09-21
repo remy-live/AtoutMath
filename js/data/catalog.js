@@ -79,17 +79,57 @@ export function estRevisable(exoOuId) {
     return !(exo && exo.sansRevision);
 }
 
+// --- « À DEUX » : DEUX QUESTIONS, ET NON UNE ---------------------------------
+//
+// La marque disait « il faut être deux », et son commentaire le disait aussi :
+// « un élève seul qui ouvre un duel se retrouve devant un jeu qu'il ne peut pas
+// jouer ». Mais elle était posée sur cinq exercices dont TROIS se jouent très
+// bien tout seul : la pipopipette, le Puissance 4 et le Sim sont réglés sur
+// « une partie contre l'ordinateur ». Et l'othello, les dames et les échecs,
+// qui ont exactement le même réglage, ne la portaient pas. Six jeux identiques,
+// trois marqués, trois non.
+//
+// Parce que la marque répondait à DEUX questions à la fois :
+//   · « mon élève est seul devant l'écran — peut-il l'ouvrir ? » ;
+//   · « je cherche une activité à faire en binôme — laquelle ? »
+// La première interdit, la seconde propose. Elles ne portent pas sur les mêmes
+// exercices, et une seule marque ne pouvait pas répondre juste aux deux.
+//
+// ELLES SE DÉDUISENT TOUTES DEUX, plutôt que de se tenir à la main : la seconde
+// se lit dans le réglage `mode` de l'exercice — celui qui offre « une partie à
+// deux sur le même écran » se joue à deux, et c'est exactement les six jeux de
+// plateau. Une liste écrite dériverait ; une déduction, non.
+
 /**
- * « À deux » : il faut être DEUX devant le même écran pour y jouer.
+ * IL FAUT ÊTRE DEUX pour ouvrir celui-là. Un élève seul y est bloqué.
  *
- * Ce n'est ni un domaine ni un niveau — c'est une condition matérielle, et
- * elle mérite sa propre marque : un élève seul qui ouvre un duel se retrouve
- * devant un jeu qu'il ne peut pas jouer, et le professeur qui cherche une
- * activité de fin d'heure ne sait pas lesquelles s'y prêtent.
+ * Deux façons de l'être : l'exercice ne sait rien faire d'autre (le Duel, les
+ * Arpenteurs), ou bien le professeur l'a RÉGLÉ sur « à deux » — auquel cas ce
+ * sont les réglages de l'étape qui tranchent, comme partout ailleurs.
+ *
+ * @param {Object|string} exoOuId
+ * @param {Object} [reglages] les `overrides` de l'étape, s'il y en a
  */
-export function estADeux(exoOuId) {
+export function estADeux(exoOuId, reglages = null) {
     const exo = typeof exoOuId === 'string' ? getExerciseById(exoOuId) : exoOuId;
-    return !!(exo && exo.deuxJoueurs);
+    if (!exo) return false;
+    if (exo.deuxJoueurs) return true;
+    return { ...(exo.params || {}), ...(reglages || {}) }.mode === 'deux';
+}
+
+/**
+ * IL PEUT SE JOUER À DEUX — c'est la question du professeur qui cherche une
+ * activité de fin d'heure, et non celle de l'élève seul devant l'écran.
+ *
+ * Déduit du réglage : l'exercice qui propose « une partie à deux sur le même
+ * écran » se joue à deux, qu'il soit réglé ainsi ou non.
+ */
+export function seJoueAussiADeux(exoOuId) {
+    const exo = typeof exoOuId === 'string' ? getExerciseById(exoOuId) : exoOuId;
+    if (!exo) return false;
+    if (exo.deuxJoueurs) return true;
+    return (paramSchemaOf(exo) || []).some(p =>
+        p.id === 'mode' && (p.options || []).some(o => o.value === 'deux'));
 }
 
 /**

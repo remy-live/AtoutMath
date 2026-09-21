@@ -12,7 +12,7 @@
 // clavier, appui, fermeture.
 
 import { state } from '../core/state.js';
-import { exercices, estADeux, filterByStatus } from '../data/catalog.js';
+import { exercices, estADeux, seJoueAussiADeux, filterByStatus } from '../data/catalog.js';
 import { isGame } from '../core/gameAccess.js';
 import { chercher, decouper, preparer } from '../core/recherche.js';
 import { openGameLayer } from '../games/engine.js';
@@ -48,12 +48,15 @@ export function ficheDe(exo) {
             // mais il se cherche — et c'est tout ce qu'on lui demandait.
             motsCles: [
                 isGame(exo) ? 'jeu jeux' : '',
-                estADeux(exo) ? 'deux joueurs duo a deux' : '',
+                // « à deux » se cherche : celui qui tape ces mots veut une
+                // activité pour un binôme, qu'elle l'impose ou qu'elle le
+                // permette. Les six jeux de plateau doivent sortir.
+                seJoueAussiADeux(exo) ? 'deux joueurs duo a deux' : '',
                 ...(exo.motsClefs || [])
             ].filter(Boolean),
             texte: exo.instruction || '',
             jeu: isGame(exo),
-            duo: estADeux(exo)
+            duo: seJoueAussiADeux(exo)
         });
         cache.set(exo, f);
     }

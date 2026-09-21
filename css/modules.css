@@ -3752,6 +3752,14 @@ html[data-theme="dark"] .tag-jeu { background: rgba(252, 211, 77, .16); color: #
 .tag-duo { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; font-weight: 700; }
 html[data-theme="dark"] .tag-duo { background: rgba(167, 139, 250, .18); color: #c4b5fd; border-color: rgba(167, 139, 250, .42); }
 .tag-btn.tag-duo.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+/* « AUSSI à deux » : le même violet, en creux.
+   Les deux marques répondent à deux questions différentes — « il FAUT être
+   deux » interdit à l'élève seul, « il PEUT se jouer à deux » propose au
+   professeur — et l'œil doit les distinguer sans les séparer : c'est la même
+   famille, ce n'est pas la même contrainte. */
+.tag-duo--aussi { background: transparent; border-style: dashed; }
+html[data-theme="dark"] .tag-duo--aussi { background: transparent; }
+.cx2-duo--aussi { opacity: .75; }
 
 .tag-status { font-weight: 700; }
 .tag-status--test { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }

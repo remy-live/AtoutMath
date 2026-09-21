@@ -1530,7 +1530,6 @@ export const calculExercises = [
         printParams: { jeu: 'pipopipette', colonnes: 5, rangees: 4 },
         cree: '2026-08-19',
         activityId: 'pipopipette', horsProgression: true, sansRevision: true,
-        deuxJoueurs: true,
         params: { mode: 'ia', niveau: 'moyen', taille: 'moyen' },
         paramSchema: [
             {
@@ -1577,7 +1576,6 @@ export const calculExercises = [
         printParams: { jeu: 'puissance4', colonnes: 7, rangees: 6 }, title: 'Puissance 4',
         cree: '2026-08-19',
         activityId: 'puissance4', horsProgression: true, sansRevision: true,
-        deuxJoueurs: true,
         params: { mode: 'ia', niveau: 'moyen' },
         paramSchema: [
             {
@@ -1615,7 +1613,6 @@ export const calculExercises = [
         printParams: { jeu: 'sim' }, title: 'Le Sim',
         cree: '2026-08-19',
         activityId: 'sim', horsProgression: true, sansRevision: true,
-        deuxJoueurs: true,
         params: { mode: 'ia', niveau: 'moyen' },
         paramSchema: [
             {

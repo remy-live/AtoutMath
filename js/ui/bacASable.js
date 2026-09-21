@@ -20,8 +20,10 @@
 // l'effet qu'on veut d'une récompense.
 
 import { state } from '../core/state.js';
-import { getExerciseById } from '../data/catalog.js';
-import { bacOuvert, jeuxDuBac, parcoursDuBac } from '../core/bacASable.js';
+import { exercices, getExerciseById, estADeux } from '../data/catalog.js';
+import { isGame } from '../core/gameAccess.js';
+import { bacOuvert, jeuxDuBac, parcoursDuBac, jeuxDeLaSeance, ceQueDisaitLaSeance }
+    from '../core/bacASable.js';
 import { bacFerme, tempsRestant } from '../core/seanceDistante.js';
 import { avancementDuMoment } from './filSeance.js';
 import { showModal } from './modal.js';
@@ -48,6 +50,44 @@ export function lesJeux(liste = null) {
     return jeuxDuBac(getExerciseById, liste);
 }
 
+/**
+ * CE QUE L'ÉLÈVE VIENT DE FAIRE — les exercices de sa séance.
+ *
+ * `state.studentPath` est le parcours assigné, projeté du journal : il porte
+ * les étapes avec leur `exerciseId`. C'est la seule source qui dise ce que
+ * l'élève a RÉELLEMENT traversé, et non ce qui était prévu quelque part.
+ */
+function exercicesDeLaSeance() {
+    const parcours = state.studentPath;
+    const etapes = (parcours && parcours.steps) || [];
+    return etapes.map(e => getExerciseById(e && e.exerciseId)).filter(Boolean);
+}
+
+/**
+ * LES JEUX EN DEUX GROUPES : les valeurs sûres, puis ceux de la séance.
+ *
+ * Deux groupes et non une grille de vingt-cinq tuiles : le second dit POURQUOI
+ * il est là — « comme ta séance » — et sans ce mot, l'élève n'y verrait qu'une
+ * liste plus longue à parcourir.
+ */
+export function lesGroupesDuBac(liste = null) {
+    const sures = lesJeux(liste);
+    // Le filtre « jouable seul » est ici, et non dans le noyau : c'est le
+    // catalogue qui sait ce qu'est un jeu, et le noyau ne le connaît pas.
+    const jouablesSeul = exercices.filter(e => isGame(e) && !estADeux(e));
+    // ON ÉCARTE CE QU'IL VIENT DE FAIRE. « Comme ta séance », et non « ta
+    // séance » : reproposer en récompense l'exercice qu'on vient de finir se
+    // lit comme une punition, et c'est arrivé à la mesure — une séance sur le
+    // tableau à double entrée se voyait reproposer le tableau à double entrée.
+    const deLaSeance = exercicesDeLaSeance();
+    const commeLaSeance = jeuxDeLaSeance(
+        jouablesSeul, ceQueDisaitLaSeance(deLaSeance), [...sures, ...deLaSeance]);
+    return [
+        { titre: '', jeux: sures },
+        { titre: 'Comme ta séance', jeux: commeLaSeance }
+    ].filter(g => g.jeux.length);
+}
+
 function tuile(exo) {
     return `<button type="button" class="bac-jeu" data-bac-jeu="${esc(exo.id)}">
         <span class="bac-jeu-nom">${esc(exo.title)}</span>
@@ -70,11 +110,12 @@ export function ouvrirLeBac() {
             { width: '420px' });
         return null;
     }
-    const jeux = lesJeux();
+    const groupes = lesGroupesDuBac();
     const corps = `
         <p class="bac-mot">Tu as fini ta séance. Ce sont des mathématiques,
            mais on y joue — et tu peux arrêter quand tu veux.</p>
-        <div class="bac-grille">${jeux.map(tuile).join('')}</div>`;
+        ${groupes.map(g => (g.titre ? `<h4 class="bac-groupe">${esc(g.titre)}</h4>` : '')
+        + `<div class="bac-grille">${g.jeux.map(tuile).join('')}</div>`).join('')}`;
     const fenetre = showModal('Le bac à sable', corps, { width: '720px' });
 
     fenetre.element.addEventListener('click', async (e) => {

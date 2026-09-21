@@ -3570,6 +3570,13 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 }
 
 .bac-mot { margin: 0 0 14px; color: var(--text-muted); font-size: .95rem; }
+/* « Comme ta séance » : le titre dit POURQUOI ces jeux-là sont proposés.
+   Sans lui, l'élargissement ne serait qu'une grille plus longue à parcourir —
+   et le module tout entier existe pour éviter ça. */
+.bac-groupe {
+    margin: 18px 0 8px; font-size: .82rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted);
+}
 .bac-grille {
     display: grid; gap: 9px;
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));

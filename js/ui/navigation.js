@@ -1,4 +1,4 @@
-import { exercices, domaines, filterByStatus, statusOf, estADeux, STATUS, STATUS_LABELS } from '../data/catalog.js';
+import { exercices, domaines, filterByStatus, statusOf, estADeux, seJoueAussiADeux, STATUS, STATUS_LABELS } from '../data/catalog.js';
 import { TAGS } from '../data/tags.js';
 import { clearEngines } from '../core/timers.js';
 import { destroyAllDemoCursors } from '../core/demoPointer.js';
@@ -295,7 +295,12 @@ export function getFilteredExercises() {
         list = list.filter(e => e.tags.niveaux && e.tags.niveaux.some(n => state.selectedNiveaux.includes(n)));
     }
     if (state.aDeuxSeuls) {
-        list = list.filter(e => estADeux(e));
+        // LE FILTRE RÉPOND À LA QUESTION DU PROFESSEUR — « je cherche une
+        // activité à faire en binôme » — et non à celle de l'élève seul. Il
+        // montre donc aussi les six jeux de plateau, qui se jouent à deux sans
+        // y être obligés. Cacher le Puissance 4 à qui cherche un jeu pour deux
+        // n'aurait aucun sens.
+        list = list.filter(e => seJoueAussiADeux(e));
     }
     if (state.searchQuery) {
         list = list.filter(e => matchesSearch(e, state.searchQuery));
@@ -702,7 +707,7 @@ function renderNiveauRow() {
     // elle ne concerne qu'une poignée d'exercices, et une ligne de tags de plus
     // coûterait à tout le monde la place qu'elle ne rend qu'à eux.
     const duos = filterByStatus(exercices, { only: state.catalogFilter, teacher: state.isTeacherMode })
-        .filter(e => estADeux(e)).length;
+        .filter(e => seJoueAussiADeux(e)).length;
 
     const ligne = document.getElementById('filter-row-niveau');
     if (ligne) ligne.hidden = dispo.length < 2 && !duos;
@@ -847,7 +852,13 @@ function createCard(exo) {
     tags.innerHTML = `<span class="tag tag-btn tag-niveau">${niveauxStr}</span>
         <span class="tag tag-btn tag-domaine">${exo.tags.chemin[0]}</span>
         ${isGame(exo) ? '<span class="tag tag-btn tag-jeu">🎮 jeu</span>' : ''}
-        ${estADeux(exo) ? '<span class="tag tag-btn tag-duo">👥 à deux</span>' : ''}
+        ${estADeux(exo)
+        ? '<span class="tag tag-btn tag-duo" title="Il faut être deux devant '
+          + 'le même écran.">👥 à deux</span>'
+        : (seJoueAussiADeux(exo)
+            ? '<span class="tag tag-btn tag-duo tag-duo--aussi" title="Se joue '
+              + 'seul contre l\'ordinateur, ou à deux sur le même écran — c\'est '
+              + 'un réglage de l\'exercice.">👥 aussi à deux</span>' : '')}
         ${statusBadge(exo)}`;
 
     if (state.previewsOn) {

@@ -265,7 +265,14 @@ function quandLEcranEstLibre(faire, restant = 34) {
     setTimeout(() => quandLEcranEstLibre(faire, restant - 1), 300);
 }
 
-/** Les jeux qu'on peut offrir : solo, et jouables en quelques minutes. */
+/**
+ * Les jeux qu'on peut offrir : solo, et jouables en quelques minutes.
+ *
+ * `estADeux` veut dire « il FAUT être deux » — et depuis qu'on a séparé cette
+ * question de « il PEUT se jouer à deux », les six jeux de plateau entrent ici :
+ * réglés sur « une partie contre l'ordinateur », un élève seul les joue très
+ * bien. C'est six récompenses de plus, et aucune qu'on ne puisse ouvrir.
+ */
 export function jeuxOffrables(limite = 3) {
     const jeux = filterByStatus(exercices, { only: 'valide', teacher: false })
         .filter(e => estJeuCatalogue(e) && !estADeux(e));

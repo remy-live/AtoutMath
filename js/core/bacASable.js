@@ -30,6 +30,8 @@
 // n'est rien du tout. Les jeux longs restent au catalogue, où on les choisit
 // exprès.
 
+import { uniteDe } from './registry.js';
+
 /**
  * CE QU'IL Y A DANS LE BAC, ET POURQUOI CEUX-LÀ.
  *
@@ -37,8 +39,17 @@
  * mathématiques, cela se comprend sans explication, une partie dure quelques
  * minutes, et l'on peut lâcher en plein milieu sans rien perdre.
  *
- * Le professeur n'a rien à configurer pour que cela marche — c'est le but d'une
- * liste par défaut. S'il veut la sienne, elle est dans La séance.
+ * LE PROFESSEUR N'A RIEN À RÉGLER, et c'est le but. Ce qu'il peut faire, c'est
+ * FERMER le bac pour une heure, classe par classe — il n'y a pas d'autre
+ * réglage aujourd'hui, et ce commentaire prétendait le contraire : il annonçait
+ * une liste à composer dans La séance. Le paramètre `liste` existe bien
+ * ci-dessous, mais rien ne lui passe jamais rien — une porte posée sans
+ * serrure. Il faudrait une colonne de plus côté serveur, et cela se décide,
+ * cela ne s'oublie pas dans un commentaire.
+ *
+ * CE QUI ADAPTE LE BAC, EN REVANCHE, C'EST LA SÉANCE ELLE-MÊME : voir
+ * `jeuxDeLaSeance` plus bas. Le niveau et le domaine de ce que l'élève vient de
+ * faire élargissent la liste, sans que personne ait à cocher quoi que ce soit.
  */
 export const PAR_DEFAUT = [
     // Arcade : on s'arrête n'importe quand, on n'a rien perdu.
@@ -107,6 +118,31 @@ export function bacOuvert(avancement, contexte = {}) {
     return { ouvert: true, pourquoi: 'fini', dire: 'Tu as fini : à toi de choisir.' };
 }
 
+/** Combien de jeux de la séance on ajoute, au maximum. Voir ÉLARGIR ci-dessous. */
+export const ELARGISSEMENT_MAX = 6;
+
+/**
+ * L'UNITÉ QUI TRAHIT UNE PARTIE QU'ON NE PEUT PAS LÂCHER.
+ *
+ * Le quatrième critère du bac — « on doit pouvoir s'arrêter en plein milieu
+ * sans rien perdre » — ne se déduisait d'aucun champ, et c'est ce qui m'a
+ * d'abord fait chercher un substitut : j'ai essayé le nombre d'unités d'une
+ * séance, et MESURÉ qu'il ne marchait pas, puisqu'il aurait retiré le
+ * Puissance 4 et la pipopipette, dont une partie dure trois minutes.
+ *
+ * Il se lisait en fait dans l'UNITÉ que chaque activité déclare. Une GRILLE à
+ * moitié faite qu'on abandonne est exactement la déception décrite ; une
+ * question, une paire, une brique, une partie, non. MESURÉ
+ * (`tools/tmp/bacUnites.mjs`) : le catalogue a 13 jeux qui se comptent en
+ * grilles — sudoku, hashi, slitherlink, futoshiki, démineur, logigramme… — et
+ * AUCUN des dix-sept choisis à la main n'en fait partie. La règle était donc
+ * déjà appliquée, elle n'était simplement pas écrite.
+ *
+ * Ces jeux restent au catalogue, où on les choisit exprès, avec le temps
+ * devant soi.
+ */
+const UNITES_TROP_LONGUES = ['grille'];
+
 /**
  * LES JEUX DU BAC, RÉSOLUS SUR LE CATALOGUE.
  *
@@ -128,6 +164,77 @@ export function jeuxDuBac(trouver, liste = null) {
         if (exo) out.push(exo);
     }
     return out;
+}
+
+/**
+ * ÉLARGIR LE BAC À CE QU'ON VIENT DE TRAVAILLER.
+ *
+ * RÉMY : « prévoit-on des jeux bac à sable par parcours ou différents bacs à
+ * sable ? »
+ *
+ * MESURÉ sur la liste écrite à la main (`tools/tmp/bacMesure.mjs`) : 16 de ses
+ * 17 jeux sont du domaine « Nombres et calculs », et par niveau elle donne
+ * 10 jeux à un CM2, 16 à un 6ème, 8 à un 5ème, 4 à un 4ème — et UN SEUL à un
+ * 3ème. Un élève qui finit une séance de géométrie en avance trouvait donc un
+ * bac entièrement fait de calcul ; un 3ème, presque rien de son niveau. Ce
+ * n'était pas un choix, c'était le résultat non regardé d'une liste écrite
+ * exercice par exercice.
+ *
+ * LE BAC SUIT DONC LA SÉANCE, et c'est le critère que Rémy avait posé
+ * lui-même : « ce qu'il contient est des mathématiques — ce sont les mêmes
+ * notions, jouées ». On prend le NIVEAU et le DOMAINE de ce que l'élève vient
+ * de faire, et l'on ajoute les jeux du catalogue qui y correspondent. Rien à
+ * régler pour le professeur : la séance dit déjà tout.
+ *
+ * ON N'OUVRE PAS LE CATALOGUE ENTIER POUR AUTANT. Le module le dit depuis le
+ * début : « un élève à qui il reste sept minutes et qui doit CHOISIR parmi
+ * deux cents passe ses sept minutes à choisir. » Mesuré, l'élargissement sans
+ * borne donnerait 43 tuiles à un 6ème. On en ajoute six au plus.
+ *
+ * ET LES VALEURS SÛRES RESTENT EN TÊTE : ce sont elles qui portent le critère
+ * qu'aucune mesure ne remplace — on peut les lâcher en plein milieu sans rien
+ * perdre, parce que la sonnerie ne prévient pas.
+ *
+ * @param {Array} jeux       les jeux jouables SEUL du catalogue (le filtre est
+ *                           à l'appelant : le noyau ne connaît pas le catalogue)
+ * @param {object} seance    { niveaux: string[], domaines: string[] }
+ * @param {Array} deja       ce que le bac propose déjà, pour ne pas doubler
+ * @param {number} [max]
+ */
+export function jeuxDeLaSeance(jeux, seance, deja = [], max = ELARGISSEMENT_MAX) {
+    const niveaux = (seance && seance.niveaux) || [];
+    const domaines = (seance && seance.domaines) || [];
+    // PAS DE SÉANCE, PAS D'ÉLARGISSEMENT. Un élève qui ouvre le bac sans avoir
+    // rien fait — cela n'arrive pas, la porte est fermée — ou dont on ne sait
+    // rien reçoit la liste tenue à la main, comme avant.
+    if (!niveaux.length || !domaines.length) return [];
+    const vus = new Set((deja || []).map(e => e && e.id));
+    return (jeux || [])
+        .filter(e => e && !vus.has(e.id))
+        .filter(e => (e.tags && e.tags.niveaux || []).some(n => niveaux.includes(n)))
+        .filter(e => domaines.includes(e.tags && e.tags.chemin && e.tags.chemin[0]))
+        .filter(e => !UNITES_TROP_LONGUES.includes(uniteDe(e.activityId, 1)))
+        .slice(0, max);
+}
+
+/**
+ * CE QUE LA SÉANCE DIT D'ELLE-MÊME : ses niveaux et ses domaines.
+ *
+ * On les lit sur les EXERCICES traversés, et non sur un réglage du professeur :
+ * c'est la seule source qui existe toujours, et elle ne peut pas se désaccorder
+ * de ce que l'élève vient réellement de faire.
+ *
+ * @param {Array} exercices  les exercices des étapes de la séance finie
+ */
+export function ceQueDisaitLaSeance(exercices) {
+    const niveaux = new Set();
+    const domaines = new Set();
+    for (const e of exercices || []) {
+        if (!e || !e.tags) continue;
+        (e.tags.niveaux || []).forEach(n => niveaux.add(n));
+        if (e.tags.chemin && e.tags.chemin[0]) domaines.add(e.tags.chemin[0]);
+    }
+    return { niveaux: [...niveaux], domaines: [...domaines] };
 }
 
 /**
