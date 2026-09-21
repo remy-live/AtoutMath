@@ -44,6 +44,34 @@ export class BaseGame {
          * peuvent pas s'arrêter le déclarent, chacun chez lui.
          */
         this.tempsReel = false;
+        /*
+         * PAS DE REPRISE DANS LES JEUX D'ARCADE — RÉMY A TRANCHÉ.
+         *
+         * Question posée : les quinze jeux d'arcade ne reposent jamais la
+         * question qu'on vient de rater — la météorite explose, la brique
+         * tombe, on passe à la suivante. Fallait-il leur donner une seconde
+         * chance, pour qu'ils honorent le réglage « Essais autorisés par
+         * question » ? Rémy : « non non on garde les jeux d'arcade tel quel. »
+         *
+         * ON NE LE « CORRIGERA » DONC PAS, et c'est écrit ici parce que cela
+         * ressemble à un oubli. Une reprise changerait la nature de ces
+         * jeux-là : leur tension vient précisément de ce qu'une erreur est
+         * perdue, comme au flipper.
+         *
+         * ET LE RÉGLAGE N'EST PAS SANS EFFET POUR AUTANT — je l'ai d'abord cru
+         * et c'était faux. MESURÉ au navigateur sur une étape de Tetris
+         * (`tools/tmp/essaisArcade.mjs`), après UNE question ratée :
+         *
+         *     essais autorisés = 1   →  1 question comptée, 0 juste
+         *     essais autorisés = 2   →  0 question comptée
+         *     essais autorisés = 3   →  0 question comptée
+         *
+         * À un essai, une question ratée est une question CONSOMMÉE : la partie
+         * se raccourcit à chaque erreur, et c'est le régime d'une évaluation.
+         * À deux ou plus, l'élève joue jusqu'à ce qu'il en ait réussi le compte
+         * demandé. Le réglage commande donc bien quelque chose ici — le PRIX
+         * d'une erreur, et non le droit de la refaire.
+         */
         this._surGelDemo = (e) => { this.gelDemo = !!e.detail; };
         document.addEventListener('demo_pause', this._surGelDemo);
     }

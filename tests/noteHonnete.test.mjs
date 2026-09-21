@@ -196,3 +196,22 @@ test('LE RÉGIME D\'ENTRAÎNEMENT N\'EST PAS TOUCHÉ', () => {
     assert.equal(b.totalQuestions, 2);
     assert.equal(b.note, 20, 'résolue = acquise, quel que soit le nombre d\'essais');
 });
+
+test('DANS UN JEU D\'ARCADE, « ESSAIS AUTORISÉS » FIXE LE PRIX D\'UNE ERREUR', () => {
+    // RÉMY : « non non on garde les jeux d'arcade tel quel. » Les quinze jeux
+    // d'arcade ne reposent jamais la question ratée — la météorite explose, on
+    // passe à la suivante —, et c'est voulu : leur tension vient de là.
+    //
+    // Ce test existe pour qu'on ne « corrige » pas cette décision par
+    // distraction, en croyant réparer un réglage sans effet. Il en a un, et
+    // MESURÉ au navigateur sur une étape de Tetris, après une question ratée :
+    //     essais = 1 → 1 question comptée, 0 juste    (l'erreur coûte la question)
+    //     essais = 2 → 0 question comptée             (l'erreur ne coûte rien)
+    // Le réglage commande le PRIX de l'erreur, pas le droit de la refaire.
+    const base = readFileSync(new URL('../js/core/BaseGame.js', import.meta.url), 'utf8');
+    assert.match(base, /PAS DE REPRISE DANS LES JEUX D'ARCADE — RÉMY A TRANCHÉ/);
+    // Et ce qui produit ce prix : la ligne du moteur qui clôt une question dès
+    // que les essais sont épuisés.
+    const run = readFileSync(new URL('../js/core/runner.js', import.meta.url), 'utf8');
+    assert.match(run, /const resolved = payload\.correct \|\| \(payload\.attemptIndex \+ 1\) >= maxTries;/);
+});
