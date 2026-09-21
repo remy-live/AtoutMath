@@ -435,6 +435,41 @@ function modeLibreHtml() {
             <span class="reglage-interrupteur-mot">${su ? 'On regarde…'
                 : (actif ? 'Ouvert aux élèves' : 'Réservé à ce que vous donnez')}</span>
         </button>
+    </section>
+    ${inscriptionHtml()}`;
+}
+
+/**
+ * L'INSCRIPTION LIBRE — la porte « Rejoindre ma classe ».
+ *
+ * RÉMY, en la découvrant : « à quoi sert rejoindre ma classe ? »… puis « je
+ * pense qu'il faut le fermer, mais permettre la réouverture dans Mes classes,
+ * au même niveau que le catalogue en libre accès ».
+ *
+ * AU MÊME NIVEAU, DONC : même écran, même interrupteur, un seul endroit à
+ * regarder pour savoir ce qui est ouvert. Les deux réglages ne font pourtant
+ * pas la même chose, et l'écran doit le dire — l'un ouvre un CATALOGUE, l'autre
+ * CRÉE DES ÉLÈVES. C'est pour cela que celui-ci est fermé par défaut et que
+ * l'autre ne l'est pas.
+ */
+function inscriptionHtml() {
+    const actif = !!vue.reglagesSite && vue.reglagesSite.inscriptionLibre === true;
+    const su = vue.reglagesSite === null;
+    return `
+    <section class="ec-bloc ec-bloc--site">
+        <h3 class="ec-h3">L'inscription libre</h3>
+        <p class="ec-note ec-note--bloc">Allumée, un élève peut entrer avec le code de la
+           classe en tapant son prénom — pratique quand vous n'avez pas importé de liste.
+           Éteinte, seuls les billets ouvrent la porte. <b>Gardez-la éteinte si votre liste
+           vient de Pronote</b> : un prénom tapé de travers crée un second élève, vierge,
+           à côté du vrai.</p>
+        <button type="button" class="reglage-interrupteur${actif ? ' reglage-interrupteur--actif' : ''}"
+                data-inscription-libre="${actif ? '1' : '0'}" aria-pressed="${actif}"
+                ${su ? 'disabled' : ''}>
+            <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>
+            <span class="reglage-interrupteur-mot">${su ? 'On regarde…'
+                : (actif ? 'Chacun peut s\'inscrire' : 'Billet obligatoire')}</span>
+        </button>
     </section>`;
 }
 
@@ -1548,7 +1583,7 @@ async function brancher(e, redessiner) {
         + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
         + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
-        + '[data-profs], [data-reessayer], [data-poste], [data-mode-libre],'
+        + '[data-profs], [data-reessayer], [data-poste], [data-mode-libre], [data-inscription-libre],'
         + '[data-imposer-rien], [data-mettre-en-cours],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo]');
@@ -1649,6 +1684,19 @@ async function brancher(e, redessiner) {
     // localement et redessiner tout de suite ; l'écran dirait alors « ouvert »
     // même si le serveur a refusé, et le professeur croirait avoir ouvert le
     // catalogue à trente élèves. On attend, on lit, on affiche ce qui EST.
+    if (d.inscriptionLibre !== undefined) {
+        const cible = d.inscriptionLibre !== '1';
+        await fait(reglagesDuSite({ inscriptionLibre: cible }), (r) => {
+            vue.reglagesSite = r.reglages || vue.reglagesSite;
+            noterReglagesSite(vue.reglagesSite);
+            showToast(cible
+                ? 'L\'inscription libre est ouverte : un élève peut se déclarer avec le code de la classe.'
+                : 'L\'inscription libre est fermée : seuls les billets ouvrent la porte.',
+                'success');
+        });
+        return;
+    }
+
     if (d.modeLibre !== undefined) {
         const cible = d.modeLibre !== '1';
         await fait(reglagesDuSite({ modeLibre: cible }), (r) => {

@@ -80,6 +80,27 @@ export function modeLibre() {
     return MODE_LIBRE;
 }
 
+/**
+ * L'INSCRIPTION LIBRE — « Rejoindre ma classe », la porte où l'élève tape son
+ * prénom et se crée.
+ *
+ * RÉMY, en la découvrant : « à quoi sert rejoindre ma classe ? »… puis « je
+ * pense qu'il faut le fermer, mais permettre la réouverture ».
+ *
+ * FERMÉE PAR DÉFAUT, et c'est l'inverse du mode libre : celui-ci ouvre un
+ * catalogue, celle-là CRÉE DES ÉLÈVES. Quand la liste vient de Pronote, un
+ * prénom tapé de travers — « Cassandre » au lieu de « BOSSE Cassandre » —
+ * fabrique un doublon vierge à côté de l'élève qui travaille. Le serveur refuse
+ * donc, et l'écran n'a aucune raison de montrer une porte qui refuse.
+ *
+ * PAS DE REPLI « OUVERT » SUR LA COPIE D'ESSAI, contrairement au mode libre :
+ * là-bas, ouvrir évitait un cul-de-sac ; ici, ouvrir fabrique des élèves. Quand
+ * le serveur n'a rien dit, on tient la porte fermée.
+ */
+export function inscriptionLibre() {
+    return reglageSite('inscriptionLibre') === true;
+}
+
 /** L'élève est-il rattaché à une classe sur le serveur ? */
 export function estRattache() {
     const p = getActiveProfile();

@@ -96,9 +96,16 @@ test('LA PORTE NE SE REDESSINE QUE SI LE RÉGLAGE A CHANGÉ', () => {
     // effacerait l'identifiant que l'élève est en train de taper.
     const src = readFileSync(new URL('../js/ui/portailUI.js', import.meta.url), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    //
+    // DEUX RÉGLAGES DÉCIDENT MAINTENANT DE SA FORME : le mode libre AJOUTE une
+    // porte (« Explorer les exercices »), l'inscription libre en RETIRE une
+    // (« Je n'ai pas de billet »). La garde compare donc les deux — surveiller
+    // le seul mode libre laisserait la seconde figée dans l'état où la page a
+    // été ouverte.
     assert.match(src, /let dessineeAvec = null;/);
-    assert.match(src, /if \(dessineeAvec === modeLibre\(\)\) return false;/);
-    assert.match(src, /dessineeAvec = modeLibre\(\);/);
+    assert.match(src, /const signatureDesPortes = \(\) => `\$\{modeLibre\(\)\}\|\$\{inscriptionLibre\(\)\}`;/);
+    assert.match(src, /if \(dessineeAvec === signatureDesPortes\(\)\) return false;/);
+    assert.match(src, /dessineeAvec = signatureDesPortes\(\);/);
 });
 
 test('LE SERVEUR TIENT LE RÉGLAGE, ET LE REND SANS JETON', () => {

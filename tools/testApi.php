@@ -277,6 +277,31 @@ verifier('le code fait six signes sans 0/O ni 1/I',
 
 titre('3. Les élèves se rattachent');
 
+// ── L'INSCRIPTION LIBRE EST FERMÉE PAR DÉFAUT ────────────────────────────────
+//
+// Rémy : « je pense qu'il faut le fermer, mais permettre la réouverture ». On
+// vérifie les deux états AVANT tout le reste : la suite de ce fichier rattache
+// une douzaine d'élèves par cette porte, et elle ne le pourrait pas si la porte
+// restait close. C'est aussi la preuve que le réglage commande vraiment.
+$r = json('/join', ['classCode' => $code, 'firstName' => 'Léa']);
+verifier('PORTE FERMÉE : un élève inconnu ne se crée pas',
+    $r['code'] === 403 && ($r['json']['error'] ?? '') === 'inscription_fermee', $r['brut']);
+verifier('et on lui dit quoi faire, en français d\'élève',
+    str_contains($r['json']['message'] ?? '', 'billet'), $r['brut']);
+
+// Le jeton d'API du professeur — celui de l'application, pas la session web
+// de `/admin/`. Il ne servait qu'à la fin du fichier ; il sert maintenant ici.
+$jetonProf = json('/teacher/login',
+    ['email' => 'prof@essai.test', 'password' => 'motdepassetreslong'])['json']['token'] ?? '';
+verifier('le professeur obtient son jeton d\'application', $jetonProf !== '');
+
+$r = json('/teacher/reglages', ['inscriptionLibre' => true], $jetonProf);
+verifier('le professeur rouvre l\'inscription',
+    $r['code'] === 200 && ($r['json']['reglages']['inscriptionLibre'] ?? false) === true, $r['brut']);
+$r = json('/reglages');
+verifier('et la porte d\'entrée le sait, sans jeton',
+    ($r['json']['reglages']['inscriptionLibre'] ?? false) === true);
+
 $r = json('/join', ['classCode' => $code, 'firstName' => 'Léa']);
 verifier('Léa se rattache', $r['code'] === 200 && !empty($r['json']['token']), $r['brut']);
 $lea = $r['json']['token'] ?? '';

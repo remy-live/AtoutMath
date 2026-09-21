@@ -160,6 +160,34 @@ function handleJoin(): void
         fail(403, 'student_blocked', "Ton professeur a mis ton accès en pause. Préviens-le.");
     }
 
+    // ── L'INSCRIPTION LIBRE EST FERMÉE PAR DÉFAUT ────────────────────────────
+    //
+    // RÉMY, en découvrant cet écran : « à quoi sert rejoindre ma classe ? »…
+    // puis « je pense qu'il faut le fermer, mais permettre la réouverture ».
+    //
+    // CETTE PORTE CRÉE DES ÉLÈVES. C'est ce qu'elle est faite pour faire, et
+    // c'est utile au professeur qui n'a pas de liste : il annonce un code au
+    // tableau et la classe se peuple. Mais quand la liste vient de Pronote,
+    // elle devient un piège. L'empreinte du prénom est tolérante — accents,
+    // casse et ordre des mots ne comptent pas, « Maëlle Nguyên » retrouve bien
+    // « NGUYÊN Maëlle » — mais le NOMBRE DE MOTS compte : la liste dit
+    // « BOSSE Cassandre », Cassandre tape « Cassandre », et voilà une seconde
+    // Cassandre, vierge de tout travail, à côté de la vraie.
+    //
+    // FERMÉE, LA PORTE NE CRÉE PLUS RIEN. Un élève déjà dans la liste peut
+    // encore entrer par là — il ne fabrique personne, et cela dépanne celui
+    // dont le billet est resté à la maison. C'est l'inscription qu'on ferme,
+    // pas la classe.
+    //
+    // Réglage de SITE, comme le catalogue en libre accès : même écran, même
+    // interrupteur, et un seul endroit à regarder pour savoir ce qui est
+    // ouvert.
+    if (!$student && lireReglage('site.inscriptionLibre', '0') !== '1') {
+        fail(403, 'inscription_fermee',
+            "Cette classe ne s'ouvre qu'avec le billet donné par ton professeur. "
+            . 'Demande-lui le tien.');
+    }
+
     $token = newToken();
     if ($student) {
         db()->prepare('UPDATE students SET token_hash = ?, last_seen_at = ' . sqlMaintenant() . ' WHERE id = ?')
@@ -1536,6 +1564,10 @@ function handleReglages(): void
 {
     respond(['reglages' => [
         'modeLibre' => lireReglage('site.modeLibre', '0') === '1',
+        // L'INSCRIPTION LIBRE — « Rejoindre ma classe ». Publique pour la même
+        // raison que le mode libre : elle décide d'une PORTE de l'écran
+        // d'accueil, et un visiteur n'a pas encore de jeton pour la demander.
+        'inscriptionLibre' => lireReglage('site.inscriptionLibre', '0') === '1',
     ]]);
 }
 
@@ -1560,8 +1592,12 @@ function handleTeacherReglages(): void
     if (array_key_exists('modeLibre', $body)) {
         ecrireReglage('site.modeLibre', $body['modeLibre'] ? '1' : '0');
     }
+    if (array_key_exists('inscriptionLibre', $body)) {
+        ecrireReglage('site.inscriptionLibre', $body['inscriptionLibre'] ? '1' : '0');
+    }
     respond(['ok' => true, 'reglages' => [
         'modeLibre' => lireReglage('site.modeLibre', '0') === '1',
+        'inscriptionLibre' => lireReglage('site.inscriptionLibre', '0') === '1',
     ]]);
 }
 

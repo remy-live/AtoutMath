@@ -18,7 +18,7 @@
 
 import { joinClass, loginEleve } from '../core/sync.js';
 import { applyCode } from './studentCodeUI.js';
-import { modeLibre, portailNecessaire, adresseApiDeduite } from '../core/portail.js';
+import { modeLibre, inscriptionLibre, portailNecessaire, adresseApiDeduite } from '../core/portail.js';
 import { copieDEssai } from '../core/copieDEssai.js';
 import { versionLisible } from '../core/versionDuSite.js';
 import { state } from '../core/state.js';
@@ -215,14 +215,20 @@ let dessineeAvec = null;
  */
 export function porteASuivre() {
     if (!document.getElementById(ID)) return false;
-    if (dessineeAvec === modeLibre()) return false;
+    // LES DEUX RÉGLAGES DÉCIDENT DE LA FORME DU PORTAIL : le mode libre ajoute
+    // une porte, l'inscription libre en retire une. Ne surveiller que le
+    // premier laisserait la seconde figée dans l'état où la page a été ouverte.
+    if (dessineeAvec === signatureDesPortes()) return false;
     fermerPortail();
     majPortail();
     return true;
 }
 
+/** Ce qui, dans les réglages, change la FORME du portail. */
+const signatureDesPortes = () => `${modeLibre()}|${inscriptionLibre()}`;
+
 function dessiner() {
-    dessineeAvec = modeLibre();
+    dessineeAvec = signatureDesPortes();
     const el = document.createElement('div');
     el.id = ID;
     el.className = 'portail';
@@ -265,8 +271,16 @@ function dessiner() {
                  marchent, mais elles ne se valent pas : la liste dit qui
                  travaille, le code de classe laisse chacun se déclarer. On
                  montre donc la bonne d'abord, et l'autre à qui la cherche —
-                 l'élève sans billet, le remplaçant, l'essai. -->
-            <details class="portail-repli">
+                 l'élève sans billet, le remplaçant, l'essai.
+
+                 ET ELLE DISPARAÎT QUAND ELLE EST FERMÉE. Le serveur refuse
+                 désormais l'inscription libre tant que le professeur ne l'a pas
+                 rouverte (voir core/portail.js) ; montrer une porte qui refuse
+                 serait pire que de ne pas la montrer — l'élève tape son prénom
+                 trois fois avant de lever la main. (Et pas de guillemet oblique
+                 dans ce commentaire : il est DANS un gabarit, et le premier
+                 qu'on y pose ferme le gabarit.) -->
+            ${inscriptionLibre() ? `<details class="portail-repli">
               <summary>Je n'ai pas de billet</summary>
               <label>Code de la classe
                 <input id="portail-classe" type="text" autocomplete="off" spellcheck="false"
@@ -278,7 +292,7 @@ function dessiner() {
                        maxlength="40" placeholder="Léa"></label>
               <button id="portail-rejoindre" class="portail-bouton portail-bouton--doux">Entrer avec le code de la classe</button>
               <p class="portail-etat" id="portail-etat-classe"></p>
-            </details>
+            </details>` : ''}
           </section>
 
           <section class="portail-porte">
@@ -473,7 +487,10 @@ function dessiner() {
     el.querySelectorAll('#portail-login, #portail-code-eleve').forEach(i => {
         i.onkeydown = (e) => { if (e.key === 'Enter') connecter(); };
     });
-    document.getElementById('portail-rejoindre').onclick = rejoindre;
+    // LA PORTE PEUT NE PAS ÊTRE LÀ : l'inscription libre est fermée par défaut,
+    // et brancher un bouton absent arrête tout le reste du branchement.
+    const btnRejoindre = document.getElementById('portail-rejoindre');
+    if (btnRejoindre) btnRejoindre.onclick = rejoindre;
     document.getElementById('portail-ouvrir').onclick = ouvrir;
     el.querySelectorAll('#portail-classe, #portail-prenom').forEach(i => {
         i.onkeydown = (e) => { if (e.key === 'Enter') rejoindre(); };
