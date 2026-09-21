@@ -28,6 +28,8 @@
 // pose un `aria-label`, sans quoi on rendrait muet pour un lecteur d'écran ce
 // qu'on vient de rendre visible pour l'œil.
 
+import { poserContre } from './poserContre.js';
+
 const ID_COUCHE = 'infobulle-couche';
 const ECART = 10;      // entre le bouton et la bulle
 const MARGE = 8;       // entre la bulle et le bord de l'écran
@@ -85,25 +87,41 @@ export function fermerInfobulle() {
  *   2. centrée sur l'élément, puis ramenée entre les deux bords ;
  *   3. jamais plus large que l'écran moins ses marges — au-delà, elle se replie
  *      sur plusieurs lignes plutôt que de déborder.
+ *
+ * LE CALCUL EST PARTAGÉ avec les panneaux de la fiche (`poserContre`), et ce
+ * n'est pas qu'une économie de lignes : ma première version de ce placement
+ * portait EXACTEMENT le défaut que Rémy venait de signaler à l'autre bout du
+ * logiciel — `Math.max(MARGE, y)` borne le haut de la bulle et jamais son bas.
+ * Il ne se voyait pas ici parce qu'une infobulle est courte ; il se serait vu
+ * au premier texte d'aide un peu long, sur un téléphone. Trois copies d'un même
+ * calcul, c'est trois occasions de ne le corriger que deux fois.
+ *
+ * Ce qui reste PROPRE à la bulle : le sens qu'elle affiche (sa pointe en
+ * dépend) et le décalage de cette pointe.
  */
 function placer(el) {
     const r = el.getBoundingClientRect();
-    const b = bulle.getBoundingClientRect();
-    const dessous = r.top - b.height - ECART < MARGE;
-    const y = dessous ? r.bottom + ECART : r.top - b.height - ECART;
+    const largeurAvant = bulle.getBoundingClientRect().width;
+    const { x, dessous } = poserContre(bulle, r, {
+        ecart: ECART, marge: MARGE,
+        // Une bulle se pose AU-DESSUS quand elle peut : c'est la convention, et
+        // au-dessous elle recouvre ce qu'on s'apprête à lire.
+        dessousDabord: false,
+        // Elle se replie sur plusieurs lignes, elle ne défile pas : une bulle
+        // d'aide avec un ascenseur serait un aveu.
+        borner: false,
+        // Centrée sur l'élément : `poserContre` aligne sur le bord gauche.
+        decalageX: r.width / 2 - largeurAvant / 2
+    });
 
-    let x = r.left + r.width / 2 - b.width / 2;
-    x = Math.max(MARGE, Math.min(x, window.innerWidth - b.width - MARGE));
-
-    bulle.style.left = `${Math.round(x)}px`;
-    bulle.style.top = `${Math.round(Math.max(MARGE, y))}px`;
     bulle.dataset.sens = dessous ? 'dessous' : 'dessus';
     // LA POINTE SUIT L'ÉLÉMENT, PAS LA BULLE. Quand la bulle a été ramenée dans
     // l'écran, son milieu n'est plus celui du bouton : une pointe centrée sur
     // elle désignerait le vide.
+    const largeur = bulle.getBoundingClientRect().width;
     const pointe = r.left + r.width / 2 - x;
     bulle.style.setProperty('--pointe',
-        `${Math.round(Math.max(12, Math.min(b.width - 12, pointe)))}px`);
+        `${Math.round(Math.max(12, Math.min(largeur - 12, pointe)))}px`);
 }
 
 function montrer(el) {

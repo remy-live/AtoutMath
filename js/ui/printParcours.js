@@ -77,6 +77,7 @@ import { retenirRepli } from './repli.js';
 import { brancherFicheDirecte } from './ficheDirecte.js';
 import { MODES, resolvePolicy } from '../core/policy.js';
 import { chargerJsPDF } from './printSheet.js';
+import { poserContre } from './poserContre.js';
 import {
     mesureur, echapper, apercuItems, apercuEntete, entetePdf, pdfItems, pourPdf, ENCRE,
     cartoucheDe, hauteurEntete1, apercuSolutions, pdfSolutions,
@@ -806,6 +807,10 @@ export function ouvrirFicheParcours(chemin) {
 
     const fermerRoue = () => {
         if (!panneau) return;
+        // L'ŒIL SE FERME AVEC LE PANNEAU. Un `ResizeObserver` laissé branché
+        // sur un élément retiré tient cet élément en mémoire — et rouvrir la
+        // roue cent fois dans une séance en laisserait cent.
+        if (panneau.__oeil) { panneau.__oeil.disconnect(); panneau.__oeil = null; }
         panneau.remove();
         panneau = null;
         document.removeEventListener('pointerdown', surClicDehors, true);
@@ -944,13 +949,7 @@ export function ouvrirFicheParcours(chemin) {
 
     /** Collé à ce qu'on retouche, et rabattu s'il devait sortir de l'écran. */
     function placerPanneau(cible) {
-        const r = cible.getBoundingClientRect();
-        const large = panneau.offsetWidth, haut = panneau.offsetHeight;
-        const x = Math.max(8, Math.min(r.left, window.innerWidth - large - 8));
-        const y = r.bottom + 6 + haut > window.innerHeight
-            ? Math.max(8, r.top - haut - 6) : r.bottom + 6;
-        panneau.style.left = `${x}px`;
-        panneau.style.top = `${y}px`;
+        poserContre(panneau, cible);
     }
 
     function ouvrirRoue(bouton, id) {
@@ -989,16 +988,6 @@ export function ouvrirFicheParcours(chemin) {
             </div>` : ''}
             <button type="button" class="pp-roue-autres" data-r-neuf>${refaireSvg(15)} Autres questions</button>`;
         document.body.appendChild(panneau);
-
-        // COLLÉ À L'ENGRENAGE, et rabattu s'il devait sortir de l'écran : un
-        // panneau à moitié hors du cadre ne se règle pas, il se subit.
-        const r = bouton.getBoundingClientRect();
-        const large = panneau.offsetWidth, haut = panneau.offsetHeight;
-        const x = Math.max(8, Math.min(r.left, window.innerWidth - large - 8));
-        const y = r.bottom + 6 + haut > window.innerHeight
-            ? Math.max(8, r.top - haut - 6) : r.bottom + 6;
-        panneau.style.left = `${x}px`;
-        panneau.style.top = `${y}px`;
 
         brancherPas(panneau);
         const nb = panneau.querySelector('[data-r-nb]');
@@ -1067,6 +1056,30 @@ export function ouvrirFicheParcours(chemin) {
                 if (ev.target.closest('.cfg-on')) setTimeout(relire, 0);
             });
         }
+        // COLLÉ À L'ENGRENAGE, ET PLACÉ EN DERNIER — voir `poserContre`.
+        //
+        // RÉMY : « sur le 9, 10, 11 les paramètres ne sont toujours pas
+        // accessibles. Depuis tout le temps ! »
+        //
+        // L'ordre était le coupable, et c'est une correction PRÉCÉDENTE qui
+        // l'avait créé. `brancherMarches`, ajouté quand Rémy avait signalé que
+        // la frise de ces trois exercices ne s'affichait pas, GARNIT le bloc
+        // du contenu — mesuré, il le fait passer de 265 à 340 px. Le panneau
+        // était placé AVANT, sur une hauteur de 532 px qu'il n'aurait plus une
+        // milliseconde plus tard : 607. Soixante-quinze pixels de trop, et le
+        // bas du panneau passait sous le bord de l'écran.
+        //
+        // On place donc quand tout est garni. Et l'observateur ci-dessous
+        // rattrape ce qu'on ne sait pas prévoir — une police qui arrive, une
+        // frise qui se redessine, un réglage qui ajoute une ligne : le panneau
+        // se repose au lieu de sortir de l'écran.
+        poserContre(panneau, bouton);
+        if (typeof ResizeObserver === 'function') {
+            const oeil = new ResizeObserver(() => poserContre(panneau, bouton));
+            oeil.observe(panneau);
+            panneau.__oeil = oeil;
+        }
+
         nb.focus();
         nb.select();
         document.addEventListener('pointerdown', surClicDehors, true);

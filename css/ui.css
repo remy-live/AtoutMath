@@ -1979,8 +1979,22 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     /* AU-DESSUS DE LA MODALE QUI L'A OUVERT : la fiche vit dans une
        « modal-overlay--top » à z-index 999999, et un panneau posé en dessous
        existe sans se voir — le pire des deux mondes. */
-    position: fixed; z-index: 1000001; min-width: 190px;
+    /* UNE LARGEUR BORNÉE, pour que la hauteur ne dépende pas de l'endroit où
+       le panneau se trouve quand on la mesure. Sans elle, il s'étale tant
+       qu'il n'est pas posé, puis se replie — et se retrouve plus haut qu'on ne
+       l'avait cru. Les panneaux mesurés font 224 à 247 px : 320 ne change
+       donc rien à ce qu'on voit, seulement à ce qu'on mesure. */
+    position: fixed; z-index: 1000001;
+    min-width: 190px; max-width: min(320px, calc(100vw - 16px));
     display: flex; flex-direction: column; gap: 8px;
+    /* PLUS HAUT QUE L'ÉCRAN : ALORS IL DÉFILE.
+       Les réglages en listes à cocher — « les étapes travaillées », « les
+       paliers travaillés » — font des panneaux de 607 px. Sur un portable
+       posé en paysage, c'est plus que la fenêtre entière : sans défilement, il
+       faudrait choisir quelle moitié on sacrifie. La hauteur est posée par
+       `poserContre`, qui connaît l'écran ; ici on dit seulement quoi faire du
+       trop-plein. */
+    overflow-y: auto; overscroll-behavior: contain;
     padding: 12px; border-radius: 12px;
     background: var(--bg-panel); border: 1px solid var(--border);
     box-shadow: 0 14px 40px rgba(0, 0, 0, .22);
