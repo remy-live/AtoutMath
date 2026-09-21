@@ -44,10 +44,15 @@ export function gradeRun(run, policyOverride = null) {
                 itemSeed: a.itemSeed || null, exerciseId: a.exerciseId || null,
                 questionText: a.questionText || '', expected: a.expected,
                 tries: 0, hintsUsed: 0, solved: false, firstTry: false,
-                msElapsed: 0, given: a.given, misconception: null
+                msElapsed: 0, given: a.given, misconception: null,
+                // Une question ne devient « morceau » que si TOUTES ses
+                // tentatives le sont : la première décide, une suivante qui ne
+                // le serait pas la fait redevenir une vraie question.
+                partiel: true
             });
         }
         const it = items.get(key);
+        if (!a.partiel) it.partiel = false;
         it.tries++;
         it.hintsUsed = Math.max(it.hintsUsed, a.hintsUsed || 0);
         // `msElapsed` est un INTERVALLE — le temps écoulé depuis la tentative
@@ -63,7 +68,27 @@ export function gradeRun(run, policyOverride = null) {
             if (a.misconception) it.misconception = a.misconception;
         }
     }
-    const itemList = [...items.values()];
+    // --- CE QUI EST UNE QUESTION, ET CE QUI N'EN EST QU'UN MORCEAU -----------
+    //
+    // RÉMY : « comment juges-tu un exercice comme l'organigramme des
+    // quadrilatères en mode évaluation ? »
+    //
+    // `partiel` veut dire, depuis toujours : « cette tentative compte aux
+    // statistiques et au carnet d'erreurs, mais ce n'est pas une question de la
+    // série » — un chiffre posé dans une multiplication, un codage de
+    // l'organigramme. `runner.js` l'écartait bien de son compteur. LE BARÈME,
+    // LUI, NE LE SAVAIT PAS : l'élève lisait « 1 organigramme » en haut et sa
+    // note se calculait sur les onze morceaux qu'il avait traversés — un
+    // nombre qui changeait avec ses erreurs, puisqu'un morceau non tenté ne
+    // produit aucune tentative.
+    //
+    // La note compte donc les QUESTIONS. Les morceaux, eux, restent entiers là
+    // où ils valent quelque chose : le bilan par compétence et le carnet
+    // d'erreurs, qui n'ont que faire d'un découpage en questions et pour
+    // lesquels « il a raté le codage du losange » est précisément ce qu'on
+    // veut savoir.
+    const tousLesItems = [...items.values()];
+    const itemList = tousLesItems.filter(it => !it.partiel);
 
     // --- Crédit par question, selon la règle du barème ---
     const creditOf = (it) => {
@@ -119,7 +144,7 @@ export function gradeRun(run, policyOverride = null) {
 
     // --- Bilan par compétence ---
     const bySkill = new Map();
-    for (const it of itemList) {
+    for (const it of tousLesItems) {
         if (!it.skillId) continue;
         if (!bySkill.has(it.skillId)) {
             bySkill.set(it.skillId, { skillId: it.skillId, label: skillLabel(it.skillId), questions: 0, credit: 0, reussies: 0 });
@@ -189,7 +214,14 @@ export function gradeRun(run, policyOverride = null) {
         parCompetence,
         // Les questions ratées, avec leur diagnostic : c'est la partie que
         // le professeur lit en premier.
-        aRetravailler: itemList
+        //
+        // ELLE PREND LES MORCEAUX AUSSI, et c'est là qu'ils valent le plus :
+        // « il a raté le codage du losange » ou « il s'est trompé de retenue à
+        // la dizaine » est exactement ce qu'on veut lire. La note les écarte
+        // parce qu'elle compte des questions ; le carnet les garde parce qu'il
+        // cherche l'erreur, pas le compte. C'est ce que `partiel` promet depuis
+        // le début : « aux statistiques et au carnet d'erreurs ».
+        aRetravailler: tousLesItems
             .filter(it => !it.solved || !it.firstTry)
             .map(it => ({
                 questionText: it.questionText,
