@@ -16,6 +16,7 @@ import { exercices, getExerciseById, paramSchemaOf, estNotable } from '../data/c
 import { state } from '../core/state.js';
 import { makePath, makeStep, normalizePath, totalItems } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
+import { poserLeBandeauDesOutils } from './bandeauOutils.js';
 import { communDe, appliquerAuxEtapes } from '../core/reglagesGroupes.js';
 import { ouvrirReglagesEtape, fermerReglagesEtape } from './reglagesEtape.js';
 import { MAX_ETAPE } from '../core/seuilEtape.js';
@@ -924,6 +925,11 @@ export function renderTeacherPath() {
     // vide n'est qu'un bandeau de plus.
     steps.forEach((step, index) => pathBox.appendChild(stepRow(step, index, policy)));
     majBarreSelection();
+    // LA BANDE QUI NOMME LES ICÔNES. Ici et non au démarrage : `outilsDuParcours`
+    // vient de montrer ou de cacher sept boutons selon que le parcours est vide,
+    // et une légende posée avant eux ne les nommerait pas. Sans effet une fois
+    // que le professeur a dit « j'ai compris ».
+    poserLeBandeauDesOutils();
     autoSavePath();
 }
 

@@ -593,3 +593,60 @@ body.mobile-view #toast-container {
    récompenses de la carte : l'élève doit faire le lien entre les deux écrans
    sans qu'on le lui écrive. */
 .run-screen-text--cadeau { color: #2f855a; font-weight: 700; }
+
+/* --- LA BANDE QUI NOMME LES ICÔNES ------------------------------------------
+   Voir js/ui/bandeauOutils.js : mesuré, huit boutons d'icône sans un mot à
+   l'arrivée, et pas de survol sur une tablette.
+
+   ELLE SE LIT COMME UNE LÉGENDE, PAS COMME UNE ALERTE. Fond très doux, pas de
+   couleur d'avertissement, pas d'ombre : ce n'est pas un problème à régler,
+   c'est une note qu'on lit une fois. Une bande jaune au-dessus du travail se
+   fait chasser avant d'être lue. */
+.bandeau-outils {
+    margin: 0 0 14px; padding: 12px 14px;
+    border: 1px dashed var(--border); border-radius: 12px;
+    background: color-mix(in srgb, var(--primary) 4%, var(--bg-panel));
+}
+.bandeau-outils-titre {
+    margin: 0 0 10px; font-size: .84rem; font-weight: 700;
+    color: var(--text-muted);
+}
+/* Une grille et non une simple ligne : douze noms mis bout à bout se lisent
+   comme une phrase, alors que ce sont douze entrées distinctes. Les colonnes
+   se comptent toutes seules — deux sur un téléphone, quatre sur un écran. */
+.bandeau-outils-liste {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: 6px 14px;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+.bandeau-outils-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .84rem; color: var(--text-main);
+    padding: 4px 6px; border-radius: 8px;
+}
+/* La classe n'est posée qu'à la souris — voir bandeauOutils.js. Au doigt la
+   ligne est du texte, et rien ne doit laisser croire le contraire. */
+.bandeau-outils-item--cliquable { cursor: pointer; }
+.bandeau-outils-item--cliquable:hover { background: var(--bg-app); }
+/* L'icône est la COPIE du bouton : elle garde sa taille d'origine, qu'on ramène
+   ici à celle d'un mot pour qu'elles s'alignent toutes. */
+.bandeau-outils-item svg {
+    width: 17px; height: 17px; flex: none; color: var(--text-muted);
+}
+.bandeau-outils-compris {
+    margin-top: 10px; padding: 6px 14px;
+    font: inherit; font-size: .82rem; font-weight: 700;
+    color: var(--text-muted); cursor: pointer;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 999px;
+}
+.bandeau-outils-compris:hover { color: var(--text-main); border-color: var(--text-muted); }
+/* LE PLANCHER TACTILE NE VAUT QUE POUR CE QUI SE CLIQUE. Au doigt, les lignes
+   sont du texte — elles ne portent pas de geste, elles n'ont donc pas de cible
+   à offrir. « J'ai compris », lui, se vise, une seule fois, sans relire. */
+@media (pointer: coarse) {
+    .bandeau-outils-compris { min-height: 44px; }
+    /* Deux colonnes plutôt qu'une : onze noms en colonne unique font une
+       page de défilement avant d'atteindre le parcours. */
+    .bandeau-outils-liste { grid-template-columns: repeat(2, 1fr); gap: 4px 10px; }
+    .bandeau-outils-item { font-size: .78rem; padding: 3px 4px; }
+}
