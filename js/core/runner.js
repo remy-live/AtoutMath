@@ -718,6 +718,37 @@ export class Runner {
         if (titleEl) titleEl.textContent = step.title;
 
         state.activeExo = step.exercise;
+
+        // ON DIT AU SERVEUR SUR QUOI IL EST, AVANT QU'IL AIT RÉPONDU.
+        //
+        // C'est l'événement qui manquait — voir `STEP_STARTED` dans
+        // core/journal.js. Il part comme les autres : `journal_appended`
+        // déclenche la poussée quatre secondes plus tard, et le direct du
+        // professeur le relit dans les dix qui suivent.
+        //
+        // PAS EN ESSAI. Le professeur qui regarde l'exercice d'un élève depuis
+        // sa propre fenêtre ne doit pas apparaître dans son propre direct —
+        // c'est la même règle que pour `run_started` juste au-dessus.
+        if (!this.essai) journal.emit(EventTypes.STEP_STARTED, {
+            runId: this.runId,
+            pathId: this.path && this.path.id,
+            pathName: this.path && this.path.name,
+            stepId: step.stepId,
+            // L'IDENTIFIANT, PAS L'OBJET. `step.exercise` est l'exercice
+            // HYDRATÉ (voir `hydratePath`) ; `step.exerciseId` est son nom.
+            // MESURÉ avec l'objet : le direct affichait « [object Object] »
+            // à la place du titre, et le bouton du professeur ouvrait le vide.
+            // Les autres événements du journal écrivent l'identifiant ; le
+            // serveur le range tel quel et le professeur le relit tel quel.
+            exerciseId: step.exerciseId || (step.exercise && step.exercise.id) || '',
+            // LE MÊME DRAPEAU QUE `run_started`, ET LU AU MÊME ENDROIT.
+            // J'avais écrit `this.bacASable`, qui n'existe pas : toujours
+            // faux, donc une partie du bac à sable serait passée pour du
+            // travail de séance dans le direct — précisément ce que le
+            // commentaire de `run_started` dit d'éviter.
+            bac: !!(this.path && this.path.bac)
+        });
+
         this.majBoutonPasser(step);
         // La calculatrice n'est offerte que là où l'exercice le dit, et une
         // fenêtre ouverte à l'étape d'avant se referme si la suivante ne
