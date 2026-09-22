@@ -220,27 +220,42 @@ body.mobile-view.teacher-mode #sidebar {
     background: var(--bg-panel);
 }
 body.mobile-view.teacher-mode #sidebar.drawer-open { transform: translateY(0); }
-/* ET LA BARRE DU BAS RESTE AU-DESSUS DU TIROIR REPLIÉ.
-   `bottom: var(--bottom-nav-height)` pose bien le tiroir SUR la barre ; c'est
-   la translation qui le fait redescendre par-dessus. Replié, il descend de
-   548 px et son bas passe de 784 à 1392 — la barre de navigation, opaque et à
-   z-index 100, se retrouve sous 658 px de panneau à z-index 4000.
+/* LA BARRE DU BAS N'EXISTE PAS DANS L'ESPACE DU PROFESSEUR.
+   Rémy, capture d'iPhone en mode prof : « y a un intérêt à la zone prof à la
+   toolbar du bas ? »
 
-   MESURÉ sur 390 × 844, professeur, tiroir replié (`tools/tmp/troisTel2.mjs`),
-   en demandant qui reçoit le doigt au milieu de chaque onglet :
+   NON, ET C'EST MESURÉ. On a appuyé sur les cinq, à 390 × 844, parcours chargé,
+   en vérifiant à chaque fois que le doigt atteignait bien le bouton
+   (`tools/tmp/barreDuBasProf.mjs`) :
 
-                                          avant     après
-       onglets de la barre du bas pris    5 / 5     0 / 5
+       Explorer    le bouton s'allume, l'écran ne change pas d'un caractère
+       Exercices   idem
+       Code        ouvre le code élève — DOUBLON du 🔗 de la barre d'outils
+       Parcours    le bouton s'allume, l'écran ne change pas
+       Profil      ouvre le profil d'ÉLÈVE : « Mes points », « Ce que tu dois
+                   réviser », tutoiement — chez quelqu'un qui porte « Prof »
 
-   Cinq sur cinq : Explorer, Exercices, Code, Parcours et Profil. Toute la
-   navigation du téléphone, invisible et morte, en permanence — puisque le
-   tiroir est replié tant qu'on ne l'ouvre pas. Ce qu'on voyait à la place,
-   c'étaient les onglets DU TIROIR, qui tombent exactement au même endroit.
+   Deux sur cinq font quelque chose, et les deux sont des erreurs pour un
+   professeur. C'est la navigation de l'ÉLÈVE, posée sous l'espace du
+   professeur qui a déjà la sienne en haut — Préparer / La classe — plus les
+   onglets du tiroir juste au-dessus. Quatre bandeaux de navigation sur 844 px.
 
-   On ne touche pas à la translation, qui fait l'animation : on remonte la
-   barre au-dessus. Ouvert, le tiroir s'arrête à 784 et ne la recouvre plus —
-   la règle ne change donc rien à ce moment-là. */
-body.mobile-view.teacher-mode #bottom-nav { z-index: 4100; }
+   ON RETIRE, ET LA HAUTEUR AVEC. Mettre `--bottom-nav-height` à zéro suffit à
+   tout recaler : le tiroir est posé à `bottom: var(--bottom-nav-height)` et la
+   réserve sous le parcours se calcule dessus. Un `display: none` seul aurait
+   laissé soixante pixels de bande morte au bas de l'écran.
+
+   CE QUI DISPARAÎT AVEC : ma correction de la v771, qui remontait cette barre
+   au-dessus du tiroir replié (`z-index: 4100`). Elle réparait la visibilité
+   d'un bandeau qui n'avait rien à faire là — Rémy a posé la bonne question
+   après coup. La règle est retirée plutôt que gardée « au cas où » : une règle
+   qui protège un élément absent raconte une histoire fausse au prochain
+   lecteur. En espace ÉLÈVE, rien ne change : la classe `teacher-mode` tombe et
+   la barre revient, avec sa hauteur. */
+body.mobile-view.teacher-mode {
+    --bottom-nav-height: 0px;
+}
+body.mobile-view.teacher-mode #bottom-nav { display: none !important; }
 /* LE VOILE DERRIÈRE LE TIROIR OUVERT. Voir `setDrawer` dans `js/app.js` : il
    dit « c'est dessous » au lieu de laisser croire à un titre coupé. Il commence
    sous la barre du haut, pour qu'on garde ses repères, et il s'efface en même

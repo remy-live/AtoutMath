@@ -72,28 +72,49 @@ test('LES DEUX BOÎTES RESTENT DANS LE HTML — LEURS ÉCOUTEURS EN DÉPENDENT',
     assert.match(html, /<div class="path-header-left">/);
 });
 
-test('LA BARRE DU BAS PASSE AU-DESSUS DU TIROIR REPLIÉ', () => {
-    // MESURÉ sur 390 × 844, professeur, en demandant qui reçoit le doigt au
-    // milieu de chaque onglet (`tools/tmp/troisTel2.mjs`) :
+test('LA BARRE DU BAS N\'EXISTE PLUS DANS L\'ESPACE DU PROFESSEUR', () => {
+    // CE TEST A CHANGÉ D'AVIS, ET C'EST RÉMY QUI A EU RAISON.
     //
-    //                                        avant     après
-    //   onglets de la barre du bas pris      5 / 5     0 / 5
+    // En v771 il gardait ma correction : la barre du bas était recouverte par
+    // le tiroir replié — 5 onglets sur 5 inatteignables — et je l'avais
+    // remontée au-dessus (`z-index: 4100`). Mesure juste, correction juste.
     //
-    // Cinq sur cinq : Explorer, Exercices, Code, Parcours, Profil. Toute la
-    // navigation du téléphone, invisible et morte — en permanence, puisque le
-    // tiroir est replié tant qu'on ne l'ouvre pas. Ce qu'on voyait à la place,
-    // c'étaient les onglets DU TIROIR, qui tombent au même endroit.
-    assert.match(MISE_EN_PAGE, /body\.mobile-view\.teacher-mode #bottom-nav \{ z-index: 4100; \}/);
-    // 4100 doit rester au-dessus du tiroir (4000) et de son voile (3999) : si
-    // l'un des deux montait, la barre retournerait dessous en silence.
-    // On lit le z-index du TIROIR COULISSANT, pas celui de `#sidebar` en
-    // général : la première règle du fichier en pose un à 10, et un test qui
-    // prend la première occurrence venue mesure autre chose que ce qu'il croit.
-    const bloc = MISE_EN_PAGE.slice(MISE_EN_PAGE.indexOf(
-        'body.mobile-view.teacher-mode #sidebar {\n    position: fixed'));
-    const tiroir = Number((bloc.match(/z-index: (\d+);/) || [])[1]);
-    assert.equal(tiroir, 4000, `tiroir à ${tiroir}`);
-    assert.ok(4100 > tiroir, 'la barre du bas doit rester au-dessus du tiroir');
+    // Puis Rémy, capture d'iPhone en mode prof : « y a un intérêt à la zone
+    // prof à la toolbar du bas ? » MESURÉ en appuyant sur les cinq, à
+    // 390 × 844, parcours chargé, en vérifiant que le doigt atteignait bien le
+    // bouton (`tools/tmp/barreDuBasProf.mjs`) :
+    //
+    //   Explorer    le bouton s'allume, l'écran ne change pas d'un caractère
+    //   Exercices   idem
+    //   Code        ouvre le code élève — DOUBLON du 🔗 de la barre d'outils
+    //   Parcours    le bouton s'allume, l'écran ne change pas
+    //   Profil      ouvre le profil d'ÉLÈVE : « Mes points », « Ce que tu dois
+    //               réviser », tutoiement — chez quelqu'un qui porte « Prof »
+    //
+    // Deux sur cinq font quelque chose, et les deux sont des erreurs pour un
+    // professeur. J'avais donc réparé la visibilité d'un bandeau qui n'avait
+    // rien à faire là. La bonne question est venue après la bonne correction.
+    //
+    // MESURÉ APRÈS retrait : le tiroir replié remonte de 734 à 794, soit
+    // soixante pixels rendus au parcours, et aucune bande morte en bas.
+    assert.match(MISE_EN_PAGE, /body\.mobile-view\.teacher-mode #bottom-nav \{ display: none !important; \}/);
+    // LA HAUTEUR AVEC. Un `display: none` seul aurait laissé soixante pixels de
+    // vide : le tiroir se pose à `bottom: var(--bottom-nav-height)` et la
+    // réserve sous le parcours se calcule dessus.
+    assert.match(MISE_EN_PAGE, /body\.mobile-view\.teacher-mode \{\s*\n\s*--bottom-nav-height: 0px;\s*\n\}/);
+    // ET L'ANCIENNE RÈGLE EST PARTIE, pas gardée « au cas où » : une règle qui
+    // protège un élément absent raconte une histoire fausse au prochain lecteur.
+    assert.ok(!/#bottom-nav \{ z-index: 4100; \}/.test(MISE_EN_PAGE));
+});
+
+test('MAIS L\'ÉLÈVE, LUI, GARDE SA NAVIGATION', () => {
+    // C'est SA barre : Explorer, Exercices, Code, Parcours, Profil. Le retrait
+    // ne vaut que sous `teacher-mode` ; la classe tombe quand on repasse élève,
+    // et la barre revient avec sa hauteur.
+    assert.match(MISE_EN_PAGE, /body\.mobile-view #bottom-nav \{ display: flex !important; \}/);
+    const retrait = MISE_EN_PAGE.match(/(body\.mobile-view\.teacher-mode #bottom-nav \{ display: none)/);
+    assert.ok(retrait && retrait[1].includes('teacher-mode'),
+        'le retrait doit être conditionné au mode professeur');
 });
 
 test('ET « PROF » RESTE ÉCRIT SUR LE TÉLÉPHONE', () => {
