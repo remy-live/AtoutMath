@@ -46,6 +46,15 @@ export const TAGS = {
         FRACTIONS: "Fractions",
         DECIMAUX: "Nombres décimaux",
         RELATIFS: "Nombres relatifs",
+        // LE CHAPITRE QUI OUVRE LA SECONDE. Rémy : « on va faire des exercices
+        // de seconde. Premier type : placer des nombres dans le bon ensemble de
+        // nombres et aussi sur les intervalles, sur un axe, avec inégalité,
+        // union et intersection. »
+        //
+        // Rangé à part, et non sous « Numération » : ce n'est plus l'écriture
+        // d'un nombre qu'on travaille, c'est son APPARTENANCE — à ℕ, à ℤ, à un
+        // intervalle. Les deux se ressemblent de loin et ne se répondent pas.
+        ENSEMBLES: "Ensembles et intervalles",
         // Le chapitre où le nombre laisse la place à la lettre. Rangé sous
         // « Calcul mental », il aurait disparu au milieu des tables — c'est
         // pourtant l'entrée en algèbre, et elle se travaille pour elle-même.
@@ -87,6 +96,14 @@ export const TAGS = {
         SIXIEME: "6ème",
         CINQUIEME: "5ème",
         QUATRIEME: "4ème",
-        TROISIEME: "3ème"
+        TROISIEME: "3ème",
+        // LE LYCÉE COMMENCE ICI. Rémy : « oui rajoute le niveau seconde ».
+        //
+        // Presque tout le code lit `Object.values(TAGS.NIVEAU)` pour ordonner
+        // les niveaux — filtres du catalogue, arbre, tri des dossiers — donc
+        // cette seule ligne les met tous à jour, dans l'ordre de la scolarité.
+        // Un seul endroit recopiait la liste à la main (`ui/choisirExercice`) ;
+        // il lit désormais ici comme les autres.
+        SECONDE: "2nde"
     }
 };

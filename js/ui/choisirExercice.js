@@ -30,6 +30,7 @@
 // mot, on regarde, on tape autre chose) ; tout le reste vient de là.
 
 import { exercices, filterByStatus, estADeux, seJoueAussiADeux } from '../data/catalog.js';
+import { TAGS } from '../data/tags.js';
 import { state } from '../core/state.js';
 import { showModal } from './modal.js';
 import { correspond } from '../core/recherche.js';
@@ -54,7 +55,13 @@ function visibles() {
 
 /** Les niveaux réellement présents, dans l'ordre du programme. */
 function niveauxDisponibles(liste) {
-    const ordre = ['CM2', '6ème', '5ème', '4ème', '3ème'];
+    // ON LIT LE RÉFÉRENTIEL, ON NE LE RECOPIE PAS. Cette liste était écrite à
+    // la main, et c'est le SEUL endroit du code qui le faisait — partout
+    // ailleurs on lit `Object.values(TAGS.NIVEAU)`. Le jour où la Seconde est
+    // arrivée, elle apparaissait donc partout sauf dans cette fenêtre-ci, et
+    // en dernier puisque le repli la renvoie à la fin. Une liste recopiée est
+    // une liste qui finit par mentir.
+    const ordre = Object.values(TAGS.NIVEAU);
     const vus = new Set();
     liste.forEach(e => (e.tags.niveaux || []).forEach(n => vus.add(n)));
     return ordre.filter(n => vus.has(n)).concat([...vus].filter(n => !ordre.includes(n)));

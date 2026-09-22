@@ -205,6 +205,42 @@ const BASE = {
             + 'C\'est pour cela qu\'on décompose avant : la méthode tient encore quand les '
             + 'nombres grandissent.'
     },
+    // --- Chapitre « Ensembles et intervalles » (2de) ---
+    //
+    // TROIS COMPÉTENCES ET NON UNE, parce que ce sont trois gestes distincts et
+    // qu'un élève peut en tenir un sans les autres. Celui qui LIT un axe sans
+    // hésiter écrit souvent ]2 ; 5[ pour [2 ; 5[ ; celui qui écrit juste ne
+    // sait pas toujours retrouver le dessin. Le bilan par compétence doit le
+    // dire au professeur, sinon il refait travailler les trois pour un seul.
+    'nb.intervalle.lire': {
+        label: 'Lire et représenter un intervalle sur un axe',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        // `num.relatifs.sens` et non un identifiant inventé : j'avais écrit
+        // `num.relatifs.comparaison`, qui n'existe pas. Un prérequis fantôme ne
+        // lève aucune erreur — il rend seulement la remédiation muette, ce qui
+        // est exactement ce qu'on ne verrait jamais.
+        prereqs: ['num.relatifs.sens'],
+        descriptor: 'Passer de la droite graduée à l\'intervalle, et retrouver le dessin à partir de l\'écriture.',
+        lesson: 'Un crochet tourné VERS L\'INTÉRIEUR prend la borne ; tourné vers l\'extérieur, il la laisse dehors. Vers l\'infini on dessine une flèche : on ne s\'arrête jamais.'
+    },
+    'nb.intervalle.ecrire': {
+        label: 'Écrire un intervalle avec les bons crochets',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        prereqs: ['nb.intervalle.lire'],
+        descriptor: 'Écrire l\'intervalle correspondant à une inégalité ou à un dessin, crochets compris.',
+        lesson: 'Du plus petit vers le plus grand. Crochet fermé [ ou ] quand la borne est PRISE, ouvert quand elle est laissée. Et le crochet de l\'infini est toujours ouvert : l\'infini n\'est pas un nombre, on ne l\'atteint jamais.'
+    },
+    'nb.intervalle.inegalite': {
+        label: 'Traduire un intervalle en inégalité',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        prereqs: ['nb.intervalle.lire'],
+        descriptor: 'Écrire la condition sur x — avec ⩽ ou < selon que la borne est prise ou non.',
+        lesson: '⩽ se lit « inférieur OU ÉGAL » : il prend la borne. < la laisse. [2 ; 5[ s\'écrit donc 2 ⩽ x < 5.'
+    },
+
     // --- Chapitre « Nombres entiers et décimaux » (6ᵉ) ---
     'num.ecriture.lettres': {
         label: 'Écrire un nombre en chiffres et en lettres',

@@ -210,6 +210,18 @@ export const CODES_EXERCICES = {
     'defi-parking':               'PK',   // Le Parking
     'defi-embouteillage':         'EB',   // L'Embouteillage
     'defi-pousseur':              'PJ',   // Le Pousseur
+
+    // --- Seconde : ensembles et intervalles ---
+    //
+    // PAS DE I, PAS DE O, PAS DE Q. J'avais d'abord écrit IV, IC et ID —
+    // mnémoniques pour « intervalle », et silencieusement invalides : la lettre
+    // de contrôle rend `null` sur une lettre hors alphabet, `codeCourt` rend
+    // alors la chaîne VIDE, et mes trois exercices « partageaient » ce vide.
+    // L'alphabet de ces codes en compte vingt-trois, parce qu'ils se DICTENT en
+    // classe et qu'un I, un O ou un Q s'entendent comme un autre.
+    'sec-intervalles':            'VL',   // Intervalles : les trois écritures
+    'sec-intervalles-ecrire':     'NT',   // Le bon côté du crochet
+    'sec-intervalles-demi':       'ZA',   // Demi-droites et infini
 };
 
 /** L'exercice que désignent ces deux lettres, ou undefined. */
