@@ -69,6 +69,26 @@ applyCors();
 // servir, plutôt que de refuser tout le monde à l'entrée.
 try { migrerSiNecessaire(); } catch (Throwable $t) { /* on sert quand même */ }
 
+// LA PURGE NE TOURNAIT QUE SI L'ON OUVRAIT L'ADMINISTRATION.
+//
+// `purgerSiNecessaire()` n'était appelée que depuis `admin/index.php`. Or
+// Rémy travaille désormais depuis l'espace professeur de l'application, qui
+// passe entièrement par ici : il pouvait conduire sa classe toute l'année
+// sans jamais déclencher l'effacement — pendant que la page Santé affichait
+// « conservation limitée à N jours ». Une promesse écrite à l'écran que le
+// code ne tenait pas.
+//
+// Le coût est nul : la fonction se garde elle-même par un témoin quotidien
+// (`api/.derniere-purge`) et rend la main aussitôt les autres fois. Et elle
+// ne doit jamais faire tomber l'API : effacer de vieux événements est moins
+// urgent que servir la classe qui est en train de travailler.
+//
+// CE QU'ELLE N'EFFACE TOUJOURS PAS : la table `students`, donc les prénoms.
+// Ce n'est pas un oubli à réparer en passant — c'est une politique à décider
+// (au bout de combien de temps un élève parti cesse-t-il d'exister ?), et
+// c'est à Rémy de la fixer, pas à moi.
+try { purgerSiNecessaire(); } catch (Throwable $t) { /* la classe passe avant */ }
+
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $base = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');
 $route = '/' . trim(substr($path, strlen($base)), '/');
