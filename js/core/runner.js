@@ -1744,7 +1744,25 @@ export class Runner {
         }
     }
 
-    finish(aborted = false) {
+    /**
+     * @param {boolean} aborted  le parcours n'est pas allé au bout — c'est ce
+     *   qui part au journal, et il faut que ce soit vrai : le professeur
+     *   compte les séances terminées.
+     * @param {Object} [opts]
+     * @param {string} [opts.bilanQuandMeme] une phrase à poser au-dessus du
+     *   bilan pour l'afficher MALGRÉ l'interruption.
+     *
+     *   DEUX INTERRUPTIONS QUI NE SE RESSEMBLENT PAS. L'élève qui ferme son
+     *   exercice a choisi de partir : lui montrer un bilan serait le retenir.
+     *   Le chronomètre qui tombe à zéro, lui, ne lui laisse pas le choix — et
+     *   c'est l'instant où il a le plus besoin de savoir ce qu'il a réussi.
+     *
+     *   MESURÉ : `leMoment.js` promettait déjà « il enregistre ce qui a été
+     *   fait, PUIS AFFICHE SON BILAN », et `finish(true)` sortait deux lignes
+     *   avant le bilan. Le commentaire disait l'intention, le code faisait
+     *   autre chose, et personne ne voyait rien.
+     */
+    finish(aborted = false, { bilanQuandMeme = '' } = {}) {
         this.teardownStep();
         // L'ÉCOUTE MEURT AVEC LE PARCOURS. Un runner fini qui écoute encore
         // rallumerait un bouton dans une page où il n'y a plus d'étape — et
@@ -1765,7 +1783,7 @@ export class Runner {
             durationSeconds: Math.round((Date.now() - this.startedAt) / 1000)
         });
 
-        if (aborted) return;
+        if (aborted && !bilanQuandMeme) return;
 
         // Le bilan est recalculé depuis le journal, pas depuis des compteurs
         // internes : c'est exactement ce que verra le professeur.
@@ -1784,7 +1802,8 @@ export class Runner {
         }));
 
         import('../ui/reportUI.js').then(m => m.showRunReport(bilan, {
-            onClose: () => this.exit()
+            onClose: () => this.exit(),
+            enTete: bilanQuandMeme
         }));
     }
 

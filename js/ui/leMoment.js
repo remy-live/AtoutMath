@@ -168,9 +168,23 @@ function terminerLeTravail() {
     // enregistre ce qui a été fait, puis affiche son bilan. L'arracher
     // perdrait la dernière réponse — celle qu'on est en train de taper quand
     // la sonnerie tombe, et qui est toujours celle qui compte.
+    //
+    // ET LE BILAN, IL FAUT LE DEMANDER. Cette phrase était écrite ici depuis
+    // le début ; elle était fausse. `finish(true)` marque le parcours
+    // interrompu et sort AVANT le bilan — à juste titre pour l'élève qui
+    // ferme son exercice, à tort pour celui que la sonnerie arrête. Il n'a
+    // rien choisi, et c'est l'instant où il a le plus besoin de savoir ce
+    // qu'il a réussi. Le journal garde `aborted: true` : le parcours n'est pas
+    // allé au bout, et le professeur compte les séances terminées.
     const meneur = state.activeSequenceRunner;
     if (meneur && typeof meneur.finish === 'function') {
-        try { meneur.finish(true); } catch (e) { /* déjà clos */ }
+        try {
+            meneur.finish(true, {
+                bilanQuandMeme: 'Le temps est écoulé. Voici ce que tu as fait '
+                    + 'jusque-là — ce n\'est pas une séance ratée, c\'est une '
+                    + 'séance arrêtée.'
+            });
+        } catch (e) { /* déjà clos */ }
     }
 }
 

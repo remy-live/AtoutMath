@@ -657,3 +657,15 @@ body.mobile-view #toast-container {
     .bandeau-outils-liste { grid-template-columns: repeat(2, 1fr); gap: 4px 10px; }
     .bandeau-outils-item { font-size: .78rem; padding: 3px 4px; }
 }
+
+/* LA PHRASE AU-DESSUS DU BILAN, quand il ne vient pas d'une fin normale.
+   Voir `bilanQuandMeme` dans core/runner.js : l'élève arrêté par la sonnerie
+   lit « 3 questions, 2 réussies » et croit avoir tout raté. Elle se lit AVANT
+   les chiffres, donc elle se pose avant eux et non dans un coin. */
+.report-entete {
+    margin: 0 0 14px; padding: 10px 14px;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    border-left: 3px solid var(--primary);
+    border-radius: 8px;
+    font-size: .92rem; color: var(--text-main);
+}

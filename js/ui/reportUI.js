@@ -11,7 +11,12 @@
 import { appreciation } from '../core/grading.js';
 import { porteHtml as porteDuBac } from './bacASable.js';
 
-export function showRunReport(bilan, { onClose } = {}) {
+/**
+ * @param {string} [opts.enTete] une phrase posée AU-DESSUS du bilan, quand il
+ *   ne vient pas d'une fin normale. Sans elle, l'élève interrompu par la
+ *   sonnerie lit « 3 questions, 2 réussies » et croit avoir tout raté.
+ */
+export function showRunReport(bilan, { onClose, enTete = '' } = {}) {
     document.getElementById('run-report-modal')?.remove();
 
     const modal = document.createElement('div');
@@ -31,7 +36,8 @@ export function showRunReport(bilan, { onClose } = {}) {
     let porte = '';
     try { porte = porteDuBac(); } catch (e) { /* jamais au détriment du bilan */ }
 
-    modal.innerHTML = `<div class="glass-panel modal-panel-md report-panel">${reportHtml(bilan)}
+    modal.innerHTML = `<div class="glass-panel modal-panel-md report-panel">${
+        enTete ? `<p class="report-entete">${escapeHtml(enTete)}</p>` : ''}${reportHtml(bilan)}
         ${porte ? `<div class="report-bac">${porte}</div>` : ''}
         <div class="modal-actions-center">
             <button id="btn-report-close" class="btn-toggle glass-btn primary active report-close-btn">Terminer</button>
