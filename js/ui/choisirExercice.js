@@ -104,7 +104,13 @@ export function ouvrirChoixExercice({ ajouter } = {}) {
             <div class="cx2-corps">
                 <ul class="cx2-liste" role="listbox" aria-label="Exercices"></ul>
                 <div class="cx2-apercu">
-                    <p class="cx2-apercu-vide">Choisis un exercice à gauche pour le voir ici.</p>
+                    <!-- PAS « À GAUCHE » : sur un téléphone il n'y a pas de
+                         gauche. La fenêtre empile alors la recherche, les
+                         niveaux, la liste, PUIS l'aperçu — la liste est
+                         au-dessus. Une phrase qui nomme un côté ne vaut que
+                         pour une mise en page ; « touche un exercice » vaut
+                         pour les deux. -->
+                    <p class="cx2-apercu-vide">Touche un exercice pour le voir ici.</p>
                     <div class="cx2-apercu-cadre" hidden><div class="cx2-apercu-toile"></div></div>
                     <div class="cx2-apercu-pied" hidden>
                         <button type="button" class="cx2-rejouer" data-rejouer>Question suivante</button>

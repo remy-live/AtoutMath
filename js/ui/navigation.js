@@ -81,10 +81,21 @@ export function createLibraryItem(exo) {
         e.stopPropagation();
         if (!state.isTeacherMode) return;
         // Une étape est une référence à l'exercice, pas une copie de celui-ci.
+        // UN CLIC, UN AVIS.
+        //
+        // Il y en avait DEUX, qui disaient la même chose à une seconde
+        // d'intervalle : celui-ci (« « X » ajouté au parcours ») et celui que
+        // `addStep` pose lui-même (« X ajouté — clique dessus pour le
+        // régler. »). MESURÉ : trois ajouts de suite empilaient six avis sur
+        // 314 pixels de haut, qui recouvraient la colonne du parcours — le
+        // professeur venait d'ajouter trois exercices et ne pouvait plus
+        // relire ce qu'il avait fait.
+        //
+        // C'est celui d'`addStep` qu'on garde : il dit le GESTE suivant, pas
+        // seulement le fait. Et il paraît sur téléphone comme ailleurs, donc
+        // la raison d'être de celui-ci — « sur téléphone la colonne est hors
+        // de vue, sans retour l'ajout semble muet » — reste servie.
         import('./builder.js').then(module => module.addStep(exo.id));
-        // Sur téléphone, la colonne du parcours est hors de vue quand on
-        // parcourt le catalogue : sans ce retour, l'ajout semblait muet.
-        import('./modal.js').then(m => m.showToast(`« ${exo.title} » ajouté au parcours`, 'success'));
     };
     item.appendChild(btnAdd);
 

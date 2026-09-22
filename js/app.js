@@ -19,6 +19,7 @@ import { destroyAllDemoCursors, marquerDemo } from './core/demoPointer.js';
 import { openGameLayer, openDemo } from './games/engine.js';
 import { validateCatalog } from './core/registry.js';
 import { exercices, countByStatus, STATUS_LABELS, STATUS_CYCLE, estRevisable, getExerciseById } from './data/catalog.js';
+import { TAGS } from './data/tags.js';
 import { isGame } from './core/gameAccess.js';
 import { questionsOuvertes } from './core/carnet.js';
 import {
@@ -482,7 +483,21 @@ function initNiveauFilter() {
     const dropdown = document.getElementById('cns-dropdown');
     if (!select || !dropdown) return;
 
-    const niveaux = [...new Set(exercices.flatMap(e => e.tags.niveaux || []))].sort();
+    // L'ORDRE DE L'ÉCOLE, PAS CELUI DE L'ALPHABET — et c'est la deuxième fois.
+    //
+    // `.sort()` tout court range par code de caractère : les chiffres avant
+    // les lettres, donc « 2nde · 3ème · 4ème · 5ème · 6ème · CM2 ». Le plus
+    // jeune niveau se retrouvait EN DERNIER, dans le menu qu'un professeur de
+    // collège lit tous les jours.
+    //
+    // J'avais corrigé exactement cela dans `ui/choisirExercice.js`, et écrit
+    // un test intitulé « plus personne ne recopie la liste des niveaux ». Le
+    // test ne lisait qu'un fichier : il gardait un endroit au lieu de garder
+    // la règle. Celui-ci lui a échappé — il ne recopiait pas la liste, il la
+    // triait mal, ce qui donne le même mensonge par un autre chemin.
+    const ordre = Object.values(TAGS.NIVEAU);
+    const niveaux = [...new Set(exercices.flatMap(e => e.tags.niveaux || []))]
+        .sort((a, b) => ordre.indexOf(a) - ordre.indexOf(b));
     if (!Array.isArray(state.selectedNiveaux)) state.selectedNiveaux = [];
 
     const updateLabel = () => {

@@ -34,6 +34,12 @@
 // existent, ils sont ailleurs, et c'est très bien.
 
 import { showToast } from './modal.js';
+// LE CATALOGUE SE COMPTE, IL NE SE RECOPIE PAS. Deux phrases de cet écran
+// annonçaient « 172 exercices » ; le catalogue en contient 178 depuis qu'on y
+// a mis la Seconde. Un nombre écrit à la main est un nombre qui devient faux
+// le jour où l'on ajoute quelque chose — et personne ne s'en aperçoit, parce
+// qu'aucun test ne lit une phrase.
+import { exercices as catalogueComplet } from '../data/catalog.js';
 import { demander, demanderTexte, choisirIndice } from './demander.js';
 import { choisirLesColonnes } from './collerListeUI.js';
 import { oublierLesClasses } from './donnerSeance.js';
@@ -408,7 +414,7 @@ function carteClasseHtml(c) {
  *
  * CE QU'IL FAIT, ET CE QU'IL NE FAIT PAS. Allumé, le catalogue s'ouvre aux
  * élèves : une quatrième porte « Explorer les exercices » sur l'écran d'accueil,
- * l'onglet « Exercices », les 172 exercices. Éteint, l'élève ne voit que ce
+ * l'onglet « Exercices », tout le catalogue. Éteint, l'élève ne voit que ce
  * qu'on lui a donné.
  *
  * IL NE PASSE PAS PAR-DESSUS LE VERROU D'UNE CLASSE. Une classe verrouillée
@@ -426,8 +432,9 @@ function modeLibreHtml() {
     <section class="ec-bloc ec-bloc--site">
         <h3 class="ec-h3">Le catalogue en libre accès</h3>
         <p class="ec-note ec-note--bloc">Allumé, les élèves peuvent explorer les
-           172 exercices en dehors de ce que vous leur donnez. Une classe
-           verrouillée le reste : ce réglage-ci ne passe pas par-dessus.</p>
+           ${catalogueComplet.length} exercices en dehors de ce que vous leur
+           donnez. Une classe verrouillée le reste : ce réglage-ci ne passe pas
+           par-dessus.</p>
         <button type="button" class="reglage-interrupteur${actif ? ' reglage-interrupteur--actif' : ''}"
                 data-mode-libre="${actif ? '1' : '0'}" aria-pressed="${actif}"
                 ${su ? 'disabled' : ''}>
@@ -538,7 +545,7 @@ function directHtml() {
         return `<div class="ec-vide ec-vide--invite">
             <p class="ec-vide-grand">Personne dans cette classe pour l'instant.</p>
             <p>Dictez le code de classe, ou collez votre liste dans l'onglet
-               <b>La liste</b>.</p>
+               <b>Les élèves</b>.</p>
         </div>`;
     }
     const enLigne = eleves.filter(e => estEnLigne(e.vu, maintenant)).length;

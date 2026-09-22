@@ -42,13 +42,53 @@ test('LE LYCÉE COMMENCE, ET IL EST EN DERNIER', () => {
     assert.ok(ordre.indexOf('3ème') < ordre.indexOf('2nde'));
 });
 
-test('ET PLUS PERSONNE NE RECOPIE LA LISTE DES NIVEAUX', () => {
-    // `ui/choisirExercice` était le SEUL endroit à l'écrire à la main. La
-    // Seconde y serait apparue en dernier — après le repli — au lieu d'être à
-    // sa place. Une liste recopiée est une liste qui finit par mentir.
-    const C = lire('js/ui/choisirExercice.js');
-    assert.match(C, /const ordre = Object\.values\(TAGS\.NIVEAU\);/);
-    assert.ok(!/'CM2', '6ème'/.test(C));
+test('ET PLUS PERSONNE NE RANGE LES NIVEAUX AUTREMENT QUE DANS L\'ORDRE DE L\'ÉCOLE', () => {
+    // CE TEST GARDAIT UN FICHIER, PAS UNE RÈGLE — et c'est un audit qui me
+    // l'a appris. Il ne lisait que `ui/choisirExercice.js`, l'endroit où
+    // j'avais vu le défaut. `js/app.js:485` faisait le même mensonge par un
+    // autre chemin : `.sort()` tout court, qui range par code de caractère et
+    // donne « 2nde · 3ème · 4ème · 5ème · 6ème · CM2 » — le plus jeune niveau
+    // EN DERNIER, dans le menu qu'un professeur de collège lit tous les jours.
+    //
+    // On ne garde donc plus un fichier : on balaie tous ceux qui trient des
+    // niveaux, et l'on exige que le rang vienne de `TAGS.NIVEAU`.
+    const suspects = ['js/ui/choisirExercice.js', 'js/app.js', 'js/ui/navigation.js'];
+    suspects.forEach(f => {
+        const C = lire(f);
+        if (!/tags\.niveaux/.test(C)) return;        // ce fichier ne trie pas de niveaux
+        // Un tri de niveaux sans comparateur range par ordre alphabétique.
+        const nu = /niveaux[^;]*\]\s*\.sort\(\s*\)/s.test(C);
+        assert.ok(!nu, `${f} : des niveaux triés par ordre alphabétique`);
+        // Et la liste ne se recopie pas à la main.
+        assert.ok(!/'CM2',\s*'6ème'/.test(C), `${f} : la liste des niveaux est recopiée`);
+    });
+    // Le résultat, vérifié pour de vrai plutôt que par lecture du code :
+    // l'ordre officiel commence au plus jeune et finit au lycée.
+    const ordre = Object.values(TAGS.NIVEAU);
+    assert.equal(ordre[0], 'CM2');
+    assert.equal(ordre[ordre.length - 1], '2nde');
+    const alphabetique = [...ordre].sort();
+    assert.notDeepEqual(ordre, alphabetique,
+        'si les deux ordres coïncidaient, ce test ne prouverait rien');
+});
+
+test('ET AUCUN ÉCRAN N\'ANNONCE UN NOMBRE D\'EXERCICES ÉCRIT À LA MAIN', () => {
+    // « les 172 exercices », dans deux phrases de l'espace classes. Le
+    // catalogue en contient 178 depuis qu'on y a mis la Seconde. Un nombre
+    // écrit à la main devient faux le jour où l'on ajoute quelque chose, et
+    // personne ne s'en aperçoit : aucun test ne lit une phrase.
+    // ON LIT CE QUI ARRIVE À L'ÉCRAN, PAS LES COMMENTAIRES. Ma première
+    // version lisait le fichier entier et tombait sur la phrase où j'explique
+    // justement la correction — un test qui accuse son propre correctif.
+    const sansCommentaires = (C) => C
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .split('\n').map(l => l.replace(/^\s*\/\/.*$/, '')).join('\n');
+    const ecrans = ['js/ui/espaceClasses.js', 'js/ui/choisirExercice.js',
+        'js/ui/navigation.js', 'js/app.js'];
+    ecrans.forEach(f => {
+        const m = /(\d{3})\s+exercices/.exec(sansCommentaires(lire(f)));
+        assert.equal(m, null, `${f} : « ${m && m[0]} » écrit en dur`);
+    });
 });
 
 test('LES TROIS EXERCICES SONT AU CATALOGUE, AVEC LEUR CODE DICTABLE', () => {
