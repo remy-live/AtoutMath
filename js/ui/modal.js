@@ -25,7 +25,36 @@ export function showToast(message, type = 'success', duration = 3000) {
 
     const icon = isError ? iconError : (isInfo ? iconInfo : iconSuccess);
     
-    toast.innerHTML = `<div style="display:flex; align-items:center; gap:10px;"><span style="flex:0 0 auto; line-height:0;">${icon}</span><span style="font-weight:600; min-width:0;">${message}</span></div>`;
+    // LE MESSAGE EST DU TEXTE, ET CETTE LIGNE ÉTAIT UNE FAILLE.
+    //
+    // Elle collait `${message}` dans `innerHTML`. Or un avis dit souvent le
+    // prénom d'un élève ou le nom d'un exercice — c'est-à-dire une chaîne que
+    // l'ÉLÈVE a écrite. « X pourra passer « Y ». » : si X vaut
+    // `<img src=x onerror=…>`, le code de l'élève s'exécute dans la page du
+    // PROFESSEUR, qui garde son jeton dans `localStorage`. L'élève devient
+    // alors professeur sur tout le serveur : il lit les prénoms et le travail
+    // de toutes les classes, et le jeton volé ne s'périme jamais.
+    //
+    // ET L'ÉCHAPPEMENT EN AMONT NE PROTÉGEAIT PAS, ce qui est le piège :
+    // `espaceClasses.js` écrit bien `data-prenom="${esc(e.prenom)}"`, mais le
+    // navigateur DÉCODE les entités en relisant l'attribut. `dataset.prenom`
+    // rend la charge intacte, et elle repart dans `innerHTML`. Mesuré :
+    // l'attribut écrit et la valeur relue sont identiques, et le code s'exécute.
+    //
+    // On ne rafistole donc pas les appelants — il y en a cent sept, et il
+    // suffirait d'en oublier un. On ferme le puits : le pictogramme est du
+    // HTML parce que c'est NOUS qui l'écrivons, le message est du texte parce
+    // que c'est quelqu'un d'autre.
+    const boite = document.createElement('div');
+    boite.style.cssText = 'display:flex; align-items:center; gap:10px;';
+    const pictogramme = document.createElement('span');
+    pictogramme.style.cssText = 'flex:0 0 auto; line-height:0;';
+    pictogramme.innerHTML = icon;
+    const texte = document.createElement('span');
+    texte.style.cssText = 'font-weight:600; min-width:0;';
+    texte.textContent = message;
+    boite.append(pictogramme, texte);
+    toast.replaceChildren(boite);
     toast.style = `background: ${bg}; color: white; padding: 12px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); min-width: min(200px, 100%);`;
     
     container.appendChild(toast);

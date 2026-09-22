@@ -35,6 +35,19 @@ $erreur = '';
 if (empty($_SESSION['prof']) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $email = trim((string) ($_POST['email'] ?? ''));
     $mdp   = (string) ($_POST['mdp'] ?? '');
+    // DIX ESSAIS PAR MINUTE, COMME L'API — et cette page les comptait pas.
+    //
+    // `/teacher/login` est bornée depuis longtemps. Cette page-ci ouvre la
+    // MÊME porte, avec le MÊME mot de passe, et ne comptait rien : elle se
+    // contentait du `sleep(1)` plus bas, qui ne retarde que la requête en
+    // cours et ne gêne pas celui qui en lance quarante à la fois. MESURÉ :
+    // 40 essais en parallèle, 40 réponses 200 en dix secondes, et le bon mot
+    // de passe passait encore juste après.
+    //
+    // Ce mot de passe n'ouvre pas que l'administration : il ouvre aussi
+    // l'espace professeur et `deposer.php`, c'est-à-dire l'écriture de
+    // fichiers sur le site. C'était la dernière porte non gardée.
+    $tropDEssais = compterEtDepasse('admin_login_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 10);
     // L'ADRESSE SE COMPARE SANS TENIR COMPTE DES MAJUSCULES.
     //
     // Rémy, enfermé dehors : « mon mail et code ne fonctionnent pas ». Une
@@ -51,14 +64,19 @@ if (empty($_SESSION['prof']) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $prof = $stmt->fetch();
     // LA MÊME PHRASE DANS LES DEUX CAS. Dire « cette adresse n'existe pas »
     // apprend à un inconnu quelles adresses existent.
-    if ($prof && password_verify($mdp, $prof['password_hash'])) {
+    if (!$tropDEssais && $prof && password_verify($mdp, $prof['password_hash'])) {
         session_regenerate_id(true);
         $_SESSION['prof'] = $prof['id'];
         redirige('index.php');
     }
     // Une seconde d'attente : de quoi rendre l'essai en boucle inintéressant.
     sleep(1);
-    $erreur = 'Adresse ou mot de passe incorrect.';
+    // ON DIT QU'ON COMPTE, mais sans dire si l'adresse existe : le professeur
+    // qui s'est trompé trois fois comprend qu'il doit souffler une minute,
+    // l'inconnu n'apprend rien de plus qu'avant.
+    $erreur = $tropDEssais
+        ? 'Trop d\'essais. Attendez une minute avant de réessayer.'
+        : 'Adresse ou mot de passe incorrect.';
 }
 
 if (empty($_SESSION['prof'])) {
