@@ -121,9 +121,40 @@ export function isActive() {
     return !!(config.enabled && config.apiUrl && profile && profile.remote && profile.remote.token);
 }
 
+/**
+ * LA PREMIÈRE RÉPONSE PART TOUT DE SUITE ; LA RAFALE ATTEND.
+ *
+ * Rémy : « peut-on rendre la synchronisation plus réactive entre les postes
+ * élèves et professeurs ? »
+ *
+ * MESURÉ (`tools/tmp/delaiReel.mjs`), réponse de l'élève → chiffre qui bouge
+ * sur l'écran du professeur : 8,0 s · 7,0 s · 7,0 s. Quatre de ces secondes
+ * étaient ce délai-ci, appliqué À CHAQUE réponse.
+ *
+ * LE DÉLAI N'ÉTAIT PAS INUTILE pour autant : les jeux d'arcade produisent des
+ * rafales — plusieurs réponses par seconde — et sans lui chacune partirait
+ * seule. C'est ce qui aurait rendu dangereux de le raccourcir bêtement : sur
+ * l'hébergement mutualisé de Rémy, trente élèves en rafale font le calcul
+ * tout seuls.
+ *
+ * ON NE RACCOURCIT DONC PAS LE DÉLAI, ON DÉPLACE SON BORD. La première réponse
+ * après un temps calme part IMMÉDIATEMENT ; les suivantes sont regroupées
+ * comme avant, une poussée par `PUSH_DEBOUNCE_MS` au plus. Le cas courant — un
+ * élève qui répond toutes les quinze secondes — gagne quatre secondes et ne
+ * coûte pas une requête de plus. Le cas de la rafale ne coûte rien de plus non
+ * plus : le plafond est le même.
+ */
+let dernierPush = 0;
+
 function schedulePush() {
     if (!isActive() || pushTimer) return;
-    pushTimer = setTimeout(() => { pushTimer = null; syncNow({ silent: true }); }, PUSH_DEBOUNCE_MS);
+    const depuis = Date.now() - dernierPush;
+    const attente = depuis >= PUSH_DEBOUNCE_MS ? 0 : PUSH_DEBOUNCE_MS - depuis;
+    pushTimer = setTimeout(() => {
+        pushTimer = null;
+        dernierPush = Date.now();
+        syncNow({ silent: true });
+    }, attente);
 }
 
 /**

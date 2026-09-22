@@ -2278,11 +2278,26 @@ async function rafraichirClasse(redessiner) {
  * partait jamais dans la session où l'élève s'était connecté (voir `initSync`).
  * Corrigées ensemble, elles donnent une quinzaine de secondes au pire.
  *
- * ON NE DESCEND PAS PLUS BAS. Le direct ne bat que pendant que l'onglet « Le
- * direct » est ouvert ; le raccourcir encore ferait une requête par seconde
- * pour voir bouger un compteur que l'œil ne suit pas si vite.
+ * CINQ SECONDES, ET NON DIX. Rémy : « peut-on rendre la synchronisation plus
+ * réactive ? » MESURÉ (`tools/tmp/delaiReel.mjs`), réponse de l'élève →
+ * chiffre qui bouge sur l'écran du professeur :
+ *
+ *                              avant                après
+ *     trois essais             8,0 · 7,0 · 7,0 s    voir le test
+ *
+ * Les deux moitiés du délai ont bougé ensemble : la poussée de l'élève part
+ * maintenant tout de suite après un temps calme (voir `schedulePush` dans
+ * core/sync.js), et ce battement-ci passe de dix à cinq secondes.
+ *
+ * ON NE DESCEND PAS PLUS BAS, et la raison n'est pas l'œil du professeur :
+ * c'est que chaque battement fait relire au serveur les deux cents derniers
+ * événements de CHACUN des trente élèves. Doubler la fréquence double ce
+ * travail ; le quadrupler le quadruplerait, sur un hébergement mutualisé. Le
+ * direct ne bat que pendant que son onglet est ouvert, ce qui borne la casse,
+ * mais cinq secondes est le point où l'on s'arrête sans mesurer la charge du
+ * serveur — et cette mesure-là, on ne l'a pas faite.
  */
-const BATTEMENT_MS = 10000;
+const BATTEMENT_MS = 5000;
 
 /**
  * CE QUE LE BATTEMENT A LE DROIT DE TOUCHER.
