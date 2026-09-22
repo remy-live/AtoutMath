@@ -68,5 +68,59 @@ export const secondeExercises = [
         tags: { chemin: [D, ENS], niveaux: [SECONDE] },
         instruction: "Les demi-droites, celles qui vont jusqu'à l'infini. Le crochet de "
             + "l'infini est toujours ouvert : on ne l'atteint jamais." 
+    },
+    {
+        id: 'sec-ensembles',
+        cree: '2026-09-22',
+        title: 'Le plus petit ensemble de nombres',
+        consignePapier: 'Entoure le plus petit ensemble auquel le nombre appartient.',
+        colonnesPapier: 2,
+        generatorId: 'nb.ensembles', activityId: 'buttons',
+        // LE PIÈGE N'EST PAS LA DÉFINITION, C'EST LE CALCUL. √64 n'est pas un
+        // irrationnel : il vaut 8. −18/3 n'est pas une fraction : il vaut −6.
+        // L'élève qui répond à la forme ÉCRITE au lieu de la VALEUR se trompe
+        // presque à tous les coups — et c'est exactement ce que le manuel de
+        // Rémy (exercices 45 à 47) cherche à déclencher.
+        params: { portee: 'tous' },
+        motsClefs: ['ensemble', 'entier', 'naturel', 'relatif', 'décimal', 'rationnel',
+            'réel', 'irrationnel', 'racine', 'fraction', 'seconde', 'lycée'],
+        tags: { chemin: [D, ENS], niveaux: [SECONDE] },
+        instruction: "Calcule d'abord, classe ensuite. √64 n'est pas un irrationnel : "
+            + "il vaut 8, c'est un entier. Le dessin des cadres emboîtés rappelle que "
+            + "chaque ensemble contient le précédent."
+    },
+    {
+        id: 'sec-union-inter',
+        cree: '2026-09-22',
+        title: 'Union et intersection d\'intervalles',
+        consignePapier: 'Écris l\'ensemble demandé.',
+        colonnesPapier: 1,
+        generatorId: 'nb.intervalles.ensemblistes', activityId: 'buttons',
+        params: { operation: 'toutes', cas: 'tous' },
+        motsClefs: ['union', 'intersection', 'intervalle', 'réunion', 'commun',
+            'vide', 'crochet', 'seconde', 'lycée'],
+        tags: { chemin: [D, ENS], niveaux: [SECONDE] },
+        instruction: "Deux intervalles dessinés l'un sous l'autre, sur la même "
+            + "graduation. ∩ garde ce qui est dans les DEUX, ∪ ce qui est dans l'un OU "
+            + "l'autre. Regarde où les deux traits se superposent."
+    },
+    {
+        id: 'sec-union-inter-vide',
+        cree: '2026-09-22',
+        title: 'Quand l\'intersection est vide',
+        consignePapier: 'Écris l\'ensemble demandé.',
+        colonnesPapier: 1,
+        generatorId: 'nb.intervalles.ensemblistes', activityId: 'buttons',
+        // LES DEUX CAS QU'ON NE VOIT JAMAIS VENIR, isolés pour être travaillés.
+        // Mélangés aux autres ils sortent une fois sur cinq, et l'élève n'a
+        // jamais l'occasion d'y réfléchir deux fois de suite : il répond « il
+        // n'y a pas de réponse » ou bouche le trou, et passe à la suivante.
+        params: { operation: 'toutes', cas: 'separes' },
+        motsClefs: ['vide', 'ensemble vide', 'union', 'intersection', 'disjoint',
+            'intervalle', 'seconde'],
+        tags: { chemin: [D, ENS], niveaux: [SECONDE] },
+        instruction: "Deux intervalles qui ne se croisent pas, ou qui se touchent "
+            + "juste. L'intersection peut être VIDE — cela s'écrit ∅ — et l'union peut "
+            + "rester en deux morceaux : on ne bouche pas le trou."
     }
 ];

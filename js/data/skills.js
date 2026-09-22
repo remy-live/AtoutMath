@@ -240,6 +240,27 @@ const BASE = {
         descriptor: 'Écrire la condition sur x — avec ⩽ ou < selon que la borne est prise ou non.',
         lesson: '⩽ se lit « inférieur OU ÉGAL » : il prend la borne. < la laisse. [2 ; 5[ s\'écrit donc 2 ⩽ x < 5.'
     },
+    'nb.intervalle.ensembliste': {
+        label: 'Union et intersection de deux intervalles',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        // Savoir ÉCRIRE un intervalle est le prérequis, pas savoir le lire :
+        // la réponse à « I ∩ J » est une écriture, crochets compris.
+        prereqs: ['nb.intervalle.ecrire'],
+        descriptor: 'Trouver la partie commune à deux intervalles, et leur réunion — y compris quand elle est vide ou en deux morceaux.',
+        lesson: '∩ garde ce qui est dans les DEUX ; ∪ garde ce qui est dans l\'un OU l\'autre. À une borne partagée, l\'intersection prend le crochet le plus SÉVÈRE et l\'union le plus GÉNÉREUX. Une intersection peut être vide (∅), et une union peut rester en deux morceaux.'
+    },
+    'nb.ensembles.appartenance': {
+        label: 'Le plus petit ensemble de nombres',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        // Le vrai prérequis n'est pas une définition, c'est de savoir CALCULER
+        // avant de classer : √64 vaut 8, −18/3 vaut −6. Sans cela on répond à
+        // la forme écrite au lieu de la valeur.
+        prereqs: ['nb.intervalle.lire'],
+        descriptor: 'Reconnaître si un nombre est entier, décimal, rationnel ou seulement réel — après l\'avoir calculé.',
+        lesson: 'ℕ ⊂ ℤ ⊂ 𝔻 ⊂ ℚ ⊂ ℝ : chaque ensemble contient le précédent. On calcule D\'ABORD : √64 = 8 est un entier, pas un irrationnel. Un décimal est un nombre dont l\'écriture décimale S\'ARRÊTE ; 1/3 = 0,333… ne s\'arrête pas, mais reste un quotient d\'entiers, donc rationnel.'
+    },
 
     // --- Chapitre « Nombres entiers et décimaux » (6ᵉ) ---
     'num.ecriture.lettres': {

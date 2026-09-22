@@ -669,3 +669,64 @@ body.mobile-view #toast-container {
     border-radius: 8px;
     font-size: .92rem; color: var(--text-main);
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   LES INTERVALLES DE SECONDE — l'écriture mathématique et les deux axes.
+
+   Ces classes existaient dans le générateur sans qu'aucune règle ne les
+   habille : `.iv-ecriture` portait « 2 ⩽ x < 5 » dans la taille du texte
+   courant, c'est-à-dire la taille d'une légende. Or c'est L'ÉNONCÉ — le seul
+   objet de la page que l'élève doit lire caractère par caractère, puisque
+   toute la question tient dans le sens d'un crochet.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.iv-ecriture {
+    font-size: 1.9rem;
+    font-weight: 700;
+    text-align: center;
+    margin: 10px 0 4px;
+    /* Les chiffres de même largeur : « 12 » et « −6 » ne doivent pas faire
+       bouger les crochets d'une proposition à l'autre. */
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .02em;
+}
+
+.iv-phrase {
+    font-size: 1.05rem;
+    text-align: center;
+    margin: 10px auto 4px;
+    max-width: 34ch;
+    line-height: 1.45;
+}
+
+/* I et J, côte à côte et chacun de sa couleur — la même que son axe. La
+   couleur est posée en ligne par le générateur : c'est elle qui fait le lien
+   entre l'écriture et le dessin, et elle doit donc être la MÊME valeur, pas
+   une approximation choisie ici. */
+.iv-deux {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 22px;
+    margin: 10px 0 6px;
+}
+
+.iv-nom {
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Les deux axes empilés se touchent : ils partagent une graduation, et un
+   écart les ferait lire comme deux dessins séparés. */
+.iv-axe + .iv-axe { margin-top: -4px; }
+
+.iv-axe, .iv-poupees { display: block; margin-left: auto; margin-right: auto; }
+
+@media (max-width: 480px) {
+    /* Sur un téléphone, l'écriture reste lisible mais cesse d'occuper la
+       moitié de l'écran — les propositions doivent tenir dessous sans qu'on
+       fasse défiler pour les voir. */
+    .iv-ecriture { font-size: 1.5rem; }
+    .iv-nom { font-size: 1.05rem; }
+}

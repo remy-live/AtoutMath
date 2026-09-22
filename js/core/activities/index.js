@@ -111,7 +111,7 @@ import { memoryFicheGenerator } from '../generators/memoryFiche.js';
 import { hexagrilleFicheGenerator } from '../generators/hexagrilleFiche.js';
 import { tuyauxGenerator } from '../generators/tuyaux.js';
 import { lasersGenerator } from '../generators/lasers.js';
-import { intervallesGenerator } from '../generators/intervalles.js';
+import { intervallesGenerator, ensemblesGenerator, ensemblistesGenerator } from '../generators/intervalles.js';
 import { pourcentagesGenerator } from '../generators/pourcentages.js';
 import { perimetreTriangleGenerator } from '../generators/perimetreTriangle.js';
 import { disqueGenerator } from '../generators/disque.js';
@@ -173,7 +173,9 @@ import {
     egypteFicheGenerator, hexagrilleFicheGenerator,
     tuyauxGenerator, pourcentagesGenerator,
     perimetreTriangleGenerator, disqueGenerator, lasersGenerator,
-    intervallesGenerator
+    intervallesGenerator,
+    ensemblesGenerator,
+    ensemblistesGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------

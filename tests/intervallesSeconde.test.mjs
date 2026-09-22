@@ -53,7 +53,7 @@ test('ET PLUS PERSONNE NE RECOPIE LA LISTE DES NIVEAUX', () => {
 
 test('LES TROIS EXERCICES SONT AU CATALOGUE, AVEC LEUR CODE DICTABLE', () => {
     const miens = exercices.filter(e => (e.tags.niveaux || []).includes('2nde'));
-    assert.equal(miens.length, 3);
+    assert.equal(miens.length, 6);
     miens.forEach(e => {
         assert.equal(e.tags.chemin[1], 'Ensembles et intervalles');
         // PAS DE I, PAS DE O, PAS DE Q : ces codes se DICTENT en classe.
@@ -95,9 +95,21 @@ test('« INFÉRIEUR OU ÉGAL » S\'ÉCRIT ⩽, ET IL PREND LA BORNE', () => {
     assert.equal(inegaliteTexte({ a: 0, b: null, ea: false, eb: false }), 'x > 0');
 });
 
+test('LE SIGNE MOINS EST UN SIGNE MOINS, PAS UN TRAIT D\'UNION', () => {
+    // `-3` (U+002D) et `−3` (U+2212) ne sont pas le même caractère. Ce module
+    // écrivait déjà `]−∞` avec le vrai moins, et `[-3 ; 1]` avec celui du
+    // clavier : deux signes moins dans la même ligne. Et la liste des
+    // ensembles de nombres, juste à côté dans le chapitre, écrit `−18/3`.
+    assert.equal(intervalleTexte({ a: -3, b: 1, ea: true, eb: true }), '[−3 ; 1]');
+    assert.equal(inegaliteTexte({ a: null, b: -2, ea: false, eb: true }), 'x ⩽ −2');
+    assert.ok(!/\u002D/.test(intervalleTexte({ a: -6, b: -1, ea: false, eb: false })));
+    // Et jusque sous la droite graduée — c'est là qu'on les compare.
+    assert.ok(!/>-\d/.test(axeHtml([{ a: -4, b: 2, ea: true, eb: false }])));
+});
+
 test('LA PHRASE DU MANUEL DIT « INCLUS » OU « EXCLU »', () => {
     assert.equal(phraseTexte({ a: -5, b: 7, ea: false, eb: true }),
-        'x est un réel compris entre -5 exclu et 7 inclus');
+        'x est un réel compris entre −5 exclu et 7 inclus');
     assert.equal(phraseTexte({ a: null, b: 2, ea: false, eb: false }),
         'x est un réel strictement inférieur à 2');
 });
