@@ -810,3 +810,32 @@ body.mobile-view #toast-container {
     .fa-regle { font-size: .95rem; }
     .fa-role { font-size: .95rem; }
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   CALCULER AVEC DES FRACTIONS — l'expression, empilée comme au tableau.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.cf-expression {
+    font-size: 1.55rem;
+    font-weight: 700;
+    text-align: center;
+    margin: 14px 0 8px;
+    /* Les fractions sont des `inline-flex` : sans cela l'interligne du
+       paragraphe les écrase les unes contre les autres. */
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.cf-consigne { margin-bottom: 4px; }
+
+/* LA GRANDE BARRE D'UNE FRACTION DE FRACTIONS.
+   C'est le barreau 7, et tout son enjeu tient dans cette barre : elle est une
+   DIVISION. Elle doit donc se voir comme une barre principale, et non se
+   confondre avec les deux petites qu'elle sépare — d'où un trait plus épais
+   et de l'air au-dessus et au-dessous. */
+.fraction--grande > .fraction-num,
+.fraction--grande > .fraction-den {
+    padding: .3em .55em;
+    font-size: .9em;
+}
+.fraction--grande > .fraction-den { border-top-width: 4px; }

@@ -113,6 +113,7 @@ import { tuyauxGenerator } from '../generators/tuyaux.js';
 import { lasersGenerator } from '../generators/lasers.js';
 import { intervallesGenerator, ensemblesGenerator, ensemblistesGenerator } from '../generators/intervalles.js';
 import { factorisationGenerator } from '../generators/factorisation.js';
+import { calculFractionsGenerator } from '../generators/calculFractions.js';
 import { pourcentagesGenerator } from '../generators/pourcentages.js';
 import { perimetreTriangleGenerator } from '../generators/perimetreTriangle.js';
 import { disqueGenerator } from '../generators/disque.js';
@@ -177,7 +178,8 @@ import {
     intervallesGenerator,
     ensemblesGenerator,
     ensemblistesGenerator,
-    factorisationGenerator
+    factorisationGenerator,
+    calculFractionsGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------

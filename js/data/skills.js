@@ -250,6 +250,27 @@ const BASE = {
         descriptor: 'Trouver la partie commune à deux intervalles, et leur réunion — y compris quand elle est vide ou en deux morceaux.',
         lesson: '∩ garde ce qui est dans les DEUX ; ∪ garde ce qui est dans l\'un OU l\'autre. À une borne partagée, l\'intersection prend le crochet le plus SÉVÈRE et l\'union le plus GÉNÉREUX. Une intersection peut être vide (∅), et une union peut rester en deux morceaux.'
     },
+    'nb.fractions.calculer': {
+        label: 'Calculer une expression avec des fractions',
+        chemin: [D.NUMERIQUE, SD.FRACTIONS],
+        niveaux: [N.SECONDE],
+        // QUATRIÈME PRÉREQUIS FANTÔME DE LA SEMAINE, et j'écris le compte
+        // parce qu'il dit quelque chose : j'avais posé
+        // `frac.addition.denominateurs`, qui n'existe pas — comme
+        // `lit.developper.simple` hier et `num.relatifs.comparaison` avant.
+        // La cause est toujours la même : j'invente un identifiant qui SONNE
+        // juste au lieu d'ouvrir la liste. Et rien ne tombe : un prérequis
+        // fantôme ne lève aucune erreur, il rend seulement la remédiation
+        // muette — l'élève en difficulté ne se voit jamais proposer ce qui
+        // lui manque, et c'est précisément ce qu'on ne verrait jamais.
+        //
+        // Les deux vrais prérequis, lus dans la liste : mettre au même
+        // dénominateur, et multiplier deux fractions. Tout le reste de ce
+        // chapitre de Seconde s'appuie dessus.
+        prereqs: ['num.frac.denominateur-commun', 'num.frac.multiplication'],
+        descriptor: 'Mener un calcul à plusieurs étages — parenthèses, priorités, fraction de fractions — et donner un résultat réduit.',
+        lesson: 'Un dénominateur COMMUN pour additionner, jamais la somme des dénominateurs. Pour multiplier, on simplifie AVANT. Diviser, c\'est multiplier par l\'inverse. Et la grande barre d\'une fraction de fractions est une division : on calcule le haut, puis le bas, puis on divise.'
+    },
     'lit.factoriser.identite': {
         label: 'Factoriser avec a² − b²',
         chemin: [D.NUMERIQUE, SD.LITTERAL],

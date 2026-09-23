@@ -233,6 +233,16 @@ export const CODES_EXERCICES = {
     'fac-6':                      'FJ',   // Facteur commun caché
     'fac-7':                      'FL',   // Trois termes
     'fac-revision':               'FR',   // Les quatre premiers barreaux
+    'cf-1':                       'GB',   // Deux fractions, dénominateur multiple
+    'cf-2':                       'GD',   // Dénominateurs quelconques
+    'cf-3':                       'GF',   // Produit : simplifier avant
+    'cf-4':                       'GG',   // Diviser par une fraction
+    'cf-5':                       'GH',   // Un entier devant une parenthèse
+    'cf-6':                       'GJ',   // Les priorités
+    'cf-7':                       'GK',   // Une fraction de fractions
+    'cf-8':                       'GL',   // Produit de deux parenthèses
+    'cf-9':                       'GM',   // Calculer, puis dire l'ensemble
+    'cf-revision':                'GN',   // Les quatre premiers barreaux
 };
 
 /** L'exercice que désignent ces deux lettres, ou undefined. */
