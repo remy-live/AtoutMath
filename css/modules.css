@@ -2943,6 +2943,29 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 
 /* Annonce des récompenses : une seule modale, même quand plusieurs paliers
    tombent ensemble. */
+/* ── LA CARTE DE FIN, UNE SEULE ────────────────────────────────────────────
+   Les récompenses et le bilan de maîtrise ouvraient chacun leur fenêtre, au
+   même instant, par-dessus l'écran de fin du parcours. Trois panneaux
+   empilés, et le bouton qui compte — « Voir mon bilan » — était dessous.
+   Ils partagent maintenant une carte, dans un ordre fixe : ce qu'on a GAGNÉ
+   d'abord, parce que c'est ce qui fait lever les yeux ; ce qu'on a APPRIS
+   ensuite, parce que cela demande de lire. */
+.fs-carte { text-align: center; padding: 6px 0; }
+.fs-titre-recompense { color: var(--primary-texte); font-size: 1.35rem; margin: 0 0 14px; }
+.fs-bilan .modal-title { margin-top: 10px; }
+/* Le trait ne sépare que si les DEUX sont là : une carte qui n'a qu'un
+   message n'a rien à séparer, et une ligne orpheline se lit comme un manque. */
+.fs-trait {
+    height: 1px; margin: 18px 4px; border: 0;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+@media (max-width: 480px) {
+    /* À la sonnerie, sur un téléphone, la carte doit tenir sans faire défiler
+       jusqu'au bouton — c'est exactement ce qu'on vient de réparer. */
+    .fs-titre-recompense { font-size: 1.15rem; margin-bottom: 10px; }
+    .fs-trait { margin: 12px 4px; }
+}
+
 .badge-modal { text-align: center; padding: 6px 0; }
 .badge-modal-titre { color: var(--primary-texte); font-size: 1.5rem; margin: 0 0 16px; }
 .badge-won-list { display: flex; flex-direction: column; gap: 9px; }

@@ -803,6 +803,34 @@ l'outil inventait cinq pannes qui n'existaient pas.
 
 ---
 
+## 11 bis. Ce qu'on a décidé de NE PAS faire
+
+Une décision qu'on ne note pas se repose tous les six mois, et se reprend
+parfois dans l'autre sens sans que personne se souvienne pourquoi. Celles-ci
+ont été prises, avec leur raison et leur date.
+
+### L'inscription libre reste ouverte à tout professeur — septembre 2026
+
+`POST /teacher/reglages` ne demande que `requireTeacher()` : **n'importe quel
+professeur du serveur** peut allumer `inscriptionLibre`, et ce réglage vaut
+pour **tout le site**. Allumé, quiconque connaît un code de classe crée un
+élève dans cette classe — dans n'importe laquelle, pas seulement les siennes.
+
+Un audit l'a signalé, et la correction tenait en une ligne : exiger
+`estLeFondateur()`, comme pour `signup`.
+
+**Rémy a tranché de ne pas la poser** : « mes tests seront que pour moi et mes
+classes ». Le serveur n'accueille aujourd'hui qu'un professeur, donc le risque
+est nul et la friction — devoir appeler le fondateur pour allumer un réglage —
+serait payée pour rien.
+
+**CE QUI FAIT REVENIR LA QUESTION**, et il faut le dire pour que personne n'ait
+à le redécouvrir : le jour où un **second professeur** rejoint ce serveur. La
+décision ci-dessus vaut pour une installation à un seul professeur, pas pour un
+établissement. Si `/teacher/signup` a créé quelqu'un d'autre, il faut reprendre
+la question — la correction est toujours une ligne, dans
+`handleTeacherReglages()`, et le commentaire du code l'envisage déjà.
+
 ## 12. Ce qui reste à faire
 
 - Porter Memory et Météorites sur le contrat `Item` ; `core/generators.js`

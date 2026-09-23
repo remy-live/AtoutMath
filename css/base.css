@@ -264,3 +264,74 @@ button, [role="button"], label, summary {
     -webkit-user-select: none; user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
+
+
+/* ════ TEXTE PLUS AÉRÉ ═══════════════════════════════════════════════════════
+
+   POUR LES ÉLÈVES DYSLEXIQUES — mais pas de la façon qu'on croit.
+
+   L'idée qui vient d'abord est « mettons une police pour dyslexiques ». Elle
+   n'a pas de preuve solide : les études contrôlées ne montrent pas qu'une
+   police dessinée exprès fasse mieux lire. Ce qui en a, c'est L'ESPACEMENT —
+   entre les lettres, entre les mots, entre les lignes. Changer de police coûte
+   cher et rend surtout le logiciel étranger à celui que les autres utilisent ;
+   écarter le texte coûte quelques lignes et marche.
+
+   ET C'EST UN RÉGLAGE, PAS UN DÉFAUT. Rémy : « je partage ton avis ». Passer
+   tout le monde à 1,6 d'interligne allonge chaque écran, donc fait défiler
+   davantage sur téléphone — on soignerait deux élèves en gênant les vingt-trois
+   autres. Posé à côté des thèmes, le réglage ne coûte rien à qui ne le prend
+   pas, et se règle une fois pour celui qui en a besoin.
+
+   CE QU'ON N'ÉCARTE PAS : les chiffres d'un calcul posé, les cellules d'un
+   tableau, les graduations d'un axe. Écarter les lettres de « 1234 » ne le
+   rend pas plus lisible, cela le désaligne — et une opération posée qui ne
+   s'aligne plus n'est plus une opération posée. Le réglage s'arrête au texte.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root[data-aere="1"] body {
+    line-height: 1.6;
+    letter-spacing: .022em;
+    word-spacing: .06em;
+}
+/* Les blocs de lecture prennent un peu plus : c'est là qu'on suit une ligne
+   du regard et qu'on saute à la suivante, le geste qui rate le plus souvent. */
+:root[data-aere="1"] p,
+:root[data-aere="1"] li,
+:root[data-aere="1"] .instruction,
+:root[data-aere="1"] .game-question,
+:root[data-aere="1"] .iv-phrase,
+:root[data-aere="1"] .fb-card,
+:root[data-aere="1"] .ec-note,
+:root[data-aere="1"] .lesson-text {
+    line-height: 1.75;
+}
+/* Et les paragraphes respirent entre eux : sans cela, augmenter l'interligne
+   colle les blocs les uns aux autres et l'on ne voit plus où l'un finit. */
+:root[data-aere="1"] p + p { margin-top: .85em; }
+
+/* CE QUI GARDE SON ALIGNEMENT, QUOI QU'IL ARRIVE. Un calcul posé, un tableau
+   de valeurs, une droite graduée : ce sont des objets où la POSITION porte le
+   sens. On y rétablit l'espacement normal — l'aération ne doit pas déplacer
+   une retenue sous la mauvaise colonne. */
+:root[data-aere="1"] .iv-axe text,
+:root[data-aere="1"] table,
+:root[data-aere="1"] .pp-pose,
+:root[data-aere="1"] code, :root[data-aere="1"] pre {
+    letter-spacing: normal; word-spacing: normal;
+}
+
+/* ET CEUX-CI GARDENT LE LEUR — c'était une faute de ma première version.
+   Les trois champs de code et l'écriture d'un intervalle posent DÉJÀ leur
+   propre espacement, choisi pour eux : 0,12 em sur le billet pour séparer
+   `I`, `l` et `1`, 0,1 em sur le code de classe. Les mettre dans la liste
+   au-dessus remettait tout à `normal` — MESURÉ : le champ du billet tombait
+   de 2,016 px à zéro dès qu'on aérait le texte. Le réglage censé aider un
+   élève dyslexique lui retirait précisément la correction faite pour lui.
+   On ne neutralise donc que l'espacement des MOTS, qui, lui, s'hérite. */
+:root[data-aere="1"] .iv-ecriture,
+:root[data-aere="1"] #portail-code-eleve,
+:root[data-aere="1"] #portail-classe,
+:root[data-aere="1"] #student-code-input {
+    word-spacing: normal;
+}

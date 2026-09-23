@@ -68,8 +68,16 @@ test('LES DEUX BOÎTES RESTENT DANS LE HTML — LEURS ÉCOUTEURS EN DÉPENDENT',
     // en retirant les deux div du gabarit, le `stopPropagation` qui empêche la
     // barre de se replier quand on clique un outil partirait avec.
     const html = lire('index.html');
-    assert.match(html, /<div class="builder-header-actions" onclick="event\.stopPropagation\(\)">/);
+    assert.match(html, /<div class="builder-header-actions" data-ne-replie-pas>/);
     assert.match(html, /<div class="path-header-left">/);
+    // CE TEST POINTAIT UN `onclick=` ÉCRIT DANS LA BALISE, et il est tombé le
+    // jour où ce gestionnaire est devenu un écouteur — la CSP refuse du
+    // JavaScript dans du HTML, pour la raison même qui la rend utile. Ce
+    // qu'il protège n'a pas changé d'un pouce : les deux boîtes doivent
+    // rester, et quelque chose doit toujours empêcher le clic de replier la
+    // barre. On vérifie donc le bout qui a bougé, à son nouvel endroit.
+    assert.match(lire('js/ui/builder.js'),
+        /\[data-ne-replie-pas\][\s\S]{0,200}stopPropagation/);
 });
 
 test('LA BARRE DU BAS N\'EXISTE PLUS DANS L\'ESPACE DU PROFESSEUR', () => {

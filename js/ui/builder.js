@@ -52,6 +52,7 @@ export function initBuilder() {
     pathBox.ondragleave = () => pathBox.classList.remove('drag-over');
     pathBox.ondrop = (e) => handleDrop(e, pathBox);
 
+    initNePlieRien();
     initNameInput();
     initPreviewModes();
     initToolbar();
@@ -1597,6 +1598,21 @@ function initNameInput() {
         state.currentPath.name = input.value.trim() || 'Nouveau parcours';
         autoSavePath();
     };
+}
+
+/**
+ * Les conteneurs de la barre qui ne doivent pas replier l'en-tête.
+ *
+ * C'ÉTAIT UN `onclick=` DANS LA BALISE, et ce sont les deux seuls qu'avait la
+ * page. Un gestionnaire écrit dans un attribut est du JavaScript dans du HTML :
+ * une CSP le refuse, pour la raison même qui la rend utile — c'est sous cette
+ * forme qu'une faille d'échappement s'exécute. Le comportement ne change pas
+ * d'un pixel ; seul l'endroit où il est écrit change.
+ */
+function initNePlieRien() {
+    document.querySelectorAll('[data-ne-replie-pas]').forEach(el => {
+        el.addEventListener('click', (e) => e.stopPropagation());
+    });
 }
 
 function initPreviewModes() {

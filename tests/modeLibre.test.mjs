@@ -117,8 +117,17 @@ test('LE SERVEUR TIENT LE RÉGLAGE, ET LE REND SANS JETON', () => {
     const lecture = api.slice(api.indexOf('function handleReglages'),
         api.indexOf('function handleTeacherReglages'));
     assert.ok(!/requireTeacher|requireStudent/.test(lecture), 'la lecture est publique');
-    const ecriture = api.slice(api.indexOf('function handleTeacherReglages'),
-        api.indexOf('function handleTeacherReglages') + 700);
+    // ON LIT LA FONCTION ENTIÈRE, pas ses 700 premiers caractères.
+    //
+    // La borne arbitraire a fini par mordre : un commentaire expliquant
+    // pourquoi cette route demande `requireTeacher()` et non
+    // `estLeFondateur()` a poussé l'appel au-delà du 700ᵉ caractère, et le
+    // test a annoncé que l'écriture était publique — alors qu'elle ne l'a
+    // jamais été. Une fenêtre comptée en caractères mesure la longueur des
+    // commentaires, pas le code.
+    const debut = api.indexOf('function handleTeacherReglages');
+    const suite = api.indexOf('\nfunction ', debut + 1);
+    const ecriture = api.slice(debut, suite === -1 ? api.length : suite);
     assert.match(ecriture, /requireTeacher\(\);/, 'l\'écriture ne l\'est pas');
 });
 

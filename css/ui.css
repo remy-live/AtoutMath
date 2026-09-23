@@ -726,6 +726,26 @@
 /* Le code de classe se dicte en majuscules : autant l'écrire ainsi, quoi que
    tape l'élève — c'est une frappe de moins et un doute de moins. */
 #portail-classe { text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+
+/* LE CHAMP DU BILLET N'AVAIT AUCUNE TYPOGRAPHIE — et c'est celui qu'on remplit
+   d'après un code DICTÉ à voix haute, vingt-cinq fois de suite.
+
+   Les deux autres champs de code en avaient une : `#student-code-input` est en
+   `monospace` avec 4 px d'écartement, `#portail-classe` en majuscules espacées.
+   Celui-ci héritait du texte courant. Or dans Outfit, la police de
+   l'application, `I` majuscule, `l` minuscule et `1` sont trois traits
+   verticaux quasi identiques — et un code se dicte justement lettre par
+   lettre. L'élève qui entend « i » tape `l`, et la porte se referme sur lui
+   sans qu'il comprenne pourquoi.
+
+   `monospace` sépare ces trois-là par construction (le chiffre y porte des
+   empattements, le `l` une queue), et l'écartement empêche deux signes voisins
+   de se lire comme un seul. C'est la même correction que pour les deux autres
+   champs, avec trois ans de retard. */
+#portail-code-eleve {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: .12em; font-weight: 700; font-size: 1.05rem;
+}
 .portail-bouton {
     width: 100%; margin-top: 4px; padding: 12px; border: none; border-radius: 10px;
     background: var(--primary); color: #fff; font: inherit; font-weight: 700;

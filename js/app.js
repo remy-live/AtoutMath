@@ -1065,6 +1065,7 @@ function initNavButtons() {
 
     initMobileDrillToggle();
     initTheme();
+    initTexteAere();
 }
 
 function initMobileDrillToggle() {
@@ -1115,6 +1116,47 @@ const THEMES = [
     { id: 'forest', nom: 'Forêt' },
     { id: 'sunset', nom: 'Couchant' }
 ];
+
+/**
+ * « Texte plus aéré » : l'interligne et l'espacement, réglables.
+ *
+ * POUR LES ÉLÈVES DYSLEXIQUES, et pas avec une police spéciale — les études
+ * contrôlées ne montrent pas qu'une police dessinée exprès fasse mieux lire.
+ * Ce qui a des preuves, c'est l'espacement : entre les lettres, entre les mots,
+ * entre les lignes. Voir le bloc « TEXTE PLUS AÉRÉ » de `css/base.css`.
+ *
+ * UN RÉGLAGE ET NON UN DÉFAUT : passer tout le monde à 1,6 allonge chaque
+ * écran et fait défiler davantage sur téléphone. On soignerait deux élèves en
+ * gênant les vingt-trois autres.
+ *
+ * LE RÉGLAGE VIT DANS LE NAVIGATEUR, pas dans le profil serveur — c'est un
+ * réglage de POSTE : le même élève sur la tablette du fond et sur son
+ * téléphone n'a pas forcément le même besoin, et surtout il doit pouvoir le
+ * mettre sans que personne ne le sache.
+ */
+function initTexteAere() {
+    const btn = document.getElementById('btn-toggle-aere');
+    const mot = document.getElementById('btn-aere-mot');
+    if (!btn) return;
+    const actif = () => document.documentElement.getAttribute('data-aere') === '1';
+    const peindre = () => {
+        const on = actif();
+        if (mot) mot.textContent = on ? 'Texte aéré : oui' : 'Texte plus aéré';
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.title = on
+            ? 'Le texte est écarté — appuyer pour revenir à l\'espacement normal'
+            : 'Écarter les lettres et les lignes, pour lire plus facilement';
+        btn.setAttribute('aria-label', btn.title);
+    };
+    btn.onclick = () => {
+        const on = !actif();
+        if (on) document.documentElement.setAttribute('data-aere', '1');
+        else document.documentElement.removeAttribute('data-aere');
+        try { localStorage.setItem('atoutmath-aere', on ? '1' : '0'); } catch (e) { /* privé */ }
+        peindre();
+    };
+    peindre();
+}
 
 function initTheme() {
     const btn = document.getElementById('btn-toggle-theme');

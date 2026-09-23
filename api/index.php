@@ -1607,6 +1607,23 @@ function handleReglages(): void
  */
 function handleTeacherReglages(): void
 {
+    // `requireTeacher()` ET PAS `estLeFondateur()` : C'EST UN CHOIX, PAS UN OUBLI.
+    //
+    // Ces deux réglages sont des réglages de SITE, pas de classe. N'importe
+    // quel professeur peut donc allumer `inscriptionLibre` pour tout le
+    // serveur — et allumée, quiconque connaît un code de classe crée un élève
+    // dedans, dans n'importe quelle classe.
+    //
+    // Un audit l'a signalé en septembre 2026 et la correction tient en une
+    // ligne. Rémy a tranché de ne pas la poser : « mes tests seront que pour
+    // moi et mes classes ». Un seul professeur sur ce serveur, donc aucun
+    // risque, et la friction — appeler le fondateur pour allumer un réglage —
+    // serait payée pour rien.
+    //
+    // CE QUI FAIT REVENIR LA QUESTION : le jour où `/teacher/signup` crée un
+    // SECOND professeur. La décision vaut pour une installation à un seul
+    // professeur, pas pour un établissement. Voir `docs/architecture.md` §11
+    // bis avant de la reprendre dans un sens ou dans l'autre.
     requireTeacher();
     $body = jsonBody();
     if (array_key_exists('modeLibre', $body)) {
