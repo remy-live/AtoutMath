@@ -44,7 +44,7 @@
 // une SECONDE bonne réponse, et l'élève qui la choisit aurait raison tout en
 // étant marqué faux. C'est la faute qu'on ne voit jamais à la relecture.
 
-import { makeItem } from '../items.js';
+import { makeItem, finalizeChoices } from '../items.js';
 
 // LE SIGNE MOINS, ET NON LE TRAIT D'UNION DU CLAVIER — comme dans le chapitre
 // des intervalles. `-3` et `−3` ne sont pas le même caractère, et les deux se
@@ -365,15 +365,25 @@ function barreau6(rng) {
                 // (x² − n²)(px + q − 1) EST un produit, et il est égal à la
                 // réponse. Mais « factoriser » en Seconde veut dire aller
                 // jusqu'au bout : tant qu'un facteur est lui-même une
-                // différence de carrés, il se factorise encore. C'est la
-                // définition du chapitre, et c'est précisément ce que le
-                // barreau 6 enseigne.
+                // différence de carrés, il se factorise encore.
                 //
-                // JE LE SIGNALE PARCE QUE C'EST DISCUTABLE : un élève qui
-                // répond cela n'a pas écrit quelque chose de FAUX, il a écrit
-                // quelque chose d'INACHEVÉ. Si Rémy préfère l'accepter, ce
-                // leurre se retire en supprimant ces lignes.
+                // J'AVAIS SIGNALÉ LE CAS COMME DISCUTABLE — l'élève qui répond
+                // cela n'écrit pas quelque chose de FAUX, il écrit quelque
+                // chose d'INACHEVÉ — et proposé de l'accepter. Rémy a tranché :
+                // « Évidemment programme de seconde. » C'est donc faux, et le
+                // leurre reste.
+                //
+                // LA RÈGLE VAUT AUSSI POUR CELUI QUI LA POSE. Si l'inachevé est
+                // faux, alors la BONNE réponse doit, elle, aller jusqu'au bout
+                // partout — sans quoi le générateur marquerait faux l'élève qui
+                // a fini le travail. Vérifié sur 21 000 questions des sept
+                // barreaux : aucune réponse ne laisse de différence de carrés
+                // non factorisée. Un test le garde.
+                //
+                // `enDernier` : voir `generate`. Il est juste, il est subtil,
+                // il ne se pose pas en première question.
                 { texte: `(x² ${M} ${n * n})(${lineaire(p, q - 1)})`, memeValeur: true,
+                    enDernier: true,
                     evaluer: (x) => (x * x - n * n) * (p * x + q - 1),
                     why: `C'est bien un produit, mais x² ${M} ${n * n} se factorise `
                         + `encore : tant qu'il reste une différence de carrés, la `
@@ -655,6 +665,47 @@ export const factorisationGenerator = {
             const j = rng.int(0, i);
             [faux[i], faux[j]] = [faux[j], faux[i]];
         }
+        // LE LEURRE LE PLUS FIN NE SE POSE PAS EN PREMIÈRE QUESTION.
+        //
+        // L'échelle d'aide ouvre une séance à DEUX propositions pour mettre en
+        // confiance, et `reduireChoix` ne garde alors que le premier leurre de
+        // cette liste. Le tirage ci-dessus pouvait donc y placer celui du
+        // barreau 6 — (x² − 9)(4x + 1) contre (x − 3)(x + 3)(4x + 1) : deux
+        // produits ÉGAUX, dont l'un est seulement moins fini. MESURÉ : 355
+        // questions sur 21 000, toutes au barreau 6, où c'était le seul leurre
+        // offert. La discrimination la plus subtile du chapitre, demandée au
+        // moment où l'élève a le moins d'appuis.
+        //
+        // Il reste faux — Rémy : « Évidemment programme de seconde » —, mais il
+        // n'apparaît qu'au QCM complet, une fois la factorisation acquise.
+        //
+        // ON NE LE PLACE PAS DANS LA LISTE : ON LE SERT APRÈS. Deux essais ont
+        // échoué avant celui-ci, et chacun pour une raison qui mérite d'être
+        // écrite.
+        //
+        // Le premier le renvoyait en FIN de liste. Comme on ne retient que
+        // TROIS leurres sur les quatre du barreau, il tombait alors toujours —
+        // et le défaut mesuré passait à zéro exactement comme s'il avait été
+        // corrigé. Repousser un leurre et le supprimer ne se distinguent pas
+        // dans ce chiffre-là ; seul le contrôle « apparaît-il encore quand le
+        // QCM est complet ? » l'a montré, et il disait zéro lui aussi.
+        //
+        // Le second le plaçait TROISIÈME dans la liste. Mais la sélection
+        // écarte au passage les leurres qui s'écrivent comme un autre, si bien
+        // qu'un doublon parmi les premiers le faisait remonter — jusqu'en tête
+        // dans les cas où deux ordinaires tombaient ensemble. Une position dans
+        // une liste qu'on filtre ensuite ne garantit rien.
+        //
+        // D'où la forme retenue : on sert DEUX leurres ordinaires d'abord, le
+        // subtil ensuite, et l'on complète avec ce qui reste. Le rang n'est
+        // plus une espérance, c'est une conséquence.
+        //
+        // L'AUTRE `memeValeur` DU CHAPITRE N'EST PAS CONCERNÉ, et c'est la
+        // différence qui compte : « (6 − 5x)² − 1² » n'est pas un produit DU
+        // TOUT. Reconnaître un produit d'une différence est la première leçon
+        // du chapitre, pas la dernière — ce leurre-là a sa place en ouverture.
+        const ordinaires = faux.filter(f => !f.enDernier);
+        const subtils = faux.filter(f => f.enDernier);
         // ON DÉDOUBLONNE SUR CE QUE L'ÉLÈVE VOIT, pas sur la formule.
         //
         // Deux leurres construits différemment peuvent s'écrire pareil selon
@@ -667,22 +718,42 @@ export const factorisationGenerator = {
         // fausse — la faute qu'on ne voit jamais à la relecture.
         const dejaVu = new Set([q.reponse]);
         const choisis = [];
-        for (const f of faux) {
-            if (choisis.length >= 3) break;
-            if (dejaVu.has(f.texte)) continue;
-            dejaVu.add(f.texte);
-            choisis.push(f);
-        }
-        const choices = [
+        const servir = (liste, jusqua) => {
+            for (const f of liste) {
+                if (choisis.length >= jusqua) break;
+                if (dejaVu.has(f.texte)) continue;
+                dejaVu.add(f.texte);
+                choisis.push(f);
+            }
+        };
+        servir(ordinaires, 2);   // deux ordinaires d'abord, quoi qu'il arrive
+        servir(subtils, 3);      // puis le subtil, s'il y en a un
+        servir(ordinaires, 3);   // et l'on complète avec le reste
+        const brutes = [
             { value: 'ok', label: q.reponse, correct: true },
             ...choisis.map((f, i) => ({
                 value: 'faux' + i, label: f.texte, correct: false, why: f.why
             }))
         ];
-        for (let i = choices.length - 1; i > 0; i--) {
-            const j = rng.int(0, i);
-            [choices[i], choices[j]] = [choices[j], choices[i]];
-        }
+        // ON PASSE PAR `finalizeChoices`, COMME TOUS LES AUTRES QCM DE L'APPLI.
+        //
+        // Ces trois chapitres de Seconde mélangeaient leurs propositions à la
+        // main. Le mélange était juste — mais `finalizeChoices` ne fait pas que
+        // mélanger : il NOTE AU PASSAGE le rang d'origine de chaque leurre,
+        // et c'est ce rang que `reduireChoix` lit pour décider lequel survit
+        // quand l'échelle d'aide ouvre une séance à deux propositions.
+        //
+        // Faute de l'appeler, `rang` restait indéfini ; `reduireChoix` retombe
+        // alors sur `?? 99` pour tous, le tri devient neutre, et le leurre
+        // conservé est simplement le premier du mélange — c'est-à-dire un
+        // leurre au hasard. Le principe « le distracteur le plus instructif est
+        // celui qui reste quand il n'en reste qu'un » ne s'appliquait donc à
+        // AUCUN des trois chapitres, sans que rien ne le signale : le QCM était
+        // bien formé, les quatre propositions étaient là, seul l'ordre mentait.
+        //
+        // Trouvé en cherchant pourquoi le leurre inachevé du barreau 6 tombait
+        // encore en première question après avoir été rangé en fin de liste.
+        const choices = finalizeChoices(rng, brutes, { count: 4 });
 
         return makeItem({
             seed: rng.seed,

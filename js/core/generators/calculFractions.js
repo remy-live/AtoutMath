@@ -40,7 +40,7 @@
 // devoir : 1/3 et 0,333… ne sont pas dans le même ensemble, et c'est
 // justement ce qu'on demande de distinguer.
 
-import { makeItem } from '../items.js';
+import { makeItem, finalizeChoices } from '../items.js';
 
 const M = '−';
 const nb = (v) => (v < 0 ? M + Math.abs(v) : String(v));
@@ -507,16 +507,20 @@ export const calculFractionsGenerator = {
             faux.push(l);
         }
 
-        const choices = [
+        const brutes = [
             { value: 'ok', label: fracHtml(q.valeur), correct: true },
             ...faux.map((l, i) => ({
                 value: 'faux' + i, label: fracHtml(l.valeur), correct: false, why: l.why
             }))
         ];
-        for (let i = choices.length - 1; i > 0; i--) {
-            const j = rng.int(0, i);
-            [choices[i], choices[j]] = [choices[j], choices[i]];
-        }
+        // ON PASSE PAR `finalizeChoices`, COMME TOUS LES AUTRES QCM DE L'APPLI.
+        // Il mélange, mais il NOTE AUSSI le rang d'origine de chaque leurre —
+        // et c'est ce rang que `reduireChoix` lit pour choisir lequel survit
+        // quand l'échelle d'aide ouvre une séance à deux propositions. Sans cet
+        // appel, `rang` restait indéfini, le tri devenait neutre, et le leurre
+        // gardé était celui que le mélange avait mis devant : un au hasard.
+        // Les trois chapitres de Seconde avaient le même trou.
+        const choices = finalizeChoices(rng, brutes, { count: 4 });
 
         const ens = plusPetitEnsemble(q.valeur);
         return makeItem({
@@ -574,7 +578,7 @@ function questionEnsemble(rng) {
         Q: 'le dénominateur réduit contient un autre facteur, donc l\'écriture décimale '
             + 'ne s\'arrête jamais'
     };
-    const choices = ordre.map(id => ({
+    const brutes = ordre.map(id => ({
         value: id, label: ENSEMBLES[id].label, correct: id === bon,
         why: id === bon ? undefined
             : (RANG_ENS[id] > RANG_ENS[bon]
@@ -582,10 +586,13 @@ function questionEnsemble(rng) {
                     + `PLUS PETIT : ${pourquoi[bon]}.`
                 : `${txt(q.valeur)} n'est pas dans ${ENSEMBLES[id].nom} — ${pourquoi[bon]}.`)
     }));
-    for (let i = choices.length - 1; i > 0; i--) {
-        const j = rng.int(0, i);
-        [choices[i], choices[j]] = [choices[j], choices[i]];
-    }
+    // Même raison qu'au-dessus, et ici le rang porte un sens : les ensembles
+    // sont écrits du plus petit au plus grand, si bien que le leurre conservé à
+    // deux propositions est le VOISIN du bon — la vraie question (« est-ce le
+    // plus petit ? ») plutôt qu'un ensemble lointain qu'on écarte sans
+    // réfléchir. `count: 4` : les quatre ensembles restent tous proposés, comme
+    // le dit le commentaire ci-dessus.
+    const choices = finalizeChoices(rng, brutes, { count: 4 });
 
     return makeItem({
         seed: rng.seed,

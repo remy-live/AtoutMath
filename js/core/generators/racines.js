@@ -35,7 +35,7 @@
 // recalcule chaque énoncé en nombres à virgule, par un autre chemin, et
 // compare.
 
-import { makeItem } from '../items.js';
+import { makeItem, finalizeChoices } from '../items.js';
 
 const M = '−';
 const nb = (v) => (v < 0 ? M + Math.abs(v) : String(v));
@@ -657,7 +657,7 @@ export const racinesGenerator = {
             faux.push({ ...l, etiquette });
         }
 
-        const choices = [
+        const brutes = [
             { value: 'ok', label: html(q.valeur), correct: true },
             ...faux.map((l, i) => ({
                 value: 'faux' + i,
@@ -666,10 +666,25 @@ export const racinesGenerator = {
                 correct: false, why: l.why
             }))
         ];
-        for (let i = choices.length - 1; i > 0; i--) {
-            const j = rng.int(0, i);
-            [choices[i], choices[j]] = [choices[j], choices[i]];
-        }
+        // ON PASSE PAR `finalizeChoices`, COMME TOUS LES AUTRES QCM DE L'APPLI.
+        //
+        // Ces trois chapitres de Seconde mélangeaient leurs propositions à la
+        // main. Le mélange était juste — mais `finalizeChoices` ne fait pas que
+        // mélanger : il NOTE AU PASSAGE le rang d'origine de chaque leurre,
+        // et c'est ce rang que `reduireChoix` lit pour décider lequel survit
+        // quand l'échelle d'aide ouvre une séance à deux propositions.
+        //
+        // Faute de l'appeler, `rang` restait indéfini ; `reduireChoix` retombe
+        // alors sur `?? 99` pour tous, le tri devient neutre, et le leurre
+        // conservé est simplement le premier du mélange — c'est-à-dire un
+        // leurre au hasard. Le principe « le distracteur le plus instructif est
+        // celui qui reste quand il n'en reste qu'un » ne s'appliquait donc à
+        // AUCUN des trois chapitres, sans que rien ne le signale : le QCM était
+        // bien formé, les quatre propositions étaient là, seul l'ordre mentait.
+        //
+        // Trouvé en cherchant pourquoi le leurre inachevé du barreau 6 tombait
+        // encore en première question après avoir été rangé en fin de liste.
+        const choices = finalizeChoices(rng, brutes, { count: 4 });
 
         return makeItem({
             seed: rng.seed,
