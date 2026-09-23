@@ -139,15 +139,22 @@ function jetons(src) {
         if (c === ':' || c === '÷') { out.push({ t: 'divise' }); i++; continue; }
         if (c === '/') { out.push({ t: 'barre' }); i++; continue; }
         if (c === '^') { out.push({ t: 'chapeau' }); i++; continue; }
-        // LES EXPOSANTS EN PETIT CARACTÈRE, ² ET ³, PARCE QUE TOUT LE DÉPÔT LES
-        // ÉCRIT AINSI. `analyser('x² − 36')` levait « caractère inattendu »
-        // alors que c'est l'écriture employée par tous les générateurs
-        // existants — et par Rémy quand il tape une formule. On les lit comme
-        // un accent circonflexe suivi du chiffre : « x² » et « x^2 » donnent
-        // exactement le même arbre.
-        if (c === '\u00b2' || c === '\u00b3') {
+        // LES EXPOSANTS EN PETIT CARACTÈRE — ON LES ACCEPTE TOUS EN ENTRÉE,
+        // ON N'EN ÉCRIT AUCUN EN SORTIE.
+        //
+        // En entrée, parce que c'est ainsi que tout le dépôt les écrit :
+        // `analyser('x² − 36')` levait « caractère inattendu » alors que c'est
+        // l'écriture de tous les générateurs existants — et celle que Rémy a
+        // sous la main. « x² » et « x^2 » donnent maintenant le même arbre.
+        //
+        // Jamais en sortie, parce qu'Outfit ne contient que ¹ ² ³ : au-delà, le
+        // caractère viendrait d'une police de secours et « x² + x⁴ »
+        // mélangerait deux polices dans un même monôme. Le rendu passe donc par
+        // une mise en page, qui vaut à n'importe quel exposant.
+        const chiffreHaut = '⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(c);
+        if (chiffreHaut >= 0) {
             out.push({ t: 'chapeau' });
-            out.push({ t: 'nombre', v: c === '\u00b2' ? '2' : '3' });
+            out.push({ t: 'nombre', v: String(chiffreHaut) });
             i++; continue;
         }
         if (c === '(') { out.push({ t: 'ouvre' }); i++; continue; }
