@@ -247,6 +247,21 @@ export const CODES_EXERCICES = {
     'cf-12':                      'GV',   // Une fraction de fractions
     'cf-ensemble':                'GW',   // Calculer, puis dire l'ensemble
     'cf-revision':                'GN',   // Les quatre opérations
+    // DÉVELOPPER — D comme développer, et la seconde lettre monte avec le
+    // barreau, de sorte que l'ordre dicté soit celui de la progression.
+    'dev-1':                      'DB',   // Distributivité simple
+    'dev-2':                      'DH',   // Un moins dans la parenthèse
+    'dev-3':                      'DJ',   // Un coefficient devant la lettre
+    'dev-4':                      'DK',   // Le facteur est négatif
+    'dev-5':                      'DL',   // Deux distributions, puis réduire
+    'dev-6':                      'DN',   // Double distributivité
+    'dev-7':                      'DP',   // Un moins dans la seconde
+    'dev-8':                      'DU',   // Deux moins
+    'dev-9':                      'DW',   // Des coefficients partout
+    'dev-10':                     'DX',   // Le carré d'une somme
+    'dev-11':                     'DY',   // La différence de carrés
+    'dev-simple':                 'DZ',   // Révision — la distributivité simple
+    'dev-double':                 'VB',   // Révision — la double distributivité
     // LES RACINES CARRÉES — R comme racine, et la seconde lettre monte avec le
     // barreau, de sorte que l'ordre dicté soit celui de la progression.
     'rc-1':                       'RA',   // Les carrés parfaits

@@ -271,6 +271,28 @@ const BASE = {
         descriptor: 'Mener un calcul à plusieurs étages — parenthèses, priorités, fraction de fractions — et donner un résultat réduit.',
         lesson: 'Un dénominateur COMMUN pour additionner, jamais la somme des dénominateurs. Pour multiplier, on simplifie AVANT. Diviser, c\'est multiplier par l\'inverse. Et la grande barre d\'une fraction de fractions est une division : on calcule le haut, puis le bas, puis on divise.'
     },
+    'lit.developper.simple': {
+        label: 'Développer avec la distributivité simple',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.QUATRIEME, N.TROISIEME],
+        // `num.litteral.reduire` — VÉRIFIÉ DANS LA LISTE. Qui ne sait pas que
+        // 3 × x s'écrit 3x ne peut pas écrire le résultat d'une distribution,
+        // et qui ne sait pas réduire ne peut pas finir le barreau 5.
+        prereqs: ['num.litteral.reduire'],
+        descriptor: 'Ouvrir une parenthèse précédée d\'un facteur, en multipliant CHAQUE terme, et réduire ce qu\'on obtient.',
+        lesson: 'k(a + b) = ka + kb. LE FACTEUR MULTIPLIE TOUT CE QUI EST DANS LA PARENTHÈSE, pas seulement le premier terme : c\'est la faute qui coûte le plus cher, et le dessin la montre. Car la distributivité EST une aire : 3(x + 2) est un rectangle de hauteur 3 et de largeur x + 2 ; on le coupe en deux morceaux, 3x et 6, et leur somme est l\'aire entière parce qu\'on a découpé sans rien changer. Un signe moins dans la parenthèse est un morceau qu\'on RETIRE ; un facteur négatif change le signe des DEUX morceaux — −2(x − 5) = −2x + 10, et le second devient positif.',
+        // Note : cet identifiant avait été écrit par erreur, puis retiré, avant
+        // d'exister vraiment. Il existe maintenant, et un test balaie tout le
+        // registre pour qu'aucun prérequis ne redevienne fantôme.
+    },
+    'lit.developper.double': {
+        label: 'Développer un produit de deux parenthèses',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.TROISIEME, N.SECONDE],
+        prereqs: ['lit.developper.simple', 'num.litteral.puissances'],
+        descriptor: 'Multiplier deux parenthèses terme à terme — quatre produits — puis réunir ceux qui portent le même x.',
+        lesson: '(a + b)(c + d) = ac + ad + bc + bd : QUATRE produits, pas deux. Le rectangle est coupé dans les deux sens, et les deux morceaux du MILIEU sont ceux qu\'on oublie — (x + 2)(x + 3) ne fait pas x² + 6, il fait x² + 5x + 6. Chaque case prend le signe du produit de ses deux bords : deux bords négatifs donnent une case POSITIVE, et c\'est là que le dessin vaut mieux qu\'une règle. Deux cas se reconnaissent ensuite à l\'œil : (x + a)² a un double produit au milieu — x² + 2ax + a², jamais x² + a² — et (x − a)(x + a) voit ses deux cases du milieu s\'annuler, ce qui ne laisse que x² − a². Ce dernier est l\'identité qu\'on utilise à l\'envers pour factoriser.'
+    },
     'lit.factoriser.identite': {
         label: 'Factoriser avec a² − b²',
         chemin: [D.NUMERIQUE, SD.LITTERAL],

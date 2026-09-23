@@ -1160,3 +1160,79 @@ body.mobile-view #toast-container {
 @media (max-width: 480px) {
     :root { --fx-trait: .07em; }
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   DÉVELOPPER — le rectangle de la distributivité.
+   Voir js/core/generators/developpement.js : la distributivité EST une aire,
+   et le dessin ne fait pas qu'illustrer la règle, il la démontre.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.dv-expression {
+    font-size: 1.62rem;
+    font-weight: 700;
+    text-align: center;
+    margin: 12px 0 10px;
+    line-height: 1.4;
+}
+
+.dv-consigne { margin-bottom: 2px; }
+
+.dv-figure {
+    display: flex;
+    justify-content: center;
+    margin: 6px auto 2px;
+    /* Deux rectangles côte à côte au barreau 5 : ils doivent pouvoir passer à
+       la ligne sur un téléphone plutôt que de rétrécir jusqu'à l'illisible. */
+    max-width: 100%;
+}
+
+.dv-svg {
+    width: 100%;
+    max-width: 21rem;
+    height: auto;
+    /* Le dessin suit la couleur du texte : il reste juste dans les cinq
+       thèmes, clairs comme sombres. */
+    color: inherit;
+}
+
+/* LA CASE : une aire, donc une surface — et non un simple cadre. Un contour
+   seul se lit comme un tableau ; une surface se lit comme un morceau de
+   rectangle, ce qui est le propos. */
+.dv-case {
+    fill: color-mix(in srgb, var(--primary) 13%, transparent);
+    stroke: var(--primary);
+    stroke-width: 1.5;
+}
+
+/* CE QU'ON RETIRE, et non ce qu'on ajoute. Au barreau 2, 3(x − 2) est la bande
+   de largeur x DIMINUÉE d'un bout de largeur 2 : ce bout-là se dessine
+   autrement, sinon le dessin dirait « on ajoute » pendant que l'écriture dit
+   « on retire ». */
+.dv-case--retire {
+    fill: color-mix(in srgb, var(--warning-texte) 14%, transparent);
+    stroke: var(--warning-texte);
+    stroke-dasharray: 5 3;
+}
+
+/* Les DIMENSIONS sont dehors, les AIRES dedans. C'est ce qui distingue ce
+   qu'on sait de ce qu'on cherche. */
+.dv-dim {
+    fill: currentColor;
+    font-size: 15px;
+    font-weight: 700;
+    text-anchor: middle;
+    opacity: .8;
+}
+.dv-dim--gauche { text-anchor: end; }
+
+.dv-aire {
+    fill: var(--primary-texte);
+    font-size: 16px;
+    font-weight: 800;
+    text-anchor: middle;
+}
+
+@media (max-width: 480px) {
+    .dv-expression { font-size: 1.3rem; }
+    .dv-svg { max-width: 100%; }
+}

@@ -115,6 +115,7 @@ import { intervallesGenerator, ensemblesGenerator, ensemblistesGenerator } from 
 import { factorisationGenerator } from '../generators/factorisation.js';
 import { calculFractionsGenerator } from '../generators/calculFractions.js';
 import { racinesGenerator } from '../generators/racines.js';
+import { developpementGenerator } from '../generators/developpement.js';
 import { pourcentagesGenerator } from '../generators/pourcentages.js';
 import { perimetreTriangleGenerator } from '../generators/perimetreTriangle.js';
 import { disqueGenerator } from '../generators/disque.js';
@@ -181,7 +182,8 @@ import {
     ensemblistesGenerator,
     factorisationGenerator,
     calculFractionsGenerator,
-    racinesGenerator
+    racinesGenerator,
+    developpementGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
