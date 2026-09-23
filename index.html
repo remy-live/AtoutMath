@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=785">
-    <link rel="stylesheet" href="css/layout.css?v=785">
-    <link rel="stylesheet" href="css/ui.css?v=785">
-    <link rel="stylesheet" href="css/games.css?v=785">
-    <link rel="stylesheet" href="css/components.css?v=785">
-    <link rel="stylesheet" href="css/modules.css?v=785">
+    <link rel="stylesheet" href="css/base.css?v=786">
+    <link rel="stylesheet" href="css/layout.css?v=786">
+    <link rel="stylesheet" href="css/ui.css?v=786">
+    <link rel="stylesheet" href="css/games.css?v=786">
+    <link rel="stylesheet" href="css/components.css?v=786">
+    <link rel="stylesheet" href="css/modules.css?v=786">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -237,6 +237,95 @@
 </head>
 
 <body class="">
+
+    <!-- ══ CE QU'ON VOIT PENDANT QUE ÇA CHARGE ═══════════════════════════════
+
+         MESURÉ sur un téléphone, cache vide : premier pixel peint à 100 ms,
+         mais `document.body.innerText` encore VIDE à 200 ms ET à 600 ms —
+         un rectangle gris, rien dedans. Premier texte lisible entre 600 et
+         1 200 ms, application prête à 1 062 ms. Coût : 308 requêtes, 241
+         fichiers JavaScript, 4,8 Mo.
+
+         ET C'EST MESURÉ EN LOCAL. En salle informatique, sur le Wi-Fi d'un
+         collège partagé par vingt-cinq postes qui démarrent à la même minute,
+         308 requêtes ne coûtent pas une seconde. L'élève de 6ᵉ croit que « ça
+         ne marche pas », il recharge — et les 308 requêtes recommencent.
+
+         CE BLOC NE REND PAS L'APPLICATION PLUS RAPIDE. Il rend l'attente
+         compréhensible, ce qui n'est pas la même chose et se répare en une
+         demi-heure au lieu d'un chantier. Le vrai chantier — découper les 241
+         modules, dont la plupart sont des jeux qu'un élève de 6ᵉ n'ouvrira
+         jamais dans sa séance — reste à faire.
+
+         TOUT EST EN LIGNE, ET C'EST LA CONDITION. Le style est dans la balise,
+         pas dans `css/base.css` : une feuille externe est une requête de plus,
+         et c'est précisément celle qui n'est pas encore arrivée quand on a
+         besoin d'afficher ceci. Un écran de chargement qui attend son CSS ne
+         sert à rien. -->
+    <div id="chargement" role="status" aria-live="polite"
+         style="position:fixed; inset:0; z-index:9999; display:flex;
+                flex-direction:column; align-items:center; justify-content:center;
+                gap:18px; background:#f8fafc; color:#334155;
+                font:600 1rem/1.4 system-ui,-apple-system,'Segoe UI',sans-serif;
+                text-align:center; padding:24px;">
+        <div style="width:58px; height:58px; border-radius:16px; background:#4f46e5;
+                    display:flex; align-items:center; justify-content:center;
+                    color:#fff; font-size:1.6rem; font-weight:800;">+−</div>
+        <div>AtoutMath se charge…</div>
+        <!-- LA BARRE N'EST PAS UNE MESURE, ET ELLE NE PRÉTEND PAS L'ÊTRE : on
+             ne sait pas combien de temps il reste. Elle dit « ça travaille »,
+             ce qui est la seule chose vraie qu'on puisse dire ici. -->
+        <div style="width:150px; height:4px; border-radius:2px; background:#e2e8f0;
+                    overflow:hidden;">
+            <div id="chargement-barre"
+                 style="width:40%; height:100%; border-radius:2px; background:#4f46e5;"></div>
+        </div>
+        <style>
+            @keyframes chargementVaEtVient {
+                0%   { transform: translateX(-100%); }
+                100% { transform: translateX(250%); }
+            }
+            #chargement-barre { animation: chargementVaEtVient 1.1s ease-in-out infinite; }
+            /* Qui demande moins d'animation reçoit une barre immobile, pas une
+               absence de barre : le message reste le même. */
+            @media (prefers-reduced-motion: reduce) {
+                #chargement-barre { animation: none; width: 100%; opacity: .55; }
+            }
+            /* Le thème se lit avant que la moindre feuille n'arrive : sinon
+               l'élève qui travaille en sombre reçoit un éclair blanc en
+               pleine figure, puis l'application. */
+            @media (prefers-color-scheme: dark) {
+                #chargement { background: #0f172a !important; color: #cbd5e1 !important; }
+                #chargement div[style*="e2e8f0"] { background: #334155 !important; }
+            }
+        </style>
+    </div>
+    <script>
+        (function () {
+            var bloc = document.getElementById('chargement');
+            if (!bloc) { return; }
+            var parti = false;
+            function retirer() {
+                if (parti) { return; }
+                parti = true;
+                // ON LE RETIRE DU DOCUMENT, on ne le rend pas transparent.
+                // Un voile invisible reste un voile : il intercepte les clics,
+                // et l'application paraîtrait morte au lieu de paraître lente.
+                bloc.style.transition = 'opacity .18s';
+                bloc.style.opacity = '0';
+                bloc.style.pointerEvents = 'none';
+                setTimeout(function () { if (bloc.parentNode) { bloc.remove(); } }, 200);
+            }
+            document.addEventListener('atoutmath_pret', retirer);
+            if (window.__atoutmathPret === true) { retirer(); }
+            // LE FILET. Si un module tombe, `atoutmath_pret` ne vient jamais et
+            // l'élève reste devant un écran de chargement éternel — c'est pire
+            // que l'écran blanc qu'on répare, parce que celui-là ment. Au bout
+            // de quinze secondes on s'efface : il verra ce qui a pu se monter,
+            // et au pire la page telle qu'elle est.
+            setTimeout(retirer, 15000);
+        })();
+    </script>
 
     <!-- PALETTE D'OUTILS D'AUTEUR
          Flottante et déplaçable : en bandeau fixe en haut, elle recouvrait

@@ -16,7 +16,12 @@ export function showToast(message, type = 'success', duration = 3000) {
     // qui dit seulement « voici où tu es » n'est ni l'un ni l'autre, et le
     // dire en vert avec une coche, c'est le faire lire comme une réussite.
     const isInfo = type === 'info';
-    const bg = isError ? 'var(--danger)' : (isInfo ? 'var(--primary)' : 'var(--success)');
+    // LE FOND D'UN AVIS PORTE DU BLANC, donc il prend le jeton « fond » (voir
+    // `css/base.css`). MESURÉ avant : vert 2,54:1 et rouge 3,76:1, pour un
+    // seuil à 4,5. Après : 5,48 et 6,29. L'indigo de `--primary`, lui,
+    // passait déjà à 6,29 — on n'y touche pas.
+    const bg = isError ? 'var(--danger-fond)'
+        : (isInfo ? 'var(--primary)' : 'var(--success-fond)');
     
     const iconSuccess = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
     const iconError = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;

@@ -1256,6 +1256,61 @@ body.plein-ecran .pe-sortir { display: block; }
        faut. Sans cela, les 44 px demandés débordent d'une barre de 46 et les
        boutons se rognent en silence. */
     body.mobile-view #top-navbar { min-height: 52px; }
+
+    /* ─── L'ESPACE « LA CLASSE », QUI MANQUAIT À CETTE LISTE ───────────────
+       MESURÉ sur une tablette de 820 (avec `hasTouch`, sans quoi
+       `pointer: coarse` ne s'applique pas et l'on mesure les tailles de la
+       souris) : 31 cibles sur 46 sous 44 px dans « Le direct », dont les deux
+       SEULS gestes de cet écran — « mot » à 42 × 25 et « indice » à 53 × 25.
+       Vingt-cinq pixels, c'est 57 % de la pulpe d'un index.
+
+       La règle existait, elle marchait partout ailleurs — sur « Préparer », au
+       téléphone, 2 cibles sur 29 — mais sa liste de sélecteurs a été écrite
+       AVANT cet espace et ne le nommait nulle part. Une liste de sélecteurs
+       est une liste : elle ne connaît que ce qu'on y a mis, et elle ne
+       prévient pas quand un écran nouveau lui échappe.
+
+       ET C'EST L'ÉCRAN QU'ON TIENT DEBOUT, tablette d'une main, devant
+       vingt-cinq élèves — celui où viser est le plus difficile et le plus
+       pressé. */
+    .ec-mini, .ec-onglet, .ec-pilote-btn, .ec-bouton,
+    .ec-retour, .ec-fermer, .ec-carte-jeter, .ec-lien,
+    .ec-code, .ec-alarme-qui { min-height: 44px; }
+    /* Les deux gestes du direct gardent leur dessin : c'est le champ autour
+       qui grandit, pas la pastille. Sans ce remplissage, `min-height` seul
+       étire le texte au milieu d'une boîte vide et la rangée se déforme. */
+    .ec-mini { padding-top: 4px; padding-bottom: 4px; }
+    /* Les deux croix sont carrées : leur donner de la hauteur sans largeur
+       ferait une fente de 32 de large sur 44 de haut. */
+    .ec-fermer, .ec-carte-jeter { min-width: 44px; }
+    /* ET LA LARGEUR AUSSI, POUR LES PLUS COURTS. Mesuré après un premier
+       passage : « mot » était remonté à 42 × 44 — la hauteur réparée, la
+       largeur à deux pixels du compte. Une cible se vise dans les deux sens ;
+       s'arrêter à la hauteur, c'est réparer la moitié du geste. */
+    .ec-mini, .ec-retour { min-width: 44px; }
+    /* LES CHAMPS DE SAISIE COMPTENT COMME DES CIBLES. « Un mot à toute la
+       classe » faisait 520 × 40 et le champ des minutes 67 × 40 : on les
+       touche pour écrire, et rater un champ oblige à recommencer la phrase.
+       On vise large plutôt que d'énumérer : tout ce qui se remplit dans cet
+       espace, y compris ce qu'on y ajoutera demain. */
+    #zone-classe input, #zone-classe select, #zone-classe textarea,
+    .ec-champ { min-height: 44px; }
+
+    /* MÊME CAUSE, DEUX AUTRES ENDROITS.
+
+       La croix de « Choisir un exercice » : 13 × 30 au doigt, la plus petite
+       cible du parcours professeur — et sur tactile il n'y a pas de clavier,
+       donc pas d'Échap : c'est la SEULE sortie d'une fenêtre qui couvre
+       l'écran. */
+    .modal-close-btn { min-width: 44px; min-height: 44px; }
+    /* Le panneau « Réglages de la partie » : 15 cibles sur 41 sous 44 px, et
+       le « ? » d'aide à 18 × 18, la plus petite du logiciel. Le plancher des
+       jeux existait déjà mais s'écrit `#game-layer button` — or ce panneau est
+       une MODALE, donc hors de `#game-layer`, et la règle ne l'atteignait pas.
+       Un sélecteur qui nomme un ancêtre ne protège que ce qui est dedans. */
+    .cfg-step, .cfg-info, .cfg-rail { min-height: 44px; }
+    .cfg-info { min-width: 44px; }
+
 }
 
 /* Sidebar - sélecteur de niveau */

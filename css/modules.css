@@ -148,7 +148,11 @@
     background: var(--primary); box-shadow: 0 4px 14px rgba(99, 102, 241, .34);
     transition: filter .15s, transform .1s;
 }
-.fb-card--ko .fb-close { background: var(--danger); box-shadow: 0 4px 14px rgba(239, 68, 68, .32); }
+/* LE BOUTON QUE L'ÉLÈVE APPUIE APRÈS CHAQUE FAUTE. C'est, de tout le
+   logiciel, l'objet coloré le plus souvent regardé — et il donnait 3,76:1 en
+   blanc sur `--danger`. L'ombre garde la teinte vive : elle ne porte pas de
+   texte, elle n'a donc pas la même contrainte. */
+.fb-card--ko .fb-close { background: var(--danger-fond); box-shadow: 0 4px 14px rgba(239, 68, 68, .32); }
 .fb-close:hover { filter: brightness(1.07); }
 .fb-close:active { transform: translateY(2px); }
 .fb-close:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
@@ -3343,7 +3347,10 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     background: linear-gradient(180deg, #fef3c7, #fde68a);
     box-shadow: 0 6px 0 #d97706, 0 8px 14px rgba(217, 119, 6, .3);
 }
-.world-node--done .world-node-rang { border-color: #f59e0b; background: #f59e0b; color: #fff; }
+/* L'ÉTOILE D'UNE ÉTAPE RÉUSSIE : 2,15:1 en blanc sur l'orange vif. Le
+   contour garde l'orange — c'est lui qui fait voir la pastille de loin ; le
+   fond descend à la version qui porte du blanc. */
+.world-node--done .world-node-rang { border-color: #f59e0b; background: var(--warning-fond); color: #fff; }
 
 .world-node--current .world-node-btn {
     border-color: color-mix(in srgb, var(--primary) 70%, #000 22%);

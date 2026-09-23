@@ -119,8 +119,26 @@ test('UN AVIS N\'EST NI UNE RÉUSSITE NI UNE PANNE', () => {
     // réussite.
     const M = sansCommentaires(lire('js/ui/modal.js'));
     assert.match(M, /const isInfo = type === 'info';/);
-    assert.match(M, /isError \? 'var\(--danger\)' : \(isInfo \? 'var\(--primary\)' : 'var\(--success\)'\)/);
     assert.match(M, /const icon = isError \? iconError : \(isInfo \? iconInfo : iconSuccess\);/);
+
+    // CE TEST VERROUILLAIT LE NOM DES JETONS, PAS LA RÈGLE — et il est tombé
+    // le jour où le vert a changé de jeton pour passer le contraste, alors
+    // que les trois tons étaient toujours là et toujours distincts. Il
+    // gardait la lettre au lieu de garder l'intention, comme mon test sur
+    // l'ordre des niveaux. Ce qu'on protège ici, c'est qu'un avis
+    // d'information ne se lise pas comme une réussite : donc TROIS branches,
+    // et TROIS couleurs différentes. Quelles couleurs, c'est au contraste
+    // d'en décider, pas à ce test.
+    const choix = /const bg = isError \? '([^']+)'\s*:\s*\(isInfo \? '([^']+)' : '([^']+)'\)/
+        .exec(M.replace(/\s*\n\s*/g, ' '));
+    assert.ok(choix, 'les trois tons ne se lisent plus dans une seule expression');
+    const [, panne, info, reussite] = choix;
+    assert.equal(new Set([panne, info, reussite]).size, 3,
+        `deux tons partagent une couleur : ${panne} · ${info} · ${reussite}`);
+    // Et chacun reste une variable de thème : une couleur écrite en dur ici
+    // ne suivrait aucun des cinq thèmes.
+    [panne, info, reussite].forEach(c =>
+        assert.match(c, /^var\(--[a-z-]+\)$/, `couleur écrite en dur : ${c}`));
 });
 
 test('LA COPIE NE PUBLIE NI LE SERVEUR NI LES OUTILS', () => {

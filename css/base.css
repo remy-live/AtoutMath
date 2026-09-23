@@ -56,6 +56,32 @@
        et descendent jusqu'à passer. */
     --success-texte: #047857; --accent-texte: #0369a1;
     --warning-texte: #b45309; --danger-texte: #be123c;
+
+    /* ─── UN TROISIÈME RÔLE : LE FOND QUI PORTE DU BLANC ───────────────────
+       Le commentaire ci-dessus partage déjà les couleurs de sens en deux —
+       un FOND vif, un TEXTE contrasté — et note que « le thème sombre les
+       veut carrément opposés ». C'est exact, et c'est précisément ce qui
+       rendait le remède évident faux.
+
+       CE QUI MANQUAIT. Certaines surfaces sont des FONDS, mais des fonds qui
+       portent du BLANC : l'avis qui dit « Donné à la 6e B », le bouton
+       « J'ai compris » qu'un élève appuie après chaque faute, l'étoile d'une
+       étape réussie. MESURÉ, blanc dessus : vert 2,54, rouge 3,76, étoile
+       2,15 — la règle AA en demande 4,5. Le TEXTE de l'application, lui, est
+       irréprochable dans les cinq thèmes : l'écart était exactement là, sur
+       les surfaces colorées et pas sur les lettres.
+
+       ET LE REMÈDE ÉVIDENT ÉTAIT UN PIÈGE. « Prends le jeton TEXTE comme
+       fond » marche en clair (5,48 et 6,29) et s'effondre en sombre, où
+       `--success-texte` vaut #6ee7b7, un vert PÂLE fait pour se poser sur du
+       noir : blanc dessus, 1,52 — PIRE que les 2,54 qu'on voulait réparer.
+
+       D'où un jeton de plus, et pas un jeton recyclé. Il ne se redéfinit dans
+       AUCUN thème, volontairement : sa contrainte n'est pas d'aller avec la
+       page, elle est de porter du blanc. Elle est donc la même partout. */
+    --success-fond: #047857;   /* blanc dessus : 5,48 */
+    --danger-fond:  #be123c;   /* blanc dessus : 6,29 */
+    --warning-fond: #b45309;   /* blanc dessus : 5,02 */
     
     /* Les étiquettes : mesuré, le rose du niveau donnait 3,91 sur son fond et
        le bleu du domaine 4,24. Un cran plus foncé chacun. */
