@@ -23,6 +23,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as fx from '../js/core/maths/formule.js';
 
 const { analyser, html, texte, formule, formuleTexte } = fx;
@@ -62,6 +63,30 @@ test('un radical porte toujours son crochet ET sa barre', () => {
     // valeur en dur ici, le raccord redevient un réglage à la main.
     assert.ok(!/stroke-width="/.test(h),
         'l\'épaisseur du trait est écrite dans le balisage au lieu de venir du CSS');
+});
+
+// LE DÉFAUT QUI GRANDISSAIT AVEC LA TAILLE DU TEXTE.
+//
+// Rémy : « sur ton banc les radicaux ont-ils une ligne de la même épaisseur ».
+// Mesurée sur l'encre : non. Et la cause n'était pas celle que je croyais.
+//
+// `vector-effect` NE S'HÉRITE PAS. Il était déclaré sur le `<svg>`, donc il ne
+// touchait pas le `<path>` : le trait était mis à l'échelle par le viewBox,
+// exactement comme si la règle n'existait pas. `stroke-width`, lui, s'hérite
+// bien — ce qui rendait l'ensemble vraisemblable.
+//
+// Conséquence mesurée : 4,2 px peints là où 2,4 étaient demandés à 32 px de
+// corps, et 47 px à 104 px, où le crochet devenait un pâté noir. Le défaut
+// croissait avec la taille du texte, donc il restait invisible aux tailles où
+// l'on regarde d'habitude.
+test('les réglages de trait sont portés par le TRACÉ, pas par le conteneur', () => {
+    const css = readFileSync(new URL('../css/components.css', import.meta.url), 'utf8');
+    const regle = css.match(/\.fx-crochet path[\s\S]*?\{([\s\S]*?)\}/);
+    assert.ok(regle, 'aucune règle ne vise « .fx-crochet path »');
+    for (const prop of ['vector-effect', 'stroke-width', 'stroke']) {
+        assert.match(regle[1], new RegExp(prop),
+            `« ${prop} » n'est pas posé sur le tracé : il ne s'héritera pas`);
+    }
 });
 
 // ── 2. L'ÉCRAN ET LE PAPIER NE PEUVENT PLUS DIVERGER ────────────────────────

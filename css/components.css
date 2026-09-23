@@ -994,6 +994,24 @@ body.mobile-view #toast-container {
    chiffres du radicande, précisément ceux qui doivent s'aligner sur le texte. */
 .fx-rac { position: relative; display: inline-block; padding-left: .58em; }
 
+/* LE TRACÉ PORTE LUI-MÊME SES RÉGLAGES DE TRAIT, ET C'EST INDISPENSABLE.
+   `vector-effect` NE S'HÉRITE PAS. Posé sur le <svg>, il ne touchait pas le
+   <path> : le trait était donc mis à l'échelle par le viewBox, comme si la
+   règle n'existait pas. Mesuré — 4,2 px peints là où 2,4 étaient demandés à
+   32 px de corps, et 47 px à 104 px, où le crochet devenait un pâté noir.
+   Le défaut grandissait avec la taille du texte, donc il était invisible aux
+   tailles où l'on regarde d'habitude. `stroke-width`, lui, s'hérite bien —
+   c'est ce qui rendait l'ensemble vraisemblable. */
+.fx-crochet path,
+.fx-par-trait path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: var(--fx-trait);
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .fx-crochet {
     position: absolute; left: 0; bottom: 0;
     /* Le haut du crochet est le MILIEU de la barre, et non le haut de la
@@ -1012,17 +1030,81 @@ body.mobile-view #toast-container {
        il devient plus élancé, comme dans les polices mathématiques. */
     vector-effect: non-scaling-stroke;
     stroke-linecap: round;
-    stroke-linejoin: miter;
-    stroke-miterlimit: 4;
+    /* `round` ET NON `miter` AU COUDE. Mesuré sur l'encre, colonne par
+       colonne : avec un onglet, le raccord entre la branche montante et le
+       segment horizontal produisait une pointe qui épaississait le trait à
+       4,3 px sur les deux premiers pixels de la barre, avant de retomber à 2.
+       Un renflement local à l'endroit précis où l'œil cherche la continuité. */
+    stroke-linejoin: round;
 }
 
 .fx-sous {
     display: block;
-    border-top: var(--fx-trait) solid currentColor;
+    position: relative;
     /* Un court dépassement à droite : un radical qui s'arrête pile sur le
        dernier chiffre paraît coupé. Les polices mathématiques laissent ce
-       filet. */
-    padding: .13em .12em 0 .1em;
+       filet. Le haut réserve la place de la barre, qui ne tient plus de
+       hauteur elle-même. */
+    padding: calc(.13em + var(--fx-trait)) .12em 0 .1em;
+}
+
+/* LA BARRE EST UN TRACÉ, COMME LE CROCHET.
+   Rémy : « sur ton banc les radicaux ont-ils une ligne de la même épaisseur ».
+   Mesurée sur l'encre : non. Les deux demandaient pourtant .075em — mais une
+   BORDURE est arrondie au pixel entier par le navigateur, pas le trait d'un
+   tracé SVG. À 32 px de corps : 2,00 px contre 2,40 px, soit un crochet 20 %
+   plus gras que la barre qu'il prolonge. Un bloc de hauteur .075em ne réglait
+   rien, sa hauteur étant calée de la même façon.
+   Deux tracés, mêmes réglages : l'égalité n'est plus une coïncidence de
+   calcul, elle est structurelle. */
+.fx-barre {
+    position: absolute;
+    /* Le haut de la boîte EST le haut du radicande : le rectangle y occupe
+       [0, --fx-trait], exactement là où le crochet l'attend. */
+    left: 0; top: 0;
+    /* LA LARGEUR EST IMPOSÉE, ET IL LE FAUT. Un `<svg>` porteur d'un viewBox a
+       un RAPPORT D'ASPECT intrinsèque — ici 10 sur 10, donc carré — et ce
+       rapport l'emporte dès qu'une des deux dimensions est déduite des bords.
+       Avec `left: 0; right: 0` et une hauteur donnée, la barre mesurait
+       2,39 px de large au lieu des 44 px du radicande : un point, pas un
+       trait. En posant explicitement les deux dimensions, le rapport d'aspect
+       ne s'applique plus.
+       UNE VRAIE BOÎTE, aussi : le tracé est AU MILIEU de la vue (y = 5 sur
+       10), et un trait est centré sur sa trajectoire — il occupe donc
+       exactement [0, e] dans la boîte, là où le crochet l'attend. Premier
+       essai avec une boîte de hauteur nulle : le facteur d'échelle vertical
+       devenait nul et le trait se peignait par morceaux, avec des trous
+       mesurés à 0,00 px. */
+    width: 100%;
+    /* UNE BOÎTE CONFORTABLE, ET LE TRAIT DESSINÉ DEDANS EN PROPORTION.
+       Une boîte haute de --fx-trait exactement, soit 1,2 px à 16 px de corps,
+       est trop fine pour échapper à l'arrondi : mesurée, elle se calait sur
+       le pixel entier à plusieurs tailles — 1,00 px au lieu de 1,20 ; 3,00 au
+       lieu de 3,60 ; 5,00 au lieu de 5,40.
+       La boîte fait donc .5em, et le rectangle en occupe les 15 % du haut :
+       15 % de .5em font .075em, c'est-à-dire --fx-trait. Le rapport est
+       CONSTANT — les deux valeurs sont en em —, si bien que l'égalité tient à
+       toutes les tailles. Et le bord du rectangle, étant à l'intérieur d'une
+       boîte large, est anticrénelé au lieu d'être calé. */
+    height: .5em;
+    /* Le dessin se superpose au radicande : il ne doit pas intercepter la
+       souris ni gêner la sélection du texte. */
+    pointer-events: none;
+    /* UN RECTANGLE REMPLI, ET NON UN TRAIT TRACÉ. Un trait déclaré
+       `non-scaling-stroke` ne survit pas à un étirement ANISOTROPE : la barre
+       s'étire beaucoup en largeur et pas du tout en hauteur, et le trait
+       tombait alors à 0,67 px au lieu de 2,40. Un rectangle rempli, lui, suit
+       la boîte exactement.
+       MESURÉ, quatre façons de peindre le même .075em à 32 px de corps
+       (2,40 px demandés), encre relevée à 8× :
+         bordure CSS   2,000 px   (−16,7 %)
+         bloc CSS      2,000 px   (−16,7 %)
+         rectangle SVG 2,391 px   ( −0,4 %)
+         tracé SVG     2,406 px   ( +0,3 %)
+       Les deux formes CSS sont calées sur le pixel entier ; les deux formes
+       SVG tiennent la valeur. Le crochet étant un tracé, la barre doit être
+       un rectangle : c'est le seul couple qui s'accorde. */
+    fill: currentColor;
 }
 
 /* ── LA PARENTHÈSE QUI GRANDIT ──────────────────────────────────────────── */

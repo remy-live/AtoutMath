@@ -310,10 +310,27 @@ const nu = (n) => (n.sorte === 'groupe' ? nu(n.dedans) : n);
  * ceux qui doivent s'aligner avec le texte autour.
  */
 function radicalHtml(dedans) {
-    return '<span class="fx-rac"><svg class="fx-crochet" viewBox="0 0 10 20" '
-        + 'preserveAspectRatio="none" aria-hidden="true" focusable="false">'
+    // LA BARRE EST DESSINÉE ELLE AUSSI, et c'est une question de Rémy qui l'a
+    // imposé : « sur ton banc les radicaux ont-ils une ligne de la même
+    // épaisseur ». Mesurée sur l'encre, la réponse était non.
+    //
+    // Les deux traits demandaient pourtant la même valeur, --fx-trait. Mais
+    // ils n'étaient pas peints par le même mécanisme : le crochet est un tracé
+    // SVG, la barre était une bordure CSS — et le navigateur ARRONDIT une
+    // bordure au pixel entier sans toucher au trait d'un tracé. À 32 px de
+    // corps, 2,00 px contre 2,40 px : le crochet 20 % plus gras que la barre
+    // qu'il prolonge. Le remplacement par un bloc n'y changeait rien, sa
+    // hauteur étant calée de la même façon.
+    //
+    // Deux tracés SVG, mêmes réglages, même `stroke-width` : l'égalité n'est
+    // plus une coïncidence de calcul, elle est structurelle.
+    return '<span class="fx-rac">'
+        + '<svg class="fx-crochet" viewBox="0 0 10 20" preserveAspectRatio="none" '
+        + 'aria-hidden="true" focusable="false">'
         + '<path d="M0 12.4 L2.7 12.4 L5.2 19.4 L8.2 0 L10 0"/></svg>'
-        + `<span class="fx-sous">${dedans}</span></span>`;
+        + `<span class="fx-sous"><svg class="fx-barre" viewBox="0 0 10 100" `
+        + 'preserveAspectRatio="none" aria-hidden="true" focusable="false">'
+        + `<rect x="0" y="0" width="10" height="15"/></svg>${dedans}</span></span>`;
 }
 
 /**
