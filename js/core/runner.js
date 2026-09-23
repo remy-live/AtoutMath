@@ -1370,9 +1370,9 @@ export class Runner {
                 && (this.steps[this.index].bonus || this.steps[this.index].facultatif)) {
                 this.index++;
             }
-            this.showStepResult(passed, solved, required, cadeau);
+            this.showStepResult(passed, solved, required, cadeau, step);
         } else {
-            this.showStepResult(false, solved, required, null);
+            this.showStepResult(false, solved, required, null, step);
         }
     }
 
@@ -1530,17 +1530,35 @@ export class Runner {
             </div>`;
     }
 
-    showStepResult(passed, solved, required, cadeau = null) {
+    showStepResult(passed, solved, required, cadeau = null, step = null) {
         const last = this.index >= this.steps.length;
         // UN JEU QUI VIENT DE S'OUVRIR PASSE DEVANT TOUT LE RESTE. C'est la
         // seule bonne nouvelle de l'écran, et elle ne se répétera pas.
         const jeu = cadeau
             ? this.steps.find(s => s.stepId === cadeau)
             : null;
-        const icon = jeu ? '🎁' : (passed ? '🎉' : '💪');
-        const title = jeu ? 'Tu as gagné un jeu !' : (passed ? 'Étape validée !' : 'Presque…');
+
+        // LE SANS-FAUTE SE DIT, ET IL NE SE DISAIT PAS.
+        //
+        // Rémy : « on peut leur proposer de recommencer l'exercice lorsqu'ils
+        // l'ont terminé pour essayer de s'améliorer, ou leur dire que c'est
+        // bien s'ils ont eu bon partout ».
+        //
+        // Dix sur dix et sept sur dix recevaient EXACTEMENT le même écran —
+        // « Étape validée ! », la même icône, la même phrase à un chiffre
+        // près. L'élève qui n'a rien raté n'apprenait donc pas qu'il n'avait
+        // rien raté, et celui qui avait trois fautes n'avait aucun moyen de
+        // les reprendre : un seul bouton, « Continuer ».
+        const posees = this.itemsResolved.size;
+        const sansFaute = passed && posees > 0 && solved >= posees;
+
+        const icon = jeu ? '🎁' : (sansFaute ? '🏆' : (passed ? '🎉' : '💪'));
+        const title = jeu ? 'Tu as gagné un jeu !'
+            : (sansFaute ? 'Sans faute !' : (passed ? 'Étape validée !' : 'Presque…'));
         const detail = passed
-            ? `${solved} bonne${solved > 1 ? 's' : ''} réponse${solved > 1 ? 's' : ''} sur ${this.itemsResolved.size}.`
+            ? (sansFaute
+                ? `${posees} sur ${posees}. Tout juste, du premier coup — c'est acquis.`
+                : `${solved} bonne${solved > 1 ? 's' : ''} réponse${solved > 1 ? 's' : ''} sur ${posees}.`)
             : `Tu as ${solved} bonne${solved > 1 ? 's' : ''} réponse${solved > 1 ? 's' : ''}, il en faut ${required}.`;
         const detailJeu = jeu
             ? `<p class="run-screen-text run-screen-text--cadeau"><b>${escapeHtml(jeu.title)}</b>
@@ -1558,6 +1576,30 @@ export class Runner {
             : (passed ? (last ? 'Voir mon bilan' : (parLaCarte ? 'Voir ma carte' : 'Continuer'))
                 : 'Réessayer');
 
+        // REFAIRE POUR S'AMÉLIORER — le second bouton, et les quatre
+        // conditions qui décident s'il paraît.
+        //
+        // · L'étape est VALIDÉE mais pas parfaite : c'est le seul cas où l'on
+        //   n'avait rien à proposer. Ratée, « Réessayer » existe déjà ;
+        //   parfaite, il n'y a rien à améliorer et le proposer serait dire
+        //   « ce n'était pas encore assez ».
+        // · PAS EN ÉVALUATION. Rémy, sur le bilan d'exercice : « en mode
+        //   interrogation, il ne faut pas proposer à la fin de refaire
+        //   l'exercice ». Une note qu'on recommence jusqu'à ce qu'elle tombe
+        //   juste ne mesure plus rien — et l'élève qui voit le bouton en
+        //   déduit, à raison, que ça ne comptait pas.
+        // · Il faut retrouver l'étape pour la rejouer.
+        //
+        // ET CELA NE PEUT PAS LUI NUIRE — c'est ce qui rend le bouton
+        // acceptable. `computeAssignedPath` garde la MEILLEURE tentative :
+        // vérifié, 7/10 puis 4/10 laisse 7/10, et 9/10 ensuite remonte à
+        // 9/10. Un élève qui retente et fait moins bien ne perd rien. Sans
+        // cette garantie, le bouton serait un piège tendu aux plus
+        // consciencieux.
+        const rang = step ? this.steps.indexOf(step) : -1;
+        const peutRefaire = passed && !sansFaute && !jeu
+            && this.policy.mode !== 'evaluation' && rang >= 0;
+
         this.canvas.innerHTML = `
             <div class="run-screen">
                 <div class="run-screen-icon" aria-hidden="true">${icon}</div>
@@ -1566,12 +1608,28 @@ export class Runner {
                 ${detailJeu}
                 ${passed ? this.filDesEtapes() : ''}
                 <button id="btn-run-next" class="btn-toggle active run-screen-btn">${btnLabel}</button>
+                ${peutRefaire ? `<button id="btn-run-refaire" type="button"
+                    class="btn-toggle glass-btn run-screen-btn run-screen-btn--doux"
+                    >Refaire pour m'améliorer</button>` : ''}
             </div>`;
 
         document.getElementById('btn-run-next').onclick = () => {
             if (jeu || parLaCarte) return this.showPathMap();
             // Réussie ou non, on relance : l'index n'a avancé que si l'étape
             // est validée, sinon on la rejoue.
+            this.runStep();
+        };
+
+        const refaire = document.getElementById('btn-run-refaire');
+        if (refaire) refaire.onclick = () => {
+            // ON REVIENT SUR L'ÉTAPE, on ne rouvre pas l'exercice seul.
+            //
+            // Le bilan de fin d'exercice, lui, appelle `openGameLayer` — ce
+            // qui sortirait l'élève de sa séance et le laisserait dans un
+            // exercice isolé, sans carte, sans suite, sans retour. Ici l'index
+            // recule sur l'étape qu'on vient de finir, et `runStep` la rejoue
+            // exactement comme la première fois.
+            this.index = rang;
             this.runStep();
         };
     }

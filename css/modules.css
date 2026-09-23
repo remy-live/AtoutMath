@@ -2209,6 +2209,17 @@ html[data-point="plus"] .pt-croix { display: none; }
 .run-screen-title--ko { color: var(--warning-texte); }
 .run-screen-text { font-size: 1.1rem; color: var(--text-main); max-width: 480px; line-height: 1.5; }
 .run-screen-btn { font-size: 1.25rem; padding: 14px 32px; margin-top: 10px; }
+/* « REFAIRE POUR M'AMÉLIORER » EST UNE OFFRE, PAS UNE CONSIGNE.
+   Il est plus petit et plus discret que « Continuer » : l'élève qui veut
+   avancer ne doit pas hésiter une seconde entre les deux, et celui qui veut
+   reprendre doit le trouver sans le chercher. Deux boutons de même poids
+   poseraient une question là où il n'y en a pas — l'étape est validée, la
+   suite est le chemin normal. */
+.run-screen-btn--doux {
+    font-size: 1rem; padding: 10px 24px; margin-top: 8px;
+    opacity: .85;
+}
+.run-screen-btn--doux:hover { opacity: 1; }
 
 /* ═══ LA CARTE, ENTRE LES EXERCICES ═══════════════════════════════════════════
    Rémy : « quand on lance un parcours, le tiroir de gauche disparaît et il
