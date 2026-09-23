@@ -28,6 +28,7 @@ import { makeRng } from '../js/core/ids.js';
 import { racinesGenerator, POUR_ESSAI } from '../js/core/generators/racines.js';
 import { SKILLS } from '../js/data/skills.js';
 import { secondeExercises } from '../js/data/seconde.js';
+import * as fx from '../js/core/maths/formule.js';
 
 const { rac, racineDe, txt, facteurs } = POUR_ESSAI;
 
@@ -42,8 +43,12 @@ function evalTexte(t) {
     if (m0) return Math.sqrt(Number(m0[1]) + Number(m0[2]));
 
     const terme = (x) => {
-        const q = x.match(/^\(?(.+?)\)?\/(\d+)$/);
-        if (q) return terme(q[1]) / Number(q[2]);
+        // Le bas d'une fraction n'est plus forcément un entier : depuis que le
+        // barreau 8 pose « 3/√7 » sous forme de fraction — c'est ainsi qu'on
+        // l'écrit au lycée, et c'est ce qui montre qu'il y a une racine EN BAS,
+        // tout l'objet du barreau — le dénominateur peut être un radical.
+        const q = x.match(/^\(?(.+?)\)?\/(.+)$/);
+        if (q) return terme(q[1]) / terme(q[2]);
         const a = x.match(/^(-?\d*)√(\d+)$/);
         if (a) {
             const k = a[1] === '' ? 1 : (a[1] === '-' ? -1 : Number(a[1]));
@@ -62,13 +67,21 @@ function evalTexte(t) {
     return terme(s);
 }
 
-/** Ce que l'élève lit sur un bouton, une fois le balisage retiré. */
-const etiquette = (h) => String(h)
-    .replace(/<span class="fraction-den">/g, '/')
-    .replace(/<[^>]+>/g, '').replace(/\s+/g, '').trim();
-
-/** Le texte de l'énoncé, séparateurs CONSERVÉS — voir le test du bas. */
-const enonceLisible = (h) => String(h).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+/**
+ * CE QUE VAUT UNE PROPOSITION, LU SUR SON TEXTE ET NON SUR SON BALISAGE.
+ *
+ * L'ancienne version dépouillait le HTML du libellé. Elle a cessé de mesurer
+ * quoi que ce soit le jour où le radical est devenu un DESSIN : « √45 » et
+ * « 4√5 », débarrassés de leurs balises, donnent tous les deux « 45 ». Le test
+ * « l'énoncé n'écrit jamais la réponse » a signalé cette collision comme une
+ * faute du générateur, et le test des doublons aurait fini par confondre
+ * « 2√2 » avec « 22 ».
+ *
+ * Chaque proposition porte maintenant son `texte`, issu du même arbre que son
+ * libellé. C'est ce champ que la fiche papier imprime ; c'est donc aussi le
+ * bon champ à mesurer — on lit ce que l'élève lit.
+ */
+const etiquette = (c) => String(c && c.texte != null ? c.texte : c).replace(/\s+/g, '');
 
 const BARREAUX = ['1', '2', '3', '4', '5', '6', '7', '8', 'revision', 'toutes'];
 const PAR_BARREAU = 150;
@@ -126,7 +139,7 @@ test('quatre propositions, une seule juste, aucune écrite deux fois', () => {
             `[${b}#${i}] ${item.choices.length} propositions pour ${item.prompt.text}`);
         assert.equal(item.choices.filter(c => c.correct).length, 1,
             `[${b}#${i}] pas exactement une bonne réponse`);
-        const vues = item.choices.map(c => etiquette(c.label));
+        const vues = item.choices.map(c => etiquette(c));
         assert.equal(new Set(vues).size, 4,
             `[${b}#${i}] deux propositions identiques : ${vues.join(' | ')}`);
     });
@@ -145,10 +158,10 @@ test('aucun leurre ne vaut la bonne réponse, sauf celui « pas FINI » du barre
         const juste = evalTexte(item.prompt.text.replace('Simplifie : ', ''));
         for (const c of item.choices) {
             if (c.correct) continue;
-            const v = evalTexte(etiquette(c.label));
+            const v = evalTexte(etiquette(c));
             if (Math.abs(v - juste) < 1e-9) {
                 assert.match(c.why || '', /pas FINI/,
-                    `[${b}#${i}] ${item.prompt.text} : le leurre ${etiquette(c.label)} `
+                    `[${b}#${i}] ${item.prompt.text} : le leurre ${etiquette(c)} `
                     + `vaut la bonne réponse sans être la forme inachevée.`);
                 assert.equal(item.meta.barreau, 4,
                     `[${b}#${i}] la forme inachevée hors du barreau 4`);
@@ -164,7 +177,7 @@ test('chaque leurre dit POURQUOI il est faux', () => {
         for (const c of item.choices) {
             if (c.correct) continue;
             assert.ok(c.why && c.why.length >= 12,
-                `[${b}#${i}] leurre sans explication : ${etiquette(c.label)}`);
+                `[${b}#${i}] leurre sans explication : ${etiquette(c)}`);
         }
     });
 });
@@ -181,12 +194,19 @@ test('chaque leurre dit POURQUOI il est faux', () => {
 // dessin de l'énoncé montre les rôles et non le résultat.
 test('l\'énoncé n\'écrit jamais la réponse', () => {
     balayer((item, b, i) => {
-        const rep = etiquette(item.choices.find(c => c.correct).label);
+        const rep = etiquette(item.choices.find(c => c.correct));
         if (rep.length < 2) return;   // un chiffre isolé est dans toute décomposition
-        const texte = ' ' + enonceLisible(item.prompt.html) + ' ';
+        // ON COMPARE DEUX TEXTES, et non deux balisages dépouillés. Depuis que
+        // le radical est dessiné, « √45 » et « 4√5 » se ressemblent une fois
+        // les balises retirées : tous deux donnent « 45 ». La comparaison
+        // partait alors en fausse alerte sur « 3√45 − √125 », dont la réponse
+        // est 4√5. Les formes écrites, elles, gardent leur √ et ne se
+        // confondent pas.
+        const vu = ' ' + item.prompt.text.replace('Simplifie : ', '')
+            + ' ' + (item.schemas[0] || '') + ' ';
         const motif = new RegExp('(^|[^0-9√])'
             + rep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '([^0-9]|$)');
-        assert.ok(!motif.test(texte),
+        assert.ok(!motif.test(vu),
             `[${b}#${i}] ${item.prompt.text} : la réponse « ${rep} » est déjà écrite `
             + `dans l'énoncé.`);
     });
@@ -217,19 +237,24 @@ test('chaque question porte ses deux dessins, et ils diffèrent', () => {
 // Aucun contrôle de valeur ne pouvait voir cela : les deux énoncés valent le
 // même nombre. C'est leur ÉCRITURE qui diffère, et l'écriture est tout le
 // sujet du chapitre.
-test('l\'énoncé de l\'écran est le même que celui de la fiche papier', () => {
+test('l\'énoncé de l\'écran et celui du papier sont la MÊME formule', () => {
     balayer((item, b, i) => {
-        const ecran = (item.prompt.html.match(/rc-expression">([\s\S]*?)<\/div>/) || [])[1];
-        assert.ok(ecran !== undefined, `[${b}#${i}] expression introuvable`);
-        const nu = (x) => String(x).replace(/<[^>]+>/g, '').replace(/\s+/g, '');
-        const papier = item.prompt.text.replace('Simplifie : ', '')
-            .replace(/[()]/g, '').replace(/\s+/g, '');
-        // Le seul écart admis : une division écrite en fraction à l'écran et
-        // avec ÷ au texte — c'est la même opération, pas une simplification.
-        const memeQuestion = nu(ecran) === papier
-            || nu(ecran) === papier.replace('÷', '');
-        assert.ok(memeQuestion,
-            `[${b}#${i}] l'écran affiche « ${nu(ecran)} » et le papier « ${papier} ».`);
+        // L'ALLER-RETOUR, ET NON UNE COMPARAISON DE CHAÎNES.
+        //
+        // La première version comparait le balisage dépouillé au texte. Elle
+        // ne pouvait plus fonctionner dès que les symboles sont devenus des
+        // dessins : « √4 » dépouillé de ses balises ne donne plus que « 4 ».
+        //
+        // On vérifie donc la propriété qui compte vraiment : le texte de la
+        // fiche, RELU par l'analyseur, redonne exactement le dessin de
+        // l'écran. C'est plus fort qu'une égalité de chaînes — cela prouve que
+        // les deux sorties portent la même formule, et que le texte est une
+        // écriture fidèle, pas une approximation.
+        const papier = item.prompt.text.replace('Simplifie : ', '');
+        const relu = fx.formule(papier);
+        assert.ok(item.prompt.html.includes(relu),
+            `[${b}#${i}] le texte « ${papier} », relu, ne redonne pas le dessin `
+            + `de l'écran.`);
     });
 });
 
@@ -238,8 +263,12 @@ test('l\'énoncé de l\'écran est le même que celui de la fiche papier', () =>
 // c'est-à-dire que le barreau 7 n'a plus d'énoncé.
 test('le radical porte toujours sa barre', () => {
     balayer((item, b, i) => {
-        assert.match(item.prompt.html, /rc-sous/,
+        // `fx-sous` porte la barre, `fx-crochet` le crochet : les deux doivent
+        // être là, car ce sont eux qui disent CE QUI EST SOUS LA RACINE.
+        assert.match(item.prompt.html, /fx-sous/,
             `[${b}#${i}] ${item.prompt.text} : radical sans barre`);
+        assert.match(item.prompt.html, /fx-crochet/,
+            `[${b}#${i}] ${item.prompt.text} : radical sans crochet`);
     });
 });
 
@@ -265,7 +294,7 @@ test('le barreau 7 propose TOUJOURS le piège qu\'il enseigne', () => {
         const faux = Math.sqrt(Number(a)) + Math.sqrt(Number(b));
         assert.ok(Number.isInteger(faux),
             `√(${a} + ${b}) : √a + √b n'est pas entier, le leurre du piège disparaît`);
-        const propose = item.choices.some(c => etiquette(c.label) === String(faux));
+        const propose = item.choices.some(c => etiquette(c) === String(faux));
         assert.ok(propose,
             `√(${a} + ${b}) : le leurre ${faux} — c'est-à-dire √a + √b — n'est pas proposé`);
     }
@@ -302,17 +331,31 @@ test('les neuf exercices de Seconde existent et pointent le bon générateur', (
     }
 });
 
-// ── LE PIÈGE DE MA PROPRE SONDE, GARDÉ ICI POUR MÉMOIRE ─────────────────────
+// ── CE QUE LA FICHE PAPIER IMPRIME ──────────────────────────────────────────
 //
-// La première version du test « l'énoncé n'écrit jamais la réponse » écrasait
-// les espaces avant de chercher. « … × 3 » suivi de « 6 = … » devenait alors
-// « ×36= », et le test signalait un « 36 » qui n'est écrit nulle part à
-// l'écran : dix fausses alertes sur trente mille questions. UNE MESURE QUI
-// N'EMPRUNTE PAS LE CHEMIN DE L'UTILISATEUR NE MESURE PAS SON PROBLÈME — et
-// l'utilisateur, lui, voit les espaces.
-test('enonceLisible garde les séparateurs entre deux éléments voisins', () => {
-    const h = '<span>2√6 × 3</span><span>6 = 2 × 3</span>';
-    assert.ok(!enonceLisible(h).includes('36'),
-        'deux nombres voisins se sont soudés en un troisième qui n\'existe pas');
-    assert.ok(etiquette('<span>2√6</span>').includes('2√6'));
+// MESURÉ, ET C'ÉTAIT INUTILISABLE : la feuille de ce chapitre imprimait
+// « faux0 · ok · faux1 · faux2 » à la place des quatre propositions.
+//
+// `js/ui/printQuestions.js` écrit le champ `texte` d'une proposition s'il
+// existe ; sinon son libellé, mais SEULEMENT s'il ne contient aucune balise —
+// et le nôtre en contient toujours, puisqu'un radical est dessiné. Restait la
+// `value`, qui est une clef interne. Rien à l'écran ne pouvait le laisser
+// voir : il fallait imprimer.
+test('la fiche papier imprime les propositions, et non leurs clefs internes', () => {
+    // LA MÊME RÈGLE QUE js/ui/printQuestions.js, recopiée ici pour que le test
+    // mesure ce que fait l'impression et non ce que j'en suppose.
+    const imprime = (c) => {
+        if (c.texte) return String(c.texte);
+        const brut = String(c.label ?? c.value ?? '');
+        return /[<>]/.test(brut) ? String(c.value ?? '') : brut;
+    };
+    balayer((item, b, i) => {
+        for (const c of item.choices) {
+            const sortie = imprime(c);
+            assert.ok(!/^(ok|faux\d+)$/.test(sortie),
+                `[${b}#${i}] la feuille imprimerait « ${sortie} » au lieu d'une réponse.`);
+            assert.ok(!/[<>]/.test(sortie),
+                `[${b}#${i}] du balisage part sur la feuille : ${sortie}`);
+        }
+    });
 });

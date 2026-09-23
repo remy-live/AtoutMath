@@ -855,25 +855,14 @@ body.mobile-view #toast-container {
 
 .rc-consigne { margin-bottom: 2px; }
 
-/* LA BARRE DU RADICAL, ET POURQUOI ELLE EST DESSINÉE.
-   Un « √9 + 16 » écrit à plat ne dit pas si la barre couvre le 9 seul ou toute
-   la somme — et c'est EXACTEMENT la question du barreau 7. Sans la barre,
-   l'exercice n'a plus de sens : on demanderait à l'élève de deviner l'énoncé.
-   Elle se fabrique avec une bordure haute sur ce qui est dessous, comme au
-   tableau. */
-.rc-rac { display: inline-flex; align-items: flex-start; }
-.rc-signe {
-    /* Le signe monte d'un cheveu pour rejoindre la barre : les deux traits ne
-       doivent pas laisser voir leur raccord. */
-    line-height: 1;
-    transform: translateY(-.04em);
-}
-.rc-sous {
-    border-top: 2px solid currentColor;
-    padding: .1em .18em 0 .1em;
-    margin-left: -.06em;
-    line-height: 1.25;
-}
+/* LE RADICAL A DÉMÉNAGÉ — voir « LES FORMULES » en bas de ce fichier.
+   Les règles qui étaient ici (.rc-rac / .rc-signe / .rc-sous) posaient le
+   caractère « √ » à côté d'une bordure CSS, avec un `translateY(-.04em)` pour
+   tenter de rapprocher les deux traits. Ce réglage compensait à la main une
+   géométrie qu'on ne contrôlait pas : mesuré, le glyphe ne venait même pas
+   d'Outfit, qui n'en contient aucun, mais d'une police de secours choisie par
+   le système — donc différente d'une machine à l'autre. Il n'y avait rien à
+   régler, il fallait dessiner. */
 
 /* ── LE DESSIN DE L'ÉNONCÉ : la matière, jamais le résultat ───────────────── */
 
@@ -970,4 +959,122 @@ body.mobile-view #toast-container {
     .rc-decomp { font-size: .98rem; }
     .rc-regle { font-size: .88rem; }
     .rc-matiere { padding: 7px 10px; }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   LES FORMULES — dessinées, dans la police du site.
+   Voir js/core/maths/formule.js, qui explique pourquoi rien n'est un glyphe.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* L'ÉPAISSEUR DE TOUS LES TRAITS DESSINÉS, DÉFINIE UNE SEULE FOIS.
+   Sur `:root` et non sur un conteneur : une formule ne s'enveloppe PAS, parce
+   que `choice.js` reconnaît une fraction par une expression régulière ancrée
+   sur le début du libellé — un conteneur la ferait échouer, et les
+   propositions repartiraient en cartes au lieu de ronds.
+   En `em`, donc le trait suit la taille du texte : une formule est juste en
+   petit comme en grand. À la graisse 700, .075em donne un trait du même poids
+   visuel que les chiffres — c'est ce qui manquait le plus au rendu précédent,
+   où la barre faisait 2 px sous des chiffres gras. */
+:root { --fx-trait: .075em; }
+
+/* ── LE RADICAL ─────────────────────────────────────────────────────────── */
+
+/* MESURÉ AVANT D'ÊTRE REDESSINÉ, et c'est ce qui a tranché : la police Outfit
+   ne contient AUCUN glyphe √. Le signe affiché venait d'une police de secours
+   choisie par le système — donc différent sur un Mac, un Chromebook, un iPad.
+   La contrainte de Rémy (« avec la police que je veux ») était déjà violée, et
+   elle ne POUVAIT pas être tenue avec un caractère : il n'y a rien à corriger
+   dans Outfit, il faut dessiner. */
+
+/* `inline-block` et non `inline-flex` : une boîte flex prend sa ligne de base
+   sur son premier élément — le SVG, qui n'en a pas —, et le navigateur se
+   rabat sur son bord inférieur. Mesuré : le radicande était posé 9,8 px plus
+   bas que le signe, et « 6√2 » se lisait comme si le 2 était un exposant.
+   Un inline-block prend sa ligne de base sur son contenu en flux : les
+   chiffres du radicande, précisément ceux qui doivent s'aligner sur le texte. */
+.fx-rac { position: relative; display: inline-block; padding-left: .58em; }
+
+.fx-crochet {
+    position: absolute; left: 0; bottom: 0;
+    /* Le haut du crochet est le MILIEU de la barre, et non le haut de la
+       boîte : la bordure occupe [0, N], un trait centré occuperait [−N/2,
+       +N/2]. Cette demi-épaisseur les fait coïncider — écart mesuré au banc
+       d'essai : 0,19 px, c'est-à-dire l'arrondi du navigateur. */
+    top: calc(var(--fx-trait) / 2);
+    width: .58em;
+    /* Le trait déborde du cadre vers le haut : on ne le coupe pas. */
+    overflow: visible;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: var(--fx-trait);
+    /* L'ÉTIREMENT NE DOIT JAMAIS ÉPAISSIR LE TRAIT. C'est ce qui autorise le
+       crochet à s'allonger sur une fraction sous la racine sans se déformer :
+       il devient plus élancé, comme dans les polices mathématiques. */
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+    stroke-linejoin: miter;
+    stroke-miterlimit: 4;
+}
+
+.fx-sous {
+    display: block;
+    border-top: var(--fx-trait) solid currentColor;
+    /* Un court dépassement à droite : un radical qui s'arrête pile sur le
+       dernier chiffre paraît coupé. Les polices mathématiques laissent ce
+       filet. */
+    padding: .13em .12em 0 .1em;
+}
+
+/* ── LA PARENTHÈSE QUI GRANDIT ──────────────────────────────────────────── */
+
+/* Autour d'une fraction empilée, la parenthèse de texte ne couvrait que 54 %
+   de sa hauteur — mesuré sur « 7(4 − 9/7) », le barreau dont la leçon est
+   justement « le 5 multiplie TOUTE la parenthèse ». */
+/* `vertical-align: middle`, pour la raison qui a déjà valu au radical d'être
+   un inline-block : une boîte flex prend sa ligne de base sur son premier
+   élément, ici la courbe SVG, qui n'en a pas — et le facteur de gauche tombait
+   au BAS de la parenthèse. Vu au banc sur « 7(4 − 9/7) », où le 7 se rangeait
+   sous le dénominateur. On centre donc le groupe sur la ligne, exactement
+   comme une fraction (css/modules.css:1928) : c'est la même situation, un
+   objet haut au milieu d'une ligne de texte. */
+.fx-par {
+    position: relative; display: inline-flex; align-items: stretch;
+    vertical-align: middle;
+}
+.fx-par-dedans { display: block; padding: 0 .1em; }
+.fx-par-trait {
+    width: .34em; align-self: stretch; overflow: visible;
+    fill: none; stroke: currentColor;
+    stroke-width: var(--fx-trait);
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+}
+
+/* ── LE RESTE ───────────────────────────────────────────────────────────── */
+
+/* Les variables en italique, comme dans tous les livres de mathématiques :
+   c'est ce qui distingue le x inconnu du « x » de « x fois ». */
+.fx-var { font-style: italic; }
+
+/* L'EXPOSANT EST UNE MISE EN PAGE, PAS UN CARACTÈRE.
+   Outfit contient ¹ ² ³ et rien au-delà : ⁴ à ⁹ viennent d'une police de
+   secours. Dans « x² + x⁴ », les deux exposants n'étaient donc pas de la même
+   police — et la fonction « développer » qui arrive produira des x⁴. Une boîte
+   plus petite et remontée n'a pas ce défaut, à n'importe quel exposant. */
+.fx-exp {
+    font-size: .68em;
+    /* `super` place l'exposant trop haut sur une police à grande hauteur d'x.
+       On le pose à la main, en em, pour qu'il suive la taille du texte. */
+    vertical-align: baseline;
+    position: relative;
+    top: -.52em;
+    margin-left: .02em;
+}
+
+/* Des parenthèses un peu plus fines que les chiffres : elles encadrent, elles
+   ne se lisent pas. */
+.fx-paren { font-weight: 600; padding: 0 .02em; }
+
+@media (max-width: 480px) {
+    :root { --fx-trait: .07em; }
 }

@@ -36,6 +36,7 @@
 // compare.
 
 import { makeItem, finalizeChoices } from '../items.js';
+import * as fx from '../maths/formule.js';
 
 const M = '−';
 const nb = (v) => (v < 0 ? M + Math.abs(v) : String(v));
@@ -86,39 +87,37 @@ const surR = (a, b) => (b.n === 0 ? null
 const valeur = (x) => (x.n / x.d) * Math.sqrt(x.r);
 const memeR = (a, b) => !!a && !!b && a.n === b.n && a.d === b.d && a.r === b.r;
 
-/** `6√2`, `5`, `−√3`, `(2√5)/3` */
-function txt(x) {
-    if (x.r === 1) return x.d === 1 ? nb(x.n) : `${nb(x.n)}/${x.d}`;
-    const coef = x.n === 1 ? '' : (x.n === -1 ? M : nb(x.n));
-    const base = `${coef}√${x.r}`;
-    return x.d === 1 ? base : `(${base})/${x.d}`;
-}
-
 /**
- * Le radical DESSINÉ, avec sa barre au-dessus du radicande.
+ * (n/d)√r, EN ARBRE DE FORMULE — et c'est de là que tout est écrit ensuite.
  *
- * Un « √72 » écrit à plat laisse croire que la barre ne couvre que le 7. Sur
- * √(a + b), qui est tout l'objet du barreau 7, c'est pire : sans la barre,
- * l'élève ne peut PAS voir ce qui est sous la racine, et la question perd son
- * sens. La barre est donc dessinée, ici comme au tableau.
+ * Rémy, capture à l'appui : « les racines carrées sont très moches ». Elles
+ * l'étaient, et pour une raison qu'une mesure a révélée : la police Outfit ne
+ * contient AUCUN glyphe √. Le signe affiché venait d'une police de secours
+ * choisie par le système, posé à côté d'une barre CSS qu'il ne pouvait pas
+ * rejoindre. Le module `maths/formule` le DESSINE ; voir son en-tête.
+ *
+ * MAIS LE GAIN N'EST PAS QUE TYPOGRAPHIQUE. Cette fonction rend un ARBRE, et
+ * l'écran comme la fiche papier le lisent tous les deux. Ils ne peuvent donc
+ * plus se contredire — ce qui était arrivé la veille, l'écran affichant
+ * « 5√3 ÷ √3 » quand le papier disait « √75 ÷ √3 ». Les deux avaient la même
+ * valeur ; c'est ce qui rendait l'écart invisible à tout contrôle numérique.
  */
-function racHtml(dedans) {
-    return `<span class="rc-rac"><span class="rc-signe">√</span>`
-        + `<span class="rc-sous">${dedans}</span></span>`;
+function arbre(x) {
+    const radical = fx.racine(fx.nombre(x.r));
+    let dessus;
+    if (x.r === 1) dessus = fx.nombre(Math.abs(x.n));
+    else if (Math.abs(x.n) === 1) dessus = radical;
+    else dessus = fx.produit([fx.nombre(Math.abs(x.n)), radical], 'implicite');
+    if (x.n < 0) dessus = fx.oppose(dessus);
+    return x.d === 1 ? dessus : fx.quotient(dessus, fx.nombre(x.d));
 }
 
-function html(x) {
-    if (x.r === 1) {
-        return x.d === 1 ? nb(x.n)
-            : `<span class="fraction"><span class="fraction-num">${nb(x.n)}</span>`
-                + `<span class="fraction-den">${x.d}</span></span>`;
-    }
-    const coef = x.n === 1 ? '' : (x.n === -1 ? M : nb(x.n));
-    const base = coef + racHtml(x.r);
-    if (x.d === 1) return base;
-    return `<span class="fraction"><span class="fraction-num">${base}</span>`
-        + `<span class="fraction-den">${x.d}</span></span>`;
-}
+/** `6√2`, `5`, `−√3`, `2√5/3` — pour la fiche, la voix et les clefs de tri. */
+const txt = (x) => fx.texte(arbre(x));
+/** Le même, dessiné. */
+const html = (x) => fx.html(arbre(x));
+/** Un radical seul, écrit à la main : `rac('9 + 16')`. */
+const racHtml = (dedans) => fx.formule(`√(${dedans})`);
 
 /** La décomposition en facteurs premiers, en liste. */
 function facteurs(n) {
@@ -241,7 +240,7 @@ function barreau1(rng) {
     const c = CARRES[rng.int(0, CARRES.length - 1)];
     const r = Math.round(Math.sqrt(c));
     return {
-        html: racHtml(c), texte: `√${c}`, valeur: entier(r),
+        enonce: `√${c}`, valeur: entier(r),
         etapes: `${r} × ${r} = ${c}, donc √${c} = ${r}.`,
         visuel: pairesHtml(c), structure: carreHtml(c),
         leurres: [
@@ -274,8 +273,7 @@ function barreau2(rng) {
     const b = restants[rng.int(0, restants.length - 1)];
     const ra = Math.round(Math.sqrt(a)), rb = Math.round(Math.sqrt(b));
     return {
-        html: `${racHtml(a)} × ${racHtml(b)}`, texte: `√${a} × √${b}`,
-        valeur: entier(ra * rb),
+        enonce: `√${a} × √${b}`, valeur: entier(ra * rb),
         etapes: `√${a} = ${ra} et √${b} = ${rb}, donc le produit vaut ${ra * rb}. `
             + `On peut aussi écrire √${a} × √${b} = √${a * b} = ${ra * rb}.`,
         visuel: pairesHtml(a * b), structure: deuxDecomp(a, b),
@@ -299,7 +297,7 @@ function barreau3(rng) {
     const k = Math.round(Math.sqrt(carre));
     const v = racineDe(n);
     return {
-        html: racHtml(n), texte: `√${n}`, valeur: v,
+        enonce: `√${n}`, valeur: v,
         etapes: `${n} = ${carre} × ${libre}, et ${carre} est un carré parfait. `
             + `Donc √${n} = √${carre} × √${libre} = ${k}√${libre}.`,
         visuel: pairesHtml(n), structure: decompHtml(n),
@@ -354,7 +352,7 @@ function barreau4(rng) {
     const v = racineDe(n);
     const f = facteurs(n);
     return {
-        html: racHtml(n), texte: `√${n}`, valeur: v,
+        enonce: `√${n}`, valeur: v,
         etapes: `${n} = ${f.join(' × ')}. Chaque paire sort un facteur : il reste `
             + `${v.r === 1 ? 'rien' : v.r} sous la racine, et ${v.n} devant. `
             + `On peut aussi y aller en plusieurs fois — sortir un carré, puis `
@@ -418,7 +416,7 @@ function barreau5(rng) {
     const a = rac(k1, 1, r1), b = rac(k2, 1, r2);
     const v = foisR(a, b);
     return {
-        html: `${html(a)} × ${html(b)}`, texte: `${txt(a)} × ${txt(b)}`, valeur: v,
+        enonce: `${txt(a)} × ${txt(b)}`, valeur: v,
         etapes: `On multiplie les entiers entre eux et les racines entre elles : `
             + `${k1} × ${k2} = ${k1 * k2}, et √${r1} × √${r2} = √${r1 * r2}. `
             + `Puis on simplifie ce qui peut l'être.`,
@@ -449,9 +447,7 @@ function barreau6(rng) {
     const moinsCi = rng.bool(0.35) && valeur(a) > valeur(b);
     const v = moinsCi ? moinsR(a, b) : plusR(a, b);
     return {
-        html: `${k1 === 1 ? '' : k1}${racHtml(c1 * r)} ${moinsCi ? M : '+'} `
-            + `${k2 === 1 ? '' : k2}${racHtml(c2 * r)}`,
-        texte: `${k1 === 1 ? '' : k1}√${c1 * r} ${moinsCi ? M : '+'} `
+        enonce: `${k1 === 1 ? '' : k1}√${c1 * r} ${moinsCi ? M : '+'} `
             + `${k2 === 1 ? '' : k2}√${c2 * r}`,
         valeur: v,
         etapes: `On ne peut additionner que des racines SEMBLABLES. On simplifie donc `
@@ -488,7 +484,7 @@ function barreau7(rng) {
     const ra = Math.round(Math.sqrt(a)), rb = Math.round(Math.sqrt(b));
     const faux = Number.isInteger(Math.sqrt(b)) ? ra + rb : null;
     return {
-        html: racHtml(`${a} + ${b}`), texte: `√(${a} + ${b})`, valeur: entier(racS),
+        enonce: `√(${a} + ${b})`, valeur: entier(racS),
         etapes: `On calcule D'ABORD ce qui est sous la racine : ${a} + ${b} = ${s}, `
             + `et √${s} = ${racS}.`
             + (faux ? ` Surtout pas √${a} + √${b} = ${ra} + ${rb} = ${faux} : `
@@ -516,14 +512,16 @@ function barreau8(rng) {
         const a = racineDe(k * c), b = racineDe(k);
         const v = surR(a, b);
         return {
-            // `racHtml(k * c)` ET NON `html(a)`, et l'écran l'a montré quand le
-            // texte n'aurait jamais pu le dire : `a` vaut `racineDe(75)`, que
-            // `rac` rend DÉJÀ SIMPLIFIÉ sous la forme 5√3. L'énoncé s'affichait
-            // donc « 5√3 ÷ √3 » à l'écran pendant que `texte` — celui de la
-            // fiche papier et de la lecture à voix haute — disait « √75 ÷ √3 ».
-            // Deux énoncés différents pour une même question, et celui de
-            // l'écran avait fait la moitié du travail.
-            html: `${racHtml(k * c)} ÷ ${racHtml(k)}`, texte: `√${k * c} ÷ √${k}`, valeur: v,
+            // `√${k * c}` ET NON `txt(a)` : `a` vaut `racineDe(75)`, que `rac`
+            // rend DÉJÀ SIMPLIFIÉ sous la forme 5√3. L'énoncé aurait posé la
+            // question à moitié résolue.
+            //
+            // Autrefois ce piège pouvait frapper l'écran SEUL — il l'a fait :
+            // « 5√3 ÷ √3 » affiché pendant que la fiche disait « √75 ÷ √3 ».
+            // Depuis qu'un énoncé est une chaîne unique lue deux fois, une
+            // telle divergence n'est plus possible ; il reste à ne pas
+            // simplifier la question elle-même, ce que cette ligne assure.
+            enonce: `√${k * c} ÷ √${k}`, valeur: v,
             etapes: `√a ÷ √b = √(a ÷ b) : ici √${k * c} ÷ √${k} = √${c} = ${txt(v)}.`,
             visuel: pairesHtml(c), structure: deuxDecomp(k * c, k),
             leurres: [
@@ -547,18 +545,23 @@ function barreau8(rng) {
     const a = entier(k), b = racineDe(r);
     const v = surR(a, b);
     return {
-        html: `<span class="fraction"><span class="fraction-num">${k}</span>`
-            + `<span class="fraction-den">${racHtml(r)}</span></span>`,
-        texte: `${k} ÷ √${r}`, valeur: v,
+        // La barre de fraction, et non « ÷ » : c'est sous cette forme que la
+        // question se pose au lycée, et c'est elle qui montre qu'il y a une
+        // racine EN BAS — tout l'objet du barreau.
+        enonce: `${k}/√${r}`, valeur: v,
         etapes: `On ne laisse pas de racine au dénominateur. On multiplie en haut ET en `
             + `bas par √${r} : le bas devient ${r}, et le haut ${k}√${r}. `
             + `Après simplification : ${txt(v)}.`,
         visuel: pairesHtml(r * r),
         // Le fait qui débloque tout le barreau, et qui n'est pas la réponse :
         // une racine multipliée par elle-même redonne son radicande.
+        // LE RADICAL DE CETTE CARTE PASSE AUSSI PAR LE MODULE. Écrit « √ » à la
+        // main, il tombait sur la police de secours — visiblement plus clair et
+        // plus fin que celui de l'énoncé, juste au-dessus. Deux radicaux
+        // différents dans la même fenêtre, c'est la faute dont Rémy est parti.
         structure: `<div class="rc-matiere rc-barre">`
             + `<span class="rc-etiq">le fait utile</span>`
-            + `<span class="rc-decomp">√${r} × √${r} = ${r}</span>`
+            + `<span class="rc-decomp">${fx.formule(`√${r} × √${r}`)} = ${r}</span>`
             + `<span class="rc-regle">multiplier en haut ET en bas ne change pas le quotient</span></div>`,
         leurres: [
             { valeur: rac(k, r, 1), why: `√${r} × √${r} = ${r}, mais le haut a été `
@@ -641,8 +644,29 @@ export const racinesGenerator = {
         const choix = String(params.barreau || '1');
         const possibles = choix === 'toutes' ? [1, 2, 3, 4, 5, 6, 7, 8]
             : (choix === 'revision' ? [1, 2, 3, 4] : [Number(choix) || 1]);
-        const rang = possibles[rng.int(0, possibles.length - 1)];
+        // UN BARREAU INCONNU NE DOIT PAS FAIRE TOMBER LE GÉNÉRATEUR.
+        //
+        // `Number('9') || 1` vaut 9, et il n'y a pas de neuvième barreau :
+        // `BARREAUX[9].faire` levait alors une erreur, c'est-à-dire un
+        // exercice qui ne s'ouvre pas du tout. Aucun chemin de l'application ne
+        // produit cette valeur aujourd'hui — les réglages viennent d'une liste
+        // fermée — mais un parcours enregistré l'an dernier, ou un barreau
+        // retiré du catalogue, suffirait. On retombe sur le premier barreau, ce
+        // qui donne une question juste au lieu d'un écran vide.
+        const tire = possibles[rng.int(0, possibles.length - 1)];
+        const rang = BARREAUX[tire] ? tire : 1;
         const q = BARREAUX[rang].faire(rng);
+
+        // UN ÉNONCÉ, DEUX LECTURES — et c'est tout l'intérêt du module.
+        //
+        // Chaque barreau ne déclare plus qu'une CHAÎNE de formule. L'écran et
+        // la fiche papier en sont deux rendus du même arbre : ils ne peuvent
+        // plus dire deux choses différentes. Auparavant chaque barreau écrivait
+        // son `html` et son `texte` à la main, côte à côte — et le barreau 8 a
+        // fini par les faire diverger sans que rien ne le signale, les deux
+        // écritures ayant la même valeur.
+        q.html = fx.formule(q.enonce);
+        q.texte = fx.formuleTexte(q.enonce);
 
         // ON DÉDOUBLONNE SUR L'ÉCRITURE, et la bonne réponse est dans
         // l'ensemble de départ : un leurre qui s'écrirait comme elle serait une
@@ -657,12 +681,24 @@ export const racinesGenerator = {
             faux.push({ ...l, etiquette });
         }
 
+        // CHAQUE PROPOSITION PORTE SON TEXTE, ET CE N'EST PAS UN CONFORT.
+        //
+        // MESURÉ : la fiche papier de ce chapitre imprimait
+        // « faux0 · ok · faux1 · faux2 » à la place des quatre propositions.
+        // `js/ui/printQuestions.js` écrit le champ `texte` s'il existe ; sinon
+        // le libellé, mais SEULEMENT s'il ne contient pas de balise — et le
+        // nôtre en contient toujours, puisqu'une racine est dessinée. Restait
+        // la `value`, qui est une clef interne. La feuille était inutilisable,
+        // et rien à l'écran ne le laissait voir.
+        //
+        // Le texte vient du même arbre que le libellé : il dit donc forcément
+        // la même chose.
         const brutes = [
-            { value: 'ok', label: html(q.valeur), correct: true },
+            { value: 'ok', label: html(q.valeur), texte: txt(q.valeur), correct: true },
             ...faux.map((l, i) => ({
                 value: 'faux' + i,
-                label: l.texteForce ? l.texteForce.replace(/√(\d+)/g, (_, d) => racHtml(d))
-                    : html(l.valeur),
+                label: l.texteForce ? fx.formule(l.texteForce) : html(l.valeur),
+                texte: l.texteForce ? fx.formuleTexte(l.texteForce) : txt(l.valeur),
                 correct: false, why: l.why
             }))
         ];

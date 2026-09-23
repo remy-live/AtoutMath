@@ -490,7 +490,17 @@ export const calculFractionsGenerator = {
 
         const possibles = choix === 'toutes' ? [1, 2, 3, 4, 5, 6, 7, 8]
             : (choix === 'revision' ? [1, 2, 3, 4] : [Number(choix) || 1]);
-        const rang = possibles[rng.int(0, possibles.length - 1)];
+        // UN BARREAU INCONNU NE DOIT PAS FAIRE TOMBER LE GÉNÉRATEUR.
+        //
+        // `Number('9') || 1` vaut 9, et il n'y a pas de neuvième barreau :
+        // `BARREAUX[9].faire` levait alors une erreur, c'est-à-dire un
+        // exercice qui ne s'ouvre pas du tout. Aucun chemin de l'application ne
+        // produit cette valeur aujourd'hui — les réglages viennent d'une liste
+        // fermée — mais un parcours enregistré l'an dernier, ou un barreau
+        // retiré du catalogue, suffirait. On retombe sur le premier barreau, ce
+        // qui donne une question juste au lieu d'un écran vide.
+        const tire = possibles[rng.int(0, possibles.length - 1)];
+        const rang = BARREAUX[tire] ? tire : 1;
         const q = BARREAUX[rang].faire(rng);
 
         // ON DÉDOUBLONNE SUR LA VALEUR ET SUR L'ÉTIQUETTE. Deux fautes
@@ -508,9 +518,20 @@ export const calculFractionsGenerator = {
         }
 
         const brutes = [
-            { value: 'ok', label: fracHtml(q.valeur), correct: true },
+            // LE CHAMP `texte`, ET LA FICHE PAPIER EN DÉPEND ENTIÈREMENT.
+            //
+            // MESURÉ : la feuille de ce chapitre imprimait « −2 · faux1 ·
+            // faux0 · 2 ». `js/ui/printQuestions.js` écrit `texte` s'il
+            // existe ; sinon le libellé, mais seulement s'il ne contient
+            // aucune balise. Une fraction en contient — deux span empilés —,
+            // une réponse entière n'en contient pas : d'où une feuille où
+            // certaines propositions étaient justes et d'autres remplacées par
+            // leur clef interne. Le mélange rendait le défaut plus difficile à
+            // voir qu'une panne franche.
+            { value: 'ok', label: fracHtml(q.valeur), texte: txt(q.valeur), correct: true },
             ...faux.map((l, i) => ({
-                value: 'faux' + i, label: fracHtml(l.valeur), correct: false, why: l.why
+                value: 'faux' + i, label: fracHtml(l.valeur), texte: txt(l.valeur),
+                correct: false, why: l.why
             }))
         ];
         // ON PASSE PAR `finalizeChoices`, COMME TOUS LES AUTRES QCM DE L'APPLI.

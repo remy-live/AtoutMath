@@ -730,9 +730,16 @@ export const factorisationGenerator = {
         servir(subtils, 3);      // puis le subtil, s'il y en a un
         servir(ordinaires, 3);   // et l'on complète avec le reste
         const brutes = [
-            { value: 'ok', label: q.reponse, correct: true },
+            // `texte` EXPLICITE, même si les libellés de ce chapitre sont déjà
+            // du texte pur. La fiche papier ne retombe sur le libellé que s'il
+            // ne contient aucune balise ; aujourd'hui c'est le cas, mais le
+            // jour où une expression portera un exposant dessiné, la feuille se
+            // mettrait à imprimer « faux0 » sans prévenir — ce qui est arrivé
+            // aux deux autres chapitres de Seconde.
+            { value: 'ok', label: q.reponse, texte: q.reponse, correct: true },
             ...choisis.map((f, i) => ({
-                value: 'faux' + i, label: f.texte, correct: false, why: f.why
+                value: 'faux' + i, label: f.texte, texte: f.texte,
+                correct: false, why: f.why
             }))
         ];
         // ON PASSE PAR `finalizeChoices`, COMME TOUS LES AUTRES QCM DE L'APPLI.
