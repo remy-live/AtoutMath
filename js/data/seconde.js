@@ -20,6 +20,7 @@ const D = TAGS.DOMAINE.NUMERIQUE;
 const ENS = TAGS.SOUS_DOMAINE.ENSEMBLES;
 const LIT = TAGS.SOUS_DOMAINE.LITTERAL;
 const FRAC = TAGS.SOUS_DOMAINE.FRACTIONS;
+const RAC = TAGS.SOUS_DOMAINE.RACINES;
 const SECONDE = TAGS.NIVEAU.SECONDE;
 
 // ── FACTORISER : SEPT BARREAUX, ET LA PROGRESSION EST LE PARCOURS ──────────
@@ -249,6 +250,67 @@ export const secondeExercises = [
         tags: { chemin: [D, FRAC], niveaux: [SECONDE] },
         instruction: "Les quatre opérations mélangées. La question n'est plus « comment » "
             + "mais « laquelle » : regarde le signe avant de commencer."
+    },
+    ...[
+        ['rc-1', '1. Les carrés parfaits',
+            "Avant tout le reste : reconnaître un carré. √81, c'est le nombre qui, "
+            + "multiplié par lui-même, donne 81 — et le dessin le dit autrement : "
+            + "c'est le côté d'un carré d'aire 81."],
+        ['rc-2', '2. √a × √b, quand tout tombe juste',
+            "La racine traverse un produit : √4 × √25 = √100. Ici les deux sont des "
+            + "carrés parfaits, donc rien ne reste dessous — on installe la règle sur "
+            + "des nombres où l'on peut tout vérifier."],
+        ['rc-3', '3. Sortir un carré, en un seul pas',
+            "√8 = √(4 × 2) = 2√2. On cherche le carré caché dans le nombre, on le sort, "
+            + "et ce qui n'est pas un carré reste dessous. C'est le geste de base, sur "
+            + "des nombres où il n'y a qu'un carré à trouver."],
+        ['rc-4', '4. Le plus grand carré, ou plusieurs fois de suite',
+            "√72 = 6√2 — l'exercice de la photo. Deux carrés sont cachés dedans : on "
+            + "peut les sortir d'un coup, ou sortir le premier puis recommencer sur ce "
+            + "qui reste. Les deux chemins donnent la même réponse ; ce qui compte, "
+            + "c'est de ne pas s'arrêter avant la fin. 3√8 est exact et pas terminé."],
+        ['rc-5', '5. Multiplier deux racines',
+            "3√2 × 5√6 : les nombres devant se multiplient entre eux, les racines entre "
+            + "elles. Et l'on simplifie APRÈS, car le produit des deux radicandes cache "
+            + "souvent un carré que ni l'un ni l'autre ne contenait."],
+        ['rc-6', '6. Additionner : simplifier d\'abord',
+            "2√8 + √18 ne s'additionne pas tel quel : on n'ajoute que des racines "
+            + "SEMBLABLES. On simplifie les deux — 4√2 et 3√2 —, et alors seulement on "
+            + "ajoute les nombres devant. Le √2 ne bouge pas, comme un x."],
+        ['rc-7', '7. La racine ne traverse pas une addition',
+            "√(9 + 16) vaut 5, et non 3 + 4. C'est le piège du haut de la page : la "
+            + "barre couvre TOUTE la somme, on calcule donc ce qui est dessous avant "
+            + "d'en prendre la racine. Et l'on a toujours √(a + b) < √a + √b."],
+        ['rc-8', '8. Diviser, et le dénominateur qu\'on rend entier',
+            "√50 ÷ √2 = √25 = 5 : la racine traverse le quotient comme le produit. Puis "
+            + "la règle d'écriture du lycée : on ne laisse pas de racine en bas d'une "
+            + "fraction, on multiplie en haut ET en bas par cette racine."]
+    ].map(([id, titre, instruction], i) => ({
+        id,
+        cree: '2026-09-23',
+        title: titre,
+        consignePapier: 'Écrire sous la forme la plus simple.',
+        colonnesPapier: 2,
+        generatorId: 'nb.racines', activityId: 'buttons',
+        params: { barreau: String(i + 1) },
+        motsClefs: ['racine', 'racines', 'racine carrée', 'radical', 'simplifier',
+            'facteurs premiers', 'seconde', 'lycée'],
+        tags: { chemin: [D, RAC], niveaux: [SECONDE] },
+        instruction
+    })),
+    {
+        id: 'rc-revision',
+        cree: '2026-09-23',
+        title: 'Racines : les quatre premiers barreaux',
+        consignePapier: 'Écrire sous la forme la plus simple.',
+        colonnesPapier: 2,
+        generatorId: 'nb.racines', activityId: 'buttons',
+        params: { barreau: 'revision' },
+        motsClefs: ['racine', 'racine carrée', 'révision', 'simplifier', 'seconde'],
+        tags: { chemin: [D, RAC], niveaux: [SECONDE] },
+        instruction: "Les quatre premiers barreaux mélangés. La question n'est plus "
+            + "« comment » mais « combien de carrés y a-t-il là-dedans » : un, deux, ou "
+            + "le nombre entier en est un."
     },
     {
         id: 'fac-revision',

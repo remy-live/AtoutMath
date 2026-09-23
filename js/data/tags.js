@@ -59,6 +59,12 @@ export const TAGS = {
         // « Calcul mental », il aurait disparu au milieu des tables — c'est
         // pourtant l'entrée en algèbre, et elle se travaille pour elle-même.
         LITTERAL: "Calcul littéral",
+        // Rémy, photo d'un cahier : « et ce genre de chose aussi » — √(a+b) et
+        // √a + √b d'un côté, la descente √72 = … = 6√2 de l'autre. Rangé à
+        // part plutôt que sous « Calcul mental » : une racine n'est pas une
+        // opération de plus à savoir poser, c'est une écriture qu'on apprend à
+        // rendre plus simple, et cela se travaille pour soi.
+        RACINES: "Racines carrées",
         REPERAGE: "Repérage",
         // La symétrie axiale ouvre la sixième, la centrale la cinquième, la
         // translation et la rotation la quatrième : quatre chapitres qui se

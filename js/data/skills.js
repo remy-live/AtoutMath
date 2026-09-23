@@ -297,6 +297,33 @@ const BASE = {
         descriptor: 'Sortir ce qui est écrit dans tous les termes — quitte à factoriser un terme d\'abord pour le faire apparaître.',
         lesson: 'k·A + k·B = k(A + B). Le facteur commun ne se voit pas toujours : x² − 9 cache (x − 3), et −4x + 12 cache −4(x − 3). On factorise d\'abord le morceau qui le dissimule, et le facteur commun apparaît dans tous les termes.'
     },
+    'nb.racines.simplifier': {
+        label: 'Simplifier une racine carrée',
+        chemin: [D.NUMERIQUE, SD.RACINES],
+        niveaux: [N.SECONDE],
+        // `num.arith.decomposition` — VÉRIFIÉ DANS LA LISTE AVANT D'ÊTRE ÉCRIT.
+        // C'est la quatrième fois dans ce projet qu'un prérequis est inventé de
+        // bonne foi (`num.relatifs.comparaison`, `lit.developper.simple`,
+        // `frac.addition.denominateurs`) ; aucun ne lève d'erreur, ils rendent
+        // seulement la remédiation muette. Un test balaie désormais tout le
+        // registre, mais la vérification se fait d'abord ici.
+        //
+        // Et ce prérequis-là n'est pas décoratif : il EST la méthode. Simplifier
+        // √72, c'est décomposer 72 en facteurs premiers et voir quelles paires
+        // en sortent. Qui ne sait pas décomposer ne peut que reconnaître les
+        // cas qu'il a déjà vus.
+        prereqs: ['num.arith.decomposition'],
+        descriptor: 'Sortir de dessous la racine tout ce qui peut en sortir, et savoir qu\'on a fini.',
+        lesson: 'On décompose le nombre en facteurs premiers : chaque PAIRE de facteurs identiques sort un facteur, ce qui reste seul demeure dedans. √72 = √(2×2×2×3×3) = 2 × 3 × √2 = 6√2. On peut aussi s\'y prendre en plusieurs fois — sortir un carré, puis recommencer sur ce qui reste : c\'est plus long et c\'est juste. On a fini quand il ne reste plus aucun carré sous la racine ; 3√8 est exact mais pas terminé.'
+    },
+    'nb.racines.calculer': {
+        label: 'Calculer avec des racines carrées',
+        chemin: [D.NUMERIQUE, SD.RACINES],
+        niveaux: [N.SECONDE],
+        prereqs: ['nb.racines.simplifier'],
+        descriptor: 'Multiplier, additionner et diviser des racines — et ne pas distribuer la racine sur une somme.',
+        lesson: '√a × √b = √(ab) et √a ÷ √b = √(a/b) : la racine traverse le produit et le quotient. Elle NE TRAVERSE PAS l\'addition — √(9 + 16) = √25 = 5, et non 3 + 4 = 7 ; on a toujours √(a+b) < √a + √b. Pour additionner, il faut d\'abord simplifier : 2√8 + √18 = 4√2 + 3√2 = 7√2. Et l\'on ne laisse pas de racine au dénominateur : on multiplie en haut et en bas par cette racine.'
+    },
     'nb.ensembles.appartenance': {
         label: 'Le plus petit ensemble de nombres',
         chemin: [D.NUMERIQUE, SD.ENSEMBLES],

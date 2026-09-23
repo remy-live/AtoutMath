@@ -243,6 +243,17 @@ export const CODES_EXERCICES = {
     'cf-8':                       'GL',   // Produit de deux parenthèses
     'cf-9':                       'GM',   // Calculer, puis dire l'ensemble
     'cf-revision':                'GN',   // Les quatre premiers barreaux
+    // LES RACINES CARRÉES — R comme racine, et la seconde lettre monte avec le
+    // barreau, de sorte que l'ordre dicté soit celui de la progression.
+    'rc-1':                       'RA',   // Les carrés parfaits
+    'rc-2':                       'RB',   // √a × √b
+    'rc-3':                       'RE',   // Sortir un carré, en un pas
+    'rc-4':                       'RF',   // Le plus grand carré — √72 = 6√2
+    'rc-5':                       'RH',   // Multiplier deux racines
+    'rc-6':                       'RK',   // Additionner : simplifier d'abord
+    'rc-7':                       'RL',   // La racine ne traverse pas une addition
+    'rc-8':                       'RM',   // Diviser, et le dénominateur
+    'rc-revision':                'RN',   // Les quatre premiers barreaux
 };
 
 /** L'exercice que désignent ces deux lettres, ou undefined. */

@@ -839,3 +839,135 @@ body.mobile-view #toast-container {
     font-size: .9em;
 }
 .fraction--grande > .fraction-den { border-top-width: 4px; }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   LES RACINES CARRÉES — la barre du radical, et les deux dessins.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.rc-expression {
+    font-size: 1.7rem;
+    font-weight: 700;
+    text-align: center;
+    margin: 12px 0 8px;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+}
+
+.rc-consigne { margin-bottom: 2px; }
+
+/* LA BARRE DU RADICAL, ET POURQUOI ELLE EST DESSINÉE.
+   Un « √9 + 16 » écrit à plat ne dit pas si la barre couvre le 9 seul ou toute
+   la somme — et c'est EXACTEMENT la question du barreau 7. Sans la barre,
+   l'exercice n'a plus de sens : on demanderait à l'élève de deviner l'énoncé.
+   Elle se fabrique avec une bordure haute sur ce qui est dessous, comme au
+   tableau. */
+.rc-rac { display: inline-flex; align-items: flex-start; }
+.rc-signe {
+    /* Le signe monte d'un cheveu pour rejoindre la barre : les deux traits ne
+       doivent pas laisser voir leur raccord. */
+    line-height: 1;
+    transform: translateY(-.04em);
+}
+.rc-sous {
+    border-top: 2px solid currentColor;
+    padding: .1em .18em 0 .1em;
+    margin-left: -.06em;
+    line-height: 1.25;
+}
+
+/* ── LE DESSIN DE L'ÉNONCÉ : la matière, jamais le résultat ───────────────── */
+
+.rc-matieres {
+    display: flex;
+    justify-content: center;
+    gap: 8px 14px;
+    flex-wrap: wrap;
+}
+
+.rc-matiere {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    max-width: 30rem;
+    margin: 6px auto 2px;
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--primary) 5%, transparent);
+    text-align: center;
+}
+
+.rc-etiq {
+    font-size: .82rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    opacity: .75;
+}
+
+.rc-decomp {
+    font-weight: 700;
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.rc-regle {
+    font-size: .92rem;
+    opacity: .85;
+}
+
+/* LE CARRÉ DU BARREAU 1. On ne décompose pas ici : « 121 = 11 × 11 » serait la
+   réponse écrite sous la question. On montre la DÉFINITION — une aire, un côté
+   à trouver — et le quadrillage laisse la possibilité de compter, ce qui est
+   une bonne façon d'apprendre plutôt qu'une fuite. */
+.rc-grille { display: block; margin: 4px auto; max-width: 100%; height: auto; }
+.rc-traits { stroke: var(--border); stroke-width: 1; }
+.rc-bord { fill: none; stroke: var(--primary); stroke-width: 2.5; }
+
+/* ── LE DESSIN DE L'INDICE : la méthode, cette fois jusqu'au bout ─────────── */
+
+.rc-paires {
+    max-width: 32rem;
+    margin: 6px auto 0;
+    text-align: center;
+}
+
+.rc-rangee {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 6px 0;
+}
+
+.rc-paire,
+.rc-reste {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Deux couleurs, et c'est tout le propos : ce qui SORT, et ce qui RESTE. */
+.rc-paire {
+    background: color-mix(in srgb, var(--success-texte) 14%, transparent);
+    color: var(--success-texte);
+}
+.rc-reste {
+    background: color-mix(in srgb, var(--warning-texte) 14%, transparent);
+    color: var(--warning-texte);
+}
+.rc-paire b,
+.rc-reste b { font-size: .8rem; font-weight: 600; opacity: .9; }
+.rc-reste--vide { opacity: .8; }
+
+@media (max-width: 480px) {
+    .rc-expression { font-size: 1.3rem; }
+    .rc-decomp { font-size: .98rem; }
+    .rc-regle { font-size: .88rem; }
+    .rc-matiere { padding: 7px 10px; }
+}
