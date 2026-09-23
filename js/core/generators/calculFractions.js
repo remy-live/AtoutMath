@@ -117,13 +117,201 @@ const RANG_ENS = { N: 0, Z: 1, D: 2, Q: 3 };
  * On choisit donc le numérateur PREMIER AVEC le dénominateur : la fraction
  * est déjà réduite, et le dénominateur reste celui qu'on a voulu.
  */
+/**
+ * UNE VRAIE FRACTION — dont le dénominateur survit à la réduction.
+ *
+ * MESURÉ, ET C'EST LA MÊME FAUTE RÉPÉTÉE DANS QUATRE BARREAUX : écrire
+ * `fr(rng.int(2, 9), rng.int(2, 7))` paraît tirer une fraction, mais `fr`
+ * RÉDUIT — fr(4, 2) vaut 2. Un opérande sur quatre était donc un entier, et
+ * le barreau posait « 5(2 − 1) », « 1 ÷ 2 », « (5 − 1)(5/6 + 1) » : des
+ * questions sans fraction dans un chapitre sur les fractions. Ce n'est pas
+ * une marche facile, c'est une marche absente.
+ *
+ * `fracBrute` tire un numérateur premier avec le dénominateur : celui-ci
+ * survit donc, et la valeur n'est jamais un entier.
+ */
+function vraieFraction(rng, dMin = 2, dMax = 9) {
+    return fracBrute(rng, rng.int(dMin, dMax));
+}
+
 function fracBrute(rng, d) {
     const possibles = [];
     for (let n = 1; n < d * 2; n++) if (pgcd(n, d) === 1) possibles.push(n);
     return fr(possibles[rng.int(0, possibles.length - 1)], d);
 }
 
-// ── LES NEUF BARREAUX ───────────────────────────────────────────────────────
+// ── LES QUATORZE BARREAUX ───────────────────────────────────────────────────
+//
+// Rémy : « pour ton calcul de fractions il faut être plus progressif ».
+//
+// Il avait raison, et la mesure le disait : l'échelle commençait à DEUX gestes
+// — le premier barreau posait déjà « 5/3 − 13/9 », une conversion ET une
+// soustraction — puis sautait à quatre au troisième, qui demandait d'un coup
+// de multiplier, de simplifier avant, de gérer trois facteurs et de mêler
+// entiers et fractions.
+//
+// Quatre marches manquaient au bas de l'escalier, et ce sont justement celles
+// où se jouent les fautes :
+//
+//   · MÊME DÉNOMINATEUR. La marche zéro, et la plus importante : c'est là que
+//     se décide si l'élève additionnera un jour les dénominateurs. Elle
+//     n'existait pas du tout ;
+//   · FRACTION × ENTIER, avant fraction × fraction ;
+//   · FRACTION × FRACTION, avant le produit de trois facteurs mêlés ;
+//   · DIVISER PAR UN ENTIER, avant diviser par une fraction.
+//
+// L'ordre du haut change aussi : le PRODUIT de deux parenthèses passe avant
+// leur QUOTIENT, parce qu'un produit est plus simple qu'une division — et
+// parce que le quotient demande en plus de retourner ce qu'on vient de
+// calculer.
+
+/**
+ * MÊME DÉNOMINATEUR — la marche zéro, celle qui manquait.
+ *
+ * On n'ajoute QUE les numérateurs, et le dénominateur ne bouge pas. Tout le
+ * chapitre repose là-dessus : la faute reine — additionner aussi les
+ * dénominateurs — se prend ici ou ne se prend plus.
+ */
+function barreauMeme(rng) {
+    const d = rng.int(3, 12);
+    const moinsCi = rng.bool(0.45);
+    // DEUX NUMÉRATEURS DISTINCTS, et le plus grand devant quand on retranche :
+    // une différence nulle ne travaille rien, et un résultat négatif n'est pas
+    // le sujet de ce barreau-ci.
+    // DES NUMÉRATEURS PREMIERS AVEC d, pour que les deux fractions soient déjà
+    // réduites. Sans cela le barreau écrivait « 14/10 + 18/10 » — juste, et
+    // que personne n'écrit : un professeur pose 7/10, pas 14/10.
+    const possibles = [];
+    for (let n = 1; n <= d * 2; n++) if (pgcd(n, d) === 1) possibles.push(n);
+    let n1 = possibles[rng.int(0, possibles.length - 1)];
+    const restants = possibles.filter(n => n !== n1);
+    let n2 = restants[rng.int(0, restants.length - 1)];
+    if (moinsCi && n2 > n1) [n1, n2] = [n2, n1];
+    const a = { n: n1, d }, b = { n: n2, d };
+    const v = moinsCi ? moins(a, b) : plus(a, b);
+    return {
+        html: `${fracHtml(a)} ${moinsCi ? M : '+'} ${fracHtml(b)}`,
+        texte: `${txt(a)} ${moinsCi ? M : '+'} ${txt(b)}`,
+        valeur: v,
+        etapes: `Les deux fractions sont déjà sur ${d} : on ${moinsCi ? 'retire' : 'ajoute'} `
+            + `les numérateurs, et le dénominateur NE BOUGE PAS. `
+            + `${n1} ${moinsCi ? M : '+'} ${n2} = ${moinsCi ? n1 - n2 : n1 + n2}, sur ${d}.`,
+        leurres: [
+            // LA FAUTE REINE, et c'est ici qu'elle se joue.
+            { valeur: fr(moinsCi ? n1 - n2 : n1 + n2, d + d),
+                why: `Le dénominateur NE BOUGE PAS : il reste ${d}. On n'ajoute jamais les `
+                    + `dénominateurs entre eux.` },
+            { valeur: fr(moinsCi ? n1 - n2 : n1 + n2, d * d),
+                why: `Les dénominateurs ne se multiplient pas non plus : ils sont déjà `
+                    + `les mêmes, il n'y a rien à convertir.` },
+            { valeur: moinsCi ? plus(a, b) : moins(a, b),
+                why: `C'est l'autre opération : relis le signe du milieu.` }
+        ]
+    };
+}
+
+/**
+ * FRACTION × ENTIER — la multiplication au plus simple.
+ *
+ * Un seul geste : le nombre entier multiplie le NUMÉRATEUR. La faute visée est
+ * celle de l'élève qui vient de passer une heure sur l'addition et multiplie
+ * le dénominateur aussi, « pour rester cohérent ».
+ */
+function barreauFoisEntier(rng) {
+    const d = rng.int(2, 9);
+    const f = fracBrute(rng, d);
+    const k = rng.int(2, 9);
+    const v = fois(f, fr(k));
+    return {
+        html: `${fracHtml(f)} × ${k}`,
+        texte: `${txt(f)} × ${k}`,
+        valeur: v,
+        etapes: `${k} multiplie le NUMÉRATEUR seulement : ${f.n} × ${k} = ${f.n * k}, `
+            + `toujours sur ${f.d}. Puis on simplifie s'il y a lieu : ${txt(v)}.`,
+        leurres: [
+            { valeur: fr(f.n * k, f.d * k),
+                why: `Multiplier le haut ET le bas par ${k} ne change rien du tout : `
+                    + `on retombe sur ${txt(f)}. Seul le numérateur est multiplié.` },
+            { valeur: fr(f.n, f.d * k),
+                why: `C'est le NUMÉRATEUR que ${k} multiplie, pas le dénominateur — `
+                    + `multiplier le bas rendrait la fraction plus PETITE.` },
+            { valeur: fr(f.n + k, f.d),
+                why: `${k} multiplie, il ne s'ajoute pas : ${f.n} × ${k}, et non `
+                    + `${f.n} + ${k}.` }
+        ]
+    };
+}
+
+/**
+ * FRACTION × FRACTION — et l'on simplifie AVANT.
+ *
+ * Deux facteurs seulement : le barreau suivant en mettra trois. On fabrique
+ * une simplification croisée franche, pour que « simplifier avant » se voie.
+ */
+function barreauFoisFraction(rng) {
+    // DEUX VRAIES FRACTIONS. Le premier jet laissait `fr` réduire, et le
+    // barreau posait « 2 × 5/12 » ou « 5 × 2/3 » — c'est-à-dire l'exercice du
+    // barreau 4, une marche plus bas. On tire donc les deux fractions, puis on
+    // croise un facteur commun pour que « simplifier avant » ait un sens.
+    const c = rng.int(2, 7);          // le facteur qui se croise
+    let a = vraieFraction(rng, 2, 5);
+    let b = vraieFraction(rng, 2, 5);
+    a = fr(a.n * c, a.d);
+    b = fr(b.n, b.d * c);
+    const v = fois(a, b);
+    return {
+        html: `${fracHtml(a)} × ${fracHtml(b)}`,
+        texte: `${txt(a)} × ${txt(b)}`,
+        valeur: v,
+        etapes: `On multiplie les numérateurs entre eux et les dénominateurs entre eux. `
+            + `Mais on SIMPLIFIE d'abord — sans cela on écrit ${a.n * b.n} sur `
+            + `${a.d * b.d} et l'on cherche encore. Résultat : ${txt(v)}.`,
+        leurres: [
+            { valeur: fr(a.n * b.d, a.d * b.n),
+                why: `Rien ne se retourne dans un PRODUIT : c'est la division qui `
+                    + `renverse la seconde fraction.` },
+            { valeur: fr(a.n + b.n, a.d + b.d),
+                why: `On ne multiplie pas « en croix » et l'on n'additionne rien : `
+                    + `haut × haut, bas × bas.` },
+            { valeur: fr(a.n * b.n, a.d + b.d),
+                why: `Les dénominateurs se MULTIPLIENT eux aussi : ${a.d} × ${b.d}.` }
+        ]
+    };
+}
+
+/**
+ * DIVISER PAR UN ENTIER — la division au plus simple.
+ *
+ * Diviser par 3, c'est multiplier par 1/3 : le dénominateur grandit. C'est la
+ * marche qui manquait avant « diviser par une fraction », où il faut EN PLUS
+ * retourner la seconde.
+ */
+function barreauSurEntier(rng) {
+    const d = rng.int(2, 9);
+    const f = fracBrute(rng, d);
+    const k = rng.int(2, 9);
+    const v = sur(f, fr(k));
+    return {
+        html: `${fracHtml(f)} ÷ ${k}`,
+        texte: `${txt(f)} ÷ ${k}`,
+        valeur: v,
+        etapes: `Diviser par ${k}, c'est multiplier par ${txt(fr(1, k))}. Le dénominateur `
+            + `est donc multiplié par ${k} : ${f.d} × ${k} = ${f.d * k}. Résultat ${txt(v)}.`,
+        leurres: [
+            { valeur: fr(f.n * k, f.d),
+                why: `Diviser rend plus PETIT : c'est le dénominateur qui est multiplié `
+                    + `par ${k}, pas le numérateur.` },
+            { valeur: fr(f.n, f.d + k),
+                why: `${k} multiplie le dénominateur, il ne s'y ajoute pas : `
+                    + `${f.d} × ${k}, et non ${f.d} + ${k}.` },
+            { valeur: fois(f, fr(k)),
+                why: `Le signe est un ÷, pas un × : le résultat doit être plus petit `
+                    + `que ${txt(f)}.` }
+        ]
+    };
+}
+
+// ── LES BARREAUX DU HAUT ────────────────────────────────────────────────────
 //
 // Chacun rend : l'énoncé (empilé pour l'écran, plat pour le papier), la
 // valeur EXACTE, les étapes de la correction, et les leurres avec la faute
@@ -199,13 +387,44 @@ function barreau2(rng) {
 }
 
 /** Un produit de trois fractions — on simplifie AVANT de multiplier. */
+/**
+ * LES TIRAGES VALABLES DU PRODUIT À TROIS FACTEURS, CALCULÉS UNE FOIS.
+ *
+ * Le produit est bâti pour se simplifier beaucoup — comme celui de la feuille,
+ * 12/7 × 2/9 × 21/8 = 1 —, mais `fr` réduit chaque facteur au moment où on le
+ * construit : selon les nombres tirés, les trois pouvaient devenir entiers et
+ * le barreau posait une multiplication d'entiers. MESURÉ : 0,6 % des
+ * questions, soit une sur cent soixante-dix, sans aucune fraction dans un
+ * chapitre sur les fractions.
+ *
+ * On ne tire donc pas pour rattraper ensuite — c'est le motif qui a déjà piégé
+ * ce projet cinq fois. On énumère les quintuplets qui donnent au moins DEUX
+ * vraies fractions, et l'on tire dedans.
+ */
+const TIRAGES_TROIS = (() => {
+    const out = [];
+    for (let p = 2; p <= 6; p++) {
+        for (let q = 2; q <= 5; q++) {
+            for (let r = 3; r <= 7; r++) {
+                for (let k = 2; k <= 3; k++) {
+                    for (let m = 2; m <= 5; m++) {
+                        const a = fr(p * q, r), b = fr(r, p * k), c = fr(m, q);
+                        const vraies = [a, b, c].filter(f => f.d > 1).length;
+                        if (vraies >= 2) out.push({ p, q, r, k, m });
+                    }
+                }
+            }
+        }
+    }
+    return out;
+})();
+
 function barreau3(rng) {
-    // On fabrique un produit qui se simplifie beaucoup, comme celui de la
-    // feuille : 12/7 × 2/9 × 21/8 = 1.
-    const p = rng.int(2, 6), q = rng.int(2, 5), r = rng.int(3, 7);
+    const t = TIRAGES_TROIS[rng.int(0, TIRAGES_TROIS.length - 1)];
+    const { p, q, r } = t;
     const a = fr(p * q, r);
-    const b = fr(r, p * rng.int(2, 3));
-    const c = fr(rng.int(2, 5), q);
+    const b = fr(r, p * t.k);
+    const c = fr(t.m, q);
     const v = fois(fois(a, b), c);
     return {
         html: `${fracHtml(a)} × ${fracHtml(b)} × ${fracHtml(c)}`,
@@ -228,8 +447,11 @@ function barreau3(rng) {
 
 /** Diviser, c'est multiplier par l'inverse. */
 function barreau4(rng) {
-    const a = fr(rng.int(1, 9), rng.int(2, 8));
-    const b = fr(rng.int(1, 9), rng.int(2, 8));
+    // DEUX VRAIES FRACTIONS : `fr(rng.int(1, 9), rng.int(2, 8))` se réduisait
+    // en entier, et le barreau posait « 1 ÷ 2 » — une division d'entiers là où
+    // l'on veut apprendre à retourner la seconde fraction.
+    const a = vraieFraction(rng, 2, 8);
+    const b = vraieFraction(rng, 2, 8);
     const v = sur(a, b);
     const inv = fr(b.d, b.n);
     return {
@@ -254,7 +476,23 @@ function barreau4(rng) {
 function barreau5(rng) {
     const k = rng.int(2, 7);
     const e = rng.int(1, 4);
-    const f = fr(rng.int(2, 9), rng.int(2, 7));
+    // UNE VRAIE FRACTION, ET UNE PARENTHÈSE NON NULLE.
+    //
+    // MESURÉ : `fr(rng.int(2, 9), rng.int(2, 7))` se réduisait en entier une
+    // fois sur quatre — fr(4, 2) vaut 2 —, et le barreau posait alors
+    // « 5(2 − 1) » ou « 4(3 − 3) » : 25,2 % de questions SANS AUCUNE FRACTION
+    // dans un chapitre sur les fractions, et 6,1 % de réponses nulles. Ce
+    // n'est pas une marche facile, c'est une marche absente.
+    //
+    // `fracBrute` tire un numérateur premier avec le dénominateur : la
+    // fraction survit donc à la réduction. Et l'on écarte le cas où elle vaut
+    // exactement l'entier, qui viderait la parenthèse.
+    const possibles = [];
+    for (let den = 2; den <= 7; den++) {
+        const cand = fracBrute(rng, den);
+        if (cand.d > 1 && !memeF(cand, fr(e))) possibles.push(cand);
+    }
+    const f = possibles[rng.int(0, possibles.length - 1)];
     const dedans = moins(fr(e), f);
     const v = fois(fr(k), dedans);
     return {
@@ -280,9 +518,17 @@ function barreau5(rng) {
 function barreau6(rng) {
     const k = rng.int(2, 6);
     const e = rng.int(1, 3);
-    const f = fr(rng.int(2, 9), rng.int(2, 6));
-    const g = fr(rng.int(3, 9), rng.int(2, 7));
-    const h = fr(rng.int(1, 5), rng.int(2, 6));
+    // Trois VRAIES fractions, et une parenthèse qui ne s'annule pas : le
+    // barreau écrivait « 6(1 − 1) − 3/5 × 1 », où ni la parenthèse ni la
+    // multiplication ne demandent quoi que ce soit.
+    const candidats = [];
+    for (let i = 0; i < 6; i++) {
+        const c = vraieFraction(rng, 2, 6);
+        if (!memeF(c, fr(e))) candidats.push(c);
+    }
+    const f = candidats[rng.int(0, candidats.length - 1)];
+    const g = vraieFraction(rng, 2, 7);
+    const h = vraieFraction(rng, 2, 6);
     const dedans = moins(fr(e), f);
     const gauche = fois(fr(k), dedans);
     const droite = fois(g, h);
@@ -360,10 +606,15 @@ function barreau7(rng) {
 
 /** Produit de deux parenthèses : (a − b)(c + d). La forme de D. */
 function barreau8(rng) {
-    const a = fr(rng.int(5, 25), rng.int(2, 5));
-    const b = fr(rng.int(2, 9), rng.int(2, 4));
-    const c = fr(rng.int(3, 12), rng.int(2, 6));
-    const d = rng.bool(0.5) ? fr(1) : fr(rng.int(1, 5), rng.int(2, 4));
+    // CHAQUE PARENTHÈSE CONTIENT UNE VRAIE FRACTION, et aucune ne s'annule.
+    // Le premier jet posait explicitement `fr(1)` une fois sur deux et
+    // laissait `fr` réduire les autres : on obtenait « (5 − 1)(5/6 + 1) », où
+    // la première parenthèse ne travaille rien, ou « (5/2 − 5/2)(...) », qui
+    // vaut zéro quoi qu'il y ait à droite.
+    const a = fr(vraieFraction(rng, 2, 5).n + rng.int(2, 6) * 2, 2);
+    const b = vraieFraction(rng, 2, 4);
+    const c = vraieFraction(rng, 2, 6);
+    const d = vraieFraction(rng, 2, 4);
     const gauche = moins(a, b);
     const droite = plus(c, d);
     const v = fois(gauche, droite);
@@ -387,15 +638,27 @@ function barreau8(rng) {
     };
 }
 
+// L'ÉCHELLE, DU PLUS SIMPLE AU PLUS COMPOSÉ — chaque barreau n'ajoute qu'une
+// chose à celui d'avant. Les quatre premiers sont l'addition, du cas où il n'y
+// a rien à convertir au cas où il faut tout convertir ; viennent ensuite la
+// multiplication en trois marches, la division en deux, puis les expressions
+// composées.
 const BARREAUX = {
-    1: { faire: barreau1, nom: 'Dénominateur multiple de l\'autre' },
-    2: { faire: barreau2, nom: 'Dénominateurs quelconques' },
-    3: { faire: barreau3, nom: 'Produit : simplifier avant' },
-    4: { faire: barreau4, nom: 'Diviser par une fraction' },
-    5: { faire: barreau5, nom: 'Un entier devant une parenthèse' },
-    6: { faire: barreau6, nom: 'Les priorités' },
-    7: { faire: barreau7, nom: 'Une fraction de fractions' },
-    8: { faire: barreau8, nom: 'Produit de deux parenthèses' }
+    1: { faire: barreauMeme, nom: 'Même dénominateur' },
+    2: { faire: barreau1, nom: 'Dénominateur multiple de l\'autre' },
+    3: { faire: barreau2, nom: 'Dénominateurs quelconques' },
+    4: { faire: barreauFoisEntier, nom: 'Fraction × entier' },
+    5: { faire: barreauFoisFraction, nom: 'Fraction × fraction' },
+    6: { faire: barreau3, nom: 'Plusieurs facteurs, simplifier avant' },
+    7: { faire: barreauSurEntier, nom: 'Diviser par un entier' },
+    8: { faire: barreau4, nom: 'Diviser par une fraction' },
+    9: { faire: barreau5, nom: 'Un entier devant une parenthèse' },
+    10: { faire: barreau6, nom: 'Les priorités' },
+    // LE PRODUIT AVANT LE QUOTIENT : deux parenthèses qu'on multiplie
+    // demandent moins qu'un quotient, où il faut en plus retourner ce qu'on
+    // vient de calculer.
+    11: { faire: barreau8, nom: 'Produit de deux parenthèses' },
+    12: { faire: barreau7, nom: 'Une fraction de fractions' }
 };
 
 /**
@@ -464,16 +727,20 @@ export const calculFractionsGenerator = {
             aide: 'Un barreau ajoute UNE chose au précédent. La progression se fait '
                 + 'en posant plusieurs de ces exercices à la suite dans une séance.',
             options: [
-                { value: '1', label: '1 — 1/2 + 3/4' },
-                { value: '2', label: '2 — 2/3 + 3/5' },
-                { value: '3', label: '3 — 12/7 × 2/9 × 21/8' },
-                { value: '4', label: '4 — 3/4 ÷ 5/6' },
-                { value: '5', label: '5 — 5(2 − 7/3)' },
-                { value: '6', label: '6 — les priorités' },
-                { value: '7', label: '7 — une fraction de fractions' },
-                { value: '8', label: '8 — produit de deux parenthèses' },
-                { value: 'ensemble', label: '9 — …et le plus petit ensemble' },
-                { value: 'revision', label: 'Révision — les barreaux 1 à 4' },
+                { value: '1', label: '1 — même dénominateur' },
+                { value: '2', label: '2 — un dénominateur multiple de l\'autre' },
+                { value: '3', label: '3 — dénominateurs quelconques' },
+                { value: '4', label: '4 — fraction × entier' },
+                { value: '5', label: '5 — fraction × fraction' },
+                { value: '6', label: '6 — plusieurs facteurs, simplifier avant' },
+                { value: '7', label: '7 — diviser par un entier' },
+                { value: '8', label: '8 — diviser par une fraction' },
+                { value: '9', label: '9 — un entier devant une parenthèse' },
+                { value: '10', label: '10 — les priorités' },
+                { value: '11', label: '11 — produit de deux parenthèses' },
+                { value: '12', label: '12 — une fraction de fractions' },
+                { value: 'ensemble', label: 'Calculer, puis dire l\'ensemble' },
+                { value: 'revision', label: 'Révision — les quatre opérations' },
                 { value: 'toutes', label: 'Tout mélangé' }
             ]
         }
@@ -488,8 +755,13 @@ export const calculFractionsGenerator = {
         // l'intérêt de la poser ainsi.
         if (choix === 'ensemble') return questionEnsemble(rng);
 
-        const possibles = choix === 'toutes' ? [1, 2, 3, 4, 5, 6, 7, 8]
-            : (choix === 'revision' ? [1, 2, 3, 4] : [Number(choix) || 1]);
+        // « Révision » couvre LES QUATRE OPÉRATIONS une fois montées, c'est-
+        // à-dire les huit premiers barreaux : additionner dans les trois cas
+        // de dénominateurs, multiplier dans les trois cas de facteurs, diviser
+        // dans les deux. La question n'est alors plus « comment » mais
+        // « laquelle » — celle d'un contrôle.
+        const possibles = choix === 'toutes' ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+            : (choix === 'revision' ? [1, 2, 3, 4, 5, 6, 7, 8] : [Number(choix) || 1]);
         // UN BARREAU INCONNU NE DOIT PAS FAIRE TOMBER LE GÉNÉRATEUR.
         //
         // `Number('9') || 1` vaut 9, et il n'y a pas de neuvième barreau :

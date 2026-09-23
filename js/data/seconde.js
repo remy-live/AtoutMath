@@ -188,68 +188,95 @@ export const secondeExercises = [
         instruction
     })),
     ...[
-        ['cf-1', '1. Deux fractions, un dénominateur multiple',
-            "Le plus simple : l'un des deux dénominateurs est déjà un multiple de "
-            + "l'autre. On convertit une seule fraction, et l'on additionne les "
-            + "numérateurs — jamais les dénominateurs."],
-        ['cf-2', '2. Dénominateurs quelconques',
+        ['cf-1', '1. Même dénominateur',
+            "La marche zéro, et la plus importante : les deux fractions sont déjà "
+            + "sur le même dénominateur. On ajoute les NUMÉRATEURS, et le dénominateur "
+            + "ne bouge pas. C'est ici que se décide si l'on additionnera un jour les "
+            + "dénominateurs."],
+        ['cf-2', '2. Un dénominateur multiple de l\'autre',
+            "L'un des deux dénominateurs est déjà un multiple de l'autre : on ne "
+            + "convertit qu'UNE fraction, et l'on retombe sur le cas précédent."],
+        ['cf-3', '3. Dénominateurs quelconques',
             "Ni l'un ni l'autre n'est multiple : on prend leur produit comme "
             + "dénominateur commun, on convertit LES DEUX, et alors seulement on "
             + "additionne les numérateurs."],
-        ['cf-3', '3. Produit : simplifier avant de multiplier',
-            "On multiplie les numérateurs entre eux et les dénominateurs entre eux. "
-            + "Mais on simplifie D'ABORD : sinon on manipule des nombres à quatre "
-            + "chiffres pour rien."],
-        ['cf-4', '4. Diviser par une fraction',
+        ['cf-4', '4. Fraction × entier',
+            "La multiplication au plus simple : l'entier multiplie le NUMÉRATEUR "
+            + "seulement. Multiplier le haut et le bas ne changerait rien du tout."],
+        ['cf-5', '5. Fraction × fraction',
+            "Haut × haut, bas × bas. Mais on SIMPLIFIE d'abord : sinon on manipule "
+            + "des nombres à quatre chiffres pour rien."],
+        ['cf-6', '6. Plusieurs facteurs, simplifier avant',
+            "Trois facteurs, entiers et fractions mêlés. La simplification croisée "
+            + "n'est plus un confort : sans elle, le calcul devient impraticable."],
+        ['cf-7', '7. Diviser par un entier',
+            "La division au plus simple : diviser par 3, c'est multiplier par 1/3. "
+            + "C'est le DÉNOMINATEUR qui grandit — le résultat est plus petit."],
+        ['cf-8', '8. Diviser par une fraction',
             "Diviser par une fraction, c'est multiplier par son inverse. On retourne "
             + "la SECONDE, jamais la première : la division n'est pas commutative."],
-        ['cf-5', '5. Un entier devant une parenthèse',
+        ['cf-9', '9. Un entier devant une parenthèse',
             "5(2 − 7/3) : le 5 multiplie TOUTE la parenthèse. On calcule la "
             + "parenthèse d'abord, ou l'on distribue sur les deux termes — pas sur un "
             + "seul."],
-        ['cf-6', '6. Les priorités',
+        ['cf-10', '10. Les priorités',
             "Une multiplication passe avant une soustraction, même quand elle est "
             + "écrite après. On repère les morceaux, on les calcule séparément, et "
             + "l'on assemble à la fin."],
-        ['cf-7', '7. Une fraction de fractions',
-            "La grande barre est une DIVISION. On calcule le haut, puis le bas, puis "
-            + "on divise l'un par l'autre — c'est-à-dire qu'on multiplie par "
-            + "l'inverse du bas."],
-        ['cf-8', '8. Produit de deux parenthèses',
+        ['cf-11', '11. Produit de deux parenthèses',
             "Deux parenthèses collées se multiplient : il n'y a pas de signe entre "
             + "elles parce qu'il est sous-entendu. On calcule chacune, puis on "
             + "multiplie."],
-        ['cf-9', '9. Calculer, puis dire l\'ensemble',
-            "La question du devoir, en entier. On calcule, et l'on range le RÉSULTAT "
-            + "dans le plus petit ensemble qui le contient. Une fraction réduite est "
-            + "décimale si son dénominateur ne garde que des 2 et des 5."]
+        ['cf-12', '12. Une fraction de fractions',
+            "La grande barre est une DIVISION. On calcule le haut, puis le bas, puis "
+            + "on divise l'un par l'autre — c'est-à-dire qu'on multiplie par "
+            + "l'inverse du bas. C'est le barreau le plus haut : il demande tout ce "
+            + "qui précède."]
     ].map(([id, titre, instruction], i) => ({
         id,
         cree: '2026-09-23',
         title: titre,
-        consignePapier: i === 8
-            ? 'Calculer, puis préciser le plus petit ensemble auquel appartient le résultat.'
-            : 'Calculer et donner le résultat sous forme réduite.',
+        consignePapier: 'Calculer et donner le résultat sous forme réduite.',
         colonnesPapier: 1,
         generatorId: 'nb.calculFractions', activityId: 'buttons',
-        params: { barreau: i === 8 ? 'ensemble' : String(i + 1) },
+        params: { barreau: String(i + 1) },
         motsClefs: ['fraction', 'fractions', 'calcul', 'dénominateur commun',
-            'priorités', 'inverse', 'ensemble', 'seconde', 'lycée', 'devoir'],
+            'priorités', 'inverse', 'seconde', 'lycée', 'devoir'],
         tags: { chemin: [D, FRAC], niveaux: [SECONDE] },
         instruction
     })),
     {
+        // LA QUESTION DU DEVOIR, EN ENTIER — et elle a son identifiant propre
+        // plutôt qu'un numéro de barreau : elle ne monte pas d'un cran sur la
+        // précédente, elle demande autre chose. Un numéro l'aurait rangée dans
+        // l'échelle, où elle n'est pas.
+        id: 'cf-ensemble',
+        cree: '2026-09-23',
+        title: 'Calculer, puis dire l\'ensemble',
+        consignePapier: 'Calculer, puis préciser le plus petit ensemble auquel '
+            + 'appartient le résultat.',
+        colonnesPapier: 1,
+        generatorId: 'nb.calculFractions', activityId: 'buttons',
+        params: { barreau: 'ensemble' },
+        motsClefs: ['fraction', 'ensemble', 'décimal', 'rationnel', 'seconde', 'devoir'],
+        tags: { chemin: [D, FRAC], niveaux: [SECONDE] },
+        instruction: "La question du devoir, en entier. On calcule, et l'on range le "
+            + "RÉSULTAT dans le plus petit ensemble qui le contient. Une fraction "
+            + "réduite est décimale si son dénominateur ne garde que des 2 et des 5."
+    },
+    {
         id: 'cf-revision',
         cree: '2026-09-23',
-        title: 'Fractions : les quatre premiers barreaux',
+        title: 'Fractions : les quatre opérations',
         consignePapier: 'Calculer et donner le résultat sous forme réduite.',
         colonnesPapier: 2,
         generatorId: 'nb.calculFractions', activityId: 'buttons',
         params: { barreau: 'revision' },
         motsClefs: ['fraction', 'révision', 'calcul', 'seconde'],
         tags: { chemin: [D, FRAC], niveaux: [SECONDE] },
-        instruction: "Les quatre opérations mélangées. La question n'est plus « comment » "
-            + "mais « laquelle » : regarde le signe avant de commencer."
+        instruction: "Les huit premiers barreaux mélangés — les quatre opérations, "
+            + "chacune dans tous ses cas. La question n'est plus « comment » mais "
+            + "« laquelle » : regarde le signe avant de commencer."
     },
     ...[
         ['rc-1', '1. Les carrés parfaits',

@@ -241,8 +241,12 @@ export const CODES_EXERCICES = {
     'cf-6':                       'GJ',   // Les priorités
     'cf-7':                       'GK',   // Une fraction de fractions
     'cf-8':                       'GL',   // Produit de deux parenthèses
-    'cf-9':                       'GM',   // Calculer, puis dire l'ensemble
-    'cf-revision':                'GN',   // Les quatre premiers barreaux
+    'cf-9':                       'GM',   // Un entier devant une parenthèse
+    'cf-10':                      'GS',   // Les priorités
+    'cf-11':                      'GU',   // Produit de deux parenthèses
+    'cf-12':                      'GV',   // Une fraction de fractions
+    'cf-ensemble':                'GW',   // Calculer, puis dire l'ensemble
+    'cf-revision':                'GN',   // Les quatre opérations
     // LES RACINES CARRÉES — R comme racine, et la seconde lettre monte avec le
     // barreau, de sorte que l'ordre dicté soit celui de la progression.
     'rc-1':                       'RA',   // Les carrés parfaits

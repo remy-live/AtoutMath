@@ -77,14 +77,25 @@ test('CHAQUE BARREAU TIENT SA PROMESSE', () => {
     // ET LE 2 NON PLUS, pour une autre raison : le rattrapage « si d2 est un
     // multiple, je mets d1 + 3 » retombait sur un multiple une fois sur
     // treize. L'élève croyait monter d'un cran et refaisait le précédent.
+    // L'ÉCHELLE A ÉTÉ RENUMÉROTÉE — Rémy : « pour ton calcul de fractions il
+    // faut être plus progressif ». Le « même dénominateur », qui manquait
+    // complètement, est devenu le premier barreau, et les deux cas d'addition
+    // qui suivent ont glissé d'un cran. Les promesses, elles, n'ont pas changé.
     const denoms = (t) => t.split(/ [+−] /).map(x => Number(x.split('/')[1] || 1));
     for (let i = 0; i < 300; i++) {
-        const [a, b] = denoms(BARREAUX[1].faire(makeRng(`p1_${i}`)).texte);
-        assert.ok(b % a === 0 || a % b === 0,
-            `barreau 1 : ${a} et ${b} — aucun n'est multiple de l'autre`);
-        const [c, d] = denoms(BARREAUX[2].faire(makeRng(`p2_${i}`)).texte);
+        // 1 — MÊME dénominateur : il n'y a rien à convertir, et c'est tout le
+        // sujet. C'est là que se prend, ou ne se prend plus, la faute reine.
+        const [m1, m2] = denoms(BARREAUX[1].faire(makeRng(`p0_${i}`)).texte);
+        assert.equal(m1, m2,
+            `barreau 1 : ${m1} et ${m2} — les dénominateurs devraient être les mêmes`);
+        // 2 — l'un est multiple de l'autre : UNE seule conversion.
+        const [a, b] = denoms(BARREAUX[2].faire(makeRng(`p1_${i}`)).texte);
+        assert.ok(a !== b && (b % a === 0 || a % b === 0),
+            `barreau 2 : ${a} et ${b} — l'un devrait être multiple de l'autre, sans être égal`);
+        // 3 — ni l'un ni l'autre : il faut vraiment chercher le commun.
+        const [c, d] = denoms(BARREAUX[3].faire(makeRng(`p2_${i}`)).texte);
         assert.ok(d % c !== 0 && c % d !== 0,
-            `barreau 2 : ${c} et ${d} — l'un est multiple de l'autre, c'est le barreau 1`);
+            `barreau 3 : ${c} et ${d} — l'un est multiple de l'autre, c'est le barreau 2`);
     }
 });
 
@@ -150,10 +161,61 @@ test('LE NEUVIÈME BARREAU EST LA QUESTION DU DEVOIR', () => {
     assert.ok(vus.size >= 3, `seulement ${vus.size} ensemble(s) différent(s) : ${[...vus]}`);
 });
 
-test('LES DIX EXERCICES SONT AU CATALOGUE, DANS L\'ORDRE', () => {
+// UN CHAPITRE SUR LES FRACTIONS POSE DES FRACTIONS.
+//
+// MESURÉ AVANT LA CORRECTION, et c'est ce qui rendait l'échelle bancale
+// autant que les marches manquantes : le barreau « un entier devant une
+// parenthèse » posait 25,2 % de questions SANS AUCUNE FRACTION — « 5(2 − 1) »,
+// « 4(3 − 3) » — et 6,1 % de réponses nulles. Celui des divisions écrivait
+// « 1 ÷ 2 », celui des parenthèses « (5 − 1)(5/6 + 1) ».
+//
+// La cause était la même dans quatre barreaux : `fr(rng.int(2, 9), rng.int(2, 7))`
+// paraît tirer une fraction, mais `fr` RÉDUIT — fr(4, 2) vaut 2. Une question
+// sans fraction n'est pas une marche facile, c'est une marche absente.
+test('CHAQUE BARREAU POSE DE VRAIES FRACTIONS', () => {
+    for (let r = 1; r <= 12; r++) {
+        let sans = 0, nul = 0;
+        const N = 400;
+        for (let i = 0; i < N; i++) {
+            const it = G.generate({ barreau: String(r) }, { rng: makeRng(`vf_${r}_${i}`) });
+            const e = it.prompt.text.replace(/^Calcule[^:]*: /, '');
+            if (!/\d+\/\d+/.test(e)) sans++;
+            if (it.choices.find(c => c.correct).texte === '0') nul++;
+        }
+        assert.ok(sans / N <= 0.005,
+            `barreau ${r} : ${(100 * sans / N).toFixed(1)} % de questions sans fraction`);
+        assert.ok(nul / N <= 0.01,
+            `barreau ${r} : ${(100 * nul / N).toFixed(1)} % de réponses nulles`);
+    }
+});
+
+// LES MARCHES DU BAS NE DEMANDENT QU'UNE CHOSE À LA FOIS.
+//
+// C'est la demande de Rémy, rendue vérifiable : les trois barreaux
+// d'introduction d'une opération — fraction × entier, diviser par un entier —
+// ne mettent qu'UNE fraction en jeu. Celui qui en met deux vient après.
+test('LES MARCHES D\'INTRODUCTION NE POSENT QU\'UNE FRACTION', () => {
+    const combien = (r) => {
+        let total = 0;
+        for (let i = 0; i < 200; i++) {
+            const e = G.generate({ barreau: String(r) }, { rng: makeRng(`c_${r}_${i}`) })
+                .prompt.text.replace(/^Calcule[^:]*: /, '');
+            total += (e.match(/\d+\/\d+/g) || []).length;
+        }
+        return total / 200;
+    };
+    // 4 : fraction × entier — une seule fraction.  5 : fraction × fraction.
+    assert.ok(combien(4) < 1.2, `barreau 4 : ${combien(4).toFixed(2)} fractions en moyenne`);
+    assert.ok(combien(5) > combien(4), 'le barreau 5 devrait en poser plus que le 4');
+    // 7 : diviser par un entier — une seule.  8 : diviser par une fraction.
+    assert.ok(combien(7) < 1.2, `barreau 7 : ${combien(7).toFixed(2)} fractions en moyenne`);
+    assert.ok(combien(8) > combien(7), 'le barreau 8 devrait en poser plus que le 7');
+});
+
+test('LES QUATORZE EXERCICES SONT AU CATALOGUE, DANS L\'ORDRE', () => {
     const miens = exercices.filter(e => /^cf-/.test(e.id));
-    assert.equal(miens.length, 10, 'neuf barreaux plus la révision');
-    for (let r = 1; r <= 9; r++) {
+    assert.equal(miens.length, 14, 'douze barreaux, l\'ensemble et la révision');
+    for (let r = 1; r <= 12; r++) {
         const e = miens.find(x => x.id === `cf-${r}`);
         assert.ok(e, `barreau ${r} absent`);
         assert.match(e.title, new RegExp(`^${r}\\.`), 'le titre ne porte pas son rang');
@@ -164,9 +226,13 @@ test('LES DIX EXERCICES SONT AU CATALOGUE, DANS L\'ORDRE', () => {
         assert.equal(c.length, 3, `${e.id} : code « ${c} »`);
         assert.ok(!/[IOQ]/.test(c), `${e.id} : ${c} s'entend mal`);
     }
-    // Le neuvième porte la consigne du devoir, mot pour mot.
-    assert.match(miens.find(x => x.id === 'cf-9').consignePapier,
-        /préciser le plus petit ensemble/);
+    // LA QUESTION DU DEVOIR A SON IDENTIFIANT PROPRE, et non un numéro de
+    // barreau : elle ne monte pas d'un cran sur la précédente, elle demande
+    // autre chose. Un numéro l'aurait rangée dans l'échelle, où elle n'est pas.
+    const ens = miens.find(x => x.id === 'cf-ensemble');
+    assert.ok(ens, 'l\'exercice « dire l\'ensemble » a disparu');
+    assert.match(ens.consignePapier, /préciser le plus petit ensemble/);
+    assert.ok(!/^\d/.test(ens.title), 'il ne porte pas de rang dans l\'échelle');
 });
 
 test('ET PLUS AUCUN PRÉREQUIS FANTÔME, NULLE PART', () => {
