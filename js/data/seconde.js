@@ -18,7 +18,55 @@ import { TAGS } from './tags.js';
 
 const D = TAGS.DOMAINE.NUMERIQUE;
 const ENS = TAGS.SOUS_DOMAINE.ENSEMBLES;
+const LIT = TAGS.SOUS_DOMAINE.LITTERAL;
 const SECONDE = TAGS.NIVEAU.SECONDE;
+
+// ── FACTORISER : SEPT BARREAUX, ET LA PROGRESSION EST LE PARCOURS ──────────
+//
+// Rémy, photo d'une feuille à l'appui : « peux-tu faire des exercices du type
+// seconde avec factorisation de x² − y² ? Je veux que ce soit hyper progressif
+// pour arriver à cela en photo. »
+//
+// SEPT EXERCICES ET NON UN SEUL À SEPT NIVEAUX, et c'est la réponse à « hyper
+// progressif ». Un curseur de difficulté qui mélangerait tout ne serait pas
+// une progression : ce serait une loterie où l'élève tombe sur le barreau 6
+// avant d'avoir monté le 2. Ici, le professeur pose les sept dans une séance,
+// dans l'ordre, et chacun ne travaille QU'UNE chose de plus que le précédent.
+//
+// Les quatre premiers montent l'identité a² − b² ; les trois derniers
+// apprennent à s'en servir pour autre chose, et c'est le vrai saut de la
+// Seconde. Les barreaux 3, 4 et 7 produisent exactement les formes A(x),
+// D(x), B(x) et C(x) de la feuille.
+const BARREAUX = [
+    ['fac-1', 'FB', '1. Différence de deux carrés',
+        'x² − 36 : reconnaître a² − b² quand b est un nombre.',
+        "Un carré moins un carré se factorise TOUJOURS : a² − b² = (a − b)(a + b). "
+        + "Le dessin montre pourquoi — on découpe le grand carré et on recolle."],
+    ['fac-2', 'FC', '2. Le coefficient est dans le carré',
+        '9x² − 16 : a n\'est plus x tout seul.',
+        "9x² est le carré de 3x, pas de 9x. C'est la RACINE qu'on écrit dans les "
+        + "parenthèses, et c'est là que tout le monde se trompe la première fois."],
+    ['fac-3', 'FD', '3. a devient une parenthèse',
+        '(6 − 5x)² − 1 : a est une expression entière.',
+        "Rien ne change à la règle : a vaut 6 − 5x, b vaut 1. On écrit (a − b)(a + b), "
+        + "puis on réduit chaque parenthèse."],
+    ['fac-4', 'FF', '4. Deux parenthèses au carré',
+        '(3x − 2)² − (x + 4)² : b aussi est une expression.',
+        "Le moins devant la seconde parenthèse change SES DEUX signes. C'est la faute "
+        + "numéro un de ce barreau, et elle ne pardonne pas."],
+    ['fac-5', 'FH', '5. Facteur commun visible',
+        'Ce qui est écrit dans les deux termes se met devant.',
+        "k·A + k·B = k(A + B). Ici le facteur commun est écrit deux fois, sous les yeux : "
+        + "il suffit de le sortir, et de garder ce qui restait derrière."],
+    ['fac-6', 'FJ', '6. Facteur commun caché',
+        'Il faut factoriser un morceau pour le faire apparaître.',
+        "x² − 9 cache (x − 3), et −4x + 12 cache −4(x − 3). On factorise d'abord le "
+        + "morceau qui dissimule le facteur commun — ensuite c'est le barreau 5."],
+    ['fac-7', 'FL', '7. Trois termes',
+        'Les expressions de la feuille : B(x) et C(x).',
+        "Trois termes, un facteur commun caché dans deux d'entre eux. C'est l'exercice "
+        + "de la feuille : on ne fait rien de nouveau, on fait tout à la fois."]
+];
 
 export const secondeExercises = [
     {
@@ -122,5 +170,37 @@ export const secondeExercises = [
         instruction: "Deux intervalles qui ne se croisent pas, ou qui se touchent "
             + "juste. L'intersection peut être VIDE — cela s'écrit ∅ — et l'union peut "
             + "rester en deux morceaux : on ne bouche pas le trou."
+    },
+    ...BARREAUX.map(([id, , titre, resume, instruction], i) => ({
+        id,
+        cree: '2026-09-23',
+        title: titre,
+        consignePapier: 'Factoriser les expressions suivantes.',
+        colonnesPapier: 1,
+        generatorId: 'lit.factorisation', activityId: 'buttons',
+        params: { barreau: String(i + 1) },
+        motsClefs: ['factoriser', 'factorisation', 'identité remarquable',
+            'différence de carrés', 'facteur commun', 'calcul littéral', 'seconde',
+            'lycée', resume.split(' ')[0].replace(/[^\wxÀ-ÿ²−]/g, '')],
+        tags: { chemin: [D, LIT], niveaux: [SECONDE] },
+        instruction
+    })),
+    {
+        id: 'fac-revision',
+        cree: '2026-09-23',
+        title: 'Factoriser : les quatre premiers barreaux',
+        consignePapier: 'Factoriser les expressions suivantes.',
+        colonnesPapier: 1,
+        generatorId: 'lit.factorisation', activityId: 'buttons',
+        // LE MÉLANGE VIENT APRÈS LA MONTÉE, jamais à la place. Tant qu'on
+        // travaille un barreau, l'élève sait ce qu'on lui demande et peut se
+        // concentrer sur COMMENT. Mélangés, les quatre posent une question de
+        // plus, qui est la vraie question d'un contrôle : LEQUEL est-ce ?
+        params: { barreau: 'revision' },
+        motsClefs: ['factoriser', 'révision', 'identité remarquable', 'seconde'],
+        tags: { chemin: [D, LIT], niveaux: [SECONDE] },
+        instruction: "Les quatre premiers barreaux mélangés. La question n'est plus "
+            + "« comment » mais « lequel » : repère d'abord ce qui joue le rôle de a et "
+            + "ce qui joue celui de b."
     }
 ];

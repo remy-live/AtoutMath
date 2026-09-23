@@ -225,6 +225,14 @@ export const CODES_EXERCICES = {
     'sec-ensembles':              'EA',   // Le plus petit ensemble de nombres
     'sec-union-inter':            'EU',   // Union et intersection d'intervalles
     'sec-union-inter-vide':       'EX',   // Quand l'intersection est vide
+    'fac-1':                      'FB',   // Différence de deux carrés
+    'fac-2':                      'FC',   // Le coefficient est dans le carré
+    'fac-3':                      'FD',   // a devient une parenthèse
+    'fac-4':                      'FF',   // Deux parenthèses au carré
+    'fac-5':                      'FH',   // Facteur commun visible
+    'fac-6':                      'FJ',   // Facteur commun caché
+    'fac-7':                      'FL',   // Trois termes
+    'fac-revision':               'FR',   // Les quatre premiers barreaux
 };
 
 /** L'exercice que désignent ces deux lettres, ou undefined. */

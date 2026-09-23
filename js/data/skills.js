@@ -250,6 +250,32 @@ const BASE = {
         descriptor: 'Trouver la partie commune à deux intervalles, et leur réunion — y compris quand elle est vide ou en deux morceaux.',
         lesson: '∩ garde ce qui est dans les DEUX ; ∪ garde ce qui est dans l\'un OU l\'autre. À une borne partagée, l\'intersection prend le crochet le plus SÉVÈRE et l\'union le plus GÉNÉREUX. Une intersection peut être vide (∅), et une union peut rester en deux morceaux.'
     },
+    'lit.factoriser.identite': {
+        label: 'Factoriser avec a² − b²',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.SECONDE],
+        // `num.litteral.reduire` ET NON UN IDENTIFIANT INVENTÉ. J'avais écrit
+        // `lit.developper.simple`, qui n'existe pas — la même faute que
+        // `num.relatifs.comparaison` il y a une semaine. Un prérequis fantôme
+        // ne lève AUCUNE erreur : il rend seulement la remédiation muette,
+        // c'est-à-dire qu'un élève en difficulté ne se voit jamais proposer
+        // ce qui lui manque. C'est exactement ce qu'on ne verrait jamais.
+        //
+        // Et le prérequis réel est bien celui-là : qui ne sait pas réduire
+        // une expression ne peut pas vérifier sa factorisation en la
+        // redéveloppant, donc apprend une règle au lieu d'un raisonnement.
+        prereqs: ['num.litteral.reduire'],
+        descriptor: 'Reconnaître une différence de deux carrés et l\'écrire comme un produit, même quand a et b sont des parenthèses.',
+        lesson: 'a² − b² = (a − b)(a + b). Le piège est de confondre avec (a − b)², qui a un double produit. Pour factoriser, on cherche CE QUI EST AU CARRÉ des deux côtés du moins : dans (6 − 5x)² − 1, a vaut 6 − 5x et b vaut 1.'
+    },
+    'lit.factoriser.commun': {
+        label: 'Factoriser par un facteur commun, même caché',
+        chemin: [D.NUMERIQUE, SD.LITTERAL],
+        niveaux: [N.SECONDE],
+        prereqs: ['lit.factoriser.identite'],
+        descriptor: 'Sortir ce qui est écrit dans tous les termes — quitte à factoriser un terme d\'abord pour le faire apparaître.',
+        lesson: 'k·A + k·B = k(A + B). Le facteur commun ne se voit pas toujours : x² − 9 cache (x − 3), et −4x + 12 cache −4(x − 3). On factorise d\'abord le morceau qui le dissimule, et le facteur commun apparaît dans tous les termes.'
+    },
     'nb.ensembles.appartenance': {
         label: 'Le plus petit ensemble de nombres',
         chemin: [D.NUMERIQUE, SD.ENSEMBLES],

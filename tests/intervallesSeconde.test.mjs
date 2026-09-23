@@ -92,10 +92,20 @@ test('ET AUCUN ÉCRAN N\'ANNONCE UN NOMBRE D\'EXERCICES ÉCRIT À LA MAIN', () =
 });
 
 test('LES TROIS EXERCICES SONT AU CATALOGUE, AVEC LEUR CODE DICTABLE', () => {
-    const miens = exercices.filter(e => (e.tags.niveaux || []).includes('2nde'));
+    // CE TEST FIGEAIT LE NOMBRE D'EXERCICES DE SECONDE, et il est tombé le
+    // jour où l'on a ajouté la factorisation — alors que rien de ce qu'il
+    // protège n'avait bougé. Il gardait un total, pas une règle : le total
+    // change à chaque chapitre ajouté, et le faire changer dans un test ne
+    // vérifie rien du tout.
+    //
+    // Ce qui compte, et qui est vérifié ici : le chapitre des intervalles a
+    // bien ses six exercices, ils sont tous dans le bon chapitre, et TOUS les
+    // exercices de Seconde — celui-ci comme les suivants — portent un code
+    // qui se dicte.
+    const seconde = exercices.filter(e => (e.tags.niveaux || []).includes('2nde'));
+    const miens = seconde.filter(e => e.tags.chemin[1] === 'Ensembles et intervalles');
     assert.equal(miens.length, 6);
-    miens.forEach(e => {
-        assert.equal(e.tags.chemin[1], 'Ensembles et intervalles');
+    seconde.forEach(e => {
         // PAS DE I, PAS DE O, PAS DE Q : ces codes se DICTENT en classe.
         // J'avais écrit IV, IC, ID — silencieusement invalides : la lettre de
         // contrôle rend null, `codeCourt` rend la chaîne vide, et les trois

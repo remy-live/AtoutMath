@@ -730,3 +730,83 @@ body.mobile-view #toast-container {
     .iv-ecriture { font-size: 1.5rem; }
     .iv-nom { font-size: 1.05rem; }
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   FACTORISER — l'expression, et le support visuel.
+
+   L'EXPRESSION EST L'ÉNONCÉ TOUT ENTIER. Dans ce chapitre, toute la question
+   tient dans ce qui est au carré et de quel côté est le moins : elle se lit
+   caractère par caractère, comme l'écriture d'un intervalle. Elle a donc la
+   même taille que `.iv-ecriture`, et pour la même raison.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.fa-expression {
+    font-size: 1.7rem;
+    font-weight: 700;
+    text-align: center;
+    margin: 12px 0 6px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .01em;
+    /* Une expression longue — celles du barreau 7 — passe à la ligne plutôt
+       que de déborder ; et elle revient au centre. */
+    line-height: 1.45;
+}
+
+.fa-consigne { margin-bottom: 2px; }
+
+/* LA CARTE D'IDENTIFICATION : la règle, puis qui joue a et qui joue b.
+   C'est le geste que l'élève doit faire avant d'écrire quoi que ce soit, et
+   l'avoir sous les yeux pendant qu'il choisit vaut mieux que de l'avoir lu
+   en haut de la page. */
+.fa-identite {
+    max-width: 30rem;
+    margin: 8px auto 2px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--primary) 5%, transparent);
+    text-align: center;
+}
+
+.fa-regle {
+    font-weight: 700;
+    font-size: 1.02rem;
+    letter-spacing: .01em;
+}
+
+.fa-prealable {
+    font-size: .95rem;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed var(--border);
+    /* CE QU'IL FAUT VOIR D'ABORD, au barreau 6 : le morceau qui cache le
+       facteur commun, déjà factorisé. Sans lui l'élève cherche un facteur
+       commun qui n'est pas encore écrit. */
+    opacity: .9;
+}
+
+.fa-roles {
+    display: flex;
+    justify-content: center;
+    gap: 10px 22px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.fa-role {
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+/* a et b de deux couleurs : c'est ce qui fait le lien avec la règle
+   au-dessus, et ce qui se voit avant d'être lu. */
+.fa-role { color: var(--primary-texte); }
+.fa-role--b { color: var(--warning-texte); }
+.fa-role i { font-style: italic; font-weight: 700; }
+
+.fa-figure { display: block; margin: 8px auto 0; }
+
+@media (max-width: 480px) {
+    .fa-expression { font-size: 1.28rem; }
+    .fa-regle { font-size: .95rem; }
+    .fa-role { font-size: .95rem; }
+}
