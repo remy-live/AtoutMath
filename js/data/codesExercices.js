@@ -238,6 +238,10 @@ export const CODES_EXERCICES = {
     'fac-7-pas':                  'EJ',   // Étapes : trois termes
     'dev-simple-pas':             'EK',   // Étapes : distributivité simple
     'dev-double-pas':             'EP',   // Étapes : double distributivité
+    'geo-appartenance':           'KA',   // appartenance : le point est-il dessus ?
+    'geo-appartenance-demi':      'KD',   // …avec les Demi-droites
+    'geo-codage-lire':            'LE',   // Lire un codagE
+    'geo-milieu':                 'ML',   // Le MiLieu
     'fac-revision':               'FR',   // Les quatre premiers barreaux
     'cf-1':                       'GB',   // Deux fractions, dénominateur multiple
     'cf-2':                       'GD',   // Dénominateurs quelconques

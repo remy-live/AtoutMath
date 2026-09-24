@@ -1,3 +1,4 @@
+import { elementsGeometrieGenerator } from '../core/generators/elementsGeometrie.js';
 import { TAGS } from './tags.js';
 // Les paliers du quadrilatère qui se transforme viennent du noyau : deux listes
 // d'options qui se répondent finissent toujours par diverger.
@@ -42,6 +43,26 @@ const NOTATIONS_APPRENTISSAGE = {
         { titre: 'Défi contre la montre', exerciseId: 'geo-notations-sprint', overrides: { sens: 'mixte', longueur: 'oui' }, nbItems: 6 }
     ]
 };
+
+/**
+ * Les réglages qu'une notation de `geo.elements` gouverne vraiment.
+ *
+ * Le générateur sert trois notions et déclare les réglages des trois. Les
+ * poser tous sur chaque exercice donnerait à l'exercice du milieu un bouton
+ * « quels objets » qui ne change rien à sa feuille — et
+ * `ficheReglages.test.mjs` le refuse, à raison : « un bouton qui ne fait rien
+ * est pire qu'un bouton absent ».
+ *
+ * `notion` n'est jamais offerte : c'est l'exercice qui la fixe, et elle est
+ * dans son titre. La proposer reviendrait à offrir de changer d'exercice
+ * depuis l'exercice.
+ */
+function reglagesDeGeoElements(notion) {
+    const gen = () => (elementsGeometrieGenerator.params || []);
+    const garder = { appartenance: ['sortes'], codage: ['familles'], milieu: ['piege'] };
+    const veut = garder[notion] || [];
+    return gen().filter(p => veut.includes(p.id));
+}
 
 export const geometrieExercises = [
     // --- Les angles remarquables (fiche 5ᵉ « Les angles ») ---
@@ -1726,5 +1747,63 @@ export const geometrieExercises = [
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.NOTATIONS], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Crochet = la ligne s'arrête, parenthèse = elle continue. Réponds avant que la jauge ne se vide : elle se remplit de moins en moins longtemps à mesure que tu enchaînes.",
         apprentissage: NOTATIONS_APPRENTISSAGE
-    }
+    },
+    // ── LES ÉLÉMENTS DE GÉOMÉTRIE ───────────────────────────────────────────
+    //
+    // RÉMY, sa fiche de 6e à l'appui : « on pourrait faire quoi comme
+    // exercice ? » J'avais croisé ses vingt-cinq exercices avec le catalogue ;
+    // il a retenu l'appartenance, la lecture d'un codage et le milieu.
+    //
+    // CE QUI RESTE SUR SA FEUILLE : l'étoile, le badge, le pavage, les figures
+    // au compas. C'est sa ligne rouge — « rien ne remplace le geste ». L'écran
+    // prend ce qu'il fait mieux qu'une photocopie : une figure neuve à chaque
+    // question, et la correction qui NOMME la confusion.
+    ...[
+        ['geo-appartenance', 'appartenance', 'segment-droite',
+            'Le point est-il dessus ? (∈ et ∉)',
+            "Une figure, quatre affirmations, une seule vraie. Le cœur n'est pas le "
+            + "symbole : c'est qu'un point peut être sur la DROITE (AB) sans être sur le "
+            + "SEGMENT [AB], qui s'arrête à ses deux bouts."],
+        ['geo-appartenance-demi', 'appartenance', 'tous',
+            'Le point est-il dessus ? avec les demi-droites',
+            "Le même exercice, la demi-droite en plus. [AB) part de A et file du côté de "
+            + "B : un point de l'autre côté de A est sur la droite, mais pas sur la "
+            + "demi-droite. C'est la confusion la plus tenace du chapitre."],
+        ['geo-codage-lire', 'codage', 'tous',
+            'Lire un codage',
+            "L'application savait POSER un codage ; voici l'inverse — le lire. Deux "
+            + "segments qui portent la même marque ont la même longueur, et cela s'écrit "
+            + "AB = CD, sans crochets : [AB] est un objet, AB est un nombre."],
+        ['geo-milieu', 'milieu', 'tous',
+            'Le milieu d\'un segment',
+            "Être le milieu demande DEUX choses : être sur le segment, ET être à égale "
+            + "distance des deux bouts. Une question sur cinq pose le point équidistant "
+            + "qui n'est pas sur le segment — il n'est dans aucun manuel, et c'est lui "
+            + "qui sépare ceux qui savent la définition de ceux qui l'ont à moitié "
+            + "retenue."]
+    ].map(([id, notion, sortes, title, instruction]) => ({
+        id, title,
+        cree: '2026-09-24',
+        consignePapier: notion === 'milieu' ? 'Quelle phrase est vraie ?'
+            : (notion === 'codage' ? 'Que donne le codage ?'
+                : 'Quelle affirmation est vraie ?'),
+        colonnesPapier: 1,
+        generatorId: 'geo.elements', activityId: 'buttons',
+        params: { notion, sortes },
+        // CHAQUE EXERCICE N'OFFRE QUE LES RÉGLAGES QUI LE GOUVERNENT. Un
+        // générateur qui sert trois notions déclare les réglages des trois ;
+        // les poser tous sur chaque exercice donnerait à l'exercice du milieu
+        // un bouton « quels objets » qui ne change rien — ce que
+        // `ficheReglages.test.mjs` refuse, et à raison.
+        //
+        // `notion` n'y est jamais : c'est l'exercice qui la fixe, et elle est
+        // dans son titre. La proposer reviendrait à offrir de changer
+        // d'exercice depuis l'exercice.
+        paramSchema: reglagesDeGeoElements(notion),
+        motsClefs: ['appartient', 'appartenance', 'codage', 'milieu', 'segment', 'droite',
+            'demi-droite', 'point', 'notation', 'géométrie', 'sixième', 'aligné'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.NOTATIONS],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction
+    }))
 ];

@@ -10887,3 +10887,35 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 @media (prefers-reduced-motion: reduce) {
     .infobulle { transition: none; }
 }
+
+
+/* ── POINTS ET DROITES — la figure des « Éléments de géométrie » ──────────────
+
+   Rémy, sa fiche de 6e à l'appui : trois exercices sur ∈ et ∉, et rien dans
+   l'application. Le dessin suit les conventions du cahier : une croix pour le
+   point (jamais une pastille — un disque couvre le point qu'il prétend
+   marquer), un trait fin pour la droite, un nom à côté et non dessus. */
+.pd-svg { width: 100%; max-width: 30rem; height: auto; color: inherit; }
+/* La figure codée est plus dense — deux segments, des marques — et se lit de
+   plus près : elle n'a pas besoin de la même largeur. */
+.pd-svg--codee { max-width: 24rem; }
+.pd-segment {
+    stroke: var(--text-main); stroke-width: 2; stroke-linecap: round; fill: none;
+}
+.pd-marque { stroke: var(--primary); stroke-width: 2.6; stroke-linecap: round; }
+.pd-droite {
+    stroke: var(--text-main); stroke-width: 1.6; opacity: .75;
+    stroke-linecap: round; fill: none;
+}
+/* L'OBJET SURLIGNÉ, dans l'indice : il ne remplace pas la droite, il la
+   souligne — comme le vert et le rouge que la fiche fait poser. */
+.pd-montre {
+    stroke: var(--primary); stroke-width: 5; stroke-linecap: round;
+    opacity: .38; fill: none;
+}
+.pd-pt .pt-croix, .pd-pt .pt-plus { stroke: var(--text-main); stroke-width: 2; }
+.pd-pt .pt-disque { fill: var(--text-main); }
+.pd-pt--vedette .pt-croix, .pd-pt--vedette .pt-plus { stroke: var(--primary); stroke-width: 2.6; }
+.pd-pt--vedette .pt-disque { fill: var(--primary); }
+.pd-nom { fill: var(--text-main); font-size: 17px; font-weight: 800; }
+.pd-nom--vedette { fill: var(--primary-texte); }

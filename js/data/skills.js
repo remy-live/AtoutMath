@@ -514,6 +514,35 @@ const BASE = {
         descriptor: 'Retrouver le dessin que désigne [AB], (AB) ou [AB).',
         lesson: 'Dans [AB), le premier point nommé est l\'ORIGINE : le trait s\'arrête en A et continue au-delà de B. [BA) est une autre demi-droite.'
     },
+    // ── LES TROIS NOTIONS DE SA FICHE « ÉLÉMENTS DE GÉOMÉTRIE » ─────────────
+    //
+    // Elles manquaient toutes les trois, et l'appartenance tient une page
+    // entière de sa fiche. Elles s'appuient sur la notation : on ne peut pas
+    // dire si un point est sur [AB] avant de savoir ce qu'est [AB].
+    'geo.appartenance': {
+        label: 'Dire si un point appartient à une droite, un segment, une demi-droite',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.notation.lire'],
+        descriptor: 'Écrire A ∈ (BC) ou A ∉ (BC) en lisant une figure.',
+        lesson: 'Un point peut être sur la DROITE sans être sur le SEGMENT : le segment s\'arrête à ses deux extrémités, la droite ne s\'arrête jamais. Et [AB) part de A : un point de l\'autre côté de A n\'y est pas.'
+    },
+    'geo.codage.lire': {
+        label: 'Lire un codage',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.notation.ecrire'],
+        descriptor: 'Dire quelles égalités de longueurs un codage donne.',
+        lesson: 'Deux segments qui portent la même marque ont la même longueur. On écrit AB = CD, sans crochets : [AB] est un objet, AB est un nombre — sa longueur.'
+    },
+    'geo.milieu': {
+        label: 'Reconnaître le milieu d\'un segment',
+        chemin: [D.GEOMETRIQUE, SD.REPERAGE],
+        niveaux: [N.SIXIEME, N.CINQUIEME],
+        prereqs: ['geo.codage.lire', 'geo.appartenance'],
+        descriptor: 'Dire si un point est le milieu d\'un segment, et pourquoi.',
+        lesson: 'Le milieu de [AB] demande DEUX choses : être SUR le segment, et être à égale distance de A et de B. Un point équidistant de A et de B qui n\'est pas sur [AB] n\'en est pas le milieu.'
+    },
     'geo.notation.dire': {
         label: 'Lire une notation en toutes lettres',
         chemin: [D.GEOMETRIQUE, SD.REPERAGE],

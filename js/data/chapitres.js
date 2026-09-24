@@ -70,8 +70,12 @@ export const CHAPITRES = [
     },
     {
         id: '6-elements-geometrie', niveau: SIXIEME, nom: 'Éléments de géométrie',
+        // LE CHAPITRE PORTAIT DÉJÀ LE TITRE DE SA FICHE, et il lui manquait
+        // trois de ses notions. Un exercice sans chapitre n'est atteignable
+        // que par la recherche : il existe, et personne ne le rencontre.
         skills: [
             'geo.notation.ecrire', 'geo.notation.lire', 'geo.notation.dire',
+            'geo.appartenance', 'geo.codage.lire', 'geo.milieu',
             'geo.construire.instruments', 'geo.figure.programme', 'geo.repere.coord',
             'geo.construction.programme'
         ]

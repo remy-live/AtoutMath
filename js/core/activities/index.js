@@ -48,6 +48,7 @@ import { pythagoreGenerator } from '../generators/pythagore.js';
 import { vitesseGenerator } from '../generators/vitesse.js';
 import { vocabulaireGenerator } from '../generators/vocabulaire.js';
 import { notationGenerator } from '../generators/notation.js';
+import { elementsGeometrieGenerator } from '../generators/elementsGeometrie.js';
 import { anglesManquantsGenerator } from '../generators/anglesManquants.js';
 import { anglesNommerGenerator } from '../generators/anglesNommer.js';
 import { graduationsGenerator } from '../generators/graduations.js';
@@ -146,6 +147,7 @@ import {
     arrondiGenerator,
     redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
+    elementsGeometrieGenerator,
     anglesManquantsGenerator, anglesNommerGenerator,
     graduationsGenerator, transfoQuadrillageGenerator, pavageGenerator,
     carreMagiqueGenerator, futoshikiGenerator,
