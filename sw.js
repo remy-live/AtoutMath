@@ -9,18 +9,18 @@
 //     toujours la dernière version — le cache ne sert que hors ligne.
 //
 // À incrémenter à chaque déploiement pour purger l'ancien cache.
-const CACHE = 'atoutmath-v742';
+const CACHE = 'atoutmath-v743';
 
 const NOYAU = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './css/base.css?v=803',
-    './css/layout.css?v=803',
-    './css/ui.css?v=803',
-    './css/games.css?v=803',
-    './css/components.css?v=803',
-    './css/modules.css?v=803',
+    './css/base.css?v=804',
+    './css/layout.css?v=804',
+    './css/ui.css?v=804',
+    './css/games.css?v=804',
+    './css/components.css?v=804',
+    './css/modules.css?v=804',
     './icones/icon-192.png',
     './icones/icon-512.png',
     // LES BIBLIOTHÈQUES, désormais servies avec l'application. Elles sont dans
@@ -95,9 +95,42 @@ self.addEventListener('message', (e) => {
 self.addEventListener('fetch', (e) => {
     const req = e.request;
     if (req.method !== 'GET') return;
+
+    // ON NE S'OCCUPE QUE DE NOS PROPRES FICHIERS — et c'est un correctif, pas
+    // une précaution.
+    //
+    // RÉMY, console à l'appui : des dizaines de lignes rouges. Trois familles,
+    // une seule cause, et la cause n'était PAS dans l'application :
+    //
+    //   · « Failed to execute 'put' on 'Cache': Request scheme
+    //     'chrome-extension' is unsupported » — une extension du navigateur
+    //     demande ses propres fichiers dans l'onglet ; notre worker les
+    //     interceptait et tentait de les mettre en cache, ce que l'API refuse
+    //     pour tout ce qui n'est pas http(s) ;
+    //
+    //   · « Fetch API cannot load https://fonts.gstatic.com/… Refused to
+    //     connect because it violates the document's Content Security
+    //     Policy » — la même extension injecte une police Google. Le
+    //     navigateur, lui, l'aurait classée en `font-src` ; nous, en la
+    //     REDEMANDANT depuis le worker, nous en faisions un `connect-src`,
+    //     que la politique interdit à juste titre. Nous fabriquions la
+    //     violation que nous signalions ;
+    //
+    //   · « The FetchEvent resulted in a network error response » et
+    //     « Error: hors ligne » — les conséquences des deux premières.
+    //
+    // L'application ne charge RIEN d'ailleurs : `default-src 'self'` le lui
+    // interdit, et les bibliothèques comme la police sont servies depuis
+    // ./vendor (voir NOYAU). Une requête d'une autre origine n'est donc jamais
+    // la nôtre : on la laisse au navigateur, qui saura la traiter sous la
+    // bonne directive — et le journal redevient lisible, ce qui est la
+    // condition pour y voir les vraies erreurs.
+    const url = new URL(req.url);
+    if (url.origin !== self.location.origin) return;
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
     // L'API de synchronisation ne doit JAMAIS être servie depuis le cache :
     // des données de classe périmées sont pires que pas de données.
-    if (new URL(req.url).pathname.includes('/api/')) return;
+    if (url.pathname.includes('/api/')) return;
 
     // Le « réseau d'abord » ne suffisait PAS à garantir la dernière version.
     //
@@ -113,27 +146,41 @@ self.addEventListener('fetch', (e) => {
     // REVALIDE auprès du serveur, qui répond 304 quand rien n'a changé. Le
     // coût est d'un aller-retour vide, le gain est qu'un poste connecté a
     // toujours le code du jour. Hors ligne, on retombe sur le cache.
-    const url = new URL(req.url);
-    const demande = url.origin === self.location.origin
-        ? new Request(url.href, {
-            cache: 'no-cache', credentials: 'same-origin',
-            headers: req.headers, redirect: 'follow'
-        })
-        : req;
+    const demande = new Request(url.href, {
+        cache: 'no-cache', credentials: 'same-origin',
+        headers: req.headers, redirect: 'follow'
+    });
 
     e.respondWith(
         fetch(demande)
             .then(reponse => {
-                // Copie en cache au passage (y compris les réponses opaques du
-                // CDN : on ne peut pas les lire, mais on peut les resservir).
-                if (reponse && (reponse.ok || reponse.type === 'opaque')) {
+                // Copie en cache au passage. LE `catch` N'EST PAS DÉCORATIF :
+                // une écriture de cache peut échouer (quota plein, réponse
+                // partielle), et sans lui l'échec remontait en promesse non
+                // traitée — « Cache.put() encountered a network error », vu
+                // lui aussi dans la console de Rémy. Rater la COPIE n'est pas
+                // rater la réponse : elle est déjà rendue.
+                if (reponse && reponse.ok) {
                     const copie = reponse.clone();
-                    caches.open(CACHE).then(cache => cache.put(req, copie));
+                    caches.open(CACHE)
+                        .then(cache => cache.put(req, copie))
+                        .catch(() => { /* le cache est un confort, pas un dû */ });
                 }
                 return reponse;
             })
-            .catch(() => caches.match(req).then(hit =>
-                hit || (req.mode === 'navigate' ? caches.match('./index.html') : Promise.reject(new Error('hors ligne')))
-            ))
+            .catch(async () => {
+                const hit = await caches.match(req);
+                if (hit) return hit;
+                if (req.mode === 'navigate') {
+                    const page = await caches.match('./index.html');
+                    if (page) return page;
+                }
+                // UNE RÉPONSE, PAS UN REJET. Rejeter la promesse donnait une
+                // « Uncaught (in promise) Error: hors ligne » par fichier
+                // manquant : le navigateur produit de toute façon une erreur
+                // réseau côté page, mais il la produisait EN PLUS d'un
+                // tombereau de lignes rouges qui n'apprenaient rien.
+                return new Response('', { status: 504, statusText: 'hors ligne' });
+            })
     );
 });

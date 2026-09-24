@@ -1153,6 +1153,18 @@ export const factorisationGenerator = {
         // encore en première question après avoir été rangé en fin de liste.
         const choices = finalizeChoices(rng, brutes, { count: 4 });
 
+        // COMBIEN DE FACTEURS LA RÉPONSE PORTE-T-ELLE ? Le juge s'en sert pour
+        // refuser une écriture MOINS factorisée qu'elle (voir `verifieTexte`).
+        // On le calcule ici, une fois : `verdictSurArbre` relit toute
+        // l'expression, et le faire à chaque frappe de l'élève serait payer
+        // cher une valeur qui ne change pas.
+        let facteursCibles = 0;
+        try {
+            const cible = P.verdictSurArbre(fx.analyser(
+                String(q.reponse).replace(/\s+/g, '')), fx);
+            if (cible.complet) facteursCibles = cible.facteurs.length;
+        } catch (e) { facteursCibles = 0; }
+
         return makeItem({
             seed: rng.seed,
             generatorId: 'lit.factorisation',
@@ -1212,7 +1224,26 @@ export const factorisationGenerator = {
                     String(saisie).replace(/\s+/g, '').replace(/(x)(\d)/g, '$1^$2')), fx); }
                 catch (e) { verdict = { complet: false, raison: 'écriture illisible' }; }
                 if (!verdict.complet) {
-                    return { juste: false,
+                    // COMMENCÉ N'EST PAS RATÉ — et l'on sait distinguer les deux.
+                    //
+                    // Rémy, à propos du développement : « tu peux dire que
+                    // c'est bon mais qu'il faut réduire ». C'est le même cas
+                    // ici, et le message le disait déjà — « ce n'est pas
+                    // fini » — en coûtant une vie. Qui écrit 2(x² − 9) a sorti
+                    // le facteur commun : il a fait la moitié du chemin, et
+                    // c'est la moitié qu'on lui demandait d'apprendre.
+                    //
+                    // MAIS RECOPIER L'ÉNONCÉ N'EST PAS COMMENCER. « x² − 9 »
+                    // rendu tel quel est égal lui aussi, et ce n'est pas une
+                    // factorisation entamée : c'est une question à laquelle on
+                    // n'a pas répondu. On les sépare sur ce que l'élève a
+                    // ÉCRIT — un produit, ou pas : une expression qui n'est
+                    // pas un produit n'a ni second facteur ni constante
+                    // devant (mesuré sur 2x² − 18, x² + 6x + 9, −x² + 9 :
+                    // facteurs = 1 et constante = 1 dans les trois cas).
+                    const commence = verdict.facteurs.length >= 2
+                        || verdict.constante !== 1;
+                    return { juste: false, inacheve: commence,
                         pourquoi: `C'est bien égal, mais ce n'est pas fini : ${verdict.raison}.` };
                 }
                 if (!verdict.facteurs.length) {
@@ -1223,6 +1254,35 @@ export const factorisationGenerator = {
                     return { juste: false,
                         pourquoi: 'Il n\'y a qu\'un seul facteur : factoriser, '
                             + 'c\'est écrire un PRODUIT.' };
+                }
+                // MOINS FACTORISÉ QUE LA RÉPONSE, C'EST PAS FINI — et le juge
+                // l'acceptait, mesuré sur 95 questions sur 840.
+                //
+                // Le critère général (`estCompletementFactorise`) ne connaît
+                // que les identités du programme de Seconde : devant
+                // 8(2x² + 9x + 7), il ne voit ni carré parfait ni différence
+                // de carrés, et déclare le facteur irréductible. Il a raison
+                // DANS L'ABSOLU — ce trinôme-là ne se factorise pas sans le
+                // discriminant, qui est de Première.
+                //
+                // Sauf qu'il se factorise ICI, et par le chemin même que la
+                // question enseigne : (4x + 9)² − 25 s'ouvre en
+                // (4x + 9 − 5)(4x + 9 + 5), d'où 8(x + 1)(2x + 7). L'élève qui
+                // rend 8(2x² + 9x + 7) a DÉVELOPPÉ après avoir factorisé : il
+                // a défait son travail, et on le félicitait.
+                //
+                // ON NE TOUCHE PAS AU CRITÈRE GÉNÉRAL pour autant — il a déjà
+                // coûté cher (voir l'en-tête : le discriminant y avait fait
+                // refuser des réponses justes). On compare simplement à la
+                // RÉPONSE DE LA QUESTION, qu'on connaît : moins de facteurs
+                // qu'elle, c'est qu'il en reste à sortir. Écrire les mêmes
+                // facteurs autrement — (2x + 4)(2x + 12) au lieu de
+                // 4(x + 2)(x + 6) — en compte autant, et passe.
+                if (facteursCibles > 0 && verdict.facteurs.length < facteursCibles) {
+                    return { juste: false, inacheve: true,
+                        pourquoi: 'C\'est bien égal, mais ce n\'est pas fini : '
+                            + 'on peut encore ouvrir ce qui est entre '
+                            + 'parenthèses en un produit.' };
                 }
                 return { juste: true };
             },

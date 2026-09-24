@@ -46,7 +46,8 @@
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
-import { memeReponse, normaliser } from '../reductionPuissances.js';
+import { memeReponse, normaliser, groupesSemblables }
+    from '../reductionPuissances.js';
 
 const echapper = (t) => String(t).replace(/[&<>"]/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -60,6 +61,14 @@ const echapper = (t) => String(t).replace(/[&<>"]/g,
  * ligne à sa place et on passe à la suivante : il continue l'exercice.
  */
 const ESSAIS_PAR_ETAPE = 3;
+
+/**
+ * TROIS COULEURS SUFFISENT, et ce n'est pas un chiffre rond pris au hasard :
+ * une expression du second degré n'a que trois espèces de termes — les x², les
+ * x, les nombres. Au-delà, on tourne plutôt que d'inventer une quatrième
+ * couleur qui ne se distinguerait plus des trois autres.
+ */
+const NUANCES_SEMBLABLES = 3;
 
 export function mount(container, session, opts = {}) {
     let destroyed = false;
@@ -241,8 +250,11 @@ export function mount(container, session, opts = {}) {
         const noteEl = container.querySelector('[data-note]');
 
         const redessiner = () => {
+            // `textContent` EFFACE AUSSI LE COLORIAGE des termes semblables —
+            // voir `signalerInacheve`. C'est voulu : dès que l'élève touche
+            // une touche, la phrase qu'on avait coloriée n'est plus celle-là.
             texteEl.textContent = saisie;
-            champ.classList.remove('ls-champ--ok', 'ls-champ--ko');
+            champ.classList.remove('ls-champ--ok', 'ls-champ--ko', 'ls-champ--presque');
             champ.classList.toggle('ls-champ--vide', saisie === '');
             noteEl.textContent = '';
             btnValider.disabled = saisie.trim() === '';
@@ -368,6 +380,39 @@ export function mount(container, session, opts = {}) {
                 || e.aide || 'Ce n\'est pas cela. Relis l\'étape précédente.';
         };
 
+        /**
+         * CE QUI N'EST PAS FINI N'EST PAS UNE ERREUR.
+         *
+         * L'élève a écrit une expression JUSTE mais non réduite — « x² + 2x +
+         * 5x + 10 » là où l'on attend « x² + 7x + 10 ». La séance n'en sait
+         * rien et n'en saura rien : on ne soumet pas. On le dit, on colorie ce
+         * qui va ensemble, et il finit sa ligne.
+         *
+         * RÉMY : « tu peux faire changer de couleur ce qui va ensemble ». La
+         * couleur répond à la seule question qui reste — lesquels ? — sans
+         * donner la réponse : elle dit quels termes se réunissent, pas ce que
+         * leur somme vaut. Et elle ne va jamais seule : chaque groupe a AUSSI
+         * son soulignement, plein, tireté ou pointillé, parce qu'un élève
+         * daltonien a le droit de voir l'appariement lui aussi.
+         */
+        const signalerInacheve = (pourquoi) => {
+            const morceaux = groupesSemblables(saisie);
+            const groupes = new Set(morceaux.filter(m => m.groupe >= 0)
+                .map(m => m.groupe));
+            texteEl.innerHTML = morceaux.map(m => (m.groupe >= 0
+                ? `<span class="ls-semblable" data-groupe="${
+                    m.groupe % NUANCES_SEMBLABLES}">${echapper(m.texte)}</span>`
+                : echapper(m.texte))).join('');
+            champ.classList.remove('ls-champ--ok', 'ls-champ--ko');
+            champ.classList.add('ls-champ--presque');
+            // ON NE PARLE DE COULEUR QUE S'IL Y EN A UNE. Le cas est rare —
+            // « 2x + 0 » compte deux termes écrits pour un seul monôme sans
+            // qu'aucune paire ne se corresponde — mais annoncer une couleur
+            // absente enverrait l'élève chercher ce qui n'est pas là.
+            noteEl.textContent = pourquoi + (groupes.size
+                ? ' Les termes de la même couleur vont ensemble.' : '');
+        };
+
         const valider = () => {
             if (destroyed || !saisie.trim()) return;
             // UNE ÉTAPE INTERMÉDIAIRE NE PASSE PAS PAR LA SÉANCE. Voir l'en-tête :
@@ -382,6 +427,10 @@ export function mount(container, session, opts = {}) {
                 ? (typeof verdict === 'object' ? !!verdict.juste : !!verdict)
                 : memeReponse(saisie, item.answer);
             const pourquoi = (verdict && typeof verdict === 'object' && verdict.pourquoi) || '';
+            // L'INACHEVÉ NE PASSE PAS PAR LA SÉANCE — voir `signalerInacheve`.
+            if (!juste && verdict && typeof verdict === 'object' && verdict.inacheve) {
+                return signalerInacheve(pourquoi);
+            }
             // ON SOUMET LA FORME NORMALISÉE quand elle est juste : le journal
             // et le carnet d'erreurs n'ont pas à conserver quinze écritures du
             // même résultat selon que l'élève a mis des espaces ou non.

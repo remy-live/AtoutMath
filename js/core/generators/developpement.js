@@ -937,10 +937,25 @@ export const developpementGenerator = {
                     ecrits = a.sorte === 'somme' ? a.termes.length : 1;
                 } catch (e) { ecrits = 0; }
                 if (ecrits > lu.size) {
-                    return { juste: false,
-                        pourquoi: 'C\'est bien égal, mais ce n\'est pas réduit : '
-                            + 'deux termes portent la même puissance de x et se '
-                            + 'réunissent en un seul.' };
+                    // CE N'EST PAS UNE FAUTE, C'EST UNE MOITIÉ DE TRAVAIL —
+                    // Rémy, devant « x² + 2x + 5x + 10 » : « tu peux dire que
+                    // c'est bon mais qu'il faut réduire ».
+                    //
+                    // Il a raison, et compter faux ici enseignerait le
+                    // contraire de ce qu'on veut : l'élève A développé, et
+                    // c'est la partie difficile. Lui retirer une vie pour la
+                    // ligne qu'il allait écrire lui apprend à se méfier de la
+                    // ligne intermédiaire — alors qu'on passe notre temps à
+                    // lui demander de l'écrire.
+                    //
+                    // `inacheve` dit à l'activité : ne soumets pas, dis-le, et
+                    // laisse-le finir. C'est la règle que `fractionsPose` a
+                    // déjà posée pour le calcul posé — ce qui n'est pas fini
+                    // n'est pas une erreur.
+                    return { juste: false, inacheve: true,
+                        pourquoi: 'C\'est bien égal : tu as développé. Il reste à '
+                            + 'réduire — deux termes portent la même puissance '
+                            + 'de x et se réunissent en un seul.' };
                 }
                 return { juste: true };
             },

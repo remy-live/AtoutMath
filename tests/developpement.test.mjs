@@ -29,6 +29,9 @@ import { SKILLS } from '../js/data/skills.js';
 import { exercices } from '../js/data/catalog.js';
 import * as fx from '../js/core/maths/formule.js';
 import * as P from '../js/core/maths/polynome.js';
+import { ecrireSomme, groupesSemblables }
+    from '../js/core/reductionPuissances.js';
+import { readFileSync } from 'node:fs';
 
 const BARREAUX = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
@@ -389,4 +392,113 @@ test('le pas à pas se tape : × et parenthèses sont au pavé quand il en faut'
             }
         }
     }
+});
+
+
+// ── « C'EST BON, MAIS IL FAUT RÉDUIRE » ─────────────────────────────────────
+//
+// RÉMY, capture à l'appui, devant « x²+2x+5x+10 » tapé sous (x + 2)(x + 5) :
+// « je propose cette réponse, tu peux dire que c'est bon mais qu'il faut
+// réduire, tu peux faire changer de couleur ce qui va ensemble ».
+//
+// Deux exigences, et la première est un changement de VERDICT, pas de phrase :
+// une expression juste mais non réduite ne doit pas coûter de vie. Le message
+// existait déjà ; il arrivait avec une faute.
+
+/**
+ * LA MÊME EXPRESSION, DÉVELOPPÉE MAIS PAS RÉDUITE — ce que l'élève écrit
+ * quand il s'arrête au milieu. On coupe un terme en deux : c'est exactement
+ * ce que produit la double distributivité avant le regroupement.
+ */
+const nonReduite = (reponse) => {
+    const p = P.lireSaisie(reponse, fx);
+    const c = P.coefficients(p);
+    const coupe = c.findIndex(x => Math.abs(x) >= 2);
+    if (coupe < 0) return null;
+    const part = c[coupe] > 0 ? 1 : -1;
+    const termes = [];
+    for (let d = c.length - 1; d >= 0; d--) {
+        if (c[d] === 0) continue;
+        if (d === coupe) {
+            termes.push({ coef: part, degre: d });
+            termes.push({ coef: c[d] - part, degre: d });
+        } else termes.push({ coef: c[d], degre: d });
+    }
+    return ecrireSomme(termes);
+};
+
+test('UNE RÉPONSE JUSTE MAIS NON RÉDUITE NE COMPTE PAS UNE FAUTE', () => {
+    let vues = 0;
+    for (const b of BARREAUX) {
+        for (let i = 0; i < 30; i++) {
+            const it = G.generate({ barreau: String(b) }, { rng: makeRng(`nr_${b}_${i}`) });
+            const moitie = nonReduite(it.reponsePapier);
+            if (!moitie) continue;
+            vues += 1;
+            const v = it.verifieTexte(moitie);
+            assert.equal(v.juste, false,
+                `[b${b}] « ${moitie} » n'est pas réduite et passe pour finie`);
+            assert.equal(v.inacheve, true,
+                `[b${b}] « ${moitie} » est comptée FAUSSE : `
+                + 'elle est juste, elle est inachevée');
+            assert.match(v.pourquoi, /réduire/,
+                `[b${b}] le message ne dit pas ce qui reste à faire`);
+            // ET LA RÉPONSE RÉDUITE, ELLE, PASSE — sans quoi le test ci-dessus
+            // se contenterait d'un juge qui refuse tout.
+            const fini = it.verifieTexte(it.reponsePapier);
+            assert.equal(fini.juste, true, `[b${b}] « ${it.reponsePapier} » refusée`);
+            assert.ok(!fini.inacheve, `[b${b}] la réponse finale passe pour inachevée`);
+        }
+    }
+    assert.ok(vues > 200, `seulement ${vues} cas construits : la mesure ne mesure rien`);
+});
+
+test('CE QUI VA ENSEMBLE SE COLORIE, ET RIEN D\'AUTRE', () => {
+    // La couleur doit dire QUELS termes se réunissent. Sur une réponse non
+    // réduite, il y a forcément au moins deux termes de même part littérale :
+    // s'il n'y en avait pas, le coloriage annoncé n'apparaîtrait nulle part et
+    // la phrase « les termes de la même couleur vont ensemble » mentirait.
+    for (const b of BARREAUX) {
+        for (let i = 0; i < 20; i++) {
+            const it = G.generate({ barreau: String(b) }, { rng: makeRng(`col_${b}_${i}`) });
+            const moitie = nonReduite(it.reponsePapier);
+            if (!moitie) continue;
+            const m = groupesSemblables(moitie).filter(x => x.terme);
+            const colories = m.filter(x => x.groupe >= 0);
+            assert.ok(colories.length >= 2,
+                `[b${b}] « ${moitie} » : rien à colorier`);
+            // Un terme colorié a toujours un camarade de la même couleur.
+            for (const t of colories) {
+                assert.ok(colories.filter(x => x.groupe === t.groupe).length >= 2,
+                    `[b${b}] « ${t.texte} » est colorié tout seul`);
+            }
+            // Et la réponse RÉDUITE, elle, n'a plus rien à regrouper.
+            const fini = groupesSemblables(it.reponsePapier)
+                .filter(x => x.terme && x.groupe >= 0);
+            assert.deepEqual(fini, [],
+                `[b${b}] « ${it.reponsePapier} » est réduite et se colorie encore`);
+        }
+    }
+});
+
+test('L\'ACTIVITÉ NE SOUMET PAS UNE RÉPONSE INACHEVÉE', () => {
+    // LA LECTURE DU SOURCE EST LE SEUL MOYEN ICI : `litteralSaisie` construit
+    // son pavé dans le DOM, et l'importer demanderait un navigateur (voir
+    // l'en-tête de reponseTapee.test.mjs). Ce que l'on vérifie est la seule
+    // chose qui compte : le retour arrive AVANT `session.submit`, sans quoi la
+    // vie est perdue avant même qu'on explique pourquoi elle ne devrait pas
+    // l'être.
+    const src = readFileSync(new URL('../js/core/activities/litteralSaisie.js',
+        import.meta.url), 'utf8');
+    const iInacheve = src.indexOf('verdict.inacheve');
+    const iSubmit = src.indexOf('session.submit', src.indexOf('const valider'));
+    assert.ok(iInacheve > 0, 'litteralSaisie ne regarde plus `inacheve`');
+    assert.ok(iSubmit > 0, 'litteralSaisie ne soumet plus rien : test à revoir');
+    assert.ok(iInacheve < iSubmit,
+        'le test de `inacheve` passe APRÈS `session.submit` : la faute est '
+        + 'comptée avant d\'être démentie');
+    assert.match(src, /signalerInacheve/,
+        'le signalement de l\'inachevé a disparu');
+    assert.match(src, /ls-semblable/,
+        'le coloriage des termes semblables a disparu');
 });

@@ -8372,6 +8372,45 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .ls-champ--ok { border-color: var(--success, #16a34a); background: color-mix(in srgb, var(--success, #16a34a) 10%, var(--bg-panel)); }
 .ls-champ--ko { border-color: var(--danger, #dc2626); }
+/* PRESQUE : c'est juste, ce n'est pas fini. Ni le vert du succès ni le rouge
+   de la faute — la bordure ambre dit exactement l'état de la ligne, et c'est
+   un troisième état, pas une nuance de l'un des deux. Voir
+   `signalerInacheve` dans litteralSaisie.js. */
+.ls-champ--presque {
+    border-color: var(--warning, #f59e0b);
+    background: color-mix(in srgb, var(--warning, #f59e0b) 8%, var(--bg-panel));
+}
+/* CE QUI VA ENSEMBLE — demande de Rémy. Deux marques par groupe, la couleur
+   ET le soulignement : la couleur seule laisserait de côté les élèves qui ne
+   la distinguent pas, et ils sont un par classe ou deux. Les teintes sont
+   posées ici plutôt que prises aux variables de thème : `--primary` et
+   `--accent` changent d'un thème à l'autre et finissent voisines dans
+   certains, or ces trois-là ne valent QUE par leur écart entre elles. */
+:root {
+    --ls-sem-0: #b91c1c; --ls-sem-1: #1d4ed8; --ls-sem-2: #047857;
+}
+:root[data-theme="dark"] {
+    --ls-sem-0: #fca5a5; --ls-sem-1: #93c5fd; --ls-sem-2: #6ee7b7;
+}
+.ls-semblable {
+    border-radius: 4px;
+    text-decoration-line: underline;
+    text-decoration-thickness: .1em;
+    text-underline-offset: .12em;
+    padding-inline: .04em;
+}
+.ls-semblable[data-groupe="0"] {
+    color: var(--ls-sem-0); text-decoration-style: solid;
+    background: color-mix(in srgb, var(--ls-sem-0) 12%, transparent);
+}
+.ls-semblable[data-groupe="1"] {
+    color: var(--ls-sem-1); text-decoration-style: dashed;
+    background: color-mix(in srgb, var(--ls-sem-1) 12%, transparent);
+}
+.ls-semblable[data-groupe="2"] {
+    color: var(--ls-sem-2); text-decoration-style: dotted;
+    background: color-mix(in srgb, var(--ls-sem-2) 12%, transparent);
+}
 /* LE CURSEUR CLIGNOTE, et c'est lui qui dit « écris ici ». Un champ vide et
    muet se lit comme un affichage, pas comme une place à remplir. */
 .ls-curseur {

@@ -354,3 +354,84 @@ test('« SANS RIEN RÉDUIRE » REFUSE LA LIGNE D\'APRÈS', () => {
         assert.ok(vues > 0, `barreau ${barreau} : aucune étape « sans rien réduire »`);
     }
 });
+
+// ── COMMENCÉ N'EST PAS RATÉ ─────────────────────────────────────────────────
+//
+// Rémy, à propos du développement : « je propose cette réponse [x² + 2x + 5x +
+// 10], tu peux dire que c'est bon mais qu'il faut réduire ». La factorisation a
+// exactement le même cas : 2(x² − 9) est égal, c'est un produit, et il reste un
+// pas à faire. Le message le disait déjà — « ce n'est pas fini » — mais il
+// coûtait une vie, ce qui apprend à ne pas écrire la ligne du milieu.
+//
+// LA FRONTIÈRE EST CELLE-CI : a-t-on écrit un PRODUIT ? Recopier l'énoncé est
+// égal aussi, et ce n'est pas une factorisation entamée — c'est une question à
+// laquelle on n'a pas répondu. Elle doit rester une faute, sans quoi la
+// question ne peut plus jamais être ratée.
+
+/** L'énoncé de l'item, tel qu'il est écrit à l'élève. */
+const enonceDe = (it) => String(it.prompt.papier || '').replace(/^[^:]*:\s*/, '').trim();
+
+test('RECOPIER L\'ÉNONCÉ RESTE UNE FAUTE', () => {
+    let vus = 0;
+    for (const rang of Object.keys(B).map(Number)) {
+        for (let i = 0; i < 25; i++) {
+            const it = factorisationGenerator.generate({ barreau: String(rang) },
+                { rng: makeRng(`recopie_${rang}_${i}`) });
+            if (!it.verifieTexte) continue;
+            const enonce = enonceDe(it);
+            const v = it.verifieTexte(enonce);
+            assert.equal(v.juste, false, `[b${rang}] « ${enonce} » rendu tel quel est accepté`);
+            assert.ok(!v.inacheve,
+                `[b${rang}] « ${enonce} » rendu tel quel passe pour commencé : `
+                + 'la question ne peut plus être ratée');
+            vus += 1;
+            // Et la bonne réponse, elle, passe — sinon ce test se contenterait
+            // d'un juge qui refuse tout.
+            const bonne = it.verifieTexte(it.reponsePapier);
+            assert.equal(bonne.juste, true, `[b${rang}] « ${it.reponsePapier} » refusée`);
+            assert.ok(!bonne.inacheve, `[b${rang}] la réponse finale passe pour inachevée`);
+        }
+    }
+    assert.ok(vus > 100, `seulement ${vus} énoncés jugés : la mesure ne mesure rien`);
+});
+
+test('UN FACTEUR COMMUN SORTI, ET PAS PLUS, EST « PRESQUE »', () => {
+    // On fabrique la moitié de travail que Rémy décrit : le facteur numérique
+    // sorti devant, ce qui reste laissé en l'état. On ne le fabrique que quand
+    // l'énoncé s'y prête — c'est-à-dire quand il A un facteur commun entier.
+    let vus = 0;
+    for (const rang of Object.keys(B).map(Number)) {
+        for (let i = 0; i < 40; i++) {
+            const it = factorisationGenerator.generate({ barreau: String(rang) },
+                { rng: makeRng(`moitie_${rang}_${i}`) });
+            if (!it.verifieTexte) continue;
+            const p = P.lireSaisie(enonceDe(it), fx);
+            if (!p) continue;
+            const k = P.contenu(p);
+            if (Math.abs(k) < 2) continue;
+            const reste = P.versArbre(P.poly([...p].map(([clef, c]) => ({
+                coef: c / k, expos: P.POUR_ESSAI.exposDe(clef) }))), fx);
+            const moitie = `${k}(${fx.texte(reste)})`;
+            // COMBIEN DE FACTEURS DE CHAQUE CÔTÉ — par un autre chemin que
+            // celui du juge : on lit l'écriture, lui lit son verdict.
+            const facteurs = (t) => (String(t).match(/\(/g) || []).length;
+            const v = it.verifieTexte(moitie);
+            if (facteurs(moitie) >= facteurs(it.reponsePapier)) continue;
+            vus += 1;
+            // ON NE PASSE PAS À CÔTÉ D'UNE ACCEPTATION. La première version de
+            // ce test faisait `if (v.juste) continue` : elle sautait
+            // justement le défaut qu'elle devait voir — 95 questions sur 840
+            // acceptaient 8(2x² + 9x + 7) pour (4x + 9)² − 25, c'est-à-dire
+            // une expression DÉVELOPPÉE après avoir été factorisée.
+            assert.equal(v.juste, false,
+                `[b${rang}] « ${moitie} » est accepté, alors que la réponse `
+                + `« ${it.reponsePapier} » porte plus de facteurs`);
+            assert.equal(v.inacheve, true,
+                `[b${rang}] « ${moitie} » est compté FAUX : le facteur commun `
+                + 'est sorti, le travail est entamé');
+            assert.match(v.pourquoi, /pas fini/,
+                `[b${rang}] le message ne dit pas ce qui reste à faire`);
+        }
+    }
+    assert.ok(vus > 20, `seulement ${vus} moitiés de travail mesurées`);
+});
