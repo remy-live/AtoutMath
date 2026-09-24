@@ -42,6 +42,7 @@
 import { makeItem, finalizeChoices } from '../items.js';
 import * as fx from '../maths/formule.js';
 import * as P from '../maths/polynome.js';
+import { garnirEtapes } from '../maths/etapes.js';
 
 const M = '−';
 
@@ -78,6 +79,46 @@ function etiquette(t) {
 }
 
 const produitDeTermes = (a, b) => terme(a.c * b.c, a.deg + b.deg);
+
+/**
+ * Un facteur tel qu'on l'écrit DANS un produit : « x », « 3 », « (−7) ».
+ *
+ * LES PARENTHÈSES AUTOUR D'UN NÉGATIF NE SONT PAS UNE COQUETTERIE. « x × −7 »
+ * n'est pas une écriture : deux signes d'opération ne se suivent pas. Et
+ * c'est justement sur ces parenthèses que se joue la leçon des barreaux 7, 8
+ * et 4 — (−4) × (−7) et non −4 × −7.
+ */
+const facteurEcrit = (t) => (t.c < 0 ? `(${etiquette(t).replace(M + ' ', M)})`
+    : etiquette(t));
+
+/**
+ * LES PRODUITS, ÉCRITS ET PAS ENCORE CALCULÉS.
+ *
+ * RÉMY : « on peut proposer une ligne pour pouvoir le taper. »
+ *
+ * C'est LA ligne du chapitre, celle que les flèches dessinent : chaque terme
+ * du premier facteur multiplie chaque terme du second, et on l'écrit AVANT de
+ * calculer quoi que ce soit. L'élève qui saute cette ligne est celui qui
+ * oublie les deux produits du milieu — la faute reine du double
+ * développement.
+ */
+const produitsEcrits = (gauche, droite) => gauche.flatMap(
+    g => droite.map(d => `${facteurEcrit(g)}×${facteurEcrit(d)}`)).join(' + ');
+
+/**
+ * Une somme écrite à plat : « x² − 7x − 4x + 28 ».
+ *
+ * Le premier terme garde son signe collé, les suivants le laissent à
+ * l'opérateur — c'est la règle d'écriture d'une somme, et c'est elle qui
+ * distingue « −4x » d'un « − 4x » qui n'aurait pas de terme devant.
+ */
+const sommeEcrite = (termes) => termes.map((t, i) => (i === 0
+    ? etiquette(t).replace(M + ' ', M)
+    : ` ${t.c < 0 ? M : '+'} ${etiquette(t).replace(M + ' ', '')}`)).join('');
+
+/** Tous les produits d'un développement, calculés mais PAS encore réunis. */
+const produitsCalcules = (...paires) => sommeEcrite(
+    paires.flatMap(([g, d]) => g.flatMap(a => d.map(b2 => produitDeTermes(a, b2)))));
 
 /**
  * UN NOMBRE SIGNÉ, EN ARBRE.
@@ -127,6 +168,112 @@ const echapper = (s) => String(s)
  * DIMINUÉE d'un bout de largeur 2. C'est ainsi qu'on l'explique au tableau, et
  * c'est ce qui rend le signe du résultat évident.
  */
+/**
+ * LES FLÈCHES DE LA DISTRIBUTIVITÉ : qui multiplie qui.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, après avoir fait retirer les rectangles à longueurs négatives : « je
+ * le veux bien en indice au départ ».
+ *
+ * C'EST L'AUTRE SUPPORT, ET IL RÉPOND À UNE AUTRE QUESTION. Le rectangle dit
+ * POURQUOI la distributivité marche — l'aire totale est la somme des aires.
+ * Il ne peut le dire que si toutes les longueurs sont positives, sans quoi il
+ * ment (voir `longueursPositives`). Les flèches, elles, ne prétendent à aucune
+ * géométrie : elles disent QUELS produits il faut faire, et cela reste vrai
+ * quel que soit le signe. C'est le dessin de tous les manuels, et c'est
+ * précisément celui qui manquait là où le rectangle a disparu.
+ *
+ * ELLES NE PORTENT AUCUN PRODUIT, et c'est la règle des deux dessins du
+ * projet : un dessin d'indice qui écrirait « x × 3 » au-dessus de sa flèche
+ * ferait le calcul à la place de l'élève. Les flèches montrent les APPARIEMENTS
+ * — ce qu'il faut multiplier —, pas les résultats.
+ *
+ * LES ARCS PASSENT AU-DESSUS ET AU-DESSOUS, deux et deux : quatre arcs du même
+ * côté se chevauchent et l'on ne sait plus lequel part d'où. Le premier terme
+ * envoie ses deux flèches par le haut, le second par le bas — c'est la
+ * disposition du tableau, et elle se lit sans légende.
+ *
+ * @param {Array} gauche  les termes du premier facteur
+ * @param {Array} droite  ceux du second
+ */
+function flechesSvg(gauche, droite) {
+    // ── LA MISE EN PAGE, SANS MESURER LE TEXTE ──────────────────────────
+    //
+    // Un SVG ne sait pas ce que mesurera son texte avant d'être dans la page.
+    // On ne cherche donc pas à le mesurer : on RÉSERVE à chaque étiquette une
+    // largeur proportionnelle au nombre de signes qu'elle porte, avec une
+    // largeur de signe convenue. Les étiquettes sont courtes et connues —
+    // « x », « 2x », « − 5 » —, l'écart reste petit, et le texte est centré
+    // dans sa case, donc un écart ne décale rien.
+    const LARG = 9.2, MARGE = 10, H = 116, MILIEU = 62;
+    const mots = [];
+    const pousser = (t, cls) => {
+        const txt = typeof t === 'string' ? t : etiquette(t);
+        mots.push({ txt, cls, large: Math.max(12, txt.length * LARG) });
+        return mots.length - 1;
+    };
+
+    /**
+     * « ( a + b ) », chaque morceau dans sa case. Rend l'index des TERMES,
+     * qui sont les seuls que les flèches relient.
+     *
+     * LE PREMIER TERME GARDE SON SIGNE, les suivants le laissent à la
+     * ponctuation. C'est la règle d'écriture d'une somme — « −3x + 5 », et
+     * non « − 3x + 5 » —, et l'avoir oubliée coûtait le signe du facteur :
+     * le barreau 4, dont l'énoncé est −3(x + 5), s'affichait « (3)(x + 5) ».
+     * Vu à l'écran ; la mesure des débordements, elle, ne pouvait rien en
+     * dire.
+     *
+     * ET UN TERME SEUL N'A PAS DE PARENTHÈSES. « 3(x + 2) » est ce qu'on
+     * écrit ; « (3)(x + 2) » est juste et ne s'écrit nulle part.
+     */
+    const groupe = (termes) => {
+        const idx = [];
+        const seul = termes.length === 1;
+        if (!seul) pousser('(', 'dv-fl-signe');
+        termes.forEach((t, i) => {
+            if (i) pousser(t.c < 0 ? M : '+', 'dv-fl-signe');
+            const lu = etiquette(t);
+            idx.push(pousser(i === 0 ? lu.replace(M + ' ', M) : lu.replace(M + ' ', ''),
+                'dv-fl-terme'));
+        });
+        if (!seul) pousser(')', 'dv-fl-signe');
+        return idx;
+    };
+    const iG = groupe(gauche);
+    const iD = groupe(droite);
+
+    const total = mots.reduce((s2, m2) => s2 + m2.large, 0) + 2 * MARGE;
+    let x = MARGE;
+    for (const m2 of mots) { m2.x = x + m2.large / 2; x += m2.large; }
+
+    const texte = mots.map(m2 => `<text x="${m2.x.toFixed(1)}" y="${MILIEU + 7}"
+        class="${m2.cls}">${echapper(m2.txt)}</text>`).join('');
+
+    // Les arcs : le premier terme de gauche par le haut, le second par le bas.
+    const arc = (a, b, haut) => {
+        const x1 = mots[a].x, x2 = mots[b].x;
+        const y = haut ? MILIEU - 14 : MILIEU + 16;
+        const sommet = haut ? Math.max(8, y - 16 - Math.abs(x2 - x1) * 0.12)
+            : Math.min(H - 8, y + 16 + Math.abs(x2 - x1) * 0.12);
+        return `<path d="M${x1.toFixed(1)} ${y} Q${((x1 + x2) / 2).toFixed(1)} `
+            + `${sommet.toFixed(1)} ${x2.toFixed(1)} ${y}"
+            class="dv-fleche" marker-end="url(#dv-pointe)"/>`;
+    };
+    const arcs = [];
+    iG.forEach((g, i) => iD.forEach(d => arcs.push(arc(g, d, i === 0))));
+
+    return `<div class="dv-figure"><svg viewBox="0 0 ${total.toFixed(0)} ${H}"
+        role="img" aria-label="Chaque terme de la première parenthèse multiplie chaque
+        terme de la seconde." class="dv-svg dv-svg--fleches">
+        <defs><marker id="dv-pointe" viewBox="0 0 8 8" refX="6" refY="4"
+            markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M0 0 L8 4 L0 8 z" class="dv-pointe"/></marker></defs>
+        ${arcs.join('')}${texte}
+    </svg></div>`;
+}
+
 function rectangleSvg(k, termes, resolu) {
     const H = 66, MG = 34, MH = 26, L = 250;
     const total = termes.reduce((s, t) => s + poids(t), 0);
@@ -250,7 +397,7 @@ function boiteSvg(gauche, droite, resolu) {
  *
  * Ce n'est donc pas « un dessin moins joli » : c'est un dessin qui ment. On ne
  * le pose que là où il dit vrai — les barreaux 1, 6 et 10, où tout est
- * positif. Ailleurs, la leçon reste dans `etapes`, en mots.
+ * positif. Ailleurs, la leçon reste dans `explique`, en mots.
  */
 const longueursPositives = (...listes) =>
     listes.every(l => l.every(t => t.c > 0));
@@ -275,7 +422,22 @@ function simple(rng, { kNeg = false, coefX = false, moins = false } = {}) {
         // découpé en un morceau de largeur négative, ne traduit plus le
         // calcul — il le contredit.
         figure: (resolu) => (longueursPositives([terme(k, 0)], dedans)
-            ? rectangleSvg(k, dedans, resolu) : '')
+            ? rectangleSvg(k, dedans, resolu) : ''),
+        // LES FLÈCHES, ELLES, VALENT TOUJOURS — voir `flechesSvg`. Le facteur
+        // seul se met dans une « parenthèse » d'un seul terme : l'image reste
+        // la même, deux arcs au lieu de quatre.
+        fleches: () => flechesSvg([terme(k, 0)], dedans),
+        // LA CHAÎNE — voir `produitsEcrits`. Deux lignes suffisent ici : on
+        // écrit les deux produits, puis on les calcule. Une troisième ligne
+        // « on réunit » n'aurait rien à réunir.
+        etapes: [
+            { titre: 'Les produits, sans les calculer',
+                montrer: produitsEcrits([terme(k, 0)], dedans),
+                sansReduire: true, parentheses: true, multiplication: true,
+                aide: `${facteurEcrit(terme(k, 0))} multiplie CHAQUE terme de la `
+                    + 'parenthèse : une flèche, un produit.' }
+        ],
+        titreFinal: 'On calcule chaque produit'
     };
 }
 
@@ -289,10 +451,14 @@ function barreauSimple(rng, opts, nom) {
         poly: vrai,
         structure: q.figure(false),
         visuel: q.figure(true),
+        fleches: q.fleches(),
+        // La chaîne est écrite dans `simple`, où sont k et les termes.
+        etapes: q.etapes,
+        titreFinal: q.titreFinal,
         // L'EXPLICATION NE PARLE D'UN RECTANGLE QUE S'IL Y EN A UN. Décrire
         // une aire sous un énoncé sans dessin renverrait l'élève à une image
         // qu'il n'a pas — et ce serait l'image fausse, justement retirée.
-        etapes: longueursPositives([terme(k, 0)], dedans)
+        explique: longueursPositives([terme(k, 0)], dedans)
             ? `Le rectangle a pour hauteur ${k} et se découpe en deux morceaux. `
                 + `Le premier vaut ${etiquette(terme(kx, 1))}, le second `
                 + `${etiquette(terme(kb, 0))} : l'aire totale est leur somme.`
@@ -362,7 +528,22 @@ function barreauDeux(rng) {
             ? a.figure(false) + b.figure(false) : '',
         visuel: (a.figure(true) && b.figure(true))
             ? a.figure(true) + b.figure(true) : '',
-        etapes: (a.figure(true) && b.figure(true))
+        fleches: a.fleches() + b.fleches(),
+        etapes: [
+            { titre: 'Les quatre produits, sans les calculer',
+                montrer: `${produitsEcrits([terme(a.k, 0)], a.dedans)} + `
+                    + `${produitsEcrits([terme(b.k, 0)], b.dedans)}`,
+                sansReduire: true, parentheses: true, multiplication: true,
+                aide: 'On ouvre CHAQUE parenthèse : deux produits pour la première, '
+                    + 'deux pour la seconde.' },
+            { titre: 'On calcule chaque produit',
+                montrer: produitsCalcules([[terme(a.k, 0)], a.dedans],
+                    [[terme(b.k, 0)], b.dedans]),
+                sansReduire: true, parentheses: true,
+                aide: 'Quatre morceaux, et on ne les réunit pas encore.' }
+        ],
+        titreFinal: 'On réunit : les x avec les x, les nombres avec les nombres',
+        explique: (a.figure(true) && b.figure(true))
             ? `On ouvre CHAQUE parenthèse — c'est deux rectangles — puis on réunit ce `
                 + `qui va ensemble : les x avec les x, les nombres avec les nombres.`
             : `On ouvre CHAQUE parenthèse séparément, puis on réunit ce qui va `
@@ -418,7 +599,31 @@ function barreauDouble(rng, { signeD = 1, signeB = 1, coefs = false,
             ? boiteSvg(gauche, droite, false) : '',
         visuel: longueursPositives(gauche, droite)
             ? boiteSvg(gauche, droite, true) : '',
-        etapes: !longueursPositives(gauche, droite)
+        fleches: flechesSvg(gauche, droite),
+        // LA CHAÎNE. Au carré, une ligne de plus en tête : (x + 4)² est le
+        // produit de la parenthèse PAR ELLE-MÊME, et c'est en ne l'écrivant
+        // pas qu'on répond x² + 16.
+        etapes: [
+            ...(carre ? [{ titre: 'Un carré, c\'est le produit par lui-même',
+                montrer: `(${sommeEcrite(gauche)})(${sommeEcrite(droite)})`,
+                // Voir `formeProduit` dans maths/etapes.js : ce qu'on demande
+                // ici n'est pas « plus long », c'est un PRODUIT.
+                formeProduit: true, parentheses: true,
+                aide: 'On l\'écrit deux fois : c\'est ce qui fait apparaître les '
+                    + 'QUATRE produits, dont les deux du milieu.' }] : []),
+            { titre: 'Les quatre produits, sans les calculer',
+                montrer: produitsEcrits(gauche, droite),
+                sansReduire: true, parentheses: true, multiplication: true,
+                aide: 'Chaque terme de la première parenthèse multiplie chaque terme '
+                    + 'de la seconde : quatre flèches, quatre produits.' },
+            { titre: 'On calcule chaque produit',
+                montrer: produitsCalcules([gauche, droite]),
+                sansReduire: true, parentheses: true,
+                aide: 'Le signe de chaque produit est celui du produit de ses deux '
+                    + 'facteurs. On ne réunit pas encore.' }
+        ],
+        titreFinal: 'On réunit les termes qui portent le même x',
+        explique: !longueursPositives(gauche, droite)
             // SANS DESSIN, ON DÉCRIT LE CALCUL, PAS L'IMAGE. Voir
             // `longueursPositives` : ici le rectangle mentirait, donc il n'y
             // en a pas, et l'expliquer par des cases renverrait à une image
@@ -534,6 +739,22 @@ export const developpementGenerator = {
                 { value: 'double', label: 'Révision — la double distributivité' },
                 { value: 'toutes', label: 'Tout mélangé' }
             ]
+        },
+        {
+            id: 'etapes', type: 'select', label: 'Pas à pas', default: 'non',
+            // PAS SUR LA FICHE PAPIER : le découpage est une affaire d'écran.
+            // Sur une feuille, la question et son corrigé sont les mêmes avec
+            // ou sans lignes intermédiaires, et un bouton qui ne change rien à
+            // la feuille est pire qu'un bouton absent — voir
+            // `ficheReglages.test.mjs`, qui l'a dit avant moi sur la
+            // factorisation.
+            papier: false,
+            aide: 'La question s\'écrit ligne à ligne : les produits, puis on les '
+                + 'calcule, puis on réunit. Seule la dernière ligne est notée.',
+            options: [
+                { value: 'non', label: 'Non — la réponse d\'un coup' },
+                { value: 'oui', label: 'Oui — une ligne à la fois' }
+            ]
         }
     ],
     generate(params, ctx) {
@@ -542,6 +763,7 @@ export const developpementGenerator = {
         const possibles = choix === 'toutes' ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
             : (choix === 'simple' ? [1, 2, 3, 4, 5]
                 : (choix === 'double' ? [6, 7, 8, 9, 10, 11] : [Number(choix) || 1]));
+        const pasAPas = String(params.etapes || 'non') === 'oui';
         const tire = possibles[rng.int(0, possibles.length - 1)];
         const rang = BARREAUX[tire] ? tire : 1;
         const q = BARREAUX[rang].faire(rng);
@@ -663,13 +885,23 @@ export const developpementGenerator = {
             choices,
             hints: [
                 rang <= 5
-                    ? 'Le facteur multiplie CHAQUE terme de la parenthèse — le rectangle a '
-                        + 'autant de morceaux qu'.concat('il y a de termes.')
-                    : 'Quatre morceaux, donc quatre produits. Les deux du milieu portent '
-                        + 'le même x et se réunissent.',
-                q.etapes
+                    ? 'Le facteur multiplie CHAQUE terme de la parenthèse : une flèche '
+                        + 'par produit à faire.'
+                    : 'Chaque terme de la première parenthèse multiplie chaque terme de '
+                        + 'la seconde : quatre flèches, donc quatre produits.',
+                q.explique
             ],
-            schemas: ['', q.visuel],
+            // LES FLÈCHES SONT LE PREMIER INDICE — Rémy : « je le veux bien en
+            // indice au départ ».
+            //
+            // Elles ne résolvent rien : elles montrent les APPARIEMENTS, ce
+            // qu'il faut multiplier. C'est l'aide qui vient d'abord, et la
+            // seule qui vaille quand un terme est négatif — le rectangle, lui,
+            // a été retiré de ces questions-là parce qu'il y ment (voir
+            // `longueursPositives`). Là où il subsiste, il reste le SECOND
+            // indice, avec ses aires écrites : il donne alors la réponse, et
+            // c'est sa place.
+            schemas: [q.fleches, q.visuel],
             // ON PEUT TAPER LA RÉPONSE, et c'est une demande de Rémy : « on ne
             // peut jamais taper la réponse, c'est toujours un QCM, quel
             // dommage ». `composable: 'litteral'` ouvre la route du clavier
@@ -712,12 +944,35 @@ export const developpementGenerator = {
                 }
                 return { juste: true };
             },
-            explanation: `${enonceTexte} = ${repTexte}. ${q.etapes}`,
+            explanation: `${enonceTexte} = ${repTexte}. ${q.explique}`,
             difficulty: Math.min(5, 1 + Math.floor(rang / 2.5)),
             meta: { barreau: rang, nomDuBarreau: q.nom,
                 // Le clavier littéral : x et x², pas de parenthèses — une
                 // expression développée n'en a jamais.
-                composable: 'litteral', lettre: 'x', degreMax: 2 }
+                composable: 'litteral', lettre: 'x', degreMax: 2,
+                // ── LE PAS À PAS ────────────────────────────────────────
+                //
+                // RÉMY : « on peut proposer une ligne pour pouvoir le taper. »
+                //
+                // C'est la ligne que les flèches dessinent : les produits
+                // ÉCRITS avant d'être calculés. L'élève qui la saute est
+                // celui qui oublie les deux produits du milieu — la faute
+                // reine du double développement.
+                //
+                // `saisieSeule` fait prendre la main au clavier dès la
+                // première question, pour la même raison qu'en
+                // factorisation : le découpage sert à celui qui bloque, et
+                // l'échelle d'aide n'ouvre le clavier qu'à celui qui réussit
+                // déjà.
+                //
+                // Et le pavé change AVEC la question : ces lignes-là ont
+                // besoin du signe × et des parenthèses, que la réponse
+                // réduite n'a jamais.
+                ...(pasAPas && q.etapes
+                    ? { saisieSeule: true, etapes: garnirEtapes(q.etapes),
+                        titreFinal: q.titreFinal || '',
+                        parentheses: true, multiplication: true }
+                    : {}) }
         });
     }
 };

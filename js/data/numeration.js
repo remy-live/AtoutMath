@@ -867,6 +867,43 @@ export const numerationExercises = [
             + "compris. Quatre morceaux à chaque fois : celui qui n'en compte que deux "
             + "se trompe toujours au même endroit."
     },
+    // ── DÉVELOPPER PAS À PAS ────────────────────────────────────────────────
+    //
+    // RÉMY : « on peut proposer une ligne pour pouvoir le taper. »
+    //
+    // C'est la ligne que les flèches dessinent : les produits ÉCRITS avant
+    // d'être calculés. Celui qui la saute est celui qui oublie les deux
+    // produits du milieu, et un « faux » sur la réponse entière ne dit pas
+    // lequel des quatre a manqué.
+    //
+    // DEUX EXERCICES, PAS ONZE. La factorisation en a quatre parce que ses
+    // barreaux demandent des gestes différents ; ici la méthode est la même
+    // d'un bout à l'autre — on écrit les produits, on les calcule, on réunit.
+    // Un pas à pas pour la distributivité simple, un pour la double, et le
+    // réglage « Pas à pas » reste disponible sur les onze barreaux pour qui
+    // veut le poser ailleurs.
+    ...[
+        ['dev-simple-pas', 'simple', 'Développer pas à pas : la distributivité simple',
+            "Les mêmes questions que la révision simple, écrites ligne à ligne : les "
+            + "produits d'abord, sans les calculer, puis on calcule. C'est la ligne du "
+            + "milieu qui manque à ceux qui n'ouvrent la parenthèse qu'à moitié."],
+        ['dev-double-pas', 'double', 'Développer pas à pas : la double distributivité',
+            "Quatre produits, écrits avant d'être calculés, puis réunis. Celui qui "
+            + "oublie les deux du milieu le voit à la ligne où il n'en écrit que deux."]
+    ].map(([id, barreau, titre, instruction]) => ({
+        id,
+        cree: '2026-09-24',
+        title: titre,
+        consignePapier: 'Développer et réduire les expressions suivantes.',
+        colonnesPapier: 2,
+        generatorId: 'lit.developpement', activityId: 'buttons',
+        params: { barreau, etapes: 'oui' },
+        motsClefs: ['développer', 'pas à pas', 'étapes', 'étape', 'détaillé', 'méthode',
+            'distributivité', 'double distributivité', 'parenthèse', 'calcul littéral'],
+        tags: { chemin: [D, LITT],
+            niveaux: barreau === 'simple' ? [QUATRIEME, TROISIEME] : [TROISIEME, SECONDE] },
+        instruction
+    })),
     {
         // TROIS TEMPS, ET L'ORDRE EST LE SUJET. « ×10, on ajoute un zéro » est
         // une règle qui marche pour les entiers et casse dès la première

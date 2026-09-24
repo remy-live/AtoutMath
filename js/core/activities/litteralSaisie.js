@@ -143,6 +143,13 @@ export function mount(container, session, opts = {}) {
             [
                 { t: '+', cls: 'ls-t--signe' },
                 { t: '−', cls: 'ls-t--signe', dit: 'Moins' },
+                // LE SIGNE × N'APPARAÎT QUE SI UNE LIGNE PEUT EN VOULOIR.
+                // Même règle que le cube et les parenthèses : une touche
+                // offerte est une touche qu'on croit utile. Seul le pas à pas
+                // du développement en a besoin — « x×x + x×(−7) + … » —, et
+                // une réponse réduite n'en porte jamais.
+                ...(m.multiplication
+                    ? [{ t: '×', cls: 'ls-t--signe', dit: 'Multiplié par' }] : []),
                 // LES PARENTHÈSES N'APPARAISSENT QUE SI LA RÉPONSE PEUT EN
                 // VOULOIR. Même règle que pour la touche x³ : offrir une
                 // touche dont on sait qu'elle donnera une réponse fausse,

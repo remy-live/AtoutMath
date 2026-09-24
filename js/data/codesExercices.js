@@ -236,6 +236,8 @@ export const CODES_EXERCICES = {
     'fac-4-pas':                  'EF',   // Étapes : deux parenthèses au carré
     'fac-6-pas':                  'EH',   // Étapes : facteur commun caché
     'fac-7-pas':                  'EJ',   // Étapes : trois termes
+    'dev-simple-pas':             'EK',   // Étapes : distributivité simple
+    'dev-double-pas':             'EP',   // Étapes : double distributivité
     'fac-revision':               'FR',   // Les quatre premiers barreaux
     'cf-1':                       'GB',   // Deux fractions, dénominateur multiple
     'cf-2':                       'GD',   // Dénominateurs quelconques

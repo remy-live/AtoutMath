@@ -1232,6 +1232,34 @@ body.mobile-view #toast-container {
     text-anchor: middle;
 }
 
+/* LES FLÈCHES DE LA DISTRIBUTIVITÉ — Rémy : « je le veux bien en indice au
+   départ ».
+
+   Elles répondent à une autre question que le rectangle. Le rectangle dit
+   POURQUOI la distributivité marche, et il ne peut le dire que si toutes les
+   longueurs sont positives. Les flèches disent QUELS produits il faut faire,
+   ce qui reste vrai quel que soit le signe — et c'est le dessin qui manquait
+   là où le rectangle a été retiré.
+
+   ELLES NE PORTENT AUCUN PRODUIT : un arc surmonté de « x × 3 » ferait le
+   calcul à la place de l'élève. Les arcs montrent les appariements, pas les
+   résultats. */
+.dv-svg--fleches { max-width: 23rem; }
+.dv-fl-terme {
+    fill: currentColor; font-size: 20px; font-weight: 800; text-anchor: middle;
+}
+/* Les signes et les parenthèses sont la PONCTUATION de l'expression : ils se
+   lisent, ils ne se pointent pas. En retrait, ils laissent les quatre termes
+   ressortir — ce sont eux que les flèches relient. */
+.dv-fl-signe {
+    fill: currentColor; font-size: 20px; font-weight: 600; text-anchor: middle;
+    opacity: .5;
+}
+.dv-fleche {
+    fill: none; stroke: var(--primary); stroke-width: 2; stroke-linecap: round;
+}
+.dv-pointe { fill: var(--primary); stroke: none; }
+
 @media (max-width: 480px) {
     .dv-expression { font-size: 1.3rem; }
     .dv-svg { max-width: 100%; }

@@ -27,6 +27,8 @@ import { makeRng } from '../js/core/ids.js';
 import { developpementGenerator as G, POUR_ESSAI } from '../js/core/generators/developpement.js';
 import { SKILLS } from '../js/data/skills.js';
 import { exercices } from '../js/data/catalog.js';
+import * as fx from '../js/core/maths/formule.js';
+import * as P from '../js/core/maths/polynome.js';
 
 const BARREAUX = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
@@ -277,9 +279,9 @@ test('les deux compétences existent, et leurs prérequis aussi', () => {
         'la double distributivité devrait exiger la simple');
 });
 
-test('les treize exercices sont au catalogue, et montent dans l\'ordre', () => {
+test('les exercices sont au catalogue, et montent dans l\'ordre', () => {
     const miens = exercices.filter(e => e.generatorId === 'lit.developpement');
-    assert.equal(miens.length, 13, 'onze barreaux et deux révisions');
+    assert.equal(miens.length, 15, 'onze barreaux, deux révisions, deux pas à pas');
     for (let r = 1; r <= 11; r++) {
         const e = miens.find(x => x.id === `dev-${r}`);
         assert.ok(e, `barreau ${r} absent du catalogue`);
@@ -309,4 +311,82 @@ test('le schéma garde les rapports de grandeur : x est le plus large', () => {
     // …et les rapports restent lisibles : pas de filet illisible à côté d'un x.
     assert.ok(larg[0] / larg[1] < 3,
         `rapport de ${(larg[0] / larg[1]).toFixed(1)} : la constante devient un filet`);
+});
+
+test('LE PAS À PAS DU DÉVELOPPEMENT — une ligne pour chaque geste', () => {
+    // RÉMY : « on peut proposer une ligne pour pouvoir le taper. »
+    //
+    // C'est la ligne que les flèches dessinent : les produits ÉCRITS avant
+    // d'être calculés. Celui qui la saute est celui qui oublie les deux
+    // produits du milieu, et un « faux » sur la réponse entière ne dit pas
+    // lequel des quatre a manqué.
+    const pas = exercices.filter(e => /^dev-\w+-pas$/.test(e.id));
+    assert.equal(pas.length, 2, 'un pas à pas simple, un double');
+    pas.forEach(e => assert.equal(e.params.etapes, 'oui',
+        `${e.id} : le pas à pas n'est pas activé`));
+
+    for (const b of BARREAUX) {
+        for (let i = 0; i < 40; i++) {
+            const it = G.generate({ barreau: String(b), etapes: 'oui' },
+                { rng: makeRng(`pp_${b}_${i}`) });
+            assert.ok(it.meta.etapes && it.meta.etapes.length >= 1,
+                `[b${b}] pas d'étapes alors qu'on les demande`);
+            assert.equal(it.meta.saisieSeule, true, `[b${b}] le clavier ne prend pas la main`);
+            assert.ok(it.meta.titreFinal, `[b${b}] la dernière ligne n'a pas de nom`);
+            // LA CHAÎNE EST UNE CHAÎNE : chaque ligne vaut l'énoncé. Si une
+            // seule ne le valait pas, on écrirait une suite d'égalités
+            // fausses, ce qui est pire qu'une liste.
+            const depart = P.lireSaisie(it.prompt.papier
+                .replace('Développer et réduire : ', ''), fx);
+            for (const e of it.meta.etapes) {
+                const ligne = P.lireSaisie(e.montrer, fx);
+                assert.ok(ligne, `[b${b}] « ${e.montrer} » illisible`);
+                assert.ok(P.egaux(ligne, depart),
+                    `[b${b}] « ${e.montrer} » ne vaut pas « ${it.prompt.papier} »`);
+                assert.ok(e.verifie(e.montrer.replace(/\s+/g, '')).juste,
+                    `[b${b}] « ${e.montrer} » refusée à sa propre étape`);
+                // ET LA LIGNE D'APRÈS NE PASSE PAS À SA PLACE : les deux sont
+                // ÉGALES, donc le juge des polynômes l'accepterait, et
+                // l'étape serait sautable — c'est-à-dire inexistante.
+                const v = e.verifie(it.reponsePapier.replace(/\s+/g, ''));
+                assert.ok(v && !v.juste,
+                    `[b${b}] la réponse réduite passe à l'étape « ${e.titre} »`);
+            }
+        }
+    }
+});
+
+test('le pas à pas se tape : × et parenthèses sont au pavé quand il en faut', () => {
+    // Le pavé se construit d'après `item.meta`. Une ligne qui demande un
+    // signe que le pavé n'offre pas est intapable — c'est arrivé une fois, sur
+    // le « ² » du barreau 3 de la factorisation, et personne ne l'a vu parce
+    // que les tests ne regardaient que la réponse finale.
+    const signes = (item) => {
+        const t = [item.meta.lettre || 'x', '²'];
+        if ((item.meta.degreMax || 2) >= 3) t.push('³');
+        t.push('+', '−');
+        if (item.meta.multiplication) t.push('×');
+        if (item.meta.parentheses) t.push('(', ')');
+        return t.concat('0123456789'.split(''));
+    };
+    for (const b of BARREAUX) {
+        for (let i = 0; i < 40; i++) {
+            const it = G.generate({ barreau: String(b), etapes: 'oui' },
+                { rng: makeRng(`pv_${b}_${i}`) });
+            const touches = signes(it).sort((x, y) => y.length - x.length);
+            for (const e of [...it.meta.etapes, { montrer: it.reponsePapier }]) {
+                let reste = String(e.montrer).replace(/\s+/g, '');
+                const manque = new Set();
+                while (reste) {
+                    const k = touches.find(x => reste.startsWith(x));
+                    if (k) { reste = reste.slice(k.length); continue; }
+                    manque.add(reste[0]);
+                    reste = reste.slice(1);
+                }
+                assert.deepEqual([...manque], [],
+                    `[b${b}] « ${e.montrer} » demande ${[...manque].join(' ')}, `
+                    + 'que le pavé n\'a pas');
+            }
+        }
+    }
 });
