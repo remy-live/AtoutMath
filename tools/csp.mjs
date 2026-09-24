@@ -86,6 +86,25 @@ export function fabriquerCsp(lireFichier = (f) => readFileSync(join(RACINE, f), 
         "connect-src 'self'",
         // `blob:` : les fiches imprimées s'ouvrent dans un cadre.
         "frame-src 'self' blob:",
+        // `worker-src` — ET IL MANQUAIT, ce qui aurait cassé les confettis en
+        // silence le jour du passage en vigueur.
+        //
+        // MESURÉ en posant la CSP STRICTE dans le navigateur et en jouant sous
+        // elle (voir `tools/tmp/cspEssai.mjs`) : une violation, une seule, et
+        // elle n'arrive qu'au moment le plus visible —
+        //
+        //   Refused to create a worker from 'blob:…'   ← confetti.browser.js
+        //
+        // La bibliothèque de confettis fabrique son animation dans un Worker
+        // engendré depuis un blob, et un « sans faute » n'aurait plus rien
+        // affiché du tout, sans le moindre message. C'est très exactement ce
+        // que le mode « rapport » sert à trouver, et c'est la raison pour
+        // laquelle on ne bascule pas sans avoir regardé.
+        //
+        // CE N'EST PAS UN AFFAIBLISSEMENT : un worker `blob:` ne peut être
+        // créé que par du script déjà en train de tourner sur l'origine, que
+        // `script-src` gouverne déjà. On n'ouvre donc aucune porte de plus.
+        "worker-src 'self' blob:",
         // PERSONNE N'ENFERME CE SITE DANS UNE IFRAME. C'est ce qui empêche
         // qu'on habille l'espace professeur d'une fausse page pour lui faire
         // cliquer ce qu'il ne veut pas.
@@ -105,22 +124,30 @@ function blocHtaccess(csp) {
     return [
         MARQUE_DEBUT,
         '#',
-        '# EN MODE « RAPPORT » D\'ABORD, ET C\'EST VOULU. `Report-Only` n\'empêche',
-        '# RIEN : le navigateur applique la page normalement et se contente de',
-        '# signaler dans la console ce qu\'il AURAIT bloqué. Une CSP trop serrée',
-        '# ne prévient pas l\'utilisateur — la page se charge, un bout ne marche',
-        '# plus, aucun message — et on le découvre devant la classe.',
+        '# EN VIGUEUR, ET PLUS EN MODE « RAPPORT ».',
         '#',
-        '# LA MARCHE À SUIVRE : laisser cette ligne une semaine d\'usage réel,',
-        '# ouvrir la console du navigateur de temps en temps, et ne passer à',
-        '# `Content-Security-Policy` (sans `-Report-Only`) que si rien n\'est',
-        '# signalé. Le passage est le retrait de deux mots sur cette ligne.',
+        '# `Report-Only` n\'empêche rien : le navigateur applique la page et se',
+        '# contente de signaler ce qu\'il AURAIT bloqué. C\'était le bon premier',
+        '# temps — une CSP trop serrée ne prévient pas l\'utilisateur : la page',
+        '# se charge, un bout ne marche plus, aucun message, et on le découvre',
+        '# devant la classe.',
+        '#',
+        '# ON N\'A PAS ATTENDU UNE SEMAINE : ON A MESURÉ. Plutôt que de guetter',
+        '# une console pendant des jours, on pose la CSP STRICTE dans un vrai',
+        '# navigateur et l\'on se sert de l\'application dessous — démarrage,',
+        '# entrée du professeur, espace classes, quatre exercices joués jusqu\'au',
+        '# pavé, réglages et aperçu, impression. Une violation est sortie, et',
+        '# une seule : `worker-src ← blob:`, les confettis. Elle est corrigée',
+        '# dans la politique, pas contournée. Depuis : zéro.',
+        '#',
+        '# SI QUELQUE CHOSE CASSE MALGRÉ TOUT, le retour arrière tient en deux',
+        '# mots : rajouter `-Report-Only` à la ligne ci-dessous.',
         '#',
         '# LES EMPREINTES SONT CALCULÉES : `node tools/csp.mjs --ecrire`. Elles',
         '# changent dès qu\'on touche à un script écrit dans `index.html`, et un',
         '# test (`tests/csp.test.mjs`) tombe quand elles ont dérivé.',
         '<IfModule mod_headers.c>',
-        `    Header always set Content-Security-Policy-Report-Only "${csp}"`,
+        `    Header always set Content-Security-Policy "${csp}"`,
         '    # DEUX EN-TÊTES DE PLUS, sans rapport avec la CSP mais du même',
         '    # ménage : ne pas deviner le type d\'un fichier (une image qui',
         '    # serait lue comme du script), et ne pas envoyer l\'adresse',

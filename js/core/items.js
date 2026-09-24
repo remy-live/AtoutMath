@@ -83,6 +83,24 @@ export function makeItem(spec) {
         // accompagne `hints[i]`. Les entrées vides sont la règle : un indice
         // qui n'a rien à montrer n'en a pas besoin.
         schemas: spec.schemas || [],
+        /**
+         * COMMENT ON JUGE UNE RÉPONSE TAPÉE, quand la comparer au texte attendu
+         * ne suffit pas.
+         *
+         * Rémy : « on ne peut jamais taper la réponse, c'est toujours un QCM,
+         * quel dommage ». Le clavier existait pourtant — mais `choice.js` n'y
+         * passait que si la réponse était un NOMBRE. Pour une expression, il
+         * n'y avait aucune route.
+         *
+         * Et pour une expression, la comparaison de chaînes ne convient pas :
+         * (x − 3)(x + 3) et (x + 3)(x − 3) sont tous deux justes, et aucun
+         * n'est « la » réponse. Un item peut donc apporter sa propre règle —
+         * pour une factorisation, comparer les POLYNÔMES et exiger qu'elle
+         * aille jusqu'au bout.
+         *
+         * @type {?(saisie: string) => (boolean | {juste: boolean, pourquoi?: string})}
+         */
+        verifieTexte: spec.verifieTexte || null,
         explanation: spec.explanation || '',
         // Vide = l'explication de l'écran convient au papier. C'est le cas
         // général : on ne double que les corrections qui décrivent une image.

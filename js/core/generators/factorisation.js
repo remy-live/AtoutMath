@@ -45,6 +45,8 @@
 // étant marqué faux. C'est la faute qu'on ne voit jamais à la relecture.
 
 import { makeItem, finalizeChoices } from '../items.js';
+import * as fx from '../maths/formule.js';
+import * as P from '../maths/polynome.js';
 
 // LE SIGNE MOINS, ET NON LE TRAIT D'UNION DU CLAVIER — comme dans le chapitre
 // des intervalles. `-3` et `−3` ne sont pas le même caractère, et les deux se
@@ -98,6 +100,45 @@ function tirerSauf(rng, min, max, interdits = []) {
 // le rôle de `a` et de `b` (c'est le support visuel), les leurres avec leur
 // fonction à eux, et la phrase de correction.
 
+/**
+ * Tire entre `min` et `max` (zéro exclu) parmi les valeurs qui CONVIENNENT.
+ *
+ * LA RÉPONSE DU GÉNÉRATEUR ÉTAIT INACHEVÉE UNE FOIS SUR DEUX, et personne ne
+ * pouvait le voir tant qu'on cliquait : au QCM, la bonne proposition est la
+ * bonne parce qu'elle est MARQUÉE bonne. Le jour où l'élève a pu TAPER sa
+ * réponse — Rémy : « on ne peut jamais taper la réponse, c'est toujours un QCM
+ * quel dommage » —, le même item s'est mis à dire deux choses contraires :
+ *
+ *   36x² − 16 → la proposition cochée « (6x − 4)(6x + 4) » était juste, la
+ *                même expression TAPÉE était refusée — et le juge avait raison :
+ *                les deux parenthèses gardent un 2, la réponse finie étant
+ *                4(3x − 2)(3x + 2).
+ *
+ * MESURÉ sur 1 500 questions par barreau, avant correctif : 624 au barreau 2,
+ * 715 au 3, 404 au 4, 466 au 5, 454 au 6, 100 au 7. Le barreau 1 n'en avait
+ * aucune — son énoncé x² − n² est unitaire, il ne peut rien garder.
+ *
+ * DEUX CORRECTIFS ÉTAIENT POSSIBLES, ET LE CHOIX N'EST PAS TECHNIQUE. Sortir
+ * le facteur commun dans la réponse aurait changé l'exercice : le barreau 2
+ * enseigne a² − b² avec un coefficient, pas « repérer d'abord un facteur
+ * commun », qui est le barreau 6 et qu'on n'a pas encore monté. On CONTRAINT
+ * donc le tirage pour que la question ne pose jamais ce problème-là : chaque
+ * barreau continue d'enseigner exactement ce qu'il enseignait.
+ *
+ * @param {(v:number) => boolean} convient  le test que la valeur doit passer
+ * @returns {number|null} `null` si aucune valeur ne convient — l'appelant
+ *   décide alors, et ne reçoit jamais un tirage silencieusement faux.
+ */
+function tirerTelQue(rng, min, max, convient) {
+    const possibles = [];
+    for (let v = min; v <= max; v++) if (v !== 0 && convient(v)) possibles.push(v);
+    if (!possibles.length) return null;
+    return possibles[rng.int(0, possibles.length - 1)];
+}
+
+/** Un facteur `cx + k` est-il fini ? Oui si c et k n'ont rien en commun. */
+const facteurFini = (c, k) => P.pgcd(Math.abs(c), Math.abs(k)) === 1;
+
 function barreau1(rng) {
     const n = rng.int(2, 12);
     const A = `x² ${M} ${n * n}`;
@@ -127,7 +168,11 @@ function barreau1(rng) {
 
 function barreau2(rng) {
     const p = rng.int(2, 7);
-    const n = rng.int(2, 9);
+    // n PREMIER AVEC p — voir `tirerTelQue`. Avec p = 6 et n = 4, la réponse
+    // (6x − 4)(6x + 4) garde un 2 dans chaque parenthèse : ce n'est pas fini,
+    // et finir demanderait un facteur commun, qui est le barreau 6.
+    // Toujours possible : n = p + 1 convient dès que p ≤ 8.
+    const n = tirerTelQue(rng, 2, 9, (v) => facteurFini(p, v));
     const A = `${p * p}x² ${M} ${n * n}`;
     return {
         enonce: A, evaluer: (x) => p * p * x * x - n * n,
@@ -168,7 +213,18 @@ function barreau3(rng) {
     // donc tous dans la forme du manuel.
     //
     // A(x) = (6 − 5x)² − 1 reste atteignable : n = 1, b = 6.
-    const b = rng.int(n + 1, 9);
+    // b TEL QUE LES DEUX FACTEURS SOIENT FINIS. Ils portent b − n et b + n
+    // sur le même coefficient a : si a partage un diviseur avec l'un des deux,
+    // la réponse garde un facteur commun — (5x + 6)² − 16 donnait
+    // (5x + 2)(5x + 10), où la seconde parenthèse garde 5.
+    //
+    // Le repli existe et il est juste : quand aucun b ne convient (|a| = 2 et
+    // n impair, par exemple, où b − n et b + n ont toujours la même parité),
+    // on ne force pas — on rejoue le barreau, qui retirera un autre a.
+    const bOk = tirerTelQue(rng, n + 1, 9,
+        (v) => facteurFini(a, v - n) && facteurFini(a, v + n));
+    if (bOk === null) return barreau3(rng);
+    const b = bOk;
     // La constante devant quand le coefficient est négatif — c'est ainsi que
     // la feuille écrit (6 − 5x). `b > n` ci-dessus garantit que toutes les
     // constantes restent positives, donc que cette forme tient partout.
@@ -243,8 +299,16 @@ function barreau4(rng) {
     // ON ÉVITE QUE LES CONSTANTES S'ANNULENT. Avec b + d = 0 la réponse
     // devient `(x − 4)(9x)` : juste, mais un facteur sans constante entre
     // parenthèses se lit mal, et l'élève se demande s'il a raté un morceau.
-    let d = rng.bool(0.5) ? -rng.int(1, 6) : rng.int(1, 6);
-    if (b + d === 0 || b - d === 0) d = d > 0 ? d + 1 : d - 1;
+    // d TEL QUE LES DEUX FACTEURS SOIENT FINIS — en plus des deux conditions
+    // d'écriture ci-dessus. (5x + 4)² − (x − 2)² donnait (4x + 6)(6x + 2) :
+    // les deux parenthèses gardent un 2. On tire donc d parmi les valeurs qui
+    // laissent a − c premier avec b − d ET a + c premier avec b + d.
+    const dOk = tirerTelQue(rng, -6, 6, (v) => b + v !== 0 && b - v !== 0
+        && facteurFini(a - c, b - v) && facteurFini(a + c, b + v));
+    // Aucune valeur : c'est le couple (a, c) qui ne convient pas — a − c et
+    // a + c tous deux pairs rendent la parité impossible à casser. On rejoue.
+    if (dOk === null) return barreau4(rng);
+    const d = dOk;
     const G = lineaire(a, b), D = lineaire(c, d);
     const enonce = `(${G})² ${M} (${D})²`;
     return {
@@ -290,7 +354,13 @@ function barreau5(rng) {
     // s'annuler, sinon un facteur perd sa constante et s'écrit « (4x) ». Et u
     // lui-même ne doit pas être nul, sinon les deux coïncident et le leurre
     // devient la bonne réponse.
-    const u = tirerSauf(rng, -6, 6, [-s, s]);
+    // ET u PREMIER AVEC 1 + t, qui est le coefficient du même facteur :
+    // (x − 3)(x − 2) + (x − 3)(5x − 1) donnait (x − 3)(6x − 3), où le second
+    // facteur garde un 3.
+    const u = tirerTelQue(rng, -6, 6,
+        (v) => v !== s && v !== -s && facteurFini(1 + t, s + v));
+    // Aucun u : le couple (s, t) est en cause — on rejoue le barreau.
+    if (u === null) return barreau5(rng);
     const C = `x ${M} ${r}`;
     const enonce = `(${C})(${lineaire(1, s)}) + (${C})(${lineaire(t, u)})`;
     return {
@@ -337,7 +407,11 @@ function barreau6(rng) {
         // q ∉ {0, 1, −1} : la réponse porte q − 1 et un leurre porte q + 1.
         // L'un ou l'autre nul, le facteur se réduit à « (4x) », et l'on
         // écrirait alors 4x(x − 6)(x + 6). Même raison des deux côtés.
-        const q = tirerSauf(rng, -6, 6, [1, -1]);
+        // ET q − 1 PREMIER AVEC p : (x² − 4)(4x − 3) − (x − 2)(x + 2) donnait
+        // (x − 2)(x + 2)(4x − 4), où le dernier facteur garde un 4.
+        const q = tirerTelQue(rng, -6, 6,
+            (v) => v !== 1 && v !== -1 && facteurFini(p, v - 1));
+        if (q === null) return barreau6(rng);
         const C = `x ${M} ${n}`;
         const enonce = `(x² ${M} ${n * n})(${lineaire(p, q)}) ${M} (${C})(${lineaire(1, n)})`;
         // (x−n)[(x+n)(px+q) − (x+n)] = (x−n)(x+n)(px+q−1)
@@ -408,7 +482,11 @@ function barreau6(rng) {
     // écrirait x(x − 3). Une bonne réponse qui ne ressemble pas à une bonne
     // réponse se fait éliminer par un élève qui avait raison ; un leurre qui
     // ne ressemble à rien se repère sans comprendre, et n'enseigne rien.
-    const q = tirerSauf(rng, -6, 6, [k, -k]);
+    // ET q − k PREMIER AVEC p, pour la même raison qu'au mécanisme B :
+    // (x − 3)(4x + 3) − 5x + 15 donnait (x − 3)(4x − 2), qui garde un 2.
+    const q = tirerTelQue(rng, -6, 6,
+        (v) => v !== k && v !== -k && facteurFini(p, v - k));
+    if (q === null) return barreau6(rng);
     const C = `x ${M} ${r}`;
     const enonce = `(${C})(${lineaire(p, q)}) ${M} ${monome(k)} + ${k * r}`;
     return {
@@ -450,7 +528,27 @@ function barreau7(rng) {
         const n = rng.int(1, 4);
         const p = rng.int(2, 7);
         const q = rng.int(1, 5);
-        const c = rng.int(1, 5);
+        // c TEL QUE LE CROCHET SOIT FINI. Le crochet vaut
+        // p x² + (pn + q − 2) x + (qn − c + n) ; ses trois coefficients peuvent
+        // partager un diviseur — (x² − 4)(6x + 2) − (x − 2)(x + 5) − (x − 2)²
+        // donnait (x − 2)(6x² + 12x + 4), où tout le crochet garde un 2. Seul
+        // c reste libre à ce stade, et il ne change que le terme constant :
+        // c'est donc lui qu'on choisit.
+        //
+        // ET LE CROCHET NE DOIT PAS ÊTRE UNE IDENTITÉ REMARQUABLE non plus.
+        // Deux cas sur 12 000 restaient après le correctif du facteur commun :
+        // (x² − 1)(4x + 2) − (x − 1)(x + 2) − (x − 1)² donnait
+        // (x − 1)(4x² + 4x + 1), et 4x² + 4x + 1 est (2x + 1)² — que l'élève de
+        // Seconde sait finir, et doit donc finir.
+        const c = tirerTelQue(rng, 1, 5, (v) => {
+            const B1 = p * n + q - 2, B0 = q * n - v + n;
+            if (P.pgcd(P.pgcd(p, Math.abs(B1)), Math.abs(B0)) !== 1) return false;
+            return !P.identiteRemarquable(B0, B1, p);
+        });
+        // Aucun c : (p, n, q) rendent déjà les deux premiers coefficients
+        // divisibles par un même nombre que le terme constant ne peut pas
+        // casser en cinq valeurs. On rejoue.
+        if (c === null) return barreau7(rng);
         const C = `x ${M} ${n}`;
         const enonce = `(x² ${M} ${n * n})(${lineaire(p, q)}) ${M} (${C})(${lineaire(1, c)}) `
             + `${M} (${C})²`;
@@ -652,13 +750,21 @@ export const factorisationGenerator = {
         const rang = possibles[rng.int(0, possibles.length - 1)];
         const q = BARREAUX[rang].faire(rng);
 
-        // LE SUPPORT VISUEL, TOUJOURS — la contrainte de Rémy, tenue ici par
-        // trois dessins selon ce qu'il y a à montrer : le découpage du carré
-        // quand a et b sont des nombres, l'identification des rôles quand ce
-        // sont des expressions, et le facteur commun quand c'est lui le sujet.
-        const dessin = q.visuel === 'carres' ? carresHtml(q.carres.a, q.carres.b)
-            : (q.visuel === 'commun' ? communHtml(q.commun, q.etapePrealable)
-                : identiteHtml(q.a, q.b));
+        // PAS DE SUPPORT VISUEL ICI, ET C'EST UNE DEMANDE EXPRESSE.
+        //
+        // Rémy, après avoir vu l'aperçu : « pour les factorisations, ne fais
+        // pas de support visuel ». Trois dessins y étaient posés — le découpage
+        // du carré, l'identification des rôles, le facteur commun.
+        //
+        // Il a raison, et la raison est la même qui vaut ailleurs le contraire.
+        // Un support visuel sert quand il MONTRE une chose qu'on ne voit pas
+        // dans l'écriture : une aire pour la distributivité, des paires de
+        // facteurs pour une racine, un axe pour un intervalle. Ici, ce qu'on
+        // demande à l'élève EST une lecture de l'écriture — reconnaître que
+        // 4x² − 16 est une différence de deux carrés. Un encadré qui nomme a et
+        // b fait ce travail à sa place ; il ne l'aide pas, il le remplace.
+        //
+        // La leçon reste dans l'indice, en mots.
 
         const faux = [...q.leurres];
         for (let i = faux.length - 1; i > 0; i--) {
@@ -770,10 +876,15 @@ export const factorisationGenerator = {
             prompt: {
                 text: `Factorise : ${q.enonce}`,
                 html: '<div class="game-question fa-consigne">Factorise cette expression.</div>'
-                    + `<div class="fa-expression">${q.enonce}</div>` + dessin,
+                    + `<div class="fa-expression">${q.enonce}</div>`,
                 papier: `Factoriser : ${q.enonce}`
             },
             answer: 'ok',
+            // LA RÉPONSE EN TOUTES LETTRES. `answer` est une sentinelle : les
+            // propositions portent les expressions, et c'est `correct` qui
+            // tranche. Mais la saisie au clavier, la démonstration et le
+            // corrigé papier ont besoin de l'écriture, pas de la valeur.
+            reponsePapier: q.reponse,
             choices,
             hints: [
                 rang <= 4
@@ -781,10 +892,63 @@ export const factorisationGenerator = {
                     : 'Cherche ce qui est écrit dans TOUS les termes — quitte à en factoriser un d\'abord.',
                 q.explication
             ],
-            schemas: ['', dessin],
+            // AUCUN SCHÉMA : voir ci-dessus. L'indice reste du texte.
+            schemas: [],
+            /**
+             * JUGER UNE FACTORISATION TAPÉE — et c'est ici que la règle de
+             * Rémy prend tout son sens.
+             *
+             * Comparer des chaînes ne convient pas : (x − 3)(x + 3) et
+             * (x + 3)(x − 3) sont tous deux justes, et aucun n'est « la »
+             * réponse. On compare donc les POLYNÔMES.
+             *
+             * Mais l'égalité ne suffit pas non plus, et Rémy l'a tranché :
+             * « Évidemment programme de seconde ». Qui recopie l'énoncé a
+             * écrit quelque chose d'égal et n'a rien factorisé ; qui écrit
+             * (x² − 9)(2x + 1) a écrit un produit qui n'est pas fini. Les deux
+             * sont faux, et pour deux raisons différentes — qu'on lui dit.
+             */
+            verifieTexte: (saisie) => {
+                const lu = P.lireSaisie(saisie, fx);
+                if (!lu) {
+                    return { juste: false,
+                        pourquoi: 'Je n\'arrive pas à lire cette expression. '
+                            + 'Écris-la avec les touches, parenthèses comprises.' };
+                }
+                const attendu = P.lireSaisie(q.enonce, fx);
+                if (!attendu || !P.egaux(lu, attendu)) {
+                    return { juste: false,
+                        pourquoi: 'Cette expression ne vaut pas celle de départ. '
+                            + 'Redéveloppe ce que tu as écrit pour vérifier.' };
+                }
+                // Égale, mais est-ce un produit, et va-t-il jusqu'au bout ?
+                let verdict;
+                try { verdict = P.verdictSurArbre(fx.analyser(
+                    String(saisie).replace(/\s+/g, '').replace(/(x)(\d)/g, '$1^$2')), fx); }
+                catch (e) { verdict = { complet: false, raison: 'écriture illisible' }; }
+                if (!verdict.complet) {
+                    return { juste: false,
+                        pourquoi: `C'est bien égal, mais ce n'est pas fini : ${verdict.raison}.` };
+                }
+                if (!verdict.facteurs.length) {
+                    return { juste: false,
+                        pourquoi: 'C\'est un nombre, pas un produit de facteurs.' };
+                }
+                if (verdict.facteurs.length < 2 && verdict.constante === 1) {
+                    return { juste: false,
+                        pourquoi: 'Il n\'y a qu\'un seul facteur : factoriser, '
+                            + 'c\'est écrire un PRODUIT.' };
+                }
+                return { juste: true };
+            },
             explanation: `${q.enonce} = ${q.reponse}. ${q.explication}`,
             difficulty: Math.min(5, 1 + Math.floor(rang / 1.6)),
-            meta: { barreau: rang, nomDuBarreau: BARREAUX[rang].nom }
+            // ON PEUT TAPER LA RÉPONSE. Rémy : « on ne peut jamais taper la
+            // réponse, c'est toujours un QCM, quel dommage ». Les parenthèses
+            // sont au clavier — une factorisation en a besoin, et elles
+            // n'apparaissent que là.
+            meta: { barreau: rang, nomDuBarreau: BARREAUX[rang].nom,
+                composable: 'litteral', lettre: 'x', degreMax: 3, parentheses: true }
         });
     }
 };

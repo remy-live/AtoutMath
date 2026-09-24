@@ -250,3 +250,46 @@ test('rien ne transite par une chaîne entre le moteur et le rendu', () => {
     assert.ok(P.egaux(p, P.depuisArbre(retour, fx)));
     memeFonction(a, retour, 'aller-retour par l\'arbre');
 });
+
+// ── OÙ PASSE LA LIGNE DU PROGRAMME ──────────────────────────────────────────
+
+test('un trinôme est fini sauf s\'il est l\'une des deux identités de Seconde', () => {
+    // LE DISCRIMINANT EST DE PREMIÈRE, et mon premier critère s'en servait :
+    // « fini si Δ n'est pas un carré parfait ». Conséquence mesurée : au
+    // barreau 7, la réponse OFFICIELLE du générateur — obtenue en mettant
+    // (x − 3) en facteur des trois termes, ce qui est tout l'exercice — était
+    // refusée à l'élève qui la tapait, parce que le crochet restant avait un
+    // discriminant carré. Le même item disait deux choses contraires selon
+    // qu'on cliquait ou qu'on écrivait.
+    const fini = (src) => P.estCompletementFactorise(1,
+        [P.depuisArbre(fx.analyser(src), fx)]);
+
+    // Les deux identités du chapitre : ce sont les seules à ne pas être finies.
+    assert.equal(fini('x² − 9').complet, false, 'a² − b² se factorise');
+    assert.equal(fini('4x² − 25').complet, false, 'avec un coefficient aussi');
+    assert.equal(fini('9 − x²').complet, false, 'écrite à l\'envers aussi');
+    assert.equal(fini('x² − 6x + 9').complet, false, '(a − b)² se factorise');
+    assert.equal(fini('4x² + 4x + 1').complet, false, '(2x + 1)² aussi');
+
+    // Tout le reste est fini AU NIVEAU SECONDE, même quand ça se factorise
+    // plus loin avec un outil que l'élève n'a pas encore.
+    assert.equal(fini('x² − 2x − 3').complet, true, 'Δ = 16, mais il faut Δ pour le voir');
+    assert.equal(fini('6x² + 19x + 8').complet, true, 'idem, trois coefficients');
+    assert.equal(fini('x² + 1').complet, true, 'ne se factorise pas même sur ℝ');
+    assert.equal(fini('x² − 2').complet, true, '√2 n\'est pas un polynôme');
+    assert.equal(fini('x² + x − 6').complet, true, 'Δ = 25 : hors Seconde');
+});
+
+test('un facteur qui garde un facteur commun n\'est pas fini', () => {
+    // C'est la condition qui manquait, et elle valait 41,6 % des réponses du
+    // chapitre « factorisation » : (6x − 4)(6x + 4) était la réponse
+    // officielle de 36x² − 16, alors qu'il reste 4(3x − 2)(3x + 2) à écrire.
+    const deux = (a, b) => P.estCompletementFactorise(1,
+        [a, b].map(s => P.depuisArbre(fx.analyser(s), fx)));
+    assert.equal(deux('6x − 4', '6x + 4').complet, false);
+    assert.match(deux('6x − 4', '6x + 4').raison, /2 en facteur commun/);
+    assert.equal(deux('3x − 2', '3x + 2').complet, true);
+    // Un coefficient dominant négatif n'est PAS un inachèvement : (3 − 2x) est
+    // une écriture juste, qu'un élève de Seconde a le droit de poser.
+    assert.equal(deux('3 − 2x', '15 − 2x').complet, true);
+});

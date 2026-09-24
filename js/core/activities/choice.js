@@ -141,7 +141,12 @@ export function mount(container, session, opts = {}) {
      * prend la main dès la première question — il n'y a pas de marche plus
      * basse où redescendre.
      */
-    const MODULES = { notation: './notationSaisie.js', trace: './traceNotation.js' };
+    // LA ROUTE LITTÉRALE MANQUAIT, et c'est elle qui rendait le QCM éternel.
+    // `moduleVoulu` ne passait au clavier que si la réponse était un nombre ;
+    // une expression — « 2x² + 3x − 5 », « (x − 3)(x + 3) » — n'en est pas un,
+    // donc aucun chapitre de calcul littéral ne pouvait se taper.
+    const MODULES = { notation: './notationSaisie.js', trace: './traceNotation.js',
+        litteral: './litteralSaisie.js' };
     function moduleVoulu(item, aideIci) {
         const m = (item && item.meta) || {};
         const compose = MODULES[m.composable];
@@ -156,7 +161,9 @@ export function mount(container, session, opts = {}) {
     const AVIS = {
         './numeric.js': 'À toi d\'écrire : plus de propositions, tu tapes le résultat.',
         './notationSaisie.js': 'À toi d\'écrire : tu poses toi-même les deux symboles.',
-        './traceNotation.js': ''
+        './traceNotation.js': '',
+        './litteralSaisie.js': 'À toi d\'écrire : plus de propositions, tu tapes '
+            + 'l\'expression.'
     };
 
     function renderNext() {

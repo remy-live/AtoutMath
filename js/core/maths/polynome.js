@@ -34,19 +34,35 @@
 // Seconde d'AtoutMath (`js/data/skills.js`) donnent DEUX gestes, pas un de
 // plus : a² − b² = (a − b)(a + b), et k·A + k·B = k(A + B).
 //
-//   x² + 1   → Δ = −4 : ne se factorise pas même sur les réels. FINI.
-//   x² − 2   → Δ = 8, positif mais PAS un carré parfait. Sur les réels cela
-//              donnerait (x − √2)(x + √2) — mais √2 n'est pas un polynôme, et
-//              aucune leçon ne permet d'y arriver. FINI au niveau Seconde.
-//   x² − 4   → Δ = 16, carré parfait : (x − 2)(x + 2). PAS fini.
+//   x² + 1   → ne se factorise pas même sur les réels. FINI.
+//   x² − 2   → sur les réels, (x − √2)(x + √2) — mais √2 n'est pas un
+//              polynôme, et aucune leçon ne permet d'y arriver. FINI.
+//   x² − 4   → c'est a² − b² : (x − 2)(x + 2). PAS fini.
+//   x² − 6x + 9 → c'est (a − b)², la seconde identité du chapitre. PAS fini.
 //   x³ − 1   → se factorise en (x − 1)(x² + x + 1), mais par a³ − b³, qui
 //              n'est dans aucune leçon. On le déclare INACHEVÉ : c'est exact
 //              du point de vue de l'élève, et le moteur sait le finir.
 //
-// La ligne passe donc entre ℚ et ℝ, et elle est DÉCIDABLE sur les entiers :
-// un trinôme est fini si son discriminant n'est pas un carré parfait. Aucun
-// flottant n'entre dans cette décision — `Math.sqrt` ment au-delà de 2^53, et
-// une égalité de polynômes n'a de sens qu'en entiers.
+// LE DISCRIMINANT N'EN FAIT PAS PARTIE, ET C'EST UNE CORRECTION.
+//
+// Ma première version décidait du degré 2 au discriminant : fini si Δ n'est pas
+// un carré parfait. C'était commode — c'est décidable en entiers — et c'était
+// hors programme : le discriminant est de PREMIÈRE. Le critère contredisait
+// donc les deux lignes écrites juste au-dessus, qui disent que la Seconde a
+// deux gestes et pas un de plus.
+//
+// CE N'EST PAS UNE VUE DE L'ESPRIT, C'EST MESURÉ : au barreau 7, la réponse
+// OFFICIELLE du générateur — (x − 3)(x² − 2x − 3), obtenue en mettant (x − 3)
+// en facteur des trois termes, ce qui est tout l'exercice — était refusée par
+// ce critère-là à l'élève qui la tapait. Le même item disait donc deux choses
+// contraires selon qu'on cliquait ou qu'on écrivait.
+//
+// On décide donc du degré 2 par les IDENTITÉS, pas par Δ : un trinôme n'est
+// inachevé que s'il est une différence de deux carrés ou un carré parfait.
+// x² − 2x − 3 est ni l'un ni l'autre : en Seconde, il est fini.
+//
+// La décision reste ENTIÈRE de bout en bout — `Math.sqrt` ment au-delà de 2^53,
+// et une égalité de polynômes n'a de sens qu'en entiers.
 //
 // ── DEUX CHEMINS POUR VÉRIFIER ──────────────────────────────────────────────
 //
@@ -408,12 +424,40 @@ function differenceDeCarres(pol, v = 'x') {
  *   2. aucun facteur n'est une constante — on écrit 4(3x − 2), jamais
  *      (4)(3x − 2), que personne n'écrit ;
  *   3. chaque facteur est primitif et de coefficient dominant positif ;
- *   4. un facteur de degré 2 dont le discriminant est un CARRÉ PARFAIT se
- *      factorise encore ; sinon il est fini, et c'est là que passe la ligne
- *      du programme ;
+ *   4. un facteur de degré 2 qui est une DIFFÉRENCE DE CARRÉS ou un CARRÉ
+ *      PARFAIT se factorise encore — ce sont les deux identités du chapitre ;
+ *      tout autre trinôme est fini, car le discriminant est de Première
+ *      (voir l'en-tête du fichier : le critère au Δ refusait la réponse
+ *      officielle du barreau 7 à l'élève qui la tapait) ;
  *   5. un facteur de degré ≥ 3 n'est pas fini au sens de la Seconde : aucune
  *      leçon ne donne a³ ± b³.
  */
+/**
+ * Ce trinôme est-il l'une des DEUX identités de Seconde ? Rend laquelle, ou ''.
+ *
+ * On teste le trinôme ET son opposé : 9 − x² est la même différence de carrés
+ * que x² − 9, et la Seconde écrit volontiers la première. `contenu` ayant déjà
+ * été vérifié égal à 1 par l'appelant, aucun facteur numérique ne vient
+ * brouiller la lecture des carrés.
+ */
+export function identiteRemarquable(c0, c1, c2) {
+    for (const [a0, a1, a2] of [[c0, c1, c2], [-c0, -c1, -c2]]) {
+        // a² − b² : pas de terme en x, un carré devant, un carré derrière.
+        if (a1 === 0 && a2 > 0 && a0 < 0
+            && racineEntiere(a2) !== null && racineEntiere(-a0) !== null) {
+            return 'une différence de deux carrés';
+        }
+        // a² ± 2ab + b² : les deux carrés, et le double produit au milieu.
+        if (a2 > 0 && a0 > 0) {
+            const a = racineEntiere(a2), b = racineEntiere(a0);
+            if (a !== null && b !== null && Math.abs(a1) === 2 * a * b) {
+                return 'un carré parfait';
+            }
+        }
+    }
+    return '';
+}
+
 export function estCompletementFactorise(cste, facteurs, v = 'x') {
     const non = (raison, coupable = null) => ({ complet: false, raison, coupable });
     if (!Number.isInteger(cste) || cste === 0) return non('la constante n\'est pas un entier non nul');
@@ -441,11 +485,8 @@ export function estCompletementFactorise(cste, facteurs, v = 'x') {
         if (d === 1) continue;
         if (d === 2) {
             const [c0, c1, c2] = coefficients(f, v);
-            const delta = c1 * c1 - 4 * c2 * c0;
-            if (racineEntiere(delta) !== null) {
-                return non('un trinôme se factorise encore : son discriminant '
-                    + `vaut ${delta}, qui est un carré parfait`, f);
-            }
+            const ident = identiteRemarquable(c0, c1, c2);
+            if (ident) return non(`un facteur est ${ident} : il se factorise encore`, f);
             continue;
         }
         return non(`un facteur est de degré ${d} : au programme de Seconde, `
@@ -597,6 +638,38 @@ export function lireFactorisee(arbre, fx) {
 export function verdictSurArbre(arbre, fx, v = 'x') {
     const { constante, facteurs } = lireFactorisee(arbre, fx);
     return { constante, facteurs, ...estCompletementFactorise(constante, facteurs, v) };
+}
+
+/**
+ * LIRE CE QU'UN ÉLÈVE A TAPÉ, et non ce qu'on aurait aimé qu'il tape.
+ *
+ * L'analyseur de `maths/formule` attend une écriture propre. Un élève, lui,
+ * tape ce qu'il a sous les doigts : « x2 » pour x², le trait d'union du
+ * clavier pour le moins, des espaces n'importe où, parfois un « * ». Le
+ * corriger là-dessus serait le corriger sur son clavier et non sur ses
+ * mathématiques — c'est déjà la règle du clavier littéral existant
+ * (`core/reductionPuissances.normaliser`), et elle vaut ici aussi.
+ *
+ * Rend le polynôme, ou `null` si la phrase n'a pas de sens — auquel cas on le
+ * dit à l'élève plutôt que de compter faux en silence.
+ */
+export function lireSaisie(texte, fx, v = 'x') {
+    // LES ESPACES D'ABORD, ET C'EST NÉCESSAIRE. Sans cela « 2 x 2 » n'était pas
+    // reconnu comme 2x² : le chiffre n'était pas COLLÉ à la lettre, la règle
+    // ci-dessous ne s'appliquait pas, et l'expression se lisait 2 × x × 2,
+    // c'est-à-dire 4x. L'élève avait écrit la bonne réponse et se voyait
+    // compté faux à cause de deux espaces.
+    let t = String(texte == null ? '' : texte).replace(/\s+/g, '');
+    if (!t) return null;
+    // « x2 » veut dire x² : un chiffre qui SUIT une lettre est un exposant.
+    // Devant, il reste un coefficient — « 2x » n'est pas touché.
+    t = t.replace(new RegExp(`(${v})(\\d)`, 'g'), '$1^$2');
+    try {
+        const p = depuisArbre(fx.analyser(t), fx);
+        return variables(p).every(nom => nom === v) ? p : null;
+    } catch (e) {
+        return null;
+    }
 }
 
 // ── LES DEUX FONCTIONS DEMANDÉES ────────────────────────────────────────────

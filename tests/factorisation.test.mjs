@@ -170,26 +170,35 @@ test('LE GÉNÉRATEUR EST BRANCHÉ, ET SES COMPÉTENCES EXISTENT', () => {
     });
 });
 
-test('CHAQUE QUESTION PORTE SON SUPPORT VISUEL', () => {
-    // « il faut toujours un support visuel ». Trois dessins selon ce qu'il y a
-    // à montrer : le découpage du carré quand a et b sont des nombres,
-    // l'identification des rôles quand ce sont des expressions, et le facteur
-    // commun quand c'est lui le sujet.
+// PAS DE SUPPORT VISUEL ICI, ET C'EST LE CONTRAIRE DE CE QUE CE TEST EXIGEAIT.
+//
+// Rémy, après avoir vu l'aperçu : « pour les factorisations, ne fais pas de
+// support visuel ». Trois dessins y étaient posés, et ce test les gardait.
+//
+// La règle générale — « il faut toujours un support visuel » — n'est pas
+// abandonnée pour autant ; elle est précisée. Un dessin sert quand il MONTRE
+// une chose que l'écriture ne dit pas : une aire pour la distributivité, des
+// paires de facteurs pour une racine, un axe pour un intervalle. Ici, ce qu'on
+// demande à l'élève EST une lecture de l'écriture — voir que 4x² − 16 est une
+// différence de deux carrés. Un encadré qui nomme a et b fait ce travail à sa
+// place ; il ne l'aide pas, il le remplace.
+test('LA FACTORISATION SE PASSE DE DESSIN, ET LA LEÇON RESTE DANS L\'INDICE', () => {
     ['1', '2', '3', '4', '5', '6', '7'].forEach(barreau => {
         for (let i = 0; i < 12; i++) {
             const it = factorisationGenerator.generate({ barreau },
                 { rng: makeRng(`v_${barreau}_${i}`) });
-            assert.match(it.prompt.html, /fa-identite|<svg/,
-                `barreau ${barreau} : pas de support visuel`);
+            assert.ok(!/fa-identite|fa-figure|<svg/.test(it.prompt.html),
+                `barreau ${barreau} : un dessin subsiste dans l'énoncé`);
+            assert.equal((it.schemas || []).length, 0,
+                `barreau ${barreau} : un schéma subsiste sur l'indice`);
+            // Ce qui reste doit suffire : l'expression, et deux indices écrits.
             assert.match(it.prompt.html, /fa-expression/);
             assert.ok(it.explanation.length > 40);
             assert.equal(it.hints.length, 2);
+            assert.ok(it.hints.every(h => h && h.length > 20),
+                `barreau ${barreau} : un indice trop court pour remplacer le dessin`);
         }
     });
-    // Le barreau 1 porte le découpage géométrique : c'est la démonstration, et
-    // elle vaut mieux qu'une règle apprise.
-    const un = factorisationGenerator.generate({ barreau: '1' }, { rng: makeRng('g1') });
-    assert.match(un.prompt.html, /<svg class="fa-figure"/);
 });
 
 test('ET LE SIGNE MOINS EST UN SIGNE MOINS', () => {

@@ -1323,7 +1323,20 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .re-apercu-toile {
     position: absolute; inset: 0;
     transform-origin: top left;
-    display: flex; align-items: center; justify-content: center;
+    /* EN COLONNE, COMME LE VRAI JEU — et c'est tout le défaut que Rémy a vu :
+       « l'aperçu n'est pas dingue ».
+       Une activité pose plusieurs éléments FRÈRES dans son conteneur : la
+       consigne, l'expression, la carte d'aide, les propositions, la barre
+       d'indice. Mesuré sur la factorisation : six enfants. Dans une boîte flex
+       en LIGNE, ils se rangeaient côte à côte, chacun comprimé à une colonne
+       de quelques caractères — l'identité « a² − b² = (a − b)(a + b) » y
+       descendait verticalement, une lettre par ligne.
+       Le vrai conteneur du jeu, `.canvas-area`, est en colonne : mesuré aussi.
+       L'aperçu doit montrer ce que l'élève verra, donc disposer comme lui. Le
+       défaut touchait TOUS les exercices à plusieurs éléments, pas seulement
+       celui sur lequel il a été vu. */
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
 }
 .re-apercu-vide {
     position: absolute; inset: 0; display: flex; align-items: center;

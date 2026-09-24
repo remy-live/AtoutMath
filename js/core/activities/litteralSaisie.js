@@ -62,6 +62,15 @@ export function mount(container, session, opts = {}) {
             ...(degreMax >= 3 ? [{ t: `${lettre}³`, cls: 'ls-t--lettre', dit: 'Le cube' }] : []),
             { t: '+', cls: 'ls-t--signe' },
             { t: '−', cls: 'ls-t--signe', dit: 'Moins' },
+            // LES PARENTHÈSES N'APPARAISSENT QUE SI LA RÉPONSE PEUT EN VOULOIR.
+            // Même règle que pour la touche x³ : offrir une touche dont on
+            // sait qu'elle donnera une réponse fausse, c'est tendre un piège
+            // avec l'outil qu'on prête. Une factorisation en a besoin, une
+            // expression réduite jamais.
+            ...(m.parentheses ? [
+                { t: '(', cls: 'ls-t--signe', dit: 'Ouvrir une parenthèse' },
+                { t: ')', cls: 'ls-t--signe', dit: 'Fermer la parenthèse' }
+            ] : []),
             ...'0123456789'.split('').map(c => ({ t: c, cls: 'ls-t--chiffre' }))
         ];
 
@@ -118,9 +127,34 @@ export function mount(container, session, opts = {}) {
 
         wireHint(container, session);
 
+        // CE QU'ON MONTRE QUAND ON DONNE LA RÉPONSE — et ce n'était pas elle.
+        //
+        // `item.answer` est la valeur qu'on SOUMET, pas celle qu'on LIT. Un QCM
+        // dont les propositions portent des expressions ne peut pas se servir
+        // de l'expression comme valeur : elle changerait à chaque tirage, et
+        // deux écritures justes vaudraient deux valeurs différentes. Les deux
+        // chapitres de calcul littéral posent donc la sentinelle `'ok'`, et le
+        // champ affichait « ok » à l'élève qui séchait — mesuré sur le banc,
+        // sur fac-1 comme sur dev-1, à chaque révélation et dans la
+        // démonstration, qui tapait o puis k sur un pavé qui n'a ni l'un ni
+        // l'autre.
+        //
+        // `reponsePapier` porte déjà exactement ça : « la réponse telle qu'on
+        // l'écrit ». On la lit ici, et l'on retombe sur `answer` pour les
+        // exercices dont la réponse EST sa propre valeur.
+        const aMontrer = String(item.reponsePapier || item.answer || '');
+
         const valider = () => {
             if (destroyed || !saisie.trim()) return;
-            const juste = memeReponse(saisie, item.answer);
+            // L'ITEM JUGE LUI-MÊME QUAND IL SAIT LE FAIRE. Comparer des
+            // chaînes suffit pour une expression réduite, dont l'écriture est
+            // canonique ; pas pour une factorisation, où (x − 3)(x + 3) et
+            // (x + 3)(x − 3) sont tous deux justes.
+            const verdict = item.verifieTexte ? item.verifieTexte(saisie) : null;
+            const juste = verdict !== null
+                ? (typeof verdict === 'object' ? !!verdict.juste : !!verdict)
+                : memeReponse(saisie, item.answer);
+            const pourquoi = (verdict && typeof verdict === 'object' && verdict.pourquoi) || '';
             // ON SOUMET LA FORME NORMALISÉE quand elle est juste : le journal
             // et le carnet d'erreurs n'ont pas à conserver quinze écritures du
             // même résultat selon que l'élève a mis des espaces ou non.
@@ -129,13 +163,17 @@ export function mount(container, session, opts = {}) {
 
             champ.classList.toggle('ls-champ--ok', result.correct);
             champ.classList.toggle('ls-champ--ko', !result.correct);
-            noteEl.textContent = result.correct ? '' : diagnostiquer(saisie, item);
+            // L'ITEM SAIT SOUVENT MIEUX POURQUOI C'EST FAUX que le
+            // diagnostic générique : « c'est bien égal, mais ce n'est pas
+            // factorisé » ne se devine pas d'une comparaison de chaînes.
+            noteEl.textContent = result.correct ? ''
+                : (pourquoi || diagnostiquer(saisie, item));
 
             result.dismissed.then(() => {
                 if (destroyed) return;
                 if (result.correct) return renderNext();
                 if (result.revealed) {
-                    saisie = String(item.answer);
+                    saisie = aMontrer;
                     texteEl.textContent = saisie;
                     champ.classList.remove('ls-champ--ko');
                     champ.classList.add('ls-champ--ok');
@@ -209,7 +247,7 @@ export function mount(container, session, opts = {}) {
         // ON TAPE LA RÉPONSE SIGNE PAR SIGNE, en visant les vraies touches :
         // c'est le geste que l'élève devra refaire, et le voir fait vaut mieux
         // que le voir apparaître.
-        for (const c of String(item.answer)) {
+        for (const c of String(item.reponsePapier || item.answer || '')) {
             if (destroyed) return;
             const btn = container.querySelector(`[data-t="${CSS.escape(c)}"]`);
             if (btn) { if (!await cursor.tap(btn)) return; }

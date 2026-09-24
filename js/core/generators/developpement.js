@@ -496,6 +496,9 @@ export const developpementGenerator = {
                 papier: `Développer et réduire : ${enonceTexte}`
             },
             answer: 'ok',
+            // Voir factorisation.js : `answer` est une sentinelle de QCM ; ce
+            // qui s'écrit, se tape et s'imprime, c'est l'expression réduite.
+            reponsePapier: repTexte,
             choices,
             hints: [
                 rang <= 5
@@ -506,9 +509,54 @@ export const developpementGenerator = {
                 q.etapes
             ],
             schemas: ['', q.visuel],
+            // ON PEUT TAPER LA RÉPONSE, et c'est une demande de Rémy : « on ne
+            // peut jamais taper la réponse, c'est toujours un QCM, quel
+            // dommage ». `composable: 'litteral'` ouvre la route du clavier
+            // dans `choice.js`, que l'échelle d'aide emprunte quand l'élève a
+            // montré qu'il savait reconnaître.
+            //
+            // ON COMPARE DES POLYNÔMES, PAS DES CHAÎNES. « 3x + 2x² − 5 » dit
+            // la même chose que « 2x² + 3x − 5 » ; l'ordre des termes n'est pas
+            // une faute de mathématiques, et le compter faux apprendrait à
+            // recopier une forme plutôt qu'à calculer.
+            verifieTexte: (saisie) => {
+                const lu = P.lireSaisie(saisie, fx);
+                if (!lu) {
+                    return { juste: false,
+                        pourquoi: 'Je n\'arrive pas à lire cette expression. '
+                            + 'Écris-la avec les touches, par exemple 2x² + 3x − 5.' };
+                }
+                if (!P.egaux(lu, q.poly)) return { juste: false };
+                // « PUIS RÉDUIS-LA » EST LA MOITIÉ DE LA CONSIGNE, et l'égalité
+                // seule ne la vérifie pas : `lireSaisie` regroupe les termes
+                // semblables en chemin, si bien que 2x + 4x + 30 rentrait
+                // comme 6x + 30 et passait pour juste. L'élève avait bien
+                // développé — c'est justement la moitié qu'il a faite.
+                //
+                // On compte donc les termes ÉCRITS et on les compare aux
+                // monômes du polynôme : plus de termes que de monômes, c'est
+                // qu'il en reste deux à réunir. (Le pavé n'ayant pas de
+                // parenthèses ici, il n'y a rien d'autre à démêler.)
+                let ecrits;
+                try {
+                    const a = fx.analyser(String(saisie).replace(/\s+/g, '')
+                        .replace(/(x)(\d)/g, '$1^$2'));
+                    ecrits = a.sorte === 'somme' ? a.termes.length : 1;
+                } catch (e) { ecrits = 0; }
+                if (ecrits > lu.size) {
+                    return { juste: false,
+                        pourquoi: 'C\'est bien égal, mais ce n\'est pas réduit : '
+                            + 'deux termes portent la même puissance de x et se '
+                            + 'réunissent en un seul.' };
+                }
+                return { juste: true };
+            },
             explanation: `${enonceTexte} = ${repTexte}. ${q.etapes}`,
             difficulty: Math.min(5, 1 + Math.floor(rang / 2.5)),
-            meta: { barreau: rang, nomDuBarreau: q.nom }
+            meta: { barreau: rang, nomDuBarreau: q.nom,
+                // Le clavier littéral : x et x², pas de parenthèses — une
+                // expression développée n'en a jamais.
+                composable: 'litteral', lettre: 'x', degreMax: 2 }
         });
     }
 };
