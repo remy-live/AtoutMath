@@ -44,9 +44,44 @@ import * as fx from '../maths/formule.js';
 // ── L'AXE, DESSINÉ ──────────────────────────────────────────────────────────
 
 const L = 320;        // largeur du dessin, en unités de vue
-const H = 54;         // hauteur : la droite, les crochets, les graduations
+const H = 58;         // hauteur : la droite, les crochets, les graduations
 const Y = 26;         // hauteur de la droite dans le dessin
 const MARGE = 18;     // de quoi loger une flèche et une étiquette aux bouts
+
+// ── LES ÉPAISSEURS, EN UN SEUL ENDROIT ──────────────────────────────────────
+//
+// RÉMY : « les intervalles de manière générale font grossier, ça recouvre les
+// chiffres aussi ».
+//
+// MESURÉ, et les deux reproches n'ont pas la même cause.
+//
+// « GROSSIER » EST UNE AFFAIRE DE PROPORTIONS, pas de taille. Le dessin
+// s'étire à la largeur qu'on lui donne, tout grandit ensemble — mais le trait
+// de l'intervalle faisait 5 unités sous des nombres de 11, soit près de la
+// MOITIÉ de la hauteur d'un chiffre. Au tableau, un professeur repasse la
+// portion en gras : deux à trois fois le trait de l'axe, pas un pavé. Le trait
+// passe à 3,4 — il reste deux fois et demie l'axe, et l'on voit enfin qu'il
+// est POSÉ SUR la droite plutôt qu'il ne la remplace.
+//
+// « ÇA RECOUVRE LES CHIFFRES » ÉTAIT EXACT AU PIXEL : le bras bas du crochet
+// occupait [Y + 9,5 ; Y + 12,5] et la boîte du nombre commençait à Y + 8.
+// Mesuré 1 à 2 recouvrements par dessin, sur les quatre formes d'intervalle.
+// Le crochet est donc plus court (±8 au lieu de ±11) et le nombre descend
+// (Y + 22 au lieu de Y + 19) : 2 unités d'air entre les deux, sur les quatre.
+const TRAIT = {
+    axe: 1.4,          // la droite graduée elle-même
+    intervalle: 3.4,   // la portion qu'on montre
+    crochet: 2.2,      // les bornes
+    tic: 1,            // une graduation ordinaire
+    ticRepere: 1.7     // celles de 0 et 1, les deux repères qu'on lit
+};
+// LES BRAS RESTENT À 9, ET C'EST UNE MESURE QU'ON NE REFAIT PAS. Deux
+// propositions de QCM ne diffèrent parfois que par le SENS d'un crochet :
+// mesuré à l'écran, des bras de six ne se distinguaient pas, et l'exercice
+// devenait une devinette. Seule la HAUTEUR baisse — c'est elle, et non les
+// bras, qui venait mordre sur la boîte du nombre.
+const CROCHET = { haut: 8, bras: 9 };   // demi-hauteur et longueur des bras
+const Y_NOMBRE = Y + 22;                // la ligne de base des nombres
 // LA COULEUR DE L'INTERVALLE. Une variable CSS avec un repli : la couleur de
 // l'application suit le thème, et le repli sert au papier et aux captures.
 const TEINTE = 'var(--primary, #4f46e5)';
@@ -113,10 +148,11 @@ function crochet(x, ferme, versLaDroite, teinte = TEINTE) {
     // pixels de part et d'autre. C'est ce qu'on vient regarder : c'est ce qui
     // doit se voir en premier.
     const sens = versLaDroite ? 1 : -1;
-    const d = ferme ? sens * 9 : -sens * 9;
-    return `<path d="M ${x} ${Y - 11} L ${x + d} ${Y - 11} M ${x} ${Y - 11} L ${x} ${Y + 11} `
-        + `M ${x} ${Y + 11} L ${x + d} ${Y + 11}" fill="none" stroke="${teinte}" `
-        + `stroke-width="3" stroke-linecap="round"/>`;
+    const d = ferme ? sens * CROCHET.bras : -sens * CROCHET.bras;
+    const h = CROCHET.haut;
+    return `<path d="M ${x} ${Y - h} L ${x + d} ${Y - h} M ${x} ${Y - h} L ${x} ${Y + h} `
+        + `M ${x} ${Y + h} L ${x + d} ${Y + h}" fill="none" stroke="${teinte}" `
+        + `stroke-width="${TRAIT.crochet}" stroke-linecap="round"/>`;
 }
 
 /**
@@ -136,20 +172,21 @@ export function axeHtml(parts, opts = {}) {
     let g = '';
 
     // La droite, ses flèches, ses graduations entières et leurs nombres.
-    g += `<path d="M 4 ${Y} L ${L - 4} ${Y}" stroke="currentColor" stroke-width="1.6" fill="none"/>`;
-    g += `<path d="M ${L - 4} ${Y} l -7 -4 l 0 8 z" fill="currentColor"/>`;
+    g += `<path d="M 4 ${Y} L ${L - 4} ${Y}" stroke="currentColor" `
+        + `stroke-width="${TRAIT.axe}" fill="none"/>`;
+    g += `<path d="M ${L - 4} ${Y} l -6 -3.4 l 0 6.8 z" fill="currentColor"/>`;
     for (let v = f.min; v <= f.max; v++) {
         const x = versX(v, f);
         const gros = v === 0 || v === 1;
-        g += `<path d="M ${x} ${Y - 5} L ${x} ${Y + 5}" stroke="currentColor" `
-            + `stroke-width="${gros ? 1.8 : 1}" fill="none"/>`;
+        g += `<path d="M ${x} ${Y - 4.5} L ${x} ${Y + 4.5}" stroke="currentColor" `
+            + `stroke-width="${gros ? TRAIT.ticRepere : TRAIT.tic}" fill="none"/>`;
         // ON N'ÉCRIT PAS TOUS LES NOMBRES. Le manuel n'en écrit que deux — 0 et
         // 1 — et laisse les graduations dire le reste ; seize nombres sous une
         // droite de trois cents pixels se chevauchent et ne se lisent plus. On
         // garde 0, 1 et les bornes de l'intervalle, qui sont ce qu'on regarde.
         const estBorne = bornes.includes(v);
         if (gros || estBorne) {
-            g += `<text x="${x}" y="${Y + 19}" text-anchor="middle" font-size="11" `
+            g += `<text x="${x}" y="${Y_NOMBRE}" text-anchor="middle" font-size="11" `
                 + `fill="currentColor">${nb(v)}</text>`;
         }
     }
@@ -174,13 +211,13 @@ export function axeHtml(parts, opts = {}) {
         // même droite (l'union, l'intersection) : sans lui, le second couvrirait
         // le premier et l'on ne verrait plus qu'un seul segment.
         g += `<path d="M ${x1} ${Y} L ${x2} ${Y}" stroke="${teinte}" `
-            + `stroke-width="5" stroke-linecap="butt" fill="none"/>`;
+            + `stroke-width="${TRAIT.intervalle}" stroke-linecap="butt" fill="none"/>`;
         if (p.a !== null) g += crochet(x1, p.ea, true, teinte);
         if (p.b !== null) g += crochet(x2, p.eb, false, teinte);
         // Vers l'infini, une flèche plutôt qu'un crochet : c'est ce qui se
         // dessine au tableau, et cela redit que la borne n'est pas atteinte.
-        if (p.a === null) g += `<path d="M 4 ${Y} l 10 -5 l 0 10 z" fill="${teinte}"/>`;
-        if (p.b === null) g += `<path d="M ${L - 4} ${Y} l -10 -5 l 0 10 z" fill="${teinte}"/>`;
+        if (p.a === null) g += `<path d="M 3 ${Y} l 8 -4.2 l 0 8.4 z" fill="${teinte}"/>`;
+        if (p.b === null) g += `<path d="M ${L - 3} ${Y} l -8 -4.2 l 0 8.4 z" fill="${teinte}"/>`;
         g += `</g>`;
     });
 
@@ -194,8 +231,18 @@ export function axeHtml(parts, opts = {}) {
             + `fill="${opts.teinte || TEINTE}">${opts.nom}</text>`
         : '';
     const titre = opts.titre || 'Droite graduée';
+    // LA DROITE A UNE TAILLE DE LECTURE, elle ne prend pas toute la place
+    // qu'on lui donne. Mesuré dans l'application : sur un écran large, l'axe
+    // s'étirait à 1 304 px — une unité de vue valait alors 4,07 px, et le
+    // moindre trait devenait un pavé. Tout grandissait ensemble, donc les
+    // proportions étaient les mêmes ; mais une droite graduée de treize cents
+    // pixels pour huit graduations ne ressemble plus à ce qu'un élève a dans
+    // son cahier, et c'est aussi cela que Rémy appelait « grossier ».
+    // Bornée à 560 px, une unité vaut 1,75 px : les nombres font 19 px, le
+    // trait de l'intervalle 6. C'est la taille d'un dessin de manuel.
     return `<svg class="iv-axe" viewBox="0 -${hauteur - H} ${L} ${hauteur}" `
-        + `role="img" aria-label="${titre}" style="max-width:100%;height:auto">${lettre}${g}</svg>`;
+        + `role="img" aria-label="${titre}" `
+        + `style="max-width:min(100%,560px);height:auto">${lettre}${g}</svg>`;
 }
 
 // ── LES TROIS ÉCRITURES ─────────────────────────────────────────────────────

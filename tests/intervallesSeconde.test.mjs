@@ -173,9 +173,16 @@ test('LE CROCHET FERMÉ REGARDE VERS L\'INTÉRIEUR, L\'OUVERT LUI TOURNE LE DOS'
     const ferme = axeHtml([{ a: 2, b: 5, ea: true, eb: false }]);
     const ouvert = axeHtml([{ a: 2, b: 5, ea: false, eb: false }]);
     assert.notEqual(ferme, ouvert);
-    // Les bras mesurent neuf pixels — mesuré à l'écran, six ne se distinguait
-    // pas entre deux propositions voisines.
-    assert.match(lire('js/core/generators/intervalles.js'), /const d = ferme \? sens \* 9 : -sens \* 9;/);
+    // Les bras mesurent neuf unités — mesuré à l'écran, six ne se distinguait
+    // pas entre deux propositions voisines. La HAUTEUR du crochet, elle, a
+    // baissé depuis (elle mordait sur les nombres, voir `CROCHET`) ; la
+    // longueur des bras, non, et c'est elle que ce test garde.
+    const src = lire('js/core/generators/intervalles.js');
+    assert.match(src, /const CROCHET = \{ haut: \d+(\.\d+)?, bras: 9 \}/,
+        'les bras du crochet ne mesurent plus neuf : deux propositions qui ne '
+        + 'diffèrent que par le sens du crochet vont redevenir indiscernables');
+    assert.match(src, /const d = ferme \? sens \* CROCHET\.bras : -sens \* CROCHET\.bras;/,
+        'le sens du crochet ne se lit plus dans le tracé');
 });
 
 test('UNE DEMI-DROITE PORTE UNE FLÈCHE, PAS UN CROCHET', () => {
@@ -254,4 +261,67 @@ test('LA CONSIGNE EST UNE PHRASE, PAS DEUX MORCEAUX COLLÉS', () => {
         assert.match(it.prompt.html, /correspond à (cette|cet) /);
         assert.ok(!/se lit\s*:/.test(it.prompt.html));
     });
+});
+
+// ── LE DESSIN NE RECOUVRE PLUS LES NOMBRES ──────────────────────────────────
+//
+// RÉMY : « les intervalles de manière générale font grossier, ça recouvre les
+// chiffres aussi ».
+//
+// MESURÉ au navigateur (tools/tmp/intervallesGeo.mjs), sur les quatre formes
+// d'intervalle : 1 à 2 recouvrements par dessin. Le bras bas du crochet
+// occupait [Y + 9,5 ; Y + 12,5] et la boîte du nombre commençait à Y + 8.
+//
+// Ici, on garde la SÉPARATION, qui est de la géométrie et se calcule : le bas
+// du crochet et le haut de la boîte du nombre ne doivent pas se croiser. Les
+// pixels, eux, se mesurent au banc.
+
+test('LE CROCHET ET LE NOMBRE NE SE CROISENT PAS', () => {
+    const src = lire('js/core/generators/intervalles.js');
+    const nbr = (re) => {
+        const m = src.match(re);
+        assert.ok(m, `introuvable : ${re}`);
+        return Number(m[1]);
+    };
+    const hautCrochet = nbr(/const CROCHET = \{ haut: (\d+(?:\.\d+)?)/);
+    const traitCrochet = nbr(/crochet: (\d+(?:\.\d+)?)/);
+    const yNombre = nbr(/const Y_NOMBRE = Y \+ (\d+(?:\.\d+)?);/);
+    const corps = nbr(/text-anchor="middle" font-size="(\d+)"/);
+    // Le bas de l'encre du crochet, compté depuis la droite (Y).
+    const basDuCrochet = hautCrochet + traitCrochet / 2;
+    // Le haut de la BOÎTE du nombre : mesuré au navigateur, elle commence une
+    // hauteur de corps au-dessus de la ligne de base (14 px de boîte pour un
+    // corps de 11, dont 11 au-dessus). On prend le corps, qui majore.
+    const hautDuNombre = yNombre - corps;
+    assert.ok(hautDuNombre > basDuCrochet + 1,
+        `le nombre commence à Y+${hautDuNombre} et le crochet descend à `
+        + `Y+${basDuCrochet} : ils se recouvrent`);
+});
+
+test('LE TRAIT DE L\'INTERVALLE EST POSÉ SUR LA DROITE, PAS À SA PLACE', () => {
+    // 5 unités sous des nombres de 11, c'était presque la moitié de la hauteur
+    // d'un chiffre — « grossier ». Au tableau, on repasse la portion en gras :
+    // deux à trois fois le trait de l'axe.
+    const src = lire('js/core/generators/intervalles.js');
+    const val = (nom) => {
+        const m = src.match(new RegExp(nom + ': (\\d+(?:\\.\\d+)?)'));
+        assert.ok(m, `épaisseur « ${nom} » introuvable`);
+        return Number(m[1]);
+    };
+    const axe = val('axe'), intervalle = val('intervalle');
+    const rapport = intervalle / axe;
+    assert.ok(rapport >= 2 && rapport <= 3.2,
+        `le trait de l'intervalle vaut ${rapport.toFixed(1)} fois celui de l'axe `
+        + '— au-delà de trois, il ne se lit plus comme une portion de la droite');
+    // Et il reste plus fin qu'un chiffre : c'est un trait, pas un pavé.
+    assert.ok(intervalle < 11 / 2, 'le trait fait plus de la moitié d\'un chiffre');
+});
+
+test('LA DROITE A UNE TAILLE DE LECTURE', () => {
+    // Étirée à 1 304 px sur un écran large, une unité de vue valait 4,07 px :
+    // une droite graduée de treize cents pixels pour huit graduations ne
+    // ressemble plus à ce qu'un élève a dans son cahier.
+    const svg = axeHtml([{ a: -2, b: 3, ea: true, eb: false }]);
+    assert.match(svg, /max-width:min\(100%,\s*\d+px\)/,
+        'le dessin reprend toute la largeur qu\'on lui donne');
 });
