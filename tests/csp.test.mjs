@@ -56,17 +56,29 @@ test('CHAQUE SCRIPT ÉCRIT DANS LA PAGE EST SIGNÉ — aucun oublié', () => {
     assert.ok(total >= 5, `seulement ${total} scripts relevés`);
 });
 
-test('ELLE EST EN MODE RAPPORT, ET LE RESTE TANT QU\'ON NE L\'A PAS ÉPROUVÉE', () => {
-    // Une CSP trop serrée ne prévient PAS l'utilisateur : la page se charge,
-    // un bout ne marche plus, aucun message — et on le découvre devant la
-    // classe. `Report-Only` applique la page normalement et se contente de
-    // signaler dans la console ce qu'elle aurait bloqué.
+test('ELLE EST EN VIGUEUR, ET CE PASSAGE A ÉTÉ ÉPROUVÉ', () => {
+    // CE TEST DISAIT L'INVERSE, ET C'ÉTAIT JUSTE À L'ÉPOQUE. Une CSP trop
+    // serrée ne prévient PAS l'utilisateur : la page se charge, un bout ne
+    // marche plus, aucun message — et on le découvre devant la classe. Le
+    // mode « rapport » était donc le bon premier temps, et le test gardait
+    // le passage comme un geste VOLONTAIRE.
     //
-    // Ce test ne dit pas « il ne faut jamais l'appliquer » : il dit que le
-    // passage doit être un geste VOLONTAIRE. Le jour où Rémy l'aura laissée
-    // tourner une semaine sans rien voir passer, on retire `-Report-Only`
-    // ici et dans `tools/csp.mjs`, et ce test devient l'inverse.
-    assert.match(HTACCESS, /Content-Security-Policy-Report-Only/);
+    // LE GESTE A ÉTÉ FAIT, ET IL A ÉTÉ MESURÉ. Plutôt que d'attendre une
+    // semaine en guettant une console, on pose la politique STRICTE dans un
+    // vrai navigateur et l'on se sert de l'application dessous — démarrage,
+    // entrée du professeur, espace classes, quatre exercices joués jusqu'au
+    // pavé, réglages et aperçu, impression. UNE violation est sortie, et une
+    // seule : `worker-src ← blob:`, les confettis, qui auraient cessé de
+    // s'afficher en silence au moment du « sans faute ». Elle est corrigée
+    // dans la politique, pas contournée.
+    //
+    // Le test garde maintenant l'autre sens : on ne retombe pas en mode
+    // rapport sans le décider.
+    assert.match(HTACCESS, /Header always set Content-Security-Policy "/);
+    assert.doesNotMatch(HTACCESS, /Content-Security-Policy-Report-Only/);
+    // Et le worker `blob:` est bien autorisé, faute de quoi le défaut mesuré
+    // reviendrait à la première régénération.
+    assert.match(HTACCESS, /worker-src 'self' blob:/);
 });
 
 test('AUCUN GESTIONNAIRE N\'EST ÉCRIT DANS UNE BALISE', () => {

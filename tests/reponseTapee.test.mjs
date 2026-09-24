@@ -134,3 +134,48 @@ test('le pavé décrit ici est bien celui que litteralSaisie construit', () => {
             + 'touches a changé, `touchesDe` doit changer avec elle');
     }
 });
+
+// ── LES EXERCICES DE LA FEUILLE DOIVENT RESTER TIRABLES ─────────────────────
+//
+// CE TEST EXISTE PARCE QUE JE LES AVAIS FAIT DISPARAÎTRE.
+//
+// En corrigeant les réponses inachevées, j'avais contraint les tirages partout
+// pour qu'aucun facteur commun ne subsiste. La mesure disait « 0 refus sur
+// 12 000 » et elle était exacte — sur ce qu'elle mesurait. Ce qu'elle ne
+// mesurait pas, c'est ce qui n'était plus tiré :
+//
+//   A(x) = (6 − 5x)² − 1           PLUS TIRABLE
+//   D(x) = (3x − 2)² − (x + 4)²    PLUS TIRABLE
+//
+// Deux des quatre exercices de la feuille que Rémy a photographiée, ceux-là
+// mêmes dont il a dit « je veux que ce soit hyper progressif pour arriver à
+// cela en photo ». Les deux portent un facteur commun, et c'est justement ce
+// qui en fait les exercices de FIN de feuille. Les interdire pour que le
+// corrigé soit simple, c'est retirer l'exercice.
+//
+// UNE MESURE QUI NE REGARDE QUE CE QU'ON A CORRIGÉ NE VOIT PAS CE QU'ON A
+// CASSÉ. Ce test regarde l'autre côté.
+
+test('les exercices de la feuille de Rémy restent tirables, et finis', () => {
+    const CIBLES = [
+        ['(6 − 5x)² − 1', '5(1 − x)(7 − 5x)', ['3', 'revision']],
+        ['(3x − 2)² − (x + 4)²', '4(x − 3)(2x + 1)', ['4', 'revision']]
+    ];
+    for (const [enonce, attendue, barreaux] of CIBLES) {
+        let trouve = null;
+        for (const barreau of barreaux) {
+            for (let i = 0; i < 6000 && !trouve; i++) {
+                const it = factorisationGenerator.generate({ barreau },
+                    { rng: makeRng(`feuille_${barreau}_${i}`) });
+                if (it.prompt.papier === `Factoriser : ${enonce}`) trouve = it;
+            }
+            if (trouve) break;
+        }
+        assert.ok(trouve, `« ${enonce} » n'est plus tirable : un tirage contraint `
+            + 'a retiré un exercice de la feuille');
+        assert.equal(trouve.reponsePapier, attendue,
+            `« ${enonce} » : la réponse doit aller jusqu'au bout`);
+        const v = trouve.verifieTexte(attendue.replace(/\s+/g, ''));
+        assert.ok(v && v.juste, `« ${enonce} » : sa propre réponse est refusée`);
+    }
+});

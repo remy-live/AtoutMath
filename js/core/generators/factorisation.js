@@ -118,12 +118,16 @@ function tirerSauf(rng, min, max, interdits = []) {
  * 715 au 3, 404 au 4, 466 au 5, 454 au 6, 100 au 7. Le barreau 1 n'en avait
  * aucune — son énoncé x² − n² est unitaire, il ne peut rien garder.
  *
- * DEUX CORRECTIFS ÉTAIENT POSSIBLES, ET LE CHOIX N'EST PAS TECHNIQUE. Sortir
- * le facteur commun dans la réponse aurait changé l'exercice : le barreau 2
- * enseigne a² − b² avec un coefficient, pas « repérer d'abord un facteur
- * commun », qui est le barreau 6 et qu'on n'a pas encore monté. On CONTRAINT
- * donc le tirage pour que la question ne pose jamais ce problème-là : chaque
- * barreau continue d'enseigner exactement ce qu'il enseignait.
+ * DEUX CORRECTIFS ÉTAIENT POSSIBLES, ET LE CHOIX N'EST PAS TECHNIQUE. On peut
+ * CONTRAINDRE LE TIRAGE — c'est cette fonction — ou SORTIR LE FACTEUR dans la
+ * réponse — c'est `produitFini`. Le bon correctif n'est pas le même partout,
+ * et j'ai commencé par me tromper en appliquant le premier à tous les
+ * barreaux : voir `produitFini`, qui raconte ce que cela avait effacé.
+ *
+ * LA RÈGLE RETENUE : on contraint le tirage là où le facteur commun
+ * PARASITERAIT la leçon du barreau — le 2 apprend à lire 36x² comme (6x)²,
+ * les 5 à 7 travaillent le facteur commun LITTÉRAL —, et on sort le facteur
+ * là où il EST la leçon, aux barreaux 3 et 4, qui sont ceux de la feuille.
  *
  * @param {(v:number) => boolean} convient  le test que la valeur doit passer
  * @returns {number|null} `null` si aucune valeur ne convient — l'appelant
@@ -138,6 +142,56 @@ function tirerTelQue(rng, min, max, convient) {
 
 /** Un facteur `cx + k` est-il fini ? Oui si c et k n'ont rien en commun. */
 const facteurFini = (c, k) => P.pgcd(Math.abs(c), Math.abs(k)) === 1;
+
+/**
+ * Écrit le produit de facteurs linéaires EN SORTANT le facteur numérique.
+ *
+ * ── POURQUOI CETTE FONCTION EXISTE, ET C'EST UN RETOUR EN ARRIÈRE ──────────
+ *
+ * J'avais d'abord corrigé les réponses inachevées en CONTRAIGNANT LES TIRAGES
+ * partout : pas de facteur commun, donc rien à sortir. La mesure disait zéro
+ * refus, et elle avait raison — sur ce qu'elle mesurait. Ce qu'elle ne
+ * mesurait pas, c'est ce qui avait disparu :
+ *
+ *   A(x) = (6 − 5x)² − 1          PLUS TIRABLE
+ *   D(x) = (3x − 2)² − (x + 4)²   PLUS TIRABLE
+ *
+ * Ce sont DEUX DES QUATRE EXERCICES DE LA FEUILLE QUE RÉMY A PHOTOGRAPHIÉE,
+ * ceux-là mêmes dont il a dit « je veux que ce soit hyper progressif pour
+ * arriver à cela en photo ». Les deux portent un facteur commun —
+ * (6 − 5x)² − 1 = (5 − 5x)(7 − 5x) = 5(1 − x)(7 − 5x) — et c'est justement
+ * ce qui en fait les exercices de FIN de feuille. Les interdire pour que la
+ * réponse tienne en un geste, c'est retirer l'exercice pour que le corrigé
+ * soit simple.
+ *
+ * ON GARDE DONC LES TIRAGES, ET C'EST LA RÉPONSE QUI VA JUSQU'AU BOUT. Le
+ * facteur numérique passe devant, comme on l'écrit au tableau.
+ *
+ * La contrainte reste là où elle protège une leçon : au barreau 2, qui
+ * enseigne à lire 36x² comme (6x)², et aux barreaux 5 à 7, dont le sujet est
+ * le facteur commun littéral et non numérique. Aux barreaux 3 et 4 — ceux de
+ * la feuille — elle est levée.
+ *
+ * @param {Array<[number, number]>} facteurs  chaque `[c, k]` vaut `cx + k`
+ * @param {boolean} constDAbord  écrire `6 − 5x` plutôt que `−5x + 6`
+ */
+function produitFini(facteurs, constDAbord = false) {
+    let devant = 1;
+    const nus = facteurs.map(([c, k]) => {
+        const g = P.pgcd(Math.abs(c), Math.abs(k)) || 1;
+        devant *= g;
+        return [c / g, k / g];
+    });
+    const corps = nus.map(([c, k]) => `(${lineaire(c, k, constDAbord)})`).join('');
+    return devant === 1 ? corps : `${devant}${corps}`;
+}
+
+/** Le même produit SANS sortir le facteur : c'est la réponse à mi-chemin. */
+const produitBrut = (facteurs, constDAbord = false) =>
+    facteurs.map(([c, k]) => `(${lineaire(c, k, constDAbord)})`).join('');
+
+/** Ce produit garde-t-il quelque chose à sortir ? */
+const resteASortir = (facteurs) => facteurs.some(([c, k]) => !facteurFini(c, k));
 
 function barreau1(rng) {
     const n = rng.int(2, 12);
@@ -213,32 +267,41 @@ function barreau3(rng) {
     // donc tous dans la forme du manuel.
     //
     // A(x) = (6 − 5x)² − 1 reste atteignable : n = 1, b = 6.
-    // b TEL QUE LES DEUX FACTEURS SOIENT FINIS. Ils portent b − n et b + n
-    // sur le même coefficient a : si a partage un diviseur avec l'un des deux,
-    // la réponse garde un facteur commun — (5x + 6)² − 16 donnait
-    // (5x + 2)(5x + 10), où la seconde parenthèse garde 5.
-    //
-    // Le repli existe et il est juste : quand aucun b ne convient (|a| = 2 et
-    // n impair, par exemple, où b − n et b + n ont toujours la même parité),
-    // on ne force pas — on rejoue le barreau, qui retirera un autre a.
-    const bOk = tirerTelQue(rng, n + 1, 9,
-        (v) => facteurFini(a, v - n) && facteurFini(a, v + n));
-    if (bOk === null) return barreau3(rng);
-    const b = bOk;
+    const b = rng.int(n + 1, 9);
     // La constante devant quand le coefficient est négatif — c'est ainsi que
     // la feuille écrit (6 − 5x). `b > n` ci-dessus garantit que toutes les
     // constantes restent positives, donc que cette forme tient partout.
     const ordre = a < 0;
     const A = lineaire(a, b, ordre);
     const enonce = `(${A})² ${M} ${n * n}`;
+    // Les deux facteurs de a² − b², sous la forme que `produitFini` attend.
+    const paires = [[a, b - n], [a, b + n]];
+    const aSortir = resteASortir(paires);
     return {
         enonce, evaluer: (x) => Math.pow(a * x + b, 2) - n * n,
-        reponse: `(${lineaire(a, b - n, ordre)})(${lineaire(a, b + n, ordre)})`,
+        // LA RÉPONSE VA JUSQU'AU BOUT — voir `produitFini`. C'est ici que vit
+        // A(x) = (6 − 5x)² − 1, l'exercice A de la feuille, dont la réponse
+        // finie est 5(1 − x)(7 − 5x) et non (5 − 5x)(7 − 5x).
+        reponse: produitFini(paires, ordre),
         evaluerReponse: (x) => (a * x + b - n) * (a * x + b + n),
         a: A, b: String(n),
         explication: `a = ${A} et b = ${n}. Donc a ${M} b = ${lineaire(a, b - n, ordre)} `
-            + `et a + b = ${lineaire(a, b + n, ordre)} — on réduit chaque facteur.`,
+            + `et a + b = ${lineaire(a, b + n, ordre)} — on réduit chaque facteur.`
+            + (aSortir
+                ? ` Et ce n'est pas fini : les deux parenthèses gardent un facteur `
+                    + `commun, qui se met devant — ${produitFini(paires, ordre)}.`
+                : ''),
         leurres: [
+            // LE PRODUIT NON SORTI, quand il y a quelque chose à sortir : c'est
+            // LE leurre de ces questions-là, et il n'a rien d'artificiel — il
+            // est la réponse de l'élève qui a vu l'identité et s'est arrêté
+            // juste avant la fin. `memeValeur` le dit au test : il VAUT la
+            // réponse, il est seulement inachevé.
+            ...(aSortir ? [{
+                texte: produitBrut(paires, ordre), memeValeur: true, enDernier: true,
+                evaluer: (x) => (a * x + b - n) * (a * x + b + n),
+                why: `L'identité est juste, mais ce n'est pas fini : les deux `
+                    + `parenthèses gardent un facteur commun. On le sort devant.` }] : []),
             { texte: `(${lineaire(a, b - n, ordre)})²`,
                 evaluer: (x) => Math.pow(a * x + b - n, 2),
                 why: `Tu as retiré ${n} DEUX fois. a² ${M} b² = (a ${M} b)(a + b) : on `
@@ -299,27 +362,33 @@ function barreau4(rng) {
     // ON ÉVITE QUE LES CONSTANTES S'ANNULENT. Avec b + d = 0 la réponse
     // devient `(x − 4)(9x)` : juste, mais un facteur sans constante entre
     // parenthèses se lit mal, et l'élève se demande s'il a raté un morceau.
-    // d TEL QUE LES DEUX FACTEURS SOIENT FINIS — en plus des deux conditions
-    // d'écriture ci-dessus. (5x + 4)² − (x − 2)² donnait (4x + 6)(6x + 2) :
-    // les deux parenthèses gardent un 2. On tire donc d parmi les valeurs qui
-    // laissent a − c premier avec b − d ET a + c premier avec b + d.
-    const dOk = tirerTelQue(rng, -6, 6, (v) => b + v !== 0 && b - v !== 0
-        && facteurFini(a - c, b - v) && facteurFini(a + c, b + v));
-    // Aucune valeur : c'est le couple (a, c) qui ne convient pas — a − c et
-    // a + c tous deux pairs rendent la parité impossible à casser. On rejoue.
-    if (dOk === null) return barreau4(rng);
-    const d = dOk;
+    const d = tirerSauf(rng, -6, 6, [b, -b]);
     const G = lineaire(a, b), D = lineaire(c, d);
     const enonce = `(${G})² ${M} (${D})²`;
+    // Les deux facteurs de a² − b². C'est ici que vit D(x) = (3x − 2)² − (x + 4)²,
+    // l'exercice D de la feuille : (2x − 6)(4x + 2), donc 4(x − 3)(2x + 1).
+    const paires = [[a - c, b - d], [a + c, b + d]];
+    const aSortir = resteASortir(paires);
     return {
         enonce, evaluer: (x) => Math.pow(a * x + b, 2) - Math.pow(c * x + d, 2),
-        reponse: `(${lineaire(a - c, b - d)})(${lineaire(a + c, b + d)})`,
+        reponse: produitFini(paires),
         evaluerReponse: (x) => ((a - c) * x + b - d) * ((a + c) * x + b + d),
         a: G, b: D,
         explication: `a = ${G} et b = ${D}. a ${M} b = ${lineaire(a - c, b - d)} — attention, `
             + `le moins change les DEUX signes de la seconde parenthèse. `
-            + `a + b = ${lineaire(a + c, b + d)}.`,
+            + `a + b = ${lineaire(a + c, b + d)}.`
+            + (aSortir
+                ? ` Puis on sort le facteur commun des deux parenthèses : `
+                    + `${produitFini(paires)}.`
+                : ''),
         leurres: [
+            // Le produit non sorti — voir le barreau 3 : c'est la réponse de
+            // qui a mené l'identité à bien et s'est arrêté un geste trop tôt.
+            ...(aSortir ? [{
+                texte: produitBrut(paires), memeValeur: true, enDernier: true,
+                evaluer: (x) => ((a - c) * x + b - d) * ((a + c) * x + b + d),
+                why: `L'identité est juste, mais les deux parenthèses gardent un `
+                    + `facteur commun : il se met devant.` }] : []),
             { texte: `(${lineaire(a - c, b + d)})(${lineaire(a + c, b + d)})`,
                 evaluer: (x) => ((a - c) * x + b + d) * ((a + c) * x + b + d),
                 why: `Le moins devant la parenthèse change les DEUX termes : `
