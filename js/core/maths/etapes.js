@@ -60,6 +60,39 @@ export function poidsEcrit(arbre) {
     return n;
 }
 
+/**
+ * LE SQUELETTE D'UNE LIGNE : sa FORME, sans ses nombres.
+ *
+ * RÉMY, devant fac-3 pas à pas, l'énoncé (9 − 6x)² − 25 à l'écran, la ligne
+ * « On écrit les deux carrés » en cours et le champ vide : « je ne comprends
+ * pas ce qu'il faut faire ».
+ *
+ * Le titre dit le GESTE, il ne dit pas la FORME — et c'est la forme qui
+ * manque quand on est devant un champ vide. « On écrit les deux carrés » ne
+ * dit pas qu'on attend quelque chose comme (…)² − □² ; l'élève, lui, ne peut
+ * pas le deviner, et il est bloqué non par la mathématique mais par la
+ * consigne.
+ *
+ * ON MONTRE DONC LE MOULE, ET RIEN DE PLUS. Les parenthèses et les puissances
+ * restent — ce sont elles, la forme —, les nombres deviennent des cases. Le
+ * squelette de (9 − 6x)² − 5² est (…)² − □² : il dit tout ce qu'il faut pour
+ * commencer et ne donne aucune réponse.
+ *
+ * UN MOULE, PAS UNE CORRECTION : ce qui est entre parenthèses se replie en un
+ * seul « … », faute de quoi (…  − …)² livrerait le nombre de termes.
+ */
+export function squelette(texte) {
+    let t = String(texte == null ? '' : texte);
+    // Les parenthèses, de la plus intérieure à la plus extérieure.
+    for (let tour = 0; tour < 8 && /\([^()]*\)/.test(t); tour++) {
+        t = t.replace(/\([^()]*\)/g, '(\u2026)');
+    }
+    // Ce qui reste de nombres et de lettres devient une case. Les exposants
+    // écrits en chiffres hauts ne sont pas des caractères de ce jeu-là : ils
+    // survivent, et c'est voulu — le carré fait partie de la forme.
+    return t.replace(/[0-9A-Za-z]+/g, '\u25a1');
+}
+
 export function garnirEtapes(etapes) {
     return etapes.map(e => {
         // Le poids attendu se LIT sur la réponse de l'étape : aucun nombre
@@ -76,6 +109,10 @@ export function garnirEtapes(etapes) {
             apart: !!e.apart,
             note: !!e.note,
             montrer: e.montrer,
+            // LE MOULE DE LA LIGNE — voir `squelette`. Une étape peut le poser
+            // elle-même si sa forme se dit mieux autrement ; sinon il se
+            // déduit de la réponse attendue, donc il ne peut pas se démentir.
+            modele: e.modele || (e.note ? '' : squelette(e.montrer)),
             aide: e.aide || '',
             parentheses: !!e.parentheses,
             verifie: (saisie) => {

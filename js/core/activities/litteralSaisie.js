@@ -230,7 +230,7 @@ export function mount(container, session, opts = {}) {
                 </div>
                 <div class="ls-panel">
                     <div class="ls-champ" aria-live="polite" data-champ>
-                        <span class="ls-texte" data-texte></span><span class="ls-curseur"></span>
+                        <span class="ls-texte" data-texte></span><span class="ls-curseur"></span><span class="ls-modele" data-modele aria-hidden="true"></span>
                     </div>
                     <div class="ls-clavier">${rangees.map(rangee).join('')}</div>
                     <div class="ls-actions">
@@ -248,6 +248,30 @@ export function mount(container, session, opts = {}) {
         const texteEl = container.querySelector('[data-texte]');
         const btnValider = container.querySelector('[data-valider]');
         const noteEl = container.querySelector('[data-note]');
+        const modeleEl = container.querySelector('[data-modele]');
+
+        /**
+         * LE MOULE DE LA LIGNE, DANS LE CHAMP VIDE.
+         *
+         * RÉMY, devant fac-3 pas à pas — énoncé (9 − 6x)² − 25, ligne « On
+         * écrit les deux carrés », champ vide : « je ne comprends pas ce
+         * qu'il faut faire ».
+         *
+         * Le titre dit le GESTE ; il ne dit pas la FORME, et c'est la forme
+         * qui manque devant un champ vide. Le squelette — (…)² − □² — la dit
+         * en trois signes, sans livrer un seul nombre. Il s'efface à la
+         * première touche : ce n'est pas un texte, c'est une amorce.
+         *
+         * SEULEMENT DANS UNE CHAÎNE. Sur une question d'un seul tenant,
+         * l'énoncé est juste au-dessus et la forme attendue n'a rien
+         * d'ambigu ; un moule y serait un indice gratuit.
+         */
+        const poserModele = () => {
+            if (!modeleEl) return;
+            const e = etapes.length ? etapes[rang] : null;
+            const moule = (e && !e.finale && e.modele) || '';
+            modeleEl.textContent = saisie === '' ? moule : '';
+        };
 
         const redessiner = () => {
             // `textContent` EFFACE AUSSI LE COLORIAGE des termes semblables —
@@ -256,6 +280,7 @@ export function mount(container, session, opts = {}) {
             texteEl.textContent = saisie;
             champ.classList.remove('ls-champ--ok', 'ls-champ--ko', 'ls-champ--presque');
             champ.classList.toggle('ls-champ--vide', saisie === '');
+            poserModele();
             noteEl.textContent = '';
             btnValider.disabled = saisie.trim() === '';
         };

@@ -341,7 +341,7 @@ const nu = (n) => (n.sorte === 'groupe' ? nu(n.dedans) : n);
  * contenu en flux, c'est-à-dire sur les chiffres du radicande — précisément
  * ceux qui doivent s'aligner avec le texte autour.
  */
-function radicalHtml(dedans) {
+function radicalHtml(dedans, haut = false) {
     // LA BARRE EST DESSINÉE ELLE AUSSI, et c'est une question de Rémy qui l'a
     // imposé : « sur ton banc les radicaux ont-ils une ligne de la même
     // épaisseur ». Mesurée sur l'encre, la réponse était non.
@@ -360,7 +360,8 @@ function radicalHtml(dedans) {
         + '<svg class="fx-crochet" viewBox="0 0 10 20" preserveAspectRatio="none" '
         + 'aria-hidden="true" focusable="false">'
         + '<path d="M0 12.4 L2.7 12.4 L5.2 19.4 L8.2 0 L10 0"/></svg>'
-        + `<span class="fx-sous"><svg class="fx-barre" viewBox="0 0 10 100" `
+        + `<span class="fx-sous${haut ? ' fx-sous--haut' : ''}">`
+        + `<svg class="fx-barre" viewBox="0 0 10 100" `
         + 'preserveAspectRatio="none" aria-hidden="true" focusable="false">'
         + `<rect x="0" y="0" width="10" height="15"/></svg>${dedans}</span></span>`;
 }
@@ -471,7 +472,11 @@ function rendre(n, rangParent = 0) {
             out = fractionHtml(rendre(x.haut, 0), rendre(x.bas, 0));
             break;
         case 'racine':
-            out = radicalHtml(rendre(x.sous, 0));
+            // ON DIT AU RADICAL SI SON CONTENU EST HAUT. Une fraction sous la
+            // barre ne se cale pas comme deux chiffres : le dégagement au-
+            // dessus est déjà donné par l'interligne du numérateur, et l'y
+            // ajouter une seconde fois éloignait la barre de .38 em — mesuré.
+            out = radicalHtml(rendre(x.sous, 0), estHaut(x.sous));
             break;
 
         case 'puissance': {

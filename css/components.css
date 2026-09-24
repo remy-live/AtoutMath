@@ -1020,6 +1020,18 @@ body.mobile-view #toast-container {
        d'essai : 0,19 px, c'est-à-dire l'arrondi du navigateur. */
     top: calc(var(--fx-trait) / 2);
     width: .58em;
+    /* LA HAUTEUR EST IMPOSÉE, ET IL LE FAUT — c'est le même piège que pour la
+       barre, quelques règles plus bas, et il mordait ici aussi.
+       Un `<svg>` porteur d'un viewBox a un RAPPORT D'ASPECT intrinsèque — ici
+       10 sur 20, donc 1 pour 2 — et ce rapport l'emporte dès qu'une dimension
+       est déduite des bords. Avec `top`, `bottom` et une largeur de .58 em, le
+       crochet mesurait donc TOUJOURS 1,16 em, quelle que soit la hauteur du
+       radicande : mesuré, 48,4 px de crochet pour un radicande de 76 px sous
+       √(9/16) — la pointe s'arrêtait au milieu de la fraction. Le commentaire
+       promettait pourtant qu'il s'allongeait ; il ne s'allongeait pas.
+       Une hauteur explicite écarte le rapport d'aspect. Mesuré après : 99,5 px
+       de crochet, pointe à 5 px du bas de la fraction. */
+    height: calc(100% - var(--fx-trait) / 2);
     /* Le trait déborde du cadre vers le haut : on ne le coupe pas. */
     overflow: visible;
     fill: none;
@@ -1041,12 +1053,33 @@ body.mobile-view #toast-container {
 .fx-sous {
     display: block;
     position: relative;
-    /* Un court dépassement à droite : un radical qui s'arrête pile sur le
+    /* LA BOÎTE ÉPOUSE LES CHIFFRES, ELLE NE LES LOGE PAS DANS UNE LIGNE.
+       Rémy, capture de 3√80 − 2√125 : « mal mise la racine carrée ».
+       MESURÉ SUR L'ENCRE, à 40 px de corps : .41 em de blanc entre la barre
+       et le haut des chiffres — plus de la moitié de leur hauteur. La barre
+       flottait, et c'est bien ce qui se voyait.
+       La cause n'était pas le `padding` (.205 em) mais l'INTERLIGNE INTERNE de
+       la police : Outfit réserve .28 em au-dessus des capitales, et un bloc en
+       interligne normal les ajoute au dégagement demandé. On ne pouvait donc
+       PAS corriger en retirant du padding — il aurait fallu du négatif.
+       L'interligne est donc ramené à .74, valeur qui pose la ligne de base des
+       chiffres sur le BAS de la boîte : le crochet, qui descend jusque-là,
+       s'arrête alors sur leur pied. Le dégagement redevient le seul padding.
+       Mesuré après : .18 em à 40 px, .13 em à 16 px, .15 em à 22 px.
+       Un court dépassement à droite : un radical qui s'arrête pile sur le
        dernier chiffre paraît coupé. Les polices mathématiques laissent ce
-       filet. Le haut réserve la place de la barre, qui ne tient plus de
-       hauteur elle-même. */
-    padding: calc(.13em + var(--fx-trait)) .12em 0 .1em;
+       filet. */
+    line-height: .74;
+    padding: .24em .12em 0 .1em;
 }
+
+/* UNE FRACTION SOUS LA BARRE N'A PAS BESOIN DU MÊME DÉGAGEMENT : son
+   numérateur porte déjà son propre interligne, et le padding s'y ajoutait —
+   .38 em mesurés. L'information vient de l'arbre (`estHaut` dans
+   maths/formule.js), pas d'une mesure de pixels : elle vaut donc aussi avant
+   que la police soit chargée. L'interligne, lui, revient à la normale : il ne
+   s'applique pas au bloc empilé d'une fraction, qui a le sien. */
+.fx-sous--haut { line-height: normal; padding-top: .05em; }
 
 /* LA BARRE EST UN TRACÉ, COMME LE CROCHET.
    Rémy : « sur ton banc les radicaux ont-ils une ligne de la même épaisseur ».

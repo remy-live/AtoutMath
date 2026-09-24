@@ -8309,7 +8309,15 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     border-color: var(--primary);
     background: color-mix(in srgb, var(--primary) 7%, transparent);
 }
-.ls-ligne--active .ls-quoi { color: var(--text-main); font-weight: 700; }
+/* LE MÊME TEXTE JOUE DEUX RÔLES, ET IL N'A PAS À AVOIR LA MÊME TAILLE.
+   Sur une ligne FAITE, « On écrit les deux carrés » légende ce qu'on vient
+   d'écrire : c'est une note de marge, elle reste petite. Sur la ligne ACTIVE,
+   c'est LA CONSIGNE — le seul texte qui dise quoi taper — et elle s'affichait
+   en .76 rem sous un énoncé en 2 rem. Rémy : « je ne comprends pas ce qu'il
+   faut faire ». */
+.ls-ligne--active .ls-quoi {
+    color: var(--text-main); font-weight: 700; font-size: .98rem; line-height: 1.3;
+}
 .ls-ligne--attente { opacity: .4; }
 .ls-ligne--attente .ls-quoi { visibility: hidden; }
 
@@ -8411,6 +8419,20 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     color: var(--ls-sem-2); text-decoration-style: dotted;
     background: color-mix(in srgb, var(--ls-sem-2) 12%, transparent);
 }
+/* LE MOULE DE LA LIGNE — voir `poserModele` dans litteralSaisie.js.
+   Rémy, devant une étape et un champ vide : « je ne comprends pas ce qu'il
+   faut faire ». Il dit la FORME attendue, (…)² − □², que le titre ne dit pas.
+   Il est gris et moins gras que la saisie : on doit voir du premier coup d'œil
+   que ce n'est pas écrit, c'est à écrire. Il s'efface à la première touche. */
+.ls-modele {
+    color: var(--text-muted);
+    font-weight: 600;
+    opacity: .62;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+.ls-modele:empty { display: none; }
+
 /* LE CURSEUR CLIGNOTE, et c'est lui qui dit « écris ici ». Un champ vide et
    muet se lit comme un affichage, pas comme une place à remplir. */
 .ls-curseur {

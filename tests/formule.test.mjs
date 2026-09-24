@@ -225,3 +225,52 @@ test('le texte libre est échappé — une formule ne pose pas de balise', () =>
     assert.ok(!h.includes('<img'), 'une balise est passée dans le rendu');
     assert.ok(h.includes('&lt;img'), 'le texte n\'a pas été échappé');
 });
+
+// ── LE RADICAL EST POSÉ SUR SES CHIFFRES ────────────────────────────────────
+//
+// Rémy, capture de 3√80 − 2√125 : « mal mise la racine carrée ».
+//
+// MESURÉ SUR L'ENCRE, au banc (tools/tmp/banc/radicalGeo.mjs), à 40 px :
+//   · .41 em de blanc entre la barre et le haut des chiffres — la barre
+//     flottait, et c'est ce qui se voyait ;
+//   · le crochet mesurait 48,4 px sous un radicande de 76 px : son rapport
+//     d'aspect SVG lui imposait 1,16 em, quelle que soit la hauteur du
+//     contenu. La pointe s'arrêtait au milieu de la fraction.
+//
+// Le banc mesure les pixels ; ce test-ci garde les DEUX DÉCISIONS qui les
+// produisent, parce qu'elles se reperdent d'une refonte de feuille à l'autre.
+
+test('LE RADICAL DIT À SA BOÎTE SI SON CONTENU EST HAUT', () => {
+    // Une fraction sous la barre porte déjà l'interligne de son numérateur :
+    // lui ajouter le dégagement des chiffres éloignait la barre de .38 em.
+    assert.ok(fx.html(fx.analyser('sqrt(9/16)')).includes('fx-sous--haut'),
+        'une fraction sous la racine ne se signale plus comme haute');
+    assert.ok(fx.html(fx.analyser('sqrt(sqrt2)')).includes('fx-sous--haut'),
+        'une racine sous la racine ne se signale plus comme haute');
+    // Deux chiffres, eux, ne sont pas hauts : ils prennent le dégagement plein.
+    assert.ok(!fx.html(fx.analyser('sqrt80')).includes('fx-sous--haut'),
+        '√80 se croit haut : il prendrait le dégagement des fractions');
+    assert.ok(!fx.html(fx.analyser('3*sqrt80 - 2*sqrt125')).includes('fx-sous--haut'));
+});
+
+test('LA FEUILLE DE STYLE GARDE LES DEUX CORRECTIFS DU RADICAL', () => {
+    // UN TEST QUI LIT LE CSS, faute de navigateur ici — et il lit les deux
+    // propriétés dont l'ABSENCE était le défaut, pas leur valeur exacte :
+    // celle-ci se règle au banc, sur l'encre.
+    const css = readFileSync(new URL('../css/components.css', import.meta.url), 'utf8');
+    const bloc = (sel) => {
+        const i = css.indexOf(sel + ' {');
+        assert.ok(i > 0, `${sel} a disparu de la feuille`);
+        return css.slice(i, css.indexOf('}', i));
+    };
+    // L'interligne serré : sans lui, le blanc sous la barre ne peut PAS être
+    // ramené sous .28 em, l'interligne interne de la police l'imposant.
+    assert.match(bloc('.fx-sous'), /line-height:\s*\.7\d/,
+        '.fx-sous a repris un interligne normal : la barre va se remettre à flotter');
+    // La hauteur explicite du crochet : sans elle, le rapport d'aspect du SVG
+    // le fige à 1,16 em et il ne s'allonge plus.
+    assert.match(bloc('.fx-crochet'), /height:\s*calc\(100%/,
+        '.fx-crochet n\'a plus de hauteur imposée : il cessera de s\'allonger');
+    assert.match(bloc('.fx-sous--haut'), /padding-top/,
+        '.fx-sous--haut ne règle plus son propre dégagement');
+});
