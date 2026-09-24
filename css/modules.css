@@ -8247,117 +8247,115 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     flex: 0 0 auto; width: 100%; max-width: 420px;
 }
 
-/* LA FRISE DES ÉTAPES — Rémy : « Pour les factorisations compliqué du genre
-   (x+3)² − (3x + 5)², on pourrait proposer plusieurs étapes non ? »
+/* LA CHAÎNE D'ÉGALITÉS — Rémy : « il faut revoir la façon de présenter,
+   quelque chose de cohérent ».
 
-   CE QUI EST FAIT RESTE LISIBLE, et c'est le point. L'élève écrit a + b en
-   relisant son a − b ; masquer les lignes précédentes lui demanderait de les
-   retenir, ce qui n'est pas la question posée. Une barre d'avancement aurait
-   dit « 2 sur 4 » et n'aurait rien montré.
+   La première version était une liste à cocher : le titre à gauche, la valeur
+   à droite. Chaque ligne était juste, et l'ensemble n'était pas une
+   démonstration — rien ne disait que toutes ces lignes sont ÉGALES entre
+   elles, ce qui est pourtant tout le sujet.
 
-   Les titres sont alignés à gauche et les valeurs à droite : ce sont deux
-   colonnes, pas une phrase — on retrouve une ligne d'un coup d'œil. */
-.ls-etapes {
-    list-style: none; margin: 12px 0 0; padding: 0;
-    display: flex; flex-direction: column; gap: 4px;
-    text-align: left; font-size: .95rem;
+   On écrit donc la trace du tableau : une colonne de « = » alignés, la valeur
+   en gras, et en petit à droite ce qu'on vient de faire. Ce qui est écrit
+   reste LISIBLE jusqu'au bout — l'élève relit sa ligne précédente en écrivant
+   la suivante, sinon on lui demande de la retenir, ce qui n'est pas la
+   question posée. */
+.ls-chaine {
+    list-style: none; margin: 10px 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: 3px;
+    text-align: left; font-size: 1rem;
 }
-.ls-etape {
-    display: flex; align-items: baseline; gap: 10px;
-    padding: 5px 10px; border-radius: 9px;
+.ls-ligne {
+    display: grid; align-items: baseline;
+    grid-template-columns: max-content 1ch minmax(0, 1fr);
+    gap: 2px 7px;
+    padding: 4px 8px; border-radius: 9px;
     border: 2px solid transparent;
     transition: background .18s ease, border-color .18s ease, opacity .18s ease;
 }
-.ls-etape-titre { flex: 1 1 auto; color: var(--text-muted); }
-.ls-etape-val {
-    flex: 0 0 auto; font-weight: 800; font-variant-numeric: tabular-nums;
-    color: var(--text-main);
+/* Le membre de gauche est VIDE dans la chaîne : la colonne existe quand même,
+   pour que tous les « = » tombent l'un sous l'autre. */
+.ls-gauche { color: var(--text-muted); }
+.ls-egal { color: var(--text-muted); text-align: center; }
+.ls-membre {
+    font-weight: 800; color: var(--text-main); min-width: 1ch;
+    font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
 }
-/* CE QUI EST FAIT EST CALME, pas triomphant : quatre lignes vertes vif
-   feraient de l'écriture du raisonnement une suite de récompenses, alors
-   qu'aucune de ces lignes n'est notée. */
-.ls-etape--faite {
-    background: color-mix(in srgb, var(--success, #16a34a) 8%, transparent);
+/* Ce qu'on vient de faire : en petit, sous la ligne, jamais à sa place. */
+.ls-quoi {
+    grid-column: 3; font-size: .76rem; line-height: 1.25;
+    color: var(--text-muted);
 }
-.ls-etape--faite .ls-etape-val { color: var(--success, #16a34a); }
-/* LA LIGNE DONNÉE APRÈS TROIS ESSAIS SE DISTINGUE de celle qu'on a trouvée.
-   Les confondre laisserait croire à l'élève qu'il a répondu, et il relirait
-   sa copie sans voir où il avait bloqué. */
-.ls-etape-val--donnee { color: var(--text-muted); font-style: italic; }
-.ls-etape--active {
+/* LE CALCUL DE CÔTÉ — « x² − 9 = (x − 3)(x + 3) ». Il n'est pas dans la
+   chaîne : le mêler dirait que x² − 9 vaut l'expression entière. On le pose
+   en retrait, comme dans la marge d'un cahier. */
+/* UNE NOTE EST UNE RECONNAISSANCE, PAS UNE ÉGALITÉ. « Le facteur commun :
+   x − 4 » ne dit pas que x − 4 vaut l'expression entière — d'où le deux-points
+   plutôt que le signe égal, et l'intitulé à gauche plutôt qu'en marge. */
+.ls-ligne--note .ls-gauche { color: var(--text-main); }
+.ls-ligne--note { border-left: 3px solid var(--border); border-radius: 0 9px 9px 0; }
+.ls-ligne--apart {
+    margin-bottom: 6px; border-left: 3px solid var(--border);
+    border-radius: 0 9px 9px 0; padding-left: 10px;
+}
+/* CE QUI EST FAIT EST CALME, pas triomphant : aucune de ces lignes n'est
+   notée, et quatre bandeaux verts vifs en feraient une suite de récompenses. */
+.ls-ligne--faite { background: color-mix(in srgb, var(--success, #16a34a) 8%, transparent); }
+.ls-ligne--faite .ls-membre { color: var(--success, #16a34a); }
+/* LA LIGNE DONNÉE APRÈS TROIS ESSAIS SE DISTINGUE de celle qu'on a trouvée :
+   les confondre laisserait l'élève relire sa copie sans voir où il a bloqué. */
+.ls-membre--donnee { color: var(--text-muted); font-style: italic; }
+.ls-ligne--active {
     border-color: var(--primary);
     background: color-mix(in srgb, var(--primary) 7%, transparent);
 }
-.ls-etape--active .ls-etape-titre { color: var(--text-main); font-weight: 700; }
-.ls-etape--attente { opacity: .45; }
+.ls-ligne--active .ls-quoi { color: var(--text-main); font-weight: 700; }
+.ls-ligne--attente { opacity: .4; }
+.ls-ligne--attente .ls-quoi { visibility: hidden; }
 
-/* DEUX COLONNES QUAND IL Y A UNE FRISE, ET C'EST UN CORRECTIF.
-
-   MESURÉ sur fac-4-pas, en 1200 × 900 : la colonne unique demandait 846 px
-   pour 684 px de hauteur utile — 162 px de trop —, et le bouton « Valider »
-   tombait SOUS le bord. Il restait atteignable en faisant défiler, ce qui
-   n'est pas une excuse : l'élève valide à chaque ligne, donc quatre ou cinq
-   fois par question, et on lui demandait de chercher son bouton à chaque
-   fois. La frise a ajouté cinq lignes à un écran qui tenait tout juste.
-
-   La frise passe donc à GAUCHE de l'écriture dès qu'il y a la largeur : la
-   hauteur retombe à celle du seul pavé. Sous 700 px — un téléphone — on garde
-   la colonne, qui reste la bonne disposition, et le défilement avec.
-
-   Mesuré en `cqw` sur le conteneur de l'activité, et non en `vw` : l'exercice
-   s'ouvre aussi dans l'aperçu des réglages, qui est une vignette dans une
-   page large. */
-/* SUR UN TÉLÉPHONE, LA FRISE SE SERRE ET SE BORNE.
+/* SUR UN TÉLÉPHONE, LE PAVÉ EST PUNAISÉ EN BAS ET SEUL L'ÉNONCÉ DÉFILE.
 
    MESURÉ dans le cadre téléphone (358 px de large, 684 px utiles) : la
-   colonne demandait 846 px et le bouton « Valider » tombait sous le bord.
-   Trois gestes, tous mesurés : le bandeau « plus de propositions » disparaît
-   (il était faux ici — voir `avisPour` dans choice.js) : −60 px ; les lignes
-   se serrent : −51 px ; les touches passent de 50 à 46 px : −16 px.
+   colonne demandait 846 px et « Valider » tombait sous le bord. L'élève
+   valide à chaque ligne, donc quatre ou cinq fois par question — on lui
+   demandait de chercher son bouton à chaque fois.
 
-   ET LA FRISE PREND SON PROPRE DÉFILEMENT, borné à 30 % de la hauteur. C'est
-   le filet : une question à six étapes ne repousserait plus jamais le bouton
-   hors de l'écran, quel que soit le téléphone. On fait défiler la LISTE, pas
-   la page — le pavé et le bouton, eux, ne bougent pas d'un pixel. */
+   Serrer les marges au pixel ne suffisait pas : le barreau 7 a un énoncé sur
+   deux lignes, et les 22 px de différence remettaient la barre d'indice
+   dessous. Deux rangées, donc : l'énoncé et la chaîne prennent la place qui
+   reste et défilent s'il en manque ; le champ, les touches, « Valider » et la
+   barre d'indice ne bougent jamais. */
 @container (max-width: 699px) {
-    /* LE PAVÉ EST PUNAISÉ EN BAS, ET SEUL L'ÉNONCÉ DÉFILE.
-
-       Serrer les marges au pixel près marchait pour une question et pas pour
-       la suivante : le barreau 7 a un énoncé sur deux lignes (79 px contre
-       39), et les 22 px de différence remettaient la barre d'indice sous le
-       bord. Poursuivre ainsi, c'est régler la mise en page sur la question
-       la plus courte et laisser les autres déborder.
-
-       Deux rangées, donc : l'énoncé et sa frise prennent la place qui reste
-       et défilent s'il en manque ; le champ, les touches, « Valider » et la
-       barre d'indice ne bougent jamais. Quelle que soit la longueur de
-       l'énoncé ou le nombre d'étapes, le bouton est sous le pouce. */
-    .ls-layout--etapes {
+    .ls-layout--chaine {
         display: grid; grid-template-rows: minmax(0, 1fr) auto;
         gap: 10px; padding: 6px; overflow: hidden; justify-items: center;
     }
-    .ls-layout--etapes .ls-contexte {
+    .ls-layout--chaine .ls-contexte {
         min-height: 0; overflow-y: auto; align-self: start; width: 100%;
     }
-    .ls-layout--etapes .ls-panel { align-self: end; }
-    .ls-layout--etapes .ls-etapes { font-size: .85rem; gap: 2px; margin-top: 4px; }
-    .ls-layout--etapes .ls-etape { padding: 3px 8px; gap: 8px; }
+    .ls-layout--chaine .ls-panel { align-self: end; }
+    .ls-layout--chaine .ls-chaine { font-size: .9rem; gap: 2px; margin-top: 6px; }
+    .ls-layout--chaine .ls-ligne { padding: 3px 8px; }
     /* `.ls-clavier .ls-t` ET NON `.ls-t` : une requête de conteneur n'ajoute
        AUCUNE spécificité, et `.ls-t { min-height: 50px }` est écrit plus bas
        dans ce fichier — il gagnait donc, et la mesure ne bougeait pas. */
-    .ls-layout--etapes .ls-clavier { gap: 5px; }
-    .ls-layout--etapes .ls-clavier .ls-t { min-height: 44px; }
-    .ls-layout--etapes .ls-champ { min-height: 1.6em; padding: 2px 10px; }
+    .ls-layout--chaine .ls-clavier .ls-t { min-height: 44px; }
+    .ls-layout--chaine .ls-champ { min-height: 1.6em; padding: 2px 10px; }
 }
 
+/* DEUX COLONNES DÈS QU'IL Y A LA LARGEUR : la chaîne à gauche, l'écriture à
+   droite. La hauteur retombe alors à celle du seul pavé.
+
+   Mesuré sur le CONTENEUR de l'activité et non sur la fenêtre : l'exercice
+   s'ouvre aussi dans l'aperçu des réglages, qui est une vignette dans une
+   page large. */
 @container (min-width: 700px) {
-    .ls-layout--etapes {
+    .ls-layout--chaine {
         flex-direction: row; align-items: center; justify-content: center;
         gap: 28px;
     }
-    .ls-layout--etapes .ls-contexte { flex: 0 1 auto; max-width: 440px; }
-    .ls-layout--etapes .ls-panel { flex: 0 0 auto; }
-    .ls-layout--etapes .ls-etapes { font-size: 1rem; }
+    .ls-layout--chaine .ls-contexte { flex: 0 1 auto; max-width: 460px; }
+    .ls-layout--chaine .ls-panel { flex: 0 0 auto; }
 }
 
 /* LE CHAMP EST LA RÉPONSE : il se lit de loin, et il a une hauteur FIXE. Sans
@@ -8383,9 +8381,17 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 @keyframes ls-clign { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ls-curseur { animation: none; } }
 
-.ls-clavier {
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px;
-    width: 100%;
+/* LE PAVÉ SE LIT PAR FAMILLES — voir le commentaire de `litteralSaisie.js`.
+   Une rangée par nature : la lettre et ses puissances, les signes, puis les
+   chiffres sur deux rangées de cinq. Les rangées courtes se centrent, et
+   leurs touches gardent la largeur d'une touche de chiffre : deux touches
+   étirées sur toute la ligne ne ressembleraient plus à un clavier. */
+.ls-clavier { display: flex; flex-direction: column; gap: 7px; width: 100%; }
+.ls-rangee { display: flex; justify-content: center; gap: 7px; width: 100%; }
+.ls-rangee:empty { display: none; }
+.ls-rangee > .ls-t {
+    flex: 1 1 0; min-width: 0;
+    max-width: calc((100% - 4 * 7px) / 5);
 }
 .ls-t {
     min-height: 50px; border-radius: 12px; cursor: pointer;
@@ -8397,6 +8403,11 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .ls-t:hover { background: var(--bg-hover); border-color: var(--primary); }
 .ls-t:active { transform: scale(.92); background: var(--primary); color: #fff; }
+/* LA TOUCHE EXPOSANT SE LIT DE LOIN. « ² » est un caractère déjà petit et
+   déjà haut : à la taille des autres touches, il ressemblait à une poussière
+   dans le coin du bouton. On l'agrandit — sa position haute suffit à dire ce
+   qu'il fait, sa taille doit suffire à le voir. */
+.ls-t--expo { font-size: 2.1rem; line-height: 1; }
 /* La lettre et ses puissances : ce sont elles le sujet de l'exercice. */
 .ls-t--lettre {
     color: var(--primary-texte); font-style: italic;

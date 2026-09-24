@@ -87,47 +87,116 @@ export function mount(container, session, opts = {}) {
         // répéter : on l'ajoute ici, avec le juge et la réponse qu'il porte
         // déjà. Un item sans `etapes` se comporte exactement comme avant.
         const etapes = (m.etapes || []).length
-            ? [...m.etapes, { titre: 'La réponse, jusqu\'au bout', finale: true }]
+            ? [...m.etapes,
+                { titre: m.titreFinal || 'La réponse, jusqu\'au bout', finale: true }]
             : [];
         rang = 0;
         ratages = 0;
 
-        // LES TOUCHES, RANGÉES COMME ON ÉCRIT. La lettre et ses puissances
-        // d'abord — c'est ce qui distingue cet exercice —, puis les signes,
-        // puis les chiffres. Un pavé numérique en tête aurait fait croire à un
-        // calcul.
-        const touches = [
-            { t: lettre, cls: 'ls-t--lettre' },
-            { t: `${lettre}²`, cls: 'ls-t--lettre', dit: 'Le carré' },
-            ...(degreMax >= 3 ? [{ t: `${lettre}³`, cls: 'ls-t--lettre', dit: 'Le cube' }] : []),
-            { t: '+', cls: 'ls-t--signe' },
-            { t: '−', cls: 'ls-t--signe', dit: 'Moins' },
-            // LES PARENTHÈSES N'APPARAISSENT QUE SI LA RÉPONSE PEUT EN VOULOIR.
-            // Même règle que pour la touche x³ : offrir une touche dont on
-            // sait qu'elle donnera une réponse fausse, c'est tendre un piège
-            // avec l'outil qu'on prête. Une factorisation en a besoin, une
-            // expression réduite jamais.
-            ...(m.parentheses ? [
-                { t: '(', cls: 'ls-t--signe', dit: 'Ouvrir une parenthèse' },
-                { t: ')', cls: 'ls-t--signe', dit: 'Fermer la parenthèse' }
-            ] : []),
-            ...'0123456789'.split('').map(c => ({ t: c, cls: 'ls-t--chiffre' }))
+        // ── LE PAVÉ, RANGÉ PAR NATURE ───────────────────────────────────
+        //
+        // RÉMY : « le pavé n'est pas cohérent, il faut trier 2 lignes de
+        // chiffres, le +, −, parenthèses et les x non ? »
+        //
+        // Il décrit exactement ce qui n'allait pas. Les dix-sept touches
+        // coulaient dans une grille de CINQ colonnes, dans l'ordre où on les
+        // avait listées — si bien que les rangées coupaient les familles au
+        // milieu :
+        //
+        //   x  x²  x³  +  −          ← la lettre et les signes mélangés
+        //   (  )   0   1  2          ← les parenthèses collées aux chiffres
+        //   3  4   5   6  7
+        //   8  9                     ← et une dernière rangée à deux touches
+        //
+        // Un pavé se lit par familles, pas par remplissage : on cherche « le
+        // 7 » dans le bloc des chiffres, « la parenthèse » dans celui des
+        // signes. Une rangée qui commence par « ( » et finit par « 2 »
+        // n'aide pas à trouver, elle oblige à relire.
+        //
+        // Trois rangées, donc, une par nature : la lettre et ses puissances,
+        // les signes, puis les chiffres sur DEUX rangées de cinq — 0 à 4 puis
+        // 5 à 9, comme sur une calculatrice. Les rangées courtes se centrent,
+        // et leurs touches gardent la largeur d'une touche de chiffre : deux
+        // touches étalées sur toute la ligne ne ressembleraient plus à un
+        // clavier.
+        const rangees = [
+            [
+                { t: lettre, cls: 'ls-t--lettre' },
+                // LA TOUCHE EST « ² », PAS « x² », ET C'EST UN CORRECTIF.
+                //
+                // Une touche qui écrivait `x²` d'un coup ne savait élever au
+                // carré QUE la lettre. La chaîne du barreau 3 commence par
+                // « on écrit les deux carrés » — (3 − 4x)² − 1² —, et ce
+                // carré-là porte sur une parenthèse et sur un nombre. Mesuré
+                // au banc : « touche manquante : ² ». La première ligne de
+                // l'exercice était intapable.
+                //
+                // Une touche, un geste : « ² » élève au carré ce qui vient
+                // d'être écrit, quel qu'il soit. C'est aussi plus cohérent —
+                // deux touches qui produisent toutes deux un carré, l'une
+                // seulement après un x, était exactement le genre de pavé que
+                // Rémy a trouvé illisible.
+                { t: '²', cls: 'ls-t--lettre ls-t--expo', dit: 'Au carré' },
+                ...(degreMax >= 3
+                    ? [{ t: '³', cls: 'ls-t--lettre ls-t--expo', dit: 'Au cube' }] : [])
+            ],
+            [
+                { t: '+', cls: 'ls-t--signe' },
+                { t: '−', cls: 'ls-t--signe', dit: 'Moins' },
+                // LES PARENTHÈSES N'APPARAISSENT QUE SI LA RÉPONSE PEUT EN
+                // VOULOIR. Même règle que pour la touche x³ : offrir une
+                // touche dont on sait qu'elle donnera une réponse fausse,
+                // c'est tendre un piège avec l'outil qu'on prête. Une
+                // factorisation en a besoin, une expression réduite jamais.
+                ...(m.parentheses ? [
+                    { t: '(', cls: 'ls-t--signe', dit: 'Ouvrir une parenthèse' },
+                    { t: ')', cls: 'ls-t--signe', dit: 'Fermer la parenthèse' }
+                ] : [])
+            ],
+            '01234'.split('').map(c => ({ t: c, cls: 'ls-t--chiffre' })),
+            '56789'.split('').map(c => ({ t: c, cls: 'ls-t--chiffre' }))
         ];
 
         const touche = (o) => `<button type="button" class="ls-t ${o.cls}" data-t="${echapper(o.t)}"
             ${o.dit ? `title="${echapper(o.dit)}"` : ''}>${echapper(o.t)}</button>`;
+        const rangee = (r) => `<div class="ls-rangee">${r.map(touche).join('')}</div>`;
 
-        // LA FRISE DES ÉTAPES. Elle est à côté de l'énoncé et non au-dessus du
-        // pavé : c'est le raisonnement qui s'écrit, pas une barre d'avancement.
-        // Ce qui est fait reste LISIBLE — l'élève doit pouvoir relire son
-        // a − b en écrivant a + b, sans quoi on lui demande de le retenir, ce
-        // qui n'est pas la question posée.
+        // ── LA CHAÎNE D'ÉGALITÉS ────────────────────────────────────────
+        //
+        // RÉMY : « idem pour les factorisation. Il faut revoir la façon de
+        // présenter, quelque chose de cohérent. »
+        //
+        // La première version était une LISTE À COCHER : « a − b, réduit »
+        // d'un côté, sa valeur de l'autre. Chaque ligne était juste, et
+        // l'ensemble n'était pas une démonstration — on ne voyait pas que
+        // toutes ces lignes sont ÉGALES entre elles, ce qui est pourtant tout
+        // le sujet d'une factorisation.
+        //
+        // On écrit donc ce qu'on écrit au tableau : l'expression de départ,
+        // puis une suite de « = … », chacune avec, en petit, ce qu'on vient
+        // de faire. L'élève relit sa propre trace, et cette trace est
+        // exactement la copie qu'on lui demandera de rendre.
+        //
+        //   (6 − 5x)² − 1
+        //   = (6 − 5x)² − 1²             on écrit les deux carrés
+        //   = (6 − 5x − 1)(6 − 5x + 1)   (a − b)(a + b), sans rien réduire
+        //   = (5 − 5x)(7 − 5x)           on réduit chaque parenthèse
+        //   = 5(1 − x)(7 − 5x)           on sort le facteur commun
+        //
+        // LES LIGNES `apart` NE SONT PAS DANS LA CHAÎNE, et elles portent
+        // leur membre de gauche : « x² − 9 = (x − 3)(x + 3) » est un calcul
+        // de côté, celui qu'on pose dans la marge avant de commencer. Les
+        // mêler à la chaîne dirait que x² − 9 vaut l'expression entière.
         const friseHtml = etapes.length ? `
-            <ol class="ls-etapes" data-etapes>
+            <ol class="ls-chaine" data-etapes>
                 ${etapes.map((e, i) => `
-                    <li class="ls-etape" data-etape="${i}">
-                        <span class="ls-etape-titre">${echapper(e.titre)}</span>
-                        <span class="ls-etape-val" data-val="${i}"></span>
+                    <li class="ls-ligne${e.apart ? ' ls-ligne--apart' : ''}${
+    e.note ? ' ls-ligne--note' : ''}" data-etape="${i}">
+                        <span class="ls-gauche">${echapper(
+        e.note ? e.titre : (e.gauche || ''))}</span>
+                        <span class="ls-egal" aria-hidden="true">${e.note ? ':' : '='}</span>
+                        <span class="ls-membre" data-val="${i}"></span>
+                        <span class="ls-quoi">${echapper(e.note ? '' : e.titre)}</span>
                     </li>`).join('')}
             </ol>` : '';
 
@@ -137,7 +206,7 @@ export function mount(container, session, opts = {}) {
         // jamais à lui — mesuré, la règle deux colonnes ne prenait pas.
         container.innerHTML = `
           <div class="ls-hote">
-            <div class="ls-layout${etapes.length ? ' ls-layout--etapes' : ''}">
+            <div class="ls-layout${etapes.length ? ' ls-layout--chaine' : ''}">
                 <div class="ls-contexte">
                     ${avis ? `<div class="ls-avis">${avis}</div>` : ''}
                     ${item.prompt.html}
@@ -147,7 +216,7 @@ export function mount(container, session, opts = {}) {
                     <div class="ls-champ" aria-live="polite" data-champ>
                         <span class="ls-texte" data-texte></span><span class="ls-curseur"></span>
                     </div>
-                    <div class="ls-clavier">${touches.map(touche).join('')}</div>
+                    <div class="ls-clavier">${rangees.map(rangee).join('')}</div>
                     <div class="ls-actions">
                         <button type="button" class="ls-eff" data-eff aria-label="Effacer le dernier signe">⌫</button>
                         <button type="button" class="ls-valider" data-valider disabled>Valider</button>
@@ -173,10 +242,14 @@ export function mount(container, session, opts = {}) {
         };
         const taper = (t) => { saisie += t; redessiner(); };
         const effacer = () => {
-            // ON EFFACE LE SIGNE, PAS LE CARACTÈRE. « x² » se tape d'une
-            // touche : l'effacer en deux coups — d'abord le ², puis le x —
-            // serait défaire un geste qu'on n'a pas fait.
-            saisie = saisie.replace(/(\s*[+−]\s*|[a-zA-Z][⁰¹²³⁴⁵⁶⁷⁸⁹]?|.)$/u, '');
+            // UNE TOUCHE, UN CARACTÈRE, DONC UN EFFACEMENT SIMPLE.
+            //
+            // L'ancienne règle retirait « x² » d'un seul coup, parce que « x² »
+            // s'obtenait d'une seule touche — effacer en deux temps aurait
+            // défait un geste qu'on n'avait pas fait. Depuis que le carré a sa
+            // propre touche (voir le pavé, plus haut), chaque touche écrit
+            // exactement un caractère : on en retire un.
+            saisie = [...saisie].slice(0, -1).join('');
             redessiner();
         };
         redessiner();
@@ -216,16 +289,16 @@ export function mount(container, session, opts = {}) {
             etapes.forEach((e, i) => {
                 const li = container.querySelector(`[data-etape="${i}"]`);
                 if (!li) return;
-                li.classList.toggle('ls-etape--faite', i < rang);
-                li.classList.toggle('ls-etape--active', i === rang);
-                li.classList.toggle('ls-etape--attente', i > rang);
+                li.classList.toggle('ls-ligne--faite', i < rang);
+                li.classList.toggle('ls-ligne--active', i === rang);
+                li.classList.toggle('ls-ligne--attente', i > rang);
             });
             // L'ÉTAPE EN COURS DOIT ÊTRE VISIBLE, et sur un téléphone elle ne
             // l'était pas : l'énoncé et la frise défilent dans leur propre
             // zone, et la ligne active se retrouvait coupée par le bord bas —
             // vu à l'écran sur fac-7-pas, dont l'énoncé tient sur deux lignes.
             // On l'amène sous les yeux à chaque changement d'étape.
-            const actif = container.querySelector('.ls-etape--active');
+            const actif = container.querySelector('.ls-ligne--active');
             if (actif && actif.scrollIntoView) {
                 actif.scrollIntoView({ block: 'nearest', behavior: 'auto' });
             }
@@ -247,7 +320,7 @@ export function mount(container, session, opts = {}) {
             const cel = container.querySelector(`[data-val="${i}"]`);
             if (cel) {
                 cel.textContent = texte;
-                cel.classList.toggle('ls-etape-val--donnee', !!donnee);
+                cel.classList.toggle('ls-membre--donnee', !!donnee);
             }
         };
 

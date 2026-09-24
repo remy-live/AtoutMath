@@ -230,6 +230,31 @@ function boiteSvg(gauche, droite, resolu) {
 //  10. (x + 4)²          le carré — et le piège x² + 16
 //  11. (x − 5)(x + 5)    la différence de carrés, qui ouvre la factorisation
 
+/**
+ * L'AIRE NE SE DESSINE QUE SI TOUTES LES LONGUEURS SONT POSITIVES.
+ *
+ * RÉMY : « pour le double développement, ta figure pour (x−6)(x−2) n'a pas
+ * sens, idem pour du genre (x−a)(x+a), ne la mets pas. »
+ *
+ * Il a raison, et la raison est exactement celle qui rend le dessin bon
+ * ailleurs. Le modèle de l'aire explique la distributivité parce qu'il
+ * TRADUIT le calcul : un côté est une longueur, une case est une aire, et
+ * l'aire totale est la somme des cases. Chaque trait du dessin dit quelque
+ * chose de vrai.
+ *
+ * Dès qu'un terme est négatif, plus rien ne tient : un côté de longueur −6
+ * n'existe pas, et la case (−6)(−2) se dessinait comme une aire POSITIVE à
+ * l'intérieur d'un rectangle dont les deux côtés étaient négatifs. Le dessin
+ * ne traduit plus le calcul, il le contredit — et l'élève qui essaie d'y lire
+ * quelque chose y apprend une chose fausse.
+ *
+ * Ce n'est donc pas « un dessin moins joli » : c'est un dessin qui ment. On ne
+ * le pose que là où il dit vrai — les barreaux 1, 6 et 10, où tout est
+ * positif. Ailleurs, la leçon reste dans `etapes`, en mots.
+ */
+const longueursPositives = (...listes) =>
+    listes.every(l => l.every(t => t.c > 0));
+
 const nn = (rng, min, max, sauf = []) => {
     const ok = [];
     for (let v = min; v <= max; v++) if (v !== 0 && !sauf.includes(v)) ok.push(v);
@@ -246,7 +271,11 @@ function simple(rng, { kNeg = false, coefX = false, moins = false } = {}) {
         k, dedans,
         enonce: fx.produit([arbreNombre(k),
             { sorte: 'groupe', dedans: arbreSomme(dedans) }], 'implicite'),
-        figure: (resolu) => rectangleSvg(k, dedans, resolu)
+        // Voir `longueursPositives` : un rectangle de hauteur négative, ou
+        // découpé en un morceau de largeur négative, ne traduit plus le
+        // calcul — il le contredit.
+        figure: (resolu) => (longueursPositives([terme(k, 0)], dedans)
+            ? rectangleSvg(k, dedans, resolu) : '')
     };
 }
 
@@ -260,10 +289,40 @@ function barreauSimple(rng, opts, nom) {
         poly: vrai,
         structure: q.figure(false),
         visuel: q.figure(true),
-        etapes: `Le rectangle a pour hauteur ${k < 0 ? `(${M}${Math.abs(k)})` : k} et se `
-            + `découpe en deux morceaux. Le premier vaut ${etiquette(terme(kx, 1))}, le `
-            + `second ${etiquette(terme(kb, 0))} : l'aire totale est leur somme.`,
+        // L'EXPLICATION NE PARLE D'UN RECTANGLE QUE S'IL Y EN A UN. Décrire
+        // une aire sous un énoncé sans dessin renverrait l'élève à une image
+        // qu'il n'a pas — et ce serait l'image fausse, justement retirée.
+        etapes: longueursPositives([terme(k, 0)], dedans)
+            ? `Le rectangle a pour hauteur ${k} et se découpe en deux morceaux. `
+                + `Le premier vaut ${etiquette(terme(kx, 1))}, le second `
+                + `${etiquette(terme(kb, 0))} : l'aire totale est leur somme.`
+            : `${k < 0 ? `(${M}${Math.abs(k)})` : k} multiplie CHAQUE terme de la `
+                + `parenthèse : ${etiquette(terme(kx, 1))} d'un côté, `
+                + `${etiquette(terme(kb, 0))} de l'autre. Le signe de chaque produit se `
+                + `calcule à part.`,
         leurres: [
+            // ── LE RACCOURCI QU'IL FALLAIT FERMER ────────────────────────
+            //
+            // RÉMY : « tes solutions en QCM sont évidentes. On trouve tout de
+            // suite ce qui ne va pas. »
+            //
+            // MESURÉ, et il avait raison plus précisément qu'il ne le disait :
+            // sur les barreaux 1 à 4, le TERME CONSTANT À LUI SEUL tranchait
+            // 98 à 100 % des questions. Aucun leurre ne portait la bonne
+            // constante — trois des trois se repéraient donc en calculant
+            // k × b, c'est-à-dire la MOITIÉ de l'exercice. Un chapitre qui
+            // enseigne « le facteur multiplie CHAQUE terme » laissait répondre
+            // en n'en multipliant qu'un.
+            //
+            // Ce leurre est l'exact MIROIR du suivant : l'un distribue sur le
+            // x et oublie le nombre, l'autre distribue sur le nombre et oublie
+            // le x. Ils portent la même faute des deux côtés, et ensemble ils
+            // obligent à regarder les deux termes.
+            { poly: P.poly([{ coef: dedans[0].c, expos: { x: 1 } },
+                { coef: kb, expos: {} }]),
+                why: `Le ${k < 0 ? `(${M}${Math.abs(k)})` : k} multiplie aussi le terme `
+                    + `en x : ${k < 0 ? `(${M}${Math.abs(k)})` : k} × `
+                    + `${etiquette(dedans[0])} vaut ${etiquette(terme(kx, 1))}.` },
             // LA FAUTE REINE DE LA DISTRIBUTIVITÉ SIMPLE : n'ouvrir qu'à
             // moitié. Le facteur multiplie TOUT ce qui est dans la parenthèse.
             { poly: P.poly([{ coef: kx, expos: { x: 1 } },
@@ -295,10 +354,19 @@ function barreauDeux(rng) {
     return {
         enonce,
         poly,
-        structure: a.figure(false) + b.figure(false),
-        visuel: a.figure(true) + b.figure(true),
-        etapes: `On ouvre CHAQUE parenthèse — c'est deux rectangles — puis on réunit ce `
-            + `qui va ensemble : les x avec les x, les nombres avec les nombres.`,
+        // LES DEUX RECTANGLES, OU AUCUN. Le barreau 5 pose deux produits ; si
+        // l'un porte un terme négatif, sa figure est retirée (voir
+        // `longueursPositives`) et il ne restait qu'UN rectangle sous un
+        // énoncé qui en annonce deux. L'élève cherche alors ce qu'il a raté.
+        structure: (a.figure(false) && b.figure(false))
+            ? a.figure(false) + b.figure(false) : '',
+        visuel: (a.figure(true) && b.figure(true))
+            ? a.figure(true) + b.figure(true) : '',
+        etapes: (a.figure(true) && b.figure(true))
+            ? `On ouvre CHAQUE parenthèse — c'est deux rectangles — puis on réunit ce `
+                + `qui va ensemble : les x avec les x, les nombres avec les nombres.`
+            : `On ouvre CHAQUE parenthèse séparément, puis on réunit ce qui va `
+                + `ensemble : les x avec les x, les nombres avec les nombres.`,
         leurres: [
             { poly: P.plus(pa, P.constante(0)),
                 why: `La seconde parenthèse a été oubliée : il y a deux rectangles.` },
@@ -308,7 +376,17 @@ function barreauDeux(rng) {
             { poly: P.poly([...P.coefficients(poly).entries()].map(([d, c]) =>
                 ({ coef: d === 0 ? c : c + 1, expos: d ? { x: d } : {} }))),
                 why: `Une erreur en regroupant les termes en x : on additionne les `
-                    + `coefficients, sans oublier le signe.` }
+                    + `coefficients, sans oublier le signe.` },
+            // ET LE MIROIR, SUR LES NOMBRES. Mesuré : au barreau 5, le TERME
+            // EN X à lui seul tranchait 100 % des questions — les trois
+            // leurres se repéraient sans jamais regarder les constantes. Celui
+            // -ci porte le bon terme en x et se trompe sur les nombres, ce qui
+            // est la faute symétrique et tout aussi courante.
+            { poly: P.poly([...P.coefficients(poly).entries()].map(([d, c]) =>
+                ({ coef: d === 0 ? c + (c > 0 ? -1 : 1) * 2 : c,
+                    expos: d ? { x: d } : {} }))),
+                why: `Une erreur en regroupant les NOMBRES : ils s'additionnent eux `
+                    + `aussi, avec leur signe.` }
         ],
         nom: 'Deux distributions, puis réduire'
     };
@@ -333,14 +411,28 @@ function barreauDouble(rng, { signeD = 1, signeB = 1, coefs = false,
     return {
         enonce,
         poly,
-        structure: boiteSvg(gauche, droite, false),
-        visuel: boiteSvg(gauche, droite, true),
-        etapes: carre
-            ? `(${etiquette(gauche[0])} + ${etiquette(gauche[1])})², c'est le rectangle `
-                + `multiplié par LUI-MÊME : quatre cases, dont deux identiques au milieu. `
-                + `C'est ce double produit qu'on oublie.`
-            : `Le rectangle est coupé dans les deux sens : quatre morceaux, donc quatre `
-                + `produits. Les deux du milieu portent le même x et se réunissent.`,
+        // Voir `longueursPositives`. (x − 6)(x − 2) et (x − 5)(x + 5) sont
+        // les deux cas que Rémy a nommés : dans le premier les deux côtés
+        // sont négatifs, dans le second l'un des deux l'est.
+        structure: longueursPositives(gauche, droite)
+            ? boiteSvg(gauche, droite, false) : '',
+        visuel: longueursPositives(gauche, droite)
+            ? boiteSvg(gauche, droite, true) : '',
+        etapes: !longueursPositives(gauche, droite)
+            // SANS DESSIN, ON DÉCRIT LE CALCUL, PAS L'IMAGE. Voir
+            // `longueursPositives` : ici le rectangle mentirait, donc il n'y
+            // en a pas, et l'expliquer par des cases renverrait à une image
+            // absente.
+            ? `Chaque terme de la première parenthèse multiplie chaque terme de la `
+                + `seconde : quatre produits. Le signe de chacun se calcule à part, et `
+                + `les deux termes en x se réunissent.`
+            : (carre
+                ? `(${etiquette(gauche[0])} + ${etiquette(gauche[1])})², c'est le rectangle `
+                    + `multiplié par LUI-MÊME : quatre cases, dont deux identiques au `
+                    + `milieu. C'est ce double produit qu'on oublie.`
+                : `Le rectangle est coupé dans les deux sens : quatre morceaux, donc `
+                    + `quatre produits. Les deux du milieu portent le même x et se `
+                    + `réunissent.`),
         leurres: [
             // LA FAUTE REINE DE LA DOUBLE : ne multiplier que les extrêmes,
             // c'est-à-dire ne remplir que deux cases sur quatre.
@@ -461,25 +553,94 @@ export const developpementGenerator = {
         // ON DÉDOUBLONNE SUR L'ÉCRITURE, et la bonne réponse est dans
         // l'ensemble de départ : un leurre qui s'écrirait comme elle serait une
         // seconde bonne réponse, marquée fausse.
-        const faux = [];
+        // ON CONSTITUE LE VIVIER ENTIER, PUIS ON CHOISIT DEDANS.
+        //
+        // L'ancienne boucle s'arrêtait à trois leurres — `if (faux.length >= 3)
+        // break` — et le vivier n'existait donc jamais : les leurres écrits
+        // après le troisième n'étaient pas « rarement servis », ils n'étaient
+        // JAMAIS construits. J'ai passé une demi-heure à chercher pourquoi ma
+        // garantie ne garantissait rien, en la cherchant du mauvais côté : le
+        // leurre qu'elle allait chercher n'avait pas été fabriqué.
+        //
+        // Couper au plus tôt économisait quelques `versArbre` ; cela coûtait
+        // la possibilité même de choisir.
+        const vivier = [];
         const vus = new Set([repTexte]);
         for (const l of [...q.leurres, ...secours(q.poly)]) {
-            if (faux.length >= 3) break;
             if (!l.poly || P.estNul(l.poly)) continue;
             const t = fx.texte(P.versArbre(l.poly, fx));
             if (vus.has(t)) continue;
             vus.add(t);
-            faux.push({ ...l, texte: t });
+            vivier.push({ ...l, texte: t });
         }
+        // ── ON CHOISIT TROIS LEURRES, SOUS DEUX CONTRAINTES ─────────────
+        //
+        // RÉMY : « tes solutions en QCM sont évidentes. On trouve tout de
+        // suite ce qui ne va pas. »
+        //
+        // MESURÉ, et plus précisément qu'il ne le disait : sur les barreaux 1
+        // à 4, le TERME CONSTANT à lui seul tranchait 98 à 100 % des
+        // questions ; au barreau 5, c'était le TERME EN x, à 100 %. La moitié
+        // du calcul suffisait — et c'est justement la moitié que le chapitre
+        // enseigne à ne pas oublier.
+        //
+        // Il faut donc qu'AU MOINS UN leurre porte la bonne constante, et au
+        // moins un le bon terme en x. J'ai d'abord écrit cela comme deux
+        // échanges successifs ; le second défaisait le premier, et la mesure
+        // passait de 100 % sur le terme en x à 99 % sur la constante. Deux
+        // contraintes ne se satisfont pas l'une après l'autre : on les pose
+        // d'abord, on complète ensuite.
+        const bonsCoefs = P.coefficients(q.poly);
+        const memeDegre = (p, d) => (P.coefficients(p)[d] || 0) === (bonsCoefs[d] || 0);
+        const garde = [];
+        for (const d of [0, 1]) {
+            if (garde.some(l => memeDegre(l.poly, d))) continue;
+            const jumeau = vivier.find(l => !garde.includes(l) && memeDegre(l.poly, d));
+            if (jumeau) garde.push(jumeau);
+        }
+        for (const l of vivier) {
+            if (garde.length >= 3) break;
+            if (!garde.includes(l)) garde.push(l);
+        }
+        // ON REMET L'ORDRE D'ÉCRITURE. Les leurres sont rangés du plus
+        // instructif au plus anodin, et `reduireChoix` lit ce rang pour
+        // décider lequel survit à deux propositions — voir `finalizeChoices`.
+        // Les avoir choisis dans un autre ordre ne doit pas le changer.
+        const faux = garde.slice(0, 3).sort((a2, b2) =>
+            vivier.indexOf(a2) - vivier.indexOf(b2));
 
         const brutes = [
             { value: 'ok', label: fx.html(reponse), texte: repTexte, correct: true },
             ...faux.map((l, i) => ({
-                value: 'faux' + i,
+                value: 'faux' + i, poly: l.poly,
                 label: fx.html(P.versArbre(l.poly, fx)),
                 texte: l.texte, correct: false, why: l.why
             }))
         ];
+        // ── UN LEURRE DOIT PORTER LA BONNE CONSTANTE, ET UN AUTRE LE BON
+        //    TERME EN x ────────────────────────────────────────────────────
+        //
+        // RÉMY : « tes solutions en QCM sont évidentes. On trouve tout de
+        // suite ce qui ne va pas. »
+        //
+        // MESURÉ : sur les barreaux 1 à 4, le TERME CONSTANT à lui seul
+        // tranchait 98 à 100 % des questions ; au barreau 5, c'était le TERME
+        // EN x, à 100 %. Autrement dit : la moitié du calcul suffisait, et
+        // c'est exactement la moitié que le chapitre enseigne à ne pas
+        // oublier.
+        //
+        // Les leurres qui ferment ces deux raccourcis sont écrits plus haut.
+        // Mais on n'en garde que TROIS, et l'ordre de la liste décidait
+        // lesquels : le mien était le dernier, donc jamais servi. Une
+        // propriété qu'on veut vraie à chaque question ne se confie pas à un
+        // ordre — on la garantit.
+        // ON RAISONNE SUR LES TROIS QUI SURVIVRONT, pas sur la liste entière.
+        //
+        // `finalizeChoices` garde QUATRE propositions : la bonne et les TROIS
+        // PREMIERS leurres. Ma première version échangeait le dernier de la
+        // liste — c'est-à-dire un leurre que la troncature allait de toute
+        // façon jeter. La garantie ne garantissait rien, et la mesure le
+        // disait : le barreau 5 restait à 100 %.
         const choices = finalizeChoices(rng, brutes, { count: 4 });
 
         return makeItem({

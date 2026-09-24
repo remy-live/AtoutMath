@@ -68,6 +68,9 @@
 // plus court, plus bas, et se lit comme une césure. On accepte les deux en
 // entrée — on tape ce qu'on a sous la main — et l'on ne rend jamais que celui-ci.
 const MOINS = '−';
+/** Les chiffres en exposant, dans l'ordre, et le signe moins qui va avec. */
+const CHIFFRES_HAUTS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+const HAUTS = CHIFFRES_HAUTS + '⁻';
 
 const echapper = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -151,12 +154,37 @@ function jetons(src) {
         // caractère viendrait d'une police de secours et « x² + x⁴ »
         // mélangerait deux polices dans un même monôme. Le rendu passe donc par
         // une mise en page, qui vaut à n'importe quel exposant.
-        const chiffreHaut = '⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(c);
-        if (chiffreHaut >= 0) {
+        // ON LIT L'EXPOSANT EN BLOC, et pas caractère par caractère.
+        //
+        // La première version poussait un `^` devant CHAQUE chiffre haut. Deux
+        // conséquences, l'une visible et l'autre pas :
+        //
+        //   · « 2⁻¹ » levait « caractère inattendu ⁻ » — le signe moins en
+        //     exposant n'était pas prévu du tout, et l'exercice « le plus
+        //     petit ensemble » en contient trois ;
+        //   · « 2¹² » se lisait 2^1^2, soit 2^(1^2) = 2 au lieu de 4096.
+        //     Celle-là ne levait rien : elle rendait une autre formule, et
+        //     personne ne l'aurait vue.
+        //
+        // On consomme donc la SUITE complète de caractères hauts, on la
+        // traduit en chiffres ordinaires, et l'on émet un seul exposant.
+        if (HAUTS.includes(c)) {
+            let j = i;
+            while (j < s.length && HAUTS.includes(s[j])) j++;
+            const brut = s.slice(i, j);
+            const neg = brut[0] === '\u207b';
+            const chiffres = [...(neg ? brut.slice(1) : brut)]
+                .map(ch => CHIFFRES_HAUTS.indexOf(ch)).join('');
+            if (!chiffres) throw new Error(`formule : exposant vide dans « ${s} »`);
             out.push({ t: 'chapeau' });
-            out.push({ t: 'nombre', v: String(chiffreHaut) });
-            i++; continue;
+            if (neg) out.push({ t: 'moins' });
+            out.push({ t: 'nombre', v: chiffres });
+            i = j; continue;
         }
+        // π EST UN NOMBRE ÉCRIT, PAS UNE VARIABLE. Le lire comme une lettre
+        // en ferait une inconnue — « 2π » deviendrait un monôme, et le moteur
+        // de polynômes s'en saisirait. C'est un symbole, on le rend tel quel.
+        if (c === '\u03c0') { out.push({ t: 'symbole', v: c }); i++; continue; }
         if (c === '(') { out.push({ t: 'ouvre' }); i++; continue; }
         if (c === ')') { out.push({ t: 'ferme' }); i++; continue; }
         // LES OPÉRATEURS AVANT LES LETTRES, ET C'EST INDISPENSABLE.
@@ -206,7 +234,8 @@ export function analyser(src) {
             if (est('divise')) { k++; g = { sorte: 'division', haut: g, bas: lireUnaire() }; continue; }
             if (est('barre')) { k++; g = quotient(g, lireUnaire()); continue; }
             // IMPLICITE : un atome qui en suit un autre sans rien entre eux.
-            if (est('nombre') || est('lettre') || est('ouvre') || est('racine')) {
+            if (est('nombre') || est('lettre') || est('ouvre') || est('racine')
+                || est('symbole')) {
                 g = fusionner(g, lireUnaire(), 'implicite'); continue;
             }
             return g;
@@ -237,6 +266,9 @@ export function analyser(src) {
     function lireAtome() {
         if (est('nombre')) return nombre(js[k++].v);
         if (est('lettre')) return lettre(js[k++].v);
+        // Un symbole s'écrit tel quel et ne se calcule pas : π n'est pas une
+        // inconnue, et le moteur de polynômes ne doit pas le prendre pour une.
+        if (est('symbole')) return texteBrut(js[k++].v);
         if (est('racine')) {
             k++;
             // √49 prend le nombre seul ; √(9 + 16) prend la parenthèse. C'est la
@@ -442,13 +474,38 @@ function rendre(n, rangParent = 0) {
             out = radicalHtml(rendre(x.sous, 0));
             break;
 
-        case 'puissance':
+        case 'puissance': {
             // LA BASE PREND DES PARENTHÈSES DÈS QU'ELLE N'EST PAS ATOMIQUE :
             // (x + 1)² et x + 1² ne sont pas la même chose, et l'exposant seul
             // ne le dit pas.
-            out = rendre(x.base, RANG.puissance + 1)
+            //
+            // ET « ATOMIQUE » NE VEUT PAS DIRE « DE RANG ÉLEVÉ ». Le rang du
+            // quotient (5) et celui de la racine (9) dépassent celui de la
+            // puissance (4), parce que la colonne et la barre GROUPENT :
+            // chacune se lit sans ambiguïté au milieu d'un produit. Sous un
+            // exposant, cela ne suffit plus — ce qui a été vu à l'écran, sur
+            // l'exercice « le plus petit ensemble » :
+            //
+            //   (√2)⁻⁵ × (√2)⁶  s'affichait √2⁻⁵ × √2⁶ : l'exposant semblait
+            //                   porter sur le 2, sous la barre.
+            //   (√3/3)²         posait un 2 à mi-hauteur de la fraction, sans
+            //                   dire s'il élevait la fraction ou le 3.
+            //
+            // Une barre ou une colonne groupe HORIZONTALEMENT ; un exposant se
+            // pose en haut à droite, hors de leur portée. Seuls un nombre, une
+            // lettre ou un symbole peuvent s'en passer.
+            // ON DEMANDE UN RANG PLUS FORT QUE LA BARRE, et le rang fait le
+            // reste : somme, produit, opposé et quotient se parenthèsent
+            // seuls. Les écrire à la main par-dessus donnait « ((−4)) ».
+            const b = nu(x.base);
+            const base = rendre(x.base, RANG.quotient + 1);
+            // La racine est le seul cas que le rang ne voit pas : elle est
+            // ATOMIQUE (rang 9) parce que sa barre groupe horizontalement —
+            // et c'est justement ce que l'exposant déborde.
+            out = (b.sorte === 'racine' ? paren(base, estHaut(b)) : base)
                 + `<sup class="fx-exp">${rendre(x.exposant, 0)}</sup>`;
             break;
+        }
 
         default:
             throw new Error(`formule : sorte de nœud inconnue « ${x.sorte} »`);
@@ -477,9 +534,35 @@ export function html(arbre) {
 // de l'écran et celui du papier ne PEUVENT plus dire deux choses différentes,
 // puisqu'ils sont deux lectures d'un seul objet.
 //
-// Les exposants 2 et 3 s'écrivent ² et ³ — ils existent dans toutes les
-// polices et se lisent mieux que « ^2 » sur une feuille.
-const EXPOSANTS = { 2: '²', 3: '³' };
+// LES EXPOSANTS S'ÉCRIVENT EN PETIT, TOUS, ET SEULEMENT ICI.
+//
+// La règle de l'écran est l'inverse : il n'écrit AUCUN caractère haut, parce
+// qu'Outfit ne contient que ¹ ² ³ et qu'au-delà le glyphe viendrait d'une
+// police de secours — « x² + x⁴ » mélangerait deux polices dans un monôme.
+// L'écran met donc en page un `<sup>`, ce qui vaut à n'importe quel exposant.
+//
+// LA FEUILLE N'A PAS CETTE CONTRAINTE, et elle a l'inverse : elle ne peut
+// rien mettre en page, il n'y a qu'une ligne de texte. J'avais limité les
+// caractères hauts à ² et ³ en croyant appliquer la règle de l'écran — mais
+// la conséquence était que « 2⁻¹ » s'imprimait « 2^(−1) », c'est-à-dire une
+// écriture qu'aucun professeur n'écrit. Mesuré en branchant l'exercice « le
+// plus petit ensemble », qui contient 2⁻¹, (−4)⁰ et 2,5 × 10⁻³.
+//
+// Un exposant ENTIER s'écrit donc en petit, quel qu'il soit, signe compris.
+// Le « ^ » ne sert plus qu'à ce qui n'est pas un entier — et se relit, lui
+// aussi : l'analyseur lit les deux.
+const CHIFFRES_HAUTS_ECRITS = CHIFFRES_HAUTS;
+function exposantEcrit(n) {
+    const v = nu(n);
+    if (v.sorte === 'oppose') {
+        const d = exposantEcrit(v.x);
+        return d === null ? null : '\u207b' + d;
+    }
+    if (v.sorte !== 'nombre') return null;
+    const t = String(v.v);
+    if (!/^[0-9]+$/.test(t)) return null;
+    return [...t].map(c => CHIFFRES_HAUTS_ECRITS[Number(c)]).join('');
+}
 
 function rendreTexte(n, rangParent = 0) {
     const x = nu(n);
@@ -565,10 +648,32 @@ function rendreTexte(n, rangParent = 0) {
             break;
         }
 
+        // À PLAT, LA BASE D'UNE PUISSANCE SE PARENTHÈSE DÈS QU'ELLE N'EST PAS
+        // UN SEUL SIGNE — et le rang ne suffisait pas à le dire.
+        //
+        // Le rang du quotient (5) est plus fort que celui de la puissance (4),
+        // parce qu'à l'écran une fraction est une COLONNE : elle groupe toute
+        // seule, et « (√3/3)² » s'y dessine sans parenthèses, correctement. À
+        // plat, la barre ne groupe plus rien : « √3/3² » se relit √3/(3²),
+        // c'est-à-dire un autre nombre. La fiche papier posait donc une autre
+        // question que l'écran — exactement l'écart que ce fichier existe pour
+        // fermer. Même chose pour la racine, dont la barre groupe à l'écran :
+        // « √2⁶ » à plat se lit √(2⁶).
+        //
+        // Trouvé en passant la liste de l'exercice « le plus petit ensemble »
+        // dans l'analyseur : (√3/3)² et (√2)⁶ y sont tous les deux.
         case 'puissance': {
-            const e = nu(x.exposant);
-            const court = e.sorte === 'nombre' && EXPOSANTS[e.v];
-            out = rendreTexte(x.base, RANG.puissance + 1)
+            const court = exposantEcrit(x.exposant);
+            // ON DEMANDE UN RANG PLUS FORT QUE LA BARRE, et le rang fait le
+            // reste : somme, produit, opposé et QUOTIENT se parenthèsent
+            // seuls. Écrire les parenthèses à la main par-dessus donnait
+            // « ((−4))^0 » — deux fois le même travail.
+            const base = rendreTexte(x.base, RANG.quotient + 1);
+            // La racine est le seul cas que le rang ne peut pas voir : elle
+            // est ATOMIQUE (rang 9) parce que sa barre groupe à l'écran, et
+            // c'est justement cette barre qui disparaît à plat.
+            const nue = nu(x.base).sorte === 'racine';
+            out = (nue ? `(${base})` : base)
                 + (court || `^${rendreTexte(x.exposant, RANG.puissance + 1)}`);
             break;
         }

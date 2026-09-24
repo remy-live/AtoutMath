@@ -39,6 +39,7 @@
 // de ce chapitre qui ne souffre aucune exception, et c'est celle qu'on oublie.
 
 import { makeItem } from '../items.js';
+import * as fx from '../maths/formule.js';
 
 // ── L'AXE, DESSINÉ ──────────────────────────────────────────────────────────
 
@@ -563,7 +564,16 @@ const NOMBRES = [
     { ecrit: '(−4)⁰', vaut: '1', ens: 'N', parce: 'Tout nombre non nul à la puissance 0 vaut 1 — le signe moins n\'y change rien.' },
     { ecrit: '(2√3)²', vaut: '12', ens: 'N', parce: 'On élève le 2 ET la racine : (2√3)² = 4 × 3 = 12, un entier.' },
     { ecrit: '6,23 × 10²', vaut: '623', ens: 'N', parce: '6,23 × 100 = 623 : la virgule se déplace, le nombre devient entier.' },
-    { ecrit: '36/5 × 25/6', vaut: '30', ens: 'N', parce: 'Le produit des fractions fait 900/30, et 900/30 = 30 : un entier, pas une fraction.' },
+    // LES PARENTHÈSES SONT NÉCESSAIRES, ET ELLES NE S'IMPRIMENT PAS.
+    //
+    // « 36/5 × 25/6 » se lit, comme partout, de gauche à droite :
+    // ((36/5) × 25)/6. La VALEUR ne change pas — multiplier et diviser
+    // commutent —, mais le DESSIN si : une grande fraction portant
+    // « 36/5 × 25 » au numérateur, au lieu de deux fractions multipliées.
+    // Les parenthèses disent l'arbre qu'on veut ; `formule.js` ne réécrit
+    // que les parenthèses NÉCESSAIRES, donc la feuille imprime bien
+    // « 36/5 × 25/6 ».
+    { ecrit: '(36/5) × (25/6)', vaut: '30', ens: 'N', parce: 'Le produit des fractions fait 900/30, et 900/30 = 30 : un entier, pas une fraction.' },
     { ecrit: '−5', vaut: '−5', ens: 'Z', parce: 'Entier, mais négatif : il n\'est pas dans ℕ.' },
     { ecrit: '−18/3', vaut: '−6', ens: 'Z', parce: '−18/3 = −6 : la fraction tombe juste, et le résultat est négatif.' },
     { ecrit: '−14/7', vaut: '−2', ens: 'Z', parce: '−14/7 = −2 : ce n\'est pas une fraction irréductible, elle se simplifie.' },
@@ -644,16 +654,36 @@ export const ensemblesGenerator = {
             skillId: 'nb.ensembles.appartenance',
             answerKind: 'choice',
             prompt: {
-                text: `${n.ecrit} — quel est le plus petit ensemble auquel il appartient ?`,
+                text: `${fx.formuleTexte(n.ecrit)} — quel est le plus petit `
+                    + 'ensemble auquel il appartient ?',
                 html: '<div class="game-question iv-consigne">Le plus petit ensemble '
                     + 'auquel ce nombre appartient ?</div>'
-                    + `<div class="iv-ecriture">${n.ecrit}</div>`
+                    // ── LE NOMBRE, DESSINÉ ─────────────────────────────
+                    //
+                    // RÉMY : « les racines carrées de plus petit ensemble de
+                    // nombre n'ont pas de trait horizontaux. Utilise ta
+                    // fonction pour écrire les formule car même pour les
+                    // fractions ca ne les dessine pas en colonnes. »
+                    //
+                    // Il a raison sur les deux, et c'est la même cause : cette
+                    // ligne posait `n.ecrit` — du TEXTE — directement dans la
+                    // page. « √64 » y était un glyphe √ suivi de 64, sans la
+                    // barre qui dit jusqu'où va la racine ; « 7/4 » une barre
+                    // oblique, là où le cours écrit une colonne. Deux
+                    // écritures qu'un élève ne verra dans aucun manuel.
+                    //
+                    // `formule.js` existe pour cela — c'est la fonction qu'il
+                    // demande, écrite pour les racines du chapitre. On la
+                    // branche ici.
+                    + `<div class="iv-ecriture">${fx.formule(n.ecrit)}</div>`
                     // SURTOUT PAS `poupeesHtml(n.ens)` ICI — et c'est ce que
                     // j'avais écrit, à trois lignes du commentaire qui dit de
                     // ne pas le faire. Le cadre éclairé EST la réponse : la
                     // question devenait « sais-tu lire un surlignage ? ».
                     + poupeesHtml(null),
-                papier: n.ecrit
+                // MÊME ARBRE, DEUX LECTURES : l'écran le dessine, la feuille
+                // l'écrit à plat. Ils ne peuvent plus dire deux choses.
+                papier: fx.formuleTexte(n.ecrit)
             },
             answer: n.ens,
             choices: choix,

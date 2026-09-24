@@ -50,9 +50,8 @@ import { developpementGenerator } from '../js/core/generators/developpement.js';
 /** Les touches que `litteralSaisie` posera pour cet item. */
 function touchesDe(item) {
     const m = item.meta || {};
-    const l = m.lettre || 'x';
-    const t = [l, `${l}²`];
-    if ((m.degreMax || 2) >= 3) t.push(`${l}³`);
+    const t = [m.lettre || 'x', '²'];
+    if ((m.degreMax || 2) >= 3) t.push('³');
     t.push('+', '−');
     if (m.parentheses) t.push('(', ')');
     return t.concat('0123456789'.split(''));
@@ -124,10 +123,12 @@ test('le pavé décrit ici est bien celui que litteralSaisie construit', () => {
     // ce test tombe et `touchesDe` doit être remis d'accord.
     for (const marque of [
         "{ t: lettre,",                     // la lettre
-        "{ t: `${lettre}²`",                // son carré, toujours
-        "degreMax >= 3 ? [{ t: `${lettre}³`", // le cube, sous condition
+        "{ t: '²',",                        // le carré, toujours
+        "{ t: '³',",                        // le cube, sous condition
+        "degreMax >= 3",                    // …et sa condition
         "m.parentheses ? [",                // les parenthèses, sous condition
-        "'0123456789'.split('')"            // les chiffres
+        "'01234'.split('')",                // les chiffres, première rangée
+        "'56789'.split('')"                 // …et la seconde
     ]) {
         assert.ok(src.includes(marque),
             `litteralSaisie.js ne contient plus « ${marque} » : la liste des `
@@ -177,5 +178,126 @@ test('les exercices de la feuille de Rémy restent tirables, et finis', () => {
             `« ${enonce} » : la réponse doit aller jusqu'au bout`);
         const v = trouve.verifieTexte(attendue.replace(/\s+/g, ''));
         assert.ok(v && v.juste, `« ${enonce} » : sa propre réponse est refusée`);
+    }
+});
+
+// ── ET CHAQUE LIGNE DE LA CHAÎNE SE TAPE AUSSI ──────────────────────────────
+//
+// CE TEST EXISTE PARCE QUE JE N'AVAIS VÉRIFIÉ QUE LA DERNIÈRE LIGNE.
+//
+// Les deux tests ci-dessus regardent `reponsePapier` — la réponse finale — et
+// ils passaient. Mais le pas à pas demande QUATRE lignes avant elle, et la
+// première du barreau 3 est « on écrit les deux carrés » : (3 − 4x)² − 1². Ce
+// carré-là porte sur une parenthèse et sur un nombre, et le pavé n'avait
+// qu'une touche « x² », qui ne savait élever que la lettre.
+//
+// Résultat mesuré au banc navigateur : « touche manquante : ² ». La PREMIÈRE
+// ligne de l'exercice était intapable, et aucun test ne le disait — parce
+// qu'aucun test ne regardait ailleurs que la fin.
+//
+// UNE VÉRIFICATION QUI NE COUVRE QU'UNE PARTIE DU CHEMIN NE COUVRE PAS LE
+// CHEMIN.
+
+test('factorisation pas à pas : chaque ligne s\'écrit avec les touches du pavé', () => {
+    for (const barreau of ['1', '2', '3', '4', '5', '6', '7']) {
+        for (let i = 0; i < 200; i++) {
+            const it = factorisationGenerator.generate({ barreau, etapes: 'oui' },
+                { rng: makeRng(`pav_${barreau}_${i}`) });
+            const touches = touchesDe(it);
+            for (const e of it.meta.etapes) {
+                const manque = signesManquants(e.montrer, touches);
+                assert.deepEqual(manque, [],
+                    `barreau ${barreau} — « ${e.titre} » : « ${e.montrer} » demande `
+                    + `${manque.join(' ')}, que le pavé n'a pas`);
+                // Et le membre de gauche d'un calcul de côté se LIT, il ne se
+                // tape pas — mais il doit quand même s'afficher.
+                if (e.apart) assert.ok(e.gauche, `barreau ${barreau} : calcul de côté sans gauche`);
+            }
+        }
+    }
+});
+
+test('factorisation pas à pas : chaque ligne est acceptée par son juge', () => {
+    for (const barreau of ['1', '2', '3', '4', '5', '6', '7']) {
+        for (let i = 0; i < 200; i++) {
+            const it = factorisationGenerator.generate({ barreau, etapes: 'oui' },
+                { rng: makeRng(`jug_${barreau}_${i}`) });
+            for (const e of it.meta.etapes) {
+                const v = e.verifie(e.montrer.replace(/\s+/g, ''));
+                assert.ok(v && v.juste,
+                    `barreau ${barreau} — « ${e.titre} » : sa propre ligne `
+                    + `« ${e.montrer} » est refusée : ${(v && v.pourquoi) || '?'}`);
+            }
+        }
+    }
+});
+
+// ── AUCUN QCM NE SE TRANCHE SUR UN SEUL COEFFICIENT ─────────────────────────
+//
+// RÉMY : « tes solutions en QCM sont évidentes. On trouve tout de suite ce qui
+// ne va pas. »
+//
+// Il avait raison, et la mesure l'a dit plus précisément que lui :
+//
+//   · développement, barreaux 1 à 4 : le TERME CONSTANT à lui seul tranchait
+//     98 à 100 % des questions. Un chapitre qui enseigne « le facteur
+//     multiplie CHAQUE terme » laissait répondre en n'en multipliant qu'un ;
+//   · développement, barreau 5 : le TERME EN x, à 100 % ;
+//   · factorisation, barreau 1 : la VALEUR EN x = 0 — le seul produit des
+//     constantes —, à 100 %. Barreau 7 : 82 %.
+//
+// UN QCM SE TRANCHE SUR LE CALCUL ENTIER, OU IL N'ENSEIGNE PAS CE CALCUL. Il
+// faut donc qu'au moins un leurre s'accorde avec la réponse sur chaque
+// vérification courte : si l'on ne peut pas éliminer sur la constante seule,
+// il faut aller voir le reste.
+
+import { developpementGenerator as DG } from '../js/core/generators/developpement.js';
+import * as PP from '../js/core/maths/polynome.js';
+import * as fx from '../js/core/maths/formule.js';
+
+/** Combien de propositions résistent à la vérification du coefficient `deg`. */
+function survivants(item, deg) {
+    const bon = PP.lireSaisie(item.choices.find(c => c.correct).texte, fx);
+    const attendu = PP.coefficients(bon)[deg] || 0;
+    return item.choices.filter(c => {
+        const p = PP.lireSaisie(c.texte, fx);
+        if (!p) return true;
+        return (PP.coefficients(p)[deg] || 0) === attendu;
+    }).length;
+}
+
+test('développement : ni la constante ni le terme en x ne tranchent seuls', () => {
+    for (const barreau of ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11',
+        'simple', 'double']) {
+        for (let i = 0; i < 150; i++) {
+            const it = DG.generate({ barreau }, { rng: makeRng(`ev_${barreau}_${i}`) });
+            assert.equal(it.choices.length, 4,
+                `barreau ${barreau} : ${it.choices.length} propositions`);
+            for (const deg of [0, 1]) {
+                assert.ok(survivants(it, deg) >= 2,
+                    `barreau ${barreau} : ${it.prompt.papier} — le coefficient de degré `
+                    + `${deg} suffit à trouver la réponse sans faire le reste du calcul`);
+            }
+        }
+    }
+});
+
+test('factorisation : le produit des constantes ne tranche pas seul', () => {
+    for (const barreau of ['1', '2', '3', '4', '5', '6', '7', 'revision']) {
+        for (let i = 0; i < 150; i++) {
+            const it = factorisationGenerator.generate({ barreau },
+                { rng: makeRng(`ef_${barreau}_${i}`) });
+            assert.equal(it.choices.length, 4,
+                `barreau ${barreau} : ${it.choices.length} propositions`);
+            const bon = PP.lireSaisie(it.choices.find(c => c.correct).texte, fx);
+            const k0 = PP.evaluer(bon, { x: 0 });
+            const restent = it.choices.filter(c => {
+                const p = PP.lireSaisie(c.texte, fx);
+                return !p || PP.evaluer(p, { x: 0 }) === k0;
+            }).length;
+            assert.ok(restent >= 2,
+                `barreau ${barreau} : ${it.prompt.papier} — la valeur en x = 0 suffit `
+                + 'à trouver la réponse sans jamais développer');
+        }
     }
 });

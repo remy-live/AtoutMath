@@ -35,6 +35,8 @@ import '../js/core/activities/index.js';
 import { allGenerators, getGenerator } from '../js/core/registry.js';
 import { codeCourt } from '../js/core/shortcodes.js';
 import { makeRng } from '../js/core/ids.js';
+import * as fx from '../js/core/maths/formule.js';
+import * as P from '../js/core/maths/polynome.js';
 
 const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const RANGS = [1, 2, 3, 4, 5, 6, 7];
@@ -242,8 +244,15 @@ test('CHAQUE ÉTAPE SE JUGE, ET ACCEPTE CE QUI EST JUSTE', () => {
             const it = factorisationGenerator.generate({ barreau, etapes: 'oui' },
                 { rng: makeRng(`et_${barreau}_${i}`) });
             const etapes = it.meta.etapes || [];
-            assert.ok(etapes.length >= 2,
+            // UNE SEULE ÉTAPE SUFFIT, et c'est la bonne borne. La dernière
+            // ligne de la chaîne est ajoutée par l'activité : un barreau dont
+            // rien n'est à sortir n'a qu'une ligne intermédiaire, et en
+            // inventer une seconde pour faire nombre ajouterait une ligne qui
+            // ne dit rien.
+            assert.ok(etapes.length >= 1,
                 `barreau ${barreau} : pas d'étapes alors qu'on les demande`);
+            assert.ok(it.meta.titreFinal,
+                `barreau ${barreau} : la dernière ligne n'a pas de nom`);
             assert.equal(it.meta.saisieSeule, true,
                 `barreau ${barreau} : le pas à pas doit prendre la main dès la `
                 + 'première question — c\'est à celui qui bloque qu\'il sert');
@@ -271,5 +280,77 @@ test('SANS LE RÉGLAGE, RIEN NE CHANGE', () => {
             { rng: makeRng(`sans_${barreau}`) });
         assert.equal((it.meta.etapes || []).length, 0);
         assert.ok(!it.meta.saisieSeule);
+    }
+});
+
+test('LA CHAÎNE EST UNE CHAÎNE : chaque ligne vaut l\'expression de départ', () => {
+    // RÉMY : « il faut revoir la façon de présenter, quelque chose de
+    // cohérent ». La présentation retenue est celle du tableau — l'expression,
+    // puis une suite de « = … ». Ce qui rend cette forme honnête est une
+    // propriété vérifiable : TOUTE ligne de la chaîne vaut l'expression de
+    // départ. Si une seule ne la vaut pas, on écrit une suite d'égalités
+    // fausses, ce qui est pire qu'une liste à cocher.
+    //
+    // Les lignes `apart` sont exclues, et c'est leur définition : « x² − 9 =
+    // (x − 3)(x + 3) » est un calcul de côté, posé dans la marge, qui ne vaut
+    // PAS l'expression entière. Elles portent leur propre membre de gauche, et
+    // c'est à lui qu'on les compare.
+    for (const barreau of ['1', '2', '3', '4', '5', '6', '7']) {
+        for (let i = 0; i < 250; i++) {
+            const it = factorisationGenerator.generate({ barreau, etapes: 'oui' },
+                { rng: makeRng(`ch_${barreau}_${i}`) });
+            const depart = P.lireSaisie(it.prompt.papier.replace('Factoriser : ', ''), fx);
+            assert.ok(depart, `barreau ${barreau} : énoncé illisible`);
+            for (const e of it.meta.etapes) {
+                const ligne = P.lireSaisie(e.montrer, fx);
+                assert.ok(ligne, `barreau ${barreau} : « ${e.montrer} » illisible`);
+                // Une NOTE est une reconnaissance, pas une égalité : le
+                // facteur commun ne vaut pas l'expression entière, et ce
+                // serait un contresens de le lui comparer.
+                if (e.note) continue;
+                if (e.apart) {
+                    const g = P.lireSaisie(e.gauche, fx);
+                    assert.ok(g && P.egaux(g, ligne),
+                        `barreau ${barreau} : le calcul de côté « ${e.gauche} = `
+                        + `${e.montrer} » est faux`);
+                    continue;
+                }
+                assert.ok(P.egaux(ligne, depart),
+                    `barreau ${barreau} : « ${e.montrer} » ne vaut pas `
+                    + `« ${it.prompt.papier} »`);
+            }
+            // Et la dernière ligne aussi, qui est la réponse.
+            const fin = P.lireSaisie(it.reponsePapier, fx);
+            assert.ok(fin && P.egaux(fin, depart),
+                `barreau ${barreau} : la réponse ne vaut pas l'énoncé`);
+        }
+    }
+});
+
+test('« SANS RIEN RÉDUIRE » REFUSE LA LIGNE D\'APRÈS', () => {
+    // Une ligne de la chaîne est une ÉGALITÉ : la forme réduite vaut la forme
+    // non réduite, et le juge des polynômes l'accepterait donc à sa place.
+    // L'étape que Rémy a demandé d'ajouter — « l'écrire d'abord totalement en
+    // ligne non factorisé puis réduire » — serait alors sautable, c'est-à-dire
+    // inexistante.
+    for (const barreau of ['3', '4', '5', '6', '7']) {
+        let vues = 0;
+        for (let i = 0; i < 150; i++) {
+            const it = factorisationGenerator.generate({ barreau, etapes: 'oui' },
+                { rng: makeRng(`sr_${barreau}_${i}`) });
+            const brutes = it.meta.etapes.filter(e => /sans rien réduire/i.test(e.titre));
+            for (const e of brutes) {
+                vues++;
+                assert.ok(e.verifie(e.montrer.replace(/\s+/g, '')).juste,
+                    `barreau ${barreau} : « ${e.montrer} » refusée à sa propre étape`);
+                // La réponse finale vaut la même chose et est plus courte :
+                // c'est exactement ce qu'il ne faut pas accepter ici.
+                const v = e.verifie(it.reponsePapier.replace(/\s+/g, ''));
+                assert.ok(v && !v.juste && /déjà réduit/.test(v.pourquoi || ''),
+                    `barreau ${barreau} : « ${it.reponsePapier} » passe à l'étape `
+                    + `« ${e.titre} », qui demande de ne rien réduire`);
+            }
+        }
+        assert.ok(vues > 0, `barreau ${barreau} : aucune étape « sans rien réduire »`);
     }
 });

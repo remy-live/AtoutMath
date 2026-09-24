@@ -191,57 +191,73 @@ test('chaque barreau tient sa promesse, et ne pose pas celle d\'un autre', () =>
 
 // ── LE VISUEL, QUI EST LA DEMANDE ───────────────────────────────────────────
 
-test('chaque question porte DEUX dessins, et celui de l\'énoncé ne résout rien', () => {
+test('LE DESSIN N\'EST LÀ QUE LÀ OÙ IL DIT VRAI', () => {
+    // RÉMY : « pour le double développement, ta figure pour (x−6)(x−2) n'a pas
+    // sens, idem pour du genre (x−a)(x+a), ne la mets pas. »
+    //
+    // Ce test disait l'inverse : « chaque question porte DEUX dessins ». Il
+    // était juste tant qu'on croyait qu'un support visuel valait partout — et
+    // il rendait le défaut invisible, puisqu'il EXIGEAIT le dessin qui ment.
+    //
+    // La règle est maintenant : le modèle de l'aire traduit le calcul, donc il
+    // n'a de sens que si toutes les longueurs sont positives. Un côté de
+    // longueur −6 n'existe pas, et la case (−6)(−2) se dessinait comme une
+    // aire positive dans un rectangle à deux côtés négatifs.
+    const toutPositif = (it) => !it.prompt.text.includes('\u2212');
+    let avec = 0, sans = 0;
     for (const b of BARREAUX) {
         for (let i = 0; i < 60; i++) {
             const it = G.generate({ barreau: String(b) }, { rng: makeRng(`v_${b}_${i}`) });
-            assert.match(it.prompt.html, /dv-figure/, `[b${b}] énoncé sans dessin`);
-            assert.ok(it.schemas[1] && it.schemas[1].includes('dv-figure'),
-                `[b${b}] indice sans dessin`);
-            // LE DESSIN DE L'ÉNONCÉ NE PORTE AUCUNE AIRE : les aires sont le
+            const dessine = it.prompt.html.includes('dv-figure');
+            if (toutPositif(it)) {
+                assert.ok(dessine, `[b${b}] tout est positif et il n'y a pas de dessin : `
+                    + `${it.prompt.papier}`);
+                avec++;
+            } else {
+                assert.ok(!dessine, `[b${b}] une longueur est négative et le dessin est `
+                    + `quand même posé : ${it.prompt.papier}`);
+                sans++;
+            }
+            // QUAND IL Y A UN DESSIN, IL Y EN A DEUX — l'énoncé et l'indice —
+            // et celui de l'énoncé ne porte aucune aire : les aires sont le
             // résultat. C'est la règle des deux dessins, et elle s'est déjà
             // fait prendre en défaut trois fois dans ce projet.
+            if (!dessine) {
+                assert.ok(!it.schemas[1] || !it.schemas[1].includes('dv-figure'),
+                    `[b${b}] pas de dessin à l'énoncé mais un à l'indice`);
+                continue;
+            }
+            assert.ok(it.schemas[1] && it.schemas[1].includes('dv-figure'),
+                `[b${b}] indice sans dessin`);
             assert.ok(!it.prompt.html.includes('dv-aire'),
                 `[b${b}] le dessin de l'énoncé écrit déjà les aires`);
             assert.match(it.schemas[1], /dv-aire/, `[b${b}] l'indice ne montre pas les aires`);
         }
     }
+    // Et le chapitre garde de vrais dessins : la règle retire les faux, elle
+    // ne vide pas le support visuel.
+    assert.ok(avec > 200, `seulement ${avec} questions dessinées sur ${avec + sans}`);
+    assert.ok(sans > 200, `seulement ${sans} questions sans dessin — la règle ne mord pas`);
 });
 
 // LE SIGNE D'UNE CASE EST UN CALCUL, PAS UNE DONNÉE.
 //
-// Au rectangle simple, un morceau négatif est une DIMENSION écrite dans
-// l'énoncé : le dessiner en pointillé ne révèle rien, cela traduit en image ce
-// que l'expression dit déjà. À la boîte double, le signe d'une case est le
-// PRODUIT de ses deux bords — donc une part de la réponse. Coloré dès
-// l'énoncé, il annonçait lesquelles des quatre cases sont négatives, ce qui
-// est précisément la question du barreau 8.
-test('la boîte double ne colore les cases que dans le dessin de l\'indice', () => {
-    for (const b of [7, 8, 9, 11]) {
-        for (let i = 0; i < 80; i++) {
+// Il ne reste de boîte double que là où les quatre longueurs sont positives —
+// donc plus aucune case négative à colorer. Ce que ce test garde désormais,
+// c'est que l'énoncé n'annonce jamais un signe : ni par une case en pointillé,
+// ni par une aire écrite d'avance.
+test('un énoncé ne colore ni ne chiffre jamais ses cases', () => {
+    for (const b of BARREAUX) {
+        for (let i = 0; i < 60; i++) {
             const it = G.generate({ barreau: String(b) }, { rng: makeRng(`s_${b}_${i}`) });
+            if (!it.prompt.html.includes('dv-figure')) continue;
+            assert.ok(!it.prompt.html.includes('dv-aire'),
+                `[b${b}] l'énoncé écrit les aires`);
+            // Un dessin ne subsiste que si tout est positif : plus aucune case
+            // ne peut être négative, ni à l'énoncé ni à l'indice.
             assert.ok(!it.prompt.html.includes('dv-case--retire'),
                 `[b${b}] l'énoncé annonce le signe des cases`);
-            // L'INDICE DISTINGUE LES CASES NÉGATIVES QUAND IL Y EN A.
-            // Le barreau 9 tire le signe de sa seconde parenthèse au hasard —
-            // il travaille les COEFFICIENTS, pas les signes —, si bien qu'une
-            // question sur deux n'a aucune case négative. Exiger le pointillé
-            // à chaque fois, comme le faisait la première version de ce test,
-            // revenait à exiger du générateur une chose qu'il n'a jamais
-            // promise.
-            const aUnMoins = it.prompt.text.includes('\u2212');
-            if (aUnMoins) {
-                assert.match(it.schemas[1], /dv-case--retire/,
-                    `[b${b}] l'indice ne distingue pas les cases négatives`);
-            }
         }
-    }
-    // Au rectangle simple, au contraire, le morceau retiré se voit dès
-    // l'énoncé — c'est une dimension, pas un produit.
-    for (let i = 0; i < 80; i++) {
-        const it = G.generate({ barreau: '2' }, { rng: makeRng(`s2_${i}`) });
-        assert.match(it.prompt.html, /dv-case--retire/,
-            'le morceau retiré devrait se voir dès l\'énoncé');
     }
 });
 
