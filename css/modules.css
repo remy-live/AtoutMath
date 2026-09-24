@@ -8225,6 +8225,11 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    LES TOUCHES SE DISTINGUENT PAR LEUR COULEUR, pas seulement par leur place :
    sur un téléphone, où la grille se replie, la seule position ne suffit plus à
    dire qu'un « + » n'est pas un « 4 ». */
+/* L'HÔTE EST LE CONTENEUR DE REQUÊTE. Un élément n'est jamais son propre
+   conteneur : tant que `container-type` était sur `.ls-layout`, la règle
+   « deux colonnes » écrite en `@container` ne s'appliquait pas à lui — elle
+   ne pouvait viser que ses enfants. On mesure donc sur l'hôte. */
+.ls-hote { width: 100%; height: 100%; container-type: inline-size; }
 .ls-layout {
     display: flex; flex-direction: column; align-items: center; gap: 14px;
     width: 100%; height: 100%; padding: 10px; box-sizing: border-box;
@@ -8240,6 +8245,119 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .ls-panel {
     display: flex; flex-direction: column; align-items: center; gap: 12px;
     flex: 0 0 auto; width: 100%; max-width: 420px;
+}
+
+/* LA FRISE DES ÉTAPES — Rémy : « Pour les factorisations compliqué du genre
+   (x+3)² − (3x + 5)², on pourrait proposer plusieurs étapes non ? »
+
+   CE QUI EST FAIT RESTE LISIBLE, et c'est le point. L'élève écrit a + b en
+   relisant son a − b ; masquer les lignes précédentes lui demanderait de les
+   retenir, ce qui n'est pas la question posée. Une barre d'avancement aurait
+   dit « 2 sur 4 » et n'aurait rien montré.
+
+   Les titres sont alignés à gauche et les valeurs à droite : ce sont deux
+   colonnes, pas une phrase — on retrouve une ligne d'un coup d'œil. */
+.ls-etapes {
+    list-style: none; margin: 12px 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: 4px;
+    text-align: left; font-size: .95rem;
+}
+.ls-etape {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 5px 10px; border-radius: 9px;
+    border: 2px solid transparent;
+    transition: background .18s ease, border-color .18s ease, opacity .18s ease;
+}
+.ls-etape-titre { flex: 1 1 auto; color: var(--text-muted); }
+.ls-etape-val {
+    flex: 0 0 auto; font-weight: 800; font-variant-numeric: tabular-nums;
+    color: var(--text-main);
+}
+/* CE QUI EST FAIT EST CALME, pas triomphant : quatre lignes vertes vif
+   feraient de l'écriture du raisonnement une suite de récompenses, alors
+   qu'aucune de ces lignes n'est notée. */
+.ls-etape--faite {
+    background: color-mix(in srgb, var(--success, #16a34a) 8%, transparent);
+}
+.ls-etape--faite .ls-etape-val { color: var(--success, #16a34a); }
+/* LA LIGNE DONNÉE APRÈS TROIS ESSAIS SE DISTINGUE de celle qu'on a trouvée.
+   Les confondre laisserait croire à l'élève qu'il a répondu, et il relirait
+   sa copie sans voir où il avait bloqué. */
+.ls-etape-val--donnee { color: var(--text-muted); font-style: italic; }
+.ls-etape--active {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 7%, transparent);
+}
+.ls-etape--active .ls-etape-titre { color: var(--text-main); font-weight: 700; }
+.ls-etape--attente { opacity: .45; }
+
+/* DEUX COLONNES QUAND IL Y A UNE FRISE, ET C'EST UN CORRECTIF.
+
+   MESURÉ sur fac-4-pas, en 1200 × 900 : la colonne unique demandait 846 px
+   pour 684 px de hauteur utile — 162 px de trop —, et le bouton « Valider »
+   tombait SOUS le bord. Il restait atteignable en faisant défiler, ce qui
+   n'est pas une excuse : l'élève valide à chaque ligne, donc quatre ou cinq
+   fois par question, et on lui demandait de chercher son bouton à chaque
+   fois. La frise a ajouté cinq lignes à un écran qui tenait tout juste.
+
+   La frise passe donc à GAUCHE de l'écriture dès qu'il y a la largeur : la
+   hauteur retombe à celle du seul pavé. Sous 700 px — un téléphone — on garde
+   la colonne, qui reste la bonne disposition, et le défilement avec.
+
+   Mesuré en `cqw` sur le conteneur de l'activité, et non en `vw` : l'exercice
+   s'ouvre aussi dans l'aperçu des réglages, qui est une vignette dans une
+   page large. */
+/* SUR UN TÉLÉPHONE, LA FRISE SE SERRE ET SE BORNE.
+
+   MESURÉ dans le cadre téléphone (358 px de large, 684 px utiles) : la
+   colonne demandait 846 px et le bouton « Valider » tombait sous le bord.
+   Trois gestes, tous mesurés : le bandeau « plus de propositions » disparaît
+   (il était faux ici — voir `avisPour` dans choice.js) : −60 px ; les lignes
+   se serrent : −51 px ; les touches passent de 50 à 46 px : −16 px.
+
+   ET LA FRISE PREND SON PROPRE DÉFILEMENT, borné à 30 % de la hauteur. C'est
+   le filet : une question à six étapes ne repousserait plus jamais le bouton
+   hors de l'écran, quel que soit le téléphone. On fait défiler la LISTE, pas
+   la page — le pavé et le bouton, eux, ne bougent pas d'un pixel. */
+@container (max-width: 699px) {
+    /* LE PAVÉ EST PUNAISÉ EN BAS, ET SEUL L'ÉNONCÉ DÉFILE.
+
+       Serrer les marges au pixel près marchait pour une question et pas pour
+       la suivante : le barreau 7 a un énoncé sur deux lignes (79 px contre
+       39), et les 22 px de différence remettaient la barre d'indice sous le
+       bord. Poursuivre ainsi, c'est régler la mise en page sur la question
+       la plus courte et laisser les autres déborder.
+
+       Deux rangées, donc : l'énoncé et sa frise prennent la place qui reste
+       et défilent s'il en manque ; le champ, les touches, « Valider » et la
+       barre d'indice ne bougent jamais. Quelle que soit la longueur de
+       l'énoncé ou le nombre d'étapes, le bouton est sous le pouce. */
+    .ls-layout--etapes {
+        display: grid; grid-template-rows: minmax(0, 1fr) auto;
+        gap: 10px; padding: 6px; overflow: hidden; justify-items: center;
+    }
+    .ls-layout--etapes .ls-contexte {
+        min-height: 0; overflow-y: auto; align-self: start; width: 100%;
+    }
+    .ls-layout--etapes .ls-panel { align-self: end; }
+    .ls-layout--etapes .ls-etapes { font-size: .85rem; gap: 2px; margin-top: 4px; }
+    .ls-layout--etapes .ls-etape { padding: 3px 8px; gap: 8px; }
+    /* `.ls-clavier .ls-t` ET NON `.ls-t` : une requête de conteneur n'ajoute
+       AUCUNE spécificité, et `.ls-t { min-height: 50px }` est écrit plus bas
+       dans ce fichier — il gagnait donc, et la mesure ne bougeait pas. */
+    .ls-layout--etapes .ls-clavier { gap: 5px; }
+    .ls-layout--etapes .ls-clavier .ls-t { min-height: 44px; }
+    .ls-layout--etapes .ls-champ { min-height: 1.6em; padding: 2px 10px; }
+}
+
+@container (min-width: 700px) {
+    .ls-layout--etapes {
+        flex-direction: row; align-items: center; justify-content: center;
+        gap: 28px;
+    }
+    .ls-layout--etapes .ls-contexte { flex: 0 1 auto; max-width: 440px; }
+    .ls-layout--etapes .ls-panel { flex: 0 0 auto; }
+    .ls-layout--etapes .ls-etapes { font-size: 1rem; }
 }
 
 /* LE CHAMP EST LA RÉPONSE : il se lit de loin, et il a une hauteur FIXE. Sans

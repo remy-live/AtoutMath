@@ -23,6 +23,25 @@
 // touche dont on sait qu'elle donnera une réponse fausse, c'est tendre un
 // piège avec l'outil qu'on prête — et l'élève apprend alors à se méfier de
 // l'interface plutôt qu'à réfléchir.
+//
+// ── ET QUAND LA QUESTION EST TROP GROSSE POUR UNE SEULE RÉPONSE ────────────
+//
+// RÉMY : « Pour les factorisations compliqué du genre (x+3)² − (3x + 5)², on
+// pourrait proposer plusieurs étapes non ? »
+//
+// Oui, et c'est le cœur du problème de ces questions-là : elles ne sont pas
+// difficiles, elles sont LONGUES. Qui échoue sur (x + 3)² − (3x + 5)² n'a
+// généralement pas raté l'identité — il a perdu un signe en réduisant
+// a − b, trois lignes plus bas. Un « faux » sur la réponse entière ne dit ni
+// où ni quoi, et la correction arrive toute faite.
+//
+// Un item peut donc apporter `meta.etapes` : la question s'écrit alors ligne
+// à ligne, chacune validée sur place. SEULE LA DERNIÈRE COMPTE POUR LA
+// SÉANCE — c'est la règle que `fractionsPose` a déjà posée pour le calcul
+// posé, et pour la même raison : les précédentes sont l'ÉCRITURE du
+// raisonnement, pas quatre questions déguisées. Les noter ferait valoir une
+// question quatre points de statistiques, et le carnet d'erreurs parlerait
+// de « a − b » sans dire de quelle expression.
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
@@ -32,12 +51,25 @@ import { memeReponse, normaliser } from '../reductionPuissances.js';
 const echapper = (t) => String(t).replace(/[&<>"]/g,
     c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+/**
+ * Au bout de trois essais sur une MÊME étape, on la donne et l'on avance.
+ *
+ * Sans cela, une étape ratée est un cul-de-sac : la question n'est jamais
+ * soumise, la séance ne bouge plus, et l'élève est coincé sur une ligne
+ * intermédiaire qui ne vaut même pas de point. Trois essais, puis on écrit la
+ * ligne à sa place et on passe à la suivante : il continue l'exercice.
+ */
+const ESSAIS_PAR_ETAPE = 3;
+
 export function mount(container, session, opts = {}) {
     let destroyed = false;
     let saisie = '';
     let avis = opts.avis || '';
     let cursor = null;
     let gate = null;
+    // L'étape en cours, et combien de fois on s'est trompé dessus.
+    let rang = 0;
+    let ratages = 0;
 
     function renderNext() {
         if (destroyed) return;
@@ -51,6 +83,14 @@ export function mount(container, session, opts = {}) {
         const lettre = m.lettre || 'x';
         const degreMax = m.degreMax || 2;
         saisie = '';
+        // LA DERNIÈRE ÉTAPE EST LA QUESTION ELLE-MÊME, et l'item n'a pas à la
+        // répéter : on l'ajoute ici, avec le juge et la réponse qu'il porte
+        // déjà. Un item sans `etapes` se comporte exactement comme avant.
+        const etapes = (m.etapes || []).length
+            ? [...m.etapes, { titre: 'La réponse, jusqu\'au bout', finale: true }]
+            : [];
+        rang = 0;
+        ratages = 0;
 
         // LES TOUCHES, RANGÉES COMME ON ÉCRIT. La lettre et ses puissances
         // d'abord — c'est ce qui distingue cet exercice —, puis les signes,
@@ -77,11 +117,31 @@ export function mount(container, session, opts = {}) {
         const touche = (o) => `<button type="button" class="ls-t ${o.cls}" data-t="${echapper(o.t)}"
             ${o.dit ? `title="${echapper(o.dit)}"` : ''}>${echapper(o.t)}</button>`;
 
+        // LA FRISE DES ÉTAPES. Elle est à côté de l'énoncé et non au-dessus du
+        // pavé : c'est le raisonnement qui s'écrit, pas une barre d'avancement.
+        // Ce qui est fait reste LISIBLE — l'élève doit pouvoir relire son
+        // a − b en écrivant a + b, sans quoi on lui demande de le retenir, ce
+        // qui n'est pas la question posée.
+        const friseHtml = etapes.length ? `
+            <ol class="ls-etapes" data-etapes>
+                ${etapes.map((e, i) => `
+                    <li class="ls-etape" data-etape="${i}">
+                        <span class="ls-etape-titre">${echapper(e.titre)}</span>
+                        <span class="ls-etape-val" data-val="${i}"></span>
+                    </li>`).join('')}
+            </ol>` : '';
+
+        // L'HÔTE PORTE LE CONTENEUR DE REQUÊTE, PAS LE GABARIT. Un élément
+        // n'est jamais son propre conteneur : `@container` posé sur
+        // `.ls-layout`, qui déclarait `container-type`, ne s'appliquait donc
+        // jamais à lui — mesuré, la règle deux colonnes ne prenait pas.
         container.innerHTML = `
-            <div class="ls-layout">
+          <div class="ls-hote">
+            <div class="ls-layout${etapes.length ? ' ls-layout--etapes' : ''}">
                 <div class="ls-contexte">
                     ${avis ? `<div class="ls-avis">${avis}</div>` : ''}
                     ${item.prompt.html}
+                    ${friseHtml}
                 </div>
                 <div class="ls-panel">
                     <div class="ls-champ" aria-live="polite" data-champ>
@@ -95,7 +155,8 @@ export function mount(container, session, opts = {}) {
                     <div class="ls-note" data-note></div>
                     ${hintBar(session)}
                 </div>
-            </div>`;
+            </div>
+          </div>`;
 
         avis = '';
         const champ = container.querySelector('[data-champ]');
@@ -121,7 +182,11 @@ export function mount(container, session, opts = {}) {
         redessiner();
 
         if (session.isDemo) {
-            if (!session.frozen) runDemo(item, taper, champ);
+            // LA DÉMONSTRATION SUIT LES MÊMES ÉTAPES QUE L'ÉLÈVE. Montrer la
+            // réponse finale apparaître d'un coup sur une question découpée en
+            // quatre lignes enseignerait exactement ce que le découpage sert à
+            // défaire : que le résultat se devine.
+            if (!session.frozen) runDemo(item, taper, champ, etapes, container);
             return;
         }
 
@@ -144,8 +209,90 @@ export function mount(container, session, opts = {}) {
         // exercices dont la réponse EST sa propre valeur.
         const aMontrer = String(item.reponsePapier || item.answer || '');
 
+        // ── LA FRISE, SI L'ITEM EN A UNE ────────────────────────────────
+
+        const marquerEtapes = () => {
+            if (!etapes.length) return;
+            etapes.forEach((e, i) => {
+                const li = container.querySelector(`[data-etape="${i}"]`);
+                if (!li) return;
+                li.classList.toggle('ls-etape--faite', i < rang);
+                li.classList.toggle('ls-etape--active', i === rang);
+                li.classList.toggle('ls-etape--attente', i > rang);
+            });
+            // L'ÉTAPE EN COURS DOIT ÊTRE VISIBLE, et sur un téléphone elle ne
+            // l'était pas : l'énoncé et la frise défilent dans leur propre
+            // zone, et la ligne active se retrouvait coupée par le bord bas —
+            // vu à l'écran sur fac-7-pas, dont l'énoncé tient sur deux lignes.
+            // On l'amène sous les yeux à chaque changement d'étape.
+            const actif = container.querySelector('.ls-etape--active');
+            if (actif && actif.scrollIntoView) {
+                actif.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+            }
+            // LE PAVÉ NE CHANGE PAS D'UNE ÉTAPE À L'AUTRE, et c'est réfléchi.
+            //
+            // J'avais commencé par masquer les parenthèses sur les étapes qui
+            // attendent une expression réduite. Deux raisons de ne pas le
+            // faire. La grille du clavier est en cinq colonnes : retirer deux
+            // touches redistribue toutes les autres, et le doigt qui visait le
+            // « 7 » tombe sur le « 5 » — un clavier qui bouge sous la main est
+            // pire qu'une touche inutile. Et surtout, elles ne nuisent pas :
+            // le juge compare des POLYNÔMES, donc « (x + 3) » vaut « x + 3 »
+            // et passe. Une parenthèse en trop n'est pas une faute de
+            // mathématiques, et rien ne justifie de la traiter comme telle.
+        };
+
+        /** Écrit la ligne d'une étape dans la frise, et la ferme. */
+        const poserEtape = (i, texte, donnee) => {
+            const cel = container.querySelector(`[data-val="${i}"]`);
+            if (cel) {
+                cel.textContent = texte;
+                cel.classList.toggle('ls-etape-val--donnee', !!donnee);
+            }
+        };
+
+        const etapeSuivante = () => {
+            rang += 1;
+            ratages = 0;
+            saisie = '';
+            redessiner();
+            marquerEtapes();
+        };
+
+        marquerEtapes();
+
+        const validerEtape = () => {
+            const e = etapes[rang];
+            const v = e.verifie ? e.verifie(saisie) : false;
+            const ok = typeof v === 'object' ? !!v.juste : !!v;
+            if (ok) {
+                // ON ÉCRIT CE QUE L'ÉLÈVE A TAPÉ, pas la forme canonique : s'il a
+                // écrit « 3 + x » là où le corrigé dit « x + 3 », il a raison,
+                // et remplacer son écriture par la nôtre lui laisserait croire
+                // le contraire.
+                poserEtape(rang, saisie.trim(), false);
+                champ.classList.add('ls-champ--ok');
+                regTimeout(() => { if (!destroyed) etapeSuivante(); }, 700);
+                return;
+            }
+            ratages += 1;
+            champ.classList.add('ls-champ--ko');
+            if (ratages >= ESSAIS_PAR_ETAPE) {
+                poserEtape(rang, String(e.montrer || ''), true);
+                noteEl.textContent = 'On la pose ensemble, et on continue : '
+                    + `${e.titre.toLowerCase()} vaut ${e.montrer}.`;
+                regTimeout(() => { if (!destroyed) etapeSuivante(); }, 2200);
+                return;
+            }
+            noteEl.textContent = (typeof v === 'object' && v.pourquoi)
+                || e.aide || 'Ce n\'est pas cela. Relis l\'étape précédente.';
+        };
+
         const valider = () => {
             if (destroyed || !saisie.trim()) return;
+            // UNE ÉTAPE INTERMÉDIAIRE NE PASSE PAS PAR LA SÉANCE. Voir l'en-tête :
+            // elle s'écrit, elle se corrige, elle ne se note pas.
+            if (etapes.length && !etapes[rang].finale) return validerEtape();
             // L'ITEM JUGE LUI-MÊME QUAND IL SAIT LE FAIRE. Comparer des
             // chaînes suffit pour une expression réduite, dont l'écriture est
             // canonique ; pas pour une factorisation, où (x − 3)(x + 3) et
@@ -163,6 +310,9 @@ export function mount(container, session, opts = {}) {
 
             champ.classList.toggle('ls-champ--ok', result.correct);
             champ.classList.toggle('ls-champ--ko', !result.correct);
+            if (result.correct && etapes.length) {
+                poserEtape(etapes.length - 1, saisie.trim(), false);
+            }
             // L'ITEM SAIT SOUVENT MIEUX POURQUOI C'EST FAUX que le
             // diagnostic générique : « c'est bien égal, mais ce n'est pas
             // factorisé » ne se devine pas d'une comparaison de chaînes.
@@ -175,6 +325,7 @@ export function mount(container, session, opts = {}) {
                 if (result.revealed) {
                     saisie = aMontrer;
                     texteEl.textContent = saisie;
+                    if (etapes.length) poserEtape(etapes.length - 1, saisie, true);
                     champ.classList.remove('ls-champ--ko');
                     champ.classList.add('ls-champ--ok');
                     regTimeout(renderNext, 1800);
@@ -228,7 +379,7 @@ export function mount(container, session, opts = {}) {
     }
 
     /** La démonstration : le robot trie à voix haute avant d'écrire. */
-    async function runDemo(item, taper, champ) {
+    async function runDemo(item, taper, champ, etapes = [], hote = container) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
         if (!await gate.waitTurn() || destroyed) return;
@@ -247,19 +398,46 @@ export function mount(container, session, opts = {}) {
         // ON TAPE LA RÉPONSE SIGNE PAR SIGNE, en visant les vraies touches :
         // c'est le geste que l'élève devra refaire, et le voir fait vaut mieux
         // que le voir apparaître.
-        for (const c of String(item.reponsePapier || item.answer || '')) {
-            if (destroyed) return;
-            const btn = container.querySelector(`[data-t="${CSS.escape(c)}"]`);
-            if (btn) { if (!await cursor.tap(btn)) return; }
-            taper(c);
-            if (!await cursor.pause(DEMO_SPEED.settle / 2) || destroyed) return;
+        const ecrire = async (texte) => {
+            for (const c of String(texte)) {
+                if (destroyed) return false;
+                const btn = hote.querySelector(`[data-t="${CSS.escape(c)}"]`);
+                if (btn && !btn.hidden) { if (!await cursor.tap(btn)) return false; }
+                taper(c);
+                if (!await cursor.pause(DEMO_SPEED.settle / 2) || destroyed) return false;
+            }
+            return true;
+        };
+
+        for (let i = 0; i < etapes.length - 1; i++) {
+            const e = etapes[i];
+            const li = hote.querySelector(`[data-etape="${i}"]`);
+            if (!await gate.waitTurn() || destroyed) return;
+            cursor.say(e.aide || e.titre, li || champ);
+            if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+            if (!await ecrire(e.montrer || '')) return;
+            const cel = hote.querySelector(`[data-val="${i}"]`);
+            if (cel) cel.textContent = String(e.montrer || '');
+            saisieDemoRAZ(taper);
+            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
         }
+
+        if (!await ecrire(item.reponsePapier || item.answer || '')) return;
 
         if (!await gate.waitTurn() || destroyed) return;
         champ.classList.add('ls-champ--ok');
         cursor.say(item.explanation || '', champ);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
     }
+
+    /**
+     * Vide le champ de la démonstration entre deux étapes.
+     *
+     * `taper` est la seule prise que `runDemo` a sur la saisie — il n'en a pas
+     * une pour effacer. On remet donc la variable à vide et l'on redessine par
+     * un `taper('')`, qui ne change rien d'autre.
+     */
+    function saisieDemoRAZ(taper) { saisie = ''; taper(''); }
 
     if (opts.item) render(opts.item); else renderNext();
 

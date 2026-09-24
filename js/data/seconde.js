@@ -187,6 +187,58 @@ export const secondeExercises = [
         tags: { chemin: [D, LIT], niveaux: [SECONDE] },
         instruction
     })),
+    // ── FACTORISER PAS À PAS ────────────────────────────────────────────────
+    //
+    // RÉMY : « Pour les factorisations compliqué du genre (x+3)² − (3x + 5)²,
+    // on pourrait proposer plusieurs étapes non ? »
+    //
+    // Ces questions-là ne sont pas difficiles, elles sont LONGUES. Qui échoue
+    // sur (x + 3)² − (3x + 5)² n'a presque jamais raté l'identité : il a perdu
+    // un signe en réduisant a − b, trois lignes plus bas. Un « faux » sur la
+    // réponse entière ne dit ni où ni quoi, et la correction arrive toute
+    // faite — l'élève la lit et n'apprend pas où il a lâché.
+    //
+    // CE SONT LES MÊMES QUESTIONS, écrites ligne à ligne : a, b, a − b, a + b,
+    // puis le produit. Seule la dernière ligne est notée ; les autres sont
+    // l'écriture du raisonnement, corrigée sur place.
+    //
+    // DES EXERCICES À PART, ET NON UN RÉGLAGE DE CEUX D'AVANT. Le professeur
+    // pose un parcours : il doit pouvoir mettre « le 4 pas à pas » avant « le
+    // 4 » sans réécrire les réglages de l'étape. Un exercice qui porte son nom
+    // se pose ; un réglage caché se retrouve.
+    //
+    // PAS DE PAS À PAS AUX BARREAUX 1 ET 2 : leur réponse s'écrit d'un trait,
+    // et découper « x² − 36 » en quatre lignes ferait passer pour compliqué ce
+    // qui ne l'est pas.
+    ...[
+        ['fac-3-pas', '3', '3. a devient une parenthèse — pas à pas',
+            "Les mêmes questions que le barreau 3, écrites ligne à ligne : a, b, "
+            + "a − b, a + b, puis le produit. C'est la première fois que les deux "
+            + "parenthèses demandent une réduction, et c'est là que le signe se perd."],
+        ['fac-4-pas', '4', '4. Deux parenthèses au carré — pas à pas',
+            "L'exercice que Rémy cite : (x + 3)² − (3x + 5)². Deux réductions, dont "
+            + "l'une passe par le moins devant la parenthèse. Découpé, on voit "
+            + "laquelle des deux a lâché."],
+        ['fac-6-pas', '6', '6. Facteur commun caché — pas à pas',
+            "On factorise d'abord le morceau qui cache le facteur commun, on nomme "
+            + "ce facteur, puis on écrit ce qui reste. Trois gestes, trois lignes."],
+        ['fac-7-pas', '7', '7. Trois termes — pas à pas',
+            "L'exercice de la feuille, ligne à ligne. Rien de nouveau : tout à la "
+            + "fois, mais une chose après l'autre."]
+    ].map(([id, barreau, titre, instruction]) => ({
+        id,
+        cree: '2026-09-24',
+        title: titre,
+        consignePapier: 'Factoriser les expressions suivantes.',
+        colonnesPapier: 1,
+        generatorId: 'lit.factorisation', activityId: 'buttons',
+        params: { barreau, etapes: 'oui' },
+        motsClefs: ['factoriser', 'factorisation', 'pas à pas', 'étapes', 'étape',
+            'détaillé', 'méthode', 'identité remarquable', 'facteur commun',
+            'calcul littéral', 'seconde', 'lycée'],
+        tags: { chemin: [D, LIT], niveaux: [SECONDE] },
+        instruction
+    })),
     ...[
         ['cf-1', '1. Même dénominateur',
             "La marche zéro, et la plus importante : les deux fractions sont déjà "

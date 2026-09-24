@@ -144,6 +144,45 @@ function tirerTelQue(rng, min, max, convient) {
 const facteurFini = (c, k) => P.pgcd(Math.abs(c), Math.abs(k)) === 1;
 
 /**
+ * Donne à chaque étape son juge, à partir de ce qu'elle attend.
+ *
+ * ON COMPARE DES POLYNÔMES, comme pour la réponse entière : « 3 + x » dit la
+ * même chose que « x + 3 », et corriger l'ordre des termes enseignerait à
+ * recopier une forme plutôt qu'à calculer.
+ *
+ * L'OPPOSÉ A SON MESSAGE À LUI, et il le mérite. Mathématiquement, a = 6 − 5x
+ * et a = 5x − 6 conduisent tous deux à une factorisation juste — les deux
+ * facteurs changent de signe ensemble. Mais l'énoncé ÉCRIT (6 − 5x)², et la
+ * convention du chapitre est de lire a tel quel ; surtout, laisser passer
+ * l'opposé casserait la suite, où a − b et a + b sont attendus dans ce
+ * sens-là. On refuse donc, mais en disant laquelle des deux erreurs c'est.
+ */
+function garnirEtapes(etapes) {
+    return etapes.map(e => ({
+        titre: e.titre,
+        montrer: e.montrer,
+        aide: e.aide || '',
+        parentheses: !!e.parentheses,
+        verifie: (saisie) => {
+            const lu = P.lireSaisie(saisie, fx);
+            if (!lu) {
+                return { juste: false,
+                    pourquoi: 'Je n\'arrive pas à lire cette expression. Écris-la '
+                        + 'avec les touches.' };
+            }
+            const attendu = P.lireSaisie(e.montrer, fx);
+            if (attendu && P.egaux(lu, attendu)) return { juste: true };
+            if (attendu && P.egaux(lu, P.opposeP(attendu))) {
+                return { juste: false,
+                    pourquoi: 'C\'est l\'OPPOSÉ de ce qu\'on cherche : tous les signes '
+                        + 'sont à l\'envers. Relis l\'énoncé et recopie-le tel quel.' };
+            }
+            return { juste: false, pourquoi: e.aide || '' };
+        }
+    }));
+}
+
+/**
  * Écrit le produit de facteurs linéaires EN SORTANT le facteur numérique.
  *
  * ── POURQUOI CETTE FONCTION EXISTE, ET C'EST UN RETOUR EN ARRIÈRE ──────────
@@ -349,7 +388,22 @@ function barreau3(rng) {
                 why: `C'est vrai, mais ce n'est pas factorisé : il n'y a toujours pas de `
                     + `produit. On veut deux facteurs multipliés.`, memeValeur: true }
         ],
-        visuel: 'identite'
+        visuel: 'identite',
+        // LES ÉTAPES, POUR QUI LES DEMANDE — voir `garnirEtapes`. Rémy : « Pour
+        // les factorisations compliqué du genre (x+3)² − (3x + 5)², on pourrait
+        // proposer plusieurs étapes non ? » Ici, a est une parenthèse : c'est
+        // la première fois que a − b et a + b demandent une réduction, et c'est
+        // exactement là que le signe se perd.
+        etapes: [
+            { titre: 'a, ce qui est au carré à gauche', montrer: A,
+                aide: `L'énoncé écrit (${A})² : a est ce qu'il y a dans la parenthèse.` },
+            { titre: 'b, ce qui est au carré à droite', montrer: String(n),
+                aide: `${n * n} est le carré de ${n}, donc b = ${n}.` },
+            { titre: 'a − b, réduit', montrer: lineaire(a, b - n, ordre),
+                aide: `On retire ${n} à ${A}, et on réduit.` },
+            { titre: 'a + b, réduit', montrer: lineaire(a, b + n, ordre),
+                aide: `On ajoute ${n} à ${A}, et on réduit.` }
+        ]
     };
 }
 
@@ -410,7 +464,22 @@ function barreau4(rng) {
                 evaluer: (x) => Math.pow((a + c) * x + b + d, 2),
                 why: `Les deux facteurs d'une différence de carrés ne sont jamais égaux.` }
         ],
-        visuel: 'identite'
+        visuel: 'identite',
+        // C'EST LE BARREAU QUE RÉMY A CITÉ : « (x+3)² − (3x + 5)² ». Deux
+        // parenthèses au carré, donc DEUX réductions, dont l'une passe par le
+        // moins devant la parenthèse — la faute la plus commune du chapitre,
+        // et elle est invisible dans un « faux » sur la réponse entière.
+        etapes: [
+            { titre: 'a, ce qui est au carré à gauche', montrer: G,
+                aide: `L'énoncé écrit (${G})² : a est ce qu'il y a dans la parenthèse.` },
+            { titre: 'b, ce qui est au carré à droite', montrer: D,
+                aide: `Et (${D})² : b est ${D}.` },
+            { titre: 'a − b, réduit', montrer: lineaire(a - c, b - d),
+                aide: `Attention : le moins change les DEUX termes de ${D}.` },
+            { titre: 'a + b, réduit', montrer: lineaire(a + c, b + d),
+                aide: 'Les coefficients de x s\'additionnent aussi, pas seulement '
+                    + 'les constantes.' }
+        ]
     };
 }
 
@@ -458,7 +527,14 @@ function barreau5(rng) {
                 evaluer: (x) => (x + s) * (t * x + u),
                 why: `Tu as effacé le facteur commun au lieu de le sortir.` }
         ],
-        visuel: 'commun'
+        visuel: 'commun',
+        etapes: [
+            { titre: 'Le facteur commun', montrer: C,
+                aide: 'Cherche ce qui est écrit dans les DEUX termes, tel quel.' },
+            { titre: 'Ce qui reste, réduit', montrer: lineaire(1 + t, s + u),
+                aide: `On ajoute ce qui restait de chaque terme : ${lineaire(1, s)} `
+                    + `+ ${lineaire(t, u)}.` }
+        ]
     };
 }
 
@@ -536,7 +612,20 @@ function barreau6(rng) {
                     why: `Le second terme a disparu. Le sortir en facteur laisse un 1 `
                         + `derrière lui, il ne s'efface pas.` }
             ],
-            visuel: 'commun'
+            visuel: 'commun',
+            etapes: [
+                { titre: `Factorise d'abord x² ${M} ${n * n}`, parentheses: true,
+                    montrer: `(${C})(${lineaire(1, n)})`,
+                    aide: 'C\'est une différence de carrés : elle se factorise, et '
+                        + 'c\'est ce qui fait apparaître le facteur commun.' },
+                { titre: 'Le facteur commun aux deux termes', montrer: C,
+                    aide: `Une fois x² ${M} ${n * n} factorisé, (${C}) est écrit des `
+                        + 'deux côtés.' },
+                { titre: 'Ce qui reste, réduit', montrer: lineaire(p, q - 1),
+                    aide: `Le second terme laisse un 1 derrière lui : ${lineaire(1, n)}`
+                        + `(${lineaire(p, q)}) ${M} (${lineaire(1, n)}) se met en `
+                        + `facteur de (${lineaire(1, n)}) aussi.` }
+            ]
         };
     }
     // Mécanisme de C : −kx + kr cache −k(x − r).
@@ -586,7 +675,17 @@ function barreau6(rng) {
                 why: `${M}${k} n'est pas en facteur de TOUT : il ne vient que du second `
                     + `morceau. Ce qui est commun, c'est (${C}).` }
         ],
-        visuel: 'commun'
+        visuel: 'commun',
+        etapes: [
+            { titre: `Factorise d'abord ${M}${monome(k)} + ${k * r}`, parentheses: true,
+                montrer: `${M}${k}(${C})`,
+                aide: `Les deux nombres ont ${k} en commun, et le premier est négatif.` },
+            { titre: 'Le facteur commun aux deux termes', montrer: C,
+                aide: `Une fois ${M}${monome(k)} + ${k * r} factorisé, (${C}) est `
+                    + 'écrit des deux côtés.' },
+            { titre: 'Ce qui reste, réduit', montrer: lineaire(p, q - k),
+                aide: `${lineaire(p, q)} ${M} ${k}.` }
+        ]
     };
 }
 
@@ -666,7 +765,18 @@ function barreau7(rng) {
                     why: `Le facteur commun est (${C}), pas x² ${M} ${n * n} : le `
                         + `deuxième terme ne contient pas (${lineaire(1, n)}).` }
             ],
-            visuel: 'commun'
+            visuel: 'commun',
+            etapes: [
+                { titre: `Factorise d'abord x² ${M} ${n * n}`, parentheses: true,
+                    montrer: `(${C})(${lineaire(1, n)})`,
+                    aide: 'Une différence de carrés se factorise — et c\'est elle qui '
+                        + 'fait apparaître le facteur commun aux TROIS termes.' },
+                { titre: 'Le facteur commun aux trois termes', montrer: C,
+                    aide: `(${C}) est dans les trois, une fois le premier factorisé.` },
+                { titre: 'Le crochet, réduit', montrer: crochet,
+                    aide: `(${lineaire(1, n)})(${lineaire(p, q)}) ${M} (${lineaire(1, c)}) `
+                        + `${M} (${C}) — on développe et on réduit.` }
+            ]
         };
     }
     // C(x) = (x − 3)²x − 4x + 12 + 3(x − 3)x
@@ -714,7 +824,16 @@ function barreau7(rng) {
                 evaluer: (x) => x * (x - r) * (x + m - r),
                 why: `x n'est pas commun aux trois termes : ${k * r} n'en a pas.` }])
         ],
-        visuel: 'commun'
+        visuel: 'commun',
+        etapes: [
+            { titre: `Factorise d'abord ${M}${monome(k)} + ${k * r}`, parentheses: true,
+                montrer: `${M}${k}(${C})`,
+                aide: `Les deux nombres ont ${k} en commun, et le premier est négatif.` },
+            { titre: 'Le facteur commun aux trois termes', montrer: C,
+                aide: `Une fois le deuxième morceau factorisé, (${C}) est dans les trois.` },
+            { titre: 'Le crochet, réduit', montrer: crochet,
+                aide: `(${C})x ${M} ${k} + ${monome(m)} — on réduit.` }
+        ]
     };
 }
 
@@ -809,11 +928,35 @@ export const factorisationGenerator = {
                 { value: 'revision', label: 'Révision — les barreaux 1 à 4' },
                 { value: 'toutes', label: 'Tout mélangé' }
             ]
+        },
+        {
+            id: 'etapes', type: 'select', label: 'Pas à pas', default: 'non',
+            // PAS SUR LA FICHE PAPIER, et un test l'a dit avant moi.
+            //
+            // `ficheReglages.test.mjs` refuse tout bouton qui ne change rien à
+            // la feuille — « un bouton qui ne fait rien est pire qu'un bouton
+            // absent : on l'essaie, rien ne bouge, et l'on ne sait pas si
+            // c'est la fiche ou soi qu'on n'a pas comprise ». Il est tombé sur
+            // celui-ci, aux barreaux 1 et 2.
+            //
+            // Il a raison deux fois. Ces deux barreaux n'ont pas d'étapes —
+            // leur réponse s'écrit d'un trait. Et SURTOUT, le pas à pas est
+            // une affaire d'écran : sur une feuille, la question et son
+            // corrigé sont les mêmes, avec ou sans découpage. Le réglage n'y a
+            // donc rien à faire, à aucun barreau.
+            papier: false,
+            aide: 'La question s\'écrit ligne à ligne : a, b, a − b, a + b, puis le '
+                + 'produit. Seule la dernière ligne est notée.',
+            options: [
+                { value: 'non', label: 'Non — la réponse d\'un coup' },
+                { value: 'oui', label: 'Oui — une ligne à la fois' }
+            ]
         }
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
         const choix = String(params.barreau || '1');
+        const pasAPas = String(params.etapes || 'non') === 'oui';
         const possibles = choix === 'toutes' ? [1, 2, 3, 4, 5, 6, 7]
             : (choix === 'revision' ? [1, 2, 3, 4] : [Number(choix) || 1]);
         const rang = possibles[rng.int(0, possibles.length - 1)];
@@ -1017,7 +1160,22 @@ export const factorisationGenerator = {
             // sont au clavier — une factorisation en a besoin, et elles
             // n'apparaissent que là.
             meta: { barreau: rang, nomDuBarreau: BARREAUX[rang].nom,
-                composable: 'litteral', lettre: 'x', degreMax: 3, parentheses: true }
+                composable: 'litteral', lettre: 'x', degreMax: 3, parentheses: true,
+                // PAS À PAS — Rémy : « Pour les factorisations compliqué du
+                // genre (x+3)² − (3x + 5)², on pourrait proposer plusieurs
+                // étapes non ? »
+                //
+                // `saisieSeule` fait prendre la main au clavier DÈS LA PREMIÈRE
+                // QUESTION, et c'est le point : le pas à pas sert à celui qui
+                // bloque, or l'échelle d'aide n'ouvre le clavier qu'à celui qui
+                // a déjà montré qu'il réussissait. Attendre l'échelle aurait
+                // donné le découpage à qui n'en a plus besoin.
+                //
+                // Les barreaux 1 et 2 n'en ont pas : leur réponse s'écrit d'un
+                // trait, et découper « x² − 36 » en quatre lignes ferait passer
+                // pour compliqué ce qui ne l'est pas.
+                ...(pasAPas && q.etapes ? { saisieSeule: true, etapes: garnirEtapes(q.etapes) }
+                    : {}) }
         });
     }
 };

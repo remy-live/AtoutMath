@@ -132,7 +132,7 @@ test('LA PROGRESSION EST LE PARCOURS — sept exercices, dans l\'ordre', () => {
     // « HYPER PROGRESSIF » NE SE RÈGLE PAS DANS UN GÉNÉRATEUR. Un curseur de
     // difficulté serait une loterie, où l'élève tombe sur le barreau 6 avant
     // d'avoir monté le 2. Sept exercices, que le professeur pose à la suite.
-    const miens = exercices.filter(e => /^fac-/.test(e.id));
+    const miens = exercices.filter(e => /^fac-\d+$/.test(e.id) || e.id === 'fac-revision');
     assert.equal(miens.length, 8, 'sept barreaux plus la révision');
     for (let r = 1; r <= 7; r++) {
         const e = miens.find(x => x.id === `fac-${r}`);
@@ -211,4 +211,65 @@ test('ET LE SIGNE MOINS EST UN SIGNE MOINS', () => {
         [q.enonce, q.reponse].forEach(t =>
             assert.ok(!/-/.test(t), `barreau ${r} : trait d'union dans « ${t} »`));
     });
+});
+
+test('LE PAS À PAS EST UN EXERCICE À PART, pas un réglage caché', () => {
+    // RÉMY : « Pour les factorisations compliqué du genre (x+3)² − (3x + 5)²,
+    // on pourrait proposer plusieurs étapes non ? »
+    //
+    // Le professeur pose un parcours : il doit pouvoir mettre « le 4 pas à
+    // pas » avant « le 4 » sans rouvrir les réglages de l'étape. Un exercice
+    // qui porte son nom se pose ; un réglage caché se retrouve.
+    const pas = exercices.filter(e => /^fac-\d+-pas$/.test(e.id));
+    assert.equal(pas.length, 4, 'les barreaux 3, 4, 6 et 7 en pas à pas');
+    pas.forEach(e => {
+        assert.equal(e.params.etapes, 'oui', `${e.id} : le pas à pas n'est pas activé`);
+        assert.match(e.title, /pas à pas/, `${e.id} : le titre ne le dit pas`);
+        const c = codeCourt(e.id);
+        assert.equal(c.length, 3, `${e.id} : code « ${c} »`);
+        assert.ok(!/[IOQ]/.test(c), `${e.id} : ${c} contient une lettre qui s'entend mal`);
+    });
+    // LES BARREAUX 1 ET 2 N'EN ONT PAS, et c'est délibéré : leur réponse
+    // s'écrit d'un trait, et découper « x² − 36 » en quatre lignes ferait
+    // passer pour compliqué ce qui ne l'est pas.
+    ['1', '2'].forEach(r => assert.ok(!pas.find(e => e.params.barreau === r),
+        `le barreau ${r} n'a pas besoin d'être découpé`));
+});
+
+test('CHAQUE ÉTAPE SE JUGE, ET ACCEPTE CE QUI EST JUSTE', () => {
+    for (const barreau of ['3', '4', '5', '6', '7']) {
+        for (let i = 0; i < 200; i++) {
+            const it = factorisationGenerator.generate({ barreau, etapes: 'oui' },
+                { rng: makeRng(`et_${barreau}_${i}`) });
+            const etapes = it.meta.etapes || [];
+            assert.ok(etapes.length >= 2,
+                `barreau ${barreau} : pas d'étapes alors qu'on les demande`);
+            assert.equal(it.meta.saisieSeule, true,
+                `barreau ${barreau} : le pas à pas doit prendre la main dès la `
+                + 'première question — c\'est à celui qui bloque qu\'il sert');
+            etapes.forEach(e => {
+                assert.ok(e.montrer, `barreau ${barreau} : une étape sans réponse`);
+                const v = e.verifie(String(e.montrer).replace(/\s+/g, ''));
+                assert.ok(v && v.juste, `barreau ${barreau} — « ${e.titre} » : sa propre `
+                    + `réponse « ${e.montrer} » est refusée : ${(v && v.pourquoi) || '?'}`);
+                // ET L'OPPOSÉ A SON MESSAGE À LUI : « c'est l'opposé » se
+                // corrige, « faux » ne se corrige pas.
+                const inv = e.verifie(`0 − (${e.montrer})`);
+                assert.ok(inv && !inv.juste && /OPPOS/.test(inv.pourquoi || ''),
+                    `barreau ${barreau} — « ${e.titre} » : l'opposé n'est pas nommé`);
+            });
+        }
+    }
+});
+
+test('SANS LE RÉGLAGE, RIEN NE CHANGE', () => {
+    // Un exercice qui ne demande pas le pas à pas doit se comporter comme
+    // avant : une question, une réponse, et le clavier quand l'échelle d'aide
+    // le décide — pas dès la première question.
+    for (const barreau of ['3', '4', '7']) {
+        const it = factorisationGenerator.generate({ barreau },
+            { rng: makeRng(`sans_${barreau}`) });
+        assert.equal((it.meta.etapes || []).length, 0);
+        assert.ok(!it.meta.saisieSeule);
+    }
 });

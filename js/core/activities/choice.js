@@ -158,6 +158,19 @@ export function mount(container, session, opts = {}) {
         return chiffrable ? './numeric.js' : null;
     }
 
+    /**
+     * Le bandeau qui annonce le passage au clavier — QUAND IL Y A EU PASSAGE.
+     *
+     * « À toi d'écrire : PLUS DE PROPOSITIONS » n'a de sens qu'après des
+     * propositions. Sur un exercice `saisieSeule`, le clavier prend la main
+     * dès la première question : il n'y en a jamais eu, et la phrase annonce
+     * un changement qui n'a pas eu lieu. Vu à l'écran sur le pas à pas des
+     * factorisations, où elle occupait en plus les 60 px qui manquaient au
+     * bouton « Valider » sur un téléphone.
+     */
+    const avisPour = (module, item) =>
+        ((item && item.meta && item.meta.saisieSeule) ? '' : (AVIS[module] || ''));
+
     const AVIS = {
         './numeric.js': 'À toi d\'écrire : plus de propositions, tu tapes le résultat.',
         './notationSaisie.js': 'À toi d\'écrire : tu poses toi-même les deux symboles.',
@@ -174,7 +187,7 @@ export function mount(container, session, opts = {}) {
         const rang = session.history.length;
         aide = aideSelonEtat(session.params || {}, etatAdaptatif(), rang, totalPrevu());
         const voulu = moduleVoulu(item, aide);
-        if (!releve && voulu) return passerALaMain(item, voulu, AVIS[voulu] || '');
+        if (!releve && voulu) return passerALaMain(item, voulu, avisPour(voulu, item));
         render(item);
     }
 
@@ -219,7 +232,7 @@ export function mount(container, session, opts = {}) {
         // forme d'une question à l'autre : « trace [AB) » se dessine, « (AB)
         // se lit… » se choisit. On rend la main, et `renderNext` du QCM
         // n'ayant pas eu lieu, c'est ici qu'on aiguille.
-        if (voulu) { passerALaMain(item, voulu, AVIS[voulu] || ''); return true; }
+        if (voulu) { passerALaMain(item, voulu, avisPour(voulu, item)); return true; }
         avisRetour = 'On reprend avec des propositions : ça va revenir.';
         render(item);
         return true;
