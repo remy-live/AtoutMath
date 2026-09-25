@@ -14,6 +14,7 @@ import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
 import {
     groupesDeMarches, marchesCochees, decoupeMarches, lireLongueurs, ecrireLongueurs,
+    PLIER_AU_DELA,
     poserBorne as poserBorneMarches, motsDeCoupe,
     cleParMarche, lireParMarche, ecrireParMarche, valeurParMarche
 } from '../core/progression.js';
@@ -805,6 +806,11 @@ export function fieldHtml(param, value, options = {}) {
         const liste = param.marches || [];
         const coches = new Set((Array.isArray(value) ? value : liste.map(m => m.id)).map(String));
         const groupes = groupesDeMarches(liste, param.groupes || {});
+        // LE RANG DE CHAQUE MARCHE DANS LA PROGRESSION ENTIÈRE. Il sert à
+        // l'en-tête d'un groupe replié, qui ne disait que son nom — Rémy :
+        // « pas de numéro avant les exercices ». Replié, « La distributivité
+        // simple » ne dit pas qu'elle couvre les barreaux 1 à 5.
+        const rangDe = new Map(liste.map((m, i) => [String(m.id), i + 1]));
         const ligne = (m) => `<label class="cfg-liste-ligne">
             <input type="checkbox" data-param="${param.id}" data-kind="multiselect"
                 value="${escapeAttr(m.id)}" ${coches.has(String(m.id)) ? 'checked' : ''}>
@@ -821,7 +827,13 @@ export function fieldHtml(param, value, options = {}) {
                 // ordinaire, et il n'y a alors rien à lire dedans ; un temps à
                 // moitié coché, au contraire, ne se comprend qu'ouvert.
                 const entier = dedans === g.marches.length || dedans === 0;
-                return `<details class="cfg-groupe" ${entier ? '' : 'open'}>
+                // ON NE REPLIE QUE CE QUI NE TIENT PAS — voir `PLIER_AU_DELA`.
+                // Replié d'entrée, un groupe de cinq barreaux ne laissait
+                // qu'un geste : prendre le temps entier. Rémy : « là on doit
+                // choisir un cran, ce n'est pas cohérent, je pourrais vouloir
+                // qu'un type de développement ».
+                const plier = liste.length > PLIER_AU_DELA;
+                return `<details class="cfg-groupe" ${entier && plier ? '' : 'open'}>
                     <summary class="cfg-groupe-tete">
                         <button type="button" class="cfg-groupe-case${
     dedans === g.marches.length ? ' cfg-groupe-case--tout'
@@ -829,6 +841,12 @@ export function fieldHtml(param, value, options = {}) {
                             data-groupe="${escapeAttr(g.cle)}"
                             aria-label="${escapeAttr(`Cocher ou décocher ${g.nom}`)}"></button>
                         <b>${escapeAttr(g.nom)}</b>
+                        <span class="cfg-groupe-rangs">${(() => {
+    const rangs = g.marches.map(m => rangDe.get(String(m.id))).filter(Boolean);
+    if (!rangs.length) return '';
+    const a = Math.min(...rangs), b = Math.max(...rangs);
+    return a === b ? `n° ${a}` : `n° ${a} à ${b}`;
+})()}</span>
                         <em>${dedans}/${g.marches.length}</em>
                     </summary>
                     <div class="cfg-liste-corps">${g.marches.map(ligne).join('')}</div>
@@ -836,8 +854,24 @@ export function fieldHtml(param, value, options = {}) {
             }).join('')
             : `<div class="cfg-liste-corps">${liste.map(ligne).join('')}</div>`;
 
+        // LE RÉGLAGE EXPRESS — Rémy : « tu peux faire un bouton réglage express
+        // pour avoir tout et cela se répartit équitablement entre le nombre de
+        // questions ».
+        //
+        // « Tout cocher » ne faisait que la moitié : il cochait les cases et
+        // LAISSAIT le partage sur mesure. Qui avait tiré une borne la veille
+        // retrouvait ses vingt-deux questions entassées sur trois barreaux,
+        // sans rien pour le dire. Le bouton express fait les deux d'un geste,
+        // et c'est le geste qu'on fait vraiment en préparant : « tout, à parts
+        // égales ». Les deux autres restent : « tout cocher » sans toucher au
+        // partage, et « tout décocher » qui est le premier temps d'un choix
+        // court.
         control = `<div class="cfg-marches" data-marches>
             <div class="cfg-liste-actions">
+                <button type="button" class="cfg-liste-btn cfg-liste-btn--express"
+                        data-cocher="1" data-equitable="1"
+                        title="Coche tout et partage les questions à parts égales"
+                        >Tout, à parts égales</button>
                 <button type="button" class="cfg-liste-btn" data-cocher="1">Tout cocher</button>
                 <button type="button" class="cfg-liste-btn" data-cocher="0">Tout décocher</button>
             </div>
@@ -1902,6 +1936,13 @@ document.addEventListener('click', (e) => {
         ? btn.dataset.cocher === '1'
         : !cases.every(c => c.checked);
     cases.forEach(c => { c.checked = tout; });
+    // ET LE PARTAGE REPART À ÉGALITÉ quand on le demande — voir le bouton
+    // express plus haut. Le champ caché porte les longueurs sur mesure ; le
+    // vider, c'est rendre la main à `partageEgal`, qui est le défaut.
+    if (btn.dataset.equitable === '1') {
+        const rep = hote.querySelector('[data-repartition-marches]');
+        if (rep) rep.value = '';
+    }
     // « TOUT DÉCOCHER » DÉCOCHE VRAIMENT. Rémy : « tout décocher ne fonctionne
     // pas ».
     //

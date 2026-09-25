@@ -12,13 +12,15 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
     SANS_GROUPE_MAX, PAR_MARCHE_DEFAUT,
     normaliserMarches, marchesCochees, groupesDeMarches, decoupeMarches, partageEgal,
     ecrireLongueurs, lireLongueurs, poserBorne, marcheAuRang, conseilProgression,
     cleParMarche, lireParMarche, ecrireParMarche, valeurParMarche,
     motsDeCoupe, paramMarches, totalDe
-} from '../js/core/progression.js';
+,
+    PLIER_AU_DELA} from '../js/core/progression.js';
 import { questionsConseillees } from '../js/core/duree.js';
 import { relatifsAdditionGenerator } from '../js/core/generators/relatifsAddition.js';
 import { makeRng } from '../js/core/ids.js';
@@ -369,4 +371,93 @@ test('SANS TABLE, RIEN NE CHANGE POUR PERSONNE', async () => {
             { index: i, total: 12, rng: makeRng(`s${i}`) }).answerKind);
     assert.deepEqual(new Set(nature({})), new Set(['numeric']));
     assert.deepEqual(new Set(nature({ reponse: 'choix' })), new Set(['choice']));
+});
+
+// ── CE QUE LE PANNEAU DOIT MONTRER ──────────────────────────────────────────
+//
+// RÉMY, devant les barreaux du développement regroupés : « pas mal de choses
+// ne vont pas. Déjà pas de numéro avant les exercices, et au sein d'un
+// exercice il faut pouvoir sélectionner les étapes un peu comme ce qui
+// existait déjà — là on doit choisir un cran, ce n'est pas cohérent, je
+// pourrais vouloir qu'un type de développement. Mais du coup tu peux faire un
+// bouton réglage express pour avoir tout, et cela se répartit équitablement
+// entre le nombre de questions. »
+//
+// Trois demandes, trois garde-fous. Les pixels se mesurent au navigateur
+// (tools/tmp/expressEtUneCase.mjs) ; ici on garde les décisions.
+
+test('ONZE MARCHES S\'OUVRENT, DOUZE SE REPLIENT', async () => {
+    // DEUX DEMANDES QUI SE CONTREDISENT, et c'est le nombre qui tranche :
+    // « pour un exercice des nombres relatifs il y a beaucoup d'étapes, ça
+    // risque d'être illisible » (douze, treize) contre « je pourrais vouloir
+    // qu'un type de développement » (onze, en deux temps). Replié d'entrée, un
+    // groupe ne laissait qu'un geste : prendre le temps entier.
+    assert.equal(typeof PLIER_AU_DELA, 'number');
+    await import('../js/core/activities/index.js');
+    const { allGenerators } = await import('../js/core/registry.js');
+    const taille = (id) => {
+        const g = allGenerators().find(x => x.id === id);
+        const p = (g.params || []).find(q => q && q.type === 'marches');
+        assert.ok(p, `${id} n'a plus de cases à cocher`);
+        return p.marches.length;
+    };
+    assert.ok(taille('lit.developpement') <= PLIER_AU_DELA,
+        'les onze barreaux du développement se replieraient : on ne verrait '
+        + 'que les deux temps, et l\'unité de choix serait le temps');
+    assert.ok(taille('num.relatifs.addition') > PLIER_AU_DELA,
+        'les douze marches des relatifs s\'ouvriraient en entier — « ça risque '
+        + 'd\'être illisible »');
+});
+
+test('LE PANNEAU NUMÉROTE LES TEMPS ET OFFRE LE RÉGLAGE EXPRESS', () => {
+    // LE PANNEAU SE DESSINE DANS LE DOM : on lit sa source, faute de
+    // navigateur ici. Ce qu'on garde, ce sont les trois choses dont l'ABSENCE
+    // était le défaut.
+    const src = readFileSync(new URL('../js/games/configUI.js', import.meta.url), 'utf8');
+    // 1. Le rang des marches dans l'en-tête d'un temps — « n° 1 à 5 ».
+    assert.match(src, /cfg-groupe-rangs/,
+        'l\'en-tête d\'un temps ne porte plus le rang de ses marches');
+    assert.match(src, /n° \$\{a\} à \$\{b\}/,
+        'le rang ne s\'écrit plus comme une plage');
+    // 2. Le bouton express, et ce qui le distingue de « Tout cocher ».
+    assert.match(src, /data-equitable="1"/,
+        'le bouton « Tout, à parts égales » a disparu');
+    assert.match(src, /à parts égales/,
+        'le bouton express ne dit plus ce qu\'il fait');
+    // 3. Et il REMET LE PARTAGE À ZÉRO — c'est la moitié que « Tout cocher »
+    //    ne faisait pas : qui avait tiré une borne gardait son partage sur
+    //    mesure sans que rien ne le dise.
+    const i = src.indexOf('btn.dataset.equitable');
+    assert.ok(i > 0, 'le bouton express ne touche plus au partage');
+    const suite = src.slice(i, i + 400);
+    assert.match(suite, /data-repartition-marches/,
+        'le bouton express ne vide plus le partage sur mesure');
+    assert.match(suite, /\.value = ''/,
+        'le partage sur mesure n\'est pas remis à égalité');
+    // 4. Le repli suit le nombre de marches, pas une constante écrite ici.
+    assert.match(src, /liste\.length > PLIER_AU_DELA/,
+        'le repli ne suit plus le nombre de marches');
+});
+
+test('COCHER UN SEUL BARREAU NE JOUE QUE CELUI-LÀ', async () => {
+    // « je pourrais vouloir qu'un type de développement ». C'est le cœur de la
+    // demande : l'unité de choix est la MARCHE, pas le temps.
+    const { developpementGenerator } = await import('../js/core/generators/developpement.js');
+    for (const seul of ['1', '7', '11']) {
+        const joues = [];
+        for (let i = 0; i < 6; i++) {
+            joues.push(String(developpementGenerator.generate({ marches: [seul] },
+                { rng: makeRng(`seul_${seul}_${i}`), index: i, total: 6 }).meta.marche));
+        }
+        assert.deepEqual([...new Set(joues)], [seul],
+            `coché seul, le barreau ${seul} n'est pas le seul joué`);
+    }
+    // Et deux cochés se partagent les questions, sans en oublier un.
+    const deux = [];
+    for (let i = 0; i < 8; i++) {
+        deux.push(String(developpementGenerator.generate({ marches: ['3', '9'] },
+            { rng: makeRng(`deux_${i}`), index: i, total: 8 }).meta.marche));
+    }
+    assert.deepEqual([...new Set(deux)].sort(), ['3', '9'],
+        'deux barreaux cochés : l\'un des deux ne sort jamais');
 });

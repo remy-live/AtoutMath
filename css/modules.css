@@ -4236,7 +4236,14 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     padding: 7px 10px; font-size: .9rem; list-style: none;
 }
 .cfg-groupe-tete::-webkit-details-marker { display: none; }
-.cfg-groupe-tete b { flex: 1 1 auto; font-weight: 700; }
+.cfg-groupe-tete b { flex: 0 0 auto; font-weight: 700; }
+/* LE RANG DES MARCHES DU GROUPE — « n° 1 à 5 ». Replié, l'en-tête ne disait
+   que le nom du temps : Rémy, « pas de numéro avant les exercices ». Le rang
+   est ce qui relie le temps à la progression qu'on a en tête. */
+.cfg-groupe-rangs {
+    flex: 1 1 auto; color: var(--text-muted); font-size: .78rem; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
 .cfg-groupe-tete em { font-style: normal; color: var(--text-muted); font-size: .82rem; }
 /* LA CASE DU TEMPS EST UN BOUTON, PAS UNE CASE À COCHER : elle a trois états —
    tout, rien, une partie — et une case n'en a que deux. L'état « une partie »
@@ -7060,6 +7067,19 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-muted);
 }
 .cfg-liste-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+/* LE RÉGLAGE EXPRESS SE VOIT — c'est le geste qu'on fait le plus souvent en
+   préparant : « tout, à parts égales ». Les deux autres sont des retouches ;
+   celui-ci est le point de départ, et il porte la couleur de l'application.
+   Rémy : « tu peux faire un bouton réglage express ». */
+.cfg-liste-btn--express {
+    flex: 1.4; border-color: var(--primary);
+    color: var(--primary-texte, var(--primary));
+    background: color-mix(in srgb, var(--primary) 9%, var(--bg-panel));
+}
+.cfg-liste-btn--express:hover {
+    background: color-mix(in srgb, var(--primary) 17%, var(--bg-panel));
+    color: var(--primary-texte, var(--primary));
+}
 
 /* La liste défile au-delà de sept lignes : elle ne doit jamais pousser les
    boutons « Annuler / Jouer » hors de l'écran d'un téléphone. */

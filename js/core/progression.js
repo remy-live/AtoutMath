@@ -52,6 +52,25 @@ export const TOUTES = 'toutes';
 /** Au-delà, la liste se plie en groupes — voir l'en-tête. */
 export const SANS_GROUPE_MAX = 8;
 
+/**
+ * AU-DELÀ, LES GROUPES S'OUVRENT FERMÉS. En deçà, ils s'ouvrent OUVERTS.
+ *
+ * DEUX DEMANDES DE RÉMY QUI SE CONTREDISENT — et le nombre les départage.
+ *
+ *   · « pour un exercice des nombres relatifs il y a beaucoup d'étapes, ça
+ *     risque d'être illisible » — douze et treize marches, repliées ;
+ *   · « il faut pouvoir sélectionner les étapes […], là on doit choisir un
+ *     cran, ce n'est pas cohérent, je pourrais vouloir qu'un type de
+ *     développement » — onze marches en deux temps, et repliées elles ne
+ *     montraient QUE les deux temps : le seul geste offert était de prendre
+ *     un temps entier. Le groupe cachait l'unité de choix.
+ *
+ * Onze s'ouvre, douze se replie. Le groupe reste dans les deux cas — c'est lui
+ * qui porte le « cocher tout le temps B » d'un geste —, mais il ne masque plus
+ * ce qu'il contient tant que cela tient à l'écran.
+ */
+export const PLIER_AU_DELA = 11;
+
 /** Ce que les générateurs posaient en dur avant qu'il y ait un réglage. */
 export const PAR_MARCHE_DEFAUT = 2;
 
