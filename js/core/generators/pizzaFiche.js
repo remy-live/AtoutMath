@@ -12,12 +12,32 @@
 
 import { makeItem } from '../items.js';
 import { tirerCommande, INGREDIENTS, direFraction } from '../pizza.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 const NIVEAUX = {
     facile: { nbFractions: 2, denominateurs: [2, 3, 4] },
     moyen: { nbFractions: 2, denominateurs: [2, 3, 4, 6] },
     difficile: { nbFractions: 3, denominateurs: [2, 3, 4, 6, 8] }
 };
+
+// ── LA PROGRESSION, EN CASES À COCHER ───────────────────────────────────────
+//
+// Rémy : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral, tu ne penses
+// pas ? — fais tout, ce serait le plus cohérent non ? »
+//
+// LES TROIS CRANS SE CONTIENNENT — les sixièmes ajoutent aux quarts, les
+// huitièmes aux sixièmes. Cochés, la feuille monte : deux moitiés au début,
+// trois huitièmes à la fin.
+const LISTE_MARCHES = [
+    { id: 'facile', nom: '1. 2 fractions · moitiés, tiers, quarts' },
+    { id: 'moyen', nom: '2. 2 fractions · jusqu\'aux sixièmes' },
+    { id: 'difficile', nom: '3. 3 fractions · jusqu\'aux huitièmes' }
+];
+/** Le réglage d'avant les cases — voir `marchesCochees`. */
+const ANCIEN = { cle: 'niveau' };
 
 const nomDe = (id) => (INGREDIENTS.find(i => i.id === id) || {}).nom || id;
 
@@ -28,20 +48,17 @@ export const pizzaFicheGenerator = {
     // dès qu'on compare deux garnitures, le dénominateur commun.
     skills: ['num.frac.sens', 'num.frac.denominateur-commun'],
     answerKinds: ['grid'],
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'Difficulté', default: 'moyen',
-            options: [
-                { value: 'facile', label: '2 fractions · moitiés, tiers, quarts' },
-                { value: 'moyen', label: '2 fractions · jusqu\'aux sixièmes' },
-                { value: 'difficile', label: '3 fractions · jusqu\'aux huitièmes' }
-            ]
-        }
+        paramMarches({ marches: LISTE_MARCHES, mot: 'niveau', ancien: ANCIEN })
     ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const n = NIVEAUX[(params || {}).niveau] || NIVEAUX.moyen;
+        const cran = String(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params) || 'moyen');
+        const n = NIVEAUX[cran] || NIVEAUX.moyen;
         const c = tirerCommande({ rng, ...n });
         // Un filet : sans commande tirable, la fiche ne doit pas rester vide.
         const commande = c || tirerCommande({ rng, nbFractions: 2, denominateurs: [2, 4] });
@@ -67,6 +84,7 @@ export const pizzaFicheGenerator = {
             meta: {
                 parts: commande.parts,
                 cible: commande.cible,
+                marche: cran,
                 fractions: commande.fractions.map(f => ({
                     num: f.num, den: f.den, ingredient: f.ingredient, nom: nomDe(f.ingredient)
                 }))

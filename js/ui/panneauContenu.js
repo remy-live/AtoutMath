@@ -54,11 +54,14 @@ export function monterPanneauContenu(el, { exo, schemaCatalogue, generator, regl
     if (!schema.length) return () => { };
 
     let detache = () => { };
-    import('../games/configUI.js').then(({ fieldHtml, readParams, wireTips }) => {
+    import('../games/configUI.js').then(({ fieldHtml, readParams, wireTips, valeurDeChamp }) => {
         const peindre = () => {
             el.innerHTML = '<span class="fp-contenu-titre">Contenu</span>'
-                + schema.map(p => fieldHtml(p,
-                    reglages[p.id] !== undefined ? reglages[p.id] : p.default)).join('');
+                // `valeurDeChamp` et non `reglages[p.id] ?? p.default` : une
+                // liste de marches se lit à travers `marchesCochees`, sinon un
+                // exercice réglé avant les cases s'affiche tout coché — voir
+                // games/configUI.js.
+                + schema.map(p => fieldHtml(p, valeurDeChamp(p, reglages))).join('');
             wireTips(el);
         };
         peindre();

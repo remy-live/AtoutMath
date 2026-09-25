@@ -1,4 +1,5 @@
 import { elementsGeometrieGenerator } from '../core/generators/elementsGeometrie.js';
+import { casesDeSolides } from '../core/generators/solides.js';
 import { TAGS } from './tags.js';
 // Les paliers du quadrilatère qui se transforme viennent du noyau : deux listes
 // d'options qui se répondent finissent toujours par diverger.
@@ -954,7 +955,13 @@ export const geometrieExercises = [
         // rien ne s'exécute, et c'est exactement le « programme de
         // construction » du brevet.
         printable: 'chat', printGeneratorId: 'geo.chat-fiche',
-        printParams: { quoi: 'melange', niveau: 'moyen' },
+        // PAS DE `niveau` ICI. Il épinglait la feuille sur une bande de
+        // figures ; depuis que la fiche a sa colonne de cases, ne rien
+        // dire veut dire « les trois bandes », c'est-à-dire une feuille
+        // qui part du carré et finit sur l'étoile. `quoi` reste, lui :
+        // « mélangés » y veut dire un tirage à chaque figure, et c'est
+        // justement ce que des cases ne savent pas dire.
+        printParams: { quoi: 'melange' },
         consignePapier: "Trace au crayon, côté par côté, en comptant les carreaux.",
         params: { depart: 1, saisie: 'auto' },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
@@ -1351,17 +1358,15 @@ export const geometrieExercises = [
         generatorId: 'geo.solides', printable: 'solides',
         params: { niveau: 'tous', aspect: 'tous', numeros: 'progressif', marques: 'progressif', facesColorees: true },
         paramSchema: [
+            // LA CARTE RÉÉCRIT SON PANNEAU, ELLE NE RÉÉCRIT PAS LA PROGRESSION
+            // — voir le logigramme, même cas. L'aide reste ici : c'est elle
+            // qui dit ce que chaque bande apporte.
             {
-                id: 'niveau', type: 'select', label: 'Les solides proposés',
+                ...casesDeSolides(),
+                label: 'Les solides proposés',
                 aide: 'Les solides usuels d\'abord — cube, pavé, prisme, pyramide. Les bases à cinq '
                     + 'et six côtés obligent à raisonner par familles ; l\'octaèdre force à vraiment '
-                    + 'regarder le dessin.',
-                options: [
-                    { value: 'facile', label: 'Les solides usuels' },
-                    { value: 'moyen', label: 'Jusqu\'aux bases pentagonales' },
-                    { value: 'tous', label: 'Tous, octaèdre compris' }
-                ],
-                default: 'tous'
+                    + 'regarder le dessin.'
             },
             {
                 id: 'aspect', type: 'select', label: 'Ce qu\'on demande de compter',

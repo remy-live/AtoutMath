@@ -5,6 +5,7 @@ import { NIVEAUX as NIVEAUX_CHANTIER } from '../core/chantier.js';
 // Les dominos empruntent leurs questions aux autres notions : la liste des
 // sources est tenue là où elle est vérifiée, pas recopiée ici.
 import { SOURCES as SOURCES_DOMINOS } from '../core/generators/dominos.js';
+import { casesDeNiveau } from '../core/generators/logigramme.js';
 
 // `status` absent = validé. Ne sont marqués que les exercices qui ne le sont
 // pas encore — ici les jeux autonomes, qui n'ont pas été portés sur le contrat
@@ -120,29 +121,14 @@ export const calculExercises = [
         colonnesPapier: 1,
         title: 'Prio-Bot Express',
         generatorId: 'calc.priorites', activityId: 'buttons',
-        // Le niveau et la taille des nombres se règlent : les expressions
+        // Les niveaux et la taille des nombres se règlent : les expressions
         // venaient de quatre gabarits fixes, à trois nombres de moins de dix.
-        params: { mode: 'operation', niveau: 2, parentheses: false, grands: false },
-        paramSchema: [
-            {
-                id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
-                options: [
-                    { value: 1, label: '1 — Trois nombres, deux opérations' },
-                    { value: 2, label: '2 — Jusqu\'à quatre nombres' },
-                    { value: 3, label: '3 — Les parenthèses arrivent' },
-                    { value: 4, label: '4 — Deux groupes de parenthèses' }
-                ]
-            },
-            {
-                id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
-                aide: 'Les nombres montent jusqu\'à 20 : la règle est la même, mais '
-                    + 'elle ne se devine plus de tête.'
-            },
-            {
-                id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: false,
-                aide: 'Elles n\'apparaissent qu\'à partir de la difficulté 3.'
-            }
-        ],
+        //
+        // LA CARTE NE REDIT PLUS LE SCHÉMA DU GÉNÉRATEUR. Elle en recopiait le
+        // menu « Difficulté » mot pour mot ; depuis que ce menu est une
+        // colonne de cases, la recopie l'aurait fait réapparaître ici seul.
+        // La carte pose seulement les cases cochées à l'ouverture.
+        params: { mode: 'operation', marches: ['1', '2'], parentheses: false, grands: false },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME] },
         instruction: "Sélectionne l'opération à effectuer en premier selon les règles de priorité."
     },
@@ -160,20 +146,12 @@ export const calculExercises = [
         colonnesPapier: 2,
         title: 'Prio-Bot Parenthèses',
         generatorId: 'calc.priorites', activityId: 'buttons',
-        params: { mode: 'operation', niveau: 3, parentheses: true, grands: false },
-        paramSchema: [
-            {
-                id: 'niveau', type: 'select', label: 'Difficulté', default: 3,
-                options: [
-                    { value: 3, label: '3 — Un groupe de parenthèses' },
-                    { value: 4, label: '4 — Deux groupes, ou un groupe de trois nombres' }
-                ]
-            },
-            {
-                id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
-                aide: 'Les nombres montent jusqu\'à 20.'
-            }
-        ],
+        // LES DEUX DERNIERS NIVEAUX COCHÉS, ET EUX SEULS : ce sont ceux où les
+        // parenthèses existent. Les deux premiers restent visibles dans le
+        // panneau — décochés — parce qu'un professeur qui veut réviser la
+        // règle des signes avant d'ouvrir les parenthèses n'a plus à changer
+        // d'exercice pour cela.
+        params: { mode: 'operation', marches: ['3', '4'], parentheses: true, grands: false },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Les parenthèses passent AVANT tout le reste — avant même les multiplications. "
             + "S'il y en a plusieurs, on commence par le groupe le plus intérieur. Sélectionne "
@@ -186,7 +164,7 @@ export const calculExercises = [
         colonnesPapier: 2,
         title: 'Prio-Bot Calcul',
         generatorId: 'calc.priorites', activityId: 'bubbles',
-        params: { mode: 'resultat', niveau: 2, progressif: true },
+        params: { mode: 'resultat', marches: ['1', '2'] },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Calcule l'expression en respectant les priorités opératoires."
     },
@@ -1878,18 +1856,12 @@ export const calculExercises = [
         skills: ['num.logique.logigramme'],
         params: { niveau: 1, auto: false },
         paramSchema: [
-            {
-                id: 'niveau', type: 'select', label: 'Niveau',
-                options: [
-                    { value: 1, label: '1 — Découverte · 3 lignes, 2 listes' },
-                    { value: 2, label: '2 — Trois amis, deux listes · indices croisés' },
-                    { value: 3, label: '3 — Quatre à croiser · plus rien de donné' },
-                    { value: 4, label: '4 — Plus grand, plus petit · comparaisons' },
-                    { value: 5, label: '5 — L\'écart exact · différences chiffrées' },
-                    { value: 6, label: '6 — Cinq, et rien de donné · avec des « soit… soit… »' }
-                ],
-                default: 1
-            },
+            // LA CARTE RÉÉCRIT SON PANNEAU, ELLE NE RÉÉCRIT PAS LA PROGRESSION.
+            // Les six niveaux étaient recopiés ici, mot pour mot ou presque ;
+            // depuis qu'ils sont une colonne de cases, la copie aurait fait
+            // réapparaître l'ancien menu sur cette carte seule — et l'écran
+            // comme la feuille seraient restés sur un niveau du début à la fin.
+            casesDeNiveau(),
             {
                 id: 'auto', type: 'bool', label: 'Barrer la ligne automatiquement',
                 // Personne ne barre une case à la place de l'élève sur du papier :

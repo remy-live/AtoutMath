@@ -631,6 +631,14 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
             // boulangerie trois fois sur la même feuille.
             items.push(generator.generate(reglages, {
                 rng: makeRng(), index: items.length,
+                // COMBIEN DE BLOCS AURA LA FEUILLE. Un générateur à
+                // progression en a besoin pour partager ses marches sur la
+                // page — voir `totalDe` dans core/progression.js. Sans lui, la
+                // feuille retombait sur deux calculs par marche et les
+                // dernières marches n'apparaissaient jamais sur une page
+                // courte, ou toutes les dernières lignes tombaient sur la plus
+                // dure sur une page longue.
+                total,
                 // UNE FICHE EST DU PAPIER, et un générateur a le droit de le
                 // savoir : la feuille de questions le disait déjà, la feuille
                 // de grilles non. C'est ce qui permet à un axe gradué d'y
@@ -754,6 +762,11 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
                 // revenir, et le tirage se rétrécit à chaque clic.
                 items[i] = generator.generate(reglages, {
                     rng: makeRng(), index: i,
+                    // MÊME RANG, MÊME TOTAL : relancer un bloc doit rendre un
+                    // calcul de la MÊME marche que celui qu'on remplace, sinon
+                    // un clic sur la première ligne d'une feuille qui monte en
+                    // ramènerait la plus dure.
+                    total: items.length,
                     themesExclus: items
                         .filter((_, j) => j !== i)
                         .map(it => it.meta && it.meta.theme).filter(Boolean)

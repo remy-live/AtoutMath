@@ -664,6 +664,29 @@ export const TITRES_ELEVE = {
     aide: 'Comment tu réponds'
 };
 
+/**
+ * LA VALEUR D'UN RÉGLAGE, TELLE QUE LE CHAMP DOIT LA MONTRER.
+ *
+ * Presque toujours « ce qui est enregistré, sinon le défaut ». Une liste de
+ * marches fait exception, et c'était un mensonge du panneau : un exercice
+ * réglé AVANT les cases porte encore `niveau: 2` ou `barreau: 3`, que le
+ * générateur traduit très bien (`marchesCochees`) — mais le panneau, lui, ne
+ * voyait pas de clé `marches`, tombait sur le défaut, et cochait TOUT. On lisait
+ * donc « les quatre niveaux travaillés » au-dessus d'un exercice qui n'en
+ * jouait qu'un, et le simple fait d'enregistrer sans rien toucher changeait
+ * l'exercice.
+ *
+ * `marchesCochees` est la MÊME fonction que celle du générateur : les deux ne
+ * peuvent plus diverger.
+ */
+export function valeurDeChamp(param, reglages) {
+    const r = reglages || {};
+    if (param && param.type === 'marches') {
+        return marchesCochees(r, param.marches || [], param.ancien || {}).map(m => m.id);
+    }
+    return r[param.id] !== undefined ? r[param.id] : param.default;
+}
+
 export function fieldHtml(param, value, options = {}) {
     const id = `cfg-${param.id}`;
     // UN RÉGLAGE QUI A SA PROPRE COMMANDE N'A PAS DE CHAMP. La répartition se
@@ -2869,7 +2892,7 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     // tranches, quatre écrans avant qu'on puisse voir d'où sortait le 26.
     // Rémy : « le nombre de questions est peut-être à mettre au-dessus ».
     // Un réglage qui DÉCOUPE le total passe donc sous lui, toujours.
-    const valeurDe = (p) => (current[p.id] !== undefined ? current[p.id] : p.default);
+    const valeurDe = (p) => valeurDeChamp(p, current);
     const decoupeLeTotal = (p) => p && p.type === 'marches';
     const libre = schema.filter(p => !p.groupe && !decoupeLeTotal(p));
     const apresLongueur = schema.filter(p => !p.groupe && decoupeLeTotal(p));
@@ -3175,7 +3198,7 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
                 + 'En mettre moins n\'est pas un problème — on verra les premières.'
             : 'Autant de questions que l\'exercice en pose.');
 
-    const valeurDe = (p) => current[p.id] !== undefined ? current[p.id] : p.default;
+    const valeurDe = (p) => valeurDeChamp(p, current);
 
     // LE NOMBRE DE QUESTIONS AVANT L'AIDE, ET CE N'EST PAS UN DÉTAIL. L'aperçu
     // découpe CE nombre de questions en tranches (« 3 à deux propositions, 5 à

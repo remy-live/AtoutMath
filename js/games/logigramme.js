@@ -23,6 +23,8 @@ import {
     genererLogigramme, niveauDe, creerEtats, lire, verifierSaisie,
     etiquette, INCONNU, OUI, NON
 } from '../core/logigramme.js';
+import { marchesCochees, marcheAuRang, totalDe } from '../core/progression.js';
+import { LISTE_MARCHES, ANCIEN } from '../core/generators/logigramme.js';
 
 const COMPETENCE = 'num.logique.logigramme';
 
@@ -30,7 +32,7 @@ class Logigramme extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'logigramme');
         this.rng = makeRng(this.params.seed);
-        this.niveau = Number(this.params.niveau) || 1;
+        this.poses = 0;
         // UN ROND MET UN ROND, ET RIEN D'AUTRE.
         //
         // On barrait automatiquement le reste de la ligne et de la colonne :
@@ -170,6 +172,17 @@ class Logigramme extends BaseGame {
     // --- Une énigme ---------------------------------------------------------
 
     poser() {
+        // LA MARCHE DE LA QUESTION QU'ON POSE. Le jeu lisait `params.niveau`
+        // UNE fois, au démarrage, et toute la partie restait dessus. Depuis
+        // que le réglage est une colonne de cases (Rémy : « il faudrait
+        // pouvoir faire les check box comme pour le calcul littéral »), les
+        // niveaux cochés se partagent les questions dans l'ordre — voir
+        // core/progression.js. On compte les questions POSÉES et non les
+        // réussies : une question ratée reste une question, et la progression
+        // ne doit pas piétiner.
+        this.niveau = Number(marcheAuRang(this.poses++,
+            marchesCochees(this.params, LISTE_MARCHES, ANCIEN),
+            totalDe(null, this.params), this.params)) || 1;
         this.puzzle = genererLogigramme(
             { niveau: this.niveau, theme: this.params.theme || null }, this.rng);
         this.n = this.puzzle.categories[0].valeurs.length;

@@ -27,7 +27,7 @@ import { hydratePath } from '../core/path.js';
 import { ficheSvg, refaireSvg, telechargerSvg } from './icones.js';
 import { generateurDeFiche } from '../core/registry.js';
 import { paramSchemaOf } from '../data/catalog.js';
-import { fieldHtml, readParams, wireTips, brancherMarches } from '../games/configUI.js';
+import { fieldHtml, readParams, wireTips, brancherMarches, valeurDeChamp } from '../games/configUI.js';
 import { makeRng } from '../core/ids.js';
 import { espacerMilliers } from '../core/nombres.js';
 import { composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction } from '../core/fiche.js';
@@ -188,8 +188,7 @@ function schemaPapier(etape) {
 function blocContenu(e, id) {
     const sch = schemaPapier(e);
     if (!sch.length) return '';
-    const champs = sch.map(p => fieldHtml(p,
-        e.params[p.id] !== undefined ? e.params[p.id] : p.default)).join('');
+    const champs = sch.map(p => fieldHtml(p, valeurDeChamp(p, e.params))).join('');
     return '<div class="pp-etape-contenu" data-contenu="' + id + '">'
         + '<span class="pp-etape-sous-titre">Contenu des questions</span>'
         + champs + '</div>';
@@ -983,8 +982,7 @@ export function ouvrirFicheParcours(chemin) {
                     min="0" max="40" value="${points[id]}">`)}</label>
             ${schema.length ? `<div class="pp-roue-contenu" data-r-contenu>
                 <div class="pp-roue-sous-titre">Contenu des questions</div>
-                ${schema.map(p => fieldHtml(p,
-        e.params[p.id] !== undefined ? e.params[p.id] : p.default)).join('')}
+                ${schema.map(p => fieldHtml(p, valeurDeChamp(p, e.params))).join('')}
             </div>` : ''}
             <button type="button" class="pp-roue-autres" data-r-neuf>${refaireSvg(15)} Autres questions</button>`;
         document.body.appendChild(panneau);

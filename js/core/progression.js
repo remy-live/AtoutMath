@@ -134,6 +134,36 @@ export function marchesCochees(params, toutes, ancien = {}) {
     if (vieux === undefined || vieux === null || vieux === '' || vieux === 'progressif') {
         return liste;
     }
+    // UN ANCIEN RÉGLAGE EST PARFOIS UN PLAFOND, PAS UN CHOIX.
+    //
+    // « Niveau 3 » dans les priorités ne voulait pas dire « le niveau 3 » : il
+    // voulait dire « jusqu'au 3 », et le générateur montait de 1 à 3 au fil
+    // des questions. Le relire comme UNE marche donnerait au professeur le
+    // contraire de ce qu'il avait réglé — les questions les plus dures, et
+    // elles seules, là où il avait demandé une montée.
+    //
+    // `ancien.jusqua` dit que la valeur nomme le HAUT de l'échelle : on garde
+    // tout ce qui vient avant, elle comprise.
+    //
+    // ET PARFOIS UNE CASE À CÔTÉ DÉCIDAIT DU SENS. Aux priorités, « Commencer
+    // plus facile » faisait de `niveau` un plafond ; décochée, le même nombre
+    // désignait une seule difficulté. On accepte donc une fonction des
+    // réglages : elle lit l'autre case, et deux parcours enregistrés qui
+    // portent le même `niveau: 3` ne se relisent pas de la même façon.
+    const jusqua = typeof ancien.jusqua === 'function' ? ancien.jusqua(p) : ancien.jusqua;
+    if (jusqua) {
+        const i = liste.findIndex(m => m.id === String(vieux));
+        if (i >= 0) return liste.slice(0, i + 1);
+    }
+    // ET PARFOIS C'EST LE BAS DE L'ÉCHELLE. « Commencer au niveau 5 » ou
+    // « Commencer à la figure 8 » ne nomment pas non plus UNE marche : elles
+    // disent par où l'on entre, et la suite se déroule à partir de là — le chat
+    // de Scratch bouclait même sur les douze figures à partir de celle-là. On
+    // garde donc tout ce qui vient APRÈS, elle comprise.
+    if (ancien.depuis) {
+        const i = liste.findIndex(m => m.id === String(vieux));
+        if (i >= 0) return liste.slice(i);
+    }
     // « A », « B », « C » désignaient un TEMPS entier : c'est exactement ce que
     // le groupe coché fait aujourd'hui.
     const parGroupe = liste.filter(m => m.groupe && String(m.groupe) === String(vieux));

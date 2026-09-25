@@ -13,6 +13,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import './helpers.mjs';
 import {
     SANS_GROUPE_MAX, PAR_MARCHE_DEFAUT,
     normaliserMarches, marchesCochees, groupesDeMarches, decoupeMarches, partageEgal,
@@ -289,7 +290,19 @@ test('TOUT GÉNÉRATEUR À PROGRESSION OFFRE SES CASES, ET ELLES MARCHENT', asyn
         const marches = new Set();
         for (let i = 0; i < total; i++) {
             const it = gen.generate({ ...defauts }, { rng: makeRng(`${gen.id}${i}`), index: i, total });
-            marches.add(it.meta && (it.meta.etape || it.meta.niveau || it.meta.zoom || it.meta.marche));
+            // `marche` D'ABORD, ET C'EST UNE CORRECTION. `etape`, `niveau`,
+            // `zoom` sont les noms que chaque générateur donnait à son cran
+            // AVANT les cases ; `marche` est celui que pose la frise, et c'est
+            // le seul dont on sait qu'il porte l'identifiant d'une marche.
+            // Mesuré sur `calc.priorites-fiche`, qui expose les deux : son
+            // `meta.niveau` est le NOMBRE 2 — il sert à la feuille — quand
+            // l'identifiant de la marche est la CHAÎNE « 2 ». Lu dans l'ancien
+            // ordre, le test déclarait les quatre marches jamais jouées alors
+            // qu'elles l'étaient toutes. On compare donc en chaînes, et on
+            // regarde `marche` en premier.
+            const m = it.meta || {};
+            const cran = m.marche ?? m.etape ?? m.niveau ?? m.zoom;
+            if (cran !== undefined && cran !== null) marches.add(String(cran));
         }
         // ON COMPTE CE QUI EST JOUÉ, PAS LE NOMBRE DE VALEURS VUES : certains
         // générateurs ouvrent sur une phase qui n'est PAS une marche (les
@@ -539,4 +552,125 @@ test('LES PARCOURS D\'HIER SE RELISENT DANS LES DEUX CHAPITRES', async () => {
         { rng: makeRng('cfe'), index: 0, total: 4 });
     assert.equal(ens.meta.marche, 'ensemble');
     assert.match(String(ens.prompt.papier || ''), /ensemble/i);
+});
+
+
+// --- UN ANCIEN RÉGLAGE N'EST PAS TOUJOURS UNE MARCHE -------------------------
+
+test('UN PLAFOND, UN DÉPART : deux anciens réglages qui ne nomment pas UNE marche', () => {
+    const liste = ['1', '2', '3', '4'].map(id => ({ id, nom: id }));
+    const ids = (params, ancien) => marchesCochees(params, liste, ancien).map(m => m.id);
+
+    // 1. LE PLAFOND. « Difficulté 3 » aux priorités opératoires ne voulait pas
+    //    dire « le niveau 3 » : le générateur montait de 1 à 3 au fil des
+    //    questions. Le relire comme UNE marche donnerait au professeur le
+    //    contraire de ce qu'il avait réglé — les questions les plus dures, et
+    //    elles seules, là où il avait demandé une montée.
+    assert.deepEqual(ids({ niveau: '3' }, { cle: 'niveau', jusqua: true }), ['1', '2', '3']);
+
+    // 2. ET C'EST PARFOIS UNE CASE À CÔTÉ QUI EN DÉCIDE. Aux priorités,
+    //    « Commencer plus facile » faisait de `niveau` un plafond ; décochée,
+    //    le même nombre désignait une difficulté et une seule. Deux parcours
+    //    enregistrés qui portent le même `niveau: 3` ne se relisent donc pas
+    //    de la même façon.
+    const casePriorites = { cle: 'niveau', jusqua: (p) => !!(p && p.progressif) };
+    assert.deepEqual(ids({ niveau: '3', progressif: true }, casePriorites), ['1', '2', '3']);
+    assert.deepEqual(ids({ niveau: '3' }, casePriorites), ['3']);
+
+    // 3. LE DÉPART, qui est le plafond à l'envers. « Commencer au niveau 3 »
+    //    chez le Chat Géomètre voulait dire « la 3 et toute la suite » — la
+    //    boucle repassait même par la première ensuite.
+    assert.deepEqual(ids({ depart: '3' }, { cle: 'depart', depuis: true }), ['3', '4']);
+
+    // 4. ET LES CASES, QUAND IL Y EN A, L'EMPORTENT TOUJOURS : un réglage
+    //    d'hier ne doit pas revenir par-dessus un choix d'aujourd'hui.
+    assert.deepEqual(ids({ marches: ['2'], niveau: '4', depart: '1' },
+        { cle: 'niveau', jusqua: true }), ['2']);
+});
+
+test('LE PANNEAU COCHE CE QUE LE GÉNÉRATEUR JOUE', async () => {
+    // LE MENSONGE QU'ON VIENT DE CORRIGER. Le panneau lisait `reglages.marches`
+    // et, ne le trouvant pas, prenait le défaut du réglage — c'est-à-dire TOUT
+    // coché. Un exercice réglé AVANT les cases porte pourtant encore
+    // `niveau: 2` ou `depart: 3`, que le générateur traduit très bien : on
+    // lisait donc « les quatre niveaux travaillés » au-dessus d'un exercice qui
+    // n'en jouait qu'un, et le simple fait d'enregistrer sans rien toucher
+    // changeait l'exercice.
+    const { valeurDeChamp } = await import('../js/games/configUI.js');
+    const param = paramMarches({
+        marches: ['1', '2', '3', '4'].map(id => ({ id, nom: id })),
+        mot: 'niveau', ancien: { cle: 'niveau', jusqua: true }
+    });
+    assert.deepEqual(valeurDeChamp(param, {}), ['1', '2', '3', '4'], 'rien de réglé : tout');
+    assert.deepEqual(valeurDeChamp(param, { niveau: '2' }), ['1', '2'],
+        'un ancien plafond ne se voit pas dans les cases');
+    assert.deepEqual(valeurDeChamp(param, { marches: ['4'] }), ['4']);
+    // Et un réglage ordinaire garde la règle ordinaire.
+    assert.equal(valeurDeChamp({ id: 'grands', default: false }, {}), false);
+    assert.equal(valeurDeChamp({ id: 'grands', default: false }, { grands: true }), true);
+});
+
+test('LES PRIORITÉS OPÉRATOIRES MONTENT PAR CASES, ÉCRAN ET PAPIER', async () => {
+    // Rémy : « fais tout, ce serait le plus cohérent non ? »
+    const { prioriteGenerator } = await import('../js/core/generators/calcul.js');
+    const { prioritesFicheGenerator } = await import('../js/core/generators/prioritesFiche.js');
+
+    const suite = (g, params, total) => Array.from({ length: total }, (_, i) =>
+        String(g.generate(params, { rng: makeRng(`prio${i}`), index: i, total }).meta.marche));
+
+    assert.deepEqual(suite(prioriteGenerator, { mode: 'resultat' }, 8),
+        ['1', '1', '2', '2', '3', '3', '4', '4']);
+    assert.deepEqual([...new Set(suite(prioriteGenerator, { marches: ['4'] }, 6))], ['4']);
+
+    // SUR LA FEUILLE, TOUS LES CALCULS GARDENT LA MÊME HAUTEUR. Donner à chacun
+    // le compte exact de ses étapes écrit la réponse en creux : trois lignes
+    // vides diraient « il reste trois opérations », et le calcul d'à côté n'en
+    // aurait que deux. Le maximum se prend donc sur le plus haut niveau COCHÉ,
+    // pas sur l'expression tirée.
+    const page = Array.from({ length: 12 }, (_, i) => prioritesFicheGenerator.generate(
+        {}, { rng: makeRng(`fiche${i}`), index: i, total: 12 }).meta);
+    assert.equal(new Set(page.map(m => m.etapesMax)).size, 1,
+        'les blocs de la feuille n\'ont pas tous la même hauteur');
+    assert.ok(page.some(m => m.etapes < page[0].etapesMax),
+        'aucun calcul plus court que la place réservée : la hauteur trahit le compte');
+    assert.deepEqual([...new Set(page.map(m => m.marche))], ['1', '2', '3', '4']);
+});
+
+test('UNE CARTE QUI RÉÉCRIT SON PANNEAU N\'EFFACE PAS LA PROGRESSION', async () => {
+    // `paramSchemaOf` REMPLACE, il ne complète pas — et c'est délibéré : « un
+    // schéma de catalogue n'est pas un sous-ensemble à compléter, c'est un
+    // choix ». La conséquence l'est moins : une carte qui recopiait à la main
+    // le menu « Niveau » de son générateur continuait de l'afficher après que
+    // ce menu est devenu une colonne de cases. Mesuré au moment de la bascule :
+    // deux cartes sur quarante et une — le Logigramme et « Compter sur un
+    // solide » — montraient l'ancien menu, et leur feuille comme leur écran
+    // restaient sur un niveau du début à la fin.
+    const { exercices } = await import('../js/data/catalog.js');
+    await import('../js/core/activities/index.js');
+    const { getGenerator } = await import('../js/core/registry.js');
+    const muettes = [];
+    for (const e of exercices) {
+        if (!e.paramSchema || !e.generatorId) continue;
+        const g = getGenerator(e.generatorId);
+        if (!g || !(g.params || []).some(p => p.type === 'marches')) continue;
+        if (!e.paramSchema.some(p => p.type === 'marches')) muettes.push(e.id);
+    }
+    assert.deepEqual(muettes, [],
+        `ces cartes cachent la progression de leur générateur : ${muettes.join(', ')}`);
+});
+
+test('LE LOGIGRAMME ET LES SOLIDES MONTENT AUSSI À L\'ÉCRAN', async () => {
+    // Ces deux-là ne passent PAS par un générateur à l'écran : l'activité mène
+    // son propre jeu et lisait `params.niveau` une seule fois, au démarrage.
+    // Les cases n'auraient alors servi qu'au papier.
+    const { LISTE_MARCHES: LOGI } = await import('../js/core/generators/logigramme.js');
+    const { LISTE_MARCHES: SOLI } = await import('../js/core/generators/solides.js');
+    for (const [src, liste] of [['games/logigramme.js', LOGI], ['games/solides.js', SOLI]]) {
+        const txt = readFileSync(new URL(`../js/${src}`, import.meta.url), 'utf8');
+        assert.match(txt, /marcheAuRang\(this\.poses\+\+/,
+            `${src} : le niveau ne suit pas les questions posées`);
+        assert.ok(!/this\.niveau = [^\n]*this\.params\.niveau/.test(txt),
+            `${src} : le niveau est encore figé au démarrage`);
+        assert.ok(liste.length >= 3, `${src} : la liste des marches ne s'exporte plus`);
+    }
 });

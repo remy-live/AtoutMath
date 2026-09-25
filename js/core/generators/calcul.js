@@ -13,6 +13,9 @@
 import { makeItem, finalizeChoices } from '../items.js';
 import { tirerExpression, operationPrioritaire, naif, critiquer, ecrire } from '../priorites.js';
 import { souligner } from '../fiche.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 // --- Addition ---------------------------------------------------------------
 
@@ -386,38 +389,52 @@ function cascadePapier(lignes) {
     }).join('\n');
 }
 
+// ── LES QUATRE DIFFICULTÉS, EN CASES À COCHER ───────────────────────────────
+//
+// Rémy : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral, tu ne penses
+// pas ? — fais tout, ce serait le plus cohérent non ? »
+//
+// ET ICI LES CASES REMPLACENT DEUX RÉGLAGES, PAS UN. Il y avait un menu
+// « Difficulté » et, juste en dessous, une case « Commencer plus facile » qui
+// changeait le sens du menu : cochée, 3 voulait dire « de 1 à 3 » ; décochée,
+// « 3 et rien d'autre ». Deux commandes pour dire ce qu'une colonne de cases
+// dit d'un coup d'œil — et sans jamais pouvoir demander « 1 et 3 », ni
+// « les deux dernières ».
+//
+// LE NOM DE LA MARCHE PORTE SON EXEMPLE : on reconnaît « (9 + 2) × 5 » d'un
+// coup d'œil, « niveau 3 » jamais.
+const MARCHES_PRIO = [
+    { id: '1', nom: '1. 9 + 2 × 5, trois nombres' },
+    { id: '2', nom: '2. 9 + 2 × 5 − 7, jusqu\'à quatre nombres' },
+    { id: '3', nom: '3. (9 + 2) × 5, les parenthèses arrivent' },
+    { id: '4', nom: '4. (9 + 2) × (5 − 1), deux groupes' }
+];
+// UN ANCIEN RÉGLAGE SE RELIT À LA LUMIÈRE DE SON VOISIN — voir
+// `marchesCochees` : c'est « Commencer plus facile » qui disait si `niveau`
+// nommait un plafond ou un choix.
+const ANCIEN_PRIO = { cle: 'niveau', jusqua: (p) => !!(p && p.progressif) };
+
 export const prioriteGenerator = {
     id: 'calc.priorites',
     label: 'Priorités opératoires',
     skills: ['num.prio'],
     answerKinds: ['choice'],
     ecrit: true,
+    // LA LONGUEUR SUIT LE NOMBRE DE NIVEAUX COCHÉS — voir core/duree.js.
+    conseil: (p) => conseilProgression(marchesCochees(p, MARCHES_PRIO, ANCIEN_PRIO).length),
     params: [
         { id: 'mode', type: 'select', label: 'Question posée', options: ['operation', 'resultat'], default: 'operation' },
-        {
-            id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
-            options: [
-                { value: 1, label: '1 — Trois nombres, deux opérations' },
-                { value: 2, label: '2 — Jusqu\'à quatre nombres' },
-                { value: 3, label: '3 — Les parenthèses arrivent' },
-                { value: 4, label: '4 — Deux groupes de parenthèses' }
-            ]
-        },
+        paramMarches({ marches: MARCHES_PRIO, mot: 'niveau', ancien: ANCIEN_PRIO }),
         {
             id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: false,
             aide: 'Sans elles, seule la règle « × et ÷ avant + et − » est en jeu. '
-                + 'Elles n\'apparaissent qu\'à partir de la difficulté 3.'
+                + 'Elles n\'apparaissent qu\'à partir du niveau 3.'
         },
         {
             id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
             aide: 'Les nombres montent jusqu\'à 20 et le résultat jusqu\'à 2 000 : '
                 + 'la règle est la même, mais elle ne se devine plus de tête.'
-        },
-        {
-            id: 'progressif', type: 'checkbox', label: 'Commencer plus facile', default: false,
-            aide: 'Les premières questions restent à trois nombres et deux opérations, puis la '
-                + 'difficulté monte jusqu\'à celle réglée au-dessus. On installe la règle avant '
-                + 'de la compliquer.'
         }
     ],
 
@@ -428,13 +445,13 @@ export const prioriteGenerator = {
         // LA DIFFICULTÉ MONTE. Rémy : « je trouve les calculs un peu durs quand
         // même dès le départ ». La première question d'une série sert à
         // reconnaître la règle — « × avant + » — pas à la manier sur quatre
-        // nombres ; on part donc du cran le plus simple et l'on rejoint le
-        // niveau réglé au bout de quelques questions.
-        const plafondNiveau = Math.max(1, Math.min(4, Number(params.niveau) || 2));
-        const niveau = params.progressif
-            ? Math.min(plafondNiveau,
-                1 + Math.floor((Number(ctx.index) || 0) / 4))
-            : plafondNiveau;
+        // nombres. Les niveaux cochés se partagent donc les questions, dans
+        // l'ordre : c'est la montée d'avant, mais c'est le professeur qui dit
+        // où elle commence, où elle s'arrête, et combien de questions chaque
+        // cran reçoit — voir core/progression.js.
+        const niveau = Math.max(1, Math.min(4, Number(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(params, MARCHES_PRIO, ANCIEN_PRIO),
+            totalDe(ctx, params), params)) || 2));
         const e = tirerExpression({
             rng,
             niveau,
@@ -458,6 +475,9 @@ export const prioriteGenerator = {
             meta: {
                 eq: e.texte, right: prioritaire, value: e.resultat,
                 etapes: e.etapes, avecParentheses: e.avecParentheses,
+                // LA MARCHE VOYAGE AVEC LA QUESTION : c'est elle que la frise
+                // du panneau relit pour montrer où en est l'exercice.
+                marche: String(niveau),
                 theme: e.texte
             }
         };
