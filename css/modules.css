@@ -2268,6 +2268,18 @@ html[data-point="plus"] .pt-croix { display: none; }
     display: flex; flex-direction: column; align-items: center;
     height: 100%; width: 100%; gap: 10px; padding: 14px 16px 0;
     overflow: hidden;
+    /* LA CARTE SE CENTRE COMME UN BLOC, ELLE NE S'ÉTIRE PLUS.
+       Rémy, capture d'un iPhone : « les étapes prennent de la place, j'aime
+       bien l'idée de voir la progression mais là c'est inutile et ça prend de
+       la place ». Mesuré à 390 × 844 sur une séance de deux étapes : la zone
+       de la carte prenait 515 px pour un chemin de 324, soit 169 PIXELS DE
+       VIDE entre la phrase et la première pastille — un cinquième de l'écran,
+       et c'est ce trou qui faisait paraître le chemin perdu. Sur un écran
+       d'ordinateur, 220 px.
+       Ce n'est donc pas le chemin qui prenait la place : c'est le vide
+       au-dessus de lui. La zone ne réclame plus tout le reste de la hauteur
+       (voir `.run-carte-scene`), et le bloc entier se pose au milieu. */
+    justify-content: center;
 }
 .run-carte-tete {
     text-align: center; flex: 0 0 auto;
@@ -2283,7 +2295,14 @@ html[data-point="plus"] .pt-croix { display: none; }
     background: var(--bg-soft, rgba(0, 0, 0, .04)); border-radius: 999px; padding: 4px 14px;
 }
 .run-carte-scene {
-    flex: 1 1 auto; width: 100%; max-width: 900px; overflow-y: auto; overflow-x: hidden;
+    /* `0 1 auto` ET NON `1 1 auto` : la zone prend la hauteur du chemin et
+       s'arrête là. Elle peut encore RÉTRÉCIR — c'est le `1` du milieu —, et
+       c'est ce qui compte pour une séance de douze étapes : le chemin déborde
+       alors, la zone défile, et le bouton reste en bas. `min-height: 0` le
+       permet : sans lui, une boîte flexible refuse de descendre sous la
+       hauteur de son contenu et pousse le bouton hors de l'écran. */
+    flex: 0 1 auto; min-height: 0;
+    width: 100%; max-width: 900px; overflow-y: auto; overflow-x: hidden;
     display: flex; flex-direction: column;
     /* La gerbe d'étoiles d'un jeu qui s'ouvre déborde de sa pastille : sans
        cette marge, elle serait coupée par le bord de la zone défilante. */
