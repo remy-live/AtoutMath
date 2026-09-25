@@ -292,6 +292,31 @@ export const secondeExercises = [
             + "RÉSULTAT dans le plus petit ensemble qui le contient. Une fraction "
             + "réduite est décimale si son dénominateur ne garde que des 2 et des 5."
     },
+    // ── LES FRACTIONS, LIGNE À LIGNE ────────────────────────────────────────
+    //
+    // RÉMY : « oui fais les ». Trois gestes dans une somme de fractions — le
+    // dénominateur commun, les numérateurs, la simplification —, et un « faux »
+    // sur le résultat ne dit pas lequel a lâché. Découpé, on le voit.
+    {
+        id: 'cf-pas',
+        cree: '2026-09-25',
+        title: 'Fractions pas à pas',
+        consignePapier: 'Calculer et donner le résultat sous forme réduite.',
+        colonnesPapier: 2,
+        generatorId: 'nb.calculFractions', activityId: 'buttons',
+        // LES HUIT PREMIERS BARREAUX : les quatre opérations, chacune dans
+        // tous ses cas. Les quatre du haut — priorités, deux parenthèses,
+        // fraction de fractions — n'ont pas encore de chaîne : leur découpage
+        // demande de NOMMER des morceaux, ce qui est un autre travail.
+        params: { barreau: 'revision', etapes: 'oui' },
+        motsClefs: ['fraction', 'fractions', 'pas à pas', 'étapes', 'étape', 'détaillé',
+            'méthode', 'dénominateur commun', 'addition', 'produit', 'division',
+            'seconde', 'lycée'],
+        tags: { chemin: [D, FRAC], niveaux: [SECONDE] },
+        instruction: "Les mêmes questions, écrites ligne à ligne : le dénominateur "
+            + "commun, puis les numérateurs, puis la forme réduite. Le champ montre la "
+            + "FORME attendue, et seule la dernière ligne compte pour la séance."
+    },
     {
         id: 'cf-revision',
         cree: '2026-09-23',

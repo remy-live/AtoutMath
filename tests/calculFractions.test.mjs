@@ -212,9 +212,17 @@ test('LES MARCHES D\'INTRODUCTION NE POSENT QU\'UNE FRACTION', () => {
     assert.ok(combien(8) > combien(7), 'le barreau 8 devrait en poser plus que le 7');
 });
 
-test('LES QUATORZE EXERCICES SONT AU CATALOGUE, DANS L\'ORDRE', () => {
+test('LES QUINZE EXERCICES SONT AU CATALOGUE, DANS L\'ORDRE', () => {
     const miens = exercices.filter(e => /^cf-/.test(e.id));
-    assert.equal(miens.length, 14, 'douze barreaux, l\'ensemble et la révision');
+    assert.equal(miens.length, 15,
+        'douze barreaux, l\'ensemble, la révision et le pas à pas');
+    // LA CARTE « PAS À PAS » EST PRÊTE — Rémy : « c'est génial ton idée de
+    // carte "pas à pas" prête ». Elle porte les huit premiers barreaux, les
+    // seuls dont la chaîne est écrite.
+    const pas = miens.find(e => e.id === 'cf-pas');
+    assert.ok(pas, 'la carte « Fractions pas à pas » a disparu');
+    assert.equal(pas.params.etapes, 'oui');
+    assert.equal(pas.params.barreau, 'revision');
     for (let r = 1; r <= 12; r++) {
         const e = miens.find(x => x.id === `cf-${r}`);
         assert.ok(e, `barreau ${r} absent`);
@@ -253,4 +261,95 @@ test('ET PLUS AUCUN PRÉREQUIS FANTÔME, NULLE PART', () => {
     assert.deepEqual(fantomes, []);
     // Et le générateur est branché.
     assert.ok(allGenerators().map(g => g.id).includes('nb.calculFractions'));
+});
+
+// ── LE PAS À PAS DES FRACTIONS ──────────────────────────────────────────────
+//
+// RÉMY : « oui fais les ». Trois gestes dans une somme de fractions — le
+// dénominateur commun, les numérateurs, la simplification — et un « faux » sur
+// le résultat ne dit pas lequel a lâché.
+
+test('CHAQUE LIGNE VAUT L\'ÉNONCÉ, ET NE SE LAISSE PAS SAUTER', async () => {
+    const { lireExacte, memeR } = await import('../js/core/maths/valeurExacte.js');
+    const fx = await import('../js/core/maths/formule.js');
+    let lignesVues = 0;
+    for (let b = 1; b <= 8; b++) {
+        for (let i = 0; i < 50; i++) {
+            const it = G.generate({ barreau: String(b), etapes: 'oui' },
+                { rng: makeRng(`cfc_${b}_${i}`) });
+            assert.equal(it.meta.saisieSeule, true, `[b${b}] le clavier ne prend pas la main`);
+            const etapes = it.meta.etapes || [];
+            assert.ok(etapes.length >= 1, `[b${b}] aucune ligne alors qu'on les demande`);
+            const attendu = lireExacte(it.reponsePapier, fx);
+            assert.ok(attendu, `[b${b}] réponse illisible : ${it.reponsePapier}`);
+            for (const e of etapes) {
+                lignesVues += 1;
+                const ligne = lireExacte(e.montrer, fx);
+                assert.ok(ligne, `[b${b}] « ${e.montrer} » ne se lit pas`);
+                assert.ok(memeR(ligne, attendu),
+                    `[b${b}] « ${e.montrer} » ne vaut pas « ${it.reponsePapier} »`);
+                assert.ok(e.verifie(e.montrer.replace(/\s+/g, '')).juste,
+                    `[b${b}] « ${e.montrer} » refusée à son étape`);
+                // LA RÉPONSE FINALE NE PASSE PAS À UNE ÉTAPE INTERMÉDIAIRE :
+                // les deux sont égales, donc sans exigence de forme l'étape
+                // serait sautable, c'est-à-dire inexistante.
+                const v = e.verifie(it.reponsePapier.replace(/\s+/g, ''));
+                assert.ok(v && !v.juste,
+                    `[b${b}] « ${it.reponsePapier} » passe à l'étape « ${e.titre} »`);
+                assert.ok(e.modele && /[□…]/.test(e.modele),
+                    `[b${b}] l'étape « ${e.titre} » n'a pas de moule`);
+            }
+        }
+    }
+    assert.ok(lignesVues > 400, `seulement ${lignesVues} lignes jugées`);
+});
+
+test('LE PAVÉ SAIT TAPER CHAQUE LIGNE DES FRACTIONS', () => {
+    for (let b = 1; b <= 8; b++) {
+        for (let i = 0; i < 30; i++) {
+            const it = G.generate({ barreau: String(b), etapes: 'oui' },
+                { rng: makeRng(`cfp_${b}_${i}`) });
+            const m = it.meta;
+            assert.equal(m.lettre, null, `[b${b}] le pavé offre une lettre`);
+            assert.equal(m.carre, false, `[b${b}] le pavé offre la touche ²`);
+            assert.equal(m.fraction, true, `[b${b}] pas de barre de fraction`);
+            const touches = ['+', '−', '/'];
+            if (m.multiplication) touches.push('×');
+            if (m.parentheses) touches.push('(', ')');
+            if (m.racine) touches.push('√');
+            touches.push(...'0123456789'.split(''));
+            for (const e of [...(m.etapes || []), { montrer: it.reponsePapier }]) {
+                const manque = new Set();
+                for (const c of String(e.montrer).replace(/\s+/g, '')) {
+                    if (!touches.includes(c)) manque.add(c);
+                }
+                assert.deepEqual([...manque], [],
+                    `[b${b}] « ${e.montrer} » demande ${[...manque].join(' ')}, `
+                    + 'que le pavé n\'a pas');
+            }
+        }
+    }
+});
+
+test('UNE FRACTION NON RÉDUITE EST INACHEVÉE, PAS FAUSSE', () => {
+    // La règle posée pour la factorisation : commencé n'est pas raté. 20/12
+    // vaut 5/3, et la moitié difficile est faite.
+    let vus = 0;
+    for (let b = 1; b <= 8; b++) {
+        for (let i = 0; i < 40; i++) {
+            const it = G.generate({ barreau: String(b) },
+                { rng: makeRng(`cfr_${b}_${i}`) });
+            assert.equal(it.verifieTexte(it.reponsePapier).juste, true,
+                `[b${b}] « ${it.reponsePapier} » refusée`);
+            const m = it.reponsePapier.match(/^(\d+)\/(\d+)$/);
+            if (!m) continue;
+            const brut = `${Number(m[1]) * 3}/${Number(m[2]) * 3}`;
+            const v = it.verifieTexte(brut);
+            vus += 1;
+            assert.equal(v.juste, false, `[b${b}] « ${brut} » passe pour fini`);
+            assert.equal(v.inacheve, true,
+                `[b${b}] « ${brut} » est compté FAUX : c'est égal, et pas réduit`);
+        }
+    }
+    assert.ok(vus > 50, `seulement ${vus} fractions non réduites mesurées`);
 });

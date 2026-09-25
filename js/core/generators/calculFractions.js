@@ -41,6 +41,9 @@
 // justement ce qu'on demande de distinguer.
 
 import { makeItem, finalizeChoices } from '../items.js';
+import * as fx from '../maths/formule.js';
+import { garnirEtapesNombres } from '../maths/etapesNombres.js';
+import { lireExacte, memeR as memeExacte } from '../maths/valeurExacte.js';
 
 const M = '−';
 const nb = (v) => (v < 0 ? M + Math.abs(v) : String(v));
@@ -193,6 +196,15 @@ function barreauMeme(rng) {
         html: `${fracHtml(a)} ${moinsCi ? M : '+'} ${fracHtml(b)}`,
         texte: `${txt(a)} ${moinsCi ? M : '+'} ${txt(b)}`,
         valeur: v,
+        // LA CHAÎNE — Rémy : « oui fais les ». Un geste, une ligne : le
+        // dénominateur ne bouge pas, et c'est TOUT ce que ce barreau enseigne.
+        lignes: [
+            { titre: `On ${moinsCi ? 'retire' : 'ajoute'} les numérateurs, le dénominateur ne bouge pas`,
+                montrer: `(${n1} ${moinsCi ? M : '+'} ${n2})/${d}`,
+                memesNombres: true, parentheses: true, fraction: true,
+                aide: `Le dénominateur reste ${d} : on n'additionne JAMAIS les dénominateurs.` }
+        ],
+        titreFinal: 'On calcule, et l\'on simplifie s\'il y a lieu',
         etapes: `Les deux fractions sont déjà sur ${d} : on ${moinsCi ? 'retire' : 'ajoute'} `
             + `les numérateurs, et le dénominateur NE BOUGE PAS. `
             + `${n1} ${moinsCi ? M : '+'} ${n2} = ${moinsCi ? n1 - n2 : n1 + n2}, sur ${d}.`,
@@ -226,6 +238,14 @@ function barreauFoisEntier(rng) {
         html: `${fracHtml(f)} × ${k}`,
         texte: `${txt(f)} × ${k}`,
         valeur: v,
+        lignes: [
+            { titre: 'L\'entier multiplie le NUMÉRATEUR, et lui seul',
+                montrer: `(${f.n} × ${k})/${f.d}`,
+                memesNombres: true, parentheses: true, multiplication: true, fraction: true,
+                aide: `Multiplier le bas aussi ne changerait rien du tout : on retomberait `
+                    + `sur ${txt(f)}.` }
+        ],
+        titreFinal: 'On calcule, et l\'on simplifie s\'il y a lieu',
         etapes: `${k} multiplie le NUMÉRATEUR seulement : ${f.n} × ${k} = ${f.n * k}, `
             + `toujours sur ${f.d}. Puis on simplifie s'il y a lieu : ${txt(v)}.`,
         leurres: [
@@ -263,6 +283,13 @@ function barreauFoisFraction(rng) {
         html: `${fracHtml(a)} × ${fracHtml(b)}`,
         texte: `${txt(a)} × ${txt(b)}`,
         valeur: v,
+        lignes: [
+            { titre: 'Les numérateurs entre eux, les dénominateurs entre eux',
+                montrer: `(${a.n} × ${b.n})/(${a.d} × ${b.d})`,
+                memesNombres: true, parentheses: true, multiplication: true, fraction: true,
+                aide: 'Haut × haut, bas × bas. Rien ne se retourne dans un produit.' }
+        ],
+        titreFinal: 'On simplifie — et le plus tôt est le mieux',
         etapes: `On multiplie les numérateurs entre eux et les dénominateurs entre eux. `
             + `Mais on SIMPLIFIE d'abord — sans cela on écrit ${a.n * b.n} sur `
             + `${a.d * b.d} et l'on cherche encore. Résultat : ${txt(v)}.`,
@@ -295,6 +322,13 @@ function barreauSurEntier(rng) {
         html: `${fracHtml(f)} ÷ ${k}`,
         texte: `${txt(f)} ÷ ${k}`,
         valeur: v,
+        lignes: [
+            { titre: `Diviser par ${k}, c'est multiplier par ${txt(fr(1, k))}`,
+                montrer: `${f.n}/${f.d} × 1/${k}`,
+                memesNombres: true, multiplication: true, fraction: true,
+                aide: 'Diviser rend plus PETIT : c\'est le dénominateur qui grandit.' }
+        ],
+        titreFinal: 'On multiplie, et l\'on simplifie s\'il y a lieu',
         etapes: `Diviser par ${k}, c'est multiplier par ${txt(fr(1, k))}. Le dénominateur `
             + `est donc multiplié par ${k} : ${f.d} × ${k} = ${f.d * k}. Résultat ${txt(v)}.`,
         leurres: [
@@ -329,6 +363,17 @@ function barreau1(rng) {
         html: `${fracHtml(a)} ${moinsCi ? M : '+'} ${fracHtml(b)}`,
         texte: `${txt(a)} ${moinsCi ? M : '+'} ${txt(b)}`,
         valeur: v,
+        lignes: [
+            { titre: `On met tout sur ${b.d}`,
+                montrer: `${a.n * k}/${b.d} ${moinsCi ? M : '+'} ${b.n}/${b.d}`,
+                denomEgaux: true, fraction: true,
+                aide: `${b.d} est un multiple de ${a.d} : ${txt(a)} = ${txt(fr(a.n * k, a.d * k))}.` },
+            { titre: `On ${moinsCi ? 'retire' : 'ajoute'} les numérateurs`,
+                montrer: `(${a.n * k} ${moinsCi ? M : '+'} ${b.n})/${b.d}`,
+                memesNombres: true, parentheses: true, fraction: true,
+                aide: 'Le dénominateur commun ne bouge plus.' }
+        ],
+        titreFinal: 'On calcule, et l\'on simplifie s\'il y a lieu',
         etapes: `${b.d} est un multiple de ${a.d} : on met tout sur ${b.d}. `
             + `${txt(a)} = ${txt(fr(a.n * k, a.d * k))}, et l'on ${moinsCi ? 'retire' : 'ajoute'} `
             + `les numérateurs.`,
@@ -371,6 +416,18 @@ function barreau2(rng) {
         html: `${fracHtml(a)} ${moinsCi ? M : '+'} ${fracHtml(b)}`,
         texte: `${txt(a)} ${moinsCi ? M : '+'} ${txt(b)}`,
         valeur: v,
+        lignes: [
+            { titre: `On met tout sur ${d1 * d2}`,
+                montrer: `${a.n * d2}/${d1 * d2} ${moinsCi ? M : '+'} ${b.n * d1}/${d1 * d2}`,
+                denomEgaux: true, fraction: true,
+                aide: `Ni ${d1} ni ${d2} n'est multiple de l'autre : leur produit convient `
+                    + `toujours.` },
+            { titre: `On ${moinsCi ? 'retire' : 'ajoute'} les numérateurs`,
+                montrer: `(${a.n * d2} ${moinsCi ? M : '+'} ${b.n * d1})/${d1 * d2}`,
+                memesNombres: true, parentheses: true, fraction: true,
+                aide: 'Le dénominateur commun ne bouge plus.' }
+        ],
+        titreFinal: 'On calcule, et l\'on simplifie s\'il y a lieu',
         etapes: `Ni ${d1} ni ${d2} n'est multiple de l'autre : on prend ${d1 * d2}. `
             + `${txt(a)} = ${txt(fr(a.n * d2, d1 * d2))} et ${txt(b)} = ${txt(fr(b.n * d1, d1 * d2))}.`,
         leurres: [
@@ -430,6 +487,14 @@ function barreau3(rng) {
         html: `${fracHtml(a)} × ${fracHtml(b)} × ${fracHtml(c)}`,
         texte: `${txt(a)} × ${txt(b)} × ${txt(c)}`,
         valeur: v,
+        lignes: [
+            { titre: 'Les numérateurs entre eux, les dénominateurs entre eux',
+                montrer: `(${a.n} × ${b.n} × ${c.n})/(${a.d} × ${b.d} × ${c.d})`,
+                memesNombres: true, parentheses: true, multiplication: true, fraction: true,
+                aide: 'On écrit tout, et l\'on simplifie AVANT de calculer : c\'est ce qui '
+                    + 'évite de manipuler de grands nombres.' }
+        ],
+        titreFinal: 'On simplifie, puis on calcule',
         etapes: `On multiplie les numérateurs entre eux et les dénominateurs entre eux — `
             + `mais on SIMPLIFIE d'abord : ${r} est en haut et en bas, ${q} aussi. `
             + `Sans cela on manipule ${a.n * b.n * c.n} sur ${a.d * b.d * c.d}.`,
@@ -458,6 +523,17 @@ function barreau4(rng) {
         html: `${fracHtml(a)} ÷ ${fracHtml(b)}`,
         texte: `${txt(a)} ÷ ${txt(b)}`,
         valeur: v,
+        lignes: [
+            { titre: 'On retourne la SECONDE, et la division devient un produit',
+                montrer: `${a.n}/${a.d} × ${b.d}/${b.n}`,
+                memesNombres: true, multiplication: true, fraction: true,
+                aide: `L'inverse de ${txt(b)} est ${txt(inv)}. La première ne bouge pas.` },
+            { titre: 'Les numérateurs entre eux, les dénominateurs entre eux',
+                montrer: `(${a.n} × ${b.d})/(${a.d} × ${b.n})`,
+                memesNombres: true, parentheses: true, multiplication: true, fraction: true,
+                aide: 'Haut × haut, bas × bas.' }
+        ],
+        titreFinal: 'On calcule, et l\'on simplifie s\'il y a lieu',
         etapes: `Diviser par ${txt(b)}, c'est multiplier par son inverse ${txt(inv)}. `
             + `Donc ${txt(a)} × ${txt(inv)} = ${txt(v)}.`,
         leurres: [
@@ -743,6 +819,17 @@ export const calculFractionsGenerator = {
                 { value: 'revision', label: 'Révision — les quatre opérations' },
                 { value: 'toutes', label: 'Tout mélangé' }
             ]
+        },
+        {
+            id: 'etapes', type: 'select', label: 'Pas à pas', default: 'non',
+            // PAS SUR LA FICHE PAPIER : le découpage est une affaire d'écran.
+            papier: false,
+            aide: 'La question s\'écrit ligne à ligne : le dénominateur commun, puis les '
+                + 'numérateurs, puis on simplifie. Seule la dernière ligne est notée.',
+            options: [
+                { value: 'non', label: 'Non — la réponse d\'un coup' },
+                { value: 'oui', label: 'Oui — une ligne à la fois' }
+            ]
         }
     ],
     generate(params, ctx) {
@@ -774,6 +861,12 @@ export const calculFractionsGenerator = {
         const tire = possibles[rng.int(0, possibles.length - 1)];
         const rang = BARREAUX[tire] ? tire : 1;
         const q = BARREAUX[rang].faire(rng);
+        const pasAPas = String(params.etapes || 'non') === 'oui';
+        // LES LIGNES DE LA CHAÎNE, s'il y en a. Les quatre barreaux du haut —
+        // priorités, parenthèses, fraction de fractions — n'en ont pas encore :
+        // leur découpage demande de nommer des morceaux, ce qui est un autre
+        // travail. Le clavier s'y ouvre quand même (voir plus bas).
+        const lignes = q.lignes || [];
 
         // ON DÉDOUBLONNE SUR LA VALEUR ET SUR L'ÉTIQUETTE. Deux fautes
         // différentes peuvent donner le même nombre — et un leurre qui vaut la
@@ -828,7 +921,46 @@ export const calculFractionsGenerator = {
                 papier: `Calculer : ${q.texte}`
             },
             answer: 'ok',
+            // CE QUI S'ÉCRIT, SE TAPE ET S'IMPRIME — `answer` est une
+            // sentinelle de QCM ; le clavier a besoin de l'écriture.
+            reponsePapier: txt(q.valeur),
             choices,
+            /**
+             * JUGER UNE RÉPONSE TAPÉE — sur la VALEUR EXACTE, jamais sur un
+             * flottant : 1/3 + 1/6 vaut 1/2 exactement, et 0.1 + 0.2 ne vaut
+             * pas 0.3 en virgule flottante.
+             *
+             * ET UNE FRACTION NON RÉDUITE N'EST PAS FINIE. 20/12 vaut 5/3, et
+             * la consigne du chapitre est de donner la forme réduite. Ce n'est
+             * pas une faute pour autant — c'est la moitié du travail, et la
+             * moitié difficile est faite : on le dit sans compter de vie,
+             * comme pour la factorisation.
+             */
+            verifieTexte: (saisie) => {
+                const lu = lireExacte(saisie, fx);
+                if (!lu) {
+                    return { juste: false,
+                        pourquoi: 'Je n\'arrive pas à lire cette expression. '
+                            + 'Écris-la avec les touches, par exemple 5/3.' };
+                }
+                if (!memeExacte(lu, { n: q.valeur.n, d: q.valeur.d, r: 1 })) {
+                    return { juste: false };
+                }
+                // LA FORME RÉDUITE SE LIT SUR CE QUI EST ÉCRIT : `rac` réduit
+                // en interne, donc la valeur ne peut pas la dire.
+                const m = String(saisie).replace(/\s+/g, '')
+                    .match(/^(−|-)?(\d+)\/(\d+)$/);
+                if (m) {
+                    const n = Number(m[2]), d = Number(m[3]);
+                    const p = (x, y) => (y ? p(y, x % y) : x);
+                    if (p(n, d) > 1) {
+                        return { juste: false, inacheve: true,
+                            pourquoi: 'C\'est bien égal, mais ce n\'est pas fini : la '
+                                + 'fraction se simplifie encore.' };
+                    }
+                }
+                return { juste: true };
+            },
             hints: [
                 rang <= 2 ? 'Il faut un dénominateur COMMUN avant d\'additionner.'
                     : 'Calcule un morceau à la fois, et écris chaque résultat avant de continuer.',
@@ -837,7 +969,24 @@ export const calculFractionsGenerator = {
             explanation: `${q.texte} = ${txt(q.valeur)}. ${q.etapes} `
                 + `Le plus petit ensemble qui le contient est ${ENSEMBLES[ens].nom}.`,
             difficulty: Math.min(5, 1 + Math.floor(rang / 2)),
-            meta: { barreau: rang, nomDuBarreau: BARREAUX[rang].nom, ensemble: ens }
+            meta: {
+                barreau: rang,
+                nomDuBarreau: BARREAUX[rang].nom,
+                ensemble: ens,
+                // LE CLAVIER DE CE CHAPITRE : une barre de fraction, ni
+                // lettre, ni carré, ni racine.
+                composable: 'litteral',
+                lettre: null,
+                carre: false,
+                fraction: true,
+                multiplication: lignes.some(l => l.multiplication),
+                parentheses: lignes.some(l => l.parentheses),
+                ...(pasAPas
+                    ? { saisieSeule: true,
+                        ...(lignes.length ? { etapes: garnirEtapesNombres(lignes),
+                            titreFinal: q.titreFinal || 'La réponse, sous forme réduite' } : {}) }
+                    : {})
+            }
         });
     }
 };

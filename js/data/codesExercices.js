@@ -259,6 +259,7 @@ export const CODES_EXERCICES = {
     'cf-12':                      'GV',   // Une fraction de fractions
     'cf-ensemble':                'GW',   // Calculer, puis dire l'ensemble
     'cf-revision':                'GN',   // Les quatre opérations
+    'cf-pas':                     'GX',   // Fractions, pas à pas
     // DÉVELOPPER — les quinze cartes sont devenues deux, pour la même raison
     // que la factorisation ci-dessus. DB désignait le barreau 1 et désigne
     // maintenant l'exercice entier ; EK, le pas à pas de la simple, désigne le
