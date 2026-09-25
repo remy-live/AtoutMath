@@ -106,7 +106,40 @@ test('« QUESTION SUIVANTE » AVANCE DANS LA SÉRIE, IL NE LA RECOMMENCE PAS', a
     assert.match(RE, /rang = 0;/);
     // Le professeur doit LIRE qu'il avance : « Question 3 sur 14 ». Sans ce
     // compte, on voit changer des nombres et l'on croit tourner en rond.
-    assert.match(RE, /Question \$\{\(rang % combien\(\)\) \+ 1\} sur \$\{combien\(\)\}/);
+    assert.match(RE, /Question \$\{r \+ 1\} sur \$\{total\}/);
+});
+
+test('UN CLIC, UNE MARCHE — ET NON UNE QUESTION', async () => {
+    // RÉMY, SUR UN EXERCICE RÉGLÉ À 45 QUESTIONS : « dans l'aperçu normal ça
+    // fonctionne mais dans l'aperçu avec onglet ça ne fonctionne pas. »
+    //
+    // MESURÉ : quarante-cinq questions sur onze barreaux font QUATRE questions
+    // par barreau. L'onglet avançait d'une question par clic — quatre clics
+    // pour quitter le premier barreau, quarante pour atteindre le dernier. On
+    // cliquait trois fois, on lisait 6(x + 3), 8(x + 7), 7(x + 2), et l'on
+    // concluait que rien ne bouge. Techniquement l'aperçu avançait ;
+    // utilement, non.
+    //
+    // « L'APERÇU NORMAL » dit ce qu'il fallait faire : la bulle de la barre
+    // montre la PREMIÈRE question de la zone qu'on clique, et chaque zone est
+    // une marche. L'onglet saute donc au début de la marche suivante.
+    assert.match(RE, /const zonesDeMarches = \(\) => \{/);
+    assert.match(RE, /rang = etat\.zones\[\(i \+ 1\) % etat\.zones\.length\]\.de - 1;/);
+    // Sans progression, « suivante » reste la question suivante : c'est un
+    // nouveau tirage, et c'est tout ce qu'on peut offrir.
+    assert.match(RE, /if \(!etat\) \{ rang \+= 1; return; \}/);
+    // Et la marche est NOMMÉE sous le bouton, comme la bulle la nomme.
+    assert.match(RE, /\` · \$\{z\.nom\}\`/);
+
+    // LE COMPTE QUI A DÉCLENCHÉ LA MESURE, refait ici : onze barreaux, 45
+    // questions, et les débuts de marche attendus.
+    const { decoupeMarches } = await import('../js/core/progression.js');
+    const { developpementGenerator } = await import('../js/core/generators/developpement.js');
+    const p = (developpementGenerator.params || []).find(x => x.type === 'marches');
+    const zones = decoupeMarches(p.marches, 45, {}).filter(z => z.n > 0);
+    assert.equal(zones.length, 11);
+    assert.deepEqual(zones.slice(0, 4).map(z => z.de), [1, 5, 9, 13],
+        'quatre questions par barreau : un clic par question en demandait quatre');
 });
 
 test('LA VIGNETTE ÉPINGLÉE DOIT OUBLIER CE QU\'ELLE MONTRE POUR SE RELANCER', () => {

@@ -1311,25 +1311,26 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     margin: 0 0 12px; font-size: .85rem; color: var(--text-muted); line-height: 1.4;
 }
 .re-apercu-pied {
-    display: flex; align-items: center; justify-content: center;
-    /* LE RANG NE DÉPLACE PAS LE BOUTON. Posé à sa gauche dans le flux, il
-       poussait « Question suivante » de quarante pixels à chaque changement de
-       compte (« Question 9 sur 14 » est plus large que « Question 1 sur 9 ») —
-       et l'on clique deux fois de suite au même endroit. Le bouton reste donc
-       centré sur le pied, et le rang se pose à côté sans peser. */
-    position: relative;
-    gap: 12px; padding-top: 12px;
+    /* LE RANG AU-DESSUS, LE BOUTON DESSOUS, ET C'EST UNE LEÇON DE MESURE.
+       Posé à GAUCHE du bouton, le rang poussait « Question suivante » de
+       quarante pixels à chaque changement de compte — et l'on clique deux fois
+       de suite au même endroit. Posé en absolu à sa gauche, il ne poussait
+       plus rien mais chevauchait le bouton dès qu'il nomme la marche
+       (« Question 13 sur 45 · 4. −2(x + 5), le facteur négatif »). Empilé, il
+       ne fait ni l'un ni l'autre : le bouton ne bouge pas, et la phrase a
+       toute la largeur. */
+    display: flex; flex-direction: column; align-items: center;
+    gap: 8px; padding-top: 12px;
 }
 .re-apercu-rang {
-    position: absolute; left: 0;
+    max-width: 100%;
+    /* UNE SEULE LIGNE, TOUJOURS : une phrase qui passe à deux lignes
+       descendrait le bouton d'un cran entre deux clics. Le titre complet reste
+       lisible au survol, et le nom de la marche est de toute façon écrit en
+       toutes lettres dans la liste à cocher. */
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     font-size: .78rem; color: var(--text-muted);
     font-variant-numeric: tabular-nums;
-}
-/* Sur un téléphone, le pied n'a pas la largeur pour les deux côte à côte :
-   le rang passe dessous, centré, plutôt que de chevaucher le bouton. */
-@media (max-width: 520px) {
-    .re-apercu-pied { flex-direction: column-reverse; }
-    .re-apercu-rang { position: static; }
 }
 /* Le cadre a une hauteur FIXE, posée par le script : sans elle, la fenêtre
    sauterait de taille à chaque changement de réglage — un jeu à six questions

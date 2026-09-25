@@ -32,6 +32,8 @@
 
 import { showModal } from './modal.js';
 import { adapterAuContenu, ajusterDesQueDessine, motDeRelance } from './apercuTiroir.js';
+import { paramSchemaOf } from '../data/catalog.js';
+import { marchesCochees, decoupeMarches } from '../core/progression.js';
 
 /** La boîte de l'aperçu, en pixels. Large : c'est tout l'intérêt de la fenêtre. */
 const APERCU = { l: 620, h: 420 };
@@ -152,12 +154,67 @@ export function ouvrirReglagesEtape({ etape, exo, rendre, onClose } = {}) {
         const e = etape() || {};
         return Math.max(1, Math.round(Number(e.nbItems)) || 10);
     };
+
+    // ── UN CLIC, UNE MARCHE — ET NON UNE QUESTION ─────────────────────────
+    //
+    // RÉMY, DEVANT UN EXERCICE RÉGLÉ SUR 45 QUESTIONS : « dans l'aperçu normal
+    // ça fonctionne mais dans l'aperçu avec onglet ça ne fonctionne pas ».
+    //
+    // MESURÉ : quarante-cinq questions sur onze barreaux font QUATRE questions
+    // par barreau. L'onglet avançait d'une question par clic — donc quatre
+    // clics pour quitter le premier barreau, et quarante pour atteindre le
+    // dernier. On cliquait trois fois, on lisait 6(x + 3), 8(x + 7), 7(x + 2),
+    // et l'on concluait que rien ne bouge. Techniquement l'aperçu avançait ;
+    // utilement, non.
+    //
+    // « L'APERÇU NORMAL », LUI, MARCHE — et il dit pourquoi : la bulle de la
+    // barre montre la PREMIÈRE question de la zone qu'on clique, et chaque
+    // zone est une marche. Un clic, une marche. L'onglet fait donc pareil :
+    // il saute au début de la marche suivante.
+    //
+    // ON NE PERD PAS LES AUTRES QUESTIONS D'UNE MARCHE : chaque montage tire
+    // une graine neuve, donc refaire un tour de l'escalier en donne d'autres.
+    const zonesDeMarches = () => {
+        if (!exo || !exo.generatorId) return null;
+        const p = (paramSchemaOf(exo) || []).find(x => x && x.type === 'marches');
+        if (!p) return null;
+        const courante = etape() || {};
+        const params = { ...((exo && exo.params) || {}), ...(courante.overrides || {}) };
+        const cochees = marchesCochees(params, p.marches || [], p.ancien || {});
+        const zones = decoupeMarches(cochees, combien(), params).filter(z => z.n > 0);
+        return zones.length > 1 ? { zones, mot: p.mot || 'marche' } : null;
+    };
+
+    /** La marche qui contient la question de rang `r` (à partir de 0). */
+    const zoneDe = (etat, r) => (etat ? etat.zones.find(z => r + 1 >= z.de && r + 1 <= z.a) : null);
+
+    const avancer = () => {
+        const etat = zonesDeMarches();
+        // Sans progression, « suivante » veut dire « la question suivante » :
+        // c'est un nouveau tirage, et c'est tout ce qu'on peut offrir.
+        if (!etat) { rang += 1; return; }
+        const ici = zoneDe(etat, rang % combien());
+        const i = ici ? etat.zones.indexOf(ici) : -1;
+        rang = etat.zones[(i + 1) % etat.zones.length].de - 1;
+    };
+
     const direLeRang = () => {
         if (!rangEl) return;
         // Un jeu du catalogue ne pose pas de questions : le compte n'aurait
         // aucun sens — voir `motDeRelance`.
-        rangEl.textContent = (exo && exo.generatorId)
-            ? `Question ${(rang % combien()) + 1} sur ${combien()}` : '';
+        if (!exo || !exo.generatorId) { rangEl.textContent = ''; return; }
+        const total = combien();
+        const r = rang % total;
+        const etat = zonesDeMarches();
+        const z = zoneDe(etat, r);
+        // ET LA MARCHE EST NOMMÉE. « Question 21 sur 45 » ne dit pas ce qu'on
+        // regarde ; « Question 21 sur 45 · 6. (x + 2)(x + 3) » le dit, et
+        // c'est exactement ce que la bulle de la barre écrit au-dessus d'une
+        // zone qu'on clique.
+        const texte = `Question ${r + 1} sur ${total}` + (z ? ` · ${z.nom}` : '');
+        rangEl.textContent = texte;
+        // La ligne est coupée si elle dépasse : le titre rend la fin.
+        rangEl.title = texte;
     };
     // UN AUTRE TIRAGE. Les réglages se jugent sur plusieurs questions — c'est
     // même tout l'objet de l'onglet : « une vraie question de l'exercice, avec
@@ -165,7 +222,7 @@ export function ouvrirReglagesEtape({ etape, exo, rendre, onClose } = {}) {
     // réglage tient.
     if (relance) {
         relance.textContent = motDeRelance(exo);
-        relance.onclick = () => { rang += 1; monterApercu(); };
+        relance.onclick = () => { avancer(); monterApercu(); };
     }
     cadre.style.height = `${APERCU.h}px`;
 

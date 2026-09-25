@@ -2246,6 +2246,25 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
    les polices standard d'un PDF ne le connaissent pas. */
 .fx-presque { padding: 0 .05em; }
 
+/* L'EXPOSANT NE DOIT PAS FAIRE DESCENDRE SA LIGNE.
+
+   Rémy, capture d'un aperçu de fiche : « pour l'impression des calculs en
+   puissance, le nombre en puissance est décalé par rapport aux numéros ». Le
+   « 163. » était sur sa ligne, le « 2³ = » un peu plus bas.
+
+   MESURÉ, sur la fiche des puissances contre une fiche d'additions : la ligne
+   qui porte un exposant fait 17,5 px de haut au lieu de 14, et comme chaque
+   ligne est posée en ABSOLU à un `top` fixe, ces 3,5 px de plus s'ajoutent
+   au-dessus — c'est donc la BASE qui descend de 3,5 px. Le numéro, lui, n'a
+   pas d'exposant et ne bouge pas. Sur une feuille de trente calculs, l'œil
+   voit la ligne onduler.
+
+   `line-height: 0` rend l'exposant transparent au calcul de la hauteur de
+   ligne ; son décalage vers le haut reste celui du navigateur
+   (`vertical-align: super`), qui est déjà ce que le PDF dessine de son côté —
+   voir `ligneHtml` dans ui/ficheRendu.js. */
+.fx-haut { line-height: 0; }
+
 /* LE TROU À REMPLIR, écrit dans la ligne : impossible qu'il dérive. */
 .fx-trou { border-bottom: 1px dotted #9aa3b2; }
 .fx-trou--champ { background: rgba(99, 102, 241, .10); border-bottom-color: #6366f1; }

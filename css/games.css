@@ -639,6 +639,27 @@
 .fil-pas--ratee > i { background: var(--warning); }
 .fil-ou { font-weight: 600; white-space: nowrap; }
 
+/* LE FIL CLIQUABLE — pendant un essai du professeur, et là seulement.
+   Voir l'en-tête de ui/filSeance.js.
+
+   LA CASE FAIT HUIT PIXELS DE HAUT, ET L'ON NE VISE PAS HUIT PIXELS. La zone
+   de clic déborde donc de neuf pixels en haut et en bas — vingt-six au total,
+   la hauteur du fil — sans que rien ne bouge à l'écran. Il a fallu rendre son
+   débordement visible à la case pour cela : le remplissage porte déjà son
+   propre arrondi, `overflow: hidden` ne servait qu'à le recouper. */
+.fil--pilotable .fil-pas {
+    overflow: visible;
+    border: 0; padding: 0; appearance: none; font: inherit;
+    cursor: pointer;
+}
+.fil--pilotable .fil-pas::before {
+    content: ''; position: absolute; inset: -9px 0; border-radius: 6px;
+}
+.fil--pilotable .fil-pas:hover { box-shadow: 0 0 0 2px var(--primary); }
+.fil--pilotable .fil-pas:focus-visible {
+    outline: 2px solid var(--primary); outline-offset: 3px;
+}
+
 @media (max-width: 640px) {
     .fil { padding: 4px 12px; gap: 8px; font-size: 0.72rem; }
     .fil-nom { display: none; }

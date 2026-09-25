@@ -20,9 +20,23 @@
 // « il m'en reste deux » sans lire un chiffre. Le chiffre est là quand même,
 // à droite, pour qui veut être sûr.
 //
-// IL NE CLIQUE PAS. Sauter à l'étape 4 sans avoir fait les trois premières,
-// c'est ce que le meneur refuse déjà — un fil cliquable serait un second
-// chemin, et le seul qui ne respecte pas les règles du parcours.
+// IL NE CLIQUE PAS — POUR L'ÉLÈVE. Sauter à l'étape 4 sans avoir fait les
+// trois premières, c'est ce que le meneur refuse déjà : un fil cliquable
+// serait un second chemin, et le seul qui ne respecte pas les règles du
+// parcours.
+//
+// IL CLIQUE POUR LE PROFESSEUR QUI ESSAIE SON PARCOURS, et c'est une autre
+// question. Rémy, devant un parcours de trente-cinq exercices : « on pourrait
+// cliquer les pastilles à droite de "Nombres et calculs — 35 exercices" ».
+// Pendant un essai, l'en-tête montre déjà « ‹ 1/35 › » — deux flèches qui ne
+// savent avancer que d'un cran : atteindre le trentième exercice demande
+// vingt-neuf clics, et l'on dépasse celui qu'on cherchait. Les trente-cinq
+// cases sont là, sous les yeux, et elles nomment déjà ce qu'elles montrent.
+//
+// ON N'INVENTE PAS DE SECOND CHEMIN POUR AUTANT : le clic appelle `goToStep`,
+// le saut que le meneur sait déjà faire et qu'il refuse hors essai
+// (`allowStepNavigation`). Le fil ne devient donc cliquable que là où les deux
+// flèches le sont, et jamais chez l'élève.
 //
 // ET IL NE MONTRE RIEN QUAND IL N'Y A RIEN À MONTRER. Un exercice libre, une
 // séance d'une seule étape : le fil reste caché plutôt que d'annoncer
@@ -30,6 +44,7 @@
 
 import { state } from '../core/state.js';
 import { journal } from '../core/journal.js';
+import { getExerciseById } from '../data/catalog.js';
 import { computeRuns } from '../core/projections.js';
 import { avancementDuRun } from '../core/avancement.js';
 
@@ -97,7 +112,26 @@ export function avancementDeLaDerniereSeance(combien = 400) {
     return run ? avancementDuRun(run) : null;
 }
 
-function caseHtml(i, av) {
+/**
+ * LE MENEUR, QUAND C'EST LE PROFESSEUR QUI PILOTE — et lui seul.
+ *
+ * `allowStepNavigation` est le drapeau que le meneur pose déjà pour montrer
+ * les deux flèches de l'en-tête. On ne réinvente donc pas la règle : on lit
+ * celle qui existe, et le fil et les flèches ne peuvent pas diverger.
+ */
+function meneurPilotable() {
+    const r = state.activeSequenceRunner;
+    return (r && r.allowStepNavigation && typeof r.goToStep === 'function') ? r : null;
+}
+
+/** Le titre de l'étape de rang `i`, pour l'infobulle du fil. */
+function titreEtape(meneur, i) {
+    const s = meneur && meneur.steps && meneur.steps[i];
+    const exo = s && s.exerciseId ? getExerciseById(s.exerciseId) : null;
+    return (exo && exo.title) || '';
+}
+
+function caseHtml(i, av, meneur) {
     const fait = i < av.faites;
     const enCours = av.etapeEnCours && i === av.etapeEnCours.rang;
     // UNE ÉTAPE FAITE N'EST PAS FORCÉMENT RÉUSSIE, et le fil le dit. C'est
@@ -110,10 +144,20 @@ function caseHtml(i, av) {
         part = Math.min(100, Math.round(100 * av.etapeEnCours.posees / av.etapeEnCours.prevues));
     } else if (enCours) part = 8;   // commencée, sans total connu : un liseré
 
-    const titre = enCours && av.etapeEnCours.titre ? av.etapeEnCours.titre : '';
-    return `<span class="fil-pas${fait ? ' fil-pas--fait' : ''}${ratee ? ' fil-pas--ratee' : ''}${
-        enCours ? ' fil-pas--ici' : ''}"${titre ? ` title="${esc(titre)}"` : ''}
-        ><i style="width:${part}%"></i></span>`;
+    const titre = (meneur && titreEtape(meneur, i))
+        || (enCours && av.etapeEnCours.titre ? av.etapeEnCours.titre : '');
+    const classes = `fil-pas${fait ? ' fil-pas--fait' : ''}${ratee ? ' fil-pas--ratee' : ''}${
+        enCours ? ' fil-pas--ici' : ''}`;
+    const dedans = `<i style="width:${part}%"></i>`;
+    // UN VRAI BOUTON QUAND IL CLIQUE : une case qu'on peut atteindre au clavier
+    // et que le lecteur d'écran annonce. Un `span` avec un gestionnaire serait
+    // cliquable à la souris et invisible partout ailleurs.
+    if (meneur) {
+        const dit = `Aller à l’étape ${i + 1}${titre ? ` — ${titre}` : ''}`;
+        return `<button type="button" class="${classes}" data-rang="${i}"
+            title="${esc(dit)}" aria-label="${esc(dit)}">${dedans}</button>`;
+    }
+    return `<span class="${classes}"${titre ? ` title="${esc(titre)}"` : ''}>${dedans}</span>`;
 }
 
 /** À rappeler chaque fois que l'avancement a pu bouger. Coût : une projection. */
@@ -128,14 +172,25 @@ export function majFilSeance() {
     if (!av || av.etapes < 2) { el.hidden = true; return av; }
 
     el.hidden = false;
+    const meneur = meneurPilotable();
     const ou = av.etat === 'fini'
         ? 'Séance terminée'
         : `Étape ${Math.min(av.faites + 1, av.etapes)} sur ${av.etapes}`;
+    el.classList.toggle('fil--pilotable', !!meneur);
     el.innerHTML = `
         <span class="fil-nom">${esc(av.pathName || 'Ma séance')}</span>
         <span class="fil-pas-liste">${
-            Array.from({ length: av.etapes }, (_, i) => caseHtml(i, av)).join('')}</span>
+            Array.from({ length: av.etapes }, (_, i) => caseHtml(i, av, meneur)).join('')}</span>
         <span class="fil-ou">${esc(ou)}</span>`;
+    // Le gestionnaire est POSÉ SUR LE FIL, pas sur chaque case : `innerHTML`
+    // les remplace toutes à chaque réponse, et rebrancher trente-cinq cases
+    // deux fois par question serait du travail pour rien.
+    el.onclick = meneur ? (ev) => {
+        const b = ev.target.closest && ev.target.closest('[data-rang]');
+        if (!b) return;
+        const r = meneurPilotable();
+        if (r) r.goToStep(Number(b.dataset.rang));
+    } : null;
     return av;
 }
 
