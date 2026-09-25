@@ -64,7 +64,11 @@ test('L\'APERÇU SE REFAIT AU BON MOMENT, ni trop ni trop peu', () => {
     // qu'on revient le regarder. Et tout de suite si c'est lui qu'on regarde.
     assert.match(RE, /let perime = true;/);
     assert.match(RE, /if \(quoi === 'apercu' && perime\) monterApercu\(\);/);
-    assert.match(RE, /perime = true;\s*\n\s*if \(vue === 'apercu'\) monterApercu\(\);/);
+    assert.match(RE, /perime = true;[\s\S]{0,420}if \(vue === 'apercu'\) monterApercu\(\);/);
+    // ET UN RÉGLAGE CHANGÉ REMET L'APERÇU AU DÉBUT DE LA SÉRIE : on vient de
+    // décocher un barreau, rester à la question 9 montrerait une marche que le
+    // nouveau partage ne donne plus.
+    assert.match(RE, /perime = true;[\s\S]{0,420}rang = 0;/);
 });
 
 test('LE VOLET DE DROITE NE SERT PLUS AUX RÉGLAGES', () => {

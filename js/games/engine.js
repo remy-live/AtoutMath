@@ -275,7 +275,12 @@ export function launchPreview(exo, container, params = null, opts = {}) {
         if (!generator) return null;
         const session = new ItemSession({
             generator, params: effective, exercise: exo, isDemo: true, frozen,
-            preferredKind: activity.accepts[0]
+            preferredKind: activity.accepts[0],
+            // OÙ L'ON ENTRE, ET COMBIEN IL Y EN A EN TOUT. Un aperçu remonte
+            // une session neuve à chaque « Question suivante » : sans ces
+            // deux-là, un exercice à progression y repose éternellement sa
+            // première marche — voir `ItemSession`.
+            depuis: opts.depuis, nbItems: opts.nbItems
         });
         return mod.mount(container, session, activity.mountOptions || {});
     }).catch(err => {

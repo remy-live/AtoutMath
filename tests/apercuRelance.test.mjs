@@ -61,8 +61,52 @@ test('RELANCER, C\'EST REFAIRE L\'APERÇU — pas bricoler la session', () => {
     // question, et cela vaut pour les vingt-huit activités sans en toucher une.
     assert.match(AP, /export function rejouerApercu\(\) \{/);
     assert.match(AP, /montrerApercu\(exo, ancre, \{ epingler: etaitEpingle \}\);/);
-    assert.match(CX, /relance\.onclick = \(\) => \{[\s\S]{0,140}montrer\(exo\);/);
-    assert.match(RE, /relance\.onclick = \(\) => monterApercu\(\);/);
+    assert.match(CX, /relance\.onclick = \(\) => \{[\s\S]{0,160}montrer\(exo\);/);
+    assert.match(RE, /relance\.onclick = \(\) => \{[\s\S]{0,60}monterApercu\(\);/);
+});
+
+test('« QUESTION SUIVANTE » AVANCE DANS LA SÉRIE, IL NE LA RECOMMENCE PAS', async () => {
+    // RÉMY, devant l'onglet « Aperçu » du panneau de réglages : « quand on fait
+    // l'aperçu avec les réglages, on reste toujours sur des questions du type
+    // x² − 36 ». Mesuré dans le navigateur, dix clics : dix fois le PREMIER
+    // barreau, sur « Factoriser » comme sur « Développer ». Les nombres
+    // changeaient, le barreau jamais — donc le professeur ne pouvait pas voir
+    // ce qu'il venait de cocher.
+    //
+    // La cause n'est pas dans l'aperçu : il ne peut que remonter une session
+    // NEUVE, puisqu'il remonte aussi le jeu. Une session neuve entre au rang
+    // zéro, et `index` vaut donc éternellement zéro. C'est `ItemSession` qui
+    // doit savoir où l'on entre.
+    const { ItemSession } = await import('../js/core/itemSession.js');
+    const { factorisationGenerator } = await import('../js/core/generators/factorisation.js');
+
+    const marcheAu = (depuis) => {
+        const s = new ItemSession({
+            generator: factorisationGenerator, params: {}, isDemo: true,
+            depuis, nbItems: 14
+        });
+        return String(s.next().meta.marche);
+    };
+    // Quatorze questions sur sept barreaux : deux chacun. L'aperçu qu'on
+    // parcourt doit donc montrer 1, 1, 2, 2, 3, 3, …
+    assert.deepEqual(Array.from({ length: 10 }, (_, i) => marcheAu(i)),
+        ['1', '1', '2', '2', '3', '3', '4', '4', '5', '5']);
+    // Sans `depuis`, rien ne change pour tout le reste de l'application : on
+    // entre au rang zéro, comme avant.
+    assert.equal(marcheAu(undefined), '1');
+
+    // ET LES DEUX APERÇUS QUI ONT UN BOUTON LE TRANSMETTENT.
+    assert.match(RE, /depuis: rang, nbItems: total/,
+        'le panneau de réglages ne dit pas où en est son aperçu');
+    assert.match(CX, /depuis: rang, nbItems: total/,
+        'la fenêtre de choix ne dit pas où en est son aperçu');
+    // Le rang avance d'un cran par clic, et revient au début quand un réglage
+    // change : la série n'est plus la même.
+    assert.match(RE, /rang \+= 1;/);
+    assert.match(RE, /rang = 0;/);
+    // Le professeur doit LIRE qu'il avance : « Question 3 sur 14 ». Sans ce
+    // compte, on voit changer des nombres et l'on croit tourner en rond.
+    assert.match(RE, /Question \$\{\(rang % combien\(\)\) \+ 1\} sur \$\{combien\(\)\}/);
 });
 
 test('LA VIGNETTE ÉPINGLÉE DOIT OUBLIER CE QU\'ELLE MONTRE POUR SE RELANCER', () => {

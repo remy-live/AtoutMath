@@ -1310,7 +1310,27 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .re-apercu-note {
     margin: 0 0 12px; font-size: .85rem; color: var(--text-muted); line-height: 1.4;
 }
-.re-apercu-pied { display: flex; justify-content: center; padding-top: 12px; }
+.re-apercu-pied {
+    display: flex; align-items: center; justify-content: center;
+    /* LE RANG NE DÉPLACE PAS LE BOUTON. Posé à sa gauche dans le flux, il
+       poussait « Question suivante » de quarante pixels à chaque changement de
+       compte (« Question 9 sur 14 » est plus large que « Question 1 sur 9 ») —
+       et l'on clique deux fois de suite au même endroit. Le bouton reste donc
+       centré sur le pied, et le rang se pose à côté sans peser. */
+    position: relative;
+    gap: 12px; padding-top: 12px;
+}
+.re-apercu-rang {
+    position: absolute; left: 0;
+    font-size: .78rem; color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+/* Sur un téléphone, le pied n'a pas la largeur pour les deux côte à côte :
+   le rang passe dessous, centré, plutôt que de chevaucher le bouton. */
+@media (max-width: 520px) {
+    .re-apercu-pied { flex-direction: column-reverse; }
+    .re-apercu-rang { position: static; }
+}
 /* Le cadre a une hauteur FIXE, posée par le script : sans elle, la fenêtre
    sauterait de taille à chaque changement de réglage — un jeu à six questions
    et un jeu à trente ne dessinent pas la même hauteur. */

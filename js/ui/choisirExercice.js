@@ -36,6 +36,8 @@ import { showModal } from './modal.js';
 import { correspond } from '../core/recherche.js';
 import { ficheDe } from './rechercheUI.js';
 import { adapterAuContenu, ajusterDesQueDessine, motDeRelance } from './apercuTiroir.js';
+import { questionsConseillees } from '../core/duree.js';
+import { getGenerator } from '../core/registry.js';
 
 /** La boîte de l'aperçu, dans la fenêtre. */
 const APERCU = { l: 360, h: 300 };
@@ -162,7 +164,26 @@ export function ouvrirChoixExercice({ ajouter } = {}) {
         if (h && typeof h.destroy === 'function') { try { h.destroy(); } catch (e) { /* démonté */ } }
     };
 
+    // OÙ L'ON EN EST DANS LA SÉRIE — voir la même correction dans
+    // `reglagesEtape.js`, avec la mesure qui l'a déclenchée. « Question
+    // suivante » remonte une session NEUVE : sans ce rang, un exercice à
+    // progression repose éternellement sa première marche, et l'on croit que
+    // l'aperçu tourne en rond alors qu'il n'a jamais avancé.
+    let rang = 0;
+    /** La longueur que l'exercice conseille : c'est elle que les marches se partagent. */
+    const longueurDe = (exo) => {
+        try {
+            const gen = exo && exo.generatorId ? getGenerator(exo.generatorId) : null;
+            return Math.max(1, questionsConseillees(gen, exo.params || {},
+                { activite: exo.activityId }));
+        } catch { return 10; }
+    };
+
     const montrer = (exo) => {
+        // CHANGER D'EXERCICE RECOMMENCE LA SÉRIE : on veut voir sa PREMIÈRE
+        // question, pas sa neuvième parce qu'on a cliqué neuf fois sur le
+        // précédent.
+        if (montre !== exo.id) rang = 0;
         montre = exo.id;
         tuer();
         const monTour = ++tour;
@@ -181,7 +202,10 @@ export function ouvrirChoixExercice({ ajouter } = {}) {
         toile.innerHTML = '';
         toile.style.transform = 'none';
         import('../games/engine.js').then(async ({ launchPreview }) => {
-            const h = await launchPreview(exo, toile, null, { muet: true });
+            const total = longueurDe(exo);
+            rang %= total;
+            const h = await launchPreview(exo, toile, null,
+                { muet: true, depuis: rang, nbItems: total });
             if (monTour !== tour) {
                 if (h && typeof h.destroy === 'function') { try { h.destroy(); } catch (e) { /* démonté */ } }
                 return;
@@ -260,7 +284,7 @@ export function ouvrirChoixExercice({ ajouter } = {}) {
 
     relance.onclick = () => {
         const exo = tous.find(x => x.id === montre);
-        if (exo) montrer(exo);
+        if (exo) { rang += 1; montrer(exo); }
     };
 
     champ.oninput = () => { mot = champ.value.trim(); dessiner(); };

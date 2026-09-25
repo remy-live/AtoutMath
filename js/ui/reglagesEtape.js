@@ -113,6 +113,12 @@ export function ouvrirReglagesEtape({ etape, exo, rendre, onClose } = {}) {
                 <div class="re-apercu-toile"></div>
             </div>
             <div class="re-apercu-pied">
+                <!-- OÙ L'ON EN EST DANS LA SÉRIE. Sans ce compte, « Question
+                     suivante » ne dit pas qu'on AVANCE : on voit changer des
+                     nombres et l'on croit tourner en rond — c'est exactement ce
+                     qu'il s'est passé. Avec lui, on lit « Question 3 sur 14 »
+                     et l'on sait qu'on parcourt l'exercice. -->
+                <span class="re-apercu-rang" data-rang-apercu role="status"></span>
                 <button type="button" class="re-rejouer" data-rejouer>Question suivante</button>
             </div>
         </div>`, { width: '820px', onClose: () => { ouverte = null; if (onClose) onClose(); } });
@@ -122,13 +128,44 @@ export function ouvrirReglagesEtape({ etape, exo, rendre, onClose } = {}) {
     const cadre = el.querySelector('.re-apercu-cadre');
     const toile = el.querySelector('.re-apercu-toile');
     const relance = el.querySelector('[data-rejouer]');
+    const rangEl = el.querySelector('[data-rang-apercu]');
+
+    // ── ON AVANCE DANS LA SÉRIE, ON NE LA RECOMMENCE PAS ──────────────────
+    //
+    // RÉMY : « quand on fait l'aperçu avec les réglages, on reste toujours sur
+    // des questions du type x² − 36 ». Mesuré, dix clics sur « Question
+    // suivante » : dix fois le PREMIER barreau, sur « Factoriser » comme sur
+    // « Développer ». Les nombres changeaient, le barreau jamais.
+    //
+    // La cause est que l'aperçu remonte une session NEUVE à chaque clic — il
+    // ne peut pas faire autrement, puisqu'il remonte aussi le jeu. Une session
+    // neuve entre au rang zéro, et un générateur à progression y repose donc
+    // éternellement sa première marche. On tient le rang ICI, et on le lui
+    // passe (`depuis`).
+    //
+    // ON BOUCLE À LA FIN. L'exercice fait quatorze questions ; à la quinzième
+    // on revient à la première, parce qu'un aperçu qui s'arrête n'aurait plus
+    // rien à montrer — et parce que le professeur qui veut revoir le début
+    // n'aurait que la fermeture de la fenêtre pour y arriver.
+    let rang = 0;
+    const combien = () => {
+        const e = etape() || {};
+        return Math.max(1, Math.round(Number(e.nbItems)) || 10);
+    };
+    const direLeRang = () => {
+        if (!rangEl) return;
+        // Un jeu du catalogue ne pose pas de questions : le compte n'aurait
+        // aucun sens — voir `motDeRelance`.
+        rangEl.textContent = (exo && exo.generatorId)
+            ? `Question ${(rang % combien()) + 1} sur ${combien()}` : '';
+    };
     // UN AUTRE TIRAGE. Les réglages se jugent sur plusieurs questions — c'est
     // même tout l'objet de l'onglet : « une vraie question de l'exercice, avec
     // les réglages que tu viens de choisir ». Une seule ne dit pas si le
     // réglage tient.
     if (relance) {
         relance.textContent = motDeRelance(exo);
-        relance.onclick = () => monterApercu();
+        relance.onclick = () => { rang += 1; monterApercu(); };
     }
     cadre.style.height = `${APERCU.h}px`;
 
@@ -154,8 +191,15 @@ export function ouvrirReglagesEtape({ etape, exo, rendre, onClose } = {}) {
         // catalogue : c'est exactement ce que l'élève recevra.
         const courante = etape() || {};
         const params = { ...((exo && exo.params) || {}), ...(courante.overrides || {}) };
+        const total = combien();
+        rang = rang % total;
+        direLeRang();
         import('../games/engine.js').then(({ launchPreview }) => {
-            const p = launchPreview(exo, toile, params, { muet: true });
+            // `depuis` ET `nbItems` : le premier dit où l'on en est, le second
+            // combien il y en aura — c'est lui qui permet aux marches cochées
+            // de se partager l'exercice. Voir core/progression.js.
+            const p = launchPreview(exo, toile, params,
+                { muet: true, depuis: rang, nbItems: total });
             // DEUX MESURES, ET LA PREMIÈRE DÉCIDE. Elle arrive dès que le jeu a
             // dessiné quelque chose — moins de 50 ms — et c'est elle qui donne
             // la taille ; le cadre n'apparaît qu'ensuite. La seconde, à 700 ms,
@@ -196,6 +240,10 @@ export function ouvrirReglagesEtape({ etape, exo, rendre, onClose } = {}) {
     // qu'on est en train de regarder.
     rendre(idConfig, () => {
         perime = true;
+        // UN RÉGLAGE CHANGÉ REMET L'APERÇU AU DÉBUT. On vient de décocher un
+        // barreau : la série n'est plus la même, et rester à la question 9
+        // montrerait une marche que le nouveau partage ne donne plus.
+        rang = 0;
         if (vue === 'apercu') monterApercu();
     });
 

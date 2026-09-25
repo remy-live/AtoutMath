@@ -69,6 +69,19 @@ export class ItemSession {
         // session ne l'utilise pas elle-même — c'est le Runner qui arrête —,
         // mais une activité qui change de forme en cours de route en a besoin.
         this.nbItems = Number(cfg.nbItems) || null;
+        // OÙ L'ON ENTRE DANS LA SÉRIE — presque toujours à la première
+        // question, donc zéro.
+        //
+        // RÉMY, DEVANT L'ONGLET « APERÇU » DU PANNEAU DE RÉGLAGES : « quand on
+        // fait l'aperçu avec les réglages, on reste toujours sur des questions
+        // du type x² − 36 ». Mesuré : dix clics sur « Question suivante », dix
+        // fois le PREMIER barreau, sur « Factoriser » comme sur « Développer ».
+        // L'aperçu ne rejoue pas la question suivante, il remonte une SESSION
+        // NEUVE — donc `history` est vide, donc `index` vaut zéro, donc un
+        // générateur à progression repose éternellement sa première marche.
+        // Les nombres changeaient (x² − 64, x² − 49), le barreau jamais : le
+        // professeur ne pouvait pas voir ce qu'il venait de cocher.
+        this.depuis = Math.max(0, Math.round(Number(cfg.depuis)) || 0);
 
         this.item = null;
         this.attemptIndex = 0;
@@ -156,8 +169,9 @@ export class ItemSession {
             // Mais un générateur qui porte une PROGRESSION — Le Chat Géomètre
             // enchaîne douze figures dans un ordre choisi — a besoin de savoir
             // où l'on en est, sinon il repose éternellement la première.
-            // `history` contient déjà la graine de la question en cours.
-            index: Math.max(0, this.history.length - 1),
+            // `history` contient déjà la graine de la question en cours, et
+            // `depuis` dit à quel rang on est entré — voir le constructeur.
+            index: this.depuis + Math.max(0, this.history.length - 1),
             // ET COMBIEN IL Y EN AURA EN TOUT, quand on le sait.
             //
             // Rémy, sur le réglage des progressions : « le nombre de questions
