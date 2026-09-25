@@ -46,6 +46,8 @@
 // lire comme « rien de coché » viderait l'exercice ; les ignorer effacerait un
 // choix que le professeur a posé. `marchesCochees` les traduit.
 
+import { pluriel, feminin, accorde } from './accord.js';
+
 /** Toutes les marches, c'est le défaut — et c'est ce que disait « progressif ». */
 export const TOUTES = 'toutes';
 
@@ -376,19 +378,19 @@ export function conseilProgression(nbMarches, historique = PAR_MARCHE_DEFAUT) {
  * @param {Object} [opts.groupes] les noms des groupes, par clé : { A: '…' }
  * @param {string} [opts.mot]     « marche », « étape », « niveau », « palier »…
  */
-// L'ACCORD, PARCE QUE LE MOT CHANGE D'UN EXERCICE À L'AUTRE. Une marche et une
-// étape sont féminines, un palier et un niveau masculins : écrire
-// « Les paliers travaillées » dans un logiciel de français... de maths, mais
-// lu par des élèves de sixième, ne se fait pas. Quatre mots suffisent — on ne
-// devine pas le genre, on le déclare.
-const FEMININS = new Set(['marche', 'étape', 'forme']);
-const feminin = (mot) => FEMININS.has(String(mot || '').toLowerCase());
+// L'ACCORD ET LE PLURIEL VIVENT DANS `core/accord.js` — voir l'en-tête de ce
+// module. Ils étaient ici, et il y manquait les deux moitiés du problème :
+// « figure » n'était pas déclaré féminin (« Les figures travaillés »), et le
+// pluriel se faisait par un « s » collé au mot, ce qui donnait « Les barreaus
+// travaillés » et « Les niveaus travaillés ». C'est ce que lit un professeur
+// de mathématiques, et ses élèves de sixième derrière lui.
 
 export function paramMarches({ marches = [], groupes = {}, mot = 'marche', ancien = {} } = {}) {
     const liste = normaliserMarches(marches);
     const f = feminin(mot);
     return {
-        id: 'marches', type: 'marches', label: `Les ${mot}s travaillé${f ? 'es' : 's'}`,
+        id: 'marches', type: 'marches',
+        label: `Les ${pluriel(mot)} ${accorde('travaillé', mot)}`,
         // OUTIL DE PRÉPARATION, PAS RÉGLAGE D'ÉLÈVE.
         //
         // Rémy : « est-ce que tu penses, sans que je te cause quoi que ce soit,
@@ -416,9 +418,10 @@ export function paramMarches({ marches = [], groupes = {}, mot = 'marche', ancie
         // sans cela, rouvrir un parcours d'hier montrerait tout coché alors que
         // l'exercice, lui, ne jouerait qu'un temps.
         ancien,
-        aide: `Coche ce que la classe travaille aujourd’hui. Les ${mot}s coché${f ? 'e' : ''}s se `
-            + `partagent les questions, et la barre montre comment : tire une borne pour en `
-            + `donner plus à l’${f ? 'une' : 'un'} qu’à l’autre.`
+        aide: `Coche ce que la classe travaille aujourd’hui. Les ${pluriel(mot)} `
+            + `${accorde('coché', mot)} se partagent les questions, et la barre montre `
+            + `comment : tire une borne pour en donner plus à l’${f ? 'une' : 'un'} `
+            + `qu’à l’autre.`
     };
 }
 
@@ -505,14 +508,19 @@ export function motsDeCoupe(coupe, mot = 'marche') {
     const n = coupe.reduce((s, z) => s + z.n, 0);
     const pleines = coupe.filter(z => z.n > 0);
     const tailles = [...new Set(pleines.map(z => z.n))];
+    // « CHACUNE » SUIT LE MOT, PAS LA QUESTION. La phrase parle de ce que
+    // reçoit chaque marche : « 3 questions chacune » pour une marche, « 3
+    // questions chacun » pour un niveau. Elle annonçait « chacune » partout,
+    // c'est-à-dire faux sur les deux tiers des exercices à progression.
+    const chacun = feminin(mot) ? 'chacune' : 'chacun';
     const combien = tailles.length === 1
-        ? `${tailles[0]} question${tailles[0] > 1 ? 's' : ''} chacune`
-        : `de ${Math.min(...tailles)} à ${Math.max(...tailles)} questions chacune`;
+        ? `${tailles[0]} question${tailles[0] > 1 ? 's' : ''} ${chacun}`
+        : `de ${Math.min(...tailles)} à ${Math.max(...tailles)} questions ${chacun}`;
     if (pleines.length < coupe.length) {
-        return `${n} questions : ${pleines.length} ${mot}s sur ${coupe.length}, ${combien}. `
-            + `Les autres n’auront aucune question.`;
+        return `${n} questions : ${pleines.length} ${pluriel(mot)} sur ${coupe.length}, `
+            + `${combien}. Les autres n’auront aucune question.`;
     }
-    return `${n} questions pour ${coupe.length} ${mot}s : ${combien}.`;
+    return `${n} questions pour ${coupe.length} ${pluriel(mot)} : ${combien}.`;
 }
 
 /**

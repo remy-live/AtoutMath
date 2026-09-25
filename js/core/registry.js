@@ -12,6 +12,7 @@
 //  - plus de rechargement de module à chaque partie (l'ancien `?v=Date.now()`).
 
 import { matchSkills } from '../data/skills.js';
+import { pluriel } from './accord.js';
 
 /** @type {Map<string, Object>} */
 const generators = new Map();
@@ -105,13 +106,12 @@ export function uniteDe(id, n = 1) {
     const a = activities.get(id);
     const mot = (a && a.unite) || 'question';
     if (n <= 1) return mot;
-    // LE PLURIEL FRANÇAIS N'EST PAS TOUJOURS UN « S ». L'en-tête affichait
-    // « 0 / 4 tableaus » — un mot en -eau, -eu ou -au prend un X. C'est trois
-    // lignes, et c'est ce que lit un élève à chaque question.
-    if (/[sxz]$/.test(mot)) return mot;
-    if (/(eau|au|eu)$/.test(mot)) return `${mot}x`;
-    if (/al$/.test(mot)) return `${mot.slice(0, -2)}aux`;
-    return `${mot}s`;
+    // LE PLURIEL FRANÇAIS N'EST PAS TOUJOURS UN « S » — l'en-tête affichait
+    // « 0 / 4 tableaus ». La règle vivait ici, au milieu d'une fonction qui
+    // rend l'unité d'une activité ; le panneau de réglages, qui fabrique lui
+    // aussi des pluriels, ne pouvait pas la trouver et a refait la même faute
+    // (« Les barreaus travaillés »). Elle est maintenant dans `core/accord.js`.
+    return pluriel(mot);
 }
 
 /** Le nombre d'unités d'une séance pour cette activité (10 par défaut). */

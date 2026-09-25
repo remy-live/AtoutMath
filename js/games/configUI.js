@@ -2525,11 +2525,17 @@ export function readParams(root, schema) {
  * que l'élève aura, aux nombres près — la graine, elle, ne peut pas être celle
  * d'une partie qui n'a pas commencé.
  */
-function vraieQuestionMarche(exoId, z, params, total) {
+function vraieQuestionMarche(exoId, z, params, total, pourLaFiche = false) {
     if (!exoId || !z || !z.n) return null;
     try {
         const exo = getExerciseById(exoId);
-        const gen = exo && exo.generatorId ? getGenerator(exo.generatorId) : null;
+        // SUR UNE FEUILLE, C'EST LE GÉNÉRATEUR DE LA FEUILLE QUI RÉPOND. Huit
+        // des progressions à cases n'existent QUE sur le papier — leur exercice
+        // d'écran est une activité, ou un autre générateur. Interroger
+        // `exo.generatorId` y donnait la question d'un autre exercice, ou rien
+        // du tout. Voir `generateurDeFiche` dans core/registry.js.
+        const gen = pourLaFiche ? generateurDeFiche(exo)
+            : (exo && exo.generatorId ? getGenerator(exo.generatorId) : null);
         if (!gen || !gen.generate) return null;
         const it = gen.generate({ ...(exo.params || {}), ...params },
             { index: z.de - 1, total, rng: makeRng(`marche-${exoId}-${z.id}-${z.de}`) });
@@ -2589,7 +2595,8 @@ function reglagesDeMarche(schema, z, params) {
     }).join('');
 }
 
-function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params = {}, schema = []) {
+function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params = {}, schema = [],
+    pourLaFiche = false) {
     if (!coupe.length) return '';
     const total = Math.max(1, coupe.reduce((s2, z) => s2 + z.n, 0));
     const i = Math.max(0, Math.min(coupe.length - 1, Math.round(choisie) || 0));
@@ -2639,7 +2646,7 @@ function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params 
     }).join('');
 
     const z = coupe[i];
-    const vraie = vraieQuestionMarche(exoId, z, params, total);
+    const vraie = vraieQuestionMarche(exoId, z, params, total, pourLaFiche);
     const rangs = !z.n ? 'Aucune question'
         : (z.n === 1 ? `Question ${z.de}` : `Questions ${z.de} à ${z.a}`);
     // LA LÉGENDE S'ARRÊTE À SIX MARCHES. Au-delà elle fait treize lignes sous
@@ -2708,7 +2715,7 @@ function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params 
  * disait déjà que les deux panneaux « divergeaient jusqu'ici » ; il ne
  * disait pas encore que c'était réparé pour les marches.
  */
-export function brancherMarches(racine, schema, current = {}, exoId = '') {
+export function brancherMarches(racine, schema, current = {}, exoId = '', opts = {}) {
     const champMarches = racine && racine.querySelector('[data-marches]');
     if (!champMarches) return;
     // LE PANNEAU SE DÉSIGNE, ON NE LE DEVINE PLUS. Les gestes de la barre — le
@@ -2724,7 +2731,13 @@ export function brancherMarches(racine, schema, current = {}, exoId = '') {
     // besoin de savoir de quel exercice, et avec quels réglages — ceux du
     // panneau, tels qu'ils sont en ce moment, pas ceux du catalogue.
     const barre = racine.querySelector('[data-barre-marches]');
-    if (barre) { barre.dataset.exo = exoId || ''; barre._schema = schema || []; }
+    if (barre) {
+        barre.dataset.exo = exoId || '';
+        barre._schema = schema || [];
+        // SUR UNE FEUILLE, LA BULLE INTERROGE LE GÉNÉRATEUR DU PAPIER. Huit
+        // des progressions à cases n'existent que là.
+        if (opts.fiche) barre.dataset.fiche = '1';
+    }
     // La liste des marches voyage sur le nœud plutôt que d'être relue dans le
     // schéma à chaque rafraîchissement : le panneau est déjà dessiné, c'est lui
     // la vérité.
@@ -2796,7 +2809,28 @@ export function rafraichirBarreMarches(racine, choisie) {
     const etat = etatMarches(racine);
     if (!etat) { boite.innerHTML = ''; return; }
     boite.innerHTML = barreMarchesHtml(etat.coupe, boite.dataset.mot || 'marche', i,
-        etat.vide, etat.exoId, etat.params, etat.schema);
+        etat.vide, etat.exoId, etat.params, etat.schema, etat.fiche);
+}
+
+/**
+ * LE NOMBRE DE QUESTIONS DU PANNEAU QUI PORTE CETTE BARRE.
+ *
+ * TROIS PANNEAUX, TROIS CHAMPS, ET AUCUN NE S'APPELLE PAREIL : le panneau de
+ * jeu compte en `#cfg-nbitems`, la fiche à imprimer en `#fp-combien`, la
+ * feuille de questions en `#fq-nb`. Les deux derniers vivent HORS du bloc
+ * « Contenu » où la barre est dessinée — ils sont en tête de la modale —, et
+ * c'est pour cela qu'on remonte jusqu'à elle.
+ *
+ * Sans cela, une feuille de seize calculs annoncerait « 10 questions » sous
+ * une barre découpée en dix : le dessin serait faux, et c'est le dessin qu'on
+ * tire.
+ */
+function totalDuPanneau(racine) {
+    const ici = racine && racine.querySelector('#cfg-nbitems');
+    if (ici) return Math.max(1, parseInt(ici.value, 10) || 10);
+    const cadre = (racine && racine.closest('.modal-overlay')) || document;
+    const el = cadre.querySelector('#cfg-nbitems, #fp-combien, #fq-nb');
+    return Math.max(1, parseInt(el && el.value, 10) || 10);
 }
 
 /**
@@ -2816,8 +2850,7 @@ function etatMarches(racine) {
     // l'exercice joue tout, sans que rien ne l'ait annoncé.
     const vide = !coches.length;
     const cochees = marchesCochees({ marches: coches }, liste);
-    const nb = racine.querySelector('#cfg-nbitems');
-    const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
+    const total = totalDuPanneau(racine);
     const champ = racine.querySelector('[data-repartition-marches]');
     // LES RÉGLAGES DU PANNEAU EN ENTIER, pas seulement le partage : la bulle
     // tire une vraie question, et une question tirée avec les réglages du
@@ -2830,6 +2863,9 @@ function etatMarches(racine) {
     } catch { /* un panneau à moitié dessiné ne doit pas casser la barre */ }
     return { liste, cochees, total, params, vide, exoId: (barre && barre.dataset.exo) || '',
         schema: (barre && barre._schema) || [],
+        // Le panneau d'une feuille le dit : la bulle doit alors tirer sa
+        // question au générateur du PAPIER — voir `vraieQuestionMarche`.
+        fiche: !!(barre && barre.dataset.fiche === '1'),
         coupe: decoupeMarches(cochees, total, params) };
 }
 
