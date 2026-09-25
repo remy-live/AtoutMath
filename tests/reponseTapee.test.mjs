@@ -301,3 +301,56 @@ test('factorisation : le produit des constantes ne tranche pas seul', () => {
         }
     }
 });
+
+// ── DEUX DEMANDES DE RÉMY SUR LE PAS À PAS ──────────────────────────────────
+
+test('CELUI QUI SAIT DÉJÀ PEUT RÉPONDRE D\'UN COUP', () => {
+    // RÉMY : « on peut tolérer si l'élève marque directement la version
+    // simplifiée ».
+    //
+    // Les lignes sont là pour CELUI QUI BUTE. Refuser la réponse finale à la
+    // première ligne punit celui qui la voit d'un coup d'œil, et lui apprend
+    // que l'exercice porte sur la procédure plutôt que sur le calcul.
+    const src = readFileSync(new URL('../js/core/activities/litteralSaisie.js',
+        import.meta.url), 'utf8');
+    assert.match(src, /const sautDirect = /, 'le saut direct a disparu');
+    // IL EST TESTÉ AVANT DE RENVOYER À L'ÉTAPE : après, il ne servirait à rien.
+    const i = src.indexOf('if (etapes.length && !etapes[rang].finale');
+    assert.ok(i > 0, 'le renvoi à l\'étape intermédiaire a disparu');
+    assert.match(src.slice(i, i + 160), /!sautDirect\(saisie\)/,
+        'le saut direct n\'est plus consulté avant de renvoyer à l\'étape');
+    // ET C'EST LE JUGE DE L'ITEM QUI TRANCHE, pas celui de l'étape : une
+    // réponse finale n'a pas à passer les exigences de FORME des lignes
+    // intermédiaires, qui demandent justement de ne pas avoir fini.
+    const j = src.indexOf('const sautDirect = ');
+    assert.match(src.slice(j, j + 420), /item\.verifieTexte\(texte\)/,
+        'le saut direct ne consulte pas le juge de la réponse');
+    assert.match(src.slice(j, j + 420), /rang = etapes\.length - 1/,
+        'le saut direct ne pose pas la réponse sur la dernière ligne');
+});
+
+test('LE PAVÉ ET L\'ÉNONCÉ TIENNENT DANS LE CADRE, AVEC OU SANS CHAÎNE', () => {
+    // RÉMY : « ça déborde ». MESURÉ dans le cadre du jeu, sur le barreau 1 des
+    // racines : la barre d'indices tombait 69 px SOUS le bord. Ce barreau n'a
+    // pas de chaîne — un seul geste —, donc la classe `--chaine` était absente
+    // et la règle qui punaise le pavé avec elle.
+    //
+    // La règle ne dépend pas de la chaîne, elle dépend de la PLACE : ce test
+    // garde ce fait, les pixels se mesurant au banc (tools/tmp/quiDeborde.mjs).
+    const css = readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8');
+    const bloc = (marque) => {
+        const i = css.indexOf(marque);
+        assert.ok(i > 0, `${marque} a disparu de la feuille`);
+        return css.slice(i, css.indexOf('\n}\n', i));
+    };
+    const etroit = bloc('@container (max-width: 699px)');
+    assert.match(etroit, /\.ls-layout \{[\s\S]*grid-template-rows: minmax\(0, 1fr\) auto/,
+        'le pavé n\'est plus punaisé que sur les questions découpées');
+    assert.ok(!/\.ls-layout--chaine \{/.test(etroit),
+        'la règle étroite est redevenue réservée aux chaînes');
+    const large = bloc('@container (min-width: 700px)');
+    assert.match(large, /\.ls-layout \{[\s\S]*flex-direction: row/,
+        'les deux colonnes ne sont plus offertes qu\'aux questions découpées');
+    assert.match(large, /\.ls-layout \.ls-contexte \{[\s\S]*min-height: 0/,
+        'l\'énoncé ne peut plus se serrer : son support visuel pousse le pavé dehors');
+});

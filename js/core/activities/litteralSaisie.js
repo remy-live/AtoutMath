@@ -468,11 +468,41 @@ export function mount(container, session, opts = {}) {
                 ? ' Les termes de la même couleur vont ensemble.' : '');
         };
 
+        /**
+         * CELUI QUI SAIT DÉJÀ N'EST PAS OBLIGÉ DE PASSER PAR LES LIGNES.
+         *
+         * RÉMY : « on peut tolérer si l'élève marque directement la version
+         * simplifiée ».
+         *
+         * Il a raison, et c'est une limite du découpage : les lignes sont là
+         * pour CELUI QUI BUTE. Refuser la réponse finale à la première ligne
+         * revient à punir celui qui la voit d'un coup d'œil — et à lui
+         * apprendre que l'exercice porte sur la procédure plutôt que sur le
+         * calcul.
+         *
+         * ON POSE ALORS SA RÉPONSE SUR LA DERNIÈRE LIGNE et l'on saute les
+         * intermédiaires, qui restent vides : la trace dit la vérité, à savoir
+         * qu'elles n'ont pas été écrites. La question compte normalement pour
+         * la séance, puisque c'est bien la réponse qui a été donnée.
+         */
+        const sautDirect = (texte) => {
+            if (!etapes.length || !item.verifieTexte) return false;
+            const v = item.verifieTexte(texte);
+            if (!v || !v.juste) return false;
+            rang = etapes.length - 1;   // la ligne finale, celle qui compte
+            marquerEtapes();
+            return true;
+        };
+
         const valider = () => {
             if (destroyed || !saisie.trim()) return;
             // UNE ÉTAPE INTERMÉDIAIRE NE PASSE PAS PAR LA SÉANCE. Voir l'en-tête :
             // elle s'écrit, elle se corrige, elle ne se note pas.
-            if (etapes.length && !etapes[rang].finale) return validerEtape();
+            //
+            // SAUF SI C'EST DÉJÀ LA RÉPONSE : voir `sautDirect`. On ne demande
+            // pas à celui qui a fini de faire semblant de chercher.
+            if (etapes.length && !etapes[rang].finale
+                && !sautDirect(saisie)) return validerEtape();
             // L'ITEM JUGE LUI-MÊME QUAND IL SAIT LE FAIRE. Comparer des
             // chaînes suffit pour une expression réduite, dont l'écriture est
             // canonique ; pas pour une factorisation, où (x − 3)(x + 3) et

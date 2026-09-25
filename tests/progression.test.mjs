@@ -461,3 +461,28 @@ test('COCHER UN SEUL BARREAU NE JOUE QUE CELUI-LÀ', async () => {
     assert.deepEqual([...new Set(deux)].sort(), ['3', '9'],
         'deux barreaux cochés : l\'un des deux ne sort jamais');
 });
+
+test('LA CASE D\'UN TEMPS SUIT SES MARCHES', () => {
+    // RÉMY : « quand dans les options on décoche double distributivité, il
+    // faut que la case de double distributivité soit décochée aussi ».
+    //
+    // MESURÉ au navigateur : après le clic, les cinq marches passaient bien à
+    // zéro et la case du temps gardait sa marque « tout ». Elle était calculée
+    // UNE FOIS, au dessin du panneau, et plus jamais — le panneau ne se
+    // redessine pas à chaque clic. La case affichait donc le contraire de ce
+    // qu'elle commandait.
+    const src = readFileSync(new URL('../js/games/configUI.js', import.meta.url), 'utf8');
+    assert.match(src, /function majCasesDeTemps/,
+        'la remise à jour des cases de temps a disparu');
+    // Elle est appelée dans les DEUX sens : en cliquant le temps, et en
+    // cochant une marche à la main — c'est le même défaut vu par l'autre bout.
+    const clic = src.indexOf('cases.forEach(c => { c.checked = tout; });');
+    assert.ok(clic > 0, 'le bouton de groupe ne coche plus ses marches');
+    assert.match(src.slice(clic, clic + 200), /majCasesDeTemps/,
+        'cocher un temps entier ne met plus sa case à jour');
+    assert.match(src, /dataset\.kind !== 'multiselect'[\s\S]{0,260}majCasesDeTemps/,
+        'cocher UNE marche ne met plus à jour le temps qui la contient');
+    // Et le compte écrit à côté suit : il mentait de la même façon.
+    assert.match(src, /\$\{coches\}\/\$\{dedans\.length\}/,
+        'le compte « 5/5 » ne se met plus à jour');
+});

@@ -8353,22 +8353,29 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    dessous. Deux rangées, donc : l'énoncé et la chaîne prennent la place qui
    reste et défilent s'il en manque ; le champ, les touches, « Valider » et la
    barre d'indice ne bougent jamais. */
+/* ET CE N'EST PAS RÉSERVÉ AUX QUESTIONS DÉCOUPÉES — c'était le défaut.
+   RÉMY : « ça déborde ». MESURÉ dans le cadre du jeu, sur le barreau 1 des
+   racines : la barre d'indices tombait 69 px SOUS le bord. Ce barreau-là n'a
+   pas de chaîne — un seul geste —, donc la classe `--chaine` était absente et
+   toute cette règle avec elle : l'énoncé, son support visuel et le pavé
+   s'empilaient, et « Valider » passait sous la ligne de flottaison.
+   La règle ne dépend pas de la chaîne, elle dépend de la PLACE. */
 @container (max-width: 699px) {
-    .ls-layout--chaine {
+    .ls-layout {
         display: grid; grid-template-rows: minmax(0, 1fr) auto;
         gap: 10px; padding: 6px; overflow: hidden; justify-items: center;
     }
-    .ls-layout--chaine .ls-contexte {
+    .ls-layout .ls-contexte {
         min-height: 0; overflow-y: auto; align-self: start; width: 100%;
     }
-    .ls-layout--chaine .ls-panel { align-self: end; }
+    .ls-layout .ls-panel { align-self: end; }
     .ls-layout--chaine .ls-chaine { font-size: .9rem; gap: 2px; margin-top: 6px; }
     .ls-layout--chaine .ls-ligne { padding: 3px 8px; }
     /* `.ls-clavier .ls-t` ET NON `.ls-t` : une requête de conteneur n'ajoute
        AUCUNE spécificité, et `.ls-t { min-height: 50px }` est écrit plus bas
        dans ce fichier — il gagnait donc, et la mesure ne bougeait pas. */
-    .ls-layout--chaine .ls-clavier .ls-t { min-height: 44px; }
-    .ls-layout--chaine .ls-champ { min-height: 1.6em; padding: 2px 10px; }
+    .ls-layout .ls-clavier .ls-t { min-height: 44px; }
+    .ls-layout .ls-champ { min-height: 1.6em; padding: 2px 10px; }
 }
 
 /* DEUX COLONNES DÈS QU'IL Y A LA LARGEUR : la chaîne à gauche, l'écriture à
@@ -8378,12 +8385,20 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    s'ouvre aussi dans l'aperçu des réglages, qui est une vignette dans une
    page large. */
 @container (min-width: 700px) {
-    .ls-layout--chaine {
+    .ls-layout {
         flex-direction: row; align-items: center; justify-content: center;
         gap: 28px;
     }
-    .ls-layout--chaine .ls-contexte { flex: 0 1 auto; max-width: 460px; }
-    .ls-layout--chaine .ls-panel { flex: 0 0 auto; }
+    /* L'ÉNONCÉ NE DÉFILE PAS TOUT SEUL DANS UNE COLONNE TROP HAUTE : il se
+       serre, et son support visuel avec lui. `min-height: 0` autorise la
+       boîte flex à descendre sous la taille de son contenu, sans quoi elle
+       pousse le pavé hors du cadre — c'est ce qui arrivait au support visuel
+       des racines. */
+    .ls-layout .ls-contexte {
+        flex: 0 1 auto; max-width: 460px; min-height: 0; overflow-y: auto;
+        max-height: 100%;
+    }
+    .ls-layout .ls-panel { flex: 0 0 auto; }
 }
 
 /* LE CHAMP EST LA RÉPONSE : il se lit de loin, et il a une hauteur FIXE. Sans

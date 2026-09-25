@@ -1923,6 +1923,47 @@ const casesMarches = (hote) =>
 // relatifs il y a beaucoup d'étapes ». Un temps, c'est trois à cinq marches
 // d'un coup — et c'est le geste qu'on fait vraiment : « aujourd'hui, le
 // temps B ».
+/**
+ * LA CASE D'UN TEMPS DIT L'ÉTAT DE SES MARCHES — encore faut-il la remettre à
+ * jour.
+ *
+ * RÉMY : « quand dans les options on décoche double distributivité, il faut
+ * que la case de double distributivité soit décochée aussi ».
+ *
+ * MESURÉ : après le clic, les cinq marches passaient bien à zéro et la case du
+ * temps gardait la classe « tout ». Elle était calculée UNE FOIS, au dessin du
+ * panneau, et plus jamais ensuite — le panneau ne se redessine pas à chaque
+ * clic, c'est lui la vérité une fois affiché. La case affichait donc le
+ * contraire de ce qu'elle commandait.
+ *
+ * Trois états, comme à la construction : tout, une partie, rien.
+ */
+function majCasesDeTemps(hote) {
+    hote.querySelectorAll('.cfg-groupe').forEach(g => {
+        const bouton = g.querySelector('[data-groupe]');
+        if (!bouton) return;
+        const dedans = [...g.querySelectorAll('[data-kind="multiselect"]')];
+        const coches = dedans.filter(c => c.checked).length;
+        bouton.classList.toggle('cfg-groupe-case--tout',
+            dedans.length > 0 && coches === dedans.length);
+        bouton.classList.toggle('cfg-groupe-case--part',
+            coches > 0 && coches < dedans.length);
+        // ET LE COMPTE ÉCRIT À CÔTÉ, qui mentait de la même façon.
+        const compte = g.querySelector('.cfg-groupe-tete em');
+        if (compte) compte.textContent = `${coches}/${dedans.length}`;
+    });
+}
+
+// COCHER UNE MARCHE MET À JOUR LE TEMPS QUI LA CONTIENT. Sans cela, décocher
+// trois marches sur cinq laissait la case du temps sur « tout » — et c'est le
+// même défaut que celui de Rémy, vu par l'autre bout.
+document.addEventListener('change', (e) => {
+    const c = e.target;
+    if (!c || c.dataset === undefined || c.dataset.kind !== 'multiselect') return;
+    const hote = c.closest('[data-marches]');
+    if (hote) majCasesDeTemps(hote);
+});
+
 document.addEventListener('click', (e) => {
     const btn = e.target.closest && e.target.closest('[data-groupe], [data-cocher]');
     if (!btn) return;
@@ -1936,6 +1977,7 @@ document.addEventListener('click', (e) => {
         ? btn.dataset.cocher === '1'
         : !cases.every(c => c.checked);
     cases.forEach(c => { c.checked = tout; });
+    majCasesDeTemps(hote);
     // ET LE PARTAGE REPART À ÉGALITÉ quand on le demande — voir le bouton
     // express plus haut. Le champ caché porte les longueurs sur mesure ; le
     // vider, c'est rendre la main à `partageEgal`, qui est le défaut.
