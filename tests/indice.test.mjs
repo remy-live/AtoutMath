@@ -12,6 +12,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
     indicesProposes, preparerIndice, raccourcir, UNIVERSELS, LONGUEUR_MAX
 } from '../js/core/indice.js';
@@ -107,4 +108,45 @@ test('les trois coups de pouce universels ne donnent aucune réponse', () => {
         assert.ok(!/=\s*\d/.test(u), `« ${u} » a l'air de donner un résultat`);
         assert.ok(u.length <= LONGUEUR_MAX);
     }
+});
+
+// ── L'INDICE S'OUVRE EN CARTE, PAS SOUS LES BOUTONS ─────────────────────────
+//
+// RÉMY, capture du pas à pas à l'appui : « quand l'indice apparaît en dessous,
+// on ne voit plus le haut. Je pense que l'indice ne doit apparaître que dans
+// la modale en popup. »
+//
+// La mesure était dans sa capture : l'indice poussait la colonne, et le champ
+// de saisie comme les premières touches sortaient par le haut — au moment
+// précis où l'élève vient de demander de l'aide pour écrire. Une aide qui
+// cache ce qu'elle explique ne s'explique pas elle-même.
+//
+// « Montre-moi », lui, passait DÉJÀ par la carte : les deux boutons voisins se
+// comportaient différemment sans que rien ne le dise.
+
+test('LE BOUTON « UN INDICE » PASSE PAR LA CARTE, COMME « MONTRE-MOI »', () => {
+    const src = readFileSync(new URL('../js/core/activities/choice.js', import.meta.url), 'utf8');
+    const i = src.indexOf('export function wireHint');
+    assert.ok(i > 0, 'wireHint a disparu');
+    const bloc = src.slice(i, src.indexOf('\nexport function wireShowMe', i));
+    assert.match(bloc, /game_feedback/,
+        'l\'indice ne passe plus par la carte : il retombe sous les boutons');
+    assert.match(bloc, /kind: 'hint'/, 'la carte ne sait plus que c\'est un indice');
+    // LE DESSIN SUIT L'INDICE. Rémy : « pourquoi ne pas avoir un petit
+    // schéma ? c'est souvent plus parlant ».
+    assert.match(bloc, /schema: session\.schemaIndice/,
+        'le dessin de l\'indice ne monte plus dans la carte');
+    // ET SI PERSONNE NE L'AFFICHE, ON NE LE PERD PAS : l'aperçu des réglages
+    // et les bancs ne montent pas la carte, et le contrat de `game_feedback`
+    // le dit par `handled`.
+    assert.match(bloc, /if \(!detail\.handled\)/,
+        'sans carte montée, l\'indice serait perdu sans un mot');
+});
+
+test('LA CARTE SAIT AFFICHER UN INDICE ET SON DESSIN', () => {
+    // L'autre bout du contrat : ce que `wireHint` envoie, la carte doit
+    // savoir le rendre.
+    const src = readFileSync(new URL('../js/ui/gameFeedbackUI.js', import.meta.url), 'utf8');
+    assert.match(src, /d\.kind === 'hint'/, 'la carte ne reconnaît plus un indice');
+    assert.match(src, /d\.schema \?/, 'la carte ne rend plus le dessin d\'un indice');
 });

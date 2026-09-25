@@ -595,22 +595,44 @@ export function wireHint(container, session) {
     btn.onclick = () => {
         const h = session.hint();
         if (!h) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; return; }
-        let box = container.querySelector('.hint-text');
-        if (!box) {
-            box = document.createElement('div');
-            box.className = 'hint-text';
-            box.setAttribute('role', 'status');
-            btn.parentElement.parentElement.appendChild(box);
-        }
-        box.textContent = h;
-        // LE DESSIN DE L'INDICE, s'il en a un. Rémy : « pourquoi ne pas avoir
-        // un petit schéma ? c'est souvent plus parlant ». Le HTML vient du
-        // générateur, pas de l'élève : il est de confiance.
-        if (session.schemaIndice) {
-            const dessin = document.createElement('div');
-            dessin.className = 'hint-schema';
-            dessin.innerHTML = session.schemaIndice;
-            box.appendChild(dessin);
+        // L'INDICE S'OUVRE EN CARTE, PAS SOUS LES BOUTONS.
+        //
+        // RÉMY, capture du pas à pas à l'appui : « quand l'indice apparaît en
+        // dessous, on ne voit plus le haut. Je pense que l'indice ne doit
+        // apparaître que dans la modale en popup. »
+        //
+        // Il a raison, et la mesure est dans sa capture : l'indice poussait la
+        // colonne, le champ de saisie et les premières touches sortaient par
+        // le haut — au moment précis où l'élève vient de demander de l'aide
+        // pour écrire quelque chose. Une aide qui cache ce qu'elle explique ne
+        // s'explique pas elle-même.
+        //
+        // « Montre-moi », lui, passait DÉJÀ par cette carte : les deux boutons
+        // voisins se comportaient différemment sans que rien ne le dise.
+        // Le dessin de l'indice y est accepté (Rémy : « pourquoi ne pas avoir
+        // un petit schéma ? c'est souvent plus parlant ») ; il vient du
+        // générateur, jamais de l'élève.
+        const detail = { kind: 'hint', msg: h, schema: session.schemaIndice || null };
+        document.dispatchEvent(new CustomEvent('game_feedback', { detail }));
+        // PERSONNE POUR L'AFFICHER : on retombe sous les boutons plutôt que de
+        // perdre l'indice. C'est le cas de l'aperçu des réglages et des bancs,
+        // où la carte n'est pas montée — le contrat de `game_feedback` le dit
+        // par `handled`.
+        if (!detail.handled) {
+            let box = container.querySelector('.hint-text');
+            if (!box) {
+                box = document.createElement('div');
+                box.className = 'hint-text';
+                box.setAttribute('role', 'status');
+                btn.parentElement.parentElement.appendChild(box);
+            }
+            box.textContent = h;
+            if (session.schemaIndice) {
+                const dessin = document.createElement('div');
+                dessin.className = 'hint-schema';
+                dessin.innerHTML = session.schemaIndice;
+                box.appendChild(dessin);
+            }
         }
         if (!session.hintsAvailable) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; }
     };
