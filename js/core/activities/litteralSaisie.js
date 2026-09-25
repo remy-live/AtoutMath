@@ -128,9 +128,14 @@ export function mount(container, session, opts = {}) {
         // et leurs touches gardent la largeur d'une touche de chiffre : deux
         // touches étalées sur toute la ligne ne ressembleraient plus à un
         // clavier.
+        // LE PAVÉ S'ADAPTE AU CHAPITRE — et il le faut : Rémy a demandé le pas à
+        // pas pour les racines, les fractions et les puissances, où l'on ne
+        // tape ni x ni x². Une touche « x » sur une ligne de racines est une
+        // touche dont on SAIT qu'elle donnera une réponse fausse : c'est la
+        // règle déjà posée pour le cube et les parenthèses, et elle vaut ici.
         const rangees = [
             [
-                { t: lettre, cls: 'ls-t--lettre' },
+                ...(m.lettre === null ? [] : [{ t: lettre, cls: 'ls-t--lettre' }]),
                 // LA TOUCHE EST « ² », PAS « x² », ET C'EST UN CORRECTIF.
                 //
                 // Une touche qui écrivait `x²` d'un coup ne savait élever au
@@ -145,9 +150,20 @@ export function mount(container, session, opts = {}) {
                 // deux touches qui produisent toutes deux un carré, l'une
                 // seulement après un x, était exactement le genre de pavé que
                 // Rémy a trouvé illisible.
-                { t: '²', cls: 'ls-t--lettre ls-t--expo', dit: 'Au carré' },
+                // LE CARRÉ NON PLUS N'EST PAS DE TOUS LES CHAPITRES : une
+                // ligne de racines ou de fractions n'en veut jamais, et
+                // « √5² » est précisément la faute qu'on éviterait de rendre
+                // tapable.
+                ...(m.carre === false ? []
+                    : [{ t: '²', cls: 'ls-t--lettre ls-t--expo', dit: 'Au carré' }]),
                 ...(degreMax >= 3
-                    ? [{ t: '³', cls: 'ls-t--lettre ls-t--expo', dit: 'Au cube' }] : [])
+                    ? [{ t: '³', cls: 'ls-t--lettre ls-t--expo', dit: 'Au cube' }] : []),
+                // LA RACINE EST DESSINÉE, PAS TAPÉE — voir maths/formule.js :
+                // la police Outfit n'a aucun glyphe √, et celui qu'on voyait
+                // venait d'une police de secours choisie par le système. Sur
+                // la touche, le caractère suffit : c'est un bouton, pas une
+                // formule. Ce que l'élève ÉCRIT, lui, passe par le module.
+                ...(m.racine ? [{ t: '√', cls: 'ls-t--lettre', dit: 'Racine carrée' }] : [])
             ],
             [
                 { t: '+', cls: 'ls-t--signe' },
@@ -159,6 +175,12 @@ export function mount(container, session, opts = {}) {
                 // une réponse réduite n'en porte jamais.
                 ...(m.multiplication
                     ? [{ t: '×', cls: 'ls-t--signe', dit: 'Multiplié par' }] : []),
+                // LA BARRE DE FRACTION S'ÉCRIT « / » ET SE DESSINE EN COLONNE.
+                // Rémy, à propos des formules : « même pour les fractions ça
+                // ne les dessine pas en colonnes ». La touche écrit le signe
+                // que l'analyseur lit ; c'est `maths/formule` qui l'empile.
+                ...(m.fraction
+                    ? [{ t: '/', cls: 'ls-t--signe', dit: 'Barre de fraction' }] : []),
                 // LES PARENTHÈSES N'APPARAISSENT QUE SI LA RÉPONSE PEUT EN
                 // VOULOIR. Même règle que pour la touche x³ : offrir une
                 // touche dont on sait qu'elle donnera une réponse fausse,

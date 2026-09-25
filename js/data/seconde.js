@@ -353,6 +353,32 @@ export const secondeExercises = [
         tags: { chemin: [D, RAC], niveaux: [SECONDE] },
         instruction
     })),
+    // ── LES RACINES, LIGNE À LIGNE ──────────────────────────────────────────
+    //
+    // RÉMY, capture de 3√80 − 2√125 à l'appui, puis « oui fais les ».
+    //
+    // C'est le chapitre où le pas à pas paie le plus : qui rate 3√80 − 2√125
+    // n'a presque jamais raté l'addition — il a raté la SIMPLIFICATION, deux
+    // lignes plus haut, et un « faux » sur la réponse entière ne le dit pas.
+    // Découpé, on voit laquelle des deux racines a résisté.
+    {
+        id: 'rc-pas',
+        cree: '2026-09-25',
+        title: 'Racines carrées pas à pas',
+        consignePapier: 'Écrire sous la forme la plus simple.',
+        colonnesPapier: 2,
+        generatorId: 'nb.racines', activityId: 'buttons',
+        // TOUS LES BARREAUX : le découpage vaut pour les sept qui ont plus
+        // d'un geste, et le premier — √144 = 12 — se tape simplement.
+        params: { barreau: 'toutes', etapes: 'oui' },
+        motsClefs: ['racine', 'racines', 'racine carrée', 'radical', 'simplifier',
+            'pas à pas', 'étapes', 'étape', 'détaillé', 'méthode', 'seconde', 'lycée'],
+        tags: { chemin: [D, RAC], niveaux: [SECONDE] },
+        instruction: "Les mêmes questions, écrites ligne à ligne : on montre le carré "
+            + "caché sous la racine, on le sort, puis on calcule. Le champ montre la "
+            + "FORME attendue, et chaque ligne est corrigée sur place — seule la "
+            + "dernière compte pour la séance."
+    },
     {
         id: 'rc-revision',
         cree: '2026-09-23',

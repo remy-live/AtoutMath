@@ -318,12 +318,19 @@ test('les deux compétences existent, et leurs prérequis aussi', () => {
         'le prérequis de la simplification EST la décomposition en facteurs premiers');
 });
 
-test('les neuf exercices de Seconde existent et pointent le bon générateur', () => {
+test('les dix exercices de Seconde existent et pointent le bon générateur', () => {
     const miens = secondeExercises.filter(e => e.generatorId === 'nb.racines');
-    assert.equal(miens.length, 9, 'huit barreaux et une révision');
+    assert.equal(miens.length, 10, 'huit barreaux, une révision, un pas à pas');
     const barreaux = miens.map(e => e.params.barreau).sort();
     assert.deepEqual(barreaux,
-        ['1', '2', '3', '4', '5', '6', '7', '8', 'revision'].sort());
+        ['1', '2', '3', '4', '5', '6', '7', '8', 'revision', 'toutes'].sort());
+    // LE PAS À PAS EST UNE CARTE PRÊTE — Rémy : « c'est génial ton idée de
+    // carte "pas à pas" prête ». Elle couvre TOUS les barreaux : le découpage
+    // vaut pour les sept qui ont plus d'un geste, et le premier se tape.
+    const pas = miens.find(e => e.id === 'rc-pas');
+    assert.ok(pas, 'la carte « Racines carrées pas à pas » a disparu');
+    assert.equal(pas.params.etapes, 'oui');
+    assert.equal(pas.params.barreau, 'toutes');
     for (const e of miens) {
         assert.ok(e.instruction && e.instruction.length >= 10,
             `${e.id} : consigne trop courte`);
@@ -358,4 +365,118 @@ test('la fiche papier imprime les propositions, et non leurs clefs internes', ()
                 `[${b}#${i}] du balisage part sur la feuille : ${sortie}`);
         }
     });
+});
+
+// ── LE PAS À PAS DES RACINES ────────────────────────────────────────────────
+//
+// RÉMY, capture de 3√80 − 2√125 à l'appui, puis « oui fais les ».
+//
+// C'est le chapitre où le découpage paie le plus : qui rate 3√80 − 2√125 n'a
+// presque jamais raté l'addition, il a raté la SIMPLIFICATION deux lignes plus
+// haut — et un « faux » sur la réponse entière ne le dit pas.
+//
+// LE JUGE COMPARE DES VALEURS EXACTES, jamais des flottants : √2 × √2 vaut 2,
+// et le calcul en virgule flottante rend 2.0000000000000004.
+
+test('CHAQUE LIGNE DE LA CHAÎNE VAUT L\'ÉNONCÉ, ET SE JUGE', async () => {
+    const { lireExacte, memeR } = await import('../js/core/maths/valeurExacte.js');
+    const fx = await import('../js/core/maths/formule.js');
+    const { BARREAUX } = POUR_ESSAI;
+    let lignesVues = 0;
+    for (const r of Object.keys(BARREAUX)) {
+        for (let i = 0; i < 60; i++) {
+            const it = racinesGenerator.generate({ barreau: r, etapes: 'oui' },
+                { rng: makeRng(`chaine_${r}_${i}`) });
+            // Le pas à pas ouvre TOUJOURS le clavier, même sur un barreau d'un
+            // seul geste : retomber sur un QCM au milieu d'un exercice qui
+            // s'appelle « pas à pas » ferait croire qu'on a changé d'exercice.
+            assert.equal(it.meta.saisieSeule, true, `[b${r}] le clavier ne prend pas la main`);
+            const etapes = it.meta.etapes || [];
+            if (!etapes.length) continue;
+            const attendu = lireExacte(it.reponsePapier, fx);
+            assert.ok(attendu, `[b${r}] réponse illisible : ${it.reponsePapier}`);
+            for (const e of etapes) {
+                lignesVues += 1;
+                // UNE CHAÎNE EST UNE CHAÎNE : chaque ligne vaut la réponse.
+                const ligne = lireExacte(e.montrer, fx);
+                assert.ok(ligne, `[b${r}] « ${e.montrer} » ne se lit pas`);
+                assert.ok(memeR(ligne, attendu),
+                    `[b${r}] « ${e.montrer} » ne vaut pas « ${it.reponsePapier} »`);
+                // Et elle est acceptée à sa propre étape…
+                assert.ok(e.verifie(e.montrer.replace(/\s+/g, '')).juste,
+                    `[b${r}] « ${e.montrer} » refusée à son étape « ${e.titre} »`);
+                // …tandis que la réponse finale n'y passe PAS. Les deux sont
+                // égales : sans exigence de forme, l'étape serait sautable,
+                // c'est-à-dire inexistante.
+                const v = e.verifie(it.reponsePapier.replace(/\s+/g, ''));
+                assert.ok(v && !v.juste,
+                    `[b${r}] la réponse « ${it.reponsePapier} » passe à l'étape `
+                    + `« ${e.titre} » : l'étape ne sert à rien`);
+                assert.ok(e.modele && /[□…]/.test(e.modele),
+                    `[b${r}] l'étape « ${e.titre} » n'a pas de moule`);
+            }
+        }
+    }
+    assert.ok(lignesVues > 400, `seulement ${lignesVues} lignes jugées`);
+});
+
+test('LE PAVÉ SAIT TAPER CHAQUE LIGNE, ET NE MONTRE RIEN D\'INUTILE', () => {
+    const { BARREAUX } = POUR_ESSAI;
+    for (const r of Object.keys(BARREAUX)) {
+        for (let i = 0; i < 40; i++) {
+            const it = racinesGenerator.generate({ barreau: r, etapes: 'oui' },
+                { rng: makeRng(`pave_${r}_${i}`) });
+            const m = it.meta;
+            // PAS DE LETTRE, PAS DE CARRÉ : « √5² » est précisément la faute
+            // qu'on éviterait de rendre tapable.
+            assert.equal(m.lettre, null, `[b${r}] le pavé offre une lettre`);
+            assert.equal(m.carre, false, `[b${r}] le pavé offre la touche ²`);
+            assert.equal(m.racine, true, `[b${r}] le pavé n'offre pas la racine`);
+            // ET CHAQUE LIGNE SE TAPE. C'est le test qui a manqué une fois,
+            // sur le « ² » du barreau 3 de la factorisation : la première
+            // ligne de l'exercice était intapable et rien ne le disait.
+            const touches = ['√', '+', '−'];
+            if (m.multiplication) touches.push('×');
+            if (m.parentheses) touches.push('(', ')');
+            if (m.fraction) touches.push('/');
+            touches.push(...'0123456789'.split(''));
+            for (const e of [...(m.etapes || []), { montrer: it.reponsePapier }]) {
+                const manque = new Set();
+                for (const c of String(e.montrer).replace(/\s+/g, '')) {
+                    if (!touches.includes(c)) manque.add(c);
+                }
+                assert.deepEqual([...manque], [],
+                    `[b${r}] « ${e.montrer} » demande ${[...manque].join(' ')}, `
+                    + 'que le pavé n\'a pas');
+            }
+        }
+    }
+});
+
+test('LE JUGE DE LA RÉPONSE REFUSE CE QUI N\'EST PAS SIMPLIFIÉ', () => {
+    const { BARREAUX, txt, rac } = POUR_ESSAI;
+    let vus = 0;
+    for (const r of Object.keys(BARREAUX)) {
+        for (let i = 0; i < 40; i++) {
+            const it = racinesGenerator.generate({ barreau: r },
+                { rng: makeRng(`juge_${r}_${i}`) });
+            assert.equal(it.verifieTexte(it.reponsePapier).juste, true,
+                `[b${r}] « ${it.reponsePapier} » refusée`);
+            // LA MÊME VALEUR, ÉCRITE SANS SORTIR LE CARRÉ : c'est égal, et ce
+            // n'est pas fini. On le dit, et cela ne coûte pas de vie —
+            // « commencé n'est pas raté », la règle posée pour la
+            // factorisation.
+            const v = it.meta && it.meta.valeurPourEssai;
+            void v;
+            const brut = `√${4 * 4}`;   // 4 est un carré : √16 n'est jamais simplifié
+            const verdict = it.verifieTexte(brut);
+            if (txt(rac(4, 1, 1)) === it.reponsePapier) {
+                vus += 1;
+                assert.equal(verdict.juste, false, 'une écriture non simplifiée passe');
+                assert.equal(verdict.inacheve, true,
+                    '« √16 » pour 4 est compté FAUX : c\'est égal, et pas fini');
+            }
+        }
+    }
+    assert.ok(vus > 0, 'aucune écriture non simplifiée mesurée');
 });

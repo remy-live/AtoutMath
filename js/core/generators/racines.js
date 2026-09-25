@@ -37,6 +37,9 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import * as fx from '../maths/formule.js';
+import { garnirEtapesNombres } from '../maths/etapesNombres.js';
+import { lireExacte, memeR as memeExacte, sansCarre, radicandesEcrits }
+    from '../maths/valeurExacte.js';
 
 const M = '−';
 const nb = (v) => (v < 0 ? M + Math.abs(v) : String(v));
@@ -277,6 +280,13 @@ function barreau2(rng) {
         etapes: `√${a} = ${ra} et √${b} = ${rb}, donc le produit vaut ${ra * rb}. `
             + `On peut aussi écrire √${a} × √${b} = √${a * b} = ${ra * rb}.`,
         visuel: pairesHtml(a * b), structure: deuxDecomp(a, b),
+        lignes: [
+            { titre: 'Chaque racine, calculée à part',
+                montrer: `${ra} × ${rb}`, memesNombres: true,
+                multiplication: true, racine: false,
+                aide: `√${a} = ${ra} et √${b} = ${rb} : ce sont deux carrés parfaits.` }
+        ],
+        titreFinal: 'On multiplie',
         leurres: [
             { valeur: entier(ra + rb), why: `Les racines se MULTIPLIENT ici : `
                 + `${ra} × ${rb}, pas ${ra} + ${rb}.` },
@@ -301,6 +311,15 @@ function barreau3(rng) {
         etapes: `${n} = ${carre} × ${libre}, et ${carre} est un carré parfait. `
             + `Donc √${n} = √${carre} × √${libre} = ${k}√${libre}.`,
         visuel: pairesHtml(n), structure: decompHtml(n),
+        // LA CHAÎNE — deux gestes, deux lignes. Rémy : « oui fais les ».
+        lignes: [
+            { titre: 'On écrit le carré qui se cache dedans',
+                montrer: `√(${carre} × ${libre})`,
+                carresDedans: true, memesNombres: true,
+                parentheses: true, multiplication: true,
+                aide: `${n} = ${carre} × ${libre}, et ${carre} est un carré parfait.` }
+        ],
+        titreFinal: 'On sort le carré',
         leurres: [
             { valeur: rac(carre, 1, libre), why: `√${carre} vaut ${k}, pas ${carre} : `
                 + `c'est la RACINE du carré qui sort.` },
@@ -358,6 +377,15 @@ function barreau4(rng) {
             + `On peut aussi y aller en plusieurs fois — sortir un carré, puis `
             + `recommencer sur ce qui reste : le résultat est le même.`,
         visuel: pairesHtml(n), structure: decompHtml(n),
+        lignes: [
+            { titre: 'Le plus grand carré qui divise le nombre',
+                montrer: `√(${v.n * v.n} × ${v.r})`,
+                carresDedans: true, memesNombres: true,
+                parentheses: true, multiplication: true,
+                aide: `${n} = ${f.join(' × ')} : les facteurs qui vont deux par deux `
+                    + `forment le carré ${v.n * v.n}.` }
+        ],
+        titreFinal: 'On sort le carré',
         // L'ORDRE DE CETTE LISTE DÉCIDE DE LA DIFFICULTÉ, et ce n'est pas une
         // façon de parler : l'échelle d'aide commence une séance à DEUX
         // propositions pour mettre en confiance, et `reduireChoix` ne garde
@@ -421,6 +449,14 @@ function barreau5(rng) {
             + `${k1} × ${k2} = ${k1 * k2}, et √${r1} × √${r2} = √${r1 * r2}. `
             + `Puis on simplifie ce qui peut l'être.`,
         visuel: pairesHtml(r1 * r2), structure: deuxDecomp(r1, r2),
+        lignes: [
+            { titre: 'Les nombres ensemble, les racines ensemble',
+                montrer: `(${k1} × ${k2}) × √(${r1} × ${r2})`,
+                memesNombres: true, parentheses: true, multiplication: true,
+                aide: 'Un produit se réarrange : on met les entiers d\'un côté et les '
+                    + 'racines de l\'autre, sans rien calculer encore.' }
+        ],
+        titreFinal: 'On calcule, et l\'on simplifie ce qui peut l\'être',
         leurres: [
             { valeur: rac(k1 * k2, 1, r1 + r2), why: `Les radicandes se MULTIPLIENT : `
                 + `√${r1} × √${r2} = √${r1 * r2}, pas √${r1 + r2}.` },
@@ -455,6 +491,25 @@ function barreau6(rng) {
             + `${k2 === 1 ? '' : k2}√${c2 * r} = ${txt(b)}. Les deux portent √${r} : `
             + `on ${moinsCi ? 'retire' : 'ajoute'} alors les nombres devant.`,
         visuel: pairesHtml(c1 * r), structure: deuxDecomp(c1 * r, c2 * r),
+        // LE BARREAU LE PLUS RICHE DU CHAPITRE, ET C'EST L'EXPRESSION QUE RÉMY
+        // A ENVOYÉE EN PHOTO : 3√80 − 2√125. Trois gestes, trois lignes — et
+        // l'élève qui échoue n'a presque jamais raté l'addition : il a raté la
+        // simplification, deux lignes plus haut.
+        lignes: [
+            { titre: 'On simplifie chaque racine',
+                montrer: `${k1 === 1 ? '' : `${k1} × `}${Math.round(Math.sqrt(c1))}√${r} `
+                    + `${moinsCi ? M : '+'} ${k2 === 1 ? '' : `${k2} × `}`
+                    + `${Math.round(Math.sqrt(c2))}√${r}`,
+                carresSortis: true, memesNombres: true, multiplication: true,
+                aide: `√${c1 * r} = ${Math.round(Math.sqrt(c1))}√${r} et `
+                    + `√${c2 * r} = ${Math.round(Math.sqrt(c2))}√${r}.` },
+            { titre: 'On multiplie les nombres de devant',
+                montrer: `${txt(a)} ${moinsCi ? M : '+'} ${txt(b)}`,
+                carresSortis: true,
+                aide: 'Les deux portent maintenant la même racine : elles sont '
+                    + 'SEMBLABLES, et c\'est ce qui autorise à les réunir.' }
+        ],
+        titreFinal: `On ${moinsCi ? 'retire' : 'ajoute'} les nombres de devant`,
         leurres: [
             { valeur: rac(1, 1, moinsCi ? c1 * r - c2 * r : c1 * r + c2 * r),
                 why: `On n'additionne pas SOUS les racines : √a + √b n'est pas √(a + b). `
@@ -490,6 +545,12 @@ function barreau7(rng) {
             + (faux ? ` Surtout pas √${a} + √${b} = ${ra} + ${rb} = ${faux} : `
                 + `la racine ne traverse pas une addition, et ${racS} < ${faux}.` : ''),
         visuel: pairesHtml(s), structure: sousLaBarreHtml(a, b),
+        lignes: [
+            { titre: 'On calcule D\'ABORD ce qui est sous la barre',
+                montrer: `√${s}`, avecRacine: true,
+                aide: `La barre couvre TOUTE la somme : ${a} + ${b} = ${s}.` }
+        ],
+        titreFinal: 'Et l\'on prend la racine',
         leurres: [
             ...(faux ? [{ valeur: entier(faux),
                 why: `C'est √${a} + √${b} = ${ra} + ${rb}. Mais √(a + b) n'est PAS `
@@ -524,6 +585,13 @@ function barreau8(rng) {
             enonce: `√${k * c} ÷ √${k}`, valeur: v,
             etapes: `√a ÷ √b = √(a ÷ b) : ici √${k * c} ÷ √${k} = √${c} = ${txt(v)}.`,
             visuel: pairesHtml(c), structure: deuxDecomp(k * c, k),
+            lignes: [
+                { titre: 'Deux racines qui se divisent n\'en font qu\'une',
+                    montrer: `√(${k * c}/${k})`, avecRacine: true, memesNombres: true,
+                    parentheses: true, fraction: true,
+                    aide: '√a ÷ √b = √(a ÷ b) : la division passe SOUS la barre.' }
+            ],
+            titreFinal: 'On calcule sous la barre, puis on prend la racine',
             leurres: [
                 { valeur: racineDe(k * c - k), why: `Les radicandes se DIVISENT, ils ne `
                     + `se retranchent pas : ${k * c} ÷ ${k} = ${c}.` },
@@ -553,6 +621,15 @@ function barreau8(rng) {
             + `bas par √${r} : le bas devient ${r}, et le haut ${k}√${r}. `
             + `Après simplification : ${txt(v)}.`,
         visuel: pairesHtml(r * r),
+        lignes: [
+            { titre: `On multiplie en haut ET en bas par √${r}`,
+                montrer: `(${k} × √${r})/(√${r} × √${r})`,
+                memesNombres: true, parentheses: true, multiplication: true, fraction: true,
+                aide: 'Multiplier le haut et le bas par la même chose ne change pas '
+                    + 'le quotient — et c\'est ce qui va faire disparaître la racine '
+                    + 'du dénominateur.' }
+        ],
+        titreFinal: `En bas, √${r} × √${r} = ${r} : le dénominateur est entier`,
         // Le fait qui débloque tout le barreau, et qui n'est pas la réponse :
         // une racine multipliée par elle-même redonne son radicande.
         // LE RADICAL DE CETTE CARTE PASSE AUSSI PAR LE MODULE. Écrit « √ » à la
@@ -637,6 +714,21 @@ export const racinesGenerator = {
                 { value: 'revision', label: 'Révision — les barreaux 1 à 4' },
                 { value: 'toutes', label: 'Tout mélangé' }
             ]
+        },
+        {
+            id: 'etapes', type: 'select', label: 'Pas à pas', default: 'non',
+            // PAS SUR LA FICHE PAPIER : le découpage est une affaire d'écran.
+            // Sur une feuille, la question et son corrigé sont les mêmes avec
+            // ou sans lignes intermédiaires, et un bouton qui ne change rien à
+            // la feuille est pire qu'un bouton absent — voir
+            // `ficheReglages.test.mjs`.
+            papier: false,
+            aide: 'La question s\'écrit ligne à ligne : on montre le carré, on le sort, '
+                + 'puis on calcule. Seule la dernière ligne est notée.',
+            options: [
+                { value: 'non', label: 'Non — la réponse d\'un coup' },
+                { value: 'oui', label: 'Oui — une ligne à la fois' }
+            ]
         }
     ],
     generate(params, ctx) {
@@ -655,7 +747,12 @@ export const racinesGenerator = {
         // qui donne une question juste au lieu d'un écran vide.
         const tire = possibles[rng.int(0, possibles.length - 1)];
         const rang = BARREAUX[tire] ? tire : 1;
+        const pasAPas = String(params.etapes || 'non') === 'oui';
         const q = BARREAUX[rang].faire(rng);
+        // LES LIGNES DE LA CHAÎNE, s'il y en a. Les barreaux 1 et 2 n'en ont
+        // pas : leur réponse s'écrit d'un trait, et découper « √49 » en deux
+        // lignes ferait passer pour compliqué ce qui ne l'est pas.
+        const lignes = q.lignes || [];
 
         // UN ÉNONCÉ, DEUX LECTURES — et c'est tout l'intérêt du module.
         //
@@ -735,7 +832,47 @@ export const racinesGenerator = {
                 papier: `Simplifier : ${q.texte}`
             },
             answer: 'ok',
+            // CE QUI S'ÉCRIT, SE TAPE ET S'IMPRIME — voir factorisation.js :
+            // `answer` est une sentinelle de QCM, et le clavier a besoin de
+            // l'expression, pas de la valeur.
+            reponsePapier: txt(q.valeur),
             choices,
+            /**
+             * JUGER UNE RÉPONSE TAPÉE.
+             *
+             * On compare des VALEURS EXACTES, jamais des flottants : √2 × √2
+             * vaut 2, et le calcul en virgule flottante rend
+             * 2.0000000000000004. Un juge à epsilon près marche presque
+             * toujours, et « presque » est le pire des états — la question qui
+             * échoue est rare, donc invisible, et elle compte faux une réponse
+             * juste.
+             *
+             * ET L'ÉGALITÉ NE SUFFIT PAS : √20 vaut 2√5 mais n'est pas la
+             * forme demandée — la consigne dit « sous sa forme la plus
+             * simple ». On exige donc qu'il ne reste aucun carré sous une
+             * racine, ni aucune racine au dénominateur. C'est la leçon du
+             * chapitre, et c'est ce que `rac` fait en interne.
+             */
+            verifieTexte: (saisie) => {
+                const lu = lireExacte(saisie, fx);
+                if (!lu) {
+                    return { juste: false,
+                        pourquoi: 'Je n\'arrive pas à lire cette expression. '
+                            + 'Écris-la avec les touches, par exemple 6√2.' };
+                }
+                if (!memeExacte(lu, q.valeur)) return { juste: false };
+                let arbre = null;
+                try { arbre = fx.analyser(String(saisie).replace(/\s+/g, '')); }
+                catch (e) { arbre = null; }
+                const rads = arbre ? radicandesEcrits(arbre) : [];
+                if (rads.some(r => r === null || !sansCarre(r))) {
+                    return { juste: false, inacheve: true,
+                        pourquoi: 'C\'est bien égal, mais ce n\'est pas fini : il reste '
+                            + 'un carré sous une racine. On le sort, et on recommence '
+                            + 'tant qu\'il en reste un.' };
+                }
+                return { juste: true };
+            },
             hints: [
                 rang <= 4
                     ? 'Décompose le nombre sous la racine. Chaque PAIRE de facteurs '
@@ -747,7 +884,33 @@ export const racinesGenerator = {
             schemas: ['', q.visuel],
             explanation: `${q.texte} = ${txt(q.valeur)}. ${q.etapes}`,
             difficulty: Math.min(5, 1 + Math.floor(rang / 2)),
-            meta: { barreau: rang, nomDuBarreau: BARREAUX[rang].nom }
+            meta: {
+                barreau: rang,
+                nomDuBarreau: BARREAUX[rang].nom,
+                // LE CLAVIER DE CE CHAPITRE : une racine, pas de lettre, pas
+                // de carré. Une touche offerte est une touche qu'on croit
+                // utile — « √5² » est précisément la faute qu'on éviterait de
+                // rendre tapable.
+                composable: 'litteral',
+                lettre: null,
+                carre: false,
+                racine: true,
+                multiplication: lignes.some(l => l.multiplication),
+                parentheses: lignes.some(l => l.parentheses),
+                fraction: q.valeur.d !== 1 || lignes.some(l => l.fraction),
+                // « PAS À PAS » SUR UN BARREAU QUI N'A QU'UN GESTE : on écrit
+                // quand même, sans chaîne. Le barreau 1 — √144 = 12 — ne se
+                // découpe pas, et lui inventer une ligne intermédiaire ferait
+                // passer pour compliqué ce qui ne l'est pas. Mais retomber sur
+                // un QCM au milieu d'un exercice qui s'appelle « pas à pas »
+                // serait pire : l'élève croirait avoir changé d'exercice.
+                ...(pasAPas
+                    ? { saisieSeule: true,
+                        ...(lignes.length ? { etapes: garnirEtapesNombres(lignes),
+                            titreFinal: q.titreFinal
+                                || 'La réponse, sous sa forme la plus simple' } : {}) }
+                    : {})
+            }
         });
     }
 };

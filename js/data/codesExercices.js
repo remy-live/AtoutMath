@@ -222,6 +222,7 @@ export const CODES_EXERCICES = {
     'sec-intervalles':            'VL',   // Intervalles : les trois écritures
     'sec-intervalles-ecrire':     'NT',   // Le bon côté du crochet
     'sec-intervalles-demi':       'ZA',   // Demi-droites et infini
+    'rc-pas':                     'RS',   // Racines carrées, pas à pas (Simplifier)
     'sec-ensembles':              'EA',   // Le plus petit ensemble de nombres
     'sec-union-inter':            'EU',   // Union et intersection d'intervalles
     'sec-union-inter-vide':       'EX',   // Quand l'intersection est vide
