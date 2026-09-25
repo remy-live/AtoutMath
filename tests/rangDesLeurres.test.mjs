@@ -43,7 +43,13 @@ const CHAPITRES = [
 test('les trois chapitres de Seconde posent bien le rang de leurs leurres', () => {
     for (const { nom, gen, params } of CHAPITRES) {
         for (let i = 0; i < 120; i++) {
-            const item = gen.generate(params, { rng: makeRng(`${nom}-rang-${i}`) });
+            // L'INDEX FAIT MONTER LES CHAPITRES À PROGRESSION. La
+            // factorisation coche maintenant ses barreaux au lieu de les
+            // tirer au sort (voir core/progression.js) : sans index, les cent
+            // vingt tirages restaient sur le barreau 1, et ce test ne
+            // mesurait plus qu'un septième de ce qu'il croyait mesurer.
+            const item = gen.generate(params,
+                { rng: makeRng(`${nom}-rang-${i}`), index: i, total: 120 });
             const leurres = item.choices.filter(c => !c.correct);
             assert.ok(leurres.length >= 1, `${nom} : aucun leurre`);
             for (const l of leurres) {

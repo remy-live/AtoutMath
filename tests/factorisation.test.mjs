@@ -130,24 +130,70 @@ test('LE BARREAU 3 S\'ÉCRIT COMME LA FEUILLE, ET LE 7 AUSSI', () => {
         'le barreau 7 ne produit jamais la forme de C(x)');
 });
 
-test('LA PROGRESSION EST LE PARCOURS — sept exercices, dans l\'ordre', () => {
-    // « HYPER PROGRESSIF » NE SE RÈGLE PAS DANS UN GÉNÉRATEUR. Un curseur de
-    // difficulté serait une loterie, où l'élève tombe sur le barreau 6 avant
-    // d'avoir monté le 2. Sept exercices, que le professeur pose à la suite.
-    const miens = exercices.filter(e => /^fac-\d+$/.test(e.id) || e.id === 'fac-revision');
-    assert.equal(miens.length, 8, 'sept barreaux plus la révision');
-    for (let r = 1; r <= 7; r++) {
-        const e = miens.find(x => x.id === `fac-${r}`);
-        assert.ok(e, `barreau ${r} absent du catalogue`);
-        assert.equal(e.params.barreau, String(r));
-        assert.match(e.title, new RegExp(`^${r}\\.`), 'le titre ne porte pas son rang');
-        assert.ok(e.instruction && e.instruction.length >= 10);
-        // PAS DE I, PAS DE O, PAS DE Q : ces codes se DICTENT en classe.
+test('LA PROGRESSION EST LE PARCOURS — sept barreaux, dans l\'ordre', () => {
+    // RÉMY : « est-ce que ce ne serait pas pertinent, pour l'identité x² − a²,
+    // de regrouper les exercices et de plutôt mettre des étapes avec un nombre
+    // de questions ? Là on a quand même beaucoup d'exercices pour la même
+    // chose. »
+    //
+    // C'ÉTAIT DOUZE CARTES, C'EST DEUX. Ce test gardait « sept exercices, dans
+    // l'ordre » ; ce qu'il faut garder n'a pas changé de nature, seulement de
+    // place : la progression EXISTE, elle est complète, et on la parcourt dans
+    // l'ordre. Elle était dans le catalogue, elle est dans les cases.
+    const miens = exercices.filter(e => e.generatorId === 'lit.factorisation');
+    assert.equal(miens.length, 2, 'un exercice, et le même en pas à pas');
+    const carte = miens.find(e => e.id === 'fac');
+    assert.ok(carte, 'la carte « Factoriser » a disparu du catalogue');
+    // AUCUN BARREAU FIGÉ DANS LA CARTE : c'est le professeur qui coche.
+    assert.equal(carte.params.barreau, undefined,
+        'la carte fige un barreau : le réglage ne sert plus à rien');
+
+    // LES SEPT BARREAUX SONT LÀ, NOMMÉS, ET DANS L'ORDRE.
+    const cases = factorisationGenerator.params.find(p => p.type === 'marches');
+    assert.ok(cases, 'le générateur n\'offre plus de cases à cocher');
+    assert.deepEqual(cases.marches.map(m => m.id), ['1', '2', '3', '4', '5', '6', '7']);
+    cases.marches.forEach((m, i) => assert.match(m.nom, new RegExp(`^${i + 1}\\.`),
+        `la marche ${m.id} ne porte pas son rang`));
+
+    // ET ON LES MONTE TOUS, sur la longueur que l'exercice conseille lui-même.
+    const total = factorisationGenerator.conseil({});
+    assert.ok(total >= 14, `conseil de ${total} questions pour sept barreaux`);
+    const montee = [];
+    for (let i = 0; i < total; i++) {
+        montee.push(factorisationGenerator.generate({},
+            { rng: makeRng(`montee_${i}`), index: i, total }).meta.barreau);
+    }
+    assert.deepEqual([...new Set(montee)], [1, 2, 3, 4, 5, 6, 7],
+        'la montée saute un barreau, ou les mélange');
+    // Un parcours MONTE : il ne redescend jamais.
+    montee.forEach((r, i) => assert.ok(i === 0 || r >= montee[i - 1],
+        `question ${i + 1} : on redescend du barreau ${montee[i - 1]} au ${r}`));
+
+    // PAS DE I, PAS DE O, PAS DE Q : ces codes se DICTENT en classe.
+    miens.forEach(e => {
         const c = codeCourt(e.id);
         assert.equal(c.length, 3, `${e.id} : code « ${c} »`);
         assert.ok(!/[IOQ]/.test(c), `${e.id} : ${c} contient une lettre qui s'entend mal`);
-    }
+    });
 });
+
+test('UN RÉGLAGE D\'HIER SE RELIT — le catalogue a changé, pas les parcours', () => {
+    // Les cartes ont disparu ; les parcours que Rémy a préparés, non. Un
+    // exercice enregistré avec « barreau 3 » doit jouer le barreau 3, et
+    // « Révision — les barreaux 1 à 4 » doit jouer les quatre premiers. C'est
+    // ce que `marchesCochees` traduit, et c'est pour cela que la clef du
+    // groupe est « revision » : c'était la valeur d'alors.
+    for (const r of RANGS) {
+        const it = factorisationGenerator.generate({ barreau: String(r) },
+            { rng: makeRng(`vieux_${r}`), index: 3, total: 10 });
+        assert.equal(it.meta.barreau, r, `un parcours réglé sur le barreau ${r} joue autre chose`);
+    }
+    const revision = [0, 1, 2, 3].map(i => factorisationGenerator.generate(
+        { barreau: 'revision' }, { rng: makeRng(`rev_${i}`), index: i, total: 4 }).meta.barreau);
+    assert.deepEqual(revision, [1, 2, 3, 4],
+        '« Révision — les barreaux 1 à 4 » ne se relit plus comme les quatre premiers');
+});
+
 
 test('LE GÉNÉRATEUR EST BRANCHÉ, ET SES COMPÉTENCES EXISTENT', () => {
     assert.ok(allGenerators().map(g => g.id).includes('lit.factorisation'));
@@ -215,28 +261,38 @@ test('ET LE SIGNE MOINS EST UN SIGNE MOINS', () => {
     });
 });
 
-test('LE PAS À PAS EST UN EXERCICE À PART, pas un réglage caché', () => {
-    // RÉMY : « Pour les factorisations compliqué du genre (x+3)² − (3x + 5)²,
-    // on pourrait proposer plusieurs étapes non ? »
+test('LE PAS À PAS EST UN RÉGLAGE, ET UNE CARTE DÉJÀ COCHÉE', () => {
+    // RÉMY : « c'est génial ton idée de carte "pas à pas" prête ».
     //
-    // Le professeur pose un parcours : il doit pouvoir mettre « le 4 pas à
-    // pas » avant « le 4 » sans rouvrir les réglages de l'étape. Un exercice
-    // qui porte son nom se pose ; un réglage caché se retrouve.
-    const pas = exercices.filter(e => /^fac-\d+-pas$/.test(e.id));
-    assert.equal(pas.length, 4, 'les barreaux 3, 4, 6 et 7 en pas à pas');
-    pas.forEach(e => {
-        assert.equal(e.params.etapes, 'oui', `${e.id} : le pas à pas n'est pas activé`);
-        assert.match(e.title, /pas à pas/, `${e.id} : le titre ne le dit pas`);
-        const c = codeCourt(e.id);
-        assert.equal(c.length, 3, `${e.id} : code « ${c} »`);
-        assert.ok(!/[IOQ]/.test(c), `${e.id} : ${c} contient une lettre qui s'entend mal`);
+    // Les deux à la fois, et c'est le point. Le RÉGLAGE le rend disponible sur
+    // n'importe quel barreau — y compris les deux premiers, qui n'y avaient pas
+    // droit quand c'étaient des cartes séparées. La CARTE le pose sans ouvrir
+    // le panneau, ce qu'on veut quand on prépare une remédiation en fin
+    // d'heure.
+    const carte = exercices.find(e => e.id === 'fac-pas');
+    assert.ok(carte, 'la carte « Factoriser pas à pas » a disparu');
+    assert.equal(carte.params.etapes, 'oui', 'le pas à pas n\'est pas activé');
+    assert.match(carte.title, /pas à pas/, 'le titre ne le dit pas');
+    assert.equal(carte.params.barreau, undefined,
+        'la carte fige un barreau : on ne peut plus la poser où l\'on veut');
+    const c = codeCourt(carte.id);
+    assert.equal(c.length, 3, `${carte.id} : code « ${c} »`);
+    assert.ok(!/[IOQ]/.test(c), `${carte.id} : ${c} contient une lettre qui s'entend mal`);
+
+    // LE RÉGLAGE EXISTE À PART, et il marche sur les SEPT barreaux — c'est le
+    // gain du regroupement, et il se mesure.
+    const reglage = factorisationGenerator.params.find(p => p.id === 'etapes');
+    assert.ok(reglage, 'le réglage « Pas à pas » a disparu du générateur');
+    RANGS.forEach(r => {
+        const it = factorisationGenerator.generate({ barreau: String(r), etapes: 'oui' },
+            { rng: makeRng(`pas_${r}`), index: 0, total: 10 });
+        assert.ok((it.meta.etapes || []).length >= 1,
+            `barreau ${r} : le pas à pas ne découpe rien`);
+        assert.ok(it.meta.saisieSeule,
+            `barreau ${r} : le pas à pas n'ouvre pas le clavier`);
     });
-    // LES BARREAUX 1 ET 2 N'EN ONT PAS, et c'est délibéré : leur réponse
-    // s'écrit d'un trait, et découper « x² − 36 » en quatre lignes ferait
-    // passer pour compliqué ce qui ne l'est pas.
-    ['1', '2'].forEach(r => assert.ok(!pas.find(e => e.params.barreau === r),
-        `le barreau ${r} n'a pas besoin d'être découpé`));
 });
+
 
 test('CHAQUE ÉTAPE SE JUGE, ET ACCEPTE CE QUI EST JUSTE', () => {
     for (const barreau of ['3', '4', '5', '6', '7']) {

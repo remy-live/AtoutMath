@@ -225,24 +225,25 @@ export const CODES_EXERCICES = {
     'sec-ensembles':              'EA',   // Le plus petit ensemble de nombres
     'sec-union-inter':            'EU',   // Union et intersection d'intervalles
     'sec-union-inter-vide':       'EX',   // Quand l'intersection est vide
-    'fac-1':                      'FB',   // Différence de deux carrés
-    'fac-2':                      'FC',   // Le coefficient est dans le carré
-    'fac-3':                      'FD',   // a devient une parenthèse
-    'fac-4':                      'FF',   // Deux parenthèses au carré
-    'fac-5':                      'FH',   // Facteur commun visible
-    'fac-6':                      'FJ',   // Facteur commun caché
-    'fac-7':                      'FL',   // Trois termes
-    'fac-3-pas':                  'EE',   // Étapes : a devient une parenthèse
-    'fac-4-pas':                  'EF',   // Étapes : deux parenthèses au carré
-    'fac-6-pas':                  'EH',   // Étapes : facteur commun caché
-    'fac-7-pas':                  'EJ',   // Étapes : trois termes
-    'dev-simple-pas':             'EK',   // Étapes : distributivité simple
-    'dev-double-pas':             'EP',   // Étapes : double distributivité
+    // LES DOUZE CARTES DE FACTORISATION SONT DEVENUES DEUX — Rémy : « on a
+    // quand même beaucoup d'exercices pour la même chose ». Les barreaux sont
+    // des cases à cocher, pas des exercices.
+    //
+    // LES DEUX CODES SONT REPRIS À CE QU'ILS DÉSIGNAIENT DÉJÀ, et c'est le
+    // moindre mal. La règle de cette table est qu'un code ne change jamais ;
+    // un exercice supprimé la met en défaut de toute façon — son code
+    // n'ouvrirait plus rien. En donnant FB (le barreau 1) à la carte
+    // « Factoriser » et EE (le 3 pas à pas) à « Factoriser pas à pas », un
+    // code dicté l'an dernier ouvre encore l'exercice qui contient sa
+    // question, réglages à cocher près. Les dix autres sont retirés : ils ne
+    // désignent plus rien, et un code qui ouvre le vide vaut moins qu'un code
+    // refusé.
+    'fac':                        'FB',   // Factoriser : a² − b² et facteur commun
+    'fac-pas':                    'EE',   // Factoriser pas à pas
     'geo-appartenance':           'KA',   // appartenance : le point est-il dessus ?
     'geo-appartenance-demi':      'KD',   // …avec les Demi-droites
     'geo-codage-lire':            'LE',   // Lire un codagE
     'geo-milieu':                 'ML',   // Le MiLieu
-    'fac-revision':               'FR',   // Les quatre premiers barreaux
     'cf-1':                       'GB',   // Deux fractions, dénominateur multiple
     'cf-2':                       'GD',   // Dénominateurs quelconques
     'cf-3':                       'GF',   // Produit : simplifier avant
@@ -257,21 +258,12 @@ export const CODES_EXERCICES = {
     'cf-12':                      'GV',   // Une fraction de fractions
     'cf-ensemble':                'GW',   // Calculer, puis dire l'ensemble
     'cf-revision':                'GN',   // Les quatre opérations
-    // DÉVELOPPER — D comme développer, et la seconde lettre monte avec le
-    // barreau, de sorte que l'ordre dicté soit celui de la progression.
-    'dev-1':                      'DB',   // Distributivité simple
-    'dev-2':                      'DH',   // Un moins dans la parenthèse
-    'dev-3':                      'DJ',   // Un coefficient devant la lettre
-    'dev-4':                      'DK',   // Le facteur est négatif
-    'dev-5':                      'DL',   // Deux distributions, puis réduire
-    'dev-6':                      'DN',   // Double distributivité
-    'dev-7':                      'DP',   // Un moins dans la seconde
-    'dev-8':                      'DU',   // Deux moins
-    'dev-9':                      'DW',   // Des coefficients partout
-    'dev-10':                     'DX',   // Le carré d'une somme
-    'dev-11':                     'DY',   // La différence de carrés
-    'dev-simple':                 'DZ',   // Révision — la distributivité simple
-    'dev-double':                 'VB',   // Révision — la double distributivité
+    // DÉVELOPPER — les quinze cartes sont devenues deux, pour la même raison
+    // que la factorisation ci-dessus. DB désignait le barreau 1 et désigne
+    // maintenant l'exercice entier ; EK, le pas à pas de la simple, désigne le
+    // pas à pas tout court.
+    'dev':                        'DB',   // Développer : simple et double
+    'dev-pas':                    'EK',   // Développer pas à pas
     // LES RACINES CARRÉES — R comme racine, et la seconde lettre monte avec le
     // barreau, de sorte que l'ordre dicté soit celui de la progression.
     'rc-1':                       'RA',   // Les carrés parfaits

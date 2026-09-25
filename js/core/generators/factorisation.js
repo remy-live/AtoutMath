@@ -48,6 +48,9 @@ import { makeItem, finalizeChoices } from '../items.js';
 import * as fx from '../maths/formule.js';
 import * as P from '../maths/polynome.js';
 import { garnirEtapes } from '../maths/etapes.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 // LE SIGNE MOINS, ET NON LE TRAIT D'UNION DU CLAVIER — comme dans le chapitre
 // des intervalles. `-3` et `−3` ne sont pas le même caractère, et les deux se
@@ -896,6 +899,46 @@ const BARREAUX = {
     7: { faire: barreau7, nom: 'Trois termes' }
 };
 
+// ── UN SEUL EXERCICE, SEPT MARCHES ──────────────────────────────────────────
+//
+// RÉMY : « est-ce que ce ne serait pas pertinent, pour l'identité x² − a², de
+// regrouper les exercices et de plutôt mettre des étapes avec un nombre de
+// questions ? Là on a quand même beaucoup d'exercices pour la même chose.
+// Qu'en penses-tu ? »
+//
+// COMPTÉ : vingt-sept cartes au catalogue pour ces deux notions — fac-1 à 7,
+// quatre « pas à pas », une révision, dev-1 à 11, simple, double et leurs deux
+// « pas à pas ». Or `barreau` et `etapes` étaient DÉJÀ deux réglages : ces
+// vingt-sept cartes étaient vingt-sept valeurs pré-réglées de deux menus.
+//
+// ET LE MÉCANISME QU'IL DÉCRIT EXISTE DÉJÀ, c'est le sien : « il faudrait
+// pouvoir choisir les niveaux par checkbox, avoir un nombre de questions que
+// ça change le nombre de questions, et avoir la même chose avec un peu le
+// diagramme en barres. » Il vit dans core/progression.js et vingt générateurs
+// s'en servent — relatifs, puissances, fractions, Thalès, pourcentages. Ces
+// deux chapitres-ci étaient les seuls écrits avec un menu à choix unique.
+//
+// LE NOM DE LA MARCHE PORTE SON EXEMPLE. C'est ce que faisait le menu, et
+// c'est ce qui permet de cocher sans ouvrir l'aide : on reconnaît « (6 − 5x)²
+// − 1 » d'un coup d'œil, « barreau 3 » jamais.
+const LISTE_MARCHES = [
+    { id: '1', nom: '1. x² − 36', groupe: 'revision' },
+    { id: '2', nom: '2. 9x² − 16', groupe: 'revision' },
+    { id: '3', nom: '3. (6 − 5x)² − 1', groupe: 'revision' },
+    { id: '4', nom: '4. (3x − 2)² − (x + 4)²', groupe: 'revision' },
+    { id: '5', nom: '5. Facteur commun visible', groupe: 'commun' },
+    { id: '6', nom: '6. Facteur commun caché', groupe: 'commun' },
+    { id: '7', nom: '7. Trois termes', groupe: 'commun' }
+];
+// LES DEUX TEMPS DU CHAPITRE. Sous huit marches la liste se lit d'un coup et
+// `groupesDeMarches` ne les affiche pas — mais ils servent quand même : un
+// parcours enregistré avec « Révision — les barreaux 1 à 4 » se relit comme
+// les quatre premières cases cochées, parce que la clef du groupe EST la
+// valeur d'alors. Ce qu'on a préparé hier ne se perd pas.
+const TEMPS = { revision: 'Les identités remarquables', commun: 'Le facteur commun' };
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'barreau' };
+
 // ── LE SUPPORT VISUEL ───────────────────────────────────────────────────────
 
 /**
@@ -960,24 +1003,15 @@ export const factorisationGenerator = {
     skills: ['lit.factoriser.identite', 'lit.factoriser.commun'],
     answerKinds: ['choice'],
     ecrit: true,
+    // LA LONGUEUR SUIT LE NOMBRE DE MARCHES COCHÉES — voir core/duree.js. Sept
+    // marches à deux questions en demandent quatorze ; un défaut de dix aurait
+    // arrêté l'exercice avant les deux dernières, c'est-à-dire avant le facteur
+    // commun caché, qui est le sujet de la fin du chapitre.
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'barreau', type: 'select', label: 'Quel barreau', default: '1',
-            // ≤ 200 caractères, comme tous les `aide` du projet.
-            aide: 'Un barreau ajoute UNE chose au précédent. La progression se fait '
-                + 'en posant plusieurs de ces exercices à la suite dans une séance.',
-            options: [
-                { value: '1', label: '1 — x² − 36' },
-                { value: '2', label: '2 — 9x² − 16' },
-                { value: '3', label: '3 — (6 − 5x)² − 1' },
-                { value: '4', label: '4 — (3x − 2)² − (x + 4)²' },
-                { value: '5', label: '5 — facteur commun visible' },
-                { value: '6', label: '6 — facteur commun caché' },
-                { value: '7', label: '7 — trois termes' },
-                { value: 'revision', label: 'Révision — les barreaux 1 à 4' },
-                { value: 'toutes', label: 'Tout mélangé' }
-            ]
-        },
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: 'barreau', ancien: ANCIEN
+        }),
         {
             id: 'etapes', type: 'select', label: 'Pas à pas', default: 'non',
             // PAS SUR LA FICHE PAPIER, et un test l'a dit avant moi.
@@ -1004,11 +1038,13 @@ export const factorisationGenerator = {
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const choix = String(params.barreau || '1');
         const pasAPas = String(params.etapes || 'non') === 'oui';
-        const possibles = choix === 'toutes' ? [1, 2, 3, 4, 5, 6, 7]
-            : (choix === 'revision' ? [1, 2, 3, 4] : [Number(choix) || 1]);
-        const rang = possibles[rng.int(0, possibles.length - 1)];
+        // LES BARREAUX COCHÉS SE PARTAGENT LES QUESTIONS, dans l'ordre —
+        // voir core/progression.js. Ce n'est plus un tirage au sort : une
+        // progression qui mélange ne fait pas monter, elle brasse.
+        const rang = Number(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params)) || 1;
         const q = BARREAUX[rang].faire(rng);
 
         // PAS DE SUPPORT VISUEL ICI, ET C'EST UNE DEMANDE EXPRESSE.
@@ -1292,7 +1328,15 @@ export const factorisationGenerator = {
             // réponse, c'est toujours un QCM, quel dommage ». Les parenthèses
             // sont au clavier — une factorisation en a besoin, et elles
             // n'apparaissent que là.
-            meta: { barreau: rang, nomDuBarreau: BARREAUX[rang].nom,
+            meta: {
+                barreau: rang,
+                // LE NOM QUE LE RESTE DE L'APPLICATION ATTEND d'un générateur
+                // à progression. `barreau` est le mot de ce chapitre ;
+                // `marche` est celui de core/progression.js, et c'est lui que
+                // lisent les garde-fous communs — sans quoi une marche jamais
+                // jouée passerait inaperçue ici alors qu'elle est détectée
+                // partout ailleurs.
+                marche: String(rang), nomDuBarreau: BARREAUX[rang].nom,
                 composable: 'litteral', lettre: 'x', degreMax: 3, parentheses: true,
                 // PAS À PAS — Rémy : « Pour les factorisations compliqué du
                 // genre (x+3)² − (3x + 5)², on pourrait proposer plusieurs

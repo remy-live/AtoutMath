@@ -39,36 +39,6 @@ const SECONDE = TAGS.NIVEAU.SECONDE;
 // apprennent à s'en servir pour autre chose, et c'est le vrai saut de la
 // Seconde. Les barreaux 3, 4 et 7 produisent exactement les formes A(x),
 // D(x), B(x) et C(x) de la feuille.
-const BARREAUX = [
-    ['fac-1', 'FB', '1. Différence de deux carrés',
-        'x² − 36 : reconnaître a² − b² quand b est un nombre.',
-        "Un carré moins un carré se factorise TOUJOURS : a² − b² = (a − b)(a + b). "
-        + "Le dessin montre pourquoi — on découpe le grand carré et on recolle."],
-    ['fac-2', 'FC', '2. Le coefficient est dans le carré',
-        '9x² − 16 : a n\'est plus x tout seul.',
-        "9x² est le carré de 3x, pas de 9x. C'est la RACINE qu'on écrit dans les "
-        + "parenthèses, et c'est là que tout le monde se trompe la première fois."],
-    ['fac-3', 'FD', '3. a devient une parenthèse',
-        '(6 − 5x)² − 1 : a est une expression entière.',
-        "Rien ne change à la règle : a vaut 6 − 5x, b vaut 1. On écrit (a − b)(a + b), "
-        + "puis on réduit chaque parenthèse."],
-    ['fac-4', 'FF', '4. Deux parenthèses au carré',
-        '(3x − 2)² − (x + 4)² : b aussi est une expression.',
-        "Le moins devant la seconde parenthèse change SES DEUX signes. C'est la faute "
-        + "numéro un de ce barreau, et elle ne pardonne pas."],
-    ['fac-5', 'FH', '5. Facteur commun visible',
-        'Ce qui est écrit dans les deux termes se met devant.',
-        "k·A + k·B = k(A + B). Ici le facteur commun est écrit deux fois, sous les yeux : "
-        + "il suffit de le sortir, et de garder ce qui restait derrière."],
-    ['fac-6', 'FJ', '6. Facteur commun caché',
-        'Il faut factoriser un morceau pour le faire apparaître.',
-        "x² − 9 cache (x − 3), et −4x + 12 cache −4(x − 3). On factorise d'abord le "
-        + "morceau qui dissimule le facteur commun — ensuite c'est le barreau 5."],
-    ['fac-7', 'FL', '7. Trois termes',
-        'Les expressions de la feuille : B(x) et C(x).',
-        "Trois termes, un facteur commun caché dans deux d'entre eux. C'est l'exercice "
-        + "de la feuille : on ne fait rien de nouveau, on fait tout à la fois."]
-];
 
 export const secondeExercises = [
     {
@@ -173,72 +143,78 @@ export const secondeExercises = [
             + "juste. L'intersection peut être VIDE — cela s'écrit ∅ — et l'union peut "
             + "rester en deux morceaux : on ne bouche pas le trou."
     },
-    ...BARREAUX.map(([id, , titre, resume, instruction], i) => ({
-        id,
-        cree: '2026-09-23',
-        title: titre,
+    // ── FACTORISER : UN EXERCICE, SEPT BARREAUX À COCHER ────────────────────
+    //
+    // RÉMY : « est-ce que ce ne serait pas pertinent, pour l'identité x² − a²,
+    // de regrouper les exercices et de plutôt mettre des étapes avec un nombre
+    // de questions ? Là on a quand même beaucoup d'exercices pour la même
+    // chose. »
+    //
+    // Il avait raison, et le compte le disait : SEPT cartes pour les sept
+    // barreaux, QUATRE pour les mêmes en pas à pas, UNE pour la révision — et
+    // `barreau` était déjà un réglage. Douze cartes pour deux menus.
+    //
+    // La progression n'est pas perdue pour autant, elle change de place : elle
+    // était dans l'ORDRE OÙ L'ON POSAIT LES CARTES, elle est maintenant dans
+    // les cases cochées et la barre de partage — le mécanisme que Rémy a
+    // lui-même demandé pour les relatifs et que vingt générateurs utilisent.
+    // « Poser les sept dans une séance, dans l'ordre » devient « cocher les
+    // sept, vingt questions » : c'est le même parcours, en un geste.
+    {
+        id: 'fac',
+        cree: '2026-09-25',
+        title: 'Factoriser : a² − b² et facteur commun',
         consignePapier: 'Factoriser les expressions suivantes.',
         colonnesPapier: 1,
         generatorId: 'lit.factorisation', activityId: 'buttons',
-        params: { barreau: String(i + 1) },
+        // AUCUN RÉGLAGE POSÉ : toutes les cases sont cochées par défaut, et le
+        // conseil de longueur suit (sept barreaux, quatorze questions). Le
+        // professeur décoche ce qu'il ne travaille pas aujourd'hui.
+        params: {},
         motsClefs: ['factoriser', 'factorisation', 'identité remarquable',
-            'différence de carrés', 'facteur commun', 'calcul littéral', 'seconde',
-            'lycée', resume.split(' ')[0].replace(/[^\wxÀ-ÿ²−]/g, '')],
+            'différence de carrés', 'facteur commun', 'calcul littéral',
+            'progression', 'seconde', 'lycée'],
         tags: { chemin: [D, LIT], niveaux: [SECONDE] },
-        instruction
-    })),
-    // ── FACTORISER PAS À PAS ────────────────────────────────────────────────
+        instruction: "Sept barreaux, du plus simple au plus complet, et tu choisis "
+            + "ceux que la classe travaille aujourd'hui. 1 : x² − 36. 2 : 9x² − 16, où "
+            + "a n'est plus x tout seul. 3 : (6 − 5x)² − 1, a devient une parenthèse. "
+            + "4 : (3x − 2)² − (x + 4)², b aussi. 5, 6, 7 : le facteur commun, visible "
+            + "puis caché, puis à trois termes — les expressions de la feuille."
+    },
+    // ── ET LA MÊME CHOSE, LIGNE À LIGNE ─────────────────────────────────────
     //
-    // RÉMY : « Pour les factorisations compliqué du genre (x+3)² − (3x + 5)²,
-    // on pourrait proposer plusieurs étapes non ? »
+    // RÉMY : « c'est génial ton idée de carte "pas à pas" prête ».
     //
-    // Ces questions-là ne sont pas difficiles, elles sont LONGUES. Qui échoue
-    // sur (x + 3)² − (3x + 5)² n'a presque jamais raté l'identité : il a perdu
-    // un signe en réduisant a − b, trois lignes plus bas. Un « faux » sur la
-    // réponse entière ne dit ni où ni quoi, et la correction arrive toute
-    // faite — l'élève la lit et n'apprend pas où il a lâché.
+    // Le pas à pas reste un RÉGLAGE — il s'applique donc à n'importe quel
+    // barreau, y compris les deux premiers, qui n'y avaient pas droit quand
+    // c'étaient des cartes séparées. Mais une carte déjà cochée se POSE : on
+    // la prend dans le catalogue sans ouvrir les réglages, ce qui est
+    // exactement ce qu'on veut quand on prépare une remédiation en fin
+    // d'heure.
     //
-    // CE SONT LES MÊMES QUESTIONS, écrites ligne à ligne : a, b, a − b, a + b,
-    // puis le produit. Seule la dernière ligne est notée ; les autres sont
-    // l'écriture du raisonnement, corrigée sur place.
-    //
-    // DES EXERCICES À PART, ET NON UN RÉGLAGE DE CEUX D'AVANT. Le professeur
-    // pose un parcours : il doit pouvoir mettre « le 4 pas à pas » avant « le
-    // 4 » sans réécrire les réglages de l'étape. Un exercice qui porte son nom
-    // se pose ; un réglage caché se retrouve.
-    //
-    // PAS DE PAS À PAS AUX BARREAUX 1 ET 2 : leur réponse s'écrit d'un trait,
-    // et découper « x² − 36 » en quatre lignes ferait passer pour compliqué ce
-    // qui ne l'est pas.
-    ...[
-        ['fac-3-pas', '3', '3. a devient une parenthèse — pas à pas',
-            "Les mêmes questions que le barreau 3, écrites ligne à ligne : a, b, "
-            + "a − b, a + b, puis le produit. C'est la première fois que les deux "
-            + "parenthèses demandent une réduction, et c'est là que le signe se perd."],
-        ['fac-4-pas', '4', '4. Deux parenthèses au carré — pas à pas',
-            "L'exercice que Rémy cite : (x + 3)² − (3x + 5)². Deux réductions, dont "
-            + "l'une passe par le moins devant la parenthèse. Découpé, on voit "
-            + "laquelle des deux a lâché."],
-        ['fac-6-pas', '6', '6. Facteur commun caché — pas à pas',
-            "On factorise d'abord le morceau qui cache le facteur commun, on nomme "
-            + "ce facteur, puis on écrit ce qui reste. Trois gestes, trois lignes."],
-        ['fac-7-pas', '7', '7. Trois termes — pas à pas',
-            "L'exercice de la feuille, ligne à ligne. Rien de nouveau : tout à la "
-            + "fois, mais une chose après l'autre."]
-    ].map(([id, barreau, titre, instruction]) => ({
-        id,
-        cree: '2026-09-24',
-        title: titre,
+    // RÉMY, À L'ORIGINE : « Pour les factorisations compliqué du genre
+    // (x+3)² − (3x + 5)², on pourrait proposer plusieurs étapes non ? » Ces
+    // questions-là ne sont pas difficiles, elles sont LONGUES : qui échoue sur
+    // (x + 3)² − (3x + 5)² n'a presque jamais raté l'identité, il a perdu un
+    // signe en réduisant a − b trois lignes plus bas. Seule la dernière ligne
+    // est notée ; les autres sont l'écriture du raisonnement.
+    {
+        id: 'fac-pas',
+        cree: '2026-09-25',
+        title: 'Factoriser pas à pas',
         consignePapier: 'Factoriser les expressions suivantes.',
         colonnesPapier: 1,
         generatorId: 'lit.factorisation', activityId: 'buttons',
-        params: { barreau, etapes: 'oui' },
+        params: { etapes: 'oui' },
         motsClefs: ['factoriser', 'factorisation', 'pas à pas', 'étapes', 'étape',
             'détaillé', 'méthode', 'identité remarquable', 'facteur commun',
             'calcul littéral', 'seconde', 'lycée'],
         tags: { chemin: [D, LIT], niveaux: [SECONDE] },
-        instruction
-    })),
+        instruction: "Les mêmes questions, écrites ligne à ligne : les deux carrés, "
+            + "puis (a − b)(a + b) sans rien réduire, puis on réduit. Le champ montre "
+            + "la FORME attendue — (…)² − □² — et chaque ligne est corrigée sur place. "
+            + "Seule la dernière compte pour la séance."
+    },
     ...[
         ['cf-1', '1. Même dénominateur',
             "La marche zéro, et la plus importante : les deux fractions sont déjà "
@@ -390,23 +366,5 @@ export const secondeExercises = [
         instruction: "Les quatre premiers barreaux mélangés. La question n'est plus "
             + "« comment » mais « combien de carrés y a-t-il là-dedans » : un, deux, ou "
             + "le nombre entier en est un."
-    },
-    {
-        id: 'fac-revision',
-        cree: '2026-09-23',
-        title: 'Factoriser : les quatre premiers barreaux',
-        consignePapier: 'Factoriser les expressions suivantes.',
-        colonnesPapier: 1,
-        generatorId: 'lit.factorisation', activityId: 'buttons',
-        // LE MÉLANGE VIENT APRÈS LA MONTÉE, jamais à la place. Tant qu'on
-        // travaille un barreau, l'élève sait ce qu'on lui demande et peut se
-        // concentrer sur COMMENT. Mélangés, les quatre posent une question de
-        // plus, qui est la vraie question d'un contrôle : LEQUEL est-ce ?
-        params: { barreau: 'revision' },
-        motsClefs: ['factoriser', 'révision', 'identité remarquable', 'seconde'],
-        tags: { chemin: [D, LIT], niveaux: [SECONDE] },
-        instruction: "Les quatre premiers barreaux mélangés. La question n'est plus "
-            + "« comment » mais « lequel » : repère d'abord ce qui joue le rôle de a et "
-            + "ce qui joue celui de b."
     }
 ];

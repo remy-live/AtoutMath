@@ -43,6 +43,9 @@ import { makeItem, finalizeChoices } from '../items.js';
 import * as fx from '../maths/formule.js';
 import * as P from '../maths/polynome.js';
 import { garnirEtapes } from '../maths/etapes.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 const M = '−';
 
@@ -693,6 +696,37 @@ const BARREAUX = {
     11: { faire: (r) => barreauDouble(r, { conjugue: true }) }
 };
 
+// ── UN SEUL EXERCICE, ONZE MARCHES ──────────────────────────────────────────
+//
+// Voir l'en-tête de factorisation.js : Rémy a demandé de regrouper, et le
+// mécanisme des marches cochées est le sien, déjà en place chez vingt
+// générateurs. Ici les onze barreaux portent en plus DEUX TEMPS, qui sont les
+// deux leçons du chapitre — et qui étaient déjà, mot pour mot, les deux
+// entrées « Révision » du menu. La clef du groupe EST la valeur d'alors, si
+// bien qu'un parcours enregistré « la distributivité simple » se relit comme
+// les cinq premières cases cochées.
+//
+// ONZE MARCHES DÉPASSENT HUIT : la liste se plie donc en deux temps dans le
+// panneau (voir `groupesDeMarches`), ce qui est exactement ce que Rémy avait
+// demandé pour les relatifs — « pour un exercice des nombres relatifs il y a
+// beaucoup d'étapes, ça risque d'être illisible ».
+const LISTE_MARCHES = [
+    { id: '1', nom: '1. 3(x + 2)', groupe: 'simple' },
+    { id: '2', nom: '2. 3(x − 2)', groupe: 'simple' },
+    { id: '3', nom: '3. 3(2x + 5)', groupe: 'simple' },
+    { id: '4', nom: '4. −2(x + 5), le facteur négatif', groupe: 'simple' },
+    { id: '5', nom: '5. Deux distributions, puis réduire', groupe: 'simple' },
+    { id: '6', nom: '6. (x + 2)(x + 3)', groupe: 'double' },
+    { id: '7', nom: '7. (x + 2)(x − 3)', groupe: 'double' },
+    { id: '8', nom: '8. (x − 2)(x − 3)', groupe: 'double' },
+    { id: '9', nom: '9. (2x + 3)(3x − 1)', groupe: 'double' },
+    { id: '10', nom: '10. (x + 4)², le carré', groupe: 'double' },
+    { id: '11', nom: '11. (x − 5)(x + 5)', groupe: 'double' }
+];
+const TEMPS = { simple: 'La distributivité simple', double: 'La double distributivité' };
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'barreau' };
+
 // ── LE GÉNÉRATEUR ───────────────────────────────────────────────────────────
 
 /** Des leurres de secours, pour que le compte soit toujours de quatre. */
@@ -718,28 +752,15 @@ export const developpementGenerator = {
     skills: ['lit.developper.simple', 'lit.developper.double'],
     answerKinds: ['choice'],
     ecrit: true,
+    // LA LONGUEUR SUIT LE NOMBRE DE MARCHES COCHÉES — voir core/duree.js.
+    // Onze marches à deux questions en demandent vingt-deux ; un défaut de dix
+    // s'arrêtait avant le carré et la différence de carrés, qui sont la fin du
+    // chapitre et la porte de la factorisation.
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'barreau', type: 'select', label: 'Quel barreau', default: '1',
-            aide: 'Un barreau ajoute UNE chose au précédent. La progression se fait en '
-                + 'posant plusieurs de ces exercices à la suite dans une séance.',
-            options: [
-                { value: '1', label: '1 — 3(x + 2)' },
-                { value: '2', label: '2 — 3(x − 2)' },
-                { value: '3', label: '3 — 3(2x + 5)' },
-                { value: '4', label: '4 — −2(x + 5), le facteur négatif' },
-                { value: '5', label: '5 — deux distributions, puis réduire' },
-                { value: '6', label: '6 — (x + 2)(x + 3)' },
-                { value: '7', label: '7 — (x + 2)(x − 3)' },
-                { value: '8', label: '8 — (x − 2)(x − 3)' },
-                { value: '9', label: '9 — (2x + 3)(3x − 1)' },
-                { value: '10', label: '10 — (x + 4)², le carré' },
-                { value: '11', label: '11 — (x − 5)(x + 5)' },
-                { value: 'simple', label: 'Révision — la distributivité simple' },
-                { value: 'double', label: 'Révision — la double distributivité' },
-                { value: 'toutes', label: 'Tout mélangé' }
-            ]
-        },
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: 'barreau', ancien: ANCIEN
+        }),
         {
             id: 'etapes', type: 'select', label: 'Pas à pas', default: 'non',
             // PAS SUR LA FICHE PAPIER : le découpage est une affaire d'écran.
@@ -759,12 +780,12 @@ export const developpementGenerator = {
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const choix = String(params.barreau || '1');
-        const possibles = choix === 'toutes' ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-            : (choix === 'simple' ? [1, 2, 3, 4, 5]
-                : (choix === 'double' ? [6, 7, 8, 9, 10, 11] : [Number(choix) || 1]));
         const pasAPas = String(params.etapes || 'non') === 'oui';
-        const tire = possibles[rng.int(0, possibles.length - 1)];
+        // LES BARREAUX COCHÉS SE PARTAGENT LES QUESTIONS, dans l'ordre —
+        // voir core/progression.js.
+        const tire = Number(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params)) || 1;
         const rang = BARREAUX[tire] ? tire : 1;
         const q = BARREAUX[rang].faire(rng);
 
@@ -961,7 +982,15 @@ export const developpementGenerator = {
             },
             explanation: `${enonceTexte} = ${repTexte}. ${q.explique}`,
             difficulty: Math.min(5, 1 + Math.floor(rang / 2.5)),
-            meta: { barreau: rang, nomDuBarreau: q.nom,
+            meta: {
+                barreau: rang,
+                // LE NOM QUE LE RESTE DE L'APPLICATION ATTEND d'un générateur
+                // à progression. `barreau` est le mot de ce chapitre ;
+                // `marche` est celui de core/progression.js, et c'est lui que
+                // lisent les garde-fous communs — sans quoi une marche jamais
+                // jouée passerait inaperçue ici alors qu'elle est détectée
+                // partout ailleurs.
+                marche: String(rang), nomDuBarreau: q.nom,
                 // Le clavier littéral : x et x², pas de parenthèses — une
                 // expression développée n'en a jamais.
                 composable: 'litteral', lettre: 'x', degreMax: 2,

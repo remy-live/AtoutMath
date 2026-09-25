@@ -780,130 +780,64 @@ export const numerationExercises = [
     // n'apprenait à ouvrir une parenthèse. C'est pourtant le geste dont la
     // factorisation est l'inverse, et celui par lequel on la VÉRIFIE.
     //
-    // ONZE EXERCICES ET NON UN À ONZE NIVEAUX : c'est la façon de faire de la
-    // maison, et c'est la réponse à « très progressif ». Le professeur les pose
-    // dans l'ordre au fil d'une séance, et chacun ne travaille QU'UNE chose de
-    // plus que le précédent. Les cinq premiers sont la distributivité simple,
-    // les six autres la double.
-    ...[
-        ['dev-1', '1. Distributivité simple', '4-3',
-            "Le rectangle de hauteur 3 et de largeur x + 2 : on le coupe en deux "
-            + "morceaux, et leur somme est l'aire entière. Le facteur multiplie TOUT "
-            + "ce qui est dans la parenthèse."],
-        ['dev-2', '2. Un moins dans la parenthèse', '4-3',
-            "3(x − 2) : le second morceau est RETIRÉ, pas ajouté. Le dessin le montre "
-            + "d'un trait pointillé, et le signe du résultat en découle."],
-        ['dev-3', '3. Un coefficient devant la lettre', '4-3',
-            "3(2x + 5) : le facteur multiplie le NOMBRE devant la lettre, et la lettre "
-            + "ne bouge pas. C'est 6x, jamais 6x²."],
-        ['dev-4', '4. Le facteur est négatif', '4-3',
-            "−2(x + 5) : le moins multiplie les DEUX morceaux. C'est le piège du "
-            + "chapitre, et le second terme change de signe — beaucoup l'oublient."],
-        ['dev-5', '5. Deux distributions, puis réduire', '4-3',
-            "2(x + 1) + 3(x − 2) : deux rectangles, donc deux distributions, et "
-            + "ensuite seulement on réunit les x avec les x et les nombres avec les "
-            + "nombres."],
-        ['dev-6', '6. Double distributivité', '3-2',
-            "(x + 2)(x + 3) : le rectangle est coupé dans les DEUX sens. Quatre "
-            + "morceaux, donc quatre produits — et les deux du milieu sont ceux qu'on "
-            + "oublie."],
-        ['dev-7', '7. Un moins dans la seconde', '3-2',
-            "(x + 2)(x − 3) : chaque case prend le signe du produit de ses deux bords. "
-            + "Une seule case change, et le dessin dit laquelle."],
-        ['dev-8', '8. Deux moins', '3-2',
-            "(x − 2)(x − 3) : deux bords négatifs donnent une case POSITIVE. C'est ici "
-            + "qu'un dessin vaut mieux qu'une règle apprise par cœur."],
-        ['dev-9', '9. Des coefficients partout', '3-2',
-            "(2x + 3)(3x − 1) : le premier morceau devient 6x², et les deux du milieu "
-            + "ne se réunissent qu'après avoir été calculés séparément."],
-        ['dev-10', '10. Le carré d\'une somme', '3-2',
-            "(x + 4)² : c'est le rectangle multiplié par LUI-MÊME. Les deux cases du "
-            + "milieu sont identiques et s'ajoutent — c'est le double produit, et "
-            + "x² + 16 est la faute la plus répandue du collège."],
-        ['dev-11', '11. La différence de carrés', '3-2',
-            "(x − 5)(x + 5) : les deux cases du milieu ont des signes contraires et "
-            + "s'ANNULENT. Il ne reste que x² − 25 — l'identité qu'on utilisera à "
-            + "l'envers pour factoriser, en Seconde."]
-    ].map(([id, titre, niv, instruction], i) => ({
-        id,
-        cree: '2026-09-23',
-        title: titre,
-        consignePapier: 'Développer et réduire les expressions suivantes.',
-        colonnesPapier: 2,
-        generatorId: 'lit.developpement', activityId: 'buttons',
-        params: { barreau: String(i + 1) },
-        motsClefs: ['développer', 'développement', 'distributivité', 'parenthèse',
-            'calcul littéral', 'identité remarquable', 'aire', 'rectangle'],
-        tags: { chemin: [D, LITT],
-            niveaux: niv === '4-3' ? [QUATRIEME, TROISIEME] : [TROISIEME, SECONDE] },
-        instruction
-    })),
-    {
-        id: 'dev-simple',
-        cree: '2026-09-23',
-        title: 'Développer : la distributivité simple',
-        consignePapier: 'Développer et réduire les expressions suivantes.',
-        colonnesPapier: 2,
-        generatorId: 'lit.developpement', activityId: 'buttons',
-        params: { barreau: 'simple' },
-        motsClefs: ['développer', 'distributivité', 'révision', 'parenthèse'],
-        tags: { chemin: [D, LITT], niveaux: [QUATRIEME, TROISIEME] },
-        instruction: "Les cinq premiers barreaux mélangés. La question n'est plus "
-            + "« comment » mais « où est le piège » : un signe dans la parenthèse, un "
-            + "facteur négatif, un coefficient devant la lettre."
-    },
-    {
-        id: 'dev-double',
-        cree: '2026-09-23',
-        title: 'Développer : la double distributivité',
-        consignePapier: 'Développer et réduire les expressions suivantes.',
-        colonnesPapier: 2,
-        generatorId: 'lit.developpement', activityId: 'buttons',
-        params: { barreau: 'double' },
-        motsClefs: ['développer', 'double distributivité', 'identité remarquable',
-            'révision', 'carré'],
-        tags: { chemin: [D, LITT], niveaux: [TROISIEME, SECONDE] },
-        instruction: "Les six derniers barreaux mélangés, carré et différence de carrés "
-            + "compris. Quatre morceaux à chaque fois : celui qui n'en compte que deux "
-            + "se trompe toujours au même endroit."
-    },
-    // ── DÉVELOPPER PAS À PAS ────────────────────────────────────────────────
+    // ── DÉVELOPPER : UN EXERCICE, ONZE BARREAUX À COCHER ────────────────────
     //
-    // RÉMY : « on peut proposer une ligne pour pouvoir le taper. »
+    // RÉMY : « on a quand même beaucoup d'exercices pour la même chose ».
+    //
+    // Quinze cartes ici — onze barreaux, deux révisions, deux pas à pas — pour
+    // deux réglages qui existaient déjà. La progression n'est pas perdue, elle
+    // change de place : elle était dans l'ordre où l'on posait les cartes, elle
+    // est maintenant dans les cases cochées. Les onze barreaux se plient en
+    // deux temps — la distributivité simple, la double —, et cocher un temps
+    // entier fait exactement ce que faisaient « dev-simple » et « dev-double ».
+    {
+        id: 'dev',
+        cree: '2026-09-25',
+        title: 'Développer : distributivité simple et double',
+        consignePapier: 'Développer et réduire les expressions suivantes.',
+        colonnesPapier: 2,
+        generatorId: 'lit.developpement', activityId: 'buttons',
+        params: {},
+        motsClefs: ['développer', 'développement', 'distributivité', 'parenthèse',
+            'calcul littéral', 'identité remarquable', 'aire', 'rectangle',
+            'double distributivité', 'carré', 'progression'],
+        tags: { chemin: [D, LITT], niveaux: [QUATRIEME, TROISIEME, SECONDE] },
+        instruction: "Onze barreaux en deux temps, et tu choisis ceux que la classe "
+            + "travaille. La distributivité simple d'abord — 3(x + 2), puis le moins "
+            + "dans la parenthèse, le coefficient devant la lettre, le facteur négatif, "
+            + "deux distributions à réunir. Puis la double : (x + 2)(x + 3) jusqu'au "
+            + "carré (x + 4)² et à la différence (x − 5)(x + 5), qu'on relira à "
+            + "l'envers pour factoriser."
+    },
+    // ── ET LA MÊME CHOSE, LIGNE À LIGNE ─────────────────────────────────────
+    //
+    // RÉMY : « on peut proposer une ligne pour pouvoir le taper », puis
+    // « c'est génial ton idée de carte "pas à pas" prête ».
     //
     // C'est la ligne que les flèches dessinent : les produits ÉCRITS avant
     // d'être calculés. Celui qui la saute est celui qui oublie les deux
     // produits du milieu, et un « faux » sur la réponse entière ne dit pas
     // lequel des quatre a manqué.
     //
-    // DEUX EXERCICES, PAS ONZE. La factorisation en a quatre parce que ses
-    // barreaux demandent des gestes différents ; ici la méthode est la même
-    // d'un bout à l'autre — on écrit les produits, on les calcule, on réunit.
-    // Un pas à pas pour la distributivité simple, un pour la double, et le
-    // réglage « Pas à pas » reste disponible sur les onze barreaux pour qui
-    // veut le poser ailleurs.
-    ...[
-        ['dev-simple-pas', 'simple', 'Développer pas à pas : la distributivité simple',
-            "Les mêmes questions que la révision simple, écrites ligne à ligne : les "
-            + "produits d'abord, sans les calculer, puis on calcule. C'est la ligne du "
-            + "milieu qui manque à ceux qui n'ouvrent la parenthèse qu'à moitié."],
-        ['dev-double-pas', 'double', 'Développer pas à pas : la double distributivité',
-            "Quatre produits, écrits avant d'être calculés, puis réunis. Celui qui "
-            + "oublie les deux du milieu le voit à la ligne où il n'en écrit que deux."]
-    ].map(([id, barreau, titre, instruction]) => ({
-        id,
-        cree: '2026-09-24',
-        title: titre,
+    // LE PAS À PAS RESTE UN RÉGLAGE, disponible sur les onze barreaux ; cette
+    // carte-ci est ce réglage déjà posé, pour qu'on l'attrape sans ouvrir le
+    // panneau quand on prépare une remédiation.
+    {
+        id: 'dev-pas',
+        cree: '2026-09-25',
+        title: 'Développer pas à pas',
         consignePapier: 'Développer et réduire les expressions suivantes.',
         colonnesPapier: 2,
         generatorId: 'lit.developpement', activityId: 'buttons',
-        params: { barreau, etapes: 'oui' },
+        params: { etapes: 'oui' },
         motsClefs: ['développer', 'pas à pas', 'étapes', 'étape', 'détaillé', 'méthode',
             'distributivité', 'double distributivité', 'parenthèse', 'calcul littéral'],
-        tags: { chemin: [D, LITT],
-            niveaux: barreau === 'simple' ? [QUATRIEME, TROISIEME] : [TROISIEME, SECONDE] },
-        instruction
-    })),
+        tags: { chemin: [D, LITT], niveaux: [QUATRIEME, TROISIEME, SECONDE] },
+        instruction: "Les mêmes questions, écrites ligne à ligne : les produits "
+            + "d'abord, sans les calculer, puis on calcule, puis on réunit. Le champ "
+            + "montre la FORME attendue, et seule la dernière ligne compte pour la "
+            + "séance — les autres sont l'écriture du raisonnement."
+    },
     {
         // TROIS TEMPS, ET L'ORDRE EST LE SUJET. « ×10, on ajoute un zéro » est
         // une règle qui marche pour les entiers et casse dès la première

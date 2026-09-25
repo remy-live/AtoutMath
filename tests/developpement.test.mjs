@@ -282,20 +282,54 @@ test('les deux compétences existent, et leurs prérequis aussi', () => {
         'la double distributivité devrait exiger la simple');
 });
 
-test('les exercices sont au catalogue, et montent dans l\'ordre', () => {
+test('les barreaux sont au catalogue, et montent dans l\'ordre', () => {
+    // C'ÉTAIT QUINZE CARTES, C'EST DEUX — Rémy : « on a quand même beaucoup
+    // d'exercices pour la même chose ». La progression n'a pas disparu, elle a
+    // changé de place : du catalogue vers les cases à cocher. Ce test garde la
+    // même chose qu'avant — les onze barreaux existent, sont nommés dans
+    // l'ordre, et se jouent tous — à l'endroit où elle vit désormais.
     const miens = exercices.filter(e => e.generatorId === 'lit.developpement');
-    assert.equal(miens.length, 15, 'onze barreaux, deux révisions, deux pas à pas');
-    for (let r = 1; r <= 11; r++) {
-        const e = miens.find(x => x.id === `dev-${r}`);
-        assert.ok(e, `barreau ${r} absent du catalogue`);
-        assert.match(e.title, new RegExp(`^${r}\\.`), 'le titre ne porte pas son rang');
-        assert.ok(e.instruction && e.instruction.length >= 10);
-        assert.equal(e.params.barreau, String(r));
+    assert.equal(miens.length, 2, 'un exercice, et le même en pas à pas');
+    const carte = miens.find(e => e.id === 'dev');
+    assert.ok(carte, 'la carte « Développer » a disparu du catalogue');
+    assert.equal(carte.params.barreau, undefined, 'la carte fige un barreau');
+
+    const cases = G.params.find(p => p.type === 'marches');
+    assert.ok(cases, 'le générateur n\'offre plus de cases à cocher');
+    assert.deepEqual(cases.marches.map(m => m.id),
+        ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']);
+    cases.marches.forEach((m, i) => assert.match(m.nom, new RegExp(`^${i + 1}\\.`),
+        `la marche ${m.id} ne porte pas son rang`));
+
+    // LES DEUX TEMPS DU CHAPITRE : cinq barreaux de distributivité simple,
+    // six de double. C'est ce que disaient « dev-simple » et « dev-double »,
+    // et un parcours enregistré ainsi se relit encore — la clef du groupe EST
+    // la valeur d'alors.
+    const simples = cases.marches.filter(m => m.groupe === 'simple').map(m => m.id);
+    const doubles = cases.marches.filter(m => m.groupe === 'double').map(m => m.id);
+    assert.deepEqual(simples, ['1', '2', '3', '4', '5']);
+    assert.deepEqual(doubles, ['6', '7', '8', '9', '10', '11']);
+    [['simple', simples], ['double', doubles]].forEach(([vieux, attendus]) => {
+        const joues = attendus.map((_, i) => String(G.generate({ barreau: vieux },
+            { rng: makeRng(`${vieux}_${i}`), index: i, total: attendus.length }).meta.barreau));
+        assert.deepEqual(joues, attendus,
+            `un parcours réglé sur « ${vieux} » ne joue plus les mêmes barreaux`);
+    });
+
+    // ET ON LES MONTE TOUS, sur la longueur que l'exercice conseille.
+    const total = G.conseil({});
+    assert.ok(total >= 22, `conseil de ${total} questions pour onze barreaux`);
+    const montee = [];
+    for (let i = 0; i < total; i++) {
+        montee.push(G.generate({}, { rng: makeRng(`m_${i}`), index: i, total }).meta.barreau);
     }
-    // LA DISTRIBUTIVITÉ SIMPLE EST DU COLLÈGE, LA DOUBLE ENJAMBE LE LYCÉE.
-    const niv = (id) => miens.find(x => x.id === id).tags.niveaux;
-    assert.deepEqual(niv('dev-1'), ['4ème', '3ème']);
-    assert.deepEqual(niv('dev-11'), ['3ème', '2nde']);
+    assert.deepEqual([...new Set(montee)], BARREAUX, 'la montée saute un barreau');
+    montee.forEach((r, i) => assert.ok(i === 0 || r >= montee[i - 1],
+        `question ${i + 1} : on redescend du barreau ${montee[i - 1]} au ${r}`));
+
+    // LA DISTRIBUTIVITÉ SIMPLE EST DU COLLÈGE, LA DOUBLE ENJAMBE LE LYCÉE :
+    // la carte porte les trois niveaux puisqu'elle porte les onze barreaux.
+    assert.deepEqual(carte.tags.niveaux, ['4ème', '3ème', '2nde']);
 });
 
 // ── LE DESSIN LUI-MÊME ──────────────────────────────────────────────────────
@@ -323,10 +357,14 @@ test('LE PAS À PAS DU DÉVELOPPEMENT — une ligne pour chaque geste', () => {
     // d'être calculés. Celui qui la saute est celui qui oublie les deux
     // produits du milieu, et un « faux » sur la réponse entière ne dit pas
     // lequel des quatre a manqué.
-    const pas = exercices.filter(e => /^dev-\w+-pas$/.test(e.id));
-    assert.equal(pas.length, 2, 'un pas à pas simple, un double');
-    pas.forEach(e => assert.equal(e.params.etapes, 'oui',
-        `${e.id} : le pas à pas n'est pas activé`));
+    // LA CARTE « PAS À PAS » EST PRÊTE — Rémy : « c'est génial ton idée de
+    // carte "pas à pas" prête ». Elle ne fige aucun barreau : le découpage
+    // vaut pour les onze, et c'est le gain du regroupement.
+    const carte = exercices.find(e => e.id === 'dev-pas');
+    assert.ok(carte, 'la carte « Développer pas à pas » a disparu');
+    assert.equal(carte.params.etapes, 'oui', 'le pas à pas n\'est pas activé');
+    assert.equal(carte.params.barreau, undefined,
+        'la carte fige un barreau : on ne peut plus la poser où l\'on veut');
 
     for (const b of BARREAUX) {
         for (let i = 0; i < 40; i++) {
