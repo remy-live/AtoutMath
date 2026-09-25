@@ -12,6 +12,7 @@ import { estimerEtape, mesuresParExercice, direDuree } from '../core/dureeParcou
 import { state } from '../core/state.js';
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
+import { texteDeChoix } from '../core/apercuChoix.js';
 import {
     groupesDeMarches, marchesCochees, decoupeMarches, lireLongueurs, ecrireLongueurs,
     PLIER_AU_DELA,
@@ -1011,7 +1012,7 @@ function vraieQuestion(exoId, p, params) {
             // on ne peut pas en retirer une au hasard, il faut garder la juste.
             ? [...brut.filter(c => c.correct), ...brut.filter(c => !c.correct)].slice(0, voulu)
             : brut;
-        const choix = garde.map(c => String(c.label ?? c.value ?? '')).filter(Boolean);
+        const choix = garde.map(texteDeChoix).filter(Boolean);
         return { texte: String(texte).replace(/<[^>]*>/g, '').trim(), choix };
     } catch { return null; }
 }
@@ -2514,7 +2515,7 @@ function vraieQuestionMarche(exoId, z, params, total) {
             .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
         const texte = nu((it.prompt && (it.prompt.text || it.prompt.papier)) || '');
         const choix = (Array.isArray(it.choices) ? it.choices : [])
-            .map(c => nu(c.label ?? c.value)).filter(Boolean).slice(0, 8);
+            .map(texteDeChoix).filter(Boolean).slice(0, 8);
         return texte || choix.length ? { texte, choix } : null;
     } catch { return null; }
 }
