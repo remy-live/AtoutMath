@@ -583,15 +583,31 @@ export class Runner {
             ? 'Toutes les étapes sont faites. Il ne reste qu\'à voir ton bilan.'
             : (this.policy.ordreLibre
                 ? 'Choisis l\'étape que tu veux faire : l\'ordre est libre.'
-                : `Prochaine étape : ${this.steps[prochaine].title}.`);
+                // LE POINT NE SE POSE PAS SUR UN TITRE QUI EN A DÉJÀ UN.
+                // « Prochaine étape : Segment, Droite ou Demi-droite ?. » —
+                // vu à l'écran d'un élève. Un titre d'exercice finit souvent
+                // par un point d'interrogation ; le point de la phrase vient
+                // alors s'y coller.
+                : `Prochaine étape : ${this.steps[prochaine].title}`
+                    .replace(/([^.!?…])$/, '$1.'));
         // AU DÉPART, LA RÈGLE DE LA SÉANCE. Elle décide de tout — combien
         // d'essais, s'il y a des aides, si cela compte — et c'est la seule
         // chose qu'on ne devrait jamais apprendre en cours de route. Ensuite
         // on ne la répète pas : l'élève sait où il a mis les pieds.
         const regle = faites.size ? '' : `<p class="run-carte-regle">${escapeHtml(describePolicy(this.policy))}</p>`;
+        // LE NOM DE LA SÉANCE N'EST PAS ÉCRIT TROIS FOIS.
+        //
+        // Rémy, capture de l'écran d'accueil d'un élève : le fil de la séance
+        // le porte en haut de la fenêtre, l'en-tête du jeu le porte en gros
+        // juste dessous (`#game-title`, posé quatre lignes plus haut à partir
+        // de la MÊME valeur), et la carte le reposait une troisième fois, en
+        // violet, à deux cents pixels de là. Sur une séance dont le nom fait
+        // deux lignes, c'était six lignes de titre avant la première étape.
+        //
+        // C'est la copie de la carte qu'on retire : les deux autres existent
+        // sur tous les écrans du jeu, celle-ci sur celui-ci seulement.
         ecran.innerHTML = `
             <div class="run-carte-tete">
-                <h2 class="run-carte-nom">${escapeHtml(this.path.name || 'Mon parcours')}</h2>
                 <p class="run-carte-sous">${escapeHtml(legende)}</p>
                 ${regle}
             </div>

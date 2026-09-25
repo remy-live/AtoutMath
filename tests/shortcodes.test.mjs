@@ -259,8 +259,16 @@ test('UN PARCOURS DE PLUSIEURS EXERCICES SE DICTE AUSSI', () => {
     assert.equal(relu.steps[0].nbItems, 12);
     assert.equal(relu.steps[1].nbItems, 20);
     assert.equal(relu.steps[1].threshold, seuilConseille(20));
-    // Le nom ne voyage pas, mais l'élève ne doit pas lire « Parcours partagé ».
-    assert.ok(/Relatifs/.test(relu.name) && /Pythagore/.test(relu.name), relu.name);
+    // LE NOM NE VOYAGE PAS, et il ne se refait plus en collant les titres bout
+    // à bout. Rémy, capture d'un écran d'élève : « ne mets pas toute la liste
+    // des exercices en haut […] ça risque d'être long s'il y a beaucoup de
+    // code. » Mesuré sur trente-cinq exercices — la taille de sa séance
+    // d'essai — le nom collé faisait 916 caractères, écrits trois fois sur
+    // l'écran d'accueil. Il se nomme maintenant comme un parcours construit à
+    // la main : « Nombres et calculs — 35 exercices ».
+    assert.ok(!relu.name.includes(' + '), `les titres sont encore collés : ${relu.name}`);
+    assert.match(relu.name, /2 exercices$/, relu.name);
+    assert.ok(relu.name.length < 45, `nom trop long : ${relu.name}`);
 });
 
 test('une chaîne se recopie comme on l\'entend, elle aussi', () => {

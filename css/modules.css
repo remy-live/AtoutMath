@@ -2273,8 +2273,11 @@ html[data-point="plus"] .pt-croix { display: none; }
     text-align: center; flex: 0 0 auto;
     display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
-.run-carte-nom { font-size: 1.5rem; margin: 0; color: var(--primary-texte); }
-.run-carte-sous { margin: 0; color: var(--text-muted); font-size: .95rem; }
+/* `.run-carte-nom` A DISPARU : le nom de la séance était écrit trois fois en
+   deux cents pixels — le fil, l'en-tête du jeu, et lui. Voir `showPathMap`
+   dans core/runner.js. La ligne qui reste est donc la PREMIÈRE de la carte, et
+   elle prend le poids qu'avait le titre : c'est elle qu'on lit en arrivant. */
+.run-carte-sous { margin: 0; color: var(--text-main); font-size: 1.05rem; font-weight: 600; }
 .run-carte-regle {
     margin: 0; font-size: .85rem; color: var(--text-muted);
     background: var(--bg-soft, rgba(0, 0, 0, .04)); border-radius: 999px; padding: 4px 14px;
@@ -2295,8 +2298,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 .run-carte > .run-screen-btn { flex: 0 0 auto; margin: 6px 0 16px; }
 @media (max-width: 640px) {
     .run-carte { padding: 10px 8px 0; }
-    .run-carte-nom { font-size: 1.2rem; }
-    .run-carte-sous { font-size: .85rem; }
+    .run-carte-sous { font-size: .95rem; }
     .run-carte > .run-screen-btn { font-size: 1.05rem; padding: 11px 22px; margin-bottom: 10px; }
 }
 .run-screen-sub { font-size: .92rem; color: var(--text-muted); max-width: 460px; line-height: 1.5; margin: -4px 0 4px; }

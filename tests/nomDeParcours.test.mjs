@@ -105,3 +105,46 @@ test('…mais une forme voisine écrite à la main reste intouchable', () => {
     assert.equal(
         nomPropose(parcours('Fractions — 3 exercices difficiles', 'frac-add'), themesDe), '');
 });
+
+// --- ET LA MÊME RÈGLE POUR UN PARCOURS REÇU PAR CODE -------------------------
+
+test('UN CODE NE COLLE PLUS LES TITRES BOUT À BOUT', async () => {
+    // RÉMY, capture de l'écran d'accueil d'un élève arrivé par `?code=SDY-FGU` :
+    // « ne mets pas toute la liste des exercices en haut segment droite ou
+    // demi-droite ? + code la figure. ça risque d'être long s'il y a beaucoup
+    // de code. »
+    //
+    // Il avait raison bien au-delà de deux. MESURÉ sur trente-cinq exercices —
+    // la taille de sa séance d'essai — le nom collé bout à bout fait 916
+    // CARACTÈRES. Le même parcours nommé par la règle du constructeur en fait
+    // douze. Ce nom-là était écrit trois fois sur l'écran d'accueil.
+    //
+    // La règle existait et elle est bonne ; elle ne vivait simplement qu'au
+    // seul endroit où l'on construit un parcours à la main.
+    await import('./helpers.mjs');
+    const { Shortcodes } = await import('../js/core/shortcodes.js');
+    const { CODES_EXERCICES } = await import('../js/data/codesExercices.js');
+    const { exercices } = await import('../js/data/catalog.js');
+    await import('../js/core/activities/index.js');
+
+    const codables = exercices.filter(e => CODES_EXERCICES[e.id]);
+    const geo = codables.filter(e => (e.tags.chemin || [])[0] === 'Espace et géométrie');
+    assert.ok(geo.length >= 2, 'il faut deux exercices de géométrie pour ce test');
+
+    // Le code de Rémy, tel qu'il l'a collé : deux exercices de géométrie.
+    const sien = Shortcodes.decodePath('SDY-FGU');
+    assert.ok(sien, 'le code de Rémy ne se lit plus');
+    assert.equal(sien.steps.length, 2);
+    // Ce qu'il lisait avant — les deux titres collés — n'est plus le nom.
+    const colles = sien.steps
+        .map(s => (exercices.find(e => e.id === s.exerciseId) || {}).title).join(' + ');
+    assert.notEqual(sien.name, colles);
+    assert.match(sien.name, /^.+ — 2 exercices$/);
+    assert.ok(sien.name.length < colles.length,
+        `« ${sien.name} » n'est pas plus court que « ${colles} »`);
+
+    // UN SEUL EXERCICE GARDE SON TITRE : « 1 exercice » serait moins clair, et
+    // il n'y a alors rien à raccourcir.
+    const seul = Shortcodes.decodePath('SDY');
+    assert.equal(seul.name, 'Segment, Droite ou Demi-droite ?');
+});

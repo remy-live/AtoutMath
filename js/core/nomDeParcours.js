@@ -80,32 +80,93 @@ export function themeDominant(etiquettes) {
     });
     if (!compte.size) return '';
     const total = (etiquettes || []).filter(l => l && l.length).length;
-    let meilleur = '', poids = 0;
     // À égalité, l'ordre alphabétique décide : deux parcours identiques doivent
     // recevoir le même nom, quelle que soit la façon dont on les a construits.
-    [...compte.entries()]
-        .sort((a, b) => (b[1] - a[1]) || String(a[0]).localeCompare(String(b[0]), 'fr'))
-        .forEach(([t, n]) => { if (!meilleur) { meilleur = t; poids = n; } });
-    // MOINS DE LA MOITIÉ, CE N'EST PAS UN THÈME. Un parcours qui pioche partout
-    // n'a pas de sujet : lui en inventer un serait mentir sur son contenu.
+    const classement = [...compte.entries()]
+        .sort((a, b) => (b[1] - a[1]) || String(a[0]).localeCompare(String(b[0]), 'fr'));
+    const [meilleur, poids] = classement[0];
+    // UN THÈME À ÉGALITÉ AVEC UN AUTRE N'EST PAS LE THÈME DU PARCOURS.
+    //
+    // Mesuré en donnant ce nom aux séances reçues par code : un parcours de
+    // DEUX exercices — addition de relatifs et Pythagore — s'appelait
+    // « Multiplications — 2 exercices ». Chacun apportait son chapitre, chacun
+    // pesait la moitié, et la règle du « au moins la moitié » couronnait celui
+    // que l'ordre alphabétique sortait en premier. Le départage alphabétique
+    // sert à rendre le nom REPRODUCTIBLE, pas à trancher un débat qui n'a pas
+    // de vainqueur : un nom faux est pire qu'un nom vague, et « 2 exercices »
+    // ne ment pas.
+    if (classement[1] && classement[1][1] === poids) return '';
+    // MOINS DE LA MOITIÉ, CE N'EST PAS UN THÈME NON PLUS. Un parcours qui
+    // pioche partout n'a pas de sujet : lui en inventer un serait mentir sur
+    // son contenu.
     return (total && poids / total >= 0.5) ? meilleur : '';
 }
 
 /**
  * LE NOM PROPOSÉ POUR CE PARCOURS.
  *
+ * DEUX ÉTAGES, ET LE SECOND SAUVE LES PETITS PARCOURS. Deux exercices qui ne
+ * partagent pas leur chapitre ne se départagent pas — voir `themeDominant` —,
+ * et l'on retombait sur « 2 exercices » alors qu'ils appartiennent tous deux
+ * à « Espace et géométrie ». Le domaine est plus large que le chapitre : il
+ * dit moins, mais il dit vrai, et c'est exactement ce qu'on veut d'un repère.
+ *
  * @param {object} parcours       { name, steps }
- * @param {Function} themesDe     (exerciseId) => string[] — chapitres ou domaines
+ * @param {Function} themesDe     (exerciseId) => string[] — les chapitres
+ * @param {Function} [largeDe]    (exerciseId) => string[] — le domaine, en secours
  * @returns {string} le nom à poser, ou '' s'il n'y a rien à proposer
  */
-export function nomPropose(parcours, themesDe) {
+export function nomPropose(parcours, themesDe, largeDe) {
     const p = parcours || {};
     if (nomDonne(p.name)) return '';           // quelqu'un l'a nommé : on se tait
     const etapes = (p.steps || []).filter(s => s && s.exerciseId);
     if (!etapes.length) return '';             // rien dedans : rien à dire
 
-    const theme = themeDominant(etapes.map(s => themesDe(s.exerciseId) || []));
+    const theme = themeDominant(etapes.map(s => themesDe(s.exerciseId) || []))
+        || (typeof largeDe === 'function'
+            ? themeDominant(etapes.map(s => largeDe(s.exerciseId) || [])) : '');
     const n = etapes.length;
     const combien = `${n} exercice${n > 1 ? 's' : ''}`;
     return theme ? `${theme} — ${combien}` : combien;
+}
+
+/**
+ * LES THÈMES D'UN EXERCICE : son chapitre, ou à défaut son domaine.
+ *
+ * Elle vivait en lambda dans le constructeur de parcours, et c'est LÀ qu'était
+ * le défaut — parce qu'un parcours n'est pas toujours construit là. Un élève
+ * qui arrive par un code court reçoit un parcours fabriqué par
+ * `core/shortcodes.js`, et celui-ci nommait la séance en COLLANT BOUT À BOUT
+ * les titres de tous ses exercices :
+ *
+ *     « Segment, Droite ou Demi-droite ? + Code la figure »
+ *
+ * Rémy, capture à l'appui : « ne mets pas toute la liste des exercices en haut
+ * […] ça risque d'être long s'il y a beaucoup de code ». Il a raison bien
+ * au-delà de deux : sa séance d'essai en compte trente-cinq, et ce nom-là
+ * ferait quatre lignes en haut de l'écran d'un élève de sixième.
+ *
+ * La règle existait déjà et elle est bonne : « Nombres et calculs — 35
+ * exercices ». Elle ne vivait simplement qu'à un seul endroit.
+ *
+ * @param {Object} exo           l'entrée de catalogue
+ * @param {Function} chapitresDe (exo) => [{ nom }] — voir core/chapitres.js
+ */
+export function themesDExercice(exo, chapitresDe) {
+    if (!exo) return [];
+    const chaps = (typeof chapitresDe === 'function' ? chapitresDe(exo) : [])
+        .map(c => (c && c.nom) || '').filter(Boolean);
+    return chaps.length ? chaps : domaineDExercice(exo);
+}
+
+/**
+ * LE DOMAINE D'UN EXERCICE — « Nombres et calculs », « Espace et géométrie ».
+ *
+ * Il vit dans `tags.chemin[0]`, et non dans un champ `domain`, qui n'existe
+ * pas : mesuré sur un exercice du catalogue. Il sert de SECOURS quand les
+ * chapitres ne se départagent pas — voir `nomPropose`.
+ */
+export function domaineDExercice(exo) {
+    const chemin = (exo && exo.tags && exo.tags.chemin) || [];
+    return chemin.length ? [chemin[0]] : [];
 }

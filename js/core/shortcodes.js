@@ -26,6 +26,8 @@ import { SEUIL_DEFAUT } from './recompenses.js';
 import { seuilConseille } from './seuilEtape.js';
 import { CODES_EXERCICES, EXERCICE_PAR_IDENTITE } from '../data/codesExercices.js';
 import { valeurDUsine, memeReglage } from './reglagesDUsine.js';
+import { nomPropose, themesDExercice, domaineDExercice } from './nomDeParcours.js';
+import { chapitresDe } from './chapitres.js';
 
 const PREFIX = 'M2-';
 
@@ -1041,8 +1043,21 @@ export const Shortcodes = {
                 // LE NOM SE REFAIT à partir des exercices : il ne voyage pas
                 // dans la chaîne, mais l'élève doit lire autre chose que
                 // « Parcours partagé » en haut de son écran.
-                const titres = chaine.map(e => (getExerciseById(e.exerciseId) || {}).title || 'Exercice');
-                const path = makePath(titres.join(' + '), [], defaultPolicy());
+                //
+                // IL NE SE FAIT PLUS EN COLLANT LES TITRES BOUT À BOUT. Deux
+                // exercices donnaient déjà « Segment, Droite ou Demi-droite ?
+                // + Code la figure », et Rémy, capture à l'appui : « ne mets
+                // pas toute la liste des exercices en haut […] ça risque
+                // d'être long s'il y a beaucoup de code ». Sa séance d'essai
+                // en compte trente-cinq : ce nom-là ferait quatre lignes en
+                // haut de l'écran d'un élève de sixième, répétées à trois
+                // endroits de la page d'accueil.
+                //
+                // La règle du constructeur — « Nombres et calculs — 35
+                // exercices » — s'applique donc ici aussi : c'est la MÊME
+                // fonction, et un parcours reçu par code se nomme comme le
+                // même parcours construit à la main.
+                const path = makePath('', [], defaultPolicy());
                 path.steps = chaine.map((e, i) => {
                     // Le nombre de questions écrit après le tiret, s'il y est —
                     // et le seuil s'en déduit, comme partout ailleurs.
@@ -1054,6 +1069,17 @@ export const Shortcodes = {
                         timeLimit: null, forceSeed: null
                     };
                 });
+                path.name = nomPropose({ name: '', steps: path.steps },
+                    (id) => themesDExercice(getExerciseById(id), chapitresDe),
+                    (id) => domaineDExercice(getExerciseById(id)))
+                    // Un parcours d'un seul exercice se nomme par son titre :
+                    // « 1 exercice » serait moins clair que « Le Compte est
+                    // bon », et il n'y a alors rien à raccourcir.
+                    || 'Parcours partagé';
+                if (path.steps.length === 1) {
+                    path.name = (getExerciseById(path.steps[0].exerciseId) || {}).title
+                        || path.name;
+                }
                 return identifierParLeContenu(path);
             }
             // UN CODE QU'ON NE SAIT PAS LIRE REND null, JAMAIS UN PARCOURS VIDE
