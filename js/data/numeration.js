@@ -995,5 +995,31 @@ export const numerationExercises = [
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
         instruction: "Neuf marches, en trois temps. D'ABORD CE QU'EST UNE PUISSANCE : 2⁵ n'est pas 2 × 5, c'est 2 × 2 × 2 × 2 × 2. Et (−3)² vaut +9 quand −3² vaut −9 : la parenthèse dit si le signe fait partie du nombre qu'on élève au carré. ENSUITE LES DEUX RÈGLES QU'ON ÉCHANGE TOUT LE TEMPS. Le produit AJOUTE les exposants — 10⁵ × 10³ = 10⁸, parce que cinq dix suivis de trois dix font huit dix. Le quotient les SOUSTRAIT — 10⁸ ÷ 10³ = 10⁵. Le signe de l'opération n'est PAS celui qu'on fait sur les exposants, et c'est la faute la plus fréquente du chapitre. ENFIN la puissance de puissance, qui les MULTIPLIE — (10⁴)³ = 10¹², trois paquets de quatre dix —, l'inverse qui change le signe de l'exposant, et la condition qu'on oublie : il faut la MÊME base. 2³ × 5³ ne s'écrit pas sous la forme d'une seule puissance."
+    },
+    // ── LES PUISSANCES, LIGNE À LIGNE ───────────────────────────────────────
+    //
+    // RÉMY, EN ROUGE SUR SA FICHE DE QUATRIÈME : « TU ÉCRIRAS LE CALCUL ! »
+    //
+    // C'est écrit sur chacun de ses exercices, et c'est la demande de cette
+    // carte : il ne veut pas le résultat, il veut voir 10³ × 10² = 10³⁺² = 10⁵.
+    // La ligne du milieu est celle où la règle se montre — et celle où l'on
+    // voit, quand elle est fausse, que l'élève a appliqué le signe de
+    // l'opération aux exposants.
+    {
+        id: 'num-puissances-calcul-pas',
+        title: 'Calculer avec des Puissances, pas à pas',
+        cree: '2026-09-25',
+        generatorId: 'num.puissances-calcul', activityId: 'buttons',
+        skills: ['num.puissances.regles'],
+        params: { etapes: 'oui' },
+        consignePapier: "Écris le résultat le plus simple. Tu écriras le calcul !",
+        colonnesPapier: 4,
+        motsClefs: ['puissances', 'exposant', 'pas à pas', 'étapes', 'étape', 'détaillé',
+            'méthode', 'produit', 'quotient', 'règles de calcul', 'écrire le calcul'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Les mêmes questions, avec la ligne du milieu : 10⁵ × 10² = 10^(5 + 2) = 10⁷. L'exposant se tape avec la touche ^, parce qu'un exposant qui est une SOMME ne s'écrit pas en petits chiffres. Seule la dernière ligne compte pour la séance ; les autres sont la trace qu'on demande sur la copie."
     }
 ];

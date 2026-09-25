@@ -33,7 +33,8 @@
 
 import * as fx from './formule.js';
 import {
-    lireExacte, memeR, valeurDe, sansCarre, radicandesEcrits, termesEcrits
+    lireExacte, memeR, valeurDe, sansCarre, radicandesEcrits, termesEcrits,
+    commePuissance, memePuissance
 } from './valeurExacte.js';
 import { squelette } from './etapes.js';
 
@@ -103,6 +104,12 @@ export function garnirEtapesNombres(etapes) {
     return etapes.map(e => {
         const attendu = lireExacte(e.montrer, fx);
         const arbreAttendu = arbreDe(e.montrer);
+        // LA MÊME LIGNE, VUE COMME UNE PUISSANCE. Au-delà de 2⁵³ un entier
+        // n'est plus exact — 10⁹ × 10⁹ vaut 10¹⁸ —, et `valeurDe` rend alors
+        // `null` plutôt qu'une approximation. On compare donc aussi les
+        // exposants, ce qui est de toute façon ce qu'un professeur regarde :
+        // Rémy, en rouge sur sa fiche, « TU ÉCRIRAS LE CALCUL ! »
+        const puissanceAttendue = arbreAttendu ? commePuissance(arbreAttendu) : null;
         const termesMin = e.termesMin === false ? 0
             : (arbreAttendu ? termesEcrits(arbreAttendu) : 0);
         const nombresAttendus = arbreAttendu ? nombresEcrits(arbreAttendu) : [];
@@ -131,12 +138,18 @@ export function garnirEtapesNombres(etapes) {
                             + 'les touches.' };
                 }
                 const lu = valeurDe(arbre);
-                if (!lu) {
+                const lue = commePuissance(arbre);
+                if (!lu && !lue) {
                     return { juste: false,
                         pourquoi: 'Cette écriture ne se calcule pas : vérifie les '
                             + 'parenthèses et les signes.' };
                 }
-                if (!attendu || !memeR(lu, attendu)) {
+                // L'UNE OU L'AUTRE SUFFIT, et les deux sont EXACTES : la
+                // valeur quand elle tient dans un entier sûr, l'exposant
+                // quand elle n'y tient plus.
+                const parValeur = !!(attendu && lu && memeR(lu, attendu));
+                const parExposant = memePuissance(lue, puissanceAttendue);
+                if (!parValeur && !parExposant) {
                     return { juste: false,
                         pourquoi: 'Cette ligne ne vaut pas la précédente. Une chaîne '
                             + 'd\'égalités garde la même valeur d\'un bout à l\'autre.' };

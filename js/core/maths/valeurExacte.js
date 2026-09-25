@@ -41,6 +41,18 @@ const pgcd = (a, b) => (b ? pgcd(b, a % b) : Math.abs(a));
 export function rac(n, d, r) {
     if (d === 0 || r <= 0 || !Number.isInteger(r)) return null;
     if (!Number.isInteger(n) || !Number.isInteger(d)) return null;
+    // AU-DELÀ DE 2⁵³, UN ENTIER N'EST PLUS UN ENTIER. 10¹⁸ ne se représente
+    // pas exactement en virgule flottante, et tout ce module repose sur le
+    // fait que deux entiers sont égaux ou ne le sont pas. Mesuré : le chapitre
+    // des puissances pose 10⁶ × 10⁸, dont le produit vaut 10¹⁴ — mais ses
+    // exposants vont jusqu'à 9 + 9, c'est-à-dire 10¹⁸.
+    //
+    // On rend `null` plutôt qu'une valeur approchée : un juge qui ne sait pas
+    // doit le dire. Le chapitre des puissances compare donc ses EXPOSANTS —
+    // voir `commePuissance` plus bas —, ce qui est de toute façon ce qu'un
+    // professeur regarde.
+    const GRAND = Number.MAX_SAFE_INTEGER;
+    if (Math.abs(n) > GRAND || Math.abs(d) > GRAND || r > GRAND) return null;
     let dehors = 1, dedans = 1, m = r;
     for (let p = 2; p * p <= m; p++) {
         let e = 0;
@@ -158,16 +170,17 @@ export function valeurDe(n) {
             // L'EXPOSANT NÉGATIF S'ÉCRIT `oppose`, PAS `nombre`. 10⁻² est le
             // cœur de la notation scientifique : le manquer rendait `null`
             // sur tout le chapitre des puissances.
+            // L'EXPOSANT EST UNE EXPRESSION, PAS UN CHIFFRE. Rémy, en rouge
+            // sur sa fiche de quatrième : « TU ÉCRIRAS LE CALCUL ! » — il veut
+            // voir 10³ × 10² = 10³⁺² = 10⁵. La ligne du milieu porte donc une
+            // SOMME en exposant, et ma première écriture ne savait lire qu'un
+            // nombre ou son opposé : elle rendait `null` sur la ligne même que
+            // le chapitre enseigne.
             const lireExposant = (x) => {
-                if (typeof x === 'number') return x;
-                if (!x || typeof x !== 'object') return null;
-                if (x.sorte === 'groupe') return lireExposant(x.dedans);
-                if (x.sorte === 'nombre') return Number(x.v);
-                if (x.sorte === 'oppose') {
-                    const v = lireExposant(x.x);
-                    return v === null ? null : -v;
-                }
-                return null;
+                if (typeof x === 'number') return Number.isInteger(x) ? x : null;
+                const v = valeurDe(x);
+                if (!v || v.r !== 1 || v.d !== 1) return null;
+                return v.n;
             };
             const k = lireExposant(e);
             if (!base || k === null || !Number.isInteger(k)) return null;
@@ -228,3 +241,111 @@ export const termesEcrits = (arbre) => {
     const x = arbre && arbre.sorte === 'groupe' ? arbre.dedans : arbre;
     return x && x.sorte === 'somme' ? x.termes.length : 1;
 };
+
+
+/**
+ * UNE ÉCRITURE VUE COMME UNE PUISSANCE : `{ base, exposant }`.
+ *
+ * RÉMY, en rouge sur sa fiche de quatrième : « TU ÉCRIRAS LE CALCUL ! » Il ne
+ * veut pas le résultat, il veut voir 10³ × 10² = 10³⁺² = 10⁵.
+ *
+ * ON NE PEUT PAS JUGER CES LIGNES-LÀ SUR LEUR VALEUR : 10⁹ × 10⁹ vaut 10¹⁸,
+ * qui dépasse 2⁵³ et cesse d'être un entier exact. On compare donc ce que le
+ * professeur compare — la base et l'exposant.
+ *
+ * Reconnaît `10⁸`, `10^(3+2)`, `(10^4)^3`, `1/10^7`, `(2 × 5)^5`, et tout
+ * produit ou quotient de puissances de MÊME base. Rend `null` sinon — deux
+ * bases différentes ne se réunissent pas, et c'est justement la dernière
+ * marche du chapitre.
+ */
+export function commePuissance(n) {
+    if (!n || typeof n !== 'object') return null;
+    const combiner = (a, b, signe) => {
+        if (!a || !b) return null;
+        // Un facteur ENTIER se laisse absorber s'il est une puissance de la
+        // base : 100 × 10³ = 10⁵. Sinon les deux bases diffèrent.
+        if (a.base !== b.base) return null;
+        return { base: a.base, exposant: a.exposant + signe * b.exposant };
+    };
+    switch (n.sorte) {
+        case 'groupe': return commePuissance(n.dedans);
+        case 'nombre': {
+            const v = Number(n.v);
+            if (!Number.isInteger(v) || v <= 0) return null;
+            if (v === 1) return { base: null, exposant: 0 };   // neutre
+            return canoniser({ base: v, exposant: 1 });
+        }
+        case 'produit': {
+            let t = { base: null, exposant: 0 };
+            for (const f of n.facteurs) {
+                const p = commePuissance(f);
+                if (!p) return null;
+                if (t.base === null) { t = { base: p.base, exposant: p.exposant }; continue; }
+                if (p.base === null) continue;
+                const c = combiner(t, p, 1);
+                if (!c) return null;
+                t = c;
+            }
+            return t.base === null ? null : t;
+        }
+        case 'quotient': case 'division': {
+            const h = commePuissance(n.haut), b = commePuissance(n.bas);
+            if (!h || !b) return null;
+            // 1 / 10⁷ : le haut est neutre, la base vient du bas.
+            if (h.base === null) return { base: b.base, exposant: -b.exposant };
+            return combiner(h, b, -1);
+        }
+        case 'puissance': {
+            // LA BASE SE LIT COMME UN NOMBRE, pas comme une puissance : la
+            // dernière marche du chapitre écrit (2 × 5)⁵, dont la base vaut
+            // 10. Lue comme une puissance, elle était « deux bases
+            // différentes » et la ligne se faisait refuser.
+            const b = valeurDe(n.base);
+            const e = valeurDe(n.exposant);
+            if (!b || b.r !== 1 || b.d !== 1 || b.n < 2) return null;
+            if (!e || e.r !== 1 || e.d !== 1) return null;
+            return canoniser({ base: b.n, exposant: e.n });
+        }
+        default: return null;
+    }
+}
+
+/**
+ * LA MÊME PUISSANCE, SOUS SA PLUS PETITE BASE.
+ *
+ * (10⁴)³ et 10¹² sont le même nombre, et 10000³ aussi. Sans cette réduction,
+ * le juge comparerait (10000, 3) à (10, 12) et refuserait une ligne juste.
+ *
+ * On décompose la base en facteurs premiers et l'on sort le PGCD des
+ * exposants : 10000 = 2⁴ × 5⁴ donne 10, avec quatre fois plus d'exposant.
+ */
+function canoniser(p) {
+    if (!p || !Number.isInteger(p.base) || p.base < 2) return p;
+    let m = p.base;
+    const exp = [];
+    const prem = [];
+    for (let d = 2; d * d <= m; d++) {
+        let e = 0;
+        while (m % d === 0) { m /= d; e++; }
+        if (e) { prem.push(d); exp.push(e); }
+    }
+    if (m > 1) { prem.push(m); exp.push(1); }
+    if (!exp.length) return p;
+    const pg = (a, b) => (b ? pg(b, a % b) : a);
+    const g = exp.reduce(pg);
+    if (g <= 1) return p;
+    let racineBase = 1;
+    prem.forEach((d, i) => { racineBase *= Math.pow(d, exp[i] / g); });
+    return { base: racineBase, exposant: p.exposant * g };
+}
+
+/** Les deux écritures disent-elles la même puissance ? */
+export const memePuissance = (a, b) => !!a && !!b
+    && a.base === b.base && a.exposant === b.exposant;
+
+/** La même, lue depuis un texte tapé. */
+export function lirePuissance(texte, fx) {
+    const t = String(texte == null ? '' : texte).replace(/\s+/g, '');
+    if (!t) return null;
+    try { return commePuissance(fx.analyser(t)); } catch (e) { return null; }
+}

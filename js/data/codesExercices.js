@@ -61,6 +61,7 @@ export const CODES_EXERCICES = {
     'num-puissances-transformer': 'PE',   // Puissances de 10 — écriture scientifique
     'num-puissances-prefixes':    'KM',   // Kilo, Méga, Giga, Micro, Nano
     'num-puissances-calcul':      'CP',   // Calculer avec des Puissances
+    'num-puissances-calcul-pas':  'CK',   // …et la Trace du calcul
     'calc-add':                   'AT',   // Additions Mystères
     'calc-sub':                   'SE',   // Soustractions Éclair
     'calc-mult-flash':            'FM',   // Flash Mult

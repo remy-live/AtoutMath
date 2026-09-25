@@ -181,6 +181,14 @@ export function mount(container, session, opts = {}) {
                 // que l'analyseur lit ; c'est `maths/formule` qui l'empile.
                 ...(m.fraction
                     ? [{ t: '/', cls: 'ls-t--signe', dit: 'Barre de fraction' }] : []),
+                // L'EXPOSANT SE TAPE AVEC « ^ » — Rémy, en rouge sur sa fiche
+                // de quatrième : « TU ÉCRIRAS LE CALCUL ! » Il veut voir
+                // 10³ × 10² = 10³⁺² = 10⁵, et cette ligne du milieu porte une
+                // SOMME en exposant : aucun chiffre en haut ne l'écrit. Le
+                // caractère ^ est celui que l'analyseur lit depuis toujours,
+                // et c'est aussi celui d'une calculatrice.
+                ...(m.exposant
+                    ? [{ t: '^', cls: 'ls-t--signe', dit: 'Exposant' }] : []),
                 // LES PARENTHÈSES N'APPARAISSENT QUE SI LA RÉPONSE PEUT EN
                 // VOULOIR. Même règle que pour la touche x³ : offrir une
                 // touche dont on sait qu'elle donnera une réponse fausse,
