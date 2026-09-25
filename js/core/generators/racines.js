@@ -38,6 +38,9 @@
 import { makeItem, finalizeChoices } from '../items.js';
 import * as fx from '../maths/formule.js';
 import { garnirEtapesNombres } from '../maths/etapesNombres.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 import { lireExacte, memeR as memeExacte, sansCarre, radicandesEcrits }
     from '../maths/valeurExacte.js';
 
@@ -651,6 +654,31 @@ function barreau8(rng) {
     };
 }
 
+// ── LES BARREAUX TELS QUE LE PANNEAU LES COCHE ──────────────────────────────
+//
+// RÉMY : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral, tu ne penses
+// pas ? » — et c'est le mécanisme qu'il a lui-même demandé pour les relatifs.
+//
+// LE NOM DE LA MARCHE PORTE SON EXEMPLE, comme le faisait le menu : on
+// reconnaît « √72 = 6√2 » d'un coup d'œil, « barreau 4 » jamais.
+const LISTE_MARCHES = [
+    { id: '1', nom: '1. √81, les carrés parfaits', groupe: 'revision' },
+    { id: '2', nom: '2. √4 × √25', groupe: 'revision' },
+    { id: '3', nom: '3. √8 = 2√2, extraire un carré', groupe: 'revision' },
+    { id: '4', nom: '4. √72 = 6√2, le plus grand carré', groupe: 'revision' },
+    { id: '5', nom: '5. 3√2 × 5√6', groupe: 'calculer' },
+    { id: '6', nom: '6. 2√8 + √18, additionner', groupe: 'calculer' },
+    { id: '7', nom: '7. √(9 + 16), le piège', groupe: 'calculer' },
+    { id: '8', nom: '8. Quotients et dénominateur', groupe: 'calculer' }
+];
+// LA CLEF DU PREMIER GROUPE EST « revision » : c'était la valeur du menu
+// d'alors (« Révision — les barreaux 1 à 4 »). Un parcours enregistré se
+// relit donc comme les quatre premières cases cochées.
+const TEMPS = { revision: 'Simplifier une racine', calculer: 'Calculer avec des racines' };
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'barreau' };
+
 const BARREAUX = {
     1: { faire: barreau1, nom: 'Les carrés parfaits' },
     2: { faire: barreau2, nom: '√a × √b' },
@@ -697,24 +725,12 @@ export const racinesGenerator = {
     skills: ['nb.racines.simplifier', 'nb.racines.calculer'],
     answerKinds: ['choice'],
     ecrit: true,
+    // LA LONGUEUR SUIT LE NOMBRE DE BARREAUX COCHÉS — voir core/duree.js.
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'barreau', type: 'select', label: 'Quel barreau', default: '1',
-            aide: 'Un barreau ajoute UNE chose au précédent. La progression se fait '
-                + 'en posant plusieurs de ces exercices à la suite dans une séance.',
-            options: [
-                { value: '1', label: '1 — √81' },
-                { value: '2', label: '2 — √4 × √25' },
-                { value: '3', label: '3 — √8 = 2√2' },
-                { value: '4', label: '4 — √72 = 6√2' },
-                { value: '5', label: '5 — 3√2 × 5√6' },
-                { value: '6', label: '6 — 2√8 + √18' },
-                { value: '7', label: '7 — √(9 + 16), le piège' },
-                { value: '8', label: '8 — quotients et dénominateur' },
-                { value: 'revision', label: 'Révision — les barreaux 1 à 4' },
-                { value: 'toutes', label: 'Tout mélangé' }
-            ]
-        },
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: 'barreau', ancien: ANCIEN
+        }),
         {
             id: 'etapes', type: 'select', label: 'Pas à pas', default: 'non',
             // PAS SUR LA FICHE PAPIER : le découpage est une affaire d'écran.
@@ -733,9 +749,11 @@ export const racinesGenerator = {
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const choix = String(params.barreau || '1');
-        const possibles = choix === 'toutes' ? [1, 2, 3, 4, 5, 6, 7, 8]
-            : (choix === 'revision' ? [1, 2, 3, 4] : [Number(choix) || 1]);
+        // LES BARREAUX COCHÉS SE PARTAGENT LES QUESTIONS, dans l'ordre —
+        // voir core/progression.js.
+        const possibles = [Number(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params)) || 1];
         // UN BARREAU INCONNU NE DOIT PAS FAIRE TOMBER LE GÉNÉRATEUR.
         //
         // `Number('9') || 1` vaut 9, et il n'y a pas de neuvième barreau :
@@ -887,6 +905,8 @@ export const racinesGenerator = {
             meta: {
                 barreau: rang,
                 nomDuBarreau: BARREAUX[rang].nom,
+                // Le nom que lisent les garde-fous communs des progressions.
+                marche: String(rang),
                 // LE CLAVIER DE CE CHAPITRE : une racine, pas de lettre, pas
                 // de carré. Une touche offerte est une touche qu'on croit
                 // utile — « √5² » est précisément la faute qu'on éviterait de

@@ -486,3 +486,57 @@ test('LA CASE D\'UN TEMPS SUIT SES MARCHES', () => {
     assert.match(src, /\$\{coches\}\/\$\{dedans\.length\}/,
         'le compte « 5/5 » ne se met plus à jour');
 });
+
+test('LES DEUX CHAPITRES DE SECONDE ONT LEURS CASES', async () => {
+    // RÉMY : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+    // pouvoir faire les check box comme pour le calcul littéral, tu ne penses
+    // pas ? » — mesuré à ce moment-là : 27 générateurs offraient les cases, et
+    // les deux plus longues progressions de Seconde étaient restées sur un
+    // menu à choix unique, c'est-à-dire sur l'outil qui ne sait exprimer AUCUN
+    // des choix qu'un professeur fait vraiment : « les trois premiers », « les
+    // divisions seulement », « tout sauf les priorités ».
+    await import('../js/core/activities/index.js');
+    const { allGenerators } = await import('../js/core/registry.js');
+    const cases = (id) => {
+        const g = allGenerators().find(x => x.id === id);
+        assert.ok(g, `${id} a disparu du registre`);
+        const p = (g.params || []).find(q => q && q.type === 'marches');
+        assert.ok(p, `${id} n'offre pas de cases à cocher`);
+        return p;
+    };
+    const fr = cases('nb.calculFractions');
+    assert.equal(fr.marches.length, 13, 'douze barreaux et la question du devoir');
+    // « CALCULER PUIS DIRE L'ENSEMBLE » EST UN BARREAU, pas un mode à part :
+    // c'est la question du devoir, celle qui vient après les douze.
+    assert.ok(fr.marches.some(m => m.id === 'ensemble'),
+        'la question du devoir n\'est plus une case');
+    const rc = cases('nb.racines');
+    assert.equal(rc.marches.length, 8);
+});
+
+test('LES PARCOURS D\'HIER SE RELISENT DANS LES DEUX CHAPITRES', async () => {
+    const { calculFractionsGenerator } = await import('../js/core/generators/calculFractions.js');
+    const { racinesGenerator } = await import('../js/core/generators/racines.js');
+    // « Révision — les quatre opérations » couvrait les huit premiers ; la
+    // clef du groupe EST cette valeur, donc elle se relit.
+    const huit = [0, 1, 2, 3, 4, 5, 6, 7].map(i => calculFractionsGenerator
+        .generate({ barreau: 'revision' }, { rng: makeRng(`cfr${i}`), index: i, total: 8 })
+        .meta.barreau);
+    assert.deepEqual(huit, [1, 2, 3, 4, 5, 6, 7, 8]);
+    // Et « Révision — les barreaux 1 à 4 » des racines.
+    const quatre = [0, 1, 2, 3].map(i => racinesGenerator
+        .generate({ barreau: 'revision' }, { rng: makeRng(`rcr${i}`), index: i, total: 4 })
+        .meta.barreau);
+    assert.deepEqual(quatre, [1, 2, 3, 4]);
+    // Un barreau seul reste un barreau seul.
+    for (const r of [1, 5, 9, 12]) {
+        const it = calculFractionsGenerator.generate({ barreau: String(r) },
+            { rng: makeRng(`cfu${r}`), index: 2, total: 8 });
+        assert.equal(it.meta.barreau, r, `le barreau ${r} joue autre chose`);
+    }
+    // Et « calculer puis dire l'ensemble » aussi, qui n'est plus un mode.
+    const ens = calculFractionsGenerator.generate({ barreau: 'ensemble' },
+        { rng: makeRng('cfe'), index: 0, total: 4 });
+    assert.equal(ens.meta.marche, 'ensemble');
+    assert.match(String(ens.prompt.papier || ''), /ensemble/i);
+});

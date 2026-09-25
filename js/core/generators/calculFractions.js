@@ -44,6 +44,9 @@ import { makeItem, finalizeChoices } from '../items.js';
 import * as fx from '../maths/formule.js';
 import { garnirEtapesNombres } from '../maths/etapesNombres.js';
 import { lireExacte, memeR as memeExacte } from '../maths/valeurExacte.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 const M = '−';
 const nb = (v) => (v < 0 ? M + Math.abs(v) : String(v));
@@ -719,6 +722,47 @@ function barreau8(rng) {
 // a rien à convertir au cas où il faut tout convertir ; viennent ensuite la
 // multiplication en trois marches, la division en deux, puis les expressions
 // composées.
+// ── LES BARREAUX TELS QUE LE PANNEAU LES COCHE ──────────────────────────────
+//
+// RÉMY : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral, tu ne penses
+// pas ? »
+//
+// Si. Et le compte le disait déjà : vingt-sept générateurs offrent les cases,
+// et ce chapitre-ci — douze barreaux, l'un des plus longs de l'application —
+// était resté sur un menu à choix unique, c'est-à-dire sur l'outil qui ne sait
+// exprimer AUCUN des choix qu'un professeur fait vraiment : « les trois
+// premiers », « les divisions seulement », « tout sauf les priorités ».
+//
+// « CALCULER PUIS DIRE L'ENSEMBLE » EST UN BARREAU, pas un mode à part. C'est
+// la question du devoir, celle qui vient après les douze ; en faire une case
+// la range où elle est, et l'on peut enfin la cocher AVEC les autres.
+const LISTE_MARCHES = [
+    { id: '1', nom: '1. Même dénominateur', groupe: 'revision' },
+    { id: '2', nom: '2. Un dénominateur multiple de l\'autre', groupe: 'revision' },
+    { id: '3', nom: '3. Dénominateurs quelconques', groupe: 'revision' },
+    { id: '4', nom: '4. Fraction × entier', groupe: 'revision' },
+    { id: '5', nom: '5. Fraction × fraction', groupe: 'revision' },
+    { id: '6', nom: '6. Plusieurs facteurs, simplifier avant', groupe: 'revision' },
+    { id: '7', nom: '7. Diviser par un entier', groupe: 'revision' },
+    { id: '8', nom: '8. Diviser par une fraction', groupe: 'revision' },
+    { id: '9', nom: '9. Un entier devant une parenthèse', groupe: 'expressions' },
+    { id: '10', nom: '10. Les priorités', groupe: 'expressions' },
+    { id: '11', nom: '11. Produit de deux parenthèses', groupe: 'expressions' },
+    { id: '12', nom: '12. Une fraction de fractions', groupe: 'expressions' },
+    { id: 'ensemble', nom: '13. Calculer, puis dire l\'ensemble', groupe: 'expressions' }
+];
+// LA CLEF DU PREMIER GROUPE EST « revision », ET CE N'EST PAS UN HASARD :
+// c'était la valeur du menu d'alors (« Révision — les quatre opérations »,
+// les huit premiers). Un parcours enregistré se relit donc comme les huit
+// premières cases cochées.
+const TEMPS = {
+    revision: 'Les quatre opérations',
+    expressions: 'Les expressions du devoir'
+};
+/** Le réglage d'avant les cases, pour relire un parcours enregistré. */
+const ANCIEN = { cle: 'barreau' };
+
 const BARREAUX = {
     1: { faire: barreauMeme, nom: 'Même dénominateur' },
     2: { faire: barreau1, nom: 'Dénominateur multiple de l\'autre' },
@@ -793,33 +837,16 @@ function leurresDeSecours(v) {
 export const calculFractionsGenerator = {
     id: 'nb.calculFractions',
     label: 'Calculer avec des fractions, jusqu\'aux expressions du devoir',
+    // LA LONGUEUR SUIT LE NOMBRE DE BARREAUX COCHÉS — voir core/duree.js.
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     skills: ['nb.fractions.calculer', 'nb.ensembles.appartenance'],
     answerKinds: ['choice'],
     ecrit: true,
     fractions: true,
     params: [
-        {
-            id: 'barreau', type: 'select', label: 'Quel barreau', default: '1',
-            aide: 'Un barreau ajoute UNE chose au précédent. La progression se fait '
-                + 'en posant plusieurs de ces exercices à la suite dans une séance.',
-            options: [
-                { value: '1', label: '1 — même dénominateur' },
-                { value: '2', label: '2 — un dénominateur multiple de l\'autre' },
-                { value: '3', label: '3 — dénominateurs quelconques' },
-                { value: '4', label: '4 — fraction × entier' },
-                { value: '5', label: '5 — fraction × fraction' },
-                { value: '6', label: '6 — plusieurs facteurs, simplifier avant' },
-                { value: '7', label: '7 — diviser par un entier' },
-                { value: '8', label: '8 — diviser par une fraction' },
-                { value: '9', label: '9 — un entier devant une parenthèse' },
-                { value: '10', label: '10 — les priorités' },
-                { value: '11', label: '11 — produit de deux parenthèses' },
-                { value: '12', label: '12 — une fraction de fractions' },
-                { value: 'ensemble', label: 'Calculer, puis dire l\'ensemble' },
-                { value: 'revision', label: 'Révision — les quatre opérations' },
-                { value: 'toutes', label: 'Tout mélangé' }
-            ]
-        },
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: 'barreau', ancien: ANCIEN
+        }),
         {
             id: 'etapes', type: 'select', label: 'Pas à pas', default: 'non',
             // PAS SUR LA FICHE PAPIER : le découpage est une affaire d'écran.
@@ -834,30 +861,26 @@ export const calculFractionsGenerator = {
     ],
     generate(params, ctx) {
         const rng = ctx.rng;
-        const choix = String(params.barreau || '1');
+        // LES BARREAUX COCHÉS SE PARTAGENT LES QUESTIONS, dans l'ordre —
+        // voir core/progression.js. Ce n'est plus un tirage au sort : une
+        // progression qui mélange ne fait pas monter, elle brasse.
+        const marche = String(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params) || '1');
 
-        // LE NEUVIÈME BARREAU EST LA QUESTION DU DEVOIR : on calcule, et l'on
+        // LE TREIZIÈME BARREAU EST LA QUESTION DU DEVOIR : on calcule, et l'on
         // nomme l'ensemble. La réponse n'est plus un nombre mais un ensemble —
         // et l'on ne peut pas y répondre sans avoir calculé, ce qui est tout
         // l'intérêt de la poser ainsi.
-        if (choix === 'ensemble') return questionEnsemble(rng);
+        if (marche === 'ensemble') return questionEnsemble(rng);
 
-        // « Révision » couvre LES QUATRE OPÉRATIONS une fois montées, c'est-
-        // à-dire les huit premiers barreaux : additionner dans les trois cas
-        // de dénominateurs, multiplier dans les trois cas de facteurs, diviser
-        // dans les deux. La question n'est alors plus « comment » mais
-        // « laquelle » — celle d'un contrôle.
-        const possibles = choix === 'toutes' ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-            : (choix === 'revision' ? [1, 2, 3, 4, 5, 6, 7, 8] : [Number(choix) || 1]);
+        const possibles = [Number(marche) || 1];
         // UN BARREAU INCONNU NE DOIT PAS FAIRE TOMBER LE GÉNÉRATEUR.
         //
         // `Number('9') || 1` vaut 9, et il n'y a pas de neuvième barreau :
         // `BARREAUX[9].faire` levait alors une erreur, c'est-à-dire un
-        // exercice qui ne s'ouvre pas du tout. Aucun chemin de l'application ne
-        // produit cette valeur aujourd'hui — les réglages viennent d'une liste
-        // fermée — mais un parcours enregistré l'an dernier, ou un barreau
-        // retiré du catalogue, suffirait. On retombe sur le premier barreau, ce
-        // qui donne une question juste au lieu d'un écran vide.
+        // exercice qui ne s'ouvre pas du tout. On retombe sur le premier
+        // barreau, ce qui donne une question juste au lieu d'un écran vide.
         const tire = possibles[rng.int(0, possibles.length - 1)];
         const rang = BARREAUX[tire] ? tire : 1;
         const q = BARREAUX[rang].faire(rng);
@@ -972,6 +995,8 @@ export const calculFractionsGenerator = {
             meta: {
                 barreau: rang,
                 nomDuBarreau: BARREAUX[rang].nom,
+                // Le nom que lisent les garde-fous communs des progressions.
+                marche: String(rang),
                 ensemble: ens,
                 // LE CLAVIER DE CE CHAPITRE : une barre de fraction, ni
                 // lettre, ni carré, ni racine.
@@ -1059,7 +1084,18 @@ function questionEnsemble(rng) {
         explanation: `${q.texte} = ${txt(q.valeur)}, donc ${ENSEMBLES[bon].nom} : `
             + `${pourquoi[bon]}. ${q.etapes}`,
         difficulty: 5,
-        meta: { barreau: 9, nomDuBarreau: 'Et le plus petit ensemble', ensemble: bon }
+        meta: {
+            // LE TREIZIÈME BARREAU, ET NON LE NEUVIÈME. La valeur 9 datait du
+            // temps où ce chapitre en comptait huit ; depuis, quatre barreaux
+            // de priorités se sont intercalés et cette question-ci est passée
+            // derrière eux, sans que son `meta` le suive. Un bilan qui
+            // l'affichait la rangeait donc au milieu du chapitre.
+            barreau: 13,
+            nomDuBarreau: 'Calculer, puis dire l\'ensemble',
+            // Le nom que lisent les garde-fous communs des progressions.
+            marche: 'ensemble',
+            ensemble: bon
+        }
     });
 }
 
