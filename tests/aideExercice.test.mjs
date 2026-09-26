@@ -102,10 +102,10 @@ test('un exercice à générateur peut montrer un exemple', () => {
     assert.equal(peutMontrerUnExemple({ activityId: 'sim' }), false);
 });
 
-test('un jeu propose « Voir jouer » à la place de « Un exemple »', () => {
+test('un jeu propose « Le robot joue » à la place de « Un exemple »', () => {
     const jeu = ongletsPour({ exo: { activityId: 'sim' } });
     assert.deepEqual(jeu.map(o => o.id), ['consigne', 'exemple']);
-    assert.equal(jeu[1].label, 'Voir jouer');
+    assert.equal(jeu[1].label, 'Le robot joue');
     const exo = ongletsPour({ exo: { generatorId: 'num.lettres' } });
     assert.equal(exo[1].label, 'Un exemple');
 });

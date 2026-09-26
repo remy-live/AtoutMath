@@ -46,7 +46,7 @@
 }
 .role-badge--prof {
     background: color-mix(in srgb, var(--primary) 14%, transparent);
-    border-color: var(--primary); color: var(--primary);
+    border-color: var(--primary); color: var(--primary-texte);
 }
 .role-badge--prof .role-badge-point { opacity: 1; }
 /* Sur un téléphone, le mot tombe et le point reste : il suffit à dire le rôle,
@@ -54,6 +54,33 @@
 @media (max-width: 430px) {
     .role-badge { padding: 4px; gap: 0; }
     .role-badge span:not(.role-badge-point) { display: none; }
+    /* SAUF QUAND C'EST UN PRÉNOM. Le point de couleur dit le RÔLE ; il ne dira
+       jamais QUI. Voir la note dans app.js (`role-badge--nomme`). */
+    .role-badge--nomme { padding: 4px 10px; gap: 6px; }
+    .role-badge--nomme span:not(.role-badge-point) { display: inline; }
+    /* ET SUR UNE COPIE D'ESSAI, LE MOT RESTE TOUJOURS. Rémy : « je n'ai rien
+       de générique […] mode élève/prof pour github, le but étant de tester ».
+       Y passer d'un rôle à l'autre est justement ce qu'on vient y faire ; le
+       point de couleur, lui, ne dit pas dans quel rôle on est — il faut le
+       savoir d'avance pour le lire, ce qui est le contraire d'une étiquette. */
+    body.copie-essai .role-badge { padding: 4px 10px; gap: 6px; }
+    body.copie-essai .role-badge span:not(.role-badge-point) { display: inline; }
+    /* ET « PROF » RESTE ÉCRIT, POUR LA RAISON DITE TROIS LIGNES PLUS HAUT.
+       « le point de couleur ne dit pas dans quel rôle on est — il faut le
+       savoir d'avance pour le lire, ce qui est le contraire d'une étiquette. »
+       L'argument valait pour la copie d'essai ; il vaut partout.
+
+       MESURÉ sur 390 × 844, professeur : la pastille affichait 44 px et un
+       point, `role-badge-nom` contenait bien « Prof » en `display: none`.
+       L'état où l'on montre les exercices en test et où la vue devient le
+       constructeur est justement celui dont il faut se souvenir AVANT de
+       tendre l'appareil à un enfant. Trente pixels dans une barre où les
+       onglets de texte sont déjà cachés sur téléphone : c'est payable.
+
+       L'élève sans prénom, lui, garde le point seul : « Élève » est l'état
+       normal, celui qu'on ne doit pas remarquer. */
+    .role-badge--prof { padding: 4px 10px; gap: 6px; }
+    .role-badge--prof span:not(.role-badge-point) { display: inline; }
     .role-badge-point { width: 9px; height: 9px; }
 }
 #top-navbar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -171,7 +198,19 @@ body.mobile-view.teacher-mode #sidebar { order: 2; border-top: 2px solid var(--b
 body.mobile-view.teacher-mode #sidebar {
     position: fixed; left: 0; right: 0; top: auto;
     bottom: var(--bottom-nav-height);
-    height: 64vh; height: min(64dvh, 540px);
+    /* LE TIROIR OUVERT PREND L'ÉCRAN, parce que c'est le moment où l'on cherche
+       un exercice et rien d'autre.
+
+       Rémy : « quand on déroule le tiroir les exercices sont quasi
+       inaccessibles ». MESURÉ sur un écran de 390 × 844 : le tiroir faisait
+       540 px, dont 396 de poignée, d'onglets et de filtres — il restait 144 px
+       de liste, soit QUATRE exercices visibles sur cent soixante-douze.
+
+       On passe à 78 % de la hauteur : il reste un bandeau du parcours au-dessus
+       — assez pour se rappeler ce qu'on est en train de construire — et la
+       liste double. Fermé, rien ne change : on ne voit toujours que la poignée,
+       puisque c'est `translateY(100% − poignée)` qui la découvre. */
+    height: 78vh; height: min(78dvh, 720px);
     transform: translateY(calc(100% - var(--tiroir-poignee)));
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 4000;
@@ -181,6 +220,53 @@ body.mobile-view.teacher-mode #sidebar {
     background: var(--bg-panel);
 }
 body.mobile-view.teacher-mode #sidebar.drawer-open { transform: translateY(0); }
+/* LA BARRE DU BAS N'EXISTE PAS DANS L'ESPACE DU PROFESSEUR.
+   Rémy, capture d'iPhone en mode prof : « y a un intérêt à la zone prof à la
+   toolbar du bas ? »
+
+   NON, ET C'EST MESURÉ. On a appuyé sur les cinq, à 390 × 844, parcours chargé,
+   en vérifiant à chaque fois que le doigt atteignait bien le bouton
+   (`tools/tmp/barreDuBasProf.mjs`) :
+
+       Explorer    le bouton s'allume, l'écran ne change pas d'un caractère
+       Exercices   idem
+       Code        ouvre le code élève — DOUBLON du 🔗 de la barre d'outils
+       Parcours    le bouton s'allume, l'écran ne change pas
+       Profil      ouvre le profil d'ÉLÈVE : « Mes points », « Ce que tu dois
+                   réviser », tutoiement — chez quelqu'un qui porte « Prof »
+
+   Deux sur cinq font quelque chose, et les deux sont des erreurs pour un
+   professeur. C'est la navigation de l'ÉLÈVE, posée sous l'espace du
+   professeur qui a déjà la sienne en haut — Préparer / La classe — plus les
+   onglets du tiroir juste au-dessus. Quatre bandeaux de navigation sur 844 px.
+
+   ON RETIRE, ET LA HAUTEUR AVEC. Mettre `--bottom-nav-height` à zéro suffit à
+   tout recaler : le tiroir est posé à `bottom: var(--bottom-nav-height)` et la
+   réserve sous le parcours se calcule dessus. Un `display: none` seul aurait
+   laissé soixante pixels de bande morte au bas de l'écran.
+
+   CE QUI DISPARAÎT AVEC : ma correction de la v771, qui remontait cette barre
+   au-dessus du tiroir replié (`z-index: 4100`). Elle réparait la visibilité
+   d'un bandeau qui n'avait rien à faire là — Rémy a posé la bonne question
+   après coup. La règle est retirée plutôt que gardée « au cas où » : une règle
+   qui protège un élément absent raconte une histoire fausse au prochain
+   lecteur. En espace ÉLÈVE, rien ne change : la classe `teacher-mode` tombe et
+   la barre revient, avec sa hauteur. */
+body.mobile-view.teacher-mode {
+    --bottom-nav-height: 0px;
+}
+body.mobile-view.teacher-mode #bottom-nav { display: none !important; }
+/* LE VOILE DERRIÈRE LE TIROIR OUVERT. Voir `setDrawer` dans `js/app.js` : il
+   dit « c'est dessous » au lieu de laisser croire à un titre coupé. Il commence
+   sous la barre du haut, pour qu'on garde ses repères, et il s'efface en même
+   temps que le tiroir. */
+body.mobile-view.teacher-mode.tiroir-ouvert #app-body::after {
+    content: ''; position: fixed; left: 0; right: 0;
+    top: 0; bottom: 0; z-index: 3999;
+    background: rgba(15, 23, 42, .38);
+    animation: fadeIn .25s ease;
+    pointer-events: none;
+}
 /* DE LA PLACE SOUS LE PARCOURS pour que la poignée ne cache rien — la hauteur
    de la poignée, ET une marge de confort. Mesuré : 124 pixels réservés pour
    112 occupés, soit douze pixels d'écart. Douze pixels, c'est rien : une
@@ -203,6 +289,13 @@ body.mobile-view.teacher-mode .drawer-handle {
     user-select: none; -webkit-user-select: none;
 }
 body.mobile-view.teacher-mode .drawer-handle:active { cursor: grabbing; }
+/* OUVERT, LE TIROIR N'A PLUS BESOIN DE DIRE SON NOM. « 📚 Catalogue
+   d'exercices » sert quand il est fermé et qu'il faut deviner ce qui se cache
+   sous la poignée ; une fois ouvert, les onglets juste en dessous disent déjà
+   « Exercices » et « Mes parcours ». Vingt-huit pixels rendus à la liste, et
+   sur un téléphone c'est une ligne d'exercice de plus. */
+body.mobile-view.teacher-mode #sidebar.drawer-open .drawer-handle { padding: 8px 0 6px; }
+body.mobile-view.teacher-mode #sidebar.drawer-open .drawer-label { display: none; }
 .drawer-grip {
     width: 44px; height: 5px; border-radius: 3px;
     background: var(--border);
@@ -260,6 +353,30 @@ body.mobile-view #builder-properties-panel .tiroir-poignee::before {
     background: var(--border);
 }
 #builder-properties-panel { width: 300px; display: flex; flex-direction: column; padding: 20px; background: var(--bg-panel); overflow-y: auto; border-left: 1px solid var(--border); }
+
+/* --- LE VOLET DES PARAMÈTRES, SUR GRAND ÉCRAN ---
+   Rémy : « les paramètres ne servent pas tout le temps », « on pourrait voir
+   pour utiliser l'espace », « évidemment sur portable ou tablette c'est
+   différent ».
+
+   Trois cent trente pixels étaient tenus en réserve à droite pour y écrire, la
+   plupart du temps, « Sélectionnez une activité » — un sixième de l'écran
+   pour une invitation à cliquer ailleurs. Le volet apparaît maintenant quand
+   une étape est choisie et rend la place au parcours dès qu'on le referme.
+
+   ET LE COMPORTEMENT DIFFÈRE AVEC L'ÉCRAN, comme Rémy le demande : sur grand
+   écran il POUSSE (on règle en voyant le parcours à côté), sous 1024 px il
+   RECOUVRE (il n'y a pas la place pour deux). La croix, elle, existe dans les
+   deux cas : c'est le geste qui rend l'espace. */
+@media (min-width: 1024px) {
+    body:not(.mobile-view) #builder-properties-panel { display: none; }
+    body:not(.mobile-view) #builder-properties-panel.mob-open {
+        display: flex; position: relative; padding-top: 20px;
+    }
+    body:not(.mobile-view) #builder-properties-panel .props-close {
+        display: flex; align-items: center; justify-content: center;
+    }
+}
 
 /* --- ÉCRANS MOYENS (téléphone en paysage, petite tablette) ---
    Trois colonnes fixes (catalogue 320 + parcours + propriétés 330) ne
@@ -400,7 +517,7 @@ html.volet-atelier #debug-toolbar { display: none !important; }
    qu'on emploie devant un exercice — la solution, les réglages, la ligne des
    étapes, reculer, avancer, et le régime du saut. Les autres volets, eux, n'ont pas de jeu à
    commander : la feuille ne se saute pas, et le robot a sa propre barre. */
-html.volet-atelier--jeu #debug-toolbar { display: flex !important; }
+html.volet-atelier--jeu body.outils-auteur #debug-toolbar { display: flex !important; }
 /* UN SEUL SÉLECTEUR, ET C'EST VOULU. La première écriture cachait tout puis
    rallumait les cinq — et les rallumait EN VAIN : « …#db-tools > .debug-btn »
    porte deux classes, « …#db-solution » une seule, donc la règle qui cache

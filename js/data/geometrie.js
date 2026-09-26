@@ -1,3 +1,6 @@
+import { PALIERS_PATCHWORK } from '../core/patchwork.js';
+import { elementsGeometrieGenerator } from '../core/generators/elementsGeometrie.js';
+import { casesDeSolides } from '../core/generators/solides.js';
 import { TAGS } from './tags.js';
 // Les paliers du quadrilatère qui se transforme viennent du noyau : deux listes
 // d'options qui se répondent finissent toujours par diverger.
@@ -42,6 +45,26 @@ const NOTATIONS_APPRENTISSAGE = {
         { titre: 'Défi contre la montre', exerciseId: 'geo-notations-sprint', overrides: { sens: 'mixte', longueur: 'oui' }, nbItems: 6 }
     ]
 };
+
+/**
+ * Les réglages qu'une notation de `geo.elements` gouverne vraiment.
+ *
+ * Le générateur sert trois notions et déclare les réglages des trois. Les
+ * poser tous sur chaque exercice donnerait à l'exercice du milieu un bouton
+ * « quels objets » qui ne change rien à sa feuille — et
+ * `ficheReglages.test.mjs` le refuse, à raison : « un bouton qui ne fait rien
+ * est pire qu'un bouton absent ».
+ *
+ * `notion` n'est jamais offerte : c'est l'exercice qui la fixe, et elle est
+ * dans son titre. La proposer reviendrait à offrir de changer d'exercice
+ * depuis l'exercice.
+ */
+function reglagesDeGeoElements(notion) {
+    const gen = () => (elementsGeometrieGenerator.params || []);
+    const garder = { appartenance: ['sortes'], codage: ['familles'], milieu: ['piege'] };
+    const veut = garder[notion] || [];
+    return gen().filter(p => veut.includes(p.id));
+}
 
 export const geometrieExercises = [
     // --- Les angles remarquables (fiche 5ᵉ « Les angles ») ---
@@ -227,7 +250,7 @@ export const geometrieExercises = [
         ],
         motsClefs: ['programme de construction', 'construire', 'segment', 'droite', 'cercle',
             'milieu', 'médiatrice', 'perpendiculaire', 'parallèle', 'intersection', 'rédiger'],
-        tags: { chemin: ['Géométrique', 'Repérage'], niveaux: ['6ème', '5ème'] },
+        tags: { chemin: ['Espace et géométrie', 'Repérage'], niveaux: ['6ème', '5ème'] },
         instruction: 'Une figure est dessinée : à toi d\'écrire le PROGRAMME qui la construit. '
             + 'Tu composes chaque phrase EN CLIQUANT, mot après mot : d\'abord « Place » ou '
             + '« Trace », puis ce que tu traces — « le segment [__] », « le cercle de centre _ '
@@ -583,6 +606,53 @@ export const geometrieExercises = [
             + "Le réglage « axes obliques » ajoute les diagonales à 45° : gardez-le décoché tant "
             + "que le miroir droit n'est pas acquis, car on n'y compte plus ni lignes ni colonnes."
     },
+    // LE PATCHWORK — un jeu de Rémy, rapporté d'un magazine.
+    //
+    // Rémy, quatre pages arrachées à un magazine de jeux : « j'aimerais bien ces
+    // jeux en français et en rapport avec les maths ». Celui-ci s'appelait
+    // « Quilt », et c'est le plus mathématique des quatre : on découpe une
+    // grille en morceaux qui ont chacun un CENTRE DE SYMÉTRIE, et le nombre
+    // écrit dans un morceau dit son AIRE en cases.
+    //
+    // POURQUOI IL MANQUAIT. La symétrie centrale s'enseigne sur des figures
+    // qu'on REGARDE — « cette figure a-t-elle un centre ? » — presque jamais sur
+    // des figures qu'on FABRIQUE. Ici l'élève cherche, pour une aire donnée,
+    // quelles formes ont un centre : il bute sur le L de quatre cases qui n'en a
+    // pas, et découvre que pour une aire paire le centre tombe ENTRE deux
+    // cases. Ces deux choses-là ne se disent pas, elles se butent.
+    //
+    // ET CE N'EST PAS UNE CONSTRUCTION GÉOMÉTRIQUE — la ligne rouge vise la
+    // règle et le compas. On colorie des cases d'un quadrillage : c'est un jeu
+    // de logique, du même bois que le Slitherlink et le Hashi.
+    {
+        id: 'geo-patchwork',
+        title: 'Le Patchwork',
+        cree: '2026-09-26',
+        activityId: 'patchwork',
+        skills: ['geo.transfo.centre-figure'],
+        params: { palier: 'facile' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
+                aide: 'Agrandit la grille et les morceaux. Plus un morceau est grand, plus il '
+                    + 'y a de formes qui ont un centre — et plus il faut chercher.',
+                options: Object.entries(PALIERS_PATCHWORK)
+                    .map(([value, p]) => ({ value, label: p.label }))
+            }
+        ],
+        motsClefs: ['symétrie', 'centre de symétrie', 'demi-tour', 'aire', 'découpage',
+            'patchwork', 'quilt', 'logique'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Découpe toute la grille en morceaux. Le nombre écrit dans un morceau dit "
+            + "combien il a de cases, et chaque morceau doit avoir un CENTRE DE SYMÉTRIE : tourné "
+            + "d'un demi-tour autour de ce point, il retombe exactement sur lui-même. Touche un "
+            + "nombre pour choisir son morceau, puis colorie ses cases — au doigt, en glissant. "
+            + "Retoucher une case de la couleur choisie l'efface. Attention : un L de quatre cases "
+            + "n'a pas de centre, un carré et un S en ont un. Quand tout est colorié, « Vérifier »."
+    },
     {
         id: 'geo-transfo-quadrillage',
         colonnesPapier: 4,
@@ -933,7 +1003,13 @@ export const geometrieExercises = [
         // rien ne s'exécute, et c'est exactement le « programme de
         // construction » du brevet.
         printable: 'chat', printGeneratorId: 'geo.chat-fiche',
-        printParams: { quoi: 'melange', niveau: 'moyen' },
+        // PAS DE `niveau` ICI. Il épinglait la feuille sur une bande de
+        // figures ; depuis que la fiche a sa colonne de cases, ne rien
+        // dire veut dire « les trois bandes », c'est-à-dire une feuille
+        // qui part du carré et finit sur l'étoile. `quoi` reste, lui :
+        // « mélangés » y veut dire un tirage à chaque figure, et c'est
+        // justement ce que des cases ne savent pas dire.
+        printParams: { quoi: 'melange' },
         consignePapier: "Trace au crayon, côté par côté, en comptant les carreaux.",
         params: { depart: 1, saisie: 'auto' },
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.ANGLES], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
@@ -1330,17 +1406,15 @@ export const geometrieExercises = [
         generatorId: 'geo.solides', printable: 'solides',
         params: { niveau: 'tous', aspect: 'tous', numeros: 'progressif', marques: 'progressif', facesColorees: true },
         paramSchema: [
+            // LA CARTE RÉÉCRIT SON PANNEAU, ELLE NE RÉÉCRIT PAS LA PROGRESSION
+            // — voir le logigramme, même cas. L'aide reste ici : c'est elle
+            // qui dit ce que chaque bande apporte.
             {
-                id: 'niveau', type: 'select', label: 'Les solides proposés',
+                ...casesDeSolides(),
+                label: 'Les solides proposés',
                 aide: 'Les solides usuels d\'abord — cube, pavé, prisme, pyramide. Les bases à cinq '
                     + 'et six côtés obligent à raisonner par familles ; l\'octaèdre force à vraiment '
-                    + 'regarder le dessin.',
-                options: [
-                    { value: 'facile', label: 'Les solides usuels' },
-                    { value: 'moyen', label: 'Jusqu\'aux bases pentagonales' },
-                    { value: 'tous', label: 'Tous, octaèdre compris' }
-                ],
-                default: 'tous'
+                    + 'regarder le dessin.'
             },
             {
                 id: 'aspect', type: 'select', label: 'Ce qu\'on demande de compter',
@@ -1726,5 +1800,63 @@ export const geometrieExercises = [
         tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.NOTATIONS], niveaux: [TAGS.NIVEAU.SIXIEME] },
         instruction: "Crochet = la ligne s'arrête, parenthèse = elle continue. Réponds avant que la jauge ne se vide : elle se remplit de moins en moins longtemps à mesure que tu enchaînes.",
         apprentissage: NOTATIONS_APPRENTISSAGE
-    }
+    },
+    // ── LES ÉLÉMENTS DE GÉOMÉTRIE ───────────────────────────────────────────
+    //
+    // RÉMY, sa fiche de 6e à l'appui : « on pourrait faire quoi comme
+    // exercice ? » J'avais croisé ses vingt-cinq exercices avec le catalogue ;
+    // il a retenu l'appartenance, la lecture d'un codage et le milieu.
+    //
+    // CE QUI RESTE SUR SA FEUILLE : l'étoile, le badge, le pavage, les figures
+    // au compas. C'est sa ligne rouge — « rien ne remplace le geste ». L'écran
+    // prend ce qu'il fait mieux qu'une photocopie : une figure neuve à chaque
+    // question, et la correction qui NOMME la confusion.
+    ...[
+        ['geo-appartenance', 'appartenance', 'segment-droite',
+            'Le point est-il dessus ? (∈ et ∉)',
+            "Une figure, quatre affirmations, une seule vraie. Le cœur n'est pas le "
+            + "symbole : c'est qu'un point peut être sur la DROITE (AB) sans être sur le "
+            + "SEGMENT [AB], qui s'arrête à ses deux bouts."],
+        ['geo-appartenance-demi', 'appartenance', 'tous',
+            'Le point est-il dessus ? avec les demi-droites',
+            "Le même exercice, la demi-droite en plus. [AB) part de A et file du côté de "
+            + "B : un point de l'autre côté de A est sur la droite, mais pas sur la "
+            + "demi-droite. C'est la confusion la plus tenace du chapitre."],
+        ['geo-codage-lire', 'codage', 'tous',
+            'Lire un codage',
+            "L'application savait POSER un codage ; voici l'inverse — le lire. Deux "
+            + "segments qui portent la même marque ont la même longueur, et cela s'écrit "
+            + "AB = CD, sans crochets : [AB] est un objet, AB est un nombre."],
+        ['geo-milieu', 'milieu', 'tous',
+            'Le milieu d\'un segment',
+            "Être le milieu demande DEUX choses : être sur le segment, ET être à égale "
+            + "distance des deux bouts. Une question sur cinq pose le point équidistant "
+            + "qui n'est pas sur le segment — il n'est dans aucun manuel, et c'est lui "
+            + "qui sépare ceux qui savent la définition de ceux qui l'ont à moitié "
+            + "retenue."]
+    ].map(([id, notion, sortes, title, instruction]) => ({
+        id, title,
+        cree: '2026-09-24',
+        consignePapier: notion === 'milieu' ? 'Quelle phrase est vraie ?'
+            : (notion === 'codage' ? 'Que donne le codage ?'
+                : 'Quelle affirmation est vraie ?'),
+        colonnesPapier: 1,
+        generatorId: 'geo.elements', activityId: 'buttons',
+        params: { notion, sortes },
+        // CHAQUE EXERCICE N'OFFRE QUE LES RÉGLAGES QUI LE GOUVERNENT. Un
+        // générateur qui sert trois notions déclare les réglages des trois ;
+        // les poser tous sur chaque exercice donnerait à l'exercice du milieu
+        // un bouton « quels objets » qui ne change rien — ce que
+        // `ficheReglages.test.mjs` refuse, et à raison.
+        //
+        // `notion` n'y est jamais : c'est l'exercice qui la fixe, et elle est
+        // dans son titre. La proposer reviendrait à offrir de changer
+        // d'exercice depuis l'exercice.
+        paramSchema: reglagesDeGeoElements(notion),
+        motsClefs: ['appartient', 'appartenance', 'codage', 'milieu', 'segment', 'droite',
+            'demi-droite', 'point', 'notation', 'géométrie', 'sixième', 'aligné'],
+        tags: { chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.NOTATIONS],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        instruction
+    }))
 ];

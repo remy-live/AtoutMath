@@ -18,12 +18,29 @@
 
 import { makeItem } from '../items.js';
 import { genererHexagrille, CASES } from '../hexagrille.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 const NIVEAUX = {
     facile: 'Trois cases données',
     moyen: 'Une seule case donnée',
     difficile: 'Aucune case donnée'
 };
+
+// ── LA PROGRESSION, EN CASES À COCHER ───────────────────────────────────────
+//
+// Rémy : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral, tu ne penses
+// pas ? — fais tout, ce serait le plus cohérent non ? »
+//
+// LA DIFFICULTÉ TIENT AU NOMBRE D'APPUIS — trois cases données, une, aucune.
+// C'est une échelle, et une feuille de six grilles restait pourtant sur un
+// seul barreau. Cochés, les trois se partagent la page.
+const LISTE_MARCHES = Object.entries(NIVEAUX)
+    .map(([id, nom], i) => ({ id, nom: `${i + 1}. ${nom}` }));
+/** Le réglage d'avant les cases — voir `marchesCochees`. */
+const ANCIEN = { cle: 'niveau' };
 
 export const hexagrilleFicheGenerator = {
     id: 'logi.hexagrille-fiche',
@@ -34,18 +51,16 @@ export const hexagrilleFicheGenerator = {
     // une ligne de texte.
     grille: true,
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'Difficulté', default: 'facile',
-            aide: 'La difficulté tient au nombre d\'appuis — cases déjà écrites et flèches '
-                  + 'données —, pas aux calculs. Chaque grille reste résoluble sans jamais '
-                  + 'deviner.',
-            options: Object.entries(NIVEAUX).map(([value, label]) => ({ value, label }))
-        }
+        paramMarches({ marches: LISTE_MARCHES, mot: 'niveau', ancien: ANCIEN })
     ],
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const niveau = NIVEAUX[(params || {}).niveau] ? params.niveau : 'facile';
+        const tire = String(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(params, LISTE_MARCHES, ANCIEN),
+            totalDe(ctx, params), params));
+        const niveau = NIVEAUX[tire] ? tire : 'facile';
         const puzzle = genererHexagrille(rng, { niveau });
         const solution = puzzle.solution.join(' ');
 
@@ -67,7 +82,7 @@ export const hexagrilleFicheGenerator = {
             explanation: CASES.map(({ c, r, i }) =>
                 `colonne ${c + 1} rangée ${r + 1} : ${puzzle.solution[i]}`).join(' · '),
             difficulty: niveau === 'facile' ? 2 : niveau === 'moyen' ? 3 : 4,
-            meta: { puzzle, niveau, solution: puzzle.solution }
+            meta: { puzzle, niveau, solution: puzzle.solution, marche: niveau }
         });
     }
 };

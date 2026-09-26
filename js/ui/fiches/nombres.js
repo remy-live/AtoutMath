@@ -1650,6 +1650,21 @@ function dessinerPosePdf(doc, item, slot, solution) {
 // --- LE TABLEAU DE CONVERSION, SUR LE PAPIER ------------------------------------
 
 /**
+ * ONZE MILLIMÈTRES PAR CONVERSION QUAND LE TABLEAU N'EST PAS IMPRIMÉ — et ce
+ * nombre doit être LE MÊME des deux côtés.
+ *
+ * La hauteur d'un bloc est réservée par `proportions`, qui ne connaît ni la
+ * largeur du bloc ni le nombre de colonnes qu'on y mettra ; le dessin, lui, le
+ * décide au dernier moment (`geoConversion`). Si les deux ne comptent pas
+ * pareil, l'un réserve et l'autre déborde — et c'est précisément ce qui
+ * arrivait : la réservation supposait DEUX colonnes de conversions, le dessin
+ * n'en tenait qu'UNE dans un bloc de 88,5 mm de large.
+ *
+ * On le pose donc ici, une fois, et les deux s'en servent.
+ */
+const RH_SANS_TABLEAU = 11;
+
+/**
  * La géométrie d'un tableau de conversion : les colonnes d'unités, une ligne
  * par conversion, et l'énoncé de chacune écrit à gauche de sa ligne.
  */
@@ -1747,11 +1762,25 @@ function geoConversion(item, slot) {
             && Math.ceil(nLignes / colonnes) * RH_MINI > b.h - 2) colonnes++;
     }
     const parColonne = Math.ceil(nLignes / colonnes);
-    // Sans tableau, la rangée a le droit de respirer : seize millimètres, la
-    // hauteur d'une ligne de cahier bien aérée, au lieu des neuf et demi que
-    // le tableau impose à sa voisine.
-    const rhMax = avecTableau ? 9.5 : 16;
-    const rh = Math.max(6.5, Math.min((b.h - 2) / (parColonne + (avecTableau ? 1.2 : 0.2)), rhMax));
+    // Sans tableau, la rangée a le droit de respirer — mais d'un chiffre CONNU,
+    // et c'est là que tout se jouait : voir RH_SANS_TABLEAU.
+    const rhMax = avecTableau ? 9.5 : RH_SANS_TABLEAU;
+    // UN PLANCHER QUI FAIT DÉBORDER N'EST PAS UN PLANCHER.
+    //
+    // Rémy : « quand on ne met pas les tableaux, c'est le bordel et il y a des
+    // espaces vides ». MESURÉ sur sa feuille : huit conversions, une colonne,
+    // interligne ramené au plancher de 6,5 mm — soit 52 mm de contenu dans une
+    // boîte de 37,17 mm, alors que la rangée suivante commençait 41,57 mm plus
+    // bas. Chaque bloc empiétait donc de dix millimètres sur le suivant, et les
+    // écarts entre lignes tombaient de 22 pixels à 8, 13, 9 : deux blocs
+    // imbriqués l'un dans l'autre. C'est exactement ce qu'on voit sur sa
+    // capture, et ce n'était pas « moche », c'était faux.
+    //
+    // Le plancher protégeait la lisibilité ; il la protégeait en écrivant par
+    // -dessus le bloc d'à côté. On préfère une ligne serrée à deux lignes
+    // superposées : le plancher ne s'applique donc que s'il TIENT.
+    const place = (b.h - 2) / (parColonne + (avecTableau ? 1.2 : 0.2));
+    const rh = Math.max(Math.min(6.5, place), Math.min(place, rhMax));
     const x0 = b.x + enonceW;
     const y0 = b.y + 1;
     const taille = Math.max(7.5, Math.min(rh * 1.15, avecTableau ? 12 : 14));
@@ -2835,7 +2864,15 @@ export const RENDUS_NOMBRES = {
             // et deux blocs de front tiennent sur une page au lieu d'un.
             const sansTableau = (items || []).length
                 && (items || []).every(i => i && i.meta && i.meta.tableau === false);
-            if (sansTableau) return { w: 1, h: 0.09 * Math.ceil(n / 2) + 0.06 };
+            // SANS TABLEAU, ON RÉSERVE CE QU'ON VA VRAIMENT DESSINER : une ligne
+            // par conversion, à RH_SANS_TABLEAU millimètres. La règle d'avant
+            // divisait par deux, en supposant deux colonnes de conversions dans
+            // le bloc — mais un bloc de 88,5 mm n'en porte qu'une, une
+            // conversion demandant 52 mm pour tenir entière. On réservait donc
+            // la moitié de la place nécessaire, et les blocs se chevauchaient.
+            // 93 mm : la largeur d'un bloc à deux de front, celle dont parle
+            // `disposition` juste en dessous.
+            if (sansTableau) return { w: 1, h: (n * RH_SANS_TABLEAU + 4) / 93 };
             return { w: 1, h: 0.09 * (n + 1) + 0.06 };
         },
         // DEUX DE FRONT, PLUS TROIS. Le commentaire d'origine disait vrai — à

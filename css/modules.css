@@ -50,13 +50,13 @@
     padding: 10px 22px; border-radius: 999px; pointer-events: none;
     background: var(--bg-panel); border: 2px solid #bbf7d0;
     box-shadow: 0 10px 26px rgba(15, 23, 42, .18);
-    font-weight: 800; font-size: 1.05rem; color: var(--success);
+    font-weight: 800; font-size: 1.05rem; color: var(--success-texte);
     white-space: nowrap; max-width: calc(100% - 24px);
     animation: fbToastDrop .28s cubic-bezier(.175, .885, .32, 1.275);
 }
 .fb-toast-icon { line-height: 0; display: flex; }
 .fb-toast-points {
-    font-size: .92rem; background: #dcfce7; color: var(--success);
+    font-size: .92rem; background: #dcfce7; color: var(--success-texte);
     padding: 2px 10px; border-radius: 999px;
 }
 .fb-toast.fb-card--leaving {
@@ -106,17 +106,17 @@
 .fb-card:not(.fb-card--blocking) { pointer-events: none; }
 
 .fb-icon { line-height: 0; }
-.fb-icon--ok { color: var(--success); }
-.fb-icon--ko { color: var(--danger); }
-.fb-icon--hint { color: var(--primary); }
+.fb-icon--ok { color: var(--success-texte); }
+.fb-icon--ko { color: var(--danger-texte); }
+.fb-icon--hint { color: var(--primary-texte); }
 
 .fb-label {
     font-size: .78rem; font-weight: 800; letter-spacing: .08em;
     text-transform: uppercase; color: var(--text-muted);
 }
-.fb-title { font-size: 1.45rem; font-weight: 800; color: var(--success); }
+.fb-title { font-size: 1.45rem; font-weight: 800; color: var(--success-texte); }
 .fb-points {
-    font-size: 1.02rem; font-weight: 700; color: var(--success);
+    font-size: 1.02rem; font-weight: 700; color: var(--success-texte);
     background: #dcfce7; padding: 4px 14px; border-radius: 12px;
 }
 /* `pre-line` : un indice peut REVENIR À LA LIGNE. Rémy, sur la carte d'indice
@@ -129,7 +129,7 @@
    milieu de l'égalité (« 032,12 = » d'un côté, « 32,12. » de l'autre). */
 .fb-exemple {
     display: block; margin-top: 8px; white-space: nowrap;
-    font-size: 1.15rem; font-weight: 800; color: var(--primary);
+    font-size: 1.15rem; font-weight: 800; color: var(--primary-texte);
     font-variant-numeric: tabular-nums;
 }
 .fb-detail .fb-exemple { font-size: 1rem; margin-top: 6px; }
@@ -148,7 +148,11 @@
     background: var(--primary); box-shadow: 0 4px 14px rgba(99, 102, 241, .34);
     transition: filter .15s, transform .1s;
 }
-.fb-card--ko .fb-close { background: var(--danger); box-shadow: 0 4px 14px rgba(239, 68, 68, .32); }
+/* LE BOUTON QUE L'ÉLÈVE APPUIE APRÈS CHAQUE FAUTE. C'est, de tout le
+   logiciel, l'objet coloré le plus souvent regardé — et il donnait 3,76:1 en
+   blanc sur `--danger`. L'ombre garde la teinte vive : elle ne porte pas de
+   texte, elle n'a donc pas la même contrainte. */
+.fb-card--ko .fb-close { background: var(--danger-fond); box-shadow: 0 4px 14px rgba(239, 68, 68, .32); }
 .fb-close:hover { filter: brightness(1.07); }
 .fb-close:active { transform: translateY(2px); }
 .fb-close:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
@@ -231,7 +235,7 @@
     background: color-mix(in srgb, var(--success) 12%, var(--bg-hover));
     border-color: color-mix(in srgb, var(--success) 45%, var(--border));
 }
-.btn-showme:hover:not(:disabled) { border-color: var(--success); color: var(--success); }
+.btn-showme:hover:not(:disabled) { border-color: var(--success); color: var(--success-texte); }
 
 /* --- Mode apprentissage ------------------------------------ */
 
@@ -243,7 +247,7 @@
     font-size: .95rem; line-height: 1.5; font-weight: 500;
 }
 .learn-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 22px; }
-.run-screen--learn .run-screen-title { color: var(--primary); }
+.run-screen--learn .run-screen-title { color: var(--primary-texte); }
 
 .btn-hint {
     display: inline-flex; align-items: center; gap: 8px;
@@ -251,7 +255,7 @@
     border: 1px solid var(--border); border-radius: 999px;
     padding: 8px 18px; font-size: .95rem; font-weight: 600; transition: .2s;
 }
-.btn-hint:hover:not(:disabled) { background: var(--bg-panel); border-color: var(--primary); color: var(--primary); }
+.btn-hint:hover:not(:disabled) { background: var(--bg-panel); border-color: var(--primary); color: var(--primary-texte); }
 .btn-hint:disabled { opacity: .45; cursor: not-allowed; }
 
 .hint-text {
@@ -443,7 +447,7 @@
     display: flex; align-items: center; justify-content: center;
     font-variant-numeric: tabular-nums;
 }
-.numpad-key:hover { border-color: var(--primary); color: var(--primary); }
+.numpad-key:hover { border-color: var(--primary); color: var(--primary-texte); }
 .numpad-key:active {
     transform: translateY(2px);
     box-shadow: 0 0 0 var(--border), inset 0 2px 5px rgba(15, 23, 42, .12);
@@ -452,8 +456,8 @@
    d'accent, comme la touche d'effacement porte celle de l'avertissement. Sur
    un chapitre où le signe EST la question, il ne doit pas se confondre avec
    les dix touches qu'on enfonce sans réfléchir. */
-.numpad-key--signe { color: var(--primary); }
-.numpad-key--del { color: var(--warning); }
+.numpad-key--signe { color: var(--primary-texte); }
+.numpad-key--del { color: var(--warning-texte); }
 .numpad-key--del svg { width: clamp(20px, 3cqh, 25px); height: auto; }
 .numpad-key--ok {
     grid-column: 1 / -1; height: clamp(42px, 6.8cqh, 58px); margin-top: 4px;
@@ -924,7 +928,7 @@
 .egy-svg { max-height: clamp(90px, 22cqh, 200px); }
 
 /* Mises en valeur des énoncés de numération. */
-.nb-highlight { color: var(--primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nb-highlight { color: var(--primary-texte); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .nb-highlight--lg { display: inline-block; margin-top: 6px; font-size: 1.25em; }
 /* LE NOMBRE EN LETTRES EST L'ÉNONCÉ, PAS UNE NOTE DE BAS DE PAGE.
    Rémy, banc d'essai iPhone, sur « Des Lettres aux Chiffres » : « tellement
@@ -936,11 +940,11 @@
 .nb-consigne { font-size: .72em; font-weight: 700; color: var(--text-muted); }
 .nb-words {
     display: inline-block; margin-top: 6px; font-size: 1.1em;
-    font-weight: 800; color: var(--primary); line-height: 1.3; max-width: 20ch;
+    font-weight: 800; color: var(--primary-texte); line-height: 1.3; max-width: 20ch;
 }
 .nb-slot {
     display: inline-block; min-width: 1.6em; padding: 0 .2em;
-    border-bottom: 3px dashed var(--primary); color: var(--primary);
+    border-bottom: 3px dashed var(--primary); color: var(--primary-texte);
 }
 /* Grand dans le viewBox : le SVG est ensuite réduit pour tenir en hauteur,
    et les cotes doivent rester lisibles après cette réduction. */
@@ -955,7 +959,7 @@
 /* La couleur des marques de points est posée plus bas, avec `pt-marque`. */
 .not-name { fill: var(--text-main); font-size: 20px; font-weight: 800; }
 /* L'objet à écrire, dit en toutes lettres dans l'énoncé. */
-.not-cible { display: inline-block; margin-top: 6px; color: var(--primary); font-size: .92em; }
+.not-cible { display: inline-block; margin-top: 6px; color: var(--primary-texte); font-size: .92em; }
 .not-ecriture {
     display: inline-block; padding: 2px 12px; border-radius: 10px;
     background: var(--tag-dom-bg); color: var(--tag-dom-txt);
@@ -974,7 +978,7 @@
     display: flex; justify-content: space-between; align-items: center;
     width: min(520px, 100%); font-weight: 800; font-size: clamp(.78rem, 1.9cqh, .95rem);
 }
-.sprint-vitesse { color: var(--primary); }
+.sprint-vitesse { color: var(--primary-texte); }
 .sprint-vitesse--monte { animation: sprint-palier .5s ease-out; }
 @keyframes sprint-palier {
     0% { transform: scale(1); }
@@ -982,7 +986,7 @@
     100% { transform: scale(1); }
 }
 .sprint-serie { color: var(--text-muted); }
-.sprint-serie--chaude { color: var(--danger); }
+.sprint-serie--chaude { color: var(--danger-texte); }
 
 .sprint-jauge {
     width: min(520px, 100%); height: clamp(8px, 1.6cqh, 13px);
@@ -1106,20 +1110,20 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     font-weight: 800; font-size: .92rem; color: var(--text-main);
     position: relative;
 }
-.lec-suite b.lec-ok { border-color: var(--success); color: var(--success); background: #dcfce7; }
-.lec-suite b.lec-ko { border-color: var(--danger); color: var(--danger); background: #fee2e2; }
+.lec-suite b.lec-ok { border-color: var(--success); color: var(--success-texte); background: #dcfce7; }
+.lec-suite b.lec-ko { border-color: var(--danger); color: var(--danger-texte); background: #fee2e2; }
 .lec-suite b.lec-vide { color: var(--text-muted); border-style: dashed; }
 /* Le petit calcul dans le coin d'une zone, comme sur la vraie grille. */
 .lec-suite b.lec-coin::before {
     content: attr(data-coin); position: absolute; top: 1px; left: 3px;
-    font-size: .52rem; font-weight: 800; color: var(--primary);
+    font-size: .52rem; font-weight: 800; color: var(--primary-texte);
 }
 .lec-fleche { color: var(--text-muted); font-weight: 800; }
 .lec-calcul {
     font-weight: 800; color: var(--text-main); font-size: .98rem;
     background: var(--bg-app); border-radius: 8px; padding: 4px 10px;
 }
-.lec-calcul .lec-ok { color: var(--success); }
+.lec-calcul .lec-ok { color: var(--success-texte); }
 .lec-calcul .lec-vide { color: var(--text-muted); }
 .lec-figure { margin-top: 8px; max-width: 260px; }
 .lec-figure svg { width: 100%; height: auto; }
@@ -1145,6 +1149,229 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 .cfg-apprendre-titre { font-weight: 800; font-size: .98rem; }
 .cfg-apprendre-note { font-size: .78rem; color: var(--text-muted); line-height: 1.35; }
 
+/* --- CHOISIR UN EXERCICE EN GRAND -------------------------------------------
+
+   Voir js/ui/choisirExercice.js. Mesuré : dans la colonne de 319 px, 51 titres
+   sur 172 sont rognés. Ici ils tiennent, le chemin complet est lisible, et
+   l'aperçu joue à côté. */
+.cx2 { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.cx2-barre { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.cx2-champ {
+    flex: 1 1 260px; display: flex; align-items: center; gap: 8px;
+    background: var(--bg-app); border: 1px solid var(--border);
+    border-radius: 999px; padding: 0 14px; min-height: 44px;
+}
+.cx2-loupe { line-height: 0; color: var(--text-muted); flex: 0 0 auto; }
+.cx2-recherche {
+    flex: 1 1 auto; min-width: 0; border: none; background: none;
+    font: inherit; color: var(--text-main); padding: 10px 0;
+}
+.cx2-recherche:focus { outline: none; }
+.cx2-champ:focus-within { border-color: var(--primary); }
+.cx2-niveaux { display: flex; flex-wrap: wrap; gap: 6px; }
+.cx2-niv {
+    appearance: none; font: inherit; font-size: .84rem; font-weight: 700;
+    color: var(--text-muted); background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 7px 14px; min-height: 36px; cursor: pointer;
+}
+.cx2-niv:hover { color: var(--text-main); border-color: var(--text-muted); }
+.cx2-niv--actif {
+    color: #fff; background: var(--primary); border-color: var(--primary);
+}
+.cx2-compte { margin: 0; font-size: .82rem; color: var(--text-muted); font-weight: 700; }
+/* AU DOIGT, 44 PX — y compris ici. Mesuré sur un téléphone : les pastilles de
+   niveau tombaient à 36 px et le champ de recherche à 40. La fenêtre sert
+   justement à choisir confortablement ; qu'elle soit la seule à ne pas tenir
+   la règle serait le comble. */
+@media (pointer: coarse) {
+    .cx2-niv { min-height: 44px; }
+    .cx2-recherche { padding: 13px 0; }
+}
+
+.cx2-corps { display: grid; grid-template-columns: 1fr 380px; gap: 16px; min-height: 0; }
+.cx2-liste {
+    list-style: none; margin: 0; padding: 0; max-height: 52vh; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 6px;
+}
+.cx2-item {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--bg-panel); padding: 4px 6px 4px 4px;
+}
+.cx2-item[aria-selected="true"] { border-color: var(--primary); background: var(--tag-dom-bg); }
+/* Le titre ENTIER, sur une ligne : c'est tout l'objet de cette fenêtre. Il a
+   la place ici — dans la colonne de gauche il ne l'avait pas. */
+.cx2-voir {
+    flex: 1 1 auto; min-width: 0; text-align: left; appearance: none;
+    background: none; border: none; font: inherit; cursor: pointer;
+    padding: 8px 10px; border-radius: 9px; min-height: 44px;
+    display: flex; flex-direction: column; gap: 2px;
+}
+.cx2-voir:hover { background: var(--bg-hover); }
+.cx2-titre { font-weight: 700; color: var(--text-main); font-size: .95rem; }
+.cx2-sous { font-size: .76rem; color: var(--text-muted); }
+.cx2-duo { margin-left: 6px; }
+.cx2-ajouter {
+    flex: 0 0 auto; appearance: none; font: inherit; font-size: .82rem;
+    font-weight: 800; color: #fff; background: var(--primary);
+    border: none; border-radius: 999px; padding: 9px 15px;
+    min-height: 44px; cursor: pointer; white-space: nowrap;
+}
+.cx2-ajouter:hover { background: var(--primary-hover); }
+.cx2-ajouter--fait { background: var(--success); }
+.cx2-rien { padding: 26px; text-align: center; color: var(--text-muted); }
+
+.cx2-apercu {
+    position: relative; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--bg-plateau); padding: 10px; min-height: 200px;
+}
+.cx2-apercu-vide, .cx2-apercu-note {
+    margin: 0; color: var(--text-muted); font-size: .86rem; text-align: center;
+    padding: 20px;
+}
+.cx2-apercu-cadre { position: relative; overflow: hidden; width: 100%; }
+.cx2-apercu-toile { position: absolute; inset: 0; transform-origin: top left; }
+
+/* RELANCER L'APERÇU — le mot exact est posé par le script (« Question
+   suivante » pour un générateur, « Relancer » pour un jeu). Une seule question
+   ne dit pas ce que l'exercice tire en moyenne. */
+.cx2-apercu-pied { width: 100%; display: flex; justify-content: center; padding-top: 10px; }
+.cx2-rejouer, .re-rejouer, .hd-rejouer {
+    min-height: 44px; padding: 0 16px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-panel); color: var(--text-main);
+    font-size: .88rem; font-weight: 600; cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+}
+.cx2-rejouer:hover, .re-rejouer:hover, .hd-rejouer:hover {
+    background: var(--bg-hover); border-color: var(--primary);
+}
+.cx2-rejouer:focus-visible, .re-rejouer:focus-visible, .hd-rejouer:focus-visible {
+    outline: 2px solid var(--primary); outline-offset: 2px;
+}
+
+/* SUR UN ÉCRAN ÉTROIT, L'APERÇU PASSE SOUS LA LISTE. Deux colonnes de moins de
+   trois cents pixels ne servent ni l'une ni l'autre. */
+@media (max-width: 860px) {
+    .cx2-corps { grid-template-columns: 1fr; }
+    .cx2-liste { max-height: 40vh; }
+    .cx2-apercu { min-height: 160px; }
+}
+
+/* --- CE QUE LES FILTRES GARDENT ----------------------------------------------
+
+   Voir `majCompteCatalogue` dans js/ui/navigation.js. Une ligne discrète, et
+   qui ne s'affiche QUE si quelque chose filtre : un « 172 sur 172 » permanent
+   est du bruit, et l'on cesse de lire une ligne qui ne change jamais. */
+.cat-compte {
+    margin: 0; padding: 7px 12px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+    font-size: .8rem; line-height: 1.35; color: var(--text-muted);
+    background: var(--bg-hover); border-bottom: 1px solid var(--border);
+}
+.cat-compte-nb { font-weight: 800; color: var(--text-main); }
+.cat-compte-quoi { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-compte-tout {
+    margin-left: auto; appearance: none; font: inherit; font-size: .78rem;
+    font-weight: 700; color: var(--primary-texte);
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 11px; cursor: pointer; white-space: nowrap;
+}
+.cat-compte-tout:hover { border-color: var(--primary); }
+.cat-compte-tout:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+@media (pointer: coarse) { .cat-compte-tout { min-height: 44px; } }
+
+
+/* --- LES RÉGLAGES D'UNE ÉTAPE, EN FENÊTRE ------------------------------------
+
+   Voir js/ui/reglagesEtape.js. Deux onglets : les réglages, et un aperçu qui
+   tient compte de ce qu'on vient de cocher. La fenêtre est large parce que
+   c'est ce qui permet de montrer le jeu — une colonne de 330 px ne le pouvait
+   pas, et c'est pour cela que l'aperçu n'existait pas. */
+
+.re-onglets {
+    display: flex; gap: 6px; margin: -6px 0 14px;
+    border-bottom: 1px solid var(--border);
+}
+.re-onglet {
+    appearance: none; background: none; border: none; font: inherit;
+    font-weight: 700; font-size: .95rem; color: var(--text-muted);
+    padding: 9px 16px; min-height: 44px; cursor: pointer;
+    border-bottom: 3px solid transparent; margin-bottom: -1px;
+    transition: color .15s ease, border-color .15s ease;
+}
+.re-onglet:hover { color: var(--text-main); }
+.re-onglet--actif { color: var(--primary-texte); border-bottom-color: var(--primary); }
+.re-onglet:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; }
+
+.re-apercu-note {
+    margin: 0 0 12px; font-size: .85rem; color: var(--text-muted); line-height: 1.4;
+}
+.re-apercu-pied {
+    /* LE RANG AU-DESSUS, LE BOUTON DESSOUS, ET C'EST UNE LEÇON DE MESURE.
+       Posé à GAUCHE du bouton, le rang poussait « Question suivante » de
+       quarante pixels à chaque changement de compte — et l'on clique deux fois
+       de suite au même endroit. Posé en absolu à sa gauche, il ne poussait
+       plus rien mais chevauchait le bouton dès qu'il nomme la marche
+       (« Question 13 sur 45 · 4. −2(x + 5), le facteur négatif »). Empilé, il
+       ne fait ni l'un ni l'autre : le bouton ne bouge pas, et la phrase a
+       toute la largeur. */
+    display: flex; flex-direction: column; align-items: center;
+    gap: 8px; padding-top: 12px;
+}
+.re-apercu-rang {
+    max-width: 100%;
+    /* UNE SEULE LIGNE, TOUJOURS : une phrase qui passe à deux lignes
+       descendrait le bouton d'un cran entre deux clics. Le titre complet reste
+       lisible au survol, et le nom de la marche est de toute façon écrit en
+       toutes lettres dans la liste à cocher. */
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: .78rem; color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+/* Le cadre a une hauteur FIXE, posée par le script : sans elle, la fenêtre
+   sauterait de taille à chaque changement de réglage — un jeu à six questions
+   et un jeu à trente ne dessinent pas la même hauteur. */
+.re-apercu-cadre {
+    position: relative; overflow: hidden;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--bg-plateau);
+    display: flex; align-items: center; justify-content: center;
+}
+.re-apercu-toile {
+    position: absolute; inset: 0;
+    transform-origin: top left;
+    /* EN COLONNE, COMME LE VRAI JEU — et c'est tout le défaut que Rémy a vu :
+       « l'aperçu n'est pas dingue ».
+       Une activité pose plusieurs éléments FRÈRES dans son conteneur : la
+       consigne, l'expression, la carte d'aide, les propositions, la barre
+       d'indice. Mesuré sur la factorisation : six enfants. Dans une boîte flex
+       en LIGNE, ils se rangeaient côte à côte, chacun comprimé à une colonne
+       de quelques caractères — l'identité « a² − b² = (a − b)(a + b) » y
+       descendait verticalement, une lettre par ligne.
+       Le vrai conteneur du jeu, `.canvas-area`, est en colonne : mesuré aussi.
+       L'aperçu doit montrer ce que l'élève verra, donc disposer comme lui. Le
+       défaut touchait TOUS les exercices à plusieurs éléments, pas seulement
+       celui sur lequel il a été vu. */
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+}
+.re-apercu-vide {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; color: var(--text-muted); font-size: .9rem;
+    text-align: center; padding: 20px;
+}
+/* SUR UN TÉLÉPHONE, L'APERÇU PREND CE QU'IL PEUT. Le script demande 420 px de
+   haut ; sur un écran de 844, la fenêtre entière n'en a pas tant une fois les
+   onglets et le titre posés. */
+@media (max-width: 620px) {
+    .re-apercu-cadre { height: 260px !important; }
+    .re-onglet { padding: 9px 12px; font-size: .9rem; }
+}
+
 /* --- Paramètres d'affichage ---------------------------------- */
 
 .reglage-bloc { display: flex; flex-direction: column; gap: 4px; }
@@ -1159,9 +1386,36 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 }
 .reglage-option:hover { border-color: var(--primary); }
 .reglage-option--actif { border-color: var(--primary); background: var(--tag-dom-bg); }
-.reglage-dessin { line-height: 0; color: var(--primary); }
+.reglage-dessin { line-height: 0; color: var(--primary-texte); }
 .reglage-nom { font-size: .82rem; font-weight: 700; }
 .reglage-note { font-size: .68rem; color: var(--text-muted); line-height: 1.25; text-align: center; }
+
+/* UN INTERRUPTEUR, PAS UNE CASE À COCHER. Une case dit « coché / décoché » —
+   deux états d'une case ; un interrupteur dit « allumé / éteint » — deux états
+   de la CHOSE, ce qui est la question posée. Le mot à côté (« Affichée » /
+   « Masquée ») porte l'état pour qui ne distingue pas les couleurs, et la
+   hauteur de 44 px en fait une cible tactile confortable — ce qui est bien le
+   moins pour l'interrupteur qui règle un problème de cibles tactiles. */
+.reglage-interrupteur {
+    display: flex; align-items: center; gap: 10px; align-self: flex-start;
+    min-height: 44px; padding: 6px 14px 6px 6px; border-radius: 999px;
+    border: 2px solid var(--border); background: var(--bg-app);
+    color: var(--text-main); font-family: inherit; font-size: .88rem; font-weight: 700;
+    cursor: pointer; transition: .15s;
+}
+.reglage-interrupteur:hover { border-color: var(--primary); }
+.reglage-interrupteur--actif { border-color: var(--primary); background: var(--tag-dom-bg); }
+.reglage-interrupteur-piste {
+    display: block; width: 46px; height: 28px; border-radius: 999px;
+    background: var(--border); position: relative; flex-shrink: 0; transition: .18s;
+}
+.reglage-interrupteur-piste > span {
+    position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35);
+    transition: .18s;
+}
+.reglage-interrupteur--actif .reglage-interrupteur-piste { background: var(--primary); }
+.reglage-interrupteur--actif .reglage-interrupteur-piste > span { left: 21px; }
 
 /* --- La marque d'un point ------------------------------------
    Les trois écritures sont dans le SVG ; `html[data-point]` en montre une.
@@ -1182,7 +1436,7 @@ html[data-point="disque"] .pt-plus,
 html:not([data-point="plus"]) .pt-plus { display: none; }
 html[data-point="plus"] .pt-croix { display: none; }
 
-.rep-point { color: var(--primary); }
+.rep-point { color: var(--primary-texte); }
 .not-point { color: var(--text-main); }
 .rep-point-label { fill: var(--primary); font-size: 15px; font-weight: 800; }
 
@@ -1210,10 +1464,10 @@ html[data-point="plus"] .pt-croix { display: none; }
 
 /* Le marqueur posé par l'élève : c'est la COULEUR qui change, la forme reste
    celle qu'on a choisie globalement. */
-.rep-mark { color: var(--primary); }
-.rep-mark--ok { color: var(--success); }
-.rep-mark--ko { color: var(--danger); }
-.rep-mark--demo { color: var(--warning); }
+.rep-mark { color: var(--primary-texte); }
+.rep-mark--ok { color: var(--success-texte); }
+.rep-mark--ko { color: var(--danger-texte); }
+.rep-mark--demo { color: var(--warning-texte); }
 .rep-mark-label { font-size: 13px; font-weight: 800; }
 .rep-mark-label--ko { fill: var(--danger); }
 .rep-mark-label--demo { fill: var(--warning); }
@@ -1404,9 +1658,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     font-size: .82rem; padding: 6px 14px; min-height: 34px;
     transition: border-color .15s, color .15s;
 }
-.np-outil-btn:hover { border-color: var(--primary); color: var(--primary); }
+.np-outil-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 .np-outil-btn[aria-expanded="true"] {
-    border-color: var(--primary); color: var(--primary);
+    border-color: var(--primary); color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 8%, var(--bg-panel));
 }
 .np-outil {
@@ -1455,7 +1709,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 .arr-mots p:last-child { margin-bottom: 0; }
 .arr-mots-enc {
     text-align: center; font-size: 1.2rem; font-weight: 800;
-    color: var(--primary); margin: .5em 0 .7em !important;
+    color: var(--primary-texte); margin: .5em 0 .7em !important;
 }
 
 /* LE RAPPEL DE π. Rémy : « Rappelle la valeur de Pi au départ. » Le panneau
@@ -1468,7 +1722,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 .dsq-pi p:last-child { margin-bottom: 0; }
 .dsq-pi-val {
     text-align: center; font-size: 1.35rem; font-weight: 800;
-    color: var(--primary); letter-spacing: .01em;
+    color: var(--primary-texte); letter-spacing: .01em;
     margin: .5em 0 .7em !important;
 }
 /* Le bandeau du panneau : ce qu'on regarde, et de quoi refermer. Sur
@@ -1483,7 +1737,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     border-radius: 999px; cursor: pointer; font: inherit; font-weight: 800;
     width: 32px; height: 32px; line-height: 1; flex: 0 0 auto;
 }
-.np-outil-fermer:hover { border-color: var(--primary); color: var(--primary); }
+.np-outil-fermer:hover { border-color: var(--primary); color: var(--primary-texte); }
 
 /* LE PANNEAU PASSAIT SOUS LE PAVÉ NUMÉRIQUE. Rémy, banc d'essai iPhone :
    « le schéma est sous le pavé numérique », « idem pour les formules ».
@@ -1576,7 +1830,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     flex: 1 1 100%; text-align: center;
     font-size: .88rem; font-weight: 600; color: var(--text-muted);
 }
-.qd-compte--prete { color: var(--success); }
+.qd-compte--prete { color: var(--success-texte); }
 /* « Tout effacer » est une SORTIE DE SECOURS, pas une action du même rang que
    « Valider » : il se dessine en creux pour qu'on ne le prenne pas pour elle. */
 .qd-effacer {
@@ -1589,7 +1843,7 @@ html[data-point="plus"] .pt-croix { display: none; }
    essai visiblement tape au hasard —, l'aide qui debloque s'allume au lieu
    d'attendre qu'on la trouve. */
 .qd-film--appel {
-    border-color: var(--primary); color: var(--primary);
+    border-color: var(--primary); color: var(--primary-texte);
     animation: qd-appel 1.1s ease-in-out 3;
 }
 @keyframes qd-appel {
@@ -1611,7 +1865,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     cursor: pointer; box-shadow: var(--shadow-sm); transition: .15s;
     font-variant-numeric: tabular-nums; text-align: center;
 }
-.coord-tile:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.coord-tile:hover { border-color: var(--primary); color: var(--primary-texte); transform: translateY(-3px); box-shadow: var(--shadow-md); }
 
 /* --- Comparaison (< = >) ------------------------------------ */
 
@@ -1631,7 +1885,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     display: inline-flex; align-items: center; justify-content: center;
     width: 1.78em; height: 1.78em; flex: 0 0 auto; border-radius: .42em;
     border: 3px dashed var(--primary); opacity: .5;
-    color: var(--primary); transition: .18s;
+    color: var(--primary-texte); transition: .18s;
 }
 /* Cible de dépôt survolée : elle doit se voir sans ambiguïté au doigt. */
 .compare-slot--hover {
@@ -1645,8 +1899,8 @@ html[data-point="plus"] .pt-croix { display: none; }
     width: auto; height: auto; min-width: 1.78em; min-height: 1.78em;
     padding: .1em .34em; line-height: 1;
 }
-.compare-slot--ok { border-color: var(--success); color: var(--success); background: #dcfce7; }
-.compare-slot--ko { border-color: var(--danger); color: var(--danger); background: #fee2e2; }
+.compare-slot--ok { border-color: var(--success); color: var(--success-texte); background: #dcfce7; }
+.compare-slot--ko { border-color: var(--danger); color: var(--danger-texte); background: #fee2e2; }
 
 /* LES TROIS SIGNES RESTENT SUR UNE LIGNE. Sur un téléphone étroit, trois
    tuiles de 92 px et leurs deux gouttières dépassaient de quelques pixels : le
@@ -1661,7 +1915,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     flex: 0 1 92px; min-width: 0; max-width: 92px;
     aspect-ratio: 1; border-radius: 20px;
     display: flex; align-items: center; justify-content: center;
-    font-size: clamp(1.7rem, 9vw, 2.6rem); font-weight: 800; color: var(--primary);
+    font-size: clamp(1.7rem, 9vw, 2.6rem); font-weight: 800; color: var(--primary-texte);
     background: var(--bg-panel); border: 2px solid var(--border);
     box-shadow: var(--shadow-sm); cursor: grab; transition: .15s;
     touch-action: none;          /* le geste est capté, pas interprété en défilement */
@@ -1675,10 +1929,18 @@ html[data-point="plus"] .pt-croix { display: none; }
    `transition: none` est indispensable : `.sign-tile` anime toutes ses
    propriétés, `left` et `top` compris, et le fantôme traînait derrière le
    doigt d'un sixième de seconde. */
+/* LE FANTÔME EST UN INDICE, PAS UN SOSIE.
+   Rémy : « je trouve que le fantôme lorsqu'on drag drop est vraiment trop ».
+   Il était à 95 % d'opacité et AGRANDI de 6 % : une copie pleine de la rangée,
+   posée pile sur l'endroit qu'on vise. On ne voyait plus où l'on déposait, ce
+   qui est tout ce qu'on regarde à ce moment-là.
+   Il devient translucide et légèrement PLUS PETIT que l'original — on tient
+   quelque chose, on ne le brandit pas — et il garde son ombre, qui suffit à le
+   décoller de la page. */
 .drag-ghost {
     position: fixed; z-index: 100001; pointer-events: none;
-    margin: 0; opacity: .95; transform: scale(1.06);
-    box-shadow: var(--shadow-lg); cursor: grabbing;
+    margin: 0; opacity: .5; transform: scale(.94);
+    box-shadow: var(--shadow-md); cursor: grabbing;
     transition: none !important;
 }
 
@@ -1693,7 +1955,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 /* --- Fractions --------------------------------------------- */
 
 .frac-question { display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap; }
-.frac-gap { color: var(--primary); font-size: 2rem; font-weight: 700; }
+.frac-gap { color: var(--primary-texte); font-size: 2rem; font-weight: 700; }
 
 .fraction {
     display: inline-flex; flex-direction: column; align-items: center;
@@ -1731,7 +1993,7 @@ html[data-point="plus"] .pt-croix { display: none; }
    l'égalité se déforme selon que le nombre caché en fait un ou deux. */
 .frac-trou {
     display: inline-block; min-width: 1.4em;
-    color: var(--primary); font-weight: 800;
+    color: var(--primary-texte); font-weight: 800;
 }
 .fraction--trou .fraction-num,
 .fraction--trou .fraction-den { min-width: 1.4em; }
@@ -1813,7 +2075,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     transform: translate(-50%, -50%);
     padding: 0 .22em;
     background: var(--bg-plateau, var(--bg-app, #fff));
-    color: var(--primary); font-weight: 800;
+    color: var(--primary-texte); font-weight: 800;
     font-size: .52em; line-height: 1; white-space: nowrap;
 }
 
@@ -1846,7 +2108,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     border: 2px dashed color-mix(in srgb, var(--primary) 55%, transparent);
     border-radius: .22em;
     background: var(--bg-plateau, var(--bg-app, #fff));
-    color: var(--primary); font: inherit; font-weight: 800;
+    color: var(--primary-texte); font: inherit; font-weight: 800;
     line-height: 1.15; text-align: center; cursor: pointer;
 }
 .fe-case:hover { border-color: var(--primary); }
@@ -1885,7 +2147,7 @@ html[data-point="plus"] .pt-croix { display: none; }
    ne va pas pendant qu'on regarde encore ce qu'on a écrit. */
 .fe-note {
     min-height: 1.3em; margin: .4em 0 .2em; max-width: 34ch;
-    color: var(--danger); font-weight: 700; font-size: .92rem;
+    color: var(--danger-texte); font-weight: 700; font-size: .92rem;
     text-align: center; line-height: 1.3;
 }
 
@@ -1900,7 +2162,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     background: var(--bg-panel); color: var(--text-main);
     font-size: 1.25rem; font-weight: 800; cursor: pointer;
 }
-.fe-touche:hover { border-color: var(--primary); color: var(--primary); }
+.fe-touche:hover { border-color: var(--primary); color: var(--primary-texte); }
 .fe-touche--del { grid-column: span 2; }
 .fe-touche--ok {
     grid-column: span 3;
@@ -1918,7 +2180,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 .frac-doute {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 1.2em; font-weight: 800;
-    color: var(--primary);
+    color: var(--primary-texte);
 }
 
 /* UNE FRACTION DANS UNE BULLE tient sur deux étages : elle se règle sur le
@@ -1976,11 +2238,22 @@ html[data-point="plus"] .pt-croix { display: none; }
     height: 100%; text-align: center; gap: 14px; padding: 30px;
 }
 .run-screen-icon { font-size: 3.4rem; }
-.run-screen-title { font-size: 2rem; color: var(--primary); margin: 0; }
-.run-screen-title--ok { color: var(--success); }
-.run-screen-title--ko { color: var(--warning); }
+.run-screen-title { font-size: 2rem; color: var(--primary-texte); margin: 0; }
+.run-screen-title--ok { color: var(--success-texte); }
+.run-screen-title--ko { color: var(--warning-texte); }
 .run-screen-text { font-size: 1.1rem; color: var(--text-main); max-width: 480px; line-height: 1.5; }
 .run-screen-btn { font-size: 1.25rem; padding: 14px 32px; margin-top: 10px; }
+/* « REFAIRE POUR M'AMÉLIORER » EST UNE OFFRE, PAS UNE CONSIGNE.
+   Il est plus petit et plus discret que « Continuer » : l'élève qui veut
+   avancer ne doit pas hésiter une seconde entre les deux, et celui qui veut
+   reprendre doit le trouver sans le chercher. Deux boutons de même poids
+   poseraient une question là où il n'y en a pas — l'étape est validée, la
+   suite est le chemin normal. */
+.run-screen-btn--doux {
+    font-size: 1rem; padding: 10px 24px; margin-top: 8px;
+    opacity: .85;
+}
+.run-screen-btn--doux:hover { opacity: 1; }
 
 /* ═══ LA CARTE, ENTRE LES EXERCICES ═══════════════════════════════════════════
    Rémy : « quand on lance un parcours, le tiroir de gauche disparaît et il
@@ -1995,19 +2268,41 @@ html[data-point="plus"] .pt-croix { display: none; }
     display: flex; flex-direction: column; align-items: center;
     height: 100%; width: 100%; gap: 10px; padding: 14px 16px 0;
     overflow: hidden;
+    /* LA CARTE SE CENTRE COMME UN BLOC, ELLE NE S'ÉTIRE PLUS.
+       Rémy, capture d'un iPhone : « les étapes prennent de la place, j'aime
+       bien l'idée de voir la progression mais là c'est inutile et ça prend de
+       la place ». Mesuré à 390 × 844 sur une séance de deux étapes : la zone
+       de la carte prenait 515 px pour un chemin de 324, soit 169 PIXELS DE
+       VIDE entre la phrase et la première pastille — un cinquième de l'écran,
+       et c'est ce trou qui faisait paraître le chemin perdu. Sur un écran
+       d'ordinateur, 220 px.
+       Ce n'est donc pas le chemin qui prenait la place : c'est le vide
+       au-dessus de lui. La zone ne réclame plus tout le reste de la hauteur
+       (voir `.run-carte-scene`), et le bloc entier se pose au milieu. */
+    justify-content: center;
 }
 .run-carte-tete {
     text-align: center; flex: 0 0 auto;
     display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
-.run-carte-nom { font-size: 1.5rem; margin: 0; color: var(--primary); }
-.run-carte-sous { margin: 0; color: var(--text-muted); font-size: .95rem; }
+/* `.run-carte-nom` A DISPARU : le nom de la séance était écrit trois fois en
+   deux cents pixels — le fil, l'en-tête du jeu, et lui. Voir `showPathMap`
+   dans core/runner.js. La ligne qui reste est donc la PREMIÈRE de la carte, et
+   elle prend le poids qu'avait le titre : c'est elle qu'on lit en arrivant. */
+.run-carte-sous { margin: 0; color: var(--text-main); font-size: 1.05rem; font-weight: 600; }
 .run-carte-regle {
     margin: 0; font-size: .85rem; color: var(--text-muted);
     background: var(--bg-soft, rgba(0, 0, 0, .04)); border-radius: 999px; padding: 4px 14px;
 }
 .run-carte-scene {
-    flex: 1 1 auto; width: 100%; max-width: 900px; overflow-y: auto; overflow-x: hidden;
+    /* `0 1 auto` ET NON `1 1 auto` : la zone prend la hauteur du chemin et
+       s'arrête là. Elle peut encore RÉTRÉCIR — c'est le `1` du milieu —, et
+       c'est ce qui compte pour une séance de douze étapes : le chemin déborde
+       alors, la zone défile, et le bouton reste en bas. `min-height: 0` le
+       permet : sans lui, une boîte flexible refuse de descendre sous la
+       hauteur de son contenu et pousse le bouton hors de l'écran. */
+    flex: 0 1 auto; min-height: 0;
+    width: 100%; max-width: 900px; overflow-y: auto; overflow-x: hidden;
     display: flex; flex-direction: column;
     /* La gerbe d'étoiles d'un jeu qui s'ouvre déborde de sa pastille : sans
        cette marge, elle serait coupée par le bord de la zone défilante. */
@@ -2022,8 +2317,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 .run-carte > .run-screen-btn { flex: 0 0 auto; margin: 6px 0 16px; }
 @media (max-width: 640px) {
     .run-carte { padding: 10px 8px 0; }
-    .run-carte-nom { font-size: 1.2rem; }
-    .run-carte-sous { font-size: .85rem; }
+    .run-carte-sous { font-size: .95rem; }
     .run-carte > .run-screen-btn { font-size: 1.05rem; padding: 11px 22px; margin-bottom: 10px; }
 }
 .run-screen-sub { font-size: .92rem; color: var(--text-muted); max-width: 460px; line-height: 1.5; margin: -4px 0 4px; }
@@ -2088,7 +2382,11 @@ html[data-point="plus"] .pt-croix { display: none; }
 .tablet-simulator #game-progress-container {
     grid-area: avance; margin: 0;
     width: 78px; min-width: 78px; max-width: 78px; height: 18px; border-radius: 9px;
-    background: color-mix(in srgb, var(--text-muted) 55%, var(--border));
+    /* MÊME SOCLE D'ARDOISE QUE LA GRANDE BARRE (voir games.css). Le mélange
+       d'ici donnait rgb(152,161,175) : « 0 / 10 » en blanc dessus tombait à
+       2,61 de contraste, et c'est la pastille qu'on lit sur un téléphone,
+       celle qui ne dit plus que le compte parce qu'elle fait 78 px. */
+    background: #475569;
 }
 .device-simulator #game-progress-text,
 .tablet-simulator #game-progress-text { font-size: .68rem; }
@@ -2096,9 +2394,30 @@ html[data-point="plus"] .pt-croix { display: none; }
 .tablet-simulator .pg-unite { display: none; }
 .device-simulator #game-timer,
 .tablet-simulator #game-timer { grid-area: chrono; width: 38px; height: 38px; margin: 0; }
+/* LE SIMULATEUR A LE MÊME PROBLÈME QUE LE TÉLÉPHONE, ET JE NE L'AVAIS PAS
+   MESURÉ. On regarde un cadre de téléphone DANS une fenêtre d'ordinateur : la
+   requête média `(max-width: 430px)` ne s'applique donc pas — c'est la largeur
+   de la FENÊTRE qui compte, pas celle du cadre — et ces règles-ci gouvernaient
+   seules, avec leur `nowrap`. Mesuré : la barre des questions commençait à
+   gauche de sa propre zone, c'est-à-dire hors du cadre.
+   Même remède qu'ailleurs : elles passent à la ligne plutôt que de sortir. */
 .device-simulator .game-header-actions,
 .tablet-simulator .game-header-actions {
-    grid-area: actions; justify-content: flex-end; flex-wrap: nowrap; gap: 6px; margin: 0;
+    grid-area: actions; justify-content: flex-end; flex-wrap: wrap;
+    gap: 4px; row-gap: 6px; margin: 0;
+}
+
+/* LE COMPTEUR D'ACTIVITÉS EST DÉJÀ ÉCRIT AU-DESSUS, EN TOUTES LETTRES.
+   Mesuré dans le cadre téléphone : 370 px disponibles pour 392 nécessaires,
+   d'où un bouton renvoyé seul à la ligne suivante — ce qui se lit comme une
+   erreur de mise en page. Il manquait 22 px.
+   Plutôt que de rapetisser encore quelque chose, on retire ce qui fait
+   DOUBLON : l'en-tête annonce « Étape 1 sur 3 » à deux centimètres de là, et
+   les flèches, elles, restent. Le compteur de QUESTIONS reste aussi — lui
+   n'est écrit nulle part ailleurs. */
+.device-simulator .preview-step-nav:not(.preview-step-nav--question) .preview-step-label,
+.tablet-simulator .preview-step-nav:not(.preview-step-nav--question) .preview-step-label {
+    display: none;
 }
 
 /* Vrai téléphone en plein écran.
@@ -2171,19 +2490,38 @@ html[data-point="plus"] .pt-croix { display: none; }
     #game-layer.avec-nav-prof #game-header #game-title {
         -webkit-line-clamp: 1; font-size: .95rem;
     }
+    /* ELLES PRENNENT DEUX RANGÉES, PARCE QU'ELLES NE TIENNENT PAS SUR UNE.
+       Mesuré sur un téléphone de 390 px : à `nowrap`, la barre des questions
+       commençait à −83 px — son compteur et sa flèche « précédente » étaient
+       purement hors de l'écran, et c'est justement ce que le professeur vient
+       y lire. Les six pastilles réclament 430 px ; il y en a 390.
+       On a donc le choix entre rapetisser encore (le compteur était déjà à
+       9,9 px) et accepter une rangée de plus. Une rangée de plus, dans
+       l'aperçu du PROFESSEUR seulement : l'élève n'a aucune de ces commandes,
+       et son en-tête ne bouge pas d'un pixel. */
     #game-layer.avec-nav-prof .game-header-actions {
-        justify-content: flex-end; flex-wrap: nowrap; gap: 4px;
+        justify-content: flex-end; flex-wrap: wrap; gap: 4px; row-gap: 6px;
     }
     #game-layer.avec-nav-prof .preview-step-nav {
         background: transparent; border-color: transparent;
         padding: 0; margin: 0 2px 0 0; gap: 0;
     }
-    #game-layer.avec-nav-prof .preview-step-label { min-width: 30px; font-size: .72rem; }
+    /* La largeur gagnée sur « 1/12 » est rendue à la taille du texte : à
+       .62rem le compteur faisait 9,9 px de haut, ce qu'on ne lit pas d'un
+       coup d'œil en tenant un téléphone. */
+    #game-layer.avec-nav-prof .preview-step-label { min-width: 0; font-size: .74rem; }
     #game-layer.avec-nav-prof .preview-step-nav--question .preview-step-label {
-        min-width: 26px; font-size: .62rem;
+        min-width: 0; font-size: .74rem;
     }
-    #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn { width: 30px; height: 30px; }
-    #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn svg { width: 15px; height: 15px; }
+    /* Et la place gagnée en passant à la ligne est rendue AUX DOIGTS : ces
+       flèches étaient à 30 px, c'est-à-dire sous la règle des 44 qu'on tient
+       partout ailleurs. Elles la tenaient d'autant moins qu'elles sont
+       collées les unes aux autres. */
+    #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn { width: 36px; height: 36px; }
+    #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn svg { width: 17px; height: 17px; }
+    @media (pointer: coarse) {
+        #game-layer.avec-nav-prof .preview-step-nav .game-icon-btn { width: 44px; height: 44px; }
+    }
 }
 
 /* Le bouton PLEIN ÉCRAN fait un quatrième rond dans cette rangée. Sur les
@@ -2242,9 +2580,26 @@ html[data-point="plus"] .pt-croix { display: none; }
        `btn-carre` remplace la devinette par une DÉCLARATION : le jeu dit
        lui-même « ce bouton est carré, sa hauteur est ma mise en page ». Le
        jour où un jeu ajoute une pastille ronde, il le dira aussi, et la règle
-       n'aura pas à changer. */
+       n'aura pas à changer.
+
+       LE PLANCHER EST PASSÉ DE 40 À 44 PX, ET C'EST MESURÉ. 44 est la cible
+       tactile que donnent Apple et Google — la largeur moyenne de la pulpe
+       d'un index. Un exercice sur six du catalogue (29 jeux) a été ouvert sur
+       un téléphone de 390 × 844 avant et après : sous 44 px, on passe de 2 à 0
+       cibles trop petites dans la plupart des jeux, le débordement horizontal
+       reste à 0 px partout, et les captures de la Balance, d'Angle Master, de
+       « Compter sur un solide » et du Mastermind — celui-là même qui avait été
+       déformé la première fois — ne montrent aucun bouton étiré. Les seuls
+       boutons plus hauts que larges après coup (38 × 44) sont des touches de
+       pavé numérique et deux loupes : la forme d'une touche, pas un ovale.
+
+       CE QUI RESTE SOUS 44 PX EST VOULU : les CASES DE GRILLE, exclues par la
+       liste ci-dessus — 102 cases de 27 px dans la table de Pythagore, 129 de
+       19 px dans les mots croisés, 64 de 41 px dans l'Othello. À 44 px, une
+       grille de dix colonnes ferait 440 px de large sur un écran qui en a 390 :
+       on casserait le jeu pour élargir un bouton. */
     #game-layer button:not(.game-icon-btn):not(.btn-carre):not([class*="case"]):not([class*="cell"]):not([class*="cellule"]):not([class*="touche"]) {
-        min-height: 40px;
+        min-height: 44px;
     }
 }
 /* Sur un téléphone tenu debout, les commandes ne tiennent plus à côté du
@@ -2333,7 +2688,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 /* Le compteur de questions reste affiché même en cadre étroit : c'est une
    information, pas un habillage. */
 .device-simulator .preview-step-label,
-.tablet-simulator .preview-step-label { min-width: 34px; font-size: .74rem; }
+.tablet-simulator .preview-step-label { min-width: 0; font-size: .76rem; }
 .device-simulator .game-icon-btn,
 .tablet-simulator .game-icon-btn { width: 32px; height: 32px; }
 .device-simulator .game-icon-btn svg,
@@ -2349,12 +2704,17 @@ html[data-point="plus"] .pt-croix { display: none; }
    flèches doublées que « piste précédente / suivante ». */
 .preview-step-nav--question { background: var(--tag-dom-bg); border-color: var(--tag-dom-txt); }
 .preview-step-nav--question .preview-step-label {
-    min-width: 0; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em;
-    color: var(--tag-dom-txt);
+    /* Ni majuscules ni interlettrage : il n'y a que des chiffres et une barre,
+       que l'un ne change pas et que l'autre ne fait qu'élargir. */
+    min-width: 0; font-size: .74rem; color: var(--tag-dom-txt);
 }
 .preview-step-label {
     font-size: .85rem; font-weight: 700; color: var(--text-muted);
     min-width: 44px; text-align: center; font-variant-numeric: tabular-nums;
+    /* UNE FRACTION NE SE COUPE PAS. Mesuré sur un téléphone de 390 px :
+       « 1 / 10 » tenait sur deux lignes dans 26 px. Rien, jamais, ne rend un
+       compteur plus lisible en le pliant en deux. */
+    white-space: nowrap;
 }
 .preview-step-nav .game-icon-btn:disabled { opacity: .3; cursor: not-allowed; }
 
@@ -2385,7 +2745,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 /* Cinq dernières secondes : l'anneau et le nombre passent au rouge et
    battent — un signal, pas une surprise. */
 .timer--urgent .timer-ring-fill { stroke: var(--danger); }
-.timer--urgent .timer-value { color: var(--danger); animation: timerPulse .5s ease-in-out infinite; }
+.timer--urgent .timer-value { color: var(--danger-texte); animation: timerPulse .5s ease-in-out infinite; }
 @keyframes timerPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.16); } }
 
 /* --- Bilan (fin de parcours, profil, analyse prof) --------- */
@@ -2395,9 +2755,9 @@ html[data-point="plus"] .pt-croix { display: none; }
 .report-subtitle { text-align: center; color: var(--text-muted); margin-bottom: 18px; }
 
 .report-note { text-align: center; margin: 10px 0 6px; }
-.report-note-value { font-size: 3.4rem; font-weight: 800; color: var(--primary); line-height: 1; }
+.report-note-value { font-size: 3.4rem; font-weight: 800; color: var(--primary-texte); line-height: 1; }
 .report-note-scale { font-size: 1.4rem; color: var(--text-muted); font-weight: 600; }
-.report-note--nograde .report-note-value { color: var(--success); }
+.report-note--nograde .report-note-value { color: var(--success-texte); }
 .report-note-label { color: var(--text-muted); font-size: .92rem; margin-top: 4px; }
 .report-appreciation { text-align: center; color: var(--text-main); font-size: 1.05rem; margin: 12px 0 20px; }
 
@@ -2437,7 +2797,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 }
 .calcul-summary {
     padding: 12px 16px; cursor: pointer; font-weight: 600;
-    color: var(--primary); font-size: .95rem; list-style: none;
+    color: var(--primary-texte); font-size: .95rem; list-style: none;
 }
 .calcul-summary::-webkit-details-marker { display: none; }
 .calcul-summary::before { content: '▸ '; display: inline-block; transition: transform .15s; }
@@ -2455,7 +2815,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
     font-variant-numeric: tabular-nums; font-size: .98rem; color: var(--text-main);
 }
-.calcul-etape--final { font-weight: 800; color: var(--primary); font-size: 1.1rem; }
+.calcul-etape--final { font-weight: 800; color: var(--primary-texte); font-size: 1.1rem; }
 
 .report-section-title {
     font-size: 1rem; color: var(--text-muted); text-transform: uppercase;
@@ -2475,7 +2835,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 }
 .report-miss-q { font-weight: 700; color: var(--text-main); }
 .report-miss-a { font-size: .9rem; color: var(--text-muted); }
-.report-miss-why { font-size: .9rem; color: var(--warning); margin-top: 4px; }
+.report-miss-why { font-size: .9rem; color: var(--warning-texte); margin-top: 4px; }
 .report-replay-btn { margin-top: 14px; width: 100%; }
 .report-close-btn { min-width: 180px; }
 
@@ -2488,7 +2848,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     font-size: clamp(.78rem, 3vw, 1.15rem); font-weight: 700; color: var(--text-main);
     overflow-wrap: normal; word-break: keep-all; hyphens: none;
 }
-.profile-rank-level { color: var(--primary); }
+.profile-rank-level { color: var(--primary-texte); }
 .profile-xp-bar {
     margin-top: 10px; background: var(--bg-app); border: 1px solid var(--border);
     border-radius: 10px; height: 10px; max-width: 300px; overflow: hidden;
@@ -2550,13 +2910,13 @@ html[data-point="plus"] .pt-croix { display: none; }
     border-color: transparent; font-weight: 700; cursor: pointer;
 }
 .error-group-go:hover:not(.active) { background: var(--primary-hover); color: #fff; }
-.error-group-clean { color: var(--success) !important; font-weight: 600; }
+.error-group-clean { color: var(--success-texte) !important; font-weight: 600; }
 /* Les questions deja corrigees se replient : les laisser depliees apres une
    revision reussie, c'est laisser a l'ecran ce qu'on vient justement de
    reparer. Elles restent consultables, sur une ligne. */
 .error-group-done { margin-top: 12px; }
 .error-group-done > summary {
-    cursor: pointer; color: var(--success); font-size: .85rem; font-weight: 600;
+    cursor: pointer; color: var(--success-texte); font-size: .85rem; font-weight: 600;
     padding: 4px 0; list-style-position: inside;
 }
 .error-group-done > summary:hover { text-decoration: underline; }
@@ -2566,10 +2926,10 @@ html[data-point="plus"] .pt-croix { display: none; }
    colonne descendait sous 340 px. */
 .error-item-card { align-items: flex-start; gap: 8px; }
 .error-item-body { flex: 1; min-width: 0; }
-.error-given { color: var(--danger); }
-.error-expected { color: var(--success); }
-.error-repeat { color: var(--warning); font-weight: 700; font-size: .85rem; }
-.error-why { font-size: .88rem; color: var(--warning); margin-top: 4px; line-height: 1.4; }
+.error-given { color: var(--danger-texte); }
+.error-expected { color: var(--success-texte); }
+.error-repeat { color: var(--warning-texte); font-weight: 700; font-size: .85rem; }
+.error-why { font-size: .88rem; color: var(--warning-texte); margin-top: 4px; line-height: 1.4; }
 .error-skill { font-size: .78rem; color: var(--text-muted); margin-top: 3px; }
 
 .badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; }
@@ -2649,8 +3009,31 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 
 /* Annonce des récompenses : une seule modale, même quand plusieurs paliers
    tombent ensemble. */
+/* ── LA CARTE DE FIN, UNE SEULE ────────────────────────────────────────────
+   Les récompenses et le bilan de maîtrise ouvraient chacun leur fenêtre, au
+   même instant, par-dessus l'écran de fin du parcours. Trois panneaux
+   empilés, et le bouton qui compte — « Voir mon bilan » — était dessous.
+   Ils partagent maintenant une carte, dans un ordre fixe : ce qu'on a GAGNÉ
+   d'abord, parce que c'est ce qui fait lever les yeux ; ce qu'on a APPRIS
+   ensuite, parce que cela demande de lire. */
+.fs-carte { text-align: center; padding: 6px 0; }
+.fs-titre-recompense { color: var(--primary-texte); font-size: 1.35rem; margin: 0 0 14px; }
+.fs-bilan .modal-title { margin-top: 10px; }
+/* Le trait ne sépare que si les DEUX sont là : une carte qui n'a qu'un
+   message n'a rien à séparer, et une ligne orpheline se lit comme un manque. */
+.fs-trait {
+    height: 1px; margin: 18px 4px; border: 0;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+@media (max-width: 480px) {
+    /* À la sonnerie, sur un téléphone, la carte doit tenir sans faire défiler
+       jusqu'au bouton — c'est exactement ce qu'on vient de réparer. */
+    .fs-titre-recompense { font-size: 1.15rem; margin-bottom: 10px; }
+    .fs-trait { margin: 12px 4px; }
+}
+
 .badge-modal { text-align: center; padding: 6px 0; }
-.badge-modal-titre { color: var(--primary); font-size: 1.5rem; margin: 0 0 16px; }
+.badge-modal-titre { color: var(--primary-texte); font-size: 1.5rem; margin: 0 0 16px; }
 .badge-won-list { display: flex; flex-direction: column; gap: 9px; }
 .badge-won {
     display: flex; align-items: center; gap: 12px; text-align: left;
@@ -2678,7 +3061,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .md-tete-mesure { margin: 0; font-size: .86rem; line-height: 1.4; color: var(--text-muted); }
 .md-compteur { display: flex; align-items: baseline; gap: 6px; justify-content: center; margin-top: 4px; }
 .md-compteur-valeur {
-    font-size: 2rem; font-weight: 900; color: var(--primary); font-variant-numeric: tabular-nums;
+    font-size: 2rem; font-weight: 900; color: var(--primary-texte); font-variant-numeric: tabular-nums;
 }
 .md-compteur-sur { font-size: 1rem; font-weight: 800; color: var(--text-muted); }
 .md-reste { margin: 0; text-align: center; font-size: .88rem; color: var(--text-muted); }
@@ -2733,21 +3116,21 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .plan-detail > summary::-webkit-details-marker { display: none; }
 .plan-detail > summary::before { content: '▸\00a0'; }
 .plan-detail[open] > summary::before { content: '▾\00a0'; }
-.plan-detail > summary:hover { color: var(--primary); }
+.plan-detail > summary:hover { color: var(--primary-texte); }
 .plan-motif {
     font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .3px;
     border-radius: 999px; padding: 2px 8px;
     background: var(--tag-dom-bg); color: var(--tag-dom-txt);
 }
-.plan-motif--remediation { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
-.plan-motif--revision { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning); }
+.plan-motif--remediation { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger-texte); }
+.plan-motif--revision { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning-texte); }
 .plan-lecon { margin: 5px 0 0; font-size: .85rem; line-height: 1.4; color: var(--text-muted); }
 .plan-exos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .plan-exo {
     border: 1.5px solid var(--border); background: var(--bg-app); color: var(--text-main);
     border-radius: 999px; padding: 4px 11px; font-size: .78rem; font-weight: 700; cursor: pointer;
 }
-.plan-exo:hover { border-color: var(--primary); color: var(--primary); }
+.plan-exo:hover { border-color: var(--primary); color: var(--primary-texte); }
 
 /* Les erreurs venues des jeux, mises de côté sans être perdues. */
 .error-note-jeux {
@@ -2775,8 +3158,8 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 }
 .console-entete { display: flex; align-items: center; gap: 10px; }
 .console-pastille { border-radius: 999px; padding: 3px 10px; font-size: .78rem; font-weight: 800; }
-.console-pastille--ok { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
-.console-pastille--ko { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.console-pastille--ok { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success-texte); }
+.console-pastille--ko { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger-texte); }
 .console-lignes { font-size: .78rem; color: var(--text-muted); font-weight: 700; flex: 1; }
 .console-croix {
     width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
@@ -3053,7 +3436,10 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     background: linear-gradient(180deg, #fef3c7, #fde68a);
     box-shadow: 0 6px 0 #d97706, 0 8px 14px rgba(217, 119, 6, .3);
 }
-.world-node--done .world-node-rang { border-color: #f59e0b; background: #f59e0b; color: #fff; }
+/* L'ÉTOILE D'UNE ÉTAPE RÉUSSIE : 2,15:1 en blanc sur l'orange vif. Le
+   contour garde l'orange — c'est lui qui fait voir la pastille de loin ; le
+   fond descend à la version qui porte du blanc. */
+.world-node--done .world-node-rang { border-color: #f59e0b; background: var(--warning-fond); color: #fff; }
 
 .world-node--current .world-node-btn {
     border-color: color-mix(in srgb, var(--primary) 70%, #000 22%);
@@ -3333,6 +3719,21 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .path-section-title { font-size: 1.3rem; color: var(--text-main); margin-bottom: 4px; }
 .path-section-sub { color: var(--text-muted); font-size: .94rem; margin-bottom: 16px; }
 .path-section-sub--eval { color: var(--tag-niv-txt); font-weight: 600; }
+/* LE MOT DU PROFESSEUR A CET ELEVE, au-dessus du bouton qui ouvre la seance :
+   c'est la consigne, et la lire apres avoir clique serait la lire trop tard. */
+.path-section-mot {
+    margin: 0 0 14px; padding: 10px 14px; border-left: 3px solid var(--primary);
+    background: var(--bg-hover); border-radius: 0 8px 8px 0;
+    color: var(--text-main); font-style: italic;
+}
+/* Assez grand pour etre la premiere chose qu'on touche, au doigt comme a la
+   souris : c'est le seul geste que l'eleve ait a faire sur cet ecran. */
+.path-ouvrir-seance { font-size: 1rem; padding: 12px 22px; min-height: 44px; }
+/* Le bouton du code a la même taille que celui de la séance : ce sont les deux
+   seuls gestes possibles sur cet écran, et ils ne s'y présentent jamais
+   ensemble. Il porte sa propre classe pour qu'on puisse les distinguer — dans
+   la feuille de style comme dans les épreuves. */
+.path-ouvrir-code { font-size: 1rem; padding: 12px 22px; min-height: 44px; margin-top: 12px; }
 .timeline-step-meta { font-size: .82rem; color: var(--text-muted); margin: 2px 0 8px; }
 .path-complete-banner {
     margin-top: 14px; padding: 12px; text-align: center; font-weight: 700;
@@ -3353,7 +3754,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .reco-start-all { margin-top: 16px; width: 100%; }
 
 .last-run-card { display: flex; align-items: center; gap: 20px; padding: 18px; flex-wrap: wrap; }
-.last-run-value { font-size: 2.2rem; font-weight: 800; color: var(--primary); }
+.last-run-value { font-size: 2.2rem; font-weight: 800; color: var(--primary-texte); }
 .last-run-info { flex: 1; min-width: 160px; }
 .last-run-name { font-weight: 700; color: var(--text-main); }
 .last-run-sub { font-size: .85rem; color: var(--text-muted); }
@@ -3447,12 +3848,20 @@ html[data-theme="dark"] .tag-jeu { background: rgba(252, 211, 77, .16); color: #
 .tag-duo { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; font-weight: 700; }
 html[data-theme="dark"] .tag-duo { background: rgba(167, 139, 250, .18); color: #c4b5fd; border-color: rgba(167, 139, 250, .42); }
 .tag-btn.tag-duo.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+/* « AUSSI à deux » : le même violet, en creux.
+   Les deux marques répondent à deux questions différentes — « il FAUT être
+   deux » interdit à l'élève seul, « il PEUT se jouer à deux » propose au
+   professeur — et l'œil doit les distinguer sans les séparer : c'est la même
+   famille, ce n'est pas la même contrainte. */
+.tag-duo--aussi { background: transparent; border-style: dashed; }
+html[data-theme="dark"] .tag-duo--aussi { background: transparent; }
+.cx2-duo--aussi { opacity: .75; }
 
 .tag-status { font-weight: 700; }
 .tag-status--test { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 .tag-status--brouillon { background: var(--bg-hover); color: var(--text-muted); border: 1px dashed var(--border); }
-.btn-icon--danger { color: var(--danger); }
-.btn-icon--primary { color: var(--primary); }
+.btn-icon--danger { color: var(--danger-texte); }
+.btn-icon--primary { color: var(--primary-texte); }
 
 .props-title { margin: 0 0 18px; font-size: 1.15rem; color: var(--text-main); }
 .props-close {
@@ -3479,39 +3888,21 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .path-browser-sub { color: var(--text-muted); font-size: .84rem; }
 .path-browser-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 
-/* MES PARCOURS SUR TÉLÉPHONE.
-   La fiche était une ligne : nom + résumé à gauche, trois boutons à droite. Sur
-   390 px il ne restait qu'une centaine de pixels au texte — « Nouveau parcours »
-   se coupait en deux, le résumé s'étalait sur trois lignes, et chaque parcours
-   occupait un tiers de l'écran. On empile : le nom en entier, le résumé sur une
-   ligne, les actions dessous. Les emboîtements (dossier → racine → fiche) sont
-   aussi dégraissés : trois niveaux de marge de 15 px mangeaient un cinquième de
-   la largeur. */
+/* SUR TÉLÉPHONE, LE TIROIR MONTE DU BAS — et il est alors plus large que la
+   colonne de 320 px de l'ordinateur, pas plus étroit. Les fiches respirent donc
+   un peu, sans changer de forme : on ne réapprend pas un écran parce qu'on a
+   changé d'appareil. */
 @media (max-width: 700px) {
-    #path-browser-modal .modal-panel-md { padding: 18px 14px; }
-    /* Le titre garde sa ligne, « Nouveau dossier » passe dessous en pleine
-       largeur : à trois éléments sur une ligne, « Mes Parcours » se coupait
-       en deux. `display: contents` dissout le groupe pour que ses deux
-       boutons se placent librement dans l'en-tête. */
-    #path-browser-modal .modal-title { font-size: 1.05rem; flex: 1 1 auto; white-space: nowrap; }
-    #path-browser-modal .modal-header { align-items: center; gap: 8px; flex-wrap: wrap; row-gap: 10px; }
-    #path-browser-modal .path-browser-header-actions { display: contents; }
-    #path-browser-modal .modal-close-btn { order: 2; }
-    #btn-new-folder { white-space: nowrap; order: 3; flex: 1 0 100%; }
-    .path-browser-root, .path-folder { padding: 10px; }
-    .path-folder-body { padding-left: 8px; }
-    .path-browser-item {
-        flex-direction: column; align-items: stretch; gap: 8px; padding: 11px 12px;
-    }
-    .path-browser-sub { font-size: .8rem; line-height: 1.35; }
-    .path-browser-actions { justify-content: flex-end; }
-    /* « Charger » est l'action principale : elle prend la place qui reste. */
-    .path-browser-actions .btn-toggle { flex: 1; justify-content: center; }
+    #tiroir-parcours .path-browser-item { padding: 9px 11px; }
+    #tiroir-parcours .path-browser-name { font-size: .92rem; }
+    #tiroir-parcours .path-browser-sub { font-size: .78rem; }
+    #tiroir-parcours .path-browser-actions .btn-icon { width: 30px; height: 30px; }
+    .tiroir-onglet { font-size: .9rem; padding: 9px 6px; }
 }
 
 /* --- Formulaires de configuration -------------------------- */
 
-.cfg-header { font-weight: 700; font-size: 1.05rem; color: var(--primary); margin-bottom: 6px; }
+.cfg-header { font-weight: 700; font-size: 1.05rem; color: var(--primary-texte); margin-bottom: 6px; }
 /* La consigne de l'exercice rappelle DE QUOI on règle les paramètres. */
 .cfg-desc { font-size: .82rem; color: var(--text-muted); line-height: 1.45; margin: 0 0 14px; }
 
@@ -3683,8 +4074,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    s'écrivait « Li / br / e ». Il ne se translate donc pas. */
 .cfg-cran:last-child { transform: none; text-align: right; }
 .cfg-tiret:last-child { transform: none; }
-.cfg-cran:hover { color: var(--primary); background: var(--primary-soft, #eceafd); }
-.cfg-cran--ici { color: var(--primary); font-size: .76rem; }
+.cfg-cran:hover { color: var(--primary-texte); background: var(--primary-soft, #eceafd); }
+.cfg-cran--ici { color: var(--primary-texte); font-size: .76rem; }
 
 /* LES QUATRE CARTES : L'APERÇU EST LA COMMANDE.
    Rémy, trois fois de suite : « on comprend rien pour le slide », « il faut le
@@ -3722,7 +4113,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     background: var(--primary-soft, #eceafd);
 }
 .cfg-prog-nom { font-weight: 800; font-size: .86rem; color: var(--text-main); }
-.cfg-prog--ici .cfg-prog-nom { color: var(--primary); }
+.cfg-prog--ici .cfg-prog-nom { color: var(--primary-texte); }
 .cfg-prog-dit { font-size: .71rem; line-height: 1.3; color: var(--text-muted); }
 
 /* LA FRISE DE PROGRESSION — voir `apercuAideHtml` dans games/configUI.js.
@@ -3887,7 +4278,14 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     padding: 7px 10px; font-size: .9rem; list-style: none;
 }
 .cfg-groupe-tete::-webkit-details-marker { display: none; }
-.cfg-groupe-tete b { flex: 1 1 auto; font-weight: 700; }
+.cfg-groupe-tete b { flex: 0 0 auto; font-weight: 700; }
+/* LE RANG DES MARCHES DU GROUPE — « n° 1 à 5 ». Replié, l'en-tête ne disait
+   que le nom du temps : Rémy, « pas de numéro avant les exercices ». Le rang
+   est ce qui relie le temps à la progression qu'on a en tête. */
+.cfg-groupe-rangs {
+    flex: 1 1 auto; color: var(--text-muted); font-size: .78rem; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
 .cfg-groupe-tete em { font-style: normal; color: var(--text-muted); font-size: .82rem; }
 /* LA CASE DU TEMPS EST UN BOUTON, PAS UNE CASE À COCHER : elle a trois états —
    tout, rien, une partie — et une case n'en a que deux. L'état « une partie »
@@ -3954,8 +4352,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 /* Le `summary` est une boîte flex : sans cela son dessin se fait écraser à
    quatre pixels de large — mesuré. */
 .cfg-modeles-btn svg { flex: 0 0 auto; }
-.cfg-modeles-btn:hover { border-color: var(--primary); color: var(--primary); }
-.cfg-modeles[open] .cfg-modeles-btn { border-color: var(--primary); color: var(--primary); }
+.cfg-modeles-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+.cfg-modeles[open] .cfg-modeles-btn { border-color: var(--primary); color: var(--primary-texte); }
 .cfg-modeles-liste {
     position: absolute; right: 0; top: calc(100% + 6px); z-index: 5;
     min-width: 220px; padding: 8px; border-radius: 12px;
@@ -3972,7 +4370,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     font: inherit; font-size: .82rem; font-weight: 700; text-transform: none;
     letter-spacing: 0;
 }
-.cfg-modele:hover { background: var(--bg-hover); color: var(--primary); }
+.cfg-modele:hover { background: var(--bg-hover); color: var(--primary-texte); }
 
 /* LA BULLE : la vraie question du rang que la flèche montre.
 
@@ -4009,7 +4407,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 .cfg-bulle-rang {
     font-size: .66rem; font-weight: 800; letter-spacing: .04em;
-    text-transform: uppercase; color: var(--primary); margin-bottom: 4px;
+    text-transform: uppercase; color: var(--primary-texte); margin-bottom: 4px;
 }
 .cfg-bulle-q {
     font-weight: 800; font-size: .8rem; color: var(--text-main); line-height: 1.2;
@@ -4038,7 +4436,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-marches .cfg-bulle-choix { max-height: 2.5rem; overflow: hidden; }
 .cfg-bulle-choix b {
     font-size: .7rem; font-weight: 700; padding: 2px 6px; border-radius: 5px;
-    background: var(--primary-soft, #eceafd); color: var(--primary);
+    background: var(--primary-soft, #eceafd); color: var(--primary-texte);
     white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
 /* LE PAVÉ DOIT RESSEMBLER À UN PAVÉ. Étiré sur toute la largeur de la bulle,
@@ -4085,7 +4483,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     font-style: normal; font-weight: 800; color: var(--text-muted);
     font-variant-numeric: tabular-nums;
 }
-.cfg-leg--ici b, .cfg-leg--ici em { color: var(--primary); }
+.cfg-leg--ici b, .cfg-leg--ici em { color: var(--primary-texte); }
 
 /* LES COMMANDES DE LA ZONE CHOISIE — et d'elle seule.
    Rémy : « un bouton pour ajouter ou enlever le nombre de propositions ; on
@@ -4150,7 +4548,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     background: var(--danger, #dc2626); color: #fff; border-color: var(--danger, #dc2626);
 }
 .cfg-zplusmini { color: var(--text-muted); }
-.cfg-zplusmini:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.cfg-zplusmini:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
 .cfg-zx:disabled, .cfg-zplusmini:disabled { opacity: .3; cursor: default; }
 
 @media (max-width: 520px) {
@@ -4270,7 +4668,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 .cfg-etape-dit .cfg-duo-dit { padding: 0; }
 .cfg-duree {
-    font-size: .82rem; font-weight: 800; color: var(--primary);
+    font-size: .82rem; font-weight: 800; color: var(--primary-texte);
     white-space: nowrap;
 }
 /* Mesurée sur de vraies réponses, la durée n'est plus un pari : elle le dit
@@ -4423,7 +4821,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .cfg-dit {
     grid-column: 1 / -1;
     margin: 6px 0 0; font-size: .82rem; line-height: 1.4; text-align: left;
-    color: var(--primary); font-weight: 600; overflow-wrap: break-word;
+    color: var(--primary-texte); font-weight: 600; overflow-wrap: break-word;
 }
 .cfg-dit:empty { display: none; }
 
@@ -4663,7 +5061,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: inline-flex; align-items: center; justify-content: center;
     position: relative; transition: .15s;
 }
-.cfg-info:hover, .cfg-info:focus-visible { border-color: var(--primary); color: var(--primary); }
+.cfg-info:hover, .cfg-info:focus-visible { border-color: var(--primary); color: var(--primary-texte); }
 
 /* Placée dans <body> et en `fixed` : les panneaux qui défilent découpaient
    l'infobulle quand elle était rendue à l'intérieur.
@@ -4714,7 +5112,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     content: '✓'; display: inline-block; width: 1em; margin-right: 4px;
     opacity: 0; transition: opacity .15s; vertical-align: -1px;
 }
-.cfg-chip:hover { border-color: var(--primary); color: var(--primary); }
+.cfg-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
 .cfg-chip:has(input:checked) {
     border-color: var(--primary); background: var(--primary); color: #fff;
     box-shadow: var(--shadow-sm);
@@ -4863,7 +5261,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .analysis-sub { color: var(--text-muted); font-size: .86rem; }
 .analysis-kpis { display: flex; gap: 12px; }
 .analysis-kpi { background: var(--bg-app); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; text-align: center; }
-.analysis-kpi-value { font-size: 1.35rem; font-weight: 700; color: var(--primary); }
+.analysis-kpi-value { font-size: 1.35rem; font-weight: 700; color: var(--primary-texte); }
 .analysis-kpi-label { font-size: .76rem; color: var(--text-muted); }
 .analysis-skills { list-style: none; display: flex; flex-direction: column; gap: 9px; }
 .analysis-skills li { display: flex; align-items: center; gap: 12px; }
@@ -5018,7 +5416,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     padding: 8px 16px; font-size: .9rem; font-weight: 700; cursor: pointer;
     box-shadow: var(--shadow-sm); transition: .15s;
 }
-.demo-ctrl-btn:hover { border-color: var(--primary); color: var(--primary); }
+.demo-ctrl-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 /* « Arrière » à la première explication : rien à remonter, on le dit. */
 .demo-ctrl-btn:disabled { opacity: .4; cursor: default; border-color: var(--border); color: var(--text-main); }
 .demo-ctrl-btn--active { background: var(--primary); border-color: var(--primary); color: #fff; }
@@ -5225,13 +5623,13 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 }
 .angles-input:focus { border-color: var(--primary); }
 .angles-target { font-size: 1.05rem; color: var(--text-main); }
-.angles-target b { color: var(--primary); font-size: 1.25rem; }
+.angles-target b { color: var(--primary-texte); font-size: 1.25rem; }
 .angles-built { color: var(--text-muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
-.btn-hint--on { border-color: var(--primary); color: var(--primary); background: var(--bg-panel); }
+.btn-hint--on { border-color: var(--primary); color: var(--primary-texte); background: var(--bg-panel); }
 
 /* Touche enfoncée par la démonstration : même retour visuel qu'un vrai appui. */
 .numpad-key--demo {
-    border-color: var(--primary) !important; color: var(--primary) !important;
+    border-color: var(--primary) !important; color: var(--primary-texte) !important;
     transform: translateY(2px) scale(.97);
 }
 
@@ -5306,7 +5704,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .kk-revealed { background: color-mix(in srgb, var(--warning) 16%, var(--bg-app)); cursor: default; }
 
 /* Marques du vérificateur et des indices — effacées à la moindre édition. */
-.kk-cell--conflit .kk-val { color: var(--danger); text-decoration: underline wavy var(--danger) 2px; }
+.kk-cell--conflit .kk-val { color: var(--danger-texte); text-decoration: underline wavy var(--danger) 2px; }
 .kk-cage--faux { background: #fee2e2; }
 .kk-cage--indice { background: #fef3c7; box-shadow: inset 0 0 0 3px var(--warning); }
 /* LA ZONE QUI EXPLIQUE LE COUP au mathdoku : la cage, la ligne ou la colonne
@@ -5315,7 +5713,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .kk-cell.kk-zone { background: #c7d7fe; }
 .kk-cell.kk-zone.kk-cage--indice { background: #fef3c7; }
 .kk-cell--visee { background: color-mix(in srgb, var(--primary) 18%, transparent); }
-.kk-cell--corrige .kk-val { color: var(--success); }
+.kk-cell--corrige .kk-val { color: var(--success-texte); }
 .kk-board--ok { border-color: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 35%, transparent); }
 .kk-board--secoue { animation: kkSecoue .35s ease; }
 @keyframes kkSecoue {
@@ -5341,9 +5739,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     touch-action: none;  /* le glisser ne doit pas défiler la page */
     transition: border-color .2s ease, transform .2s ease;
 }
-.kk-chip:hover { border-color: var(--primary); color: var(--primary); }
+.kk-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
 .kk-chip.drag-source { opacity: .35; }
-.kk-chip--gomme { color: var(--warning); }
+.kk-chip--gomme { color: var(--warning-texte); }
 
 .kk-actions { display: flex; gap: 10px; align-items: center; }
 .kk-btn-valider {
@@ -5356,8 +5754,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 .kk-btn-verif:disabled { opacity: .45; cursor: not-allowed; }
 
 .kk-status { min-height: 1.3em; font-weight: 600; font-size: .95rem; color: var(--text-muted); text-align: center; }
-.kk-status--ok { color: var(--success); }
-.kk-status--ko { color: var(--danger); }
+.kk-status--ok { color: var(--success-texte); }
+.kk-status--ko { color: var(--danger-texte); }
 
 /* Plateau court (téléphone en paysage, vignette) : la grille cède en premier. */
 @container plateau (max-height: 500px) {
@@ -5382,11 +5780,11 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     box-shadow: 0 2px 0 rgba(15, 23, 42, .12);
     -webkit-tap-highlight-color: transparent;
 }
-.np-choix-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.np-choix-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
 .np-choix-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
 .np-choix-btn:disabled { cursor: default; }
-.np-choix-btn--ok { border-color: var(--success); color: var(--success); }
-.np-choix-btn--ko { border-color: var(--danger); color: var(--danger); }
+.np-choix-btn--ok { border-color: var(--success); color: var(--success-texte); }
+.np-choix-btn--ko { border-color: var(--danger); color: var(--danger-texte); }
 /* Celle qu'on vient d'essayer reste barrée et fermée : on ne la repropose pas
    au réflexe suivant. */
 .np-choix-btn--use { opacity: .45; text-decoration: line-through; }
@@ -5449,7 +5847,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     color: var(--text-muted); border-radius: 10px; padding: 5px 12px;
     cursor: pointer; font: inherit; font-size: .84rem; font-weight: 600;
 }
-.la-btn-doux:hover { border-color: var(--primary); color: var(--primary); }
+.la-btn-doux:hover { border-color: var(--primary); color: var(--primary-texte); }
 
 .la-board {
     position: relative;
@@ -5522,8 +5920,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     min-height: 2.2em; text-align: center; font-size: .92rem; line-height: 1.35;
     color: var(--text-muted); max-width: 30rem;
 }
-.la-status--ok { color: var(--success); font-weight: 700; }
-.la-status--ko { color: var(--danger); font-weight: 600; }
+.la-status--ok { color: var(--success-texte); font-weight: 700; }
+.la-status--ko { color: var(--danger-texte); font-weight: 600; }
 
 /* --- LE CIRCUIT D'EAU ----------------------------------------
    Rémy : « j'aimerais bien avoir un jeu dans ce style-là, il faut tourner des
@@ -5555,8 +5953,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: flex; align-items: baseline; gap: 6px;
     font-size: .9rem; font-weight: 700; color: var(--text-muted);
 }
-.tu-compteur b { font-size: 1.5rem; font-weight: 900; color: var(--primary); }
-.tu-compteur--depasse b { color: var(--danger); }
+.tu-compteur b { font-size: 1.5rem; font-weight: 900; color: var(--primary-texte); }
+.tu-compteur--depasse b { color: var(--danger-texte); }
 
 /* LE SENS EST UN MOT, PAS SEULEMENT UNE FLÈCHE. C'est ce que le jeu apprend en
    passant : « le sens des aiguilles d'une montre » se lit sur le bouton qu'on
@@ -5565,7 +5963,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: inline-flex; align-items: center; gap: 6px;
     padding: 6px 12px; border-radius: 999px; cursor: pointer;
     border: 2px solid var(--primary); background: var(--bg-panel);
-    color: var(--primary); font: inherit; font-size: .8rem; font-weight: 800;
+    color: var(--primary-texte); font: inherit; font-size: .8rem; font-weight: 800;
     -webkit-tap-highlight-color: transparent;
 }
 .tu-sens-icone { font-size: 1.25rem; line-height: 1; }
@@ -5641,8 +6039,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     color: var(--text-muted); font: inherit; font-size: .85rem; font-weight: 700;
 }
 .tu-status { min-height: 1.3em; font-weight: 600; font-size: .95rem; color: var(--text-muted); text-align: center; }
-.tu-status--ok { color: var(--success); }
-.tu-status--ko { color: var(--danger); }
+.tu-status--ok { color: var(--success-texte); }
+.tu-status--ko { color: var(--danger-texte); }
 
 /* Le mur de briques du fond s'assombrit en thème sombre : une grille orange vif
    sur un écran nocturne éblouit là où le jeu demande de l'attention. L'appli ne
@@ -5787,7 +6185,7 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     gap: clamp(4px, 1.2cqh, 12px); width: 100%; padding: 6px;
 }
 .pyt-question { margin: 0; }
-.pyt-cible { color: var(--warning); font-size: 1.25em; }
+.pyt-cible { color: var(--warning-texte); font-size: 1.25em; }
 .pyt-sous { font-size: .88rem; color: var(--text-muted); text-align: center; }
 .pyt-board {
     display: grid;
@@ -5998,7 +6396,7 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     border: 2px solid var(--border); background: var(--bg-app); color: var(--text-main);
     border-radius: 999px; padding: 5px 11px; font-weight: 700; font-size: .84rem; cursor: pointer;
 }
-.sc-chip:hover { border-color: var(--primary); color: var(--primary); }
+.sc-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
 .sc-pop-ok {
     background: var(--primary); color: #fff; border: none; border-radius: 10px;
     padding: 8px; font-weight: 800; cursor: pointer;
@@ -6271,7 +6669,7 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     font-family: inherit; cursor: pointer; font-variant-numeric: tabular-nums;
     box-shadow: 0 2px 0 rgba(15,23,42,.12);
 }
-.rl-choix-btn:hover { border-color: var(--primary); color: var(--primary); }
+.rl-choix-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 .rl-choix-btn:active { transform: translateY(2px); box-shadow: none; }
 
 /* TÉLÉPHONE : le pavé passe de quatre rangées à deux. Douze touches en trois
@@ -6443,7 +6841,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     min-height: 1.5em; font-size: 1.05rem; font-weight: 700;
     color: var(--text-muted); text-align: center;
 }
-.ad-calcul--montre { color: var(--primary); font-size: 1.35rem; }
+.ad-calcul--montre { color: var(--primary-texte); font-size: 1.35rem; }
 
 .ad-choix { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 .ad-choix-btn {
@@ -6453,7 +6851,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font-family: inherit; cursor: pointer; font-variant-numeric: tabular-nums;
     box-shadow: 0 2px 0 rgba(15,23,42,.12);
 }
-.ad-choix-btn:hover { border-color: var(--primary); color: var(--primary); }
+.ad-choix-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 .ad-choix-btn:active { transform: translateY(2px); box-shadow: none; }
 
 /* Le pavé gagne une touche virgule à la dernière marche : sans elle, l'élève
@@ -6538,7 +6936,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     -webkit-user-select: none; user-select: none;
     -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
 }
-.pp-etape--saisie .pp-grip { cursor: grabbing; color: var(--primary); }
+.pp-etape--saisie .pp-grip { cursor: grabbing; color: var(--primary-texte); }
 .pp-etape-num { color: var(--text-muted); font-weight: 700; min-width: 1.4em; }
 .pp-etape-nom { flex: 1; min-width: 0; }
 .pp-etape-unite { color: var(--text-muted); font-weight: 500; font-size: .85rem; }
@@ -6554,7 +6952,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     display: flex; align-items: center; justify-content: center;
     -webkit-tap-highlight-color: transparent;
 }
-.pp-fleche:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.pp-fleche:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
 .pp-fleche:disabled { opacity: .3; cursor: default; }
 
 /* --- LA LIGNE D'UNE ÉTAPE, ET SON TIROIR ---------------------------------
@@ -6654,12 +7052,12 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .cfg-on--actif { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 /* Le robot des modales : le MÊME dessin que le bouton « Mode démonstration ». */
-.ac-robot { color: var(--primary); display: flex; justify-content: center; line-height: 0; }
+.ac-robot { color: var(--primary-texte); display: flex; justify-content: center; line-height: 0; }
 .ac-panel .modal-title { font-size: clamp(1.25rem, 5vw, 1.6rem); line-height: 1.15; }
 .ac-panel .modal-actions-center { margin-top: 2px; gap: 10px; }
 .ac-robot svg { display: block; }
 .ac-conseil { display: flex; align-items: flex-start; gap: 8px; text-align: left; }
-.ac-ampoule { flex: none; color: var(--warning); margin-top: 1px; }
+.ac-ampoule { flex: none; color: var(--warning-texte); margin-top: 1px; }
 
 /* --- LISTE DÉPLIANTE DE CASES À COCHER -----------------------------------
    Pour les réglages dont les options sont des PHRASES et non des symboles :
@@ -6711,6 +7109,19 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-muted);
 }
 .cfg-liste-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+/* LE RÉGLAGE EXPRESS SE VOIT — c'est le geste qu'on fait le plus souvent en
+   préparant : « tout, à parts égales ». Les deux autres sont des retouches ;
+   celui-ci est le point de départ, et il porte la couleur de l'application.
+   Rémy : « tu peux faire un bouton réglage express ». */
+.cfg-liste-btn--express {
+    flex: 1.4; border-color: var(--primary);
+    color: var(--primary-texte, var(--primary));
+    background: color-mix(in srgb, var(--primary) 9%, var(--bg-panel));
+}
+.cfg-liste-btn--express:hover {
+    background: color-mix(in srgb, var(--primary) 17%, var(--bg-panel));
+    color: var(--primary-texte, var(--primary));
+}
 
 /* La liste défile au-delà de sept lignes : elle ne doit jamais pousser les
    boutons « Annuler / Jouer » hors de l'écran d'un téléphone. */
@@ -6769,7 +7180,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* Une évaluation ne se découvre pas en cours de route : elle se signale. */
 .apercu-genre--eval {
     background: color-mix(in srgb, var(--warning) 16%, transparent);
-    border-color: var(--warning); color: var(--warning);
+    border-color: var(--warning); color: var(--warning-texte);
 }
 .apercu-regle { margin: 0; font-size: .86rem; color: var(--text-muted); }
 .apercu-styles {
@@ -7293,7 +7704,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     max-width: 22ch; white-space: normal; line-height: 1.25;
     color: var(--text-muted); font-weight: 600;
 }
-.world-node--cadeau .world-node-meta--cadeau { color: var(--warning); font-weight: 700; }
+.world-node--cadeau .world-node-meta--cadeau { color: var(--warning-texte); font-weight: 700; }
 
 /* La salle de jeux : les récompenses ouvertes, offertes d'un bloc. */
 .salle-jeux {
@@ -7726,8 +8137,8 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     box-shadow: var(--shadow-sm);
 }
 .pav-touche:active { transform: translateY(1px); background: var(--bg-app); }
-.pav-touche--eff { color: var(--accent); }
-.pav-touche--signe { color: var(--primary); }
+.pav-touche--eff { color: var(--accent-texte); }
+.pav-touche--signe { color: var(--primary-texte); }
 /* « x² » tient en deux caractères là où les autres touches n'en ont qu'un :
    sans cela, la touche du carré déborde de sa case sur un téléphone. */
 .pav-touche--carre { letter-spacing: -.02em; font-size: .92em; }
@@ -7775,7 +8186,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .nt-contexte { text-align: center; max-width: 560px; flex: 0 0 auto; }
 .nt-avis {
-    font-size: .9rem; font-weight: 700; color: var(--primary);
+    font-size: .9rem; font-weight: 700; color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;
 }
@@ -7876,6 +8287,11 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    LES TOUCHES SE DISTINGUENT PAR LEUR COULEUR, pas seulement par leur place :
    sur un téléphone, où la grille se replie, la seule position ne suffit plus à
    dire qu'un « + » n'est pas un « 4 ». */
+/* L'HÔTE EST LE CONTENEUR DE REQUÊTE. Un élément n'est jamais son propre
+   conteneur : tant que `container-type` était sur `.ls-layout`, la règle
+   « deux colonnes » écrite en `@container` ne s'appliquait pas à lui — elle
+   ne pouvait viser que ses enfants. On mesure donc sur l'hôte. */
+.ls-hote { width: 100%; height: 100%; container-type: inline-size; }
 .ls-layout {
     display: flex; flex-direction: column; align-items: center; gap: 14px;
     width: 100%; height: 100%; padding: 10px; box-sizing: border-box;
@@ -7884,13 +8300,147 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .ls-contexte { text-align: center; max-width: 560px; flex: 0 0 auto; }
 .ls-avis {
-    font-size: .9rem; font-weight: 700; color: var(--primary);
+    font-size: .9rem; font-weight: 700; color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;
 }
 .ls-panel {
     display: flex; flex-direction: column; align-items: center; gap: 12px;
     flex: 0 0 auto; width: 100%; max-width: 420px;
+}
+
+/* LA CHAÎNE D'ÉGALITÉS — Rémy : « il faut revoir la façon de présenter,
+   quelque chose de cohérent ».
+
+   La première version était une liste à cocher : le titre à gauche, la valeur
+   à droite. Chaque ligne était juste, et l'ensemble n'était pas une
+   démonstration — rien ne disait que toutes ces lignes sont ÉGALES entre
+   elles, ce qui est pourtant tout le sujet.
+
+   On écrit donc la trace du tableau : une colonne de « = » alignés, la valeur
+   en gras, et en petit à droite ce qu'on vient de faire. Ce qui est écrit
+   reste LISIBLE jusqu'au bout — l'élève relit sa ligne précédente en écrivant
+   la suivante, sinon on lui demande de la retenir, ce qui n'est pas la
+   question posée. */
+.ls-chaine {
+    list-style: none; margin: 10px 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: 3px;
+    text-align: left; font-size: 1rem;
+}
+.ls-ligne {
+    display: grid; align-items: baseline;
+    grid-template-columns: max-content 1ch minmax(0, 1fr);
+    gap: 2px 7px;
+    padding: 4px 8px; border-radius: 9px;
+    border: 2px solid transparent;
+    transition: background .18s ease, border-color .18s ease, opacity .18s ease;
+}
+/* Le membre de gauche est VIDE dans la chaîne : la colonne existe quand même,
+   pour que tous les « = » tombent l'un sous l'autre. */
+.ls-gauche { color: var(--text-muted); }
+.ls-egal { color: var(--text-muted); text-align: center; }
+.ls-membre {
+    font-weight: 800; color: var(--text-main); min-width: 1ch;
+    font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+}
+/* Ce qu'on vient de faire : en petit, sous la ligne, jamais à sa place. */
+.ls-quoi {
+    grid-column: 3; font-size: .76rem; line-height: 1.25;
+    color: var(--text-muted);
+}
+/* LE CALCUL DE CÔTÉ — « x² − 9 = (x − 3)(x + 3) ». Il n'est pas dans la
+   chaîne : le mêler dirait que x² − 9 vaut l'expression entière. On le pose
+   en retrait, comme dans la marge d'un cahier. */
+/* UNE NOTE EST UNE RECONNAISSANCE, PAS UNE ÉGALITÉ. « Le facteur commun :
+   x − 4 » ne dit pas que x − 4 vaut l'expression entière — d'où le deux-points
+   plutôt que le signe égal, et l'intitulé à gauche plutôt qu'en marge. */
+.ls-ligne--note .ls-gauche { color: var(--text-main); }
+.ls-ligne--note { border-left: 3px solid var(--border); border-radius: 0 9px 9px 0; }
+.ls-ligne--apart {
+    margin-bottom: 6px; border-left: 3px solid var(--border);
+    border-radius: 0 9px 9px 0; padding-left: 10px;
+}
+/* CE QUI EST FAIT EST CALME, pas triomphant : aucune de ces lignes n'est
+   notée, et quatre bandeaux verts vifs en feraient une suite de récompenses. */
+.ls-ligne--faite { background: color-mix(in srgb, var(--success, #16a34a) 8%, transparent); }
+.ls-ligne--faite .ls-membre { color: var(--success, #16a34a); }
+/* LA LIGNE DONNÉE APRÈS TROIS ESSAIS SE DISTINGUE de celle qu'on a trouvée :
+   les confondre laisserait l'élève relire sa copie sans voir où il a bloqué. */
+.ls-membre--donnee { color: var(--text-muted); font-style: italic; }
+.ls-ligne--active {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 7%, transparent);
+}
+/* LE MÊME TEXTE JOUE DEUX RÔLES, ET IL N'A PAS À AVOIR LA MÊME TAILLE.
+   Sur une ligne FAITE, « On écrit les deux carrés » légende ce qu'on vient
+   d'écrire : c'est une note de marge, elle reste petite. Sur la ligne ACTIVE,
+   c'est LA CONSIGNE — le seul texte qui dise quoi taper — et elle s'affichait
+   en .76 rem sous un énoncé en 2 rem. Rémy : « je ne comprends pas ce qu'il
+   faut faire ». */
+.ls-ligne--active .ls-quoi {
+    color: var(--text-main); font-weight: 700; font-size: .98rem; line-height: 1.3;
+}
+.ls-ligne--attente { opacity: .4; }
+.ls-ligne--attente .ls-quoi { visibility: hidden; }
+
+/* SUR UN TÉLÉPHONE, LE PAVÉ EST PUNAISÉ EN BAS ET SEUL L'ÉNONCÉ DÉFILE.
+
+   MESURÉ dans le cadre téléphone (358 px de large, 684 px utiles) : la
+   colonne demandait 846 px et « Valider » tombait sous le bord. L'élève
+   valide à chaque ligne, donc quatre ou cinq fois par question — on lui
+   demandait de chercher son bouton à chaque fois.
+
+   Serrer les marges au pixel ne suffisait pas : le barreau 7 a un énoncé sur
+   deux lignes, et les 22 px de différence remettaient la barre d'indice
+   dessous. Deux rangées, donc : l'énoncé et la chaîne prennent la place qui
+   reste et défilent s'il en manque ; le champ, les touches, « Valider » et la
+   barre d'indice ne bougent jamais. */
+/* ET CE N'EST PAS RÉSERVÉ AUX QUESTIONS DÉCOUPÉES — c'était le défaut.
+   RÉMY : « ça déborde ». MESURÉ dans le cadre du jeu, sur le barreau 1 des
+   racines : la barre d'indices tombait 69 px SOUS le bord. Ce barreau-là n'a
+   pas de chaîne — un seul geste —, donc la classe `--chaine` était absente et
+   toute cette règle avec elle : l'énoncé, son support visuel et le pavé
+   s'empilaient, et « Valider » passait sous la ligne de flottaison.
+   La règle ne dépend pas de la chaîne, elle dépend de la PLACE. */
+@container (max-width: 699px) {
+    .ls-layout {
+        display: grid; grid-template-rows: minmax(0, 1fr) auto;
+        gap: 10px; padding: 6px; overflow: hidden; justify-items: center;
+    }
+    .ls-layout .ls-contexte {
+        min-height: 0; overflow-y: auto; align-self: start; width: 100%;
+    }
+    .ls-layout .ls-panel { align-self: end; }
+    .ls-layout--chaine .ls-chaine { font-size: .9rem; gap: 2px; margin-top: 6px; }
+    .ls-layout--chaine .ls-ligne { padding: 3px 8px; }
+    /* `.ls-clavier .ls-t` ET NON `.ls-t` : une requête de conteneur n'ajoute
+       AUCUNE spécificité, et `.ls-t { min-height: 50px }` est écrit plus bas
+       dans ce fichier — il gagnait donc, et la mesure ne bougeait pas. */
+    .ls-layout .ls-clavier .ls-t { min-height: 44px; }
+    .ls-layout .ls-champ { min-height: 1.6em; padding: 2px 10px; }
+}
+
+/* DEUX COLONNES DÈS QU'IL Y A LA LARGEUR : la chaîne à gauche, l'écriture à
+   droite. La hauteur retombe alors à celle du seul pavé.
+
+   Mesuré sur le CONTENEUR de l'activité et non sur la fenêtre : l'exercice
+   s'ouvre aussi dans l'aperçu des réglages, qui est une vignette dans une
+   page large. */
+@container (min-width: 700px) {
+    .ls-layout {
+        flex-direction: row; align-items: center; justify-content: center;
+        gap: 28px;
+    }
+    /* L'ÉNONCÉ NE DÉFILE PAS TOUT SEUL DANS UNE COLONNE TROP HAUTE : il se
+       serre, et son support visuel avec lui. `min-height: 0` autorise la
+       boîte flex à descendre sous la taille de son contenu, sans quoi elle
+       pousse le pavé hors du cadre — c'est ce qui arrivait au support visuel
+       des racines. */
+    .ls-layout .ls-contexte {
+        flex: 0 1 auto; max-width: 460px; min-height: 0; overflow-y: auto;
+        max-height: 100%;
+    }
+    .ls-layout .ls-panel { flex: 0 0 auto; }
 }
 
 /* LE CHAMP EST LA RÉPONSE : il se lit de loin, et il a une hauteur FIXE. Sans
@@ -7907,6 +8457,59 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .ls-champ--ok { border-color: var(--success, #16a34a); background: color-mix(in srgb, var(--success, #16a34a) 10%, var(--bg-panel)); }
 .ls-champ--ko { border-color: var(--danger, #dc2626); }
+/* PRESQUE : c'est juste, ce n'est pas fini. Ni le vert du succès ni le rouge
+   de la faute — la bordure ambre dit exactement l'état de la ligne, et c'est
+   un troisième état, pas une nuance de l'un des deux. Voir
+   `signalerInacheve` dans litteralSaisie.js. */
+.ls-champ--presque {
+    border-color: var(--warning, #f59e0b);
+    background: color-mix(in srgb, var(--warning, #f59e0b) 8%, var(--bg-panel));
+}
+/* CE QUI VA ENSEMBLE — demande de Rémy. Deux marques par groupe, la couleur
+   ET le soulignement : la couleur seule laisserait de côté les élèves qui ne
+   la distinguent pas, et ils sont un par classe ou deux. Les teintes sont
+   posées ici plutôt que prises aux variables de thème : `--primary` et
+   `--accent` changent d'un thème à l'autre et finissent voisines dans
+   certains, or ces trois-là ne valent QUE par leur écart entre elles. */
+:root {
+    --ls-sem-0: #b91c1c; --ls-sem-1: #1d4ed8; --ls-sem-2: #047857;
+}
+:root[data-theme="dark"] {
+    --ls-sem-0: #fca5a5; --ls-sem-1: #93c5fd; --ls-sem-2: #6ee7b7;
+}
+.ls-semblable {
+    border-radius: 4px;
+    text-decoration-line: underline;
+    text-decoration-thickness: .1em;
+    text-underline-offset: .12em;
+    padding-inline: .04em;
+}
+.ls-semblable[data-groupe="0"] {
+    color: var(--ls-sem-0); text-decoration-style: solid;
+    background: color-mix(in srgb, var(--ls-sem-0) 12%, transparent);
+}
+.ls-semblable[data-groupe="1"] {
+    color: var(--ls-sem-1); text-decoration-style: dashed;
+    background: color-mix(in srgb, var(--ls-sem-1) 12%, transparent);
+}
+.ls-semblable[data-groupe="2"] {
+    color: var(--ls-sem-2); text-decoration-style: dotted;
+    background: color-mix(in srgb, var(--ls-sem-2) 12%, transparent);
+}
+/* LE MOULE DE LA LIGNE — voir `poserModele` dans litteralSaisie.js.
+   Rémy, devant une étape et un champ vide : « je ne comprends pas ce qu'il
+   faut faire ». Il dit la FORME attendue, (…)² − □², que le titre ne dit pas.
+   Il est gris et moins gras que la saisie : on doit voir du premier coup d'œil
+   que ce n'est pas écrit, c'est à écrire. Il s'efface à la première touche. */
+.ls-modele {
+    color: var(--text-muted);
+    font-weight: 600;
+    opacity: .62;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+.ls-modele:empty { display: none; }
+
 /* LE CURSEUR CLIGNOTE, et c'est lui qui dit « écris ici ». Un champ vide et
    muet se lit comme un affichage, pas comme une place à remplir. */
 .ls-curseur {
@@ -7916,9 +8519,17 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 @keyframes ls-clign { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ls-curseur { animation: none; } }
 
-.ls-clavier {
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px;
-    width: 100%;
+/* LE PAVÉ SE LIT PAR FAMILLES — voir le commentaire de `litteralSaisie.js`.
+   Une rangée par nature : la lettre et ses puissances, les signes, puis les
+   chiffres sur deux rangées de cinq. Les rangées courtes se centrent, et
+   leurs touches gardent la largeur d'une touche de chiffre : deux touches
+   étirées sur toute la ligne ne ressembleraient plus à un clavier. */
+.ls-clavier { display: flex; flex-direction: column; gap: 7px; width: 100%; }
+.ls-rangee { display: flex; justify-content: center; gap: 7px; width: 100%; }
+.ls-rangee:empty { display: none; }
+.ls-rangee > .ls-t {
+    flex: 1 1 0; min-width: 0;
+    max-width: calc((100% - 4 * 7px) / 5);
 }
 .ls-t {
     min-height: 50px; border-radius: 12px; cursor: pointer;
@@ -7930,9 +8541,14 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .ls-t:hover { background: var(--bg-hover); border-color: var(--primary); }
 .ls-t:active { transform: scale(.92); background: var(--primary); color: #fff; }
+/* LA TOUCHE EXPOSANT SE LIT DE LOIN. « ² » est un caractère déjà petit et
+   déjà haut : à la taille des autres touches, il ressemblait à une poussière
+   dans le coin du bouton. On l'agrandit — sa position haute suffit à dire ce
+   qu'il fait, sa taille doit suffire à le voir. */
+.ls-t--expo { font-size: 2.1rem; line-height: 1; }
 /* La lettre et ses puissances : ce sont elles le sujet de l'exercice. */
 .ls-t--lettre {
-    color: var(--primary); font-style: italic;
+    color: var(--primary-texte); font-style: italic;
     background: color-mix(in srgb, var(--primary) 8%, var(--bg-panel));
     border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
 }
@@ -7981,7 +8597,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .tn-contexte { text-align: center; max-width: 560px; flex: 0 0 auto; }
 .tn-avis {
-    font-size: .9rem; font-weight: 700; color: var(--primary);
+    font-size: .9rem; font-weight: 700; color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;
 }
@@ -8018,7 +8634,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    change : c'est ce va-et-vient qui fait comprendre la notation. */
 .tn-lecture {
     min-height: 1.6em; font-size: clamp(1.05rem, 4.4cqw, 1.5rem); font-weight: 900;
-    color: var(--primary); letter-spacing: .01em;
+    color: var(--primary-texte); letter-spacing: .01em;
 }
 .tn-lecture--vide { color: var(--text-muted); font-weight: 600; }
 .tn-valider {
@@ -8035,7 +8651,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    redescendre est un filet, pas une sanction, et le ton doit le dire. */
 .choice-avis {
     text-align: center; font-size: .9rem; font-weight: 700;
-    color: var(--primary); margin-bottom: 10px;
+    color: var(--primary-texte); margin-bottom: 10px;
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     border-radius: 10px; padding: 7px 12px;
 }
@@ -8056,7 +8672,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     color: var(--text-main); font-family: inherit; font-size: .9rem; font-weight: 700;
 }
 .cl-onglet:hover { background: var(--bg-hover); }
-.cl-onglet--actif { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--bg-app)); color: var(--primary); }
+.cl-onglet--actif { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--bg-app)); color: var(--primary-texte); }
 .cl-onglet-n {
     font-size: .74rem; font-weight: 800; padding: 1px 7px; border-radius: 999px;
     background: color-mix(in srgb, var(--text-muted) 18%, transparent);
@@ -8113,7 +8729,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     color: var(--text-main); text-decoration: underline; text-decoration-style: dotted;
     text-underline-offset: 3px;
 }
-.cl-nom:hover { color: var(--primary); }
+.cl-nom:hover { color: var(--primary-texte); }
 .cl-eleve-chiffre { margin-left: 8px; font-size: .76rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .cl-ligne--muette .cl-nom, .cl-ligne--muette .cl-eleve-chiffre { opacity: .5; }
 
@@ -8148,13 +8764,13 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     flex: 0 0 auto; min-width: 7em; background: none; border: none; padding: 0;
     cursor: pointer; font: inherit; font-weight: 800; color: var(--text-main); text-align: left;
 }
-.cl-phrase-nom:hover { color: var(--primary); }
+.cl-phrase-nom:hover { color: var(--primary-texte); }
 .cl-phrase-texte { flex: 1 1 260px; line-height: 1.45; color: var(--text-main); }
 .cl-detail-btn {
     flex: 0 0 auto; background: none; border: 1px solid var(--border); border-radius: 8px;
     padding: 3px 10px; cursor: pointer; font: inherit; font-size: .76rem; color: var(--text-muted);
 }
-.cl-detail-btn:hover { border-color: var(--primary); color: var(--primary); }
+.cl-detail-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 
 /* LE DÉTAIL, quand on l'ouvre. */
 .cl-detail-boite {
@@ -8225,7 +8841,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .chap-compteur {
     font-size: .82rem;
     font-weight: 700;
-    color: var(--warning);
+    color: var(--warning-texte);
     background: color-mix(in srgb, var(--warning) 14%, transparent);
     border: 1px solid color-mix(in srgb, var(--warning) 38%, transparent);
     border-radius: 999px;
@@ -8233,7 +8849,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font-variant-numeric: tabular-nums;
 }
 .chap-compteur--fini {
-    color: var(--success);
+    color: var(--success-texte);
     background: color-mix(in srgb, var(--success) 14%, transparent);
     border-color: color-mix(in srgb, var(--success) 38%, transparent);
 }
@@ -8298,7 +8914,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     cursor: pointer;
 }
 .chap-tete:hover { background: var(--bg-hover); border-color: var(--border); }
-.chap-num { font-size: .92rem; font-weight: 800; color: var(--primary); }
+.chap-num { font-size: .92rem; font-weight: 800; color: var(--primary-texte); }
 .chap-court { font-size: .6rem; line-height: 1.15; color: var(--text-muted); text-align: center; }
 .chap-tete--vide .chap-num { color: var(--text-muted); }
 
@@ -8363,7 +8979,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .chap-marque--propose {
     border: 1.5px dashed var(--warning);
     background: color-mix(in srgb, var(--warning) 12%, transparent);
-    color: var(--warning);
+    color: var(--warning-texte);
 }
 .chap-marque--oui { background: var(--primary); color: #fff; }
 @media (hover: hover) and (pointer: fine) {
@@ -8396,7 +9012,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     align-items: baseline;
     gap: 6px;
 }
-.chap-n { color: var(--primary); font-size: .78rem; font-variant-numeric: tabular-nums; }
+.chap-n { color: var(--primary-texte); font-size: .78rem; font-variant-numeric: tabular-nums; }
 .chap-liste { margin: 0; padding-left: 18px; font-size: .84rem; }
 .chap-comps { display: flex; flex-direction: column; gap: 6px; }
 .chap-comp {
@@ -8474,7 +9090,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .rang-btn.active {
     background: var(--bg-panel);
-    color: var(--primary);
+    color: var(--primary-texte);
     box-shadow: var(--shadow-sm);
 }
 @media (hover: hover) and (pointer: fine) {
@@ -8535,7 +9151,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .outils-item:hover { background: var(--bg-hover); }
 .outils-item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .outils-item svg { flex: none; margin-top: 2px; color: var(--text-muted); }
-.outils-item:hover svg { color: var(--primary); }
+.outils-item:hover svg { color: var(--primary-texte); }
 
 .outils-texte { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .outils-nom { font-size: .88rem; font-weight: 600; }
@@ -8569,7 +9185,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     border: 1px solid var(--border);
 }
 .path-etat--ok {
-    color: var(--success);
+    color: var(--success-texte);
     background: color-mix(in srgb, var(--success) 13%, transparent);
     border: 1px solid color-mix(in srgb, var(--success) 34%, transparent);
 }
@@ -8588,15 +9204,15 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     font-variant-numeric: tabular-nums;
 }
 .path-duree--courte {
-    color: var(--success);
+    color: var(--success-texte);
     background: color-mix(in srgb, var(--success) 13%, transparent);
 }
 .path-duree--seance {
-    color: var(--primary);
+    color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 13%, transparent);
 }
 .path-duree--longue {
-    color: var(--warning);
+    color: var(--warning-texte);
     background: color-mix(in srgb, var(--warning) 16%, transparent);
 }
 
@@ -8644,18 +9260,18 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 }
 /* Une durée MESURÉE n'est pas une estimation : elle se distingue. */
 .pstep-duree--mesure {
-    color: var(--primary);
+    color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     font-weight: 600;
 }
 
 /* Le liseré de gauche dit le DOMAINE : dans vingt étapes, c'est ce qui montre
    qu'on a empilé six exercices de calcul et aucun de géométrie. */
-.path-step[data-domaine="Numérique"] { border-left-color: #6366f1; }
-.path-step[data-domaine="Géométrique"] { border-left-color: #0ea5e9; }
-.path-step[data-domaine="Grandeurs et Mesures"] { border-left-color: #f59e0b; }
+.path-step[data-domaine="Nombres et calculs"] { border-left-color: #6366f1; }
+.path-step[data-domaine="Espace et géométrie"] { border-left-color: #0ea5e9; }
+.path-step[data-domaine="Grandeurs et mesures"] { border-left-color: #f59e0b; }
 .path-step[data-domaine="Organisation de données"] { border-left-color: #10b981; }
-.path-step[data-domaine="Défis et Énigmes"] { border-left-color: #a855f7; }
+.path-step[data-domaine="Défis et énigmes"] { border-left-color: #a855f7; }
 
 @media (max-width: 700px) {
     .path-step-meta { margin-left: 0; }
@@ -8841,13 +9457,25 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 }
 /* Neuf ou revu : deux choses différentes. Un exercice REVU, on l'a déjà vu —
    ce qu'on veut savoir est ce qui a changé, et c'est la phrase en dessous. */
+/* 10,9 PX, C'ÉTAIT LA TAILLE D'UNE NOTE DE BAS DE PAGE — pour un mot qu'on
+   regarde en premier. Rémy l'a relevé : une capitale de onze pixels se devine
+   plus qu'elle ne se lit, et celle-ci est justement là pour ATTIRER l'œil sur
+   ce qui vient d'arriver. À .8rem (12,8 px) elle reste une pastille — le titre
+   à côté fait 15 px — et elle se lit sans se pencher. */
 .nv-pastille {
-    display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px;
+    display: inline-block; margin-right: 6px; padding: 2px 9px; border-radius: 999px;
     background: var(--tag-dom-bg); color: var(--tag-dom-txt);
-    font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
-    vertical-align: 2px;
+    font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+    vertical-align: 1px;
 }
-.nv-pastille--neuf { background: rgba(22, 163, 74, .16); color: var(--success); }
+/* MESURÉ, ET C'EST LE DERNIER POINT DE CONTRASTE DE L'AUDIT. Cet écran-ci —
+   « Essayer les derniers exercices » — n'était pas dans le balayage, parce
+   qu'on n'y entre que par la palette d'auteur. La pastille verte y donnait
+   4,41 en thème clair (il en faut 4,5) : `--success-texte` est assez foncé sur
+   du blanc, pas sur un fond lavé de vert. Un cran de plus, et l'on repasse à
+   6,2. Le thème sombre, lui, était déjà à 9,58 — ce sont ses jetons pâles. */
+.nv-pastille--neuf { background: rgba(22, 163, 74, .16); color: #065f46; }
+:root[data-theme="dark"] .nv-pastille--neuf { color: var(--success-texte); }
 .nv-quoi { margin: 2px 0 0; font-size: .84rem; line-height: 1.4; color: var(--text-muted); }
 
 .nv-carte {
@@ -8864,7 +9492,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     background: var(--bg-panel); color: var(--text-main);
     font-size: .86rem; font-weight: 700; cursor: pointer; transition: border-color .15s;
 }
-.nv-btn:hover { border-color: var(--primary); color: var(--primary); }
+.nv-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 .nv-btn--primaire {
     background: linear-gradient(90deg, var(--primary), var(--accent));
     color: #fff; border-color: transparent;
@@ -8992,7 +9620,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
     align-items: center; gap: clamp(4px, 1.2cqh, 12px);
 }
-.fb-signe { font-size: clamp(1.4rem, 5cqw, 2.6rem); font-weight: 900; color: var(--primary); flex: 0 0 auto; }
+.fb-signe { font-size: clamp(1.4rem, 5cqw, 2.6rem); font-weight: 900; color: var(--primary-texte); flex: 0 0 auto; }
 .fb-signe--petit { font-size: clamp(1rem, 3cqw, 1.7rem); }
 .fb-legende {
     margin: 0; text-align: center; max-width: 46em; line-height: 1.35;
@@ -9009,7 +9637,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fb-layout--egalite .fb-frac { font-size: clamp(1.5rem, max(6cqw, 6cqh), 3.4rem); }
 .fb-frac .fraction-num, .fb-frac .fraction-den { text-align: center; }
 .fb-frac .fraction-den { border-top-width: 3px; padding-top: .06em; }
-.fb-frac--trou { color: var(--primary); }
+.fb-frac--trou { color: var(--primary-texte); }
 
 .fb-calcul { display: flex; flex-direction: column; align-items: center; gap: clamp(6px, 1.8cqh, 16px); }
 .fb-ligne, .fb-commun { display: flex; align-items: center; justify-content: center; gap: clamp(4px, 1.4cqw, 14px); flex-wrap: wrap; }
@@ -9021,7 +9649,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fb-case {
     min-width: 1.6em; min-height: 1.35em; padding: 0 .12em;
     border: 2px dashed var(--border); border-radius: 8px; background: transparent;
-    font: inherit; font-weight: 900; color: var(--primary); cursor: pointer;
+    font: inherit; font-weight: 900; color: var(--primary-texte); cursor: pointer;
     line-height: 1.15; -webkit-tap-highlight-color: transparent;
     transition: border-color .15s ease, background .15s ease, color .15s ease;
 }
@@ -9112,7 +9740,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
    l'élève reconnaisse, c'est numérateur sur dénominateur. Un `inline-flex` se
    pose dans le texte comme un mot, sans casser la ligne de base. */
 .frac-dans-texte {
-    font-size: 1.05em; font-weight: 800; color: var(--primary);
+    font-size: 1.05em; font-weight: 800; color: var(--primary-texte);
     margin: 0 .15em; vertical-align: middle; line-height: 1.05;
     font-variant-numeric: tabular-nums;
 }
@@ -9131,7 +9759,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     gap: clamp(4px, 1.4cqw, 12px); flex-wrap: wrap;
 }
 .fa-depart { font-size: clamp(1.2rem, max(4cqw, 4cqh), 2.2rem); font-weight: 800; }
-.fa-op { font-weight: 900; color: var(--primary); }
+.fa-op { font-weight: 900; color: var(--primary-texte); }
 .fa-op--mini { font-size: .8em; }
 
 /* LA FRACTION EN COLONNES, y compris quand elle contient des cases : le trait
@@ -9180,7 +9808,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fa-case {
     min-width: 1.7em; min-height: 1.3em; padding: 0 .12em;
     border: 2px dashed var(--border); border-radius: 8px; background: transparent;
-    font: inherit; font-weight: 900; color: var(--primary); cursor: pointer;
+    font: inherit; font-weight: 900; color: var(--primary-texte); cursor: pointer;
     line-height: 1.15; -webkit-tap-highlight-color: transparent;
     transition: border-color .15s ease, background .15s ease, color .15s ease;
 }
@@ -9188,8 +9816,8 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fa-case--active { border-color: var(--primary); border-style: solid;
                    background: color-mix(in srgb, var(--primary) 12%, transparent); }
 .fa-case--pleine { border-style: solid; }
-.fa-case--juste { color: var(--success); border-color: var(--success); border-style: solid; }
-.fa-case--faux { color: var(--danger); border-color: var(--danger); border-style: solid; }
+.fa-case--juste { color: var(--success-texte); border-color: var(--success); border-style: solid; }
+.fa-case--faux { color: var(--danger-texte); border-color: var(--danger); border-style: solid; }
 .fa-val { display: inline-block; min-width: 1ch; }
 .fa-case--active .fa-val::after { content: '_'; opacity: .5; }
 .fa-case--pleine .fa-val::after { content: none; }
@@ -9210,7 +9838,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     margin: 0 0 12px; text-align: center; line-height: 1.4;
     font-size: .92rem; color: var(--text-main);
 }
-.fa-table-mot b { color: var(--primary); }
+.fa-table-mot b { color: var(--primary-texte); }
 /* La modale n'est pas un conteneur de requête : la table se dimensionne en
    unités absolues, et déborde horizontalement plutôt que de se tasser. */
 .fa-table-boite { max-width: 100%; overflow-x: auto; display: flex; justify-content: center; }
@@ -9264,7 +9892,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fa-touche--ok:disabled { opacity: .45; cursor: default; }
 .fa-note {
     min-height: 2.2em; max-width: 40em; text-align: center; line-height: 1.3;
-    font-size: clamp(.7rem, max(2.2cqw, 2.2cqh), .9rem); color: var(--danger); font-weight: 600;
+    font-size: clamp(.7rem, max(2.2cqw, 2.2cqh), .9rem); color: var(--danger-texte); font-weight: 600;
 }
 
 /* En paysage large, le cahier et le pavé se mettent côte à côte : le calcul
@@ -9304,7 +9932,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fb-rang-bande--ok { animation: fb-devoile .45s ease both; }
 .fb-pile-egal {
     display: flex; justify-content: center; align-items: center;
-    font-size: clamp(1.1rem, 4cqw, 2rem); font-weight: 900; color: var(--primary);
+    font-size: clamp(1.1rem, 4cqw, 2rem); font-weight: 900; color: var(--primary-texte);
 }
 .fb-pile-vide { min-height: 0; }
 
@@ -9331,10 +9959,10 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .fb-arcs .fb-pointe { fill: var(--primary); stroke: none; }
 .fb-fleche-mot {
     position: absolute; left: 50%; top: 0; transform: translate(-50%, -50%);
-    background: var(--bg-app); padding: 0 .35em; font-weight: 900; color: var(--primary);
+    background: var(--bg-app); padding: 0 .35em; font-weight: 900; color: var(--primary-texte);
     font-size: clamp(.85rem, max(3cqw, 3cqh), 1.35rem); white-space: nowrap;
 }
-.fb-fleche-mot--su { color: var(--success); animation: fb-devoile .4s ease both; }
+.fb-fleche-mot--su { color: var(--success-texte); animation: fb-devoile .4s ease both; }
 
 /* L'entier dans un calcul de fractions : « 1 », pas « 1/1 ». Il n'a pas de
    dénominateur — c'est justement ce qu'on va lui en donner un. */
@@ -9644,7 +10272,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     border: 1px solid var(--border); background: var(--bg-panel);
     color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1;
 }
-.mes-exo-oter:hover { color: var(--danger); border-color: var(--danger); }
+.mes-exo-oter:hover { color: var(--danger-texte); border-color: var(--danger); }
 .mes-exos-ajouter { margin-top: 14px; }
 
 /* La fenêtre d'ajout : on cherche, on choisit, on borne. Trois gestes, dans
@@ -9679,7 +10307,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     background: var(--bg-panel); color: var(--text-muted); cursor: pointer;
     font: inherit; font-size: .85rem; font-weight: 600;
 }
-.mes-ajout-onglet.is-actif { border-color: var(--primary); color: var(--primary); }
+.mes-ajout-onglet.is-actif { border-color: var(--primary); color: var(--primary-texte); }
 .mes-ajout-valeurs { display: flex; gap: 6px; flex-wrap: wrap; }
 .mes-ajout-valeur {
     min-width: 46px; padding: 8px 10px; border-radius: 10px;
@@ -9697,12 +10325,18 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     background: var(--bg-app); color: var(--text-main); cursor: pointer;
     font: inherit; font-weight: 700; text-align: left;
 }
-.recompense-jeu:hover { border-color: var(--primary); color: var(--primary); }
+.recompense-jeu:hover { border-color: var(--primary); color: var(--primary-texte); }
 .recompense-non { margin-top: 14px; }
 
 /* Étape bornée par le TEMPS : la barre n'a rien à remplir — on n'a pas de
    total —, elle laisse la place au seul compte des questions faites. */
+/* SANS SOCLE, PLUS DE BLANC. Le compte est écrit en blanc parce qu'il se pose
+   d'ordinaire sur l'ardoise ; la barre devenue transparente, il se retrouvait
+   blanc sur l'en-tête clair — invisible dans quatre thèmes sur cinq. */
 #game-progress-container.pg--sans-total { background: transparent; box-shadow: none; }
+#game-progress-container.pg--sans-total #game-progress-text {
+    color: var(--text-main); text-shadow: none;
+}
 
 
 /* ==========================================================================
@@ -9765,7 +10399,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 }
 .auj-lien {
     background: none; border: 0; padding: 0 2px; cursor: pointer;
-    color: var(--primary); font: inherit; font-weight: 800;
+    color: var(--primary-texte); font: inherit; font-weight: 800;
     text-decoration: underline; text-underline-offset: 2px;
 }
 .auj-lien:hover { filter: brightness(1.15); }
@@ -9781,14 +10415,14 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .rj-champ:focus { outline: none; border-color: var(--primary); }
 .rj-aide, .rj-vide, .rj-etat { color: var(--text-muted); font-size: .88rem; margin: 0; }
 .rj-etat:empty { display: none; }
-.rj-etat--attention { color: var(--warning); font-weight: 800; }
+.rj-etat--attention { color: var(--warning-texte); font-weight: 800; }
 .rj-deja {
     margin: 0; padding: 10px 12px; border-radius: 10px;
     background: var(--bg-hover); font-size: .9rem;
 }
 .rj-quitter {
     background: none; border: 0; padding: 0 2px; cursor: pointer;
-    color: var(--danger); font: inherit; font-weight: 800; text-decoration: underline;
+    color: var(--danger-texte); font: inherit; font-weight: 800; text-decoration: underline;
 }
 /* LA LISTE NE DÉPASSE JAMAIS QUATRE LIGNES VISIBLES : au-delà, on ne choisit
    plus, on cherche — et c'est le champ qui sert à ça. */
@@ -9807,7 +10441,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .auj-dit b { display: block; font-size: clamp(1.05rem, 2.6vw, 1.3rem); font-weight: 900; }
 .auj-dit span { opacity: .92; font-weight: 600; }
 .auj-go {
-    flex: 0 0 auto; background: #fff; color: var(--primary);
+    flex: 0 0 auto; background: #fff; color: var(--primary-texte);
     border: 0; border-radius: 999px; padding: 13px 28px;
     font: inherit; font-weight: 900; font-size: 1.02rem; cursor: pointer;
     transition: transform .12s;
@@ -9879,7 +10513,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     width: 100%; background: none; border: 0; padding: 10px;
     color: var(--text-muted); font: inherit; font-weight: 800; cursor: pointer;
 }
-.auj-explorer:hover { color: var(--primary); }
+.auj-explorer:hover { color: var(--primary-texte); }
 .auj-explorer svg { transition: transform .18s; }
 .auj-explorer--ouvert svg { transform: rotate(180deg); }
 
@@ -10020,7 +10654,7 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 
 /* Ce qu'il faut retenir. L'auteur l'écrit déjà en capitales : on ne fait que
    le rendre visible sans crier — la couleur porte, le gras suffit. */
-.lc-fort { font-weight: 800; color: var(--primary); }
+.lc-fort { font-weight: 800; color: var(--primary-texte); }
 
 /* UN CALCUL SE SAISIT SANS SE LIRE. « (−3) + (−4) = −7 » n'est pas une phrase :
    c'est un objet qu'on montre, et l'oeil doit pouvoir l'attraper d'un coup au
@@ -10029,8 +10663,12 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .lc-calc {
     display: inline-block;
     padding: 1px 7px; border-radius: 6px;
-    background: rgba(255, 255, 255, .72);
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+    /* LA PASTILLE SUIT LE THÈME. Un blanc translucide codé en dur restait
+       blanc en thème sombre, sous un texte devenu clair : mesuré, 1,22 de
+       contraste — le calcul disparaissait au milieu de la leçon, c'est-à-dire
+       exactement ce qu'on avait mis en valeur. */
+    background: color-mix(in srgb, var(--text-main) 8%, var(--bg-panel));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-main) 12%, transparent);
     font-variant-numeric: tabular-nums;
     font-weight: 700; white-space: nowrap;
 }
@@ -10047,7 +10685,7 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 }
 .lc-cas-nom {
     display: block; font-weight: 900; font-size: .82em;
-    letter-spacing: .03em; color: var(--primary); margin-bottom: 2px;
+    letter-spacing: .03em; color: var(--primary-texte); margin-bottom: 2px;
 }
 /* Le corps d'un cas commence par une majuscule : le titre a pris les
    deux-points qui l'introduisaient, et « on ajoute les distances » sans
@@ -10068,7 +10706,7 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
    ajouter un titre de plus. */
 .banc-q-fig {
     display: flex; justify-content: center; margin-bottom: 8px;
-    color: var(--primary);
+    color: var(--primary-texte);
 }
 .banc-q-fig svg { width: 84px; height: 84px; }
 .banc-q-exp {
@@ -10295,7 +10933,7 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .pp-fini:active { transform: scale(.97); }
 .pp-lien { padding: 8px 14px; font-size: .86rem; font-weight: 700; }
 .pp-outil--actif {
-    border-color: var(--primary); color: var(--primary);
+    border-color: var(--primary); color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 .pp-aide-mode { font-size: .82rem; opacity: .7; margin: 2px 0 0; text-align: center; }
@@ -10321,3 +10959,101 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     background: var(--primary); color: #fff; font-weight: 800;
     box-shadow: inset 0 0 0 2px #fff;
 }
+
+
+/* LE VOILE DU DÉPÔT DE FICHIER. Il ne sert qu'à dire « lâchez ici » : il couvre
+   tout, parce qu'on accepte le dépôt partout, et il laisse voir la page en
+   dessous pour qu'on sache qu'on n'a rien quitté. */
+#depot-fichier-voile {
+    position: fixed; inset: 0; z-index: 20000; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(37, 40, 61, .55); backdrop-filter: blur(2px);
+}
+#depot-fichier-voile > div {
+    background: #fff; color: #1a202c; border-radius: 16px; padding: 22px 30px;
+    font-size: 1.05rem; line-height: 1.5; text-align: center;
+    border: 3px dashed #6366f1; box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+    max-width: min(520px, 86vw);
+}
+#depot-fichier-voile b { font-size: 1.25rem; }
+
+
+/* LES INFOBULLES — voir `js/ui/infobulle.js`.
+   Elles vivent dans une couche à elles, au-dessus de tout : une bulle qui
+   passe DERRIÈRE ce qu'elle explique ne sert à rien, et c'est l'un des trois
+   défauts que Rémy nommait (« ni recouvert ni coupé ni sortant de la zone
+   visible »). Les deux autres se règlent au placement, dans le module. */
+#infobulle-couche {
+    position: fixed; inset: 0; z-index: 2147483000;
+    pointer-events: none;
+}
+/* LA BULLE PREND LE PÔLE OPPOSÉ DE SON THÈME, et ne se fixe aucune couleur.
+   Mesuré, avec un fond figé à #1f2433 : 14,8 de contraste sur la page en
+   thème clair, mais 1,15 en thème SOMBRE — la page y est #0f172a, et la
+   bulle s'y dissolvait : il ne restait que son ombre pour la deviner.
+   `--text-main` sur `--bg-panel` est la paire de LECTURE de chaque thème,
+   donc déjà tenue au contraste ; retournée, elle donne une bulle qui se
+   détache partout : 17,1 en clair et en sombre, 8,2 dans le pire des cinq
+   (océan). Et elle suit les thèmes qu'on ajoutera sans rien y ajouter. */
+.infobulle {
+    position: fixed; pointer-events: none;
+    padding: 7px 11px; border-radius: 10px;
+    background: var(--bulle-fond, var(--text-main, #1f2433));
+    color: var(--bulle-texte, var(--bg-panel, #f6f7fb));
+    font-size: .84rem; font-weight: 600; line-height: 1.35;
+    letter-spacing: .01em;
+    box-shadow: 0 6px 22px rgba(15, 23, 42, .28);
+    /* Elle se replie plutôt que de déborder : la largeur est bornée par le
+       module, à l'écran près. */
+    white-space: normal; text-align: center;
+    opacity: 0; transform: translateY(3px);
+    transition: opacity .13s ease, transform .13s ease;
+}
+.infobulle--vue { opacity: 1; transform: translateY(0); }
+/* LA POINTE DÉSIGNE LE BOUTON, PAS LE MILIEU DE LA BULLE : quand la bulle a été
+   ramenée dans l'écran, les deux ne coïncident plus (voir `--pointe`). */
+.infobulle::after {
+    content: ''; position: absolute; left: var(--pointe, 50%);
+    margin-left: -5px; border: 5px solid transparent;
+}
+.infobulle[data-sens="dessus"]::after {
+    top: 100%; border-top-color: var(--bulle-fond, var(--text-main, #1f2433));
+}
+.infobulle[data-sens="dessous"]::after {
+    bottom: 100%; border-bottom-color: var(--bulle-fond, var(--text-main, #1f2433));
+}
+@media (prefers-reduced-motion: reduce) {
+    .infobulle { transition: none; }
+}
+
+
+/* ── POINTS ET DROITES — la figure des « Éléments de géométrie » ──────────────
+
+   Rémy, sa fiche de 6e à l'appui : trois exercices sur ∈ et ∉, et rien dans
+   l'application. Le dessin suit les conventions du cahier : une croix pour le
+   point (jamais une pastille — un disque couvre le point qu'il prétend
+   marquer), un trait fin pour la droite, un nom à côté et non dessus. */
+.pd-svg { width: 100%; max-width: 30rem; height: auto; color: inherit; }
+/* La figure codée est plus dense — deux segments, des marques — et se lit de
+   plus près : elle n'a pas besoin de la même largeur. */
+.pd-svg--codee { max-width: 24rem; }
+.pd-segment {
+    stroke: var(--text-main); stroke-width: 2; stroke-linecap: round; fill: none;
+}
+.pd-marque { stroke: var(--primary); stroke-width: 2.6; stroke-linecap: round; }
+.pd-droite {
+    stroke: var(--text-main); stroke-width: 1.6; opacity: .75;
+    stroke-linecap: round; fill: none;
+}
+/* L'OBJET SURLIGNÉ, dans l'indice : il ne remplace pas la droite, il la
+   souligne — comme le vert et le rouge que la fiche fait poser. */
+.pd-montre {
+    stroke: var(--primary); stroke-width: 5; stroke-linecap: round;
+    opacity: .38; fill: none;
+}
+.pd-pt .pt-croix, .pd-pt .pt-plus { stroke: var(--text-main); stroke-width: 2; }
+.pd-pt .pt-disque { fill: var(--text-main); }
+.pd-pt--vedette .pt-croix, .pd-pt--vedette .pt-plus { stroke: var(--primary); stroke-width: 2.6; }
+.pd-pt--vedette .pt-disque { fill: var(--primary); }
+.pd-nom { fill: var(--text-main); font-size: 17px; font-weight: 800; }
+.pd-nom--vedette { fill: var(--primary-texte); }

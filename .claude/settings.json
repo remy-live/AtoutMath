@@ -26,5 +26,19 @@
     "additionalDirectories": [
       "/private/tmp"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"${CLAUDE_PROJECT_DIR:-.}/docs/frictions.md\"; n=$(grep -c \"^## \\*\\*\" \"$d\" 2>/dev/null || true); n=${n:-0}; [ \"$n\" -gt 0 ] && printf '{\"systemMessage\":\"Journal des frictions : %s entrée(s) en attente — /distill les transforme en outils.\"}\\n' \"$n\" || true",
+            "timeout": 5,
+            "statusMessage": "Lecture du journal des frictions"
+          }
+        ]
+      }
+    ]
   }
 }

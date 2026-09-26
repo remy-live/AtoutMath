@@ -65,3 +65,38 @@ RedirectMatch 404 ^/(tests|tools|outils|imports|docs|node_modules|\.claude)(/|$)
 
 # Pas de listage de dossier : sans index, on ne montre pas le contenu.
 Options -Indexes
+
+# ── CSP : engendrée par `node tools/csp.mjs`, ne pas éditer à la main ──
+#
+# EN VIGUEUR, ET PLUS EN MODE « RAPPORT ».
+#
+# `Report-Only` n'empêche rien : le navigateur applique la page et se
+# contente de signaler ce qu'il AURAIT bloqué. C'était le bon premier
+# temps — une CSP trop serrée ne prévient pas l'utilisateur : la page
+# se charge, un bout ne marche plus, aucun message, et on le découvre
+# devant la classe.
+#
+# ON N'A PAS ATTENDU UNE SEMAINE : ON A MESURÉ. Plutôt que de guetter
+# une console pendant des jours, on pose la CSP STRICTE dans un vrai
+# navigateur et l'on se sert de l'application dessous — démarrage,
+# entrée du professeur, espace classes, quatre exercices joués jusqu'au
+# pavé, réglages et aperçu, impression. Une violation est sortie, et
+# une seule : `worker-src ← blob:`, les confettis. Elle est corrigée
+# dans la politique, pas contournée. Depuis : zéro.
+#
+# SI QUELQUE CHOSE CASSE MALGRÉ TOUT, le retour arrière tient en deux
+# mots : rajouter `-Report-Only` à la ligne ci-dessous.
+#
+# LES EMPREINTES SONT CALCULÉES : `node tools/csp.mjs --ecrire`. Elles
+# changent dès qu'on touche à un script écrit dans `index.html`, et un
+# test (`tests/csp.test.mjs`) tombe quand elles ont dérivé.
+<IfModule mod_headers.c>
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-CyDJu+j93jtmm6i5Jsv1M2a6Sv6TYqwi/9pgRqhK9ds=' 'sha256-hu6eTjnzLCHONfJGthOkWzFtRfYFF+jvvfC5dhBdPWs=' 'sha256-katAJK+GcRf/6c1XGMElvvKAlsedIISFU6cCGcTRQxA=' 'sha256-x5CfOE5q9DMkKPias0R9Cg3Lcjowo7E86idQei2inkA=' 'sha256-pa2avj5ayeUvbR3umaUy8AyoNDKYZtwRnH4NZql0zxo=' 'sha256-M2tnFN78gJtrSoLoSHah14V8C41kM/54cIXnPieU5Tk=' 'sha256-U6E5rtzN7u0exAFnzsAaqn7AVzeIxIxADhwmpFDhiTY=' 'sha256-uH1so6NKVwf2aRQPciupiB0JKvRAk91yTHxux0g4Pdo=' 'sha256-Cvx6sBYtv858+Fgr6J+PZV8kf8ekkDHrUOlT6md81q8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    # DEUX EN-TÊTES DE PLUS, sans rapport avec la CSP mais du même
+    # ménage : ne pas deviner le type d'un fichier (une image qui
+    # serait lue comme du script), et ne pas envoyer l'adresse
+    # complète de la page à un site tiers.
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+# ── fin CSP ──

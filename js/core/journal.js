@@ -19,6 +19,25 @@ export const EventTypes = {
     ERROR_DISMISSED: 'error_dismissed', // une erreur retirée du carnet
     RUN_STARTED: 'run_started',
     RUN_FINISHED: 'run_finished',
+    // UNE ÉTAPE VIENT DE S'OUVRIR — ET C'EST CE QUI MANQUAIT AU DIRECT.
+    //
+    // Rémy : « on ne peut plus voir l'écran de l'élève sur l'interface prof ? »
+    // puis « peut-on rendre la synchronisation plus réactive ? ». Les deux
+    // avaient la même cause, et ce n'était pas un délai.
+    //
+    // MESURÉ : l'élève commence sa séance, l'exercice est à son écran, et
+    // quinze secondes plus tard le direct du professeur affiche encore « Pas
+    // commencé » avec `exo` vide — donc « Son exercice, chez moi » GRISÉ.
+    // Côté serveur, `derniereActivite` cherche un `exerciseId` dans les
+    // derniers événements ; `run_started` n'en porte pas — il parle du
+    // parcours —, et le premier à en porter était `attempt`, c'est-à-dire la
+    // première RÉPONSE. Le professeur ne pouvait donc pas voir l'écran de
+    // celui qui n'a encore rien répondu : exactement l'élève qu'il regarde.
+    //
+    // Aucune ligne de serveur à changer : il lit déjà tout payload portant un
+    // `exerciseId`. Charge utile : { runId, pathId, pathName, stepId,
+    // exerciseId, bac }.
+    STEP_STARTED: 'step_started',
     STEP_COMPLETED: 'step_completed',
     TIME_SPENT: 'time_spent',
     BADGE_GRANTED: 'badge_granted',

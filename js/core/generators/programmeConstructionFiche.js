@@ -32,9 +32,45 @@ import {
     preparerNiveau, niveauxDisponibles, operationsDe, nomObjet, executer, cleObjet,
     phrasesDuModele
 } from '../programmeConstruction.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 /** Deux lignes de plus que le modèle : de la place, sans donner le compte. */
 const LIGNES_EN_PLUS = 2;
+
+// ── LES TREIZE FIGURES, EN CASES À COCHER ───────────────────────────────────
+//
+// Rémy : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral. »
+//
+// « COMMENCER À LA FIGURE N » NE CHOISISSAIT PAS UNE FIGURE : la feuille
+// partait de là et déroulait tout le reste. Et le menu n'offrait que cinq
+// entrées sur treize — 1, 4, 5, 8, 11 —, si bien que « je veux les deux
+// perpendiculaires et les deux parallèles, rien d'autre » ne se disait pas.
+//
+// AU-DELÀ DE ONZE MARCHES ON PLIE (voir core/progression.js) : les treize
+// figures se lisent en quatre temps, et l'on ouvre celui qu'on travaille.
+const TEMPS = {
+    points: 'Placer des points',
+    traits: 'Segments, droites, triangle',
+    cercles: 'Le cercle',
+    construire: 'Les constructions'
+};
+const LISTE_MARCHES = NIVEAUX.map((n, i) => ({
+    id: String(i),
+    nom: `${i + 1}. ${n.titre}`,
+    groupe: i <= 2 ? 'points' : (i <= 5 ? 'traits' : (i <= 8 ? 'cercles' : 'construire'))
+}));
+/**
+ * Le réglage d'avant les cases. `depuis` : « commencer à la 8 » voulait dire
+ * « la 8 et la suite » — voir `marchesCochees`.
+ */
+const ANCIEN = { cle: 'depuis', depuis: true };
+
+/** UNE FIGURE, UN BLOC : deux blocs sur la même figure seraient deux fois le
+ *  même travail sur la même feuille. */
+const PAR_FIGURE = 1;
 
 export const programmeConstructionFicheGenerator = {
     id: 'geo.construction.programme.fiche',
@@ -61,20 +97,12 @@ export const programmeConstructionFicheGenerator = {
                 + 'l\'élève écrit. Cochée, elles l\'aident à démarrer ; décochée, il les '
                 + 'retrouve seul, et c\'est ce qu\'on demande en contrôle.'
         },
-        {
-            id: 'depuis', type: 'select', label: 'Commencer à la figure', default: 0,
-            echelle: true,
-            aide: 'On entre au milieu de l\'échelle quand les premières ont été faites en '
-                + 'classe. Les figures se suivent ensuite dans l\'ordre de difficulté.',
-            options: [
-                { value: 0, label: '1 — Un point', court: '1' },
-                { value: 3, label: '4 — Un segment', court: '4' },
-                { value: 4, label: '5 — Une demi-droite', court: '5' },
-                { value: 7, label: '8 — Un cercle', court: '8' },
-                { value: 10, label: '11 — Deux perpendiculaires', court: '11' }
-            ]
-        }
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: 'figure', ancien: ANCIEN
+        })
     ],
+    conseil: (p) => conseilProgression(
+        marchesCochees(p, LISTE_MARCHES, ANCIEN).length, PAR_FIGURE),
 
     generate(params, ctx) {
         const p = params || {};
@@ -84,11 +112,19 @@ export const programmeConstructionFicheGenerator = {
 
         // LES FIGURES SE SUIVENT, ELLES NE SE TIRENT PAS AU SORT. Une feuille de
         // six figures dans le désordre demanderait le losange avant le milieu.
-        // Le rang de l'item dans la fiche EST le rang dans la progression.
-        const depuis = Math.max(0, (p.depuis | 0));
-        const debut = Math.max(0, dispo.findIndex(i => i >= depuis));
-        const rang = (ctx && ctx.index) || 0;
-        const niv = preparerNiveau(dispo[(debut + rang) % dispo.length]);
+        // Le rang de l'item dans la fiche EST le rang dans la progression —
+        // voir core/progression.js.
+        //
+        // ET UNE FIGURE COCHÉE QUE LES TOURNURES INTERDISENT NE SORT PAS. Les
+        // deux réglages ne disent pas la même chose : `familles` fixe le
+        // VOCABULAIRE imprimé en tête, et une figure qui réclamerait un mot
+        // absent serait infaisable. On coche donc parmi ce qui reste possible,
+        // et non parmi les treize.
+        const possibles = LISTE_MARCHES.filter(m => dispo.includes(Number(m.id)));
+        const cochees = marchesCochees(p, possibles.length ? possibles : LISTE_MARCHES, ANCIEN);
+        const voulu = Number(marcheAuRang(ctx && ctx.index ? ctx.index : 0,
+            cochees, totalDe(ctx, p), p, PAR_FIGURE));
+        const niv = preparerNiveau(dispo.includes(voulu) ? voulu : dispo[0]);
 
         // LE CORRIGÉ, EN FRANÇAIS. Le modèle désigne ses intersections par des
         // CLÉS d'objets — « droite|0.44|-0.89|3.2 » —, qu'on ne met pas sur une
@@ -169,6 +205,7 @@ export const programmeConstructionFicheGenerator = {
             difficulty: Math.min(5, 1 + Math.floor(niv0(niv) / 3)),
             meta: {
                 niveauId: niv.id,
+                marche: String(niv0(niv)),
                 titre: niv.titre,
                 depart: niv.donnes,
                 // Les tracés à montrer : ceux qu'on exige, sans les aides — la

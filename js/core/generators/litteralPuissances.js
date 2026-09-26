@@ -287,7 +287,13 @@ export const litteralPuissancesGenerator = {
             difficulty: rangGlobal < 2 ? 1 : rangGlobal < 6 ? 2 : 3,
             meta: {
                 etape: etape.id, titre: etape.titre,
-                marche: rangGlobal + 1, marches: ETAPES.length,
+                // LE RANG N'EST PAS L'IDENTIFIANT DE LA MARCHE, et les deux
+                // vivaient sous le même nom. `meta.marche` porte partout
+                // ailleurs l'IDENTIFIANT — « signe-pp », « completer »,
+                // « formule » —, c'est lui que les fiches et les tests lisent ;
+                // ici il portait le NUMÉRO. Le rang garde donc le nom qu'il a
+                // déjà dans `relatifsAddition` : `rang`.
+                marche: etape.id, rang: rangGlobal + 1, total_etapes: ETAPES.length,
                 lettre: q.lettre,
                 // LE CLAVIER SE RÈGLE SUR LA QUESTION. Offrir un bouton x³ sur
                 // une marche qui n'en veut pas, c'est proposer une réponse

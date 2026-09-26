@@ -6,7 +6,7 @@
 
 import { Shortcodes } from '../core/shortcodes.js';
 import { hydratePath } from '../core/path.js';
-import { resolvePolicy, describePolicy } from '../core/policy.js';
+import { resolvePolicy } from '../core/policy.js';
 import { showAlert, showToast } from './modal.js';
 import { state } from '../core/state.js';
 
@@ -44,7 +44,7 @@ export function applyCode(code, { autoStart = true } = {}) {
     const { steps, missing } = hydratePath(path);
     if (!steps.length) return false;
     if (missing.length) {
-        showToast(`${missing.length} activité(s) de ce parcours n'existent plus.`, 'error');
+        showToast(`${missing.length} exercice(s) de ce parcours n'existent plus.`, 'error');
     }
 
     state.setStudentPath(path.steps, {
@@ -54,7 +54,23 @@ export function applyCode(code, { autoStart = true } = {}) {
         policy: resolvePolicy(path.policy)
     });
 
-    showToast(`Parcours « ${path.name} » chargé. ${describePolicy(path.policy)}`, 'success', 5000);
+    // PAS DE MESSAGE DE CONFIRMATION, ET C'EST UNE SUPPRESSION VOULUE.
+    //
+    // Rémy, capture de l'écran d'accueil d'un élève : « même le toast est
+    // redondant ». Il l'était deux fois. Il annonçait le nom du parcours —
+    // que l'écran qui s'ouvre dans la seconde écrit déjà dans son en-tête et
+    // sur sa carte — et la règle de la séance, que cette même carte pose
+    // juste en dessous (`run-carte-regle`). Cinq secondes de bandeau par-
+    // dessus l'écran qu'il recouvrait pour répéter ce qu'il cachait.
+    //
+    // ET QUAND LA CARTE NE S'OUVRE PAS (`autoStart: false`), l'élève arrive
+    // dans « Mon Parcours », qui écrit le nom en tête de section et la règle
+    // juste dessous (voir `describePolicy` dans ui/pathView.js). Dans les deux
+    // cas, le message ne servait qu'à dire « ça a marché » — ce que l'arrivée
+    // du parcours dit mieux que lui.
+    //
+    // L'AVERTISSEMENT, LUI, RESTE : « 3 exercices de ce parcours n'existent
+    // plus » n'est écrit nulle part ailleurs.
 
     // Le code décodé, l'élève voyait la première question avant d'avoir vu son
     // parcours. Le parcours s'ouvre donc sur SA CARTE, plein écran, et c'est

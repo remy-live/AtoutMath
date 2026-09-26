@@ -59,6 +59,10 @@ const SIXIEME = TAGS.NIVEAU.SIXIEME;
 const CM2 = TAGS.NIVEAU.CM2;
 const CINQUIEME = TAGS.NIVEAU.CINQUIEME;
 const QUATRIEME = TAGS.NIVEAU.QUATRIEME;
+const TROISIEME = TAGS.NIVEAU.TROISIEME;
+// Le chapitre « développer » enjambe le collège et le lycée : la double
+// distributivité se voit en 3ème et se réutilise en Seconde pour factoriser.
+const SECONDE = TAGS.NIVEAU.SECONDE;
 
 export const numerationExercises = [
     // --- Écriture des nombres (fiche § 1, 2, 3, 19) ---
@@ -766,6 +770,74 @@ export const numerationExercises = [
         tags: { chemin: [D, LITT], niveaux: [QUATRIEME] },
         instruction: "Dix marches, deux questions chacune, et une seule règle : on ne regroupe QUE ce qui a le même exposant. On apprend d'abord à écrire une puissance (x × x, c'est x²), puis à regrouper ce qui se regroupe (2x² + 5x² = 7x², et l'exposant ne bouge pas), puis — c'est la marche décisive — à NE PAS regrouper ce qui ne se regroupe pas : 3x² + 2x est déjà réduit. Si x vaut 5, alors x vaut 5 et x² en vaut 25 ; les additionner reviendrait à ajouter des mètres à des mètres carrés. La réponse s'écrit, avec des touches x, x² et x³."
     },
+    // ── DÉVELOPPER : ONZE BARREAUX, ET UNE AIRE À CHACUN ────────────────────
+    //
+    // Rémy : « j'aimerais bien des exercices très progressifs et visuels sur le
+    // développement simple et double développement ».
+    //
+    // LE CHAPITRE MANQUAIT ENTRE LES DEUX QUI ENCADRENT CETTE PLACE : réduire
+    // une expression est juste au-dessus, factoriser est en Seconde, et rien
+    // n'apprenait à ouvrir une parenthèse. C'est pourtant le geste dont la
+    // factorisation est l'inverse, et celui par lequel on la VÉRIFIE.
+    //
+    // ── DÉVELOPPER : UN EXERCICE, ONZE BARREAUX À COCHER ────────────────────
+    //
+    // RÉMY : « on a quand même beaucoup d'exercices pour la même chose ».
+    //
+    // Quinze cartes ici — onze barreaux, deux révisions, deux pas à pas — pour
+    // deux réglages qui existaient déjà. La progression n'est pas perdue, elle
+    // change de place : elle était dans l'ordre où l'on posait les cartes, elle
+    // est maintenant dans les cases cochées. Les onze barreaux se plient en
+    // deux temps — la distributivité simple, la double —, et cocher un temps
+    // entier fait exactement ce que faisaient « dev-simple » et « dev-double ».
+    {
+        id: 'dev',
+        cree: '2026-09-25',
+        title: 'Développer : distributivité simple et double',
+        consignePapier: 'Développer et réduire les expressions suivantes.',
+        colonnesPapier: 2,
+        generatorId: 'lit.developpement', activityId: 'buttons',
+        params: {},
+        motsClefs: ['développer', 'développement', 'distributivité', 'parenthèse',
+            'calcul littéral', 'identité remarquable', 'aire', 'rectangle',
+            'double distributivité', 'carré', 'progression'],
+        tags: { chemin: [D, LITT], niveaux: [QUATRIEME, TROISIEME, SECONDE] },
+        instruction: "Onze barreaux en deux temps, et tu choisis ceux que la classe "
+            + "travaille. La distributivité simple d'abord — 3(x + 2), puis le moins "
+            + "dans la parenthèse, le coefficient devant la lettre, le facteur négatif, "
+            + "deux distributions à réunir. Puis la double : (x + 2)(x + 3) jusqu'au "
+            + "carré (x + 4)² et à la différence (x − 5)(x + 5), qu'on relira à "
+            + "l'envers pour factoriser."
+    },
+    // ── ET LA MÊME CHOSE, LIGNE À LIGNE ─────────────────────────────────────
+    //
+    // RÉMY : « on peut proposer une ligne pour pouvoir le taper », puis
+    // « c'est génial ton idée de carte "pas à pas" prête ».
+    //
+    // C'est la ligne que les flèches dessinent : les produits ÉCRITS avant
+    // d'être calculés. Celui qui la saute est celui qui oublie les deux
+    // produits du milieu, et un « faux » sur la réponse entière ne dit pas
+    // lequel des quatre a manqué.
+    //
+    // LE PAS À PAS RESTE UN RÉGLAGE, disponible sur les onze barreaux ; cette
+    // carte-ci est ce réglage déjà posé, pour qu'on l'attrape sans ouvrir le
+    // panneau quand on prépare une remédiation.
+    {
+        id: 'dev-pas',
+        cree: '2026-09-25',
+        title: 'Développer pas à pas',
+        consignePapier: 'Développer et réduire les expressions suivantes.',
+        colonnesPapier: 2,
+        generatorId: 'lit.developpement', activityId: 'buttons',
+        params: { etapes: 'oui' },
+        motsClefs: ['développer', 'pas à pas', 'étapes', 'étape', 'détaillé', 'méthode',
+            'distributivité', 'double distributivité', 'parenthèse', 'calcul littéral'],
+        tags: { chemin: [D, LITT], niveaux: [QUATRIEME, TROISIEME, SECONDE] },
+        instruction: "Les mêmes questions, écrites ligne à ligne : les produits "
+            + "d'abord, sans les calculer, puis on calcule, puis on réunit. Le champ "
+            + "montre la FORME attendue, et seule la dernière ligne compte pour la "
+            + "séance — les autres sont l'écriture du raisonnement."
+    },
     {
         // TROIS TEMPS, ET L'ORDRE EST LE SUJET. « ×10, on ajoute un zéro » est
         // une règle qui marche pour les entiers et casse dès la première
@@ -923,5 +995,31 @@ export const numerationExercises = [
             niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
         },
         instruction: "Neuf marches, en trois temps. D'ABORD CE QU'EST UNE PUISSANCE : 2⁵ n'est pas 2 × 5, c'est 2 × 2 × 2 × 2 × 2. Et (−3)² vaut +9 quand −3² vaut −9 : la parenthèse dit si le signe fait partie du nombre qu'on élève au carré. ENSUITE LES DEUX RÈGLES QU'ON ÉCHANGE TOUT LE TEMPS. Le produit AJOUTE les exposants — 10⁵ × 10³ = 10⁸, parce que cinq dix suivis de trois dix font huit dix. Le quotient les SOUSTRAIT — 10⁸ ÷ 10³ = 10⁵. Le signe de l'opération n'est PAS celui qu'on fait sur les exposants, et c'est la faute la plus fréquente du chapitre. ENFIN la puissance de puissance, qui les MULTIPLIE — (10⁴)³ = 10¹², trois paquets de quatre dix —, l'inverse qui change le signe de l'exposant, et la condition qu'on oublie : il faut la MÊME base. 2³ × 5³ ne s'écrit pas sous la forme d'une seule puissance."
+    },
+    // ── LES PUISSANCES, LIGNE À LIGNE ───────────────────────────────────────
+    //
+    // RÉMY, EN ROUGE SUR SA FICHE DE QUATRIÈME : « TU ÉCRIRAS LE CALCUL ! »
+    //
+    // C'est écrit sur chacun de ses exercices, et c'est la demande de cette
+    // carte : il ne veut pas le résultat, il veut voir 10³ × 10² = 10³⁺² = 10⁵.
+    // La ligne du milieu est celle où la règle se montre — et celle où l'on
+    // voit, quand elle est fausse, que l'élève a appliqué le signe de
+    // l'opération aux exposants.
+    {
+        id: 'num-puissances-calcul-pas',
+        title: 'Calculer avec des Puissances, pas à pas',
+        cree: '2026-09-25',
+        generatorId: 'num.puissances-calcul', activityId: 'buttons',
+        skills: ['num.puissances.regles'],
+        params: { etapes: 'oui' },
+        consignePapier: "Écris le résultat le plus simple. Tu écriras le calcul !",
+        colonnesPapier: 4,
+        motsClefs: ['puissances', 'exposant', 'pas à pas', 'étapes', 'étape', 'détaillé',
+            'méthode', 'produit', 'quotient', 'règles de calcul', 'écrire le calcul'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX],
+            niveaux: [TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Les mêmes questions, avec la ligne du milieu : 10⁵ × 10² = 10^(5 + 2) = 10⁷. L'exposant se tape avec la touche ^, parce qu'un exposant qui est une SOMME ne s'écrit pas en petits chiffres. Seule la dernière ligne compte pour la séance ; les autres sont la trace qu'on demande sur la copie."
     }
 ];

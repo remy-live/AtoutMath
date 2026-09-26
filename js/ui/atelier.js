@@ -31,7 +31,7 @@
 
 import { exercices } from '../data/catalog.js';
 import { paramSchemaOf } from '../data/catalog.js';
-import { fieldHtml, readParams, wireTips } from '../games/configUI.js';
+import { fieldHtml, readParams, wireTips, valeurDeChamp } from '../games/configUI.js';
 import {
     estJeuCatalogue, jeuRevu, aChangeJeu, statutRevu, aChange, calcRevu, aChangeCalc,
     lireRevue, nouvelleRevue, ficheDe, decider, consigneJeux, consigneStatuts, consigneCalc
@@ -752,8 +752,7 @@ function peindreReglages() {
             + 'Cet exercice n\'a pas de réglage.</div>';
         return;
     }
-    zone.innerHTML = schema.map(p => fieldHtml(p,
-        paramsCourants[p.id] !== undefined ? paramsCourants[p.id] : p.default)).join('');
+    zone.innerHTML = schema.map(p => fieldHtml(p, valeurDeChamp(p, paramsCourants))).join('');
     wireTips(zone);
     const relire = () => {
         paramsCourants = { ...paramsCourants, ...readParams(zone, schema) };

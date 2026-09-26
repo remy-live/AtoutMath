@@ -5,7 +5,7 @@
 // `mount()` et l'inscrire ici. La compatibilité entre les deux se déduit des
 // manifestes, elle ne se code pas.
 
-import { registerGenerator, registerActivity } from '../registry.js';
+import { registerGenerator, registerActivity, declarerSansNote } from '../registry.js';
 import { REGLAGE_SAISIE } from '../../ui/champsGrille.js';
 
 import {
@@ -48,6 +48,7 @@ import { pythagoreGenerator } from '../generators/pythagore.js';
 import { vitesseGenerator } from '../generators/vitesse.js';
 import { vocabulaireGenerator } from '../generators/vocabulaire.js';
 import { notationGenerator } from '../generators/notation.js';
+import { elementsGeometrieGenerator } from '../generators/elementsGeometrie.js';
 import { anglesManquantsGenerator } from '../generators/anglesManquants.js';
 import { anglesNommerGenerator } from '../generators/anglesNommer.js';
 import { graduationsGenerator } from '../generators/graduations.js';
@@ -111,6 +112,11 @@ import { memoryFicheGenerator } from '../generators/memoryFiche.js';
 import { hexagrilleFicheGenerator } from '../generators/hexagrilleFiche.js';
 import { tuyauxGenerator } from '../generators/tuyaux.js';
 import { lasersGenerator } from '../generators/lasers.js';
+import { intervallesGenerator, ensemblesGenerator, ensemblistesGenerator } from '../generators/intervalles.js';
+import { factorisationGenerator } from '../generators/factorisation.js';
+import { calculFractionsGenerator } from '../generators/calculFractions.js';
+import { racinesGenerator } from '../generators/racines.js';
+import { developpementGenerator } from '../generators/developpement.js';
 import { pourcentagesGenerator } from '../generators/pourcentages.js';
 import { perimetreTriangleGenerator } from '../generators/perimetreTriangle.js';
 import { disqueGenerator } from '../generators/disque.js';
@@ -141,6 +147,7 @@ import {
     arrondiGenerator,
     redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
+    elementsGeometrieGenerator,
     anglesManquantsGenerator, anglesNommerGenerator,
     graduationsGenerator, transfoQuadrillageGenerator, pavageGenerator,
     carreMagiqueGenerator, futoshikiGenerator,
@@ -171,7 +178,14 @@ import {
     compteFicheGenerator, pointAPointFicheGenerator, dedaleFicheGenerator,
     egypteFicheGenerator, hexagrilleFicheGenerator,
     tuyauxGenerator, pourcentagesGenerator,
-    perimetreTriangleGenerator, disqueGenerator, lasersGenerator
+    perimetreTriangleGenerator, disqueGenerator, lasersGenerator,
+    intervallesGenerator,
+    ensemblesGenerator,
+    ensemblistesGenerator,
+    factorisationGenerator,
+    calculFractionsGenerator,
+    racinesGenerator,
+    developpementGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------
@@ -736,6 +750,18 @@ const legacy = [
     // Le tasuko se compte en GRILLES : une partie, c'est un découpage entier,
     // et rien ne se valide avant la dernière somme.
     ['tasuko', 'Tasuko — les sommes cachées', 'tasuko', 'engineTasuko', 'grille', 3],
+    // Le patchwork se compte en GRILLES : une partie, c'est une grille
+    // entièrement découpée, et rien ne se valide avant.
+    ['patchwork', 'Le Patchwork (centres de symétrie)', 'patchwork', 'enginePatchwork', 'grille', 3],
+    // Les serpents se comptent aussi en GRILLES : une partie, c'est une grille
+    // entièrement remplie.
+    ['serpents', 'Les Serpents (longueurs imposées)', 'serpents', 'engineSerpents', 'grille', 3],
+    // Les croisés se comptent en CROIX : une partie, c'est une croix dont les
+    // deux calculs tombent juste.
+    ['croises', 'Les Croisés du Calcul', 'croises', 'engineCroises', 'croix', 4],
+    // Les deux nombres se comptent en LIGNES : une ligne, une paire à trouver.
+    ['deux-nombres', 'Les Deux Nombres (chevauchement)', 'deuxNombres',
+        'engineDeuxNombres', 'ligne', 6],
     // LES DÉFIS SE COMPTENT EN PARTIES GAGNÉES, pas en questions : une tour de
     // Brahma se finit ou ne se finit pas, et c'est le nombre de COUPS qui dit
     // la qualité — pas le nombre d'essais.
@@ -756,11 +782,21 @@ const legacy = [
     ['embouteillage', 'L\'Embouteillage', 'embouteillage', 'engineEmbouteillage', 'parking', 3],
     // Le pousseur se compte en ENTREPÔTS rangés, et le niveau monte entre chaque.
     ['pousseur', 'Le Pousseur', 'pousseur', 'enginePousseur', 'entrepôt', 3],
-    // LES PETITES AILES SE COMPTENT EN MONDES, depuis qu'il n'y a plus de
-    // nombres à avaler. Rémy : « on peut passer de monde à monde ». Il y en a
-    // six, et le compteur du bandeau est justement le but du jeu — « 2 / 6
-    // mondes » dit d'un coup d'œil où l'on en est.
-    ['petites-ailes', 'Les Petites Ailes', 'petitesAiles', 'enginePetitesAiles', 'monde', 6],
+    // LES PETITES AILES SE COMPTENT EN PARTIES, et plus en mondes.
+    //
+    // RÉMY : « pas besoin de 5/6 obligatoire c'est un jeu ».
+    //
+    // Six mondes comme unité, c'était six mondes À FRANCHIR — et le seuil de
+    // réussite (70 %) en exigeait CINQ. On demandait donc de traverser presque
+    // tout le jeu pour qu'une récréation compte comme faite. C'est un devoir
+    // déguisé en jeu, et c'est l'inverse de ce qu'il a demandé le jour où les
+    // nombres sont partis : « n'en fais pas un jeu mathématiques ».
+    //
+    // UNE PARTIE, comme la Tour de Hanoï, le Parking et la Pipopipette. Le
+    // compteur des mondes ne disparaît pas pour autant : il est DANS le jeu,
+    // sur son bandeau, où il est un but qu'on se donne et non une consigne
+    // qu'on subit.
+    ['petites-ailes', 'Les Petites Ailes', 'petitesAiles', 'enginePetitesAiles', 'partie', 1],
     // Le hashi se compte en GRILLES : une partie, c'est une carte entière
     // reliée, et rien ne se valide avant.
     ['hashi', 'Hashi — les ponts', 'hashi', 'engineHashi', 'grille', 3],
@@ -779,6 +815,11 @@ const legacy = [
     ['deuxmille', '2048 (doublements)', 'deuxmille', 'engineDeuxMille'],
     ['carre-magique', 'Le Carré Magique', 'carreMagique', 'engineCarreMagique', 'grille', 4],
     ['futoshiki', 'Futoshiki', 'futoshiki', 'engineFutoshiki', 'grille', 3],
+    // L'enquête se compte en ENQUÊTES : une partie, c'est un plan entièrement
+    // reconstitué PUIS le coupable nommé ; rien ne se valide avant.
+    ['enquete', 'L\'Enquête', 'enquete', 'engineEnquete', 'enquête', 3],
+    // La chute se compte en BRIQUES posées : une brique, une question.
+    ['chute-decimaux', 'La Chute des Décimaux', 'chuteDecimaux', 'engineChuteDecimaux', 'brique', 10],
     ['hexagrille', 'L\'Hexagrille (1 à 9, sommes fléchées)', 'hexagrille', 'engineHexagrille', 'grille', 3],
     ['jezzball', 'JezzBall (conquête d\'aire)', 'jezzball', 'engineJezzBall'],
     ['canon', 'Le Canon des Compléments', 'canon', 'engineCanon'],
@@ -864,4 +905,43 @@ legacy.forEach(([id, label, file, fn, unite, parDefaut]) => {
         load: () => import(`../../games/${file}.js`)
     });
 });
+
+// --- CE QUI NE SE NOTE PAS --------------------------------------------------
+//
+// RÉMY : « comment juges-tu un exercice comme l'organigramme des quadrilatères
+// en mode évaluation ? Ma question générale est : est-ce que tous les exercices
+// sont vraiment évaluables ? »
+//
+// NON, ET C'EST MESURABLE. Une note compte des questions ratées ; une activité
+// qui ne peut RIEN rater rend 20 à qui la traverse. MESURÉ en cherchant, dans
+// chaque module, une tentative fausse qui ne soit pas marquée `partiel`
+// (`tools/tmp/notable3.mjs`) : 28 exercices sur 172, que voici.
+//
+// CE N'EST PAS UN DÉFAUT DE CES ACTIVITÉS. Ce sont des CONSTRUCTIONS et des
+// RÉFLEXIONS : l'organigramme se bâtit jusqu'à ce qu'il tienne, le pousseur se
+// recommence, les mots croisés se remplissent. « Raté » n'y veut rien dire, et
+// leur arracher une note donnerait précisément le 20 de participation qu'on
+// cherche à éviter. Elles gardent tout leur sens en entraînement, et elles
+// alimentent le bilan par compétence comme les autres.
+//
+// LA LISTE EST ICI, ET NULLE PART AILLEURS. Portée par chaque déclaration, elle
+// serait illisible ; `tests/exercicesNotables.test.mjs` la redérive du code à
+// chaque exécution, donc elle ne peut pas dériver en silence.
+const SANS_NOTE = [
+    'arpenteurs', 'balance', 'colorier-nombres', 'dedale', 'deuxmille', 'duel',
+    'embouteillage', 'grenouilles', 'mot-code', 'mots-croises', 'motscaches',
+    'parking', 'petites-ailes', 'pipopipette', 'pousseur', 'programme-construction',
+    'puissance4', 'pyramide', 'pyramide-nombres', 'quadrilateres', 'sans-croiser',
+    'serpent', 'sim', 'tableau-croise', 'tasuko', 'tetris', 'tour-brahma',
+    'trigo-cotes'
+];
+SANS_NOTE.forEach(id => declarerSansNote(id));
+
+// ET TROIS QUI DÉPENDENT DE LEUR RÉGLAGE. Les échecs, les dames et l'othello
+// notent en « mat en un, mat en deux » : un coup faux est un coup faux, et le
+// module le remonte comme tel. En « partie contre l'ordinateur » ou « à deux »,
+// il n'y a pas de bonne réponse — il y a un vainqueur. C'est le même exercice,
+// et il est notable ou non selon ce que le professeur a coché.
+['othello', 'dames', 'echecs'].forEach(id =>
+    declarerSansNote(id, (p) => p.mode === 'exercice'));
 

@@ -150,3 +150,83 @@ export function demanderTexte(titre, opts = {}) {
         zone.focus();
     });
 }
+
+/**
+ * CHOISIR UN INDICE — ou en écrire un.
+ *
+ * Rémy : « la possibilité de […] envoyer un indice ».
+ *
+ * POURQUOI UN CHOIX ET PAS UN CHAMP VIDE. Le professeur est debout, il marche
+ * dans les rangs, il vient de voir sur son écran que Léo bute depuis six
+ * minutes. Lui présenter un champ vide, c'est lui demander de rédiger une
+ * phrase de mathématiques en trois secondes, au-dessus de l'épaule d'un autre
+ * élève. Il ne le fera pas — il ira parler à Léo, ce qui est très bien, mais
+ * alors la fonction ne sert à rien.
+ *
+ * On propose donc ce que la LEÇON de la compétence dit déjà, et trois coups de
+ * pouce qui marchent partout. Le champ libre reste : c'est lui qui connaît son
+ * élève.
+ *
+ * @param {string} prenom
+ * @param {Array<{texte:string, source:string}>} propositions
+ * @returns {Promise<string|null>}
+ */
+export function choisirIndice(prenom, propositions = []) {
+    return new Promise((resoudre) => {
+        document.getElementById(ID)?.remove();
+
+        const el = document.createElement('div');
+        el.id = ID;
+        el.className = 'demander';
+        el.innerHTML = `
+          <div class="demander-boite demander-boite--large" role="dialog" aria-modal="true"
+               aria-labelledby="indice-titre">
+            <h2 id="indice-titre"></h2>
+            <p class="demander-aide">Il le verra à côté de sa question, sans être interrompu.</p>
+            <div class="indice-choix"></div>
+            <input id="demander-champ" type="text" autocomplete="off"
+                   placeholder="…ou écrivez le vôtre" maxlength="300">
+            <div class="demander-boutons">
+              <button id="demander-ok" class="demander-bouton">Souffler</button>
+              <button id="demander-non" class="demander-bouton demander-bouton--doux">Annuler</button>
+            </div>
+          </div>`;
+        document.body.appendChild(el);
+        el.querySelector('#indice-titre').textContent = 'Un coup de pouce pour ' + prenom;
+
+        const fermer = (v) => { el.remove(); resoudre(v); };
+        const champ = el.querySelector('#demander-champ');
+
+        const choix = el.querySelector('.indice-choix');
+        for (const p of propositions) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'indice-choix-item'
+                + (p.source === 'universel' ? ' indice-choix-item--doux' : '');
+            // `textContent` : ces phrases viennent des leçons, elles portent des
+            // guillemets français et des apostrophes.
+            b.textContent = p.texte;
+            // UN CLIC LE POSE DANS LE CHAMP, IL NE L'ENVOIE PAS. Le professeur
+            // veut souvent ajouter un mot — « Léo, » devant, ou la ligne à
+            // regarder. Envoyer au premier clic lui retirerait ce geste, et
+            // rendrait un clic maladroit irrattrapable : un indice parti ne se
+            // rattrape pas.
+            b.onclick = () => { champ.value = p.texte; champ.focus(); };
+            choix.appendChild(b);
+        }
+
+        const valider = () => {
+            const v = champ.value.trim();
+            if (!v) { champ.focus(); return; }
+            fermer(v);
+        };
+        el.querySelector('#demander-ok').onclick = valider;
+        el.querySelector('#demander-non').onclick = () => fermer(null);
+        champ.onkeydown = (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); valider(); }
+            if (e.key === 'Escape') fermer(null);
+        };
+        el.onclick = (e) => { if (e.target === el) fermer(null); };
+        champ.focus();
+    });
+}

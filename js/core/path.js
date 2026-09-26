@@ -82,6 +82,23 @@ export function makeStep(exerciseId, overrides = {}, opts = {}) {
         // qu'un garde-fou interne, et l'en-tête ne doit pas l'annoncer comme
         // un total à atteindre. Voir `updateProgress` dans le meneur.
         sansTotal: !!opts.sansTotal,
+        // UNE ÉTAPE QUI NE SE FERME PAS TOUTE SEULE.
+        //
+        // RÉMY : « il faudrait que les jeux bacs à sable ne soient pas limités,
+        // par exemple le peintre ou nova ça s'arrête trop vite ».
+        //
+        // Le bac à sable posait `nbItems: 1` pour dire « pas de devoir ici »,
+        // et le meneur le lisait comme « une question et c'est fini » : il
+        // ferme l'étape dès que le compte est atteint (voir `onAttempt`).
+        // MESURÉ sur Nova, le Peintre et Tetris : l'étape se fermait à la
+        // PREMIÈRE réussite, sur les trois. Ce n'était donc pas deux jeux, mais
+        // tout le bac.
+        //
+        // `sansTotal` ne suffisait pas : il ne parle que de l'AFFICHAGE du
+        // total. Ici c'est l'arrêt lui-même qu'on retire. Ce qui arrête reste :
+        // le jeu qui se termine (une partie perdue, un niveau fini), le
+        // chronomètre s'il y en a un, et l'élève qui sort.
+        sansFin: !!opts.sansFin,
         // UNE ÉTAPE-JEU n'est pas du travail : elle ne compte ni dans les
         // exercices à faire, ni dans la note, et elle ne s'ouvre qu'une fois
         // le travail qui la précède réussi. Voir core/recompenses.js.

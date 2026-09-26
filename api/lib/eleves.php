@@ -32,6 +32,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/coffre.php';
 require_once __DIR__ . '/liste.php';
+require_once __DIR__ . '/projections.php';
 
 /**
  * CE QUI VA SE PASSER POUR CETTE LIGNE — la même décision à l'aperçu et à
@@ -294,30 +295,39 @@ function retirerEleve(string $eleveId, string $classeId): string
 }
 
 /**
- * CE QUE CHACUN FAIT EN CE MOMENT.
+ * CE QUE CHACUN FAIT EN CE MOMENT, ET OÙ IL EN EST.
  *
- * On remonte les quarante derniers événements et l'on répond à trois
- * questions, dans l'ordre où le professeur se les pose en marchant dans les
- * rangs : sur quel parcours est-il ? sur quel exercice ? et est-ce que ça
- * marche ?
+ * On remonte les derniers événements et l'on répond à quatre questions, dans
+ * l'ordre où le professeur se les pose en marchant dans les rangs : sur quel
+ * parcours est-il ? sur quel exercice ? est-ce que ça marche ? et — celle que
+ * Rémy réclamait — OÙ EN EST-IL DE SA SÉANCE ?
  *
- * Quarante, et pas tout le journal : un élève qui travaille depuis une heure a
- * quelques centaines d'événements, et l'on relit cette fonction toutes les
- * vingt secondes pour trente élèves. Quarante suffisent largement à couvrir
- * l'exercice en cours, et bornent le coût de la page.
+ * DEUX CENTS, ET PAS TOUT LE JOURNAL. Un élève qui travaille depuis une heure
+ * a quelques centaines d'événements, et l'on relit cette fonction toutes les
+ * dix secondes pour trente élèves. Deux cents couvrent largement la séance en
+ * cours — un parcours de cinq étapes à dix questions en produit une soixantaine,
+ * le double avec les seconds essais — et bornent le coût de la page.
+ *
+ * ET C'EST LA MÊME LECTURE QUI SERT AUX DEUX. L'avancement aurait pu se
+ * calculer à part ; ce serait une seconde requête par élève, soixante au lieu
+ * de trente à chaque battement, pour des lignes qu'on vient de déchiffrer.
  */
 function derniereActivite(string $eleveId): array
 {
     $s = db()->prepare(
         'SELECT type, ts, payload FROM events WHERE student_id = ?
-         ORDER BY seq DESC LIMIT 40'
+         ORDER BY seq DESC LIMIT 200'
     );
     $s->execute([$eleveId]);
     $lignes = $s->fetchAll();
 
     $exo = null; $parcours = null; $justes = 0; $total = 0; $quand = null;
+    // Les événements remis À L'ENDROIT pour la projection : `runsOf` lit une
+    // histoire, pas une pile.
+    $pourLeRun = [];
     foreach ($lignes as $l) {
         $p = json_decode((string) dechiffrer($l['payload']), true) ?: [];
+        $pourLeRun[] = ['type' => $l['type'], 'ts' => (int) $l['ts'], 'payload' => $p];
         $cet = $p['exerciseId'] ?? $p['exoId'] ?? null;
         if ($exo === null && $cet) {
             $exo = $cet;
@@ -335,6 +345,119 @@ function derniereActivite(string $eleveId): array
             }
         }
     }
+
+    // LE RUN LE PLUS RÉCENT, ET LUI SEUL. `runsOf` les rend déjà du plus récent
+    // au plus ancien. Un run coupé en deux par la limite de deux cents
+    // événements se lit sans son `run_started` : il n'a alors pas de plan, et
+    // l'avancement le dit en étapes plutôt qu'en questions — c'est moins
+    // précis, ce n'est pas faux.
+    // ON SAUTE LES PARTIES DU BAC À SABLE. Une partie de Tetris ouverte après
+    // un devoir rendu est plus RÉCENTE que le devoir ; sans ce filtre, le
+    // professeur verrait « Étape 1 sur 1 » remplacer « Terminé — 18 / 24
+    // justes » et croirait sa classe repartie au travail.
+    $runs = runsOf(array_reverse($pourLeRun));
+    $duTravail = null;
+    foreach ($runs as $r) {
+        if (empty($r['bac'])) { $duTravail = $r; break; }
+    }
+    $avancement = avancementDeRun($duTravail);
+
     return ['exo' => $exo, 'parcours' => $parcours, 'justes' => $justes,
-            'total' => $total, 'quand' => $quand, 'combien' => count($lignes)];
+            'total' => $total, 'quand' => $quand, 'combien' => count($lignes),
+            'avancement' => $avancement];
+}
+
+/**
+ * CE QUE L'ÉLÈVE A SOUS LES YEUX — combien de temps ça vaut encore.
+ *
+ * MIROIR EXACT de `ECRAN_FRAIS_MS` dans `js/core/ecran.js`, et le chiffre se
+ * déduit des rythmes en place, pas du goût : l'élève parle toutes les dix
+ * secondes quand son onglet est devant lui, toutes les SOIXANTE quand il est
+ * derrière — et un élève qui lit son cahier a son onglet derrière. Un seuil plus
+ * court ferait clignoter l'écran de celui qui réfléchit : montrer faux est pire
+ * que ne rien montrer.
+ */
+const ECRAN_FRAIS_S = 180;
+
+/**
+ * NOTER CE QU'IL A SOUS LES YEUX. Une ligne, écrasée — jamais un journal.
+ *
+ * Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+ * exercice, car c'est créé de façon aléatoire. » Le relevé porte LA GRAINE, qui
+ * est ce qui manquait : avec elle, le professeur régénère chez lui exactement la
+ * question de l'élève.
+ *
+ * TOUT CE QUI ARRIVE ICI VIENT D'UN CLIENT, DONC RIEN N'EST CRU. On borne chaque
+ * champ, on jette le reste, et un relevé mal formé vaut « rien à l'écran » — pas
+ * une erreur : un élève dont le navigateur bafouille ne doit pas cesser de
+ * synchroniser son travail pour autant.
+ *
+ * @param string $eleveId
+ * @param array|null $ecran ce que l'élève dit voir, ou null (il ne voit rien)
+ * @return bool vrai si quelque chose a été noté
+ */
+function noterLEcran(string $eleveId, $ecran): bool
+{
+    $court = function ($v, int $max): ?string {
+        if (!is_string($v) && !is_numeric($v)) return null;
+        $s = trim((string) $v);
+        if ($s === '') return null;
+        return mb_substr($s, 0, $max);
+    };
+
+    $exo = is_array($ecran) ? $court($ecran['exerciseId'] ?? null, 80) : null;
+    if ($exo === null) {
+        // IL NE VOIT RIEN, ET IL FAUT L'ÉCRIRE. Laisser l'ancien relevé
+        // vieillir trois minutes, c'est laisser le professeur croire son élève
+        // sur une question qu'il a quittée.
+        db()->prepare('UPDATE students SET ecran = NULL, ecran_ts = NULL WHERE id = ?')
+            ->execute([$eleveId]);
+        return false;
+    }
+
+    $entier = function ($v): ?int {
+        return (is_int($v) || (is_string($v) && ctype_digit($v))) ? (int) $v : null;
+    };
+    $propre = [
+        'exerciseId' => $exo,
+        'graine'   => $court($ecran['graine'] ?? null, 64),
+        'question' => $court($ecran['question'] ?? null, 240),
+        'etape'    => $court($ecran['etape'] ?? null, 120),
+        'fait'     => $entier($ecran['fait'] ?? null),
+        'total'    => $entier($ecran['total'] ?? null),
+    ];
+
+    // L'HORODATAGE EST CELUI DU SERVEUR, PAS CELUI DE LA TABLETTE. Une horloge
+    // mal réglée de dix minutes rendrait le relevé éternellement frais, ou
+    // éternellement périmé ; c'est la panne qu'on a déjà payée une fois sur
+    // « en ligne », et le direct s'était mis à envoyer `maintenant` pour la
+    // même raison.
+    db()->prepare('UPDATE students SET ecran = ?, ecran_ts = ' . sqlMaintenant() . ' WHERE id = ?')
+        ->execute([chiffrer(json_encode($propre, JSON_UNESCAPED_UNICODE)), $eleveId]);
+    return true;
+}
+
+/**
+ * RELIRE LE RELEVÉ D'UNE LIGNE `students`, s'il vaut encore quelque chose.
+ *
+ * Rend `null` dès que le relevé a dépassé son âge : le professeur préfère « il
+ * n'est sur aucun exercice » à une question d'il y a un quart d'heure, qui
+ * l'enverrait conseiller à côté.
+ */
+function ecranDeLEleve(?array $ligne, ?int $maintenant = null): ?array
+{
+    if (!$ligne || empty($ligne['ecran'])) return null;
+    // L'INSTANT SE LIT COMME TOUS LES AUTRES DE CETTE API — voir `instantDe`.
+    // La colonne porte une date, parce que `sqlMaintenant()` en écrit une ;
+    // écrire un entier ici aurait demandé une seconde façon de dire l'heure.
+    $quand = instantDe($ligne['ecran_ts'] ?? null);
+    if ($quand === null) return null;
+    $maintenant = $maintenant ?? time();
+    if ($maintenant - $quand >= ECRAN_FRAIS_S) return null;
+    $clair = dechiffrer((string) $ligne['ecran']);
+    if ($clair === null || $clair === '') return null;
+    $lu = json_decode($clair, true);
+    if (!is_array($lu)) return null;
+    $lu['ts'] = $quand;
+    return $lu;
 }

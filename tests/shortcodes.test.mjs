@@ -67,8 +67,19 @@ test('UN CODE DICTÉ SE RECOPIE COMME ON L\'ENTEND', () => {
     // Ce qui n'est pas un nombre après le code n'en est pas un code.
     assert.equal(Shortcodes.exerciceDuCodeCourt(`${tete}AB`), null,
         'le code suivi de lettres ne désigne aucun exercice');
-    // Et l'ancien format continue de se lire : il y a des liens dans la nature.
-    assert.ok(Shortcodes.decodePath('AA5'), 'un code d\'avant doit rester lisible');
+    // ET LE TOUT PREMIER FORMAT NE SE LIT PLUS — c'est un renoncement assumé,
+    // et il remplace cette ligne-ci, qui vérifiait l'inverse.
+    //
+    // Il écrivait le jeu sur DEUX lettres (« AA » à « AH ») sans lettre de
+    // contrôle. Mesuré en essayant toutes les fautes d'une lettre : un code
+    // MODERNE refusé à juste titre — « AFL-08-00-ACBU » mal recopié — retombait
+    // sur ce décodeur-là, qui reconnaissait « AF » et rendait le Tir à l'Arc sur
+    // des tables tirées des caractères restants. Il acceptait donc en silence
+    // tout ce que les lettres de contrôle venaient de refuser, et rendait leur
+    // garantie fausse. Aucun code de ce format n'est dans la nature.
+    assert.equal(Shortcodes.decodePath('AA5'), null,
+        'un code du tout premier format doit être refusé, pas deviné');
+    assert.equal(Shortcodes.decodePath('AF5CDE'), null);
 });
 
 test('UN EXERCICE AVEC SON NOMBRE DE QUESTIONS TIENT ENCORE DANS UN CODE DICTÉ', () => {
@@ -248,8 +259,16 @@ test('UN PARCOURS DE PLUSIEURS EXERCICES SE DICTE AUSSI', () => {
     assert.equal(relu.steps[0].nbItems, 12);
     assert.equal(relu.steps[1].nbItems, 20);
     assert.equal(relu.steps[1].threshold, seuilConseille(20));
-    // Le nom ne voyage pas, mais l'élève ne doit pas lire « Parcours partagé ».
-    assert.ok(/Relatifs/.test(relu.name) && /Pythagore/.test(relu.name), relu.name);
+    // LE NOM NE VOYAGE PAS, et il ne se refait plus en collant les titres bout
+    // à bout. Rémy, capture d'un écran d'élève : « ne mets pas toute la liste
+    // des exercices en haut […] ça risque d'être long s'il y a beaucoup de
+    // code. » Mesuré sur trente-cinq exercices — la taille de sa séance
+    // d'essai — le nom collé faisait 916 caractères, écrits trois fois sur
+    // l'écran d'accueil. Il se nomme maintenant comme un parcours construit à
+    // la main : « Nombres et calculs — 35 exercices ».
+    assert.ok(!relu.name.includes(' + '), `les titres sont encore collés : ${relu.name}`);
+    assert.match(relu.name, /2 exercices$/, relu.name);
+    assert.ok(relu.name.length < 45, `nom trop long : ${relu.name}`);
 });
 
 test('une chaîne se recopie comme on l\'entend, elle aussi', () => {
@@ -292,14 +311,20 @@ test('UNE LETTRE FAUSSE DANS UNE CHAÎNE REFUSE TOUTE LA CHAÎNE', () => {
     assert.equal(essais, 9 * 22);
 });
 
-test('un réglage qui change ce que l\'élève reçoit repasse au format complet', () => {
-    // La chaîne courte ne code que des exercices, un ordre et des nombres de
-    // questions. Tout ce qui modifie l'exercice lui-même doit voyager en
-    // entier — mieux vaut un lien long qu'un parcours amputé.
+test('ce que la chaîne courte ne sait pas dire repasse au format complet', () => {
+    // La chaîne courte code des exercices, un ordre, des nombres de questions —
+    // et, depuis, les RÉGLAGES numérotables. Tout le reste doit la faire
+    // renoncer : mieux vaut un lien long qu'un parcours amputé.
+    //
+    // LES RÉGLAGES NE DISQUALIFIENT PLUS D'OFFICE, et c'est la demande de Rémy
+    // (« c'est quand même dommage de ne pas pouvoir partager un lien juste pour
+    // un réglage »). Ce qui disqualifie encore, c'est un réglage qui n'a pas
+    // d'ensemble fini de valeurs — ici le champ libre « repartition » de
+    // Thalès. Voir `tests/reglagesDictes.test.mjs`.
     const cas = {
-        'une surcharge': makePath('X', [
-            makeStep('calc-sudoku', { taille: 9 }, {}),
-            makeStep('geo-thales', {}, {})], defaultPolicy()),
+        'un réglage qui ne s\'écrit pas en lettres': makePath('X', [
+            makeStep('geo-thales', { repartition: '3/5' }, {}),
+            makeStep('calc-sudoku', {}, {})], defaultPolicy()),
         'un temps limité': makePath('X', [
             makeStep('calc-sudoku', {}, { timeLimit: 300 }),
             makeStep('geo-thales', {}, {})], defaultPolicy()),
@@ -429,14 +454,21 @@ test('LE PROFESSEUR DOIT POUVOIR LIRE POURQUOI SON LIEN EST LONG', () => {
         'un parcours dictable n\'a aucune raison d\'être long');
     assert.equal(Shortcodes.encodePath(simple).startsWith('M2-'), false);
 
-    // Une surcharge sur une étape : le code court ne sait pas la dire.
-    const surcharge = makePath('X',
-        [makeStep('num-relatifs-thermometre', { niveau: 'dur' }, { nbItems: 10 })], defaultPolicy());
-    const r1 = Shortcodes.raisonsDuCodeLong(surcharge);
+    // Un réglage ORDINAIRE ne rend plus le lien long — il s'écrit en lettres.
+    const regle = makePath('X',
+        [makeStep('calc-sudoku', { taille: 9 }, { nbItems: 10 })], defaultPolicy());
+    assert.deepEqual(Shortcodes.raisonsDuCodeLong(regle), [],
+        'un réglage numérotable ne doit plus être une raison');
+    assert.equal(Shortcodes.encodePath(regle).startsWith('M2-'), false);
+
+    // Un réglage QUI NE S'ÉCRIT PAS, si — et la phrase doit le dire.
+    const libre = makePath('X',
+        [makeStep('geo-thales', { repartition: '3/5' }, { nbItems: 10 })], defaultPolicy());
+    const r1 = Shortcodes.raisonsDuCodeLong(libre);
     assert.equal(r1.length, 1, r1.join(' | '));
     assert.match(r1[0], /étape 1/);
-    assert.match(r1[0], /réglages/);
-    assert.equal(Shortcodes.encodePath(surcharge).startsWith('M2-'), true);
+    assert.match(r1[0], /réglage/);
+    assert.equal(Shortcodes.encodePath(libre).startsWith('M2-'), true);
 
     // Un réglage de séance : la raison porte sur la séance, pas sur une étape.
     const evalue = makePath('Contrôle',

@@ -61,6 +61,7 @@ export const CODES_EXERCICES = {
     'num-puissances-transformer': 'PE',   // Puissances de 10 — écriture scientifique
     'num-puissances-prefixes':    'KM',   // Kilo, Méga, Giga, Micro, Nano
     'num-puissances-calcul':      'CP',   // Calculer avec des Puissances
+    'num-puissances-calcul-pas':  'CK',   // …et la Trace du calcul
     'calc-add':                   'AT',   // Additions Mystères
     'calc-sub':                   'SE',   // Soustractions Éclair
     'calc-mult-flash':            'FM',   // Flash Mult
@@ -116,6 +117,8 @@ export const CODES_EXERCICES = {
     'logi-hashi':                 'HA',   // Le Hashi
     'logi-slitherlink':           'SL',   // Le Slitherlink
     'logi-futoshiki':             'FU',   // Le Futoshiki
+    'logi-enquete':               'EN',   // L'Enquête
+    'dec-chute':                  'ND',   // La Chute des Décimaux
     'logi-carre-magique':         'MG',   // Le Carré Magique
     'logi-hexagrille':            'HX',   // L'Hexagrille
     'calc-bons-chemins':          'BC',   // Les Bons Chemins
@@ -202,12 +205,83 @@ export const CODES_EXERCICES = {
     'geo-tangram':                'TN',   // Le Tangram
     'mes-heure':                  'UH',   // Quelle heure est-il ?
     'don-tableau-croise':         'TL',   // Le Tableau à Double Entrée (TabLeau)
+    'geo-patchwork':              'WK',   // Le patchWorK
+    'logi-serpents':              'SK',   // les serpents (SnaKes, son nom d'origine)
+    'calc-croises':               'XK',   // les croiXés du calcul
+    'calc-deux-nombres':          'DX',   // les DeuX nombres
     'don-tableur':                'EL',   // L'École du Tableur
     'defi-tour-brahma':           'HN',   // La Tour de Hanoï (Tour de Brahma)
     'defi-grenouilles':           'GR',   // Les Grenouilles
     'defi-parking':               'PK',   // Le Parking
     'defi-embouteillage':         'EB',   // L'Embouteillage
     'defi-pousseur':              'PJ',   // Le Pousseur
+
+    // --- Seconde : ensembles et intervalles ---
+    //
+    // PAS DE I, PAS DE O, PAS DE Q. J'avais d'abord écrit IV, IC et ID —
+    // mnémoniques pour « intervalle », et silencieusement invalides : la lettre
+    // de contrôle rend `null` sur une lettre hors alphabet, `codeCourt` rend
+    // alors la chaîne VIDE, et mes trois exercices « partageaient » ce vide.
+    // L'alphabet de ces codes en compte vingt-trois, parce qu'ils se DICTENT en
+    // classe et qu'un I, un O ou un Q s'entendent comme un autre.
+    'sec-intervalles':            'VL',   // Intervalles : les trois écritures
+    'sec-intervalles-ecrire':     'NT',   // Le bon côté du crochet
+    'sec-intervalles-demi':       'ZA',   // Demi-droites et infini
+    'rc-pas':                     'RS',   // Racines carrées, pas à pas (Simplifier)
+    'sec-ensembles':              'EA',   // Le plus petit ensemble de nombres
+    'sec-union-inter':            'EU',   // Union et intersection d'intervalles
+    'sec-union-inter-vide':       'EX',   // Quand l'intersection est vide
+    // LES DOUZE CARTES DE FACTORISATION SONT DEVENUES DEUX — Rémy : « on a
+    // quand même beaucoup d'exercices pour la même chose ». Les barreaux sont
+    // des cases à cocher, pas des exercices.
+    //
+    // LES DEUX CODES SONT REPRIS À CE QU'ILS DÉSIGNAIENT DÉJÀ, et c'est le
+    // moindre mal. La règle de cette table est qu'un code ne change jamais ;
+    // un exercice supprimé la met en défaut de toute façon — son code
+    // n'ouvrirait plus rien. En donnant FB (le barreau 1) à la carte
+    // « Factoriser » et EE (le 3 pas à pas) à « Factoriser pas à pas », un
+    // code dicté l'an dernier ouvre encore l'exercice qui contient sa
+    // question, réglages à cocher près. Les dix autres sont retirés : ils ne
+    // désignent plus rien, et un code qui ouvre le vide vaut moins qu'un code
+    // refusé.
+    'fac':                        'FB',   // Factoriser : a² − b² et facteur commun
+    'fac-pas':                    'EE',   // Factoriser pas à pas
+    'geo-appartenance':           'KA',   // appartenance : le point est-il dessus ?
+    'geo-appartenance-demi':      'KD',   // …avec les Demi-droites
+    'geo-codage-lire':            'LE',   // Lire un codagE
+    'geo-milieu':                 'ML',   // Le MiLieu
+    'cf-1':                       'GB',   // Deux fractions, dénominateur multiple
+    'cf-2':                       'GD',   // Dénominateurs quelconques
+    'cf-3':                       'GF',   // Produit : simplifier avant
+    'cf-4':                       'GG',   // Diviser par une fraction
+    'cf-5':                       'GH',   // Un entier devant une parenthèse
+    'cf-6':                       'GJ',   // Les priorités
+    'cf-7':                       'GK',   // Une fraction de fractions
+    'cf-8':                       'GL',   // Produit de deux parenthèses
+    'cf-9':                       'GM',   // Un entier devant une parenthèse
+    'cf-10':                      'GS',   // Les priorités
+    'cf-11':                      'GU',   // Produit de deux parenthèses
+    'cf-12':                      'GV',   // Une fraction de fractions
+    'cf-ensemble':                'GW',   // Calculer, puis dire l'ensemble
+    'cf-revision':                'GN',   // Les quatre opérations
+    'cf-pas':                     'GX',   // Fractions, pas à pas
+    // DÉVELOPPER — les quinze cartes sont devenues deux, pour la même raison
+    // que la factorisation ci-dessus. DB désignait le barreau 1 et désigne
+    // maintenant l'exercice entier ; EK, le pas à pas de la simple, désigne le
+    // pas à pas tout court.
+    'dev':                        'DB',   // Développer : simple et double
+    'dev-pas':                    'EK',   // Développer pas à pas
+    // LES RACINES CARRÉES — R comme racine, et la seconde lettre monte avec le
+    // barreau, de sorte que l'ordre dicté soit celui de la progression.
+    'rc-1':                       'RA',   // Les carrés parfaits
+    'rc-2':                       'RB',   // √a × √b
+    'rc-3':                       'RE',   // Sortir un carré, en un pas
+    'rc-4':                       'RF',   // Le plus grand carré — √72 = 6√2
+    'rc-5':                       'RH',   // Multiplier deux racines
+    'rc-6':                       'RK',   // Additionner : simplifier d'abord
+    'rc-7':                       'RL',   // La racine ne traverse pas une addition
+    'rc-8':                       'RM',   // Diviser, et le dénominateur
+    'rc-revision':                'RN',   // Les quatre premiers barreaux
 };
 
 /** L'exercice que désignent ces deux lettres, ou undefined. */

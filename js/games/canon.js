@@ -64,6 +64,9 @@ export function direPalier(cible, niveau) {
 class Canon extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'canon');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.rng = makeRng(this.params.seed);
         this.cible = Number(this.params.cible) || 100;
         this.voies = this.cible === 10 ? 1 : (this.cible === 100 ? 2 : 3);

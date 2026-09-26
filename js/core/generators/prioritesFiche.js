@@ -19,6 +19,25 @@
 
 import { makeItem } from '../items.js';
 import { tirerExpression, etapes, etapesMax } from '../priorites.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, totalDe
+} from '../progression.js';
+
+// ── LES QUATRE DIFFICULTÉS, EN CASES À COCHER ───────────────────────────────
+//
+// Rémy : « fais tout, ce serait le plus cohérent non ? » — et sur une feuille
+// ce n'est pas seulement de la cohérence. Le menu donnait UNE difficulté pour
+// les douze expressions de la page ; les cases donnent une feuille qui MONTE,
+// ce qui est la forme ordinaire d'un exercice d'entraînement sur papier : on
+// commence par deux calculs simples et l'on finit sur les deux durs.
+const MARCHES_PRIO = [
+    { id: '1', nom: '1. Deux opérations, sans parenthèses' },
+    { id: '2', nom: '2. Jusqu\'à trois opérations' },
+    { id: '3', nom: '3. Les parenthèses arrivent' },
+    { id: '4', nom: '4. Deux groupes de parenthèses' }
+];
+/** Le réglage d'avant les cases — voir `marchesCochees`. */
+const ANCIEN_PRIO = { cle: 'niveau' };
 
 export const prioritesFicheGenerator = {
     id: 'calc.priorites-fiche',
@@ -26,15 +45,7 @@ export const prioritesFicheGenerator = {
     answerKinds: ['numeric'],
     skills: ['num.prio', 'num.prio.relatifs'],
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
-            options: [
-                { value: 1, label: '1 — Deux opérations, sans parenthèses' },
-                { value: 2, label: '2 — Jusqu\'à trois opérations' },
-                { value: 3, label: '3 — Les parenthèses arrivent' },
-                { value: 4, label: '4 — Deux groupes de parenthèses' }
-            ]
-        },
+        paramMarches({ marches: MARCHES_PRIO, mot: 'niveau', ancien: ANCIEN_PRIO }),
         {
             id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: true,
             aide: 'Sans elles, seule la règle « × et ÷ avant + et − » est en jeu — et le '
@@ -63,7 +74,19 @@ export const prioritesFicheGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         params = params || {};
-        const niveau = Math.max(1, Math.min(4, Number(params.niveau) || 2));
+        // LES NIVEAUX COCHÉS SE PARTAGENT LES CALCULS DE LA PAGE, dans
+        // l'ordre — voir core/progression.js. `ctx.total` est le nombre de
+        // blocs de la feuille ; sans lui (une vignette) on retombe sur deux
+        // calculs par niveau, ce que faisait l'écran avant les cases.
+        const coches = marchesCochees(params, MARCHES_PRIO, ANCIEN_PRIO);
+        const niveau = Math.max(1, Math.min(4, Number(marcheAuRang(ctx.index ?? 0,
+            coches, totalDe(ctx, params), params)) || 2));
+        // ET LE PLUS HAUT NIVEAU COCHÉ, pour la hauteur des lignes — voir
+        // `etapesMax` plus bas. Le prendre sur CETTE expression-là donnerait à
+        // chaque calcul la hauteur de sa propre cascade, c'est-à-dire la
+        // réponse en creux : trois lignes vides diraient « il reste trois
+        // opérations », et le calcul d'à côté n'en aurait que deux.
+        const niveauMax = coches.reduce((m, x) => Math.max(m, Number(x.id) || 0), 1);
         const parentheses = params.parentheses !== false;
         const puissances = !!params.puissances;
         const relatifs = !!params.relatifs;
@@ -109,9 +132,10 @@ export const prioritesFicheGenerator = {
                 // feuille aient la MÊME hauteur. Donner à chacun le compte
                 // exact de ses étapes écrit la réponse en creux : trois lignes
                 // vides disent « il reste trois opérations ».
-                etapesMax: etapesMax({ niveau, parentheses, puissances }),
+                etapesMax: etapesMax({ niveau: niveauMax, parentheses, puissances }),
                 resultat: e.resultat,
                 niveau,
+                marche: String(niveau),
                 // Ce que la fiche exclura pour le bloc suivant.
                 theme: e.texte
             }

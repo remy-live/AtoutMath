@@ -12,6 +12,7 @@
 //  - plus de rechargement de module à chaque partie (l'ancien `?v=Date.now()`).
 
 import { matchSkills } from '../data/skills.js';
+import { pluriel } from './accord.js';
 
 /** @type {Map<string, Object>} */
 const generators = new Map();
@@ -105,19 +106,58 @@ export function uniteDe(id, n = 1) {
     const a = activities.get(id);
     const mot = (a && a.unite) || 'question';
     if (n <= 1) return mot;
-    // LE PLURIEL FRANÇAIS N'EST PAS TOUJOURS UN « S ». L'en-tête affichait
-    // « 0 / 4 tableaus » — un mot en -eau, -eu ou -au prend un X. C'est trois
-    // lignes, et c'est ce que lit un élève à chaque question.
-    if (/[sxz]$/.test(mot)) return mot;
-    if (/(eau|au|eu)$/.test(mot)) return `${mot}x`;
-    if (/al$/.test(mot)) return `${mot.slice(0, -2)}aux`;
-    return `${mot}s`;
+    // LE PLURIEL FRANÇAIS N'EST PAS TOUJOURS UN « S » — l'en-tête affichait
+    // « 0 / 4 tableaus ». La règle vivait ici, au milieu d'une fonction qui
+    // rend l'unité d'une activité ; le panneau de réglages, qui fabrique lui
+    // aussi des pluriels, ne pouvait pas la trouver et a refait la même faute
+    // (« Les barreaus travaillés »). Elle est maintenant dans `core/accord.js`.
+    return pluriel(mot);
 }
 
 /** Le nombre d'unités d'une séance pour cette activité (10 par défaut). */
 export function parDefautDe(id) {
     const a = activities.get(id);
     return (a && a.parDefaut) || 10;
+}
+
+// --- CETTE ACTIVITÉ PRODUIT-ELLE UNE NOTE ? ---------------------------------
+//
+// RÉMY : « est-ce que tous les exercices sont vraiment évaluables ? »
+//
+// NON, ET IL FAUT POUVOIR LE DIRE. Une note est un compte de questions
+// ratées ; une activité qui ne peut RIEN rater n'en produit pas — elle rend 20
+// à qui la traverse, quoi qu'il fasse. MESURÉ en cherchant, dans chaque module,
+// une tentative fausse qui ne soit pas marquée `partiel`
+// (`tools/tmp/notable3.mjs`) : 28 exercices sur 172 sont dans ce cas.
+//
+// Ils ne sont pas ratés pour autant — ce sont des CONSTRUCTIONS et des
+// RÉFLEXIONS : un organigramme qu'on bâtit jusqu'à ce qu'il tienne, un
+// pousseur qu'on recommence, une partie contre l'ordinateur. Leur réussite
+// n'est pas un compte de bonnes réponses, et vouloir leur en tirer une note
+// donnerait justement le 20 de participation qu'on veut éviter.
+//
+// LE MARQUAGE SE LIT EN UN SEUL ENDROIT — voir `activities/index.js`. Le
+// disperser sur vingt-huit déclarations rendrait la liste illisible, et un test
+// la redérive du code pour qu'elle ne dérive pas.
+//
+// ET IL PEUT DÉPENDRE DES RÉGLAGES : les échecs, les dames et l'othello notent
+// en « mat en un, mat en deux » — un coup faux est un coup faux — mais pas en
+// « partie contre l'ordinateur », où il n'y a pas de bonne réponse, seulement
+// un vainqueur. La marque accepte donc une fonction des paramètres.
+export function declarerSansNote(id, quand = false) {
+    const a = activities.get(id);
+    if (!a) throw new Error(`[registry] activité inconnue : ${id}`);
+    a.notable = quand;
+}
+
+/**
+ * @param {string} id       identifiant d'activité
+ * @param {Object} [params] les réglages de CET exercice
+ */
+export function activiteNotable(id, params = {}) {
+    const a = activities.get(id);
+    if (!a || a.notable === undefined) return true;
+    return typeof a.notable === 'function' ? !!a.notable(params || {}) : !!a.notable;
 }
 
 export function getGenerator(id) {

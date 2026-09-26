@@ -361,7 +361,13 @@ export const relatifsProduitGenerator = {
             difficulty: etape.temps === 'A' ? 1 : etape.temps === 'B' ? 2 : 3,
             meta: {
                 etape: etape.id, temps: etape.temps, titre: etape.titre,
-                marche: rangGlobal + 1, marches: ETAPES.length,
+                // LE RANG N'EST PAS L'IDENTIFIANT DE LA MARCHE, et les deux
+                // vivaient sous le même nom. `meta.marche` porte partout
+                // ailleurs l'IDENTIFIANT — « signe-pp », « completer »,
+                // « formule » —, c'est lui que les fiches et les tests lisent ;
+                // ici il portait le NUMÉRO. Le rang garde donc le nom qu'il a
+                // déjà dans `relatifsAddition` : `rang`.
+                marche: etape.id, rang: rangGlobal + 1, total_etapes: ETAPES.length,
                 facteurs: q.facteurs, surLeSigne,
                 // LE PAVÉ DOIT PORTER LA TOUCHE « ± ». Quand l'aide passe au
                 // clavier, (−3) × (+4) attend −12 : sans elle la question

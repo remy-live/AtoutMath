@@ -17,6 +17,40 @@
 // qui répond 0,952 (le cosinus de 60 radians) est une calculatrice fausse pour
 // l'élève qui s'en sert.
 
+/**
+ * LA CALCULATRICE EST-ELLE OFFERTE ICI ?
+ *
+ * RÉMY : « pourrait-on autoriser dans les options l'utilisation de la
+ * calculatrice ou le permettre en direct à un groupe ou aux élèves (on pourrait
+ * sélectionner dans le direct) ».
+ *
+ * Elle n'était qu'une propriété du catalogue — QUATRE exercices sur plus de
+ * deux cents, écrite en dur, que le professeur ne pouvait ni accorder ni
+ * retirer. Trois portes y mènent maintenant, et l'ordre compte :
+ *
+ *   1. LE DIRECT L'EMPORTE SUR TOUT. « Vous pouvez prendre la calculatrice »
+ *      est dit à voix haute, en pleine heure, et rien d'écrit la veille ne doit
+ *      contredire le professeur qui est dans la salle.
+ *   2. PUIS LE RÉGLAGE DE L'ÉTAPE, quand il existe. Coché, il l'offre ; décoché
+ *      sur un exercice qui l'offrait par nature, il la retire — c'est ce que
+ *      veut dire une case qu'on décoche, et sans cela le réglage ne saurait
+ *      qu'ajouter.
+ *   3. PUIS LE CATALOGUE, qui reste le défaut : un exercice de trigonométrie
+ *      n'a pas de sens sans elle.
+ *
+ * On distingue « décochée » de « pas réglée » : `undefined` laisse parler le
+ * catalogue, `false` le contredit. Les confondre ferait disparaître la
+ * calculatrice de Pythagore dès qu'on ouvre ses réglages.
+ *
+ * @param {{exercice?: object, params?: object, accordee?: boolean}} quoi
+ */
+export function calculatricePermise({ exercice = null, params = null, accordee = false } = {}) {
+    if (accordee) return true;
+    const regle = params ? params.calculatrice : undefined;
+    if (regle !== undefined && regle !== null && regle !== '') return !!regle;
+    return !!(exercice && exercice.calculatrice);
+}
+
 /** Ce que la calculatrice sait faire, par ordre de priorité croissante. */
 const OPERATEURS = {
     '+': { rang: 1, calcul: (a, b) => a + b },

@@ -12,12 +12,13 @@
 // dans des chaînes HTML. Les gestionnaires sont posés en JS, ce qui supprime
 // une dizaine de globales et rend l'échappement des données non négociable.
 
-import { exercices, getExerciseById, paramSchemaOf } from '../data/catalog.js';
+import { exercices, getExerciseById, paramSchemaOf, estNotable } from '../data/catalog.js';
 import { state } from '../core/state.js';
-import { Shortcodes } from '../core/shortcodes.js';
 import { makePath, makeStep, normalizePath, totalItems } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
+import { poserLeBandeauDesOutils, basculerLeBandeauDesOutils } from './bandeauOutils.js';
 import { communDe, appliquerAuxEtapes } from '../core/reglagesGroupes.js';
+import { ouvrirReglagesEtape, fermerReglagesEtape } from './reglagesEtape.js';
 import { MAX_ETAPE } from '../core/seuilEtape.js';
 import { creerHistorique } from '../core/historique.js';
 import {
@@ -25,9 +26,14 @@ import {
     direDuree, tensionDuree, PHRASES_TENSION
 } from '../core/dureeParcours.js';
 import { natureDe } from '../core/duree.js';
-import { chapitresDe } from '../core/chapitres.js';
 import {
-    renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide
+    resumeDeParcours, vueDeLExplorateur, quandLisible, enBref
+} from '../core/explorateurParcours.js';
+import { initTiroirOnglets, montrerPanneau } from './tiroirParcours.js';
+import { chapitresDe } from '../core/chapitres.js';
+import { nomPropose, themesDExercice, domaineDExercice } from '../core/nomDeParcours.js';
+import {
+    renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide, direLesReglages
 } from '../games/configUI.js';
 import { lireZones, normaliserZones, zonesDuMode, modeZone } from '../core/aide.js';
 import { showToast, showAlert, showConfirm } from './modal.js';
@@ -46,6 +52,7 @@ export function initBuilder() {
     pathBox.ondragleave = () => pathBox.classList.remove('drag-over');
     pathBox.ondrop = (e) => handleDrop(e, pathBox);
 
+    initNePlieRien();
     initNameInput();
     initPreviewModes();
     initToolbar();
@@ -54,6 +61,7 @@ export function initBuilder() {
     initPresentationMode();
     initGameAccessPanel();
     initClassesPanel();
+    initPortesProf();
     initChapitresPanel();
     initHistorique();
     initOutilsMenu();
@@ -65,6 +73,72 @@ export function initBuilder() {
 // Chargé à la demande : l'écran des classes lit tout le journal de chaque
 // élève pour recalculer les bilans, et un professeur qui monte un parcours
 // n'en a pas besoin.
+
+/**
+ * LES DEUX PORTES DU PROFESSEUR, EN HAUT, AVEC LEUR NOM.
+ *
+ * Elles ne font qu'appuyer sur les boutons qui existent déjà — c'est le même
+ * principe que le menu des réglages : aucune liste à tenir en double, et rien
+ * ne se désaccorde le jour où l'un des deux écrans change.
+ *
+ * LA PORTE ACTIVE DIT OÙ L'ON EST, et elle doit le dire même quand on revient
+ * par la croix de la fenêtre, pas par la porte. On surveille donc la PRÉSENCE
+ * de l'espace des classes à l'écran plutôt que les clics : un état qu'on
+ * déduit de ce qui est affiché ne peut pas mentir, alors qu'un état qu'on tient
+ * à la main finit toujours par diverger.
+ */
+function initPortesProf() {
+    const preparer = document.getElementById('top-btn-preparer');
+    const classe = document.getElementById('top-btn-classe');
+    if (!preparer || !classe) return;
+
+    const dire = (ouvert) => {
+        classe.classList.toggle('active', ouvert);
+        classe.setAttribute('aria-selected', String(ouvert));
+        preparer.classList.toggle('active', !ouvert);
+        preparer.setAttribute('aria-selected', String(!ouvert));
+    };
+
+    classe.onclick = () => {
+        const b = document.getElementById('btn-classes');
+        if (b) b.click();
+    };
+    preparer.onclick = () => {
+        // Revenir à l'atelier, c'est refermer la pièce d'à côté — et c'est la
+        // pièce elle-même qui sait comment (arrêter le battement du direct,
+        // notamment). On le lui DEMANDE par un événement, on ne le fait pas à sa
+        // place : importer son module au moment du clic ne marchait pas, parce
+        // qu'il se charge à la demande et que le clic partait avant qu'il ne
+        // soit là. Mesuré — la fonction appelée à la main refermait
+        // parfaitement, le même clic ne refermait rien.
+        document.dispatchEvent(new CustomEvent('fermer_la_classe'));
+        const horsLigne = document.querySelector('#cl-racine');
+        const croix = horsLigne && document.querySelector('.modal-overlay .modal-close');
+        if (croix) croix.click();
+        dire(false);
+    };
+
+    // LES DEUX ÉCRANS DE CLASSE, et ils n'ont pas le même toit : `ec-racine`
+    // pour l'espace serveur, `cl-racine` pour le panneau hors ligne. Un garde-fou
+    // du dépôt (tests/interfaceIds) m'a repris ici même : j'avais écrit
+    // `classes-racine`, qui n'existe nulle part — la porte ne se serait jamais
+    // allumée pour le panneau hors ligne, sans que rien ne le dise.
+    // LA PIÈCE EST UNE SECTION DE LA PAGE, pas une fenêtre : on regarde si elle
+    // est affichée. Le panneau hors ligne, lui, est resté une fenêtre — c'est
+    // un écran de dépannage, on n'y passe pas l'heure.
+    const regarder = () => {
+        const zone = document.getElementById('zone-classe');
+        dire((zone && !zone.hidden) || !!document.getElementById('cl-racine'));
+    };
+    // La pièce annonce ses allées et venues ; on relit alors le DOM, qui reste
+    // la source de vérité. Un observateur seul ne suffisait pas : afficher la
+    // section ne change qu'un attribut, et le surveiller sur tout le corps de
+    // page ferait relire à chaque frappe dans un champ.
+    document.addEventListener('classe_ouverte', regarder);
+    document.addEventListener('classe_fermee', regarder);
+    new MutationObserver(regarder).observe(document.body, { childList: true });
+    regarder();
+}
 
 function initClassesPanel() {
     const btn = document.getElementById('btn-classes');
@@ -219,7 +293,7 @@ function initPresentationMode() {
     if (!btn) return;
     btn.onclick = async () => {
         if (!state.currentPath.steps.length) {
-            showAlert('Ajoutez au moins une activité pour lancer la présentation.');
+            showAlert('Ajoutez au moins un exercice pour lancer la présentation.');
             return;
         }
         const [{ buildWorldMap }, { hydratePath }] = await Promise.all([
@@ -433,7 +507,8 @@ export async function ajouterLeDossier(path, rang) {
     if (lot.length > LOT_SANS_QUESTION) {
         showConfirm(
             `« ${nom} » contient ${lot.length} exercices. Les ajouter tous au parcours ?`,
-            verser
+            verser,
+            { bouton: `Ajouter les ${lot.length} exercices`, doux: true }
         );
         return;
     }
@@ -455,11 +530,32 @@ export function addStep(exerciseId, rang) {
     const ou = Number.isInteger(rang) ? Math.max(0, Math.min(rang, steps.length)) : steps.length;
     steps.splice(ou, 0, step);
     renderTeacherPath();
-    // Pas sur téléphone : le panneau de propriétés s'y ouvre en PLEIN ÉCRAN,
-    // et chaque ajout depuis le tiroir recouvrait donc tout — impossible
-    // d'ajouter plusieurs exercices à la suite. Les propriétés s'ouvrent d'un
-    // appui sur l'étape, quand on en a besoin.
-    if (!document.body.classList.contains('mobile-view')) selectStep(step.stepId);
+
+    // ON PRÉVIENT, ON N'INTERROMPT PAS.
+    //
+    // Rémy : « on ajoute, et là paf, une notif qui te dit que tu peux régler
+    // l'exercice via un bouton réglages dédié ».
+    //
+    // Avant, l'ajout OUVRAIT les réglages tout seul — sauf sur téléphone, où
+    // l'on avait dû le désactiver parce qu'un panneau plein écran après chaque
+    // ajout empêchait d'en ajouter deux à la suite. Le défaut était le même sur
+    // grand écran, simplement moins violent : on venait d'en chercher un dans
+    // le catalogue, et l'on se retrouvait devant un formulaire.
+    //
+    // ET L'AVIS N'A PLUS DE BOUTON.
+    //
+    // Rémy : « Dans le toast où tu proposes de régler l'exercice, le régler ne
+    // fonctionne pas, mais ne le mets pas. On règle en cliquant. »
+    //
+    // Mesuré chez moi, le bouton OUVRAIT bien la fenêtre de réglages — je le
+    // dis parce que c'est vrai, pas pour discuter : un bouton qui échoue chez
+    // celui qui s'en sert vaut moins que pas de bouton du tout. Et il avait de
+    // toute façon deux défauts que la mesure montre : 32 px de haut, sous la
+    // règle des 44 qu'on tient partout, et six secondes pour le viser.
+    //
+    // L'avis dit donc le GESTE, qui lui ne disparaît pas au bout de six
+    // secondes : l'étape est là, sous les yeux, et un clic dessus l'ouvre.
+    showToast(`${exo.title} ajouté — clique dessus pour le régler.`, 'success', 5000);
 }
 
 // --- Rendu de la liste d'étapes ---------------------------------------------
@@ -491,15 +587,70 @@ function retenirLEtat() {
     majBoutonsHistorique();
 }
 
+/**
+ * DÉPLACER UNE ÉTAPE D'UN CRAN — le geste que la tablette n'avait pas.
+ *
+ * L'ordre des étapes ne se changeait QUE par glisser-déposer HTML5
+ * (`row.draggable`), et cette API ne répond pas au doigt. Mesuré sur un
+ * contexte iPad 1024 × 1366 : appui long de 700 ms puis glissé en douze pas,
+ * l'ordre ne bougeait pas d'un millimètre. Sur tablette, un parcours se
+ * construisait donc dans l'ordre où l'on avait cliqué, définitivement.
+ *
+ * DEUX BOUTONS PLUTÔT QU'UN GLISSEMENT TACTILE, et c'est un choix. Le
+ * glissement au doigt existe déjà ailleurs (`enableTouchDragToPath`) et
+ * pourrait se rebrancher ici — mais il ne servirait qu'au doigt. Deux flèches
+ * servent au doigt, à la souris qui vise mal, et au CLAVIER : ce sont trois
+ * publics pour le même bouton, dont un qui n'avait aucun chemin du tout.
+ */
+export function deplacerEtape(stepId, sens) {
+    const steps = state.currentPath.steps;
+    const de = steps.findIndex(s => s.stepId === stepId);
+    if (de < 0) return false;
+    const vers = de + (sens < 0 ? -1 : 1);
+    if (vers < 0 || vers >= steps.length) return false;
+    const item = steps.splice(de, 1)[0];
+    steps.splice(vers, 0, item);
+    renderTeacherPath();
+    // ON REND LE CLAVIER À LA FLÈCHE QU'ON VIENT D'UTILISER. `renderTeacherPath`
+    // refait toutes les rangées : sans cela, celui qui déplace une étape de
+    // trois crans doit repartir du haut de la page à chaque cran.
+    requestAnimationFrame(() => {
+        const rangee = document.querySelector(`.path-step[data-step-id="${stepId}"]`);
+        const bouton = rangee && rangee.querySelector(`[data-sens="${sens < 0 ? 'haut' : 'bas'}"]`);
+        if (bouton && !bouton.disabled) bouton.focus();
+        else if (rangee) rangee.querySelector('[data-sens]')?.focus();
+    });
+    return true;
+}
+
 function appliquerEtat(etat) {
     if (!etat) return;
     enTrainDeRejouer = true;
     state.currentPath = etat.chemin;
     state.currentPathId = etat.cheminId;
-    selectedStepId = null;
+    // ANNULER NE DOIT PAS REFERMER LE PANNEAU QU'ON REMPLISSAIT.
+    //
+    // `selectedStepId = null` faisait qu'UN SEUL Ctrl+Z — celui qui défait le
+    // dernier réglage — vidait et refermait le volet des propriétés, et
+    // désurlignait l'étape. Mesuré : panneau ouvert sur « Addition de
+    // Fractions », deux clics sur « + », un Ctrl+Z → panneau fermé, vide, étape
+    // plus surlignée. Pour corriger un réglage de trop, le professeur devait
+    // retrouver son étape et tout rouvrir.
+    //
+    // Or annuler ne change pas ce qu'on REGARDE, seulement ce qu'on a fait. On
+    // ne lâche l'étape que si elle a réellement disparu du parcours — auquel cas
+    // le volet n'a plus d'objet.
+    const etapes = (state.currentPath && state.currentPath.steps) || [];
+    if (selectedStepId && !etapes.some(s => s.stepId === selectedStepId)) {
+        selectedStepId = null;
+    }
+    const aGarder = selectedStepId;
     const input = document.getElementById('path-name-input');
     if (input) input.value = state.currentPath.name || '';
     renderTeacherPath();
+    // `renderTeacherPath` redessine les rangées : le volet doit se remettre sur
+    // l'étape, avec ses valeurs d'APRÈS l'annulation.
+    if (aGarder) selectStep(aGarder);
     enTrainDeRejouer = false;
     majBoutonsHistorique();
 }
@@ -540,7 +691,10 @@ function majBoutonsHistorique() {
 // libellé, leur icône est clonée, et cliquer une ligne clique le bouton. Aucune
 // liste à tenir à jour en double, et un outil ajouté demain apparaît ici tout
 // seul dès qu'il porte la classe.
-const OUTILS = ['btn-classes', 'btn-chapitres', 'btn-game-access', 'btn-open-import-export-teacher'];
+// « Mes classes » N'EST PLUS ICI : elle a sa porte, en haut, avec son nom.
+// L'engrenage ne garde que ce qui est vraiment un réglage — ranger ses
+// chapitres, décider de l'accès aux jeux, entrer ou sortir ses données.
+const OUTILS = ['btn-chapitres', 'btn-game-access', 'btn-open-import-export-teacher'];
 
 function initOutilsMenu() {
     const btn = document.getElementById('btn-outils-prof');
@@ -644,7 +798,7 @@ function pastilleDuree(steps) {
     el.textContent = `${d.mesurees === d.total && d.total ? '' : '≈ '}${direDuree(d.min, d.max)}`;
     el.title = PHRASES_TENSION[tension]
         + (d.mesurees
-            ? `\n${d.mesurees} activité${d.mesurees > 1 ? 's' : ''} sur ${d.total} : durée MESURÉE `
+            ? `\n${d.mesurees} exercice${d.mesurees > 1 ? 's' : ''} sur ${d.total} : durée MESURÉE `
               + 'sur les réponses déjà enregistrées.'
             : '\nEstimation d\'après la nature des exercices — elle se précisera '
               + 'dès que les élèves auront répondu.');
@@ -701,6 +855,11 @@ export function renderTeacherPath() {
     if (!pathBox) return;
     retenirLEtat();
     rafraichirLesMesures();
+    // Quatre endroits désélectionnent une étape — la supprimer, annuler, refaire,
+    // ouvrir un autre parcours — et tous les quatre redessinent ensuite. Le
+    // volet se raccorde donc ici, une fois, plutôt qu'en quatre exemplaires
+    // dont l'un finirait par manquer.
+    accorderLeVolet();
 
     // ON RETIRE EN VÉRIFIANT LE PARENT. Un champ de la barre qui perd le focus
     // pendant qu'on redessine peut avoir déjà emporté son bloc : `remove()`
@@ -723,7 +882,7 @@ export function renderTeacherPath() {
         summary.innerHTML = '';
         if (steps.length) {
             const compte = document.createElement('span');
-            compte.textContent = `${steps.length} activité${steps.length > 1 ? 's' : ''}`
+            compte.textContent = `${steps.length} exercice${steps.length > 1 ? 's' : ''}`
                 + ` • ${totalItems(state.currentPath)} questions • `;
             summary.appendChild(compte);
             summary.appendChild(pastilleDuree(steps));
@@ -732,6 +891,34 @@ export function renderTeacherPath() {
             summary.appendChild(regle);
         }
         summary.classList.toggle('path-summary--eval', isEvaluation(policy));
+        // CE QUI NE SE NOTERA PAS, DIT AVANT LA SÉANCE ET NON APRÈS.
+        //
+        // Rémy : « comment juges-tu un exercice comme l'organigramme des
+        // quadrilatères en mode évaluation ? » Il ne se juge pas : mesuré, 31
+        // exercices sur 172 ne peuvent produire aucune question ratée (voir
+        // SANS_NOTE dans `core/activities/index.js`). Mis dans une évaluation,
+        // ils rendent 20 à qui les traverse — et l'on ne s'en aperçoit qu'en
+        // relisant les copies.
+        //
+        // On ne les INTERDIT pas : un organigramme dans une interrogation est
+        // un choix légitime, on veut que l'élève le construise. On dit
+        // seulement que sa note ne viendra pas de là.
+        const muets = isEvaluation(policy)
+            ? steps.filter(st => {
+                const e = getExerciseById(st.exerciseId);
+                return e && !estNotable(e, st.overrides);
+            }) : [];
+        if (muets.length) {
+            const avis = document.createElement('div');
+            avis.className = 'path-avis-sans-note';
+            const noms = muets.map(st => (getExerciseById(st.exerciseId) || {}).title || '?');
+            avis.innerHTML = `<b>${muets.length} exercice${muets.length > 1 ? 's' : ''} `
+                + `ne compte${muets.length > 1 ? 'nt' : ''} pas dans la note :</b> `
+                + escapeHtml(noms.join(', ')) + '. '
+                + 'On y construit ou l\'on y réfléchit — il n\'y a pas de réponse à rater, '
+                + 'donc rien à compter. Ils restent au bilan par compétence.';
+            summary.appendChild(avis);
+        }
     }
 
     // LA BARRE DE SÉLECTION, EN TÊTE DE LISTE. Elle n'apparaît que lorsqu'une
@@ -739,6 +926,11 @@ export function renderTeacherPath() {
     // vide n'est qu'un bandeau de plus.
     steps.forEach((step, index) => pathBox.appendChild(stepRow(step, index, policy)));
     majBarreSelection();
+    // LA BANDE QUI NOMME LES ICÔNES. Ici et non au démarrage : `outilsDuParcours`
+    // vient de montrer ou de cacher sept boutons selon que le parcours est vide,
+    // et une légende posée avant eux ne les nommerait pas. Sans effet une fois
+    // que le professeur a dit « j'ai compris ».
+    poserLeBandeauDesOutils();
     autoSavePath();
 }
 
@@ -1084,6 +1276,10 @@ function stepRow(step, index, policy) {
     // que le cadeau : c'est un réglage qui change ce que l'élève reçoit, et le
     // laisser caché dans un panneau, c'est le perdre de vue.
     if (step.facultatif && !step.bonus) row.classList.add('path-step--facultatif');
+    // HORS NOTE : seulement quand la séance NOTE. En entraînement, la question
+    // ne se pose pas, et une marque qui apparaît partout ne se lit plus.
+    const sansNote = isEvaluation(policy) && !estNotable(exo, step.overrides);
+    if (sansNote) row.classList.add('path-step--sans-note');
     title.innerHTML = `<span class="path-step-grip" aria-hidden="true">☰</span>`
         + (step.bonus ? '<span class="path-step-cadeau" title="Jeu de récompense : '
             + 'il ne compte pas dans la note et s\'ouvre quand le travail qui le '
@@ -1092,6 +1288,12 @@ function stepRow(step, index, policy) {
             ? '<span class="path-step-facult" title="Non obligatoire : elle s\'ouvre quand '
               + 'le travail obligatoire qui la précède est réussi, mais l\'élève peut passer '
               + 'à la suite sans la faire.">facultative</span>' : '')
+        // ET LAQUELLE, exactement. Le résumé dit combien ; sans la marque sur
+        // la ligne, le professeur doit les retrouver de tête dans vingt étapes.
+        + (sansNote ? '<span class="path-step-sansnote" title="Cet exercice ne produit '
+            + 'aucune question à rater : on y construit ou l\'on y réfléchit. Il ne '
+            + 'comptera pas dans la note, mais reste au bilan par compétence.">hors '
+            + 'note</span>' : '')
         + `<span class="path-step-name">${index + 1}. ${escapeHtml(exo.title)}</span>`;
     title.title = step.bonus ? `${exo.title} — jeu de récompense`
         : (step.facultatif ? `${exo.title} — non obligatoire` : exo.title);
@@ -1161,6 +1363,21 @@ function stepRow(step, index, policy) {
             ? 'Mesuré sur les réponses déjà enregistrées, et non estimé.'
             : 'Estimation d\'après la nature de l\'exercice.'}">`
         + `${duree.mesure ? '' : '≈ '}${escapeHtml(direDuree(duree.min, duree.max))}</span>`);
+    // CE QU'ON A RÉGLÉ SE LIT SUR LA LIGNE, et non seulement dans le panneau.
+    //
+    // Mesuré : régler « Dénominateurs : identiques → différents » ne changeait
+    // rien au texte de la ligne — identique caractère par caractère. Un
+    // professeur qui relit sa séance de huit étapes ne pouvait pas savoir
+    // laquelle il avait touchée : il fallait les rouvrir une par une.
+    //
+    // Et la pastille ne s'affiche que s'il y a VRAIMENT quelque chose de réglé :
+    // depuis `reglagesQuiChangent`, `step.overrides` ne garde que les écarts
+    // réels, ce qui la rendrait bavarde si on la posait sur tout.
+    const regle = direLesReglages(step.overrides, paramSchemaOf(exo));
+    if (regle) {
+        morceaux.push(`<span class="pstep-regle" title="${escapeHtml(regle)}">`
+            + `⚙ ${escapeHtml(regle)}</span>`);
+    }
     dessous.innerHTML = morceaux.join('');
 
     // LA BANDE, EN MINIATURE, SUR LA LIGNE DE L'ÉTAPE.
@@ -1182,7 +1399,11 @@ function stepRow(step, index, policy) {
     const preview = iconButton('Aperçu', ICONS.eye);
     preview.onclick = (e) => { e.stopPropagation(); testStep(index); };
 
-    const props = iconButton('Propriétés', ICONS.gear);
+    // « RÉGLAGES », PAS « PROPRIÉTÉS ». Rémy parle d'« un bouton réglages
+    // dédié » ; la fenêtre qui s'ouvre s'appelle « Réglages » dans son premier
+    // onglet, et la pastille sous l'étape porte déjà une roue crantée avec ce
+    // mot. Trois noms pour une roue crantée, c'était deux de trop.
+    const props = iconButton('Réglages', ICONS.gear);
     props.onclick = (e) => { e.stopPropagation(); selectStep(step.stepId); };
 
     const dup = iconButton('Dupliquer', ICONS.copy);
@@ -1191,7 +1412,21 @@ function stepRow(step, index, policy) {
     const del = iconButton('Supprimer', ICONS.trash, 'danger');
     del.onclick = (e) => { e.stopPropagation(); removeStep(step.stepId); };
 
-    [preview, props, dup, del].forEach(b => actions.appendChild(b));
+    // LES DEUX FLÈCHES D'ORDRE, en tête : c'est le geste qu'on fait le plus
+    // souvent sur une étape déjà posée, et le seul qui n'existait pas au doigt.
+    const monter = iconButton('Monter cette étape', ICONS.chevron);
+    monter.classList.add('pstep-ordre', 'pstep-ordre--haut');
+    monter.dataset.sens = 'haut';
+    monter.disabled = index === 0;
+    monter.onclick = (e) => { e.stopPropagation(); deplacerEtape(step.stepId, -1); };
+
+    const descendre = iconButton('Descendre cette étape', ICONS.chevron);
+    descendre.classList.add('pstep-ordre');
+    descendre.dataset.sens = 'bas';
+    descendre.disabled = index === state.currentPath.steps.length - 1;
+    descendre.onclick = (e) => { e.stopPropagation(); deplacerEtape(step.stepId, 1); };
+
+    [monter, descendre, preview, props, dup, del].forEach(b => actions.appendChild(b));
 
     // Chevron de dépliage — visible seulement sur téléphone.
     //
@@ -1224,43 +1459,92 @@ function stepRow(step, index, policy) {
 
 // --- Sélection et propriétés ------------------------------------------------
 
+/**
+ * LES PARAMÈTRES NE SERVENT PAS TOUT LE TEMPS — ILS NE PRENNENT DONC PAS LA
+ * PLACE TOUT LE TEMPS.
+ *
+ * Rémy : « les paramètres ne servent pas tout le temps », « on pourrait voir
+ * pour utiliser l'espace ».
+ *
+ * Trois cent trente pixels étaient réservés à droite en permanence pour y
+ * afficher, la plupart du temps, la phrase « Sélectionnez une activité ». Un
+ * sixième de l'écran pour une invitation à cliquer ailleurs. Le volet se
+ * montre désormais quand une étape est choisie, et rend la place au parcours
+ * dès qu'on le referme — le même mécanisme qu'en tablette, où il coulissait
+ * déjà, mais sans recouvrir : sur grand écran, il pousse.
+ */
+export function fermerProprietes() {
+    // Les réglages d'étape vivent maintenant dans une fenêtre ; le volet reste
+    // pour « à qui ce parcours est donné ». On ferme les deux, parce que les
+    // appelants de cette fonction veulent dire « range ce qui est ouvert ».
+    fermerReglagesEtape();
+    const panel = document.getElementById('builder-properties-panel');
+    if (!panel) return;
+    panel.classList.remove('mob-open');
+    panel.dataset.pour = '';
+    // On vide : un panneau qui ressurgit avec les réglages de l'étape
+    // précédente le temps d'une image donne l'impression d'avoir cliqué à côté.
+    panel.innerHTML = '';
+}
+
+/** Refermer le volet des étapes, et lui seul, quand plus rien n'est choisi. */
+function accorderLeVolet() {
+    const panel = document.getElementById('builder-properties-panel');
+    if (!panel || panel.dataset.pour !== 'etape') return;
+    if (!selectedStepId) fermerProprietes();
+}
+
 export function selectStep(stepId) {
-    const step = state.currentPath.steps.find(s => s.stepId === stepId);
+    let step = state.currentPath.steps.find(s => s.stepId === stepId);
     if (!step) return;
     selectedStepId = stepId;
 
-    const panel = document.getElementById('builder-properties-panel');
-    if (!panel) return;
-
-    panel.innerHTML = `
-        <button id="mob-close-props" class="props-close" aria-label="Fermer les propriétés">✕</button>
-        <h3 class="props-title">Propriétés de l'étape</h3>
-        <div id="builder-config-content"></div>`;
-    panel.classList.add('mob-open');
-
-    const fermerProps = () => panel.classList.remove('mob-open');
-    const close = document.getElementById('mob-close-props');
-    if (close) close.onclick = fermerProps;
-    // ON POUSSE CE TIROIR AUSSI. Rémy : « Les tiroirs ne se glissent pas en bas,
-    // il faut appuyer sur Annuler. » Le panneau des propriétés monte du bas sur
-    // téléphone, exactement comme les réglages ; il n'a pas de voile — il occupe
-    // tout l'écran —, donc la poignée est le seul geste, et la croix reste.
-    import('./tiroir.js').then(({ rendreTirable }) => {
-        rendreTirable(panel, fermerProps,
-            { actif: () => document.body.classList.contains('mobile-view') });
-    });
-
-    // LE MODE DU PARCOURS VOYAGE AVEC L'ÉTAPE. En évaluation, « bonnes réponses
-    // exigées » n'a pas de sens — une interrogation se note, elle ne se valide
-    // pas —, et le panneau retire la poignée du seuil.
-    renderGameConfigUI(step, (updated) => {
-        const i = state.currentPath.steps.findIndex(s => s.stepId === stepId);
-        if (i !== -1) {
-            state.currentPath.steps[i] = updated;
-            renderTeacherPath();
+    // LES RÉGLAGES S'OUVRENT EN FENÊTRE, PLUS DANS UNE TROISIÈME COLONNE.
+    //
+    // Rémy : « oublions le panneau latéral pour les réglages, ça surcharge trop
+    // l'écran […] une modale dans laquelle tu peux cocher / décocher, avoir un
+    // “tab” pour avoir un aperçu qui prenne en compte tes modifs ».
+    //
+    // Mesuré sur un écran de 1440 : le volet prenait 330 pixels — le quart de
+    // la largeur — et POUSSAIT le parcours qu'on était en train de régler. Et
+    // il ne pouvait pas montrer l'exercice : une colonne de 330 px n'a pas la
+    // place d'un plateau de jeu. La fenêtre, si — c'est elle qui rend l'aperçu
+    // possible, et l'aperçu est ce que Rémy demandait.
+    //
+    // ON NE DÉPLACE PAS LES RÉGLAGES EUX-MÊMES : `renderGameConfigUI` les
+    // dessine dans un élément qu'il trouve par identifiant, et la fenêtre lui
+    // donne le même. Deux panneaux de réglages à tenir d'accord, ce serait un
+    // de trop.
+    const exo = getExerciseById(step.exerciseId);
+    ouvrirReglagesEtape({
+        // L'ÉTAPE SE RELIT, ELLE NE SE GARDE PAS. Enregistrer un réglage
+        // REMPLACE l'objet dans `state.currentPath.steps` ; passer la référence
+        // d'aujourd'hui, c'est montrer l'étape d'hier. Mesuré : « Plus grand
+        // terme » ramené de 10 à 6, et l'aperçu tirait encore des 10.
+        etape: () => state.currentPath.steps.find(s => s.stepId === stepId),
+        exo,
+        rendre: (idConteneur, surChangement) => {
+            // LE MODE DU PARCOURS VOYAGE AVEC L'ÉTAPE. En évaluation, « bonnes
+            // réponses exigées » n'a pas de sens — une interrogation se note,
+            // elle ne se valide pas —, et le panneau retire la poignée du seuil.
+            renderGameConfigUI(step, (updated) => {
+                const i = state.currentPath.steps.findIndex(s => s.stepId === stepId);
+                if (i !== -1) {
+                    state.currentPath.steps[i] = updated;
+                    step = updated;
+                    renderTeacherPath();
+                }
+                if (surChangement) surChangement();
+            }, idConteneur, {
+                mode: (state.currentPath && state.currentPath.policy
+                    && state.currentPath.policy.mode) || null
+            });
+        },
+        onClose: () => {
+            selectedStepId = null;
+            document.querySelectorAll('.path-step').forEach(el =>
+                el.classList.remove('path-step--selected'));
         }
-    }, 'builder-config-content', {
-        mode: (state.currentPath && state.currentPath.policy && state.currentPath.policy.mode) || null
     });
 
     document.querySelectorAll('.path-step').forEach(el => {
@@ -1311,9 +1595,24 @@ function initNameInput() {
     if (!input) return;
     input.onclick = (e) => e.stopPropagation();
     input.oninput = () => {
-        state.currentPath.name = input.value.trim() || 'Mon Parcours';
+        state.currentPath.name = input.value.trim() || 'Nouveau parcours';
         autoSavePath();
     };
+}
+
+/**
+ * Les conteneurs de la barre qui ne doivent pas replier l'en-tête.
+ *
+ * C'ÉTAIT UN `onclick=` DANS LA BALISE, et ce sont les deux seuls qu'avait la
+ * page. Un gestionnaire écrit dans un attribut est du JavaScript dans du HTML :
+ * une CSP le refuse, pour la raison même qui la rend utile — c'est sous cette
+ * forme qu'une faille d'échappement s'exécute. Le comportement ne change pas
+ * d'un pixel ; seul l'endroit où il est écrit change.
+ */
+function initNePlieRien() {
+    document.querySelectorAll('[data-ne-replie-pas]').forEach(el => {
+        el.addEventListener('click', (e) => e.stopPropagation());
+    });
 }
 
 function initPreviewModes() {
@@ -1376,7 +1675,7 @@ function initToolbar() {
     if (btnTest) {
         btnTest.onclick = () => {
             if (!state.currentPath.steps.length) {
-                showAlert('Ajoutez au moins une activité pour tester le parcours.');
+                showAlert('Ajoutez au moins un exercice pour tester le parcours.');
                 return;
             }
             runPath(state.currentPath, previewMode());
@@ -1387,7 +1686,7 @@ function initToolbar() {
     if (btnFiche) {
         btnFiche.onclick = () => {
             if (!state.currentPath.steps.length) {
-                showAlert('Ajoutez au moins une activité pour imprimer une fiche.');
+                showAlert('Ajoutez au moins un exercice pour imprimer une fiche.');
                 return;
             }
             import('./printParcours.js').then(m => m.ouvrirFicheParcours(state.currentPath));
@@ -1416,55 +1715,46 @@ function initToolbar() {
 
     const btnCode = document.getElementById('btn-generate-code');
     if (btnCode) {
-        btnCode.onclick = async () => {
+        btnCode.onclick = () => {
             if (!state.currentPath.steps.length) {
-                showAlert('Ajoutez au moins une activité pour générer un code.');
+                showAlert('Ajoutez au moins un exercice pour générer un code.');
                 return;
             }
-            // LE CODE COURT SE DIT À VOIX HAUTE. Trois lettres par exercice,
-            // et le nombre de questions à la suite quand le professeur l'a
-            // choisi : « ARF-12-TPW-20 » pour deux exercices, treize
-            // caractères là où le format complet en demandait 161. C'est
-            // celui qu'on écrit au tableau pour les devoirs. On le MONTRE
-            // toujours, même quand le lien part au presse-papiers — un élève
-            // qui n'a pas le lien doit pouvoir taper le code.
-            const code = Shortcodes.encodePath(state.currentPath);
-            const court = !code.startsWith('M2-');
-            // ET QUAND LE CODE EST LONG, ON DIT POURQUOI. Rémy : « pour le lien
-            // donné dans la partie prof, j'ai du mal à comprendre quand est-ce
-            // que tu utilises le code court et le code long ». La règle
-            // existait, elle n'était écrite nulle part où il puisse la lire :
-            // le bouton disait « Lien copié » et se taisait. Or elle est
-            // simple — le code court ne sait dicter que des exercices pris tels
-            // quels, avec leur nombre de questions ; tout le reste doit voyager
-            // en entier. Chaque chose qui l'empêche est maintenant nommée, et
-            // le professeur voit du même coup ce qu'il aurait à défaire pour
-            // obtenir un code qui se dicte.
-            const raisons = court ? [] : Shortcodes.raisonsDuCodeLong(state.currentPath);
-            try {
-                await navigator.clipboard.writeText(Shortcodes.shareUrl(state.currentPath));
-                showToast(court ? `Lien copié — code à dicter : ${code}`
-                    : 'Lien copié — code long (le parcours a des réglages)', 'success');
-                if (court) showAlert(`Code à dicter : <b style="font-size:1.6em">${code}</b>`
-                    + `<br><br>${code.length} caractères, à taper dans « J'ai un code ». `
-                    + 'Chaque groupe de trois lettres est un exercice, et la '
-                    + 'troisième vérifie les deux autres : si l\'élève en '
-                    + 'recopie une de travers, le code est refusé plutôt que de '
-                    + 'lui ouvrir autre chose.'
-                    + '<br>Le lien est aussi dans le presse-papiers.');
-                else showAlert('<b>Le lien est copié, mais il n\'y a pas de code à dicter '
-                    + 'pour ce parcours.</b>'
-                    + '<br><br>Un code court ne sait dire que ceci : des exercices, dans un '
-                    + 'ordre, avec leur nombre de questions — tout le reste au réglage '
-                    + 'd\'usine. Dès qu\'un réglage doit voyager, il faut le lien entier, '
-                    + 'sans quoi l\'élève recevrait autre chose que ce que vous avez préparé.'
-                    + '<br><br>Ici, ce qui l\'empêche :<ul style="text-align:left;margin:6px 0 0 1em">'
-                    + raisons.map(r => `<li>${r}</li>`).join('') + '</ul>');
-            } catch (e) {
-                showAlert(`Code du parcours :\n\n${code}`);
-            }
+            // ON MONTRE LE LIEN, ON NE LE GLISSE PLUS DANS LE PRESSE-PAPIERS.
+            //
+            // Rémy : « mais je n'ai pas trouvé ni le qr code ni le lien quand je
+            // clique sur le lien du parcours ». Il avait raison : le bouton
+            // copiait l'adresse et annonçait « Lien copié », sans jamais la
+            // montrer. Un lien qu'on ne voit pas ne se relit pas, ne se vérifie
+            // pas, ne s'envoie pas depuis un autre appareil — et si le
+            // presse-papiers a été refusé, il n'y a rien du tout.
+            //
+            // La fenêtre donne les trois formes du même travail : le code pour
+            // le tableau, le lien pour le cahier de textes, le QR pour les
+            // téléphones. Voir `ui/partagerParcours.js`.
+            import('./partagerParcours.js').then(({ ouvrirPartage }) => {
+                ouvrirPartage(state.currentPath);
+            });
         };
     }
+
+    // LA FENÊTRE DE CHOIX, par ses deux portes : la loupe de la barre d'outils,
+    // et le bouton de l'état vide — c'est le moment où l'on en a le plus besoin.
+    const ouvrirLeChoix = () => {
+        import('./choisirExercice.js').then(({ ouvrirChoixExercice }) => {
+            ouvrirChoixExercice({ ajouter: (exo) => addStep(exo.id) });
+        });
+    };
+    ['btn-choisir-exo', 'btn-choisir-exo-vide'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.onclick = ouvrirLeChoix;
+    });
+
+    // LE « ? » DE LA BARRE. Rémy : « je mettrai éventuellement un petit ? à côté
+    // de nouveau parcours pour voir justement ce qui correspond aux icônes. »
+    // Voir ui/bandeauOutils.js : c'est lui qui rend « J'ai compris » sans regret.
+    const btnAide = document.getElementById('btn-aide-outils');
+    if (btnAide) btnAide.onclick = basculerLeBandeauDesOutils;
 
     const btnNew = document.getElementById('btn-new-path');
     if (btnNew) {
@@ -1490,9 +1780,10 @@ function initToolbar() {
             const nom = state.currentPath.name || 'Le parcours en cours';
             showConfirm(
                 `Commencer un nouveau parcours, vide ?<br><br>`
-                + `« ${escapeHtml(nom)} » (${n} activité${n > 1 ? 's' : ''}) est enregistré : `
+                + `« ${escapeHtml(nom)} » (${n} exercice${n > 1 ? 's' : ''}) est enregistré : `
                 + `vous le retrouverez dans <b>Mes Parcours</b> 📂.`,
-                repartirDeZero
+                repartirDeZero,
+                { bouton: 'Commencer un parcours vide', doux: true }
             );
         };
     }
@@ -1502,6 +1793,23 @@ export function autoSavePath() {
     if (!state.currentPath.steps.length && !state.currentPathId) {
         direLEtat(null);
         return;
+    }
+    // ON LUI DONNE UN NOM QUI DIT CE QU'IL CONTIENT, tant que personne ne l'a
+    // nommé. « Nouveau parcours » décrit l'ÉTAT — il vient d'être créé — et non
+    // le contenu ; l'état change à la seconde qui suit, le contenu reste. Deux
+    // essais dans la même semaine donnaient deux lignes strictement identiques
+    // dans la bibliothèque, sous-titre compris.
+    //
+    // APRÈS, ET NON AVANT : au moment où l'on crée un parcours, on ne sait pas
+    // encore ce qu'on va y mettre. Le professeur corrige s'il veut, le champ
+    // est juste au-dessus — et un nom écrit à la main n'est jamais écrasé.
+    const propose = nomPropose(state.currentPath,
+        (id) => themesDExercice(getExerciseById(id), chapitresDe),
+        (id) => domaineDExercice(getExerciseById(id)));
+    if (propose) {
+        state.currentPath.name = propose;
+        const champ = document.getElementById('path-name-input');
+        if (champ && champ.value !== propose) champ.value = propose;
     }
     const snapshot = JSON.parse(JSON.stringify(state.currentPath));
     if (!state.currentPathId) {
@@ -1527,7 +1835,7 @@ function direLEtat(quand) {
     if (!quand) {
         el.textContent = 'Brouillon';
         el.className = 'path-etat path-etat--brouillon';
-        el.title = 'Ce parcours sera enregistré dès qu\'il aura une activité.';
+        el.title = 'Ce parcours sera enregistré dès qu\'il aura un exercice.';
         return;
     }
     const heure = `${String(quand.getHours()).padStart(2, '0')}:${String(quand.getMinutes()).padStart(2, '0')}`;
@@ -1544,84 +1852,170 @@ function direLEtat(quand) {
 // --- Navigateur de parcours -------------------------------------------------
 
 function initPathBrowser() {
+    initTiroirOnglets(renderPathBrowser);
+
+    // LE BOUTON « dossier » DE LA BARRE NE FAIT PLUS APPARAÎTRE UNE FENÊTRE :
+    // il AMÈNE au tiroir. Le geste est le même pour le professeur, et il ne
+    // perd plus son parcours de vue en cherchant à en ouvrir un autre. Sur
+    // téléphone, où le tiroir est rabattu, on le déplie aussi : y conduire
+    // sans l'ouvrir ne montrerait qu'une poignée.
     const btnOpen = document.getElementById('btn-open-path-browser');
-    const modal = document.getElementById('path-browser-modal');
-    if (btnOpen && modal) {
-        btnOpen.onclick = () => { renderPathBrowser(); modal.style.display = 'flex'; };
-        const close = document.getElementById('btn-close-path-browser');
-        if (close) close.onclick = () => { modal.style.display = 'none'; };
+    if (btnOpen) {
+        btnOpen.onclick = () => {
+            montrerPanneau('parcours', { ouvrir: true });
+            renderPathBrowser();
+        };
     }
 
     const btnFolder = document.getElementById('btn-new-folder');
     if (btnFolder) {
-        btnFolder.onclick = () => { state.addTeacherFolder('Nouveau dossier'); renderPathBrowser(); };
+        btnFolder.onclick = () => {
+            // UN DOSSIER NEUF NE SE VOIT PAS DANS « derniers modifiés » : cette
+            // vue-là ne montre que des parcours. On bascule donc sur le
+            // rangement par dossier, sinon le bouton paraît ne rien faire.
+            state.addTeacherFolder('Nouveau dossier');
+            reglerLeTri('dossiers');
+            renderPathBrowser();
+        };
     }
+}
+
+/**
+ * L'EXPLORATEUR — DEUX FAÇONS DE REGARDER LA MÊME CHOSE.
+ *
+ * Rémy : « l'explorateur de parcours va vite avoir ses limites. Il faudrait un
+ * explorateur avec les derniers parcours édités. Il faut que ce soit bien
+ * intégré, sobre, avec la date de modif et les informations ; on peut avoir une
+ * flèche pour avoir plus d'info ».
+ *
+ * LES DOSSIERS RESTENT, ET C'EST UNE DÉCISION. Il s'en sert ; les remplacer par
+ * un tri l'obligerait à refaire un rangement qu'il a déjà fait. Mais ils ne
+ * sont plus la SEULE entrée : « derniers modifiés » l'est devenue, parce que
+ * c'est la seule chose qu'on sait vraiment d'un parcours qu'on cherche — on y
+ * a touché récemment.
+ */
+let pbTri = 'recent';
+let pbRecherche = '';
+
+/** Changer de rangement, boutons compris : deux états qui divergent mentent. */
+function reglerLeTri(tri) {
+    pbTri = tri;
+    boutonsDeTri().forEach(b => b.classList.toggle('pb-tri--actif', b.dataset.tri === tri));
+}
+
+/** LES BOUTONS DE TRI DE L'EXPLORATEUR, ET EUX SEULS.
+ *  `data-tri` sert aussi aux en-têtes de tableau de la revue : chercher dans
+ *  tout le document attachait à ces colonnes un clic qui redessinait
+ *  l'explorateur. On borne la recherche à la barre du tiroir. */
+function boutonsDeTri() {
+    const barre = document.querySelector('#tiroir-parcours .pb-tris');
+    return barre ? Array.from(barre.querySelectorAll('[data-tri]')) : [];
 }
 
 export function renderPathBrowser() {
     const list = document.getElementById('path-browser-list');
     if (!list) return;
+    brancherLaBarre();
     list.innerHTML = '';
 
-    (state.teacherFolders || []).forEach(folder => {
-        list.appendChild(folderBlock(folder));
+    const vue = vueDeLExplorateur(state.teacherPaths, state.teacherFolders, {
+        tri: pbTri,
+        recherche: pbRecherche,
+        resumeur: (p) => resumeDeParcours(p, normalizePath, getExerciseById)
     });
 
-    const rootPaths = state.teacherPaths.filter(p => !p.folderId || p.folderId === 'root');
-    const rootBlock = document.createElement('div');
-    rootBlock.className = 'path-browser-root';
-    rootBlock.ondragover = dragOver;
-    rootBlock.ondragleave = dragLeave;
-    rootBlock.ondrop = (e) => dropOnFolder(e, 'root');
-    rootBlock.innerHTML = '<div class="path-browser-root-title">Parcours (racine)</div>';
-    rootPaths.forEach(p => rootBlock.appendChild(pathItem(p)));
-    list.appendChild(rootBlock);
-
-    if (!state.teacherPaths.length && !(state.teacherFolders || []).length) {
-        list.innerHTML = '<div class="empty-state-msg">Aucun parcours enregistré.</div>';
+    if (!vue.sections.length) {
+        const vide = document.createElement('div');
+        vide.className = 'empty-state-msg';
+        vide.textContent = vue.message || '';
+        list.appendChild(vide);
+        return;
     }
+
+    vue.sections.forEach(section => list.appendChild(blocDeSection(section)));
 }
 
-function folderBlock(folder) {
-    const box = document.createElement('div');
-    box.className = 'path-folder';
-    box.ondragover = dragOver;
-    box.ondragleave = dragLeave;
-    box.ondrop = (e) => dropOnFolder(e, folder.id);
+/** Une section : un dossier, la racine, ou une liste triée qui n'accepte rien. */
+function blocDeSection(section) {
+    const bloc = document.createElement('div');
+    bloc.className = section.dossier ? 'path-folder' : 'path-browser-root';
 
+    // ON NE REND DÉPOSABLE QUE CE QUI RANGE QUELQUE CHOSE. Dans « récents »,
+    // la place d'un parcours est décidée par l'horloge : y lâcher une fiche
+    // ne rangerait rien, et un cadre de dépôt qui s'allume pour rien ment.
+    if (section.depot) {
+        bloc.ondragover = dragOver;
+        bloc.ondragleave = dragLeave;
+        bloc.ondrop = (e) => dropOnFolder(e, section.depot);
+    }
+
+    bloc.appendChild(section.dossier ? teteDeDossier(section) : titreDeSection(section.titre));
+
+    const corps = section.dossier ? document.createElement('div') : bloc;
+    if (section.dossier) corps.className = 'path-folder-body';
+
+    if (!section.parcours.length && section.vide) {
+        const rien = document.createElement('div');
+        rien.className = 'path-folder-empty';
+        rien.textContent = section.vide;
+        corps.appendChild(rien);
+    }
+    section.parcours.forEach(r => {
+        const entree = state.teacherPaths.find(p => p.id === r.id);
+        if (entree) corps.appendChild(pathItem(entree, r));
+    });
+
+    if (section.dossier) bloc.appendChild(corps);
+    return bloc;
+}
+
+function titreDeSection(texte) {
+    const t = document.createElement('div');
+    t.className = 'path-browser-root-title';
+    t.textContent = texte;
+    return t;
+}
+
+function teteDeDossier(section) {
     const head = document.createElement('div');
     head.className = 'path-folder-head';
 
     const name = document.createElement('div');
     name.className = 'path-folder-name';
     name.contentEditable = 'true';
-    name.textContent = folder.name;
-    name.onblur = () => state.renameTeacherFolder(folder.id, name.textContent.trim());
+    name.textContent = section.titre;
+    name.onblur = () => state.renameTeacherFolder(section.id, name.textContent.trim());
     name.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } };
 
     const del = iconButton('Supprimer le dossier', ICONS.trash, 'danger');
-    del.onclick = () => window.appConfirm('Suppression', 'Supprimer ce dossier ? Les parcours reviennent à la racine.', () => {
-        state.removeTeacherFolder(folder.id);
-        renderPathBrowser();
-    });
+    del.onclick = () => window.appConfirm('Suppression',
+        'Supprimer ce dossier ? Les parcours reviennent à la racine.', () => {
+            state.removeTeacherFolder(section.id);
+            renderPathBrowser();
+        });
 
     head.append(name, del);
-    box.appendChild(head);
-
-    const inner = document.createElement('div');
-    inner.className = 'path-folder-body';
-    const paths = state.teacherPaths.filter(p => p.folderId === folder.id);
-    if (!paths.length) inner.innerHTML = '<div class="path-folder-empty">Dossier vide (glissez des parcours ici)</div>';
-    paths.forEach(p => inner.appendChild(pathItem(p)));
-    box.appendChild(inner);
-    return box;
+    return head;
 }
 
-function pathItem(p) {
+let barreBranchee = false;
+function brancherLaBarre() {
+    if (barreBranchee) return;
+    const champ = document.getElementById('pb-chercher');
+    if (!champ) return;
+    barreBranchee = true;
+    champ.oninput = () => { pbRecherche = champ.value; renderPathBrowser(); };
+    boutonsDeTri().forEach(b => {
+        b.onclick = () => { reglerLeTri(b.dataset.tri); renderPathBrowser(); };
+    });
+}
+
+function pathItem(p, resume = null) {
     const normalized = normalizePath(p.data, p.name);
     const policy = resolvePolicy(normalized.policy);
     const row = document.createElement('div');
     row.className = 'path-browser-item';
+    row.dataset.parcours = p.id;
     row.draggable = true;
     row.ondragstart = (e) => { e.dataTransfer.setData('text/plain', p.id); row.style.opacity = '0.5'; };
     row.ondragend = () => { row.style.opacity = '1'; };
@@ -1634,9 +2028,30 @@ function pathItem(p) {
     name.onblur = () => state.updateTeacherPath(p.id, name.textContent.trim(), null);
     name.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } };
 
+    // CE QU'ON LIT SANS DÉPLIER : ce qu'il contient, en quoi, et depuis quand
+    // on n'y a pas touché. Trois choses sur une ligne — Rémy dit « sobre ».
+    //
+    // L'ANCIENNE LIGNE DISAIT « 5 activités • Entraînement • 12/09/2026 ». Une
+    // date en chiffres demande de calculer ; « hier » se lit. Et le nombre de
+    // questions manquait, alors que c'est LUI qui dit si la séance tient dans
+    // l'heure.
+    const r = resume || resumeDeParcours(p, normalizePath, getExerciseById);
+    // LA DATE PASSE DEVANT, ET « entraînement » DISPARAÎT. Mesuré dans le
+    // tiroir de 320 px : « 3 activités · 14 questions · 1 jeu · entraîne… » —
+    // la ligne se coupait juste avant la date, c'est-à-dire avant la seule
+    // chose que Rémy avait nommément demandée (« avec la date de modif »).
+    //
+    // « entraînement » EST LE CAS ORDINAIRE : l'écrire sur quarante-neuf fiches
+    // sur cinquante ne distingue rien. Seule l'évaluation se signale, parce
+    // qu'elle change ce que la séance veut dire. Et l'on ne répète pas
+    // « modifié » : « hier » ne peut pas se lire autrement.
     const sub = document.createElement('div');
     sub.className = 'path-browser-sub';
-    sub.textContent = `${normalized.steps.length} activités • ${isEvaluation(policy) ? 'Évaluation' : 'Entraînement'} • ${new Date(p.timestamp).toLocaleDateString()}`;
+    sub.textContent = [
+        isEvaluation(policy) ? 'évaluation' : '',
+        r.modifieLe ? quandLisible(r.modifieLe) : '',
+        enBref(r)
+    ].filter(Boolean).join(' · ');
 
     info.append(name, sub);
 
@@ -1644,27 +2059,45 @@ function pathItem(p) {
     actions.className = 'path-browser-actions';
 
     const share = iconButton('Partager', ICONS.share, 'primary');
-    share.onclick = async () => {
-        try {
-            await navigator.clipboard.writeText(Shortcodes.shareUrl(normalized));
-            showToast('Lien de partage copié !', 'success');
-        } catch (e) {
-            showAlert(`Code : ${Shortcodes.encodePath(normalized)}`);
-        }
+    // LA MÊME FENÊTRE QUE LA BARRE D'OUTILS, et non un second chemin. Celui-ci
+    // copiait le lien sans le montrer, et retombait sur le code seul quand la
+    // copie échouait : deux comportements pour un geste qui n'en a qu'un.
+    share.onclick = () => {
+        import('./partagerParcours.js').then(({ ouvrirPartage }) => {
+            ouvrirPartage(normalized, { nom: p.name });
+        });
     };
 
-    const load = document.createElement('button');
-    load.className = 'btn-toggle glass-btn primary btn-toggle--sm';
-    load.textContent = 'Charger';
-    load.onclick = () => {
+    // ON OUVRE UN PARCOURS EN CLIQUANT DESSUS — comme un exercice du catalogue
+    // juste au-dessus, dans le même tiroir. Le bouton « Charger » disparait :
+    // il pesait soixante-dix pixels dans une colonne qui en fait trois cents,
+    // et il demandait de viser ce que la fiche entière offrait déjà.
+    //
+    // RIEN NE SE PERD EN OUVRANT. Le parcours en cours d'édition est enregistré
+    // à chaque modification — c'est ce que dit « Enregistré 14:32 » en haut. Un
+    // clic de trop se répare en rouvrant l'autre, et le tiroir est resté ouvert
+    // pour ça.
+    const ouvrir = () => {
         state.currentPathId = p.id;
         state.currentPath = normalizePath(p.data, p.name);
         selectedStepId = null;
         const input = document.getElementById('path-name-input');
         if (input) input.value = state.currentPath.name;
         renderTeacherPath();
-        document.getElementById('path-browser-modal').style.display = 'none';
+        marquerOuvert(p.id);
     };
+    row.onclick = (e) => {
+        // Le nom se renomme sur place et les boutons ont leur propre rôle :
+        // un clic qui les vise ne doit pas ouvrir le parcours par-dessus.
+        if (e.target.closest('.path-browser-name, .path-browser-actions')) return;
+        ouvrir();
+    };
+    row.tabIndex = 0;
+    row.onkeydown = (e) => {
+        if (e.target !== row) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ouvrir(); }
+    };
+    row.title = `Ouvrir « ${p.name} »`;
 
     const del = iconButton('Supprimer', ICONS.trash, 'danger');
     del.onclick = () => window.appConfirm('Suppression', 'Supprimer ce parcours définitivement ?', () => {
@@ -1672,10 +2105,22 @@ function pathItem(p) {
         renderPathBrowser();
     });
 
-    actions.append(share, load, del);
+    actions.append(share, del);
     row.append(info, actions);
+    // CELUI QU'ON EST EN TRAIN D'ÉDITER SE DISTINGUE DES AUTRES. Le tiroir
+    // reste ouvert à côté du parcours : sans repère, on ne sait plus lequel
+    // des cinquante noms de la liste est celui qu'on a sous les yeux à droite.
+    if (p.id === state.currentPathId) row.classList.add('path-browser-item--ouvert');
     return row;
 }
+
+/** Souligner le parcours ouvert, sans tout redessiner. */
+function marquerOuvert(id) {
+    document.querySelectorAll('#path-browser-list .path-browser-item').forEach(el => {
+        el.classList.toggle('path-browser-item--ouvert', el.dataset.parcours === id);
+    });
+}
+
 
 function dragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drop-target'); }
 function dragLeave(e) { e.currentTarget.classList.remove('drop-target'); }

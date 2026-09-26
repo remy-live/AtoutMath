@@ -45,8 +45,49 @@ require_once __DIR__ . '/lib/grading.php';
 require_once __DIR__ . '/lib/seance.php';
 require_once __DIR__ . '/lib/coffre.php';
 require_once __DIR__ . '/lib/eleves.php';
+require_once __DIR__ . '/lib/schema.php';
+// `lireReglage` / `ecrireReglage` : le magasin clé/valeur du site.
+require_once __DIR__ . '/lib/guichet.php';
 
 applyCors();
+
+// LA BASE SE MET À JOUR TOUTE SEULE, AU PREMIER APPEL APRÈS UN DÉPÔT.
+//
+// Elle ne le faisait pas : `migrer()` n'était appelé que par `install.php`,
+// `motdepasse.php` et les pages d'administration — jamais par l'API que
+// l'application utilise. Une mise à jour qui ajoutait une colonne laissait donc
+// la base en arrière, et la première requête qui nommait cette colonne partait
+// en erreur SQL. Le serveur répondait 500, et l'élève lisait « Connexion
+// impossible pour l'instant. Préviens ton professeur. » Rémy l'a eu en classe,
+// avec ses élèves devant lui.
+//
+// Le coût est d'une lecture d'une ligne par requête : voir
+// `migrerSiNecessaire()`, qui ne migre que si la version stockée a changé.
+//
+// SI LA MIGRATION ÉCHOUE, ON NE FAIT PAS TOMBER L'API. Une base sans droit
+// d'ALTER sur un hébergement bridé doit continuer à servir ce qu'elle sait
+// servir, plutôt que de refuser tout le monde à l'entrée.
+try { migrerSiNecessaire(); } catch (Throwable $t) { /* on sert quand même */ }
+
+// LA PURGE NE TOURNAIT QUE SI L'ON OUVRAIT L'ADMINISTRATION.
+//
+// `purgerSiNecessaire()` n'était appelée que depuis `admin/index.php`. Or
+// Rémy travaille désormais depuis l'espace professeur de l'application, qui
+// passe entièrement par ici : il pouvait conduire sa classe toute l'année
+// sans jamais déclencher l'effacement — pendant que la page Santé affichait
+// « conservation limitée à N jours ». Une promesse écrite à l'écran que le
+// code ne tenait pas.
+//
+// Le coût est nul : la fonction se garde elle-même par un témoin quotidien
+// (`api/.derniere-purge`) et rend la main aussitôt les autres fois. Et elle
+// ne doit jamais faire tomber l'API : effacer de vieux événements est moins
+// urgent que servir la classe qui est en train de travailler.
+//
+// CE QU'ELLE N'EFFACE TOUJOURS PAS : la table `students`, donc les prénoms.
+// Ce n'est pas un oubli à réparer en passant — c'est une politique à décider
+// (au bout de combien de temps un élève parti cesse-t-il d'exister ?), et
+// c'est à Rémy de la fixer, pas à moi.
+try { purgerSiNecessaire(); } catch (Throwable $t) { /* la classe passe avant */ }
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $base = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');
@@ -70,6 +111,12 @@ switch ($route) {
     case '/teacher/message': handleTeacherMessage(); break;
     case '/teacher/signup':  handleTeacherSignup(); break;
     case '/teacher/override': handleTeacherOverride(); break;
+    // LES RÉGLAGES DU SITE. En lecture, la route est PUBLIQUE — et il le faut :
+    // le mode libre décide de ce qu'un visiteur voit sur la porte d'entrée,
+    // c'est-à-dire avant qu'il ait le moindre jeton. En écriture, il faut être
+    // professeur.
+    case '/reglages':         handleReglages(); break;
+    case '/teacher/reglages': handleTeacherReglages(); break;
     case '/health':          respond(['ok' => true]); break;
     default:                 fail(404, 'not_found', 'Route inconnue : ' . $route);
 }
@@ -90,11 +137,23 @@ function handleJoin(): void
     $code = strtoupper(trim((string) ($body['classCode'] ?? '')));
     $name = trim((string) ($body['firstName'] ?? ''));
 
-    rateLimit('join_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 20);
+    // ON NE COMPTE PLUS PAR ADRESSE, ET C'EST UNE CORRECTION, PAS UN CONFORT.
+    //
+    // Une salle informatique sort par UNE adresse publique. À vingt entrées par
+    // minute, le vingt et unième élève d'une classe de trente était refusé — et
+    // le message lui disait qu'il avait fait trop d'essais, ce qui était faux :
+    // c'était son premier. Le professeur, lui, voyait un élève bloqué sans
+    // raison, et rien à l'écran ne pouvait le lui expliquer.
+    //
+    // Ce qu'on protège vraiment, c'est l'essai EN BOUCLE sur un seul code : on
+    // compte donc par code de classe. La borne par adresse reste, mais large —
+    // elle ne sert plus qu'à arrêter une machine devenue folle, pas une classe.
+    rateLimit('join_ip_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 300);
 
     if ($code === '' || $name === '') {
         fail(400, 'missing_fields', 'Code de classe et prénom obligatoires.');
     }
+    rateLimit('join_code_' . $code, 60);
     if (mb_strlen($name) > 80) {
         fail(400, 'name_too_long', 'Prénom trop long.');
     }
@@ -119,6 +178,34 @@ function handleJoin(): void
     // soit délivré à quelqu'un que le professeur vient d'écarter.
     if ($student && !empty($student['blocked'])) {
         fail(403, 'student_blocked', "Ton professeur a mis ton accès en pause. Préviens-le.");
+    }
+
+    // ── L'INSCRIPTION LIBRE EST FERMÉE PAR DÉFAUT ────────────────────────────
+    //
+    // RÉMY, en découvrant cet écran : « à quoi sert rejoindre ma classe ? »…
+    // puis « je pense qu'il faut le fermer, mais permettre la réouverture ».
+    //
+    // CETTE PORTE CRÉE DES ÉLÈVES. C'est ce qu'elle est faite pour faire, et
+    // c'est utile au professeur qui n'a pas de liste : il annonce un code au
+    // tableau et la classe se peuple. Mais quand la liste vient de Pronote,
+    // elle devient un piège. L'empreinte du prénom est tolérante — accents,
+    // casse et ordre des mots ne comptent pas, « Maëlle Nguyên » retrouve bien
+    // « NGUYÊN Maëlle » — mais le NOMBRE DE MOTS compte : la liste dit
+    // « BOSSE Cassandre », Cassandre tape « Cassandre », et voilà une seconde
+    // Cassandre, vierge de tout travail, à côté de la vraie.
+    //
+    // FERMÉE, LA PORTE NE CRÉE PLUS RIEN. Un élève déjà dans la liste peut
+    // encore entrer par là — il ne fabrique personne, et cela dépanne celui
+    // dont le billet est resté à la maison. C'est l'inscription qu'on ferme,
+    // pas la classe.
+    //
+    // Réglage de SITE, comme le catalogue en libre accès : même écran, même
+    // interrupteur, et un seul endroit à regarder pour savoir ce qui est
+    // ouvert.
+    if (!$student && lireReglage('site.inscriptionLibre', '0') !== '1') {
+        fail(403, 'inscription_fermee',
+            "Cette classe ne s'ouvre qu'avec le billet donné par ton professeur. "
+            . 'Demande-lui le tien.');
     }
 
     $token = newToken();
@@ -176,11 +263,16 @@ function handleLogin(): void
     $login = trim((string) ($body['login'] ?? ''));
     $code  = strtoupper(trim((string) ($body['code'] ?? '')));
 
-    rateLimit('login_eleve_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 30);
+    // MÊME RAISON QUE POUR `join` : trente élèves derrière une seule adresse,
+    // c'est une classe, pas une attaque. Le compte se fait par IDENTIFIANT —
+    // douze essais par minute sur un billet donné, ce qui laisse largement de
+    // quoi se tromper deux fois et ne laisse rien pour forcer quatre signes.
+    rateLimit('login_ip_' . ($_SERVER['REMOTE_ADDR'] ?? 'x'), 300);
 
     if ($login === '' || $code === '') {
         fail(400, 'missing_fields', 'Identifiant et code obligatoires.');
     }
+    rateLimit('login_eleve_' . mb_strtolower($login), 12);
 
     $stmt = db()->prepare(
         'SELECT s.*, c.name AS class_name, c.join_code, c.archived
@@ -354,6 +446,23 @@ function handleSession(): void
 {
     $student = requireStudent();
     rateLimit('session_' . $student['id'], 120);
+    // ET IL DIT CE QU'IL A SOUS LES YEUX, EN PASSANT.
+    //
+    // Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+    // exercice, car c'est créé de façon aléatoire. » Le relevé porte la graine,
+    // qui rend la question reproductible — et il voyage ICI, dans une requête
+    // qui partait le corps vide toutes les dix secondes. Aucune requête de plus
+    // pour une classe entière ; voir `js/core/ecran.js` pour ce qui a été refusé
+    // (un événement de journal par question, qui aurait mangé l'historique).
+    //
+    // ON N'ÉCRIT QUE SI LE CLIENT A PARLÉ. `array_key_exists`, et non `??` :
+    // une version ancienne de l'application n'envoie pas de champ `ecran` du
+    // tout, et effacer le relevé à chaque battement de la sienne reviendrait à
+    // ne jamais rien montrer d'un élève qui n'a pas encore rechargé sa page.
+    $corps = jsonBody();
+    if (array_key_exists('ecran', $corps)) {
+        noterLEcran((string) $student['id'], $corps['ecran']);
+    }
     respond(['session' => etatDeSeance($student)]);
 }
 
@@ -523,6 +632,171 @@ function handleTeacherAssign(): void
     $pathId = (string) ($body['pathId'] ?? '');
     $classId = $body['classId'] ?? null;
 
+    // LIRE LES SÉANCES D'UNE CLASSE — ce qu'on ne pouvait pas faire.
+    //
+    // Rémy : « quand je clique sur une classe, il faut pouvoir voir la liste
+    // des séances attitrées, je trouve que c'est un peu confus ». Il avait
+    // raison, et la raison était simple : on savait DONNER un parcours à une
+    // classe, on ne savait pas dire lesquels elle avait reçus. L'information
+    // était en base depuis le début, sans porte pour la lire.
+    //
+    // ON REND AUSSI CE QUE LES ÉLÈVES EN ONT FAIT — combien l'ont ouvert, et
+    // combien l'ont terminé. Une liste de séances sans cela est un carnet de
+    // textes ; avec, c'est un tableau de bord.
+    // L'AUTRE SENS : À QUI CE PARCOURS A-T-IL ÉTÉ DONNÉ ?
+    //
+    // Rémy, sur l'explorateur de parcours : « une flèche pour avoir plus
+    // d'info », et à la question « le contenu, ou les classes ? » — « les
+    // deux ». Le contenu, on l'a sous la main ; les classes, il fallait la
+    // route. C'est la même table lue par l'autre bout.
+    if (($body['action'] ?? '') === 'list' && $pathId !== '') {
+        $q = db()->prepare('SELECT id, name FROM paths WHERE id = ? AND teacher_id = ?');
+        $q->execute([$pathId, $teacher['id']]);
+        if (!$q->fetch()) fail(404, 'path_not_found', 'Parcours introuvable.');
+
+        $s = db()->prepare(
+            'SELECT a.id, a.class_id, a.due_at, a.created_at, c.name,
+                    (SELECT COUNT(*) FROM students st WHERE st.class_id = c.id) AS effectif
+               FROM assignments a JOIN classes c ON c.id = a.class_id
+              WHERE a.path_id = ? AND c.teacher_id = ?
+              ORDER BY a.created_at DESC'
+        );
+        $s->execute([$pathId, $teacher['id']]);
+        $lesClasses = array_map(fn ($a) => [
+            'id'       => $a['class_id'],
+            'nom'      => $a['name'],
+            'effectif' => (int) $a['effectif'],
+            'donneeLe' => $a['created_at'],
+            'pourLe'   => $a['due_at'],
+        ], $s->fetchAll());
+
+        // ET LES ÉLÈVES NOMMÉS, dans la même réponse.
+        //
+        // Rémy : « il faudrait pouvoir, en cliquant sur la classe, ne le donner
+        // qu'à certains élèves ». L'écran doit alors savoir QUI l'a déjà — et
+        // cette vérité est ici, pas dans le navigateur du professeur. Une
+        // seconde requête pour la moitié de la même question ferait deux
+        // réponses à tenir d'accord ; la question est une, la réponse aussi.
+        $e = db()->prepare(
+            'SELECT a.student_id, a.created_at, a.due_at, st.first_name, st.class_id
+               FROM assignments a
+               JOIN students st ON st.id = a.student_id
+               JOIN classes c ON c.id = st.class_id
+              WHERE a.path_id = ? AND c.teacher_id = ?
+              ORDER BY a.created_at DESC'
+        );
+        $e->execute([$pathId, $teacher['id']]);
+        respond(['classes' => $lesClasses, 'eleves' => array_map(fn ($x) => [
+            'id'       => $x['student_id'],
+            'nom'      => dechiffrer($x['first_name']),
+            'classeId' => $x['class_id'],
+            'donneeLe' => $x['created_at'],
+            'pourLe'   => $x['due_at'],
+        ], $e->fetchAll())]);
+    }
+
+    if (($body['action'] ?? '') === 'list') {
+        if ($classId === null || $classId === '') fail(400, 'no_class', 'Quelle classe ?');
+        $q = db()->prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?');
+        $q->execute([$classId, $teacher['id']]);
+        if (!$q->fetch()) fail(404, 'class_not_found', 'Classe introuvable.');
+
+        // LES SÉANCES DE LA CLASSE, ET CELLES DONNÉES À QUELQUES-UNS DE SES
+        // ÉLÈVES. Sans la seconde moitié, un travail donné à trois élèves
+        // n'apparaîtrait nulle part chez le professeur — exactement le genre de
+        // séance fantôme qu'on vient de passer la journée à supprimer.
+        $s = db()->prepare(
+            'SELECT a.id, a.path_id, a.due_at, a.created_at, a.student_id,
+                    p.name, p.updated_at, p.data, st.first_name
+               FROM assignments a
+               JOIN paths p ON p.id = a.path_id
+          LEFT JOIN students st ON st.id = a.student_id
+              WHERE a.class_id = ?
+                 OR a.student_id IN (SELECT id FROM students WHERE class_id = ?)
+              ORDER BY a.created_at DESC'
+        );
+        $s->execute([$classId, $classId]);
+
+        $seances = [];
+        foreach ($s->fetchAll() as $a) {
+            // LE PARCOURS EST RANGÉ ENTIER, ENVELOPPE COMPRISE.
+            //
+            // `handleTeacherPaths` enregistre l'objet reçu tel quel — donc
+            // `{ id, name, data: { steps… } }` — et non le seul parcours. Les
+            // étapes sont un niveau plus bas que là où on les cherche
+            // naturellement, et les lire au mauvais endroit donnait « 0 étape ·
+            // 0 question » sur des parcours qui en ont douze. On lit les deux
+            // formes plutôt que de parier sur une : le jour où l'enveloppe
+            // disparaît, cette ligne ne cassera pas.
+            $brut = json_decode((string) $a['data'], true) ?: [];
+            $parcours = is_array($brut['data'] ?? null) ? $brut['data'] : $brut;
+            $etapes = is_array($parcours['steps'] ?? null) ? $parcours['steps'] : [];
+            $seances[] = [
+                'id'       => $a['id'],
+                'pathId'   => $a['path_id'],
+                'nom'      => $a['name'],
+                // À QUI : null pour toute la classe, le prénom sinon. L'écran
+                // doit pouvoir dire « à Léa » plutôt que de laisser croire que
+                // toute la classe l'a reçu.
+                'pour'     => $a['student_id'] ? dechiffrer($a['first_name']) : null,
+                'eleveId'  => $a['student_id'] ?: null,
+                'donneeLe' => $a['created_at'],
+                'pourLe'   => $a['due_at'],
+                'etapes'   => count($etapes),
+                'questions' => array_sum(array_map(
+                    fn ($e) => (int) ($e['nbItems'] ?? 0), $etapes)),
+                'mode'     => $parcours['policy']['mode'] ?? 'entrainement',
+            ];
+        }
+        respond(['seances' => $seances]);
+    }
+
+    // RETIRER UNE SÉANCE — ce qu'on ne savait pas faire non plus.
+    //
+    // On savait donner, on ne savait pas reprendre : décocher une classe dans
+    // « À qui ce parcours est donné » effaçait la séance du navigateur du
+    // professeur et laissait l'assignation en base. Les élèves auraient
+    // continué de recevoir un travail que leur professeur croit avoir repris.
+    //
+    // ON N'EFFACE QUE L'ASSIGNATION, JAMAIS LE TRAVAIL. Le journal des élèves
+    // est ailleurs et n'est pas touché : la séance quitte leur liste, le bilan
+    // reste lisible.
+    if (($body['action'] ?? '') === 'retirer') {
+        if ($pathId === '') fail(400, 'no_path', 'Quel parcours ?');
+        $pourQui = (string) ($body['studentId'] ?? '');
+
+        // ON REPREND À QUI L'ON A DONNÉ, et pas plus. Rémy : « pour l'instant on
+        // ne peut donner une séance qu'à une classe, ni à un groupe ni à un
+        // élève spécifique ». Une fois qu'on peut donner à l'un, il faut
+        // pouvoir reprendre à l'un : retirer la séance de la classe entière
+        // parce qu'on décoche un élève serait le pire des malentendus.
+        if ($pourQui !== '') {
+            $q = db()->prepare(
+                'SELECT s.id FROM students s JOIN classes c ON c.id = s.class_id
+                 WHERE s.id = ? AND c.teacher_id = ?'
+            );
+            $q->execute([$pourQui, $teacher['id']]);
+            if (!$q->fetch()) fail(404, 'student_not_found', 'Élève introuvable.');
+
+            $d = db()->prepare('DELETE FROM assignments WHERE path_id = ? AND student_id = ?');
+            $d->execute([$pathId, $pourQui]);
+            respond(['ok' => true, 'retirees' => $d->rowCount()]);
+        }
+
+        if ($classId === null || $classId === '') fail(400, 'no_class', 'Quelle classe ?');
+        $q = db()->prepare('SELECT id FROM classes WHERE id = ? AND teacher_id = ?');
+        $q->execute([$classId, $teacher['id']]);
+        if (!$q->fetch()) fail(404, 'class_not_found', 'Classe introuvable.');
+
+        // RETIRER À LA CLASSE NE RETIRE PAS AUX ÉLÈVES NOMMÉS. Ce sont deux
+        // gestes distincts : « je ne le donne plus à toute la 4C » ne veut pas
+        // dire « j'enlève aussi le rattrapage de Léa ». On borne donc au
+        // `class_id`, et l'écran montre les deux séparément.
+        $d = db()->prepare('DELETE FROM assignments WHERE path_id = ? AND class_id = ?');
+        $d->execute([$pathId, $classId]);
+        respond(['ok' => true, 'retirees' => $d->rowCount()]);
+    }
+
     $stmt = db()->prepare('SELECT id FROM paths WHERE id = ? AND teacher_id = ?');
     $stmt->execute([$pathId, $teacher['id']]);
     if (!$stmt->fetch()) fail(404, 'path_not_found', 'Parcours introuvable.');
@@ -561,6 +835,38 @@ function handleTeacherAssign(): void
     // laisser croire qu'un travail a été donné.
     if (($classId === null || $classId === '') && ($studentId === null || $studentId === '')) {
         fail(400, 'no_target', 'Il faut désigner une classe ou un élève.');
+    }
+
+    // DONNER DEUX FOIS NE DONNE PAS DEUX FOIS.
+    //
+    // La case à cocher du panneau se décoche et se recoche ; chaque coche
+    // insérait une ligne de plus. L'élève recevait alors le même travail en
+    // deux exemplaires dans sa liste, et le professeur, en retirant, n'en
+    // enlevait qu'un — l'autre restait, invisible et actif.
+    //
+    // On met donc à jour l'existante plutôt que d'en ajouter une : c'est la
+    // même séance, avec peut-être un nouvel horaire.
+    //
+    // ET L'ON N'ÉCRIT PAS « class_id IS ? ». SQLite accepte `IS` avec un
+    // paramètre lié — c'est sa comparaison qui traite NULL comme une valeur
+    // ordinaire —, MySQL le refuse : son `IS` ne prend que TRUE, FALSE, NULL
+    // ou UNKNOWN. Cette API tourne sur les deux moteurs ; la requête serait
+    // passée verte dans tous les essais, qui sont en SQLite, et aurait échoué
+    // chez Rémy. On écrit donc les deux cas, où le NULL est écrit en dur.
+    if ($classId !== null && $classId !== '') {
+        $vue = db()->prepare(
+            'SELECT id FROM assignments WHERE path_id = ? AND class_id = ? AND student_id IS NULL');
+        $vue->execute([$pathId, $classId]);
+    } else {
+        $vue = db()->prepare(
+            'SELECT id FROM assignments WHERE path_id = ? AND student_id = ? AND class_id IS NULL');
+        $vue->execute([$pathId, $studentId]);
+    }
+    $deja = $vue->fetchColumn();
+    if ($deja !== false) {
+        db()->prepare('UPDATE assignments SET due_at = ? WHERE id = ?')
+            ->execute([$body['dueAt'] ?? null, $deja]);
+        respond(['ok' => true, 'deja' => true]);
     }
 
     db()->prepare('INSERT INTO assignments (id, path_id, class_id, student_id, due_at) VALUES (?, ?, ?, ?, ?)')
@@ -739,6 +1045,94 @@ function handleTeacherClass(): void
             ? 'Consigne retirée.' : 'Consigne affichée à toute la classe.']);
     }
 
+    // IMPOSER LA SÉANCE. Rémy : « est-ce qu'il ne serait pas possible que
+    // lorsque les élèves se connectent, j'impose la séance, comme cela ils
+    // n'ont rien à lancer ».
+    //
+    // ON VÉRIFIE QUE LE PARCOURS EST À NOUS. Sans cela, un identifiant de
+    // parcours suffirait à faire travailler la classe d'un collègue sur le
+    // sien — la même porte qu'on a fermée sur /teacher/assign, et elle doit
+    // être fermée ici aussi.
+    if ($action === 'imposer') {
+        $pathId = trim((string) ($body['pathId'] ?? ''));
+        if ($pathId === '') {
+            db()->prepare('UPDATE classes SET impose_path_id = NULL, impose_jusqu_a = NULL
+                           WHERE id = ?')->execute([$classe['id']]);
+            respond(['ok' => true, 'impose' => null, 'jusqua' => null,
+                     'dit' => 'La séance n\'est plus imposée : chacun choisit.']);
+        }
+        $q = db()->prepare('SELECT id, name FROM paths WHERE id = ? AND teacher_id = ?');
+        $q->execute([$pathId, $teacher['id']]);
+        $p = $q->fetch();
+        if (!$p) fail(404, 'path_not_found', 'Parcours introuvable.');
+        // ELLE S'ÉTEINT TOUTE SEULE À LA FIN DE LA JOURNÉE.
+        //
+        // Rémy : « si je ne clos pas une séance, à la maison l'élève aura
+        // toujours la séance en cours non ? » — oui, et sans fin. Une séance
+        // posée un mardi matin et oubliée s'ouvrait encore toute seule le
+        // samedi. Voir `finDeLaJourneeScolaire` : elle vaut jusqu'à trois
+        // heures du matin, pour ne pas se refermer au milieu d'une question
+        // chez l'élève qui finit à 23 h 50.
+        $jusqua = finDeLaJourneeScolaire();
+        db()->prepare('UPDATE classes SET impose_path_id = ?, impose_jusqu_a = ? WHERE id = ?')
+            ->execute([$pathId, $jusqua, $classe['id']]);
+        respond(['ok' => true, 'impose' => $pathId, 'jusqua' => $jusqua,
+                 'dit' => '« ' . $p['name'] . ' » s\'ouvre tout seul chez vos élèves '
+                        . 'jusqu\'à demain matin.']);
+    }
+
+    // LE COMPTE À REBOURS, ET SES DEUX ISSUES. Rémy : « pour le compte à
+    // rebours c'est pour terminer la séance ou mettre en pause (pour faire un
+    // peu de cours par exemple ou pour parler) ».
+    //
+    // ON ENREGISTRE L'INSTANT DE FIN, jamais une durée. Une durée commence à
+    // vieillir dès qu'elle est écrite ; un élève qui arrive en retard, ou dont
+    // l'appareil se réveille, doit voir le temps qui reste VRAIMENT — pas celui
+    // qui restait quand le professeur a cliqué.
+    if ($action === 'chrono') {
+        $minutes = (int) ($body['minutes'] ?? 0);
+        if ($minutes <= 0) {
+            db()->prepare('UPDATE classes SET chrono_fin = NULL, chrono_a_zero = NULL WHERE id = ?')
+                ->execute([$classe['id']]);
+            respond(['ok' => true, 'chrono' => null, 'dit' => 'Compte à rebours arrêté.']);
+        }
+        if ($minutes > 180) fail(400, 'trop_long', 'Trois heures au plus.');
+        $aZero = ($body['aZero'] ?? 'terminer') === 'pause' ? 'pause' : 'terminer';
+        $fin = time() + $minutes * 60;
+        db()->prepare('UPDATE classes SET chrono_fin = ?, chrono_a_zero = ? WHERE id = ?')
+            ->execute([$fin, $aZero, $classe['id']]);
+        respond(['ok' => true, 'chrono' => ['finAt' => $fin, 'aZero' => $aZero],
+                 'dit' => $minutes . ' min — à zéro, on ' .
+                     ($aZero === 'pause' ? 'met la classe en pause.' : 'termine la séance.')]);
+    }
+
+    // LE BAC À SABLE DE CEUX QUI ONT FINI.
+    //
+    // Rémy : « un élève qui a fini peut avoir une zone bac à sable avec des
+    // jeux ». Il est OUVERT par défaut : une fonction qu'il faut allumer pour
+    // la découvrir n'est jamais découverte. Ce geste-ci sert à le FERMER, pour
+    // les heures où celui qui a fini doit relire ou aider son voisin.
+    if ($action === 'bac') {
+        $ferme = !empty($body['ferme']);
+        // ET COMBIEN DE TEMPS IL DURE. Rémy : « un temps, réglé par vous ». Le
+        // compte part quand l'élève OUVRE le bac ; zéro veut dire « pas de
+        // limite », et c'est le défaut. On borne à deux heures : au-delà, le
+        // chiffre ne veut plus rien dire dans une heure de cours.
+        $minutes = array_key_exists('minutes', $body)
+            ? max(0, min(120, (int) $body['minutes'])) : null;
+        if ($minutes === null) {
+            db()->prepare('UPDATE classes SET bac_ferme = ? WHERE id = ?')
+                ->execute([$ferme ? 1 : 0, $classe['id']]);
+        } else {
+            db()->prepare('UPDATE classes SET bac_ferme = ?, bac_minutes = ? WHERE id = ?')
+                ->execute([$ferme ? 1 : 0, $minutes ?: null, $classe['id']]);
+        }
+        $dit = $ferme ? 'Bac à sable fermé.'
+            : ($minutes ? "Bac à sable ouvert, $minutes minutes par élève."
+                        : 'Bac à sable ouvert.');
+        respond(['ok' => true, 'ferme' => $ferme, 'minutes' => $minutes ?: 0, 'dit' => $dit]);
+    }
+
     // LES DEUX GESTES SANS RETOUR DEMANDENT LE MOT ÉCRIT, comme dans les pages
     // d'administration. Une fenêtre « êtes-vous sûr ? » se clique sans lire ;
     // taper EFFACER demande de s'arrêter une seconde, et c'est tout ce qu'on
@@ -845,6 +1239,22 @@ function handleTeacherRoster(): void
             'id' => $classe['id'], 'name' => $classe['name'],
             'joinCode' => $classe['join_code'], 'level' => $classe['level'],
             'locked' => (bool) $classe['locked'], 'notice' => $classe['notice'],
+            // LE MOMENT EN COURS, pour que l'écran s'ouvre sur ce qui est
+            // VRAIMENT posé — et non sur des champs vides qu'il faudrait
+            // deviner. Un écran de réglages qui ne montre pas l'état actuel
+            // fait reposer deux fois le même réglage.
+            // ON RELIT PAR LA MÊME PORTE QUE L'ÉLÈVE. Rendre la colonne brute
+            // ferait dire « en cours » à l'écran du professeur pour une séance
+            // que ses élèves ne reçoivent plus depuis ce matin.
+            'impose_path_id' => imposeEncoreValide($classe),
+            'impose_jusqu_a' => $classe['impose_jusqu_a'] ?? null,
+            'chrono_fin' => $classe['chrono_fin'] ?? null,
+            'chrono_a_zero' => $classe['chrono_a_zero'] ?? null,
+            'bac_ferme' => (bool) ($classe['bac_ferme'] ?? 0),
+            // Combien de temps dure le bac chez eux, en minutes. 0 = sans
+            // limite. L'écran doit l'afficher, sinon le professeur repose le
+            // même quart d'heure à chaque heure sans savoir s'il y est déjà.
+            'bac_minutes' => (int) ($classe['bac_minutes'] ?? 0),
         ],
         'eleves' => rosterLisible($classe['id']),
         // Un code proposé d'avance pour « le même pour toute la classe » : il
@@ -893,6 +1303,7 @@ function handleTeacherLive(): void
     $classe = classeDuProf($teacher, $body);
 
     $rangs = [];
+    $maintenant = time();
     foreach (elevesDeLaClasse($classe['id']) as $e) {
         $a = derniereActivite($e['id']);
         $rangs[] = [
@@ -905,11 +1316,28 @@ function handleTeacherLive(): void
             'justes' => $a['justes'],
             'total' => $a['total'],
             'quand' => $a['quand'],
+            // OÙ IL EN EST DE SA SÉANCE — calculé avec les mêmes règles que
+            // chez l'élève (api/lib/projections.php ↔ js/core/avancement.js),
+            // sans quoi les deux écrans diraient deux choses du même élève à la
+            // même seconde.
+            'avancement' => $a['avancement'],
+            // ET CE QU'IL A SOUS LES YEUX, À LA MINUTE. `null` dès que le relevé
+            // a passé trois minutes : le professeur préfère « il n'est sur aucun
+            // exercice » à une question d'il y a un quart d'heure, qui l'enverrait
+            // conseiller à côté. C'est la GRAINE qui compte le plus ici — elle
+            // rouvre la question chez lui, à l'identique.
+            'ecran' => ecranDeLEleve($e, $maintenant),
         ];
     }
+    // LE MOMENT EN COURS VOYAGE AVEC LE DIRECT, et c'est ce qui empêche
+    // l'alarme d'inactivité de sonner trente fois pendant que le professeur
+    // parle au tableau : en pause, personne ne répond — c'est le but.
+    $chronoFin = $classe['chrono_fin'] ?? null;
     respond([
         'classe' => ['id' => $classe['id'], 'name' => $classe['name'],
                      'locked' => (bool) $classe['locked'], 'notice' => $classe['notice']],
+        'chrono' => $chronoFin ? ['finAt' => (int) $chronoFin,
+                                  'aZero' => $classe['chrono_a_zero'] ?: 'terminer'] : null,
         // L'HEURE DU SERVEUR, ET NON CELLE DU NAVIGATEUR. « en ligne » se
         // décide en comparant deux instants ; s'ils viennent de deux horloges
         // différentes, une tablette mal réglée fait disparaître toute la classe.
@@ -944,6 +1372,7 @@ function handleTeacherMessage(): void
         respond(['messages' => array_map(fn ($m) => [
             'id' => $m['id'],
             'corps' => dechiffrer($m['body']),
+            'genre' => ($m['genre'] ?? '') === 'indice' ? 'indice' : 'mot',
             'pour' => $m['student_id'] ? dechiffrer($m['first_name']) : null,
             'lus' => (int) $m['lus'],
             'quand' => $m['created_at'],
@@ -953,10 +1382,24 @@ function handleTeacherMessage(): void
     $corps = trim((string) ($body['body'] ?? ''));
     if ($corps === '') fail(400, 'vide', 'Le mot est vide.');
     $pour = (string) ($body['studentId'] ?? '');
+    // MOT OU INDICE — deux façons d'arriver chez l'élève, pas deux tables. Le
+    // mot prend l'écran et demande un « J'ai lu » ; l'indice se pose à côté de
+    // la question sans rien interrompre. Tout le reste est identique, y compris
+    // l'accusé de lecture : le professeur veut savoir s'il a été vu.
+    $genre = ($body['genre'] ?? 'mot') === 'indice' ? 'indice' : 'mot';
 
     if ($pour === '') {
-        db()->prepare('INSERT INTO messages (id, class_id, body) VALUES (?, ?, ?)')
-            ->execute([uuidv4(), $classe['id'], chiffrer(mb_substr($corps, 0, 500))]);
+        // UN INDICE NE S'ENVOIE PAS À TOUTE LA CLASSE. Souffler la même chose à
+        // trente élèves dont vingt-cinq n'ont pas de difficulté, c'est leur
+        // donner la réponse — et le professeur qui voulait aider Léo aurait
+        // gâché l'exercice pour les autres. Ce geste-là s'appelle une consigne,
+        // et il existe déjà.
+        if ($genre === 'indice') {
+            fail(400, 'indice_classe',
+                'Un indice s\'adresse à un élève. Pour toute la classe, écrivez une consigne.');
+        }
+        db()->prepare('INSERT INTO messages (id, class_id, body, genre) VALUES (?, ?, ?, ?)')
+            ->execute([uuidv4(), $classe['id'], chiffrer(mb_substr($corps, 0, 500)), $genre]);
         respond(['ok' => true, 'dit' => 'Mot envoyé à toute la classe.']);
     }
 
@@ -966,9 +1409,10 @@ function handleTeacherMessage(): void
     $s->execute([$pour, $classe['id']]);
     $eleve = $s->fetch() ?: null;
     if (!$eleve) fail(404, 'student_not_found', 'Élève introuvable.');
-    db()->prepare('INSERT INTO messages (id, student_id, body) VALUES (?, ?, ?)')
-        ->execute([uuidv4(), $pour, chiffrer(mb_substr($corps, 0, 500))]);
-    respond(['ok' => true, 'dit' => 'Mot envoyé à ' . dechiffrer($eleve['first_name']) . '.']);
+    db()->prepare('INSERT INTO messages (id, student_id, body, genre) VALUES (?, ?, ?, ?)')
+        ->execute([uuidv4(), $pour, chiffrer(mb_substr($corps, 0, 500)), $genre]);
+    respond(['ok' => true, 'dit' => ($genre === 'indice' ? 'Indice soufflé à ' : 'Mot envoyé à ')
+        . dechiffrer($eleve['first_name']) . '.']);
 }
 
 /**
@@ -1163,6 +1607,78 @@ function handleTeacherSignup(): void
  * L'un ou l'autre vise TOUTE LA CLASSE ou UN SEUL ÉLÈVE — c'est la
  * différenciation, et c'est le cas courant : « toi, tu peux sauter celui-là ».
  */
+/**
+ * LES RÉGLAGES DU SITE, EN LECTURE — sans jeton, pour tout le monde.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * POURQUOI PUBLIQUE. Le mode libre décide de ce que montre la PORTE D'ENTRÉE :
+ * une quatrième porte « Explorer les exercices », ou non. Un visiteur qui
+ * arrive n'a aucun jeton — il n'en aura un qu'après être entré. Une route
+ * protégée ne pourrait donc jamais répondre à la seule question qu'on lui pose.
+ *
+ * CE QU'ELLE DIT, ET RIEN D'AUTRE. Un booléen. Elle ne révèle ni classe, ni
+ * élève, ni professeur : savoir que le catalogue est ouvert, c'est exactement ce
+ * qu'on apprend en regardant l'écran d'accueil.
+ */
+function handleReglages(): void
+{
+    respond(['reglages' => [
+        'modeLibre' => lireReglage('site.modeLibre', '0') === '1',
+        // L'INSCRIPTION LIBRE — « Rejoindre ma classe ». Publique pour la même
+        // raison que le mode libre : elle décide d'une PORTE de l'écran
+        // d'accueil, et un visiteur n'a pas encore de jeton pour la demander.
+        'inscriptionLibre' => lireReglage('site.inscriptionLibre', '0') === '1',
+    ]]);
+}
+
+/**
+ * LES RÉGLAGES DU SITE, EN ÉCRITURE — professeur exigé.
+ *
+ * Rémy : « le mode libre, mets-le en bouton dans ma zone prof (qui est admin
+ * aussi du coup) ».
+ *
+ * TOUT PROFESSEUR PEUT LE CHANGER, et il faut le dire. C'est un réglage de
+ * SITE, pas de classe : l'allumer ouvre le catalogue aux élèves de tout le
+ * monde. Sur ce serveur-ci il n'y a qu'un professeur, et c'est lui l'admin —
+ * mais le jour où il y en aura trois, ce bouton sera à trois mains. La vraie
+ * réponse serait un rôle « fondateur », qui existe déjà pour les professeurs
+ * (`vousEtesLeFondateur`) ; on ne l'impose pas ici parce que cela enfermerait
+ * dehors un Rémy qui aurait créé son compte en second.
+ */
+function handleTeacherReglages(): void
+{
+    // `requireTeacher()` ET PAS `estLeFondateur()` : C'EST UN CHOIX, PAS UN OUBLI.
+    //
+    // Ces deux réglages sont des réglages de SITE, pas de classe. N'importe
+    // quel professeur peut donc allumer `inscriptionLibre` pour tout le
+    // serveur — et allumée, quiconque connaît un code de classe crée un élève
+    // dedans, dans n'importe quelle classe.
+    //
+    // Un audit l'a signalé en septembre 2026 et la correction tient en une
+    // ligne. Rémy a tranché de ne pas la poser : « mes tests seront que pour
+    // moi et mes classes ». Un seul professeur sur ce serveur, donc aucun
+    // risque, et la friction — appeler le fondateur pour allumer un réglage —
+    // serait payée pour rien.
+    //
+    // CE QUI FAIT REVENIR LA QUESTION : le jour où `/teacher/signup` crée un
+    // SECOND professeur. La décision vaut pour une installation à un seul
+    // professeur, pas pour un établissement. Voir `docs/architecture.md` §11
+    // bis avant de la reprendre dans un sens ou dans l'autre.
+    requireTeacher();
+    $body = jsonBody();
+    if (array_key_exists('modeLibre', $body)) {
+        ecrireReglage('site.modeLibre', $body['modeLibre'] ? '1' : '0');
+    }
+    if (array_key_exists('inscriptionLibre', $body)) {
+        ecrireReglage('site.inscriptionLibre', $body['inscriptionLibre'] ? '1' : '0');
+    }
+    respond(['ok' => true, 'reglages' => [
+        'modeLibre' => lireReglage('site.modeLibre', '0') === '1',
+        'inscriptionLibre' => lireReglage('site.inscriptionLibre', '0') === '1',
+    ]]);
+}
+
 function handleTeacherOverride(): void
 {
     $teacher = requireTeacher();
@@ -1171,6 +1687,24 @@ function handleTeacherOverride(): void
     $action = (string) ($body['action'] ?? 'add');
 
     if ($action === 'cancel') {
+        // RETIRER TOUT UN GENRE, SANS AVOIR À NOMMER CHAQUE LIGNE.
+        //
+        // « Je retire la calculatrice » est UN geste de fin d'exercice, et il ne
+        // doit pas demander au professeur de retrouver les sept lignes qu'il a
+        // posées — une pour la classe, six pour des élèves. Sans identifiant,
+        // on supprime donc tout ce genre-là dans cette classe.
+        if (($body['overrideId'] ?? '') === '' && ($body['mode'] ?? '') !== '') {
+            $genre = (string) $body['mode'];
+            $q = db()->prepare(
+                'DELETE FROM overrides WHERE mode = ? AND (class_id = ? OR student_id IN
+                 (SELECT id FROM students WHERE class_id = ?))'
+            );
+            $q->execute([$genre, $classe['id'], $classe['id']]);
+            respond(['ok' => true, 'reglages' => overridesDeLaClasse($classe['id']),
+                     'dit' => $genre === 'calculatrice'
+                        ? 'La calculatrice est retirée.'
+                        : 'Réglages retirés.']);
+        }
         // On borne la suppression à NOS réglages : l'identifiant vient du
         // navigateur, donc de quelqu'un.
         $q = db()->prepare(
@@ -1186,26 +1720,72 @@ function handleTeacherOverride(): void
         respond(['reglages' => overridesDeLaClasse($classe['id'])]);
     }
 
+    // `*` N'EST PAS UN EXERCICE, C'EST « PARTOUT ».
+    //
+    // Rémy, sur la calculatrice : « pourrait-on autoriser dans les options
+    // l'utilisation de la calculatrice ou le permettre en direct à un groupe ou
+    // aux élèves », et il veut les deux portées — « les deux au choix ». Pour
+    // cet exercice-ci, on nomme l'exercice ; pour toute l'heure, `*`. La table
+    // n'a pas besoin d'une colonne de plus : elle dit déjà « ce réglage vaut
+    // pour cet exercice », et `*` est l'exercice « tous ».
     $exo = trim((string) ($body['exerciseId'] ?? ''));
     if ($exo === '') fail(400, 'bad_exercise', 'Il faut désigner un exercice.');
-    $mode = ($body['mode'] ?? 'saut') === 'retire' ? 'retire' : 'saut';
+    $mode = in_array($body['mode'] ?? 'saut', ['saut', 'retire', 'calculatrice'], true)
+        ? (string) $body['mode'] : 'saut';
+    if ($exo === '*' && $mode !== 'calculatrice') {
+        // Sauter TOUS les exercices, ce n'est pas un réglage, c'est annuler la
+        // séance — et cela se fait en la retirant, pas en la vidant.
+        fail(400, 'bad_exercise', 'Seule la calculatrice s\'autorise pour toute la séance.');
+    }
 
-    $studentId = (string) ($body['studentId'] ?? '');
-    if ($studentId !== '') {
+    // UN GESTE, PLUSIEURS ÉLÈVES. Rémy : « on pourrait le donner que pour
+    // certains élèves », « on pourrait sélectionner dans le direct ». Cocher
+    // quatre noms puis attendre quatre allers-retours, c'est quatre occasions
+    // qu'un seul échoue et que le professeur ne sache pas lesquels ont reçu.
+    $ids = $body['studentIds'] ?? null;
+    if (!is_array($ids)) $ids = [];
+    $un = (string) ($body['studentId'] ?? '');
+    if ($un !== '') $ids[] = $un;
+    $ids = array_values(array_unique(array_filter(array_map('strval', $ids), fn ($i) => $i !== '')));
+    if (count($ids) > 200) fail(400, 'too_many', 'Trop d\'élèves d\'un coup.');
+
+    foreach ($ids as $id) {
         $q = db()->prepare('SELECT id FROM students WHERE id = ? AND class_id = ?');
-        $q->execute([$studentId, $classe['id']]);
+        $q->execute([$id, $classe['id']]);
         if (!$q->fetch()) fail(404, 'student_not_found', 'Élève introuvable.');
     }
 
-    db()->prepare('INSERT INTO overrides (id, class_id, student_id, exercise_id, mode)
-                   VALUES (?, ?, ?, ?, ?)')
-        ->execute([uuidv4(), $studentId ? null : $classe['id'], $studentId ?: null,
-                   mb_substr($exo, 0, 80), $mode]);
+    // ON NE SUPERPOSE PAS DEUX FOIS LE MÊME RÉGLAGE : rappuyer sur le bouton
+    // ajoutait une ligne de plus, invisible, et « retirer » n'en enlevait
+    // qu'une. Le geste est donc idempotent.
+    $vide = db()->prepare(
+        'DELETE FROM overrides WHERE mode = ? AND exercise_id = ?
+           AND (' . ($ids ? 'student_id = ?' : 'class_id = ?') . ')'
+    );
 
+    $insert = db()->prepare('INSERT INTO overrides (id, class_id, student_id, exercise_id, mode)
+                             VALUES (?, ?, ?, ?, ?)');
+    $court = mb_substr($exo, 0, 80);
+    if ($ids) {
+        foreach ($ids as $id) {
+            $vide->execute([$mode, $court, $id]);
+            $insert->execute([uuidv4(), null, $id, $court, $mode]);
+        }
+    } else {
+        $vide->execute([$mode, $court, $classe['id']]);
+        $insert->execute([uuidv4(), $classe['id'], null, $court, $mode]);
+    }
+
+    $aQui = $ids ? (count($ids) === 1 ? 'à cet élève' : 'à ' . count($ids) . ' élèves')
+                 : 'à toute la classe';
     respond(['ok' => true, 'reglages' => overridesDeLaClasse($classe['id']),
              'dit' => $mode === 'retire'
                 ? "L'exercice « $exo » est retiré du parcours."
-                : "Le saut de « $exo » est autorisé : un bouton « passer » apparaîtra."]);
+                : ($mode === 'calculatrice'
+                    ? ($exo === '*'
+                        ? "La calculatrice est autorisée $aQui, pour toute la séance."
+                        : "La calculatrice est autorisée $aQui, sur « $exo ».")
+                    : "Le saut de « $exo » est autorisé : un bouton « passer » apparaîtra.")]);
 }
 
 /** Les réglages d'exercice en vigueur dans cette classe, du plus récent au plus ancien. */

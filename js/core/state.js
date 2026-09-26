@@ -27,6 +27,69 @@ import { conceptToSkill, deriveSkillFromLegacy } from './compat.js';
 
 let profileStore = null;
 
+// --- L'IDENTITÉ D'UNE QUESTION, ET LE NUMÉRO DE L'ESSAI ---------------------
+//
+// RÉMY : « comment juges-tu un exercice comme l'organigramme des quadrilatères
+// en mode évaluation ? Ma question générale est : est-ce que tous les
+// exercices sont vraiment évaluables ? »
+//
+// LE DÉFAUT QUE SA QUESTION A FAIT SORTIR. La règle par défaut d'une
+// évaluation est « juste DU PREMIER COUP » ; `grading.js` la lit dans
+// `attemptIndex`. Or cette ligne disait `a.attemptIndex || 0` — et MESURÉ,
+// 79 des 80 modules qui remontent des réponses ne le renseignent jamais. Les
+// exercices à générateur s'en tirent, parce qu'`itemSession` le compte pour
+// eux ; les 78 activités, non. Même élève, mêmes réponses (trois questions
+// ratées puis reprises sur dix) :
+//
+//     exercice à générateur   note 14/20 — premier essai : 7/10
+//     jeu autonome            note 20/20 — premier essai : 10/10
+//
+// Un élève qui se trompe puis se reprend était noté comme s'il avait tout eu
+// du premier coup, sur plus de la moitié du catalogue.
+//
+// ON LE COMPTE ICI, ET NON DANS CHAQUE JEU. C'est le seul entonnoir par lequel
+// passe toute tentative, de quelque origine qu'elle vienne : le corriger à
+// soixante-dix-huit endroits, c'est se donner soixante-dix-huit occasions de
+// l'oublier au prochain jeu écrit.
+//
+// DEUX NOTIONS QUI SE CONFONDAIENT, et c'est la racine :
+//   · REPRENDRE la même question — deuxième essai, la note doit le savoir ;
+//   · RETOMBER sur le même fait plus tard — « 7 × 8 » qui revient à la
+//     troisième minute de Tetris est une AUTRE question, pas une reprise.
+// `grading.js` groupait par énoncé, faute de mieux, et mélangeait les deux.
+// Chaque OCCURRENCE reçoit donc son identité ; les essais d'une occurrence la
+// partagent. La question courante est close dès qu'elle tombe juste.
+//
+// ON NE TOUCHE À RIEN QUAND L'APPELANT SAIT : un exercice à générateur donne
+// sa graine et son numéro d'essai, et ils sont justes. C'est l'absence qu'on
+// comble, pas la présence qu'on corrige.
+let questionEnCours = null;   // { cle, essais, graine }
+let occurrences = 0;
+
+function identifierLaQuestion(a, ctx) {
+    const graineDonnee = a.itemSeed || ctx.itemSeed || null;
+    if (graineDonnee) {
+        // L'appelant tient le compte : `itemSession` incrémente son
+        // `attemptIndex` à chaque essai et remet à zéro à la question suivante.
+        questionEnCours = null;
+        return { itemSeed: graineDonnee, attemptIndex: a.attemptIndex || 0 };
+    }
+    // L'ÉTAPE FAIT PARTIE DE LA CLEF : deux étapes du même jeu posent la même
+    // question sans que ce soit une reprise — et `grading.js` groupe sur la
+    // seule graine, sans regarder l'étape.
+    const cle = `${ctx.stepId || ''}|${a.questionText || ''}`;
+    if (!questionEnCours || questionEnCours.cle !== cle) {
+        questionEnCours = { cle, essais: 0, graine: `q${++occurrences}@${ctx.stepId || 'libre'}` };
+    }
+    const attemptIndex = a.attemptIndex || questionEnCours.essais;
+    questionEnCours.essais++;
+    const graine = questionEnCours.graine;
+    // JUSTE = CLOSE. La suivante, même si elle porte le même énoncé, est une
+    // nouvelle question et non un troisième essai.
+    if (a.correct) questionEnCours = null;
+    return { itemSeed: graine, attemptIndex };
+}
+
 // --- Mémoïsation des projections -------------------------------------------
 // Recalculer les projections à chaque lecture serait correct mais coûteux :
 // `state.score` est lu à chaque rendu. On invalide sur événement.
@@ -72,7 +135,7 @@ export const state = {
     // les classes qui avaient reçu n'importe quel autre parcours sans
     // identifiant. Ce n'était pas une mémoire de la dernière classe : c'était
     // deux inconnus qui se prenaient pour le même.
-    currentPath: { id: 'path_' + shortId(8), version: 2, name: 'Mon Parcours', policy: null, steps: [] },
+    currentPath: { id: 'path_' + shortId(8), version: 2, name: 'Nouveau parcours', policy: null, steps: [] },
     currentPathId: null,
     isTeacherMode: false,
     isMobileView: false,
@@ -226,6 +289,7 @@ export const state = {
      */
     recordAttempt(a) {
         const ctx = this.attemptContext || {};
+        const identite = identifierLaQuestion(a, ctx);
         const exo = this.activeExo;
         const payload = {
             runId: ctx.runId || null,
@@ -235,12 +299,12 @@ export const state = {
             generatorId: a.generatorId || ctx.generatorId || null,
             activityId: a.activityId || ctx.activityId || null,
             skillId: a.skillId || ctx.skillId || null,
-            itemSeed: a.itemSeed || ctx.itemSeed || null,
+            itemSeed: identite.itemSeed,
             questionText: a.questionText !== undefined ? a.questionText : (ctx.questionText || ''),
             given: a.given,
             expected: a.expected !== undefined ? a.expected : ctx.expected,
             correct: !!a.correct,
-            attemptIndex: a.attemptIndex || 0,
+            attemptIndex: identite.attemptIndex,
             msElapsed: a.msElapsed || (ctx.startedAt ? Date.now() - ctx.startedAt : 0),
             hintsUsed: a.hintsUsed || ctx.hintsUsed || 0,
             misconception: a.misconception || null,

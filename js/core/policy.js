@@ -72,6 +72,21 @@ export function defaultPolicy() {
         // travail, une séance d'atelier ou une révision libre se choisissent :
         // le réglage existe, il est simplement décoché.
         ordreLibre: false,
+        // COMMENT LA SÉANCE SE PRÉSENTE À L'ÉLÈVE.
+        //
+        // Rémy : « il faudrait pouvoir peut-être choisir la présentation »,
+        // puis « par séance, et par défaut celle façon duolingo ».
+        //
+        // Les trois habillages existaient déjà — carte des mondes, chemin
+        // d'étapes, liste classique — mais le choix appartenait au POSTE :
+        // rangé dans le navigateur de l'élève, invisible du professeur, et
+        // impossible à fixer pour une interrogation. Il vit maintenant dans la
+        // séance, à côté de l'ordre des étapes : les deux répondent à la même
+        // question, « comment l'élève la traverse ».
+        //
+        // `libre` rend la main à l'élève — c'est l'ancien comportement, et il
+        // reste utile pour un plan de travail qu'on refait toute l'année.
+        presentation: 'chemin',  // 'chemin' | 'mondes' | 'classique' | 'libre'
         allowRetryStep: true,   // réessayer une étape ratée
         pointsPerItem: 10,
         hintPenalty: 0.25,      // part de points perdue par aide utilisée
@@ -121,6 +136,21 @@ export function evaluationPolicy(overrides = {}) {
         // elle se déduit du réglage ci-dessus (voir `resolvePolicy`).
         showCorrection: true,
         adaptive: false,
+        // L'ORDRE EST LIBRE EN ÉVALUATION, ET C'EST L'INVERSE D'AILLEURS.
+        //
+        // Rémy : « en évaluation, penses-tu qu'il faille imposer un ordre ou on
+        // laisse au choix ? » — puis, la proposition faite : « 1 ordre libre ».
+        //
+        // Sur une feuille de papier, l'élève bloqué sur l'exercice 2 saute au 4
+        // sans même y penser, et personne n'a jamais appelé cela de la triche :
+        // c'est la première chose qu'on enseigne avant un brevet. L'ordre
+        // imposé, lui, transforme un blocage en zéro sur tout ce qui suit.
+        //
+        // En entraînement le défaut reste l'ordre imposé : là, l'ordre porte la
+        // progression, et « quatre exercices PUIS un jeu » n'a plus de règle si
+        // l'on peut commencer par la fin. Une évaluation n'a ni progression ni
+        // jeu de récompense — elle n'a que des points à aller chercher.
+        ordreLibre: true,
         // ON NE REFAIT PAS UNE INTERROGATION. Rémy : « en mode interrogation,
         // il ne faut pas proposer à la fin de refaire l'exercice ». Une
         // évaluation qu'on recommence jusqu'à ce qu'elle tombe juste ne mesure
@@ -190,7 +220,20 @@ export function describePolicy(policy) {
     const p = resolvePolicy(policy);
     if (isEvaluation(p)) {
         const note = p.grading && p.grading.scale ? ` Noté sur ${p.grading.scale}.` : '';
-        return `Évaluation : une seule réponse par question, sans aide.${note}`;
+        // UN DROIT QU'ON N'ANNONCE PAS EST UN DROIT QUE PERSONNE N'EXERCE.
+        // L'ordre libre est le défaut des évaluations depuis que Rémy l'a
+        // tranché ; l'élève bloqué sur le deuxième exercice ne le devinera pas
+        // tout seul, et c'est justement lui que la règle est censée sauver.
+        //
+        // SANS « TU ». J'avais d'abord écrit « Tu peux traiter les exercices
+        // dans l'ordre que tu veux » — et la capture du bandeau du professeur
+        // me l'a rendu en pleine figure : cette phrase s'affiche AUSSI chez
+        // lui, dans le résumé de la séance qu'il compose, où elle le tutoie.
+        // Les trois autres phrases de cette fonction sont impersonnelles
+        // depuis toujours, et pour cette raison-là exactement : elle sert deux
+        // lecteurs. L'élève comprend « l'ordre est libre » aussi bien.
+        const ordre = p.ordreLibre ? ' L\'ordre des exercices est libre.' : '';
+        return `Évaluation : une seule réponse par question, sans aide.${note}${ordre}`;
     }
     if (isApprentissage(p)) {
         return 'Apprentissage : leçon et robot pour découvrir, essais illimités, aides gratuites.';

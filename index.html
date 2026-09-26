@@ -58,18 +58,101 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=687">
-    <link rel="stylesheet" href="css/layout.css?v=687">
-    <link rel="stylesheet" href="css/ui.css?v=687">
-    <link rel="stylesheet" href="css/games.css?v=687">
-    <link rel="stylesheet" href="css/components.css?v=687">
-    <link rel="stylesheet" href="css/modules.css?v=687">
+    <link rel="stylesheet" href="css/base.css?v=835">
+    <link rel="stylesheet" href="css/layout.css?v=835">
+    <link rel="stylesheet" href="css/ui.css?v=835">
+    <link rel="stylesheet" href="css/games.css?v=835">
+    <link rel="stylesheet" href="css/components.css?v=835">
+    <link rel="stylesheet" href="css/modules.css?v=835">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
          stockage retombe en mémoire et que le PDF devienne impossible à
          fabriquer. Une application qui se veut utilisable hors ligne ne peut
          pas dépendre d'un serveur qu'elle ne maîtrise pas. -->
+    <!-- LE POSTE ÉLÈVE — DEUX RÔLES DANS LE MÊME NAVIGATEUR.
+
+         Rémy : « comment je pourrais simuler un mode élève et prof simultané,
+         pour être sûr que ça fonctionne ».
+
+         Le problème n'est pas l'affichage, c'est le RANGEMENT. Le jeton du
+         professeur, le rattachement de l'élève et le souvenir de la porte
+         vivent tous dans `localStorage`, qui est commun à tout un navigateur
+         pour un même site. Ouvrir un second onglet ne donne donc pas un second
+         élève : il donne le MÊME, et se connecter d'un côté déconnecte l'autre.
+
+         ON NE TOUCHE PAS AUX QUATRE-VINGT-SIX ENDROITS QUI ÉCRIVENT. Avec
+         `?poste=1`, on remplace ici l'objet `localStorage` lui-même par un
+         objet qui préfixe toutes les clefs. Les modules chargés ensuite —
+         tous, sans exception, y compris le voile d'avant-porte juste dessous —
+         croient parler au stockage ordinaire ; ils parlent à un tiroir à part.
+         C'était la seule façon d'obtenir une isolation COMPLÈTE sans réécrire
+         trente fichiers, donc sans risquer d'en oublier un.
+
+         `clear()` N'EFFACE QUE LE TIROIR. La barre de mise au point propose
+         « tout effacer » ; sans cette précaution, ce bouton actionné depuis le
+         poste élève supprimerait la session du professeur dans l'autre
+         fenêtre. Une fonction de démonstration ne doit pas pouvoir faire ça.
+
+         IndexedDB est traité juste après le chargement de localforage : le
+         journal de l'élève est déjà rangé par profil, mais deux profils
+         identiques se marcheraient dessus. On lui donne donc sa propre base. -->
+    <script>
+        (function () {
+            var p;
+            try { p = new URLSearchParams(location.search); } catch (e) { return; }
+            // PLUSIEURS POSTES À LA FOIS : `?poste=2`, `?poste=3`…
+            //
+            // Rémy : « un mode qui m'ouvre […] une fenêtre avec plusieurs
+            // iframes où ça ouvre des fenêtres d'élèves, pour tester […] que je
+            // puisse voir ce que cela donne pour plusieurs élèves. »
+            //
+            // Le préfixe était FIXE. Deux postes ouverts ensemble écrivaient
+            // donc dans le même tiroir : le second billet déconnectait le
+            // premier, et le mur aurait montré deux fois le même élève — ou
+            // pire, le travail de l'un sous le nom de l'autre. Le numéro entre
+            // dans le préfixe, et chaque case a le sien.
+            //
+            // LA PLACE 1 GARDE « poste: » SANS NUMÉRO. Ce n'est pas de la
+            // compatibilité — aucun élève n'utilise encore le logiciel — c'est
+            // que « Ouvrir son poste », le geste courant, n'a aucune raison de
+            // changer de tiroir le jour où l'on ajoute un mur.
+            var n = parseInt(p.get('poste'), 10);
+            if (!(n >= 1 && n <= 12)) { return; }
+            var vrai;
+            try {
+                vrai = window.localStorage;
+                vrai.getItem('__sonde__');
+            } catch (e) { return; }   // navigation privée verrouillée : on laisse tel quel
+
+            var P = n === 1 ? 'poste:' : 'poste' + n + ':';
+            var clefs = function () {
+                var l = [];
+                for (var i = 0; i < vrai.length; i++) {
+                    var k = vrai.key(i);
+                    if (k && k.indexOf(P) === 0) { l.push(k.slice(P.length)); }
+                }
+                return l;
+            };
+            var faux = {
+                getItem: function (c) { return vrai.getItem(P + c); },
+                setItem: function (c, v) { return vrai.setItem(P + c, v); },
+                removeItem: function (c) { return vrai.removeItem(P + c); },
+                key: function (i) { var l = clefs(); return i < l.length ? l[i] : null; },
+                clear: function () {
+                    clefs().forEach(function (c) { vrai.removeItem(P + c); });
+                }
+            };
+            Object.defineProperty(faux, 'length', { get: function () { return clefs().length; } });
+            try {
+                Object.defineProperty(window, 'localStorage', {
+                    value: faux, configurable: true, writable: false
+                });
+            } catch (e) { return; }
+            window.__posteEleve = true;
+            window.__postePlace = n;
+        })();
+    </script>
     <!-- UN CODE DANS L'URL : ON NE MONTRE PAS L'APPLICATION.
          Rémy : « quand il y a un code dans l'URL, il faut charger tout de
          suite le parcours et pas voir l'interface ». L'élève qui suit le lien
@@ -135,10 +218,114 @@
         })();
     </script>
     <script src="vendor/localforage/localforage.min.js"></script>
+    <script>
+        // LE JOURNAL DU POSTE ÉLÈVE DANS SA PROPRE BASE. Il faut que ce soit
+        // ici : `localforage.config()` n'a d'effet qu'avant le premier accès
+        // aux données, et les modules qui en font vivent plus bas.
+        if (window.__posteEleve && typeof localforage !== 'undefined') {
+            // Même raison qu'au-dessus, et même règle : IndexedDB est commune à
+            // l'origine, donc chaque place lui faut sa base.
+            try {
+                var b = window.__postePlace > 1 ? 'atoutmath-poste' + window.__postePlace
+                    : 'atoutmath-poste';
+                localforage.config({ name: b, storeName: 'poste' });
+            }
+            catch (e) { /* le préfixe de localStorage suffit déjà à séparer */ }
+        }
+    </script>
     <script src="vendor/confetti/confetti.browser.js"></script>
 </head>
 
 <body class="">
+
+    <!-- ══ CE QU'ON VOIT PENDANT QUE ÇA CHARGE ═══════════════════════════════
+
+         MESURÉ sur un téléphone, cache vide : premier pixel peint à 100 ms,
+         mais `document.body.innerText` encore VIDE à 200 ms ET à 600 ms —
+         un rectangle gris, rien dedans. Premier texte lisible entre 600 et
+         1 200 ms, application prête à 1 062 ms. Coût : 308 requêtes, 241
+         fichiers JavaScript, 4,8 Mo.
+
+         ET C'EST MESURÉ EN LOCAL. En salle informatique, sur le Wi-Fi d'un
+         collège partagé par vingt-cinq postes qui démarrent à la même minute,
+         308 requêtes ne coûtent pas une seconde. L'élève de 6ᵉ croit que « ça
+         ne marche pas », il recharge — et les 308 requêtes recommencent.
+
+         CE BLOC NE REND PAS L'APPLICATION PLUS RAPIDE. Il rend l'attente
+         compréhensible, ce qui n'est pas la même chose et se répare en une
+         demi-heure au lieu d'un chantier. Le vrai chantier — découper les 241
+         modules, dont la plupart sont des jeux qu'un élève de 6ᵉ n'ouvrira
+         jamais dans sa séance — reste à faire.
+
+         TOUT EST EN LIGNE, ET C'EST LA CONDITION. Le style est dans la balise,
+         pas dans `css/base.css` : une feuille externe est une requête de plus,
+         et c'est précisément celle qui n'est pas encore arrivée quand on a
+         besoin d'afficher ceci. Un écran de chargement qui attend son CSS ne
+         sert à rien. -->
+    <div id="chargement" role="status" aria-live="polite"
+         style="position:fixed; inset:0; z-index:9999; display:flex;
+                flex-direction:column; align-items:center; justify-content:center;
+                gap:18px; background:#f8fafc; color:#334155;
+                font:600 1rem/1.4 system-ui,-apple-system,'Segoe UI',sans-serif;
+                text-align:center; padding:24px;">
+        <div style="width:58px; height:58px; border-radius:16px; background:#4f46e5;
+                    display:flex; align-items:center; justify-content:center;
+                    color:#fff; font-size:1.6rem; font-weight:800;">+−</div>
+        <div>AtoutMath se charge…</div>
+        <!-- LA BARRE N'EST PAS UNE MESURE, ET ELLE NE PRÉTEND PAS L'ÊTRE : on
+             ne sait pas combien de temps il reste. Elle dit « ça travaille »,
+             ce qui est la seule chose vraie qu'on puisse dire ici. -->
+        <div style="width:150px; height:4px; border-radius:2px; background:#e2e8f0;
+                    overflow:hidden;">
+            <div id="chargement-barre"
+                 style="width:40%; height:100%; border-radius:2px; background:#4f46e5;"></div>
+        </div>
+        <style>
+            @keyframes chargementVaEtVient {
+                0%   { transform: translateX(-100%); }
+                100% { transform: translateX(250%); }
+            }
+            #chargement-barre { animation: chargementVaEtVient 1.1s ease-in-out infinite; }
+            /* Qui demande moins d'animation reçoit une barre immobile, pas une
+               absence de barre : le message reste le même. */
+            @media (prefers-reduced-motion: reduce) {
+                #chargement-barre { animation: none; width: 100%; opacity: .55; }
+            }
+            /* Le thème se lit avant que la moindre feuille n'arrive : sinon
+               l'élève qui travaille en sombre reçoit un éclair blanc en
+               pleine figure, puis l'application. */
+            @media (prefers-color-scheme: dark) {
+                #chargement { background: #0f172a !important; color: #cbd5e1 !important; }
+                #chargement div[style*="e2e8f0"] { background: #334155 !important; }
+            }
+        </style>
+    </div>
+    <script>
+        (function () {
+            var bloc = document.getElementById('chargement');
+            if (!bloc) { return; }
+            var parti = false;
+            function retirer() {
+                if (parti) { return; }
+                parti = true;
+                // ON LE RETIRE DU DOCUMENT, on ne le rend pas transparent.
+                // Un voile invisible reste un voile : il intercepte les clics,
+                // et l'application paraîtrait morte au lieu de paraître lente.
+                bloc.style.transition = 'opacity .18s';
+                bloc.style.opacity = '0';
+                bloc.style.pointerEvents = 'none';
+                setTimeout(function () { if (bloc.parentNode) { bloc.remove(); } }, 200);
+            }
+            document.addEventListener('atoutmath_pret', retirer);
+            if (window.__atoutmathPret === true) { retirer(); }
+            // LE FILET. Si un module tombe, `atoutmath_pret` ne vient jamais et
+            // l'élève reste devant un écran de chargement éternel — c'est pire
+            // que l'écran blanc qu'on répare, parce que celui-là ment. Au bout
+            // de quinze secondes on s'efface : il verra ce qui a pu se monter,
+            // et au pire la page telle qu'elle est.
+            setTimeout(retirer, 15000);
+        })();
+    </script>
 
     <!-- PALETTE D'OUTILS D'AUTEUR
          Flottante et déplaçable : en bandeau fixe en haut, elle recouvrait
@@ -316,7 +503,15 @@
         <nav id="top-navbar">
             <div class="nav-left">
                 <button id="btn-toggle-sidebar" class="btn-icon" aria-label="Ouvrir/fermer le menu latéral">☰</button>
-                <div class="title">AtoutMath</div>
+                <!-- LE TITRE RAMÈNE À L'ACCUEIL. Rémy : « quand on clique sur
+                     AtoutMath en haut à gauche, on revient sur le site ; là le
+                     titre ne fait rien sur aucune zone (même administrative) ».
+                     C'était un `<div>` : rien à cliquer, rien au clavier, rien
+                     pour un lecteur d'écran. Or un logo en haut à gauche est
+                     le seul repère que tout le monde connaît pour sortir d'un
+                     endroit où l'on s'est perdu. -->
+                <button type="button" id="btn-accueil" class="title"
+                        title="Revenir à l'accueil" aria-label="Revenir à l'accueil">AtoutMath</button>
                 <!-- QUI EST DEVANT L'ÉCRAN. Rémy : « sur l'interface prof ou et
                      élèves, j'ai l'impression que ce n'est pas clair ». Le
                      basculement existait, mais dans la palette de test — une
@@ -331,6 +526,51 @@
                         title="Basculer entre l'espace élève et l'espace professeur">
                     <span class="role-badge-point" aria-hidden="true"></span>
                     <span id="role-badge-nom">Élève</span>
+                </button>
+            </div>
+            <!-- LES PORTES DU PROFESSEUR, ENFIN VISIBLES.
+
+                 Rémy : « il faut que la zone classe, mon parcours, mes
+                 chapitres soient plus instinctives, plus simple, j'ai
+                 l'impression que l'on se perd un peu », puis, devant la
+                 capture de l'engrenage : « tu n'as rien changé ».
+
+                 TROIS DÉFAUTS, ET L'ENGRENAGE LES PORTAIT TOUS LES TROIS.
+
+                 Un engrenage veut dire « réglages ». Or « Mes classes » n'est
+                 pas un réglage : c'est la moitié du métier. L'y ranger disait
+                 à qui regarde que c'est accessoire.
+
+                 Une pièce de travail n'est pas un popup. « Mes classes » a
+                 trois onglets à lui tout seul ; un popup sert à UNE décision
+                 courte, et dès qu'il lui faut des onglets, c'est une pièce —
+                 qui a besoin d'une porte qu'on voit.
+
+                 Enfin les noms disaient l'OBJET, pas le MOMENT. « Mon
+                 Parcours », « Mes classes », « Mes chapitres » : trois
+                 possessifs. Un professeur ne se dit pas « je vais dans mes
+                 chapitres » ; il se dit « je prépare » ou « je fais cours ».
+
+                 Les chapitres, eux, ne sont pas un lieu : c'est une façon de
+                 TRIER le catalogue, et l'onglet « Chapitres » de la colonne de
+                 gauche le fait déjà. Il ne reste dans l'engrenage que de vrais
+                 réglages. -->
+            <div class="nav-center nav-center--prof teacher-only" role="tablist"
+                 aria-label="Les zones du professeur">
+                <button class="top-nav-tab active" id="top-btn-preparer" role="tab" aria-selected="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                    Préparer
+                </button>
+                <button class="top-nav-tab" id="top-btn-classe" role="tab" aria-selected="false">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    La classe
                 </button>
             </div>
             <div class="nav-center student-only">
@@ -371,9 +611,15 @@
                     Profil
                 </button>
             </div>
-            <div class="nav-center teacher-only nav-center-editing-label">
-                Mode Édition de Parcours
-            </div>
+            <!-- CE BANDEAU DISAIT UNE TROISIÈME FOIS OÙ L'ON ÉTAIT.
+                 L'écran de préparation portait trois noms à deux cents pixels
+                 les uns des autres : « Mode Édition de Parcours » ici,
+                 « Construction de Parcours » en en-tête, et le nom du parcours
+                 lui-même juste en dessous. Trois façons de dire la même chose,
+                 c'est trois occasions de se demander si ce sont trois endroits.
+                 L'onglet « Préparer » est déjà allumé dans cette même barre :
+                 il dit où l'on est, et il le dit avec le mot que le professeur
+                 a cliqué pour y venir. -->
             <div class="nav-right">
                 <!-- LE CARNET D'ERREURS, atteignable en un geste. Il existait,
                      mais enterré au fond du profil : une erreur relue trois
@@ -417,7 +663,15 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/>
                                 <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
-                            </svg>Changer de thème</button>
+                            </svg><span id="btn-theme-mot">Changer de thème</span></button>
+                    <!-- À CÔTÉ DES THÈMES, ET C'EST SA PLACE : c'est le même
+                         geste — « je règle comment l'écran me parle » — et
+                         l'élève qui en a besoin cherche là. -->
+                    <button id="btn-toggle-aere" class="nav-menu-item" role="menuitem" type="button" aria-pressed="false">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                                <polyline points="6 3 3 6 6 9"/><polyline points="6 21 3 18 6 15"/>
+                            </svg><span id="btn-aere-mot">Texte plus aéré</span></button>
                         <button id="btn-open-sync" class="nav-menu-item" role="menuitem" type="button">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.2 4.5 4.5 0 0 0 6.5 19z" />
@@ -428,6 +682,23 @@
                                 <polyline points="17 21 17 13 7 13 7 21" />
                                 <polyline points="7 3 7 8 15 8" />
                             </svg>Sauvegarder / Restaurer</button>
+                        <!-- SE DÉCONNECTER. Rémy : « Tu sais qu'on ne peut même pas
+                             se déconnecter ». C'était vrai : le jeton ne s'effaçait
+                             que lorsque le SERVEUR le refusait. Un professeur
+                             connecté sur l'ordinateur de la salle informatique y
+                             restait après la sonnerie, avec ses classes, sa liste
+                             et les codes de ses trente élèves ouverts au suivant.
+
+                             LE BOUTON NE S'AFFICHE QUE SI L'ON EST CONNECTÉ À
+                             QUELQUE CHOSE (voir ui/deconnexionUI.js) : proposer de
+                             se déconnecter à quelqu'un qui travaille hors ligne est
+                             une porte qui ne mène nulle part, et qui inquiète. -->
+                        <button id="btn-deconnexion" class="nav-menu-item nav-menu-item--sortie"
+                                role="menuitem" type="button" hidden>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+                            </svg><span id="btn-deconnexion-mot">Se déconnecter</span></button>
                     </div>
                 </div>
                 <!-- Plein écran : le même bouton existe dans l'en-tête de jeu.
@@ -458,7 +729,7 @@
                      le niveau, les XP et les badges qui l'expliquent ; le rendre
                      cliquable ne double pas cette page, il y conduit. -->
                 <button type="button" id="btn-score" class="score-display"
-                    title="Mes etoiles - voir mon profil" aria-label="Mes etoiles - voir mon profil">
+                    title="Mes points — voir mon profil" aria-label="Mes points — voir mon profil">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
@@ -478,13 +749,32 @@
                     <span class="drawer-grip" aria-hidden="true"></span>
                     <span class="drawer-label">📚 Catalogue d'exercices</span>
                 </button>
+                <!-- LES DEUX CONTENUS DU TIROIR.
+                     Rémy, après avoir vu l'explorateur en popup : « non, je
+                     voyais cela comme un explorateur intégré, un peu comme les
+                     exercices dans le tiroir de gauche ».
+                     Il a raison, et c'est la même matière : à gauche vit ce
+                     qu'on PIOCHE pour construire — des exercices, et des
+                     parcours déjà faits. Une popup est faite pour une décision
+                     qu'on prend et qu'on quitte ; retrouver un parcours parmi
+                     cinquante est un lieu où l'on reste. -->
+                <div id="tiroir-onglets" class="tiroir-onglets teacher-only" role="tablist"
+                     aria-label="Ce que montre le tiroir">
+                    <button type="button" class="tiroir-onglet tiroir-onglet--actif" role="tab"
+                            data-tiroir="exercices" aria-selected="true"
+                            aria-controls="tiroir-exercices">Exercices</button>
+                    <button type="button" class="tiroir-onglet" role="tab"
+                            data-tiroir="parcours" aria-selected="false"
+                            aria-controls="tiroir-parcours">Mes parcours</button>
+                </div>
+                <div id="tiroir-exercices" class="tiroir-panneau" role="tabpanel">
                 <div class="sidebar-top-controls">
                     <div class="btn-group desktop-controls">
                         <button class="btn-toggle active" id="desk-btn-drill" title="Présentation par Clic">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="7"></rect><path d="M12 6v4"></path></svg>
                             Clic
                         </button>
-                        <button id="desk-btn-acc" class="btn-toggle" title="Présentation Arborescence">
+                        <button id="desk-btn-acc" class="btn-toggle" title="Présentation en arborescence">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="9" width="6" height="6" rx="1"></rect><rect x="16" y="3" width="6" height="6" rx="1"></rect><rect x="16" y="15" width="6" height="6" rx="1"></rect><path d="M8 12h4V6h4"></path><path d="M12 12v6h4"></path></svg>
                             Arbre
                         </button>
@@ -497,6 +787,21 @@
                     <div id="cns-dropdown">
                         <!-- Checkboxes will be injected here -->
                     </div>
+                    </div>
+                    <!-- RANGER PAR DOMAINE OU PAR CHAPITRE. Le domaine dit de
+                         quoi parle l'exercice, le chapitre dit quand on s'en
+                         sert. Deux questions différentes, deux rangements du
+                         même catalogue.
+
+                         IL EST ICI, avec le choix du niveau, parce que ce sont
+                         DEUX FILTRES et qu'ils tiennent sur une ligne. Sur
+                         téléphone, chaque bande empilée coûte une ligne
+                         d'exercices : mesuré, il y avait 396 px de poignée,
+                         d'onglets et de filtres avant le premier exercice, pour
+                         quatre exercices visibles sur cent soixante-douze. -->
+                    <div id="rangement-bascule" class="rang-bascule" role="group" aria-label="Ranger le catalogue">
+                        <button type="button" class="rang-btn" data-rangement="domaine">Domaines</button>
+                        <button type="button" class="rang-btn" data-rangement="chapitre">Chapitres</button>
                     </div>
                 </div>
                 <!-- LA RECHERCHE. La loupe dit ce qu'est ce champ sans le
@@ -518,13 +823,15 @@
                     <ul id="sidebar-search-suggestions" class="rech-liste" role="listbox" hidden
                         aria-label="Suggestions d'exercices"></ul>
                 </div>
-                <!-- RANGER PAR DOMAINE OU PAR CHAPITRE. Le domaine dit de quoi
-                     parle l'exercice, le chapitre dit quand on s'en sert. Deux
-                     questions différentes, deux rangements du même catalogue. -->
-                <div id="rangement-bascule" class="rang-bascule" role="group" aria-label="Ranger le catalogue">
-                    <button type="button" class="rang-btn" data-rangement="domaine">Domaines</button>
-                    <button type="button" class="rang-btn" data-rangement="chapitre">Chapitres</button>
-                </div>
+                <!-- CE QUE LES FILTRES GARDENT, ET COMMENT LES DÉFAIRE.
+                     Rémy : « il faudrait des filtres pour afficher moins
+                     d'infos (surtout que puisque tu rajoutes un jeu par jour,
+                     ça va vite faire beaucoup) ». Mesuré : 172 exercices,
+                     9 076 px d'arbre déplié dans une fenêtre de 595 — quinze
+                     écrans de défilement. Cocher « 6ème » en retire 32, et
+                     RIEN à l'écran ne le disait. Un filtre qu'on a oublié
+                     d'enlever fait chercher un exercice qui est là. -->
+                <p id="catalogue-compte" class="cat-compte" role="status" aria-live="polite" hidden></p>
                 <div id="nav-container">
                     <div id="view-accordion"></div>
                     <div id="view-drilldown">
@@ -533,12 +840,36 @@
                         <div id="drill-content"></div>
                     </div>
                 </div>
+                </div>
+
+                <!-- L'EXPLORATEUR DE PARCOURS, DANS LE TIROIR.
+                     La barre de recherche et le tri restent en haut pendant que
+                     la liste défile : chercher sans devoir remonter est
+                     exactement le geste qu'on essaie d'épargner. -->
+                <div id="tiroir-parcours" class="tiroir-panneau teacher-only" role="tabpanel" hidden>
+                    <div class="pb-barre">
+                        <input type="search" id="pb-chercher" class="pb-chercher"
+                               placeholder="Chercher un parcours…" autocomplete="off"
+                               aria-label="Chercher un parcours par son nom">
+                        <div class="pb-tris" role="group" aria-label="Comment ranger">
+                            <button type="button" class="pb-tri pb-tri--actif" data-tri="recent">Récents</button>
+                            <button type="button" class="pb-tri" data-tri="dossiers">Dossiers</button>
+                            <button type="button" id="btn-new-folder" class="pb-tri pb-tri--neuf"
+                                    title="Nouveau dossier" aria-label="Nouveau dossier">+ Dossier</button>
+                        </div>
+                    </div>
+                    <div id="path-browser-list">
+                        <!-- Liste injectée en JS -->
+                    </div>
+                </div>
             </aside>
 
             <!-- ZONE PRINCIPALE -->
             <main id="main-area">
                 <header class="teacher-only">
-                    <div class="builder-header-label">Construction de Parcours
+                    <!-- Le nom de l'écran, et le seul : le même verbe que
+                         l'onglet qui y mène. -->
+                    <div class="builder-header-label">Préparer un parcours
                     </div>
                     <div class="flex-spacer"></div>
                 </header>
@@ -571,7 +902,7 @@
                         <div id="path-header-toggle" class="path-header-toggle">
                             <div class="path-header-left">
                                 <h2 class="path-header-title">
-                                    <input type="text" id="path-name-input" value="Mon Parcours" title="Cliquez pour modifier le nom" aria-label="Nom du parcours">
+                                    <input type="text" id="path-name-input" value="Nouveau parcours" title="Cliquez pour modifier le nom" aria-label="Nom du parcours">
                                     <span id="path-count-badge">0</span>
                                     <svg id="path-toggle-icon" class="collapsable-btn" xmlns="http://www.w3.org/2000/svg"
                                         width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -585,8 +916,47 @@
                                 <!-- Icônes SVG et non emojis : un emoji change de dessin
                                      d'un appareil à l'autre et jure avec le trait du reste
                                      de l'interface. Nom complet en infobulle. -->
+                                <!-- CHOISIR EN GRAND. Voir js/ui/choisirExercice.js :
+                                     la colonne de gauche reste le rangement qu'on
+                                     parcourt du coin de l'œil ; cette fenêtre sert au
+                                     moment où l'on CHERCHE, avec les titres entiers et
+                                     l'aperçu à côté. -->
+                                <button id="btn-choisir-exo" class="toolbar-icon-btn"
+                                        title="Choisir un exercice (titres entiers, aperçu)"
+                                        aria-label="Choisir un exercice">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                         viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                         aria-hidden="true">
+                                        <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.6-3.6" />
+                                        <path d="M11 8v6M8 11h6" />
+                                    </svg>
+                                </button>
                                 <button id="btn-new-path" class="toolbar-icon-btn" title="Nouveau parcours" aria-label="Nouveau parcours">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M15 2v5h5" /><path d="M12 11v6" /><path d="M9 14h6" /></svg>
+                                </button>
+                                <!-- LE « ? » QUI RAMÈNE LA LÉGENDE DES ICÔNES.
+                                     Rémy : « je mettrai éventuellement un petit ?
+                                     à côté de nouveau parcours pour voir justement
+                                     ce qui correspond aux icônes. »
+
+                                     C'est ce qui rend « J'ai compris » sans
+                                     regret : un bandeau d'aide qu'on ne peut plus
+                                     rappeler, on hésite à le fermer, et il finit
+                                     par traîner des mois. Ici on le ferme parce
+                                     qu'on sait où le retrouver.
+
+                                     IL EST ICI ET NON AU BOUT DE LA BARRE parce
+                                     que ses trois voisins — choisir, nouveau,
+                                     ouvrir — sont les seuls boutons TOUJOURS
+                                     visibles : les autres vont et viennent selon
+                                     que le parcours est vide. Un bouton d'aide
+                                     qui change de place est un bouton qu'on
+                                     cherche au lieu de le viser. -->
+                                <button id="btn-aide-outils" class="toolbar-icon-btn toolbar-icon-btn--outil"
+                                        title="Que font ces icônes ? — affiche leur nom sous la barre"
+                                        aria-label="Que font ces icônes ?" aria-expanded="false">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.2a2.5 2.5 0 0 1 4.7 1.1c0 1.7-2.3 2-2.3 3.4" /><path d="M12 17.1h.01" /></svg>
                                 </button>
                                 <button id="btn-open-path-browser" class="toolbar-icon-btn" title="Mes parcours enregistrés" aria-label="Mes parcours enregistrés">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" /></svg>
@@ -616,15 +986,25 @@
                                 <button id="btn-classes" class="toolbar-icon-btn toolbar-icon-btn--outil" hidden title="Mes classes : suivre les progressions" aria-label="Mes classes">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                                 </button>
-                                <button id="btn-chapitres" class="toolbar-icon-btn toolbar-icon-btn--outil" hidden title="Mes chapitres : ranger les exercices" aria-label="Mes chapitres">
+                                <button id="btn-chapitres" class="toolbar-icon-btn toolbar-icon-btn--outil" hidden title="Organiser mes chapitres : ranger les exercices" aria-label="Organiser mes chapitres">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" /><path d="M9 13h6" /><path d="M9 17h3" /></svg>
                                 </button>
                                 <button id="btn-game-access" class="toolbar-icon-btn toolbar-icon-btn--outil" hidden title="Accès aux jeux : exercices libres, réservés ou à débloquer" aria-label="Accès aux jeux">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                                 </button>
                             </div>
-                            <div class="builder-header-actions" onclick="event.stopPropagation()">
-                            <div class="preview-mode-group desktop-only" onclick="event.stopPropagation()">
+                            <!-- `data-ne-replie-pas` REMPLACE UN `onclick=` ÉCRIT DANS LA BALISE.
+                                 Ces deux conteneurs arrêtent la propagation du clic pour que
+                                 toucher un bouton de la barre ne replie pas l'en-tête du
+                                 parcours. C'est la seule chose qu'ils font.
+
+                                 MAIS UN GESTIONNAIRE ÉCRIT DANS UN ATTRIBUT EST DU JAVASCRIPT
+                                 DANS DU HTML, et c'est exactement ce qu'une CSP refuse —
+                                 pour une bonne raison : c'est la forme sous laquelle une
+                                 faille d'échappement s'exécute. Les deux seuls du fichier
+                                 passent donc en écouteur, posé par `ui/builder.js`. -->
+                            <div class="builder-header-actions" data-ne-replie-pas>
+                            <div class="preview-mode-group desktop-only" data-ne-replie-pas>
                                 <button id="preview-mode-mobile" class="preview-mode-btn active" title="Mobile" aria-label="Aperçu mobile">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2" ry="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></svg>
                                 </button>
@@ -640,8 +1020,8 @@
                             </button>
                             <div class="outils-enveloppe">
                                 <button id="btn-outils-prof" class="toolbar-icon-btn toolbar-icon-btn--outil"
-                                        title="Mes outils : classes, chapitres, accès aux jeux, données"
-                                        aria-label="Mes outils" aria-haspopup="true" aria-expanded="false">
+                                        title="Réglages : chapitres, accès aux jeux, données"
+                                        aria-label="Réglages" aria-haspopup="true" aria-expanded="false">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1.5" /><rect width="7" height="7" x="14" y="3" rx="1.5" /><rect width="7" height="7" x="3" y="14" rx="1.5" /><rect width="7" height="7" x="14" y="14" rx="1.5" /></svg>
                                 </button>
                                 <div id="outils-menu" class="outils-menu" hidden role="menu"></div>
@@ -655,8 +1035,24 @@
                             <button id="btn-test-sequence" class="toolbar-icon-btn toolbar-icon-btn--primary" title="Tester le parcours" aria-label="Tester le parcours">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                             </button>
-                            <button id="btn-donner-classe" class="toolbar-icon-btn toolbar-icon-btn--primary" title="À qui ce parcours est donné : mode de la séance, classes, élèves et bilans" aria-label="À qui ce parcours est donné">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+                            <!-- CE BOUTON A CESSÉ D'ÊTRE UN ENGRENAGE, et c'est la réponse à une
+                                 question de Rémy : « est-ce que dans la zone prof le mode et barème
+                                 ne fait pas doublon avec les paramètres ? »
+
+                                 MESURÉ : « Mode & barème » n'est pas inerte — un clic sur Évaluation
+                                 change cinq réglages d'un coup (mode, essais 2→3, aides coupées,
+                                 note sur 20, ordre libre) et le bandeau du parcours le redit aussitôt.
+                                 Le doublon n'était donc pas dans ce que font les deux panneaux : il
+                                 était dans leurs SIGNES. Un engrenage veut dire « réglages » partout,
+                                 et l'infobulle de celui-ci annonçait « mode de la séance » — alors
+                                 que le panneau qu'il ouvre ne contient aucun mode, seulement des
+                                 classes, des élèves et une date. Deux boutons voisins promettaient
+                                 le même réglage ; un seul l'avait.
+
+                                 L'avion en papier dit ce que le bouton fait vraiment : DONNER le
+                                 parcours à quelqu'un. Et l'infobulle dit où va le reste. -->
+                            <button id="btn-donner-classe" class="toolbar-icon-btn toolbar-icon-btn--primary" title="Donner ce parcours : classes, élèves, date d'ouverture et bilans. Le mode et le barème se règlent avec l'icône voisine." aria-label="Donner ce parcours à une classe">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
                             </button>
                             <button id="btn-generate-code" class="toolbar-icon-btn toolbar-icon-btn--success" title="Code Élève : lien à distribuer" aria-label="Code Élève : lien à distribuer">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
@@ -679,24 +1075,40 @@
                                 <span id="path-etat" class="path-etat path-etat--brouillon">Brouillon</span>
                             </div>
                             <div id="path-container">
-                                <div class="empty-msg">Ajoutez des
-                                    activités depuis le catalogue.</div>
+                                <!-- L'ÉTAT VIDE DONNE LE GESTE, il ne le décrit
+                                     pas. « Ajoutez des exercices depuis le
+                                     catalogue » désigne la colonne de gauche —
+                                     où, mesuré, 51 titres sur 172 sont rognés
+                                     dans 319 px. Le bouton ouvre la fenêtre de
+                                     choix, où ils tiennent. -->
+                                <div class="empty-msg">Ce parcours est vide.
+                                    <button type="button" id="btn-choisir-exo-vide"
+                                            class="btn-toggle active empty-cta">Choisir un exercice</button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Colonne de Droite (Propriétés) -->
-                    <div id="builder-properties-panel">
-                        <div class="empty-msg">
-                            Sélectionnez une activité pour en modifier les propriétés.</div>
-                    </div>
+                    <!-- LE VOLET DES PARAMÈTRES NE PREND LA PLACE QUE QUAND IL SERT.
+                         Rémy : « les paramètres ne servent pas tout le temps »,
+                         « on pourrait voir pour utiliser l'espace ». Il est
+                         donc vide au repos, et se remplit d'un clic sur une
+                         étape — en poussant le parcours sur grand écran, en le
+                         recouvrant sur tablette et téléphone. -->
+                    <div id="builder-properties-panel"></div>
                 </div>
 
                 <!-- PARCOURS (ELEVE) -->
                 <div id="view-path" class="student-only">
-                    <h1 class="view-heading-title">Mon Parcours Actuel</h1>
-                    <p class="view-heading-subtitle">Suis les étapes validées
-                        par ton professeur.</p>
+                    <!-- PAS D'EN-TÊTE STATIQUE ICI.
+                         « Mon Parcours Actuel » prenait le sixième d'un écran de
+                         téléphone pour répéter ce que la première section dit
+                         mieux : elle porte le NOM de la séance et la classe.
+                         Et le sous-titre devenait faux dès que l'élève ajoutait
+                         ses propres exercices, ou qu'aucune séance ne lui était
+                         donnée. Un titre qui ment coûte plus qu'un titre
+                         absent. -->
 
                     <div id="student-path-container" class="path-timeline">
                         <!-- Rendu dynamique par js/ui/pathView.js à partir de state.studentPath -->
@@ -714,11 +1126,18 @@
                              (« Voici un résumé de tes accomplissements ») n'a
                              pas été remplacé : il n'apprenait rien. -->
                         <div class="profile-header">
-                            <h1 class="view-heading-title">Mon Profil</h1>
+                            <h1 class="view-heading-title">Mon profil</h1>
                             <div class="profile-score-block">
                                 <div class="profile-score-emoji">⭐</div>
                                 <div id="profile-score-value" class="profile-score-value">0</div>
-                                <div class="profile-score-label">Points totaux</div>
+                                <!-- LE MÊME NOMBRE, LE MÊME MOT. Il s'appelait
+                                     « étoiles » dans la barre du haut, « Points
+                                     totaux » ici, et « XP » deux cartes plus
+                                     bas — alors que c'est LITTÉRALEMENT le même
+                                     nombre (le niveau vaut score ÷ 100). Un
+                                     élève qui en gagne ne peut pas savoir qu'il
+                                     regarde trois fois le même compteur. -->
+                                <div class="profile-score-label">Mes points</div>
                             </div>
                         </div>
 
@@ -726,17 +1145,17 @@
                         <div class="stats-grid">
                             <div class="stat-card">
                                 <span class="stat-label">Niveau
-                                    Actuel</span>
+                                    actuel</span>
                                 <span id="profile-level" class="stat-value stat-value--accent">Apprenti</span>
                             </div>
                             <div class="stat-card">
                                 <span class="stat-label">Exercices
-                                    Réussis</span>
+                                    réussis</span>
                                 <span id="profile-correct-count" class="stat-value stat-value--success">0</span>
                             </div>
                             <div class="stat-card">
                                 <span class="stat-label">Temps de
-                                    Jeu</span>
+                                    jeu</span>
                                 <span id="profile-time-value" class="stat-value stat-value--primary">0s</span>
                             </div>
                         </div>
@@ -836,6 +1255,28 @@
                     </div>
                 </div>
             </main>
+
+            <!-- LA CLASSE, EN VRAIE PAGE ET NON EN FENÊTRE.
+
+                 Rémy : « oui mais du coup tu es toujours sur des popup, tu
+                 n'avais pas dit que tu travaillais en onglet ? » — et il avait
+                 raison : j'avais déplacé la POIGNÉE sans déplacer la PIÈCE.
+                 La porte était nommée, mais elle ouvrait encore une fenêtre
+                 par-dessus l'atelier.
+
+                 Une fenêtre est faite pour UNE décision courte : on la lit, on
+                 tranche, elle disparaît. « La classe » a trois onglets, une
+                 liste de trente élèves, un direct qui bat toutes les dix
+                 secondes — on y passe l'heure. Ce n'est pas une fenêtre,
+                 c'est une pièce, et elle prend la place de l'atelier au lieu
+                 de se poser dessus.
+
+                 CE QUE ÇA CHANGE, ET QUI N'EST PAS QU'UNE AFFAIRE DE GOÛT : on
+                 ne se demande plus ce qu'il y a derrière, il n'y a plus de
+                 voile gris, la barre du haut reste atteignable, et revenir se
+                 fait par la porte « Préparer » — au même endroit que l'aller.
+                 Une fenêtre, elle, se ferme par une croix qu'il faut trouver. -->
+            <section id="zone-classe" hidden aria-label="La classe"></section>
         </div> <!-- END APP BODY -->
 
         <!-- NAVIGATION MOBILE BASSE -->
@@ -973,21 +1414,21 @@
                     </div>
 
                     <div id="preview-step-nav" class="preview-step-nav" hidden>
-                        <button id="btn-preview-prev" class="game-icon-btn" title="Activité précédente" aria-label="Activité précédente">
+                        <button id="btn-preview-prev" class="game-icon-btn" title="Exercice précédent" aria-label="Exercice précédent">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <polyline points="15 18 9 12 15 6" />
                             </svg>
                         </button>
                         <span id="preview-step-label" class="preview-step-label">1 / 1</span>
-                        <button id="btn-preview-next" class="game-icon-btn" title="Activité suivante" aria-label="Activité suivante">
+                        <button id="btn-preview-next" class="game-icon-btn" title="Exercice suivant" aria-label="Exercice suivant">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <polyline points="9 18 15 12 9 6" />
                             </svg>
                         </button>
                     </div>
-                    <button id="btn-toggle-demo" class="game-icon-btn game-icon-btn--warn" title="Mode Démonstration" aria-label="Mode Démonstration">
+                    <button id="btn-toggle-demo" class="game-icon-btn game-icon-btn--warn" title="Le robot joue l'exercice" aria-label="Le robot joue l'exercice">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <rect width="18" height="18" x="3" y="3" rx="2" />
@@ -1080,7 +1521,16 @@
                         <path d="M21 14h1" />
                         <path d="M12 3v-2" />
                     </svg>
-                    <span id="demo-banner-text">Mode Démonstration</span>
+                    <!-- LA MÊME CHOSE S'APPELAIT DE QUATRE FAÇONS : « Montre-moi »
+                         pour l'élève, « Mode démonstration » ici, « Aperçu » sur
+                         cette même bande quand elle s'ouvre, et « Le robot » dans
+                         l'Atelier. Le professeur ne pouvait pas deviner que les
+                         quatre désignent le petit personnage qui joue l'exercice
+                         tout seul. C'est « le robot », parce que c'est le nom que
+                         l'Atelier lui donne déjà et qu'il dit ce qu'on voit.
+                         « Montre-moi » reste : ce n'est pas le nom de la chose,
+                         c'est ce que l'élève lui DEMANDE. -->
+                    <span id="demo-banner-text">Le robot joue</span>
                     <span id="demo-banner-plus" aria-hidden="true">▾</span>
                     <button class="btn-stop-demo" id="btn-start-real-game">À moi de jouer !</button>
                 </div>
@@ -1099,10 +1549,10 @@
                     <button id="btn-close-code" class="modal-close-btn" aria-label="Fermer">&times;</button>
                 </div>
                 <p class="modal-text">Saisis le code donné par ton professeur
-                    pour lancer une activité spécifique. Les majuscules, les
+                    pour ouvrir son parcours. Les majuscules, les
                     espaces et les tirets n'ont pas d'importance. Si tu te
                     trompes d'une lettre, le code sera refusé&nbsp;: il ne
-                    t'ouvrira jamais une autre activité par erreur.</p>
+                    t'ouvrira jamais un autre parcours par erreur.</p>
 
                 <!-- L'EXEMPLE MONTRE LES DEUX FORMES, ET IL EST VRAI : « SUD »
                      ouvre vraiment le Sudoku. Un code d'exercice fait trois
@@ -1122,11 +1572,21 @@
             </div>
         </div>
 
-        <!-- MODALE HOVER PREVIEW DEMO -->
+        <!-- L'APERÇU DU CATALOGUE. Survoler = jeter un œil ; cliquer = épingler,
+             et la vignette devient alors jouable jusqu'à ce qu'on la ferme. -->
         <div id="hover-demo-box">
             <div class="hd-header">
                 <span id="hd-title">Titre</span>
-                <span class="hd-subtitle">Aperçu direct</span>
+                <span class="hd-subtitle">Cliquez pour épingler</span>
+                <button type="button" class="hd-fermer" aria-label="Fermer l'aperçu">&times;</button>
+            </div>
+            <!-- UN AUTRE TIRAGE, SANS REFERMER. Rémy : « on a que une question et
+                 on ne peut pas naviguer dans les questions ». Un générateur en
+                 tire des différentes ; juger l'exercice sur un seul tirage,
+                 c'est juger sur un échantillon de un. Le mot du bouton change
+                 selon l'exercice — voir `motDeRelance`. -->
+            <div class="hd-pied">
+                <button type="button" class="hd-rejouer" id="hd-rejouer">Question suivante</button>
             </div>
             <div class="hd-canvas-wrap">
                 <div id="hover-demo-canvas"></div>
@@ -1161,22 +1621,6 @@
 
     </div>
 
-        <!-- MODALE NAVIGATEUR DE PARCOURS -->
-        <div id="path-browser-modal" class="modal-overlay">
-            <div class="glass-panel modal-panel-md">
-                <div class="modal-header">
-                    <h3 class="modal-title">📂 Mes Parcours</h3>
-                    <div class="path-browser-header-actions">
-                        <button id="btn-new-folder" class="btn-toggle glass-btn">📁 Nouveau Dossier</button>
-                        <button id="btn-close-path-browser" class="modal-close-btn" aria-label="Fermer">&times;</button>
-                    </div>
-                </div>
-                <div id="path-browser-list">
-                    <!-- Liste injectée en JS -->
-                </div>
-            </div>
-        </div>
-
         <!-- MODALE MODE & BARÈME DU PARCOURS -->
         <div id="path-policy-modal" class="modal-overlay">
             <div class="glass-panel modal-panel-md">
@@ -1185,13 +1629,23 @@
                     <button id="btn-close-path-policy" class="modal-close-btn" aria-label="Fermer">&times;</button>
                 </div>
                 <p class="modal-text">Un même parcours peut servir d'entraînement ou d'évaluation notée :
-                    ce sont les mêmes activités, avec des règles différentes.</p>
+                    ce sont les mêmes exercices, avec des règles différentes.
+                    <b>Chaque changement s'applique tout de suite.</b></p>
                 <div id="builder-policy-content"></div>
                 <!-- Un vrai bouton de sortie : la croix en haut à droite ne se
                      voit pas sur un panneau qui remplit l'écran, et les
-                     réglages sont déjà enregistrés au fur et à mesure. -->
+                     réglages sont déjà enregistrés au fur et à mesure.
+                     IL S'APPELAIT « VALIDER », ET IL NE VALIDAIT RIEN. Chaque
+                     réglage s'applique au moment où on le touche — mesuré :
+                     cliquer « Évaluation » change la politique du parcours
+                     AVANT même qu'on referme. Les deux sorties, la croix et ce
+                     bouton, font donc exactement la même chose ; l'une le
+                     disait, l'autre promettait une décision à prendre. Un
+                     professeur qui cherche « Annuler » après avoir changé
+                     d'avis ne le trouve pas — et pour cause, il n'existe pas.
+                     On dit ce qui se passe. -->
                 <div class="modal-actions-center">
-                    <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="btn-valider-path-policy">Valider</button>
+                    <button type="button" class="btn-toggle glass-btn primary active modal-btn-flex" id="btn-valider-path-policy">Fermer</button>
                 </div>
             </div>
         </div>
@@ -1327,6 +1781,16 @@
         // Init theme immediately to prevent flash
         const savedTheme = localStorage.getItem('mathbox-theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
+
+        // LE TEXTE AÉRÉ SE POSE ICI AUSSI, ET POUR LA MÊME RAISON QUE LE THÈME :
+        // s'il attendait que `app.js` démarre, l'élève verrait d'abord la page
+        // serrée puis la verrait s'écarter sous ses yeux — un sursaut d'une
+        // seconde, précisément chez celui qui a du mal à suivre une ligne.
+        try {
+            if (localStorage.getItem('atoutmath-aere') === '1') {
+                document.documentElement.setAttribute('data-aere', '1');
+            }
+        } catch (e) { /* navigation privée : on reste au réglage par défaut */ }
 
         // PWA : enregistre le service worker (installation + hors ligne).
         // Silencieux en cas d'échec — l'application marche sans lui.

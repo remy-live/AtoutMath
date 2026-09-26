@@ -1,0 +1,327 @@
+// LES INTERVALLES DE SECONDE.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// RÉMY : « on va faire des exercices de seconde. Premier type : placer des
+// nombres dans le bon ensemble de nombres et aussi sur les intervalles, sur un
+// axe, avec inégalité, union et intersection, il faut toujours un support
+// visuel. » Puis : « il faut faire toutes les possibilités et aussi savoir
+// écrire avec les signes inférieurs ou égal et le bon côté du crochet. » Puis :
+// « oui rajoute le niveau seconde ».
+//
+// MESURÉ sur trente questions tirées (`tools/tmp/voirIntervalles.mjs`) :
+//
+//   huit sens de traduction sortent      oui, les huit
+//   questions sans aucun dessin          0 / 30
+//   bonnes réponses par question         exactement 1, partout
+//   propositions identiques              3 / 30  →  0 / 30 (voir plus bas)
+//
+// Et joué dans la vraie application (`tools/tmp/jouerIntervalles.mjs`) : le
+// panneau de réglages s'ouvre avec les deux paramètres, la question s'affiche
+// avec son axe, et les propositions-dessins font 324 × 55 — lisibles.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { TAGS } from '../js/data/tags.js';
+import { exercices } from '../js/data/catalog.js';
+import { codeCourt } from '../js/core/shortcodes.js';
+import {
+    intervalleTexte, inegaliteTexte, phraseTexte, axeHtml, intervallesGenerator
+} from '../js/core/generators/intervalles.js';
+import { makeRng } from '../js/core/ids.js';
+
+const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
+
+// ── LE NIVEAU ───────────────────────────────────────────────────────────────
+
+test('LE LYCÉE COMMENCE, ET IL EST EN DERNIER', () => {
+    assert.equal(TAGS.NIVEAU.SECONDE, '2nde');
+    const ordre = Object.values(TAGS.NIVEAU);
+    assert.equal(ordre[ordre.length - 1], '2nde');
+    assert.ok(ordre.indexOf('3ème') < ordre.indexOf('2nde'));
+});
+
+test('ET PLUS PERSONNE NE RANGE LES NIVEAUX AUTREMENT QUE DANS L\'ORDRE DE L\'ÉCOLE', () => {
+    // CE TEST GARDAIT UN FICHIER, PAS UNE RÈGLE — et c'est un audit qui me
+    // l'a appris. Il ne lisait que `ui/choisirExercice.js`, l'endroit où
+    // j'avais vu le défaut. `js/app.js:485` faisait le même mensonge par un
+    // autre chemin : `.sort()` tout court, qui range par code de caractère et
+    // donne « 2nde · 3ème · 4ème · 5ème · 6ème · CM2 » — le plus jeune niveau
+    // EN DERNIER, dans le menu qu'un professeur de collège lit tous les jours.
+    //
+    // On ne garde donc plus un fichier : on balaie tous ceux qui trient des
+    // niveaux, et l'on exige que le rang vienne de `TAGS.NIVEAU`.
+    const suspects = ['js/ui/choisirExercice.js', 'js/app.js', 'js/ui/navigation.js'];
+    suspects.forEach(f => {
+        const C = lire(f);
+        if (!/tags\.niveaux/.test(C)) return;        // ce fichier ne trie pas de niveaux
+        // Un tri de niveaux sans comparateur range par ordre alphabétique.
+        const nu = /niveaux[^;]*\]\s*\.sort\(\s*\)/s.test(C);
+        assert.ok(!nu, `${f} : des niveaux triés par ordre alphabétique`);
+        // Et la liste ne se recopie pas à la main.
+        assert.ok(!/'CM2',\s*'6ème'/.test(C), `${f} : la liste des niveaux est recopiée`);
+    });
+    // Le résultat, vérifié pour de vrai plutôt que par lecture du code :
+    // l'ordre officiel commence au plus jeune et finit au lycée.
+    const ordre = Object.values(TAGS.NIVEAU);
+    assert.equal(ordre[0], 'CM2');
+    assert.equal(ordre[ordre.length - 1], '2nde');
+    const alphabetique = [...ordre].sort();
+    assert.notDeepEqual(ordre, alphabetique,
+        'si les deux ordres coïncidaient, ce test ne prouverait rien');
+});
+
+test('ET AUCUN ÉCRAN N\'ANNONCE UN NOMBRE D\'EXERCICES ÉCRIT À LA MAIN', () => {
+    // « les 172 exercices », dans deux phrases de l'espace classes. Le
+    // catalogue en contient 178 depuis qu'on y a mis la Seconde. Un nombre
+    // écrit à la main devient faux le jour où l'on ajoute quelque chose, et
+    // personne ne s'en aperçoit : aucun test ne lit une phrase.
+    // ON LIT CE QUI ARRIVE À L'ÉCRAN, PAS LES COMMENTAIRES. Ma première
+    // version lisait le fichier entier et tombait sur la phrase où j'explique
+    // justement la correction — un test qui accuse son propre correctif.
+    const sansCommentaires = (C) => C
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .split('\n').map(l => l.replace(/^\s*\/\/.*$/, '')).join('\n');
+    const ecrans = ['js/ui/espaceClasses.js', 'js/ui/choisirExercice.js',
+        'js/ui/navigation.js', 'js/app.js'];
+    ecrans.forEach(f => {
+        const m = /(\d{3})\s+exercices/.exec(sansCommentaires(lire(f)));
+        assert.equal(m, null, `${f} : « ${m && m[0]} » écrit en dur`);
+    });
+});
+
+test('LES TROIS EXERCICES SONT AU CATALOGUE, AVEC LEUR CODE DICTABLE', () => {
+    // CE TEST FIGEAIT LE NOMBRE D'EXERCICES DE SECONDE, et il est tombé le
+    // jour où l'on a ajouté la factorisation — alors que rien de ce qu'il
+    // protège n'avait bougé. Il gardait un total, pas une règle : le total
+    // change à chaque chapitre ajouté, et le faire changer dans un test ne
+    // vérifie rien du tout.
+    //
+    // Ce qui compte, et qui est vérifié ici : le chapitre des intervalles a
+    // bien ses six exercices, ils sont tous dans le bon chapitre, et TOUS les
+    // exercices de Seconde — celui-ci comme les suivants — portent un code
+    // qui se dicte.
+    const seconde = exercices.filter(e => (e.tags.niveaux || []).includes('2nde'));
+    const miens = seconde.filter(e => e.tags.chemin[1] === 'Ensembles et intervalles');
+    assert.equal(miens.length, 6);
+    seconde.forEach(e => {
+        // PAS DE I, PAS DE O, PAS DE Q : ces codes se DICTENT en classe.
+        // J'avais écrit IV, IC, ID — silencieusement invalides : la lettre de
+        // contrôle rend null, `codeCourt` rend la chaîne vide, et les trois
+        // exercices « partageaient » ce vide.
+        const c = codeCourt(e.id);
+        assert.ok(c.length === 3, `${e.id} : code « ${c} »`);
+        assert.ok(!/[IOQ]/.test(c), `${e.id} : ${c} contient une lettre qui s'entend mal`);
+    });
+});
+
+// ── LES TROIS ÉCRITURES ─────────────────────────────────────────────────────
+
+test('LES CROCHETS SONT DU BON CÔTÉ — C\'EST LA DEMANDE', () => {
+    assert.equal(intervalleTexte({ a: 2, b: 5, ea: true, eb: false }), '[2 ; 5[');
+    assert.equal(intervalleTexte({ a: 2, b: 5, ea: false, eb: true }), ']2 ; 5]');
+    assert.equal(intervalleTexte({ a: 2, b: 5, ea: true, eb: true }), '[2 ; 5]');
+    assert.equal(intervalleTexte({ a: 2, b: 5, ea: false, eb: false }), ']2 ; 5[');
+});
+
+test('ET LE CROCHET DE L\'INFINI EST TOUJOURS OUVERT', () => {
+    // La seule règle du chapitre qui ne souffre aucune exception.
+    assert.equal(intervalleTexte({ a: null, b: 3, ea: false, eb: true }), ']−∞ ; 3]');
+    assert.equal(intervalleTexte({ a: 0, b: null, ea: true, eb: false }), '[0 ; +∞[');
+    // Jamais de crochet fermé du côté de l'infini, quoi qu'on lui passe.
+    assert.ok(!/\[−∞/.test(intervalleTexte({ a: null, b: 3, ea: true, eb: true })));
+    assert.ok(!/∞\]/.test(intervalleTexte({ a: 0, b: null, ea: true, eb: true })));
+});
+
+test('« INFÉRIEUR OU ÉGAL » S\'ÉCRIT ⩽, ET IL PREND LA BORNE', () => {
+    // Rémy : « savoir écrire avec les signes inférieurs ou égal ». Et c'est le
+    // ⩽ du programme français, pas le ≤ anglo-saxon.
+    assert.equal(inegaliteTexte({ a: 2, b: 5, ea: true, eb: false }), '2 ⩽ x < 5');
+    assert.equal(inegaliteTexte({ a: 2, b: 5, ea: false, eb: true }), '2 < x ⩽ 5');
+    assert.equal(inegaliteTexte({ a: null, b: 3, ea: false, eb: true }), 'x ⩽ 3');
+    assert.equal(inegaliteTexte({ a: null, b: 3, ea: false, eb: false }), 'x < 3');
+    assert.equal(inegaliteTexte({ a: 0, b: null, ea: true, eb: false }), 'x ⩾ 0');
+    assert.equal(inegaliteTexte({ a: 0, b: null, ea: false, eb: false }), 'x > 0');
+});
+
+test('LE SIGNE MOINS EST UN SIGNE MOINS, PAS UN TRAIT D\'UNION', () => {
+    // `-3` (U+002D) et `−3` (U+2212) ne sont pas le même caractère. Ce module
+    // écrivait déjà `]−∞` avec le vrai moins, et `[-3 ; 1]` avec celui du
+    // clavier : deux signes moins dans la même ligne. Et la liste des
+    // ensembles de nombres, juste à côté dans le chapitre, écrit `−18/3`.
+    assert.equal(intervalleTexte({ a: -3, b: 1, ea: true, eb: true }), '[−3 ; 1]');
+    assert.equal(inegaliteTexte({ a: null, b: -2, ea: false, eb: true }), 'x ⩽ −2');
+    assert.ok(!/\u002D/.test(intervalleTexte({ a: -6, b: -1, ea: false, eb: false })));
+    // Et jusque sous la droite graduée — c'est là qu'on les compare.
+    assert.ok(!/>-\d/.test(axeHtml([{ a: -4, b: 2, ea: true, eb: false }])));
+});
+
+test('LA PHRASE DU MANUEL DIT « INCLUS » OU « EXCLU »', () => {
+    assert.equal(phraseTexte({ a: -5, b: 7, ea: false, eb: true }),
+        'x est un réel compris entre −5 exclu et 7 inclus');
+    assert.equal(phraseTexte({ a: null, b: 2, ea: false, eb: false }),
+        'x est un réel strictement inférieur à 2');
+});
+
+// ── LE DESSIN ───────────────────────────────────────────────────────────────
+
+test('LE CROCHET FERMÉ REGARDE VERS L\'INTÉRIEUR, L\'OUVERT LUI TOURNE LE DOS', () => {
+    // C'est le cœur du dessin, et ce qui ne se lit pas dans une capture.
+    // Un crochet fermé à GAUCHE a ses bras vers la DROITE (dx positif) ;
+    // ouvert, vers la gauche. On lit les tracés.
+    const ferme = axeHtml([{ a: 2, b: 5, ea: true, eb: false }]);
+    const ouvert = axeHtml([{ a: 2, b: 5, ea: false, eb: false }]);
+    assert.notEqual(ferme, ouvert);
+    // Les bras mesurent neuf unités — mesuré à l'écran, six ne se distinguait
+    // pas entre deux propositions voisines. La HAUTEUR du crochet, elle, a
+    // baissé depuis (elle mordait sur les nombres, voir `CROCHET`) ; la
+    // longueur des bras, non, et c'est elle que ce test garde.
+    const src = lire('js/core/generators/intervalles.js');
+    assert.match(src, /const CROCHET = \{ haut: \d+(\.\d+)?, bras: 9 \}/,
+        'les bras du crochet ne mesurent plus neuf : deux propositions qui ne '
+        + 'diffèrent que par le sens du crochet vont redevenir indiscernables');
+    assert.match(src, /const d = ferme \? sens \* CROCHET\.bras : -sens \* CROCHET\.bras;/,
+        'le sens du crochet ne se lit plus dans le tracé');
+});
+
+test('UNE DEMI-DROITE PORTE UNE FLÈCHE, PAS UN CROCHET', () => {
+    const versLaDroite = axeHtml([{ a: 1, b: null, ea: true, eb: false }]);
+    assert.match(versLaDroite, /<svg/);
+    // La flèche de l'intervalle, au bout : c'est ce qui dit « ça continue ».
+    assert.ok((versLaDroite.match(/<path/g) || []).length > 5);
+});
+
+// ── LES QUESTIONS ───────────────────────────────────────────────────────────
+
+const tirer = (n, params = { sens: 'toutes', forme: 'les-deux' }) =>
+    Array.from({ length: n }, (_, i) =>
+        intervallesGenerator.generate(params, { rng: makeRng(2000 + i) }));
+
+test('AUCUNE QUESTION SANS SUPPORT VISUEL — LA CONTRAINTE DE RÉMY', () => {
+    // « il faut toujours un support visuel ». Quand la question PART de l'axe
+    // il est dans l'énoncé ; quand elle y ARRIVE, les propositions sont des
+    // axes. MESURÉ : 0 question sur 30 sans le moindre dessin.
+    tirer(30).forEach(it => {
+        const tout = (it.prompt.html || '') + it.choices.map(c => c.label).join('');
+        assert.match(tout, /<svg/, `${it.meta.de} → ${it.meta.vers} : pas de dessin`);
+    });
+});
+
+test('TOUTES LES TRADUCTIONS SORTENT', () => {
+    // « il faut faire toutes les possibilités ».
+    const vus = new Set(tirer(60).map(it => `${it.meta.de}→${it.meta.vers}`));
+    ['inegalite→intervalle', 'inegalite→axe', 'intervalle→inegalite',
+        'intervalle→axe', 'axe→intervalle', 'axe→inegalite',
+        'phrase→intervalle', 'phrase→axe'].forEach(s =>
+        assert.ok(vus.has(s), `jamais vu : ${s}`));
+});
+
+test('UNE SEULE BONNE RÉPONSE, ET AUCUNE PROPOSITION EN DOUBLE', () => {
+    // MESURÉ : 3 questions sur 30 portaient DEUX PROPOSITIONS IDENTIQUES, dont
+    // l'une marquée fausse. Toujours le même cas — une demi-droite dont on
+    // demande l'inégalité : la faute « infini fermé » change l'écriture de
+    // l'intervalle mais PAS celle de l'inégalité, `x ⩽ 3` des deux côtés.
+    // Comparer les objets ne pouvait pas le voir ; on compare l'étiquette.
+    tirer(60).forEach(it => {
+        assert.equal(it.choices.filter(c => c.correct).length, 1);
+        const vues = it.choices.map(c => c.label);
+        assert.equal(new Set(vues).size, vues.length,
+            `${it.meta.de} → ${it.meta.vers} : deux propositions identiques`);
+    });
+});
+
+test('CHAQUE LEURRE DIT QUELLE FAUTE IL EST', () => {
+    // Un « faux » sans diagnostic n'apprend rien. Les quatre fautes réelles :
+    // crochet à l'envers, ouvert pour fermé, bornes échangées, infini fermé.
+    tirer(30).forEach(it => {
+        it.choices.filter(c => !c.correct).forEach(c =>
+            assert.ok(c.why && c.why.length > 20,
+                `${it.meta.de} → ${it.meta.vers} : un leurre sans explication`));
+    });
+});
+
+test('LE RÉGLAGE « DEMI-DROITES » NE SERT QUE DES DEMI-DROITES', () => {
+    tirer(20, { sens: 'toutes', forme: 'demi' }).forEach(it => {
+        assert.match(it.explanation, /infini n'est pas un nombre/);
+    });
+});
+
+test('ET « ÉCRIRE L\'INTERVALLE » NE DEMANDE QUE ÇA', () => {
+    tirer(20, { sens: 'intervalle', forme: 'les-deux' }).forEach(it => {
+        assert.equal(it.meta.vers, 'intervalle');
+        assert.equal(it.skillId, 'nb.intervalle.ecrire');
+    });
+});
+
+test('LA CONSIGNE EST UNE PHRASE, PAS DEUX MORCEAUX COLLÉS', () => {
+    // Ma première version fabriquait « Cet intervalle se lit : Quelle droite
+    // graduée ? » — du français d'automate.
+    tirer(20).forEach(it => {
+        assert.match(it.prompt.html, /correspond à (cette|cet) /);
+        assert.ok(!/se lit\s*:/.test(it.prompt.html));
+    });
+});
+
+// ── LE DESSIN NE RECOUVRE PLUS LES NOMBRES ──────────────────────────────────
+//
+// RÉMY : « les intervalles de manière générale font grossier, ça recouvre les
+// chiffres aussi ».
+//
+// MESURÉ au navigateur (tools/tmp/intervallesGeo.mjs), sur les quatre formes
+// d'intervalle : 1 à 2 recouvrements par dessin. Le bras bas du crochet
+// occupait [Y + 9,5 ; Y + 12,5] et la boîte du nombre commençait à Y + 8.
+//
+// Ici, on garde la SÉPARATION, qui est de la géométrie et se calcule : le bas
+// du crochet et le haut de la boîte du nombre ne doivent pas se croiser. Les
+// pixels, eux, se mesurent au banc.
+
+test('LE CROCHET ET LE NOMBRE NE SE CROISENT PAS', () => {
+    const src = lire('js/core/generators/intervalles.js');
+    const nbr = (re) => {
+        const m = src.match(re);
+        assert.ok(m, `introuvable : ${re}`);
+        return Number(m[1]);
+    };
+    const hautCrochet = nbr(/const CROCHET = \{ haut: (\d+(?:\.\d+)?)/);
+    const traitCrochet = nbr(/crochet: (\d+(?:\.\d+)?)/);
+    const yNombre = nbr(/const Y_NOMBRE = Y \+ (\d+(?:\.\d+)?);/);
+    const corps = nbr(/text-anchor="middle" font-size="(\d+)"/);
+    // Le bas de l'encre du crochet, compté depuis la droite (Y).
+    const basDuCrochet = hautCrochet + traitCrochet / 2;
+    // Le haut de la BOÎTE du nombre : mesuré au navigateur, elle commence une
+    // hauteur de corps au-dessus de la ligne de base (14 px de boîte pour un
+    // corps de 11, dont 11 au-dessus). On prend le corps, qui majore.
+    const hautDuNombre = yNombre - corps;
+    assert.ok(hautDuNombre > basDuCrochet + 1,
+        `le nombre commence à Y+${hautDuNombre} et le crochet descend à `
+        + `Y+${basDuCrochet} : ils se recouvrent`);
+});
+
+test('LE TRAIT DE L\'INTERVALLE EST POSÉ SUR LA DROITE, PAS À SA PLACE', () => {
+    // 5 unités sous des nombres de 11, c'était presque la moitié de la hauteur
+    // d'un chiffre — « grossier ». Au tableau, on repasse la portion en gras :
+    // deux à trois fois le trait de l'axe.
+    const src = lire('js/core/generators/intervalles.js');
+    const val = (nom) => {
+        const m = src.match(new RegExp(nom + ': (\\d+(?:\\.\\d+)?)'));
+        assert.ok(m, `épaisseur « ${nom} » introuvable`);
+        return Number(m[1]);
+    };
+    const axe = val('axe'), intervalle = val('intervalle');
+    const rapport = intervalle / axe;
+    assert.ok(rapport >= 2 && rapport <= 3.2,
+        `le trait de l'intervalle vaut ${rapport.toFixed(1)} fois celui de l'axe `
+        + '— au-delà de trois, il ne se lit plus comme une portion de la droite');
+    // Et il reste plus fin qu'un chiffre : c'est un trait, pas un pavé.
+    assert.ok(intervalle < 11 / 2, 'le trait fait plus de la moitié d\'un chiffre');
+});
+
+test('LA DROITE A UNE TAILLE DE LECTURE', () => {
+    // Étirée à 1 304 px sur un écran large, une unité de vue valait 4,07 px :
+    // une droite graduée de treize cents pixels pour huit graduations ne
+    // ressemble plus à ce qu'un élève a dans son cahier.
+    const svg = axeHtml([{ a: -2, b: 3, ea: true, eb: false }]);
+    assert.match(svg, /max-width:min\(100%,\s*\d+px\)/,
+        'le dessin reprend toute la largeur qu\'on lui donne');
+});

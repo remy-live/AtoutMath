@@ -153,10 +153,11 @@ function renderHeader() {
     const level = Math.floor(score / 100) + 1;
     const xpInLevel = score % 100;
 
-    let rank = 'Apprenti Mathématicien';
-    if (level >= 3) rank = 'Calculateur Averti';
-    if (level >= 5) rank = 'Expert des Chiffres';
-    if (level >= 10) rank = 'Génie des Maths';
+    // Les quatre titres, en français : majuscule au premier mot, et c'est tout.
+    let rank = 'Apprenti mathématicien';
+    if (level >= 3) rank = 'Calculateur averti';
+    if (level >= 5) rank = 'Expert des chiffres';
+    if (level >= 10) rank = 'Génie des maths';
 
     setText('profile-score-value', score);
     setText('profile-correct-count', getTotalCorrectCount());
@@ -172,12 +173,19 @@ function renderHeader() {
     const timeEl = document.getElementById('profile-time-value');
     if (timeEl) timeEl.textContent = formatDuration(state.timeSpentTotal);
 
+    // « XP » ÉTAIT LE TROISIÈME NOM DU MÊME NOMBRE. Le niveau vaut
+    // `score ÷ 100` et la barre montre `score % 100` : c'est le compteur de la
+    // barre du haut, appelé « étoiles » là-haut et « Points totaux » deux
+    // lignes plus haut. Trois mots pour un chiffre, dont un mot d'anglais de
+    // jeu vidéo qu'un élève de sixième n'a aucune raison de connaître — et que
+    // Rémy n'emploie nulle part ailleurs. On dit « points », qui est déjà le
+    // mot des exploits (« Gagner 250 points »), et l'on dit à quoi ils servent.
     const levelEl = document.getElementById('profile-level');
     if (levelEl) {
         levelEl.innerHTML = `
             <div class="profile-rank">${rank} <span class="profile-rank-level">(Niveau ${level})</span></div>
             <div class="profile-xp-bar"><div style="width:${xpInLevel}%"></div></div>
-            <div class="profile-xp-text">${xpInLevel} / 100 XP</div>`;
+            <div class="profile-xp-text">${xpInLevel} / 100 points avant le niveau ${level + 1}</div>`;
     }
 }
 
@@ -698,7 +706,7 @@ function renderProfiles() {
                 showConfirm(`Supprimer le profil « ${p.name} » et toutes ses données ?`, async () => {
                     await deleteProfile(p.id);
                     location.reload();
-                });
+                }, { bouton: `Supprimer « ${p.name} »` });
             };
             chip.appendChild(del);
         }

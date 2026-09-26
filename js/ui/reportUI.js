@@ -9,14 +9,36 @@
 // information exploitable, ni pour l'élève ni pour le professeur.
 
 import { appreciation } from '../core/grading.js';
+import { porteHtml as porteDuBac } from './bacASable.js';
 
-export function showRunReport(bilan, { onClose } = {}) {
+/**
+ * @param {string} [opts.enTete] une phrase posée AU-DESSUS du bilan, quand il
+ *   ne vient pas d'une fin normale. Sans elle, l'élève interrompu par la
+ *   sonnerie lit « 3 questions, 2 réussies » et croit avoir tout raté.
+ */
+export function showRunReport(bilan, { onClose, enTete = '' } = {}) {
     document.getElementById('run-report-modal')?.remove();
 
     const modal = document.createElement('div');
     modal.id = 'run-report-modal';
     modal.className = 'modal-overlay';
-    modal.innerHTML = `<div class="glass-panel modal-panel-md report-panel">${reportHtml(bilan)}
+    // LA PORTE DU BAC À SABLE, ICI ET PAS AILLEURS.
+    //
+    // Rémy : « un élève qui a fini peut avoir une zone bac à sable avec des
+    // jeux ». C'est le seul écran où l'élève se trouve au moment exact où la
+    // question se pose — il vient de finir, il lève la tête, il reste huit
+    // minutes. Une porte rangée dans un menu ne serait jamais trouvée.
+    //
+    // Elle s'affiche même FERMÉE quand il n'a pas fini (« encore deux étapes,
+    // et le bac à sable s'ouvre ») : c'est la phrase qui donne envie de finir.
+    // Fermée par le professeur, en revanche, elle disparaît complètement —
+    // annoncer ce qu'on ne donnera pas est une promesse en l'air.
+    let porte = '';
+    try { porte = porteDuBac(); } catch (e) { /* jamais au détriment du bilan */ }
+
+    modal.innerHTML = `<div class="glass-panel modal-panel-md report-panel">${
+        enTete ? `<p class="report-entete">${escapeHtml(enTete)}</p>` : ''}${reportHtml(bilan)}
+        ${porte ? `<div class="report-bac">${porte}</div>` : ''}
         <div class="modal-actions-center">
             <button id="btn-report-close" class="btn-toggle glass-btn primary active report-close-btn">Terminer</button>
         </div>
@@ -28,6 +50,19 @@ export function showRunReport(bilan, { onClose } = {}) {
         modal.remove();
         if (onClose) onClose();
     };
+
+    const ouvre = modal.querySelector('[data-ouvrir-bac]');
+    if (ouvre) {
+        ouvre.onclick = (e) => {
+            // ON FERME LE BILAN AVANT D'OUVRIR LE BAC. Deux fenêtres l'une sur
+            // l'autre, et l'élève qui ferme la première se retrouve devant la
+            // seconde sans comprendre d'où elle vient.
+            e.stopPropagation();
+            modal.remove();
+            if (onClose) onClose();
+            import('./bacASable.js').then(m => m.ouvrirLeBac());
+        };
+    }
 
     wireReplay(modal, bilan);
     return modal;

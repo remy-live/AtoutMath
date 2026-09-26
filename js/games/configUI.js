@@ -5,6 +5,7 @@
 // un générateur la fait apparaître partout où il est utilisé, sans toucher au
 // catalogue ni à cette interface.
 
+import { calculatricePermise } from '../core/calculatrice.js';
 import { paramSchemaOf, getExerciseById } from '../data/catalog.js';
 import { seuilDe } from '../core/recompenses.js';
 import { natureDe } from '../core/duree.js';
@@ -12,12 +13,15 @@ import { estimerEtape, mesuresParExercice, direDuree } from '../core/dureeParcou
 import { state } from '../core/state.js';
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
 import { questionsConseillees, MIN_QUESTIONS, MAX_QUESTIONS } from '../core/duree.js';
+import { texteDeChoix } from '../core/apercuChoix.js';
 import {
     groupesDeMarches, marchesCochees, decoupeMarches, lireLongueurs, ecrireLongueurs,
+    PLIER_AU_DELA,
     poserBorne as poserBorneMarches, motsDeCoupe,
     cleParMarche, lireParMarche, ecrireParMarche, valeurParMarche
 } from '../core/progression.js';
 import { MODES, evaluationPolicy, apprentissagePolicy, defaultPolicy, resolvePolicy } from '../core/policy.js';
+import { reglagesQuiChangent as ecartsDeReglages } from '../core/reglagesDUsine.js';
 import { echelleDe, rangDans } from '../core/echelle.js';
 // Une graine FIXE pour l'aperçu : voir `vraieQuestion`.
 import { makeRng } from '../core/ids.js';
@@ -661,6 +665,29 @@ export const TITRES_ELEVE = {
     aide: 'Comment tu réponds'
 };
 
+/**
+ * LA VALEUR D'UN RÉGLAGE, TELLE QUE LE CHAMP DOIT LA MONTRER.
+ *
+ * Presque toujours « ce qui est enregistré, sinon le défaut ». Une liste de
+ * marches fait exception, et c'était un mensonge du panneau : un exercice
+ * réglé AVANT les cases porte encore `niveau: 2` ou `barreau: 3`, que le
+ * générateur traduit très bien (`marchesCochees`) — mais le panneau, lui, ne
+ * voyait pas de clé `marches`, tombait sur le défaut, et cochait TOUT. On lisait
+ * donc « les quatre niveaux travaillés » au-dessus d'un exercice qui n'en
+ * jouait qu'un, et le simple fait d'enregistrer sans rien toucher changeait
+ * l'exercice.
+ *
+ * `marchesCochees` est la MÊME fonction que celle du générateur : les deux ne
+ * peuvent plus diverger.
+ */
+export function valeurDeChamp(param, reglages) {
+    const r = reglages || {};
+    if (param && param.type === 'marches') {
+        return marchesCochees(r, param.marches || [], param.ancien || {}).map(m => m.id);
+    }
+    return r[param.id] !== undefined ? r[param.id] : param.default;
+}
+
 export function fieldHtml(param, value, options = {}) {
     const id = `cfg-${param.id}`;
     // UN RÉGLAGE QUI A SA PROPRE COMMANDE N'A PAS DE CHAMP. La répartition se
@@ -804,6 +831,11 @@ export function fieldHtml(param, value, options = {}) {
         const liste = param.marches || [];
         const coches = new Set((Array.isArray(value) ? value : liste.map(m => m.id)).map(String));
         const groupes = groupesDeMarches(liste, param.groupes || {});
+        // LE RANG DE CHAQUE MARCHE DANS LA PROGRESSION ENTIÈRE. Il sert à
+        // l'en-tête d'un groupe replié, qui ne disait que son nom — Rémy :
+        // « pas de numéro avant les exercices ». Replié, « La distributivité
+        // simple » ne dit pas qu'elle couvre les barreaux 1 à 5.
+        const rangDe = new Map(liste.map((m, i) => [String(m.id), i + 1]));
         const ligne = (m) => `<label class="cfg-liste-ligne">
             <input type="checkbox" data-param="${param.id}" data-kind="multiselect"
                 value="${escapeAttr(m.id)}" ${coches.has(String(m.id)) ? 'checked' : ''}>
@@ -820,7 +852,13 @@ export function fieldHtml(param, value, options = {}) {
                 // ordinaire, et il n'y a alors rien à lire dedans ; un temps à
                 // moitié coché, au contraire, ne se comprend qu'ouvert.
                 const entier = dedans === g.marches.length || dedans === 0;
-                return `<details class="cfg-groupe" ${entier ? '' : 'open'}>
+                // ON NE REPLIE QUE CE QUI NE TIENT PAS — voir `PLIER_AU_DELA`.
+                // Replié d'entrée, un groupe de cinq barreaux ne laissait
+                // qu'un geste : prendre le temps entier. Rémy : « là on doit
+                // choisir un cran, ce n'est pas cohérent, je pourrais vouloir
+                // qu'un type de développement ».
+                const plier = liste.length > PLIER_AU_DELA;
+                return `<details class="cfg-groupe" ${entier && plier ? '' : 'open'}>
                     <summary class="cfg-groupe-tete">
                         <button type="button" class="cfg-groupe-case${
     dedans === g.marches.length ? ' cfg-groupe-case--tout'
@@ -828,6 +866,12 @@ export function fieldHtml(param, value, options = {}) {
                             data-groupe="${escapeAttr(g.cle)}"
                             aria-label="${escapeAttr(`Cocher ou décocher ${g.nom}`)}"></button>
                         <b>${escapeAttr(g.nom)}</b>
+                        <span class="cfg-groupe-rangs">${(() => {
+    const rangs = g.marches.map(m => rangDe.get(String(m.id))).filter(Boolean);
+    if (!rangs.length) return '';
+    const a = Math.min(...rangs), b = Math.max(...rangs);
+    return a === b ? `n° ${a}` : `n° ${a} à ${b}`;
+})()}</span>
                         <em>${dedans}/${g.marches.length}</em>
                     </summary>
                     <div class="cfg-liste-corps">${g.marches.map(ligne).join('')}</div>
@@ -835,8 +879,24 @@ export function fieldHtml(param, value, options = {}) {
             }).join('')
             : `<div class="cfg-liste-corps">${liste.map(ligne).join('')}</div>`;
 
+        // LE RÉGLAGE EXPRESS — Rémy : « tu peux faire un bouton réglage express
+        // pour avoir tout et cela se répartit équitablement entre le nombre de
+        // questions ».
+        //
+        // « Tout cocher » ne faisait que la moitié : il cochait les cases et
+        // LAISSAIT le partage sur mesure. Qui avait tiré une borne la veille
+        // retrouvait ses vingt-deux questions entassées sur trois barreaux,
+        // sans rien pour le dire. Le bouton express fait les deux d'un geste,
+        // et c'est le geste qu'on fait vraiment en préparant : « tout, à parts
+        // égales ». Les deux autres restent : « tout cocher » sans toucher au
+        // partage, et « tout décocher » qui est le premier temps d'un choix
+        // court.
         control = `<div class="cfg-marches" data-marches>
             <div class="cfg-liste-actions">
+                <button type="button" class="cfg-liste-btn cfg-liste-btn--express"
+                        data-cocher="1" data-equitable="1"
+                        title="Coche tout et partage les questions à parts égales"
+                        >Tout, à parts égales</button>
                 <button type="button" class="cfg-liste-btn" data-cocher="1">Tout cocher</button>
                 <button type="button" class="cfg-liste-btn" data-cocher="0">Tout décocher</button>
             </div>
@@ -976,7 +1036,7 @@ function vraieQuestion(exoId, p, params) {
             // on ne peut pas en retirer une au hasard, il faut garder la juste.
             ? [...brut.filter(c => c.correct), ...brut.filter(c => !c.correct)].slice(0, voulu)
             : brut;
-        const choix = garde.map(c => String(c.label ?? c.value ?? '')).filter(Boolean);
+        const choix = garde.map(texteDeChoix).filter(Boolean);
         return { texte: String(texte).replace(/<[^>]*>/g, '').trim(), choix };
     } catch { return null; }
 }
@@ -1888,6 +1948,47 @@ const casesMarches = (hote) =>
 // relatifs il y a beaucoup d'étapes ». Un temps, c'est trois à cinq marches
 // d'un coup — et c'est le geste qu'on fait vraiment : « aujourd'hui, le
 // temps B ».
+/**
+ * LA CASE D'UN TEMPS DIT L'ÉTAT DE SES MARCHES — encore faut-il la remettre à
+ * jour.
+ *
+ * RÉMY : « quand dans les options on décoche double distributivité, il faut
+ * que la case de double distributivité soit décochée aussi ».
+ *
+ * MESURÉ : après le clic, les cinq marches passaient bien à zéro et la case du
+ * temps gardait la classe « tout ». Elle était calculée UNE FOIS, au dessin du
+ * panneau, et plus jamais ensuite — le panneau ne se redessine pas à chaque
+ * clic, c'est lui la vérité une fois affiché. La case affichait donc le
+ * contraire de ce qu'elle commandait.
+ *
+ * Trois états, comme à la construction : tout, une partie, rien.
+ */
+function majCasesDeTemps(hote) {
+    hote.querySelectorAll('.cfg-groupe').forEach(g => {
+        const bouton = g.querySelector('[data-groupe]');
+        if (!bouton) return;
+        const dedans = [...g.querySelectorAll('[data-kind="multiselect"]')];
+        const coches = dedans.filter(c => c.checked).length;
+        bouton.classList.toggle('cfg-groupe-case--tout',
+            dedans.length > 0 && coches === dedans.length);
+        bouton.classList.toggle('cfg-groupe-case--part',
+            coches > 0 && coches < dedans.length);
+        // ET LE COMPTE ÉCRIT À CÔTÉ, qui mentait de la même façon.
+        const compte = g.querySelector('.cfg-groupe-tete em');
+        if (compte) compte.textContent = `${coches}/${dedans.length}`;
+    });
+}
+
+// COCHER UNE MARCHE MET À JOUR LE TEMPS QUI LA CONTIENT. Sans cela, décocher
+// trois marches sur cinq laissait la case du temps sur « tout » — et c'est le
+// même défaut que celui de Rémy, vu par l'autre bout.
+document.addEventListener('change', (e) => {
+    const c = e.target;
+    if (!c || c.dataset === undefined || c.dataset.kind !== 'multiselect') return;
+    const hote = c.closest('[data-marches]');
+    if (hote) majCasesDeTemps(hote);
+});
+
 document.addEventListener('click', (e) => {
     const btn = e.target.closest && e.target.closest('[data-groupe], [data-cocher]');
     if (!btn) return;
@@ -1901,6 +2002,14 @@ document.addEventListener('click', (e) => {
         ? btn.dataset.cocher === '1'
         : !cases.every(c => c.checked);
     cases.forEach(c => { c.checked = tout; });
+    majCasesDeTemps(hote);
+    // ET LE PARTAGE REPART À ÉGALITÉ quand on le demande — voir le bouton
+    // express plus haut. Le champ caché porte les longueurs sur mesure ; le
+    // vider, c'est rendre la main à `partageEgal`, qui est le défaut.
+    if (btn.dataset.equitable === '1') {
+        const rep = hote.querySelector('[data-repartition-marches]');
+        if (rep) rep.value = '';
+    }
     // « TOUT DÉCOCHER » DÉCOCHE VRAIMENT. Rémy : « tout décocher ne fonctionne
     // pas ».
     //
@@ -2254,6 +2363,76 @@ function valeurChoisie(param, brut) {
     return param.type === 'number' ? Number(brut) : brut;
 }
 
+/**
+ * CE QUI A VRAIMENT ÉTÉ CHANGÉ — et rien d'autre.
+ *
+ * `readParams` relit TOUT le panneau : chaque case, chaque menu, chaque champ,
+ * qu'on y ait touché ou non. Le panneau écrivait donc l'intégralité du schéma
+ * dans `step.overrides` dès qu'on effleurait n'importe quoi — y compris le
+ * seul nombre de questions, qui n'est même pas un réglage de contenu.
+ *
+ * CE QUE ÇA COÛTAIT, MESURÉ. Deux exercices ajoutés, rien réglé : le code à
+ * dicter fait « DFP-AFL », sept caractères. UN clic sur le « + » du nombre de
+ * questions, et le code devenait « M2-eyJuIjoiTW9uIFBhcmNvdXJz… », 214
+ * caractères — indictable. Et l'écran annonçait « étape 2 : ses réglages ont
+ * été modifiés », alors qu'aucun réglage de contenu n'avait été touché : le
+ * professeur lisait une accusation fausse et perdait son code au tableau.
+ *
+ * LA RÈGLE A DÉMÉNAGÉ DANS LE NOYAU (`core/reglagesDUsine.js`), parce que le
+ * code dicté en a besoin lui aussi : il écrit les réglages en lettres, et
+ * surtout il les RELIT en n'écrivant que les mêmes écarts. Deux définitions du
+ * « défaut » finiraient par diverger, et le parcours reçu par code n'aurait
+ * alors pas la même identité que celui qu'on a donné. Le panneau la ré-expose
+ * ici pour ceux qui l'appelaient déjà.
+ */
+export const reglagesQuiChangent = ecartsDeReglages;
+
+/**
+ * CE QUI A ÉTÉ RÉGLÉ SUR CETTE ÉTAPE, EN CLAIR ET EN COURT.
+ *
+ * Mesuré : régler « Dénominateurs : identiques → différents » sur une étape ne
+ * changeait RIEN à sa ligne dans le parcours — texte strictement identique,
+ * comparé caractère par caractère. Le professeur qui relit sa séance de huit
+ * étapes ne peut pas savoir laquelle il a touchée : il doit les rouvrir une par
+ * une.
+ *
+ * ON ÉCRIT LE LIBELLÉ DU SCHÉMA, pas la clé du code. « memeDenominateur:
+ * differents » ne se lit pas ; « Dénominateurs : différents » se lit. Et l'on
+ * s'arrête à deux réglages : cette ligne doit rester une ligne, et celui qui
+ * veut le détail ouvre le panneau, qui est là pour ça.
+ *
+ * @param {object} overrides ce que l'étape a d'écart avec l'exercice
+ * @param {Array}  schema    le schéma qui nomme ces réglages
+ * @param {number} [combien] combien on en écrit avant de dire « +n »
+ * @returns {string} « Dénominateurs : différents · Maximum : 20 », ou ''
+ */
+export function direLesReglages(overrides, schema, combien = 2) {
+    const o = overrides || {};
+    const cles = Object.keys(o);
+    if (!cles.length) return '';
+    const parId = new Map((schema || []).filter(p => p && p.id).map(p => [p.id, p]));
+
+    const dire = (cle) => {
+        const p = parId.get(cle);
+        const v = o[cle];
+        // UNE CLÉ HORS SCHÉMA n'a pas de nom lisible — les réglages posés marche
+        // par marche, par exemple. On ne l'invente pas : on la compte, sans
+        // prétendre la nommer.
+        if (!p) return null;
+        const nom = p.label || cle;
+        if (p.type === 'bool' || typeof v === 'boolean') return v ? nom : `sans ${nom.toLowerCase()}`;
+        if (Array.isArray(v)) return v.length ? `${nom} : ${v.length} choisi${v.length > 1 ? 's' : ''}` : null;
+        const opt = (p.options || []).find(x => String(valeurOption(x)) === String(v));
+        return `${nom} : ${opt ? libelleOption(opt) : v}`;
+    };
+
+    const lisibles = cles.map(dire).filter(Boolean);
+    if (!lisibles.length) return '';
+    const montres = lisibles.slice(0, combien);
+    const reste = lisibles.length - montres.length;
+    return montres.join(' · ') + (reste > 0 ? ` +${reste}` : '');
+}
+
 export function readParams(root, schema) {
     const out = {};
     schema.forEach(param => {
@@ -2347,11 +2526,17 @@ export function readParams(root, schema) {
  * que l'élève aura, aux nombres près — la graine, elle, ne peut pas être celle
  * d'une partie qui n'a pas commencé.
  */
-function vraieQuestionMarche(exoId, z, params, total) {
+function vraieQuestionMarche(exoId, z, params, total, pourLaFiche = false) {
     if (!exoId || !z || !z.n) return null;
     try {
         const exo = getExerciseById(exoId);
-        const gen = exo && exo.generatorId ? getGenerator(exo.generatorId) : null;
+        // SUR UNE FEUILLE, C'EST LE GÉNÉRATEUR DE LA FEUILLE QUI RÉPOND. Huit
+        // des progressions à cases n'existent QUE sur le papier — leur exercice
+        // d'écran est une activité, ou un autre générateur. Interroger
+        // `exo.generatorId` y donnait la question d'un autre exercice, ou rien
+        // du tout. Voir `generateurDeFiche` dans core/registry.js.
+        const gen = pourLaFiche ? generateurDeFiche(exo)
+            : (exo && exo.generatorId ? getGenerator(exo.generatorId) : null);
         if (!gen || !gen.generate) return null;
         const it = gen.generate({ ...(exo.params || {}), ...params },
             { index: z.de - 1, total, rng: makeRng(`marche-${exoId}-${z.id}-${z.de}`) });
@@ -2360,7 +2545,7 @@ function vraieQuestionMarche(exoId, z, params, total) {
             .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
         const texte = nu((it.prompt && (it.prompt.text || it.prompt.papier)) || '');
         const choix = (Array.isArray(it.choices) ? it.choices : [])
-            .map(c => nu(c.label ?? c.value)).filter(Boolean).slice(0, 8);
+            .map(texteDeChoix).filter(Boolean).slice(0, 8);
         return texte || choix.length ? { texte, choix } : null;
     } catch { return null; }
 }
@@ -2411,7 +2596,8 @@ function reglagesDeMarche(schema, z, params) {
     }).join('');
 }
 
-function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params = {}, schema = []) {
+function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params = {}, schema = [],
+    pourLaFiche = false) {
     if (!coupe.length) return '';
     const total = Math.max(1, coupe.reduce((s2, z) => s2 + z.n, 0));
     const i = Math.max(0, Math.min(coupe.length - 1, Math.round(choisie) || 0));
@@ -2461,7 +2647,7 @@ function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params 
     }).join('');
 
     const z = coupe[i];
-    const vraie = vraieQuestionMarche(exoId, z, params, total);
+    const vraie = vraieQuestionMarche(exoId, z, params, total, pourLaFiche);
     const rangs = !z.n ? 'Aucune question'
         : (z.n === 1 ? `Question ${z.de}` : `Questions ${z.de} à ${z.a}`);
     // LA LÉGENDE S'ARRÊTE À SIX MARCHES. Au-delà elle fait treize lignes sous
@@ -2530,7 +2716,7 @@ function barreMarchesHtml(coupe, mot, choisie, vide = false, exoId = '', params 
  * disait déjà que les deux panneaux « divergeaient jusqu'ici » ; il ne
  * disait pas encore que c'était réparé pour les marches.
  */
-export function brancherMarches(racine, schema, current = {}, exoId = '') {
+export function brancherMarches(racine, schema, current = {}, exoId = '', opts = {}) {
     const champMarches = racine && racine.querySelector('[data-marches]');
     if (!champMarches) return;
     // LE PANNEAU SE DÉSIGNE, ON NE LE DEVINE PLUS. Les gestes de la barre — le
@@ -2546,7 +2732,13 @@ export function brancherMarches(racine, schema, current = {}, exoId = '') {
     // besoin de savoir de quel exercice, et avec quels réglages — ceux du
     // panneau, tels qu'ils sont en ce moment, pas ceux du catalogue.
     const barre = racine.querySelector('[data-barre-marches]');
-    if (barre) { barre.dataset.exo = exoId || ''; barre._schema = schema || []; }
+    if (barre) {
+        barre.dataset.exo = exoId || '';
+        barre._schema = schema || [];
+        // SUR UNE FEUILLE, LA BULLE INTERROGE LE GÉNÉRATEUR DU PAPIER. Huit
+        // des progressions à cases n'existent que là.
+        if (opts.fiche) barre.dataset.fiche = '1';
+    }
     // La liste des marches voyage sur le nœud plutôt que d'être relue dans le
     // schéma à chaque rafraîchissement : le panneau est déjà dessiné, c'est lui
     // la vérité.
@@ -2618,7 +2810,28 @@ export function rafraichirBarreMarches(racine, choisie) {
     const etat = etatMarches(racine);
     if (!etat) { boite.innerHTML = ''; return; }
     boite.innerHTML = barreMarchesHtml(etat.coupe, boite.dataset.mot || 'marche', i,
-        etat.vide, etat.exoId, etat.params, etat.schema);
+        etat.vide, etat.exoId, etat.params, etat.schema, etat.fiche);
+}
+
+/**
+ * LE NOMBRE DE QUESTIONS DU PANNEAU QUI PORTE CETTE BARRE.
+ *
+ * TROIS PANNEAUX, TROIS CHAMPS, ET AUCUN NE S'APPELLE PAREIL : le panneau de
+ * jeu compte en `#cfg-nbitems`, la fiche à imprimer en `#fp-combien`, la
+ * feuille de questions en `#fq-nb`. Les deux derniers vivent HORS du bloc
+ * « Contenu » où la barre est dessinée — ils sont en tête de la modale —, et
+ * c'est pour cela qu'on remonte jusqu'à elle.
+ *
+ * Sans cela, une feuille de seize calculs annoncerait « 10 questions » sous
+ * une barre découpée en dix : le dessin serait faux, et c'est le dessin qu'on
+ * tire.
+ */
+function totalDuPanneau(racine) {
+    const ici = racine && racine.querySelector('#cfg-nbitems');
+    if (ici) return Math.max(1, parseInt(ici.value, 10) || 10);
+    const cadre = (racine && racine.closest('.modal-overlay')) || document;
+    const el = cadre.querySelector('#cfg-nbitems, #fp-combien, #fq-nb');
+    return Math.max(1, parseInt(el && el.value, 10) || 10);
 }
 
 /**
@@ -2638,8 +2851,7 @@ function etatMarches(racine) {
     // l'exercice joue tout, sans que rien ne l'ait annoncé.
     const vide = !coches.length;
     const cochees = marchesCochees({ marches: coches }, liste);
-    const nb = racine.querySelector('#cfg-nbitems');
-    const total = Math.max(1, parseInt(nb && nb.value, 10) || 10);
+    const total = totalDuPanneau(racine);
     const champ = racine.querySelector('[data-repartition-marches]');
     // LES RÉGLAGES DU PANNEAU EN ENTIER, pas seulement le partage : la bulle
     // tire une vraie question, et une question tirée avec les réglages du
@@ -2652,6 +2864,9 @@ function etatMarches(racine) {
     } catch { /* un panneau à moitié dessiné ne doit pas casser la barre */ }
     return { liste, cochees, total, params, vide, exoId: (barre && barre.dataset.exo) || '',
         schema: (barre && barre._schema) || [],
+        // Le panneau d'une feuille le dit : la bulle doit alors tirer sa
+        // question au générateur du PAPIER — voir `vraieQuestionMarche`.
+        fiche: !!(barre && barre.dataset.fiche === '1'),
         coupe: decoupeMarches(cochees, total, params) };
 }
 
@@ -2714,7 +2929,13 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     // tranches, quatre écrans avant qu'on puisse voir d'où sortait le 26.
     // Rémy : « le nombre de questions est peut-être à mettre au-dessus ».
     // Un réglage qui DÉCOUPE le total passe donc sous lui, toujours.
-    const valeurDe = (p) => (current[p.id] !== undefined ? current[p.id] : p.default);
+    // CE QUE LA CASE MONTRE EN ARRIVANT : l'état RÉEL de cette étape, réglage
+    // compris. Si l'on montrait seulement `step.overrides.calculatrice`, la
+    // case serait décochée sur un exercice de trigonométrie qui l'offre par
+    // nature — et la décocher n'aurait rien changé, puis la cocher aurait
+    // écrit un réglage inutile. Voir `calculatricePermise` dans le noyau.
+    const calculatriceCochee = calculatricePermise({ exercice: exo, params: current });
+    const valeurDe = (p) => valeurDeChamp(p, current);
     const decoupeLeTotal = (p) => p && p.type === 'marches';
     const libre = schema.filter(p => !p.groupe && !decoupeLeTotal(p));
     const apresLongueur = schema.filter(p => !p.groupe && decoupeLeTotal(p));
@@ -2784,6 +3005,21 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
                     ${infoBtn('Une étape de poids 2 compte double dans le barème.', null)}</label>
                 <input type="number" id="cfg-weight" class="cfg-input cfg-input--num" min="1" max="10" value="${step.weight || 1}">
             </div>
+            <!-- LA CALCULATRICE SE RÈGLE ICI. Rémy : « pourrait-on autoriser
+                 dans les options l'utilisation de la calculatrice ». Elle
+                 n'était qu'une propriété du catalogue, écrite en dur sur quatre
+                 exercices, que le professeur ne pouvait ni donner ni retirer.
+                 Elle est dans « Déroulement » parce que c'est un réglage de
+                 CONDITIONS — comme le chronomètre —, pas de contenu. -->
+            <label class="cfg-case" id="cfg-case-calculatrice">
+                <input type="checkbox" id="cfg-calculatrice" ${calculatriceCochee ? 'checked' : ''}>
+                <span><b>🧮 Calculatrice autorisée</b><br>
+                <span class="cfg-help">Un bouton s'ouvre dans l'en-tête, et il bat trois fois à
+                chaque question pour qu'on le voie.${evaluation
+        ? ' <b>En évaluation, elle change ce que la note mesure</b> — à vous de voir, '
+          + 'c\'est votre devoir.'
+        : ''}</span></span>
+            </label>
         </div>`;
 
     content.classList.toggle('cfg-apercu-hote', aApercuAide(schema));
@@ -2874,7 +3110,20 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     brancherMarches(content, schema, current, exo.id || step.exerciseId);
 
     const commit = () => {
-        const overrides = readParams(content, schema);
+        // On n'enregistre que ce qui S'ÉCARTE de l'exercice : voir
+        // `reglagesQuiChangent`. Écrire tout le schéma rendait le code à dicter
+        // illisible au premier clic sur le nombre de questions.
+        const overrides = reglagesQuiChangent(readParams(content, schema), exo, schema);
+        // LA CALCULATRICE N'EST PAS UN PARAMÈTRE DU GÉNÉRATEUR : elle ne passe
+        // donc pas par `readParams`, et on l'ajoute à la main. Comme les
+        // autres, on ne l'écrit QUE si elle s'écarte de l'exercice : sinon le
+        // code à dicter s'allongerait d'un réglage qui ne change rien.
+        const calcEl = document.getElementById('cfg-calculatrice');
+        if (calcEl) {
+            const veut = !!calcEl.checked;
+            if (veut !== !!exo.calculatrice) overrides.calculatrice = veut;
+            else delete overrides.calculatrice;
+        }
         const nbItems = intVal('cfg-nbitems', 10);
         describeThreshold();
         toggleScope();
@@ -3017,7 +3266,7 @@ export function ouvrirReglagesAvantPartie(exo, onStart, opts = {}) {
                 + 'En mettre moins n\'est pas un problème — on verra les premières.'
             : 'Autant de questions que l\'exercice en pose.');
 
-    const valeurDe = (p) => current[p.id] !== undefined ? current[p.id] : p.default;
+    const valeurDe = (p) => valeurDeChamp(p, current);
 
     // LE NOMBRE DE QUESTIONS AVANT L'AIDE, ET CE N'EST PAS UN DÉTAIL. L'aperçu
     // découpe CE nombre de questions en tranches (« 3 à deux propositions, 5 à
@@ -3219,6 +3468,25 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
             <input type="checkbox" id="cfg-ordre-libre" ${p.ordreLibre ? 'checked' : ''}>
             Laisser l'élève choisir l'ordre des étapes
         </label>
+        <!-- COMMENT LA SÉANCE SE PRÉSENTE. Rémy : « il faudrait pouvoir
+             peut-être choisir la présentation », puis « par séance, et par
+             défaut celle façon duolingo ».
+
+             Les trois habillages existaient, mais le choix vivait dans le
+             navigateur de l'élève : le professeur ne le voyait pas et ne
+             pouvait pas le fixer. Il est ici, sous l'ordre des étapes, parce
+             que les deux répondent à la même question — comment on traverse
+             la séance. -->
+        <div class="cfg-field cfg-field--wide">
+            <label class="cfg-label" for="cfg-presentation">Présentation</label>
+            <select id="cfg-presentation" class="cfg-input">
+                <option value="chemin" ${p.presentation === 'chemin' ? 'selected' : ''}>Chemin d'étapes (une étape après l'autre)</option>
+                <option value="mondes" ${p.presentation === 'mondes' ? 'selected' : ''}>Carte des mondes (façon jeu de plateau)</option>
+                <option value="classique" ${p.presentation === 'classique' ? 'selected' : ''}>Liste classique (titres et consignes)</option>
+                <option value="libre" ${p.presentation === 'libre' ? 'selected' : ''}>Laisser l'élève choisir</option>
+            </select>
+            <p class="cfg-help">Tant que vous en imposez une, les trois boutons d'habillage disparaissent de son écran : un bouton qui ne change rien est pire qu'un bouton absent.</p>
+        </div>
 
         <div class="cfg-group ${isEval ? '' : 'cfg-group--muted'}">
             <div class="cfg-group-title">Barème</div>
@@ -3311,6 +3579,7 @@ export function renderPolicyEditor(path, onChange, containerId = 'builder-policy
             hints: document.getElementById('cfg-hints').checked,
             adaptive: document.getElementById('cfg-adaptive').checked,
             ordreLibre: document.getElementById('cfg-ordre-libre').checked,
+            presentation: (document.getElementById('cfg-presentation') || {}).value || base.presentation,
             // Ce que l'ordinateur fait après chaque réponse. `resolvePolicy`
             // en déduira `showCorrection` : c'est le mot qui commande.
             correction: (document.getElementById('cfg-correction') || {}).value || base.correction,

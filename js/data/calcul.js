@@ -1,3 +1,6 @@
+import { PALIERS_SERPENTS } from '../core/serpents.js';
+import { PALIERS_CROISES } from '../core/croises.js';
+import { PALIERS_DEUX_NOMBRES } from '../core/deuxNombres.js';
 import { TAGS } from './tags.js';
 import { STATUS } from './status.js';
 import { REGLAGE_SAISIE } from '../ui/champsGrille.js';
@@ -5,6 +8,7 @@ import { NIVEAUX as NIVEAUX_CHANTIER } from '../core/chantier.js';
 // Les dominos empruntent leurs questions aux autres notions : la liste des
 // sources est tenue là où elle est vérifiée, pas recopiée ici.
 import { SOURCES as SOURCES_DOMINOS } from '../core/generators/dominos.js';
+import { casesDeNiveau } from '../core/generators/logigramme.js';
 
 // `status` absent = validé. Ne sont marqués que les exercices qui ne le sont
 // pas encore — ici les jeux autonomes, qui n'ont pas été portés sur le contrat
@@ -120,29 +124,14 @@ export const calculExercises = [
         colonnesPapier: 1,
         title: 'Prio-Bot Express',
         generatorId: 'calc.priorites', activityId: 'buttons',
-        // Le niveau et la taille des nombres se règlent : les expressions
+        // Les niveaux et la taille des nombres se règlent : les expressions
         // venaient de quatre gabarits fixes, à trois nombres de moins de dix.
-        params: { mode: 'operation', niveau: 2, parentheses: false, grands: false },
-        paramSchema: [
-            {
-                id: 'niveau', type: 'select', label: 'Difficulté', default: 2,
-                options: [
-                    { value: 1, label: '1 — Trois nombres, deux opérations' },
-                    { value: 2, label: '2 — Jusqu\'à quatre nombres' },
-                    { value: 3, label: '3 — Les parenthèses arrivent' },
-                    { value: 4, label: '4 — Deux groupes de parenthèses' }
-                ]
-            },
-            {
-                id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
-                aide: 'Les nombres montent jusqu\'à 20 : la règle est la même, mais '
-                    + 'elle ne se devine plus de tête.'
-            },
-            {
-                id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses', default: false,
-                aide: 'Elles n\'apparaissent qu\'à partir de la difficulté 3.'
-            }
-        ],
+        //
+        // LA CARTE NE REDIT PLUS LE SCHÉMA DU GÉNÉRATEUR. Elle en recopiait le
+        // menu « Difficulté » mot pour mot ; depuis que ce menu est une
+        // colonne de cases, la recopie l'aurait fait réapparaître ici seul.
+        // La carte pose seulement les cases cochées à l'ouverture.
+        params: { mode: 'operation', marches: ['1', '2'], parentheses: false, grands: false },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME] },
         instruction: "Sélectionne l'opération à effectuer en premier selon les règles de priorité."
     },
@@ -160,20 +149,12 @@ export const calculExercises = [
         colonnesPapier: 2,
         title: 'Prio-Bot Parenthèses',
         generatorId: 'calc.priorites', activityId: 'buttons',
-        params: { mode: 'operation', niveau: 3, parentheses: true, grands: false },
-        paramSchema: [
-            {
-                id: 'niveau', type: 'select', label: 'Difficulté', default: 3,
-                options: [
-                    { value: 3, label: '3 — Un groupe de parenthèses' },
-                    { value: 4, label: '4 — Deux groupes, ou un groupe de trois nombres' }
-                ]
-            },
-            {
-                id: 'grands', type: 'checkbox', label: 'Des calculs plus grands', default: false,
-                aide: 'Les nombres montent jusqu\'à 20.'
-            }
-        ],
+        // LES DEUX DERNIERS NIVEAUX COCHÉS, ET EUX SEULS : ce sont ceux où les
+        // parenthèses existent. Les deux premiers restent visibles dans le
+        // panneau — décochés — parce qu'un professeur qui veut réviser la
+        // règle des signes avant d'ouvrir les parenthèses n'a plus à changer
+        // d'exercice pour cela.
+        params: { mode: 'operation', marches: ['3', '4'], parentheses: true, grands: false },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Les parenthèses passent AVANT tout le reste — avant même les multiplications. "
             + "S'il y en a plusieurs, on commence par le groupe le plus intérieur. Sélectionne "
@@ -186,7 +167,7 @@ export const calculExercises = [
         colonnesPapier: 2,
         title: 'Prio-Bot Calcul',
         generatorId: 'calc.priorites', activityId: 'bubbles',
-        params: { mode: 'resultat', niveau: 2, progressif: true },
+        params: { mode: 'resultat', marches: ['1', '2'] },
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES], niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Calcule l'expression en respectant les priorités opératoires."
     },
@@ -1530,7 +1511,6 @@ export const calculExercises = [
         printParams: { jeu: 'pipopipette', colonnes: 5, rangees: 4 },
         cree: '2026-08-19',
         activityId: 'pipopipette', horsProgression: true, sansRevision: true,
-        deuxJoueurs: true,
         params: { mode: 'ia', niveau: 'moyen', taille: 'moyen' },
         paramSchema: [
             {
@@ -1577,7 +1557,6 @@ export const calculExercises = [
         printParams: { jeu: 'puissance4', colonnes: 7, rangees: 6 }, title: 'Puissance 4',
         cree: '2026-08-19',
         activityId: 'puissance4', horsProgression: true, sansRevision: true,
-        deuxJoueurs: true,
         params: { mode: 'ia', niveau: 'moyen' },
         paramSchema: [
             {
@@ -1615,7 +1594,6 @@ export const calculExercises = [
         printParams: { jeu: 'sim' }, title: 'Le Sim',
         cree: '2026-08-19',
         activityId: 'sim', horsProgression: true, sansRevision: true,
-        deuxJoueurs: true,
         params: { mode: 'ia', niveau: 'moyen' },
         paramSchema: [
             {
@@ -1881,18 +1859,12 @@ export const calculExercises = [
         skills: ['num.logique.logigramme'],
         params: { niveau: 1, auto: false },
         paramSchema: [
-            {
-                id: 'niveau', type: 'select', label: 'Niveau',
-                options: [
-                    { value: 1, label: '1 — Découverte · 3 lignes, 2 listes' },
-                    { value: 2, label: '2 — Trois amis, deux listes · indices croisés' },
-                    { value: 3, label: '3 — Quatre à croiser · plus rien de donné' },
-                    { value: 4, label: '4 — Plus grand, plus petit · comparaisons' },
-                    { value: 5, label: '5 — L\'écart exact · différences chiffrées' },
-                    { value: 6, label: '6 — Cinq, et rien de donné · avec des « soit… soit… »' }
-                ],
-                default: 1
-            },
+            // LA CARTE RÉÉCRIT SON PANNEAU, ELLE NE RÉÉCRIT PAS LA PROGRESSION.
+            // Les six niveaux étaient recopiés ici, mot pour mot ou presque ;
+            // depuis qu'ils sont une colonne de cases, la copie aurait fait
+            // réapparaître l'ancien menu sur cette carte seule — et l'écran
+            // comme la feuille seraient restés sur un niveau du début à la fin.
+            casesDeNiveau(),
             {
                 id: 'auto', type: 'bool', label: 'Barrer la ligne automatiquement',
                 // Personne ne barre une case à la place de l'élève sur du papier :
@@ -1967,6 +1939,138 @@ export const calculExercises = [
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "La règle est écrite en haut : repeins SEULEMENT les dalles dont le calcul la vérifie. Marcher sur une bonne dalle la repeint en rose ; marcher sur une autre la fait s'effriter et tu perds du terrain. Lis avant d'avancer ! Flèches du clavier, croix tactile ou glissé sur le terrain. Les blobs verts sont retirés par défaut — le réglage les rend, et alors le bouton TIR les élimine, tandis que le bouton 🎯 (ou MAJ + flèche au clavier) tourne la tête SANS avancer : on vise un blob sans repeindre au passage une dalle qu'on n'avait pas choisie."
+    },
+    // LES DEUX NOMBRES — le quatrième jeu rapporté par Rémy.
+    //
+    // Il s'appelait « A 1-Off Puzzle » : chaque ligne y cache deux mots dont
+    // les lettres se chevauchent — « RABT » cache BAR et TAB, qui partagent le
+    // A et le B. Je lui ai dit que c'était le plus faible des quatre côté
+    // mathématiques, puisque c'est un jeu de lettres et que le catalogue en a
+    // déjà deux ; il a répondu « fais les tous ». J'ai donc gardé l'IDÉE, qui
+    // est bonne — deux lectures d'une même suite, qui se chevauchent — et
+    // changé la matière : des CHIFFRES, et deux NOMBRES liés par une phrase.
+    //
+    // CE QUE ÇA TRAVAILLE : lire un nombre dans une suite de chiffres — « 2 4 8 »
+    // contient 24 et 48, mais pas 28, parce que les chiffres ne se sautent pas
+    // — puis vérifier la relation de tête sur chaque candidat. C'est du calcul
+    // mental EN SITUATION : on ne demande pas « combien fait le double de 24 »,
+    // on demande « où sont les deux nombres qui vont ensemble ».
+    {
+        id: 'calc-deux-nombres', title: 'Les Deux Nombres', cree: '2026-09-26',
+        activityId: 'deux-nombres',
+        skills: ['num.logique.deux-nombres'],
+        params: { palier: 'facile' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
+                aide: 'Ajoute des relations, allonge la ligne, puis passe aux nombres à trois '
+                    + 'chiffres.',
+                options: Object.entries(PALIERS_DEUX_NOMBRES)
+                    .map(([value, p]) => ({ value, label: p.label }))
+            }
+        ],
+        motsClefs: ['nombres cachés', 'chiffres', 'double', 'triple', 'lecture',
+            'calcul mental', 'chevauchement'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Deux nombres sont cachés dans la ligne de chiffres, et la phrase du haut "
+            + "dit ce qui les lie — le double, le triple, plus dix. Un nombre se lit D'AFFILÉE : "
+            + "dans « 2 4 8 » il y a 24 et 48, mais pas 28. Et les deux nombres PARTAGENT un "
+            + "chiffre : le dernier de celui de gauche est le premier de celui de droite. "
+            + "Écris-les tous les deux, puis « Vérifier »."
+    },
+    // LES CROISÉS DU CALCUL — un jeu de Rémy, rapporté d'un magazine.
+    //
+    // Il s'appelait « Cross Wits » : on y place des lettres dans une petite
+    // croix pour former deux mots qui se définissent l'un l'autre. Les lettres
+    // deviennent ici des CHIFFRES, et les mots des ÉGALITÉS.
+    //
+    // CE N'EST PAS UN EXERCICE DE CALCUL. Un exercice demande « combien font
+    // 3 + 4 ? » et l'élève répond. Ici il n'y a pas de question : il y a une
+    // contrainte, et l'on cherche ce qui la satisfait. On essaie, on voit que
+    // ça ne tombe pas, on recommence ailleurs — du raisonnement par essais
+    // ORGANISÉS, et la première marche vers les systèmes d'équations.
+    {
+        id: 'calc-croises', title: 'Les Croisés du Calcul', cree: '2026-09-26',
+        activityId: 'croises',
+        skills: ['num.logique.croises'],
+        params: { palier: 'facile' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
+                aide: 'Ajoute des opérations, puis retire le chiffre donné. Sans chiffre donné, '
+                    + 'il faut commencer par le croisement.',
+                options: Object.entries(PALIERS_CROISES)
+                    .map(([value, p]) => ({ value, label: p.label }))
+            }
+        ],
+        motsClefs: ['égalité', 'calcul mental', 'croisés', 'contrainte', 'essais',
+            'addition', 'soustraction', 'multiplication'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Place les chiffres du bas dans les cases vides pour que la LIGNE et la "
+            + "COLONNE soient toutes les deux des égalités vraies. Touche un chiffre, puis la "
+            + "case où tu le veux ; retouche une case pour reprendre son chiffre. Commence par "
+            + "la case du croisement : son chiffre sert aux deux calculs, donc c'est elle qui "
+            + "décide le plus. Les signes ne bougent pas."
+    },
+    // LES SERPENTS — un jeu de Rémy, rapporté d'un magazine.
+    //
+    // Rémy, quatre pages arrachées à un magazine de jeux : « j'aimerais bien ces
+    // jeux en français et en rapport avec les maths ». Celui-ci s'appelait
+    // « Snakes in Boxes ».
+    //
+    // CE QUI EN FAIT UN JEU DE MATHÉMATIQUES, et pas seulement de logique : le
+    // réglage « calculs ». La longueur d'un serpent n'est alors plus écrite,
+    // elle est CALCULÉE — « 2 × 3 » à sa tête —, et il faut savoir que six
+    // cases suivront avant de commencer à tracer. Le calcul mental cesse d'être
+    // un exercice pour devenir un moyen.
+    //
+    // LA RÈGLE DU CARRÉ DE QUATRE EST LA PLUS BELLE, et c'est celle qu'on
+    // oublie : sans elle, un « serpent » de huit cases pourrait être un
+    // rectangle 2 × 4, et le jeu se réduirait à découper la grille en
+    // rectangles. Avec elle, le chemin doit rester un chemin.
+    {
+        id: 'logi-serpents', title: 'Les Serpents', cree: '2026-09-26',
+        activityId: 'serpents',
+        skills: ['num.logique.serpents'],
+        params: { palier: 'facile', etiquettes: 'nombres' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
+                aide: 'Agrandit la grille et allonge les serpents. Un serpent long a beaucoup '
+                    + 'de chemins possibles : c\'est là que le raisonnement commence.',
+                options: Object.entries(PALIERS_SERPENTS)
+                    .map(([value, p]) => ({ value, label: p.label }))
+            },
+            {
+                id: 'etiquettes', type: 'select', label: 'La longueur est donnée',
+                default: 'nombres',
+                aide: 'En calculs, la tête du serpent porte « 2 × 3 » au lieu de 6 : il faut '
+                    + 'calculer avant de pouvoir tracer.',
+                options: [
+                    { value: 'nombres', label: 'En nombres — 6' },
+                    { value: 'calculs', label: 'En calculs — 2 × 3' }
+                ]
+            }
+        ],
+        motsClefs: ['serpents', 'longueur', 'chemin', 'angle droit', 'grille', 'logique',
+            'calcul mental', 'snakes'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Remplis toute la grille de serpents. Chaque nombre est la TÊTE d'un "
+            + "serpent et dit sa longueur en cases. Un serpent va tout droit ou tourne à angle "
+            + "droit, et il ne remplit jamais un carré de quatre cases : il reste mince partout. "
+            + "Touche un nombre pour choisir son serpent, puis colorie ses cases en glissant le "
+            + "doigt. Commence par les serpents courts et par les coins — ce sont eux qui ont le "
+            + "moins de chemins possibles. Le réglage « en calculs » remplace le nombre par une "
+            + "opération : il faut alors calculer avant de tracer."
     },
     {
         // LE HASHI — Hashiwokakero, « construire des ponts ». Rémy : « je
@@ -2090,6 +2194,94 @@ export const calculExercises = [
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "Chaque chiffre une fois par ligne et par colonne, comme un sudoku — mais les signes < et > entre les cases doivent être respectés. Un signe ÉLIMINE : la case du petit côté ne peut pas porter le plus grand chiffre. Pour écrire : touche une case et son chiffre monte (1, 2, 3… puis vide), ou glisse un chiffre du pavé dessus."
+    },
+    {
+        // LA CHUTE DES DÉCIMAUX. Rémy : « Je pensais à un jeu sympa, un
+        // [segment] en dessous séparé en 10, exemple 3 jusque 4, ça fait dix
+        // espaces. Des briques tombent du ciel et il faut les placer entre les
+        // graduations des axes. Exemple 3,15 le placer entre 3,1 et 3,2 ».
+        //
+        // C'EST L'ENCADREMENT, ET C'EST UNE DES CHOSES QUI RÉSISTENT LE PLUS.
+        // Un élève de sixième sait lire 3,15 ; il sait beaucoup moins dire entre
+        // quels dixièmes il tombe, et il se trompe d'une façon très précise :
+        // il lit « 15 » après la virgule et le place vers 3,5, parce qu'il
+        // traite la partie décimale comme un entier. Le jeu attaque exactement
+        // cette erreur — la brique ne peut se poser que dans un INTERVALLE, et
+        // un intervalle se désigne par ses deux bornes.
+        //
+        // TOUT EST COMPTÉ EN MILLIÈMES ENTIERS. 3,1 + 0,1 ne fait pas 3,2 en
+        // virgule flottante : il fait 3.3000000000000003. Une droite graduée
+        // calculée en flottants finit par afficher « 3,30000000000004 » au
+        // tableau, ou par refuser une réponse juste. Voir core/chuteDecimaux.js.
+        id: 'dec-chute', title: 'La Chute des Décimaux',
+        cree: '2026-09-15',
+        activityId: 'chute-decimaux',
+        sansRevision: true,
+        skills: ['num.dec.encadrer'],
+        params: { niveau: 1 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Le segment',
+                aide: 'Chaque niveau ne change QU\'UNE chose : d\'abord la partie entière, '
+                    + 'puis la finesse des graduations, puis le signe. Un niveau qui change '
+                    + 'deux choses à la fois ne dit pas laquelle n\'est pas comprise.',
+                options: [
+                    { value: 1, label: '1 — Des dixièmes, entre 0 et 1' },
+                    { value: 2, label: '2 — Des dixièmes, plus loin sur la droite' },
+                    { value: 3, label: '3 — Des centièmes' },
+                    { value: 4, label: '4 — Avec des nombres négatifs' }
+                ],
+                default: 1
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.DECIMAUX], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
+        motsClefs: ['encadrer', 'encadrement', 'décimaux', 'decimaux', 'droite graduée',
+            'graduation', 'dixième', 'centième', 'virgule', 'intervalle', 'briques', 'chute'],
+        instruction: "Une brique tombe du ciel avec un nombre écrit dessus. En bas, une droite graduée : elle va d'un nombre à un autre, coupée en dix morceaux. Touche le morceau où la brique doit se poser — celui qui est ENTRE les deux bonnes graduations. Pour 3,15, c'est entre 3,1 et 3,2 : c'est le PREMIER chiffre après la virgule qui décide, pas les suivants. Au clavier : ← → pour viser, Entrée pour poser. La brique tombe lentement, mais elle tombe."
+    },
+    {
+        // L'ENQUÊTE. Rémy : « Connais tu aussi le jeu murdoku », puis « ne
+        // l'appelle pas comme cela ».
+        //
+        // Le Murdoku est un jeu de Manuel Garand, déposé, avec ses grilles et
+        // ses illustrations : on ne le copie pas. Le MÉCANISME, lui, est celui
+        // des grilles de déduction, vieux comme les mathématiques récréatives
+        // — une bijection à retrouver sous contraintes. On le reprend avec un
+        // décor de collège et un objet égaré : trente élèves de quatrième, ce
+        // n'est pas le public d'un roman noir.
+        //
+        // CE QU'IL APPORTE, ET QUE LE LOGIGRAMME N'A PAS : un PLAN. Le
+        // logigramme croise des listes ; ici on croise des POSITIONS — rangée,
+        // colonne, les quatre points cardinaux, la distance en nombre de pas.
+        // C'est du repérage autant que de la logique, et les deux se tiennent.
+        //
+        // UNE SEULE SOLUTION, GARANTIE PAR ÉNUMÉRATION. Le noyau compte TOUS les
+        // placements possibles — 36, 576 ou 14 400 selon la taille — et ne rend
+        // la grille que si un seul survit aux indices. Puis il retire un à un
+        // les indices dont on peut se passer. Voir core/enquete.js.
+        id: 'logi-enquete', title: "L'Enquête",
+        cree: '2026-09-14',
+        activityId: 'enquete',
+        sansRevision: true,
+        skills: ['num.logique.enquete'],
+        params: { niveau: 1 },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'La scène',
+                aide: 'La taille de la grille EST la difficulté : trois personnages se placent '
+                    + 'presque de tête, cinq demandent d\'éliminer méthodiquement case par case.',
+                options: [
+                    { value: 1, label: '1 — La récréation · 3 × 3, trois personnages' },
+                    { value: 2, label: '2 — Le bâtiment B · 4 × 4, quatre personnages' },
+                    { value: 3, label: "3 — L'heure du déjeuner · 5 × 5, cinq personnages" }
+                ],
+                default: 1
+            }
+        ],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        motsClefs: ['enquête', 'enquete', 'déduction', 'deduction', 'logique', 'plan',
+            'repérage', 'reperage', 'nord', 'sud', 'est', 'ouest', 'indices', 'coupable'],
+        instruction: "Un objet a disparu. Chaque personnage occupe une case, et il n'y en a qu'UN par rangée et qu'UN par colonne : poser quelqu'un interdit donc toute sa rangée et toute sa colonne aux autres. Touche un prénom, puis la case où tu le places ; touche-le sur le plan pour le reprendre. Le nord est en haut, l'ouest à gauche ; « à côté » veut dire par un côté, jamais en diagonale. Tous les indices sont vrais, et ensemble ils ne laissent qu'une seule disposition possible : on ne devine jamais, on élimine. Quand tout le monde est placé, il reste à lire le plan — qui était seul dans le lieu où l'on a retrouvé l'objet ?"
     },
     {
         // LE CARRÉ MAGIQUE. Trente soustractions à trous qui se donnent la

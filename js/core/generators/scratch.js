@@ -21,6 +21,9 @@
 
 import { makeItem } from '../items.js';
 import { executer } from '../scratchVM.js';
+import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
 
 const SKILL = 'geo.figure.programme';
 
@@ -229,6 +232,39 @@ const NIVEAUX = [
     }
 ];
 
+// ── LES DOUZE FIGURES, EN CASES À COCHER ────────────────────────────────────
+//
+// Rémy : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral. »
+//
+// « COMMENCER AU NIVEAU N » N'ÉTAIT PAS UN CHOIX DE FIGURE, c'était une entrée
+// dans une boucle : on partait de la figure N et l'on repassait les douze,
+// rosace comprise, puis on revenait au trait. Le professeur qui voulait
+// travailler l'hexagone et l'octogone n'avait aucun moyen de le dire.
+//
+// AU-DELÀ DE ONZE MARCHES ON PLIE (voir core/progression.js) : les douze
+// figures se lisent donc en trois temps, et l'on ouvre celui qu'on travaille.
+const TEMPS = {
+    traits: "Le trait et l'angle droit",
+    polygones: 'Les polygones réguliers',
+    composees: 'Les figures composées'
+};
+const LISTE_MARCHES = NIVEAUX.map((n, i) => ({
+    id: String(i + 1),
+    nom: `${i + 1}. ${n.titre}`,
+    // Le temps se DÉDUIT de la difficulté déjà déclarée sur chaque figure : une
+    // seconde liste écrite à la main finirait par ne plus dire la même chose.
+    groupe: n.difficulte <= 2 ? 'traits' : (n.difficulte === 3 ? 'polygones' : 'composees')
+}));
+/**
+ * Le réglage d'avant les cases. `depuis` : « commencer au 5 » voulait dire
+ * « le 5 et la suite », pas « le 5 » — voir `marchesCochees`.
+ */
+const ANCIEN = { cle: 'depart', depuis: true };
+
+/** UNE FIGURE, UNE QUESTION : on ne repasse pas deux fois le même octogone. */
+const PAR_FIGURE = 1;
+
 export const scratchGenerator = {
     id: 'geo.scratch',
     label: 'Le Chat Géomètre (repasser une figure)',
@@ -242,11 +278,9 @@ export const scratchGenerator = {
                 { value: 'libre', label: 'Mode libre (dessiner ce qu’on veut)' }
             ]
         },
-        {
-            id: 'depart', type: 'select', label: 'Commencer au niveau',
-            options: NIVEAUX.map((n, i) => ({ value: i + 1, label: `${i + 1}. ${n.titre}` })),
-            default: 1
-        },
+        paramMarches({
+            marches: LISTE_MARCHES, groupes: TEMPS, mot: 'figure', ancien: ANCIEN
+        }),
         {
             id: 'saisie', type: 'select', label: 'Poser les blocs', papier: false,
             options: [
@@ -258,12 +292,19 @@ export const scratchGenerator = {
         }
     ],
 
+    // Une figure, une question — et rien de plus : au-delà, on repasserait la
+    // même. Voir core/duree.js.
+    conseil: (p) => conseilProgression(
+        marchesCochees(p, LISTE_MARCHES, ANCIEN).length, PAR_FIGURE),
+
     generate(params, ctx) {
         if (params?.mode === 'libre') return atelierLibre(ctx, params);
-        // Les niveaux s'enchaînent dans l'ordre : c'est une progression, pas
-        // un tirage. `index` est fourni par la session, sinon on avance seul.
-        const premier = Math.max(1, Math.min(NIVEAUX.length, parseInt(params?.depart) || 1)) - 1;
-        const rang = (premier + (ctx.index ?? 0)) % NIVEAUX.length;
+        // LES FIGURES COCHÉES S'ENCHAÎNENT DANS L'ORDRE : c'est une
+        // progression, pas un tirage — voir core/progression.js.
+        const rang = Math.max(0, Math.min(NIVEAUX.length - 1,
+            Number(marcheAuRang(ctx.index ?? 0,
+                marchesCochees(params, LISTE_MARCHES, ANCIEN),
+                totalDe(ctx, params), params, PAR_FIGURE)) - 1));
         const niveau = NIVEAUX[rang];
         const { depart, figure } = centrer(niveau);
 
@@ -279,7 +320,8 @@ export const scratchGenerator = {
             explanation: niveau.lecon,
             difficulty: niveau.difficulte,
             meta: {
-                niveau: rang + 1, total: NIVEAUX.length, id: niveau.id, titre: niveau.titre,
+                niveau: rang + 1, marche: String(rang + 1),
+                total: NIVEAUX.length, id: niveau.id, titre: niveau.titre,
                 palette: niveau.palette, depart, amorce: niveau.amorce || [],
                 modele: niveau.modele, figure, exigences: niveau.exigences || null,
                 saisie: params?.saisie || 'auto'

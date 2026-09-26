@@ -87,6 +87,22 @@ export async function auServeur(route, corps = {}) {
     return data || {};
 }
 
+/**
+ * LA LISTE DES CLASSES A CHANGÉ — que ceux qui la gardent en mémoire l'oublient.
+ *
+ * `donnerSeance.js` garde la liste quinze secondes pour ne pas la redemander à
+ * chaque ouverture du panneau. Ce cache était vidé à la SUPPRESSION d'une
+ * classe, et nulle part ailleurs : une classe qu'on venait de créer n'existait
+ * pas encore pour le panneau « À qui ce parcours est donné », et rien ne
+ * disait pourquoi. On annonce donc le changement, et c'est à ceux qui gardent
+ * une copie d'écouter — le noyau n'a pas à connaître leurs caches.
+ */
+function laListeABouge() {
+    if (typeof document !== 'undefined') {
+        document.dispatchEvent(new CustomEvent('classes_updated'));
+    }
+}
+
 /** Les classes du professeur. Rend un tableau, ou `{ erreur }`. */
 export async function mesClasses() {
     const d = await auServeur('/teacher/classes', { action: 'list' });
@@ -101,10 +117,21 @@ export async function creerClasse(nom, niveau = '') {
     if (d.erreur) return d;
     // Le serveur rend expressément celle qu'il vient de créer : la chercher en
     // tête d'une liste triée à la seconde ouvrait parfois la mauvaise.
+    laListeABouge();
     return d.creee || { erreur: 'La classe a peut-être été créée : rechargez pour voir.' };
 }
 
 export const listeDeClasse = (classId) => auServeur('/teacher/roster', { classId, action: 'list' });
+
+/**
+ * LES RÉGLAGES DU SITE — ceux qui valent pour tout le monde.
+ *
+ * Rémy : « le mode libre, mets-le en bouton dans ma zone prof ». Sans argument
+ * on lit ; avec, on écrit. La route rend l'état APRÈS écriture, ce qui évite
+ * de deviner : c'est le serveur qui dit où l'on en est, pas le bouton.
+ */
+export const reglagesDuSite = (changements = {}) =>
+    auServeur('/teacher/reglages', changements);
 export const apercuDeListe = (classId, texte, codeCommun) =>
     auServeur('/teacher/roster', { classId, action: 'apercu', texte, codeCommun });
 export const importerListe = (classId, liste) =>
@@ -120,8 +147,20 @@ export const ecarterEleve = (classId, studentId, blocked) =>
 
 export const leDirect = (classId) => auServeur('/teacher/live', { classId });
 
+/**
+ * LES SÉANCES D'UNE CLASSE — celles qu'on lui a données, de la plus récente
+ * à la plus ancienne.
+ *
+ * Rémy : « quand je clique sur une classe, il faut pouvoir voir la liste des
+ * séances attitrées ». L'information était en base depuis le début ; il
+ * manquait la porte pour la lire.
+ */
+export const seancesDeLaClasse = (classId) =>
+    auServeur('/teacher/assign', { classId, action: 'list' });
+
 export const renommerClasse = (classId, name, level) =>
-    auServeur('/teacher/class', { classId, action: 'rename', name, level });
+    auServeur('/teacher/class', { classId, action: 'rename', name, level })
+        .then(r => { laListeABouge(); return r; });
 export const mettreEnPause = (classId, locked) =>
     auServeur('/teacher/class', { classId, action: 'lock', locked });
 export const poserConsigne = (classId, notice) =>
@@ -129,10 +168,61 @@ export const poserConsigne = (classId, notice) =>
 export const viderClasse = (classId, confirmation) =>
     auServeur('/teacher/class', { classId, action: 'empty', confirmation });
 export const supprimerClasse = (classId, confirmation) =>
-    auServeur('/teacher/class', { classId, action: 'delete', confirmation });
+    auServeur('/teacher/class', { classId, action: 'delete', confirmation })
+        .then(r => { laListeABouge(); return r; });
+
+/**
+ * IMPOSER UNE SÉANCE À LA CLASSE, ou rendre le choix.
+ *
+ * Rémy : « lorsque les élèves se connectent, j'impose la séance, comme cela ils
+ * n'ont rien à lancer ». Un identifiant vide lève l'imposition.
+ */
+export const imposerLaSeance = (classId, pathId) =>
+    auServeur('/teacher/class', { classId, action: 'imposer', pathId: pathId || '' });
+
+/**
+ * LE COMPTE À REBOURS, ET CE QU'IL FAIT À ZÉRO.
+ *
+ * `aZero` vaut 'terminer' (on ramasse les copies) ou 'pause' (on reprend la
+ * parole). Zéro minute l'arrête.
+ */
+export const lancerLeChrono = (classId, minutes, aZero = 'terminer') =>
+    auServeur('/teacher/class', { classId, action: 'chrono', minutes, aZero });
+
+export const arreterLeChrono = (classId) =>
+    auServeur('/teacher/class', { classId, action: 'chrono', minutes: 0 });
+
+/**
+ * OUVRIR OU FERMER LE BAC À SABLE de ceux qui ont fini.
+ *
+ * Rémy : « un élève qui a fini peut avoir une zone bac à sable avec des jeux ».
+ * Il est ouvert par défaut ; ce geste sert à le fermer, pour les heures où
+ * celui qui a fini doit relire ou aider son voisin.
+ */
+export const reglerLeBac = (classId, ferme, minutes = null) =>
+    auServeur('/teacher/class', {
+        classId, action: 'bac', ferme: !!ferme,
+        // ET COMBIEN DE TEMPS IL DURE. Rémy : « un temps, réglé par vous ».
+        // `null` ne touche pas à la durée — ouvrir et fermer le bac ne doit pas
+        // effacer le quart d'heure qu'on avait posé.
+        ...(minutes === null ? {} : { minutes: Math.max(0, Math.min(120, Number(minutes) || 0)) })
+    });
 
 export const envoyerUnMot = (classId, body, studentId = '') =>
     auServeur('/teacher/message', { classId, body, studentId });
+
+/**
+ * SOUFFLER UN INDICE À UN ÉLÈVE — et à un seul.
+ *
+ * Rémy : « la possibilité de […] envoyer un indice ».
+ *
+ * `studentId` n'a pas de valeur par défaut, contrairement au mot, et c'est
+ * délibéré : un indice envoyé à toute la classe est une réponse donnée à
+ * vingt-cinq élèves qui n'en avaient pas besoin. Le serveur le refuse aussi —
+ * on ne compte pas sur l'écran pour tenir une règle.
+ */
+export const soufflerUnIndice = (classId, body, studentId) =>
+    auServeur('/teacher/message', { classId, body, studentId, genre: 'indice' });
 export const lesMots = (classId) => auServeur('/teacher/message', { classId, action: 'list' });
 
 export const creerUnProfesseur = (displayName, email, password) =>
@@ -153,6 +243,31 @@ export const reglerUnExercice = (classId, exerciseId, mode, studentId = '') =>
     auServeur('/teacher/override', { classId, action: 'add', exerciseId, mode, studentId });
 export const annulerUnReglage = (classId, overrideId) =>
     auServeur('/teacher/override', { classId, action: 'cancel', overrideId });
+
+/**
+ * ACCORDER LA CALCULATRICE, EN PLEINE HEURE.
+ *
+ * RÉMY : « pourrait-on autoriser dans les options l'utilisation de la
+ * calculatrice ou le permettre en direct à un groupe ou aux élèves (on pourrait
+ * sélectionner dans le direct) », puis : « les deux au choix mais on pourrait le
+ * donner que pour certains élèves ».
+ *
+ * `exerciseId` vaut `'*'` pour TOUTE LA SÉANCE, ou l'identifiant d'un exercice
+ * pour celui-là seulement. `eleves` vide veut dire toute la classe.
+ *
+ * UN SEUL ALLER-RETOUR POUR PLUSIEURS ÉLÈVES : cocher quatre noms puis attendre
+ * quatre réponses, c'est quatre occasions qu'une seule échoue sans que le
+ * professeur sache laquelle.
+ */
+export const accorderLaCalculatrice = (classId, exerciseId = '*', eleves = []) =>
+    auServeur('/teacher/override', {
+        classId, action: 'add', mode: 'calculatrice',
+        exerciseId: exerciseId || '*', studentIds: eleves
+    });
+
+/** La retirer partout dans cette classe — un geste, pas une ligne à retrouver. */
+export const retirerLaCalculatrice = (classId) =>
+    auServeur('/teacher/override', { classId, action: 'cancel', mode: 'calculatrice' });
 
 /**
  * EST-IL LÀ EN CE MOMENT ?

@@ -175,3 +175,128 @@ export function fauteAjouterExposants(termes, lettre = 'x') {
         [...autres.map(t => ({ ...t, tard: 0 })), faux]
             .sort((a, b) => (b.degre - a.degre) || (a.tard - b.tard)), lettre);
 }
+
+// ── CE QUI VA ENSEMBLE, DANS CE QUE L'ÉLÈVE A ÉCRIT ─────────────────────────
+//
+// RÉMY, devant « x² + 2x + 5x + 10 » tapé sous (x + 2)(x + 5) : « tu peux dire
+// que c'est bon mais qu'il faut réduire, tu peux faire changer de couleur ce
+// qui va ensemble ».
+//
+// « CE QUI VA ENSEMBLE » EST UNE QUESTION SUR L'ÉCRITURE, pas sur le
+// polynôme. Le polynôme, lui, a déjà tout regroupé — c'est précisément pour
+// cela qu'il ne peut pas servir ici : `lireSaisie` rend « 6x + 10 » quand
+// l'élève a écrit « 2x + 5x + 10 » et ne sait plus dire QUELS morceaux de sa
+// phrase se sont réunis. On découpe donc la phrase telle qu'elle est tapée, et
+// l'on compare les parties littérales.
+//
+// ON NE COMPREND PAS L'EXPRESSION, ON LA DÉCOUPE. Aucune analyse, aucun
+// calcul : une somme se coupe à ses + et ses − de premier niveau. C'est assez
+// pour colorier, et c'est surtout ce qui permet de colorier une phrase qui ne
+// veut encore rien dire — l'élève est en train de l'écrire.
+
+/** Un signe qui suit l'un de ceux-là n'est pas une coupure : c'est SON signe. */
+const AVANT_UN_SIGNE = new Set(['+', '−', '-', '×', '*', '÷', '/', '^', '(', '=']);
+const SIGNES = new Set(['+', '−', '-']);
+
+/**
+ * LA SOMME ÉCRITE, EN MORCEAUX. Rend la suite complète des morceaux — termes
+ * ET séparateurs — de sorte que les recoller redonne EXACTEMENT le texte de
+ * départ. C'est la condition pour pouvoir colorier un champ de saisie sans
+ * déplacer une virgule de ce que l'élève voit.
+ *
+ * `{ texte, terme }` : `terme` dit si le morceau est un terme (à colorier) ou
+ * ce qui le sépare du suivant (signe, espaces).
+ */
+export function tronconnerSomme(texte) {
+    const s = String(texte == null ? '' : texte);
+    const bruts = [];
+    let courant = '';
+    let profondeur = 0;
+    let precedent = '';
+    for (const c of s) {
+        if (c === '(') profondeur += 1;
+        else if (c === ')') profondeur = Math.max(0, profondeur - 1);
+        const coupe = SIGNES.has(c) && profondeur === 0
+            && precedent !== '' && !AVANT_UN_SIGNE.has(precedent);
+        if (coupe) {
+            bruts.push({ texte: courant, terme: true });
+            bruts.push({ texte: c, terme: false });
+            courant = '';
+        } else courant += c;
+        if (c.trim() !== '') precedent = c;
+    }
+    if (courant !== '') bruts.push({ texte: courant, terme: true });
+    // LES ESPACES NE SONT PAS DU TERME. Laissés dedans, le soulignement de
+    // couleur dépassait d'un blanc à droite de chaque morceau — on voyait le
+    // découpage plutôt que les termes.
+    const morceaux = [];
+    for (const m of bruts) {
+        if (!m.terme) { morceaux.push(m); continue; }
+        const gauche = m.texte.match(/^\s*/)[0];
+        const droite = m.texte.match(/\s*$/)[0];
+        const noyau = m.texte.slice(gauche.length, m.texte.length - droite.length);
+        if (!noyau) { morceaux.push({ texte: m.texte, terme: false }); continue; }
+        if (gauche) morceaux.push({ texte: gauche, terme: false });
+        morceaux.push({ texte: noyau, terme: true });
+        if (droite) morceaux.push({ texte: droite, terme: false });
+    }
+    return morceaux;
+}
+
+/**
+ * LA PART LITTÉRALE D'UN TERME ÉCRIT, sous une forme comparable.
+ *
+ * « 2x », « −12x » et « x » ont la même : deux termes se réunissent quand
+ * elles coïncident, et c'est la seule chose à savoir pour colorier. Les trois
+ * écritures de l'exposant que le clavier accepte — x², x^2, x2 — donnent le
+ * même résultat, sans quoi l'élève verrait sa couleur changer selon la touche
+ * qu'il a choisie.
+ *
+ * Le terme constant a pour signature la chaîne vide : les constantes vont
+ * ensemble elles aussi.
+ */
+export function signatureTerme(terme) {
+    const t = String(terme == null ? '' : terme).replace(/\s+/g, '');
+    const degres = new Map();
+    const re = new RegExp(`([a-zA-Z])(\\^\\d+|\\d+|[${CHIFFRES_HAUT}]+)?`, 'g');
+    let m;
+    while ((m = re.exec(t)) !== null) {
+        const brut = m[2] || '';
+        let d;
+        if (!brut) d = 1;
+        else if (brut[0] === '^') d = Number(brut.slice(1));
+        else if (/^\d+$/.test(brut)) d = Number(brut);
+        else d = Number([...brut].map(c => CHIFFRES_HAUT.indexOf(c)).join(''));
+        degres.set(m[1], (degres.get(m[1]) || 0) + d);
+    }
+    return [...degres.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))
+        .map(([lettre, d]) => `${lettre}^${d}`).join('·');
+}
+
+/**
+ * LES MORCEAUX, AVEC LEUR GROUPE DE COULEUR.
+ *
+ * `groupe` vaut −1 pour ce qui ne se regroupe avec rien : un terme SEUL DE SON
+ * ESPÈCE ne se colorie pas. Colorier les quatre termes de « x² + 2x + 5x + 10 »
+ * en quatre couleurs ne dirait rien du tout ; n'en colorier que deux — les deux
+ * qui se réunissent — dit toute la réponse à la question posée.
+ *
+ * Les groupes sont numérotés dans l'ordre d'apparition, pour que la couleur ne
+ * saute pas d'un terme à l'autre pendant qu'on écrit.
+ */
+export function groupesSemblables(texte) {
+    const morceaux = tronconnerSomme(texte);
+    const combien = new Map();
+    for (const m of morceaux) {
+        if (!m.terme) continue;
+        m.signature = signatureTerme(m.texte);
+        combien.set(m.signature, (combien.get(m.signature) || 0) + 1);
+    }
+    const rangs = new Map();
+    for (const m of morceaux) {
+        if (!m.terme || combien.get(m.signature) < 2) { m.groupe = -1; continue; }
+        if (!rangs.has(m.signature)) rangs.set(m.signature, rangs.size);
+        m.groupe = rangs.get(m.signature);
+    }
+    return morceaux;
+}

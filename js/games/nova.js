@@ -134,6 +134,9 @@ class Nova extends BaseGame {
     // --- Mise en place -------------------------------------------------------
 
     render() {
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         const p = this.params || {};
         this.tables = (Array.isArray(p.tables) && p.tables.length ? p.tables : [2, 3, 4, 5, 6, 7, 8, 9, 10])
             .map(Number).filter(n => n >= 2 && n <= 12);

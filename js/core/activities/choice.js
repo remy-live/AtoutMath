@@ -141,7 +141,12 @@ export function mount(container, session, opts = {}) {
      * prend la main dès la première question — il n'y a pas de marche plus
      * basse où redescendre.
      */
-    const MODULES = { notation: './notationSaisie.js', trace: './traceNotation.js' };
+    // LA ROUTE LITTÉRALE MANQUAIT, et c'est elle qui rendait le QCM éternel.
+    // `moduleVoulu` ne passait au clavier que si la réponse était un nombre ;
+    // une expression — « 2x² + 3x − 5 », « (x − 3)(x + 3) » — n'en est pas un,
+    // donc aucun chapitre de calcul littéral ne pouvait se taper.
+    const MODULES = { notation: './notationSaisie.js', trace: './traceNotation.js',
+        litteral: './litteralSaisie.js' };
     function moduleVoulu(item, aideIci) {
         const m = (item && item.meta) || {};
         const compose = MODULES[m.composable];
@@ -153,10 +158,25 @@ export function mount(container, session, opts = {}) {
         return chiffrable ? './numeric.js' : null;
     }
 
+    /**
+     * Le bandeau qui annonce le passage au clavier — QUAND IL Y A EU PASSAGE.
+     *
+     * « À toi d'écrire : PLUS DE PROPOSITIONS » n'a de sens qu'après des
+     * propositions. Sur un exercice `saisieSeule`, le clavier prend la main
+     * dès la première question : il n'y en a jamais eu, et la phrase annonce
+     * un changement qui n'a pas eu lieu. Vu à l'écran sur le pas à pas des
+     * factorisations, où elle occupait en plus les 60 px qui manquaient au
+     * bouton « Valider » sur un téléphone.
+     */
+    const avisPour = (module, item) =>
+        ((item && item.meta && item.meta.saisieSeule) ? '' : (AVIS[module] || ''));
+
     const AVIS = {
         './numeric.js': 'À toi d\'écrire : plus de propositions, tu tapes le résultat.',
         './notationSaisie.js': 'À toi d\'écrire : tu poses toi-même les deux symboles.',
-        './traceNotation.js': ''
+        './traceNotation.js': '',
+        './litteralSaisie.js': 'À toi d\'écrire : plus de propositions, tu tapes '
+            + 'l\'expression.'
     };
 
     function renderNext() {
@@ -167,7 +187,7 @@ export function mount(container, session, opts = {}) {
         const rang = session.history.length;
         aide = aideSelonEtat(session.params || {}, etatAdaptatif(), rang, totalPrevu());
         const voulu = moduleVoulu(item, aide);
-        if (!releve && voulu) return passerALaMain(item, voulu, AVIS[voulu] || '');
+        if (!releve && voulu) return passerALaMain(item, voulu, avisPour(voulu, item));
         render(item);
     }
 
@@ -212,7 +232,7 @@ export function mount(container, session, opts = {}) {
         // forme d'une question à l'autre : « trace [AB) » se dessine, « (AB)
         // se lit… » se choisit. On rend la main, et `renderNext` du QCM
         // n'ayant pas eu lieu, c'est ici qu'on aiguille.
-        if (voulu) { passerALaMain(item, voulu, AVIS[voulu] || ''); return true; }
+        if (voulu) { passerALaMain(item, voulu, avisPour(voulu, item)); return true; }
         avisRetour = 'On reprend avec des propositions : ça va revenir.';
         render(item);
         return true;
@@ -575,22 +595,44 @@ export function wireHint(container, session) {
     btn.onclick = () => {
         const h = session.hint();
         if (!h) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; return; }
-        let box = container.querySelector('.hint-text');
-        if (!box) {
-            box = document.createElement('div');
-            box.className = 'hint-text';
-            box.setAttribute('role', 'status');
-            btn.parentElement.parentElement.appendChild(box);
-        }
-        box.textContent = h;
-        // LE DESSIN DE L'INDICE, s'il en a un. Rémy : « pourquoi ne pas avoir
-        // un petit schéma ? c'est souvent plus parlant ». Le HTML vient du
-        // générateur, pas de l'élève : il est de confiance.
-        if (session.schemaIndice) {
-            const dessin = document.createElement('div');
-            dessin.className = 'hint-schema';
-            dessin.innerHTML = session.schemaIndice;
-            box.appendChild(dessin);
+        // L'INDICE S'OUVRE EN CARTE, PAS SOUS LES BOUTONS.
+        //
+        // RÉMY, capture du pas à pas à l'appui : « quand l'indice apparaît en
+        // dessous, on ne voit plus le haut. Je pense que l'indice ne doit
+        // apparaître que dans la modale en popup. »
+        //
+        // Il a raison, et la mesure est dans sa capture : l'indice poussait la
+        // colonne, le champ de saisie et les premières touches sortaient par
+        // le haut — au moment précis où l'élève vient de demander de l'aide
+        // pour écrire quelque chose. Une aide qui cache ce qu'elle explique ne
+        // s'explique pas elle-même.
+        //
+        // « Montre-moi », lui, passait DÉJÀ par cette carte : les deux boutons
+        // voisins se comportaient différemment sans que rien ne le dise.
+        // Le dessin de l'indice y est accepté (Rémy : « pourquoi ne pas avoir
+        // un petit schéma ? c'est souvent plus parlant ») ; il vient du
+        // générateur, jamais de l'élève.
+        const detail = { kind: 'hint', msg: h, schema: session.schemaIndice || null };
+        document.dispatchEvent(new CustomEvent('game_feedback', { detail }));
+        // PERSONNE POUR L'AFFICHER : on retombe sous les boutons plutôt que de
+        // perdre l'indice. C'est le cas de l'aperçu des réglages et des bancs,
+        // où la carte n'est pas montée — le contrat de `game_feedback` le dit
+        // par `handled`.
+        if (!detail.handled) {
+            let box = container.querySelector('.hint-text');
+            if (!box) {
+                box = document.createElement('div');
+                box.className = 'hint-text';
+                box.setAttribute('role', 'status');
+                btn.parentElement.parentElement.appendChild(box);
+            }
+            box.textContent = h;
+            if (session.schemaIndice) {
+                const dessin = document.createElement('div');
+                dessin.className = 'hint-schema';
+                dessin.innerHTML = session.schemaIndice;
+                box.appendChild(dessin);
+            }
         }
         if (!session.hintsAvailable) { btn.disabled = true; btn.textContent = 'Plus d\'indice'; }
     };
