@@ -57,6 +57,8 @@ const CLE_SEANCES = 'seances';
  * dépliage (voir `elevesDeLaClasse` dans ui/parcoursClasses.js).
  */
 let memoClasses = null;
+/** Vrai quand le serveur n'a pas répondu — voir `classesIllisibles`. */
+let echecDerniereLecture = false;
 let memoQuand = 0;
 const MEMO_MS = 15000;
 
@@ -74,8 +76,21 @@ export async function lireClasses({ fraiches = false } = {}) {
         // LE SERVEUR A REFUSÉ : on ne remplace pas ses classes par une liste
         // locale qui n'a rien à voir. Mieux vaut un panneau vide, qui dit
         // qu'il n'y a rien, qu'un panneau qui montre autre chose.
+        //
+        // MAIS « VIDE » ET « MUET » NE SE DISENT PAS PAREIL, et c'est le
+        // défaut que Rémy a rencontré : « je n'ai plus les paramètres qui me
+        // permettent de donner un parcours à la classe ». Mesuré en coupant
+        // l'API : le panneau s'ouvre, les classes ont disparu, et il annonce
+        // « Vous n'avez pas encore de classe. Créez-en une ». C'est FAUX — il
+        // en a deux — et cela l'envoie en fabriquer une troisième.
+        //
+        // On retient donc l'échec. Le panneau dira « je n'ai pas pu les lire »
+        // et offrira de réessayer, au lieu d'affirmer une chose qu'il ne sait
+        // pas.
+        echecDerniereLecture = true;
         return memoClasses || [];
     }
+    echecDerniereLecture = false;
     memoClasses = (Array.isArray(d) ? d : []).map(c => ({
         id: c.id,
         nom: c.name || c.nom || 'Classe',
@@ -89,8 +104,18 @@ export async function lireClasses({ fraiches = false } = {}) {
     return memoClasses;
 }
 
+/**
+ * LA DERNIÈRE LECTURE A-T-ELLE ÉCHOUÉ ?
+ *
+ * Vrai quand le serveur n'a pas répondu — et donc que la liste rendue est un
+ * souvenir ou rien du tout, PAS un inventaire. Voir `lireClasses`.
+ */
+export function classesIllisibles() { return echecDerniereLecture; }
+
 /** Après un changement de classe, la prochaine lecture doit aller au serveur. */
-export function oublierLesClasses() { memoClasses = null; memoQuand = 0; }
+export function oublierLesClasses() {
+    memoClasses = null; memoQuand = 0; echecDerniereLecture = false;
+}
 
 // ET L'ON N'ATTEND PLUS QUE QUELQU'UN PENSE À NOUS LE DIRE. `oublierLesClasses`
 // n'était appelée qu'au moment de supprimer une classe : créer une classe puis
@@ -132,6 +157,15 @@ export async function ouvrirDonnerSeance(parcours, onDonne) {
     }
     const classes = await lireClasses();
     if (!classes.length) {
+        // MUET N'EST PAS VIDE — voir `lireClasses`. Dire « vous n'avez pas de
+        // classe » à un professeur qui en a trois, parce que le serveur n'a
+        // pas répondu, l'envoie en fabriquer une quatrième.
+        if (classesIllisibles()) {
+            return showAlert('Je n\'ai pas pu lire vos classes : le serveur n\'a pas '
+                + 'répondu. Vos classes ne sont pas perdues — réessayez dans un instant.'
+                + '<br><br>En attendant, le bouton <b>lien</b> vous donne un code à '
+                + 'dicter : il marche sans serveur.');
+        }
         // ON NE DEMANDE PAS DE CRÉER UNE CLASSE ICI. Le professeur est en train
         // de donner un travail ; l'envoyer construire ses classes au milieu du
         // geste, c'est lui faire perdre le fil et le parcours. On lui dit où

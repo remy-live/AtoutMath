@@ -47,6 +47,28 @@ const MODELES_PIXEL = [
 
 const COULEURS = { red: '#ff6b6b', blue: '#4dabf7', green: '#51cf66', yellow: '#fcc419', black: '#333', white: '#fff' };
 
+/**
+ * LA BONNE RÉPONSE D'UNE TÂCHE, TELLE QU'ON L'ÉCRIT.
+ *
+ * RÉMY : « mais pour le tableur la bonne réponse est =A1+B1 pas 17 ».
+ *
+ * Il a raison, et cela se voyait à deux endroits. À l'écran, le refus
+ * annonçait « attendu : 17 » alors que la consigne demande une FORMULE :
+ * l'élève lit qu'on voulait 17 et va l'écrire — c'est-à-dire exactement
+ * la faute que ce niveau existe pour empêcher (« recopier les nombres
+ * marche une fois ; avec les références, le tableur recalcule tout seul »).
+ * Et dans le carnet d'erreurs, la réponse attendue s'enregistrait comme
+ * `17` : le professeur relisait « attendu : 17 » sous une question qui
+ * demandait `=A1+B1`.
+ *
+ * La VALEUR reste le juge — `=B1+A1` est aussi juste que `=A1+B1`, et
+ * comparer les écritures refuserait la seconde. Mais ce qu'on ANNONCE et
+ * ce qu'on ENREGISTRE est l'écriture attendue.
+ */
+export function attenduEcrit(tache) {
+    return (tache && tache.formule && tache.modele) ? tache.modele : (tache || {}).attendu;
+}
+
 class Tableur extends BaseGame {
     render() {
         this.level = Math.min(9, Math.max(1, parseInt(this.params.startLevel) || 1));
@@ -670,7 +692,7 @@ class Tableur extends BaseGame {
             if (!val.startsWith('=')) {
                 this.refuser(inp, 'Une formule commence toujours par =', {
                     questionText: this.ui.consigne.textContent,
-                    input: inp.value, expected: 'une formule commençant par =',
+                    input: inp.value, expected: attenduEcrit(tache),
                     concept: SKILL_FORMULES,
                     customMessage: `Sans le signe =, le tableur croit que tu écris du texte. C'est = qui déclenche le calcul.`
                 });
@@ -682,7 +704,7 @@ class Tableur extends BaseGame {
             if (val.indexOf('=', 1) > 0) {
                 this.refuser(inp, 'Il y a deux « = » : la formule est écrite deux fois.', {
                     questionText: this.ui.consigne.textContent,
-                    input: inp.value, expected: 'une seule formule',
+                    input: inp.value, expected: attenduEcrit(tache),
                     concept: SKILL_FORMULES,
                     customMessage: `Ta case contient ${val} : la formule s'est ajoutée à la `
                         + `précédente au lieu de la remplacer. Efface tout, puis écris-la une seule fois.`
@@ -694,7 +716,7 @@ class Tableur extends BaseGame {
             if (!aRef && !aFonction) {
                 this.refuser(inp, 'Utilise les références des cases (A1, B2…), pas les nombres !', {
                     questionText: this.ui.consigne.textContent,
-                    input: inp.value, expected: 'une formule avec des références',
+                    input: inp.value, expected: attenduEcrit(tache),
                     concept: SKILL_FORMULES,
                     customMessage: `Recopier les nombres (=3+4) marche une fois, mais si une case change, ton résultat devient faux. Avec les références (=A1+B1), le tableur recalcule tout seul : c'est toute sa force.`
                 });
@@ -713,18 +735,25 @@ class Tableur extends BaseGame {
                 const raison = res.replace(/^Erreur\s*:\s*/, '');
                 this.refuser(inp, `${raison.charAt(0).toUpperCase()}${raison.slice(1)}.`, {
                     questionText: this.ui.consigne.textContent,
-                    input: val, expected: tache.attendu,
+                    input: val, expected: attenduEcrit(tache),
                     concept: SKILL_FORMULES,
                     customMessage: `Le tableur n'arrive pas à calculer ${val} : ${raison}. `
                         + `Une formule ne contient que des références de cases (A1, B2…), `
                         + `des nombres et les signes + − * / .`
                 });
             } else {
-                this.refuser(inp, `Ta formule donne ${res}, attendu : ${tache.attendu}.`, {
+                // ON NE DIT PLUS « attendu : 17 » SOUS UNE QUESTION QUI DEMANDE
+                // UNE FORMULE : l'élève lirait qu'il faut écrire 17, ce que ce
+                // niveau existe précisément pour empêcher. On dit ce que le
+                // total DEVRAIT faire, ce qui est un indice sur les cases, pas
+                // une réponse à recopier.
+                this.refuser(inp, `Ta formule calcule ${res} ; le total cherché fait ${tache.attendu}.`, {
                     questionText: this.ui.consigne.textContent,
-                    input: val, expected: tache.attendu,
+                    input: val, expected: attenduEcrit(tache),
                     concept: SKILL_FORMULES,
-                    customMessage: `La formule ${val} calcule ${res}. Vérifie que tu utilises les BONNES cases : relis la consigne et pointe chaque référence du doigt.`
+                    customMessage: `La formule ${val} calcule ${res}, et l'on cherche ${tache.attendu}. `
+                        + `Vérifie que tu utilises les BONNES cases : relis la consigne et pointe `
+                        + `chaque référence du doigt.`
                 });
             }
         } else {

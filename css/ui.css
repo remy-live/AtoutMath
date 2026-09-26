@@ -3198,6 +3198,18 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     font-size: .85rem; line-height: 1.35; color: var(--text-main);
 }
 .pc-vide { font-size: .84rem; color: var(--text-muted); line-height: 1.4; }
+/* LE SERVEUR N'A PAS RÉPONDU — ce n'est pas un état vide, c'est un
+   incident. Voir `lireClasses` dans ui/donnerSeance.js : le panneau
+   annonçait « Vous n'avez pas encore de classe » à un professeur qui en
+   a deux. La couleur d'alerte le distingue d'un simple manque. */
+.pc-vide--muet { color: var(--warning-texte); }
+.pc-reessayer {
+    display: inline-block; margin-left: 6px;
+    border: 1px solid currentColor; border-radius: 999px;
+    background: none; color: inherit; font: inherit; font-weight: 600;
+    padding: 3px 12px; cursor: pointer;
+}
+.pc-reessayer:disabled { opacity: .6; cursor: default; }
 
 /* LE BILAN S'OUVRE SOUS LA LISTE, pas dans une boîte par-dessus : on veut
    pouvoir passer d'un élève à l'autre sans refermer, et une boîte modale

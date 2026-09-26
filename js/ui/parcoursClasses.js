@@ -42,7 +42,9 @@ import {
     poserMot, aRattraper
 } from '../core/seances.js';
 import { bilanSeance, bilanEleveSeance, aTravaille } from '../core/bilanSeance.js';
-import { lireClasses, lireSeances, ecrireSeances } from './donnerSeance.js';
+import {
+    lireClasses, lireSeances, ecrireSeances, classesIllisibles, oublierLesClasses
+} from './donnerSeance.js';
 import { couleurNiveau, consigneDe, consigneClasse } from '../core/bilan.js';
 import { LEVELS } from '../core/mastery.js';
 
@@ -423,7 +425,10 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         return showAlert('Ajoutez au moins une activité avant de donner ce parcours.');
     }
 
-    const classes = await lireClasses();
+    // UNE COPIE, PARCE QU'ON LA RÉÉCRIT SUR PLACE APRÈS UN « Réessayer » :
+    // `lireClasses` rend son propre souvenir, et le vider ici le viderait
+    // pour toute l'application.
+    const classes = [...(await lireClasses())];
     let seances = await lireSeances();
     // QUI L'A DÉJÀ — demandé au serveur, pas deviné du navigateur. Le
     // professeur a pu donner ce parcours depuis un autre poste ; son stock
@@ -454,9 +459,14 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
     // Cocher au hasard, c'est donner le devoir à la classe d'à côté. On ne
     // montre le code QUE dans ce cas : l'afficher partout ferait du bruit
     // permanent pour un problème rare.
-    const parNom = new Map();
-    classes.forEach(c => parNom.set(c.nom, (parNom.get(c.nom) || 0) + 1));
-    classes.forEach(c => { c.homonyme = (parNom.get(c.nom) || 0) > 1; });
+    // DEUX CLASSES DE MÊME NOM SE DISTINGUENT PAR LEUR CODE. Sortie en
+    // fonction parce qu'on la rejoue après un « Réessayer ».
+    const nommerLesHomonymes = () => {
+        const parNom = new Map();
+        classes.forEach(c => parNom.set(c.nom, (parNom.get(c.nom) || 0) + 1));
+        classes.forEach(c => { c.homonyme = (parNom.get(c.nom) || 0) > 1; });
+    };
+    nommerLesHomonymes();
 
     /**
      * LES CLASSES DÉPLIÉES LE RESTENT APRÈS UN REDESSIN.
@@ -506,8 +516,17 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
 
                 ${classes.length ? `<div class="pc-classes">
                     ${classes.map(c => ligneClasseHtml(c, infos.get(c.id))).join('')}
-                </div>` : `<p class="pc-vide">Vous n'avez pas encore de classe.
-                    Créez-en une par la porte <b>La classe</b>, en haut.</p>`}
+                </div>` : (classesIllisibles()
+        // MUET N'EST PAS VIDE — voir `lireClasses` dans ui/donnerSeance.js.
+        // Rémy : « je n'ai plus les paramètres qui me permettent de donner un
+        // parcours à la classe ». Le panneau annonçait « Vous n'avez pas
+        // encore de classe » alors qu'il en a deux et que c'est le serveur
+        // qui n'avait pas répondu.
+        ? `<p class="pc-vide pc-vide--muet">Je n'ai pas pu lire vos classes :
+                    le serveur n'a pas répondu. Vos classes ne sont pas perdues.
+                    <button type="button" class="pc-reessayer" data-reessayer>Réessayer</button></p>`
+        : `<p class="pc-vide">Vous n'avez pas encore de classe.
+                    Créez-en une par la porte <b>La classe</b>, en haut.</p>`)}
 
                 <p class="pc-compte" role="status" aria-live="polite">${
                     direAQui(donnees, nommes.size)}</p>
@@ -768,6 +787,21 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
             rendreTirable(panel, fermerPanneau,
                 { actif: () => document.body.classList.contains('mobile-view') });
         });
+
+        // RÉESSAYER, quand le serveur n'a pas répondu. On oublie le souvenir
+        // — sinon la relecture rendrait la même liste vide sans rien demander
+        // — puis on redemande et l'on redessine.
+        const reessayer = panel.querySelector('[data-reessayer]');
+        if (reessayer) reessayer.onclick = async () => {
+            reessayer.disabled = true;
+            reessayer.textContent = 'On redemande…';
+            oublierLesClasses();
+            const fraiches = await lireClasses({ fraiches: true });
+            classes.length = 0;
+            fraiches.forEach(c => classes.push(c));
+            nommerLesHomonymes();
+            dessiner();
+        };
 
         const sel = panel.querySelector('[data-mode]');
         if (sel) sel.onchange = () => {

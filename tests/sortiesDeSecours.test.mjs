@@ -125,3 +125,33 @@ test('« ERREUR » N\'EST PAS UN DIAGNOSTIC', () => {
     // d'une.
     assert.match(TABLEUR, /} else if \(typeof res === 'string'\) \{/);
 });
+
+test('LA BONNE RÉPONSE D\'UNE FORMULE EST UNE FORMULE', async () => {
+    // RÉMY : « mais pour le tableur la bonne réponse est =A1+B1 pas 17 ».
+    //
+    // Le refus annonçait « attendu : 17 » sous une consigne qui demande une
+    // FORMULE — donc il soufflait à l'élève d'écrire 17, exactement la faute
+    // que ce niveau existe pour empêcher. Et le carnet d'erreurs enregistrait
+    // « attendu : 17 » sous une question qui demandait `=A1+B1`.
+    //
+    // Mesuré dans le navigateur, une formule valide mais fausse (`=A1+A1`) :
+    // avant, la tentative partait avec `expected: '9'` ; après, avec
+    // `expected: '=A1+B1'`.
+    const { attenduEcrit } = await import('../js/games/spreadsheet.js');
+    assert.equal(attenduEcrit({ formule: true, modele: '=A1+B1', attendu: '17' }), '=A1+B1');
+    // Un repérage de case, lui, attend bien une valeur : on n'a pas de
+    // formule à annoncer, et l'on n'en invente pas.
+    assert.equal(attenduEcrit({ formule: false, attendu: '12' }), '12');
+    // Une tâche sans modèle retombe sur la valeur plutôt que sur `undefined` :
+    // un carnet qui dit « attendu : undefined » ne vaut pas mieux qu'un carnet
+    // qui dit 17.
+    assert.equal(attenduEcrit({ formule: true, attendu: '8' }), '8');
+    assert.equal(attenduEcrit(null), undefined);
+    // ET LA VALEUR RESTE LE JUGE : `=B1+A1` est aussi juste que `=A1+B1`, et
+    // comparer les écritures refuserait la seconde. Le jeu compare donc
+    // toujours des nombres.
+    assert.match(TABLEUR, /Math\.abs\(parseFloat\(res\) - parseFloat\(tache\.attendu\)\) < 0\.1/);
+    // Et le message ne donne plus la réponse à recopier : il dit ce que la
+    // formule calcule et ce que le total devrait faire.
+    assert.match(TABLEUR, /Ta formule calcule \$\{res\} ; le total cherché fait \$\{tache\.attendu\}/);
+});
