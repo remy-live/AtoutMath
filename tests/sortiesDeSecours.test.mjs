@@ -102,3 +102,26 @@ test('THALÈS : LA DÉMONSTRATION POSE SA FIGURE AVANT DE PARLER', () => {
     assert.match(thales.slice(i, i + 200), /if \(!this\.f\) this\.poserDefi\(\);/,
         'la démonstration ne pose toujours pas sa figure');
 });
+
+test('« ERREUR » N\'EST PAS UN DIAGNOSTIC', () => {
+    // RÉMY, deux captures à deux jours d'écart : `=A1+B1` — la formule même
+    // que la consigne donne en exemple — et « Ta formule donne Erreur ». Je
+    // n'ai pas su reproduire son cas : cette formule-là donne le bon total,
+    // avec un zéro comme avec 8 et 9, et soixante questions d'affilée n'ont
+    // produit aucune « Erreur ».
+    //
+    // TANT QU'ON NE SAIT PAS, ON FAIT DIRE À LA MACHINE CE QU'ELLE VOIT. Le
+    // mot « Erreur » désigne le symptôme et cache la cause. Mesuré dans le
+    // navigateur après correction : `=A1+B7` dit « Il n'y a pas de case B7
+    // dans cette grille », `=A1+B1²` dit « Je ne sais pas lire “²” ». Si cela
+    // retombe sur Rémy, sa capture portera la réponse.
+    assert.match(TABLEUR, /il n'y a pas de case \$\{absente\} dans cette grille/);
+    assert.match(TABLEUR, /je ne sais pas lire « \$\{quoi\} » dans \$\{brut\}/);
+    // La référence entière se relit dans la formule D'ORIGINE : après
+    // remplacement il ne reste que le « B » de « B7 », qui ne dirait rien.
+    assert.match(TABLEUR, /const refs = brut\.match\(\/\[A-Z\]\+\\d\+\/g\)/);
+    // Et le refus ne parle plus du total attendu quand il n'y a pas de total :
+    // « Ta formule donne Erreur, attendu : 17 » posait deux énigmes au lieu
+    // d'une.
+    assert.match(TABLEUR, /} else if \(typeof res === 'string'\) \{/);
+});

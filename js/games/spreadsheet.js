@@ -705,6 +705,20 @@ class Tableur extends BaseGame {
                 inp.value = res;
                 if (inp === this.inputActif) this.ui.fxVal.textContent = String(res);
                 this.reussirSaisie(inp);
+            } else if (typeof res === 'string') {
+                // LA FORMULE NE SE LIT PAS : on dit POURQUOI, et l'on ne parle
+                // pas du total attendu — il n'y a pas de total à comparer.
+                // « Ta formule donne Erreur, attendu : 17 » laissait l'élève
+                // devant deux énigmes au lieu d'une.
+                const raison = res.replace(/^Erreur\s*:\s*/, '');
+                this.refuser(inp, `${raison.charAt(0).toUpperCase()}${raison.slice(1)}.`, {
+                    questionText: this.ui.consigne.textContent,
+                    input: val, expected: tache.attendu,
+                    concept: SKILL_FORMULES,
+                    customMessage: `Le tableur n'arrive pas à calculer ${val} : ${raison}. `
+                        + `Une formule ne contient que des références de cases (A1, B2…), `
+                        + `des nombres et les signes + − * / .`
+                });
             } else {
                 this.refuser(inp, `Ta formule donne ${res}, attendu : ${tache.attendu}.`, {
                     questionText: this.ui.consigne.textContent,
@@ -742,8 +756,30 @@ class Tableur extends BaseGame {
 
     // --- Calcul des formules ------------------------------------------------
 
+    /**
+     * « ERREUR » N'EST PAS UN DIAGNOSTIC.
+     *
+     * RÉMY, deux captures à deux jours d'écart : `=A1+B1` — la formule même
+     * que la consigne donne en exemple — et « Ta formule donne Erreur ». Je
+     * n'ai pas su reproduire son cas : la même formule, avec un zéro comme
+     * avec 8 et 9, donne le bon total, et soixante questions d'affilée n'ont
+     * produit aucune « Erreur ». Une saisie la produit — la formule écrite
+     * deux fois —, mais son message d'alors nommait le doublon, pas le sien.
+     *
+     * TANT QU'ON NE SAIT PAS, ON FAIT DIRE À LA MACHINE CE QU'ELLE VOIT. Le
+     * mot « Erreur » désigne le symptôme et cache la cause : il reste, après
+     * remplacement des références, quelque chose qui n'est pas du calcul. On
+     * rend donc ce QUELQUE CHOSE. L'élève lit « je ne sais pas lire “B7” »
+     * plutôt qu'un mot de machine, et si cela retombe sur Rémy, sa capture
+     * portera la réponse.
+     *
+     * @returns {number|string} le résultat, ou une phrase qui commence par
+     *   « Erreur » — les appelants ne testent que `parseFloat`, qui rend NaN
+     *   dans les deux cas.
+     */
     evaluerFormule(formule) {
         let expr = formule.substring(1).toUpperCase();
+        const brut = expr;
         const plage = (s, e) => {
             const vals = [];
             const c1 = this.cols.indexOf(s[0]), r1 = parseInt(s.slice(1)) - 1;
@@ -769,10 +805,29 @@ class Tableur extends BaseGame {
             return isNaN(v) ? 0 : v;
         });
         try {
-            if (/[^0-9+\-*/().\s]/.test(expr)) return 'Erreur';
+            // CE QUI RESTE ET QUI N'EST PAS DU CALCUL. Après les remplacements,
+            // une formule lisible ne contient plus que des chiffres, des
+            // opérateurs, des parenthèses et des espaces. Tout le reste est ce
+            // qu'on n'a pas su lire — et c'est cela qu'il faut nommer.
+            const restes = expr.match(/[^0-9+\-*/().\s]+/g);
+            if (restes) {
+                // UNE RÉFÉRENCE HORS GRILLE SE DIT PAR SON NOM. « B7 » quand
+                // la grille s'arrête à la ligne 6 : après remplacement il ne
+                // reste que le « B », qui ne dirait rien. On relit donc la
+                // formule d'origine pour retrouver la référence entière.
+                const refs = brut.match(/[A-Z]+\d+/g) || [];
+                const absente = refs.find(r =>
+                    !this.grilleActive()?.querySelector(`input[data-cell-id="${r}"]`));
+                if (absente) return `Erreur : il n'y a pas de case ${absente} dans cette grille`;
+                const quoi = [...new Set(restes)].slice(0, 2).join(' ');
+                return `Erreur : je ne sais pas lire « ${quoi} » dans ${brut}`;
+            }
             const res = new Function('return ' + expr)();
+            if (!Number.isFinite(res)) return 'Erreur : ce calcul n\'a pas de résultat';
             return Math.round(res * 100) / 100;
-        } catch { return 'Erreur'; }
+        } catch (e) {
+            return `Erreur : le calcul ${expr} ne se fait pas`;
+        }
     }
 
     // --- Progression --------------------------------------------------------
