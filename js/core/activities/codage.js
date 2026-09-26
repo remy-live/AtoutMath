@@ -39,6 +39,7 @@ export function mount(container, session) {
     let ids = [];
     let pts = [];
     let pose = { marques: {}, angles: {} };
+    let inacheve = 0;
 
     function renderNext() {
         if (destroyed) return;
@@ -48,6 +49,9 @@ export function mount(container, session) {
         ids = m.segments;
         pts = m.points;
         pose = { marques: {}, angles: {} };
+        // COMBIEN DE FOIS ON A VALIDÉ UNE FIGURE INACHEVÉE — voir
+        // `brancherValidation`.
+        inacheve = 0;
         render();
     }
 
@@ -180,11 +184,35 @@ export function mount(container, session) {
             if (session.locked || destroyed) return;
             const bilan = verifierCodage(fig, pose, ids, pts);
 
-            // CE QUI N'EST PAS FINI N'EST PAS UNE ERREUR. Tant qu'il reste un
-            // segment nu, on le dit et l'on ne compte rien : valider à moitié
-            // ferait perdre une vie pour une phrase inachevée.
+            // CE QUI N'EST PAS FINI N'EST PAS UNE ERREUR — LA PREMIÈRE FOIS.
+            //
+            // Tant qu'il reste un segment nu, on le dit et l'on ne compte
+            // rien : valider à moitié ferait perdre une vie pour une phrase
+            // inachevée. L'intention est bonne ; elle avait un trou.
+            //
+            // RÉMY : « dans ce genre d'exercice on peut se retrouver bloqué ».
+            // Il avait raison, et la cause tient en une ligne : ce retour
+            // anticipé n'appelle PAS `session.submit`. Or tous les filets
+            // pendent à `submit` — le décompte des essais, la correction
+            // montrée, la figure suivante. Un élève qui ne sait pas quoi poser
+            // sur un segment pouvait donc appuyer sur Valider indéfiniment :
+            // rien ne bougeait. En entraînement les indices POSENT des marques
+            // et finissent par le sortir de là ; en ÉVALUATION la politique
+            // les coupe (`hints: false`), et il n'existait alors plus aucune
+            // sortie : ni validation, ni indice, ni passage. La séance
+            // s'arrêtait là.
+            //
+            // Le premier refus reste donc gratuit — c'est vraiment une phrase
+            // inachevée. Au second, l'exercice redevient un exercice : la
+            // réponse compte, la correction s'affiche au bout des essais, et
+            // la figure suivante arrive.
             const manque = bilan.problemes.find(p => p.genre === 'manque');
-            if (manque) { statut(manque.message, 'ko'); secouer(); return; }
+            if (manque) {
+                inacheve += 1;
+                statut(manque.message, 'ko');
+                secouer();
+                if (inacheve < 2) return;
+            }
 
             const result = session.submit(canoniser(pose, ids, pts), {
                 misconception: bilan.correct ? '' : bilan.problemes[0].message

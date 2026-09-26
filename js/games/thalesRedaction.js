@@ -691,6 +691,23 @@ class ThalesRedaction extends BaseGame {
     // --- La démonstration du robot ---------------------------------------------
 
     async runDemoSequence() {
+        // LE ROBOT PARLAIT D'UNE FIGURE QUI N'ÉTAIT PAS LÀ.
+        //
+        // Rémy : « thalès n'a pas d'aperçu ». Mesuré : la vignette montait ONZE
+        // nœuds — l'enveloppe et sa feuille de style —, sans un seul `svg`,
+        // quand le QCM de Thalès en monte quarante-six avec son dessin.
+        //
+        // `start()` appelle `runDemoSequence()` À LA PLACE de `startGameLoop()`
+        // (voir core/BaseGame.js) : en démonstration, `poserDefi()` n'était donc
+        // jamais appelé. Pas de figure, pas d'énoncé, pas d'étiquettes — et le
+        // robot expliquait « deux droites sécantes, et deux parallèles » devant
+        // un cadre blanc. Ce n'est pas seulement l'aperçu qui était vide : la
+        // démonstration plein écran l'était aussi.
+        //
+        // Les autres jeux autonomes posent leur plateau en tête de séquence —
+        // l'École du Tableur ouvre sa leçon 1, le Chat pose sa figure. Celui-ci
+        // ne le faisait pas.
+        if (!this.f) this.poserDefi();
         const cursor = createDemoCursor();
         const gate = createDemoGate(this.container);
         this.demoCursor = cursor;
