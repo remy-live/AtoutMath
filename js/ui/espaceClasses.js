@@ -706,6 +706,15 @@ function rangHtml(e, maintenant) {
         <span class="ec-point${ici ? ' ec-point--vert' : ''}"></span>
         <div class="ec-rang-qui">
             <b>${esc(e.prenom)}</b>
+            <!-- « A FINI », ÉCRIT À CÔTÉ DU NOM.
+                 Rémy : « tu peux aussi écrire dans le direct au nom de l eleve
+                 quand il a fini ». L information existait — « Terminé — 18 / 24
+                 justes » — mais dans la colonne d avancement, à droite, sous une
+                 jauge pleine. Or la question qu on se pose en marchant dans les
+                 rangs est « qui a fini ? », et on la pose aux NOMS. Elle se lit
+                 donc là où l oeil arrive. (Pas de guillemet oblique ici : ce
+                 commentaire est DANS un gabarit.) -->
+            ${aFini(e) ? '<span class="ec-fini">a fini</span>' : ''}
             <span class="ec-rang-quand">${esc(depuis(e.vu, maintenant))}</span>
         </div>
         <div class="ec-rang-quoi">
@@ -821,6 +830,17 @@ function jusquaDit() {
 }
 
 /** Le bac à sable est-il fermé pour cette classe ? (Ouvert par défaut.) */
+/**
+ * CET ÉLÈVE A-T-IL FINI SA SÉANCE ?
+ *
+ * Une seule lecture, au même endroit pour la ligne et pour la tuile : deux
+ * façons de répondre à la même question finiraient par se contredire, et l'on
+ * verrait « a fini » à gauche et « étape 3 sur 4 » à droite.
+ */
+function aFini(e) {
+    return !!(e && e.avancement && e.avancement.etat === 'fini');
+}
+
 function bacDeLaClasse() {
     const info = (vue.liste && vue.liste.classe) || {};
     return !!info.bac_ferme;

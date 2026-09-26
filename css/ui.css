@@ -289,6 +289,16 @@
     display: inline-flex; align-items: center; justify-content: center;
     padding: 6px; margin: -6px 2px -6px -2px; flex: 0 0 auto;
 }
+/* « A FINI », À CÔTÉ DU NOM — Rémy : « tu peux aussi écrire dans le direct au
+   nom de l'élève quand il a fini ». C'est la question qu'on se pose en marchant
+   dans les rangs, et on la pose aux noms, pas aux jauges. */
+.ec-fini {
+    flex: 0 0 auto; margin-left: 6px;
+    background: var(--success-fond); color: #fff;
+    border-radius: 999px; padding: 1px 8px;
+    font-size: .68rem; font-weight: 700; letter-spacing: .02em;
+    white-space: nowrap;
+}
 .ec-choix input { width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary); }
 .ec-pilote-cadre .ec-champ--mince { width: auto; }
 .ec-pilote-mot-liant { font-size: .8rem; color: var(--text-muted); }
