@@ -814,7 +814,12 @@ export class Runner {
             };
             const fn = mod[activity.legacyExport] || Object.values(mod).find(v => typeof v === 'function');
             this.canvas.innerHTML = '';
-            const jeu = fn ? fn(this.canvas, false, { ...step.params, nbQuestions: step.nbItems }) : null;
+            // ET ON NE LUI ANNONCE PAS UN BUT QU'IL N'A PAS : une étape sans
+            // fin ne lui passe aucun `nbQuestions`, le jeu garde le sien.
+            const jeu = fn ? fn(this.canvas, false, {
+                ...step.params,
+                nbQuestions: step.sansFin ? null : step.nbItems
+            }) : null;
             // On GARDE l'instance. Le gestionnaire fabriqué ici se contentait
             // de vider l'écran, et l'instance était jetée : ces jeux ouvrent
             // leurs propres `setInterval`, qui continuaient donc de tourner
@@ -970,6 +975,24 @@ export class Runner {
      * Appelé par state.recordAttempt pour chaque réponse, quelle que soit son
      * origine (activité moderne ou jeu autonome).
      */
+    /**
+     * LE COMPTE EST-IL ATTEINT ? — la seule question, posée à un seul endroit.
+     *
+     * Trois endroits fermaient l'étape sur le compte (la réponse, le saut du
+     * professeur, le temps écoulé sur une question). Trois copies de la même
+     * règle, c'est trois occasions d'en oublier une : le drapeau `sansFin`
+     * aurait pu être respecté ici et ignoré là, et le bac à sable se serait
+     * arrêté par le chemin qu'on n'aurait pas corrigé.
+     *
+     * `sansFin` : voir core/path.js. Une étape sans fin — le bac à sable — ne
+     * se ferme jamais sur un compte. Ce qui l'arrête reste : le jeu qui se
+     * termine, le chronomètre, l'élève qui sort.
+     */
+    compteAtteint() {
+        if (!this.step || this.step.sansFin) return false;
+        return this.itemsResolved.size >= this.step.nbItems;
+    }
+
     onAttempt(payload) {
         if (!this.step) return;
 
@@ -1035,7 +1058,7 @@ export class Runner {
         //
         // Le chronomètre garde ce qui lui revient : il coupe quand le temps est
         // écoulé, avant le compte (`runTimerCycle` appelle `endStep`).
-        if (this.itemsResolved.size >= this.step.nbItems) {
+        if (this.compteAtteint()) {
             // ON FERME LA SESSION TOUT DE SUITE, la conclusion s'affiche après.
             //
             // Le délai laisse à l'élève le temps de lire la correction de la
@@ -1214,7 +1237,7 @@ export class Runner {
         this.itemsResolved.add(cle);
         this.updateProgress();
 
-        if (this.itemsResolved.size >= this.step.nbItems) { this.endStep(); return true; }
+        if (this.compteAtteint()) { this.endStep(); return true; }
         if (this.handle && this.handle.showNext) this.handle.showNext();
         if (this.currentTimeLimit && this.timerScope === 'question') {
             this.runTimerCycle(this.currentTimeLimit);
@@ -1718,7 +1741,7 @@ export class Runner {
         const result = this.session.submit(null, {});
         const suite = () => {
             if (!this.step) return;
-            if (this.itemsResolved.size >= this.step.nbItems) return this.endStep();
+            if (this.compteAtteint()) return this.endStep();
             if (this.handle && this.handle.showNext) this.handle.showNext();
             this.runTimerCycle(this.currentTimeLimit);
         };

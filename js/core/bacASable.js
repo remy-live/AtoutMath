@@ -256,8 +256,15 @@ export function ceQueDisaitLaSeance(exercices) {
  * @param {object} politique
  */
 export function parcoursDuBac(faireEtape, faireParcours, jeuId, politique) {
+    // `sansFin` EST CE QUI FAIT DU BAC UN BAC. Sans lui, `nbItems: 1` disait au
+    // meneur de fermer l'étape à la première réussite — mesuré sur Nova, le
+    // Peintre et Tetris : les trois s'arrêtaient au premier point. Rémy : « ça
+    // s'arrête trop vite ». Et `sansTotal`, pour que l'en-tête compte ce qui est
+    // fait au lieu d'annoncer un but : dans un bac à sable, « 7 » est un score,
+    // « 7 / 1 » n'est rien.
     const etape = faireEtape(jeuId, {}, {
-        stepId: 'bac', nbItems: 1, threshold: 0, bonus: true
+        stepId: 'bac', nbItems: 1, threshold: 0, bonus: true,
+        sansFin: true, sansTotal: true
     });
     const parcours = faireParcours('Le bac à sable', [etape], politique);
     parcours.personnel = true;
