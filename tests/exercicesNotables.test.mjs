@@ -71,10 +71,45 @@ function appels(src, nom) {
     return out;
 }
 
+/**
+ * LE TEXTE DU MODULE, ET CELUI DE CE QU'IL IMPORTE À CÔTÉ.
+ *
+ * Deux jeux qui partagent leur écran — Le Patchwork et Les Serpents partagent
+ * `colorierMorceaux.js` — n'appellent plus `onWrongAnswer` eux-mêmes : c'est
+ * l'écran commun qui le fait. Une mesure qui ne lit que le fichier de tête
+ * conclut alors « ce jeu ne peut pas rater une question », ce qui est faux, et
+ * la déclaration passe pour fautive.
+ *
+ * On suit donc les imports DU MÊME DOSSIER, sur un seul niveau : assez pour
+ * voir l'écran qu'on vient d'extraire, trop peu pour ramasser le noyau.
+ *
+ * ET SURTOUT PAS `../core/BaseGame.js` : il DÉFINIT `onWrongAnswer(el, ...)`,
+ * ce qui ressemble à un appel quand on lit le texte. Mesuré en suivant tous les
+ * imports relatifs : dix jeux d'un coup sont devenus « notables », dont le
+ * Tasuko et les mots croisés, qui ne le sont pas.
+ */
+function texteAvecSesVoisins(f) {
+    const s = lire(f);
+    const dossier = f.slice(0, f.lastIndexOf('/'));
+    let tout = s;
+    for (const m of s.matchAll(/from\s+'(\.\/[^']+)'/g)) {
+        const rel = m[1];
+        const parts = (dossier + '/' + rel).split('/');
+        const pile = [];
+        for (const p of parts) {
+            if (p === '.' || p === '') continue;
+            if (p === '..') pile.pop(); else pile.push(p);
+        }
+        const voisin = pile.join('/');
+        if (existsSync(chemin(voisin))) tout += '\n' + lire(voisin);
+    }
+    return tout;
+}
+
 /** Ce module peut-il produire une QUESTION ratée — fausse, et pas `partiel` ? */
 function peutRaterUneQuestion(f) {
     if (!f || !existsSync(chemin(f))) return null;
-    const s = lire(f);
+    const s = texteAvecSesVoisins(f);
     // Le moteur de questions juge chaque item : il rate par construction.
     if (/itemSession/.test(s)) return true;
     const faux = [...appels(s, 'onWrongAnswer'), ...appels(s, 'onGameAction')]

@@ -78,6 +78,21 @@ const BASE = {
         descriptor: 'Remplir une grille en croisant des contraintes de calcul et de placement.',
         lesson: 'Commence par les zones d\'une seule case, puis cherche les zones où une seule combinaison est possible.'
     },
+    // LE SERPENT SE COMPTE AVANT DE SE TRACER.
+    //
+    // Rangée avec les autres grilles de logique, parce que c'en est une — mais
+    // ce qu'elle demande en propre, c'est de tenir une LONGUEUR en tête :
+    // combien de cases, et où elles peuvent tenir sans que le serpent
+    // s'épaississe. Avec le réglage « calculs », la longueur n'est plus écrite,
+    // elle est calculée : « 2 × 3 » avant de savoir qu'on cherche six cases.
+    'num.logique.serpents': {
+        label: 'Serpents de longueur donnée (grille)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Remplir une grille de chemins dont la longueur est imposée, sans jamais les épaissir.',
+        lesson: 'Commence par les serpents les plus courts et par les coins : ce sont eux qui ont le moins de chemins possibles. Un serpent ne remplit jamais un carré de quatre cases — dès que tu en vois un, c\'est que deux serpents doivent passer là, ou que celui-ci doit tourner ailleurs.'
+    },
     'num.logique.binairo': {
         label: 'Grilles binaires (Binairo)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

@@ -1,3 +1,4 @@
+import { PALIERS_SERPENTS } from '../core/serpents.js';
 import { TAGS } from './tags.js';
 import { STATUS } from './status.js';
 import { REGLAGE_SAISIE } from '../ui/champsGrille.js';
@@ -1936,6 +1937,60 @@ export const calculExercises = [
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "La règle est écrite en haut : repeins SEULEMENT les dalles dont le calcul la vérifie. Marcher sur une bonne dalle la repeint en rose ; marcher sur une autre la fait s'effriter et tu perds du terrain. Lis avant d'avancer ! Flèches du clavier, croix tactile ou glissé sur le terrain. Les blobs verts sont retirés par défaut — le réglage les rend, et alors le bouton TIR les élimine, tandis que le bouton 🎯 (ou MAJ + flèche au clavier) tourne la tête SANS avancer : on vise un blob sans repeindre au passage une dalle qu'on n'avait pas choisie."
+    },
+    // LES SERPENTS — un jeu de Rémy, rapporté d'un magazine.
+    //
+    // Rémy, quatre pages arrachées à un magazine de jeux : « j'aimerais bien ces
+    // jeux en français et en rapport avec les maths ». Celui-ci s'appelait
+    // « Snakes in Boxes ».
+    //
+    // CE QUI EN FAIT UN JEU DE MATHÉMATIQUES, et pas seulement de logique : le
+    // réglage « calculs ». La longueur d'un serpent n'est alors plus écrite,
+    // elle est CALCULÉE — « 2 × 3 » à sa tête —, et il faut savoir que six
+    // cases suivront avant de commencer à tracer. Le calcul mental cesse d'être
+    // un exercice pour devenir un moyen.
+    //
+    // LA RÈGLE DU CARRÉ DE QUATRE EST LA PLUS BELLE, et c'est celle qu'on
+    // oublie : sans elle, un « serpent » de huit cases pourrait être un
+    // rectangle 2 × 4, et le jeu se réduirait à découper la grille en
+    // rectangles. Avec elle, le chemin doit rester un chemin.
+    {
+        id: 'logi-serpents', title: 'Les Serpents', cree: '2026-09-26',
+        activityId: 'serpents',
+        skills: ['num.logique.serpents'],
+        params: { palier: 'facile', etiquettes: 'nombres' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
+                aide: 'Agrandit la grille et allonge les serpents. Un serpent long a beaucoup '
+                    + 'de chemins possibles : c\'est là que le raisonnement commence.',
+                options: Object.entries(PALIERS_SERPENTS)
+                    .map(([value, p]) => ({ value, label: p.label }))
+            },
+            {
+                id: 'etiquettes', type: 'select', label: 'La longueur est donnée',
+                default: 'nombres',
+                aide: 'En calculs, la tête du serpent porte « 2 × 3 » au lieu de 6 : il faut '
+                    + 'calculer avant de pouvoir tracer.',
+                options: [
+                    { value: 'nombres', label: 'En nombres — 6' },
+                    { value: 'calculs', label: 'En calculs — 2 × 3' }
+                ]
+            }
+        ],
+        motsClefs: ['serpents', 'longueur', 'chemin', 'angle droit', 'grille', 'logique',
+            'calcul mental', 'snakes'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Remplis toute la grille de serpents. Chaque nombre est la TÊTE d'un "
+            + "serpent et dit sa longueur en cases. Un serpent va tout droit ou tourne à angle "
+            + "droit, et il ne remplit jamais un carré de quatre cases : il reste mince partout. "
+            + "Touche un nombre pour choisir son serpent, puis colorie ses cases en glissant le "
+            + "doigt. Commence par les serpents courts et par les coins — ce sont eux qui ont le "
+            + "moins de chemins possibles. Le réglage « en calculs » remplace le nombre par une "
+            + "opération : il faut alors calculer avant de tracer."
     },
     {
         // LE HASHI — Hashiwokakero, « construire des ponts ». Rémy : « je
