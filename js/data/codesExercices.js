@@ -207,6 +207,8 @@ export const CODES_EXERCICES = {
     'don-tableau-croise':         'TL',   // Le Tableau à Double Entrée (TabLeau)
     'geo-patchwork':              'WK',   // Le patchWorK
     'logi-serpents':              'SK',   // les serpents (SnaKes, son nom d'origine)
+    'calc-croises':               'XK',   // les croiXés du calcul
+    'calc-deux-nombres':          'DX',   // les DeuX nombres
     'don-tableur':                'EL',   // L'École du Tableur
     'defi-tour-brahma':           'HN',   // La Tour de Hanoï (Tour de Brahma)
     'defi-grenouilles':           'GR',   // Les Grenouilles

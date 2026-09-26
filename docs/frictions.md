@@ -118,3 +118,18 @@ manque.
 - **Ce qui manque** : une règle simple, à écrire dans le `CLAUDE.md` une fois
   qu'on l'aura vérifiée — on écrit les caractères français DIRECTEMENT, jamais
   en séquences d'échappement, et l'on relit le fichier avant de le retoucher.
+
+## **Retoucher un fichier pendant que le harnais tourne invalide la mesure** — 2026-09-26
+
+- **Ce que je voulais faire** : occuper les quatre minutes de `npm test` en
+  relisant le code que je venais d'écrire.
+- **Ce qui a coûté** : j'y ai trouvé deux petites choses (une variable annulée
+  par `void`, une étiquette de palier qui annonçait « quatre relations » pour
+  trois) et je les ai corrigées — pendant le passage. Le verdict « 3900 tests,
+  0 échec » ne portait donc plus sur l'arbre qu'on allait committer : quatre
+  minutes de plus pour remesurer. Le harnais ne dit rien de cet écart, et rien
+  n'empêche de committer le verdict d'un autre arbre.
+- **Combien de fois** : |
+- **Ce qui manque** : que le harnais enregistre l'empreinte de l'arbre qu'il a
+  mesuré, et qu'une commande de fin de course refuse de committer si l'arbre a
+  bougé depuis — au lieu de compter sur ma mémoire.

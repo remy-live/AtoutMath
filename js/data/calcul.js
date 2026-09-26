@@ -1,4 +1,6 @@
 import { PALIERS_SERPENTS } from '../core/serpents.js';
+import { PALIERS_CROISES } from '../core/croises.js';
+import { PALIERS_DEUX_NOMBRES } from '../core/deuxNombres.js';
 import { TAGS } from './tags.js';
 import { STATUS } from './status.js';
 import { REGLAGE_SAISIE } from '../ui/champsGrille.js';
@@ -1937,6 +1939,84 @@ export const calculExercises = [
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME] },
         instruction: "La règle est écrite en haut : repeins SEULEMENT les dalles dont le calcul la vérifie. Marcher sur une bonne dalle la repeint en rose ; marcher sur une autre la fait s'effriter et tu perds du terrain. Lis avant d'avancer ! Flèches du clavier, croix tactile ou glissé sur le terrain. Les blobs verts sont retirés par défaut — le réglage les rend, et alors le bouton TIR les élimine, tandis que le bouton 🎯 (ou MAJ + flèche au clavier) tourne la tête SANS avancer : on vise un blob sans repeindre au passage une dalle qu'on n'avait pas choisie."
+    },
+    // LES DEUX NOMBRES — le quatrième jeu rapporté par Rémy.
+    //
+    // Il s'appelait « A 1-Off Puzzle » : chaque ligne y cache deux mots dont
+    // les lettres se chevauchent — « RABT » cache BAR et TAB, qui partagent le
+    // A et le B. Je lui ai dit que c'était le plus faible des quatre côté
+    // mathématiques, puisque c'est un jeu de lettres et que le catalogue en a
+    // déjà deux ; il a répondu « fais les tous ». J'ai donc gardé l'IDÉE, qui
+    // est bonne — deux lectures d'une même suite, qui se chevauchent — et
+    // changé la matière : des CHIFFRES, et deux NOMBRES liés par une phrase.
+    //
+    // CE QUE ÇA TRAVAILLE : lire un nombre dans une suite de chiffres — « 2 4 8 »
+    // contient 24 et 48, mais pas 28, parce que les chiffres ne se sautent pas
+    // — puis vérifier la relation de tête sur chaque candidat. C'est du calcul
+    // mental EN SITUATION : on ne demande pas « combien fait le double de 24 »,
+    // on demande « où sont les deux nombres qui vont ensemble ».
+    {
+        id: 'calc-deux-nombres', title: 'Les Deux Nombres', cree: '2026-09-26',
+        activityId: 'deux-nombres',
+        skills: ['num.logique.deux-nombres'],
+        params: { palier: 'facile' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
+                aide: 'Ajoute des relations, allonge la ligne, puis passe aux nombres à trois '
+                    + 'chiffres.',
+                options: Object.entries(PALIERS_DEUX_NOMBRES)
+                    .map(([value, p]) => ({ value, label: p.label }))
+            }
+        ],
+        motsClefs: ['nombres cachés', 'chiffres', 'double', 'triple', 'lecture',
+            'calcul mental', 'chevauchement'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Deux nombres sont cachés dans la ligne de chiffres, et la phrase du haut "
+            + "dit ce qui les lie — le double, le triple, plus dix. Un nombre se lit D'AFFILÉE : "
+            + "dans « 2 4 8 » il y a 24 et 48, mais pas 28. Et les deux nombres PARTAGENT un "
+            + "chiffre : le dernier de celui de gauche est le premier de celui de droite. "
+            + "Écris-les tous les deux, puis « Vérifier »."
+    },
+    // LES CROISÉS DU CALCUL — un jeu de Rémy, rapporté d'un magazine.
+    //
+    // Il s'appelait « Cross Wits » : on y place des lettres dans une petite
+    // croix pour former deux mots qui se définissent l'un l'autre. Les lettres
+    // deviennent ici des CHIFFRES, et les mots des ÉGALITÉS.
+    //
+    // CE N'EST PAS UN EXERCICE DE CALCUL. Un exercice demande « combien font
+    // 3 + 4 ? » et l'élève répond. Ici il n'y a pas de question : il y a une
+    // contrainte, et l'on cherche ce qui la satisfait. On essaie, on voit que
+    // ça ne tombe pas, on recommence ailleurs — du raisonnement par essais
+    // ORGANISÉS, et la première marche vers les systèmes d'équations.
+    {
+        id: 'calc-croises', title: 'Les Croisés du Calcul', cree: '2026-09-26',
+        activityId: 'croises',
+        skills: ['num.logique.croises'],
+        params: { palier: 'facile' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
+                aide: 'Ajoute des opérations, puis retire le chiffre donné. Sans chiffre donné, '
+                    + 'il faut commencer par le croisement.',
+                options: Object.entries(PALIERS_CROISES)
+                    .map(([value, p]) => ({ value, label: p.label }))
+            }
+        ],
+        motsClefs: ['égalité', 'calcul mental', 'croisés', 'contrainte', 'essais',
+            'addition', 'soustraction', 'multiplication'],
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME]
+        },
+        instruction: "Place les chiffres du bas dans les cases vides pour que la LIGNE et la "
+            + "COLONNE soient toutes les deux des égalités vraies. Touche un chiffre, puis la "
+            + "case où tu le veux ; retouche une case pour reprendre son chiffre. Commence par "
+            + "la case du croisement : son chiffre sert aux deux calculs, donc c'est elle qui "
+            + "décide le plus. Les signes ne bougent pas."
     },
     // LES SERPENTS — un jeu de Rémy, rapporté d'un magazine.
     //

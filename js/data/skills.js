@@ -78,6 +78,34 @@ const BASE = {
         descriptor: 'Remplir une grille en croisant des contraintes de calcul et de placement.',
         lesson: 'Commence par les zones d\'une seule case, puis cherche les zones où une seule combinaison est possible.'
     },
+    // LIRE UN NOMBRE DANS UNE SUITE DE CHIFFRES, et le relier à un autre.
+    //
+    // « 2 4 8 » contient 24, 48, 2, 4 et 8 — et rien d'autre : les chiffres ne
+    // se sautent pas. C'est une évidence qui n'en est pas une, et le jeu la
+    // fait buter. Le chevauchement d'un chiffre oblige en plus à le compter
+    // deux fois, ce qui dérange — et c'est donc ce qui s'apprend.
+    'num.logique.deux-nombres': {
+        label: 'Deux nombres qui se chevauchent',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Retrouver deux nombres cachés dans une suite de chiffres, liés par une relation.',
+        lesson: 'Un nombre se lit d\'affilée : dans « 2 4 8 » il y a 24 et 48, mais pas 28. Commence par le chiffre de gauche, lis le nombre qui commence là, applique la phrase (le double, le triple, plus dix), puis regarde si le résultat est écrit juste après — en partageant le dernier chiffre.'
+    },
+    // DEUX ÉGALITÉS QUI SE CROISENT — la première marche vers les systèmes.
+    //
+    // Ce n'est pas un exercice de calcul : il n'y a pas de question, il y a une
+    // CONTRAINTE, et l'on cherche ce qui la satisfait. On essaie, ça ne tombe
+    // pas, on recommence ailleurs. Le chiffre du croisement appartient aux deux
+    // calculs à la fois, et c'est lui qui fait tout le raisonnement.
+    'num.logique.croises': {
+        label: 'Deux égalités qui se croisent',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Placer des chiffres pour rendre vraies deux égalités qui partagent une case.',
+        lesson: 'Commence par la case du CROISEMENT : son chiffre sert aux deux calculs, donc c\'est elle qui décide le plus. Essaie ensuite un chiffre, regarde si le calcul tombe juste, et recommence avec un autre — c\'est un essai ORGANISÉ, pas un essai au hasard : chaque chiffre posé en élimine d\'autres.'
+    },
     // LE SERPENT SE COMPTE AVANT DE SE TRACER.
     //
     // Rangée avec les autres grilles de logique, parce que c'en est une — mais

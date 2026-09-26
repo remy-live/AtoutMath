@@ -756,6 +756,12 @@ const legacy = [
     // Les serpents se comptent aussi en GRILLES : une partie, c'est une grille
     // entièrement remplie.
     ['serpents', 'Les Serpents (longueurs imposées)', 'serpents', 'engineSerpents', 'grille', 3],
+    // Les croisés se comptent en CROIX : une partie, c'est une croix dont les
+    // deux calculs tombent juste.
+    ['croises', 'Les Croisés du Calcul', 'croises', 'engineCroises', 'croix', 4],
+    // Les deux nombres se comptent en LIGNES : une ligne, une paire à trouver.
+    ['deux-nombres', 'Les Deux Nombres (chevauchement)', 'deuxNombres',
+        'engineDeuxNombres', 'ligne', 6],
     // LES DÉFIS SE COMPTENT EN PARTIES GAGNÉES, pas en questions : une tour de
     // Brahma se finit ou ne se finit pas, et c'est le nombre de COUPS qui dit
     // la qualité — pas le nombre d'essais.
