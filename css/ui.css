@@ -119,6 +119,23 @@
     text-align: left; border-radius: 6px; transition: .15s;
 }
 .ec-code--copie:hover { background: var(--bg-hover); box-shadow: 0 0 0 5px var(--bg-hover); }
+/* LA PORTE FERMÉE SE VOIT, SANS CRIER.
+   Le code reste gros — on le dicte toujours, et on le dictera dès la porte
+   rouverte —, mais il perd la couleur qui promettait qu'il servait, et l'on pose
+   à côté le geste qui l'ouvre. Ce n'est pas une alarme : c'est un réglage juste
+   (« gardez-la éteinte si votre liste vient de Pronote »), simplement un réglage
+   dont l'écran se taisait. */
+.ec-carte-code--ferme .ec-code { color: var(--text-muted); }
+.ec-code--ferme { color: var(--text-muted); }
+.ec-ferme-mot { color: var(--text-muted); font-weight: 600; }
+.ec-code-ouvrir {
+    align-self: flex-start; margin-top: 2px;
+    font: inherit; font-size: .74rem; font-weight: 700;
+    padding: 4px 10px; border-radius: 999px; cursor: pointer;
+    background: var(--bg-panel); color: var(--primary-texte);
+    border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+.ec-code-ouvrir:hover { background: var(--bg-hover); }
 .ec-carte-bas { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ec-eff { font-size: .85rem; color: var(--text-muted); font-weight: 600; }
 .ec-pastille {

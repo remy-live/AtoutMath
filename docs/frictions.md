@@ -159,3 +159,23 @@ manque.
   de champ qui porte son unité (`tsMs` / `tsS`), ou une vérification de harnais
   qui compare ce que le client écrit et ce que le serveur rend, champ par champ,
   pour tout ce qui traverse.
+
+## **J'ai cru un outil sur parole, et j'ai accusé du code juste** — 2026-09-26
+
+- **Ce que je voulais faire** : dire à Rémy ce qui restait à réparer.
+- **Ce qui a coûté** : `apercusVides.mjs` signalait huit aperçus « vides ». Je
+  lui ai rapporté trois d'entre eux comme des défauts à corriger. **Aucun ne
+  l'était** : `frac-samurai` montre sa fraction et son bouton, `geo-patrons`
+  montre le cube plié en trois dimensions, et `geo-atelier-instruments` charge
+  son plan dans une IFRAME que l'heuristique ne peut pas voir — 1409 nœuds et
+  159 dessins dedans. Il a fallu ouvrir les images pour s'en apercevoir. Coût :
+  une fausse alerte transmise à Rémy, et trois réparations qui n'avaient pas
+  lieu d'être.
+- **Combien de fois** : ||  (déjà payée par `nouvelExercice.mjs` et ses 1214
+  faux problèmes, dont le commentaire dit exactement cela)
+- **Ce qui manque** : une règle pour les outils de ce dépôt, et pas seulement
+  pour celui-ci — **un outil qui accuse imprime la pièce**. `apercusVides.mjs`
+  disait « vide » sans jamais montrer ce qu'il avait trouvé ; il imprime
+  maintenant le texte de l'aperçu, et l'on voit tout de suite qu'il se trompe.
+  Et le corollaire, qui est pour moi : on ne rapporte pas le verdict d'un outil
+  à Rémy sans avoir regardé la chose elle-même.

@@ -11,11 +11,39 @@
 // cadre blanc. On ouvre donc l'aperçu de CHAQUE activité autonome, et l'on
 // compte ce qui s'y trouve.
 //
-// LA RÈGLE DE DÉCISION, et elle a demandé une deuxième passe. Compter les
-// nœuds ne suffit pas : Math Crush dessine tout son monde dans UN canevas et
-// n'a qu'un nœud — c'est un aperçu parfaitement plein. Ce qui trahit le trou
-// de Thalès, c'est la conjonction : aucune surface de dessin ET presque rien
-// dans le DOM. Mesuré avant correction : 11 nœuds, 0 dessin. Après : 57 et 1.
+// LA RÈGLE DE DÉCISION, et elle a demandé TROIS passes. Compter les nœuds ne
+// suffit pas : Math Crush dessine tout son monde dans UN canevas et n'a qu'un
+// nœud — c'est un aperçu parfaitement plein. La deuxième règle cherchait donc
+// la conjonction « aucune surface de dessin ET presque rien dans le DOM ».
+// Mesuré sur Thalès avant correction : 11 nœuds, 0 dessin ; après : 57 et 1.
+//
+// ELLE CRIAIT AU LOUP SUR HUIT APERÇUS PLEINS, et je l'ai crue. Vérification
+// faite en REGARDANT les images, un soir de septembre :
+//
+//   · `frac-samurai` montre la fraction 8/12, sa consigne et son bouton
+//     « Couper » — dix-huit nœuds, aucun dessin, et rien à corriger ;
+//   · `geo-patrons` montre le cube plié en trois dimensions, fait de DIV et de
+//     transformations CSS, sans le moindre canevas ;
+//   · `geo-atelier-instruments` charge son plan dans une IFRAME — 1409 nœuds et
+//     159 dessins DEDANS, qu'un `querySelectorAll` du document hôte ne voit pas ;
+//   · `calc-deux-nombres`, quatorze nœuds, montre la ligne de chiffres, les deux
+//     fenêtres et « Vérifier ».
+//
+// UN OUTIL QUI REND HUIT FAUSSES PISTES FAIT PERDRE PLUS DE TEMPS QU'IL N'EN
+// GAGNE — c'est la leçon déjà écrite en tête de `nouvelExercice.mjs`, et je
+// viens de la repayer. Pire : j'ai rapporté ces trois-là à Rémy comme des
+// défauts à corriger, sur la foi d'un compte de nœuds.
+//
+// LA TROISIÈME RÈGLE NE COMPTE PLUS : ELLE REGARDE. Un aperçu est vide quand il
+// n'a NI surface de dessin (canevas, SVG, iframe), NI rien à lire. C'est la
+// définition d'un cadre blanc, et c'est exactement ce que Thalès montrait.
+//
+// ET ON A VÉRIFIÉ QU'ELLE ATTRAPE ENCORE. Une règle qui ne signale plus rien
+// peut être juste, ou simplement aveugle, et rien ne les distingue de
+// l'extérieur. On a donc RECRÉÉ la panne de Thalès — l'aperçu de la Tour de
+// Hanoï ne posant plus qu'une feuille de style — et relancé : « aperçus VIDES
+// (ni dessin, ni rien à lire) : 1 · defi-tour-brahma (tour-brahma) — 0 nœuds,
+// RIEN À LIRE ». Puis la panne a été retirée.
 //
 //   node tools/apercusVides.mjs
 import { chromium } from 'playwright';
@@ -77,19 +105,38 @@ for (const id of ids) {
         // aperçu — c'est exactement ce que Thalès montrait.
         const utiles = [...hote.querySelectorAll('*')]
             .filter(e => !/^(STYLE|SCRIPT)$/.test(e.tagName)).length;
+        // CE QU'IL Y A À VOIR, ET CE QU'IL Y A À LIRE.
+        //
+        // L'IFRAME COMPTE COMME UNE SURFACE DE DESSIN : `geo-atelier-instruments`
+        // charge son plan dedans, et le document hôte n'en voit rien — 1409
+        // nœuds et 159 dessins invisibles à un `querySelectorAll` d'ici.
+        //
+        // Et le TEXTE compte autant : un jeu de nombres n'a aucune raison de
+        // poser un canevas pour écrire « Trouve un diviseur commun ».
         const out = { exo: exoId, activite: exo.activityId, utiles, erreur,
-            dessin: hote.querySelectorAll('svg, canvas').length };
+            dessin: hote.querySelectorAll('svg, canvas, iframe').length,
+            lire: (hote.innerText || '').replace(/\s+/g, ' ').trim() };
         hote.remove();
         return out;
     }, id);
-    // NI DESSIN NI CONTENU : c'est la signature d'un aperçu qui n'a rien
-    // posé. Un canevas seul (Crush, Nova, l'Escadrille) est un aperçu plein.
-    if (!vu.dessin && vu.utiles < 20) maigres.push(vu);
-    console.log(`  ${String(vu.utiles).padStart(4)} nœuds · ${vu.dessin} dessin  ${vu.activite}`
+    // NI DESSIN NI TEXTE : c'est la définition d'un cadre blanc, et c'est
+    // exactement ce que Thalès montrait. Un canevas seul (Crush, Nova,
+    // l'Escadrille) est un aperçu plein ; une phrase seule aussi.
+    //
+    // VINGT-CINQ SIGNES, et le seuil se justifie : un aperçu qui n'a posé
+    // qu'une étiquette de score — « 0 / 4 » — n'a pas posé sa question. Toutes
+    // les consignes du catalogue en font davantage.
+    if (!vu.dessin && vu.lire.length < 25) maigres.push(vu);
+    console.log(`  ${String(vu.utiles).padStart(4)} nœuds · ${vu.dessin} dessin`
+        + ` · ${String(vu.lire.length).padStart(3)} signes  ${vu.activite}`
         + (vu.erreur ? '  ⚠ ' + vu.erreur : ''));
 }
-console.log(`\naperçus VIDES (aucun dessin et moins de 20 nœuds) : ${maigres.length}`);
-maigres.forEach(m => console.log('   ', JSON.stringify(m)));
+console.log(`\naperçus VIDES (ni dessin, ni rien à lire) : ${maigres.length}`);
+// ON IMPRIME DE QUOI VÉRIFIER SOI-MÊME. Un outil qui accuse doit donner la
+// pièce : ce qu'il a trouvé à lire, et l'erreur s'il y en a une. Sans cela on
+// le croit sur parole — ce qui vient de coûter trois fausses réparations.
+maigres.forEach(m => console.log(`    ${m.exo} (${m.activite}) — ${m.utiles} nœuds, `
+    + `« ${m.lire || 'RIEN À LIRE'} »` + (m.erreur ? ` ⚠ ${m.erreur}` : '')));
 console.log('erreurs de page :', err.length, err.slice(0, 3));
 await nav.close();
 srv.kill();

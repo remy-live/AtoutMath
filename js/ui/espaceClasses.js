@@ -41,6 +41,7 @@ import { showToast } from './modal.js';
 // qu'aucun test ne lit une phrase.
 import { exercices as catalogueComplet } from '../data/catalog.js';
 import { demander, demanderTexte, choisirIndice } from './demander.js';
+import { etatDuCodeDeClasse, motApresCopie } from '../core/codeDeClasse.js';
 import { choisirLesColonnes } from './collerListeUI.js';
 import { oublierLesClasses } from './donnerSeance.js';
 import { nomDuProf } from '../core/verrouProf.js';
@@ -376,16 +377,29 @@ function classesHtml() {
 
 function carteClasseHtml(c) {
     const n = Number(c.student_count) || 0;
+    // `vue.reglagesSite` vaut `null` tant que le serveur n'a pas répondu, et la
+    // règle le distingue de « fermée » : on ne clignote pas un avertissement.
+    const porte = etatDuCodeDeClasse(vue.reglagesSite ? vue.reglagesSite.inscriptionLibre : null);
     return `
     <div class="ec-carte" data-ouvrir="${esc(c.id)}" role="button" tabindex="0">
         <div class="ec-carte-haut">
             <b class="ec-carte-nom">${esc(c.name)}</b>
             ${c.level ? `<span class="ec-niveau">${esc(c.level)}</span>` : ''}
         </div>
-        <div class="ec-carte-code">
-            <span class="ec-code-eti">code de classe</span>
+        <!-- LE CODE PORTE SON ÉTAT, ET LE GESTE QUI L'OUVRE EST À CÔTÉ.
+             Mesuré deux fois : ce code s'affichait en gros, avec son bouton de
+             copie, alors que le champ pour le taper n'existe chez l'élève que si
+             l'inscription libre est allumée — et elle est fermée par défaut. Le
+             professeur dictait un code que personne ne pouvait écrire, et la
+             réponse était un interrupteur dans un AUTRE écran. Voir
+             js/core/codeDeClasse.js, qui tient la règle. -->
+        <div class="ec-carte-code${porte.ouvert === false ? ' ec-carte-code--ferme' : ''}">
+            <span class="ec-code-eti">${esc(porte.etiquette)}</span>
             <button type="button" class="ec-code ec-code--copie" data-copier="${esc(c.join_code)}"
-                    title="Copier le code">${esc(c.join_code)}</button>
+                    title="${esc(porte.dit)}">${esc(c.join_code)}</button>
+            ${porte.quoiFaire ? `<button type="button" class="ec-code-ouvrir"
+                    data-inscription-libre="0"
+                    title="${esc(porte.dit)}">${esc(porte.quoiFaire)}</button>` : ''}
         </div>
         <div class="ec-carte-bas">
             <span class="ec-eff">${n} élève${n > 1 ? 's' : ''}</span>
@@ -516,7 +530,15 @@ function classeHtml() {
     const c = vue.classe;
     const eleves = (vue.liste && vue.liste.eleves) || [];
     const info = (vue.liste && vue.liste.classe) || c;
-    const sous = `<code class="ec-code ec-code--petit">${esc(c.join_code || info.joinCode || '')}</code>`
+    // MÊME VÉRITÉ DANS LES DEUX ÉCRANS. Le code reparaît ici, en petit, sous le
+    // nom de la classe : s'il n'y portait pas son état, il suffirait d'entrer
+    // dans la classe pour retrouver la promesse qu'on vient de retirer.
+    const porte = etatDuCodeDeClasse(vue.reglagesSite ? vue.reglagesSite.inscriptionLibre : null);
+    const sous = `<code class="ec-code ec-code--petit${porte.ouvert === false ? ' ec-code--ferme' : ''}"
+            title="${esc(porte.dit)}">${esc(c.join_code || info.joinCode || '')}</code>`
+        + (porte.ouvert === false
+            ? '<span class="ec-sous-sep">\u00b7</span><span class="ec-ferme-mot">porte ferm\u00e9e</span>'
+            : '')
         + `<span class="ec-sous-sep">·</span>${eleves.length} élève${eleves.length > 1 ? 's' : ''}`
         + (info.locked ? '<span class="ec-sous-sep">·</span><b>en pause</b>' : '');
 
@@ -1695,7 +1717,11 @@ async function brancher(e, redessiner) {
         const code = copie.dataset.copier;
         try {
             await navigator.clipboard.writeText(code);
-            showToast('Code copié : ' + code, 'success');
+            // « Code copié » tout court serait le même mensonge que l'étiquette
+            // d'avant : le professeur colle ce code dans son cahier de textes le
+            // soir, et c'est le dernier moment où l'avertissement sert.
+            const mot = motApresCopie(code, vue.reglagesSite ? vue.reglagesSite.inscriptionLibre : null);
+            showToast(mot.texte, mot.genre);
         } catch (err) {
             // Sans permission (ou hors HTTPS), on ne ment pas : on le montre.
             showToast('Le code est ' + code + ' — le navigateur refuse de le copier '
