@@ -160,6 +160,13 @@ function migrer(?PDO $pdo = null): void
         --     jamais découverte. Il y a des heures où l'on veut que celui qui a
         --     fini relise ou aide son voisin : c'est ce que ferme ce drapeau.
         bac_ferme      $bool,
+        --   · bac_minutes : combien de temps dure le bac à sable, en minutes.
+        --     Rémy, interrogé sur ce qui doit borner les jeux du bac : « un
+        --     temps, réglé par vous ». Le compte part quand l'ÉLÈVE ouvre le
+        --     bac, pas à l'heure de la classe : celui qui finit dix minutes
+        --     avant les autres a droit aux mêmes dix minutes de jeu. NULL ou 0
+        --     veut dire « pas de limite », ce qui reste le défaut.
+        bac_minutes    " . ($sqlite ? 'INTEGER' : 'INT NULL') . ",
         created_at $date,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 
@@ -377,7 +384,8 @@ function migrer(?PDO $pdo = null): void
                        'impose_jusqu_a' => $sqlite ? 'INTEGER' : 'BIGINT NULL',
                        'chrono_fin'     => $sqlite ? 'INTEGER' : 'BIGINT NULL',
                        'chrono_a_zero'  => $txtNull,
-                       'bac_ferme'      => $bool],
+                       'bac_ferme'      => $bool,
+                       'bac_minutes'    => $sqlite ? 'INTEGER' : 'INT NULL'],
         'students' => ['blocked' => $bool,
                        'first_name_key' => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
                        'login'          => $sqlite ? 'TEXT NULL' : 'VARCHAR(255) NULL',

@@ -41,6 +41,9 @@ const VIDE = {
     // Le bac à sable de ceux qui ont fini. FERMÉ est le cas particulier :
     // ouvert par défaut, une fonction qu'il faut allumer n'est pas découverte.
     bacFerme: false,
+    // COMBIEN DE TEMPS DURE LE BAC, en minutes. 0 = sans limite, et c'est le
+    // défaut. Voir `resteDuBac` : le compte part quand l'ÉLÈVE l'ouvre.
+    bacMinutes: 0,
     // L'HEURE DU SERVEUR au moment où il a répondu, et l'heure qu'il était ICI
     // à cet instant. Les deux ensemble donnent l'écart entre les horloges, et
     // c'est ce qui permet d'afficher le même chiffre sur trente appareils dont
@@ -145,6 +148,30 @@ export function consigneDuProf() {
 
 /** Le professeur a-t-il fermé le bac à sable pour cette heure ? */
 export function bacFerme() { return !!etat.bacFerme; }
+
+/**
+ * LE TEMPS DU BAC À SABLE, ET POURQUOI IL PART DE L'ÉLÈVE.
+ *
+ * RÉMY, interrogé sur ce qui doit borner les jeux du bac : « un temps, réglé
+ * par vous ».
+ *
+ * Le compte part quand CET élève ouvre le bac, pas à l'heure de la classe :
+ * celui qui finit dix minutes avant les autres a droit aux mêmes dix minutes de
+ * jeu que celui qui finit en dernier. Un compte à rebours commun aurait puni le
+ * rapide, ce qui est exactement l'inverse de ce que le bac récompense.
+ *
+ * L'instant d'ouverture est gardé SUR L'APPAREIL, comme le reste de l'état de
+ * séance : un élève qui recharge sa page ne recommence pas son quart d'heure.
+ *
+ * @returns {{minutes:number, reste:number}|null} null = pas de limite
+ */
+export function resteDuBac(depuis = null, maintenant = Date.now()) {
+    const minutes = Number(etat.bacMinutes) || 0;
+    if (minutes <= 0) return null;
+    if (!depuis) return { minutes, reste: minutes * 60 };
+    const ecoule = Math.max(0, Math.round((maintenant - depuis) / 1000));
+    return { minutes, reste: Math.max(0, minutes * 60 - ecoule) };
+}
 
 export function messagesNonLus() {
     return Array.isArray(etat.messages) ? etat.messages.slice() : [];

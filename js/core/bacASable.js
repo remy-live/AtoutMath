@@ -105,6 +105,15 @@ export function bacOuvert(avancement, contexte = {}) {
             dire: 'On écoute le professeur.' };
     }
 
+    // SON PROPRE TEMPS DE JEU, ÉPUISÉ. Rémy : « un temps, réglé par vous ». Ce
+    // n'est pas le compte à rebours de la classe, c'est le quart d'heure de
+    // CET élève, parti quand il a ouvert le bac — voir `resteDuBac`.
+    const b = contexte.budget;
+    if (b && b.reste <= 0) {
+        return { ouvert: false, pourquoi: 'bac-epuise',
+            dire: `Tes ${b.minutes} minutes de bac à sable sont passées.` };
+    }
+
     if (!avancement) {
         return { ouvert: false, pourquoi: 'rien-commence',
             dire: 'Le bac à sable s\'ouvre quand ta séance est finie.' };
@@ -255,16 +264,22 @@ export function ceQueDisaitLaSeance(exercices) {
  * @param {function} faireParcours  makePath
  * @param {object} politique
  */
-export function parcoursDuBac(faireEtape, faireParcours, jeuId, politique) {
+export function parcoursDuBac(faireEtape, faireParcours, jeuId, politique, reste = 0) {
     // `sansFin` EST CE QUI FAIT DU BAC UN BAC. Sans lui, `nbItems: 1` disait au
     // meneur de fermer l'étape à la première réussite — mesuré sur Nova, le
     // Peintre et Tetris : les trois s'arrêtaient au premier point. Rémy : « ça
     // s'arrête trop vite ». Et `sansTotal`, pour que l'en-tête compte ce qui est
     // fait au lieu d'annoncer un but : dans un bac à sable, « 7 » est un score,
     // « 7 / 1 » n'est rien.
+    // ET C'EST LE TEMPS QUI ARRÊTE, quand le professeur en a posé un. `sansFin`
+    // a retiré la fin par le COMPTE ; le chronomètre reste, et c'est
+    // exactement ce qu'on veut ici : « un temps, réglé par vous » (Rémy). On
+    // lui donne ce qui RESTE du quart d'heure de l'élève, pas la durée pleine :
+    // sinon chaque jeu ouvert relancerait le compte à zéro.
     const etape = faireEtape(jeuId, {}, {
         stepId: 'bac', nbItems: 1, threshold: 0, bonus: true,
-        sansFin: true, sansTotal: true
+        sansFin: true, sansTotal: true,
+        timeLimit: reste > 0 ? reste : null
     });
     const parcours = faireParcours('Le bac à sable', [etape], politique);
     parcours.personnel = true;

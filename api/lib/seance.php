@@ -127,13 +127,15 @@ function etatDeSeance(array $eleve): array
     // requireStudent(), pour que cette fonction soit utilisable seule (elle
     // l'est dans les tests, où l'on n'a pas de requête HTTP).
     $s = $pdo->prepare('SELECT id, name, join_code, locked, notice, impose_path_id,
-                              impose_jusqu_a, chrono_fin, chrono_a_zero, bac_ferme
+                              impose_jusqu_a, chrono_fin, chrono_a_zero, bac_ferme,
+                              bac_minutes
                          FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
     $classe = $s->fetch() ?: ['id' => '', 'name' => '', 'join_code' => '', 'locked' => 0,
                               'notice' => null, 'impose_path_id' => null,
                               'impose_jusqu_a' => null, 'chrono_fin' => null,
-                              'chrono_a_zero' => null, 'bac_ferme' => 0];
+                              'chrono_a_zero' => null, 'bac_ferme' => 0,
+                              'bac_minutes' => null];
     // LA SÉANCE IMPOSÉE A UNE FIN, et c'est ici qu'on la fait respecter : c'est
     // la porte par laquelle TOUS les élèves la reçoivent.
     $imposeId = imposeEncoreValide($classe);
@@ -233,6 +235,9 @@ function etatDeSeance(array $eleve): array
         // LE BAC À SABLE : ouvert par défaut, et c'est délibéré. Une fonction
         // qu'il faut allumer pour la découvrir n'est jamais découverte.
         'bacFerme'  => (bool) ($classe['bac_ferme'] ?? 0),
+        // COMBIEN DE TEMPS DURE LE BAC, en minutes, 0 = sans limite. Le compte
+        // part quand l'élève l'ouvre — voir `resteDuBac` côté client.
+        'bacMinutes' => (int) ($classe['bac_minutes'] ?? 0),
         'messages'  => $messages,
         'skippable' => array_keys($saut),
         'removed'   => array_keys($retire),

@@ -199,8 +199,14 @@ export const arreterLeChrono = (classId) =>
  * Il est ouvert par défaut ; ce geste sert à le fermer, pour les heures où
  * celui qui a fini doit relire ou aider son voisin.
  */
-export const reglerLeBac = (classId, ferme) =>
-    auServeur('/teacher/class', { classId, action: 'bac', ferme: !!ferme });
+export const reglerLeBac = (classId, ferme, minutes = null) =>
+    auServeur('/teacher/class', {
+        classId, action: 'bac', ferme: !!ferme,
+        // ET COMBIEN DE TEMPS IL DURE. Rémy : « un temps, réglé par vous ».
+        // `null` ne touche pas à la durée — ouvrir et fermer le bac ne doit pas
+        // effacer le quart d'heure qu'on avait posé.
+        ...(minutes === null ? {} : { minutes: Math.max(0, Math.min(120, Number(minutes) || 0)) })
+    });
 
 export const envoyerUnMot = (classId, body, studentId = '') =>
     auServeur('/teacher/message', { classId, body, studentId });

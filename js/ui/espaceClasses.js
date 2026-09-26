@@ -826,6 +826,12 @@ function bacDeLaClasse() {
     return !!info.bac_ferme;
 }
 
+/** Combien de minutes dure le bac chez cette classe. 0 = sans limite. */
+function minutesDuBac() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    return Number(info.bac_minutes) || 0;
+}
+
 function classeEnPause() {
     const ch = vue.direct && vue.direct.chrono;
     const info = (vue.liste && vue.liste.classe) || vue.classe || {};
@@ -1492,6 +1498,21 @@ function barrePiloteHtml() {
                 ${bacDeLaClasse()
                     ? '<button type="button" class="ec-pilote-btn" data-bac="0">Ouvrir</button>'
                     : '<button type="button" class="ec-pilote-btn" data-bac="1">Fermer</button>'}
+                ${bacDeLaClasse() ? '' : `
+                <!-- COMBIEN DE TEMPS IL DURE. Rémy, interrogé sur ce qui doit
+                     borner les jeux du bac : « un temps, réglé par vous ». Le
+                     compte part quand l ELEVE ouvre le bac, pas à l heure de la
+                     classe : celui qui finit dix minutes avant les autres a
+                     droit aux mêmes dix minutes. 0 = sans limite, et c est le
+                     défaut. (Pas de guillemet oblique ici : ce commentaire est
+                     DANS un gabarit.) -->
+                <span class="ec-pilote-mot-liant">·</span>
+                <input type="number" id="ec-bac-min" class="ec-champ ec-champ--court"
+                       min="0" max="120" step="5" value="${minutesDuBac()}"
+                       aria-label="Minutes de bac à sable par élève"
+                       data-valide-sur-entree="data-bac-minutes">
+                <span class="ec-pilote-mot-liant">min par élève</span>
+                <button type="button" class="ec-pilote-btn" data-bac-minutes>Poser</button>`}
             </span>
         </div>
 
@@ -1669,7 +1690,7 @@ async function brancher(e, redessiner) {
         + '[data-imposer-rien], [data-mettre-en-cours],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
-        + '[data-choix], [data-calc-donner], [data-calc-retirer]');
+        + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes]');
     if (!el) return;
     const d = el.dataset;
 
@@ -2308,9 +2329,25 @@ async function brancher(e, redessiner) {
     }
 
     if (d.bac !== undefined) {
+        // ON NE TOUCHE PAS À LA DURÉE EN OUVRANT OU EN FERMANT : le quart
+        // d'heure posé doit survivre à une fermeture le temps d'une
+        // explication au tableau.
         await fait(reglerLeBac(cid, d.bac === '1'), (r) => {
             if (vue.liste && vue.liste.classe) vue.liste.classe.bac_ferme = !!r.ferme;
         });
+        return;
+    }
+
+    if (d.bacMinutes !== undefined) {
+        const champ = document.getElementById('ec-bac-min');
+        const min = champ ? Math.max(0, Math.min(120, parseInt(champ.value, 10) || 0)) : 0;
+        await fait(reglerLeBac(cid, bacDeLaClasse(), min), (r) => {
+            if (vue.liste && vue.liste.classe) {
+                vue.liste.classe.bac_ferme = !!r.ferme;
+                vue.liste.classe.bac_minutes = r.minutes || 0;
+            }
+        }, min ? `🧰 Bac à sable : ${min} minutes par élève, à partir du moment où il l'ouvre.`
+               : '🧰 Bac à sable sans limite de temps.');
         return;
     }
 
@@ -2443,7 +2480,8 @@ function signatureDuPilote() {
     // calculatrice et n'avait aucun moyen de revenir en arrière.
     return [!!info.locked, !!bacDeLaClasse(), !!(ch && ch.finAt), (ch && ch.quoi) || '',
         info.impose_path_id || '',
-        (vue.reglages || []).some(x => x.mode === 'calculatrice') ? 'calc' : ''].join('|');
+        (vue.reglages || []).some(x => x.mode === 'calculatrice') ? 'calc' : '',
+        String(minutesDuBac())].join('|');
 }
 
 function rafraichirLeDirect(zone) {

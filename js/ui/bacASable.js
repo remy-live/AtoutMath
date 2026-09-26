@@ -24,7 +24,8 @@ import { exercices, getExerciseById, estADeux } from '../data/catalog.js';
 import { isGame } from '../core/gameAccess.js';
 import { bacOuvert, jeuxDuBac, parcoursDuBac, jeuxDeLaSeance, ceQueDisaitLaSeance }
     from '../core/bacASable.js';
-import { bacFerme, tempsRestant } from '../core/seanceDistante.js';
+import { bacFerme, tempsRestant, resteDuBac } from '../core/seanceDistante.js';
+import { globalStore } from '../core/store.js';
 import { avancementDuMoment } from './filSeance.js';
 import { showModal } from './modal.js';
 
@@ -42,7 +43,42 @@ const esc = (t) => String(t == null ? '' : t)
  */
 export function etatDuBac(avancement = undefined) {
     const av = avancement === undefined ? avancementDuMoment() : avancement;
-    return bacOuvert(av, { ferme: bacFerme(), chrono: tempsRestant() });
+    return bacOuvert(av, {
+        ferme: bacFerme(), chrono: tempsRestant(), budget: resteDuBac(ouvertDepuis)
+    });
+}
+
+/**
+ * QUAND CET ÉLÈVE A OUVERT SON BAC — l'instant, pas la durée.
+ *
+ * RÉMY : « un temps, réglé par vous ». Le compte part quand l'élève ouvre le
+ * bac, et pas à l'heure de la classe : celui qui finit dix minutes avant les
+ * autres doit avoir les mêmes dix minutes de jeu.
+ *
+ * L'instant est gardé sur l'appareil pour survivre à un rechargement de page —
+ * un élève qui recharge ne recommence pas son quart d'heure — et il est relu au
+ * démarrage. La clef porte le jour : demain est une autre heure, et un instant
+ * d'hier fermerait le bac avant de l'avoir ouvert.
+ */
+const CLE_BAC = 'bacOuvertA';
+let ouvertDepuis = 0;
+
+const jourDit = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
+
+/** Relu au démarrage : sans cela, recharger la page rend le temps déjà passé. */
+export async function relireLOuvertureDuBac() {
+    try {
+        const vu = await globalStore.get(CLE_BAC, null);
+        if (vu && vu.jour === jourDit() && Number(vu.a) > 0) ouvertDepuis = Number(vu.a);
+    } catch { /* pas de tiroir, pas de mémoire : le bac repart à neuf */ }
+    return ouvertDepuis;
+}
+
+/** Le premier jeu ouvert démarre le compte ; les suivants le continuent. */
+function demarrerLeCompte() {
+    if (ouvertDepuis) return;
+    ouvertDepuis = Date.now();
+    globalStore.set(CLE_BAC, { a: ouvertDepuis, jour: jourDit() }).catch(() => {});
 }
 
 /** Les jeux, résolus sur le catalogue de CETTE installation. */
@@ -144,8 +180,13 @@ async function jouerUnJeu(exo) {
         import('../core/path.js'),
         import('../core/mesExercices.js')
     ]);
+    // LE COMPTE PART ICI, au premier jeu ouvert — pas à l'affichage de la
+    // porte : regarder la liste des jeux ne doit pas consommer son temps.
+    demarrerLeCompte();
+    const budget = resteDuBac(ouvertDepuis);
     new Runner({
-        path: parcoursDuBac(makeStep, makePath, exo.id, politiquePerso()),
+        path: parcoursDuBac(makeStep, makePath, exo.id, politiquePerso(),
+            budget ? budget.reste : 0),
         deviceMode: 'none',
         // En sortant, on revient là d'où l'on vient — pas sur un écran vide.
         onExit: () => import('./navigation.js').then(m => m.setTopNavMode('path'))
@@ -173,6 +214,9 @@ let pose = false;
 export function initBacASable() {
     if (pose || typeof document === 'undefined') return;
     pose = true;
+    // ON RELIT L'HEURE D'OUVERTURE AVANT TOUT : un élève qui recharge sa page
+    // en plein jeu ne doit pas recommencer son quart d'heure, ni le perdre.
+    relireLOuvertureDuBac();
     document.addEventListener('click', (e) => {
         if (e.target.closest('[data-ouvrir-bac]')) ouvrirLeBac();
     });

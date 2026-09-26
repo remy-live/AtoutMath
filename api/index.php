@@ -1097,10 +1097,23 @@ function handleTeacherClass(): void
     // les heures où celui qui a fini doit relire ou aider son voisin.
     if ($action === 'bac') {
         $ferme = !empty($body['ferme']);
-        db()->prepare('UPDATE classes SET bac_ferme = ? WHERE id = ?')
-            ->execute([$ferme ? 1 : 0, $classe['id']]);
-        respond(['ok' => true, 'ferme' => $ferme,
-                 'dit' => $ferme ? 'Bac à sable fermé.' : 'Bac à sable ouvert.']);
+        // ET COMBIEN DE TEMPS IL DURE. Rémy : « un temps, réglé par vous ». Le
+        // compte part quand l'élève OUVRE le bac ; zéro veut dire « pas de
+        // limite », et c'est le défaut. On borne à deux heures : au-delà, le
+        // chiffre ne veut plus rien dire dans une heure de cours.
+        $minutes = array_key_exists('minutes', $body)
+            ? max(0, min(120, (int) $body['minutes'])) : null;
+        if ($minutes === null) {
+            db()->prepare('UPDATE classes SET bac_ferme = ? WHERE id = ?')
+                ->execute([$ferme ? 1 : 0, $classe['id']]);
+        } else {
+            db()->prepare('UPDATE classes SET bac_ferme = ?, bac_minutes = ? WHERE id = ?')
+                ->execute([$ferme ? 1 : 0, $minutes ?: null, $classe['id']]);
+        }
+        $dit = $ferme ? 'Bac à sable fermé.'
+            : ($minutes ? "Bac à sable ouvert, $minutes minutes par élève."
+                        : 'Bac à sable ouvert.');
+        respond(['ok' => true, 'ferme' => $ferme, 'minutes' => $minutes ?: 0, 'dit' => $dit]);
     }
 
     // LES DEUX GESTES SANS RETOUR DEMANDENT LE MOT ÉCRIT, comme dans les pages
@@ -1221,6 +1234,10 @@ function handleTeacherRoster(): void
             'chrono_fin' => $classe['chrono_fin'] ?? null,
             'chrono_a_zero' => $classe['chrono_a_zero'] ?? null,
             'bac_ferme' => (bool) ($classe['bac_ferme'] ?? 0),
+            // Combien de temps dure le bac chez eux, en minutes. 0 = sans
+            // limite. L'écran doit l'afficher, sinon le professeur repose le
+            // même quart d'heure à chaque heure sans savoir s'il y est déjà.
+            'bac_minutes' => (int) ($classe['bac_minutes'] ?? 0),
         ],
         'eleves' => rosterLisible($classe['id']),
         // Un code proposé d'avance pour « le même pour toute la classe » : il
