@@ -74,3 +74,47 @@ manque.
 - **Ce qui manque** : un module `tools/sonde.mjs` qui rende une page déjà
   identifiée — professeur **ou** élève, billet compris — et qui collecte seul
   les erreurs de page et les fenêtres natives.
+
+## ~~Ajouter un exercice au catalogue casse quatre choses invisibles~~ — 2026-09-26
+
+- **Ce que je voulais faire** : ajouter Le Patchwork au catalogue.
+- **Ce qui a coûté** : QUATRE passages de `npm test` de quatre minutes chacun,
+  soit seize minutes d'attente, pour découvrir une à une des règles qu'aucun
+  message ne dit à l'avance : la compétence citée doit exister dans
+  `js/data/skills.js` ; le code dicté doit tenir dans l'alphabet à 23 lettres
+  (ni I, ni O, ni **Q** — ce qui faisait silencieusement retomber l'exercice sur
+  le format long, et cassait deux tests sans rapport apparent) ; un fichier de
+  `js/data/` ne doit jamais importer un module de `js/games/` (sinon dix-neuf
+  fichiers de tests tombent sur « document is not defined ») ; et les jetons de
+  couleur employés doivent exister dans `css/base.css`.
+- **Combien de fois** : |
+- **Ce qui manque** : une commande `node tools/nouvelExercice.mjs <id>` qui
+  vérifie ces quatre points en deux secondes, avant de lancer les quatre
+  minutes. Les quatre règles sont déjà testées : il s'agit de les rendre
+  interrogeables une par une.
+- **TRAITÉE** le 2026-09-26 : `tools/nouvelExercice.mjs` existe. MESURÉ en
+  réintroduisant chaque faute une par une — code hors alphabet 199 ms, code
+  déjà pris 207 ms, compétence inexistante 206 ms, fichier de données qui
+  importe un jeu 54 ms, jeton de couleur inconnu 225 ms. Chacune est nommée
+  avec ce qu'il faut faire. À comparer aux quatre minutes du harnais complet,
+  qui disait la même chose sans dire comment la corriger.
+- **CE QUE L'OUTIL A APPRIS DE LUI-MÊME** : sa première version lisait les
+  fichiers à l'expression régulière et rendait **1214 problèmes, tous faux** —
+  elle prenait les identifiants de réglages pour des exercices et ne voyait
+  aucune compétence. Un outil qui fait gagner du temps en rendant mille fausses
+  pistes en fait perdre. Il IMPORTE donc les modules au lieu de les deviner, et
+  il ramasse les jetons de couleur dans tout `css/`, pas seulement dans
+  `base.css`.
+
+## **L'outil d'écriture réécrit mes séquences d'échappement** — 2026-09-26
+
+- **Ce que je voulais faire** : écrire un fichier JavaScript contenant `\u2019`
+  en toutes lettres, puis le retoucher par script.
+- **Ce qui a coûté** : l'outil a transformé `\u2019` en apostrophe typographique
+  à l'écriture. Le script de retouche, qui cherchait la séquence littérale, n'a
+  rien trouvé — et l'`assert` a tout annulé. Deux allers-retours pour comprendre
+  que le fichier sur le disque ne contenait pas ce que je croyais y avoir mis.
+- **Combien de fois** : ||
+- **Ce qui manque** : une règle simple, à écrire dans le `CLAUDE.md` une fois
+  qu'on l'aura vérifiée — on écrit les caractères français DIRECTEMENT, jamais
+  en séquences d'échappement, et l'on relit le fichier avant de le retoucher.

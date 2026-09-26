@@ -71,6 +71,19 @@ mesurent quelque chose qu'on voudra remesurer.
 
 **On lit le verdict AVANT de committer**, pas après.
 
+## 4 bis. Avant d'ajouter un exercice au catalogue
+
+```sh
+node tools/nouvelExercice.mjs [identifiant]
+```
+
+Deux cents millisecondes, et il dit ce que `npm test` mettrait quatre minutes à
+dire sans expliquer comment le corriger : la compétence citée existe-t-elle, le
+code dicté tient-il dans l'alphabet à 23 lettres (**ni I, ni O, ni Q**), un
+fichier de `js/data/` importe-t-il un module de `js/games/` (ce qui fait tomber
+TOUS les tests sur « document is not defined »), et les jetons de couleur
+employés sont-ils déclarés quelque part.
+
 ## 5. Les commentaires sont la moitié du travail
 
 Ce dépôt explique chaque décision non évidente, à la place où elle se prend. Un
@@ -92,6 +105,10 @@ Les messages de commit suivent la même règle : ce qui a été demandé, ce qui
   CSS ou HTML **à l'intérieur d'un gabarit** ferme le gabarit. Le message
   d'erreur désigne alors une ligne sans rapport. `node --check <fichier>` le
   trouve en une seconde ; on l'exécute après toute retouche d'un gros gabarit.
+- **On écrit les caractères français DIRECTEMENT**, jamais en séquences
+  d'échappement : l'outil d'écriture transforme `\u2019` en apostrophe au moment
+  d'écrire, et le script de retouche qui cherche la séquence littérale ne trouve
+  alors plus rien. Dans le doute, relire le fichier avant de le retoucher.
 - **L'outil `Edit` ne sait pas remplacer** un texte contenant `«` `»` ou une
   espace insécable. Passer par un script Python en `tools/tmp/`, avec
   `assert s.count(old) == 1` avant chaque remplacement — **et penser à exécuter
