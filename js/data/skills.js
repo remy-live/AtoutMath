@@ -944,6 +944,22 @@ const BASE = {
         descriptor: 'Tracer l\'image d\'une figure par une symétrie centrale, sur quadrillage.',
         lesson: 'Le demi-tour. Chaque case part vers le centre O et continue de l\'autre côté, à la même distance : si une case est 3 carreaux à droite et 2 au-dessus de O, son image est 3 carreaux à gauche et 2 au-dessous. La figure se retrouve à l\'envers DANS LES DEUX SENS À LA FOIS — c\'est ce qui la distingue du miroir, qui n\'en retourne qu\'un. Autre nom du même geste : la rotation d\'un demi-tour.'
     },
+    // RECONNAÎTRE UN CENTRE N'EST PAS EN TRACER UN.
+    //
+    // La compétence d'à côté — `geo.transfo.centrale` — demande de TRACER
+    // l'image d'une figure par une symétrie centrale : on part de la figure et
+    // du centre, et l'on construit. Celle-ci demande l'inverse : on a une
+    // figure, et il faut décider si un centre existe, donc essayer. C'est le
+    // chapitre « figures ayant un centre de symétrie », et c'est ce que fait Le
+    // Patchwork — l'élève y bute sur le L de quatre cases, qui n'en a pas.
+    'geo.transfo.centre-figure': {
+        label: 'Reconnaître qu\u2019une figure a un centre de symétrie',
+        chemin: [D.GEOMETRIQUE, SD.TRANSFORMATIONS],
+        niveaux: [N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['geo.transfo.centrale'],
+        descriptor: 'Dire si une figure a un centre de symétrie, et où il se trouve.',
+        lesson: 'Une figure a un CENTRE DE SYMÉTRIE quand on peut la tourner d\u2019un demi-tour autour d\u2019un point et la retrouver exactement à sa place. Le point n\u2019est pas toujours sur la figure, et il n\u2019est pas toujours au milieu d\u2019une case : pour une forme de quatre cases, il tombe entre deux cases ou au coin de quatre. Le test se fait par paires — chaque case doit avoir sa jumelle de l\u2019autre côté du centre, à la même distance. Un carré en a un, un S en a un, un L n\u2019en a pas.'
+    },
     'geo.transfo.translation': {
         label: 'Tracer l\'image par une translation',
         chemin: [D.GEOMETRIQUE, SD.TRANSFORMATIONS],

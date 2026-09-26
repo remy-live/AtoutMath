@@ -1,3 +1,4 @@
+import { PALIERS_PATCHWORK } from '../core/patchwork.js';
 import { elementsGeometrieGenerator } from '../core/generators/elementsGeometrie.js';
 import { casesDeSolides } from '../core/generators/solides.js';
 import { TAGS } from './tags.js';
@@ -604,6 +605,53 @@ export const geometrieExercises = [
             + "Quand ta figure est complète, appuie sur « Valider » — rien n'est jugé avant. "
             + "Le réglage « axes obliques » ajoute les diagonales à 45° : gardez-le décoché tant "
             + "que le miroir droit n'est pas acquis, car on n'y compte plus ni lignes ni colonnes."
+    },
+    // LE PATCHWORK — un jeu de Rémy, rapporté d'un magazine.
+    //
+    // Rémy, quatre pages arrachées à un magazine de jeux : « j'aimerais bien ces
+    // jeux en français et en rapport avec les maths ». Celui-ci s'appelait
+    // « Quilt », et c'est le plus mathématique des quatre : on découpe une
+    // grille en morceaux qui ont chacun un CENTRE DE SYMÉTRIE, et le nombre
+    // écrit dans un morceau dit son AIRE en cases.
+    //
+    // POURQUOI IL MANQUAIT. La symétrie centrale s'enseigne sur des figures
+    // qu'on REGARDE — « cette figure a-t-elle un centre ? » — presque jamais sur
+    // des figures qu'on FABRIQUE. Ici l'élève cherche, pour une aire donnée,
+    // quelles formes ont un centre : il bute sur le L de quatre cases qui n'en a
+    // pas, et découvre que pour une aire paire le centre tombe ENTRE deux
+    // cases. Ces deux choses-là ne se disent pas, elles se butent.
+    //
+    // ET CE N'EST PAS UNE CONSTRUCTION GÉOMÉTRIQUE — la ligne rouge vise la
+    // règle et le compas. On colorie des cases d'un quadrillage : c'est un jeu
+    // de logique, du même bois que le Slitherlink et le Hashi.
+    {
+        id: 'geo-patchwork',
+        title: 'Le Patchwork',
+        cree: '2026-09-26',
+        activityId: 'patchwork',
+        skills: ['geo.transfo.centre-figure'],
+        params: { palier: 'facile' },
+        paramSchema: [
+            {
+                id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
+                aide: 'Agrandit la grille et les morceaux. Plus un morceau est grand, plus il '
+                    + 'y a de formes qui ont un centre — et plus il faut chercher.',
+                options: Object.entries(PALIERS_PATCHWORK)
+                    .map(([value, p]) => ({ value, label: p.label }))
+            }
+        ],
+        motsClefs: ['symétrie', 'centre de symétrie', 'demi-tour', 'aire', 'découpage',
+            'patchwork', 'quilt', 'logique'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        instruction: "Découpe toute la grille en morceaux. Le nombre écrit dans un morceau dit "
+            + "combien il a de cases, et chaque morceau doit avoir un CENTRE DE SYMÉTRIE : tourné "
+            + "d'un demi-tour autour de ce point, il retombe exactement sur lui-même. Touche un "
+            + "nombre pour choisir son morceau, puis colorie ses cases — au doigt, en glissant. "
+            + "Retoucher une case de la couleur choisie l'efface. Attention : un L de quatre cases "
+            + "n'a pas de centre, un carré et un S en ont un. Quand tout est colorié, « Vérifier »."
     },
     {
         id: 'geo-transfo-quadrillage',
