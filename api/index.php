@@ -1646,6 +1646,24 @@ function handleTeacherOverride(): void
     $action = (string) ($body['action'] ?? 'add');
 
     if ($action === 'cancel') {
+        // RETIRER TOUT UN GENRE, SANS AVOIR À NOMMER CHAQUE LIGNE.
+        //
+        // « Je retire la calculatrice » est UN geste de fin d'exercice, et il ne
+        // doit pas demander au professeur de retrouver les sept lignes qu'il a
+        // posées — une pour la classe, six pour des élèves. Sans identifiant,
+        // on supprime donc tout ce genre-là dans cette classe.
+        if (($body['overrideId'] ?? '') === '' && ($body['mode'] ?? '') !== '') {
+            $genre = (string) $body['mode'];
+            $q = db()->prepare(
+                'DELETE FROM overrides WHERE mode = ? AND (class_id = ? OR student_id IN
+                 (SELECT id FROM students WHERE class_id = ?))'
+            );
+            $q->execute([$genre, $classe['id'], $classe['id']]);
+            respond(['ok' => true, 'reglages' => overridesDeLaClasse($classe['id']),
+                     'dit' => $genre === 'calculatrice'
+                        ? 'La calculatrice est retirée.'
+                        : 'Réglages retirés.']);
+        }
         // On borne la suppression à NOS réglages : l'identifiant vient du
         // navigateur, donc de quelqu'un.
         $q = db()->prepare(
@@ -1661,26 +1679,72 @@ function handleTeacherOverride(): void
         respond(['reglages' => overridesDeLaClasse($classe['id'])]);
     }
 
+    // `*` N'EST PAS UN EXERCICE, C'EST « PARTOUT ».
+    //
+    // Rémy, sur la calculatrice : « pourrait-on autoriser dans les options
+    // l'utilisation de la calculatrice ou le permettre en direct à un groupe ou
+    // aux élèves », et il veut les deux portées — « les deux au choix ». Pour
+    // cet exercice-ci, on nomme l'exercice ; pour toute l'heure, `*`. La table
+    // n'a pas besoin d'une colonne de plus : elle dit déjà « ce réglage vaut
+    // pour cet exercice », et `*` est l'exercice « tous ».
     $exo = trim((string) ($body['exerciseId'] ?? ''));
     if ($exo === '') fail(400, 'bad_exercise', 'Il faut désigner un exercice.');
-    $mode = ($body['mode'] ?? 'saut') === 'retire' ? 'retire' : 'saut';
+    $mode = in_array($body['mode'] ?? 'saut', ['saut', 'retire', 'calculatrice'], true)
+        ? (string) $body['mode'] : 'saut';
+    if ($exo === '*' && $mode !== 'calculatrice') {
+        // Sauter TOUS les exercices, ce n'est pas un réglage, c'est annuler la
+        // séance — et cela se fait en la retirant, pas en la vidant.
+        fail(400, 'bad_exercise', 'Seule la calculatrice s\'autorise pour toute la séance.');
+    }
 
-    $studentId = (string) ($body['studentId'] ?? '');
-    if ($studentId !== '') {
+    // UN GESTE, PLUSIEURS ÉLÈVES. Rémy : « on pourrait le donner que pour
+    // certains élèves », « on pourrait sélectionner dans le direct ». Cocher
+    // quatre noms puis attendre quatre allers-retours, c'est quatre occasions
+    // qu'un seul échoue et que le professeur ne sache pas lesquels ont reçu.
+    $ids = $body['studentIds'] ?? null;
+    if (!is_array($ids)) $ids = [];
+    $un = (string) ($body['studentId'] ?? '');
+    if ($un !== '') $ids[] = $un;
+    $ids = array_values(array_unique(array_filter(array_map('strval', $ids), fn ($i) => $i !== '')));
+    if (count($ids) > 200) fail(400, 'too_many', 'Trop d\'élèves d\'un coup.');
+
+    foreach ($ids as $id) {
         $q = db()->prepare('SELECT id FROM students WHERE id = ? AND class_id = ?');
-        $q->execute([$studentId, $classe['id']]);
+        $q->execute([$id, $classe['id']]);
         if (!$q->fetch()) fail(404, 'student_not_found', 'Élève introuvable.');
     }
 
-    db()->prepare('INSERT INTO overrides (id, class_id, student_id, exercise_id, mode)
-                   VALUES (?, ?, ?, ?, ?)')
-        ->execute([uuidv4(), $studentId ? null : $classe['id'], $studentId ?: null,
-                   mb_substr($exo, 0, 80), $mode]);
+    // ON NE SUPERPOSE PAS DEUX FOIS LE MÊME RÉGLAGE : rappuyer sur le bouton
+    // ajoutait une ligne de plus, invisible, et « retirer » n'en enlevait
+    // qu'une. Le geste est donc idempotent.
+    $vide = db()->prepare(
+        'DELETE FROM overrides WHERE mode = ? AND exercise_id = ?
+           AND (' . ($ids ? 'student_id = ?' : 'class_id = ?') . ')'
+    );
 
+    $insert = db()->prepare('INSERT INTO overrides (id, class_id, student_id, exercise_id, mode)
+                             VALUES (?, ?, ?, ?, ?)');
+    $court = mb_substr($exo, 0, 80);
+    if ($ids) {
+        foreach ($ids as $id) {
+            $vide->execute([$mode, $court, $id]);
+            $insert->execute([uuidv4(), null, $id, $court, $mode]);
+        }
+    } else {
+        $vide->execute([$mode, $court, $classe['id']]);
+        $insert->execute([uuidv4(), $classe['id'], null, $court, $mode]);
+    }
+
+    $aQui = $ids ? (count($ids) === 1 ? 'à cet élève' : 'à ' . count($ids) . ' élèves')
+                 : 'à toute la classe';
     respond(['ok' => true, 'reglages' => overridesDeLaClasse($classe['id']),
              'dit' => $mode === 'retire'
                 ? "L'exercice « $exo » est retiré du parcours."
-                : "Le saut de « $exo » est autorisé : un bouton « passer » apparaîtra."]);
+                : ($mode === 'calculatrice'
+                    ? ($exo === '*'
+                        ? "La calculatrice est autorisée $aQui, pour toute la séance."
+                        : "La calculatrice est autorisée $aQui, sur « $exo ».")
+                    : "Le saut de « $exo » est autorisé : un bouton « passer » apparaîtra.")]);
 }
 
 /** Les réglages d'exercice en vigueur dans cette classe, du plus récent au plus ancien. */

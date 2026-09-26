@@ -1900,6 +1900,94 @@ verifier('le collègue ne règle rien chez nous',
         ['classId' => $idDeb, 'action' => 'add', 'exerciseId' => 'calc-add'],
         $jetonAutre)['code'] === 404);
 
+// ── LA CALCULATRICE, ACCORDÉE EN PLEINE HEURE.
+//
+// RÉMY : « pourrait-on autoriser dans les options l'utilisation de la
+// calculatrice ou le permettre en direct à un groupe ou aux élèves (on pourrait
+// sélectionner dans le direct) », puis : « les deux au choix mais on pourrait le
+// donner que pour certains élèves ».
+//
+// Elle n'était qu'une propriété du catalogue — quatre exercices, écrits en dur,
+// que le professeur ne pouvait ni donner ni retirer. Elle passe par la même
+// table que le saut et le retrait : un réglage d'exercice, pour la classe ou
+// pour un élève. `*` n'est pas un exercice, c'est « toute la séance ».
+
+$codeDeb = $cl2['join_code'] ?? '';
+$rDeb = json('/join', ['classCode' => $codeDeb, 'firstName' => 'Nour']);
+$jetonNour = $rDeb['json']['token'] ?? '';
+$idNour = $rDeb['json']['studentId'] ?? '';
+$jetonZoe = json('/join', ['classCode' => $codeDeb, 'firstName' => 'Zoé'])['json']['token'] ?? '';
+verifier('deux élèves pour l\'essai de la calculatrice',
+    $jetonNour !== '' && $jetonZoe !== '' && $idNour !== '');
+
+$calcDe = fn (string $jeton) => json('/session', [], $jeton)['json']['session']['calculatrice'] ?? null;
+
+verifier('AU DÉPART, PERSONNE N\'A DE CALCULATRICE ACCORDÉE',
+    $calcDe($jetonNour) === [] && $calcDe($jetonZoe) === [],
+    json_encode($calcDe($jetonNour)));
+
+// POUR TOUTE LA SÉANCE, À TOUTE LA CLASSE : le geste qu'on fait en le disant à
+// voix haute.
+$r = json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'add', 'mode' => 'calculatrice', 'exerciseId' => '*'],
+    $jetonNotre);
+verifier('LA CALCULATRICE S\'ACCORDE À TOUTE LA CLASSE, POUR TOUTE LA SÉANCE',
+    $r['code'] === 200 && $calcDe($jetonNour) === ['*'] && $calcDe($jetonZoe) === ['*'],
+    $r['json']['dit'] ?? '');
+
+// ET ELLE SE RETIRE D'UN GESTE, SANS AVOIR À NOMMER CHAQUE LIGNE.
+$r = json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'cancel', 'mode' => 'calculatrice'], $jetonNotre);
+verifier('ELLE SE RETIRE SANS QU\'ON AIT À RETROUVER LA LIGNE',
+    $r['code'] === 200 && $calcDe($jetonNour) === [] && $calcDe($jetonZoe) === [],
+    $r['json']['dit'] ?? '');
+
+// À CERTAINS SEULEMENT — « on pourrait le donner que pour certains élèves ».
+// Un seul aller-retour pour plusieurs noms : quatre requêtes, c'est quatre
+// occasions qu'une seule échoue sans qu'on sache laquelle.
+$r = json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'add', 'mode' => 'calculatrice',
+     'exerciseId' => 'calc-add', 'studentIds' => [$idNour]], $jetonNotre);
+verifier('ELLE S\'ACCORDE À UN ÉLÈVE, SUR UN SEUL EXERCICE',
+    $r['code'] === 200 && $calcDe($jetonNour) === ['calc-add'] && $calcDe($jetonZoe) === [],
+    'Nour : ' . json_encode($calcDe($jetonNour)) . ' · Zoé : ' . json_encode($calcDe($jetonZoe)));
+
+// DONNER DEUX FOIS NE DONNE PAS DEUX FOIS. La même faute que sur les séances :
+// rappuyer ajoutait une ligne de plus, invisible, et « retirer » n'en enlevait
+// qu'une.
+json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'add', 'mode' => 'calculatrice',
+     'exerciseId' => 'calc-add', 'studentIds' => [$idNour]], $jetonNotre);
+$combien = (int) db()->query(
+    "SELECT COUNT(*) FROM overrides WHERE mode = 'calculatrice' AND exercise_id = 'calc-add'"
+)->fetchColumn();
+verifier('ACCORDER DEUX FOIS N\'ÉCRIT QU\'UNE LIGNE', $combien === 1, "$combien ligne(s)");
+
+// ET L'ON N'AUTORISE PAS À SAUTER TOUTE LA SÉANCE : `*` n'a de sens que pour la
+// calculatrice. Vider un parcours se fait en le retirant, pas en l'éventrant.
+verifier('« toute la séance » ne vaut que pour la calculatrice',
+    json('/teacher/override',
+        ['classId' => $idDeb, 'action' => 'add', 'mode' => 'saut', 'exerciseId' => '*'],
+        $jetonNotre)['code'] === 400);
+
+verifier('un élève d\'une autre classe est refusé',
+    json('/teacher/override',
+        ['classId' => $idDeb, 'action' => 'add', 'mode' => 'calculatrice',
+         'exerciseId' => '*', 'studentIds' => ['pas-un-eleve']], $jetonNotre)['code'] === 404);
+
+// LE SAUT ET LA CALCULATRICE NE SE MARCHENT PAS SUR LES PIEDS : trois modes
+// dans la même table, et l'élève doit recevoir les trois listes séparément.
+json('/teacher/override',
+    ['classId' => $idDeb, 'action' => 'add', 'mode' => 'saut', 'exerciseId' => 'calc-mult'],
+    $jetonNotre);
+$sess = json('/session', [], $jetonNour)['json']['session'] ?? [];
+verifier('TROIS MODES, TROIS LISTES, ET AUCUN MÉLANGE',
+    ($sess['calculatrice'] ?? null) === ['calc-add']
+    && in_array('calc-mult', $sess['skippable'] ?? [], true)
+    && !in_array('calc-mult', $sess['calculatrice'] ?? [], true),
+    'calc : ' . json_encode($sess['calculatrice'] ?? null)
+        . ' · saut : ' . json_encode($sess['skippable'] ?? null));
+
 // ── UNE PORTE QUI S'OUVRE DOIT POUVOIR SE REFERMER.
 //
 // Créer un collègue était possible ; le défaire ne l'était pas. La seule issue

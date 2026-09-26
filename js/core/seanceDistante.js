@@ -32,6 +32,10 @@ const VIDE = {
     className: '', classCode: '',
     locked: false, notice: null, blocked: false,
     messages: [], skippable: [], removed: [],
+    // LES EXERCICES OÙ LE PROFESSEUR VIENT D'ACCORDER LA CALCULATRICE — et
+    // l'exercice `*`, qui veut dire « toute la séance ». Voir
+    // `calculatriceAccordee`.
+    calculatrice: [],
     // LE MOMENT EN COURS : la séance imposée, et le compte à rebours.
     impose: null, chrono: null,
     // Le bac à sable de ceux qui ont fini. FERMÉ est le cas particulier :
@@ -257,6 +261,28 @@ export function estRetire(exerciceId) {
  */
 export function peutSauter(exerciceId) {
     return !!exerciceId && etat.skippable.includes(exerciceId);
+}
+
+/**
+ * LA CALCULATRICE, ACCORDÉE EN DIRECT.
+ *
+ * RÉMY : « pourrait-on autoriser dans les options l'utilisation de la
+ * calculatrice ou le permettre en direct à un groupe ou aux élèves (on pourrait
+ * sélectionner dans le direct) ».
+ *
+ * TROIS PORTES MÈNENT À CE BOUTON, et elles ne se remplacent pas :
+ *   · l'exercice l'autorise par nature (`exo.calculatrice`, dans le catalogue) ;
+ *   · le professeur l'a cochée en construisant son parcours (réglage d'étape) ;
+ *   · il vient de l'accorder, en pleine heure, à la classe ou à des élèves.
+ *
+ * C'est la troisième que cette fonction répond. L'exercice `*` vaut pour toute
+ * la séance : c'est le « vous pouvez prendre la calculatrice » qu'on dit à voix
+ * haute, et qui ne se répète pas à chaque exercice.
+ */
+export function calculatriceAccordee(exerciceId) {
+    const liste = etat.calculatrice || [];
+    if (!liste.length) return false;
+    return liste.includes('*') || (!!exerciceId && liste.includes(exerciceId));
 }
 
 /** Retire du parcours les étapes que le professeur a supprimées. */

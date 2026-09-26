@@ -170,6 +170,10 @@ test('ON CHOISIT L\'EXERCICE À DISPENSER, ON NE TAPE PLUS SON IDENTIFIANT', () 
     // « le troisième », pas « num-arrondi ».
     assert.match(ec, /titre: `\$\{i \+ 1\}\. \$\{nomDExercice\(id\)\}`/);
     // La barre se refait quand la séance change — sinon la liste resterait
-    // celle de l'heure d'avant.
-    assert.match(ec, /info\.impose_path_id \|\| ''\]\.join\('\|'\)/);
+    // celle de l'heure d'avant. La signature porte maintenant un élément de
+    // plus (la calculatrice accordée, qui fait apparaître son bouton
+    // « Retirer ») : on vérifie donc que la séance imposée y est TOUJOURS,
+    // sans figer le reste de la ligne.
+    assert.match(ec, /function signatureDuPilote\(\)[\s\S]{0,900}info\.impose_path_id \|\| ''/);
+    assert.match(ec, /signatureDuPilote\(\)[\s\S]{0,1200}\]\.join\('\|'\)/);
 });

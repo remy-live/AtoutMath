@@ -28,7 +28,7 @@ import { computeRuns } from './projections.js';
 import { uuid } from './ids.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
 import { reglerCalculatrice, signalerNouvelleQuestion } from '../ui/calculatrice.js';
-import { filtrerEtapes, peutSauter } from './seanceDistante.js';
+import { filtrerEtapes, peutSauter, calculatriceAccordee } from './seanceDistante.js';
 import { majFilSeance, cacherFilSeance } from '../ui/filSeance.js';
 
 export class Runner {
@@ -769,7 +769,13 @@ export class Runner {
         // La calculatrice n'est offerte que là où l'exercice le dit, et une
         // fenêtre ouverte à l'étape d'avant se referme si la suivante ne
         // l'autorise pas.
-        reglerCalculatrice(step.exercise);
+        // TROIS PORTES, ET C'EST LE NOYAU QUI TRANCHE — voir
+        // `calculatricePermise`. Le direct l'emporte sur le réglage de l'étape,
+        // qui l'emporte sur le catalogue.
+        reglerCalculatrice(step.exercise, {
+            params: step.params,
+            accordee: calculatriceAccordee(step.exercise && step.exercise.id)
+        });
         this.updateProgress();
         this.updateStepNavigation();
 

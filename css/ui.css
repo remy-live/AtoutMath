@@ -276,6 +276,20 @@
 }
 .ec-pilote-cadre .ec-champ { flex: 0 0 auto; }
 .ec-pilote-cadre .ec-champ--court { width: 4.2rem; text-align: center; }
+/* LE CHOIX DE LA PORTÉE DE LA CALCULATRICE — « pour toute la séance » ou le nom
+   d'un exercice. Il ne peut pas être aussi court que le champ des minutes : un
+   titre d'exercice coupé à quatre rem ne se lit pas. Mais il ne doit pas non
+   plus pousser le reste de la barre hors de l'écran, d'où le maximum. */
+.ec-pilote-cadre .ec-champ--ou { max-width: 13rem; }
+/* LA CASE QUI CHOISIT UN ÉLÈVE, dans Le direct.
+   Elle est DANS une ligne qui est elle-même un bouton (elle ouvre la fiche) :
+   la zone de clic est donc élargie autour de la case, pour qu'un doigt qui vise
+   la case ne déplie pas la fiche. Voir data-choix dans ui/espaceClasses.js. */
+.ec-choix {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 6px; margin: -6px 2px -6px -2px; flex: 0 0 auto;
+}
+.ec-choix input { width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary); }
 .ec-pilote-cadre .ec-champ--mince { width: auto; }
 .ec-pilote-mot-liant { font-size: .8rem; color: var(--text-muted); }
 /* LE MOT À LA CLASSE PREND LA PLACE QUI RESTE : c'est le seul champ où l'on

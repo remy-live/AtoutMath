@@ -239,6 +239,31 @@ export const annulerUnReglage = (classId, overrideId) =>
     auServeur('/teacher/override', { classId, action: 'cancel', overrideId });
 
 /**
+ * ACCORDER LA CALCULATRICE, EN PLEINE HEURE.
+ *
+ * RÉMY : « pourrait-on autoriser dans les options l'utilisation de la
+ * calculatrice ou le permettre en direct à un groupe ou aux élèves (on pourrait
+ * sélectionner dans le direct) », puis : « les deux au choix mais on pourrait le
+ * donner que pour certains élèves ».
+ *
+ * `exerciseId` vaut `'*'` pour TOUTE LA SÉANCE, ou l'identifiant d'un exercice
+ * pour celui-là seulement. `eleves` vide veut dire toute la classe.
+ *
+ * UN SEUL ALLER-RETOUR POUR PLUSIEURS ÉLÈVES : cocher quatre noms puis attendre
+ * quatre réponses, c'est quatre occasions qu'une seule échoue sans que le
+ * professeur sache laquelle.
+ */
+export const accorderLaCalculatrice = (classId, exerciseId = '*', eleves = []) =>
+    auServeur('/teacher/override', {
+        classId, action: 'add', mode: 'calculatrice',
+        exerciseId: exerciseId || '*', studentIds: eleves
+    });
+
+/** La retirer partout dans cette classe — un geste, pas une ligne à retrouver. */
+export const retirerLaCalculatrice = (classId) =>
+    auServeur('/teacher/override', { classId, action: 'cancel', mode: 'calculatrice' });
+
+/**
  * EST-IL LÀ EN CE MOMENT ?
  *
  * Quatre-vingt-dix secondes, la même valeur que la page d'administration : la

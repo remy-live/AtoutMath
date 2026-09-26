@@ -5,6 +5,7 @@
 // un générateur la fait apparaître partout où il est utilisé, sans toucher au
 // catalogue ni à cette interface.
 
+import { calculatricePermise } from '../core/calculatrice.js';
 import { paramSchemaOf, getExerciseById } from '../data/catalog.js';
 import { seuilDe } from '../core/recompenses.js';
 import { natureDe } from '../core/duree.js';
@@ -2928,6 +2929,12 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     // tranches, quatre écrans avant qu'on puisse voir d'où sortait le 26.
     // Rémy : « le nombre de questions est peut-être à mettre au-dessus ».
     // Un réglage qui DÉCOUPE le total passe donc sous lui, toujours.
+    // CE QUE LA CASE MONTRE EN ARRIVANT : l'état RÉEL de cette étape, réglage
+    // compris. Si l'on montrait seulement `step.overrides.calculatrice`, la
+    // case serait décochée sur un exercice de trigonométrie qui l'offre par
+    // nature — et la décocher n'aurait rien changé, puis la cocher aurait
+    // écrit un réglage inutile. Voir `calculatricePermise` dans le noyau.
+    const calculatriceCochee = calculatricePermise({ exercice: exo, params: current });
     const valeurDe = (p) => valeurDeChamp(p, current);
     const decoupeLeTotal = (p) => p && p.type === 'marches';
     const libre = schema.filter(p => !p.groupe && !decoupeLeTotal(p));
@@ -2998,6 +3005,21 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
                     ${infoBtn('Une étape de poids 2 compte double dans le barème.', null)}</label>
                 <input type="number" id="cfg-weight" class="cfg-input cfg-input--num" min="1" max="10" value="${step.weight || 1}">
             </div>
+            <!-- LA CALCULATRICE SE RÈGLE ICI. Rémy : « pourrait-on autoriser
+                 dans les options l'utilisation de la calculatrice ». Elle
+                 n'était qu'une propriété du catalogue, écrite en dur sur quatre
+                 exercices, que le professeur ne pouvait ni donner ni retirer.
+                 Elle est dans « Déroulement » parce que c'est un réglage de
+                 CONDITIONS — comme le chronomètre —, pas de contenu. -->
+            <label class="cfg-case" id="cfg-case-calculatrice">
+                <input type="checkbox" id="cfg-calculatrice" ${calculatriceCochee ? 'checked' : ''}>
+                <span><b>🧮 Calculatrice autorisée</b><br>
+                <span class="cfg-help">Un bouton s'ouvre dans l'en-tête, et il bat trois fois à
+                chaque question pour qu'on le voie.${evaluation
+        ? ' <b>En évaluation, elle change ce que la note mesure</b> — à vous de voir, '
+          + 'c\'est votre devoir.'
+        : ''}</span></span>
+            </label>
         </div>`;
 
     content.classList.toggle('cfg-apercu-hote', aApercuAide(schema));
@@ -3092,6 +3114,16 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
         // `reglagesQuiChangent`. Écrire tout le schéma rendait le code à dicter
         // illisible au premier clic sur le nombre de questions.
         const overrides = reglagesQuiChangent(readParams(content, schema), exo, schema);
+        // LA CALCULATRICE N'EST PAS UN PARAMÈTRE DU GÉNÉRATEUR : elle ne passe
+        // donc pas par `readParams`, et on l'ajoute à la main. Comme les
+        // autres, on ne l'écrit QUE si elle s'écarte de l'exercice : sinon le
+        // code à dicter s'allongerait d'un réglage qui ne change rien.
+        const calcEl = document.getElementById('cfg-calculatrice');
+        if (calcEl) {
+            const veut = !!calcEl.checked;
+            if (veut !== !!exo.calculatrice) overrides.calculatrice = veut;
+            else delete overrides.calculatrice;
+        }
         const nbItems = intVal('cfg-nbitems', 10);
         describeThreshold();
         toggleScope();

@@ -160,8 +160,10 @@ function etatDeSeance(array $eleve): array
         'genre' => ($m['genre'] ?? '') === 'indice' ? 'indice' : 'mot',
     ], $s->fetchAll());
 
-    // LES EXERCICES DÉBLOQUÉS. Un réglage pour la classe et un réglage pour
-    // l'élève peuvent viser le même exercice ; `retire` l'emporte sur `saut`,
+    // LES RÉGLAGES D'EXERCICE EN VIGUEUR POUR LUI : ce qu'il peut sauter, ce
+    // qui est retiré de son parcours, et où la calculatrice lui est accordée.
+    // Un réglage pour la classe et un réglage pour l'élève peuvent viser le
+    // même exercice ; `retire` l'emporte sur `saut`,
     // parce que retirer est le geste du professeur qui a constaté que
     // l'exercice plante — il ne veut pas que l'élève retombe dessus.
     $s = $pdo->prepare(
@@ -171,8 +173,14 @@ function etatDeSeance(array $eleve): array
     $s->execute([$eleve['class_id'], $eleve['id']]);
     $saut = [];
     $retire = [];
+    // LA CALCULATRICE ACCORDÉE EN DIRECT. Rémy : « pourrait-on autoriser dans
+    // les options l'utilisation de la calculatrice ou le permettre en direct à
+    // un groupe ou aux élèves ». L'exercice `*` veut dire « toute la séance ».
+    $calculatrice = [];
     foreach ($s->fetchAll() as $o) {
-        if ($o['mode'] === 'retire') {
+        if ($o['mode'] === 'calculatrice') {
+            $calculatrice[$o['exercise_id']] = true;
+        } elseif ($o['mode'] === 'retire') {
             $retire[$o['exercise_id']] = true;
         } else {
             $saut[$o['exercise_id']] = true;
@@ -228,6 +236,9 @@ function etatDeSeance(array $eleve): array
         'messages'  => $messages,
         'skippable' => array_keys($saut),
         'removed'   => array_keys($retire),
+        // Les exercices où le professeur vient d'autoriser la calculatrice —
+        // `*` valant pour toute la séance.
+        'calculatrice' => array_keys($calculatrice),
         'impose'    => $impose,
         'chrono'    => $chrono,
         'maintenant' => time(),

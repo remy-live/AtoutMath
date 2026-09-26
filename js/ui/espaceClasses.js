@@ -52,6 +52,7 @@ import {
     envoyerUnMot, soufflerUnIndice, reglerLeBac,
     creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
     lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis,
+    accorderLaCalculatrice, retirerLaCalculatrice,
     imposerLaSeance, lancerLeChrono, arreterLeChrono, auServeur, reglagesDuSite
 } from '../core/espaceProf.js';
 import { noterReglagesSite } from '../core/reglagesSite.js';
@@ -153,6 +154,11 @@ export async function ouvrirEspaceClasses() {
             reglagesSite: null,
         // L'élève dont la fiche est dépliée dans Le direct — un seul à la fois.
         fiche: null,
+        // LES ÉLÈVES COCHÉS dans Le direct. Un ensemble, pas une liste : on y
+        // entre et l'on en sort par le même geste, trente fois dans l'heure.
+        // Il survit au battement de dix secondes (les cases sont redessinées
+        // d'après lui) mais pas au changement de classe.
+        choisis: new Set(),
             bilans: null, seances: null, occupe: false };
 
     // UNE PIÈCE, PAS UNE FENÊTRE.
@@ -688,6 +694,15 @@ function rangHtml(e, maintenant) {
         data-fiche="${esc(e.id)}" role="button" tabindex="0"
         aria-expanded="${ouverte ? 'true' : 'false'}"
         title="Voir o\u00f9 en est ${esc(e.prenom)}">
+        <!-- LA CASE NE FAIT PAS PARTIE DU BOUTON : cliquer la ligne ouvre la
+             fiche, cocher la case choisit l'élève. Les deux gestes sont à deux
+             centimètres l'un de l'autre, et le second ne doit pas déclencher le
+             premier — voir data-choix dans les gestes. -->
+        <span class="ec-choix" title="Choisir ${esc(e.prenom)}">
+            <input type="checkbox" data-choix="${esc(e.id)}"
+                   aria-label="Choisir ${esc(e.prenom)}"
+                   ${(vue.choisis && vue.choisis.has(e.id)) ? 'checked' : ''}>
+        </span>
         <span class="ec-point${ici ? ' ec-point--vert' : ''}"></span>
         <div class="ec-rang-qui">
             <b>${esc(e.prenom)}</b>
@@ -1444,6 +1459,32 @@ function barrePiloteHtml() {
                 `}
             </span>
 
+            <!-- LA CALCULATRICE, ACCORDÉE EN PLEINE HEURE.
+                 RÉMY : « pourrait-on autoriser dans les options l'utilisation
+                 de la calculatrice ou le permettre en direct à un groupe ou aux
+                 élèves (on pourrait sélectionner dans le direct) », puis « les
+                 deux au choix mais on pourrait le donner que pour certains
+                 élèves ».
+                 DEUX PORTÉES, comme il les a demandées : toute la séance — le
+                 « vous pouvez prendre la calculatrice » qu'on dit à voix haute
+                 et qu'on ne répète pas — ou un exercice seul. Et deux
+                 destinataires : toute la classe, ou les élèves cochés dans la
+                 liste en dessous. L'étiquette dit lequel, parce qu'accorder à
+                 trente en croyant accorder à quatre ne se voit qu'après. -->
+            <span class="ec-pilote-cadre">
+                <span class="ec-pilote-eti">🧮 Calculatrice</span>
+                <span class="ec-pilote-mot-liant" data-calc-aqui>${aQuiLaCalculatrice()}</span>
+                <select id="ec-calc-ou" class="ec-champ ec-champ--ou"
+                        aria-label="Où la calculatrice est autorisée">
+                    <option value="*">pour toute la séance</option>
+                    ${exercicesSousLaMain().map(x =>
+        `<option value="${esc(x.id)}">sur ${esc(x.titre)}</option>`).join('')}
+                </select>
+                <button type="button" class="ec-pilote-btn" data-calc-donner>Autoriser</button>
+                ${(vue.reglages || []).some(x => x.mode === 'calculatrice')
+        ? '<button type="button" class="ec-pilote-btn" data-calc-retirer>Retirer</button>' : ''}
+            </span>
+
             <span class="ec-pilote-cadre">
                 <span class="ec-pilote-eti">🧰 Bac à sable</span>
                 <span class="ec-pilote-mot-liant">${bacDeLaClasse()
@@ -1503,13 +1544,33 @@ function barrePiloteHtml() {
     </div>`;
 }
 
+/**
+ * À QUI LA CALCULATRICE VA — dit avant de cliquer, pas après.
+ *
+ * Accorder à trente élèves en croyant en accorder à quatre ne se voit qu'au
+ * moment où trente sortent leur calculatrice. L'étiquette suit donc les cases
+ * cochées, et c'est elle qu'on relit avant d'appuyer.
+ */
+function aQuiLaCalculatrice() {
+    const n = elevesChoisis().length;
+    if (!n) return 'à toute la classe';
+    return n === 1 ? 'à 1 élève coché' : `à ${n} élèves cochés`;
+}
+
+/** Les élèves cochés dans le direct, filtrés sur ceux qui y sont encore. */
+function elevesChoisis() {
+    const vus = new Set((((vue.direct || {}).eleves) || []).map(e => e.id));
+    return [...(vue.choisis || [])].filter(id => vus.has(id));
+}
+
 /** Les réglages d'exercice en vigueur, avec de quoi les défaire. */
 function reglagesHtml() {
     const r = vue.reglages;
     if (!r || !r.length) return '';
     return `<div class="ec-puces ec-puces--reglages">
         ${r.map(x => `<span class="ec-puce">
-            ${x.mode === 'retire' ? '⊘' : '↷'} ${esc(nomDExercice(x.exerciseId))}
+            ${x.mode === 'retire' ? '⊘' : (x.mode === 'calculatrice' ? '🧮' : '↷')} ${
+        x.exerciseId === '*' ? 'toute la séance' : esc(nomDExercice(x.exerciseId))}
             ${x.pour ? '· ' + esc(x.pour) : '· toute la classe'}
             <button type="button" class="ec-mini" data-annuler-reglage="${esc(x.id)}"
                     title="Annuler ce réglage">×</button>
@@ -1607,20 +1668,44 @@ async function brancher(e, redessiner) {
         + '[data-mode-libre], [data-inscription-libre],'
         + '[data-imposer-rien], [data-mettre-en-cours],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
-        + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo]');
+        + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
+        + '[data-choix], [data-calc-donner], [data-calc-retirer]');
     if (!el) return;
     const d = el.dataset;
+
+    // COCHER UN ÉLÈVE NE DEMANDE RIEN AU SERVEUR, et ne redessine rien.
+    //
+    // Ce cas passe AVANT le verrou `vue.occupe` et avant tout `redessiner()` :
+    // cocher quatre noms d'affilée pendant qu'une requête est en vol doit
+    // marcher, et un redessin complet du direct effacerait le mot que le
+    // professeur est peut-être en train d'écrire dans la barre. On ne touche
+    // donc qu'à l'étiquette qui dit à qui l'on parle.
+    if (d.choix !== undefined) {
+        if (!vue.choisis) vue.choisis = new Set();
+        if (vue.choisis.has(d.choix)) vue.choisis.delete(d.choix);
+        else vue.choisis.add(d.choix);
+        const eti = document.querySelector('[data-calc-aqui]');
+        if (eti) eti.textContent = aQuiLaCalculatrice();
+        return;
+    }
 
     // UNE SEULE ACTION À LA FOIS. Deux clics pendant que le réseau réfléchit,
     // et l'on écrit deux fois la même liste.
     if (vue.occupe) return;
 
-    const fait = async (promesse, surSucces) => {
+    // `dire` REMPLACE LA PHRASE DU SERVEUR QUAND LE CLIENT EN SAIT PLUS.
+    //
+    // Le serveur ne connaît pas les TITRES des exercices — il n'a que leurs
+    // identifiants. Il annonçait donc « la calculatrice est autorisée sur
+    // “calc-add” », et le professeur lisait un nom de code pour un exercice qui
+    // s'appelle « Additions Mystères ». Ici, `nomDExercice` le sait.
+    const fait = async (promesse, surSucces, dire = '') => {
         vue.occupe = true;
         const r = await promesse;
         vue.occupe = false;
         if (r && r.erreur) { showToast(r.erreur, 'error'); return null; }
-        if (r && r.dit) showToast(r.dit, 'success');
+        if (dire) showToast(dire, 'success');
+        else if (r && r.dit) showToast(r.dit, 'success');
         if (surSucces) surSucces(r);
         redessiner();
         return r;
@@ -2139,6 +2224,30 @@ async function brancher(e, redessiner) {
         return;
     }
 
+    // LA CALCULATRICE, ACCORDÉE EN DIRECT. Rémy : « le permettre en direct à un
+    // groupe ou aux élèves ». Deux portées (`*` pour toute la séance, ou un
+    // exercice), deux destinataires (la classe, ou les élèves cochés).
+    if (d.calcDonner !== undefined) {
+        const ou = document.getElementById('ec-calc-ou');
+        const exo = ou ? ou.value : '*';
+        const qui = elevesChoisis();
+        const portee = exo === '*' ? 'pour toute la séance' : `sur « ${nomDExercice(exo)} »`;
+        await fait(accorderLaCalculatrice(cid, exo, qui), (r) => {
+            vue.reglages = r.reglages || vue.reglages;
+            // ON NE DÉCOCHE PAS : le professeur vient peut-être de donner la
+            // calculatrice à ces quatre-là, et il va leur souffler un indice
+            // juste après. Perdre la sélection lui ferait recocher.
+        }, `🧮 Calculatrice autorisée ${aQuiLaCalculatrice()}, ${portee}.`);
+        return;
+    }
+
+    if (d.calcRetirer !== undefined) {
+        await fait(retirerLaCalculatrice(cid), (r) => {
+            vue.reglages = r.reglages || [];
+        });
+        return;
+    }
+
     if (d.annulerReglage) {
         await fait(annulerUnReglage(cid, d.annulerReglage), (r) => {
             vue.reglages = r.reglages || [];
@@ -2328,8 +2437,13 @@ function signatureDuPilote() {
     // barre doit se refaire. On n'y met PAS les exercices ouverts par les
     // élèves — ils changent à chaque minute du début de l'heure, et refaire la
     // barre effacerait le mot que le professeur est en train d'écrire.
+    // LA CALCULATRICE EN FAIT PARTIE : le bouton « Retirer » n'existe que
+    // lorsqu'il y a quelque chose à retirer. Sans cela, il n'apparaissait
+    // qu'au prochain changement de forme — le professeur venait d'accorder la
+    // calculatrice et n'avait aucun moyen de revenir en arrière.
     return [!!info.locked, !!bacDeLaClasse(), !!(ch && ch.finAt), (ch && ch.quoi) || '',
-        info.impose_path_id || ''].join('|');
+        info.impose_path_id || '',
+        (vue.reglages || []).some(x => x.mode === 'calculatrice') ? 'calc' : ''].join('|');
 }
 
 function rafraichirLeDirect(zone) {
