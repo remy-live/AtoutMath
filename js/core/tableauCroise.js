@@ -275,26 +275,64 @@ export const ENONCES = [
  * cases sur vingt. Pour rendre l'exercice plus difficile, il faut donc agrandir
  * le tableau, pas percer davantage — c'est ce que fait le dernier palier.
  */
+/**
+ * ET LES NOMBRES, EUX AUSSI, MONTENT PAR PALIERS.
+ *
+ * RÉMY : « pour les tableaux à double entrée, il faut des calculs un peu plus
+ * simples au début ».
+ *
+ * Il avait raison, et la faute était dans le raisonnement du dessus : « la
+ * difficulté ne tient pas aux calculs ». C'est vrai de la DIFFICULTÉ de
+ * l'exercice — le travail est de trouver la prochaine ligne à un seul trou —
+ * mais faux de sa CHARGE : les nombres venaient du contexte et de lui seul, si
+ * bien que le palier « découverte » servait déjà du 25-70. MESURÉ sur soixante
+ * tableaux par palier, avant : à la découverte, une case allait jusqu'à 89, un
+ * total de ligne jusqu'à 202, le grand total jusqu'à 382, et 88 % des cases
+ * portaient deux chiffres ou plus.
+ *
+ * Un élève de sixième qui découvre le geste additionne alors quatre nombres à
+ * deux chiffres AVANT d'avoir compris ce qu'il cherche. Il rate l'exercice sur
+ * l'addition, pas sur le tableau — et c'est le tableau qu'on voulait apprendre.
+ *
+ * `plafond` borne donc les nombres tirés. Le dernier palier n'en a pas : c'est
+ * là qu'on veut justement l'addition en colonne, et c'est aussi là que la
+ * calculatrice s'éteint.
+ */
 export const PALIERS = {
     decouverte: {
-        label: 'Petit tableau, peu de trous — avec la calculatrice',
-        lignes: 2, colonnes: 3, trous: 4, calculatrice: true
+        label: 'Petits nombres, petit tableau — avec la calculatrice',
+        lignes: 2, colonnes: 3, trous: 4, calculatrice: true, plafond: 9
     },
     facile: {
-        label: 'Comme sur la fiche — 2 lignes, 4 colonnes',
-        lignes: 2, colonnes: 4, trous: 7, calculatrice: true
+        label: 'Petits nombres, comme sur la fiche — 2 lignes, 4 colonnes',
+        lignes: 2, colonnes: 4, trous: 7, calculatrice: true, plafond: 12
     },
     moyen: {
         label: '3 lignes, 4 colonnes — tous les totaux cachés',
-        lignes: 3, colonnes: 4, trous: 8, calculatrice: true
+        lignes: 3, colonnes: 4, trous: 8, calculatrice: true, plafond: 25
     },
     difficile: {
-        // La calculatrice s'éteint ici, et le tableau grandit : les deux seuls
-        // leviers qui restent une fois qu'on cache déjà tout ce qu'on peut.
-        label: '4 lignes, 4 colonnes — sans calculatrice',
+        // La calculatrice s'éteint ici, le tableau grandit, et les nombres
+        // reprennent leur taille naturelle : les trois seuls leviers qui
+        // restent une fois qu'on cache déjà tout ce qu'on peut.
+        label: '4 lignes, 4 colonnes, grands nombres — sans calculatrice',
         lignes: 4, colonnes: 4, trous: 9, calculatrice: false
     }
 };
+
+/**
+ * LES BORNES DU TIRAGE POUR CE PALIER ET CE CONTEXTE.
+ *
+ * On garde un ÉCART d'au moins cinq entre les deux bornes : sans cela, un
+ * contexte qui commence à 8 et un plafond à 9 donneraient « entre 8 et 9 »,
+ * c'est-à-dire un tableau de 8 et de 9 — plus simple, oui, mais plus un
+ * tableau de données.
+ */
+export function bornesDuTirage(E, P) {
+    if (!P || !P.plafond) return { bas: E.mini, haut: E.maxi };
+    const haut = Math.min(E.maxi, P.plafond);
+    return { bas: Math.max(1, Math.min(E.mini, haut - 5)), haut };
+}
 
 /** Le maximum démontrable de cases cachées : les totaux, et rien de plus. */
 export const trousMaximum = (R, C) => R + C + 1;
@@ -392,7 +430,14 @@ function deduireLigne(cases, n) {
 export function genererTableau({ rng = makeRng(1), palier = 'facile', enonce = null, tour = null, depart = 'tableau' } = {}) {
     const P = PALIERS[palier] || PALIERS.facile;
     // Un énoncé qui a au moins assez de libellés pour ce palier.
-    const possibles = ENONCES.filter(e => e.lignes.length >= P.lignes && e.colonnes.length >= P.colonnes);
+    // ET UN CONTEXTE OÙ LES PETITS NOMBRES ONT DU SENS. Plafonner « les élèves
+    // du collège » (25 à 70) à neuf donnerait « 4 élèves en sixième », ce qui
+    // est un tableau juste et une phrase fausse. On préfère donc, aux premiers
+    // paliers, les contextes qui comptent naturellement peu — le club
+    // robotique, le tournoi d'échecs, les parapluies.
+    const possibles = ENONCES.filter(e => e.lignes.length >= P.lignes
+        && e.colonnes.length >= P.colonnes
+        && (!P.plafond || e.mini <= P.plafond));
     const pioche = possibles.length ? possibles : ENONCES;
     // SUR UNE FEUILLE, LES ÉNONCÉS NE DOIVENT PAS SE RÉPÉTER. Tirés
     // indépendamment, huit contextes pour six blocs donnent souvent un doublon,
@@ -412,10 +457,11 @@ export function genererTableau({ rng = makeRng(1), palier = 'facile', enonce = n
     const R = Math.min(P.lignes, E.lignes.length);
     const C = Math.min(P.colonnes, E.colonnes.length);
 
+    const { bas, haut } = bornesDuTirage(E, P);
     const interieur = [];
     for (let r = 0; r < R; r++) {
         const ligne = [];
-        for (let c = 0; c < C; c++) ligne.push(rng.int(E.mini, E.maxi));
+        for (let c = 0; c < C; c++) ligne.push(rng.int(bas, haut));
         interieur.push(ligne);
     }
     const M = completer(interieur, R, C);

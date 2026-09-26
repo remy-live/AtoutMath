@@ -1,4 +1,8 @@
 import { TAGS } from './tags.js';
+// LES PALIERS DU TABLEAU CROISÉ VIENNENT DU NOYAU, on ne les recopie pas : les
+// libellés affichés et les vrais réglages doivent dire la même chose, et deux
+// listes jumelles finissent toujours par se contredire.
+import { PALIERS } from '../core/tableauCroise.js';
 
 // Domaine « Organisation de données » : ouvert par l'École du Tableur,
 // portée de l'ancien projet. D'autres exercices (lecture de tableaux, de
@@ -37,15 +41,11 @@ export const donneesExercises = [
         paramSchema: [
             {
                 id: 'palier', type: 'select', label: 'La difficulté', default: 'facile',
-                aide: 'La difficulté tient au nombre de lignes à relire pour trouver la prochaine à '
-                    + 'un seul trou, pas aux calculs. La calculatrice accompagne les premiers '
-                    + 'paliers, puis s\'éteint.',
-                options: [
-                    { value: 'decouverte', label: 'Petit tableau, peu de trous — avec la calculatrice' },
-                    { value: 'facile', label: 'Comme sur la fiche — 2 lignes, 4 colonnes' },
-                    { value: 'moyen', label: '3 lignes, 4 colonnes — tous les totaux cachés' },
-                    { value: 'difficile', label: '4 lignes, 4 colonnes — sans calculatrice' }
-                ]
+                aide: 'Monte le tableau à balayer, et la taille des nombres — petits au '
+                    + 'début. La calculatrice s\'éteint au dernier palier, où l\'addition en '
+                    + 'colonne fait partie du travail.',
+                options: Object.entries(PALIERS)
+                    .map(([value, p]) => ({ value, label: p.label }))
             },
             {
                 // CE QUE L'EXERCICE DEMANDE VRAIMENT. Rémy : « j'aimerais bien
