@@ -30,6 +30,8 @@
  * @property {{text:string, html?:string, sub?:string}} prompt
  * @property {string|number} answer
  * @property {Choice[]} [choices]
+ * @property {boolean} [ecritureExacte] - la réponse est une ÉCRITURE, pas un
+ *   nombre : « 53,300 » ne vaut alors plus « 53,3 ». Voir `makeItem`.
  * @property {string[]} hints       - aides graduées, de la plus légère à la plus explicite
  * @property {string} explanation   - correction affichée après coup
  * @property {string} [reponsePapier] - la réponse telle qu'on l'écrit dans le
@@ -101,6 +103,28 @@ export function makeItem(spec) {
          * @type {?(saisie: string) => (boolean | {juste: boolean, pourquoi?: string})}
          */
         verifieTexte: spec.verifieTexte || null,
+        /**
+         * QUAND C'EST L'ÉCRITURE QUI EST LA RÉPONSE.
+         *
+         * RÉMY : « dans les zéros inutiles, tu considères comme bon comme
+         * réponse 53,300 ; par exemple 0530,060 = 530,06 ».
+         *
+         * `sameAnswer` compare les NOMBRES : 53,300 et 53,3 sont le même
+         * nombre, donc la réponse passait. C'est voulu presque partout — un
+         * quotient écrit « 25,0 » est juste, et refuser le zéro de trop
+         * ferait perdre un point pour une broutille. Mais « La Chasse aux
+         * Zéros » demande précisément d'ENLEVER ces zéros : la réponse n'est
+         * pas un nombre, c'est une ÉCRITURE. Mesuré avant correction, sur
+         * quarante questions : 54 réponses encore chargées de zéros sur 54
+         * étaient comptées justes — y compris RECOPIER LA QUESTION, qui
+         * rapportait un point pour n'avoir rien fait.
+         *
+         * L'exercice qui juge une écriture le déclare donc, et c'est le seul
+         * endroit où on se le permet : le défaut reste la tolérance.
+         *
+         * @type {boolean}
+         */
+        ecritureExacte: !!spec.ecritureExacte,
         explanation: spec.explanation || '',
         // Vide = l'explication de l'écran convient au papier. C'est le cas
         // général : on ne double que les corrections qui décrivent une image.
@@ -204,6 +228,25 @@ export function sameAnswer(a, b) {
     return Math.abs(parseFloat(na) - parseFloat(nb)) < 1e-9;
 }
 
+/**
+ * MÊME ÉCRITURE, et pas seulement même valeur.
+ *
+ * On garde les tolérances qui ne touchent pas à ce qu'on travaille : les
+ * espaces autour, la virgule ou le point (c'est une affaire de clavier, pas
+ * de numération), les espaces de milliers, la casse. On abandonne la seule
+ * qui compte ici : l'égalité numérique. « 53,30 » n'est donc plus « 53,3 »,
+ * et « 0147 » n'est plus « 147 ».
+ */
+export function memeEcriture(a, b) {
+    const norm = (v) => {
+        let s = String(v === undefined || v === null ? '' : v).trim().replace(',', '.').toLowerCase();
+        const nu = s.replace(/[\s\u00A0\u202F]/g, '');
+        if (/^[-+]?\d*\.?\d+$/.test(nu)) s = nu;
+        return s;
+    };
+    return norm(a) === norm(b);
+}
+
 /** La chaîne est-elle un nombre, et RIEN QUE lui ? */
 const estNombreEntier = (s) => /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/.test(s);
 
@@ -213,17 +256,23 @@ const estNombreEntier = (s) => /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/.test(s);
  * qui transforme un « faux » en diagnostic.
  */
 export function evaluate(item, given) {
-    const correct = sameAnswer(given, item.answer);
+    // UN SEUL COMPARATEUR POUR TOUT L'ITEM — le verdict ET les diagnostics.
+    // Sinon un item jugé sur l'écriture irait chercher son « pourquoi » avec
+    // la règle tolérante, et le distracteur « il reste des zéros à la fin »,
+    // qui vaut le même nombre que la bonne réponse, serait reconnu... comme
+    // la bonne réponse.
+    const pareil = item.ecritureExacte ? memeEcriture : sameAnswer;
+    const correct = pareil(given, item.answer);
     let misconception = null;
     if (!correct && item.choices) {
-        const picked = item.choices.find(c => sameAnswer(c.value, given));
+        const picked = item.choices.find(c => pareil(c.value, given));
         if (picked && picked.why) misconception = picked.why;
     }
     // Puis les diagnostics de saisie — voir `makeItem`. Ils ne prennent jamais
     // la place d'un distracteur reconnu : celui-là a été CHOISI, celui-ci est
     // deviné d'après ce qui a été tapé.
     if (!correct && !misconception && Array.isArray(item.diagnostics)) {
-        const vu = item.diagnostics.find(d => sameAnswer(d.value, given));
+        const vu = item.diagnostics.find(d => pareil(d.value, given));
         if (vu && vu.why) misconception = vu.why;
     }
     return {
