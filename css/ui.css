@@ -233,6 +233,21 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 .ec-fiche-question { margin: 0; font-size: .84rem; color: var(--text-muted); }
+/* CE QU'IL A SOUS LES YEUX, EN CE MOMENT.
+   Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+   exercice, car c'est créé de façon aléatoire. » Cette ligne-ci porte l'énoncé
+   même, et elle ne doit pas se lire comme les autres lignes de la fiche : elle
+   est la seule qui vienne de l'écran de l'élève et non d'un calcul. D'où
+   l'encadré, et la petite étiquette qui dit d'où ça sort. */
+.ec-fiche-yeux {
+    margin: 0; font-size: .86rem; color: var(--text-main);
+    background: var(--bg-plateau); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 9px;
+}
+.ec-fiche-yeux span {
+    display: block; font-size: .68rem; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 2px;
+}
 /* LE CONSEIL N'EST PAS UNE DÉCISION. On dit ce qu'on a vu — « bloqué depuis
    douze minutes » — et c'est le professeur qui tranche. */
 .ec-fiche-conseil {

@@ -70,10 +70,19 @@ manque.
   écouter `pageerror` et `dialog`. Les erreurs se répètent aussi : mauvais nom de
   fonction d'identification, sélecteur de bouton absent, classe fermée à
   l'inscription libre.
-- **Combien de fois** : |||||||||  (neuf sondes dans la journée)
+- **Combien de fois** : |||||||||||  (onze sondes ; les deux dernières ont
+  retrouvé exactement les mêmes pièges)
 - **Ce qui manque** : un module `tools/sonde.mjs` qui rende une page déjà
   identifiée — professeur **ou** élève, billet compris — et qui collecte seul
   les erreurs de page et les fenêtres natives.
+- **DEUX PIÈGES DE PLUS, retrouvés le 26 au soir** en écrivant
+  `tools/memeQuestion.mjs`, et qui appartiennent au même module manquant :
+  `#top-btn-classe` ramène à la LISTE des classes, pas dans la classe — il faut
+  rouvrir la carte ensuite, sans quoi `.ec-rang` n'existe pas et la sonde accuse
+  le logiciel de son propre égarement ; et `runner.finish()` seul laisse
+  `#game-layer` affiché (il porte le bilan), couche qui **intercepte tous les
+  clics** — il faut `exit()`. Trois quarts d'heure pour ces deux-là, dont une
+  fausse accusation portée contre du code juste.
 
 ## ~~Ajouter un exercice au catalogue casse quatre choses invisibles~~ — 2026-09-26
 
@@ -133,3 +142,20 @@ manque.
 - **Ce qui manque** : que le harnais enregistre l'empreinte de l'arbre qu'il a
   mesuré, et qu'une commande de fin de course refuse de committer si l'arbre a
   bougé depuis — au lieu de compter sur ma mémoire.
+
+## **Un essai unitaire ne voit pas deux unités de temps qui se croisent** — 2026-09-26
+
+- **Ce que je voulais faire** : faire voyager un horodatage du navigateur de
+  l'élève jusqu'à la fiche du professeur.
+- **Ce qui a coûté** : rien du tout côté essais — les onze essais de
+  `tests/ecran.test.mjs` passaient, et l'API passait ses 341 vérifications. Le
+  relevé partait en MILLISECONDES (`Date.now()`), l'API le rendait en SECONDES
+  (sa convention, « voir `instantDe` »), et la fiche jugeait donc tout relevé
+  vieux de cinquante ans : elle restait muette devant une donnée parfaitement
+  valide. Seule la sonde de navigateur l'a vu, parce qu'elle est la seule à
+  regarder les DEUX côtés à la fois.
+- **Combien de fois** : |
+- **Ce qui manque** : que les deux côtés ne puissent pas se contredire — un nom
+  de champ qui porte son unité (`tsMs` / `tsS`), ou une vérification de harnais
+  qui compare ce que le client écrit et ce que le serveur rend, champ par champ,
+  pour tout ce qui traverse.

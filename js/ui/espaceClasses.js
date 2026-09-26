@@ -766,6 +766,8 @@ function ficheHtml(e, maintenant) {
         ${cases ? `<div class="ec-fiche-pas-rangee" role="list"
                         aria-label="Les \u00e9tapes de son parcours">${cases}</div>` : ''}
         ${f.question ? `<p class="ec-fiche-question">${esc(f.question)}</p>` : ''}
+        ${f.sousLesYeux ? `<p class="ec-fiche-yeux"><span>Sous ses yeux</span>${
+            esc(f.sousLesYeux)}</p>` : ''}
 
         ${pourquoi ? `<p class="ec-fiche-conseil">${esc(pourquoi)}</p>` : ''}
 
@@ -776,9 +778,12 @@ function ficheHtml(e, maintenant) {
                     data-prenom="${esc(e.prenom)}" data-exo="${esc(e.exo || '')}"${
                     g.indice ? '' : ' disabled'}>Coup de pouce</button>
             <button type="button" class="ec-bouton ec-bouton--doux" data-voir-exo="${esc(e.exo || '')}"
-                    data-prenom="${esc(e.prenom)}"${g.indice ? '' : ' disabled'}
-                    title="Son \u00e9tape, avec SES r\u00e9glages, ouverte chez vous. Les nombres sont tir\u00e9s au sort : c'est le m\u00eame travail, pas la m\u00eame question. Pour voir ce qu'il a sous les yeux, c'est « Ouvrir son poste », dans Les \u00e9l\u00e8ves."
-                    >Son exercice, chez moi</button>
+                    data-prenom="${esc(e.prenom)}" data-graine="${esc(f.graine || '')}"${
+                    g.indice ? '' : ' disabled'}
+                    title="${f.graine
+                        ? 'SA question, celle-là précisément, ouverte chez vous avec SES réglages. Rien n\'est enregistré. Pour être lui et non plus le regarder, c\'est « Ouvrir son poste », dans Les élèves.'
+                        : 'Son étape, avec SES réglages. Il n\'a pas encore dit quelle question il a sous les yeux : ce sera le même travail, pas forcément la même question. Pour voir ce qu\'il a sous les yeux, c\'est « Ouvrir son poste », dans Les élèves.'}"
+                    >${f.graine ? 'Sa question, chez moi' : 'Son exercice, chez moi'}</button>
             <button type="button" class="ec-bouton" data-saut-eleve="${esc(e.id)}"
                     data-exo="${esc(e.exo || '')}" data-prenom="${esc(e.prenom)}"${
                     g.debloquer ? '' : ' disabled'}
@@ -2206,10 +2211,28 @@ async function brancher(e, redessiner) {
         ]);
         // AVEC SES RÉGLAGES À LUI, et une seule étape : ce qu'on ouvre doit
         // être le travail qu'il a devant les yeux, pas l'exercice du catalogue.
+        // ET SA QUESTION, PAS UNE AU HASARD — ce qui manquait à ce bouton.
+        //
+        // Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+        // exercice, car c'est créé de façon aléatoire. »
+        //
+        // Le bouton était bon ; c'est la GRAINE qui n'arrivait pas. Une question
+        // porte la sienne depuis toujours (`item.seed`), `makeRng(graine)` est
+        // reproductible, et `forceSeed` sait déjà rejouer une question précise —
+        // la remédiation s'en sert pour refaire l'erreur du carnet. Il ne
+        // manquait que le transport, et c'est le relevé d'écran qui l'assure
+        // maintenant (`js/core/ecran.js`).
+        //
+        // SANS GRAINE, RIEN NE CHANGE : on ouvre l'étape comme avant, et
+        // l'infobulle du bouton dit que ce sera le même travail, pas la même
+        // question. Un élève qui n'a pas encore rechargé sa page, ou un jeu qui
+        // ne dit pas sa graine, retombent proprement sur l'ancien geste.
         const pas = makeStep(exo.id, (etape && etape.overrides) || {}, {
-            stepId: 'voir', nbItems: (etape && etape.nbItems) || 5, threshold: 0, bonus: true
+            stepId: 'voir', nbItems: (etape && etape.nbItems) || 5, threshold: 0, bonus: true,
+            forceSeed: d.graine || null
         });
-        const parcours = makePath(`Chez ${d.prenom || 'l\'élève'} — ${exo.title}`,
+        const parcours = makePath(
+            `${d.graine ? 'Sa question' : 'Son exercice'} — ${d.prenom || 'l\'élève'} · ${exo.title}`,
             [pas], politiquePerso());
         parcours.personnel = true;
         // `essai` : RIEN N'EST ENREGISTRÉ. Le professeur qui regarde ne doit

@@ -25,7 +25,8 @@ import { getSkill } from '../data/skills.js';
 import { hydratePath } from './path.js';
 import { gradeRun } from './grading.js';
 import { computeRuns } from './projections.js';
-import { uuid } from './ids.js';
+import { uuid, shortId } from './ids.js';
+import { direQuOnVoit, oublierLEcran } from './ecran.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
 import { reglerCalculatrice, signalerNouvelleQuestion } from '../ui/calculatrice.js';
 import { filtrerEtapes, peutSauter, calculatriceAccordee } from './seanceDistante.js';
@@ -822,10 +823,47 @@ export class Runner {
             this.canvas.innerHTML = '';
             // ET ON NE LUI ANNONCE PAS UN BUT QU'IL N'A PAS : une étape sans
             // fin ne lui passe aucun `nbQuestions`, le jeu garde le sien.
+            // LA GRAINE DU JEU, POUR QUE LE PROFESSEUR PUISSE VOIR LA MÊME
+            // GRILLE. Rémy : « on ne peut jamais vraiment voir l'écran de
+            // l'élève, juste son exercice, car c'est créé de façon aléatoire. »
+            //
+            // Une question générée porte sa graine depuis toujours
+            // (`item.seed`) ; un jeu autonome, non — il appelle `makeRng(...)`
+            // avec ce qu'il trouve dans ses réglages, et il n'y trouvait rien :
+            // `makeRng(undefined)` tire une graine au hasard, que personne ne
+            // sait plus. Le patchwork de l'élève n'était donc reproductible par
+            // personne, pas même par lui.
+            //
+            // ON LA LUI DONNE DONC, SOUS SES DEUX NOMS. Cinquante-cinq jeux
+            // lisent `params.seed` et une poignée `params.graine` — les deux
+            // orthographes ont cours dans le dépôt, et renommer cinquante-cinq
+            // fichiers pour ce seul besoin serait une réécriture au lieu d'une
+            // réparation. On pose les deux ; chaque jeu prend celle qu'il
+            // connaît.
+            //
+            // ET SI L'ÉTAPE EN IMPOSE UNE, C'EST ELLE. C'est par là que le
+            // professeur ouvre la grille de son élève : `forceSeed` portait
+            // déjà les questions générées, il porte maintenant les jeux.
+            const graineDuJeu = step.forceSeed
+                || step.params.seed || step.params.graine || shortId(8);
             const jeu = fn ? fn(this.canvas, false, {
                 ...step.params,
+                seed: graineDuJeu, graine: graineDuJeu,
                 nbQuestions: step.sansFin ? null : step.nbItems
             }) : null;
+            // CE QU'IL A SOUS LES YEUX : l'exercice et la graine. Pas de texte
+            // de question — un jeu n'en a pas, il a une grille —, et le direct
+            // le dira ainsi plutôt que d'inventer un énoncé.
+            // `essai` VEUT DIRE « RIEN NE S'ENREGISTRE », ET LE RELEVÉ EST UNE
+            // TRACE. C'est par ce mode que le professeur ouvre l'exercice de son
+            // élève ; sans cette garde, son propre écran écraserait celui qu'il
+            // regarde — et dans un navigateur où les deux rôles coexistent
+            // (`boutEnBout` en monte un exprès), il le remplacerait chez le
+            // serveur.
+            if (!this.essai) direQuOnVoit({
+                exerciseId: step.exercise.id, graine: graineDuJeu,
+                etape: step.exercise.title, fait: null, total: null
+            });
             // On GARDE l'instance. Le gestionnaire fabriqué ici se contentait
             // de vider l'écran, et l'instance était jetée : ces jeux ouvrent
             // leurs propres `setInterval`, qui continuaient donc de tourner
@@ -885,7 +923,23 @@ export class Runner {
 
         // Le compteur suit toute nouvelle question, d'où qu'elle vienne :
         // réponse de l'élève, saut du professeur, retour en arrière.
-        this.session.on('item', () => this.updateStepNavigation());
+        //
+        // ET C'EST LE MOMENT OÙ L'ON DIT CE QU'ON VOIT. Ici, et pas dans
+        // `submit` : le professeur regarde l'élève qui n'a pas encore répondu —
+        // c'est même exactement celui-là qu'il regarde. Un relevé écrit à la
+        // réponse arriverait toujours une question trop tard.
+        this.session.on('item', (item) => {
+            this.updateStepNavigation();
+            if (this.essai) return;   // un essai du professeur ne laisse pas de trace
+            direQuOnVoit({
+                exerciseId: step.exercise.id,
+                graine: item && item.seed,
+                question: item && item.prompt ? item.prompt.text : null,
+                etape: step.exercise.title,
+                fait: this.itemsResolved.size,
+                total: step.sansTotal ? null : step.nbItems
+            });
+        });
 
         this.handle = mod.mount(this.canvas, this.session, activity.mountOptions || {});
         // La session n'existe qu'ici : c'est seulement maintenant qu'on sait
@@ -1837,6 +1891,11 @@ export class Runner {
         this.handle = null;
         if (this.session) this.session.finish();
         this.session = null;
+        // ON DIT QU'ON NE VOIT PLUS RIEN, ET ON NE LAISSE PAS LE RELEVÉ
+        // VIEILLIR. Trois minutes pendant lesquelles le professeur croirait son
+        // élève sur une question qu'il a quittée, c'est trois minutes de
+        // conseil donné à côté — voir `oublierLEcran` dans `ecran.js`.
+        oublierLEcran();
         clearEngines();
         state.attemptContext = null;
 

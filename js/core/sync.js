@@ -17,6 +17,7 @@ import { journal } from './journal.js';
 import { globalStore } from './store.js';
 import { getActiveProfile, getDeviceId, attachRemote, getActiveProfileId } from './profile.js';
 import { appliquerEtat } from './seanceDistante.js';
+import { ceQuOnVoit } from './ecran.js';
 
 const CONFIG_KEY = 'syncConfig';
 const PUSH_DEBOUNCE_MS = 4000;
@@ -182,7 +183,19 @@ export async function apiEleve(chemin, corps) {
 export async function rafraichirSeance() {
     if (!isActive() || !navigator.onLine) return null;
     try {
-        const res = await apiEleve('/session', {});
+        // CE QU'IL A SOUS LES YEUX PART AVEC LE BATTEMENT DE CŒUR.
+        //
+        // Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+        // exercice, car c'est créé de façon aléatoire. » La réponse tenait en
+        // une graine — encore fallait-il la faire voyager, et l'on ne voulait ni
+        // une requête de plus ni un événement de journal de plus (voir
+        // `ecran.js`, qui explique les deux refus).
+        //
+        // CETTE REQUÊTE-CI PARTAIT LE CORPS VIDE, toutes les dix secondes, pour
+        // demander « le professeur a-t-il verrouillé ? ». Elle repart avec le
+        // relevé dedans : le même nombre de requêtes, quelques dizaines
+        // d'octets de plus, et le professeur voit la question.
+        const res = await apiEleve('/session', { ecran: ceQuOnVoit() });
         return res && res.session ? appliquerEtat(res.session) : null;
     } catch (err) {
         console.info('[sync] état de séance indisponible :', err.message);

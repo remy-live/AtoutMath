@@ -366,3 +366,98 @@ function derniereActivite(string $eleveId): array
             'total' => $total, 'quand' => $quand, 'combien' => count($lignes),
             'avancement' => $avancement];
 }
+
+/**
+ * CE QUE L'ÉLÈVE A SOUS LES YEUX — combien de temps ça vaut encore.
+ *
+ * MIROIR EXACT de `ECRAN_FRAIS_MS` dans `js/core/ecran.js`, et le chiffre se
+ * déduit des rythmes en place, pas du goût : l'élève parle toutes les dix
+ * secondes quand son onglet est devant lui, toutes les SOIXANTE quand il est
+ * derrière — et un élève qui lit son cahier a son onglet derrière. Un seuil plus
+ * court ferait clignoter l'écran de celui qui réfléchit : montrer faux est pire
+ * que ne rien montrer.
+ */
+const ECRAN_FRAIS_S = 180;
+
+/**
+ * NOTER CE QU'IL A SOUS LES YEUX. Une ligne, écrasée — jamais un journal.
+ *
+ * Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+ * exercice, car c'est créé de façon aléatoire. » Le relevé porte LA GRAINE, qui
+ * est ce qui manquait : avec elle, le professeur régénère chez lui exactement la
+ * question de l'élève.
+ *
+ * TOUT CE QUI ARRIVE ICI VIENT D'UN CLIENT, DONC RIEN N'EST CRU. On borne chaque
+ * champ, on jette le reste, et un relevé mal formé vaut « rien à l'écran » — pas
+ * une erreur : un élève dont le navigateur bafouille ne doit pas cesser de
+ * synchroniser son travail pour autant.
+ *
+ * @param string $eleveId
+ * @param array|null $ecran ce que l'élève dit voir, ou null (il ne voit rien)
+ * @return bool vrai si quelque chose a été noté
+ */
+function noterLEcran(string $eleveId, $ecran): bool
+{
+    $court = function ($v, int $max): ?string {
+        if (!is_string($v) && !is_numeric($v)) return null;
+        $s = trim((string) $v);
+        if ($s === '') return null;
+        return mb_substr($s, 0, $max);
+    };
+
+    $exo = is_array($ecran) ? $court($ecran['exerciseId'] ?? null, 80) : null;
+    if ($exo === null) {
+        // IL NE VOIT RIEN, ET IL FAUT L'ÉCRIRE. Laisser l'ancien relevé
+        // vieillir trois minutes, c'est laisser le professeur croire son élève
+        // sur une question qu'il a quittée.
+        db()->prepare('UPDATE students SET ecran = NULL, ecran_ts = NULL WHERE id = ?')
+            ->execute([$eleveId]);
+        return false;
+    }
+
+    $entier = function ($v): ?int {
+        return (is_int($v) || (is_string($v) && ctype_digit($v))) ? (int) $v : null;
+    };
+    $propre = [
+        'exerciseId' => $exo,
+        'graine'   => $court($ecran['graine'] ?? null, 64),
+        'question' => $court($ecran['question'] ?? null, 240),
+        'etape'    => $court($ecran['etape'] ?? null, 120),
+        'fait'     => $entier($ecran['fait'] ?? null),
+        'total'    => $entier($ecran['total'] ?? null),
+    ];
+
+    // L'HORODATAGE EST CELUI DU SERVEUR, PAS CELUI DE LA TABLETTE. Une horloge
+    // mal réglée de dix minutes rendrait le relevé éternellement frais, ou
+    // éternellement périmé ; c'est la panne qu'on a déjà payée une fois sur
+    // « en ligne », et le direct s'était mis à envoyer `maintenant` pour la
+    // même raison.
+    db()->prepare('UPDATE students SET ecran = ?, ecran_ts = ' . sqlMaintenant() . ' WHERE id = ?')
+        ->execute([chiffrer(json_encode($propre, JSON_UNESCAPED_UNICODE)), $eleveId]);
+    return true;
+}
+
+/**
+ * RELIRE LE RELEVÉ D'UNE LIGNE `students`, s'il vaut encore quelque chose.
+ *
+ * Rend `null` dès que le relevé a dépassé son âge : le professeur préfère « il
+ * n'est sur aucun exercice » à une question d'il y a un quart d'heure, qui
+ * l'enverrait conseiller à côté.
+ */
+function ecranDeLEleve(?array $ligne, ?int $maintenant = null): ?array
+{
+    if (!$ligne || empty($ligne['ecran'])) return null;
+    // L'INSTANT SE LIT COMME TOUS LES AUTRES DE CETTE API — voir `instantDe`.
+    // La colonne porte une date, parce que `sqlMaintenant()` en écrit une ;
+    // écrire un entier ici aurait demandé une seconde façon de dire l'heure.
+    $quand = instantDe($ligne['ecran_ts'] ?? null);
+    if ($quand === null) return null;
+    $maintenant = $maintenant ?? time();
+    if ($maintenant - $quand >= ECRAN_FRAIS_S) return null;
+    $clair = dechiffrer((string) $ligne['ecran']);
+    if ($clair === null || $clair === '') return null;
+    $lu = json_decode($clair, true);
+    if (!is_array($lu)) return null;
+    $lu['ts'] = $quand;
+    return $lu;
+}

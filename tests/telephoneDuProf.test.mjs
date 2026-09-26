@@ -22,10 +22,21 @@ test('« VOIR SON EXERCICE » DIT MAINTENANT CHEZ QUI ÇA S\'OUVRE', () => {
     // J'ai failli signaler un doublon : « son écran » d'un côté, « Voir son
     // exercice » de l'autre. Vérification faite, ce sont DEUX gestes — et le
     // plus puissant des deux portait le nom le plus vague.
-    assert.match(EC, />Son exercice, chez moi<\/button>/);
+    // DEUX NOMS DEPUIS QUE LA GRAINE VOYAGE, et le plus fort n'est plus le plus
+    // vague : quand l'élève a dit quelle question il a sous les yeux, le bouton
+    // promet « Sa question » et l'ouvre pour de vrai (mesuré dans
+    // `tools/memeQuestion.mjs`). Sans graine, l'ancienne promesse subsiste.
+    assert.match(EC, /'Sa question, chez moi' : 'Son exercice, chez moi'/);
     assert.ok(!/>Voir son exercice</.test(EC));
-    // Et l'infobulle envoie vers l'autre, qui est le geste fort.
-    assert.match(EC, /Pour voir ce qu'il a sous les yeux, c'est « Ouvrir son poste »/);
+    // Et l'infobulle envoie vers l'autre, qui est le geste fort — DANS LES DEUX
+    // CAS. Rendue conditionnelle, elle avait perdu le renvoi d'un côté.
+    //
+    // LES APOSTROPHES SONT ÉCHAPPÉES DANS LA SOURCE (`qu\\'il`), parce que ces
+    // deux phrases vivent désormais dans des chaînes à guillemets simples : le
+    // test lit du TEXTE de fichier, donc il doit tolérer la barre oblique. Sans
+    // cela il échoue sur une phrase qui est bel et bien là, mot pour mot.
+    assert.match(EC, /Pour voir ce qu\\?'il a sous les yeux, c\\?'est « Ouvrir son poste »/);
+    assert.match(EC, /Pour être lui et non plus le regarder, c\\?'est « Ouvrir son poste »/);
 });
 
 test('« SON ÉCRAN » DIT CE QU\'IL FAIT VRAIMENT : OUVRIR SON POSTE', () => {

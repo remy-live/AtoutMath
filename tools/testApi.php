@@ -459,6 +459,100 @@ $r = json('/session', [], $lea);
 verifier('et il ne le reçoit pas non plus',
     !in_array($motAilleurs, array_column($r['json']['session']['messages'] ?? [], 'id'), true));
 
+// ------------------------------------------------ Ce qu'il a sous les yeux ----
+
+titre('5 bis. Ce que l\'élève a sous les yeux');
+
+// Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+// exercice, car c'est créé de façon aléatoire. » Ce qui manquait n'était pas le
+// bouton du direct — il existe — mais LA GRAINE, qui rend la question
+// reproductible. Elle voyage désormais avec le battement de cœur `/session`,
+// qui partait le corps vide toutes les dix secondes.
+
+$r = json('/session', ['ecran' => [
+    'exerciseId' => 'num-rang', 'graine' => 'ab12cd34',
+    'question' => 'Quel est le chiffre des dizaines dans 4 572 ?',
+    'etape' => 'Le rang des chiffres', 'fait' => 3, 'total' => 10,
+]], $lea);
+verifier('le relevé d\'écran part avec le battement de cœur', $r['code'] === 200);
+
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+$rangs = $r['json']['eleves'] ?? [];
+$deLea = null;
+foreach ($rangs as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('LE PROFESSEUR VOIT LA QUESTION DE LÉA',
+    ($deLea['ecran']['question'] ?? '') === 'Quel est le chiffre des dizaines dans 4 572 ?');
+verifier('ET SA GRAINE — c\'est elle qui rouvre la même question chez lui',
+    ($deLea['ecran']['graine'] ?? '') === 'ab12cd34');
+verifier('avec l\'avancement qu\'elle a annoncé',
+    ($deLea['ecran']['fait'] ?? null) === 3 && ($deLea['ecran']['total'] ?? null) === 10);
+verifier('et l\'heure du relevé, qui vient du SERVEUR et non de la tablette',
+    ($deLea['ecran']['ts'] ?? 0) > 1000000000);
+
+// SACHA N'A RIEN DIT : son relevé est vide, et ce n'est pas une panne.
+$deSacha = null;
+foreach ($rangs as $x) {
+    if (($x['prenom'] ?? '') === 'Sacha') $deSacha = $x;
+}
+verifier('celui qui n\'a rien dit n\'a pas d\'écran',
+    is_array($deSacha) && array_key_exists('ecran', $deSacha) && $deSacha['ecran'] === null);
+
+// ON NE CROIT RIEN DE CE QUI ARRIVE. Le relevé vient d'un client : chaque champ
+// est borné, et un relevé difforme vaut « rien à l'écran » — pas une erreur, car
+// un navigateur qui bafouille ne doit pas cesser de synchroniser son travail.
+json('/session', ['ecran' => [
+    'exerciseId' => str_repeat('x', 500),
+    'question' => str_repeat('a', 5000),
+    'graine' => str_repeat('g', 500),
+    'fait' => 'beaucoup', 'total' => ['pas', 'un', 'nombre'],
+]], $lea);
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+$deLea = null;
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('un relevé difforme est BORNÉ, pas refusé',
+    mb_strlen($deLea['ecran']['exerciseId'] ?? '') === 80
+    && mb_strlen($deLea['ecran']['question'] ?? '') === 240
+    && mb_strlen($deLea['ecran']['graine'] ?? '') === 64);
+verifier('et ce qui n\'est pas un nombre ne devient pas un nombre',
+    $deLea['ecran']['fait'] === null && $deLea['ecran']['total'] === null);
+
+// IL REVIENT AU MENU : il faut l'ÉCRIRE, et pas laisser le relevé vieillir
+// trois minutes — sinon le professeur conseille sur une question quittée.
+json('/session', ['ecran' => null], $lea);
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+$deLea = null;
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('QUAND IL QUITTE, L\'ÉCRAN S\'EFFACE TOUT DE SUITE',
+    is_array($deLea) && array_key_exists('ecran', $deLea) && $deLea['ecran'] === null);
+
+// UNE APPLICATION QUI NE CONNAÎT PAS LE RELEVÉ NE DOIT RIEN EFFACER. Un élève
+// qui n'a pas encore rechargé sa page envoie `/session` sans champ `ecran` ; si
+// l'absence valait « rien à l'écran », le professeur ne verrait jamais celui-là.
+json('/session', ['ecran' => [
+    'exerciseId' => 'num-rang', 'graine' => 'zz99', 'question' => 'Et celle-ci ?',
+]], $lea);
+json('/session', [], $lea);            // l'ancienne application, corps vide
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+$deLea = null;
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('un battement sans champ « ecran » NE L\'EFFACE PAS',
+    ($deLea['ecran']['graine'] ?? '') === 'zz99');
+
+// ET LE RELEVÉ EST CHIFFRÉ DANS LA BASE, comme le prénom. Ce n'est pas la
+// réponse de l'élève — elle voyage par le journal —, mais c'est ce qu'un élève
+// NOMMÉ fait à la minute : le fichier qui part seul ne doit pas le dire.
+$brut = db()->query('SELECT ecran FROM students WHERE ecran IS NOT NULL LIMIT 1')->fetchColumn();
+verifier('le relevé est chiffré sur le disque',
+    is_string($brut) && $brut !== '' && !str_contains($brut, 'num-rang'));
+
 // ------------------------------------------------- L'exercice qui bloque ----
 
 titre('6. Un exercice plante et bloque la progression');

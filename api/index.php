@@ -446,6 +446,23 @@ function handleSession(): void
 {
     $student = requireStudent();
     rateLimit('session_' . $student['id'], 120);
+    // ET IL DIT CE QU'IL A SOUS LES YEUX, EN PASSANT.
+    //
+    // Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+    // exercice, car c'est créé de façon aléatoire. » Le relevé porte la graine,
+    // qui rend la question reproductible — et il voyage ICI, dans une requête
+    // qui partait le corps vide toutes les dix secondes. Aucune requête de plus
+    // pour une classe entière ; voir `js/core/ecran.js` pour ce qui a été refusé
+    // (un événement de journal par question, qui aurait mangé l'historique).
+    //
+    // ON N'ÉCRIT QUE SI LE CLIENT A PARLÉ. `array_key_exists`, et non `??` :
+    // une version ancienne de l'application n'envoie pas de champ `ecran` du
+    // tout, et effacer le relevé à chaque battement de la sienne reviendrait à
+    // ne jamais rien montrer d'un élève qui n'a pas encore rechargé sa page.
+    $corps = jsonBody();
+    if (array_key_exists('ecran', $corps)) {
+        noterLEcran((string) $student['id'], $corps['ecran']);
+    }
     respond(['session' => etatDeSeance($student)]);
 }
 
@@ -1286,6 +1303,7 @@ function handleTeacherLive(): void
     $classe = classeDuProf($teacher, $body);
 
     $rangs = [];
+    $maintenant = time();
     foreach (elevesDeLaClasse($classe['id']) as $e) {
         $a = derniereActivite($e['id']);
         $rangs[] = [
@@ -1303,6 +1321,12 @@ function handleTeacherLive(): void
             // sans quoi les deux écrans diraient deux choses du même élève à la
             // même seconde.
             'avancement' => $a['avancement'],
+            // ET CE QU'IL A SOUS LES YEUX, À LA MINUTE. `null` dès que le relevé
+            // a passé trois minutes : le professeur préfère « il n'est sur aucun
+            // exercice » à une question d'il y a un quart d'heure, qui l'enverrait
+            // conseiller à côté. C'est la GRAINE qui compte le plus ici — elle
+            // rouvre la question chez lui, à l'identique.
+            'ecran' => ecranDeLEleve($e, $maintenant),
         ];
     }
     // LE MOMENT EN COURS VOYAGE AVEC LE DIRECT, et c'est ce qui empêche

@@ -97,7 +97,14 @@ test('LES TROIS GESTES EXISTENT TOUJOURS, SOUS LEURS NOMS DE v771', () => {
     // avec leur emplacement, pour que la prochaine question ait sa réponse ici.
     //
     //   Le direct, dans la FICHE (clic sur la ligne de l'élève) :
-    assert.match(EC, />Son exercice, chez moi<\/button>/);
+    //
+    // ET CE BOUTON A DEUX NOMS DEPUIS QUE LA GRAINE VOYAGE. Rémy : « on ne peut
+    // jamais vraiment voir l'écran de l'élève, juste son exercice, car c'est
+    // créé de façon aléatoire. » Quand l'élève a dit quelle question il a sous
+    // les yeux, le bouton peut promettre SA question et le dit ; sinon il garde
+    // l'ancienne promesse, plus faible et toujours vraie. Les deux noms sont
+    // gardés ici, parce que c'est le genre de renommage qu'on ne retrouve plus.
+    assert.match(EC, /'Sa question, chez moi' : 'Son exercice, chez moi'/);
     //   Les élèves, sur la ligne de chacun :
     assert.match(EC, />Ouvrir son poste<\/button>/);
     //   Les élèves, en tête de liste :

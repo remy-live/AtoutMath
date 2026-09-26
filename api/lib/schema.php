@@ -209,6 +209,25 @@ function migrer(?PDO $pdo = null): void
         login_key      " . ($sqlite ? 'TEXT NULL' : 'CHAR(64) NULL') . ",
         access_code    $txtNull,
         token_hash   $txt,
+        -- CE QU'IL A SOUS LES YEUX EN CE MOMENT — une ligne, pas un journal.
+        --
+        -- Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+        -- exercice, car c'est créé de façon aléatoire. » Le relevé porte
+        -- l'exercice, LA GRAINE (c'est elle qui manquait : elle rend la question
+        -- reproductible à l'identique) et l'énoncé abrégé.
+        --
+        -- ÉCRASÉE À CHAQUE FOIS, et c'est le fond du choix. Un événement de
+        -- journal par question aurait doublé le journal, et le direct ne lit que
+        -- les quarante derniers événements de chaque élève : on aurait payé la
+        -- question d'aujourd'hui avec la moitié de l'historique. Une colonne ne
+        -- grandit pas.
+        --
+        -- CHIFFRÉE COMME LE PRÉNOM. Ce n'est pas la réponse de l'élève — elle,
+        -- elle voyage par le journal —, mais c'est ce qu'un élève NOMMÉ est en
+        -- train de faire, à la minute. Le fichier qui part seul ne doit pas le
+        -- dire (voir « Le fichier tel qu'on l'emporterait » dans testApi).
+        ecran        $txtNull,
+        ecran_ts     $dateN,
         -- Un élève peut être mis de côté sans être effacé : il ne peut plus
         -- se rattacher, mais son travail reste lisible jusqu'à la purge.
         blocked      $bool,
@@ -390,7 +409,11 @@ function migrer(?PDO $pdo = null): void
                        'first_name_key' => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
                        'login'          => $sqlite ? 'TEXT NULL' : 'VARCHAR(255) NULL',
                        'login_key'      => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
-                       'access_code'    => $txtNull],
+                       'access_code'    => $txtNull,
+                       // Le relevé d'écran arrive sur une base déjà installée :
+                       // celle de Rémy tourne depuis la rentrée.
+                       'ecran'          => $txtNull,
+                       'ecran_ts'       => $dateN],
         // Le genre du message — voir la table `messages`. Une base installée
         // avant l'indice n'a que des mots, et c'est bien ce que dit l'absence.
         'messages' => ['genre' => $txtNull],

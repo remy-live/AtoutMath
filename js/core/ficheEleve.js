@@ -31,6 +31,7 @@
 
 import { vigilanceDe } from './vigilance.js';
 import { depuisCombien } from './avancement.js';
+import { phraseDeLEcran, ecranFrais, ecranDuServeur } from './ecran.js';
 
 /**
  * L'ÉTAT D'UNE ÉTAPE, VU DE LA FICHE.
@@ -74,6 +75,25 @@ export function ficheDeLEleve(eleve, maintenant, opts = {}) {
         ou: ouEnEstIl(av),
         etapes: lesEtapes(av),
         question: laQuestion(av),
+        // CE QU'IL A SOUS LES YEUX, ET LA GRAINE QUI LE REPRODUIT.
+        //
+        // Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+        // exercice, car c'est créé de façon aléatoire. » Le relevé arrive
+        // maintenant avec le direct (voir `js/core/ecran.js`) ; la fiche en
+        // extrait deux choses, et pas une : la PHRASE, qu'on lit debout, et la
+        // GRAINE, qui rouvre la question à l'identique.
+        //
+        // `phraseDeLEcran` rend `null` dès que le relevé est périmé — le serveur
+        // le filtre déjà, mais une page laissée ouverte vingt minutes garde son
+        // dernier direct à l'écran, et c'est exactement là qu'on mentirait.
+        // `maintenant` arrive en SECONDES (c'est l'heure du serveur, portée par
+        // le direct) ; `ecranDuServeur` remet le relevé dans la même unité, et
+        // c'est la seule conversion — voir son commentaire, né d'une sonde.
+        sousLesYeux: phraseDeLEcran(ecranDuServeur(e.ecran), maintenant * 1000),
+        graine: (() => {
+            const ec = ecranDuServeur(e.ecran);
+            return ec && ecranFrais(ec, maintenant * 1000) ? ec.graine : null;
+        })(),
         silence: v.silence,
         silenceDit: v.silence >= 60 ? depuisCombien(v.silence) : '',
         etat: v.etat,
