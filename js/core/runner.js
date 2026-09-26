@@ -862,7 +862,11 @@ export class Runner {
             // serveur.
             if (!this.essai) direQuOnVoit({
                 exerciseId: step.exercise.id, graine: graineDuJeu,
-                etape: step.exercise.title, fait: null, total: null
+                etape: step.exercise.title, fait: null, total: null,
+                // ET SES RÉGLAGES — ceux que le jeu vient de recevoir, pas ceux
+                // qu'on devinerait. Rémy : « le même exercice avec les mêmes
+                // paramètres que l'élève ».
+                reglages: step.params
             });
             // On GARDE l'instance. Le gestionnaire fabriqué ici se contentait
             // de vider l'écran, et l'instance était jetée : ces jeux ouvrent
@@ -937,7 +941,12 @@ export class Runner {
                 question: item && item.prompt ? item.prompt.text : null,
                 etape: step.exercise.title,
                 fait: this.itemsResolved.size,
-                total: step.sansTotal ? null : step.nbItems
+                total: step.sansTotal ? null : step.nbItems,
+                // LA GRAINE NE REJOUE UNE QUESTION QU'À RÉGLAGES ÉGAUX : le
+                // générateur lit les deux, et changer un palier change les
+                // nombres tirés. Sans cette ligne, le professeur pouvait ouvrir
+                // un écran qui RESSEMBLE au sien sans être le sien.
+                reglages: step.params
             });
         });
 

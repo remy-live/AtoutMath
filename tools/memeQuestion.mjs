@@ -213,7 +213,11 @@ console.log('  CHEZ LE PROF  :', ouvert.slice(0, 120));
 // LA VRAIE MESURE : on compare LES DEUX ÉCRANS, pas un écran à un texte. Le
 // compteur de questions diffère légitimement — le professeur ne refait pas la
 // série de son élève, il regarde UNE question —, donc on l'ôte des deux côtés.
-const sansCompteur = (t) => String(t).replace(/\d+\s*\/\s*\d+\s*questions?/gi, '')
+// LE COMPTEUR NE DIT PAS TOUJOURS « QUESTIONS » : chaque activité compte dans
+// son unité — questions, lignes, grilles, croix. On ôte donc « n / m <mot> »,
+// quel que soit le mot, plutôt que de déclarer deux écrans identiques
+// différents pour un vocabulaire.
+const sansCompteur = (t) => String(t).replace(/\d+\s*\/\s*\d+\s*\p{L}+/gu, '')
     .replace(/\s+/g, ' ').trim();
 const vuEleve = sansCompteur(chezLEleve.surLEcran);
 const vuProf = sansCompteur(ouvert);
@@ -359,6 +363,92 @@ if (grilleEleve.empreinte !== grilleProf) {
     console.log('      prof  :', String(grilleProf).slice(0, 150));
 }
 
+
+
+// ═══════════ ET LES RÉGLAGES, SANS LESQUELS LA GRAINE NE SUFFIT PAS ═════════
+//
+// Rémy : « ce serait aussi vraiment cool dans le direct de pouvoir avoir le
+// même exercice avec les mêmes paramètres que l'élève ».
+//
+// LE CAS QUI PIÉGEAIT. Le professeur reconstituait les réglages en cherchant
+// l'exercice dans SES parcours. Ici l'élève ouvre « Les Deux Nombres » au palier
+// DIFFICILE, et ce parcours-là n'existe chez personne : l'ancienne version
+// serait retombée sur les réglages du catalogue, c'est-à-dire sur le palier
+// facile. Même graine, autres réglages, autre question — et un miroir presque
+// juste, dont on ne sait pas lequel des deux on regarde.
+//
+// L'exercice est choisi exprès : sa consigne ÉCRIT son réglage. Au palier
+// facile elle dit le DOUBLE ou le TRIPLE sur deux chiffres ; au palier
+// difficile, PLUS CENT sur trois. La différence se lit à l'œil nu.
+
+await el.evaluate(async () => {
+    const { getExerciseById } = await import('./js/data/catalog.js');
+    const { makeStep, makePath } = await import('./js/core/path.js');
+    const { politiquePerso } = await import('./js/core/mesExercices.js');
+    const { Runner } = await import('./js/core/runner.js');
+    const exo = getExerciseById('calc-deux-nombres');
+    const pas = makeStep(exo.id, { palier: 'difficile' }, { stepId: 'sr', nbItems: 3, threshold: 0 });
+    new Runner({ path: makePath('Essai réglages', [pas], politiquePerso()), deviceMode: 'none' }).start();
+});
+await el.waitForTimeout(3500);
+
+const reglagesEleve = await el.evaluate(async () => {
+    const { ceQuOnVoit } = await import('./js/core/ecran.js');
+    const { rafraichirSeance } = await import('./js/core/sync.js');
+    await rafraichirSeance();
+    const z = document.getElementById('game-layer');
+    return { releve: ceQuOnVoit(),
+        surLEcran: z ? (z.innerText || '').replace(/\s+/g, ' ').trim() : '' };
+});
+ok('L\'ÉLÈVE ANNONCE SES RÉGLAGES',
+    !!(reglagesEleve.releve && reglagesEleve.releve.reglages
+        && reglagesEleve.releve.reglages.palier === 'difficile'),
+    JSON.stringify((reglagesEleve.releve || {}).reglages || null));
+
+await prof.evaluate(async () => {
+    const { state } = await import('./js/core/state.js');
+    const r = state.activeSequenceRunner;
+    if (r) { r.finish(true); r.exit(); }
+});
+await attendre(1800);
+await entrerDansLaClasse();
+
+const attenduR = (reglagesEleve.releve || {}).graine || null;
+let vuR = null;
+for (let essai = 0; essai < 20; essai++) {
+    await prof.evaluate(() => {
+        if (document.querySelector('.ec-fiche')) return;
+        const r = [...document.querySelectorAll('.ec-rang')].find(x => /Léa/.test(x.textContent || ''));
+        const b = r && r.querySelector('[data-fiche]');
+        if (b) b.click(); else if (r) r.click();
+    });
+    vuR = await prof.evaluate(() => {
+        const b = document.querySelector('.ec-fiche [data-voir-exo]');
+        return b ? { graine: b.getAttribute('data-graine'), reglages: b.getAttribute('data-reglages') } : null;
+    });
+    if (vuR && vuR.graine === attenduR) break;
+    await attendre(2000);
+}
+ok('SES RÉGLAGES ARRIVENT JUSQU\'AU BOUTON DU PROFESSEUR',
+    !!vuR && /"palier":"difficile"/.test(vuR.reglages || ''), (vuR && vuR.reglages) || '(aucun)');
+
+await prof.evaluate(() => {
+    const b = document.querySelector('.ec-fiche [data-voir-exo]');
+    if (b) b.click();
+});
+await prof.waitForTimeout(3500);
+const ouvertR = await prof.evaluate(() => {
+    const z = document.getElementById('game-layer');
+    return z ? (z.innerText || '').replace(/\s+/g, ' ').trim() : '';
+});
+const sansCompteurR = (t) => String(t).replace(/\d+\s*\/\s*\d+\s*\p{L}+/gu, '')
+    .replace(/\s+/g, ' ').trim();
+const aR = sansCompteurR(reglagesEleve.surLEcran);
+const bR = sansCompteurR(ouvertR);
+console.log('\n  CHEZ L\'ÉLÈVE  :', aR.slice(0, 120));
+console.log('  CHEZ LE PROF  :', bR.slice(0, 120));
+ok('MÊME QUESTION ET MÊMES RÉGLAGES — l\'écran du professeur est bien le sien',
+    !!aR && aR === bR, aR === bR ? aR.slice(0, 110) : 'les deux écrans diffèrent');
 
 console.log('\n' + '─'.repeat(64));
 console.log(`fenêtres natives et erreurs de page : ${soucis.length}`);

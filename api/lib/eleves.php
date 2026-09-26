@@ -418,6 +418,34 @@ function noterLEcran(string $eleveId, $ecran): bool
     $entier = function ($v): ?int {
         return (is_int($v) || (is_string($v) && ctype_digit($v))) ? (int) $v : null;
     };
+    // SES RÉGLAGES À LUI — Rémy : « le même exercice avec les mêmes paramètres
+    // que l'élève ». La graine ne rejoue une question qu'à réglages ÉGAUX : le
+    // générateur lit les deux, et changer un palier change les nombres tirés.
+    //
+    // ON NE CROIT TOUJOURS RIEN. Le client a déjà taillé (voir
+    // `reglagesQuiVoyagent`), mais rien n'oblige un client à être le nôtre : on
+    // retaille ici, aux mêmes bornes. Valeurs simples et tableaux de valeurs
+    // simples, quarante clefs, et l'on jette tout si l'ensemble dépasse — un
+    // relevé trop gros vaut « pas de réglages », jamais une erreur.
+    $reglages = null;
+    if (is_array($ecran['reglages'] ?? null)) {
+        $simple = fn($v) => is_string($v) || is_int($v) || is_float($v) || is_bool($v);
+        $r = [];
+        foreach ($ecran['reglages'] as $cle => $v) {
+            if (count($r) >= 40) break;
+            if (!is_string($cle) || mb_strlen($cle) > 60) continue;
+            if ($v === null || $simple($v)) { $r[$cle] = is_string($v) ? mb_substr($v, 0, 120) : $v; continue; }
+            if (is_array($v) && $v === array_values($v)) {
+                $liste = [];
+                foreach (array_slice($v, 0, 40) as $x) {
+                    if ($simple($x)) $liste[] = is_string($x) ? mb_substr($x, 0, 120) : $x;
+                }
+                if ($liste) $r[$cle] = $liste;
+            }
+        }
+        if ($r && mb_strlen((string) json_encode($r, JSON_UNESCAPED_UNICODE)) <= 900) $reglages = $r;
+    }
+
     $propre = [
         'exerciseId' => $exo,
         'graine'   => $court($ecran['graine'] ?? null, 64),
@@ -425,6 +453,7 @@ function noterLEcran(string $eleveId, $ecran): bool
         'etape'    => $court($ecran['etape'] ?? null, 120),
         'fait'     => $entier($ecran['fait'] ?? null),
         'total'    => $entier($ecran['total'] ?? null),
+        'reglages' => $reglages,
     ];
 
     // L'HORODATAGE EST CELUI DU SERVEUR, PAS CELUI DE LA TABLETTE. Une horloge

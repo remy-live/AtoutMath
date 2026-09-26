@@ -146,3 +146,85 @@ test('LES DEUX UNITÉS DE TEMPS NE SE CONFONDENT PLUS', async () => {
     assert.equal(ecranDuServeur(null), null);
     assert.equal(ecranDuServeur({ graine: 'g' }), null, 'sans heure, pas de relevé');
 });
+
+test('LES RÉGLAGES VOYAGENT, TAILLÉS POUR LE VOYAGE', async () => {
+    const { reglagesQuiVoyagent } = await import('../js/core/ecran.js');
+
+    // Ce qui passe : les valeurs simples, et les listes de valeurs simples —
+    // beaucoup de réglages sont des paliers cochés, et c'est exactement ce qui
+    // change la question.
+    assert.deepEqual(
+        reglagesQuiVoyagent({ palier: 'moyen', taille: 5, avecZero: true, rien: null,
+            niveaux: ['cm2', 'sixieme'] }),
+        { palier: 'moyen', taille: 5, avecZero: true, rien: null,
+          niveaux: ['cm2', 'sixieme'] });
+
+    // Ce qui ne passe pas, sans bruit : aucun `paramSchema` du catalogue n'en
+    // produit, et un relevé n'est pas l'endroit où l'on découvre qu'il y en a.
+    assert.deepEqual(reglagesQuiVoyagent({ bon: 1, imbrique: { a: 1 } }), { bon: 1 });
+    assert.deepEqual(reglagesQuiVoyagent({ bon: 1, f: () => 1 }), { bon: 1 });
+
+    // Rien à dire vaut null, pas un objet vide : le direct distingue « il n'a
+    // pas dit ses réglages » de « il en a, et ils sont vides ».
+    assert.equal(reglagesQuiVoyagent({}), null);
+    assert.equal(reglagesQuiVoyagent(null), null);
+    assert.equal(reglagesQuiVoyagent('palier=moyen'), null);
+    assert.equal(reglagesQuiVoyagent([1, 2]), null);
+
+    // ET L'ON BORNE. Trente élèves toutes les dix secondes.
+    const enorme = {};
+    for (let i = 0; i < 200; i++) enorme['c' + i] = 'x'.repeat(50);
+    assert.equal(reglagesQuiVoyagent(enorme), null, 'trop gros : rien plutôt que tout');
+    const beaucoup = {};
+    for (let i = 0; i < 200; i++) beaucoup['c' + i] = i;
+    assert.equal(Object.keys(reglagesQuiVoyagent(beaucoup)).length, 40, 'quarante clefs au plus');
+});
+
+test('CHANGER UN RÉGLAGE FAIT UN RELEVÉ NEUF, même à question et graine égales', () => {
+    // Le professeur peut changer un palier en direct : l'écran de l'élève change
+    // alors sans que la question ni la graine bougent. Oublier les réglages dans
+    // la comparaison, c'est garder le relevé d'avant.
+    oublierLEcran();
+    const base = { exerciseId: 'calc-prio', graine: 'g1', question: 'Q1', fait: 0 };
+    const a = direQuOnVoit({ ...base, reglages: { palier: 'facile' } }, 1000);
+    assert.equal(a.ts, 1000);
+    const b = direQuOnVoit({ ...base, reglages: { palier: 'moyen' } }, 50_000);
+    assert.equal(b.ts, 50_000, 'les réglages ont changé : c\'est un écran neuf');
+    assert.deepEqual(b.reglages, { palier: 'moyen' });
+    // Et sans rien changer, l'heure ne bouge toujours pas.
+    const c = direQuOnVoit({ ...base, reglages: { palier: 'moyen' } }, 90_000);
+    assert.equal(c.ts, 50_000);
+    oublierLEcran();
+});
+
+test('LA FICHE REND LES RÉGLAGES, ET LES OUBLIE QUAND ILS SONT PÉRIMÉS', async () => {
+    const { ficheDeLEleve } = await import('../js/core/ficheEleve.js');
+    const maintenant = 1_700_000_000;
+    const ecran = { exerciseId: 'calc-prio', graine: 'ab12', question: 'Q',
+        reglages: { palier: 'moyen' }, ts: maintenant - 5 };
+    assert.deepEqual(ficheDeLEleve({ id: 'e1', prenom: 'Léa', ecran }, maintenant).reglages,
+        { palier: 'moyen' });
+    // Périmés, ils partent AVEC la graine : ouvrir de vieux réglages en
+    // annonçant « les siens » serait pire que d'avouer la devinette.
+    const vieux = ficheDeLEleve({ id: 'e1', prenom: 'Léa',
+        ecran: { ...ecran, ts: maintenant - ECRAN_FRAIS_MS / 1000 - 1 } }, maintenant);
+    assert.equal(vieux.reglages, null);
+    assert.equal(vieux.graine, null);
+});
+
+test('LE DIRECT PRÉFÈRE SES RÉGLAGES À LA DEVINETTE, ET DIT LEQUEL', async () => {
+    const { readFileSync } = await import('node:fs');
+    const EC = readFileSync(new URL('../js/ui/espaceClasses.js', import.meta.url), 'utf8');
+    // Les siens d'abord, l'étape ensuite, le catalogue en dernier.
+    assert.match(EC, /const siens = lireReglagesDuBouton\(el\);/);
+    assert.match(EC, /const reglages = siens \|\| \(etape && etape\.overrides\) \|\| \{\};/);
+    // ET LES TROIS PROVENANCES SE DISENT. Un professeur qui ne sait pas
+    // laquelle il regarde conseille sur une question peut-être pas la sienne.
+    assert.match(EC, /Ses réglages à lui/);
+    assert.match(EC, /Réglages de votre séance/);
+    assert.match(EC, /Réglages du catalogue/);
+    // Un attribut se retouche à la main : un JSON malformé fait retomber sur la
+    // devinette, il n'empêche pas d'ouvrir l'exercice.
+    assert.match(EC, /function lireReglagesDuBouton\(bouton\)/);
+    assert.match(EC, /catch \(e\) \{\s*return null;/);
+});

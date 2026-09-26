@@ -96,14 +96,30 @@ test('ET IL OUVRE L\'ÉTAPE, AVEC LES RÉGLAGES DE L\'ÉLÈVE', () => {
     // Même sans le robot, l'exercice nu du catalogue n'est pas son travail :
     // ce sont les cases que le professeur a cochées dans l'étape qui font la
     // différence — les paliers, la partie de la leçon, le nombre de questions.
+    //
+    // ET DEPUIS, LES SIENS L'EMPORTENT SUR LA DEVINETTE. Rémy : « ce serait
+    // aussi vraiment cool dans le direct de pouvoir avoir le même exercice avec
+    // les mêmes paramètres que l'élève ». `etapeDeLaSeance` cherche l'exercice
+    // dans les parcours du professeur : bonne devinette, juste la plupart du
+    // temps, fausse dès que l'élève n'est pas là où on le croit — bac à sable,
+    // exercice ouvert librement, étape modifiée depuis. Et la graine ne rejoue
+    // une question qu'à réglages ÉGAUX, donc la devinette pouvait ouvrir un
+    // écran qui RESSEMBLE au sien sans être le sien.
     const ec = lire('js/ui/espaceClasses.js');
     assert.match(ec, /function etapeDeLaSeance\(exerciceId\)/);
-    assert.match(ec, /makeStep\(exo\.id, \(etape && etape\.overrides\) \|\| \{\}/);
+    // TROIS PROVENANCES, DANS CET ORDRE : les siens, l'étape, le catalogue.
+    assert.match(ec, /const siens = lireReglagesDuBouton\(el\);/);
+    assert.match(ec, /const reglages = siens \|\| \(etape && etape\.overrides\) \|\| \{\};/);
+    assert.match(ec, /makeStep\(exo\.id, reglages, \{/);
     // La séance IMPOSÉE a raison sur les autres parcours : un même exercice
     // vit dans dix parcours avec dix réglages.
     assert.match(ec, /const ordre = imposee \? \[imposee, \.\.\.parcours\.filter/);
-    // Et quand on ne trouve pas l'étape, on le DIT plutôt que de faire passer
-    // les réglages du catalogue pour les siens.
+    // ET L'ÉCRAN DIT LAQUELLE DES TROIS il vient d'ouvrir. Un professeur qui ne
+    // le sait pas conseille sur une question qui n'est peut-être pas la sienne,
+    // en croyant la voir — et un miroir presque juste est pire qu'un miroir
+    // absent.
+    assert.match(ec, /Ses réglages à lui/);
+    assert.match(ec, /Réglages de votre séance : il n\\'a pas encore dit les siens/);
     assert.match(ec, /Réglages du catalogue : cet exercice n\\'est pas dans la séance donnée/);
 });
 

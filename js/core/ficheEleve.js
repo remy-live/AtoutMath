@@ -94,6 +94,16 @@ export function ficheDeLEleve(eleve, maintenant, opts = {}) {
             const ec = ecranDuServeur(e.ecran);
             return ec && ecranFrais(ec, maintenant * 1000) ? ec.graine : null;
         })(),
+        // ET SES RÉGLAGES. Rémy : « le même exercice avec les mêmes paramètres
+        // que l'élève ». La graine ne rejoue une question qu'à réglages ÉGAUX ;
+        // sans eux, le professeur ouvrait un écran qui RESSEMBLE au sien.
+        //
+        // Périmés, ils partent avec la graine : ouvrir de vieux réglages en
+        // annonçant « les siens » serait pire que d'avouer la devinette.
+        reglages: (() => {
+            const ec = ecranDuServeur(e.ecran);
+            return ec && ecranFrais(ec, maintenant * 1000) ? (ec.reglages || null) : null;
+        })(),
         silence: v.silence,
         silenceDit: v.silence >= 60 ? depuisCombien(v.silence) : '',
         etat: v.etat,

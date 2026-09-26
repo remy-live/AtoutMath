@@ -83,6 +83,9 @@ export function releveDEcran(quoi, quand = Date.now()) {
         graine: quoi.graine ? String(quoi.graine) : null,
         question: quoi.question ? texteCourt(quoi.question) : null,
         etape: quoi.etape ? String(quoi.etape) : null,
+        // SES RÉGLAGES À LUI, et non ceux qu'on devine. La graine ne rejoue une
+        // question qu'à réglages égaux — voir `reglagesQuiVoyagent`.
+        reglages: reglagesQuiVoyagent(quoi.reglages),
         fait: n(quoi.fait),
         total: n(quoi.total),
         ts: quand
@@ -126,9 +129,14 @@ export function phraseDeLEcran(ecran, maintenant = Date.now()) {
 export function direQuOnVoit(quoi, quand = Date.now()) {
     const neuf = releveDEcran(quoi, quand);
     if (!neuf) { releve = null; return null; }
+    // LES RÉGLAGES COMPTENT DANS LA COMPARAISON : le professeur peut changer un
+    // palier en direct, et l'écran de l'élève change alors sans que la question
+    // ni la graine bougent. Les oublier ici, c'est garder le relevé d'avant.
+    const memesReglages = JSON.stringify(releve && releve.reglages)
+        === JSON.stringify(neuf.reglages);
     if (releve && releve.exerciseId === neuf.exerciseId && releve.graine === neuf.graine
         && releve.question === neuf.question && releve.etape === neuf.etape
-        && releve.fait === neuf.fait) {
+        && releve.fait === neuf.fait && memesReglages) {
         return releve;
     }
     releve = neuf;
@@ -172,4 +180,60 @@ export function oublierLEcran() {
 export function ecranDuServeur(ecran) {
     if (!ecran || !ecran.ts) return null;
     return { ...ecran, ts: Number(ecran.ts) * 1000 };
+}
+
+/**
+ * LES RÉGLAGES DE L'ÉLÈVE, TAILLÉS POUR LE VOYAGE.
+ *
+ * Rémy : « ce serait aussi vraiment cool dans le direct de pouvoir avoir le
+ * même exercice avec les mêmes paramètres que l'élève ».
+ *
+ * CE QUI MANQUAIT AU RELEVÉ, ET POURQUOI ÇA MARCHAIT QUAND MÊME. La graine
+ * rejoue une question — à réglages ÉGAUX. Le professeur, lui, reconstituait les
+ * réglages en cherchant l'exercice dans SES parcours (`etapeDeLaSeance`). C'est
+ * une bonne devinette, et elle tombe juste la plupart du temps : c'est bien lui
+ * qui a réglé l'étape. Elle tombe à côté dès que l'élève n'est pas là où on le
+ * croit — une partie du bac à sable, un exercice ouvert librement, une étape
+ * modifiée depuis, ou le même exercice présent dans dix parcours avec dix
+ * réglages. L'écran le disait à demi-mot : « Réglages du catalogue : cet
+ * exercice n'est pas dans la séance donnée. »
+ *
+ * MÊME GRAINE ET AUTRES RÉGLAGES DONNENT UNE AUTRE QUESTION. Le générateur lit
+ * les deux ; changer le palier, c'est changer les nombres tirés. La devinette
+ * pouvait donc produire un écran qui RESSEMBLE à celui de l'élève sans être le
+ * sien — et un miroir presque juste est pire qu'un miroir absent, parce qu'on
+ * ne sait pas lequel on regarde.
+ *
+ * CE QU'ON GARDE. Les réglages sont de la configuration, pas des données
+ * d'élève ; ils pèsent peu (MESURÉ sur les 216 exercices du catalogue : médiane
+ * 31 signes, neuvième décile 71, maximum 125 — `geo-programme-construction`).
+ * On borne quand même, parce que ce qui traverse le réseau vient d'un client :
+ * seules les valeurs simples passent, et un tableau de valeurs simples ; le
+ * reste est écarté sans bruit.
+ */
+const REGLAGES_MAX_CLEFS = 40;
+const REGLAGES_MAX_SIGNES = 900;
+
+export function reglagesQuiVoyagent(params) {
+    if (!params || typeof params !== 'object' || Array.isArray(params)) return null;
+    const simple = (v) => ['string', 'number', 'boolean'].includes(typeof v);
+    const out = {};
+    let n = 0;
+    for (const [cle, v] of Object.entries(params)) {
+        if (n >= REGLAGES_MAX_CLEFS) break;
+        if (v === null) { out[cle] = null; n++; continue; }
+        if (simple(v)) { out[cle] = v; n++; continue; }
+        // UN TABLEAU DE VALEURS SIMPLES PASSE, et il le faut : beaucoup de
+        // réglages sont des listes de paliers cochés — c'est exactement ce qui
+        // change la question.
+        if (Array.isArray(v) && v.every(simple)) { out[cle] = v.slice(0, 40); n++; }
+        // Tout le reste (objets imbriqués, fonctions) est écarté sans bruit :
+        // aucun `paramSchema` du catalogue n'en produit, et un relevé n'est pas
+        // l'endroit où l'on découvre qu'il y en a un.
+    }
+    if (!Object.keys(out).length) return null;
+    // ET L'ON BORNE LE TOUT. Trente élèves toutes les dix secondes : ce qui
+    // voyage doit rester petit, même si quelqu'un invente un jour un réglage
+    // démesuré.
+    return JSON.stringify(out).length > REGLAGES_MAX_SIGNES ? null : out;
 }

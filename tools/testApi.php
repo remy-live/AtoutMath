@@ -553,6 +553,55 @@ $brut = db()->query('SELECT ecran FROM students WHERE ecran IS NOT NULL LIMIT 1'
 verifier('le relevé est chiffré sur le disque',
     is_string($brut) && $brut !== '' && !str_contains($brut, 'num-rang'));
 
+// --- SES RÉGLAGES À LUI, et pas ceux qu'on devine ---
+//
+// Rémy : « ce serait aussi vraiment cool dans le direct de pouvoir avoir le même
+// exercice avec les mêmes paramètres que l'élève ». La graine ne rejoue une
+// question qu'à réglages ÉGAUX : le générateur lit les deux.
+
+json('/session', ['ecran' => [
+    'exerciseId' => 'calc-deux-nombres', 'graine' => 'rr77',
+    'reglages' => ['palier' => 'difficile', 'niveaux' => ['cm2', 'sixieme'],
+                   'avecZero' => true, 'taille' => 5],
+]], $lea);
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+$deLea = null;
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('LES RÉGLAGES DE L\'ÉLÈVE ARRIVENT AU PROFESSEUR',
+    ($deLea['ecran']['reglages']['palier'] ?? '') === 'difficile');
+verifier('une liste de paliers cochés passe aussi',
+    ($deLea['ecran']['reglages']['niveaux'] ?? []) === ['cm2', 'sixieme']);
+verifier('et les booléens restent des booléens',
+    ($deLea['ecran']['reglages']['avecZero'] ?? null) === true
+    && ($deLea['ecran']['reglages']['taille'] ?? null) === 5);
+
+// ON NE CROIT RIEN DE CE QUI ARRIVE, ICI NON PLUS. Le client a déjà taillé,
+// mais rien n'oblige un client à être le nôtre.
+$enorme = [];
+for ($i = 0; $i < 200; $i++) $enorme['c' . $i] = str_repeat('x', 50);
+json('/session', ['ecran' => [
+    'exerciseId' => 'calc-deux-nombres', 'graine' => 'rr77', 'reglages' => $enorme,
+]], $lea);
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('des réglages démesurés valent AUCUN réglage, pas une erreur',
+    $deLea['ecran']['reglages'] === null && ($deLea['ecran']['graine'] ?? '') === 'rr77');
+
+json('/session', ['ecran' => [
+    'exerciseId' => 'calc-deux-nombres', 'graine' => 'rr77',
+    'reglages' => ['bon' => 1, 'imbrique' => ['a' => ['b' => 1]], 'liste' => [1, 2, 3]],
+]], $lea);
+$r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
+foreach ($r['json']['eleves'] ?? [] as $x) {
+    if (($x['prenom'] ?? '') === 'Léa') $deLea = $x;
+}
+verifier('un réglage imbriqué est écarté, les voisins restent',
+    ($deLea['ecran']['reglages'] ?? []) === ['bon' => 1, 'liste' => [1, 2, 3]]);
+
 // ------------------------------------------------- L'exercice qui bloque ----
 
 titre('6. Un exercice plante et bloque la progression');

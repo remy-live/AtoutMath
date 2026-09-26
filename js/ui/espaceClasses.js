@@ -800,7 +800,8 @@ function ficheHtml(e, maintenant) {
                     data-prenom="${esc(e.prenom)}" data-exo="${esc(e.exo || '')}"${
                     g.indice ? '' : ' disabled'}>Coup de pouce</button>
             <button type="button" class="ec-bouton ec-bouton--doux" data-voir-exo="${esc(e.exo || '')}"
-                    data-prenom="${esc(e.prenom)}" data-graine="${esc(f.graine || '')}"${
+                    data-prenom="${esc(e.prenom)}" data-graine="${esc(f.graine || '')}"
+                    data-reglages="${esc(f.reglages ? JSON.stringify(f.reglages) : '')}"${
                     g.indice ? '' : ' disabled'}
                     title="${f.graine
                         ? 'SA question, celle-là précisément, ouverte chez vous avec SES réglages. Rien n\'est enregistré. Pour être lui et non plus le regarder, c\'est « Ouvrir son poste », dans Les élèves.'
@@ -1666,6 +1667,28 @@ function reglagesHtml() {
  * par l'élève. L'appelant le DIT alors, plutôt que de faire passer les
  * réglages du catalogue pour les siens.
  */
+/**
+ * LES RÉGLAGES QUE L'ÉLÈVE A ANNONCÉS, relus depuis le bouton.
+ *
+ * Ils y voyagent en JSON parce que c'est là qu'on les a sous la main au moment
+ * du clic — le direct se redessine entièrement à chaque battement, et garder
+ * une carte d'objets à côté du HTML ferait deux vérités à tenir d'accord.
+ *
+ * ET L'ON SE MÉFIE DE CE QU'ON RELIT. Un attribut de page se retouche à la main
+ * dans n'importe quel navigateur ; un JSON malformé ne doit pas empêcher
+ * d'ouvrir l'exercice, seulement faire retomber sur la devinette.
+ */
+function lireReglagesDuBouton(bouton) {
+    const brut = bouton && bouton.dataset ? bouton.dataset.reglages : '';
+    if (!brut) return null;
+    try {
+        const r = JSON.parse(brut);
+        return (r && typeof r === 'object' && !Array.isArray(r) && Object.keys(r).length) ? r : null;
+    } catch (e) {
+        return null;
+    }
+}
+
 function etapeDeLaSeance(exerciceId) {
     if (!exerciceId) return null;
     const info = (vue.liste && vue.liste.classe) || {};
@@ -2223,9 +2246,12 @@ async function brancher(e, redessiner) {
     // catalogue donne ses défauts ; l'élève, lui, travaille avec ce que le
     // professeur a coché dans l'étape. On ouvre donc l'étape elle-même.
     //
-    // Un vrai miroir de son écran reste un autre métier : il faudrait que
+    // « UN VRAI MIROIR DE SON ÉCRAN RESTE UN AUTRE MÉTIER : il faudrait que
     // l'élève envoie sa question au fil de l'eau, ce qui change ce qui voyage
-    // sur le réseau pendant l'heure. À décider ensemble.
+    // sur le réseau pendant l'heure. À décider ensemble. » C'était écrit ici, et
+    // c'est décidé : l'élève envoie sa graine ET SES RÉGLAGES avec le battement
+    // de cœur qui partait déjà vide toutes les dix secondes. Voir
+    // `js/core/ecran.js` pour ce qui voyage et ce qui a été refusé.
     if (d.voirExo !== undefined) {
         if (!d.voirExo) { showToast('Il n\'est sur aucun exercice pour l\'instant.', 'info'); return; }
         const exo = getExerciseById(d.voirExo);
@@ -2253,7 +2279,29 @@ async function brancher(e, redessiner) {
         // l'infobulle du bouton dit que ce sera le même travail, pas la même
         // question. Un élève qui n'a pas encore rechargé sa page, ou un jeu qui
         // ne dit pas sa graine, retombent proprement sur l'ancien geste.
-        const pas = makeStep(exo.id, (etape && etape.overrides) || {}, {
+        // SES RÉGLAGES À LUI L'EMPORTENT SUR LA DEVINETTE.
+        //
+        // Rémy : « ce serait aussi vraiment cool dans le direct de pouvoir avoir
+        // le même exercice avec les mêmes paramètres que l'élève ».
+        //
+        // `etapeDeLaSeance` cherchait l'exercice dans les parcours du
+        // professeur. C'est une bonne devinette — c'est bien lui qui a réglé
+        // l'étape — et elle tombe juste la plupart du temps. Elle tombe à côté
+        // dès que l'élève n'est pas là où on le croit : une partie du bac à
+        // sable, un exercice ouvert librement, une étape modifiée depuis, ou le
+        // même exercice présent dans dix parcours avec dix réglages.
+        //
+        // ET ALORS LA GRAINE NE SUFFIT PLUS : le générateur lit la graine ET les
+        // réglages, si bien qu'un palier différent donne d'autres nombres avec
+        // la même graine. On aurait ouvert un écran qui RESSEMBLE au sien sans
+        // être le sien — un miroir presque juste, dont on ne sait pas lequel des
+        // deux on regarde.
+        //
+        // Les réglages voyagent donc avec le relevé. La devinette reste, en
+        // second : elle sert encore à l'élève qui n'a pas rechargé sa page.
+        const siens = lireReglagesDuBouton(el);
+        const reglages = siens || (etape && etape.overrides) || {};
+        const pas = makeStep(exo.id, reglages, {
             stepId: 'voir', nbItems: (etape && etape.nbItems) || 5, threshold: 0, bonus: true,
             forceSeed: d.graine || null
         });
@@ -2267,9 +2315,21 @@ async function brancher(e, redessiner) {
             path: parcours, deviceMode: 'none', essai: true,
             onExit: () => import('./navigation.js').then(m => m.setTopNavMode('path'))
         }).start();
-        if (!etape) {
-            showToast('Réglages du catalogue : cet exercice n\'est pas dans la séance donnée.',
+        // ON DIT D'OÙ VIENNENT LES RÉGLAGES QU'ON VIENT D'OUVRIR.
+        //
+        // Trois provenances, et elles ne se valent pas : les siens (certitude),
+        // ceux de l'étape (devinette raisonnable), ceux du catalogue (aucun
+        // rapport garanti avec son écran). Le professeur doit savoir lequel il
+        // regarde — sans quoi il conseille sur une question qui n'est
+        // peut-être pas la sienne, en croyant la voir.
+        if (siens) {
+            showToast('Ses réglages à lui, tels qu\'il les a annoncés.', 'success', 2500);
+        } else if (etape) {
+            showToast('Réglages de votre séance : il n\'a pas encore dit les siens.',
                 'info', 4000);
+        } else {
+            showToast('Réglages du catalogue : cet exercice n\'est pas dans la séance donnée, '
+                + 'et il n\'a pas dit les siens.', 'info', 4000);
         }
         return;
     }
