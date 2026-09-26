@@ -97,12 +97,12 @@
     overflow-wrap: anywhere;
 }
 .ec-niveau {
-    font-size: .72rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+    font-size: .75rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;
     background: var(--tag-niv-bg); color: var(--tag-niv-txt); white-space: nowrap;
 }
 .ec-carte-code { display: flex; flex-direction: column; gap: 3px; }
 .ec-code-eti {
-    font-size: .68rem; text-transform: uppercase; letter-spacing: .09em;
+    font-size: .75rem; text-transform: uppercase; letter-spacing: .09em;
     color: var(--text-muted); font-weight: 700;
 }
 /* LE CODE EST GROS PARCE QU'ON LE DICTE. C'est le seul chiffre de cet écran
@@ -130,7 +130,7 @@
 .ec-ferme-mot { color: var(--text-muted); font-weight: 600; }
 .ec-code-ouvrir {
     align-self: flex-start; margin-top: 2px;
-    font: inherit; font-size: .74rem; font-weight: 700;
+    font: inherit; font-size: .78rem; font-weight: 700;
     padding: 4px 10px; border-radius: 999px; cursor: pointer;
     background: var(--bg-panel); color: var(--primary-texte);
     border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border));
@@ -153,10 +153,20 @@
 .ec-plus { font-size: 1.7rem; line-height: 1; color: var(--primary-texte); }
 
 /* --- Les onglets ---------------------------------------------------------- */
+/* LES CINQ ONGLETS DÉFILENT PLUTÔT QUE DE SE COUPER.
+   MESURÉ à 360 px : le cinquième — « Les bilans » — dépassait de 15 px, son
+   libellé rogné au bord, et il ne s'atteignait qu'en faisant glisser toute la
+   page. Un onglet à moitié dehors ne se lit pas comme un onglet : il se lit
+   comme la fin de la liste, et l'écran qu'il ouvre n'existe plus.
+   On garde les cinq sur une rangée — les replier casserait le repère — mais la
+   rangée défile toute seule, et le rognage aux bords dit qu'il y a une suite. */
 .ec-onglets {
     display: flex; gap: 4px; padding: 0 26px;
     border-bottom: 1px solid var(--border); background: var(--bg-app);
+    overflow-x: auto; scrollbar-width: none;
 }
+.ec-onglets::-webkit-scrollbar { display: none; }
+.ec-onglet { flex: 0 0 auto; }
 .ec-onglet {
     background: none; border: none; border-bottom: 2.5px solid transparent;
     color: var(--text-muted); cursor: pointer; font: inherit; font-weight: 700;
@@ -170,12 +180,30 @@
 /* --- Le direct ------------------------------------------------------------ */
 .ec-compte { margin: 0 0 14px; font-weight: 700; color: var(--text-main); }
 .ec-rangs { display: flex; flex-direction: column; gap: 6px; }
+/* SIX COLONNES, PARCE QUE LA LIGNE A SIX ENFANTS — et la panne est revenue.
+   La note ci-dessous (« LES DEUX BOUTONS TIENNENT DANS UNE SEULE CELLULE »)
+   décrit exactement ce défaut et le dit réparé. Il l'était : la ligne comptait
+   alors cinq enfants pour cinq colonnes. La CASE À COCHER, ajoutée depuis pour
+   donner la calculatrice à des élèves choisis, en a fait un sixième — et la
+   réparation d'hier est redevenue la panne d'aujourd'hui.
+
+   MESURÉ à 768 px, sur une classe de trente : les lignes des élèves qui ont un
+   score faisaient 129 px, celles des élèves jamais venus 64 px, l'une sous
+   l'autre dans la même liste ; à 1280, trois hauteurs — 110 / 97 / 56. Et les
+   deux gestes changeaient de place selon l'élève : à x = 590 pour les uns, à
+   x = 14 à la ligne suivante pour les autres, à cinq cents pixels de leur nom.
+
+   LE COMPTE D'ENFANTS EST DÉSORMAIS CONSTANT : le score est toujours écrit,
+   vide quand il n'y en a pas (voir `rangHtml`). Compter sur une cellule qui
+   n'apparaît que parfois, c'est reposer le même piège pour le prochain. */
 .ec-rang {
     display: grid; align-items: center; gap: 12px;
-    grid-template-columns: 10px minmax(120px, 1.1fr) minmax(0, 1.6fr) auto auto;
+    grid-template-columns: auto 10px minmax(120px, 1.1fr) minmax(0, 1.6fr) auto auto;
     padding: 9px 13px; border-radius: 11px;
     background: var(--bg-panel); border: 1px solid var(--border);
 }
+/* La cellule du score existe même vide : c'est elle qui tient le compte. */
+.ec-score--vide { display: block; width: 0; }
 .ec-rang--ici { border-color: color-mix(in srgb, #10b981 45%, var(--border)); }
 
 /* ─────────── LA FICHE D'UN ÉLÈVE, DÉPLIÉE SOUS SA LIGNE ───────────────────
@@ -328,10 +356,13 @@
     flex: 0 0 auto; margin-left: 6px;
     background: var(--success-fond); color: #fff;
     border-radius: 999px; padding: 1px 8px;
-    font-size: .68rem; font-weight: 700; letter-spacing: .02em;
+    font-size: .76rem; font-weight: 700; letter-spacing: .02em;
     white-space: nowrap;
 }
-.ec-choix input { width: 17px; height: 17px; cursor: pointer; accent-color: var(--primary); }
+/* L'ENVELOPPE PORTE LE GESTE, LA CASE PORTE LE DESSIN. Voir le commentaire du
+   gabarit : un seul événement part, et il part d'une zone qu'on peut viser. */
+.ec-choix { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.ec-choix input { width: 17px; height: 17px; accent-color: var(--primary); pointer-events: none; }
 .ec-pilote-cadre .ec-champ--mince { width: auto; }
 .ec-pilote-mot-liant { font-size: .8rem; color: var(--text-muted); }
 /* LE MOT À LA CLASSE PREND LA PLACE QUI RESTE : c'est le seul champ où l'on
@@ -374,10 +405,35 @@
 .ec-pilote-eti { font-size: .78rem; font-weight: 700; color: var(--text-main); }
 .ec-pilote-cadre .ec-pilote-eti { white-space: nowrap; }
 /* Sur téléphone, chaque cadre prend la largeur : à 390 px, deux cadres côte à
-   côte rognent les deux. */
+   côte rognent les deux.
+
+   ET SON CONTENU DOIT SE REPLIER AVEC LUI — la moitié qui manquait. Le cadre
+   prenait toute la largeur, mais gardait `flex-wrap: nowrap` : ses boutons
+   sortaient donc de l'écran par la droite pendant que les étiquettes, seules
+   compressibles, s'écrasaient en colonnes d'un mot.
+
+   MESURÉ à 360 px, barre complète : « Lancer » à x = 422, « Autoriser » à
+   x = 386, « Poser » à x = 364 — jusqu'à 131 px au-delà du bord, aucun pixel
+   visible. Rien ne le signalait : `#zone-classe` porte `overflow-y: auto`, donc
+   l'autre axe passe à `auto` tout seul, et il fallait faire glisser toute la
+   liste des élèves de 131 px pour retrouver les boutons. Pendant ce temps « à
+   toute la classe » s'écrivait sur quatre lignes d'un mot et « ouvert à ceux
+   qui ont fini » sur six.
+
+   ON REPLIE DONC, ET L'ON CESSE D'ÉCRASER LES MOTS : un cadre replié est plus
+   haut, mais tout y est atteignable — et c'est exactement le compromis que la
+   note du repli décrit plus haut, « ce qui est toujours visible est ce qu'on
+   fait en cours d'heure ». */
 @media (max-width: 700px) {
-    .ec-pilote-cadre { flex: 1 1 100%; }
+    .ec-pilote-cadre { flex: 1 1 100%; flex-wrap: wrap; }
     .ec-pilote-mot { flex: 1 1 100%; }
+    /* Les étiquettes de liaison cessent d'absorber le manque de place : elles
+       passent à la ligne d'un bloc, au lieu de se casser mot à mot. */
+    .ec-pilote-cadre .ec-pilote-mot-liant { white-space: nowrap; }
+    /* Un bouton n'est jamais plus étroit que son mot. */
+    .ec-pilote-cadre .ec-pilote-btn { flex: 0 0 auto; }
+    /* Et les deux déroulants prennent ce qui reste plutôt que de déborder. */
+    .ec-pilote-cadre select, .ec-pilote-cadre .ec-champ { min-width: 0; flex: 1 1 auto; }
 }
 .ec-rang--ecarte { opacity: .5; }
 /* Le vert de présence ne vient PAS du thème : « il est là » doit se voir de la
@@ -451,9 +507,29 @@
 .ec-silence { color: var(--warning-texte); font-weight: 700; }
 
 /* --- Tableaux, listes, aperçu --------------------------------------------- */
+/* UN TABLEAU QUI NE TIENT PAS DÉFILE DANS SON CADRE, il ne sort pas de l'écran.
+
+   MESURÉ à 360 px sur « Les élèves » : le tableau faisait 720 px dans une
+   fenêtre de 360, et quatre boutons de CHACUNE des trente lignes étaient
+   entièrement dehors — « billet » à x = 473, « retirer » à x = 653, jusqu'à
+   293 px au-delà du bord. Sur « Les bilans », l'en-tête « Dernière note » et
+   ses trente cellules étaient hors écran. Rien ne le disait : `#zone-classe`
+   porte `overflow-y: auto`, donc l'autre axe passe à `auto` tout seul et il
+   fallait faire glisser TOUTE la page — liste des élèves comprise — pour
+   retrouver les boutons.
+
+   Le cadre défile donc lui-même, et le tableau garde sa largeur utile au lieu
+   d'être comprimé jusqu'à l'illisible. La page, elle, ne bouge plus. */
+.ec-table-cadre { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .ec-table { width: 100%; border-collapse: collapse; margin: 6px 0 18px; }
+@media (max-width: 760px) {
+    /* En dessous, on ne comprime plus : on laisse le tableau prendre ce qu'il
+       lui faut et l'on fait glisser le cadre. Un « retirer » lisible qu'on
+       atteint vaut mieux qu'un « ret… » qu'on ne touche pas. */
+    .ec-table { width: auto; min-width: 100%; }
+}
 .ec-table th {
-    text-align: left; font-size: .72rem; text-transform: uppercase;
+    text-align: left; font-size: .76rem; text-transform: uppercase;
     letter-spacing: .07em; color: var(--text-muted); font-weight: 700;
     padding: 7px 10px; border-bottom: 1px solid var(--border);
 }
@@ -567,9 +643,19 @@
     .ec-qui { display: none; }
     /* Le rang se replie sur deux lignes : le nom et la présence d'abord, ce
        qu'il fait ensuite. Un tableau à cinq colonnes sur un téléphone se lit
-       en zoomant, c'est-à-dire pas du tout. */
-    .ec-rang { grid-template-columns: 10px 1fr auto; row-gap: 4px; }
-    .ec-rang-quoi { grid-column: 2 / -1; }
+       en zoomant, c'est-à-dire pas du tout.
+
+       ON PLACE CHAQUE CELLULE, ON NE LAISSE PLUS DEVINER. Le placement
+       automatique dépend du NOMBRE d'enfants, et ce nombre a changé deux fois
+       (le score, puis la case à cocher) : chaque fois, la mise en page s'est
+       défaite en silence. Six cases nommées ne se défont pas. */
+    .ec-rang { grid-template-columns: auto 10px 1fr auto; row-gap: 4px; }
+    .ec-choix        { grid-area: 1 / 1 / 2 / 2; }
+    .ec-point        { grid-area: 1 / 2 / 2 / 3; }
+    .ec-rang-qui     { grid-area: 1 / 3 / 2 / 4; }
+    .ec-rang-gestes  { grid-area: 1 / 4 / 2 / 5; }
+    .ec-rang-quoi    { grid-area: 2 / 3 / 3 / 5; }
+    .ec-score        { grid-area: 2 / 1 / 3 / 3; justify-self: center; }
     .ec-table th:nth-child(4), .ec-table td:nth-child(4) { display: none; }
 }
 
@@ -1371,6 +1457,24 @@ body.plein-ecran .pe-sortir { display: block; }
        espace, y compris ce qu'on y ajoutera demain. */
     #zone-classe input, #zone-classe select, #zone-classe textarea,
     .ec-champ { min-height: 44px; }
+    /* TROIS CIBLES QUE LA LISTE NE CONNAISSAIT PAS — et la note ci-dessus
+       prévenait que c'est ce qui arrive à une liste : « elle ne connaît que ce
+       qu'on y a mis, et elle ne prévient pas quand un écran nouveau lui
+       échappe. » Les trois sont nées après elle.
+
+       LA CASE DE CHOIX était haute de 44 et LARGE DE 13 : la hauteur réparée
+       par la règle des champs juste au-dessus, la largeur oubliée. Trente fois
+       par écran, et c'est le geste qui désigne qui reçoit la calculatrice. On
+       élargit l'ENVELOPPE, pas la case : une case à cocher de 44 px de côté
+       serait énorme à l'œil, et c'est la zone qu'on vise, pas le dessin. */
+    .ec-choix { min-width: 44px; min-height: 44px; }
+    .ec-choix input { min-height: 17px; }
+    /* LE REPLI DU PILOTE est la SEULE porte vers « Le mot au tableau » : 690 ×
+       22 à 768 px, une fente. */
+    details.ec-pilote-plus > summary { min-height: 44px; display: flex;
+        align-items: center; }
+    /* ET « OUVRIR LA PORTE », posé ce matin, 102 × 25. */
+    .ec-code-ouvrir { min-height: 44px; }
 
     /* MÊME CAUSE, DEUX AUTRES ENDROITS.
 
@@ -3725,9 +3829,15 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 /* LE MUR. Des tuiles, pas des lignes : trente lignes tiennent sur deux écrans,
    trente tuiles tiennent sur un — et ce qu'on cherche ici se voit à la couleur,
    pas à la lecture. */
+/* LES TUILES S'ÉLARGISSENT AVEC L'ÉCRAN, au lieu de rester au minimum.
+   MESURÉ à 1920 px : la grille faisait dix colonnes de 176 px et coupait
+   « GRANDJEAN Marie-Ange » à 24 px près, alors qu'il restait 350 px de vide
+   sous le mur. La troncature est voulue — un nom long ne doit pas déformer sa
+   tuile —, mais elle n'a rien à faire sur un tableau de classe de deux mètres.
+   La largeur minimale suit donc la fenêtre, bornée aux deux bouts. */
 .ec-mur {
     display: grid; gap: 9px;
-    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(clamp(168px, 14vw, 262px), 1fr));
 }
 .ec-tuile {
     background: var(--bg-panel); border: 1px solid var(--border);
@@ -3746,7 +3856,7 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     transition: width .4s ease;
 }
 .ec-tuile-mot {
-    font-size: .74rem; color: var(--text-muted);
+    font-size: .78rem; color: var(--text-muted);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ec-tuile-actions { display: flex; gap: 5px; margin-top: 2px; }

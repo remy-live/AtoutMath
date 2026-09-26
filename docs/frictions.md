@@ -179,3 +179,36 @@ manque.
   maintenant le texte de l'aperçu, et l'on voit tout de suite qu'il se trompe.
   Et le corollaire, qui est pour moi : on ne rapporte pas le verdict d'un outil
   à Rémy sans avoir regardé la chose elle-même.
+
+## **Une grille se défait en silence quand on lui ajoute un enfant** — 2026-09-26
+
+- **Ce que je voulais faire** : ajouter une case à cocher dans la ligne d'élève
+  du direct, pour donner la calculatrice à des élèves choisis.
+- **Ce qui a coûté** : la ligne est une grille de CINQ colonnes ; la case en a
+  fait un sixième enfant, et tout ce qui suivait est passé à la rangée
+  implicite. Résultat mesuré par un agent : des lignes de 129 px et de 64 px
+  l'une sous l'autre, et les deux boutons à cinq cents pixels de leur nom. Rien
+  ne l'a dit — ni les 3 900 essais, ni les trois harnais. **Et le commentaire
+  juste au-dessus de la règle CSS décrivait exactement cette panne et la disait
+  réparée** : elle l'était, pour cinq enfants. Je l'ai relue sans la voir.
+- **Combien de fois** : ||  (la même grille, deux fois : le score, puis la case)
+- **Ce qui manque** : une mesure de RENDU dans les harnais. Les trois qu'on a
+  regardent le code, l'API et la synchronisation ; aucun ne regarde l'écran. Un
+  balayage « toutes les largeurs × tous les écrans » qui compte les débordements
+  et les cibles trop petites — ce que l'agent a écrit en une soirée dans
+  `tools/tmp/auditProf-mesure.mjs` — devrait tourner avant chaque commit qui
+  touche à une mise en page. En attendant, une règle qui coûte peu : **quand on
+  ajoute un enfant à une grille, on place les cases explicitement** plutôt que
+  de compter sur l'ordre — c'est ce qui a été fait ici.
+
+## **`fullPage: true` ment partout où le défilement n'est pas sur le document** — 2026-09-26
+
+- **Ce que je voulais faire** : capturer un écran entier du professeur.
+- **Ce qui a coûté** : dans l'espace du professeur, c'est `#zone-classe` qui
+  porte le défilement, pas le document. `page.screenshot({ fullPage: true })` ne
+  rend donc que la fenêtre, sans le dire. Un premier passage d'audit complet a
+  été perdu là-dessus.
+- **Combien de fois** : |
+- **Ce qui manque** : que la sonde partagée (celle du point « chaque sonde de
+  navigateur repart de zéro ») capture par ÉLÉMENT après l'avoir amené sous les
+  yeux, jamais par `fullPage`.

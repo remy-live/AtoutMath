@@ -262,7 +262,7 @@ function profsHtml() {
     if (!liste) {
         corps = '<div class="ec-vide">On regarde…</div>';
     } else {
-        corps = `<table class="ec-table">
+        corps = `<div class="ec-table-cadre"><table class="ec-table">
             <thead><tr><th>Professeur</th><th>Adresse</th><th>Classes</th><th></th></tr></thead>
             <tbody>${liste.map(t => `
             <tr>
@@ -274,7 +274,7 @@ function profsHtml() {
                                data-retirer-prof="${esc(t.id)}" data-nom="${esc(t.nom)}"
                                data-classes="${t.classes || 0}">retirer</button>`}</td>
             </tr>`).join('')}</tbody>
-        </table>`;
+        </table></div>`;
     }
     return enTeteHtml('Les professeurs', 'Ceux qui peuvent ouvrir ce serveur', true) + messageHtml()
         + `<div class="ec-corps">
@@ -706,9 +706,18 @@ function rangHtml(e, maintenant) {
     const ici = estEnLigne(e.vu, maintenant);
     const v = vigilanceDe(e, maintenant, { enPause: classeEnPause() });
     const ouverte = vue.fiche === e.id;
+    // LE SCORE S'ÉCRIT TOUJOURS, VIDE QUAND IL N'Y EN A PAS.
+    //
+    // La ligne est une grille ; une cellule qui n'apparaît que parfois décale
+    // tout ce qui la suit. MESURÉ sur une classe de trente : les lignes avec
+    // score faisaient 129 px, celles sans 64 px, l'une sous l'autre — et les
+    // deux boutons passaient à la ligne suivante, à cinq cents pixels du nom.
+    // Le compte d'enfants doit être CONSTANT, sans quoi le prochain qui ajoute
+    // quelque chose à cette ligne repose le même piège (voir `.ec-rang` dans
+    // css/ui.css : c'est la deuxième fois).
     const score = e.total
         ? `<span class="ec-score${e.justes / e.total >= 0.7 ? ' ec-score--bien' : ''}">${e.justes} / ${e.total}</span>`
-        : '';
+        : '<span class="ec-score ec-score--vide" aria-hidden="true"></span>';
     return `
     <div class="ec-rang-hote${ouverte ? ' ec-rang-hote--ouverte' : ''}">
     <div class="ec-rang ec-rang--cliquable${ici ? ' ec-rang--ici' : ''}${e.ecarte ? ' ec-rang--ecarte' : ''}${
@@ -720,9 +729,16 @@ function rangHtml(e, maintenant) {
              fiche, cocher la case choisit l'élève. Les deux gestes sont à deux
              centimètres l'un de l'autre, et le second ne doit pas déclencher le
              premier — voir data-choix dans les gestes. -->
-        <span class="ec-choix" title="Choisir ${esc(e.prenom)}">
-            <input type="checkbox" data-choix="${esc(e.id)}"
-                   aria-label="Choisir ${esc(e.prenom)}"
+        <!-- LA ZONE QU'ON VISE N'EST PAS LE DESSIN.
+             MESURÉ au doigt : la case faisait 17 px de large pour 44 de haut —
+             la hauteur donnée par la règle des champs, la largeur oubliée —,
+             trente fois par écran, et c'est le geste qui désigne qui reçoit la
+             calculatrice. C'est donc l'ENVELOPPE qui fait 44 sur 44 et qui porte
+             le geste ; la case ne reçoit plus le doigt — pointer-events none —
+             pour qu'un seul événement parte, jamais deux. Elle reste
+             atteignable au clavier, et l'espace la coche comme avant. -->
+        <span class="ec-choix" data-choix="${esc(e.id)}" title="Choisir ${esc(e.prenom)}">
+            <input type="checkbox" aria-label="Choisir ${esc(e.prenom)}"
                    ${(vue.choisis && vue.choisis.has(e.id)) ? 'checked' : ''}>
         </span>
         <span class="ec-point${ici ? ' ec-point--vert' : ''}"></span>
@@ -1221,7 +1237,7 @@ function tableauBilanHtml(lignes) {
         <p class="ec-note ec-note--bloc">Rangés par ce qui demande un geste, pas par
            ordre alphabétique : ceux qui n'ont rien fait d'abord, puis les plus en
            difficulté.</p>
-        <table class="ec-table ec-table--bilan">
+        <div class="ec-table-cadre"><table class="ec-table ec-table--bilan">
             <thead><tr>
                 <th>Élève</th><th>Questions</th><th>Réussite</th>
                 <th>Travail</th><th>Erreurs ouvertes</th><th>Dernière note</th>
@@ -1242,7 +1258,7 @@ function tableauBilanHtml(lignes) {
                     <td>${note}</td>
                 </tr>`;
             }).join('')}</tbody>
-        </table>
+        </table></div>
     </section>`;
 }
 
@@ -1290,7 +1306,7 @@ function listeHtml() {
     }
 
     return outils + (avec.length ? `
-    <table class="ec-table">
+    <div class="ec-table-cadre"><table class="ec-table">
         <thead><tr>
             <th>Élève</th><th>Identifiant</th><th>Code</th><th>Vu</th><th></th>
         </tr></thead>
@@ -1321,7 +1337,7 @@ function listeHtml() {
             </td>
         </tr>`).join('')}
         </tbody>
-    </table>` : '')
+    </table></div>` : '')
     + (sans.length ? `
     <h3 class="ec-h3">Entrés par le code de la classe <span class="ec-note">(${sans.length})</span></h3>
     <p class="ec-note ec-note--bloc">Ils travaillent déjà, mais n'ont pas de billet.
@@ -1385,7 +1401,7 @@ function apercuHtml() {
     <div class="ec-apercu">
         <h3 class="ec-h3">Voici ce qui va se passer</h3>
         <p class="ec-note ec-note--bloc"><b>Rien n'est encore enregistré.</b> ${esc(resume)}.</p>
-        <table class="ec-table">
+        <div class="ec-table-cadre"><table class="ec-table">
             <thead><tr><th>Élève</th><th>Identifiant</th><th>Code</th><th>Ce qui se passera</th></tr></thead>
             <tbody>
             ${a.lignes.map(l => `
@@ -1398,7 +1414,7 @@ function apercuHtml() {
                 <td class="ec-note">${esc(l.dit)}</td>
             </tr>`).join('')}
             </tbody>
-        </table>
+        </table></div>
         ${a.ignorees && a.ignorees.length ? `
         <p class="ec-note ec-note--bloc"><b>Lignes non comprises</b>, laissées de côté :
            ${a.ignorees.map(x => `<code>${esc(x)}</code>`).join(' ')}</p>` : ''}
@@ -1779,6 +1795,15 @@ async function brancher(e, redessiner) {
         if (!vue.choisis) vue.choisis = new Set();
         if (vue.choisis.has(d.choix)) vue.choisis.delete(d.choix);
         else vue.choisis.add(d.choix);
+        // LA CASE SUIT CE QU'ON VIENT DE DÉCIDER, ET NON L'INVERSE.
+        //
+        // Le geste part maintenant de l'enveloppe de 44 px, pas de la case :
+        // le navigateur ne la coche donc plus tout seul. On l'accorde ici, ce
+        // qui vaut aussi pour la barre d'espace — le clavier coche, l'événement
+        // remonte, et l'on repose la même valeur : les deux chemins disent la
+        // même chose.
+        const laCase = el.querySelector('input[type="checkbox"]');
+        if (laCase) laCase.checked = vue.choisis.has(d.choix);
         const eti = document.querySelector('[data-calc-aqui]');
         if (eti) eti.textContent = aQuiLaCalculatrice();
         return;
