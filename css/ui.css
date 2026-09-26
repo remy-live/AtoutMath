@@ -836,7 +836,21 @@
     z-index: 9000;
     background: var(--bg-app, #f6f7fb);
     overflow-y: auto;
-    display: flex; align-items: center; justify-content: center;
+    /* CENTRÉ TANT QUE ÇA TIENT, COLLÉ EN HAUT DÈS QUE ÇA DÉBORDE.
+       Le même piège que la zone de jeu et les fenêtres, à la porte d'entrée —
+       l'écran que TOUS les élèves voient en premier. Un contenu centré qui
+       dépasse déborde des DEUX côtés, et la moitié du haut passe au-dessus de
+       `scrollTop = 0`, là où aucun navigateur ne sait aller.
+
+       MESURÉ sur un téléphone de 360 × 640 : la boîte fait 823 px, le titre
+       « AtoutMath » se retrouve à y = −92, HORS VITRE, et l'élève arrive sur
+       une page dont le premier élément lisible est une case de code. Avec le
+       repli « Je n'ai pas de billet » ouvert, 279 px de perdus ; après un code
+       refusé, 288. Ça se lit comme une page à moitié chargée.
+
+       Le bas, lui, se rattrapait en défilant : c'est bien le centrage qui
+       mange le haut, pas la hauteur. */
+    display: flex; align-items: safe center; justify-content: safe center;
     padding: 24px 18px;
 }
 .portail-boite { width: min(880px, 100%); }
@@ -972,8 +986,22 @@ body.sans-mode-libre #rangement-bascule { display: none !important; }
     padding: 9px 18px;
     text-align: center;
     /* Une consigne longue ne doit pas manger l'écran d'un téléphone : au-delà
-       de trois lignes elle défile dans son propre bandeau. */
-    max-height: 4.4em;
+       d'un certain point elle défile dans son propre bandeau.
+
+       MAIS 4,4em CACHAIT LA MOITIÉ DU MESSAGE, SANS LE DIRE. MESURÉ avec une
+       consigne de professeur réaliste — « On commence par les additions
+       posées… Ceux qui ont fini peuvent aller au bac à sable, mais SEULEMENT
+       après m'avoir montré leur cahier » : à 360 × 640, bandeau de 67 px pour
+       141 px de texte, soit 74 px cachés — 52 % du message, coupé en plein
+       milieu d'un mot, sans points de suspension, sans barre de défilement
+       visible sur un téléphone, et sans bouton pour fermer. La moitié de ce
+       que le professeur écrit à sa classe n'existait pas sur leur écran.
+
+       Le plafond suit donc la hauteur de l'écran : une consigne ordinaire tient
+       en entier, une consigne démesurée défile toujours. Mesuré à 360 × 640
+       après correction : 141 px de texte dans 150 px de bandeau, rien de caché
+       — et le plafond de 35 % garde la promesse de ne pas manger l'écran. */
+    max-height: min(35vh, 10em);
     overflow-y: auto;
     z-index: 60;
 }
@@ -1490,6 +1518,21 @@ body.plein-ecran .pe-sortir { display: block; }
        Un sélecteur qui nomme un ancêtre ne protège que ce qui est dedans. */
     .cfg-step, .cfg-info, .cfg-rail { min-height: 44px; }
     .cfg-info { min-width: 44px; }
+
+    /* ET LES CASES À COCHER, QUE LA LISTE NE NOMMAIT PAS.
+       MESURÉ au doigt dans les fenêtres d'impression et de réglages :
+       « Mode interrogation », « Proposer les réponses », « Bonus »,
+       « Facultatif », « Calculatrice » — treize pixels sur treize, dans des
+       étiquettes de dix-neuf de haut. Une case à cocher est toujours petite,
+       et c'est très bien : ce qu'on vise, c'est son ÉTIQUETTE. On grandit
+       donc l'étiquette, qui porte déjà le geste (`&lt;label&gt;` : cliquer le mot
+       coche la case), et l'on ne touche pas au dessin.
+
+       LA MÊME LEÇON QUE LA CASE DE CHOIX DU DIRECT, le même jour : la zone
+       qu'on vise n'est pas le dessin. */
+    .fq-case, .cfg-case, .path-step-case,
+    label:has(> input[type="checkbox"]) { min-height: 44px; display: flex;
+        align-items: center; }
 
 }
 
@@ -4313,8 +4356,24 @@ body.classe-ouverte #bottom-nav { display: none !important; }
    défaut un fond, une bordure et la police du système : on les retire tous,
    mais on garde le curseur et le retour au survol — sans quoi personne ne
    devine qu'il se clique, ce qui était précisément le problème. */
+/* LE NOM DU LOGICIEL NE SE PEIGNAIT PLUS DU TOUT.
+   `.title` écrit « AtoutMath » en DÉGRADÉ DÉCOUPÉ PAR LE TEXTE : le fond porte
+   les couleurs, `-webkit-text-fill-color: transparent` rend les lettres
+   creuses, et l'on voit le fond à travers. Le jour où le titre est devenu un
+   bouton — Rémy : « quand on clique sur AtoutMath en haut à gauche, on revient
+   sur le site » —, cette règle-ci a remis `background: none` pour effacer
+   l'apparence de bouton. Le dégradé est parti ; le remplissage transparent est
+   resté. Des lettres creuses sans rien derrière ne dessinent rien.
+
+   MESURÉ : `-webkit-text-fill-color: rgba(0,0,0,0)`, `background-image: none`,
+   et dans la boîte du bouton (74 × 44) deux à trois couleurs distinctes — celles
+   du fond. Pas une lettre. À toutes les largeurs, dans les deux thèmes, sur
+   tous les écrans connectés.
+
+   On efface donc la BORDURE et le remplissage du bouton, pas son fond : c'est
+   ce fond-là qui EST le texte. */
 #top-navbar button.title {
-    background: none; border: none; padding: 0; font: inherit; color: inherit;
+    border: none; padding: 0; font: inherit;
     cursor: pointer; text-align: left;
 }
 #top-navbar button.title:hover { opacity: .78; }

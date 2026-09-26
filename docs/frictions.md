@@ -212,3 +212,37 @@ manque.
 - **Ce qui manque** : que la sonde partagée (celle du point « chaque sonde de
   navigateur repart de zéro ») capture par ÉLÉMENT après l'avoir amené sous les
   yeux, jamais par `fullPage`.
+
+## **Un jeton de couleur fait pour le texte ne va pas sous du blanc** — 2026-09-26
+
+- **Ce que je voulais faire** : colorer un bouton et deux cartes.
+- **Ce qui a coûté** : trois contrastes sous le seuil, trouvés par un agent et
+  pas par nous — « Commencer » à **1,99** en thème sombre (lavande pâle sur
+  pastille blanche), les cartes « découverte » et « révision » à **2,54** et
+  **2,15**, la barre de progression à **2,6**. Chaque fois la même erreur :
+  prendre `--primary-texte` ou `--success` pour un fond. Et `css/base.css`
+  décrit DÉJÀ ce piège en toutes lettres — « le remède évident était un
+  piège » — et a posé `--success-fond`, `--danger-fond`, `--warning-fond` pour
+  exactement cela. Ils existaient ; personne ne les a employés.
+- **Combien de fois** : ||||
+- **Ce qui manque** : une vérification de contraste dans le harnais, qui lise
+  la couleur RENDUE et non `backgroundColor` — l'agent a écarté quatre faux
+  positifs sur six parce que ce dépôt emploie beaucoup de dégradés et de
+  `color-mix`, invisibles à une lecture de propriété.
+
+## **Le centrage en flex mange le haut, et on le repaie écran par écran** — 2026-09-26
+
+- **Ce que je voulais faire** : centrer un contenu dans une zone qui défile.
+- **Ce qui a coûté** : quatre écrans distincts avec la même panne, trouvés en un
+  soir — la porte d'entrée (titre à **y = −92** sur un téléphone, jusqu'à 288 px
+  perdus avec le repli ouvert), l'écran de leçon (**494 px** au-dessus du
+  premier pixel lisible), la zone de jeu et les fenêtres. Un contenu centré qui
+  dépasse déborde des DEUX côtés, et la moitié du haut passe au-dessus de
+  `scrollTop = 0` : ce n'est pas du contenu à faire défiler, c'est du contenu
+  PERDU. Deux de ces quatre écrans portaient déjà le commentaire qui explique le
+  piège, et le remède — `safe center` — appliqué à côté.
+- **Combien de fois** : ||||
+- **Ce qui manque** : que `align-items: center` et `justify-content: center` ne
+  s'écrivent plus jamais seuls sur un conteneur qui défile. Une vérification qui
+  lit les feuilles de style et signale la paire `overflow: auto` + `center` sans
+  `safe` coûterait dix lignes et fermerait la famille entière.

@@ -1884,11 +1884,27 @@ export class Runner {
         text.title = `${vus} / ${total} ${quoi}`;
         // En évaluation, on n'affiche pas le score en direct : cela induit une
         // pression inutile et modifie le comportement de l'élève.
+        // LA BARRE PORTE DU BLANC : SA COULEUR EST CELLE QUI LE PORTE.
+        //
+        // MESURÉ par un balayage de tous les écrans d'exercice : le compte
+        // « 3 / 10 », blanc et gras, sur la barre devenue verte — 2,6 de
+        // contraste, là où la règle AA en demande 4,5. Sur les 216 exercices,
+        // dès que le seuil est atteint.
+        //
+        // `--success` est un vert de PASTILLE, fait pour être vu ; `--success-fond`
+        // est le même vert assombri jusqu'à porter du blanc (5,48), et il existe
+        // déjà pour exactement cette raison — voir son commentaire dans
+        // `css/base.css`, y compris le piège qu'il évite : prendre le jeton
+        // TEXTE marcherait en clair et s'effondrerait en sombre, où c'est un
+        // vert pâle. Il ne se redéfinit dans aucun thème, et c'est voulu.
+        //
+        // La même remarque vaut pour le dégradé d'avant : il finit déjà sur
+        // `--accent-texte` (5,93) pour la même raison, réparée en son temps.
         bar.style.background = isEvaluation(this.policy)
             ? 'linear-gradient(90deg, var(--text-muted), var(--primary))'
             : (solved >= seuilRequis(this.step)
-                ? 'var(--success)'
-                : 'linear-gradient(90deg, var(--primary), var(--accent))');
+                ? 'var(--success-fond)'
+                : 'linear-gradient(90deg, var(--primary), var(--accent-texte))');
     }
 
     // --- Fin ----------------------------------------------------------------

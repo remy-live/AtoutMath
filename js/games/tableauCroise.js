@@ -152,6 +152,16 @@ class TableauCroise extends BaseGame {
                     .tc-calc { width: min(260px, 100%); grid-template-columns: repeat(4, 1fr); }
                     .tc-table { font-size: clamp(11px, 3.4cqw, 15px); }
                     .tc-table th, .tc-table td { padding: 3px 4px; min-width: 2.9em; }
+                    /* LE TABLEAU DÉFILE DANS SON CADRE PLUTÔT QUE DE SORTIR.
+                       MESURÉ au doigt, au pire tirage sur huit — des en-têtes
+                       longs comme « Pointure 36 » : 361 px de tableau dans un
+                       cadre de 320 à 360 px de fenêtre, 81 px dehors à 320. Et
+                       la colonne coupée est celle des TOTAUX — celle que
+                       l'exercice demande de compléter, et sur laquelle repose
+                       sa consigne (« la ligne ou la colonne où il ne manque
+                       QU'UNE SEULE information »). Elle était invisible à
+                       l'arrivée. */
+                    [data-table] { max-width: 100%; overflow-x: auto; }
                 }
             </style>
             <div class="tc-wrap">

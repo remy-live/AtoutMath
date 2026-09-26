@@ -521,7 +521,22 @@ export class ProgrammeConstruction extends BaseGame {
                     background: transparent; color: var(--primary); font: inherit; font-weight: 600;
                     padding: 5px 9px; font-size: clamp(11px, 2.1cqw, 13px);
                 }
-                .pc-barre { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+                /* LA BARRE DE VALIDATION RESTE COLLÉE AU BAS DU CADRE.
+                   MESURÉ au doigt : « Vérifier ma figure » tombait 53 px sous
+                   la fenêtre d'un iPhone 12 à 15 (390 x 844), 138 px sur un
+                   iPhone SE (375 x 667), 205 px sur le plus petit. Le cadre
+                   défile — l'élève n'est donc pas bloqué — mais RIEN ne le lui
+                   dit, et c'est un défilement DANS un cadre, pas la page : il
+                   ouvre l'exercice, voit deux dessins et une phrase, et n'a
+                   aucune raison de deviner qu'un bouton l'attend plus bas.
+                   Collée, elle est toujours là. */
+                .pc-barre {
+                    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+                    position: sticky; bottom: 0; z-index: 2; flex: 0 0 auto;
+                    margin: 0 -10px -10px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+                    background: var(--bg-plateau, #fff);
+                    border-top: 1px solid var(--border-color, #d7dae3);
+                }
                 .pc-btn {
                     border: 0; border-radius: 10px; cursor: pointer; font: inherit; font-weight: 700;
                     padding: 7px 14px; background: var(--primary); color: #fff;
