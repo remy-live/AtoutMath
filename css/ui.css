@@ -2050,6 +2050,37 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 
 /* La feuille : format A4 paysage exact, ombre de papier posé. */
 .fp-apercu-cadre { display: flex; justify-content: center; }
+/* UN `display` D'AUTEUR L'EMPORTE SUR LE MASQUAGE DU NAVIGATEUR.
+   Le navigateur cache les enfants d'un `<details>` fermé par sa propre feuille
+   de style ; la ligne ci-dessus, écrite bien avant le repli, gagnait contre
+   elle. MESURÉ : `open: false` et pourtant 371 px d'aperçu peints. On rend donc
+   au repli ce qui lui revient, explicitement. */
+.fp-apercu-repli:not([open]) > .fp-apercu-cadre { display: none; }
+/* SUR TÉLÉPHONE, L'APERÇU SE REPLIE — parce qu'il ne montre plus rien.
+   MESURÉ à 360 et 414 px : une feuille A4 réduite à la largeur de la colonne
+   donne 154 textes SOUS 12 PX — le titre de la feuille à 5,5 px, la consigne et
+   les numéros de questions à 3,8 px, les emplacements « + Prénom » à 3,5 px.
+   Ce n'est pas un aperçu, c'est une tache grise, et elle occupe toute la
+   hauteur de l'écran entre les réglages et le bouton.
+   On ne le SUPPRIME pas : le professeur qui veut vérifier sa mise en page peut
+   le déplier d'un doigt, et la ligne qui l'annonce dit pourquoi il est replié.
+   Le PDF, lui, sort à la bonne taille — c'est ce qui compte. */
+@media (max-width: 560px) {
+    .fp-apercu-repli { display: block; }
+    .fp-apercu-repli > summary {
+        cursor: pointer; list-style: none; padding: 10px 2px; min-height: 44px;
+        display: flex; align-items: center; gap: 8px;
+        font-size: .86rem; font-weight: 700; color: var(--text-muted);
+    }
+    .fp-apercu-repli > summary::-webkit-details-marker { display: none; }
+    .fp-apercu-repli > summary::before { content: '\25b8'; transition: transform .15s ease; }
+    .fp-apercu-repli[open] > summary::before { transform: rotate(90deg); }
+}
+/* Au-delà du téléphone, le repli n'en est pas un : l'aperçu est toujours là et
+   sa ligne d'annonce disparaît. */
+@media (min-width: 561px) {
+    .fp-apercu-repli > summary { display: none; }
+}
 .fp-apercu {
     position: relative; background: #fff; overflow: hidden;
     border: 1px solid var(--border); border-radius: 4px;

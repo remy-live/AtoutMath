@@ -1949,8 +1949,8 @@ class Organigramme extends BaseGame {
                             this.largeurFenetre(), etroit ? [] : boitesDuPlan(),
                             this.reglageFenetre()),
             v);
-        // Le fondu ne s'allume que là où l'on coupe vraiment.
-        this.planEl.style.setProperty('--fondu', (codage || etroit) ? '16px' : '0px');
+        // (Le fondu se pose dans `cadrer`, qui est le seul à connaître les deux
+        //  boîtes — voir son commentaire.)
 
         // LES TRAITS. Chaque condition en porte deux : ce qui y entre, ce qui en
         // sort. Ils ne se dessinent que si la condition est montrée — sinon on
@@ -3009,6 +3009,22 @@ class Organigramme extends BaseGame {
         // décaler d'un centième du MONDE, c'est bien avancer d'une unité de plan.
         m.style.transform = `translate(${(-(fen.x0 - monde.x0) / monde.w * 100).toFixed(3)}%,`
             + ` ${(-(fen.y0 - monde.y0) / monde.h * 100).toFixed(3)}%)`;
+
+        // LE FONDU S'ALLUME OÙ L'ON COUPE — et c'est ICI qu'on le sait.
+        //
+        // Il se posait au point d'appel, sur `codage || etroit` : une devinette
+        // de ce qui est coupé, et non la chose elle-même. MESURÉ à 1440 x 900,
+        // en mode étape, sur un écran large : le monde dépassait le plan de
+        // 61 px à GAUCHE et à DROITE, avec un fondu à zéro — et l'on voyait
+        // deux amorces de flèches tranchées net aux deux bords, qui ne mènent
+        // nulle part. C'est exactement ce que la note du fondu décrit : « une
+        // carte tranchée au couteau se lit c'est cassé ; la même fondue au
+        // blanc se lit ça continue par là ».
+        //
+        // `cadrer` est le seul endroit qui connaisse les deux boîtes. Un pixel
+        // de marge, parce qu'un arrondi de pourcentage n'est pas une coupure.
+        const coupe = (monde.w > fen.w + 1) || (monde.h > fen.h + 1);
+        this.planEl.style.setProperty('--fondu', coupe ? '16px' : '0px');
     }
 
     /** Combien de temps pour aller de la fenêtre précédente à celle-ci. */

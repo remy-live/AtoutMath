@@ -279,3 +279,18 @@ manque.
   existera. Et qu'une sonde qui compte des cibles ignore les cases de grille et
   de tableau : neuf colonnes dans 360 px ne feront jamais 44 px chacune, et les
   signaler rend cinquante-huit fausses pistes par exercice.
+
+## **Un `pkill` par motif tue aussi ce qu'on vient de lancer** — 2026-09-27
+
+- **Ce que je voulais faire** : faire le ménage des serveurs d'essai avant de
+  relancer un balayage.
+- **Ce qui a coûté** : `pkill -f "siteEssai.php 94"` a emporté le serveur du
+  balayage que je lançais dans la même commande — ses ports sont tirés au sort
+  dans 9400-9579. Le balayage est mort à la première page (« Target page,
+  context or browser has been closed »), et il a fallu vingt minutes pour le
+  recommencer.
+- **Combien de fois** : |
+- **Ce qui manque** : que `tools/siteEssai.php` écrive son identifiant de
+  processus quelque part, et qu'une commande `node tools/menage.mjs` tue les
+  serveurs QU'ON A LAISSÉS, nommément — jamais par motif de ligne de commande.
+  En attendant : on ne fait pas le ménage dans la commande qui lance.

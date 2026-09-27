@@ -239,3 +239,29 @@ export function quandLEcranEstLibre(faire, restant = 34) {
     if (restant <= 0) return;
     setTimeout(() => quandLEcranEstLibre(faire, restant - 1), 300);
 }
+
+/**
+ * REPLIER L'APERÇU DE FEUILLE QUAND L'ÉCRAN EST TROP ÉTROIT POUR LE LIRE.
+ *
+ * MESURÉ à 360 et 414 px : une feuille A4 réduite à la largeur de la colonne
+ * donne 154 textes SOUS 12 PX — le titre à 5,5 px, les numéros de questions à
+ * 3,8 px, les emplacements « + Prénom » à 3,5 px. Ce n'est plus un aperçu,
+ * c'est une tache grise, et elle occupe tout l'écran entre les réglages et le
+ * bouton de téléchargement.
+ *
+ * ON REPLIE, ON NE SUPPRIME PAS : le professeur qui veut vérifier sa mise en
+ * page le déplie d'un doigt. Et le PDF, lui, sort toujours à la bonne taille —
+ * c'est ce qui compte.
+ *
+ * LE REPLI SE FAIT ICI ET PAS DANS LE GABARIT, en RETIRANT `open` plutôt qu'en
+ * l'ajoutant : si ce code ne tournait pas, l'aperçu resterait ouvert partout —
+ * c'est-à-dire le comportement d'avant. Une correction qui échoue doit
+ * retomber sur l'ancien état, jamais sur un écran vide.
+ *
+ * Les trois fenêtres d'impression partagent cette mise en page ; elles
+ * partagent donc cette fonction, pour qu'il n'y en ait pas trois versions.
+ */
+export function replierApercuSiEtroit(racine) {
+    const d = (racine || document).querySelector('.fp-apercu-repli');
+    if (d && window.innerWidth <= 560) d.open = false;
+}

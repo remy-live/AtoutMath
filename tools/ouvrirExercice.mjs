@@ -27,11 +27,27 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { setTimeout as attendre } from 'node:timers/promises';
 
-const EXO = process.argv[2];
-if (!EXO) {
-    console.log('usage : node tools/ouvrirExercice.mjs <id> [LxH,LxH…] [--image]');
+// PLUSIEURS EXERCICES SUR UN SEUL SERVEUR, ET UN SEUL NAVIGATEUR.
+//
+// La première version en ouvrait UN, et montait son site d'essai pour lui seul :
+// balayer les deux cent seize du catalogue aurait demandé deux cent seize
+// démarrages de PHP et de Chromium, soit des heures. On monte donc tout une
+// fois, et l'on promène la même page.
+//
+//     node tools/ouvrirExercice.mjs --tous 360x640
+//     node tools/ouvrirExercice.mjs calc-sudoku,geo-patchwork 768x900
+//     node tools/ouvrirExercice.mjs --tous 360x640 --aere
+//
+// `--aere` allume « Texte plus aéré », le réglage qui allonge chaque écran :
+// c'est celui qui peut faire basculer les écrans déjà justes.
+const ARG = process.argv[2];
+if (!ARG) {
+    console.log('usage : node tools/ouvrirExercice.mjs <id[,id…]|--tous> [LxH,LxH…] '
+        + '[--image] [--aere] [--theme=dark]');
     process.exit(2);
 }
+const AERE = process.argv.includes('--aere');
+const THEME = (process.argv.find(a => a.startsWith('--theme=')) || '').split('=')[1] || '';
 const TAILLES = (process.argv[3] && !process.argv[3].startsWith('--')
     ? process.argv[3] : '360x640,768x900,1440x900')
     .split(',').map(t => { const [l, h] = t.split('x').map(Number); return { l, h }; });
@@ -48,6 +64,8 @@ await attendre(400);
 
 const nav = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 let defauts = 0;
+let vus = 0;
+const fautifs = new Set();
 
 for (const { l, h } of TAILLES) {
     // LE DOIGT SOUS 768, LA SOURIS AU-DESSUS. Voir le préambule : c'est la
@@ -65,122 +83,183 @@ for (const { l, h } of TAILLES) {
     await p.goto(`http://127.0.0.1:${PORT}/index.html`);
     await p.waitForFunction(() => window.__atoutmathPret === true, { timeout: 20000 });
 
-    const monte = await p.evaluate(async (exoId) => {
-        const { getExerciseById } = await import('./js/data/catalog.js');
-        const exo = getExerciseById(exoId);
-        if (!exo) return 'inconnu au catalogue';
-        const { makeStep, makePath } = await import('./js/core/path.js');
-        const { politiquePerso } = await import('./js/core/mesExercices.js');
-        const { Runner } = await import('./js/core/runner.js');
-        const pas = makeStep(exo.id, {}, { stepId: 's1', nbItems: 8, threshold: 0 });
-        new Runner({ path: makePath('Sonde', [pas], politiquePerso()), deviceMode: 'none' }).start();
-        return null;
-    }, EXO);
-    if (monte) { console.log(`  ${EXO} : ${monte}`); process.exit(2); }
-    await attendre(3200);
+    // LA LISTE DES EXERCICES SE LIT DANS LA PAGE, une fois par taille : le
+    // catalogue est la seule source qui les connaisse tous.
+    const LISTE = ARG === '--tous'
+        ? await p.evaluate(async () => (await import('./js/data/catalog.js')).exercices.map(e => e.id))
+        : ARG.split(',').map(x => x.trim()).filter(Boolean);
 
-    // LES JEUX À CANEVAS S'OUVRENT SUR UN ÉCRAN « JOUER ». Sans ce clic, on
-    // mesure une page d'accueil en croyant mesurer un jeu.
-    await p.evaluate(() => {
-        const b = [...document.querySelectorAll('#game-layer button')]
-            .filter(x => x.getBoundingClientRect().width > 0)
-            .find(x => /^(jouer|commencer|c'est parti|démarrer|go)/i.test((x.textContent || '').trim()));
-        if (b) b.click();
-    });
-    await attendre(2000);
+    // LE MODE « TEXTE PLUS AÉRÉ » ALLONGE CHAQUE ÉCRAN : c'est le réglage qui
+    // peut faire basculer ceux qui sont tout juste. Et le thème se pose ici,
+    // pas par un clic : on mesure le rendu, pas le chemin du réglage.
+    if (AERE) await p.evaluate(() => document.documentElement.setAttribute('data-aere', '1'));
+    if (THEME) await p.evaluate((t) => document.documentElement.setAttribute('data-theme', t), THEME);
 
-    const m = await p.evaluate(() => {
-        const vu = (e) => {
-            const r = e.getBoundingClientRect();
-            const s = getComputedStyle(e);
-            return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
-        };
-        const nom = (e) => (e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 26)
-            || e.getAttribute('aria-label') || e.className || e.tagName;
-        const H = document.documentElement.clientHeight;
-        const W = document.documentElement.clientWidth;
-        const couche = document.getElementById('game-layer');
-        const plateau = document.getElementById('game-board') || document.querySelector('.canvas-area');
+    for (const EXO of LISTE) {
+        // ON REPART D'UNE PAGE PROPRE ENTRE DEUX EXERCICES : un meneur laissé
+        // ouvert garde ses minuteurs, et le suivant se monte par-dessus.
+        await p.evaluate(() => {
+            const { state } = window.__atoutmathEtat || {};
+            void state;
+        });
+        await p.reload();
+        await p.waitForFunction(() => window.__atoutmathPret === true, { timeout: 20000 });
+        if (AERE) await p.evaluate(() => document.documentElement.setAttribute('data-aere', '1'));
+        if (THEME) await p.evaluate((t) => document.documentElement.setAttribute('data-theme', t), THEME);
+        soucis.length = 0;
+        const monte = await p.evaluate(async (exoId) => {
+            const { getExerciseById } = await import('./js/data/catalog.js');
+            const exo = getExerciseById(exoId);
+            if (!exo) return 'inconnu au catalogue';
+            const { makeStep, makePath } = await import('./js/core/path.js');
+            const { politiquePerso } = await import('./js/core/mesExercices.js');
+            const { Runner } = await import('./js/core/runner.js');
+            const pas = makeStep(exo.id, {}, { stepId: 's1', nbItems: 8, threshold: 0 });
+            new Runner({ path: makePath('Sonde', [pas], politiquePerso()), deviceMode: 'none' }).start();
+            return null;
+        }, EXO);
+        // UN EXERCICE QU'ON NE SAIT PAS OUVRIR NE DOIT PAS TUER LE BALAYAGE :
+        // on le dit, et l'on passe au suivant. Deux cent seize exercices, et
+        // l'on s'arrête au premier venu, c'est deux cent quinze mesures perdues.
+        if (monte) { console.log(`  ${EXO} · ${l}×${h} : ${monte}`); defauts++; fautifs.add(EXO); continue; }
+        await attendre(3200);
 
-        const cliquables = [...(couche ? couche.querySelectorAll('button, [role="button"], a, input, select') : [])]
-            .filter(vu);
+        // LES JEUX À CANEVAS S'OUVRENT SUR UN ÉCRAN « JOUER ». Sans ce clic, on
+        // mesure une page d'accueil en croyant mesurer un jeu.
+        await p.evaluate(() => {
+            const b = [...document.querySelectorAll('#game-layer button')]
+                .filter(x => x.getBoundingClientRect().width > 0)
+                .find(x => /^(jouer|commencer|c'est parti|démarrer|go)/i.test((x.textContent || '').trim()));
+            if (b) b.click();
+        });
+        await attendre(2000);
 
-        return {
-            // LE DÉFAUT LE PLUS GRAVE : un bouton sous la fenêtre. L'élève ne
-            // peut pas répondre, et rien ne le lui dit.
-            sousLaFenetre: cliquables
-                .map(e => ({ q: nom(e), bas: Math.round(e.getBoundingClientRect().bottom) }))
-                .filter(x => x.bas > H + 1),
-            aDefiler: plateau ? Math.max(0, plateau.scrollHeight - plateau.clientHeight) : 0,
-            horsPlateau: (() => {
-                if (!plateau) return null;
-                const pr = plateau.getBoundingClientRect();
-                return [...plateau.children].filter(vu).map(e => {
-                    const r = e.getBoundingClientRect();
-                    return { q: nom(e), depasse: Math.round(Math.max(0, r.right - pr.right, pr.left - r.left)) };
-                }).filter(x => x.depasse > 1);
-            })(),
-            // LES CASES D'UNE GRILLE NE SONT PAS DES BOUTONS QU'ON DESSINE.
-            //
-            // Neuf colonnes de sudoku dans 360 px font 40 px chacune, et aucun
-            // réglage n'y changera rien : c'est la grille qui décide, pas la
-            // case. Les signaler, c'est rendre cinquante-huit fausses pistes
-            // par exercice — la faute même que ce dépôt a payée deux fois
-            // (voir `tools/apercusVides.mjs` et `tools/nouvelExercice.mjs`).
-            //
-            // On ne garde donc que les cibles HORS GRILLE : celles dont la
-            // taille est un choix, et qu'on peut donc corriger.
-            cibles: cliquables.filter(e => {
-                // ON REMONTE DE TROIS CRANS : la case est souvent enveloppée,
-                // et regarder le seul parent laissait passer toutes les cases
-                // de sudoku. Mesuré : 58 fausses pistes par exercice.
-                // UN TABLEAU EST UNE GRILLE, LUI AUSSI. Les cellules d'un
-                // tableau à double entrée se dimensionnent par colonnes ; cinq
-                // colonnes dans 360 px ne feront jamais 44 px chacune.
-                if (e.closest('table')) return false;
-                let p = e.parentElement;
-                for (let n = 0; n < 3 && p; n++, p = p.parentElement) {
-                    const g = getComputedStyle(p).display;
-                    if ((g === 'grid' || g === 'inline-grid') && p.children.length > 8) return false;
-                }
-                return true;
-            }).map(e => {
+        const m = await p.evaluate(() => {
+            const vu = (e) => {
                 const r = e.getBoundingClientRect();
-                return { q: nom(e), w: Math.round(r.width), h: Math.round(r.height) };
-            }).filter(x => x.w < 44 || x.h < 44),
-            pageDeborde: Math.round(document.documentElement.scrollWidth - W),
-            aLire: ((couche && couche.innerText) || '').replace(/\s+/g, ' ').trim().length
-        };
-    });
+                const s = getComputedStyle(e);
+                return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
+            };
+            const nom = (e) => (e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 26)
+                || e.getAttribute('aria-label') || e.className || e.tagName;
+            const H = document.documentElement.clientHeight;
+            const W = document.documentElement.clientWidth;
+            const couche = document.getElementById('game-layer');
+            const plateau = document.getElementById('game-board') || document.querySelector('.canvas-area');
 
-    const mot = auDoigt ? 'doigt' : 'souris';
-    console.log(`\n  ${EXO} · ${l}×${h} (${mot})`);
-    console.log(`    à lire : ${m.aLire} signes · page déborde de ${m.pageDeborde} px`
-        + ` · plateau à défiler : ${m.aDefiler} px`);
-    if (m.sousLaFenetre.length) {
-        defauts++;
-        console.log('    SOUS LA FENÊTRE :');
-        m.sousLaFenetre.forEach(x => console.log(`      · « ${x.q} » à ${x.bas} (fenêtre ${h})`));
-    }
-    if (m.horsPlateau && m.horsPlateau.length) {
-        defauts++;
-        m.horsPlateau.forEach(x => console.log(`    HORS DU PLATEAU : « ${x.q} » de ${x.depasse} px`));
-    }
-    if (auDoigt && m.cibles.length) {
-        defauts++;
-        m.cibles.slice(0, 6).forEach(x => console.log(`    CIBLE HORS GRILLE ${x.w}×${x.h} : « ${x.q} »`));
-        if (m.cibles.length > 6) console.log(`    … et ${m.cibles.length - 6} autre(s)`);
-    }
-    if (soucis.length) { defauts++; soucis.slice(0, 3).forEach(x => console.log('    ERREUR : ' + x)); }
-    if (IMAGE) {
-        const f = `tools/tmp/exo-${EXO}-${l}x${h}.png`;
-        await p.screenshot({ path: f });
-        console.log('    ' + f);
+            const cliquables = [...(couche ? couche.querySelectorAll('button, [role="button"], a, input, select') : [])]
+                .filter(vu);
+
+            return {
+                // LE DÉFAUT LE PLUS GRAVE : un bouton sous la fenêtre. L'élève ne
+                // peut pas répondre, et rien ne le lui dit.
+                sousLaFenetre: cliquables
+                    .map(e => ({ q: nom(e), bas: Math.round(e.getBoundingClientRect().bottom) }))
+                    .filter(x => x.bas > H + 1),
+                aDefiler: plateau ? Math.max(0, plateau.scrollHeight - plateau.clientHeight) : 0,
+                horsPlateau: (() => {
+                    if (!plateau) return null;
+                    const pr = plateau.getBoundingClientRect();
+                    return [...plateau.children].filter(vu).map(e => {
+                        const r = e.getBoundingClientRect();
+                        return { q: nom(e), depasse: Math.round(Math.max(0, r.right - pr.right, pr.left - r.left)) };
+                    }).filter(x => x.depasse > 1);
+                })(),
+                // LES CASES D'UNE GRILLE NE SONT PAS DES BOUTONS QU'ON DESSINE.
+                //
+                // Neuf colonnes de sudoku dans 360 px font 40 px chacune, et aucun
+                // réglage n'y changera rien : c'est la grille qui décide, pas la
+                // case. Les signaler, c'est rendre cinquante-huit fausses pistes
+                // par exercice — la faute même que ce dépôt a payée deux fois
+                // (voir `tools/apercusVides.mjs` et `tools/nouvelExercice.mjs`).
+                //
+                // On ne garde donc que les cibles HORS GRILLE : celles dont la
+                // taille est un choix, et qu'on peut donc corriger.
+                cibles: cliquables.filter(e => {
+                    // ON REMONTE DE TROIS CRANS : la case est souvent enveloppée,
+                    // et regarder le seul parent laissait passer toutes les cases
+                    // de sudoku. Mesuré : 58 fausses pistes par exercice.
+                    // UN TABLEAU EST UNE GRILLE, LUI AUSSI. Les cellules d'un
+                    // tableau à double entrée se dimensionnent par colonnes ; cinq
+                    // colonnes dans 360 px ne feront jamais 44 px chacune.
+                    if (e.closest('table')) return false;
+                // ET L'OUTIL SUIT LA MÊME LISTE D'EXCEPTIONS QUE LA RÈGLE.
+                //
+                // `css/modules.css` exclut volontairement du plancher de 44 px
+                // les icônes carrées, les cases de grille et LES TOUCHES DE
+                // PAVÉ NUMÉRIQUE, avec sa mesure à l'appui : « les seuls
+                // boutons plus hauts que larges après coup (38 x 44) sont des
+                // touches de pavé numérique et deux loupes : la forme d'une
+                // touche, pas un ovale ». Signaler ces éléments-là, c'est
+                // reprocher au logiciel une décision qu'il a prise exprès — et
+                // noyer les vrais défauts sous le bruit, la faute que ce dépôt
+                // a payée deux fois. Si l'exception doit être revue, cela se
+                // discute dans la feuille de style, pas dans un rapport.
+                if (e.matches('.game-icon-btn, .btn-carre, [class*="case"], [class*="cell"],'
+                    + ' [class*="cellule"], [class*="touche"]')) return false;
+                    let p = e.parentElement;
+                    for (let n = 0; n < 3 && p; n++, p = p.parentElement) {
+                        const g = getComputedStyle(p).display;
+                        if ((g === 'grid' || g === 'inline-grid') && p.children.length > 8) return false;
+                    }
+                    return true;
+                }).map(e => {
+                    const r = e.getBoundingClientRect();
+                    return { q: nom(e), w: Math.round(r.width), h: Math.round(r.height) };
+                }).filter(x => x.w < 44 || x.h < 44),
+                pageDeborde: Math.round(document.documentElement.scrollWidth - W),
+                aLire: ((couche && couche.innerText) || '').replace(/\s+/g, ' ').trim().length
+            };
+        });
+
+        // ON N'IMPRIME QUE CE QUI CLOCHE. Sur deux cent seize exercices, une
+        // ligne par exercice sain noierait les défauts dans deux cents lignes
+        // de « rien à signaler » — et un rapport qu'on ne lit pas ne sert pas.
+        // L'exercice qui n'a RIEN À LIRE est signalé, lui : c'est un écran vide.
+        const mot = auDoigt ? 'doigt' : 'souris';
+        const rien = !m.sousLaFenetre.length && !(m.horsPlateau && m.horsPlateau.length)
+            && !(auDoigt && m.cibles.length) && !soucis.length
+            && m.pageDeborde <= 0 && m.aLire >= 25;
+        vus++;
+        if (rien) continue;
+        console.log(`\n  ${EXO} · ${l}×${h} (${mot})`);
+        console.log(`    à lire : ${m.aLire} signes · page déborde de ${m.pageDeborde} px`
+            + ` · plateau à défiler : ${m.aDefiler} px`);
+        if (m.aLire < 25) {
+            defauts++; fautifs.add(EXO);
+            console.log('    ÉCRAN VIDE : rien à lire dans la couche de jeu.');
+        }
+        if (m.pageDeborde > 0) {
+            defauts++; fautifs.add(EXO);
+            console.log(`    LA PAGE DÉBORDE de ${m.pageDeborde} px`);
+        }
+        if (m.sousLaFenetre.length) {
+            defauts++; fautifs.add(EXO);
+            console.log('    SOUS LA FENÊTRE :');
+            m.sousLaFenetre.forEach(x => console.log(`      · « ${x.q} » à ${x.bas} (fenêtre ${h})`));
+        }
+        if (m.horsPlateau && m.horsPlateau.length) {
+            defauts++;
+            m.horsPlateau.forEach(x => console.log(`    HORS DU PLATEAU : « ${x.q} » de ${x.depasse} px`));
+        }
+        if (auDoigt && m.cibles.length) {
+            defauts++;
+            m.cibles.slice(0, 6).forEach(x => console.log(`    CIBLE HORS GRILLE ${x.w}×${x.h} : « ${x.q} »`));
+            if (m.cibles.length > 6) console.log(`    … et ${m.cibles.length - 6} autre(s)`);
+        }
+        if (soucis.length) { defauts++; fautifs.add(EXO); soucis.slice(0, 3).forEach(x => console.log('    ERREUR : ' + x)); }
+        if (IMAGE) {
+            const f = `tools/tmp/exo-${EXO}-${l}x${h}.png`;
+            await p.screenshot({ path: f });
+            console.log('    ' + f);
+        }
     }
     await ctx.close();
 }
 
-console.log(`\n${defauts ? defauts + ' défaut(s)' : 'rien à signaler'}`);
+console.log(`\n${vus} écran(s) mesuré(s) · `
+    + `${defauts ? defauts + ' défaut(s)' : 'rien à signaler'}`
+    + (fautifs.size ? `\n${fautifs.size} exercice(s) en cause : ${[...fautifs].join(' ')}` : ''));
 await nav.close();
 srv.kill();
 process.exit(defauts ? 1 : 0);

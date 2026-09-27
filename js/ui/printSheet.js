@@ -16,6 +16,7 @@
 // la page, l'en-tête et la page des solutions sont communs.
 
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
+import { replierApercuSiEtroit } from './modal.js';
 import { ficheSvg, refaireSvg, telechargerSvg } from './icones.js';
 import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
@@ -349,9 +350,12 @@ function assurerModale() {
                         <select id="fp-couleur" class="cfg-input"></select></label>
                 </div>
             </details>
+            <details class="fp-apercu-repli" open>
+                <summary>L’aperçu de la feuille</summary>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu" id="fp-apercu"></div>
             </div>
+            </details>
             <div class="fp-note" id="fp-note">Page 1 : les grilles, avec un en-tête Nom / Date.
                 Page 2 : les solutions — à garder pour soi ou à donner après.</div>
             <div class="modal-actions-center">
@@ -360,6 +364,7 @@ function assurerModale() {
             </div>
         </div>`;
     document.body.appendChild(modal);
+    replierApercuSiEtroit(modal);
     // Les deux commandes de fenêtre — ancrer/détacher, replier les réglages —
     // sont posées dans le titre une fois pour toutes.
     fenetreFiche = equiperFenetre(modal, CLE_FENETRE, { peutDetacher: fenetresDetachables });
