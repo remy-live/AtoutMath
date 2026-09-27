@@ -443,3 +443,22 @@ manque.
   calibre sur une intention du dépôt, pas sur une règle générale**. Ici
   l'intention était écrite dans `css/base.css`, à dix lignes des jetons
   concernés. La lire d'abord aurait fait gagner la première passe entière.
+
+## **Une famille de couleur oubliée dans la feuille de style, et rien ne le dit** — 2026-09-27
+
+- **Ce que je voulais faire** : colorer les tuiles de la boîte à jeux par famille
+  d'exercice.
+- **Ce qui a coûté** : `familleDe` rendait NEUF familles, la feuille de style en
+  déclarait HUIT. Les trente-six exercices de logique — le sixième du catalogue —
+  retombaient sur la couleur par défaut, celle du calcul. Aucune erreur, aucune
+  ligne rouge : une grille simplement plus terne qu'elle ne devrait, et
+  impossible à diagnostiquer à l'œil puisque l'indigo est une couleur légitime.
+  Trouvé par hasard, en comptant la répartition des 216 exercices pour vérifier
+  autre chose.
+- **Combien de fois** : |
+- **Ce qui manque** : une habitude — **une énumération en JavaScript et son
+  pendant en CSS doivent se vérifier l'un l'autre par un test**. Ce dépôt en a
+  plusieurs paires (les thèmes, les jetons de tag, les familles). Le test écrit
+  ici (`tests/boite.test.mjs`) ne coûte rien : il lit `css/modules.css` et exige
+  que chaque famille déclarée y ait sa règle, et que chaque famille rendue soit
+  déclarée. Il aurait attrapé celle-ci en une seconde.

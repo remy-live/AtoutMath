@@ -11268,17 +11268,18 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
    chaque module deviner qu'il doit se taire.
 
    ET IL N'A AUCUN DES SIGNES DU DEVOIR : pas d'étape numérotée, pas de jauge,
-   pas de seuil, pas de bilan. Une carte par jeu, deux rangées de boutons, et
-   « Jouer ». Voir `js/ui/boiteUI.js` et `js/core/boite.js`. */
-/* ON NE CACHE PAS `#app-container`, ET C'EST UN PIÈGE MESURÉ : la couche de
-   jeu vit DEDANS (`index.html`, ligne 1343). La cacher cacherait le jeu
-   lui-même, et la boîte n'aurait plus qu'un bouton « Jouer » qui n'ouvre rien.
-   On cache donc ses enfants un par un, SAUF la couche de jeu. */
+   pas de seuil, pas de bilan. Voir `js/ui/boiteUI.js` et `js/core/boite.js`.
+
+   LA PREMIÈRE VERSION ÉTAIT UN MUR DE BOUTONS, et Rémy l'a dit en une phrase :
+   « c'est pas très beau, ca fait veilliot, lourd […] Personne n'aime voir
+   quelque chose comme cela. » Chaque carte portait ses réglages à plat, soit
+   jusqu'à dix boutons gris ; sur sa boîte de 51 exercices, cela faisait CINQ
+   CENTS boutons sur un écran dont le seul travail est de donner envie d'en
+   choisir un. Les réglages sont passés derrière une ROUE, et la carte est
+   devenue une TUILE : une couverture colorée, un nom, une ligne de réglages. */
 body.en-boite > #app-container > *:not(#game-layer) { display: none !important; }
 body.en-boite .portail,
 body.en-boite #portail { display: none !important; }
-/* Et le fond de l'application ne doit pas rester en travers : le conteneur
-   garde sa place, mais plus sa peinture. */
 body.en-boite > #app-container { background: none; }
 
 .bj-ecran {
@@ -11290,70 +11291,213 @@ body.en-boite > #app-container { background: none; }
        au-dessus de `scrollTop = 0`, donc hors d'atteinte. Le piège a déjà
        coûté deux écrans dans ce dépôt. */
     display: flex; justify-content: safe center;
-    padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    padding: 20px 16px calc(24px + env(safe-area-inset-bottom, 0px));
 }
 .bj-ecran[hidden] { display: none; }
 
-.bj-boite { width: 100%; max-width: 760px; margin: 0 auto; }
+.bj-boite { width: 100%; max-width: 1100px; margin: 0 auto; }
 
 .bj-titre {
     margin: 4px 0 2px; text-align: center;
-    font-size: clamp(1.5rem, 5vw, 2.1rem); line-height: 1.15;
-    color: var(--primary-texte); text-wrap: balance;
+    font-size: clamp(1.55rem, 5vw, 2.3rem); line-height: 1.12;
+    color: var(--primary-texte); text-wrap: balance; letter-spacing: -.01em;
 }
 .bj-sous {
-    margin: 0 auto 18px; max-width: 34em; text-align: center;
-    font-size: .92rem; line-height: 1.45; color: var(--text-muted);
+    margin: 0 auto 22px; max-width: 34em; text-align: center;
+    font-size: .9rem; line-height: 1.45; color: var(--text-muted);
 }
 
-/* UNE COLONNE SUR TÉLÉPHONE, DEUX DÈS QU'IL Y A LA PLACE. `auto-fit` plutôt
-   qu'un nombre de colonnes fixe : une boîte peut contenir un jeu comme douze,
-   et une carte seule au milieu d'une grille de trois colonnes a l'air d'un
-   oubli. */
-.bj-cartes {
+/* LA GRILLE SE REMPLIT, ELLE NE S'ÉTIRE PAS. `auto-fill` plutôt qu'`auto-fit` :
+   avec `auto-fit`, une boîte d'un seul jeu donnerait une tuile large comme
+   l'écran — une affiche, pas une tuile. */
+.bj-grille {
     display: grid; gap: 14px;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 208px), 1fr));
 }
 
-.bj-carte {
+.bj-jeu {
+    position: relative;
+    /* HAUTEUR ÉGALE DANS UNE RANGÉE. Sans ces trois lignes, un titre sur deux
+       lignes fait une tuile plus haute que ses voisines, et la rangée devient
+       un peigne. La tuile s'étire, et c'est son CORPS qui prend le surplus. */
+    display: flex;
+    border-radius: 18px; overflow: hidden;
     background: var(--bg-panel); border: 1px solid var(--border);
-    border-radius: 16px; padding: 14px 14px 12px;
-    display: flex; flex-direction: column; gap: 10px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .06);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
-.bj-carte-titre {
-    margin: 0; font-size: 1.12rem; line-height: 1.25;
+.bj-jeu:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(15, 23, 42, .13); }
+.bj-jeu:focus-within { border-color: var(--primary); }
+@media (prefers-reduced-motion: reduce) {
+    .bj-jeu, .bj-jeu:hover { transition: none; transform: none; }
+}
+
+/* LA TUILE ENTIÈRE EST LE BOUTON. On ne vise plus un rectangle au fond d'une
+   carte : tout ce qui n'est pas la roue lance la partie. */
+.bj-jeu-ouvrir {
+    display: flex; flex-direction: column; width: 100%; padding: 0; margin: 0;
+    border: none; background: none; text-align: left;
+    font: inherit; color: inherit; cursor: pointer;
+}
+.bj-jeu-corps { flex: 1 1 auto; }
+
+/* LA COULEUR VIENT DU DOMAINE, et c'est une information : les jeux de nombres
+   se ressemblent, ceux de géométrie aussi, et l'oeil retrouve sa famille sans
+   lire. Rien n'est écrit sur la couverture — sauf la roue, qui porte son propre
+   fond sombre. */
+.bj-couv {
+    display: block; position: relative; height: 82px;
+    background:
+        radial-gradient(120% 120% at 14% 8%, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 56%),
+        linear-gradient(135deg, var(--bj-a, #6366f1), var(--bj-b, #4338ca));
+}
+.bj-couv::after {
+    content: ''; position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, .2) 1.2px, transparent 1.2px);
+    background-size: 14px 14px;
+}
+/* LE MONOGRAMME DONNE UN VISAGE À CHAQUE JEU. Une couverture d'une seule
+   couleur est propre et muette : sur cinquante tuiles, deux jeux de la même
+   famille ne se distinguent qu'en lisant leur nom. Deux grandes lettres pâles
+   suffisent à les séparer du coin de l'oeil. Elles sont DÉCORATIVES — le nom
+   est écrit juste en dessous —, d'où `aria-hidden` sur la couverture. */
+.bj-mono {
+    position: absolute; left: 13px; bottom: 6px;
+    /* ENTIÈREMENT DANS LA COUVERTURE. La première version le débordait vers le
+       bas ; la tuile étant en `overflow: hidden`, les lettres arrivaient
+       TRANCHÉES à mi-hauteur — ce qui ne se lit pas comme un parti pris, mais
+       comme un défaut d'affichage. */
+    font-size: 2.6rem; font-weight: 900; letter-spacing: -.03em; line-height: .9;
+    color: rgba(255, 255, 255, .28);
+    user-select: none;
+}
+/* HUIT FAMILLES, ET PAS CINQ. Colorer par DOMAINE donnait à la boîte « Nombres
+   et calculs » de Rémy cinquante et une tuiles indigo : une couleur qui ne
+   distingue rien ne vaut pas mieux que pas de couleur. On colore donc par
+   sous-domaine, regroupé — le regroupement est dans `js/core/boite.js`, avec
+   la raison de chaque rapprochement. */
+/* LES NEUF TEINTES SONT RÉPARTIES SUR LA ROUE, et les plus nombreuses ont les
+   plus distinctes : 55 exercices de géométrie, 41 de calcul, 40 de fractions,
+   36 de logique. Deux familles voisines de deux exercices chacune ne gênent
+   personne ; deux familles voisines de quarante feraient une grille illisible. */
+.bj-jeu[data-dom="geometrie"] { --bj-a: #10b981; --bj-b: #047857; }
+.bj-jeu[data-dom="calcul"]    { --bj-a: #6366f1; --bj-b: #4338ca; }
+.bj-jeu[data-dom="fractions"] { --bj-a: #f43f5e; --bj-b: #9f1239; }
+.bj-jeu[data-dom="logique"]   { --bj-a: #f59e0b; --bj-b: #b45309; }
+.bj-jeu[data-dom="nombres"]   { --bj-a: #a855f7; --bj-b: #6b21a8; }
+.bj-jeu[data-dom="algebre"]   { --bj-a: #0ea5e9; --bj-b: #0369a1; }
+.bj-jeu[data-dom="defis"]     { --bj-a: #f97316; --bj-b: #9a3412; }
+.bj-jeu[data-dom="mesures"]   { --bj-a: #14b8a6; --bj-b: #0f766e; }
+.bj-jeu[data-dom="donnees"]   { --bj-a: #06b6d4; --bj-b: #0e7490; }
+
+.bj-jeu-corps {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 11px 13px 13px;
+}
+.bj-jeu-titre {
+    font-size: 1.02rem; font-weight: 800; line-height: 1.2; color: var(--text-main);
+    /* Deux lignes au plus : « Les Fonctions : Image et Antécédent » ne doit pas
+       faire une tuile deux fois plus haute que ses voisines. */
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+.bj-jeu-reglages {
+    font-size: .78rem; color: var(--text-muted); line-height: 1.35;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bj-jeu-score {
+    margin-top: 4px; align-self: flex-start;
+    font-size: .72rem; font-weight: 700; letter-spacing: .01em;
+    color: #fff; background: var(--success-fond);
+    padding: 2px 8px; border-radius: 999px;
+}
+
+/* LA ROUE EST BLANCHE SUR UN ROND SOMBRE, et ce n'est pas un choix d'allure :
+   elle est posée sur cinq couvertures de teintes différentes, dont un ambre
+   clair. MESURÉ sur la pire des cinq — 45 % de #0f172a par-dessus #f59e0b — le
+   blanc y donne 5,47, au-dessus du seuil de 4,5. Une roue qui prendrait la
+   couleur de la couverture serait illisible sur deux d'entre elles. */
+.bj-roue {
+    position: absolute; top: 8px; right: 8px;
+    width: 38px; height: 38px; border-radius: 999px; border: none;
+    display: grid; place-items: center; cursor: pointer;
+    background: rgba(15, 23, 42, .45); color: #fff;
+    backdrop-filter: blur(3px);
+    transition: background .15s ease, transform .15s ease;
+}
+.bj-roue:hover { background: rgba(15, 23, 42, .68); transform: rotate(35deg); }
+@media (prefers-reduced-motion: reduce) { .bj-roue:hover { transform: none; } }
+
+/* --- LA FEUILLE DES RÉGLAGES ------------------------------------------------
+   Elle s'ouvre PAR-DESSUS la grille et ne contient qu'un jeu : c'est là que les
+   boutons ont leur place, parce qu'on y est venu exprès. */
+.bj-feuille {
+    position: fixed; inset: 0; z-index: 70;
+    background: rgba(15, 23, 42, .55);
+    display: flex; justify-content: safe center; align-items: safe center;
+    padding: 16px; overflow-y: auto;
+}
+.bj-feuille-panneau {
+    width: 100%; max-width: 440px;
+    background: var(--bg-panel); border-radius: 20px;
+    padding: 0 18px 18px; overflow: hidden;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, .3);
+    /* La bande du haut reprend la couleur du jeu : on sait de quel jeu on règle
+       la difficulté sans relire son nom. */
+    border-top: 6px solid var(--bj-a, #6366f1);
+}
+.bj-feuille-panneau[data-dom="geometrie"] { --bj-a: #10b981; }
+.bj-feuille-panneau[data-dom="calcul"]    { --bj-a: #6366f1; }
+.bj-feuille-panneau[data-dom="fractions"] { --bj-a: #f43f5e; }
+.bj-feuille-panneau[data-dom="logique"]   { --bj-a: #f59e0b; }
+.bj-feuille-panneau[data-dom="nombres"]   { --bj-a: #a855f7; }
+.bj-feuille-panneau[data-dom="algebre"]   { --bj-a: #0ea5e9; }
+.bj-feuille-panneau[data-dom="defis"]     { --bj-a: #f97316; }
+.bj-feuille-panneau[data-dom="mesures"]   { --bj-a: #14b8a6; }
+.bj-feuille-panneau[data-dom="donnees"]   { --bj-a: #06b6d4; }
+
+.bj-feuille-titre {
+    margin: 16px 0 14px; font-size: 1.25rem; line-height: 1.2;
     color: var(--text-main); text-wrap: balance;
 }
-.bj-carte-mot { margin: -4px 0 0; font-size: .84rem; color: var(--text-muted); }
 
-.bj-reglages { display: flex; flex-direction: column; gap: 8px; }
-.bj-reglage { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.bj-reglages { display: flex; flex-direction: column; gap: 12px; }
+.bj-reglage { display: flex; flex-direction: column; gap: 6px; }
 .bj-reglage-mot {
-    font-size: .78rem; font-weight: 700; letter-spacing: .02em;
+    font-size: .74rem; font-weight: 700; letter-spacing: .04em;
     text-transform: uppercase; color: var(--text-muted);
-    flex: 0 0 auto;
 }
-.bj-choix-rang { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; }
+.bj-choix-rang { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .bj-choix {
     flex: 1 1 auto; min-width: 0;
-    padding: 8px 10px; border-radius: 10px; cursor: pointer;
+    padding: 9px 10px; border-radius: 11px; cursor: pointer;
     border: 1px solid var(--border); background: transparent;
-    color: var(--text-main); font: inherit; font-size: .9rem;
+    color: var(--text-main); font: inherit; font-size: .92rem;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: border-color .15s ease, background .15s ease;
 }
 .bj-choix:hover { border-color: var(--primary); }
 /* LE CHOIX RETENU SE VOIT SANS QU'ON LE CHERCHE : un fond plein, pas une
-   simple bordure. Blanc sur `--primary` — le jeton de fond, pas la teinte
-   vive : c'est celui qui porte du blanc dans les cinq thèmes. */
+   simple bordure. Blanc sur `--primary`, qui porte le blanc dans les cinq
+   thèmes (5,02 au pire) — voir `tools/blancSurJeton.mjs`. */
 .bj-choix--actif {
     background: var(--primary); border-color: var(--primary);
     color: #fff; font-weight: 700;
 }
 
+.bj-feuille-pied {
+    display: flex; gap: 10px; align-items: center; margin-top: 18px;
+}
+.bj-feuille-fermer {
+    flex: 0 0 auto; padding: 11px 16px; border-radius: 12px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-muted); font: inherit; cursor: pointer; min-height: 44px;
+}
+.bj-feuille-fermer:hover { color: var(--text-main); border-color: var(--text-muted); }
+
 .bj-jouer {
-    margin-top: 2px; padding: 12px 18px; border: none; border-radius: 12px;
+    flex: 1 1 auto; padding: 12px 18px; border: none; border-radius: 12px;
     background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     color: #fff; font: inherit; font-size: 1.05rem; font-weight: 800;
     cursor: pointer; min-height: 44px;
@@ -11364,12 +11508,34 @@ body.en-boite > #app-container { background: none; }
 @media (pointer: coarse) {
     /* Le plancher tactile du dépôt : 44 px de haut, la pulpe d'un index. */
     .bj-choix { min-height: 44px; }
+    .bj-roue { width: 44px; height: 44px; top: 7px; right: 7px; }
+}
+
+/* DEUX COLONNES SUR UN TÉLÉPHONE, ET C'EST CE QUI EN FAIT UNE APPLI.
+   MESURÉ à 390 px : une tuile par rangée donne, pour la boîte de 51 exercices
+   de Rémy, un ruban de cinquante et une tuiles hautes de 150 px — six mille
+   pixels à faire défiler pour voir ce qu'on a. Deux colonnes en font trois
+   mille, et surtout elles se REGARDENT comme une grille d'icônes plutôt que
+   comme une liste. La tuile rétrécit en conséquence : couverture plus basse,
+   titre d'un cran plus petit, monogramme à l'avenant. */
+@media (max-width: 560px) {
+    .bj-grille {
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+        gap: 11px;
+    }
+    .bj-couv { height: 62px; }
+    .bj-mono { font-size: 2rem; left: 10px; bottom: 4px; }
+    .bj-jeu-corps { padding: 9px 10px 11px; }
+    .bj-jeu-titre { font-size: .94rem; }
+    .bj-jeu-reglages { font-size: .72rem; }
+    .bj-titre { font-size: clamp(1.4rem, 7vw, 1.9rem); }
+    .bj-sous { font-size: .84rem; margin-bottom: 18px; }
 }
 
 /* La porte de sortie de la boîte : discrète, jamais illisible. `--text-muted`
    passe le seuil AA dans les cinq thèmes (mesuré : 5,48 à 9,47), et le
    plancher tactile s'applique comme partout ailleurs. */
-.bj-pied { text-align: center; margin: 22px 0 6px; }
+.bj-pied { text-align: center; margin: 26px 0 6px; }
 .bj-sortie {
     color: var(--text-muted); font-size: .82rem; letter-spacing: .04em;
     text-decoration: none; border-bottom: 1px solid var(--border);

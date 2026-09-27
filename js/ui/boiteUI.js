@@ -25,7 +25,7 @@ import { makePath, makeStep, questionsConseilleesDe } from '../core/path.js';
 import {
     estUneBoite, politiqueDeBoite, reglagesDuJoueur, clefDeLaBoite, memoireVide,
     rangerUnePartie, motDeLaCarte, motCourt, LONGUEURS, LONGUEUR_DEFAUT,
-    questionsSelonLongueur
+    questionsSelonLongueur, familleDe, monogramme
 } from '../core/boite.js';
 
 const ID = 'boite-layer';
@@ -78,7 +78,98 @@ function longueurEnCours(step, memoire) {
 
 // --- L'ÉCRAN ----------------------------------------------------------------
 
-function boutonsHtml(champ, valeur) {
+// --- LA TUILE D'UN JEU --------------------------------------------------------
+//
+// PREMIÈRE VERSION, ET CE QU'ELLE A COÛTÉ. Chaque carte portait ses réglages À
+// PLAT : trois rangées de boutons, jusqu'à dix boutons par jeu. Rémy, devant une
+// boîte de 51 exercices : « c'est pas très beau, ca fait veilliot, lourd […]
+// Personne n'aime voir quelque chose comme cela. » Il avait raison, et
+// l'arithmétique le dit : 51 jeux x 10 boutons, ce sont CINQ CENTS boutons gris
+// sur un écran dont le seul travail est de donner envie d'en choisir UN.
+//
+// CE QUI CHANGE : la tuile ne montre plus que ce qu'on regarde pour choisir —
+// une couverture colorée, le nom du jeu, ses réglages en UNE LIGNE de texte, et
+// le score qu'on a déjà fait. Les réglages eux-mêmes passent derrière une ROUE,
+// dans une feuille qui s'ouvre par-dessus. La tuile entière est le bouton
+// « jouer » : on ne vise plus un rectangle au fond d'une carte.
+//
+// LA COULEUR VIENT DU DOMAINE, et c'est une information, pas une décoration :
+// les jeux de nombres se ressemblent, ceux de géométrie aussi, et l'oeil
+// retrouve sa famille sans lire. Les cinq domaines sont ceux des programmes de
+// collège (voir `js/data/tags.js`).
+/** Le champ de la longueur, qui n'appartient à aucun exercice : il est à la boîte. */
+function champLongueur() {
+    return {
+        id: '__longueur', label: 'La partie',
+        options: LONGUEURS.map(l => ({ value: l.id, label: l.mot }))
+    };
+}
+
+/** Les champs qu'on propose pour ce jeu : les siens, puis la longueur. */
+function champsDe(exo) {
+    return [...reglagesDuJoueur(paramSchemaOf(exo)), champLongueur()];
+}
+
+/**
+ * LES RÉGLAGES EN UNE LIGNE : « Facile · 6 × 6 · Moyenne ».
+ *
+ * C'est ce qui remplace les dix boutons. On lit son choix d'un coup d'oeil, et
+ * l'on n'ouvre la roue que si l'on veut en changer — ce qui, sur une boîte
+ * qu'on rouvre tous les jours, n'arrive presque jamais.
+ */
+function resumeDesReglages(exo, valeurs, longueur) {
+    return champsDe(exo).map(c => {
+        const v = c.id === '__longueur' ? longueur : (valeurs[c.id] ?? c.default);
+        const o = c.options.find(x => String(x.value) === String(v));
+        return o ? motCourt(String(o.label ?? o.value)) : '';
+    }).filter(Boolean).join(' · ');
+}
+
+// Une roue dessinée, et non le caractère ⚙ : l'émoji change de forme et de
+// couleur d'un appareil à l'autre, et sur la moitié d'entre eux il est jaune.
+const ROUE = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" '
+    + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+    + 'stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/>'
+    + '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06'
+    + 'a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09'
+    + 'A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83'
+    + 'l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09'
+    + 'A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83'
+    + 'l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09'
+    + 'a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83'
+    + 'l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09'
+    + 'a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+
+function tuileHtml(step, memoire) {
+    const exo = getExerciseById(step.exerciseId);
+    if (!exo) return '';
+    const valeurs = reglagesEnCours(step, memoire);
+    const longueur = longueurEnCours(step, memoire);
+    const resume = resumeDesReglages(exo, valeurs, longueur);
+    const score = motDeLaCarte(memoire.jeux[step.exerciseId]);
+    const id = esc(step.exerciseId);
+    return `
+      <article class="bj-jeu" data-exo="${id}" data-dom="${familleDe(exo)}">
+        <button type="button" class="bj-jeu-ouvrir" data-jouer="${id}">
+          <span class="bj-couv" aria-hidden="true"><span class="bj-mono">${esc(monogramme(exo.title))}</span></span>
+          <span class="bj-jeu-corps">
+            <span class="bj-jeu-titre">${esc(exo.title)}</span>
+            ${resume ? `<span class="bj-jeu-reglages">${esc(resume)}</span>` : ''}
+            ${score ? `<span class="bj-jeu-score">${esc(score)}</span>` : ''}
+          </span>
+        </button>
+        <button type="button" class="bj-roue" data-roue="${id}"
+                title="Réglages de ${esc(exo.title)}"
+                aria-label="Réglages de ${esc(exo.title)}">${ROUE}</button>
+      </article>`;
+}
+
+// --- LA FEUILLE DES RÉGLAGES --------------------------------------------------
+//
+// Elle s'ouvre PAR-DESSUS la grille, et elle ne contient qu'un jeu : c'est là
+// que les boutons ont leur place, parce qu'on y est venu exprès.
+
+function rangeeHtml(champ, valeur) {
     const choix = champ.options.map(o => {
         const v = o.value;
         const actif = String(v) === String(valeur);
@@ -91,34 +182,51 @@ function boutonsHtml(champ, valeur) {
                         title="${esc(entier)}"
                         aria-pressed="${actif}">${esc(motCourt(entier))}</button>`;
     }).join('');
-    return `<div class="bj-reglage"><span class="bj-reglage-mot">${esc(champ.label || champ.id)}</span>
-              <span class="bj-choix-rang">${choix}</span></div>`;
+    return `<div class="bj-reglage">
+              <span class="bj-reglage-mot">${esc(motCourt(champ.label || champ.id))}</span>
+              <span class="bj-choix-rang">${choix}</span>
+            </div>`;
 }
 
-function carteHtml(step, memoire) {
-    const exo = getExerciseById(step.exerciseId);
-    if (!exo) return '';
-    const vus = reglagesDuJoueur(paramSchemaOf(exo));
+let roueOuverte = null;
+
+function fermerLaRoue() {
+    const f = document.querySelector('.bj-feuille');
+    if (f) f.remove();
+    roueOuverte = null;
+}
+
+function ouvrirLaRoue(exoId) {
+    const path = boiteCourante;
+    if (!path) return;
+    const step = path.steps.find(x => x.exerciseId === exoId);
+    const exo = getExerciseById(exoId);
+    if (!step || !exo) return;
+    fermerLaRoue();
+    const memoire = lireMemoire(path);
     const valeurs = reglagesEnCours(step, memoire);
-    const mot = motDeLaCarte(memoire.jeux[step.exerciseId]);
     const longueur = longueurEnCours(step, memoire);
-    // LA LONGUEUR EST UN RÉGLAGE COMME LES AUTRES, et c'est le seul qui existe
-    // pour les deux cent seize exercices : tous ont un nombre de questions
-    // conseillé, aucun n'a besoin de le savoir.
-    const champLongueur = {
-        id: '__longueur', label: 'La partie',
-        options: LONGUEURS.map(l => ({ value: l.id, label: l.mot }))
-    };
-    return `
-      <article class="bj-carte" data-exo="${esc(step.exerciseId)}">
-        <h2 class="bj-carte-titre">${esc(exo.title)}</h2>
-        ${mot ? `<p class="bj-carte-mot">${esc(mot)}</p>` : ''}
+    const f = document.createElement('div');
+    f.className = 'bj-feuille';
+    f.setAttribute('role', 'dialog');
+    f.setAttribute('aria-modal', 'true');
+    f.setAttribute('aria-label', 'Réglages de ' + exo.title);
+    f.innerHTML = `
+      <div class="bj-feuille-panneau" data-exo="${esc(exoId)}" data-dom="${familleDe(exo)}">
+        <h2 class="bj-feuille-titre">${esc(exo.title)}</h2>
         <div class="bj-reglages">
-          ${vus.map(c => boutonsHtml(c, valeurs[c.id] ?? c.default)).join('')}
-          ${boutonsHtml(champLongueur, longueur)}
+          ${champsDe(exo).map(c => rangeeHtml(c,
+        c.id === '__longueur' ? longueur : (valeurs[c.id] ?? c.default))).join('')}
         </div>
-        <button type="button" class="bj-jouer" data-jouer="${esc(step.exerciseId)}">Jouer</button>
-      </article>`;
+        <div class="bj-feuille-pied">
+          <button type="button" class="bj-feuille-fermer">Fermer</button>
+          <button type="button" class="bj-jouer" data-jouer="${esc(exoId)}">Jouer</button>
+        </div>
+      </div>`;
+    document.getElementById(ID).appendChild(f);
+    roueOuverte = exoId;
+    const premier = f.querySelector('.bj-choix, .bj-jouer');
+    if (premier) premier.focus();
 }
 
 function dessiner(path) {
@@ -135,8 +243,8 @@ function dessiner(path) {
         <h1 class="bj-titre">${esc(path.name || 'Mes jeux')}</h1>
         <p class="bj-sous">Choisis un jeu. Rien n'est noté, rien n'est envoyé :
            ce que tu joues reste sur cet appareil.</p>
-        <div class="bj-cartes">
-          ${path.steps.map(s => carteHtml(s, memoire)).join('')}
+        <div class="bj-grille">
+          ${path.steps.map(s => tuileHtml(s, memoire)).join('')}
         </div>
         <!-- UNE PORTE DE SORTIE, DISCRÈTE MAIS PRÉSENTE.
              La boîte occupe tout l'écran et cache le reste du logiciel : c'est
@@ -315,12 +423,27 @@ function jouer(exoId) {
 document.addEventListener('click', (e) => {
     const ecran = document.getElementById(ID);
     if (!ecran || ecran.hidden || !ecran.contains(e.target)) return;
+
+    // LA ROUE OUVRE LES RÉGLAGES, ET RIEN D'AUTRE. Elle est posée SUR la tuile,
+    // qui est elle-même le bouton « jouer » : sans ce départ anticipé, un clic
+    // sur la roue lancerait la partie.
+    const roue = e.target.closest('[data-roue]');
+    if (roue) { ouvrirLaRoue(roue.getAttribute('data-roue')); return; }
+
+    if (e.target.closest('.bj-feuille-fermer')) { fermerLaRoue(); return; }
+    // CLIQUER À CÔTÉ DE LA FEUILLE LA REFERME : c'est le geste que tout le monde
+    // fait, et une feuille qui résiste au geste passe pour bloquée.
+    if (e.target.classList && e.target.classList.contains('bj-feuille')) {
+        fermerLaRoue(); return;
+    }
+
     const jouerBtn = e.target.closest('[data-jouer]');
-    if (jouerBtn) { jouer(jouerBtn.getAttribute('data-jouer')); return; }
+    if (jouerBtn) { fermerLaRoue(); jouer(jouerBtn.getAttribute('data-jouer')); return; }
+
     const choix = e.target.closest('.bj-choix');
     if (!choix || !boiteCourante) return;
-    const carte = choix.closest('.bj-carte');
-    const exoId = carte && carte.getAttribute('data-exo');
+    const cadre = choix.closest('[data-exo]');
+    const exoId = cadre && cadre.getAttribute('data-exo');
     if (!exoId) return;
     const champ = choix.getAttribute('data-champ');
     let valeur = choix.getAttribute('data-valeur');
@@ -344,5 +467,19 @@ document.addEventListener('click', (e) => {
         reglages: neuf
     };
     ecrireMemoire(boiteCourante, memoire);
+    // ON REDESSINE LA GRILLE — la tuile résume les réglages, elle doit suivre —
+    // PUIS ON ROUVRE LA FEUILLE sur le même jeu : choisir une taille ne doit pas
+    // renvoyer au menu, sans quoi il faut rouvrir la roue à chaque réglage.
+    const rouvrir = roueOuverte;
     dessiner(boiteCourante);
+    if (rouvrir) ouvrirLaRoue(rouvrir);
+});
+
+// ÉCHAP REFERME LA FEUILLE. Sur un clavier c'est le geste attendu, et il n'y a
+// pas d'autre fenêtre ouverte dans une boîte à jeux.
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !roueOuverte) return;
+    const ecran = document.getElementById(ID);
+    if (!ecran || ecran.hidden) return;
+    fermerLaRoue();
 });

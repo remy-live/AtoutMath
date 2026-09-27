@@ -203,6 +203,103 @@ export function motCourt(etiquette) {
     return (coupe || t).slice(0, 24);
 }
 
+/**
+ * LE MONOGRAMME D'UN JEU : une ou deux lettres, pour sa couverture.
+ *
+ * Une couverture d'une seule couleur unie est propre et muette : sur une grille
+ * de cinquante tuiles, rien ne distingue deux jeux de la même famille tant qu'on
+ * n'a pas lu leur nom. Deux grandes lettres pâles donnent à chacun un visage, et
+ * l'oeil retrouve « le Compte est Bon » à sa place sans relire la grille.
+ *
+ * LES PETITS MOTS NE COMPTENT PAS. « Le Compte est Bon » donne CB et non LC :
+ * les articles et les prépositions sont les mêmes partout, et deux tuiles sur
+ * trois porteraient la même lettre.
+ */
+const PETITS_MOTS = new Set([
+    // articles et prépositions
+    'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'd', 'l', 'à', 'au', 'aux',
+    'et', 'en', 'sur', 'par', 'pour', 'dans', 'avec', 'sans', 'sous', 'vers', 'chez',
+    // et les verbes et pronoms qu'on retrouve dans un titre sur deux
+    'est', 'sont', 'a', 'ont', 'ce', 'cet', 'cette', 'qui', 'que', 'quoi', 'ou', 'où'
+]);
+
+export function monogramme(titre) {
+    const mots = String(titre || '')
+        .replace(/[^\p{L}\p{N}\s'-]/gu, ' ')
+        .split(/[\s'-]+/)
+        .filter(Boolean)
+        .filter(m => !PETITS_MOTS.has(m.toLowerCase()));
+    const source = mots.length ? mots : String(titre || '').split(/\s+/).filter(Boolean);
+    if (!source.length) return '';
+    if (source.length === 1) return source[0].slice(0, 1).toUpperCase();
+    return (source[0][0] + source[1][0]).toUpperCase();
+}
+
+// --- LA FAMILLE DE COULEUR D'UN EXERCICE --------------------------------------
+//
+// LE DOMAINE NE SUFFIT PAS, et c'est une boîte de Rémy qui l'a montré : la
+// sienne s'appelle « Nombres et calculs » et porte 51 exercices. Colorer par
+// domaine, c'est cinquante et une tuiles indigo — une couleur qui ne distingue
+// rien ne vaut pas mieux que pas de couleur.
+//
+// ON COLORE DONC PAR SOUS-DOMAINE, regroupé en HUIT familles. Vingt-deux teintes
+// feraient un arc-en-ciel où plus rien ne se ressemble ; huit familles gardent
+// le sens — les fractions et les relatifs vont ensemble, la géométrie tient
+// d'un bloc — tout en donnant à une boîte de calcul mental de quoi respirer.
+const FAMILLE_PAR_SOUS_DOMAINE = {
+    'Calcul mental': 'calcul',
+    'Priorités opératoires': 'calcul',
+    'Numération': 'nombres',
+    'Nombres décimaux': 'nombres',
+    'Ensembles et intervalles': 'nombres',
+    'Fractions': 'fractions',
+    'Nombres relatifs': 'fractions',
+    'Racines carrées': 'fractions',
+    'Calcul littéral': 'algebre',
+    'Repérage': 'geometrie',
+    'Transformations': 'geometrie',
+    'Angles': 'geometrie',
+    'Notations et vocabulaire': 'geometrie',
+    'Périmètre et aire': 'geometrie',
+    "Géométrie dans l'espace": 'geometrie',
+    'Heures et durées': 'mesures',
+    'Tableur': 'donnees',
+    'Logique': 'logique',
+    'Casse-tête': 'logique',
+    'Stratégie et raisonnement': 'logique',
+    'Résolution de problèmes': 'defis',
+    'Adresse et réflexes': 'defis'
+};
+
+/** Le repli quand l'exercice n'a pas de sous-domaine : son domaine. */
+const FAMILLE_PAR_DOMAINE = {
+    'Nombres et calculs': 'calcul',
+    'Espace et géométrie': 'geometrie',
+    'Grandeurs et mesures': 'mesures',
+    'Organisation de données': 'donnees',
+    'Défis et énigmes': 'defis'
+};
+
+/**
+ * LES NEUF FAMILLES, dans l'ordre où la feuille de style les déclare.
+ *
+ * ELLE EN A OUBLIÉ UNE, ET PERSONNE NE L'AURAIT VU. La première version en
+ * déclarait huit : `logique` manquait. Ses TRENTE-SIX exercices — le sixième du
+ * catalogue — retombaient sur la couleur par défaut, c'est-à-dire l'indigo du
+ * calcul. Rien ne casse, rien ne s'affiche en rouge : on voit seulement une
+ * grille un peu plus terne qu'elle ne devrait, sans savoir pourquoi. D'où le
+ * test qui compare cette liste à la feuille de style.
+ */
+export const FAMILLES = ['calcul', 'nombres', 'fractions', 'algebre',
+    'geometrie', 'logique', 'mesures', 'donnees', 'defis'];
+
+export function familleDe(exo) {
+    const chemin = (exo && exo.tags && Array.isArray(exo.tags.chemin)) ? exo.tags.chemin : [];
+    return FAMILLE_PAR_SOUS_DOMAINE[chemin[1]]
+        || FAMILLE_PAR_DOMAINE[chemin[0]]
+        || 'calcul';
+}
+
 // --- LA MÉMOIRE DE LA BOÎTE, QUI NE SORT PAS DE L'APPAREIL --------------------
 //
 // « on peut le garder en local storage et la personne l'a pour elle ».

@@ -6,10 +6,13 @@ import './helpers.mjs';
 import {
     MAX_JEUX, MAX_REGLAGES_JOUEUR, politiqueDeBoite, faireUneBoite, estUneBoite,
     reglagesDuJoueur, clefDeLaBoite, memoireVide, rangerUnePartie, motDeLaCarte,
-    LONGUEURS, LONGUEUR_DEFAUT, questionsSelonLongueur, motCourt
+    LONGUEURS, LONGUEUR_DEFAUT, questionsSelonLongueur, motCourt,
+    monogramme, familleDe, FAMILLES
 } from '../js/core/boite.js';
 import { Shortcodes } from '../js/core/shortcodes.js';
 import { MODES } from '../js/core/policy.js';
+import { readFileSync } from 'node:fs';
+import { exercices } from '../js/data/catalog.js';
 
 test('une boîte n\'est pas un devoir : pas de note, pas de seuil, pas d\'ordre', () => {
     const b = faireUneBoite({ nom: 'Les jeux de la 6e B', exercices: ['calc-sudoku', 'calc-mathodu'] });
@@ -169,4 +172,42 @@ test('L\'ÉTIQUETTE DU JOUEUR EST UN MOT, PAS UNE PHRASE', () => {
     assert.equal(motCourt('Demi-droite'), 'Demi-droite');
     assert.equal(motCourt(''), '');
     assert.equal(motCourt(null), '');
+});
+
+test('le monogramme saute les petits mots', () => {
+    // « Le Compte est Bon » donne CB et non LC : les articles et les verbes
+    // d'appui sont les mêmes partout, et deux tuiles sur trois porteraient la
+    // même lettre.
+    assert.equal(monogramme('Le Compte est Bon'), 'CB');
+    assert.equal(monogramme('La Chasse aux Zéros'), 'CZ');
+    assert.equal(monogramme('Quelle heure est-il ?'), 'QH');
+    assert.equal(monogramme('Sudoku'), 'S');
+    assert.equal(monogramme(''), '');
+    assert.equal(monogramme(null), '');
+    // Un titre qui ne serait FAIT que de petits mots garde quand même un signe.
+    assert.equal(monogramme('de la'), 'DL');
+});
+
+test('CHAQUE EXERCICE DU CATALOGUE A UNE FAMILLE DE COULEUR DÉCLARÉE', () => {
+    // LA FAUTE QUE CE TEST EXISTE POUR EMPÊCHER, et elle a été commise : la
+    // feuille de style déclarait huit familles, `familleDe` en rendait neuf.
+    // Les TRENTE-SIX exercices de logique — le sixième du catalogue —
+    // retombaient sur la couleur par défaut, c'est-à-dire celle du calcul.
+    // Rien ne casse, rien ne s'affiche en rouge : la grille est seulement plus
+    // terne qu'elle ne devrait, et personne ne sait pourquoi.
+    const css = readFileSync('css/modules.css', 'utf8');
+    const manquantes = FAMILLES.filter(f =>
+        !css.includes(`.bj-jeu[data-dom="${f}"]`)
+        || !css.includes(`.bj-feuille-panneau[data-dom="${f}"]`));
+    assert.deepEqual(manquantes, [], 'familles sans couleur en CSS');
+
+    const inconnues = [...new Set(exercices.map(e => familleDe(e)))]
+        .filter(f => !FAMILLES.includes(f));
+    assert.deepEqual(inconnues, [], 'familles rendues mais non déclarées');
+
+    // ET AUCUNE FAMILLE DÉCLARÉE NE DOIT ÊTRE VIDE : une teinte que personne ne
+    // porte est une ligne de style qu'on gardera dix ans sans le savoir.
+    const portees = new Set(exercices.map(e => familleDe(e)));
+    assert.deepEqual(FAMILLES.filter(f => !portees.has(f)), [],
+        'familles déclarées que plus aucun exercice ne porte');
 });

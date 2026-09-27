@@ -73,7 +73,7 @@ const vu = await q.evaluate(() => {
         present: !!ecran && !ecran.hidden,
         haut: r ? Math.round(r.height) : 0,
         titre: (document.querySelector('.bj-titre') || {}).textContent || '',
-        cartes: document.querySelectorAll('.bj-carte').length,
+        cartes: document.querySelectorAll('.bj-jeu').length,
         onglet: document.title,
         pomme: (document.querySelector('meta[apple-mobile-web-app-title]')
             || document.querySelector('meta[name="apple-mobile-web-app-title"]') || {}).content || '',
@@ -84,15 +84,25 @@ const vu = await q.evaluate(() => {
         portail: !!document.querySelector('.portail'),
         voile: document.documentElement.classList.contains('depuis-code')
             && !document.documentElement.classList.contains('parcours-pret'),
-        reglages: [...document.querySelectorAll('.bj-carte')].map(c => ({
+        // LA TUILE NE MONTRE PLUS DE BOUTONS : elle résume les réglages en une
+        // ligne de texte, et la roue ouvre le reste. C'est la correction
+        // demandée par Rémy — « ça fait vieillot, lourd ».
+        boutonsSurLaGrille: document.querySelectorAll('.bj-grille .bj-choix').length,
+        roues: document.querySelectorAll('.bj-roue').length,
+        tuiles: [...document.querySelectorAll('.bj-jeu')].map(c => ({
             exo: c.getAttribute('data-exo'),
-            rangs: [...c.querySelectorAll('.bj-reglage-mot')].map(x => x.textContent.trim())
+            dom: c.getAttribute('data-dom'),
+            resume: (c.querySelector('.bj-jeu-reglages') || {}).textContent || ''
         }))
     };
 });
 dit(vu.present, 'le lien ouvre la boîte', `${vu.haut} px de haut`);
 dit(vu.titre.trim() === 'Les jeux de la 6e B', 'et elle porte son nom', vu.titre.trim());
-dit(vu.cartes === 3, 'une carte par jeu', String(vu.cartes));
+dit(vu.cartes === 3, 'une tuile par jeu', String(vu.cartes));
+dit(vu.boutonsSurLaGrille === 0,
+    'AUCUN bouton de réglage sur la grille : ils sont derrière la roue',
+    String(vu.boutonsSurLaGrille));
+dit(vu.roues === 3, 'une roue par tuile', String(vu.roues));
 dit(vu.onglet === 'Les jeux de la 6e B', 'le nom de l\'onglet est celui de la boîte', vu.onglet);
 dit(vu.pomme === 'Les jeux de la 6e B', 'et celui de l\'installation sur iPhone', vu.pomme);
 dit(vu.manifeste.startsWith('blob:'), 'un manifeste est posé pour l\'installation',
@@ -101,41 +111,83 @@ dit(!vu.navbar, 'pas de barre du haut : ce n\'est pas le logiciel, c\'est la bo�
 dit(!vu.portail, 'pas de portail derrière');
 dit(!vu.voile, 'le voile du lien est bien levé');
 
-// 3. LES RÉGLAGES DU JOUEUR : la longueur partout, la difficulté là où elle existe.
-const parJeu = Object.fromEntries(vu.reglages.map(r => [r.exo, r.rangs]));
-dit((parJeu['calc-add'] || []).length === 1
-    && /partie/i.test((parJeu['calc-add'] || [])[0] || ''),
-'un exercice sans difficulté n\'offre que la longueur',
-JSON.stringify(parJeu['calc-add']));
-dit((parJeu['calc-sudoku'] || []).length === 3,
-    'le sudoku offre difficulté, taille et longueur', JSON.stringify(parJeu['calc-sudoku']));
+// 3. CE QUE LA TUILE RÉSUME, ET LA COULEUR DE SA FAMILLE.
+const parJeu = Object.fromEntries(vu.tuiles.map(r => [r.exo, r]));
+dit(/Moyenne/.test((parJeu['calc-add'] || {}).resume || ''),
+    'un exercice sans difficulté résume sa seule longueur',
+    (parJeu['calc-add'] || {}).resume);
+dit(/Facile.+6 × 6.+Moyenne/.test((parJeu['calc-sudoku'] || {}).resume || ''),
+    'le sudoku résume difficulté, taille et longueur en une ligne',
+    (parJeu['calc-sudoku'] || {}).resume);
+// LA COULEUR VIENT DU SOUS-DOMAINE, pas du domaine : le sudoku est de la
+// famille « logique », pas de celle du calcul, alors que son domaine est
+// « Nombres et calculs ». C'est tout l'intérêt — une boîte de 51 exercices de
+// nombres serait autrement d'une seule couleur.
+dit((parJeu['calc-sudoku'] || {}).dom === 'logique',
+    'la tuile porte la couleur de sa famille', (parJeu['calc-sudoku'] || {}).dom);
+dit(new Set(vu.tuiles.map(t => t.dom)).size >= 2,
+    'et deux jeux de familles différentes ne portent pas la même',
+    JSON.stringify(vu.tuiles.map(t => t.exo + ':' + t.dom)));
 
-// 4. UN RÉGLAGE CHOISI RESTE CHOISI.
+// 4. LA ROUE OUVRE LES RÉGLAGES, ET UN CHOIX RESTE CHOISI.
 await q.evaluate(() => {
-    const carte = document.querySelector('.bj-carte[data-exo="calc-sudoku"]');
-    const b = [...carte.querySelectorAll('.bj-choix')]
+    document.querySelector('.bj-jeu[data-exo="calc-sudoku"] .bj-roue').click();
+});
+await attendre(500);
+const feuille = await q.evaluate(() => {
+    const f = document.querySelector('.bj-feuille');
+    return {
+        ouverte: !!f,
+        titre: f ? (f.querySelector('.bj-feuille-titre') || {}).textContent || '' : '',
+        rangs: f ? [...f.querySelectorAll('.bj-reglage-mot')].map(x => x.textContent.trim()) : [],
+        // LA TUILE NE DOIT PAS LANCER LA PARTIE quand on vise la roue.
+        enJeu: (() => { const g = document.getElementById('game-layer');
+            return !!g && g.style.display && g.style.display !== 'none'; })()
+    };
+});
+dit(feuille.ouverte, 'la roue ouvre la feuille des réglages');
+dit(!feuille.enJeu, 'et elle ne lance PAS la partie au passage');
+dit(feuille.titre.trim() === 'Sudoku', 'la feuille dit de quel jeu il s\'agit', feuille.titre.trim());
+dit(feuille.rangs.length === 3, 'le sudoku y offre difficulté, taille et longueur',
+    JSON.stringify(feuille.rangs));
+
+await q.evaluate(() => {
+    const b = [...document.querySelectorAll('.bj-feuille .bj-choix')]
         .find(x => x.getAttribute('data-champ') === 'taille' && x.getAttribute('data-valeur') === '9');
     if (b) b.click();
 });
-await attendre(400);
+await attendre(500);
 const garde = await q.evaluate(() => {
-    const carte = document.querySelector('.bj-carte[data-exo="calc-sudoku"]');
-    const actif = carte.querySelector('.bj-choix[data-champ="taille"].bj-choix--actif');
+    const f = document.querySelector('.bj-feuille');
+    const actif = f && f.querySelector('.bj-choix[data-champ="taille"].bj-choix--actif');
+    const tuile = document.querySelector('.bj-jeu[data-exo="calc-sudoku"] .bj-jeu-reglages');
     const clefs = Object.keys(localStorage).filter(k => k.startsWith('mathbox-boite-'));
     return {
+        feuilleEncoreLa: !!f,
         actif: actif ? actif.getAttribute('data-valeur') : '',
+        resume: tuile ? tuile.textContent : '',
         clefs: clefs.length,
         contenu: clefs.length ? localStorage.getItem(clefs[0]) : ''
     };
 });
 dit(garde.actif === '9', 'le choix du joueur se voit', garde.actif);
-dit(garde.clefs === 1, 'et il est rangé dans le navigateur, sous la boîte',
-    garde.contenu.slice(0, 90));
+dit(garde.feuilleEncoreLa,
+    'CHOISIR NE REFERME PAS LA FEUILLE : on règle plusieurs choses d\'affilée');
+dit(/9 × 9/.test(garde.resume), 'et la tuile derrière suit', garde.resume);
+dit(garde.clefs === 1, 'rangé dans le navigateur, sous la boîte',
+    garde.contenu.slice(0, 80));
+
+// ÉCHAP REFERME.
+await q.keyboard.press('Escape');
+await attendre(400);
+dit(await q.evaluate(() => !document.querySelector('.bj-feuille')),
+    'Échap referme la feuille');
 
 // 5. ON JOUE, PUIS ON REVIENT.
 await q.evaluate(() => {
-    const carte = document.querySelector('.bj-carte[data-exo="calc-add"]');
-    carte.querySelector('.bj-jouer').click();
+    // LA TUILE ENTIÈRE EST LE BOUTON : on clique le corps, pas un rectangle
+    // au fond d'une carte.
+    document.querySelector('.bj-jeu[data-exo="calc-add"] .bj-jeu-ouvrir').click();
 });
 await attendre(3500);
 const enJeu = await q.evaluate(() => {
@@ -164,7 +216,7 @@ const retour = await q.evaluate(() => {
     return {
         menu: !!ecran && !ecran.hidden,
         parties: m && m.jeux['calc-add'] ? m.jeux['calc-add'].parties : 0,
-        mot: (document.querySelector('.bj-carte[data-exo="calc-add"] .bj-carte-mot') || {}).textContent || ''
+        mot: (document.querySelector('.bj-jeu[data-exo="calc-add"] .bj-jeu-score') || {}).textContent || ''
     };
 });
 dit(retour.menu, 'quitter le jeu ramène au menu');
