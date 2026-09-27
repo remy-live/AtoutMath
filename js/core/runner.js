@@ -74,6 +74,21 @@ export class Runner {
         // Le mode coupe les quatre écritures du parcours (départ, étape,
         // arrivée) et, par la session, les tentatives et les indices.
         this.essai = !!cfg.essai;
+        // NE RIEN LAISSER DERRIÈRE SOI, SANS POUR AUTANT ÊTRE UN ESSAI.
+        //
+        // `essai` disait deux choses à la fois : « n'écris pas au journal » ET
+        // « montre les commandes du professeur » (la bande du robot, la
+        // navigation d'étape — voir plus bas). La BOÎTE À JEUX n'a besoin que
+        // de la première : celui qui ouvre un lien de boîte n'est identifié
+        // nulle part, rien de ce qu'il joue ne doit entrer dans le carnet d'un
+        // élève ni remonter à personne — Rémy : « la personne l'a pour elle, je
+        // n'interviens pas » —, mais il ne doit surtout pas voir les boutons du
+        // professeur.
+        //
+        // Les deux idées se séparent donc ici. `essai` garde son sens d'écran,
+        // `sansTrace` prend celui d'écriture, et un essai reste sans trace :
+        // rien ne change pour ce qui existait.
+        this.sansTrace = !!cfg.sansTrace || this.essai;
         this.index = cfg.startIndex || 0;
         // En mode apprentissage, chaque étape s'ouvre sur un écran leçon +
         // robot. `skipIntro` le saute UNE fois : posé quand on revient d'une
@@ -146,7 +161,7 @@ export class Runner {
         const premiere = this.steps[Math.min(this.index, this.steps.length - 1)];
         if (titreEl && premiere) titreEl.textContent = premiere.title;
 
-        if (!this.essai) journal.emit(EventTypes.RUN_STARTED, {
+        if (!this.sansTrace) journal.emit(EventTypes.RUN_STARTED, {
             runId: this.runId,
             pathId: this.path.id,
             pathName: this.path.name,
@@ -746,7 +761,7 @@ export class Runner {
         // PAS EN ESSAI. Le professeur qui regarde l'exercice d'un élève depuis
         // sa propre fenêtre ne doit pas apparaître dans son propre direct —
         // c'est la même règle que pour `run_started` juste au-dessus.
-        if (!this.essai) journal.emit(EventTypes.STEP_STARTED, {
+        if (!this.sansTrace) journal.emit(EventTypes.STEP_STARTED, {
             runId: this.runId,
             pathId: this.path && this.path.id,
             pathName: this.path && this.path.name,
@@ -860,7 +875,7 @@ export class Runner {
             // regarde — et dans un navigateur où les deux rôles coexistent
             // (`boutEnBout` en monte un exprès), il le remplacerait chez le
             // serveur.
-            if (!this.essai) direQuOnVoit({
+            if (!this.sansTrace) direQuOnVoit({
                 exerciseId: step.exercise.id, graine: graineDuJeu,
                 etape: step.exercise.title, fait: null, total: null,
                 // ET SES RÉGLAGES — ceux que le jeu vient de recevoir, pas ceux
@@ -912,7 +927,7 @@ export class Runner {
             generator,
             params: step.params,
             policy: this.policy,
-            sansTrace: this.essai,
+            sansTrace: this.sansTrace,
             exercise: step.exercise,
             runId: this.runId,
             stepId: step.stepId,
@@ -934,7 +949,7 @@ export class Runner {
         // réponse arriverait toujours une question trop tard.
         this.session.on('item', (item) => {
             this.updateStepNavigation();
-            if (this.essai) return;   // un essai du professeur ne laisse pas de trace
+            if (this.sansTrace) return;   // un essai, une boîte : pas de trace
             direQuOnVoit({
                 exerciseId: step.exercise.id,
                 graine: item && item.seed,
@@ -1418,7 +1433,7 @@ export class Runner {
         const required = seuilRequis(step);
         const passed = solved >= required;
 
-        if (!this.essai) journal.emit(EventTypes.STEP_COMPLETED, {
+        if (!this.sansTrace) journal.emit(EventTypes.STEP_COMPLETED, {
             runId: this.runId,
             pathId: this.path.id,
             stepId: step.stepId,
@@ -1544,7 +1559,7 @@ export class Runner {
         this.teardownStep();
         this.step = null;
 
-        if (!this.essai) journal.emit(EventTypes.STEP_COMPLETED, {
+        if (!this.sansTrace) journal.emit(EventTypes.STEP_COMPLETED, {
             runId: this.runId,
             pathId: this.path.id,
             stepId: step.stepId,
@@ -1963,7 +1978,7 @@ export class Runner {
         // le parcours qu'il décrivait.
         try { cacherFilSeance(); } catch (e) { /* idem */ }
 
-        if (!this.essai) journal.emit(EventTypes.RUN_FINISHED, {
+        if (!this.sansTrace) journal.emit(EventTypes.RUN_FINISHED, {
             runId: this.runId,
             pathId: this.path.id,
             aborted,
@@ -2025,6 +2040,20 @@ export class Runner {
             }
         }
         this.finish(true);
+    }
+
+    /**
+     * CE QUE LA PARTIE QUI VIENT DE FINIR A DONNÉ.
+     *
+     * La boîte à jeux en a besoin pour écrire son meilleur score dans le
+     * navigateur du joueur, et elle ne doit pas aller le chercher dans les
+     * entrailles du meneur : deux ensembles dont le nom peut changer demain.
+     */
+    bilanDeLaPartie() {
+        return {
+            reussies: this.itemsSolved ? this.itemsSolved.size : 0,
+            posees: this.itemsResolved ? this.itemsResolved.size : 0
+        };
     }
 
     exit() {

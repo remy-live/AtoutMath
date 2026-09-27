@@ -662,6 +662,9 @@ export function raisonsDuCodeLong(path) {
     if (p.reprise) {
         out.push('c\'est un rattrapage, et il doit se distinguer du travail d\'origine');
     }
+    if (p.boite) {
+        out.push('c\'est une boîte à jeux, et son nom voyage avec elle');
+    }
     p.steps.forEach((s, i) => {
         const r = raisonEtape(s);
         if (r) out.push(`étape ${i + 1} : ${r}`);
@@ -722,6 +725,15 @@ function chaineCourte(path) {
     // et l'élève qui la tape retomberait sur le parcours qu'il vient de rater.
     // Le format complet, lui, sait porter la graine.
     if (p.reprise) return '';
+    // UNE BOÎTE À JEUX NE SE DICTE PAS, ET SON NOM EST LA RAISON.
+    //
+    // La chaîne courte abandonne le nom du parcours, et le refait à la lecture
+    // à partir des titres des exercices : pour une séance, c'est un renoncement
+    // acceptable. Pour une boîte, le nom est ce que le joueur lit en grand à
+    // l'arrivée, et c'est aussi celui sous lequel il l'installe sur son écran
+    // d'accueil. « Sudoku, Mathdoku » à la place de « Les jeux de la 6e B »,
+    // c'est perdre la boîte elle-même. Le format complet, lui, porte le nom.
+    if (p.boite) return '';
     let out = '';
     for (const s of p.steps) {
         if (!etapeSimple(s)) return '';
@@ -818,6 +830,11 @@ function compact(path) {
     // Cette graine-ci, elle, voyage. C'est le seul champ de la forme compacte
     // qui ne décrit pas le travail : il décrit l'ACTE de le redonner.
     if (p.reprise) out.r = p.reprise;
+    // LA MARQUE DE LA BOÎTE À JEUX : une lettre, et l'arrivée est un autre
+    // écran. Le même code, sans elle, ouvrirait la carte d'une séance et
+    // enchaînerait les étapes dans l'ordre ; avec elle, il ouvre un menu qu'on
+    // picore. Voir `core/boite.js`.
+    if (p.boite) out.c = 1;
     // Le seuil qui ouvre les jeux de récompense du parcours.
     if (p.bonusSeuil !== undefined && p.bonusSeuil !== SEUIL_DEFAUT) out.b = p.bonusSeuil;
 
@@ -961,6 +978,7 @@ function expand(obj) {
     const path = makePath(obj.n || 'Parcours partagé', [], resolvePolicy(pol));
     if (obj.b !== undefined) path.bonusSeuil = obj.b;
     if (obj.r) path.reprise = obj.r;
+    if (obj.c) path.boite = true;
     path.steps = (obj.s || []).map((s, i) => ({
         stepId: `sc_${i}`,
         exerciseId: s.e,

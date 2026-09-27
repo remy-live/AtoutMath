@@ -406,3 +406,20 @@ manque.
   jusqu'au professeur depuis le direct, `forceSeed` existe) et surtout
   **parcourir les valeurs de `params.quoi`** au lieu d'en tirer une. Un exercice
   à sept formes demande sept écrans, pas un.
+
+## **`onExit` du meneur n'est pas appelé quand on ferme par la croix** — 2026-09-27
+
+- **Ce que je voulais faire** : ramener au menu de la boîte à jeux quand le
+  joueur referme un jeu.
+- **Ce qui a coûté** : une sonde complète écrite, lancée, et trois vérifications
+  en défaut sans que rien ne soit cassé côté boîte. `#btn-close-game`
+  (`js/app.js`) n'appelle pas `runner.exit()` : il abandonne le meneur et cache
+  la couche lui-même. C'est parfaitement légitime — ce bouton existait avant le
+  rappel —, mais `onExit` est le seul nom qui laisse croire le contraire, et il
+  est le premier endroit où l'on va. Diagnostic long, parce que la sonde disait
+  vrai : le menu ne revenait vraiment pas.
+- **Combien de fois** : |
+- **Ce qui manque** : que la sortie du meneur passe par UN SEUL chemin. Tant que
+  ce n'est pas le cas, une ligne dans `runner.js` à côté de `onExit` devrait
+  dire « attention : `#btn-close-game` ne passe pas par ici ». Tout écran qui
+  rend la main après une partie retombera dans ce trou.

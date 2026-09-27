@@ -9,6 +9,7 @@ import { hydratePath } from '../core/path.js';
 import { resolvePolicy } from '../core/policy.js';
 import { showAlert, showToast } from './modal.js';
 import { state } from '../core/state.js';
+import { estUneBoite } from '../core/boite.js';
 
 export function initStudentCodeUI() {
     const btnSubmit = document.getElementById('btn-submit-code');
@@ -43,6 +44,22 @@ export function applyCode(code, { autoStart = true } = {}) {
 
     const { steps, missing } = hydratePath(path);
     if (!steps.length) return false;
+
+    // UNE BOÎTE À JEUX N'EST PAS UN DEVOIR, ET NE DOIT RIEN EN AVOIR.
+    //
+    // Le même code, la même lecture, le même décodeur — mais ce qui suit
+    // change tout : `setStudentPath` ferait de ce lien un PARCOURS ASSIGNÉ.
+    // Il s'inscrirait dans « Mon Parcours », la barre du haut basculerait en
+    // mode parcours, la progression de l'appareil s'y rattacherait, et celui
+    // qui a simplement ouvert un lien pour jouer au sudoku se retrouverait
+    // avec un devoir à rendre. Rémy : « sans forcément avoir un parcours ».
+    //
+    // La boîte part donc AVANT tout cela, vers son propre écran.
+    if (estUneBoite(path)) {
+        path.steps = steps;
+        import('./boiteUI.js').then(m => m.ouvrirLaBoite(path));
+        return true;
+    }
     if (missing.length) {
         showToast(`${missing.length} exercice(s) de ce parcours n'existent plus.`, 'error');
     }

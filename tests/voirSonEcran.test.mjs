@@ -79,7 +79,17 @@ test('ET LE PROFESSEUR QUI REGARDE N\'ENTRE PAS DANS SON PROPRE DIRECT', () => {
     // runner en `essai`, et un essai ne se journalise pas. Sans ce garde, le
     // professeur qui regarde l'écran d'Emma apparaîtrait comme travaillant sur
     // l'exercice d'Emma.
-    assert.match(R, /if \(!this\.essai\) journal\.emit\(EventTypes\.STEP_STARTED/);
+    //
+    // LA GARDE S'APPELLE MAINTENANT `sansTrace`, ET ELLE COUVRE UN CAS DE PLUS.
+    // `essai` disait deux choses à la fois — « n'écris rien au journal » ET
+    // « montre les commandes du professeur ». La boîte à jeux (`core/boite.js`)
+    // n'a besoin que de la première : celui qui ouvre un lien de boîte n'est
+    // identifié nulle part, et rien de ce qu'il joue ne doit entrer dans le
+    // carnet de qui que ce soit. Les deux idées se sont donc séparées, et
+    // `this.sansTrace` vaut `essai || boîte` : le professeur qui regarde reste
+    // couvert exactement comme avant.
+    assert.match(R, /if \(!this\.sansTrace\) journal\.emit\(EventTypes\.STEP_STARTED/);
+    assert.match(R, /this\.sansTrace = !!cfg\.sansTrace \|\| this\.essai;/);
 });
 
 test('LA CONDITION DU BOUTON N\'A PAS BOUGÉ — C\'EST CE QU\'ON LUI DONNE QUI CHANGE', () => {

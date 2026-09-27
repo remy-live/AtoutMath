@@ -399,6 +399,46 @@ exercices disparus. `normalizePath()` convertit les anciens parcours.
 Les codes de partage encodent le parcours entier — politique et barème compris
 — en base64url. Les anciens codes à deux lettres restent décodables.
 
+### 8 bis. La boîte à jeux : le même transport, une autre arrivée
+
+Rémy : « j'aimerai bien faire qqch qui permet en transférant un lien d'avoir une
+sorte d'appli avec des exercices que j'ai choisi **sans forcément avoir un
+parcours**. Par exemple, j'envoie un lien et les personnes peuvent jouer au
+sudoku ou au ken ken et avec des réglages ultra simplifié. »
+
+Une **boîte à jeux** est un parcours qui porte une marque (`boite: true`, une
+seule lettre dans le code) et qui, à l'arrivée, ouvre un **menu** au lieu d'une
+séance : une carte par jeu, aucun ordre, aucun seuil, aucune note, aucun bilan.
+
+Pourquoi c'est un parcours dans le code : le lien, le code dicté à lettre de
+contrôle, le QR, l'affiche à imprimer et la lecture de `?code=` existent déjà et
+ont coûté des mois. Un second transport, ce serait deux encodeurs à tenir — et
+une boîte sans aucune de ces garanties.
+
+Ce que la marque change, et c'est tout ce qu'elle change :
+
+| | Parcours | Boîte |
+| --- | --- | --- |
+| à l'arrivée | la carte de la séance, dans l'ordre | un menu, au choix |
+| ce qui est gardé | le journal de l'élève, puis le serveur | `localStorage`, sur l'appareil |
+| qui le voit | le professeur, dans Le direct | personne d'autre que le joueur |
+| réglages | ceux du professeur | deux au plus, au joueur |
+
+Le meneur tourne en `sansTrace` : une partie de boîte n'entre dans le carnet de
+personne, même si la boîte est ouverte dans le navigateur d'un élève connecté.
+`sansTrace` a d'ailleurs été séparé de `essai` pour cela — `essai` disait à la
+fois « n'écris rien » et « montre les commandes du professeur ».
+
+Les réglages du joueur ne sont pas inventés : on montre ce que l'exercice a
+vraiment, en choix fermé et court (`difficulte`, `taille`…), et **la longueur de
+la partie**, qui est le seul réglage valable pour les 216 exercices puisqu'elle
+ne demande rien d'autre que leur nombre de questions conseillé.
+
+`js/core/boite.js` (la règle, sans DOM), `js/ui/boiteUI.js` (l'écran),
+`tests/boite.test.mjs`, `tools/boiteAJeux.mjs` (la mesure par le chemin du
+joueur : on fabrique une boîte, on relève son lien, on l'ouvre dans un
+navigateur neuf).
+
 ### L'identité d'un parcours est son CONTENU
 
 Un parcours voyage par trois chemins, et il faut qu'ils se reconnaissent : le

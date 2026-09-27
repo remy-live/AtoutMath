@@ -262,6 +262,16 @@ window.addEventListener('DOMContentLoaded', async () => {
                     document.documentElement.classList.add('parcours-pret');
                     return;
                 }
+                // UNE BOÎTE À JEUX N'OUVRE PAS LA COUCHE DE JEU : elle ouvre son
+                // MENU, et personne ne joue tant qu'on n'a pas choisi. Sans
+                // cette ligne, le voile attendait une couche qui ne viendrait
+                // jamais, et la boîte apparaissait au bout de huit secondes —
+                // ou plutôt : le voile tombait, en déclarant le lien abîmé.
+                const bj = document.getElementById('boite-layer');
+                if (bj && !bj.hidden) {
+                    document.documentElement.classList.add('parcours-pret');
+                    return;
+                }
                 if (Date.now() - depart > 8000) {
                     document.documentElement.classList.remove('depuis-code', 'parcours-pret');
                     return;
@@ -606,6 +616,13 @@ function initGameControls() {
             // par lien : elle était cachée pour qu'il ne la voie pas AVANT son
             // parcours, pas pour la lui interdire après.
             document.documentElement.classList.remove('depuis-code', 'parcours-pret');
+            // SAUF S'IL EST DANS UNE BOÎTE À JEUX : là, fermer un jeu veut dire
+            // « je reviens au menu », pas « je quitte ». Mesuré : sans cette
+            // ligne, la croix rouge laissait un écran vide — ce bouton n'appelle
+            // pas `exit()`, donc le meneur ne rend jamais la main à la boîte.
+            if (document.body.classList.contains('en-boite')) {
+                import('./ui/boiteUI.js').then(m => m.revenirALaBoite());
+            }
         };
     }
 

@@ -105,6 +105,23 @@ export function fabriquerCsp(lireFichier = (f) => readFileSync(join(RACINE, f), 
         // créé que par du script déjà en train de tourner sur l'origine, que
         // `script-src` gouverne déjà. On n'ouvre donc aucune porte de plus.
         "worker-src 'self' blob:",
+        // `manifest-src` — LE NOM QUE PORTE UNE BOÎTE À JEUX INSTALLÉE.
+        //
+        // Sans cette ligne, le manifeste retombe sur `default-src 'self'` et un
+        // manifeste `blob:` est REFUSÉ — en silence, comme toujours : la boîte
+        // s'installerait sous le nom « AtoutMath » au lieu de « Les jeux de la
+        // 6e B », et rien ne dirait pourquoi.
+        //
+        // POURQUOI UN MANIFESTE FABRIQUÉ À LA VOLÉE. Le manifeste du dépôt est
+        // un fichier unique et figé ; il ne peut pas porter douze noms, et une
+        // boîte à jeux est faite pour qu'il y en ait douze. Voir
+        // `ui/boiteUI.js` : le nom, le `start_url` et le `scope` se composent
+        // au moment où la boîte s'ouvre.
+        //
+        // CE N'EST PAS UN AFFAIBLISSEMENT, pour la même raison que le worker
+        // ci-dessus : un `blob:` ne peut naître que du script déjà en train de
+        // tourner sur l'origine, que `script-src` gouverne déjà.
+        "manifest-src 'self' blob:",
         // PERSONNE N'ENFERME CE SITE DANS UNE IFRAME. C'est ce qui empêche
         // qu'on habille l'espace professeur d'une fausse page pour lui faire
         // cliquer ce qu'il ne veut pas.

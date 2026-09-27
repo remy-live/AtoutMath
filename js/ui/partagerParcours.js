@@ -33,6 +33,7 @@
 import { showModal, showToast } from './modal.js';
 import { Shortcodes } from '../core/shortcodes.js';
 import { qrcodeSVG } from '../core/qrcode.js';
+import { faireUneBoite } from '../core/boite.js';
 
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -109,14 +110,36 @@ function imprimerLAffiche({ nom, code, lien }) {
  * @param {{nom?: string}} [options]
  */
 export function ouvrirPartage(path, options = {}) {
-    const code = Shortcodes.encodePath(path);
+    // EN FAIRE UNE BOÎTE À JEUX, OU NON : c'est la même liste d'exercices, et
+    // deux façons radicalement différentes de la donner.
+    //
+    // Rémy : « j'aimerai bien faire qqch qui permet en transférant un lien
+    // d'avoir une sorte d'appli avec des exercices que j'ai choisi sans
+    // forcément avoir un parcours. »
+    //
+    // LE CHOIX EST ICI, ET PAS DANS LE CONSTRUCTEUR DE SÉANCE, parce que c'est
+    // ici qu'on décide COMMENT on donne le travail — à côté du code à dicter,
+    // du lien et du QR. Le constructeur, lui, décide de ce qu'il y a dedans, et
+    // c'est la même chose dans les deux cas.
+    //
+    // ON REFABRIQUE LA BOÎTE À PARTIR DES ÉTAPES, au lieu de poser un drapeau
+    // sur la séance : une boîte n'a ni seuil, ni note, ni ordre, et
+    // `faireUneBoite` est le seul endroit qui sache ce que cela veut dire.
+    const enBoite = !!options.boite;
+    const aPartager = enBoite ? faireUneBoite({
+        nom: path.name || options.nom || 'Mes jeux',
+        exercices: (path.steps || []).map(s => ({
+            id: s.exerciseId, overrides: s.overrides, nbItems: s.nbItems
+        }))
+    }) : path;
+    const code = Shortcodes.encodePath(aPartager);
     if (!code) {
         showToast('Ce parcours ne peut pas être encodé.', 'error');
         return null;
     }
-    const lien = Shortcodes.shareUrl(path);
+    const lien = Shortcodes.shareUrl(aPartager);
     const dictable = !code.startsWith('M2-');
-    const raisons = dictable ? [] : Shortcodes.raisonsDuCodeLong(path);
+    const raisons = dictable ? [] : Shortcodes.raisonsDuCodeLong(aPartager);
     const nom = options.nom || path.name || 'Parcours';
 
     // LE QR PORTE LE LIEN, PAS LE CODE. Un lecteur de QR ouvre ce qu'il trouve :
@@ -130,6 +153,22 @@ export function ouvrirPartage(path, options = {}) {
             margin-bottom:6px">${titre}</div>${corps}</div>`;
 
     const contenu = `
+        <label id="partage-boite-bloc" style="display:flex;gap:10px;align-items:flex-start;
+               padding:10px 12px;margin:0 0 16px;border:1px solid var(--border);
+               border-radius:10px;cursor:pointer;min-height:44px">
+            <input type="checkbox" id="partage-boite" ${enBoite ? 'checked' : ''}
+                   style="margin-top:3px;flex:0 0 auto">
+            <span>
+                <span style="font-weight:700">En faire une boîte à jeux</span>
+                <span style="display:block;font-size:.85rem;color:var(--text-muted);
+                             line-height:1.45;margin-top:2px">
+                    Celui qui ouvre le lien voit un MENU de ces exercices et en choisit
+                    un quand il veut : pas d'ordre imposé, pas de note, pas de bilan, et
+                    rien qui remonte jusqu'à vous. Les meilleurs scores restent sur son
+                    appareil, et il peut l'installer comme une petite application.
+                </span>
+            </span>
+        </label>
         <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
             <div style="flex:0 0 auto;margin:0 auto">
                 ${svg
@@ -181,7 +220,9 @@ export function ouvrirPartage(path, options = {}) {
             <button id="partage-fermer" class="btn btn-primary">Fermer</button>
         </div>`;
 
-    const fenetre = showModal(`Partager « ${esc(nom)} »`, contenu, { width: '640px' });
+    const fenetre = showModal(
+        (enBoite ? `Partager la boîte « ${esc(nom)} »` : `Partager « ${esc(nom)} »`),
+        contenu, { width: '640px' });
     const el = fenetre.element;
     const champCode = el.querySelector('#partage-code');
     const champLien = el.querySelector('#partage-lien');
@@ -196,6 +237,16 @@ export function ouvrirPartage(path, options = {}) {
     // UN CHAMP EN LECTURE SEULE SE SÉLECTIONNE D'UN CLIC. C'est le geste de
     // secours quand la copie est refusée, et celui qu'on fait naturellement.
     [champCode, champLien].forEach(c => { if (c) c.onclick = () => c.select(); });
+
+    // BASCULER REFAIT LA FENÊTRE. Le code, le lien, le QR, l'affiche et la
+    // liste des raisons changent TOUS quand on coche : les rafraîchir un par un
+    // serait cinq occasions d'en oublier un, et une fenêtre qui montre le QR de
+    // la séance sous le lien de la boîte serait pire que pas de bouton.
+    const bascule = el.querySelector('#partage-boite');
+    if (bascule) bascule.onchange = () => {
+        fenetre.close();
+        ouvrirPartage(path, { ...options, boite: bascule.checked });
+    };
 
     const imprimer = el.querySelector('#partage-imprimer');
     if (imprimer) imprimer.onclick = () => imprimerLAffiche({ nom, code: dictable ? code : '', lien });
