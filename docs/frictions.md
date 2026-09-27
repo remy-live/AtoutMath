@@ -323,3 +323,69 @@ manque.
   qu'on vient d'écrire, avant même d'essayer de s'en servir. Une entrée du
   journal le demandait déjà le 26 ; elle est toujours ouverte, et elle vient de
   se payer trois fois de plus.
+
+## **Une sonde qui mesure une position au lieu de refaire le geste : 95 fausses pistes sur 95** — 2026-09-27
+
+- **Ce que je voulais faire** : balayer les 216 exercices du catalogue sur trois
+  tailles d'écran et corriger ce qui ne tient pas.
+- **Ce qui a coûté** : le balayage a rendu **36 défauts**, dont 17 « SOUS LA
+  FENÊTRE » et 78 cibles trop petites. Vérification faite un par un dans le
+  navigateur, en refaisant le geste : **dix-sept sur dix-sept étaient
+  atteignables en défilant**, et les cibles étaient des cases de grille ou des
+  touches. Quatre défauts réels sur quatre-vingt-quinze signalements, et une
+  heure passée à ne pas y croire. La règle fautive tenait en une ligne — « le
+  bas du bouton dépasse la fenêtre » — alors que chaque jeu porte un cadre
+  défilant et que `.canvas-area` est en `overflow-y: auto`.
+- **Combien de fois** : |||  (`apercusVides.mjs` deux fois, `ouvrirExercice.mjs`
+  une, et c'est la même faute chaque fois)
+- **Ce qui manque** : une règle écrite en tête de toute sonde de rendu — **on ne
+  signale que ce qui résiste au geste**. Mesurer une position, c'est deviner ;
+  `scrollIntoView` puis `elementFromPoint`, c'est savoir. Et un corollaire aussi
+  cher : **une sonde plus sévère que la règle du dépôt ne mesure pas le
+  logiciel, elle mesure son propre désaccord** — le plancher de 44 px n'impose
+  qu'un `min-height` et exclut les cases ; une sonde qui refuse aussi les
+  largeurs rend cinquante lignes par exercice.
+
+## **`getComputedStyle().backgroundColor` ne rend pas du `rgb()` pour un `color-mix`** — 2026-09-27
+
+- **Ce que je voulais faire** : mesurer les contrastes des trois nouveaux thèmes.
+- **Ce qui a coûté** : une passe complète refaite, environ trente minutes.
+  Chromium rend `color(srgb 0.897 0.927 0.993)` ; une sonde qui n'accepte que
+  `rgb()` ne reconnaît pas ce fond, **remonte silencieusement jusqu'au fond de
+  l'application** et mesure le mauvais couple. Ce dépôt a **136 fonds en
+  `color-mix`** : le piège est structurel, pas accidentel.
+- **Combien de fois** : |
+- **Ce qui manque** : une fonction partagée « contraste réellement rendu » —
+  capture de l'élément, couleur la plus fréquente pour le fond, encre la plus
+  éloignée — que toute sonde de couleur importe au lieu de la réécrire. Elle
+  existe déjà deux fois, dans `tools/tmp/auditTheme-silencePixels.py` et dans
+  `tools/tmp/ambre.mjs`.
+
+## **Un site d'essai neuf n'a pas les états qu'on veut mesurer** — 2026-09-27
+
+- **Ce que je voulais faire** : vérifier ma correction du mot « rien depuis
+  N min » du direct, que l'audit avait mesuré à 4,24 en thème océan.
+- **Ce qui a coûté** : trente captures vides — « pas de rang de ce genre ».
+  L'étiquette n'apparaît que si un élève est **silencieux depuis des minutes** ;
+  le site de l'audit avait tourné une heure, le mien venait de naître. Il a fallu
+  écrire une deuxième sonde qui mesure l'autre moitié de la paire (le fond du
+  rang, toujours présent) pour pouvoir dire un chiffre.
+- **Combien de fois** : |
+- **Ce qui manque** : que `tools/siteEssai.php` sache **semer le temps** — un
+  élève silencieux depuis huit minutes, un devoir rendu hier, une note de la
+  semaine dernière. Sans ça, tout écran qui dépend de l'âge d'une donnée est
+  hors de portée d'une sonde, et c'est la moitié du direct.
+
+## **Deux sondes sur le même site d'essai se marchent dessus** — 2026-09-27
+
+- **Ce que je voulais faire** : enchaîner deux passes de mesure sur un site déjà
+  monté, pour ne pas repayer le démarrage de PHP.
+- **Ce qui a coûté** : la deuxième passe héritait de la progression de la
+  première — les identifiants d'élèves sont uniques par collage, pas par serveur
+  — et « Commencer ma séance » avait disparu de l'écran qu'elle venait mesurer.
+  Diagnostic long, parce que la sonde ne mentait pas : l'écran était vraiment
+  différent.
+- **Combien de fois** : |
+- **Ce qui manque** : une phrase dans le `CLAUDE.md` — **une sonde d'écrans part
+  d'un `siteEssai` neuf**, ou bien elle dit dans son titre qu'elle mesure un site
+  déjà joué.

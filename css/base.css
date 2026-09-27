@@ -55,7 +55,27 @@
        blanc, elles ne se lisent pas. Les versions « texte » gardent la teinte
        et descendent jusqu'à passer. */
     --success-texte: #047857; --accent-texte: #0369a1;
-    --warning-texte: #b45309; --danger-texte: #be123c;
+    /* L'AMBRE EST PASSÉ DE #b45309 À #92400e, ET C'EST MESURÉ SUR LES PIXELS.
+       `.ec-silence` — le mot « rien depuis 7 min » du direct, celui que le
+       professeur doit repérer sans le chercher — est en `--warning-texte` sur le
+       fond de la fiche dépliée, `color-mix(--primary 7%, --bg-panel)`. Vingt-
+       quatre découpes de l'étiquette rendue, texte gras de 12,2 px, seuil 4,5 :
+
+         clair 4,53 · océan 4,24 · forêt 4,32 · coucher 6,39 · sombre 9,70
+
+       Océan et forêt tombaient SOUS le seuil, et le clair ne passait que de
+       trois centièmes. La cause n'était pas le thème mais le jeton : coucher de
+       soleil était le seul des cinq à redéfinir cet ambre en #92400e, et c'est
+       justement le seul qui passait largement. On prend donc sa valeur pour
+       tous : même teinte, un cran plus foncé.
+
+       APRÈS, sur le même fond relevé pixel par pixel (`tools/tmp/ambre.mjs`,
+       qui retrouve les quatre chiffres ci-dessus au centième) :
+
+         océan 4,24 -> 5,99 · forêt 4,32 -> 6,10 · clair 4,53 -> 6,39
+
+       Le thème sombre garde son #fcd34d, qui donne déjà 9,70. */
+    --warning-texte: #92400e; --danger-texte: #be123c;
 
     /* ─── UN TROISIÈME RÔLE : LE FOND QUI PORTE DU BLANC ───────────────────
        Le commentaire ci-dessus partage déjà les couleurs de sens en deux —
@@ -148,7 +168,7 @@
     --primary-texte: #075985;
     --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
     --success-texte: #047857; --accent-texte: #0369a1;
-    --warning-texte: #b45309; --danger-texte: #be123c;
+    --warning-texte: #92400e; --danger-texte: #be123c;
     
     --tag-niv-bg: #bfdbfe; --tag-niv-txt: #1e3a8a;
     --tag-dom-bg: #fed7aa; --tag-dom-txt: #9a3412;
@@ -168,7 +188,7 @@
     --primary-texte: #166534;
     --danger: #ef4444; --success: #22c55e; --warning: #f59e0b;
     --success-texte: #047857; --accent-texte: #0369a1;
-    --warning-texte: #b45309; --danger-texte: #be123c;
+    --warning-texte: #92400e; --danger-texte: #be123c;
     
     --tag-niv-bg: #bbf7d0; --tag-niv-txt: #14532d;
     --tag-dom-bg: #fef08a; --tag-dom-txt: #713f12;

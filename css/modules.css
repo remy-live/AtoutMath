@@ -2481,9 +2481,18 @@ html[data-point="plus"] .pt-croix { display: none; }
     #game-header #game-progress-container {
         grid-area: avance; flex: none; margin: 0;
         width: 72px; min-width: 72px; max-width: 72px; height: 18px; border-radius: 9px;
-        /* Piste plus sombre : sur 72 px, le compteur en blanc se perdait sur
-           le gris clair tant que la barre était vide. */
-        background: color-mix(in srgb, var(--text-muted) 55%, var(--border));
+        /* LA PISTE REDEVIENT CELLE DE L'ORDINATEUR, ET C'EST UNE CORRECTION.
+           L'intention de la ligne qui était ici — « piste plus sombre : sur
+           72 px, le compteur en blanc se perdait sur le gris clair tant que la
+           barre était vide » — était juste, mais son mélange ne l'obtenait pas.
+           MESURÉ sur les pixels rendus, blanc gras de 12 px sur cette pastille :
+           clair 2,61 · forêt 3,12 · coucher 3,22 · océan 3,57 · sombre 3,71,
+           pour un seuil de 4,5. Le pire des cinq était le thème CLAIR, celui de
+           tous les jours : `color-mix(--text-muted 55%, --border)` est un gris
+           moyen mélangé à une bordure pâle, donc un gris pâle.
+           La piste de `css/games.css` — `#475569` — donne 7,51 dans les cinq
+           thèmes, puisqu'elle ne dépend d'aucun jeton. On la laisse donc agir :
+           elle était déjà là, et elle était déjà la bonne. */
     }
     #game-progress-bar { border-radius: 9px; }
     /* 10,9 px, ET LE MOT N'Y EST PLUS POUR RIEN : la note ci-dessous explique
@@ -2625,6 +2634,38 @@ html[data-point="plus"] .pt-croix { display: none; }
        grille de dix colonnes ferait 440 px de large sur un écran qui en a 390 :
        on casserait le jeu pour élargir un bouton. */
     #game-layer button:not(.game-icon-btn):not(.btn-carre):not([class*="case"]):not([class*="cell"]):not([class*="cellule"]):not([class*="touche"]) {
+        min-height: 44px;
+    }
+
+    /* LE CHAMP OÙ L'ÉLÈVE TAPE SA RÉPONSE EST UNE CIBLE, LUI AUSSI.
+       ============================================================
+       Le plancher ci-dessus a été écrit pour les BOUTONS, et il n'a jamais rien
+       dit des champs. Le balayage du catalogue entier — 216 exercices, trois
+       tailles, 432 écrans, chacun ouvert au doigt — a trouvé quatre exercices
+       dont le champ de réponse est plus bas qu'un doigt, et ce sont les quatre
+       seuls défauts de cible qui restaient :
+
+         · la glissière de la Balance ........ 180 x 16
+         · les deux champs de l'horloge ....... 66 x 39
+         · le champ d'Angle Master ............ 58 x 34
+         · les deux champs de « Deux nombres ». 53 x 36
+
+       Un champ qu'on touche pour répondre est exactement la cible que ce
+       plancher protège ; la glissière est même le pire cas, puisqu'il faut
+       ATTRAPER seize pixels et les FAIRE GLISSER. Trente-neuf pixels de haut
+       passent presque, seize ne passent pas du tout.
+
+       LA CASE À COCHER ET LE BOUTON RADIO SONT EXCLUS : leur taille est celle du
+       signe que le navigateur dessine, et les étirer fait un ovale — la faute
+       que le plancher des boutons a déjà payée une fois, et que son commentaire
+       raconte vingt lignes plus haut. Le label qui les porte reçoit déjà ses
+       44 px dans `css/ui.css`.
+
+       La glissière garde sa piste au milieu de la boîte : Chromium centre la
+       piste d'un `range` dans la hauteur qu'on lui donne, donc on gagne une
+       zone de prise de 44 px sans déplacer d'un pixel ce que l'élève voit. */
+    #game-layer input:not([type="checkbox"]):not([type="radio"]),
+    #game-layer select {
         min-height: 44px;
     }
 }
