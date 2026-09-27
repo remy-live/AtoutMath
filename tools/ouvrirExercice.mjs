@@ -258,16 +258,35 @@ for (const { l, h } of TAILLES) {
                     if (pareils.length >= 8) { casesEcartees++; return false; }
                 }
                 return true;
-            }).map(e => {
-                const r = e.getBoundingClientRect();
-                return { q: nom(e), w: Math.round(r.width), h: Math.round(r.height) };
             // LA HAUTEUR DÉCIDE, PAS LA LARGEUR — comme le plancher du dépôt, qui
             // n'impose qu'un `min-height`. Sa propre mesure le dit : « les seuls
             // boutons plus hauts que larges après coup (38 x 44) sont des touches
             // de pavé numérique et deux loupes : la forme d'une touche, pas un
             // ovale. » Une flèche de 35 x 44 est une touche ; un champ de 66 x 39
             // est trop bas pour un doigt.
-            }).filter(x => x.h < 44);
+            //
+            // ET CE QU'ON MESURE EST LA ZONE DE PRISE, PAS LE RECTANGLE.
+            // Un trou dans une phrase (`np-trou`) ne peut pas grandir sans
+            // pousser la ligne ; il porte donc un pseudo-élément qui élargit sa
+            // zone de prise à 44 px sans rien déplacer. Son rectangle continue
+            // d'annoncer 26 px, et une sonde qui s'arrêterait là signalerait un
+            // défaut déjà corrigé. On demande donc au navigateur, comme pour
+            // l'atteignabilité : QUI reçoit le doigt à 21 px au-dessus et
+            // au-dessous du centre ?
+            }).map(e => {
+                const r = e.getBoundingClientRect();
+                const cx = Math.round(r.left + r.width / 2);
+                const cy = Math.round(r.top + r.height / 2);
+                const sien = (y) => {
+                    if (y < 0 || y > H) return false;
+                    const d = document.elementFromPoint(cx, y);
+                    return !!d && (d === e || e.contains(d) || d.contains(e));
+                };
+                const prise = (r.height >= 44) || (sien(cy - 21) && sien(cy + 21));
+                return {
+                    q: nom(e), w: Math.round(r.width), h: Math.round(r.height), prise
+                };
+            }).filter(x => !x.prise);
 
             // EN DERNIER, ET SEULEMENT EN DERNIER : L'ESSAI QUI DÉPLACE LA PAGE.
             //

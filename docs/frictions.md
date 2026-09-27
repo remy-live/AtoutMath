@@ -389,3 +389,20 @@ manque.
 - **Ce qui manque** : une phrase dans le `CLAUDE.md` — **une sonde d'écrans part
   d'un `siteEssai` neuf**, ou bien elle dit dans son titre qu'elle mesure un site
   déjà joué.
+
+## **Un balayage tire une question au hasard, donc il ne voit qu'un exercice sur six** — 2026-09-27
+
+- **Ce que je voulais faire** : vérifier un défaut que le balayage venait de
+  signaler dans « Les Fonctions » — deux cibles de 38 x 26.
+- **Ce qui a coûté** : quatorze ouvertures de l'exercice avant de retomber sur la
+  question fautive. `alg-fonctions` tire sa question parmi sept formes (`lire`,
+  `phrase`, `image`, `programme`, `tableau`…) et une seule porte des trous à
+  toucher. Le balayage ouvre chaque exercice UNE fois, avec une graine tirée au
+  hasard : il a vu cette forme-là par chance, et la passe suivante ne la reverra
+  peut-être pas. Deux conséquences, aussi mauvaises l'une que l'autre — un défaut
+  signalé qu'on ne sait pas reproduire, et cinq formes sur six jamais regardées.
+- **Combien de fois** : |
+- **Ce qui manque** : que la sonde puisse **fixer la graine** (elle voyage déjà
+  jusqu'au professeur depuis le direct, `forceSeed` existe) et surtout
+  **parcourir les valeurs de `params.quoi`** au lieu d'en tirer une. Un exercice
+  à sept formes demande sept écrans, pas un.

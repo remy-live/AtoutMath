@@ -580,6 +580,50 @@
     border-bottom-width: 3px;
 }
 .np-trou--plein { letter-spacing: normal; }
+/* ET UNE CASE QU'ON TOUCHE SE TOUCHE AVEC UN DOIGT.
+   ===================================================
+   MESURÉ au balayage du catalogue, sur un téléphone de 360 x 640 : les deux
+   trous de « ? est un antécédent de ? par f » font 38 x 26. Vingt-six pixels,
+   pour un plancher tactile de quarante-quatre.
+
+   ON NE PEUT PAS LES GRANDIR : un trou est un mot DANS une phrase. Lui donner
+   neuf pixels de remplissage vertical descendrait son soulignement de neuf
+   pixels sous le texte — le trait qui dit « écris ici » se décollerait du mot —,
+   et grandirait la ligne de la phrase.
+
+   ON AGRANDIT DONC LA ZONE DE PRISE, PAS LE MOT. Un pseudo-élément en position
+   absolue ne participe pas à la mise en page : il ne déplace rien, et le doigt
+   qui tombe dessus touche le trou. La phrase garde exactement la même allure,
+   au pixel près, et la cible passe de 26 à 44.
+
+   SOUS `pointer: coarse` SEULEMENT : à la souris, la zone invisible passerait
+   par-dessus la ligne du dessus pour rien.
+
+   ET LA PHRASE S'AÈRE, SANS QUOI LES DEUX ZONES SE MARCHENT DESSUS. MESURÉ :
+   « ? est un antécédent de ? par f » se replie sur DEUX lignes dans 360 px, à
+   29 px d'écart. Deux bandes de 44 px à 29 px d'écart se recouvrent, et celle
+   du second trou — plus bas dans le document, donc au-dessus — mangeait la
+   moitié haute du premier : le trou VISÉ, celui où l'élève écrit, était le seul
+   des deux à ne pas recevoir le doigt. Une interligne de 44 px sépare les
+   lignes d'exactement la hauteur d'une zone.
+
+   QUARANTE-HUIT, ET PAS QUARANTE-QUATRE : deux bandes de 44 px espacées de
+   44 px se touchent au pixel près, et l'arrondi décide alors laquelle reçoit le
+   doigt — mesuré, le trou visé perdait encore. Quatre pixels de jeu suffisent,
+   et chaque trou reçoit ses 44 px entiers. */
+@media (pointer: coarse) {
+    .fn-phrase { line-height: 48px; }
+    /* LE TROU, LUI, GARDE SA PROPRE INTERLIGNE. Sans cette ligne, l'interligne
+       de 44 px est héritée par le bloc en ligne qu'est le trou : sa boîte passe
+       à 44 px, et son SOULIGNEMENT — le trait qui dit « écris ici » — descend
+       au fond de la boîte, à neuf pixels sous le texte. La phrase s'aère, le
+       mot ne bouge pas. */
+    .np-trou { position: relative; line-height: normal; }
+    .np-trou::after {
+        content: ''; position: absolute; left: 0; right: 0;
+        top: 50%; transform: translateY(-50%); height: 44px;
+    }
+}
 
 /* UN PROGRAMME DE CALCUL EST UNE LISTE. Rémy : « va à la ligne à chaque
    étape ». Écrit d'un trait, il se repliait sur un écran étroit à des endroits
