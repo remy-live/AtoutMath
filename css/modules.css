@@ -2486,7 +2486,13 @@ html[data-point="plus"] .pt-croix { display: none; }
         background: color-mix(in srgb, var(--text-muted) 55%, var(--border));
     }
     #game-progress-bar { border-radius: 9px; }
-    #game-header #game-progress-text { font-size: .68rem; letter-spacing: -.02em; }
+    /* 10,9 px, ET LE MOT N'Y EST PLUS POUR RIEN : la note ci-dessous explique
+       qu'on a retiré l'unité (« paires », « lignes ») parce qu'elle débordait.
+       Il ne reste que le compte — « 2 / 15 », cinq signes —, et cinq signes à
+       12 px tiennent largement dans les soixante-douze pixels de la pastille.
+       On rend donc à ce chiffre la taille du plancher : c'est l'avancement,
+       l'élève le cherche du regard pendant tout l'exercice. */
+    #game-header #game-progress-text { font-size: .75rem; letter-spacing: -.02em; }
     /* « 0 / 24 paires » dans soixante-douze pixels : le mot débordait des deux
        côtés et l'on ne lisait plus le compte. Le compte suffit. */
     .pg-unite { display: none; }
@@ -2770,7 +2776,19 @@ html[data-point="plus"] .pt-croix { display: none; }
 
 /* --- Bilan (fin de parcours, profil, analyse prof) --------- */
 
-.report-panel { max-height: 88vh; overflow-y: auto; padding: 26px; }
+/* `overflow-anchor: none` : LE NAVIGATEUR NE DÉCIDE PLUS OÙ L'ON REGARDE.
+   MESURÉ sur téléphone court — 360 × 640, 360 × 740, 414 × 640, les deux
+   thèmes, six configurations sur six : le bilan s'ouvrait à son `scrollTop`
+   MAXIMUM, et l'élève qui finit sa séance atterrissait sur le BAS de son
+   bilan — trophée, « Sans faute ! » et note 314 px plus haut. C'est l'ancrage
+   de défilement de Chromium : le panneau grandit après sa pose (la porte du
+   bac, les tuiles, les barres de maîtrise) et le navigateur suit le contenu
+   plutôt que de rester en haut. Ici, il n'y a rien à suivre : on ouvre une
+   fenêtre, on la lit du début. */
+.report-panel {
+    max-height: 88vh; overflow-y: auto; padding: 26px;
+    overflow-anchor: none;
+}
 .report-title { font-size: 1.7rem; color: var(--text-main); text-align: center; margin-bottom: 4px; }
 .report-subtitle { text-align: center; color: var(--text-muted); margin-bottom: 18px; }
 
@@ -2874,7 +2892,7 @@ html[data-point="plus"] .pt-croix { display: none; }
     border-radius: 10px; height: 10px; max-width: 300px; overflow: hidden;
 }
 .profile-xp-bar > div { background: var(--primary); height: 100%; transition: width .5s ease; }
-.profile-xp-text { font-size: clamp(.68rem, 2.4vw, .8rem); color: var(--text-muted); margin-top: 5px; }
+.profile-xp-text { font-size: clamp(.76rem, 2.4vw, .84rem); color: var(--text-muted); margin-top: 5px; }
 
 .skill-group-title {
     font-weight: 700; color: var(--text-muted); font-size: .78rem;
@@ -3485,7 +3503,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 
 .world-node-ici {
     margin-top: 8px; padding: 3px 10px; border-radius: 999px;
-    font-size: .7rem; font-weight: 800; letter-spacing: .02em;
+    font-size: .76rem; font-weight: 800; letter-spacing: .02em;
     background: var(--primary); color: #fff; box-shadow: var(--shadow-sm);
     animation: worldBounce 1.6s ease-in-out infinite;
 }
@@ -3513,7 +3531,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .world-node--locked .world-node-label { color: var(--text-muted); }
-.world-node-meta { font-size: .72rem; color: var(--text-muted); }
+.world-node-meta { font-size: .76rem; color: var(--text-muted); }
 .world-map-play { width: 100%; margin-top: 4px; }
 
 @media (max-width: 520px) {
@@ -5704,17 +5722,27 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    du navigateur. Elle reste lisible, mais discrète — le détail est toujours
    à un appui sur « ? ». */
 @media (max-height: 780px), (max-width: 700px) {
+    /* TROIS LIGNES, PAS DEUX — et ce qui était coupé n'était pas un détail.
+       Sur le Binairo, l'élève lisait « Autant de 0 que de 1 par ligne et par
+       colonne — jamais trois identiques q… » : la moitié coupée porte UNE DES
+       DEUX RÈGLES DU JEU. La note d'origine disait « elle reste lisible, mais
+       discrète — le détail est toujours à un appui sur ? », ce qui est vrai
+       d'un détail et faux d'une règle.
+       La troisième ligne coûte dix-sept pixels, que la grille rend désormais :
+       depuis qu'elle tient compte de ce qui l'entoure (voir `.su-board`), elle
+       n'a plus besoin de toute la hauteur. Remesuré sur les deux jeux : aucun
+       bouton sous la fenêtre. */
     .kenken-consigne, .tab-consigne, .pyt-sous {
         font-size: .84rem; line-height: 1.3; font-weight: 600;
         color: var(--text-muted);
-        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
         overflow: hidden;
     }
     .kenken-consigne b, .tab-consigne b { font-weight: 800; color: var(--text-main); }
     .kenken-layout { gap: 6px; padding: 8px 6px; }
     /* Sur écran court, ce qui entoure la grille est plus maigre — la consigne
        tient en deux lignes, les gouttières fondent : on lui rend la place. */
-    .su-board { width: min(500px, 92cqw, max(170px, 100cqh - 250px)); }
+    .su-board { width: min(500px, 92cqw, max(170px, 100cqh - 272px)); }
 }
 
 .kk-board {
@@ -6351,11 +6379,20 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
    d'une bande vide : c'est pourtant lui qu'il faut regarder pour compter les
    carreaux. */
 .sc-scene {
+    /* SUR UN ÉCRAN COURT, LA SCÈNE CÈDE AVANT LES BOUTONS D'AIDE.
+       MESURÉ au doigt à 360 × 640 : « 💡 Un indice » et « 🤝 Montre-moi »
+       tombaient 47 px sous la fenêtre. Le cadre défilait d'exactement 47 px —
+       ça passait au pixel près, et rien ne le disait. Un plancher de 190 px sur
+       un écran de 640 ne laisse pas la place au reste ; 150 suffisent à voir ce
+       que le chat dessine, et rendent les deux aides. */
     flex: 1 1 42%; min-height: 190px;
     display: flex; align-items: center; justify-content: center;
     background: var(--bg-app); border: 2px solid var(--border); border-radius: 14px; overflow: hidden;
 }
 .sc-canvas { display: block; touch-action: none; }
+@media (max-height: 700px) {
+    .sc-scene { min-height: 130px; }
+}
 
 /* Le studio : palette + atelier, côte à côte comme dans Scratch. */
 .sc-studio {
@@ -9267,10 +9304,15 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     background: var(--bg-hover);
     border: 1px solid var(--border);
 }
+/* « ENREGISTRÉ » : 3,9 DE CONTRASTE, IL EN FAUT 4,5.
+   Le vert du texte sur un fond vert clair, en thème clair — le sombre passait
+   déjà. Un fond un peu plus pâle et une bordure un peu plus franche rendent le
+   badge lisible sans changer sa couleur : c'est la même famille, et il doit
+   rester reconnaissable d'un coup d'œil à côté de « Brouillon ». */
 .path-etat--ok {
     color: var(--success-texte);
-    background: color-mix(in srgb, var(--success) 13%, transparent);
-    border: 1px solid color-mix(in srgb, var(--success) 34%, transparent);
+    background: color-mix(in srgb, var(--success) 7%, var(--bg-panel));
+    border: 1px solid color-mix(in srgb, var(--success) 45%, transparent);
 }
 @keyframes path-etat-eclat {
     from { transform: scale(1.12); filter: brightness(1.25); }

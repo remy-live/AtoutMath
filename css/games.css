@@ -611,6 +611,11 @@
     padding: 5px 25px; min-height: 26px;
     background: var(--bg-verre); backdrop-filter: blur(10px);
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    /* 12,5 px : le fil dit « Étape 1 sur 3 » et le nom du parcours — c'est
+       l'avancement de la séance, que l'élève cherche du regard. Il était à
+       0,72rem, soit 11,5 px, sous le plancher de lisibilité qu'on tient
+       partout ailleurs. La bande ne grandit pas pour autant : elle a
+       `min-height: 26px` et le texte y tient. */
     font-size: 0.78rem; color: var(--text-muted);
     flex-shrink: 0;
 }

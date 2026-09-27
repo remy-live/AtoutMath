@@ -88,6 +88,32 @@ function majBandeau(texte) {
  */
 function majVerrou(actif) {
     document.body.classList.toggle('classe-verrouillee', !!actif);
+    // LA PASTILLE DU PRÉNOM RESTE VISIBLE SOUS VERROU (voir css/ui.css), mais
+    // elle ne doit plus ouvrir le mode professeur — ni au doigt, ni au clavier.
+    // `pointer-events: none` suffit pour le doigt ; la tabulation, non.
+    const pastille = document.getElementById('btn-role');
+    if (pastille) {
+        pastille.disabled = !!actif;
+        pastille.setAttribute('aria-disabled', actif ? 'true' : 'false');
+        pastille.tabIndex = actif ? -1 : 0;
+        // ET ELLE DIT POURQUOI LES BOUTONS ONT DISPARU.
+        //
+        // Sous verrou, trois commandes s'effacent de la barre et RIEN ne
+        // l'expliquait : l'élève voyait son écran maigrir sans un mot. Le
+        // professeur a sa consigne pour parler, mais il ne l'écrit pas
+        // toujours, et « mets en pause » est justement le geste qu'on fait
+        // vite. Deux mots à côté du prénom suffisent, et ils tiennent dans la
+        // place qu'on vient de lui rendre — pas un bandeau de plus.
+        let mot = pastille.querySelector('.role-badge-pause');
+        if (actif && !mot) {
+            mot = document.createElement('span');
+            mot.className = 'role-badge-pause';
+            mot.textContent = 'en pause';
+            pastille.appendChild(mot);
+        } else if (!actif && mot) {
+            mot.remove();
+        }
+    }
     if (!actif) return;
     // Si l'élève était DANS le catalogue au moment du verrouillage, on le
     // ramène sur son parcours : le laisser sur un écran qu'on vient de lui

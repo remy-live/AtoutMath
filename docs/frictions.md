@@ -246,3 +246,36 @@ manque.
   s'écrivent plus jamais seuls sur un conteneur qui défile. Une vérification qui
   lit les feuilles de style et signale la paire `overflow: auto` + `center` sans
   `safe` coûterait dix lignes et fermerait la famille entière.
+
+## **Le navigateur décide où l'on regarde, et personne ne le lui a retiré** — 2026-09-27
+
+- **Ce que je voulais faire** : ouvrir une fenêtre de bilan en haut.
+- **Ce qui a coûté** : deux tentatives. Poser `scrollTop = 0` à la pose ne suffit
+  pas — le panneau grandit après (la porte du bac, les tuiles, les barres de
+  maîtrise) et l'ancrage de défilement de Chromium SUIT le contenu. Remesuré :
+  `scrollTop` revenait à 286 sur 286 de réserve. Il a fallu `overflow-anchor:
+  none` EN PLUS de trois remises en haut.
+- **Combien de fois** : |
+- **Ce qui manque** : que `overflow-anchor: none` accompagne toute fenêtre qu'on
+  ouvre et dont le contenu se complète après la pose. C'est la même famille que
+  le centrage en flex : une valeur par défaut du navigateur, raisonnable
+  ailleurs, fausse ici.
+
+## **Une cible tactile ne se mesure pas avec une souris** — 2026-09-27
+
+- **Ce que je voulais faire** : vérifier que les boutons font 44 px.
+- **Ce qui a coûté** : deux agents sur quatre ont d'abord rendu des listes
+  entières de faux défauts — trente-deux boutons d'un côté, quatorze de
+  l'autre — parce que le plancher de 44 px de ce dépôt vit sous
+  `@media (pointer: coarse)`, et qu'un Chromium de bureau rétréci à 360 px
+  annonce un pointeur FIN. Ils mesuraient une fenêtre étroite, pas un téléphone.
+  Deux heures perdues d'un côté, quarante mesures à refaire de l'autre. Et
+  `js/app.js` a la même condition pour la présentation téléphone : sans
+  `hasTouch`, on ne mesure même pas la bonne mise en page.
+- **Combien de fois** : ||
+- **Ce qui manque** : que `hasTouch: true, isMobile: true` soit le DÉFAUT de
+  toute sonde de mise en page sous 768 px — c'est fait dans
+  `tools/ouvrirExercice.mjs`, à généraliser au module de sonde partagé quand il
+  existera. Et qu'une sonde qui compte des cibles ignore les cases de grille et
+  de tableau : neuf colonnes dans 360 px ne feront jamais 44 px chacune, et les
+  signaler rend cinquante-huit fausses pistes par exercice.

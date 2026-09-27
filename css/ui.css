@@ -663,7 +663,11 @@
    « un code » sans dire lequel : Rémy a collé un code de séance dans la case
    du billet, et le refus qui suivait l'envoyait vérifier son billet. */
 .portail-forme {
-    font-weight: 500; font-size: .74rem; color: var(--text-muted, #64748b);
+    /* 11,8 px SUR LA PORTE D'ENTRÉE, et ce texte-là porte de l'information :
+       « 4 signes », « long, avec des tirets » — c'est lui qui dit quel code on
+       attend, et il a été ajouté exprès parce que Rémy avait collé un code de
+       séance dans la case du billet. */
+    font-weight: 500; font-size: .78rem; color: var(--text-muted, #64748b);
     margin-left: 6px; letter-spacing: 0;
 }
 
@@ -1038,11 +1042,24 @@ body.classe-verrouillee #top-btn-grid,
 body.classe-verrouillee #mob-btn-grid,
 body.classe-verrouillee #mob-btn-drill-acc,
 body.classe-verrouillee #btn-toggle-sidebar,
-body.classe-verrouillee #btn-role,
 body.classe-verrouillee #btn-open-import-export-student,
 body.classe-verrouillee #sidebar,
 body.classe-verrouillee #debug-toolbar,
 body.classe-verrouillee #rangement-bascule { display: none !important; }
+
+/* LA PASTILLE DU PRÉNOM RESTE, MAIS ELLE CESSE D'ÊTRE UNE PORTE.
+   Elle était masquée avec les autres, et pour une bonne raison — c'est par elle
+   qu'on passe en mode professeur, « et un élève de sixième trouve ce clic avant
+   la fin de l'heure ». Mais elle est AUSSI le seul endroit où l'élève lit son
+   propre prénom en haut de l'écran, posé là exprès. MESURÉ : sous verrou,
+   `.nav-left` passait de 152 × 44 — « AtoutMath » et « Alicia » — à 74 × 44
+   sans un pixel d'encre, soit 7 % de la hauteur d'un téléphone en bande
+   blanche, et l'élève perdait son nom.
+   On lui retire donc le GESTE, pas la place : elle reste lisible, elle ne se
+   clique plus, et le clavier ne s'y arrête pas. */
+body.classe-verrouillee #btn-role {
+    pointer-events: none; cursor: default;
+}
 
 /* L'ÉLÈVE MIS EN PAUSE. Un voile complet : il n'y a rien à faire tant que le
    professeur n'a pas rouvert, et laisser l'application utilisable derrière
@@ -1431,6 +1448,34 @@ body.plein-ecran .pe-sortir { display: block; }
     .rang-btn, .btn-toggle { min-height: 44px; }
     .toolbar-icon-btn { min-width: 44px; min-height: 44px; }
     .rech-croix { min-width: 44px; min-height: 44px; }
+
+    /* ── LE RESTE DE CE QUI ÉCHAPPAIT AU PLANCHER ────────────────────────────
+       Trouvé par un balayage de tous les écrans, au doigt. Deux familles, et
+       elles disent la même chose que les notes précédentes : une LISTE de
+       sélecteurs ne connaît que ce qu'on y a mis.
+
+       CÔTÉ ÉLÈVE. « changer » — le geste de l'élève assis devant la tablette de
+       quelqu'un d'autre — faisait 60 × 18, la plus petite cible de son espace.
+       Puis les cartes de plan (65 × 25 et 298 × 41), le dépliant « Pourquoi, et
+       avec quoi ? » (298 × 24), les onglets du profil (× 37), « Explorer tous
+       les exercices » (× 40), « J'ai lu » du mot du professeur (× 42) et la
+       porte du bac à sable (× 42).
+
+       CÔTÉ PROFESSEUR. Le « + » de l'arbre du catalogue (24 × 24) et son œil
+       (28 × 28), les trois champs de la barre latérale (35 à 37 px), le chevron
+       d'une étape (28 × 28), les « Oui » / « Non » des réglages (× 41), la
+       bascule d'aperçu (28 × 30) et la poignée du tiroir (19 px de haut).
+
+       DEUX D'ENTRE ELLES SE VISENT DANS LES DEUX SENS — celles qui sont
+       carrées ; les autres sont déjà larges et ne manquaient que de hauteur. */
+    .auj-lien, .auj-explorer, .plan-exo, .plan-btn, .plan-detail > summary,
+    .prof-onglet-btn, .mot-du-prof-ok, .bac-porte { min-height: 44px; }
+    .exo-list-item button.teacher-only, .path-step-toggle, .preview-mode-btn {
+        min-width: 44px; min-height: 44px;
+    }
+    #sidebar-search-input, #custom-niveau-select, #path-name-input,
+    .cfg-on, .path-step-actions button { min-height: 44px; }
+    #drawer-handle { min-height: 44px; }
     /* LA PORTE D'ENTRÉE DE L'ÉLÈVE, mesurée sur un téléphone de 390 : deux
        cibles trop petites, et ce sont les deux SEULES portes de secours —
        « Je n'ai pas de billet », qui déplie la saisie du prénom, et « Je suis

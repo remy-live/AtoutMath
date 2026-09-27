@@ -49,6 +49,17 @@
     border-color: var(--primary); color: var(--primary-texte);
 }
 .role-badge--prof .role-badge-point { opacity: 1; }
+/* « EN PAUSE », À CÔTÉ DU PRÉNOM — voir `majVerrou` dans seanceDistanteUI.
+   Sous verrou, trois commandes s'effacent de la barre et rien ne l'expliquait :
+   l'élève voyait son écran maigrir sans un mot. Deux mots suffisent, et ils
+   tiennent dans la place qu'on vient de rendre à la pastille. Elle n'est alors
+   plus un bouton : ni doigt, ni clavier (voir css/ui.css). */
+.role-badge-pause {
+    margin-left: 2px; padding: 1px 7px; border-radius: 999px;
+    background: color-mix(in srgb, var(--warning) 22%, transparent);
+    color: var(--warning-texte); font-size: .74rem; font-weight: 800;
+}
+body.classe-verrouillee .role-badge { opacity: 1; cursor: default; }
 /* Sur un téléphone, le mot tombe et le point reste : il suffit à dire le rôle,
    et la barre haute n'a pas un pixel à perdre. */
 @media (max-width: 430px) {

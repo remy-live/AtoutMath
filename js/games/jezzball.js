@@ -52,7 +52,18 @@ class JezzBall extends BaseGame {
                 .jz-pc { font-weight: 900; min-width: 3.2em; text-align: right; }
                 canvas.jz-toile {
                     border: 2.5px solid var(--text-main); border-radius: 10px;
-                    width: min(94cqw, 640px); touch-action: none; cursor: crosshair;
+                    /* LE TERRAIN SUIT L'ÉCRAN, DANS LES DEUX SENS.
+                       Il n'était borné que par la LARGEUR : à 1440 x 900 il
+                       faisait 640 x 419 dans un plateau de 830, soit 270 px de
+                       vide en dessous ; à 360 x 640, 286 x 188 — trente-deux
+                       pour cent de la hauteur, avec cent trente pixels vides
+                       sous la consigne. Le jeu restait jouable, mais on jouait
+                       petit sans raison.
+                       La hauteur disponible entre ici : environ deux cents
+                       pixels pour l'entête, la barre et la note, et le reste
+                       pour le terrain, dans sa proportion. */
+                    width: min(94cqw, 820px, calc((100cqh - 200px) * 1.53));
+                    touch-action: none; cursor: crosshair;
                     background: var(--bg-panel); display: block;
                 }
                 .jz-barre { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }

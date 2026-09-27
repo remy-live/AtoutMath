@@ -212,3 +212,30 @@ export function showConfirm(message, onConfirm, opts = {}) {
         };
     }
 }
+
+/**
+ * ATTENDRE QUE L'ÉCRAN SOIT LIBRE, PUIS AGIR.
+ *
+ * DEUX FENÊTRES L'UNE SUR L'AUTRE NE SE LISENT NI L'UNE NI L'AUTRE, et celle
+ * du dessous est pire qu'invisible : elle garde le CLAVIER. Mesuré à la fin
+ * d'un parcours, dans dix configurations sur dix — la carte des récompenses
+ * ouverte sous le bilan, `document.activeElement` posé sur son bouton
+ * « Super ! » que personne ne voit, et une touche Entrée agissant sur une
+ * fenêtre cachée. Le panneau de bilan étant translucide, le fantôme du trophée
+ * transparaissait derrière « BILAN PAR COMPÉTENCE ».
+ *
+ * Au-delà de dix secondes on renonce : l'élève est passé à autre chose, et une
+ * carte qui surgit après coup n'annonce plus rien.
+ *
+ * CETTE FONCTION VIVAIT DANS `mesExercicesUI`, où elle servait aux récompenses
+ * proposées après un exercice seul. Elle est ici parce que le même besoin s'est
+ * présenté ailleurs, et que deux implémentations d'une même règle finissent
+ * toujours par diverger — c'est la doctrine de ce dépôt.
+ */
+export function quandLEcranEstLibre(faire, restant = 34) {
+    const occupe = [...document.querySelectorAll('.modal-overlay, #run-report-modal')]
+        .some(m => m.style.display !== 'none' && getComputedStyle(m).display !== 'none');
+    if (!occupe) { faire(); return; }
+    if (restant <= 0) return;
+    setTimeout(() => quandLEcranEstLibre(faire, restant - 1), 300);
+}

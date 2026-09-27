@@ -46,6 +46,35 @@ export function showRunReport(bilan, { onClose, enTete = '' } = {}) {
     document.body.appendChild(modal);
     modal.style.display = 'flex';
 
+    // ON REMONTE LE PANNEAU EN HAUT, EXPRÈS.
+    //
+    // MESURÉ sur téléphone court — 360 × 640, 360 × 740, 414 × 640, dans les
+    // deux thèmes, six configurations sur six : le panneau s'ouvrait à son
+    // `scrollTop` MAXIMUM. L'élève qui finit sa séance atterrissait sur le BAS
+    // de son bilan : le trophée, « Sans faute ! », « 2 sur 2, tout juste du
+    // premier coup » et la note étaient au-dessus, et il fallait remonter pour
+    // les voir. Sur un écran de 360 × 640, 314 px plus haut.
+    //
+    // La cause la plus probable est l'ancrage de défilement du navigateur, qui
+    // suit un contenu inséré pendant que le panneau grandit. On ne cherche pas
+    // à le déjouer : on dit simplement où l'on veut être, ce qui est vrai quel
+    // que soit le navigateur. Deux fois, parce qu'une ligne peut encore
+    // s'insérer dans la même image (la porte du bac, les tuiles de bilan).
+    const panneau = modal.querySelector('.report-panel') || modal.firstElementChild;
+    if (panneau) {
+        // TROIS FOIS, PARCE QUE DEUX NE SUFFISAIENT PAS. Remesuré à 360 × 640
+        // après une première tentative : `scrollTop` revenait à 286 sur 286 de
+        // réserve. Le panneau grandit encore après sa pose — la porte du bac,
+        // les tuiles de bilan, les barres de maîtrise —, et le navigateur suit.
+        // `overflow-anchor: none` (voir `.report-panel` dans css/modules.css)
+        // lui retire cette initiative ; ces trois remises-ci rattrapent ce qui
+        // arriverait quand même.
+        const enHaut = () => { panneau.scrollTop = 0; };
+        enHaut();
+        requestAnimationFrame(enHaut);
+        setTimeout(enHaut, 150);
+    }
+
     document.getElementById('btn-report-close').onclick = () => {
         modal.remove();
         if (onClose) onClose();

@@ -92,7 +92,7 @@
    bande — c'est un résumé, pas le contenu de la page. */
 .stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
 .stat-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.stat-label { color: var(--text-muted); font-size: clamp(.7rem, 2.6vw, .9rem); font-weight: 600; }
+.stat-label { color: var(--text-muted); font-size: clamp(.76rem, 2.6vw, .9rem); font-weight: 600; }
 .stat-value { font-size: clamp(1rem, 4vw, 1.4rem); font-weight: 700; overflow-wrap: break-word; }
 
 .stat-value--accent { font-size: clamp(.82rem, 3vw, 1.2rem); color: var(--accent-texte); }

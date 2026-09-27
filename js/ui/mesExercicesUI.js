@@ -25,7 +25,7 @@ import { exercices, getExerciseById, estADeux, filterByStatus } from '../data/ca
 import { estJeuCatalogue } from '../core/revue.js';
 import { chercher } from '../core/recherche.js';
 import { ficheDe } from './rechercheUI.js';
-import { showModal, showToast } from './modal.js';
+import { showModal, showToast, quandLEcranEstLibre } from './modal.js';
 import {
     LIMITES, LIMITE_DEFAUT, creerExercicePerso, decrireLimite, enParcours,
     meriteRecompense, parcoursRecompense
@@ -250,19 +250,6 @@ export async function jouerExercicePerso(entree) {
             if (meriteRecompense(bilanFinal)) quandLEcranEstLibre(() => proposerRecompense());
         }
     }).start();
-}
-
-/**
- * Attend que plus aucune fenêtre ne soit ouverte, puis agit. Au-delà de dix
- * secondes on renonce : l'élève est passé à autre chose, et une récompense qui
- * surgit après coup n'en est plus une.
- */
-function quandLEcranEstLibre(faire, restant = 34) {
-    const occupe = [...document.querySelectorAll('.modal-overlay, #run-report-modal')]
-        .some(m => m.style.display !== 'none' && getComputedStyle(m).display !== 'none');
-    if (!occupe) { faire(); return; }
-    if (restant <= 0) return;
-    setTimeout(() => quandLEcranEstLibre(faire, restant - 1), 300);
 }
 
 /**

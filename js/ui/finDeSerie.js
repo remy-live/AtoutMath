@@ -32,7 +32,7 @@
 // enchaînement. On attend donc un court moment avant de dessiner — assez pour
 // que les deux soient arrivées, trop peu pour qu'on le remarque.
 
-import { showModal } from './modal.js';
+import { showModal, quandLEcranEstLibre } from './modal.js';
 import { robotSvg } from './icones.js';
 
 // 320 ms : plus long que les 260 ms d'attente des badges (voir
@@ -86,6 +86,26 @@ function dessiner() {
     const { badges, bilan, actions, apres } = enAttente;
     vider();
     if (!badges.length && !bilan) return;
+
+    // ET L'ON ATTEND QUE L'ÉCRAN SOIT LIBRE.
+    //
+    // CE FICHIER A ÉTÉ ÉCRIT POUR EMPÊCHER TROIS PANNEAUX SIMULTANÉS, et il en
+    // restait un quatrième qu'il ne connaissait pas : le BILAN DE PARCOURS, que
+    // le meneur ouvre à `finish()`. Mesuré à la fin d'un parcours, dix
+    // configurations sur dix : cette carte-ci s'ouvrait SOUS le bilan, et
+    // `document.activeElement` se posait sur son bouton « Super ! » — invisible,
+    // mais tenant le clavier. Une touche Entrée agissait sur une fenêtre que
+    // l'élève ne voyait pas. Le bilan étant translucide, le fantôme du trophée
+    // transparaissait derrière « BILAN PAR COMPÉTENCE ».
+    //
+    // L'ORDRE DE LECTURE TRANCHE : le bilan d'un parcours est le plus gros
+    // événement, et c'est lui qu'on vient chercher. La carte attend donc qu'il
+    // soit refermé. Elle ne disparaît pas — elle arrive à son tour, et elle est
+    // lue, ce qu'elle n'était pas.
+    quandLEcranEstLibre(() => poser({ badges, bilan, actions, apres }));
+}
+
+function poser({ badges, bilan, actions, apres }) {
 
     // L'ORDRE DE LECTURE EST FIXE, ET C'EST TOUT L'OBJET DE CE FICHIER :
     // d'abord ce qu'on a GAGNÉ — c'est ce qui fait lever les yeux —, ensuite
