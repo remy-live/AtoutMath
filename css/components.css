@@ -163,7 +163,7 @@
 .section-header-row .section-title { margin-bottom: 0; }
 .section-header-actions { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
 .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; }
-#btn-start-revision { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; display: none; }
+#btn-start-revision { background: var(--accent-fond); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; display: none; }
 .badges-placeholder { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; padding: 30px; box-shadow: var(--shadow-sm); text-align: center; color: var(--text-muted); }
 #error-log-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px; }
 
@@ -174,7 +174,7 @@
 .path-timeline-step--locked { opacity: 0.6; }
 .path-timeline-step .btn-toggle { margin-top: 10px; }
 .path-timeline-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.2rem; flex-shrink: 0; box-shadow: 0 0 0 4px var(--bg-app); }
-.path-timeline-icon--done { background: var(--success); color: white; }
+.path-timeline-icon--done { background: var(--success-fond); color: white; }
 .path-timeline-icon--current { background: var(--primary); color: white; }
 .path-timeline-icon--locked { background: var(--border); color: var(--text-muted); }
 .card--flush { flex-grow: 1; margin: 0; }
@@ -324,7 +324,7 @@
 .modal-btn-flex { flex: 1; justify-content: center; }
 .modal-btn-flex--neutral { background: var(--bg-panel); color: var(--text-main); }
 .modal-btn-flex--primary { background: var(--primary); color: white; border-color: var(--primary); font-weight: bold; }
-.modal-btn-flex--danger { background: var(--danger); color: white; border-color: var(--danger); }
+.modal-btn-flex--danger { background: var(--danger-fond); color: white; border-color: var(--danger); }
 .glass-btn--full { width: 100%; justify-content: center; }
 
 #student-code-input { font-size: 1.5rem; padding: 15px; border: 2px solid var(--border); border-radius: 12px; outline: none; text-transform: uppercase; width: 100%; text-align: center; font-family: monospace; font-weight: bold; letter-spacing: 4px; }
@@ -472,7 +472,8 @@ body.mobile-view #toast-container {
 .carnet-btn { position: relative; overflow: visible; }
 .carnet-pastille {
     position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px;
-    padding: 0 4px; border-radius: 999px; background: var(--danger); color: #fff;
+    /* Dix pixels de blanc gras : il faut 4,5, et `--danger` en donne 3,76. */
+    padding: 0 4px; border-radius: 999px; background: var(--danger-fond); color: #fff;
     font-size: 10px; font-weight: 800; line-height: 18px; text-align: center;
     box-shadow: 0 0 0 2px var(--bg-app); pointer-events: none;
 }

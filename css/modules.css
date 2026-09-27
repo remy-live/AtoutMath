@@ -1030,7 +1030,7 @@
 }
 .sprint-etiquette { line-height: 1.25; }
 .sprint-tuile--ok { border-color: var(--success); background: #dcfce7; color: #065f46; }
-.sprint-tuile--ko { border-color: var(--danger); background: var(--danger); color: #fff; }
+.sprint-tuile--ko { border-color: var(--danger); background: var(--danger-fond); color: #fff; }
 .sprint-tuile--ko .sprint-touche { background: rgba(255,255,255,.25); color: #fff; }
 /* La bonne case, révélée quand le temps est écoulé ou les essais épuisés. */
 .sprint-tuile--vraie { border-color: var(--success); box-shadow: 0 0 0 3px rgba(16,185,129,.25); }
@@ -2226,15 +2226,18 @@ html[data-point="plus"] .pt-croix { display: none; }
 }
 .mole {
     width: 78%; height: 78%; border-radius: 50%;
-    background: var(--accent); color: #fff;
+    /* `--accent-fond` et non `--accent` : la taupe porte un nombre BLANC,
+       et le blanc sur `--accent` vaut 2,14 en thème clair. Voir la famille
+       des jetons de fond dans `css/base.css`. */
+    background: var(--accent-fond); color: #fff;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.7rem; font-weight: 700;
     transform: translateY(150%);
     transition: transform .2s cubic-bezier(.175, .885, .32, 1.275), background .15s;
 }
 .mole--up { transform: translateY(0); }
-.mole--ok { background: var(--success); }
-.mole--ko { background: var(--danger); }
+.mole--ok { background: var(--success-fond); }
+.mole--ko { background: var(--danger-fond); }
 
 /* --- Écrans du moteur de parcours -------------------------- */
 
@@ -3603,7 +3606,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 /* Les actions principales gardent leur couleur d'origine, l'icône en blanc. */
 .toolbar-icon-btn--primary { background: var(--primary); border-color: var(--primary); color: #fff; }
 .toolbar-icon-btn--primary:hover { border-color: var(--primary); filter: brightness(1.08); }
-.toolbar-icon-btn--success { background: var(--success); border-color: var(--success); color: #fff; }
+.toolbar-icon-btn--success { background: var(--success-fond); border-color: var(--success); color: #fff; }
 .toolbar-icon-btn--success:hover { border-color: var(--success); filter: brightness(1.08); }
 
 /* UNE DOUZAINE DE CARRÉS BLANCS IDENTIQUES NE SE LISENT PAS. Un trait sépare
@@ -4656,7 +4659,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    une tablette ne survole jamais rien. */
 .cfg-zx { color: var(--danger, #dc2626); border-color: rgba(220, 38, 38, .35); }
 .cfg-zx:hover:not(:disabled) {
-    background: var(--danger, #dc2626); color: #fff; border-color: var(--danger, #dc2626);
+    background: var(--danger-fond); color: #fff; border-color: var(--danger);
 }
 .cfg-zplusmini { color: var(--text-muted); }
 .cfg-zplusmini:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
@@ -5876,7 +5879,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 
 .kk-actions { display: flex; gap: 10px; align-items: center; }
 .kk-btn-valider {
-    background: linear-gradient(90deg, var(--primary), var(--accent)); color: #fff;
+    /* Le dégradé finit sur `--accent-fond` : voir `.bac-porte--ouverte`
+       dans `css/ui.css`, même motif et même mesure. */
+    background: linear-gradient(90deg, var(--primary), var(--accent-fond)); color: #fff;
     border: none; border-radius: 12px; padding: 10px 26px;
     font-size: 1.05rem; font-weight: 700; cursor: pointer;
     box-shadow: var(--shadow-sm); transition: transform .15s ease;
@@ -6338,8 +6343,11 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 .pyt-cell--tete { background: var(--bg-hover); color: var(--text-muted); font-weight: 800; }
 .pyt-case { background: var(--bg-app); border: 1px solid var(--border); cursor: pointer; color: var(--text-main); }
 .pyt-case:hover { border-color: var(--primary); background: rgba(124, 92, 255, .10); }
-.pyt-case--ok { background: var(--success) !important; color: #fff !important; border-color: var(--success) !important; }
-.pyt-case--ko { background: var(--danger) !important; color: #fff !important; border-color: var(--danger) !important; }
+/* LE FOND PORTE DU BLANC, DONC C'EST LE JETON DE FOND. Mesuré : blanc sur
+   `--success` 2,54, sur `--danger` 3,76 — dans les cinq thèmes. La bordure
+   garde la couleur vive, qui n'a rien à porter. */
+.pyt-case--ok { background: var(--success-fond) !important; color: #fff !important; border-color: var(--success) !important; }
+.pyt-case--ko { background: var(--danger-fond) !important; color: #fff !important; border-color: var(--danger) !important; }
 
 /* --- Sudoku : la grille aux blocs -----------------------------
    Lignes fines entre les cases, traits épais aux frontières des blocs et sur
@@ -7854,7 +7862,12 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--warning) 22%, transparent);
 }
 .world-node--cadeau .world-node-rang {
-    background: var(--warning); color: #3a2a00; border-color: var(--warning);
+    /* LE BRUN EST DESCENDU DE #3a2a00 À #2e2100, ET C'EST LE THÈME « COUCHER DE
+       SOLEIL » QUI L'A DEMANDÉ. Un rang de 12,5 px en graisse 900 exige 4,5 :
+       l'ancien brun donnait 6,47 sur l'ambre des quatre autres thèmes, mais
+       4,36 sur le #d97706 de coucher de soleil, le seul à foncer `--warning`.
+       Le nouveau donne 7,33 et 4,94. */
+    background: var(--warning); color: #2e2100; border-color: var(--warning);
 }
 .world-node--cadeau-ferme .world-node-btn {
     border-style: dashed; border-color: var(--border);
@@ -8267,7 +8280,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .ea-vignette-txt { margin-top: 4px; font-size: .7rem; line-height: 1.25; color: var(--text-muted); }
 .ea-retirer {
     position: absolute; top: -7px; right: -7px; width: 22px; height: 22px;
-    border-radius: 50%; border: 2px solid var(--bg-panel); background: var(--danger, #e11d48);
+    border-radius: 50%; border: 2px solid var(--bg-panel); background: var(--danger-fond);
     color: #fff; cursor: pointer; font-size: .7rem; font-weight: 800; line-height: 1;
 }
 .ea-pied { display: flex; justify-content: flex-end; gap: 10px; }
@@ -9660,7 +9673,8 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 }
 .nv-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 .nv-btn--primaire {
-    background: linear-gradient(90deg, var(--primary), var(--accent));
+    /* Même correction que les deux autres dégradés indigo-vers-accent. */
+    background: linear-gradient(90deg, var(--primary), var(--accent-fond));
     color: #fff; border-color: transparent;
 }
 .nv-btn--primaire:hover { color: #fff; filter: brightness(1.06); }
@@ -10032,7 +10046,7 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 /* Et le premier de tous : c'est LUI, le dénominateur commun. Il doit se
    distinguer des autres rendez-vous, sinon on a montré des multiples communs
    sans montrer le plus petit — c'est-à-dire sans répondre à la question. */
-.fa-c-ppcm { background: var(--success) !important; color: #fff;
+.fa-c-ppcm { background: var(--success-fond) !important; color: #fff;
              box-shadow: inset 0 0 0 2px #065f46;
              animation: fa-clignote 1.1s ease-in-out 3; }
 @keyframes fa-clignote { 50% { transform: scale(1.18); } }

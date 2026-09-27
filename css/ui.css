@@ -593,7 +593,7 @@
 }
 .ec-bouton--doux:hover { background: var(--bg-hover); border-color: var(--text-muted); }
 .ec-bouton--rouge { background: var(--bg-panel); color: var(--danger-texte); border-color: var(--danger); }
-.ec-bouton--rouge:hover { background: var(--danger); color: #fff; }
+.ec-bouton--rouge:hover { background: var(--danger-fond); color: #fff; }
 .ec-bouton--grand { padding: 12px 24px; font-size: 1rem; margin-top: 6px; }
 
 .ec-mini {
@@ -603,7 +603,7 @@
     color: var(--text-muted); transition: .15s;
 }
 .ec-mini:hover { background: var(--bg-hover); color: var(--text-main); }
-.ec-mini--rouge:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+.ec-mini--rouge:hover { background: var(--danger-fond); color: #fff; border-color: var(--danger); }
 
 /* --- Vides, notes, alertes ------------------------------------------------ */
 .ec-vide { padding: 40px 26px; text-align: center; color: var(--text-muted); }
@@ -2301,7 +2301,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 }
 .fp-champ:hover .fp-champ-x,
 .fp-champ:focus-within .fp-champ-x { opacity: .75; }
-.fp-champ-x:hover { opacity: 1; color: #fff; background: var(--danger, #c0392b); }
+.fp-champ-x:hover { opacity: 1; color: #fff; background: var(--danger-fond); }
 @media (hover: none) { .fp-champ-x { opacity: .6; } }
 .fp-champ i { font-style: normal; color: #4a5568; }
 
@@ -2912,7 +2912,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .cx-tete-btn[aria-pressed="true"] {
     background: var(--primary); border-color: var(--primary); color: #fff;
 }
-.cx-fermer:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+.cx-fermer:hover { background: var(--danger-fond); border-color: var(--danger); color: #fff; }
 
 /* L'ÉCRAN : ce qu'on tape en petit, le résultat en grand — l'inverse de ce
    qu'on lit d'abord serait une calculatrice qu'on relit deux fois. */
@@ -3998,9 +3998,12 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .ec-alarme-oeil {
     flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-weight: 900; color: #fff; background: var(--warning);
+    /* Un « ! » blanc de 22 px : blanc sur `--warning` vaut 2,15 dans quatre
+       thèmes sur cinq, et c'est l'alarme du direct — celle qu'on doit lire en
+       balayant trente lignes. */
+    font-weight: 900; color: #fff; background: var(--warning-fond);
 }
-.ec-alarme--dur .ec-alarme-oeil { background: var(--danger); }
+.ec-alarme--dur .ec-alarme-oeil { background: var(--danger-fond); }
 .ec-alarme-mot { font-weight: 600; }
 
 /* Dans Le direct, la ligne de celui qui ne répond plus se teinte : c'est ce qui
@@ -4079,7 +4082,11 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .report-bac { margin: 14px 0 2px; text-align: center; }
 .bac-porte { font: inherit; }
 .bac-porte--ouverte {
-    background: linear-gradient(90deg, var(--primary), var(--accent));
+    /* LE DÉGRADÉ FINIT SUR `--accent-fond`, ET NON SUR `--accent`. Le blanc
+       tient sur l'indigo du départ (5,02 au pire des cinq thèmes) et
+       s'effondre à l'arrivée : 2,14 sur le bleu ciel. La moitié droite du
+       bouton était illisible, et personne ne regarde la moitié d'un bouton. */
+    background: linear-gradient(90deg, var(--primary), var(--accent-fond));
     color: #fff; border: none; font-weight: 800; font-size: 1rem;
     padding: 11px 26px; border-radius: 11px; cursor: pointer;
     box-shadow: 0 4px 14px rgba(0, 0, 0, .14);
@@ -4182,7 +4189,7 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     font: inherit; font-weight: 700; padding: 10px 20px; border-radius: 10px;
     cursor: pointer; border: 1px solid transparent;
 }
-.dx-bouton--sortie { background: var(--danger); color: #fff; }
+.dx-bouton--sortie { background: var(--danger-fond); color: #fff; }
 .dx-bouton--sortie:disabled { opacity: .6; cursor: default; }
 .dx-bouton--doux { background: var(--bg-app); color: var(--text-main); border-color: var(--border); }
 

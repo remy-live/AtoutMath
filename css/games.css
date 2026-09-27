@@ -250,7 +250,7 @@
 }
 .bubble:active { transform: translateY(2px) scale(0.95); }
 
-.bubble.demo-target, .prio-btn.demo-target, .grid-cell.demo-target, .missing-cell.demo-target, .ad-choix-btn.demo-target { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5), 0 0 25px var(--warning) !important; transform: scale(1.15) !important; background: linear-gradient(135deg, var(--warning), #fbbf24) !important; color: white !important; border-color: white !important;}
+.bubble.demo-target, .prio-btn.demo-target, .grid-cell.demo-target, .missing-cell.demo-target, .ad-choix-btn.demo-target { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5), 0 0 25px var(--warning) !important; transform: scale(1.15) !important; background: linear-gradient(135deg, var(--warning-fond), #92400e) !important; color: white !important; border-color: white !important;}
 
 /* CE DONT LE ROBOT PARLE, DANS L'ÉNONCÉ.
    La bulle pointait « 6 × 6 » dans « 6 × 6 − 8 » : la pointe tombait entre
@@ -290,7 +290,7 @@
 .pytha-cell--corner { background: transparent; color: var(--text-muted); }
 .pytha-cell--header { background: var(--bg-hover); color: var(--text-muted); font-weight: 700; }
 .pytha-cell--highlight { background: var(--primary); color: white; }
-.pytha-cell--target { background: var(--warning); color: white; font-size: 1.1rem; font-weight: 800; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4); }
+.pytha-cell--target { background: var(--warning-fond); color: white; font-size: 1.1rem; font-weight: 800; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4); }
 
 /* Boutons Priorité */
 /* LA RÉPONSE SE LIT AUSSI BIEN QUE LA QUESTION. Elle grandit donc avec
@@ -341,7 +341,7 @@
     transition: background .15s;
 }
 .hd-fermer:hover { background: rgba(255,255,255,.35); }
-#hover-demo-box .hd-header { background: linear-gradient(90deg, var(--accent), #1e293b); color: white; padding: 12px 20px; font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+#hover-demo-box .hd-header { background: linear-gradient(90deg, var(--accent-fond), #1e293b); color: white; padding: 12px 20px; font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 .hd-subtitle { color: #cbd5e1; font-weight: normal; font-size: 0.75rem; }
 /* LA BARRE DE RELANCE DE LA VIGNETTE. Elle est posée SOUS l'en-tête et non
    au pied : le cadre change de hauteur à chaque mesure, et un pied qui suit

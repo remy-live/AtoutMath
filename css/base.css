@@ -102,6 +102,13 @@
     --success-fond: #047857;   /* blanc dessus : 5,48 */
     --danger-fond:  #be123c;   /* blanc dessus : 6,29 */
     --warning-fond: #b45309;   /* blanc dessus : 5,02 */
+    /* ET UN QUATRIÈME, POUR LA MÊME RAISON, TROUVÉ EN COMPTANT.
+       `tools/tmp/blancSurJeton.mjs` a calculé le blanc sur chaque jeton dans
+       chacun des cinq thèmes : `--accent` ne le porte NULLE PART — 2,14 en
+       clair et en sombre, 4,10 en océan, 3,30 en forêt, 3,56 en coucher de
+       soleil. La taupe du jeu de rapidité, qui affiche un nombre blanc de
+       1,7 rem sur ce jeton, était donc illisible dans les cinq. */
+    --accent-fond:  #0369a1;   /* blanc dessus : 5,93 */
     
     /* Les étiquettes : mesuré, le rose du niveau donnait 3,91 sur son fond et
        le bleu du domaine 4,24. Un cran plus foncé chacun. */

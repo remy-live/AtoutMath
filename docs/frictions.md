@@ -423,3 +423,23 @@ manque.
   ce n'est pas le cas, une ligne dans `runner.js` à côté de `onExit` devrait
   dire « attention : `#btn-close-game` ne passe pas par ici ». Tout écran qui
   rend la main après une partie retombera dans ce trou.
+
+## **Un outil qui compare tout rend dix-neuf faux positifs ; celui qui pose la bonne question en trouve douze vrais** — 2026-09-27
+
+- **Ce que je voulais faire** : savoir si les trois nouveaux thèmes cassaient des
+  contrastes dans les exercices, sans ouvrir 648 écrans.
+- **Ce qui a coûté** : une première sonde comparait le blanc à CHAQUE jeton, dans
+  chaque thème, et annonçait « 19 couples en défaut ». C'était arithmétiquement
+  vrai et humainement faux : `--accent`, `--danger`, `--success` et `--warning`
+  ne sont pas faits pour porter du blanc — la famille `--*-fond` existe
+  exactement pour ça, et son commentaire le dit depuis des mois. La bonne
+  question n'était pas « ce jeton porte-t-il du blanc ? » mais « une RÈGLE
+  pose-t-elle du blanc sur un jeton qui n'en porte pas ? ». Réécrite ainsi, la
+  même sonde a trouvé **douze défauts réels que mon `grep` avait manqués** —
+  dont trois boutons dont le dégradé finit sur le bleu ciel, lisibles à gauche
+  et illisibles à droite.
+- **Combien de fois** : ||  (même faute de forme que le balayage du matin)
+- **Ce qui manque** : une habitude à écrire quelque part — **une sonde se
+  calibre sur une intention du dépôt, pas sur une règle générale**. Ici
+  l'intention était écrite dans `css/base.css`, à dix lignes des jetons
+  concernés. La lire d'abord aurait fait gagner la première passe entière.
