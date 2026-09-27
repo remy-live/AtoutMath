@@ -1306,7 +1306,7 @@ function listeHtml() {
     }
 
     return outils + (avec.length ? `
-    <div class="ec-table-cadre"><table class="ec-table">
+    <div class="ec-table-cadre"><table class="ec-table ec-table--eleves">
         <thead><tr>
             <th>Élève</th><th>Identifiant</th><th>Code</th><th>Vu</th><th></th>
         </tr></thead>
@@ -2778,8 +2778,19 @@ function imprimerLesBillets(seulement) {
     f.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8">
     <title>Billets — ${esc(info.name || '')}</title>
     <style>
+      /* LA MARGE D'UNE FEUILLE SE DIT AVEC @page, PAS AVEC body.
+         (Pas d'accent grave dans ce commentaire : il est DANS un gabarit, et
+          le premier qu'on y pose ferme le gabarit.)
+         Une marge de body ne vaut qu'au DÉBUT du flux : les pages deux et
+         suivantes n'avaient que ce que la boîte de dialogue d'impression
+         voulait bien leur donner. Mesuré avec les marges à zéro : les billets
+         de la page 2 commençaient à 2 mm du bord — et une classe de trente
+         tient sur deux pages. Avec les marges par défaut de Chrome, cela ne se
+         voyait presque pas : c'est le genre de défaut qui attend l'imprimante
+         du collège pour se montrer. */
+      @page { margin: 14mm; }
       body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-             margin: 14mm; color: #111; }
+             margin: 0; color: #111; }
       h1 { font-size: 1.1rem; margin: 0 0 3mm; }
       .sous { color: #555; margin: 0 0 6mm; font-size: .9rem; }
       .billets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }

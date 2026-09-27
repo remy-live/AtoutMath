@@ -294,3 +294,32 @@ manque.
   processus quelque part, et qu'une commande `node tools/menage.mjs` tue les
   serveurs QU'ON A LAISSÉS, nommément — jamais par motif de ligne de commande.
   En attendant : on ne fait pas le ménage dans la commande qui lance.
+
+## **Une règle de tableau nommait la classe, pas le tableau** — 2026-09-27
+
+- **Ce que je voulais faire** : cacher la colonne « Vu » sur téléphone.
+- **Ce qui a coûté** : la règle s'écrivait `.ec-table th:nth-child(4)`, c'est-à-
+  dire TOUS les tableaux de l'espace. Or la quatrième colonne n'est pas la même
+  partout : « Vu » dans la liste des élèves, **« Ce qui se passera »** dans
+  l'aperçu d'import, et **le bouton « retirer »** dans Les professeurs. Un agent
+  l'a mesuré : cellule rendue 0 × 0, et le professeur confirmait un import SANS
+  RETOUR après avoir lu trois colonnes sur quatre. Le commentaire de ce tableau
+  disait pourtant : « C'est la pièce la plus importante de tout l'écran. »
+- **Combien de fois** : |
+- **Ce qui manque** : une habitude, à écrire quelque part — **un sélecteur de
+  colonne se nomme par ce qu'il y a DEDANS**, pas par son rang. `nth-child(4)`
+  dans une classe partagée est une bombe à retardement : elle explose le jour où
+  quelqu'un réutilise la classe pour un autre tableau, et rien ne le dit.
+
+## **Le piège de l'accent grave, une troisième fois le même jour** — 2026-09-27
+
+- **Ce que je voulais faire** : écrire un commentaire CSS citant `body`.
+- **Ce qui a coûté** : deux minutes, parce qu'on sait. Mais c'est la TROISIÈME
+  fois en deux jours — `espaceClasses.js` deux fois, `quadrilateres.js` une —,
+  et le `CLAUDE.md` le décrit déjà en tête de sa section « pièges ». Le savoir
+  ne suffit visiblement pas : la main écrit l'accent grave toute seule.
+- **Combien de fois** : |||||  (cinq au total dans ce dépôt)
+- **Ce qui manque** : que `node --check` passe TOUT SEUL sur chaque fichier
+  qu'on vient d'écrire, avant même d'essayer de s'en servir. Une entrée du
+  journal le demandait déjà le 26 ; elle est toujours ouverte, et elle vient de
+  se payer trois fois de plus.

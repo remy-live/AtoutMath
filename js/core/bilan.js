@@ -389,6 +389,18 @@ export function consigneDe(b) {
 
     const durs = (b.difficultes || []).slice(0, 2).map(c => c.nom);
     if (durs.length) {
+        // PAS DE DEUX-POINTS POUR UNE SEULE NOTION, et c'est un choix — un
+        // essai le garde (« Un seul souci : pas de deux-points inutile », voir
+        // tests/bilan.test.mjs).
+        //
+        // UN AUDIT L'A SIGNALÉ COMME UN DÉFAUT, et la remarque n'est pas sans
+        // fondement : dans le PDF du bilan de séance, « Maël — Doit réviser
+        // Aire d'un rectangle. » voisine avec « Anaïs — Doit réviser :
+        // Diviser et Additionner des entiers. », et la première a l'air d'un
+        // ordre tronqué parce que la notion commence par une majuscule.
+        // C'est une question de goût d'écriture, pas une panne : elle revient à
+        // Rémy, et on ne défait pas un choix gardé par un essai sans qu'il
+        // tranche.
         return `Doit réviser ${durs.length > 1 ? ' : ' : ''}${durs.join(' et ')}.`
             .replace('Doit réviser  : ', 'Doit réviser : ');
     }

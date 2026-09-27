@@ -656,7 +656,27 @@
     .ec-rang-gestes  { grid-area: 1 / 4 / 2 / 5; }
     .ec-rang-quoi    { grid-area: 2 / 3 / 3 / 5; }
     .ec-score        { grid-area: 2 / 1 / 3 / 3; justify-self: center; }
-    .ec-table th:nth-child(4), .ec-table td:nth-child(4) { display: none; }
+    /* LA COLONNE QU'ON CACHE SUR TÉLÉPHONE EST « VU », ET ELLE SEULE.
+       Cette règle nommait `.ec-table`, c'est-à-dire TOUS les tableaux de
+       l'espace — et la quatrième colonne n'est pas la même partout :
+
+         · liste des élèves  → « Vu » (la cacher se défend, c'est un détail) ;
+         · aperçu d'import   → « CE QUI SE PASSERA » ;
+         · les professeurs   → LE BOUTON « retirer ».
+
+       MESURÉ à 360 px : la cellule « déjà dans la liste — son code ne change
+       pas » rendue 0 × 0, et le cadre ne pouvait même pas glisser pour aller la
+       chercher. Le professeur confirmait un import SANS RETOUR en ayant lu
+       trois colonnes sur quatre, alors que le commentaire de ce tableau dit :
+       « C'est la pièce la plus importante de tout l'écran […] Le professeur
+       doit voir, ligne par ligne, ce que le logiciel a compris — et pouvoir
+       dire non. » Et dans « Les professeurs », « retirer » passait de 57 × 25 à
+       0 × 0 entre 768 et 560 px, pendant que la phrase du dessous continuait de
+       promettre le geste.
+
+       Les deux autres tableaux défilent dans leur cadre depuis hier : ils n'ont
+       plus besoin qu'on leur retire une colonne. */
+    .ec-table--eleves th:nth-child(4), .ec-table--eleves td:nth-child(4) { display: none; }
 }
 
 /* La FORME du code, écrite à côté de son nom. Les deux portes demandaient
@@ -701,16 +721,46 @@
 /* ====================================================================== */
 
 /* --- La fenêtre qui remplace `prompt()` -------------------------------- */
+/* CES FENÊTRES-CI DÉBORDAIENT PAR LES DEUX BOUTS, ET RIEN NE DÉFILAIT.
+   Le même piège que la zone de jeu, l'écran de leçon, la porte d'entrée et les
+   fenêtres déclarées — la cinquième fois, et la dernière famille qui restait :
+   un contenu centré qui dépasse sort des DEUX côtés, le haut passe au-dessus de
+   `scrollTop = 0`, et ici rien ne pouvait même ramener le bas.
+
+   MESURÉ sur « Coup de pouce » avec six propositions — cas réel, la compétence
+   « fractions équivalentes » en rend six : panneau de 721 px dans un écran de
+   640, haut du titre à −41, bouton « Souffler » à 659 et AUCUN conteneur
+   défilable entre lui et la racine. En paysage (640 × 360), le bouton était
+   entièrement dehors. Et `index.html` pose `user-scalable=no` : on ne pouvait
+   même pas dézoomer pour le rattraper. Même chose sur « Coller une liste
+   d'élèves » en paysage, 48 px sous la ligne.
+
+   Le voile défile, la boîte se borne, et `safe center` rend le haut. */
 .demander {
     position: fixed; inset: 0; z-index: 2000001;
     background: rgba(15, 23, 42, .55);
-    display: flex; align-items: center; justify-content: center; padding: 18px;
+    display: flex; align-items: safe center; justify-content: safe center;
+    padding: 18px; overflow-y: auto;
 }
 .demander-boite {
     background: var(--bg-panel, #fff); color: var(--text-main, #1a202c);
     border-radius: 18px; padding: 22px; width: min(430px, 100%);
     box-shadow: 0 24px 60px rgba(15, 23, 42, .35);
+    max-height: calc(100dvh - 36px); overflow-y: auto;
+    /* Le navigateur ne décide pas où l'on regarde — voir `.report-panel`. */
+    overflow-anchor: none;
 }
+/* L'INVITE D'UN CHAMP N'AVAIT AUCUNE RÈGLE DANS TOUT LE DÉPÔT.
+   Elle prenait donc le gris par défaut du navigateur, #757575 — MESURÉ AU PIXEL
+   sur les captures : 4,40 en thème clair, 3,87 en sombre, là où il en faut 4,5.
+   Et ce n'est pas un texte décoratif : c'est lui qui porte LE MOT À RECOPIER —
+   EFFACER pour « Vider la liste » et « Supprimer la classe », REFAIRE pour
+   « Refaire tous les codes », RETIRER pour retirer un élève. Dans les quatre
+   fenêtres sans retour, la chose la moins lisible de l'écran était celle qu'il
+   fallait taper.
+   `--text-muted` est fait pour ça et passe dans les CINQ thèmes — mesuré :
+   5,48 en clair, 9,47 en sombre, 6,68 à 7,09 dans les trois autres. */
+::placeholder { color: var(--text-muted); opacity: 1; }
 .demander-boite h2 { margin: 0 0 14px; font-size: 1.1rem; }
 .demander-boite input {
     width: 100%; padding: 11px 13px; font: inherit;
@@ -1578,6 +1628,22 @@ body.plein-ecran .pe-sortir { display: block; }
     .fq-case, .cfg-case, .path-step-case,
     label:has(> input[type="checkbox"]) { min-height: 44px; display: flex;
         align-items: center; }
+
+    /* DEUX ÉCRANS DE PLUS QUE LA LISTE NE CONNAISSAIT — et la note du dessus
+       l'avait prédit mot pour mot : « une liste de sélecteurs est une liste :
+       elle ne connaît que ce qu'on y a mis, et elle ne prévient pas quand un
+       écran nouveau lui échappe. »
+
+       Les fenêtres de `demander.js` et celle des colonnes d'import
+       (`collerListeUI.js`) s'accrochent à `document.body`, donc HORS de
+       `#zone-classe` : le second plancher, écrit `#zone-classe input, …`, ne les
+       atteignait pas non plus. MESURÉ au doigt : les sept menus de colonnes à
+       172 × 23 — la moitié du compte, et c'est le SEUL geste de cet écran,
+       corriger une colonne mal devinée — et tous les boutons de validation à
+       42 px, deux pixels trop bas. */
+    .demander-bouton, .cl-bouton, .indice-choix-item { min-height: 44px; }
+    .cl-select, .demander-boite input, .demander-boite select,
+    .demander-boite textarea { min-height: 44px; }
 
 }
 
