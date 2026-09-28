@@ -308,10 +308,14 @@ export class Runner {
 
     updateStepNavigation() {
         if (!this.allowStepNavigation) return;
-        const label = document.getElementById('preview-step-label');
         const prev = document.getElementById('btn-preview-prev');
         const next = document.getElementById('btn-preview-next');
-        if (!label || !prev || !next) return;
+        // LE COMPTEUR D'ÉTAPE N'EXISTE PLUS — la frise le dit. On ne le cherche
+        // donc plus, et SURTOUT on ne s'arrête pas s'il manque : le garde-fou
+        // d'origine rendait la main dès qu'un des trois éléments était absent,
+        // et retirer le libellé aurait emporté avec lui la mise à jour des
+        // flèches ET celle de la navigation par question, vingt lignes plus bas.
+        if (!prev || !next) return;
 
         const position = Math.min(this.index, this.steps.length - 1);
         // SANS ESPACES AUTOUR DE LA BARRE, et ce n'est pas de la coquetterie.
@@ -325,7 +329,6 @@ export class Runner {
         // que de continuer à le rapetisser. Le `nowrap` de la feuille de style
         // interdit en plus la coupure, qui n'a jamais de sens dans une
         // fraction.
-        label.textContent = `${position + 1}/${this.steps.length}`;
         prev.disabled = position <= 0;
         next.disabled = position >= this.steps.length - 1;
 

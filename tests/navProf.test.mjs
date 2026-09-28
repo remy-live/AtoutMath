@@ -60,9 +60,17 @@ test('LA BARRE DES ACTIVITÉS SE TAIT QUAND IL N\'Y EN A QU\'UNE', () => {
 test('UNE FRACTION NE SE COUPE PAS, ET NE S\'ÉCRIT PAS AVEC DES ESPACES', () => {
     // Les espaces coûtaient un quart de la largeur, et c'est cette largeur-là
     // qui a été rendue à la taille du texte plutôt qu'à un retour à la ligne.
-    assert.match(RUNNER, /label\.textContent = `\$\{position \+ 1\}\/\$\{this\.steps\.length\}`;/);
+    //
+    // LE COMPTEUR D'ÉTAPE N'EST PLUS DANS CETTE ÉPREUVE, et ce n'est pas un
+    // relâchement : il n'existe plus. Rémy, le 28 septembre : « le 2 » — la
+    // frise écrit déjà « Étape 1 sur 10 » dix pixels plus haut, et le répéter
+    // « 1/10 » à côté d'un AUTRE « 1/10 » qui comptait les questions rendait
+    // les deux illisibles. Voir `tests/memoryPaire.test.mjs`, qui tient
+    // maintenant son absence.
     assert.match(RUNNER, /labelQ\.textContent = `\$\{Math\.min\(vue, total\)\}\/\$\{total\}`;/);
     assert.ok(!/\$\{position \+ 1\} \/ \$\{/.test(RUNNER), 'plus d\'espaces autour de la barre');
+    assert.ok(!/\$\{Math\.min\(vue, total\)\} \/ \$\{/.test(RUNNER),
+        'ni autour de celle du compteur des questions, qui reste');
     assert.match(CSS, /\.preview-step-label \{[\s\S]{0,400}white-space: nowrap;/);
 });
 

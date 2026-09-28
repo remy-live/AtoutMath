@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=857">
-    <link rel="stylesheet" href="css/layout.css?v=857">
-    <link rel="stylesheet" href="css/ui.css?v=857">
-    <link rel="stylesheet" href="css/games.css?v=857">
-    <link rel="stylesheet" href="css/components.css?v=857">
-    <link rel="stylesheet" href="css/modules.css?v=857">
+    <link rel="stylesheet" href="css/base.css?v=858">
+    <link rel="stylesheet" href="css/layout.css?v=858">
+    <link rel="stylesheet" href="css/ui.css?v=858">
+    <link rel="stylesheet" href="css/games.css?v=858">
+    <link rel="stylesheet" href="css/components.css?v=858">
+    <link rel="stylesheet" href="css/modules.css?v=858">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -1428,7 +1428,15 @@
                                 <polyline points="15 18 9 12 15 6" />
                             </svg>
                         </button>
-                        <span id="preview-step-label" class="preview-step-label">1 / 1</span>
+                        <!-- PAS DE COMPTEUR ICI : LA FRISE LE DIT DÉJÀ. Rémy, devant
+                             son écran de téléphone, a choisi « le 2 » — retirer le
+                             doublon. « Étape 1 sur 10 » est écrit en toutes lettres
+                             dans la frise, dix pixels plus haut ; le répéter « 1/10 »
+                             entre deux flèches, à côté d'un AUTRE « 1/10 » qui compte
+                             les questions, ne disait pas deux choses — cela rendait
+                             les deux illisibles.
+                             Le compteur des QUESTIONS reste, lui : « 48/167 » n'est
+                             écrit nulle part ailleurs. -->
                         <button id="btn-preview-next" class="game-icon-btn" title="Exercice suivant" aria-label="Exercice suivant">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
