@@ -855,3 +855,26 @@ manque.
 - **Ce qui a sauvé la mise** : la règle du dépôt, une fois de plus — mesurer le
   GESTE et non le code. Une correction qu'on ne voit pas agir n'est pas une
   correction, et celle-ci n'agissait sur rien.
+
+## **Une mesure qui ne regarde qu'un thème ne voit pas le défaut d'un thème** — 2026-09-28
+
+> Rémy : « en fait il faut faire attention aux contrastes selon les modes si on
+> a pris mode nuit ou non ».
+
+- **Ce qu'il montrait** : le cercle et les lettres du Vocabulaire du Cercle,
+  invisibles en thème sombre. Mesuré dans les cinq thèmes :
+  `clair 16,32 · SOMBRE 1,14 · océan 16,32 · forêt 16,32 · couchant 16,32`.
+  **Un seul thème sur cinq** — quatre lignes sur cinq disaient que tout allait
+  bien, et c'est exactement ce qui rend ces défauts-là si durables.
+- **Ce qui l'a laissé passer** : `tools/quiEstIllisible.mjs` SAUTAIT les
+  dessins. Il avait de bonnes raisons — l'encre d'un SVG est un `fill`, et ce
+  qu'il y a dessous est une forme, pas un fond de boîte — mais s'abstenir sur
+  toute une famille revient à ne pas la garder du tout.
+- **Combien de fois** : |
+- **Ce qu'on en garde** : la sonde mesure désormais les dessins, contre le
+  plateau, et ne s'abstient QUE sur les glyphes posés sur une forme peinte.
+  Elle a retrouvé le défaut d'origine à 1,09. Et elle prend `--theme` : une
+  campagne de contraste se lance maintenant thème par thème, pas une fois.
+- **La règle** : **un défaut de couleur se cherche dans le thème qui le
+  révèle.** Le thème clair est celui où l'on développe, donc le seul où ces
+  défauts ne se voient jamais.

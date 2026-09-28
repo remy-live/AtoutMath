@@ -11728,6 +11728,11 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
    point (jamais une pastille — un disque couvre le point qu'il prétend
    marquer), un trait fin pour la droite, un nom à côté et non dessus. */
 .pd-svg { width: 100%; max-width: 30rem; height: auto; color: inherit; }
+/* LA FIGURE DU CERCLE PREND L'ENCRE DU THÈME. Tout son dessin est peint en
+   `currentColor` (voir ENCRE_FIG dans core/cercleFigure.js) : c'est ici que
+   cette couleur se décide, et c'est la seule ligne à changer pour que le
+   cercle, les croix et les lettres suivent le thème clair comme le sombre. */
+.fig-cercle { color: var(--text-main); }
 /* La figure codée est plus dense — deux segments, des marques — et se lit de
    plus près : elle n'a pas besoin de la même largeur. */
 .pd-svg--codee { max-width: 24rem; }

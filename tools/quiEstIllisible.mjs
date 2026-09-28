@@ -91,6 +91,19 @@ for (const id of liste) {
         // l'encre d'une plaque jaune au bleu nuit du plateau — 1,19 annoncé sur
         // un jeton parfaitement lisible. On ne devine pas la couleur moyenne
         // d'un dégradé : on DIT qu'on ne sait pas, et on laisse l'oeil trancher.
+        // UNE FORME PEINTE SOUS LE GLYPHE change le fond, et la sonde ne sait
+        // pas laquelle : on s'abstient plutôt que d'inventer.
+        const surUneForme = (el) => {
+            const b = el.getBoundingClientRect();
+            const cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+            for (const f of el.ownerSVGElement.querySelectorAll('circle, rect, ellipse, polygon, path')) {
+                const s2 = getComputedStyle(f);
+                if (!s2.fill || s2.fill === 'none') continue;
+                const r2 = f.getBoundingClientRect();
+                if (cx >= r2.left && cx <= r2.right && cy >= r2.top && cy <= r2.bottom) return true;
+            }
+            return false;
+        };
         const surDegrade = (el) => {
             for (let e = el; e; e = e.parentElement) {
                 const st = getComputedStyle(e);
@@ -127,15 +140,33 @@ for (const id of liste) {
             if (!propre) continue;
             const st = getComputedStyle(el);
             if (st.display === 'none' || st.visibility === 'hidden' || +st.opacity === 0) continue;
-            // DANS UN DESSIN, L'ENCRE S'APPELLE `fill`, PAS `color`. Et ce
-            // qu'il y a dessous est une FORME, pas un fond de boîte : le
-            // chiffre d'une île de Hashi est posé sur un cercle blanc, que
-            // `background-color` ne connaît pas. La sonde lisait donc l'encre
-            // héritée de la page — blanche en thème sombre — sur le fond de la
-            // page, et annonçait 1,05 sur un chiffre noir parfaitement lisible.
-            // Mesurer là-dedans demande de retrouver la forme sous le glyphe ;
-            // c'est un autre outil. On compte, et on ne juge pas.
-            if (el.ownerSVGElement || el.tagName.toLowerCase() === 'svg') { dessins++; continue; }
+            // DANS UN DESSIN, L'ENCRE S'APPELLE `fill` OU `stroke`.
+            //
+            // Rémy : « il faut faire attention aux contrastes selon les modes ».
+            // Sa capture montrait un cercle et des lettres peints en noir écrit
+            // en dur sur le bleu nuit du plateau — 1,14 de contraste, et rien à
+            // voir. Une première version de cette sonde SAUTAIT les dessins :
+            // elle n'aurait jamais trouvé ce défaut-là.
+            //
+            // CE QU'ON MESURE, ET CE QU'ON NE MESURE PAS : l'encre d'un dessin
+            // contre le PLATEAU, qui est ce qu'il y a derrière la figure. Si le
+            // glyphe est posé sur une FORME peinte — le chiffre d'une île de
+            // Hashi sur son cercle blanc —, le plateau n'est pas le bon fond ;
+            // on ne juge donc que ce qui n'a aucune forme sous lui, et l'on
+            // compte les autres à part.
+            if (el.ownerSVGElement) {
+                const encreSvg = enPixels(st.fill && st.fill !== 'none' ? st.fill : st.stroke);
+                if (!encreSvg) { dessins++; continue; }
+                if (surUneForme(el)) { dessins++; continue; }
+                const c2 = ratio(encreSvg, fondDe(el.ownerSVGElement));
+                if (c2 < SEUIL) mauvais.push({
+                    quoi: 'dessin ' + el.tagName,
+                    texte: (el.textContent || '').trim().slice(0, 20) || el.tagName,
+                    contraste: +c2.toFixed(2)
+                });
+                continue;
+            }
+            if (el.tagName.toLowerCase() === 'svg') continue;
             const r = el.getBoundingClientRect();
             if (r.width < 8 || r.height < 6) continue;
             const encre = enPixels(st.color);
