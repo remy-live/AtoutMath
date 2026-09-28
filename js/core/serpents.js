@@ -24,10 +24,13 @@
 // queue sans jamais s'élargir.
 
 import { makeRng } from './ids.js';
-// LES DEUX AIDES DE QUADRILLAGE VIENNENT DU PATCHWORK, et ce n'est pas un
-// hasard : les deux jeux découpent une grille en morceaux. Les recopier ici,
+// LES DEUX AIDES DE QUADRILLAGE SONT PARTAGÉES, et ce n'est pas un hasard :
+// tout jeu qui découpe une grille en morceaux en a besoin. Les recopier ici,
 // c'est accepter qu'un jour l'une des deux copies se corrige et pas l'autre.
-import { voisines, dUnSeulTenant } from './patchwork.js';
+// Elles venaient du Patchwork, retiré du catalogue le 28 septembre à la
+// demande de Rémy ; elles vivent depuis dans `js/core/quadrillage.js`, qui ne
+// porte plus le nom d'un exercice disparu.
+import { voisines, dUnSeulTenant } from './quadrillage.js';
 
 export { voisines, dUnSeulTenant };
 

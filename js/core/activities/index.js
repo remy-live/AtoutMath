@@ -750,18 +750,12 @@ const legacy = [
     // Le tasuko se compte en GRILLES : une partie, c'est un découpage entier,
     // et rien ne se valide avant la dernière somme.
     ['tasuko', 'Tasuko — les sommes cachées', 'tasuko', 'engineTasuko', 'grille', 3],
-    // Le patchwork se compte en GRILLES : une partie, c'est une grille
-    // entièrement découpée, et rien ne se valide avant.
-    ['patchwork', 'Le Patchwork (centres de symétrie)', 'patchwork', 'enginePatchwork', 'grille', 3],
     // Les serpents se comptent aussi en GRILLES : une partie, c'est une grille
     // entièrement remplie.
     ['serpents', 'Les Serpents (longueurs imposées)', 'serpents', 'engineSerpents', 'grille', 3],
     // Les croisés se comptent en CROIX : une partie, c'est une croix dont les
     // deux calculs tombent juste.
     ['croises', 'Les Croisés du Calcul', 'croises', 'engineCroises', 'croix', 4],
-    // Les deux nombres se comptent en LIGNES : une ligne, une paire à trouver.
-    ['deux-nombres', 'Les Deux Nombres (chevauchement)', 'deuxNombres',
-        'engineDeuxNombres', 'ligne', 6],
     // LES DÉFIS SE COMPTENT EN PARTIES GAGNÉES, pas en questions : une tour de
     // Brahma se finit ou ne se finit pas, et c'est le nombre de COUPS qui dit
     // la qualité — pas le nombre d'essais.

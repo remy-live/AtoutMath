@@ -560,7 +560,7 @@ verifier('le relevé est chiffré sur le disque',
 // question qu'à réglages ÉGAUX : le générateur lit les deux.
 
 json('/session', ['ecran' => [
-    'exerciseId' => 'calc-deux-nombres', 'graine' => 'rr77',
+    'exerciseId' => 'logi-serpents', 'graine' => 'rr77',
     'reglages' => ['palier' => 'difficile', 'niveaux' => ['cm2', 'sixieme'],
                    'avecZero' => true, 'taille' => 5],
 ]], $lea);
@@ -582,7 +582,7 @@ verifier('et les booléens restent des booléens',
 $enorme = [];
 for ($i = 0; $i < 200; $i++) $enorme['c' . $i] = str_repeat('x', 50);
 json('/session', ['ecran' => [
-    'exerciseId' => 'calc-deux-nombres', 'graine' => 'rr77', 'reglages' => $enorme,
+    'exerciseId' => 'logi-serpents', 'graine' => 'rr77', 'reglages' => $enorme,
 ]], $lea);
 $r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);
 foreach ($r['json']['eleves'] ?? [] as $x) {
@@ -592,7 +592,7 @@ verifier('des réglages démesurés valent AUCUN réglage, pas une erreur',
     $deLea['ecran']['reglages'] === null && ($deLea['ecran']['graine'] ?? '') === 'rr77');
 
 json('/session', ['ecran' => [
-    'exerciseId' => 'calc-deux-nombres', 'graine' => 'rr77',
+    'exerciseId' => 'logi-serpents', 'graine' => 'rr77',
     'reglages' => ['bon' => 1, 'imbrique' => ['a' => ['b' => 1]], 'liste' => [1, 2, 3]],
 ]], $lea);
 $r = json('/teacher/live', ['classId' => $classe['id']], $jetonProf);

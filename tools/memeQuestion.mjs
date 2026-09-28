@@ -260,7 +260,7 @@ ok('QUAND IL FERME SON EXERCICE, L\'ÉCRAN S\'EFFACE TOUT DE SUITE',
 
 // ══════════════════════ ET LES GRILLES, QUI N'ONT PAS D'ÉNONCÉ ══════════════
 //
-// C'est la moitié la plus visible de la plainte de Rémy : un patchwork n'a pas
+// C'est la moitié la plus visible de la plainte de Rémy : une grille n'a pas
 // de question écrite, il a une GRILLE, et deux grilles tirées au hasard ne se
 // ressemblent jamais. Un jeu autonome ne portait aucune graine — il appelait
 // `makeRng(undefined)` —, donc sa grille n'était reproductible par personne, pas
@@ -285,7 +285,7 @@ await el.evaluate(async (exoId) => {
     const exo = getExerciseById(exoId);
     const pas = makeStep(exo.id, {}, { stepId: 'sg', nbItems: 3, threshold: 0 });
     new Runner({ path: makePath('Essai grille', [pas], politiquePerso()), deviceMode: 'none' }).start();
-}, 'geo-patchwork');
+}, 'logi-serpents');
 await el.waitForTimeout(3500);
 
 const grilleEleve = await el.evaluate(async (src) => {
@@ -371,7 +371,7 @@ if (grilleEleve.empreinte !== grilleProf) {
 // même exercice avec les mêmes paramètres que l'élève ».
 //
 // LE CAS QUI PIÉGEAIT. Le professeur reconstituait les réglages en cherchant
-// l'exercice dans SES parcours. Ici l'élève ouvre « Les Deux Nombres » au palier
+// l'exercice dans SES parcours. Ici l'élève ouvre « Les Serpents » au palier
 // DIFFICILE, et ce parcours-là n'existe chez personne : l'ancienne version
 // serait retombée sur les réglages du catalogue, c'est-à-dire sur le palier
 // facile. Même graine, autres réglages, autre question — et un miroir presque
@@ -386,7 +386,7 @@ await el.evaluate(async () => {
     const { makeStep, makePath } = await import('./js/core/path.js');
     const { politiquePerso } = await import('./js/core/mesExercices.js');
     const { Runner } = await import('./js/core/runner.js');
-    const exo = getExerciseById('calc-deux-nombres');
+    const exo = getExerciseById('logi-serpents');
     const pas = makeStep(exo.id, { palier: 'difficile' }, { stepId: 'sr', nbItems: 3, threshold: 0 });
     new Runner({ path: makePath('Essai réglages', [pas], politiquePerso()), deviceMode: 'none' }).start();
 });

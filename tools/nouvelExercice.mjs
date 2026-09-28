@@ -22,7 +22,7 @@
 // devance.
 //
 //     node tools/nouvelExercice.mjs            → tout le catalogue
-//     node tools/nouvelExercice.mjs geo-patchwork
+//     node tools/nouvelExercice.mjs logi-serpents
 //
 // Sortie : 0 si tout va bien, 1 sinon, et une ligne par problème qui dit QUOI
 // FAIRE — pas seulement ce qui ne va pas.

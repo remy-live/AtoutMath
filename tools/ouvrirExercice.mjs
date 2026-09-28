@@ -17,7 +17,7 @@
 //
 //     node tools/ouvrirExercice.mjs calc-sudoku
 //     node tools/ouvrirExercice.mjs calc-sudoku 360x640,768x900,1440x900
-//     node tools/ouvrirExercice.mjs geo-patchwork 390x844 --image
+//     node tools/ouvrirExercice.mjs logi-serpents 390x844 --image
 //
 // CE QU'IL DIT, par taille : ce qui reste HORS D'ATTEINTE sous la fenêtre (le
 // défaut le plus grave possible — l'élève ne peut pas répondre), ce qui sort du
@@ -67,7 +67,7 @@ import { setTimeout as attendre } from 'node:timers/promises';
 // fois, et l'on promène la même page.
 //
 //     node tools/ouvrirExercice.mjs --tous 360x640
-//     node tools/ouvrirExercice.mjs calc-sudoku,geo-patchwork 768x900
+//     node tools/ouvrirExercice.mjs calc-sudoku,logi-serpents 768x900
 //     node tools/ouvrirExercice.mjs --tous 360x640 --aere
 //
 // `--aere` allume « Texte plus aéré », le réglage qui allonge chaque écran :

@@ -4,7 +4,7 @@
 // jeux en français et en rapport avec les maths ». Celui-ci s'appelait
 // « Snakes in Boxes ». La règle et le juge sont dans js/core/serpents.js ;
 // l'écran — la peinture au doigt, la gomme, « Vérifier », le robot — est
-// partagé avec Le Patchwork, dans js/games/colorierMorceaux.js.
+// dans js/games/colorierMorceaux.js, prêt pour un autre jeu de découpage.
 //
 // CE QUI EST PROPRE AUX SERPENTS : la longueur annoncée peut être un CALCUL.
 // « 2 × 3 » au départ d'un serpent, et il faut savoir que six cases suivront

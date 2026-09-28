@@ -1,6 +1,6 @@
 // COLORIER UNE GRILLE EN MORCEAUX — l'écran que deux jeux partagent.
 //
-// Le Patchwork et Les Serpents posent la même question à l'élève : « donne
+// LES JEUX DE DÉCOUPAGE posent la même question à l'élève : « donne
 // chaque case à l'un des morceaux annoncés ». Ce qui change, c'est la RÈGLE du
 // morceau — avoir un centre de symétrie, ou être un chemin mince — et rien
 // d'autre : le geste, la peinture, la gomme, le bouton « Vérifier », la
