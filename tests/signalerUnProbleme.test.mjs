@@ -164,6 +164,96 @@ test('LE NOYAU N\'IMPORTE PAS D\'INTERFACE', () => {
         + 'les mettre');
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// L'ORDINATEUR EST LE CAS PRINCIPAL, ET IL AVAIT LE MODE D'EMPLOI DU TÉLÉPHONE.
+//
+// Rémy : « et sur l'ordinateur car globalement les élèves le feront sur ordi au
+// collège ».
+//
+// UNE CAPTURE D'ÉCRAN WINDOWS NE CRÉE AUCUN FICHIER : Impr. écran copie dans le
+// presse-papiers, et c'est tout. « Prends d'abord la photo, puis ajoute-la ici »
+// envoyait donc l'élève chercher dans « Mes images » une image qui n'y est pas —
+// une consigne qui ne peut pas être suivie, sur la machine où presque tous
+// l'auront sous les yeux.
+
+test('SUR UN ORDINATEUR, ON COLLE — ET LE COLLAGE EST ÉCOUTÉ', () => {
+    // SUR TOUTE LA FENÊTRE, pas seulement sur la zone de texte : un élève qui
+    // vient de capturer son écran appuie sur Ctrl+V sans se demander où était
+    // le curseur.
+    assert.match(UI, /el\.addEventListener\('paste', \(e\) => \{/,
+        'le collage doit être écouté sur la fenêtre entière');
+    // `files` ET `items` : Chrome livre l'image dans `files`, d'autres
+    // navigateurs seulement dans `items`. Ne lire que l'un des deux, c'est
+    // marcher sur un navigateur et pas sur le voisin — et l'on ne sait pas
+    // lequel tourne sur les postes du collège.
+    assert.match(UI, /\[\.\.\.\(d\.files \|\| \[\]\)\]\.find\(x => x\.type\.startsWith\('image\/'\)\)/,
+        'l\'image collée se cherche dans les fichiers du presse-papiers');
+    assert.match(UI, /\[\.\.\.\(d\.items \|\| \[\]\)\]\.filter\(x => x\.type\.startsWith\('image\/'\)\)/,
+        'et dans ses éléments, pour les navigateurs qui ne remplissent que ceux-là');
+});
+
+test('ET LE MODE D\'EMPLOI DIT LE GESTE DE LA MACHINE QU\'ON A', () => {
+    assert.match(UI, /function motsDeLAppareil\(\)/,
+        'les mots doivent dépendre de l\'appareil');
+    assert.match(UI, /matchMedia\('\(pointer: coarse\)'\)/,
+        'on devine par le POINTEUR, comme la feuille de style pour ses cibles de '
+        + '44 px : deux façons de deviner la même chose finiraient par se contredire');
+    assert.match(UI, /Impr\. écran, puis colle ici avec Ctrl\+V/,
+        'sur un ordinateur, la consigne nomme la touche et le raccourci');
+    // DEUX MORCEAUX PLUTÔT QU'UN SEUL MOTIF : la phrase du Mac contient une
+    // apostrophe échappée, et un `[^']*` entre les deux bouts s'y arrête — la
+    // première version de ce contrôle tombait sur du code parfaitement juste.
+    assert.match(UI, /Appuie sur ⌃⌘⇧4/,
+        'sur un Mac, où la touche Impr. écran n\'existe pas, elle nomme le sien');
+    assert.match(UI, /puis colle ici avec ⌘V/,
+        'et le raccourci de collage du Mac, qui n\'est pas Ctrl+V');
+    assert.match(UI, /boutons de ton appareil/,
+        'au doigt, elle parle des boutons de l\'appareil');
+});
+
+test('UNE IMAGE LÂCHÉE SUR LA FENÊTRE NE FAIT PAS PARTIR L\'APPLICATION', () => {
+    const i = UI.indexOf("depot.addEventListener('drop'");
+    assert.ok(i > 0, 'le dépôt par glissement doit exister');
+    const bloc = UI.slice(i, i + 500);
+    // SANS `preventDefault`, LE NAVIGATEUR REMPLACE LA PAGE PAR L'IMAGE. L'élève
+    // perdrait le texte qu'il vient d'écrire, au moment où il essaie de
+    // l'illustrer — et il ne recommencerait pas.
+    assert.match(bloc, /e\.preventDefault\(\); e\.stopPropagation\(\);/,
+        'le dépôt doit être arrêté net');
+    // `stopPropagation` N'EST PAS UNE PRÉCAUTION : le dépôt de fichiers du
+    // logiciel écoute sur le DOCUMENT pour importer des parcours, et
+    // répondrait qu'il ne sait pas quoi faire de cette capture d'écran.
+    const doc = readFileSync(new URL('../js/ui/deposerFichier.js', import.meta.url), 'utf8');
+    assert.match(doc, /doc\.addEventListener\('drop'/,
+        'c\'est bien un écouteur de document qu\'il faut arrêter : si celui-ci '
+        + 'disparaît un jour, ce test le dira');
+    assert.match(UI, /\['dragenter', 'dragover'\]\.forEach\(nom => depot\.addEventListener\(nom, \(e\) => \{\s*\n\s*e\.preventDefault\(\);/,
+        'et `dragover` doit l\'être aussi, sinon le navigateur refuse le dépôt');
+});
+
+test('LES TROIS PORTES MÈNENT AU MÊME TRAITEMENT', () => {
+    // TROIS COPIES DE CE TRAITEMENT SERAIENT TROIS OCCASIONS DE N'EN CORRIGER
+    // QUE DEUX. Le rétrécissement, le message d'échec, la vignette, le mot du
+    // bouton : tout cela n'a aucune raison de différer selon qu'on a choisi,
+    // collé ou glissé.
+    assert.match(UI, /async function prendreLaPhoto\(fichier\)/,
+        'une seule route pour les trois portes');
+    for (const porte of [
+        /champ\.addEventListener\('change', \(\) => prendreLaPhoto\(/,
+        /e\.preventDefault\(\);\s*\n\s*prendreLaPhoto\(image\);/,
+        /if \(image\) prendreLaPhoto\(image\);/
+    ]) assert.match(UI, porte, 'cette porte doit passer par la route commune');
+});
+
+test('CTRL+ENTRÉE ENVOIE, ENTRÉE SEULE PASSE À LA LIGNE', () => {
+    // PAS ENTRÉE TOUTE SEULE : le champ est multiligne, et un élève qui décrit
+    // une panne passe à la ligne. Envoyer à la première touche Entrée, ce
+    // serait couper son message à sa première phrase.
+    assert.match(UI, /if \(e\.key === 'Enter' && \(e\.ctrlKey \|\| e\.metaKey\) && !envoyer\.disabled\)/,
+        'le raccourci demande Ctrl (ou ⌘ sur un Mac) EN PLUS d\'Entrée');
+});
+
 test('LA PHOTO NE VOYAGE PAS AVEC LA LISTE DU PROFESSEUR', () => {
     // QUATRE CENTS KILO-OCTETS PAR SIGNALEMENT, vingt signalements : huit
     // mégaoctets pour un écran qui en ouvrira peut-être une. Sur le wifi d'un

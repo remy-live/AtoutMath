@@ -41,8 +41,21 @@ import { setTimeout as dormir } from 'node:timers/promises';
 // LE THÈME SE PASSE EN ARGUMENT, et ce n'est pas un ornement. Rémy : « il faut
 // faire attention aux contrastes selon les modes si on a pris mode nuit ou
 // non ». Une fenêtre qui ne se lit que dans un thème sur cinq ne se lit pas.
-const THEME = process.argv[2] && process.argv[2] !== 'clair' ? process.argv[2] : null;
-const s = await ouvrirSonde({ largeur: 390, hauteur: 844, theme: THEME });
+//
+// ET L'APPAREIL AUSSI. Rémy : « globalement les élèves le feront sur ordi au
+// collège ». Le geste n'est pas le même des deux côtés — au doigt on va
+// chercher une photo, au clavier on COLLE —, et une sonde qui ne connaît que
+// le téléphone ne mesure pas le cas principal.
+//
+//     node tools/signalerAuDoigt.mjs [thème] [ordi|doigt]
+const ARGS = process.argv.slice(2);
+const THEME = ARGS.find(a => ['dark', 'ocean', 'forest', 'sunset'].includes(a)) || null;
+const ORDI = ARGS.includes('ordi');
+const s = await ouvrirSonde({
+    largeur: ORDI ? 1280 : 390, hauteur: ORDI ? 900 : 844, theme: THEME
+});
+console.log(`\x1b[2m${ORDI ? 'ordinateur 1280×900, au clavier'
+    : 'téléphone 390×844, au doigt'} · thème ${THEME || 'clair'}\x1b[0m`);
 let ratés = 0;
 const dire = (quoi, vrai, detail = '') => {
     if (!vrai) ratés++;
@@ -120,9 +133,12 @@ vu = await s.page.$eval('#btn-signaler', b => {
              dedans: r2.right <= window.innerWidth + 1 && r2.left >= -1 };
 });
 dire('le bouton paraît', vu.cache === false);
-// LE PLANCHER DU DÉPÔT : 44 px, « la largeur moyenne de la pulpe d'un index ».
-dire('il se vise au doigt', vu.l >= 34 && vu.h >= 34, `${vu.l}×${vu.h}`);
-dire('et il tient dans l\'écran du téléphone', vu.dedans,
+// LE PLANCHER DU DÉPÔT : 44 px AU DOIGT, « la largeur moyenne de la pulpe d'un
+// index ». À la souris, les boutons de l'en-tête font 36 px et c'est très bien :
+// un curseur vise au pixel. On ne demande donc pas la même chose aux deux.
+dire(ORDI ? 'il se vise à la souris' : 'il se vise au doigt',
+    vu.l >= (ORDI ? 32 : 44) && vu.h >= (ORDI ? 32 : 44), `${vu.l}×${vu.h}`);
+dire('et il tient dans l\'écran', vu.dedans,
     vu.dedans ? '' : 'il sort de la largeur');
 
 console.log('\n\x1b[1mL\'élève signale\x1b[0m');
@@ -144,14 +160,32 @@ for (const [sel, quoi] of [['.sg-etiquette', 'la question posée à l\'élève']
         c ? c.contraste.toFixed(2) : 'introuvable');
 }
 
+// LE MODE D'EMPLOI DE LA PHOTO DIT-IL LE GESTE DE CETTE MACHINE-LÀ ?
+//
+// C'est la moitié qui manquait. « Prends d'abord la photo, puis ajoute-la ici »
+// décrit un téléphone ; sur un ordinateur de collège, Impr. écran ne crée aucun
+// fichier, et l'élève cherche dans « Mes images » une image qui n'y est pas.
+const consigne = await s.page.$eval('.sg-note', n => n.textContent.trim());
+const bouton = await s.page.$eval('[data-joindre-mot]', n => n.textContent.trim());
+dire(ORDI ? 'la consigne parle de COLLER, pas d\'aller chercher un fichier'
+    : 'la consigne parle des boutons de l\'appareil',
+    ORDI ? /coll/i.test(consigne) : /boutons de ton appareil/i.test(consigne),
+    consigne.slice(0, 74));
+dire('et le bouton porte le même geste',
+    ORDI ? /[Cc]oller/.test(bouton) : /photo/.test(bouton), bouton);
+
 await s.page.fill('#sg-texte', 'Le clavier cache la question, je ne vois pas ce que je tape.');
 
-// LA PHOTO : on fabrique une image comme le ferait la photothèque du téléphone.
-// UN PNG DE 1400 × 3000 — plus grand que la borne du serveur une fois encodé :
-// c'est le cas réel d'une capture d'iPhone, et c'est le rétrécissement qu'on
-// mesure ici. Node n'a pas de canevas ; ce chemin-là n'existe QUE dans un vrai
-// navigateur, et c'est pour cela que cet outil existe.
-const gros = await s.page.evaluate(async () => {
+// LA PHOTO. UN PNG DE 1400 × 3000 — plus lourd que la borne du serveur une fois
+// encodé : c'est le cas réel d'une capture d'écran, et c'est le rétrécissement
+// qu'on mesure ici. Node n'a pas de canevas ; ce chemin-là n'existe QUE dans un
+// vrai navigateur, et c'est pour cela que cet outil existe.
+//
+// ET ELLE ENTRE PAR LA PORTE DE CETTE MACHINE-LÀ. Au doigt, par le sélecteur de
+// fichiers ; au clavier, par le PRESSE-PAPIERS — le seul endroit où Impr. écran
+// dépose quoi que ce soit. Mesurer le collage avec un sélecteur de fichiers, ce
+// serait mesurer un geste que personne ne fera au collège.
+const gros = await s.page.evaluate(async (parLeClavier) => {
     const cv = document.createElement('canvas');
     cv.width = 1400; cv.height = 3000;
     const c = cv.getContext('2d');
@@ -164,25 +198,92 @@ const gros = await s.page.evaluate(async () => {
     }
     c.putImageData(img, 0, 0);
     const b = await new Promise(ok => cv.toBlob(ok, 'image/png'));
+    const fichier = new File([b], 'capture.png', { type: 'image/png' });
     const dt = new DataTransfer();
-    dt.items.add(new File([b], 'capture.png', { type: 'image/png' }));
-    document.querySelector('[data-fichier]').files = dt.files;
-    document.querySelector('[data-fichier]').dispatchEvent(new Event('change'));
+    dt.items.add(fichier);
+    if (parLeClavier) {
+        // CTRL+V, tel que le navigateur le livre : un événement `paste` dont le
+        // presse-papiers porte le fichier. On le lance sur la ZONE DE TEXTE,
+        // là où le curseur se trouve après l'ouverture de la fenêtre — c'est
+        // l'écoute posée sur toute la fenêtre qui doit le rattraper.
+        document.querySelector('#sg-texte').dispatchEvent(
+            new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    } else {
+        document.querySelector('[data-fichier]').files = dt.files;
+        document.querySelector('[data-fichier]').dispatchEvent(new Event('change'));
+    }
     return b.size;
-});
+}, ORDI);
 console.log(`    (la photo de départ pèse ${Math.round(gros / 1024)} ko)`);
 await dormir(1800);
 const petite = await s.page.evaluate(() => {
     const v = document.querySelector('[data-vignette]');
     return v && v.src ? v.src.length : 0;
 });
-dire('LA PHOTO EST RÉTRÉCIE SOUS LA BORNE DU SERVEUR',
+dire(ORDI ? 'LA CAPTURE COLLÉE EST PRISE ET RÉTRÉCIE'
+    : 'LA PHOTO EST RÉTRÉCIE SOUS LA BORNE DU SERVEUR',
     petite > 0 && petite <= 400000,
     petite ? `${Math.round(gros / 1024)} ko → ${Math.round(petite / 1024)} ko` : 'aucune vignette');
 dire('et la vignette se voit avant l\'envoi',
     await s.page.$eval('[data-apercu]', a => !a.hidden).catch(() => false));
 
-await s.page.click('[data-envoyer]');
+// GLISSER UNE IMAGE DANS LE CADRE, l'autre geste de l'ordinateur — et celui qui
+// ferait DISPARAÎTRE l'application si personne n'arrêtait le navigateur : sans
+// `preventDefault`, une image lâchée sur une page la remplace, et l'élève perd
+// le texte qu'il venait d'écrire.
+if (ORDI) {
+    const apres = await s.page.evaluate(async () => {
+        const cv = document.createElement('canvas');
+        cv.width = 400; cv.height = 300;
+        cv.getContext('2d').fillRect(0, 0, 400, 300);
+        const b = await new Promise(ok => cv.toBlob(ok, 'image/png'));
+        const dt = new DataTransfer();
+        dt.items.add(new File([b], 'autre.png', { type: 'image/png' }));
+        const cadre = document.querySelector('[data-depot]');
+        cadre.dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
+        const vise = cadre.classList.contains('sg-photo--vise');
+        cadre.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+        return { vise };
+    });
+    dire('le cadre s\'allume quand une image le survole', apres.vise === true);
+    await dormir(1200);
+    dire('et l\'application ne part pas à l\'image lâchée dessus',
+        await s.page.$('#sg-texte') !== null);
+    dire('la photo glissée remplace la précédente',
+        await s.page.evaluate(() => {
+            const v = document.querySelector('[data-vignette]');
+            return !!(v && v.src && v.src.length < 20000);
+        }));
+    // ET L'ON REMET LA GROSSE : c'est elle qu'on veut retrouver chez le
+    // professeur, pour que la ligne « photo » de ce rapport ait un sens.
+    await s.page.evaluate(async () => {
+        const cv = document.createElement('canvas');
+        cv.width = 1400; cv.height = 3000;
+        const c = cv.getContext('2d');
+        const img = c.createImageData(1400, 3000);
+        for (let i = 0; i < img.data.length; i += 4) {
+            img.data[i] = (i * 7) % 255; img.data[i + 1] = (i * 13) % 255;
+            img.data[i + 2] = (i * 29) % 255; img.data[i + 3] = 255;
+        }
+        c.putImageData(img, 0, 0);
+        const b = await new Promise(ok => cv.toBlob(ok, 'image/png'));
+        const dt = new DataTransfer();
+        dt.items.add(new File([b], 'capture.png', { type: 'image/png' }));
+        document.querySelector('#sg-texte').dispatchEvent(
+            new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    });
+    await dormir(1600);
+
+    // CTRL+ENTRÉE ENVOIE. Sur l'ordinateur, c'est le geste de celui qui vient
+    // de taper trois phrases et ne veut pas reprendre la souris.
+    await s.page.focus('#sg-texte');
+    await s.page.keyboard.press('Control+Enter');
+    await dormir(1600);
+    dire('CTRL+ENTRÉE ENVOIE, sans reprendre la souris',
+        await s.page.$('#sg-texte') === null);
+}
+
+if (await s.page.$('[data-envoyer]')) await s.page.click('[data-envoyer]');
 await dormir(1600);
 dire('la fenêtre se referme une fois le message parti',
     await s.page.$('#sg-texte') === null);
@@ -200,7 +301,7 @@ if (sig) {
     // rouvre le même exercice et PAS la même question.
     dire('ET AVEC LA GRAINE', !!ec.graine, ec.graine || 'aucune');
     dire('et la question qu\'il avait sous les yeux', !!ec.question, ec.question || '');
-    dire('la taille de son écran', sig.contexte.largeur === 390,
+    dire('la taille de son écran', sig.contexte.largeur === (ORDI ? 1280 : 390),
         `${sig.contexte.largeur}×${sig.contexte.hauteur}`);
     dire('la version que SON navigateur a chargée', !!sig.contexte.version,
         sig.contexte.version || 'inconnue');

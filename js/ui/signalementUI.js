@@ -53,8 +53,56 @@ function dernieresErreurs() {
  * @param {number} [o.zIndex] l'étage, quand on ouvre depuis la couche de jeu
  *                            (`#game-layer` est à 10000 : voir `showModal`).
  */
+/**
+ * LES MOTS CHANGENT AVEC L'APPAREIL, PARCE QUE LE GESTE CHANGE AVEC LUI.
+ *
+ * Rémy : « et sur l'ordinateur car globalement les élèves le feront sur ordi au
+ * collège ».
+ *
+ * C'EST LE CAS PRINCIPAL, ET IL AVAIT LE MAUVAIS MODE D'EMPLOI. « Prends
+ * d'abord la photo, puis ajoute-la ici » décrit le geste d'un téléphone : on
+ * photographie, l'image va dans la photothèque, on va la chercher. Sur un
+ * ordinateur de collège, ce chemin-là existe à peine — une capture d'écran
+ * Windows ne crée aucun fichier, elle va dans le PRESSE-PAPIERS. Un élève qui
+ * suit la consigne cherche dans « Mes images » un fichier qui n'y est pas.
+ *
+ * LE VRAI GESTE, SUR WINDOWS : la touche Impr. écran, puis Ctrl+V ici. Deux
+ * touches, rien à trouver, rien à nommer. Sur un Mac, ⌘⇧4 écrit sur le bureau
+ * ET ⌃⌘⇧4 copie : on nomme les deux, et le dépôt par glissement marche aussi.
+ *
+ * ON DEVINE PAR LE POINTEUR, pas par le nom du navigateur. `(pointer: coarse)`
+ * dit « un doigt » ; c'est la même question que pose la feuille de style pour
+ * ses cibles de 44 px, et deux façons de deviner la même chose finiraient par
+ * se contredire. Une tablette avec clavier répond « doigt » et lit la consigne
+ * du téléphone — ce qui est juste : elle a un bouton de capture, pas une touche
+ * Impr. écran.
+ */
+function motsDeLAppareil() {
+    const auDoigt = typeof matchMedia === 'function'
+        && matchMedia('(pointer: coarse)').matches;
+    if (auDoigt) {
+        return {
+            bouton: 'Ajouter une photo de l\'écran',
+            note: 'Prends d\'abord la photo avec les boutons de ton appareil, '
+                + 'puis ajoute-la ici. Ce n\'est pas obligatoire.'
+        };
+    }
+    // SUR UN MAC, LA TOUCHE N'EXISTE PAS ; on ne va pas lui dire « Impr. écran ».
+    const mac = typeof navigator !== 'undefined'
+        && /Mac|iPad|iPhone/.test(navigator.platform || navigator.userAgent || '');
+    return {
+        bouton: 'Coller ou choisir une photo',
+        note: mac
+            ? 'Appuie sur ⌃⌘⇧4, cadre l\'écran, puis colle ici avec ⌘V. '
+              + 'Tu peux aussi glisser une image dans ce cadre. Ce n\'est pas obligatoire.'
+            : 'Appuie sur la touche Impr. écran, puis colle ici avec Ctrl+V. '
+              + 'Tu peux aussi glisser une image dans ce cadre. Ce n\'est pas obligatoire.'
+    };
+}
+
 export function ouvrirSignalement({ zIndex = 10001 } = {}) {
     if (ouverte) return ouverte;
+    const mots = motsDeLAppareil();
     const f = showModal('Signaler un problème', `
         <div class="sg-corps">
             <label class="sg-etiquette" for="sg-texte">Qu'est-ce qui ne va pas ?</label>
@@ -62,21 +110,23 @@ export function ouvrirSignalement({ zIndex = 10001 } = {}) {
                 placeholder="Par exemple : « le clavier cache la question » ou « le bouton Valider ne fait rien »."></textarea>
             <p class="sg-compte" data-compte aria-live="polite"></p>
 
-            <!-- LA PHOTO, DITE AVEC LES MOTS DE L'ÉLÈVE. « Ajoute une photo »
-                 et non « joindre un fichier » : c'est le geste qu'il connaît,
-                 celui des deux boutons de son téléphone. -->
-            <div class="sg-photo">
+            <!-- LA PHOTO, DITE AVEC LES MOTS DE L'ÉLÈVE, ET AVEC CEUX DE SON
+                 APPAREIL. Rémy : « globalement les élèves le feront sur ordi au
+                 collège ». Sur un ordinateur, personne ne va chercher un
+                 fichier : on appuie sur Impr. écran et l'on colle. Le mot du
+                 bouton et la phrase en dessous changent donc avec la machine —
+                 voir motsDeLAppareil, plus bas dans ce fichier. -->
+            <div class="sg-photo" data-depot>
                 <button type="button" class="sg-joindre" data-joindre>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="3" y="5" width="18" height="14" rx="2" />
                         <circle cx="12" cy="12" r="3.2" />
                     </svg>
-                    Ajouter une photo de l'écran
+                    <span data-joindre-mot>${mots.bouton}</span>
                 </button>
                 <input type="file" accept="image/*" data-fichier hidden>
-                <p class="sg-note">Prends d'abord la photo avec ton téléphone ou ton
-                   ordinateur, puis ajoute-la ici. Ce n'est pas obligatoire.</p>
+                <p class="sg-note">${mots.note}</p>
                 <div class="sg-apercu" data-apercu hidden>
                     <img alt="La photo que tu vas envoyer" data-vignette>
                     <button type="button" class="sg-retirer" data-retirer>Retirer la photo</button>
@@ -119,34 +169,99 @@ export function ouvrirSignalement({ zIndex = 10001 } = {}) {
     zone.addEventListener('input', compter);
     compter();
 
-    el.querySelector('[data-joindre]').onclick = () => champ.click();
+    const joindre = el.querySelector('[data-joindre]');
+    const joindreMot = el.querySelector('[data-joindre-mot]');
+    const depot = el.querySelector('[data-depot]');
+
+    /**
+     * UNE SEULE ROUTE POUR LES TROIS PORTES — le fichier choisi, le collage,
+     * le glissement. Elles arrivent par trois événements différents et
+     * produisent la même chose : un fichier image. Trois copies de ce
+     * traitement, ce serait trois occasions de ne corriger que deux d'entre
+     * elles.
+     */
+    async function prendreLaPhoto(fichier) {
+        if (!fichier) return;
+        dire('');
+        joindre.disabled = true;
+        joindreMot.textContent = 'On prépare la photo…';
+        photo = await retrecirLaPhoto(fichier);
+        joindre.disabled = false;
+        if (!photo) {
+            // ON NE BLOQUE PAS L'ENVOI POUR AUTANT : le texte vaut plus que la
+            // photo, et un élève à qui l'on refuse tout parce que son image n'a
+            // pas pu être lue n'enverra jamais son signalement.
+            joindreMot.textContent = mots.bouton;
+            dire("Cette photo n'a pas pu être préparée. Envoie ton message sans elle : "
+                + "l'essentiel y sera quand même.");
+            return;
+        }
+        joindreMot.textContent = 'Changer la photo';
+        vignette.src = photo;
+        apercu.hidden = false;
+    }
+
+    joindre.onclick = () => champ.click();
     el.querySelector('[data-retirer]').onclick = () => {
         photo = null;
         champ.value = '';
         apercu.hidden = true;
         vignette.removeAttribute('src');
+        joindreMot.textContent = mots.bouton;
     };
-    champ.addEventListener('change', async () => {
-        const fichier = champ.files && champ.files[0];
-        if (!fichier) return;
-        dire('');
-        const avant = el.querySelector('[data-joindre]');
-        avant.disabled = true;
-        avant.textContent = 'On prépare la photo…';
-        photo = await retrecirLaPhoto(fichier);
-        avant.disabled = false;
-        avant.textContent = 'Changer la photo';
-        if (!photo) {
-            // ON NE BLOQUE PAS L'ENVOI POUR AUTANT : le texte vaut plus que la
-            // photo, et un élève à qui l'on refuse tout parce que son image n'a
-            // pas pu être lue n'enverra jamais son signalement.
-            avant.textContent = 'Ajouter une photo de l\'écran';
-            dire("Cette photo n'a pas pu être préparée. Envoie ton message sans elle : "
-                + "l'essentiel y sera quand même.");
-            return;
-        }
-        vignette.src = photo;
-        apercu.hidden = false;
+    champ.addEventListener('change', () => prendreLaPhoto(champ.files && champ.files[0]));
+
+    // ── COLLER, LA PORTE DE L'ORDINATEUR ─────────────────────────────────────
+    //
+    // Rémy : « globalement les élèves le feront sur ordi au collège ».
+    //
+    // UNE CAPTURE D'ÉCRAN WINDOWS NE CRÉE AUCUN FICHIER. Impr. écran copie dans
+    // le presse-papiers, et c'est tout : sans cette écoute, l'élève qui suit le
+    // geste que tout le monde connaît n'a rien à donner au sélecteur de
+    // fichiers, et cherche dans « Mes images » une image qui n'y est pas.
+    //
+    // ON ÉCOUTE SUR TOUTE LA FENÊTRE, pas seulement sur la zone de texte. Un
+    // élève qui vient de coller son écran ne se demande pas où était le
+    // curseur ; il appuie sur Ctrl+V, et cela doit marcher partout dans cette
+    // fenêtre. `clipboardData.files` porte l'image ; le texte collé, lui,
+    // continue son chemin normalement vers le champ.
+    el.addEventListener('paste', (e) => {
+        const d = e.clipboardData;
+        if (!d) return;
+        const image = [...(d.files || [])].find(x => x.type.startsWith('image/'))
+            || [...(d.items || [])].filter(x => x.type.startsWith('image/'))
+                .map(x => x.getAsFile()).find(Boolean);
+        if (!image) return;
+        e.preventDefault();
+        prendreLaPhoto(image);
+    });
+
+    // ── GLISSER UNE IMAGE DANS LE CADRE ──────────────────────────────────────
+    //
+    // `stopPropagation` N'EST PAS UNE PRÉCAUTION : le dépôt de fichiers du
+    // logiciel écoute sur le DOCUMENT (`js/ui/deposerFichier.js`) pour importer
+    // des parcours. Sans cet arrêt, la capture d'écran de l'élève lui
+    // arriverait, et il répondrait qu'il ne sait pas quoi faire de ce
+    // fichier — au milieu d'un signalement qui, lui, marchait très bien.
+    //
+    // Et `preventDefault` sur `dragover` EST OBLIGATOIRE : sans lui, le
+    // navigateur refuse le dépôt et, pire, quitte l'application pour afficher
+    // l'image. Un élève perdrait son texte au moment de l'illustrer.
+    ['dragenter', 'dragover'].forEach(nom => depot.addEventListener(nom, (e) => {
+        e.preventDefault(); e.stopPropagation();
+        depot.classList.add('sg-photo--vise');
+    }));
+    ['dragleave', 'dragend'].forEach(nom => depot.addEventListener(nom, (e) => {
+        e.stopPropagation();
+        depot.classList.remove('sg-photo--vise');
+    }));
+    depot.addEventListener('drop', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        depot.classList.remove('sg-photo--vise');
+        const image = [...((e.dataTransfer && e.dataTransfer.files) || [])]
+            .find(x => x.type.startsWith('image/'));
+        if (image) prendreLaPhoto(image);
+        else dire('Ce n\'est pas une image. Glisse une capture d\'écran, ou colle-la.');
     });
 
     el.querySelector('[data-annuler]').onclick = () => f.close();
@@ -172,6 +287,20 @@ export function ouvrirSignalement({ zIndex = 10001 } = {}) {
             ? 'C\'est envoyé, avec ta photo. Merci — ton professeur le verra.'
             : 'C\'est envoyé. Merci — ton professeur le verra.', 'success', 4200);
     };
+
+    // CTRL+ENTRÉE ENVOIE, SUR L'ORDINATEUR OÙ L'ON A UN CLAVIER.
+    //
+    // Pas Entrée toute seule : le champ est multiligne, et un élève qui décrit
+    // une panne passe à la ligne. Le raccourci qui envoie un message long sans
+    // quitter le clavier s'écrit Ctrl+Entrée partout ailleurs ; on ne l'invente
+    // pas ici. Le bouton reste la porte principale — c'est un raccourci, pas la
+    // seule façon d'envoyer.
+    zone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !envoyer.disabled) {
+            e.preventDefault();
+            envoyer.click();
+        }
+    });
 
     // LE FOCUS VA DANS LE CHAMP, pas sur la croix de fermeture. Au clavier comme
     // au lecteur d'écran, la fenêtre s'ouvre à l'endroit où l'on a quelque chose
