@@ -67,9 +67,30 @@ class MotsCroises extends BaseGame {
                    de son emplacement et venait se poser PAR-DESSUS le clavier.
                    Sa hauteur ne vient plus de son contenu mais de ce qui
                    reste — sans quoi la mesurer serait circulaire. */
+                /* ET IL RETIENT CE QUI DÉBORDE. C'est un FILET, pas un
+                   réglage : la correction précédente avait repris quatre-vingts
+                   pixels à ce qui n'est pas la grille, ce qui suffisait à la
+                   grille du jour — mais un budget se dépasse, et quand il se
+                   dépassait la grille se posait PAR-DESSUS le clavier. Mesuré
+                   sur un téléphone couché : corps de 118 px, grille de 259,
+                   débordement de 141 — trente et un par-dessus la définition,
+                   cinquante-quatre par-dessus le clavier, neuf par-dessus les
+                   boutons. Les cases portent position: relative, donc elles
+                   passent DEVANT leurs voisines : une case qu'on ne peut pas
+                   toucher parce qu'un clavier est dessous, et un clavier qu'on
+                   ne peut pas toucher parce qu'une grille est dessus.
+                   Avec overflow: auto, le pire cas devient un défilement.
+
+                   SAFE CENTER, ET NON CENTER : un enfant centré qui déborde
+                   sort des DEUX côtés, et le côté du haut n'est pas atteignable
+                   au défilement — la première rangée serait perdue. safe center
+                   centre tant que ça tient, et s'aligne au début dès que ça ne
+                   tient plus. */
                 .mc-corps {
                     flex: 1 1 0; min-height: 0; width: 100%;
-                    display: flex; gap: 14px; align-items: center; justify-content: center;
+                    display: flex; gap: 14px;
+                    align-items: safe center; justify-content: safe center;
+                    overflow: auto;
                     container-type: size; container-name: mccorps;
                 }
                 /* La liste, elle, reste calée en haut : centrée, elle
@@ -220,7 +241,13 @@ class MotsCroises extends BaseGame {
                    sur deux rangées faute d'être un peu plus serrés, la note
                    redit ce que la grille montre, et la définition n'a pas
                    besoin d'être écrite en dix-sept points sur un téléphone. */
-                @container (max-width: 520px) {
+                /* ET LA MÊME CURE QUAND C'EST LA HAUTEUR QUI MANQUE. Le bloc
+                   ne regardait que la largeur : un téléphone COUCHÉ fait 804 px
+                   de large, n'entrait donc dans aucune de ces règles, et gardait
+                   la définition en dix-sept points, les boutons larges et le
+                   plancher à quinze — dans 118 px de hauteur utile. C'est la
+                   seule condition qui reproduisait la capture de Rémy. */
+                @container ((max-width: 520px) or (max-height: 460px)) {
                     .mc-indice { min-height: 1.4em; font-size: clamp(11px, 3.1cqw, 13px); }
                     .mc-btn { padding: 4px 7px; font-size: .76rem; }
                     .mc-barre { gap: 4px; }

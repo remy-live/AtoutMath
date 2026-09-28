@@ -650,3 +650,21 @@ manque.
 - **Au passage, et c'est le même geste** : le même balayage a montré que
   « Valider » tombait sous l'écran dans onze conditions sur trente. Une sonde
   qui change de taille de fenêtre voit des choses qu'aucune relecture ne voit.
+
+## **`getBoundingClientRect` rend la boîte, pas ce qui est peint** — 2026-09-28
+
+- **Ce que je voulais faire** : vérifier qu'une grille de mots croisés ne se
+  pose plus par-dessus le clavier, après avoir mis le conteneur en
+  `overflow: auto`.
+- **Ce qui a coûté** : un faux « CASSÉ » que j'ai failli corriger. La sonde
+  calculait l'aire commune entre le rectangle de la grille et celui du pavé de
+  lettres — et continuait d'annoncer un pixel de recouvrement sur un clavier
+  parfaitement dégagé. `getBoundingClientRect` rend la BOÎTE DE MISE EN PAGE ;
+  dès qu'un ancêtre découpe, elle ne dit plus rien de ce que l'oeil voit. La
+  mesure d'avant la correction était juste par accident : rien ne découpait.
+- **Combien de fois** : |  (même famille que « une capture d'élément perd un
+  texte peint par son fond » : la géométrie calculée et le rendu divergent)
+- **Ce qui manque** : une règle. **Quand on mesure un recouvrement, découper
+  d'abord chaque boîte par ses conteneurs qui défilent.** Trois lignes, et sans
+  elles la sonde condamne exactement la correction qu'on vient d'écrire — le
+  pire moment pour une fausse alerte.
