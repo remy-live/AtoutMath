@@ -22,6 +22,22 @@
 //
 // APRÈS : zéro sur les quatre hauteurs, et sur les six conditions du balayage.
 //
+// ET LA VARIANTE À CHAÎNE EST COUVERTE, ce que je n'avais PAS mesuré en
+// corrigeant. Rémy a envoyé « Factoriser pas à pas », où l'énoncé porte une
+// chaîne d'égalités (`ls-layout--chaine`) au lieu d'un dessin : l'expression
+// x² − 49 coupée par le champ, et la ligne « On écrit les deux carrés » sous
+// les touches. Remesuré sur le fichier d'AVANT, sorti de git :
+//
+//     390 × 844 : 0 · 700 : 52 px · 664 : 87 px · 600 : 132 px
+//
+// À 600, le recouvrement se répartit sur trois morceaux — la consigne pour 4,
+// l'expression pour 30, la chaîne pour 98 — ce qui est exactement sa capture,
+// x² − 49 coupé en deux. Avec le plafond : zéro aux quatre hauteurs.
+//
+// LA LEÇON EST SUR MOI : la même règle sert aux deux variantes, mais je ne
+// l'avais vérifiée que sur celle qui portait un dessin. Un correctif qui tient
+// sur le cas qu'on a sous les yeux n'est pas un correctif vérifié.
+//
 // LA DEUXIÈME MOITIÉ EST UNE QUESTION DE PLACE, PAS DE RECOUVREMENT. Le plafond
 // ne donne pas de place, il empêche d'en voler : l'énoncé passe d'un
 // débordement à un défilement. Le pavé pesait 439 px sur un hôte de 538 — on
