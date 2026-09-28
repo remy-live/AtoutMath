@@ -925,6 +925,109 @@ verifier('et garde le récent', (int) $s->fetchAll()[0]['c'] === 1);
 verifier('elle ne repasse pas le même jour', purgerSiNecessaire() === 0);
 @unlink($API . '/.derniere-purge');
 
+// ------------------------------------------------------- Les signalements ---
+
+titre('11 bis. « Ça ne marche pas » : de l\'élève au professeur');
+
+// Rémy : « un bouton désactivable ou non qui permet à l'élève d'envoyer un bug
+// et de prendre une photo d'écran ».
+//
+// LE RÉGLAGE EST UNE PORTE, PAS UNE DÉCORATION. Cacher le bouton empêche
+// d'appuyer ; cela n'empêche personne d'appeler la route à la main. On commence
+// donc par vérifier que la route refuse quand le professeur n'a rien ouvert —
+// c'est le seul essai de cette section qui garde une règle plutôt qu'un usage.
+
+// UNE CLASSE ET UNE ÉLÈVE À NOUS. Le jeton de Léa ne vaut plus rien depuis la
+// section 7, qui vide sa classe exprès : s'en servir ici ferait refuser la
+// route pour une raison qui n'a rien à voir avec ce qu'on mesure.
+$classeSignal = uuidv4();
+db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
+    ->execute([$classeSignal, $profId, 'Signaux', 'SIGNAL']);
+$r = json('/join', ['classCode' => 'SIGNAL', 'firstName' => 'Awa']);
+$awa = $r['json']['token'] ?? '';
+verifier('une élève se rattache pour cette section', $awa !== '');
+
+$r = json('/reglages');
+verifier('le signalement est ÉTEINT par défaut',
+    ($r['json']['reglages']['signalement'] ?? null) === false);
+
+$r = json('/signalement', ['corps' => 'Le bouton ne marche pas.'], $awa);
+verifier('ET LA ROUTE REFUSE TANT QU\'IL EST ÉTEINT', $r['code'] === 403, (string) $r['code']);
+
+$r = json('/teacher/reglages', ['signalement' => true], $jetonProf);
+verifier('le professeur l\'allume', ($r['json']['reglages']['signalement'] ?? null) === true);
+verifier('et l\'élève le voit dans les réglages publics',
+    (json('/reglages')['json']['reglages']['signalement'] ?? null) === true);
+
+// LE CONTEXTE EST CE QUI VAUT LE PLUS : c'est la graine qui rouvre la question.
+$photo = 'data:image/jpeg;base64,' . base64_encode(str_repeat('P', 900));
+$r = json('/signalement', [
+    'corps' => 'Le clavier cache la question, je ne vois pas ce qu\'il faut taper.',
+    'contexte' => ['ecran' => ['exerciseId' => 'num-rang', 'graine' => 'ab12cd34',
+                               'question' => 'Quel est le chiffre des dizaines ?'],
+                   'theme' => 'dark', 'largeur' => 390, 'hauteur' => 844, 'version' => 'v874'],
+    'image' => $photo,
+], $awa);
+verifier('l\'élève envoie son signalement', $r['code'] === 200);
+verifier('et le serveur dit qu\'il a gardé la photo', ($r['json']['photo'] ?? null) === true);
+
+$r = json('/teacher/signalements', ['action' => 'list'], $jetonProf);
+$sig = $r['json']['signalements'][0] ?? null;
+verifier('LE PROFESSEUR LE LIT', is_array($sig)
+    && str_contains($sig['corps'] ?? '', 'Le clavier cache la question'));
+verifier('AVEC LA GRAINE — sans elle, « ça bugue » ne se reproduit pas',
+    ($sig['contexte']['ecran']['graine'] ?? '') === 'ab12cd34');
+verifier('et le thème, qui explique la moitié des défauts d\'affichage',
+    ($sig['contexte']['theme'] ?? '') === 'dark');
+verifier('il sait qui l\'a écrit', ($sig['qui'] ?? '') === 'Awa');
+// LA PHOTO NE VOYAGE PAS AVEC LA LISTE : on dit seulement qu'elle existe.
+verifier('la liste annonce la photo sans la porter',
+    ($sig['photo'] ?? null) === true && !array_key_exists('image', $sig));
+$r = json('/teacher/signalements', ['action' => 'photo', 'id' => $sig['id']], $jetonProf);
+verifier('et elle s\'ouvre à la demande', ($r['json']['image'] ?? '') === $photo);
+
+// ON NE CROIT RIEN DE CE QUI ARRIVE D'UN NAVIGATEUR. Une image trop lourde ou
+// qui n'en est pas une est ÉCARTÉE — jamais refusée : le texte et le contexte
+// valent plus qu'elle, et les perdre pour une photo serait perdre le plus.
+$r = json('/signalement', [
+    'corps' => 'Deuxième essai.',
+    'image' => 'data:image/jpeg;base64,' . base64_encode(str_repeat('Z', 500000)),
+], $awa);
+verifier('UNE PHOTO TROP LOURDE EST ÉCARTÉE, PAS REFUSÉE',
+    $r['code'] === 200 && ($r['json']['photo'] ?? null) === false);
+$r = json('/signalement', ['corps' => 'Troisième.', 'image' => 'javascript:alert(1)'], $awa);
+verifier('et ce qui n\'est pas une image non plus',
+    $r['code'] === 200 && ($r['json']['photo'] ?? null) === false);
+verifier('un signalement vide est refusé',
+    json('/signalement', ['corps' => '   '], $awa)['code'] === 400);
+
+// CLASSER N'EST PAS EFFACER — le même défaut signalé trois fois dit quelque
+// chose que le premier signalement tout seul ne dit pas.
+json('/teacher/signalements', ['action' => 'traite', 'id' => $sig['id'], 'traite' => true], $jetonProf);
+$liste = json('/teacher/signalements', ['action' => 'list'], $jetonProf)['json']['signalements'] ?? [];
+$lui = null;
+foreach ($liste as $x) { if (($x['id'] ?? '') === $sig['id']) $lui = $x; }
+verifier('classé, il reste dans la liste', is_array($lui) && ($lui['traite'] ?? null) === true);
+verifier('et il descend sous ceux qui attendent',
+    count($liste) > 1 && ($liste[count($liste) - 1]['id'] ?? '') === $sig['id']);
+
+json('/teacher/signalements', ['action' => 'supprimer', 'id' => $sig['id']], $jetonProf);
+$restants = json('/teacher/signalements', ['action' => 'list'], $jetonProf)['json']['signalements'] ?? [];
+verifier('effacé, il n\'y est plus',
+    !array_filter($restants, fn ($x) => ($x['id'] ?? '') === $sig['id']));
+
+// LE FICHIER QUI PART SEUL NE DOIT PAS PARLER — un signalement porte ce qu'un
+// élève NOMMÉ était en train de faire, et sa phrase à lui. La vérification est
+// en SECTION 13 et non ici : lire le fichier pendant que deux processus
+// l'utilisent laisse la connexion dans un état où l'écriture suivante rend
+// « database disk image is malformed », trois sections plus loin, sur une
+// insertion banale. On laisse donc « Deuxième essai » dans la base pour qu'elle
+// ait quelque chose à chercher.
+
+// ET L'ON REFERME, pour que la suite des essais retrouve le site tel qu'il
+// était : ce réglage vaut pour tout le serveur.
+json('/teacher/reglages', ['signalement' => false], $jetonProf);
+
 // ------------------------------------------------------------ Le schéma -----
 
 titre('12. Le schéma se remet à niveau sans rien casser');
@@ -937,9 +1040,10 @@ verifier('migrer() est idempotent', (int) db()->query('SELECT COUNT(*) c FROM ev
 $tables = array_column(db()->query(
     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
 )->fetchAll(), 'name');
-verifier('les onze tables sont là',
+verifier('les douze tables sont là',
     $tables === ['assignments', 'classes', 'events', 'message_reads', 'messages',
-                 'overrides', 'paths', 'reglages', 'student_tokens', 'students', 'teachers'],
+                 'overrides', 'paths', 'reglages', 'signalements', 'student_tokens',
+                 'students', 'teachers'],
     implode(', ', $tables));
 
 titre('12 bis. La liste : lire un vrai fichier de professeur');
@@ -2311,6 +2415,8 @@ $octets = (string) @file_get_contents($BAC . '/essai.sqlite')
         . (string) @file_get_contents($BAC . '/essai.sqlite-wal');
 
 verifier('le fichier porte bien des blocs chiffrés', str_contains($octets, 'v1:'));
+verifier('ce qu\'un élève a SIGNALÉ n\'est pas lisible dans le fichier',
+    !str_contains($octets, 'Deuxième essai'));
 foreach ([
     'un prénom d\'élève'          => 'Anastasia',
     'la réponse d\'un élève'      => 'quarante-deux-mille',

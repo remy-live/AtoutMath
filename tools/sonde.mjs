@@ -85,7 +85,44 @@ export async function ouvrirSonde(o = {}) {
 
     await page.goto(`http://127.0.0.1:${port}/index.html`);
     await page.waitForFunction(() => window.__atoutmathPret === true, { timeout: 30000 });
-    if (o.theme) await page.evaluate(t => document.documentElement.setAttribute('data-theme', t), o.theme);
+
+    // LE THÈME EST UN ATTRIBUT DE LA PAGE, ET UN RECHARGEMENT L'EMPORTE.
+    //
+    // La sonde posait `data-theme` une fois, après le premier chargement. Or
+    // `identifier()` recharge — c'est la moitié du geste, voir plus bas —, et
+    // beaucoup de sondes rechargent encore ensuite. Le thème disparaissait à
+    // chaque fois, SANS UN MOT, et les chiffres qui suivaient étaient ceux du
+    // thème clair sous le nom d'un autre.
+    //
+    // MESURÉ, ET C'EST AINSI QU'ON L'A VU : l'écran des signalements annonçait
+    // 17,85 · 5,74 · 4,88 · 17,06 dans les CINQ thèmes, à la deuxième décimale.
+    // Cinq thèmes qui s'accordent à ce point ne s'accordent pas : ils sont le
+    // même. C'est le seul indice qu'on ait eu, et il tenait à ce qu'on ait
+    // lancé les cinq d'affilée.
+    //
+    // ON PREND DONC LE CHEMIN DE L'ÉLÈVE. Un élève ne pose pas un attribut : il
+    // appuie sur le bouton des thèmes, et son choix se range dans
+    // `localStorage` sous `mathbox-theme` (voir `js/app.js`). On écrit là, et
+    // l'application repose le thème toute seule à chaque chargement — comme
+    // chez lui. L'attribut est posé en plus, pour que la mesure qui suit
+    // immédiatement n'ait pas à attendre le rechargement.
+    const CLE_THEME = 'mathbox-theme';
+    let themeVoulu = o.theme || null;
+    const reposerLeTheme = async () => {
+        await page.evaluate(([t, cle]) => {
+            try {
+                if (t) window.localStorage.setItem(cle, t);
+                else window.localStorage.removeItem(cle);
+            } catch (e) { /* navigation privée : l'attribut suffira */ }
+            if (t) document.documentElement.setAttribute('data-theme', t);
+            else document.documentElement.removeAttribute('data-theme');
+        }, [themeVoulu, CLE_THEME]);
+    };
+    if (themeVoulu) await reposerLeTheme();
+    // ET L'ON REPOSE APRÈS CHAQUE CHARGEMENT, y compris ceux que la sonde
+    // appelante déclenche elle-même : c'est la seule façon qu'elle n'ait rien à
+    // savoir de ce piège.
+    page.on('load', () => { reposerLeTheme().catch(() => { /* page partie */ }); });
 
     const sonde = {
         page, ctx, nav, port, info, doigt, erreurs, fenetresNatives,
@@ -105,16 +142,18 @@ export async function ouvrirSonde(o = {}) {
             // toutes les photos sortent vides.
             await page.reload();
             await page.waitForFunction(() => window.__atoutmathPret === true, { timeout: 30000 });
+            // ET LE THÈME REVIENT AVEC. Sans cette ligne, une sonde ouverte en
+            // thème sombre mesure le thème clair à partir d'ici, et ses chiffres
+            // n'en ont pas l'air.
+            await reposerLeTheme();
             await dormir(500);
             return dit;
         },
 
         /** Bascule un thème (ou revient au thème clair avec `null`). */
         async theme(nom) {
-            await page.evaluate(t => {
-                if (t) document.documentElement.setAttribute('data-theme', t);
-                else document.documentElement.removeAttribute('data-theme');
-            }, nom || null);
+            themeVoulu = nom || null;
+            await reposerLeTheme();
             await dormir(220);
         },
 

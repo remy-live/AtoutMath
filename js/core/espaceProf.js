@@ -132,6 +132,28 @@ export const listeDeClasse = (classId) => auServeur('/teacher/roster', { classId
  */
 export const reglagesDuSite = (changements = {}) =>
     auServeur('/teacher/reglages', changements);
+
+/**
+ * CE QUE LES ÉLÈVES ONT SIGNALÉ — toutes classes confondues.
+ *
+ * Rémy : « un bouton désactivable ou non qui permet à l'élève d'envoyer un bug
+ * et de prendre une photo d'écran ».
+ *
+ * PAS DE `classId`, ET C'EST LE FOND DU SUJET. Un signalement parle du
+ * LOGICIEL, pas d'une classe : « le clavier recouvre l'énoncé » arrive des 5eB
+ * comme des 4eA. Obliger à regarder classe par classe, ce serait faire faire à
+ * Rémy le tri que la machine fait en une requête.
+ *
+ * LA PHOTO N'EST PAS DANS LA LISTE : quatre cents kilo-octets par signalement,
+ * pour un écran qui en ouvrira peut-être une. On la demande quand on la
+ * regarde, et pas avant.
+ */
+export const lesSignalements = () => auServeur('/teacher/signalements', { action: 'list' });
+export const photoDuSignalement = (id) => auServeur('/teacher/signalements', { action: 'photo', id });
+export const classerSignalement = (id, traite) =>
+    auServeur('/teacher/signalements', { action: 'traite', id, traite });
+export const effacerSignalement = (id) =>
+    auServeur('/teacher/signalements', { action: 'supprimer', id });
 export const apercuDeListe = (classId, texte, codeCommun) =>
     auServeur('/teacher/roster', { classId, action: 'apercu', texte, codeCommun });
 export const importerListe = (classId, liste) =>

@@ -33,7 +33,7 @@
 // qui ouvre cet écran a trente élèves devant lui et vingt secondes. Les bilans
 // existent, ils sont ailleurs, et c'est très bien.
 
-import { showToast } from './modal.js';
+import { showToast, showConfirm } from './modal.js';
 // LE CATALOGUE SE COMPTE, IL NE SE RECOPIE PAS. Deux phrases de cet écran
 // annonçaient « 172 exercices » ; le catalogue en contient 178 depuis qu'on y
 // a mis la Seconde. Un nombre écrit à la main est un nombre qui devient faux
@@ -54,7 +54,8 @@ import {
     creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
     lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis,
     accorderLaCalculatrice, retirerLaCalculatrice,
-    imposerLaSeance, lancerLeChrono, arreterLeChrono, auServeur, reglagesDuSite
+    imposerLaSeance, lancerLeChrono, arreterLeChrono, auServeur, reglagesDuSite,
+    lesSignalements, photoDuSignalement, classerSignalement, effacerSignalement
 } from '../core/espaceProf.js';
 import { noterReglagesSite } from '../core/reglagesSite.js';
 import { adresseAdmin } from './classesServeur.js';
@@ -150,6 +151,9 @@ export function fermerEspaceClasses() {
 export async function ouvrirEspaceClasses() {
     vue = { ou: 'classes', classes: null, erreur: '', classe: null, onglet: 'direct',
             liste: null, direct: null, apercu: null, profs: null, reglages: null,
+            // Ce que les élèves ont signalé — `null` tant qu'on n'est pas allé
+            // voir, ce qui n'est pas « aucun signalement ».
+            signalements: null,
             // Les réglages du SITE — `null` tant que le serveur n'a pas répondu,
             // ce qui n'est pas la même chose que « tout est éteint ».
             reglagesSite: null,
@@ -239,6 +243,7 @@ export async function ouvrirEspaceClasses() {
 // --- Le dessin --------------------------------------------------------------
 
 function ecranHtml() {
+    if (vue.ou === 'signalements') return signalementsHtml();
     if (vue.ou === 'profs') return profsHtml();
     if (vue.ou === 'classe' && vue.classe) return classeHtml();
     return classesHtml();
@@ -290,6 +295,101 @@ function profsHtml() {
                     : 'Ajouter ou retirer un compte revient au professeur qui a installé le '
                       + 'site : ces gestes-là touchent au serveur entier, pas à une classe.'}</p>
         </div>`;
+}
+
+/**
+ * CE QUE LES ÉLÈVES ONT SIGNALÉ.
+ *
+ * Rémy : « un bouton désactivable ou non qui permet à l'élève d'envoyer un bug
+ * et de prendre une photo d'écran ».
+ *
+ * L'ÉCRAN NE MONTRE PAS D'ABORD LA PHOTO, IL MONTRE LE CONTEXTE. Une image dit
+ * à quoi ressemblait l'écran ; la GRAINE le rejoue. Le bouton « Sa question,
+ * chez moi » est le MÊME que celui du direct — mêmes attributs, même geste, même
+ * code derrière : ce qui vaut pour l'élève qu'on regarde travailler vaut pour
+ * celui qui vient de dire que ça ne marche pas.
+ *
+ * LA PHOTO SE DEMANDE, ELLE NE VIENT PAS TOUTE SEULE. Quatre cents kilo-octets
+ * par signalement, sur le wifi d'un collège : la liste serait illisible avant
+ * d'être lisible. Un bouton, une photo, celle qu'on veut voir.
+ *
+ * TRAITÉ NE VEUT PAS DIRE EFFACÉ, et les deux boutons existent séparément. Un
+ * défaut corrigé se classe — il sort du haut de la liste sans disparaître, parce
+ * que le même défaut signalé trois fois par trois élèves dit quelque chose qu'un
+ * seul signalement ne dit pas.
+ */
+function signalementsHtml() {
+    const liste = vue.signalements;
+    let corps;
+    if (!liste) {
+        corps = '<div class="ec-vide">On regarde…</div>';
+    } else if (!liste.length) {
+        corps = `<div class="ec-vide">Aucun signalement.
+            ${vue.reglagesSite && vue.reglagesSite.signalement === true
+                ? 'Le bouton est allumé chez vos élèves : ils peuvent en envoyer.'
+                : '<b>Le bouton est éteint</b> : vos élèves n\'en ont pas.'}</div>`;
+    } else {
+        corps = liste.map(carteSignalementHtml).join('');
+    }
+    const ouverts = liste ? liste.filter(s => !s.traite).length : 0;
+    return enTeteHtml('Ce que les élèves signalent',
+        liste === null ? 'On regarde…'
+            : (ouverts ? `${ouverts} à regarder` : 'Rien en attente'), true)
+        + messageHtml()
+        + `<div class="ec-corps"><div class="ec-signalements">${corps}</div></div>`;
+}
+
+function carteSignalementHtml(s) {
+    const c = s.contexte || {};
+    const ec = c.ecran || {};
+    const exo = ec.exerciseId ? getExerciseById(ec.exerciseId) : null;
+    // LES FAITS SUR UNE LIGNE, dans l'ordre où l'on s'en sert : l'exercice
+    // d'abord (« lequel ? »), puis ce qui explique souvent le défaut — le thème
+    // et la largeur de l'écran —, puis la version, qui dit si l'on cherche dans
+    // du code qui existe encore.
+    const faits = [];
+    if (exo) faits.push(esc(exo.title));
+    else if (ec.exerciseId) faits.push(esc(ec.exerciseId) + ' (hors catalogue)');
+    if (c.theme && c.theme !== 'clair') faits.push('thème ' + esc(c.theme));
+    if (c.largeur) faits.push(`${c.largeur}×${c.hauteur || '?'}`);
+    if (c.version) faits.push(esc(c.version));
+    if (!ec.graine) faits.push('sans graine');
+
+    return `
+    <article class="ec-signal${s.traite ? ' ec-signal--traite' : ''}" data-signal="${esc(s.id)}">
+        <div class="ec-signal-tete">
+            <b class="ec-signal-qui">${esc(s.qui || 'Un élève')}</b>
+            <span class="ec-note">${esc(s.classe || '')} · ${esc(quandLisible(s.quand))}</span>
+            ${s.traite ? '<span class="ec-signal-marque">classé</span>' : ''}
+        </div>
+        <p class="ec-signal-dit">${esc(s.corps)}</p>
+        ${faits.length ? `<p class="ec-signal-faits">${faits.join(' · ')}</p>` : ''}
+        ${ec.question ? `<p class="ec-signal-question">${esc(ec.question)}</p>` : ''}
+        ${Array.isArray(c.erreurs) && c.erreurs.length
+            ? `<pre class="ec-signal-erreurs">${esc(c.erreurs.join('\n'))}</pre>` : ''}
+        <div class="ec-signal-photo" data-photo-de="${esc(s.id)}" hidden></div>
+        <div class="ec-signal-gestes">
+            <!-- LE MÊME BOUTON QUE DANS LE DIRECT, aux mêmes attributs près :
+                 c'est la branche voirExo qui le traite, et elle sait déjà
+                 rouvrir une question exacte avec les réglages de l'élève. -->
+            <button type="button" class="ec-bouton ec-bouton--doux"
+                    data-voir-exo="${esc(ec.exerciseId || '')}"
+                    data-prenom="${esc(s.qui || '')}" data-graine="${esc(ec.graine || '')}"
+                    data-reglages="${esc(ec.reglages ? JSON.stringify(ec.reglages) : '')}"
+                    ${ec.exerciseId ? '' : 'disabled'}
+                    title="${ec.graine
+                        ? 'SA question, celle-là précisément, avec SES réglages. Rien n\'est enregistré.'
+                        : 'Son exercice, avec ses réglages. Il n\'a pas dit quelle question : ce sera le même travail, pas forcément la même.'}"
+                    >${ec.graine ? 'Sa question, chez moi' : 'Son exercice, chez moi'}</button>
+            ${s.photo ? `<button type="button" class="ec-bouton ec-bouton--doux"
+                    data-voir-photo="${esc(s.id)}">Voir sa photo</button>` : ''}
+            <button type="button" class="ec-bouton" data-classer="${esc(s.id)}"
+                    data-vers="${s.traite ? '0' : '1'}"
+                    >${s.traite ? 'Le rouvrir' : 'C\'est réglé'}</button>
+            <button type="button" class="ec-mini ec-mini--rouge" data-effacer-signal="${esc(s.id)}"
+                    >effacer</button>
+        </div>
+    </article>`;
 }
 
 /** L'en-tête, commun aux deux écrans : qui l'on est, et par où l'on revient. */
@@ -497,6 +597,47 @@ function inscriptionHtml() {
             <span class="reglage-interrupteur-mot">${su ? 'On regarde…'
                 : (actif ? 'Chacun peut s\'inscrire' : 'Billet obligatoire')}</span>
         </button>
+    </section>
+    ${signalementReglageHtml()}`;
+}
+
+/**
+ * LE SIGNALEMENT DE PROBLÈMES — le troisième interrupteur du site.
+ *
+ * Rémy : « penses-tu qu'il serait possible d'ajouter un bouton désactivable ou
+ * non qui permet à l'élève d'envoyer un bug et de prendre une photo d'écran ? »
+ *
+ * ÉTEINT PAR DÉFAUT, comme l'inscription libre et pour une raison voisine : ce
+ * bouton ouvre un canal qui remonte jusqu'à vous, et c'est à vous de décider
+ * quand. Une classe d'évaluation, une séance où l'on veut le silence, un jour
+ * où l'on n'a pas le temps de lire : on l'éteint, et il n'existe plus.
+ *
+ * ET LA PORTE VERS LA LISTE EST ICI, AU MÊME ENDROIT QUE L'INTERRUPTEUR. Une
+ * fonction qu'on allume dans un écran et qu'on lit dans un autre est une
+ * fonction qu'on allume et qu'on oublie.
+ */
+function signalementReglageHtml() {
+    const actif = !!vue.reglagesSite && vue.reglagesSite.signalement === true;
+    const su = vue.reglagesSite === null;
+    return `
+    <section class="ec-bloc ec-bloc--site">
+        <h3 class="ec-h3">Signaler un problème</h3>
+        <p class="ec-note ec-note--bloc">Allumé, l'élève trouve un bouton dans l'en-tête de
+           chaque exercice pour vous dire ce qui ne marche pas. <b>L'exercice, la question
+           exacte et la taille de son écran partent avec</b> : vous rouvrez sa question chez
+           vous d'un clic. Il peut aussi joindre une photo de son écran — c'est lui qui la
+           prend, avec les boutons de son téléphone : aucun navigateur d'iPhone ne sait
+           photographier sa propre page.</p>
+        <button type="button" class="reglage-interrupteur${actif ? ' reglage-interrupteur--actif' : ''}"
+                data-signalement="${actif ? '1' : '0'}" aria-pressed="${actif}"
+                ${su ? 'disabled' : ''}>
+            <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>
+            <span class="reglage-interrupteur-mot">${su ? 'On regarde…'
+                : (actif ? 'Les élèves peuvent signaler' : 'Aucun bouton chez les élèves')}</span>
+        </button>
+        <p class="ec-note ec-note--bloc">
+            <button type="button" class="ec-lien" data-signalements>Voir ce qui a été signalé</button>
+        </p>
     </section>`;
 }
 
@@ -1780,7 +1921,9 @@ async function brancher(e, redessiner) {
         + '[data-imposer-rien], [data-mettre-en-cours],'
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
-        + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes]');
+        + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
+        + '[data-signalement], [data-signalements], [data-voir-photo], [data-classer],'
+        + '[data-effacer-signal]');
     if (!el) return;
     const d = el.dataset;
 
@@ -1970,6 +2113,77 @@ async function brancher(e, redessiner) {
                 : 'Le catalogue est refermé : les élèves ne voient que ce que vous donnez.',
                 'success');
         });
+        return;
+    }
+
+    if (d.signalement !== undefined) {
+        const cible = d.signalement !== '1';
+        await fait(reglagesDuSite({ signalement: cible }), (r) => {
+            vue.reglagesSite = r.reglages || vue.reglagesSite;
+            noterReglagesSite(vue.reglagesSite);
+            showToast(cible
+                ? 'Vos élèves ont maintenant un bouton pour signaler un problème.'
+                : 'Le bouton de signalement est retiré des écrans des élèves.',
+                'success');
+        });
+        return;
+    }
+
+    if (d.signalements !== undefined) {
+        vue.ou = 'signalements'; vue.signalements = null; vue.erreur = '';
+        redessiner();
+        const l = await lesSignalements();
+        if (l.erreur) vue.erreur = l.erreur;
+        else vue.signalements = Array.isArray(l.signalements) ? l.signalements : [];
+        redessiner();
+        return;
+    }
+
+    if (d.voirPhoto !== undefined) {
+        // LA PHOTO S'AFFICHE SOUS SON SIGNALEMENT, pas dans une fenêtre. On la
+        // regarde EN LISANT ce que l'élève a écrit — les deux ensemble disent
+        // ce que ni l'un ni l'autre ne dit seul, et une fenêtre par-dessus
+        // cacherait justement le texte.
+        const hote = document.querySelector(`[data-photo-de="${d.voirPhoto}"]`);
+        if (!hote) return;
+        if (!hote.hidden) { hote.hidden = true; hote.innerHTML = ''; return; }
+        hote.hidden = false;
+        hote.innerHTML = '<p class="ec-note">On la charge…</p>';
+        const r = await photoDuSignalement(d.voirPhoto);
+        if (r.erreur || !r.image) {
+            hote.innerHTML = `<p class="ec-note">${esc(r.erreur || 'Cette photo est introuvable.')}</p>`;
+            return;
+        }
+        // `src` POSÉ EN PROPRIÉTÉ, PAS DANS LE GABARIT : l'URL fait des
+        // centaines de milliers de signes, et la faire passer par une chaîne
+        // HTML échappée la recopierait deux fois pour rien.
+        hote.innerHTML = '<img class="ec-signal-image" alt="La photo envoyée par l\'élève">';
+        hote.firstChild.src = r.image;
+        return;
+    }
+
+    if (d.classer !== undefined) {
+        await fait(classerSignalement(d.classer, d.vers === '1'), () => {
+            const s = (vue.signalements || []).find(x => x.id === d.classer);
+            if (s) s.traite = d.vers === '1';
+        });
+        return;
+    }
+
+    if (d.effacerSignal !== undefined) {
+        // ON DEMANDE AVANT D'EFFACER — un signalement ne se refait pas, et
+        // l'élève qui l'a écrit ne saura jamais qu'il a disparu. Pas de mot à
+        // recopier ici, contrairement aux gestes qui touchent une classe : on
+        // efface une ligne, pas trente élèves, et exiger « EFFACER » au clavier
+        // pour chacune ferait qu'on n'en effacerait plus aucune.
+        const id = d.effacerSignal;
+        showConfirm(
+            'Effacer ce signalement ? Pour le sortir de la liste sans le perdre, '
+            + 'il y a « C\'est réglé ».',
+            () => fait(effacerSignalement(id), () => {
+                vue.signalements = (vue.signalements || []).filter(x => x.id !== id);
+            }, 'Signalement effacé.'),
+            { titre: 'Effacer ce signalement', bouton: 'Effacer' });
         return;
     }
 

@@ -3367,6 +3367,72 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     }
 }
 
+/* --- Signaler un problème ----------------------------------
+   Rémy : « un bouton désactivable ou non qui permet à l'élève d'envoyer un bug
+   et de prendre une photo d'écran. »
+
+   TOUT CE QUI SE TOUCHE FAIT 44 PX — le plancher du dépôt, « la largeur moyenne
+   de la pulpe d'un index ». Cette fenêtre s'ouvre surtout depuis un téléphone,
+   au moment où quelque chose ne marche déjà pas : une cible ratée y coûte plus
+   cher qu'ailleurs.
+
+   AUCUNE COULEUR ÉCRITE EN DUR. Le thème sombre est passé par ici : un fond
+   #fff sous un texte du thème donne du blanc sur blanc, et c'est le défaut
+   qu'on a payé trois fois (voir tests/jetonsFantomes.test.mjs). */
+
+.sg-corps { display: flex; flex-direction: column; gap: 12px; }
+.sg-etiquette { font-weight: 800; font-size: .95rem; color: var(--text-main); }
+.sg-texte {
+    width: 100%; box-sizing: border-box; resize: vertical; min-height: 92px;
+    font: inherit; font-size: 1rem; line-height: 1.45; padding: 10px 12px;
+    background: var(--bg-app); color: var(--text-main);
+    border: 1.5px solid var(--border); border-radius: 12px;
+}
+.sg-texte:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.sg-compte { margin: -6px 0 0; font-size: .78rem; color: var(--text-muted); min-height: 1em; }
+
+.sg-photo { display: flex; flex-direction: column; gap: 8px; }
+.sg-joindre {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; padding: 10px 14px; cursor: pointer; font: inherit; font-weight: 700;
+    background: var(--bg-app); color: var(--text-main);
+    border: 1.5px dashed var(--border); border-radius: 12px;
+}
+.sg-joindre:disabled { opacity: .6; cursor: progress; }
+.sg-note { margin: 0; font-size: .82rem; line-height: 1.4; color: var(--text-muted); }
+.sg-apercu { display: flex; align-items: center; gap: 10px; }
+/* LA VIGNETTE RESTE PETITE : elle sert à vérifier qu'on a joint LA BONNE photo,
+   pas à la relire. Une capture de téléphone est très haute ; sans ce plafond,
+   elle pousse le bouton « Envoyer » hors de la fenêtre. */
+.sg-apercu img {
+    max-height: 96px; max-width: 40%; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg-app);
+}
+.sg-retirer {
+    min-height: 44px; padding: 8px 12px; cursor: pointer; font: inherit; font-size: .85rem;
+    font-weight: 700; background: none; color: var(--danger-texte);
+    border: 1.5px solid var(--border); border-radius: 10px;
+}
+.sg-avec {
+    margin: 0; font-size: .82rem; line-height: 1.5; color: var(--text-muted);
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-app));
+    border-radius: 10px; padding: 9px 11px;
+}
+.sg-erreur {
+    margin: 0; font-size: .88rem; line-height: 1.45; color: var(--danger-texte);
+    background: color-mix(in srgb, var(--danger) 10%, var(--bg-app));
+    border-radius: 10px; padding: 9px 11px;
+}
+.sg-actions { display: flex; gap: 8px; }
+.sg-btn {
+    flex: 1; min-height: 46px; padding: 12px 10px; border-radius: 12px; cursor: pointer;
+    font: inherit; font-weight: 800; font-size: .95rem;
+    border: 1.5px solid var(--border); background: var(--bg-app); color: var(--text-main);
+}
+.sg-btn--fort { background: var(--primary); border-color: var(--primary); color: #fff; }
+.sg-btn--fort:disabled { opacity: .7; cursor: progress; }
+.sg-btn--fantome { flex: 0 0 auto; min-width: 110px; color: var(--text-muted); }
+
 /* --- Profils multiples sur un même poste ------------------- */
 
 .profile-switcher { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 30px; }

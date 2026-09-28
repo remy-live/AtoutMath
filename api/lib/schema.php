@@ -351,6 +351,44 @@ function migrer(?PDO $pdo = null): void
         valeur TEXT NOT NULL,
         maj    $date";
 
+    // CE QUE L'ÉLÈVE SIGNALE QUAND ÇA NE MARCHE PAS.
+    //
+    // Rémy : « un bouton désactivable ou non qui permet à l'élève d'envoyer un
+    // bug et de prendre une photo d'écran ».
+    //
+    // POURQUOI UNE TABLE ET PAS UN MESSAGE. `messages` va du professeur vers
+    // l'élève : une ligne y porte un destinataire, pas un expéditeur, et sa
+    // lecture s'accuse dans `message_reads`. Un signalement va dans l'autre
+    // sens, porte un CONTEXTE que personne d'autre n'a, et se traite plutôt
+    // qu'il ne se lit. Les deux auraient fini par se gêner dans la même table.
+    //
+    // `contexte` EST CE QUI VAUT LE PLUS ICI, et c'est le relevé d'écran de
+    // `js/core/ecran.js` — exercice, GRAINE, énoncé abrégé, réglages. Le
+    // professeur rouvre la question exacte, telle que l'élève l'avait sous les
+    // yeux ; sans la graine, « ça bugue en calcul » ne se reproduit pas.
+    //
+    // `image` EST UNE PHOTO QUE L'ÉLÈVE JOINT, pas une capture que le logiciel
+    // prend — voir `js/core/signalement.js`, qui explique pourquoi la seconde
+    // n'existe pas sur un iPhone. Elle est donc facultative, et elle est BORNÉE
+    // au serveur comme au client : ce qui vient d'un navigateur n'est jamais cru
+    // sur parole.
+    //
+    // TOUT EST CHIFFRÉ, corps et contexte, pour la raison qui vaut déjà pour
+    // `ecran` : c'est ce qu'un élève NOMMÉ était en train de faire. « Je ne
+    // comprends rien à cet exercice » écrit par Léa n'a pas à se lire dans un
+    // fichier de base qui part tout seul.
+    $tables['signalements'] = "
+        id         $id,
+        student_id $refNull,
+        class_id   $refNull,
+        corps      TEXT NOT NULL,
+        contexte   TEXT NULL,
+        image      " . ($sqlite ? 'TEXT NULL' : 'LONGTEXT NULL') . ",
+        traite     $bool,
+        created_at $date,
+        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+        FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE";
+
     $tables['overrides'] = "
         id          $id,
         class_id    $refNull,
@@ -381,6 +419,10 @@ function migrer(?PDO $pdo = null): void
         'idx_messages_student' => 'messages(student_id)',
         'idx_messages_class'   => 'messages(class_id)',
         'idx_reads_student'    => 'message_reads(student_id)',
+        // Le professeur lit ses signalements par classe, du plus récent au plus
+        // ancien : c'est la seule lecture de cette table, et c'est celle-là
+        // qu'on indexe.
+        'idx_signal_class'     => 'signalements(class_id, created_at)',
         'idx_over_class'       => 'overrides(class_id)',
         'idx_over_student'     => 'overrides(student_id)',
     ] as $nom => $cible) {

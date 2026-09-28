@@ -878,3 +878,48 @@ manque.
 - **La règle** : **un défaut de couleur se cherche dans le thème qui le
   révèle.** Le thème clair est celui où l'on développe, donc le seul où ces
   défauts ne se voient jamais.
+
+---
+
+## **La sonde s'identifie en PROFESSEUR, et l'écran de l'élève n'existe pas là** — 2026-09-28
+
+- **Ce que je voulais faire** : mesurer le bouton « Signaler un problème »,
+  qui ne paraît que chez un élève RATTACHÉ à une classe.
+- **Ce qui a coûté** : ~25 min. `s.identifier()` appelle `identifierProf` :
+  l'onglet qui en sort est celui de Rémy, et `isActive()` — le rattachement
+  d'un élève — y vaut faux. Le bouton restait caché quoi qu'on allume, et
+  Playwright disait seulement « element is not visible ». J'ai d'abord cherché
+  du côté du réglage, qui arrivait parfaitement.
+- **Combien de fois** : |
+- **Ce qui manque** : un `s.entrerCommeEleve()` dans `tools/sonde.mjs`, qui
+  fasse ce que `boutEnBout.mjs` fait à la main — créer une classe, importer un
+  billet, appeler `loginEleve`. Vingt lignes à recopier à chaque fois qu'on
+  mesure quelque chose que seul un élève voit, c'est-à-dire souvent.
+- **Le piège dans le piège** : `loginEleve` change le profil local, donc
+  l'onglet CESSE d'être celui du professeur. Mesurer les deux côtés demande
+  deux onglets — ou, pour poser une donnée, une requête directe au lieu d'une
+  connexion.
+
+---
+
+## **Un rechargement emporte le thème, et cinq thèmes rendent le même chiffre** — 2026-09-28
+
+- **Ce que je voulais faire** : lire les contrastes de deux écrans neufs dans
+  les cinq thèmes, comme la règle du 28 septembre l'exige.
+- **Ce qui a coûté** : ~20 min et six campagnes pour rien. `ouvrirSonde({ theme })`
+  posait `data-theme` UNE FOIS ; `identifier()` recharge, et la sonde rechargeait
+  encore deux fois. L'attribut partait à chaque fois **sans un mot**, et tout ce
+  qui suivait mesurait le thème clair sous le nom d'un autre.
+- **Ce qui l'a révélé** : `17,85 · 5,74 · 4,88 · 17,06` — les mêmes quatre
+  nombres, à la deuxième décimale, dans les cinq thèmes. Cinq thèmes qui
+  s'accordent à ce point ne s'accordent pas : ils sont le même. L'indice ne
+  tenait qu'au fait d'avoir lancé les cinq d'affilée ; une campagne sur un seul
+  thème n'aurait rien eu à comparer.
+- **Combien de fois** : |
+- **Ce qu'on en garde** : `tools/sonde.mjs` écrit désormais le thème dans
+  `localStorage` sous `mathbox-theme` — **le chemin de l'élève**, qui appuie sur
+  le bouton des thèmes — et le repose après CHAQUE chargement (`page.on('load')`),
+  y compris ceux que la sonde appelante déclenche. Les cinq thèmes rendent
+  maintenant cinq chiffres différents.
+- **La règle** : **ce qu'une sonde pose sur la page, un rechargement le reprend.
+  Ce qu'elle range où l'utilisateur le range, non.**

@@ -469,6 +469,14 @@ export class Runner {
         gl.style.display = 'flex';
         const banner = document.getElementById('demo-overlay-banner');
         if (banner) banner.style.display = 'none';
+        // SIGNALER UN PROBLÈME — à chaque ouverture, et non une fois au
+        // démarrage. Le réglage du professeur arrive du serveur quelques
+        // centaines de millisecondes APRÈS le premier dessin de la page :
+        // décider une seule fois, c'est décider avec une réponse qui n'est pas
+        // encore là, et l'élève n'aurait son bouton qu'au rechargement suivant.
+        import('../ui/signalementUI.js')
+            .then(m => m.majBoutonSignaler())
+            .catch(() => { /* l'exercice se joue très bien sans ce bouton */ });
         // Une vraie partie n'est pas un aperçu : l'en-tête retrouve son titre.
         marquerDemo();
     }

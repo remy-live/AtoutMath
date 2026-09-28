@@ -633,6 +633,60 @@
     .ec-mini--rouge:hover { background: var(--danger-fond); color: #fff; border-color: var(--danger); }
 }
 
+/* --- Ce que les élèves signalent ------------------------------------------
+   Rémy : « un bouton désactivable ou non qui permet à l'élève d'envoyer un bug
+   et de prendre une photo d'écran. »
+
+   CE QU'ON LIT EN PREMIER EST CE QUI EST ÉCRIT, et les faits viennent après, en
+   petit. L'ordre inverse — l'exercice, le thème, la version, puis la phrase de
+   l'élève — a été essayé : on parcourt alors une fiche technique en cherchant
+   la seule ligne qu'une personne a tapée. */
+
+.ec-signalements { display: flex; flex-direction: column; gap: 12px; }
+.ec-signal {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 13px; padding: 13px 15px;
+}
+/* CLASSÉ SE VOIT SANS SE CACHER : le trait de gauche s'éteint, le reste pâlit
+   un peu. Un signalement traité reste lisible — trois fois le même défaut, c'est
+   une information que le premier tout seul ne donne pas. */
+.ec-signal--traite { border-left-color: var(--border); opacity: .72; }
+.ec-signal-tete { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ec-signal-qui { font-size: .95rem; color: var(--text-main); }
+.ec-signal-marque {
+    margin-left: auto; font-size: .72rem; font-weight: 800; border-radius: 999px;
+    padding: 2px 9px; background: color-mix(in srgb, var(--success) 18%, transparent);
+    color: var(--success-texte);
+}
+.ec-signal-dit {
+    margin: 8px 0 0; font-size: .98rem; line-height: 1.5; color: var(--text-main);
+    white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.ec-signal-faits { margin: 8px 0 0; font-size: .78rem; color: var(--text-muted); }
+.ec-signal-question {
+    margin: 6px 0 0; font-size: .85rem; line-height: 1.45; color: var(--text-muted);
+    border-left: 2px solid var(--border); padding-left: 9px;
+}
+/* LE TEXTE D'UNE ERREUR NE SE REPLIE PAS : une pile d'appels coupée au milieu
+   d'un chemin de fichier ne se lit plus. Elle défile donc dans sa propre boîte,
+   et le reste de la page ne défile pas avec. */
+.ec-signal-erreurs {
+    margin: 8px 0 0; padding: 8px 10px; border-radius: 9px; overflow-x: auto;
+    background: var(--bg-app); border: 1px solid var(--border);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .72rem; line-height: 1.45; color: var(--text-muted);
+}
+.ec-signal-photo { margin-top: 10px; }
+/* LA PHOTO NE PREND PAS TOUT L'ÉCRAN. Une capture d'iPhone fait deux fois plus
+   haut que large : sans ce plafond, un seul signalement occuperait trois écrans
+   et l'on perdrait les suivants. */
+.ec-signal-image {
+    max-width: 100%; max-height: 60vh; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-app);
+}
+.ec-signal-gestes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 11px; }
+
 /* --- Vides, notes, alertes ------------------------------------------------ */
 .ec-vide { padding: 40px 26px; text-align: center; color: var(--text-muted); }
 .ec-vide--invite { max-width: 520px; margin: 0 auto; line-height: 1.65; }

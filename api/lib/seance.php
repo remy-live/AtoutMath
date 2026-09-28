@@ -318,6 +318,13 @@ function purgerSiNecessaire(): int
     // l'exercice 3 » n'apporte rien à personne.
     db()->prepare('DELETE FROM messages WHERE created_at < ' . sqlIlYA($jours))->execute();
 
+    // LES SIGNALEMENTS AUSSI, ET CEUX-LÀ PÈSENT. Un mot fait deux lignes ; un
+    // signalement peut porter une photo de quatre cents kilo-octets, plus le
+    // relevé de ce que l'élève avait sous les yeux — donc son travail du moment.
+    // Le garder six mois après que le défaut a été corrigé, c'est garder une
+    // donnée d'élève qui ne sert plus à rien.
+    db()->prepare('DELETE FROM signalements WHERE created_at < ' . sqlIlYA($jours))->execute();
+
     return $combien;
 }
 

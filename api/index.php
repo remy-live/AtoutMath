@@ -11,6 +11,7 @@ declare(strict_types=1);
  *   POST /sync                 pousser/tirer des événements (élève)
  *   POST /session              l'état de séance seul (verrou, mot, déblocages)
  *   POST /messages/read        « j'ai lu ce mot »
+ *   POST /signalement          « ça ne marche pas » (élève), avec sa photo
  *   POST /teacher/login        connexion professeur
  *   POST /teacher/classes      créer/lister des classes
  *   POST /teacher/paths        enregistrer/lister des parcours
@@ -24,6 +25,7 @@ declare(strict_types=1);
  *   POST /teacher/message      un mot à la classe ou à un élève
  *   POST /teacher/signup       lister, créer, retirer un professeur
  *   POST /teacher/override     autoriser le saut d'un exercice, ou le retirer
+ *   POST /teacher/signalements ce que les élèves ont signalé
  *
  * LES CINQ DERNIÈRES ONT ÉTÉ AJOUTÉES POUR L'APPLICATION. Rémy : « j'aimerai
  * ne pas passer par admin et dans atout math sans passer par la zone admin ».
@@ -48,6 +50,21 @@ require_once __DIR__ . '/lib/eleves.php';
 require_once __DIR__ . '/lib/schema.php';
 // `lireReglage` / `ecrireReglage` : le magasin clé/valeur du site.
 require_once __DIR__ . '/lib/guichet.php';
+
+// CE QU'UN SIGNALEMENT A LE DROIT DE PESER.
+//
+// Les trois bornes sont ici, ensemble, parce qu'elles se lisent ensemble : un
+// signalement complet tient au pire en 420 ko, dont 400 de photo. Trente élèves
+// en envoyant chacun un, c'est douze mégaoctets — ce qu'une classe produit en
+// une heure de journal ordinaire. Au-delà, ce n'est plus un signalement, c'est
+// un dépôt de fichiers, et ce n'est pas ce qu'on construit ici.
+//
+// LE CORPS EST COURT EXPRÈS. Mille signes, c'est un gros paragraphe. Ce qui
+// aide le professeur à reproduire la panne n'est pas la longueur du récit,
+// c'est le CONTEXTE — qui, lui, part tout seul.
+const SIGNAL_CORPS_MAX    = 1000;
+const SIGNAL_CONTEXTE_MAX = 4000;
+const SIGNAL_IMAGE_MAX    = 400000;
 
 applyCors();
 
@@ -99,6 +116,7 @@ switch ($route) {
     case '/sync':            handleSync(); break;
     case '/session':         handleSession(); break;
     case '/messages/read':   handleMessagesRead(); break;
+    case '/signalement':     handleSignalement(); break;
     case '/teacher/login':   handleTeacherLogin(); break;
     case '/teacher/classes': handleTeacherClasses(); break;
     case '/teacher/paths':   handleTeacherPaths(); break;
@@ -111,6 +129,7 @@ switch ($route) {
     case '/teacher/message': handleTeacherMessage(); break;
     case '/teacher/signup':  handleTeacherSignup(); break;
     case '/teacher/override': handleTeacherOverride(); break;
+    case '/teacher/signalements': handleTeacherSignalements(); break;
     // LES RÉGLAGES DU SITE. En lecture, la route est PUBLIQUE — et il le faut :
     // le mode libre décide de ce qu'un visiteur voit sur la porte d'entrée,
     // c'est-à-dire avant qu'il ait le moindre jeton. En écriture, il faut être
@@ -464,6 +483,73 @@ function handleSession(): void
         noterLEcran((string) $student['id'], $corps['ecran']);
     }
     respond(['session' => etatDeSeance($student)]);
+}
+
+/**
+ * « ÇA NE MARCHE PAS. » — l'élève signale un problème.
+ *
+ * Rémy : « un bouton désactivable ou non qui permet à l'élève d'envoyer un bug
+ * et de prendre une photo d'écran ».
+ *
+ * LE RÉGLAGE EST VÉRIFIÉ ICI AUSSI, et pas seulement dans le bouton. Cacher le
+ * bouton empêche l'élève d'appuyer ; cela n'empêche personne d'appeler la route
+ * à la main. Un réglage qui ne vit que dans l'interface n'est pas un réglage,
+ * c'est une décoration.
+ *
+ * SIX PAR MINUTE ET PAR ÉLÈVE — le compteur du dépôt ne sait compter qu'à la
+ * minute, et c'est très bien ici : écrire un signalement prend plus de temps que
+ * ça. Le chiffre a été mesuré plutôt que choisi. À TROIS, le harnais d'essai
+ * tombait — il en envoie quatre d'affilée pour éprouver les bornes —, et un
+ * essai qui tombe sur le quota dit exactement ce qu'un élève vivrait : deux
+ * tentatives ratées (une photo trop lourde, un champ vide) et le troisième
+ * message, le bon, refusé. Six laisse la place aux essais maladroits et ferme
+ * quand même la porte à un appui resté enfoncé.
+ */
+function handleSignalement(): void
+{
+    $student = requireStudent();
+    if (lireReglage('site.signalement', '0') !== '1') {
+        fail(403, 'signalement_ferme',
+            'Votre professeur n\'a pas ouvert le signalement de problèmes.');
+    }
+    rateLimit('signal_' . $student['id'], 6);
+    $body = jsonBody();
+
+    $corps = trim((string) ($body['corps'] ?? ''));
+    if ($corps === '') fail(400, 'vide', 'Dis en un mot ce qui ne va pas.');
+    // ON COUPE PLUTÔT QUE DE REFUSER. Un élève qui a écrit trop long a quand
+    // même quelque chose à dire, et lui rendre son texte avec « c'est trop
+    // long » au moment où il signale une panne, c'est une deuxième panne.
+    $corps = mb_substr($corps, 0, SIGNAL_CORPS_MAX);
+
+    // LE CONTEXTE VIENT DU CLIENT, DONC ON NE LE CROIT PAS SUR PAROLE. On le
+    // range tel quel après l'avoir borné : c'est du JSON qu'on ne relira que
+    // pour l'afficher, jamais pour décider de quoi que ce soit.
+    $contexte = null;
+    if (isset($body['contexte']) && is_array($body['contexte'])) {
+        $json = json_encode($body['contexte'], JSON_UNESCAPED_UNICODE);
+        if (is_string($json) && strlen($json) <= SIGNAL_CONTEXTE_MAX) $contexte = $json;
+    }
+
+    // LA PHOTO EST FACULTATIVE ET BORNÉE. Le client la rétrécit déjà (voir
+    // `js/core/signalement.js`) ; cette borne-ci est celle qui compte, parce
+    // qu'elle est la seule que l'élève ne peut pas contourner. Une photo trop
+    // lourde est ÉCARTÉE, pas refusée : le texte et le contexte — qui valent
+    // plus qu'elle — arrivent quand même.
+    $image = null;
+    $brut = (string) ($body['image'] ?? '');
+    if ($brut !== '' && strlen($brut) <= SIGNAL_IMAGE_MAX
+        && preg_match('#^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$#', $brut)) {
+        $image = $brut;
+    }
+
+    db()->prepare(
+        'INSERT INTO signalements (id, student_id, class_id, corps, contexte, image) '
+        . 'VALUES (?, ?, ?, ?, ?, ?)'
+    )->execute([uuidv4(), $student['id'], $student['class_id'],
+        chiffrer($corps), chiffrer($contexte), chiffrer($image)]);
+
+    respond(['ok' => true, 'photo' => $image !== null]);
 }
 
 /** « J'ai lu le mot. » */
@@ -1416,6 +1502,88 @@ function handleTeacherMessage(): void
 }
 
 /**
+ * CE QUE LES ÉLÈVES ONT SIGNALÉ — lire, classer, effacer.
+ *
+ * TOUTES CLASSES CONFONDUES, et c'est le point. Un signalement parle du
+ * LOGICIEL, pas de la classe : « le clavier recouvre l'énoncé » arrive des 5eB
+ * comme des 4eA, et obliger Rémy à regarder dans six classes pour trouver six
+ * fois le même défaut, c'est lui faire faire le tri que la machine sait faire.
+ * Les mots, eux, restent par classe : ils s'adressent à des élèves, pas à un
+ * logiciel.
+ *
+ * LA PHOTO NE VOYAGE PAS AVEC LA LISTE. Quatre cents kilo-octets par
+ * signalement, vingt signalements : huit mégaoctets pour un écran qui en montre
+ * peut-être une. Chaque ligne dit seulement SI elle en a une, et la route la
+ * sert à la demande.
+ */
+function handleTeacherSignalements(): void
+{
+    $teacher = requireTeacher();
+    $body = jsonBody();
+    $action = (string) ($body['action'] ?? 'list');
+
+    // L'APPARTENANCE SE VÉRIFIE DANS LA REQUÊTE, PAS APRÈS. La jointure sur
+    // `classes.teacher_id` fait que le signalement d'un autre professeur
+    // n'existe tout simplement pas pour celui-ci — y compris quand il en donne
+    // l'identifiant exact.
+    $aLui = 'JOIN classes c ON c.id = s.class_id AND c.teacher_id = ?';
+
+    if ($action === 'photo') {
+        $st = db()->prepare("SELECT s.image FROM signalements s $aLui WHERE s.id = ?");
+        $st->execute([$teacher['id'], (string) ($body['id'] ?? '')]);
+        $l = $st->fetch() ?: null;
+        if (!$l) fail(404, 'introuvable', 'Ce signalement n\'existe pas.');
+        respond(['image' => dechiffrer($l['image'])]);
+    }
+
+    if ($action === 'traite' || $action === 'supprimer') {
+        // DEUX REQUÊTES ET NON UNE : `UPDATE ... JOIN` ne s'écrit pas pareil en
+        // SQLite et en MySQL, et ce dépôt sert les deux. On cherche d'abord ce
+        // qui nous appartient, on agit ensuite sur ce qu'on a trouvé.
+        $st = db()->prepare("SELECT s.id FROM signalements s $aLui WHERE s.id = ?");
+        $st->execute([$teacher['id'], (string) ($body['id'] ?? '')]);
+        $l = $st->fetch() ?: null;
+        if (!$l) fail(404, 'introuvable', 'Ce signalement n\'existe pas.');
+        if ($action === 'supprimer') {
+            db()->prepare('DELETE FROM signalements WHERE id = ?')->execute([$l['id']]);
+        } else {
+            $vers = !empty($body['traite']) ? 1 : 0;
+            db()->prepare('UPDATE signalements SET traite = ? WHERE id = ?')
+                ->execute([$vers, $l['id']]);
+        }
+        respond(['ok' => true]);
+    }
+
+    $st = db()->prepare(
+        "SELECT s.id, s.corps, s.contexte, s.traite, s.created_at, s.class_id,
+                c.name AS classe, st.first_name,
+                CASE WHEN s.image IS NULL THEN 0 ELSE 1 END AS aPhoto
+         FROM signalements s $aLui
+         LEFT JOIN students st ON st.id = s.student_id
+         ORDER BY s.traite ASC, s.created_at DESC LIMIT 60"
+    );
+    $st->execute([$teacher['id']]);
+    respond(['signalements' => array_map(function ($l) {
+        // LE CONTEXTE EST RENDU DÉPLIÉ. Il est parti du client en JSON, il a été
+        // rangé en JSON ; le renvoyer en chaîne obligerait l'écran du professeur
+        // à le relire lui-même, et à décider quoi faire d'un JSON illisible —
+        // une décision qui se prend mieux ici, une fois.
+        $ctx = $l['contexte'] === null ? null : json_decode((string) dechiffrer($l['contexte']), true);
+        return [
+            'id' => $l['id'],
+            'corps' => dechiffrer($l['corps']),
+            'contexte' => is_array($ctx) ? $ctx : null,
+            'classe' => $l['classe'],
+            'classId' => $l['class_id'],
+            'qui' => $l['first_name'] ? dechiffrer($l['first_name']) : null,
+            'photo' => (bool) $l['aPhoto'],
+            'traite' => (bool) $l['traite'],
+            'quand' => $l['created_at'],
+        ];
+    }, $st->fetchAll())]);
+}
+
+/**
  * CRÉER UN SECOND PROFESSEUR.
  *
  * Rémy : « oui j'ai un compte admin mais pas un compte professeur, comment
@@ -1629,6 +1797,13 @@ function handleReglages(): void
         // raison que le mode libre : elle décide d'une PORTE de l'écran
         // d'accueil, et un visiteur n'a pas encore de jeton pour la demander.
         'inscriptionLibre' => lireReglage('site.inscriptionLibre', '0') === '1',
+        // LE SIGNALEMENT — « un bouton désactivable ou non qui permet à l'élève
+        // d'envoyer un bug ». Public pour la même raison que les deux autres :
+        // il décide d'un BOUTON de l'écran de l'élève, et l'application doit
+        // savoir s'il faut le dessiner avant même d'avoir ouvert un exercice.
+        // Savoir que le bouton existe n'apprend rien à personne ; c'est ce qu'on
+        // voit en regardant l'écran.
+        'signalement' => lireReglage('site.signalement', '0') === '1',
     ]]);
 }
 
@@ -1673,9 +1848,13 @@ function handleTeacherReglages(): void
     if (array_key_exists('inscriptionLibre', $body)) {
         ecrireReglage('site.inscriptionLibre', $body['inscriptionLibre'] ? '1' : '0');
     }
+    if (array_key_exists('signalement', $body)) {
+        ecrireReglage('site.signalement', $body['signalement'] ? '1' : '0');
+    }
     respond(['ok' => true, 'reglages' => [
         'modeLibre' => lireReglage('site.modeLibre', '0') === '1',
         'inscriptionLibre' => lireReglage('site.inscriptionLibre', '0') === '1',
+        'signalement' => lireReglage('site.signalement', '0') === '1',
     ]]);
 }
 
