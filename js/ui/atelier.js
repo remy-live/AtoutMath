@@ -40,6 +40,9 @@ import { STATUS, STATUS_LABELS } from '../data/status.js';
 import { isGame } from '../core/gameAccess.js';
 import { aUneFichePapier, getActivity, getGenerator } from '../core/registry.js';
 import { journalConsole } from './consoleLog.js';
+// L'aperçu du professeur vit dans l'état commun : c'est lui que les volets
+// doivent suivre. Voir `appareilDuProf`.
+import { state } from '../core/state.js';
 import { FORMATS, sonder, rapportEnTexte } from './controle.js';
 import { piloter, piloteEnTexte } from './pilote.js';
 
@@ -217,10 +220,33 @@ function consigneDuCarnet() {
 }
 
 /** L'adresse d'un volet : la même page, avec ce qu'elle doit ouvrir. */
-function adresse(quoi) {
+/**
+ * L'APPAREIL QUE LE PROFESSEUR A CHOISI, tel qu'un volet doit le recevoir.
+ *
+ * Rémy : « j'avais mis l'aperçu en mode ordinateur, quand j'ai cliqué sur le
+ * robot, l'aperçu est passé en mode téléphone ».
+ *
+ * MESURÉ, ET C'ÉTAIT PLUS LARGE QUE LE ROBOT : page mère à « desktop », les
+ * DEUX volets à « mobile ». Chaque volet est un CADRE, c'est-à-dire une autre
+ * page, avec son propre `core/state.js` ; `cadreDe()` y lit
+ * `state.previewDeviceMode`, qui vaut « mobile » au démarrage — et personne ne
+ * clique les boutons d'aperçu DANS le cadre. Le choix ne pouvait pas voyager.
+ *
+ * Il voyage donc par l'adresse, comme les réglages : c'est le seul chemin
+ * qu'une page a vers une autre.
+ */
+function appareilDuProf() {
+    // `cadreDe()` attend 'none' pour le plein écran, là où le bouton dit
+    // 'desktop'. On traduit ici, une fois, plutôt que dans chaque volet.
+    const m = state.previewDeviceMode;
+    return m === 'desktop' || !m ? 'none' : m;
+}
+
+function adresse(quoi, appareil) {
     const p = new URLSearchParams();
     p.set('atelier', quoi);
     p.set('exo', exoCourant.id);
+    p.set('appareil', appareil || appareilDuProf());
     // Les réglages voyagent en clair : ce sont des valeurs simples, et l'URL
     // lisible se copie dans un onglet à part quand on veut voir un volet en
     // grand sur un vrai écran.
@@ -1094,8 +1120,13 @@ async function controler() {
                 dit.textContent = `${exoCourant.title} — ${etape.quoi} en ${format.nom.toLowerCase()}`
                     + ` (${format.l} × ${format.h})`;
                 peindreControle(`${format.nom} · ${etape.quoi} — en cours…`);
+                // LE CONTRÔLE IMPOSE SON PROPRE FORMAT, et le cadre qu'il
+                // ouvre FAIT déjà la taille de l'appareil. Lui laisser en plus
+                // le simulateur du professeur, c'était mesurer un téléphone
+                // DANS une fenêtre d'ordinateur — deux cadres empilés, et
+                // « trois vraies mises en page » n'en était plus une seule.
                 bilans.push(await sonder({
-                    url: adresse(etape.quoi), format, scene, quoi: etape.quoi
+                    url: adresse(etape.quoi, 'none'), format, scene, quoi: etape.quoi
                 }));
                 peindreControle();
             }
@@ -1460,7 +1491,12 @@ export async function ouvrirVoletAtelier(quoi, params) {
     if (!exo) return;
     let regles = {};
     try { regles = JSON.parse(decodeURIComponent(params.get('p') || '{}')) || {}; } catch (e) { regles = {}; }
-    const complet = { ...exo, params: { ...(exo.params || {}), ...regles } };
+    // L'APPAREIL VIENT DE L'ADRESSE — voir `appareilDuProf`. `apercuAppareil`
+    // est le chemin que `cadreDe()` respecte avant tout le reste ; il existait
+    // déjà pour le contrôle, qui lance le même exercice dans trois formats.
+    const appareil = params.get('appareil');
+    const complet = { ...exo, params: { ...(exo.params || {}), ...regles },
+        ...(appareil ? { apercuAppareil: appareil } : {}) };
     document.documentElement.classList.add('volet-atelier');
     // Le volet dit LEQUEL il est — l'en-tête de la page l'a déjà posé, mais
     // celui-ci s'ouvre aussi sans passer par l'URL (le contrôle en cadre).

@@ -570,3 +570,33 @@ manque.
      qui réintroduit le défaut et exige l'échec ferait ça tout seul.
 
 - **À MOITIÉ FERMÉE PAR `node tools/epreuveTombe.mjs`** — 2026-09-28. Le second réflexe demandé est devenu un outil : il applique au code le remplacement qui REMET le défaut, relance l'épreuve, exige qu'elle tombe, et remet le fichier dans un `finally`. MESURÉ dans les deux sens : sur le garde des ombres indigo il annonce « elle TOMBE » ; sur une épreuve sans rapport il annonce « CETTE ÉPREUVE NE GARDE RIEN ». Le premier réflexe — chercher la FORME et non la valeur — reste une habitude, pas un outil.
+
+## **Un cadre dans un cadre a son propre état, et le réglage du parent n'y va pas** — 2026-09-28
+
+- **Ce que je voulais faire** : comprendre pourquoi l'aperçu de l'Atelier
+  repassait en téléphone quand Rémy cliquait sur le robot.
+- **Ce qui a coûté** : quatre sondes avant une mesure à laquelle on puisse se
+  fier, et chacune se trompait autrement.
+  1. j'ai lu `state.previewDeviceMode` DANS le cadre — c'est le réglage de la
+     page, pas ce que le meneur emploie ; il valait « mobile » avant ET après
+     la correction, et j'ai failli conclure que rien n'avait changé ;
+  2. j'ai attendu la PRÉSENCE de `#game-layer` : il est dans le document dès le
+     départ, à zéro pixel, donc l'attente rendait la main tout de suite et je
+     mesurais zéro à tous les coups ;
+  3. un délai fixe de 4,5 s donnait une lecture juste sur trois — et l'on ne
+     conclut pas « ça suit » sur un chiffre qui change d'un essai à l'autre ;
+  4. la première sonde ne testait qu'UN choix (« ordinateur ») : un volet
+     toujours en plein écran l'aurait passée sans rien suivre.
+- **Le défaut lui-même était plus large que le signalement** : les DEUX volets
+  ignoraient le choix, pas seulement le robot, et le contrôle mesurait un
+  téléphone DANS une fenêtre d'ordinateur — deux cadres empilés.
+- **Combien de fois** : ||  (déjà payé le 27 avec `fullPage` et le défilement
+  qui n'est pas sur le document : même famille, un cadre n'est pas la page)
+- **Ce qui manque** : une règle à écrire une fois — **ce qu'on mesure dans un
+  cadre doit être ce que l'OEIL voit, pas l'état d'un module.** Une largeur, une
+  couleur, un texte : ces trois-là traversent la frontière des documents. Un
+  `import()` depuis le parent rend TOUJOURS la copie du parent, et l'Atelier a
+  déjà trois rustines pour cela (`window.__journalAtelier`, `__sessionAtelier`,
+  `__runnerAtelier`). La quatrième aurait été une de trop.
+  L'outil existe désormais : `tools/apercuDeLAtelier.mjs`, qui encode les trois
+  erreurs ci-dessus pour ne pas les repayer.
