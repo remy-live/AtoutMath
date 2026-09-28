@@ -2927,6 +2927,13 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     const schema = paramSchemaOf(exo).flatMap((c) => {
         if (!c) return [];
         if (c.id === 'clavier') return formes.clavier ? [c] : [];
+        // LA RÉPARTITION EST UN CHAMP CACHÉ, ET C'EST ELLE QUI TENAIT L'APERÇU.
+        // MESURÉ : après avoir retiré le rail des cinq « pas à pas », le
+        // panneau montrait encore DOUZE BANDES de frise — on avait retiré la
+        // commande et laissé le tableau de bord, ce qui est pire qu'avant. Le
+        // groupe « aide » se dessine dès qu'un de ses réglages survit ;
+        // `repartition` en fait partie.
+        if (c.id === 'repartition') return formes.propositions ? [c] : [];
         if (c.id !== 'aide') return [c];
         if (!formes.propositions) return [];
         if (formes.clavier) return [c];

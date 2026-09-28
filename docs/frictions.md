@@ -487,3 +487,24 @@ manque.
   sait écrire, et NOMME ceux qu'on n'a pas encore comprises plutôt que de les
   passer sous silence. Premier verdict : six réglages partagés, deux règles
   écrites, trente et un exercices assainis.
+
+## **Deux réglages de même nom, deux réglages différents** — 2026-09-28
+
+- **Ce que je voulais faire** : écrire une règle pour chacun des six réglages
+  servis par une activité, et dire lesquels sont muets.
+- **Ce qui a coûté** : quatre fausses pistes rendues d'un coup. `reponse` est
+  posé par les activités du cercle et de la symétrie — « Choisir · Cliquer ·
+  Écrire » — ET, sous le même nom, par six générateurs qui n'ont rien à voir :
+  arrondi, relatifs, pourcentages, périmètre du triangle. Ma règle, indexée sur
+  le seul NOM du réglage, appliquait la sémantique de l'un à l'autre. Trouvé
+  parce que les quatre noms signalés n'avaient visiblement rien à faire là —
+  soit exactement le réflexe que ce dépôt a payé trois fois cette semaine :
+  regarder la chose avant de la rapporter.
+- **Combien de fois** : |
+- **Ce qui manque** : que l'identité d'un réglage soit **(nom, source)** et non
+  le nom seul. Tant que ce n'est pas le cas, tout outil qui raisonne sur les
+  réglages doit vérifier d'où vient celui qu'il tient — c'est ce que fait
+  maintenant `tools/reglagesMuets.mjs` (`duBonBord`). Et accessoirement : un
+  `includes(id)` cherche une sous-chaîne, pas un mot — « consigne » se trouvait
+  dans « consignePapier », et l'outil annonçait 147 lecteurs pour un réglage
+  qu'un seul fichier lit.

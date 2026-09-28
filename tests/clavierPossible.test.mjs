@@ -128,6 +128,12 @@ test('LE PANNEAU APPLIQUE LE FILTRE — sinon la mesure ne sert à rien', () => 
     assert.match(panneau, /formesPossibles\(/, 'le panneau doit interroger les formes possibles');
     assert.match(panneau, /c\.id === 'clavier'/, 'et filtrer la case du clavier');
     assert.match(panneau, /c\.id !== 'aide'/, 'et le rail de l\'aide');
+    // LA RÉPARTITION EST LE CHAMP CACHÉ DU MÊME ESCALIER, et c'est LUI qui
+    // tenait l'aperçu à l'écran : retirer le rail sans le retirer laissait la
+    // frise « Comment l'élève répondra » au-dessus d'un exercice où l'on ne
+    // choisit jamais. Mesuré dans le navigateur avant et après.
+    assert.match(panneau, /c\.id === 'repartition'/,
+        'et le champ caché de la répartition, sans quoi l\'aperçu reste');
     // Le cran « Directement au clavier » ne doit pas survivre là où il est muet.
     assert.match(panneau, /o\.value !== 'clavier'/,
         'le cran du clavier doit être retiré du rail quand le pavé est impossible');
