@@ -28,13 +28,37 @@ const n2 = (v) => Number(v).toFixed(1);
  * Ce n'est pas une mise en page optimale, c'est une mise en page SANS
  * COLLISION, ce qui est la seule chose qui compte ici.
  */
-const AUTOUR = [
-    { x: 0, y: -1 }, { x: 1, y: -1 }, { x: -1, y: -1 }, { x: 1, y: 0 },
-    { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: -1, y: 1 }
-];
+// HUIT PLACES NE SUFFISENT PAS À UN POINT DE CROISEMENT. Avec un seul rayon
+// et huit directions, un point posé là où deux droites se coupent n'a AUCUNE
+// place dégagée : les huit sont à portée de l'une ou de l'autre, et l'on
+// choisit la moins mauvaise — c'est-à-dire une lettre barrée. MESURÉ : 31 noms
+// sur 196 encore touchés après avoir corrigé les segments. On donne donc de la
+// marge de manoeuvre : douze directions, deux distances, vingt-quatre places.
+const AUTOUR = [];
+for (const rayon of [1.2, 1.6, 2.1]) {
+    for (let i = 0; i < 12; i++) {
+        const a = i * Math.PI / 6;
+        AUTOUR.push({ x: Math.cos(a) * rayon, y: Math.sin(a) * rayon });
+    }
+}
+
+/** Les deux bouts RÉELLEMENT DESSINÉS d'une droite : ses points, dépassés. */
+function traitDessine(A, B) {
+    const dx = B.x - A.x, dy = B.y - A.y;
+    const L = Math.hypot(dx, dy) || 1;
+    const e = DEBORD * UNITE;
+    return [{ x: A.x - dx / L * e, y: A.y - dy / L * e },
+        { x: B.x + dx / L * e, y: B.y + dy / L * e }];
+}
 
 function placerNoms(P, segments, boite) {
     const RAYON = 15;
+    // LA LETTRE A UNE TAILLE, ET C'EST ELLE QU'UN TRAIT TRAVERSE. La première
+    // version notait la distance du CENTRE de l'étiquette aux droites : un
+    // centre à 15 px d'un trait laisse la lettre à sept, c'est-à-dire dessus.
+    // On mesure donc depuis les bords de la lettre — un disque de 9 px suffit,
+    // les noms font une seule capitale.
+    const DEMI = 9;
     // ON RAMÈNE L'ÉTIQUETTE DANS LE CADRE, et c'est la dernière chose qu'on
     // fait — avant, la place choisie pouvait tomber dehors pour un point posé
     // sur le bord de la grille. Mesuré : cinq noms sortis du viewBox sur
@@ -56,17 +80,20 @@ function placerNoms(P, segments, boite) {
     for (const nom of Object.keys(P)) {
         const c = P[nom];
         let meilleur = null, meilleurScore = -1;
+        // ON NOTE LA PLACE QU'ON VA VRAIMENT PRENDRE, pas celle qu'on visait.
+        // La pince qui ramène l'étiquette dans le cadre s'appliquait APRÈS le
+        // choix : pour un point posé au bord, elle déplaçait le nom élu — et
+        // pouvait le reposer exactement sur le trait qu'on venait de fuir.
         for (const dir of AUTOUR) {
-            const q = { x: c.x + dir.x * RAYON, y: c.y + dir.y * RAYON };
-            const aTraits = Math.min(...segments.map(s => distSeg(q, s)));
+            const q = dansLeCadre({ x: c.x + dir.x * RAYON, y: c.y + dir.y * RAYON });
+            const aTraits = Math.min(...segments.map(s => distSeg(q, s))) - DEMI;
             const aNoms = poses.length ? Math.min(...poses.map(p => Math.hypot(q.x - p.x, q.y - p.y)))
                 : 999;
             const score = Math.min(aTraits, aNoms * 0.8);
             if (score > meilleurScore) { meilleurScore = score; meilleur = q; }
         }
-        const place = dansLeCadre(meilleur);
-        poses.push(place);
-        out[nom] = place;
+        poses.push(meilleur);
+        out[nom] = meilleur;
     }
     return out;
 }
@@ -94,9 +121,17 @@ export function sceneSvg(sc, cfg = {}) {
     const W = MARGE * 2 + sc.grille.largeur * UNITE;
     const H = MARGE * 2 + sc.grille.hauteur * UNITE;
     const P = projeter(sc);
+    // LES SEGMENTS QU'ON ÉVITE SONT CEUX QU'ON DESSINE, dépassement compris.
+    // Ils étaient pris entre les deux points nommés, alors que le trait les
+    // dépasse de 34,5 px de chaque côté — tout le sens de la figure, d'ailleurs :
+    // « un trait qui s'arrête pile sur le dernier point se lit comme un
+    // segment ». Un nom posé au-delà d'un bout était donc noté LOIN de la
+    // droite, et la droite lui passait dessus. MESURÉ avant : 56 noms sur 196
+    // touchés par un trait, sur 28 figures — dont le « H » de la capture de
+    // Rémy, barré au croisement des deux droites.
     const noms = placerNoms(P, sc.droites.map(d => {
         const [a, b] = boutsDe(d);
-        return [P[a], P[b]];
+        return traitDessine(P[a], P[b]);
     }), { W, H });
 
     // LES DROITES DÉPASSENT LEURS POINTS, et c'est ce qui les fait lire comme

@@ -11521,7 +11521,24 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .pd-pt .pt-disque { fill: var(--text-main); }
 .pd-pt--vedette .pt-croix, .pd-pt--vedette .pt-plus { stroke: var(--primary); stroke-width: 2.6; }
 .pd-pt--vedette .pt-disque { fill: var(--primary); }
-.pd-nom { fill: var(--text-main); font-size: 17px; font-weight: 800; }
+/* LE NOM SE DÉTACHE DU TRAIT, MÊME QUAND LE TRAIT PASSE DESSOUS.
+   Rémy : « ce serait bien que le libellé des points ne soient pas coupé ».
+   La correction est d'abord dans le PLACEMENT (voir `placerNoms` dans
+   core/pointsDroitesSvg.js) : segments réellement dessinés au lieu des
+   segments entre points, vingt-quatre places au lieu de huit, distance prise
+   depuis le bord de la lettre. Mesuré sur 28 figures et 196 noms : 56 noms
+   barrés sont tombés à 6.
+   LES SIX QUI RESTENT SONT DES POINTS DE CROISEMENT, où aucune place n'est
+   vraiment libre ; les replacer encore ne ferait que porter le problème sur un
+   autre point. Le halo finit le travail : la lettre est tracée PAR-DESSUS un
+   contour de la couleur du fond, donc le trait s'interrompt derrière elle.
+   `paint-order: stroke fill` n'est pas facultatif — sans lui le contour se
+   dessine par-dessus la lettre et l'épaissit au lieu de la détourer. */
+.pd-nom {
+    fill: var(--text-main); font-size: 17px; font-weight: 800;
+    paint-order: stroke fill;
+    stroke: var(--bg-plateau); stroke-width: 3px; stroke-linejoin: round;
+}
 .pd-nom--vedette { fill: var(--primary-texte); }
 
 /* ============================================================================

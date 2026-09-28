@@ -714,3 +714,19 @@ manque.
 - **L'outil** : `tools/quiDeborde.mjs`, cinq points par élément, et il dit si un
   conteneur peut rattraper en défilant — ce qui est un geste de plus, pas une
   perte.
+
+## **`remplacer.mjs` est tout-ou-rien, et je l'ai oublié dans un lot mixte** — 2026-09-28
+
+- **Ce que je voulais faire** : poser un halo sur les noms de points (CSS) et
+  élargir le choix des places (JS), dans un même appel `--depuis`.
+- **Ce qui a coûté** : le halo n'a JAMAIS été écrit. Une des deux paires visait
+  le fichier JS et ne se trouvait pas dans le CSS ; l'outil a donc — comme il
+  doit — refusé d'écrire quoi que ce soit. J'ai lu « paire 1 ok » et poursuivi.
+  Vingt minutes plus tard je mesurais un halo qui n'existait pas.
+- **Combien de fois** : |
+- **Ce qui l'a rattrapé** : l'épreuve, qui exigeait `paint-order: stroke fill`
+  dans `.pd-nom` et l'a trouvé absent. Sans elle, je livrais une correction
+  imaginaire avec des chiffres mesurés sur autre chose.
+- **Ce qui manque** : une habitude. **Un lot de remplacements vise UN fichier ;
+  deux fichiers, deux appels.** Et relire la dernière ligne de l'outil, pas la
+  première : « RIEN n'est écrit » y est écrit en toutes lettres.
