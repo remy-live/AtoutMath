@@ -78,7 +78,7 @@ class PyramideNombres extends BaseGame {
                 .pn-pave { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
                 .pn-touche {
                     width: clamp(26px, 6.5cqw, 44px); height: clamp(24px, 5cqh, 40px);
-                    border: 1px solid var(--border-soft, #cbd5e1); border-radius: 8px;
+                    border: 1px solid var(--border); border-radius: 8px;
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     font-weight: 800; font-size: clamp(13px, 2.8cqh, 19px);
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
@@ -87,7 +87,7 @@ class PyramideNombres extends BaseGame {
                 .pn-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .pn-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }

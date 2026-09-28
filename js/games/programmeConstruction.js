@@ -370,8 +370,8 @@ export class ProgrammeConstruction extends BaseGame {
                 .pc-figures { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 0 0 auto; }
                 @container (max-width: 330px) { .pc-figures { grid-template-columns: 1fr; } }
                 .pc-cadre {
-                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 12px;
-                    background: var(--card-bg, #fff); padding: 6px; position: relative;
+                    border: 1.5px solid var(--border); border-radius: 12px;
+                    background: var(--bg-panel); padding: 6px; position: relative;
                     /* Le cadre devient sa propre référence de largeur : c'est
                        lui qui doit dire au dessin sa hauteur, pas la fenêtre. */
                     container-type: inline-size;
@@ -387,7 +387,7 @@ export class ProgrammeConstruction extends BaseGame {
                 .pc-etiq {
                     position: absolute; top: -9px; left: 10px; padding: 0 6px;
                     font-size: min(11px, 6cqw); white-space: nowrap;
-                    font-weight: 700; background: var(--card-bg, #fff); color: var(--text-muted);
+                    font-weight: 700; background: var(--bg-panel); color: var(--text-muted);
                 }
                 /* LA HAUTEUR SUIT LA LARGEUR DU CADRE, et plus la fenêtre.
                    Le monde du dessin fait 100 sur 70 : un cadre de 155 pixels
@@ -435,8 +435,8 @@ export class ProgrammeConstruction extends BaseGame {
                    les boutons ne sont que la façon de l'écrire. */
                 .pc-arbre {
                     display: flex; flex-direction: column; gap: 8px;
-                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
-                    background: var(--card-bg, #fff); padding: 10px; min-height: 120px;
+                    border: 1.5px solid var(--border); border-radius: 10px;
+                    background: var(--bg-panel); padding: 10px; min-height: 120px;
                 }
                 .pc-arbre-phrase {
                     font-size: clamp(14px, 2.9cqw, 19px); font-weight: 700; line-height: 1.4;
@@ -450,8 +450,8 @@ export class ProgrammeConstruction extends BaseGame {
                 }
                 .pc-arbre-mots { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
                 .pc-mot {
-                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
-                    cursor: pointer; background: var(--card-bg, #fff); color: var(--text-main);
+                    border: 1.5px solid var(--border); border-radius: 10px;
+                    cursor: pointer; background: var(--bg-panel); color: var(--text-main);
                     font: inherit; font-weight: 600; padding: 7px 12px;
                     font-size: clamp(12px, 2.3cqw, 15px); line-height: 1.3;
                 }
@@ -484,8 +484,8 @@ export class ProgrammeConstruction extends BaseGame {
                    déplace rien à l'écran. */
                 .pc-pose {
                     display: flex; flex-direction: column; gap: 4px; min-height: 120px;
-                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
-                    background: var(--card-bg, #fff); padding: 8px;
+                    border: 1.5px solid var(--border); border-radius: 10px;
+                    background: var(--bg-panel); padding: 8px;
                 }
                 .pc-pose--vide {
                     align-items: center; justify-content: center; text-align: center;
@@ -513,8 +513,8 @@ export class ProgrammeConstruction extends BaseGame {
                 }
                 .pc-banque { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
                 .pc-carte {
-                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
-                    cursor: pointer; background: var(--card-bg, #fff); color: var(--text-main);
+                    border: 1.5px solid var(--border); border-radius: 10px;
+                    cursor: pointer; background: var(--bg-panel); color: var(--text-main);
                     font: inherit; padding: 6px 10px; font-size: clamp(11px, 2.2cqw, 14px);
                     line-height: 1.35; text-align: left;
                 }
@@ -523,7 +523,7 @@ export class ProgrammeConstruction extends BaseGame {
                 }
                 .pc-carte--posee { opacity: .38; cursor: default; }
                 @media (hover: hover) {
-                    .pc-carte--posee:hover { border-color: var(--border-color, #d7dae3); color: var(--text-main); }
+                    .pc-carte--posee:hover { border-color: var(--border); color: var(--text-main); }
                 }
                 .pc-modeles { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
                 .pc-ajout {
@@ -545,14 +545,14 @@ export class ProgrammeConstruction extends BaseGame {
                     position: sticky; bottom: 0; z-index: 2; flex: 0 0 auto;
                     margin: 0 -10px -10px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
                     background: var(--bg-plateau, #fff);
-                    border-top: 1px solid var(--border-color, #d7dae3);
+                    border-top: 1px solid var(--border);
                 }
                 .pc-btn {
                     border: 0; border-radius: 10px; cursor: pointer; font: inherit; font-weight: 700;
                     padding: 7px 14px; background: var(--primary); color: #fff;
                 }
                 .pc-btn--doux { background: transparent; color: var(--text-muted);
-                    border: 1.5px solid var(--border-color, #d7dae3); }
+                    border: 1.5px solid var(--border); }
                 .pc-note { text-align: center; min-height: 1.3em; font-size: clamp(11px, 2.2cqw, 14px); }
                 .pc-note--ok { color: var(--success); font-weight: 700; }
                 .pc-note--ko { color: var(--danger); font-weight: 600; }

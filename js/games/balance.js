@@ -182,11 +182,11 @@ export class Balance extends BaseGame {
                    dans un fléau devenu blanc en thème nuit. Le fond du plateau,
                    lui, est toujours le contraire du trait. */
                 .bl-axe {
-                    fill: var(--bg-plateau, var(--card-bg, #fff));
+                    fill: var(--bg-plateau);
                     stroke: var(--text-main); stroke-width: 3;
                 }
                 .bl-pied {
-                    fill: color-mix(in srgb, var(--text-main) 86%, var(--card-bg, #fff));
+                    fill: color-mix(in srgb, var(--text-main) 86%, var(--bg-plateau));
                     stroke: var(--text-main); stroke-width: 1.6; stroke-linejoin: round;
                 }
                 .bl-jour { fill: var(--bg-plateau, #fff); opacity: .22; }
@@ -196,7 +196,7 @@ export class Balance extends BaseGame {
                 .bl-ombre { fill: var(--text-main); opacity: .1; }
                 .bl-fil { stroke: var(--text-muted); stroke-width: 1.6; fill: none; }
                 .bl-plateau {
-                    fill: var(--card-bg, #fff); stroke: var(--text-main); stroke-width: 2.4;
+                    fill: var(--bg-plateau); stroke: var(--text-main); stroke-width: 2.4;
                     stroke-linejoin: round;
                 }
                 .bl-rebord { stroke: var(--text-main); stroke-width: 1.2; opacity: .35; }
@@ -230,7 +230,7 @@ export class Balance extends BaseGame {
                     display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto;
                 }
                 .bl-btn {
-                    border: 1.5px solid var(--border-color, #d7dae3); background: var(--card-bg, #fff);
+                    border: 1.5px solid var(--border); background: var(--bg-plateau);
                     color: var(--text-main); border-radius: 9px; padding: 5px 11px; cursor: pointer;
                     font-size: clamp(11px, 2.2cqw, 13px); font-weight: 700;
                 }
@@ -248,7 +248,7 @@ export class Balance extends BaseGame {
                 .bl-ops { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto; }
                 .bl-op {
                     border: 1.5px solid var(--primary, #4a6fd4); border-radius: 9px;
-                    background: color-mix(in srgb, var(--primary) 8%, var(--card-bg, #fff));
+                    background: color-mix(in srgb, var(--primary) 8%, var(--bg-plateau));
                     color: var(--primary, #4a6fd4); cursor: pointer; font: inherit; font-weight: 800;
                     padding: 6px 13px; font-size: clamp(12px, 2.4cqw, 15px);
                     font-variant-numeric: tabular-nums;
@@ -334,7 +334,7 @@ export class Balance extends BaseGame {
                     .bl-journal {
                         grid-column: 2; grid-row: 4 / -1; max-height: none;
                         align-self: stretch; text-align: left; overflow-y: auto;
-                        border-left: 1.5px solid var(--border-color, #d7dae3);
+                        border-left: 1.5px solid var(--border);
                         padding-left: 12px; gap: 3px;
                         font-size: clamp(12px, 1.6cqw, 15px);
                     }

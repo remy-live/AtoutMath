@@ -150,13 +150,13 @@ class Pousseur extends BaseGame {
                 .sk-fl {
                     width: clamp(30px, 7cqh, 44px); height: clamp(30px, 7cqh, 44px);
                     border-radius: 10px; font-weight: 800; font-size: clamp(13px, 3cqh, 19px);
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main); cursor: pointer;
                 }
                 .sk-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .sk-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.3cqh, 14px);
                 }

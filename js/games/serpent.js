@@ -198,8 +198,8 @@ export class Serpent extends BaseGame {
                     .sp-bandeau { grid-area: bandeau; }
                     .sp-note { grid-area: note; min-height: 1.3em; font-size: 11px; }
                 }
-                .sp-fond { fill: var(--card-bg, #fff); stroke: var(--border-color, #d7dae3); stroke-width: .04; }
-                .sp-quadrillage { stroke: var(--border-color, #d7dae3); stroke-width: .015; opacity: .55; }
+                .sp-fond { fill: #fff; stroke: #d7dae3; stroke-width: .04; }
+                .sp-quadrillage { stroke: #d7dae3; stroke-width: .015; opacity: .55; }
                 .sp-anneau { stroke: #fff; stroke-width: .05; }
                 .sp-tete { stroke: var(--text-main); stroke-width: .09; }
                 .sp-graine { stroke-width: .04; }

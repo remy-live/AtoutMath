@@ -112,7 +112,7 @@ class Grenouilles extends BaseGame {
                 .gr-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .gr-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }

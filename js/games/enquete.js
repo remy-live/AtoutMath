@@ -122,7 +122,7 @@ class Enquete extends BaseGame {
                 }
                 .eq-pions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
                 .eq-chip {
-                    border: 2px solid #cbd5e1; background: var(--surface, #fff); color: var(--text-main);
+                    border: 2px solid #cbd5e1; background: var(--bg-panel); color: var(--text-main);
                     border-radius: 999px; padding: 5px 13px; font: inherit; font-weight: 700;
                     font-size: .85rem; cursor: pointer;
                 }

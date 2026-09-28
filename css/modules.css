@@ -2369,7 +2369,7 @@ html[data-point="plus"] .pt-croix { display: none; }
 .run-carte-sous { margin: 0; color: var(--text-main); font-size: 1.05rem; font-weight: 600; }
 .run-carte-regle {
     margin: 0; font-size: .85rem; color: var(--text-muted);
-    background: var(--bg-soft, rgba(0, 0, 0, .04)); border-radius: 999px; padding: 4px 14px;
+    background: var(--bg-hover); border-radius: 999px; padding: 4px 14px;
 }
 .run-carte-scene {
     /* `0 1 auto` ET NON `1 1 auto` : la zone prend la hauteur du chemin et
@@ -11249,7 +11249,7 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 
 .banc-q-onglets { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
 .banc-q-jour {
-    background: var(--surface-2, #f6f8fc); border: 1px solid var(--border, #dce2ec);
+    background: var(--bg-hover); border: 1px solid var(--border, #dce2ec);
     border-radius: 12px; padding: 14px 16px; margin-bottom: 6px;
 }
 .banc-q-texte { font-size: 1.06rem; line-height: 1.45; }
@@ -11573,7 +11573,7 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .pp-touche {
     min-height: clamp(38px, 6vh, 52px);
     border: 2px solid var(--border, #d8dbe6); border-radius: 12px;
-    background: var(--surface, #fff); color: var(--text-main);
+    background: var(--bg-panel); color: var(--text-main);
     font-size: clamp(1rem, 3.4vw, 1.3rem); font-weight: 800;
     cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
@@ -11605,7 +11605,7 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     font: inherit; font-weight: 700; cursor: pointer;
     padding: 10px 16px; border-radius: 12px;
     border: 2px solid var(--border, #d8dbe6);
-    background: var(--surface, #fff); color: var(--text-main);
+    background: var(--bg-panel); color: var(--text-main);
 }
 /* « J'AI FINI DE SIMPLIFIER » — c'est l'élève qui le dit, et le bouton doit se
    voir sans se confondre avec les deux gestes au-dessus : il ne fait pas

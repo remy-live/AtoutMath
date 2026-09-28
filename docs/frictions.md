@@ -770,3 +770,43 @@ manque.
 - **La règle** : **un proxy doit partager la MÉCANIQUE du défaut, pas seulement
   son symptôme.** Reproduire « c'est trop large » ne suffit pas si la correction
   agit sur « c'est trop grand » : on teste alors sa propre impuissance.
+
+## **Le repli d'un `var()` n'est pas un filet, c'est le prix d'une faute de nom** — 2026-09-28
+
+- **Ce que je voulais faire** : comprendre deux boutons blancs portant un texte
+  blanc, en thème sombre.
+- **Ce qui a coûté** : rien à trouver, et c'est ce qui rend l'entrée utile. Le
+  code disait `background: var(--card-bg, #fff); color: var(--text-main)`. Or
+  `--card-bg` n'existe nulle part dans ce dépôt : ses jetons s'appellent
+  `--bg-panel` et `--border`. Le repli s'appliquait donc TOUJOURS, et personne
+  ne pouvait le voir en lisant — un repli ressemble à une précaution.
+- **Compté sur tout le dépôt** : 225 jetons employés, **82 jamais déclarés**.
+  La plupart sont posés depuis JavaScript et vont très bien ; une quinzaine
+  portent un nom de surface ou de texte (`--card-bg`, `--border-color`,
+  `--border-soft`, `--surface`, `--text-soft`…) et retombent sur une couleur
+  claire écrite en dur, donc illisible dès que le thème s'assombrit.
+- **Combien de fois** : |
+- **Ce qui manque, et qui existe maintenant** : `tools/quiEstIllisible.mjs`. Le
+  NOM du jeton n'est pas le critère — un blanc écrit en dur sous un texte sombre
+  se lit très bien. C'est le COUPLE qui décide, et il se mesure. L'outil ouvre
+  chaque exercice en thème sombre et rend le contraste de chaque texte sur le
+  fond réellement peint. Sur le jeu signalé : **1,05**.
+- **Et il peint plutôt que de lire des chaînes** : `getComputedStyle` rend un
+  `color-mix` sous la forme `oklab(...)`, que rien ne sait lire à la main. On
+  demande au navigateur de peindre la couleur dans un canevas d'un pixel et l'on
+  relit le pixel. Exact, et valable pour toutes les syntaxes à venir.
+
+## **Deux pièges déjà écrits, repayés le même jour** — 2026-09-28
+
+- **L'accent grave dans un gabarit, NEUVIÈME fois.** Mon commentaire de
+  correction citait les noms de jetons entre accents graves, à l'intérieur d'un
+  gabarit JavaScript. `tools/remplacer.mjs` a refusé le fichier et l'a remis :
+  le garde-fou a fait exactement son travail, ce qui est la bonne nouvelle. La
+  règle à retenir est plus étroite que celle du guide : **on ne cite pas un nom
+  de code entre accents graves dans un commentaire qui part dans un gabarit.**
+- **Le `pkill` par motif, qui tue la commande qui le contient.** Le guide le dit
+  déjà — « un pkill par motif tue aussi ce qu'on vient de lancer » — mais la
+  ligne de commande du shell CONTIENT le motif : `pkill -f quiEstIllisible`
+  suivi de trois autres commandes a tué les trois. Ce qui marche :
+  `ps -eo pid,comm,args | awk '$2=="node" && /motif/ {print $1}' | xargs -r kill`,
+  qui ne vise que les processus `node`.

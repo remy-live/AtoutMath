@@ -2142,7 +2142,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-repli > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .fp-repli > .fp-controles {
     padding: 8px 0 4px 10px; margin-left: 6px;
-    border-left: 2px solid var(--border-soft, rgba(0,0,0,.08));
+    border-left: 2px solid var(--border);
 }
 /* Le nom d'un groupe de cases à cocher, dans le repli : « En-tête : Nom,
    Prénom… ». Sans lui, quatre cases flottent sans dire de quoi elles parlent. */
@@ -2159,7 +2159,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-contenu {
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
     padding-bottom: 10px; margin-bottom: 4px;
-    border-bottom: 1px solid var(--border-soft, rgba(0,0,0,.08));
+    border-bottom: 1px solid var(--border);
 }
 .fp-contenu[hidden] { display: none; }
 .fp-contenu-titre {
@@ -2219,7 +2219,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fp-pas select.cfg-input { width: 72px; text-align: center; padding: 0 4px 0 8px; }
 .fp-pas-btn {
     width: 28px; height: 28px; flex: 0 0 auto; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--border); background: var(--surface-2, rgba(127, 127, 127, .12));
+    border: 1px solid var(--border); background: var(--bg-hover);
     color: var(--text); font-size: 1.05rem; font-weight: 700; line-height: 1;
     display: flex; align-items: center; justify-content: center;
     transition: background .12s, opacity .12s;

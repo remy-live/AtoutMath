@@ -119,7 +119,7 @@ class Pyramide extends BaseGame {
                 .py-rappel b {
                     display: inline-flex; align-items: center; justify-content: center;
                     min-width: 1.5em; padding: 1px 3px; border-radius: 4px;
-                    background: var(--bg-soft, #eef2f7); font-weight: 800;
+                    background: var(--bg-hover); font-weight: 800;
                 }
                 .py-rappel i { font-style: normal; opacity: .75; }
 
@@ -127,7 +127,7 @@ class Pyramide extends BaseGame {
                     flex: 0 0 auto; max-width: 100%; }
                 .py-touche {
                     width: clamp(20px, 5.6cqw, 34px); height: clamp(20px, 4.4cqh, 34px);
-                    border: 1px solid var(--border-soft, #cbd5e1); border-radius: 6px;
+                    border: 1px solid var(--border); border-radius: 6px;
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     font-weight: 800; font-size: clamp(10px, 2.4cqh, 15px);
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
@@ -136,7 +136,7 @@ class Pyramide extends BaseGame {
                 .py-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .py-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }
