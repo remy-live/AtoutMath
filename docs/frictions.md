@@ -481,6 +481,9 @@ manque.
 - **Ce qui manque** : une habitude, et elle vaut pour tout ce dépôt — **un
   réglage proposé par une ACTIVITÉ s'applique à tous ses exercices, mais n'agit
   que sur certains ; personne ne le vérifie**. Il faudrait, pour chaque réglage
-  partagé, un outil du genre de `tools/clavierInutile.mjs` : il tire de vraies
-  questions et dit où la commande est muette. Le clavier est le premier trouvé ;
-  rien ne dit qu'il est le seul.
+  partagé, un outil qui tire de vraies questions et dit où la commande est
+  muette. **Écrit le lendemain** : `tools/reglagesMuets.mjs`. Il fait
+  l'inventaire des réglages servis par une activité, applique les règles qu'on
+  sait écrire, et NOMME ceux qu'on n'a pas encore comprises plutôt que de les
+  passer sous silence. Premier verdict : six réglages partagés, deux règles
+  écrites, trente et un exercices assainis.

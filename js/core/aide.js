@@ -570,11 +570,12 @@ export function plafonnerClavier(aide, params = {}) {
 // tracé, une expression littérale). « somme », « différence », « oui », « [AB) »
 // ne sont rien de tout cela.
 //
-// MESURÉ sur le catalogue (`tools/clavierInutile.mjs`, 24 questions tirées par
-// exercice) : dans VINGT ET UN exercices sur soixante-dix, aucune question ne
-// peut jamais atteindre le pavé. Le professeur y décoche un réglage pour
-// protéger une classe qui découvre, et croit avoir agi. Un réglage qui ne fait
-// rien est pire qu'un réglage absent.
+// MESURÉ sur le catalogue (`tools/reglagesMuets.mjs`, qui tire de vraies
+// questions) : dans VINGT-SIX exercices sur soixante-dix, le réglage ne décide
+// de rien — vingt et un parce qu'aucune réponse n'est un nombre, cinq parce
+// qu'on y va de toute façon. Le professeur y décoche un réglage pour protéger
+// une classe qui découvre, et croit avoir agi. Un réglage qui ne fait rien est
+// pire qu'un réglage absent.
 //
 // LA RÈGLE EST ÉCRITE ICI, UNE FOIS. `activities/choice.js` l'applique pour
 // décider quel module pose la question, et le panneau de réglages l'interroge
@@ -595,6 +596,34 @@ export function itemPeutAllerAuClavier(item) {
 }
 
 /**
+ * LE RÉGLAGE « AUTORISER LE CLAVIER » A-T-IL PRISE SUR CETTE QUESTION-LÀ ?
+ *
+ * CE N'EST PAS LA MÊME QUESTION QUE « le clavier est-il possible », et les
+ * confondre m'a fait cacher le réglage au mauvais endroit. Relire l'ordre des
+ * lignes de `moduleVoulu`, dans `activities/choice.js` :
+ *
+ *     if (m.saisieSeule) return compose || null;   // le réglage n'est PAS lu
+ *     if (!aideIci.clavier) return null;           // ici, il décide
+ *
+ * Une question `saisieSeule` — les « pas à pas » du développement, de la
+ * factorisation — va au clavier DÈS LA PREMIÈRE, et le réglage n'est même pas
+ * consulté. Le clavier y est donc parfaitement possible, et le réglage
+ * parfaitement muet.
+ */
+export function reglageClavierAgit(item) {
+    if (!item || (item.meta && item.meta.saisieSeule)) return false;
+    return itemPeutAllerAuClavier(item);
+}
+
+/** Cette question-là peut-elle se poser en PROPOSITIONS ? */
+export function itemPeutEtreChoisi(item) {
+    // `saisieSeule` dit « celle-ci ne se pose pas en vignettes » : « Trace
+    // [AB) » ne se choisit pas parmi quatre images, et c'est ce QCM-là que
+    // Rémy trouvait bête. Tout le reste commence par des propositions.
+    return !!item && !(item.meta && item.meta.saisieSeule);
+}
+
+/**
  * ET CET EXERCICE-LÀ ? On le demande au générateur, on ne le devine pas.
  *
  * On tire de vraies questions : c'est la seule réponse juste, puisqu'un même
@@ -607,20 +636,41 @@ export function itemPeutAllerAuClavier(item) {
  * @param {number} [tirages]
  */
 export function clavierPossible(exo, gen, rngPour, tirages = 18) {
+    return formesPossibles(exo, gen, rngPour, tirages).clavier;
+}
+
+/** Et les propositions ? Même question, même tirage. */
+export function propositionsPossibles(exo, gen, rngPour, tirages = 18) {
+    return formesPossibles(exo, gen, rngPour, tirages).propositions;
+}
+
+/**
+ * LES DEUX QUESTIONS EN UN SEUL TIRAGE.
+ *
+ * Le panneau de réglages les pose toutes les deux ; les poser séparément, c'est
+ * faire tourner le générateur trente-six fois au lieu de dix-huit à chaque
+ * ouverture. Et surtout : deux tirages différents pourraient ne pas voir les
+ * mêmes volets, donc ne pas répondre sur le même exercice.
+ */
+export function formesPossibles(exo, gen, rngPour, tirages = 18) {
     if (!gen || typeof gen.generate !== 'function' || typeof rngPour !== 'function') {
-        // On ne sait pas : on MONTRE le réglage. Cacher une commande sur un
+        // On ne sait pas : on MONTRE les réglages. Cacher une commande sur un
         // doute, c'est retirer au professeur une décision qu'il avait.
-        return true;
+        return { clavier: true, propositions: true };
     }
+    let clavier = false;
+    let propositions = false;
     for (let i = 0; i < tirages; i++) {
         let item = null;
         try {
             item = gen.generate({ ...(exo.params || {}) },
                 { rng: rngPour('clav' + i), weakTables: [], difficulty: null, index: i });
         } catch (e) {
-            return true;   // même raison : dans le doute, on montre
+            return { clavier: true, propositions: true };   // dans le doute, on montre
         }
-        if (itemPeutAllerAuClavier(item)) return true;
+        if (reglageClavierAgit(item)) clavier = true;
+        if (itemPeutEtreChoisi(item)) propositions = true;
+        if (clavier && propositions) break;
     }
-    return false;
+    return { clavier, propositions };
 }

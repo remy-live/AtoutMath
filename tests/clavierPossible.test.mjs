@@ -16,7 +16,11 @@ import './helpers.mjs';
 import { exercices, paramSchemaOf } from '../js/data/catalog.js';
 import { getGenerator } from '../js/core/registry.js';
 import { makeRng } from '../js/core/ids.js';
-import { itemPeutAllerAuClavier, clavierPossible } from '../js/core/aide.js';
+import {
+    itemPeutAllerAuClavier, reglageClavierAgit, itemPeutEtreChoisi,
+    clavierPossible, propositionsPossibles
+} from '../js/core/aide.js';
+import { readFileSync } from 'node:fs';
 import '../js/core/activities/index.js';
 
 test('la règle du pavé : un nombre, ou rien', () => {
@@ -79,4 +83,52 @@ test('LE RÉGLAGE NE SURVIT QUE LÀ OÙ IL AGIT, et on le demande au générateu
     const motJuste = exercices.find(e => e.id === 'num-vocabulaire');
     assert.ok(motJuste, 'num-vocabulaire doit exister');
     assert.equal(clavierPossible(motJuste, getGenerator(motJuste.generatorId), makeRng), true);
+});
+
+test('LE RÉGLAGE N\'A PAS PRISE SUR UNE QUESTION QUI VA D\'EMBLÉE AU CLAVIER', () => {
+    // LA DISTINCTION QUI M'A ÉCHAPPÉ D'ABORD, et qui a fait cacher le réglage
+    // au mauvais endroit. Relire l'ordre des lignes de `moduleVoulu` :
+    //
+    //     if (m.saisieSeule) return compose || null;   // le réglage n'est PAS lu
+    //     if (!aideIci.clavier) return null;           // ici, il décide
+    //
+    // Une question « pas à pas » est `saisieSeule` ET `composable` : le clavier
+    // y est parfaitement possible, et le réglage parfaitement muet.
+    const pasAPas = { answer: '2x + 3', meta: { saisieSeule: true, composable: 'litteral' } };
+    assert.equal(itemPeutAllerAuClavier(pasAPas), true, 'le clavier EST possible');
+    assert.equal(reglageClavierAgit(pasAPas), false, 'mais le réglage ne décide pas');
+    assert.equal(itemPeutEtreChoisi(pasAPas), false, 'et l\'on ne choisit jamais');
+
+    const ordinaire = { answer: 12 };
+    assert.equal(reglageClavierAgit(ordinaire), true);
+    assert.equal(itemPeutEtreChoisi(ordinaire), true);
+});
+
+test('L\'ESCALIER D\'AIDE DISPARAÎT LÀ OÙ L\'ON NE CHOISIT JAMAIS', () => {
+    const gen = (exo) => (exo.generatorId ? getGenerator(exo.generatorId) : null);
+    // Les cinq « pas à pas » : chaque question va droit au clavier, donc
+    // « Toujours 2 propositions » ne veut rien dire.
+    ['dev-pas', 'fac-pas', 'cf-pas', 'rc-pas', 'num-puissances-calcul-pas'].forEach(id => {
+        const exo = exercices.find(e => e.id === id);
+        assert.ok(exo, id + ' doit exister');
+        assert.equal(propositionsPossibles(exo, gen(exo), makeRng), false, id);
+        assert.equal(clavierPossible(exo, gen(exo), makeRng), false,
+            id + ' : le clavier arrive quoi qu\'on coche');
+    });
+    // Et un exercice ordinaire garde les deux.
+    const add = exercices.find(e => e.id === 'calc-add');
+    assert.equal(propositionsPossibles(add, gen(add), makeRng), true);
+    assert.equal(clavierPossible(add, gen(add), makeRng), true);
+});
+
+test('LE PANNEAU APPLIQUE LE FILTRE — sinon la mesure ne sert à rien', () => {
+    // Un test qui vérifie la RÈGLE et pas son EMPLOI laisse passer la refonte
+    // qui emporte le filtre. On lit donc le panneau.
+    const panneau = readFileSync('js/games/configUI.js', 'utf8');
+    assert.match(panneau, /formesPossibles\(/, 'le panneau doit interroger les formes possibles');
+    assert.match(panneau, /c\.id === 'clavier'/, 'et filtrer la case du clavier');
+    assert.match(panneau, /c\.id !== 'aide'/, 'et le rail de l\'aide');
+    // Le cran « Directement au clavier » ne doit pas survivre là où il est muet.
+    assert.match(panneau, /o\.value !== 'clavier'/,
+        'le cran du clavier doit être retiré du rail quand le pavé est impossible');
 });
