@@ -569,6 +569,20 @@ export function mount(container, session, opts = {}) {
             // chiffres, lettres, `^`, et le trait d'union comme signe moins.
             if (/^[0-9a-zA-Z+^]$/.test(e.key)) { taper(e.key); e.preventDefault(); }
             else if (e.key === '-') { taper('−'); e.preventDefault(); }
+            // L'ASTÉRISQUE ÉCRIT LE SIGNE FOIS. Rémy : « il faut que quand je
+            // tape l'astérisque, cela affiche le fois ». Il tapait `*`, et il
+            // ne se passait RIEN — la touche n'était pas dans la liste, et un
+            // clavier qui avale une frappe sans rien dire est pire qu'un
+            // clavier qui refuse.
+            //
+            // ON NE L'ACCEPTE QUE LÀ OÙ LE PAVÉ PORTE LA TOUCHE ×, et c'est la
+            // règle déjà posée dans ce fichier pour le cube et les
+            // parenthèses : une touche dont on SAIT qu'elle donnera une
+            // réponse fausse ne doit pas exister. Sur une ligne de réponse
+            // réduite, il n'y a pas de produit à écrire.
+            else if (e.key === '*' && m.multiplication) {
+                taper('×'); e.preventDefault();
+            }
         };
     }
 

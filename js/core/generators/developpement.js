@@ -42,7 +42,7 @@
 import { makeItem, finalizeChoices } from '../items.js';
 import * as fx from '../maths/formule.js';
 import * as P from '../maths/polynome.js';
-import { garnirEtapes } from '../maths/etapes.js';
+import { garnirEtapes, produitDeNombres } from '../maths/etapes.js';
 import {
     paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
 } from '../progression.js';
@@ -951,12 +951,24 @@ export const developpementGenerator = {
                 // monômes du polynôme : plus de termes que de monômes, c'est
                 // qu'il en reste deux à réunir. (Le pavé n'ayant pas de
                 // parenthèses ici, il n'y a rien d'autre à démêler.)
-                let ecrits;
+                let ecrits, arbre = null;
                 try {
-                    const a = fx.analyser(String(saisie).replace(/\s+/g, '')
+                    arbre = fx.analyser(String(saisie).replace(/\s+/g, '')
                         .replace(/(x)(\d)/g, '$1^$2'));
-                    ecrits = a.sorte === 'somme' ? a.termes.length : 1;
+                    ecrits = arbre.sorte === 'somme' ? arbre.termes.length : 1;
                 } catch (e) { ecrits = 0; }
+                // LE COMPTE DES TERMES NE VOIT PAS TOUT — Rémy : « j'écris
+                // 3*x−3*2 et tu considères que la réponse est bonne alors
+                // qu'on n'a pas réduit ». « 3×x − 3×2 » a DEUX termes pour
+                // deux monômes : la moitié non faite n'est pas dans le compte
+                // des termes, elle est à l'intérieur d'un terme. Voir
+                // `produitDeNombres` dans maths/etapes.js.
+                if (arbre && produitDeNombres(arbre)) {
+                    return { juste: false, inacheve: true,
+                        pourquoi: 'C\'est bien égal, et le développement est fait. '
+                            + 'Mais il reste un produit de deux NOMBRES à calculer — '
+                            + 'écris son résultat.' };
+                }
                 if (ecrits > lu.size) {
                     // CE N'EST PAS UNE FAUTE, C'EST UNE MOITIÉ DE TRAVAIL —
                     // Rémy, devant « x² + 2x + 5x + 10 » : « tu peux dire que

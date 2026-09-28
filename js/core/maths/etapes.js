@@ -18,6 +18,51 @@ import * as fx from './formule.js';
 import * as P from './polynome.js';
 
 /**
+ * UN PRODUIT DE DEUX NOMBRES N'EST PAS UN CALCUL FAIT.
+ *
+ * Rémy, sur le développement pas à pas : « quand tu demandes de développer et
+ * réduire 3(x−2), j'écris 3*x−3*2 et tu considères que la réponse est bonne
+ * alors qu'on n'a pas réduit ».
+ *
+ * IL A RAISON, ET LE GARDE-FOU EXISTANT NE POUVAIT PAS LE VOIR. Celui-ci
+ * compare le nombre de TERMES ÉCRITS au nombre de monômes : il attrape bien
+ * « 2x + 4x + 30 », qui a trois termes pour deux monômes. Mais « 3×x − 3×2 »
+ * en a DEUX pour deux — la moitié non faite n'est pas dans le compte des
+ * termes, elle est À L'INTÉRIEUR d'un terme.
+ *
+ * ON CHERCHE DONC UN PRODUIT DONT DEUX FACTEURS SONT DES NOMBRES. C'est la
+ * seule chose qui manque, et c'est exactement ce qu'un élève laisse traîner
+ * quand il s'arrête à la ligne d'avant.
+ *
+ * ET L'ON NE REFUSE PAS « 3×x ». Un nombre fois une lettre, c'est 3x écrit
+ * autrement : la multiplication y est implicite par convention, pas par
+ * calcul. Refuser cette écriture-là corrigerait la notation au lieu des
+ * mathématiques — et le pavé du pas à pas porte justement une touche ×.
+ *
+ * @param {object} arbre - un arbre de `maths/formule.js`
+ * @returns {boolean}
+ */
+export function produitDeNombres(arbre) {
+    if (!arbre || typeof arbre !== 'object') return false;
+    const estNombre = (n) => !!n && (n.sorte === 'nombre'
+        || (n.sorte === 'oppose' && estNombre(n.x))
+        || (n.sorte === 'groupe' && estNombre(n.dedans)));
+    if (arbre.sorte === 'produit' && Array.isArray(arbre.facteurs)) {
+        if (arbre.facteurs.filter(estNombre).length >= 2) return true;
+    }
+    // On descend PARTOUT : le produit fautif peut être sous un opposé, dans
+    // une parenthèse, au numérateur d'un quotient. Une recherche qui ne
+    // regarderait que le premier niveau laisserait passer −(3×2).
+    for (const clef of ['termes', 'facteurs']) {
+        if (Array.isArray(arbre[clef]) && arbre[clef].some(produitDeNombres)) return true;
+    }
+    for (const clef of ['x', 'dedans', 'base', 'exposant', 'haut', 'bas', 'gauche', 'droite']) {
+        if (arbre[clef] && produitDeNombres(arbre[clef])) return true;
+    }
+    return false;
+}
+
+/**
  * Donne à chaque étape son juge, à partir de ce qu'elle attend.
  *
  * ON COMPARE DES POLYNÔMES, comme pour la réponse entière : « 3 + x » dit la
