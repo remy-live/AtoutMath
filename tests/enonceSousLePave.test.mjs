@@ -145,6 +145,10 @@ test('LE DESSIN SE MET À LA TAILLE DE LA PLACE, SANS S\'APLATIR', () => {
 test('LE PLATEAU NE GARDE PAS VINGT PIXELS DE MARGE AUTOUR DE CET ÉCRAN', () => {
     // L'hôte de l'activité occupe déjà toute la place et gère ses propres
     // marges : les 20 px du plateau étaient 40 px perdus en hauteur.
-    assert.match(CSS, /\.canvas-area:has\(\.ls-hote\) \{ padding: 8px; \}/,
+    // Les mots croisés ont rejoint la règle : leur hôte occupe lui aussi toute
+    // la place et gère ses propres marges.
+    assert.match(CSS, /\.canvas-area:has\(\.ls-hote\)[^{]*\{ padding: 8px; \}/,
         'le plateau rend sa marge à une activité qui la gère elle-même');
+    assert.match(CSS, /\.canvas-area:has\(\.mc-wrap\) \{ padding: 8px; \}/,
+        'les mots croisés aussi : même hôte plein cadre, même marge perdue');
 });

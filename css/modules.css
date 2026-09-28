@@ -623,7 +623,7 @@
    vingt pixels perdus en haut ET en bas — quarante, sur un écran où l'énoncé
    n'en avait que 124. On n'en garde que ce qu'il faut pour que le cadre ne
    touche pas le bord. */
-.canvas-area:has(.ls-hote) { padding: 8px; }
+.canvas-area:has(.ls-hote), .canvas-area:has(.mc-wrap) { padding: 8px; }
 .numpad-layout { padding: 20px; }
 
 .canvas-area:has(.figure-wrap) .game-question,

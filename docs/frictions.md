@@ -691,3 +691,26 @@ manque.
   découpe au bord de la GRILLE, pas au bord de la rangée. Le débordement d'une
   rangée se déverse donc sur la suivante, et pas dehors — ce qui explique qu'on
   voie le défaut à l'écran sans qu'aucune boîte ne sorte du cadre.
+
+## **Découper n'est pas recouvrir : une sonde d'occlusion se teste sur le défaut** — 2026-09-28
+
+- **Ce que je voulais faire** : chercher moi-même les écrans où du contenu
+  disparaît, au lieu d'attendre la cinquième capture de Rémy.
+- **Ce qui a coûté** : une sonde entière, écrite et lancée, qui rendait
+  « 0 souci » SUR LE DÉPÔT D'AVANT LA CORRECTION — c'est-à-dire sur le défaut
+  qu'elle existait pour trouver. Elle découpait chaque boîte par ses ancêtres
+  qui découpent, ce qui attrape un élément COUPÉ ; le défaut, lui, était un
+  frère posé DEVANT. Un recouvrement ne rogne aucune boîte.
+- **Combien de fois** : |
+- **Ce qui l'a sauvée** : la règle du dépôt, appliquée à une sonde et non à une
+  épreuve — **la faire tourner sur le défaut avant de la croire**. Trente
+  secondes (`git show <commit>:fichier > fichier`, lancer, remettre) contre un
+  outil qui aurait menti à chaque passage.
+- **La leçon technique** : pour savoir si un élément se voit, il n'y a qu'une
+  question juste — **qu'y a-t-il AU POINT ?** `elementFromPoint` répond pour le
+  découpage ET pour le recouvrement, parce que c'est la question que le
+  navigateur se pose pour peindre. Toute géométrie calculée à côté est une
+  reconstitution, et les reconstitutions ratent un cas sur deux.
+- **L'outil** : `tools/quiDeborde.mjs`, cinq points par élément, et il dit si un
+  conteneur peut rattraper en défilant — ce qui est un geste de plus, pas une
+  perte.
