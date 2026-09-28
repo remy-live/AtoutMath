@@ -310,6 +310,19 @@
     html { scroll-behavior: auto !important; }
 }
 
+/* SAFARI GROSSIT LE TEXTE TOUT SEUL, ET IL FAUT LE LUI DIRE.
+   Rémy, capture du Serpent Littéral : « très mal écrit dans les ronds et
+   carrés ». Le « 5 » touchait le bord gauche du jeton, le « x » sortait à
+   droite. MESURÉ ICI : la même étiquette occupe 0,52 du disque, contre 0,86
+   sur sa capture. Ce n'est donc pas la taille demandée qui est fausse.
+   iOS applique un « ajustement automatique de la taille du texte » — inflation
+   d'un bloc qu'il juge étroit — et il l'applique AUSSI au texte d'un SVG, dont
+   la taille est exprimée en unités du dessin. Le gonflage n'a alors plus aucun
+   rapport avec la place disponible dans le jeton.
+   `text-size-adjust: 100 %` dit « la taille que j'ai écrite est la bonne ».
+   C'est un non-événement partout ailleurs : Chrome et Firefox de bureau
+   l'ignorent, Safari de bureau ne gonfle rien. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif; }
 /* `dvh` (avec repli `vh`) : sur iPhone, 100vh mesure la fenêtre SANS la barre
    d'outils de Safari — le bas de page, dont la navigation basse, se retrouvait

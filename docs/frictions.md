@@ -751,3 +751,22 @@ manque.
   tester ce qu'il CONTIENT** — `selectorText` avant `cssRules`. Un test par
   présence de propriété vieillit mal : la plateforme ajoute des propriétés, et
   la branche qu'on croyait étroite devient la branche générale.
+
+## **Un proxy de défaut doit se comporter comme le défaut** — 2026-09-28
+
+- **Ce que je voulais faire** : prouver qu'un ajusteur de taille de texte mord
+  vraiment, alors que le défaut vient d'un iPhone que je n'ai pas.
+- **Ce qui a coûté** : un premier proxy inutile. Pour élargir les étiquettes
+  j'ai injecté un `letter-spacing` FIXE — l'étiquette débordait bien, mais
+  aucune réduction de police ne pouvait la rattraper, puisque l'écartement ne
+  dépend pas de la taille. L'ajusteur a donc semblé inefficace alors qu'il
+  faisait exactement son travail, et j'ai failli le réécrire.
+- **Combien de fois** : |
+- **Ce qui marche** : doubler la taille CHOISIE dans la source (`.34` → `.72`),
+  ce qui est proportionnel comme l'est le gonflage d'iOS. Verdict net : sans
+  l'ajusteur, la pire étiquette occupe 1,07 du jeton et deux débordent ; avec,
+  0,78 et zéro, la taille retenue s'adaptant à la police (0,52 avec Outfit,
+  0,58 avec un serif).
+- **La règle** : **un proxy doit partager la MÉCANIQUE du défaut, pas seulement
+  son symptôme.** Reproduire « c'est trop large » ne suffit pas si la correction
+  agit sur « c'est trop grand » : on teste alors sa propre impuissance.

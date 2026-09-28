@@ -36,6 +36,43 @@ const COMPETENCE = 'num.litteral.reduire';
 
 /** Une couleur par famille : c'est le seul indice, et il suffit. */
 const COULEURS = ['#8a6414', '#3d6fd0', '#2f8f5b', '#a03a8f'];
+
+/**
+ * RÉTRÉCIT LES ÉTIQUETTES QUI DÉBORDENT DE LEUR JETON.
+ *
+ * Une largeur de texte ne se calcule pas : elle dépend de la police que
+ * l'appareil a vraiment chargée, du gras qu'il sait produire, et de la façon
+ * dont il fabrique celui qu'il ne sait pas. `getBBox()` est le seul endroit où
+ * cette largeur existe — c'est le navigateur qui la dit, après avoir écrit.
+ *
+ * LA PLACE DISPONIBLE EST CELLE DU JETON, pas celle de la case : un disque de
+ * rayon .38 offre .76 de large, et l'on s'arrête à .78 de cela pour laisser
+ * respirer le trait de contour. Un anneau carré de .92 offre davantage.
+ *
+ * ON NE GROSSIT JAMAIS. Une étiquette courte garde la taille choisie ; sans
+ * cela, un « x » seul viendrait remplir tout le disque et les jetons
+ * n'auraient plus la même écriture d'un terme à l'autre — ce qui est
+ * exactement ce qu'on reproche à la capture.
+ */
+function ajusterAuCadre(scene) {
+    const svg = scene.querySelector('svg');
+    if (!svg) return;
+    for (const t of svg.querySelectorAll('text.sp-txt')) {
+        const place = t.previousElementSibling
+            && t.previousElementSibling.tagName.toLowerCase() === 'circle'
+            ? parseFloat(t.previousElementSibling.getAttribute('r')) * 2 * 0.78
+            : 0.92 * 0.82;
+        let taille = parseFloat(t.getAttribute('font-size')) || 0.3;
+        // Trois passes suffisent : chaque passe divise l'excès, et une police
+        // ne change pas de proportions en cours de route.
+        for (let i = 0; i < 3; i++) {
+            const l = t.getBBox().width;
+            if (!l || l <= place) break;
+            taille *= place / l;
+            t.setAttribute('font-size', taille.toFixed(4));
+        }
+    }
+}
 const CLAIRES = ['#f0d9a4', '#c8d9f6', '#bfe6d2', '#eecbe6'];
 
 const TOUCHES = {
@@ -388,6 +425,23 @@ export class Serpent extends BaseGame {
 
         this.sceneEl.innerHTML = `<svg class="sp-svg" viewBox="-.1 -.1 ${niv.large + .2} ${niv.haut + .2}"
             preserveAspectRatio="xMidYMid meet">${out}</svg>`;
+        // ON NE SUPPOSE PAS LA POLICE : ON MESURE CE QU'ELLE A ÉCRIT.
+        //
+        // Rémy, capture d'iPhone : « très mal écrit dans les ronds et carrés ».
+        // Le « 5 » touchait le bord gauche du disque, le « x » sortait à droite.
+        // MESURÉ ICI, avec Outfit chargée : « 5x » fait 0,389 pour un disque de
+        // 0,76 — la moitié. Sur sa capture, la même étiquette en occupe 0,86.
+        // Ce n'est donc pas la taille choisie qui est fausse, c'est la POLICE
+        // qui n'est pas celle que j'ai sous les yeux : une police de secours, ou
+        // un gras 800 que l'appareil fabrique lui-même en épaississant le 700,
+        // et un gras fabriqué est plus large.
+        //
+        // Choisir une taille plus petite « pour être tranquille » serait le même
+        // pari, en plus petit : on rendrait le texte illisible chez tout le
+        // monde pour un appareil qu'on n'a pas mesuré. On mesure donc APRÈS
+        // écriture, et l'on ne rétrécit que ce qui dépasse — ce qui ne coûte
+        // rien là où rien ne dépasse.
+        ajusterAuCadre(this.sceneEl);
         this.anneauxEl = [...this.sceneEl.querySelectorAll('[data-anneau]')];
         this.cibleEl = this.sceneEl.querySelector('[data-cible]');
         this.placer(this.dernierAvancement || 0);
