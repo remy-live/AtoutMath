@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=855">
-    <link rel="stylesheet" href="css/layout.css?v=855">
-    <link rel="stylesheet" href="css/ui.css?v=855">
-    <link rel="stylesheet" href="css/games.css?v=855">
-    <link rel="stylesheet" href="css/components.css?v=855">
-    <link rel="stylesheet" href="css/modules.css?v=855">
+    <link rel="stylesheet" href="css/base.css?v=856">
+    <link rel="stylesheet" href="css/layout.css?v=856">
+    <link rel="stylesheet" href="css/ui.css?v=856">
+    <link rel="stylesheet" href="css/games.css?v=856">
+    <link rel="stylesheet" href="css/components.css?v=856">
+    <link rel="stylesheet" href="css/modules.css?v=856">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -793,16 +793,10 @@
                          sert. Deux questions différentes, deux rangements du
                          même catalogue.
 
-                         IL EST ICI, avec le choix du niveau, parce que ce sont
-                         DEUX FILTRES et qu'ils tiennent sur une ligne. Sur
-                         téléphone, chaque bande empilée coûte une ligne
-                         d'exercices : mesuré, il y avait 396 px de poignée,
-                         d'onglets et de filtres avant le premier exercice, pour
-                         quatre exercices visibles sur cent soixante-douze. -->
-                    <div id="rangement-bascule" class="rang-bascule" role="group" aria-label="Ranger le catalogue">
-                        <button type="button" class="rang-btn" data-rangement="domaine">Domaines</button>
-                        <button type="button" class="rang-btn" data-rangement="chapitre">Chapitres</button>
-                    </div>
+                         LA BANDE DE BOUTONS EST PARTIE dans le fil d'Ariane, qui
+                         écrit déjà « Domaines » ou « Chapitres » au-dessus de la
+                         liste. Elle coûtait 46 px pour répéter ce que le bandeau
+                         disait dix pixels plus bas. Voir `#rangement-fil`. -->
                 </div>
                 <!-- LA RECHERCHE. La loupe dit ce qu'est ce champ sans le
                      dire ; la liste de suggestions s'ouvre sous lui au fil de
@@ -832,11 +826,25 @@
                      RIEN à l'écran ne le disait. Un filtre qu'on a oublié
                      d'enlever fait chercher un exercice qui est là. -->
                 <p id="catalogue-compte" class="cat-compte" role="status" aria-live="polite" hidden></p>
+                <!-- LE FIL D'ARIANE EST SORTI DE LA VUE « CLIC », et il le
+                     fallait : il porte maintenant la bascule du rangement, et
+                     la vue « Arbre » n'avait pas de fil du tout — la bascule y
+                     serait devenue introuvable. Il sert donc aux DEUX vues ; en
+                     arbre, il n'a pas de dossier ouvert à annoncer et son
+                     bouton « retour » s'efface. -->
+                <div id="breadcrumb"><button id="btn-back" aria-label="Retour">←</button><span id="breadcrumb-text">Domaines</span>
+                    <!-- LA BASCULE EST ICI PARCE QUE CE BANDEAU DIT DÉJÀ LE
+                         RANGEMENT. Rémy, devant la colonne : « ça prend de la
+                         place quand même ne code rien ». Une bande de boutons
+                         qui répétait juste au-dessus ce que ce bandeau écrit
+                         coûtait 46 px, et 287 px passaient avant le premier
+                         exercice — six exercices de 48 px. -->
+                    <button type="button" id="rangement-fil" class="rang-fil"
+                            aria-label="Changer de rangement"><span aria-hidden="true">⇄</span> <span data-rang-mot>Chapitres</span></button>
+                </div>
                 <div id="nav-container">
                     <div id="view-accordion"></div>
                     <div id="view-drilldown">
-                        <div id="breadcrumb"><button id="btn-back" aria-label="Retour">←</button><span id="breadcrumb-text">Domaines</span>
-                        </div>
                         <div id="drill-content"></div>
                     </div>
                 </div>

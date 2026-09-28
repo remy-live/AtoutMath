@@ -75,18 +75,46 @@ test('OUVERT, LE TIROIR NE RÉPÈTE PLUS SON NOM', () => {
     assert.match(LAYOUT, /#sidebar\.drawer-open \.drawer-handle \{ padding: 8px 0 6px; \}/);
 });
 
-test('LES DEUX FILTRES PARTAGENT UNE LIGNE SUR TÉLÉPHONE', () => {
-    // Le niveau et le rangement répondent à deux questions voisines, et chacun
-    // tenait sa propre bande. Il faut qu'ils soient VOISINS dans le document
-    // pour pouvoir se ranger côte à côte : une colonne flex ne sait pas réunir
-    // deux bandes séparées par une troisième.
+test('LA BARRE DE FILTRES TIENT SUR UNE LIGNE, ET LE RANGEMENT N\'Y EST PLUS', () => {
+    // CE QUE CET ESSAI GARDAIT AVANT : que le niveau et le rangement soient
+    // VOISINS dans le document, pour tenir côte à côte sur téléphone.
+    //
+    // CE QU'IL GARDE DEPUIS LE 28 SEPTEMBRE : que le rangement n'y soit PLUS.
+    // Rémy, devant la colonne : « ça prend de la place quand même ne code
+    // rien ». Mesuré sur 1440 × 900 : 287 px avant le premier exercice, soit
+    // six exercices de 48 px. Le bandeau gris écrivant déjà « Domaines » ou
+    // « Chapitres », la bande de boutons a fondu dedans — et la ligne ainsi
+    // libérée a permis de mettre Clic/Arbre à côté du niveau. Mesuré après :
+    // 176 px, deux exercices et demi de plus.
     const debut = HTML.indexOf('class="sidebar-top-controls"');
     const fin = HTML.indexOf('id="sidebar-search-wrap"');
     const dedans = HTML.slice(debut, fin);
     assert.ok(debut > 0 && fin > debut, 'les deux repères doivent exister, dans cet ordre');
-    assert.match(dedans, /id="rangement-bascule"/,
-        'le rangement doit être DANS la barre de filtres, avant la recherche');
-    assert.match(UI, /body\.mobile-view \.sidebar-top-controls \{ flex-direction: row;/);
+    assert.doesNotMatch(dedans, /id="rangement-bascule"/,
+        'la bande du rangement a fondu dans le fil d\'Ariane : elle ne doit pas revenir');
+    assert.match(UI, /\.sidebar-top-controls \{[^}]*flex-direction: row/,
+        'la barre de filtres tient sur une ligne, sur téléphone comme sur ordinateur');
+});
+
+test('LA BASCULE DU RANGEMENT EST ATTEIGNABLE DANS LES DEUX VUES', () => {
+    // LE PIÈGE ÉVITÉ DE JUSTESSE, et il mérite son essai : le fil d'Ariane
+    // vivait DANS `#view-drilldown`. Y poser la bascule sans l'en sortir
+    // l'aurait rendue introuvable en vue « Arbre » — et le professeur n'aurait
+    // même pas su qu'un rangement existait.
+    const fil = HTML.indexOf('id="breadcrumb"');
+    const vue = HTML.indexOf('id="view-drilldown"');
+    assert.ok(fil > 0, 'le fil d\'Ariane doit exister');
+    assert.ok(fil < vue,
+        'le fil d\'Ariane doit être AVANT la vue « Clic », donc hors d\'elle : '
+        + 'sinon la bascule disparaît en vue « Arbre »');
+    assert.match(HTML, /id="rangement-fil"/, 'la pastille de rangement est dans le fil');
+    // ET ELLE DIT OÙ L'ON VA, pas où l'on est : une pastille unique qui
+    // afficherait « Domaines » alors qu'on y est déjà ne veut rien dire.
+    const nav = readFileSync(new URL('../js/ui/navigation.js', import.meta.url), 'utf8');
+    assert.match(nav, /RANGEMENTS\.CHAPITRE \? 'Domaines' : 'Chapitres'/,
+        'la pastille porte le nom de l\'AUTRE rangement');
+    assert.match(nav, /function peindreFil/,
+        'le fil doit savoir se peindre en vue « Arbre », où il n\'a pas de chemin');
 });
 
 test('LE MENU « ⋯ » RENTRE DANS L\'ÉCRAN', () => {

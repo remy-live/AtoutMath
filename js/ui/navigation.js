@@ -450,35 +450,82 @@ function getNodeSubKeys(filtered, path) {
 }
 
 /**
- * La bascule « Domaines / Chapitres » au-dessus de l'arbre.
+ * LA BASCULE DU RANGEMENT VIT DANS LE FIL D'ARIANE, qui la nomme déjà.
+ *
+ * Rémy, devant la colonne de gauche : « tu penses pas que ça, ça pourrait être
+ * optimisé, ça prend de la place quand même ne code rien ».
+ *
+ * MESURÉ : 287 px passaient avant le premier exercice sur un écran de 1440 ×
+ * 900, soit SIX exercices de 48 px, pour 512 px de catalogue. Or le bandeau
+ * gris écrit déjà « Domaines » ou « Chapitres » à la racine : une bande de deux
+ * boutons qui répétait cela dix pixels plus haut coûtait 46 px pour ne rien
+ * apprendre. Elle est donc devenue une pastille DANS ce bandeau, là où son
+ * effet est nommé. Mesuré après : 182 px, deux exercices de plus à l'écran.
+ *
+ * ELLE NE DIT PAS OÙ L'ON EST, ELLE DIT OÙ L'ON VA. Deux boutons montraient
+ * l'état ; une pastille unique doit montrer la DESTINATION, sinon on clique sur
+ * « Domaines » en étant déjà dans les domaines. Elle porte donc le nom de
+ * l'AUTRE rangement, et la flèche ⇄ dit que c'est un aller-retour.
  *
  * Changer de rangement remet la navigation à la racine : le dossier ouvert
  * — « Numérique › Calcul mental » — n'existe pas dans l'autre rangement, et
  * l'y laisser afficherait une grille vide sans dire pourquoi.
  */
+/**
+ * LE FIL D'ARIANE, DANS LES DEUX VUES.
+ *
+ * Il vivait DANS `#view-drilldown` et disparaissait donc en vue « Arbre ».
+ * Tant qu'il ne portait qu'un chemin, cela allait : l'arbre n'a pas de dossier
+ * ouvert. Depuis qu'il porte la BASCULE DU RANGEMENT, le faire disparaître,
+ * c'est rendre un réglage introuvable — et le professeur ne saurait même pas
+ * qu'il a existé.
+ *
+ * @param {boolean} enArbre - vrai en vue « Arbre », où il n'y a rien à remonter
+ */
+function peindreFil(enArbre) {
+    const fil = document.getElementById('breadcrumb');
+    const texte = document.getElementById('breadcrumb-text');
+    const retour = document.getElementById('btn-back');
+    if (!fil) return;
+    fil.style.display = 'flex';
+    if (enArbre) {
+        if (retour) retour.style.display = 'none';
+        if (texte) {
+            texte.textContent = modeRangement() === RANGEMENTS.CHAPITRE
+                ? 'Chapitres' : 'Domaines';
+        }
+    }
+}
+
+/** Le fil reste à l'écran : c'est lui qui porte la bascule. */
+function montrerFil() {
+    const fil = document.getElementById('breadcrumb');
+    if (fil) fil.style.display = 'flex';
+}
+
 export function initBasculeRangement() {
-    const boite = document.getElementById('rangement-bascule');
-    if (!boite) return;
-    const boutons = [...boite.querySelectorAll('.rang-btn')];
+    const pastille = document.getElementById('rangement-fil');
+    if (!pastille) return;
+    const mot = pastille.querySelector('[data-rang-mot]');
 
     const peindre = () => {
-        const mode = modeRangement();
-        boutons.forEach(b => {
-            const actif = b.dataset.rangement === mode;
-            b.classList.toggle('active', actif);
-            b.setAttribute('aria-pressed', String(actif));
-        });
+        const vers = modeRangement() === RANGEMENTS.CHAPITRE ? 'Domaines' : 'Chapitres';
+        if (mot) mot.textContent = vers;
+        pastille.title = `Ranger le catalogue par ${vers.toLowerCase()}`;
+        pastille.setAttribute('aria-label', pastille.title);
     };
 
-    boutons.forEach(b => {
-        b.onclick = () => {
-            if (b.dataset.rangement === modeRangement()) return;
-            setModeRangement(b.dataset.rangement);
-            state.navStack = [];
-            peindre();
-            refreshCatalogViews();
-        };
-    });
+    pastille.onclick = (e) => {
+        // LE FIL D'ARIANE PORTE AUSSI LE BOUTON « RETOUR » : sans cela, un clic
+        // sur la pastille remonterait d'un dossier en même temps qu'il change
+        // de rangement.
+        e.stopPropagation();
+        setModeRangement(modeRangement() === RANGEMENTS.CHAPITRE
+            ? RANGEMENTS.DOMAINE : RANGEMENTS.CHAPITRE);
+        state.navStack = [];
+        peindre();
+        refreshCatalogViews();
+    };
 
     // Le classement change dans l'écran des chapitres pendant que l'arbre est
     // affiché derrière : il doit suivre, sans quoi le professeur croit que sa
@@ -594,6 +641,7 @@ export function renderDrilldown() {
     }
 
     back.style.display = path.length === 0 ? 'none' : 'block';
+    montrerFil();
     // À la racine, le fil d'Ariane annonce le rangement en cours : « Domaines »
     // au-dessus d'une liste de niveaux se lirait comme une erreur.
     bread.textContent = path.length === 0
@@ -1077,6 +1125,11 @@ export function setSidebarMode(m) {
     }
     if(m==='acc') {
         document.getElementById('view-accordion').style.display = 'block';
+        // L'ARBRE N'A PAS DE DOSSIER OUVERT À ANNONCER, mais il a un
+        // RANGEMENT — et depuis que la bascule vit dans le fil d'Ariane, ce
+        // bandeau doit rester à l'écran dans les deux vues, sans quoi le
+        // réglage devient introuvable dès qu'on passe en arbre.
+        peindreFil(true);
     }
 }
 
