@@ -836,3 +836,22 @@ manque.
 - **La règle générale, qui vaut au-delà des couleurs** : **avant de corriger sur
   la foi d'une liste, en ouvrir les cinq pires.** Trente secondes, et elles
   disent si la liste mérite qu'on la suive.
+
+## **Le nom du fichier n'est pas le nom du jeu** — 2026-09-28
+
+- **Ce que je voulais faire** : élargir la prise tactile de « Relier sans
+  Croiser ».
+- **Ce qui a coûté** : une correction entière écrite dans `js/games/relier.js`,
+  commentaires compris — et ce n'est pas ce jeu-là. `relier.js` dessine des
+  chemins sur une grille (`rp-case`), `sansCroiser.js` fait tracer à main levée
+  (`sx-carre`). Deux jeux qui « relient », deux fichiers, et le titre ne dit ni
+  l'un ni l'autre. C'est la SONDE qui l'a dit, en ne trouvant aucun `[data-x]`
+  dans le plateau : le code que je venais d'écrire ne s'exécutait pas.
+- **Combien de fois** : |
+- **Ce qui manque** : un réflexe de trente secondes. **On remonte du catalogue
+  au fichier, jamais du nom au fichier** : `activityId` dans `js/data/*.js`,
+  puis `js/core/activities/index.js`. Ici, `geo-sans-croiser` → `sans-croiser`
+  → `sansCroiser.js`, et le doute était levé avant d'écrire une ligne.
+- **Ce qui a sauvé la mise** : la règle du dépôt, une fois de plus — mesurer le
+  GESTE et non le code. Une correction qu'on ne voit pas agir n'est pas une
+  correction, et celle-ci n'agissait sur rien.

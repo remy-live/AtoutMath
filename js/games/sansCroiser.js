@@ -239,20 +239,63 @@ class SansCroiser extends BaseGame {
         return { x: (e.clientX - x0) / k + c.x - 2, y: (e.clientY - y0) / k + c.y - 2 };
     }
 
+    /**
+     * UNE CIBLE DE QUATORZE PIXELS NE SE VISE PAS AU DOIGT.
+     *
+     * Rémy, capture d'iPhone : « dur dur au téléphone ». MESURÉ : un carré fait
+     * 14 px de côté sur un téléphone, contre 27 sur un ordinateur — et il
+     * fallait poser le doigt DEDANS pour commencer un trait, puis le relever
+     * DEDANS pour le finir. Le dépôt exige 44 px partout ailleurs ; ici on en
+     * demandait un tiers, pour un geste de précision.
+     *
+     * ON NE GROSSIT PAS LES CARRÉS : leur taille EST la figure, et l'élève doit
+     * voir le même dessin que sur la feuille. On élargit la PRISE : viser à
+     * côté d'un carré revient à viser dedans, et le point retenu est ramené
+     * SUR le carré — sans quoi la vérification, qui exige un départ et une
+     * arrivée dans un carré, refuserait le trait qu'on vient d'aider.
+     *
+     * Vingt-deux pixels d'écran : la moitié de la pulpe d'un index, convertis
+     * en unités de dessin pour que la tolérance soit la même à toutes les
+     * tailles d'écran.
+     */
+    uniteParPixel() {
+        const r = this.svg.getBoundingClientRect();
+        const c = this.fig.cadre;
+        const k = Math.min(r.width / (c.l + 4), r.height / (c.h + 4));
+        return k > 0 ? 1 / k : 1;
+    }
+
+    /** Le carré visé : celui qui contient le point, ou le plus proche à portée. */
+    carreVise(p) {
+        const liste = carres(this.fig);
+        const dedans = liste.find(k => dansRect(p, k));
+        if (dedans) return { carre: dedans, point: p };
+        const portee = 22 * this.uniteParPixel();
+        let meilleur = null, mieux = Infinity;
+        for (const k of liste) {
+            const x = Math.min(Math.max(p.x, k.x), k.x + k.l);
+            const y = Math.min(Math.max(p.y, k.y), k.y + k.h);
+            const d = Math.hypot(p.x - x, p.y - y);
+            if (d < mieux) { mieux = d; meilleur = { carre: k, point: { x, y } }; }
+        }
+        return mieux <= portee ? meilleur : null;
+    }
+
     brancherDoigt() {
         if (this.isDemo) return;
         const svg = this.svg;
         svg.onpointerdown = (e) => {
             if (this.fini || !this.fig) return;
-            const p = this.pointDe(e);
-            const depart = carres(this.fig).find(k => dansRect(p, k));
-            if (!depart) return;
+            const vise = this.carreVise(this.pointDe(e));
+            if (!vise) return;
+            const depart = vise.carre, p = vise.point;
             if (this.traits.some(t => t.lettre === depart.lettre)) {
                 this.note(`La lettre ${depart.lettre} est déjà reliée — touche son trait pour l'effacer.`);
                 return;
             }
             svg.setPointerCapture(e.pointerId);
             this.encours = { lettre: depart.lettre, points: [{ x: p.x, y: p.y }] };
+            this.encours.carreDepart = depart;
             this.note('');
         };
         svg.onpointermove = (e) => {
@@ -273,6 +316,11 @@ class SansCroiser extends BaseGame {
             }
             const t = this.encours;
             this.encours = null;
+            // ET L'ARRIVÉE AUSSI SE RATTRAPE. Relever le doigt à côté du carré
+            // jumeau annulait tout le trait qu'on venait de tracer.
+            const bout = t.points[t.points.length - 1];
+            const vise = this.carreVise(bout);
+            if (vise && !dansRect(bout, vise.carre)) t.points.push(vise.point);
             this.terminer(t);
         };
         svg.onpointerup = fin;
