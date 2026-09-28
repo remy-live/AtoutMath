@@ -10633,12 +10633,25 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
    lavande pâle #a5b4fc, prévu pour se poser sur du noir. Sur une pastille
    blanche, MESURÉ : 1,99 — il en faut 4,5. Le bouton se lisait comme désactivé,
    à toutes les largeurs.
-   On prend donc la couleur qui porte sur du blanc, la même dans tous les
-   thèmes — c'est la contrainte de ce bouton, et elle ne dépend pas de la page.
+   On prend donc la couleur qui porte sur du blanc — c'est la contrainte de ce
+   bouton, et elle ne dépend pas de la page.
    C'est exactement le piège que `css/base.css` décrit pour `--success-fond` :
-   « le remède évident était un piège », un jeton texte recyclé en fond. */
+   « le remède évident était un piège », un jeton texte recyclé en fond.
+
+   28 SEPTEMBRE : CETTE COULEUR SUIT MAINTENANT LE THÈME, sans rien perdre.
+   Rémy, devant la maquette des cinq thèmes : « ok pour 3 ». Le commentaire
+   ci-dessus disait « la même dans tous les thèmes », et ce n'était pas la
+   contrainte — la contrainte était « lisible sur du blanc ». `--primary` la
+   remplit : c'est un jeton de FOND, fait pour porter du blanc, donc forcément
+   sombre, donc lisible SOUS du blanc aussi. Mesuré dans les cinq thèmes sur la
+   pastille blanche : 6,29 · 6,29 · 5,93 · 5,02 · 5,18, pour un seuil de 4,5.
+   La maquette avait d'ailleurs reposé le piège telle quelle : sa colonne
+   « suivre le thème » employait `--primary-texte` et retombait à 1,99 en
+   sombre. C'est le même 1,99 que huit lignes plus haut — et c'est pour cela
+   que la couleur a désormais SON PROPRE JETON, `--primary-sur-blanc`, déclaré
+   et mesuré dans `css/base.css`. Un commentaire n'avait pas suffi. */
 .auj-go {
-    flex: 0 0 auto; background: #fff; color: #3730a3;
+    flex: 0 0 auto; background: #fff; color: var(--primary-sur-blanc);
     border: 0; border-radius: 999px; padding: 13px 28px;
     font: inherit; font-weight: 900; font-size: 1.02rem; cursor: pointer;
     transition: transform .12s;

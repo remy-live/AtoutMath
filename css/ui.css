@@ -1032,7 +1032,15 @@ body.sans-mode-libre #rangement-bascule { display: none !important; }
    flexible de #app-container : elle pousse le reste au lieu de le recouvrir. */
 .consigne-prof {
     flex-shrink: 0;
-    background: linear-gradient(90deg, #4f46e5, #7c3aed);
+    /* LE BANDEAU SUIT LE THÈME. Rémy, devant la maquette : « ok pour 4 ». Il
+       allait d'un indigo à un violet écrits en dur : un professeur en Forêt
+       recevait une bande indigo-violet en travers d'une interface verte.
+       Les deux bouts portent du blanc, et c'est la seule contrainte de ce
+       bandeau. Mesuré sur les cinq thèmes : 6,29 → 7,90 · 6,29 → 7,90 ·
+       5,93 → 7,56 · 5,02 → 7,13 · 5,18 → 7,31, pour un seuil de 4,5. Le
+       dégradé en dur donnait 6,29 → 5,70 : on ne perd rien en lisibilité, on
+       y gagne même au bout sombre. */
+    background: linear-gradient(90deg, var(--primary), var(--primary-hover));
     color: #fff;
     font-weight: 600;
     font-size: .95rem;
@@ -1387,7 +1395,9 @@ body.outils-auteur #debug-toolbar { display: flex; }
 }
 
 /* --- CONTROLES INTERFACES --- */
-.title { font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--primary), #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+/* LE NOM DU LOGICIEL SUIT LE THÈME AUX DEUX BOUTS. Les valeurs et leurs
+   mesures sont dans `css/base.css`, là où les jetons se déclarent. */
+.title { font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--titre-debut), var(--titre-fin)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
 /* Top Navbar Tabs */
 .nav-tab { background: transparent; border: none; font-size: 1rem; font-weight: 600; color: var(--text-muted); padding: 18px 15px; cursor: pointer; transition: 0.2s; position: relative; }

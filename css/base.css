@@ -46,6 +46,42 @@
        veut rester vif, un TEXTE se pose sur le fond et doit s'en détacher.
        Et le thème sombre les veut carrément opposés — fond vif, texte pâle. */
     --primary-texte: #4f46e5;
+    /* LE DÉGRADÉ DU NOM DU LOGICIEL, EN HAUT À GAUCHE.
+       Rémy, devant la maquette des cinq thèmes : « ok pour 1 ». Le dégradé
+       finissait sur un violet ÉCRIT EN DUR (#8b5cf6) : « AtoutMath » partait
+       donc du vert et arrivait au violet en thème Forêt, de l'orange au violet
+       en Coucher de soleil. Personne n'avait voulu ça ; la seconde couleur
+       n'avait simplement jamais été rebranchée sur le thème.
+       ON DÉCLARE LES DEUX BOUTS ICI, et non la seule couleur d'arrivée, parce
+       que le thème sombre veut les deux autres : le titre est du TEXTE (le
+       dégradé est découpé dedans par `background-clip`), et `--primary` est une
+       couleur de FOND. MESURÉ DANS LE NAVIGATEUR, sur la barre du haut réelle
+       (`--bg-verre`, pas une supposition) : en sombre, le titre partait
+       aujourd'hui de 2,84 — DÉJÀ sous le seuil de 3 —, et la solution évidente
+       (aller vers la couleur de survol) l'enfonçait à 2,26. Le violet en dur
+       était ce qui le rattrapait sans que personne ne le sache.
+       Les quatre thèmes clairs se servent donc tout seuls dans leurs propres
+       jetons, qu'ils redéfinissent déjà ; le sombre prend ses deux indigos
+       clairs, mesurés à 8,27 et 5,52. */
+    --titre-debut: var(--primary); --titre-fin: var(--primary-hover);
+    /* LA COULEUR DU THÈME QUAND ELLE SE POSE SUR DU BLANC.
+       Troisième membre de la famille, et il lui fallait son nom. `--primary`
+       est un FOND, `--primary-texte` est du TEXTE SUR LE FOND DE LA PAGE ;
+       celui-ci est du TEXTE SUR UNE PASTILLE BLANCHE, et les trois contraintes
+       sont différentes. Le bouton « Commencer » de la carte du jour est le
+       seul dans ce cas aujourd'hui.
+       POURQUOI PAS `--primary-texte` : parce qu'en thème sombre c'est un
+       lavande pâle, mesuré à 1,99 sur du blanc. C'est le piège que le
+       commentaire de `.auj-go` raconte déjà, et que la maquette du 28 septembre
+       a reposé telle quelle — preuve qu'un commentaire ne suffit pas et qu'il
+       fallait un jeton.
+       POURQUOI `var(--primary)` SUFFIT : un jeton de fond est fait pour porter
+       du blanc, donc sombre, donc lisible SOUS du blanc. Mesuré dans le
+       navigateur sur les cinq thèmes : 6,29 · 6,29 · 5,93 · 5,02 · 5,18, pour
+       un seuil de 4,5. L'indirection suit le thème toute seule — et une
+       épreuve de `tests/contraste.test.mjs` refait le calcul, pour le jour où
+       un thème donnerait à `--primary` une teinte claire. */
+    --primary-sur-blanc: var(--primary);
     --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
     /* LES COULEURS DE SENS, QUAND ELLES SERVENT DE TEXTE. Même partage que
        pour l'indigo, et pour la même raison mesurée : le vert de réussite
@@ -139,6 +175,12 @@
     /* Indigo clair : 8,5 de contraste sur le fond des fenetres, contre 4,00
        pour `--primary`. Elle ne sert QUE de couleur de texte. */
     --primary-texte: #a5b4fc;
+    /* LE TITRE, EN SOMBRE, VA DE CLAIR À UN PEU MOINS CLAIR. Les deux jetons
+       du thème clair descendent ici à 2,62 et 2,08 sur la barre du haut : un
+       dégradé qui part du fond de bouton serait illisible aux deux bouts. On
+       reprend donc le lavande de texte, et un indigo clair d'un cran en
+       dessous. Mesuré sur la barre réelle : 8,27 puis 5,52, pour un seuil de 3. */
+    --titre-debut: var(--primary-texte); --titre-fin: #818cf8;
     --bg-app: #0f172a; --bg-panel: #1e293b; --bg-hover: #334155;
     --bg-plateau: #1e2a44;
     --bg-verre: rgba(15, 23, 42, .86);

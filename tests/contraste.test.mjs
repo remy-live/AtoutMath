@@ -70,6 +70,65 @@ test('les cinq thèmes ont TOUS leur version texte', () => {
     });
 });
 
+test('LA COULEUR QUI SE POSE SUR DU BLANC PORTE, DANS LES CINQ THÈMES', () => {
+    // TROISIÈME MEMBRE DE LA FAMILLE. `--primary` est un fond, `--primary-texte`
+    // est du texte sur le fond de la page, et `--primary-sur-blanc` est du texte
+    // sur une PASTILLE BLANCHE — le bouton « Commencer » de la carte du jour.
+    //
+    // POURQUOI CETTE ÉPREUVE EXISTE : le jeton vaut `var(--primary)`, donc il
+    // suit le thème tout seul. C'est commode et c'est fragile — le jour où un
+    // thème donnerait à sa couleur primaire une teinte claire, le bouton
+    // deviendrait blanc sur blanc sans que rien ne le dise. On refait donc le
+    // calcul ici, sur les valeurs écrites dans `css/base.css`.
+    //
+    // ON SAIT QUE CE N'EST PAS LE RENDU. Le rendu est mesuré dans le navigateur
+    // (`tools/tmp/troisCouleurs.mjs` : 6,29 · 6,29 · 5,93 · 5,02 · 5,18). Ici on
+    // tient la RÈGLE, là-bas le RÉSULTAT — c'est le partage annoncé en tête de
+    // ce fichier, et la pastille est blanche par construction, donc le calcul
+    // sur les jetons suffit à voir venir le coup.
+    const net = sansCommentaires(BASE);
+    const declare = /--primary-sur-blanc:\s*([^;]+);/.exec(net);
+    assert.ok(declare, 'le jeton --primary-sur-blanc est déclaré');
+
+    /** Le bloc d'un thème, ou le `:root` nu pour le thème clair. */
+    const bloc = (nom) => (nom
+        ? net.slice(net.indexOf(`:root[data-theme="${nom}"]`),
+            net.indexOf('}', net.indexOf(`:root[data-theme="${nom}"]`)))
+        : net.slice(0, net.indexOf(':root[data-theme')));
+
+    /** Résout une indirection `var(--x)` dans le thème, puis dans `:root`. */
+    const resoudre = (valeur, nom) => {
+        const v = valeur.trim();
+        const indirect = /^var\(\s*(--[\w-]+)\s*\)$/.exec(v);
+        if (!indirect) return v;
+        for (const ou of [bloc(nom), bloc('')]) {
+            const m = new RegExp('(?:^|[;{\\s])' + indirect[1] + ':\\s*([^;]+);').exec(ou);
+            if (m) return m[1].trim();
+        }
+        assert.fail(`${indirect[1]} introuvable pour le thème ${nom || 'clair'}`);
+    };
+
+    const luminance = (hex) => {
+        let n = hex.replace('#', '');
+        if (n.length === 3) n = [...n].map(c => c + c).join('');
+        assert.match(n, /^[0-9a-fA-F]{6}$/, `couleur lisible : ${hex}`);
+        const v = [0, 2, 4].map(i => parseInt(n.slice(i, i + 2), 16) / 255)
+            .map(c => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+        return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+    };
+    // Sur du blanc, le rapport se simplifie : le blanc est toujours le clair.
+    const surBlanc = (hex) => 1.05 / (luminance(hex) + 0.05);
+
+    ['', 'dark', 'ocean', 'forest', 'sunset'].forEach(t => {
+        const couleur = resoudre(declare[1], t);
+        const k = surBlanc(couleur);
+        assert.ok(k >= 4.5,
+            `en thème ${t || 'clair'}, « Commencer » donne ${k.toFixed(2)} sur sa `
+            + `pastille blanche (${couleur}) ; il en faut 4,5. Si un thème a changé `
+            + 'sa couleur primaire, --primary-sur-blanc doit prendre sa propre valeur.');
+    });
+});
+
 test('LE MODE PROFESSEUR NE REPREND PAS la version texte', () => {
     // `body.teacher-mode` impose l'indigo par-dessus le thème choisi. S'il
     // imposait aussi `--primary-texte`, le thème sombre perdrait sa version
