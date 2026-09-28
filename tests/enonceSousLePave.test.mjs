@@ -108,3 +108,43 @@ test('ET L\'ON DIT QUE L\'ÉNONCÉ CONTINUE PLUS BAS', () => {
     assert.match(CSS, /\.ls-contexte--encore::after \{/,
         'et il doit être dessiné');
 });
+
+test('UNE FAMILLE D\'UNE TOUCHE NE PREND PAS UNE LIGNE ENTIÈRE', () => {
+    // Rémy : « je veux que tu règles les problèmes d'abord ». Le plafond de
+    // v863 empêchait le recouvrement ; il ne faisait pas TENIR l'écran. Sur
+    // « Racines carrées pas à pas », la première rangée du pavé ne portait
+    // qu'une touche — le « √ » — pour 44 px plus sa gouttière, et le dessin du
+    // carré, qui EST la leçon, restait hors de l'écran.
+    //
+    // MESURÉ à 390 × 664, la hauteur d'un iPhone sous Safari : le pavé passe de
+    // 396 à 347 px, et l'énoncé de 124 à 173. Avec les autres coupes, il tient
+    // ENTIER sans défiler — 201 px de contenu pour 209 de fenêtre.
+    assert.match(JS, /const LARGEUR_RANGEE = 5;/,
+        'la largeur d\'une rangée de chiffres borne la fusion : le clavier ne '
+        + 's\'élargit jamais');
+    assert.match(JS, /rangees\[i\]\.length < 3\s*\n?\s*&& rangees\[i\]\.length \+ rangees\[i \+ 1\]\.length <= LARGEUR_RANGEE/,
+        'seules deux familles MAIGRES partagent une ligne, et seulement si '
+        + 'elles tiennent dans cette largeur');
+    assert.match(JS, /if \(!rangees\[i\]\.length\) rangees\.splice\(i, 1\)/,
+        'une famille vide ne rend pas sa gouttière');
+});
+
+test('LE DESSIN SE MET À LA TAILLE DE LA PLACE, SANS S\'APLATIR', () => {
+    const regle = /\.ls-layout \.ls-contexte \.rc-grille \{([^}]*)\}/.exec(ETROIT)?.[1] || '';
+    assert.ok(regle, 'le dessin doit être borné en hauteur sur un téléphone');
+    assert.match(regle, /max-height:\s*\d+px/, 'un plafond, en pixels');
+    // LE PIÈGE : le SVG porte width et height en ATTRIBUTS. Un plafond de
+    // hauteur sans `width: auto` garde la largeur de l'attribut, et le carré
+    // devient un rectangle — un carré qui n'est plus carré sous la question
+    // « combien de cases sur un côté ? ».
+    assert.match(regle, /width:\s*auto/,
+        'sans width: auto, la largeur reste celle de l\'attribut du SVG et le '
+        + 'carré s\'aplatit');
+});
+
+test('LE PLATEAU NE GARDE PAS VINGT PIXELS DE MARGE AUTOUR DE CET ÉCRAN', () => {
+    // L'hôte de l'activité occupe déjà toute la place et gère ses propres
+    // marges : les 20 px du plateau étaient 40 px perdus en hauteur.
+    assert.match(CSS, /\.canvas-area:has\(\.ls-hote\) \{ padding: 8px; \}/,
+        'le plateau rend sa marge à une activité qui la gère elle-même');
+});

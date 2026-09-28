@@ -618,6 +618,12 @@
 /* Un énoncé suivi d'une figure ou d'un pavé n'a pas besoin des 40 px de
    respiration prévus pour une question seule. */
 .canvas-area:has(.numpad) { padding: 0; }
+/* MÊME RAISON POUR L'ACTIVITÉ « ÉCRIRE UNE EXPRESSION » : son hôte occupe déjà
+   toute la place et gère ses propres marges. Les 20 px du plateau étaient
+   vingt pixels perdus en haut ET en bas — quarante, sur un écran où l'énoncé
+   n'en avait que 124. On n'en garde que ce qu'il faut pour que le cadre ne
+   touche pas le bord. */
+.canvas-area:has(.ls-hote) { padding: 8px; }
 .numpad-layout { padding: 20px; }
 
 .canvas-area:has(.figure-wrap) .game-question,
@@ -8818,6 +8824,29 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
        844 px de haut le dessin tient entier sans défiler du tout. */
     .ls-layout .ls-panel { gap: 8px; }
     .ls-layout .ls-note { min-height: 1.6em; font-size: .84rem; }
+    /* LA CONSIGNE N'A PAS BESOIN D'ÊTRE ÉCRITE EN VINGT-SIX POINTS sur un
+       téléphone. Mesuré : « Factorise cette expression. » prenait 64 px sur
+       deux lignes à 1,6 rem, dans un énoncé qui dispose de 124 px en tout.
+       Elle reste la plus grosse chose de l'écran après le pavé. */
+    .ls-layout .ls-contexte .game-question { font-size: 1.05rem; line-height: 1.2; }
+    /* Le radical porte la question : il reste le plus gros de l'énoncé, mais
+       1,7 rem sur un téléphone, c'est la taille d'un titre. */
+    .ls-layout .ls-contexte .rc-expression { font-size: 1.25rem; margin: 4px 0 2px; }
+    /* ET LE DESSIN SE MET À LA TAILLE DE LA PLACE. Le carré d'aire 225 se
+       dessine en 126 px de côté — la taille qu'il faut sur un ordinateur. Sur
+       un téléphone, ces 126 px sont la différence entre « on voit le dessin »
+       et « il faut aller le chercher ». `width: auto` est indispensable : sans
+       lui, la largeur reste celle de l'attribut du SVG et le carré s'aplatit.
+       Les cases restent comptables — c'est tout leur intérêt : 96 / 15 donne
+       un peu plus de six pixels par case, ce qui se compte encore du doigt. */
+    .ls-layout .ls-contexte .rc-grille { max-height: 80px; width: auto; margin: 2px auto; }
+    .ls-layout .ls-contexte .rc-matiere { padding: 4px 10px; margin: 2px auto 0; gap: 0; }
+    .ls-layout .ls-contexte .rc-etiq { font-size: .72rem; }
+    .ls-layout .ls-contexte .rc-regle { font-size: .8rem; }
+    /* Le champ de réponse : 44 px, le plancher tactile, et pas un de plus —
+       c'est une zone d'affichage, pas une cible à viser. */
+    .ls-layout .ls-champ { min-height: 44px; }
+    .ls-layout .ls-panel { gap: 6px; }
 }
 
 /* DEUX COLONNES DÈS QU'IL Y A LA LARGEUR : la chaîne à gauche, l'écriture à

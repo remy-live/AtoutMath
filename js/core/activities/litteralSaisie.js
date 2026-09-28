@@ -203,6 +203,35 @@ export function mount(container, session, opts = {}) {
             '56789'.split('').map(c => ({ t: c, cls: 'ls-t--chiffre' }))
         ];
 
+        // UNE FAMILLE D'UNE TOUCHE N'EST PAS UNE FAMILLE.
+        //
+        // Rémy, capture d'iPhone sur « Racines carrées pas à pas » : le dessin
+        // du carré, qui EST la leçon de cet exercice, ne tient pas à l'écran.
+        // MESURÉ à 390 × 664 : l'énoncé a 124 px de fenêtre pour 328 px de
+        // contenu. Et dans le pavé, la première rangée ne portait qu'UNE
+        // touche — le « √ » — pour 44 px de haut plus sa gouttière.
+        //
+        // Les trois familles restent (la lettre et ses puissances, les signes,
+        // les chiffres) : ce qui les distingue est leur COULEUR, Rémy l'a
+        // écrit lui-même deux paragraphes plus haut — « sur un téléphone, où
+        // la grille se replie, la seule position ne suffit plus ». Deux
+        // familles maigres partagent donc une ligne quand elles tiennent dans
+        // la largeur d'une rangée de chiffres, cinq touches. Le clavier ne
+        // s'élargit jamais ; il cesse seulement de gaspiller une ligne pour un
+        // seul signe. Quarante-neuf pixels rendus à l'énoncé.
+        // ET UNE FAMILLE VIDE N'EN EST PAS UNE NON PLUS : sur un chapitre sans
+        // lettre, sans carré et sans racine, la première rangée ne portait AUCUNE
+        // touche et rendait quand même sa gouttière.
+        const LARGEUR_RANGEE = 5;
+        for (let i = rangees.length - 1; i >= 0; i--) if (!rangees[i].length) rangees.splice(i, 1);
+        for (let i = 0; i < rangees.length - 1; i++) {
+            if (rangees[i].length && rangees[i].length < 3
+                && rangees[i].length + rangees[i + 1].length <= LARGEUR_RANGEE) {
+                rangees.splice(i, 2, rangees[i].concat(rangees[i + 1]));
+                i--;
+            }
+        }
+
         const touche = (o) => `<button type="button" class="ls-t ${o.cls}" data-t="${echapper(o.t)}"
             ${o.dit ? `title="${echapper(o.dit)}"` : ''}>${echapper(o.t)}</button>`;
         const rangee = (r) => `<div class="ls-rangee">${r.map(touche).join('')}</div>`;
