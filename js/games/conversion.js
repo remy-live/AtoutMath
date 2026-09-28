@@ -62,7 +62,7 @@ class Conversion extends BaseGame {
                 .cv-etape {
                     font-weight: 800; font-size: clamp(14px, 3.4cqw, 18px); text-align: center;
                     padding: 5px 14px; border-radius: 999px; color: #fff;
-                    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+                    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
                 }
                 .cv-enonce {
                     font-size: clamp(20px, 5.5cqw, 30px); font-weight: 900;

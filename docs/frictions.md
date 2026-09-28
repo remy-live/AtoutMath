@@ -533,3 +533,26 @@ manque.
   (c) **refuse de rendre une image unie** — compter les teintes distinctes
   coûte dix lignes et aurait arrêté les trois allers-retours au premier. Toutes
   les sondes du dépôt réécrivent aujourd'hui ces trois choses, ou les oublient.
+
+## **Chercher une valeur littérale trouve les copies, pas la classe de défaut** — 2026-09-28
+
+- **Ce que je voulais faire** : corriger partout un dégradé qui part du thème et
+  finit sur une couleur écrite en dur.
+- **Ce qui a coûté** : j'ai cherché `#8b5cf6`, le violet que j'avais sous les
+  yeux, et j'ai trouvé NEUF endroits. En écrivant ensuite l'épreuve qui tient la
+  RÈGLE — « si un bout du dégradé vient du thème, l'autre aussi » — elle en a
+  trouvé **treize**, dont un `#a855f7` dans le Compte est Bon que le `grep`
+  n'aurait jamais vu. Puis trois faux positifs ont appris que le critère juste
+  n'était pas « c'est un jeton » mais « ce jeton change-t-il de TEINTE selon le
+  thème » — mesuré : `--primary` traverse 230°, `--warning` 5°.
+- **Et l'épreuve, écrite trop vite, ne gardait rien.** Son expression s'arrêtait
+  au premier `)`, celui de `var(--primary)` : remise devant le défaut, elle
+  passait au vert. Trouvé en essayant EXPRÈS de la faire tomber.
+- **Combien de fois** : ||
+- **Ce qui manque** : deux réflexes qui devraient être des outils.
+  1. **Chercher la forme, pas la valeur.** Un `grep` de couleur littérale est un
+     échantillon, jamais un inventaire ; c'est l'écriture de la règle qui fait
+     l'inventaire. Le corollaire coûte cher : on croit avoir fini.
+  2. **Une épreuve neuve doit être VUE échouer avant d'être crue.** Deux fois
+     aujourd'hui une épreuve verte ne gardait rien. Un `--verifie-que-ca-tombe`
+     qui réintroduit le défaut et exige l'échec ferait ça tout seul.

@@ -437,18 +437,43 @@ body.mobile-view #toast-container {
     gap: clamp(8px, 2cqw, 13px); width: 100%; max-width: 560px;
     flex: 0 0 auto; margin-inline: auto;
 }
+/* LE DÉGRADÉ D'ACTION. Rémy, après la maquette des cinq thèmes : « vas y
+   directement ». Il finissait sur un violet ÉCRIT EN DUR (#8b5cf6) — le même
+   à neuf endroits : cette carte, la bulle de choix, la carte de choix, la
+   touche OK du pavé, et cinq jeux (problèmes, conversion, virgule, poser une
+   opération, poser une division). Un élève en thème Forêt voyait donc ses
+   cartes partir du vert et arriver au violet.
+   ON ÉCRIT LE DÉGRADÉ DANS LA RÈGLE, ET NON DANS UN JETON DE `:root`, et c'est
+   délibéré : un `var(--primary)` placé dans un jeton de `:root` est résolu
+   LÀ-BAS, donc il échappe à `body.teacher-mode` — c'est ce qui arrive au titre
+   du logiciel, et c'est expliqué dans `css/base.css`. Ici on ne veut RIEN
+   changer d'autre que la couleur d'arrivée : ces surfaces suivaient le mode
+   professeur avant, elles le suivent encore.
+   Les neuf portent du blanc, et c'est leur seule contrainte. Mesuré du blanc
+   sur la couleur d'arrivée dans les cinq thèmes : 7,90 · 7,90 · 7,56 · 7,13 ·
+   7,31, pour un seuil de 4,5 ; le violet en dur donnait 5,70. On y gagne.
+
+   ET L'OMBRE SUIT LE REMPLISSAGE. Reteinter la carte sans reteinter son ombre
+   laissait un bouton VERT posé sur une ombre INDIGO — visible à l'oeil sur la
+   planche du 28 septembre, en océan, en forêt et en coucher de soleil. Treize
+   ombres, sur les seules règles dont on avait changé le remplissage : le dépôt
+   en compte trente-neuf en tout, et les autres appartiennent à des jeux qui ont
+   leur propre palette (labyrinthe, jezzball), où l'indigo est un choix.
+   `color-mix(... N%, transparent)` rend exactement ce que `rgba(couleur, .N)`
+   rendait — la couleur à N pour cent d'opacité — en la prenant au thème. Ce
+   n'est pas une nouveauté ici : le dépôt en emploie déjà cent trente-six. */
 .jeu-carte {
     display: flex; align-items: center; justify-content: center; text-align: center;
     min-height: clamp(52px, 10cqw, 70px); padding: 11px 13px;
     border-radius: 18px; border: 3px solid rgba(255, 255, 255, .22);
-    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     color: #fff; font-weight: 800; font-size: clamp(.95rem, 3.2cqw, 1.25rem);
     line-height: 1.2; text-wrap: balance; cursor: pointer;
-    box-shadow: 0 7px 18px rgba(79, 70, 229, .32);
+    box-shadow: 0 7px 18px color-mix(in srgb, var(--primary) 32%, transparent);
     transition: all .22s cubic-bezier(.4, 0, .2, 1);
     -webkit-tap-highlight-color: transparent;
 }
-.jeu-carte:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px rgba(79, 70, 229, .42); }
+.jeu-carte:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px color-mix(in srgb, var(--primary) 42%, transparent); }
 .jeu-carte:active:not(:disabled) { transform: translateY(2px) scale(.98); }
 .jeu-carte:disabled { cursor: default; }
 .jeu-carte--ok { background: linear-gradient(135deg, #34d399, #16a34a); box-shadow: 0 8px 20px rgba(22, 163, 74, .4); }

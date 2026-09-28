@@ -129,6 +129,122 @@ test('LA COULEUR QUI SE POSE SUR DU BLANC PORTE, DANS LES CINQ THÈMES', () => {
     });
 });
 
+test('AUCUN DÉGRADÉ NE PART DU THÈME POUR FINIR SUR UNE COULEUR EN DUR', () => {
+    // NEUF FOIS LE MÊME DÉFAUT, ET UNE SEULE CORRECTION. `linear-gradient(...,
+    // var(--primary), #8b5cf6)` était écrit à neuf endroits : la carte de jeu,
+    // la bulle de choix, la carte de choix, la touche OK du pavé, et cinq jeux.
+    // Le premier bout suivait le thème, le second était un violet fixe — un
+    // élève en Forêt voyait ses cartes partir du vert et arriver au violet.
+    //
+    // CE QUE CETTE ÉPREUVE TIENT : qu'on ne le réécrive pas. Un dégradé se
+    // copie-colle d'un jeu au suivant, et c'est exactement comme ça qu'il est
+    // arrivé à neuf. La règle est simple et se lit : si un bout d'un dégradé
+    // vient du thème, l'autre aussi.
+    const jeux = fs.readdirSync(new URL('../js/games/', import.meta.url))
+        .filter(n => n.endsWith('.js'))
+        .map(n => ({ nom: `js/games/${n}`,
+            texte: fs.readFileSync(new URL(`../js/games/${n}`, import.meta.url), 'utf8') }));
+
+    // QUATRE FAUX POSITIFS ONT APPRIS À ÉCRIRE LA RÈGLE, et ils méritent d'être
+    // nommés, sinon quelqu'un l'élargira de nouveau :
+    //   · `var(--nj-jauge, #22c55e)` dans ninja.js — le `#` est une valeur de
+    //     REPLI à l'intérieur du `var()`, pas un second bout ;
+    //   · `#000 var(--fondu, 0px)` dans quadrilateres.js — le `var()` est une
+    //     LONGUEUR, et le `#000` la couleur d'un masque ;
+    //   · `var(--warning-fond)` et `var(--accent-fond)` — ces jetons-là ne sont
+    //     JAMAIS redéfinis par un thème. Un dégradé qui en part ne bouge pas
+    //     d'un thème à l'autre : son second bout a le droit d'être écrit en dur.
+    //
+    // LE VRAI CRITÈRE N'EST DONC PAS « C'EST UN JETON », C'EST « CE JETON
+    // CHANGE-T-IL DE TEINTE SELON LE THÈME ». Et on ne l'écrit pas à la main :
+    // on le calcule sur `css/base.css`. Mesuré — `--primary` traverse 230° de
+    // teinte (indigo, bleu, vert, orange), `--accent` 180° ; `--warning` en
+    // bouge de 5, `--success` de 18, `--danger` de 13. Seuls les premiers
+    // rendent un second bout fixe incohérent : un amber qui va vers un amber
+    // reste un amber, un vert qui va vers un violet ne veut rien dire.
+    // Le jour où quelqu'un rendra `--warning` vert dans un thème, cette épreuve
+    // se mettra à le garder toute seule.
+    const SANS_REPLI = /var\(\s*--[\w-]+\s*,[^()]*\)/g;
+
+    /** La teinte d'un `#rgb` ou `#rrggbb`, en degrés. */
+    const teinte = (hex) => {
+        let n = hex.replace('#', '');
+        if (n.length === 3) n = [...n].map(c => c + c).join('');
+        const [r, g, b] = [0, 2, 4].map(i => parseInt(n.slice(i, i + 2), 16) / 255);
+        const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+        if (!d) return null;   // un gris n'a pas de teinte
+        const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+        return ((h * 60) % 360 + 360) % 360;
+    };
+    /** L'écart de teinte le plus grand d'un jeu de couleurs, sur le cercle. */
+    const ecartDeTeinte = (couleurs) => {
+        const t = couleurs.map(teinte).filter(x => x !== null);
+        let pire = 0;
+        for (const a of t) for (const b of t) {
+            const d = Math.abs(a - b);
+            pire = Math.max(pire, Math.min(d, 360 - d));
+        }
+        return pire;
+    };
+
+    // Les blocs de thème de `css/base.css`, commentaires retirés.
+    const NET = sansCommentaires(BASE);
+    const blocsDeTheme = [NET.slice(0, NET.indexOf(':root[data-theme')),
+        ...['dark', 'ocean', 'forest', 'sunset'].map(n => {
+            const i = NET.indexOf(`:root[data-theme="${n}"]`);
+            return i < 0 ? '' : NET.slice(i, NET.indexOf('\n}', i));
+        })];
+
+    /** Un jeton dont la teinte voyage d'un thème à l'autre. */
+    const voyage = (jeton) => {
+        const vues = blocsDeTheme.map(b => {
+            const m = new RegExp('(?:^|[;{\\s])' + jeton + ':\\s*(#[0-9a-fA-F]{3,8})\\s*;').exec(b);
+            return m && m[1];
+        }).filter(Boolean);
+        return vues.length > 1 && ecartDeTeinte(vues) > 60;
+    };
+
+    // ON COMPTE LES PARENTHÈSES, ON NE LES DEVINE PAS. Première version de cette
+    // épreuve : `gradient\(([^;{}]*?)\)`, qui s'arrête au PREMIER `)` — celui de
+    // `var(--primary)`. Elle ne voyait donc jamais le second bout, et elle
+    // passait au vert avec le défaut remis en place. Vérifié en le remettant :
+    // c'est comme ça qu'on l'a su, et c'est pour ça qu'on essaie de faire
+    // tomber une épreuve neuve avant de la croire.
+    /** Le contenu de chaque `…-gradient(…)`, parenthèses équilibrées. */
+    const degrades = (texte) => {
+        const out = [];
+        const debut = /(?:linear|radial|conic)-gradient\(/g;
+        let m;
+        while ((m = debut.exec(texte))) {
+            let profondeur = 1, i = m.index + m[0].length;
+            while (i < texte.length && profondeur > 0) {
+                if (texte[i] === '(') profondeur++;
+                else if (texte[i] === ')') profondeur--;
+                i++;
+            }
+            if (profondeur === 0) out.push(texte.slice(m.index + m[0].length, i - 1));
+        }
+        return out;
+    };
+
+    const coupables = [];
+    [...FEUILLES, ...jeux].forEach(({ nom, texte }) => {
+        degrades(sansCommentaires(texte)).forEach(brut => {
+            const dedans = brut.replace(SANS_REPLI, 'JETON');
+            const cites = [...dedans.matchAll(/var\(\s*(--[\w-]+)\s*\)/g)].map(m => m[1]);
+            if (!cites.some(voyage)) return;   // aucun bout ne change de teinte
+            const dur = dedans.match(/#[0-9a-fA-F]{3,8}\b/g);
+            if (dur) coupables.push(`${nom} : ${dur.join(' ')} dans ${brut.slice(0, 62)}…`);
+        });
+    });
+
+    assert.deepEqual(coupables, [],
+        'un dégradé dont UN bout suit le thème et l\'autre est écrit en dur donne\n'
+        + 'une couleur que personne n\'a voulue : « AtoutMath » partait du vert et\n'
+        + 'arrivait au violet en thème Forêt. Prendre l\'autre bout dans le thème\n'
+        + 'aussi — `var(--primary-hover)` pour un fond qui porte du blanc.');
+});
+
 test('LE MODE PROFESSEUR NE REPREND PAS la version texte', () => {
     // `body.teacher-mode` impose l'indigo par-dessus le thème choisi. S'il
     // imposait aussi `--primary-texte`, le thème sombre perdrait sa version

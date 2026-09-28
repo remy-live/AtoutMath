@@ -115,14 +115,14 @@ class Problemes extends BaseGame {
                     display: flex; align-items: center; justify-content: center; text-align: center;
                     min-height: clamp(52px, 10cqw, 70px); padding: 11px 13px;
                     border-radius: 18px; border: 3px solid rgba(255,255,255,.22);
-                    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+                    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
                     color: #fff; font-weight: 800; font-size: clamp(.95rem, 3.2cqw, 1.25rem);
                     line-height: 1.2; text-wrap: balance; cursor: pointer;
-                    box-shadow: 0 7px 18px rgba(79, 70, 229, .32);
+                    box-shadow: 0 7px 18px color-mix(in srgb, var(--primary) 32%, transparent);
                     transition: all .22s cubic-bezier(.4, 0, .2, 1);
                     -webkit-tap-highlight-color: transparent;
                 }
-                .pb-carte-rep:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px rgba(79,70,229,.42); }
+                .pb-carte-rep:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px color-mix(in srgb, var(--primary) 42%, transparent); }
                 .pb-carte-rep:active:not(:disabled) { transform: translateY(2px) scale(.98); }
                 .pb-carte-rep:disabled { cursor: default; }
                 .pb-carte-rep--ok {

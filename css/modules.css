@@ -462,14 +462,14 @@
 .numpad-key--ok {
     grid-column: 1 / -1; height: clamp(42px, 6.8cqh, 58px); margin-top: 4px;
     color: #fff; border-color: transparent;
-    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     font-size: clamp(1.02rem, 2.3cqh, 1.22rem); letter-spacing: .02em;
-    box-shadow: 0 4px 0 rgba(79, 70, 229, .55), 0 8px 18px rgba(99, 102, 241, .3);
+    box-shadow: 0 4px 0 color-mix(in srgb, var(--primary) 55%, transparent), 0 8px 18px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 .numpad-key--ok:hover { color: #fff; border-color: transparent; filter: brightness(1.06); }
 .numpad-key--ok:active {
     transform: translateY(3px);
-    box-shadow: 0 1px 0 rgba(79, 70, 229, .55), 0 3px 8px rgba(99, 102, 241, .28);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--primary) 55%, transparent), 0 3px 8px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 /* --- Zone de jeu : débordement vertical ---------------------

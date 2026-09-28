@@ -45,7 +45,7 @@ const STYLE = `
     .pl-etape {
         font-weight: 800; font-size: clamp(13px, 3.2cqw, 17px); color: #fff;
         padding: 5px 14px; border-radius: 999px; text-align: center;
-        background: linear-gradient(135deg, var(--primary), #8b5cf6);
+        background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     }
 
     /* LA FEUILLE. Une grille de cases carrées : c'est le cahier, et rien ne

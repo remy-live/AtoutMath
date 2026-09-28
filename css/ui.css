@@ -1397,7 +1397,7 @@ body.outils-auteur #debug-toolbar { display: flex; }
 /* --- CONTROLES INTERFACES --- */
 /* LE NOM DU LOGICIEL SUIT LE THÈME AUX DEUX BOUTS. Les valeurs et leurs
    mesures sont dans `css/base.css`, là où les jetons se déclarent. */
-.title { font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--titre-debut), var(--titre-fin)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.title { font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--degrade-texte-debut), var(--degrade-texte-fin)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
 /* Top Navbar Tabs */
 .nav-tab { background: transparent; border: none; font-size: 1rem; font-weight: 600; color: var(--text-muted); padding: 18px 15px; cursor: pointer; transition: 0.2s; position: relative; }

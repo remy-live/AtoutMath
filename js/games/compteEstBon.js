@@ -65,7 +65,18 @@ class CompteEstBon extends BaseGame {
                 .cb-but {
                     font-size: clamp(38px, 13cqw, 76px); font-weight: 900; line-height: 1;
                     letter-spacing: -.03em;
-                    background: linear-gradient(135deg, var(--primary), #a855f7);
+                    /* LE MÊME DÉFAUT QUE LE NOM DU LOGICIEL, ET LE MÊME REMÈDE.
+                       Ce dégradé finissait sur un violet écrit en dur : en thème
+                       Forêt, le but partait du vert et arrivait au violet ; en
+                       Coucher de soleil, de l'orange au violet. Et en thème
+                       sombre il partait d'un indigo de FOND posé en texte sur du
+                       sombre — le nombre qu'on regarde le plus était celui qui
+                       se lisait le moins bien. Les deux jetons portent leurs
+                       mesures dans css/base.css.
+                       (PAS D'ACCENT GRAVE ICI : on est dans un gabarit, et un
+                       accent grave le ferme. Septième fois dans ce dépôt ;
+                       node --check l'a dit en une seconde.) */
+                    background: linear-gradient(135deg, var(--degrade-texte-debut), var(--degrade-texte-fin));
                     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
                 }
                 .cb-ecart { font-size: .82rem; color: var(--text-muted); font-weight: 700; }

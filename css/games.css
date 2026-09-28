@@ -236,7 +236,7 @@
         calc((var(--large) - 4px - (var(--n) - 1) * var(--ecart)) / var(--n)));
 }
 .bubble { width: var(--bulle); height: var(--bulle); flex: 0 0 auto;
-    font-size: min(2.2rem, calc(var(--bulle) * .4)); border-radius: 50%; background: linear-gradient(135deg, var(--primary), #8b5cf6) !important; color: white !important; font-weight: 700; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4); border: 4px solid rgba(255,255,255,0.2); }
+    font-size: min(2.2rem, calc(var(--bulle) * .4)); border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-hover)) !important; color: white !important; font-weight: 700; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 25px color-mix(in srgb, var(--primary) 40%, transparent); border: 4px solid rgba(255,255,255,0.2); }
 /* LE SURVOL N'EXISTE PAS AU DOIGT.
    Rémy : « un jeton est mis en évidence alors qu'on a cliqué sur rien —
    c'était juste celui de la question précédente ». Un navigateur tactile garde
@@ -246,7 +246,7 @@
    une réponse déjà désignée, avant même d'avoir répondu.
    Le survol est réservé aux appareils qui en ont un — souris ou trackpad. */
 @media (hover: hover) and (pointer: fine) {
-    .bubble:hover { transform: translateY(-8px) scale(1.05); box-shadow: 0 15px 35px rgba(79, 70, 229, 0.5); }
+    .bubble:hover { transform: translateY(-8px) scale(1.05); box-shadow: 0 15px 35px color-mix(in srgb, var(--primary) 50%, transparent); }
 }
 .bubble:active { transform: translateY(2px) scale(0.95); }
 
@@ -481,15 +481,15 @@
     display: flex; align-items: center; justify-content: center; text-align: center;
     min-height: clamp(56px, 11vw, 74px); padding: 12px 14px;
     border-radius: 18px; border: 3px solid rgba(255,255,255,.22);
-    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
     color: #fff; font-weight: 700; font-size: clamp(.95rem, 3.4vw, 1.25rem);
     line-height: 1.25; text-wrap: balance; cursor: pointer;
-    box-shadow: 0 8px 20px rgba(79, 70, 229, .34);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 34%, transparent);
     transition: all .25s cubic-bezier(.4, 0, .2, 1);
     -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) and (pointer: fine) {
-.choice-carte:hover { transform: translateY(-4px); box-shadow: 0 13px 28px rgba(79, 70, 229, .45); }
+.choice-carte:hover { transform: translateY(-4px); box-shadow: 0 13px 28px color-mix(in srgb, var(--primary) 45%, transparent); }
 }
 .choice-carte:active { transform: translateY(2px) scale(.98); }
 /* Trois propositions : la dernière prend toute la ligne plutôt que de

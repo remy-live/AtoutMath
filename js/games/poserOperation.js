@@ -89,7 +89,7 @@ class PoserOperation extends BaseGame {
                 .po-etape {
                     font-weight: 800; font-size: clamp(14px, 3.4cqw, 18px); color: #fff;
                     padding: 5px 14px; border-radius: 999px;
-                    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+                    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
                 }
 
                 /* LA GRILLE. Une colonne par rang, et la virgule dessinée sur la

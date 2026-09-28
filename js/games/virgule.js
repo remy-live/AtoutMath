@@ -219,9 +219,9 @@ class Virgule extends BaseGame {
                     display: flex; align-items: center; justify-content: center;
                     min-height: clamp(54px, 11cqw, 72px); padding: 11px 13px;
                     border-radius: 18px; border: 3px solid rgba(255,255,255,.22);
-                    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+                    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
                     color: #fff; font-weight: 800; font-size: clamp(1.05rem, 4cqw, 1.5rem);
-                    cursor: pointer; box-shadow: 0 7px 18px rgba(79,70,229,.32);
+                    cursor: pointer; box-shadow: 0 7px 18px color-mix(in srgb, var(--primary) 32%, transparent);
                     transition: all .22s cubic-bezier(.4,0,.2,1);
                     -webkit-tap-highlight-color: transparent;
                 }

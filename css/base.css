@@ -46,7 +46,11 @@
        veut rester vif, un TEXTE se pose sur le fond et doit s'en détacher.
        Et le thème sombre les veut carrément opposés — fond vif, texte pâle. */
     --primary-texte: #4f46e5;
-    /* LE DÉGRADÉ DU NOM DU LOGICIEL, EN HAUT À GAUCHE.
+    /* LE DÉGRADÉ QU'ON PEINT DANS DU TEXTE, SUR LE FOND DE LA PAGE.
+       Deux emplois aujourd'hui : le nom du logiciel en haut à gauche, et le
+       BUT du Compte est Bon — ce nombre énorme qu'on regarde toute la partie.
+       Les deux se peignent par `background-clip: text`, les deux se posent sur
+       le fond, et les deux avaient le même défaut.
        Rémy, devant la maquette des cinq thèmes : « ok pour 1 ». Le dégradé
        finissait sur un violet ÉCRIT EN DUR (#8b5cf6) : « AtoutMath » partait
        donc du vert et arrivait au violet en thème Forêt, de l'orange au violet
@@ -63,7 +67,7 @@
        Les quatre thèmes clairs se servent donc tout seuls dans leurs propres
        jetons, qu'ils redéfinissent déjà ; le sombre prend ses deux indigos
        clairs, mesurés à 8,27 et 5,52. */
-    --titre-debut: var(--primary); --titre-fin: var(--primary-hover);
+    --degrade-texte-debut: var(--primary); --degrade-texte-fin: var(--primary-hover);
     /* LA COULEUR DU THÈME QUAND ELLE SE POSE SUR DU BLANC.
        Troisième membre de la famille, et il lui fallait son nom. `--primary`
        est un FOND, `--primary-texte` est du TEXTE SUR LE FOND DE LA PAGE ;
@@ -86,7 +90,7 @@
        — c'est une règle de CSS que personne ne devine, alors on l'écrit.
        `body.teacher-mode` impose `--primary: #4f46e5` par-dessus le thème (voir
        `css/ui.css`, c'est la correction de contraste que Rémy a choisi de
-       garder). Or `--titre-debut` et `--primary-sur-blanc` sont déclarés ICI,
+       garder). Or `--degrade-texte-debut` et `--primary-sur-blanc` sont déclarés ICI,
        sur `:root` : leur `var(--primary)` est résolu SUR `:root`, avant que
        `body` n'existe dans la cascade. Le titre et « Commencer » suivent donc
        le thème même pour le professeur.
@@ -194,7 +198,7 @@
        dégradé qui part du fond de bouton serait illisible aux deux bouts. On
        reprend donc le lavande de texte, et un indigo clair d'un cran en
        dessous. Mesuré sur la barre réelle : 8,27 puis 5,52, pour un seuil de 3. */
-    --titre-debut: var(--primary-texte); --titre-fin: #818cf8;
+    --degrade-texte-debut: var(--primary-texte); --degrade-texte-fin: #818cf8;
     --bg-app: #0f172a; --bg-panel: #1e293b; --bg-hover: #334155;
     --bg-plateau: #1e2a44;
     --bg-verre: rgba(15, 23, 42, .86);
