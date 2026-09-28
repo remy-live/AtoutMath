@@ -318,7 +318,9 @@ manque.
   fois en deux jours — `espaceClasses.js` deux fois, `quadrilateres.js` une —,
   et le `CLAUDE.md` le décrit déjà en tête de sa section « pièges ». Le savoir
   ne suffit visiblement pas : la main écrit l'accent grave toute seule.
-- **Combien de fois** : |||||  (cinq au total dans ce dépôt)
+- **Combien de fois** : ||||| |  (six au total dans ce dépôt ; la sixième le
+  2026-09-28, dans un commentaire CSS d'une maquette jetable — et cette fois-là
+  le message d'erreur désignait la ligne 76, à quarante lignes de la faute)
 - **Ce qui manque** : que `node --check` passe TOUT SEUL sur chaque fichier
   qu'on vient d'écrire, avant même d'essayer de s'en servir. Une entrée du
   journal le demandait déjà le 26 ; elle est toujours ouverte, et elle vient de
