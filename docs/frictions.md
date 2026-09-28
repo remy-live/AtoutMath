@@ -668,3 +668,26 @@ manque.
   d'abord chaque boîte par ses conteneurs qui défilent.** Trois lignes, et sans
   elles la sonde condamne exactement la correction qu'on vient d'écrire — le
   pire moment pour une fausse alerte.
+
+## **`overflow-y: auto` ne contraint rien sans plafond** — 2026-09-28
+
+- **Ce que je voulais faire** : comprendre pourquoi l'énoncé d'un exercice se
+  peignait sous le clavier, alors que le code disait explicitement le contraire.
+- **Ce qui a coûté** : trois sondes avant de regarder la bonne propriété. La
+  règle était `min-height: 0; overflow-y: auto; align-self: start` — et en
+  lisant, on coche « ça défile, donc c'est contenu ». Faux : `align-self: start`
+  donne à la boîte la hauteur de son CONTENU, pas celle de sa rangée. Rien
+  n'est contraint, donc rien ne défile, et le surplus se déverse. Il manquait
+  `max-height: 100%`, six caractères.
+- **Combien de fois** : ||  (déjà vu avec `minmax(auto, 1fr)` le même jour : une
+  piste, une boîte — même illusion, « j'ai écrit la limite » alors qu'on a écrit
+  le comportement EN CAS de limite)
+- **Ce qui manque** : une habitude de lecture. **Trois propriétés forment un
+  contenant : la limite, le débordement, et l'alignement qui ne l'annule pas.**
+  Les voir séparément fait manquer le trou à chaque fois. Et une règle de
+  mesure : chercher un `scrollHeight > clientHeight` là où l'on CROIT avoir posé
+  un défilement — si la boîte ne défile jamais, elle ne contient rien.
+- **Et un corollaire écrit ailleurs** : `overflow: hidden` sur une grille
+  découpe au bord de la GRILLE, pas au bord de la rangée. Le débordement d'une
+  rangée se déverse donc sur la suivante, et pas dehors — ce qui explique qu'on
+  voie le défaut à l'écran sans qu'aucune boîte ne sorte du cadre.

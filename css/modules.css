@@ -8648,6 +8648,22 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     container-type: inline-size;
 }
 .ls-contexte { text-align: center; max-width: 560px; flex: 0 0 auto; }
+/* LE CHEVRON QUI DIT QUE L'ÉNONCÉ CONTINUE. La classe est posée par
+   `annoncerLeReste` dans core/activities/litteralSaisie.js, et SEULEMENT quand
+   il reste quelque chose sous la ligne de flottaison — voir le commentaire de
+   cette fonction pour la mesure qui l'a rendue nécessaire. Même dessin que
+   `.sc-palette--encore` : c'est le même geste, il doit se reconnaitre. */
+.ls-contexte--encore { position: relative; }
+.ls-contexte--encore::after {
+    content: '⌄'; position: sticky; bottom: 2px; display: block;
+    width: 30px; height: 20px; margin: 2px 2px 0 auto;
+    line-height: 20px; font-size: 1.2rem; font-weight: 700;
+    color: var(--primary-texte); pointer-events: none;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--text-main) 18%, transparent);
+    animation: sc-encore 1.6s ease-in-out infinite;
+}
 .ls-avis {
     font-size: .9rem; font-weight: 700; color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 10%, transparent);
@@ -8756,8 +8772,27 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
         display: grid; grid-template-rows: minmax(0, 1fr) auto;
         gap: 10px; padding: 6px; overflow: hidden; justify-items: center;
     }
+    /* `max-height: 100%` EST CE QUI REND L'`overflow-y` EFFECTIF, et son
+       absence a coûté l'écran entier de Rémy — l'énoncé et son dessin peints
+       SOUS le pavé de touches.
+
+       `align-self: start` dit à l'élément de prendre la hauteur de son CONTENU
+       au lieu de celle de sa rangée. Il n'était donc jamais contraint : rien à
+       défiler, et les 305 px du dessin débordaient d'une rangée qui en avait
+       80. `overflow: hidden` sur la grille découpe au bord de la GRILLE, pas
+       au bord de la rangée — le débordement se déversait donc sur la rangée
+       suivante, c'est-à-dire sur le clavier.
+
+       MESURÉ AVANT, chargement neuf à chaque hauteur, thème sombre, 390 px de
+       large : le pavé recouvrait 31 px du dessin à 844, 181 à 700, 188 à 664,
+       187 à 600. Sur l'iPhone de Rémy, le dessin entier.
+
+       ON GARDE `align-self: start` : avec le plafond, un énoncé court reste en
+       haut à sa taille naturelle, et seul un énoncé trop grand se met à
+       défiler. `stretch` aurait étiré la boîte même quand rien ne le demande. */
     .ls-layout .ls-contexte {
-        min-height: 0; overflow-y: auto; align-self: start; width: 100%;
+        min-height: 0; max-height: 100%; overflow-y: auto;
+        align-self: start; width: 100%;
     }
     .ls-layout .ls-panel { align-self: end; }
     .ls-layout--chaine .ls-chaine { font-size: .9rem; gap: 2px; margin-top: 6px; }
@@ -8767,6 +8802,22 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
        dans ce fichier — il gagnait donc, et la mesure ne bougeait pas. */
     .ls-layout .ls-clavier .ls-t { min-height: 44px; }
     .ls-layout .ls-champ { min-height: 1.6em; padding: 2px 10px; }
+    /* ET LE PAVÉ REND CE QU'IL PEUT RENDRE, parce que le plafond ci-dessus
+       ne fait que transformer un recouvrement en défilement — il ne donne pas
+       de place, il empêche d'en voler. MESURÉ à 390 px de large : le pavé
+       pèse 435 px sur un hôte qui en fait 538, et il ne laissait que 80 px à
+       l'énoncé. Une fente de 80 px qui défile est mieux qu'un dessin invisible,
+       mais ce n'est pas encore lisible.
+
+       LES TOUCHES NE BOUGENT PAS : elles sont déjà à leur plancher de 44 px,
+       et une touche qu'on rate est pire qu'un énoncé qu'on défile. Ce qui
+       cède, ce sont les gouttières et la place RÉSERVÉE au diagnostic — celle
+       qui existe pour que le clavier ne saute pas quand le message apparaît.
+       Elle reste réservée, simplement sur deux lignes au lieu de quatre.
+       Quarante et un pixels rendus : l'énoncé passe de 80 à 121 px, et à
+       844 px de haut le dessin tient entier sans défiler du tout. */
+    .ls-layout .ls-panel { gap: 8px; }
+    .ls-layout .ls-note { min-height: 1.6em; font-size: .84rem; }
 }
 
 /* DEUX COLONNES DÈS QU'IL Y A LA LARGEUR : la chaîne à gauche, l'écriture à

@@ -274,6 +274,7 @@ export function mount(container, session, opts = {}) {
           </div>`;
 
         avis = '';
+        annoncerLeReste(container.querySelector('.ls-contexte'));
         const champ = container.querySelector('[data-champ]');
         const texteEl = container.querySelector('[data-texte]');
         const btnValider = container.querySelector('[data-valider]');
@@ -594,6 +595,40 @@ export function mount(container, session, opts = {}) {
      * l'une d'elles, on lui dit LAQUELLE. Sinon, on lui rappelle la règle du
      * tri par sacs, qui est la seule règle qu'il y ait.
      */
+    /**
+     * DIRE QUE L'ÉNONCÉ CONTINUE PLUS BAS.
+     *
+     * « ATTEIGNABLE N'EST PAS VISIBLE » — la phrase est de
+     * `tools/quiDefileSansLeDire.mjs`, et elle vaut ici pour du CONTENU et non
+     * pour une commande. Sur un téléphone court, le pavé pèse 392 px sur un
+     * hôte de 538 : il reste 124 px à l'énoncé, et le dessin du carré — qui EST
+     * la leçon de cet exercice, « on montre le carré caché sous la racine » —
+     * tombe sous la ligne de flottaison. Un élève de seconde qui ne voit pas de
+     * dessin ne se dit pas qu'il y en a un.
+     *
+     * Le chevron ne s'affiche QUE s'il y a quelque chose en dessous, et il
+     * disparaît dès qu'on est arrivé en bas : un indice qui ment une fois n'est
+     * plus lu.
+     */
+    function annoncerLeReste(zone) {
+        if (!zone) return;
+        const dire = () => {
+            const reste = zone.scrollHeight - zone.clientHeight - zone.scrollTop;
+            zone.classList.toggle('ls-contexte--encore', reste > 4);
+        };
+        zone.addEventListener('scroll', dire, { passive: true });
+        // LA MESURE SE REFAIT QUAND LA BOÎTE CHANGE : la hauteur de l'énoncé
+        // dépend du pavé, qui dépend du clavier, qui n'a pas fini de se poser
+        // au moment où l'on écrit cette ligne. Une mesure unique rendait faux
+        // une fois sur deux.
+        if (typeof ResizeObserver === 'function') {
+            const oeil = new ResizeObserver(dire);
+            oeil.observe(zone);
+            [...zone.children].forEach(e => oeil.observe(e));
+        }
+        dire();
+    }
+
     function diagnostiquer(donne, item) {
         const pieges = (item.meta && item.meta.pieges) || [];
         const n = normaliser(donne);
