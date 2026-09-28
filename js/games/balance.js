@@ -249,7 +249,12 @@ export class Balance extends BaseGame {
                 .bl-op {
                     border: 1.5px solid var(--primary, #4a6fd4); border-radius: 9px;
                     background: color-mix(in srgb, var(--primary) 8%, var(--bg-plateau));
-                    color: var(--primary, #4a6fd4); cursor: pointer; font: inherit; font-weight: 800;
+                    /* L'ENCRE EST LA VERSION « TEXTE » DU JETON. --primary est
+                       une couleur de FOND ; posée en encre sur un fond qui la
+                       contient déjà à 8 %, elle donne 2,16 en thème sombre.
+                       --primary-texte existe pour cela, et il s'ÉCLAIRCIT en
+                       thème sombre au lieu de s'assombrir. */
+                    color: var(--primary-texte); cursor: pointer; font: inherit; font-weight: 800;
                     padding: 6px 13px; font-size: clamp(12px, 2.4cqw, 15px);
                     font-variant-numeric: tabular-nums;
                 }

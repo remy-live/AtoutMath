@@ -208,7 +208,12 @@ class MotsCroises extends BaseGame {
                     display: flex; align-items: center; justify-content: center;
                     -webkit-tap-highlight-color: transparent;
                 }
-                .mc-touche--eff { background: #fef3c7; border-color: #fcd34d; }
+                /* LA TOUCHE D'EFFACEMENT PORTE SON FOND EN DUR ; SON ENCRE AUSSI.
+                   Elle héritait de --text-main, qui devient BLANC en thème
+                   sombre : du blanc sur un ambre pâle, mesuré à 1,06 de
+                   contraste. Un fond fixe demande une encre fixe — l'un sans
+                   l'autre est la recette du blanc sur blanc. */
+                .mc-touche--eff { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
 
                 .mc-barre { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; flex: 0 0 auto; }
                 .mc-btn {

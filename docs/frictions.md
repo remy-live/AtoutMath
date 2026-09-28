@@ -810,3 +810,29 @@ manque.
   suivi de trois autres commandes a tué les trois. Ce qui marche :
   `ps -eo pid,comm,args | awk '$2=="node" && /motif/ {print $1}' | xargs -r kill`,
   qui ne vise que les processus `node`.
+
+## **Un dégradé n'est pas une couleur, et une opacité fait partie de l'encre** — 2026-09-28
+
+- **Ce que je voulais faire** : faire confiance à la liste de 49 exercices que
+  `tools/quiEstIllisible.mjs` venait de rendre.
+- **Ce qui a coûté** : la moitié de la liste était fausse, et je l'ai su en
+  ouvrant les cinq pires. Deux angles morts, tous deux dans la façon dont un
+  navigateur compose une couleur :
+  1. **`background-color` vaut `transparent` sous un `background-image`.** La
+     sonde remontait donc jusqu'au fond de la page et comparait l'encre d'une
+     plaque jaune au bleu nuit du plateau : 1,19 annoncé sur un jeton
+     parfaitement lisible, au Compte est bon.
+  2. **L'opacité ne changeait rien à son calcul.** Un texte à 55 % n'est pas de
+     la couleur qu'il déclare : il se compose avec ce qu'il y a dessous. Un
+     `mm-num` annoncé à 1,07 vaut en réalité 4,25.
+- **Combien de fois** : |  (même famille que « `getComputedStyle` ne rend pas du
+  `rgb()` pour un `color-mix` » : trois fois maintenant qu'une couleur CALCULÉE
+  diverge de la couleur PEINTE)
+- **Ce qu'on en garde** : **on ne devine pas la couleur moyenne d'un dégradé,
+  on dit qu'on ne sait pas.** L'outil les compte à part et laisse l'oeil
+  trancher — une sonde qui s'abstient est plus utile qu'une sonde qui invente.
+  Et l'opacité de l'élément ET DE SES ANCÊTRES entre dans l'encre, parce que
+  c'est ce que le navigateur fait.
+- **La règle générale, qui vaut au-delà des couleurs** : **avant de corriger sur
+  la foi d'une liste, en ouvrir les cinq pires.** Trente secondes, et elles
+  disent si la liste mérite qu'on la suive.

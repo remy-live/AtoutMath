@@ -108,8 +108,13 @@ class Tasuko extends BaseGame {
                     min-width: 1.7em; padding: 1px 4px; border-radius: 999px;
                     font-weight: 800; text-align: center;
                     font-size: clamp(10px, 2.3cqh, 15px);
+                    /* TROIS COULEURS FIXES ET UN FOND DU THÈME : l'encre et la
+                       bordure sont écrites en dur, le fond suivait le thème et
+                       devenait sombre — de l'indigo foncé sur de l'ardoise,
+                       mesuré à 2,04. Une pastille dont on choisit l'encre doit
+                       choisir son fond. */
                     border: 1.5px solid #6d5cf6; color: #4c3fd0;
-                    background: var(--bg-panel, #fff);
+                    background: #fff;
                 }
                 .tk-somme--faite {
                     border-color: #cbd5e1; color: #a0aec0;

@@ -249,7 +249,12 @@ class Course extends BaseGame {
                 .course-hud { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: var(--course-large); height: 100%; pointer-events: none; display: none; flex-direction: column; z-index:5; }
                 .course-hud.active { display: flex; }
                 .course-hud-top { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.9); border-bottom: 2px solid var(--border); }
-                .course-hud-info { display: flex; gap: 15px; font-weight: bold; font-size: 1.2rem; align-items: center; color: var(--text-main); }
+                /* LE BANDEAU EST BLANC EN DUR, SON TEXTE AUSSI DOIT L'ÊTRE.
+                   Le fond est un rgba(255,255,255,.9) fixe — il se pose sur la
+                   piste, pas sur l'interface. L'encre, elle, suivait le thème et
+                   devenait BLANCHE : score, points et vies disparaissaient,
+                   mesuré à 1,03 de contraste en thème sombre. */
+                .course-hud-info { display: flex; gap: 15px; font-weight: bold; font-size: 1.2rem; align-items: center; color: #0f172a; }
                 .course-combo-container { width: 100%; height: 10px; background: #ddd; position: relative; }
                 .course-combo-fill { width: 0%; height: 100%; background: linear-gradient(90deg, orange, red); transition: width 0.2s; }
                 .course-combo-text { position: absolute; top: 15px; right: 10px; font-weight: 900; font-size: 1.5rem; color: var(--warning); transform: rotate(-5deg); display: none; text-shadow: 2px 2px 0 #fff; }

@@ -52,7 +52,7 @@ const liste = await s.page.evaluate(async (choisis) => {
 }, CHOISIS);
 
 console.log(`${liste.length} exercice(s), thème ${THEME || 'clair'}, 390 × 844\n`);
-let fautifs = 0, vus = 0;
+let fautifs = 0, vus = 0, degradesTotal = 0, dessinsTotal = 0;
 for (const id of liste) {
     if (await s.ouvrirExercice(id)) continue;
     await dormir(320);
@@ -85,6 +85,21 @@ for (const id of liste) {
         // LE FOND VU PAR LE TEXTE : le premier ancêtre qui peint vraiment. Un
         // fond à moitié transparent se compose sur celui d'en dessous, sinon on
         // juge une couleur que personne ne voit.
+        // UN DÉGRADÉ N'EST PAS UNE COULEUR, ET LE PRÉTENDRE FAIT CRIER AU LOUP.
+        // `background-color` vaut `transparent` sous un `background-image` : la
+        // première version remontait alors jusqu'au fond de la page et comparait
+        // l'encre d'une plaque jaune au bleu nuit du plateau — 1,19 annoncé sur
+        // un jeton parfaitement lisible. On ne devine pas la couleur moyenne
+        // d'un dégradé : on DIT qu'on ne sait pas, et on laisse l'oeil trancher.
+        const surDegrade = (el) => {
+            for (let e = el; e; e = e.parentElement) {
+                const st = getComputedStyle(e);
+                if (st.backgroundImage && st.backgroundImage !== 'none') return true;
+                const c = enPixels(st.backgroundColor);
+                if (c && c[3] >= 0.999) return false;
+            }
+            return false;
+        };
         const fondDe = (el) => {
             let pile = [];
             for (let e = el; e; e = e.parentElement) {
@@ -104,6 +119,7 @@ for (const id of liste) {
         const couche = document.querySelector('#game-layer');
         if (!couche) return { erreur: 'pas de couche' };
         const mauvais = [];
+        let degrades = 0, dessins = 0;
         for (const el of couche.querySelectorAll('*')) {
             // On ne juge que ce qui PORTE du texte en propre.
             const propre = [...el.childNodes]
@@ -111,21 +127,41 @@ for (const id of liste) {
             if (!propre) continue;
             const st = getComputedStyle(el);
             if (st.display === 'none' || st.visibility === 'hidden' || +st.opacity === 0) continue;
+            // DANS UN DESSIN, L'ENCRE S'APPELLE `fill`, PAS `color`. Et ce
+            // qu'il y a dessous est une FORME, pas un fond de boîte : le
+            // chiffre d'une île de Hashi est posé sur un cercle blanc, que
+            // `background-color` ne connaît pas. La sonde lisait donc l'encre
+            // héritée de la page — blanche en thème sombre — sur le fond de la
+            // page, et annonçait 1,05 sur un chiffre noir parfaitement lisible.
+            // Mesurer là-dedans demande de retrouver la forme sous le glyphe ;
+            // c'est un autre outil. On compte, et on ne juge pas.
+            if (el.ownerSVGElement || el.tagName.toLowerCase() === 'svg') { dessins++; continue; }
             const r = el.getBoundingClientRect();
             if (r.width < 8 || r.height < 6) continue;
             const encre = enPixels(st.color);
             if (!encre) continue;
-            const c = ratio(encre, fondDe(el));
+            if (surDegrade(el)) { degrades++; continue; }
+            const fond = fondDe(el);
+            // L'OPACITÉ FAIT PARTIE DE L'ENCRE. Un texte à 55 % n'est pas de la
+            // couleur qu'il déclare : il se compose avec ce qu'il y a dessous, et
+            // c'est ce mélange que l'oeil lit. Une opacité posée sur un ANCÊTRE
+            // compte aussi — elle s'applique à tout ce qu'il contient.
+            let alpha = encre[3];
+            for (let e = el; e; e = e.parentElement) alpha *= +getComputedStyle(e).opacity;
+            const vu = [0, 1, 2].map(i => encre[i] * alpha + fond[i] * (1 - alpha));
+            const c = ratio(vu, fond);
             if (c < SEUIL) mauvais.push({
                 quoi: (el.className || el.tagName).toString().slice(0, 26),
                 texte: el.textContent.trim().replace(/\s+/g, ' ').slice(0, 26),
                 contraste: +c.toFixed(2)
             });
         }
-        return { mauvais };
+        return { mauvais, degrades, dessins };
     }, SEUIL);
     if (vu.erreur) continue;
     vus++;
+    if (vu.degrades) degradesTotal += vu.degrades;
+    if (vu.dessins) dessinsTotal += vu.dessins;
     if (vu.mauvais.length) {
         fautifs++;
         console.log(`  ILLISIBLE  ${id.padEnd(24)} ${vu.mauvais.length} texte(s)`);
@@ -134,6 +170,10 @@ for (const id of liste) {
     }
 }
 console.log(`\n${vus} exercice(s) ouverts · ${fautifs} portent du texte sous ${SEUIL}`);
+console.log(`${degradesTotal} texte(s) posés sur un dégradé, non jugés : `
+    + 'une couleur moyenne de dégradé se devine, elle ne se mesure pas');
+console.log(`${dessinsTotal} texte(s) dans un dessin, non jugés : leur encre est `
+    + 'un `fill` et ce qu\'il y a dessous est une forme, pas un fond de boîte');
 console.log(`erreurs de page : ${s.erreurs.length}`);
 await s.fermer();
 process.exit(fautifs ? 1 : 0);

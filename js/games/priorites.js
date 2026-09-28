@@ -100,8 +100,14 @@ class Priorites extends BaseGame {
                     padding: 2px 6px; border-radius: 8px; line-height: 1.1;
                     border: 2px solid transparent;
                 }
+                /* L'ENCRE EST LA VERSION « TEXTE » DU JETON, PAS LE JETON.
+                   --primary est une couleur de FOND ; posée en encre sur
+                   --bg-hover, elle donne 1,65 de contraste en thème sombre —
+                   deux gris-bleus l'un sur l'autre. --primary-texte existe
+                   exactement pour cela, et il s'éclaircit en thème sombre au
+                   lieu de s'assombrir. */
                 .pr-jeton--op {
-                    cursor: pointer; background: var(--bg-hover); color: var(--primary);
+                    cursor: pointer; background: var(--bg-hover); color: var(--primary-texte);
                     border-color: var(--border); transition: .12s;
                 }
                 @media (hover: hover) {
