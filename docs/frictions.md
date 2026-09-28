@@ -462,3 +462,25 @@ manque.
   ici (`tests/boite.test.mjs`) ne coûte rien : il lit `css/modules.css` et exige
   que chaque famille déclarée y ait sa règle, et que chaque famille rendue soit
   déclarée. Il aurait attrapé celle-ci en une seconde.
+
+## **Un réglage offert par l'activité à soixante-dix exercices, muet dans vingt et un** — 2026-09-28
+
+- **Ce que je voulais faire** : répondre à Rémy — « dans le mot juste, dans les
+  réglages, le clavier est proposé mais le jeu ne propose jamais le clavier
+  non ? »
+- **Ce qui a coûté** : rien à trouver, tout à MESURER. La réponse d'instinct — et
+  celle que j'ai commencé à lui donner — était « le générateur pose toujours
+  `answerKind: 'choice'`, donc jamais de clavier ». C'était vrai sur
+  `answerKind` et **faux sur la conclusion** : le pavé ne regarde pas
+  `answerKind`, il regarde si `Number(item.answer)` est fini. Dans « Le Mot
+  Juste », un volet sur six répond par un nombre. Il a fallu tirer de vraies
+  questions pour le savoir — et la même mesure a trouvé **vingt et un autres
+  exercices** où le réglage ne peut, lui, rien faire du tout.
+- **Combien de fois** : ||  (même faute que le matin : conclure d'après le nom
+  d'un champ au lieu de faire tourner le code)
+- **Ce qui manque** : une habitude, et elle vaut pour tout ce dépôt — **un
+  réglage proposé par une ACTIVITÉ s'applique à tous ses exercices, mais n'agit
+  que sur certains ; personne ne le vérifie**. Il faudrait, pour chaque réglage
+  partagé, un outil du genre de `tools/clavierInutile.mjs` : il tire de vraies
+  questions et dit où la commande est muette. Le clavier est le premier trouvé ;
+  rien ne dit qu'il est le seul.

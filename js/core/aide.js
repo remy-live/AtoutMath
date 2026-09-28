@@ -558,3 +558,69 @@ export function plafonnerClavier(aide, params = {}) {
     const dernier = [...ECHELONS].reverse().find(e => !e.clavier) || ECHELONS[0];
     return { ...dernier };
 }
+
+// --- LE CLAVIER EST-IL SEULEMENT POSSIBLE DANS CET EXERCICE ? -----------------
+//
+// Rémy : « dans le mot juste, dans les réglages, le clavier est proposé mais le
+// jeu ne propose jamais le clavier non ? »
+//
+// LE RÉGLAGE « AUTORISER LE CLAVIER » EST OFFERT PAR L'ACTIVITÉ, donc à tous les
+// exercices à propositions — soixante-dix. Mais le pavé ne prend la main que si
+// la réponse est un NOMBRE, ou si l'item se déclare composable (une notation, un
+// tracé, une expression littérale). « somme », « différence », « oui », « [AB) »
+// ne sont rien de tout cela.
+//
+// MESURÉ sur le catalogue (`tools/clavierInutile.mjs`, 24 questions tirées par
+// exercice) : dans VINGT ET UN exercices sur soixante-dix, aucune question ne
+// peut jamais atteindre le pavé. Le professeur y décoche un réglage pour
+// protéger une classe qui découvre, et croit avoir agi. Un réglage qui ne fait
+// rien est pire qu'un réglage absent.
+//
+// LA RÈGLE EST ÉCRITE ICI, UNE FOIS. `activities/choice.js` l'applique pour
+// décider quel module pose la question, et le panneau de réglages l'interroge
+// pour savoir s'il doit montrer la case. Deux copies de cette règle, et le jour
+// où l'une bouge, le panneau ment.
+
+/** Cette question-là peut-elle se taper plutôt que se choisir ? */
+export function itemPeutAllerAuClavier(item) {
+    const m = (item && item.meta) || {};
+    if (m.composable) return true;
+    // `saisieSeule` va au clavier DÈS LA PREMIÈRE QUESTION : ce n'est pas
+    // l'escalier qui l'y mène, et le réglage ne le retient pas non plus.
+    if (m.saisieSeule) return false;
+    if (!item || item.answer === null || item.answer === undefined || item.answer === '') {
+        return false;
+    }
+    return Number.isFinite(Number(item.answer));
+}
+
+/**
+ * ET CET EXERCICE-LÀ ? On le demande au générateur, on ne le devine pas.
+ *
+ * On tire de vraies questions : c'est la seule réponse juste, puisqu'un même
+ * exercice peut mêler des volets chiffrés et des volets de vocabulaire — « Le
+ * Mot Juste » en a un sur six qui se tape, et cinq qui ne se tapent pas.
+ *
+ * @param {Object} exo l'exercice du catalogue
+ * @param {Object} gen son générateur (le registre n'est pas connu d'ici)
+ * @param {Function} rngPour fabrique un tirage à partir d'une graine
+ * @param {number} [tirages]
+ */
+export function clavierPossible(exo, gen, rngPour, tirages = 18) {
+    if (!gen || typeof gen.generate !== 'function' || typeof rngPour !== 'function') {
+        // On ne sait pas : on MONTRE le réglage. Cacher une commande sur un
+        // doute, c'est retirer au professeur une décision qu'il avait.
+        return true;
+    }
+    for (let i = 0; i < tirages; i++) {
+        let item = null;
+        try {
+            item = gen.generate({ ...(exo.params || {}) },
+                { rng: rngPour('clav' + i), weakTables: [], difficulty: null, index: i });
+        } catch (e) {
+            return true;   // même raison : dans le doute, on montre
+        }
+        if (itemPeutAllerAuClavier(item)) return true;
+    }
+    return false;
+}

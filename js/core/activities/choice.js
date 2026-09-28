@@ -13,7 +13,7 @@
 import { regTimeout } from '../timers.js';
 import { state } from '../state.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
-import { aideSelonEtat, reduireChoix } from '../aide.js';
+import { aideSelonEtat, reduireChoix, itemPeutAllerAuClavier } from '../aide.js';
 import { barreOutils, boiteOutils, brancherOutils } from './outils.js';
 
 /**
@@ -153,9 +153,11 @@ export function mount(container, session, opts = {}) {
         if (m.saisieSeule) return compose || null;
         if (!aideIci.clavier) return null;
         if (compose) return compose;
-        const chiffrable = item.answer !== null && item.answer !== ''
-            && Number.isFinite(Number(item.answer));
-        return chiffrable ? './numeric.js' : null;
+        // LA RÈGLE VIT DANS `core/aide.js`, ET ELLE Y VIT SEULE. Le panneau de
+        // réglages l'interroge lui aussi, pour ne pas proposer « Autoriser le
+        // clavier » à un exercice dont aucune réponse ne se tape. Deux copies,
+        // et le jour où l'une bouge, le panneau ment.
+        return itemPeutAllerAuClavier(item) ? './numeric.js' : null;
     }
 
     /**

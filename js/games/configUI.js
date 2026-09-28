@@ -25,6 +25,7 @@ import { reglagesQuiChangent as ecartsDeReglages } from '../core/reglagesDUsine.
 import { echelleDe, rangDans } from '../core/echelle.js';
 // Une graine FIXE pour l'aperçu : voir `vraieQuestion`.
 import { makeRng } from '../core/ids.js';
+import { clavierPossible } from '../core/aide.js';
 import {
     ajusterDuo, phraseDuo, seuilPourMode, quotaDemande, seuilConseille,
     MIN_ETAPE, MAX_ETAPE
@@ -2893,7 +2894,24 @@ export function renderGameConfigUI(step, onSave, containerId = 'builder-config-c
     const evaluation = opts.mode === MODES.EVALUATION;
 
     const exo = getExerciseById(step.exerciseId) || step.exercise || {};
-    const schema = paramSchemaOf(exo);
+    // UN RÉGLAGE QUI NE PEUT RIEN FAIRE NE S'AFFICHE PAS.
+    //
+    // Rémy : « dans le mot juste, dans les réglages, le clavier est proposé
+    // mais le jeu ne propose jamais le clavier non ? » L'activité offre
+    // « Autoriser le clavier » à ses soixante-dix exercices à propositions ;
+    // le pavé, lui, ne prend la main que si la réponse est un NOMBRE. MESURÉ
+    // (`tools/clavierInutile.mjs`) : dans VINGT ET UN d'entre eux, aucune
+    // question ne peut jamais l'atteindre — « somme », « oui », « [AB) » ne se
+    // tapent pas sur un pavé de chiffres.
+    //
+    // ON CACHE, ON NE DÉSACTIVE PAS : c'est la règle de la barre d'outils du
+    // constructeur, et pour la même raison — « un bouton grisé demande encore à
+    // être lu pour comprendre qu'il ne sert pas ; un bouton absent ne demande
+    // rien ». Et dans le doute — générateur introuvable, question qui jette —
+    // `clavierPossible` rend `true` : on ne retire pas au professeur une
+    // décision sur un soupçon.
+    const schema = paramSchemaOf(exo).filter(c => !(c && c.id === 'clavier')
+        || clavierPossible(exo, exo.generatorId ? getGenerator(exo.generatorId) : null, makeRng));
     const current = { ...(exo.params || {}), ...(step.overrides || {}) };
     const nbEtape = step.nbItems || conseilEtape(step);
     const blocLongueur = glissiereDouble({
