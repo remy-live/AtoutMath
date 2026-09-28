@@ -145,7 +145,7 @@
 .fb-close {
     margin-top: 12px; padding: 11px 30px; border-radius: 14px; border: none;
     font-size: 1.05rem; font-weight: 700; color: #fff; cursor: pointer;
-    background: var(--primary); box-shadow: 0 4px 14px rgba(99, 102, 241, .34);
+    background: var(--primary); box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 34%, transparent);
     transition: filter .15s, transform .1s;
 }
 /* LE BOUTON QUE L'ÉLÈVE APPUIE APRÈS CHAQUE FAUTE. C'est, de tout le
@@ -1454,9 +1454,9 @@ html[data-point="plus"] .pt-croix { display: none; }
    restait même d'une question à la suivante, sur un nœud qui ne voulait plus
    rien dire. */
 @media (hover: hover) and (pointer: fine) {
-    .rep-hit:hover { fill: rgba(99, 102, 241, .22); }
+    .rep-hit:hover { fill: color-mix(in srgb, var(--primary) 22%, transparent); }
 }
-.rep-hit:focus-visible { fill: rgba(99, 102, 241, .22); }
+.rep-hit:focus-visible { fill: color-mix(in srgb, var(--primary) 22%, transparent); }
 /* La question répondue ne se re-survole plus et ne se re-clique plus : le halo
    disparaît avec la réponse, et un second appui ne peut rien déclencher
    pendant que la correction est à l'écran. */
@@ -1508,7 +1508,7 @@ html[data-point="plus"] .pt-croix { display: none; }
    son image, puis s'efface. Elle est translucide et cerclée — on ne doit pas
    la confondre une seconde avec une case tracée. */
 .qd-film-fantome rect {
-    fill: rgba(99, 102, 241, .38); stroke: var(--primary);
+    fill: color-mix(in srgb, var(--primary) 38%, transparent); stroke: var(--primary);
     stroke-width: 2; stroke-dasharray: 5 3;
 }
 .qd-film-fantome { transition: opacity .3s ease; }
@@ -3132,7 +3132,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .badge-ok-btn {
     margin-top: 18px; background: var(--primary); color: #fff; border: none;
     padding: 11px 30px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; cursor: pointer;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, .3);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
 /* Détail d'une médaille : ce qu'elle mesure, où l'on en est, les paliers. */
@@ -3943,7 +3943,7 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
        l'étape en voulant l'ouvrir. */
     .path-step--ouvert .path-step-actions .btn-icon { width: 40px; height: 40px; }
 }
-.path-step--selected { border-color: var(--primary) !important; box-shadow: 0 0 0 2px rgba(99, 102, 241, .18); }
+.path-step--selected { border-color: var(--primary) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent); }
 .path-step--broken { opacity: .6; border-style: dashed !important; }
 
 .tag-meta { background: var(--bg-hover); color: var(--text-muted); border: 1px solid var(--border); }
@@ -6457,6 +6457,41 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     border-right: 1px solid var(--border);
     transition: background .18s;
 }
+/* IL Y A D'AUTRES BLOCS PLUS BAS. Voir `veillerSurLaPalette` dans
+   `js/core/activities/scratchBlocs.js` : c'est le SEUL écran du catalogue, sur
+   216 mesurés au doigt en 390 x 844, où une commande nécessaire se cache sous
+   son cadre. La flèche est posée hors du flux, en bas de la colonne, et elle
+   s'éteint dès qu'on a défilé.
+   ELLE NE MANGE PAS LE BLOC QU'ELLE ANNONCE : un dégradé effacerait justement
+   ce qu'on veut montrer. Elle ne prend pas le doigt non plus — `pointer-events:
+   none` — sinon elle volerait le glissement du bloc qui est dessous. */
+.sc-palette { position: relative; }
+/* PREMIÈRE VERSION, REJETÉE PAR LA PHOTO : tirée par un `margin-top: -22px`,
+   la flèche se posait SUR le dernier bloc (« lever le stylo »), en indigo sur
+   du vert — elle cachait le mot qu'elle était censée faire trouver. Elle est
+   maintenant un vrai élément de la colonne, collé en bas pendant qu'on défile,
+   avec sa pastille : elle se lit sur un bloc bleu comme sur un vert. */
+.sc-palette--encore::after {
+    /* À DROITE, ET C'EST LA PHOTO QUI L'A DIT. Au centre, la pastille se
+       posait encore sur « lever le stylo » : les blocs sont alignés à GAUCHE et
+       de largeurs inégales, donc le bord droit de la colonne est l'endroit le
+       plus souvent vide. */
+    content: '⌄'; position: sticky; bottom: 2px;
+    align-self: flex-end; margin-right: 2px; flex: 0 0 auto;
+    width: 30px; height: 20px; margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; line-height: 1; font-weight: 700;
+    color: var(--primary-texte); pointer-events: none;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--text-main) 18%, transparent);
+    animation: sc-encore 1.6s ease-in-out infinite;
+}
+@keyframes sc-encore {
+    0%, 100% { transform: translateY(0); opacity: .75; }
+    50% { transform: translateY(3px); opacity: 1; }
+}
+
 /* Ramener une pièce sur la palette la jette : c'est le geste de Scratch. */
 .sc-palette--corbeille { background: color-mix(in srgb, var(--danger) 16%, transparent); border-radius: 10px; }
 .sc-palette--corbeille::before {

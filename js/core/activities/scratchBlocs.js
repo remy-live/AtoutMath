@@ -166,6 +166,51 @@ export function mount(container, session, opts = {}) {
         });
 
         atelier.charger(item.meta.amorce || []);
+        veillerSurLaPalette(palette);
+    }
+
+    /**
+     * DIRE QU'IL Y A D'AUTRES BLOCS PLUS BAS.
+     *
+     * UN BALAYAGE DES 216 EXERCICES, sur un téléphone de 390 x 844 et au doigt,
+     * n'a trouvé QU'UN SEUL écran où une commande nécessaire se cache sous son
+     * cadre : celui-ci. La palette du Chat est une colonne de blocs sur 42 pour
+     * cent d'une largeur de téléphone ; 81 pixels en dépassaient, et le bloc
+     * « répéter 4 fois » était dedans.
+     *
+     * ATTEIGNABLE N'EST PAS VISIBLE, et c'est toute la question. Le balayage du
+     * 27 septembre avait annoncé dix-sept boutons « sous la fenêtre » qui se
+     * défilaient tous très bien, et la sonde avait été corrigée — à raison.
+     * Mais un élève de sixième qui ne voit pas le bloc qu'on lui demande ne se
+     * dit pas « il doit être plus bas » : il attend, ou il renonce.
+     *
+     * POURQUOI PAS UN SIMPLE DÉGRADÉ QUI EFFACE LE BAS : parce qu'il effacerait
+     * justement le bloc qu'on veut montrer. On pose une flèche, hors du flux,
+     * qui dit le geste ; elle disparaît dès qu'on a défilé.
+     *
+     * ELLE NE S'ALLUME QUE SI ELLE SERT. Sur un ordinateur, la palette tient
+     * tout entière et l'indice ne doit jamais paraître : c'est la mesure du
+     * débordement qui décide, pas la taille de l'écran.
+     */
+    function veillerSurLaPalette(palette) {
+        if (!palette) return;
+        const dire = () => {
+            const reste = palette.scrollHeight - palette.clientHeight - palette.scrollTop;
+            // Huit pixels : en dessous, c'est un arrondi de mise en page, pas
+            // un bloc caché.
+            palette.classList.toggle('sc-palette--encore', reste > 8);
+        };
+        palette.addEventListener('scroll', dire, { passive: true });
+        // La palette se remplit et se redimensionne APRÈS ce branchement : on
+        // remesure à chaque changement de taille plutôt que de parier sur un
+        // délai. Sans cela l'indice restait allumé sur un ordinateur, où il n'a
+        // rien à dire.
+        if (window.ResizeObserver) {
+            const oeil = new ResizeObserver(dire);
+            oeil.observe(palette);
+            palette._oeil = oeil;
+        }
+        dire();
     }
 
     // --- Saisie d'un nombre -------------------------------------------------
@@ -641,6 +686,8 @@ export function mount(container, session, opts = {}) {
         destroy() {
             destroyed = true;
             if (anim) { cancelAnimationFrame(anim); anim = null; }
+            const pal = container.querySelector('[data-palette]');
+            if (pal && pal._oeil) { pal._oeil.disconnect(); pal._oeil = null; }
             if (preparerAtelier._resize) {
                 window.removeEventListener('resize', preparerAtelier._resize);
                 preparerAtelier._resize = null;

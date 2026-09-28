@@ -31,11 +31,18 @@ Voir `docs/architecture.md` §0. Le reste du logiciel peut être discuté ; pas 
 ## 2. Le rituel de version, à chaque commit
 
 Sans lui, le navigateur des élèves garde l'ancienne version et la correction
-n'existe pas.
+n'existe pas. **Une commande le fait en entier :**
 
-1. `?v=NNN` → `NNN+1` dans `index.html` **et** `sw.js` (six occurrences chacun) ;
-2. `const CACHE = 'atoutmath-vNNN'` dans `sw.js` (numérotation indépendante) ;
-3. `node tools/csp.mjs --ecrire` dès qu'un script en ligne a bougé.
+```sh
+node tools/version.mjs        # et `--dire` pour savoir où l'on en est
+```
+
+Elle monte `?v=NNN` dans `index.html` **et** `sw.js` (six occurrences chacun),
+monte `const CACHE = 'atoutmath-vNNN'` dans `sw.js` (numérotation indépendante),
+lance `node tools/csp.mjs --ecrire`, relit les fichiers sur le disque, et imprime
+la ligne à recopier dans le message de commit. Elle **refuse de monter quoi que
+ce soit** si elle ne trouve pas six occurrences par fichier ou si les deux
+fichiers divergent : un rituel à moitié fait est pire que pas de rituel.
 
 ## 3. Mesurer, puis corriger
 
@@ -54,9 +61,26 @@ professeur ou comme l'élève, et l'on clique. Playwright est là pour ça :
 chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
 ```
 
-`php tools/siteEssai.php <PORT>` monte un site d'essai complet et imprime une
-ligne JSON avec `port`, `email: 'remy@essai.test'`, `mdp: 'motdepassetreslong'`.
-Une sonde doit **s'identifier puis recharger la page**.
+**On n'écrit plus une sonde à la main :** `tools/sonde.mjs` porte tout ce qu'on
+réécrivait à chaque fois, et chacune de ses lignes ferme une friction payée.
+
+```js
+import { ouvrirSonde } from './tools/sonde.mjs';
+const s = await ouvrirSonde({ largeur: 390, hauteur: 844 });  // < 768 px → au doigt
+await s.identifier();                       // s'identifie PUIS recharge
+await s.ouvrirExercice('calc-add');         // monte le meneur, clique « JOUER »
+await s.photo('.title', 'tools/tmp/t.png'); // découpe la page, dit si l'image est UNIE
+await s.contrasteRendu('.title');           // sur les PIXELS, donc lit les color-mix
+await s.fermer();                           // ne tue que SON serveur
+```
+
+`s.page` reste la page Playwright pour tout le reste ; `s.erreurs` et
+`s.fenetresNatives` se remplissent tout seuls.
+
+À la main, `php tools/siteEssai.php <PORT>` monte un site d'essai complet et
+imprime une ligne JSON avec `port`, `email: 'remy@essai.test'`,
+`mdp: 'motdepassetreslong'` — et une sonde doit alors **s'identifier puis
+recharger la page**, sans quoi elle mesure le portail.
 
 Les scripts jetables vivent dans `tools/tmp/` (ignoré par git). On garde ceux qui
 mesurent quelque chose qu'on voudra remesurer.
@@ -70,6 +94,19 @@ mesurent quelque chose qu'on voudra remesurer.
 | `node tools/boutEnBout.mjs` | Le verdict doit finir par « fenêtres natives et erreurs de page : 0 » **et** « TOUT SE SYNCHRONISE ». |
 
 **On lit le verdict AVANT de committer**, pas après.
+
+### Une épreuve neuve se voit échouer avant qu'on la croie
+
+Deux fois dans la même journée, une épreuve écrite pour garder une règle ne
+gardait rien et passait au vert. Une épreuve verte qui ne garde rien donne une
+assurance qui n'existe pas — c'est pire que pas d'épreuve.
+
+```sh
+node tools/epreuveTombe.mjs <essai> <source> <ancien> <nouveau>
+```
+
+Il remet le défaut dans le code, relance l'épreuve, **exige qu'elle tombe**, et
+remet le fichier comme il était quoi qu'il arrive.
 
 ## 4 bis. Avant d'ajouter un exercice au catalogue
 
@@ -103,17 +140,25 @@ Les messages de commit suivent la même règle : ce qui a été demandé, ce qui
 
 - **Le piège de l'accent grave.** Un accent grave (`` ` ``) dans un commentaire
   CSS ou HTML **à l'intérieur d'un gabarit** ferme le gabarit. Le message
-  d'erreur désigne alors une ligne sans rapport. `node --check <fichier>` le
-  trouve en une seconde ; on l'exécute après toute retouche d'un gros gabarit.
+  d'erreur désigne alors une ligne sans rapport. **Un `hook` s'en charge
+  maintenant** : `tools/hooks/verifierSyntaxe.sh` passe `node --check` sur tout
+  fichier JavaScript écrit, se tait quand tout va bien, et rend la piste quand
+  l'erreur désigne une ligne qui n'a rien à voir. Sept occurrences avant lui.
 - **On écrit les caractères français DIRECTEMENT**, jamais en séquences
   d'échappement : l'outil d'écriture transforme `\u2019` en apostrophe au moment
   d'écrire, et le script de retouche qui cherche la séquence littérale ne trouve
   alors plus rien. Dans le doute, relire le fichier avant de le retoucher.
 - **L'outil `Edit` ne sait pas remplacer** un texte contenant `«` `»` ou une
-  espace insécable. Passer par un script Python en `tools/tmp/`, avec
-  `assert s.count(old) == 1` avant chaque remplacement — **et penser à exécuter
-  le script**, ce qui a été oublié deux fois. Si un `assert` tombe au milieu,
-  **aucun** des remplacements précédents n'est enregistré.
+  espace insécable. On ne réécrit plus le script Python de cinq lignes :
+
+  ```sh
+  node tools/remplacer.mjs <fichier> <ancien> <nouveau> [...]
+  node tools/remplacer.mjs <fichier> --depuis <paires.json>   # pour du multiligne
+  ```
+
+  Il compte **avant** d'écrire, n'écrit qu'une fois tout vérifié (donc jamais à
+  moitié), refuse zéro occurrence, et repasse `node --check` en remettant le
+  fichier si la syntaxe ne tient plus.
 
 ## 7. Le journal des frictions
 

@@ -245,6 +245,56 @@ test('AUCUN DÉGRADÉ NE PART DU THÈME POUR FINIR SUR UNE COULEUR EN DUR', () =
         + 'aussi — `var(--primary-hover)` pour un fond qui porte du blanc.');
 });
 
+test('AUCUNE OMBRE INDIGO SOUS UNE SURFACE QUI SUIT LE THÈME', () => {
+    // UN BOUTON VERT SUR UNE OMBRE INDIGO, ÇA SE VOIT. C'est ce que la planche
+    // du 28 septembre montrait en océan, forêt et coucher de soleil : le
+    // remplissage avait été reteinté, pas l'ombre posée dessous.
+    //
+    // LA RÈGLE : dans une règle qui prend sa couleur au thème, aucune couleur
+    // d'accompagnement — ombre, halo, remplissage translucide — ne doit être
+    // l'indigo du thème CLAIR écrit à la main. `color-mix(..., transparent)`
+    // rend exactement ce que `rgba(couleur, .N)` rendait, en la prenant au
+    // thème ; le dépôt en emploie déjà plus de cent.
+    //
+    // CE QUI RESTE EN DUR, ET POURQUOI. Seize indigos subsistent, tous dans des
+    // règles qui ne prennent RIEN au thème, et c'est ce que cette épreuve
+    // autorise :
+    //   · des jeux de couleurs DISTINCTIVES, où l'indigo n'est pas « la couleur
+    //     d'action » mais « la première des quatre » — les pièces du quadrillage
+    //     (indigo, vert, turquoise), les décors de l'escadrille, le labyrinthe
+    //     et son thème Espace, jezzball ;
+    //   · les FICHES IMPRIMÉES (`.fp-`, `.fx-`), qui sortent sur du papier :
+    //     une feuille ne suit pas le thème de l'écran de qui l'a lancée ;
+    //   · deux figures d'activité (angles, blocs Scratch) dont les couleurs
+    //     sont celles du dessin, pas celles de l'interface.
+    const INDIGO = /rgba\(\s*(?:79,\s*79|79,\s*70,\s*229|99,\s*102,\s*241|67,\s*56,\s*202)\s*,/;
+    const JETON = /var\(--(?:primary|accent|success|warning|danger|degrade)[\w-]*/;
+
+    const jeux = fs.readdirSync(new URL('../js/games/', import.meta.url))
+        .filter(n => n.endsWith('.js'))
+        .map(n => ({ nom: `js/games/${n}`,
+            texte: fs.readFileSync(new URL(`../js/games/${n}`, import.meta.url), 'utf8') }));
+
+    const coupables = [];
+    [...FEUILLES, ...jeux].forEach(({ nom, texte }) => {
+        const net = sansCommentaires(texte);
+        // Chaque corps de règle, pris entre ses accolades — une règle CSS n'en
+        // contient pas d'autre dans ce dépôt.
+        for (const m of net.matchAll(/\{([^{}]*)\}/g)) {
+            const corps = m.group ? m.group(1) : m[1];
+            if (!INDIGO.test(corps) || !JETON.test(corps)) continue;
+            const avant = net.slice(Math.max(0, m.index - 80), m.index);
+            const sel = (avant.split(/[;}]/).pop() || '').trim().slice(-48);
+            coupables.push(`${nom} : ${sel}`);
+        }
+    });
+
+    assert.deepEqual(coupables, [],
+        'une règle qui prend sa couleur au thème ne doit pas poser dessous un\n'
+        + 'indigo écrit à la main : en thème Forêt, cela donne un bouton vert sur\n'
+        + 'une ombre indigo. Employer color-mix(in srgb, var(--primary) N%, transparent).');
+});
+
 test('LE MODE PROFESSEUR NE REPREND PAS la version texte', () => {
     // `body.teacher-mode` impose l'indigo par-dessus le thème choisi. S'il
     // imposait aussi `--primary-texte`, le thème sombre perdrait sa version

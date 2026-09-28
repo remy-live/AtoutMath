@@ -81,7 +81,7 @@ class ChuteDecimaux extends BaseGame {
                     background: var(--primary, #6366f1); color: #fff;
                     font-weight: 800; font-size: clamp(1.1rem, 4cqw, 1.8rem);
                     padding: 10px 20px; border-radius: 12px;
-                    box-shadow: 0 6px 16px rgba(79, 70, 229, .35);
+                    box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 35%, transparent);
                     white-space: nowrap;
                 }
                 .cd-brique--juste { background: #10b981; box-shadow: 0 6px 16px rgba(16,185,129,.4); }

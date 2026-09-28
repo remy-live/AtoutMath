@@ -1783,7 +1783,7 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 /* --- SEQUENCE EDITEUR PROF --- */
 .sequence-area { width: 100%; max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding: 30px 15px; }
 #path-container { min-height: 150px; background: var(--bg-hover); border: 2px dashed var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px; transition: 0.3s; }
-#path-container.drag-over { border-color: var(--primary); background: rgba(99, 102, 241, 0.05); }
+#path-container.drag-over { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, transparent); }
 /* Rangée compacte : une seule ligne par étape, hauteur minimale, pas de
    retour à la ligne — la colonne du milieu doit montrer un parcours entier
    sans défiler. */
@@ -1853,13 +1853,13 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .glass-btn { border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main); border-radius: 8px; font-weight: 600; transition: 0.2s; }
 .glass-btn:hover { background: var(--bg-hover); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
 .glass-btn.primary { background: var(--primary); color: white; border-color: transparent; }
-.glass-btn.primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); }
+.glass-btn.primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent); }
 
 /* Style des Checkboxes config */
 .config-table-cb { display: none; }
 .config-table-cb + span { display: inline-block; width: 45px; height: 45px; line-height: 45px; text-align: center; border-radius: 12px; background: rgba(0,0,0,0.03); border: 2px solid rgba(0,0,0,0.08); font-weight: 600; font-size: 1.1rem; color: #94a3b8; cursor: pointer; transition: 0.2s; }
 .config-table-cb + span:hover { background: rgba(0,0,0,0.06); color: var(--text-main); }
-.config-table-cb:checked + span { background: var(--primary); border-color: var(--primary); color: white; font-weight: 700; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3); transform: scale(1.05); }
+.config-table-cb:checked + span { background: var(--primary); border-color: var(--primary); color: white; font-weight: 700; box-shadow: 0 4px 10px color-mix(in srgb, var(--primary) 30%, transparent); transform: scale(1.05); }
 
 @keyframes popIn {
     0% { opacity: 0; transform: scale(0.9); }

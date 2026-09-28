@@ -133,7 +133,7 @@ class QuadriMorph extends BaseGame {
                 .qm-fig { width: 100%; height: auto; display: block;
                     background: var(--bg-panel); border: 1px solid var(--border);
                     border-radius: 16px; }
-                .qm-fig--visee { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,.25); }
+                .qm-fig--visee { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent); }
                 .qm-nom {
                     text-align: center; font-weight: 800; font-size: 1.05rem; margin-top: 6px;
                     color: var(--primary); min-height: 1.4em;

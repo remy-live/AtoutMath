@@ -294,9 +294,13 @@ test('LA CONSIGNE SUIT L\'ORDRE DES PRIORITÉS', () => {
         { nom: 'Nombres relatifs' }, { nom: 'Additions' }, { nom: 'Aires' }] });
     assert.match(c, /^Doit réviser : Nombres relatifs et Additions\.$/);
 
-    // Un seul souci : pas de deux-points inutile.
+    // UN SEUL SOUCI PREND LE DEUX-POINTS AUSSI, depuis que Rémy a tranché.
+    // L'essai gardait l'inverse, et c'est pour cela qu'il fallait le changer
+    // AVEC la règle : une ligne de tableau se balaie, et l'oeil suit un préfixe
+    // fixe. « Doit réviser Aire d'un rectangle. » avait l'air d'un ordre
+    // tronqué à côté de « Doit réviser : Diviser et Additionner. »
     assert.equal(consigneDe({ questions: 40, assez: true,
-        difficultes: [{ nom: 'Nombres relatifs' }] }), 'Doit réviser Nombres relatifs.');
+        difficultes: [{ nom: 'Nombres relatifs' }] }), 'Doit réviser : Nombres relatifs.');
 
     // Et celui qui réussit tout n'a pas besoin d'être félicité : il a besoin de
     // plus dur, et c'est cela l'information utile.

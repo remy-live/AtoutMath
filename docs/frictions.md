@@ -28,7 +28,7 @@ manque.
 
 ---
 
-## **Le rituel de version se refait à la main à chaque commit** — 2026-09-26
+## ~~Le rituel de version se refait à la main à chaque commit~~ — 2026-09-26
 
 - **Ce que je voulais faire** : livrer une correction.
 - **Ce qui a coûté** : trois `sed`, un `grep -c` de vérification et un appel à
@@ -39,7 +39,9 @@ manque.
 - **Ce qui manque** : une commande qui monte les deux numéros, relance
   `csp.mjs`, et vérifie que les six occurrences de chaque fichier ont bougé.
 
-## **L'outil `Edit` ne sait pas éditer le français du dépôt** — 2026-09-26
+- **REMPLACÉE PAR `node tools/version.mjs`** — 2026-09-28. Une commande fait les trois gestes : `?v=` +1 dans les deux fichiers, `CACHE` +1 dans `sw.js`, et `node tools/csp.mjs --ecrire`. Elle COMPTE les occurrences (six par fichier) et refuse de monter quoi que ce soit si elle en trouve un autre nombre, si les deux fichiers divergent, ou si la relecture sur disque ne retrouve pas les nouveaux numéros — un rituel à moitié fait est pire que pas de rituel. MESURÉ : le commit v851 → v852 l'a employée, elle a rendu la ligne à recopier dans le message de commit.
+
+## ~~L'outil `Edit` ne sait pas éditer le français du dépôt~~ — 2026-09-26
 
 - **Ce que je voulais faire** : remplacer un texte contenant des guillemets
   français ou une espace insécable.
@@ -52,7 +54,9 @@ manque.
   ancien/nouveau, vérifie l'unicité, écrit, **et** passe `node --check` — pour
   qu'écrire et exécuter ne soient plus deux gestes.
 
-## **Le piège de l'accent grave revient** — 2026-09-26
+- **REMPLACÉE PAR `node tools/remplacer.mjs`** — 2026-09-28. Elle prend un fichier et des paires, compte AVANT d'écrire, n'écrit qu'une fois tout vérifié (donc jamais à moitié), refuse zéro occurrence, et passe `node --check` sur les fichiers JavaScript en remettant le fichier si la syntaxe ne tient pas. MESURÉ sur un texte portant `«  »` et une espace insécable : remplacé du premier coup ; sur un motif absent : refusé, rien d'écrit.
+
+## ~~Le piège de l'accent grave revient~~ — 2026-09-26
 
 - **Ce que je voulais faire** : ajouter un commentaire HTML dans un gabarit.
 - **Ce qui a coûté** : `SyntaxError` désignant une ligne sans rapport, puis la
@@ -62,7 +66,9 @@ manque.
 - **Ce qui manque** : un `node --check` automatique sur tout fichier modifié,
   avant même d'essayer de lancer quoi que ce soit.
 
-## **Chaque sonde de navigateur repart de zéro** — 2026-09-26
+- **FERMÉE PAR UN HOOK** — 2026-09-28. `tools/hooks/verifierSyntaxe.sh` passe `node --check` sur tout fichier JavaScript écrit, en `PostToolUse` sur `Edit` et `Write`. Il se tait quand la syntaxe tient, et quand elle ne tient pas il rend le message de node SUIVI de la piste — parce que ce message désigne souvent une ligne sans rapport. MESURÉ dans les deux sens sur un gabarit contenant un accent grave dans un commentaire : refusé avec la piste, et silence sur un fichier sain. Sept occurrences dans ce dépôt avant lui.
+
+## ~~Chaque sonde de navigateur repart de zéro~~ — 2026-09-26
 
 - **Ce que je voulais faire** : mesurer un comportement dans le vrai navigateur.
 - **Ce qui a coûté** : quarante lignes recopiées à chaque fois — démarrer
@@ -83,6 +89,8 @@ manque.
   `#game-layer` affiché (il porte le bilan), couche qui **intercepte tous les
   clics** — il faut `exit()`. Trois quarts d'heure pour ces deux-là, dont une
   fausse accusation portée contre du code juste.
+
+- **REMPLACÉE PAR `tools/sonde.mjs`** — 2026-09-28. `ouvrirSonde()` monte le site d'essai, ouvre Chromium au bon chemin, met `hasTouch`/`isMobile` PAR DÉFAUT sous 768 px, écoute les erreurs de page et les fenêtres natives, et ne tue à la fin que le serveur qu'elle a lancé. `identifier()` s'identifie PUIS RECHARGE. `photo()` découpe la page (jamais l'élément) et COMPTE LES TEINTES pour refuser une image unie. `contrasteRendu()` mesure sur les PIXELS, donc lit les fonds en `color-mix` que `getComputedStyle` ne rend pas en `rgb()`. MESURÉ : la mesure du titre dans cinq thèmes, qui avait coûté trois allers-retours le matin, tient en douze lignes et rend 7,42 · 8,12 · 6,95 · 6,46 · 6,65 avec des photos non vides.
 
 ## ~~Ajouter un exercice au catalogue casse quatre choses invisibles~~ — 2026-09-26
 
@@ -311,7 +319,7 @@ manque.
   dans une classe partagée est une bombe à retardement : elle explose le jour où
   quelqu'un réutilise la classe pour un autre tableau, et rien ne le dit.
 
-## **Le piège de l'accent grave, une troisième fois le même jour** — 2026-09-27
+## ~~Le piège de l'accent grave, une troisième fois le même jour~~ — 2026-09-27
 
 - **Ce que je voulais faire** : écrire un commentaire CSS citant `body`.
 - **Ce qui a coûté** : deux minutes, parce qu'on sait. Mais c'est la TROISIÈME
@@ -325,6 +333,8 @@ manque.
   qu'on vient d'écrire, avant même d'essayer de s'en servir. Une entrée du
   journal le demandait déjà le 26 ; elle est toujours ouverte, et elle vient de
   se payer trois fois de plus.
+
+- **FERMÉE PAR UN HOOK** — 2026-09-28. `tools/hooks/verifierSyntaxe.sh` passe `node --check` sur tout fichier JavaScript écrit, en `PostToolUse` sur `Edit` et `Write`. Il se tait quand la syntaxe tient, et quand elle ne tient pas il rend le message de node SUIVI de la piste — parce que ce message désigne souvent une ligne sans rapport. MESURÉ dans les deux sens sur un gabarit contenant un accent grave dans un commentaire : refusé avec la piste, et silence sur un fichier sain. Sept occurrences dans ce dépôt avant lui.
 
 ## **Une sonde qui mesure une position au lieu de refaire le geste : 95 fausses pistes sur 95** — 2026-09-27
 
@@ -511,7 +521,7 @@ manque.
   dans « consignePapier », et l'outil annonçait 147 lecteurs pour un réglage
   qu'un seul fichier lit.
 
-## **Une capture d'élément perd un texte peint par son fond, et personne ne le voit** — 2026-09-28
+## ~~Une capture d'élément perd un texte peint par son fond, et personne ne le voit~~ — 2026-09-28
 
 - **Ce que je voulais faire** : montrer à Rémy que le titre « AtoutMath » suit
   bien le thème, en photographiant l'entête dans les cinq thèmes.
@@ -534,7 +544,9 @@ manque.
   coûte dix lignes et aurait arrêté les trois allers-retours au premier. Toutes
   les sondes du dépôt réécrivent aujourd'hui ces trois choses, ou les oublient.
 
-## **Chercher une valeur littérale trouve les copies, pas la classe de défaut** — 2026-09-28
+- **REMPLACÉE PAR `tools/sonde.mjs`** — 2026-09-28. Les trois demandes de cette entrée sont dans `photo()` et `identifier()` : découpe de page, connexion suivie d'un rechargement, et refus d'une image unie.
+
+## ~~Chercher une valeur littérale trouve les copies, pas la classe de défaut~~ — 2026-09-28
 
 - **Ce que je voulais faire** : corriger partout un dégradé qui part du thème et
   finit sur une couleur écrite en dur.
@@ -556,3 +568,5 @@ manque.
   2. **Une épreuve neuve doit être VUE échouer avant d'être crue.** Deux fois
      aujourd'hui une épreuve verte ne gardait rien. Un `--verifie-que-ca-tombe`
      qui réintroduit le défaut et exige l'échec ferait ça tout seul.
+
+- **À MOITIÉ FERMÉE PAR `node tools/epreuveTombe.mjs`** — 2026-09-28. Le second réflexe demandé est devenu un outil : il applique au code le remplacement qui REMET le défaut, relance l'épreuve, exige qu'elle tombe, et remet le fichier dans un `finally`. MESURÉ dans les deux sens : sur le garde des ombres indigo il annonce « elle TOMBE » ; sur une épreuve sans rapport il annonce « CETTE ÉPREUVE NE GARDE RIEN ». Le premier réflexe — chercher la FORME et non la valeur — reste une habitude, pas un outil.

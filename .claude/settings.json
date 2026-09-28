@@ -39,6 +39,19 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR:-.}/tools/hooks/verifierSyntaxe.sh\"",
+            "timeout": 15,
+            "statusMessage": "node --check sur le fichier écrit"
+          }
+        ]
+      }
     ]
   }
 }

@@ -681,7 +681,7 @@
 /* L'ÉTAPE EN COURS SE DISTINGUE DES ÉTAPES FAITES. Même remplissage partiel,
    mais la couleur du travail plutôt que celle du fini : sans quoi une étape à
    moitié pleine et une étape close se liraient pareil. */
-.fil-pas--ici { box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35); }
+.fil-pas--ici { box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent); }
 .fil-pas--ici > i { background: linear-gradient(90deg, var(--primary), var(--accent)); }
 /* Une étape FAITE mais RATÉE. L'élève doit voir où revenir ; une case pleine
    lui ferait croire qu'il peut passer à la suite. */

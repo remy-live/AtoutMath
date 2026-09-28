@@ -84,7 +84,32 @@ export const donneesExercises = [
         consignePapier: "Écris le nom exact, avec la majuscule de la colonne.",
         params: { startLevel: 1, goal: 3 },
         paramSchema: [
-            { id: 'startLevel', type: 'number', label: 'Leçon de départ', min: 1, max: 9, default: 1 },
+            {
+                // NEUF NUMÉROS NE DISENT RIEN. Le réglage demandait « Leçon de
+                // départ » entre 1 et 9, et rien, nulle part, ne disait ce
+                // qu'est la leçon 5. Un professeur qui vient de faire les
+                // formules en classe veut commencer aux formules ; il devait
+                // ouvrir le jeu neuf fois pour savoir laquelle c'est.
+                // LES NOMS SONT CEUX DES CONSIGNES DU JEU, mot pour mot — voir
+                // `js/games/spreadsheet.js`, la suite des `this.level === n`.
+                // On garde le numéro devant : il reste la seule chose que
+                // l'élève et le professeur voient en commun à l'écran.
+                id: 'startLevel', type: 'select', label: 'Leçon de départ', default: 1,
+                echelle: true,
+                aide: 'Les neuf leçons s\'enchaînent ensuite jusqu\'à la dernière. '
+                    + 'On entre au milieu quand le début a été fait en classe.',
+                options: [
+                    { value: 1, label: '1 — Cliquer sur une case (B3)', court: '1' },
+                    { value: 2, label: '2 — Sélectionner une plage (A1:B2)', court: '2' },
+                    { value: 3, label: '3 — Peindre des cases : le pixel art', court: '3' },
+                    { value: 4, label: '4 — Écrire un nombre dans une case', court: '4' },
+                    { value: 5, label: '5 — La formule qui additionne : =A1+B1', court: '5' },
+                    { value: 6, label: '6 — La formule qui multiplie : =A2*B2', court: '6' },
+                    { value: 7, label: '7 — =SOMME() sur une plage', court: '7' },
+                    { value: 8, label: '8 — =MOYENNE() sur une plage', court: '8' },
+                    { value: 9, label: '9 — La facture : plusieurs formules et le total', court: '9' }
+                ]
+            },
             { id: 'goal', type: 'number', label: 'Réussites par leçon', min: 2, max: 6, default: 3 }
         ],
         skills: ['don.tableur.reperage', 'don.tableur.formules'],
