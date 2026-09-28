@@ -29,6 +29,30 @@
 // APRÈS, sur les quatre grilles et six tailles de fenêtre (390×844, 375×600,
 // 360×640, 320×568, 844×390, 1280×900) : toutes les cases présentes, rapport
 // 1,00 à 1,02, zéro case coupée. `node tools/grilleLisible.mjs` le remesure.
+//
+// « EST-CE DÛ AU MODE APERÇU ? » — la question de Rémy, et la réponse est NON.
+// Mesuré sur le FICHIER D'AVANT, sorti de git et non imité, le binairo à cinq
+// tailles de fenêtre avec et sans le cadre de professeur :
+//
+//     375 × 600  sans cadre : entier      · avec cadre : SIX CASES COUPÉES
+//     375 × 640  sans cadre : SIX COUPÉES · avec cadre : entier
+//     360 × 640  sans cadre : cases de 41 à 46 px de haut — inégales
+//
+// La deuxième ligne suffit à répondre : à 375 × 640 c'est l'aperçu qui SAUVE
+// la grille. Le cadre ne fait que changer la hauteur disponible, et selon la
+// fenêtre il fait passer du bon ou du mauvais côté de la limite. La troisième
+// montre la cause à nu, sans aucun aperçu : des rangées de hauteurs inégales,
+// parce qu'une case vide porte un `<input>` — plus haut qu'un `<span>` — et
+// qu'une piste en `1fr` refuse de descendre sous son contenu. Sur la capture
+// de Rémy, la rangée entièrement DONNÉE est la plus courte des six : c'est
+// cette signature-là.
+//
+// CE QUE JE N'AI PAS PU FAIRE, ET QUI SE DIT : reproduire l'ampleur de sa
+// capture. Chromium donne à ses champs une hauteur intrinsèque plus modeste
+// que Safari ; ici l'écart entre rangées est de cinq pixels, chez lui d'un
+// facteur deux. La correction ne dépend pas du navigateur — les pistes ne
+// consultent plus le contenu du tout — mais c'est sur SON iPhone que la
+// vérification finale se fait.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
