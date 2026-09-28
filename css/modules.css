@@ -2636,9 +2636,42 @@ html[data-point="plus"] .pt-croix { display: none; }
        19 px dans les mots croisés, 64 de 41 px dans l'Othello. À 44 px, une
        grille de dix colonnes ferait 440 px de large sur un écran qui en a 390 :
        on casserait le jeu pour élargir un bouton. */
-    #game-layer button:not(.game-icon-btn):not(.btn-carre):not([class*="case"]):not([class*="cell"]):not([class*="cellule"]):not([class*="touche"]) {
+    #game-layer button:not(.game-icon-btn):not(.btn-carre):not(.fil-pas):not([class*="case"]):not([class*="cell"]):not([class*="cellule"]):not([class*="touche"]) {
         min-height: 44px;
     }
+
+    /* LA FRISE DES ÉTAPES N'EST PAS UNE RANGÉE DE BOUTONS.
+       ====================================================
+       Rémy, capture d'iPhone à l'appui : « même les carrés des étapes sont
+       hyper gros en haut et moche du coup ».
+
+       IL VOYAIT UN DÉFAUT QUE SON ÉLÈVE N'A PAS. Une étape est un trait de
+       8 px — c'est un indicateur d'avancement, pas une commande. Mais en
+       APERÇU DE PROFESSEUR, la frise devient pilotable et ses dix traits
+       deviennent des `<button>` : le plancher ci-dessus les gonflait alors à
+       44 px chacun, et la bande passait de 26 à 53 px. L'élève, lui, a
+       toujours vu des traits.
+
+       LA CIBLE RESTE DE 44 px, ET C'EST LE POINT. `.fil-pas::before` porte
+       déjà une zone de prise qui déborde de 9 px en haut et en bas ; on la
+       pousse à 18 px, ce qui fait 8 + 36 = 44 px de doigt sans un pixel de
+       plus à l'écran. C'est exactement le remède employé pour les trous d'une
+       phrase à trous, mesuré le 27 septembre : la prise grandit, le dessin
+       non. */
+    .fil--pilotable .fil-pas { min-height: 0; }
+    /* ELLE DÉBORDE VERS LE BAS, PAS DES DEUX CÔTÉS. La frise touche le haut
+       de l'écran : au-dessus du trait il n'y a rien à prendre, et une zone
+       symétrique de 18 px gaspillait la moitié de sa hauteur hors de la page.
+       Mesuré par le geste : 4 px au-dessus, 32 px en dessous, plus les 8 px du
+       trait — 44 px de doigt, entièrement dans l'écran. */
+    .fil--pilotable .fil-pas::before { inset: -4px 0 -32px 0; }
+    /* ET LA ZONE DÉBORDANTE DOIT ÊTRE DEVANT. Mesurée par le geste — on vise
+       seize pixels au-dessus du trait et l'on demande au navigateur qui
+       répond —, elle rendait « autre chose » : la bande de la frise vient
+       AVANT l'en-tête dans le document, donc l'en-tête se peint par-dessus,
+       et la prise débordait sous lui. Agrandir une cible sans regarder ce qui
+       la couvre, c'est déplacer le défaut. */
+    .fil--pilotable { position: relative; z-index: 5; }
 
     /* LE CHAMP OÙ L'ÉLÈVE TAPE SA RÉPONSE EST UNE CIBLE, LUI AUSSI.
        ============================================================
