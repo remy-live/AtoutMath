@@ -33,6 +33,18 @@ const GRILLES = [
     ['calc-garam', 'garam']
 ];
 const THEMES = [null, 'dark', 'ocean', 'forest', 'sunset'];
+// LES TAILLES DE FENÊTRE OÙ UNE GRILLE SE CASSE. Ce ne sont pas des tailles
+// choisies pour faire joli : ce sont celles qui serrent le plateau entre la
+// consigne, la palette et les deux boutons. 375 × 600 est celle qui a mangé
+// six cases du binairo.
+const TAILLES = [
+    [390, 844, 'téléphone'],
+    [375, 600, 'iPhone court'],
+    [360, 640, 'Android'],
+    [320, 568, 'le plus petit'],
+    [844, 390, 'couché'],
+    [1280, 900, 'ordinateur']
+];
 /** Le plancher d'un objet graphique : en dessous, le trait n'est pas vu. */
 const PLANCHER_TRAIT = 3;
 /** Un chiffre est du texte : il se lit à 4,5. */
@@ -116,6 +128,31 @@ const MESURE = () => {
     };
 };
 
+// LA GÉOMÉTRIE : autant de cases que la grille en annonce, carrées, et AUCUNE
+// hors du plateau. Le nombre attendu se lit sur le plateau lui-même (`--kk-n`,
+// `--su-n`) ou, à défaut, sur ce que le jeu a écrit — on ne le suppose pas.
+const GEOMETRIE = () => {
+    const plateau = document.querySelector('.kk-board, .su-board, .ga-board');
+    if (!plateau) return { erreur: 'plateau absent' };
+    const st = getComputedStyle(plateau);
+    const r = plateau.getBoundingClientRect();
+    const cases = [...plateau.querySelectorAll('.kk-cell, .su-cell, .ga-cell')];
+    if (!cases.length) return { erreur: 'aucune case' };
+    const rects = cases.map(e => e.getBoundingClientRect());
+    const n = Number(st.getPropertyValue('--kk-n')) || Number(st.getPropertyValue('--su-n')) || 0;
+    const rapports = rects.map(x => x.width / x.height).filter(x => isFinite(x) && x > 0);
+    return {
+        plateau: `${Math.round(r.width)}×${Math.round(r.height)}`,
+        cases: cases.length,
+        // Le garam n'est pas carré : son nombre de cases ne se déduit pas d'un n.
+        attendu: n ? n * n : cases.length,
+        pire: rapports.length
+            ? Math.max(...rapports.map(x => Math.max(x, 1 / x))) : 99,
+        // CE QUI DÉBORDE NE SE VOIT PAS : le plateau est en `overflow: hidden`.
+        coupees: rects.filter(x => x.bottom > r.bottom + 1 || x.right > r.right + 1).length
+    };
+};
+
 const voulu = process.argv[2];
 const aFaire = voulu ? GRILLES.filter(([id]) => id === voulu) : GRILLES;
 if (!aFaire.length) {
@@ -149,9 +186,39 @@ for (const [id, nom] of aFaire) {
     await s.fermer();
 }
 
+// --- ET LA GRILLE TIENT-ELLE ENTIÈRE ? --------------------------------------
+//
+// UNE GRILLE PEUT ÊTRE PARFAITEMENT LISIBLE ET AMPUTÉE. `overflow: hidden` sur
+// le plateau coupe les rangées qui débordent SANS RIEN DIRE : à 375 × 600, le
+// binairo perdait six de ses trente-six cases, et la capture de Rémy montrait
+// six colonnes de cases trois fois trop hautes. Le contraste, lui, était
+// impeccable. Les deux mesures sont donc nécessaires, et aucune ne remplace
+// l'autre.
+console.log('');
+for (const [id, nom] of aFaire) {
+    const s = await ouvrirSonde({ largeur: 390, hauteur: 844 });
+    await s.identifier();
+    const raté = await s.ouvrirExercice(id);
+    if (raté) { console.log(`  ${nom} : ${raté}`); await s.fermer(); manques++; continue; }
+    await dormir(1300);
+    for (const [l, h, quoi] of TAILLES) {
+        await s.page.setViewportSize({ width: l, height: h });
+        await dormir(420);
+        const vu = await s.page.evaluate(GEOMETRIE);
+        if (vu.erreur) { console.log(`  ${nom} : ${vu.erreur}`); manques++; continue; }
+        const mal = vu.coupees > 0 || vu.pire > 1.15 || vu.cases !== vu.attendu;
+        if (mal) manques++;
+        console.log(`  ${mal ? 'RATÉ' : 'ok  '}  ${nom.padEnd(9)} ${quoi.padEnd(13)}`
+            + ` ${String(l + '×' + h).padStart(8)} · plateau ${vu.plateau}`
+            + ` · ${vu.cases}/${vu.attendu} cases · rapport ${vu.pire.toFixed(2)}`
+            + ` · coupées ${vu.coupees}`);
+    }
+    await s.fermer();
+}
+
 console.log(manques
-    ? `\n${manques} mesure(s) sous le plancher (trait ${PLANCHER_TRAIT}, encre ${PLANCHER_ENCRE}).`
-    : '\nLES QUATRE GRILLES SE LISENT DANS LES CINQ THÈMES.');
+    ? `\n${manques} mesure(s) ratée(s) (trait ${PLANCHER_TRAIT}, encre ${PLANCHER_ENCRE}, case carrée et entière).`
+    : '\nLES QUATRE GRILLES SE LISENT ET TIENNENT ENTIÈRES.');
 process.exit(manques ? 1 : 0);
 
 // (la fonction MESURE est déclarée en tête du fichier, avant l'emploi)

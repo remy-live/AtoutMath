@@ -5819,7 +5819,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     .kenken-layout { gap: 6px; padding: 8px 6px; }
     /* Sur écran court, ce qui entoure la grille est plus maigre — la consigne
        tient en deux lignes, les gouttières fondent : on lui rend la place. */
-    .su-board { width: min(500px, 92cqw, max(170px, 100cqh - 272px)); }
+    .su-board { --su-largeur: min(500px, 92cqw, max(170px, 100cqh - 272px)); }
 }
 
 /* LA GRILLE EST DU PAPIER, PAS UN PANNEAU DE L'INTERFACE.
@@ -5859,12 +5859,52 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     --kk-encre-donnee: #0f172a;   /* ce qui lui est donné */
     --kk-donnee: #f1f5f9;
     display: grid;
-    grid-template-columns: repeat(var(--kk-n), 1fr);
-    /* Les lignes aussi en `1fr` : laissées en `auto`, leur hauteur suivait le
-       CONTENU — la ligne portant un grand chiffre devenait plus haute que les
-       lignes vides, et la grille n'était plus carrée case par case. */
-    grid-template-rows: repeat(var(--kk-n), 1fr);
-    width: min(440px, 94cqw, 54cqh);
+    /* `minmax(0, 1fr)` ET NON `1fr` : ce sont deux choses différentes, et la
+       différence a mangé la moitié d'une grille.
+
+       `1fr` vaut `minmax(auto, 1fr)` : une piste refuse alors de descendre
+       sous la hauteur de son CONTENU. MESURÉ sur le binairo à 375 × 600, en
+       aperçu de professeur : le plateau fait 259 px de haut, ses six rangées
+       en réclament 276, elles débordent de 23 px — et `overflow: hidden` en
+       coupe SIX CASES sans rien dire. Rémy en a envoyé la capture : six
+       colonnes, des cases trois fois plus hautes que larges, la grille
+       tronquée. La faute est invisible à la lecture du code : la grille est
+       bien carrée, c'est la BOÎTE qui l'est et pas les pistes.
+
+       Le garam porte déjà cette correction, avec la même phrase : « sans
+       `min-height: 0`, une case de grille refuse de descendre sous la hauteur
+       de son chiffre ». Elle manquait aux trois autres. */
+    grid-template-columns: repeat(var(--kk-n), minmax(0, 1fr));
+    /* Les lignes aussi : laissées en `auto`, leur hauteur suivait le CONTENU —
+       la ligne portant un grand chiffre devenait plus haute que les lignes
+       vides, et la grille n'était plus carrée case par case. */
+    grid-template-rows: repeat(var(--kk-n), minmax(0, 1fr));
+    /* LA LARGEUR RETENUE, NOMMÉE : les chiffres s'y accrochent.
+       Ils se calaient sur `cqh`, la hauteur du PLATEAU DE JEU — c'est-à-dire
+       sur quelque chose qui n'a aucun rapport avec la taille d'une case. Une
+       fenêtre haute et étroite donnait donc un chiffre trop gros pour sa case,
+       la case repoussait sa piste, et la grille débordait. Le garam porte la
+       même ligne, `--ga-largeur`, pour la même raison. */
+    /* ET ELLE LAISSE LA PLACE À CE QUI L'ENTOURE. `54cqh` ne regardait que la
+       hauteur du plateau, jamais celle de la consigne, de la palette, des deux
+       boutons et de la ligne d'état — qui pèsent ensemble une trentaine de
+       pixels de plus que ce que la grille leur laissait. MESURÉ sur trente
+       conditions : « Valider » tombait SOUS le bas de l'écran dans onze
+       d'entre elles, jusqu'à 125 px, et toujours en aperçu de professeur, où
+       le cadre de téléphone rogne encore la hauteur. Le sudoku porte cette
+       soustraction depuis un défaut identique (voir `.su-board`).
+
+       LE PLANCHER DE 264 px N'EST PAS DÉCORATIF : c'est six cases de 44 px,
+       le plancher tactile du dépôt. Une première version descendait à 170 et
+       corrigeait les onze boutons — mais elle ramenait la grille du binairo
+       de 46 à 35 px par case SUR LE TÉLÉPHONE DE L'ÉLÈVE, où le bouton ne
+       sortait pas. Corriger l'aperçu du professeur en rognant ce que l'élève
+       touche, c'est déplacer le défaut sur celui qui ne se plaint pas.
+       Ce qui reste hors de l'écran s'atteint en DÉFILANT — mesuré : le
+       conteneur `.canvas-area` défile dans chacun de ces cas, et il porte
+       déjà son indice de défilement. */
+    --kk-largeur: min(440px, 94cqw, max(264px, 100cqh - 300px));
+    width: var(--kk-largeur);
     aspect-ratio: 1;
     background: var(--kk-papier);
     border: 3px solid var(--kk-cage); border-radius: 10px;
@@ -5878,7 +5918,15 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
        portent pas les jetons du mathdoku. Un `var()` sans repli y devient
        invalide et emporte la déclaration entière — bordure comprise. */
     border: 1px solid var(--kk-trait, #7f8da0);
-    font-size: clamp(1.15rem, 5.2cqh, 2rem); font-weight: 800;
+    /* La piste peut rétrécir (voir `minmax(0, 1fr)` ci-dessus) ; il faut que la
+       CASE le puisse aussi, sans quoi elle repousse la piste par en dessous. */
+    min-height: 0; min-width: 0; overflow: hidden;
+    /* LE CHIFFRE SE MESURE À LA CASE, pas à la fenêtre : largeur du plateau
+       divisée par le nombre de colonnes, un peu plus de la moitié. Les replis
+       servent au garam et au sudoku, qui empruntent `.kk-cell` sans porter ces
+       jetons — et qui redéclarent leur propre taille juste après. */
+    font-size: clamp(.8rem, calc(var(--kk-largeur, 440px) / var(--kk-n, 4) * .52), 2rem);
+    font-weight: 800;
     color: var(--kk-encre, #2563eb); cursor: pointer; user-select: none;
     transition: background .15s ease;
 }
@@ -5975,7 +6023,7 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 /* Plateau court (téléphone en paysage, vignette) : la grille cède en premier. */
 @container plateau (max-height: 500px) {
     .kenken-layout { gap: 6px; padding: 6px; }
-    .kk-board { width: min(300px, 90cqw, 62cqh); }
+    .kk-board { --kk-largeur: min(300px, 90cqw, max(150px, 100cqh - 230px)); }
 }
 
 /* --- LES PROPOSITIONS DU PAVÉ ---------------------------------
@@ -6434,8 +6482,10 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
    l'élève s'écrivent en bleu, les données en noir. */
 .su-board {
     display: grid;
-    grid-template-columns: repeat(var(--su-n), 1fr);
-    grid-template-rows: repeat(var(--su-n), 1fr);
+    /* `minmax(0, 1fr)` : même raison qu'au mathdoku, et le sudoku y est plus
+       exposé encore — neuf rangées au lieu de quatre. */
+    grid-template-columns: repeat(var(--su-n), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--su-n), minmax(0, 1fr));
     /* LA GRILLE LAISSE LA PLACE À CE QUI L'ENTOURE.
        `72cqh` ne regardait que la hauteur du plateau, jamais celle de ce qui
        vit au-dessus et en dessous : la consigne, la palette, les actions, la
@@ -6446,7 +6496,10 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
        À 360 × 640, 46 px dessous.
        Ces cinq-là pèsent environ 318 px, gouttières et remplissage compris. On
        les retire, avec un plancher pour que la grille reste une grille. */
-    width: min(500px, 92cqw, max(200px, 100cqh - 330px));
+    /* Même jeton qu'au mathdoku, et pour la même raison : les chiffres se
+       calent sur la case, donc sur la largeur RETENUE du plateau. */
+    --su-largeur: min(500px, 92cqw, max(200px, 100cqh - 330px));
+    width: var(--su-largeur);
     aspect-ratio: 1;
     border: 3px solid #0f172a; border-radius: 10px; overflow: hidden;
     background: var(--bg-panel); box-shadow: var(--shadow-md);
@@ -6464,7 +6517,8 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     border-radius: 0;
     background: #fff;
     font-weight: 800; color: #2563eb;
-    font-size: clamp(.9rem, calc(38cqh / var(--su-n)), 1.6rem);
+    min-height: 0; min-width: 0; overflow: hidden;
+    font-size: clamp(.7rem, calc(var(--su-largeur, 500px) / var(--su-n) * .52), 1.6rem);
 }
 .su-cell.kk-given { color: #0f172a; background: #f1f5f9; }
 .su-cell.su-br { border-right: 3px solid #0f172a; }

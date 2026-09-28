@@ -624,3 +624,29 @@ manque.
   dans les onze conditions balayées. Ce qui manquait était le CONTRASTE du
   quadrillage — 1,23 à 1,56 selon le thème. « Pas lisible » disait littéralement
   ce qu'il fallait mesurer, et j'ai cherché une déformation pendant deux sondes.
+
+## **`1fr` n'est pas `minmax(0, 1fr)`, et la différence se mange en silence** — 2026-09-28
+
+- **Ce que je voulais faire** : comprendre la capture de Rémy — un binairo à six
+  colonnes, cases trois fois plus hautes que larges, grille tronquée.
+- **Ce qui a coûté** : rien en temps, et c'est ce qui rend l'entrée utile. Le
+  défaut était mesurable en trente secondes une fois la bonne question posée —
+  mais la bonne question n'était pas « la grille est-elle carrée », c'était
+  « toutes les cases sont-elles DANS le plateau ». `repeat(n, 1fr)` vaut
+  `repeat(n, minmax(auto, 1fr))` : une piste refuse de descendre sous son
+  contenu, la grille déborde de son `aspect-ratio`, et `overflow: hidden` coupe
+  le bas **sans rien signaler**. Six cases sur trente-six disparaissaient, et
+  aucune mesure du plateau ne le disait : il faisait bien 259 × 259.
+- **Et le dépôt savait déjà** : `.ga-cell` porte `min-height: 0` depuis un
+  défaut identique, avec la phrase exacte. Trois grilles sur quatre ne l'avaient
+  pas. La connaissance était écrite au bon endroit — dans le bloc du garam — et
+  personne ne va lire le bloc du garam en corrigeant le binairo.
+- **Combien de fois** : ||
+- **Ce qui manque** : une mesure qui compte ce qui SORT, pas seulement ce qui
+  est. `tools/grilleLisible.mjs` le fait maintenant (`coupees`), et il balaie
+  six tailles de fenêtre. La règle générale vaut au-delà des grilles : **quand
+  un conteneur est en `overflow: hidden`, mesurer ce qu'il contient ne suffit
+  pas — il faut compter ce qu'il a jeté.**
+- **Au passage, et c'est le même geste** : le même balayage a montré que
+  « Valider » tombait sous l'écran dans onze conditions sur trente. Une sonde
+  qui change de taille de fenêtre voit des choses qu'aucune relecture ne voit.
