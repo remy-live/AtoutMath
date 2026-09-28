@@ -5822,7 +5822,42 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     .su-board { width: min(500px, 92cqw, max(170px, 100cqh - 272px)); }
 }
 
+/* LA GRILLE EST DU PAPIER, PAS UN PANNEAU DE L'INTERFACE.
+   Rémy, capture à l'appui, en thème Forêt : « pas lisible ». Ce n'était pas la
+   géométrie — onze conditions balayées, la grille est carrée partout, seize
+   cases et quatre rangées, rapport 1,00. C'était le QUADRILLAGE : il prenait
+   `--border`, un jeton fait pour border un panneau. MESURÉ sur la grille
+   réelle, contraste du trait fin sur le fond de la case :
+
+       clair 1,23 · sombre 1,41 · océan 1,56 · forêt 1,34 · couchant 1,44
+
+   Un pixel à 1,3, c'est un trait qu'on ne voit pas : les cases fondaient en
+   gros blocs, et les rares morceaux de vert qui survivaient ressemblaient à
+   des marques égarées — ce que la capture montre exactement. Le trait de cage,
+   lui, était à 10,98 : huit fois plus fort, ce qui achevait de faire lire les
+   cages comme si elles étaient les cases.
+
+   ET EN THÈME SOMBRE, TOUT DISPARAISSAIT : le #2c3e50 des cages tombait à 1,33
+   sur `--bg-panel`, le texte de case devenait blanc sur des fonds d'état codés
+   en clair. Une grille de chiffres n'a pas à suivre les humeurs du thème.
+
+   LE DÉPÔT A DÉJÀ TRANCHÉ CETTE QUESTION : `.su-cell` (sudoku) et `.ga-cell`
+   (garam) se peignent leur propre papier — fond blanc, traits fixes, encre
+   bleue pour ce que l'élève pose, encre noire pour ce qui lui est donné. Le
+   mathdoku était le seul des trois à emprunter les jetons du thème. Il rejoint
+   ses frères, et les trois puzzles se ressemblent enfin. */
 .kk-board {
+    --kk-papier: #fff;
+    /* 1 px à 3,1 DANS LE PIRE CAS : le minimum qu'un objet graphique demande
+       pour être vu. Le pire cas, c'est le trait entre deux cases DONNÉES, dont
+       le fond gris lui mange un demi-point — 3,40 sur le papier blanc, 3,10
+       sur le gris. La hiérarchie avec la cage ne tient pas à la couleur seule,
+       elle tient à l'ÉPAISSEUR : 1 px gris contre 3 px presque noirs. */
+    --kk-trait: #7f8da0;
+    --kk-cage: #0f172a;
+    --kk-encre: #2563eb;          /* ce que l'élève pose */
+    --kk-encre-donnee: #0f172a;   /* ce qui lui est donné */
+    --kk-donnee: #f1f5f9;
     display: grid;
     grid-template-columns: repeat(var(--kk-n), 1fr);
     /* Les lignes aussi en `1fr` : laissées en `auto`, leur hauteur suivait le
@@ -5831,40 +5866,51 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     grid-template-rows: repeat(var(--kk-n), 1fr);
     width: min(440px, 94cqw, 54cqh);
     aspect-ratio: 1;
-    background: var(--bg-panel);
-    border: 3px solid #2c3e50; border-radius: 10px;
+    background: var(--kk-papier);
+    border: 3px solid var(--kk-cage); border-radius: 10px;
     box-shadow: var(--shadow-md);
     overflow: hidden;
 }
 .kk-cell {
     position: relative; display: flex; align-items: center; justify-content: center;
-    border: 1px solid var(--border);
+    /* LES REPLIS SONT NÉCESSAIRES, PAS DÉCORATIFS : `.kk-cell` sert aussi au
+       garam et au sudoku, dont les plateaux (`.ga-board`, `.su-board`) ne
+       portent pas les jetons du mathdoku. Un `var()` sans repli y devient
+       invalide et emporte la déclaration entière — bordure comprise. */
+    border: 1px solid var(--kk-trait, #7f8da0);
     font-size: clamp(1.15rem, 5.2cqh, 2rem); font-weight: 800;
-    color: var(--text-main); cursor: pointer; user-select: none;
+    color: var(--kk-encre, #2563eb); cursor: pointer; user-select: none;
     transition: background .15s ease;
 }
 .kk-cell:hover { background: color-mix(in srgb, var(--primary) 7%, transparent); }
 .kk-cell:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
 
 /* Bordures de cage : le dessin qui structure le puzzle. */
-.kk-bt { border-top: 3px solid #2c3e50; }
-.kk-br { border-right: 3px solid #2c3e50; }
-.kk-bb { border-bottom: 3px solid #2c3e50; }
-.kk-bl { border-left: 3px solid #2c3e50; }
+.kk-bt { border-top: 3px solid var(--kk-cage); }
+.kk-br { border-right: 3px solid var(--kk-cage); }
+.kk-bb { border-bottom: 3px solid var(--kk-cage); }
+.kk-bl { border-left: 3px solid var(--kk-cage); }
 
 .kk-label {
     position: absolute; top: 2px; left: 5px;
     font-size: clamp(.6rem, 1.9cqh, .8rem); font-weight: 700;
-    color: var(--text-muted); letter-spacing: .02em; pointer-events: none;
+    /* L'étiquette de cage (« 4+ ») est du papier elle aussi : en `--text-muted`
+       elle devenait BLANCHE en thème sombre, donc invisible sur la grille. */
+    color: #475569; letter-spacing: .02em; pointer-events: none;
 }
 
-/* Cases données et révélées : remplies pour l'élève, intouchables. */
-.kk-given { background: color-mix(in srgb, var(--primary) 10%, var(--bg-app)); cursor: default; }
-.kk-given:hover { background: color-mix(in srgb, var(--primary) 10%, var(--bg-app)); }
-.kk-revealed { background: color-mix(in srgb, var(--warning) 16%, var(--bg-app)); cursor: default; }
+/* Cases données et révélées : remplies pour l'élève, intouchables.
+   ELLES CHANGENT AUSSI D'ENCRE, et c'est une lecture que l'élève n'avait pas :
+   ce qu'il a posé lui-même est en bleu, ce que la grille lui donne est en noir
+   sur fond gris — comme au sudoku et au garam. */
+.kk-given { background: var(--kk-donnee, #f1f5f9); color: var(--kk-encre-donnee, #0f172a); cursor: default; }
+.kk-given:hover { background: var(--kk-donnee, #f1f5f9); }
+.kk-revealed { background: #fef3c7; color: var(--kk-encre-donnee, #0f172a); cursor: default; }
 
-/* Marques du vérificateur et des indices — effacées à la moindre édition. */
-.kk-cell--conflit .kk-val { color: var(--danger-texte); text-decoration: underline wavy var(--danger) 2px; }
+/* Marques du vérificateur et des indices — effacées à la moindre édition.
+   Teintes fixes : posées sur le papier, elles ne peuvent pas suivre le thème
+   sans devenir illisibles la moitié du temps. */
+.kk-cell--conflit .kk-val { color: #b91c1c; text-decoration: underline wavy #dc2626 2px; }
 .kk-cage--faux { background: #fee2e2; }
 .kk-cage--indice { background: #fef3c7; box-shadow: inset 0 0 0 3px var(--warning); }
 /* LA ZONE QUI EXPLIQUE LE COUP au mathdoku : la cage, la ligne ou la colonne
@@ -5872,8 +5918,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    case visée. */
 .kk-cell.kk-zone { background: #c7d7fe; }
 .kk-cell.kk-zone.kk-cage--indice { background: #fef3c7; }
-.kk-cell--visee { background: color-mix(in srgb, var(--primary) 18%, transparent); }
-.kk-cell--corrige .kk-val { color: var(--success-texte); }
+.kk-cell--visee { background: #dbe4ff; }
+.kk-cell--corrige .kk-val { color: #047857; }
 .kk-board--ok { border-color: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 35%, transparent); }
 .kk-board--secoue { animation: kkSecoue .35s ease; }
 @keyframes kkSecoue {
@@ -6407,7 +6453,14 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 }
 .su-cell {
     border: none;
-    border-right: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;
+    /* MÊME TRAIT QUE LE MATHDOKU, ET POUR LA MÊME RAISON. En corrigeant le
+       quadrillage du mathdoku, `tools/grilleLisible.mjs` a mesuré les trois
+       autres grilles au passage : le sudoku était à 1,36 — le défaut exact dont
+       Rémy disait « pas lisible », déjà là, sur un jeu dont il n'avait pas
+       parlé. Le #cbd5e1 est une couleur de séparateur d'interface ; un
+       quadrillage de puzzle se compte à l'oeil, case par case. 3,13 après. */
+    border-right: 1px solid var(--kk-trait, #7f8da0);
+    border-bottom: 1px solid var(--kk-trait, #7f8da0);
     border-radius: 0;
     background: #fff;
     font-weight: 800; color: #2563eb;

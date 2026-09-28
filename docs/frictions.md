@@ -600,3 +600,27 @@ manque.
   `__runnerAtelier`). La quatrième aurait été une de trop.
   L'outil existe désormais : `tools/apercuDeLAtelier.mjs`, qui encode les trois
   erreurs ci-dessus pour ne pas les repayer.
+
+## **Une sonde qui choisit ses éléments par leur TAILLE mesure la décoration** — 2026-09-28
+
+- **Ce que je voulais faire** : trouver dans quelle condition la grille du
+  mathdoku s'écrase, après « pas lisible » et une capture.
+- **Ce qui a coûté** : une sonde entière écrite, lancée sur sept conditions, et
+  **sept verdicts « RATÉ » dont deux que j'avais vérifiés à l'oeil comme
+  corrects**. Elle prenait `plateau.querySelectorAll('*')` filtré par la
+  taille : sur seize cases, cela ramassait trente-huit éléments — étiquettes de
+  cage, bordures, marques d'état. Les « 8 à 11 rangées » et les « rapports de
+  1,27 à 3,23 » décrivaient des décorations, pas des cases. Il a fallu que je
+  compare le verdict à une capture que je venais de regarder pour m'en rendre
+  compte ; sans cette capture, je corrigeais un défaut qui n'existait pas.
+- **Combien de fois** : |
+- **Ce qui manque** : rien d'outillable, une règle. **Une sonde nomme ce qu'elle
+  mesure.** Choisir par la géométrie (« ce qui fait plus de 8 px ») paraît
+  robuste — « je ne suppose rien sur les noms de classe » — et c'est l'inverse :
+  la géométrie ne distingue pas une case d'une étiquette, et le filtre invente
+  un peuplement. Le jeu écrit `class="kk-cell"` sur chaque case ; c'est ce
+  sélecteur-là qu'il fallait, et il donnait seize cases carrées.
+- **Et le défaut, lui, n'était pas où je le cherchais** : la grille est carrée
+  dans les onze conditions balayées. Ce qui manquait était le CONTRASTE du
+  quadrillage — 1,23 à 1,56 selon le thème. « Pas lisible » disait littéralement
+  ce qu'il fallait mesurer, et j'ai cherché une déformation pendant deux sondes.
