@@ -455,7 +455,9 @@ export class ProgrammeConstruction extends BaseGame {
                     font: inherit; font-weight: 600; padding: 7px 12px;
                     font-size: clamp(12px, 2.3cqw, 15px); line-height: 1.3;
                 }
-                .pc-mot:hover { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .pc-mot:hover { border-color: var(--primary); color: var(--primary); }
+                }
                 /* UNE LETTRE EST UNE CIBLE CARRÉE : « A » dans un bouton taillé
                    pour « le cercle de centre » se cherche du doigt. */
                 .pc-mot--lettre { min-width: 44px; text-align: center; font-weight: 800; }
@@ -465,7 +467,9 @@ export class ProgrammeConstruction extends BaseGame {
                     border: 0; background: transparent; color: var(--text-muted); cursor: pointer;
                     font: inherit; font-size: clamp(11px, 2.1cqw, 13px); padding: 4px 8px;
                 }
-                .pc-retour:hover { color: var(--text-main); }
+                @media (hover: hover) {
+                    .pc-retour:hover { color: var(--text-main); }
+                }
                 .pc-lignes { display: flex; flex-direction: column; gap: 0; font-size: clamp(10px, 2cqw, 12.5px); }
                 .pc-l { display: flex; gap: 6px; line-height: 1.55;
                     font-size: clamp(12px, 2.3cqw, 15px); min-height: 1.55em; }
@@ -504,7 +508,9 @@ export class ProgrammeConstruction extends BaseGame {
                    il n'y a pas de survol, et une commande qu'on ne voit pas
                    n'existe pas. */
                 .pc-posee-x { flex: 0 0 auto; color: var(--text-muted); font-weight: 700; }
-                .pc-posee:hover .pc-posee-x { color: var(--danger); }
+                @media (hover: hover) {
+                    .pc-posee:hover .pc-posee-x { color: var(--danger); }
+                }
                 .pc-banque { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
                 .pc-carte {
                     border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
@@ -512,9 +518,13 @@ export class ProgrammeConstruction extends BaseGame {
                     font: inherit; padding: 6px 10px; font-size: clamp(11px, 2.2cqw, 14px);
                     line-height: 1.35; text-align: left;
                 }
-                .pc-carte:hover { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .pc-carte:hover { border-color: var(--primary); color: var(--primary); }
+                }
                 .pc-carte--posee { opacity: .38; cursor: default; }
-                .pc-carte--posee:hover { border-color: var(--border-color, #d7dae3); color: var(--text-main); }
+                @media (hover: hover) {
+                    .pc-carte--posee:hover { border-color: var(--border-color, #d7dae3); color: var(--text-main); }
+                }
                 .pc-modeles { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
                 .pc-ajout {
                     border: 1.5px dashed var(--primary); border-radius: 10px; cursor: pointer;

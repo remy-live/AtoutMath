@@ -730,3 +730,24 @@ manque.
 - **Ce qui manque** : une habitude. **Un lot de remplacements vise UN fichier ;
   deux fichiers, deux appels.** Et relire la dernière ligne de l'outil, pas la
   première : « RIEN n'est écrit » y est écrit en toutes lettres.
+
+## **Une règle CSS ordinaire a maintenant un `cssRules`, et ma sonde a compté zéro** — 2026-09-28
+
+- **Ce que je voulais faire** : compter, dans le navigateur, combien de règles
+  `:hover` s'appliquent encore sur un téléphone.
+- **Ce qui a coûté** : une sonde qui rendait « 0 vivantes, 0 éteintes » sur des
+  feuilles de 2 724 règles. Elle triait ainsi : si la règle a un `media`, c'est
+  une requête ; SINON si elle a un `cssRules`, c'est un conteneur ; sinon c'est
+  une règle. Or depuis l'imbrication CSS, **toute** `CSSStyleRule` porte un
+  `cssRules` (vide). La deuxième branche avalait donc toutes les règles
+  ordinaires et descendait dans une liste vide.
+- **Combien de fois** : |
+- **Ce qui l'a rattrapé** : un zéro trop rond. « 0 et 0 » sur sept feuilles
+  chargées n'est pas un résultat, c'est une panne — et la sonde a été rouverte
+  au lieu d'être crue. Le premier réflexe utile a été de faire dire à la sonde
+  COMBIEN de règles elle voyait par feuille : 17, 96, 1085… donc elle lisait
+  bien, et le tri était en cause.
+- **Ce qui manque** : une règle de tri. **On teste ce qu'un objet EST avant de
+  tester ce qu'il CONTIENT** — `selectorText` avant `cssRules`. Un test par
+  présence de propriété vieillit mal : la plateforme ajoute des propriétés, et
+  la branche qu'on croyait étroite devient la branche générale.

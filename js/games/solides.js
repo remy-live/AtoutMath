@@ -171,7 +171,9 @@ class Solides extends BaseGame {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
                     font: inherit; font-weight: 800; font-size: 1rem;
                 }
-                .sd-touche:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .sd-touche:hover { background: var(--bg-hover); }
+                }
                 .sd-ecran {
                     min-width: 66px; text-align: center; font-weight: 800; font-size: 1.25rem;
                     border: 2px solid var(--primary); border-radius: 10px; padding: 5px 10px;

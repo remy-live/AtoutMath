@@ -57,7 +57,9 @@ class CompteEstBon extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .cb-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .cb-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                }
                 .cb-btn:disabled { opacity: .4; cursor: default; }
 
                 /* LE BUT, ÉNORME. C'est le seul nombre qu'on regarde pendant
@@ -107,7 +109,10 @@ class CompteEstBon extends BaseGame {
                     border: 2px solid var(--border); background: var(--bg-panel);
                     color: var(--text-main); font-size: 22px; font-weight: 800;
                 }
-                .cb-signe:hover, .cb-signe--choisi { background: var(--primary); color: #fff; }
+                .cb-signe--choisi { background: var(--primary); color: #fff; }
+                @media (hover: hover) {
+                    .cb-signe:hover { background: var(--primary); color: #fff; }
+                }
 
                 /* LA LIGNE EN COURS : « 75 × 4 = [  ] ». */
                 .cb-ligne {

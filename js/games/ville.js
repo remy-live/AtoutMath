@@ -139,7 +139,9 @@ class Ville extends BaseGame {
                 .vi-voiture { transition: transform .42s cubic-bezier(.4,.1,.2,1); }
                 .vi-voiture--stop { transition: none; }
                 .vi-cible { cursor: pointer; }
-                .vi-cible:hover circle:last-child { opacity: .5; }
+                @media (hover: hover) {
+                    .vi-cible:hover circle:last-child { opacity: .5; }
+                }
 
                 .vi-cmds {
                     display: flex; gap: 10px; justify-content: center;
@@ -196,7 +198,9 @@ class Ville extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .vi-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .vi-btn:hover { background: var(--bg-hover); }
+                }
             </style>
             <div class="vi-wrap">
                 <div class="vi-haut">

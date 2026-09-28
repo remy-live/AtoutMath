@@ -344,7 +344,9 @@ function assurerPanneau() {
                 border-radius: 9px; padding: 6px 10px; font: inherit; font-size: .8rem;
                 cursor: pointer; min-height: 34px; flex: 0 0 auto;
             }
-            .atl-pas:hover { background: var(--bg-hover); }
+            @media (hover: hover) {
+                .atl-pas:hover { background: var(--bg-hover); }
+            }
             .atl-pas:disabled { opacity: .35; cursor: default; }
 
             /* TROIS VOLETS ET UN RAIL, ET CHACUN S'ÉTEINT.
@@ -390,7 +392,9 @@ function assurerPanneau() {
                 cursor: pointer; font-size: .9rem; line-height: 1; padding: 3px 5px;
                 border-radius: 6px;
             }
-            .atl-volet-tete .atl-mini:hover { background: var(--bg-hover); color: var(--text-main); }
+            @media (hover: hover) {
+                .atl-volet-tete .atl-mini:hover { background: var(--bg-hover); color: var(--text-main); }
+            }
             .atl-volet-tete .atl-espace { margin-left: auto; }
             .atl-cadre { flex: 1 1 auto; width: 100%; border: 0; background: #fff; min-height: 0; }
             .atl-eteint {
@@ -423,8 +427,9 @@ function assurerPanneau() {
                 background: transparent; color: var(--text-main);
                 font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer;
             }
-            .atl-rang-select:hover, .atl-rang-select:focus {
-                border-color: var(--border); background: var(--bg-app);
+            .atl-rang-select:focus { border-color: var(--border); background: var(--bg-app); }
+            @media (hover: hover) {
+                .atl-rang-select:hover { border-color: var(--border); background: var(--bg-app); }
             }
             .atl-diff {
                 font-size: .66rem; font-weight: 800; letter-spacing: .02em;

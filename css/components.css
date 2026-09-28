@@ -141,7 +141,9 @@
     font: inherit; font-weight: 700; font-size: .95rem; cursor: pointer;
     transition: background .15s ease, color .15s ease;
 }
-.prof-onglet-btn:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+@media (hover: hover) {
+    .prof-onglet-btn:hover { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+}
 .prof-onglet-btn--actif { background: var(--primary); color: #fff; }
 /* Le compteur DIT S'IL Y A QUELQUE CHOSE À VOIR avant qu'on clique. Vide, il
    disparaît : un « 0 » posé sur un onglet se lit comme une erreur. */
@@ -400,7 +402,9 @@ body.mobile-view #toast-container {
     color: var(--text-main); border-radius: 9px; cursor: pointer;
     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
 }
-.jeu-btn:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .jeu-btn:hover { background: var(--bg-hover); }
+}
 
 /* LE BOUTON D'AIDE. Même mot, même ampoule, même couleur, partout — c'est
    ce qui permet de le reconnaître sans le relire. */
@@ -412,7 +416,9 @@ body.mobile-view #toast-container {
     font-size: clamp(12px, 2.9cqw, 15px); padding: 7px 16px; cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
-.jeu-aide:hover { background: color-mix(in srgb, var(--primary) 18%, var(--bg-panel)); }
+@media (hover: hover) {
+    .jeu-aide:hover { background: color-mix(in srgb, var(--primary) 18%, var(--bg-panel)); }
+}
 .jeu-aide svg { flex: 0 0 auto; }
 
 .jeu-pave {
@@ -473,7 +479,9 @@ body.mobile-view #toast-container {
     transition: all .22s cubic-bezier(.4, 0, .2, 1);
     -webkit-tap-highlight-color: transparent;
 }
-.jeu-carte:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px color-mix(in srgb, var(--primary) 42%, transparent); }
+@media (hover: hover) {
+    .jeu-carte:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px color-mix(in srgb, var(--primary) 42%, transparent); }
+}
 .jeu-carte:active:not(:disabled) { transform: translateY(2px) scale(.98); }
 .jeu-carte:disabled { cursor: default; }
 .jeu-carte--ok { background: linear-gradient(135deg, #34d399, #16a34a); box-shadow: 0 8px 20px rgba(22, 163, 74, .4); }
@@ -653,7 +661,9 @@ body.mobile-view #toast-container {
 /* La classe n'est posée qu'à la souris — voir bandeauOutils.js. Au doigt la
    ligne est du texte, et rien ne doit laisser croire le contraire. */
 .bandeau-outils-item--cliquable { cursor: pointer; }
-.bandeau-outils-item--cliquable:hover { background: var(--bg-app); }
+@media (hover: hover) {
+    .bandeau-outils-item--cliquable:hover { background: var(--bg-app); }
+}
 /* L'icône est la COPIE du bouton : elle garde sa taille d'origine, qu'on ramène
    ici à celle d'un mot pour qu'elles s'alignent toutes. */
 .bandeau-outils-item svg {
@@ -672,7 +682,9 @@ body.mobile-view #toast-container {
     color: var(--text-muted); cursor: pointer;
     background: var(--bg-panel); border: 1px solid var(--border); border-radius: 999px;
 }
-.bandeau-outils-compris:hover { color: var(--text-main); border-color: var(--text-muted); }
+@media (hover: hover) {
+    .bandeau-outils-compris:hover { color: var(--text-main); border-color: var(--text-muted); }
+}
 /* LE PLANCHER TACTILE NE VAUT QUE POUR CE QUI SE CLIQUE. Au doigt, les lignes
    sont du texte — elles ne portent pas de geste, elles n'ont donc pas de cible
    à offrir. « J'ai compris », lui, se vise, une seule fois, sans relire. */

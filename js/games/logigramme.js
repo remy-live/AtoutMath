@@ -89,7 +89,9 @@ class Logigramme extends BaseGame {
                     background: var(--bg-panel); font-weight: 800; user-select: none;
                     -webkit-tap-highlight-color: transparent; line-height: 1;
                 }
-                .lg-case--vide:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .lg-case--vide:hover { background: var(--bg-hover); }
+                }
                 .lg-case--non { color: var(--danger, #dc2626); }
                 .lg-case--oui { color: var(--success, #16a34a); background: color-mix(in srgb, var(--success, #16a34a) 12%, var(--bg-panel)); }
                 .lg-case--faute { animation: lg-faute .5s ease 3; }
@@ -131,7 +133,9 @@ class Logigramme extends BaseGame {
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700;
                     font-size: .84rem; padding: 7px 14px;
                 }
-                .lg-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .lg-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                }
                 .lg-btn--valider { border-color: var(--primary); background: var(--primary); color: #fff; }
                 .lg-note {
                     min-height: 2.4em; text-align: center; font-size: .86rem;

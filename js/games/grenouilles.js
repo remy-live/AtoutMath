@@ -91,7 +91,9 @@ class Grenouilles extends BaseGame {
                 /* Une grenouille qui PEUT bouger se touche ; les autres non, et
                    cela se voit avant d'essayer. */
                 .gr-pad--jouable { cursor: pointer; }
-                .gr-pad--jouable:hover { filter: brightness(1.06); }
+                @media (hover: hover) {
+                    .gr-pad--jouable:hover { filter: brightness(1.06); }
+                }
                 .gr-pad--montre { box-shadow: 0 0 0 4px rgba(183, 121, 31, .55); }
                 .gr-pad svg { width: 78%; height: 78%; display: block; }
                 /* La flèche du sens autorisé : la règle, écrite sur la bête. */

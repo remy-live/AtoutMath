@@ -110,7 +110,9 @@ class ThalesRedaction extends BaseGame {
                     font: inherit; font-weight: 600; font-size: .88rem; padding: 7px 11px;
                     line-height: 1.3;
                 }
-                .thr-opt:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .thr-opt:hover { border-color: var(--primary); }
+                }
                 .thr-opt--pris { border-color: var(--success); background: rgba(22,163,74,.12); }
                 .thr-opt--faux { border-color: var(--danger); background: rgba(220,38,38,.1); opacity: .7; }
 
@@ -150,7 +152,9 @@ class ThalesRedaction extends BaseGame {
                     cursor: pointer; min-height: 38px; line-height: 1.2;
                     display: flex; align-items: center; justify-content: center;
                 }
-                .thr-case--trou:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .thr-case--trou:hover { border-color: var(--primary); }
+                }
                 /* LA CASE VISÉE SE VOIT DE LOIN. C'est elle qui recevra la
                    prochaine étiquette : sans repère, on touche une longueur et
                    l'on ne sait pas où elle est allée. */
@@ -171,7 +175,9 @@ class ThalesRedaction extends BaseGame {
                     background: var(--bg-panel); color: var(--text-main); font: inherit;
                     font-weight: 800; font-size: .84rem; padding: 5px 10px; min-height: 32px;
                 }
-                .thr-eti:hover { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .thr-eti:hover { border-color: var(--primary); color: var(--primary); }
+                }
 
                 .thr-resultat { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
                 .thr-nb {

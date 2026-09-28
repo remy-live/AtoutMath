@@ -71,7 +71,9 @@ class Problemes extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .pb-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .pb-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* L'ÉNONCÉ. Une carte, pas un paragraphe perdu : c'est le texte
                    qu'il faut relire trois fois, il doit être facile à retrouver
@@ -122,7 +124,9 @@ class Problemes extends BaseGame {
                     transition: all .22s cubic-bezier(.4, 0, .2, 1);
                     -webkit-tap-highlight-color: transparent;
                 }
-                .pb-carte-rep:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px color-mix(in srgb, var(--primary) 42%, transparent); }
+                @media (hover: hover) {
+                    .pb-carte-rep:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 12px 26px color-mix(in srgb, var(--primary) 42%, transparent); }
+                }
                 .pb-carte-rep:active:not(:disabled) { transform: translateY(2px) scale(.98); }
                 .pb-carte-rep:disabled { cursor: default; }
                 .pb-carte-rep--ok {

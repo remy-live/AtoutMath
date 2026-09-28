@@ -72,7 +72,9 @@
 }
 #demo-overlay-banner.demo-banner--ouvert #demo-banner-plus { transform: rotate(180deg); }
 .btn-stop-demo { background: var(--primary); color: white; padding: 5px 12px; border-radius: 15px; font-weight: bold; transition: 0.2s; border: none; cursor: pointer; flex-shrink: 0; white-space: nowrap; }
-.btn-stop-demo:hover { background: var(--primary-hover); }
+@media (hover: hover) {
+    .btn-stop-demo:hover { background: var(--primary-hover); }
+}
 
 .canvas-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle at center, var(--bg-plateau) 0%, var(--bg-app) 100%); position: relative; padding: 20px; overflow: hidden; }
 
@@ -340,7 +342,9 @@
     line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
     transition: background .15s;
 }
-.hd-fermer:hover { background: rgba(255,255,255,.35); }
+@media (hover: hover) {
+    .hd-fermer:hover { background: rgba(255,255,255,.35); }
+}
 #hover-demo-box .hd-header { background: linear-gradient(90deg, var(--accent-fond), #1e293b); color: white; padding: 12px 20px; font-size: 0.9rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 .hd-subtitle { color: #cbd5e1; font-weight: normal; font-size: 0.75rem; }
 /* LA BARRE DE RELANCE DE LA VIGNETTE. Elle est posée SOUS l'en-tête et non
@@ -356,7 +360,9 @@
     min-height: 36px; padding: 0 14px; font-size: .82rem;
     background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1;
 }
-#hover-demo-box .hd-rejouer:hover { background: #e2e8f0; border-color: #94a3b8; }
+@media (hover: hover) {
+    #hover-demo-box .hd-rejouer:hover { background: #e2e8f0; border-color: #94a3b8; }
+}
 @media (pointer: coarse) { #hover-demo-box .hd-rejouer { min-height: 44px; } }
 
 .hd-canvas-wrap { flex-grow: 1; position: relative; overflow: hidden; height: 240px; background: radial-gradient(circle at center, var(--bg-plateau) 0%, var(--bg-app) 100%); }
@@ -704,7 +710,9 @@
 .fil--pilotable .fil-pas::before {
     content: ''; position: absolute; inset: -9px 0; border-radius: 6px;
 }
-.fil--pilotable .fil-pas:hover { box-shadow: 0 0 0 2px var(--primary); }
+@media (hover: hover) {
+    .fil--pilotable .fil-pas:hover { box-shadow: 0 0 0 2px var(--primary); }
+}
 .fil--pilotable .fil-pas:focus-visible {
     outline: 2px solid var(--primary); outline-offset: 3px;
 }

@@ -39,7 +39,9 @@
     color: var(--text-muted); font: inherit; font-size: .78rem; font-weight: 800;
     cursor: pointer; transition: .15s; white-space: nowrap;
 }
-.role-badge:hover { border-color: var(--text-muted); color: var(--text-main); }
+@media (hover: hover) {
+    .role-badge:hover { border-color: var(--text-muted); color: var(--text-main); }
+}
 .role-badge-point {
     width: 7px; height: 7px; border-radius: 50%;
     background: currentColor; opacity: .55;
@@ -122,7 +124,10 @@ body.classe-verrouillee .role-badge { opacity: 1; cursor: default; }
     font: inherit; font-weight: 600; font-size: .92rem;
     text-align: left; cursor: pointer; white-space: nowrap;
 }
-.nav-menu-item:hover, .nav-menu-item:focus-visible { background: var(--bg-hover); }
+.nav-menu-item:focus-visible { background: var(--bg-hover); }
+@media (hover: hover) {
+    .nav-menu-item:hover { background: var(--bg-hover); }
+}
 .nav-menu-item svg { flex: 0 0 auto; opacity: .7; }
 /* Le bouton PLEIN ÉCRAN s'ajoute à une rangée déjà pleine. Plutôt que de le
    reléguer dans un menu — un bouton qu'il faut chercher n'est pas « toujours

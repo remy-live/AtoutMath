@@ -74,7 +74,9 @@ class Dictee extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 6px 12px;
                 }
-                .di-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .di-btn:hover { background: var(--bg-hover); }
+                }
                 .di-btn--on { border-color: var(--primary); color: var(--primary); }
                 .di-champ {
                     font-size: clamp(24px, 7cqw, 44px); font-weight: 900;

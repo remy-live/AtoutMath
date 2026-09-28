@@ -188,7 +188,9 @@ class Canon extends BaseGame {
                     -webkit-tap-highlight-color: transparent;
                     transition: filter .12s ease;
                 }
-                .cn-boulet:hover { filter: brightness(1.4) drop-shadow(0 0 10px rgba(252,211,77,.95)); }
+                @media (hover: hover) {
+                    .cn-boulet:hover { filter: brightness(1.4) drop-shadow(0 0 10px rgba(252,211,77,.95)); }
+                }
                 /* LA TRAÎNÉE, derrière l'astéroïde — donc du côté d'où il
                    vient : à droite quand il arrive de droite, en bas quand il
                    tombe. Elle dit le sens de la marche d'un coup d'œil. */

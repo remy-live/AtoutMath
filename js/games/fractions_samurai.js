@@ -97,7 +97,9 @@ class FracSamurai extends BaseGame {
                 .sam-vise { outline: 2px solid #fcc419; outline-offset: 1px; }
                 .sam-facteur { padding: 0 4px; position: relative; }
                 .sam-cible { cursor: pointer; border-radius: 6px; }
-                .sam-cible:hover { background: rgba(252,196,25,.25); }
+                @media (hover: hover) {
+                    .sam-cible:hover { background: rgba(252,196,25,.25); }
+                }
                 .sam-barre { color: #888; }
                 .sam-barre::after { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 4px; background: #ff6b6b; border-radius: 2px; transform: rotate(-18deg); box-shadow: 0 0 8px #ff6b6b; }
             </style>

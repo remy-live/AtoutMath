@@ -153,7 +153,9 @@
    blanc sur `--danger`. L'ombre garde la teinte vive : elle ne porte pas de
    texte, elle n'a donc pas la même contrainte. */
 .fb-card--ko .fb-close { background: var(--danger-fond); box-shadow: 0 4px 14px rgba(239, 68, 68, .32); }
-.fb-close:hover { filter: brightness(1.07); }
+@media (hover: hover) {
+    .fb-close:hover { filter: brightness(1.07); }
+}
 .fb-close:active { transform: translateY(2px); }
 .fb-close:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
@@ -235,7 +237,9 @@
     background: color-mix(in srgb, var(--success) 12%, var(--bg-hover));
     border-color: color-mix(in srgb, var(--success) 45%, var(--border));
 }
-.btn-showme:hover:not(:disabled) { border-color: var(--success); color: var(--success-texte); }
+@media (hover: hover) {
+    .btn-showme:hover:not(:disabled) { border-color: var(--success); color: var(--success-texte); }
+}
 
 /* --- Mode apprentissage ------------------------------------ */
 
@@ -255,7 +259,9 @@
     border: 1px solid var(--border); border-radius: 999px;
     padding: 8px 18px; font-size: .95rem; font-weight: 600; transition: .2s;
 }
-.btn-hint:hover:not(:disabled) { background: var(--bg-panel); border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .btn-hint:hover:not(:disabled) { background: var(--bg-panel); border-color: var(--primary); color: var(--primary-texte); }
+}
 .btn-hint:disabled { opacity: .45; cursor: not-allowed; }
 
 .hint-text {
@@ -447,7 +453,9 @@
     display: flex; align-items: center; justify-content: center;
     font-variant-numeric: tabular-nums;
 }
-.numpad-key:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .numpad-key:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .numpad-key:active {
     transform: translateY(2px);
     box-shadow: 0 0 0 var(--border), inset 0 2px 5px rgba(15, 23, 42, .12);
@@ -466,7 +474,9 @@
     font-size: clamp(1.02rem, 2.3cqh, 1.22rem); letter-spacing: .02em;
     box-shadow: 0 4px 0 color-mix(in srgb, var(--primary) 55%, transparent), 0 8px 18px color-mix(in srgb, var(--primary) 30%, transparent);
 }
-.numpad-key--ok:hover { color: #fff; border-color: transparent; filter: brightness(1.06); }
+@media (hover: hover) {
+    .numpad-key--ok:hover { color: #fff; border-color: transparent; filter: brightness(1.06); }
+}
 .numpad-key--ok:active {
     transform: translateY(3px);
     box-shadow: 0 1px 0 color-mix(in srgb, var(--primary) 55%, transparent), 0 3px 8px color-mix(in srgb, var(--primary) 28%, transparent);
@@ -1025,7 +1035,9 @@
     font-family: inherit; font-size: clamp(.95rem, 2.4cqh, 1.25rem); font-weight: 700;
     cursor: pointer; text-align: left; transition: transform .12s, border-color .12s;
 }
-.sprint-tuile:hover { border-color: var(--primary); transform: translateY(-2px); }
+@media (hover: hover) {
+    .sprint-tuile:hover { border-color: var(--primary); transform: translateY(-2px); }
+}
 /* Le numéro du raccourci clavier : discret, mais c'est lui qui rend les
    paliers rapides jouables ailleurs qu'au doigt. */
 .sprint-touche {
@@ -1149,7 +1161,9 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     background: var(--tag-dom-bg); color: var(--text-main); font-family: inherit;
     transition: .15s;
 }
-.cfg-apprendre:hover { filter: brightness(1.03); transform: translateY(-1px); }
+@media (hover: hover) {
+    .cfg-apprendre:hover { filter: brightness(1.03); transform: translateY(-1px); }
+}
 .cfg-apprendre-icone { font-size: 1.5rem; flex-shrink: 0; }
 .cfg-apprendre-corps { display: flex; flex-direction: column; gap: 2px; }
 .cfg-apprendre-titre { font-weight: 800; font-size: .98rem; }
@@ -1186,7 +1200,9 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     border: 1px solid var(--border); border-radius: 999px;
     padding: 7px 14px; min-height: 36px; cursor: pointer;
 }
-.cx2-niv:hover { color: var(--text-main); border-color: var(--text-muted); }
+@media (hover: hover) {
+    .cx2-niv:hover { color: var(--text-main); border-color: var(--text-muted); }
+}
 .cx2-niv--actif {
     color: #fff; background: var(--primary); border-color: var(--primary);
 }
@@ -1219,7 +1235,9 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     padding: 8px 10px; border-radius: 9px; min-height: 44px;
     display: flex; flex-direction: column; gap: 2px;
 }
-.cx2-voir:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .cx2-voir:hover { background: var(--bg-hover); }
+}
 .cx2-titre { font-weight: 700; color: var(--text-main); font-size: .95rem; }
 .cx2-sous { font-size: .76rem; color: var(--text-muted); }
 .cx2-duo { margin-left: 6px; }
@@ -1229,7 +1247,9 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     border: none; border-radius: 999px; padding: 9px 15px;
     min-height: 44px; cursor: pointer; white-space: nowrap;
 }
-.cx2-ajouter:hover { background: var(--primary-hover); }
+@media (hover: hover) {
+    .cx2-ajouter:hover { background: var(--primary-hover); }
+}
 .cx2-ajouter--fait { background: var(--success); }
 .cx2-rien { padding: 26px; text-align: center; color: var(--text-muted); }
 
@@ -1257,8 +1277,8 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     font-size: .88rem; font-weight: 600; cursor: pointer;
     transition: background .15s ease, border-color .15s ease;
 }
-.cx2-rejouer:hover, .re-rejouer:hover, .hd-rejouer:hover {
-    background: var(--bg-hover); border-color: var(--primary);
+@media (hover: hover) {
+    .cx2-rejouer:hover, .re-rejouer:hover, .hd-rejouer:hover { background: var(--bg-hover); border-color: var(--primary); }
 }
 .cx2-rejouer:focus-visible, .re-rejouer:focus-visible, .hd-rejouer:focus-visible {
     outline: 2px solid var(--primary); outline-offset: 2px;
@@ -1291,7 +1311,9 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     background: var(--bg-panel); border: 1px solid var(--border);
     border-radius: 999px; padding: 4px 11px; cursor: pointer; white-space: nowrap;
 }
-.cat-compte-tout:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .cat-compte-tout:hover { border-color: var(--primary); }
+}
 .cat-compte-tout:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 @media (pointer: coarse) { .cat-compte-tout { min-height: 44px; } }
 
@@ -1314,7 +1336,9 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     border-bottom: 3px solid transparent; margin-bottom: -1px;
     transition: color .15s ease, border-color .15s ease;
 }
-.re-onglet:hover { color: var(--text-main); }
+@media (hover: hover) {
+    .re-onglet:hover { color: var(--text-main); }
+}
 .re-onglet--actif { color: var(--primary-texte); border-bottom-color: var(--primary); }
 .re-onglet:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; }
 
@@ -1395,7 +1419,9 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     border: 2px solid var(--border); background: var(--bg-app);
     color: var(--text-main); font-family: inherit; transition: .15s;
 }
-.reglage-option:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .reglage-option:hover { border-color: var(--primary); }
+}
 .reglage-option--actif { border-color: var(--primary); background: var(--tag-dom-bg); }
 .reglage-dessin { line-height: 0; color: var(--primary-texte); }
 .reglage-nom { font-size: .82rem; font-weight: 700; }
@@ -1414,7 +1440,9 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
     color: var(--text-main); font-family: inherit; font-size: .88rem; font-weight: 700;
     cursor: pointer; transition: .15s;
 }
-.reglage-interrupteur:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .reglage-interrupteur:hover { border-color: var(--primary); }
+}
 .reglage-interrupteur--actif { border-color: var(--primary); background: var(--tag-dom-bg); }
 .reglage-interrupteur-piste {
     display: block; width: 46px; height: 28px; border-radius: 999px;
@@ -1566,7 +1594,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     font-size: 1.05rem; font-weight: 700; font-style: italic;
     cursor: pointer; transition: border-color .15s, transform .15s;
 }
-.sy-btn:hover { border-color: var(--primary); transform: translateY(-2px); }
+@media (hover: hover) {
+    .sy-btn:hover { border-color: var(--primary); transform: translateY(-2px); }
+}
 .sy-btn.sy-juste { border-color: var(--success); background: rgba(22, 163, 74, .12); }
 .sy-btn.sy-faux { border-color: var(--danger); background: rgba(220, 38, 38, .1); }
 
@@ -1669,7 +1699,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     font-size: .82rem; padding: 6px 14px; min-height: 34px;
     transition: border-color .15s, color .15s;
 }
-.np-outil-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .np-outil-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .np-outil-btn[aria-expanded="true"] {
     border-color: var(--primary); color: var(--primary-texte);
     background: color-mix(in srgb, var(--primary) 8%, var(--bg-panel));
@@ -1748,7 +1780,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     border-radius: 999px; cursor: pointer; font: inherit; font-weight: 800;
     width: 32px; height: 32px; line-height: 1; flex: 0 0 auto;
 }
-.np-outil-fermer:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .np-outil-fermer:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 
 /* LE PANNEAU PASSAIT SOUS LE PAVÉ NUMÉRIQUE. Rémy, banc d'essai iPhone :
    « le schéma est sous le pavé numérique », « idem pour les formules ».
@@ -1849,7 +1883,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     padding: 8px 16px; font-size: .9rem; font-weight: 600;
     color: var(--text-muted); cursor: pointer; transition: color .15s, border-color .15s;
 }
-.qd-effacer:hover { color: var(--text-main); border-color: var(--text-muted); }
+@media (hover: hover) {
+    .qd-effacer:hover { color: var(--text-main); border-color: var(--text-muted); }
+}
 /* LE BOUTON QU'ON DÉSIGNE. Après deux essais serieux et manques — ou apres un
    essai visiblement tape au hasard —, l'aide qui debloque s'allume au lieu
    d'attendre qu'on la trouve. */
@@ -1876,7 +1912,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     cursor: pointer; box-shadow: var(--shadow-sm); transition: .15s;
     font-variant-numeric: tabular-nums; text-align: center;
 }
-.coord-tile:hover { border-color: var(--primary); color: var(--primary-texte); transform: translateY(-3px); box-shadow: var(--shadow-md); }
+@media (hover: hover) {
+    .coord-tile:hover { border-color: var(--primary); color: var(--primary-texte); transform: translateY(-3px); box-shadow: var(--shadow-md); }
+}
 
 /* --- Comparaison (< = >) ------------------------------------ */
 
@@ -1932,7 +1970,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     touch-action: none;          /* le geste est capté, pas interprété en défilement */
     user-select: none;
 }
-.sign-tile:hover { border-color: var(--primary); box-shadow: var(--shadow-md); }
+@media (hover: hover) {
+    .sign-tile:hover { border-color: var(--primary); box-shadow: var(--shadow-md); }
+}
 .sign-tile:active { cursor: grabbing; }
 .sign-tile.drag-source { opacity: .3; transform: none; }
 
@@ -2122,7 +2162,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     color: var(--primary-texte); font: inherit; font-weight: 800;
     line-height: 1.15; text-align: center; cursor: pointer;
 }
-.fe-case:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .fe-case:hover { border-color: var(--primary); }
+}
 /* LA CASE ACTIVE PORTE LE CURSEUR, et c'est la seule chose qui dise où le
    prochain chiffre va tomber. Un pavé sans case allumée, c'est taper à
    l'aveugle. */
@@ -2173,14 +2215,18 @@ html[data-point="plus"] .pt-croix { display: none; }
     background: var(--bg-panel); color: var(--text-main);
     font-size: 1.25rem; font-weight: 800; cursor: pointer;
 }
-.fe-touche:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .fe-touche:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .fe-touche--del { grid-column: span 2; }
 .fe-touche--ok {
     grid-column: span 3;
     background: var(--primary); border-color: var(--primary); color: #fff;
 }
 .fe-touche--ok:disabled { opacity: .45; cursor: default; }
-.fe-touche--ok:not(:disabled):hover { background: var(--primary-hover); color: #fff; }
+@media (hover: hover) {
+    .fe-touche--ok:not(:disabled):hover { background: var(--primary-hover); color: #fff; }
+}
 
 /* LE DOUTE SE MET À LA PLACE DU SIGNE. « Ces deux fractions sont-elles
    égales ? » ne peut pas s'écrire avec un = entre les deux : le signe
@@ -2282,7 +2328,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     font-size: 1rem; padding: 10px 24px; margin-top: 8px;
     opacity: .85;
 }
-.run-screen-btn--doux:hover { opacity: 1; }
+@media (hover: hover) {
+    .run-screen-btn--doux:hover { opacity: 1; }
+}
 
 /* ═══ LA CARTE, ENTRE LES EXERCICES ═══════════════════════════════════════════
    Rémy : « quand on lance un parcours, le tiroir de gauche disparaît et il
@@ -3030,7 +3078,9 @@ html[data-point="plus"] .pt-croix { display: none; }
     flex: 0 0 auto; background: var(--primary); color: #fff;
     border-color: transparent; font-weight: 700; cursor: pointer;
 }
-.error-group-go:hover:not(.active) { background: var(--primary-hover); color: #fff; }
+@media (hover: hover) {
+    .error-group-go:hover:not(.active) { background: var(--primary-hover); color: #fff; }
+}
 .error-group-clean { color: var(--success-texte) !important; font-weight: 600; }
 /* Les questions deja corrigees se replient : les laisser depliees apres une
    revision reussie, c'est laisser a l'ecran ce qu'on vient justement de
@@ -3095,7 +3145,9 @@ html[data-theme="dark"] .badge-card--diamant { background: linear-gradient(160de
     background: var(--bg-panel); border: 1px solid var(--border);
     border-radius: 14px; padding: 10px 12px 12px; transition: border-color .15s;
 }
-.medal-family:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .medal-family:hover { border-color: var(--primary); }
+}
 .medal-family-head { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
 .medal-family-icon { font-size: 1.2rem; }
 .medal-family-title { font-weight: 800; font-size: .92rem; color: var(--text-main); flex: 1; min-width: 0; }
@@ -3227,7 +3279,9 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     background: var(--primary); color: #fff; font-weight: 800; font-size: .95rem;
     font-family: inherit;
 }
-.plan-btn:hover { filter: brightness(1.08); }
+@media (hover: hover) {
+    .plan-btn:hover { filter: brightness(1.08); }
+}
 /* Le détail reste là, replié : à un appui pour qui veut savoir. */
 .plan-detail { margin-top: 8px; }
 .plan-detail > summary {
@@ -3237,7 +3291,9 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .plan-detail > summary::-webkit-details-marker { display: none; }
 .plan-detail > summary::before { content: '▸\00a0'; }
 .plan-detail[open] > summary::before { content: '▾\00a0'; }
-.plan-detail > summary:hover { color: var(--primary-texte); }
+@media (hover: hover) {
+    .plan-detail > summary:hover { color: var(--primary-texte); }
+}
 .plan-motif {
     font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .3px;
     border-radius: 999px; padding: 2px 8px;
@@ -3251,7 +3307,9 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     border: 1.5px solid var(--border); background: var(--bg-app); color: var(--text-main);
     border-radius: 999px; padding: 4px 11px; font-size: .78rem; font-weight: 700; cursor: pointer;
 }
-.plan-exo:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .plan-exo:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 
 /* Les erreurs venues des jeux, mises de côté sans être perdues. */
 .error-note-jeux {
@@ -3317,11 +3375,15 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     background: var(--bg-app); border: 1px solid var(--border);
     border-radius: 999px; padding: 6px 14px; cursor: pointer; transition: .15s;
 }
-.profile-chip:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .profile-chip:hover { border-color: var(--primary); }
+}
 .profile-chip--active { background: var(--primary); color: #fff; border-color: var(--primary); cursor: default; }
 .profile-chip-name { font-weight: 600; outline: none; }
 .profile-chip-del { color: inherit; opacity: .7; font-size: .85rem; }
-.profile-chip-del:hover { opacity: 1; }
+@media (hover: hover) {
+    .profile-chip-del:hover { opacity: 1; }
+}
 
 /* --- Carte des mondes (parcours élève & présentation prof) --
    Les étapes serpentent par rangées reliées de pointillés, comme la carte
@@ -3597,7 +3659,9 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     box-shadow: 0 4px 0 color-mix(in srgb, var(--border) 70%, #000 10%);
 }
 .world-node--locked .world-node-rang { opacity: .6; }
-.world-node:not(.world-node--locked) .world-node-btn:hover { transform: translateY(-3px); }
+@media (hover: hover) {
+    .world-node:not(.world-node--locked) .world-node-btn:hover { transform: translateY(-3px); }
+}
 .world-node:not(.world-node--locked) .world-node-btn:active {
     transform: translateY(5px);
     box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 65%, #000 14%);
@@ -3633,9 +3697,9 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     background: var(--bg-panel); border: 1px solid var(--border);
     box-shadow: var(--shadow-sm); transition: .15s;
 }
-.toolbar-icon-btn:hover {
-    border-color: var(--primary);
-    transform: translateY(-1px); box-shadow: var(--shadow-md);
+@media (hover: hover) {
+    .toolbar-icon-btn:hover { border-color: var(--primary);
+    transform: translateY(-1px); box-shadow: var(--shadow-md); }
 }
 .toolbar-icon-btn:active { transform: translateY(0); }
 .toolbar-icon-btn svg { display: block; }
@@ -3644,9 +3708,13 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
 .toolbar-icon-btn[hidden] { display: none; }
 /* Les actions principales gardent leur couleur d'origine, l'icône en blanc. */
 .toolbar-icon-btn--primary { background: var(--primary); border-color: var(--primary); color: #fff; }
-.toolbar-icon-btn--primary:hover { border-color: var(--primary); filter: brightness(1.08); }
+@media (hover: hover) {
+    .toolbar-icon-btn--primary:hover { border-color: var(--primary); filter: brightness(1.08); }
+}
 .toolbar-icon-btn--success { background: var(--success-fond); border-color: var(--success); color: #fff; }
-.toolbar-icon-btn--success:hover { border-color: var(--success); filter: brightness(1.08); }
+@media (hover: hover) {
+    .toolbar-icon-btn--success:hover { border-color: var(--success); filter: brightness(1.08); }
+}
 
 /* UNE DOUZAINE DE CARRÉS BLANCS IDENTIQUES NE SE LISENT PAS. Un trait sépare
    ce qui construit CE parcours de ce qui appartient au professeur — ses
@@ -3670,7 +3738,9 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
    bouton — le pire des deux mondes, parce que le code jurerait qu'il a raison. */
 .toolbar-sep[hidden], .preview-mode-group[hidden] { display: none !important; }
 .toolbar-icon-btn--outil { color: var(--text-muted); box-shadow: none; }
-.toolbar-icon-btn--outil:hover { color: var(--text-main); }
+@media (hover: hover) {
+    .toolbar-icon-btn--outil:hover { color: var(--text-main); }
+}
 
 /* Rien à annuler : le bouton le dit au lieu de faire semblant. */
 .toolbar-icon-btn:disabled {
@@ -3678,10 +3748,10 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     cursor: default;
     box-shadow: none;
 }
-.toolbar-icon-btn:disabled:hover {
-    border-color: var(--border);
+@media (hover: hover) {
+    .toolbar-icon-btn:disabled:hover { border-color: var(--border);
     transform: none;
-    box-shadow: none;
+    box-shadow: none; }
 }
 
 /* Sélecteur de présentation du parcours (classique / mondes / chemin). */
@@ -3699,7 +3769,9 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     display: flex; align-items: center; justify-content: center;
     transition: .15s; filter: grayscale(60%); opacity: .7;
 }
-.path-style-btn:hover { filter: none; opacity: 1; }
+@media (hover: hover) {
+    .path-style-btn:hover { filter: none; opacity: 1; }
+}
 .path-style-btn--active {
     background: var(--bg-panel); box-shadow: var(--shadow-sm);
     filter: none; opacity: 1;
@@ -3778,7 +3850,9 @@ html[data-theme="dark"] .medal-chip--platine { background: linear-gradient(160de
     border-radius: 9px; font: inherit; font-weight: 600; font-size: .88rem;
     padding: 6px 14px; cursor: pointer;
 }
-.presentation-nav button:hover:not(:disabled) { background: var(--bg-hover); }
+@media (hover: hover) {
+    .presentation-nav button:hover:not(:disabled) { background: var(--bg-hover); }
+}
 .presentation-nav button:disabled { opacity: .4; cursor: default; }
 .presentation-nav-pos { font-size: .82rem; color: var(--text-muted); font-weight: 600; }
 @media (max-width: 800px) {
@@ -4130,7 +4204,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     transition: background .12s ease, transform .1s ease;
     -webkit-tap-highlight-color: transparent;
 }
-.cfg-step:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .cfg-step:hover { background: var(--bg-hover); }
+}
 
 /* --- LA GLISSIÈRE ------------------------------------------------------------
    Rémy : « un slider de paramètres (exemple sur 10 questions), et 3 slides
@@ -4227,7 +4303,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    s'écrivait « Li / br / e ». Il ne se translate donc pas. */
 .cfg-cran:last-child { transform: none; text-align: right; }
 .cfg-tiret:last-child { transform: none; }
-.cfg-cran:hover { color: var(--primary-texte); background: var(--primary-soft, #eceafd); }
+@media (hover: hover) {
+    .cfg-cran:hover { color: var(--primary-texte); background: var(--primary-soft, #eceafd); }
+}
 .cfg-cran--ici { color: var(--primary-texte); font-size: .76rem; }
 
 /* LES QUATRE CARTES : L'APERÇU EST LA COMMANDE.
@@ -4260,7 +4338,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     border: 2px solid var(--border, #d7dce5); border-radius: 12px;
     background: #fff; color: inherit; font: inherit;
 }
-.cfg-prog:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .cfg-prog:hover { border-color: var(--primary); }
+}
 .cfg-prog--ici {
     border-color: var(--primary);
     background: var(--primary-soft, #eceafd);
@@ -4505,7 +4585,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
 /* Le `summary` est une boîte flex : sans cela son dessin se fait écraser à
    quatre pixels de large — mesuré. */
 .cfg-modeles-btn svg { flex: 0 0 auto; }
-.cfg-modeles-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .cfg-modeles-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .cfg-modeles[open] .cfg-modeles-btn { border-color: var(--primary); color: var(--primary-texte); }
 .cfg-modeles-liste {
     position: absolute; right: 0; top: calc(100% + 6px); z-index: 5;
@@ -4523,7 +4605,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     font: inherit; font-size: .82rem; font-weight: 700; text-transform: none;
     letter-spacing: 0;
 }
-.cfg-modele:hover { background: var(--bg-hover); color: var(--primary-texte); }
+@media (hover: hover) {
+    .cfg-modele:hover { background: var(--bg-hover); color: var(--primary-texte); }
+}
 
 /* LA BULLE : la vraie question du rang que la flèche montre.
 
@@ -4623,7 +4707,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     background: transparent; color: inherit; font-family: inherit;
     border-radius: 7px; cursor: pointer;
 }
-.cfg-leg:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .cfg-leg:hover { background: var(--bg-hover); }
+}
 .cfg-leg i, .cfg-zpuce { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
 .cfg-leg--2 i, .cfg-zpuce--2 { background: #10b981; }
 .cfg-leg--3 i, .cfg-zpuce--3 { background: #14b8a6; }
@@ -4697,11 +4783,13 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    c'est la seule commande de ce bloc qui détruise quelque chose. Un doigt sur
    une tablette ne survole jamais rien. */
 .cfg-zx { color: var(--danger, #dc2626); border-color: rgba(220, 38, 38, .35); }
-.cfg-zx:hover:not(:disabled) {
-    background: var(--danger-fond); color: #fff; border-color: var(--danger);
+@media (hover: hover) {
+    .cfg-zx:hover:not(:disabled) { background: var(--danger-fond); color: #fff; border-color: var(--danger); }
 }
 .cfg-zplusmini { color: var(--text-muted); }
-.cfg-zplusmini:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .cfg-zplusmini:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
+}
 .cfg-zx:disabled, .cfg-zplusmini:disabled { opacity: .3; cursor: default; }
 
 @media (max-width: 520px) {
@@ -5162,7 +5250,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     background: var(--bg-app); color: var(--text-muted);
     border: 2px solid var(--border); font-weight: 700;
 }
-.modal-btn-flex--neutral:hover { color: var(--text-main); border-color: var(--text-muted); }
+@media (hover: hover) {
+    .modal-btn-flex--neutral:hover { color: var(--text-main); border-color: var(--text-muted); }
+}
 
 
 /* --- ET SUR TABLETTE, DEUX COLONNES ------------------------------------
@@ -5214,7 +5304,10 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: inline-flex; align-items: center; justify-content: center;
     position: relative; transition: .15s;
 }
-.cfg-info:hover, .cfg-info:focus-visible { border-color: var(--primary); color: var(--primary-texte); }
+.cfg-info:focus-visible { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .cfg-info:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 
 /* Placée dans <body> et en `fixed` : les panneaux qui défilent découpaient
    l'infobulle quand elle était rendue à l'intérieur.
@@ -5265,7 +5358,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     content: '✓'; display: inline-block; width: 1em; margin-right: 4px;
     opacity: 0; transition: opacity .15s; vertical-align: -1px;
 }
-.cfg-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .cfg-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .cfg-chip:has(input:checked) {
     border-color: var(--primary); background: var(--primary); color: #fff;
     box-shadow: var(--shadow-sm);
@@ -5391,7 +5486,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     margin-bottom: 4px; padding: 8px 10px; border-radius: 10px;
     transition: background .15s;
 }
-.cfg-check:hover { background: var(--tag-dom-bg); }
+@media (hover: hover) {
+    .cfg-check:hover { background: var(--tag-dom-bg); }
+}
 
 .cfg-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
 .cfg-modes--3 { grid-template-columns: 1fr 1fr 1fr; }
@@ -5401,7 +5498,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     padding: 14px; border-radius: 14px; border: 2px solid var(--border);
     background: var(--bg-app); transition: .15s;
 }
-.cfg-mode:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .cfg-mode:hover { border-color: var(--primary); }
+}
 .cfg-mode--active { border-color: var(--primary); background: var(--tag-dom-bg); }
 .cfg-mode-icon { font-size: 1.5rem; }
 .cfg-mode-title { font-weight: 700; color: var(--text-main); }
@@ -5432,7 +5531,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     display: flex; align-items: center; gap: 8px; padding: 6px;
     cursor: pointer; border-radius: 4px;
 }
-.niveau-option:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .niveau-option:hover { background: var(--bg-hover); }
+}
 
 @media (max-width: 768px) {
     .cfg-modes { grid-template-columns: 1fr; }
@@ -5569,7 +5670,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     padding: 8px 16px; font-size: .9rem; font-weight: 700; cursor: pointer;
     box-shadow: var(--shadow-sm); transition: .15s;
 }
-.demo-ctrl-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .demo-ctrl-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 /* « Arrière » à la première explication : rien à remonter, on le dit. */
 .demo-ctrl-btn:disabled { opacity: .4; cursor: default; border-color: var(--border); color: var(--text-main); }
 .demo-ctrl-btn--active { background: var(--primary); border-color: var(--primary); color: #fff; }
@@ -5936,7 +6039,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     color: var(--kk-encre, #2563eb); cursor: pointer; user-select: none;
     transition: background .15s ease;
 }
-.kk-cell:hover { background: color-mix(in srgb, var(--primary) 7%, transparent); }
+@media (hover: hover) {
+    .kk-cell:hover { background: color-mix(in srgb, var(--primary) 7%, transparent); }
+}
 .kk-cell:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
 
 /* Bordures de cage : le dessin qui structure le puzzle. */
@@ -5958,7 +6063,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
    ce qu'il a posé lui-même est en bleu, ce que la grille lui donne est en noir
    sur fond gris — comme au sudoku et au garam. */
 .kk-given { background: var(--kk-donnee, #f1f5f9); color: var(--kk-encre-donnee, #0f172a); cursor: default; }
-.kk-given:hover { background: var(--kk-donnee, #f1f5f9); }
+@media (hover: hover) {
+    .kk-given:hover { background: var(--kk-donnee, #f1f5f9); }
+}
 .kk-revealed { background: #fef3c7; color: var(--kk-encre-donnee, #0f172a); cursor: default; }
 
 /* Marques du vérificateur et des indices — effacées à la moindre édition.
@@ -6006,7 +6113,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     touch-action: none;  /* le glisser ne doit pas défiler la page */
     transition: border-color .2s ease, transform .2s ease;
 }
-.kk-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .kk-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .kk-chip.drag-source { opacity: .35; }
 .kk-chip--gomme { color: var(--warning-texte); }
 
@@ -6019,7 +6128,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     font-size: 1.05rem; font-weight: 700; cursor: pointer;
     box-shadow: var(--shadow-sm); transition: transform .15s ease;
 }
-.kk-btn-valider:hover { transform: translateY(-2px); }
+@media (hover: hover) {
+    .kk-btn-valider:hover { transform: translateY(-2px); }
+}
 .kk-btn-verif:disabled { opacity: .45; cursor: not-allowed; }
 
 .kk-status { min-height: 1.3em; font-weight: 600; font-size: .95rem; color: var(--text-muted); text-align: center; }
@@ -6049,7 +6160,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     box-shadow: 0 2px 0 rgba(15, 23, 42, .12);
     -webkit-tap-highlight-color: transparent;
 }
-.np-choix-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .np-choix-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
+}
 .np-choix-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
 .np-choix-btn:disabled { cursor: default; }
 .np-choix-btn--ok { border-color: var(--success); color: var(--success-texte); }
@@ -6116,7 +6229,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     color: var(--text-muted); border-radius: 10px; padding: 5px 12px;
     cursor: pointer; font: inherit; font-size: .84rem; font-weight: 600;
 }
-.la-btn-doux:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .la-btn-doux:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 
 .la-board {
     position: relative;
@@ -6147,7 +6262,9 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     padding: 0; border: none; background: transparent; cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
-.la-case:hover { background: rgba(255, 255, 255, .07); }
+@media (hover: hover) {
+    .la-case:hover { background: rgba(255, 255, 255, .07); }
+}
 .la-case--indice { background: rgba(250, 204, 21, .22); }
 
 .la-quadrillage line { stroke: rgba(255, 255, 255, .09); stroke-width: 2; }
@@ -6475,7 +6592,9 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 }
 .pyt-cell--tete { background: var(--bg-hover); color: var(--text-muted); font-weight: 800; }
 .pyt-case { background: var(--bg-app); border: 1px solid var(--border); cursor: pointer; color: var(--text-main); }
-.pyt-case:hover { border-color: var(--primary); background: rgba(124, 92, 255, .10); }
+@media (hover: hover) {
+    .pyt-case:hover { border-color: var(--primary); background: rgba(124, 92, 255, .10); }
+}
 /* LE FOND PORTE DU BLANC, DONC C'EST LE JETON DE FOND. Mesuré : blanc sur
    `--success` 2,54, sur `--danger` 3,76 — dans les cinq thèmes. La bordure
    garde la couleur vive, qui n'a rien à porter. */
@@ -6701,7 +6820,9 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     border-radius: 999px; color: var(--text-main); font-weight: 900; font-size: 1rem;
     line-height: 1; display: flex; align-items: center; justify-content: center;
 }
-.sc-outil:hover { background: var(--bg-app); }
+@media (hover: hover) {
+    .sc-outil:hover { background: var(--bg-app); }
+}
 /* AU DOIGT, CES TROIS-LÀ RESTENT CARRÉS MAIS DEVIENNENT VISIBLES.
    MESURÉ : 26 × 26 pour « − », « + » et la corbeille de l'atelier de blocs.
    Elles portent `btn-carre`, que le plancher de 44 px exclut volontairement —
@@ -6746,7 +6867,9 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     border: 2px solid var(--border); background: var(--bg-app); color: var(--text-main);
     border-radius: 999px; padding: 5px 11px; font-weight: 700; font-size: .84rem; cursor: pointer;
 }
-.sc-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .sc-chip:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .sc-pop-ok {
     background: var(--primary); color: #fff; border: none; border-radius: 10px;
     padding: 8px; font-weight: 800; cursor: pointer;
@@ -7019,7 +7142,9 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
     font-family: inherit; cursor: pointer; font-variant-numeric: tabular-nums;
     box-shadow: 0 2px 0 rgba(15,23,42,.12);
 }
-.rl-choix-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .rl-choix-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .rl-choix-btn:active { transform: translateY(2px); box-shadow: none; }
 
 /* TÉLÉPHONE : le pavé passe de quatre rangées à deux. Douze touches en trois
@@ -7201,7 +7326,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font-family: inherit; cursor: pointer; font-variant-numeric: tabular-nums;
     box-shadow: 0 2px 0 rgba(15,23,42,.12);
 }
-.ad-choix-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .ad-choix-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .ad-choix-btn:active { transform: translateY(2px); box-shadow: none; }
 
 /* Le pavé gagne une touche virgule à la dernière marche : sans elle, l'élève
@@ -7302,7 +7429,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     display: flex; align-items: center; justify-content: center;
     -webkit-tap-highlight-color: transparent;
 }
-.pp-fleche:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .pp-fleche:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-texte); }
+}
 .pp-fleche:disabled { opacity: .3; cursor: default; }
 
 /* --- LA LIGNE D'UNE ÉTAPE, ET SON TIROIR ---------------------------------
@@ -7398,7 +7527,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     color: var(--text-muted); font: inherit; font-weight: 700; font-size: .95rem;
     transition: background .12s, color .12s, border-color .12s;
 }
-.cfg-on:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .cfg-on:hover { border-color: var(--primary); }
+}
 .cfg-on--actif { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 /* Le robot des modales : le MÊME dessin que le bouton « Mode démonstration ». */
@@ -7427,7 +7558,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 /* Le triangle du navigateur est remplacé par le chevron du fichier : celui de
    Safari n'a ni la même taille ni la même couleur que celui de Chrome. */
 .cfg-liste-tete::-webkit-details-marker { display: none; }
-.cfg-liste-tete:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .cfg-liste-tete:hover { background: var(--bg-hover); }
+}
 .cfg-liste-tete svg { flex-shrink: 0; color: var(--text-muted); transition: transform .18s; }
 .cfg-liste[open] .cfg-liste-tete svg { transform: rotate(180deg); }
 .cfg-liste[open] .cfg-liste-tete { border-bottom: 1px solid var(--border); }
@@ -7446,7 +7579,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font-size: .84rem; font-weight: 700; color: var(--text-muted);
 }
 .cfg-affiner-tete::-webkit-details-marker { display: none; }
-.cfg-affiner-tete:hover { color: var(--text-main); }
+@media (hover: hover) {
+    .cfg-affiner-tete:hover { color: var(--text-main); }
+}
 .cfg-affiner-tete svg { flex-shrink: 0; transition: transform .18s; }
 .cfg-affiner[open] .cfg-affiner-tete { color: var(--text-main); }
 .cfg-affiner[open] .cfg-affiner-tete svg { transform: rotate(180deg); }
@@ -7458,7 +7593,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     border: 1px solid var(--border); background: var(--bg-panel);
     font: inherit; font-size: .78rem; font-weight: 700; color: var(--text-muted);
 }
-.cfg-liste-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+@media (hover: hover) {
+    .cfg-liste-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+}
 /* LE RÉGLAGE EXPRESS SE VOIT — c'est le geste qu'on fait le plus souvent en
    préparant : « tout, à parts égales ». Les deux autres sont des retouches ;
    celui-ci est le point de départ, et il porte la couleur de l'application.
@@ -7468,9 +7605,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     color: var(--primary-texte, var(--primary));
     background: color-mix(in srgb, var(--primary) 9%, var(--bg-panel));
 }
-.cfg-liste-btn--express:hover {
-    background: color-mix(in srgb, var(--primary) 17%, var(--bg-panel));
-    color: var(--primary-texte, var(--primary));
+@media (hover: hover) {
+    .cfg-liste-btn--express:hover { background: color-mix(in srgb, var(--primary) 17%, var(--bg-panel));
+    color: var(--primary-texte, var(--primary)); }
 }
 
 /* La liste défile au-delà de sept lignes : elle ne doit jamais pousser les
@@ -7481,7 +7618,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     padding: 6px 8px; border-radius: 8px;
     font-size: .86rem; font-weight: 600; color: var(--text-main);
 }
-.cfg-liste-ligne:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .cfg-liste-ligne:hover { background: var(--bg-hover); }
+}
 .cfg-liste-ligne input {
     flex-shrink: 0; width: 17px; height: 17px; margin: 0;
     accent-color: var(--primary); cursor: pointer;
@@ -8075,7 +8214,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font: inherit; font-weight: 700; color: var(--text-main);
     transition: transform .12s, box-shadow .12s;
 }
-.salle-jeu:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+@media (hover: hover) {
+    .salle-jeu:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+}
 .salle-jeu-picto { font-size: 1.2rem; line-height: 1; }
 
 /* Le rôle d'une étape, côté professeur. */
@@ -8415,7 +8556,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     border: 2px solid var(--border); border-radius: 10px; background: var(--bg-panel);
     display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
 }
-.ea-piece:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .ea-piece:hover { border-color: var(--primary); }
+}
 .ea-piece--actif { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 16%, var(--bg-panel)); }
 .ea-gomme { cursor: pointer; }
 
@@ -8442,7 +8585,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700; font-size: .85rem;
     padding: 7px 11px;
 }
-.ea-btn:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .ea-btn:hover { border-color: var(--primary); }
+}
 .ea-btn--fort { background: var(--primary); color: #fff; border-color: var(--primary); }
 .ea-legende { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: .82rem; color: var(--text-muted); }
 .ea-legende input {
@@ -8572,7 +8717,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .nt-fente--pleine { border-style: solid; border-color: transparent; color: var(--text-main); }
 .nt-fente--juste { color: var(--success, #16a34a); border-color: var(--success, #16a34a); border-style: solid; }
 .nt-fente--faux { color: var(--danger, #dc2626); border-color: var(--danger, #dc2626); border-style: solid; }
-.nt-fente:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .nt-fente:hover { background: var(--bg-hover); }
+}
 
 /* DEUX CLAVIERS, UN PAR EXTRÉMITÉ, et chacun dit de quel côté il agit : le
    mélange des quatre symboles obligeait à décider AUSSI où le poser, ce qui
@@ -8603,7 +8750,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     -webkit-tap-highlight-color: transparent;
     transition: transform .1s ease, background .12s ease, border-color .12s ease;
 }
-.nt-touche:hover { background: var(--bg-hover); border-color: var(--primary); }
+@media (hover: hover) {
+    .nt-touche:hover { background: var(--bg-hover); border-color: var(--primary); }
+}
 .nt-touche:active { transform: scale(.92); background: var(--primary); color: #fff; }
 
 .nt-valider {
@@ -8968,7 +9117,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     -webkit-tap-highlight-color: transparent;
     transition: transform .1s ease, background .12s ease, border-color .12s ease;
 }
-.ls-t:hover { background: var(--bg-hover); border-color: var(--primary); }
+@media (hover: hover) {
+    .ls-t:hover { background: var(--bg-hover); border-color: var(--primary); }
+}
 .ls-t:active { transform: scale(.92); background: var(--primary); color: #fff; }
 /* LA TOUCHE EXPOSANT SE LIT DE LOIN. « ² » est un caractère déjà petit et
    déjà haut : à la taille des autres touches, il ressemblait à une poussière
@@ -8989,7 +9140,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     border: 2px solid var(--border); background: var(--bg-panel);
     color: var(--text-main); font-family: inherit; font-size: 1.15rem;
 }
-.ls-eff:hover { border-color: var(--danger, #dc2626); color: var(--danger, #dc2626); }
+@media (hover: hover) {
+    .ls-eff:hover { border-color: var(--danger, #dc2626); color: var(--danger, #dc2626); }
+}
 .ls-valider {
     flex: 1; min-height: 44px; border-radius: 12px; border: none; cursor: pointer;
     background: var(--primary); color: #fff; font-family: inherit;
@@ -9100,7 +9253,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     border: 2px solid var(--border); background: var(--bg-app);
     color: var(--text-main); font-family: inherit; font-size: .9rem; font-weight: 700;
 }
-.cl-onglet:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .cl-onglet:hover { background: var(--bg-hover); }
+}
 .cl-onglet--actif { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--bg-app)); color: var(--primary-texte); }
 .cl-onglet-n {
     font-size: .74rem; font-weight: 800; padding: 1px 7px; border-radius: 999px;
@@ -9125,7 +9280,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 }
 .cl-btn--fin { background: transparent; color: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
 .cl-btn--mini { padding: 5px 11px; font-size: .78rem; }
-.cl-btn:hover { filter: brightness(1.06); }
+@media (hover: hover) {
+    .cl-btn:hover { filter: brightness(1.06); }
+}
 
 .cl-grille-boite { overflow-x: auto; margin-bottom: 6px; }
 .cl-grille { border-collapse: separate; border-spacing: 3px; font-size: .84rem; width: auto; }
@@ -9158,7 +9315,9 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     color: var(--text-main); text-decoration: underline; text-decoration-style: dotted;
     text-underline-offset: 3px;
 }
-.cl-nom:hover { color: var(--primary-texte); }
+@media (hover: hover) {
+    .cl-nom:hover { color: var(--primary-texte); }
+}
 .cl-eleve-chiffre { margin-left: 8px; font-size: .76rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .cl-ligne--muette .cl-nom, .cl-ligne--muette .cl-eleve-chiffre { opacity: .5; }
 
@@ -9193,13 +9352,17 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     flex: 0 0 auto; min-width: 7em; background: none; border: none; padding: 0;
     cursor: pointer; font: inherit; font-weight: 800; color: var(--text-main); text-align: left;
 }
-.cl-phrase-nom:hover { color: var(--primary-texte); }
+@media (hover: hover) {
+    .cl-phrase-nom:hover { color: var(--primary-texte); }
+}
 .cl-phrase-texte { flex: 1 1 260px; line-height: 1.45; color: var(--text-main); }
 .cl-detail-btn {
     flex: 0 0 auto; background: none; border: 1px solid var(--border); border-radius: 8px;
     padding: 3px 10px; cursor: pointer; font: inherit; font-size: .76rem; color: var(--text-muted);
 }
-.cl-detail-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .cl-detail-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 
 /* LE DÉTAIL, quand on l'ouvre. */
 .cl-detail-boite {
@@ -9342,14 +9505,18 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     color: inherit;
     cursor: pointer;
 }
-.chap-tete:hover { background: var(--bg-hover); border-color: var(--border); }
+@media (hover: hover) {
+    .chap-tete:hover { background: var(--bg-hover); border-color: var(--border); }
+}
 .chap-num { font-size: .92rem; font-weight: 800; color: var(--primary-texte); }
 .chap-court { font-size: .6rem; line-height: 1.15; color: var(--text-muted); text-align: center; }
 .chap-tete--vide .chap-num { color: var(--text-muted); }
 
 .chap-table tbody td { border-bottom: 1px solid var(--border); padding: 0; }
 .chap-nom { position: sticky; left: 0; z-index: 2; background: var(--bg-panel); }
-.chap-table tbody tr:hover td, .chap-table tbody tr:hover .chap-nom { background: var(--bg-hover); }
+@media (hover: hover) {
+    .chap-table tbody tr:hover td, .chap-table tbody tr:hover .chap-nom { background: var(--bg-hover); }
+}
 .chap-ligne--choisie td, .chap-ligne--choisie .chap-nom {
     background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
 }
@@ -9577,10 +9744,14 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     text-align: left;
     cursor: pointer;
 }
-.outils-item:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .outils-item:hover { background: var(--bg-hover); }
+}
 .outils-item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .outils-item svg { flex: none; margin-top: 2px; color: var(--text-muted); }
-.outils-item:hover svg { color: var(--primary-texte); }
+@media (hover: hover) {
+    .outils-item:hover svg { color: var(--primary-texte); }
+}
 
 .outils-texte { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .outils-nom { font-size: .88rem; font-weight: 600; }
@@ -9799,7 +9970,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     color: var(--text-muted);
     cursor: pointer;
 }
-.pp-retouche-annuler:hover { color: var(--text-main); border-color: var(--border-fort, var(--text-muted)); }
+@media (hover: hover) {
+    .pp-retouche-annuler:hover { color: var(--text-main); border-color: var(--border-fort, var(--text-muted)); }
+}
 
 /* --- La figure d'une erreur, dans le carnet ---------------------------------
    Une question qui dit « cette figure » a besoin de sa figure. Le dessin est
@@ -9856,7 +10029,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     background: none; border: none; cursor: pointer;
     font-size: 1.1rem; color: var(--text-muted); padding: 4px 8px; border-radius: 8px;
 }
-.nv-croix:hover { color: var(--text-main); background: var(--bg-app); }
+@media (hover: hover) {
+    .nv-croix:hover { color: var(--text-main); background: var(--bg-app); }
+}
 .nv-note { margin: 0; font-size: .82rem; color: var(--text-muted); }
 
 .nv-corps { overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
@@ -9926,13 +10101,17 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     background: var(--bg-panel); color: var(--text-main);
     font-size: .86rem; font-weight: 700; cursor: pointer; transition: border-color .15s;
 }
-.nv-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .nv-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .nv-btn--primaire {
     /* Même correction que les deux autres dégradés indigo-vers-accent. */
     background: linear-gradient(90deg, var(--primary), var(--accent-fond));
     color: #fff; border-color: transparent;
 }
-.nv-btn--primaire:hover { color: #fff; filter: brightness(1.06); }
+@media (hover: hover) {
+    .nv-btn--primaire:hover { color: #fff; filter: brightness(1.06); }
+}
 
 /* Sur téléphone, les deux boutons passent sous le nom : côte à côte ils le
    réduisaient à trois mots coupés. */
@@ -10088,7 +10267,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     line-height: 1.15; -webkit-tap-highlight-color: transparent;
     transition: border-color .15s ease, background .15s ease, color .15s ease;
 }
-.fb-case:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .fb-case:hover { background: var(--bg-hover); }
+}
 .fb-case--active { border-color: var(--primary); border-style: solid; background: color-mix(in srgb, var(--primary) 12%, transparent); }
 .fb-case--pleine { border-style: solid; }
 .fb-case--juste { color: var(--success, #10b981); border-color: var(--success, #10b981); border-style: solid; }
@@ -10108,7 +10289,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     color: var(--text-main); font-size: clamp(.95rem, 3cqw, 1.3rem); font-weight: 800;
     cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-.fb-touche:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .fb-touche:hover { background: var(--bg-hover); }
+}
 .fb-touche:active { transform: scale(.94); }
 .fb-touche--ok {
     grid-column: span 2; background: var(--primary); border-color: var(--primary); color: #fff;
@@ -10247,7 +10430,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     line-height: 1.15; -webkit-tap-highlight-color: transparent;
     transition: border-color .15s ease, background .15s ease, color .15s ease;
 }
-.fa-case:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .fa-case:hover { background: var(--bg-hover); }
+}
 .fa-case--active { border-color: var(--primary); border-style: solid;
                    background: color-mix(in srgb, var(--primary) 12%, transparent); }
 .fa-case--pleine { border-style: solid; }
@@ -10262,7 +10447,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     border-radius: 999px; padding: 3px 11px; font: inherit; font-size: .82em;
     font-weight: 700; cursor: pointer; white-space: nowrap;
 }
-.fa-aide-ppcm:hover { background: var(--bg-hover); border-color: var(--primary); }
+@media (hover: hover) {
+    .fa-aide-ppcm:hover { background: var(--bg-hover); border-color: var(--primary); }
+}
 
 /* --- LA TABLE DE PYTHAGORE, l'aide au PPCM (dans une modale) ---
    « On peut lui montrer la table de Pythagore, ou on fait clignoter les lignes
@@ -10318,7 +10505,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     color: var(--text-main); font-size: clamp(.9rem, 3cqw, 1.25rem); font-weight: 800;
     cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-.fa-touche:hover { background: var(--bg-hover); }
+@media (hover: hover) {
+    .fa-touche:hover { background: var(--bg-hover); }
+}
 .fa-touche:active { transform: scale(.94); }
 .fa-touche--ok {
     grid-column: span 2; background: var(--primary); border-color: var(--primary); color: #fff;
@@ -10650,8 +10839,14 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     transition: stroke .15s ease;
 }
 .cg-cible--pt { stroke-width: 0; }
-.cg-cible--visee, .cg-cible:hover { stroke: var(--primary); stroke-opacity: .16; }
-.cg-cible--pt.cg-cible--visee, .cg-cible--pt:hover { fill: var(--primary); fill-opacity: .14; }
+.cg-cible--visee { stroke: var(--primary); stroke-opacity: .16; }
+@media (hover: hover) {
+    .cg-cible:hover { stroke: var(--primary); stroke-opacity: .16; }
+}
+.cg-cible--pt.cg-cible--visee { fill: var(--primary); fill-opacity: .14; }
+@media (hover: hover) {
+    .cg-cible--pt:hover { fill: var(--primary); fill-opacity: .14; }
+}
 .cg-cible:focus-visible { stroke: var(--primary); stroke-opacity: .34; outline: none; }
 
 @keyframes cgSecousse {
@@ -10694,7 +10889,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     display: flex; flex-direction: row; align-items: center; gap: 12px;
     padding: 12px 14px; text-align: left; cursor: default;
 }
-.mes-exo-carte:hover { transform: none; box-shadow: var(--shadow-sm); border-color: var(--border); }
+@media (hover: hover) {
+    .mes-exo-carte:hover { transform: none; box-shadow: var(--shadow-sm); border-color: var(--border); }
+}
 .mes-exo-carte::before { display: none; }
 .mes-exo-corps { flex: 1 1 auto; min-width: 0; }
 .mes-exo-titre {
@@ -10707,7 +10904,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     border: 1px solid var(--border); background: var(--bg-panel);
     color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1;
 }
-.mes-exo-oter:hover { color: var(--danger-texte); border-color: var(--danger); }
+@media (hover: hover) {
+    .mes-exo-oter:hover { color: var(--danger-texte); border-color: var(--danger); }
+}
 .mes-exos-ajouter { margin-top: 14px; }
 
 /* La fenêtre d'ajout : on cherche, on choisit, on borne. Trois gestes, dans
@@ -10730,7 +10929,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     padding: 9px 11px; border-radius: 10px; border: 1px solid transparent;
     background: var(--bg-app); color: var(--text-main); cursor: pointer; font: inherit;
 }
-.mes-ajout-choix:hover { border-color: var(--border); }
+@media (hover: hover) {
+    .mes-ajout-choix:hover { border-color: var(--border); }
+}
 .mes-ajout-choix.is-actif { border-color: var(--primary); background: var(--bg-hover); }
 .mes-ajout-choix-titre { font-weight: 700; }
 .mes-ajout-choix-sous { font-size: .78rem; color: var(--text-muted); }
@@ -10760,7 +10961,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     background: var(--bg-app); color: var(--text-main); cursor: pointer;
     font: inherit; font-weight: 700; text-align: left;
 }
-.recompense-jeu:hover { border-color: var(--primary); color: var(--primary-texte); }
+@media (hover: hover) {
+    .recompense-jeu:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
 .recompense-non { margin-top: 14px; }
 
 /* Étape bornée par le TEMPS : la barre n'a rien à remplir — on n'a pas de
@@ -10844,7 +11047,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     color: var(--primary-texte); font: inherit; font-weight: 800;
     text-decoration: underline; text-underline-offset: 2px;
 }
-.auj-lien:hover { filter: brightness(1.15); }
+@media (hover: hover) {
+    .auj-lien:hover { filter: brightness(1.15); }
+}
 
 /* ── REJOINDRE SA CLASSE ─────────────────────────────────────────────────── */
 .rj { display: flex; flex-direction: column; gap: 10px; }
@@ -10875,7 +11080,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     background: var(--bg-panel); color: var(--text-main); font: inherit; cursor: pointer;
     transition: border-color .12s, transform .1s;
 }
-.rj-choix:hover, .rj-seance:hover { border-color: var(--primary); transform: translateX(2px); }
+@media (hover: hover) {
+    .rj-choix:hover, .rj-seance:hover { border-color: var(--primary); transform: translateX(2px); }
+}
 .rj-choix-nom, .rj-seance-nom { font-weight: 800; }
 .rj-choix-classe, .rj-seance-dit { color: var(--text-muted); font-size: .86rem; }
 .rj-seances { display: flex; flex-direction: column; gap: 8px; }
@@ -10914,7 +11121,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 .auj-carte--revision .auj-go { color: #b45309; }
 .auj-carte--decouverte .auj-go { color: #047857; }
 .auj-carte--decouverte .auj-go { color: #047857; }
-.auj-go:hover { transform: translateY(-1px); }
+@media (hover: hover) {
+    .auj-go:hover { transform: translateY(-1px); }
+}
 
 /* L'ANNEAU DE PROGRESSION : un `conic-gradient`, rien de plus. Il n'a ni trait
    ni forme à animer, et une seule propriété le décrit. */
@@ -10965,7 +11174,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     border-radius: 16px; padding: 13px 15px; cursor: pointer;
     font: inherit; color: var(--text-main); transition: .15s;
 }
-.auj-tuile:hover { border-color: var(--primary); transform: translateY(-1px); }
+@media (hover: hover) {
+    .auj-tuile:hover { border-color: var(--primary); transform: translateY(-1px); }
+}
 .auj-tuile-ico { font-size: 1.35rem; flex: 0 0 auto; }
 .auj-tuile-dit { min-width: 0; }
 .auj-tuile-dit b { display: block; font-weight: 800; font-size: .96rem; }
@@ -10979,7 +11190,9 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
     width: 100%; background: none; border: 0; padding: 10px;
     color: var(--text-muted); font: inherit; font-weight: 800; cursor: pointer;
 }
-.auj-explorer:hover { color: var(--primary-texte); }
+@media (hover: hover) {
+    .auj-explorer:hover { color: var(--primary-texte); }
+}
 .auj-explorer svg { transition: transform .18s; }
 .auj-explorer--ouvert svg { transform: rotate(180deg); }
 
@@ -11090,8 +11303,12 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
    font que naviguer. */
 .game-icon-btn--ok { color: #1f7a4d; border-color: rgba(31, 122, 77, .35); }
 .game-icon-btn--ko { color: #b83a2c; border-color: rgba(184, 58, 44, .35); }
-.game-icon-btn--ok:hover:not(:disabled) { background: rgba(31, 122, 77, .10); }
-.game-icon-btn--ko:hover:not(:disabled) { background: rgba(184, 58, 44, .10); }
+@media (hover: hover) {
+    .game-icon-btn--ok:hover:not(:disabled) { background: rgba(31, 122, 77, .10); }
+}
+@media (hover: hover) {
+    .game-icon-btn--ko:hover:not(:disabled) { background: rgba(184, 58, 44, .10); }
+}
 
 
 /* LE NOMBRE SE TAPE AU BOUT DU RAIL. Rémy : « pour le nombre de question il
@@ -11293,7 +11510,9 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     padding: 0 .12em; cursor: pointer; line-height: 1.1;
     transition: background .12s, border-color .12s, transform .12s;
 }
-.pp-jeton:hover { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+@media (hover: hover) {
+    .pp-jeton:hover { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+}
 .pp-jeton--choisi {
     border-color: var(--primary);
     background: color-mix(in srgb, var(--primary) 18%, transparent);
@@ -11307,7 +11526,9 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
     text-decoration-color: var(--danger, #e0245e);
     cursor: default;
 }
-.pp-jeton--barre:hover { background: none; }
+@media (hover: hover) {
+    .pp-jeton--barre:hover { background: none; }
+}
 
 /* LE NOMBRE OUVERT, à sa place exacte dans la ligne. Rémy : « on clique sur le
    33 et il apparaît … × … ». Les deux cases remplacent le nombre là où il
@@ -11611,10 +11832,15 @@ body.en-boite > #app-container { background: none; }
     box-shadow: 0 1px 2px rgba(15, 23, 42, .06);
     transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
-.bj-jeu:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(15, 23, 42, .13); }
+@media (hover: hover) {
+    .bj-jeu:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(15, 23, 42, .13); }
+}
 .bj-jeu:focus-within { border-color: var(--primary); }
 @media (prefers-reduced-motion: reduce) {
-    .bj-jeu, .bj-jeu:hover { transition: none; transform: none; }
+    .bj-jeu { transition: none; transform: none; }
+    @media (hover: hover) {
+        .bj-jeu:hover { transition: none; transform: none; }
+    }
 }
 
 /* LA TUILE ENTIÈRE EST LE BOUTON. On ne vise plus un rectangle au fond d'une
@@ -11710,8 +11936,12 @@ body.en-boite > #app-container { background: none; }
     backdrop-filter: blur(3px);
     transition: background .15s ease, transform .15s ease;
 }
-.bj-roue:hover { background: rgba(15, 23, 42, .68); transform: rotate(35deg); }
-@media (prefers-reduced-motion: reduce) { .bj-roue:hover { transform: none; } }
+@media (hover: hover) {
+    .bj-roue:hover { background: rgba(15, 23, 42, .68); transform: rotate(35deg); }
+}
+@media (prefers-reduced-motion: reduce) { @media (hover: hover) {
+     .bj-roue:hover { transform: none; }
+ } }
 
 /* --- LA FEUILLE DES RÉGLAGES ------------------------------------------------
    Elle s'ouvre PAR-DESSUS la grille et ne contient qu'un jeu : c'est là que les
@@ -11762,7 +11992,9 @@ body.en-boite > #app-container { background: none; }
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     transition: border-color .15s ease, background .15s ease;
 }
-.bj-choix:hover { border-color: var(--primary); }
+@media (hover: hover) {
+    .bj-choix:hover { border-color: var(--primary); }
+}
 /* LE CHOIX RETENU SE VOIT SANS QU'ON LE CHERCHE : un fond plein, pas une
    simple bordure. Blanc sur `--primary`, qui porte le blanc dans les cinq
    thèmes (5,02 au pire) — voir `tools/blancSurJeton.mjs`. */
@@ -11779,7 +12011,9 @@ body.en-boite > #app-container { background: none; }
     border: 1px solid var(--border); background: transparent;
     color: var(--text-muted); font: inherit; cursor: pointer; min-height: 44px;
 }
-.bj-feuille-fermer:hover { color: var(--text-main); border-color: var(--text-muted); }
+@media (hover: hover) {
+    .bj-feuille-fermer:hover { color: var(--text-main); border-color: var(--text-muted); }
+}
 
 .bj-jouer {
     flex: 1 1 auto; padding: 12px 18px; border: none; border-radius: 12px;
@@ -11787,7 +12021,9 @@ body.en-boite > #app-container { background: none; }
     color: #fff; font: inherit; font-size: 1.05rem; font-weight: 800;
     cursor: pointer; min-height: 44px;
 }
-.bj-jouer:hover { filter: brightness(1.06); }
+@media (hover: hover) {
+    .bj-jouer:hover { filter: brightness(1.06); }
+}
 .bj-jouer:active { transform: translateY(1px); }
 
 @media (pointer: coarse) {
@@ -11826,5 +12062,7 @@ body.en-boite > #app-container { background: none; }
     text-decoration: none; border-bottom: 1px solid var(--border);
     padding: 4px 6px; display: inline-block;
 }
-.bj-sortie:hover { color: var(--primary-texte); border-bottom-color: currentColor; }
+@media (hover: hover) {
+    .bj-sortie:hover { color: var(--primary-texte); border-bottom-color: currentColor; }
+}
 @media (pointer: coarse) { .bj-sortie { min-height: 44px; line-height: 36px; } }

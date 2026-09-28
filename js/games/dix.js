@@ -83,7 +83,9 @@ class AmisDeDix extends BaseGame {
                     color: var(--text-main);
                     transition: transform .1s ease, opacity .25s ease, box-shadow .1s ease;
                 }
-                .dx-carte:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,.15); }
+                @media (hover: hover) {
+                    .dx-carte:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,.15); }
+                }
                 /* LA TABLE QUI DÉRIVE. Les cartes quittent la grille et se
                    placent au pixel près : on les anime par leur position, et
                    non par une transformation — celle-ci reste aux états (prise,
@@ -100,7 +102,9 @@ class AmisDeDix extends BaseGame {
                     font-size: clamp(15px, 5.4cqw, 26px);
                     transition: opacity .25s ease, box-shadow .1s ease;
                 }
-                .dx-table--mouvante .dx-carte:hover { transform: none; }
+                @media (hover: hover) {
+                    .dx-table--mouvante .dx-carte:hover { transform: none; }
+                }
                 .dx-carte--prise {
                     border-color: var(--primary); background: color-mix(in srgb, var(--primary) 16%, var(--bg-panel));
                     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 35%, transparent);

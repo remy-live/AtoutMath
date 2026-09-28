@@ -107,7 +107,9 @@ class ChuteDecimaux extends BaseGame {
                     border: 2px solid transparent; border-bottom: none;
                     transition: background .12s;
                 }
-                .cd-case:hover { background: #e0e7ff; }
+                @media (hover: hover) {
+                    .cd-case:hover { background: #e0e7ff; }
+                }
                 .cd-case--vise { border-color: var(--primary, #6366f1); background: #e0e7ff; }
                 .cd-case--bonne { background: #bbf7d0; }
                 .cd-case--ratee { background: #fecaca; }

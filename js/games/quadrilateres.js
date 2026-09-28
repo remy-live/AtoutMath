@@ -1084,7 +1084,9 @@ class Organigramme extends BaseGame {
                     font: inherit; font-size: .72rem; font-weight: 700;
                     padding: 2px 10px; min-height: 24px; cursor: pointer; vertical-align: middle;
                 }
-                .qd-passer:hover { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .qd-passer:hover { border-color: var(--primary); color: var(--primary); }
+                }
                 @keyframes qd-attendre {
                     0%, 100% { border-color: var(--border); box-shadow: none; }
                     50% {

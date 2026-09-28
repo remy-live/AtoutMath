@@ -227,7 +227,9 @@ function assurerPanneau() {
                 color: var(--text-muted); padding: 6px 6px;
             }
             .rv-tri { cursor: pointer; user-select: none; }
-            .rv-tri:hover { color: var(--primary); }
+            @media (hover: hover) {
+                .rv-tri:hover { color: var(--primary); }
+            }
             .rv-tri--actif { color: var(--primary); }
             .rv-fleche { display: inline-block; min-width: .7em; font-size: .8em; }
             .rv-table th.rv-nom, .rv-table td.rv-nom {
@@ -235,9 +237,13 @@ function assurerPanneau() {
                 border-right: 1px solid var(--border);
             }
             .rv-table td.rv-nom { cursor: pointer; }
-            .rv-table td.rv-nom:hover b { color: var(--primary); }
+            @media (hover: hover) {
+                .rv-table td.rv-nom:hover b { color: var(--primary); }
+            }
             .rv-table thead th.rv-nom { z-index: 4; }
-            .rv-table tbody tr:hover td { background: var(--bg-panel); }
+            @media (hover: hover) {
+                .rv-table tbody tr:hover td { background: var(--bg-panel); }
+            }
             /* LA LARGEUR EST PORTÉE PAR LE CONTENU, PAS PAR LA CASE. Un
                max-width sur une cellule de tableau ne tient pas : en mise en
                page automatique, la colonne grandit jusqu'au plus long des
@@ -263,7 +269,9 @@ function assurerPanneau() {
                 justify-content: center; border-radius: 8px; cursor: pointer;
                 border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main); padding: 0;
             }
-            .rv-voir:hover { border-color: var(--primary); color: var(--primary); }
+            @media (hover: hover) {
+                .rv-voir:hover { border-color: var(--primary); color: var(--primary); }
+            }
             .rv-ico { width: 15px; height: 15px; fill: none; stroke: currentColor;
                 stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
             .rv-coche { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
@@ -276,7 +284,9 @@ function assurerPanneau() {
             .rv-date { width: 118px; font-size: .74rem; }
             .rv-quand { font-size: .72rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
             .rv-jour { color: var(--text-muted); }
-            .rv-jour:hover { color: #16a34a; border-color: #16a34a; }
+            @media (hover: hover) {
+                .rv-jour:hover { color: #16a34a; border-color: #16a34a; }
+            }
             .rv-remarque { width: 200px; }
             .rv-moteur { font-size: .7rem; color: var(--text-muted); font-family: ui-monospace, monospace;
                 max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -292,7 +302,9 @@ function assurerPanneau() {
                 border-radius: 9px; padding: 3px 7px; font: inherit; font-size: .74rem;
                 font-weight: 600; cursor: pointer; white-space: normal;
             }
-            .rv-classer:hover { border-color: var(--primary); color: var(--primary); }
+            @media (hover: hover) {
+                .rv-classer:hover { border-color: var(--primary); color: var(--primary); }
+            }
             .rv-classer--plein { border-style: solid; border-color: var(--primary); color: var(--text-main); }
             .rv-pastille {
                 background: var(--primary); color: #fff; border-radius: 999px;

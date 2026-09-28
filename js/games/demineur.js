@@ -131,12 +131,16 @@ class Demineur extends BaseGame {
                     line-height: 1; cursor: pointer; color: transparent;
                     transition: background .12s ease, transform .1s ease;
                 }
-                .dm-case:hover { background: #a7b5cb; }
+                @media (hover: hover) {
+                    .dm-case:hover { background: #a7b5cb; }
+                }
                 .dm-case:active { transform: scale(.92); background: #93a3bd; }
                 .dm-case--ouverte {
                     background: #f7f9fc; box-shadow: none; cursor: default;
                 }
-                .dm-case--ouverte:hover { background: #f7f9fc; }
+                @media (hover: hover) {
+                    .dm-case--ouverte:hover { background: #f7f9fc; }
+                }
                 .dm-case--vide { background: #eef2f7; box-shadow: none; }
                 .dm-case--drapeau { font-size: calc(var(--case) * .62); color: #0f172a; }
                 .dm-case--mine { background: #fecaca; }

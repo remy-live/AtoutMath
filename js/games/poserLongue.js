@@ -41,7 +41,9 @@ const STYLE = `
         color: var(--text-main); border-radius: 9px; cursor: pointer;
         font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
     }
-    .pl-btn:hover { background: var(--bg-hover); }
+    @media (hover: hover) {
+        .pl-btn:hover { background: var(--bg-hover); }
+    }
     .pl-etape {
         font-weight: 800; font-size: clamp(13px, 3.2cqw, 17px); color: #fff;
         padding: 5px 14px; border-radius: 999px; text-align: center;
@@ -85,7 +87,9 @@ const STYLE = `
         position: absolute; right: -6px; top: 0; width: 12px; height: 100%;
         cursor: pointer; border-radius: 4px;
     }
-    .pl-fente:hover { background: color-mix(in srgb, var(--danger) 35%, transparent); }
+    @media (hover: hover) {
+        .pl-fente:hover { background: color-mix(in srgb, var(--danger) 35%, transparent); }
+    }
 
     .pl-signe { display: flex; align-items: center; justify-content: flex-end;
         padding-right: 4px; font-weight: 900; }
@@ -136,7 +140,9 @@ const STYLE = `
         border: 2px solid var(--border); background: var(--bg-panel);
         color: var(--text-main); font-size: 19px; font-weight: 800; font-family: inherit;
     }
-    .pl-touche:hover { background: var(--primary); color: #fff; }
+    @media (hover: hover) {
+        .pl-touche:hover { background: var(--primary); color: #fff; }
+    }
     .pl-touche--ok { border-color: var(--success); color: var(--success); }
     .pl-saisie {
         min-width: 70px; padding: 4px 12px; border-radius: 8px; font-weight: 900;

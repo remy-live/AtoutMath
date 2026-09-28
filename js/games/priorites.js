@@ -76,7 +76,9 @@ class Priorites extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .pr-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .pr-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* LA CASCADE. Chaque ligne sous la précédente, alignée à
                    gauche : c'est la présentation du cahier, et elle rend la
@@ -102,7 +104,9 @@ class Priorites extends BaseGame {
                     cursor: pointer; background: var(--bg-hover); color: var(--primary);
                     border-color: var(--border); transition: .12s;
                 }
-                .pr-jeton--op:hover { background: var(--primary); color: #fff; }
+                @media (hover: hover) {
+                    .pr-jeton--op:hover { background: var(--primary); color: #fff; }
+                }
 
                 /* L'OPÉRATION SOULIGNÉE : UN SEUL TRAIT sous les trois jetons.
                    C'est pour cela qu'ils sont enveloppés ensemble — souligner

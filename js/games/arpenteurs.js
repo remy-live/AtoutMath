@@ -156,7 +156,9 @@ class Arpenteurs extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .ar-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .ar-btn:hover { background: var(--bg-hover); }
+                }
             </style>
             <div class="ar-wrap">
                 <div class="ar-haut">

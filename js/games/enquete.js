@@ -92,7 +92,9 @@ class Enquete extends BaseGame {
                     display: flex; align-items: center; justify-content: center;
                     border: 2px solid transparent; transition: border-color .12s;
                 }
-                .eq-case:hover { border-color: var(--accent, #4f46e5); }
+                @media (hover: hover) {
+                    .eq-case:hover { border-color: var(--accent, #4f46e5); }
+                }
                 .eq-case--objet { box-shadow: inset 0 0 0 3px #f59e0b; }
                 .eq-lieu-nom {
                     position: absolute; top: 2px; left: 4px; font-size: .63rem;

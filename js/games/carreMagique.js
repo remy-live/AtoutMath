@@ -77,7 +77,9 @@ class CarreMagique extends BaseGame {
                     background: var(--bg-panel); cursor: pointer;
                     border: 2.5px dashed color-mix(in srgb, var(--primary) 45%, transparent);
                 }
-                .cm-case--trou:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .cm-case--trou:hover { border-color: var(--primary); }
+                }
                 .cm-case--choisie {
                     border-style: solid; border-color: var(--primary);
                     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 28%, transparent);

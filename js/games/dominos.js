@@ -158,7 +158,9 @@ class Dominos extends BaseGame {
                     transition: transform .12s ease, box-shadow .12s ease;
                 }
                 .dm-piece--reserve .dm-demi + .dm-demi { border-top: 2px solid var(--text-main); border-left: 0; }
-                .dm-piece--reserve:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.17); }
+                @media (hover: hover) {
+                    .dm-piece--reserve:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.17); }
+                }
                 /* LA PIÈCE QUI VOLE PASSE AU-DESSUS DE LA COUCHE DE JEU.
                    Avec un z-index de 9999 elle glissait SOUS cette couche, qui
                    est à 10000 : le fantôme existait, suivait le doigt, et ne se

@@ -181,7 +181,9 @@ class MotsCroises extends BaseGame {
                 }
                 .mc-listes h5 { margin: 4px 0 2px; font-size: .8rem; color: var(--primary); }
                 .mc-def { cursor: pointer; padding: 1px 3px; border-radius: 4px; }
-                .mc-def:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .mc-def:hover { background: var(--bg-hover); }
+                }
                 .mc-def--faite { color: var(--text-muted); text-decoration: line-through; }
                 .mc-def--vue { background: color-mix(in srgb, var(--warning, #f59e0b) 22%, transparent); }
                 @container (min-width: 980px) {

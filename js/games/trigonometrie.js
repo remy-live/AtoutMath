@@ -209,7 +209,9 @@ class Trigonometrie extends BaseGame {
                     background: var(--bg-panel); color: var(--text-main);
                     font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer;
                 }
-                .tg-touche:hover { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .tg-touche:hover { border-color: var(--primary); color: var(--primary); }
+                }
                 .tg-touche--signe { color: var(--text-muted); font-weight: 700; }
                 .tg-touche--eff { color: var(--warning); }
                 .tg-valider {
@@ -217,7 +219,9 @@ class Trigonometrie extends BaseGame {
                     background: var(--primary); color: #fff; font: inherit; font-weight: 800;
                     cursor: pointer;
                 }
-                .tg-valider:hover { filter: brightness(1.07); }
+                @media (hover: hover) {
+                    .tg-valider:hover { filter: brightness(1.07); }
+                }
 
                 .tg-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; flex: 0 0 auto; }
                 .tg-btn {

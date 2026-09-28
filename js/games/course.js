@@ -263,9 +263,13 @@ class Course extends BaseGame {
                 .course-panel-title { text-align:center; margin-bottom:10px; font-weight:bold; border-bottom: 1px solid var(--border); padding-bottom: 5px; color: var(--text-muted); }
                 
                 .course-btn { pointer-events: auto; background: var(--primary); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-                .course-btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
+                @media (hover: hover) {
+                    .course-btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
+                }
                 .course-btn.outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
-                .course-btn.outline:hover { background: var(--primary); color: #fff; }
+                @media (hover: hover) {
+                    .course-btn.outline:hover { background: var(--primary); color: #fff; }
+                }
                 
                 .course-selector-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; }
                 .course-sel-btn { flex: 1; padding: 10px; border: 2px solid var(--border); border-radius: 8px; background: var(--bg-app); font-weight: bold; cursor: pointer; color: var(--text-muted); transition: 0.2s; }
@@ -281,7 +285,9 @@ class Course extends BaseGame {
                 .course-garage-item { border: 2px solid var(--border); border-radius: 12px; background: var(--bg-app);
                     padding: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center;
                     gap: 6px; font-weight: bold; color: var(--text-muted); transition: 0.2s; pointer-events: auto; }
-                .course-garage-item:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); }
+                @media (hover: hover) {
+                    .course-garage-item:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); }
+                }
                 .course-garage-item.selected { border-color: var(--primary); color: var(--primary); background: var(--bg-panel); }
                 .course-garage-item canvas { width: 74px; height: 84px; }
                 .course-ink-splat { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; background: radial-gradient(circle, rgba(0,0,0,0.9) 10%, transparent 60%); opacity: 0; transition: opacity 0.5s; mix-blend-mode: multiply; z-index: 4; }

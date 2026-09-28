@@ -49,7 +49,9 @@ class MotsCaches extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .mc-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .mc-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* Le corps : la grille et la liste des mots côte à côte quand il
                    y a de la largeur, l'une sous l'autre sur un téléphone. */

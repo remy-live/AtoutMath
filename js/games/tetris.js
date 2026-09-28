@@ -143,7 +143,9 @@ class Tetris extends BaseGame {
                     box-shadow: 0 4px 15px rgba(0,0,0,.25); text-transform: uppercase; letter-spacing: 1px;
                     font-family: inherit;
                 }
-                .tetris-start-btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+                @media (hover: hover) {
+                    .tetris-start-btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+                }
                 .tetris-hidden { display: none !important; }
                 .tetris-regle { display: flex; align-items: center; gap: 10px; margin-top: 14px;
                     color: #e2e8f0; font-weight: 700; font-size: 1.05rem; }

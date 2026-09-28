@@ -321,7 +321,9 @@ class Ninja extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .nj-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .nj-btn:hover { background: var(--bg-hover); }
+                }
             </style>
             <div class="nj-wrap">
                 <div class="nj-consigne" data-consigne></div>

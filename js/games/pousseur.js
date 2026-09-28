@@ -107,7 +107,9 @@ class Pousseur extends BaseGame {
                     box-sizing: border-box;
                 }
                 .sk-marche { cursor: pointer; }
-                .sk-marche:hover { background: #dbe3f5; }
+                @media (hover: hover) {
+                    .sk-marche:hover { background: #dbe3f5; }
+                }
                 .sk-caisse {
                     position: absolute; box-sizing: border-box;
                     width: calc(100% / var(--sk-l, 7)); height: calc(100% / var(--sk-h, 7));

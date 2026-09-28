@@ -152,7 +152,9 @@ class QuadriMorph extends BaseGame {
                     background: var(--bg-panel); border: 2px solid var(--border);
                     color: var(--text-main); cursor: grab; max-width: 220px; text-align: center;
                 }
-                .qm-cartes .kk-chip:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .qm-cartes .kk-chip:hover { border-color: var(--primary); }
+                }
                 .qm-chip--posee { opacity: .45; pointer-events: none; border-style: dashed; }
 
                 .qm-noms { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -161,7 +163,9 @@ class QuadriMorph extends BaseGame {
                     background: var(--bg-panel); color: var(--text-main);
                     font: inherit; font-weight: 800; cursor: pointer;
                 }
-                .qm-nom-btn:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .qm-nom-btn:hover { border-color: var(--primary); }
+                }
                 .qm-nom-btn--juste { border-color: var(--success); background: rgba(22,163,74,.12); }
                 .qm-nom-btn--faux { border-color: var(--danger); background: rgba(220,38,38,.1); }
 

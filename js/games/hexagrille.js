@@ -131,7 +131,9 @@ class Hexagrille extends BaseGame {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700; padding: 7px 12px;
                 }
-                .hx-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .hx-btn:hover { background: var(--bg-hover); }
+                }
                 .hx-note {
                     min-height: 2.4em; text-align: center; font-size: .88rem;
                     color: var(--text-muted); max-width: 620px; flex: 0 0 auto;

@@ -83,7 +83,9 @@ class Automate extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .au-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .au-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* Le programme À GAUCHE, le quadrillage à droite — et l'un
                    au-dessus de l'autre dès que l'écran se rétrécit. Les deux

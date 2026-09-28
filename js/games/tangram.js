@@ -121,7 +121,9 @@ class Tangram extends BaseGame {
                     border: 2px solid var(--border); background: var(--bg-panel); color: var(--text-main);
                     border-radius: 10px; cursor: pointer; font: inherit; font-weight: 700; padding: 8px 14px;
                 }
-                .tg-choix button:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .tg-choix button:hover { border-color: var(--primary); }
+                }
                 .tg-choix button.tg-juste { border-color: var(--success, #16a34a);
                     background: color-mix(in srgb, var(--success, #16a34a) 16%, var(--bg-panel)); }
                 .tg-choix button.tg-faux { border-color: var(--danger, #dc2626);

@@ -314,7 +314,9 @@ export class Patrons extends BaseGame {
                     color: var(--text-main); border-radius: 10px; padding: 7px 18px; cursor: pointer;
                     font-size: clamp(12px, 2.4cqw, 15px); font-weight: 700;
                 }
-                .pa-btn:hover:not(:disabled) { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .pa-btn:hover:not(:disabled) { border-color: var(--primary); }
+                }
                 .pa-btn:disabled { opacity: .4; cursor: default; }
                 .pa-note {
                     text-align: center; min-height: 2.6em; flex: 0 0 auto;

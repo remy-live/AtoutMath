@@ -58,7 +58,9 @@ class Conversion extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .cv-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .cv-btn:hover { background: var(--bg-hover); }
+                }
                 .cv-etape {
                     font-weight: 800; font-size: clamp(14px, 3.4cqw, 18px); text-align: center;
                     padding: 5px 14px; border-radius: 999px; color: #fff;
@@ -83,9 +85,9 @@ class Conversion extends BaseGame {
                    disent : sans indice visible, on n'essaie pas de cliquer un
                    en-tête de tableau — et on reste bloqué sur son erreur. */
                 .cv-tete-posee { cursor: pointer; }
-                .cv-tete-posee:hover {
-                    background: color-mix(in srgb, var(--primary) 14%, transparent);
-                    outline: 2px solid var(--primary); outline-offset: -3px;
+                @media (hover: hover) {
+                    .cv-tete-posee:hover { background: color-mix(in srgb, var(--primary) 14%, transparent);
+                    outline: 2px solid var(--primary); outline-offset: -3px; }
                 }
 
                 /* Le chiffre posé, et le fantôme pendant le glissement. */

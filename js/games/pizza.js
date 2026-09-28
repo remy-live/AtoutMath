@@ -141,7 +141,9 @@ class Pizza extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .pz-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .pz-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* LE BON DE COMMANDE. Une ligne = une fraction et son
                    ingrédient : « un quart d'ananas ». RIEN D'AUTRE.
@@ -172,7 +174,9 @@ class Pizza extends BaseGame {
                 }
                 .pz-svg { width: 100%; height: 100%; display: block; touch-action: none; }
                 .pz-part { cursor: pointer; }
-                .pz-part:hover .pz-fond { filter: brightness(1.06); }
+                @media (hover: hover) {
+                    .pz-part:hover .pz-fond { filter: brightness(1.06); }
+                }
 
                 /* LA CAISSE À INGRÉDIENTS : on en choisit un, ou on le fait
                    glisser sur une part. Le bac sélectionné est franchement

@@ -78,7 +78,9 @@ class Virgule extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .vg-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .vg-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* Le fil des trois temps : on doit voir où l'on en est, et
                    surtout qu'il RESTE quelque chose après. */
@@ -225,7 +227,9 @@ class Virgule extends BaseGame {
                     transition: all .22s cubic-bezier(.4,0,.2,1);
                     -webkit-tap-highlight-color: transparent;
                 }
-                .vg-carte:hover:not(:disabled) { transform: translateY(-4px); }
+                @media (hover: hover) {
+                    .vg-carte:hover:not(:disabled) { transform: translateY(-4px); }
+                }
                 .vg-carte:disabled { cursor: default; }
                 .vg-carte--ok { background: linear-gradient(135deg, #34d399, #16a34a); }
                 .vg-carte--ko { background: linear-gradient(135deg, #f87171, #dc2626); }

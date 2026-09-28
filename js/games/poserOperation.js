@@ -85,7 +85,9 @@ class PoserOperation extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .po-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .po-btn:hover { background: var(--bg-hover); }
+                }
                 .po-etape {
                     font-weight: 800; font-size: clamp(14px, 3.4cqw, 18px); color: #fff;
                     padding: 5px 14px; border-radius: 999px;
@@ -150,7 +152,9 @@ class PoserOperation extends BaseGame {
                     border: 2px solid var(--border); background: var(--bg-panel);
                     color: var(--text-main); font-size: 20px; font-weight: 800;
                 }
-                .po-touche:hover { background: var(--primary); color: #fff; }
+                @media (hover: hover) {
+                    .po-touche:hover { background: var(--primary); color: #fff; }
+                }
                 .po-jeton {
                     padding: 6px 11px; border-radius: 9px; cursor: grab; touch-action: none;
                     background: color-mix(in srgb, var(--primary) 16%, transparent);

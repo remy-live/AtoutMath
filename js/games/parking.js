@@ -111,7 +111,9 @@ class Parking extends BaseGame {
                     padding: calc(var(--pk-case) * .07);
                 }
                 .pk-case--jouable { cursor: pointer; }
-                .pk-case--jouable:hover { filter: brightness(1.05); }
+                @media (hover: hover) {
+                    .pk-case--jouable:hover { filter: brightness(1.05); }
+                }
                 /* La place de dégagement : la seule où l'on se range pour
                    laisser passer. On la marque, parce que c'est le sujet. */
                 .pk-case--place { border-style: dashed; background: #f2f5f9; }

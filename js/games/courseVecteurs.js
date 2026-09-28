@@ -275,7 +275,9 @@ class CourseVecteurs extends BaseGame {
                     font-size: clamp(.85rem, 3cqh, 1.3rem); font-weight: 800; line-height: 1;
                     -webkit-tap-highlight-color: transparent;
                 }
-                .cv-touche-acc:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .cv-touche-acc:hover { background: var(--bg-hover); }
+                }
                 .cv-touche-acc:active { transform: scale(.93); }
                 /* LA PASTILLE DE LA TOUCHE — la jumelle de celle qu'on voit
                    sur la piste. Même couleur, même rôle : celle qu'on touche
@@ -311,7 +313,9 @@ class CourseVecteurs extends BaseGame {
                     border-radius: 10px; padding: 5px 12px; font-weight: 700; cursor: pointer;
                     font-size: inherit; -webkit-tap-highlight-color: transparent;
                 }
-                .cv-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .cv-btn:hover { background: var(--bg-hover); }
+                }
                 .cv-select { font: inherit; padding: 4px 8px; border-radius: 10px;
                     border: 2px solid var(--border); background: var(--bg-panel); color: var(--text-main); }
             </style>

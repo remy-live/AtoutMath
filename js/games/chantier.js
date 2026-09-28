@@ -83,7 +83,9 @@ class Chantier extends BaseGame {
                     padding: 6px 11px; line-height: 1.2;
                     transition: background .12s, transform .1s;
                 }
-                .ch-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .ch-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                }
                 .ch-btn:active:not(:disabled) { transform: scale(.94); }
                 .ch-btn:disabled { opacity: .38; cursor: default; }
 
@@ -203,7 +205,9 @@ class Chantier extends BaseGame {
                     background: color-mix(in srgb, var(--success) 24%, transparent);
                 }
                 @keyframes ch-appel { 50% { opacity: .55; } }
-                .ch-cible:hover { animation: none; opacity: 1; }
+                @media (hover: hover) {
+                    .ch-cible:hover { animation: none; opacity: 1; }
+                }
 
                 .ch-note {
                     min-height: 2.6em; text-align: center; width: 100%;

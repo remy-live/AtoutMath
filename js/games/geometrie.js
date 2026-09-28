@@ -73,7 +73,9 @@ class Geometrie extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 700; font-size: .84rem; padding: 7px 14px;
                 }
-                .gm-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .gm-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                }
                 .gm-btn--valider { border-color: var(--primary); color: #fff; background: var(--primary); }
                 .gm-btn:disabled { opacity: .45; cursor: default; }
                 .gm-note {
