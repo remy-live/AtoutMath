@@ -67,7 +67,7 @@ class AmisDeDix extends BaseGame {
                     container-type: inline-size;
                 }
                 .dx-tete { text-align: center; font-size: 1rem; flex: 0 0 auto; }
-                .dx-cible { font-size: 1.5rem; font-weight: 900; color: var(--primary); }
+                .dx-cible { font-size: 1.5rem; font-weight: 900; color: var(--primary-texte); }
                 .dx-vies { font-size: 1.05rem; letter-spacing: .1em; }
                 .dx-table {
                     display: grid; gap: 9px; justify-content: center; flex: 0 0 auto;

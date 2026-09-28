@@ -56,7 +56,7 @@ class ColorierNombres extends BaseGame {
                     text-align: center; flex: 0 0 auto; max-width: 640px; line-height: 1.35;
                     font-size: clamp(11px, 2.6cqw, 14px); color: var(--text-muted);
                 }
-                .cn-consigne b { color: var(--primary); }
+                .cn-consigne b { color: var(--primary-texte); }
 
                 /* LA GRILLE SE MESURE SUR LA SCÈNE, pas sur le plateau entier :
                    la consigne, les boutons et la note prennent déjà leur part,
@@ -94,7 +94,7 @@ class ColorierNombres extends BaseGame {
                 /* La ligne dont le compte ne peut plus tomber juste : on le dit
                    tout de suite plutôt qu'à la fin, quand il faudrait chercher. */
                 .cn-ind.cn-ind--faux { color: var(--danger); }
-                .cn-ind.cn-ind--visee { color: var(--primary); }
+                .cn-ind.cn-ind--visee { color: var(--primary-texte); }
 
                 .cn-case {
                     width: var(--cn-case); height: var(--cn-case); box-sizing: border-box;
@@ -126,7 +126,7 @@ class ColorierNombres extends BaseGame {
                     padding: 6px 11px; font-size: .82rem; min-height: 34px;
                 }
                 .cn-btn--actif {
-                    border-color: var(--primary); color: var(--primary);
+                    border-color: var(--primary); color: var(--primary-texte);
                     background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
                 }
                 .cn-note {
@@ -135,7 +135,7 @@ class ColorierNombres extends BaseGame {
                 }
                 .cn-note--ok { color: var(--success); font-weight: 700; }
                 .cn-note--ko { color: var(--danger); font-weight: 600; }
-                .cn-note b { color: var(--primary); }
+                .cn-note b { color: var(--primary-texte); }
 
                 /* --- LA GRILLE FINIE DEVIENT UN DESSIN ---------------------
                    Rémy : « Quand le dessin est bon dis le ».

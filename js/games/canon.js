@@ -90,7 +90,7 @@ class Canon extends BaseGame {
                 }
                 .cn-tete { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
                     justify-content: center; font-size: .92rem; }
-                .cn-cible { font-weight: 900; color: var(--primary); font-size: 1.1rem; }
+                .cn-cible { font-weight: 900; color: var(--primary-texte); font-size: 1.1rem; }
                 .cn-palier { color: var(--text-muted); font-size: .82rem; font-style: italic; }
 
                 /* L'ESPACE. Le champ de bataille au sol enfermait le jeu dans

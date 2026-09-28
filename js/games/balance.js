@@ -313,7 +313,7 @@ export class Balance extends BaseGame {
                    recopie. */
                 .bl-jl--detail { color: var(--text-muted); padding-left: 1em; font-size: .92em; }
                 .bl-jl--fin { color: var(--success); font-weight: 800; margin-top: 3px; }
-                .bl-jl i { font-style: normal; color: var(--primary); font-weight: 700; }
+                .bl-jl i { font-style: normal; color: var(--primary-texte); font-weight: 700; }
                 .bl-note {
                     text-align: center; min-height: 2.4em; flex: 0 0 auto;
                     font-size: clamp(11px, 2.2cqw, 13px); line-height: 1.3;

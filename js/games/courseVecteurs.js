@@ -168,7 +168,7 @@ class CourseVecteurs extends BaseGame {
                 }
                 .cv-avant[hidden] { display: none; }
                 .cv-avant-nom {
-                    font-weight: 900; font-size: clamp(1.1rem, 5cqw, 1.9rem); color: var(--primary);
+                    font-weight: 900; font-size: clamp(1.1rem, 5cqw, 1.9rem); color: var(--primary-texte);
                 }
                 .cv-avant-mot {
                     font-size: clamp(.9rem, 3.4cqw, 1.15rem); line-height: 1.45;

@@ -456,7 +456,7 @@ export class ProgrammeConstruction extends BaseGame {
                     font-size: clamp(12px, 2.3cqw, 15px); line-height: 1.3;
                 }
                 @media (hover: hover) {
-                    .pc-mot:hover { border-color: var(--primary); color: var(--primary); }
+                    .pc-mot:hover { border-color: var(--primary); color: var(--primary-texte); }
                 }
                 /* UNE LETTRE EST UNE CIBLE CARRÉE : « A » dans un bouton taillé
                    pour « le cercle de centre » se cherche du doigt. */
@@ -476,7 +476,7 @@ export class ProgrammeConstruction extends BaseGame {
                 .pc-l small { font-size: .82em; line-height: 1.55; }
                 .pc-l--ok { color: var(--success); }
                 .pc-l--ko { color: var(--danger); }
-                .pc-l--note { color: var(--primary); }
+                .pc-l--note { color: var(--primary-texte); }
                 /* --- LA COMPOSITION PAR PHRASES ------------------------------
                    Deux colonnes comme la rédaction : à gauche ce qu'on a posé,
                    à droite la banque. On garde exactement la même géométrie que
@@ -519,7 +519,7 @@ export class ProgrammeConstruction extends BaseGame {
                     line-height: 1.35; text-align: left;
                 }
                 @media (hover: hover) {
-                    .pc-carte:hover { border-color: var(--primary); color: var(--primary); }
+                    .pc-carte:hover { border-color: var(--primary); color: var(--primary-texte); }
                 }
                 .pc-carte--posee { opacity: .38; cursor: default; }
                 @media (hover: hover) {
@@ -528,7 +528,7 @@ export class ProgrammeConstruction extends BaseGame {
                 .pc-modeles { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
                 .pc-ajout {
                     border: 1.5px dashed var(--primary); border-radius: 10px; cursor: pointer;
-                    background: transparent; color: var(--primary); font: inherit; font-weight: 600;
+                    background: transparent; color: var(--primary-texte); font: inherit; font-weight: 600;
                     padding: 5px 9px; font-size: clamp(11px, 2.1cqw, 13px);
                 }
                 /* LA BARRE DE VALIDATION RESTE COLLÉE AU BAS DU CADRE.
@@ -556,7 +556,7 @@ export class ProgrammeConstruction extends BaseGame {
                 .pc-note { text-align: center; min-height: 1.3em; font-size: clamp(11px, 2.2cqw, 14px); }
                 .pc-note--ok { color: var(--success); font-weight: 700; }
                 .pc-note--ko { color: var(--danger); font-weight: 600; }
-                .pc-note--info { color: var(--primary); font-weight: 600; }
+                .pc-note--info { color: var(--primary-texte); font-weight: 600; }
             </style>
             <div class="pc-wrap" lang="fr">
                 <div class="pc-consigne" data-consigne></div>

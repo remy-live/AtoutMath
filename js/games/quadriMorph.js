@@ -104,7 +104,7 @@ class QuadriMorph extends BaseGame {
                     background: var(--bg-panel); color: var(--text-muted);
                 }
                 .qm-etape--ici {
-                    border-color: var(--primary); color: var(--primary);
+                    border-color: var(--primary); color: var(--primary-texte);
                     background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
                 }
                 .qm-etape--faite { opacity: .5; }
@@ -136,7 +136,7 @@ class QuadriMorph extends BaseGame {
                 .qm-fig--visee { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent); }
                 .qm-nom {
                     text-align: center; font-weight: 800; font-size: 1.05rem; margin-top: 6px;
-                    color: var(--primary); min-height: 1.4em;
+                    color: var(--primary-texte); min-height: 1.4em;
                 }
                 /* Le nom se cache pendant qu'on le cherche : c'est la question. */
                 .qm-nom--cache { color: var(--text-muted); }

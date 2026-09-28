@@ -63,7 +63,7 @@ class Problemes extends BaseGame {
                 }
                 .pb-famille {
                     background: color-mix(in srgb, var(--primary) 14%, transparent);
-                    color: var(--primary); border-radius: 999px; padding: 3px 12px;
+                    color: var(--primary-texte); border-radius: 999px; padding: 3px 12px;
                 }
                 .pb-score { color: var(--text-muted); font-weight: 600; }
                 .pb-btn {
@@ -92,7 +92,7 @@ class Problemes extends BaseGame {
                 .pb-question {
                     margin-top: 9px; padding-top: 9px; border-top: 2px dashed var(--border);
                     font-weight: 800; font-size: clamp(14px, 3.6cqw, 20px);
-                    color: var(--primary); line-height: 1.35;
+                    color: var(--primary-texte); line-height: 1.35;
                 }
                 .pb-nb { font-weight: 800; color: var(--text-main); white-space: nowrap; }
 

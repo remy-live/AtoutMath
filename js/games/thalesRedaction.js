@@ -91,7 +91,7 @@ class ThalesRedaction extends BaseGame {
                     font-weight: 800; font-size: .82rem; letter-spacing: .04em;
                     text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px;
                 }
-                .thr-bloc--ici .thr-titre { color: var(--primary); }
+                .thr-bloc--ici .thr-titre { color: var(--primary-texte); }
                 .thr-bloc--fait .thr-titre { color: var(--success); }
                 .thr-ligne { font-size: .95rem; line-height: 1.5; font-weight: 600; }
                 /* La phrase qui dit quoi faire sur la ligne chiffrée : plus
@@ -176,7 +176,7 @@ class ThalesRedaction extends BaseGame {
                     font-weight: 800; font-size: .84rem; padding: 5px 10px; min-height: 32px;
                 }
                 @media (hover: hover) {
-                    .thr-eti:hover { border-color: var(--primary); color: var(--primary); }
+                    .thr-eti:hover { border-color: var(--primary); color: var(--primary-texte); }
                 }
 
                 .thr-resultat { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

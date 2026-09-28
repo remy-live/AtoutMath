@@ -96,7 +96,7 @@ class Proportion extends BaseGame {
                     color: var(--text-main);
                 }
                 .pr-trou {
-                    cursor: pointer; color: var(--primary);
+                    cursor: pointer; color: var(--primary-texte);
                     background: color-mix(in srgb, var(--primary) 9%, transparent);
                     -webkit-tap-highlight-color: transparent;
                 }
@@ -138,7 +138,7 @@ class Proportion extends BaseGame {
                     font-size: clamp(12px, 2.9cqw, 15px); line-height: 1.5;
                 }
                 .pr-lien[hidden] { display: none; }
-                .pr-lien b { color: var(--primary); }
+                .pr-lien b { color: var(--primary-texte); }
                 .pr-lien-ligne { display: flex; gap: 8px; align-items: baseline; padding: 2px 0; }
                 .pr-puce {
                     flex: 0 0 auto; width: 19px; height: 19px; border-radius: 50%;

@@ -1085,7 +1085,7 @@ class Organigramme extends BaseGame {
                     padding: 2px 10px; min-height: 24px; cursor: pointer; vertical-align: middle;
                 }
                 @media (hover: hover) {
-                    .qd-passer:hover { border-color: var(--primary); color: var(--primary); }
+                    .qd-passer:hover { border-color: var(--primary); color: var(--primary-texte); }
                 }
                 @keyframes qd-attendre {
                     0%, 100% { border-color: var(--border); box-shadow: none; }
@@ -1122,7 +1122,7 @@ class Organigramme extends BaseGame {
                     text-align: center; font-weight: 800; line-height: 1.25;
                     font-size: clamp(11px, 2.6cqw, 14px);
                 }
-                .qd-etape-titre b { color: var(--primary); }
+                .qd-etape-titre b { color: var(--primary-texte); }
                 .qd-fentes { display: flex; flex-direction: column; gap: 4px; }
                 .qd-fente {
                     min-height: 30px; border-radius: 9px; box-sizing: border-box;
@@ -1156,7 +1156,7 @@ class Organigramme extends BaseGame {
                     font-size: clamp(10px, 2.2cqw, 13px); line-height: 1.35;
                 }
                 .qd-carnet h4 {
-                    margin: 6px 0 2px; font-size: 1em; color: var(--primary);
+                    margin: 6px 0 2px; font-size: 1em; color: var(--primary-texte);
                 }
                 .qd-carnet ul { margin: 0; padding-left: 18px; }
 
@@ -1291,7 +1291,7 @@ class Organigramme extends BaseGame {
                    fort pour cette flèche » n'est pas une réussite et n'est pas
                    une faute ; le peindre en rouge redirait exactement ce que la
                    phrase nie. */
-                .qd-note--info { color: var(--primary); font-weight: 600; }
+                .qd-note--info { color: var(--primary-texte); font-weight: 600; }
 
                 /* Couché, le plan à gauche et les cartes à droite : en paysage
                    c'est la hauteur qui manque. La requête interroge le PLATEAU,

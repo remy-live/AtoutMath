@@ -92,7 +92,7 @@ class Conversion extends BaseGame {
 
                 /* Le chiffre posé, et le fantôme pendant le glissement. */
                 .cv-chiffre { color: var(--text-main); }
-                .cv-fantome { color: var(--primary); opacity: .45; }
+                .cv-fantome { color: var(--primary-texte); opacity: .45; }
                 .cv-zero { color: var(--danger); }
                 .cv-case--survol { background: color-mix(in srgb, var(--primary) 18%, transparent); }
                 .cv-virgule { position: relative; }

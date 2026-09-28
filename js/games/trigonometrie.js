@@ -110,7 +110,7 @@ class Trigonometrie extends BaseGame {
                     text-align: center; flex: 0 0 auto; max-width: 640px; line-height: 1.35;
                     font-size: clamp(12px, 2.8cqw, 15px);
                 }
-                .tg-consigne b { color: var(--primary); }
+                .tg-consigne b { color: var(--primary-texte); }
                 /* LA SCÈNE MESURE LA FIGURE, PAS LE PLATEAU. Un carré calé sur la
                    hauteur du plateau entier se réserverait une place déjà prise
                    par la consigne, les étiquettes et la note. */
@@ -179,7 +179,7 @@ class Trigonometrie extends BaseGame {
                     gap: 6px; flex-wrap: wrap; font-weight: 800;
                     font-size: clamp(15px, 3.4cqw, 20px);
                 }
-                .tg-gauche { color: var(--primary); font-variant-numeric: tabular-nums; }
+                .tg-gauche { color: var(--primary-texte); font-variant-numeric: tabular-nums; }
                 /* LA FRACTION SE DESSINE COMME UNE FRACTION : un trait, un champ
                    au-dessus, un champ en dessous. Sur une ligne, « a/b » se lit
                    comme une division ; ici c'est un RAPPORT, et l'élève doit voir
@@ -196,7 +196,7 @@ class Trigonometrie extends BaseGame {
                 .tg-champ:focus { outline: none; border-color: var(--primary); }
                 .tg-champ--vise { border-color: var(--primary); }
                 .tg-rappel {
-                    font-size: .82rem; font-weight: 700; color: var(--primary);
+                    font-size: .82rem; font-weight: 700; color: var(--primary-texte);
                     background: color-mix(in srgb, var(--primary) 10%, transparent);
                     border-radius: 8px; padding: 4px 10px; text-align: center;
                 }
@@ -210,7 +210,7 @@ class Trigonometrie extends BaseGame {
                     font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer;
                 }
                 @media (hover: hover) {
-                    .tg-touche:hover { border-color: var(--primary); color: var(--primary); }
+                    .tg-touche:hover { border-color: var(--primary); color: var(--primary-texte); }
                 }
                 .tg-touche--signe { color: var(--text-muted); font-weight: 700; }
                 .tg-touche--eff { color: var(--warning); }

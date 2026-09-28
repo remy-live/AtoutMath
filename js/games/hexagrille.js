@@ -117,7 +117,7 @@ class Hexagrille extends BaseGame {
                 .hx-jeton {
                     width: clamp(34px, 9cqw, 46px); height: clamp(34px, 9cqw, 46px);
                     border-radius: 50%; border: 2px solid var(--primary);
-                    background: var(--bg-panel); color: var(--primary);
+                    background: var(--bg-panel); color: var(--primary-texte);
                     font: inherit; font-weight: 900; font-size: clamp(15px, 4cqw, 21px);
                     display: flex; align-items: center; justify-content: center;
                     cursor: grab; -webkit-tap-highlight-color: transparent;

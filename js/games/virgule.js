@@ -97,7 +97,7 @@ class Virgule extends BaseGame {
                     font-size: clamp(21px, 6cqw, 34px); font-weight: 800; flex: 0 0 auto;
                     letter-spacing: .01em; text-align: center;
                 }
-                .vg-op b { color: var(--primary); }
+                .vg-op b { color: var(--primary-texte); }
                 .vg-consigne {
                     text-align: center; max-width: 560px; flex: 0 0 auto;
                     font-size: clamp(12px, 2.9cqw, 15px); line-height: 1.35; color: var(--text-muted);
@@ -209,7 +209,7 @@ class Virgule extends BaseGame {
                     font-size: clamp(12px, 2.9cqw, 15px); font-weight: 800; flex: 0 0 auto;
                     color: var(--text-muted);
                 }
-                .vg-compteur b { color: var(--primary); }
+                .vg-compteur b { color: var(--primary-texte); }
 
                 /* Les quatre propositions, en cartes : « 0,025 » ne tient pas
                    dans une bulle ronde. */
@@ -242,7 +242,7 @@ class Virgule extends BaseGame {
                 .vg-ecran {
                     min-width: clamp(140px, 42cqw, 230px); padding: 8px 16px;
                     border: 3px solid var(--primary); border-radius: 14px;
-                    background: var(--bg-panel); color: var(--primary); text-align: center;
+                    background: var(--bg-panel); color: var(--primary-texte); text-align: center;
                 }
                 .vg-ecran--vide::after { content: '?'; opacity: .4; }
                 .vg-pave {

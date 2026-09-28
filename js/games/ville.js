@@ -159,13 +159,13 @@ class Ville extends BaseGame {
                 .vi-cmd:disabled { opacity: .32; cursor: default; }
                 .vi-cmd svg { display: block; }
                 .vi-cmd-nom { font-size: .72rem; font-weight: 700; color: var(--text-muted); }
-                .vi-cmd--go { border-color: var(--primary); color: var(--primary); }
+                .vi-cmd--go { border-color: var(--primary); color: var(--primary-texte); }
                 /* Le volant est braqué : le bouton reste enfoncé. Sans cette
                    marque, rien ne dit que la rotation est ACQUISE et qu'il ne
                    reste qu'à avancer. */
                 .vi-cmd--braque {
                     background: color-mix(in srgb, var(--primary) 18%, transparent);
-                    border-color: var(--primary); color: var(--primary);
+                    border-color: var(--primary); color: var(--primary-texte);
                     box-shadow: none; transform: translateY(3px);
                 }
 

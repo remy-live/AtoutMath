@@ -42,7 +42,7 @@ class CarreMagique extends BaseGame {
                     color: var(--text-main); overflow-y: auto; container-type: size;
                 }
                 .cm-tete { text-align: center; font-size: .95rem; }
-                .cm-somme { font-size: 1.5rem; font-weight: 900; color: var(--primary); }
+                .cm-somme { font-size: 1.5rem; font-weight: 900; color: var(--primary-texte); }
                 /* LE CARRÉ EST UN TABLEAU DE SOMMES, pas une grille de trous.
                    Le total de chaque rangée s'écrit au bout, en direct : c'est
                    lui qui dit si l'on approche, et c'est par lui qu'on trouve la
@@ -100,7 +100,7 @@ class CarreMagique extends BaseGame {
                     background: color-mix(in srgb, var(--success, #16a34a) 18%, transparent); }
                 .cm-total--ko { color: var(--danger, #dc2626);
                     background: color-mix(in srgb, var(--danger, #dc2626) 15%, transparent); }
-                .cm-total--cible { color: var(--primary); font-weight: 900; }
+                .cm-total--cible { color: var(--primary-texte); font-weight: 900; }
 
                 /* LE PAVÉ MAISON. Le clavier de l'iPhone recouvrait le carré et
                    les boutons : on ne voyait plus ce qu'on remplissait. */

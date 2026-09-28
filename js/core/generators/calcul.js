@@ -235,7 +235,7 @@ export const multMissingGenerator = {
                 // tient-il dans 24 ? ». Sans repère, le robot entourait
                 // « Facteur Manquant » — le nom du jeu.
                 html: `<div class="game-question" style="margin-bottom:0;">Facteur Manquant</div>
-                       <div data-vise style="font-size:2.2rem; font-weight:bold; color:var(--primary);">${eq}</div>`
+                       <div data-vise style="font-size:2.2rem; font-weight:bold; color:var(--primary-texte);">${eq}</div>`
             },
             answer: missing,
             choices,

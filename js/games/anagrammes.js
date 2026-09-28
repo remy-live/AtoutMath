@@ -71,7 +71,7 @@ class Anagrammes extends BaseGame {
                     border-radius: 9px; border: 2.5px dashed var(--border);
                     display: flex; align-items: center; justify-content: center;
                     font-weight: 900; font-size: calc(var(--an-cote) * .58);
-                    background: var(--bg-panel); color: var(--primary);
+                    background: var(--bg-panel); color: var(--primary-texte);
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
                 }
                 .an-case--pleine { border-style: solid; border-color: var(--primary); }

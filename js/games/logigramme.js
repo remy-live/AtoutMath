@@ -76,7 +76,7 @@ class Logigramme extends BaseGame {
                 }
                 .lg-indice--fait { opacity: .48; text-decoration: line-through; }
                 .lg-indice--vise { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 25%, transparent); }
-                .lg-indice-num { font-weight: 800; color: var(--primary); flex: 0 0 auto; }
+                .lg-indice-num { font-weight: 800; color: var(--primary-texte); flex: 0 0 auto; }
 
                 .lg-grille { flex: 0 0 auto; }
                 .lg-table { border-collapse: collapse; }

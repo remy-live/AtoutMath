@@ -228,9 +228,9 @@ function assurerPanneau() {
             }
             .rv-tri { cursor: pointer; user-select: none; }
             @media (hover: hover) {
-                .rv-tri:hover { color: var(--primary); }
+                .rv-tri:hover { color: var(--primary-texte); }
             }
-            .rv-tri--actif { color: var(--primary); }
+            .rv-tri--actif { color: var(--primary-texte); }
             .rv-fleche { display: inline-block; min-width: .7em; font-size: .8em; }
             .rv-table th.rv-nom, .rv-table td.rv-nom {
                 position: sticky; left: 0; z-index: 2; text-align: left;
@@ -238,7 +238,7 @@ function assurerPanneau() {
             }
             .rv-table td.rv-nom { cursor: pointer; }
             @media (hover: hover) {
-                .rv-table td.rv-nom:hover b { color: var(--primary); }
+                .rv-table td.rv-nom:hover b { color: var(--primary-texte); }
             }
             .rv-table thead th.rv-nom { z-index: 4; }
             @media (hover: hover) {
@@ -270,7 +270,7 @@ function assurerPanneau() {
                 border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main); padding: 0;
             }
             @media (hover: hover) {
-                .rv-voir:hover { border-color: var(--primary); color: var(--primary); }
+                .rv-voir:hover { border-color: var(--primary); color: var(--primary-texte); }
             }
             .rv-ico { width: 15px; height: 15px; fill: none; stroke: currentColor;
                 stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -303,7 +303,7 @@ function assurerPanneau() {
                 font-weight: 600; cursor: pointer; white-space: normal;
             }
             @media (hover: hover) {
-                .rv-classer:hover { border-color: var(--primary); color: var(--primary); }
+                .rv-classer:hover { border-color: var(--primary); color: var(--primary-texte); }
             }
             .rv-classer--plein { border-style: solid; border-color: var(--primary); color: var(--text-main); }
             .rv-pastille {

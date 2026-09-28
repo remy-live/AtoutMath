@@ -104,7 +104,7 @@ class Pythagore extends BaseGame {
                    ordre, et le calcul dans le « Donc ». */
                 .py-redac { font-size: clamp(12px, 2.9cqw, 15px); line-height: 1.45; }
                 .py-redac p { margin: 0 0 4px; }
-                .py-redac b { color: var(--primary); }
+                .py-redac b { color: var(--primary-texte); }
 
                 .py-calc { display: flex; flex-direction: column; gap: 8px;
                     font-size: clamp(15px, 3.4cqw, 20px); font-weight: 700;

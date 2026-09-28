@@ -163,7 +163,7 @@ class MotsCroises extends BaseGame {
                     text-align: center; font-weight: 700; max-width: 46ch; min-height: 2.4em;
                     font-size: clamp(12px, min(2.6cqw, 3.2cqh), 17px); line-height: 1.3;
                 }
-                .mc-indice b { color: var(--primary); }
+                .mc-indice b { color: var(--primary-texte); }
 
                 /* LA LISTE COMPLÈTE, dépliable — et posée À CÔTÉ dès que la
                    largeur le permet : c'est la mise en page du journal. */
@@ -179,7 +179,7 @@ class MotsCroises extends BaseGame {
                     max-height: 100%; overflow-y: auto; font-size: .82rem; line-height: 1.35;
                     overflow-wrap: anywhere;
                 }
-                .mc-listes h5 { margin: 4px 0 2px; font-size: .8rem; color: var(--primary); }
+                .mc-listes h5 { margin: 4px 0 2px; font-size: .8rem; color: var(--primary-texte); }
                 .mc-def { cursor: pointer; padding: 1px 3px; border-radius: 4px; }
                 @media (hover: hover) {
                     .mc-def:hover { background: var(--bg-hover); }

@@ -196,7 +196,7 @@ class Chantier extends BaseGame {
                 .ch-cible {
                     border: max(2px, calc(var(--case) * .07)) solid var(--primary);
                     background: color-mix(in srgb, var(--primary) 20%, transparent);
-                    color: var(--primary); cursor: pointer; z-index: 4;
+                    color: var(--primary-texte); cursor: pointer; z-index: 4;
                     font-size: calc(var(--case) * .46); font-weight: 800;
                     animation: ch-appel 1.5s ease-in-out infinite;
                 }

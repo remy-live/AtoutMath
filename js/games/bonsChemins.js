@@ -63,7 +63,7 @@ class BonsChemins extends BaseGame {
                 .bc-cible {
                     font-weight: 800; font-size: clamp(17px, 5cqw, 27px); line-height: 1.1;
                 }
-                .bc-cible b { color: var(--primary); font-size: 1.25em; }
+                .bc-cible b { color: var(--primary-texte); font-size: 1.25em; }
                 /* HAUTEUR FIXE, ET UNE SEULE LIGNE. Ce qu'elle dit change à chaque
                    clic ; si elle passait de une à deux lignes, la scène se
                    redimensionnerait sous le doigt. */

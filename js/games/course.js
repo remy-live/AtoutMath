@@ -263,7 +263,7 @@ class Course extends BaseGame {
                 
                 .course-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-app); z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: flex-start; overflow-y: auto; padding: 20px; box-sizing: border-box; }
                 .course-screen.active { display: flex; }
-                .course-screen h1 { font-size: 2.5rem; margin-bottom: 15px; text-align: center; color: var(--primary); }
+                .course-screen h1 { font-size: 2.5rem; margin-bottom: 15px; text-align: center; color: var(--primary-texte); }
                 .course-panel { border: 1px solid var(--border); padding: 15px; width: 100%; max-width: 550px; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-md); margin-bottom: 15px; position: relative; }
                 .course-panel-title { text-align:center; margin-bottom:10px; font-weight:bold; border-bottom: 1px solid var(--border); padding-bottom: 5px; color: var(--text-muted); }
                 
@@ -271,7 +271,7 @@ class Course extends BaseGame {
                 @media (hover: hover) {
                     .course-btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
                 }
-                .course-btn.outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+                .course-btn.outline { background: transparent; border: 2px solid var(--primary); color: var(--primary-texte); }
                 @media (hover: hover) {
                     .course-btn.outline:hover { background: var(--primary); color: #fff; }
                 }
@@ -293,7 +293,7 @@ class Course extends BaseGame {
                 @media (hover: hover) {
                     .course-garage-item:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); }
                 }
-                .course-garage-item.selected { border-color: var(--primary); color: var(--primary); background: var(--bg-panel); }
+                .course-garage-item.selected { border-color: var(--primary); color: var(--primary-texte); background: var(--bg-panel); }
                 .course-garage-item canvas { width: 74px; height: 84px; }
                 .course-ink-splat { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; background: radial-gradient(circle, rgba(0,0,0,0.9) 10%, transparent 60%); opacity: 0; transition: opacity 0.5s; mix-blend-mode: multiply; z-index: 4; }
             </style>
@@ -372,7 +372,7 @@ class Course extends BaseGame {
                     <h1>BILAN</h1>
                     <div class="course-panel">
                         <div style="text-align:center; margin-bottom:5px; color:var(--text-muted);" id="course-end-title">SCORE FINAL</div>
-                        <div style="font-size:3.5rem; text-align:center; color:var(--primary); font-weight:bold;" id="course-end-score">0</div>
+                        <div style="font-size:3.5rem; text-align:center; color:var(--primary-texte); font-weight:bold;" id="course-end-score">0</div>
                         <button id="course-btn-retry-err" class="course-btn" style="width:100%; margin-top:10px; display:none;">↺ REJOUER MES ERREURS</button>
                     </div>
                     <div class="course-panel" id="course-res-list" style="max-height: 250px; overflow-y:auto;"></div>

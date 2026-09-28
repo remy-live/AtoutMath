@@ -7287,7 +7287,14 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
 .ad-jeton {
     width: clamp(20px, 6vw, 30px); height: clamp(20px, 6vw, 30px);
     border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-weight: 900; font-size: .82rem; color: #fff;
+    /* L'ENCRE EST SOMBRE, PAS BLANCHE, ET LE CODE COULEUR NE BOUGE PAS.
+       Du blanc sur le rose #ef8a8a donne 2,42 de contraste, et sur le bleu
+       #7ba7e0 guère plus : c'est le défaut classique du blanc sur un pastel, et
+       il ne dépend d'aucun thème — il était là aussi en plein jour. Une encre
+       proche du noir rend 5,4 sur le rose et 5,7 sur le bleu, et le rouge du
+       plus comme le bleu du moins restent exactement ce qu'ils étaient : c'est
+       le FOND qui porte le code, pas le chiffre. */
+    font-weight: 900; font-size: .82rem; color: #1f2937;
     transition: transform .38s ease, opacity .38s ease;
 }
 .ad-jeton--plus { background: #ef8a8a; box-shadow: inset 0 -2px 0 rgba(0,0,0,.16); }

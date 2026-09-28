@@ -246,7 +246,7 @@ class Automate extends BaseGame {
                 }
                 .au-annonce-rang {
                     font-size: .74rem; font-weight: 800; letter-spacing: .04em;
-                    text-transform: uppercase; color: var(--primary);
+                    text-transform: uppercase; color: var(--primary-texte);
                 }
                 .au-annonce-carte h3 { margin: 4px 0 8px; font-size: 1.25rem; }
                 .au-annonce-carte p { margin: 0 0 16px; line-height: 1.4; color: var(--text-muted); }
