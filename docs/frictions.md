@@ -510,3 +510,26 @@ manque.
   `includes(id)` cherche une sous-chaîne, pas un mot — « consigne » se trouvait
   dans « consignePapier », et l'outil annonçait 147 lecteurs pour un réglage
   qu'un seul fichier lit.
+
+## **Une capture d'élément perd un texte peint par son fond, et personne ne le voit** — 2026-09-28
+
+- **Ce que je voulais faire** : montrer à Rémy que le titre « AtoutMath » suit
+  bien le thème, en photographiant l'entête dans les cinq thèmes.
+- **Ce qui a coûté** : trois allers-retours. Quinze images sont sorties de la
+  BONNE TAILLE, avec la BONNE couleur de fond, et SANS UNE LETTRE. Deux causes
+  empilées, chacune silencieuse :
+  1. `locator.screenshot()` recompose l'élément seul, et le dégradé découpé
+     dans le texte (`background-clip: text` + `-webkit-text-fill-color`) ne
+     survit pas à cette recomposition ;
+  2. la sonde ne s'était pas identifiée, donc la page était restée le PORTAIL :
+     l'entête existait dans le document, derrière le voile. Les contrastes
+     calculés restaient justes — le style calculé s'applique à un élément
+     caché — ce qui rend l'oubli dangereux : RIEN ne le signalait.
+- **Combien de fois** : | (la première pour la capture ; la connexion oubliée
+  est déjà décrite par la règle du `CLAUDE.md`, ce qui prouve qu'une règle
+  écrite ne remplace pas un outil)
+- **Ce qui manque** : une fonction de sonde partagée qui (a) s'identifie et
+  recharge, (b) photographie PAR DÉCOUPE DE LA PAGE et non par élément, et
+  (c) **refuse de rendre une image unie** — compter les teintes distinctes
+  coûte dix lignes et aurait arrêté les trois allers-retours au premier. Toutes
+  les sondes du dépôt réécrivent aujourd'hui ces trois choses, ou les oublient.

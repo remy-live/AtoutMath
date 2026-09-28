@@ -82,6 +82,20 @@
        épreuve de `tests/contraste.test.mjs` refait le calcul, pour le jour où
        un thème donnerait à `--primary` une teinte claire. */
     --primary-sur-blanc: var(--primary);
+    /* CES DEUX JETONS ÉCHAPPENT AU MODE PROFESSEUR, ET CE N'EST PAS UN HASARD
+       — c'est une règle de CSS que personne ne devine, alors on l'écrit.
+       `body.teacher-mode` impose `--primary: #4f46e5` par-dessus le thème (voir
+       `css/ui.css`, c'est la correction de contraste que Rémy a choisi de
+       garder). Or `--titre-debut` et `--primary-sur-blanc` sont déclarés ICI,
+       sur `:root` : leur `var(--primary)` est résolu SUR `:root`, avant que
+       `body` n'existe dans la cascade. Le titre et « Commencer » suivent donc
+       le thème même pour le professeur.
+       Le bandeau de consigne, lui, écrit `var(--primary)` DANS sa règle : il
+       est résolu sur l'élément, hérite de `body`, et reste indigo pour le
+       professeur. MESURÉ, connecté : 6,29→7,90 dans les cinq thèmes côté prof,
+       et les couleurs du thème côté élève — qui est celui qui le lit. Les deux
+       passent, et c'est la conséquence directe du mode professeur, pas un
+       oubli. */
     --danger: #ef4444; --success: #10b981; --warning: #f59e0b;
     /* LES COULEURS DE SENS, QUAND ELLES SERVENT DE TEXTE. Même partage que
        pour l'indigo, et pour la même raison mesurée : le vert de réussite
