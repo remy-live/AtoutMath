@@ -531,8 +531,42 @@ export function mount(container, session, opts = {}) {
             //
             // SAUF SI C'EST DÉJÀ LA RÉPONSE : voir `sautDirect`. On ne demande
             // pas à celui qui a fini de faire semblant de chercher.
-            if (etapes.length && !etapes[rang].finale
-                && !sautDirect(saisie)) return validerEtape();
+            // ── CE QUI EST ÉGAL MAIS PAS FINI SE DIT, MÊME SUR UNE LIGNE ──
+            //
+            // Rémy, capture d'iPhone sur « Fractions pas à pas », 1/4 + 5/4, la
+            // ligne « On ajoute les numérateurs, le dénominateur ne bouge pas »,
+            // 6/4 écrit dans le champ, bordure rouge : « je sais que je n'ai pas
+            // simplifié mais il me dit faux ».
+            //
+            // IL AVAIT RAISON, ET LE LOGICIEL LE SAVAIT. `sautDirect` autorise
+            // depuis toujours d'écrire la réponse directement — « on peut
+            // tolérer si l'élève marque directement la version simplifiée » —,
+            // mais il exige `juste`. Or `verifieTexte` répond ici
+            // `{ juste: false, inacheve: true, pourquoi: 'C'est bien égal, mais
+            // ce n'est pas fini : la fraction se simplifie encore.' }` : la
+            // phrase exacte de Rémy, écrite dans le code, et jetée. On
+            // retombait sur le juge de la LIGNE, qui répondait tout autre
+            // chose — « à cette ligne on REGROUPE, on ne calcule pas encore ».
+            //
+            // MESURÉ, la même intention jugée deux fois :
+            //
+            //     8/5 + 9/5, on tape 17/5 ... « Parfait ! +10 »
+            //     4/3 + 2/3, on tape  6/3 ... REFUSÉ, et pour le mauvais motif
+            //
+            // Le même geste, deux verdicts — la seule différence étant que
+            // 17/5 est déjà réduit, donc reconnu par `sautDirect`. Une règle
+            // qu'on ne peut pas apprendre n'est pas une règle.
+            //
+            // ON NE L'ACCEPTE PAS POUR AUTANT : la ligne finale demande la forme
+            // réduite, et la donner reste le travail. On dit seulement LEQUEL
+            // des deux reproches est le bon.
+            if (etapes.length && !etapes[rang].finale && !sautDirect(saisie)) {
+                const presque = item.verifieTexte ? item.verifieTexte(saisie) : null;
+                if (presque && typeof presque === 'object' && presque.inacheve) {
+                    return signalerInacheve(presque.pourquoi || '');
+                }
+                return validerEtape();
+            }
             // L'ITEM JUGE LUI-MÊME QUAND IL SAIT LE FAIRE. Comparer des
             // chaînes suffit pour une expression réduite, dont l'écriture est
             // canonique ; pas pour une factorisation, où (x − 3)(x + 3) et

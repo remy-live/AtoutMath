@@ -993,3 +993,51 @@ manque.
 - **La règle** : **« ça ne le fait qu'en série » décrit QUAND on le voit, pas
   D'OÙ ça vient.** Le seul moyen de trancher était de retirer l'enchaînement et
   de constater que l'erreur restait.
+
+---
+
+## **Le bon reproche existait, c'est le mauvais qui sortait** — 2026-09-29
+
+> Rémy, capture d'iPhone sur « Fractions pas à pas » : « je sais que je n'ai pas
+> simplifié mais il me dit faux ».
+
+- **Ce qu'il montrait** : 1/4 + 5/4, la ligne « On ajoute les numérateurs, le
+  dénominateur ne bouge pas », `6/4` en rouge. Le message affiché disait « à
+  cette ligne on REGROUPE, on ne calcule pas encore » — alors que le logiciel
+  SAVAIT déjà dire, mot pour mot, ce que Rémy venait de dire : « c'est bien
+  égal, mais ce n'est pas fini : la fraction se simplifie encore ».
+- **La friction** : ce défaut est **invisible à la lecture du code**. Les deux
+  branches sont justes séparément — `sautDirect` exige une réponse juste,
+  le juge de ligne exige la forme regroupée. C'est leur RENCONTRE qui ment, et
+  seule une réponse *égale mais non réduite* la déclenche.
+- **Ce qui l'a rendu visible** : comparer deux cas que rien ne distingue pour
+  l'élève. `8/5 + 9/5 → 17/5` passe (« Parfait ! »), `4/3 + 2/3 → 6/3` échoue.
+  Même geste, deux verdicts, parce que le premier résultat est déjà réduit.
+- **Combien de fois** : |
+- **La règle** : **quand deux règles justes se rencontrent, c'est la rencontre
+  qu'il faut mesurer.** On ne la trouve qu'en fabriquant deux cas que l'élève
+  croit identiques et en regardant s'ils reçoivent la même réponse.
+
+---
+
+## **Quatre fois de suite, c'est ma sonde qui avait tort** — 2026-09-29
+
+- **Ce qui a coûté** : ~35 min sur une correction qui en valait dix. À chaque
+  fois, un résultat alarmant venait de la sonde, pas du logiciel :
+    - `[data-t="eff"]` pour la touche d'effacement, qui s'appelle `[data-eff]` :
+      le champ gardait `8/4`, je tapais `2` derrière, et je concluais que la
+      réponse réduite était refusée ;
+    - un trait d'union `-` tapé là où la touche porte un vrai signe moins `−` :
+      `(19-1)/12` n'était jamais saisi, et « la forme regroupée est refusée » ;
+    - trois chemins essayés sur LA MÊME question : dès que le premier est
+      accepté, la ligne change et les deux autres mesurent autre chose ;
+    - un `text=Valider` cliqué alors que le bouton est désactivé quand le champ
+      est vide — la sonde mourait au lieu de le dire.
+- **Combien de fois** : ||
+- **Ce qui manque** : de quoi **taper une expression** dans `tools/sonde.mjs` —
+  `s.taperFormule('(3+5)/4')` qui trouve les vraies touches (y compris `−`,
+  `⌫`, la barre de fraction), vide le champ avant, et refuse de valider si le
+  bouton est éteint. Quatre sondes de suite l'ont réécrit de travers.
+- **La règle** : **un résultat qui accuse le logiciel se revérifie en regardant
+  ce que la sonde a réellement fait.** Trois des quatre fausses pistes se
+  voyaient en imprimant le contenu du champ avant de valider.
