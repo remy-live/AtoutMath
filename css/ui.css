@@ -1782,8 +1782,25 @@ body.plein-ecran .pe-sortir { display: block; }
    gardent leur infobulle et leur `aria-label` ; c'est un choix de présentation
    qu'on fait une fois par séance, pas un bouton qu'on cherche. */
 .sidebar-top-controls > .desktop-controls { flex: 0 0 auto; width: auto; }
-.sidebar-top-controls > .desktop-controls .btn-toggle { font-size: 0; padding: 0; width: 38px; min-width: 38px; justify-content: center; }
-.sidebar-top-controls > .desktop-controls .btn-toggle svg { width: 17px; height: 17px; }
+/* `gap: 0` AUSSI, ET C'EST LA MOITIÉ QUI RESTAIT.
+   Retirer la marge de l'icône a ramené l'écart de 5 px à 2,5 — la moitié
+   exactement, ce qui désignait un espacement PARTAGÉ plutôt qu'une marge. Le
+   bouton est un `flex` avec `gap: 5px`, et le libellé réduit à `font-size: 0`
+   reste un élément de flex : il a une largeur nulle, mais le gap qui le sépare
+   de l'icône, lui, existe toujours. Le centrage répartit donc 17 px d'icône et
+   5 px de vide, et pousse l'icône de 2,5 px vers la gauche. */
+.sidebar-top-controls > .desktop-controls .btn-toggle { font-size: 0; padding: 0; gap: 0; width: 38px; min-width: 38px; justify-content: center; }
+/* ET LA MARGE DU MOT PART AVEC LE MOT.
+   Rémy : « un petit détail les icones ne font pas centrés dans le bouton du
+   switch ». `.btn-toggle svg` porte `margin-right: 5px` (layout.css) pour
+   séparer l'icône de son libellé — « 🖱 Clic ». Le libellé a été retiré d'ici
+   (`font-size: 0`, voir juste au-dessus) ; la marge, elle, est restée, et elle
+   pousse l'icône vers la gauche dans un bouton de 38 px.
+   MESURÉ, écart entre le centre de l'icône et celui du bouton : −5,00 px sur
+   les DEUX boutons. Après : 0,00. */
+.sidebar-top-controls > .desktop-controls .btn-toggle svg {
+    width: 17px; height: 17px; margin-right: 0;
+}
 .sidebar-top-controls > .select-wrap { flex: 1 1 auto; min-width: 0; width: auto; }
 #cns-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (pointer: coarse) {
