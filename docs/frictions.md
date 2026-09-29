@@ -923,3 +923,73 @@ manque.
   maintenant cinq chiffres différents.
 - **La règle** : **ce qu'une sonde pose sur la page, un rechargement le reprend.
   Ce qu'elle range où l'utilisateur le range, non.**
+
+---
+
+## **Un robot muet ne casse rien : aucun essai ne peut le voir** — 2026-09-29
+
+> Rémy, capture d'iPhone : « bug avec le robot ».
+
+- **Ce qu'il montrait** : « Le Canon des Compléments » en démonstration — terrain
+  noir et vide, « Niveau **undefined** », aucun cœur, « prépare… » immobile,
+  pendant que le robot expliquait « un boulet approche, je cherche son
+  complément à 100 ». MESURÉ avant : **0 astéroïde, 0 tir**, relevés à 2, 6 et
+  12 secondes.
+- **La cause, en une ligne de `BaseGame`** : `if (this.isDemo)
+  runDemoSequence(); else startGameLoop();` — **exclusif**. Un robot qui
+  n'appelle pas `startGameLoop` lui-même parle devant un décor mort, avec les
+  champs que cette méthode aurait posés restés vides.
+- **Pourquoi personne ne l'avait vu** : rien n'échoue. Pas d'erreur de page, pas
+  de page blanche, pas d'essai rouge — `npm test` ne lance aucun robot, et un
+  élève qui voit un robot muet croit que c'est normal.
+- **Combien de fois** : |
+- **Ce qu'on en garde** : `tools/robotsMuets.mjs` ouvre le robot de chaque
+  exercice et cherche un `undefined`/`NaN` à l'écran. Il a confirmé que le
+  défaut était **unique au canon** — c'est ce qu'on voulait savoir avant de
+  corriger huit fichiers au jugé.
+- **La règle** : **ce qui ne lève pas d'erreur n'est pas gardé par les essais.
+  Un robot se regarde.**
+
+---
+
+## **Trois fausses alertes d'affilée, et chacune a sa raison** — 2026-09-29
+
+- **Ce que je voulais faire** : chercher si d'autres robots étaient muets.
+- **Ce qui a coûté** : ~30 min, à poursuivre trois défauts qui n'existaient pas.
+  Le critère « le plateau ne mute pas » se trompe de trois façons :
+    - **un `<canvas>` ne mute rien.** « L'Escadrille » annonçait 1 mutation en
+      neuf secondes et son robot marche très bien : tout se peint dans un
+      contexte 2D, invisible au DOM ;
+    - **une démonstration de clics** sur une grille immobile ne bouge pas non
+      plus — le curseur du robot vit sur `<body>`, hors du plateau observé ;
+    - **deux notes identiques se dédupliquent.** « 💥 30 + 70 = 100 ! » deux
+      fois de suite : mon observateur comparait au précédent et n'en gardait
+      qu'une. J'ai conclu « le second tir ne touche pas » d'une leçon qui
+      touchait deux fois.
+- **Combien de fois** : ||
+- **Ce qu'on en garde** : dans `robotsMuets.mjs`, le texte est le **verdict**
+  (un `undefined` est une certitude) et le mouvement n'est qu'une **invitation à
+  regarder**, avec les jeux à canevas exclus d'office.
+- **La règle** : **une sonde doit savoir ce qu'elle ne sait pas mesurer.** Un
+  critère qui ne s'applique pas à tout le monde ne doit pas rendre de verdict.
+
+---
+
+## **Une erreur qui n'apparaît qu'en série n'est pas forcément celle de la sonde** — 2026-09-29
+
+- **Ce qui s'est passé** : en enchaînant plusieurs robots, la page rendait
+  « Cannot set properties of null (setting 'textContent') ». Seule, chaque
+  démonstration était propre. J'ai d'abord classé l'erreur comme un défaut de
+  ma sonde — l'enchaînement — et ajouté `clearEngines()` entre deux robots.
+  **Elle est restée.**
+- **La vraie cause** : `canon.js` posait un `setTimeout` NU à la fin de partie,
+  que `clearEngines()` ne peut pas annuler. Perdre puis quitter dans la seconde
+  et demie qui suit — c'est-à-dire au moment exact où l'on quitte — exécutait le
+  rappel sur une couche de jeu déjà remplacée.
+- **Combien de fois** : |
+- **Ce qu'on en garde** : `regTimeout` au lieu de `setTimeout`, et `majTete()`
+  rendue incapable de lever quand son plateau a disparu. Une épreuve garde les
+  deux, vue tomber.
+- **La règle** : **« ça ne le fait qu'en série » décrit QUAND on le voit, pas
+  D'OÙ ça vient.** Le seul moyen de trancher était de retirer l'enchaînement et
+  de constater que l'erreur restait.
