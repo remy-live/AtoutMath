@@ -302,7 +302,8 @@ export const numerationExercises = [
         // en CHERCHANT des paires, pas en répondant à des questions : une
         // table de cartes, on tape 3 puis 7, elles s'envolent. La table vidée,
         // une plus grande arrive.
-        id: 'num-amis-de-dix', title: 'Les Amis de Dix',
+        id: 'num-amis-de-dix',
+        jeu: false, title: 'Les Amis de Dix',
         cree: '2026-08-12',
         activityId: 'dix',
         // Sur le papier, on TRACE le trait au lieu de taper deux cartes : c'est
@@ -344,7 +345,8 @@ export const numerationExercises = [
         // ennemi porte 23, la cible est 100, on charge 77 au pavé, on touche
         // le boulet, et le nôtre part à sa rencontre. Somme juste : explosion.
         // Fausse : l'ennemi continue sa route. Le calcul précède le geste.
-        id: 'num-canon-complements', title: 'Le Canon des Compléments',
+        id: 'num-canon-complements',
+        jeu: false, title: 'Le Canon des Compléments',
         cree: '2026-08-12',
         activityId: 'canon',
         sansRevision: true,
@@ -423,7 +425,8 @@ export const numerationExercises = [
         instruction: "Un nombre relatif, c'est une POSITION. L'addition, c'est un DÉPLACEMENT : compte les crans, n'additionne pas les distances. Le réglage « Niveau » choisit le modèle — l'ascenseur, le thermomètre, les pastilles qui s'annulent, ou l'écriture (+3) + (−5) — ou les enchaîne tous."
     },
     {
-        id: 'num-dictee', title: 'Dictée de Grands Nombres',
+        id: 'num-dictee',
+        jeu: false, title: 'Dictée de Grands Nombres',
         cree: '2026-08-10',
         activityId: 'dictee', skills: ['num.ecriture.lettres'],
         params: { palier: 'grands' },
@@ -623,6 +626,7 @@ export const numerationExercises = [
         // C'est exactement pourquoi on retire les poids AVANT de diviser :
         // la règle n'est pas récitée, elle est rencontrée.
         id: 'alg-balance',
+        jeu: false,
         cree: '2026-09-04',
         title: 'La Balance des Équations',
         activityId: 'balance',
@@ -849,7 +853,8 @@ export const numerationExercises = [
         // les deux lectures sont vraies et donnent le même nombre, mais c'est
         // la première que l'élève entend en classe, et l'exercice ne doit pas
         // dire le contraire du professeur.
-        id: 'num-virgule', title: 'La Virgule qui se décale',
+        id: 'num-virgule',
+        jeu: false, title: 'La Virgule qui se décale',
         cree: '2026-08-11',
         activityId: 'virgule',
         // Sur le papier, le glissement dans le tableau de numération n'a pas

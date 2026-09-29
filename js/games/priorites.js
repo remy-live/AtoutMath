@@ -52,6 +52,13 @@ class Priorites extends BaseGame {
         // le résultat final et ne peut pas dire où l'élève a dérapé ; la
         // cascade, elle, s'arrête sur la ligne fautive.
         this.relatifs = !!this.params.relatifs;
+        // LE MOINS DEVANT UNE PARENTHÈSE — Rémy : « les élèves galèrent aux
+        // exercices −(−3+5×6)−(−7) […] je pense qu'il faut être progressif ».
+        // C'est une TABLE DE FORMES différente, et rien d'autre : la cascade,
+        // la correction et les messages ne changent pas d'un mot.
+        this.avecOppose = !!this.params.oppose;
+        // Un opposé sans négatifs n'enseigne rien : le réglage entraîne l'autre.
+        if (this.avecOppose) this.relatifs = true;
         // L'option qui voyage avec chaque appel au noyau : c'est elle qui
         // autorise une soustraction à descendre sous zéro.
         this.opts = { relatifs: this.relatifs };
@@ -208,7 +215,8 @@ class Priorites extends BaseGame {
     poser() {
         const e = tirerExpression({
             rng: this.rng, niveau: this.niveau, parentheses: this.avecParentheses,
-            puissances: this.avecPuissances, relatifs: this.relatifs
+            puissances: this.avecPuissances, relatifs: this.relatifs,
+            avecOppose: this.avecOppose
         });
         this.expression = e;
         // Chaque ligne écrite, avec l'endroit où elle est soulignée.

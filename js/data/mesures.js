@@ -130,7 +130,8 @@ export const mesuresExercises = [
         // erreur : l'ordre des unit\u00e9s, le rang du nombre, la place de la
         // virgule. Les m\u00e9langer, c'est ne jamais savoir laquelle a co\u00fbt\u00e9 la
         // r\u00e9ponse.
-        id: 'mes-conversion', title: 'Le Tableau de Conversion',
+        id: 'mes-conversion',
+        jeu: false, title: 'Le Tableau de Conversion',
         cree: '2026-08-14',
         activityId: 'conversion',
         // SUR LE PAPIER : le tableau des cahiers, une ligne par conversion.

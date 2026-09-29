@@ -197,7 +197,28 @@ export const aChange = (exo, fiche) =>
  * catalogue en cinquante et un jeux et soixante-deux exercices. Se contenter de
  * « il a un activityId » aurait coché cent treize lignes sur cent treize.
  */
-export const estJeuCatalogue = (exo) => !!(exo && exo.activityId && !exo.generatorId);
+/**
+ * CE CATALOGUE-LÀ DEVINAIT, ET IL DEVINAIT SOUVENT FAUX.
+ *
+ * Rémy, revue de la v878 : « quelques remarques car il y a des choses qui ne
+ * sont pas des jeux ». Trente-deux exercices sur quarante-huit comptés comme
+ * jeux ne l'étaient pas.
+ *
+ * LA DÉDUCTION ÉTAIT « un `activityId` sans `generatorId` », et elle ne
+ * décrivait pas ce qu'on croyait : elle disait « cet exercice a son écran à
+ * lui », ce qui est vrai d'un jeu ET de la Dictée de Grands Nombres, du
+ * Tableau de Conversion, de la Rédaction de Thalès ou de Poser une opération.
+ * Aucun de ces quatre n'est un jeu, et chacun a bien son écran.
+ *
+ * ON DIT DONC CE QU'ON SAIT PLUTÔT QUE DE LE DEVINER : un exercice qui porte
+ * `jeu: false` n'en est pas un, et la déduction ne sert plus que de défaut pour
+ * ceux qu'on n'a pas encore tranchés. La décision de Rémy cesse ainsi de vivre
+ * dans son navigateur — sans ce champ, chaque revue lui redemandait les mêmes
+ * trente-deux cases.
+ */
+export const estJeuCatalogue = (exo) => (exo && typeof exo.jeu === 'boolean'
+    ? exo.jeu
+    : !!(exo && exo.activityId && !exo.generatorId));
 export const jeuRevu = (exo, fiche) =>
     (fiche && typeof fiche.jeu === 'boolean') ? fiche.jeu : estJeuCatalogue(exo);
 export const aChangeJeu = (exo, fiche) =>

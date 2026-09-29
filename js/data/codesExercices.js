@@ -75,6 +75,10 @@ export const CODES_EXERCICES = {
     // « PR » va aux puissances et « PS » n'est pas libre : le X marque la
     // rencontre des deux chapitres.
     'calc-prio-relatifs':         'PX',   // Prio-Bot Relatifs — Priorités × relatifs
+    // « M » COMME MOINS, ET NON COMME PRIORITÉS : tous les « P? » utiles étaient
+    // pris, et ce chapitre-ci ne porte de toute façon pas sur l'ordre des
+    // opérations mais sur la suppression d'une parenthèse.
+    'calc-prio-oppose':           'MB',   // Le Moins devant la Parenthèse
     'calc-compte-est-bon':        'CB',   // Le Compte est Bon
     'calc-poser':                 'PS',   // Poser une opération
     'calc-poser-multiplication':  'MU',   // Poser une multiplication

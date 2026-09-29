@@ -159,7 +159,8 @@ export const geometrieExercises = [
         // famille. C'est l'idée que les élèves n'ont pas, et qu'aucun manuel ne
         // peut montrer parce qu'il faudrait que la figure bouge. Il vient donc
         // AVANT l'organigramme dans la progression, pas après.
-        id: 'geo-quadri-morph',        title: 'Le Quadrilatère qui se Transforme',
+        id: 'geo-quadri-morph',
+        jeu: false,        title: 'Le Quadrilatère qui se Transforme',
         cree: '2026-09-01',
         activityId: 'quadri-morph',
         sansRevision: true,
@@ -270,6 +271,7 @@ export const geometrieExercises = [
 
     {
         id: 'geo-quadrilateres',
+        jeu: false,
         cree: '2026-09-01',
         title: 'L\'Organigramme des Quadrilatères',
         activityId: 'quadrilateres',
@@ -1431,7 +1433,8 @@ export const geometrieExercises = [
         // trois choses deviennent inévitables : il y a un endroit du programme
         // où l'on se trouve, la boucle y REMONTE, et la gauche est celle du
         // robot.
-        id: 'geo-automate', title: 'L\'Automate',
+        id: 'geo-automate',
+        jeu: false, title: 'L\'Automate',
         cree: '2026-08-11',
         activityId: 'automate',
         params: { niveau: 'moyen', mode: 'progressif' },
@@ -1624,7 +1627,8 @@ export const geometrieExercises = [
         // dépend de la précédente. Les deux formes ne tiennent pas dans le
         // même moule, et forcer la seconde dans le premier aurait donné quatre
         // questions sans rapport apparent au lieu d'une démonstration.
-        id: 'geo-thales-redaction',        title: 'Thalès : la Rédaction', cree: '2026-09-01',
+        id: 'geo-thales-redaction',
+        jeu: false,        title: 'Thalès : la Rédaction', cree: '2026-09-01',
         activityId: 'thales-redaction', sansRevision: true,
         // LA FICHE PAPIER A SON PROPRE GÉNÉRATEUR. Rémy : « et pour
         // l'impression, il faut aussi proposer un exercice de rédaction ».
@@ -1676,7 +1680,8 @@ export const geometrieExercises = [
     // copie est fausse. C'est pour cela que ce repérage mérite un exercice à
     // lui seul, et pas trois lignes d'introduction au chapitre suivant.
     {
-        id: 'geo-trigo-cotes',        title: 'Hypoténuse, Opposé, Adjacent',
+        id: 'geo-trigo-cotes',
+        jeu: false,        title: 'Hypoténuse, Opposé, Adjacent',
         colonnesPapier: 4,
         // LA FEUILLE N'EST PAS L'ÉCRAN. À l'écran on CLIQUE le côté ; sur le
         // papier on l'ÉCRIT — le premier palier n'a pas de traduction papier,

@@ -181,6 +181,7 @@ export const calculExercises = [
         // compétence et sa ligne au bilan — et le professeur voit lequel des
         // deux il doit reprendre.
         id: 'calc-prio-relatifs',
+        jeu: false,
         cree: '2026-09-02',
         consignePapier: "Calcule en respectant les priorités, écris les calculs. Attention aux signes.",
         colonnesPapier: 4,
@@ -239,7 +240,8 @@ export const calculExercises = [
         // ÉCRIRE la suite du calcul — et c'est là qu'apparaît la faute qui
         // coûte vraiment des points : calculer 4 × 5 juste, puis oublier le
         // « − 2 » en passant à la ligne. Un QCM ne la voit jamais.
-        id: 'calc-prio-cascade', title: 'Priorités : ligne par ligne',
+        id: 'calc-prio-cascade',
+        jeu: false, title: 'Priorités : ligne par ligne',
         colonnesPapier: 4,
         cree: '2026-08-14',
         activityId: 'priorites',
@@ -288,12 +290,77 @@ export const calculExercises = [
         instruction: "Clique sur l'opération qu'il faut faire EN PREMIER : elle se souligne. Donne son résultat dans le trou, et la ligne suivante s'écrit — en RECOPIANT tout le reste. C'est la recopie qui coûte des points en contrôle, pas la règle : on calcule 4 × 5 correctement, et on oublie le « − 2 ». Avec le réglage « Avec des puissances », un cran s'ajoute à la règle : les parenthèses d'abord, PUIS les puissances, puis les multiplications et les divisions, et enfin les additions et les soustractions. Une puissance se clique comme un signe — c'est elle, l'opération."
     },
     {
+        // LE MOINS DEVANT UNE PARENTHÈSE, UN BARREAU À LA FOIS.
+        //
+        // Rémy : « les élèves galèrent aux exercices −(−3+5×6)−(−7). Comment les
+        // aider ? Peut-être commencer par remplacer +(−3), puis faire −(−3+7) en
+        // les guidant sur les parenthèses puis faire les priorités opératoires »
+        // — puis, une fois l'échelle proposée : « oui et je pense qu'il faut
+        // être progressif ».
+        //
+        // CETTE EXPRESSION-LÀ N'ÉTAIT PAS TIRABLE. Toutes les formes du moteur
+        // commencent par un nombre ou par une parenthèse ouvrante : un moins
+        // appliqué à un GROUPE n'existait pas. Le barreau 4 est exactement ce
+        // qu'il écrit au tableau.
+        //
+        // POURQUOI UN EXERCICE À PART, ET NON UN CRAN DE PLUS SUR « Prio-Bot
+        // Relatifs ». Le geste n'est pas le même : là-bas on tranche un ORDRE
+        // (× avant +), ici on supprime une PARENTHÈSE en changeant un signe. Les
+        // deux se piègent l'un l'autre, et c'est déjà pour cela que les
+        // priorités et les relatifs ont été séparés. Chacun garde sa ligne au
+        // bilan, et Rémy voit lequel des deux reprendre.
+        //
+        // L'ORDRE DES BARREAUX S'ÉCARTE DE SA PREMIÈRE IDÉE, ET C'EST ASSUMÉ.
+        // Il proposait −(−3+7) AVANT les priorités ; on l'a mis après. Dans
+        // −(−3 + 5 × 6), la règle du signe est inapplicable tant que l'intérieur
+        // n'est pas un seul nombre — un élève à qui l'on montre −(−3+7) d'abord
+        // écrit « 3 − 5 × 6 », ce qui est faux et plausible. Le moteur le lui
+        // refuse désormais en toutes lettres (« on calcule d'abord ce qu'il y a
+        // dedans ») ; l'échelle doit dire la même chose que lui.
+        id: 'calc-prio-oppose',
+        jeu: false,
+        cree: '2026-09-29',
+        title: 'Le Moins devant la Parenthèse',
+        consignePapier: 'Calcule en respectant les priorités, écris les calculs. '
+            + 'Attention au moins devant la parenthèse.',
+        colonnesPapier: 4,
+        activityId: 'priorites',
+        skills: ['num.prio.relatifs'],
+        params: { niveau: 1, oppose: true, relatifs: true },
+        paramSchema: [
+            {
+                id: 'niveau', type: 'select', label: 'Difficulté', echelle: true,
+                aide: 'Chaque cran ajoute UNE difficulté. Le dernier est l\'expression '
+                    + 'complète : −(−3 + 5 × 6) − (−7).',
+                options: [
+                    { value: 1, label: '1 — Une parenthèse, un nombre : −(−7)', court: '1' },
+                    { value: 2, label: '2 — Une parenthèse, une somme : −(−3 + 7)', court: '2' },
+                    { value: 3, label: '3 — Des priorités dedans : −(−3 + 5 × 6)', court: '3' },
+                    { value: 4, label: '4 — L\'expression entière', court: '4' }
+                ],
+                default: 1
+            }
+        ],
+        motsClefs: ['opposé', 'moins devant une parenthèse', 'supprimer les parenthèses',
+            'relatifs', 'priorités', 'signe', 'parenthèses'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Un moins qui n'a rien à sa gauche n'est pas une soustraction : il prend "
+            + "l'OPPOSÉ de ce qui le suit. Et il ne peut s'appliquer qu'à UN SEUL nombre — "
+            + "tant qu'il reste un calcul dans la parenthèse, c'est lui qu'on fait d'abord. "
+            + "Clique sur l'opération à faire en premier, donne son résultat, et la ligne "
+            + "suivante s'écrit. Les quatre crans ajoutent une difficulté chacun : une "
+            + "parenthèse avec un seul nombre, puis avec une somme, puis avec des priorités "
+            + "dedans, et enfin l'expression entière."
+    },
+    {
         // LE COMPTE EST BON. Le tirage est fabriqué à l'endroit : le compte est
         // donc toujours atteignable, et l'on sait en combien d'opérations —
         // c'est le réglage de difficulté. Les grandes plaques sont garanties :
         // 25, 50, 75 et 100 sont celles dont les multiples doivent devenir des
         // réflexes.
-        id: 'calc-compte-est-bon', title: 'Le Compte est Bon',
+        id: 'calc-compte-est-bon',
+        jeu: false, title: 'Le Compte est Bon',
         cree: '2026-08-14',
         activityId: 'compte-est-bon',
         // SUR LE PAPIER, c'est l'exercice d'origine : on cherche au crayon,
@@ -342,7 +409,8 @@ export const calculExercises = [
         // c'est justement ce qu'on veut faire sentir : ce qui change entre + et
         // −, ce n'est pas la méthode, c'est l'endroit où se note la retenue.
         // Les deux règles sont dites dans la consigne, l'une après l'autre.
-        id: 'calc-poser', title: 'Poser une opération',
+        id: 'calc-poser',
+        jeu: false, title: 'Poser une opération',
         colonnesPapier: 5,
         cree: '2026-08-14',
         revisions: [
@@ -413,7 +481,8 @@ export const calculExercises = [
         // retenue qui ne se comporte pas comme celle de l'addition : elle
         // s'ajoute APRÈS le produit, jamais au chiffre avant de multiplier.
         // C'est l'erreur qu'on ne voit pas si l'on ne fait écrire que le total.
-        id: 'calc-poser-multiplication', title: 'Poser une multiplication',
+        id: 'calc-poser-multiplication',
+        jeu: false, title: 'Poser une multiplication',
         colonnesPapier: 4,
         cree: '2026-08-14',
         revisions: [
@@ -647,7 +716,8 @@ export const calculExercises = [
         instruction: "Associe chaque opération à son résultat pour nettoyer le plateau !"
     },
     {
-        id: 'calc-labyrinthe', title: 'Labyrinthe Mathématique',
+        id: 'calc-labyrinthe',
+        jeu: false, title: 'Labyrinthe Mathématique',
         cree: '2026-07-26',
         activityId: 'labyrinthe', skills: ['num.mult.table.*'],
         params: { timeLimit: 60, timeReduction: 5, operations: ['*'], tables: [2, 3, 4, 5, 6, 7, 8, 9, 10] },
@@ -896,7 +966,8 @@ export const calculExercises = [
         instruction: "Combine les blocs pour que leur produit donne la cible demandée !"
     },
     {
-        id: 'calc-vault', title: 'Le Coffre-Fort',
+        id: 'calc-vault',
+        jeu: false, title: 'Le Coffre-Fort',
         cree: '2026-08-04',
         // « Propose toujours le milieu de la zone possible » : c'est la
         // dichotomie, et le jeu ne fait que ça.
@@ -973,7 +1044,8 @@ export const calculExercises = [
         instruction: "À DEUX, sur une tablette posée à plat entre vous. Le serveur choisit une table, puis la balle fait des allers-retours : celui qui la reçoit tape le résultat avant qu'elle n'atteigne sa ligne. Elle accélère à chaque renvoi. Rien n'est enregistré dans le carnet — c'est un duel."
     },
     {
-        id: 'calc-arpenteurs', title: 'Les Arpenteurs',
+        id: 'calc-arpenteurs',
+        jeu: false, title: 'Les Arpenteurs',
         cree: '2026-08-10',
         // Clôturer une parcelle rectangulaire, c'est lire un produit comme une
         // aire : les deux compétences travaillent ensemble, sur le même geste.
@@ -1198,7 +1270,8 @@ export const calculExercises = [
         // chiffre-dans-la-case et la case-pour-le-chiffre d'un sudoku : « ce
         // 4-là n'a plus qu'un voisin possible » et « le 7 ne peut se faire qu'à
         // cet endroit ».
-        id: 'log-tasuko', title: 'Tasuko',
+        id: 'log-tasuko',
+        jeu: false, title: 'Tasuko',
         colonnesPapier: 4,
         cree: '2026-08-25',
         activityId: 'tasuko', skills: ['num.logique.tasuko'],
@@ -1239,7 +1312,8 @@ export const calculExercises = [
         // celui qui a compris que soustraire, c'est chercher ce qui manque, la
         // remplit sans hésiter. C'est la leçon des « nombres à trous », posée
         // sur un objet qu'on a envie de finir.
-        id: 'calc-pyramide-nombres', title: 'La Pyramide des Nombres',
+        id: 'calc-pyramide-nombres',
+        jeu: false, title: 'La Pyramide des Nombres',
         cree: '2026-08-25',
         activityId: 'pyramide-nombres', skills: ['num.pyramide-additive'],
         sansRevision: true,
@@ -1460,7 +1534,8 @@ export const calculExercises = [
         // C'est la décomposition en facteurs premiers jouée à l'envers : on ne
         // l'écrit pas, on la FAIT — et le bilan de fin de partie la réécrit
         // comme au tableau, à côté du chemin réellement pris.
-        id: 'calc-diviseurs', title: 'Le Chasseur de Diviseurs',
+        id: 'calc-diviseurs',
+        jeu: false, title: 'Le Chasseur de Diviseurs',
         cree: '2026-08-19',
         activityId: 'diviseurs', skills: ['num.arith.decomposition'],
         params: { niveau: 'facile', boucliers: 3 },
@@ -1680,7 +1755,8 @@ export const calculExercises = [
         instruction: "Glisse ton doigt de la première à la dernière lettre pour tracer un mot. Chaque mot trouvé affiche SA DÉFINITION : c'est le vocabulaire que ton cours emploie sans toujours l'expliquer. Le bouton 💡 fait l'inverse — il donne la définition, à toi de retrouver le mot."
     },
     {
-        id: 'calc-chantier', title: 'Le Chantier des Blocs',
+        id: 'calc-chantier',
+        jeu: false, title: 'Le Chantier des Blocs',
         cree: '2026-08-10',
         activityId: 'chantier', skills: ['num.mult.table.*'],
         params: { depart: 'ch1' },
@@ -2263,7 +2339,8 @@ export const calculExercises = [
         // somme. Une somme de 3 sur deux cases ne laisse aucun choix, et c'est
         // par là qu'on entre. On ne récite pas une somme magique, on croise
         // des décompositions.
-        id: 'logi-hexagrille', title: 'L\'Hexagrille',
+        id: 'logi-hexagrille',
+        jeu: false, title: 'L\'Hexagrille',
         colonnesPapier: 4,
         cree: '2026-08-17',
         revisions: [{
@@ -2316,7 +2393,8 @@ export const calculExercises = [
         // La règle des DIAGONALES ne figurait pas sur la fiche : on l'a
         // retrouvée en vérifiant ses six cibles. Sans les diagonales, la
         // première (« Trouve 8 ») est impossible. Un test le démontre.
-        id: 'calc-bons-chemins', title: 'Les Bons Chemins',
+        id: 'calc-bons-chemins',
+        jeu: false, title: 'Les Bons Chemins',
         cree: '2026-08-31',
         activityId: 'bons-chemins',
         // SUR LE PAPIER AUSSI, et c'est même sa forme d'origine : une grille
@@ -2514,7 +2592,8 @@ export const calculExercises = [
         // fermer la porte avant d'avoir lu la première ligne. Ce sont des
         // histoires — courtes, mélangées, et c'est justement le mélange qui
         // empêche de reconnaître l'opération sans lire.
-        id: 'num-problemes', title: 'Histoires en Pagaille',
+        id: 'num-problemes',
+        jeu: false, title: 'Histoires en Pagaille',
         // DEUX LIGNES SOUS CHAQUE HISTOIRE. Rémy : « laisse une ligne en
         // pointillés sous chaque question pour écrire les calculs ». Il n'y en
         // avait aucune : la réponse se posait au bout de l'énoncé, sur les
@@ -2580,7 +2659,8 @@ export const calculExercises = [
         // juste assez souvent pour ne pas l'alerter. Le bouton « Montrer le
         // lien » existe pour que chercher le coefficient devienne le premier
         // geste, pas le dernier recours.
-        id: 'num-proportion-tableau', title: 'Tableau de Proportionnalité',
+        id: 'num-proportion-tableau',
+        jeu: false, title: 'Tableau de Proportionnalité',
         cree: '2026-08-11',
         activityId: 'proportion',
         // Le seul de ces exercices qui se photocopie tel quel : deux lignes,
@@ -2658,7 +2738,8 @@ export const calculExercises = [
         // qui vaut 13 » retourne le geste habituel — on part du résultat et
         // l'on balaie les opérations — et l'élève calcule vingt fois de tête
         // sans qu'on le lui demande, parce qu'il veut voir l'image.
-        id: 'calc-point-a-point', title: 'Le Point à Point',
+        id: 'calc-point-a-point',
+        jeu: false, title: 'Le Point à Point',
         cree: '2026-08-14',
         activityId: 'point-a-point',
         // SUR LE PAPIER, c'est l'exercice d'origine : on cherche au crayon,
