@@ -27,6 +27,11 @@
 // l'application.
 
 /** Les jetons d'une expression : des nombres, des opérateurs, des parenthèses. */
+// LA NOTATION DE LA MULTIPLICATION S'APPLIQUE AUSSI ICI. La cascade réécrit ses
+// lignes elle-même, sans repasser par `makeItem` : sans cet import, l'énoncé
+// aurait le signe choisi et les lignes en dessous garderaient le « × ».
+import { avecSigne } from './signeFois.js';
+
 export const nombre = (v) => ({ type: 'n', valeur: v });
 export const operateur = (op) => ({ type: 'op', op });
 export const ouvrante = () => ({ type: '(' });
@@ -124,7 +129,10 @@ export function ecrireJeton(j, avant) {
     if (j.type === 'n') return String(j.valeur).replace('-', '−').replace('.', ',');
     if (j.type === 'p') return ecrirePuissance(j);
     if (j.type === 'u') return '−';
-    if (j.type === 'op') return j.op === '-' ? '−' : j.op;
+    // LA CASCADE N'EST PAS UN ÉNONCÉ : elle réécrit ses lignes elle-même, sans
+    // repasser par `makeItem`. La notation choisie doit donc être posée ici
+    // aussi, et c'est le seul endroit où un opérateur de cascade s'écrit.
+    if (j.type === 'op') return j.op === '-' ? '−' : avecSigne(j.op);
     return j.type;
 }
 

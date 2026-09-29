@@ -44,6 +44,8 @@
 // de « a − b » sans dire de quelle expression.
 
 import { regTimeout } from '../timers.js';
+// LA TOUCHE « FOIS » PORTE LA NOTATION CHOISIE — voir `js/core/signeFois.js`.
+import { glypheFois } from '../signeFois.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { memeReponse, normaliser, groupesSemblables }
@@ -173,8 +175,15 @@ export function mount(container, session, opts = {}) {
                 // offerte est une touche qu'on croit utile. Seul le pas à pas
                 // du développement en a besoin — « x×x + x×(−7) + … » —, et
                 // une réponse réduite n'en porte jamais.
+                // LA TOUCHE PORTE LA NOTATION CHOISIE, ET ÉCRIT CE QU'ELLE
+                // PORTE. Rémy : « évidemment ce rendu est valable dans les
+                // écritures et input ». Une touche qui montre « · » et écrit
+                // « × » ferait mentir le champ de saisie d'un caractère — et
+                // c'est celui que l'élève est en train d'apprendre.
+                // LES TROIS SE LISENT DE TOUTE FAÇON (voir maths/formule.js) :
+                // le réglage ne peut donc pas casser une réponse juste.
                 ...(m.multiplication
-                    ? [{ t: '×', cls: 'ls-t--signe', dit: 'Multiplié par' }] : []),
+                    ? [{ t: glypheFois(), cls: 'ls-t--signe', dit: 'Multiplié par' }] : []),
                 // LA BARRE DE FRACTION S'ÉCRIT « / » ET SE DESSINE EN COLONNE.
                 // Rémy, à propos des formules : « même pour les fractions ça
                 // ne les dessine pas en colonnes ». La touche écrit le signe
@@ -645,7 +654,7 @@ export function mount(container, session, opts = {}) {
             // réponse fausse ne doit pas exister. Sur une ligne de réponse
             // réduite, il n'y a pas de produit à écrire.
             else if (e.key === '*' && m.multiplication) {
-                taper('×'); e.preventDefault();
+                taper(glypheFois()); e.preventDefault();
             }
         };
     }

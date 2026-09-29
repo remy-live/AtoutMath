@@ -10,6 +10,12 @@
 // La compatibilité se lit sur un seul champ : `answerKind`. Une activité
 // déclare les genres de réponse qu'elle sait présenter (`accepts`), un
 // générateur ceux qu'il sait produire.
+//
+// LE SEUL IMPORT DE CE FICHIER, et il est là pour une raison qu'on peut écrire :
+// tout item passe par `makeItem`, donc la notation de la multiplication se pose
+// ici une fois pour tout le dépôt plutôt que dans les cent soixante-six
+// fichiers qui écrivent un « × ». Voir `notationDeLItem`, plus bas.
+import { avecSigne, sansSigne, signeChoisi, SIGNE_PAR_DEFAUT } from './signeFois.js';
 
 /**
  * @typedef {'choice'|'numeric'|'text'|'point'|'pair'|'grid'} AnswerKind
@@ -141,6 +147,58 @@ export function makeItem(spec) {
         throw new Error(`[item] ${item.generatorId}: un item 'choice' doit avoir une réponse correcte parmi ses choix`);
     }
     if (!item.prompt.html) item.prompt.html = `<div class="game-question">${item.prompt.text}</div>`;
+    return notationDeLItem(item);
+}
+
+/**
+ * LA NOTATION DE LA MULTIPLICATION, POSÉE UNE SEULE FOIS POUR TOUT LE DÉPÔT.
+ *
+ * Rémy : « dans les paramètres d'affichage, propose aussi le x (le signe fois
+ * français) ou l'astérisque […] évidemment ce rendu est valable dans les
+ * écritures et input ».
+ *
+ * TOUT ITEM PASSE PAR `makeItem`. C'est ce qui permet de n'écrire la règle
+ * qu'ici : les deux cents générateurs continuent d'écrire « × », les cent
+ * soixante-six fichiers qui en contiennent ne bougent pas, et un exercice écrit
+ * l'an prochain respectera le réglage sans que son auteur ait à le savoir.
+ * Compté avant de commencer : 1 001 chaînes portent un « × ».
+ *
+ * ON NE TOUCHE QUE CE QUI S'AFFICHE, et la liste est courte exprès :
+ *
+ *   · `prompt.text` / `prompt.html`  l'énoncé ;
+ *   · `explanation`, `explicationPapier`, `hints`  ce qu'on lit après coup ;
+ *   · le LIBELLÉ des propositions, jamais leur `value`.
+ *
+ * CE QU'ON NE TOUCHE PAS, ET C'EST LA MOITIÉ DE LA RÈGLE. `answer`,
+ * `choices[].value`, `diagnostics[].value`, `reponsePapier` : ce sont des
+ * VALEURS, elles se comparent. Les retoucher ferait qu'un élève dont le
+ * professeur a choisi l'astérisque verrait sa bonne réponse refusée, ou qu'un
+ * travail enregistré deviendrait illisible pour un appareil réglé autrement.
+ * La saisie, elle, accepte les trois notations quoi qu'il arrive — voir
+ * `js/core/signeFois.js`.
+ *
+ * AU DÉFAUT, CETTE FONCTION NE FAIT RIEN : `avecSigne` rend son argument tel
+ * quel tant que le signe choisi est « × ». Tout le monde passe ici, personne
+ * ne paie rien.
+ */
+function notationDeLItem(item) {
+    if (signeChoisi() === SIGNE_PAR_DEFAUT) return item;
+    item.prompt.text = avecSigne(item.prompt.text);
+    item.prompt.html = avecSigne(item.prompt.html);
+    item.explanation = avecSigne(item.explanation);
+    item.explicationPapier = avecSigne(item.explicationPapier);
+    item.hints = (item.hints || []).map(avecSigne);
+    if (Array.isArray(item.choices)) {
+        item.choices = item.choices.map(c => ({
+            ...c,
+            label: avecSigne(c.label),
+            // `texte` EST CE QU'IMPRIME LA FICHE (voir `printQuestions.js`) :
+            // c'est de l'affichage lui aussi, et l'oublier donnerait une feuille
+            // qui ne ressemble pas à l'écran.
+            texte: avecSigne(c.texte),
+            why: avecSigne(c.why)
+        }));
+    }
     return item;
 }
 
@@ -200,7 +258,13 @@ export function finalizeChoices(rng, choices, { count = 4, filler = null } = {})
 /** Comparaison tolérante : "12" == 12, " 3,5 " == "3.5". */
 export function sameAnswer(a, b) {
     const norm = v => {
-        let s = String(v === undefined || v === null ? '' : v).trim().replace(',', '.').toLowerCase();
+        // LES TROIS SIGNES DE MULTIPLICATION VALENT LE MÊME. Sans cette
+        // ramenée, un professeur qui choisit l'astérisque verrait la bonne
+        // réponse de ses élèves refusée : le pavé écrit « 3*4 », la réponse
+        // attendue dit « 3×4 », et la comparaison est une comparaison de
+        // CHAÎNES. Le réglage change l'affichage, il ne doit rien casser.
+        let s = sansSigne(String(v === undefined || v === null ? '' : v))
+            .trim().replace(',', '.').toLowerCase();
         // « 62 307 » ET « 62307 » SONT LE MÊME NOMBRE. Depuis qu'on écrit les
         // grands nombres par groupes de trois — c'est la règle, et c'est ce
         // qui permet de les lire —, une réponse qui porte ses espaces doit

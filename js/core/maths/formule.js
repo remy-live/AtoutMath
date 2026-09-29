@@ -138,7 +138,12 @@ function jetons(src) {
         if (c === '√') { out.push({ t: 'racine' }); i++; continue; }
         if (c === '+') { out.push({ t: 'plus' }); i++; continue; }
         if (c === '-' || c === MOINS) { out.push({ t: 'moins' }); i++; continue; }
-        if (c === '*' || c === '×') { out.push({ t: 'fois' }); i++; continue; }
+        // LES TROIS NOTATIONS SE LISENT, TOUJOURS, quel que soit le réglage
+        // d'affichage. Rémy propose de pouvoir écrire « · » ou « * » à la place
+        // du « × » ; mais ce choix décide de ce qu'on ÉCRIT, jamais de ce qu'on
+        // comprend. Un élève sur un clavier d'ordinateur tape une étoile, un
+        // autre recopie le point médian de son écran : les deux ont raison.
+        if (c === '*' || c === '×' || c === '·') { out.push({ t: 'fois' }); i++; continue; }
         if (c === ':' || c === '÷') { out.push({ t: 'divise' }); i++; continue; }
         if (c === '/') { out.push({ t: 'barre' }); i++; continue; }
         if (c === '^') { out.push({ t: 'chapeau' }); i++; continue; }

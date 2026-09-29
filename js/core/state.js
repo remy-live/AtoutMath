@@ -22,6 +22,7 @@ import {
     computeScore, computeTime, computeBadges, computeAttempts, computeErrors,
     countCorrect, computeAssignedPath, errorKeyOf, computeExploits, computeVerrousOuverts
 } from './projections.js';
+import { poserSigneFois, SIGNE_PAR_DEFAUT } from './signeFois.js';
 import { computeMastery } from './mastery.js';
 import { conceptToSkill, deriveSkillFromLegacy } from './compat.js';
 
@@ -155,6 +156,15 @@ export const state = {
     // d'affichage global, persisté : c'est une habitude de classe, pas un choix
     // qu'on refait à chaque exercice.
     stylePoint: 'croix',
+    // LE SIGNE DE MULTIPLICATION : 'fois' (×) | 'point' (·) | 'etoile' (*).
+    //
+    // Rémy : « dans les paramètres d'affichage, propose aussi le x (le signe
+    // fois français) ou l'astérisque ». Réglage d'affichage global et persisté,
+    // pour la même raison que la marque des points : c'est une habitude de
+    // classe, pas un choix qu'on refait à chaque exercice. Voir
+    // `js/core/signeFois.js`, qui explique pourquoi la substitution se fait à
+    // l'affichage et non dans les mille endroits qui écrivent un « × ».
+    signeFois: SIGNE_PAR_DEFAUT,
     // Filtre d'état de publication du catalogue : 'tout' | 'valide' | 'test'
     // | 'brouillon'. Outil d'auteur, persisté par confort entre deux sessions.
     catalogFilter: 'tout',
@@ -250,6 +260,11 @@ export const state = {
         this.mesExercices = (await profileStore.get('mesExercices', [])) || [];
         this.stylePoint = (await profileStore.get('stylePoint', 'croix')) || 'croix';
         appliquerStylePoint(this.stylePoint);
+        // `poserSigneFois` BORNE ELLE-MÊME ce qu'on lui donne : la valeur vient
+        // d'un stockage qu'un navigateur peut rendre dans n'importe quel état,
+        // et elle rend l'identifiant qu'elle a vraiment retenu.
+        this.signeFois = poserSigneFois(
+            await profileStore.get('signeFois', SIGNE_PAR_DEFAUT));
 
         journal.compact();
         invalidate();
@@ -419,6 +434,23 @@ export const state = {
         this.stylePoint = STYLES_POINT.includes(style) ? style : 'croix';
         appliquerStylePoint(this.stylePoint);
         if (profileStore) await profileStore.set('stylePoint', this.stylePoint);
+    },
+    /**
+     * CHANGER LA NOTATION DE LA MULTIPLICATION.
+     *
+     * ON ANNONCE LE CHANGEMENT, et c'est nécessaire : un exercice déjà à
+     * l'écran a écrit son énoncé avec l'ancien signe, et rien ne le lui
+     * redemandera. Sans cet avis, le professeur changerait le réglage et ne
+     * verrait rien bouger avant la question suivante — donc croirait que le
+     * bouton ne marche pas.
+     */
+    async setSigneFois(id) {
+        this.signeFois = poserSigneFois(id);
+        if (profileStore) await profileStore.set('signeFois', this.signeFois);
+        if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent('signe_fois_change',
+                { detail: this.signeFois }));
+        }
     },
 
     // --- Parcours assigné ---------------------------------------------------

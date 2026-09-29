@@ -11,6 +11,7 @@ import { initConsoleCapture, openConsoleModal } from './ui/consoleLog.js';
 initConsoleCapture();
 
 import { state } from './core/state.js';
+import { SIGNES_FOIS } from './core/signeFois.js';
 import { jetonProf, verrouActif } from './core/verrouProf.js';
 import { copieDEssai } from './core/copieDEssai.js';
 import { journal } from './core/journal.js';
@@ -813,11 +814,33 @@ function initReglagesAffichage() {
                             <span class="reglage-note">${m.aide}</span>
                         </button>`).join('')}
                 </div>
+            </div>
+            <div class="reglage-bloc">
+                <div class="reglage-titre">Signe de multiplication</div>
+                <p class="reglage-aide">Partout où il s'écrit : les énoncés, les
+                   calculs ligne à ligne, le pavé et ce que l'élève tape.
+                   <b>Les trois se tapent toujours</b> — ce réglage choisit ce qui
+                   s'affiche, pas ce qui est compris.</p>
+                <div class="reglage-choix">
+                    ${SIGNES_FOIS.map(s => `
+                        <button type="button" class="reglage-option${state.signeFois === s.id ? ' reglage-option--actif' : ''}"
+                                data-signe-fois="${s.id}" aria-pressed="${state.signeFois === s.id}">
+                            <span class="reglage-dessin reglage-dessin--signe">7 ${s.glyphe} 8</span>
+                            <span class="reglage-nom">${s.label}</span>
+                            <span class="reglage-note">${s.aide}</span>
+                        </button>`).join('')}
+                </div>
             </div>` + blocOutilsAuteur();
 
         contenu.querySelectorAll('[data-point]').forEach(btn => {
             btn.onclick = async () => {
                 await state.setStylePoint(btn.dataset.point);
+                dessiner();
+            };
+        });
+        contenu.querySelectorAll('[data-signe-fois]').forEach(btn => {
+            btn.onclick = async () => {
+                await state.setSigneFois(btn.dataset.signeFois);
                 dessiner();
             };
         });

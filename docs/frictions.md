@@ -1041,3 +1041,27 @@ manque.
 - **La règle** : **un résultat qui accuse le logiciel se revérifie en regardant
   ce que la sonde a réellement fait.** Trois des quatre fausses pistes se
   voyaient en imprimant le contenu du champ avant de valider.
+
+---
+
+**Une sonde peut passer au vert faute de sujet** — 29 septembre 2026
+
+- **Ce que je voulais faire** : vérifier dans un vrai navigateur que les trois
+  notations du signe fois (`×`, `·`, `*`) s'affichent bien jusqu'à l'écran.
+- **Ce qui a coûté** : deux exécutions pour rien. La sonde demandait « l'écran
+  n'affiche pas une AUTRE notation » — une assertion qui passe quand l'écran
+  n'affiche AUCUNE multiplication, et c'était exactement le cas : l'extrait lu
+  valait « Priorités : ligne par ligne 0 / 8 0 calcul mené au bout 💡 Pourq ».
+  Trois coches vertes, zéro mesure. Le même piège a ensuite coûté un troisième
+  tour sur la touche du pavé : `touches.every(...)` sur un tableau vide est
+  vrai, et l'exercice choisi n'avait pas de pavé de saisie.
+- **Combien de fois** : ||
+- **Ce qui manque** : `tools/epreuveTombe.mjs` remet le défaut dans le code et
+  exige qu'une **épreuve** tombe ; rien n'en fait autant pour une **sonde**, qui
+  mesure pourtant le chemin de l'élève. Il faudrait pouvoir lancer une sonde
+  contre une version du code où le réglage est débranché, et exiger qu'elle
+  crie.
+- **La règle** : **une assertion négative exige d'abord un sujet.** On ne juge
+  pas « ce qui est écrit est bien écrit » avant d'avoir prouvé qu'il y a quelque
+  chose d'écrit — un `dire('un produit finit par s'afficher', …)` avant le reste,
+  et un `touches.length > 0` avant le `every`.

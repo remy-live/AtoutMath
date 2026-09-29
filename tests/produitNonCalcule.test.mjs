@@ -73,5 +73,14 @@ test('L\'ASTÉRISQUE EST BRANCHÉ SUR LE CHAMP, et seulement où le × existe', 
         import.meta.url), 'utf8');
     assert.match(texte, /e\.key === '\*' && m\.multiplication/,
         'l\'astérieque doit écrire le signe fois, là où le pavé porte la touche ×');
-    assert.match(texte, /taper\('×'\)/, 'et écrire le vrai signe, pas l\'astérisque');
+    // CETTE LIGNE ÉPINGLAIT `taper('×')`, ET LE SIGNE EST DEVENU UN RÉGLAGE.
+    // Rémy : « dans les paramètres d'affichage, propose aussi le x […] ou
+    // l'astérisque ». L'intention de l'épreuve n'a pas bougé d'un mot — la
+    // touche écrit LE SIGNE DE MULTIPLICATION et non l'astérisque brut — mais
+    // ce signe se lit maintenant dans `signeFois.js`, et il vaut « × » tant
+    // que personne n'a rien changé.
+    assert.match(texte, /taper\(glypheFois\(\)\)/,
+        'et écrire le signe de multiplication du moment, pas l\'astérisque');
+    assert.match(texte, /import \{ glypheFois \} from '\.\.\/signeFois\.js';/,
+        'ce qui suppose que la touche sache où le demander');
 });

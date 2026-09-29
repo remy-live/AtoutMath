@@ -1424,6 +1424,14 @@ html[data-theme="dark"] .sprint-tuile--ok { background: rgba(16,185,129,.22); co
 }
 .reglage-option--actif { border-color: var(--primary); background: var(--tag-dom-bg); }
 .reglage-dessin { line-height: 0; color: var(--primary-texte); }
+/* L'APERÇU DU SIGNE EST DU TEXTE, PAS UN DESSIN. `line-height: 0` convient à un
+   SVG de marque de point ; sur « 7 × 8 » il écraserait la ligne sur elle-même.
+   Et l'aperçu doit être lu à la taille où l'élève le lira — c'est tout ce qu'on
+   demande à un aperçu de notation. */
+.reglage-dessin--signe {
+    line-height: 1.2; font-size: 1.15rem; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
 .reglage-nom { font-size: .82rem; font-weight: 700; }
 .reglage-note { font-size: .68rem; color: var(--text-muted); line-height: 1.25; text-align: center; }
 
