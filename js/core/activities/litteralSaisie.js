@@ -48,6 +48,7 @@ import { regTimeout } from '../timers.js';
 import { glypheFois } from '../signeFois.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { jugerEtape } from '../ligneEtape.js';
 import { memeReponse, normaliser, groupesSemblables }
     from '../reductionPuissances.js';
 
@@ -447,9 +448,50 @@ export function mount(container, session, opts = {}) {
 
         marquerEtapes();
 
+        /**
+         * LE JUGE D'UNE LIGNE INTERMÉDIAIRE.
+         *
+         * ─────────────────────────────────────────────────────────────────
+         *
+         * RÉMY, capture à l'appui, sur « Enlever les parenthèses » :
+         *
+         *     −(+3) − (−7)
+         *     « Réécris la ligne SANS parenthèses. Ne la calcule pas encore. »
+         *     il tape −3+7, bordure rouge : « il me compte faux »
+         *
+         * IL AVAIT RAISON, ET LE JUGE NE JUGEAIT RIEN. Cette fonction lisait
+         * `e.verifie` — que PERSONNE ne fournit : aucun générateur du dépôt ne
+         * pose ce champ. `v` valait donc `false` à tous les coups, et TOUTE
+         * ligne intermédiaire était refusée, y compris celle que l'activité
+         * finit par écrire elle-même au bout de trois essais.
+         *
+         * MESURÉ (tools/lignesIntermediaires.mjs) : sur « −(−5) − (+3) », on
+         * retape « 5 − 3 » — la ligne que le logiciel venait de poser — et il
+         * la refuse. Un juge qui refuse sa propre réponse n'est pas sévère :
+         * il est muet.
+         *
+         * CE QU'ON JUGE MAINTENANT, ET AVEC QUOI. `montrer` EST la ligne
+         * attendue : l'en-tête de ce module le dit — « ce que l'élève tape, et
+         * ce qu'on lui montre s'il sèche ». On la compare avec `memeReponse`,
+         * le même juge que la ligne finale : espaces ignorés, trait d'union
+         * accepté pour le signe moins, « + » de tête facultatif. C'est la
+         * réponse de Rémy à la question posée en son temps — « 4 − 5 » et
+         * « +4 − 5 » valent l'un comme l'autre.
+         *
+         * `e.verifie` RESTE PRIORITAIRE, pour le jour où une étape aura
+         * plusieurs écritures justes que la comparaison de chaînes ne peut pas
+         * reconnaître — une factorisation, par exemple, où (x − 3)(x + 3) et
+         * (x + 3)(x − 3) sont tous deux bons.
+         *
+         * IL VIT DANS `core/ligneEtape.js`, ET C'EST TOUTE LA LEÇON. Ici, il
+         * était INÉPROUVABLE : ce module touche le document dès qu'on
+         * l'importe, et `node --test` tombe sur « document is not defined ».
+         * Une règle qu'aucune épreuve ne peut atteindre se casse en silence —
+         * c'est exactement ce qui est arrivé à celle-ci.
+         */
         const validerEtape = () => {
             const e = etapes[rang];
-            const v = e.verifie ? e.verifie(saisie) : false;
+            const v = jugerEtape(e, saisie);
             const ok = typeof v === 'object' ? !!v.juste : !!v;
             if (ok) {
                 // ON ÉCRIT CE QUE L'ÉLÈVE A TAPÉ, pas la forme canonique : s'il a

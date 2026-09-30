@@ -1292,3 +1292,46 @@ manque.
 - **La règle** : **le réglage par défaut est un cas de figure, et c'est celui
   que l'utilisateur reçoit.** Une sonde qui pose toujours ses réglages ne le
   joue jamais.
+
+---
+
+**Une règle hors d'atteinte des épreuves** — 30 septembre 2026
+
+- **Ce que je voulais faire** : comprendre pourquoi « Enlever les parenthèses »
+  refusait une ligne juste. Rémy : « il me compte faux ».
+- **Ce qui a coûté** : le juge des lignes intermédiaires lisait un champ
+  `verifie` qu'AUCUN générateur du dépôt ne fournit. Il refusait donc tout,
+  depuis toujours, y compris la ligne que l'activité finit par écrire
+  elle-même. Quatre mille épreuves au vert, et l'exercice injouable. La cause
+  n'est pas la faute elle-même — elle est banale — mais son ABRI : le juge
+  vivait dans `activities/litteralSaisie.js`, qui touche le document dès qu'on
+  l'importe. `node --test` y tombe sur « document is not defined ». Aucune
+  épreuve ne POUVAIT l'atteindre.
+- **Combien de fois** : |
+- **Ce qui manque** : un outil qui liste les fonctions de décision — celles qui
+  rendent juste/faux — vivant dans un module inimportable sans navigateur.
+  Elles sont, par construction, celles qu'aucune épreuve ne garde.
+- **La règle** : **une règle qu'aucune épreuve ne peut atteindre se casse en
+  silence.** Ce qui décide du juste et du faux sort de l'écran et va dans un
+  module que `node --test` peut importer.
+
+---
+
+**Trois mesures fausses de suite sur le même écran** — 30 septembre 2026
+
+- **Ce que je voulais faire** : taper une ligne dans le champ de
+  `litteralSaisie` et lire le verdict.
+- **Ce qui a coûté** : quarante minutes, et la correction était déjà écrite —
+  c'est la sonde qui mentait. Trois fois, pour trois raisons différentes :
+  (1) le champ n'est pas un `<input>`, le vider par `textContent = ''` efface
+  les trois `<span>` qui le composent ; (2) le clavier physique n'accepte pas
+  les parenthèses, si bien qu'une ligne comme « −(−9) » ne pouvait pas être
+  tapée du tout ; (3) rouvrir l'exercice TIRE UNE NOUVELLE QUESTION, et la
+  sonde retapait la réponse de la précédente. À chaque fois, elle accusait le
+  logiciel de refuser une ligne juste qui ne l'était pas.
+- **Combien de fois** : ||
+- **Ce qui manque** : un `s.taperAuPave(texte)` dans `tools/sonde.mjs` — vider
+  par ⌫, cliquer les touches `.ls-t`, valider — et un `s.mêmeQuestion()` qui
+  dise si le tirage a changé entre deux mesures.
+- **La règle** : **quand la sonde accuse le logiciel, on soupçonne la sonde
+  d'abord.** Et l'on tape sur le pavé de l'écran, jamais dans le DOM.
