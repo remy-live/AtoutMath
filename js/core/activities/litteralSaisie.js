@@ -242,6 +242,33 @@ export function mount(container, session, opts = {}) {
             }
         }
 
+        // ── CE QUE LE PAVÉ PORTE, LE CLAVIER PHYSIQUE L'ACCEPTE ─────────
+        //
+        // RÉMY : « on ne peut pas écrire les parenthèses au clavier ».
+        //
+        // C'ÉTAIT VRAI, ET SUR UN ORDINATEUR C'EST BLOQUANT : au barreau qui
+        // demande « −(−9) », la ligne attendue ne pouvait tout simplement PAS
+        // être tapée. Il fallait viser les touches à la souris, sur un écran
+        // où l'on a un clavier sous les doigts.
+        //
+        // LA LISTE ÉCRITE À LA MAIN AVAIT DÉJÀ DÉRIVÉ UNE FOIS — Rémy, à
+        // propos de l'astérisque : « il faut que quand je tape l'astérisque,
+        // cela affiche le fois ». Il tapait `*`, il ne se passait rien. Une
+        // liste tenue à la main à côté d'une autre liste finit toujours par
+        // s'en écarter : on la DÉDUIT donc du pavé, qui est déjà la liste des
+        // touches que cette question autorise.
+        //
+        // ET LA RÈGLE DE LA MAISON TIENT TOUJOURS, sans qu'on ait à la répéter
+        // une quatrième fois : « une touche dont on SAIT qu'elle donnera une
+        // réponse fausse ne doit pas exister ». Si le pavé ne montre pas de
+        // parenthèse, le clavier n'en écrit pas non plus.
+        const glyphesDuPave = new Set(rangees.flat().map((o) => o.t));
+        // DEUX TOUCHES N'ONT PAS LE MÊME CARACTÈRE SUR LE CLAVIER ET À
+        // L'ÉCRAN : le signe moins de la typographie se tape avec le trait
+        // d'union, et le signe fois avec l'astérisque — quelle que soit la
+        // notation choisie (×, · ou *), puisque la touche porte celle-là.
+        const AUTRE_TOUCHE = { '-': '−', '*': glypheFois() };
+
         const touche = (o) => `<button type="button" class="ls-t ${o.cls}" data-t="${echapper(o.t)}"
             ${o.dit ? `title="${echapper(o.dit)}"` : ''}>${echapper(o.t)}</button>`;
         const rangee = (r) => `<div class="ls-rangee">${r.map(touche).join('')}</div>`;
@@ -680,24 +707,15 @@ export function mount(container, session, opts = {}) {
             if (session.locked) return;
             if (e.key === 'Enter') { valider(); e.preventDefault(); return; }
             if (e.key === 'Backspace') { effacer(); e.preventDefault(); return; }
-            // Le clavier physique accepte tout ce que `normaliser` sait relire :
-            // chiffres, lettres, `^`, et le trait d'union comme signe moins.
-            if (/^[0-9a-zA-Z+^]$/.test(e.key)) { taper(e.key); e.preventDefault(); }
-            else if (e.key === '-') { taper('−'); e.preventDefault(); }
-            // L'ASTÉRISQUE ÉCRIT LE SIGNE FOIS. Rémy : « il faut que quand je
-            // tape l'astérisque, cela affiche le fois ». Il tapait `*`, et il
-            // ne se passait RIEN — la touche n'était pas dans la liste, et un
-            // clavier qui avale une frappe sans rien dire est pire qu'un
-            // clavier qui refuse.
-            //
-            // ON NE L'ACCEPTE QUE LÀ OÙ LE PAVÉ PORTE LA TOUCHE ×, et c'est la
-            // règle déjà posée dans ce fichier pour le cube et les
-            // parenthèses : une touche dont on SAIT qu'elle donnera une
-            // réponse fausse ne doit pas exister. Sur une ligne de réponse
-            // réduite, il n'y a pas de produit à écrire.
-            else if (e.key === '*' && m.multiplication) {
-                taper(glypheFois()); e.preventDefault();
-            }
+            if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+            // LE PAVÉ DIT CE QUI S'ÉCRIT, et le clavier ne fait que le
+            // recopier — voir `glyphesDuPave` plus haut. Les majuscules
+            // tapent la minuscule du pavé : celui qui écrit « X » n'a pas
+            // fait d'erreur de mathématiques.
+            const frappe = AUTRE_TOUCHE[e.key] || e.key;
+            const glyphe = glyphesDuPave.has(frappe) ? frappe
+                : (glyphesDuPave.has(frappe.toLowerCase()) ? frappe.toLowerCase() : null);
+            if (glyphe) { taper(glyphe); e.preventDefault(); }
         };
     }
 
@@ -751,6 +769,24 @@ export function mount(container, session, opts = {}) {
         if (normaliser(item.prompt.text.split(':').pop()) === n) {
             return 'C\'est l\'expression de départ, recopiée : il reste quelque chose à regrouper.';
         }
+        // ── LA PHRASE PAR DÉFAUT PARLE DU CHAPITRE OÙ L'ON EST ──────────────
+        //
+        // RÉMY, sur « Enlever les parenthèses » — un chapitre de nombres
+        // relatifs, sans une seule lettre — voyait s'afficher : « Range chaque
+        // terme dans son sac, puis additionne les nombres de devant —
+        // l'exposant, lui, ne bouge pas ». Il n'y a ni sac, ni terme, ni
+        // exposant dans « −(6 + 8) + (4 − 7) ».
+        //
+        // CETTE PHRASE EST BONNE LÀ OÙ ELLE EST NÉE : réduire une expression
+        // littérale, c'est bien ranger les semblables ensemble. Elle ne vaut
+        // que là, et `lettre: null` dit justement que cette question n'en a
+        // pas. On rend alors l'INDICE DE L'EXERCICE, qui est écrit par celui
+        // qui sait de quoi il parle.
+        const sansLettre = item.meta && item.meta.lettre === null;
+        if (sansLettre) {
+            return (item.hints || [])[0]
+                || 'Ce n\'est pas cela. Relis la ligne précédente.';
+        }
         return 'Range chaque terme dans son sac, puis additionne les nombres de devant — '
             + 'l\'exposant, lui, ne bouge pas.';
     }
@@ -762,15 +798,46 @@ export function mount(container, session, opts = {}) {
         if (!await gate.waitTurn() || destroyed) return;
         if (!await cursor.pause(600) || destroyed) return;
 
+        // ── LE ROBOT PARLE DE L'EXERCICE QU'IL JOUE ─────────────────────
+        //
+        // RÉMY, en regardant la démonstration de « Enlever les parenthèses » :
+        // « l'explication du robot pour ça n'est pas terrible ».
+        //
+        // IL DISAIT DEUX PHRASES ÉCRITES EN DUR, et toutes deux parlaient d'un
+        // autre chapitre : « Je range d'abord chaque terme dans son sac : les
+        // carrés avec les carrés, les lettres simples ensemble » et
+        // « l'exposant, lui, ne bouge jamais ». Il n'y a ni sac, ni carré, ni
+        // exposant dans « −(6 + 8) + (4 − 7) ». Ces phrases sont bonnes là où
+        // elles sont nées — réduire une expression littérale — et nulle part
+        // ailleurs. C'est le même défaut que la note d'erreur, au même endroit
+        // conceptuel : une activité sert plusieurs chapitres, et son robot
+        // n'avait qu'un discours.
+        //
+        // `lettre: null` DIT QUE CETTE QUESTION N'A PAS DE LETTRE. Sans lettre,
+        // le robot ouvre sur le geste — regarder avant d'écrire — puis rend la
+        // parole à l'INDICE DE L'EXERCICE, écrit par celui qui sait de quoi il
+        // parle. Et il ne le dit que s'il tient en une bulle : la règle des
+        // 110 caractères de `activities/choice.js` vaut ici aussi, « une
+        // explication de trois lignes fige la démonstration au point qu'on la
+        // croit plantée ».
+        const avecLettre = (item.meta || {}).lettre !== null;
+        const tientEnUneBulle = (t) => typeof t === 'string' && t.trim()
+            && t.trim().length <= 110;
         const contexte = container.querySelector('.ls-contexte');
-        cursor.say('Je range d\'abord chaque terme dans son sac : les carrés avec les carrés, '
-            + 'les lettres simples ensemble, les nombres ensemble.', contexte || container);
+        cursor.say(avecLettre
+            ? 'Je range chaque terme dans son sac : les carrés ensemble, les lettres '
+                + 'ensemble, les nombres ensemble.'
+            : 'Je lis l\'énoncé en entier avant d\'écrire.', contexte || container);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
-        cursor.say('Dans un sac, j\'additionne les nombres de devant. L\'exposant, lui, ne '
-            + 'bouge jamais.', container.querySelector('.ls-clavier') || container);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        const deuxieme = avecLettre
+            ? 'Dans un sac, j\'additionne les nombres de devant. L\'exposant ne bouge pas.'
+            : ((item.hints || []).find(tientEnUneBulle) || '');
+        if (deuxieme) {
+            if (!await gate.waitTurn() || destroyed) return;
+            cursor.say(deuxieme, container.querySelector('.ls-clavier') || container);
+            if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        }
 
         // ON TAPE LA RÉPONSE SIGNE PAR SIGNE, en visant les vraies touches :
         // c'est le geste que l'élève devra refaire, et le voir fait vaut mieux

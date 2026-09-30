@@ -96,6 +96,70 @@ test('ET LES ÉTAPES QUE LE CATALOGUE PRODUIT PASSENT VRAIMENT SON JUGE', () => 
     }
 });
 
+test('LE ROBOT NE PARLE PAS D\'UN AUTRE CHAPITRE', () => {
+    // RÉMY, devant la démonstration de « Enlever les parenthèses » :
+    // « l'explication du robot pour ça n'est pas terrible ».
+    //
+    // Il disait « Je range d'abord chaque terme dans son sac : les carrés avec
+    // les carrés » et « l'exposant, lui, ne bouge jamais » — sur « −(6 + 8) +
+    // (4 − 7) », où il n'y a ni sac, ni carré, ni exposant. Ces deux phrases
+    // sont bonnes là où elles sont nées, et nulle part ailleurs : cette
+    // activité sert plusieurs chapitres.
+    //
+    // ON ÉPROUVE LE CÂBLAGE, PAS LE TEXTE : la phrase peut être réécrite, elle
+    // doit rester derrière le drapeau qui dit si la question a une lettre.
+    const src = readFileSync(new URL('../js/core/activities/litteralSaisie.js',
+        import.meta.url), 'utf8');
+    // ET IL VA CHERCHER LA MÉTA SUR L'ITEM, PAS DANS UNE VARIABLE VOISINE.
+    //
+    // Ma première correction écrivait `m.lettre`, comme partout ailleurs dans
+    // ce fichier — mais `m` est déclaré dans `render()`, et `runDemo` en est
+    // la SŒUR, pas une fonction imbriquée. `node --check` passait ; à
+    // l'exécution, le robot mourait sur un « m is not defined » dès sa
+    // première phrase, et la sonde n'entendait plus aucune bulle. Une
+    // démonstration qui ne démarre pas ressemble à un bouton mort.
+    assert.match(src, /const avecLettre = \(item\.meta \|\| \{\}\)\.lettre !== null;/,
+        'le robot doit lire la méta sur l\'item : `m` n\'existe pas dans sa portée');
+    const i = src.indexOf('const avecLettre');
+    const bloc = src.slice(i, i + 1400);
+    for (const mot of ['sac', 'carrés', 'exposant']) {
+        const j = bloc.indexOf(mot);
+        assert.ok(j > 0, `le robot ne dit plus rien sur « ${mot} » : phrase perdue ?`);
+        assert.ok(bloc.lastIndexOf('avecLettre', j) > 0,
+            `« ${mot} » doit rester derrière le drapeau : un chapitre sans lettre `
+            + 'ne doit pas l\'entendre');
+    }
+    // ET LA RÈGLE DES 110 CARACTÈRES VAUT POUR LUI AUSSI — « une bulle se lit
+    // à 340 ms le mot ». On l'éprouve sur les phrases écrites en dur.
+    for (const phrase of bloc.match(/cursor\.say\(\s*'([^']{20,})'/g) || []) {
+        const texte = phrase.replace(/^cursor\.say\(\s*'/, '');
+        assert.ok(texte.length <= 110, `bulle de ${texte.length} caractères : ${texte}`);
+    }
+});
+
+test('LE CLAVIER PHYSIQUE ÉCRIT CE QUE LE PAVÉ MONTRE', () => {
+    // RÉMY : « on ne peut pas écrire les parenthèses au clavier ». C'était vrai,
+    // et sur un ordinateur c'était bloquant : au barreau qui demande « −(−9) »,
+    // la ligne attendue ne pouvait PAS être tapée.
+    //
+    // ET LA LISTE ÉCRITE À LA MAIN AVAIT DÉJÀ DÉRIVÉ UNE FOIS — Rémy, pour le
+    // signe × : « il faut que quand je tape l'astérisque, cela affiche le
+    // fois ». Deux listes tenues à la main finissent toujours par s'écarter.
+    // On éprouve donc qu'il n'y en a plus qu'UNE : le clavier se DÉDUIT du
+    // pavé. `tools/clavierPhysique.mjs` le remesure au navigateur, touche par
+    // touche et exercice par exercice.
+    const src = readFileSync(new URL('../js/core/activities/litteralSaisie.js',
+        import.meta.url), 'utf8');
+    assert.match(src, /const glyphesDuPave = new Set\(rangees\.flat\(\)/,
+        'les touches acceptées se déduisent du pavé, elles ne se listent plus');
+    assert.match(src, /glyphesDuPave\.has\(frappe\)/,
+        'et c\'est bien cette liste-là que le clavier interroge');
+    // ON N'ÉNUMÈRE PAS LES TOUCHES ICI : ce serait refaire la liste à la main,
+    // à un troisième endroit. On vérifie qu'aucune ne s'y ajoute en dur.
+    assert.doesNotMatch(src, /e\.key === '\*' && m\.multiplication/,
+        'plus de touche traitée à part : le pavé décide');
+});
+
 test('LE JUGE RESTE HORS DE L\'ACTIVITÉ, POUR RESTER ÉPROUVABLE', () => {
     // C'est la raison d'être du fichier, et elle se perd en une ligne : il
     // suffit de recopier la comparaison dans l'activité pour retrouver un juge

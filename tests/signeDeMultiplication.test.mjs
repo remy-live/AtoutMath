@@ -166,7 +166,12 @@ test('LA TOUCHE DU PAVÉ PORTE CE QU\'ELLE ÉCRIT', () => {
         new URL('../js/core/activities/litteralSaisie.js', import.meta.url), 'utf8');
     assert.match(LS, /\{ t: glypheFois\(\), cls: 'ls-t--signe'/,
         'la touche prend la notation du moment');
-    assert.match(LS, /taper\(glypheFois\(\)\)/,
+    // L'ASTÉRISQUE DU CLAVIER ÉCRIT LA MÊME CHOSE QU'ELLE — et il l'écrit
+    // maintenant par la table de traduction, depuis que le clavier physique se
+    // déduit du pavé au lieu d'être une seconde liste tenue à la main. Rémy :
+    // « on ne peut pas écrire les parenthèses au clavier » — c'est cette
+    // seconde liste qui avait dérivé.
+    assert.match(LS, /'\*': glypheFois\(\)/,
         'et l\'astérisque du clavier écrit la même chose qu\'elle');
 });
 

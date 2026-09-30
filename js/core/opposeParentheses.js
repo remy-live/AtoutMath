@@ -253,15 +253,37 @@ function barreau3(rng) {
 /**
  * BARREAU 4 — DEUX FOIS LA MÊME CHOSE, ET C'EST TOUT L'INTÉRÊT.
  *
- * « −(−3+5) − (−9−5) = −(....) − (....) = .... ». Rien de neuf par rapport au
- * barreau 3, sinon qu'il faut le faire deux fois sans mélanger les deux — ce
- * qui est exactement la difficulté de l'expression complète.
+ * « −(−3+5) − (−9−5) = −(....) − (....) = .......... = .... ». Rien de neuf par
+ * rapport au barreau 3, sinon qu'il faut le faire deux fois sans mélanger les
+ * deux — ce qui est exactement la difficulté de l'expression complète.
+ *
+ * ── TROIS LIGNES, ET LA DEUXIÈME EST CELLE QUI DONNE SON NOM À L'EXERCICE ──
+ *
+ * RÉMY, regardant un élève sur « −(6 + 8) + (4 − 7) » : « tu vois là on n'a pas
+ * encore enlevé les parenthèses ».
+ *
+ * IL AVAIT RAISON, ET C'ÉTAIT GÊNANT : l'exercice s'appelle « Enlever les
+ * parenthèses », et la ligne où elles disparaissent n'était JAMAIS ÉCRITE. On
+ * passait de « −(14) + (−3) » au résultat, d'un coup — deux gestes sur une
+ * seule ligne, alors que ce barreau existe précisément pour les séparer. Le
+ * barreau 2 le faisait déjà correctement ; celui-ci l'avait perdu en route.
+ *
+ * LA DEUXIÈME LIGNE EST DONC « −14 − 3 » : les parenthèses sont parties, et
+ * rien n'est encore calculé. C'est le geste que l'exercice enseigne, et c'est
+ * la ligne que l'élève doit écrire de sa main.
  */
 function barreau4(rng) {
     const g = dedans(rng);
     const d = dedans(rng);
     const lien = rng.bool() ? '+' : '−';
-    const total = lien === '+' ? -g.valeur + d.valeur : -g.valeur - d.valeur;
+    // CE QUE DEVIENT CHAQUE MORCEAU UNE FOIS LA PARENTHÈSE ENLEVÉE : le moins
+    // de tête prend l'opposé du groupe de gauche, et l'opérateur se combine
+    // avec le signe du groupe de droite. Exactement la règle du barreau 2,
+    // appliquée à des groupes déjà calculés.
+    const t1 = -g.valeur;
+    const c2 = lien === '+' ? d.valeur : -d.valeur;
+    const sansParentheses = relatif(t1) + ' ' + (c2 < 0 ? '−' : '+') + ' ' + Math.abs(c2);
+    const total = t1 + c2;
     return {
         niveau: 4,
         enonce: '−(' + g.texte + ') ' + lien + ' (' + d.texte + ')',
@@ -275,14 +297,18 @@ function barreau4(rng) {
                 ]
             },
             {
-                aide: 'Maintenant enlève les parenthèses et calcule.',
+                aide: 'Maintenant enlève les parenthèses. Ne calcule pas encore.',
+                morceaux: [txt('= '), trou([sansParentheses], 'expression', sansParentheses)]
+            },
+            {
+                aide: 'Et maintenant le résultat.',
                 morceaux: [txt('= '), trou([relatif(total)], 'nombre', relatif(total))]
             }
         ],
         reponse: relatif(total),
         pourquoi: 'À gauche ' + g.texte + ' = ' + relatif(g.valeur) + ', à droite '
-            + d.texte + ' = ' + relatif(d.valeur) + '. Puis on enlève les '
-            + 'parenthèses et l\'on calcule : ' + relatif(total) + '.'
+            + d.texte + ' = ' + relatif(d.valeur) + '. On enlève les parenthèses : '
+            + sansParentheses + '. Et l\'on calcule : ' + relatif(total) + '.'
     };
 }
 

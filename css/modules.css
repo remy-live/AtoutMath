@@ -8964,10 +8964,30 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    reste LISIBLE jusqu'au bout — l'élève relit sa ligne précédente en écrivant
    la suivante, sinon on lui demande de la retenir, ce qui n'est pas la
    question posée. */
+/* CE QUE L'ÉLÈVE A ÉCRIT SE LIT, ET SE LIT DE LOIN.
+
+   RÉMY, devant « Enlever les parenthèses » : « je trouve que c'est écrit petit
+   aussi en dessous du calcul ».
+
+   MESURÉ à 1400 px, sur le même écran : l'énoncé fait 46,4 px, le champ de
+   saisie 42 px, et la ligne que l'élève vient d'écrire — celle qu'il relit
+   pour écrire la suivante — 16 px. Trois fois moins que l'énoncé. Le titre des
+   étapes à venir tombait, lui, à 12,2 px : le plancher que ce dépôt s'est
+   donné, atteint par le bas.
+
+   CE N'EST PAS UNE LÉGENDE, C'EST SA COPIE. Cette chaîne EST le travail : on
+   la relit ligne après ligne, et l'en-tête de ce bloc le dit déjà — « ce qui
+   est écrit reste LISIBLE jusqu'au bout ». Elle se pose donc entre la note et
+   l'énoncé, et elle suit la largeur comme eux.
+
+   ET LES SOUS-TITRES SUIVENT EN `em`, PAS EN `rem`. C'est ce qui manquait :
+   `rem` se mesure sur la racine du document, si bien que grossir la chaîne ne
+   grossissait rien de ce qu'elle contient. En `em`, la légende garde sa
+   proportion — plus petite que la ligne, jamais minuscule. */
 .ls-chaine {
     list-style: none; margin: 10px 0 0; padding: 0;
     display: flex; flex-direction: column; gap: 3px;
-    text-align: left; font-size: 1rem;
+    text-align: left; font-size: clamp(1.05rem, 2.2vw, 1.45rem);
 }
 .ls-ligne {
     display: grid; align-items: baseline;
@@ -8985,9 +9005,11 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
     font-weight: 800; color: var(--text-main); min-width: 1ch;
     font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
 }
-/* Ce qu'on vient de faire : en petit, sous la ligne, jamais à sa place. */
+/* Ce qu'on vient de faire : plus petit que la ligne, sous elle, jamais à sa
+   place — et en `em`, pour que ce soit toujours vrai quelle que soit la taille
+   de la chaîne. */
 .ls-quoi {
-    grid-column: 3; font-size: .76rem; line-height: 1.25;
+    grid-column: 3; font-size: .72em; line-height: 1.3;
     color: var(--text-muted);
 }
 /* LE CALCUL DE CÔTÉ — « x² − 9 = (x − 3)(x + 3) ». Il n'est pas dans la
@@ -9020,7 +9042,7 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
    en .76 rem sous un énoncé en 2 rem. Rémy : « je ne comprends pas ce qu'il
    faut faire ». */
 .ls-ligne--active .ls-quoi {
-    color: var(--text-main); font-weight: 700; font-size: .98rem; line-height: 1.3;
+    color: var(--text-main); font-weight: 700; font-size: .88em; line-height: 1.3;
 }
 .ls-ligne--attente { opacity: .4; }
 .ls-ligne--attente .ls-quoi { visibility: hidden; }
@@ -9072,7 +9094,10 @@ html[data-theme="dark"] .ad-col--moins .ad-col-titre { color: #93c5fd; }
         align-self: start; width: 100%;
     }
     .ls-layout .ls-panel { align-self: end; }
-    .ls-layout--chaine .ls-chaine { font-size: .9rem; gap: 2px; margin-top: 6px; }
+    /* SUR UN TÉLÉPHONE, LA CHAÎNE RESTE LISIBLE SANS CHASSER LE PAVÉ. Le
+       `clamp` ci-dessus la poserait à 1,05 rem ; on descend d'un cran, pas de
+       trois — la mesure d'en face (390 × 844) dit que le pavé tient. */
+    .ls-layout--chaine .ls-chaine { font-size: 1rem; gap: 2px; margin-top: 6px; }
     .ls-layout--chaine .ls-ligne { padding: 3px 8px; }
     /* `.ls-clavier .ls-t` ET NON `.ls-t` : une requête de conteneur n'ajoute
        AUCUNE spécificité, et `.ls-t { min-height: 50px }` est écrit plus bas

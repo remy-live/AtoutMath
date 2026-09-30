@@ -71,16 +71,27 @@ test('L\'ASTÉRISQUE EST BRANCHÉ SUR LE CHAMP, et seulement où le × existe', 
     // tape « 3 » puis « * » et lit « 3× » dans le champ.
     const texte = readFileSync(new URL('../js/core/activities/litteralSaisie.js',
         import.meta.url), 'utf8');
-    assert.match(texte, /e\.key === '\*' && m\.multiplication/,
-        'l\'astérieque doit écrire le signe fois, là où le pavé porte la touche ×');
+    // ── LA RÈGLE N'A PAS BOUGÉ, SON ÉCRITURE OUI ────────────────────────
+    //
+    // Cette épreuve épinglait la LIGNE `e.key === '*' && m.multiplication` —
+    // une exception écrite à la main, à côté de la liste des touches, elle
+    // aussi écrite à la main. Rémy : « on ne peut pas écrire les parenthèses
+    // au clavier » : cette seconde liste avait dérivé, et il manquait « ( ».
+    //
+    // LE CLAVIER SE DÉDUIT MAINTENANT DU PAVÉ, ce qui rend la dérive
+    // impossible — et fait disparaître l'exception. L'INTENTION est intacte et
+    // se vérifie mieux : l'astérisque écrit le signe de multiplication DU
+    // MOMENT, et seulement là où le pavé porte cette touche.
+    assert.match(texte, /const AUTRE_TOUCHE = \{ '-': '−', '\*': glypheFois\(\) \};/,
+        'l\'astérisque doit écrire le signe fois du moment');
+    assert.match(texte, /glyphesDuPave\.has\(frappe\)/,
+        'et seulement là où le pavé porte la touche ×');
     // CETTE LIGNE ÉPINGLAIT `taper('×')`, ET LE SIGNE EST DEVENU UN RÉGLAGE.
     // Rémy : « dans les paramètres d'affichage, propose aussi le x […] ou
     // l'astérisque ». L'intention de l'épreuve n'a pas bougé d'un mot — la
     // touche écrit LE SIGNE DE MULTIPLICATION et non l'astérisque brut — mais
     // ce signe se lit maintenant dans `signeFois.js`, et il vaut « × » tant
     // que personne n'a rien changé.
-    assert.match(texte, /taper\(glypheFois\(\)\)/,
-        'et écrire le signe de multiplication du moment, pas l\'astérisque');
     assert.match(texte, /import \{ glypheFois \} from '\.\.\/signeFois\.js';/,
         'ce qui suppose que la touche sache où le demander');
 });
