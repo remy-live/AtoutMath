@@ -287,7 +287,19 @@ class Priorites extends BaseGame {
         // à faire : « 4² » n'a pas de signe entre deux nombres, il y a un
         // nombre qui porte son exposant. L'élève la souligne donc comme il
         // soulignerait un ×.
-        const agissant = j.type === 'op' || j.type === 'p';
+        // ET LE MOINS UNAIRE AUSSI — c'est une opération, la seule de « −(−4) ».
+        //
+        // Rémy : « −(−4) il demande de cliquer sur une opération mais ça ne va
+        // pas, ça ne fait rien ». MESURÉ : sur « − (−4) », les deux jetons
+        // sortaient en `.pr-jeton` nus, sans `--op`, donc sans gestionnaire de
+        // clic. L'écran réclamait un clic et n'offrait rien à cliquer — l'élève
+        // ne pouvait pas se tromper, il était simplement arrêté.
+        //
+        // Le jeton `u` avait été ajouté au MOTEUR sans l'être à la MAIN qui le
+        // montre : `etapes()` savait le réduire, l'écran ne savait pas le
+        // proposer. Une épreuve du moteur passait donc au vert sur un exercice
+        // injouable.
+        const agissant = j.type === 'op' || j.type === 'p' || j.type === 'u';
         el.className = 'pr-jeton' + (agissant ? ' pr-jeton--op' : '');
         // LE VOISIN DE GAUCHE VOYAGE AVEC LE JETON : c'est lui qui décide si le
         // nombre négatif prend ses parenthèses. Sans lui, la cascade écrivait

@@ -31,6 +31,7 @@ import {
     reduire, etapesMax
 } from '../js/core/priorites.js';
 import { makeRng } from '../js/core/ids.js';
+import { readFileSync } from 'node:fs';
 
 const OPTS = { relatifs: true };
 const cascade = (texte) => {
@@ -136,4 +137,37 @@ test('LE RESTE DU MOTEUR N\'A PAS BOUGÉ', () => {
     const ordinaire = tirerExpression({ rng: makeRng('temoin'), niveau: 3, relatifs: true });
     assert.doesNotMatch(ordinaire.texte, /^−\(/,
         'sans le réglage, aucune expression ne commence par un opposé');
+});
+
+test('CE QUE LE MOTEUR SAIT RÉDUIRE, L\'ÉCRAN DOIT LE RENDRE CLIQUABLE', () => {
+    // Rémy : « −(−4) il demande de cliquer sur une opération mais ça ne va pas,
+    // ça ne fait rien ».
+    //
+    // MESURÉ AU NAVIGATEUR : sur « − (−4) », les deux jetons sortaient en
+    // `.pr-jeton` nus, sans `--op`, donc sans gestionnaire de clic. L'écran
+    // réclamait un clic et n'offrait rien à cliquer. L'élève n'était pas en
+    // train de se tromper : il était arrêté.
+    //
+    // LA CAUSE TIENT EN UN MOT MANQUANT. Le jeton `u` — le moins unaire — avait
+    // été ajouté au MOTEUR sans l'être à la MAIN qui le montre. Les épreuves du
+    // moteur passaient donc toutes au vert sur un exercice injouable : elles
+    // regardaient `etapes()`, jamais l'écran.
+    //
+    // D'OÙ CETTE ÉPREUVE-CI, qui relie les deux : tout type de jeton que le
+    // moteur sait réduire doit être proposé au clic. Ajouter demain un jeton
+    // réductible sans toucher `jetonHtml` la fera tomber.
+    const AGISSANTS = ['op', 'p', 'u'];
+    const JEU = readFileSync(new URL('../js/games/priorites.js', import.meta.url), 'utf8');
+    const ligne = (JEU.match(/const agissant = .*/) || [''])[0];
+    assert.ok(ligne, 'la ligne qui décide de ce qui se clique existe toujours');
+    for (const t of AGISSANTS) {
+        assert.ok(ligne.includes(`'${t}'`),
+            `le jeton « ${t} » est réductible par le moteur : il doit être cliquable`);
+    }
+
+    // ET LE MOTEUR SAIT BIEN LE RÉDUIRE, pour que l'épreuve ci-dessus garde
+    // quelque chose de vrai et non une liste écrite à la main.
+    const j = lire('-(-4)');
+    assert.ok(j.some(x => x.type === 'u'), '« −(−4) » porte bien un moins unaire');
+    assert.deepEqual(cascade('-(-4)'), ['−(−4)', '4']);
 });
