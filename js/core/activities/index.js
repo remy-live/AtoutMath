@@ -117,6 +117,7 @@ import { factorisationGenerator } from '../generators/factorisation.js';
 import { calculFractionsGenerator } from '../generators/calculFractions.js';
 import { racinesGenerator } from '../generators/racines.js';
 import { developpementGenerator } from '../generators/developpement.js';
+import { opposeRegleGenerator, opposeEnleverGenerator } from '../generators/oppose.js';
 import { pourcentagesGenerator } from '../generators/pourcentages.js';
 import { perimetreTriangleGenerator } from '../generators/perimetreTriangle.js';
 import { disqueGenerator } from '../generators/disque.js';
@@ -185,7 +186,11 @@ import {
     factorisationGenerator,
     calculFractionsGenerator,
     racinesGenerator,
-    developpementGenerator
+    developpementGenerator,
+    // LE MOINS DEVANT LA PARENTHÈSE — deux générateurs pour deux activités qui
+    // existaient déjà : le QCM et la saisie ligne à ligne. Voir l'en-tête de
+    // `generators/oppose.js` : la première version les avait refaits à la main.
+    opposeRegleGenerator, opposeEnleverGenerator
 ].forEach(registerGenerator);
 
 // --- Activités pilotées par un générateur -----------------------------------

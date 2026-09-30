@@ -78,7 +78,9 @@ export const CODES_EXERCICES = {
     // « M » COMME MOINS, ET NON COMME PRIORITÉS : tous les « P? » utiles étaient
     // pris, et ce chapitre-ci ne porte de toute façon pas sur l'ordre des
     // opérations mais sur la suppression d'une parenthèse.
-    'calc-prio-oppose':           'MB',   // Le Moins devant la Parenthèse
+    'calc-oppose-regle':          'MD',   // La règle du signe : −(−4) = ?
+    'calc-oppose-enlever':        'MF',   // Enlever les parenthèses, ligne à ligne
+    'calc-prio-oppose':           'MB',   // Le Moins devant la Parenthèse (priorités)
     'calc-compte-est-bon':        'CB',   // Le Compte est Bon
     'calc-poser':                 'PS',   // Poser une opération
     'calc-poser-multiplication':  'MU',   // Poser une multiplication

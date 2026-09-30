@@ -90,72 +90,52 @@ test('L\'OPPOSÉ EMPORTE SA PARENTHÈSE, NI PLUS NI MOINS', () => {
         'deux jetons remplacés : le moins et le nombre');
 });
 
-test('L\'ÉCHELLE MONTE D\'UNE DIFFICULTÉ PAR BARREAU', () => {
+test('CE MOTEUR NE PORTE PLUS QUE LES DEUX DERNIERS BARREAUX', () => {
     // ─────────────────────────────────────────────────────────────────────
-    // CETTE ÉPREUVE A CHANGÉ DE CONTENU, PAS D'INTENTION.
+    // CETTE ÉPREUVE A CHANGÉ DE CONTENU DEUX FOIS EN DEUX JOURS, et la seconde
+    // fois pour une bonne raison.
     //
-    // Elle gardait l'échelle précédente — quatre barreaux, les priorités dès
-    // le troisième. Rémy, après avoir vu ses élèves dessus, en a écrit une
-    // autre : « Au départ, je préfèrerais juste remplacer […] Puis avec des
-    // priorités opératoires (pour l'instant on n'a pas encore fait le produit
-    // de nombres négatifs) ». Cinq barreaux, et les priorités tout au bout.
+    // Elle a d'abord gardé quatre barreaux, puis cinq — l'échelle que Rémy a
+    // écrite. Puis il a demandé : « pourquoi n'utilises tu pas le système de
+    // QCM, pourquoi as tu tout refait ». Les quatre premiers barreaux sont
+    // alors partis dans les activités qui savent les servir : un QCM par
+    // `activities/choice.js`, une saisie ligne à ligne par
+    // `activities/litteralSaisie.js`. Leurs tirages vivent dans
+    // `js/core/opposeParentheses.js` et s'éprouvent dans
+    // `tests/enleverLesParentheses.test.mjs`.
     //
-    // Elle a donc eu RAISON de tomber : c'est ce qu'on attend d'une épreuve
-    // quand la règle qu'elle garde est remplacée.
-    //
-    // CE QU'ELLE GARDE RESTE LE MÊME : chaque barreau ajoute une chose, et une
-    // seule. Deux crans qui enseignent la même chose ne sont pas une
-    // progression.
+    // CE MOTEUR-CI NE GARDE QUE CE QU'IL SAIT FAIRE : une cascade à cliquer,
+    // sur les deux formes qui portent une priorité. Une forme que plus
+    // personne ne tire est une forme qu'on croit éprouvée.
     const tire = (niveau, k) => tirerExpression({
         rng: makeRng(`echelle-${niveau}-${k}`), niveau, avecOppose: true
     });
     for (let k = 0; k < 40; k++) {
-        // 1 — la règle du signe, sur un seul nombre.
-        assert.match(tire(1, k).texte, /^−\(−\d+\)$/,
-            'le barreau 1 est « −(−4) » et rien d\'autre');
-        // 2 — la règle dans un calcul, toujours sans priorité.
+        // 1 — une priorité DANS la parenthèse.
+        const un = tire(1, k).texte;
+        assert.match(un, /^−\(−?\d+ [+−] \d+ [×÷] \d+\)$/, un);
+        // 2 — l'expression entière.
         const deux = tire(2, k).texte;
-        assert.doesNotMatch(deux, /[×÷]/,
-            'le barreau 2 porte sur la parenthèse, pas sur les priorités');
-        assert.match(deux, /^−\(−\d+\) [+−] \(−\d+\)$/,
-            'et il a la forme « −(−4) + (−5) » que Rémy a écrite');
-        // 3 — ce qu'on fait AVANT la règle : une somme dans la parenthèse.
-        const trois = tire(3, k).texte;
-        assert.doesNotMatch(trois, /[×÷]/,
-            'le barreau 3 apporte la SOMME dans la parenthèse, pas la priorité');
-        assert.match(trois, /^−\(−?\d+ [+−] \d+\)$/,
-            'et jamais de parenthèse dans la parenthèse : Rémy écrit « −(−3 + 5) »');
-        // 4 — deux fois la même chose.
-        const quatre = tire(4, k).texte;
-        assert.doesNotMatch(quatre, /[×÷]/, 'le barreau 4 non plus ne multiplie pas');
-        assert.match(quatre, /^−\(−?\d+ [+−] \d+\) [+−] \(−?\d+ [+−] \d+\)$/,
-            'il a la forme « −(−3 + 5) − (−9 − 5) »');
-        // 5 — et seulement là, les priorités.
-        const cinq = tire(5, k).texte;
-        assert.match(cinq, /[×÷]/,
-            'le barreau 5 a TOUJOURS une priorité à trancher, sinon il ne porte '
-            + 'pas son nom une fois sur deux');
-        // LA SEULE CONTRAINTE QUE RÉMY A POSÉE EN TOUTES LETTRES, et elle vaut
-        // pour le barreau qui multiplie : aucun produit de deux relatifs.
-        assert.doesNotMatch(cinq, /\(−\d+\)\s*[×÷]|[×÷]\s*\(−\d+\)/,
-            `« ${cinq} » multiplie deux relatifs, chapitre pas encore fait`);
+        assert.match(deux, /^−\(−?\d+ [+−] \d+ [×÷] \d+\) [+−] \(−\d+\)$/, deux);
+        // LA SEULE CONTRAINTE QUE RÉMY A POSÉE EN TOUTES LETTRES : « pour
+        // l'instant on n'a pas encore fait le produit de nombres négatifs ».
+        for (const t of [un, deux]) {
+            assert.doesNotMatch(t, /\(−\d+\)\s*[×÷]|[×÷]\s*\(−\d+\)/,
+                `« ${t} » multiplie deux relatifs, chapitre pas encore fait`);
+        }
     }
+    // ET AU-DELÀ DE DEUX, ON RESTE SUR LE DERNIER. Un parcours enregistré
+    // hier peut porter « niveau : 5 » ; il doit jouer, pas tomber.
+    assert.match(tire(5, 1).texte, /[×÷]/, 'un ancien réglage ne casse pas l\'exercice');
 });
 
 test('ET LA FEUILLE RÉSERVE LE BON NOMBRE DE LIGNES', () => {
     // Une cascade tronquée se voit au crayon et pas à l'écran : la dernière
-    // ligne n'a simplement plus où s'écrire. Les cinq barreaux, donc, et pas
-    // quatre — borner à 4 ferait réserver la place du barreau 4 pour un calcul
-    // du barreau 5.
-    assert.equal(etapesMax({ niveau: 1, avecOppose: true }), 1);
-    assert.equal(etapesMax({ niveau: 2, avecOppose: true }), 2);
-    assert.equal(etapesMax({ niveau: 3, avecOppose: true }), 2);
-    // QUATRE, ET NON TROIS : « −(−3 + 5) − (−9 − 5) » demande de calculer les
-    // DEUX intérieurs, puis d'appliquer l'opposé, puis de soustraire. J'avais
-    // écrit 3 de tête ; c'est le calcul qui a raison.
-    assert.equal(etapesMax({ niveau: 4, avecOppose: true }), 4);
-    assert.equal(etapesMax({ niveau: 5, avecOppose: true }), 4);
+    // ligne n'a simplement plus où s'écrire.
+    assert.equal(etapesMax({ niveau: 1, avecOppose: true }), 3);
+    assert.equal(etapesMax({ niveau: 2, avecOppose: true }), 4);
 });
+
 
 test('LE RESTE DU MOTEUR N\'A PAS BOUGÉ', () => {
     // « Une mesure qui ne regarde que ce qu'on a corrigé ne voit pas ce qu'on a

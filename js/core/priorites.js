@@ -649,42 +649,31 @@ const FORMES = {
  * s'écrit « −5 » et n'est plus un exercice sur la parenthèse. Ce qui suit un
  * opposé doit donc être négatif, sinon le barreau ne porte pas son nom.
  */
-// LES CINQ BARREAUX DE RÉMY, ET LA TABLE LES SUIT.
+// LES DEUX DERNIERS BARREAUX DE L'ÉCHELLE DE RÉMY — les seuls qui se cliquent.
 //
-// À l'ÉCRAN, les barreaux 1 à 4 ne se jouent plus en cascade : on les remplit
-// (voir js/core/opposeParentheses.js). Cette table sert alors à DEUX choses —
-// la feuille imprimée, qui pose les mêmes calculs au crayon, et le barreau 5,
-// où la cascade redevient le sujet.
+// L'échelle en compte cinq. Les quatre premiers ne passent plus par ce moteur :
+// ils ont leurs propres exercices et leurs propres activités — `calc-oppose-regle`
+// est un QCM servi par `activities/choice.js`, `calc-oppose-enlever` une saisie
+// ligne à ligne servie par `activities/litteralSaisie.js`. Leurs tirages vivent
+// dans `js/core/opposeParentheses.js`.
 //
-// ELLE A ÉTÉ REMISE D'ACCORD AVEC L'ÉCHELLE, parce que deux échelles qui
-// divergent — une à l'écran, une sur la feuille — se remarquent le jour où un
-// élève fait les deux. Le barreau 1 ne porte plus « −8 + (−9) », qui n'a pas
-// d'opposé du tout : cette forme-là appartient au barreau 2, sous « −(−4) + (−5) ».
+// POURQUOI LA TABLE A MAIGRI. Elle a porté les cinq barreaux pendant une
+// journée, du temps où le jeu des priorités les affichait tous lui-même. Rémy :
+// « pourquoi n'utilises tu pas le système de QCM, pourquoi as tu tout refait ».
+// Il avait raison ; en rendant chaque barreau à l'activité qui sait le servir,
+// trois formes sur cinq n'avaient plus personne pour les tirer — et une forme
+// que rien ne tire est une forme qu'on croit éprouvée.
 //
-// JAMAIS DE PRODUIT DE DEUX RELATIFS, à aucun barreau. Rémy : « pour l'instant
-// on n'a pas encore fait le produit de nombres négatifs ». Le « × » du barreau
-// 5 est entre deux POSITIFS : c'est une priorité à respecter, pas une règle des
-// signes à deviner.
+// JAMAIS DE PRODUIT DE DEUX RELATIFS. Rémy : « pour l'instant on n'a pas encore
+// fait le produit de nombres négatifs ». Le « × » est donc entre deux POSITIFS
+// (`n+`) : c'est une priorité à respecter, pas une règle des signes à deviner.
 const FORMES_OPPOSE = {
-    // 1 — la règle du signe, sur un seul nombre : « −(−4) ».
+    // 1 — une priorité DANS la parenthèse : « −(−3 + 5 × 6) ».
     1: [
-        ['u', 'n-']
+        ['u', '(', 'n-', 'op+', 'n+', 'op×', 'n+', ')']
     ],
-    // 2 — la règle dans un calcul : « −(−4) + (−5) ».
+    // 2 — l'expression entière : « −(−3 + 5 × 6) − (−7) ».
     2: [
-        ['u', 'n-', 'op+', 'n-']
-    ],
-    // 3 — ce qu'on fait AVANT la règle : « −(−3 + 7) ».
-    3: [
-        ['u', '(', 'n-', 'op+', 'n+', ')']
-    ],
-    // 4 — deux fois la même chose : « −(−3 + 5) − (−9 − 5) ».
-    4: [
-        ['u', '(', 'n-', 'op+', 'n+', ')', 'op+', '(', 'n-', 'op+', 'n+', ')']
-    ],
-    // 5 — et seulement là, les priorités.
-    5: [
-        ['u', '(', 'n-', 'op+', 'n+', 'op×', 'n+', ')'],
         ['u', '(', 'n-', 'op+', 'n+', 'op×', 'n+', ')', 'op+', 'n-']
     ]
 };
@@ -703,11 +692,11 @@ const FORMES_OPPOSE = {
 export function etapesMax({
     niveau = 2, parentheses = true, imposer = false, puissances = false, avecOppose = false
 } = {}) {
-    // LE MÊME PLAFOND QUE LE TIRAGE : cinq barreaux pour l'opposé. Deux bornes
-    // qui ne disent pas la même chose feraient réserver, sur la feuille, la
-    // place du barreau 4 pour un calcul du barreau 5 — une ligne de moins que
-    // ce que l'élève a à écrire, et le trou se voit au crayon.
-    const n = Math.max(1, Math.min(avecOppose ? 5 : 4, niveau));
+    // LE MÊME PLAFOND QUE LE TIRAGE. Deux bornes qui ne disent pas la même
+    // chose feraient réserver, sur la feuille, la place d'un barreau pour le
+    // calcul d'un autre — une ligne de moins que ce que l'élève a à écrire, et
+    // le trou se voit au crayon.
+    const n = Math.max(1, Math.min(avecOppose ? 2 : 4, niveau));
     if (avecOppose) {
         const f = FORMES_OPPOSE[n] || FORMES_OPPOSE[1];
         // UN OPPOSÉ EST UNE OPÉRATION, et il compte donc une ligne comme les
@@ -776,7 +765,9 @@ export function tirerExpression({
     // ajoute « avec les priorités » APRÈS les quatre de remplissage. Borner à 4
     // sans le dire aurait fait retomber le barreau 5 sur le 4 — le bon calcul
     // par accident, jusqu'au jour où la table bouge.
-    const n = Math.max(1, Math.min(avecOppose ? 5 : 4, niveau));
+    // DEUX BARREAUX POUR L'OPPOSÉ, quatre pour le reste : cet exercice ne porte
+    // plus que les deux derniers crans de l'échelle, les seuls qui se cliquent.
+    const n = Math.max(1, Math.min(avecOppose ? 2 : 4, niveau));
     const grand = Math.max(3, Math.round(max));
     // LE NOM DE L'OPTION N'EST PAS CELUI DU JETON, ET C'EST VOULU : `oppose`
     // est le CONSTRUCTEUR du jeton, et une option du même nom le masquerait

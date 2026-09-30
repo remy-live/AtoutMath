@@ -326,19 +326,19 @@ export const calculExercises = [
         colonnesPapier: 4,
         activityId: 'priorites',
         skills: ['num.prio.relatifs'],
+        // `niveauOppose` DIT AU MOTEUR OÙ EN EST L'ÉCHELLE COMPLÈTE. Cet
+        // exercice ne porte plus que ses deux derniers barreaux ; ses formes
+        // sont celles qui, dans `FORMES_OPPOSE`, portent une priorité.
         params: { niveau: 1, oppose: true, relatifs: true },
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Difficulté', echelle: true,
-                aide: 'L\'échelle de Rémy : la règle du signe d\'abord, les priorités '
-                    + 'en dernier. Les quatre premiers crans se REMPLISSENT ; le '
-                    + 'cinquième se conduit ligne à ligne comme un Prio-Bot.',
+                aide: 'Le dernier barreau de l\'échelle : la règle du signe et les '
+                    + 'priorités ensemble. Les quatre premiers sont dans « La règle '
+                    + 'du signe » et « Enlever les parenthèses ».',
                 options: [
-                    { value: 1, label: '1 — La règle du signe : −(−4) = ?', court: '1' },
-                    { value: 2, label: '2 — Enlever les parenthèses : −(−4) + (−5)', court: '2' },
-                    { value: 3, label: '3 — Calculer dedans d\'abord : −(−3 + 5)', court: '3' },
-                    { value: 4, label: '4 — Deux parenthèses : −(−3 + 5) − (−9 − 5)', court: '4' },
-                    { value: 5, label: '5 — Avec les priorités : −(−3 + 5 × 6) − (−7)', court: '5' }
+                    { value: 1, label: '1 — Une priorité dedans : −(−3 + 5 × 6)', court: '1' },
+                    { value: 2, label: '2 — L\'expression entière : −(−3 + 5 × 6) − (−7)', court: '2' }
                 ],
                 default: 1
             }
@@ -350,9 +350,100 @@ export const calculExercises = [
         instruction: "Un moins qui n'a rien à sa gauche n'est pas une soustraction : il prend "
             + "l'OPPOSÉ de ce qui le suit. Et il ne peut s'appliquer qu'à UN SEUL nombre — "
             + "tant qu'il reste un calcul dans la parenthèse, c'est lui qu'on fait d'abord. "
-            + "Aux quatre premiers crans, on REMPLIT : la règle du signe sur un nombre, "
-            + "puis la ligne réécrite sans parenthèses, puis ce qu'il faut calculer avant. "
-            + "Au cinquième seulement, on conduit le calcul ligne à ligne."
+            + "Clique sur l'opération à faire en premier, donne son résultat, et la ligne "
+            + "suivante s'écrit. C'est le DERNIER barreau de l'échelle : la règle du signe "
+            + "se travaille d'abord dans « La règle du signe », puis dans « Enlever les "
+            + "parenthèses »."
+    },
+    {
+        // ═══════════════════════════════════════════════════════════════════
+        // BARREAU 1 — LA RÈGLE DU SIGNE, EN QCM, PAR LE SYSTÈME DE QCM.
+        //
+        // RÉMY, DEVANT LA PREMIÈRE VERSION : « pourquoi n'utilises tu pas le
+        // système de QCM, pourquoi as tu tout refait », puis « ce n'est pas
+        // trop joli non plus ».
+        //
+        // Il avait raison. J'avais écrit un QCM à la main dans le jeu des
+        // priorités, alors que `activities/choice.js` existe et dit lui-même
+        // qu'il est « une seule implémentation pour tous les jeux à
+        // propositions cliquables ». Le mien n'avait ni les essais, ni
+        // l'échelle d'aide, ni la réduction des propositions après une erreur,
+        // ni la barre d'outils, ni le robot — et il ne ressemblait à aucun
+        // autre écran du logiciel.
+        //
+        // POURQUOI UN EXERCICE À PART, ET NON UN CRAN DE L'AUTRE. Une
+        // activité est choisie UNE FOIS par exercice
+        // (`runner.js` : `getActivity(step.exercise.activityId)`) : un même
+        // exercice ne peut pas être un QCM au cran 1 et une saisie au cran 2.
+        // Et c'est tant mieux ici — chacun garde sa ligne au bilan, et Rémy
+        // voit lequel des trois reprendre.
+        // ═══════════════════════════════════════════════════════════════════
+        id: 'calc-oppose-regle',
+        jeu: false,
+        cree: '2026-09-30',
+        title: 'La règle du signe',
+        consignePapier: 'Écris le résultat. Attention au moins devant la parenthèse.',
+        colonnesPapier: 6,
+        // `bubbles` EST LA VARIANTE ORDINAIRE DU SYSTÈME DE QCM — celle que
+        // voient les élèves partout ailleurs dans le logiciel. C'est tout
+        // l'intérêt : un écran de plus qui ressemble aux autres, au lieu d'un
+        // écran de plus qui ne ressemble à rien.
+        activityId: 'bubbles',
+        generatorId: 'num.oppose.regle',
+        skills: ['num.prio.relatifs'],
+        params: {},
+        motsClefs: ['opposé', 'moins devant une parenthèse', 'règle des signes',
+            'relatifs', 'signe', 'parenthèses'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "Un moins qui n'a rien à sa gauche n'est pas une soustraction : il "
+            + "prend l'OPPOSÉ de ce qui le suit. Rien d'autre à penser ici : un seul "
+            + "nombre dans la parenthèse, et quatre propositions. C'est le premier "
+            + "barreau — ensuite viennent « Enlever les parenthèses », puis « Le Moins "
+            + "devant la Parenthèse » avec les priorités."
+    },
+    {
+        // ═══════════════════════════════════════════════════════════════════
+        // BARREAUX 2 À 4 — ON ENLÈVE LES PARENTHÈSES, LIGNE À LIGNE.
+        //
+        // RÉMY : « puis −(−4) + (−5) = .......... = ; l'élève écrit +4 − 5 et
+        // donne le résultat. Puis −(−3+5) = −(....) […] Puis −(−3+5) − (−9−5)
+        // = −(....) − (....) = .................... ».
+        //
+        // C'est `meta.etapes` de `activities/litteralSaisie.js`, mot pour
+        // mot : « la question s'écrit alors ligne à ligne, chacune validée sur
+        // place. SEULE LA DERNIÈRE COMPTE POUR LA SÉANCE ». Les précédentes
+        // sont l'ÉCRITURE du raisonnement, pas trois questions déguisées — les
+        // noter ferait valoir une question trois points de statistiques.
+        //
+        // LE CŒUR DU BARREAU 2 : on réécrit AVANT de calculer. Répondre « −1 »
+        // à la ligne « 4 − 5 » n'est pas une erreur, c'est un saut : l'activité
+        // le dit par `inacheve` et laisse finir, sans retirer de vie.
+        // ═══════════════════════════════════════════════════════════════════
+        id: 'calc-oppose-enlever',
+        jeu: false,
+        cree: '2026-09-30',
+        title: 'Enlever les parenthèses',
+        consignePapier: 'Réécris sans parenthèses, puis calcule. Écris toutes les lignes.',
+        colonnesPapier: 3,
+        activityId: 'litteral-saisie',
+        generatorId: 'num.oppose.enlever',
+        skills: ['num.prio.relatifs'],
+        // PAS DE `paramSchema` ICI : le générateur déclare ses marches à cocher
+        // lui-même, par `paramMarches` — la convention de la maison, suivie par
+        // trente-huit générateurs. Rémy : « tu ne fais pas les étapes à cocher,
+        // on avait convenu de cela de manière globale ». Un menu écrit ici
+        // aurait doublé le réglage du générateur, et c'est le catalogue qui
+        // aurait gagné.
+        params: {},
+        motsClefs: ['opposé', 'moins devant une parenthèse', 'supprimer les parenthèses',
+            'relatifs', 'signe', 'parenthèses'],
+        tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
+        instruction: "On enlève les parenthèses AVANT de calculer, et l'on écrit la ligne "
+            + "obtenue. « −(−4) + (−5) » devient « 4 − 5 », et seulement après on trouve "
+            + "−1. Écrire le résultat tout de suite n'est pas compté faux — on vous dit "
+            + "simplement qu'il manque la ligne du milieu, celle où l'on se trompe."
     },
     {
         // LE COMPTE EST BON. Le tirage est fabriqué à l'endroit : le compte est

@@ -64,8 +64,7 @@ class Priorites extends BaseGame {
         // Un opposé sans négatifs n'enseigne rien : le réglage entraîne l'autre.
         if (this.avecOppose) this.relatifs = true;
         // ─────────────────────────────────────────────────────────────────────
-        // LES QUATRE PREMIERS BARREAUX DE L'OPPOSÉ NE SE CLIQUENT PAS : ON LES
-        // REMPLIT.
+        // LES QUATRE PREMIERS BARREAUX DE L'OPPOSÉ NE SONT PLUS ICI.
         //
         // Rémy, après avoir vu ses élèves dessus : « Au départ, je préfèrerais
         // juste remplacer (avec QCM éventuellement) −(−4) = ? −(+4) = ? puis
@@ -79,8 +78,18 @@ class Priorites extends BaseGame {
         // payer les deux difficultés d'un coup — c'est exactement ce qui a
         // arrêté ses élèves.
         //
-        // La cascade revient au barreau 5, où elle est le sujet.
-        this.remplissage = this.avecOppose && this.niveau <= 4;
+        // ILS ONT LEURS PROPRES EXERCICES, ET LEURS PROPRES ACTIVITÉS :
+        // `calc-oppose-regle` est un QCM servi par `activities/choice.js`,
+        // `calc-oppose-enlever` une saisie ligne à ligne servie par
+        // `activities/litteralSaisie.js` et son `meta.etapes`.
+        //
+        // RÉMY : « pourquoi n'utilises tu pas le système de QCM, pourquoi as tu
+        // tout refait », puis « ce n'est pas trop joli non plus ». J'avais
+        // écrit ici un QCM et un remplissage à la main — deux cent quatre-vingts
+        // lignes qui refaisaient, moins bien, ce que deux activités savaient
+        // déjà faire : les essais, l'échelle d'aide, la réduction des
+        // propositions, la barre d'outils, le robot, la traçabilité au bilan.
+        // Ce fichier ne conduit plus que ce qu'il sait conduire : une cascade.
         // L'option qui voyage avec chaque appel au noyau : c'est elle qui
         // autorise une soustraction à descendre sous zéro.
         this.opts = { relatifs: this.relatifs };
@@ -181,57 +190,6 @@ class Priorites extends BaseGame {
                 .pr-note--ok { color: var(--success); font-weight: 700; }
                 .pr-note--ko { color: var(--danger); font-weight: 700; }
 
-                /* ─────── LES QUATRE BARREAUX QU'ON REMPLIT ───────
-                   L'énoncé reste en tête, en gros ; les lignes remplies
-                   s'effacent sous lui comme les lignes passées d'une
-                   cascade. C'est la présentation du cahier, et c'est la
-                   seule que l'élève retrouvera sur sa copie. */
-                .pr-aide {
-                    font-size: clamp(12px, 3cqw, 14px); color: var(--text-muted);
-                    text-align: center; max-width: 520px; min-height: 1.3em;
-                }
-                /* UN TROU QUI ATTEND UNE LIGNE EST PLUS LARGE QU'UN TROU QUI
-                   ATTEND UN NOMBRE. « 4 − 5 » ne tient pas dans 2,8 em, et un
-                   champ trop court fait croire qu'on s'est trompé d'endroit. */
-                .pr-trou--ligne { width: 5.2em; }
-                /* CE QU'ON N'A PAS ENCORE ATTEINT SE VOIT SANS S'OFFRIR :
-                   les pointillés disent qu'il y aura quelque chose à écrire
-                   là, et qu'on n'y est pas encore. */
-                .pr-apres {
-                    opacity: .38; border-bottom: 3px dotted currentColor;
-                    padding: 2px .4em; border-radius: 6px 6px 0 0;
-                }
-                /* UNE RÉPONSE DONNÉE RESTE LISIBLE ET CESSE D'ÊTRE UN CHAMP :
-                   elle fait partie de la ligne, désormais. */
-                .pr-dit { color: var(--primary); }
-                /* Une ligne pas encore atteinte s'annonce sans s'imposer :
-                   elle dit combien d'étapes il reste, elle ne demande rien. */
-                .pr-ligne--aVenir { opacity: .5; }
-                /* ET L'AIDE DISPARAÎT QUAND ELLE EST VIDE : en cascade elle ne
-                   sert pas (la note dit déjà quoi faire), et une hauteur
-                   réservée pour rien pousse le calcul vers le haut. */
-                .pr-aide:empty { min-height: 0; }
-
-                /* LE QCM DU PREMIER BARREAU. Quatre nombres, en ligne s'ils
-                   tiennent, sinon sur deux rangées — jamais une colonne de
-                   quatre, qui pousse la question hors de l'écran au doigt. */
-                .pr-qcm {
-                    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
-                    max-width: 520px;
-                }
-                .pr-choix {
-                    font: inherit; font-weight: 800;
-                    font-size: clamp(18px, 5cqw, 26px);
-                    min-width: 3.4em; min-height: 48px; padding: 8px 18px;
-                    border: 2px solid var(--border); border-radius: 12px;
-                    background: var(--bg-panel); color: var(--text-main); cursor: pointer;
-                }
-                @media (hover: hover) {
-                    .pr-choix:hover { border-color: var(--primary); background: var(--bg-hover); }
-                }
-                .pr-choix:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
-                .pr-choix--faux { animation: pr-non .34s ease; border-color: var(--danger); }
-                .pr-choix--juste { border-color: var(--success); color: var(--success); }
             </style>
             <div class="pr-wrap">
                 <div class="pr-tete">
@@ -240,18 +198,12 @@ class Priorites extends BaseGame {
                     <button type="button" class="pr-btn" data-neuf>↺ Autre calcul</button>
                 </div>
                 <div class="pr-cascade" data-cascade></div>
-                <!-- CE QU'IL FAUT FAIRE MAINTENANT, sous la ligne en cours.
-                     Séparé de la note : la note dit si c'est juste, l'aide dit
-                     ce qu'on attend. Les mêler faisait disparaître la consigne
-                     à chaque correction. -->
-                <p class="pr-aide" data-aide></p>
                 <p class="pr-note" data-note></p>
             </div>`;
 
         this.cascadeEl = this.container.querySelector('[data-cascade]');
         this.noteEl = this.container.querySelector('[data-note]');
         this.scoreEl = this.container.querySelector('[data-score]');
-        this.aideEl = this.container.querySelector('[data-aide]');
 
         // AU DOIGT, LE CLAVIER DU TÉLÉPHONE NE S'OUVRE PAS. Le champ de saisie
         // naît d'un clic sur une opération, donc APRÈS le geste de l'élève :
@@ -278,22 +230,10 @@ class Priorites extends BaseGame {
                 // aucune ligne ne descend sous zéro, et une touche de signe n'y
                 // servirait qu'à fabriquer des fautes.
                 signe: this.relatifs,
-                // LE « + » N'EST LÀ QUE LÀ OÙ IL S'ÉCRIT. Au barreau 2, l'élève
-                // tape une LIGNE — « 4 − 5 », parfois « +4 − 5 » : sans touche
-                // « + », la moitié des écritures justes lui sont interdites.
-                // Ailleurs, un « + » dans un trou qui attend un nombre ne
-                // fabriquerait que des fautes.
-                touches: this.remplissage ? [{ k: '+', cls: 'pav-touche--signe' }] : [],
-                // ET LE TROU D'UNE LIGNE EST PLUS LONG QU'UN NOMBRE : « −4 − 5 »
-                // fait cinq signes plus les espaces, le plafond de six coupait
-                // la réponse pendant qu'on l'écrivait.
-                maxLong: this.remplissage ? 12 : 6,
                 champ: () => this.container.querySelector('.pr-trou'),
                 valider: () => {
                     const trou = this.container.querySelector('.pr-trou');
-                    if (!trou || !trou.value.trim()) return;
-                    if (this.remplissage) this.validerDuPave(trou);
-                    else this.valider(trou);
+                    if (trou && trou.value.trim()) this.valider(trou);
                 }
             });
         }
@@ -305,10 +245,6 @@ class Priorites extends BaseGame {
     startGameLoop() { /* Pas d'horloge : on réfléchit à son rythme. */ }
 
     poser() {
-        // DEUX FAÇONS DE RÉPONDRE, ET C'EST LE BARREAU QUI TRANCHE. Les quatre
-        // premiers barreaux de l'opposé se remplissent ; tout le reste — les
-        // Prio-Bot, les relatifs, et le barreau 5 de l'opposé — se clique.
-        if (this.remplissage) return this.poserRemplissage();
         const e = tirerExpression({
             rng: this.rng, niveau: this.niveau, parentheses: this.avecParentheses,
             puissances: this.avecPuissances, relatifs: this.relatifs,
@@ -533,237 +469,7 @@ class Priorites extends BaseGame {
         return true;
     }
 
-    // ─────────────────── LES QUATRE BARREAUX QU'ON REMPLIT ───────────────────
-    //
-    // Rémy : « Au départ, je préfèrerais juste remplacer (avec QCM
-    // éventuellement) −(−4) = ? −(+4) = ? puis −(−4) + (−5) = .......... = ;
-    // l'élève écrit +4 − 5 et donne le résultat. Puis −(−3+5) = −(....) […]
-    // Puis avec des priorités opératoires ».
-    //
-    // UNE QUESTION EST UNE SUITE DE LIGNES, chacune faite de morceaux : du
-    // texte qu'on lit, et des trous qu'on remplit de gauche à droite. Quand
-    // tous les trous d'une ligne sont bons, la ligne descend et la suivante
-    // s'ouvre. Le tirage ne connaît rien de l'écran, l'écran ne calcule rien :
-    // tout ce qui est mathématique vit dans `js/core/opposeParentheses.js`, où
-    // il s'éprouve sans navigateur.
-
-    poserRemplissage() {
-        this.q = tirerOppose({ rng: this.rng, niveau: this.niveau });
-        this.ligne = 0;          // la ligne en cours
-        this.trouFait = [];      // ce que l'élève a déjà écrit, ligne par ligne
-        this.qcmFige = null;     // la proposition cliquée, le temps de la montrer
-        this.note('');
-        this.dessinerRemplissage();
-        return true;
-    }
-
-    /**
-     * LE QCM N'EST LÀ QUE POUR INSTALLER LA RÈGLE, PUIS IL S'EFFACE.
-     *
-     * Rémy, à la question posée : « QCM d'abord, saisie ensuite ». Les trois
-     * premières questions se cliquent — au doigt c'est immédiat, et l'erreur
-     * se lit : celui qui choisit « −4 » a recopié au lieu de changer le signe.
-     * Ensuite on écrit, parce qu'on peut trouver un QCM en éliminant, et que
-     * ce qui compte ici est d'ÉCRIRE un signe.
-     */
-    get auQcm() { return this.niveau === 1 && this.reussies < 3; }
-
-    dessinerRemplissage() {
-        this.cascadeEl.innerHTML = '';
-
-        // L'ÉNONCÉ EN TÊTE, et il ne bouge plus : c'est à lui que l'élève
-        // revient à chaque ligne.
-        const tete = document.createElement('div');
-        tete.className = 'pr-ligne';
-        tete.appendChild(Object.assign(document.createElement('span'),
-            { className: 'pr-jeton', textContent: this.q.enonce }));
-        this.cascadeEl.appendChild(tete);
-
-        // TOUTES LES LIGNES SONT LÀ DÈS LE DÉPART, celles qu'on n'a pas encore
-        // atteintes en pointillés. C'est la notation de Rémy telle qu'il l'a
-        // écrite — « −(−4) + (−5) = .......... = » — et elle dit d'un coup d'œil
-        // combien d'étapes il y a. Ne montrer que la ligne en cours faisait
-        // apparaître la suivante par surprise, une fois la première validée.
-        this.q.lignes.forEach((l, i) => {
-            const ligne = document.createElement('div');
-            ligne.className = 'pr-ligne'
-                + (i < this.ligne ? ' pr-ligne--passee' : '')
-                + (i > this.ligne ? ' pr-ligne--aVenir' : '');
-            let rang = 0;
-            for (const m of l.morceaux) {
-                if (m.t === 'texte') {
-                    ligne.appendChild(Object.assign(document.createElement('span'),
-                        { className: 'pr-jeton', textContent: m.v }));
-                    continue;
-                }
-                ligne.appendChild(this.trouRemplissageHtml(m, i, rang));
-                rang++;
-            }
-            this.cascadeEl.appendChild(ligne);
-        });
-
-        if (this.auQcm) this.cascadeEl.appendChild(this.qcmHtml());
-
-        if (this.scoreEl) {
-            this.scoreEl.textContent = `${this.reussies} calcul${this.reussies > 1 ? 's' : ''} `
-                + `mené${this.reussies > 1 ? 's' : ''} au bout`;
-        }
-        if (this.aideEl) {
-            this.aideEl.textContent = this.auQcm
-                ? 'Que vaut ce calcul ?'
-                : (this.q.lignes[this.ligne] || {}).aide || 'Écris la réponse.';
-        }
-        const trou = this.cascadeEl.querySelector('.pr-trou');
-        if (trou) trou.focus();
-    }
-
-    /** Un trou : déjà rempli, en cours, ou pas encore atteint. */
-    trouRemplissageHtml(m, iLigne, rang) {
-        const fait = (this.trouFait[iLigne] || [])[rang];
-        if (fait !== undefined) {
-            return Object.assign(document.createElement('span'),
-                { className: 'pr-jeton pr-dit', textContent: fait });
-        }
-        // LE PREMIER TROU NON REMPLI DE LA LIGNE EN COURS est le seul qui
-        // s'ouvre : remplir dans le désordre n'aurait aucun sens sur une ligne
-        // qui se lit de gauche à droite, et deux champs à la fois font hésiter.
-        //
-        // ET AUCUN CHAMP NE S'OUVRE PENDANT LE QCM. Vu à la capture : l'écran
-        // montrait un champ de saisie vide AU-DESSUS des quatre propositions —
-        // deux façons de répondre à la même question, dont une qui ne marchait
-        // pas. On répond par le QCM, ou l'on écrit ; jamais les deux.
-        const enCours = !this.auQcm && iLigne === this.ligne
-            && rang === (this.trouFait[iLigne] || []).length;
-        if (!enCours) {
-            return Object.assign(document.createElement('span'),
-                { className: 'pr-jeton pr-apres', textContent: '…' });
-        }
-
-        // LE TROU OUVERT EST RETENU : le pavé tactile valide sans savoir quel
-        // trou il remplit, et il lui faut la réponse attendue.
-        this.mCourant = m;
-        const trou = document.createElement('input');
-        trou.className = 'pr-trou' + (m.genre === 'expression' ? ' pr-trou--ligne' : '');
-        trou.type = 'text';
-        trou.setAttribute('aria-label', m.genre === 'expression'
-            ? 'la ligne réécrite sans parenthèses' : 'le résultat');
-        // AU DOIGT, LE CLAVIER DU SYSTÈME RESTE FERMÉ : c'est notre pavé qui
-        // écrit, comme partout ailleurs dans ce jeu (voir `trouHtml`).
-        if (auDoigt()) sansClavierSysteme(trou);
-        let rendu = false;
-        const valider = () => {
-            if (rendu || !trou.value.trim()) return;
-            rendu = true;
-            if (!this.validerRemplissage(trou, m)) rendu = false;
-        };
-        trou.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') valider(); });
-        if (!auDoigt()) trou.addEventListener('blur', valider);
-        return trou;
-    }
-
-    qcmHtml() {
-        const zone = document.createElement('div');
-        zone.className = 'pr-qcm';
-        for (const c of this.q.choix) {
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'pr-choix';
-            b.textContent = c.v;
-            if (this.qcmFige === c.v) b.classList.add(c.juste ? 'pr-choix--juste' : 'pr-choix--faux');
-            b.addEventListener('click', () => this.choisirQcm(c, b));
-            zone.appendChild(b);
-        }
-        return zone;
-    }
-
-    choisirQcm(c, bouton) {
-        if (this.qcmFige) return;               // une réponse déjà donnée
-        if (c.juste) {
-            this.qcmFige = c.v;
-            this.trouFait[0] = [c.v];
-            bouton.classList.add('pr-choix--juste');
-            return this.gagner();
-        }
-        // UN PIÈGE QUI DIT POURQUOI. Une croix rouge apprend qu'on s'est
-        // trompé ; la phrase apprend en quoi — et c'est la seule des deux qui
-        // évite de recommencer la même erreur.
-        bouton.classList.add('pr-choix--faux');
-        setTimeout(() => bouton.classList.remove('pr-choix--faux'), 360);
-        this.note(c.pourquoi, 'ko');
-        this.onWrongAnswer(null, {
-            concept: COMPETENCE,
-            questionText: this.q.enonce, input: c.v, expected: this.q.reponse,
-            customMessage: c.pourquoi
-        });
-    }
-
-    validerRemplissage(trou, m) {
-        const donne = trou.value.trim();
-        if (!donne) return false;
-        if (!reponseJuste(donne, m.attendu)) {
-            trou.classList.add('pr-jeton--faux');
-            setTimeout(() => trou.classList.remove('pr-jeton--faux'), 360);
-            // CE QU'ON REPROCHE DÉPEND DE CE QU'ON ATTENDAIT. Répondre le
-            // RÉSULTAT à la ligne de réécriture n'est pas la même erreur que se
-            // tromper de signe, et le dire pareil n'apprendrait ni l'une ni
-            // l'autre.
-            this.note(m.genre === 'expression'
-                ? 'Pas encore : on réécrit la ligne SANS parenthèses, on ne la calcule '
-                    + 'pas. Le moins devant une parenthèse change le signe de ce qu\'il y a dedans.'
-                : `Ce n'est pas ${donne}. Reprends le signe.`, 'ko');
-            this.onWrongAnswer(null, {
-                concept: COMPETENCE,
-                questionText: this.q.enonce, input: donne, expected: m.montre
-            });
-            trou.value = '';
-            trou.focus();
-            return false;
-        }
-
-        (this.trouFait[this.ligne] = this.trouFait[this.ligne] || []).push(m.montre);
-        const combien = this.q.lignes[this.ligne].morceaux.filter(x => x.t === 'trou').length;
-        if (this.trouFait[this.ligne].length < combien) {
-            this.note('');
-            this.dessinerRemplissage();
-            return true;
-        }
-        if (this.ligne < this.q.lignes.length - 1) {
-            this.ligne++;
-            this.note('Bien.');
-            this.dessinerRemplissage();
-            return true;
-        }
-        this.gagner();
-        return true;
-    }
-
-    /** La question est finie : on compte, on félicite, et on en pose une autre. */
-    gagner() {
-        this.reussies++;
-        this.note(`✅ ${this.q.enonce} = ${this.q.reponse}.`, 'ok');
-        this.onCorrectAnswer(null, COMPETENCE, {
-            questionText: this.q.enonce,
-            expected: this.q.reponse, given: this.q.reponse,
-            // LE BARREAU PÈSE DANS LES POINTS : remplir deux lignes et deux
-            // parenthèses n'est pas le même travail que cliquer un nombre
-            // parmi quatre.
-            points: 4 + this.niveau * 2
-        });
-        this.dessinerRemplissage();
-        setTimeout(() => { if (this.isRunning) this.poser(); }, 1700);
-    }
-
-    /** Le pavé tactile valide : il faut lui redonner le trou attendu. */
-    validerDuPave(trou) {
-        if (this.mCourant) this.validerRemplissage(trou, this.mCourant);
-    }
-
-    expliquerRemplissage() {
-        this.note(this.q.pourquoi);
-    }
-
     expliquer() {
-        if (this.remplissage) return this.expliquerRemplissage();
         const p = operationPrioritaire(this.courant, this.opts);
         if (!p) return this.note('Il n\'y a plus rien à calculer.');
         if (this.choisi === null) {
@@ -784,67 +490,7 @@ class Priorites extends BaseGame {
 
     // --- La démonstration -------------------------------------------------------
 
-    /**
-     * LA DÉMONSTRATION DES BARREAUX QU'ON REMPLIT.
-     *
-     * Celle de la cascade parle de `this.expression` et de `this.courant`, qui
-     * n'existent pas ici : lancée sur ces barreaux, elle levait à sa deuxième
-     * ligne et le `catch` l'avalait. L'aperçu du catalogue montrait alors une
-     * case vide — pas une erreur, ce qui est pire : rien ne disait que quelque
-     * chose manquait.
-     *
-     * ELLE MONTRE LA RÈGLE, PAS LE LOGICIEL. Ce qu'un élève doit emporter de
-     * quinze secondes d'aperçu, c'est « le moins change le signe de ce qu'il y
-     * a dans la parenthèse » — pas où l'on clique.
-     */
-    async runDemoRemplissage() {
-        const cur = createDemoCursor();
-        this.demoCursor = cur;
-        const gate = createDemoGate(this.container);
-        this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
-        try {
-            cur.protegerZone(this.cascadeEl);
-            await gate.wait(500);
-            cur.say(`Voilà « ${this.q.enonce} ». Le moins devant la parenthèse `
-                + 'prend l\'OPPOSÉ de ce qu\'il y a dedans.', this.cascadeEl);
-            await gate.wait(2800);
-
-            // LE QCM D'ABORD, S'IL EST LÀ : c'est ce que l'élève verra.
-            if (this.auQcm) {
-                const bon = [...this.container.querySelectorAll('.pr-choix')]
-                    .find(b => b.textContent === this.q.reponse);
-                cur.say(this.q.pourquoi, bon || this.cascadeEl);
-                await gate.wait(2600);
-                if (bon) await cur.tap(bon);
-                await gate.wait(1200);
-                cur.say('Le nombre ne change pas : seul son signe change.', this.cascadeEl);
-                await gate.wait(2400);
-                return fin();
-            }
-
-            for (let tour = 0; tour < 6 && this.isRunning; tour++) {
-                const trou = this.cascadeEl.querySelector('.pr-trou');
-                if (!trou || !this.mCourant) break;
-                const m = this.mCourant;
-                cur.say(m.genre === 'expression'
-                    ? 'D\'abord on RÉÉCRIT la ligne sans parenthèses. On ne la calcule '
-                        + `pas encore : ${m.montre}.`
-                    : `Ici, ${m.montre}.`, trou);
-                await gate.wait(2400);
-                trou.value = m.montre;
-                this.validerRemplissage(trou, m);
-                await gate.wait(1100);
-                if (this.reussies > 0) break;      // la question est finie
-            }
-            cur.say(this.q.pourquoi, this.cascadeEl);
-            await gate.wait(2600);
-        } catch (e) { /* démonstration coupée */ }
-        fin();
-    }
-
     async runDemoSequence() {
-        if (this.remplissage) return this.runDemoRemplissage();
         const cur = createDemoCursor();
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
