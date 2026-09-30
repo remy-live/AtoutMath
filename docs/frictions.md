@@ -1169,3 +1169,45 @@ manque.
   structure vise un APPEL (`require`, `href`, un identifiant de route), jamais
   une chaîne de caractères qui peut apparaître dans une phrase.
 - **La règle** : **on n'interdit pas un mot, on interdit un lien.**
+
+---
+
+**Un signe assez contrasté, et pourtant invisible** — 30 septembre 2026
+
+- **Ce que je voulais faire** : savoir POURQUOI les virgules de « Poser une
+  opération » ne se voient pas, avant de les changer.
+- **Ce qui a coûté** : vingt minutes, et surtout une fausse piste évitée de
+  justesse. Les deux outils de la maison répondaient « tout va bien » :
+  `contrasteRendu` donne un rouge franc sur fond clair, et la police de la
+  virgule est celle des chiffres, 26 px. Le défaut n'était ni dans le contraste
+  ni dans la taille mais dans la MATIÈRE — 136 pixels d'encre contre 866 pour
+  le chiffre d'à côté, parce qu'une virgule n'occupe qu'un fond de glyphe. J'ai
+  écrit ce comptage à la main dans deux sondes jetables avant de comprendre que
+  c'était la mesure, et non l'une des deux autres.
+- **Combien de fois** : |
+- **Ce qui manque** : plus rien — `s.encre(selecteur)` est entrée dans
+  `tools/sonde.mjs`, à côté de `contrasteRendu`, et rend les pixels d'encre
+  d'un élément.
+- **La règle** : **le contraste dit si un signe se LIT, l'encre dit s'il se
+  VOIT.** Pour un petit signe — virgule, accent, exposant, point décimal — on
+  mesure sa surface rapportée à celle de ses voisins.
+
+---
+
+**Photographier une grille que personne n'a remplie** — 30 septembre 2026
+
+- **Ce que je voulais faire** : juger la taille d'une virgule dans la grille de
+  l'addition posée — donc la voir ENTRE DES CHIFFRES, ce qui suppose d'avoir
+  d'abord fait glisser les nombres.
+- **Ce qui a coûté** : trois photos pour rien (une grille vide, où un signe
+  seul paraît toujours assez gros), puis vingt lignes de sonde pour rejouer le
+  glisser à la souris — retrouver quel chiffre on attrape, calculer la colonne
+  qu'il vise, synthétiser `mouse.down/move/up`. Et c'est la photo de la grille
+  REMPLIE qui a montré les deux vrais défauts : la virgule tombait sous la
+  ligne, et en thème sombre la case suivante lui mangeait la moitié droite.
+- **Combien de fois** : |
+- **Ce qui manque** : un `s.glisser(source, cible)` dans `tools/sonde.mjs`.
+  Une dizaine de jeux se jouent au glisser-déposer par `rendreGlissable`, et
+  aucun ne se mesure tant qu'on ne sait pas y poser une pièce.
+- **La règle** : **un écran vide ne se juge pas.** On joue l'exercice avant de
+  le photographier.

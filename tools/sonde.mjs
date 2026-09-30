@@ -32,6 +32,7 @@
 //     await s.identifier();                       // prof, puis rechargement
 //     await s.photo('.title', 'tools/tmp/titre.png');
 //     console.log(await s.contrasteRendu('.title'));
+//     console.log(await s.encre('.po-virgule'));   // la MATIÈRE du signe, en pixels
 //     await s.fermer();
 //
 // `s.page` est la page Playwright : tout ce que cette sonde ne prévoit pas
@@ -279,6 +280,40 @@ export async function ouvrirSonde(o = {}) {
             const [x, y] = [lum(encre), lf].sort((a, b) => b - a);
             return { encre, fond, pixels: total, pixelsEncre: masse,
                 contraste: (x + 0.05) / (y + 0.05) };
+        },
+
+        /**
+         * LA SURFACE D'ENCRE d'un élément, en pixels : ce qui n'est pas le fond.
+         *
+         * `contrasteRendu` dit si un signe se LIT ; il ne dit pas s'il se VOIT.
+         * Rémy : « les virgules ne sont pas très visibles » — et elles étaient
+         * du même rouge franc qu'aujourd'hui. Ce qui manquait n'était pas du
+         * contraste, c'était de la matière : 136 pixels d'encre contre 866 pour
+         * le chiffre d'à côté. Une taille de police n'aurait rien dit non plus,
+         * les deux étaient à 26 px — une virgule n'occupe qu'un fond de glyphe.
+         *
+         * D'OÙ CE CHIFFRE-LÀ, qui se compare : la surface d'un signe rapportée
+         * à celle de ses voisins, c'est le rapport que l'œil fait.
+         *
+         * Le seuil à 40 sur 255 laisse tomber le lissage de bord. Sans lui,
+         * toutes les surfaces gonflent du même facteur et la comparaison, qui
+         * est tout l'intérêt, ne veut plus rien dire.
+         *
+         * @returns {Promise<{pixels:number, part:number}|null>} `part` est la
+         *   fraction du rectangle couverte d'encre.
+         */
+        async encre(selecteur, marge = 0) {
+            const chemin = join(tmpdir(), `encre-${Date.now()}-${Math.random().toString(36).slice(2)}.png`);
+            const pris = await sonde.photo(selecteur, chemin, marge);
+            if (!pris) return null;
+            const hist = couleursDe(chemin);
+            if (!hist || !hist.length) return null;
+            const total = hist.reduce((s, h) => s + h.n, 0);
+            const clarte = ([r, v, b]) => 0.2126 * r + 0.7152 * v + 0.0722 * b;
+            const fond = clarte(hist[0].c);
+            let n = 0;
+            for (const h of hist) if (Math.abs(clarte(h.c) - fond) > 40) n += h.n;
+            return { pixels: n, part: n / total };
         },
 
         async fermer() {

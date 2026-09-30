@@ -66,6 +66,15 @@ class PoserOperation extends BaseGame {
                 }
                 .po-nombre[hidden] { display: none; }
                 .po-nombre b { font-weight: 900; pointer-events: none; }
+                /* La virgule de la plaque, dans le rouge de celle de la grille :
+                   c'est le MÊME signe, il doit avoir la même tête aux deux
+                   endroits. Elle ne se saisit pas — on attrape le nombre par un
+                   chiffre — d'où pointer-events none, qui était jusqu'ici écrit
+                   en style d'élément dans le code. */
+                .po-nombre .po-virgule {
+                    color: var(--danger); font-size: 1.45em; font-weight: 900;
+                    line-height: 1; pointer-events: none;
+                }
                 /* L'APERÇU : là où le nombre tomberait si l'on lâchait. C'est
                    lui qui fait VOIR le décalage avant de le commettre. */
                 .po-case--apercu {
@@ -111,11 +120,40 @@ class PoserOperation extends BaseGame {
                     background: color-mix(in srgb, var(--primary) 14%, transparent); }
                 .po-case--faux { animation: po-non .34s ease; }
                 @keyframes po-non { 25% { translate: -5px 0; } 75% { translate: 5px 0; } }
-                /* La virgule : un point sur la frontière droite de la colonne
-                   des unités. Elle ne prend pas de colonne à elle. */
+                /* LA VIRGULE EST UNE VIRGULE, PAS UNE PUCE.
+
+                   Rémy : « les virgules ne sont pas très visibles ».
+
+                   MESURÉ AVANT, au navigateur, et sur la surface d'ENCRE — ce
+                   que l'œil reçoit, non une taille de police : sur la plaque à
+                   faire glisser, la virgule portait 136 pixels d'encre contre
+                   866 pour le chiffre voisin, soit 16 % de lui. Dans la grille,
+                   ce n'était même pas une virgule : un rond rouge de 8 px, que
+                   la photo fait lire comme une puce de liste — et celui de la
+                   ligne du résultat, posé sous des cases encore sans bordure,
+                   flottait tout seul dans le vide.
+
+                   OR C'EST ELLE QUI ALIGNE, et la consigne ne dit que cela :
+                   « les unités sous les unités : c'est la virgule qui aligne,
+                   pas le bord droit ». La montrer d'une façon sur la plaque et
+                   d'une autre dans la grille laissait à l'élève le soin de
+                   faire le lien — sur le seul signe dont l'exercice dépend.
+
+                   ELLE GARDE SA PLACE : sur la frontière droite de la colonne
+                   des unités, sans colonne à elle. Et pointer-events none,
+                   parce qu'elle déborde sur une case qui se clique. */
                 .po-case--virgule::after {
-                    content: ''; position: absolute; right: -4px; bottom: 3px;
-                    width: 8px; height: 8px; border-radius: 50%; background: var(--danger);
+                    content: ','; position: absolute; right: 0; bottom: 0;
+                    transform: translate(50%, -12%);
+                    font-size: 1.6em; line-height: 1; font-weight: 900;
+                    color: var(--danger); pointer-events: none;
+                    /* ELLE CHEVAUCHE LA CASE SUIVANTE, QUI SE PEINT APRÈS ELLE.
+                       Vu en thème sombre, où les fonds de case sont opaques :
+                       la moitié droite de la virgule disparaissait derrière le
+                       chiffre d'à côté. Deux frères également positionnés se
+                       peignent dans l'ordre du code — il faut donc le dire.
+                       Le trait de l'opération, lui, reste au-dessus. */
+                    z-index: 1;
                 }
                 .po-signe { display: flex; align-items: center; justify-content: center;
                     font-size: clamp(19px, 5.5cqw, 30px); font-weight: 900; }
@@ -397,8 +435,8 @@ class PoserOperation extends BaseGame {
                 // ne compte pas comme un chiffre, elle sépare.
                 if (c.rang === 0 && att.chiffres.some(x => x.rang < 0)) {
                     const v = document.createElement('span');
+                    v.className = 'po-virgule';
                     v.textContent = ',';
-                    v.style.pointerEvents = 'none';
                     jeton.appendChild(v);
                 }
             });

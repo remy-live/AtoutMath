@@ -77,9 +77,26 @@ const STYLE = `
         color: var(--danger); outline: 2px solid var(--danger);
     }
     @keyframes pl-non { 25% { translate: -5px 0; } 75% { translate: 5px 0; } }
+    /* LA MÊME VIRGULE QUE DANS « POSER UNE OPÉRATION », pour la même raison.
+       Rémy : « les virgules ne sont pas très visibles ». C'était ici aussi un
+       rond rouge de 7 px, qui se lit comme une puce et non comme le signe que
+       l'élève doit RECONNAÎTRE pour aligner. Un même signe garde une même tête
+       d'un exercice à l'autre, sinon l'élève apprend trois dessins au lieu
+       d'une notation.
+
+       ELLE NE PREND TOUJOURS PAS DE RANG : posée sur la frontière droite de la
+       case, elle ne pousse aucune colonne. Et pointer-events none, parce que la
+       fente où l'on POSE la virgule occupe exactement cet endroit-là — sans
+       cela, le signe volerait le clic qui le fait naître. */
     .pl-case--virgule::after {
-        content: ''; position: absolute; right: -3px; bottom: 2px;
-        width: 7px; height: 7px; border-radius: 50%; background: var(--danger);
+        content: ','; position: absolute; right: 0; bottom: 0;
+        transform: translate(50%, -12%);
+        font-size: 1.6em; line-height: 1; font-weight: 900;
+        color: var(--danger); pointer-events: none;
+        /* Au-dessus du fond de la case voisine, qui se peint après elle —
+           invisible en thème clair, flagrant en sombre. Sous le trait, lui,
+           qui monte à z-index 2. */
+        z-index: 1;
     }
     /* La case où l'on peut POSER la virgule : un intervalle cliquable, pas une
        colonne — la virgule ne prend pas de rang. */
