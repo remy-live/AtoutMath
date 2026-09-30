@@ -649,23 +649,43 @@ const FORMES = {
  * s'écrit « −5 » et n'est plus un exercice sur la parenthèse. Ce qui suit un
  * opposé doit donc être négatif, sinon le barreau ne porte pas son nom.
  */
+// LES CINQ BARREAUX DE RÉMY, ET LA TABLE LES SUIT.
+//
+// À l'ÉCRAN, les barreaux 1 à 4 ne se jouent plus en cascade : on les remplit
+// (voir js/core/opposeParentheses.js). Cette table sert alors à DEUX choses —
+// la feuille imprimée, qui pose les mêmes calculs au crayon, et le barreau 5,
+// où la cascade redevient le sujet.
+//
+// ELLE A ÉTÉ REMISE D'ACCORD AVEC L'ÉCHELLE, parce que deux échelles qui
+// divergent — une à l'écran, une sur la feuille — se remarquent le jour où un
+// élève fait les deux. Le barreau 1 ne porte plus « −8 + (−9) », qui n'a pas
+// d'opposé du tout : cette forme-là appartient au barreau 2, sous « −(−4) + (−5) ».
+//
+// JAMAIS DE PRODUIT DE DEUX RELATIFS, à aucun barreau. Rémy : « pour l'instant
+// on n'a pas encore fait le produit de nombres négatifs ». Le « × » du barreau
+// 5 est entre deux POSITIFS : c'est une priorité à respecter, pas une règle des
+// signes à deviner.
 const FORMES_OPPOSE = {
+    // 1 — la règle du signe, sur un seul nombre : « −(−4) ».
     1: [
-        ['u', 'n-'],
-        // « 8 + (−6) », « 8 − (−6) » : l'écriture que Rémy cite en premier,
-        // « commencer par remplacer +(−3) ». JAMAIS de multiplication ici —
-        // « −6 × (−7) » est le produit de deux relatifs, un autre chapitre, et
-        // il tombait une fois sur deux tant que l'opérateur se tirait au sort.
-        ['n', 'op+', 'n-']
+        ['u', 'n-']
     ],
+    // 2 — la règle dans un calcul : « −(−4) + (−5) ».
     2: [
-        ['u', '(', 'n-', 'op+', 'n', ')']
+        ['u', 'n-', 'op+', 'n-']
     ],
+    // 3 — ce qu'on fait AVANT la règle : « −(−3 + 7) ».
     3: [
-        ['u', '(', 'n-', 'op+', 'n', 'op×', 'n', ')']
+        ['u', '(', 'n-', 'op+', 'n+', ')']
     ],
+    // 4 — deux fois la même chose : « −(−3 + 5) − (−9 − 5) ».
     4: [
-        ['u', '(', 'n-', 'op+', 'n', 'op×', 'n', ')', 'op+', 'n-']
+        ['u', '(', 'n-', 'op+', 'n+', ')', 'op+', '(', 'n-', 'op+', 'n+', ')']
+    ],
+    // 5 — et seulement là, les priorités.
+    5: [
+        ['u', '(', 'n-', 'op+', 'n+', 'op×', 'n+', ')'],
+        ['u', '(', 'n-', 'op+', 'n+', 'op×', 'n+', ')', 'op+', 'n-']
     ]
 };
 
@@ -683,7 +703,11 @@ const FORMES_OPPOSE = {
 export function etapesMax({
     niveau = 2, parentheses = true, imposer = false, puissances = false, avecOppose = false
 } = {}) {
-    const n = Math.max(1, Math.min(4, niveau));
+    // LE MÊME PLAFOND QUE LE TIRAGE : cinq barreaux pour l'opposé. Deux bornes
+    // qui ne disent pas la même chose feraient réserver, sur la feuille, la
+    // place du barreau 4 pour un calcul du barreau 5 — une ligne de moins que
+    // ce que l'élève a à écrire, et le trou se voit au crayon.
+    const n = Math.max(1, Math.min(avecOppose ? 5 : 4, niveau));
     if (avecOppose) {
         const f = FORMES_OPPOSE[n] || FORMES_OPPOSE[1];
         // UN OPPOSÉ EST UNE OPÉRATION, et il compte donc une ligne comme les
@@ -748,7 +772,11 @@ export function tirerExpression({
     avecOppose = false,
     plafond = puissances ? 1200 : 400
 } = {}) {
-    const n = Math.max(1, Math.min(4, niveau));
+    // CINQ BARREAUX POUR L'OPPOSÉ, quatre pour le reste : l'échelle de Rémy
+    // ajoute « avec les priorités » APRÈS les quatre de remplissage. Borner à 4
+    // sans le dire aurait fait retomber le barreau 5 sur le 4 — le bon calcul
+    // par accident, jusqu'au jour où la table bouge.
+    const n = Math.max(1, Math.min(avecOppose ? 5 : 4, niveau));
     const grand = Math.max(3, Math.round(max));
     // LE NOM DE L'OPTION N'EST PAS CELUI DU JETON, ET C'EST VOULU : `oppose`
     // est le CONSTRUCTEUR du jeton, et une option du même nom le masquerait
@@ -783,6 +811,21 @@ export function tirerExpression({
             // un opposé doit être négatif, sinon le barreau ne porte pas son
             // nom une fois sur deux.
             if (t === 'n-') return nombre(-rng.int(2, grand));
+            // `n+` : UN POSITIF IMPOSÉ, le pendant de `n-`, et il ferme deux
+            // trous d'un coup dans les formes de l'opposé.
+            //
+            // MESURÉ sur le tirage, avant lui : le barreau 5 sortait
+            // « −(−7 − (−7) × (−6)) », c'est-à-dire le PRODUIT DE DEUX
+            // RELATIFS — le chapitre que Rémy a nommément mis de côté (« pour
+            // l'instant on n'a pas encore fait le produit de nombres
+            // négatifs »). Et les barreaux 3 et 4 sortaient « −(−2 + (−6)) »,
+            // une parenthèse dans une parenthèse, quand Rémy écrit « −(−3+5) ».
+            //
+            // La cause était la même : `n` tire un négatif 45 fois sur 100 dès
+            // que les relatifs sont en jeu. C'est ce qu'on veut dans une
+            // cascade ordinaire ; ici le SECOND opérande doit être positif,
+            // faute de quoi le barreau enseigne autre chose que son nom.
+            if (t === 'n+') return nombre(rng.int(2, grand));
             if (t === 'u') return oppose();
             // LE GENRE DE L'OPÉRATEUR EST DIT PAR LA FORME, et c'est ce qui
             // sépare les barreaux. MESURÉ à l'écran : le barreau 2 tirait

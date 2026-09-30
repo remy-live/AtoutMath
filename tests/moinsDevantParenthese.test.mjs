@@ -91,42 +91,70 @@ test('L\'OPPOSÉ EMPORTE SA PARENTHÈSE, NI PLUS NI MOINS', () => {
 });
 
 test('L\'ÉCHELLE MONTE D\'UNE DIFFICULTÉ PAR BARREAU', () => {
-    // CHAQUE BARREAU AJOUTE UNE CHOSE, ET UNE SEULE. Deux crans qui enseignent
-    // la même chose ne sont pas une progression — MESURÉ à l'écran, le barreau
-    // 2 tirait « −(−8 × 7) », c'est-à-dire ce que le barreau 3 apporte.
+    // ─────────────────────────────────────────────────────────────────────
+    // CETTE ÉPREUVE A CHANGÉ DE CONTENU, PAS D'INTENTION.
+    //
+    // Elle gardait l'échelle précédente — quatre barreaux, les priorités dès
+    // le troisième. Rémy, après avoir vu ses élèves dessus, en a écrit une
+    // autre : « Au départ, je préfèrerais juste remplacer […] Puis avec des
+    // priorités opératoires (pour l'instant on n'a pas encore fait le produit
+    // de nombres négatifs) ». Cinq barreaux, et les priorités tout au bout.
+    //
+    // Elle a donc eu RAISON de tomber : c'est ce qu'on attend d'une épreuve
+    // quand la règle qu'elle garde est remplacée.
+    //
+    // CE QU'ELLE GARDE RESTE LE MÊME : chaque barreau ajoute une chose, et une
+    // seule. Deux crans qui enseignent la même chose ne sont pas une
+    // progression.
     const tire = (niveau, k) => tirerExpression({
         rng: makeRng(`echelle-${niveau}-${k}`), niveau, avecOppose: true
     });
     for (let k = 0; k < 40; k++) {
-        const un = tire(1, k).texte;
-        assert.doesNotMatch(un, /[×÷]/,
-            'le barreau 1 ne multiplie pas : « −6 × (−7) » est le produit de deux '
-            + 'relatifs, un autre chapitre');
+        // 1 — la règle du signe, sur un seul nombre.
+        assert.match(tire(1, k).texte, /^−\(−\d+\)$/,
+            'le barreau 1 est « −(−4) » et rien d\'autre');
+        // 2 — la règle dans un calcul, toujours sans priorité.
         const deux = tire(2, k).texte;
         assert.doesNotMatch(deux, /[×÷]/,
             'le barreau 2 porte sur la parenthèse, pas sur les priorités');
-        assert.match(deux, /^−\(/, 'et il commence toujours par un opposé');
+        assert.match(deux, /^−\(−\d+\) [+−] \(−\d+\)$/,
+            'et il a la forme « −(−4) + (−5) » que Rémy a écrite');
+        // 3 — ce qu'on fait AVANT la règle : une somme dans la parenthèse.
         const trois = tire(3, k).texte;
-        assert.match(trois, /[×÷]/,
-            'le barreau 3 a TOUJOURS une priorité à trancher, sinon il ne porte '
-            + 'pas son nom une fois sur deux');
+        assert.doesNotMatch(trois, /[×÷]/,
+            'le barreau 3 apporte la SOMME dans la parenthèse, pas la priorité');
+        assert.match(trois, /^−\(−?\d+ [+−] \d+\)$/,
+            'et jamais de parenthèse dans la parenthèse : Rémy écrit « −(−3 + 5) »');
+        // 4 — deux fois la même chose.
         const quatre = tire(4, k).texte;
-        //  NE TRAVERSE PAS LES PARENTHÈSES DES NÉGATIFS : la première
-        // version de ce motif refusait « −(−3 − (−9) × (−6)) + (−5) », qui est
-        // pourtant exactement la forme attendue. C'était l'épreuve qui avait
-        // tort, pas le tirage.
-        assert.match(quatre, /^−\(.*[×÷].*\) [+−] \(−\d+\)$/,
-            'et le barreau 4 est la forme que Rémy écrit au tableau');
+        assert.doesNotMatch(quatre, /[×÷]/, 'le barreau 4 non plus ne multiplie pas');
+        assert.match(quatre, /^−\(−?\d+ [+−] \d+\) [+−] \(−?\d+ [+−] \d+\)$/,
+            'il a la forme « −(−3 + 5) − (−9 − 5) »');
+        // 5 — et seulement là, les priorités.
+        const cinq = tire(5, k).texte;
+        assert.match(cinq, /[×÷]/,
+            'le barreau 5 a TOUJOURS une priorité à trancher, sinon il ne porte '
+            + 'pas son nom une fois sur deux');
+        // LA SEULE CONTRAINTE QUE RÉMY A POSÉE EN TOUTES LETTRES, et elle vaut
+        // pour le barreau qui multiplie : aucun produit de deux relatifs.
+        assert.doesNotMatch(cinq, /\(−\d+\)\s*[×÷]|[×÷]\s*\(−\d+\)/,
+            `« ${cinq} » multiplie deux relatifs, chapitre pas encore fait`);
     }
 });
 
 test('ET LA FEUILLE RÉSERVE LE BON NOMBRE DE LIGNES', () => {
     // Une cascade tronquée se voit au crayon et pas à l'écran : la dernière
-    // ligne n'a simplement plus où s'écrire.
+    // ligne n'a simplement plus où s'écrire. Les cinq barreaux, donc, et pas
+    // quatre — borner à 4 ferait réserver la place du barreau 4 pour un calcul
+    // du barreau 5.
     assert.equal(etapesMax({ niveau: 1, avecOppose: true }), 1);
     assert.equal(etapesMax({ niveau: 2, avecOppose: true }), 2);
-    assert.equal(etapesMax({ niveau: 3, avecOppose: true }), 3);
+    assert.equal(etapesMax({ niveau: 3, avecOppose: true }), 2);
+    // QUATRE, ET NON TROIS : « −(−3 + 5) − (−9 − 5) » demande de calculer les
+    // DEUX intérieurs, puis d'appliquer l'opposé, puis de soustraire. J'avais
+    // écrit 3 de tête ; c'est le calcul qui a raison.
     assert.equal(etapesMax({ niveau: 4, avecOppose: true }), 4);
+    assert.equal(etapesMax({ niveau: 5, avecOppose: true }), 4);
 });
 
 test('LE RESTE DU MOTEUR N\'A PAS BOUGÉ', () => {

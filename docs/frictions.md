@@ -1086,3 +1086,47 @@ manque.
   l'outil quand un argument contient un accent grave venu de `bash`.
 - **La règle** : **dès qu'un texte à écrire contient un accent grave, il passe
   par `--depuis <paires.json>`, jamais par la ligne de commande.**
+
+---
+
+**Le moteur savait, l'écran ne savait pas — et aucune épreuve ne reliait les deux** — 30 septembre 2026
+
+- **Ce que je voulais faire** : ajouter un jeton au moteur de priorités (le
+  moins unaire) et le voir jouable à l'écran.
+- **Ce qui a coûté** : un exercice injouable livré à Rémy, et ses élèves
+  arrêtés dessus. Le jeton avait été ajouté au moteur ET éprouvé — sept
+  épreuves vertes sur `etapes()`, `reduire()`, `tirerExpression()`. Il manquait
+  UN mot dans `jetonHtml`, et l'écran n'offrait rien à cliquer sous une consigne
+  qui réclamait un clic. Toutes les épreuves regardaient le moteur ; aucune ne
+  regardait la main qui le montre.
+- **Combien de fois** : ||
+- **Ce qui manque** : de quoi éprouver qu'un moteur et son écran parlent de la
+  même chose, sans monter un navigateur. Ici la forme trouvée tient en trois
+  lignes — on lit dans la source la liste des types cliquables et l'on exige
+  qu'elle couvre tout ce que le moteur sait réduire — mais je l'ai écrite APRÈS
+  coup, et rien ne me la rappellera la prochaine fois.
+- **La règle** : **quand on ajoute au moteur, on ouvre l'écran.** Une sonde de
+  trente secondes sur l'exercice concerné aurait tout dit ; sept épreuves
+  vertes ne l'ont pas remplacée.
+
+---
+
+**Une sonde qui vise un sélecteur qui n'existe pas accuse le logiciel** — 30 septembre 2026
+
+- **Ce que je voulais faire** : vérifier au navigateur qu'une opération est
+  cliquable dans le jeu des priorités.
+- **Ce qui a coûté** : deux fausses pistes dans la même heure. La sonde
+  cherchait `[data-op]`, qui n'existe nulle part — l'opérateur porte la classe
+  `.pr-jeton--op`. Elle répondait donc « aucune opération cliquable » sur TOUTES
+  les expressions, y compris celles où le clic marchait. Puis, corrigée, elle
+  cliquait le PREMIER opérateur, qui sur trois barreaux sur quatre est
+  justement le mauvais choix : elle a rapporté « rien ne se passe » là où le jeu
+  refusait correctement, avec une phrase d'explication à l'écran.
+- **Combien de fois** : |||
+- **Ce qui manque** : que `tools/sonde.mjs` sache lire un jeu plutôt que le
+  DOM — `s.operationsCliquables()`, `s.cliquerOperation(n)` — au lieu que
+  chaque sonde redevine les classes. Et, à défaut, qu'une sonde qui ne trouve
+  AUCUNE cible le dise comme un défaut de mesure, pas comme un défaut du
+  logiciel.
+- **La règle** : **avant d'accuser, imprimer le HTML rendu.** Les deux fois, un
+  `innerHTML` de la zone a donné la réponse en une seconde.

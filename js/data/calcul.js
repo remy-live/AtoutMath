@@ -330,13 +330,15 @@ export const calculExercises = [
         paramSchema: [
             {
                 id: 'niveau', type: 'select', label: 'Difficulté', echelle: true,
-                aide: 'Chaque cran ajoute UNE difficulté. Le dernier est l\'expression '
-                    + 'complète : −(−3 + 5 × 6) − (−7).',
+                aide: 'L\'échelle de Rémy : la règle du signe d\'abord, les priorités '
+                    + 'en dernier. Les quatre premiers crans se REMPLISSENT ; le '
+                    + 'cinquième se conduit ligne à ligne comme un Prio-Bot.',
                 options: [
-                    { value: 1, label: '1 — Une parenthèse, un nombre : −(−7)', court: '1' },
-                    { value: 2, label: '2 — Une parenthèse, une somme : −(−3 + 7)', court: '2' },
-                    { value: 3, label: '3 — Des priorités dedans : −(−3 + 5 × 6)', court: '3' },
-                    { value: 4, label: '4 — L\'expression entière', court: '4' }
+                    { value: 1, label: '1 — La règle du signe : −(−4) = ?', court: '1' },
+                    { value: 2, label: '2 — Enlever les parenthèses : −(−4) + (−5)', court: '2' },
+                    { value: 3, label: '3 — Calculer dedans d\'abord : −(−3 + 5)', court: '3' },
+                    { value: 4, label: '4 — Deux parenthèses : −(−3 + 5) − (−9 − 5)', court: '4' },
+                    { value: 5, label: '5 — Avec les priorités : −(−3 + 5 × 6) − (−7)', court: '5' }
                 ],
                 default: 1
             }
@@ -348,10 +350,9 @@ export const calculExercises = [
         instruction: "Un moins qui n'a rien à sa gauche n'est pas une soustraction : il prend "
             + "l'OPPOSÉ de ce qui le suit. Et il ne peut s'appliquer qu'à UN SEUL nombre — "
             + "tant qu'il reste un calcul dans la parenthèse, c'est lui qu'on fait d'abord. "
-            + "Clique sur l'opération à faire en premier, donne son résultat, et la ligne "
-            + "suivante s'écrit. Les quatre crans ajoutent une difficulté chacun : une "
-            + "parenthèse avec un seul nombre, puis avec une somme, puis avec des priorités "
-            + "dedans, et enfin l'expression entière."
+            + "Aux quatre premiers crans, on REMPLIT : la règle du signe sur un nombre, "
+            + "puis la ligne réécrite sans parenthèses, puis ce qu'il faut calculer avant. "
+            + "Au cinquième seulement, on conduit le calcul ligne à ligne."
     },
     {
         // LE COMPTE EST BON. Le tirage est fabriqué à l'endroit : le compte est
