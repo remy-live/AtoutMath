@@ -2412,8 +2412,17 @@ async function brancher(e, redessiner) {
         const propose = (vue.liste && vue.liste.codePropose) || '';
         const code = await demander('Le même code pour toute la classe', {
             valeur: propose, bouton: 'Refaire les codes', max: 12,
+            // CE QU'IL FAUT DIRE, ET QUE CET ÉCRAN NE DISAIT PAS : un code
+            // commun veut dire que N'IMPORTE QUEL élève peut entrer à la place
+            // d'un autre. La phrase existait dans `api/admin/eleves.php` — la
+            // page des listes de l'administration — et elle a failli partir
+            // avec elle quand Rémy a demandé de retirer les classes de là.
+            // C'est une mise en garde, pas un détail de formulation : sans
+            // elle, on choisit le code commun sans savoir ce qu'on échange.
             aide: 'De 3 à 12 lettres ou chiffres. Pratique pour une première séance : '
-                + 'un seul code à écrire au tableau. Les anciens billets ne vaudront plus rien.'
+                + 'un seul code à écrire au tableau. En échange, n\'importe quel élève '
+                + 'peut entrer à la place d\'un autre — à refaire dès que possible. '
+                + 'Les anciens billets ne vaudront plus rien.'
         });
         if (!code) return;
         await fait(refaireLesCodes(cid, code), (r) => {

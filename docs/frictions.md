@@ -1130,3 +1130,42 @@ manque.
   logiciel.
 - **La règle** : **avant d'accuser, imprimer le HTML rendu.** Les deux fois, un
   `innerHTML` de la zone a donné la réponse en une seconde.
+
+---
+
+**Supposer la forme d'un retour au lieu de la lire** — 30 septembre 2026
+
+- **Ce que je voulais faire** : afficher la liste des archives présentes sur le
+  site, dans la nouvelle page d'administration.
+- **Ce qui a coûté** : une section entière qui s'arrêtait de s'afficher au
+  milieu, **sans un mot à l'écran**. `archivesPresentes()` rend des CHEMINS ;
+  j'avais écrit `$a['nom']` en supposant des tableaux. En PHP 8 cela lève, les
+  erreurs ne s'affichent pas en production, et le rendu s'interrompt net : le
+  journal des dépôts et le dernier paragraphe manquaient. Ma sonde a signalé
+  « le dépôt n'est pas inscrit au journal » — ce qui était faux, la base le
+  contenait bien.
+- **Combien de fois** : ||
+- **Ce qui manque** : que le site d'essai de `tools/siteEssai.php` tourne avec
+  `display_errors` et un gestionnaire d'erreurs qui écrit dans la page, pour
+  qu'une erreur fatale de rendu se VOIE au lieu de se déduire d'un manque. Une
+  page qui s'arrête à moitié ressemble à une page qui n'a rien à dire.
+- **La règle** : **on lit la signature avant d'écrire l'appel.** Trente
+  secondes de lecture contre vingt minutes de recherche à l'envers.
+
+---
+
+**Une épreuve qui interdit d'écrire pourquoi** — 30 septembre 2026
+
+- **Ce que je voulais faire** : garder, par une épreuve, que les pages des
+  classes ne reviennent pas dans l'administration.
+- **Ce qui a coûté** : l'épreuve refusait toute MENTION de `classe.php` — et
+  elle est tombée sur le commentaire d'en-tête qui explique précisément ce qui
+  a été retiré et pourquoi. Dans un dépôt où l'on demande d'expliquer chaque
+  décision à l'endroit où elle se prend, une épreuve qui interdit de nommer ce
+  qu'on a supprimé se retourne contre la règle de la maison. Même piège la
+  minute d'après : `lib/eleves.php` existe toujours et fait le travail.
+- **Combien de fois** : ||
+- **Ce qui manque** : rien à fabriquer — une habitude à tenir. Une épreuve de
+  structure vise un APPEL (`require`, `href`, un identifiant de route), jamais
+  une chaîne de caractères qui peut apparaître dans une phrase.
+- **La règle** : **on n'interdit pas un mot, on interdit un lien.**
