@@ -113,6 +113,7 @@ import { hexagrilleFicheGenerator } from '../generators/hexagrilleFiche.js';
 import { tuyauxGenerator } from '../generators/tuyaux.js';
 import { lasersGenerator } from '../generators/lasers.js';
 import { intervallesGenerator, ensemblesGenerator, ensemblistesGenerator } from '../generators/intervalles.js';
+import { valeurAbsolueGenerator } from '../generators/valeurAbsolue.js';
 import { factorisationGenerator } from '../generators/factorisation.js';
 import { calculFractionsGenerator } from '../generators/calculFractions.js';
 import { racinesGenerator } from '../generators/racines.js';
@@ -181,6 +182,7 @@ import {
     tuyauxGenerator, pourcentagesGenerator,
     perimetreTriangleGenerator, disqueGenerator, lasersGenerator,
     intervallesGenerator,
+    valeurAbsolueGenerator,
     ensemblesGenerator,
     ensemblistesGenerator,
     factorisationGenerator,

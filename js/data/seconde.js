@@ -90,6 +90,38 @@ export const secondeExercises = [
             + "l'infini est toujours ouvert : on ne l'atteint jamais." 
     },
     {
+        // ── LA FEUILLE DE RÉMY, EXACTEMENT ──────────────────────────────
+        //
+        // « j'aimerai ce style d'exercice », avec la photo de son énoncé :
+        // « Dans chaque cas, représenter l'ensemble des nombres réels x tels
+        // que : a. |x − 2| = 5 · b. |x + 4| = 1 · c. |x − 3| ⩽ 1,5 ·
+        // d. |x + 2| < 4,5 ». Les quatre lignes sont tirables telles quelles :
+        // a et b au barreau 2 puis 5, c et d aux barreaux 3, 4 et 6.
+        //
+        // IL VIENT APRÈS LES INTERVALLES, et pas seulement dans l'ordre du
+        // chapitre : il s'appuie dessus. Les crochets se travaillent là-bas,
+        // seuls ; ici on ne travaille QUE la distance, sur un dessin dont
+        // l'élève connaît déjà la lecture.
+        id: 'sec-valeur-absolue',
+        cree: '2026-09-30',
+        title: 'Valeur absolue : représenter sur un axe',
+        consignePapier: 'Dans chaque cas, représente sur un axe l\'ensemble des nombres réels x tels que :',
+        colonnesPapier: 2,
+        generatorId: 'nb.valeur-absolue', activityId: 'buttons',
+        // PAS DE `paramSchema` : le générateur déclare ses barreaux lui-même,
+        // par `paramMarches`. Un réglage redéclaré ici gagnerait en silence
+        // sur celui du générateur, qui ne le lirait plus.
+        params: {},
+        motsClefs: ['valeur absolue', 'distance', 'axe', 'droite graduée', 'intervalle',
+            'barres', 'module', 'centre', 'rayon', 'seconde', 'lycée'],
+        tags: { chemin: [D, ENS], niveaux: [SECONDE] },
+        instruction: "|x − a| est la DISTANCE entre x et a : c'est la seule chose à "
+            + "retenir, tout le reste en découle. |x − 2| = 5, ce sont les deux nombres "
+            + "à 5 de 2 — un de chaque côté. |x − 3| ⩽ 1,5, ce sont ceux qui sont PROCHES "
+            + "de 3 : le segment centré sur 3, de rayon 1,5 des deux côtés. Et attention "
+            + "au signe : |x + 4| s'écrit aussi |x − (−4)|, son centre est −4."
+    },
+    {
         id: 'sec-ensembles',
         cree: '2026-09-22',
         title: 'Le plus petit ensemble de nombres',

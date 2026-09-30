@@ -102,9 +102,23 @@ test('LES TROIS EXERCICES SONT AU CATALOGUE, AVEC LEUR CODE DICTABLE', () => {
     // bien ses six exercices, ils sont tous dans le bon chapitre, et TOUS les
     // exercices de Seconde — celui-ci comme les suivants — portent un code
     // qui se dicte.
+    //
+    // ET LE TOTAL A RECOMMENCÉ, EN PLUS PETIT. Après avoir cessé de figer le
+    // nombre d'exercices de SECONDE, cette épreuve figeait encore celui du
+    // CHAPITRE — « assert.equal(miens.length, 6) ». Elle est tombée le jour où
+    // la valeur absolue est arrivée, sans que rien de ce qu'elle protège n'ait
+    // bougé : exactement la faute que son propre commentaire dénonce, refaite
+    // une ligne plus bas. On nomme donc les exercices attendus au lieu de les
+    // compter — ajouter le suivant ne fera plus tomber l'épreuve, et RETIRER
+    // l'un de ceux-ci la fera tomber, ce que le total ne garantissait pas.
     const seconde = exercices.filter(e => (e.tags.niveaux || []).includes('2nde'));
     const miens = seconde.filter(e => e.tags.chemin[1] === 'Ensembles et intervalles');
-    assert.equal(miens.length, 6);
+    const ATTENDUS = ['sec-intervalles', 'sec-intervalles-ecrire', 'sec-intervalles-demi',
+        'sec-ensembles', 'sec-union-inter', 'sec-union-inter-vide', 'sec-valeur-absolue'];
+    for (const id of ATTENDUS) {
+        assert.ok(miens.some(e => e.id === id),
+            `${id} a quitté le chapitre « Ensembles et intervalles »`);
+    }
     seconde.forEach(e => {
         // PAS DE I, PAS DE O, PAS DE Q : ces codes se DICTENT en classe.
         // J'avais écrit IV, IC, ID — silencieusement invalides : la lettre de

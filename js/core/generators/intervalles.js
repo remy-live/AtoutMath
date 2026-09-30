@@ -165,8 +165,13 @@ function crochet(x, ferme, versLaDroite, teinte = TEINTE) {
  */
 export function axeHtml(parts, opts = {}) {
     const vivants = parts.filter(Boolean);
+    const points = opts.points || [];
     const bornes = vivants.flatMap(p => [p.a, p.b]).filter(v => v !== null);
-    const f = opts.fenetre || fenetreCommune(vivants);
+    // LES POINTS ISOLÉS CADRENT L'AXE EUX AUSSI. Sans cela, un ensemble réduit
+    // à deux nombres n'aurait AUCUNE partie vivante : la fenêtre serait tirée
+    // de rien, et les deux points tomberaient hors du dessin.
+    const f = opts.fenetre || fenetreCommune(vivants.length
+        ? vivants : points.map((v) => ({ a: v, b: v, ea: true, eb: true })));
 
     const hauteur = H + (vivants.length - 1) * 14;
     let g = '';
@@ -189,6 +194,36 @@ export function axeHtml(parts, opts = {}) {
             g += `<text x="${x}" y="${Y_NOMBRE}" text-anchor="middle" font-size="11" `
                 + `fill="currentColor">${nb(v)}</text>`;
         }
+    }
+
+    // LES BORNES QUI NE TOMBENT PAS SUR UNE GRADUATION.
+    //
+    // La boucle ci-dessus ne visite que les entiers : une borne à 1,5 n'y
+    // passait jamais, et l'intervalle [1,5 ; 4,5] se dessinait avec DEUX
+    // crochets sans nom. On les écrit donc à part, avec leur propre petit
+    // trait — sans quoi le lecteur ne sait pas à quelle hauteur de la
+    // graduation le crochet se pose.
+    for (const v of bornes) {
+        if (Number.isInteger(v)) continue;
+        const x = versX(v, f);
+        g += `<path d="M ${x} ${Y - 3} L ${x} ${Y + 3}" stroke="currentColor" `
+            + `stroke-width="${TRAIT.tic}" fill="none"/>`;
+        g += `<text x="${x}" y="${Y_NOMBRE}" text-anchor="middle" font-size="11" `
+            + `fill="currentColor">${nb(v)}</text>`;
+    }
+
+    // LES POINTS ISOLÉS — « représenter l'ensemble des x tels que |x − 2| = 5 ».
+    //
+    // Une ÉGALITÉ ne donne pas un intervalle : elle donne deux nombres, et rien
+    // entre eux. Un segment de longueur nulle avec deux crochets face à face
+    // serait illisible ; au tableau on marque un gros point plein, et c'est ce
+    // qu'on fait. Le nombre est écrit dessous comme une borne, puisque c'en est
+    // une — le seul point de l'ensemble de ce côté-là.
+    for (const p of (opts.points || [])) {
+        const x = versX(p, f);
+        g += `<circle cx="${x}" cy="${Y}" r="4" fill="${opts.teinte || TEINTE}"/>`;
+        g += `<text x="${x}" y="${Y_NOMBRE}" text-anchor="middle" font-size="11" `
+            + `font-weight="700" fill="currentColor">${nb(p)}</text>`;
     }
 
     vivants.forEach((p, i) => {
@@ -258,7 +293,10 @@ const INF = '∞';
 // l'infini et `[-3 ; 1]` avec le trait d'union pour les bornes, et la liste
 // des ensembles de nombres écrit `−18/3`. Trois écritures du même signe dans
 // le même chapitre.
-const nb = (v) => String(v).replace('-', '−');
+// ET LA VIRGULE DÉCIMALE, depuis que les valeurs absolues bornent en 1,5 et
+// 4,5 (la feuille de Rémy : « |x − 3| ⩽ 1,5 »). `String(4.5)` rend « 4.5 » :
+// un point décimal anglais sous une droite graduée française.
+const nb = (v) => String(v).replace('.', ',').replace('-', '−');
 const LE = '⩽';   // ⩽ — celui du programme français, pas le ≤ anglo-saxon
 const GE = '⩾';   // ⩾
 

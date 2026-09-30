@@ -1248,3 +1248,47 @@ manque.
   jour où la mesure revient une troisième fois.
 - **La règle** : **un ancêtre qui répond n'est pas un recouvrement.** On écarte
   ce qui contient l'élément, on ne garde que ce qui se peint par-dessus.
+
+---
+
+**Le piège de l'accent grave, quatorzième fois** — 30 septembre 2026
+
+- **Ce que je voulais faire** : écrire un commentaire citant un nom de classe
+  (`choice--ok`) et un nom de fichier, par `tools/remplacer.mjs`, depuis la
+  ligne de commande.
+- **Ce qui a coûté** : dans une chaîne entre guillemets doubles, l'interpréteur
+  EXÉCUTE ce qui est entre accents graves. Le commentaire est arrivé amputé de
+  ses deux noms, le fichier restait syntaxiquement valide, `node --check` s'est
+  tu, aucune épreuve n'a bronché. Seule une relecture à l'œil l'a trouvé — et
+  l'on ne relit pas ce qu'on vient d'écrire. **La règle était déjà écrite dans
+  CLAUDE.md, et je l'ai enfreinte deux fois dans la même journée.**
+- **Combien de fois** : ||||||||||||||
+- **Ce qui manque** : plus rien. `tools/remplacer.mjs` REFUSE désormais tout
+  texte de plusieurs lignes passé en argument : le multiligne passe par
+  `--depuis <paires.json>`, où aucun interpréteur ne se mêle du contenu. Le
+  critère n'est pas « contient un accent grave » — quand l'interpréteur a fait
+  son œuvre, les accents graves ont DISPARU du texte reçu, et l'outil ne peut
+  pas voir le dégât : il ne peut que fermer le chemin par lequel il arrive.
+- **La règle** : **une règle qu'on doit se rappeler n'est pas une règle, c'est
+  un vœu.** Quand un piège revient trois fois, on ne réécrit pas la consigne :
+  on ferme le chemin.
+
+---
+
+**Une sonde qui ne joue que les réglages qu'elle pose** — 30 septembre 2026
+
+- **Ce que je voulais faire** : éprouver un exercice neuf, barreau par barreau.
+- **Ce qui a coûté** : la sonde ouvrait l'exercice avec `{ marches: [...] }` à
+  chaque fois — huit barreaux, huit passages verts. Or le professeur, lui,
+  l'ouvre SANS réglage. Et là, `marchesCochees(p, M, null)` levait « Cannot
+  read properties of null » : `null` n'est pas `undefined`, une valeur par
+  défaut de paramètre ne s'applique qu'au second. L'écran restait à « 0 / 8
+  questions », sans une proposition. Trouvé par hasard, en comparant la taille
+  des cartes avec l'exercice voisin.
+- **Combien de fois** : |
+- **Ce qui manque** : `tools/nouvelExercice.mjs` pourrait ouvrir le générateur
+  avec `params: {}` et signaler une exception — deux cents millisecondes contre
+  un exercice injouable livré.
+- **La règle** : **le réglage par défaut est un cas de figure, et c'est celui
+  que l'utilisateur reçoit.** Une sonde qui pose toujours ses réglages ne le
+  joue jamais.

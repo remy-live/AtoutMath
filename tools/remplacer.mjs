@@ -61,6 +61,39 @@ if (iDepuis >= 0) {
         console.error('il faut un nombre PAIR de textes : <ancien> <nouveau> <ancien> <nouveau> …');
         process.exit(2);
     }
+
+    // ── UN TEXTE DE PLUSIEURS LIGNES NE PASSE PLUS PAR LA LIGNE DE COMMANDE ──
+    //
+    // LE PIÈGE DE L'ACCENT GRAVE, QUATORZIÈME FOIS. Dans une chaîne entre
+    // guillemets doubles, l'interpréteur de commandes EXÉCUTE ce qui est entre
+    // accents graves. Un commentaire français qui cite un nom de classe entre
+    // accents graves arrive donc AMPUTÉ : les mots ont disparu, le fichier est
+    // syntaxiquement valide, `node --check` se tait, aucune épreuve ne le voit.
+    // Seule une relecture à l'œil le trouve — et l'on ne relit pas ce qu'on
+    // vient d'écrire.
+    //
+    // LA RÈGLE ÉTAIT DÉJÀ ÉCRITE dans CLAUDE.md, et je l'ai enfreinte deux
+    // fois dans la même journée. Une règle qu'on doit se rappeler n'est pas
+    // une règle : c'est un vœu. Celle-ci devient donc mécanique.
+    //
+    // POURQUOI LE CRITÈRE EST « PLUSIEURS LIGNES » ET NON « CONTIENT UN ACCENT
+    // GRAVE » : quand l'interpréteur a fait son œuvre, les accents graves ont
+    // DISPARU du texte reçu. Cet outil ne peut donc pas voir le dégât ; il ne
+    // peut que fermer le chemin par lequel il arrive. Or le dégât n'arrive que
+    // sur de la prose — un commentaire, une consigne —, c'est-à-dire sur du
+    // multiligne. Les retouches d'une ligne, elles, restent commodes.
+    const multi = reste.find((t) => t.includes('\n'));
+    if (multi !== undefined) {
+        console.error('Un texte de PLUSIEURS LIGNES ne passe pas par la ligne de commande :');
+        console.error(`  « ${multi.split('\n')[0].slice(0, 60)}… »`);
+        console.error('');
+        console.error('L\'interpréteur exécute ce qui est entre accents graves, et un');
+        console.error('commentaire arrive alors amputé sans que rien ne le signale.');
+        console.error('Écrire les paires dans un fichier JSON, puis :');
+        console.error('  node tools/remplacer.mjs ' + fichier + ' --depuis tools/tmp/paires.json');
+        process.exit(2);
+    }
+
     for (let i = 0; i < reste.length; i += 2) paires.push([reste[i], reste[i + 1]]);
 }
 

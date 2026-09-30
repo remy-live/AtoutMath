@@ -279,6 +279,33 @@ const BASE = {
         descriptor: 'Trouver la partie commune à deux intervalles, et leur réunion — y compris quand elle est vide ou en deux morceaux.',
         lesson: '∩ garde ce qui est dans les DEUX ; ∪ garde ce qui est dans l\'un OU l\'autre. À une borne partagée, l\'intersection prend le crochet le plus SÉVÈRE et l\'union le plus GÉNÉREUX. Une intersection peut être vide (∅), et une union peut rester en deux morceaux.'
     },
+    // ── LA VALEUR ABSOLUE, DEUX COMPÉTENCES ET NON UNE ──────────────────
+    //
+    // Elles se tiennent, mais un élève peut tenir la première sans la seconde,
+    // et le bilan doit le dire. Celui qui LIT « |x + 4| » comme la distance à
+    // −4 peut encore dessiner le segment du mauvais côté du crochet ; celui
+    // qui dessine juste par habitude ne sait pas forcément ce qu'il dessine.
+    // Les confondre ferait refaire travailler la lecture à qui ne rate que le
+    // crochet — la faute du chapitre PRÉCÉDENT.
+    'nb.valeur-absolue.distance': {
+        label: 'Lire |x − a| comme une distance',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        prereqs: ['num.relatifs.sens'],
+        descriptor: 'Reconnaître le centre : |x − a| est la distance entre x et a, et |x + 4| celle entre x et −4.',
+        lesson: 'Deux barres autour d\'une différence, c\'est une DISTANCE : |7 − 2| = 5, et 5 est bien ce qui sépare 2 de 7 sur la droite graduée. Le piège tient en un signe : |x + 4| s\'écrit aussi |x − (−4)|, donc son centre est −4, pas 4.'
+    },
+    'nb.valeur-absolue.representer': {
+        label: 'Représenter |x − a| ⋈ r sur un axe',
+        chemin: [D.NUMERIQUE, SD.ENSEMBLES],
+        niveaux: [N.SECONDE],
+        // Lire la distance d'abord : sans le centre, il n'y a rien à dessiner.
+        // Et les crochets viennent du chapitre des intervalles, où ils se
+        // travaillent seuls.
+        prereqs: ['nb.valeur-absolue.distance', 'nb.intervalle.lire'],
+        descriptor: 'Dessiner l\'ensemble des x : deux points pour une égalité, un segment centré pour ⩽, deux morceaux pour ⩾.',
+        lesson: 'Le centre, puis le rayon, puis le signe. |x − a| = r donne DEUX nombres, a − r et a + r, et rien entre eux. |x − a| ⩽ r donne le segment centré sur a, de rayon r des deux côtés. |x − a| ⩾ r donne le contraire : ce qui est LOIN de a, donc deux morceaux et un trou au milieu.'
+    },
     'nb.fractions.calculer': {
         label: 'Calculer une expression avec des fractions',
         chemin: [D.NUMERIQUE, SD.FRACTIONS],

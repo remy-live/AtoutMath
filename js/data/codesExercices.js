@@ -232,6 +232,7 @@ export const CODES_EXERCICES = {
     'sec-intervalles-ecrire':     'NT',   // Le bon côté du crochet
     'sec-intervalles-demi':       'ZA',   // Demi-droites et infini
     'rc-pas':                     'RS',   // Racines carrées, pas à pas (Simplifier)
+    'sec-valeur-absolue':         'VB',   // Valeur absolue : représenter sur un axe
     'sec-ensembles':              'EA',   // Le plus petit ensemble de nombres
     'sec-union-inter':            'EU',   // Union et intersection d'intervalles
     'sec-union-inter-vide':       'EX',   // Quand l'intersection est vide
