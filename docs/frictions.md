@@ -1065,3 +1065,24 @@ manque.
   pas « ce qui est écrit est bien écrit » avant d'avoir prouvé qu'il y a quelque
   chose d'écrit — un `dire('un produit finit par s'afficher', …)` avant le reste,
   et un `touches.length > 0` avant le `every`.
+
+---
+
+**L'accent grave, douzième fois — et cette fois c'est bash qui l'avale** — 30 septembre 2026
+
+- **Ce que je voulais faire** : ajouter un commentaire CSS citant une propriété
+  entre accents graves, via `node tools/remplacer.mjs` lancé depuis `bash`.
+- **Ce qui a coûté** : une retouche de plus. Dans une chaîne à guillemets
+  doubles, `bash` EXÉCUTE ce qui est entre accents graves : la propriété citée
+  a disparu du fichier écrit, remplacée par le vide, et le terminal a répondu
+  « space-between: command not found ». Écrit sans erreur de syntaxe, donc le
+  `hook` `verifierSyntaxe.sh` n'avait rien à dire — le fichier était valide, il
+  était seulement faux.
+- **Combien de fois** : |||| |||| ||
+- **Ce qui manque** : `tools/remplacer.mjs` devrait pouvoir lire ses arguments
+  autrement que par la ligne de commande pour tout ce qui porte un accent
+  grave. L'option `--depuis <paires.json>` existe déjà : ce qui manque, c'est
+  que je m'en serve SANS ATTENDRE de m'être fait avoir — ou un refus net de
+  l'outil quand un argument contient un accent grave venu de `bash`.
+- **La règle** : **dès qu'un texte à écrire contient un accent grave, il passe
+  par `--depuis <paires.json>`, jamais par la ligne de commande.**

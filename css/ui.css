@@ -4754,6 +4754,27 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 #tiroir-parcours .path-folder-body { margin-top: 5px; }
 #tiroir-parcours .path-folder-name { font-size: .82rem; }
 #tiroir-parcours .path-folder-empty { font-size: .74rem; }
+/* DANS LE TIROIR DE 300 px, LE COMPTE D'UN DOSSIER REPLIÉ EST LA PREMIÈRE
+   CHOSE QU'ON SACRIFIE : le nom se lit, « 4 parcours » se devine. On le garde
+   mais on l'écrase, et on laisse le nom le pousser dehors plutôt que passer à
+   la ligne — une tête de dossier sur deux lignes ne ressemble plus à une tête
+   de dossier. */
+#tiroir-parcours .path-folder-head { gap: 6px; }
+#tiroir-parcours .path-folder-compte { font-size: .7rem; overflow: hidden; text-overflow: ellipsis; }
+#tiroir-parcours .path-folder-chevron svg { width: 14px; height: 14px; }
+/* LA CORBEILLE D'UN DOSSIER SUIT CELLE D'UN PARCOURS : elle ne se montre qu'au
+   survol à la souris. Sinon une tête de dossier repliée, qui tient sur une
+   ligne, n'est plus qu'un nom coincé entre deux icônes. */
+@media (hover: hover) and (pointer: fine) {
+    #tiroir-parcours .path-folder-head > .btn-icon {
+        opacity: 0; pointer-events: none; transition: opacity .15s ease;
+    }
+    #tiroir-parcours .path-folder-head:hover > .btn-icon,
+    #tiroir-parcours .path-folder-head:focus-within > .btn-icon {
+        opacity: 1; pointer-events: auto;
+    }
+}
+#tiroir-parcours .path-folder-head > .btn-icon { width: 24px; height: 24px; padding: 4px; box-shadow: none; }
 
 
 /* ─────────────── LA SÉANCE EN COURS, DITE PLUTÔT QUE DEVINÉE ──────────────

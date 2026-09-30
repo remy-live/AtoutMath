@@ -4184,9 +4184,38 @@ html[data-theme="dark"] .tag-duo--aussi { background: transparent; }
 body.mobile-view .props-close { display: flex; align-items: center; justify-content: center; }
 
 .path-folder { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 10px; }
-.path-folder-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.path-folder-name { font-weight: 700; font-size: 1.1rem; color: var(--text-main); outline: none; border-bottom: 1px dashed var(--border); }
+/* ─────────── LE DOSSIER SE REPLIE, ET TOUTE SA TÊTE EST LA POIGNÉE ───────────
+   Rémy : « on pourrait replier des répertoires ? ». Un dossier de cinquante
+   parcours pousse tout le reste hors de l'écran.
+   LA FLÈCHE SEULE NE SUFFIT PAS COMME CIBLE : 16 px au doigt se ratent. C'est
+   donc la tête entière qui bascule, corbeille exceptée — et le nom garde son
+   double-clic, qui ne remonte pas jusqu'ici. */
+.path-folder-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; cursor: pointer; gap: 8px; }
+.path-folder-head:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 6px; }
+.path-folder-chevron { display: inline-flex; flex-shrink: 0; color: var(--text-muted); transition: transform .18s ease; }
+.path-folder--replie .path-folder-chevron { transform: rotate(-90deg); }
+/* LE NOM PREND LA PLACE QUI RESTE, et le compte se colle à droite avant la
+   corbeille : sinon space-between écarte le nom du chevron qu'il suit. */
+.path-folder-head .path-folder-name { flex: 1; min-width: 0; }
+.path-folder-compte { color: var(--text-muted); font-size: .8rem; white-space: nowrap; }
+/* REPLIÉ, LE CADRE SE RESSERRE : une marge de 15 px sous une ligne unique
+   laissait un blanc qui donnait l'impression que le dossier n'était pas vide
+   mais cassé. */
+.path-folder--replie { padding-bottom: 7px; }
+.path-folder--replie .path-folder-head { margin-bottom: 0; }
+/* LE POINTILLÉ NE SE MONTRE QUE QUAND IL DIT VRAI. Permanent, il annonçait un
+   champ de saisie sur un nom qui, au repos, n'en est pas un : on renomme au
+   DOUBLE-clic (voir nomRenommable dans builder.js). Au survol il annonce ce
+   qui est possible, pendant l'édition il montre où l'on écrit. */
+.path-folder-name { font-weight: 700; font-size: 1.1rem; color: var(--text-main); outline: none; border-bottom: 1px dashed transparent; }
+.path-folder-name:hover, .path-folder-name[contenteditable="true"] { border-bottom-color: var(--border); }
+/* UN display EXPLICITE L'EMPORTE SUR [hidden], qui n'est qu'une règle du
+   navigateur. MESURÉ : le corps du dossier gardait hidden = true et restait
+   affiché — le dossier replié ne perdait que 5 px sur 107. Une sonde qui lit
+   la PROPRIÉTÉ voit le pli ; l'œil ne le voit pas. D'où la hauteur mesurée
+   depuis. */
 .path-folder-body { display: flex; flex-direction: column; gap: 10px; padding-left: 18px; min-height: 20px; }
+.path-folder-body[hidden] { display: none; }
 .path-folder-empty { color: var(--text-muted); font-size: .88rem; font-style: italic; }
 .path-browser-root { padding: 15px; border: 1px solid transparent; border-radius: 12px; }
 .path-browser-root-title { font-weight: 700; color: var(--text-main); margin-bottom: 10px; }
@@ -4196,7 +4225,8 @@ body.mobile-view .props-close { display: flex; align-items: center; justify-cont
     padding: 12px; display: flex; justify-content: space-between; align-items: center;
     gap: 12px; cursor: grab; margin-bottom: 8px;
 }
-.path-browser-name { font-weight: 700; color: var(--text-main); outline: none; border-bottom: 1px dashed var(--border); display: inline-block; }
+.path-browser-name { font-weight: 700; color: var(--text-main); outline: none; border-bottom: 1px dashed transparent; display: inline-block; }
+.path-browser-name:hover, .path-browser-name[contenteditable="true"] { border-bottom-color: var(--border); }
 .path-browser-sub { color: var(--text-muted); font-size: .84rem; }
 .path-browser-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 

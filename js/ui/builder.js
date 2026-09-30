@@ -1949,10 +1949,26 @@ function blocDeSection(section) {
         bloc.ondrop = (e) => dropOnFolder(e, section.depot);
     }
 
-    bloc.appendChild(section.dossier ? teteDeDossier(section) : titreDeSection(section.titre));
+    // UN DOSSIER REPLIÉ RESTE UN DOSSIER : il accepte toujours qu'on lui
+    // dépose un parcours — et il se déplie alors, pour qu'on voie où il est
+    // tombé. Recevoir en silence ce qu'on ne peut pas voir, c'est perdre.
+    const replie = section.dossier && !!(state.teacherFolders
+        .find(f => f.id === section.id) || {}).replie;
+    if (section.depot && replie) {
+        bloc.ondrop = (e) => {
+            state.setFolderReplie(section.id, false);
+            dropOnFolder(e, section.depot);
+        };
+    }
+    if (replie) bloc.classList.add('path-folder--replie');
+
+    bloc.appendChild(section.dossier ? teteDeDossier(section, replie) : titreDeSection(section.titre));
 
     const corps = section.dossier ? document.createElement('div') : bloc;
-    if (section.dossier) corps.className = 'path-folder-body';
+    if (section.dossier) {
+        corps.className = 'path-folder-body';
+        corps.hidden = replie;
+    }
 
     if (!section.parcours.length && section.vide) {
         const rien = document.createElement('div');
@@ -1976,25 +1992,149 @@ function titreDeSection(texte) {
     return t;
 }
 
-function teteDeDossier(section) {
+/**
+ * UN NOM QU'ON RENOMME AU DOUBLE-CLIC — ET QUI NE FAIT RIEN D'AUTRE AVANT.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « je préfèrerais un double clic sur le nom dans la barre de gauche
+ * pour changer le nom et un simple clic pour charger le parcours, car là on
+ * clique souvent sur le titre pour changer le nom et on ne comprend pas
+ * pourquoi cela ne charge pas ».
+ *
+ * CE QUI SE PASSAIT : le nom était `contentEditable` EN PERMANENCE. Cliquer
+ * dessus posait donc un curseur de texte — et la ligne qui ouvre le parcours
+ * s'écartait exprès du nom pour ne pas lui voler son clic. Deux gestes
+ * identiques pour deux effets différents, dont l'un ne se voyait pas : sur un
+ * nom court, le curseur clignotant est à peu près invisible, et il ne reste
+ * que l'impression que le clic n'a rien fait.
+ *
+ * ET LE TRAIT POINTILLÉ SOUS LE NOM DISAIT « champ de saisie » à l'œil pendant
+ * que la fiche entière disait « clique-moi ». Il ne se montre plus qu'au
+ * survol et pendant l'édition — c'est-à-dire quand il est vrai. À noter : dans
+ * le TIROIR étroit, celui de la capture de Rémy, ce trait était déjà
+ * transparent au repos ; il ne restait donc là que le geste sans effet. Le
+ * pointillé permanent, lui, est dans le panneau large.
+ *
+ * ON N'ATTEND PAS POUR SAVOIR SI UN DEUXIÈME CLIC ARRIVE. Le geste simple part
+ * tout de suite ; un double-clic le déclenche donc aussi, une fois, avant
+ * d'ouvrir l'édition. C'est sans conséquence des deux côtés : ouvrir un
+ * parcours n'en perd aucun (celui qu'on éditait est enregistré à chaque
+ * modification), et sur un dossier le premier pli est défait par le second.
+ * L'inverse — retarder tout clic de 250 ms pour distinguer les deux — ferait
+ * payer cette attente aux cinquante clics simples pour le seul double.
+ *
+ * @param {string}   texte       le nom affiché
+ * @param {string}   classe      la classe CSS de la ligne
+ * @param {function} enregistrer reçoit le nom retenu, non vide et élagué
+ */
+function nomRenommable(texte, classe, enregistrer) {
+    const el = document.createElement('div');
+    el.className = classe;
+    el.textContent = texte;
+    el.title = 'Double-clic pour renommer';
+
+    // ON NOTE CE QU'IL Y AVAIT AVANT, pour pouvoir le remettre : une édition
+    // qu'on ne peut pas annuler se refuse à commencer, et c'est alors la
+    // fonctionnalité entière qui ne sert plus.
+    let avant = texte;
+
+    const finir = (garder) => {
+        if (el.contentEditable !== 'true') return;
+        el.contentEditable = 'false';
+        const neuf = el.textContent.trim();
+        // UN NOM VIDE N'EST PAS UN NOM. Effacer tout puis cliquer ailleurs
+        // laissait une ligne anonyme et introuvable dans la liste.
+        if (!garder || !neuf || neuf === avant) { el.textContent = avant; return; }
+        avant = neuf;
+        el.textContent = neuf;
+        enregistrer(neuf);
+    };
+
+    el.ondblclick = (e) => {
+        // LE DOUBLE-CLIC NE REMONTE PAS : sans cela, la ligne le reçoit à son
+        // tour et le navigateur sélectionne le paragraphe entier derrière.
+        e.stopPropagation();
+        e.preventDefault();
+        avant = el.textContent.trim();
+        el.contentEditable = 'true';
+        el.focus();
+        // TOUT SÉLECTIONNER : on double-clique pour REMPLACER un nom, presque
+        // jamais pour ajouter une lettre au milieu.
+        const s = window.getSelection();
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        s.removeAllRanges();
+        s.addRange(r);
+    };
+    // PENDANT L'ÉDITION, LE CLIC RESTE DANS LE CHAMP. Il sert à placer le
+    // curseur ; le laisser remonter rechargerait le parcours ou replierait le
+    // dossier sous les doigts de celui qui est en train d'écrire.
+    el.onclick = (e) => { if (el.contentEditable === 'true') e.stopPropagation(); };
+    el.onblur = () => finir(true);
+    el.onkeydown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); finir(true); el.blur(); }
+        if (e.key === 'Escape') { e.preventDefault(); finir(false); el.blur(); }
+        e.stopPropagation();
+    };
+    return el;
+}
+
+function teteDeDossier(section, replie) {
     const head = document.createElement('div');
     head.className = 'path-folder-head';
 
-    const name = document.createElement('div');
-    name.className = 'path-folder-name';
-    name.contentEditable = 'true';
-    name.textContent = section.titre;
-    name.onblur = () => state.renameTeacherFolder(section.id, name.textContent.trim());
-    name.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } };
+    // LA FLÈCHE DIT L'ÉTAT ET NE SE CLIQUE PAS À PART : toute la tête replie,
+    // parce qu'une cible de 18 px au doigt se rate une fois sur trois. Elle
+    // reste un `span` — un bouton dans une tête cliquable donnerait deux
+    // arrêts au clavier pour une seule action.
+    const fleche = document.createElement('span');
+    fleche.className = 'path-folder-chevron';
+    fleche.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true">${ICONS.chevron}</svg>`;
+
+    const name = nomRenommable(section.titre, 'path-folder-name',
+        (neuf) => state.renameTeacherFolder(section.id, neuf));
+
+    // CE QU'UN DOSSIER REPLIÉ GARDE, puisqu'on ne le voit plus. Un pli qui
+    // cache sans dire combien oblige à déplier pour savoir s'il y a lieu.
+    const combien = document.createElement('span');
+    combien.className = 'path-folder-compte';
+    const n = section.parcours.length;
+    combien.textContent = replie ? (n ? `${n} parcours` : 'vide') : '';
 
     const del = iconButton('Supprimer le dossier', ICONS.trash, 'danger');
-    del.onclick = () => window.appConfirm('Suppression',
-        'Supprimer ce dossier ? Les parcours reviennent à la racine.', () => {
-            state.removeTeacherFolder(section.id);
-            renderPathBrowser();
-        });
+    del.onclick = (e) => {
+        e.stopPropagation();
+        window.appConfirm('Suppression',
+            'Supprimer ce dossier ? Les parcours reviennent à la racine.', () => {
+                state.removeTeacherFolder(section.id);
+                renderPathBrowser();
+            });
+    };
 
-    head.append(name, del);
+    head.append(fleche, name, combien, del);
+
+    const basculer = () => {
+        state.setFolderReplie(section.id, !replie);
+        renderPathBrowser();
+    };
+    head.onclick = (e) => {
+        if (e.target.closest('.btn-icon')) return;
+        basculer();
+    };
+    // AU CLAVIER AUSSI. La tête devient l'élément qu'on atteint par tabulation
+    // pour ce dossier ; `aria-expanded` dit à un lecteur d'écran ce que fait
+    // l'espace qu'on s'apprête à taper.
+    head.tabIndex = 0;
+    head.setAttribute('role', 'button');
+    head.setAttribute('aria-expanded', String(!replie));
+    head.onkeydown = (e) => {
+        if (e.target !== head) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); basculer(); }
+    };
+    head.title = replie ? 'Déplier ce dossier' : 'Replier ce dossier';
     return head;
 }
 
@@ -2021,12 +2161,26 @@ function pathItem(p, resume = null) {
     row.ondragend = () => { row.style.opacity = '1'; };
 
     const info = document.createElement('div');
-    const name = document.createElement('div');
-    name.className = 'path-browser-name';
-    name.contentEditable = 'true';
-    name.textContent = p.name;
-    name.onblur = () => state.updateTeacherPath(p.id, name.textContent.trim(), null);
-    name.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } };
+    // RENOMMER CELUI QU'ON A SOUS LES YEUX DOIT RENOMMER LES DEUX VUES.
+    //
+    // MESURÉ : on clique sur « Gamma », il s'ouvre à droite ; on le renomme
+    // dans le tiroir en « Gamma renommé » ; la seconde d'après il est
+    // redevenu « Gamma ». L'éditeur enregistre à chaque modification, et il
+    // enregistre `state.currentPath.name` — resté à l'ancien nom, parce que
+    // personne ne lui avait dit. Le tiroir écrivait donc dans une valeur que
+    // l'éditeur allait écraser.
+    //
+    // Le défaut ne date pas du double-clic ; il attendait qu'on renomme un
+    // parcours ouvert. Le double-clic l'a seulement mis sur le chemin, en
+    // faisant du clic sur le nom le geste qui OUVRE.
+    const name = nomRenommable(p.name, 'path-browser-name', (neuf) => {
+        state.updateTeacherPath(p.id, neuf, null);
+        if (p.id === state.currentPathId && state.currentPath) {
+            state.currentPath.name = neuf;
+            const champ = document.getElementById('path-name-input');
+            if (champ) champ.value = neuf;
+        }
+    });
 
     // CE QU'ON LIT SANS DÉPLIER : ce qu'il contient, en quoi, et depuis quand
     // on n'y a pas touché. Trois choses sur une ligne — Rémy dit « sobre ».
@@ -2080,6 +2234,13 @@ function pathItem(p, resume = null) {
     const ouvrir = () => {
         state.currentPathId = p.id;
         state.currentPath = normalizePath(p.data, p.name);
+        // ET LE NOM DE LA LISTE FAIT FOI. `normalizePath` répand `...p.data` et
+        // garde donc le nom rangé DANS le parcours ; `updateTeacherPath` les
+        // tient désormais d'accord, mais les parcours renommés AVANT cette
+        // correction portent encore les deux noms. Sans cette ligne, les
+        // ouvrir les ferait revenir à l'ancien — silencieusement, puisque la
+        // sauvegarde automatique recopierait ensuite ce nom-là dans l'entrée.
+        if (p.name) state.currentPath.name = p.name;
         selectedStepId = null;
         const input = document.getElementById('path-name-input');
         if (input) input.value = state.currentPath.name;
@@ -2087,9 +2248,14 @@ function pathItem(p, resume = null) {
         marquerOuvert(p.id);
     };
     row.onclick = (e) => {
-        // Le nom se renomme sur place et les boutons ont leur propre rôle :
-        // un clic qui les vise ne doit pas ouvrir le parcours par-dessus.
-        if (e.target.closest('.path-browser-name, .path-browser-actions')) return;
+        // LE NOM NE S'EXCLUT PLUS. Il en était écarté du temps où il était un
+        // champ de saisie permanent ; il ne l'est plus qu'après un double-clic
+        // (voir `nomRenommable`), et c'est justement le titre que Rémy visait
+        // quand il attendait que le parcours se charge.
+        //
+        // Les boutons, eux, gardent leur rôle propre : partager ou supprimer
+        // n'est pas ouvrir.
+        if (e.target.closest('.path-browser-actions')) return;
         ouvrir();
     };
     row.tabIndex = 0;

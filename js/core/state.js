@@ -572,11 +572,31 @@ export const state = {
         return newPath;
     },
 
+    /**
+     * LE NOM EST ÉCRIT À DEUX ENDROITS, ET LES DEUX DOIVENT SUIVRE.
+     *
+     * Une entrée porte `name` — ce que montre l'explorateur — et son parcours
+     * porte `data.name`, la même chose à l'intérieur. Renommer n'écrivait que
+     * le premier.
+     *
+     * MESURÉ : on renomme « Gamma » en « Gamma renommé » dans le tiroir, on le
+     * rouvre, il s'appelle de nouveau « Gamma » — et cette fois pour de bon,
+     * car la sauvegarde automatique recopie alors l'ancien nom dans l'entrée.
+     * La cause tient en une ligne de `normalizePath`, qui répand `...raw` : le
+     * nom rangé DANS le parcours l'emporte sur celui qu'on lui passe. C'est
+     * cohérent — le parcours sait comment il s'appelle —, à condition que
+     * personne ne renomme l'entrée sans le lui dire.
+     *
+     * On le lui dit donc ici, au seul endroit par où passe un renommage.
+     */
     updateTeacherPath(id, name, pathData) {
         const p = this.teacherPaths.find(x => x.id === id);
         if (!p) return;
         if (name) p.name = name;
         if (pathData) p.data = pathData;
+        if (name && p.data && typeof p.data === 'object' && !Array.isArray(p.data)) {
+            p.data.name = name;
+        }
         p.timestamp = Date.now();
         this.saveTeacherPaths();
     },
@@ -611,6 +631,31 @@ export const state = {
         if (!f) return;
         f.name = name;
         f.timestamp = Date.now();
+        this.saveTeacherFolders();
+    },
+
+    /**
+     * REPLIER UN DOSSIER, ET S'EN SOUVENIR.
+     *
+     * Rémy : « on pourrait replier des répertoires ? ». Un dossier de
+     * cinquante parcours pousse tout le reste hors de l'écran ; replié, il
+     * tient sur une ligne et dit combien il garde.
+     *
+     * ON LE RANGE SUR LE DOSSIER LUI-MÊME, et pas dans un réglage à part.
+     * C'est discutable — un pli est une vue, pas une donnée, et le replier sur
+     * le téléphone le repliera sur l'ordinateur. On l'assume : les dossiers
+     * voyagent déjà d'un appareil à l'autre par `saveTeacherFolders`, et un
+     * second stockage à synchroniser pour un booléen coûterait plus cher que
+     * ce qu'il éviterait.
+     */
+    setFolderReplie(id, replie) {
+        const f = this.teacherFolders.find(x => x.id === id);
+        if (!f || !!f.replie === !!replie) return;
+        f.replie = !!replie;
+        // ON NE TOUCHE PAS À `timestamp` : replier un dossier n'est pas le
+        // modifier, et l'explorateur trie sur cette date. Un dossier qu'on
+        // ouvre pour regarder ne doit pas remonter en tête comme s'il avait
+        // été travaillé.
         this.saveTeacherFolders();
     },
 

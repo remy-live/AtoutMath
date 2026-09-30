@@ -46,23 +46,47 @@
  * LES TROIS NOTATIONS, avec les mots de Rémy.
  *
  * L'ordre est celui de l'écran : le défaut d'abord, puis les deux autres.
+ *
+ * ── POURQUOI CES NOTES SONT SI COURTES ──────────────────────────────────────
+ *
+ * Elles s'affichent dans une carte d'un panneau à TROIS COLONNES, qui mesure
+ * 86 px de large sur un téléphone de 390 px — une douzaine de caractères par
+ * ligne. Rémy, en voyant la première version : « hyper écrasé verticalement
+ * non ? ». MESURÉ : mes notes faisaient 47, 98 et 93 caractères, retombaient
+ * sur 4, 7 et 9 lignes, et les cartes montaient à 196 px contre 125 px pour
+ * celles de la marque des points juste au-dessus — une fois et demie plus
+ * hautes pour dire trois fois moins.
+ *
+ * LA RÈGLE, TENUE PAR UNE ÉPREUVE : ce qui tient dans une carte se compte en
+ * caractères, pas en idées. Une note qui dépasse `NOTE_MAX` ne se raccourcit
+ * pas à l'écran, elle empile des lignes. Ce qu'on a à dire de plus long se dit
+ * dans le paragraphe du bloc, qui prend toute la largeur.
  */
 export const SIGNES_FOIS = [
     {
         id: 'fois', glyphe: '×', label: 'À la française',
-        aide: 'La notation du collège et des manuels français.'
+        aide: 'La notation des manuels'
     },
     {
         id: 'point', glyphe: '·', label: 'Point médian',
-        aide: 'Plus léger, et il ne se confond jamais avec la lettre x — '
-            + 'ce qui compte dès qu\'il y a des lettres.'
+        aide: 'Jamais confondu avec x'
     },
     {
+        // « Fausse sur une copie » AVANT « celle du tableur » : le professeur
+        // qui hésite a besoin de la mise en garde, pas de la justification.
         id: 'etoile', glyphe: '*', label: 'Astérisque',
-        aide: 'Celle des machines : le tableur, le Chat Géomètre. Sur une '
-            + 'copie, elle serait comptée fausse.'
+        aide: 'Fausse sur une copie'
     }
 ];
+
+/**
+ * LA LARGEUR D'UNE CARTE, EN CARACTÈRES.
+ *
+ * Mesuré sur celles de la marque des points, réglées depuis longtemps : 22 à
+ * 25 caractères, deux lignes, 125 px de haut. On s'autorise un peu plus, pas
+ * le double.
+ */
+export const NOTE_MAX = 30;
 
 /** Le défaut, et il ne bouge pas : c'est ce qu'écrivent les manuels. */
 export const SIGNE_PAR_DEFAUT = 'fois';

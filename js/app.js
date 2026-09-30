@@ -817,10 +817,14 @@ function initReglagesAffichage() {
             </div>
             <div class="reglage-bloc">
                 <div class="reglage-titre">Signe de multiplication</div>
-                <p class="reglage-aide">Partout où il s'écrit : les énoncés, les
-                   calculs ligne à ligne, le pavé et ce que l'élève tape.
-                   <b>Les trois se tapent toujours</b> — ce réglage choisit ce qui
-                   s'affiche, pas ce qui est compris.</p>
+                <!-- CE PARAGRAPHE PREND TOUTE LA LARGEUR, les notes des cartes
+                     n'en ont que 86 px : tout ce qui demande une phrase se dit
+                     ICI, jamais dans une carte. Voir signeFois.js, NOTE_MAX. -->
+                <p class="reglage-aide">Partout où il s'écrit : énoncés, calculs
+                   ligne à ligne, pavé de saisie. <b>Les trois se tapent
+                   toujours</b> — le réglage change ce qui s'affiche, pas ce qui
+                   est compris. L'astérisque est celle du tableur et du Chat
+                   Géomètre.</p>
                 <div class="reglage-choix">
                     ${SIGNES_FOIS.map(s => `
                         <button type="button" class="reglage-option${state.signeFois === s.id ? ' reglage-option--actif' : ''}"
