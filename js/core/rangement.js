@@ -53,7 +53,35 @@ export function setModeRangement(mode) {
  */
 export function cheminsDe(exo, mode = modeRangement(), classement = undefined) {
     if (!exo || !exo.tags) return [[]];
-    if (mode !== RANGEMENTS.CHAPITRE) return [exo.tags.chemin || []];
+    if (mode !== RANGEMENTS.CHAPITRE) {
+        // ── UN EXERCICE PEUT TENIR À DEUX ENDROITS DE L'ARBRE ──────────────
+        //
+        // RÉMY : « j'ai cherché l'exercice des nombres relatifs, il était dans
+        // priorités mais il peut être aussi dans nombre relatifs ».
+        //
+        // Il a raison, et ce n'est pas une hésitation de rangement :
+        // « −6 + 3 × (−2) » EST des priorités et EST des relatifs, et le
+        // professeur qui prépare l'un des deux chapitres doit l'y trouver. Le
+        // ranger sous un seul revient à parier sur le chapitre qu'il préparera.
+        //
+        // LE RANGEMENT PAR CHAPITRE LE FAISAIT DÉJÀ — un exercice y suit ses
+        // compétences, et `calc-prio-relatifs` apparaît sous « Priorités
+        // opératoires », « Relatifs » et « Produits de relatifs ». Seul le
+        // rangement par DOMAINE, celui par défaut, n'en connaissait qu'un.
+        // D'où sa recherche infructueuse.
+        //
+        // TOUT LE RESTE ÉTAIT DÉJÀ PRÊT : cette fonction rend une LISTE depuis
+        // le début, et les trois fonctions de l'arbre raisonnent sur « au moins
+        // un de ses chemins passe par ce dossier ». Il ne manquait qu'un second
+        // chemin à déclarer.
+        //
+        // LE PREMIER RESTE LE PRINCIPAL. `tags.chemin[0]` donne le domaine, et
+        // plusieurs écrans l'affichent tel quel — la pastille du catalogue, la
+        // colonne du bilan. Un exercice garde donc UN domaine ; ce sont ses
+        // sous-dossiers qui peuvent être deux.
+        const autres = Array.isArray(exo.tags.aussi) ? exo.tags.aussi : [];
+        return [exo.tags.chemin || [], ...autres.filter((c) => Array.isArray(c) && c.length)];
+    }
 
     const niveaux = exo.tags.niveaux || [];
     const siens = classement === undefined ? chapitresDe(exo) : chapitresDe(exo, classement);

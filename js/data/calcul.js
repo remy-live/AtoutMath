@@ -224,6 +224,10 @@ export const calculExercises = [
             }
         ],
         tags: {
+            // AUSSI DANS « Nombres relatifs » — voir cheminsDe() dans
+            // core/rangement.js. Rémy : « il était dans priorités mais il
+            // peut être aussi dans nombre relatifs ».
+            aussi: [[TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.RELATIFS]],
             chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES],
             niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
@@ -346,6 +350,10 @@ export const calculExercises = [
         motsClefs: ['opposé', 'moins devant une parenthèse', 'supprimer les parenthèses',
             'relatifs', 'priorités', 'signe', 'parenthèses'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES],
+            // AUSSI DANS « Nombres relatifs » — voir cheminsDe() dans
+            // core/rangement.js. Rémy : « il était dans priorités mais il
+            // peut être aussi dans nombre relatifs ».
+            aussi: [[TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.RELATIFS]],
             niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Un moins qui n'a rien à sa gauche n'est pas une soustraction : il prend "
             + "l'OPPOSÉ de ce qui le suit. Et il ne peut s'appliquer qu'à UN SEUL nombre — "
@@ -395,6 +403,10 @@ export const calculExercises = [
         motsClefs: ['opposé', 'moins devant une parenthèse', 'règle des signes',
             'relatifs', 'signe', 'parenthèses'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES],
+            // AUSSI DANS « Nombres relatifs » — voir cheminsDe() dans
+            // core/rangement.js. Rémy : « il était dans priorités mais il
+            // peut être aussi dans nombre relatifs ».
+            aussi: [[TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.RELATIFS]],
             niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Un moins qui n'a rien à sa gauche n'est pas une soustraction : il "
             + "prend l'OPPOSÉ de ce qui le suit. Rien d'autre à penser ici : un seul "
@@ -439,6 +451,10 @@ export const calculExercises = [
         motsClefs: ['opposé', 'moins devant une parenthèse', 'supprimer les parenthèses',
             'relatifs', 'signe', 'parenthèses'],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.PRIORITES],
+            // AUSSI DANS « Nombres relatifs » — voir cheminsDe() dans
+            // core/rangement.js. Rémy : « il était dans priorités mais il
+            // peut être aussi dans nombre relatifs ».
+            aussi: [[TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.RELATIFS]],
             niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "On enlève les parenthèses AVANT de calculer, et l'on écrit la ligne "
             + "obtenue. « −(−4) + (−5) » devient « 4 − 5 », et seulement après on trouve "
