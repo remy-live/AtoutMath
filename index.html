@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=889">
-    <link rel="stylesheet" href="css/layout.css?v=889">
-    <link rel="stylesheet" href="css/ui.css?v=889">
-    <link rel="stylesheet" href="css/games.css?v=889">
-    <link rel="stylesheet" href="css/components.css?v=889">
-    <link rel="stylesheet" href="css/modules.css?v=889">
+    <link rel="stylesheet" href="css/base.css?v=890">
+    <link rel="stylesheet" href="css/layout.css?v=890">
+    <link rel="stylesheet" href="css/ui.css?v=890">
+    <link rel="stylesheet" href="css/games.css?v=890">
+    <link rel="stylesheet" href="css/components.css?v=890">
+    <link rel="stylesheet" href="css/modules.css?v=890">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -799,8 +799,16 @@
                          disait dix pixels plus bas. Voir `#rangement-fil`. -->
                 </div>
                 <!-- LA RECHERCHE. La loupe dit ce qu'est ce champ sans le
-                     dire ; la liste de suggestions s'ouvre sous lui au fil de
-                     la frappe et mène directement à l'exercice. -->
+                     dire ; les résultats tombent dans la liste du dessous, au
+                     fil de la frappe et classés par pertinence.
+
+                     IL Y AVAIT ICI UNE SECONDE LISTE, flottante, qui montrait
+                     huit des mêmes résultats sans l'œil ni le « + » et en
+                     recouvrait cinq. Rémy : « quand on appuie sur entrée il
+                     faudrait que la liste arrive dans l'arbre en dessous non
+                     et pas insérer le premier lien ? » Elle est partie avec sa
+                     touche Entrée ; le clavier descend maintenant dans la
+                     vraie liste (voir js/ui/rechercheUI.js). -->
                 <div id="sidebar-search-wrap">
                     <div class="rech-champ">
                         <svg class="rech-loupe" viewBox="0 0 24 24" width="17" height="17" fill="none"
@@ -808,14 +816,11 @@
                             <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.6-3.6" />
                         </svg>
                         <input type="search" id="sidebar-search-input" autocomplete="off"
-                               role="combobox" aria-expanded="false" aria-autocomplete="list"
-                               aria-controls="sidebar-search-suggestions"
+                               aria-controls="drill-content"
                                placeholder="Rechercher un exercice..." aria-label="Rechercher un exercice">
                         <button type="button" id="sidebar-search-clear" class="rech-croix" hidden
                                 aria-label="Effacer la recherche">&times;</button>
                     </div>
-                    <ul id="sidebar-search-suggestions" class="rech-liste" role="listbox" hidden
-                        aria-label="Suggestions d'exercices"></ul>
                 </div>
                 <!-- CE QUE LES FILTRES GARDENT, ET COMMENT LES DÉFAIRE.
                      Rémy : « il faudrait des filtres pour afficher moins

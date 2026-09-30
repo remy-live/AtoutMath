@@ -1835,19 +1835,12 @@ body.mobile-view .sidebar-top-controls > .select-wrap,
     .rech-croix:hover { color: var(--text-main); background: rgba(0,0,0,0.06); }
 }
 
-.rech-liste { position: absolute; top: calc(100% - 10px); left: 10px; right: 10px; z-index: 120; margin: 4px 0 0; padding: 4px; list-style: none; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-md); max-height: min(52vh, 340px); overflow-y: auto; }
-.rech-item { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 7px 9px; border-radius: 7px; cursor: pointer; }
-.rech-item--actif { background: color-mix(in srgb, var(--primary) 12%, transparent); }
-@media (hover: hover) {
-    .rech-item:hover { background: color-mix(in srgb, var(--primary) 12%, transparent); }
-}
-.rech-titre { font-size: 0.9rem; font-weight: 600; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Le gras marque CE QU'ON VIENT DE TAPER : l'œil retrouve sa saisie dans la
-   ligne sans relire le titre entier. */
-.rech-titre b { color: var(--primary-texte); font-weight: 800; }
-.rech-tags { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
-.rech-sous { grid-column: 1; font-size: 0.72rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rech-vide { padding: 10px; font-size: 0.82rem; color: var(--text-muted); text-align: center; }
+/* LA LISTE FLOTTANTE DE SUGGESTIONS N'EST PLUS. Elle montrait huit des mêmes
+   résultats que la liste du dessous, sans l'œil ni le « + », et en recouvrait
+   cinq — mesuré en tapant « fraction » dans l'atelier. Ce qu'elle avait à elle,
+   le classement par pertinence et le clavier, est passé à la vraie liste.
+   Rémy : « quand on appuie sur entrée il faudrait que la liste arrive dans
+   l'arbre en dessous non et pas insérer le premier lien ? » */
 
 .btn-group { display: flex; gap: 4px; background: var(--bg-app); padding: 4px; border-radius: 10px; border: 1px solid var(--border); box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); }
 .btn-toggle { padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600; transition: all 0.2s ease; border: 1px solid transparent; }
@@ -1886,11 +1879,18 @@ details[open] > summary .custom-chevron { transform: rotate(90deg); }
    44 px et pas moins : c'est la cible tactile minimale confortable, et le
    catalogue se parcourt au doigt sur tablette. */
 .exo-list-item { height: 44px; box-sizing: border-box; padding: 0 8px 0 6px; margin: 2px 0; border-radius: 8px; font-size: 0.95rem; font-weight: 500; color: var(--text-main); display: flex; align-items: center; gap: 6px; background: var(--bg-panel); border: 1px solid var(--border); transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, transform 0.2s ease; cursor: pointer; }
+/* LA LIGNE OÙ L'ON EST ARRIVÉ AU CLAVIER, depuis le champ de recherche. Elle se
+   marque comme une ligne SURVOLÉE et non comme un champ de saisie : c'est le
+   même geste — parcourir une liste — et l'on ne veut pas apprendre deux
+   signes pour lui. Le cerne s'ajoute par-dessus, pour qui navigue sans voir
+   les couleurs. */
+.exo-list-item:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary); box-shadow: var(--shadow-sm); color: var(--primary-texte); }
 @media (hover: hover) {
     .exo-list-item:hover { border-color: var(--primary); box-shadow: var(--shadow-sm); transform: translateX(2px); color: var(--primary-texte); }
 }
 /* Le titre coupe, et le titre entier reste accessible : l'attribut `title`
    pose l'infobulle du navigateur, et l'apercu epingle porte le nom en clair. */
+.exo-item-titre b { color: var(--primary-texte); font-weight: 800; }
 .exo-item-titre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* CE QU'ON A REGLE, SUR LA LIGNE DE L'ETAPE. Discret — c'est un repere, pas un

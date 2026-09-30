@@ -1211,3 +1211,40 @@ manque.
   aucun ne se mesure tant qu'on ne sait pas y poser une pièce.
 - **La règle** : **un écran vide ne se juge pas.** On joue l'exercice avant de
   le photographier.
+
+---
+
+**Une épreuve qui cherche son motif trop loin** — 30 septembre 2026
+
+- **Ce que je voulais faire** : garder qu'Entrée, dans le champ de recherche,
+  descend dans les résultats au lieu d'ajouter le premier au parcours.
+- **Ce qui a coûté** : l'épreuve était verte avec ET sans le défaut ;
+  `tools/epreuveTombe.mjs` l'a dit tout de suite, sans quoi elle partait au
+  dépôt. Deux trous d'un coup, et tous deux viennent de la même paresse : elle
+  lisait le gestionnaire de clavier ENTIER au lieu de la branche « Entrée ».
+  Elle exigeait « viser(0) » quelque part — la branche ↓ le contient aussi — et
+  n'interdisait que `addStep`, que le défaut atteignait par `activer`.
+- **Combien de fois** : ||
+- **Ce qui manque** : rien à fabriquer. `epreuveTombe.mjs` fait déjà le travail,
+  et c'est la deuxième fois qu'il rattrape une épreuve creuse : il n'est pas
+  facultatif.
+- **La règle** : **une épreuve de structure découpe l'endroit où la décision se
+  prend**, pas le bloc qui l'entoure. Interdire des noms ne garde que les
+  défauts qu'on a imaginés.
+
+---
+
+**`elementFromPoint` rend aussi les ancêtres** — 30 septembre 2026
+
+- **Ce que je voulais faire** : compter les lignes de résultat qu'une boîte
+  flottante recouvre.
+- **Ce qui a coûté** : dix minutes et une fausse alerte. `document.elementFromPoint`
+  au centre d'une ligne à cheval sur le bas d'une zone qui défile rend LA ZONE,
+  qui est son ancêtre — et la sonde criait au recouvrement là où la ligne était
+  simplement en bas de sa fenêtre. La même mesure sert déjà ailleurs dans le
+  dépôt ; elle ressortira.
+- **Combien de fois** : |
+- **Ce qui manque** : un `s.recouvertPar(selecteur)` dans `tools/sonde.mjs` le
+  jour où la mesure revient une troisième fois.
+- **La règle** : **un ancêtre qui répond n'est pas un recouvrement.** On écarte
+  ce qui contient l'élément, on ne garde que ce qui se peint par-dessus.

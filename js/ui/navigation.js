@@ -5,7 +5,7 @@ import { destroyAllDemoCursors } from '../core/demoPointer.js';
 import { accessOf, lockLabel, isGame } from '../core/gameAccess.js';
 import { state } from '../core/state.js';
 import { launchPreview, openGameLayer } from '../games/engine.js';
-import { correspond } from '../core/recherche.js';
+import { chercher, decouper } from '../core/recherche.js';
 import { estJeuCatalogue } from '../core/revue.js';
 import { cheminsDe, modeRangement, setModeRangement, RANGEMENTS, HORS_CHAPITRE } from '../core/rangement.js';
 import { ficheDe } from './rechercheUI.js';
@@ -22,6 +22,18 @@ import { pendantLeGlissement, arreterLeDefilement, brancherDefilementGlisse }
 export function createLibraryItem(exo) {
     const item = document.createElement('div');
     item.className = 'exo-list-item';
+    // CETTE LIGNE SE PREND AU CLAVIER, depuis le champ de recherche : ↓ y entre,
+    // les flèches la parcourent, Entrée l'ajoute. Rémy : « quand on appuie sur
+    // entrée il faudrait que la liste arrive dans l'arbre en dessous ».
+    //
+    // `tabIndex = -1` ET PAS 0 : le focus se donne par programme, mais la ligne
+    // n'entre pas dans l'ordre de tabulation. À 217 exercices, elle y mettrait
+    // 217 arrêts entre le champ de recherche et le reste de la page.
+    item.tabIndex = -1;
+    // L'identifiant voyage sur la ligne : le clavier retrouve l'exercice sans
+    // qu'on ait à garder une table en mémoire, qui se périmerait à la frappe
+    // suivante puisque la liste est redessinée en entier.
+    item.dataset.exo = exo.id;
     // La mise en page vit dans la feuille de style, et pas ici : une hauteur de
     // rangee fixee en CSS que quatre styles en ligne contredisent ne tient pas.
 
@@ -63,7 +75,21 @@ export function createLibraryItem(exo) {
     // l'apercu epingle le rendent en entier quand on en a besoin.
     const titleSpan = document.createElement('span');
     titleSpan.className = 'exo-item-titre';
-    titleSpan.textContent = exo.title;
+    // LE GRAS MARQUE CE QU'ON VIENT DE TAPER, et l'œil retrouve sa saisie dans
+    // la ligne sans relire le titre entier. C'est la seconde chose que faisait
+    // la boîte flottante de suggestions et que la liste ne faisait pas — la
+    // première étant le classement. Les deux sont ici maintenant ; la boîte
+    // n'avait plus rien à elle.
+    //
+    // `decouper` rend le titre d'ORIGINE, accents compris : il compare sur la
+    // forme sans accents mais ne rend jamais « Geometrie » à l'écran.
+    const q = (state.searchQuery || '').trim();
+    if (q) {
+        titleSpan.innerHTML = decouper(exo.title, q)
+            .map((m) => m.fort ? `<b>${echapper(m.texte)}</b>` : echapper(m.texte)).join('');
+    } else {
+        titleSpan.textContent = exo.title;
+    }
     titleSpan.title = exo.title;
     item.appendChild(titleSpan);
 
@@ -287,12 +313,38 @@ function statusBadge(exo) {
     return `<span class="tag tag-btn tag-status tag-status--${s}">${STATUS_LABELS[s]}</span>`;
 }
 
-// Le catalogue se resserre avec EXACTEMENT la règle des suggestions : sans
-// accents, mot à mot, la consigne en dernier recours. Deux règles différentes
-// donneraient le spectacle absurde d'une suggestion visible au-dessus d'un
-// catalogue qui prétend n'avoir rien trouvé.
-function matchesSearch(exo, query) {
-    return correspond(ficheDe(exo), query);
+/**
+ * LA RECHERCHE NE FILTRE PLUS SEULEMENT, ELLE CLASSE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * MESURÉ AVANT (tools/leTrajetDuProf.mjs) : en tapant « addition », les trois
+ * premières lignes du catalogue étaient « Les Nombres des Pharaons », « Le Mot
+ * Juste » et « Nombres Relatifs ». Le premier titre contenant le mot arrivait
+ * en QUATRIÈME position. Ces trois-là répondent bien — leur consigne parle
+ * d'addition — mais un professeur ne lit pas les vingt-sept résultats : il lit
+ * les trois premiers et conclut que la recherche ne marche pas.
+ *
+ * LE CLASSEMENT EXISTAIT DÉJÀ, et c'est bien le problème : il ne servait que
+ * la petite liste flottante, celle-là même qui recouvrait cinq lignes du
+ * catalogue en montrant les mêmes exercices. Rémy : « quand on appuie sur
+ * entrée il faudrait que la liste arrive dans l'arbre en dessous non ». Elle y
+ * arrive — il ne lui manquait que l'ordre.
+ *
+ * L'ENSEMBLE NE CHANGE PAS, SEULEMENT L'ORDRE. `chercher` écarte une fiche dès
+ * qu'un mot n'y marque aucun point, ce qui est mot pour mot la règle de
+ * `correspond` : les deux gardent les mêmes exercices. On ne risque donc pas
+ * de faire disparaître un résultat en le triant — et le compte « 27 sur 217 »
+ * reste juste.
+ */
+function classerParPertinence(list, query) {
+    // `chercher` rend l'OBJET FICHE qu'on lui a passé, et `ficheDe` le garde en
+    // cache : la même fiche pour le même exercice. La table tient donc sur
+    // l'identité, sans avoir à recomparer des identifiants.
+    const parFiche = new Map(list.map((e) => [ficheDe(e), e]));
+    return chercher([...parFiche.keys()], query, { max: Infinity })
+        .map((r) => parFiche.get(r.fiche))
+        .filter(Boolean);
 }
 
 export function getFilteredExercises() {
@@ -313,8 +365,8 @@ export function getFilteredExercises() {
         // n'aurait aucun sens.
         list = list.filter(e => seJoueAussiADeux(e));
     }
-    if (state.searchQuery) {
-        list = list.filter(e => matchesSearch(e, state.searchQuery));
+    if (state.searchQuery && state.searchQuery.trim()) {
+        list = classerParPertinence(list, state.searchQuery);
     }
     return list;
 }

@@ -300,15 +300,14 @@ const trouves = await prof.evaluate(() => {
     // vingtaine, il lit les trois premières lignes et conclut.
     const rang = noms.findIndex(n => /addition/i.test(n));
     return {
-        suggestions: document.querySelectorAll('#sidebar-search-suggestions li').length,
         liste: noms.length,
         trois: noms.slice(0, 3),
         rangDuBon: rang
     };
 });
-console.log(`   ${trouves.liste} exercice(s) trouvé(s) · ${trouves.suggestions} suggestion(s)`);
+console.log(`   ${trouves.liste} exercice(s) trouvé(s)`);
 console.log(`   les trois premiers : ${trouves.trois.join(' · ')}`);
-if (!trouves.liste && !trouves.suggestions) {
+if (!trouves.liste) {
     frotte('« addition » ne trouve rien dans le catalogue');
 } else if (trouves.rangDuBon > 2) {
     frotte(`« addition » : le premier titre qui contient le mot arrive en `
