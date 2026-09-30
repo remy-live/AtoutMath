@@ -67,6 +67,24 @@ $constats[] = $installeur
         . "elle sert aux nouvelles installations.)")
     : constat('ok', 'Page d\'installation', 'effacée');
 
+// LES FICHIERS QU'UNE MISE À JOUR NE PEUT PAS EFFACER.
+//
+// Rémy : « donc je mets à jour comment ». La question a fait apparaître un trou
+// qu'on n'avait jamais eu à regarder : ni l'archive déposée ni la publication
+// par SFTP n'effacent quoi que ce soit — et c'est voulu, sans quoi elles
+// emporteraient `config.php` et la base. Un fichier RETIRÉ du logiciel reste
+// donc sur l'hébergement, vivant, accessible, travaillant sur la base
+// d'aujourd'hui avec le code d'hier. Voir `lib/menage.php`.
+$perimes = fichiersPerimesPresents(dirname(__DIR__, 3));
+$constats[] = $perimes
+    ? constat('!', 'Fichiers d\'une version précédente',
+        count($perimes) . ' fichier' . (count($perimes) > 1 ? 's' : '')
+        . ' que le logiciel n\'utilise plus',
+        'Une mise à jour écrit les fichiers, elle n\'en efface aucun — c\'est ce '
+        . 'qui l\'empêche d\'emporter votre configuration et votre base. Ceux-ci '
+        . 'restent donc de l\'ancienne version ; le bouton ci-dessous les retire.')
+    : constat('ok', 'Fichiers d\'une version précédente', 'aucun');
+
 // La purge
 $jours = (int) (config()['retention_days'] ?? 0);
 $temoin = dirname(__DIR__) . '/.derniere-purge';
@@ -177,6 +195,25 @@ soit plus là du tout.</p>
     <input type="hidden" name="jeton" value="<?= h(jeton()) ?>">
     <input type="hidden" name="action" value="effacer-installeur">
     <button class="rouge">Effacer api/install.php</button>
+</form>
+<?php endif; ?>
+
+<?php if ($perimes): ?>
+<h3 style="font-size:.95rem; margin:18px 0 7px">Retirer les fichiers d'une version précédente</h3>
+<p class="gris-clair" style="margin-top:0">Ils ne servent plus, et ils travaillent
+sur votre base d'aujourd'hui avec le code d'hier.</p>
+<ul class="gris-clair" style="margin-top:0">
+    <?php foreach ($perimes as $chemin => $pourquoi): ?>
+        <li><code><?= h($chemin) ?></code> — <?= h($pourquoi) ?></li>
+    <?php endforeach; ?>
+</ul>
+<form method="post">
+    <input type="hidden" name="jeton" value="<?= h(jeton()) ?>">
+    <input type="hidden" name="action" value="menage">
+    <?php // ON NE DIT PAS AU SERVEUR QUOI EFFACER. La liste vit dans
+          // lib/menage.php ; un formulaire qui nomme le fichier à supprimer est
+          // un formulaire qui supprime n'importe quoi. ?>
+    <button class="rouge">Retirer ces <?= count($perimes) ?> fichier<?= count($perimes) > 1 ? 's' : '' ?></button>
 </form>
 <?php endif; ?>
 <?php

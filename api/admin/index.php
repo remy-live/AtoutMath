@@ -44,6 +44,7 @@ require_once __DIR__ . '/../lib/seance.php';
 require_once __DIR__ . '/../lib/coffre.php';
 require_once __DIR__ . '/../lib/sante.php';
 require_once __DIR__ . '/../lib/guichet.php';
+require_once __DIR__ . '/../lib/menage.php';
 
 // LE DÉPOSEUR, CHARGÉ SANS SA PAGE. Il apporte `lireArchive`, `poserArchive`,
 // `plafondTransfert`, `archivesPresentes` et `poids` — les règles qui refusent
@@ -197,6 +198,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         redirige('index.php#sante', $ok
             ? 'install.php est effacé.'
             : "Impossible de l'effacer : supprimez api/install.php par FTP.");
+    }
+
+    // --- Retirer les fichiers d'une version précédente ----------------------
+    if ($action === 'menage') {
+        $r = effacerFichiersPerimes(dirname(__DIR__, 2));
+        $n = count($r['effaces']);
+        redirige('index.php#sante', $r['restants']
+            ? $n . ' retiré(s), mais ' . implode(', ', $r['restants'])
+                . ' résiste(nt) : supprimez-les par FTP.'
+            : ($n > 0
+                ? $n . ' fichier' . ($n > 1 ? 's' : '') . ' d\'une version précédente retiré'
+                    . ($n > 1 ? 's' : '') . '.'
+                : 'Il n\'y en avait plus.'));
     }
 
     // --- Le dépôt d'une archive --------------------------------------------

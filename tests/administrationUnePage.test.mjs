@@ -148,3 +148,36 @@ test('L\'AVERTISSEMENT DU CODE COMMUN N\'EST PAS PARTI AVEC LA PAGE', () => {
     assert.match(lire('js/ui/espaceClasses.js'), /entrer à la place d\\'un autre/,
         'le logiciel doit dire ce que le code commun coûte, là où le geste se fait');
 });
+
+test('CE QU\'UNE MISE À JOUR NE PEUT PAS EFFACER EST NOMMÉ QUELQUE PART', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // Rémy : « donc je mets à jour comment ». La question a fait apparaître un
+    // trou qu'on n'avait jamais eu à regarder : NOS DEUX FAÇONS DE METTRE À
+    // JOUR N'EFFACENT RIEN — l'archive écrit ce qu'elle contient, et la
+    // publication par SFTP tourne avec `delete_remote_files: false`, parce
+    // qu'un transfert qui « fait le ménage » emporterait `config.php` et la
+    // base, c'est-à-dire le travail de toutes les classes.
+    //
+    // Un fichier retiré du logiciel reste donc sur l'hébergement, vivant, à
+    // travailler sur la base d'aujourd'hui avec le code d'hier. Cette épreuve
+    // relie les deux : un fichier supprimé du dépôt doit être inscrit dans
+    // `lib/menage.php`, sinon personne ne le retirera jamais.
+    const MENAGE = lire('api/lib/menage.php');
+    for (const mort of ['api/admin/classe.php', 'api/admin/eleves.php']) {
+        assert.ok(MENAGE.includes(mort),
+            `${mort} a été supprimé du dépôt mais reste sur les serveurs déjà `
+            + 'installés : il doit figurer dans FICHIERS_PERIMES');
+    }
+    // ET LA LISTE NE SE DEVINE PAS. « Tout ce qui n'est pas dans l'archive »
+    // serait une règle automatique et catastrophique : elle désignerait
+    // `config.php`, la base, et les archives déposées à la racine.
+    assert.match(MENAGE, /function effacerFichiersPerimes/);
+    assert.doesNotMatch(MENAGE, /\$_POST|\$_GET|\$_REQUEST/,
+        'on efface ce que NOUS avons inscrit, jamais ce que le navigateur nomme');
+    assert.match(INDEX, /effacerFichiersPerimes\(dirname\(__DIR__, 2\)\)/,
+        'et la page l\'appelle sans lui passer de chemin');
+
+    // LE RÉGLAGE QUI REND TOUT CELA NÉCESSAIRE NE DOIT PAS BOUGER EN SILENCE.
+    assert.match(lire('.github/workflows/deploiement.yml'), /delete_remote_files: false/,
+        'le jour où cela passerait à true, on perdrait config.php et la base');
+});
