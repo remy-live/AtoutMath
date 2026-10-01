@@ -128,14 +128,14 @@ function etatDeSeance(array $eleve): array
     // l'est dans les tests, où l'on n'a pas de requête HTTP).
     $s = $pdo->prepare('SELECT id, name, join_code, locked, notice, impose_path_id,
                               impose_jusqu_a, chrono_fin, chrono_a_zero, bac_ferme,
-                              bac_minutes
+                              bac_minutes, bac_jeux
                          FROM classes WHERE id = ?');
     $s->execute([$eleve['class_id']]);
     $classe = $s->fetch() ?: ['id' => '', 'name' => '', 'join_code' => '', 'locked' => 0,
                               'notice' => null, 'impose_path_id' => null,
                               'impose_jusqu_a' => null, 'chrono_fin' => null,
                               'chrono_a_zero' => null, 'bac_ferme' => 0,
-                              'bac_minutes' => null];
+                              'bac_minutes' => null, 'bac_jeux' => null];
     // LA SÉANCE IMPOSÉE A UNE FIN, et c'est ici qu'on la fait respecter : c'est
     // la porte par laquelle TOUS les élèves la reçoivent.
     $imposeId = imposeEncoreValide($classe);
@@ -238,6 +238,18 @@ function etatDeSeance(array $eleve): array
         // COMBIEN DE TEMPS DURE LE BAC, en minutes, 0 = sans limite. Le compte
         // part quand l'élève l'ouvre — voir `resteDuBac` côté client.
         'bacMinutes' => (int) ($classe['bac_minutes'] ?? 0),
+        // CE QU'IL Y A DEDANS, quand le professeur l'a choisi. Rémy : « pour le
+        // bac à sable j'aimerai quand même bien pouvoir éditer le contenu ».
+        //
+        // `null` VEUT DIRE « LA LISTE PAR DÉFAUT », et c'est différent du
+        // tableau vide : vide, c'est un professeur qui a tout retiré, et le bac
+        // de ses élèves doit alors rester vide. Le noyau fait déjà cette
+        // distinction — `jeuxDuBac(trouver, liste)` ne retombe sur ses valeurs
+        // sûres que si la liste est absente.
+        'bacJeux' => ($classe['bac_jeux'] ?? null) === null
+            ? null
+            : (((string) $classe['bac_jeux']) === ''
+                ? [] : explode(',', (string) $classe['bac_jeux'])),
         'messages'  => $messages,
         'skippable' => array_keys($saut),
         'removed'   => array_keys($retire),

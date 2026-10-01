@@ -103,6 +103,7 @@ assurance qui n'existe pas — c'est pire que pas d'épreuve.
 
 ```sh
 node tools/epreuveTombe.mjs <essai> <source> <ancien> <nouveau>
+node tools/epreuveTombe.mjs <essai> <source> --depuis <paires.json>   # multiligne
 ```
 
 Il remet le défaut dans le code, relance l'épreuve, **exige qu'elle tombe**, et

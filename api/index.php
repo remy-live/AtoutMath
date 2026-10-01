@@ -1239,17 +1239,57 @@ function handleTeacherClass(): void
         // chiffre ne veut plus rien dire dans une heure de cours.
         $minutes = array_key_exists('minutes', $body)
             ? max(0, min(120, (int) $body['minutes'])) : null;
-        if ($minutes === null) {
-            db()->prepare('UPDATE classes SET bac_ferme = ? WHERE id = ?')
-                ->execute([$ferme ? 1 : 0, $classe['id']]);
-        } else {
-            db()->prepare('UPDATE classes SET bac_ferme = ?, bac_minutes = ? WHERE id = ?')
-                ->execute([$ferme ? 1 : 0, $minutes ?: null, $classe['id']]);
+
+        // CE QU'IL Y A DEDANS. Rémy : « pour le bac à sable j'aimerai quand
+        // même bien pouvoir éditer le contenu ».
+        //
+        // TROIS ÉTATS, ET ILS NE DISENT PAS LA MÊME CHOSE :
+        //   · la clef absente — on ne touche pas au contenu (c'est le cas
+        //     quand on ouvre ou ferme le bac, ou qu'on règle sa durée) ;
+        //   · une liste VIDE — le professeur a tout retiré, et son bac doit
+        //     rester vide plutôt que de se remplir tout seul de ce qu'il vient
+        //     d'enlever ;
+        //   · une liste — c'est elle qu'on sert.
+        //
+        // ON BORNE À VINGT. Le module du bac le dit depuis le début : « un
+        // élève à qui il reste sept minutes et qui doit CHOISIR parmi deux
+        // cents passe ses sept minutes à choisir ».
+        $jeux = null;
+        if (array_key_exists('jeux', $body)) {
+            $liste = is_array($body['jeux']) ? $body['jeux'] : [];
+            $propres = [];
+            foreach ($liste as $x) {
+                $x = trim((string) $x);
+                // L'ALPHABET D'UN IDENTIFIANT DE CATALOGUE, et rien d'autre :
+                // cette chaîne repartira vers trente navigateurs d'élèves.
+                if ($x !== '' && preg_match('/^[a-z0-9-]{2,60}$/', $x)
+                    && !in_array($x, $propres, true)) {
+                    $propres[] = $x;
+                }
+            }
+            $jeux = implode(',', array_slice($propres, 0, 20));
         }
+
+        // ON N'ÉCRIT QUE CE QU'ON NOUS A DONNÉ. Trois requêtes auraient été
+        // trois façons d'oublier un cas ; on compose la liste des colonnes.
+        $colonnes = ['bac_ferme = ?'];
+        $valeurs = [$ferme ? 1 : 0];
+        if ($minutes !== null) { $colonnes[] = 'bac_minutes = ?'; $valeurs[] = $minutes ?: null; }
+        if ($jeux !== null)    { $colonnes[] = 'bac_jeux = ?';    $valeurs[] = $jeux; }
+        $valeurs[] = $classe['id'];
+        db()->prepare('UPDATE classes SET ' . implode(', ', $colonnes) . ' WHERE id = ?')
+            ->execute($valeurs);
+
+        $combien = $jeux === null ? null : ($jeux === '' ? 0 : count(explode(',', $jeux)));
         $dit = $ferme ? 'Bac à sable fermé.'
-            : ($minutes ? "Bac à sable ouvert, $minutes minutes par élève."
-                        : 'Bac à sable ouvert.');
-        respond(['ok' => true, 'ferme' => $ferme, 'minutes' => $minutes ?: 0, 'dit' => $dit]);
+            : ($combien !== null
+                ? ($combien ? "Bac à sable : $combien jeu(x) choisi(s)."
+                            : 'Bac à sable vidé : plus aucun jeu proposé.')
+                : ($minutes ? "Bac à sable ouvert, $minutes minutes par élève."
+                            : 'Bac à sable ouvert.'));
+        respond(['ok' => true, 'ferme' => $ferme, 'minutes' => $minutes ?: 0,
+                 'jeux' => $jeux === null ? null : ($jeux === '' ? [] : explode(',', $jeux)),
+                 'dit' => $dit]);
     }
 
     // LES DEUX GESTES SANS RETOUR DEMANDENT LE MOT ÉCRIT, comme dans les pages
@@ -1374,6 +1414,12 @@ function handleTeacherRoster(): void
             // limite. L'écran doit l'afficher, sinon le professeur repose le
             // même quart d'heure à chaque heure sans savoir s'il y est déjà.
             'bac_minutes' => (int) ($classe['bac_minutes'] ?? 0),
+            // ET CE QU'IL Y A DEDANS, pour que l'écran puisse dire l'état avant
+            // qu'on clique. NULL veut dire « au choix du logiciel » et la
+            // chaîne vide « tout retiré » : l'écran distingue les deux, on lui
+            // rend donc la colonne telle quelle plutôt qu'un tableau qui les
+            // confondrait.
+            'bac_jeux' => $classe['bac_jeux'] ?? null,
         ],
         'eleves' => rosterLisible($classe['id']),
         // Un code proposé d'avance pour « le même pour toute la classe » : il

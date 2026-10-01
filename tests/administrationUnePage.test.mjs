@@ -181,3 +181,31 @@ test('CE QU\'UNE MISE À JOUR NE PEUT PAS EFFACER EST NOMMÉ QUELQUE PART', () =
     assert.match(lire('.github/workflows/deploiement.yml'), /delete_remote_files: false/,
         'le jour où cela passerait à true, on perdrait config.php et la base');
 });
+
+test('LE NOM EN HAUT À GAUCHE RAMÈNE AU SITE', () => {
+    // Rémy : « dans la partie admin, j'aimerai pouvoir cliquer sur le
+    // atoutmath en haut à gauche pour aller sur le site ».
+    //
+    // C'est le geste du web entier, et il ne menait nulle part ici : on
+    // repartait par le bouton « retour » du navigateur, ou en retapant
+    // l'adresse. L'administration vit dans `api/admin/` — deux dossiers plus
+    // haut, et l'on est sur le site.
+    const SOCLE = lire('api/admin/_socle.php');
+    assert.match(SOCLE, /<a class="marque" href="\.\.\/\.\.\/"/,
+        'le nom du logiciel ne ramène nulle part');
+
+    // UN CHEMIN RELATIF, ET C'EST LA DÉCISION QU'ON GARDE. Le site de Rémy est
+    // à la racine, mais rien ne garantit qu'il le soit toujours — un
+    // sous-dossier, un essai, un second site sur le même hébergement. Une
+    // adresse absolue écrite ici conduirait alors ses élèves ailleurs.
+    assert.doesNotMatch(SOCLE, /<a class="marque" href="(https?:|\/)/,
+        'une adresse absolue casse une installation en sous-dossier');
+
+    // ET IL RESTE LISIBLE : même blanc, même graisse qu'avant, sur l'en-tête
+    // sombre. Un lien de la couleur par défaut du navigateur sur #1e293b ne se
+    // lit pas.
+    assert.match(SOCLE, /header \.marque \{[^}]*color: #fff/,
+        'le nom passerait en bleu de lien sur un fond sombre');
+    assert.match(SOCLE, /header \.marque:focus-visible/,
+        'un lien doit se voir quand on l\'atteint au clavier');
+});

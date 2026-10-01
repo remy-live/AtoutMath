@@ -12,6 +12,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { bacOuvert, jeuxDuBac, PAR_DEFAUT } from '../js/core/bacASable.js';
 import '../js/core/activities/index.js';
 import { getExerciseById } from '../js/data/catalog.js';
@@ -91,11 +92,41 @@ test('le professeur peut donner sa propre liste', () => {
     assert.deepEqual(jeux.map(j => j.id), ['calc-tetris', 'calc-sudoku']);
 });
 
-test('une liste vide retombe sur celle par défaut, plutôt que sur rien', () => {
-    // Un bac vide se lit comme une panne. S'il doit être fermé, c'est le
-    // réglage `ferme` qui le dit, et il s'accompagne d'une phrase.
-    assert.ok(jeuxDuBac(getExerciseById, []).length >= 10);
-    assert.ok(jeuxDuBac(getExerciseById, null).length >= 10);
+test('LA LISTE ABSENTE RETOMBE SUR CELLE PAR DÉFAUT — LA LISTE VIDE, NON', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // CETTE ÉPREUVE DISAIT L'INVERSE, ET VOICI POURQUOI ELLE A CHANGÉ.
+    //
+    // Elle gardait « une liste vide retombe sur celle par défaut, plutôt que
+    // sur rien », avec un argument juste : « un bac vide se lit comme une
+    // panne ». Il tenait tant que PERSONNE ne pouvait composer la liste — une
+    // liste vide ne pouvait alors être qu'un oubli du logiciel.
+    //
+    // Rémy : « pour le bac à sable j'aimerai quand même bien pouvoir éditer le
+    // contenu ». À partir de là, une liste vide n'est plus un oubli : c'est un
+    // professeur qui a tout retiré, et lui remettre les valeurs par défaut lui
+    // rend exactement ce qu'il vient d'enlever.
+    //
+    // L'ARGUMENT, LUI, N'A PAS DISPARU : il se tient maintenant à l'écran,
+    // dans `ouvrirLeBac`, par une phrase — « ton professeur n'a mis aucun jeu
+    // dans le bac à sable pour cette fois » — au lieu d'une fenêtre vide. Le
+    // reste de la chaîne est gardé par `tests/bacDuProf.test.mjs`.
+    assert.ok(jeuxDuBac(getExerciseById, null).length >= 10,
+        'un bac jamais réglé doit rester garni');
+    assert.ok(jeuxDuBac(getExerciseById, undefined).length >= 10,
+        'et une clef absente vaut « jamais réglé »');
+    assert.deepEqual(jeuxDuBac(getExerciseById, []), [],
+        'un bac vidé exprès se remplit de ce que le professeur vient d\'enlever');
+});
+
+test('ET UN BAC VIDE SE DIT, AU LIEU DE S\'OUVRIR SUR RIEN', () => {
+    // La moitié de la décision ci-dessus vit dans l'écran, pas dans le noyau :
+    // sans cette phrase, vider le bac ouvrirait une fenêtre blanche, et c'est
+    // précisément ce que l'ancienne règle voulait éviter.
+    const UI = readFileSync(new URL('../js/ui/bacASable.js', import.meta.url), 'utf8');
+    assert.match(UI, /if \(!groupes\.length\) \{/,
+        'rien ne regarde le cas où il n\'y a aucun jeu à montrer');
+    assert.match(UI, /aucun jeu dans le bac à sable/,
+        'une fenêtre vide ne dit pas ce qui s\'est passé');
 });
 
 test('un identifiant inconnu est ignoré, il ne casse pas le bac', () => {

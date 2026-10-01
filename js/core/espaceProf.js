@@ -221,13 +221,21 @@ export const arreterLeChrono = (classId) =>
  * Il est ouvert par défaut ; ce geste sert à le fermer, pour les heures où
  * celui qui a fini doit relire ou aider son voisin.
  */
-export const reglerLeBac = (classId, ferme, minutes = null) =>
+export const reglerLeBac = (classId, ferme, minutes = null, jeux = null) =>
     auServeur('/teacher/class', {
         classId, action: 'bac', ferme: !!ferme,
         // ET COMBIEN DE TEMPS IL DURE. Rémy : « un temps, réglé par vous ».
         // `null` ne touche pas à la durée — ouvrir et fermer le bac ne doit pas
         // effacer le quart d'heure qu'on avait posé.
-        ...(minutes === null ? {} : { minutes: Math.max(0, Math.min(120, Number(minutes) || 0)) })
+        ...(minutes === null ? {} : { minutes: Math.max(0, Math.min(120, Number(minutes) || 0)) }),
+        // ET CE QU'IL Y A DEDANS. Rémy : « pour le bac à sable j'aimerai quand
+        // même bien pouvoir éditer le contenu ».
+        //
+        // MÊME RÈGLE QUE POUR LA DURÉE, et elle compte double ici : `null` ne
+        // touche pas au contenu, si bien que fermer le bac à 10 h n'efface pas
+        // les jeux choisis à 8 h. Un TABLEAU VIDE, lui, est une demande — « je
+        // n'en veux aucun » — et il est transmis tel quel jusqu'à la colonne.
+        ...(jeux === null ? {} : { jeux: (Array.isArray(jeux) ? jeux : []).map(String) })
     });
 
 export const envoyerUnMot = (classId, body, studentId = '') =>

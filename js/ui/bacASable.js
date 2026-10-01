@@ -24,7 +24,8 @@ import { exercices, getExerciseById, estADeux } from '../data/catalog.js';
 import { isGame } from '../core/gameAccess.js';
 import { bacOuvert, jeuxDuBac, parcoursDuBac, jeuxDeLaSeance, ceQueDisaitLaSeance }
     from '../core/bacASable.js';
-import { bacFerme, tempsRestant, resteDuBac } from '../core/seanceDistante.js';
+import { bacFerme, tempsRestant, resteDuBac, jeuxDuBacDuProf }
+    from '../core/seanceDistante.js';
 import { globalStore } from '../core/store.js';
 import { avancementDuMoment } from './filSeance.js';
 import { showModal } from './modal.js';
@@ -146,7 +147,29 @@ export function ouvrirLeBac() {
             { width: '420px' });
         return null;
     }
-    const groupes = lesGroupesDuBac();
+    // LA LISTE DU PROFESSEUR SI ELLE EXISTE, celle par défaut sinon. Rémy :
+    // « pour le bac à sable j'aimerai quand même bien pouvoir éditer le
+    // contenu ». Le noyau savait recevoir une liste depuis le début ; personne
+    // ne la lui donnait.
+    const groupes = lesGroupesDuBac(jeuxDuBacDuProf());
+
+    // ET S'IL N'Y A VRAIMENT RIEN, ON LE DIT — on ne montre pas une fenêtre
+    // vide.
+    //
+    // C'ÉTAIT L'ARGUMENT QUI FAISAIT RETOMBER LA LISTE VIDE SUR CELLE PAR
+    // DÉFAUT : « un bac vide se lit comme une panne ». L'argument était juste,
+    // et il ne disparaît pas parce que Rémy peut maintenant vider son bac
+    // exprès (« pour le bac à sable j'aimerai quand même bien pouvoir éditer
+    // le contenu ») : il se déplace ici, et devient une phrase. C'est la règle
+    // que tout le reste du logiciel suit déjà — « un bouton qui disparaît
+    // laisse croire qu'il n'y a rien ; une phrase dit ce qui s'est passé ».
+    if (!groupes.length) {
+        showModal('Le bac à sable',
+            '<p class="bac-refus">Tu as fini ta séance — mais ton professeur n\'a mis '
+            + 'aucun jeu dans le bac à sable pour cette fois.</p>', { width: '420px' });
+        return null;
+    }
+
     const corps = `
         <p class="bac-mot">Tu as fini ta séance. Ce sont des mathématiques,
            mais on y joue — et tu peux arrêter quand tu veux.</p>

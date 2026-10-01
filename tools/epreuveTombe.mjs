@@ -24,6 +24,16 @@
 //     node tools/epreuveTombe.mjs tests/contraste.test.mjs css/ui.css \
 //       'color-mix(in srgb, var(--primary) 30%, transparent)' 'rgba(79, 70, 229, 0.3)'
 //
+// ET QUAND LE DÉFAUT TIENT SUR PLUSIEURS LIGNES, on l'écrit dans un fichier,
+// exactement comme pour `remplacer.mjs` — la ligne de commande ne sait pas
+// porter un texte multiligne, et un commentaire y arrive amputé sans que rien
+// ne le signale :
+//
+//     node tools/epreuveTombe.mjs <essai> <source> --depuis <paires.json>
+//
+// où le fichier contient un tableau de paires `[ancien, nouveau]`. On en
+// applique plusieurs d'un coup quand un seul défaut se répare à deux endroits.
+//
 // Il rend 0 si l'épreuve est verte AVANT et rouge APRÈS — c'est-à-dire si elle
 // garde vraiment quelque chose. Tout le reste est un échec, et il dit lequel.
 
@@ -32,10 +42,39 @@ import { execFileSync } from 'node:child_process';
 
 const [essai, source, ancien, nouveau] = process.argv.slice(2);
 
-if (!essai || !source || ancien === undefined || nouveau === undefined) {
+// UN DÉFAUT TIENT PARFOIS SUR PLUSIEURS LIGNES, et la ligne de commande ne sait
+// pas les porter — l'interpréteur exécute ce qui est entre accents graves, et un
+// commentaire arrive alors amputé sans que rien ne le signale. C'est la raison
+// pour laquelle `remplacer.mjs` a `--depuis` ; cet outil-ci écrit par les mêmes
+// moyens et le refusait, ce qui coûtait deux essais à chaque défaut multiligne.
+//
+// MÊME FICHIER, MÊME FORME : un tableau de paires `[ancien, nouveau]`. Les deux
+// outils prennent donc les mêmes arguments de la même façon.
+let paires = [];
+if (ancien === '--depuis') {
+    if (!nouveau) {
+        console.error('« --depuis » attend un fichier de paires JSON.');
+        process.exit(2);
+    }
+    try {
+        paires = JSON.parse(readFileSync(nouveau, 'utf8'));
+    } catch (e) {
+        console.error(`${nouveau} ne se lit pas : ${e.message}`);
+        process.exit(2);
+    }
+    if (!Array.isArray(paires) || !paires.length
+        || paires.some((p) => !Array.isArray(p) || p.length !== 2
+            || typeof p[0] !== 'string' || typeof p[1] !== 'string')) {
+        console.error(`${nouveau} doit contenir un tableau de paires [ancien, nouveau].`);
+        process.exit(2);
+    }
+} else if (!essai || !source || ancien === undefined || nouveau === undefined) {
     console.error('emploi : node tools/epreuveTombe.mjs <essai> <source> <ancien> <nouveau>');
+    console.error('         node tools/epreuveTombe.mjs <essai> <source> --depuis <paires.json>');
     console.error('  <ancien> → <nouveau> doit RÉINTRODUIRE le défaut que l\'épreuve prétend garder.');
     process.exit(2);
+} else {
+    paires = [[ancien, nouveau]];
 }
 
 /** Lance l'épreuve. Rend `true` si elle passe. */
@@ -49,21 +88,29 @@ function verte() {
 }
 
 const avant = readFileSync(source, 'utf8');
-const combien = avant.split(ancien).length - 1;
 
-// ON EXIGE UNE SEULE OCCURRENCE. Zéro, et l'on n'a rien remis du tout — on
-// aurait relancé l'épreuve pour rien et conclu qu'elle est solide. Plusieurs, et
-// l'on ne sait pas laquelle a fait tomber l'épreuve.
-if (combien !== 1) {
-    console.error(`\n« ${ancien.slice(0, 60)} » apparaît ${combien} fois dans ${source}.`);
-    console.error('On en veut exactement une : sinon on ne sait pas ce qu\'on a mesuré.');
-    process.exit(2);
+// ON EXIGE UNE SEULE OCCURRENCE, PAIRE PAR PAIRE. Zéro, et l'on n'a rien remis
+// du tout — on aurait relancé l'épreuve pour rien et conclu qu'elle est solide.
+// Plusieurs, et l'on ne sait pas laquelle a fait tomber l'épreuve.
+for (const [vieux] of paires) {
+    const combien = avant.split(vieux).length - 1;
+    if (combien !== 1) {
+        console.error(`\n« ${vieux.slice(0, 60)} » apparaît ${combien} fois dans ${source}.`);
+        console.error('On en veut exactement une : sinon on ne sait pas ce qu\'on a mesuré.');
+        process.exit(2);
+    }
 }
+
+/** Le fichier, avec le défaut remis. */
+const abime = () => paires.reduce((t, [vieux, neuf]) => t.replace(vieux, neuf), avant);
 
 console.log(`épreuve  : ${essai}`);
 console.log(`on abîme : ${source}`);
-console.log(`           « ${ancien.slice(0, 70)} »`);
-console.log(`        → « ${nouveau.slice(0, 70)} »\n`);
+for (const [vieux, neuf] of paires) {
+    console.log(`           « ${vieux.slice(0, 70).replace(/\n/g, '⏎')} »`);
+    console.log(`        → « ${neuf.slice(0, 70).replace(/\n/g, '⏎')} »`);
+}
+console.log('');
 
 if (!verte()) {
     console.error('L\'ÉPREUVE EST DÉJÀ ROUGE avant qu\'on touche à quoi que ce soit.');
@@ -74,7 +121,7 @@ console.log('  ok    elle est verte sur le dépôt intact');
 
 let tombe = false;
 try {
-    writeFileSync(source, avant.replace(ancien, nouveau));
+    writeFileSync(source, abime());
     tombe = !verte();
 } finally {
     // LE `finally` N'EST PAS UNE POLITESSE. Sans lui, une interruption laisse

@@ -163,7 +163,18 @@ const UNITES_TROP_LONGUES = ['grille'];
  * @param {string[]} [liste]  la liste du professeur, sinon celle par défaut
  */
 export function jeuxDuBac(trouver, liste = null) {
-    const ids = Array.isArray(liste) && liste.length ? liste : PAR_DEFAUT;
+    // LA LISTE VIDE EST UNE RÉPONSE, PAS UNE ABSENCE.
+    //
+    // On écrivait `Array.isArray(liste) && liste.length` : un professeur qui
+    // RETIRE tout voyait donc son bac se remplir des valeurs par défaut —
+    // c'est-à-dire exactement de ce qu'il venait d'enlever. Le défaut ne se
+    // voyait pas tant que personne ne pouvait éditer la liste ; il est apparu
+    // à la minute où Rémy l'a demandé.
+    //
+    // `null` VEUT DIRE « je n'y ai pas touché » ; `[]` veut dire « je n'en
+    // veux aucun ». Les deux chemins sont tenus jusqu'au serveur, où la
+    // colonne `bac_jeux` distingue NULL de la chaîne vide.
+    const ids = Array.isArray(liste) ? liste : PAR_DEFAUT;
     const vus = new Set();
     const out = [];
     for (const id of ids) {

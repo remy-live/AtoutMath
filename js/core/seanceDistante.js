@@ -44,6 +44,13 @@ const VIDE = {
     // COMBIEN DE TEMPS DURE LE BAC, en minutes. 0 = sans limite, et c'est le
     // défaut. Voir `resteDuBac` : le compte part quand l'ÉLÈVE l'ouvre.
     bacMinutes: 0,
+    // CE QU'IL Y A DEDANS, quand le professeur l'a choisi. Rémy : « pour le bac
+    // à sable j'aimerai quand même bien pouvoir éditer le contenu ».
+    //
+    // `null` VEUT DIRE « LA LISTE PAR DÉFAUT », et ce n'est PAS le tableau
+    // vide : vide, c'est un professeur qui a tout retiré, et le bac doit alors
+    // rester vide plutôt que de se remplir de ce qu'il vient d'enlever.
+    bacJeux: null,
     // L'HEURE DU SERVEUR au moment où il a répondu, et l'heure qu'il était ICI
     // à cet instant. Les deux ensemble donnent l'écart entre les horloges, et
     // c'est ce qui permet d'afficher le même chiffre sur trente appareils dont
@@ -148,6 +155,20 @@ export function consigneDuProf() {
 
 /** Le professeur a-t-il fermé le bac à sable pour cette heure ? */
 export function bacFerme() { return !!etat.bacFerme; }
+
+/**
+ * LES JEUX QUE LE PROFESSEUR A MIS DANS LE BAC, ou `null` s'il n'y a pas
+ * touché.
+ *
+ * LA DISTINCTION ENTRE `null` ET `[]` EST TOUT LE SENS DE CETTE FONCTION, et
+ * c'est pour cela qu'elle ne rend pas un tableau par commodité. `jeuxDuBac`
+ * ne retombe sur ses valeurs sûres que si la liste est ABSENTE ; lui rendre un
+ * tableau vide à la place de `null` remplirait le bac d'un professeur qui
+ * vient précisément de le vider.
+ */
+export function jeuxDuBacDuProf() {
+    return Array.isArray(etat.bacJeux) ? etat.bacJeux : null;
+}
 
 /**
  * LE TEMPS DU BAC À SABLE, ET POURQUOI IL PART DE L'ÉLÈVE.

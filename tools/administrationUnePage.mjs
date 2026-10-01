@@ -63,6 +63,31 @@ const apres = await page.evaluate(() => [...document.querySelectorAll('details.b
     .filter(d => d.open).map(d => d.id));
 dire('les cinq se déplient', apres.length === 5, apres.join(' '));
 
+// LE NOM EN HAUT À GAUCHE RAMÈNE AU SITE, et on le mesure en CLIQUANT.
+//
+// Rémy : « dans la partie admin, j'aimerai pouvoir cliquer sur le atoutmath en
+// haut à gauche pour aller sur le site ». Une épreuve de source dit que la
+// balise est là ; seul un clic dit où elle mène, et que la page d'arrivée est
+// bien le logiciel et non une liste de fichiers.
+const marque = await page.evaluate(() => {
+    const a = document.querySelector('header .marque');
+    if (!a) return null;
+    const c = getComputedStyle(a);
+    return { texte: a.textContent.trim(), href: a.getAttribute('href'),
+             couleur: c.color, souligne: c.textDecorationLine };
+});
+dire('le nom du logiciel est un lien', !!marque && marque.href === '../../',
+    marque ? `${marque.texte} → ${marque.href}` : '(pas de lien)');
+dire('et il reste blanc sur l\'en-tête sombre',
+    !!marque && /rgb\(255, 255, 255\)/.test(marque.couleur), marque?.couleur || '');
+await page.click('header .marque');
+await page.waitForLoadState('domcontentloaded');
+dire('cliquer dessus ouvre le logiciel',
+    await page.evaluate(() => !!document.querySelector('#app, #root, .app, main')
+        && !/Index of/.test(document.title)),
+    page.url().replace(BASE, '') + ' · ' + (await page.title()));
+await page.goto(`${BASE}/api/admin/index.php`, { waitUntil: 'domcontentloaded' });
+
 // LES ANCIENNES ADRESSES MÈNENT ENCORE QUELQUE PART.
 for (const [ancien, ancre] of [['sante.php', 'sante'], ['rapport.php', 'rapport'],
     ['ranger.php', 'ranger']]) {

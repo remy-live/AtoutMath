@@ -142,6 +142,14 @@ body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 
 header { background: #1e293b; color: #fff; padding: 12px 20px; display: flex;
          align-items: center; gap: 18px; flex-wrap: wrap; }
 header b { font-size: 1.05rem; }
+/* LE NOM EST UN LIEN, et il doit en avoir l'air sans crier : la même graisse
+   qu'avant, le même blanc, et un soulignement au survol — assez pour qu'on
+   essaie, pas assez pour qu'on croie avoir cliqué par erreur. */
+header .marque { font-size: 1.05rem; font-weight: 700; color: #fff;
+                 text-decoration: none; }
+header .marque:hover { text-decoration: underline; }
+header .marque:focus-visible { outline: 2px solid #fff; outline-offset: 3px;
+                               border-radius: 4px; }
 /* PLUS DE BARRE DE NAVIGATION : il n'y a qu'une page. Elle proposait
    « Mes classes », « Santé », « Rapport » ; les classes ont quitté
    l'administration (elles se conduisent dans le logiciel) et les deux autres
@@ -250,7 +258,21 @@ button.petit { padding: 5px 10px; font-size: .85rem; }
 .lien-exo:hover { background: #c7d2fe; }
 </style></head><body>
 <header>
-  <b>AtoutMath</b>
+  <!-- LE NOM RAMÈNE AU SITE, parce que c'est là qu'on clique.
+
+       Rémy : « dans la partie admin, j'aimerai pouvoir cliquer sur le
+       atoutmath en haut à gauche pour aller sur le site ».
+
+       C'est le geste du web entier : le nom en haut à gauche ramène chez soi.
+       Ici il ne ramenait nulle part — on repartait par le bouton « retour »
+       du navigateur, ou en retapant l'adresse. L'administration vit dans
+       `api/admin/` : deux dossiers plus haut, et l'on y est.
+
+       `../../` ET NON UNE ADRESSE ABSOLUE : le site de Rémy est à la racine,
+       mais rien ne garantit qu'il le soit toujours — un sous-dossier, un
+       essai, un second site sur le même hébergement. Un chemin relatif suit
+       l'installation sans qu'on ait à lui dire où elle est. -->
+  <a class="marque" href="../../" title="Retourner au site">AtoutMath</a>
   <span class="sous">administration</span>
   <span class="qui"><?= h($prof['display_name']) ?> ·
     <a href="index.php?deconnexion=1">se déconnecter</a></span>

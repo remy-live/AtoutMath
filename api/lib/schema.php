@@ -167,6 +167,23 @@ function migrer(?PDO $pdo = null): void
         --     avant les autres a droit aux mêmes dix minutes de jeu. NULL ou 0
         --     veut dire « pas de limite », ce qui reste le défaut.
         bac_minutes    " . ($sqlite ? 'INTEGER' : 'INT NULL') . ",
+        --   · bac_jeux : CE QU'IL Y A DEDANS, quand le professeur l'a choisi.
+        --     Rémy : « pour le bac à sable j'aimerai quand même bien pouvoir
+        --     éditer le contenu ». Le noyau savait déjà recevoir une liste —
+        --     `jeuxDuBac(trouver, liste)`, « la liste du professeur, sinon
+        --     celle par défaut » — mais rien ne la rangeait ni ne la portait
+        --     jusqu'à l'élève. C'est cette colonne qui manquait, et elle seule.
+        --
+        --     DES IDENTIFIANTS SÉPARÉS PAR DES VIRGULES, et non du JSON : on
+        --     n'y range que des identifiants d'exercice du catalogue, qui n'ont
+        --     ni virgule ni espace. Une colonne JSON demanderait un décodage
+        --     des deux côtés pour ranger une liste de mots.
+        --
+        --     NULL VEUT DIRE « CELLE PAR DÉFAUT », et c'est différent de la
+        --     liste VIDE : vide, c'est un professeur qui a tout retiré, et son
+        --     bac doit alors rester vide plutôt que de se remplir tout seul de
+        --     ce qu'il vient d'enlever.
+        bac_jeux       $txtNull,
         created_at $date,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 

@@ -2189,6 +2189,72 @@ verifier('et le rouvrir',
     && json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'],
         $jetonNotre)['json']['classe']['bac_ferme'] === false);
 
+// CE QU'IL Y A DEDANS, maintenant que le professeur peut le composer.
+//
+// Rémy : « pour le bac à sable j'aimerai quand même bien pouvoir éditer le
+// contenu ». Le noyau savait recevoir une liste depuis le premier jour ; il
+// manquait la colonne, la route et le bouton.
+//
+// TROIS ÉTATS, ET C'EST TOUT L'ENJEU DE CETTE SECTION : la clef ABSENTE ne
+// touche à rien, la liste VIDE est une demande, une liste est servie. Les deux
+// premiers se confondent à la moindre distraction, et les confondre remplit le
+// bac de ce que le professeur vient justement d'enlever.
+$bacDe = fn () => json('/teacher/roster', ['classId' => $idApp, 'action' => 'list'],
+    $jetonNotre)['json']['classe']['bac_jeux'];
+verifier('tant qu\'on n\'y a pas touché, le contenu du bac est NULL',
+    $bacDe() === null);
+$pose = json('/teacher/class',
+    ['classId' => $idApp, 'action' => 'bac', 'ferme' => false,
+     'jeux' => ['geo-tangram', 'calc-nova', 'calc-labyrinthe']], $jetonNotre);
+verifier('le professeur choisit trois jeux, et le serveur les lui rend',
+    $pose['code'] === 200
+    && $pose['json']['jeux'] === ['geo-tangram', 'calc-nova', 'calc-labyrinthe']);
+verifier('la liste se relit dans la classe',
+    $bacDe() === 'geo-tangram,calc-nova,calc-labyrinthe');
+verifier('L\'ÉLÈVE LA REÇOIT, ET DANS LE MÊME ORDRE',
+    json('/sync', ['deviceId' => 'sien', 'cursor' => 0, 'events' => []],
+        $jetonEleve)['json']['session']['bacJeux']
+        === ['geo-tangram', 'calc-nova', 'calc-labyrinthe']);
+
+// FERMER LE BAC N'EFFACE PAS CE QU'ON Y A MIS. C'est la même règle que pour la
+// durée, et elle se joue sur une clef ABSENTE du corps de la requête : un
+// `jeux: []` de politesse viderait le bac à chaque clic sur « Fermer ».
+json('/teacher/class', ['classId' => $idApp, 'action' => 'bac', 'ferme' => true], $jetonNotre);
+json('/teacher/class', ['classId' => $idApp, 'action' => 'bac', 'ferme' => false,
+                        'minutes' => 10], $jetonNotre);
+verifier('FERMER LE BAC, PUIS RÉGLER SA DURÉE, N\'EFFACE PAS SES JEUX',
+    $bacDe() === 'geo-tangram,calc-nova,calc-labyrinthe');
+
+// LA LISTE VIDE EST UNE RÉPONSE. Elle s'écrit, et elle s'écrit DIFFÉRENTE de
+// NULL : sans quoi le bac vidé se remplirait tout seul des valeurs par défaut.
+$vide = json('/teacher/class',
+    ['classId' => $idApp, 'action' => 'bac', 'ferme' => false, 'jeux' => []], $jetonNotre);
+verifier('vider le bac l\'écrit vide, et non « jamais réglé »',
+    $vide['json']['jeux'] === [] && $bacDe() === '');
+verifier('et l\'élève reçoit un tableau vide, pas null',
+    json('/sync', ['deviceId' => 'sien', 'cursor' => 0, 'events' => []],
+        $jetonEleve)['json']['session']['bacJeux']
+        === []);
+
+// CE QUI PART VERS TRENTE NAVIGATEURS D'ÉLÈVES EST FILTRÉ ICI. L'écran du
+// professeur ne propose que des identifiants du catalogue ; la route, elle, ne
+// le suppose pas.
+$sale = json('/teacher/class',
+    ['classId' => $idApp, 'action' => 'bac', 'ferme' => false,
+     'jeux' => ['geo-tangram', '../../config.php', '<script>', '', 'geo-tangram',
+                'A-MAJUSCULES', 'calc-nova']], $jetonNotre);
+verifier('UN IDENTIFIANT QUI N\'EST PAS DU CATALOGUE EST ÉCARTÉ, ET LE DOUBLON AUSSI',
+    $sale['json']['jeux'] === ['geo-tangram', 'calc-nova']);
+verifier('vingt jeux au plus : choisir ne doit pas durer plus que jouer',
+    count(json('/teacher/class',
+        ['classId' => $idApp, 'action' => 'bac', 'ferme' => false,
+         'jeux' => array_map(fn ($i) => "jeu-$i", range(1, 40))],
+        $jetonNotre)['json']['jeux']) === 20);
+// On remet la classe comme on l'a trouvée : la suite des épreuves ne parle plus
+// du bac, et un réglage qui traîne fausse ce qu'on mesurera plus loin.
+json('/teacher/class', ['classId' => $idApp, 'action' => 'bac', 'ferme' => false,
+                        'minutes' => 0, 'jeux' => []], $jetonNotre);
+
 // --- L'indice : à UN élève, et jamais à la classe ---------------------------
 //
 // Rémy : « la possibilité de […] envoyer un indice ». Un indice soufflé à

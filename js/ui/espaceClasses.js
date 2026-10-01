@@ -37,6 +37,9 @@ import { showToast, showConfirm, showModal } from './modal.js';
 import { chercher } from '../core/recherche.js';
 import { ficheDe } from './rechercheUI.js';
 import { makeStep } from '../core/path.js';
+import { PAR_DEFAUT as BAC_PAR_DEFAUT } from '../core/bacASable.js';
+import { isGame } from '../core/gameAccess.js';
+import { estADeux } from '../data/catalog.js';
 import { monterUnParcours, ramenerLaBibliotheque } from '../core/parcoursServeur.js';
 // LE CATALOGUE SE COMPTE, IL NE SE RECOPIE PAS. Deux phrases de cet écran
 // annonçaient « 172 exercices » ; le catalogue en contient 178 depuis qu'on y
@@ -1042,6 +1045,30 @@ function minutesDuBac() {
     return Number(info.bac_minutes) || 0;
 }
 
+/**
+ * LES JEUX QUE LE PROFESSEUR A MIS DANS LE BAC — `null` s'il n'y a pas touché.
+ *
+ * La colonne vaut NULL (jamais réglé), la chaîne vide (tout retiré), ou une
+ * liste. Les trois états sont différents, et c'est pour cela qu'on ne les
+ * écrase pas en un tableau par commodité.
+ */
+function jeuxDuBacDeLaClasse() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    const brut = info.bac_jeux;
+    if (brut === null || brut === undefined) return null;
+    if (Array.isArray(brut)) return brut;
+    const s = String(brut);
+    return s === '' ? [] : s.split(',').filter(Boolean);
+}
+
+/** Ce qu'on écrit à côté du bouton : l'état, en français. */
+function direLesJeuxDuBac() {
+    const l = jeuxDuBacDeLaClasse();
+    if (l === null) return 'au choix du logiciel';
+    if (!l.length) return 'aucun jeu';
+    return l.length === 1 ? '1 jeu choisi' : `${l.length} jeux choisis`;
+}
+
 function classeEnPause() {
     const ch = vue.direct && vue.direct.chrono;
     const info = (vue.liste && vue.liste.classe) || vue.classe || {};
@@ -1778,7 +1805,25 @@ function barrePiloteHtml() {
                        aria-label="Minutes de bac à sable par élève"
                        data-valide-sur-entree="data-bac-minutes">
                 <span class="ec-pilote-mot-liant">min par élève</span>
-                <button type="button" class="ec-pilote-btn" data-bac-minutes>Poser</button>`}
+                <button type="button" class="ec-pilote-btn" data-bac-minutes>Poser</button>
+                <!-- CE QU'IL Y A DEDANS. Rémy : « pour le bac à sable
+                     j'aimerai quand même bien pouvoir éditer le contenu ».
+
+                     LE NOYAU SAVAIT DÉJÀ RECEVOIR UNE LISTE — « la liste du
+                     professeur, sinon celle par défaut », écrit dans
+                     core/bacASable.js — mais rien ne la rangeait ni ne la
+                     portait jusqu'à l'élève. Il manquait une colonne, un
+                     aller-retour, et ce bouton.
+
+                     L'ÉTIQUETTE DIT L'ÉTAT, et les deux états ne sont pas le
+                     même : « au choix du logiciel » tant qu'on n'y a pas
+                     touché, le compte sinon — zéro compris, parce qu'un bac
+                     vidé exprès doit se voir. -->
+                <span class="ec-pilote-mot-liant">·</span>
+                <span class="ec-pilote-mot-liant" data-bac-combien>${direLesJeuxDuBac()}</span>
+                <button type="button" class="ec-pilote-btn" data-bac-jeux
+                        title="Choisir les jeux que vos élèves trouveront dans le bac. Sans choix, le logiciel propose ses valeurs sûres, élargies à ce que la séance vient de travailler."
+                        >Choisir</button>`}
             </span>
         </div>
 
@@ -1986,7 +2031,7 @@ async function brancher(e, redessiner) {
 
     const el = e.target.closest('[data-ouvrir], [data-retour], [data-onglet], [data-nouvelle-classe],'
         + '[data-ajouter-eleve], [data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code],'
-        + '[data-seance-ajouter], [data-seance-retirer],'
+        + '[data-seance-ajouter], [data-seance-retirer], [data-bac-jeux],'
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
         + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
         + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
@@ -2925,6 +2970,27 @@ async function brancher(e, redessiner) {
         return;
     }
 
+    // CHOISIR LES JEUX DU BAC. Rémy : « pour le bac à sable j'aimerai quand
+    // même bien pouvoir éditer le contenu ».
+    if (d.bacJeux !== undefined) {
+        const actuels = jeuxDuBacDeLaClasse();
+        // LA LISTE PAR DÉFAUT SERT DE POINT DE DÉPART, et non une page blanche :
+        // un professeur qui veut ajouter UN jeu ne doit pas avoir à recomposer
+        // les dix-sept autres. Tant qu'il n'a rien réglé, on lui montre ce que
+        // ses élèves voient aujourd'hui.
+        const depart = actuels === null ? lesJeuxParDefaut() : actuels;
+        const choisis = await composerLeBac(depart);
+        if (choisis === null) return;
+        await fait(reglerLeBac(cid, bacDeLaClasse(), null, choisis), (r) => {
+            if (vue.liste && vue.liste.classe) {
+                vue.liste.classe.bac_jeux = Array.isArray(r.jeux) ? r.jeux.join(',') : null;
+            }
+        }, choisis.length
+            ? `🧰 Bac à sable : ${choisis.length} jeu(x) pour vos élèves.`
+            : '🧰 Bac à sable vidé : vos élèves n\'y trouveront plus rien.');
+        return;
+    }
+
     if (d.bacMinutes !== undefined) {
         const champ = document.getElementById('ec-bac-min');
         const min = champ ? Math.max(0, Math.min(120, parseInt(champ.value, 10) || 0)) : 0;
@@ -3174,6 +3240,139 @@ function lancerLeBattement(redessiner) {
         if (vue.onglet === 'mur') { zone.innerHTML = murHtml(); return; }
         rafraichirLeDirect(zone);
     }, BATTEMENT_MS);
+}
+
+/**
+ * LA LISTE PAR DÉFAUT DU BAC, résolue sur CE catalogue.
+ *
+ * Elle sert de point de départ au composeur : un professeur qui veut ajouter
+ * un jeu ne doit pas avoir à recomposer les dix-sept autres.
+ */
+/** Un jeu qu'un élève seul peut lancer — le bac s'ouvre à celui qui a fini
+ *  avant les autres, et lui proposer une activité à deux, c'est lui proposer
+ *  d'attendre quelqu'un. */
+function estUnJeuSeul(exo) {
+    return isGame(exo) && !estADeux(exo);
+}
+
+function lesJeuxParDefaut() {
+    return BAC_PAR_DEFAUT.filter(id => !!getExerciseById(id));
+}
+
+/**
+ * COMPOSER LE BAC À SABLE — ce que les élèves y trouveront.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « pour le bac à sable j'aimerai quand même bien pouvoir éditer le
+ * contenu ». Et, sur l'idée d'un bac à sable propre à chaque séance : c'est
+ * justement ce qu'on NE fait pas. Un second concept pour le même besoin, c'est
+ * une chose de plus à apprendre et un endroit de plus où chercher. Le bac
+ * suit déjà la séance tout seul — ce qui manquait, c'est une étagère que le
+ * professeur remplit.
+ *
+ * UNE FENÊTRE QUI MONTRE L'ÉTAT, pas un formulaire. On voit ce qu'il y a
+ * dedans, on retire d'un clic, on ajoute par la recherche. Rien ne part au
+ * serveur avant « Enregistrer » : composer une liste demande d'hésiter, et
+ * une liste qui s'enregistre à chaque clic ne se laisse pas essayer.
+ *
+ * ON NE BORNE PAS À VINGT ICI, mais au serveur. Une borne posée des deux
+ * côtés finit par ne plus être la même ; celle qui compte est celle qui écrit.
+ *
+ * @param {string[]} depart ce qu'il y a dedans aujourd'hui
+ * @returns {Promise<string[]|null>} la nouvelle liste, ou null si on renonce
+ */
+function composerLeBac(depart) {
+    return new Promise((repondre) => {
+        let choisis = [...depart];
+        let repondu = false;
+
+        const corps = `
+            <p class="ec-note">Ce que vos élèves trouveront dans le bac quand ils auront
+               fini. Le logiciel y ajoute toujours quelques jeux <b>comme la séance</b>
+               qu'ils viennent de faire : cette liste-ci est le fond fixe.</p>
+            <div id="ec-bac-dedans" class="ec-choix-liste"></div>
+            <label class="ec-pilote-mot-liant" for="ec-bac-q">Ajouter un jeu</label>
+            <input id="ec-bac-q" class="ec-champ" type="text" autocomplete="off"
+                   spellcheck="false" placeholder="tangram, calcul, labyrinthe…"
+                   aria-label="Chercher un jeu à ajouter">
+            <div id="ec-bac-trouves" class="ec-choix-liste"></div>
+            <div class="ec-seance-gestes">
+                <button type="button" class="ec-bouton" id="ec-bac-ok">Enregistrer</button>
+                <button type="button" class="ec-bouton ec-bouton--doux" id="ec-bac-defaut"
+                        title="Remettre les jeux que le logiciel propose quand on n'a rien choisi"
+                        >Remettre ceux du logiciel</button>
+            </div>`;
+
+        const modal = showModal('Les jeux du bac à sable', corps, {
+            width: '560px',
+            onClose: () => { if (!repondu) repondre(null); }
+        });
+        const dedans = modal.element.querySelector('#ec-bac-dedans');
+        const champ = modal.element.querySelector('#ec-bac-q');
+        const trouves = modal.element.querySelector('#ec-bac-trouves');
+
+        // ON NE PROPOSE QUE DES JEUX JOUABLES SEUL. Le bac s'ouvre à un élève
+        // qui a fini avant les autres : lui proposer une activité à deux, c'est
+        // lui proposer d'attendre quelqu'un.
+        const candidats = catalogueComplet.filter(e => e && e.id && estUnJeuSeul(e));
+
+        const peindreDedans = () => {
+            if (!choisis.length) {
+                dedans.innerHTML = '<p class="ec-note">Le bac est vide : vos élèves '
+                    + 'n\'y trouveront que les jeux « comme leur séance ».</p>';
+                return;
+            }
+            dedans.innerHTML = choisis.map(id => {
+                const e = getExerciseById(id);
+                return `<button type="button" class="ec-choix-ligne" data-ote="${esc(id)}">
+                    <b>${esc(e ? e.title : id)}</b>
+                    <span class="ec-note">retirer du bac</span>
+                </button>`;
+            }).join('');
+        };
+
+        const peindreTrouves = () => {
+            const q = (champ.value || '').trim();
+            if (!q) { trouves.innerHTML = ''; return; }
+            const dejaLa = new Set(choisis);
+            const liste = chercher(candidats.filter(e => !dejaLa.has(e.id)).map(ficheDe),
+                q, { max: 8 })
+                .map(r => candidats.find(e => e.id === r.fiche.id)).filter(Boolean);
+            trouves.innerHTML = liste.length
+                ? liste.map(e => `<button type="button" class="ec-choix-ligne" data-mets="${esc(e.id)}">
+                       <b>${esc(e.title)}</b>
+                       <span class="ec-note">${esc((e.tags && e.tags.chemin || []).join(' › '))}</span>
+                   </button>`).join('')
+                : '<p class="ec-note">Aucun jeu pour ces mots.</p>';
+        };
+
+        champ.oninput = peindreTrouves;
+        modal.element.onclick = (ev) => {
+            const ote = ev.target.closest('[data-ote]');
+            const mets = ev.target.closest('[data-mets]');
+            if (ote) { choisis = choisis.filter(x => x !== ote.dataset.ote); peindreDedans(); peindreTrouves(); return; }
+            if (mets) {
+                choisis = [...choisis, mets.dataset.mets];
+                champ.value = '';
+                peindreDedans(); peindreTrouves(); champ.focus();
+                return;
+            }
+            if (ev.target.closest('#ec-bac-defaut')) {
+                choisis = lesJeuxParDefaut();
+                peindreDedans(); peindreTrouves();
+                return;
+            }
+            if (ev.target.closest('#ec-bac-ok')) {
+                repondu = true;
+                modal.close();
+                repondre(choisis);
+            }
+        };
+
+        peindreDedans();
+        champ.focus();
+    });
 }
 
 // --- Choisir un exercice, sans quitter l'écran de la classe ----------------

@@ -1527,3 +1527,27 @@ manque.
   fabrique du faux travail.** `echelle: true` veut dire « progression
   composable » ; il avait été posé cinq fois comme s'il voulait dire « réglage
   qui change la difficulté ».
+
+---
+
+**`epreuveTombe.mjs` ne savait pas remettre un défaut qui tient sur plusieurs
+lignes** — 2026-10-01
+
+- *Ce que je voulais faire* : voir tomber sept épreuves neuves (le bac à sable
+  que le professeur remplit, le lien du nom dans l'administration). Six défauts
+  tenaient sur une ligne ; le septième — le ternaire à trois lignes de
+  `api/lib/seance.php` qui distingue `null` de `[]` — n'en tenait pas.
+- *Ce qui a coûté* : deux essais ratés. J'ai d'abord écrit les paires dans un
+  fichier JSON et passé `--depuis`, par analogie avec `remplacer.mjs` ; l'outil
+  a lu `--depuis` comme le texte à remplacer et m'a répondu « apparaît 0 fois ».
+  Puis il a fallu chercher une ancre d'UNE ligne qui soit à la fois unique dans
+  le fichier et assez signifiante pour que l'épreuve tombe pour la bonne raison.
+- *Combien de fois* : |
+- *Ce qui manque — fait dans la foulée* : `epreuveTombe.mjs` accepte maintenant
+  `--depuis <paires.json>` comme `remplacer.mjs`, dont il se servait déjà pour
+  écrire. Le défaut à trois lignes de `api/lib/seance.php` se remet désormais
+  d'une commande, et l'on peut abîmer deux endroits d'un coup quand un seul
+  défaut se répare en deux.
+- *La règle* : **deux outils qui prennent les mêmes arguments doivent les
+  prendre de la même façon.** Une différence invisible entre deux signatures
+  jumelles se paie en essais, pas en lecture de code.
