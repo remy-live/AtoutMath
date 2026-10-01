@@ -62,42 +62,109 @@ console.log(`   avant le mot : ${avant.questions} questions, barème sur ${avant
 const bouton = await s.page.$('#btn-ajouter-mot');
 dire('le bouton « ajouter un message » est dans la barre', !!bouton);
 
-// ON CLIQUE, COMME LUI. Le bouton pose l'étape ET ouvre la fenêtre d'écriture.
-await s.page.click('#btn-ajouter-mot');
-await dormir(900);
-const fenetre = await s.page.evaluate(() => {
-    const t = [...document.querySelectorAll('.modal-title, h3')]
-        .map((e) => e.textContent.trim()).filter(Boolean);
-    return {
-        titre: t.find((x) => /mot du professeur/i.test(x)) || '',
-        champTitre: !!document.getElementById('mot-titre'),
-        champTexte: !!document.getElementById('mot-texte'),
-        apercu: !!document.getElementById('mot-apercu')
-    };
-});
-dire('la fenêtre d\'écriture s\'ouvre', !!fenetre.titre, fenetre.titre || '(aucun titre)');
-dire('elle a un titre, un texte et un aperçu',
-    fenetre.champTitre && fenetre.champTexte && fenetre.apercu, JSON.stringify(fenetre));
+// ON TIRE LA BULLE ENTRE LES DEUX EXERCICES, comme Rémy l'a demandé :
+// « l'idéal est de pouvoir faire glisser en drag drop une ligne de texte entre
+// les exercices ». On vise le MILIEU de la deuxième ligne, ce qui dépose avant
+// elle — donc entre les deux.
+// LE SÉLECTEUR SE LIT DANS LA SOURCE, il ne s'invente pas — règle du journal,
+// payée huit fois. `:nth-of-type(2)` compte les DIV frères, pas les
+// `.path-step` : la liste porte d'autres éléments. On prend la deuxième ligne
+// par son index, ce qui est ce qu'on voulait dire.
+const lignes = await s.page.$$('.path-step');
+if (lignes.length < 2) { console.log('   (moins de deux étapes : rien à viser)'); }
+const cible = lignes[1];
+const boite = cible ? await cible.boundingBox() : null;
+if (boite) {
+    await s.page.hover('#btn-ajouter-mot');
+    await s.page.mouse.down();
+    await s.page.mouse.move(boite.x + boite.width / 2, boite.y + 4, { steps: 12 });
+    await s.page.mouse.up();
+    await dormir(1000);
+}
 
-// ON ÉCRIT, ET L'APERÇU DOIT SUIVRE — avec le gras, et SANS la balise qu'on
-// tape exprès pour voir si elle s'exécute.
-await s.page.fill('#mot-titre', 'Attention au piège');
-await s.page.fill('#mot-texte',
+let ou = await s.page.evaluate(async () => {
+    const { state } = await import('./js/core/state.js');
+    const { estUnMessage } = await import('./js/core/path.js');
+    return state.currentPath.steps.findIndex(estUnMessage);
+});
+// LE GLISSER DE SOURIS N'EST PAS TOUJOURS UN VRAI GLISSER-DÉPOSER HTML : selon
+// la plateforme, Chromium ne fabrique pas l'événement `dragstart`. On ne
+// transforme pas ce doute en faux signalement — on le dit, et l'on dépose par
+// l'événement lui-même pour mesurer la SUITE, qui est ce qui compte ici.
+if (ou === -1) {
+    console.log('   (le glisser à la souris n\'a pas produit de dépôt : on dépose par l\'événement)');
+    await s.page.evaluate(() => {
+        const liste = document.getElementById('path-steps') || document.querySelector('.path-steps');
+        const cible = document.querySelectorAll('.path-step')[1];
+        const r = cible.getBoundingClientRect();
+        const dt = new DataTransfer();
+        dt.setData('text/mot', '1');
+        (liste || cible.parentElement).dispatchEvent(new DragEvent('drop', {
+            bubbles: true, cancelable: true, dataTransfer: dt,
+            clientX: r.x + r.width / 2, clientY: r.y + 4
+        }));
+    });
+    await dormir(900);
+    ou = await s.page.evaluate(async () => {
+        const { state } = await import('./js/core/state.js');
+        const { estUnMessage } = await import('./js/core/path.js');
+        return state.currentPath.steps.findIndex(estUnMessage);
+    });
+}
+dire('LE MOT SE DÉPOSE ENTRE LES DEUX EXERCICES', ou === 1,
+    ou === -1 ? 'aucun mot posé' : `rang ${ou + 1}`);
+
+// ── ON ÉCRIT DIRECTEMENT DANS LA LIGNE, SANS FENÊTRE ───────────────────────
+// ON COMPTE LES FENÊTRES VISIBLES, pas les `.modal-title` du document : la
+// page en porte plusieurs en permanence, cachées (la confirmation universelle,
+// entre autres). Neuvième sélecteur inventé de ce chantier, et la règle du
+// journal vaut toujours : on le LIT dans la source, ou on mesure ce qu'on voit.
+const fenetresVisibles = await s.page.evaluate(() =>
+    [...document.querySelectorAll('.modal-title')]
+        .filter((e) => e.getBoundingClientRect().width > 0).map((e) => e.textContent.trim()));
+dire('aucune fenêtre ne s\'est ouverte', fenetresVisibles.length === 0,
+    fenetresVisibles.join(' · ') || '');
+const champs = await s.page.evaluate(() => ({
+    titre: !!document.querySelector('.path-mot-titre'),
+    texte: !!document.querySelector('.path-mot-texte'),
+    focus: (document.activeElement || {}).className || ''
+}));
+dire('la ligne porte ses deux champs', champs.titre && champs.texte, JSON.stringify(champs));
+dire('et le curseur y est déjà', /path-mot-texte/.test(champs.focus), champs.focus || '(ailleurs)');
+
+// ON TAPE, PUIS ON CLIQUE DANS L'AUTRE CHAMP — c'est le geste du professeur,
+// et c'est lui qui a révélé que le re-rendu au départ du champ volait le clic.
+await s.page.fill('.path-mot-titre', 'Attention au piège');
+await s.page.click('.path-mot-texte');
+await dormir(300);
+const curseurArrive = await s.page.evaluate(() =>
+    (document.activeElement || {}).className || '');
+dire('LE CLIC DU TITRE VERS LE TEXTE ARRIVE À DESTINATION',
+    /path-mot-texte/.test(curseurArrive), curseurArrive || '(nulle part)');
+await s.page.fill('.path-mot-texte',
     'Ici on change de *méthode*.\n\nOn calcule la parenthèse <b>d\'abord</b>.');
-await dormir(600);
-const apercu = await s.page.evaluate(() => {
-    const el = document.getElementById('mot-apercu');
-    return { html: el.innerHTML, texte: el.textContent, paragraphes: el.querySelectorAll('p').length,
-             gras: el.querySelectorAll('b').length };
-});
-dire('l\'aperçu fait deux paragraphes', apercu.paragraphes === 2, String(apercu.paragraphes));
-dire('le gras entre étoiles s\'applique', apercu.gras === 1, String(apercu.gras));
-dire('LA BALISE TAPÉE À LA MAIN NE S\'EXÉCUTE PAS',
-    apercu.texte.includes('<b>d\'abord</b>') && !/<b>d&#39;abord/.test(apercu.html),
-    apercu.texte.includes('<b>') ? 'affichée en texte' : 'DISPARUE — donc interprétée');
+await s.page.evaluate(() => document.querySelector('.path-mot-texte').blur());
+await dormir(900);
 
-await s.page.click('#mot-ok');
-await dormir(1000);
+const garde = await s.page.evaluate(async () => {
+    const { state } = await import('./js/core/state.js');
+    const { estUnMessage } = await import('./js/core/path.js');
+    const m = state.currentPath.steps.find(estUnMessage);
+    return m ? m.message : null;
+});
+dire('ce qu\'on tape est enregistré sans bouton',
+    !!garde && garde.titre === 'Attention au piège' && /change de \*méthode\*/.test(garde.texte),
+    JSON.stringify(garde));
+
+// ET LE CHAMP SE SÉLECTIONNE — c'est ce qu'un parent `draggable` empêche.
+const selectionnable = await s.page.evaluate(() => {
+    const t = document.querySelector('.path-mot-texte');
+    return { ligneDeplacable: t.closest('.path-step').draggable,
+             poigneeDeplacable: !!t.closest('.path-step').querySelector('.path-step-grip').draggable };
+});
+dire('LE TEXTE RESTE SÉLECTIONNABLE : la ligne n\'est plus déplaçable',
+    selectionnable.ligneDeplacable === false, String(selectionnable.ligneDeplacable));
+dire('c\'est la poignée ☰ qui porte le glisser', selectionnable.poigneeDeplacable);
 
 const liste = await s.page.evaluate(async () => {
     const { state } = await import('./js/core/state.js');
@@ -111,12 +178,24 @@ const liste = await s.page.evaluate(async () => {
              questions: totalItems(state.currentPath),
              bareme: totalWeight(state.currentPath) };
 });
+console.log('   ce que porte le modèle : ' + JSON.stringify(
+    await s.page.evaluate(async () => {
+        const { state } = await import('./js/core/state.js');
+        const { estUnMessage } = await import('./js/core/path.js');
+        const m = state.currentPath.steps.find(estUnMessage);
+        return m ? m.message : null;
+    })));
 console.log('   la liste de l\'atelier :');
 liste.lignes.forEach((l) => console.log(`     ${l.mot ? '💬' : l.casse ? '✗ ' : '  '} ${l.texte}`));
 dire('le mot a sa ligne, et n\'est PAS annoncé cassé',
     liste.lignes.some((l) => l.mot) && !liste.lignes.some((l) => l.casse));
-dire('la ligne porte le titre du mot',
-    liste.lignes.some((l) => l.mot && /Attention au piège/.test(l.texte)));
+// LA VALEUR D'UN CHAMP N'EST PAS DANS `textContent` : on la lit sur le champ.
+// Première version : la sonde cherchait le titre dans le texte de la ligne, et
+// ne l'y trouvait évidemment pas — le titre vit maintenant dans un `input`.
+const titreDeLaLigne = await s.page.evaluate(() =>
+    (document.querySelector('.path-step--mot .path-mot-titre') || {}).value || '');
+dire('la ligne porte le titre du mot', /Attention au piège/.test(titreDeLaLigne),
+    titreDeLaLigne || '(vide)');
 dire('il n\'ajoute aucune question au total', liste.questions === avant.questions,
     `${avant.questions} → ${liste.questions} pour ${liste.etapes} étapes`);
 dire('ET RIEN AU BARÈME — zéro ne doit pas valoir un', liste.bareme === avant.bareme,
@@ -129,8 +208,9 @@ dire('ET RIEN AU BARÈME — zéro ne doit pas valoir un', liste.bareme === avan
 console.log('\n\x1b[1mLA SÉANCE, TRAVERSÉE\x1b[0m');
 await s.page.evaluate(async () => {
     const { state } = await import('./js/core/state.js');
-    const st = state.currentPath.steps;
-    st.splice(1, 0, st.pop());             // le mot passe en deuxième
+    // LE MOT EST DÉJÀ AU BON RANG : il a été DÉPOSÉ entre les deux exercices,
+    // ce qui est tout l'objet du nouveau geste. L'ancienne version devait le
+    // remonter à la main après l'avoir ajouté à la fin.
     const { Runner } = await import('./js/core/runner.js');
     const { politiquePerso } = await import('./js/core/mesExercices.js');
     // PAS DE `sansTrace`, ET C'EST LA DEUXIÈME ERREUR DE CETTE SONDE : le fil

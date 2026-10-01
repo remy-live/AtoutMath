@@ -16,8 +16,7 @@ import { exercices, getExerciseById, paramSchemaOf, estNotable } from '../data/c
 import { state } from '../core/state.js';
 import { makePath, makeStep, makeMessage, estUnMessage, normalizePath, totalItems }
     from '../core/path.js';
-import { messageEnHtml, apercuDuMessage, TITRE_MAX, LONGUEUR_MAX }
-    from '../core/messageEtape.js';
+import { TITRE_MAX, LONGUEUR_MAX } from '../core/messageEtape.js';
 import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
 import { poserLeBandeauDesOutils, basculerLeBandeauDesOutils } from './bandeauOutils.js';
 import { communDe, appliquerAuxEtapes } from '../core/reglagesGroupes.js';
@@ -39,7 +38,7 @@ import {
     renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide, direLesReglages
 } from '../games/configUI.js';
 import { lireZones, normaliserZones, zonesDuMode, modeZone } from '../core/aide.js';
-import { showToast, showAlert, showConfirm, showModal } from './modal.js';
+import { showToast, showAlert, showConfirm } from './modal.js';
 
 let selectedStepId = null;
 
@@ -461,6 +460,22 @@ function handleDrop(e, pathBox) {
     const dossier = e.dataTransfer.getData('text/dossier');
     if (dossier !== '') {
         ajouterLeDossier(dossier === '' ? [] : dossier.split(' > '), rang);
+        return;
+    }
+
+    // UN MOT DU PROFESSEUR, DÉPOSÉ À SA PLACE.
+    //
+    // Rémy, devant la fenêtre d'écriture de la première version : « c'est hyper
+    // vieillot et en fait l'idéal est de pouvoir faire glisser en drag drop une
+    // ligne de texte entre les exercices et on écrit directement non ? »
+    //
+    // IL A RAISON SUR LES DEUX POINTS, et le second est le plus important : un
+    // mot sert à expliquer ce qui se passe ENTRE deux exercices précis. Le
+    // poser d'abord à la fin, puis le remonter, c'est faire en deux gestes ce
+    // que le glisser fait en un — et c'est le geste que ce panneau emploie
+    // déjà pour tout le reste.
+    if (e.dataTransfer.getData('text/mot') !== '') {
+        ajouterUnMot(rang);
         return;
     }
 
@@ -1263,12 +1278,89 @@ function stepRow(step, index, policy) {
     // titre s'il y en a un, les premiers mots sinon.
     if (estUnMessage(step)) {
         row.classList.add('path-step--mot');
-        row.innerHTML = `<div class="path-step-title">
+        const m = step.message || {};
+        row.innerHTML = `<div class="path-mot-ligne">
             <span class="path-step-grip" aria-hidden="true">☰</span>
-            <span class="path-step-mot-marque" aria-hidden="true">💬</span>
-            <span class="path-step-name">${index + 1}. ${escapeHtml(apercuDuMessage(step.message))}</span>
+            <span class="path-mot-marque" aria-hidden="true">💬</span>
+            <div class="path-mot-champs">
+                <input class="path-mot-titre" type="text" maxlength="${TITRE_MAX}"
+                       placeholder="Titre (facultatif)"
+                       aria-label="Titre du mot, facultatif"
+                       value="${escapeHtml(m.titre || '')}">
+                <textarea class="path-mot-texte" rows="2" maxlength="${LONGUEUR_MAX}"
+                          placeholder="Ce que l'élève lira ici. Une ligne vide fait un paragraphe, *un mot entre étoiles* s'affiche en gras."
+                          aria-label="Le texte du mot">${escapeHtml(m.texte || '')}</textarea>
+            </div>
         </div>`;
-        row.title = 'Un mot à lire — clique pour l\'écrire';
+
+        // LA POIGNÉE PORTE LE GLISSER, PAS LA LIGNE — et c'est une nécessité,
+        // pas une préférence. Un élément `draggable` EMPÊCHE de sélectionner le
+        // texte à l'intérieur : la ligne entière étant déplaçable, on ne
+        // pouvait plus ni placer son curseur ni sélectionner un mot dans le
+        // champ. On déplace donc le glisser sur le ☰, qui est exactement ce
+        // qu'il a l'air d'être.
+        row.draggable = false;
+        const grip = row.querySelector('.path-step-grip');
+        grip.draggable = true;
+        grip.ondragstart = (e) => {
+            e.dataTransfer.setData('text/reorder', index);
+            row.style.opacity = '0.5';
+        };
+        grip.ondragend = () => { row.style.opacity = '1'; };
+
+        // ON ÉCRIT DIRECTEMENT DANS LA LIGNE. Rémy, devant la fenêtre d'avant :
+        // « c'est hyper vieillot et en fait l'idéal est de pouvoir faire
+        // glisser en drag drop une ligne de texte entre les exercices et on
+        // écrit directement non ? »
+        //
+        // ON N'ATTEND PAS UN BOUTON « Enregistrer ». Ce panneau enregistre déjà
+        // tout seul le reste du parcours ; un bouton ici serait le seul endroit
+        // où il faudrait penser à le faire, donc le seul endroit où l'on
+        // perdrait son travail.
+        //
+        // ON NE REDESSINE PAS LA LISTE À CHAQUE FRAPPE : refabriquer la ligne
+        // sous les doigts reprendrait le champ à zéro, curseur compris.
+        // `renderTeacherPath` est rappelé au DÉPART du champ, quand le reste de
+        // l'écran — le résumé, les numéros — a besoin de suivre.
+        const champs = row.querySelectorAll('.path-mot-titre, .path-mot-texte');
+        const lire = () => {
+            const i = state.currentPath.steps.findIndex(s => s.stepId === step.stepId);
+            if (i === -1) return;
+            state.currentPath.steps[i] = makeMessage({
+                titre: row.querySelector('.path-mot-titre').value,
+                texte: row.querySelector('.path-mot-texte').value
+            }, { stepId: step.stepId });
+            autoSavePath();
+        };
+        champs.forEach((c) => {
+            // Le clic dans un champ ne doit pas être pris pour un clic sur la
+            // ligne — qui, lui, sélectionne l'étape.
+            c.onclick = (e) => e.stopPropagation();
+            c.oninput = lire;
+        });
+        // ON NE REDESSINE PAS LA LISTE EN QUITTANT LE CHAMP, et c'est une
+        // correction, pas une économie.
+        //
+        // MESURÉ : avec un `renderTeacherPath()` au départ du champ, passer du
+        // titre au texte d'un clic perdait le clic. Le départ du titre
+        // refabrique la ligne, donc le `textarea` que le doigt visait est
+        // DÉTACHÉ avant que le clic n'y arrive : le curseur n'allait nulle
+        // part, et il fallait cliquer une seconde fois. La sonde l'a vu en
+        // perdant le titre ; un professeur l'aurait vu en le retapant.
+        //
+        // ET CE REDESSIN NE SERVAIT À RIEN. Il était là pour que le résumé et
+        // les numéros suivent — or un mot ne change ni le nombre de questions,
+        // ni le barème, ni le rang des autres étapes. Rien à rafraîchir.
+        // LE CHAMP GRANDIT AVEC LE TEXTE, plutôt qu'une barre de défilement de
+        // trois lignes : on relit ce qu'on écrit, surtout quand c'est court.
+        const zone = row.querySelector('.path-mot-texte');
+        const grandir = () => {
+            zone.style.height = 'auto';
+            zone.style.height = Math.min(220, zone.scrollHeight) + 'px';
+        };
+        zone.addEventListener('input', grandir);
+        requestAnimationFrame(grandir);
+
         const del = iconButton('Supprimer', ICONS.trash, 'danger');
         del.onclick = (e) => { e.stopPropagation(); removeStep(step.stepId); };
         row.appendChild(del);
@@ -1541,77 +1633,48 @@ export function ajouterUnMot(rang) {
     const ou = Number.isInteger(rang) ? Math.max(0, Math.min(rang, steps.length)) : steps.length;
     steps.splice(ou, 0, step);
     renderTeacherPath();
-    ecrireLeMot(step.stepId);
+    // ET LE CURSEUR SE POSE DANS LE CHAMP, puisqu'on vient d'ajouter le mot
+    // pour l'écrire. Après `renderTeacherPath`, la ligne existe dans la page.
+    selectStep(step.stepId);
 }
 
 /**
- * ÉCRIRE LE MOT — une fenêtre, deux champs, rien d'autre.
+ * ON N'OUVRE PLUS DE FENÊTRE POUR ÉCRIRE UN MOT.
  *
- * ON NE MET PAS DE BARRE D'OUTILS, et c'est une décision, pas une économie.
- * Rémy, sur la mise en forme : « du texte, des retours à la ligne, du gras ».
- * Un éditeur plus riche ne coûte pas cher à écrire, il coûte cher à VIVRE :
- * on passe ses soirées à mettre en forme au lieu de préparer des exercices.
- * L'aide sous le champ dit la seule syntaxe qu'il y a à connaître.
+ * Rémy, devant la première version : « c'est hyper vieillot et en fait l'idéal
+ * est de pouvoir faire glisser en drag drop une ligne de texte entre les
+ * exercices et on écrit directement non ? »
  *
- * L'APERÇU EST LE VRAI, celui du meneur : `messageEnHtml`, dans la classe
- * `.run-mot-texte`. Un aperçu approximatif est pire que pas d'aperçu — on
- * corrigerait un texte d'après une image fausse.
+ * Il avait raison deux fois. Une fenêtre modale pour trois lignes de texte,
+ * c'est un écran de plus à ouvrir et à refermer pour chaque correction — et
+ * surtout, on écrit SANS VOIR le parcours autour, alors que le mot n'existe que
+ * par rapport aux deux exercices qu'il sépare. L'écriture vit maintenant dans
+ * la LIGNE elle-même (voir `stepRow`), et le mot se dépose à sa place au
+ * glisser.
+ *
+ * L'ÉDITEUR S'ENREGISTRE TOUT SEUL, comme le reste du panneau — un bouton
+ * « Enregistrer » n'y était que pour la fenêtre, et il aurait été le seul
+ * endroit du parcours où l'on peut perdre son travail en cliquant à côté.
  */
-export function ecrireLeMot(stepId) {
-    const etape = state.currentPath.steps.find(s => s.stepId === stepId);
-    if (!estUnMessage(etape)) return;
-    const m = etape.message || {};
-    const modal = showModal('Le mot du professeur', `
-        <label class="ec-pilote-mot-liant" for="mot-titre">Titre (facultatif)</label>
-        <input id="mot-titre" class="ec-champ" type="text" maxlength="${TITRE_MAX}"
-               placeholder="Avant de commencer" value="${escapeHtml(m.titre || '')}">
-        <label class="ec-pilote-mot-liant" for="mot-texte">Ce que l'élève lira</label>
-        <textarea id="mot-texte" class="ec-champ" rows="6" maxlength="${LONGUEUR_MAX}"
-                  placeholder="Attention, ici on change de méthode…"
-                  >${escapeHtml(m.texte || '')}</textarea>
-        <p class="ec-note">Une ligne vide fait un paragraphe. Un mot entre
-           étoiles — <code>*comme ceci*</code> — s'affiche en gras.</p>
-        <h4 class="ec-pilote-titre">Ce que l'élève verra</h4>
-        <div id="mot-apercu" class="run-mot-texte"></div>
-        <div class="ec-seance-gestes">
-            <button type="button" class="ec-bouton" id="mot-ok">Enregistrer</button>
-        </div>`, { width: '560px' });
 
-    const champTitre = modal.element.querySelector('#mot-titre');
-    const champTexte = modal.element.querySelector('#mot-texte');
-    const apercu = modal.element.querySelector('#mot-apercu');
-    const peindre = () => { apercu.innerHTML = messageEnHtml(champTexte.value); };
-    champTexte.oninput = peindre;
-    peindre();
-
-    modal.element.querySelector('#mot-ok').onclick = () => {
-        const i = state.currentPath.steps.findIndex(s => s.stepId === stepId);
-        if (i !== -1) {
-            // ON REMPLACE L'ÉTAPE, on ne la retouche pas en place : c'est la
-            // règle de ce fichier depuis que l'aperçu des réglages a montré
-            // l'étape d'hier (voir `selectStep`).
-            state.currentPath.steps[i] = makeMessage(
-                { titre: champTitre.value, texte: champTexte.value },
-                { stepId });
-        }
-        modal.close();
-        renderTeacherPath();
-        autoSavePath();
-    };
-    champTexte.focus();
-}
 
 export function selectStep(stepId) {
     let step = state.currentPath.steps.find(s => s.stepId === stepId);
     if (!step) return;
     selectedStepId = stepId;
 
-    // UN MOT NE SE RÈGLE PAS, IL S'ÉCRIT. Le panneau de réglages est bâti
-    // autour de l'exercice et de son moteur ; sur une étape qui n'en a pas, il
-    // n'aurait rien à montrer. Le clic sur la ligne est le même geste pour les
-    // deux sortes d'étapes — Rémy clique dessus pour l'ouvrir — et c'est ici,
-    // au seul endroit par où passe ce clic, qu'on aiguille.
-    if (estUnMessage(step)) return ecrireLeMot(stepId);
+    // UN MOT NE SE RÈGLE PAS, IL S'ÉCRIT — et il s'écrit DANS SA LIGNE.
+    //
+    // Le panneau de réglages est bâti autour de l'exercice et de son moteur ;
+    // sur une étape qui n'en a pas, il n'aurait rien à montrer. On ne l'ouvre
+    // donc pas, et l'on met le curseur là où Rémy veut taper : dans le champ,
+    // qui est déjà sous ses yeux.
+    if (estUnMessage(step)) {
+        const champ = document.querySelector(
+            `.path-step[data-step-id="${stepId}"] .path-mot-texte`);
+        if (champ) champ.focus();
+        return;
+    }
 
     // LES RÉGLAGES S'OUVRENT EN FENÊTRE, PLUS DANS UNE TROISIÈME COLONNE.
     //
@@ -1872,8 +1935,23 @@ function initToolbar() {
 
     // AJOUTER UN MOT. Rémy : « dans le parcours ce qui serait sympa c'est de
     // pouvoir caler un message entre les exercices, pour expliquer un peu. »
+    // LA BULLE SE CLIQUE *ET* SE GLISSE.
+    //
+    // Rémy : « l'idéal est de pouvoir faire glisser en drag drop une ligne de
+    // texte entre les exercices ». Le glisser POSE LE MOT À SA PLACE, ce qui
+    // est le geste juste — un mot n'a de sens qu'entre deux exercices précis.
+    // Le clic reste, et ajoute à la fin : c'est ce qu'on veut quand on écrit
+    // un parcours de haut en bas, et c'est aussi la seule porte accessible au
+    // clavier et au doigt.
     const btnMot = document.getElementById('btn-ajouter-mot');
-    if (btnMot) btnMot.onclick = () => ajouterUnMot();
+    if (btnMot) {
+        btnMot.onclick = () => ajouterUnMot();
+        btnMot.draggable = true;
+        btnMot.ondragstart = (e) => {
+            e.dataTransfer.setData('text/mot', '1');
+            e.dataTransfer.effectAllowed = 'copy';
+        };
+    }
 
     // LE « ? » DE LA BARRE. Rémy : « je mettrai éventuellement un petit ? à côté
     // de nouveau parcours pour voir justement ce qui correspond aux icônes. »

@@ -2340,6 +2340,54 @@ html[data-point="plus"] .pt-croix { display: none; }
     .run-screen-btn--doux:hover { opacity: 1; }
 }
 
+/* ═══ LA LIGNE QUI S'ÉCRIT, DANS LE PARCOURS ══════════════════════════════════
+   Rémy : « c'est hyper vieillot et en fait l'idéal est de pouvoir faire glisser
+   en drag drop une ligne de texte entre les exercices et on écrit directement
+   non ? »
+
+   ELLE A LA MÊME CARRURE QU'UNE LIGNE D'EXERCICE — même fond, même arrondi,
+   même marge — et deux différences qui disent ce qu'elle est : un liseré à
+   gauche, et des champs sans bordure tant qu'on n'écrit pas dedans. Une ligne
+   qui ressemblerait à un formulaire ferait une tache dans une liste de dix
+   étapes.
+
+   AUCUNE DÉCLARATION DE POLICE : `font: inherit` sur les champs, parce qu'un
+   `input` et un `textarea` ne prennent PAS la police de la page tout seuls —
+   c'est la seule exception du navigateur à la règle d'héritage, et c'est
+   précisément ce que Rémy a demandé d'éviter : « il faut rester cohérent dans
+   la police ». */
+.path-step--mot {
+    border-left: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+    align-items: flex-start;
+}
+.path-mot-ligne { display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0; }
+.path-mot-marque { font-size: 1rem; line-height: 1.6; }
+.path-mot-champs { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.path-mot-titre, .path-mot-texte {
+    font: inherit; color: var(--text-main);
+    background: transparent; border: 1px solid transparent; border-radius: 6px;
+    padding: 3px 6px; width: 100%;
+}
+.path-mot-titre { font-weight: 700; }
+.path-mot-texte { resize: none; overflow: hidden; line-height: 1.5; min-height: 2.6em; }
+.path-mot-titre::placeholder, .path-mot-texte::placeholder {
+    color: var(--text-soft); font-weight: 400;
+}
+/* ON NE MONTRE LE CADRE QU'AU MOMENT OÙ IL SERT : au survol, on comprend que
+   c'est éditable ; au focus, on voit où l'on tape. Le reste du temps, la ligne
+   se lit comme du texte. */
+@media (hover: hover) {
+    .path-mot-titre:hover, .path-mot-texte:hover { border-color: var(--border); }
+}
+.path-mot-titre:focus, .path-mot-texte:focus {
+    outline: none; border-color: var(--primary); background: var(--bg-app);
+}
+/* LA POIGNÉE PORTE LE GLISSER, et elle doit en avoir l'air : la ligne, elle,
+   n'est plus déplaçable — sans quoi on ne pourrait pas sélectionner un mot
+   dans le champ. */
+.path-step--mot .path-step-grip { cursor: grab; padding-top: 3px; }
+.path-step--mot .path-step-grip:active { cursor: grabbing; }
+
 /* ═══ LE MOT DU PROFESSEUR, ENTRE DEUX EXERCICES ══════════════════════════════
    Rémy : « dans le parcours ce qui serait sympa c'est de pouvoir caler un
    message entre les exercices, pour expliquer un peu. »

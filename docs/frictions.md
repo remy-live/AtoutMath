@@ -1644,3 +1644,47 @@ lignes** — 2026-10-01
 - *La règle* : **on mesure une DIFFÉRENCE, pas une valeur en dur** (le total
   avant et après l'ajout, plutôt que 20), et **on ne coupe pas le journal dans
   une sonde qui va regarder quelque chose qui se dessine à partir du journal.**
+
+---
+
+**Un sélecteur inventé, encore — et le témoin qui l'a dit** — 2026-10-01
+
+- *Ce que je voulais faire* : vérifier dans une sonde qu'aucune fenêtre modale
+  ne s'ouvre quand on écrit un mot dans la ligne du parcours.
+- *Ce qui a coûté* : deux faux signalements de plus dans la même sonde.
+  `.path-step:nth-of-type(2)` ne vise pas la deuxième ligne `.path-step` mais le
+  deuxième DIV frère — la liste en porte d'autres. Et `.modal-title` existe en
+  PERMANENCE dans la page, caché (la confirmation universelle, entre autres) :
+  la sonde annonçait « la fenêtre modale est revenue » alors qu'aucune n'était
+  visible. Neuvième et dixième sélecteurs inventés depuis que la règle est
+  écrite.
+- *Combien de fois* : ||||||||||
+- *Ce qui manque* : la règle existe déjà — « avant d'écrire un sélecteur, on le
+  LIT dans la source ». Ce qui manque, c'est son corollaire : **ce qui est dans
+  le document n'est pas ce qui est à l'écran.** Toute question de la forme « y
+  a-t-il un X » se mesure sur les éléments VISIBLES (`getBoundingClientRect()
+  .width > 0`), jamais sur `querySelector` seul.
+- *La règle* : **compter ce qu'on voit, pas ce qui existe.** Et, pour les
+  listes : viser par index sur `querySelectorAll('.classe')`, jamais par
+  `:nth-of-type`, qui compte les frères et non la classe.
+
+---
+
+**Un re-rendu au départ d'un champ vole le clic suivant** — 2026-10-01
+
+- *Ce que je voulais faire* : écrire un mot du professeur directement dans la
+  ligne du parcours, avec deux champs — le titre, puis le texte.
+- *Ce qui a coûté* : une heure à soupçonner Playwright. La sonde perdait le
+  titre, et un essai direct dans la page, à la main, marchait parfaitement :
+  j'ai donc cru à un artefact d'outil. C'en était un à moitié — et l'autre
+  moitié était un VRAI défaut : `onblur` rappelait `renderTeacherPath()`, qui
+  refabrique la ligne, donc **le champ que le doigt visait était détaché avant
+  que le clic n'y arrive**. Un professeur passant du titre au texte d'un clic
+  aurait dû cliquer deux fois, sans comprendre pourquoi.
+- *Combien de fois* : |
+- *Ce qui manque* : rien à fabriquer — une mesure à ajouter, et elle l'est :
+  la sonde vérifie maintenant que `document.activeElement` est bien le champ
+  visé après le clic.
+- *La règle* : **un écran qui se redessine au départ d'un champ perd le geste
+  qui l'a fait partir.** Avant d'appeler un rendu dans un `blur`, se demander ce
+  qu'il rafraîchit vraiment — ici, rien du tout.

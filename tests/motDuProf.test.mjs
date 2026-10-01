@@ -186,7 +186,23 @@ test('LE MOT SE RELIT DEPUIS LE FIL, MÊME POUR L\'ÉLÈVE', () => {
 test('L\'ATELIER SAIT L\'AJOUTER ET L\'ÉCRIRE, ET NE L\'ANNONCE PAS CASSÉ', () => {
     const b = lire('js/ui/builder.js');
     assert.match(b, /export function ajouterUnMot/);
-    assert.match(b, /export function ecrireLeMot/);
+    // ─────────────────────────────────────────────────────────────────────
+    // IL N'Y A PLUS DE FENÊTRE POUR ÉCRIRE — Rémy : « c'est hyper vieillot et
+    // en fait l'idéal est de pouvoir faire glisser en drag drop une ligne de
+    // texte entre les exercices et on écrit directement non ? » L'écriture vit
+    // dans la LIGNE, et le mot se dépose à sa place au glisser.
+    assert.doesNotMatch(b, /function ecrireLeMot/,
+        'la fenêtre modale est revenue : on écrit dans la ligne');
+    assert.match(b, /class="path-mot-texte"/,
+        'la ligne ne porte pas de champ : on ne peut plus écrire dedans');
+    assert.match(b, /getData\('text\/mot'\) !== ''/,
+        'on ne peut plus déposer un mot entre deux exercices');
+    // LA POIGNÉE PORTE LE GLISSER, ET LA LIGNE NE L'A PLUS : un élément
+    // `draggable` empêche de sélectionner le texte qu'il contient. C'est le
+    // genre de défaut qu'on ne voit qu'en essayant de corriger une faute de
+    // frappe au milieu d'une phrase.
+    assert.match(b, /row\.draggable = false;[\s\S]{0,400}grip\.draggable = true;/,
+        'la ligne déplaçable empêcherait de sélectionner son propre texte');
     // LA LIGNE DU MOT PASSE AVANT « Exercice introuvable » : sans cela, Rémy
     // venait d'écrire son message et l'atelier le lui annonçait abîmé.
     //
@@ -203,8 +219,12 @@ test('L\'ATELIER SAIT L\'AJOUTER ET L\'ÉCRIRE, ET NE L\'ANNONCE PAS CASSÉ', ()
     assert.ok(ouMot !== -1, 'rien ne reconnaît un mot dans la ligne de l\'atelier');
     assert.ok(ouCasse !== -1 && ouMot < ouCasse,
         'le mot tomberait dans la branche « Exercice introuvable »');
-    // UN MOT NE SE RÈGLE PAS, IL S'ÉCRIT : le clic sur la ligne ouvre l'éditeur.
-    assert.match(b, /if \(estUnMessage\(step\)\) return ecrireLeMot\(stepId\)/);
+    // UN MOT NE SE RÈGLE PAS, IL S'ÉCRIT : le clic sur la ligne pose le curseur
+    // dans le champ, au lieu d'ouvrir un panneau de réglages qui n'aurait rien
+    // à montrer sur une étape sans exercice ni moteur.
+    const choisir = sansCommentaires(b.slice(b.indexOf('export function selectStep')));
+    assert.match(choisir.slice(0, 700), /if \(estUnMessage\(step\)\) \{[\s\S]{0,200}\.focus\(\)/,
+        'le clic sur un mot ouvrirait les réglages d\'un exercice qui n\'existe pas');
     // Et le bouton existe dans la page, avec un nom qu'on peut lire.
     assert.match(lire('index.html'), /id="btn-ajouter-mot"/);
 });
