@@ -41,6 +41,7 @@ import { PAR_DEFAUT as BAC_PAR_DEFAUT } from '../core/bacASable.js';
 import { isGame } from '../core/gameAccess.js';
 import { estADeux } from '../data/catalog.js';
 import { monterUnParcours, ramenerLaBibliotheque } from '../core/parcoursServeur.js';
+import { cheminDeLEntree } from '../core/entreeParcours.js';
 // LE CATALOGUE SE COMPTE, IL NE SE RECOPIE PAS. Deux phrases de cet écran
 // annonçaient « 172 exercices » ; le catalogue en contient 178 depuis qu'on y
 // a mis la Seconde. Un nombre écrit à la main est un nombre qui devient faux
@@ -3514,32 +3515,13 @@ async function parcoursDeLaSeance(pathId) {
     return (state.teacherPaths || []).find(x => x && x.id === pathId) || null;
 }
 
-/**
- * LES ÉTAPES D'UNE ENTRÉE DE BIBLIOTHÈQUE — et il y a DEUX formes.
- *
- * `state.teacherPaths` ne contient pas toujours la même chose :
- *
- *   · `state.saveTeacherPath()` y range une ENVELOPPE — { id, name, data,
- *     folderId, timestamp } — dont `data` est le parcours ;
- *   · `ramenerLaBibliotheque()` y range le PARCOURS lui-même, normalisé, avec
- *     ses `steps` au premier niveau.
- *
- * Les deux formes se promènent donc côte à côte selon qu'un parcours a été
- * fabriqué ici ou rapatrié du serveur. Le serveur le sait et le dit déjà —
- * `assignmentsFor` lit `brut.data ?? brut` avec le commentaire « les étapes
- * sont un niveau plus bas que là où on les cherche naturellement ».
- *
- * MESURÉ, ET C'EST POUR CELA QUE CETTE FONCTION EXISTE : mon premier essai
- * écrivait `[...(entree.steps || []), nouvelle]` sur une enveloppe. `steps` y
- * vaut `undefined`, donc la séance passait de DEUX étapes à UNE — celle qu'on
- * venait d'ajouter. Ajouter un exercice effaçait la séance. La sonde l'a vu
- * en recomptant au serveur ; à l'écran, le bouton avait l'air de marcher.
- */
-function cheminDeLEntree(entree) {
-    if (!entree) return null;
-    const enveloppe = entree.data && typeof entree.data === 'object' && !Array.isArray(entree.data);
-    return enveloppe ? entree.data : entree;
-}
+// LE DÉBALLAGE D'UNE ENTRÉE DE BIBLIOTHÈQUE A QUITTÉ CE FICHIER.
+//
+// Il était ici, écrit pour l'ajout d'un exercice à une séance — et il manquait
+// au rapatriement des parcours, où le même oubli faisait redescendre du serveur
+// des parcours vides. Deux fois la même ligne, deux fois le même défaut : elle
+// vit maintenant dans `js/core/entreeParcours.js`, avec les deux mesures qui
+// l'ont payée, et s'éprouve sans navigateur.
 
 // --- Les billets à imprimer -------------------------------------------------
 

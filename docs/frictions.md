@@ -1551,3 +1551,48 @@ lignes** — 2026-10-01
 - *La règle* : **deux outils qui prennent les mêmes arguments doivent les
   prendre de la même façon.** Une différence invisible entre deux signatures
   jumelles se paie en essais, pas en lecture de code.
+
+---
+
+**Aucun harnais ne regardait un SECOND ordinateur** — 2026-10-01
+
+- *Ce que je voulais faire* : comprendre pourquoi un parcours créé au collège
+  n'était pas sur le Mac de Rémy chez lui. Trois défauts sur la même chaîne,
+  dont un depuis le premier jour du raccordement au serveur.
+- *Ce qui a coûté* : non pas la correction — une ligne, un appel, un déballage —
+  mais le fait que **rien ne pouvait le voir**. `npm test` ne sort pas du
+  processus, `testApi.php` ne regarde que le serveur, et `boutEnBout.mjs` ouvre
+  deux ONGLETS, qui partagent IndexedDB : le parcours y est déjà, et la
+  synchronisation n'a rien à faire pour qu'on le voie. Quatre mille épreuves
+  vertes sur un logiciel où la bibliothèque ne descendait jamais.
+- *Combien de fois* : |
+- *Ce qui manque — fait dans la foulée* : `tools/deuxPostes.mjs`, qui ouvre un
+  **contexte neuf** (`nav.newContext()`, donc un navigateur qui n'a jamais rien
+  vu de ce compte) et refait le geste : créer au collège, retrouver à la
+  maison. À réutiliser pour tout ce qui doit suivre le professeur ou l'élève
+  d'un appareil à l'autre.
+- *La règle* : **deux onglets ne sont pas deux ordinateurs.** Tout ce qui
+  s'enregistre dans le navigateur se mesure dans un contexte neuf, ou ne se
+  mesure pas.
+
+---
+
+**Une épreuve qui lit le commentaire au lieu du code** — 2026-10-01
+
+- *Ce que je voulais faire* : garder par une épreuve l'ORDRE de deux appels
+  (`ramenerLaBibliotheque()` avant `monterLaBibliotheque()`), et le fait que la
+  route PHP n'emploie plus `+` pour remplacer une clef.
+- *Ce qui a coûté* : deux fois la même chute. Les deux épreuves lisaient le
+  fichier source et comparaient des `indexOf` — mais **le correctif cite le
+  défaut dans son commentaire**, parce que c'est la règle de ce dépôt
+  (« annoncer ce qui a été mesuré »). La première épreuve accusait donc le
+  commentaire qui raconte la correction ; la seconde restait VERTE en inversant
+  l'ordre des appels, parce que le commentaire au-dessus les nomme dans le bon
+  ordre. Trouvée par `epreuveTombe.mjs`, pas par la relecture.
+- *Combien de fois* : ||
+- *Ce qui manque* : une fonction partagée pour les épreuves qui lisent du code
+  source — `sansCommentaires(texte)` — plutôt que le filtre recopié deux fois.
+  Deux lignes, mais la troisième fois sera la bonne pour l'écrire quelque part.
+- *La règle* : **une épreuve qui lit du source doit retirer les commentaires
+  avant de chercher.** Sinon, expliquer un défaut suffit à faire mentir
+  l'épreuve qui le garde — et ce dépôt explique TOUT.

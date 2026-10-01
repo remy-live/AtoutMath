@@ -1815,6 +1815,48 @@ verifier('et nous modifions bien notre propre parcours',
         'path' => ['id' => $notreParcours, 'name' => 'Parcours retouché',
                    'version' => 2, 'steps' => []]], $jetonNotre)['code'] === 200);
 
+// ─── LE PARCOURS REDESCEND DÉCODÉ, ET AVEC SES ÉTAPES ──────────────────────
+//
+// Rémy : « le parcours que j'ai créé au collège sur mon compte, je ne l'ai pas
+// sur mon mac chez moi !!!! »
+//
+// LE PIÈGE TENAIT EN UN CARACTÈRE. La route rendait la liste avec
+// `$r + ['data' => json_decode(...)]`, et l'opérateur `+` sur deux tableaux PHP
+// NE REMPLACE PAS une clef que la gauche porte déjà : la ligne sortie de la
+// base a une colonne `data`, donc le tableau décodé était calculé puis JETÉ, et
+// la route rendait la CHAÎNE JSON BRUTE sous le même nom. Le champ existait, il
+// avait le bon nom, il contenait bien le parcours — en texte.
+//
+// CÔTÉ NAVIGATEUR, `ramenerLaBibliotheque` fait `if (!p || !p.id) continue` :
+// sur une chaîne, `p.id` est `undefined`, donc TOUTES les lignes étaient
+// sautées. La bibliothèque du serveur ne redescendait jamais, en silence.
+//
+// ON MESURE LE TYPE, et pas seulement la présence : c'est exactement ce que
+// personne ne regardait.
+json('/teacher/paths', ['action' => 'save',
+    'path' => ['id' => 'path_essai_forme', 'name' => 'ENVELOPPE À DÉBALLER',
+               'data' => ['id' => 'path_dedans', 'version' => 2,
+                          'name' => 'ENVELOPPE À DÉBALLER',
+                          'steps' => [['stepId' => 'a', 'exerciseId' => 'calc-add'],
+                                      ['stepId' => 'b', 'exerciseId' => 'calc-prio']]],
+               'folderId' => 'root', 'timestamp' => 1700000000000]], $jetonNotre);
+$laListe = json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['paths'] ?? [];
+$laLigne = null;
+foreach ($laListe as $l) {
+    if (($l['id'] ?? '') === 'path_essai_forme') { $laLigne = $l; break; }
+}
+verifier('le parcours est bien dans la liste', $laLigne !== null);
+verifier('ET SON `data` EST UN TABLEAU, PAS UNE CHAÎNE JSON',
+    is_array($laLigne['data'] ?? null),
+    'reçu : ' . gettype($laLigne['data'] ?? null));
+verifier('IL PORTE SES DEUX ÉTAPES, UN NIVEAU PLUS BAS',
+    count($laLigne['data']['data']['steps'] ?? []) === 2,
+    (string) count($laLigne['data']['data']['steps'] ?? []) . ' étape(s)');
+// ET LES AUTRES CHAMPS DE LA LIGNE N'ONT PAS DISPARU en changeant d'opérateur :
+// `array_merge` remplace `data` et garde le reste.
+verifier('et la ligne garde son nom et sa date',
+    ($laLigne['name'] ?? '') === 'ENVELOPPE À DÉBALLER' && !empty($laLigne['updated_at']));
+
 // Une assignation qui ne vise personne n'a jamais servi à rien : elle restait
 // en base sans jamais être lue, et l'écran disait pourtant « donné ».
 verifier('une assignation sans classe ni élève est refusée',

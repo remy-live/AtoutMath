@@ -50,6 +50,8 @@ import { normalizePath } from './path.js';
 import { donnerSeance, complementDeSeance, completerSeance } from './seances.js';
 import { identiteDeParcours } from './shortcodes.js';
 import { empreinte } from './empreinteParcours.js';
+import { estUnParcoursSeme } from './parcoursSemes.js';
+import { cheminDeLEntree } from './entreeParcours.js';
 
 /** Ce qu'on a déjà réussi à monter : identifiant → empreinte de ce qui est parti. */
 const dejaMonte = new Map();
@@ -100,6 +102,12 @@ export async function monterLaBibliotheque() {
     if (!enPosteDeProf()) return { montes: 0, restes: 0, erreur: '' };
     let montes = 0, restes = 0, erreur = '';
     for (const p of (state.teacherPaths || [])) {
+        // ON NE MONTE PAS CE QUE LE LOGICIEL SE DONNE À LUI-MÊME. Voir
+        // `parcoursSemes.js` : « Parcours découverte » et « Tout sur papier »
+        // naissent sur CHAQUE machine avec un identifiant neuf. Les monter, puis
+        // les redescendre ailleurs, c'est fabriquer une paire de jumeaux par
+        // poste — MESURÉ, cinq lignes au serveur pour trois parcours.
+        if (estUnParcoursSeme(p)) continue;
         const r = await monterUnParcours(p);
         if (r.monte) montes++;
         else { restes++; erreur = erreur || r.erreur || ''; }
@@ -122,13 +130,51 @@ export async function ramenerLaBibliotheque() {
     if (!enPosteDeProf()) return { ramenes: 0, erreur: 'Pas identifié comme professeur.' };
     const r = await auServeur('/teacher/paths', { action: 'list' });
     if (r.erreur) return { ramenes: 0, erreur: r.erreur };
-    const connus = new Set((state.teacherPaths || []).map(p => p.id));
+    const connus = new Set((state.teacherPaths || []).map(p => p && p.id));
     let ramenes = 0;
     for (const ligne of (r.paths || [])) {
-        const p = ligne.data;
-        if (!p || !p.id || connus.has(p.id)) continue;
-        state.teacherPaths.push(normalizePath(p, p.name));
-        dejaMonte.set(p.id, empreinte(p));
+        const brut = ligne && ligne.data;
+        if (!brut || typeof brut !== 'object' || !brut.id || connus.has(brut.id)) continue;
+        // CE QUE LE LOGICIEL SE DONNE À LUI-MÊME NE REDESCEND PAS. Voir
+        // `parcoursSemes.js`. « Tout sur papier » est même PLUS JUSTE refabriqué
+        // ici que rapatrié : rapatrié, il porterait le catalogue de l'autre
+        // machine. Les anciennes lignes déjà au serveur sont donc ignorées — on
+        // n'y touche pas, on ne les regarde plus.
+        if (estUnParcoursSeme(brut)) continue;
+
+        // DEUX FORMES ARRIVENT D'ICI, ET LA MAUVAISE PERD SES ÉTAPES EN SILENCE.
+        //
+        // `monterLaBibliotheque` envoie ce qu'elle a sous la main, c'est-à-dire
+        // l'ENVELOPPE rangée par `state.saveTeacherPath` : { id, name, data,
+        // folderId, timestamp }, où `data` est le parcours. Le serveur la range
+        // telle quelle et la rend telle quelle.
+        //
+        // MESURÉ : `normalizePath(enveloppe, nom)` rend DEUX étapes sur le
+        // parcours et ZÉRO sur l'enveloppe. La raison est écrite dans
+        // `normalizePath` : il cherche `raw.data` comme un TABLEAU d'étapes (le
+        // vieux format de l'explorateur) ; ici `data` est un OBJET, donc il
+        // retombe sur `raw.steps`, qui n'existe pas à ce niveau. Un parcours
+        // revenait avec son nom, son identifiant, et rien dedans.
+        //
+        // LE DÉBALLAGE VIT DANS SON PROPRE MODULE parce que la même ligne avait
+        // déjà été écrite dans `js/ui/espaceClasses.js` — et qu'elle manquait
+        // ici. Voir `entreeParcours.js`.
+        const dedans = cheminDeLEntree(brut) || brut;
+        const parcours = normalizePath(dedans, brut.name || dedans.name || 'Parcours');
+
+        // ON REMET L'ENVELOPPE, PARCE QUE C'EST CE QUE L'EXPLORATEUR LIT. Il
+        // affiche `name`, range par `folderId` et trie par `timestamp` ; un
+        // parcours nu y entrait sans dossier et sans date. On garde l'identifiant
+        // de l'enveloppe du serveur, sinon le prochain démarrage le remonterait
+        // sous un nom neuf et l'on aurait fabriqué le doublon qu'on évite.
+        state.teacherPaths.push({
+            id: brut.id,
+            name: brut.name || parcours.name,
+            data: parcours,
+            folderId: brut.folderId || 'root',
+            timestamp: brut.timestamp || Date.now()
+        });
+        dejaMonte.set(brut.id, empreinte(brut));
         ramenes++;
     }
     if (ramenes) state.saveTeacherPaths();
@@ -237,7 +283,31 @@ export async function initParcoursServeur() {
         Object.entries(garde).forEach(([k, v]) => dejaMonte.set(k, v));
     }
     veillerSurLaBibliotheque();
-    if (enPosteDeProf()) monterLaBibliotheque();
+    if (!enPosteDeProf()) return;
+
+    // ON DESCEND AVANT DE MONTER, ET IL FALLAIT LES DEUX.
+    //
+    // Rémy : « le parcours que j'ai créé au collège sur mon compte, je ne l'ai
+    // pas sur mon mac chez moi !!!! »
+    //
+    // `ramenerLaBibliotheque()` porte depuis le début le commentaire « c'est ce
+    // qui fait qu'un professeur retrouve ses parcours sur un ordinateur qu'il
+    // n'a jamais utilisé ». Elle n'était appelée QUE par
+    // `parcoursDeLaSeance(pathId)`, c'est-à-dire au moment de compléter une
+    // séance déjà donnée. Personne ne l'appelait au démarrage : la moitié
+    // « serveur → navigateur » du raccordement n'était branchée nulle part, et
+    // la bibliothèque ne descendait donc jamais.
+    //
+    // DANS CET ORDRE, ET PAS L'INVERSE : si l'on monte d'abord, un poste neuf
+    // envoie sa bibliothèque vide (ou ses deux parcours semés) avant d'avoir vu
+    // ce que le serveur avait. Descendre d'abord, puis monter ce qui manque, est
+    // le seul ordre où un poste neuf ne peut rien appauvrir.
+    //
+    // ON N'ÉCRASE JAMAIS UN PARCOURS LOCAL : `ramenerLaBibliotheque` saute les
+    // identifiants déjà connus. Une retouche pas encore partie survit donc à un
+    // démarrage, et repart à la montée qui suit.
+    await ramenerLaBibliotheque();
+    await monterLaBibliotheque();
 }
 
 // ──────────────────────────────────────────── CÔTÉ ÉLÈVE : RECEVOIR ─────────

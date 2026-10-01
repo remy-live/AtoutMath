@@ -713,7 +713,28 @@ function handleTeacherPaths(): void
 
     $stmt = db()->prepare('SELECT id, name, data, updated_at FROM paths WHERE teacher_id = ? ORDER BY updated_at DESC');
     $stmt->execute([$teacher['id']]);
-    respond(['paths' => array_map(fn($r) => $r + ['data' => json_decode($r['data'], true)], $stmt->fetchAll())]);
+    // `array_merge` ET SURTOUT PAS `+`, ET C'EST TOUTE L'HISTOIRE DE CE BOGUE.
+    //
+    // Rémy : « le parcours que j'ai créé au collège sur mon compte, je ne l'ai
+    // pas sur mon mac chez moi !!!! »
+    //
+    // On écrivait `$r + ['data' => json_decode(...)]`. L'opérateur `+` sur deux
+    // tableaux PHP NE REMPLACE PAS une clef que la gauche porte déjà : la ligne
+    // sortie de la base a une colonne `data`, donc le tableau décodé était
+    // calculé puis JETÉ, et la route rendait la chaîne JSON BRUTE sous le même
+    // nom. Rien ne protestait : le champ existait, il avait le bon nom, et il
+    // contenait bien le parcours — en texte.
+    //
+    // CE QUE ÇA CASSAIT, EN SILENCE, DEPUIS LE DÉBUT : côté navigateur,
+    // `ramenerLaBibliotheque()` fait `const p = ligne.data; if (!p || !p.id)
+    // continue;`. Sur une chaîne, `p.id` est `undefined` — donc TOUTES les
+    // lignes étaient sautées, et la bibliothèque du serveur ne redescendait
+    // JAMAIS. MESURÉ (tools/deuxPostes.mjs) : « 0 ramené(s) » sur un poste
+    // neuf dont le serveur portait pourtant trois parcours.
+    respond(['paths' => array_map(
+        fn ($r) => array_merge($r, ['data' => json_decode($r['data'], true)]),
+        $stmt->fetchAll()
+    )]);
 }
 
 function handleTeacherAssign(): void
