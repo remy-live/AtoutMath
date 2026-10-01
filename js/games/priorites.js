@@ -33,8 +33,10 @@ import { tirerOppose, reponseJuste } from '../core/opposeParentheses.js';
 import {
     tirerExpression, operationPrioritaire, critiquer, reduire, reduirePourEcrire,
     ecrireJeton,
-    ecrire, terminee
+    ecrire, terminee,
+    MARCHES_PRIORITES, MARCHES_OPPOSE, ANCIEN_NIVEAU
 } from '../core/priorites.js';
+import { marchesCochees, marcheAuRang, totalDe } from '../core/progression.js';
 
 const COMPETENCE = 'num.prio';
 
@@ -46,6 +48,23 @@ class Priorites extends BaseGame {
         // Rémy ajoute « avec les priorités » APRÈS les quatre de remplissage.
         const hautBarreau = this.params.oppose ? 5 : 4;
         this.niveau = Math.max(1, Math.min(hautBarreau, parseInt(this.params.niveau) || 2));
+        // LES BARREAUX COCHÉS SE PARTAGENT LES QUESTIONS, DANS L'ORDRE.
+        //
+        // Rémy : « il faudrait pouvoir faire les check box comme pour le
+        // calcul littéral ». Le jeu lisait `params.niveau` UNE fois, ici, et
+        // toute la partie restait dessus : on ne pouvait demander qu'un seul
+        // barreau à la fois, et surtout pas « les trois premiers » ni « le 2
+        // et le 4 » — ce qu'un menu à choix unique ne sait pas dire.
+        //
+        // La feuille papier le faisait déjà (`prioritesFiche.js`) ; l'écran,
+        // non. Deux portes vers le même travail qui ne se règlent pas pareil,
+        // c'est une des deux qu'on oublie.
+        this.echelle = this.params.oppose ? MARCHES_OPPOSE : MARCHES_PRIORITES;
+        this.cochees = marchesCochees(this.params, this.echelle, ANCIEN_NIVEAU);
+        // ON COMPTE LES QUESTIONS POSÉES, PAS LES RÉUSSIES : une question
+        // ratée reste une question, et la progression ne doit pas piétiner sur
+        // l'élève qui bute — c'est justement celui qu'on veut voir avancer.
+        this.poses = 0;
         this.avecParentheses = this.params.parentheses !== false;
         this.avecPuissances = !!this.params.puissances;
         // LES NOMBRES RELATIFS DANS LA CASCADE. Rémy : « sur les Prio-Bot
@@ -245,6 +264,12 @@ class Priorites extends BaseGame {
     startGameLoop() { /* Pas d'horloge : on réfléchit à son rythme. */ }
 
     poser() {
+        // LE BARREAU DE CETTE QUESTION-CI — voir le constructeur. `marcheAuRang`
+        // partage les questions entre les barreaux cochés, dans l'ordre : sur
+        // seize questions et trois barreaux, l'élève en fait six du premier,
+        // cinq du deuxième, cinq du troisième. Il n'y a rien à régler de plus.
+        this.niveau = Number(marcheAuRang(this.poses++, this.cochees,
+            totalDe(null, this.params), this.params)) || this.niveau;
         const e = tirerExpression({
             rng: this.rng, niveau: this.niveau, parentheses: this.avecParentheses,
             puissances: this.avecPuissances, relatifs: this.relatifs,

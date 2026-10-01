@@ -18,7 +18,8 @@
 // elle vient de core/priorites.js, jamais d'un calcul refait ici.
 
 import { makeItem } from '../items.js';
-import { tirerExpression, etapes, etapesMax } from '../priorites.js';
+import { tirerExpression, etapes, etapesMax,
+         MARCHES_PRIORITES, ANCIEN_NIVEAU } from '../priorites.js';
 import {
     paramMarches, marchesCochees, marcheAuRang, totalDe
 } from '../progression.js';
@@ -30,14 +31,12 @@ import {
 // les douze expressions de la page ; les cases donnent une feuille qui MONTE,
 // ce qui est la forme ordinaire d'un exercice d'entraînement sur papier : on
 // commence par deux calculs simples et l'on finit sur les deux durs.
-const MARCHES_PRIO = [
-    { id: '1', nom: '1. Deux opérations, sans parenthèses' },
-    { id: '2', nom: '2. Jusqu\'à trois opérations' },
-    { id: '3', nom: '3. Les parenthèses arrivent' },
-    { id: '4', nom: '4. Deux groupes de parenthèses' }
-];
-/** Le réglage d'avant les cases — voir `marchesCochees`. */
-const ANCIEN_PRIO = { cle: 'niveau' };
+// LES BARREAUX VIENNENT DU MOTEUR, et non d'une copie locale. Ils vivaient
+// ici ET deux fois dans le catalogue, au mot près. L'écran et la feuille
+// doivent dire la MÊME chose du même travail : une liste recopiée garantit
+// qu'un jour ils ne le diront plus.
+const MARCHES_PRIO = MARCHES_PRIORITES;
+const ANCIEN_PRIO = ANCIEN_NIVEAU;
 
 export const prioritesFicheGenerator = {
     id: 'calc.priorites-fiche',

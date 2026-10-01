@@ -679,6 +679,49 @@ const FORMES_OPPOSE = {
 };
 
 /**
+ * LES BARREAUX DE L'ÉCHELLE, ÉCRITS UNE SEULE FOIS.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Ils vivaient en TROIS copies : une dans le catalogue pour « Priorités :
+ * ligne par ligne », une autre pour « Prio-Bot Relatifs », une troisième dans
+ * `prioritesFiche.js` pour la feuille papier. Trois listes identiques au mot
+ * près, et rien pour les tenir d'accord : le jour où l'on renomme un barreau,
+ * l'écran et la feuille ne disent plus la même chose du même travail.
+ *
+ * ILS SONT ICI PARCE QUE C'EST ICI QU'ON LES SERT. `FORMES` et `FORMES_OPPOSE`
+ * sont juste au-dessus : un barreau est le nom d'une ligne de ces tables, et
+ * le nommer loin de ce qu'il désigne, c'est garantir qu'ils divergeront.
+ */
+export const MARCHES_PRIORITES = [
+    { id: '1', nom: '1. Deux opérations, sans parenthèses' },
+    { id: '2', nom: '2. Jusqu\'à trois opérations' },
+    { id: '3', nom: '3. Les parenthèses arrivent' },
+    { id: '4', nom: '4. Deux groupes de parenthèses' }
+];
+
+/**
+ * LE MOINS DEVANT UNE PARENTHÈSE — les deux derniers crans de l'échelle de
+ * Rémy. Les quatre premiers sont dans « La règle du signe » et « Enlever les
+ * parenthèses » ; cet exercice-ci ne porte que ceux où une priorité entre en
+ * jeu, et c'est pour cela qu'il a sa propre liste.
+ */
+export const MARCHES_OPPOSE = [
+    { id: '1', nom: '1. Une priorité dedans : −(−3 + 5 × 6)' },
+    { id: '2', nom: '2. L\'expression entière : −(−3 + 5 × 6) − (−7)' }
+];
+
+/**
+ * LE RÉGLAGE D'AVANT LES CASES.
+ *
+ * Un parcours préparé hier porte `niveau: 2` et rien d'autre. Sans cette
+ * traduction, `marchesCochees` ne saurait pas quoi en faire et rendrait TOUTE
+ * l'échelle : le professeur rouvrirait son parcours et y trouverait quatre
+ * barreaux cochés là où il en avait choisi un. Voir `core/progression.js`.
+ */
+export const ANCIEN_NIVEAU = { cle: 'niveau' };
+
+/**
  * COMBIEN D'ÉTAPES, AU MAXIMUM, POUR CE RÉGLAGE ?
  *
  * La feuille en a besoin pour donner à TOUS les calculs le même nombre de

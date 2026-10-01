@@ -8,6 +8,11 @@ import { NIVEAUX as NIVEAUX_CHANTIER } from '../core/chantier.js';
 // sources est tenue là où elle est vérifiée, pas recopiée ici.
 import { SOURCES as SOURCES_DOMINOS } from '../core/generators/dominos.js';
 import { casesDeNiveau } from '../core/generators/logigramme.js';
+// LES BARREAUX DES PRIORITÉS VIENNENT DU MOTEUR, pas d'une copie : ils
+// vivaient en trois exemplaires identiques — ici deux fois, et une troisième
+// dans la feuille papier — et rien ne les tenait d'accord.
+import { MARCHES_PRIORITES, MARCHES_OPPOSE, ANCIEN_NIVEAU } from '../core/priorites.js';
+import { paramMarches } from '../core/progression.js';
 
 // `status` absent = validé. Ne sont marqués que les exercices qui ne le sont
 // pas encore — ici les jeux autonomes, qui n'ont pas été portés sur le contrat
@@ -206,16 +211,11 @@ export const calculExercises = [
         skills: ['num.prio.relatifs'],
         params: { niveau: 2, parentheses: false, relatifs: true },
         paramSchema: [
-            {
-                id: 'niveau', type: 'select', label: 'Difficulté', echelle: true,
-                options: [
-                    { value: 1, label: '1 — Deux opérations, sans parenthèses', court: '1' },
-                    { value: 2, label: '2 — Jusqu\'à trois opérations', court: '2' },
-                    { value: 3, label: '3 — Les parenthèses arrivent', court: '3' },
-                    { value: 4, label: '4 — Deux groupes de parenthèses', court: '4' }
-                ],
-                default: 2
-            },
+            // LA MÊME ÉCHELLE QUE « Priorités : ligne par ligne », cochée —
+            // voir là-bas. Elle est partagée, et non recopiée : deux listes
+            // identiques au mot près finissent toujours par diverger.
+            paramMarches({ marches: MARCHES_PRIORITES, mot: 'barreau',
+                ancien: ANCIEN_NIVEAU }),
             {
                 id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses',
                 aide: 'Sans elles, seule la rencontre des deux règles est en jeu : '
@@ -263,16 +263,19 @@ export const calculExercises = [
         skills: ['num.prio'],
         params: { niveau: 2, parentheses: true, puissances: false },
         paramSchema: [
-            {
-                id: 'niveau', type: 'select', label: 'Difficulté', echelle: true,
-                options: [
-                    { value: 1, label: '1 — Deux opérations, sans parenthèses', court: '1' },
-                    { value: 2, label: '2 — Jusqu\'à trois opérations', court: '2' },
-                    { value: 3, label: '3 — Les parenthèses arrivent', court: '3' },
-                    { value: 4, label: '4 — Deux groupes de parenthèses', court: '4' }
-                ],
-                default: 2
-            },
+            // L'ÉCHELLE SE COCHE, ELLE NE SE CHOISIT PLUS DANS UN MENU.
+            //
+            // Rémy : « il faudrait pouvoir faire les check box comme pour le
+            // calcul littéral ». Un menu à choix unique ne sait dire qu'un
+            // barreau ; la colonne de cases dit « les trois premiers », « le 2
+            // et le 4 », « le dernier tout seul » — et c'est très exactement
+            // comment on prépare une séance après une leçon.
+            //
+            // LES BARREAUX SONT CEUX DU MOTEUR, pas une copie : ils vivaient
+            // en trois exemplaires identiques (ici, dans « Prio-Bot Relatifs »
+            // et dans la feuille papier), et rien ne les tenait d'accord.
+            paramMarches({ marches: MARCHES_PRIORITES, mot: 'barreau',
+                ancien: ANCIEN_NIVEAU }),
             {
                 id: 'parentheses', type: 'checkbox', label: 'Avec des parenthèses',
                 aide: 'Sans elles, seule la règle « × et ÷ avant + et − » est en jeu — et le tirage garantit qu\'un calcul de gauche à droite donne toujours faux.',
@@ -335,17 +338,12 @@ export const calculExercises = [
         // sont celles qui, dans `FORMES_OPPOSE`, portent une priorité.
         params: { niveau: 1, oppose: true, relatifs: true },
         paramSchema: [
-            {
-                id: 'niveau', type: 'select', label: 'Difficulté', echelle: true,
-                aide: 'Le dernier barreau de l\'échelle : la règle du signe et les '
-                    + 'priorités ensemble. Les quatre premiers sont dans « La règle '
-                    + 'du signe » et « Enlever les parenthèses ».',
-                options: [
-                    { value: 1, label: '1 — Une priorité dedans : −(−3 + 5 × 6)', court: '1' },
-                    { value: 2, label: '2 — L\'expression entière : −(−3 + 5 × 6) − (−7)', court: '2' }
-                ],
-                default: 1
-            }
+            // LES DEUX DERNIERS CRANS DE L'ÉCHELLE, cochés plutôt que choisis
+            // dans un menu. Les quatre premiers sont dans « La règle du signe »
+            // et « Enlever les parenthèses » : cet exercice ne porte que ceux
+            // où une priorité entre en jeu.
+            paramMarches({ marches: MARCHES_OPPOSE, mot: 'barreau',
+                ancien: ANCIEN_NIVEAU })
         ],
         motsClefs: ['opposé', 'moins devant une parenthèse', 'supprimer les parenthèses',
             'relatifs', 'priorités', 'signe', 'parenthèses'],
