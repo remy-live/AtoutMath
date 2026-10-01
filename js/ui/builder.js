@@ -1709,7 +1709,13 @@ function initToolbar() {
     if (btnDonner) {
         btnDonner.onclick = async () => {
             const { ouvrirPanneauClasses } = await import('./parcoursClasses.js');
-            ouvrirPanneauClasses(state.currentPath, () => renderTeacherPath());
+            // ET L'ON REDEMANDE EN REFERMANT : c'est le panneau où l'on coche
+            // et décoche les classes. Garder la réponse d'avant ferait un badge
+            // qui contredit ce qu'on vient de faire, dans la même seconde.
+            ouvrirPanneauClasses(state.currentPath, () => {
+                renderTeacherPath();
+                demanderLAuditoire(true);
+            });
         };
     }
 
@@ -1789,6 +1795,67 @@ function initToolbar() {
     }
 }
 
+// ─────────────────────────────── QUI A CETTE SÉANCE EN COURS ───────────────
+//
+// Rémy : « comment complète-t-on une séance en cours du coup ? »
+//
+// On la complète ICI : on rouvre le parcours et l'on ajoute un exercice à la
+// fin. Depuis que la séance de l'élève se relit, l'ajout lui arrive vraiment —
+// même s'il a déjà commencé. Mais RIEN NE LE DISAIT, et c'est bien pire qu'une
+// fonction manquante : le professeur qui l'ignore ne s'en sert pas, et celui
+// qui retouche sans le savoir change le travail d'une classe en cours d'heure.
+//
+// ET LA RÈGLE N'EST PAS SYMÉTRIQUE, ce qui est précisément ce qu'il faut dire :
+// ajouter à la fin arrive, retirer ou rerégler n'arrive pas. Les élèves gardent
+// ce qu'ils ont eu sous les yeux — sans quoi leur bilan désignerait des
+// exercices qu'ils n'ont jamais vus. Voir `complementDeSeance`.
+//
+// ON DEMANDE AU SERVEUR, ET UNE SEULE FOIS PAR PARCOURS OUVERT. Le navigateur
+// du professeur ne sait pas ce qu'il a donné depuis un autre poste —
+// `aQuiEstDonne` le dit déjà au panneau des classes. Le redemander à chaque
+// frappe ferait une requête par lettre tapée dans le nom du parcours.
+let auditoire = { id: null, classes: [], eleves: [] };
+
+async function demanderLAuditoire(force = false) {
+    const p = state.currentPath;
+    const id = state.currentPathId && p ? p.id : null;
+    if (!id) { auditoire = { id: null, classes: [], eleves: [] }; direLAuditoire(); return; }
+    if (!force && auditoire.id === id) { direLAuditoire(); return; }
+    try {
+        const { aQuiEstDonne } = await import('../core/parcoursServeur.js');
+        const r = await aQuiEstDonne(p);
+        auditoire = { id, classes: r.classes || [], eleves: r.eleves || [] };
+    } catch (e) {
+        // PAS DE RÉSEAU, PAS DE BADGE — et surtout pas de badge qui MENT.
+        // « Donné à personne » sur une séance en cours serait pire que rien.
+        auditoire = { id: null, classes: [], eleves: [] };
+    }
+    direLAuditoire();
+}
+
+/** Le badge, et l'infobulle qui porte la règle. */
+function direLAuditoire() {
+    const el = document.getElementById('path-donne');
+    if (!el) return;
+    const noms = (auditoire.classes || []).map(c => c.name || c.nom || '').filter(Boolean);
+    const combienDEleves = (auditoire.eleves || []).length;
+    if (!noms.length && !combienDEleves) { el.hidden = true; el.textContent = ''; return; }
+
+    const qui = noms.length
+        ? (noms.length <= 2 ? noms.join(' et ') : `${noms.length} classes`)
+        : `${combienDEleves} élève${combienDEleves > 1 ? 's' : ''}`;
+    el.hidden = false;
+    el.textContent = `Donné à ${qui}`;
+    el.title = `Cette séance est en cours chez ${qui}.\n\n`
+        + 'Un exercice AJOUTÉ à la fin leur arrive tout seul, même à ceux qui ont '
+        + 'déjà commencé : ce qu\'ils ont fait est gardé.\n\n'
+        + 'Retirer, déplacer ou rerégler une étape ne les atteint PAS — ils gardent '
+        + 'ce qu\'ils ont eu sous les yeux, sans quoi leur bilan désignerait des '
+        + 'exercices qu\'ils n\'ont jamais vus.\n\n'
+        + 'Pour enlever un exercice à une classe qui bute, allez dans La classe : '
+        + '« dispenser toute la classe d\'un exercice ».';
+}
+
 export function autoSavePath() {
     if (!state.currentPath.steps.length && !state.currentPathId) {
         direLEtat(null);
@@ -1819,6 +1886,9 @@ export function autoSavePath() {
         state.updateTeacherPath(state.currentPathId, state.currentPath.name, snapshot);
     }
     direLEtat(new Date());
+    // Le badge survit aux redessins : on le repose après chaque enregistrement,
+    // sans redemander au serveur tant que c'est le même parcours.
+    demanderLAuditoire();
 }
 
 /**
@@ -2234,6 +2304,9 @@ function pathItem(p, resume = null) {
     const ouvrir = () => {
         state.currentPathId = p.id;
         state.currentPath = normalizePath(p.data, p.name);
+        // ON REDEMANDE À QUI IL EST DONNÉ : c'est un autre parcours, donc une
+        // autre réponse, et l'ancien badge resterait affiché sur le nouveau.
+        demanderLAuditoire(true);
         // ET LE NOM DE LA LISTE FAIT FOI. `normalizePath` répand `...p.data` et
         // garde donc le nom rangé DANS le parcours ; `updateTeacherPath` les
         // tient désormais d'accord, mais les parcours renommés AVANT cette

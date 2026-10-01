@@ -9947,6 +9947,31 @@ body.teacher-mode #view-accordion summary:active { cursor: grabbing; }
 }
 .path-etat--eclat { animation: path-etat-eclat .45s ease-out; }
 
+/* QUI A CETTE SÉANCE EN COURS — à côté de « Enregistré 14:32 ».
+
+   Rémy : « comment complète-t-on une séance en cours du coup ? ». On la
+   complète ICI, en ajoutant un exercice à la fin de ce parcours — et rien ne
+   le disait nulle part.
+
+   LE BADGE N'APPARAÎT QUE LORSQUE LE PARCOURS EST DONNÉ. Sur un brouillon il
+   n'aurait rien à dire, et un badge qui dit « personne » apprend moins qu'un
+   badge absent tout en prenant la même place. */
+.path-donne {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    padding: 2px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex: none;
+    color: var(--primary-texte);
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-panel));
+    border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
+    /* L'INFOBULLE PORTE LA RÈGLE, qui ne tient pas dans un badge : ce qu'un
+       ajout fait, et ce qu'un retrait ne fait pas. Le curseur le dit. */
+    cursor: help;
+}
+
 /* La durée totale : le seul chiffre du bandeau qu'on lit pour DÉCIDER. */
 .path-duree {
     display: inline-block;

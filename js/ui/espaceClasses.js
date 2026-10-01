@@ -1780,8 +1780,21 @@ function barrePiloteHtml() {
         `<option value="${esc(x.id)}">${esc(x.titre)}${x.ou ? ` — ${esc(x.ou)}` : ''}</option>`)
         .join('') || '<option value="">Aucun exercice en cours</option>'}
                         </select>
-                        <button type="button" class="ec-bouton" data-saut>Autoriser le saut</button>
-                        <button type="button" class="ec-bouton ec-bouton--doux" data-retire>Le retirer</button>
+                        <!-- DEUX GESTES QUI N'ONT PAS LA MÊME PORTÉE, ET QUI
+                             se ressemblaient trop. « Autoriser le saut » ouvre
+                             une porte : l'élève peut passer, rien ne
+                             disparaît. « Le retirer » fait disparaître
+                             l'exercice pour les trente. Le second était en
+                             bouton DISCRET à côté du premier en bouton plein —
+                             le geste le plus fort, le moins annoncé. Il est
+                             désormais marqué en rouge, il dit sa portée dans
+                             son libellé, et il demande confirmation. -->
+                        <button type="button" class="ec-bouton" data-saut
+                                title="Toute la classe verra un bouton « passer » sur cet exercice. L'étape ne comptera ni pour ni contre eux."
+                                >Autoriser le saut</button>
+                        <button type="button" class="ec-bouton ec-bouton--rouge" data-retire
+                                title="L'exercice disparaît de la séance pour TOUTE la classe, comme s'il n'y était pas. On vous le fera confirmer, et le réglage s'annule juste en dessous."
+                                >Le retirer pour tous</button>
                     </div>
                     ${reglagesHtml()}
                 </div>
@@ -2664,10 +2677,49 @@ async function brancher(e, redessiner) {
     if (d.saut !== undefined || d.retire !== undefined) {
         const champ = document.getElementById('ec-exo');
         const exo = champ ? champ.value.trim() : '';
-        if (!exo) { showToast('Écrivez l\'identifiant de l\'exercice.', 'info'); return; }
+        // LE MESSAGE DISAIT ENCORE « Écrivez l'identifiant de l'exercice »,
+        // alors que le champ libre est devenu une LISTE DÉROULANTE : on n'y
+        // écrit plus rien, et l'on ne peut donc pas suivre ce conseil. Un
+        // message qui demande un geste impossible est pire qu'un message
+        // absent. Le seul cas où la liste ne rend rien, c'est quand aucun
+        // exercice n'est sous la main — et c'est cela qu'il faut dire, avec
+        // les deux façons d'en avoir un.
+        if (!exo) {
+            showToast('Aucun exercice sous la main : imposez une séance, ou attendez '
+                + 'qu\'un élève en ouvre un.', 'info');
+            return;
+        }
+        // ON DIT CE QU'ON VA FAIRE, ET À COMBIEN DE PERSONNES.
+        //
+        // « Le retirer » fait disparaître l'exercice pour TOUTE la classe. Il
+        // vivait en bouton discret à côté de « Autoriser le saut » en bouton
+        // plein, sans confirmation et sans dire sa portée : le geste le plus
+        // fort de cet écran était le moins annoncé. Le saut, lui, ne retire
+        // rien — il ouvre une porte — et n'a rien à faire confirmer.
+        //
+        // ET LA CONFIRMATION DIT QUE C'EST RÉVERSIBLE, ce qui change tout :
+        // le réglage s'annule d'un clic juste en dessous, et le travail déjà
+        // fait reste au bilan. On ne fait pas peur, on informe.
+        if (d.retire !== undefined) {
+            const combien = ((vue.liste && vue.liste.eleves) || []).length;
+            // ON ATTEND UNE RÉPONSE, ET LES DEUX RÉPONSES COMPTENT.
+            // `showConfirm` rend maintenant la main sur un refus — par le
+            // bouton, la croix ou le clic à côté — sans quoi cet `await`
+            // gèlerait tous les autres gestes de l'écran, en silence.
+            const ok = await new Promise((repondre) => {
+                showConfirm(
+                    `« ${esc(nomDExercice(exo))} » disparaîtra de la séance pour `
+                    + (combien ? `les ${combien} élèves de la classe` : 'toute la classe')
+                    + ', comme s\'il n\'y était pas.<br><br>Ce qu\'ils ont déjà fait dessus '
+                    + 'reste au bilan, et vous pourrez annuler ce réglage juste en dessous.',
+                    () => repondre(true),
+                    { bouton: 'Le retirer pour tous', titre: 'Retirer cet exercice ?',
+                      onCancel: () => repondre(false) });
+            });
+            if (!ok) return;
+        }
         await fait(reglerUnExercice(cid, exo, d.retire !== undefined ? 'retire' : 'saut'), (r) => {
             vue.reglages = r.reglages || vue.reglages;
-            if (champ) champ.value = '';
         });
         return;
     }

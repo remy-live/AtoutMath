@@ -199,14 +199,30 @@ export function showConfirm(message, onConfirm, opts = {}) {
             </div>
         </div>
     `;
-    const modal = showModal(opts.titre || verbe, contentHTML, { width: '400px' });
-    
+    // ON DIT AUSSI QUAND C'EST NON, ET IL Y A TROIS FAÇONS DE DIRE NON.
+    //
+    // `showConfirm` ne rappelait QUE la confirmation : annuler refermait sans
+    // un mot. Un appelant qui attend une réponse — `await new Promise(...)` —
+    // restait alors suspendu pour toujours, et tous les autres gestes de son
+    // écran avec lui, en silence.
+    //
+    // ON PASSE PAR `onClose`, et c'est ce qui rend les trois chemins égaux :
+    // le bouton « Annuler », la croix de l'en-tête et le clic à côté referment
+    // tous par `close()`. Les traiter un par un, c'est en oublier un — et
+    // c'est toujours celui-là que le professeur emploie.
+    let repondu = false;
+    const modal = showModal(opts.titre || verbe, contentHTML, {
+        width: '400px',
+        onClose: () => { if (!repondu && opts.onCancel) opts.onCancel(); }
+    });
+
     const cancelBtn = modal.element.querySelector('.confirm-cancel-btn');
     const okBtn = modal.element.querySelector('.confirm-ok-btn');
-    
+
     if (cancelBtn) cancelBtn.onclick = () => modal.close();
     if (okBtn) {
         okBtn.onclick = () => {
+            repondu = true;
             modal.close();
             if (onConfirm) onConfirm();
         };
