@@ -83,7 +83,21 @@ export async function monterUnParcours(parcours) {
     const sceau = empreinte(parcours);
     if (dejaMonte.get(parcours.id) === sceau) return { monte: true };
 
-    const r = await auServeur('/teacher/paths', { action: 'save', path: parcours });
+    // UNE SEULE FORME EN BASE, ET C'EST LE PARCOURS.
+    //
+    // Deux écrivains visaient la même ligne avec deux formes différentes :
+    // `donnerAuServeur` envoie le PARCOURS, `monterLaBibliotheque` envoie
+    // l'ENVELOPPE de « Préparer ». Le dernier qui écrit gagne — et comme la
+    // veille remonte toute la bibliothèque à chaque retouche, c'était presque
+    // toujours l'enveloppe. L'élève recevait alors une séance à zéro exercice.
+    //
+    // ON DÉBALLE DONC AVANT D'ENVOYER, en gardant l'identifiant et le nom de
+    // l'ENTRÉE : ce sont eux que les assignations désignent, et les renommer
+    // ici détacherait les séances déjà données de leur parcours.
+    const dedans = cheminDeLEntree(parcours) || parcours;
+    const aEnvoyer = { ...dedans, id: parcours.id, name: parcours.name };
+
+    const r = await auServeur('/teacher/paths', { action: 'save', path: aEnvoyer });
     if (r.erreur) return { monte: false, erreur: r.erreur };
     dejaMonte.set(parcours.id, sceau);
     await globalStore.set(CLE_MONTEE, Object.fromEntries(dejaMonte)).catch(() => {});
@@ -456,6 +470,27 @@ export async function recevoirLesAssignations(assignations) {
     const completees = [];
     for (const a of assignations) {
         if (!a || !a.path) continue;
+        // ─────────────────────────────────────────────────────────────────
+        // ON DÉBALLE L'ENVELOPPE, ET C'EST TOUTE LA SÉANCE QUI EN DÉPEND.
+        //
+        // Rémy, capture à l'appui : « Relatifs — 4C · 0 exercice à faire »,
+        // sur une séance qui en porte seize.
+        //
+        // Ce que le serveur range dans `paths.data` n'est pas toujours un
+        // parcours : `monterLaBibliotheque` y envoie l'ENVELOPPE de
+        // « Préparer » — { id, name, data, folderId, timestamp } —, où le
+        // parcours est un étage plus bas. `normalizePath` sur cette forme rend
+        // ZÉRO étape, et l'élève reçoit une séance vide, avec le bon nom et la
+        // bonne classe. Rien ne dit que quelque chose a manqué.
+        //
+        // C'est le MÊME défaut que celui qui faisait redescendre des parcours
+        // vides dans la bibliothèque (v906). Il vivait ici aussi, sur le
+        // chemin de l'élève, et nous n'étions pas allés le chercher.
+        //
+        // ON RÉPARE À LA RÉCEPTION, et non seulement à l'envoi : les parcours
+        // déjà rangés en enveloppe sur son serveur ne vont pas se réécrire
+        // tout seuls, et ses élèves ont cours demain.
+        const chemin = cheminDeLEntree(a.path) || a.path;
         // L'identifiant de séance vient de l'assignation : deux synchros
         // successives ne doivent pas fabriquer deux séances pour un même
         // travail donné une seule fois.
@@ -480,7 +515,8 @@ export async function recevoirLesAssignations(assignations) {
         // c'est la dispense qui est faite pour ça.
         const existante = parId.get(id);
         if (existante) {
-            const plus = complementDeSeance(existante, normalizePath(a.path, a.name || a.path.name));
+            const plus = complementDeSeance(existante,
+                normalizePath(chemin, a.name || chemin.name));
             if (plus) {
                 const complete = completerSeance(existante, plus.etapes);
                 const i = seances.indexOf(existante);
@@ -490,7 +526,7 @@ export async function recevoirLesAssignations(assignations) {
             }
             continue;
         }
-        const parcours = normalizePath(a.path, a.name || a.path.name);
+        const parcours = normalizePath(chemin, a.name || chemin.name);
         const s = donnerSeance({ id: classeId, nom: distant.className || '' }, parcours, {
             titre: a.name || parcours.name,
             donneeLe: Date.now()

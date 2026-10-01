@@ -1772,3 +1772,27 @@ lignes** — 2026-10-01
   Ce qui touche aux DONNÉES, lui, se mesure très bien par HTTP.
 - *La règle* : **une épreuve qui compare deux vues d'une même base mesure leur
   décalage avant de mesurer le logiciel.**
+
+---
+
+**Deux écrivains, une seule ligne, deux formes différentes** — 2026-10-01
+
+- *Ce que je voulais faire* : comprendre pourquoi une séance donnée arrivait
+  chez l'élève avec « 0 exercice à faire ».
+- *Ce qui a coûté* : une panne en classe, et un contournement que Rémy a
+  trouvé seul — « il fallait que je remette la séance ». Deux fonctions
+  écrivaient la MÊME ligne `paths` avec deux FORMES : `donnerAuServeur` envoyait
+  le parcours, `monterLaBibliotheque` envoyait l'enveloppe de « Préparer », où
+  le parcours est un étage plus bas. Le dernier qui écrit gagne — et comme la
+  veille remonte toute la bibliothèque deux secondes après chaque retouche,
+  c'était presque toujours l'enveloppe. `normalizePath` sur une enveloppe rend
+  ZÉRO étape : l'élève recevait le bon nom, la bonne classe, et rien dedans.
+- *Combien de fois* : ||  (déjà vu en v906 sur le rapatriement de la
+  bibliothèque — même forme, même silence, autre chemin.)
+- *Ce qui manque* : rien à fabriquer. **Une seule forme en base**, imposée à
+  l'écriture (`monterUnParcours` déballe avant d'envoyer), et le déballage
+  gardé À LA RÉCEPTION pour les lignes déjà écrites de travers.
+- *La règle* : **deux écrivains sur une même ligne doivent écrire la même
+  forme, et c'est à l'écriture qu'on l'impose, pas à la lecture.** Quand on
+  s'aperçoit qu'un lecteur doit deviner la forme, c'est qu'il y en a déjà deux —
+  et le prochain lecteur, lui, ne devinera pas.
