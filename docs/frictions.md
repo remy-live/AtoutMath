@@ -1501,3 +1501,29 @@ manque.
 - **La règle** : **trois champs choisis à la main sont un pari sur la forme de
   l'objet ; l'objet entier n'en est pas un.** Et : **ce qu'aucune épreuve ne
   peut atteindre finit par être faux.**
+
+---
+
+**« Convertir dix échelles » en était quatre, cinq erreurs et quatre bornes** — 1er octobre 2026
+
+- **Ce que je croyais faire** : convertir dix menus déroulants en colonnes de
+  cases, parce qu'un outil de cohérence les signalait tous les dix.
+- **Ce que c'était vraiment, après les avoir regardés un par un** : quatre
+  vraies échelles (converties), CINQ drapeaux `echelle: true` posés à tort sur
+  des réglages qui ne sont pas des progressions — l'opération de Math Crush,
+  la taille d'une grille, la fréquence d'un codage —, et quatre BORNES sur une
+  suite qui s'enchaîne (« Leçon de départ », « Jusqu'à quel niveau »), qu'on ne
+  compose pas.
+- **Combien de fois** : |
+- **Ce qui manque** : rien à fabriquer, mais une règle à écrire dans l'outil —
+  c'est fait : il porte maintenant une table d'exceptions AVEC LEUR RAISON, et
+  ne les compte plus comme des écarts.
+- **La règle** : **un signalement n'est pas un diagnostic.** Un outil dit « ces
+  dix-là ne suivent pas la convention » ; il ne dit pas lesquels DEVRAIENT la
+  suivre. Les dix méritaient d'être ouverts un par un, et six d'entre eux
+  n'avaient aucun travail à faire — seulement une erreur de déclaration à
+  corriger, ou une raison à écrire.
+- **Et le corollaire** : **un drapeau employé pour autre chose que son sens
+  fabrique du faux travail.** `echelle: true` veut dire « progression
+  composable » ; il avait été posé cinq fois comme s'il voulait dire « réglage
+  qui change la difficulté ».

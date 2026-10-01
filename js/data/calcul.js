@@ -1592,7 +1592,13 @@ export const calculExercises = [
                 default: 'litteral'
             },
             {
-                id: 'taille', type: 'select', label: 'Taille de la grille', echelle: true,
+                // PAS UNE ÉCHELLE : C'EST UNE TAILLE. Une grille est petite,
+                // moyenne ou grande ; elle ne peut pas être « petite et
+                // grande », et il n'y a pas de progression à composer. Le
+                // drapeau `echelle` annonce des barreaux qu'on gravit — il a
+                // été posé ici comme s'il voulait dire « réglage qui change la
+                // difficulté », ce qu'il ne veut pas dire.
+                id: 'taille', type: 'select', label: 'Taille de la grille',
                 aide: 'La grille est un ANNEAU : un cadre de bandes, le centre laissé vide. Ce qu\'on règle, c\'est le nombre de bandes par côté — donc le nombre de mots, et la largeur de l\'alphabet à retrouver.',
                 options: [
                     { value: 'petite', label: 'Petite — 8 mots', court: 'Petite' },
@@ -1602,7 +1608,9 @@ export const calculExercises = [
                 default: 'moyenne'
             },
             {
-                id: 'aide', type: 'select', label: 'Lettres offertes', echelle: true,
+                // NI CELUI-CI, pour la même raison : une part d'alphabet
+                // donnée d'avance, et une seule à la fois.
+                id: 'aide', type: 'select', label: 'Lettres offertes',
                 aide: 'La part de l\'alphabet donnée d\'avance pour démarrer. Les lettres les plus '
                     + 'fréquentes remplissent beaucoup de cases : une part modeste suffit.',
                 options: [
@@ -2675,12 +2683,24 @@ export const calculExercises = [
         params: { mode: 'addition', difficulty: 'progressive' },
         paramSchema: [
             {
-                id: 'mode', type: 'select', label: 'Opération', echelle: true,
+                // PAS UNE ÉCHELLE : C'EST UN CHOIX.
+                //
+                // `echelle: true` annonce une PROGRESSION — des barreaux qu'on
+                // gravit, et qu'une colonne de cases sait composer (« les
+                // trois premiers », « le 2 et le 4 »). Ici il n'y a rien à
+                // gravir : on joue à l'addition OU à la multiplication, et une
+                // partie ne peut pas être les deux. Le drapeau a été posé
+                // comme s'il voulait dire « réglage qui change la
+                // difficulté » ; il ne veut pas dire cela, et l'outil de
+                // cohérence réclamait une conversion impossible.
+                id: 'mode', type: 'select', label: 'Opération',
                 aide: 'L\'opération choisie est écrite partout : dans le jeton à côté de la cible, '
                     + 'dans le calcul en cours, et entre deux gemmes de la chaîne.',
                 options: ['addition', 'multiplication'], default: 'addition'
             },
-            { id: 'difficulty', type: 'select', label: 'Difficulté', echelle: true, options: ['progressive', 'difficile'], default: 'progressive' }
+            // NI CELUI-CI : deux valeurs, et « progressive » n'est pas un
+            // barreau sous « difficile » — c'est une autre façon de monter.
+            { id: 'difficulty', type: 'select', label: 'Difficulté', options: ['progressive', 'difficile'], default: 'progressive' }
         ],
         tags: { chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.CALCUL_MENTAL], niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME] },
         instruction: "Glisse ton doigt d'une gemme à l'autre, en passant par des cases VOISINES, pour atteindre la cible. Le jeton coloré à côté de la cible dit l'opération : + pour additionner, × pour multiplier — et le signe se pose entre chaque paire de gemmes pendant que tu traces. Le calcul s'écrit en entier sous la cible : il devient rouge dès que tu dépasses. Une erreur coûte deux secondes, une réussite en rend autant que ta chaîne compte de gemmes."

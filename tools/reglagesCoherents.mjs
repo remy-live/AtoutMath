@@ -70,6 +70,28 @@ function reglagesDe(exo) {
  * détecteur qui crie au loup se fait désactiver au troisième cri.
  */
 const MENUS_ACCEPTÉS = {
+    // ─── LES BORNES D'UNE PROGRESSION QUI S'ENCHAÎNE ──────────────────────
+    //
+    // Ces trois-là ne règlent pas QUELS barreaux travailler, mais OÙ L'ON
+    // ENTRE ou JUSQU'OÙ L'ON VA dans une suite qui se gravit d'elle-même. Les
+    // cocher n'aurait pas de sens : on ne fait pas la leçon 7 d'un tutoriel
+    // sans les six premières, et « la 1, la 4 et la 7 » ne décrit rien.
+    //
+    // C'est une famille, pas trois cas particuliers — et c'est pour cela
+    // qu'elle est écrite ensemble.
+    'don-tableur':
+        'les neuf leçons du tableur s\'enchaînent, chacune supposant la '
+        + 'précédente. Le réglage dit où l\'on ENTRE — « on entre au milieu '
+        + 'quand le début a été fait en classe » — et non ce qu\'on travaille.',
+    'geo-programme-construction':
+        'même forme : « Commencer au niveau », et les niveaux s\'enchaînent '
+        + 'ensuite jusqu\'au dernier. Un point d\'entrée ne se compose pas.',
+    'voc-mot-code':
+        '« Jusqu\'à quel niveau » est un PLAFOND, pas une liste : la grille '
+        + 'tire des mots des niveaux 1 à N. Cocher « le 1 et le 3 » ne '
+        + 'fabriquerait pas une grille, cela en retirerait des mots.',
+
+    // ─── ET CELLE-CI, POUR UNE AUTRE RAISON ───────────────────────────────
     'defi-pousseur':
         'cinquante niveaux de Sokoban, joués dans l\'ordre. Cocher cinquante '
         + 'cases est illisible, et « les douze premiers » ne veut rien dire ici : '

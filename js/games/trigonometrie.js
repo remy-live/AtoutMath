@@ -48,6 +48,8 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
+import { marchesCochees, marcheAuRang, totalDe } from '../core/progression.js';
+import { MARCHES_TRIGO, ANCIEN_TRIGO } from '../core/trigonometrie.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     ROLES, LIBELLES, COURTS, tirerTriangle, rolesDe, pointsDe, questionsDe,
@@ -58,6 +60,10 @@ import {
 
 /** Les trois façons de poser la même figure. */
 const PALIERS = { REPERER: 'reperer', ECRIRE: 'ecrire', FORMULE: 'formule' };
+
+// Les trois paliers à cocher vivent dans le NOYAU (core/trigonometrie.js) :
+// le catalogue les déclare, et js/data/ ne doit jamais importer js/games/.
+
 
 // L'AIDE DU DÉPART DURE DEUX FIGURES. Assez pour que le rapport s'installe,
 // pas assez pour qu'on prenne l'habitude de le lire au lieu de le savoir. Elle
@@ -87,8 +93,15 @@ class Trigonometrie extends BaseGame {
         this.rng = makeRng(this.params.seed);
         // « Tourner » se règle : en découverte, une figure droite se lit mieux.
         this.tourner = this.params.tourner !== false;
-        this.palier = Object.values(PALIERS).includes(this.params.palier)
-            ? this.params.palier : PALIERS.REPERER;
+        // LE PALIER SE CHOISIT MAINTENANT PAR FIGURE — voir `poser()`. On garde
+        // ici une valeur de départ pour tout ce qui lit `this.palier` avant la
+        // première question : l'en-tête, la consigne, l'aperçu du catalogue.
+        this.cochees = marchesCochees(this.params, MARCHES_TRIGO, ANCIEN_TRIGO);
+        this.palier = (this.cochees[0] && this.cochees[0].id) || PALIERS.REPERER;
+        // ON COMPTE LES FIGURES POSÉES, pas les réussies : une figure ratée
+        // reste une figure, et la progression ne doit pas piétiner sur l'élève
+        // qui bute.
+        this.poses = 0;
         this.trouves = {};
         // Le compteur des figures aidées : voir FIGURES_AIDEES.
         this.figures = 0;
@@ -279,6 +292,13 @@ class Trigonometrie extends BaseGame {
     showNext() { return this.poser(); }
 
     poser() {
+        // LE PALIER DE CETTE FIGURE-CI. Les paliers cochés se partagent les
+        // figures dans l'ordre (core/progression.js) : sur douze figures et
+        // deux paliers cochés, six de chaque. Le jeu lisait `params.palier`
+        // une seule fois, au constructeur, et toute la partie restait dessus.
+        const suivant = marcheAuRang(this.poses++, this.cochees,
+            totalDe(null, this.params), this.params);
+        if (suivant) this.palier = suivant;
         this.triangle = tirerTriangle(this.rng, { tourner: this.tourner });
         this.figures += 1;
         // UNE FONCTION PAR FIGURE au palier des formules, et non les trois.

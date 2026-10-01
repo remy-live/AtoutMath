@@ -4,6 +4,11 @@ import { TAGS } from './tags.js';
 // Les paliers du quadrilatère qui se transforme viennent du noyau : deux listes
 // d'options qui se répondent finissent toujours par diverger.
 import { PALIERS as MORPH_PALIERS } from '../core/quadriMorph.js';
+// LES PALIERS DE LA TRIGONOMÉTRIE VIENNENT DU NOYAU, jamais du jeu : un
+// fichier de js/data/ qui importe js/games/ fait tomber TOUS les tests sur
+// « document is not defined ».
+import { MARCHES_TRIGO, ANCIEN_TRIGO } from '../core/trigonometrie.js';
+import { paramMarches } from '../core/progression.js';
 
 // Les anciens exercices « grille » (cases à cliquer dans un quadrillage) sont
 // remplacés par un vrai repère du plan : axes fléchés, origine, graduations
@@ -336,8 +341,19 @@ export const geometrieExercises = [
             // demande de coder le parallélogramme. Puis on passe au rectangle
             // […]. On code le rectangle puis après on met les vignettes. »
             {
+                // PAS UNE ÉCHELLE : C'EST UNE FRÉQUENCE. « echelle: true »
+                // annonce une PROGRESSION, des barreaux qu'on gravit et qu'une
+                // colonne de cases sait composer. Ici on règle COMBIEN DE FOIS
+                // on demande de coder — aucune, la première, toutes — et une
+                // partie ne peut pas être « aucune et toutes ».
+                //
+                // LA VRAIE PROGRESSION DE CE JEU EST AILLEURS, et elle marche
+                // déjà : « partiesDe » rend une SUITE de moments qui
+                // s'enchaînent (placer les noms, construire pas à pas, tout
+                // reconstruire, répondre aux questions). C'est très exactement
+                // ce qu'une colonne de cases ferait — en moins bien, puisqu'il
+                // faudrait la cocher.
                 id: 'codage', type: 'select', label: 'Coder les figures', default: 'premier',
-                echelle: true,
                 aide: 'Quand une case apparaît, l\'élève code la figure : mêmes marques sur les '
                     + 'côtés égaux, petit carré sur les angles droits. Ne concerne que le mode '
                     + 'étape par étape.',
@@ -1697,22 +1713,22 @@ export const geometrieExercises = [
         skills: ['geo.trigo.cotes'],
         params: { palier: 'reperer', tourner: true },
         paramSchema: [
-            {
-                // TROIS PALIERS, LE MÊME TRIANGLE. Rémy : « tu peux aussi poser
-                // une question quel est le côté opposé à G […] et il peut aussi
-                // l'écrire avec les crochets. On pourrait y inclure l'écriture
-                // des formules, en aidant au départ. »
-                id: 'palier', type: 'select', label: 'Ce qu\'on demande',
-                default: 'reperer', echelle: true,
-                aide: 'Montrer prouve qu\'on a lu la figure ; écrire prouve en plus qu\'on sait '
-                    + 'nommer un segment par ses extrémités. Le troisième palier fait écrire cos, '
-                    + 'sin ou tan.',
-                options: [
-                    { value: 'reperer', label: 'Cliquer le côté sur la figure', court: 'Cliquer' },
-                    { value: 'ecrire', label: 'Écrire le nom du côté — [AB]', court: 'Écrire' },
-                    { value: 'formule', label: 'Écrire la formule — cos(G) = …', court: 'Formule' }
-                ]
-            },
+            // TROIS PALIERS, LE MÊME TRIANGLE. Rémy : « tu peux aussi poser une
+            // question quel est le côté opposé à G […] et il peut aussi
+            // l'écrire avec les crochets. On pourrait y inclure l'écriture des
+            // formules, en aidant au départ. »
+            //
+            // ILS SE COCHENT, ILS NE SE CHOISISSENT PLUS. Montrer prouve qu'on
+            // a lu la figure ; écrire prouve en plus qu'on sait nommer un
+            // segment par ses extrémités ; le troisième fait écrire cos, sin
+            // ou tan. Ce sont trois GESTES différents sur la même figure, et
+            // une séance de révision veut souvent les deux derniers sans le
+            // premier — ce qu'un menu à choix unique ne sait pas dire.
+            //
+            // La liste vient du jeu, où les paliers sont définis : une seconde
+            // liste écrite ici finirait par ne plus dire la même chose.
+            paramMarches({ marches: MARCHES_TRIGO, mot: 'palier',
+                ancien: ANCIEN_TRIGO }),
             {
                 id: 'tourner', type: 'boolean', label: 'Faire tourner la figure', default: true,
                 aide: 'Un triangle toujours posé l\'angle droit en bas à gauche enseigne une règle '
