@@ -56,6 +56,27 @@ function reglagesDe(exo) {
  * type `marches`, le drapeau `echelle` que le catalogue pose lui-même, et le
  * mot `barreau` employé par le générateur.
  */
+/**
+ * LES ÉCHELLES QU'ON LAISSE EN MENU, ET POURQUOI.
+ *
+ * La convention de la maison est la liste à cocher. Elle n'est pas un dogme :
+ * elle existe parce qu'elle dit « les quatre premières », « A et C », « la 7
+ * toute seule » — ce qu'un menu à choix unique ne peut pas exprimer. Là où ce
+ * gain n'existe pas, l'imposer coûterait plus qu'il ne rapporte.
+ *
+ * UNE EXCEPTION S'ÉCRIT, AVEC SA RAISON. Sans cette table, l'outil redésigne
+ * le même écart à chaque passage, on s'habitue à le voir, et le jour où un
+ * VRAI écart s'ajoute il se range dans un décor qu'on ne lit plus. Un
+ * détecteur qui crie au loup se fait désactiver au troisième cri.
+ */
+const MENUS_ACCEPTÉS = {
+    'defi-pousseur':
+        'cinquante niveaux de Sokoban, joués dans l\'ordre. Cocher cinquante '
+        + 'cases est illisible, et « les douze premiers » ne veut rien dire ici : '
+        + 'on ne compose pas un entraînement avec des tableaux de Sokoban, on '
+        + 'reprend là où l\'on s\'est arrêté.'
+};
+
 function echelleDe(exo) {
     const { duGen, duCatalogue } = reglagesDe(exo);
     const cases = duGen.find((p) => p && p.type === 'marches');
@@ -110,14 +131,26 @@ console.log(`\n\x1b[1mRÉGLAGES — ${lignes.length} exercices lus\x1b[0m\n`);
 console.log(`\x1b[1mLA PROGRESSION\x1b[0m`);
 console.log(`  ${vert(aCocher.length + ' à cocher')} (paramMarches) · `
     + `${aMenu.length ? rouge(aMenu.length + ' en menu') : vert('0 en menu')}`);
-if (aMenu.length) {
+// LES EXCEPTIONS ÉCRITES SORTENT DE LA LISTE DES ÉCARTS, et se disent à part.
+const excuses = aMenu.filter(({ exo }) => MENUS_ACCEPTÉS[exo.id]);
+const ecarts = aMenu.filter(({ exo }) => !MENUS_ACCEPTÉS[exo.id]);
+
+if (ecarts.length) {
     console.log(gris('\n  Ceux-ci ont une échelle mais l\'écrivent en menu déroulant.'));
     console.log(gris('  La convention de la maison est la liste à cocher : elle dit'));
     console.log(gris('  « les quatre premières », « A et C », « la 7 toute seule » —'));
     console.log(gris('  ce qu\'un menu à choix unique ne peut pas exprimer.\n'));
-    for (const { exo, e } of aMenu) {
+    for (const { exo, e } of ecarts) {
         console.log(`    ${rouge('menu')} ${exo.id.padEnd(30)} ${String(e.combien).padStart(2)} crans`
             + gris(`  (déclaré au ${e.ou})  « ${exo.title} »`));
+    }
+}
+
+if (excuses.length) {
+    console.log(gris('\n  Et ceux-ci restent en menu, pour une raison écrite :\n'));
+    for (const { exo, e } of excuses) {
+        console.log(`    ${gris('menu')} ${exo.id.padEnd(30)} ${String(e.combien).padStart(2)} crans`);
+        console.log(gris(`           ${MENUS_ACCEPTÉS[exo.id]}`));
     }
 }
 
@@ -142,6 +175,8 @@ if (gros.length) {
 
 const mediane = lignes.map((l) => l.n).sort((a, b) => a - b)[Math.floor(lignes.length / 2)];
 console.log(`\n${gris(`médiane : ${mediane} commandes par panneau`)}`);
-console.log(aMenu.length || enDouble.length
-    ? rouge(`\n${aMenu.length + enDouble.length} écart(s) à regarder.`)
+// LE COMPTE NE RETIENT QUE LES VRAIS ÉCARTS : une exception écrite n'en est
+// pas un, et la compter laisserait l'outil rouge pour toujours — donc illisible.
+console.log(ecarts.length || enDouble.length
+    ? rouge(`\n${ecarts.length + enDouble.length} écart(s) à regarder.`)
     : vert('\nLES RÉGLAGES DISENT LA MÊME CHOSE PARTOUT.'));

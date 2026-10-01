@@ -52,7 +52,10 @@ const liste = await s.page.evaluate(async (choisis) => {
 }, CHOISIS);
 
 console.log(`${liste.length} exercice(s), thème ${THEME || 'clair'}, 390 × 844\n`);
-let fautifs = 0, vus = 0, degradesTotal = 0, dessinsTotal = 0;
+let fautifs = 0, vus = 0, degradesTotal = 0, dessinsTotal = 0, estompesTotal = 0;
+// Les textes PÂLES PAR CHOIX ne s'impriment qu'à la demande : les relire à
+// chaque passage, c'est réapprendre à ne plus lire la liste.
+const VOIR_ESTOMPES = ARGS.includes('--estompes');
 for (const id of liste) {
     if (await s.ouvrirExercice(id)) continue;
     await dormir(320);
@@ -132,6 +135,7 @@ for (const id of liste) {
         const couche = document.querySelector('#game-layer');
         if (!couche) return { erreur: 'pas de couche' };
         const mauvais = [];
+        const estompes = [];
         let degrades = 0, dessins = 0;
         for (const el of couche.querySelectorAll('*')) {
             // On ne juge que ce qui PORTE du texte en propre.
@@ -181,13 +185,38 @@ for (const id of liste) {
             for (let e = el; e; e = e.parentElement) alpha *= +getComputedStyle(e).opacity;
             const vu = [0, 1, 2].map(i => encre[i] * alpha + fond[i] * (1 - alpha));
             const c = ratio(vu, fond);
-            if (c < SEUIL) mauvais.push({
+            if (c >= SEUIL) continue;
+
+            // ESTOMPÉ EXPRÈS N'EST PAS ILLISIBLE PAR ERREUR.
+            //
+            // Mesuré, et c'est ce qui a failli faire perdre une soirée : sur
+            // sept exercices signalés, CINQ l'étaient pour un bouton
+            // DÉSACTIVÉ (« Valider » tant que rien n'est tapé, « Annuler »
+            // tant qu'il n'y a rien à défaire) ou pour un modèle en filigrane
+            // qui dit la FORME attendue et s'efface à la première touche. Ces
+            // textes-là sont pâles PARCE QU'ON LE VEUT : les remonter à 4,5
+            // reviendrait à dire « clique-moi » à un bouton qui ne marche pas.
+            //
+            // ON LES COMPTE QUAND MÊME, À PART. Un bouton désactivé à 2,48
+            // reste quelque chose qu'on peut vouloir regarder un jour — mais
+            // il ne doit pas se mêler aux vraies fautes, sinon la liste rougit
+            // pour toujours et personne ne la lit plus. Un détecteur qui crie
+            // au loup se fait désactiver au troisième cri.
+            const desactive = !!(el.disabled || el.closest('[disabled], [aria-disabled="true"]'));
+            const faitPale = alpha < 0.95;
+            const ligne = {
                 quoi: (el.className || el.tagName).toString().slice(0, 26),
                 texte: el.textContent.trim().replace(/\s+/g, ' ').slice(0, 26),
-                contraste: +c.toFixed(2)
-            });
+                contraste: +c.toFixed(2),
+                // CE QU'IL FAUDRAIT CORRIGER SI ON LE VOULAIT : le contraste de
+                // la couleur DÉCLARÉE, sans l'estompage. S'il passe le seuil,
+                // c'est bien l'estompage qui décide, et non un mauvais couple.
+                sansEstompage: +ratio([encre[0], encre[1], encre[2]], fond).toFixed(2)
+            };
+            if (desactive || faitPale) estompes.push(ligne);
+            else mauvais.push(ligne);
         }
-        return { mauvais, degrades, dessins };
+        return { mauvais, estompes, degrades, dessins };
     }, SEUIL);
     if (vu.erreur) continue;
     vus++;
@@ -198,6 +227,17 @@ for (const id of liste) {
         console.log(`  ILLISIBLE  ${id.padEnd(24)} ${vu.mauvais.length} texte(s)`);
         vu.mauvais.slice(0, 3).forEach(m =>
             console.log(`             ${String(m.contraste).padStart(5)} · ${m.quoi} · « ${m.texte} »`));
+    }
+    if ((vu.estompes || []).length) {
+        estompesTotal += vu.estompes.length;
+        // ON NE LES IMPRIME QU'AVEC `--estompes` : les lire à chaque passage,
+        // c'est réapprendre à ne plus lire la liste.
+        if (VOIR_ESTOMPES) {
+            console.log(`  estompé    ${id.padEnd(24)} ${vu.estompes.length} texte(s)`);
+            vu.estompes.slice(0, 3).forEach(m =>
+                console.log(`             ${String(m.contraste).padStart(5)} · ${m.quoi} · « ${m.texte} »`
+                    + `   (sans l'estompage : ${m.sansEstompage})`));
+        }
     }
 }
 console.log(`\n${vus} exercice(s) ouverts · ${fautifs} portent du texte sous ${SEUIL}`);

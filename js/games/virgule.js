@@ -153,7 +153,18 @@ class Virgule extends BaseGame {
                     position: absolute; bottom: 2px; height: 17px;
                     display: flex; align-items: center; justify-content: center;
                     font-size: 9px; font-weight: 800; letter-spacing: .02em;
-                    color: #fff; background: var(--danger); border-radius: 5px;
+                    /* DU BLANC SUR « --danger » NE FAIT QUE 3,99 — il en faut 4,5.
+                       Mesuré en thème sombre sur les PIXELS peints
+                       (tools/quiEstIllisible.mjs) : 3,76 pour « unités ».
+                       Et ce mot-là est le repère du tableau : c'est lui qui dit
+                       de quel côté de la virgule on se trouve. On ne touche pas
+                       au jeton — « --danger » sert partout et son rouge doit
+                       rester reconnaissable — on fonce LE FOND DE CE BADGE
+                       seul, assez pour passer le seuil et pas assez pour
+                       changer de couleur à l'œil. */
+                    color: #fff;
+                    background: color-mix(in srgb, var(--danger) 78%, #000);
+                    border-radius: 5px;
                     z-index: 4; pointer-events: none; white-space: nowrap;
                     transition: left .34s cubic-bezier(.35, .1, .25, 1);
                 }
