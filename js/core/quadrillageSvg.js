@@ -399,8 +399,26 @@ function marquesDeLaTransfo(t, { L, H, px, py, u, p, ancre }) {
         const ax = ancre.x, ay = ancre.y;
         out.push(`<line class="qd-vecteur" marker-end="url(#${p}-fleche)"
             x1="${px(ax)}" y1="${py(ay)}" x2="${px(ax + t.vecteur.x)}" y2="${py(ay + t.vecteur.y)}"/>`);
-        out.push(`<text class="qd-marque-nom" x="${px(ax + t.vecteur.x / 2)}"
-            y="${py(ay + t.vecteur.y / 2 - 0.35)}" text-anchor="middle">v</text>`);
+        // ON NE NOMME SUR LE DESSIN QUE CE QUE LA CONSIGNE NOMME.
+        //
+        // Rémy, devant la figure : « c'est quoi le truc bizarre au milieu de
+        // la flèche ? ». C'était un « v », le nom du vecteur, posé au milieu
+        // du trait. Il n'apprenait rien et gênait deux fois :
+        //
+        //   · AUCUNE CONSIGNE NE LE PRONONCE. Celle-ci dit « la translation
+        //     que montre la flèche rouge » (voir `consigneDe`) ; l'autre dit
+        //     « qui la fait glisser de 3 carreaux vers le bas ». Jamais « v ».
+        //     Un nom sur un dessin dit à l'élève qu'on va s'en servir — et
+        //     l'on cherche à quoi, au lieu de compter des carreaux.
+        //   · À CE NIVEAU, LE VECTEUR N'EXISTE PAS ENCORE. Un « v » nu, sans
+        //     la flèche au-dessus, n'est même pas la notation qu'il
+        //     rencontrera au lycée. Et à la taille où il sort, Rémy l'a pris
+        //     pour une seconde pointe de flèche : c'est bien la preuve qu'il
+        //     se lit comme du décor, pas comme une lettre.
+        //
+        // LE « O » DU CENTRE RESTE, lui : la consigne le nomme — « par la
+        // symétrie de centre O », « autour de O » — et sans lui on ne saurait
+        // pas autour de quoi tourner. C'est la même règle, dans l'autre sens.
     }
 
     return out;

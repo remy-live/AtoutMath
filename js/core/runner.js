@@ -29,7 +29,7 @@ import { uuid, shortId } from './ids.js';
 import { direQuOnVoit, oublierLEcran } from './ecran.js';
 import { destroyAllDemoCursors, marquerDemo } from './demoPointer.js';
 import { reglerCalculatrice, signalerNouvelleQuestion } from '../ui/calculatrice.js';
-import { filtrerEtapes, peutSauter, calculatriceAccordee } from './seanceDistante.js';
+import { filtrerEtapes, peutSauter, estRetire, calculatriceAccordee } from './seanceDistante.js';
 import { majFilSeance, cacherFilSeance } from '../ui/filSeance.js';
 
 export class Runner {
@@ -1521,7 +1521,25 @@ export class Runner {
     majBoutonPasser(step, annoncer = false) {
         const bouton = document.getElementById('btn-passer-exo');
         if (!bouton) return;
-        const permis = !!(step && step.exercise && peutSauter(step.exercise.id));
+        // RETIRER UN EXERCICE DOIT ATTEINDRE CELUI QUI EST DESSUS.
+        //
+        // Rémy : « il faut vraiment que pour la séance ce soit facile
+        // d'ajouter et d'enlever un exercice et surtout que ça s'actualise
+        // chez un élève. »
+        //
+        // LE FILTRE DES ÉTAPES RETIRÉES NE S'APPLIQUE QU'À LA CONSTRUCTION du
+        // meneur (voir le constructeur). Un élève déjà entré gardait donc
+        // l'exercice retiré jusqu'à ce qu'il relance — c'est-à-dire
+        // exactement l'élève qu'on voulait débloquer, et exactement le moment
+        // où le professeur vient de décider que cet exercice plante.
+        //
+        // ON NE LE SORT PAS DE FORCE de l'écran : couper quelqu'un en pleine
+        // question pour le ramener à la carte, c'est lui faire perdre ce qu'il
+        // vient de taper. On lui ouvre la porte, tout de suite, et il la
+        // franchit quand il veut. Le saut ne compte ni pour ni contre lui.
+        const exoId = step && step.exercise && step.exercise.id;
+        const retireMaintenant = !!exoId && estRetire(exoId);
+        const permis = !!exoId && (peutSauter(exoId) || retireMaintenant);
         const apparait = permis && bouton.hidden;
         bouton.hidden = !permis;
         bouton.onclick = permis ? () => this.passerEtape() : null;
@@ -1531,6 +1549,18 @@ export class Runner {
         //
         // Un bouton qui apparaît en silence en haut de l'écran, chez quelqu'un
         // qui a le nez sur sa question depuis dix minutes, n'apparaît pas.
+        // ET LA PHRASE N'EST PAS LA MÊME DANS LES DEUX CAS. « celui-ci
+        // résiste » dit à l'élève que son professeur a vu qu'il butait ; sur
+        // un exercice RETIRÉ, cela serait faux et vexant — il ne butait
+        // peut-être pas du tout, c'est l'exercice qu'on enlève, souvent pour
+        // toute la classe à la fois.
+        if (apparait && annoncer && !this.essai && retireMaintenant) {
+            import('../ui/modal.js').then(({ showToast }) => showToast(
+                'Ton professeur vient de retirer cet exercice de la séance. '
+                + 'Tu peux passer à la suite — le bouton « Passer ›› » est en '
+                + 'haut de l\'écran.', 'info', 11000));
+            return;
+        }
         if (apparait && annoncer && !this.essai) {
             // LA PHRASE COMPTE AUTANT QUE LE BOUTON. Rémy : « dis une phrase
             // bienveillante. » Celui qui la lit vient de passer dix minutes à

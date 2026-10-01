@@ -495,7 +495,8 @@ function ancreLibre(q, t) {
     // `qNoeud` dans ui/printSheet.js). Les nœuds vont donc de 0 à t.l INCLUS,
     // et la distance se mesure au CENTRE des cases, décalé d'un demi-carreau.
     // LE BORD EXTÉRIEUR NE COMPTE PAS COMME UN TRAIT : la flèche s'y confond
-    // avec le cadre du quadrillage, et son étiquette « v » sort de la figure.
+    // avec le cadre du quadrillage. (L'étiquette « v » que cette ligne citait
+    // n'existe plus : voir `marquesDeTransfo`.)
     // On cherche donc d'abord parmi les traits INTÉRIEURS ; les bords ne
     // servent que de repli, pour un vecteur si long qu'il ne tient nulle part
     // ailleurs.
