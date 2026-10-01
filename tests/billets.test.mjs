@@ -92,6 +92,21 @@ test('LA PAGE PORTE LES DEUX PRÉSENTATIONS, ET UNE SEULE SORT DE L\'IMPRIMANTE'
     // TABLEAU. Vu sur la photo, pas dans le code : un tableau ne se découpe
     // pas, et sa légende dit déjà ce qu'il faut savoir.
     assert.match(html, /body\.en-tableau \.sous \{ display: none; \}/);
+    // LE TITRE AUSSI SUIT LA PRÉSENTATION : la feuille qu'on garde sur son
+    // bureau toute l'heure s'appelle une liste, pas des billets.
+    assert.match(html, /<h1 class="titre-billets">/);
+    assert.match(html, /<h1 class="titre-tableau">6e B — identifiants et codes<\/h1>/);
+    assert.match(html, /body\.en-tableau \.titre-billets \{ display: none; \}/);
+    assert.match(html, /body:not\(\.en-tableau\) \.titre-tableau \{ display: none; \}/);
+});
+
+test('ET LE BOUTON D\'IMPRESSION DIT QUE LE PDF EST POSSIBLE', () => {
+    // Rémy : « on peut imprimer le tableau ou l'exporter en pdf ? ». Les deux
+    // marchaient, et il a dû poser la question — « Enregistrer au format PDF »
+    // est une destination CACHÉE dans la fenêtre d'impression du navigateur.
+    // Une possibilité qu'il faut deviner n'est pas offerte.
+    const html = htmlDesBillets({ eleves: TROIS, nom: '6e B', origine: 'https://x.fr/' });
+    assert.match(html, />Imprimer ou enregistrer en PDF</);
     // La barre de commandes ne s'imprime pas.
     assert.match(html, /@media print \{ \.rien \{ display: none; \} \}/);
     // L'en-tête du tableau revient en page 2 : une classe de trente ne tient

@@ -24,6 +24,7 @@
 import { ouvrirSonde } from './sonde.mjs';
 import { setTimeout as dormir } from 'node:timers/promises';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 const s = await ouvrirSonde({ largeur: 1400, hauteur: 950 });
 await s.identifier();
@@ -155,6 +156,37 @@ if (!d) {
         ? '   \x1b[32m→ LE CSV EXPORTE EXACTEMENT CE QU\'ON IMPRIME.\x1b[0m'
         : '   \x1b[31m→ LE CSV ET LES BILLETS NE DISENT PAS LA MÊME CHOSE.\x1b[0m');
 }
+
+// ─── 3. CE QUI SORT VRAIMENT DE L'IMPRIMANTE ────────────────────────────────
+//
+// Rémy : « on peut imprimer le tableau ou l'exporter en pdf ? ». On ne répond
+// pas de mémoire. `page.pdf()` emprunte le MÊME chemin que « Enregistrer au
+// format PDF » de Chrome — la feuille de style d'impression, @page, les sauts
+// de page. Ce que ce fichier contient est donc ce que Rémy obtiendra, et c'est
+// la seule mesure qui le dise : à l'écran, les règles @media print dorment.
+console.log('\n\x1b[1m3. À L\'IMPRIMANTE\x1b[0m');
+const sortie = async (quoi, fichier) => {
+    await fenetre.pdf({ path: fichier, format: 'A4', printBackground: true });
+    const texte = execFileSync('pdftotext', [fichier, '-']).toString();
+    const pages = ((execFileSync('pdfinfo', [fichier]).toString().match(/Pages:\s+(\d+)/)) || [])[1];
+    const barre = /Télécharger le CSV|Billets à découper/.test(texte);
+    console.log(`   ${quoi} — ${pages} page(s), barre de commandes imprimée : `
+        + (barre ? '\x1b[31mOUI\x1b[0m' : 'non'));
+    console.log('     premières lignes : '
+        + texte.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 4).join(' | '));
+    return texte;
+};
+await fenetre.click('#btn-vue-billets');
+await dormir(300);
+const pdfBillets = await sortie('billets à découper', 'tools/tmp/billets.pdf');
+await fenetre.click('#btn-vue-tableau');
+await dormir(300);
+const pdfTableau = await sortie('tableau de la classe', 'tools/tmp/tableau.pdf');
+console.log('   le tableau imprimé a sa colonne « Remis » : '
+    + (/Remis/.test(pdfTableau) ? 'oui' : '\x1b[31mnon\x1b[0m'));
+console.log(pdfBillets !== pdfTableau && /Identifiant/.test(pdfTableau) && !/Identifiant/.test(pdfBillets)
+    ? '   \x1b[32m→ LE CHOIX DE L\'ÉCRAN ARRIVE JUSQU\'À L\'IMPRIMANTE.\x1b[0m'
+    : '   \x1b[31m→ LES DEUX IMPRESSIONS SE RESSEMBLENT : le choix ne passe pas.\x1b[0m');
 
 // Et le bouton « Imprimer », celui qui était mort : on vérifie que l'écouteur
 // est bien posé. On ne CLIQUE pas — la boîte d'impression bloquerait la sonde.

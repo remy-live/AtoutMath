@@ -180,17 +180,33 @@ export function htmlDesBillets({ eleves, nom = '', origine = '' }) {
       body.en-tableau .sous { display: none; }
       body:not(.en-tableau) .tableau { display: none; }
       body.en-tableau .billets { display: none; }
+      /* ET LE TITRE SUIT LA PRÉSENTATION. « Billets » au-dessus d'un tableau
+         qu'on ne découpe pas, c'était la même maladresse que la phrase
+         ci-dessus : la feuille qu'on garde sur son bureau toute l'heure
+         s'appelle une liste, pas des billets. */
+      body.en-tableau .titre-billets { display: none; }
+      body:not(.en-tableau) .titre-tableau { display: none; }
       @media print { .rien { display: none; } }
     </style></head><body>
     <div class="rien">
-      <button id="btn-imprimer" type="button">Imprimer</button>
+      <!-- ON DIT LE PDF SUR LE BOUTON. Rémy : « on peut imprimer le tableau
+           ou l'exporter en pdf ? ». Les deux marchent, et c'est mesuré
+           (tools/billetsEtAjout.mjs sort les deux PDF et lit ce qu'ils
+           contiennent) — mais « Enregistrer au format PDF » est une
+           destination CACHÉE dans la fenêtre d'impression du navigateur, et
+           rien ne l'annonçait. Une possibilité qu'il faut deviner n'est pas
+           offerte : il a dû poser la question. -->
+      <button id="btn-imprimer" type="button"
+              title="La fenêtre d'impression du navigateur propose aussi « Enregistrer au format PDF » comme destination"
+              >Imprimer ou enregistrer en PDF</button>
       <span class="sep"></span>
       <button id="btn-vue-billets" type="button" aria-pressed="true">Billets à découper</button>
       <button id="btn-vue-tableau" type="button" aria-pressed="false">Tableau de la classe</button>
       <span class="sep"></span>
       <button id="btn-csv" type="button">Télécharger le CSV</button>
     </div>
-    <h1>${unSeul ? `Billet de ${esc(eleves[0].prenom)}` : 'Billets'} — ${esc(nom)}</h1>
+    <h1 class="titre-billets">${unSeul ? `Billet de ${esc(eleves[0].prenom)}` : 'Billets'} — ${esc(nom)}</h1>
+    <h1 class="titre-tableau">${esc(nom)} — identifiants et codes</h1>
     <p class="sous">${unSeul
         ? 'À redonner à cet élève. Son code n\'a pas changé : l\'ancien billet reste valable.'
         : 'À découper et à distribuer.'} L'élève tape son identifiant et son code
@@ -205,7 +221,9 @@ export function htmlDesBillets({ eleves, nom = '', origine = '' }) {
     </div>
     <div class="tableau">
       <table>
-        <caption>${esc(nom)} — ${eleves.length} élève${eleves.length > 1 ? 's' : ''}.
+        <!-- LA LÉGENDE NE REDIT PLUS LE NOM DE LA CLASSE : il est dans le
+             titre juste au-dessus depuis qu'il y en a un pour le tableau. -->
+        <caption>${eleves.length} élève${eleves.length > 1 ? 's' : ''}.
           L'élève tape son identifiant et son code sur ${esc(origine)}</caption>
         <thead><tr>
           <th></th><th>Élève</th><th>Identifiant</th><th>Code</th><th>Remis</th>
