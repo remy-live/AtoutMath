@@ -692,6 +692,36 @@
 /* Une étape FAITE mais RATÉE. L'élève doit voir où revenir ; une case pleine
    lui ferait croire qu'il peut passer à la suite. */
 .fil-pas--ratee > i { background: var(--warning); }
+/* LE MOT DU PROFESSEUR N'EST PAS UN EXERCICE, DONC SA CASE N'EN A PAS L'AIR.
+   Rémy : « dans le parcours ce qui serait sympa c'est de pouvoir caler un
+   message entre les exercices. »
+
+   DEUX DIFFÉRENCES, ET DEUX RAISONS :
+
+   · elle ne S'ÉTIRE PAS (`flex: 0 0 14px`). Les autres cases se partagent la
+     largeur à parts égales parce qu'elles valent chacune un exercice ; un mot
+     à lire qui prendrait le même tiers de la barre ferait croire à l'élève
+     qu'il a un tiers du travail devant lui ;
+   · elle est CREUSE, en pointillés. Une case pleine veut dire « fait » sur
+     tout ce fil ; il fallait donc dire « ce n'est pas du travail » autrement
+     que par le remplissage, qui est déjà pris.
+
+   ELLE EST CLIQUABLE POUR L'ÉLÈVE, elle seule — c'est elle qui rouvre le mot
+   (voir `relireLeMot`). D'où le curseur et le repère au clavier, qui sont
+   ailleurs réservés au fil piloté par le professeur. */
+.fil-pas--mot {
+    flex: 0 0 14px; background: none;
+    border: 1.5px dashed color-mix(in srgb, var(--primary) 55%, transparent);
+    border-radius: 4px; overflow: visible;
+    padding: 0; appearance: none; font: inherit; cursor: pointer;
+}
+.fil-pas--mot > i { display: none; }
+/* La même zone de clic débordante que le fil piloté : on ne vise pas 8 px. */
+.fil-pas--mot::before { content: ''; position: absolute; inset: -9px -3px; border-radius: 6px; }
+@media (hover: hover) {
+    .fil-pas--mot:hover { border-color: var(--primary); }
+}
+.fil-pas--mot:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .fil-ou { font-weight: 600; white-space: nowrap; }
 
 /* LE FIL CLIQUABLE — pendant un essai du professeur, et là seulement.

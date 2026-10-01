@@ -18,8 +18,68 @@ import { questionsConseillees } from './duree.js';
 import { getGenerator } from './registry.js';
 import { SEUIL_DEFAUT } from './recompenses.js';
 import { seuilConseille } from './seuilEtape.js';
+import { titreNettoye, texteNettoye, apercuDuMessage } from './messageEtape.js';
 
 export const PATH_VERSION = 2;
+
+/**
+ * LE GENRE D'UNE ÉTAPE — et il n'y en avait pas.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « dans le parcours ce qui serait sympa c'est de pouvoir caler un
+ * message entre les exercices, pour expliquer un peu. »
+ *
+ * UNE ÉTAPE ÉTAIT TOUJOURS UN EXERCICE, nulle part écrit parce que nulle part
+ * mis en doute : `hydratePath` ÉCARTAIT toute étape dont l'exercice est
+ * introuvable, et c'était juste — une étape sans exercice ne pouvait être
+ * qu'un parcours abîmé ou un exercice renommé.
+ *
+ * ON NE DEVINE DONC PAS, ON DÉCLARE. Le genre est écrit sur l'étape, et le
+ * logiciel ne demande jamais « cette étape a-t-elle un exercice ? » pour en
+ * déduire ce qu'elle est : un parcours cassé et un message resteraient
+ * indiscernables, et le premier s'afficherait comme le second.
+ *
+ * UNE ÉTAPE SANS GENRE EST UN EXERCICE. C'est ce qui fait que les milliers de
+ * parcours déjà rangés — dans les navigateurs, au serveur, dans les codes
+ * dictés — continuent de marcher sans conversion.
+ */
+export const GENRE_MESSAGE = 'message';
+
+/** Cette étape est-elle un mot du professeur, et non un exercice ? */
+export function estUnMessage(step) {
+    return !!step && step.genre === GENRE_MESSAGE;
+}
+
+/**
+ * UN MOT DU PROFESSEUR, À UN RANG DU PARCOURS.
+ *
+ * ── CE QU'IL NE FAIT PAS, ET C'EST LE PLUS IMPORTANT ─────────────────────
+ *
+ * Il ne pose AUCUNE question (`nbItems: 0`), donc il n'entre ni dans le total
+ * des questions, ni dans le barème, ni dans la note. `weight: 0` ne suffirait
+ * pas : `totalWeight` somme `st.weight || 1`, et zéro y vaut un. Ce sont donc
+ * `totalItems` et `totalWeight` qui l'écartent nommément.
+ *
+ * IL N'EST PAS `facultatif`, ET C'EST VOULU. Le meneur SAUTE les étapes
+ * facultatives en avançant (voir `endStep`) : marqué facultatif, le message ne
+ * s'afficherait jamais. Il se traverse, comme un exercice — simplement, on le
+ * traverse en lisant.
+ *
+ * @param {{titre?:string, texte?:string}} message
+ */
+export function makeMessage(message = {}, opts = {}) {
+    return {
+        stepId: opts.stepId || 's_' + shortId(6),
+        genre: GENRE_MESSAGE,
+        message: {
+            titre: titreNettoye(message.titre),
+            texte: texteNettoye(message.texte)
+        },
+        nbItems: 0, threshold: 0, weight: 0,
+        bonus: false, facultatif: false
+    };
+}
 
 /**
  * Le nombre de questions que CET exercice conseille.
@@ -212,6 +272,21 @@ function legacyStep(s, i) {
 }
 
 function normalizeStep(s) {
+    // UN MESSAGE NE PREND PAS LES DÉFAUTS D'UN EXERCICE. « dix questions, seuil
+    // sept » n'a aucun sens sur un mot à lire, et ces valeurs-là se
+    // retrouveraient dans le total des questions du parcours.
+    if (estUnMessage(s)) {
+        return {
+            ...s,
+            message: {
+                titre: titreNettoye((s.message || {}).titre),
+                texte: texteNettoye((s.message || {}).texte)
+            },
+            nbItems: 0, threshold: 0, weight: 0,
+            bonus: false, facultatif: false,
+            overrides: {}
+        };
+    }
     return {
         weight: 1, nbItems: 10, threshold: null, timeLimit: null, bonus: false,
         facultatif: false, verrou: null, ouvertureLe: null,
@@ -244,6 +319,27 @@ export function hydratePath(path) {
     const steps = [];
 
     for (const step of normalized.steps) {
+        // UN MESSAGE N'A PAS D'EXERCICE, ET CE N'EST PAS UNE ÉTAPE ABÎMÉE.
+        //
+        // C'est ici que tout se jouait : cette boucle écartait silencieusement
+        // toute étape dont l'exercice est introuvable, ce qui est le bon geste
+        // pour un exercice renommé — et qui aurait fait disparaître le mot du
+        // professeur sans un mot, à l'affichage comme à l'impression.
+        //
+        // ON LE RECONNAÎT AU GENRE, pas à l'absence d'exercice : un parcours
+        // vraiment abîmé doit continuer d'être écarté et SIGNALÉ.
+        if (estUnMessage(step)) {
+            steps.push({
+                ...step,
+                exercise: null,
+                // LE TITRE EST CELUI DE LA LISTE : le fil, la carte et l'atelier
+                // demandent tous un nom d'étape, et `apercuDuMessage` en donne
+                // un même quand Rémy n'a pas mis de titre.
+                title: apercuDuMessage(step.message),
+                params: {}
+            });
+            continue;
+        }
         const exo = getExerciseById(step.exerciseId);
         if (!exo) {
             missing.push(step.exerciseId);
@@ -266,12 +362,17 @@ export function hydratePath(path) {
  * Les jeux de récompense en sont exclus : on ne note pas une récompense.
  */
 export function totalWeight(path) {
-    return (path.steps || []).filter(st => !st.bonus)
+    // ET LES MESSAGES AUSSI : on ne note pas un mot à lire. `weight: 0` ne
+    // suffirait PAS — la somme ci-dessous lit `st.weight || 1`, où zéro vaut
+    // un. Il faut donc les écarter nommément, et c'est exactement le défaut
+    // qu'une relecture ne voit pas : un parcours de deux exercices et d'un
+    // message aurait eu un barème sur trois.
+    return (path.steps || []).filter(st => !st.bonus && !estUnMessage(st))
         .reduce((s, st) => s + (st.weight || 1), 0) || 1;
 }
 
-/** Nombre total de questions d'un parcours — hors jeux de récompense. */
+/** Nombre total de questions d'un parcours — hors jeux de récompense et messages. */
 export function totalItems(path) {
-    return (path.steps || []).filter(st => !st.bonus)
+    return (path.steps || []).filter(st => !st.bonus && !estUnMessage(st))
         .reduce((s, st) => s + (st.nbItems || 0), 0);
 }

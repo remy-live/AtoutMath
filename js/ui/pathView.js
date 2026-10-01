@@ -11,6 +11,7 @@
 //   3. le dernier bilan noté, pour que l'élève sache où il en est.
 
 import { state } from '../core/state.js';
+import { estUnMessage } from '../core/path.js';
 import { sectionMesExercices } from './mesExercicesUI.js';
 import { instantane, ouvrirSeance } from './maSeance.js';
 import { estRattache } from '../core/portail.js';
@@ -511,6 +512,10 @@ const PICTOS = {
 };
 
 function pictoDe(step) {
+    // UN MOT DU PROFESSEUR PORTE SON PROPRE PICTO, et non le crayon par défaut.
+    // Sans lui, la case du mot se dessinait comme un exercice dont le domaine
+    // est inconnu : l'élève cliquait dessus en croyant jouer.
+    if (estUnMessage(step)) return '💬';
     const chemin = (step.exercise && step.exercise.tags && step.exercise.tags.chemin) || [];
     for (let i = chemin.length - 1; i >= 0; i--) {
         if (PICTOS[chemin[i]]) return PICTOS[chemin[i]];
@@ -546,11 +551,17 @@ function creerNoeud(step, i, statut, opts, numero = i + 1) {
                 : statut === 'locked' ? '🔒' : pictoDe(step);
     btn.innerHTML = `<span class="world-node-picto">${picto}</span>`;
     btn.title = step.title;
+    const mot = estUnMessage(step);
     const dit = statut === 'done' ? 'terminé'
         : statut === 'cadeau' ? 'jeu ouvert'
             : statut === 'cle' ? 'fermée, il faut la clé du professeur'
-                : (statut === 'locked' || statut === 'cadeau-ferme') ? 'à débloquer' : 'jouer';
-    btn.setAttribute('aria-label', `${cadeau ? 'Jeu' : 'Étape ' + numero} : ${step.title} — ${dit}`);
+                : (statut === 'locked' || statut === 'cadeau-ferme') ? 'à débloquer'
+                    // ON NE DIT PAS « jouer » SUR UN MOT À LIRE. C'est la seule
+                    // phrase que le lecteur d'écran annonce : elle doit dire ce
+                    // qui va se passer, et il ne va rien se jouer.
+                    : mot ? 'à lire' : 'jouer';
+    btn.setAttribute('aria-label',
+        `${cadeau ? 'Jeu' : mot ? 'Mot du professeur' : 'Étape ' + numero} : ${step.title} — ${dit}`);
     btn.onclick = () => { if (opts.onNodeClick) opts.onNodeClick(i, statut); };
 
     const rang = document.createElement('span');

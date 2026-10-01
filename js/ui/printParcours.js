@@ -93,6 +93,20 @@ export function analyserParcours(chemin) {
     const { steps } = hydratePath(chemin);
     const papier = [], ecran = [];
     for (const s of steps) {
+        // UN MOT DU PROFESSEUR N'EST PAS UN EXERCICE, ET IL FAISAIT TOMBER LA
+        // FICHE.
+        //
+        // `s.exercise` vaut `null` sur une étape de genre « message » (voir
+        // `hydratePath`), et la ligne suivante lit `s.exercise.printable` : la
+        // fiche entière partait en erreur, pas seulement le message. Un seul
+        // mot dans une séance, et plus rien ne s'imprimait.
+        //
+        // IL N'EST PAS ENCORE SUR LE PAPIER, et c'est une limite assumée, pas
+        // un oubli : la feuille se compose par les GÉNÉRATEURS de fiche, qu'un
+        // message n'a pas. L'y poser demande un bloc de texte libre dans le
+        // moteur de mise en page — un vrai morceau, pas une ligne. On le dit
+        // plutôt que de le faire à moitié.
+        if (!s.exercise) continue;
         const gen = generateurDeFiche(s.exercise);
         // Deux façons d'aller sur le papier, et la seconde manquait : un
         // sudoku, un binairo, un garam n'ont pas de « questions » mais des
@@ -127,7 +141,10 @@ export function analyserParcours(chemin) {
         if (gen && (gen.ecrit || grille)) papier.push({ ...s, params, generator: gen, grille });
         else ecran.push(s);
     }
-    return { papier, ecran, total: steps.length };
+    // LE TOTAL COMPTE LES EXERCICES, pas les étapes : le mot du professeur
+    // n'est ni sur le papier ni sur l'écran, et l'annoncer dans « N exercices »
+    // ferait chercher une activité qui n'existe pas.
+    return { papier, ecran, total: papier.length + ecran.length };
 }
 
 /**

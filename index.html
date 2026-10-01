@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=906">
-    <link rel="stylesheet" href="css/layout.css?v=906">
-    <link rel="stylesheet" href="css/ui.css?v=906">
-    <link rel="stylesheet" href="css/games.css?v=906">
-    <link rel="stylesheet" href="css/components.css?v=906">
-    <link rel="stylesheet" href="css/modules.css?v=906">
+    <link rel="stylesheet" href="css/base.css?v=907">
+    <link rel="stylesheet" href="css/layout.css?v=907">
+    <link rel="stylesheet" href="css/ui.css?v=907">
+    <link rel="stylesheet" href="css/games.css?v=907">
+    <link rel="stylesheet" href="css/components.css?v=907">
+    <link rel="stylesheet" href="css/modules.css?v=907">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -943,6 +943,29 @@
                                          aria-hidden="true">
                                         <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.6-3.6" />
                                         <path d="M11 8v6M8 11h6" />
+                                    </svg>
+                                </button>
+                                <!-- UN MOT ENTRE DEUX EXERCICES.
+                                     Rémy : « dans le parcours ce qui serait sympa
+                                     c'est de pouvoir caler un message entre les
+                                     exercices, pour expliquer un peu. »
+
+                                     IL EST À CÔTÉ DE LA LOUPE, et non dans un menu :
+                                     c'est l'autre chose qu'on ajoute à un parcours, et
+                                     il n'y en a que deux. Un menu « ajouter… » à deux
+                                     entrées coûte un clic de plus à chacune.
+
+                                     L'ICÔNE EST UNE BULLE, au même trait que les
+                                     autres — pas un emoji, qui change de dessin d'un
+                                     appareil à l'autre et jure avec le reste. -->
+                                <button id="btn-ajouter-mot" class="toolbar-icon-btn"
+                                        title="Ajouter un message à lire entre deux exercices"
+                                        aria-label="Ajouter un message">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                         viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                         aria-hidden="true">
+                                        <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" />
                                     </svg>
                                 </button>
                                 <button id="btn-new-path" class="toolbar-icon-btn" title="Nouveau parcours" aria-label="Nouveau parcours">

@@ -1596,3 +1596,51 @@ lignes** — 2026-10-01
 - *La règle* : **une épreuve qui lit du source doit retirer les commentaires
   avant de chercher.** Sinon, expliquer un défaut suffit à faire mentir
   l'épreuve qui le garde — et ce dépôt explique TOUT.
+
+---
+
+**Une épreuve qui lit du source accuse le commentaire qui explique la correction** — 2026-10-01
+
+- *Ce que je voulais faire* : garder par des épreuves quatre décisions qui ne
+  vivent que dans le source — l'opérateur PHP, l'ordre de deux appels, la
+  police d'une règle CSS, le fait que rouvrir un message ne touche pas au
+  canevas du meneur.
+- *Ce qui a coûté* : quatre chutes, dont **deux épreuves VERTES qui ne
+  gardaient rien** — trouvées par `epreuveTombe.mjs`, pas par la relecture. La
+  cause est structurelle, pas distraite : ce dépôt exige qu'un bon commentaire
+  **cite le défaut qu'il ferme**, si bien qu'une épreuve qui lit la prose comme
+  du code punit exactement ce qu'on veut encourager. L'une s'accusait
+  elle-même ; l'autre restait verte en inversant les deux appels, parce que le
+  commentaire au-dessus les nomme dans le bon ordre.
+- *Combien de fois* : ||||
+- *Ce qui manque — fait dans la foulée* : `sansCommentaires(texte)` dans
+  `tests/helpers.mjs`, avec les quatre mesures qui l'ont payée. Les trois
+  copies écrites à la main ont été remplacées par elle.
+- *La règle* : **une épreuve qui lit du source retire les commentaires avant de
+  chercher.** Et son corollaire, trouvé le même soir : **une épreuve qui garde
+  une POSITION ne garde rien quand c'est une CONDITION qui décide** — comparer
+  `indexOf('path-step--mot')` et `indexOf('path-step--broken')` reste vrai
+  quand on remplace le test par `if (false)`.
+
+---
+
+**La sonde mesurait son propre réglage, puis son propre à-peu-près** — 2026-10-01
+
+- *Ce que je voulais faire* : mesurer le mot du professeur de bout en bout dans
+  un navigateur — l'atelier, l'écran de l'élève, le fil.
+- *Ce qui a coûté* : trois faux signalements d'affilée, tous de la sonde et non
+  du logiciel. (1) Elle attendait « 20 questions » en dur, alors que chaque
+  exercice apporte SON compte naturel : 25. (2) Elle lançait le meneur avec
+  `sansTrace: true`, donc sans journal, donc sans fil — et annonçait « 0 case »
+  sur un fil qui marche. (3) Elle cherchait le panneau des parcours sans avoir
+  cliqué « Préparer », et lisait `document.body.innerText`, qui ne rend que le
+  texte VISIBLE : le témoin « Parcours découverte » était absent lui aussi, ce
+  qui est la seule raison pour laquelle je ne l'ai pas crue.
+- *Combien de fois* : ||
+- *Ce qui manque* : rien à fabriquer ; une habitude à tenir. **Toute mesure
+  porte un TÉMOIN** — une valeur dont on sait d'avance qu'elle doit être vraie.
+  Sans lui, on ne distingue pas « le logiciel est cassé » de « la sonde regarde
+  ailleurs », et c'est la sonde trois fois sur trois.
+- *La règle* : **on mesure une DIFFÉRENCE, pas une valeur en dur** (le total
+  avant et après l'ajout, plutôt que 20), et **on ne coupe pas le journal dans
+  une sonde qui va regarder quelque chose qui se dessine à partir du journal.**

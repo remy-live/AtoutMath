@@ -14,7 +14,10 @@
 
 import { exercices, getExerciseById, paramSchemaOf, estNotable } from '../data/catalog.js';
 import { state } from '../core/state.js';
-import { makePath, makeStep, normalizePath, totalItems } from '../core/path.js';
+import { makePath, makeStep, makeMessage, estUnMessage, normalizePath, totalItems }
+    from '../core/path.js';
+import { messageEnHtml, apercuDuMessage, TITRE_MAX, LONGUEUR_MAX }
+    from '../core/messageEtape.js';
 import { resolvePolicy, isEvaluation, describePolicy, MODES } from '../core/policy.js';
 import { poserLeBandeauDesOutils, basculerLeBandeauDesOutils } from './bandeauOutils.js';
 import { communDe, appliquerAuxEtapes } from '../core/reglagesGroupes.js';
@@ -36,7 +39,7 @@ import {
     renderGameConfigUI, renderPolicyEditor, conseilEtape, aApercuAide, direLesReglages
 } from '../games/configUI.js';
 import { lireZones, normaliserZones, zonesDuMode, modeZone } from '../core/aide.js';
-import { showToast, showAlert, showConfirm } from './modal.js';
+import { showToast, showAlert, showConfirm, showModal } from './modal.js';
 
 let selectedStepId = null;
 
@@ -1248,6 +1251,30 @@ function stepRow(step, index, policy) {
     row.ondragend = () => { row.style.opacity = '1'; };
     row.onclick = () => selectStep(step.stepId);
 
+    // UN MOT DU PROFESSEUR : sa propre ligne, et SURTOUT PAS celle d'en
+    // dessous.
+    //
+    // Sans cette branche, le mot tombait dans « Exercice introuvable » — ce qui
+    // est logique, puisqu'il n'a pas d'exercice, et parfaitement faux pour
+    // Rémy : il venait de l'écrire, et l'atelier le lui annonçait cassé.
+    //
+    // LA LIGNE DIT LE TEXTE, pas « Message ». C'est ce qui permet de retrouver
+    // le bon dans une séance qui en porte trois ; `apercuDuMessage` prend le
+    // titre s'il y en a un, les premiers mots sinon.
+    if (estUnMessage(step)) {
+        row.classList.add('path-step--mot');
+        row.innerHTML = `<div class="path-step-title">
+            <span class="path-step-grip" aria-hidden="true">☰</span>
+            <span class="path-step-mot-marque" aria-hidden="true">💬</span>
+            <span class="path-step-name">${index + 1}. ${escapeHtml(apercuDuMessage(step.message))}</span>
+        </div>`;
+        row.title = 'Un mot à lire — clique pour l\'écrire';
+        const del = iconButton('Supprimer', ICONS.trash, 'danger');
+        del.onclick = (e) => { e.stopPropagation(); removeStep(step.stepId); };
+        row.appendChild(del);
+        return row;
+    }
+
     if (!exo) {
         row.classList.add('path-step--broken');
         row.innerHTML = `<div class="path-step-title">${index + 1}. Exercice introuvable
@@ -1494,10 +1521,97 @@ function accorderLeVolet() {
     if (!selectedStepId) fermerProprietes();
 }
 
+/**
+ * AJOUTER UN MOT DU PROFESSEUR — l'autre chose qu'on met dans un parcours.
+ *
+ * RÉMY : « dans le parcours ce qui serait sympa c'est de pouvoir caler un
+ * message entre les exercices, pour expliquer un peu. »
+ *
+ * ON L'AJOUTE VIDE, PUIS ON OUVRE L'ÉDITEUR. L'inverse — une fenêtre qui
+ * demande le texte avant de poser l'étape — obligerait à écrire quelque chose
+ * pour voir où l'étape se range, et à tout retaper si l'on s'est trompé de
+ * place. Un mot vide se repère tout seul dans la liste : il s'appelle
+ * « Message ».
+ *
+ * @param {number} [rang]  où l'insérer ; à la fin quand on ne dit rien.
+ */
+export function ajouterUnMot(rang) {
+    const step = makeMessage({});
+    const steps = state.currentPath.steps;
+    const ou = Number.isInteger(rang) ? Math.max(0, Math.min(rang, steps.length)) : steps.length;
+    steps.splice(ou, 0, step);
+    renderTeacherPath();
+    ecrireLeMot(step.stepId);
+}
+
+/**
+ * ÉCRIRE LE MOT — une fenêtre, deux champs, rien d'autre.
+ *
+ * ON NE MET PAS DE BARRE D'OUTILS, et c'est une décision, pas une économie.
+ * Rémy, sur la mise en forme : « du texte, des retours à la ligne, du gras ».
+ * Un éditeur plus riche ne coûte pas cher à écrire, il coûte cher à VIVRE :
+ * on passe ses soirées à mettre en forme au lieu de préparer des exercices.
+ * L'aide sous le champ dit la seule syntaxe qu'il y a à connaître.
+ *
+ * L'APERÇU EST LE VRAI, celui du meneur : `messageEnHtml`, dans la classe
+ * `.run-mot-texte`. Un aperçu approximatif est pire que pas d'aperçu — on
+ * corrigerait un texte d'après une image fausse.
+ */
+export function ecrireLeMot(stepId) {
+    const etape = state.currentPath.steps.find(s => s.stepId === stepId);
+    if (!estUnMessage(etape)) return;
+    const m = etape.message || {};
+    const modal = showModal('Le mot du professeur', `
+        <label class="ec-pilote-mot-liant" for="mot-titre">Titre (facultatif)</label>
+        <input id="mot-titre" class="ec-champ" type="text" maxlength="${TITRE_MAX}"
+               placeholder="Avant de commencer" value="${escapeHtml(m.titre || '')}">
+        <label class="ec-pilote-mot-liant" for="mot-texte">Ce que l'élève lira</label>
+        <textarea id="mot-texte" class="ec-champ" rows="6" maxlength="${LONGUEUR_MAX}"
+                  placeholder="Attention, ici on change de méthode…"
+                  >${escapeHtml(m.texte || '')}</textarea>
+        <p class="ec-note">Une ligne vide fait un paragraphe. Un mot entre
+           étoiles — <code>*comme ceci*</code> — s'affiche en gras.</p>
+        <h4 class="ec-pilote-titre">Ce que l'élève verra</h4>
+        <div id="mot-apercu" class="run-mot-texte"></div>
+        <div class="ec-seance-gestes">
+            <button type="button" class="ec-bouton" id="mot-ok">Enregistrer</button>
+        </div>`, { width: '560px' });
+
+    const champTitre = modal.element.querySelector('#mot-titre');
+    const champTexte = modal.element.querySelector('#mot-texte');
+    const apercu = modal.element.querySelector('#mot-apercu');
+    const peindre = () => { apercu.innerHTML = messageEnHtml(champTexte.value); };
+    champTexte.oninput = peindre;
+    peindre();
+
+    modal.element.querySelector('#mot-ok').onclick = () => {
+        const i = state.currentPath.steps.findIndex(s => s.stepId === stepId);
+        if (i !== -1) {
+            // ON REMPLACE L'ÉTAPE, on ne la retouche pas en place : c'est la
+            // règle de ce fichier depuis que l'aperçu des réglages a montré
+            // l'étape d'hier (voir `selectStep`).
+            state.currentPath.steps[i] = makeMessage(
+                { titre: champTitre.value, texte: champTexte.value },
+                { stepId });
+        }
+        modal.close();
+        renderTeacherPath();
+        autoSavePath();
+    };
+    champTexte.focus();
+}
+
 export function selectStep(stepId) {
     let step = state.currentPath.steps.find(s => s.stepId === stepId);
     if (!step) return;
     selectedStepId = stepId;
+
+    // UN MOT NE SE RÈGLE PAS, IL S'ÉCRIT. Le panneau de réglages est bâti
+    // autour de l'exercice et de son moteur ; sur une étape qui n'en a pas, il
+    // n'aurait rien à montrer. Le clic sur la ligne est le même geste pour les
+    // deux sortes d'étapes — Rémy clique dessus pour l'ouvrir — et c'est ici,
+    // au seul endroit par où passe ce clic, qu'on aiguille.
+    if (estUnMessage(step)) return ecrireLeMot(stepId);
 
     // LES RÉGLAGES S'OUVRENT EN FENÊTRE, PLUS DANS UNE TROISIÈME COLONNE.
     //
@@ -1755,6 +1869,11 @@ function initToolbar() {
         const b = document.getElementById(id);
         if (b) b.onclick = ouvrirLeChoix;
     });
+
+    // AJOUTER UN MOT. Rémy : « dans le parcours ce qui serait sympa c'est de
+    // pouvoir caler un message entre les exercices, pour expliquer un peu. »
+    const btnMot = document.getElementById('btn-ajouter-mot');
+    if (btnMot) btnMot.onclick = () => ajouterUnMot();
 
     // LE « ? » DE LA BARRE. Rémy : « je mettrai éventuellement un petit ? à côté
     // de nouveau parcours pour voir justement ce qui correspond aux icônes. »

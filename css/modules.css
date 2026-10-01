@@ -2340,6 +2340,34 @@ html[data-point="plus"] .pt-croix { display: none; }
     .run-screen-btn--doux:hover { opacity: 1; }
 }
 
+/* ═══ LE MOT DU PROFESSEUR, ENTRE DEUX EXERCICES ══════════════════════════════
+   Rémy : « dans le parcours ce qui serait sympa c'est de pouvoir caler un
+   message entre les exercices, pour expliquer un peu. »
+
+   AUCUNE DÉCLARATION DE POLICE ICI, et c'est une consigne, pas un oubli.
+   Rémy : « il faut rester cohérent dans la police ». `css/base.css` pose Outfit
+   sur `*` ; tout ce qui n'en parle pas est donc déjà juste. Ce qu'on règle ici,
+   ce sont les tailles et la largeur de lecture — rien d'autre.
+   Gardé par `tests/policeCoherente.test.mjs`.
+
+   LE TEXTE EST ALIGNÉ À GAUCHE, alors que tout le reste de `.run-screen` est
+   centré. Un paragraphe centré de quatre lignes se lit mal : l'œil reperd le
+   début de chaque ligne. Le titre, lui, reste centré avec les autres.
+
+   LA LARGEUR DE LECTURE EST BORNÉE à la même valeur que `.run-screen-text`
+   (480 px) : au-delà, une ligne devient trop longue pour qu'on retrouve la
+   suivante — c'est la raison pour laquelle un journal a des colonnes. */
+.run-mot-texte {
+    max-width: 480px; text-align: left;
+    font-size: 1.1rem; line-height: 1.6; color: var(--text-main);
+}
+.run-mot-texte p { margin: 0 0 .7em; }
+.run-mot-texte p:last-child { margin-bottom: 0; }
+/* Le gras du professeur. Il doit se voir SANS changer la couleur : une
+   couleur de plus sur cet écran et le bouton n'est plus ce qui attire
+   l'œil. */
+.run-mot-texte b { font-weight: 800; }
+
 /* ═══ LA CARTE, ENTRE LES EXERCICES ═══════════════════════════════════════════
    Rémy : « quand on lance un parcours, le tiroir de gauche disparaît et il
    occupe tout l'espace en dessous. Entre chaque exercice, on revoit le
@@ -6905,13 +6933,21 @@ html[data-theme="dark"] .ga-signe { color: var(--text-main); }
 .sc-piece--vive:active { cursor: grabbing; }
 .sc-piece--tenue .sc-piece-forme { filter: drop-shadow(0 6px 10px rgba(15, 23, 42, .35)); }
 .sc-piece-texte {
-    fill: #fff; font-family: 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 13px;
+    /* LA POLICE DE L'APPLICATION, ET PAS UNE AUTRE.
+       Rémy : « il faut rester cohérent dans la police ». Ces deux règles
+       demandaient 'Inter', qui n'est pas servie avec le logiciel : seule Outfit
+       l'est (vendor/outfit, importée par base.css). Le navigateur retombait
+       donc sur `system-ui` — une police DIFFÉRENTE de tout le reste de l'écran,
+       sur les pièces du bloc Scratch, et personne ne l'avait vu parce qu'une
+       police de repli ne proteste jamais. `inherit` suffit : la feuille de base
+       pose Outfit sur `*`. */
+    fill: #fff; font-family: inherit; font-weight: 700; font-size: 13px;
     dominant-baseline: central; pointer-events: none;
 }
 .sc-piece-champ { cursor: pointer; }
 .sc-piece-champ-fond { fill: #fff; }
 .sc-piece-champ-texte {
-    fill: #1e293b; font-family: 'Inter', system-ui, sans-serif; font-weight: 800; font-size: 13px;
+    fill: #1e293b; font-family: inherit; font-weight: 800; font-size: 13px;
     text-anchor: middle; dominant-baseline: central; pointer-events: none;
 }
 /* La pièce fantôme : le double pâle de ce qu'on tient, posé à l'endroit où

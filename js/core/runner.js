@@ -22,7 +22,8 @@ import { seuilRequis } from './seuilEtape.js';
 import { etatRecompenses, prochaineObligatoire } from './recompenses.js';
 import { skillsOf } from '../data/catalog.js';
 import { getSkill } from '../data/skills.js';
-import { hydratePath } from './path.js';
+import { hydratePath, estUnMessage } from './path.js';
+import { messageEnHtml, titreNettoye } from './messageEtape.js';
 import { gradeRun } from './grading.js';
 import { computeRuns } from './projections.js';
 import { uuid, shortId } from './ids.js';
@@ -500,6 +501,105 @@ export class Runner {
     }
 
     /**
+     * LE MOT DU PROFESSEUR, À SON RANG DANS LE PARCOURS.
+     *
+     * ─────────────────────────────────────────────────────────────────────
+     *
+     * RÉMY : « dans le parcours ce qui serait sympa c'est de pouvoir caler un
+     * message entre les exercices, pour expliquer un peu. »
+     *
+     * C'est ce qu'il dit à l'oral en classe — « attention, maintenant on
+     * change de méthode » — et que personne ne dit à l'élève qui travaille
+     * seul chez lui.
+     *
+     * UN SEUL BOUTON, ET AUCUN MOYEN DE SE TROMPER. Pas de « passer », pas de
+     * croix : on lit, on continue. Le message reste relisable depuis le fil
+     * de la séance, ce que Rémy a demandé explicitement — « oui, il reste
+     * dans le fil » — donc rien ici n'a besoin de le retenir.
+     *
+     * LE TEXTE EST MIS EN FORME PAR `messageEtape.js`, ET PAS PAR LE MOTEUR
+     * DE LEÇONS. Les deux existent, et la différence n'est pas une question
+     * de goût : `leconHtml.js` compose du contenu LIVRÉ AVEC LE LOGICIEL
+     * (`js/data/skills.js`), écrit par nous, dans une syntaxe d'auteur — il
+     * n'échappe d'ailleurs pas l'apostrophe. Ici, le texte vient du champ de
+     * saisie d'un professeur et part sur trente écrans : il lui faut un
+     * module dont l'ordre — échapper d'abord, mettre en forme ensuite — est
+     * la garantie, et qui s'éprouve pour cela (voir `messageEtape.test.mjs`).
+     *
+     * LA POLICE EST CELLE DU LOGICIEL. Rémy : « il faut rester cohérent dans
+     * la police ». Aucune déclaration de police ici ni dans la feuille de
+     * style du message : `css/base.css` pose Outfit sur `*`, et tout le reste
+     * en hérite. C'est gardé par `tests/policeCoherente.test.mjs`.
+     */
+    showMessage(step) {
+        const m = (step && step.message) || {};
+        const titre = titreNettoye(m.titre);
+        this.canvas.innerHTML = `
+            <div class="run-screen run-mot">
+                <div class="run-screen-icon" aria-hidden="true">💬</div>
+                ${titre ? `<h2 class="run-screen-title">${escapeHtml(titre)}</h2>` : ''}
+                <div class="run-mot-texte">${messageEnHtml(m.texte)}</div>
+                <button id="btn-run-mot" class="btn-toggle active run-screen-btn"
+                        >J'ai compris</button>
+            </div>`;
+        const btn = document.getElementById('btn-run-mot');
+        if (btn) btn.onclick = () => this.passerLeMessage(step);
+    }
+
+    /**
+     * ON A LU : on avance.
+     *
+     * ── POURQUOI ON ÉCRIT QUAND MÊME UNE ÉTAPE CLOSE AU JOURNAL ──────────
+     *
+     * Un message ne pose pas de question, donc rien à noter — et c'est
+     * justement pour cela qu'il faut le dire explicitement. Tout ce qui lit
+     * l'avancement compte les étapes CLOSES (`avancement.js`) : sans cette
+     * trace, l'élève resterait éternellement « étape 2 sur 5 », le fil
+     * garderait sa case vide, et une séance reprise le lendemain
+     * recommencerait au message. Les compteurs sont donc à ZÉRO, et `passed`
+     * à vrai : un mot lu est un mot lu.
+     *
+     * `exerciseId` EST `null`, ET C'EST LA SEULE DIFFÉRENCE VISIBLE au
+     * journal. Tout ce qui agrège par exercice — le bilan, les compétences,
+     * Pronote — filtre déjà sur un identifiant présent.
+     *
+     * ON N'AFFICHE PAS DE BILAN D'ÉTAPE DERRIÈRE, ni la carte. « J'ai
+     * compris » doit donner l'exercice suivant, pas un second écran à
+     * traverser : deux écrans de suite pour un mot de trois lignes, et le mot
+     * devient une corvée.
+     */
+    passerLeMessage(step) {
+        this.step = null;
+        if (!this.sansTrace) journal.emit(EventTypes.STEP_COMPLETED, {
+            runId: this.runId,
+            pathId: this.path.id,
+            stepId: step.stepId,
+            title: step.title,
+            weight: 0,
+            bonus: false,
+            exerciseId: null,
+            questions: 0,
+            solved: 0,
+            required: 0,
+            passed: true
+        });
+        this.faites.add(step.stepId);
+        if (this.isStudentPath) {
+            state.markStudentPathStepCompleted(step.stepId, {
+                runId: this.runId, solved: 0, required: 0, questions: 0, passed: true
+            });
+        }
+        this.index++;
+        // LA MÊME RÈGLE QU'APRÈS UN EXERCICE : on n'enchaîne ni sur une
+        // récompense ni sur une étape facultative.
+        while (this.steps[this.index]
+            && (this.steps[this.index].bonus || this.steps[this.index].facultatif)) {
+            this.index++;
+        }
+        this.runStep();
+    }
+
+    /**
      * Écran d'annonce avant une évaluation. Une évaluation qui démarre sans
      * prévenir n'est pas honnête : l'élève doit savoir qu'il n'a qu'un essai
      * et que cela compte.
@@ -730,6 +830,18 @@ export class Runner {
         if (this.index >= this.steps.length) return this.finish();
 
         const step = this.steps[this.index];
+
+        // UN MESSAGE N'EST PAS UN EXERCICE : on le peint et l'on s'arrête là.
+        //
+        // ON SORT AVANT TOUT LE RESTE, et c'est délibéré : ce qui suit monte un
+        // moteur, un chronomètre, une graine, une pastille de score et un titre
+        // d'exercice. Un mot à lire n'a besoin d'aucun des cinq, et chacun
+        // chercherait `step.exercise`, qui vaut `null` ici.
+        if (estUnMessage(step)) {
+            this.step = step;
+            return this.showMessage(step);
+        }
+
         this.step = step;
         this.stepStartedAt = Date.now();
         this.itemsResolved = new Set();

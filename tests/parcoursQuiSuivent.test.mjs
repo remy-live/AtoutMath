@@ -37,6 +37,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { sansCommentaires } from './helpers.mjs';
 import { normalizePath, makeStep, makePath } from '../js/core/path.js';
 import { cheminDeLEntree, combienDEtapes } from '../js/core/entreeParcours.js';
 import { estUnParcoursSeme, NOM_DECOUVERTE, DEBUT_PAPIER } from '../js/core/parcoursSemes.js';
@@ -110,8 +111,7 @@ test('LE DÉMARRAGE DESCEND LA BIBLIOTHÈQUE, ET AVANT DE LA MONTER', () => {
     // `monterLaBibliotheque()` pour expliquer la décision — donc `indexOf`
     // trouvait le commentaire, jamais l'appel. Deuxième fois ce soir qu'une
     // épreuve lit la prose comme du code.
-    const corps = init.slice(0, init.indexOf('\n}'))
-        .split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    const corps = sansCommentaires(init.slice(0, init.indexOf('\n}')));
 
     // LE DÉFAUT D'ORIGINE : `initParcoursServeur` ne montait que.
     assert.match(corps, /await ramenerLaBibliotheque\(\)/,
@@ -170,8 +170,7 @@ test('LA ROUTE DES PARCOURS DÉCODE VRAIMENT SON `data`', () => {
     // tombait dessus : elle accusait le commentaire qui raconte la correction.
     // Une épreuve qui lit les commentaires comme du code interdit d'expliquer
     // ce qu'on vient de corriger — et c'est la moitié du travail, ici.
-    const corps = route.slice(0, route.indexOf('\nfunction '))
-        .split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    const corps = sansCommentaires(route.slice(0, route.indexOf('\nfunction ')));
     assert.match(corps, /array_merge\(\$r, \['data' => json_decode/,
         'le `+` de PHP garderait la chaîne brute et la bibliothèque ne descendrait plus');
     assert.doesNotMatch(corps, /\$r \+ \[/,

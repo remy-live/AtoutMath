@@ -47,6 +47,8 @@ import { journal } from '../core/journal.js';
 import { getExerciseById } from '../data/catalog.js';
 import { computeRuns } from '../core/projections.js';
 import { avancementDuRun } from '../core/avancement.js';
+import { estUnMessage } from '../core/path.js';
+import { apercuDuMessage } from '../core/messageEtape.js';
 
 const esc = (t) => String(t == null ? '' : t)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -124,9 +126,42 @@ function meneurPilotable() {
     return (r && r.allowStepNavigation && typeof r.goToStep === 'function') ? r : null;
 }
 
+/**
+ * L'ÉTAPE DE RANG `i`, telle qu'on peut la lire d'ici.
+ *
+ * DEUX SOURCES, ET IL FAUT LES DEUX : le meneur quand il tourne (ses étapes
+ * sont hydratées), le parcours de l'élève sinon — c'est le cas du fil affiché
+ * entre deux exercices, ou après la séance.
+ */
+function etapeDeRang(meneur, i) {
+    // LE MENEUR QUI TOURNE, PILOTABLE OU PAS — et c'est la correction que la
+    // sonde a imposée.
+    //
+    // Ma première version lisait `meneurPilotable()`, c'est-à-dire le meneur
+    // SEULEMENT quand le professeur le pilote, et retombait sinon sur
+    // `state.studentPath`. MESURÉ (`tools/motDansLeParcours.mjs`) : trois cases
+    // au fil, aucune reconnue comme un mot. La raison est que `studentPath` est
+    // la séance ASSIGNÉE — or le professeur qui essaie son propre parcours, ou
+    // l'élève qui lance une séance par code, ne travaillent pas sur celle-là.
+    // Le fil lisait donc les étapes d'un autre parcours, et personne ne s'en
+    // apercevait puisqu'il n'en tirait qu'un titre.
+    //
+    // `state.activeSequenceRunner` porte les étapes HYDRATÉES de ce qui tourne
+    // vraiment : c'est la source la plus proche de l'écran, et elle vaut dans
+    // les trois cas.
+    const r = meneur || state.activeSequenceRunner;
+    const duRun = r && r.steps && r.steps[i];
+    if (duRun) return duRun;
+    const p = state.studentPath;
+    return (p && p.steps && p.steps[i]) || null;
+}
+
 /** Le titre de l'étape de rang `i`, pour l'infobulle du fil. */
 function titreEtape(meneur, i) {
-    const s = meneur && meneur.steps && meneur.steps[i];
+    const s = etapeDeRang(meneur, i);
+    // UN MESSAGE N'A PAS D'EXERCICE, DONC PAS DE TITRE D'EXERCICE — et la case
+    // du fil restait sans infobulle, c'est-à-dire indistinguable des autres.
+    if (estUnMessage(s)) return apercuDuMessage(s.message);
     const exo = s && s.exerciseId ? getExerciseById(s.exerciseId) : null;
     return (exo && exo.title) || '';
 }
@@ -144,11 +179,27 @@ function caseHtml(i, av, meneur) {
         part = Math.min(100, Math.round(100 * av.etapeEnCours.posees / av.etapeEnCours.prevues));
     } else if (enCours) part = 8;   // commencée, sans total connu : un liseré
 
-    const titre = (meneur && titreEtape(meneur, i))
+    const titre = titreEtape(meneur, i)
         || (enCours && av.etapeEnCours.titre ? av.etapeEnCours.titre : '');
+    // UN MOT DU PROFESSEUR SE RELIT, ET C'EST LA MOITIÉ DE L'IDÉE.
+    //
+    // Rémy, interrogé sur ce point : « oui, il reste dans le fil ». Un élève
+    // qui bloque à l'exercice 3 doit pouvoir relire ce qui était écrit avant —
+    // sinon le message ne sert qu'à ceux qui lisent du premier coup, c'est-à-
+    // dire pas à ceux pour qui on l'écrit.
+    //
+    // SA CASE EST DONC TOUJOURS UN BOUTON, même pour l'élève, alors que les
+    // autres ne le sont que sous le pilotage du professeur. Le geste est sans
+    // danger : il ROUVRE le mot, il ne déplace pas le meneur.
+    const mot = estUnMessage(etapeDeRang(meneur, i));
     const classes = `fil-pas${fait ? ' fil-pas--fait' : ''}${ratee ? ' fil-pas--ratee' : ''}${
-        enCours ? ' fil-pas--ici' : ''}`;
+        enCours ? ' fil-pas--ici' : ''}${mot ? ' fil-pas--mot' : ''}`;
     const dedans = `<i style="width:${part}%"></i>`;
+    if (mot && !meneur) {
+        const dit = `Relire le mot du professeur${titre ? ` — ${titre}` : ''}`;
+        return `<button type="button" class="${classes}" data-mot="${i}"
+            title="${esc(dit)}" aria-label="${esc(dit)}">${dedans}</button>`;
+    }
     // UN VRAI BOUTON QUAND IL CLIQUE : une case qu'on peut atteindre au clavier
     // et que le lecteur d'écran annonce. Un `span` avec un gestionnaire serait
     // cliquable à la souris et invisible partout ailleurs.
@@ -185,13 +236,41 @@ export function majFilSeance() {
     // Le gestionnaire est POSÉ SUR LE FIL, pas sur chaque case : `innerHTML`
     // les remplace toutes à chaque réponse, et rebrancher trente-cinq cases
     // deux fois par question serait du travail pour rien.
-    el.onclick = meneur ? (ev) => {
-        const b = ev.target.closest && ev.target.closest('[data-rang]');
+    el.onclick = (ev) => {
+        if (!ev.target.closest) return;
+        // RELIRE UN MOT : c'est ouvert à l'élève, et cela ne bouge rien.
+        const m = ev.target.closest('[data-mot]');
+        if (m) return relireLeMot(Number(m.dataset.mot));
+        const b = ev.target.closest('[data-rang]');
         if (!b) return;
         const r = meneurPilotable();
         if (r) r.goToStep(Number(b.dataset.rang));
-    } : null;
+    };
     return av;
+}
+
+/**
+ * ROUVRIR LE MOT DU PROFESSEUR, sans rien déranger.
+ *
+ * ON PASSE PAR `showModal`, ET SURTOUT PAS PAR L'ÉCRAN DU MENEUR : l'élève est
+ * peut-être au milieu d'un exercice quand il clique. Repeindre `this.canvas`
+ * effacerait sa question en cours. Une fenêtre se referme et laisse tout en
+ * place.
+ *
+ * LE MÊME TEXTE, LE MÊME HTML, LE MÊME MODULE que l'écran du meneur — donc la
+ * même garantie d'échappement, et pas une seconde syntaxe à tenir d'accord.
+ */
+function relireLeMot(rang) {
+    const s = etapeDeRang(meneurPilotable(), rang);
+    if (!estUnMessage(s)) return;
+    Promise.all([import('./modal.js'), import('../core/messageEtape.js')])
+        .then(([{ showModal }, { messageEnHtml, titreNettoye }]) => {
+            const m = s.message || {};
+            showModal(titreNettoye(m.titre) || 'Le mot du professeur',
+                `<div class="run-mot-texte">${messageEnHtml(m.texte)}</div>`,
+                { width: '520px' });
+        })
+        .catch(() => { /* sans la fenêtre, la case reste une case : rien de cassé */ });
 }
 
 /** Le fil s'efface en sortant du parcours : il n'a rien à dire sur l'accueil. */

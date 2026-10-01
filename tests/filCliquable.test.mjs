@@ -47,7 +47,23 @@ test('LE GESTIONNAIRE EST SUR LE FIL, PAS SUR TRENTE-CINQ CASES', () => {
     // `innerHTML` remplace toutes les cases à chaque réponse : rebrancher
     // trente-cinq boutons deux fois par question serait du travail pour rien,
     // et surtout une occasion d'en oublier.
-    assert.match(FIL, /el\.onclick = meneur \?/);
+    //
+    // ─────────────────────────────────────────────────────────────────────
+    // CETTE ÉPREUVE EXIGEAIT `el.onclick = meneur ?`, ET C'ÉTAIT TROP PRÉCIS.
+    //
+    // Le gestionnaire n'est plus conditionnel : depuis que le fil porte les
+    // mots du professeur, il est posé TOUJOURS — la case d'un mot se clique
+    // même sans pilotage, parce que l'élève doit pouvoir le relire (Rémy :
+    // « oui, il reste dans le fil »). Ce que l'épreuve devait garder n'était
+    // pas la condition, c'était qu'il y ait UN gestionnaire, et sur le FIL.
+    //
+    // On garde donc l'intention, et de deux côtés : un `onclick` sur `el`, et
+    // AUCUN sur les cases que `innerHTML` recrée.
+    assert.match(FIL, /el\.onclick = \(ev\) =>/);
+    assert.doesNotMatch(FIL, /\.fil-pas[^\n]*\.onclick/,
+        'une case qui porte son propre gestionnaire le perd au prochain rendu');
+    // L'aiguillage se fait par `closest`, sur le fil, donc une seule fois.
+    assert.match(FIL, /ev\.target\.closest\('\[data-rang\]'\)/);
     assert.match(FIL, /el\.classList\.toggle\('fil--pilotable', !!meneur\)/);
 });
 

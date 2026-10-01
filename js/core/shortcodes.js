@@ -19,7 +19,8 @@
 // lisent plus : ils rendaient fausse la garantie des lettres de contrôle (voir
 // la note plus bas, avant l'API).
 
-import { normalizePath, makePath, questionsConseilleesDe } from './path.js';
+import { normalizePath, makePath, makeMessage, estUnMessage, questionsConseilleesDe }
+    from './path.js';
 import { getExerciseById, paramSchemaOf } from '../data/catalog.js';
 import { defaultPolicy, resolvePolicy, apprentissagePolicy, evaluationPolicy, MODES } from './policy.js';
 import { SEUIL_DEFAUT } from './recompenses.js';
@@ -598,6 +599,16 @@ const telQuel = questionsConseilleesDe;
  * @returns {string} la raison, ou '' si l'étape se dicte.
  */
 function raisonEtape(s) {
+    // UN MOT DU PROFESSEUR NE TIENT PAS EN TROIS LETTRES, et il faut le dire
+    // avec ses mots : « cette étape n'a pas d'exercice » ferait croire à Rémy
+    // que son parcours est abîmé, alors qu'il vient d'y écrire un message.
+    //
+    // LE COÛT EST RÉEL ET ASSUMÉ : une séance qui porte un message se partage
+    // par le code LONG, celui qu'on copie-colle, et non par les trois lettres
+    // qu'on dicte à voix haute. C'est déjà le cas d'une séance chronométrée ou
+    // à coefficient ; pour les séances qu'il dicte en classe, mieux vaut ne pas
+    // y mettre de message.
+    if (estUnMessage(s)) return 'elle porte un message, qui ne tient pas en trois lettres';
     if (!s || !s.exerciseId) return 'cette étape n\'a pas d\'exercice';
     if ((s.weight || 1) !== 1) return 'elle a un coefficient';
     if (s.timeLimit) return 'elle est chronométrée';
@@ -869,6 +880,22 @@ const CLES_ETAPE = {
 };
 
 function compactStep(s) {
+    // UN MOT DU PROFESSEUR VOYAGE DANS LE FORMAT COMPLET, et il n'y a pas de
+    // choix : son texte ne tient pas en trois lettres.
+    //
+    // Rémy : « dans le parcours ce qui serait sympa c'est de pouvoir caler un
+    // message entre les exercices. » Le code COURT ne peut pas le porter —
+    // `raisonEtape` le dit et bascule sur le format complet — mais le format
+    // complet, lui, doit le porter ENTIER : sans ces trois lignes, un parcours
+    // partagé par lien perdait ses messages en silence, et l'élève recevait un
+    // enchaînement d'exercices sans les explications écrites pour lui.
+    if (estUnMessage(s)) {
+        const m = s.message || {};
+        const out = { g: 'm' };
+        if (m.titre) out.mt = m.titre;
+        if (m.texte) out.mx = m.texte;
+        return out;
+    }
     const out = { e: s.exerciseId };
     if (s.nbItems && s.nbItems !== 10) out.q = s.nbItems;
     if (s.threshold !== null && s.threshold !== undefined) out.t = s.threshold;
@@ -979,7 +1006,14 @@ function expand(obj) {
     if (obj.b !== undefined) path.bonusSeuil = obj.b;
     if (obj.r) path.reprise = obj.r;
     if (obj.c) path.boite = true;
-    path.steps = (obj.s || []).map((s, i) => ({
+    path.steps = (obj.s || []).map((s, i) => {
+        // LE MOT DU PROFESSEUR SE RELIT TEL QU'IL A ÉTÉ ÉCRIT. On passe par
+        // `makeMessage`, qui renettoie le texte : un lien peut avoir été
+        // bricolé à la main, et ce texte deviendra du HTML chez l'élève.
+        if (s.g === 'm') {
+            return makeMessage({ titre: s.mt, texte: s.mx }, { stepId: `sc_${i}` });
+        }
+        return {
         stepId: `sc_${i}`,
         exerciseId: s.e,
         overrides: s.o || {},
@@ -993,7 +1027,8 @@ function expand(obj) {
         facultatif: !!s.nb || !!s.b,
         verrou: s.k || null,
         ouvertureLe: s.d || null
-    }));
+        };
+    });
     return path;
 }
 
