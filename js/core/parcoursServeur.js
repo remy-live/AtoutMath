@@ -47,7 +47,7 @@ import { auServeur } from './espaceProf.js';
 import { jetonProf } from './verrouProf.js';
 import { getActiveProfile } from './profile.js';
 import { normalizePath } from './path.js';
-import { donnerSeance } from './seances.js';
+import { donnerSeance, complementDeSeance, completerSeance } from './seances.js';
 import { identiteDeParcours } from './shortcodes.js';
 
 /** Ce qu'on a déjà réussi à monter : identifiant → empreinte de ce qui est parti. */
@@ -155,7 +155,16 @@ export async function donnerAuServeur(parcours, classId, opts = {}) {
         pathId: parcours.id,
         classId: classId || null,
         studentId: opts.studentId || null,
-        dueAt: opts.dueAt || null
+        dueAt: opts.dueAt || null,
+        // L'IDENTITÉ DU TRAVAIL, QUE SEUL LE NAVIGATEUR SAIT CALCULER.
+        //
+        // Le serveur la range telle quelle et la rendra à TOUS les élèves de
+        // la séance — y compris à celui qui ouvre son poste une heure après
+        // que le professeur l'a complétée. Sans elle, chacun la recalculait
+        // chez lui, sur le contenu qu'il avait sous les yeux : MESURÉ, Tom
+        // « path_cDPF7NX » et Emma « path_cK8LZGE » pour une même séance. Le
+        // bilan filtre les travaux là-dessus ; il en perdait un des deux.
+        pathIdentity: identiteDeParcours(normalizePath(parcours, parcours.name))
     });
     if (r.erreur) return r;
     return { ok: true, pathId: parcours.id };
@@ -293,22 +302,65 @@ export async function recevoirLesAssignations(assignations) {
     }
 
     const seances = (await lireSeances()) || [];
-    const dejaLa = new Set(seances.map(s => s.id));
+    const parId = new Map(seances.map(s => [s.id, s]));
     const neuves = [];
+    const completees = [];
     for (const a of assignations) {
         if (!a || !a.path) continue;
         // L'identifiant de séance vient de l'assignation : deux synchros
         // successives ne doivent pas fabriquer deux séances pour un même
         // travail donné une seule fois.
         const id = 's_srv_' + String(a.assignmentId || a.pathId);
-        if (dejaLa.has(id)) continue;
+
+        // LA SÉANCE DÉJÀ LÀ SE COMPLÈTE, ELLE NE SE RÉÉCRIT PAS.
+        //
+        // Rémy : « si je me rends compte qu'une séance est trop courte ou que
+        // les élèves vont trop vite, puis-je la compléter ? ».
+        //
+        // ON ÉCRIVAIT ICI `if (dejaLa.has(id)) continue;` — la séance de
+        // l'élève était écrite UNE FOIS et jamais relue. MESURÉ sur le chemin
+        // réel (`tools/seanceQuiChange.mjs`) : le professeur complétait, Tom
+        // qui avait déjà la séance gardait 2 étapes même après rechargement,
+        // et Emma qui ouvrait après en avait 3. Deux élèves de la même classe,
+        // la même séance, un contenu différent, et rien ne le disait.
+        //
+        // `complementDeSeance` dit ce qu'on a le droit d'ajouter, et il est
+        // STRICT : seulement des étapes EN PLUS À LA FIN, jamais sur une
+        // séance close. Retirer ou rerégler une étape déjà donnée rendrait le
+        // bilan menteur — et pour enlever un exercice à une classe qui bute,
+        // c'est la dispense qui est faite pour ça.
+        const existante = parId.get(id);
+        if (existante) {
+            const plus = complementDeSeance(existante, normalizePath(a.path, a.name || a.path.name));
+            if (plus) {
+                const complete = completerSeance(existante, plus.etapes);
+                const i = seances.indexOf(existante);
+                if (i >= 0) seances[i] = complete;
+                parId.set(id, complete);
+                completees.push({ seance: complete, ajoutees: plus.etapes.length });
+            }
+            continue;
+        }
         const parcours = normalizePath(a.path, a.name || a.path.name);
         const s = donnerSeance({ id: classeId, nom: distant.className || '' }, parcours, {
             titre: a.name || parcours.name,
             donneeLe: Date.now()
         });
         s.id = id;
-        s.pathId = identiteDeParcours(parcours);
+        // L'IDENTITÉ VIENT DU SERVEUR, FIGÉE QUAND LA SÉANCE A ÉTÉ DONNÉE.
+        //
+        // On la recalculait ici, sur le contenu reçu. Tant que le parcours ne
+        // bougeait pas, tout le monde tombait sur la même — mais dès qu'on
+        // COMPLÈTE une séance, celui qui l'avait déjà garde l'ancienne et
+        // celui qui la reçoit après en obtient une neuve. MESURÉ : Tom
+        // « path_cDPF7NX », Emma « path_cK8LZGE », même séance, même contenu.
+        // Le bilan de séance filtre les travaux sur cette identité
+        // (`runsDeLaSeance`) : l'un des deux en tombait, sans un mot.
+        //
+        // LE REPLI RESTE, et il sert vraiment : une séance donnée AVANT que la
+        // colonne n'existe n'en a pas. Elle retombe alors sur l'ancien calcul,
+        // qui est exactement ce qu'elle avait déjà.
+        s.pathId = a.pathIdentity || identiteDeParcours(parcours);
         // L'HORAIRE DU SERVEUR DEVIENT L'OUVERTURE DE LA SÉANCE. `due_at`
         // existait en base et ne servait à rien ; c'est lui qui portera
         // « imposée de 8 h à 9 h ».
@@ -317,10 +369,21 @@ export async function recevoirLesAssignations(assignations) {
             if (!Number.isNaN(t)) s.ouvreLe = t;
         }
         seances.push(s);
+        parId.set(id, s);
         neuves.push(s);
     }
-    if (neuves.length) await ecrireSeances(seances);
-    return { ecrites: neuves.length, seances: neuves };
+    if (neuves.length || completees.length) await ecrireSeances(seances);
+    // ON ANNONCE LE COMPLÉMENT, ON NE LE GLISSE PAS. Deux exercices qui
+    // apparaissent au milieu de l'heure sans un mot, c'est un élève qui croit
+    // avoir mal lu — ou qui croit avoir fini et s'arrête.
+    if (completees.length && typeof document !== 'undefined') {
+        for (const c of completees) {
+            document.dispatchEvent(new CustomEvent('seance_completee', { detail: c }));
+        }
+    }
+    return { ecrites: neuves.length, seances: neuves,
+             completees: completees.length,
+             ajoutees: completees.reduce((n, c) => n + c.ajoutees, 0) };
 }
 
 /** À brancher une fois : le serveur parle, on range. */

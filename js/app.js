@@ -314,6 +314,29 @@ window.addEventListener('DOMContentLoaded', async () => {
     // en cache — et la porte se redessine si le serveur dit autre chose.
     chargerReglagesSite(adresseApiDeduite(getSyncConfig().apiUrl))
         .catch(() => null);
+    // LE COMPLÉMENT DE SÉANCE SE DIT À L'ÉLÈVE, IL NE SE GLISSE PAS.
+    //
+    // Rémy : « si je me rends compte qu'une séance est trop courte ou que les
+    // élèves vont trop vite, puis-je la compléter ? ». Oui, désormais — et
+    // deux exercices qui apparaissent au milieu de l'heure sans un mot, c'est
+    // un élève qui croit avoir mal lu, ou qui croit avoir fini et s'arrête.
+    //
+    // ON NE L'INTERROMPT PAS POUR AUTANT : un avis qui passe, pas une fenêtre.
+    // Le meneur, lui, ne redessine rien tant qu'il tourne (`parcoursServeur`
+    // s'arrête sur `state.activeSequenceRunner`) : l'élève finit sa question.
+    // `showToast` S'IMPORTE À LA DEMANDE, comme partout ailleurs dans ce
+    // fichier : il n'y est pas importé en tête, et l'appeler directement
+    // aurait jeté une erreur au premier complément — c'est-à-dire chez Rémy,
+    // en classe, et nulle part chez nous.
+    document.addEventListener('seance_completee', (e) => {
+        const n = ((e.detail || {}).ajoutees) || 0;
+        if (!n) return;
+        import('./ui/modal.js').then(({ showToast }) => showToast(n === 1
+            ? 'Ton professeur vient d\'ajouter un exercice à la séance.'
+            : `Ton professeur vient d'ajouter ${n} exercices à la séance.`,
+        'info', 7000)).catch(() => { /* pas d'écran : tant pis */ });
+    });
+
     document.addEventListener('reglages_site', () => {
         // La porte est peut-être DÉJÀ dessinée : `majPortail` ne la refait pas
         // toute seule — et c'est heureux, elle effacerait ce qu'on y tape.

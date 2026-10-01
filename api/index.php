@@ -564,7 +564,7 @@ function handleMessagesRead(): void
 function assignmentsFor(array $student): array
 {
     $stmt = db()->prepare(
-        'SELECT a.id, a.due_at, p.id AS path_id, p.name, p.data
+        'SELECT a.id, a.due_at, a.path_identity, p.id AS path_id, p.name, p.data
          FROM assignments a JOIN paths p ON p.id = a.path_id
          WHERE a.class_id = ? OR a.student_id = ?
          ORDER BY a.created_at DESC LIMIT 20'
@@ -573,6 +573,11 @@ function assignmentsFor(array $student): array
     return array_map(fn($r) => [
         'assignmentId' => $r['id'],
         'pathId' => $r['path_id'],
+        // L'IDENTITÉ FIGÉE AU MOMENT OÙ LA SÉANCE A ÉTÉ DONNÉE — voir la
+        // colonne `path_identity` dans api/lib/schema.php. Sans elle, deux
+        // élèves de la même classe rangeaient leur travail sous deux noms dès
+        // que le professeur complétait sa séance, et le bilan en perdait un.
+        'pathIdentity' => $r['path_identity'] ?? null,
         'name' => $r['name'],
         'dueAt' => $r['due_at'],
         'path' => json_decode($r['data'], true),
@@ -948,15 +953,26 @@ function handleTeacherAssign(): void
             'SELECT id FROM assignments WHERE path_id = ? AND student_id = ? AND class_id IS NULL');
         $vue->execute([$pathId, $studentId]);
     }
+    $identite = trim((string) ($body['pathIdentity'] ?? ''));
+
     $deja = $vue->fetchColumn();
     if ($deja !== false) {
-        db()->prepare('UPDATE assignments SET due_at = ? WHERE id = ?')
-            ->execute([$body['dueAt'] ?? null, $deja]);
+        // ON NE RÉÉCRIT PAS L'IDENTITÉ D'UNE SÉANCE DÉJÀ DONNÉE : c'est tout
+        // son intérêt. Redonner le même parcours à la même classe — ce qui
+        // arrive à chaque fois que le professeur retouche puis renvoie — ne
+        // doit pas débaptiser le travail que les élèves ont déjà fait. On ne
+        // la pose que si elle manque, c'est-à-dire pour les séances données
+        // avant que cette colonne n'existe.
+        db()->prepare('UPDATE assignments SET due_at = ?,
+                              path_identity = COALESCE(path_identity, ?) WHERE id = ?')
+            ->execute([$body['dueAt'] ?? null, $identite !== '' ? $identite : null, $deja]);
         respond(['ok' => true, 'deja' => true]);
     }
 
-    db()->prepare('INSERT INTO assignments (id, path_id, class_id, student_id, due_at) VALUES (?, ?, ?, ?, ?)')
-        ->execute([uuidv4(), $pathId, $classId ?: null, $studentId ?: null, $body['dueAt'] ?? null]);
+    db()->prepare('INSERT INTO assignments (id, path_id, class_id, student_id, due_at, path_identity)
+                   VALUES (?, ?, ?, ?, ?, ?)')
+        ->execute([uuidv4(), $pathId, $classId ?: null, $studentId ?: null,
+                   $body['dueAt'] ?? null, $identite !== '' ? $identite : null]);
 
     respond(['ok' => true]);
 }

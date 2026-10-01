@@ -285,13 +285,29 @@ function migrer(?PDO $pdo = null): void
         updated_at $date,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 
+    // `path_identity` — L'IDENTITÉ DU TRAVAIL, FIGÉE AU MOMENT OÙ ON DONNE.
+    //
+    // Elle est calculée par le navigateur (`identiteDeParcours`, une empreinte
+    // du CONTENU) et envoyée ici. Le serveur ne saurait pas la recalculer, et
+    // c'est tant mieux : il n'a pas à connaître cette définition.
+    //
+    // POURQUOI ELLE DOIT VIVRE EN BASE. L'élève la recalculait chez lui, à la
+    // réception. Tant que le parcours ne bougeait pas, tout le monde tombait
+    // sur la même — mais dès qu'on COMPLÈTE une séance, celui qui l'avait déjà
+    // garde l'ancienne et celui qui la reçoit après en obtient une neuve.
+    // MESURÉ : Tom « path_cDPF7NX », Emma « path_cK8LZGE », même séance, même
+    // contenu. Or le bilan de séance filtre les travaux sur cette identité
+    // (`runsDeLaSeance`, js/core/bilanSeance.js) : l'un des deux élèves en
+    // tombait, sans un mot. Une identité qu'on recalcule n'est pas une
+    // identité.
     $tables['assignments'] = "
-        id         $id,
-        path_id    $ref,
-        class_id   $refNull,
-        student_id $refNull,
-        due_at     $dateN,
-        created_at $date,
+        id            $id,
+        path_id       $ref,
+        class_id      $refNull,
+        student_id    $refNull,
+        due_at        $dateN,
+        path_identity $txtNull,
+        created_at    $date,
         FOREIGN KEY (path_id) REFERENCES paths(id) ON DELETE CASCADE,
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";

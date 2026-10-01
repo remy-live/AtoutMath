@@ -1249,6 +1249,68 @@ verifier('le nouvel élève a reçu un identifiant et un code',
     (bool) preg_match('/^[a-z0-9._-]+$/', array_key_last(array_diff_key($apresAjout, $avantAjout)) ?? ''),
     implode(' ', array_keys(array_diff_key($apresAjout, $avantAjout))));
 
+// --- L'IDENTITÉ DU TRAVAIL EST FIGÉE AU MOMENT OÙ LA SÉANCE EST DONNÉE.
+//
+// Rémy : « si je me rends compte qu'une séance est trop courte […] puis-je la
+// compléter ? ». Oui — et compléter touche à une chose qu'on ne voit pas :
+// l'identité sous laquelle les élèves rangent leur travail.
+//
+// Elle est calculée par le NAVIGATEUR (une empreinte du contenu) et chaque
+// élève la recalculait chez lui, à la réception. Tant que le parcours ne
+// bougeait pas, tout le monde tombait sur la même — mais dès qu'on complète,
+// celui qui avait déjà la séance garde l'ancienne et celui qui la reçoit après
+// en obtient une neuve. MESURÉ au navigateur : Tom « path_cDPF7NX », Emma
+// « path_cK8LZGE », même séance, même contenu. Le bilan de séance filtre les
+// travaux là-dessus : l'un des deux en tombait, sans un mot.
+//
+// Le serveur la range donc une fois et la rend à tout le monde. CE QU'ON
+// MESURE ICI : qu'il la garde, et surtout qu'il NE LA RÉÉCRIVE PAS quand le
+// professeur redonne le même parcours — ce qu'il fait à chaque retouche.
+$classeI = uuidv4();
+db()->prepare('INSERT INTO classes (id, teacher_id, name, join_code) VALUES (?, ?, ?, ?)')
+    ->execute([$classeI, $profId, '6e Identité', 'IDENTI']);
+$parcoursI = uuidv4();
+db()->prepare('INSERT INTO paths (id, teacher_id, name, data) VALUES (?, ?, ?, ?)')
+    ->execute([$parcoursI, $profId, 'Séance du lundi',
+               json_encode(['id' => $parcoursI, 'version' => 2, 'name' => 'Séance du lundi',
+                            'steps' => [['stepId' => 's0', 'exerciseId' => 'calc-add']]])]);
+json('/teacher/assign', ['pathId' => $parcoursI, 'classId' => $classeI,
+                         'pathIdentity' => 'path_PREMIERE'], $jetonProf);
+$lire = function () use ($classeI) {
+    $s = db()->prepare('SELECT path_identity FROM assignments WHERE class_id = ?');
+    $s->execute([$classeI]);
+    return (string) ($s->fetchAll()[0]['path_identity'] ?? '');
+};
+verifier("L'IDENTITÉ DU TRAVAIL EST RANGÉE EN BASE", $lire() === 'path_PREMIERE', $lire());
+
+// On redonne le même parcours, avec une identité DIFFÉRENTE — c'est très
+// exactement ce qui arrive quand le professeur complète sa séance puis renvoie.
+json('/teacher/assign', ['pathId' => $parcoursI, 'classId' => $classeI,
+                         'pathIdentity' => 'path_SECONDE'], $jetonProf);
+verifier('ET REDONNER NE LA RÉÉCRIT PAS',
+    $lire() === 'path_PREMIERE',
+    'sinon le travail déjà fait change de nom et le bilan le perd : ' . $lire());
+
+// Et l'élève la reçoit, plutôt que de la recalculer chez lui.
+$eleveI = uuidv4();
+db()->prepare('INSERT INTO students (id, class_id, first_name, first_name_key, login, login_key,
+                                     access_code, token_hash)
+               VALUES (?,?,?,?,?,?,?,?)')
+    ->execute([$eleveI, $classeI, chiffrer('Tom Identité'), empreintePrenom('Tom Identité'),
+               chiffrer('tom.identite'), empreinteLogin('tom.identite'),
+               chiffrer('IDTOM1'), hash('sha256', uuidv4())]);
+$cx = json('/login', ['login' => 'tom.identite', 'code' => 'IDTOM1']);
+// LES ASSIGNATIONS VOYAGENT AVEC /sync, PAS AVEC /session : ma première
+// version interrogeait /session, qui ne porte que l'état de séance, et
+// concluait que l'élève ne recevait rien. C'est la vérification qui avait
+// tort, pas le serveur.
+$sess = json('/sync', ['deviceId' => 'd', 'cursor' => 0, 'events' => []],
+              $cx['json']['token'] ?? '');
+$a = ($sess['json']['assignments'] ?? [])[0] ?? [];
+verifier("ET L'ÉLÈVE LA REÇOIT AU LIEU DE LA RECALCULER",
+    ($a['pathIdentity'] ?? '') === 'path_PREMIERE',
+    json_encode($a['pathIdentity'] ?? null));
+
 // --- RETIRER UN ÉLÈVE. Impossible avant : un départ en cours d'année restait
 //     dans la liste pour toujours.
 $idSacha = json('/login', ['login' => 'sacha.roy', 'code' => 'CLASSE6'])['json']['studentId'];
