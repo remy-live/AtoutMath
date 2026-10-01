@@ -341,9 +341,14 @@ class PyramideNombres extends BaseGame {
         if (!this.p) this.poser();
         if (!await cur.pause(500) || !this.isRunning) return fin();
 
-        cur.say('Chaque case est la somme des deux du dessous. Mais on ne remplit pas '
-            + 'la pyramide dans l\'ordre : on cherche un TRIANGLE où deux cases sur trois '
-            + 'sont déjà là.', this.tableEl);
+        // DEUX IDÉES, DONC DEUX BULLES : la règle des cases, puis le geste de
+        // recherche. Ensemble elles faisaient 156 caractères, soit trois lignes
+        // qu'on croit plantées.
+        cur.say('Chaque case est la somme des deux du dessous.', this.tableEl);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Je ne remplis pas dans l\'ordre : je cherche un TRIANGLE où deux cases '
+            + 'sur trois sont là.', this.tableEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let n = 0; n < 3; n++) {

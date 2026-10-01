@@ -334,10 +334,11 @@ export function expliquer(solide, aspect) {
 /** Ce que le robot dit quand il montre comment on compte. */
 export function direMethode(solide, aspect) {
     const quoi = ASPECTS.find(a => a.id === aspect).label;
-    return `Je compte les ${quoi} en les touchant une par une : la marque reste, `
-        + 'donc je ne compte jamais deux fois la même — et surtout je n\'en oublie pas. '
-        + 'Les traits en POINTILLÉS sont les arêtes de derrière : elles existent, '
-        + 'même si on ne les voit pas.';
+    // 243 CARACTÈRES MESURÉS, la plus longue bulle du logiciel : quatorze
+    // secondes de robot figé. Et sa seconde moitié — les pointillés, les arêtes
+    // de derrière — est dite en clair par la bulle suivante, qui les montre.
+    // On garde le geste ; le reste se voit.
+    return `Je compte les ${quoi} une par une : la marque reste, je ne compte pas deux fois.`;
 }
 
 // --- Le tirage ---------------------------------------------------------------

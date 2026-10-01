@@ -360,7 +360,7 @@ class TourBrahma extends BaseGame {
             this.etat = jouer(this.etat, c.de, c.vers);
             this.coups++;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.step || 700) || !this.isRunning) return fin();
+            if (!await cur.pause(700) || !this.isRunning) return fin();
         }
         cur.say(`C'est pour cela que le compte double à chaque boule ajoutée, plus un : `
             + '1, 3, 7, 15, 31… Avec soixante-quatre boules, les moines de Brahma en ont '

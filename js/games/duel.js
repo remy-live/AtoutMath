@@ -1062,7 +1062,7 @@ class Duel extends BaseGame {
         this.startGameLoop();
 
         if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Un duel à deux sur la même tablette : elle se pose à plat entre vous, et la moitié du haut est retournée pour que chacun lise à l\'endroit.', this.plateau);
+        cur.say('Un duel à deux : la tablette à plat entre vous, le haut retourné pour que chacun lise à l\'endroit.', this.plateau);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
@@ -1075,7 +1075,10 @@ class Duel extends BaseGame {
         if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('La balle porte l\'opération. Celui qui la reçoit tape le résultat avant qu\'elle n\'atteigne sa ligne — le pavé valide tout seul au bon nombre de chiffres.', this.terrain);
+        cur.say('La balle porte l\'opération : je tape le résultat avant qu\'elle n\'atteigne ma ligne.', this.terrain);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Le pavé valide tout seul, au bon nombre de chiffres.', this.terrain);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         // Six échanges : de quoi voir la balle changer de camp et accélérer.
@@ -1096,22 +1099,25 @@ class Duel extends BaseGame {
             this.lancerVol();
             this.majEcran();
             if (i === 1) {
-                cur.say('Et voilà l\'échange : elle repart aussitôt avec un autre produit de la MÊME table, vers l\'autre joueur. Les deux calculent, sans arrêt.', this.terrain);
+                cur.say('Et voilà l\'échange : elle repart avec un autre produit de la MÊME table, vers l\'autre joueur.', this.terrain);
             }
             if (i === 3) {
-                cur.say('À chaque renvoi elle va un peu plus vite. Un point se joue en cinq, dix, quinze échanges — c\'est ça qui use les tables.', this.terrain);
+                cur.say('À chaque renvoi elle va un peu plus vite : cinq, dix, quinze échanges dans un point.', this.terrain);
             }
             if (!await cur.pause(dureeDemo(i === 1 || i === 3 ? DEMO_SPEED.between : 700)) || !this.isRunning) return fin();
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Une erreur ou une balle laissée passer, et le point va à l\'autre. Le perdant du point sert le suivant : on peut toujours revenir.', this.terrain);
+        // ON NE RÉCITE PLUS LE RÈGLEMENT DANS LA BULLE (qui sert le point
+        // suivant, ce que le carnet garde ou non) : au-delà de 110 caractères la
+        // démonstration se fige. Le service suivant se voit à l'écran juste après.
+        cur.say('Une erreur ou une balle laissée passer, et le point va à l\'autre.', this.terrain);
         const pt = manquer(p);
         this.finDePoint(pt);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Rien n\'est enregistré dans le carnet : à deux sur un seul profil, on ne saurait pas à qui attribuer les réponses. Un duel se joue, et il s\'oublie.', this.plateau);
+        cur.say('Rien n\'est enregistré dans le carnet : un duel se joue, et il s\'oublie.', this.plateau);
         if (!await cur.pause(DEMO_SPEED.between)) return fin();
         fin();
     }

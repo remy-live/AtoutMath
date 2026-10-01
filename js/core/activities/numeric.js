@@ -536,7 +536,9 @@ export function mount(container, session, opts = {}) {
         // LE CALCUL, ET IL DÉSIGNE LES PROPOSITIONS EN LE DISANT : c'est parmi
         // elles qu'on va chercher le résultat, et la bulle le dit en pointant
         // là où le doigt ira.
-        const dernier = (item.hints || [])[2] || (item.hints || [])[1];
+        // S'IL N'Y A PAS DE TROISIÈME INDICE, IL N'Y A RIEN DE NEUF À DIRE —
+        // le replier sur le deuxième faisait répéter la bulle précédente.
+        const dernier = (item.hints || [])[2];
         if (tientEnUneBulle(dernier)) {
             if (!await gate.waitTurn() || destroyed) return;
             cursor.say(dernier.trim(), el.parentElement || el);
@@ -631,8 +633,15 @@ export function mount(container, session, opts = {}) {
         const cibles = String(item.answer).split('|');
         // Le premier indice dit comment se range la phrase : c'est exactement
         // ce que le robot est en train de faire.
+        // ── LA MÊME PHRASE DITE DEUX FOIS DE SUITE ──────────────────────
+        //
+        // `phraseDepart` rend DÉJÀ `hints[0]` quand il tient en une bulle, et
+        // `rangement` EST `hints[0]` : le robot disait exactement la même
+        // phrase deux fois, en déplaçant seulement la bulle. À l'écran, on
+        // croit qu'il s'est bloqué — sur l'activité la plus fréquentée du
+        // logiciel.
         const rangement = (item.hints || [])[0];
-        if (tientEnUneBulle(rangement)) {
+        if (tientEnUneBulle(rangement) && rangement.trim() !== phraseDepart(item)) {
             if (!await gate.waitTurn() || destroyed) return;
             cursor.say(rangement.trim(), cases[0] || contexte);
             if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;

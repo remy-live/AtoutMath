@@ -479,8 +479,10 @@ class PointAPoint extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
+        // « que personne n'a vue en commençant » était un commentaire sur le jeu,
+        // pas sur ce que fait l'élève : la bulle passait 110 caractères pour lui.
         cur.say('Et ainsi de suite. À la fin, les calculs s\'effacent et il ne reste que '
-            + 'l\'image — que personne n\'a vue en commençant.', this.sceneEl);
+            + 'l\'image.', this.sceneEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

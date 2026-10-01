@@ -789,7 +789,10 @@ class Ninja extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Attention : laisser filer un objet qu\'il fallait prendre coûte une vie, exactement comme se tromper. Ne rien toucher n\'est donc pas une stratégie.', this.scene);
+        // LA DEUXIÈME PHRASE DISAIT VRAI, MAIS C'ÉTAIT UNE LEÇON, PAS UN GESTE :
+        // « ne rien toucher n'est pas une stratégie » se déduit de la première,
+        // et les deux ensemble faisaient 146 caractères.
+        cur.say('Attention : laisser filer un objet qu\'il fallait prendre coûte une vie.', this.scene);
         if (!await cur.pause(DEMO_SPEED.between)) return fin();
         fin();
     }

@@ -521,14 +521,20 @@ class PetitesAiles extends BaseGame {
         const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
 
         if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Une seule touche — clic, doigt ou barre d\'espace. Tu appuies pour '
-            + 'PLONGER, tu relâches pour planer. Il n\'y a rien à calculer : c\'est un jeu '
-            + 'd\'adresse.', this.wrap);
+        // UNE IDÉE PAR BULLE. Les touches et la jauge restent — l'élève en a
+        // besoin ; les commentaires sur le jeu (« rien à calculer », « c'est un jeu
+        // d'adresse ») sont partis. Au-delà de 110 caractères, la bulle se lit si
+        // longtemps qu'on croit la démonstration figée.
+        cur.say('Une seule touche : clic, doigt ou barre d\'espace.', this.wrap);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
-        cur.say('Appuie dans la DESCENTE — tu prends de la vitesse — et relâche au '
-            + 'sommet : la bosse te met en l\'air, et tu sautes toute la côte suivante. '
-            + 'Regarde la jauge de vitesse en bas.', this.wrap);
+        cur.say('J\'appuie pour PLONGER, je relâche pour planer.', this.wrap);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('J\'appuie dans la DESCENTE pour prendre de la vitesse — regarde la jauge en bas.', this.wrap);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Je relâche au sommet : la bosse me met en l\'air, et je saute la côte suivante.', this.wrap);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         // Le robot joue parfaitement pendant quelques secondes.
@@ -540,9 +546,10 @@ class PetitesAiles extends BaseGame {
         this.appuie = false;
         if (!this.isRunning) return fin();
 
-        cur.say('Et il faut aller vite : la nuit court derrière toi. Chaque frontière '
-            + 'franchie ouvre un nouveau monde et la repousse — il y en a six.',
-        this.mondeEl);
+        cur.say('Et il faut aller vite : la nuit court derrière toi.', this.mondeEl);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Chaque frontière franchie ouvre un nouveau monde et repousse la nuit — il y en a six.', this.mondeEl);
         await cur.pause(DEMO_SPEED.between);
         fin();
     }

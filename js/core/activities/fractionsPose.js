@@ -32,7 +32,7 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
-import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 import { multiplesCommuns, bougeDansPose, etapesPosees } from '../fractionsEquivalentes.js';
 import { showModal } from '../../ui/modal.js';
 
@@ -630,7 +630,7 @@ export function mount(container, session, opts = {}) {
         }
 
         if (!await gate.waitTurn() || destroyed) return;
-        cursor.say(item.explanation || 'Et voilà le calcul posé en entier.', scene || container);
+        cursor.say(enUneBulle(item.explanation, 'Et voilà le calcul posé en entier.'), scene || container);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }

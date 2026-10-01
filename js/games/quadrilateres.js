@@ -3470,9 +3470,16 @@ class Organigramme extends BaseGame {
 
         if (!this.org) this.poser();
         if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Cet organigramme n\'est pas une liste : les familles s\'EMBOÎTENT. On part du '
-            + 'quadrilatère, à gauche, et chaque flèche avance d\'un cran en ajoutant UNE seule '
-            + 'condition. Tout ce qui est à droite est aussi tout ce qui est à gauche.', this.planEl);
+        // UNE IDÉE PAR BULLE. La phrase qui énonçait l'emboîtement en toutes
+        // lettres (« tout ce qui est à droite est aussi tout ce qui est à gauche »)
+        // est partie : les deux chemins vers le carré, montrés à la fin, la disent
+        // mieux. Au-delà de 110 caractères, la bulle se lit si longtemps qu'on
+        // croit la démonstration plantée.
+        cur.say('Cet organigramme n\'est pas une liste : les familles s\'EMBOÎTENT.', this.planEl);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('On part du quadrilatère, à gauche, et chaque flèche ajoute UNE seule condition.', this.planEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (this.progressif) {
@@ -3512,9 +3519,11 @@ class Organigramme extends BaseGame {
                 if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
             }
             if (!await gate.waitTurn() || !this.isRunning) return fin();
-            cur.say('L\'étape est finie, et la case suivante apparaît. On continue ainsi jusqu\'au '
-                + 'carré — où l\'on arrive PAR DEUX CHEMINS, depuis le rectangle et depuis le '
-                + 'losange. Chacun apporte ce que l\'autre avait déjà.', this.planEl);
+            cur.say('L\'étape est finie, et la case suivante apparaît.', this.planEl);
+            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            cur.say('On continue ainsi jusqu\'au carré : on y arrive PAR DEUX CHEMINS, le rectangle et le losange.', this.planEl);
             if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
             return fin();
         }
@@ -3542,8 +3551,11 @@ class Organigramme extends BaseGame {
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
         cur.say('Et regarde la droite : on arrive au carré depuis le rectangle ET depuis le '
-            + 'losange. Chaque chemin ajoute ce que l\'autre avait déjà — c\'est pour cela '
-            + 'qu\'un carré est à la fois un rectangle et un losange.', this.planEl);
+            + 'losange.', this.planEl);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Donc un carré est à la fois un rectangle et un losange.', this.planEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

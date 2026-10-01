@@ -408,8 +408,12 @@ class Hexagrille extends BaseGame {
         const fin = () => { this.cursor?.hideBubble(); return true; };
 
         if (!await this.cursor.pause(600)) return fin();
-        this.cursor.say('Neuf cases, les chiffres de 1 à 9, chacun une seule fois. '
-            + 'Chaque flèche donne la somme de la file qu\'elle désigne.', this.plateauEl);
+        // DEUX IDÉES, DONC DEUX BULLES : les cases d'abord, les flèches ensuite.
+        // En une seule bulle de 114 caractères, la démonstration démarrait figée.
+        this.cursor.say('Neuf cases, les chiffres de 1 à 9, chacun une seule fois.', this.plateauEl);
+        if (!await this.cursor.pause(DEMO_SPEED.between)) return fin();
+
+        this.cursor.say('Chaque flèche donne la somme de la file qu\'elle désigne.', this.plateauEl);
         if (!await this.cursor.pause(DEMO_SPEED.between + 1200)) return fin();
 
         // Le robot déroule la grille comme on la résout : toujours la file où

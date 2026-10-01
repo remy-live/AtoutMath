@@ -15,7 +15,7 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
-import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 import { GAUCHES, DROITES, SYMBOLES, composer, diagnostic } from '../notationSaisie.js';
 
 const ditDe = (s) => (SYMBOLES.find(x => x.s === s) || {}).dit || '';
@@ -207,7 +207,10 @@ export function mount(container, session, opts = {}) {
 
         if (!await gate.waitTurn() || destroyed) return;
         ecritureEl.classList.add('nt-ecriture--ok');
-        cursor.say(`Ça donne ${bon}. ${item.explanation || ''}`.trim(), ecritureEl);
+        // ON S'EN TIENT AU GESTE ACCOMPLI. L'explication du générateur monte à
+        // 153 caractères sur la demi-droite ; elle a toute sa place dans la
+        // correction, qui a de quoi l'afficher.
+        cursor.say(`Ça donne ${bon}.`, ecritureEl);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
     }
 

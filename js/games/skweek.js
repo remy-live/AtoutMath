@@ -634,8 +634,14 @@ class Skweek extends BaseGame {
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Je ne marche JAMAIS sans avoir lu. Une dalle qui ne vérifie pas la règle '
-            + 's\'effrite sous mes pieds — et le terrain qu\'elle emporte ne revient pas.', this.vueEl);
+        cur.say('Je ne marche JAMAIS sans avoir lu.', this.vueEl);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        // DEUX BULLES : le geste, puis ce qu'il coûte de l'oublier. Au-delà de 110
+        // caractères une bulle se lit si lentement qu'on croit la démonstration plantée
+        // (js/core/activities/choice.js, COURT). « et le terrain qu'elle emporte ne
+        // revient pas » est parti : la dalle qui s'effrite dit déjà la sanction.
+        cur.say('Une dalle qui ne vérifie pas la règle s\'effrite sous mes pieds.', this.vueEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         // Quelques pas VERS des dalles justes : le robot montre le tri. Il
@@ -681,9 +687,12 @@ class Skweek extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('On lit, on calcule, PUIS on avance. Le bouton TIR sert aux blobs verts — '
-            + 'ils ne se calculent pas, eux — et le 🎯 tourne la tête SANS avancer, pour '
-            + 'les viser sans repeindre une dalle au passage.',
+        cur.say('On lit, on calcule, PUIS on avance.', this.vueEl);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        // LES DEUX BOUTONS RESTENT NOMMÉS — l'élève en a besoin pour jouer — mais dans
+        // leur propre bulle, et sans l'aparté sur les blobs qui ne se calculent pas.
+        cur.say('Le bouton TIR sert aux blobs verts, et le 🎯 tourne la tête sans avancer.',
         this.container.querySelector('[data-viser]'));
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();

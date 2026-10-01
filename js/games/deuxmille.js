@@ -366,8 +366,10 @@ class DeuxMille extends BaseGame {
 
         if (!this.grille) this.poser();
         if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Toutes les tuiles sont des DOUBLEMENTS : 2, 4, 8, 16… Quand deux tuiles égales se '
-            + 'touchent dans le sens du geste, elles fusionnent en leur double.', this.grilleEl);
+        // UNE IDÉE PAR BULLE : au-delà de 110 caractères la démonstration paraît figée.
+        cur.say('Toutes les tuiles sont des DOUBLEMENTS : 2, 4, 8, 16…', this.grilleEl);
+        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        cur.say('Deux tuiles égales qui se touchent dans le sens du geste fusionnent en leur double.', this.grilleEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let k = 0; k < 5 && peutJouer(this.grille); k++) {
@@ -382,8 +384,8 @@ class DeuxMille extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Le secret : ne joue pas au hasard. AVANT de glisser, cherche quelles tuiles vont se '
-            + 'retrouver — c\'est du calcul mental déguisé en réflexe.', this.container.querySelector('[data-aide]'));
+        // « du calcul mental déguisé en réflexe » est une leçon sur le jeu, pas un geste : coupée.
+        cur.say('AVANT de glisser, cherche quelles tuiles vont se retrouver.', this.container.querySelector('[data-aide]'));
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

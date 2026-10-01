@@ -660,9 +660,11 @@ class Dominos extends BaseGame {
 
         if (!this.chaine) this.poser();
         if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('La planche est tracée d\'avance : je vois la forme à reconstituer et le nombre '
-            + 'de pièces. Une pièce porte une question d\'un côté et la réponse d\'une AUTRE '
-            + 'question de l\'autre.', this.plateauEl);
+        // UNE IDÉE PAR BULLE : au-delà de 110 caractères la démonstration paraît figée.
+        cur.say('La planche est tracée d\'avance : je vois la forme et le nombre de pièces.', this.plateauEl);
+        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        cur.say('Une pièce porte une question d\'un côté, la réponse d\'une AUTRE question de l\'autre.',
+        this.plateauEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let k = 0; k < 4 && !plateauFini(this.etat); k++) {
@@ -680,9 +682,10 @@ class Dominos extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('On continue le long du serpentin jusqu\'à ARRIVÉE. Rien n\'est refusé au '
-            + 'moment où on pose : c\'est « Vérifier » qui entoure les jointures fausses, '
-            + 'et on va relire celles-là.', this.container.querySelector('[data-verifier]'));
+        // « Rien n'est refusé au moment où on pose » explique une décision du logiciel :
+        // la bulle ne garde que le geste, puisqu'elle désigne le bouton « Vérifier ».
+        cur.say('On continue jusqu\'à ARRIVÉE, puis « Vérifier » entoure les jointures fausses.',
+        this.container.querySelector('[data-verifier]'));
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

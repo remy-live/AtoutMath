@@ -325,8 +325,14 @@ class Geometrie extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('À toi : les mêmes instruments sont là, en haut de la feuille. '
-            + 'La règle, l\'équerre, le compas et le rapporteur se prennent, se posent et se tournent à la souris ou au doigt.', this.cadreEl);
+        // DEUX IDÉES, DONC DEUX BULLES : en une seule, la phrase faisait 172
+        // caractères et figeait la fin de la démonstration. Rémy : « des
+        // explications courtes, et concises ».
+        cur.say('À toi : les mêmes instruments sont là, en haut de la feuille.', this.cadreEl);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('La règle, l\'équerre, le compas et le rapporteur se prennent au doigt ou à la souris.', this.cadreEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

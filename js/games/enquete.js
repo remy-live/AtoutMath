@@ -458,8 +458,10 @@ class Enquete extends BaseGame {
             + 'un seul par colonne.', this.histoireEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
-        cur.say('Les indices sont tous VRAIS, et ensemble ils ne laissent qu\'une seule '
-            + 'disposition possible. On ne devine jamais : on élimine.', this.indicesEl);
+        // « On ne devine jamais : on élimine » était la leçon ; la démonstration qui suit
+        // montre l'élimination indice par indice, elle n'a pas besoin qu'on l'annonce.
+        cur.say('Les indices sont tous VRAIS : ensemble, ils ne laissent qu\'une seule disposition.',
+            this.indicesEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let tour = 0; tour < e.noms.length; tour++) {

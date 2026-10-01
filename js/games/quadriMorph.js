@@ -488,9 +488,11 @@ class QuadriMorph extends BaseGame {
             + 'respecter.', this.zoneEl);
         if (!await cursor.pause(DEMO_SPEED.settle)) return;
         if (!await gate.waitTurn()) return;
-        cursor.say('Puis je LIS ce que j\'obtiens : les chevrons disent les côtés '
-            + 'parallèles, les petits traits les longueurs égales. Chaque propriété en '
-            + 'plus RÉTRÉCIT la famille.', this.familleEl);
+        // « Chaque propriété en plus RÉTRÉCIT la famille » est une leçon, et c'est
+        // justement ce que la figure montre toute seule : 158 caractères pour le
+        // redire. Reste le geste, lire le codage.
+        cursor.say('Puis je LIS la figure : les chevrons disent les côtés parallèles, '
+            + 'les petits traits les longueurs égales.', this.familleEl);
         await cursor.pause(DEMO_SPEED.between);
     }
 }

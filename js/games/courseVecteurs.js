@@ -658,13 +658,19 @@ class CourseVecteurs extends BaseGame {
         };
 
         if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Une course sur papier quadrillé. La voiture GARDE sa vitesse d\'un tour sur '
-            + 'l\'autre : je ne choisis que comment la changer, d\'une case au plus.', this.svg);
+        // UNE IDÉE PAR BULLE : la conséquence (« donc je freine avant le virage »)
+        // devient sa propre bulle au lieu d'allonger la première. Au-delà de 110
+        // caractères, la bulle se lit si longtemps qu'on croit la démonstration
+        // plantée — la règle est dans `js/core/activities/choice.js`.
+        cur.say('Une course sur papier quadrillé : la voiture GARDE sa vitesse d\'un tour sur l\'autre.', this.svg);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Les neuf points sont mes neuf arrivées possibles. Les rouges m\'enverraient '
-            + 'dans le décor : je les vois AVANT de jouer.', this.svg);
+        cur.say('Je ne choisis que comment la changer, d\'une case au plus.', this.svg);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Les neuf points sont mes neuf arrivées possibles. Les rouges m\'enverraient dans le décor.', this.svg);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let tour = 0; tour < 8 && !this.fini; tour++) {
@@ -681,8 +687,11 @@ class CourseVecteurs extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Le carré des neuf points s\'éloigne à mesure qu\'on accélère : c\'est pour ça '
-            + 'qu\'il faut freiner AVANT le virage, jamais dedans.', this.svg);
+        cur.say('Le carré des neuf points s\'éloigne à mesure qu\'on accélère.', this.svg);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Donc je freine AVANT le virage, jamais dedans.', this.svg);
         if (!await cur.pause(DEMO_SPEED.between)) return fin();
         fin();
     }

@@ -4149,8 +4149,13 @@ class Nova extends BaseGame {
 
         if (!await cur.pause(700) || !this.isRunning) return fin();
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Le canon tire tout seul : mon doigt ne sert qu\'à piloter. Mais si je le laisse POSÉ, je charge un rayon lourd — et pendant ce temps le canon ralentit.', this.arene);
+        // UNE IDÉE PAR BULLE, chacune sous 110 caractères : au-delà, la bulle se lit si
+        // lentement (340 ms le mot) qu'on croit la démonstration plantée.
+        cur.say('Le canon tire tout seul : mon doigt ne sert qu\'à piloter.', this.arene);
         this.lancerVague();
+        if (!await cur.pause(1800) || !this.isRunning) return fin();
+
+        cur.say('Si je le laisse POSÉ, je charge un rayon lourd, et pendant ce temps le canon ralentit.', this.arene);
         if (!await cur.pause(2400) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
@@ -4289,7 +4294,11 @@ class Nova extends BaseGame {
         this.piste = null;
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Une faille ou une piste sans faute rapporte des crédits ⬢ et une bombe ✹. Et à l\'ATELIER, ces crédits achètent un canon, une coque ou un bouclier — ça, ça se garde.', this.arene);
+        cur.say('Une faille ou une piste sans faute rapporte des crédits ⬢ et une bombe ✹.', this.arene);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('À l\'ATELIER, ces crédits achètent un canon, une coque ou un bouclier.', this.arene);
         if (!await cur.pause(DEMO_SPEED.between + 2600) || !this.isRunning) return fin();
         fin();
     }

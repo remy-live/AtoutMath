@@ -744,9 +744,10 @@ class Trigonometrie extends BaseGame {
             return fin();
         }
 
-        cur.say('Avant toute formule, il faut savoir QUEL côté est lequel. C\'est là qu\'on '
-            + 'se trompe : un cosinus juste appliqué au mauvais côté donne un nombre faux '
-            + 'que rien ne rattrape.', this.figEl);
+        // LA SUITE ÉTAIT UNE LEÇON SUR LA FAUTE, PAS UN GESTE : les trois étapes qui
+        // viennent juste après nomment chaque côté, ce qui la rend inutile. 169
+        // caractères avant même le premier geste.
+        cur.say('Avant toute formule, il faut savoir QUEL côté est lequel.', this.figEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         const etapes = [

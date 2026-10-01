@@ -979,8 +979,12 @@ class PoserMultiplication extends PoserLongue {
                     await gate.wait(1800);
                 }
             }
-            cur.say('Puis on additionne les lignes — et la virgule se pose à la toute fin, '
-                + 'en comptant les décimales des deux facteurs.', this.grilleEl);
+            // UNE IDÉE PAR BULLE, chacune sous 110 caractères : au-delà, la bulle se lit si
+            // lentement (340 ms le mot) qu'on croit la démonstration plantée.
+            cur.say('Puis on additionne les lignes.', this.grilleEl);
+            await gate.wait(1800);
+            cur.say('La virgule se pose à la toute fin, en comptant les décimales des deux facteurs.',
+                this.grilleEl);
             await gate.wait(3000);
         } catch (e) { /* démonstration coupée */ }
         cur.destroy(); gate.destroy();
@@ -1361,8 +1365,8 @@ class PoserDivision extends PoserLongue {
         try {
             cur.protegerZone([this.grilleEl, this.zoneEl]);
             await gate.wait(500);
-            cur.say('Une division posée, c\'est toujours la même étape recommencée : j\'abaisse, '
-                + 'je cherche combien de fois, je multiplie, je soustrais.', this.grilleEl);
+            cur.say('Une division posée : j\'abaisse, je cherche combien de fois, '
+                + 'je multiplie, je soustrais.', this.grilleEl);
             await gate.wait(3400);
             for (let i = this.debut; i < this.d.etapes.length && this.isRunning; i++) {
                 const e = this.d.etapes[i];

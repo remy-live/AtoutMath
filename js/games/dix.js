@@ -374,8 +374,11 @@ class AmisDeDix extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Toujours dans cet ordre : une carte, LE calcul, puis l\'amie qu\'on cherche. '
-            + 'C\'est comme ça que les paires deviennent des réflexes.', this.tableEl);
+        // « C'est comme ça que les paires deviennent des réflexes » était la leçon, pas le
+        // geste : coupée. Au-delà de 110 caractères la bulle se lit si lentement qu'on
+        // croit la démonstration plantée (js/core/activities/choice.js, COURT).
+        cur.say('Toujours dans cet ordre : une carte, LE calcul, puis l\'amie qu\'on cherche.',
+            this.tableEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

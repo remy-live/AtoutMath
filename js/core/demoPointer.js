@@ -205,6 +205,75 @@ export function tempsDeLecture(texte) {
 // flotter sur l'écran. Ce registre permet de les balayer tous à la fermeture.
 const curseursVivants = new Set();
 
+// ── L'ÉCHÉANCE DE LECTURE EST UN ÉTAT DU MODULE, PAS DU CURSEUR ─────────────
+//
+// RÉMY : « des explications courtes, et concises », et « le bon rythme ».
+//
+// MESURÉ, SUR CENT SIX FICHIERS : `cursor.pause(ms)` attend le MAXIMUM entre
+// la durée demandée et ce qui reste à lire — c'est ce qui allonge tout seul
+// les pauses derrière une phrase longue. `gate.wait(ms)`, lui, est un délai
+// sec. Or vingt-quatre démonstrations disent une phrase PUIS attendent avec
+// `gate.wait` : elles donnent 2 500 ms fixes à des bulles qui en demandent
+// 8 000 à 14 000. La bulle est remplacée avant d'avoir pu être lue, quelle que
+// soit sa longueur. Retards mesurés jusqu'à 11,5 secondes (parking, pousseur).
+//
+// POURQUOI LA BARRE NE POUVAIT PAS LE SAVOIR : `finDeLecture` vivait dans la
+// fermeture de `createDemoCursor`, et `createDemoGate` est une AUTRE fabrique.
+// Elle n'avait aucun moyen d'apprendre qu'une phrase était en train d'être
+// lue. Le défaut n'était pas une étourderie d'appel : il était structurel.
+//
+// IL N'Y A QU'UN ROBOT À LA FOIS — le module porte déjà la pause et le pas à
+// pas de cette façon, et `createDemoGate` le dit : « depuis que la pause est
+// un état du module ». L'échéance de lecture rejoint donc les siennes, et les
+// deux attentes lisent la même horloge.
+let finDeLecture = 0;
+
+/** Ce qu'il reste à lire de la bulle affichée, en millisecondes. */
+export function resteALire() {
+    return Math.max(0, finDeLecture - performance.now());
+}
+
+// ── CE QUI NE TIENT PAS EN UNE BULLE N'Y ENTRE PAS ENTIER ───────────────────
+//
+// RÉMY : « des explications courtes, et concises ».
+//
+// LA RÈGLE DATE DE LOIN et n'était nulle part : `COURT = 110` est écrit dans
+// `activities/choice.js` — « une bulle se lit à 340 ms le mot : une
+// explication de trois lignes fige la démonstration au point qu'on la croit
+// plantée ». Mesuré : elle est recopiée à la main dans TROIS fichiers sur cent
+// six.
+//
+// LE CAS QU'AUCUN HARNAIS NE VOIT. `tools/robotCourt.mjs` compte les phrases
+// écrites en toutes lettres ; il ne peut rien dire de
+// `cursor.say(item.explanation)`, dont la longueur ne se connaît qu'à
+// l'exécution. Or c'est de là que viennent les pires : la leçon d'un
+// générateur, faite pour être lue au calme dans la correction, part telle
+// quelle dans la bulle. Mesuré : 275 caractères sur le calcul de fractions
+// posé, 243 sur les solides, 231 sur l'addition des relatifs.
+//
+// ON NE TRONQUE PAS AU MILIEU D'UNE PHRASE. On garde la PREMIÈRE RESPIRATION —
+// la première phrase complète, si elle tient — et sinon le repli que
+// l'appelant fournit, qui dit le geste. C'est la parade qu'`activities/
+// numeric.js` avait inventée dans son coin ; elle monte ici, où tout le monde
+// peut s'en servir.
+export const COURT = 110;
+
+/**
+ * Le texte s'il tient en une bulle, sinon sa première phrase, sinon le repli.
+ *
+ * @param {string} texte - ce que l'exercice voulait faire dire
+ * @param {string} [repli] - la phrase courte à dire quand rien ne tient
+ */
+export function enUneBulle(texte, repli = '') {
+    const s = String(texte == null ? '' : texte).trim();
+    if (!s) return repli;
+    if (s.length <= COURT) return s;
+    // Une première phrase d'au moins seize caractères : en deçà, « Bien. » ne
+    // remplace pas une explication, il la remplace par rien.
+    const m = s.match(/^[\s\S]{16,110}?[.!?](?=\s|$)/);
+    return m ? m[0].trim() : repli;
+}
+
 /** Détruit tous les pointeurs de démonstration encore à l'écran. */
 export function destroyAllDemoCursors() {
     [...curseursVivants].forEach(c => c.destroy());
@@ -502,6 +571,13 @@ export function createDemoGate(host) {
          */
         async wait(ms) {
             if (destroyed) return false;
+            // ON N'EFFACE PAS UNE PHRASE QU'ON N'A PAS EU LE TEMPS DE LIRE.
+            // Voir `resteALire` en tête de module : cette attente-ci prend
+            // désormais le MAXIMUM entre le délai demandé et ce qui reste de
+            // la bulle, exactement comme `cursor.pause`. C'est la correction
+            // qui remet le rythme d'aplomb dans les vingt-quatre
+            // démonstrations qui parlent avant d'attendre ici.
+            const reste = resteALire();
             // UN DÉLAI QUI N'EN EST PAS UN NE PASSE PAS INAPERÇU. Cinq jeux
             // écrivaient « gate.wait(2500 * DEMO_SPEED) » — mais DEMO_SPEED est
             // un TABLEAU de durées nommées, pas un facteur : le produit valait
@@ -510,13 +586,13 @@ export function createDemoGate(host) {
             // l'écran, aucune erreur : « le robot ne fonctionne pas ».
             // On rattrape ici ce qui n'est pas un nombre, plutôt que de laisser
             // le prochain appel douteux repasser sans bruit.
-            const duree = Number.isFinite(ms) ? Math.max(0, ms) : DEMO_SPEED.settle;
+            const demande = Number.isFinite(ms) ? Math.max(0, ms) : DEMO_SPEED.settle;
             // Et l'allure choisie par le professeur s'applique aussi à ces
             // pauses-là : « Lent » ne ralentissait que les déplacements.
             await new Promise((res) => {
                 let t;
                 const fini = () => { clearTimeout(t); minuteurs.delete(fini); res(); };
-                t = setTimeout(fini, duree * facteurVitesse);
+                t = setTimeout(fini, Math.max(demande * facteurVitesse, reste));
                 minuteurs.add(fini);
             });
             // Puis son tour : si l'on a mis en pause pendant l'attente, le
@@ -570,8 +646,6 @@ export function createDemoCursor() {
     let destroyed = false;
     let ghost = null;
     let bulle = null;
-    // Instant avant lequel la bulle en cours n'a pas fini d'être lue.
-    let finDeLecture = 0;
     // Zone que la bulle ne doit pas recouvrir (voir `protegerZone`).
     let zoneProtegee = null;
     // Les attentes en cours, pour les dénouer à la destruction : une promesse

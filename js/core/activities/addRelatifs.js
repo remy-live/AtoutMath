@@ -22,7 +22,7 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint, wireShowMe } from './choice.js';
-import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 
 /** Un nombre à la française : virgule décimale, vrai signe moins. */
 const fmt = (v) => String(Math.round(v * 10) / 10).replace('-', '−').replace('.', ',');
@@ -387,7 +387,11 @@ export function mount(container, session) {
 
         if (!await cursor.pause(500)) return fin();
         if (m.texteLecon) {
-            cursor.say(m.texteLecon, vise('[data-tableau]', '[data-calcul]', '.game-question'));
+            // LA LEÇON DU GÉNÉRATEUR EST FAITE POUR LA CORRECTION, pas pour une
+            // bulle : dix des douze marches dépassent 110 caractères, et la pire
+            // en fait 231 — quarante mots, treize secondes de robot figé.
+            // `enUneBulle` en garde la première phrase, ou dit le geste.
+            cursor.say(enUneBulle(m.texteLecon, 'Je regarde d\'abord le signe de chaque nombre.'), vise('[data-tableau]', '[data-calcul]', '.game-question'));
             if (!await cursor.pause(DEMO_SPEED.between)) return fin();
         }
 
@@ -423,7 +427,10 @@ export function mount(container, session) {
         }
 
         if (!await gate.waitTurn()) return fin();
-        cursor.say(item.explanation, vise('[data-calcul]', '[data-tableau]', '.game-question'));
+        // 215 caractères mesurés, et qui REDISENT ce que les deux bulles
+        // précédentes viennent de montrer. L'explication entière reste dans la
+        // correction, où l'élève la lit à son rythme.
+        cursor.say(enUneBulle(item.explanation, 'Et voilà le résultat.'), vise('[data-calcul]', '[data-tableau]', '.game-question'));
         if (!await cursor.pause(DEMO_SPEED.between)) return fin();
 
         // Puis on tape la réponse, chiffre par chiffre — la virgule comprise,

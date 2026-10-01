@@ -602,11 +602,22 @@ class Chantier extends BaseGame {
         const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
 
         if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Le chantier : chaque bloc porte une multiplication, chaque dalle creuse porte un résultat. Il faut poser chaque bloc sur la dalle qui porte SON résultat.', this.plateau);
+        // UNE IDÉE PAR BULLE, ET LE GESTE PLUTÔT QUE LA LEÇON. Les phrases qui
+        // concluaient (« le calcul ouvre la porte, le chemin la referme », « se
+        // tromper ici ne coûte rien ») sont parties : au-delà de 110 caractères
+        // la bulle se lit si longtemps qu'on croit la démonstration plantée, et
+        // la règle se voit dans le geste qui suit.
+        cur.say('Chaque bloc porte une multiplication, chaque dalle creuse porte un résultat.', this.plateau);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Je pose chaque bloc sur la dalle qui porte SON résultat.', this.plateau);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Attention : un bloc poussé ne fait pas un pas. Il GLISSE jusqu\'à rencontrer un mur ou un autre bloc. On ne choisit donc pas où il s\'arrête — on choisit contre quoi.', this.plateau);
+        cur.say('Un bloc poussé ne fait pas un pas : il GLISSE jusqu\'à un mur ou un autre bloc.', this.plateau);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Je ne choisis donc pas où il s\'arrête, mais contre quoi.', this.plateau);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await this.demoNiveau(cur, gate)) return fin();
@@ -615,17 +626,17 @@ class Chantier extends BaseGame {
         // valeur, donc un calcul qui ne suffit plus à décider.
         if (!await gate.waitTurn() || !this.isRunning) return fin();
         this.charger(NIVEAUX.findIndex(n => n.id === 'ch5'));
-        cur.say('Voici le vrai problème. Ce bloc fait 4 × 4, celui-là 2 × 8 : ils valent TOUS LES DEUX 16, et les deux dalles portent 16. Le calcul ouvre donc deux possibilités au lieu d\'une.', this.plateau);
+        cur.say('Ce bloc fait 4 × 4, celui-là 2 × 8 : les deux font 16, et les deux dalles portent 16.', this.plateau);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Savoir que 4 × 4 = 16 ne suffit plus : il faut regarder QUEL bloc peut atteindre QUELLE dalle. Le calcul ouvre la porte, le chemin la referme.', this.plateau);
+        cur.say('Savoir que 4 × 4 = 16 ne suffit plus : je regarde QUEL bloc atteint QUELLE dalle.', this.plateau);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await this.demoNiveau(cur, gate)) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Et si tu t\'enfermes — un bloc scellé au mauvais endroit bouche un passage pour toujours — le jeu te le dit tout de suite, et le bouton Annuler défait le coup. Se tromper ici ne coûte rien : c\'est de la réflexion, pas un contrôle.', this.plateau);
+        cur.say('Un bloc scellé au mauvais endroit bouche un passage : le bouton Annuler défait le coup.', this.plateau);
         if (!await cur.pause(DEMO_SPEED.between)) return fin();
         fin();
     }

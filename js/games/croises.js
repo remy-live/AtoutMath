@@ -257,8 +257,10 @@ class Croises extends BaseGame {
         if (!await cur.pause(500) || !this.isRunning) return fin();
 
         const croisement = this.g.rangee * 5 + this.g.colonne;
-        cur.say('Cette case-là est dans la ligne ET dans la colonne : son chiffre sert '
-            + 'aux deux calculs. C\u2019est par elle qu\u2019on commence.',
+        // LA LEÇON COUPÉE : « son chiffre sert aux deux calculs » tenait déjà dans le
+        // geste de commencer par cette case, et au-delà de 110 caractères la bulle se lit
+        // si lentement qu'on croit la démonstration plantée (js/core/activities/choice.js).
+        cur.say('Cette case est dans la ligne ET dans la colonne : je commence par elle.',
         this.ui.grille.querySelector(`[data-i="${croisement}"]`) || this.ui.grille);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 

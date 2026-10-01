@@ -586,8 +586,10 @@ class Diviseurs extends BaseGame {
         this.dessiner();
         if (!await cur.pause(500) || !this.isRunning) return fin();
 
-        cur.say('60 descend. Je ne peux pas le capturer : on ne capture que les nombres PREMIERS, '
-            + 'et 60 n\'en est pas un. Il faut d\'abord le casser.', this.espaceEl);
+        // UNE IDÉE PAR BULLE, et au-dessous de 110 caractères : au-delà, la démonstration
+        // se lit si lentement qu'on la croit plantée. « 60 n'en est pas un » redit le reste.
+        cur.say('60 descend. Il faut d\'abord le casser : je ne capture que des nombres PREMIERS.',
+        this.espaceEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         const etapes = [
@@ -607,9 +609,10 @@ class Diviseurs extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
+        // Nommer la leçon (« c'est la décomposition en facteurs premiers ») n'est pas un
+        // geste montré : la bulle garde le calcul, le nom reste au professeur.
         cur.say('Et voilà ce qu\'on vient d\'écrire sans le dire : 60 = 4 × 3 × 5, '
-            + 'c\'est-à-dire 2 × 2 × 3 × 5. C\'est la décomposition en facteurs premiers.',
-        this.espaceEl);
+            + 'c\'est-à-dire 2 × 2 × 3 × 5.', this.espaceEl);
         await cur.pause(DEMO_SPEED.between);
         fin();
     }

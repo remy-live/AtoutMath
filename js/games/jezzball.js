@@ -306,11 +306,16 @@ class JezzBall extends BaseGame {
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Je lance un mur LOIN des balles : il pousse des deux côtés, et s\'il arrive au bout '
-            + 'sans être touché, toute région sans balle est conquise.', this.toile);
+        // DEUX IDÉES, DONC DEUX BULLES : le geste avant le lancer, ce qu'il
+        // rapporte pendant que le mur avance. En une seule, 138 caractères à lire
+        // d'un coup.
+        cur.say('Je lance un mur LOIN des balles : il pousse des deux côtés.', this.toile);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
         // Un mur dans le tiers le plus vide.
         const x = this.p.balles.every(b => b.x > this.p.cols / 2) ? 4 : this.p.cols - 5;
         lancerMur(this.p, x, Math.floor(this.p.lignes / 2), true);
+        cur.say('S\'il arrive au bout sans être touché, toute région sans balle est conquise.', this.toile);
         if (!await cur.pause(2600) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();

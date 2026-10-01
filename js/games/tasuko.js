@@ -438,8 +438,10 @@ class Tasuko extends BaseGame {
             + 'Relier ce qui tombe juste ne suffit donc pas.', this.grilleEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
-        cur.say('Le bon réflexe n\'est pas de regarder les chiffres, c\'est de regarder cette '
-            + 'liste-là et de prendre une somme qui reste.', this.sommesEl);
+        // LA MÊME CONSIGNE DITE COMME UN GESTE, ET NON COMME UN « bon réflexe » :
+        // 118 caractères pour dire deux fois où regarder.
+        cur.say('Je ne regarde pas les chiffres : je prends dans cette liste une somme '
+            + 'qui reste.', this.sommesEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let n = 0; n < 3; n++) {

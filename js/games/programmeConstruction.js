@@ -911,15 +911,20 @@ export class ProgrammeConstruction extends BaseGame {
         const butEl = this.container.querySelector('.pc-cadre--but');
 
         if (!await gate.waitTurn()) return;
-        cursor.say('À gauche, la figure à obtenir. Tout ce qu\'il faut savoir est '
-            + 'dessiné dessus : les lettres des points, les traits, et le codage '
-            + 'en rouge.', butEl);
+        // UNE IDÉE PAR BULLE, et la conclusion qui commentait le logiciel (« c'est
+        // la figure obtenue qui décide, pas la tournure des phrases ») est partie :
+        // au-delà de 110 caractères la bulle se lit si longtemps qu'on croit la
+        // démonstration plantée.
+        cursor.say('À gauche, la figure à obtenir.', butEl);
+        if (!await cursor.pause(DEMO_SPEED.settle)) return;
+
+        if (!await gate.waitTurn()) return;
+        cursor.say('Tout est dessiné dessus : les lettres des points, les traits, et le codage en rouge.', butEl);
         if (!await cursor.pause(DEMO_SPEED.settle)) return;
 
         if (!await gate.waitTurn()) return;
         cursor.say('À droite, ce que mon programme trace vraiment. Elle est vide : '
-            + 'je n\'ai encore rien posé. C\'est elle qui dira si j\'ai juste, pas moi.',
-        this.cadreMoiEl);
+            + 'je n\'ai encore rien posé.', this.cadreMoiEl);
         if (!await cursor.pause(DEMO_SPEED.settle)) return;
 
         const jusque = [];
@@ -961,9 +966,7 @@ export class ProgrammeConstruction extends BaseGame {
         if (!await gate.waitTurn()) return;
         this.note('Le programme est écrit : la figure de droite est celle de gauche.', 'ok');
         this.cadreMoiEl.classList.add('pc-cadre--ok');
-        cursor.say('Les deux figures sont les mêmes : le programme est bon. Il en '
-            + 'existe d\'autres — c\'est la figure obtenue qui décide, pas la '
-            + 'tournure des phrases.', this.cadreMoiEl);
+        cursor.say('Les deux figures sont les mêmes : le programme est bon.', this.cadreMoiEl);
         await cursor.pause(DEMO_SPEED.between);
     }
 

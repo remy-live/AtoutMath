@@ -409,8 +409,15 @@ class BonsChemins extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Et si mon produit ne divise plus la cible, c\'est fini : multiplier '
-            + 'n\'enlève jamais un facteur. Je reviens en touchant une case de mon trait.',
+        // DEUX BULLES : le piège d'abord, le geste pour en sortir ensuite — et ce geste
+        // garde sa flèche sur le bouton de retour. Au-delà de 110 caractères la bulle se
+        // lit si lentement qu'on croit la démonstration plantée
+        // (js/core/activities/choice.js, COURT).
+        cur.say('Si mon produit ne divise plus la cible, c\'est fini : multiplier n\'enlève jamais un facteur.',
+            this.svg);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Je reviens en touchant une case de mon trait.',
         this.container.querySelector('[data-retour]'));
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();

@@ -597,11 +597,15 @@ class Demineur extends BaseGame {
         const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
 
         if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Le démineur : chaque chiffre compte les mines des huit cases qui l\'entourent. Rien n\'est caché au hasard — tout se déduit.', this.plateau);
+        // LA LEÇON TOMBE, LE GESTE RESTE. « Tout se déduit », « c'est de là que
+        // part le raisonnement » : la démonstration le MONTRE ensuite, déduction
+        // par déduction, et une bulle de plus de 110 caractères se lit si
+        // longtemps qu'on croit la démonstration figée.
+        cur.say('Chaque chiffre compte les mines des huit cases qui l\'entourent.', this.plateau);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Le premier clic ne peut jamais tomber sur une mine : il ouvre toujours une zone, comme celle-ci. C\'est de là que part tout le raisonnement.', this.plateau);
+        cur.say('Le premier clic ne tombe jamais sur une mine : il ouvre toujours une zone, comme celle-ci.', this.plateau);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         // Puis on déroule : à chaque tour, une déduction, dite avant d'être jouée.
@@ -610,7 +614,7 @@ class Demineur extends BaseGame {
             if (gagnee(this.grille)) break;
             const d = deduire(this.grille);
             if (!d) {
-                cur.say('Plus rien ne se déduit avec certitude : c\'est le moment où il faudrait choisir. Une grille bien tirée n\'en arrive presque jamais là.', this.plateau);
+                cur.say('Plus rien ne se déduit avec certitude : c\'est le moment où il faudrait choisir.', this.plateau);
                 if (!await cur.pause(DEMO_SPEED.between)) return fin();
                 break;
             }
@@ -633,7 +637,10 @@ class Demineur extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Voilà toute la méthode : un chiffre dont les drapeaux sont au complet libère ses voisines, un chiffre à court de cases les marque toutes. Le bouton 💡 rejoue ce raisonnement quand tu bloques.', this.plateau);
+        cur.say('Un chiffre dont les drapeaux sont au complet libère ses voisines ; à court de cases, il les marque toutes.', this.plateau);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Le bouton 💡 rejoue ce raisonnement quand tu bloques.', this.plateau);
         if (!await cur.pause(DEMO_SPEED.between)) return fin();
         fin();
     }

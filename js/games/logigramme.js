@@ -444,8 +444,10 @@ class Logigramme extends BaseGame {
         if (!this.puzzle) this.poser();     // hors partie (aperçu), on en tire une
         if (!await cur.pause(500) || !this.isRunning) return fin();
 
-        cur.say('Un logigramme se résout SANS jamais deviner : chaque case s\'écrit parce qu\'un indice '
-            + 'ou la grille l\'oblige. Regarde.', this.teteEl);
+        // Sous 110 caractères : au-delà, la bulle se lit si lentement (340 ms le mot)
+        // qu'on croit la démonstration plantée.
+        cur.say('On ne devine jamais : chaque case s\'écrit parce qu\'un indice ou la grille l\'oblige.',
+        this.teteEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         // IL REPREND LA GRILLE EN COURS, LÀ OÙ L'ÉLÈVE EN EST.
@@ -475,9 +477,12 @@ class Logigramme extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('On continue ainsi jusqu\'à ce que chaque ligne ait son rond. '
-            + 'Si tu bloques, le bouton « Aide-moi » te donne la déduction suivante — '
-            + 'la raison, pas la réponse.', this.container.querySelector('[data-aide]'));
+        // UNE IDÉE PAR BULLE : la suite de la grille, puis le bouton que le robot désigne.
+        cur.say('On continue ainsi jusqu\'à ce que chaque ligne ait son rond.',
+        this.container.querySelector('[data-aide]'));
+        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        cur.say('Si tu bloques, « Aide-moi » te donne la déduction suivante : la raison, pas la réponse.',
+        this.container.querySelector('[data-aide]'));
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

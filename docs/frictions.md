@@ -1335,3 +1335,46 @@ manque.
   dise si le tirage a changé entre deux mesures.
 - **La règle** : **quand la sonde accuse le logiciel, on soupçonne la sonde
   d'abord.** Et l'on tape sur le pavé de l'écran, jamais dans le DOM.
+
+---
+
+**Une règle écrite dans un fichier, appliquée dans trois sur cent six** — 1er octobre 2026
+
+- **Ce que je voulais faire** : rendre au robot de démonstration un rythme et
+  des phrases courtes, sur tout le logiciel.
+- **Ce qui a coûté** : cinq agents d'audit, et le constat est le même partout.
+  La règle `COURT = 110` existe depuis longtemps, elle est JUSTE, elle est bien
+  commentée — et elle est recopiée À LA MAIN dans trois fichiers sur cent six.
+  Résultat : 91 bulles écrites en toutes lettres au-dessus de la limite, dont
+  une de 243 caractères, et une vingtaine d'autres construites à l'exécution
+  qui montaient à 275. Personne n'avait rien cassé : la règle n'avait simplement
+  jamais eu de bras.
+- **Combien de fois** : |||
+- **Ce qui manque** : plus rien ici — `tools/robotCourt.mjs` compte les bulles
+  littérales et les clés de `DEMO_SPEED` qui n'existent pas,
+  `tests/robotCourt.test.mjs` le fait tourner à chaque commit, et
+  `enUneBulle()` garde celles qu'on ne connaît qu'à l'exécution. Mais la
+  QUESTION reste ouverte pour les autres règles du dépôt : combien d'entre
+  elles sont, elles aussi, écrites une fois et appliquées trois ?
+- **La règle** : **une convention sans harnais est une convention qui s'use.**
+  Le jour où l'on écrit « on fait toujours X », on écrit aussi ce qui le
+  compte.
+
+---
+
+**Un harnais qui accuse le commentaire expliquant le défaut** — 1er octobre 2026
+
+- **Ce que je voulais faire** : compter les emplois fautifs de `DEMO_SPEED`.
+- **Ce qui a coûté** : cinq minutes, et une ligne de rapport fausse — mon outil
+  comptait comme faute le COMMENTAIRE de `demoPointer.js` qui raconte
+  précisément ce piège (« cinq jeux écrivaient gate.wait(2500 * DEMO_SPEED) »).
+  **C'est la deuxième fois en deux jours** : une épreuve avait déjà trébuché
+  sur le commentaire expliquant ce qu'on venait de retirer. Dans un dépôt dont
+  la règle est d'expliquer chaque décision à l'endroit où elle se prend, tout
+  outil qui lit le code EN CROISERA.
+- **Combien de fois** : ||
+- **Ce qui manque** : rien à fabriquer — `sansCommentaires()` est dans
+  `tools/robotCourt.mjs` et s'exporte. Le prochain outil qui lit du code la
+  réutilise.
+- **La règle** : **un outil qui lit le code lit d'abord le code, pas les
+  commentaires.** On les retire avant de chercher, en gardant les positions.

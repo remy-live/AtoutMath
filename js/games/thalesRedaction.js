@@ -722,16 +722,22 @@ class ThalesRedaction extends BaseGame {
             + 'rapportent les points — pas le nombre.', this.copieEl);
         if (!await cursor.pause(DEMO_SPEED.settle)) return;
         if (!await gate.waitTurn()) return;
+        // UNE IDÉE PAR BULLE : les trois temps gardent leur définition et leur
+        // geste, et ce qui commentait la correction (« la ligne où l'on remplace
+        // par les valeurs ne se recopie pas ») est parti. Au-delà de 110
+        // caractères, la bulle se lit si longtemps qu'on croit la démonstration
+        // plantée.
         cursor.say('JE SAIS QUE : ce qui vient de l\'énoncé. Deux droites sécantes, et '
-            + 'deux parallèles — Thalès ne demande rien d\'autre.', this.figEl);
+            + 'deux parallèles.', this.figEl);
         if (!await cursor.pause(DEMO_SPEED.settle)) return;
         if (!await gate.waitTurn()) return;
-        cursor.say('OR : ce qui vient du cours. J\'écris l\'égalité des trois rapports, '
-            + 'chaque petit segment sur le grand qui le contient.', this.copieEl);
+        cursor.say('OR : ce qui vient du cours. J\'écris l\'égalité des trois rapports.', this.copieEl);
         if (!await cursor.pause(DEMO_SPEED.settle)) return;
         if (!await gate.waitTurn()) return;
-        cursor.say('DONC : ce que j\'en déduis. Produit en croix, calcul, conclusion — '
-            + 'et la ligne où l\'on remplace par les valeurs ne se recopie pas.',
+        cursor.say('Chaque petit segment sur le grand qui le contient.', this.copieEl);
+        if (!await cursor.pause(DEMO_SPEED.settle)) return;
+        if (!await gate.waitTurn()) return;
+        cursor.say('DONC : ce que j\'en déduis. Produit en croix, calcul, conclusion.',
         this.copieEl);
         await cursor.pause(DEMO_SPEED.between);
     }

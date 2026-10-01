@@ -397,9 +397,15 @@ class SansCroiser extends BaseGame {
 
         if (!this.fig) this.poser();
         if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Trois interdits : les traits ne se croisent pas, ils ne sortent pas du cadre, '
-            + 'et ils ne passent pas sur un carré. Le troisième est celui qu\'on oublie — un '
-            + 'carré n\'est pas une étiquette, c\'est un obstacle.', this.svg);
+        // 204 CARACTÈRES D'UN SEUL BLOC : les trois interdits restent, l'élève en a
+        // besoin, mais le troisième prend sa propre bulle — c'est celui qu'on oublie,
+        // et la leçon sur l'étiquette ne faisait que le répéter.
+        cur.say('Trois interdits : les traits ne se croisent pas, et ils ne sortent pas '
+            + 'du cadre.', this.svg);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Le troisième : un trait ne passe jamais sur un carré.', this.svg);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let k = 0; k < 2 && k < this.fig.solution.length; k++) {

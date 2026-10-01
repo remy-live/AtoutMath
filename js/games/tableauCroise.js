@@ -506,9 +506,11 @@ class TableauCroise extends BaseGame {
         if (!this.tableau) this.poser();
         const t = this.tableau;
         if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Je ne remplis pas les cases dans l\'ordre où elles sont écrites. Je cherche '
-            + 'la ligne ou la colonne où il ne manque QU\'UNE SEULE case : celle-là, je peux '
-            + 'la boucler tout de suite.', this.tableEl);
+        // UNE SEULE IDÉE, LE GESTE DE CHERCHER : « celle-là, je peux la boucler tout de
+        // suite » redisait la même chose en plus long, et au-delà de 110 caractères la
+        // bulle se lit si lentement qu'on croit la démonstration plantée
+        // (js/core/activities/choice.js, COURT).
+        cur.say('Je cherche la ligne ou la colonne où il ne manque QU\'UNE SEULE case.', this.tableEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let k = 0; k < 3; k++) {
@@ -530,8 +532,7 @@ class TableauCroise extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Et chaque case que je viens d\'écrire en ouvre d\'autres : c\'est comme cela '
-            + 'qu\'on finit le tableau, sans jamais deviner.', this.tableEl);
+        cur.say('Et chaque case que je viens d\'écrire en ouvre d\'autres.', this.tableEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

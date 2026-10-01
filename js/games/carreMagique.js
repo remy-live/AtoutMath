@@ -464,8 +464,9 @@ class CarreMagique extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Chaque case écrite débloque une nouvelle ligne à une seule case : on continue '
-            + 'jusqu\'au bout, sans jamais deviner.', this.container.querySelector('[data-aide]'));
+        // « on continue jusqu'au bout, sans jamais deviner » était la leçon, pas le geste.
+        cur.say('Chaque case écrite débloque une nouvelle ligne à une seule case.',
+            this.container.querySelector('[data-aide]'));
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

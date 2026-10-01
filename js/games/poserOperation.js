@@ -694,8 +694,10 @@ class PoserOperation extends BaseGame {
                 this.dessiner();
                 await gate.wait(700);
             }
+            // LA DEUXIÈME PHRASE PARLAIT DU BARÈME, PAS DU GESTE : le robot montre
+            // où il écrit la retenue, il ne dit pas comment le logiciel compte.
             cur.say('Moi, j\'écris les retenues dans les petits ronds : c\'est ainsi qu\'on ne les '
-                + 'oublie pas. Si tu les gardes en tête, ton résultat compte quand même.', this.grilleEl);
+                + 'oublie pas.', this.grilleEl);
             await gate.wait(2800);
         } catch (e) { /* démonstration coupée */ }
         fin();

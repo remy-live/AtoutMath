@@ -543,14 +543,19 @@ class Pousseur extends BaseGame {
         if (!this.jeu) return fin();
         if (!await cur.pause(400) || !this.isRunning) return fin();
 
-        cur.say('Le pousseur POUSSE, il ne tire jamais. Une caisse envoyée contre un mur ne '
-            + 'reviendra plus le long de ce mur ; dans un coin, elle ne bougera plus du tout.',
-        this.plateauEl);
+        cur.say('Le pousseur POUSSE, il ne tire jamais.', this.plateauEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
-        cur.say('Alors avant de pousser, la question n\'est pas « est-ce que ça avance ? » mais '
-            + '« est-ce que je pourrai revenir ? ». Le jeu te prévient dès que la position '
-            + 'devient perdue — mais la voir venir, c\'est tout l\'exercice.', this.plateauEl);
+        // DEUX BULLES LÀ OÙ IL N'Y EN AVAIT QU'UNE : la règle de poussée et le sort de la
+        // caisse coincée sont deux idées, et une bulle de plus de 110 caractères se lit si
+        // lentement qu'on croit la démonstration plantée (js/core/activities/choice.js, COURT).
+        cur.say('Une caisse poussée contre un mur ne revient plus ; dans un coin, elle ne bouge plus.',
+            this.plateauEl);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        // « Le jeu te prévient dès que la position devient perdue » est parti : le robot
+        // montre le geste, il n'explique pas ce que le logiciel décide à la place de l'élève.
+        cur.say('Avant de pousser, je me demande : est-ce que je pourrai revenir ?', this.plateauEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let i = 0; i < 4; i++) {
@@ -558,7 +563,7 @@ class Pousseur extends BaseGame {
             if (!c) break;
             this.montre = c.k;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.step || 500) || !this.isRunning) return fin();
+            if (!await cur.pause(500) || !this.isRunning) return fin();
             const suite = pousser(this.caisses, c);
             this.caisses = suite.caisses;
             this.pousseur = suite.pousseur;
@@ -566,7 +571,7 @@ class Pousseur extends BaseGame {
             this.poussees++;
             this.montre = null;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.step || 500) || !this.isRunning) return fin();
+            if (!await cur.pause(500) || !this.isRunning) return fin();
         }
         cur.say(`Il en faut ${this.jeu.mini} au minimum sur cet entrepôt-là. Le compteur te dit `
             + 'combien il en reste : s\'il monte, tu viens de faire un détour.', this.compteEl);

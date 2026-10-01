@@ -788,8 +788,11 @@ class Canon extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Toujours ce chemin : je lis le nombre, je calcule le complément, je charge, et '
-            + 'SEULEMENT ensuite je tire. Le calcul d\'abord, le geste après.', this.chargeEl);
+        // « Le calcul d'abord, le geste après » redisait la phrase qui précède, et au-delà
+        // de 110 caractères la bulle se lit si lentement qu'on croit la démonstration
+        // plantée (js/core/activities/choice.js, COURT).
+        cur.say('Toujours ce chemin : je lis le nombre, je calcule le complément, je charge, puis je tire.',
+            this.chargeEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         // ET L'ON FIGE À LA FIN — sans quoi la partie continuerait toute seule,
         // personne aux commandes : les astéroïdes atteindraient le canon l'un

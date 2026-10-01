@@ -15,7 +15,7 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
-import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 import { executer, compterBlocs, contientBoucle, profondeurBoucles } from '../scratchVM.js';
 import { comparerTrace, diagnostiquer, verifierExigences } from '../scratchScore.js';
 import { CHAT_SVG, CHAT_TAILLE } from './chatSvg.js';
@@ -647,7 +647,7 @@ export function mount(container, session, opts = {}) {
         if (btn && !await cursor.tap(btn, 700)) return fin();
         await lancer();
         if (destroyed) return fin();
-        cursor.say(item.explanation, container.querySelector('.sc-scene'));
+        cursor.say(enUneBulle(item.explanation, 'Le chat a refait la figure : le programme est bon.'), container.querySelector('.sc-scene'));
         if (!await cursor.pause(DEMO_SPEED.between + 1400) || destroyed) return fin();
         fin();
         renderNext();

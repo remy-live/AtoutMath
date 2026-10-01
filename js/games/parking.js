@@ -362,13 +362,18 @@ class Parking extends BaseGame {
         if (!this.p) this.poser();
         if (!await cur.pause(500) || !this.isRunning) return fin();
 
-        cur.say('Une seule voie relie les deux parkings, et on ne se double pas dessus. '
-            + 'Alors regarde la case en pointillés, sous la voie : c\'est la SEULE place où '
-            + 'une voiture peut se ranger pour en laisser passer une autre.', this.plateauEl);
+        // UNE IDÉE PAR BULLE, chacune sous 110 caractères : au-delà, la bulle se lit si
+        // lentement (340 ms le mot) qu'on croit la démonstration plantée.
+        cur.say('Une seule voie relie les deux parkings, et on ne se double pas dessus.', this.plateauEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
-        cur.say('Tout le jeu est là : qui se range, et quand ? Une voiture qui entre dans la '
-            + 'voie sans savoir où elle va se ranger bloque tout le monde derrière elle.',
+        cur.say('La case en pointillés, sous la voie : la SEULE place pour se ranger et laisser passer.',
+        this.plateauEl);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        // « Tout le jeu est là : qui se range, et quand ? » commente le jeu au lieu de
+        // montrer le geste : la bulle garde la seule phrase qui dit quoi regarder.
+        cur.say('Une voiture qui entre dans la voie sans savoir où se ranger bloque tout le monde derrière.',
         this.plateauEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
@@ -381,7 +386,7 @@ class Parking extends BaseGame {
             this.cap[c.de] = null;
             this.coups++;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.step || 600) || !this.isRunning) return fin();
+            if (!await cur.pause(600) || !this.isRunning) return fin();
         }
         cur.say(`Et il en faut ${minimumParking(this.n)} comme ça, au minimum. C'est bien un `
             + 'jeu de fin de semaine — le compteur t\'indique à chaque coup combien il en '
