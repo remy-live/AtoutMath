@@ -1688,3 +1688,43 @@ lignes** — 2026-10-01
 - *La règle* : **un écran qui se redessine au départ d'un champ perd le geste
   qui l'a fait partir.** Avant d'appeler un rendu dans un `blur`, se demander ce
   qu'il rafraîchit vraiment — ici, rien du tout.
+
+---
+
+**Un panneau qui ne se dessine qu'au CLIC sur son onglet** — 2026-10-01
+
+- *Ce que je voulais faire* : mesurer le gestionnaire de parcours dans le
+  navigateur — cocher, ranger, jeter.
+- *Ce qui a coûté* : sept allers-retours de sonde, tous sur le même
+  malentendu. `montrerPanneau('parcours')` DÉPLIE le panneau, et ne dessine
+  rien : la liste n'existe que par le rappel `auRendu` que `initTiroirOnglets`
+  déclenche **sur le clic**. La sonde voyait donc un panneau ouvert, un
+  `<select>` visible, zéro ligne — et accusait tour à tour le tri, la case à
+  cocher, puis la barre d'actions. Ce qui m'a sauvé, c'est le témoin : même
+  « Parcours découverte », présent depuis le premier démarrage, manquait.
+- *Combien de fois* : |
+- *Ce qui manque* : rien à fabriquer, une ligne à retenir — et elle rejoint la
+  règle des sélecteurs : **on emprunte la porte, on n'appelle pas la fonction
+  qui est derrière.** Ici, `click('[data-tiroir="parcours"]')`.
+- *La règle* : **appeler la fonction qu'un bouton appelle n'est pas cliquer le
+  bouton.** Un écran monte souvent en deux temps — montrer, puis remplir — et
+  seul le geste fait les deux.
+
+---
+
+**Une sonde qui cherche une faute en trouve une autre** — 2026-10-01
+
+- *Ce que je voulais faire* : vérifier que les quatre rangements rangent.
+- *Ce qui a coûté* : rien — et c'est pour cela que je le note. La sonde a
+  affiché « Mimosa · Mimosa · Zèbre » pour trois parcours aux noms distincts.
+  Cause : `saveTeacherPath` fabriquait `'path_' + Date.now()`, et trois
+  enregistrements dans la même milliseconde partagent leur identifiant. Ce
+  n'est pas un cas de laboratoire — `generateSampleData` enregistre deux
+  parcours coup sur coup — et au serveur ce serait pire : `ON CONFLICT(id) DO
+  UPDATE`, donc le second ÉCRASE le premier sans un mot.
+- *Combien de fois* : |
+- *Ce qui manque* : rien. C'est un succès de méthode, pas une friction.
+- *La règle* : **une sonde qui mesure trois cas distincts attrape ce qu'une
+  épreuve d'un seul cas ne peut pas voir.** Un identifiant qui se répète est
+  invisible tant qu'on ne crée qu'un objet à la fois — c'est-à-dire dans
+  toutes les épreuves qu'on écrit naturellement.

@@ -309,17 +309,51 @@ function marquerLus(array $eleve, array $ids): int
  * plus : un fichier témoin porte la date du dernier passage. Coût réel, mesuré
  * sur une base de séance : une requête `DELETE` indexée.
  */
+/**
+ * COMBIEN DE JOURS LA CORBEILLE GARDE UN PARCOURS.
+ *
+ * Rémy : « il y reste 30 jours, puis part tout seul ».
+ *
+ * ELLE VIT ICI, À CÔTÉ DE CE QUI EFFACE, et le serveur la rend à l'écran dans
+ * la réponse de `/teacher/paths` plutôt que de la laisser se recopier dans le
+ * navigateur : deux nombres à tenir d'accord finissent toujours par diverger,
+ * et c'est celui qui efface qui a raison.
+ */
+const JOURS_CORBEILLE = 30;
+
 function purgerSiNecessaire(): int
 {
     $jours = (int) (config()['retention_days'] ?? 0);
-    if ($jours <= 0) {
-        return 0;
-    }
     $temoin = dirname(__DIR__) . '/.derniere-purge';
     if (is_file($temoin) && trim((string) @file_get_contents($temoin)) === date('Y-m-d')) {
         return 0;
     }
     @file_put_contents($temoin, date('Y-m-d'));
+
+    // LA CORBEILLE DES PARCOURS SE VIDE SEULE, ET D'ABORD.
+    //
+    // Rémy : « il y reste 30 jours, puis part tout seul ». C'est le choix qui
+    // évite qu'une corbeille devienne une seconde bibliothèque à gérer — celle
+    // qu'on n'ouvre jamais et qui grossit.
+    //
+    // ELLE NE DÉPEND PAS DE `retention_days`, et c'est pour cela que le test
+    // d'arrêt ci-dessous a été DÉPLACÉ après elle. `retention_days` règle la
+    // conservation des DONNÉES D'ÉLÈVES, que Rémy peut vouloir à zéro — « je
+    // ferai une séance unique et après je détruirai la liste des élèves ». La
+    // corbeille d'un professeur n'a rien à voir avec cela, et son compte à
+    // rebours doit tourner même quand l'autre est arrêté.
+    //
+    // C'EST LE SEUL ENDROIT DU LOGICIEL QUI EFFACE UN PARCOURS SANS QU'ON LE
+    // DEMANDE. On accepte ici que l'`ON DELETE CASCADE` d'`assignments`
+    // emporte la trace des séances données avec : après trente jours à la
+    // corbeille, c'est le sens même du geste. Le travail des élèves, lui, vit
+    // dans `events` et ne bouge pas.
+    db()->prepare('DELETE FROM paths WHERE supprime_le IS NOT NULL AND supprime_le < '
+        . sqlIlYA(JOURS_CORBEILLE))->execute();
+
+    if ($jours <= 0) {
+        return 0;
+    }
 
     $limite = (int) ((time() - $jours * 86400) * 1000);
     $s = db()->prepare('DELETE FROM events WHERE ts < ?');

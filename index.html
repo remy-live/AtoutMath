@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=908">
-    <link rel="stylesheet" href="css/layout.css?v=908">
-    <link rel="stylesheet" href="css/ui.css?v=908">
-    <link rel="stylesheet" href="css/games.css?v=908">
-    <link rel="stylesheet" href="css/components.css?v=908">
-    <link rel="stylesheet" href="css/modules.css?v=908">
+    <link rel="stylesheet" href="css/base.css?v=909">
+    <link rel="stylesheet" href="css/layout.css?v=909">
+    <link rel="stylesheet" href="css/ui.css?v=909">
+    <link rel="stylesheet" href="css/games.css?v=909">
+    <link rel="stylesheet" href="css/components.css?v=909">
+    <link rel="stylesheet" href="css/modules.css?v=909">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -870,6 +870,40 @@
                             <button type="button" id="btn-new-folder" class="pb-tri pb-tri--neuf"
                                     title="Nouveau dossier" aria-label="Nouveau dossier">+ Dossier</button>
                         </div>
+                        <!-- DANS QUEL ORDRE ON LIT CHAQUE PILE.
+                             Rémy : « pour en sélectionner plusieurs les trier les
+                             classer », et sur les rangements : « plusieurs
+                             rangements possibles ».
+
+                             UN MENU DÉROULANT ET NON QUATRE BOUTONS DE PLUS : la
+                             barre en porte déjà trois, et sept boutons côte à côte
+                             dans un tiroir de trois cents pixels ne se lisent plus.
+                             Le groupement (Récents / Dossiers) reste en boutons
+                             parce qu'il change la FORME de la liste ; l'ordre, lui,
+                             ne change que le sens de lecture. -->
+                        <label class="pb-ordre-mot" for="pb-ordre">Ranger</label>
+                        <select id="pb-ordre" class="pb-ordre" aria-label="Dans quel ordre ranger les parcours">
+                            <option value="recent">du plus récent</option>
+                            <option value="ancien">du plus ancien</option>
+                            <option value="nom">par nom</option>
+                            <option value="taille">du plus petit</option>
+                        </select>
+                        <!-- LA CORBEILLE. Rémy : « supprimer en bloc, mettre dans
+                             la corbeille ». Elle ne s'affiche QUE si elle contient
+                             quelque chose — une corbeille vide en permanence est un
+                             bouton qu'on apprend à ne plus voir. -->
+                        <button type="button" id="btn-corbeille" class="pb-tri pb-corbeille" hidden>
+                            🗑 Corbeille <span data-corbeille-combien></span>
+                        </button>
+                    </div>
+                    <!-- CE QU'ON FAIT AUX PARCOURS COCHÉS. Cachée tant que rien
+                         n'est coché : une barre d'actions permanente au-dessus
+                         d'une liste est un bandeau de plus à ignorer. -->
+                    <div id="pb-selection" class="pb-selection" hidden>
+                        <span data-pb-combien></span>
+                        <button type="button" class="ec-bouton ec-bouton--doux" data-pb-ranger>Ranger dans…</button>
+                        <button type="button" class="ec-bouton ec-bouton--rouge" data-pb-jeter>Mettre à la corbeille</button>
+                        <button type="button" class="ec-bouton ec-bouton--doux" data-pb-rien>Tout décocher</button>
                     </div>
                     <div id="path-browser-list">
                         <!-- Liste injectée en JS -->

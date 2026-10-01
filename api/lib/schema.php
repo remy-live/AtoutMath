@@ -300,6 +300,24 @@ function migrer(?PDO $pdo = null): void
         name       $txt,
         data       $json,
         updated_at $date,
+        --   · supprime_le : LA CORBEILLE, et c'est une SUPPRESSION DOUCE.
+        --
+        --     Rémy : « supprimer en bloc, mettre dans la corbeille ».
+        --
+        --     POURQUOI UNE COLONNE ET NON UN `DELETE`. D'abord parce qu'une
+        --     suppression en bloc sur une année de préparation est le genre de
+        --     geste qu'on ne fait qu'une fois. Ensuite, et surtout, parce que
+        --     `assignments.path_id` est en ON DELETE CASCADE : effacer vraiment
+        --     un parcours emporterait SILENCIEUSEMENT la trace des séances
+        --     qu'on a données avec. Rémy, interrogé : « on prévient, et on
+        --     garde le bilan ».
+        --
+        --     NULL = vivant. Une date = dans la corbeille depuis ce jour-là.
+        --     `purgerSiNecessaire()` efface pour de bon au-delà de trente
+        --     jours — c'est le choix de Rémy : « il y reste 30 jours, puis part
+        --     tout seul ». Une corbeille qu'il faut penser à vider est une
+        --     seconde bibliothèque à gérer.
+        supprime_le $dateN,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 
     // `path_identity` — L'IDENTITÉ DU TRAVAIL, FIGÉE AU MOMENT OÙ ON DONNE.

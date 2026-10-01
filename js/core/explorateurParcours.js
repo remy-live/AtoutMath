@@ -134,6 +134,64 @@ export function derniersEdites(resumes, combien = 0) {
 }
 
 /**
+ * LES QUATRE FAÇONS DE RANGER, ET POURQUOI IL EN FALLAIT QUATRE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « il me faudrait clairement un gestionnaire de parcours pour en
+ * sélectionner plusieurs les trier les classer », et, sur le choix des
+ * rangements : « plusieurs rangements possibles ».
+ *
+ * IL N'Y EN AVAIT QU'UN, ET IL N'ÉTAIT PAS CHOISI : `derniersEdites`, câblé en
+ * dur. Les deux boutons « Récents » et « Dossiers » ne sont pas des tris — ce
+ * sont des GROUPEMENTS, et dans les deux cas l'ordre interne était le même.
+ *
+ * CE QUE CHACUN SERT À FAIRE, parce qu'un ordre sans usage est un bouton de
+ * plus :
+ *
+ *   · `recent` — « celui de la semaine dernière ». C'est le défaut, et il le
+ *     reste : neuf fois sur dix on cherche ce qu'on vient de toucher ;
+ *   · `ancien` — l'inverse, et il sert exactement au ménage que Rémy demande :
+ *     ce qui dort depuis deux ans arrive en tête, prêt à être coché ;
+ *   · `nom` — « celui des fractions », quand on ne se souvient plus de QUAND on
+ *     l'a fait. C'est l'ordre qui manquait le plus ;
+ *   · `taille` — les plus PETITS d'abord, et c'est délibéré : un parcours d'une
+ *     activité est presque toujours un essai oublié. Les gros, eux, on sait
+ *     qu'on les a faits.
+ *
+ * ON TRIE TOUJOURS PAR NOM À ÉGALITÉ. Sans ce second critère, deux parcours de
+ * même taille changeraient de place d'un affichage à l'autre selon l'ordre où
+ * le navigateur les a rangés — et une liste qui bouge toute seule, on ne lui
+ * fait plus confiance.
+ */
+export const ORDRES = ['recent', 'ancien', 'nom', 'taille'];
+
+export function ordonner(resumes, ordre = 'recent') {
+    const parNom = (a, b) => String(a.nom).localeCompare(String(b.nom), 'fr');
+    const liste = (resumes || []).slice();
+    if (ordre === 'nom') return liste.sort(parNom);
+    if (ordre === 'taille') {
+        return liste.sort((a, b) => {
+            const ca = Number(a.activites) || 0, cb = Number(b.activites) || 0;
+            return ca !== cb ? ca - cb : parNom(a, b);
+        });
+    }
+    if (ordre === 'ancien') {
+        // UN PARCOURS SANS DATE RESTE AU FOND, dans les deux sens. Il n'est pas
+        // « le plus ancien » : on ne sait pas quand il a été fait. Le mettre en
+        // tête du ménage ferait jeter ce qu'on n'a pas pu dater.
+        return liste.sort((a, b) => {
+            const ta = a.modifieLe || 0, tb = b.modifieLe || 0;
+            if (!ta && !tb) return parNom(a, b);
+            if (!ta) return 1;
+            if (!tb) return -1;
+            return ta !== tb ? ta - tb : parNom(a, b);
+        });
+    }
+    return derniersEdites(liste);
+}
+
+/**
  * CHERCHER PAR LE NOM, SANS DEMANDER L'ORTHOGRAPHE EXACTE.
  *
  * Sans accent et sans casse : un professeur qui cherche « equations » doit
@@ -186,10 +244,16 @@ export function enBref(r) {
  *
  * @param {Array}  entrees  state.teacherPaths
  * @param {Array}  dossiers state.teacherFolders
- * @param {object} opts     { tri: 'recent'|'dossiers', recherche, resumeur }
+ * @param {object} opts     { tri: 'recent'|'dossiers', ordre, recherche, resumeur }
  */
 export function vueDeLExplorateur(entrees, dossiers, opts = {}) {
     const tri = opts.tri === 'dossiers' ? 'dossiers' : 'recent';
+    // LE GROUPEMENT ET L'ORDRE SONT DEUX CHOSES, et les confondre était le
+    // défaut d'origine : « Récents » et « Dossiers » disent COMMENT on empile,
+    // `ordre` dit DANS QUEL SENS on lit chaque pile. On peut donc ranger ses
+    // dossiers par nom, ce qui était impossible.
+    const ordre = ORDRES.includes(opts.ordre) ? opts.ordre : 'recent';
+    const ranger = (liste) => ordonner(liste, ordre);
     const recherche = String(opts.recherche || '').trim();
     const resumeur = typeof opts.resumeur === 'function'
         ? opts.resumeur
@@ -201,7 +265,7 @@ export function vueDeLExplorateur(entrees, dossiers, opts = {}) {
     }
 
     if (recherche) {
-        const trouves = derniersEdites(chercher(tous, recherche));
+        const trouves = ranger(chercher(tous, recherche));
         if (!trouves.length) {
             return {
                 mode: 'recherche', sections: [], total: 0,
@@ -223,8 +287,8 @@ export function vueDeLExplorateur(entrees, dossiers, opts = {}) {
             mode: 'recent', total: tous.length,
             sections: [{
                 id: 'recent', depot: null, dossier: false,
-                titre: 'Du plus récemment modifié',
-                parcours: derniersEdites(tous)
+                titre: TITRES_ORDRE[ordre],
+                parcours: ranger(tous)
             }]
         };
     }
@@ -235,15 +299,29 @@ export function vueDeLExplorateur(entrees, dossiers, opts = {}) {
     // la règle change d'une vue à l'autre.
     const sections = (dossiers || []).map(f => ({
         id: f.id, depot: f.id, dossier: true, titre: f.name,
-        parcours: derniersEdites(tous.filter(r => r.dossier === f.id)),
+        parcours: ranger(tous.filter(r => r.dossier === f.id)),
         vide: 'Dossier vide (glissez des parcours ici)'
     }));
     sections.push({
         id: 'root', depot: 'root', dossier: false, titre: 'Parcours (racine)',
-        parcours: derniersEdites(tous.filter(r => !r.dossier || r.dossier === 'root'))
+        parcours: ranger(tous.filter(r => !r.dossier || r.dossier === 'root'))
     });
     return { mode: 'dossiers', sections, total: tous.length };
 }
+
+/**
+ * CE QU'ON ÉCRIT EN TÊTE DE LISTE, et il doit dire l'ordre EN TOUTES LETTRES.
+ *
+ * « Du plus récemment modifié » était seul, et le restait quel que soit le
+ * rangement. Une liste dont l'en-tête ment sur son ordre est pire qu'une liste
+ * sans en-tête : on cherche en bas ce qui est en haut.
+ */
+const TITRES_ORDRE = {
+    recent: 'Du plus récemment modifié',
+    ancien: 'Du plus ancien — pour faire le ménage',
+    nom: 'Par ordre alphabétique',
+    taille: 'Des plus petits aux plus gros'
+};
 
 /** Le titre d'un exercice, ou rien — jamais son identifiant déguisé en titre. */
 function titreDExercice(id, nommer) {

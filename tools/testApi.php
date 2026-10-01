@@ -1857,6 +1857,75 @@ verifier('IL PORTE SES DEUX ÉTAPES, UN NIVEAU PLUS BAS',
 verifier('et la ligne garde son nom et sa date',
     ($laLigne['name'] ?? '') === 'ENVELOPPE À DÉBALLER' && !empty($laLigne['updated_at']));
 
+// ─── LA CORBEILLE : JETER, RESTAURER, VIDER ────────────────────────────────
+//
+// Rémy : « supprimer en bloc, mettre dans la corbeille ».
+//
+// MESURÉ AVANT (tools/parcoursSupprime.mjs) : on supprimait un parcours, on
+// rechargeait la page, IL REVENAIT. La route n'acceptait que `save` et `list` ;
+// le navigateur effaçait sa copie, le serveur gardait la sienne, et le
+// rapatriement du démarrage suivant la redescendait. Le bouton disait
+// « définitivement ».
+$lesVivants = fn () => array_column(
+    json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['paths'] ?? [], 'name');
+$laCorbeille = fn () => array_column(
+    json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['corbeille'] ?? [], 'name');
+
+verifier('avant de jeter, le parcours est parmi les vivants',
+    in_array('ENVELOPPE À DÉBALLER', $lesVivants(), true));
+$jete = json('/teacher/paths',
+    ['action' => 'corbeille', 'ids' => ['path_essai_forme']], $jetonNotre);
+verifier('JETER LE MET À LA CORBEILLE', ($jete['json']['combien'] ?? 0) === 1);
+verifier('il quitte la liste des vivants',
+    !in_array('ENVELOPPE À DÉBALLER', $lesVivants(), true));
+verifier('ET IL EST DANS LA CORBEILLE, PAS EFFACÉ',
+    in_array('ENVELOPPE À DÉBALLER', $laCorbeille(), true));
+verifier('le serveur dit lui-même combien de jours il le garde',
+    (json('/teacher/paths', ['action' => 'list'], $jetonNotre)['json']['joursCorbeille'] ?? 0) === 30);
+
+// UN COLLÈGUE NE JETTE PAS NOS PARCOURS. C'est la seule chose qui compte
+// vraiment dans cette route : sans `AND teacher_id = ?`, un identifiant deviné
+// suffirait.
+json('/teacher/paths', ['action' => 'restaurer', 'ids' => ['path_essai_forme']], $jetonNotre);
+$volé = json('/teacher/paths',
+    ['action' => 'corbeille', 'ids' => ['path_essai_forme']], $jetonAutre);
+verifier('UN COLLÈGUE NE JETTE PAS NOTRE PARCOURS',
+    ($volé['json']['combien'] ?? -1) === 0,
+    'lignes touchées : ' . (string) ($volé['json']['combien'] ?? '?'));
+verifier('et il est toujours vivant chez nous',
+    in_array('ENVELOPPE À DÉBALLER', $lesVivants(), true));
+
+// RESTAURER LE REMET PARMI LES VIVANTS — c'est la moitié qui rend la corbeille
+// utile : une suppression dont on ne revient pas n'est pas une corbeille.
+json('/teacher/paths', ['action' => 'corbeille', 'ids' => ['path_essai_forme']], $jetonNotre);
+$remis = json('/teacher/paths',
+    ['action' => 'restaurer', 'ids' => ['path_essai_forme']], $jetonNotre);
+verifier('RESTAURER LE REMET PARMI LES VIVANTS',
+    ($remis['json']['combien'] ?? 0) === 1
+    && in_array('ENVELOPPE À DÉBALLER', $lesVivants(), true)
+    && !in_array('ENVELOPPE À DÉBALLER', $laCorbeille(), true));
+
+// EN BLOC, parce que c'est le geste demandé : trente parcours à jeter, c'est
+// UNE requête et non trente.
+json('/teacher/paths', ['action' => 'save',
+    'path' => ['id' => 'path_jeter_1', 'name' => 'JETABLE 1', 'version' => 2, 'steps' => []]],
+    $jetonNotre);
+json('/teacher/paths', ['action' => 'save',
+    'path' => ['id' => 'path_jeter_2', 'name' => 'JETABLE 2', 'version' => 2, 'steps' => []]],
+    $jetonNotre);
+$bloc = json('/teacher/paths',
+    ['action' => 'corbeille', 'ids' => ['path_jeter_1', 'path_jeter_2']], $jetonNotre);
+verifier('ON EN JETTE DEUX D\'UN COUP', ($bloc['json']['combien'] ?? 0) === 2);
+verifier('une liste vide est refusée plutôt que de ne rien faire en silence',
+    json('/teacher/paths', ['action' => 'corbeille', 'ids' => []], $jetonNotre)['code'] === 400);
+
+// VIDER EFFACE POUR DE BON, et seulement ce qui est à la corbeille.
+$vide = json('/teacher/paths', ['action' => 'vider'], $jetonNotre);
+verifier('VIDER LA CORBEILLE EFFACE POUR DE BON', ($vide['json']['combien'] ?? 0) === 2);
+verifier('et la corbeille est vide', count($laCorbeille()) === 0);
+verifier('MAIS LES VIVANTS N\'ONT PAS BOUGÉ',
+    in_array('ENVELOPPE À DÉBALLER', $lesVivants(), true));
+
 // Une assignation qui ne vise personne n'a jamais servi à rien : elle restait
 // en base sans jamais être lue, et l'écran disait pourtant « donné ».
 verifier('une assignation sans classe ni élève est refusée',

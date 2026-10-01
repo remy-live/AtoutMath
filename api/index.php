@@ -677,7 +677,9 @@ function handleTeacherPaths(): void
     $teacher = requireTeacher();
     $body = jsonBody();
 
-    if (($body['action'] ?? 'list') === 'save') {
+    $action = (string) ($body['action'] ?? 'list');
+
+    if ($action === 'save') {
         $path = $body['path'] ?? null;
         if (!is_array($path) || empty($path['name'])) {
             fail(400, 'bad_path', 'Parcours invalide.');
@@ -711,7 +713,65 @@ function handleTeacherPaths(): void
         respond(['pathId' => $id]);
     }
 
-    $stmt = db()->prepare('SELECT id, name, data, updated_at FROM paths WHERE teacher_id = ? ORDER BY updated_at DESC');
+    // ─── LA CORBEILLE ─────────────────────────────────────────────────────
+    //
+    // Rémy : « supprimer en bloc, mettre dans la corbeille ».
+    //
+    // CE QUI MANQUAIT N'ÉTAIT PAS L'ÉCRAN, C'ÉTAIT CETTE ROUTE. Mesuré avant
+    // (`tools/parcoursSupprime.mjs`) : on supprimait un parcours, on rechargeait
+    // la page, IL REVENAIT. Le navigateur effaçait sa copie locale, le serveur
+    // gardait la sienne, et `ramenerLaBibliotheque()` la redescendait au
+    // démarrage suivant. Le bouton « Supprimer définitivement » ne supprimait
+    // rien au-delà d'un rechargement, et personne ne pouvait le voir sans
+    // essayer exactement cela.
+    //
+    // ON NE SUPPRIME JAMAIS DIRECTEMENT, et ce n'est pas de la prudence de
+    // principe : `assignments.path_id` est en ON DELETE CASCADE. Un vrai
+    // `DELETE` emporterait la trace des séances données avec ce parcours.
+    // Rémy : « on prévient, et on garde le bilan ».
+    //
+    // LES TROIS GESTES PRENNENT UNE LISTE, parce que le geste qu'il demande est
+    // « en bloc » : trente parcours à jeter, c'est UNE requête, pas trente.
+    if (in_array($action, ['corbeille', 'restaurer'], true)) {
+        $ids = [];
+        foreach ((array) ($body['ids'] ?? []) as $x) {
+            $x = trim((string) $x);
+            if ($x !== '' && mb_strlen($x) <= 64) $ids[] = $x;
+        }
+        $ids = array_values(array_unique($ids));
+        if (!$ids) fail(400, 'no_ids', 'Aucun parcours désigné.');
+        // ON BORNE, comme partout ailleurs : une liste sans fin arrivant d'un
+        // navigateur n'est pas une liste, c'est une surface d'attaque.
+        $ids = array_slice($ids, 0, 200);
+        $trous = implode(',', array_fill(0, count($ids), '?'));
+        // `AND teacher_id = ?` EST LA SEULE CHOSE QUI COMPTE ICI : sans elle,
+        // un identifiant deviné jetterait le parcours d'un collègue.
+        $q = db()->prepare(
+            'UPDATE paths SET supprime_le = ' . ($action === 'corbeille' ? sqlMaintenant() : 'NULL')
+            . " WHERE teacher_id = ? AND id IN ($trous)"
+        );
+        $q->execute(array_merge([$teacher['id']], $ids));
+        respond(['ok' => true, 'combien' => $q->rowCount()]);
+    }
+
+    // VIDER LA CORBEILLE — le seul endroit du logiciel qui efface un parcours
+    // pour de bon, et il faut l'avoir demandé deux fois : mettre à la
+    // corbeille, puis vider.
+    if ($action === 'vider') {
+        $q = db()->prepare('DELETE FROM paths WHERE teacher_id = ? AND supprime_le IS NOT NULL');
+        $q->execute([$teacher['id']]);
+        respond(['ok' => true, 'combien' => $q->rowCount()]);
+    }
+
+    // ON NE REND QUE LES VIVANTS, et la corbeille À PART.
+    //
+    // Les deux listes partent ensemble, et c'est voulu : le navigateur a besoin
+    // des deux au même instant. Sans la seconde, une machine qui détient encore
+    // un parcours jeté depuis un AUTRE poste n'aurait aucun moyen de l'
+    // apprendre — elle le garderait, et le remonterait.
+    $stmt = db()->prepare('SELECT id, name, data, updated_at FROM paths
+                            WHERE teacher_id = ? AND supprime_le IS NULL
+                            ORDER BY updated_at DESC');
     $stmt->execute([$teacher['id']]);
     // `array_merge` ET SURTOUT PAS `+`, ET C'EST TOUTE L'HISTOIRE DE CE BOGUE.
     //
@@ -731,10 +791,23 @@ function handleTeacherPaths(): void
     // lignes étaient sautées, et la bibliothèque du serveur ne redescendait
     // JAMAIS. MESURÉ (tools/deuxPostes.mjs) : « 0 ramené(s) » sur un poste
     // neuf dont le serveur portait pourtant trois parcours.
-    respond(['paths' => array_map(
-        fn ($r) => array_merge($r, ['data' => json_decode($r['data'], true)]),
-        $stmt->fetchAll()
-    )]);
+    // ET LA CORBEILLE, avec la date : l'écran doit pouvoir dire « il reste
+    // 23 jours », sans quoi « 30 jours » n'est qu'une promesse.
+    $c = db()->prepare('SELECT id, name, supprime_le FROM paths
+                         WHERE teacher_id = ? AND supprime_le IS NOT NULL
+                         ORDER BY supprime_le DESC');
+    $c->execute([$teacher['id']]);
+    respond([
+        'paths' => array_map(
+            fn ($r) => array_merge($r, ['data' => json_decode($r['data'], true)]),
+            $stmt->fetchAll()
+        ),
+        'corbeille' => $c->fetchAll(),
+        // COMBIEN DE JOURS ELLE GARDE, dit par le serveur et non recopié dans
+        // l'écran : deux nombres à tenir d'accord finissent toujours par
+        // diverger, et c'est celui qui EFFACE qui a raison.
+        'joursCorbeille' => JOURS_CORBEILLE
+    ]);
 }
 
 function handleTeacherAssign(): void

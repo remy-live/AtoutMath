@@ -58,9 +58,14 @@ dire('il est au serveur', noms.includes('À SUPPRIMER'), JSON.stringify(noms));
 // ── ON LE SUPPRIME, COMME LE BOUTON LE FAIT ─────────────────────────────────
 console.log('\n\x1b[1m2. ON LE SUPPRIME\x1b[0m');
 const apres = await s.page.evaluate(async ([id]) => {
+    // ON PASSE PAR LA PORTE QUE L'ÉCRAN EMPRUNTE : `jeterALaCorbeille`, qui
+    // jette AU SERVEUR d'abord et oublie localement ensuite. `removeTeacherPath`
+    // seul n'efface que la copie de ce navigateur — c'est précisément ce que
+    // cette sonde a mis en évidence.
+    const { jeterALaCorbeille } = await import('./js/core/parcoursServeur.js');
+    const r = await jeterALaCorbeille([id]);
     const { state } = await import('./js/core/state.js');
-    state.removeTeacherPath(id);
-    return { local: state.teacherPaths.map((p) => p.name) };
+    return { local: state.teacherPaths.map((p) => p.name), r };
 }, [pose.id]);
 dire('il a bien quitté la bibliothèque de ce poste',
     !apres.local.includes('À SUPPRIMER'));

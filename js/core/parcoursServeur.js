@@ -130,6 +130,25 @@ export async function ramenerLaBibliotheque() {
     if (!enPosteDeProf()) return { ramenes: 0, erreur: 'Pas identifié comme professeur.' };
     const r = await auServeur('/teacher/paths', { action: 'list' });
     if (r.erreur) return { ramenes: 0, erreur: r.erreur };
+    // CE QUI A ÉTÉ JETÉ AILLEURS S'EN VA D'ICI AUSSI.
+    //
+    // Sans cela, le poste de la salle garderait éternellement un parcours que
+    // Rémy a mis à la corbeille depuis son Mac — et le remonterait au serveur
+    // à chaque démarrage, où il resterait jeté, dans une partie de cache-cache
+    // que personne ne gagne. C'est l'autre moitié de la corbeille, et elle ne
+    // se voit que sur une SECONDE machine.
+    let jetes = 0;
+    const aLaCorbeille = new Set((r.corbeille || []).map(x => x && x.id).filter(Boolean));
+    if (aLaCorbeille.size) {
+        for (const p of [...(state.teacherPaths || [])]) {
+            if (p && aLaCorbeille.has(p.id)) {
+                state.removeTeacherPath(p.id);
+                dejaMonte.delete(p.id);
+                jetes++;
+            }
+        }
+    }
+
     const connus = new Set((state.teacherPaths || []).map(p => p && p.id));
     let ramenes = 0;
     for (const ligne of (r.paths || [])) {
@@ -178,7 +197,69 @@ export async function ramenerLaBibliotheque() {
         ramenes++;
     }
     if (ramenes) state.saveTeacherPaths();
-    return { ramenes, erreur: '' };
+    if (jetes) await globalStore.set(CLE_MONTEE, Object.fromEntries(dejaMonte)).catch(() => {});
+    return { ramenes, jetes, erreur: '' };
+}
+
+/**
+ * METTRE DES PARCOURS À LA CORBEILLE — au serveur, donc pour de bon.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « supprimer en bloc, mettre dans la corbeille ».
+ *
+ * CE QU'ON RÉPARE ICI EST PLUS GRAVE QU'UN MANQUE. MESURÉ
+ * (`tools/parcoursSupprime.mjs`) : on supprimait un parcours, on rechargeait
+ * la page, IL REVENAIT. `removeTeacherPath` n'effaçait que la copie du
+ * navigateur ; le serveur gardait la sienne, et `ramenerLaBibliotheque()` la
+ * redescendait au démarrage suivant. Le bouton disait « définitivement ».
+ *
+ * ON JETTE AU SERVEUR D'ABORD, ON OUBLIE LOCALEMENT ENSUITE. L'ordre compte :
+ * dans l'autre sens, une panne de réseau laisserait un parcours effacé ici et
+ * vivant là-bas — c'est-à-dire exactement le défaut qu'on corrige.
+ *
+ * @param {string[]} ids  les identifiants d'ENVELOPPE (ceux de teacherPaths)
+ */
+export async function jeterALaCorbeille(ids) {
+    const liste = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
+    if (!liste.length) return { ok: true, combien: 0 };
+    if (!enPosteDeProf()) {
+        // SANS SERVEUR, ON NE PROMET PAS CE QU'ON NE PEUT PAS TENIR. Le
+        // professeur qui n'est pas identifié travaille sur sa machine seule :
+        // sa suppression locale EST définitive, et c'est juste.
+        liste.forEach((id) => state.removeTeacherPath(id));
+        return { ok: true, combien: liste.length, local: true };
+    }
+    const r = await auServeur('/teacher/paths', { action: 'corbeille', ids: liste });
+    if (r.erreur) return r;
+    liste.forEach((id) => { state.removeTeacherPath(id); dejaMonte.delete(id); });
+    await globalStore.set(CLE_MONTEE, Object.fromEntries(dejaMonte)).catch(() => {});
+    return { ok: true, combien: r.combien || liste.length };
+}
+
+/** Les ressortir de la corbeille : elles redescendront au prochain rapatriement. */
+export async function sortirDeLaCorbeille(ids) {
+    const liste = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
+    if (!liste.length) return { ok: true, combien: 0 };
+    if (!enPosteDeProf()) return { erreur: 'Pas identifié comme professeur.' };
+    const r = await auServeur('/teacher/paths', { action: 'restaurer', ids: liste });
+    if (r.erreur) return r;
+    await ramenerLaBibliotheque();
+    return { ok: true, combien: r.combien || liste.length };
+}
+
+/** Ce qu'il y a dans la corbeille, et depuis quand. */
+export async function laCorbeille() {
+    if (!enPosteDeProf()) return { parcours: [], jours: 30 };
+    const r = await auServeur('/teacher/paths', { action: 'list' });
+    if (r.erreur) return { parcours: [], jours: 30, erreur: r.erreur };
+    return { parcours: r.corbeille || [], jours: r.joursCorbeille || 30 };
+}
+
+/** VIDER LA CORBEILLE — le seul geste qui efface vraiment, et il se demande. */
+export async function viderLaCorbeille() {
+    if (!enPosteDeProf()) return { erreur: 'Pas identifié comme professeur.' };
+    return auServeur('/teacher/paths', { action: 'vider' });
 }
 
 /**

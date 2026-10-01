@@ -4852,3 +4852,43 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 #top-navbar button.title:focus-visible {
     outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 6px;
 }
+
+/* ═══ LE GESTIONNAIRE DE PARCOURS ═════════════════════════════════════════════
+   Rémy : « il me faudrait clairement un gestionnaire de parcours pour en
+   sélectionner plusieurs les trier les classer […] supprimer en bloc, mettre
+   dans la corbeille. »
+
+   LA CASE REPREND LE MOTIF DU DIRECT, classe `.ec-choix` comprise : une
+   enveloppe de 44 px qui porte le geste, la case en `pointer-events: none`
+   pour qu'un seul événement parte. Deux façons de cocher dans le même
+   logiciel, ce serait une de trop. */
+.pb-choix { flex: 0 0 auto; margin-right: 2px; }
+.path-browser-item--coche {
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    box-shadow: inset 2px 0 0 var(--primary);
+}
+/* L'ORDRE DE LECTURE. Un menu déroulant et non quatre boutons : la barre en
+   porte déjà trois, et sept côte à côte dans un tiroir de trois cents pixels
+   ne se lisent plus. */
+.pb-ordre-mot { font-size: .78rem; color: var(--text-soft); margin-left: 2px; }
+.pb-ordre {
+    font: inherit; font-size: .82rem; padding: 4px 6px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-app); color: var(--text-main); max-width: 100%;
+}
+.pb-ordre:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.pb-corbeille { margin-left: auto; }
+/* LA BARRE DES COCHÉS. Elle n'apparaît que lorsqu'une case est cochée : une
+   barre d'actions permanente au-dessus d'une liste n'est qu'un bandeau de plus
+   à ignorer. Elle colle en haut pour qu'on puisse cocher en bas de trente
+   parcours sans perdre le bouton de vue. */
+.pb-selection {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    padding: 7px 8px; margin: 6px 0;
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    border-radius: 10px;
+    position: sticky; top: 0; z-index: 2;
+}
+.pb-selection [data-pb-combien] {
+    font-weight: 700; font-size: .85rem; color: var(--text-main); margin-right: 2px;
+}

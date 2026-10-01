@@ -561,7 +561,23 @@ export const state = {
 
     saveTeacherPath(name, pathData, folderId = 'root') {
         const newPath = {
-            id: 'path_' + Date.now(),
+            // L'HORLOGE SEULE NE SUFFIT PAS À FAIRE UN IDENTIFIANT.
+            //
+            // MESURÉ (`tools/gestionParcours.mjs`) : trois parcours enregistrés
+            // d'affilée reçoivent le MÊME `path_<ms>`, et la bibliothèque en
+            // affiche trois fois le dernier. Ce n'est pas un cas de laboratoire
+            // — `generateSampleData` enregistre « Parcours découverte » puis
+            // « Tout sur papier » coup sur coup, et tout code qui pose deux
+            // parcours à la suite tombe dedans.
+            //
+            // ET CE SERAIT PIRE AU SERVEUR : `/teacher/paths` fait un
+            // `ON CONFLICT(id) DO UPDATE`. Deux parcours de même identifiant,
+            // c'est le second qui ÉCRASE le premier, sans un mot.
+            //
+            // `shortId` est déjà ce qui sert à `currentPath` seize lignes plus
+            // haut ; l'horloge reste devant pour que les identifiants gardent
+            // leur ordre naturel, ce qui aide à lire une base à la main.
+            id: 'path_' + Date.now() + '_' + shortId(4),
             name,
             data: pathData,
             folderId,
@@ -620,7 +636,9 @@ export const state = {
     },
 
     addTeacherFolder(name) {
-        const folder = { id: 'folder_' + Date.now(), name, timestamp: Date.now() };
+        // MÊME RAISON QUE POUR LES PARCOURS, et le même piège : deux dossiers
+        // créés dans la même milliseconde n'en feraient qu'un.
+        const folder = { id: 'folder_' + Date.now() + '_' + shortId(4), name, timestamp: Date.now() };
         this.teacherFolders.push(folder);
         this.saveTeacherFolders();
         return folder;
