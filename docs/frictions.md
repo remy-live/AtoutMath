@@ -1728,3 +1728,47 @@ lignes** — 2026-10-01
   épreuve d'un seul cas ne peut pas voir.** Un identifiant qui se répète est
   invisible tant qu'on ne crée qu'un objet à la fois — c'est-à-dire dans
   toutes les épreuves qu'on écrit naturellement.
+
+---
+
+**Une colonne ajoutée sans monter le numéro de schéma casse le site de Rémy** — 2026-10-01
+
+- *Ce que je voulais faire* : ajouter deux colonnes (`classes.bac_jeux`,
+  `paths.supprime_le`).
+- *Ce qui a coûté* : **deux pannes en production, dont une pendant son cours.**
+  `migrerSiNecessaire()` ne migre QUE si le numéro stocké diffère de
+  `VERSION_SCHEMA` — une constante à monter À LA MAIN. Oubliée deux fois. Sa
+  base, à jour de numéro et en retard de colonnes, répondait 500 sur
+  `/teacher/paths` (« Le serveur a refusé ») **et sur `/login`** : ses élèves
+  lisaient « Connexion impossible pour l'instant. Préviens ton professeur. »
+  La consigne était pourtant écrite en toutes lettres au-dessus de la
+  constante : « le seul geste qu'une modification de schéma demande ».
+- *Combien de fois* : ||
+- *Ce qui manque — fait dans la foulée* : **on ne demande plus de s'en
+  souvenir.** La version est l'empreinte des définitions de tables
+  (`versionDuSchema()`), et la migration des bases existantes est DÉRIVÉE de
+  ces mêmes définitions au lieu d'une seconde liste tenue à la main — laquelle
+  avait d'ailleurs oublié `assignments.path_identity` depuis des mois. Le
+  harnais vérifie en plus que CHAQUE colonne déclarée existe vraiment en base.
+- *La règle* : **un geste manuel que le logiciel pourrait faire finit par être
+  oublié, et la consigne écrite au-dessus n'y change rien.** Quand un oubli se
+  paie en panne chez l'utilisateur, ce n'est pas une consigne qu'il faut
+  renforcer : c'est le geste qu'il faut supprimer.
+
+---
+
+**Deux connexions SQLite ne voient pas le même schéma au même instant** — 2026-10-01
+
+- *Ce que je voulais faire* : vérifier dans `testApi.php` qu'une base à qui l'on
+  arrache une colonne la retrouve au premier appel de l'API.
+- *Ce qui a coûté* : six allers-retours. L'épreuve arrachait la colonne depuis
+  une connexion PDO à part, puis interrogeait l'API, qui a la sienne : les deux
+  ne voyaient pas le même schéma, et l'épreuve mesurait surtout ce décalage.
+  Elle a dit « la migration ne part pas » alors qu'un essai en processus
+  unique montrait qu'elle part parfaitement.
+- *Combien de fois* : |
+- *Ce qui manque* : rien à fabriquer. **Ce qui touche au SCHÉMA se mesure dans
+  un seul processus, sur une base à part** — pas à travers le serveur d'essai.
+  Ce qui touche aux DONNÉES, lui, se mesure très bien par HTTP.
+- *La règle* : **une épreuve qui compare deux vues d'une même base mesure leur
+  décalage avant de mesurer le logiciel.**

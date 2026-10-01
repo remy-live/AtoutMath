@@ -1287,7 +1287,7 @@ function stepRow(step, index, policy) {
                        placeholder="Titre (facultatif)"
                        aria-label="Titre du mot, facultatif"
                        value="${escapeHtml(m.titre || '')}">
-                <textarea class="path-mot-texte" rows="2" maxlength="${LONGUEUR_MAX}"
+                <textarea class="path-mot-texte" rows="1" maxlength="${LONGUEUR_MAX}"
                           placeholder="Ce que l'élève lira ici. Une ligne vide fait un paragraphe, *un mot entre étoiles* s'affiche en gras."
                           aria-label="Le texte du mot">${escapeHtml(m.texte || '')}</textarea>
             </div>
@@ -1304,6 +1304,18 @@ function stepRow(step, index, policy) {
         grip.draggable = true;
         grip.ondragstart = (e) => {
             e.dataTransfer.setData('text/reorder', index);
+            // LE FANTÔME DOIT ÊTRE LA LIGNE, PAS LA POIGNÉE.
+            //
+            // Rémy : « qu'on voit le fantôme quand on les déplace ». Depuis que
+            // le glisser est parti sur le ☰ — il le fallait, un parent
+            // `draggable` empêche de sélectionner le texte qu'il contient —, le
+            // navigateur promenait l'image de ce qu'on tient, c'est-à-dire
+            // trois petits traits. On ne voyait plus ce qu'on déplaçait.
+            //
+            // On lui redonne donc la LIGNE entière, saisie près du coin haut
+            // gauche pour qu'elle reste sous le curseur plutôt que centrée
+            // dessus.
+            if (e.dataTransfer.setDragImage) e.dataTransfer.setDragImage(row, 24, 18);
             row.style.opacity = '0.5';
         };
         grip.ondragend = () => { row.style.opacity = '1'; };
@@ -1361,9 +1373,22 @@ function stepRow(step, index, policy) {
         zone.addEventListener('input', grandir);
         requestAnimationFrame(grandir);
 
+        // LA CORBEILLE VA DANS LA LIGNE DES CHAMPS, pas à côté d'eux.
+        //
+        // Rémy : « mets l'icone poubelle ailleurs ». Elle était posée sur la
+        // LIGNE, qui s'étire sur toute la hauteur du bloc : le bouton tombait
+        // donc en bas, sous le texte, et ajoutait sa hauteur à un pavé déjà
+        // haut. MESURÉ avant : 62 px plus bas que le haut de la ligne.
+        //
+        // ON LA RANGE DONC DANS `.path-mot-ligne`, qui aligne ses enfants en
+        // HAUT — une place structurelle, qu'aucune feuille de style chargée
+        // après ne peut déplacer. Ma première tentative passait par
+        // `align-self` et deux sélecteurs, dont un inventé : le bouton ne porte
+        // pas `.icon-btn` mais `.btn-icon`. On ne devine pas une classe, on la
+        // lit — treizième fois que cette règle se paie.
         const del = iconButton('Supprimer', ICONS.trash, 'danger');
         del.onclick = (e) => { e.stopPropagation(); removeStep(step.stepId); };
-        row.appendChild(del);
+        row.querySelector('.path-mot-ligne').appendChild(del);
         return row;
     }
 

@@ -2810,6 +2810,84 @@ verifier('ET ELLE A REMIS LA COLONNE TOUTE SEULE',
     in_array('bac_ferme', $colonnes(), true),
     'colonnes : ' . implode(', ', $colonnes()));
 
+// ─── ET CE CONTRÔLE NE GARDE PLUS *UNE* COLONNE, MAIS TOUTES ───────────────
+//
+// Rémy, écran à l'appui : « Le serveur a refusé (code 500) ».
+//
+// SA BASE TOURNE DEPUIS LA RENTRÉE, et la migration des bases déjà installées
+// reposait sur une SECONDE LISTE, tenue à la main, qu'il fallait penser à
+// allonger. Trois colonnes y manquaient : `assignments.path_identity`,
+// `classes.bac_jeux` et `paths.supprime_le`. La dernière a tout fait tomber —
+// la requête qui LISTE les parcours la nomme, donc ce n'était pas la corbeille
+// qui refusait, c'était la bibliothèque entière.
+//
+// LE CONTRÔLE D'AVANT N'AURAIT JAMAIS PU LE VOIR : il vérifiait `bac_ferme`,
+// une colonne qui, elle, était bien dans la liste. On vérifie donc désormais
+// que CHAQUE colonne de CHAQUE définition existe en base — ce qui est
+// exactement la promesse que la migration doit tenir.
+$manquantes = [];
+foreach (lesTablesDuSchema(true) as $table => $definition) {
+    $enBase = array_column(
+        $base->query("PRAGMA table_info($table)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!$enBase) { continue; }
+    foreach (array_keys(colonnesDeLaDefinition($definition)) as $col) {
+        if (!in_array($col, $enBase, true)) { $manquantes[] = "$table.$col"; }
+    }
+}
+verifier('CHAQUE COLONNE DÉCLARÉE EXISTE VRAIMENT EN BASE',
+    $manquantes === [], implode(', ', $manquantes) ?: 'aucune manquante');
+
+// ─── LA PANNE DE RÉMY, REPRODUITE SUR UNE BASE À PART ─────────────────────
+//
+// Elle ne tient PAS à une colonne manquante : elle tient à une base dont le
+// NUMÉRO DE SCHÉMA est à jour alors que les colonnes ne le sont pas. C'est
+// l'état d'un site mis à jour avec un paquet dont l'auteur a oublié de monter
+// `VERSION_SCHEMA` à la main — ce qui est arrivé deux fois, pour
+// `classes.bac_jeux` puis pour `paths.supprime_le`.
+//
+// `migrerSiNecessaire()` rendait alors la main sans rien faire, et toute
+// requête qui nomme la colonne partait en 500 :
+//   · `/teacher/paths` nomme `supprime_le` → la bibliothèque entière tombe ;
+//   · `etatDeSeance()` nomme `bac_jeux` → `/login` tombe, et l'ÉLÈVE lit
+//     « Connexion impossible pour l'instant. Préviens ton professeur. »
+//
+// ON LE MESURE DANS CE PROCESSUS-CI, SUR UNE BASE NEUVE, et non à travers le
+// serveur d'essai. Deux connexions PDO sur un même fichier SQLite ne voient pas
+// le schéma au même instant : une première version de ce contrôle arrachait la
+// colonne d'un côté et interrogeait de l'autre, et mesurait surtout ce
+// décalage-là. Ici, une base, une connexion, aucun doute sur ce qu'on observe.
+$bacMig = $BAC . '/migration.sqlite';
+$pdoMig = new PDO('sqlite:' . $bacMig);
+$pdoMig->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+migrer($pdoMig);
+$colsMig = fn ($t) => array_column(
+    $pdoMig->query("PRAGMA table_info($t)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+
+// L'ÉTAT EXACT DE SA BASE : deux colonnes en retard, et le numéro de schéma
+// resté à `4` — la valeur de la constante écrite à la main, que personne n'a
+// montée. Avec l'ancienne constante, `4 === 4` et la migration rendait la main.
+$pdoMig->exec('ALTER TABLE paths DROP COLUMN supprime_le');
+$pdoMig->exec('ALTER TABLE classes DROP COLUMN bac_jeux');
+$pdoMig->exec("INSERT OR REPLACE INTO reglages (cle, valeur) VALUES ('schema', '4')");
+verifier('une base « à jour de numéro » à qui il manque deux colonnes',
+    !in_array('supprime_le', $colsMig('paths'), true)
+    && !in_array('bac_jeux', $colsMig('classes'), true));
+verifier('et son numéro vaut bien l\'ancienne constante',
+    $pdoMig->query("SELECT valeur FROM reglages WHERE cle = 'schema'")->fetchColumn() === '4');
+
+$aMigre = migrerSiNecessaire($pdoMig);
+verifier('LA MIGRATION PART QUAND MÊME, parce que la version est CALCULÉE', $aMigre === true);
+verifier('ET LES DEUX COLONNES SONT REVENUES',
+    in_array('supprime_le', $colsMig('paths'), true)
+    && in_array('bac_jeux', $colsMig('classes'), true),
+    'paths : ' . implode(', ', $colsMig('paths')));
+// ET LE NUMÉRO EST CELUI DU SCHÉMA RÉEL : le prochain appel ne remigrera pas
+// pour rien.
+verifier('le numéro stocké devient celui que le schéma calcule',
+    (int) $pdoMig->query("SELECT valeur FROM reglages WHERE cle = 'schema'")->fetchColumn()
+        === versionDuSchema());
+verifier('ET UN SECOND APPEL NE REMIGRE PAS', migrerSiNecessaire($pdoMig) === false);
+
 // Et ce qui tombait en panne remarche : la connexion d'un élève.
 //
 // On en fabrique un NEUF plutôt que de réutiliser l'un des précédents : les

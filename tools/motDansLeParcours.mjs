@@ -130,6 +130,23 @@ const champs = await s.page.evaluate(() => ({
     focus: (document.activeElement || {}).className || ''
 }));
 dire('la ligne porte ses deux champs', champs.titre && champs.texte, JSON.stringify(champs));
+
+// LA HAUTEUR SE MESURE SUR UNE LIGNE VIDE, c'est-à-dire sur ce que Rémy voit
+// au moment où il la dépose. Mesurée pleine, elle dirait surtout la longueur du
+// texte qu'on vient d'y taper.
+const hauteurs = await s.page.evaluate(() => {
+    const mot = document.querySelector('.path-step--mot');
+    const exo = [...document.querySelectorAll('.path-step')].find((e) => e !== mot);
+    const corbeille = mot ? mot.querySelector('.btn-icon') : null;
+    return {
+        mot: mot ? Math.round(mot.getBoundingClientRect().height) : 0,
+        exo: exo ? Math.round(exo.getBoundingClientRect().height) : 0,
+        corbeilleHaut: corbeille && mot
+            ? Math.round(corbeille.getBoundingClientRect().top - mot.getBoundingClientRect().top)
+            : -1,
+        corbeilleDansLaLigne: !!(corbeille && corbeille.closest('.path-mot-ligne'))
+    };
+});
 dire('et le curseur y est déjà', /path-mot-texte/.test(champs.focus), champs.focus || '(ailleurs)');
 
 // ON TAPE, PUIS ON CLIQUE DANS L'AUTRE CHAMP — c'est le geste du professeur,
@@ -200,6 +217,31 @@ dire('il n\'ajoute aucune question au total', liste.questions === avant.question
     `${avant.questions} → ${liste.questions} pour ${liste.etapes} étapes`);
 dire('ET RIEN AU BARÈME — zéro ne doit pas valoir un', liste.bareme === avant.bareme,
     `${avant.bareme} → ${liste.bareme}`);
+
+// ── LA LIGNE DU MOT DANS L'ATELIER NE DOIT PAS ÊTRE UN PAVÉ ────────────────
+//
+// Rémy, capture à l'appui : « rends les blocs qui portent le texte à éditer
+// plus petit (mets l'icone poubelle ailleurs) et qu'on voit le fantôme quand on
+// les déplace ».
+console.log('\n\x1b[1mLA LIGNE DU MOT, DANS L\'ATELIER\x1b[0m');
+// ON MESURE AVANT DE LANCER LA SÉANCE, et c'est la correction : après, la
+// couche de jeu couvre la page, et le bouton « Préparer » est parfaitement
+// visible — mais recouvert. Même famille de piège que le panneau qu'on croit
+// ouvert : ce qu'on voit n'est pas ce qu'on peut cliquer.
+console.log(`   à vide : mot ${hauteurs.mot} px · exercice ${hauteurs.exo} px`);
+dire('UNE LIGNE DE MOT VIDE NE FAIT PAS PLUS QU\'UNE LIGNE D\'EXERCICE',
+    hauteurs.mot > 0 && hauteurs.mot <= hauteurs.exo,
+    `${hauteurs.mot} contre ${hauteurs.exo}`);
+dire('LA CORBEILLE EST EN HAUT, pas sous le texte',
+    hauteurs.corbeilleHaut >= 0 && hauteurs.corbeilleHaut < 24,
+    `${hauteurs.corbeilleHaut} px sous le haut de la ligne`);
+dire('et elle est rangée DANS la ligne des champs', hauteurs.corbeilleDansLaLigne);
+// ET LE FANTÔME DU GLISSER EST LA LIGNE, pas la poignée.
+const fantome = await s.page.evaluate(() => {
+    const src = document.querySelector('.path-step--mot .path-step-grip');
+    return !!(src && src.ondragstart && String(src.ondragstart).includes('setDragImage'));
+});
+dire('ON VOIT LA LIGNE EN LA DÉPLAÇANT, pas trois petits traits', fantome);
 
 // ── CÔTÉ ÉLÈVE : LA SÉANCE ──────────────────────────────────────────────────
 //
@@ -296,6 +338,7 @@ dire('le mot a sa case dans le fil', fil.laCase, `${fil.combien} cases`);
 dire('elle est cliquable, même pour l\'élève', fil.bouton === 'BUTTON', fil.bouton);
 dire('et elle ne s\'étire pas comme un exercice', fil.large > 0 && fil.large < fil.voisine,
     `${fil.large} px contre ${fil.voisine} px`);
+
 
 if (fil.laCase) {
     await s.page.click('#fil-seance .fil-pas--mot');

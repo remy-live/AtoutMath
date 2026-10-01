@@ -2356,20 +2356,38 @@ html[data-point="plus"] .pt-croix { display: none; }
    c'est la seule exception du navigateur à la règle d'héritage, et c'est
    précisément ce que Rémy a demandé d'éviter : « il faut rester cohérent dans
    la police ». */
+/* ELLE TIENT LA MÊME PLACE QU'UNE LIGNE D'EXERCICE, ET PAS TROIS FOIS PLUS.
+   Rémy : « rends les blocs qui portent le texte à éditer plus petit (mets
+   l'icone poubelle ailleurs) ».
+
+   DEUX CHOSES L'ENFLAIENT : un champ de texte haut de deux lignes même vide, et
+   la corbeille qui passait À LA LIGNE sous les champs — la ligne se repliait,
+   et le bloc gagnait quarante pixels pour un bouton. `nowrap` règle le second,
+   `rows="1"` le premier ; le champ grandit ensuite avec le texte, et lui seul. */
 .path-step--mot {
     border-left: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
     align-items: flex-start;
+    flex-wrap: nowrap;
+    padding-top: 6px; padding-bottom: 6px;
 }
+/* LA CORBEILLE À DROITE, EN HAUT, comme sur les lignes d'exercice — c'est là
+   que l'œil la cherche, et elle ne coûte plus de hauteur.
+
+   ELLE EST DANS `.path-mot-ligne`, et c'est voulu : posée sur la ligne entière,
+   elle s'alignait en bas (la ligne s'étire sur toute la hauteur du bloc) et
+   ajoutait trente pixels sous le texte. Une place dans le DOM vaut mieux qu'un
+   `align-self` qu'une feuille chargée plus tard peut défaire. */
+.path-mot-ligne > .btn-icon { align-self: flex-start; flex: 0 0 auto; }
 .path-mot-ligne { display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0; }
-.path-mot-marque { font-size: 1rem; line-height: 1.6; }
-.path-mot-champs { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.path-mot-marque { font-size: 1rem; line-height: 1.5; }
+.path-mot-champs { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 .path-mot-titre, .path-mot-texte {
     font: inherit; color: var(--text-main);
     background: transparent; border: 1px solid transparent; border-radius: 6px;
-    padding: 3px 6px; width: 100%;
+    padding: 2px 6px; width: 100%;
 }
 .path-mot-titre { font-weight: 700; }
-.path-mot-texte { resize: none; overflow: hidden; line-height: 1.5; min-height: 2.6em; }
+.path-mot-texte { resize: none; overflow: hidden; line-height: 1.45; min-height: 1.6em; }
 .path-mot-titre::placeholder, .path-mot-texte::placeholder {
     color: var(--text-soft); font-weight: 400;
 }

@@ -34,13 +34,52 @@ declare(strict_types=1);
 require_once __DIR__ . '/db.php';
 
 /**
- * LA VERSION DU SCHÉMA — à monter dès qu'on touche aux tables ou aux colonnes.
+ * LA VERSION DU SCHÉMA — CALCULÉE, et non plus tenue à la main.
  *
- * C'est le seul geste qu'une modification de schéma demande : la migration se
- * déclenche toute seule chez tout le monde, au premier appel de l'API après le
- * dépôt du paquet.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * IL Y AVAIT ICI `const VERSION_SCHEMA = 4;` et, juste au-dessus, la consigne :
+ * « à monter dès qu'on touche aux tables ou aux colonnes. C'est le seul geste
+ * qu'une modification de schéma demande ». Un seul geste, et il a été oublié
+ * DEUX FOIS — pour `classes.bac_jeux`, puis pour `paths.supprime_le`.
+ *
+ * CE QUE L'OUBLI A COÛTÉ, ET IL FAUT L'ÉCRIRE EN ENTIER. `migrerSiNecessaire()`
+ * compare la version stockée à celle-ci et REND LA MAIN si elles sont égales :
+ * la base de Rémy, à jour de numéro, n'a donc jamais reçu les deux colonnes.
+ * Résultat chez lui, en v909 :
+ *
+ *   · `/teacher/paths` nomme `supprime_le` → 500 → « Le serveur a refusé » sur
+ *     la bibliothèque entière, pas seulement sur la corbeille ;
+ *   · `etatDeSeance()` nomme `bac_jeux` → 500 sur `/login` et `/sync` → ses
+ *     ÉLÈVES lisaient « Connexion impossible pour l'instant. Préviens ton
+ *     professeur. »
+ *
+ * C'est mot pour mot la panne que l'en-tête de ce fichier raconte déjà, en
+ * disant qu'elle est réparée. Elle l'était : on avait corrigé le déclencheur,
+ * pas ce qui le commande.
+ *
+ * ON NE DEMANDE DONC PLUS DE S'EN SOUVENIR. La version est l'empreinte des
+ * définitions elles-mêmes : ajouter, retirer ou retyper une colonne la change,
+ * et la migration part toute seule. Reformuler un commentaire ne la change pas
+ * — `colonnesDeLaDefinition()` les retire —, ce qui évite de faire migrer
+ * trente bases pour une virgule.
+ *
+ * LA COLLISION EST SANS CONSÉQUENCE : deux schémas différents qui tomberaient
+ * sur la même empreinte coûteraient une migration non faite, pas une base
+ * abîmée — et une migration, ici, est idempotente.
  */
-const VERSION_SCHEMA = 4;
+function versionDuSchema(): int
+{
+    static $vue = null;
+    if ($vue !== null) return $vue;
+    $signature = '';
+    foreach (lesTablesDuSchema(dbPilote() === 'sqlite') as $table => $definition) {
+        foreach (colonnesDeLaDefinition($definition) as $col => $type) {
+            $signature .= "$table.$col:$type;";
+        }
+    }
+    return $vue = (int) (crc32($signature) & 0x7fffffff);
+}
 
 /**
  * MIGRER, MAIS PAS À CHAQUE REQUÊTE.
@@ -65,7 +104,7 @@ function migrerSiNecessaire(?PDO $pdo = null): bool
         $s = $pdo->prepare('SELECT valeur FROM reglages WHERE cle = ?');
         $s->execute(['schema']);
         $vu = $s->fetchColumn();
-        if ($vu !== false && (int) $vu === VERSION_SCHEMA) return false;
+        if ($vu !== false && (int) $vu === versionDuSchema()) return false;
     } catch (Throwable $t) {
         // Pas de table `reglages` : base d'avant, ou base vide. On migre.
     }
@@ -74,10 +113,10 @@ function migrerSiNecessaire(?PDO $pdo = null): bool
 
     try {
         $maj = $pdo->prepare('UPDATE reglages SET valeur = ? WHERE cle = ?');
-        $maj->execute([(string) VERSION_SCHEMA, 'schema']);
+        $maj->execute([(string) versionDuSchema(), 'schema']);
         if (!$maj->rowCount()) {
             $pdo->prepare(sqlInsereSansDoublon() . ' INTO reglages (cle, valeur) VALUES (?, ?)')
-                ->execute(['schema', (string) VERSION_SCHEMA]);
+                ->execute(['schema', (string) versionDuSchema()]);
         }
     } catch (Throwable $t) {
         // On a migré, c'est l'essentiel. La marque se reposera au prochain coup.
@@ -89,7 +128,27 @@ function migrer(?PDO $pdo = null): void
 {
     $pdo = $pdo ?: db();
     $sqlite = dbPilote() === 'sqlite';
+    $moteur = $sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+    $tables = lesTablesDuSchema($sqlite);
 
+    foreach ($tables as $nom => $colonnes) {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS $nom ($colonnes)$moteur");
+    }
+
+    migrerLaSuite($pdo, $sqlite, $tables);
+}
+
+/**
+ * LES DÉFINITIONS DES TABLES — une seule source, et elle est lisible d'ailleurs.
+ *
+ * ELLES ÉTAIENT ENFERMÉES DANS `migrer()`, et c'est ce qui a permis au défaut
+ * de passer : rien, hors de cette fonction, ne pouvait vérifier qu'une base
+ * porte bien toutes les colonnes qu'on déclare. Le harnais le fait maintenant
+ * (`php tools/testApi.php`, « CHAQUE COLONNE DÉCLARÉE EXISTE VRAIMENT EN
+ * BASE »), et il ne le pouvait pas avant.
+ */
+function lesTablesDuSchema(bool $sqlite): array
+{
     // Le vocabulaire qui change d'un moteur à l'autre, dit une fois.
     $id      = $sqlite ? 'TEXT NOT NULL PRIMARY KEY' : 'CHAR(36) NOT NULL PRIMARY KEY';
     $ref     = $sqlite ? 'TEXT NOT NULL' : 'CHAR(36) NOT NULL';
@@ -450,9 +509,12 @@ function migrer(?PDO $pdo = null): void
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";
 
-    foreach ($tables as $nom => $colonnes) {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS $nom ($colonnes)$moteur");
-    }
+    return $tables;
+}
+
+/** Les index, les colonnes rattrapées, les réparations. */
+function migrerLaSuite(PDO $pdo, bool $sqlite, array $tables): void
+{
 
     foreach ([
         'idx_students_class'   => 'students(class_id)',
@@ -485,40 +547,96 @@ function migrer(?PDO $pdo = null): void
         }
     }
 
-    // Les colonnes ajoutées après coup, pour une base déjà installée. On
-    // essaie, et l'échec veut dire « elle y est déjà ».
-    foreach ([
-        'classes'  => ['locked' => $bool, 'notice' => $txtNull,
-                       // LE MOMENT EN COURS — voir la table `classes`. Ces
-                       // trois-là arrivent sur une base déjà installée : celle
-                       // de Rémy tourne depuis la rentrée.
-                       'impose_path_id' => $refNull,
-                       'impose_jusqu_a' => $sqlite ? 'INTEGER' : 'BIGINT NULL',
-                       'chrono_fin'     => $sqlite ? 'INTEGER' : 'BIGINT NULL',
-                       'chrono_a_zero'  => $txtNull,
-                       'bac_ferme'      => $bool,
-                       'bac_minutes'    => $sqlite ? 'INTEGER' : 'INT NULL'],
-        'students' => ['blocked' => $bool,
-                       'first_name_key' => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
-                       'login'          => $sqlite ? 'TEXT NULL' : 'VARCHAR(255) NULL',
-                       'login_key'      => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
-                       'access_code'    => $txtNull,
-                       // Le relevé d'écran arrive sur une base déjà installée :
-                       // celle de Rémy tourne depuis la rentrée.
-                       'ecran'          => $txtNull,
-                       'ecran_ts'       => $dateN],
-        // Le genre du message — voir la table `messages`. Une base installée
-        // avant l'indice n'a que des mots, et c'est bien ce que dit l'absence.
-        'messages' => ['genre' => $txtNull],
-    ] as $table => $colonnes) {
-        foreach ($colonnes as $col => $type) {
+    // ─── LES COLONNES D'UNE BASE DÉJÀ INSTALLÉE ───────────────────────────
+    //
+    // `CREATE TABLE IF NOT EXISTS` ne touche pas à une table qui existe. Toute
+    // colonne ajoutée à une définition ci-dessus n'arrive donc JAMAIS chez
+    // quelqu'un qui a installé le logiciel avant. Il faut la demander
+    // explicitement, et c'est ce que fait cette boucle.
+    //
+    // ── IL Y AVAIT ICI UNE SECONDE LISTE, TENUE À LA MAIN. ON L'A SUPPRIMÉE ─
+    //
+    // Elle nommait les colonnes une par une — `classes.locked`, `students.
+    // ecran`… — et il fallait penser à l'allonger à chaque fois. MESURÉ le jour
+    // où cela a coûté : la base de Rémy, installée à la rentrée, n'avait reçu
+    // NI `assignments.path_identity`, NI `classes.bac_jeux`, NI
+    // `paths.supprime_le`. Les trois étaient dans les `CREATE TABLE` ci-dessus,
+    // et aucune n'arrivait chez lui.
+    //
+    // CE QUE ÇA DONNAIT À L'ÉCRAN : « Le serveur a refusé (code 500) ». Pas sur
+    // la corbeille seule — la requête qui LISTE les parcours nomme
+    // `supprime_le`, donc toute la bibliothèque tombait. Un professeur qui met
+    // à jour perd l'écran entier, et rien ne lui dit pourquoi.
+    //
+    // ON DÉRIVE DONC LA MIGRATION DES DÉFINITIONS ELLES-MÊMES. Il n'y a plus
+    // deux listes à tenir d'accord, donc plus de divergence possible : une
+    // colonne écrite dans un `CREATE TABLE` est, par construction, une colonne
+    // que les bases existantes recevront.
+    //
+    // CE QU'ON ACCEPTE : une colonne `NOT NULL` sans valeur par défaut échoue
+    // sur une table non vide, et l'échec est silencieux — comme avec l'ancienne
+    // liste. C'est pourquoi toute colonne ajoutée après coup doit être NULLable
+    // ou porter un défaut. Les types `$txtNull`, `$dateN`, `$refNull` et `$bool`
+    // sont là pour cela.
+    foreach ($tables as $table => $definition) {
+        foreach (colonnesDeLaDefinition($definition) as $col => $type) {
             try {
                 $pdo->exec("ALTER TABLE $table ADD COLUMN $col $type");
-            } catch (Throwable $t) { /* déjà là */ }
+            } catch (Throwable $t) { /* déjà là, ou impossible à ajouter après coup */ }
         }
     }
 
     reparerEmpreintesPrenom($pdo);
+}
+
+/**
+ * LES COLONNES D'UNE DÉFINITION DE TABLE, lues telles qu'on les a écrites.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * ON NE LIT PAS DU SQL EN GÉNÉRAL, on lit NOS définitions — celles du tableau
+ * `$tables` juste au-dessus, écrites une colonne par ligne. C'est ce qui rend
+ * l'exercice sûr : la forme est connue, et elle est à nous.
+ *
+ * CE QU'ON ÉCARTE, ET POURQUOI :
+ *   · les lignes de commentaire `--`, qui portent ici la moitié du sens ;
+ *   · les contraintes de table — `FOREIGN KEY`, `PRIMARY KEY`, `UNIQUE`,
+ *     `CHECK` — qui ne sont pas des colonnes ;
+ *   · la clé primaire elle-même : on ne l'ajoute pas après coup, et l'essayer
+ *     ne ferait qu'un échec de plus à avaler en silence.
+ *
+ * @param string $definition le corps d'un `CREATE TABLE`, sans les parenthèses
+ * @return array<string,string> nom de colonne → type
+ */
+function colonnesDeLaDefinition(string $definition): array
+{
+    $out = [];
+    foreach (explode("\n", $definition) as $ligne) {
+        $ligne = trim($ligne);
+        if ($ligne === '' || str_starts_with($ligne, '--')) {
+            continue;
+        }
+        $ligne = rtrim($ligne, ',');
+        // Un commentaire en fin de ligne ne fait pas partie du type.
+        $ligne = preg_split('/\s--\s/', $ligne)[0];
+        if (preg_match('/^(FOREIGN|PRIMARY|UNIQUE|CHECK|CONSTRAINT)\b/i', $ligne)) {
+            continue;
+        }
+        $bouts = preg_split('/\s+/', trim($ligne), 2);
+        if (count($bouts) !== 2) {
+            continue;
+        }
+        [$nom, $type] = $bouts;
+        if (!preg_match('/^[a-z_][a-z0-9_]*$/i', $nom)) {
+            continue;
+        }
+        // LA CLÉ PRIMAIRE NE S'AJOUTE PAS APRÈS COUP.
+        if (stripos($type, 'PRIMARY KEY') !== false) {
+            continue;
+        }
+        $out[$nom] = trim($type);
+    }
+    return $out;
 }
 
 /**
