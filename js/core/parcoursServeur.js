@@ -49,19 +49,17 @@ import { getActiveProfile } from './profile.js';
 import { normalizePath } from './path.js';
 import { donnerSeance, complementDeSeance, completerSeance } from './seances.js';
 import { identiteDeParcours } from './shortcodes.js';
+import { empreinte } from './empreinteParcours.js';
 
 /** Ce qu'on a déjà réussi à monter : identifiant → empreinte de ce qui est parti. */
 const dejaMonte = new Map();
 const CLE_MONTEE = 'parcoursMontes';
 
 /** Une empreinte courte et stable de ce qu'on enverrait. */
-function empreinte(parcours) {
-    try {
-        return JSON.stringify({ n: parcours.name, s: parcours.steps, p: parcours.policy });
-    } catch (e) {
-        return String(Math.random());
-    }
-}
+// L'empreinte du contenu vit dans son propre module : voir son en-tête, et
+// surtout `tests/empreinteParcours.test.mjs`. Elle était ici, où rien ne
+// pouvait l'éprouver — ce fichier importe `state.js`, qui veut un `document`.
+
 
 /** Le professeur est-il identifié auprès du serveur ? */
 function enPosteDeProf() {

@@ -834,6 +834,23 @@ function handleTeacherAssign(): void
                 'donneeLe' => $a['created_at'],
                 'pourLe'   => $a['due_at'],
                 'etapes'   => count($etapes),
+                // CE QU'IL Y A DEDANS, ET PAS SEULEMENT COMBIEN.
+                //
+                // Rémy : « il faut vraiment que pour la séance ce soit facile
+                // d'ajouter et d'enlever un exercice ». Pour en RETIRER un
+                // depuis l'écran de la classe, il faut pouvoir les lui
+                // proposer — et le compte ne le permet pas. Le serveur ne
+                // connaît pas le catalogue, il rend donc les identifiants ;
+                // c'est le navigateur qui les nomme.
+                //
+                // `array_values` ET NON `array_filter` SEUL : un tableau PHP
+                // aux clés trouées se sérialise en OBJET JSON, et le
+                // navigateur recevrait { "1": "calc-sub" } au lieu d'une
+                // liste. Le défaut n'apparaîtrait que sur une séance dont une
+                // étape est cassée — donc jamais dans nos essais.
+                'exercices' => array_values(array_filter(array_map(
+                    fn ($e) => isset($e['exerciseId']) ? (string) $e['exerciseId'] : null,
+                    $etapes))),
                 'questions' => array_sum(array_map(
                     fn ($e) => (int) ($e['nbItems'] ?? 0), $etapes)),
                 'mode'     => $parcours['policy']['mode'] ?? 'entrainement',

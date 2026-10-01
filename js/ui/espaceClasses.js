@@ -33,7 +33,11 @@
 // qui ouvre cet écran a trente élèves devant lui et vingt secondes. Les bilans
 // existent, ils sont ailleurs, et c'est très bien.
 
-import { showToast, showConfirm } from './modal.js';
+import { showToast, showConfirm, showModal } from './modal.js';
+import { chercher } from '../core/recherche.js';
+import { ficheDe } from './rechercheUI.js';
+import { makeStep } from '../core/path.js';
+import { monterUnParcours, ramenerLaBibliotheque } from '../core/parcoursServeur.js';
 // LE CATALOGUE SE COMPTE, IL NE SE RECOPIE PAS. Deux phrases de cet écran
 // annonçaient « 172 exercices » ; le catalogue en contient 178 depuis qu'on y
 // a mis la Seconde. Un nombre écrit à la main est un nombre qui devient faux
@@ -1262,6 +1266,42 @@ function seancesHtml() {
                     ${s.pourLe ? `<span class="ec-sous-sep">·</span>
                         <span>à rendre ${esc(quandLisible(s.pourLe))}</span>` : ''}
                 </div>
+                <!-- COMPLÉTER ET ALLÉGER, LÀ OÙ ON REGARDE SA CLASSE.
+
+                     Rémy : « il faut vraiment que pour la séance ce soit
+                     facile d'ajouter et d'enlever un exercice et surtout que
+                     ça s'actualise chez un élève. »
+
+                     LES DEUX GESTES N'EMPRUNTENT PAS LE MÊME CHEMIN, et c'est
+                     voulu — c'est l'asymétrie expliquée dans
+                     « complementDeSeance » :
+
+                       · AJOUTER écrit dans le PARCOURS. L'étape arrive chez
+                         tous les élèves, même ceux qui ont commencé, et leur
+                         avancement est gardé. C'est permanent : la séance a
+                         vraiment un exercice de plus.
+                       · RETIRER passe par la DISPENSE, qui ne touche pas au
+                         parcours. L'exercice disparaît pour la classe, le
+                         travail déjà fait dessus reste au bilan, et le réglage
+                         s'annule d'un clic. Réécrire le parcours ferait mentir
+                         le bilan de ceux qui l'avaient déjà fait.
+
+                     SEULEMENT SUR LES SÉANCES DE CLASSE. Une séance donnée à
+                     un élève nommé (« s.pour ») se rattrape, elle ne se
+                     complète pas : changer son parcours changerait aussi celui
+                     de la classe, qui le partage. -->
+                ${s.pour ? '' : `
+                <div class="ec-seance-gestes">
+                    <button type="button" class="ec-mini" data-seance-ajouter="${esc(s.pathId)}"
+                            data-nom="${esc(s.nom)}"
+                            title="Un exercice de plus, à la fin. Il arrive chez tous vos élèves, même ceux qui ont déjà commencé — ce qu'ils ont fait est gardé."
+                            >+ un exercice</button>
+                    ${s.exercices && s.exercices.length ? `
+                    <button type="button" class="ec-mini ec-mini--rouge" data-seance-retirer="${esc(s.pathId)}"
+                            data-exos="${esc((s.exercices || []).join(','))}"
+                            title="L'exercice disparaît pour toute la classe, tout de suite, même chez celui qui est dessus. Le travail déjà fait reste au bilan et le réglage s'annule."
+                            >retirer un exercice</button>` : ''}
+                </div>`}
             </div>`).join('')}</div>`;
 }
 
@@ -1946,6 +1986,7 @@ async function brancher(e, redessiner) {
 
     const el = e.target.closest('[data-ouvrir], [data-retour], [data-onglet], [data-nouvelle-classe],'
         + '[data-ajouter-eleve], [data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code],'
+        + '[data-seance-ajouter], [data-seance-retirer],'
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
         + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
         + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
@@ -2674,6 +2715,73 @@ async function brancher(e, redessiner) {
     // écrit dans la colonne d'à côté. Ce qui manque, c'est le bout de papier.
     if (d.billet) return imprimerLesBillets([d.billet]);
 
+    // --- Compléter et alléger la séance, depuis l'écran de la classe ------
+    //
+    // Rémy : « il faut vraiment que pour la séance ce soit facile d'ajouter et
+    // d'enlever un exercice et surtout que ça s'actualise chez un élève. »
+    if (d.seanceAjouter) {
+        const exo = await choisirUnExercice(`Ajouter un exercice à « ${d.nom || 'la séance'} »`);
+        if (!exo) return;
+        const parcours = await parcoursDeLaSeance(d.seanceAjouter);
+        if (!parcours) {
+            // ON LE DIT, ET ON DIT OÙ ALLER. Un bouton qui échoue sans
+            // expliquer envoie le professeur chercher la panne pendant
+            // l'heure.
+            showToast('Ce parcours n\'est pas sur cet appareil et le serveur ne l\'a pas '
+                + 'rendu. Ouvrez-le dans Préparer, puis réessayez.', 'error', 7000);
+            return;
+        }
+        // ON AJOUTE À LA FIN, ET SEULEMENT À LA FIN. C'est la condition pour
+        // que le complément atteigne les élèves qui ont déjà commencé sans
+        // rendre orphelin ce qu'ils ont fait — voir `complementDeSeance`.
+        //
+        // ET L'ON ÉCRIT DANS LA FORME QU'ON A TROUVÉE : l'entrée peut être une
+        // enveloppe ou le parcours nu (voir `cheminDeLEntree`). On ne la
+        // convertit pas au passage — ce serait changer, sans raison et sans le
+        // dire, la forme de ce que le serveur conserve.
+        const chemin = cheminDeLEntree(parcours);
+        if (!chemin) {
+            showToast('Ce parcours est illisible sur cet appareil.', 'error', 6000);
+            return;
+        }
+        chemin.steps = [...(chemin.steps || []), makeStep(exo)];
+        state.saveTeacherPaths();
+        const m = await monterUnParcours(parcours);
+        if (!m.monte) {
+            showToast(m.erreur || 'Le serveur n\'a pas pris la modification.', 'error', 6000);
+            return;
+        }
+        // ON RELIT LA LISTE : le compte d'étapes affiché vient du serveur,
+        // et laisser l'ancien ferait croire que l'ajout n'a pas pris.
+        vue.seances = null;
+        redessiner();
+        const liste = await seancesDeLaClasse(cid);
+        vue.seances = liste.erreur ? { erreur: liste.erreur } : liste;
+        redessiner();
+        showToast(`« ${nomDExercice(exo)} » ajouté à la séance. Vos élèves le verront, `
+            + 'même ceux qui ont déjà commencé.', 'success', 6000);
+        return;
+    }
+
+    if (d.seanceRetirer) {
+        // ON NE PROPOSE QUE CE QUI EST DANS LA SÉANCE. Un choisisseur ouvert
+        // sur tout le catalogue laisserait retirer un exercice qui n'y est
+        // pas : le réglage serait écrit, et rien ne changerait à l'écran.
+        const dedans = (d.exos || '').split(',').filter(Boolean);
+        if (!dedans.length) { showToast('Cette séance n\'a aucun exercice.', 'info'); return; }
+        const exo = await choisirParmi('Retirer un exercice de la séance',
+            dedans.map(id => ({ id, titre: nomDExercice(id) })));
+        if (!exo) return;
+        // LE MÊME CHEMIN QUE LA DISPENSE DE LA BARRE DE PILOTAGE, et non une
+        // réécriture du parcours : le travail déjà fait reste au bilan, le
+        // réglage s'annule d'un clic, et l'élève qui est DESSUS voit son
+        // bouton « Passer » apparaître sans recharger.
+        await fait(reglerUnExercice(cid, exo, 'retire'), (r) => {
+            vue.reglages = r.reglages || vue.reglages;
+        }, `« ${nomDExercice(exo)} » retiré de la séance, pour toute la classe.`);
+        return;
+    }
+
     if (d.saut !== undefined || d.retire !== undefined) {
         const champ = document.getElementById('ec-exo');
         const exo = champ ? champ.value.trim() : '';
@@ -3066,6 +3174,172 @@ function lancerLeBattement(redessiner) {
         if (vue.onglet === 'mur') { zone.innerHTML = murHtml(); return; }
         rafraichirLeDirect(zone);
     }, BATTEMENT_MS);
+}
+
+// --- Choisir un exercice, sans quitter l'écran de la classe ----------------
+
+/**
+ * UN CHOISISSEUR D'EXERCICE, POUR LA SÉANCE EN COURS.
+ *
+ * RÉMY : « il faut vraiment que pour la séance ce soit facile d'ajouter et
+ * d'enlever un exercice et surtout que ça s'actualise chez un élève. »
+ *
+ * POURQUOI ICI ET PAS DANS « PRÉPARER ». Compléter une séance se décide EN
+ * CLASSE, à la minute où l'on voit que les élèves vont trop vite. Le chemin
+ * existant — retrouver le bon parcours dans sa bibliothèque, l'ouvrir, y
+ * ajouter une étape — demande de savoir que c'est possible, de se souvenir
+ * duquel il s'agit, et de quitter l'écran où l'on surveille sa classe. Trois
+ * raisons de remettre à plus tard, et « plus tard » n'arrive jamais pendant
+ * l'heure.
+ *
+ * ON NE REFAIT PAS LE CATALOGUE POUR AUTANT. Deux cents exercices dans une
+ * fenêtre, c'est l'écran « Préparer » en moins bien. On donne un champ de
+ * recherche et dix résultats : celui qui cherche sait ce qu'il veut — il vient
+ * de voir sa classe buter ou filer sur une notion précise.
+ *
+ * @param {string} titre     ce qu'on écrit en haut de la fenêtre
+ * @param {string[]} [sauf]  les exercices déjà dans la séance : les proposer
+ *                           une seconde fois ferait doublon dans le parcours
+ * @returns {Promise<string|null>} l'identifiant choisi, ou null
+ */
+function choisirUnExercice(titre, sauf = []) {
+    return new Promise((repondre) => {
+        const exclus = new Set(sauf);
+        const candidats = catalogueComplet.filter(e => e && e.id && !exclus.has(e.id));
+        const corps = `
+            <p class="ec-note">Tapez deux ou trois lettres : le nom de l'exercice,
+               la notion, le niveau.</p>
+            <input id="ec-choix-q" class="ec-champ" type="text" autocomplete="off"
+                   spellcheck="false" placeholder="fraction, tables, symétrie…"
+                   aria-label="Chercher un exercice">
+            <div id="ec-choix-liste" class="ec-choix-liste"></div>`;
+        let repondu = false;
+        const modal = showModal(titre, corps, {
+            width: '520px',
+            onClose: () => { if (!repondu) repondre(null); }
+        });
+        const champ = modal.element.querySelector('#ec-choix-q');
+        const liste = modal.element.querySelector('#ec-choix-liste');
+
+        const peindre = () => {
+            const q = (champ.value || '').trim();
+            // SANS RIEN DE TAPÉ, ON NE MONTRE PAS DEUX CENTS LIGNES : on dit
+            // quoi faire. Une liste trop longue ne se lit pas, elle se fuit.
+            if (!q) {
+                liste.innerHTML = '<p class="ec-note">Commencez à taper…</p>';
+                return;
+            }
+            const trouves = chercher(candidats.map(ficheDe), q, { max: 10 })
+                .map(r => candidats.find(e => e.id === r.fiche.id))
+                .filter(Boolean);
+            if (!trouves.length) {
+                liste.innerHTML = '<p class="ec-note">Aucun exercice pour ces mots.</p>';
+                return;
+            }
+            liste.innerHTML = trouves.map(e => `
+                <button type="button" class="ec-choix-ligne" data-choix="${esc(e.id)}">
+                    <b>${esc(e.title)}</b>
+                    <span class="ec-note">${esc((e.tags && e.tags.chemin || []).join(' › '))}</span>
+                </button>`).join('');
+        };
+
+        champ.oninput = peindre;
+        liste.onclick = (ev) => {
+            const b = ev.target.closest('[data-choix]');
+            if (!b) return;
+            repondu = true;
+            modal.close();
+            repondre(b.dataset.choix);
+        };
+        // ENTRÉE PREND LE PREMIER : c'est le geste de celui qui a tapé trois
+        // lettres et vu arriver ce qu'il voulait. L'obliger à lâcher le
+        // clavier pour viser une ligne, c'est lui coûter la seconde qu'on
+        // vient de lui faire gagner.
+        champ.onkeydown = (ev) => {
+            if (ev.key !== 'Enter') return;
+            ev.preventDefault();
+            const premier = liste.querySelector('[data-choix]');
+            if (premier) premier.click();
+        };
+        peindre();
+        champ.focus();
+    });
+}
+
+/**
+ * CHOISIR DANS UNE COURTE LISTE — les exercices d'UNE séance, pas le catalogue.
+ *
+ * Pas de champ de recherche ici, et c'est le point : une séance fait deux à
+ * douze exercices. Les montrer tous, c'est une seconde de lecture et un clic ;
+ * y mettre une recherche obligerait à taper pour atteindre ce qui est déjà à
+ * l'écran.
+ *
+ * @param {string} titre
+ * @param {Array<{id:string, titre:string}>} choix
+ * @returns {Promise<string|null>}
+ */
+function choisirParmi(titre, choix) {
+    return new Promise((repondre) => {
+        const corps = `<div class="ec-choix-liste">${choix.map(c => `
+            <button type="button" class="ec-choix-ligne" data-choix="${esc(c.id)}">
+                <b>${esc(c.titre)}</b>
+            </button>`).join('')}</div>`;
+        let repondu = false;
+        const modal = showModal(titre, corps, {
+            width: '460px',
+            onClose: () => { if (!repondu) repondre(null); }
+        });
+        modal.element.onclick = (ev) => {
+            const b = ev.target.closest('[data-choix]');
+            if (!b) return;
+            repondu = true;
+            modal.close();
+            repondre(b.dataset.choix);
+        };
+    });
+}
+
+/**
+ * LE PARCOURS DE CETTE SÉANCE, DANS LA BIBLIOTHÈQUE DU PROFESSEUR.
+ *
+ * ON VA LE CHERCHER AU SERVEUR S'IL N'EST PAS LÀ, et ce n'est pas une
+ * précaution de principe : le professeur a pu donner cette séance depuis le
+ * poste de la salle, et ouvrir sa classe depuis le sien. Sans ce rappel, le
+ * bouton « ajouter » échouerait exactement là où il sert le plus — sur un
+ * autre poste que celui qui a préparé.
+ */
+async function parcoursDeLaSeance(pathId) {
+    let p = (state.teacherPaths || []).find(x => x && x.id === pathId);
+    if (p) return p;
+    await ramenerLaBibliotheque();
+    return (state.teacherPaths || []).find(x => x && x.id === pathId) || null;
+}
+
+/**
+ * LES ÉTAPES D'UNE ENTRÉE DE BIBLIOTHÈQUE — et il y a DEUX formes.
+ *
+ * `state.teacherPaths` ne contient pas toujours la même chose :
+ *
+ *   · `state.saveTeacherPath()` y range une ENVELOPPE — { id, name, data,
+ *     folderId, timestamp } — dont `data` est le parcours ;
+ *   · `ramenerLaBibliotheque()` y range le PARCOURS lui-même, normalisé, avec
+ *     ses `steps` au premier niveau.
+ *
+ * Les deux formes se promènent donc côte à côte selon qu'un parcours a été
+ * fabriqué ici ou rapatrié du serveur. Le serveur le sait et le dit déjà —
+ * `assignmentsFor` lit `brut.data ?? brut` avec le commentaire « les étapes
+ * sont un niveau plus bas que là où on les cherche naturellement ».
+ *
+ * MESURÉ, ET C'EST POUR CELA QUE CETTE FONCTION EXISTE : mon premier essai
+ * écrivait `[...(entree.steps || []), nouvelle]` sur une enveloppe. `steps` y
+ * vaut `undefined`, donc la séance passait de DEUX étapes à UNE — celle qu'on
+ * venait d'ajouter. Ajouter un exercice effaçait la séance. La sonde l'a vu
+ * en recomptant au serveur ; à l'écran, le bouton avait l'air de marcher.
+ */
+function cheminDeLEntree(entree) {
+    if (!entree) return null;
+    const enveloppe = entree.data && typeof entree.data === 'object' && !Array.isArray(entree.data);
+    return enveloppe ? entree.data : entree;
 }
 
 // --- Les billets à imprimer -------------------------------------------------

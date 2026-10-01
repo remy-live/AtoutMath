@@ -1463,3 +1463,41 @@ manque.
 - **La règle** : **quand la sonde accuse le logiciel, on suspecte la sonde
   d'abord — et on regarde la PHOTO.** Une commande se vise par son identifiant,
   jamais par son texte : un écran en porte souvent dix du même nom.
+
+---
+
+**J'invente les sélecteurs de mes sondes, et je recommence** — 1er octobre 2026
+
+- **Combien de fois** : ||||| (cinq, dans la même journée : `[data-classe]`,
+  le « retirer » de la première ligne, `.toast`, et deux autres)
+- **Ce qui a coûté, cette fois** : la sonde lisait les avis par
+  `[class*=toast]`. Les avis n'ont AUCUNE classe — ils vivent dans
+  `#toast-container`. Elle a donc conclu « rien ne se passe » sur un bouton qui
+  affichait « ajouté à la séance », et j'ai cherché le défaut dans le code
+  pendant trois tours.
+- **Ce qui manque** : `tools/sonde.mjs` devrait porter `s.avis()` (le texte des
+  avis affichés), `s.fenetre()` et `s.repondre()` (la fenêtre de confirmation).
+  Toutes mes sondes réécrivent ces lignes, et une sur deux se trompe.
+- **La règle** : **avant d'écrire un sélecteur, on le LIT dans la source.**
+  « Ça devrait s'appeler comme ça » n'est pas une mesure.
+
+---
+
+**Une empreinte qui ne regarde que trois champs choisis** — 1er octobre 2026
+
+- **Ce que je mesurais** : si le bouton « + un exercice » atteignait le
+  serveur. Ce que j'ai trouvé : **un parcours retouché dans Préparer ne
+  remontait jamais**, depuis toujours, et rien ne le disait.
+- **La cause** : `empreinte()` lisait `name`, `steps` et `policy` AU PREMIER
+  NIVEAU. Les entrées de bibliothèque rangent le parcours dans `.data` :
+  l'empreinte valait `{"n":"Séance du lundi"}` et ne bougeait plus. Le cache
+  répondait « déjà monté » en mentant.
+- **Combien de fois** : |
+- **Ce qui manque** : rien à fabriquer — la fonction est sortie dans
+  `js/core/empreinteParcours.js`, où `npm test` peut l'atteindre. Elle vivait
+  dans un fichier qui importe `state.js`, lequel veut un `document` : aucune
+  épreuve ne pouvait la toucher, et c'est exactement là que le défaut s'est
+  logé pendant des mois.
+- **La règle** : **trois champs choisis à la main sont un pari sur la forme de
+  l'objet ; l'objet entier n'en est pas un.** Et : **ce qu'aucune épreuve ne
+  peut atteindre finit par être faux.**

@@ -615,6 +615,27 @@
     .ec-bouton--doux:hover { background: var(--bg-hover); border-color: var(--text-muted); }
 }
 .ec-bouton--rouge { background: var(--bg-panel); color: var(--danger-texte); border-color: var(--danger); }
+
+/* LE CHOISISSEUR D'EXERCICE, dans l'écran de la classe.
+   Rémy : « il faut vraiment que pour la séance ce soit facile d'ajouter et
+   d'enlever un exercice ». Une liste de lignes pleines, hautes de 44 px : on
+   la parcourt des yeux et on vise au doigt, en classe, sans précision. */
+.ec-choix-liste { display: flex; flex-direction: column; gap: 6px; margin-top: 10px;
+                  max-height: 46vh; overflow-y: auto; }
+.ec-choix-ligne {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+    font: inherit; text-align: left; cursor: pointer; width: 100%;
+    min-height: 44px; padding: 8px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
+}
+@media (hover: hover) {
+    .ec-choix-ligne:hover { background: var(--bg-hover); border-color: var(--primary); }
+}
+.ec-choix-ligne:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* Les deux gestes posés sous une séance : ils doivent se distinguer du reste
+   de la ligne, qui n'est que de l'information. */
+.ec-seance-gestes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 @media (hover: hover) {
     .ec-bouton--rouge:hover { background: var(--danger-fond); color: #fff; }
 }
