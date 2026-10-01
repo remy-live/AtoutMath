@@ -1524,6 +1524,36 @@ export async function ouvrirVoletAtelier(quoi, params) {
     // volet pose la lecture sur `window`. Voir ui/cadreAtelier.js, qui la lit.
     const { state: etatDuVolet } = await import('../core/state.js');
     window.__runnerAtelier = () => etatDuVolet.activeSequenceRunner || null;
+
+    // ── L'APPAREIL CHOISI S'ASSIED DANS L'ÉTAT DU VOLET ─────────────────
+    //
+    // RÉMY : « je suis dans la zone prof, j'ai mis aperçu en ordinateur, je
+    // commence à faire l'exercice, je clique sur le robot et là ça se met en
+    // mode téléphone ».
+    //
+    // TROIS PAS, ET LE RÉGLAGE SE PERDAIT AU DEUXIÈME :
+    //
+    //   1. le volet lance bien l'exercice avec `apercuAppareil`, que
+    //      `cadreDe()` respecte avant tout le reste — l'écran est juste ;
+    //   2. le Runner démarre et fait `state.activeExo = step.exercise`, qui
+    //      est l'entrée BRUTE du catalogue : la copie portant l'appareil est
+    //      remplacée, et personne ne s'en aperçoit tant qu'on ne redemande
+    //      pas le cadre ;
+    //   3. le robot appelle `openDemo(state.activeExo)`, donc `cadreDe()` sur
+    //      cette entrée brute. Il retombe sur `state.previewDeviceMode` — qui
+    //      vaut « mobile » AU DÉMARRAGE, et personne ne clique les boutons
+    //      d'aperçu DANS un cadre. D'où le téléphone.
+    //
+    // LE COMMENTAIRE D'`appareilDuProf` DÉCRIVAIT DÉJÀ CE PIÈGE pour un autre
+    // chemin : « chaque volet est un CADRE, avec son propre core/state.js […]
+    // le choix ne pouvait pas voyager ». On l'avait fait voyager par
+    // l'adresse ; il n'ARRIVAIT nulle part. Il s'assied donc ici, une fois, et
+    // tout ce qui lira `previewDeviceMode` dans ce volet — le robot comme le
+    // reste — trouvera ce que le professeur a choisi.
+    //
+    // `cadreDe()` attend « none » pour le plein écran là où le bouton dit
+    // « desktop » : c'est la traduction inverse de celle d'`appareilDuProf`.
+    if (appareil) etatDuVolet.previewDeviceMode = appareil === 'none' ? 'desktop' : appareil;
     const { ItemSession } = await import('../core/itemSession.js');
     if (!ItemSession.prototype.__relaisAtelier) {
         ItemSession.prototype.__relaisAtelier = true;

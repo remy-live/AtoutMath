@@ -1378,3 +1378,29 @@ manque.
   réutilise.
 - **La règle** : **un outil qui lit le code lit d'abord le code, pas les
   commentaires.** On les retire avant de chercher, en gardant les positions.
+
+---
+
+**Un réglage qui voyage mais qui n'arrive nulle part** — 1er octobre 2026
+
+- **Ce que je voulais faire** : comprendre pourquoi l'aperçu du professeur,
+  réglé sur « ordinateur », passait en téléphone dès qu'on cliquait le robot.
+- **Ce qui a coûté** : deux sondes pour rien avant la bonne. J'ai d'abord
+  mesuré le chemin du bac à sable — tout y était juste, 1400 px avant comme
+  après — et j'en ai conclu que je ne reproduisais pas le défaut, alors que
+  je mesurais simplement UN AUTRE CHEMIN. Il a fallu que Rémy redise la suite
+  exacte — zone prof, aperçu en ordinateur, je commence l'exercice, je clique
+  le robot — pour que je vise le volet de l'Atelier.
+- **Combien de fois** : ||
+- **Ce qui manque** : rien à fabriquer. `tools/robotGardeLAppareil.mjs` garde
+  ce chemin-là, et il le garde parce qu'il est le seul à le parcourir.
+- **La règle** : **quand une mesure ne reproduit pas le défaut, c'est le
+  CHEMIN qu'on vérifie d'abord, pas la conclusion.** « Je n'arrive pas à le
+  reproduire » veut presque toujours dire « je ne fais pas la même chose ».
+
+- **Et le défaut lui-même mérite sa ligne** : le commentaire d'`appareilDuProf`
+  décrivait DÉJÀ ce piège — « chaque volet est un CADRE, avec son propre
+  core/state.js […] le choix ne pouvait pas voyager », d'où l'envoi par
+  l'adresse. On l'avait fait PARTIR ; personne n'avait écrit la ligne qui le
+  fait ARRIVER. **Un réglage qu'on transmet et qu'on ne rassied pas n'est pas
+  transmis.**
