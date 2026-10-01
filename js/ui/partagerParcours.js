@@ -93,7 +93,7 @@ function imprimerLAffiche({ nom, code, lien }) {
       .mode { color: #555; font-size: .9rem; margin: 3mm 0 0; }
       @media print { .rien { display: none; } }
     </style></head><body>
-    <p class="rien"><button onclick="window.print()">Imprimer</button></p>
+    <p class="rien"><button id="btn-imprimer" type="button">Imprimer</button></p>
     <h1>${esc(nom || 'Parcours')}</h1>
     ${svg}
     ${code ? `<p class="mode">ou taper ce code dans « J'ai un code »</p>
@@ -101,6 +101,20 @@ function imprimerLAffiche({ nom, code, lien }) {
     <p class="lien">${esc(lien)}</p>
     </body></html>`);
     f.document.close();
+
+    // LE BOUTON SE BRANCHE D'ICI, ET NON PAR UN `onclick=` DANS LE GABARIT.
+    //
+    // MESURÉ avec la CSP de production (`tools/fenetresFilles.mjs`, témoin sans
+    // en-tête à l'appui) : une fenêtre ouverte par `window.open('')` HÉRITE de
+    // la CSP de son ouvreur, et notre `script-src` n'a pas 'unsafe-inline' —
+    // les empreintes ne couvrent pas les gestionnaires d'attribut. Ce bouton
+    // était donc MORT chez Rémy et VIVANT chez nous, puisque le serveur
+    // d'essai ne pose pas l'en-tête.
+    //
+    // La fenêtre est de même origine : son document nous est ouvert, et le code
+    // qui pose l'écouteur est le nôtre, déjà autorisé.
+    const b = f.document.getElementById('btn-imprimer');
+    if (b) b.addEventListener('click', () => f.print());
 }
 
 /**

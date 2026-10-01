@@ -19,6 +19,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const SRC = fs.readFileSync(new URL('../js/ui/espaceClasses.js', import.meta.url), 'utf8');
+/** La page imprimée elle-même : son texte vit dans `js/ui/billets.js`. */
+const PAGE = fs.readFileSync(new URL('../js/ui/billets.js', import.meta.url), 'utf8');
 /** Sans les commentaires : on teste des règles, pas des intentions. */
 const NET = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
@@ -54,6 +56,13 @@ test('L\'IMPRESSION SAIT NE SORTIR QU\'UN BILLET', () => {
 test('la page dit ce qu\'elle est, et rassure', () => {
     // Un professeur qui réimprime un billet se demande s'il vient de casser
     // quelque chose. La page le lui dit avant qu'il ait à le demander.
-    assert.match(NET, /Billet de \$\{esc\(eleves\[0\]\.prenom\)\}/);
-    assert.match(NET, /l\\?'ancien billet reste valable/);
+    //
+    // CES DEUX PHRASES ONT DÉMÉNAGÉ, et l'épreuve avec elles. Quand Rémy a
+    // demandé « une présentation en tableau et ou export cvs », la page des
+    // billets est sortie de `espaceClasses.js` pour `js/ui/billets.js`, où
+    // elle s'éprouve sans navigateur. Le comportement n'a pas bougé d'un mot ;
+    // c'est l'épreuve qui regardait le mauvais fichier, et elle l'a dit tout
+    // de suite — ce qui est très exactement son travail.
+    assert.match(PAGE, /Billet de \$\{esc\(eleves\[0\]\.prenom\)\}/);
+    assert.match(PAGE, /l\\?'ancien billet reste valable/);
 });

@@ -1212,6 +1212,43 @@ verifier('« le même pour tous » donne bien le même à tous',
     json('/login', ['login' => 'sacha.roy', 'code' => 'CLASSE6'])['code'] === 200
     && json('/login', ['login' => 'yanis.ferrand', 'code' => 'CLASSE6'])['code'] === 200);
 
+// --- AJOUTER UN SEUL ÉLÈVE, SANS TOUCHER AUX AUTRES.
+//
+// Rémy : « j'ai l'impression qu'on ne peut pas ajouter un élève dans une
+// classe, idem pour l'enlever ? ». Retirer, il pouvait (c'est la section
+// suivante, et elle est plus vieille que sa question). Ajouter aussi — mais le
+// seul chemin était « Coller une liste d'élèves », dont la fenêtre dit
+// « collez le fichier ENTIER ». Un professeur qui lit cela n'y colle pas un nom
+// le 15 novembre quand un élève arrive : il croit qu'il va écraser sa classe.
+//
+// LE LOGICIEL PORTE MAINTENANT « + Ajouter un élève », qui envoie une liste
+// d'UNE LIGNE par le même chemin. C'est donc cette promesse-là qu'on mesure
+// ici : une ligne de plus n'enlève rien et ne change AUCUN code déjà
+// distribué. Si l'import devenait un jour un remplacement, trente billets
+// cesseraient de valoir d'un coup, en pleine année.
+$codesDe = function () use ($classeF) {
+    $s = db()->prepare('SELECT login, access_code FROM students WHERE class_id = ?');
+    $s->execute([$classeF]);
+    $m = [];
+    foreach ($s->fetchAll() as $e) {
+        $m[dechiffrer($e['login'])] = dechiffrer($e['access_code']);
+    }
+    return $m;
+};
+$avantAjout = $codesDe();
+$r = $apercuF(['texte' => 'Camille Thibault']);
+verifier("AJOUTER UN SEUL ÉLÈVE : l'aperçu l'annonce comme nouveau",
+    $sortsDe($r) === ['nouveau'], implode(' ', $sortsDe($r)));
+$importF($r['json']['apercu']['texte']);
+$apresAjout = $codesDe();
+verifier('la classe a UN élève de plus', count($apresAjout) === count($avantAjout) + 1);
+verifier('et pas un seul code déjà distribué n\'a changé',
+    array_intersect_key($apresAjout, $avantAjout) == $avantAjout,
+    'un import qui rebat les codes périme tous les billets de la classe');
+verifier('le nouvel élève a reçu un identifiant et un code',
+    (bool) preg_match('/^[a-z0-9._-]+$/', array_key_last(array_diff_key($apresAjout, $avantAjout)) ?? ''),
+    implode(' ', array_keys(array_diff_key($apresAjout, $avantAjout))));
+
 // --- RETIRER UN ÉLÈVE. Impossible avant : un départ en cours d'année restait
 //     dans la liste pour toujours.
 $idSacha = json('/login', ['login' => 'sacha.roy', 'code' => 'CLASSE6'])['json']['studentId'];

@@ -1404,3 +1404,62 @@ manque.
   l'adresse. On l'avait fait PARTIR ; personne n'avait écrit la ligne qui le
   fait ARRIVER. **Un réglage qu'on transmet et qu'on ne rassied pas n'est pas
   transmis.**
+
+---
+
+**Le serveur d'essai ne pose pas la CSP, donc on ne mesure pas la vraie page** — 1er octobre 2026
+
+- **Ce que je voulais faire** : ajouter un tableau et un export CSV à la page
+  des billets, comme Rémy l'a demandé.
+- **Ce que j'ai trouvé en chemin** : la page portait un
+  `onclick="window.print()"`. Une fenêtre ouverte par `window.open('')` HÉRITE
+  de la CSP de son ouvreur, et notre `script-src` n'a pas 'unsafe-inline' — le
+  bouton était donc MORT chez Rémy et VIVANT chez nous depuis le jour où il a
+  été écrit, parce que `tools/siteEssai.php` ne pose pas l'en-tête. Deux
+  occurrences, et aucun des trois harnais ne pouvait les voir.
+- **Combien de fois** : |
+- **Ce qui manque, et qui existe maintenant** : `tools/fenetresFilles.mjs`. Il
+  remesure que la CSP voyage (avec un TÉMOIN sans en-tête, sans quoi un « non »
+  pourrait n'être qu'un clic qui n'a pas atteint le bouton) et relit tout `js/`
+  pour y refuser le moindre gestionnaire d'attribut.
+- **Ce qui manque encore** : une sonde qui parcourt l'application avec la CSP
+  de production posée par interception. Tant qu'elle n'existe pas, TOUT ce que
+  la CSP refuse est invisible en local. Je n'ai pas fabriqué celle-là
+  aujourd'hui : elle mérite d'être pensée, pas bâclée.
+- **La règle** : **un serveur d'essai plus permissif que le vrai ne mesure pas
+  le vrai.** Chaque écart entre les deux est un défaut qu'on livrera sans
+  jamais le voir.
+
+---
+
+**Mon propre détecteur a crié au loup sur quatre mots français** — 1er octobre 2026
+
+- **Ce qui a coûté** : le détecteur de gestionnaires d'attribut cherchait `on`
+  suivi de lettres. Il a désigné `{ only = 'tout' }` et `let onglet =
+  'consigne'`. Quatre fausses pistes sur six.
+- **Combien de fois** : || (déjà payé avec `tools/robotCourt.mjs`, qui comptait
+  un commentaire comme une faute)
+- **La règle** : **un détecteur qui crie au loup se fait désactiver au
+  troisième cri.** Nommer les cas un par un est plus long à écrire et ne se
+  trompe pas ; une épreuve du détecteur LUI-MÊME, nourrie de faux positifs
+  connus, coûte dix lignes (`tests/fenetresFilles.test.mjs`).
+
+---
+
+**La sonde accuse, et c'est la sonde qui a tort** — 1er octobre 2026
+
+- **Ce qui a coûté** : Rémy demandait si l'on pouvait retirer un élève. Ma
+  sonde cliquait « retirer » sur une ligne, écrivait RETIRER, cliquait
+  `^retirer$` — et tombait sur le « retirer » de la PREMIÈRE LIGNE du tableau,
+  puisque la casse ne comptait pas. Elle rouvrait donc la fenêtre au lieu de la
+  valider, et concluait « LA LISTE N'A PAS CHANGÉ ». Le logiciel, lui, marchait.
+- **Combien de fois** : |||| (quatre fois dans la même journée : sélecteurs
+  inventés, champ détruit, question redessinée, et celle-ci)
+- **Ce qui manque** : `tools/sonde.mjs` pourrait porter un `s.fenetre()` qui
+  vise `#demander-champ` / `#demander-ok` / `#demander-non`, et un
+  `s.repondre('RETIRER')` qui fait les trois gestes. Toutes mes sondes qui
+  confirment quelque chose réécrivent ces six lignes, et trois s'y sont
+  trompées.
+- **La règle** : **quand la sonde accuse le logiciel, on suspecte la sonde
+  d'abord — et on regarde la PHOTO.** Une commande se vise par son identifiant,
+  jamais par son texte : un écran en porte souvent dix du même nom.

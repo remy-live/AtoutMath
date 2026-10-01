@@ -43,6 +43,7 @@ import { exercices as catalogueComplet } from '../data/catalog.js';
 import { demander, demanderTexte, choisirIndice } from './demander.js';
 import { etatDuCodeDeClasse, motApresCopie } from '../core/codeDeClasse.js';
 import { choisirLesColonnes } from './collerListeUI.js';
+import { htmlDesBillets, csvDesBillets, nomDuFichierCsv, brancherLesBoutons } from './billets.js';
 import { oublierLesClasses } from './donnerSeance.js';
 import { nomDuProf } from '../core/verrouProf.js';
 import {
@@ -1415,7 +1416,27 @@ function listeHtml() {
 
     const outils = `
     <div class="ec-outils">
-        <button type="button" class="ec-bouton" data-coller>Coller une liste d'élèves</button>
+        <!-- UN ÉLÈVE À LA FOIS, ET C'EST UN BOUTON À PART.
+
+             Rémy : « j'ai l'impression qu'on ne peut pas ajouter un élève dans
+             une classe ». MESURÉ : on pouvait déjà — « importerListe » n'efface
+             rien, il AJOUTE —, mais le seul chemin était « Coller une liste
+             d'élèves », dont la fenêtre dit « collez le fichier ENTIER ». Un
+             professeur qui lit cela n'y colle pas un nom le 15 novembre quand
+             un élève arrive : il croit qu'il va écraser sa classe. Une commande
+             qu'on n'ose pas employer n'existe pas.
+
+             CE BOUTON NE DOUBLE PAS LE CODE DE L'IMPORT : il fabrique une
+             liste d'UNE LIGNE et la fait passer par le même aperçu. L'élève
+             arrivé par le code de la classe est donc rattaché à son travail,
+             l'homonyme est signalé, l'identifiant est fabriqué — tout ce que
+             l'import sait faire, et rien de réécrit. -->
+        <button type="button" class="ec-bouton" data-ajouter-eleve
+                title="Un seul élève, sans toucher aux autres : son identifiant et son code sont fabriqués, et vous verrez l'aperçu avant que rien ne soit écrit"
+                >+ Ajouter un élève</button>
+        <button type="button" class="ec-bouton ec-bouton--doux" data-coller
+                title="Toute une classe d'un coup, depuis Pronote ou un tableur. Les élèves déjà là gardent leur code : une liste collée AJOUTE, elle n'efface jamais."
+                >Coller une liste d'élèves</button>
         ${avec.length ? `
         <button type="button" class="ec-bouton ec-bouton--doux" data-imprimer>Imprimer les billets</button>
         <button type="button" class="ec-bouton ec-bouton--doux" data-codes-communs>Un même code pour tous</button>
@@ -1911,7 +1932,7 @@ async function brancher(e, redessiner) {
     }
 
     const el = e.target.closest('[data-ouvrir], [data-retour], [data-onglet], [data-nouvelle-classe],'
-        + '[data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code],'
+        + '[data-ajouter-eleve], [data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code],'
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
         + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
         + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
@@ -2342,6 +2363,35 @@ async function brancher(e, redessiner) {
     // --- Les gestes qui demandent une classe ouverte ---
     const cid = vue.classe && vue.classe.id;
     if (!cid) return;
+
+    // --- Ajouter UN élève, sans toucher aux autres ---
+    //
+    // DEUX QUESTIONS AU PLUS, et la seconde est facultative. Le nom suffit :
+    // l'identifiant et le code se fabriquent côté serveur, exactement comme
+    // pour une liste collée. On ne demande l'identifiant que si le professeur
+    // veut le choisir — ce qui n'arrive que pour lever un homonyme.
+    //
+    // ET L'APERÇU RESTE. On pourrait écrire directement : c'est un seul nom,
+    // que le professeur vient de taper. On ne le fait pas, parce que c'est
+    // précisément sur UN nom que les cas tordus se jouent — « Noé » qui est
+    // déjà entré par le code de la classe doit être RATTACHÉ à son travail et
+    // non recréé à côté, et seul l'aperçu le dit avant d'écrire.
+    if (d.ajouterEleve !== undefined) {
+        const nom = await demander('Ajouter un élève', {
+            bouton: 'Voir ce qui va se passer', max: 80,
+            placeholder: 'DUPONT Emma',
+            aide: 'Son nom tel que vous l\'écrivez dans votre liste. L\'identifiant et le '
+                + 'code seront fabriqués. Pour choisir l\'identifiant vous-même — deux '
+                + 'homonymes, par exemple —, écrivez « DUPONT Emma ; dupont.e ».'
+        });
+        if (!nom) return;
+        // ON ENVOIE LA LIGNE TELLE QUELLE : `lireListe()` côté serveur sait
+        // déjà séparer « nom ; identifiant » et reconnaître lequel est lequel.
+        // Normaliser ici serait écrire une seconde fois sa devinette.
+        const r = await fait(apercuDeListe(cid, nom.trim(), ''));
+        if (r && r.apercu) { vue.apercu = r.apercu; redessiner(); }
+        return;
+    }
 
     if (d.coller !== undefined) {
         const texte = await demanderTexte('Collez votre liste d\'élèves', {
@@ -2976,6 +3026,19 @@ function lancerLeBattement(redessiner) {
  * navigateur croit voir — la barre du haut, la fenêtre modale, le fond gris.
  * Une page neuve ne contient QUE les billets, et l'on sait exactement ce qui
  * sortira de l'imprimante de la salle des profs.
+ *
+ * CE QUI SE PASSE ICI, ET CE QUI SE PASSE AILLEURS. La page elle-même — les
+ * billets à découper, le tableau de la classe, le CSV — vit dans
+ * `js/ui/billets.js`, où elle s'éprouve sans navigateur : un prénom qui
+ * contient un point-virgule casse un CSV, et on ne va pas chercher ce cas à la
+ * main. Ici on ne garde que ce qui demande l'écran : QUELS élèves, QUELLE
+ * classe, et l'ouverture de la fenêtre.
+ *
+ * Rémy : « pour imprimer les billets, tu pourrais aussi me proposer une
+ * présentation en tableau et ou export cvs ». Les deux sont DANS la page, dans
+ * une barre qui ne s'imprime pas : un clic pour changer de présentation, un
+ * clic pour le fichier. On ne lui demande donc rien avant d'ouvrir la fenêtre —
+ * le geste courant, « j'imprime mes billets », reste à un seul clic.
  */
 /**
  * @param {string[]} [seulement] les identifiants à imprimer ; tous par défaut.
@@ -2991,6 +3054,8 @@ function imprimerLesBillets(seulement) {
     }
     if (!eleves.length) { showToast('Aucun billet à imprimer.', 'info'); return; }
     const info = (vue.liste && vue.liste.classe) || vue.classe || {};
+    const nom = info.name || '';
+    const origine = location.origin + location.pathname.replace(/\/[^/]*$/, '/');
 
     const f = window.open('', '_blank');
     if (!f) {
@@ -2998,49 +3063,26 @@ function imprimerLesBillets(seulement) {
             + 'Autorisez les fenêtres pour ce site, puis réessayez.', 'error');
         return;
     }
-    f.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8">
-    <title>Billets — ${esc(info.name || '')}</title>
-    <style>
-      /* LA MARGE D'UNE FEUILLE SE DIT AVEC @page, PAS AVEC body.
-         (Pas d'accent grave dans ce commentaire : il est DANS un gabarit, et
-          le premier qu'on y pose ferme le gabarit.)
-         Une marge de body ne vaut qu'au DÉBUT du flux : les pages deux et
-         suivantes n'avaient que ce que la boîte de dialogue d'impression
-         voulait bien leur donner. Mesuré avec les marges à zéro : les billets
-         de la page 2 commençaient à 2 mm du bord — et une classe de trente
-         tient sur deux pages. Avec les marges par défaut de Chrome, cela ne se
-         voyait presque pas : c'est le genre de défaut qui attend l'imprimante
-         du collège pour se montrer. */
-      @page { margin: 14mm; }
-      body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-             margin: 0; color: #111; }
-      h1 { font-size: 1.1rem; margin: 0 0 3mm; }
-      .sous { color: #555; margin: 0 0 6mm; font-size: .9rem; }
-      .billets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
-      .billet { border: 1px dashed #999; border-radius: 3mm; padding: 4mm; break-inside: avoid; }
-      .nom { font-weight: 700; font-size: 1.05rem; margin-bottom: 2mm; }
-      .l { font-size: .88rem; margin: 1mm 0; }
-      b.code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1.15rem;
-               letter-spacing: .08em; }
-      .pied { margin-top: 3mm; font-size: .72rem; color: #666; }
-      @media print { .rien { display: none; } }
-    </style></head><body>
-    <h1>${eleves.length === 1 ? `Billet de ${esc(eleves[0].prenom)}` : 'Billets'}
-        — ${esc(info.name || '')}</h1>
-    <p class="sous">${eleves.length === 1
-        ? 'À redonner à cet élève. Son code n\'a pas changé : l\'ancien billet reste valable.'
-        : 'À découper et à distribuer.'} L'élève tape son identifiant et son code
-       sur la page d'accueil du site.</p>
-    <p class="rien"><button onclick="window.print()">Imprimer</button></p>
-    <div class="billets">
-      ${eleves.map(e => `<div class="billet">
-        <div class="nom">${esc(e.prenom)}</div>
-        <div class="l">identifiant <b>${esc(e.login)}</b></div>
-        <div class="l">code <b class="code">${esc(e.code)}</b></div>
-        <div class="pied">${esc(location.origin + location.pathname.replace(/\/[^/]*$/, '/'))}</div>
-      </div>`).join('')}
-    </div></body></html>`);
+    f.document.write(htmlDesBillets({ eleves, nom, origine }));
     f.document.close();
+
+    // LES BOUTONS SE BRANCHENT D'ICI, ET C'EST UNE CORRECTION, PAS UN STYLE.
+    //
+    // Cette page portait un `onclick="window.print()"`. MESURÉ avec la CSP de
+    // production (`tools/fenetresFilles.mjs`, témoin sans en-tête à l'appui) :
+    // une fenêtre ouverte par `window.open('')` HÉRITE de la CSP de son
+    // ouvreur, et notre `script-src` n'a pas 'unsafe-inline' — les empreintes
+    // ne couvrent pas les gestionnaires d'attribut. Le bouton « Imprimer »
+    // était donc MORT chez Rémy et VIVANT chez nous, parce que le serveur
+    // d'essai ne pose pas l'en-tête. C'est le genre de défaut qui attend
+    // l'imprimante du collège pour se montrer.
+    //
+    // La fenêtre est de même origine : son document nous est ouvert, et le code
+    // qui pose les écouteurs est le nôtre, déjà autorisé.
+    brancherLesBoutons(f, {
+        csv: csvDesBillets(eleves, nom),
+        fichier: nomDuFichierCsv(nom)
+    });
 }
 
 // --- Ajouter un professeur --------------------------------------------------
