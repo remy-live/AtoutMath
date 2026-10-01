@@ -158,12 +158,108 @@ test('LE MENEUR PEINT LE MOT, ET SORT AVANT DE MONTER UN MOTEUR', () => {
     assert.match(debut, /return this\.showMessage\(step\)/);
     // ET IL ÉCRIT UNE ÉTAPE CLOSE AU JOURNAL : sans cela, l'élève resterait
     // éternellement « étape 2 sur 5 » et reprendrait au mot le lendemain.
-    const p = src.slice(src.indexOf('    passerLeMessage(step)'));
+    //
+    // LA TRACE A ÉTÉ SORTIE DE `passerLeMessage` le jour où le mot a cessé
+    // d'avoir toujours son écran : il se lit maintenant aussi en bulle, et les
+    // DEUX chemins doivent laisser la même trace. Elle vit donc dans
+    // `noterLeMotLu`, et l'on vérifie que les deux l'appellent — sans quoi un
+    // mot lu en bulle laisserait le fil avec sa case vide pour toujours.
+    const p = src.slice(src.indexOf('    noterLeMotLu(step)'));
     const corps = p.slice(0, p.indexOf('\n    }'));
     assert.match(corps, /EventTypes\.STEP_COMPLETED/);
     assert.match(corps, /questions: 0/);
     assert.match(corps, /exerciseId: null/);
     assert.match(corps, /passed: true/);
+    const passer = src.slice(src.indexOf('    passerLeMessage(step)'));
+    assert.match(passer.slice(0, 300), /this\.noterLeMotLu\(step\)/,
+        'l\'écran plein ne noterait plus le mot comme lu');
+});
+
+// ──────────────────────────── LA BULLE AU-DESSUS DE L'EXERCICE ──────────────
+
+test('UN MOT SUIVI D\'UN EXERCICE ARRIVE EN BULLE, ET NON SUR SON ÉCRAN', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // RÉMY : « pour le message ce serait bien qu'il apparaisse en popup ou une
+    // petite bulle au dessus de l'épreuve qui lui suit non ? »
+    //
+    // IL A RAISON, ET SA PROPRE SÉANCE LE DIT : son mot d'accueil explique la
+    // série d'exercices qui suit. Sur un écran à lui seul, avec un bouton
+    // « J'ai compris », l'élève le traverse sans le lire — et quand il arrive à
+    // l'exercice, l'explication n'est plus là.
+    const src = sansCommentaires(lire('js/core/runner.js'));
+    const f = src.slice(src.indexOf('    async runStep()'));
+    const bloc = f.slice(f.indexOf('if (estUnMessage(step))'), f.indexOf('this.step = step;\n'));
+    assert.match(bloc, /const suivante = this\.etapeApres\(this\.index\)/,
+        'le meneur ne regarde plus ce qui suit le mot');
+    assert.match(bloc, /if \(suivante && !estUnMessage\(suivante\)\)/,
+        'un mot suivi d\'un autre mot serait replié dans une bulle sur un mot');
+    assert.match(bloc, /this\.motEnAttente = step;/);
+    assert.match(bloc, /this\.noterLeMotLu\(step\)/,
+        'le mot replié ne serait jamais noté lu : le fil garderait sa case vide');
+    // ET LE MOT DE LA FIN GARDE SON ÉCRAN : rien ne le surmonte. C'est le
+    // témoin de la règle — sans lui, un écran plein supprimé partout passerait
+    // pour une bulle réussie.
+    assert.match(f.slice(0, 2600), /return this\.showMessage\(step\)/,
+        'un mot en dernière position n\'aurait plus aucun écran');
+});
+
+test('LA BULLE EST POSÉE AVANT LE PLATEAU, PAS DEDANS', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // TOUS LES JEUX FONT `canvas.innerHTML = ''` EN SE MONTANT, et beaucoup le
+    // refont à chaque question. Une bulle rangée dans `#game-board` y aurait
+    // vécu le temps d'un battement — et le défaut serait apparu non pas tout de
+    // suite, mais à la deuxième question, c'est-à-dire chez l'élève.
+    const src = sansCommentaires(lire('js/core/runner.js'));
+    const b = src.slice(src.indexOf('    montrerLaBulle(step)'));
+    const corps = b.slice(0, b.indexOf('\n    }'));
+    assert.match(corps, /parentNode\.insertBefore\(bulle, plateau\)/,
+        'la bulle serait effacée par le premier dessin du jeu');
+    assert.doesNotMatch(corps, /plateau\.appendChild|plateau\.innerHTML/);
+    // ELLE S'ANNONCE AUX LECTEURS D'ÉCRAN : elle arrive EN MÊME TEMPS que
+    // l'exercice, donc sans annonce elle passe inaperçue — on lit la question,
+    // jamais ce qui l'explique.
+    assert.match(corps, /aria-live/);
+    // ET ELLE NE SURVIT PAS À L'ÉTAPE QU'ELLE SURMONTE.
+    const f = src.slice(src.indexOf('    async runStep()'));
+    assert.match(f.slice(0, 400), /this\.effacerLaBulle\(\);/,
+        'la bulle d\'une étape resterait au-dessus de la suivante');
+});
+
+test('LA BULLE DÉSIGNE L\'EXERCICE QUE L\'ÉLÈVE VERRA VRAIMENT', () => {
+    // `etapeApres` saute ce que le meneur saute de toute façon — récompenses et
+    // étapes facultatives. Sans cela, un mot suivi d'un jeu de récompense se
+    // serait affiché au-dessus d'un écran que personne n'atteint.
+    const src = sansCommentaires(lire('js/core/runner.js'));
+    const e = src.slice(src.indexOf('    etapeApres(depuis)'));
+    const corps = e.slice(0, e.indexOf('\n    }'));
+    assert.match(corps, /!s\.bonus && !s\.facultatif/,
+        'la bulle surmonterait une étape que le meneur saute');
+});
+
+// ──────────────────────────────── LE MOT VIDE ───────────────────────────────
+
+test('UN MOT VIDE N\'EST PAS UNE ÉTAPE — mesuré dans la séance de Rémy', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // SA SÉANCE « Relatifs » EN PORTAIT UN : `{ titre: '', texte: '' }`. À
+    // l'exécution, c'était une étape de plus dans le fil, un écran avec une
+    // bulle de bande dessinée, aucun texte, et un bouton « J'ai compris » sous
+    // le vide. L'élève aurait cherché ce qu'il devait comprendre.
+    const p = makePath('Avec un vide', [
+        makeStep('calc-add', {}, { stepId: 'x', nbItems: 3 }),
+        makeMessage({ titre: '', texte: '' }, { stepId: 'vide' }),
+        makeMessage({ titre: '', texte: '   \n  ' }, { stepId: 'blanc' }),
+        makeMessage({ titre: 'Un titre seul', texte: '' }, { stepId: 'titre' }),
+        makeMessage({ titre: '', texte: 'Du texte seul' }, { stepId: 'texte' })
+    ]);
+    const rangs = (hydratePath(p).steps || []).map((s) => s.stepId);
+    assert.deepEqual(rangs, ['x', 'titre', 'texte'],
+        'un mot sans titre ni texte arrive jusqu\'à l\'élève');
+    // ON NE L'EFFACE PAS DE L'ATELIER POUR AUTANT : c'est peut-être un mot que
+    // Rémy allait écrire, et le faire disparaître sous ses doigts serait pire
+    // que de le laisser. `normalizePath` le garde donc.
+    const garde = (normalizePath(p).steps || []).map((s) => s.stepId);
+    assert.ok(garde.includes('vide'),
+        'la ligne disparaîtrait de l\'atelier pendant qu\'on l\'écrit');
 });
 
 test('LE MOT SE RELIT DEPUIS LE FIL, MÊME POUR L\'ÉLÈVE', () => {

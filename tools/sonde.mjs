@@ -73,7 +73,13 @@ export async function ouvrirSonde(o = {}) {
     const nav = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
     const ctx = await nav.newContext({
         viewport: { width: largeur, height: hauteur },
-        deviceScaleFactor: 2, hasTouch: doigt, isMobile: doigt
+        deviceScaleFactor: 2, hasTouch: doigt, isMobile: doigt,
+        // LES TÉLÉCHARGEMENTS SONT ACCEPTÉS, ET ÉCRIT NOIR SUR BLANC. Playwright
+        // les accepte par défaut aujourd'hui — mais une sonde qui mesure un
+        // export (voir `gestionParcours.mjs`) dépend de ce défaut, et un défaut
+        // dont on dépend sans le dire se retourne un jour contre nous, sous la
+        // forme d'un `waitForEvent('download')` qui expire sans raison visible.
+        acceptDownloads: true
     });
     const page = await ctx.newPage();
 
@@ -149,6 +155,39 @@ export async function ouvrirSonde(o = {}) {
             await reposerLeTheme();
             await dormir(500);
             return dit;
+        },
+
+        /**
+         * CE SÉLECTEUR DÉSIGNE-T-IL QUELQUE CHOSE ? Et si non, on le dit FORT.
+         *
+         * ── LA FRICTION QUE CET OUTIL FERME, ET QU'ON A PAYÉE QUINZE FOIS ──
+         *
+         * Une sonde qui interroge un crochet inventé ne reçoit pas d'erreur :
+         * elle reçoit `false`, `0`, `''` — c'est-à-dire la MÊME réponse qu'un
+         * logiciel cassé. On cherche alors le défaut dans le code pendant
+         * vingt minutes, et il était dans la question. Relevé dans ce dépôt
+         * sur `.modal-title` (qui existe mais vide), `.icon-btn` (c'est
+         * `.btn-icon`), `:nth-of-type(2)` (compte les frères, pas les
+         * classes), `#game-board .question-text` (c'est `.game-question`)…
+         *
+         * ON NE DEVINE PLUS ET ON NE SE TAIT PLUS : cette fonction rend le
+         * nombre d'éléments trouvés, et JETTE quand c'est zéro. Une sonde qui
+         * s'arrête sur « ce crochet ne désigne rien » coûte dix secondes ; une
+         * sonde qui répond `false` en coûte vingt minutes.
+         *
+         * @param {string} selecteur
+         * @param {string} [pourquoi] ce qu'on croyait mesurer, pour le message
+         * @returns {Promise<number>} combien d'éléments, au moins 1
+         */
+        async doitExister(selecteur, pourquoi = '') {
+            const n = await page.evaluate((s) => document.querySelectorAll(s).length, selecteur);
+            if (!n) {
+                throw new Error(`le crochet « ${selecteur} » ne désigne RIEN dans la page`
+                    + `${pourquoi ? ' (' + pourquoi + ')' : ''}.`
+                    + ' Lire la source plutôt que deviner : un crochet inventé rend la'
+                    + ' même réponse qu\'un logiciel cassé.');
+            }
+            return n;
         },
 
         /** Bascule un thème (ou revient au thème clair avec `null`). */

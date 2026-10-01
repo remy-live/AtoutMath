@@ -2047,12 +2047,8 @@ async function demanderLAuditoire(force = false) {
         const { aQuiEstDonne } = await import('../core/parcoursServeur.js');
         const r = await aQuiEstDonne(p);
         auditoire = { id, classes: r.classes || [], eleves: r.eleves || [] };
-        // ON RETIENT LE COMPTE POUR LA CORBEILLE. Avant de jeter un parcours,
-        // l'écran doit pouvoir dire « celui-ci a déjà été donné » — Rémy : « on
-        // prévient, et on garde le bilan ». On ne le redemande pas pour trente
-        // parcours à la fois : ce qu'on sait, on le dit ; ce qu'on ignore, on
-        // se tait plutôt que d'affirmer « jamais donné ».
-        auditoires.set(id, (r.classes || []).length + (r.eleves || []).length);
+        // CE QUI A DÉJÀ ÉTÉ DONNÉ N'EST PLUS RETENU ICI : voir `combienDonne`
+        // dans `parcoursServeur.js`, et le commentaire qui l'ouvre.
     } catch (e) {
         // PAS DE RÉSEAU, PAS DE BADGE — et surtout pas de badge qui MENT.
         // « Donné à personne » sur une séance en cours serait pire que rien.
@@ -2196,15 +2192,6 @@ let pbTri = 'recent';
 let pbRecherche = '';
 /** Dans quel ordre on lit chaque pile. Rémy : « plusieurs rangements possibles ». */
 let pbOrdre = 'recent';
-/**
- * COMBIEN DE CLASSES ONT REÇU CE PARCOURS — appris du serveur, pas deviné.
- *
- * Ce navigateur ne sait rien de ce qui a été donné depuis l'autre poste. Le
- * compte sert à AVERTIR avant de jeter, et c'est ce que Rémy a demandé : « on
- * prévient, et on garde le bilan ».
- */
-const auditoires = new Map();
-
 /** Changer de rangement, boutons compris : deux états qui divergent mentent. */
 function reglerLeTri(tri) {
     pbTri = tri;
@@ -2233,8 +2220,6 @@ export function renderPathBrowser() {
         resumeur: (p) => resumeDeParcours(p, normalizePath, getExerciseById)
     });
     brancherLesGestesDesCoches();
-    majBarreDesCoches();
-    majLeBoutonCorbeille();
 
     if (!vue.sections.length) {
         const vide = document.createElement('div');
@@ -2485,237 +2470,29 @@ function brancherLaBarre() {
  * n'ajoute pas. C'est toute la différence avec `addEventListener`, et c'est
  * pourquoi ce fichier emploie l'un et pas l'autre.
  */
+/**
+ * GÉRER — la fenêtre au large, et non une barre dans une colonne.
+ *
+ * Rémy : « tu peux pas faire mieux ou ouvrir une modale, je trouve que c'est un
+ * peu bricolé, on ne peut faire des cadre de sélection, utiliser shift ou cmd ».
+ *
+ * Cocher, ranger en bloc, jeter en bloc et la corbeille ont quitté ce fichier :
+ * ils vivent dans `js/ui/gererParcours.js`, avec la sélection que tout le monde
+ * connaît — clic, Maj, Ctrl/Cmd, Ctrl+A, et le cadre qu'on tire. Le tiroir, lui,
+ * fait ce qu'il fait bien : chercher un parcours et l'ouvrir.
+ */
 function brancherLesGestesDesCoches() {
-    const barre = document.getElementById('pb-selection');
-    if (barre) {
-        barre.onclick = (ev) => {
-            if (!ev.target.closest) return;
-            if (ev.target.closest('[data-pb-rien]')) { cochesParcours.clear(); return renderPathBrowser(); }
-            if (ev.target.closest('[data-pb-jeter]')) return jeterLesCoches();
-            if (ev.target.closest('[data-pb-ranger]')) return rangerLesCoches();
-        };
-    }
-    const corbeille = document.getElementById('btn-corbeille');
-    if (corbeille) corbeille.onclick = ouvrirLaCorbeille;
     const ordre = document.getElementById('pb-ordre');
     if (ordre && !ordre.onchange) {
         ordre.value = pbOrdre;
         ordre.onchange = () => { pbOrdre = ordre.value; renderPathBrowser(); };
     }
-}
-
-/**
- * LES PARCOURS COCHÉS — le motif est celui du direct, et ce n'est pas un hasard.
- *
- * RÉMY : « il me faudrait clairement un gestionnaire de parcours pour en
- * sélectionner plusieurs les trier les classer […] supprimer en bloc ».
- *
- * ON REPREND LE MOTIF DÉJÀ ÉPROUVÉ AU DOIGT dans « Le direct » sur les élèves
- * (`ui/espaceClasses.js`) : un `Set` d'identifiants, une enveloppe de 44 px qui
- * porte le geste, la case en `pointer-events: none` pour qu'un seul événement
- * parte, et une barre qui dit COMBIEN. Un second motif de sélection dans le
- * même logiciel, ce serait deux façons de cocher à apprendre.
- *
- * LE `Set` PEUT CONTENIR DES FANTÔMES, et c'est la LECTURE qui nettoie : un
- * parcours coché puis jeté depuis un autre poste ne doit pas faire échouer le
- * geste suivant.
- */
-// LE NOM EST `cochesParcours` ET NON `coches` : ce fichier porte DÉJÀ un `Set`
-// nommé `coches`, pour les ÉTAPES du parcours ouvert. Deux sélections
-// différentes vivent dans le même écran — les étapes à droite, les parcours
-// dans le tiroir — et `node --check` a refusé le fichier avant moi, ce qui
-// valait mieux : un `coches` ambigu aurait fini par cocher les mauvais.
-const cochesParcours = new Set();
-
-function cochesVivants() {
-    const vus = new Set((state.teacherPaths || []).map(p => p && p.id));
-    return [...cochesParcours].filter(id => vus.has(id));
-}
-
-/** Ce qu'on écrit dans la barre, et elle n'apparaît que s'il y a de quoi. */
-/**
- * LE BOUTON DE LA CORBEILLE NE S'AFFICHE QUE S'IL Y A QUELQUE CHOSE DEDANS.
- *
- * Une corbeille vide en permanence est un bouton qu'on apprend à ne plus voir —
- * et le jour où elle contient ce qu'on cherche, on ne le voit pas non plus.
- *
- * ON DEMANDE AU SERVEUR, mais pas à chaque frappe dans le champ de recherche :
- * le compte est mis en cache et rafraîchi quand la bibliothèque bouge.
- */
-let corbeilleCombien = null;
-function majLeBoutonCorbeille() {
-    const b = document.getElementById('btn-corbeille');
-    if (!b) return;
-    const peindre = () => {
-        b.hidden = !corbeilleCombien;
-        const n = b.querySelector('[data-corbeille-combien]');
-        if (n) n.textContent = corbeilleCombien ? `(${corbeilleCombien})` : '';
-    };
-    if (corbeilleCombien !== null) return peindre();
-    corbeilleCombien = 0;
-    auServeurDesParcours().then(({ laCorbeille }) => laCorbeille())
-        .then(({ parcours, jours }) => {
-            corbeilleCombien = (parcours || []).length;
-            if (jours) joursDeLaCorbeille = jours;
-            peindre();
-        })
-        .catch(() => { /* sans serveur, pas de corbeille : rien à montrer */ });
-    peindre();
-}
-
-/** À rappeler quand la corbeille a pu changer : le compte se redemande. */
-function oublierLeCompteDeLaCorbeille() { corbeilleCombien = null; }
-
-function majBarreDesCoches() {
-    const barre = document.getElementById('pb-selection');
-    if (!barre) return;
-    const n = cochesVivants().length;
-    barre.hidden = n === 0;
-    const compte = barre.querySelector('[data-pb-combien]');
-    if (compte) compte.textContent = n === 1 ? '1 parcours coché' : `${n} parcours cochés`;
-}
-
-/**
- * METTRE LES COCHÉS À LA CORBEILLE.
- *
- * ON DIT CE QU'ON JETTE, ET ON NOMME CE QUI A SERVI. Rémy, interrogé sur un
- * parcours déjà donné à une classe : « on prévient, et on garde le bilan ».
- * Le compte des séances données vient du serveur (`donne`), parce que ce
- * navigateur-ci ne sait pas ce qui a été donné depuis l'autre.
- */
-/**
- * COMBIEN DE JOURS LA CORBEILLE GARDE — demandé au serveur, jamais recopié.
- *
- * C'est LUI qui efface (voir `purgerSiNecessaire`). Écrire « 30 » dans cet
- * écran, c'est accepter qu'un jour il dise trente pendant que le serveur en
- * compte quinze.
- */
-let joursDeLaCorbeille = 30;
-
-/**
- * LE RACCORDEMENT AU SERVEUR SE CHARGE À LA DEMANDE, comme partout dans ce
- * fichier (`aQuiEstDonne` fait déjà ainsi). L'atelier doit pouvoir s'ouvrir
- * sans réseau et sans jeton : rien de tout cela n'est nécessaire pour bâtir un
- * parcours, et seuls ces quatre gestes-ci en ont besoin.
- */
-const auServeurDesParcours = () => import('../core/parcoursServeur.js');
-
-async function jeterLesCoches() {
-    const ids = cochesVivants();
-    if (!ids.length) return;
-    const noms = ids.map(id => (state.teacherPaths.find(p => p.id === id) || {}).name || '?');
-    const donnes = ids.filter(id => (auditoires.get(id) || 0) > 0).length;
-    const quoi = ids.length === 1 ? `« ${noms[0]} »` : `${ids.length} parcours`;
-    const avertir = donnes
-        ? `<br><br>${donnes === 1 ? 'L\'un d\'eux a' : `${donnes} d\'entre eux ont`}`
-          + ` déjà été donné${donnes > 1 ? 's' : ''} à une classe. Le travail des élèves`
-          + ' et leur bilan restent lisibles.'
-        : '';
-    // `showConfirm(message, onConfirm, opts)` — LE MESSAGE D'ABORD, ET LE TITRE
-    // DANS LES OPTIONS. Ma première version lui passait un titre et du HTML,
-    // comme `showModal` : la fenêtre s'ouvrait avec le titre en guise de texte
-    // et le rappel en guise de HTML, et le geste ne partait jamais. La sonde a
-    // dit « on ne demande pas avant de jeter » ; c'était pire, on ne jetait pas.
-    const ok = await new Promise((repondre) => {
-        showConfirm(
-            `${quoi} ${ids.length === 1 ? 'part' : 'partent'} à la corbeille.<br><br>`
-            + `Vous pourrez ${ids.length === 1 ? 'l\'' : 'les '}en ressortir pendant `
-            + `${joursDeLaCorbeille} jours.${avertir}`,
-            () => repondre(true),
-            { titre: 'Mettre à la corbeille', bouton: 'Mettre à la corbeille',
-              onCancel: () => repondre(false) });
-    });
-    if (!ok) return;
-    const { jeterALaCorbeille } = await auServeurDesParcours();
-    const r = await jeterALaCorbeille(ids);
-    if (r.erreur) return showToast(r.erreur, 'error', 6000);
-    cochesParcours.clear();
-    oublierLeCompteDeLaCorbeille();
-    renderPathBrowser();
-    showToast(`🗑 ${r.combien} parcours à la corbeille.`, 'success', 4000);
-}
-
-/** LES RANGER D'UN COUP dans un dossier — le glisser ne vaut pas pour douze. */
-async function rangerLesCoches() {
-    const ids = cochesVivants();
-    if (!ids.length) return;
-    const dossiers = state.teacherFolders || [];
-    const choix = [{ id: 'root', name: 'À la racine (hors dossier)' }, ...dossiers];
-    const modal = showModal('Ranger dans…', `
-        <div class="ec-choix-liste">${choix.map(f =>
-        `<button type="button" class="ec-choix-ligne" data-dossier="${escapeHtml(f.id)}">
-             <b>${escapeHtml(f.name)}</b></button>`).join('')}</div>
-        ${dossiers.length ? '' : '<p class="ec-note">Aucun dossier pour l\'instant : '
-        + 'créez-en un avec « + Dossier ».</p>'}`, { width: '420px' });
-    modal.element.onclick = (ev) => {
-        const b = ev.target.closest('[data-dossier]');
-        if (!b) return;
-        ids.forEach(id => state.moveTeacherPath(id, b.dataset.dossier));
-        modal.close();
-        cochesParcours.clear();
-        reglerLeTri('dossiers');
-        renderPathBrowser();
-        showToast(`${ids.length} parcours rangé${ids.length > 1 ? 's' : ''}.`, 'success', 3500);
-    };
-}
-
-/**
- * LA CORBEILLE — ce qu'on y voit, et ce qu'on peut en faire.
- *
- * ELLE VIENT DU SERVEUR À CHAQUE OUVERTURE, et non d'une copie locale : un
- * parcours jeté depuis le poste de la salle doit s'y trouver quand on l'ouvre
- * depuis chez soi. C'est tout l'intérêt d'une corbeille rangée là-bas.
- */
-async function ouvrirLaCorbeille() {
-    const { laCorbeille, sortirDeLaCorbeille, viderLaCorbeille } = await auServeurDesParcours();
-    const { parcours, jours, erreur } = await laCorbeille();
-    if (erreur) return showToast(erreur, 'error', 6000);
-    if (jours) joursDeLaCorbeille = jours;
-    const modal = showModal('La corbeille', `
-        <p class="ec-note">Un parcours reste ici ${jours} jours, puis s'efface
-           tout seul. Les séances déjà faites par les élèves restent au bilan.</p>
-        <div id="corbeille-liste" class="ec-choix-liste">${
-        parcours.length ? parcours.map(p => `
-            <button type="button" class="ec-choix-ligne" data-sortir="${escapeHtml(p.id)}">
-                <b>${escapeHtml(p.name || 'Sans nom')}</b>
-                <span class="ec-note">jeté ${quandLisible(instantDe(p.supprime_le))} — le remettre</span>
-            </button>`).join('')
-        : '<p class="ec-note">La corbeille est vide.</p>'}</div>
-        ${parcours.length ? `<div class="ec-seance-gestes">
-            <button type="button" class="ec-bouton ec-bouton--rouge" id="corbeille-vider"
-                    >Vider la corbeille (${parcours.length})</button>
-        </div>` : ''}`, { width: '480px' });
-
-    modal.element.onclick = async (ev) => {
-        const remettre = ev.target.closest('[data-sortir]');
-        if (remettre) {
-            const r = await sortirDeLaCorbeille([remettre.dataset.sortir]);
-            modal.close();
-            oublierLeCompteDeLaCorbeille();
-            renderPathBrowser();
-            return showToast(r.erreur || '↩ Parcours remis dans la bibliothèque.',
-                r.erreur ? 'error' : 'success', 4000);
-        }
-        if (ev.target.closest('#corbeille-vider')) {
-            // ON EFFACE POUR DE BON, DONC ON LE DEMANDE UNE SECONDE FOIS. C'est
-            // le seul geste du logiciel qui détruit un parcours sans retour.
-            const ok = await new Promise((repondre) => {
-                showConfirm(
-                    `Les ${parcours.length} parcours de la corbeille seront effacés `
-                    + '<b>définitivement</b>.<br><br>Ce geste ne s\'annule pas.',
-                    () => repondre(true),
-                    { titre: 'Vider la corbeille', bouton: 'Vider',
-                      onCancel: () => repondre(false) });
-            });
-            if (!ok) return;
-            const r = await viderLaCorbeille();
-            modal.close();
-            oublierLeCompteDeLaCorbeille();
-            renderPathBrowser();
-            showToast(r.erreur || `🗑 Corbeille vidée (${r.combien || 0}).`,
-                r.erreur ? 'error' : 'success', 4000);
-        }
-    };
+    const gerer = document.getElementById('btn-gerer-parcours');
+    if (gerer && !gerer.onclick) {
+        gerer.onclick = () => import('./gererParcours.js')
+            .then((m) => m.ouvrirLeGestionnaire())
+            .catch(() => showToast('La gestion des parcours n\'a pas pu s\'ouvrir.', 'error', 5000));
+    }
 }
 
 function pathItem(p, resume = null) {
@@ -2726,39 +2503,16 @@ function pathItem(p, resume = null) {
     row.dataset.parcours = p.id;
     row.draggable = true;
 
-    // LA CASE À COCHER, DEVANT, ET HORS DU GESTE QUI OUVRE.
+    // LES CASES À COCHER ONT QUITTÉ LE TIROIR.
     //
-    // Même motif que « Le direct » sur les élèves : une enveloppe de 44 px qui
-    // porte le geste, la case elle-même en `pointer-events: none` pour qu'un
-    // seul événement parte. Et `stopPropagation`, sans quoi cocher ouvrirait
-    // aussi le parcours — c'est-à-dire que cocher dix parcours en ouvrirait dix.
-    const enveloppe = document.createElement('span');
-    enveloppe.className = 'ec-choix pb-choix';
-    enveloppe.innerHTML = `<input type="checkbox" tabindex="-1" aria-hidden="true">`;
-    const laCase = enveloppe.querySelector('input');
-    laCase.checked = cochesParcours.has(p.id);
-    enveloppe.setAttribute('role', 'checkbox');
-    enveloppe.setAttribute('tabindex', '0');
-    enveloppe.setAttribute('aria-checked', laCase.checked ? 'true' : 'false');
-    enveloppe.setAttribute('aria-label', `Cocher ${p.name}`);
-    const basculer = (e) => {
-        e.stopPropagation();
-        if (cochesParcours.has(p.id)) cochesParcours.delete(p.id);
-        else cochesParcours.add(p.id);
-        laCase.checked = cochesParcours.has(p.id);
-        enveloppe.setAttribute('aria-checked', laCase.checked ? 'true' : 'false');
-        row.classList.toggle('path-browser-item--coche', laCase.checked);
-        // ON NE REDESSINE PAS LA LISTE : cocher dix parcours de suite
-        // refabriquerait dix fois trente lignes, et la case suivante
-        // sauterait sous le doigt.
-        majBarreDesCoches();
-    };
-    enveloppe.onclick = basculer;
-    enveloppe.onkeydown = (e) => {
-        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); basculer(e); }
-    };
-    if (laCase.checked) row.classList.add('path-browser-item--coche');
-    row.appendChild(enveloppe);
+    // Rémy : « tu peux pas faire mieux ou ouvrir une modale, je trouve que
+    // c'est un peu bricolé ». Une case par ligne et une barre d'actions
+    // au-dessus, dans une colonne de trois cents pixels : la barre se repliait
+    // sur trois lignes, et le tiroir ne servait plus à ce pour quoi il existe.
+    //
+    // LE TIROIR CHERCHE ET OUVRE. Gérer — comparer cinquante lignes, en prendre
+    // vingt, les ranger — se fait dans « Gérer mes parcours », au large, avec
+    // Maj, Ctrl et le cadre qu'on tire. Voir `js/ui/gererParcours.js`.
     row.ondragstart = (e) => { e.dataTransfer.setData('text/plain', p.id); row.style.opacity = '0.5'; };
     row.ondragend = () => { row.style.opacity = '1'; };
 

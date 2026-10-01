@@ -71,8 +71,14 @@ await s.identifier();                       // s'identifie PUIS recharge
 await s.ouvrirExercice('calc-add');         // monte le meneur, clique « JOUER »
 await s.photo('.title', 'tools/tmp/t.png'); // découpe la page, dit si l'image est UNIE
 await s.contrasteRendu('.title');           // sur les PIXELS, donc lit les color-mix
+await s.doitExister('.game-question');      // JETTE si le crochet ne désigne rien
 await s.fermer();                           // ne tue que SON serveur
 ```
+
+`doitExister` ferme la friction la plus chère du dépôt : **un sélecteur inventé
+rend `false`, c'est-à-dire la même réponse qu'un logiciel cassé** — on cherche
+alors le défaut dans le code pendant vingt minutes. Quinze occurrences avant
+lui. On l'emploie sur tout crochet qu'on n'a pas LU dans la source.
 
 `s.page` reste la page Playwright pour tout le reste ; `s.erreurs` et
 `s.fenetresNatives` se remplissent tout seuls.
@@ -108,6 +114,26 @@ node tools/epreuveTombe.mjs <essai> <source> --depuis <paires.json>   # multilig
 
 Il remet le défaut dans le code, relance l'épreuve, **exige qu'elle tombe**, et
 remet le fichier comme il était quoi qu'il arrive.
+
+## 3 bis. Quand Rémy envoie une de ses séances
+
+> « je peux te donner ma séance et tu vérifies si tout est ok. »
+
+```sh
+node tools/relireUneSeance.mjs <fichier.json>
+```
+
+Il accepte ce que le logiciel accepte (`lireLeFichier`) : enveloppe de
+bibliothèque, parcours nu, fichier exporté par « Gérer ». Il dit les étapes
+déclarées **et** celles réellement traversées — la différence est toujours
+intéressante —, le total, le barème, la durée estimée, puis il avertit sur ce
+qui se voit mal : un mot vide, un mot resté en dernière position, un seuil
+au-dessus du nombre de questions, un exercice disparu du catalogue, une séance
+qui déborde de l'heure. Il ne juge pas le CHOIX des exercices : c'est le métier
+de Rémy.
+
+C'est ainsi qu'on a trouvé, dans sa séance « Relatifs », un mot aux titre et
+texte vides — invisible dans une liste de seize lignes.
 
 ## 4 bis. Avant d'ajouter un exercice au catalogue
 

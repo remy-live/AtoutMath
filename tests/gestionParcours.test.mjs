@@ -26,12 +26,21 @@
 // prévient, et on garde le bilan ». Trente jours, puis la purge quotidienne
 // efface — « il y reste 30 jours, puis part tout seul ».
 //
-// MESURÉ APRÈS (`tools/gestionParcours.mjs`, 16 vérifications) : les quatre
-// rangements changent l'ordre affiché et l'en-tête l'annonce ; cocher deux
-// parcours fait apparaître la barre sans ouvrir aucun des deux ; « Mettre à la
-// corbeille » demande, puis les retire de la liste ; après rechargement ils ne
-// reviennent pas ; la corbeille les montre ; et l'un d'eux ressorti revient
-// dans la bibliothèque. 0 erreur de page.
+// ── ET POURQUOI UNE FENÊTRE, ET NON UNE BARRE À CASES ──────────────────────
+//
+// RÉMY, devant le premier écran : « tu peux pas faire mieux ou ouvrir une
+// modale, je trouve que c'est un peu bricolé, on ne peut faire des cadre de
+// sélection, utiliser shift ou cmd ». Les cases à cocher et la barre ont donc
+// quitté le tiroir de trois cents pixels pour `js/ui/gererParcours.js`.
+//
+// MESURÉ APRÈS (`tools/gestionParcours.mjs`, 31 vérifications) : les trois
+// colonnes rangent et la colonne active porte sa marque ; un clic prend une
+// ligne sans ouvrir le parcours ; Maj prend la suite PUIS la rétrécit ; Ctrl
+// et Cmd en ajoutent une ; Ctrl+A prend tout ; un cadre tiré depuis une ligne
+// prend ce qu'il touche, rend ce qu'il quitte, et le clic du relâchement ne
+// l'avale pas ; « Mettre à la corbeille » demande en annonçant trente jours,
+// puis les deux quittent la liste, se retrouvent dans la corbeille, et l'un
+// ressorti revient. 0 erreur de page, 0 fenêtre native.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -123,7 +132,7 @@ test('LA ROUTE SAIT JETER, RESTAURER ET VIDER — ET SEULEMENT SES PROPRES PARCO
     assert.match(corps, /array_slice\(\$ids, 0, 200\)/,
         'une liste sans fin n\'est pas une liste, c\'est une surface d\'attaque');
     // ET LA LISTE NE REND QUE LES VIVANTS, la corbeille à part.
-    assert.match(corps, /AND supprime_le IS NULL/,
+    assert.match(corps, /AND (?:p\.)?supprime_le IS NULL/,
         'les parcours jetés redescendraient avec les autres');
     assert.match(corps, /'corbeille' => \$c->fetchAll\(\)/);
     assert.match(corps, /'joursCorbeille' => JOURS_CORBEILLE/,
@@ -175,45 +184,147 @@ test('CE QUI EST JETÉ AILLEURS S\'EN VA DE CETTE MACHINE AUSSI', () => {
 
 // ───────────────────────────────────────────── L'ÉCRAN ──────────────────────
 
-test('COCHER NE DOIT PAS OUVRIR LE PARCOURS', () => {
-    // La ligne entière est un bouton qui OUVRE. Sans `stopPropagation`, cocher
-    // dix parcours en ouvrirait dix — et le dixième écraserait l'éditeur.
-    const b = sansCommentaires(lire('js/ui/builder.js'));
-    const f = b.slice(b.indexOf('const basculer = (e) =>'));
-    assert.match(f.slice(0, 200), /e\.stopPropagation\(\)/,
-        'cocher ouvrirait aussi le parcours');
-});
-
-test('LA SÉLECTION DES PARCOURS NE S\'APPELLE PAS COMME CELLE DES ÉTAPES', () => {
-    // `node --check` a refusé le fichier avant moi : `coches` existait DÉJÀ,
-    // pour les étapes du parcours ouvert. Deux sélections vivent dans le même
-    // écran, et un nom ambigu aurait fini par cocher les mauvais.
-    const b = lire('js/ui/builder.js');
-    assert.match(b, /const cochesParcours = new Set\(\);/);
-    assert.match(b, /let coches = new Set\(\)|const coches = new Set\(\)/,
-        'la sélection des étapes a disparu');
-});
-
-test('LA BARRE DES COCHÉS SE BRANCHE À CHAQUE RENDU, PAS UNE SEULE FOIS', () => {
+test('LE TIROIR N\'A PLUS NI CASES À COCHER NI BARRE D\'ACTIONS', () => {
     // ─────────────────────────────────────────────────────────────────────
-    // MESURÉ : `brancherLaBarre()` ne s'exécute QU'UNE FOIS, et ce passage a
-    // lieu avant que la barre n'existe. La sonde a trouvé la barre en place,
-    // dans le bon tiroir, avec son bouton dedans — et `barre.onclick` à
-    // `false`. Le clic sur « Mettre à la corbeille » n'allait nulle part, en
-    // silence.
+    // RÉMY A PHOTOGRAPHIÉ LE DÉFAUT : trois boutons repliés sur trois lignes
+    // dans une colonne de trois cents pixels. « je trouve que c'est un peu
+    // bricolé ». La cause n'était pas le dessin, c'était la LARGEUR — gérer
+    // demande de voir cinquante lignes d'un coup.
+    //
+    // CETTE ÉPREUVE GARDE UNE SUPPRESSION, ce qui est le plus facile à défaire
+    // sans y penser : il suffit d'un copier-coller depuis l'historique pour que
+    // les deux écrans réapparaissent côte à côte, chacun avec sa sélection.
     const b = sansCommentaires(lire('js/ui/builder.js'));
-    assert.match(b, /function brancherLesGestesDesCoches/);
-    const rendu = b.slice(b.indexOf('export function renderPathBrowser'));
-    assert.match(rendu.slice(0, 1200), /brancherLesGestesDesCoches\(\);/,
-        'la barre ne serait branchée qu\'au premier rendu, donc jamais');
+    assert.doesNotMatch(b, /pb-choix/, 'les cases à cocher sont revenues dans le tiroir');
+    assert.doesNotMatch(b, /pb-selection/, 'la barre d\'actions est revenue dans le tiroir');
+    assert.doesNotMatch(b, /data-pb-jeter|data-pb-ranger/,
+        'les gestes en bloc sont revenus dans le tiroir');
+    const h = sansCommentaires(lire('index.html'));
+    assert.doesNotMatch(h, /id="pb-selection"|id="btn-corbeille"/,
+        'le gabarit porte encore la barre');
+    // ET LE TÉMOIN, SANS QUOI CETTE ÉPREUVE PASSERAIT AU VERT SUR UN TIROIR
+    // DONT ON AURAIT RETIRÉ LA GESTION TOUT ENTIÈRE.
+    assert.match(h, /id="btn-gerer-parcours"/, 'plus aucune porte vers la gestion');
+    assert.match(b, /btn-gerer-parcours/);
+    assert.match(b, /gererParcours\.js/, 'le bouton « Gérer » n\'ouvre rien');
+});
+
+test('LE CADRE PEUT PARTIR D\'UNE LIGNE, SANS QUOI IL NE PART DE NULLE PART', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // MESURÉ (`tools/gestionParcours.mjs`) : « il reste 1 px de vide sous la
+    // dernière ligne ». Le cadre ne démarrait que sur du vide — il n'y en a
+    // plus dès sept parcours, et le geste que Rémy a demandé devenait
+    // impossible à amorcer EXACTEMENT quand il sert : sur une bibliothèque
+    // remplie. Une liste courte se clique ; c'est la longue qui a besoin d'un
+    // cadre.
+    //
+    // CE QUI L'INTERDISAIT était la crainte de confondre avec un
+    // glisser-déposer. Il n'y en a pas dans cette fenêtre : la crainte venait
+    // du tiroir, recopiée ici sans sa raison.
+    const g = sansCommentaires(lire('js/ui/gererParcours.js'));
+    const appui = g.slice(g.indexOf('liste.onmousedown'), g.indexOf('liste.onmousemove'));
+    assert.doesNotMatch(appui, /closest\('\.gp-ligne/,
+        'le cadre refuse à nouveau de partir d\'une ligne');
+    // MAIS PAS DEPUIS L'EN-TÊTE : un cadre tiré depuis un titre de colonne
+    // serait un clic de tri raté.
+    assert.match(appui, /closest\('\.gp-tete'\)/, 'un cadre partirait de l\'en-tête');
+});
+
+test('UN APPUI IMMOBILE RESTE UN CLIC, ET C\'EST LE GESTE LE PLUS FRÉQUENT', () => {
+    // Si deux pixels de tremblement ouvraient un cadre, chaque clic de Rémy
+    // deviendrait une sélection d'une ligne par accident — le cadre
+    // « marcherait » et l'écran serait inutilisable.
+    const g = sansCommentaires(lire('js/ui/gererParcours.js'));
+    assert.match(g, /const SEUIL_DU_CADRE = \d+;/, 'plus de seuil : tout appui tire un cadre');
+    const bouge = g.slice(g.indexOf('liste.onmousemove'), g.indexOf('const finirLeCadre'));
+    assert.match(bouge, /if \(!tire\)[\s\S]{0,160}SEUIL_DU_CADRE[\s\S]{0,60}return;/,
+        'le cadre s\'ouvre avant d\'avoir franchi le seuil');
+    assert.match(bouge, /tire = true;/);
+});
+
+test('LE CLIC QUI SUIT UN CADRE EST AVALÉ, SINON LE CADRE EST PERDU EN LÂCHANT', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // LE DÉFAUT QUE LE CADRE PARTANT D'UNE LIGNE REND POSSIBLE : le navigateur
+    // envoie un `click` après le `mouseup`, sur la ligne où l'on a relâché.
+    // Sans ce garde-fou, `onclick` ramènerait la sélection à cette seule
+    // ligne — vingt parcours encadrés, un seul pris, et rien à l'écran pour
+    // expliquer pourquoi.
+    const g = sansCommentaires(lire('js/ui/gererParcours.js'));
+    const clic = g.slice(g.indexOf('liste.onclick'), g.indexOf('liste.onkeydown'));
+    assert.match(clic.slice(0, 220), /if \(avalerLeClic\)[\s\S]{0,80}return;/,
+        'le clic du relâchement n\'est plus avalé : le cadre se perd en lâchant');
+    const finir = g.slice(g.indexOf('const finirLeCadre'), g.indexOf('liste.onmouseup'));
+    assert.match(finir, /avalerLeClic = tire;/,
+        'on avalerait aussi le clic d\'un appui immobile, qui doit sélectionner');
+});
+
+test('LE CADRE SE RECALCULE DEPUIS SON DÉPART, IL N\'EMPILE PAS', () => {
+    // Un cadre qui ne sait que GRANDIR est le même défaut que l'ancre qui
+    // suivait le Maj-clic : on ne peut plus corriger son geste sans tout
+    // recommencer. On repart donc, à chaque mouvement, de ce qui était pris
+    // quand le bouton a été enfoncé.
+    const g = sansCommentaires(lire('js/ui/gererParcours.js'));
+    const bouge = g.slice(g.indexOf('liste.onmousemove'), g.indexOf('const finirLeCadre'));
+    assert.doesNotMatch(bouge, /dansLeCadre\([\s\S]{0,120}\.add\(/,
+        'le cadre ajoute sans jamais retirer');
+    assert.match(bouge, /selection = new Set\(\[\.\.\.priseAuDepart,[\s\S]{0,120}dansLeCadre/,
+        'le cadre ne repart pas de ce qui était pris au départ');
+});
+
+test('LE PIED NE COMPTE QUE CE QUI EST SOUS LES YEUX', () => {
+    // La sélection peut garder des fantômes — une ligne jetée depuis un autre
+    // poste, un filtre qui resserre. « 3 parcours sélectionnés » au-dessus
+    // d'une liste d'une ligne, puis « Mettre à la corbeille » qui en jette un,
+    // c'est le genre de mensonge qui coûte un parcours.
+    const g = sansCommentaires(lire('js/ui/gererParcours.js'));
+    const compte = g.slice(g.indexOf('const direCombien'), g.indexOf('const prises'));
+    assert.match(compte, /filter\(\(id\) => affiches\.some/,
+        'le pied compte des parcours que l\'écran ne montre pas');
+    // ET LE GESTE EN BLOC PART DE LA MÊME LISTE, sans quoi on jetterait les
+    // fantômes que le pied ne comptait pas.
+    assert.match(g, /const prises = \(\) => \[\.\.\.selection\]\.filter\(\(id\) => affiches\.some/);
+});
+
+test('LES DEUX ÉCRANS TRIENT PAR LE MÊME MODULE, ET LA CORBEILLE EST LA MÊME', () => {
+    // Deux façons de trier les mêmes parcours finiraient par ne plus donner le
+    // même ordre, et deux corbeilles par ne plus savoir restaurer. Le tiroir et
+    // la fenêtre importent donc `explorateurParcours` et `corbeilleParcours`.
+    const g = sansCommentaires(lire('js/ui/gererParcours.js'));
+    const b = sansCommentaires(lire('js/ui/builder.js'));
+    assert.match(g, /from '\.\.\/core\/explorateurParcours\.js'/);
+    assert.match(b, /explorateurParcours\.js/);
+    assert.match(g, /corbeilleParcours\.js/);
+    // ET LA FENÊTRE PRÉVIENT LE TIROIR : ils montrent la même bibliothèque, et
+    // un tiroir qui garde un parcours jeté le rouvrirait.
+    assert.match(g, /function rafraichirLeTiroir[\s\S]{0,260}renderPathBrowser/);
 });
 
 test('ON AVERTIT QUAND LE PARCOURS A DÉJÀ SERVI, ET LE BILAN RESTE', () => {
+    // ─────────────────────────────────────────────────────────────────────
     // Rémy : « on prévient, et on garde le bilan ».
-    const b = lire('js/ui/builder.js');
-    assert.match(b, /auditoires/, 'rien ne retient ce qui a déjà été donné');
-    assert.match(b, /bilan restent lisibles/,
-        'on jetterait une séance donnée sans dire ce qu\'il advient du travail');
+    //
+    // L'AVERTISSEMENT A FAILLI DEVENIR MUET EN CHANGEANT D'ÉCRAN. Une `Map`
+    // dans `builder.js` retenait le compte — et ne se remplissait que pour le
+    // parcours OUVERT, donc presque jamais au moment d'en gérer trente. Elle
+    // se serait taue exactement quand elle sert. Le compte vient maintenant du
+    // serveur, avec la liste, en une jointure.
+    const php = lire('api/index.php');
+    assert.match(php, /SELECT COUNT\(\*\) FROM assignments a WHERE a\.path_id = p\.id\) AS donne/,
+        'la liste ne dit plus combien de fois un parcours a été donné');
+    const s = sansCommentaires(lire('js/core/parcoursServeur.js'));
+    assert.match(s, /export async function combienDonne/);
+    const g = sansCommentaires(lire('js/ui/gererParcours.js'));
+    assert.match(g, /combienDonne\(\)/, 'la fenêtre ne demande pas le compte');
+    // ET ELLE LE DIT AVANT DE JETER, en ne le disant QUE quand c'est vrai : une
+    // phrase collée à chaque suppression finit par ne plus être lue.
+    const jeter = g.slice(g.indexOf('[data-gp-jeter]\').onclick'));
+    assert.match(jeter.slice(0, 1400), /const servis = ids\.filter\(\(id\) => donnes\.get\(id\)\)/,
+        'on jetterait une séance donnée sans prévenir');
+    assert.match(jeter.slice(0, 1400), /reste au bilan/,
+        'rien ne dit ce qu\'il advient du travail des élèves');
+    // ET L'ÉCRAN SE TAIT TANT QU'IL NE SAIT PAS : un badge « jamais donné »
+    // faux serait pire que pas de badge. La `Map` part donc vide.
+    assert.match(g, /let donnes = new Map\(\);/);
 });
 
 // ───────────────────────────── L'IDENTIFIANT QUI SE RÉPÉTAIT ────────────────

@@ -286,40 +286,129 @@ await s.page.evaluate(() => {
 });
 await dormir(1400);
 
-const ecran = await s.page.evaluate(() => {
-    const t = document.querySelector('.run-mot-texte');
-    const titre = document.querySelector('.run-mot .run-screen-title');
-    const btn = document.getElementById('btn-run-mot');
-    const cs = t ? getComputedStyle(t) : null;
+// ── LE MOT ARRIVE EN BULLE, AU-DESSUS DE L'EXERCICE QUI LE SUIT ─────────────
+//
+// RÉMY : « pour le message ce serait bien qu'il apparaisse en popup ou une
+// petite bulle au dessus de l'épreuve qui lui suit non ? »
+//
+// CE QUE SEULE CETTE MESURE PEUT DIRE : que la bulle est posée AVANT
+// `#game-board` et non dedans. Tous les jeux vident le plateau en se montant,
+// et beaucoup le revident à chaque question — une bulle rangée dedans aurait
+// vécu le temps d'un battement, et la sonde l'y aurait trouvée si elle avait
+// regardé trop tôt.
+const bulle = await s.page.evaluate(() => {
+    const b = document.getElementById('run-bulle-mot');
+    const plateau = document.getElementById('game-board');
+    const texte = b ? b.querySelector('.run-bulle-texte') : null;
+    const cs = texte ? getComputedStyle(texte) : null;
+    const r = b ? b.getBoundingClientRect() : null;
+    const rp = plateau ? plateau.getBoundingClientRect() : null;
     return {
-        present: !!t,
-        titre: titre ? titre.textContent.trim() : '',
-        texte: t ? t.textContent.replace(/\s+/g, ' ').trim() : '',
-        gras: t ? t.querySelectorAll('b').length : 0,
-        bouton: btn ? btn.textContent.trim() : '',
+        present: !!b,
+        // DANS LE PLATEAU, OU AVANT LUI ? C'est la question qui compte.
+        dedans: !!(b && plateau && plateau.contains(b)),
+        avant: !!(b && plateau && b.compareDocumentPosition(plateau)
+            & Node.DOCUMENT_POSITION_FOLLOWING),
+        titre: (b && b.querySelector('.run-bulle-titre') || {}).textContent || '',
+        texte: texte ? texte.textContent.replace(/\s+/g, ' ').trim() : '',
+        gras: texte ? texte.querySelectorAll('b').length : 0,
         police: cs ? cs.fontFamily : '',
-        aligne: cs ? cs.textAlign : ''
+        aligne: cs ? cs.textAlign : '',
+        // ELLE NE DOIT PAS RECOUVRIR L'EXERCICE : au-dessus veut dire
+        // au-dessus, pas par-dessus.
+        auDessus: !!(r && rp && r.bottom <= rp.top + 2),
+        croix: (() => {
+            const c = b && b.querySelector('.run-bulle-fermer');
+            if (!c) return 0;
+            const g = c.getBoundingClientRect();
+            return Math.round(Math.min(g.width, g.height));
+        })(),
+        // ET L'ÉCRAN PLEIN NE DOIT PLUS ÊTRE LÀ : si les deux s'affichaient,
+        // la sonde dirait « la bulle marche » sur un écran inchangé.
+        ecranPlein: !!document.querySelector('.run-mot-texte'),
+        // LE JEU EST BIEN MONTÉ DERRIÈRE : sans ce témoin, une bulle seule sur
+        // un plateau vide passerait pour un succès.
+        // `.game-question` SE LIT DANS LE PLATEAU, IL NE S'INVENTE PAS. Mes
+        // quatre premiers crochets — `.question-text`, `.exo-wrap`, `canvas`,
+        // `input` — ne désignaient rien : le témoin était rouge sur un
+        // exercice parfaitement monté, et j'ai failli chercher le défaut dans
+        // la bulle. Quinzième sélecteur inventé de ce chantier.
+        jeu: !!document.querySelector('#game-board .game-question, #game-board canvas')
     };
 });
-dire('L\'ÉLÈVE LIT LE MOT entre les deux exercices', ecran.present);
-dire('avec son titre', /Attention au piège/.test(ecran.titre), ecran.titre);
-dire('et son gras', ecran.gras === 1, String(ecran.gras));
-dire('un seul bouton, et il dit ce qu\'il fait', ecran.bouton === 'J\'ai compris', ecran.bouton);
+dire('LE MOT ARRIVE EN BULLE, ET NON SUR UN ÉCRAN À LUI SEUL',
+    bulle.present && !bulle.ecranPlein,
+    bulle.present ? (bulle.ecranPlein ? 'les deux à la fois' : 'bulle') : '(aucune bulle)');
+dire('TÉMOIN : l\'exercice est bien monté derrière', bulle.jeu);
+dire('LA BULLE EST POSÉE AVANT LE PLATEAU, pas dedans (les jeux le vident)',
+    bulle.present && !bulle.dedans && bulle.avant,
+    bulle.dedans ? 'dans #game-board' : 'avant #game-board');
+dire('elle est AU-DESSUS de l\'exercice, et non par-dessus', bulle.auDessus);
+dire('avec son titre', /Attention au piège/.test(bulle.titre), bulle.titre || '(sans titre)');
+dire('et son gras', bulle.gras === 1, String(bulle.gras));
 // LA POLICE RENDUE, et non la règle CSS : c'est la seule mesure qui attrape un
-// repli silencieux.
-dire('LA POLICE EST CELLE DU LOGICIEL', /Outfit/i.test(ecran.police), ecran.police);
-dire('le paragraphe est aligné à gauche, pas centré', ecran.aligne === 'left', ecran.aligne);
+// repli silencieux. Rémy : « il faut rester cohérent dans la police ».
+dire('LA POLICE EST CELLE DU LOGICIEL', /Outfit/i.test(bulle.police), bulle.police);
+dire('le texte est aligné à gauche, pas centré', bulle.aligne === 'left', bulle.aligne);
+dire('la croix est une vraie cible tactile (44 px)', bulle.croix >= 44, `${bulle.croix} px`);
 
-// « J'AI COMPRIS » DOIT DONNER L'EXERCICE SUIVANT, pas un second écran.
-await s.page.click('#btn-run-mot');
-await dormir(1800);
-vu = await s.page.evaluate(() => ({
-    mot: !!document.querySelector('.run-mot-texte'),
-    bilan: !!document.getElementById('btn-run-next'),
-    titre: (document.getElementById('game-title') || {}).textContent || ''
+// ON LA FERME, et elle ne revient pas : le mot est déjà noté lu.
+await s.page.click('.run-bulle-fermer');
+await dormir(400);
+const refermee = await s.page.evaluate(() => ({
+    bulle: !!document.getElementById('run-bulle-mot'),
+    jeu: !!document.querySelector('#game-board .game-question, #game-board canvas')
 }));
-dire('« J\'ai compris » enchaîne sur l\'exercice suivant',
-    !vu.mot && !vu.bilan, vu.titre.trim() || JSON.stringify(vu));
+dire('la croix la ferme, et l\'exercice reste', !refermee.bulle && refermee.jeu);
+
+// ── ET LE MOT DE LA FIN GARDE SON ÉCRAN ─────────────────────────────────────
+//
+// Un mot en DERNIÈRE position n'a aucun exercice à surmonter. C'est le cas de
+// la séance de Rémy, qui finit par deux mots. Il garde donc son écran plein —
+// et cette mesure est le témoin de la précédente : sans elle, un écran plein
+// supprimé partout passerait pour une bulle réussie.
+console.log('\n\x1b[1mLE MOT DE LA FIN\x1b[0m');
+const fin = await s.page.evaluate(async () => {
+    const { state } = await import('./js/core/state.js');
+    const { makeMessage } = await import('./js/core/path.js');
+    const run = state.activeSequenceRunner;
+    // On ajoute un mot à la toute fin du run en cours, et l'on y va.
+    run.steps.push({ ...makeMessage({ titre: 'À bientôt', texte: 'Bon travail !' }),
+        exercise: null, title: 'À bientôt', params: {} });
+    run.index = run.steps.length - 1;
+    await run.runStep();
+    await new Promise((ok) => setTimeout(ok, 600));
+    return {
+        ecranPlein: !!document.querySelector('.run-mot-texte'),
+        bulle: !!document.getElementById('run-bulle-mot'),
+        bouton: (document.getElementById('btn-run-mot') || {}).textContent || ''
+    };
+});
+dire('UN MOT EN DERNIÈRE POSITION GARDE SON ÉCRAN',
+    fin.ecranPlein && !fin.bulle, fin.ecranPlein ? 'écran plein' : '(rien)');
+dire('et son bouton', fin.bouton.trim() === 'J\'ai compris', fin.bouton.trim());
+
+// ── UN MOT VIDE N'EST PAS UNE ÉTAPE ─────────────────────────────────────────
+//
+// MESURÉ DANS LA SÉANCE DE RÉMY : son parcours « Relatifs » portait un mot dont
+// le titre ET le texte étaient vides. L'élève aurait traversé un écran avec une
+// bulle de bande dessinée, aucun texte, et « J'ai compris » sous le vide.
+console.log('\n\x1b[1mLE MOT VIDE DE LA SÉANCE DE RÉMY\x1b[0m');
+const vide = await s.page.evaluate(async () => {
+    const { hydratePath, makePath, makeStep, makeMessage } = await import('./js/core/path.js');
+    const { politiquePerso } = await import('./js/core/mesExercices.js');
+    const p = makePath('Avec un mot vide', [
+        makeStep('calc-add', {}, { stepId: 'x', nbItems: 3 }),
+        makeMessage({ titre: '', texte: '' }, { stepId: 'y' }),
+        makeMessage({ titre: '', texte: 'Celui-là a du texte' }, { stepId: 'z' })
+    ], politiquePerso());
+    const h = hydratePath(p);
+    return { etapes: (h.steps || []).map((x) => x.stepId) };
+});
+dire('LE MOT VIDE EST ÉCARTÉ DE CE QUE L\'ÉLÈVE TRAVERSE',
+    !vide.etapes.includes('y'), vide.etapes.join(' · '));
+dire('TÉMOIN : le mot qui porte du texte reste', vide.etapes.includes('z'),
+    vide.etapes.join(' · '));
 
 // ── LE RELIRE, DEPUIS LE FIL ────────────────────────────────────────────────
 console.log('\n\x1b[1mLE RELIRE\x1b[0m');
@@ -346,7 +435,12 @@ if (fil.laCase) {
     const relu = await s.page.evaluate(() => {
         const t = [...document.querySelectorAll('.modal-title, h3')]
             .map((e) => e.textContent.trim());
-        const corps = document.querySelector('.modal .run-mot-texte, .run-mot-texte');
+        // DANS LA FENÊTRE, ET PAS N'IMPORTE QUEL `.run-mot-texte` DE LA PAGE.
+        // Le mot de la fin, mesuré juste avant, laisse son écran plein
+        // derrière : `querySelector` prenait le SIEN, en tête du document, et
+        // la sonde lisait « Bon travail ! » là où elle attendait le mot relu.
+        const corps = document.querySelector('.modal-overlay .run-mot-texte')
+            || document.querySelector('.run-mot-texte');
         return { titre: t.find((x) => /Attention au piège/.test(x)) || '',
                  texte: corps ? corps.textContent.replace(/\s+/g, ' ').trim().slice(0, 50) : '' };
     });

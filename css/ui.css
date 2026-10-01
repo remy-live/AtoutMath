@@ -4877,18 +4877,81 @@ body.classe-ouverte #bottom-nav { display: none !important; }
     background: var(--bg-app); color: var(--text-main); max-width: 100%;
 }
 .pb-ordre:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.pb-corbeille { margin-left: auto; }
-/* LA BARRE DES COCHÉS. Elle n'apparaît que lorsqu'une case est cochée : une
-   barre d'actions permanente au-dessus d'une liste n'est qu'un bandeau de plus
-   à ignorer. Elle colle en haut pour qu'on puisse cocher en bas de trente
-   parcours sans perdre le bouton de vue. */
-.pb-selection {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-    padding: 7px 8px; margin: 6px 0;
-    background: color-mix(in srgb, var(--primary) 12%, transparent);
-    border-radius: 10px;
-    position: sticky; top: 0; z-index: 2;
+.pb-gerer { margin-left: auto; font-weight: 700; }
+
+/* ═══ GÉRER MES PARCOURS — la fenêtre ════════════════════════════════════════
+   Rémy : « tu peux pas faire mieux ou ouvrir une modale […] on ne peut faire
+   des cadre de sélection, utiliser shift ou cmd ».
+
+   UNE LISTE, PAS UN TABLEAU À BORDURES. Quatre colonnes alignées suffisent à
+   comparer cinquante lignes ; des traits entre elles ajouteraient cinquante
+   lignes de plus à regarder. */
+.gp-barre { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.gp-barre .ec-champ { flex: 1 1 auto; }
+/* UNE HAUTEUR MINIMALE, pour que la fenêtre ne saute pas de taille entre une
+   bibliothèque de deux parcours et une recherche qui n'en garde qu'un. Elle
+   laisse aussi du vide sous la dernière ligne quand il y en a peu — ce n'est
+   plus NÉCESSAIRE au cadre depuis qu'il peut partir d'une ligne, mais c'est là
+   qu'on pense à le tirer. */
+.gp-liste {
+    position: relative; min-height: 230px; max-height: 52vh;
+    overflow-y: auto; overflow-x: hidden;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--bg-app);
 }
-.pb-selection [data-pb-combien] {
-    font-weight: 700; font-size: .85rem; color: var(--text-main); margin-right: 2px;
+.gp-liste:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* L'EN-TÊTE RESTE EN HAUT pendant qu'on fait défiler : trier par nom puis
+   chercher la colonne pour revenir en arrière, c'est deux gestes de trop. */
+.gp-tete {
+    display: flex; gap: 10px; padding: 6px 10px; position: sticky; top: 0; z-index: 1;
+    background: var(--bg-panel); border-bottom: 1px solid var(--border);
+    font-size: .78rem; font-weight: 700; color: var(--text-soft);
 }
+.gp-tete .gp-col { text-align: left; }
+.gp-tete button.gp-col {
+    border: 0; background: none; font: inherit; color: inherit; cursor: pointer;
+    padding: 0; border-radius: 4px;
+}
+/* `--primary-texte` ET NON `--primary` : la couleur du bouton ne passe pas le
+   seuil AA sur du texte. Gardé par tests/contraste.test.mjs. */
+@media (hover: hover) { .gp-tete button.gp-col:hover { color: var(--primary-texte); } }
+.gp-tete button.gp-col:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.gp-ligne {
+    display: flex; gap: 10px; padding: 7px 10px; cursor: default;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+    /* ON NE SÉLECTIONNE PAS LE TEXTE EN TIRANT UN CADRE : sans cela, le geste
+       surligne les noms au lieu de prendre les lignes. */
+    user-select: none;
+}
+.gp-ligne:last-child { border-bottom: 0; }
+@media (hover: hover) {
+    .gp-ligne:hover { background: var(--bg-hover); }
+}
+.gp-ligne--prise {
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    box-shadow: inset 2px 0 0 var(--primary);
+}
+.gp-col--nom { flex: 1 1 40%; min-width: 0; font-weight: 600; color: var(--text-main);
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gp-col--taille { flex: 0 0 26%; color: var(--text-soft); font-size: .85rem; }
+.gp-col--dossier { flex: 0 0 16%; color: var(--text-soft); font-size: .85rem; }
+.gp-col--date { flex: 0 0 14%; color: var(--text-soft); font-size: .85rem; }
+.gp-vide { padding: 18px 10px; text-align: center; }
+/* « DONNÉ » — la marque d'un parcours qui a déjà servi. Rémy : « on prévient,
+   et on garde le bilan ». Discrète parce qu'elle n'empêche rien : elle informe
+   avant un geste que la confirmation rappellera de toute façon. */
+.gp-donne {
+    display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+    font-size: .68rem; font-weight: 700; letter-spacing: .02em; vertical-align: middle;
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    color: var(--primary-texte);
+}
+/* LE CADRE QU'ON TIRE. Il ne prend pas les clics — il ne fait que se montrer. */
+.gp-cadre {
+    position: absolute; left: 0; right: 0; pointer-events: none; z-index: 2;
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    border: 1px solid var(--primary); border-radius: 4px;
+}
+.gp-pied { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.gp-combien { font-weight: 700; font-size: .9rem; color: var(--text-main); margin-right: auto; }
+.gp-pied .ec-bouton[disabled] { opacity: .45; cursor: default; }
+.gp-aide { margin-top: 8px; }

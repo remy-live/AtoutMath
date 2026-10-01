@@ -73,6 +73,24 @@ export function titreNettoye(brut) {
 }
 
 /**
+ * CE MOT EST-IL VIDE — c'est-à-dire : n'a-t-il RIEN à montrer ?
+ *
+ * MESURÉ DANS LA SÉANCE DE RÉMY. Sa séance « Relatifs » portait trois mots, et
+ * le dernier avait titre et texte vides : `{ titre: '', texte: '' }`. À
+ * l'exécution, c'était une étape de plus dans le fil, un écran avec une bulle
+ * de bande dessinée, aucun texte, et un bouton « J'ai compris » sous le vide.
+ * L'élève aurait cherché ce qu'il devait comprendre.
+ *
+ * ON NE L'EFFACE PAS DE L'ATELIER POUR AUTANT : c'est peut-être un mot que
+ * Rémy allait écrire. Il est écarté à l'HYDRATATION, là où le parcours devient
+ * ce que l'élève traverse — voir `hydratePath`.
+ */
+export function motVide(message) {
+    const m = message || {};
+    return !titreNettoye(m.titre) && !texteNettoye(m.texte);
+}
+
+/**
  * CE QU'ON MONTRE DANS UNE LISTE quand il n'y a pas de titre.
  *
  * L'atelier et le fil de la séance ont besoin d'un nom pour chaque étape. Sans

@@ -547,6 +547,78 @@ export class Runner {
     }
 
     /**
+     * L'ÉTAPE QUI SUIT CELLE-CI, EN SAUTANT CE QU'ON SAUTE DE TOUTE FAÇON.
+     *
+     * La même règle que partout ailleurs dans le meneur : on n'enchaîne ni sur
+     * une récompense ni sur une étape facultative. Elle est écrite ici une fois
+     * pour que la bulle désigne l'exercice que l'élève verra VRAIMENT — un mot
+     * suivi d'un jeu de récompense se serait affiché au-dessus d'un écran que
+     * personne n'atteint.
+     */
+    etapeApres(depuis) {
+        for (let i = depuis + 1; i < this.steps.length; i++) {
+            const s = this.steps[i];
+            if (s && !s.bonus && !s.facultatif) return s;
+        }
+        return null;
+    }
+
+    /**
+     * LA BULLE DU MOT, AU-DESSUS DE L'EXERCICE.
+     *
+     * RÉMY : « ce serait bien qu'il apparaisse en popup ou une petite bulle au
+     * dessus de l'épreuve qui lui suit ».
+     *
+     * ── POURQUOI UNE BULLE ET NON UNE FENÊTRE ────────────────────────────
+     *
+     * Une fenêtre modale se ferme avant de travailler : elle redevient l'écran
+     * qu'on traverse, avec un clic de plus. La bulle RESTE pendant l'exercice,
+     * et c'est tout l'intérêt — « explique un peu », disait Rémy du mot : une
+     * explication qui disparaît au moment où l'on en a besoin n'explique rien.
+     *
+     * ── POURQUOI ELLE EST POSÉE AVANT `#game-board`, ET NON DEDANS ───────
+     *
+     * Tous les jeux font `canvas.innerHTML = ''` en se montant, et beaucoup le
+     * refont à chaque question. Dans le plateau, la bulle aurait vécu quelques
+     * millisecondes. Elle est donc sa SŒUR, insérée juste avant lui.
+     *
+     * ELLE SE FERME, et le bouton le dit : un élève qui a lu doit pouvoir
+     * récupérer la place. Elle ne revient pas — le mot est déjà noté lu.
+     */
+    montrerLaBulle(step) {
+        const plateau = this.canvas;
+        if (!plateau || !plateau.parentNode) return;
+        this.effacerLaBulle();
+        const m = (step && step.message) || {};
+        const titre = titreNettoye(m.titre);
+        const bulle = document.createElement('div');
+        bulle.className = 'run-bulle';
+        bulle.id = 'run-bulle-mot';
+        // `role="note"` ET `aria-live` : le mot arrive EN MÊME TEMPS que
+        // l'exercice, donc sans annonce il passerait inaperçu d'un lecteur
+        // d'écran, qui lit la question et jamais ce qui l'explique.
+        bulle.setAttribute('role', 'note');
+        bulle.setAttribute('aria-live', 'polite');
+        bulle.innerHTML = `
+            <span class="run-bulle-marque" aria-hidden="true">💬</span>
+            <div class="run-bulle-corps">
+                ${titre ? `<b class="run-bulle-titre">${escapeHtml(titre)}</b>` : ''}
+                <div class="run-bulle-texte">${messageEnHtml(m.texte)}</div>
+            </div>
+            <button type="button" class="run-bulle-fermer" aria-label="Fermer le mot du professeur"
+                    >×</button>`;
+        plateau.parentNode.insertBefore(bulle, plateau);
+        const fermer = bulle.querySelector('.run-bulle-fermer');
+        if (fermer) fermer.onclick = () => this.effacerLaBulle();
+    }
+
+    /** La bulle ne survit pas à l'étape qu'elle surmonte. */
+    effacerLaBulle() {
+        const vieille = document.getElementById('run-bulle-mot');
+        if (vieille && vieille.parentNode) vieille.parentNode.removeChild(vieille);
+    }
+
+    /**
      * ON A LU : on avance.
      *
      * ── POURQUOI ON ÉCRIT QUAND MÊME UNE ÉTAPE CLOSE AU JOURNAL ──────────
@@ -570,6 +642,27 @@ export class Runner {
      */
     passerLeMessage(step) {
         this.step = null;
+        this.noterLeMotLu(step);
+        this.index++;
+        // LA MÊME RÈGLE QU'APRÈS UN EXERCICE : on n'enchaîne ni sur une
+        // récompense ni sur une étape facultative.
+        while (this.steps[this.index]
+            && (this.steps[this.index].bonus || this.steps[this.index].facultatif)) {
+            this.index++;
+        }
+        this.runStep();
+    }
+
+    /**
+     * UN MOT LU EST UN MOT LU — on l'écrit au journal, même sans question.
+     *
+     * Extrait de `passerLeMessage` le jour où le mot a cessé d'avoir toujours
+     * son écran : il se lit maintenant aussi en bulle au-dessus de l'exercice
+     * qui le suit, et les deux chemins doivent laisser la MÊME trace. Sans
+     * elle, l'élève resterait éternellement « étape 2 sur 5 », le fil garderait
+     * sa case vide, et une séance reprise le lendemain recommencerait au mot.
+     */
+    noterLeMotLu(step) {
         if (!this.sansTrace) journal.emit(EventTypes.STEP_COMPLETED, {
             runId: this.runId,
             pathId: this.path.id,
@@ -589,14 +682,6 @@ export class Runner {
                 runId: this.runId, solved: 0, required: 0, questions: 0, passed: true
             });
         }
-        this.index++;
-        // LA MÊME RÈGLE QU'APRÈS UN EXERCICE : on n'enchaîne ni sur une
-        // récompense ni sur une étape facultative.
-        while (this.steps[this.index]
-            && (this.steps[this.index].bonus || this.steps[this.index].facultatif)) {
-            this.index++;
-        }
-        this.runStep();
     }
 
     /**
@@ -831,6 +916,9 @@ export class Runner {
 
         const step = this.steps[this.index];
 
+        // UNE BULLE D'AVANT NE SURVIT PAS À L'ÉTAPE D'AVANT.
+        this.effacerLaBulle();
+
         // UN MESSAGE N'EST PAS UN EXERCICE : on le peint et l'on s'arrête là.
         //
         // ON SORT AVANT TOUT LE RESTE, et c'est délibéré : ce qui suit monte un
@@ -838,6 +926,30 @@ export class Runner {
         // d'exercice. Un mot à lire n'a besoin d'aucun des cinq, et chacun
         // chercherait `step.exercise`, qui vaut `null` ici.
         if (estUnMessage(step)) {
+            // ── EN BULLE AU-DESSUS DE L'EXERCICE QUI SUIT ──────────────────
+            //
+            // RÉMY : « pour le message ce serait bien qu'il apparaisse en popup
+            // ou une petite bulle au dessus de l'épreuve qui lui suit non ? »
+            //
+            // IL A RAISON, ET LA RAISON SE LIT DANS SA PROPRE SÉANCE : son mot
+            // d'accueil dit « Bonjour et bienvenue à cette série d'exercices de
+            // révisions ». Sur un écran à lui seul, avec un bouton « J'ai
+            // compris », l'élève le traverse sans le lire — et quand il arrive
+            // à l'exercice, le mot qui l'explique n'est plus là. Posé au-dessus
+            // de l'exercice, il reste sous les yeux pendant qu'on travaille,
+            // c'est-à-dire au moment où il sert.
+            //
+            // SAUF S'IL N'Y A RIEN DERRIÈRE : un mot en dernière position n'a
+            // aucun exercice à surmonter. Il garde son écran — c'est le mot de
+            // la fin, et un mot de la fin se lit.
+            const suivante = this.etapeApres(this.index);
+            if (suivante && !estUnMessage(suivante)) {
+                this.step = null;
+                this.noterLeMotLu(step);
+                this.motEnAttente = step;
+                this.index = this.steps.indexOf(suivante);
+                return this.runStep();
+            }
             this.step = step;
             return this.showMessage(step);
         }
@@ -903,6 +1015,15 @@ export class Runner {
             // commentaire de `run_started` dit d'éviter.
             bac: !!(this.path && this.path.bac)
         });
+
+        // LA BULLE DU MOT QUI PRÉCÈDE, S'IL Y EN AVAIT UN. Elle est posée
+        // AVANT le plateau et non dedans : chaque jeu vide `#game-board` quand
+        // il se monte, et la bulle y disparaîtrait au premier dessin.
+        if (this.motEnAttente) {
+            const mot = this.motEnAttente;
+            this.motEnAttente = null;
+            this.montrerLaBulle(mot);
+        }
 
         this.majBoutonPasser(step);
         // La calculatrice n'est offerte que là où l'exercice le dit, et une

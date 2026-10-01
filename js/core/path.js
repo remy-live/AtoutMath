@@ -18,7 +18,7 @@ import { questionsConseillees } from './duree.js';
 import { getGenerator } from './registry.js';
 import { SEUIL_DEFAUT } from './recompenses.js';
 import { seuilConseille } from './seuilEtape.js';
-import { titreNettoye, texteNettoye, apercuDuMessage } from './messageEtape.js';
+import { titreNettoye, texteNettoye, apercuDuMessage, motVide } from './messageEtape.js';
 
 export const PATH_VERSION = 2;
 
@@ -329,6 +329,19 @@ export function hydratePath(path) {
         // ON LE RECONNAÎT AU GENRE, pas à l'absence d'exercice : un parcours
         // vraiment abîmé doit continuer d'être écarté et SIGNALÉ.
         if (estUnMessage(step)) {
+            // UN MOT VIDE N'EST PAS UNE ÉTAPE.
+            //
+            // MESURÉ DANS LA SÉANCE DE RÉMY : son parcours « Relatifs » en
+            // portait un, titre et texte vides. L'élève aurait traversé un
+            // écran avec une bulle, aucun texte, et « J'ai compris » sous le
+            // vide — en cherchant ce qu'il devait comprendre.
+            //
+            // ÉCARTÉ ICI ET PAS AILLEURS : `hydratePath` est l'endroit où le
+            // parcours devient ce que l'élève TRAVERSE. Dans l'atelier, la
+            // ligne reste — c'est peut-être un mot que Rémy allait écrire, et
+            // la faire disparaître sous ses doigts serait pire que de la
+            // laisser.
+            if (motVide(step.message)) continue;
             steps.push({
                 ...step,
                 exercise: null,

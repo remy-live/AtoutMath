@@ -1796,3 +1796,58 @@ lignes** — 2026-10-01
   forme, et c'est à l'écriture qu'on l'impose, pas à la lecture.** Quand on
   s'aperçoit qu'un lecteur doit deviner la forme, c'est qu'il y en a déjà deux —
   et le prochain lecteur, lui, ne devinera pas.
+
+**Une sonde qui écrit les noms attendus à la main mesure son arithmétique** — 2026-10-01
+
+- *Ce que je voulais faire* : mesurer la fenêtre « Gérer mes parcours » — clic,
+  Maj, Ctrl, Ctrl+A, le cadre qu'on tire, exporter, importer.
+- *Ce qui a coûté* : **sept rouges sur trois passages, pour UN seul vrai
+  défaut.** La bibliothèque porte deux parcours semés depuis le premier
+  démarrage (« Parcours découverte », « Tout sur papier »), et par ordre
+  alphabétique ils tombent après les cinq que la sonde avait posés. Mes
+  `=== 'Cc troisième|Dd quatrième|Ee cinquième'` étaient donc faux ; le cadre
+  prenait exactement ce qu'il devait prendre. Même histoire avec le parcours
+  « ressorti de la corbeille » (la corbeille range par date de jet, pas par
+  ordre d'arrivée) et avec le parcours exporté (« Aa premier » était à la
+  corbeille à ce point du scénario).
+- *Combien de fois* : |||| (v905 : « 25 au lieu de 20 » ; v908 : le total du
+  tiroir ; v911 : la ligne du mot ; ici, trois fois dans le même fichier.)
+- *Ce qui manque* : rien à fabriquer, une règle à tenir. **Une sonde LIT
+  l'écran, puis compare l'écran à lui-même.** `const alEcran = await noms()`
+  puis `alEcran.slice(2)` dit la même chose que trois noms recopiés, et reste
+  vraie quand le catalogue change. Les noms écrits à la main ne valent que pour
+  ce que la sonde vient elle-même de poser, jamais pour ce qu'elle a trouvé.
+
+**Un crochet inventé rend la même réponse qu'un logiciel cassé** — 2026-10-01
+
+- *Ce que je voulais faire* : un témoin disant « l'exercice est bien monté
+  derrière la bulle », pour que la mesure de la bulle ne passe pas au vert sur
+  un plateau vide.
+- *Ce qui a coûté* : quatre sélecteurs inventés d'affilée
+  (`#game-board .question-text`, `.exo-wrap`, `canvas`, `input`), un témoin
+  rouge sur un exercice parfaitement monté, et la tentation d'aller chercher le
+  défaut dans la bulle. Le plateau écrit `.game-question`. Dix secondes pour le
+  lire, vingt minutes pour le deviner.
+- *Combien de fois* : ||||||||||||||| (quinzième de ce chantier : `.modal-title`
+  qui existe mais vide, `.icon-btn` au lieu de `.btn-icon`, `:nth-of-type(2)`
+  qui compte les frères…)
+- *Ce qui manque* : **fabriqué** — `s.doitExister(selecteur, pourquoi)` dans
+  `tools/sonde.mjs`. Il rend le nombre d'éléments trouvés et **jette** à zéro,
+  avec le crochet dans le message. Une sonde qui s'arrête sur « ce crochet ne
+  désigne rien » coûte dix secondes ; une sonde qui répond `false` en coûte
+  vingt minutes, parce qu'on cherche alors au mauvais endroit.
+
+**Insérer un bloc de code par script double les barres obliques** — 2026-10-01
+
+- *Ce que je voulais faire* : ajouter soixante lignes de mesure au milieu d'une
+  sonde, par un script Python (`remplacer.mjs --depuis` pour le reste).
+- *Ce qui a coûté* : un passage entier de sonde (quatre minutes) pour un
+  `/(\d+)/` arrivé sur le disque en `/(\\d+)/` — un motif qui cherche une barre
+  oblique suivie de chiffres, donc qui ne trouve jamais rien. La sonde annonçait
+  « 0 activité » sur une ligne juste, et j'ai failli accuser la colonne.
+- *Combien de fois* : || (déjà vu sur les caractères français écrits en
+  séquences d'échappement, § 6 de CLAUDE.md.)
+- *Ce qui manque* : une relecture, pas un outil. **Après toute insertion par
+  script, `grep` le motif sur le disque** — `remplacer.mjs` repasse déjà
+  `node --check`, mais `/(\\d+)/` est du JavaScript parfaitement valide. La
+  syntaxe ne protège que de la syntaxe.

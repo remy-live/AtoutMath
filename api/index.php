@@ -769,9 +769,18 @@ function handleTeacherPaths(): void
     // des deux au même instant. Sans la seconde, une machine qui détient encore
     // un parcours jeté depuis un AUTRE poste n'aurait aucun moyen de l'
     // apprendre — elle le garderait, et le remonterait.
-    $stmt = db()->prepare('SELECT id, name, data, updated_at FROM paths
-                            WHERE teacher_id = ? AND supprime_le IS NULL
-                            ORDER BY updated_at DESC');
+    // `donne` : COMBIEN DE FOIS CE PARCOURS A DÉJÀ ÉTÉ DONNÉ.
+    //
+    // Rémy : « on prévient, et on garde le bilan ». Prévenir demande de savoir,
+    // et l'écran ne savait que pour le parcours OUVERT — c'est-à-dire presque
+    // jamais au moment de gérer. On demandait sinon une requête par parcours,
+    // soit trente allers-retours pour une fenêtre qui s'ouvre : la liste les
+    // porte donc toutes, en une jointure comptée.
+    $stmt = db()->prepare('SELECT p.id, p.name, p.data, p.updated_at,
+                               (SELECT COUNT(*) FROM assignments a WHERE a.path_id = p.id) AS donne
+                            FROM paths p
+                            WHERE p.teacher_id = ? AND p.supprime_le IS NULL
+                            ORDER BY p.updated_at DESC');
     $stmt->execute([$teacher['id']]);
     // `array_merge` ET SURTOUT PAS `+`, ET C'EST TOUTE L'HISTOIRE DE CE BOGUE.
     //

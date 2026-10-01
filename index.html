@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=911">
-    <link rel="stylesheet" href="css/layout.css?v=911">
-    <link rel="stylesheet" href="css/ui.css?v=911">
-    <link rel="stylesheet" href="css/games.css?v=911">
-    <link rel="stylesheet" href="css/components.css?v=911">
-    <link rel="stylesheet" href="css/modules.css?v=911">
+    <link rel="stylesheet" href="css/base.css?v=912">
+    <link rel="stylesheet" href="css/layout.css?v=912">
+    <link rel="stylesheet" href="css/ui.css?v=912">
+    <link rel="stylesheet" href="css/games.css?v=912">
+    <link rel="stylesheet" href="css/components.css?v=912">
+    <link rel="stylesheet" href="css/modules.css?v=912">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -888,22 +888,19 @@
                             <option value="nom">par nom</option>
                             <option value="taille">du plus petit</option>
                         </select>
-                        <!-- LA CORBEILLE. Rémy : « supprimer en bloc, mettre dans
-                             la corbeille ». Elle ne s'affiche QUE si elle contient
-                             quelque chose — une corbeille vide en permanence est un
-                             bouton qu'on apprend à ne plus voir. -->
-                        <button type="button" id="btn-corbeille" class="pb-tri pb-corbeille" hidden>
-                            🗑 Corbeille <span data-corbeille-combien></span>
-                        </button>
-                    </div>
-                    <!-- CE QU'ON FAIT AUX PARCOURS COCHÉS. Cachée tant que rien
-                         n'est coché : une barre d'actions permanente au-dessus
-                         d'une liste est un bandeau de plus à ignorer. -->
-                    <div id="pb-selection" class="pb-selection" hidden>
-                        <span data-pb-combien></span>
-                        <button type="button" class="ec-bouton ec-bouton--doux" data-pb-ranger>Ranger dans…</button>
-                        <button type="button" class="ec-bouton ec-bouton--rouge" data-pb-jeter>Mettre à la corbeille</button>
-                        <button type="button" class="ec-bouton ec-bouton--doux" data-pb-rien>Tout décocher</button>
+                        <!-- GÉRER : cocher, ranger, jeter, la corbeille.
+                             Rémy, devant la barre à trois boutons empilée ici :
+                             « tu peux pas faire mieux ou ouvrir une modale, je
+                             trouve que c'est un peu bricolé, on ne peut faire
+                             des cadre de sélection, utiliser shift ou cmd ».
+
+                             IL AVAIT RAISON, ET LA CAUSE ÉTAIT LA LARGEUR. Ce
+                             tiroir fait trois cents pixels : une barre d'actions
+                             s'y replie sur trois lignes. Gérer demande de voir
+                             cinquante lignes d'un coup — c'est une fenêtre, pas
+                             une colonne. Voir js/ui/gererParcours.js. -->
+                        <button type="button" id="btn-gerer-parcours" class="pb-tri pb-gerer"
+                                title="Sélectionner, ranger, mettre à la corbeille">Gérer</button>
                     </div>
                     <div id="path-browser-list">
                         <!-- Liste injectée en JS -->

@@ -270,6 +270,30 @@ export async function laCorbeille() {
     return { parcours: r.corbeille || [], jours: r.joursCorbeille || 30 };
 }
 
+/**
+ * COMBIEN DE FOIS CHAQUE PARCOURS A DÉJÀ ÉTÉ DONNÉ.
+ *
+ * Rémy : « on prévient, et on garde le bilan ». Prévenir demande de SAVOIR, et
+ * l'atelier ne savait que pour le parcours ouvert — c'est-à-dire presque jamais
+ * au moment d'en gérer trente. Le serveur compte la jointure et la rend avec la
+ * liste : un aller-retour pour toute la fenêtre, et non un par ligne.
+ *
+ * ON INTERROGE À CHAQUE OUVERTURE DE LA FENÊTRE, et non une fois au démarrage :
+ * Rémy donne une séance, puis vient ranger ses parcours. Un compte vieux de
+ * deux heures dirait « jamais donné » de celui qu'il vient de donner.
+ *
+ * @returns {Promise<Map<string, number>>} par identifiant de parcours
+ */
+export async function combienDonne() {
+    if (!enPosteDeProf()) return new Map();
+    const r = await auServeur('/teacher/paths', { action: 'list' });
+    const m = new Map();
+    for (const ligne of (r.paths || [])) {
+        if (ligne && ligne.id) m.set(ligne.id, Number(ligne.donne) || 0);
+    }
+    return m;
+}
+
 /** VIDER LA CORBEILLE — le seul geste qui efface vraiment, et il se demande. */
 export async function viderLaCorbeille() {
     if (!enPosteDeProf()) return { erreur: 'Pas identifié comme professeur.' };
