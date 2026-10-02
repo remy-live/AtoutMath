@@ -1927,3 +1927,24 @@ lignes** — 2026-10-01
   aussi l'erreur qu'on voulait pouvoir corriger.** Relire la raison écrite
   au-dessus d'une garde avant de la croire : elle dit souvent, déjà, où elle
   s'arrête.
+
+**On a failli écrire une fonctionnalité qui existait déjà** — 2026-10-02
+
+- *Ce que je voulais faire* : répondre à Rémy — « je peux réinitialiser un
+  élève sur une séance, ça m'aiderait à tester mon élève test ».
+- *Ce qui a coûté* : presque une route serveur, une colonne et un canal de
+  synchronisation. J'avais déjà esquissé le schéma quand j'ai cherché
+  `effacerLeTravail` — `deconnecterEleve({ effacerLeTravail: true })` existe,
+  est offerte derrière une case de la fenêtre de déconnexion, et fait
+  exactement cela. Trente secondes de sonde ont remplacé une heure de code.
+- *Combien de fois* : || (déjà : `figuresDe` réécrite au lieu d'être
+  réemployée.)
+- *Ce qui manque* : **un inventaire de ce que le logiciel sait déjà faire.**
+  241 modules, et la seule façon de savoir si un geste existe est de deviner
+  son nom et de le chercher. Avant d'écrire une fonctionnalité demandée,
+  chercher d'abord le VERBE dans le dépôt (`effacer`, `remettre`, `rejouer`,
+  `dispenser`) — pas le nom qu'on lui donnerait soi-même.
+- *La règle* : **une demande de fonctionnalité est d'abord une question sur ce
+  qui existe.** Et la réponse se mesure : savoir que le geste existe ne suffit
+  pas, il fallait vérifier que le serveur ne renvoie pas aussitôt ce que
+  l'appareil vient d'effacer.
