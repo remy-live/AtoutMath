@@ -67,10 +67,16 @@ test('ET L\'INFOBULLE DIT LA RÈGLE ASYMÉTRIQUE', () => {
     const src = lire('js/ui/builder.js');
     const fonction = src.indexOf('function direLAuditoire');
     assert.ok(fonction > 0, 'la fonction du badge existe');
+    // LA TRANCHE EST LARGE : l'infobulle a grandi le jour où l'on y a ajouté
+    // ce qui arrive à l'élève qui n'a pas encore ouvert la séance, et une
+    // tranche de neuf cents caractères coupait avant la fin.
     const bulle = src.slice(src.indexOf('el.title = ', fonction),
-                            src.indexOf('el.title = ', fonction) + 900);
-    assert.match(bulle, /AJOUTÉ à la fin leur arrive tout seul/);
-    assert.match(bulle, /ne les atteint PAS/);
+                            src.indexOf('el.title = ', fonction) + 5200);
+    assert.match(bulle, /À LA FIN leur arrive tout seul/);
+    // L'APOSTROPHE EST ÉCHAPPÉE DANS LA SOURCE : on cherche ce que le fichier
+    // contient, pas ce que l'écran affiche. Même piège que trois lignes plus
+    // bas, et il m'a repris.
+    assert.match(bulle, /n\\?'atteint PAS ceux/);
     // Et elle dit où aller pour enlever un exercice, puisque ce n'est pas ici.
     // L'apostrophe est ÉCHAPPÉE dans la source JavaScript : on cherche ce qui
     // est écrit dans le fichier, pas ce que l'écran affiche.
@@ -131,4 +137,41 @@ test('MAIS L\'ORDRE LIBRE GARDE SA CARTE D\'OUVERTURE, ET IL LE FAUT', () => {
     // prend une étape facultative ou un jeu de récompense gagné.
     assert.match(runner, /async showPathMap\(\)/);
     assert.match(runner, /this\.showPathMap\(\)/);
+});
+
+test('LE BADGE DIT LA RÈGLE ENTIÈRE, Y COMPRIS CE QUI FAIT DIVERGER DEUX ÉLÈVES', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // RÉMY : « si je modifie une séance dans les parcours, le parcours se
+    // modifie aussi sur la séance en cours ? »
+    //
+    // MESURÉ (tools/seanceQuiBouge.mjs), et la réponse est en trois morceaux :
+    //
+    //   · AJOUTER à la fin descend chez les élèves qui ont déjà la séance ;
+    //   · RERÉGLER une étape déjà donnée ne les atteint pas — `complementDeSeance`
+    //     le refuse, pour que leur bilan ne désigne pas une étape qu'ils n'ont
+    //     jamais vue sous cette forme ;
+    //   · MAIS un camarade qui se connecte APRÈS reçoit, lui, la version
+    //     modifiée. Mesuré : 4 questions chez l'un, 20 chez l'autre, même
+    //     classe, même séance, et rien ne le disait.
+    //
+    // LE TROISIÈME MORCEAU EST CELUI QUI MANQUAIT À L'INFOBULLE, et c'est le
+    // seul des trois qui soit dangereux. Tant que le serveur n'arbitre pas, le
+    // remède est de le DIRE avant le geste. Cette épreuve garde la phrase :
+    // elle est facile à perdre en réécrivant un texte d'aide.
+    const b = lire('js/ui/builder.js');
+    // UNE TRANCHE, ET NON `indexOf('\n}')` : le corps de la fonction porte des
+    // accolades fermantes en début de ligne, et la découpe s'arrêtait avant le
+    // texte qu'on cherche — l'épreuve échouait sur une phrase présente.
+    const corps = b.slice(b.indexOf('function direLAuditoire'),
+        b.indexOf('function direLAuditoire') + 5200);
+    assert.match(corps, /PAS ENCORE ouvert la séance recevra, lui, /,
+        'le badge ne prévient plus que deux élèves peuvent diverger');
+    assert.match(corps, /deux versions/);
+    assert.match(corps, /redonner la séance/,
+        'on ne dit plus comment s\'en sortir');
+    // ET LA MOITIÉ UTILE EST SUR LE BADGE LUI-MÊME : une règle qui ne vit que
+    // dans un `title` n'est lue par personne — surtout pas par un professeur
+    // qui a la main sur le clavier.
+    assert.match(corps, /on peut ajouter à la fin/,
+        'le badge ne dit plus ce qu\'on a le droit de faire sans le survoler');
 });

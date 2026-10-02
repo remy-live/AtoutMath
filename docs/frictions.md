@@ -1875,3 +1875,30 @@ lignes** — 2026-10-01
 - *La règle* : **une correction qui répare un endroit sans nommer la classe de
   défaut reviendra sous un autre nom.** La première fois, on avait fabriqué
   `figuresDe` — le bon outil — et on ne l'avait branché qu'à un seul écran.
+
+**Deux élèves de la même classe, deux versions de la même séance** — 2026-10-02
+
+- *Ce que je voulais faire* : répondre à Rémy — « si je modifie une séance dans
+  les parcours, le parcours se modifie aussi sur la séance en cours ? »
+- *Ce qui a coûté* : j'ai failli répondre OUI sur la foi d'une ligne de SQL
+  (`assignments a JOIN paths p ON p.id = a.path_id` : l'élève reçoit le
+  contenu ACTUEL). La mesure dit autre chose, et en trois morceaux : ajouter
+  à la fin descend chez l'élève qui a déjà la séance ; rerégler une étape déjà
+  donnée ne l'atteint pas (`complementDeSeance` le refuse, à raison) ; **mais
+  un camarade qui se connecte APRÈS reçoit la version modifiée.** Mesuré :
+  4 questions chez l'un, 20 chez l'autre, même classe, même séance, et rien
+  ne le dit.
+- *Combien de fois* : || (la même divergence avait été trouvée et corrigée
+  pour le cas de l'AJOUT — `tools/seanceQuiChange.mjs`, commentaire dans
+  `parcoursServeur.js`. On avait réparé la moitié du cas.)
+- *Ce qui manque* : **la règle est en JavaScript, chez l'élève ; elle devrait
+  être au serveur.** `complementDeSeance` protège celui qui a commencé ; elle
+  ne peut rien pour celui qui n'a encore rien, parce qu'il n'a pas de « avant »
+  à comparer. Tant que l'assignation ne porte pas une copie FIGÉE du contenu au
+  moment du don, et que le serveur n'arbitre pas les compléments contre elle,
+  la convergence est hors de portée du navigateur. À faire après la rentrée ;
+  d'ici là, l'atelier le DIT sur le badge « Donné à… ».
+- *La règle* : **quand une règle doit valoir pour plusieurs machines, elle ne
+  peut pas vivre sur l'une d'elles.** Celle-ci est écrite une fois, bien, et au
+  mauvais étage — chaque navigateur l'applique contre ce qu'il a, et ils n'ont
+  pas tous la même chose.

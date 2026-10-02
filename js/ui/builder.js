@@ -2069,13 +2069,34 @@ function direLAuditoire() {
         ? (noms.length <= 2 ? noms.join(' et ') : `${noms.length} classes`)
         : `${combienDEleves} élève${combienDEleves > 1 ? 's' : ''}`;
     el.hidden = false;
-    el.textContent = `Donné à ${qui}`;
+    // LA MOITIÉ DE LA RÈGLE TIENT SUR LE BADGE LUI-MÊME.
+    //
+    // Rémy : « si je modifie une séance dans les parcours, le parcours se
+    // modifie aussi sur la séance en cours ? » — la question d'un professeur
+    // qui a la main sur le clavier, pas la souris sur une infobulle. Une règle
+    // qui ne vit que dans un `title` n'est lue par personne : on écrit donc
+    // sur le badge ce qu'il faut savoir AVANT de toucher au parcours.
+    el.textContent = `Donné à ${qui} · on peut ajouter à la fin`;
     el.title = `Cette séance est en cours chez ${qui}.\n\n`
-        + 'Un exercice AJOUTÉ à la fin leur arrive tout seul, même à ceux qui ont '
+        + 'AJOUTER UN EXERCICE À LA FIN leur arrive tout seul, même à ceux qui ont '
         + 'déjà commencé : ce qu\'ils ont fait est gardé.\n\n'
-        + 'Retirer, déplacer ou rerégler une étape ne les atteint PAS — ils gardent '
-        + 'ce qu\'ils ont eu sous les yeux, sans quoi leur bilan désignerait des '
-        + 'exercices qu\'ils n\'ont jamais vus.\n\n'
+        + 'RETIRER, DÉPLACER OU RERÉGLER une étape déjà donnée n\'atteint PAS ceux '
+        + 'qui ont ouvert la séance — ils gardent ce qu\'ils ont eu sous les yeux, '
+        + 'sans quoi leur bilan désignerait des exercices qu\'ils n\'ont jamais vus.\n\n'
+        // ── LA PHRASE QUI MANQUAIT, ET QUI EST TOUT LE DANGER ─────────────
+        //
+        // MESURÉ (tools/seanceQuiBouge.mjs) : après un reréglage, l\'élève qui
+        // avait déjà ouvert la séance garde 4 questions, et le camarade qui se
+        // connecte APRÈS en reçoit 20. Deux élèves de la même classe, la même
+        // séance, deux travaux — et rien ne le disait.
+        //
+        // La règle protège celui qui a commencé ; elle ne peut pas protéger
+        // celui qui n\'a rien encore. Tant que le serveur n\'arbitre pas, le
+        // seul remède est de le DIRE, ici, avant le geste.
+        + 'ATTENTION : un élève qui n\'a PAS ENCORE ouvert la séance recevra, lui, '
+        + 'la version modifiée. Deux élèves de la même classe peuvent donc se '
+        + 'retrouver avec deux versions. Pour changer une étape déjà donnée, le '
+        + 'plus sûr est de redonner la séance.\n\n'
         + 'Pour enlever un exercice à une classe qui bute, allez dans La classe : '
         + '« dispenser toute la classe d\'un exercice ».';
 }
