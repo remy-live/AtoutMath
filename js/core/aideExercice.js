@@ -28,6 +28,8 @@
 //
 // Module pur : pas de DOM. C'est ui/aideExercice.js qui peint.
 
+import { figuresDe } from './visuelQuestion.js';
+
 /** Coupe un texte en phrases, en respectant les abréviations courantes. */
 export function phrases(texte) {
     const t = String(texte || '').replace(/\s+/g, ' ').trim();
@@ -64,6 +66,21 @@ export function decouperConsigne(texte) {
 export function etapesExemple(item) {
     if (!item) return null;
     const question = (item.prompt && (item.prompt.text || item.prompt.html)) || '';
+    // LA FIGURE FAIT PARTIE DE LA QUESTION, et pas de la décoration.
+    //
+    // RÉMY, capture de l'aide à l'appui : « dans l'aide j'ai cela, mais il
+    // manque le schéma ». L'exemple affichait « Comment note-t-on cette
+    // figure ? » SANS la figure — c'est-à-dire une question mot pour mot
+    // impossible à résoudre, sur l'écran qui existe pour expliquer.
+    //
+    // LA CAUSE : `prompt.text` est la phrase SEULE ; le dessin est dans
+    // `prompt.html`. On prenait `text || html`, donc jamais le dessin dès que
+    // la phrase existait — c'est-à-dire toujours.
+    //
+    // C'EST LA DEUXIÈME FOIS, ET `figuresDe` EST NÉE DE LA PREMIÈRE. Rémy,
+    // alors sur le carnet d'erreurs : « quand il y a quelque chose de visuel,
+    // il faut afficher ce visuel ». On réemploie donc le même extracteur
+    // plutôt que d'en écrire un second qui divergerait.
     const explication = String(item.explanation || '').trim();
     const bruts = (item.hints || []).map(h => String(h || '').trim()).filter(Boolean);
     const memeChose = (a, b) => normaliser(a) === normaliser(b);
@@ -71,6 +88,7 @@ export function etapesExemple(item) {
         !(i === bruts.length - 1 && explication && memeChose(h, explication)));
     return {
         question: String(question).trim(),
+        figures: figuresDe(item.prompt && item.prompt.html),
         etapes,
         reponse: item.answer === undefined || item.answer === null ? '' : String(item.answer),
         explication

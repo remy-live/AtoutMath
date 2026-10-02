@@ -177,52 +177,79 @@ test('LE MENEUR PEINT LE MOT, ET SORT AVANT DE MONTER UN MOTEUR', () => {
 
 // ──────────────────────────── LA BULLE AU-DESSUS DE L'EXERCICE ──────────────
 
-test('UN MOT SUIVI D\'UN EXERCICE ARRIVE EN BULLE, ET NON SUR SON ÉCRAN', () => {
+test('UN MOT SUIVI D\'UN EXERCICE ARRIVE EN FENÊTRE, ET NON SUR SON ÉCRAN', () => {
     // ─────────────────────────────────────────────────────────────────────
-    // RÉMY : « pour le message ce serait bien qu'il apparaisse en popup ou une
-    // petite bulle au dessus de l'épreuve qui lui suit non ? »
+    // RÉMY, EN DEUX TEMPS. D'abord : « pour le message ce serait bien qu'il
+    // apparaisse en popup ou une petite bulle au dessus de l'épreuve qui lui
+    // suit non ? ». On a essayé la bulle — posée à côté, qu'on pouvait
+    // ignorer. Puis, l'ayant vue : « je le voyais plus comme une popup et il
+    // faut que l'élève appuie sur un bouton pour poursuivre ».
     //
-    // IL A RAISON, ET SA PROPRE SÉANCE LE DIT : son mot d'accueil explique la
-    // série d'exercices qui suit. Sur un écran à lui seul, avec un bouton
-    // « J'ai compris », l'élève le traverse sans le lire — et quand il arrive à
-    // l'exercice, l'explication n'est plus là.
+    // UN MOT QU'ON PEUT IGNORER EST UN MOT QU'ON IGNORE. Une consigne posée
+    // dans la marge d'un exercice déjà jouable ne sera lue par personne : la
+    // main va à la première question.
     const src = sansCommentaires(lire('js/core/runner.js'));
     const f = src.slice(src.indexOf('    async runStep()'));
     const bloc = f.slice(f.indexOf('if (estUnMessage(step))'), f.indexOf('this.step = step;\n'));
     assert.match(bloc, /const suivante = this\.etapeApres\(this\.index\)/,
         'le meneur ne regarde plus ce qui suit le mot');
     assert.match(bloc, /if \(suivante && !estUnMessage\(suivante\)\)/,
-        'un mot suivi d\'un autre mot serait replié dans une bulle sur un mot');
+        'un mot suivi d\'un autre mot serait replié dans une fenêtre sur un mot');
     assert.match(bloc, /this\.motEnAttente = step;/);
     assert.match(bloc, /this\.noterLeMotLu\(step\)/,
         'le mot replié ne serait jamais noté lu : le fil garderait sa case vide');
     // ET LE MOT DE LA FIN GARDE SON ÉCRAN : rien ne le surmonte. C'est le
     // témoin de la règle — sans lui, un écran plein supprimé partout passerait
-    // pour une bulle réussie.
+    // pour une fenêtre réussie.
     assert.match(f.slice(0, 2600), /return this\.showMessage\(step\)/,
         'un mot en dernière position n\'aurait plus aucun écran');
 });
 
-test('LA BULLE EST POSÉE AVANT LE PLATEAU, PAS DEDANS', () => {
+test('LE MOT ARRÊTE L\'ÉLÈVE : UN BOUTON, ET RIEN D\'AUTRE POUR SORTIR', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // RÉMY : « il faut que l'élève appuie sur un bouton pour poursuivre ».
+    //
+    // LE BOUTON EST CE QUI FAIT LA DIFFÉRENCE entre une décoration et une
+    // consigne : il demande un geste, donc il demande d'avoir regardé. La
+    // première version — une bulle avec une croix dans le coin, posée À CÔTÉ
+    // d'un exercice déjà jouable — n'arrêtait personne.
+    const src = sansCommentaires(lire('js/core/runner.js'));
+    const b = src.slice(src.indexOf('    montrerLeMot(step)'));
+    const corps = b.slice(0, b.indexOf('\n    }'));
+    assert.match(corps, /id="btn-run-mot"/, 'plus de bouton pour poursuivre');
+    assert.match(corps, />J'ai compris</);
+    // C'EST UNE FENÊTRE, ET LES LECTEURS D'ÉCRAN DOIVENT L'ENTENDRE AINSI :
+    // sans cela l'élève s'entend lire la question d'un exercice qu'il ne peut
+    // pas encore toucher.
+    assert.match(corps, /role', 'dialog'/);
+    assert.match(corps, /aria-modal/);
+    // ET LE FOCUS EST POSÉ DESSUS : au clavier, « Entrée » doit suffire —
+    // sinon le focus serait resté sur le dernier bouton de l'étape d'AVANT.
+    assert.match(corps, /btn\.focus\(\)/, 'au clavier, « Entrée » ne ferait rien');
+    // LA FENÊTRE RECOUVRE LE PLATEAU : si elle ne le recouvrait pas, l'élève
+    // pourrait répondre sans avoir lu, et le bouton ne servirait à rien.
+    const css = lire('css/modules.css');
+    const bloc = css.slice(css.indexOf('.run-mot-popup {'));
+    assert.match(bloc.slice(0, 260), /position: fixed; inset: 0/,
+        'la fenêtre ne couvrirait pas l\'exercice : on pourrait répondre sans lire');
+});
+
+test('LA FENÊTRE DU MOT EST POSÉE AVANT LE PLATEAU, PAS DEDANS', () => {
     // ─────────────────────────────────────────────────────────────────────
     // TOUS LES JEUX FONT `canvas.innerHTML = ''` EN SE MONTANT, et beaucoup le
-    // refont à chaque question. Une bulle rangée dans `#game-board` y aurait
+    // refont à chaque question. Une fenêtre rangée dans `#game-board` y aurait
     // vécu le temps d'un battement — et le défaut serait apparu non pas tout de
     // suite, mais à la deuxième question, c'est-à-dire chez l'élève.
     const src = sansCommentaires(lire('js/core/runner.js'));
-    const b = src.slice(src.indexOf('    montrerLaBulle(step)'));
+    const b = src.slice(src.indexOf('    montrerLeMot(step)'));
     const corps = b.slice(0, b.indexOf('\n    }'));
-    assert.match(corps, /parentNode\.insertBefore\(bulle, plateau\)/,
-        'la bulle serait effacée par le premier dessin du jeu');
+    assert.match(corps, /parentNode\.insertBefore\(boite, plateau\)/,
+        'la fenêtre serait effacée par le premier dessin du jeu');
     assert.doesNotMatch(corps, /plateau\.appendChild|plateau\.innerHTML/);
-    // ELLE S'ANNONCE AUX LECTEURS D'ÉCRAN : elle arrive EN MÊME TEMPS que
-    // l'exercice, donc sans annonce elle passe inaperçue — on lit la question,
-    // jamais ce qui l'explique.
-    assert.match(corps, /aria-live/);
     // ET ELLE NE SURVIT PAS À L'ÉTAPE QU'ELLE SURMONTE.
     const f = src.slice(src.indexOf('    async runStep()'));
-    assert.match(f.slice(0, 400), /this\.effacerLaBulle\(\);/,
-        'la bulle d\'une étape resterait au-dessus de la suivante');
+    assert.match(f.slice(0, 400), /this\.effacerLeMot\(\);/,
+        'la fenêtre d\'une étape resterait au-dessus de la suivante');
 });
 
 test('LA BULLE DÉSIGNE L\'EXERCICE QUE L\'ÉLÈVE VERRA VRAIMENT', () => {

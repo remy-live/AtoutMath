@@ -66,6 +66,25 @@ export class Runner {
         this.deviceMode = cfg.deviceMode || 'none';
         this.isStudentPath = !!cfg.isStudentPath;
         this.allowStepNavigation = !!cfg.allowStepNavigation;
+        // ON N'OUVRE PAS LA SÉANCE SUR LA CARTE QUAND ON VIENT DÉJÀ DE LA CARTE.
+        //
+        // RÉMY : « quand l'élève ouvre sa session, et qu'on a imposé une
+        // séance, il y a deux mouvements, le premier clic sur un écran joli qui
+        // prend presque tout l'espace et après quand on clique on arrive sur le
+        // parcours ».
+        //
+        // LES DEUX ÉCRANS MONTRAIENT LA MÊME CHOSE. L'accueil de l'élève
+        // (`ui/pathView.js`) dessine déjà la carte entière, avec le nom de la
+        // séance, la règle du jeu, « C'est ici ! » sur la prochaine étape, et
+        // un bouton « Commencer ma séance ». Le meneur, en démarrant,
+        // redessinait AUSSITÔT cette même carte avec un bouton « Continuer ».
+        // Deux clics, deux fois la même image, pour entrer dans un travail.
+        //
+        // ON NE RETIRE QUE LA CARTE D'OUVERTURE : celle qui revient ENTRE les
+        // étapes garde tout son sens — c'est là qu'on voit le chemin avancer,
+        // et c'est le seul endroit d'où l'on peut prendre une étape
+        // facultative ou un jeu gagné.
+        this.sansCarteDOuverture = !!cfg.sansCarteDOuverture;
         // MODE ESSAI : le professeur regarde un exercice, il ne travaille pas.
         //
         // Un essai lancé depuis la palette d'auteur ne doit RIEN laisser dans
@@ -219,8 +238,13 @@ export class Runner {
         // carte du parcours n'ont de sens avant qu'on ait expliqué la règle.
         if (this.lecon) this.showLecon();
         else if (isEvaluation(this.policy)) this.showBriefing();
-        else if (this.avecCarte) this.showPathMap();
-        else this.runStep();
+        // L'ORDRE LIBRE GARDE SA CARTE D'OUVERTURE, et il le faut : c'est là
+        // que l'élève CHOISIT par où il commence. Sans elle, le logiciel
+        // choisirait à sa place une séance dont tout l'intérêt est qu'il
+        // choisisse. L'accueil, lui, ne fait que montrer.
+        else if (this.avecCarte && !(this.sansCarteDOuverture && !this.policy.ordreLibre)) {
+            this.showPathMap();
+        } else this.runStep();
         return true;
     }
 
@@ -551,9 +575,9 @@ export class Runner {
      *
      * La même règle que partout ailleurs dans le meneur : on n'enchaîne ni sur
      * une récompense ni sur une étape facultative. Elle est écrite ici une fois
-     * pour que la bulle désigne l'exercice que l'élève verra VRAIMENT — un mot
-     * suivi d'un jeu de récompense se serait affiché au-dessus d'un écran que
-     * personne n'atteint.
+     * pour que le mot se pose sur l'exercice que l'élève verra VRAIMENT — un
+     * mot suivi d'un jeu de récompense se serait affiché par-dessus un écran
+     * que personne n'atteint.
      */
     etapeApres(depuis) {
         for (let i = depuis + 1; i < this.steps.length; i++) {
@@ -564,57 +588,75 @@ export class Runner {
     }
 
     /**
-     * LA BULLE DU MOT, AU-DESSUS DE L'EXERCICE.
+     * LE MOT DU PROFESSEUR, EN FENÊTRE PAR-DESSUS L'EXERCICE QUI LE SUIT.
      *
-     * RÉMY : « ce serait bien qu'il apparaisse en popup ou une petite bulle au
-     * dessus de l'épreuve qui lui suit ».
+     * RÉMY, en deux temps. D'abord : « ce serait bien qu'il apparaisse en popup
+     * ou une petite bulle au dessus de l'épreuve qui lui suit non ? ». On a
+     * essayé la bulle — posée à côté, qu'on pouvait ignorer. Puis, l'ayant
+     * vue : « je le voyais plus comme une popup et il faut que l'élève appuie
+     * sur un bouton pour poursuivre ».
      *
-     * ── POURQUOI UNE BULLE ET NON UNE FENÊTRE ────────────────────────────
+     * ── POURQUOI IL A RAISON, ET POURQUOI LA BULLE AVAIT TORT ────────────
      *
-     * Une fenêtre modale se ferme avant de travailler : elle redevient l'écran
-     * qu'on traverse, avec un clic de plus. La bulle RESTE pendant l'exercice,
-     * et c'est tout l'intérêt — « explique un peu », disait Rémy du mot : une
-     * explication qui disparaît au moment où l'on en a besoin n'explique rien.
+     * Un mot qu'on peut ignorer est un mot qu'on ignore. Une consigne posée
+     * dans la marge d'un exercice déjà jouable ne sera lue par personne : la
+     * main va à la première question. Le BOUTON est ce qui fait la différence
+     * entre une décoration et une consigne — il demande un geste, donc il
+     * demande d'avoir regardé.
+     *
+     * ── CE QU'ON GARDE DE LA BULLE, ET QUI ÉTAIT LA BONNE MOITIÉ ─────────
+     *
+     * L'exercice est DÉJÀ MONTÉ DERRIÈRE. Ce n'est pas un écran de plus à
+     * traverser avant d'arriver : on ferme, et l'on est dessus. C'est ce qui
+     * distingue cette fenêtre de l'ancien écran plein, où « J'ai compris »
+     * lançait seulement le chargement de la suite.
      *
      * ── POURQUOI ELLE EST POSÉE AVANT `#game-board`, ET NON DEDANS ───────
      *
      * Tous les jeux font `canvas.innerHTML = ''` en se montant, et beaucoup le
-     * refont à chaque question. Dans le plateau, la bulle aurait vécu quelques
-     * millisecondes. Elle est donc sa SŒUR, insérée juste avant lui.
-     *
-     * ELLE SE FERME, et le bouton le dit : un élève qui a lu doit pouvoir
-     * récupérer la place. Elle ne revient pas — le mot est déjà noté lu.
+     * refont à chaque question. Dans le plateau, la fenêtre aurait vécu
+     * quelques millisecondes — et le défaut ne serait apparu qu'à la deuxième
+     * question, c'est-à-dire chez l'élève. Elle est donc sa SŒUR, insérée
+     * juste avant lui, et elle le recouvre par le CSS.
      */
-    montrerLaBulle(step) {
+    montrerLeMot(step) {
         const plateau = this.canvas;
         if (!plateau || !plateau.parentNode) return;
-        this.effacerLaBulle();
+        this.effacerLeMot();
         const m = (step && step.message) || {};
         const titre = titreNettoye(m.titre);
-        const bulle = document.createElement('div');
-        bulle.className = 'run-bulle';
-        bulle.id = 'run-bulle-mot';
-        // `role="note"` ET `aria-live` : le mot arrive EN MÊME TEMPS que
-        // l'exercice, donc sans annonce il passerait inaperçu d'un lecteur
-        // d'écran, qui lit la question et jamais ce qui l'explique.
-        bulle.setAttribute('role', 'note');
-        bulle.setAttribute('aria-live', 'polite');
-        bulle.innerHTML = `
-            <span class="run-bulle-marque" aria-hidden="true">💬</span>
-            <div class="run-bulle-corps">
-                ${titre ? `<b class="run-bulle-titre">${escapeHtml(titre)}</b>` : ''}
-                <div class="run-bulle-texte">${messageEnHtml(m.texte)}</div>
-            </div>
-            <button type="button" class="run-bulle-fermer" aria-label="Fermer le mot du professeur"
-                    >×</button>`;
-        plateau.parentNode.insertBefore(bulle, plateau);
-        const fermer = bulle.querySelector('.run-bulle-fermer');
-        if (fermer) fermer.onclick = () => this.effacerLaBulle();
+        const boite = document.createElement('div');
+        boite.className = 'run-mot-popup';
+        boite.id = 'run-mot-popup';
+        // `role="dialog"` ET `aria-modal` : c'est une fenêtre qui ATTEND une
+        // réponse, pas une note posée à côté. Un lecteur d'écran doit le dire
+        // ainsi, sans quoi l'élève s'entend lire la question d'un exercice
+        // qu'il ne peut pas encore toucher.
+        boite.setAttribute('role', 'dialog');
+        boite.setAttribute('aria-modal', 'true');
+        boite.setAttribute('aria-label', titre || 'Le mot du professeur');
+        boite.innerHTML = `
+            <div class="run-mot-carte">
+                <span class="run-mot-marque" aria-hidden="true">\uD83D\uDCAC</span>
+                ${titre ? `<h2 class="run-mot-titre">${escapeHtml(titre)}</h2>` : ''}
+                <div class="run-mot-texte">${messageEnHtml(m.texte)}</div>
+                <button type="button" class="btn-toggle active run-mot-btn"
+                        id="btn-run-mot">J'ai compris</button>
+            </div>`;
+        plateau.parentNode.insertBefore(boite, plateau);
+        const btn = boite.querySelector('#btn-run-mot');
+        if (btn) {
+            btn.onclick = () => this.effacerLeMot();
+            // ON DONNE LE FOCUS AU BOUTON, et c'est la moitié du geste :
+            // au clavier, « Entrée » doit suffire, et sans focus posé ici il
+            // serait resté sur le dernier bouton de l'étape d'AVANT.
+            try { btn.focus(); } catch (e) { /* sans focus, le clic suffit */ }
+        }
     }
 
-    /** La bulle ne survit pas à l'étape qu'elle surmonte. */
-    effacerLaBulle() {
-        const vieille = document.getElementById('run-bulle-mot');
+    /** La fenêtre du mot ne survit pas à l'étape qu'elle surmonte. */
+    effacerLeMot() {
+        const vieille = document.getElementById('run-mot-popup');
         if (vieille && vieille.parentNode) vieille.parentNode.removeChild(vieille);
     }
 
@@ -916,8 +958,8 @@ export class Runner {
 
         const step = this.steps[this.index];
 
-        // UNE BULLE D'AVANT NE SURVIT PAS À L'ÉTAPE D'AVANT.
-        this.effacerLaBulle();
+        // LA FENÊTRE D'UN MOT NE SURVIT PAS À L'ÉTAPE QU'ELLE SURMONTAIT.
+        this.effacerLeMot();
 
         // UN MESSAGE N'EST PAS UN EXERCICE : on le peint et l'on s'arrête là.
         //
@@ -926,18 +968,16 @@ export class Runner {
         // d'exercice. Un mot à lire n'a besoin d'aucun des cinq, et chacun
         // chercherait `step.exercise`, qui vaut `null` ici.
         if (estUnMessage(step)) {
-            // ── EN BULLE AU-DESSUS DE L'EXERCICE QUI SUIT ──────────────────
+            // ── EN FENÊTRE PAR-DESSUS L'EXERCICE QUI SUIT ─────────────────
             //
-            // RÉMY : « pour le message ce serait bien qu'il apparaisse en popup
-            // ou une petite bulle au dessus de l'épreuve qui lui suit non ? »
+            // RÉMY : « je le voyais plus comme une popup et il faut que l'élève
+            // appuie sur un bouton pour poursuivre ».
             //
-            // IL A RAISON, ET LA RAISON SE LIT DANS SA PROPRE SÉANCE : son mot
-            // d'accueil dit « Bonjour et bienvenue à cette série d'exercices de
-            // révisions ». Sur un écran à lui seul, avec un bouton « J'ai
-            // compris », l'élève le traverse sans le lire — et quand il arrive
-            // à l'exercice, le mot qui l'explique n'est plus là. Posé au-dessus
-            // de l'exercice, il reste sous les yeux pendant qu'on travaille,
-            // c'est-à-dire au moment où il sert.
+            // CE QUE CELA CHANGE DE L'ANCIEN ÉCRAN PLEIN : l'exercice est DÉJÀ
+            // MONTÉ derrière. On ferme la fenêtre, on y est. L'écran plein,
+            // lui, n'était qu'une porte — « J'ai compris » lançait seulement le
+            // chargement de la suite, et le mot disparaissait avant l'exercice
+            // qu'il expliquait.
             //
             // SAUF S'IL N'Y A RIEN DERRIÈRE : un mot en dernière position n'a
             // aucun exercice à surmonter. Il garde son écran — c'est le mot de
@@ -1016,13 +1056,13 @@ export class Runner {
             bac: !!(this.path && this.path.bac)
         });
 
-        // LA BULLE DU MOT QUI PRÉCÈDE, S'IL Y EN AVAIT UN. Elle est posée
-        // AVANT le plateau et non dedans : chaque jeu vide `#game-board` quand
-        // il se monte, et la bulle y disparaîtrait au premier dessin.
+        // LE MOT QUI PRÉCÈDE, S'IL Y EN AVAIT UN. Sa fenêtre est posée AVANT
+        // le plateau et non dedans : chaque jeu vide `#game-board` en se
+        // montant, et elle y disparaîtrait au premier dessin.
         if (this.motEnAttente) {
             const mot = this.motEnAttente;
             this.motEnAttente = null;
-            this.montrerLaBulle(mot);
+            this.montrerLeMot(mot);
         }
 
         this.majBoutonPasser(step);

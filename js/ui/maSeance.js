@@ -176,7 +176,23 @@ export function ouvrirSeance(seance, { autoStart = true } = {}) {
     import('./navigation.js').then(m => m.setTopNavMode('path'));
     if (autoStart) {
         import('../core/runner.js').then(({ Runner }) => {
-            new Runner({ path, deviceMode: 'none', isStudentPath: true }).start();
+            new Runner({
+                path, deviceMode: 'none', isStudentPath: true,
+                // ON ARRIVE DE LA CARTE : NE PAS LA REMONTRER.
+                //
+                // Rémy : « il y a deux mouvements, le premier clic sur un écran
+                // joli qui prend presque tout l'espace et après quand on clique
+                // on arrive sur le parcours ». L'écran joli EST la carte —
+                // `ui/pathView.js` la dessine entière, avec la règle de la
+                // séance et « C'est ici ! » sur la prochaine étape. Le meneur
+                // la redessinait aussitôt avec un bouton « Continuer ».
+                //
+                // C'EST LE BOUTON QUI PORTE CETTE VÉRITÉ, pas le meneur : lui
+                // seul sait d'où l'on vient. Un code dicté, un essai de
+                // professeur ou une reprise par un autre chemin n'ont pas vu la
+                // carte et la gardent.
+                sansCarteDOuverture: true
+            }).start();
         });
     }
     return true;

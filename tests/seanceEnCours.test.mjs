@@ -86,3 +86,49 @@ test('ET PAS DE BADGE QUI MENT QUAND LE SERVEUR NE RÉPOND PAS', () => {
         /catch \(e\) \{[\s\S]{0,400}auditoire = \{ id: null, classes: \[\], eleves: \[\] \};/,
         'en cas d\'échec on efface le badge plutôt que d\'en afficher un faux');
 });
+
+// ──────────────── UN SEUL ÉCRAN POUR ENTRER DANS SA SÉANCE ──────────────────
+
+test('ON N\'OUVRE PAS LA SÉANCE SUR LA CARTE QUAND ON VIENT DÉJÀ DE LA CARTE', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // RÉMY : « quand l'élève ouvre sa session, et qu'on a imposé une séance,
+    // il y a deux mouvements, le premier clic sur un écran joli qui prend
+    // presque tout l'espace et après quand on clique on arrive sur le
+    // parcours, tu comprends ? »
+    //
+    // LES DEUX ÉCRANS MONTRAIENT LA MÊME CHOSE. L'accueil (`ui/pathView.js`)
+    // dessine la carte entière — le nom de la séance, la règle du jeu,
+    // « C'est ici ! » sur la prochaine étape — avec un bouton « Commencer ma
+    // séance ». Le meneur, en démarrant, redessinait AUSSITÔT cette même carte
+    // avec un bouton « Continuer ». Deux clics, deux fois la même image.
+    //
+    // POURQUOI CETTE ÉPREUVE PLUTÔT QU'UNE AUTRE : le défaut n'est dans AUCUN
+    // des deux écrans, il est dans leur SUCCESSION — et une succession écrite
+    // à deux endroits éloignés se recolle au premier refactor qui ne la voit
+    // pas. On garde donc le fil : le bouton passe le drapeau, le meneur le lit.
+    const seance = lire('js/ui/maSeance.js');
+    assert.match(seance, /sansCarteDOuverture: true/,
+        'le bouton « Commencer ma séance » ne dit plus d\'où l\'on vient');
+    const runner = lire('js/core/runner.js');
+    assert.match(runner, /this\.sansCarteDOuverture = !!cfg\.sansCarteDOuverture;/,
+        'le meneur n\'écoute plus ce que le bouton lui dit');
+    assert.match(runner,
+        /this\.avecCarte && !\(this\.sansCarteDOuverture && !this\.policy\.ordreLibre\)/,
+        'la carte d\'ouverture se remontrerait par-dessus celle de l\'accueil');
+});
+
+test('MAIS L\'ORDRE LIBRE GARDE SA CARTE D\'OUVERTURE, ET IL LE FAUT', () => {
+    // C'est là que l'élève CHOISIT par où il commence. Sans elle, le logiciel
+    // choisirait à sa place une séance dont tout l'intérêt est qu'il
+    // choisisse — l'accueil, lui, ne fait que MONTRER la carte.
+    //
+    // ET C'EST LE TÉMOIN DE L'ÉPREUVE PRÉCÉDENTE : sans cette ligne, supprimer
+    // la carte d'ouverture PARTOUT ferait passer l'autre au vert.
+    const runner = lire('js/core/runner.js');
+    assert.match(runner, /!this\.policy\.ordreLibre/,
+        'une séance à ordre libre démarrerait sans laisser choisir');
+    // ET LA CARTE ENTRE LES ÉTAPES RESTE : c'est le seul endroit d'où l'on
+    // prend une étape facultative ou un jeu de récompense gagné.
+    assert.match(runner, /async showPathMap\(\)/);
+    assert.match(runner, /this\.showPathMap\(\)/);
+});

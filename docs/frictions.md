@@ -1851,3 +1851,27 @@ lignes** — 2026-10-01
   script, `grep` le motif sur le disque** — `remplacer.mjs` repasse déjà
   `node --check`, mais `/(\\d+)/` est du JavaScript parfaitement valide. La
   syntaxe ne protège que de la syntaxe.
+
+**Un énoncé qui parle d'un dessin doit porter le dessin, partout** — 2026-10-02
+
+- *Ce que je voulais faire* : rien. C'est Rémy qui a trouvé, capture à
+  l'appui : « dans l'aide j'ai cela, mais il manque le schéma ». L'onglet
+  « Un exemple » affichait « Comment note-t-on cette figure ? » sans la figure.
+- *Ce qui a coûté* : la correction elle-même est de trois lignes — `figuresDe`
+  existait déjà. Ce qui a coûté, c'est que **le défaut avait déjà été corrigé
+  une fois**, ailleurs : Rémy, en v8xx, sur le carnet d'erreurs — « quand il y
+  a quelque chose de visuel, il faut afficher ce visuel ». On avait réparé
+  l'endroit, pas la classe de défaut. Trois écrans réaffichent un énoncé
+  (le carnet, l'aide, la fiche papier) et chacun a sa propre façon d'en
+  extraire le texte.
+- *Combien de fois* : || (carnet d'erreurs, puis aide. La fiche papier prend
+  `prompt.papier || prompt.text` — elle a sa raison, mais c'est un troisième
+  chemin.)
+- *Ce qui manque* : **une seule porte pour « donner à voir un énoncé »**. Tant
+  qu'il y en a trois, le quatrième écran qui réaffichera une question oubliera
+  la figure à son tour, et personne ne le verra avant Rémy. À défaut de la
+  fabriquer tout de suite : **quand on écrit un écran qui réaffiche un énoncé,
+  on se demande d'abord ce que `prompt` contient d'AUTRE que `text`.**
+- *La règle* : **une correction qui répare un endroit sans nommer la classe de
+  défaut reviendra sous un autre nom.** La première fois, on avait fabriqué
+  `figuresDe` — le bon outil — et on ne l'avait branché qu'à un seul écran.

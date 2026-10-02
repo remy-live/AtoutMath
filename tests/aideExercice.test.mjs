@@ -149,3 +149,46 @@ test('chaque exercice à générateur sait produire un exemple complet', () => {
     });
     assert.deepEqual(sans, [], 'ces exercices n\'ont ni indice ni explication à montrer');
 });
+
+// ─────────────────────────────── LA FIGURE DE L'EXEMPLE ─────────────────────
+
+test('UNE QUESTION QUI PARLE D\'UNE FIGURE EMPORTE LA FIGURE', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // RÉMY, capture de l'onglet « Un exemple » à l'appui : « dans l'aide j'ai
+    // cela, mais il manque le schéma ». L'écran disait, en gros et au centre,
+    // « Comment note-t-on cette figure ? » — et il n'y avait pas de figure.
+    // Une question qui désigne un dessin absent est mot pour mot impossible à
+    // résoudre, sur l'écran qui existe précisément pour expliquer.
+    //
+    // LA CAUSE : `prompt.text` est la phrase SEULE, le dessin est dans
+    // `prompt.html`, et l'on prenait `text || html` — donc jamais le dessin,
+    // puisque la phrase existe toujours.
+    //
+    // C'ÉTAIT LA DEUXIÈME FOIS. Rémy, alors sur le carnet d'erreurs : « quand
+    // il y a quelque chose de visuel, il faut afficher ce visuel ».
+    const exo = exercices.find(e => e.id === 'geo-notation');
+    assert.ok(exo, 'geo-notation a disparu du catalogue');
+    const gen = getGenerator(exo.generatorId);
+    const item = gen.generate({ ...(exo.params || {}) },
+        { rng: makeRng('epreuve-figure'), index: 0 });
+    assert.match(item.prompt.html, /<svg/, 'ce générateur ne dessine plus rien');
+    const ex = etapesExemple(item);
+    assert.match(ex.figures, /<svg/,
+        'l\'exemple de l\'aide parle d\'une figure sans la porter');
+    // ET LA PHRASE RESTE LA PHRASE : on ajoute le dessin, on ne remplace pas
+    // la question par du HTML — elle est échappée à l'affichage.
+    assert.doesNotMatch(ex.question, /<svg/);
+});
+
+test('ET UN EXERCICE SANS FIGURE N\'EN INVENTE PAS', () => {
+    // LE TÉMOIN. Sans lui, un `figures` toujours rempli — ne serait-ce que
+    // d'une chaîne vide rendue comme un bloc — ferait passer l'épreuve
+    // précédente au vert sur un panneau qui afficherait une boîte vide sous
+    // chaque question de calcul.
+    const exo = exercices.find(e => e.id === 'calc-add');
+    const gen = getGenerator(exo.generatorId);
+    const item = gen.generate({ ...(exo.params || {}) },
+        { rng: makeRng('epreuve-sans-figure'), index: 0 });
+    const ex = etapesExemple(item);
+    assert.equal(ex.figures, '', 'une figure est apparue là où il n\'y en a pas');
+});

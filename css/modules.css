@@ -2434,46 +2434,65 @@ html[data-point="plus"] .pt-croix { display: none; }
    l'œil. */
 .run-mot-texte b { font-weight: 800; }
 
-/* ═══ LA BULLE DU MOT, AU-DESSUS DE L'EXERCICE ════════════════════════════════
-   RÉMY : « pour le message ce serait bien qu'il apparaisse en popup ou une
-   petite bulle au dessus de l'épreuve qui lui suit non ? »
+/* ═══ LE MOT DU PROFESSEUR, EN FENÊTRE SUR L'EXERCICE ════════════════════════
+   RÉMY : « je le voyais plus comme une popup et il faut que l'élève appuie sur
+   un bouton pour poursuivre ».
 
-   ELLE NE PREND PAS LA PLACE DE L'EXERCICE, et c'est tout le point : le mot
-   reste lisible PENDANT qu'on travaille. Un écran à part se traverse sans se
-   lire, et l'explication manque là où elle sert.
+   ELLE RECOUVRE LE PLATEAU SANS LE REMPLACER. L'exercice est monté derrière :
+   on ferme, on y est. C'est toute la différence avec l'écran plein d'avant, où
+   « J'ai compris » lançait seulement le chargement de la suite — et où le mot
+   disparaissait donc AVANT l'exercice qu'il explique.
+
+   ELLE EST LA SŒUR DE `#game-board`, pas son enfant : chaque jeu vide le
+   plateau en se montant, et elle y aurait vécu le temps d'un battement.
+
+   `position: fixed`, ET NON `absolute` : le plateau n'a pas d'ancêtre
+   positionné garanti, et une fenêtre posée en absolu se serait accrochée à un
+   parent qu'on ne connaît pas — c'est-à-dire ailleurs qu'à l'écran. Son
+   `z-index` reste SOUS celui des fenêtres du logiciel (100000) : si l'aide ou
+   les réglages s'ouvrent, ils passent devant, comme partout ailleurs.
 
    PAS D'OMBRE INDIGO, PAS DE POLICE DÉCLARÉE : base.css pose Outfit sur `*`,
-   et les vingt-six ombres de couleur ont été retirées du dépôt une par une.
-   La bulle se signale par son fond et son filet, comme les autres encadrés.
-
-   ELLE TIENT SUR UNE LARGEUR DE LECTURE — même borne que `.run-mot-texte` et
-   `.run-screen-text` : au-delà, l'œil reperd le début de la ligne suivante. */
-.run-bulle {
-    display: flex; gap: 10px; align-items: flex-start;
-    width: min(100%, 620px); margin: 0 auto 12px; padding: 10px 12px;
-    border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--primary) 9%, var(--bg-panel));
+   et les vingt-six ombres de couleur ont été retirées du dépôt une par une. */
+.run-mot-popup {
+    position: fixed; inset: 0; z-index: 9000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+    /* LE FOND EST VOILÉ, PAS NOIR : on doit deviner l'exercice derrière — c'est
+       ce qui dit « ça continue juste là », au lieu de « nouvel écran ». */
+    background: color-mix(in srgb, var(--bg-app) 72%, transparent);
+    backdrop-filter: blur(3px);
+    animation: run-mot-arrive .22s ease-out;
 }
-.run-bulle-marque { font-size: 1.15rem; line-height: 1.4; flex: 0 0 auto; }
-.run-bulle-corps { flex: 1 1 auto; min-width: 0; text-align: left; }
-.run-bulle-titre { display: block; font-size: .95rem; margin-bottom: 2px; }
-.run-bulle-texte { font-size: .95rem; line-height: 1.5; color: var(--text-main); }
-.run-bulle-texte p { margin: 0 0 .5em; }
-.run-bulle-texte p:last-child { margin-bottom: 0; }
-.run-bulle-texte b { font-weight: 800; }
-/* LA CROIX EST UNE VRAIE CIBLE : 44 px, comme toutes les cibles tactiles du
-   logiciel. Une croix de seize pixels sur un téléphone se rate deux fois sur
-   trois, et l'on finit par tapoter l'exercice derrière. */
-.run-bulle-fermer {
-    flex: 0 0 auto; min-width: 44px; min-height: 44px; margin: -8px -6px -8px 0;
-    border: 0; background: none; cursor: pointer;
-    font-size: 1.3rem; line-height: 1; color: var(--text-soft); border-radius: 8px;
+@media (prefers-reduced-motion: reduce) { .run-mot-popup { animation: none; } }
+@keyframes run-mot-arrive { from { opacity: 0; } }
+.run-mot-carte {
+    width: min(100%, 520px); max-height: 100%; overflow-y: auto;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 22px 24px 20px; border-radius: 18px;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    text-align: center;
 }
-@media (hover: hover) {
-    .run-bulle-fermer:hover { color: var(--text-main); background: var(--bg-hover); }
+.run-mot-marque { font-size: 1.9rem; line-height: 1; }
+.run-mot-titre { margin: 0; font-size: 1.25rem; color: var(--text-main); }
+/* LE TEXTE EST ALIGNÉ À GAUCHE, alors que la carte est centrée : un paragraphe
+   centré de quatre lignes se lit mal — l'œil reperd le début de chaque ligne.
+   La largeur de lecture est bornée pour la même raison qu'un journal a des
+   colonnes. */
+.run-mot-texte {
+    align-self: stretch; max-width: 440px; margin: 0 auto;
+    text-align: left; font-size: 1.05rem; line-height: 1.6; color: var(--text-main);
 }
-.run-bulle-fermer:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.run-mot-texte p { margin: 0 0 .7em; }
+.run-mot-texte p:last-child { margin-bottom: 0; }
+/* Le gras du professeur. Il doit se voir SANS changer la couleur : une couleur
+   de plus et le bouton n'est plus ce qui attire l'œil. */
+.run-mot-texte b { font-weight: 800; }
+/* LE BOUTON EST UNE VRAIE CIBLE : 44 px, comme toutes les cibles tactiles du
+   logiciel. C'est lui qui fait la différence entre une décoration et une
+   consigne — il demande un geste, donc il demande d'avoir regardé. */
+.run-mot-btn { min-height: 44px; padding: 0 26px; margin-top: 4px; }
 
 /* ═══ LA CARTE, ENTRE LES EXERCICES ═══════════════════════════════════════════
    Rémy : « quand on lance un parcours, le tiroir de gauche disparaît et il
