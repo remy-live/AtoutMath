@@ -391,6 +391,33 @@
 @media (hover: hover) {
     .ec-pilote-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
 }
+/* DANS QUEL ORDRE ON RANGE LES ÉLÈVES DU DIRECT.
+   Rémy : « pour le direct ce serait bien de pouvoir faire le tri au nom et pas
+   à celui qui est connecté ».
+   DEUX BOUTONS PLUTÔT QU'UN DÉROULANT : il y a deux choix, et un déroulant
+   demande deux gestes pour en voir un. Ils sont DISCRETS — c'est un réglage
+   d'habitude, pas une commande de classe : il ne doit pas se disputer l'œil
+   avec « Mettre en pause », qui change ce que trente écrans montrent. */
+.ec-ordre {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    margin: 10px 0 6px;
+}
+.ec-ordre-btn {
+    font: inherit; font-size: .78rem; font-weight: 600; cursor: pointer;
+    min-height: 32px; padding: 4px 10px; border-radius: 999px;
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+}
+@media (hover: hover) {
+    .ec-ordre-btn:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
+.ec-ordre-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* CELUI QUI EST ACTIF SE VOIT : un réglage qu'on ne voit pas est un réglage
+   qu'on reclique, et l'on se demande s'il a marché. */
+.ec-ordre-btn--actif {
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    border-color: var(--primary); color: var(--primary-texte);
+}
+
 /* LA PAUSE ALLUMÉE SE VOIT DE LOIN. C'est le seul réglage de cette barre qui
    change ce que TRENTE écrans montrent ; l'oublier allumé en fin d'heure, c'est
    une classe qui ne peut plus rien ouvrir le lendemain. */

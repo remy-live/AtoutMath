@@ -159,6 +159,62 @@ export function trierPourLeMur(eleves, maintenant, contexte = {}) {
 }
 
 /**
+ * L'ORDRE DE LA LISTE D'APPEL : par nom, et il ne bouge jamais.
+ *
+ * RÉMY : « pour le direct ce serait bien de pouvoir faire le tri au nom et pas
+ * à celui qui est connecté ».
+ *
+ * ── LES DEUX ORDRES RÉPONDENT À DEUX QUESTIONS DIFFÉRENTES ────────────────
+ *
+ * `trierPourLeMur` répond à « chez qui dois-je aller ? » — et c'est la bonne
+ * réponse quand on cherche QUELQU'UN. Celui-ci répond à « où en est Maëlle ? »,
+ * quand on cherche QUELQU'UN DE PRÉCIS, et c'est une autre question.
+ *
+ * ON NE REMPLACE DONC PAS L'UN PAR L'AUTRE. L'ordre par urgence existe parce
+ * qu'un élève arrêté dont le nom commence par V se retrouvait hors de l'écran
+ * pendant que la bande d'alarme le nommait en haut. Le rendre alphabétique
+ * pour tout le monde ferait revenir ce défaut-là.
+ *
+ * CE QUI COMPTE ICI EST QU'IL NE BOUGE PAS. Rémy dit « pas à celui qui est
+ * connecté » : dans l'ordre d'urgence, un élève qui se connecte, qui finit ou
+ * qui se tait CHANGE DE PLACE — la liste se réarrange sous les yeux pendant
+ * qu'on y cherche un prénom. Ici, la place d'un élève ne dépend que de son nom.
+ *
+ * ET C'EST DEVENU L'ORDRE PAR DÉFAUT, un jour de classe plus tard. RÉMY :
+ * « le tri n'arrête pas de changer sur le mur c'est compliqué de s'y
+ * retrouver il faudrait qqch de fixe ». Voir `espaceClasses.js`,
+ * `ORDRE_PAR_DEFAUT`.
+ */
+export function trierParNom(eleves, maintenant, contexte = {}) {
+    return (eleves || [])
+        .map(e => ({ ...vigilanceDe(e, maintenant, contexte), eleve: e }))
+        .sort((a, b) => String(a.eleve.prenom || '')
+            .localeCompare(String(b.eleve.prenom || ''), 'fr',
+                // `numeric` POUR LES HOMONYMES NUMÉROTÉS, et `sensitivity`
+                // pour que « Émile » se range avec les E et non à la fin.
+                { numeric: true, sensitivity: 'base' })
+            // DEUX ÉLÈVES DU MÊME PRÉNOM NE PERMUTENT PAS D'UN BATTEMENT À
+            // L'AUTRE. Sans ce départage, `localeCompare` rend 0 et l'ordre
+            // retombe sur celui du tableau reçu — qui vient du serveur, à
+            // chaque rafraîchissement. Il y a deux Lucas dans la classe de
+            // Rémy : « il faudrait qqch de fixe » ne souffre pas d'exception
+            // pour eux deux.
+            || String(a.eleve.id || '').localeCompare(String(b.eleve.id || '')));
+}
+
+/** Les deux ordres, nommés une fois — l'écran ne choisit pas ses propres mots. */
+export const ORDRES_DU_DIRECT = [
+    { cle: 'urgence', mot: 'ceux qu\'il faut voir', trier: trierPourLeMur },
+    { cle: 'nom', mot: 'par nom', trier: trierParNom }
+];
+
+/** Le trieur d'une clef, avec repli : un réglage inconnu ne casse pas l'écran. */
+export function trieurDuDirect(cle) {
+    const o = ORDRES_DU_DIRECT.find(x => x.cle === cle);
+    return (o || ORDRES_DU_DIRECT[0]).trier;
+}
+
+/**
  * LA PHRASE DE L'ALARME.
  *
  * Elle nomme les élèves. « 3 élèves sont arrêtés » oblige à chercher lesquels

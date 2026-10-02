@@ -76,7 +76,51 @@ import { state } from '../core/state.js';
 import { getSkill } from '../data/skills.js';
 import { indicesProposes } from '../core/indice.js';
 import { enBref, avancementDeClasse, depuisCombien } from '../core/avancement.js';
-import { lesAlarmes, trierPourLeMur, direLesAlarmes, vigilanceDe } from '../core/vigilance.js';
+import { lesAlarmes, trierPourLeMur, direLesAlarmes, vigilanceDe,
+    ORDRES_DU_DIRECT, trieurDuDirect } from '../core/vigilance.js';
+
+/**
+ * DANS QUEL ORDRE ON RANGE LES ÉLÈVES DU DIRECT.
+ *
+ * RÉMY : « pour le direct ce serait bien de pouvoir faire le tri au nom et pas
+ * à celui qui est connecté ».
+ *
+ * IL EST GARDÉ D'UNE FOIS SUR L'AUTRE, dans le stockage du navigateur : c'est
+ * une habitude de travail, pas un geste. Un professeur qui range par nom le
+ * range par nom tous les jours, et le lui redemander à chaque ouverture de la
+ * classe serait le lui refuser.
+ *
+ * ── LE DÉFAUT EST « PAR NOM », ET C'EST RÉMY QUI L'A TRANCHÉ ──────────────
+ *
+ * J'avais d'abord gardé « urgence » par défaut, en me disant qu'on n'impose
+ * pas un changement d'habitude à ceux qui n'ont rien demandé. Il a répondu, en
+ * classe, le lendemain : « le tri n'arrête pas de changer sur le mur c'est
+ * compliqué de s'y retrouver il faudrait qqch de fixe ».
+ *
+ * L'habitude n'était donc pas un confort, c'était la gêne. Dans l'ordre
+ * d'urgence, un élève change de place dès qu'il se connecte, qu'il répond,
+ * qu'il finit ou qu'il se taise — c'est-à-dire tout le temps, et le mur se
+ * rafraîchit tout seul toutes les quelques secondes. On cherche Maëlle, on
+ * la voit, on tend le doigt, elle a bougé.
+ *
+ * ON NE PERD RIEN DE L'URGENCE EN FAISANT CELA, et c'est ce qui rend le
+ * changement acceptable : la BANDE D'ALARME, en haut du mur, NOMME les élèves
+ * arrêtés ou ralentis (voir `direLesAlarmes`). C'était d'ailleurs la raison
+ * d'être de l'ordre par urgence — qu'un élève arrêté dont le nom commence par
+ * V ne se retrouve pas hors de l'écran —, et la bande la tient mieux que le
+ * tri, puisqu'elle dit le prénom au lieu de déplacer une vignette.
+ *
+ * L'ordre par urgence reste, à un clic : il répond à « chez qui dois-je
+ * aller ? », quand on ne cherche personne en particulier.
+ */
+const CLEF_ORDRE = 'atoutmath.direct.ordre';
+const ORDRE_PAR_DEFAUT = 'nom';
+let ordreDuDirect = (() => {
+    // UN STOCKAGE QUI REFUSE NE DOIT PAS EMPÊCHER LA CLASSE DE S'OUVRIR : en
+    // navigation privée, `localStorage` peut jeter à la simple lecture.
+    try { return localStorage.getItem(CLEF_ORDRE) || ORDRE_PAR_DEFAUT; }
+    catch (e) { return ORDRE_PAR_DEFAUT; }
+})();
 import { enMinutes } from './leMoment.js';
 import { ficheDeLEleve, gestesPossibles, pourquoiDebloquer } from '../core/ficheEleve.js';
 import { notionsAReprendre, resumeDeClasse, ordreDuBilan, enHeures } from '../core/bilanClasse.js';
@@ -799,8 +843,16 @@ function directHtml() {
          Le tri par urgence existe déjà, il est écrit, éprouvé et documenté
          (core/vigilance.js), et le MUR s'en sert depuis toujours. Le direct
          ne l'appelait pas. -->
+    <div class="ec-ordre" role="group" aria-label="Dans quel ordre ranger les élèves">
+        <span class="ec-note">Ranger</span>
+        ${ORDRES_DU_DIRECT.map(o => `<button type="button"
+            class="ec-ordre-btn${o.cle === ordreDuDirect ? ' ec-ordre-btn--actif' : ''}"
+            data-ordre-direct="${esc(o.cle)}"
+            aria-pressed="${o.cle === ordreDuDirect ? 'true' : 'false'}"
+            >${esc(o.mot)}</button>`).join('')}
+    </div>
     <div class="ec-rangs">
-        ${trierPourLeMur(eleves, maintenant, { enPause: classeEnPause() })
+        ${trieurDuDirect(ordreDuDirect)(eleves, maintenant, { enPause: classeEnPause() })
             .map(v => rangHtml(v.eleve, maintenant)).join('')}
     </div>`;
 }
@@ -2044,9 +2096,42 @@ async function brancher(e, redessiner) {
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
         + '[data-signalement], [data-signalements], [data-voir-photo], [data-classer],'
+        + '[data-ordre-direct],'
         + '[data-effacer-signal]');
     if (!el) return;
     const d = el.dataset;
+
+    // CHANGER L'ORDRE NE DEMANDE RIEN AU SERVEUR, ET NE REDESSINE QUE LES RANGS.
+    //
+    // Rémy : « pour le direct ce serait bien de pouvoir faire le tri au nom ».
+    //
+    // CE CAS PASSE AVANT LE VERROU `vue.occupe` et avant tout `redessiner()`,
+    // pour la même raison que les cases à cocher : un redessin complet du
+    // direct effacerait le mot que le professeur est peut-être en train
+    // d'écrire dans la barre de pilotage.
+    if (d.ordreDirect !== undefined) {
+        ordreDuDirect = d.ordreDirect;
+        // UN STOCKAGE QUI REFUSE NE DOIT PAS EMPÊCHER LE TRI : en navigation
+        // privée, `localStorage` jette à l'écriture. L'ordre vaut alors pour
+        // cette séance-ci, et c'est déjà ce qu'on demandait.
+        try { localStorage.setItem(CLEF_ORDRE, ordreDuDirect); }
+        catch (err) { /* on range quand même, on ne s'en souviendra pas */ }
+        const zone = el.closest('.ec-corps');
+        const rangs = zone && zone.querySelector('.ec-rangs');
+        if (rangs && vue.direct) {
+            rangs.innerHTML = trieurDuDirect(ordreDuDirect)(
+                vue.direct.eleves, vue.direct.maintenant, { enPause: classeEnPause() })
+                .map(v => rangHtml(v.eleve, vue.direct.maintenant)).join('');
+        }
+        // ET LES DEUX BOUTONS DISENT LEQUEL EST ACTIF : un réglage qu'on ne
+        // voit pas est un réglage qu'on reclique.
+        (zone ? zone.querySelectorAll('[data-ordre-direct]') : []).forEach(b => {
+            const actif = b.dataset.ordreDirect === ordreDuDirect;
+            b.classList.toggle('ec-ordre-btn--actif', actif);
+            b.setAttribute('aria-pressed', actif ? 'true' : 'false');
+        });
+        return;
+    }
 
     // COCHER UN ÉLÈVE NE DEMANDE RIEN AU SERVEUR, et ne redessine rien.
     //

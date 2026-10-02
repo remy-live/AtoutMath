@@ -1991,3 +1991,43 @@ lignes** — 2026-10-01
 - *La règle* : **quand on ajoute une condition d'affichage, se demander d'où
   vient la donnée qui la décide, et si cet écran l'a vraiment.** Sinon on écrit
   un bouton qui existe dans le code et nulle part ailleurs.
+
+---
+
+## Une épreuve de hasard est verte ou rouge selon le jour — 2026-10-02
+
+- *Ce que je voulais faire* : garder le dédoublonnage des questions (« sur la
+  table de pythagore, essaie d'eviter les mêmes questions ») par une épreuve
+  simple : quatre valeurs possibles, quatre questions posées, quatre
+  distinctes.
+- *Ce qui a coûté* : deux `epreuveTombe.mjs` pour comprendre, et une minute à
+  chercher le défaut dans le code. Le correctif retire **douze fois au plus** ;
+  au quatrième tirage, douze retirages ont encore (3/4)¹² ≈ 3 % de chances de
+  retomber sur du déjà vu. L'épreuve tombait donc toute seule une fois sur
+  trente, et `epreuveTombe.mjs` a rendu le verdict exact — « L'ÉPREUVE EST DÉJÀ
+  ROUGE avant qu'on touche à quoi que ce soit » — sur un dépôt intact. Sans lui,
+  j'aurais cherché un bogue qui n'existait pas.
+- *Combien de fois* : | (première occurrence nommée, mais tous les générateurs
+  tirent au sort : il y en aura d'autres.)
+- *Ce qui manque* : rien à fabriquer, `epreuveTombe.mjs` a fait exactement son
+  travail et c'est lui qui a tranché.
+- *La règle* : **une épreuve qui tire au sort mesure une moyenne, pas une
+  série.** Un correctif probabiliste ne promet pas « jamais » : il promet
+  « rare ». L'épreuve doit promettre la même chose — trois cents séries et une
+  moyenne —, sinon elle est plus fausse que le code qu'elle garde.
+
+## La mesure d'une répétition se réécrivait à chaque fois — 2026-10-02
+
+- *Ce que je voulais faire* : savoir combien de fois la même question revient
+  dans une série de vingt, avant et après correction.
+- *Ce qui a coûté* : une sonde jetable, puis trois erreurs de chemin
+  (`js/core/rng.js` au lieu de `ids.js`, `CATALOG` au lieu de `exercices`,
+  `getGenerator` qui vit dans `registry.js` et non dans `activities/index.js`),
+  et surtout un **registre vide** : `getGenerator` rend `null` pour tout le
+  catalogue tant qu'on n'a pas importé `js/core/activities/index.js` pour ses
+  effets de bord. Quatre allers-retours pour une mesure de dix lignes.
+- *Combien de fois* : || (la même question se posera pour tout exercice dont
+  Rémy dira « ça se répète ».)
+- *Ce qui manque* : fait — `tools/repetitionsDUneSerie.mjs <identifiant>
+  [--clef enonce|reponse]`. Il monte une VRAIE `ItemSession`, donc il voit le
+  dédoublonnage, ce qu'une boucle sur le générateur ne verrait jamais.

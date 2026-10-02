@@ -998,6 +998,9 @@ export class Runner {
         this.stepStartedAt = Date.now();
         this.itemsResolved = new Set();
         this.itemsSolved = new Set();
+        // CELLES QU'IL A EUES DU PREMIER COUP, et c'est une autre chose que
+        // `itemsSolved` — voir `showStepResult`.
+        this.itemsPremierCoup = new Set();
         this.autonomousCounter = 0;
         // L'ÉTAPE EST-ELLE DÉJÀ JOUÉE ? Voir `onAttempt` : le drapeau se pose
         // dès la question décisive, la conclusion s'affiche une seconde et
@@ -1400,6 +1403,17 @@ export class Runner {
             this.itemsResolved.add(key);
             if (!payload.itemSeed) this.autonomousCounter++;
             if (payload.correct) this.itemsSolved.add(key);
+            // DU PREMIER COUP, OU PAS. C'est le chiffre que l'écran de fin
+            // d'étape annonçait à tort — voir `showStepResult`.
+            //
+            // `attemptIndex` COMPTE À PARTIR DE ZÉRO : la première réponse
+            // porte 0. Un jeu autonome n'en envoie pas toujours ; sans
+            // numéro, on considère que c'est le premier essai, ce qui est le
+            // cas de tous les jeux où une erreur termine la manche.
+            const essai = Number(payload.attemptIndex);
+            if (payload.correct && (!Number.isFinite(essai) || essai === 0)) {
+                this.itemsPremierCoup.add(key);
+            }
         }
 
         this.updateProgress();
@@ -1987,15 +2001,51 @@ export class Runner {
         // rien raté, et celui qui avait trois fautes n'avait aucun moyen de
         // les reprendre : un seul bouton, « Continuer ».
         const posees = this.itemsResolved.size;
-        const sansFaute = passed && posees > 0 && solved >= posees;
+        // ── « SANS FAUTE » VEUT DIRE SANS FAUTE ────────────────────────────
+        //
+        // RÉMY, rapportant son élève : « une élève m'a dit qu'elle avait fait
+        // une faute mais qu'il lui avait dit qu'elle avait tout bon ; en fait
+        // elle a eu bon au deuxième essai à une question ».
+        //
+        // ON COMPARAIT `solved` À `posees`. Or `solved` compte les questions
+        // FINALEMENT trouvées, quel que soit le nombre d'essais : en
+        // entraînement, l'élève a droit à deux essais, donc une question
+        // ratée puis corrigée entrait dans `solved` exactement comme une
+        // question juste du premier coup. L'écran annonçait alors « Tout
+        // juste, DU PREMIER COUP » à quelqu'un qui savait le contraire.
+        //
+        // C'EST LA PIRE SORTE DE DÉFAUT : l'élève a raison et le logiciel lui
+        // dit qu'elle a tort. Elle ne peut pas s'être trompée sur ce qu'elle
+        // vient de vivre — elle cesse donc de croire l'écran, et plus rien de
+        // ce qu'il annoncera ne vaudra.
+        //
+        // TROIS ISSUES PLUTÔT QUE DEUX, maintenant que la nuance existe :
+        // tout juste du premier coup, tout trouvé mais pas du premier coup,
+        // et le reste. La deuxième est une bonne nouvelle elle aussi — se
+        // corriger est un apprentissage —, mais elle ne se dit pas comme la
+        // première.
+        //
+        // ON NE DIT PAS « au second essai » : le nombre d'essais n'est pas
+        // toujours deux. La remédiation en laisse trois, le mode libre
+        // quatre-vingt-dix-neuf, et un exercice réglé à la main jusqu'à cinq
+        // (`maxAttemptsPerItem`). « Au second essai » serait donc le même
+        // genre de petit mensonge que celui qu'on corrige ici.
+        const duPremierCoup = this.itemsPremierCoup ? this.itemsPremierCoup.size : solved;
+        const sansFaute = passed && posees > 0 && duPremierCoup >= posees;
+        const toutTrouve = passed && posees > 0 && !sansFaute && solved >= posees;
+        const reprises = Math.max(0, solved - duPremierCoup);
 
         const icon = jeu ? '🎁' : (sansFaute ? '🏆' : (passed ? '🎉' : '💪'));
         const title = jeu ? 'Tu as gagné un jeu !'
-            : (sansFaute ? 'Sans faute !' : (passed ? 'Étape validée !' : 'Presque…'));
+            : (sansFaute ? 'Sans faute !'
+                : (toutTrouve ? 'Tout trouvé !' : (passed ? 'Étape validée !' : 'Presque…')));
         const detail = passed
             ? (sansFaute
                 ? `${posees} sur ${posees}. Tout juste, du premier coup — c'est acquis.`
-                : `${solved} bonne${solved > 1 ? 's' : ''} réponse${solved > 1 ? 's' : ''} sur ${posees}.`)
+                : (toutTrouve
+                    ? `${posees} sur ${posees}, dont ${reprises} rattrapée${reprises > 1 ? 's' : ''} `
+                        + 'après une erreur. Se corriger, c\'est apprendre.'
+                    : `${solved} bonne${solved > 1 ? 's' : ''} réponse${solved > 1 ? 's' : ''} sur ${posees}.`))
             : `Tu as ${solved} bonne${solved > 1 ? 's' : ''} réponse${solved > 1 ? 's' : ''}, il en faut ${required}.`;
         const detailJeu = jeu
             ? `<p class="run-screen-text run-screen-text--cadeau"><b>${escapeHtml(jeu.title)}</b>

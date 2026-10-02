@@ -25,6 +25,17 @@ export function mount(container, session, opts = {}) {
         render();
     }
 
+    // CE QUE L'ÉLÈVE LIT ICI, C'EST LE RÉSULTAT — pas l'énoncé.
+    //
+    // Rémy : « sur la table de pythagore, essaie d'eviter les mêmes
+    // questions ». Le générateur produit « 7 × 6 = ? » et « 6 × 7 = ? », deux
+    // items parfaitement différents ; l'écran, lui, n'en montre que le
+    // produit : « Où se cache 42 dans la table ? ». Deux questions pour le
+    // logiciel, une seule pour l'élève. La session dédoublonne sur l'énoncé
+    // par défaut, ce qui n'aurait donc rien changé : on lui dit ici que, dans
+    // cette activité, une question c'est un RÉSULTAT.
+    if (session.clefDeQuestion) session.clefDeQuestion(it => String(it.answer));
+
     function cible() { return Number(item.answer); }
 
     function render() {
