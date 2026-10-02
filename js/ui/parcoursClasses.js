@@ -302,6 +302,11 @@ function elevesHtml(classe, info) {
                 ${b ? `<button type="button" class="pc-bilan" data-bilan-eleve="${esc(e.id)}"
                         data-classe="${esc(classe.id)}">bilan</button>`
         : '<span class="pc-rien">n\'a pas commencé</span>'}
+                ${b ? `<button type="button" class="pc-remettre" data-reinit-eleve="${esc(e.id)}"
+                        data-classe="${esc(classe.id)}"
+                        title="Remettre cet élève à zéro sur cette séance"
+                        aria-label="Remettre ${esc(e.nom)} à zéro sur cette séance"
+                        >↺</button>` : ''}
             </div>`;
         }).join('');
 }
@@ -775,6 +780,7 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         b.textContent = '▾';
         b.setAttribute('aria-expanded', 'true');
         brancherBilansEleves(liste, classe);
+        brancherRemisesAZero(liste, classe);
         brancherLesCasesEleves(liste, classe);
     }
 
@@ -868,6 +874,60 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 if (!info.seance) return;
                 montrer(bilanClasseHtml(bilanSeance(info.seance, classe)),
                     { seance: info.seance, classe });
+            };
+        });
+    }
+
+    /**
+     * REMETTRE UN ÉLÈVE À ZÉRO SUR CETTE SÉANCE.
+     *
+     * RÉMY : « j'ai créé un élève virtuel dans la classe puis je réinitialise
+     * la séance depuis mon poste comme s'il ne l'avait jamais commencée ».
+     *
+     * LE BOUTON N'APPARAÎT QUE S'IL A COMMENCÉ : remettre à zéro quelqu'un qui
+     * n'a rien fait ne fait rien, et un bouton qui ne fait rien use la
+     * confiance qu'on a dans les autres.
+     *
+     * ON DEMANDE AVANT, et la phrase dit ce qui part : c'est le seul geste du
+     * logiciel qui efface du travail d'élève sans corbeille derrière.
+     */
+    function brancherRemisesAZero(liste, classe) {
+        liste.querySelectorAll('[data-reinit-eleve]').forEach(b => {
+            b.onclick = () => {
+                const info = etatClasse(classe, seances, pathId);
+                const eleve = (classe.eleves || []).find(e => e.id === b.dataset.reinitEleve);
+                if (!info.seance || !eleve) return;
+                showConfirm(
+                    `Tout le travail de <b>${esc(eleve.nom)}</b> sur cette séance sera `
+                    + 'effacé : ses réponses, son avancement et son bilan.<br><br>'
+                    + 'Il la retrouvera entière, comme s\'il ne l\'avait jamais '
+                    + 'commencée — sur tous ses appareils.<br><br>'
+                    + '<b>Ce geste ne s\'annule pas.</b>',
+                    async () => {
+                        const { auServeur } = await import('../core/espaceProf.js');
+                        // L'IDENTITÉ DE LA SÉANCE, et non celle du parcours de
+                        // l'atelier : c'est sous celle-là que l'élève a inscrit
+                        // son travail (voir `pathIdentity` dans parcoursServeur).
+                        const r = await auServeur('/teacher/student', {
+                            action: 'reinitialiser',
+                            studentId: eleve.id,
+                            pathId: info.seance.pathId
+                                || (info.seance.path && info.seance.path.id) || pathId
+                        });
+                        if (r.erreur) return showToast(r.erreur, 'error', 6000);
+                        showToast(r.dit || 'Séance remise à zéro.', 'success', 5000);
+                        // ON REDESSINE EN REDEMANDANT LA LISTE AU SERVEUR.
+                        //
+                        // `classe.eleves` porte les ÉVÉNEMENTS de chaque élève,
+                        // chargés une fois au dépliage — c'est d'eux que le
+                        // bilan est calculé. Les garder afficherait le travail
+                        // qu'on vient d'effacer, et le bouton aurait l'air de
+                        // n'avoir rien fait. On vide, et `deplier` recharge.
+                        classe.eleves = [];
+                        const plier = b.closest('.pc-classe').querySelector('[data-plier]');
+                        if (plier) await deplier(plier);
+                    },
+                    { titre: 'Remettre à zéro', bouton: 'Remettre à zéro' });
             };
         });
     }

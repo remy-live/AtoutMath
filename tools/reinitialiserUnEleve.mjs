@@ -130,6 +130,114 @@ dire('TÉMOIN : et son travail est monté au serveur',
         return journal.pending().length === 0;
     }), 'rien ne reste en attente');
 
+// ── LE PROFESSEUR LE REMET À ZÉRO DEPUIS SON POSTE ──────────────────────────
+//
+// RÉMY : « j'ai créé un élève virtuel dans la classe puis je réinitialise la
+// séance depuis mon poste comme s'il ne l'avait jamais commencée ».
+//
+// C'EST LA MESURE QUI COMPTE : le geste traverse deux machines. Le professeur
+// demande, le serveur efface ET pose un message, l'appareil de l'élève le lit
+// à sa synchro suivante et oublie à son tour. Aucune épreuve de module ne peut
+// dire que la chaîne entière tient.
+console.log('\n\x1b[1mLE PROFESSEUR REMET L\'ÉLÈVE À ZÉRO DEPUIS SON POSTE\x1b[0m');
+const idSeance = await p.evaluate(async () => {
+    const { lireSeances } = await import('./js/ui/donnerSeance.js');
+    const l = (await lireSeances()) || [];
+    const m = l.find((x) => /rejouer/i.test(x.titre || ''));
+    return m ? (m.pathId || (m.path && m.path.id)) : null;
+});
+console.log(`   la séance porte l'identité ${idSeance}`);
+
+const vuDuProf = await s.page.evaluate(async ([cid]) => {
+    const { listeDeClasse } = await import('./js/core/espaceProf.js');
+    const r = await listeDeClasse(cid);
+    const e = (r.eleves || []).find((x) => /Emma/.test(x.prenom || ''));
+    return e ? e.id : null;
+}, [classeId]);
+
+// ON PASSE PAR LA ROUTE, pas par le bouton : le bouton est mesuré par le
+// harnais de bout en bout, et ici c'est la CHAÎNE qu'on éprouve. Le crochet du
+// bouton est gardé par une épreuve de source.
+const remis = await s.page.evaluate(async ([sid, pid]) => {
+    const { auServeur } = await import('./js/core/espaceProf.js');
+    return auServeur('/teacher/student',
+        { action: 'reinitialiser', studentId: sid, pathId: pid });
+}, [vuDuProf, idSeance]);
+console.log(`   le serveur répond : ${JSON.stringify(remis)}`);
+dire('LE SERVEUR EFFACE LE TRAVAIL DE CET ÉLÈVE',
+    remis.ok === true && (remis.efface || 0) > 0, JSON.stringify(remis));
+
+// LE BILAN DU PROFESSEUR NE DOIT PLUS RIEN MONTRER.
+const auBilan = await s.page.evaluate(async ([sid]) => {
+    const { auServeur } = await import('./js/core/espaceProf.js');
+    const r = await auServeur('/teacher/student', { studentId: sid });
+    return { runs: (r.runs || []).length, score: r.score || 0 };
+}, [vuDuProf]);
+console.log(`   au bilan du professeur : ${JSON.stringify(auBilan)}`);
+dire('ET SON BILAN NE PORTE PLUS CETTE SÉANCE', auBilan.runs === 0,
+    `${auBilan.runs} run(s) restant(s)`);
+
+// ── L'APPAREIL DE L'ÉLÈVE L'APPREND À SA SYNCHRO SUIVANTE ───────────────────
+//
+// SANS CETTE MOITIÉ, LE GESTE NE SERT À RIEN : l'écran de l'élève est dessiné
+// par SON journal, et ses événements sont déjà synchronisés — il ne les
+// repousse pas, mais il ne les oublie pas non plus.
+console.log('\n\x1b[1mL\'APPAREIL DE L\'ÉLÈVE L\'APPREND\x1b[0m');
+const apresSynchro = await p.evaluate(async () => {
+    const { syncNow } = await import('./js/core/sync.js');
+    const r = await syncNow({ silent: true });
+    return r || {};
+});
+console.log(`   synchro : ${JSON.stringify(apresSynchro)}`);
+dire('SON APPAREIL OUBLIE À SON TOUR', (apresSynchro.oublies || 0) > 0,
+    `${apresSynchro.oublies || 0} événement(s) oublié(s)`);
+await dormir(1500);
+
+const chezLui = await avancement();
+console.log(`   chez l'élève : ${JSON.stringify(chezLui)}`);
+
+// LA SÉANCE RESTE DONNÉE : on efface son TRAVAIL, pas le travail À FAIRE.
+const laSeanceApres = await p.evaluate(async () => {
+    const { lireSeances } = await import('./js/ui/donnerSeance.js');
+    const l = (await lireSeances()) || [];
+    const m = l.find((x) => /rejouer/i.test(x.titre || ''));
+    return { trouvee: !!m, etapes: ((m && m.path && m.path.steps) || []).length };
+});
+dire('LA SÉANCE EST TOUJOURS LÀ, ENTIÈRE',
+    laSeanceApres.trouvee && laSeanceApres.etapes === 3, JSON.stringify(laSeanceApres));
+
+// ON LA ROUVRE : c'est là que l'avancement se recalcule depuis le journal.
+await p.reload();
+await p.waitForFunction(() => window.__atoutmathPret === true, { timeout: 30000 });
+await dormir(5000);
+await p.click('.path-ouvrir-seance');
+await dormir(3000);
+const rejouee = await avancement();
+console.log(`   une fois rouverte : ${JSON.stringify(rejouee)}`);
+dire('IL LA RETROUVE COMME S\'IL NE L\'AVAIT JAMAIS COMMENCÉE',
+    rejouee.faites === 0, `${rejouee.faites} étape(s) faite(s)`);
+
+// ── ET L'ORDRE NE SE REJOUE PAS CONTRE LUI ──────────────────────────────────
+//
+// Les ordres sont renvoyés à CHAQUE synchro — c'est voulu, pour atteindre un
+// appareil qui dormait. Il faut donc que celui qui recommence tout de suite ne
+// voie pas son nouveau travail effacé dix secondes plus tard.
+console.log('\n\x1b[1mIL RECOMMENCE : SON TRAVAIL NEUF RESTE\x1b[0m');
+const refait = await p.evaluate(async () => {
+    const { state } = await import('./js/core/state.js');
+    const a = state.studentPath;
+    state.markStudentPathStepCompleted((a.steps || [])[0].stepId, {
+        runId: 'encore', solved: 4, required: 3, questions: 4, passed: true
+    });
+    const { syncNow } = await import('./js/core/sync.js');
+    await syncNow({ silent: true });
+    await new Promise((ok) => setTimeout(ok, 800));
+    await syncNow({ silent: true });
+    return (state.studentPath.completed || []).length;
+});
+dire('CE QU\'IL REFAIT APRÈS LA REMISE À ZÉRO N\'EST PAS EFFACÉ',
+    refait === 1, `${refait} étape(s) faite(s)`);
+
 // ── ON LE REMET À ZÉRO, PAR LA PORTE QUI EXISTE ─────────────────────────────
 //
 // `deconnecterEleve({ effacerLeTravail: true })` est exactement ce que la

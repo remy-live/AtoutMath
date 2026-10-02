@@ -406,6 +406,28 @@ function lesTablesDuSchema(bool $sqlite): array
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";
 
+    // REMETTRE UN ÉLÈVE À ZÉRO SUR UNE SÉANCE.
+    //
+    // RÉMY : « j'ai créé un élève virtuel dans la classe puis je réinitialise
+    // la séance depuis mon poste comme s'il ne l'avait jamais commencée ».
+    //
+    // POURQUOI UNE LIGNE EN BASE, ALORS QU'ON EFFACE DÉJÀ LES ÉVÉNEMENTS.
+    // Effacer au serveur ne suffit pas : l'appareil de l'élève garde SON
+    // journal, et c'est lui qui dessine l'écran. Comme ses événements sont
+    // déjà synchronisés, il ne les repousse pas — mais il ne les oublie pas
+    // non plus. Il faut donc le LUI DIRE, et cette ligne est le message :
+    // `/sync` la lui rend, il oublie ce qui précède, et l'on ne la relit plus.
+    //
+    // ELLE NE S'EFFACE PAS APRÈS COUP, et c'est voulu : un élève qui ouvre son
+    // poste trois jours plus tard doit l'apprendre aussi. Une ligne par remise
+    // à zéro et par parcours, c'est quelques octets par an et par élève.
+    $tables['reinitialisations'] = "
+        id         $id,
+        student_id $ref,
+        path_id    $txt,
+        le         $date,
+        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";
+
     // --- Ce que Rémy a demandé en plus -----------------------------------
 
     // UN MOT À UN ÉLÈVE. « la possibilité d'envoyer un message

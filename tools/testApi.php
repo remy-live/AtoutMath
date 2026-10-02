@@ -1078,10 +1078,14 @@ verifier('migrer() est idempotent', (int) db()->query('SELECT COUNT(*) c FROM ev
 $tables = array_column(db()->query(
     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
 )->fetchAll(), 'name');
-verifier('les douze tables sont là',
+// LA LISTE EST ÉCRITE EN ENTIER, ET ELLE DOIT L'ÊTRE : une table oubliée au
+// déploiement ne se voit qu'au moment où une route l'interroge — c'est-à-dire
+// en classe. On la met à jour à la main à chaque table neuve, et c'est le prix
+// à payer pour que l'oubli crie ici plutôt que là-bas.
+verifier('les treize tables sont là',
     $tables === ['assignments', 'classes', 'events', 'message_reads', 'messages',
-                 'overrides', 'paths', 'reglages', 'signalements', 'student_tokens',
-                 'students', 'teachers'],
+                 'overrides', 'paths', 'reglages', 'reinitialisations',
+                 'signalements', 'student_tokens', 'students', 'teachers'],
     implode(', ', $tables));
 
 titre('12 bis. La liste : lire un vrai fichier de professeur');

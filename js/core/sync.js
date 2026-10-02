@@ -373,6 +373,22 @@ export async function syncNow({ silent = false } = {}) {
 
         if (res.accepted && res.accepted.length) journal.markSynced(res.accepted);
         const pulled = journal.merge(res.events || []);
+
+        // CE QUE LE PROFESSEUR A DEMANDÉ D'OUBLIER.
+        //
+        // Rémy : « je réinitialise la séance depuis mon poste comme s'il ne
+        // l'avait jamais commencée ». Le serveur a déjà effacé sa part ; sans
+        // cette ligne, l'appareil garderait la sienne et l'écran de l'élève
+        // montrerait un travail que plus personne ne détient.
+        //
+        // APRÈS `merge` ET AVANT `flush` : on oublie ce qui vient peut-être
+        // d'arriver d'un autre appareil du même élève, et l'on n'écrit qu'une
+        // fois sur le disque.
+        let oublies = 0;
+        if (res.oublis && res.oublis.length) {
+            const { appliquerLesOublis } = await import('./oublis.js');
+            oublies = appliquerLesOublis(journal, res.oublis);
+        }
         await journal.flush();
 
         await attachRemote(profile.id, { cursor: res.cursor, lastSyncAt: Date.now() });
@@ -384,7 +400,7 @@ export async function syncNow({ silent = false } = {}) {
             document.dispatchEvent(new CustomEvent('assignments_received', { detail: res.assignments }));
         }
 
-        const result = { pushed: pending.length, pulled };
+        const result = { pushed: pending.length, pulled, oublies };
         document.dispatchEvent(new CustomEvent('sync_done', { detail: result }));
         if (!silent) {
             const { showToast } = await import('../ui/modal.js');

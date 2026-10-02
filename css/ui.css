@@ -3778,6 +3778,29 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
     font: inherit; font-size: .78rem; font-weight: 700; color: var(--primary-texte);
     text-decoration: underline; text-underline-offset: 2px;
 }
+/* REMETTRE À ZÉRO — un geste rare, et qui efface. Il se tient à côté du bilan
+   qu'il efface, mais il ne lui ressemble pas : pas de libellé, un seul signe,
+   et la couleur de ce qui prévient. On ne clique pas « ↺ » par distraction là
+   où l'on cliquerait « bilan ».
+
+   44 PX DE CIBLE, comme toutes les cibles tactiles du logiciel : une flèche de
+   seize pixels sur une tablette se rate — et ici, la rater veut dire toucher
+   « bilan », ce qui est sans gravité, ou la TOUCHER par erreur, ce qui ne l'est
+   pas. C'est aussi pour cela qu'on demande confirmation. */
+.pc-remettre {
+    flex: 0 0 auto; min-width: 44px; min-height: 44px;
+    border: none; background: none; cursor: pointer;
+    font: inherit; font-size: 1rem; line-height: 1; color: var(--text-muted);
+    border-radius: 8px;
+}
+@media (hover: hover) {
+    .pc-remettre:hover {
+        color: var(--danger-texte);
+        background: color-mix(in srgb, var(--danger) 12%, transparent);
+    }
+}
+.pc-remettre:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
 /* CLORE EST DISCRET MAIS PRÉSENT. C'est un geste qu'on fait une fois par
    séance, pas un bouton d'action principale — mais il doit être là, à côté du
    bilan qu'on lit juste après. */

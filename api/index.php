@@ -444,6 +444,18 @@ function handleSync(): void
         'events' => $events,
         'cursor' => $maxSeq,
         'assignments' => assignmentsFor($student),
+        // CE QUE LE PROFESSEUR A DEMANDÉ D'OUBLIER.
+        //
+        // Rémy : « je réinitialise la séance depuis mon poste comme s'il ne
+        // l'avait jamais commencée ». Effacer au serveur ne suffit pas :
+        // l'appareil garde SON journal, et c'est lui qui dessine l'écran.
+        //
+        // ON LES ENVOIE TOUTES, À CHAQUE FOIS, et c'est voulu : une remise à
+        // zéro doit atteindre un élève qui n'ouvre son poste que trois jours
+        // plus tard, et un appareil qui aurait manqué le message. Oublier ce
+        // qu'on a déjà oublié ne coûte rien — c'est l'intérêt d'un ordre
+        // idempotent. Quelques lignes par élève et par an.
+        'oublis' => oublisDeLEleve($student['id']),
         // L'ÉTAT DE SÉANCE VOYAGE AVEC LA SYNCHRO, et non dans une requête à
         // part. Le client synchronise déjà toutes les cinq minutes et à chaque
         // rafale de réponses : lui faire demander le verrou séparément
@@ -1196,6 +1208,70 @@ function handleTeacherStudent(): void
 
     $events = eventsOfStudent($studentId);
     $runs = runsOf($events);
+
+    // ─── REMETTRE CET ÉLÈVE À ZÉRO SUR UNE SÉANCE ─────────────────────────
+    //
+    // RÉMY : « j'ai créé un élève virtuel dans la classe puis je réinitialise
+    // la séance depuis mon poste comme s'il ne l'avait jamais commencée ».
+    //
+    // DEUX MOITIÉS, ET AUCUNE NE SUFFIT SEULE.
+    //
+    //   · LE SERVEUR OUBLIE : on efface les événements de cet élève qui
+    //     appartiennent à ce parcours. Sans cela le bilan garderait son
+    //     travail, et `/sync` le renverrait au premier appareil neuf.
+    //   · ON LE DIT À SON APPAREIL : son journal local est ce qui dessine son
+    //     écran, et comme ses événements sont DÉJÀ synchronisés il ne les
+    //     repousse pas — mais il ne les oublie pas non plus. La ligne dans
+    //     `reinitialisations` est le message, et `/sync` la lui rend.
+    //
+    // ON NE PEUT PAS FILTRER EN SQL, ET C'EST LA CONTRAINTE QUI DESSINE TOUT :
+    // `events.payload` est CHIFFRÉ en base. Le parcours d'un événement ne se
+    // lit qu'après déchiffrement. On relit donc les événements de cet élève —
+    // ce que la route fait déjà pour son bilan — et l'on efface par
+    // identifiant.
+    if (($body['action'] ?? '') === 'reinitialiser') {
+        $pathId = trim((string) ($body['pathId'] ?? ''));
+        if ($pathId === '') fail(400, 'no_path', 'Quelle séance ?');
+
+        // LES RUNS DE CE PARCOURS. Un `step_completed` ne porte pas toujours le
+        // parcours ; il porte toujours son run, et le run porte le parcours.
+        $siens = [];
+        foreach ($runs as $r) {
+            if (($r['pathId'] ?? null) === $pathId) $siens[$r['runId']] = true;
+        }
+
+        $aEffacer = [];
+        foreach ($events as $e) {
+            $p = $e['payload'] ?? [];
+            $parRun = isset($p['runId']) && isset($siens[$p['runId']]);
+            $parChemin = ($p['pathId'] ?? null) === $pathId;
+            if ($parRun || $parChemin) $aEffacer[] = $e['id'];
+        }
+
+        $efface = 0;
+        if ($aEffacer) {
+            // PAR PAQUETS DE CENT : une liste de mille marqueurs dans un
+            // `IN (...)` dépasse les limites de certains serveurs, et une
+            // séance de trente exercices écrit vite des centaines
+            // d'événements.
+            foreach (array_chunk($aEffacer, 100) as $paquet) {
+                $trous = implode(',', array_fill(0, count($paquet), '?'));
+                // `AND student_id = ?` EST LA SEULE CHOSE QUI COMPTE ICI :
+                // les identifiants viennent du navigateur, donc de quelqu'un.
+                $q = db()->prepare("DELETE FROM events WHERE student_id = ? AND id IN ($trous)");
+                $q->execute(array_merge([$studentId], $paquet));
+                $efface += $q->rowCount();
+            }
+        }
+
+        db()->prepare('INSERT INTO reinitialisations (id, student_id, path_id) VALUES (?, ?, ?)')
+            ->execute([uuidv4(), $studentId, $pathId]);
+
+        respond(['ok' => true, 'efface' => $efface,
+                 'dit' => $efface
+                    ? "Séance remise à zéro : $efface trace(s) effacée(s)."
+                    : 'Séance remise à zéro : cet élève n\'avait rien commencé.']);
+    }
 
     respond([
         'student' => ['id' => $student['id'], 'firstName' => $student['first_name']],
@@ -2166,6 +2242,29 @@ function overridesDeLaClasse(string $classeId): array
         'pour' => $o['student_id'] ? dechiffrer($o['first_name']) : null,
         'quand' => instantDe($o['created_at']),
     ], $s->fetchAll());
+}
+
+/**
+ * LES REMISES À ZÉRO DEMANDÉES POUR CET ÉLÈVE.
+ *
+ * Une ligne par séance remise à zéro, avec l'heure. L'appareil de l'élève
+ * oublie, dans son propre journal, tout ce qui concerne ce parcours et qui
+ * précède cette heure — voir `appliquerLesOublis` côté navigateur.
+ *
+ * `le` EST RENDU EN MILLISECONDES, comme tout ce que le journal manipule. La
+ * base garde un `datetime('now')` en UTC ; le navigateur, lui, ne connaît que
+ * des horodatages. Convertir ICI évite que chaque lecteur s'en charge — et
+ * qu'un seul l'oublie.
+ */
+function oublisDeLEleve(string $studentId): array
+{
+    $stmt = db()->prepare('SELECT path_id, le FROM reinitialisations WHERE student_id = ?
+                           ORDER BY le ASC LIMIT 200');
+    $stmt->execute([$studentId]);
+    return array_map(fn($r) => [
+        'pathId' => $r['path_id'],
+        'le' => (int) (strtotime((string) $r['le'] . ' UTC') * 1000),
+    ], $stmt->fetchAll());
 }
 
 function eventsOfStudent(string $studentId): array

@@ -1948,3 +1948,23 @@ lignes** — 2026-10-01
   qui existe.** Et la réponse se mesure : savoir que le geste existe ne suffit
   pas, il fallait vérifier que le serveur ne renvoie pas aussitôt ce que
   l'appareil vient d'effacer.
+
+**« Réinitialiser » : j'ai répondu à la question d'à côté** — 2026-10-02
+
+- *Ce que je voulais faire* : répondre à « je peux réinitialiser un élève sur
+  une séance, ça m'aiderait à tester mon élève test ».
+- *Ce qui a coûté* : un aller-retour entier. J'ai compris « l'élève peut-il se
+  remettre à zéro ? », mesuré que oui (déconnexion en effaçant le travail),
+  écrit une sonde, un commit et une réponse de vingt lignes — pour m'entendre
+  dire « attend je pense que l'on ne s'est pas compris ». Il voulait le faire
+  DEPUIS SON POSTE, sur un élève virtuel, sans toucher à l'appareil.
+- *Combien de fois* : || (déjà : « deux clics » comptés depuis un billet alors
+  qu'il demandait depuis la connexion — même jour.)
+- *Ce qui manque* : rien à fabriquer. **Relire la demande en cherchant QUI fait
+  le geste.** « Je réinitialise » — c'est lui, professeur, à son poste. Les
+  deux fois, le mot qui tranchait était dans la phrase et je ne l'avais pas
+  lu : « depuis mon poste », « quand on se connecte ».
+- *La règle* : **avant de mesurer, écrire en une phrase qui fait le geste, sur
+  quelle machine, et ce qu'il voit après.** Si cette phrase ne se laisse pas
+  écrire, la demande n'est pas comprise — et c'est le moment de demander, pas
+  après avoir livré.
