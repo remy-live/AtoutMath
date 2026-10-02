@@ -314,12 +314,36 @@ export function quadrillageSvg(cfg = {}) {
  * viser un trait de deux pixels au doigt est impossible, et l'exercice porte
  * sur la symétrie, pas sur l'adresse.
  */
+// ── UNE ZONE DE VISÉE PEUT DIRE CE QU'ELLE EST ──────────────────────────────
+//
+// RÉMY : « Les élèves ont beaucoup de mal à comprendre le concept de x = 6, ce
+// qui serait possible c'est que si la souris passe sur une droite ou sur un
+// point ou qu'il clique dessus, on a un petit tooltip visible qui donne les
+// coordonnées du point ou l'équation de la droite x = 6 ou y = 8 par exemple ».
+//
+// LE DESSIN NE SAIT PAS ÉCRIRE « x = 6 », et il n'a pas à l'apprendre : la
+// phrase dépend du repère de l'élève, que `elementSymetrie.js` connaît et que
+// le quadrillage ignore. L'appelant pose donc `el.dit`, et le dessin se
+// contente de l'attacher à la zone de visée.
+//
+// ET UNE ZONE NAÎT DÈS QU'IL Y A QUELQUE CHOSE À DIRE, même quand on ne peut
+// pas cliquer : sur la première marche, l'élève répond par des boutons sous la
+// figure, et c'est justement là qu'il a le plus besoin de voir le lien entre
+// le trait et son écriture.
 function dessinerCandidat(el, i, { L, H, px, py, u, interactive }) {
     const out = [];
     const cible = [];
     const id = el.id ?? i;
     const nom = esc(el.nom || '');
     const large = u * 0.5;
+    const dit = el.dit ? ` data-dit="${esc(el.dit)}"` : '';
+    // UNE ZONE QUI N'EST PAS CLIQUABLE NE SE PREND PAS POUR UN BOUTON : pas de
+    // `role`, pas de `tabindex`, et le lecteur d'écran lit la figure, pas
+    // trente cibles muettes. Elle n'est là que pour le survol et le doigt.
+    const role = interactive
+        ? ' tabindex="0" role="button"'
+        : ' aria-hidden="true" pointer-events="all"';
+    const zone = interactive || el.dit;
 
     if (el.genre === 'axe' && el.axe) {
         const vert = el.axe.type === 'v';
@@ -333,8 +357,8 @@ function dessinerCandidat(el, i, { L, H, px, py, u, interactive }) {
                 text-anchor="middle">${nom}</text>`
             : `<text class="qd-candidat-nom" x="${px(L) + u * 0.15}" y="${py(q)}"
                 dominant-baseline="central">${nom}</text>`);
-        if (interactive) {
-            cible.push(`<rect class="qd-el-hit" data-el="${esc(id)}" tabindex="0" role="button"
+        if (zone) {
+            cible.push(`<rect class="qd-el-hit" data-el="${esc(id)}"${dit}${role}
                 aria-label="La droite ${nom}"
                 x="${vert ? px(q) - large / 2 : px(0)}" y="${vert ? py(0) : py(q) - large / 2}"
                 width="${vert ? large : L * u}" height="${vert ? H * u : large}"/>`);
@@ -349,8 +373,8 @@ function dessinerCandidat(el, i, { L, H, px, py, u, interactive }) {
             + `<line x1="${px(cx - 0.26)}" y1="${py(cy + 0.26)}" x2="${px(cx + 0.26)}" y2="${py(cy - 0.26)}"/>`
             + `</g>`);
         out.push(`<text class="qd-candidat-nom" x="${px(cx + 0.32)}" y="${py(cy - 0.32)}">${nom}</text>`);
-        if (interactive) {
-            cible.push(`<circle class="qd-el-hit" data-el="${esc(id)}" tabindex="0" role="button"
+        if (zone) {
+            cible.push(`<circle class="qd-el-hit" data-el="${esc(id)}"${dit}${role}
                 aria-label="Le point ${nom}"
                 cx="${px(cx)}" cy="${py(cy)}" r="${large * 0.75}"/>`);
         }

@@ -88,8 +88,21 @@ test('APRÈS CHAQUE GESTE, ON RELIT LE SERVEUR', () => {
     // corrige. Des deux côtés — la case d'un élève ET celle de la classe.
     const casesEleves = PC.slice(PC.indexOf('function brancherLesCasesEleves'));
     assert.match(casesEleves.slice(0, 2500), /await relireLesNommes\(\);/);
-    const basculer = PC.slice(PC.indexOf('async function basculer'),
-        PC.indexOf('async function basculer') + 4200);
+    // ── UNE TRANCHE SE BORNE SUR LA FIN DE LA FONCTION, PAS SUR UN NOMBRE ──
+    //
+    // Elle était bornée à 4 200 caractères, et elle est tombée le jour où un
+    // commentaire de vingt lignes s'est ajouté DANS la fonction : la ligne
+    // cherchée existait toujours, elle était seulement passée au-delà de la
+    // fenêtre. L'épreuve accusait un code intact.
+    //
+    // C'est la troisième fois qu'une tranche trop courte coûte une enquête.
+    // Une borne qui dépend de la longueur des COMMENTAIRES est une borne qui
+    // tombera encore — et elle tombe au pire moment, dans un harnais de quatre
+    // minutes lu juste avant de committer.
+    const debut = PC.indexOf('async function basculer');
+    const fin = PC.indexOf('\n    dessiner();\n    return panel;', debut);
+    assert.ok(debut > 0 && fin > debut, 'la fonction `basculer` a changé de forme');
+    const basculer = PC.slice(debut, fin);
     assert.match(basculer, /await relireLesNommes\(\);\s*\n\s*dessiner\(\);/);
 });
 

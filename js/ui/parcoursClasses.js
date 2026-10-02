@@ -41,7 +41,8 @@ import {
     clore, rouvrir, retirer, remettre, estRetiree, elevesDe,
     poserMot, aRattraper
 } from '../core/seances.js';
-import { bilanSeance, bilanEleveSeance, aTravaille } from '../core/bilanSeance.js';
+import { bilanSeance, bilanEleveSeance, aTravaille,
+    onSaitQuiATravaille } from '../core/bilanSeance.js';
 import {
     lireClasses, lireSeances, ecrireSeances, classesIllisibles, oublierLesClasses
 } from './donnerSeance.js';
@@ -131,6 +132,11 @@ function etatClasse(classe, seances, pathId, maintenant = Date.now()) {
         retiree: !!retiree && !vivante,
         etat: seance ? etatSeance(seance, maintenant) : null,
         travaille: seance ? (classe.eleves || []).some(e => aTravaille(seance, e.evenements || [])) : false,
+        // ET SAIT-ON SEULEMENT ? `travaille: false` veut dire deux choses —
+        // « personne n'a commencé » et « je n'ai pas les journaux » — et cet
+        // écran est précisément celui qui ne les a pas. Voir
+        // `onSaitQuiATravaille` : la confusion coûtait un bilan.
+        onSait: onSaitQuiATravaille(classe),
         // LES RATTRAPAGES SONT DES SÉANCES À PART, ET ILS SE RETROUVENT ICI.
         //
         // Un rattrapage porte une COPIE du parcours avec un identifiant neuf,
@@ -283,11 +289,45 @@ function elevesHtml(classe, info) {
             ? `<p class="pc-vide pc-vide--note">${combien} élève${combien > 1 ? 's' : ''} sur `
               + `${liste.length} l'${combien > 1 ? 'ont' : 'a'}. Cochez, décochez.</p>`
             : '<p class="pc-vide pc-vide--note">Cochez ceux à qui vous le donnez.</p>'))
+        // CET ÉCRAN DISTRIBUE, IL NE RELIT PAS — et il ne possède pas de quoi
+        // relire : voir le commentaire sur `aTravaille`, plus bas. On dit donc
+        // où le travail se lit, plutôt que de laisser chercher.
+        + (info.seance
+            ? '<p class="pc-vide pc-vide--note pc-vide--ou">Ce qu\'ils en ont fait se lit '
+              + 'dans <b>Mes classes</b>, onglet <b>Les bilans</b> : chaque ligne s\'y '
+              + 'déplie sur ses notions fragiles et ses séances notées.</p>'
+            : '')
         + [...liste]
         .sort((a, b) => String(a.nom).localeCompare(String(b.nom), 'fr'))
         .map(e => {
-            const fait = info.seance && aTravaille(info.seance, e.evenements || []);
-            const b = fait ? bilanEleveSeance(info.seance, e) : null;
+            // ── CET ÉCRAN NE SAIT PAS QUI A TRAVAILLÉ, ET IL NE LE DIT PLUS ──
+            //
+            // MESURÉ (`tools/reinitialiserUnEleve.mjs`) : TOUTE la classe
+            // s'affichait « n'a pas commencé », y compris un élève qui venait
+            // de finir sa séance. La raison est la même que celle du bouton de
+            // remise à zéro, deux commentaires plus bas : cette liste vient de
+            // la route « roster », qui rend des noms et des codes, PAS les
+            // événements. `aTravaille` y répond donc toujours non.
+            //
+            // ON NE DIT PLUS RIEN PLUTÔT QUE DE DIRE FAUX. « n'a pas
+            // commencé » sous le nom d'un élève qui vient de rendre son
+            // travail est une information inventée, et Rémy la croirait — il
+            // n'a aucune raison de se méfier d'une phrase aussi nette. Un
+            // blanc se remarque et se demande ; une fausse phrase, non.
+            //
+            // ET LE BILAN PAR ÉLÈVE EXISTE, À UN ONGLET D'ICI : « Mes classes
+            // › Les bilans », où chaque ligne se déplie depuis peu sur ses
+            // notions fragiles et ses séances notées. Le dupliquer ici
+            // demanderait d'envoyer au professeur le journal de trente élèves
+            // à chaque ouverture de ce panneau, pour une information qu'il a
+            // déjà ailleurs et mieux rangée. On l'y renvoie (voir l'en-tête de
+            // la liste) au lieu de la recopier.
+            //
+            // `aTravaille` et `bilanEleveSeance` restent importés : ils
+            // servent au BILAN DE SÉANCE, plus bas dans ce fichier, qui reçoit
+            // bien les événements.
+            const b = (info.seance && (e.evenements || []).length)
+                ? bilanEleveSeance(info.seance, e) : null;
             // TOUTE LA CLASSE L'A : chacun l'a, donc chaque case est cochée.
             // Elle n'est plus grisée — c'est tout l'objet de la correction.
             const sien = toute || (info.nommes || new Set()).has(e.id);
@@ -300,8 +340,7 @@ function elevesHtml(classe, info) {
                 <span class="pc-eleve-nom">${esc(e.nom)}</span>
                 ${b ? `<span class="pc-chiffre">${b.questions} q · ${pourcent(b.reussite)}</span>` : ''}
                 ${b ? `<button type="button" class="pc-bilan" data-bilan-eleve="${esc(e.id)}"
-                        data-classe="${esc(classe.id)}">bilan</button>`
-        : '<span class="pc-rien">n\'a pas commencé</span>'}
+                        data-classe="${esc(classe.id)}">bilan</button>` : ''}
                 <!-- IL NE DÉPEND PAS DU BILAN, ET C'EST VOULU.
                      Première version : le bouton n'apparaissait que si l'élève
                      avait travaillé — ce qui paraissait sage. MESURÉ
@@ -1182,7 +1221,20 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
             // aurait fait qu'annuler laisse la séance chez le professeur et
             // plus chez les élèves — c'est-à-dire exactement l'incohérence
             // qu'on est en train de réparer, dans l'autre sens.
-            if (info.travaille) {
+            // ── DANS LE DOUTE, ON RETIRE : ON NE SUPPRIME PAS ───────────────
+            //
+            // `info.travaille` vaut `false` aussi bien quand personne n'a
+            // commencé que quand cet écran n'a pas les journaux — et il ne les
+            // a JAMAIS (voir `onSaitQuiATravaille`). La branche « personne n'a
+            // encore commencé » SUPPRIME la séance de la bibliothèque, et le
+            // bilan de cette séance avec elle : un professeur qui retirait une
+            // séance travaillée perdait son bilan.
+            //
+            // RETIRER N'EFFACE RIEN, SUPPRIMER EFFACE TOUT. Le pire qui puisse
+            // arriver du côté prudent est une séance que personne n'a ouverte
+            // qui reste dans la liste, marquée « retirée ». Le pire de l'autre
+            // côté est un bilan de classe perdu. Ce n'est pas un arbitrage.
+            if (info.travaille || !info.onSait) {
                 if (!await auServeurRetirer(classe)) { caseEl.checked = true; return; }
                 // ON NE SUPPRIME PAS DU TRAVAIL. On retire, et on le dit.
                 seances = seances.map(s => (s.id === info.seance.id ? retirer(s) : s));

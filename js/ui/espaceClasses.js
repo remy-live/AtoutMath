@@ -124,6 +124,7 @@ let ordreDuDirect = (() => {
 import { enMinutes } from './leMoment.js';
 import { ficheDeLEleve, gestesPossibles, pourquoiDebloquer } from '../core/ficheEleve.js';
 import { notionsAReprendre, resumeDeClasse, ordreDuBilan, enHeures } from '../core/bilanClasse.js';
+import { detailDeLEleve } from '../core/detailDeLEleve.js';
 import { getSkill as laCompetence } from '../data/skills.js';
 
 /**
@@ -212,6 +213,9 @@ export async function ouvrirEspaceClasses() {
             reglagesSite: null,
         // L'élève dont la fiche est dépliée dans Le direct — un seul à la fois.
         fiche: null,
+        // Et celui dont la ligne est dépliée dans Les bilans. Les deux écrans
+        // ne se partagent pas ce souvenir : on n'y cherche pas la même chose.
+        bilanOuvert: null,
         // LES ÉLÈVES COCHÉS dans Le direct. Un ensemble, pas une liste : on y
         // entre et l'on en sort par le même geste, trente fois dans l'heure.
         // Il survit au battement de dix secondes (les cases sont redessinées
@@ -1553,6 +1557,43 @@ function reprendreHtml(notions, combienDElevesEnTout) {
     </section>`;
 }
 
+/**
+ * LE DÉPLIAGE D'UN ÉLÈVE : ce qui est fragile, et ce qu'il a eu.
+ *
+ * Il tient dans une SEULE cellule qui traverse les six colonnes : une ligne de
+ * tableau ne peut rien porter d'autre, et c'est tant mieux — le dépliage ne se
+ * confond pas avec une ligne d'élève.
+ *
+ * CE QU'IL DIT EST DÉCIDÉ AILLEURS (`core/detailDeLEleve.js`), là où ça se
+ * mesure sans navigateur : combien de notions fragiles, dans quel ordre, et
+ * quelle phrase quand il n'y a rien — ce qui est le cas le plus fréquent la
+ * première semaine.
+ */
+function detailHtml(l) {
+    const d = detailDeLEleve(l);
+    const fragiles = d.fragiles.length ? `
+        <div class="ec-detail-bloc">
+            <h4 class="ec-detail-titre">Ce qui est fragile</h4>
+            ${d.fragiles.map(f => `<div class="ec-detail-notion">
+                <b>${esc(f.label)}</b>
+                <span class="ec-jauge ec-jauge--mince"><i style="width:${f.pourcent}%"></i></span>
+                <span class="ec-note">${f.pourcent} %</span>
+            </div>`).join('')}
+        </div>` : '';
+    const notes = d.notes.length ? `
+        <div class="ec-detail-bloc">
+            <h4 class="ec-detail-titre">Ses séances notées</h4>
+            ${d.notes.map(n => `<div class="ec-detail-note">
+                <span>${esc(n.seance)}</span>
+                <b>${esc(String(n.note))} / ${esc(String(n.sur))}</b>
+            </div>`).join('')}
+        </div>` : '';
+    return `<tr class="ec-tr-detail"><td colspan="6">
+        <p class="ec-note ec-note--bloc">${esc(d.phrase)}</p>
+        ${fragiles}${notes}
+    </td></tr>`;
+}
+
 function tableauBilanHtml(lignes) {
     return `<section class="ec-bloc">
         <h3 class="ec-h3">Élève par élève</h3>
@@ -1570,7 +1611,28 @@ function tableauBilanHtml(lignes) {
                     ? '—' : Math.round(l.successRate * 100) + ' %';
                 const note = l.lastNote
                     ? `${esc(String(l.lastNote.note))} / ${esc(String(l.lastNote.sur))}` : '—';
-                return `<tr${rien ? ' class="ec-tr-rien"' : ''}>
+                // ── ON CLIQUE SUR LUI, ET SA LIGNE SE DÉPLIE ───────────────
+                //
+                // RÉMY : « le bilan que tu proposes est bien car concis, on
+                // pourrait avoir un peu de détail par élève si on le souhaite
+                // et qu'on clique sur lui ? »
+                //
+                // LES DEUX MOITIÉS DE SA PHRASE COMPTENT. Le tableau est bien
+                // PARCE QU'il est concis : six colonnes, trente lignes, et
+                // l'œil trouve en deux secondes qui n'a rien fait. Trois
+                // colonnes de plus le détruiraient. Le détail se déplie donc,
+                // et seulement là où l'on a cliqué.
+                //
+                // LE SERVEUR L'ENVOYAIT DÉJÀ : `/teacher/report` rend
+                // `weakSkills` et `notes` par élève depuis toujours, et
+                // l'écran n'en affichait aucune. Il n'y avait rien à aller
+                // chercher, seulement à montrer.
+                const ouvert = vue.bilanOuvert === l.studentId;
+                return `<tr class="ec-tr-bilan${rien ? ' ec-tr-rien' : ''}${
+                    ouvert ? ' ec-tr-bilan--ouverte' : ''}"
+                    data-bilan-eleve="${esc(l.studentId)}" role="button" tabindex="0"
+                    aria-expanded="${ouvert ? 'true' : 'false'}"
+                    title="Voir le détail de ${esc(l.firstName)}">
                     <td><b>${esc(l.firstName)}</b>${l.lastSeenAt ? ''
                         : ' <span class="ec-note">(jamais venu)</span>'}</td>
                     <td>${l.totalQuestions || 0}</td>
@@ -1578,7 +1640,7 @@ function tableauBilanHtml(lignes) {
                     <td class="ec-note">${esc(enHeures(l.timeSeconds))}</td>
                     <td>${l.openErrors || 0}</td>
                     <td>${note}</td>
-                </tr>`;
+                </tr>${ouvert ? detailHtml(l) : ''}`;
             }).join('')}</tbody>
         </table></div>
     </section>`;
@@ -2155,7 +2217,7 @@ async function brancher(e, redessiner) {
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
-        + '[data-calc-eleve], [data-saut-tout],'
+        + '[data-calc-eleve], [data-saut-tout], [data-bilan-eleve],'
         + '[data-signalement], [data-signalements], [data-voir-photo], [data-classer],'
         + '[data-ordre-direct],'
         + '[data-effacer-signal]');
@@ -2745,6 +2807,15 @@ async function brancher(e, redessiner) {
     // Rémy : « il faut aussi pouvoir cliquer sur l'élève, voir où il en est ».
     // Un second clic referme : c'est ce qu'on essaie, et c'est ce qui permet de
     // retrouver la classe entière sans chercher de croix.
+    // UN ÉLÈVE À LA FOIS, comme la fiche du direct : deux dépliages ouverts
+    // font reculer le tableau de six lignes, et l'on perd la vue d'ensemble
+    // qui est tout l'intérêt de cet écran.
+    if (d.bilanEleve !== undefined) {
+        vue.bilanOuvert = vue.bilanOuvert === d.bilanEleve ? null : d.bilanEleve;
+        redessiner();
+        return;
+    }
+
     if (d.fiche !== undefined) {
         vue.fiche = vue.fiche === d.fiche ? null : d.fiche;
         redessiner();

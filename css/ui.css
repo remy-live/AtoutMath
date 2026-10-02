@@ -4525,6 +4525,44 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .ec-td-faible { color: var(--danger-texte); font-weight: 700; }
 .ec-tr-rien { background: color-mix(in srgb, var(--warning) 8%, transparent); }
 
+/* ── LE DÉPLIAGE D'UN ÉLÈVE, SOUS SA LIGNE ──────────────────────────────────
+
+   Rémy : « le bilan que tu proposes est bien car concis, on pourrait avoir un
+   peu de détail par élève si on le souhaite et qu'on clique sur lui ? »
+
+   LA LIGNE DOIT SE DONNER POUR CLIQUABLE, sinon personne ne la clique : un
+   tableau ne s'essaie pas, il se lit. Le curseur et le survol le disent, et
+   `aria-expanded` le dit à qui lit l'écran à l'oreille. */
+.ec-tr-bilan { cursor: pointer; }
+@media (hover: hover) and (pointer: fine) {
+    .ec-tr-bilan:hover > td { background: color-mix(in srgb, var(--primary) 6%, transparent); }
+}
+.ec-tr-bilan:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.ec-tr-bilan--ouverte > td { background: color-mix(in srgb, var(--primary) 9%, transparent); }
+/* Le dépliage n'est pas une ligne d'élève : il n'en porte ni la grille ni les
+   bords, et sa cellule traverse les six colonnes. */
+.ec-tr-detail > td { padding: 12px 14px 16px; background: var(--bg-app); }
+.ec-detail-bloc { margin-top: 10px; }
+.ec-detail-titre {
+    margin: 0 0 6px; font-size: .82rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
+}
+.ec-detail-notion {
+    display: grid; grid-template-columns: minmax(0, 1fr) 90px 44px;
+    align-items: center; gap: 10px; padding: 3px 0; font-size: .9rem;
+}
+.ec-detail-notion > b { min-width: 0; overflow-wrap: anywhere; }
+.ec-detail-note {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; padding: 3px 0; font-size: .9rem;
+}
+/* À la largeur d'un téléphone, la jauge et le pourcentage passent sous le nom
+   plutôt que de le réduire à trois lettres. */
+@media (max-width: 560px) {
+    .ec-detail-notion { grid-template-columns: minmax(0, 1fr) 44px; }
+    .ec-detail-notion > .ec-jauge { grid-column: 1 / -1; }
+}
+
 /* ─────────────────────────── SE DÉCONNECTER ───────────────────────────────
    Rémy : « Tu sais qu'on ne peut même pas se déconnecter ».
 

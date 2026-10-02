@@ -2063,3 +2063,54 @@ lignes** — 2026-10-01
   commentaire HTML sans le refermer. Zéro fausse alerte sur le dépôt entier, et
   il attrape celui-là. **Quand un détecteur crie mille fois, ce n'est pas le
   seuil qu'il faut monter, c'est la question qu'il faut retourner.**
+
+---
+
+## `false` veut dire « non » ET « je ne sais pas » — 2026-10-02
+
+- *Ce que je voulais faire* : afficher le bilan par élève dans « Donner à une
+  classe », qui ne s'y affichait jamais.
+- *Ce qui a coûté* : rien à chercher — un commentaire du dépôt décrivait déjà
+  la cause, écrite après la friction du bouton de remise à zéro : cette liste
+  vient de la route « roster », qui rend des noms et des codes, PAS les
+  événements, donc `aTravaille` y répond toujours non. **Mais en relisant qui
+  d'autre s'appuyait sur ce `false`, j'ai trouvé pire que l'affichage** :
+  `info.travaille` gardait aussi la branche de SUPPRESSION. Retirer une séance
+  depuis ce panneau prenait toujours le chemin « personne n'a encore
+  commencé », qui efface la séance de la bibliothèque — **et le bilan de cette
+  séance avec elle**. Un professeur qui retirait une séance travaillée perdait
+  son bilan.
+- *Combien de fois* : ||| (le bouton gardé par une donnée absente, trois fois
+  maintenant : la flèche de remise à zéro, le bilan par élève, et celui-ci.)
+- *Ce qui manque* : rien à fabriquer. La correction est un prédicat —
+  `onSaitQuiATravaille(classe)` — et une condition qui le consulte avant
+  d'effacer.
+- *La règle, et c'est la troisième formulation de la même leçon* : la première
+  disait **un bouton ne se garde qu'avec une information que son écran
+  détient**. Voici la version qui mord : **`false` veut dire « non » ET « je ne
+  sais pas », et aucune des deux ne se voit. Une condition qui décide
+  d'EFFACER ne se contente donc pas d'un `false` : elle demande d'abord si l'on
+  sait.** Un défaut d'affichage se signale tout seul — Rémy l'a vu en une
+  journée ; celui-ci serait resté muet jusqu'au jour où un bilan aurait
+  disparu, et personne n'aurait fait le lien.
+
+## Une tranche d'épreuve bornée par un NOMBRE finit toujours par tomber — 2026-10-02
+
+- *Ce que je voulais faire* : ajouter un commentaire de vingt lignes dans
+  `basculer()`, pour expliquer pourquoi on retire au lieu de supprimer.
+- *Ce qui a coûté* : `npm test` est passé de 4343/4343 à une épreuve rouge —
+  « APRÈS CHAQUE GESTE, ON RELIT LE SERVEUR » —, dans un harnais de quatre
+  minutes lu juste avant de committer. Le code était INTACT : l'épreuve
+  découpait `PC.slice(début, début + 4200)` et la ligne cherchée venait de
+  passer au-delà de la fenêtre, poussée par le commentaire. Cinq minutes à
+  relire un correctif qui n'avait rien.
+- *Combien de fois* : ||| (déjà deux fois sur `seanceEnCours.test.mjs` et
+  `oublis.test.mjs`, où j'avais simplement ÉLARGI la tranche — c'est-à-dire
+  repoussé le problème.)
+- *Ce qui manque* : rien à fabriquer, une règle à tenir.
+- *La règle* : **une tranche se borne sur la FIN de ce qu'elle mesure, jamais
+  sur un nombre de caractères.** Une borne qui dépend de la longueur des
+  COMMENTAIRES est une borne qui retombera — et ce dépôt ajoute des
+  commentaires à chaque correctif, par construction. `indexOf(fin, début)`
+  coûte la même ligne et ne bouge plus. Élargir la fenêtre ne corrige rien :
+  cela achète quelques commentaires de sursis.

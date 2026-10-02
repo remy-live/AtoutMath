@@ -1613,6 +1613,47 @@ html[data-point="plus"] .pt-croix { display: none; }
     font-size: .92rem; font-weight: 600; margin: 2px auto 12px;
 }
 
+/* LA BULLE QUI DIT « x = 6 ».
+
+   Rémy : « Les élèves ont beaucoup de mal à comprendre le concept de x = 6 […]
+   si la souris passe sur une droite ou sur un point ou qu'il clique dessus, on
+   a un petit tooltip visible qui donne les coordonnées du point ou l'équation
+   de la droite x = 6 ou y = 8 par exemple ».
+
+   ELLE EST POSÉE SUR LE MILIEU DE LA ZONE DE VISÉE, et remontée d'une
+   demi-hauteur par `translate` : posée DESSUS, elle couvrirait le trait dont
+   elle parle — ce qui est exactement ce qu'il ne faut pas faire quand on
+   enseigne le lien entre un trait et son écriture.
+
+   `pointer-events: none` : sans cela, la bulle passe sous le curseur, vole le
+   survol à la droite, se cache, rend le survol, reparaît — et clignote.
+
+   Le plateau devient le repère de ce placement : `position: relative` sur lui,
+   et rien d'autre ne bouge. */
+.sy-plateau { position: relative; }
+.sy-bulle {
+    position: absolute; z-index: 3; pointer-events: none;
+    transform: translate(-50%, calc(-100% - 10px));
+    background: var(--text-main); color: var(--bg-panel);
+    padding: 4px 10px; border-radius: 9px; white-space: nowrap;
+    font-size: .95rem; font-weight: 800; letter-spacing: .01em;
+    box-shadow: var(--shadow-md);
+}
+/* La petite pointe, qui dit DE QUOI la bulle parle. Sans elle, deux droites
+   voisines se disputent la même étiquette. */
+.sy-bulle::after {
+    content: ''; position: absolute; left: 50%; top: 100%;
+    transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: var(--text-main);
+}
+/* LA ZONE DE VISÉE SE SIGNALE AU SURVOL — Rémy : « et il faut le signaler ».
+   Une zone transparente qui ne répond pas ne se découvre jamais : rien ne dit
+   à l'élève qu'il y a quelque chose à survoler. */
+.qd-el-hit[data-dit] { cursor: help; }
+@media (hover: hover) and (pointer: fine) {
+    .qd-el-hit[data-dit]:hover { fill: color-mix(in srgb, var(--primary) 12%, transparent); }
+}
+
 .sy-ecriture {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
     gap: 10px; margin: 2px auto 6px;
