@@ -140,7 +140,14 @@ function dessiner() {
     el.innerHTML = `<span class="moment-chrono">${enMinutes(t.reste)}</span>`
         + `<span class="moment-quoi">${t.aZero === 'pause'
             ? 'À zéro, on s\'arrête pour écouter.'
-            : 'À zéro, on ramasse les copies.'}</span>`;
+            // ON NE RAMASSE PAS DE COPIES. Rémy : « c'est noté à Zéro on ramasse
+            // les copies. Ne mets pas cela, ce sont pas des copies lol ». Il a
+            // raison deux fois : il n'y a pas de feuille, et surtout rien à
+            // rendre — le travail de l'élève est déjà parti au serveur à chaque
+            // réponse. La phrase annonçait donc un geste qui n'existe pas, et
+            // elle pouvait faire croire à l'élève qu'il lui restait quelque
+            // chose à faire avant la fin.
+            : 'À zéro, c\'est terminé.'}</span>`;
 }
 
 // ─────────────────────────────────────────────────────── LE FIL ─────────────

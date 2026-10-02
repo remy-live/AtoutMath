@@ -21,7 +21,8 @@ import { hydratePath, normalizePath } from '../core/path.js';
 import { resolvePolicy, isEvaluation, describePolicy } from '../core/policy.js';
 import { journal } from '../core/journal.js';
 import { computeRuns } from '../core/projections.js';
-import { gradeRun, baremeParEtape, direBareme } from '../core/grading.js';
+import { gradeRun, baremeParEtape } from '../core/grading.js';
+import { sousLaPastille } from '../core/ligneDEtape.js';
 import { buildRecommendedPreview, startRecommendedSession, startSkillSession } from '../core/remediation.js';
 import { formatDuration } from './reportUI.js';
 import {
@@ -391,6 +392,12 @@ function assignedSection() {
         // sur quoi. `null` hors évaluation notée — une étape d'entraînement
         // n'a pas de points, et en afficher serait mentir.
         bareme: baremeParEtape(steps, path.policy),
+        // CE QU'IL A FAIT DE CHAQUE ÉTAPE DÉJÀ TERMINÉE. Rémy, devant le
+        // plan : « on pourrait écrire la réussite aussi non ? ». La pastille
+        // disait ce qu'il y A à faire — quatorze questions, quatre points —
+        // et jamais ce qu'il EN A FAIT ; l'élève devait rouvrir son bilan
+        // pour savoir s'il avait tout trouvé à l'étape qu'il regardait.
+        resultats: assigned.resultats || {},
         recompenses: parJeu,
         seuilRecompense: etatJeux.seuil,
         // L'élève choisit-il son ordre ? C'est une règle de la séance.
@@ -616,11 +623,21 @@ function creerNoeud(step, i, statut, opts, numero = i + 1) {
             ? 'À toi de jouer !'
             : direRecompense(jeu, opts.seuilRecompense ?? 0.75);
     } else {
-        // Le barème tient sous la pastille : « 5 q. • 4 pts ». C'est court, et
-        // c'est ce qu'un élève regarde avant de choisir où passer son temps.
-        const pts = opts.bareme && opts.bareme.get(step.stepId);
-        meta.textContent = `${step.nbItems} q.${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`
-            + (pts ? ` • ${direBareme(pts)}` : '');
+        // ── ON ÉCRIT « QUESTIONS », PAS « q. » ────────────────────────────
+        //
+        // RÉMY : « sur le plan ca écrite 14 q. par exemple écris 14
+        // questions ». L'abréviation gagnait six caractères sous une pastille
+        // de 124 px — et la vue en liste, elle, écrivait « questions » en
+        // entier depuis toujours : deux façons de dire la même chose dans le
+        // même parcours, selon le bouton qu'on avait pressé.
+        //
+        // ET LA RÉUSSITE, QUAND IL Y EN A UNE. Rémy, dans la foulée : « on
+        // pourrait écrire la réussite aussi non ? ». Une étape terminée ne
+        // dit plus ce qu'il y AVAIT à faire — l'élève le sait, il l'a fait —
+        // mais ce qu'il EN A FAIT. Le barème et le chronomètre s'effacent
+        // alors : annoncer « sur 4 pts » sous une étape finie, c'est annoncer
+        // une épreuve qui n'aura pas lieu.
+        meta.textContent = sousLaPastille(step, opts);
     }
 
     node.append(label, meta);
@@ -849,9 +866,9 @@ export function buildClassicTimeline(steps, opts = {}) {
                 ? 'Ta récompense : à toi de jouer !'
                 : direRecompense(jeu, opts.seuilRecompense ?? 0.75);
         } else {
-            const pts = opts.bareme && opts.bareme.get(step.stepId);
-            meta.textContent = `${step.nbItems} questions${step.timeLimit ? ` • ${step.timeLimit}s` : ''}`
-                + (pts ? ` • sur ${direBareme(pts)}` : '');
+            // La même phrase que sous la pastille : deux vues du même
+            // parcours ne disent pas deux choses différentes.
+            meta.textContent = sousLaPastille(step, opts, { sur: true });
         }
         card.appendChild(meta);
 

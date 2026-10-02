@@ -41,6 +41,49 @@
 /** Ce qu'on endort : la page, et rien d'autre. */
 const DERRIERE = ['#top-navbar', '#app-body', '#bottom-nav'];
 
+// ─── LE MENU DU NAVIGATEUR NE S'OUVRE PAS PAR-DESSUS UN EXERCICE ──────────
+//
+// RÉMY : « pour le météorites mathématiques quand on clique hors de la zone
+// (le cercle en pointillés), ca montre le menu contextuel ».
+//
+// CE QUE L'ÉLÈVE VIT. Sur une tablette, l'appui long est un geste ordinaire :
+// on pose le doigt pour viser, on hésite une seconde, et le système ouvre son
+// menu « Copier / Rechercher / Partager » par-dessus le jeu. Le temps de le
+// fermer, la météorite est passée. Au clic droit, même chose sur un ordinateur.
+//
+// CE N'EST PAS UN DÉFAUT DES MÉTÉORITES, et c'est pour cela que le correctif
+// est ici. MESURÉ avec `tools/leMenuDuNavigateur.mjs`, qui envoie un vrai
+// `contextmenu` dans un coin du plateau et lit `defaultPrevented` — la seule
+// chose qui décide si le menu s'ouvre :
+//
+//   FUITE  calc-arcade-shooter   sur « canvas-area »
+//   FUITE  calc-labyrinthe       sur « laby-stats »
+//   FUITE  geo-tangram           sur « tg-wrap »
+//
+// Trois sur trois. Corriger l'arène des Météorites aurait réparé un jeu et
+// laissé les autres — et le prochain jeu écrit l'aurait porté à son tour.
+//
+// DEUX EXCEPTIONS, ET CHACUNE A SA RAISON.
+//
+//   · UN CHAMP DE SAISIE GARDE SON MENU. L'élève qui tape une réponse, une
+//     rédaction ou une formule doit pouvoir copier et coller — le lui retirer
+//     coûterait plus cher que le menu ne gêne.
+//   · UN JEU QUI SE SERT DU CLIC DROIT N'EST PAS EMPÊCHÉ. Le Démineur pose ses
+//     drapeaux ainsi (`js/games/demineur.js`), Colorier aussi. Leur propre
+//     écouteur s'exécute de toute façon : deux écouteurs sur le même événement
+//     tournent tous les deux, et annuler le menu n'annule pas le second.
+//
+// ON AVALE À LA PHASE DE REMONTÉE, pas à la capture : un jeu qui voudrait
+// traiter le clic droit AVANT nous le peut encore.
+const SAISIE = 'input, textarea, select, [contenteditable=""], [contenteditable="true"]';
+
+function avalerLeMenu(couche) {
+    couche.addEventListener('contextmenu', (e) => {
+        if (e.target && e.target.closest && e.target.closest(SAISIE)) return;
+        e.preventDefault();
+    });
+}
+
 const visible = (el) => !!el && el.style.display !== 'none'
     && getComputedStyle(el).display !== 'none';
 
@@ -68,6 +111,9 @@ export function initCoucheDeJeu() {
 
     let ouverte = visible(couche);
     endormir(ouverte);
+    // Une seule fois, et pour tous les jeux : voir ci-dessus. L'écouteur reste
+    // posé même couche fermée — elle ne reçoit alors aucun événement.
+    avalerLeMenu(couche);
 
     new MutationObserver(() => {
         const maintenant = visible(couche);

@@ -12,6 +12,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import './helpers.mjs';
 import '../js/core/activities/index.js';
 import { fautIlOuvrir, enMinutes } from '../js/ui/leMoment.js';
@@ -147,4 +148,33 @@ test('un état sans moment efface le moment précédent', () => {
     appliquerEtat({ className: '4A' });
     assert.equal(tempsRestant(), null);
     assert.equal(seanceImposee(), null);
+});
+
+test('ON NE RAMASSE PAS DE COPIES — il n\'y en a pas', () => {
+    // RÉMY : « c'est noté à Zéro on ramasse les copies. Ne mets pas cela, ce
+    // sont pas des copies lol ».
+    //
+    // Il a raison deux fois. Il n'y a pas de feuille ; et surtout il n'y a rien
+    // à RENDRE — chaque réponse part au serveur au moment où elle est donnée.
+    // La phrase annonçait un geste qui n'existe pas, et elle pouvait faire
+    // croire à l'élève qu'il lui restait quelque chose à faire avant la fin.
+    //
+    // LA MÉTAPHORE ÉTAIT D'ABORD DANS UN COMMENTAIRE (core/espaceProf.js,
+    // « `aZero` vaut 'terminer' (on ramasse les copies) ») avant d'arriver à
+    // l'écran de l'élève. C'est généralement dans cet ordre que ça se passe,
+    // d'où la seconde vérification.
+    const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
+    const SRC = lire('js/ui/leMoment.js');
+    const PROF = lire('js/core/espaceProf.js');
+
+    // Ce que l'élève LIT, hors commentaires : la phrase est dans un gabarit.
+    const codeSeul = (s) => s.split('\n').map(l => l.replace(/^\s*\/\/.*$/, '')).join('\n');
+    assert.ok(!/copies/.test(codeSeul(SRC)), 'l\'élève lit encore « les copies »');
+    assert.match(SRC, /À zéro, c\\?'est terminé\./);
+    // Et l'autre issue, celle qui rend la parole au professeur, n'a pas bougé.
+    assert.match(SRC, /À zéro, on s\\?'arrête pour écouter\./);
+
+    // Le commentaire d'origine, celui qui a semé la phrase.
+    assert.ok(!/\(on ramasse les copies\)/.test(PROF),
+        'la métaphore est restée là où elle est née : elle repoussera');
 });

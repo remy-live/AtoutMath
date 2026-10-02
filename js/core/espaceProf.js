@@ -205,8 +205,12 @@ export const imposerLaSeance = (classId, pathId) =>
 /**
  * LE COMPTE À REBOURS, ET CE QU'IL FAIT À ZÉRO.
  *
- * `aZero` vaut 'terminer' (on ramasse les copies) ou 'pause' (on reprend la
+ * `aZero` vaut 'terminer' (la séance est finie) ou 'pause' (on reprend la
  * parole). Zéro minute l'arrête.
+ *
+ * ON NE DIT PLUS « on ramasse les copies », ici non plus. Rémy : « ce sont pas
+ * des copies lol ». La métaphore était dans ce commentaire avant d'être à
+ * l'écran de l'élève — c'est généralement dans cet ordre que ça se passe.
  */
 export const lancerLeChrono = (classId, minutes, aZero = 'terminer') =>
     auServeur('/teacher/class', { classId, action: 'chrono', minutes, aZero });

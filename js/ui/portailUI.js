@@ -256,14 +256,43 @@ function dessiner() {
                  L'attribut autocapitalize dit au clavier ce qu'on attend, champ par
                  champ : rien pour un identifiant, des MAJUSCULES pour un code,
                  le prénom en majuscule initiale pour un prénom. -->
-            <label>Identifiant
+            <!-- L'EXEMPLE EST DANS L'ÉTIQUETTE, PAS DANS LE CHAMP.
+
+                 RÉMY : « dans l'écran d'accueil ou on tape son identifiant,
+                 quand on clique sur le champ qui affiche un exemple ca efface
+                 le champ exemple ».
+
+                 MESURÉ, PHOTO À L'APPUI, portail ouvert à 390 px de large :
+                 lea.durand et 4KP2 s'affichaient en gras sombre, dans la
+                 police du champ — le second en monospace
+                 espacé, c'est-à-dire exactement la typographie d'un code
+                 réellement saisi. Rien ne distinguait l'exemple d'une valeur
+                 déjà tapée. L'élève voit son champ rempli, pose le doigt
+                 dessus, tape — et l'exemple disparaît. De son point de vue,
+                 le logiciel vient d'effacer quelque chose.
+
+                 L'exemple remonte donc dans l'étiquette, à côté de la forme
+                 du code, là où « 4 signes » vit déjà. Il y reste visible
+                 PENDANT la frappe, ce qu'un indice de champ ne fait jamais —
+                 et c'est précisément quand on tape qu'on a besoin de l'avoir
+                 sous les yeux.
+
+                 ON NE TOUCHE PAS AU STYLE DES INDICES EN GÉNÉRAL : leur fort
+                 contraste a été posé exprès, mesuré, parce que dans les
+                 fenêtres sans retour l'indice PORTE LE MOT À RECOPIER
+                 (EFFACER, REFAIRE, RETIRER). Voir la règle ::placeholder
+                 dans css/ui.css. (Pas d'accent grave ici : ce commentaire est
+                 DANS un gabarit, et le premier qu'on y pose le ferme — l'outil
+                 d'écriture l'a refusé, comme prévu.) Le défaut n'était donc
+                 pas le contraste, c'était l'ENDROIT. -->
+            <label>Identifiant <span class="portail-forme">par exemple lea.durand</span>
               <input id="portail-login" type="text" autocomplete="username" spellcheck="false"
                      autocapitalize="none" autocorrect="off"
-                     maxlength="60" placeholder="lea.durand"></label>
-            <label>Code <span class="portail-forme">4 signes</span>
+                     maxlength="60"></label>
+            <label>Code <span class="portail-forme">4 signes, par exemple 4KP2</span>
               <input id="portail-code-eleve" type="text" autocomplete="off" spellcheck="false"
                      autocapitalize="characters" autocorrect="off" inputmode="text"
-                     maxlength="12" placeholder="4KP2"></label>
+                     maxlength="12"></label>
             <button id="portail-connecter" class="portail-bouton">Entrer</button>
             <p class="portail-etat" id="portail-etat-login"></p>
 
@@ -282,14 +311,18 @@ function dessiner() {
                  qu'on y pose ferme le gabarit.) -->
             ${inscriptionLibre() ? `<details class="portail-repli">
               <summary>Je n'ai pas de billet</summary>
-              <label>Code de la classe
+              <!-- Mêmes deux champs, même défaut : « ABC123 » s'affichait en
+                   majuscules espacées et en gras (voir la règle
+                   portail-classe de css/ui.css), donc comme un code déjà
+                   saisi. -->
+              <label>Code de la classe <span class="portail-forme">par exemple ABC123</span>
                 <input id="portail-classe" type="text" autocomplete="off" spellcheck="false"
                        autocapitalize="characters" autocorrect="off" inputmode="text"
-                       maxlength="12" placeholder="ABC123"></label>
+                       maxlength="12"></label>
               <label>Ton prénom
                 <input id="portail-prenom" type="text" autocomplete="given-name"
                        autocapitalize="words" autocorrect="off"
-                       maxlength="40" placeholder="Léa"></label>
+                       maxlength="40"></label>
               <button id="portail-rejoindre" class="portail-bouton portail-bouton--doux">Entrer avec le code de la classe</button>
               <p class="portail-etat" id="portail-etat-classe"></p>
             </details>` : ''}
@@ -299,6 +332,9 @@ function dessiner() {
             <h2>J'ai un code de séance</h2>
             <p class="portail-aide">Le code que ton professeur vient de dicter,
                ou le lien qu'il t'a envoyé.</p>
+            <!-- ICI L'INDICE RESTE : « colle le code ici » est une CONSIGNE,
+                 pas un exemple. Personne ne la prend pour un code déjà entré,
+                 et elle disparaît au bon moment — quand on colle. -->
             <label>Code de la séance <span class="portail-forme">long, avec des tirets</span>
               <!-- Le code de séance distingue les majuscules des minuscules :
                    la majuscule automatique le casserait à coup sûr. -->
