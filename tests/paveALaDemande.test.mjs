@@ -55,7 +55,7 @@ function poserStockage(quiRefuse = false) {
 test('SANS RIEN DEMANDER, LE PAVÉ N\'EST PAS VOULU', async () => {
     const st = poserStockage();
     try {
-        const { paveVoulu } = await import('../js/core/paveVoulu.js');
+        const { paveVoulu } = await import('../js/core/reglagesDuPoste.js');
         assert.equal(paveVoulu(), false);
     } finally { st.rendre(); }
 });
@@ -65,7 +65,7 @@ test('UNE FOIS DEMANDÉ, L\'APPAREIL S\'EN SOUVIENT', async () => {
     // le refuser.
     const st = poserStockage();
     try {
-        const { paveVoulu, seSouvenirDuPave } = await import('../js/core/paveVoulu.js');
+        const { paveVoulu, seSouvenirDuPave } = await import('../js/core/reglagesDuPoste.js');
         seSouvenirDuPave(true);
         assert.equal(paveVoulu(), true);
         seSouvenirDuPave(false);
@@ -81,7 +81,7 @@ test('UN STOCKAGE QUI REFUSE N\'EMPÊCHE PAS DE JOUER', async () => {
     // exception ici viderait l'exercice au montage.
     const st = poserStockage(true);
     try {
-        const { paveVoulu, seSouvenirDuPave } = await import('../js/core/paveVoulu.js');
+        const { paveVoulu, seSouvenirDuPave } = await import('../js/core/reglagesDuPoste.js');
         assert.equal(paveVoulu(), false);
         assert.doesNotThrow(() => seSouvenirDuPave(true));
         // Le pavé s'ouvrira quand même pour cette séance-ci : c'est le code de

@@ -103,10 +103,14 @@ test('CE QU\'ELLE DIT EST CE QUE L\'ÉLÈVE DEVRA ÉCRIRE — le même module', 
     assert.equal(ecrireElement(10, axe('v', 6)), 'x = 6,5');
 });
 
-test('SUR LA MARCHE « ÉCRIRE », AUCUNE DROITE NE DIT RIEN', () => {
-    // LA DÉCISION QUE RÉMY N'A PAS PRISE, et la raison d'être de ce fichier.
+test('SUR LA MARCHE « ÉCRIRE », AUCUNE DROITE NE DIT RIEN — tant qu\'on n\'a rien demandé', () => {
+    // LA DÉCISION QUE RÉMY N'A PAS PRISE D'ABORD, et la raison d'être de ce
+    // fichier. Il l'a prise le lendemain, et mieux : pas « jamais », mais
+    // « derrière un point d'interrogation » — voir la fin du fichier. Le
+    // défaut par défaut reste donc : rien ne se dit tant que personne ne
+    // demande.
     const SRC = lire('js/core/activities/symetrieElement.js');
-    assert.match(SRC, /const avecEcriture = marche !== 'ecrire';/);
+    assert.match(SRC, /const avecEcriture = marche !== 'ecrire' \|\| ecrituresVoulues\(\);/);
     assert.match(SRC, /const montres = avecEcriture\s*\n\s*\? candidats\.map/);
     // Et c'est `montres` qui part au dessin, pas `candidats`.
     assert.match(SRC, /elements: montres,/);
@@ -148,4 +152,75 @@ test('ELLE SE SIGNALE, ET ELLE NE SE MET PAS DEVANT CE DONT ELLE PARLE', () => {
     assert.match(CSS, /\.sy-bulle \{[^}]*pointer-events: none/);
     // Le plateau est le repère du placement.
     assert.match(CSS, /\.sy-plateau \{ position: relative; \}/);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// ET SUR LA MARCHE « ÉCRIRE », DERRIÈRE UN POINT D'INTERROGATION.
+//
+// RÉMY, capture de cette marche-là à l'appui : « là il faudrait encore le point
+// d'interrogation qui donne les coordonnées du point et de la droite ».
+//
+// SA FORMULATION LÈVE L'OBJECTION QUE J'AVAIS POSÉE. J'avais éteint les bulles
+// ici parce qu'afficher « x = 6 » au survol donnerait la réponse à recopier sur
+// la marche qui demande justement de l'écrire. Mais DERRIÈRE UN POINT
+// D'INTERROGATION, ce n'est plus un cadeau : c'est l'élève qui demande, d'un
+// geste, et il sait ce qu'il demande.
+//
+// ET ÇA NE DONNE TOUJOURS PAS LA RÉPONSE : toutes les droites disent la leur,
+// pas seulement la bonne. Il reste à trouver LAQUELLE, et c'est la question.
+// D'où aussi le fait que ça ne compte pas comme un indice — c'est une aide à la
+// LECTURE, comme la calculatrice, et elle ne coûte rien à la note.
+//
+// MESURÉ dans un vrai navigateur, marche « écrire » :
+//   AVANT   0 zone, un bouton « ? » de 44 × 44
+//   APRÈS   4 zones — « y = 5 », « (3 ; 3) », « (3 ; 1) », « (5 ; 2) » —,
+//           le bouton disparu, le réglage gardé, le champ toujours là,
+//           et la bulle qui paraît au survol.
+
+test('LE « ? » EXISTE SUR LA MARCHE QUI DEMANDE D\'ÉCRIRE, et seulement là', () => {
+    const SRC = lire('js/core/activities/symetrieElement.js');
+    // Il est posé dans la zone de réponse de l'écriture, pas dans les deux
+    // autres : ailleurs, les bulles sont déjà allumées et il n'ouvrirait rien.
+    const i = SRC.indexOf('const quoi =');
+    const bloc = SRC.slice(i, SRC.indexOf('</div>', i));
+    assert.ok(bloc.length > 200, 'tranche vide : le test ne vérifierait rien');
+    assert.match(bloc, /data-sy-ecritures/);
+    // ET IL SE TAIT DÈS QU'IL A SERVI : un bouton qui n'allume plus rien est un
+    // bouton cassé.
+    assert.match(bloc, /const demander = ecrituresVoulues\(\) \? '' : `<button/);
+});
+
+test('IL ALLUME LES ÉCRITURES, ET L\'APPAREIL S\'EN SOUVIENT', () => {
+    const SRC = lire('js/core/activities/symetrieElement.js');
+    assert.match(SRC, /const avecEcriture = marche !== 'ecrire' \|\| ecrituresVoulues\(\);/);
+    assert.match(SRC, /seSouvenirDesEcritures\(true\);/);
+    // Un élève qui ne tient pas la notation ne la tient pas davantage à la
+    // question suivante : la lui redemander à chaque fois, ce serait la lui
+    // refuser.
+    const i = SRC.indexOf('demander.onclick');
+    const bloc = SRC.slice(i, i + 200);
+    assert.match(bloc, /render\(\);/, 'le dessin ne se refait pas : rien ne s\'allume');
+});
+
+test('MAIS IL NE DIT PAS LAQUELLE — ce n\'est donc pas un indice', () => {
+    // LA RAISON POUR LAQUELLE ÇA NE COÛTE RIEN À LA NOTE. Si seul le bon
+    // élément disait son écriture, le « ? » serait la réponse déguisée.
+    const SRC = lire('js/core/activities/symetrieElement.js');
+    // Les écritures sont posées sur TOUS les candidats, d'un seul `map`.
+    assert.match(SRC, /\? candidats\.map\(c => \(\{ \.\.\.c, dit: ecrireElement\(m\.hauteur, c\) \}\)\)/);
+    // Et le geste ne passe PAS par le compteur d'indices de la session.
+    const i = SRC.indexOf('demander.onclick');
+    const bloc = SRC.slice(i, i + 300);
+    assert.ok(!/useHint|hintIndex|session\.indice/.test(bloc),
+        'montrer les écritures compte comme un indice : il ne donne pourtant rien');
+});
+
+test('LE « ? » SE TOUCHE AU DOIGT — 44 px, comme toute cible', () => {
+    const CSS = lire('css/modules.css');
+    assert.match(CSS, /\.sy-demander \{[^}]*width: 44px; height: 44px;/);
+    assert.match(CSS, /\.sy-demander:focus-visible \{ outline:/);
+    // `--primary-texte` ET NON `--primary` : l'un est un FOND, l'autre du TEXTE
+    // sur le fond de la page. La confusion a déjà coûté un contraste.
+    assert.match(CSS, /\.sy-demander \{[^}]*color: var\(--primary-texte/);
 });

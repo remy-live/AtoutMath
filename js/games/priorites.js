@@ -29,7 +29,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../ui/paveTactile.js';
-import { paveVoulu, seSouvenirDuPave } from '../core/paveVoulu.js';
+import { paveVoulu, seSouvenirDuPave } from '../core/reglagesDuPoste.js';
 import { tirerOppose, reponseJuste } from '../core/opposeParentheses.js';
 import {
     tirerExpression, operationPrioritaire, critiquer, reduire, reduirePourEcrire,

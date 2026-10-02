@@ -30,6 +30,7 @@ import {
     cleElement, ecrireElement, lireElement
 } from '../elementSymetrie.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { ecrituresVoulues, seSouvenirDesEcritures } from '../reglagesDuPoste.js';
 
 /** Les trois marches, et le préréglage qui les enchaîne. */
 export const MARCHES = ['choisir', 'cliquer', 'ecrire'];
@@ -95,7 +96,24 @@ export function mount(container, session, opts = {}) {
         // ET ELLE NE TRAHIT RIEN SUR LES DEUX PREMIÈRES : TOUTES les droites
         // disent la leur, pas seulement la bonne. Savoir que (d₂) s'écrit
         // « x = 6 » ne dit pas que (d₂) est l'axe cherché.
-        const avecEcriture = marche !== 'ecrire';
+        // ET SUR LA MARCHE « ÉCRIRE », SEULEMENT SI L'ÉLÈVE LE DEMANDE.
+        //
+        // RÉMY, capture de cette marche-là à l'appui : « là il faudrait encore
+        // le point d'interrogation qui donne les coordonnées du point et de la
+        // droite ».
+        //
+        // IL A RAISON, ET SA FORMULATION LÈVE L'OBJECTION. J'avais éteint les
+        // bulles ici parce qu'afficher « x = 6 » au survol donnerait la réponse
+        // à recopier sur la marche qui demande justement de l'écrire. Mais
+        // DERRIÈRE UN POINT D'INTERROGATION, ce n'est plus un cadeau : c'est
+        // l'élève qui demande, d'un geste, et il sait ce qu'il demande.
+        //
+        // ET ÇA NE DONNE TOUJOURS PAS LA RÉPONSE : toutes les droites disent
+        // la leur, pas seulement la bonne. Savoir que (d₂) s'écrit « x = 6 »
+        // ne dit pas que (d₂) est l'axe cherché — il reste à trouver LAQUELLE,
+        // et c'est la question. D'où aussi le fait que ça ne compte pas comme
+        // un indice : c'est une aide à la LECTURE, comme la calculatrice.
+        const avecEcriture = marche !== 'ecrire' || ecrituresVoulues();
         const montres = avecEcriture
             ? candidats.map(c => ({ ...c, dit: ecrireElement(m.hauteur, c) }))
             : candidats;
@@ -142,8 +160,15 @@ export function mount(container, session, opts = {}) {
                 directement sur le dessin.</p>`;
         }
         const quoi = 'une droite s\'écrit x = … ou y = …, un point s\'écrit (… ; …)';
+        // LE POINT D'INTERROGATION DE RÉMY. Il n'apparaît que tant que les
+        // écritures sont éteintes : un bouton qui n'allume plus rien est un
+        // bouton cassé, et celui-ci se tait dès qu'il a servi.
+        const demander = ecrituresVoulues() ? '' : `<button type="button"
+            class="sy-demander" data-sy-ecritures
+            title="Montrer comment chaque droite et chaque point du dessin s'écrivent. Cela ne dit pas lequel est la réponse."
+            aria-label="Comment ça s'écrit ?">?</button>`;
         return `<div class="sy-ecriture">
-            <label class="sy-label" for="sy-champ">Écris-le : <span>${quoi}</span></label>
+            <label class="sy-label" for="sy-champ">Écris-le : <span>${quoi}</span>${demander}</label>
             <input id="sy-champ" class="sy-champ" type="text" inputmode="text"
                    autocomplete="off" spellcheck="false" placeholder="x = 4">
             <button type="button" class="kk-btn-valider" data-valider>Valider</button>
@@ -226,6 +251,18 @@ export function mount(container, session, opts = {}) {
             });
             return;
         }
+        // ON L'ALLUME, ET L'APPAREIL S'EN SOUVIENT. Un élève qui ne tient pas
+        // la notation ne la tient pas davantage à la question suivante : la
+        // lui redemander à chaque fois, ce serait la lui refuser. Le souvenir
+        // est par APPAREIL — c'est une façon de LIRE, pas un réglage
+        // pédagogique, et le professeur garde la main par la marche qu'il
+        // choisit.
+        const demander = container.querySelector('[data-sy-ecritures]');
+        if (demander) demander.onclick = () => {
+            seSouvenirDesEcritures(true);
+            render();
+        };
+
         const champ = container.querySelector('#sy-champ');
         const valider = () => repondreParEcriture(champ.value);
         champ.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); valider(); } };
