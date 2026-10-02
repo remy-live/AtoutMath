@@ -183,15 +183,29 @@ test('LE BOUTON EXISTE CÔTÉ PROFESSEUR, ET IL DEMANDE AVANT', () => {
     assert.match(ui, /data-reinit-eleve/, 'plus de bouton pour remettre à zéro');
     assert.match(ui, /action: 'reinitialiser'/);
     // ON DEMANDE AVANT : c'est le seul geste du logiciel qui efface du travail
-    // d'élève sans corbeille derrière.
-    const f = ui.slice(ui.indexOf('function brancherRemisesAZero'));
+    // d'élève sans corbeille derrière. LA DEMANDE EST ÉCRITE UNE FOIS, dans
+    // `remettreAZero`, et les deux écrans l'appellent — deux copies auraient
+    // divergé au premier garde-fou ajouté.
+    const f = ui.slice(ui.indexOf('function remettreAZero'));
     assert.match(f.slice(0, 2200), /showConfirm\(/,
         'on effacerait le travail d\'un élève sur un clic');
     assert.match(f.slice(0, 2200), /ne s\\?'annule pas/);
+    // LES DEUX ÉCRANS PASSENT PAR LÀ : la liste des élèves d'une classe, et le
+    // bilan d'un élève. Rémy : « je ne trouve pas ta flèche qui tourne » — elle
+    // n'était que dans le premier.
+    assert.match(ui, /function brancherRemisesAZero/);
+    assert.match(ui, /remettre\.onclick = \(\) => remettreAZero\(contexte\.eleve/,
+        'le bouton du bilan d\'un élève n\'est plus branché');
     // ET LA LISTE SE RECHARGE : `classe.eleves` porte les événements d'où le
     // bilan est calculé. Les garder afficherait le travail qu'on vient
     // d'effacer, et le bouton aurait l'air de n'avoir rien fait.
-    assert.match(f.slice(0, 2600), /classe\.eleves = \[\];/);
+    assert.match(ui.slice(ui.indexOf('function brancherRemisesAZero'), 
+        ui.indexOf('function brancherRemisesAZero') + 1400), /classe\.eleves = \[\];/);
     // PAS DE FENÊTRE NATIVE — « tu utilises des alert et prompt, on évite ! ».
     assert.doesNotMatch(f.slice(0, 2600), /(^|[^.\w])(alert|confirm|prompt)\s*\(/m);
+    // ET IL NE DÉPEND PAS DU BILAN : mesuré, celui-ci ne s'affiche jamais sur
+    // cet écran (la route « roster » ne porte pas les événements). Le bouton
+    // était gardé par une information que l'écran ne possède pas.
+    assert.match(ui, /\$\{info\.seance \? `<button type="button" class="pc-remettre pc-remettre--ligne"/,
+        'le bouton redépend d\'un bilan que cet écran ne sait pas calculer');
 });

@@ -302,11 +302,25 @@ function elevesHtml(classe, info) {
                 ${b ? `<button type="button" class="pc-bilan" data-bilan-eleve="${esc(e.id)}"
                         data-classe="${esc(classe.id)}">bilan</button>`
         : '<span class="pc-rien">n\'a pas commencé</span>'}
-                ${b ? `<button type="button" class="pc-remettre" data-reinit-eleve="${esc(e.id)}"
-                        data-classe="${esc(classe.id)}"
-                        title="Remettre cet élève à zéro sur cette séance"
+                <!-- IL NE DÉPEND PAS DU BILAN, ET C'EST VOULU.
+                     Première version : le bouton n'apparaissait que si l'élève
+                     avait travaillé — ce qui paraissait sage. MESURÉ
+                     (tools/reinitialiserUnEleve.mjs) : il n'apparaissait JAMAIS.
+                     Cette liste vient de la route « roster », qui rend des noms
+                     et des codes, PAS les événements ; la fonction aTravaille y
+                     répond donc toujours non, et toute la classe s'affiche
+                     « n'a pas commencé ». Le bouton était gardé par une
+                     information que cet écran ne possède pas.
+                     (Pas d'accent grave ici : ce commentaire est à l'intérieur
+                     d'un gabarit, et il le fermerait.)
+                     C'EST LE SERVEUR QUI SAIT, et il le dit : remettre à zéro un
+                     élève qui n'a rien fait répond « cet élève n'avait rien
+                     commencé » et n'efface rien. Mieux vaut un bouton honnête
+                     qu'un bouton absent pour une mauvaise raison. -->
+                ${info.seance ? `<button type="button" class="pc-remettre pc-remettre--ligne"
+                        data-reinit-eleve="${esc(e.id)}" data-classe="${esc(classe.id)}"
                         aria-label="Remettre ${esc(e.nom)} à zéro sur cette séance"
-                        >↺</button>` : ''}
+                        >remettre à zéro</button>` : ''}
             </div>`;
         }).join('');
 }
@@ -412,6 +426,22 @@ function bilanEleveHtml(b) {
         <div class="pc-mot-actions">
             <button type="button" class="pc-mot-ok" data-mot-envoyer>Envoyer</button>
             ${b.mot ? '<button type="button" class="pc-mot-non" data-mot-effacer>Retirer</button>' : ''}
+        </div>
+        <!-- REMETTRE À ZÉRO SE TROUVE LÀ OÙ L'ON REGARDE UN ÉLÈVE.
+             Rémy : « je ne trouve pas ta flèche qui tourne ». Je l'avais posée
+             dans l'écran « Donner à une classe » — celui où l'on DISTRIBUE une
+             séance —, et non dans celui où l'on LIT ce qu'un élève en a fait.
+             Ce sont deux moments différents du métier, et la remise à zéro
+             appartient au second : on regarde son travail, et l'on décide de
+             l'effacer.
+             ET C'EST ÉCRIT EN TOUTES LETTRES. Un « ↺ » seul ne se trouve pas,
+             et il se confond avec le « ↻ Donner un rattrapage » qui vit sur
+             l'écran d'à côté. -->
+        <div class="pc-remise">
+            <button type="button" class="pc-remettre" data-reinit-eleve="${esc(b.id)}"
+                    >↺ Remettre cette séance à zéro</button>
+            <span class="pc-remise-dit">Il la retrouvera entière, comme s'il ne
+                l'avait jamais commencée.</span>
         </div>
     </div>`;
 }
@@ -669,6 +699,21 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         if (envoyer) envoyer.onclick = () => poser(champ.value.trim());
         const effacer = z.querySelector('[data-mot-effacer]');
         if (effacer) effacer.onclick = () => poser('');
+
+        // ET LA REMISE À ZÉRO, SOUS LE BILAN QU'ELLE EFFACE. C'est l'écran où
+        // l'on regarde ce qu'un élève a fait : c'est là qu'on décide de le lui
+        // reprendre, pas dans celui où l'on distribue la séance.
+        const remettre = z.querySelector('[data-reinit-eleve]');
+        if (remettre) {
+            remettre.onclick = () => remettreAZero(contexte.eleve, contexte.seance,
+                () => {
+                    // ON FERME LE BILAN qu'on vient d'effacer : le laisser à
+                    // l'écran ferait croire que rien ne s'est passé. Il n'y a
+                    // plus rien à montrer de cet élève sur cette séance.
+                    z.hidden = true;
+                    z.innerHTML = '';
+                });
+        }
     }
 
     /**
@@ -879,55 +924,69 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
     }
 
     /**
-     * REMETTRE UN ÉLÈVE À ZÉRO SUR CETTE SÉANCE.
+     * REMETTRE UN ÉLÈVE À ZÉRO SUR UNE SÉANCE.
      *
      * RÉMY : « j'ai créé un élève virtuel dans la classe puis je réinitialise
      * la séance depuis mon poste comme s'il ne l'avait jamais commencée ».
      *
-     * LE BOUTON N'APPARAÎT QUE S'IL A COMMENCÉ : remettre à zéro quelqu'un qui
-     * n'a rien fait ne fait rien, et un bouton qui ne fait rien use la
-     * confiance qu'on a dans les autres.
+     * ── ÉCRITE UNE FOIS, APPELÉE DE DEUX ÉCRANS ──────────────────────────
+     *
+     * Le geste se propose là où l'on DISTRIBUE la séance (la liste des élèves
+     * d'une classe) et là où l'on LIT ce qu'un élève en a fait (son bilan).
+     * Rémy : « je ne trouve pas ta flèche qui tourne » — je ne l'avais mise
+     * que dans le premier, et c'est le second qu'il regarde. Deux copies de
+     * cette fonction auraient divergé au premier garde-fou ajouté.
      *
      * ON DEMANDE AVANT, et la phrase dit ce qui part : c'est le seul geste du
      * logiciel qui efface du travail d'élève sans corbeille derrière.
+     *
+     * @param {{id: string, nom: string}} eleve
+     * @param {object} seance
+     * @param {Function} apres  rappelé une fois le serveur d'accord
      */
+    function remettreAZero(eleve, seance, apres) {
+        if (!eleve || !seance) return;
+        showConfirm(
+            `Tout le travail de <b>${esc(eleve.nom)}</b> sur cette séance sera `
+            + 'effacé : ses réponses, son avancement et son bilan.<br><br>'
+            + 'Il la retrouvera entière, comme s\'il ne l\'avait jamais '
+            + 'commencée — sur tous ses appareils.<br><br>'
+            + '<b>Ce geste ne s\'annule pas.</b>',
+            async () => {
+                const { auServeur } = await import('../core/espaceProf.js');
+                // L'IDENTITÉ DE LA SÉANCE, et non celle du parcours de
+                // l'atelier : c'est sous celle-là que l'élève a inscrit son
+                // travail (voir `pathIdentity` dans parcoursServeur).
+                const r = await auServeur('/teacher/student', {
+                    action: 'reinitialiser',
+                    studentId: eleve.id,
+                    pathId: seance.pathId || (seance.path && seance.path.id) || pathId
+                });
+                if (r.erreur) return showToast(r.erreur, 'error', 6000);
+                showToast(r.dit || 'Séance remise à zéro.', 'success', 5000);
+                if (typeof apres === 'function') await apres();
+            },
+            { titre: 'Remettre à zéro', bouton: 'Remettre à zéro' });
+    }
+
+    /** Le bouton de la liste des élèves d'une classe. */
     function brancherRemisesAZero(liste, classe) {
         liste.querySelectorAll('[data-reinit-eleve]').forEach(b => {
             b.onclick = () => {
                 const info = etatClasse(classe, seances, pathId);
                 const eleve = (classe.eleves || []).find(e => e.id === b.dataset.reinitEleve);
-                if (!info.seance || !eleve) return;
-                showConfirm(
-                    `Tout le travail de <b>${esc(eleve.nom)}</b> sur cette séance sera `
-                    + 'effacé : ses réponses, son avancement et son bilan.<br><br>'
-                    + 'Il la retrouvera entière, comme s\'il ne l\'avait jamais '
-                    + 'commencée — sur tous ses appareils.<br><br>'
-                    + '<b>Ce geste ne s\'annule pas.</b>',
-                    async () => {
-                        const { auServeur } = await import('../core/espaceProf.js');
-                        // L'IDENTITÉ DE LA SÉANCE, et non celle du parcours de
-                        // l'atelier : c'est sous celle-là que l'élève a inscrit
-                        // son travail (voir `pathIdentity` dans parcoursServeur).
-                        const r = await auServeur('/teacher/student', {
-                            action: 'reinitialiser',
-                            studentId: eleve.id,
-                            pathId: info.seance.pathId
-                                || (info.seance.path && info.seance.path.id) || pathId
-                        });
-                        if (r.erreur) return showToast(r.erreur, 'error', 6000);
-                        showToast(r.dit || 'Séance remise à zéro.', 'success', 5000);
-                        // ON REDESSINE EN REDEMANDANT LA LISTE AU SERVEUR.
-                        //
-                        // `classe.eleves` porte les ÉVÉNEMENTS de chaque élève,
-                        // chargés une fois au dépliage — c'est d'eux que le
-                        // bilan est calculé. Les garder afficherait le travail
-                        // qu'on vient d'effacer, et le bouton aurait l'air de
-                        // n'avoir rien fait. On vide, et `deplier` recharge.
-                        classe.eleves = [];
-                        const plier = b.closest('.pc-classe').querySelector('[data-plier]');
-                        if (plier) await deplier(plier);
-                    },
-                    { titre: 'Remettre à zéro', bouton: 'Remettre à zéro' });
+                remettreAZero(eleve, info.seance, async () => {
+                    // ON REDESSINE EN REDEMANDANT LA LISTE AU SERVEUR.
+                    //
+                    // `classe.eleves` porte les ÉVÉNEMENTS de chaque élève,
+                    // chargés une fois au dépliage — c'est d'eux que le bilan
+                    // est calculé. Les garder afficherait le travail qu'on
+                    // vient d'effacer, et le bouton aurait l'air de n'avoir
+                    // rien fait. On vide, et `deplier` recharge.
+                    classe.eleves = [];
+                    const plier = b.closest('.pc-classe').querySelector('[data-plier]');
+                    if (plier) await deplier(plier);
+                });
             };
         });
     }

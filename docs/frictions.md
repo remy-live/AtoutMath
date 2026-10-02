@@ -1968,3 +1968,26 @@ lignes** — 2026-10-01
   quelle machine, et ce qu'il voit après.** Si cette phrase ne se laisse pas
   écrire, la demande n'est pas comprise — et c'est le moment de demander, pas
   après avoir livré.
+
+**Un bouton gardé par une information que l'écran ne possède pas** — 2026-10-02
+
+- *Ce que je voulais faire* : poser « remettre à zéro » à côté du bilan d'un
+  élève, dans le panneau « Donner à une classe ».
+- *Ce qui a coûté* : Rémy — « je ne trouve pas ta flèche qui tourne ». Il avait
+  raison deux fois. D'abord je l'avais mise au mauvais endroit (l'écran où l'on
+  DISTRIBUE, pas celui où l'on LIT). Ensuite, et surtout, je l'avais rendue
+  conditionnelle à `aTravaille(seance, eleve.evenements)` — qui répond TOUJOURS
+  non sur cet écran : `elevesDeLaClasse` appelle la route « roster », qui rend
+  des noms et des codes, jamais les événements. **Toute la classe s'y affiche
+  « n'a pas commencé »**, même un élève qui vient de travailler.
+- *Combien de fois* : | (mais c'est la deuxième fois en une soirée qu'une
+  sonde dit « absent » sur du code juste — la première, elle regardait trop
+  tôt.)
+- *Ce qui manque* : rien à fabriquer. **Un bouton ne se garde qu'avec une
+  information que son écran DÉTIENT.** Celui-ci se gardait sur une donnée que
+  la route ne rend pas — il ne pouvait donc jamais apparaître, et aucune
+  épreuve de source ne l'aurait dit : `data-reinit-eleve` était bien dans le
+  fichier.
+- *La règle* : **quand on ajoute une condition d'affichage, se demander d'où
+  vient la donnée qui la décide, et si cet écran l'a vraiment.** Sinon on écrit
+  un bouton qui existe dans le code et nulle part ailleurs.

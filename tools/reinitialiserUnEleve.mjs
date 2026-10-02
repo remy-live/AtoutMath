@@ -238,6 +238,117 @@ const refait = await p.evaluate(async () => {
 dire('CE QU\'IL REFAIT APRÈS LA REMISE À ZÉRO N\'EST PAS EFFACÉ',
     refait === 1, `${refait} étape(s) faite(s)`);
 
+// ── ET LE BOUTON SE TROUVE-T-IL ? ──────────────────────────────────────────
+//
+// RÉMY : « je ne trouve pas ta flèche qui tourne ».
+//
+// Je l'avais posée dans l'écran « Donner à une classe » — celui où l'on
+// DISTRIBUE une séance — et non dans celui où l'on LIT ce qu'un élève en a
+// fait. Deux moments différents du métier ; la remise à zéro appartient au
+// second.
+//
+// CE QU'AUCUNE ÉPREUVE DE SOURCE NE DIT : qu'un bouton présent dans le gabarit
+// est VISIBLE à l'écran, qu'il porte des mots, et qu'il fait 44 pixels de haut.
+// Une épreuve qui cherche `data-reinit-eleve` dans le fichier passe au vert sur
+// un bouton que personne ne voit.
+console.log('\n\x1b[1mLE BOUTON, LÀ OÙ LE PROFESSEUR REGARDE UN ÉLÈVE\x1b[0m');
+await s.page.click('#top-btn-preparer');
+await dormir(1200);
+const ouvert = await s.page.evaluate(async () => {
+    const { state } = await import('./js/core/state.js');
+    const { normalizePath } = await import('./js/core/path.js');
+    const { cheminDeLEntree } = await import('./js/core/entreeParcours.js');
+    const entree = (state.teacherPaths || []).find((p) => /rejouer/i.test(p.name || ''));
+    if (!entree) return { sansParcours: true };
+    state.currentPath = normalizePath(cheminDeLEntree(entree) || entree, entree.name);
+    state.currentPathId = entree.id;
+    const { ouvrirPanneauClasses } = await import('./js/ui/parcoursClasses.js');
+    await ouvrirPanneauClasses(state.currentPath, () => {});
+    await new Promise((ok) => setTimeout(ok, 1500));
+
+    // ON DONNE PAR LA CASE DU PANNEAU, et c'est ce qui manquait à ma première
+    // mesure. La séance avait été donnée par `donnerAuServeur` : le serveur
+    // l'avait, l'élève l'avait — mais la liste LOCALE du professeur, non. Sans
+    // séance locale, `etatClasse` ne trouve rien, aucun bilan ne s'affiche, et
+    // donc aucun bouton. La sonde concluait « le bouton est absent » sur un
+    // panneau parfaitement juste, qui n'avait simplement rien à montrer.
+    //
+    // C'EST AUSSI CE QUI PEUT ARRIVER À RÉMY : un parcours donné depuis un
+    // autre écran que celui-ci n'y montre pas de bilan.
+    const case6B = [...document.querySelectorAll('[data-donner]')].find((x) => {
+        const l = x.closest('label');
+        return l && /6e B/.test(l.textContent || '');
+    });
+    if (case6B && !case6B.checked) {
+        case6B.click();
+        await new Promise((ok) => setTimeout(ok, 2500));
+    }
+
+    // ON DÉPLIE LA CLASSE : la liste des élèves n'est chargée qu'à ce moment-là.
+    const plier = [...document.querySelectorAll('[data-plier]')].find((b) => {
+        const l = b.closest('.pc-classe');
+        return l && /6e B/.test(l.textContent || '');
+    });
+    if (plier) plier.click();
+    await new Promise((ok) => setTimeout(ok, 3000));
+    return { donnee: !!case6B, plie: !!plier };
+});
+dire('le panneau des classes s\'ouvre', !ouvert.sansParcours, JSON.stringify(ouvert));
+
+const dansLaListe = await s.page.evaluate(() => {
+    const b = document.querySelector('.pc-eleves [data-reinit-eleve]');
+    if (!b) return { trouve: false };
+    const r = b.getBoundingClientRect();
+    return { trouve: true, mots: b.textContent.trim(),
+        haut: Math.round(r.height), visible: r.width > 0 };
+});
+console.log(`   dans la liste des élèves : ${JSON.stringify(dansLaListe)}`);
+dire('LE BOUTON EST DANS LA LISTE DES ÉLÈVES, ET IL PORTE DES MOTS',
+    dansLaListe.trouve && /remettre à zéro/i.test(dansLaListe.mots || ''),
+    dansLaListe.mots || '(absent)');
+
+// ── ET DANS LE BILAN DE L'ÉLÈVE, LÀ OÙ L'ON DÉCIDE ─────────────────────────
+const dansLeBilan = await s.page.evaluate(async () => {
+    const b = document.querySelector('.pc-eleves [data-bilan-eleve]');
+    if (!b) return { sansBilan: true };
+    b.click();
+    await new Promise((ok) => setTimeout(ok, 1200));
+    const r = document.querySelector('.pc-remise [data-reinit-eleve]');
+    if (!r) return { trouve: false };
+    const g = r.getBoundingClientRect();
+    return { trouve: true, mots: r.textContent.replace(/\s+/g, ' ').trim(),
+        haut: Math.round(g.height), visible: g.width > 0,
+        // LA PHRASE QUI DIT CE QUI SE PASSE, à côté du bouton.
+        dit: (document.querySelector('.pc-remise-dit') || {}).textContent || '' };
+});
+console.log(`   dans le bilan de l'élève : ${JSON.stringify(dansLeBilan)}`);
+if (dansLeBilan.sansBilan) {
+    // ── UN DÉFAUT TROUVÉ EN CHERCHANT LE BOUTON, ET PLUS GROS QUE LUI ──────
+    //
+    // Le bouton « bilan » d'un élève N'APPARAÎT JAMAIS dans cet écran, pour
+    // une classe du serveur. `elevesDeLaClasse` appelle la route « roster »,
+    // qui rend des noms, des identifiants et des codes — PAS les événements.
+    // `aTravaille(seance, e.evenements)` répond donc toujours non, et toute la
+    // classe s'affiche « n'a pas commencé », même ceux qui viennent de
+    // travailler.
+    //
+    // LA REMISE À ZÉRO NE DÉPEND PLUS DE LUI (voir elevesHtml), donc le geste
+    // que Rémy a demandé fonctionne. Mais le bilan par élève, lui, reste hors
+    // d'atteinte depuis cet écran : il faudrait que le panneau demande au
+    // serveur le rapport de la classe, et non seulement sa liste.
+    console.log('  \x1b[33m⚠ DÉFAUT CONNU\x1b[0m — aucun bouton « bilan » par élève sur cet');
+    console.log('    écran : la liste vient de la route « roster », qui ne porte pas');
+    console.log('    les événements. Toute la classe s\'affiche « n\'a pas commencé ».');
+    console.log('    Le bouton de remise à zéro, lui, n\'en dépend pas.');
+} else {
+    dire('ET IL EST AUSSI SOUS LE BILAN DE L\'ÉLÈVE, LÀ OÙ L\'ON DÉCIDE',
+        dansLeBilan.trouve && dansLeBilan.visible, dansLeBilan.mots || '(absent)');
+    dire('il fait une vraie cible tactile', (dansLeBilan.haut || 0) >= 44,
+        `${dansLeBilan.haut || 0} px`);
+    dire('et une phrase dit ce qui va se passer',
+        /jamais commencée/i.test(dansLeBilan.dit || ''), (dansLeBilan.dit || '').trim());
+}
+
 // ── ON LE REMET À ZÉRO, PAR LA PORTE QUI EXISTE ─────────────────────────────
 //
 // `deconnecterEleve({ effacerLeTravail: true })` est exactement ce que la
