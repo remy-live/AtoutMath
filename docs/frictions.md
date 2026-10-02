@@ -2031,3 +2031,35 @@ lignes** — 2026-10-01
 - *Ce qui manque* : fait — `tools/repetitionsDUneSerie.mjs <identifiant>
   [--clef enonce|reponse]`. Il monte une VRAIE `ItemSession`, donc il voit le
   dédoublonnage, ce qu'une boucle sur le générateur ne verrait jamais.
+
+---
+
+## Deux accents graves gardent la syntaxe, et l'écran affiche NaN — 2026-10-02
+
+- *Ce que je voulais faire* : poser deux boutons sur la fiche d'un élève
+  (« lui donner la calculatrice », « tout lui débloquer »).
+- *Ce qui a coûté* : **neuvième occurrence du piège de l'accent grave, et la
+  première que le hook ne voit pas.** J'avais écrit, dans un commentaire HTML à
+  l'intérieur d'un gabarit : `` l'exercice `*` ``. Deux accents graves dans le
+  même commentaire : le premier ferme le gabarit, le second en rouvre un, et
+  **le `*` entre les deux devient une multiplication**. Deux chaînes vides
+  multipliées font `NaN`, et c'est `NaN` qui s'affichait à la place de la fiche.
+  `node --check` se tait — la syntaxe tient —, le hook se tait, les 4 290
+  épreuves passent (elles lisent la SOURCE), et le défaut part jusqu'au
+  navigateur. Une sonde, six mesures, un vidage d'`innerHTML` : vingt-cinq
+  minutes pour voir trois lettres.
+- *Combien de fois* : |||| |||| (neuf, dont celle-ci — la seule silencieuse.)
+- *Ce qui manque* : fait — `tools/accentGrave.mjs`, branché dans
+  `tools/hooks/verifierSyntaxe.sh` **avant** `node --check`.
+- *Ce qui a été jeté en chemin, et pourquoi c'est la moitié du travail* : la
+  première version signalait tout accent grave dans un commentaire HTML ou CSS.
+  **Mille vingt-quatre alertes** sur le dépôt — chaque `/** … */` de
+  documentation en porte, et aucun n'est dangereux. Une alarme qui sonne mille
+  fois n'est pas lue : `apercusVides.mjs` avait déjà payé cette leçon-là.
+- *La règle, et elle est contre-intuitive* : **on ne peut pas demander « ce
+  commentaire est-il dans un gabarit ? »**, puisque l'accent grave est
+  justement ce qui décide où le gabarit finit — la question se mord la queue.
+  On la retourne : on lit chaque GABARIT, et l'on regarde s'il ouvre un
+  commentaire HTML sans le refermer. Zéro fausse alerte sur le dépôt entier, et
+  il attrape celui-là. **Quand un détecteur crie mille fois, ce n'est pas le
+  seuil qu'il faut monter, c'est la question qu'il faut retourner.**

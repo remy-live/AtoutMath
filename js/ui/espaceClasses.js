@@ -983,10 +983,27 @@ function rangHtml(e, maintenant) {
  * là » et se lit debout, en dix secondes. Tout ce qui ne sert pas cette
  * décision-là encombre — voir `js/core/ficheEleve.js`.
  */
+/**
+ * CE QUE CET ÉLÈVE-CI A DÉJÀ REÇU, pour toute la séance.
+ *
+ * ON COMPARE LES IDENTIFIANTS, PAS LES PRÉNOMS. Il y a deux Lucas dans la
+ * classe de Rémy : un prénom ne désigne personne, et le réglage se serait
+ * affiché sur la fiche de l'autre.
+ *
+ * Rend la ligne de réglage (elle porte son identifiant, donc de quoi la
+ * retirer), ou `null`.
+ */
+function reglageDeLEleve(eleveId, mode) {
+    return (vue.reglages || []).find(x => x.mode === mode
+        && x.exerciseId === '*' && x.pourId === eleveId) || null;
+}
+
 function ficheHtml(e, maintenant) {
     const f = ficheDeLEleve(e, maintenant, { enPause: classeEnPause() });
     const g = gestesPossibles(f);
     const pourquoi = pourquoiDebloquer(f);
+    const saCalc = reglageDeLEleve(e.id, 'calculatrice');
+    const sonSaut = reglageDeLEleve(e.id, 'saut');
 
     const cases = f.etapes.map(x => `<span class="ec-fiche-pas ec-fiche-pas--${x.etat}"
         title="\u00c9tape ${x.rang}${x.titre ? ' \u2014 ' + esc(x.titre) : ''} : ${MOT_ETAPE[x.etat]}"
@@ -1032,6 +1049,49 @@ function ficheHtml(e, maintenant) {
                         ? 'Il pourra passer cet exercice. L\'\u00e9tape ne comptera ni pour ni contre lui.'
                         : 'Il faut qu\'il soit sur un exercice.'}"
                     >Laisse tomber celui-l\u00e0</button>
+            <!-- ── LES DEUX GESTES QUI NE VALENT QUE POUR LUI ───────────────
+
+                 RÉMY : « dans le direct quand je clique sur un élève ce serait
+                 cool de pouvoir lui donner la calculatrice (juste à lui du
+                 coup) », puis « il faudrait aussi pouvoir mais seulement pour
+                 le direct permettre de débloquer tous les exercices (et aussi
+                 au cas par cas pour l'élève) quand on clique dessus ».
+
+                 LES DEUX EXISTAIENT, MAIS PAS ICI. La calculatrice se donnait
+                 depuis la barre de pilotage, aux élèves COCHÉS dans la liste —
+                 et sans coche, elle allait à toute la classe. Rémy, le
+                 lendemain : « la calculatrice s'est mises à toute la classe
+                 pour toute la séance ». Cliquer sur un élève pour ouvrir sa
+                 fiche n'est pas le cocher, et rien ne le disait au moment du
+                 geste. Le réglage le plus large était le défaut silencieux.
+
+                 ICI, IL N'Y A AUCUN DOUTE SUR LE DESTINATAIRE : on vient de
+                 cliquer sur LUI, son prénom est en haut de la fiche, et le
+                 bouton le nomme. C'est la même correction que « Laisse tomber
+                 celui-là », qui a rejoint cette fiche pour la même raison.
+
+                 POUR LA SÉANCE EN COURS — Rémy, interrogé : « Pour la séance
+                 en cours ». C'est ce que veut dire l'exercice étoile.
+
+                 (PAS D'ACCENT GRAVE ICI, et cette fois il n'a RIEN cassé de
+                 visible : « l'exercice <accent>*<accent> » a fermé le gabarit,
+                 multiplié deux chaînes vides, et rendu NaN — la fiche de
+                 l'élève s'affichait « NaN » et node --check ne disait rien,
+                 parce que la syntaxe, elle, tenait. Voir docs/frictions.md.) -->
+            <button type="button" class="ec-bouton ec-bouton--doux"
+                    data-calc-eleve="${esc(e.id)}" data-prenom="${esc(e.prenom)}"
+                    data-deja="${saCalc ? esc(saCalc.id) : ''}"
+                    title="${saCalc
+                        ? 'Il l\'a pour toute la séance. Appuyer la lui retire.'
+                        : 'À lui seul, et pour toute la séance.'}"
+                    >🧮 ${saCalc ? 'Lui retirer la calculatrice' : 'Lui donner la calculatrice'}</button>
+            <button type="button" class="ec-bouton ec-bouton--doux"
+                    data-saut-tout="${esc(e.id)}" data-prenom="${esc(e.prenom)}"
+                    data-deja="${sonSaut ? esc(sonSaut.id) : ''}"
+                    title="${sonSaut
+                        ? 'Il peut passer n\'importe quel exercice. Appuyer le lui retire.'
+                        : 'Il pourra passer n\'importe quel exercice de la séance. Aucune étape sautée ne comptera contre lui.'}"
+                    >🔓 ${sonSaut ? 'Refermer son parcours' : 'Tout lui débloquer'}</button>
             ${g.rouvrir ? `<button type="button" class="ec-bouton" data-ecarter="${esc(e.id)}"
                     data-etat="1" data-prenom="${esc(e.prenom)}">Lui rendre l'acc\u00e8s</button>` : ''}
         </div>
@@ -2095,6 +2155,7 @@ async function brancher(e, redessiner) {
         + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
         + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
+        + '[data-calc-eleve], [data-saut-tout],'
         + '[data-signalement], [data-signalements], [data-voir-photo], [data-classer],'
         + '[data-ordre-direct],'
         + '[data-effacer-signal]');
@@ -2834,6 +2895,34 @@ async function brancher(e, redessiner) {
             showToast(`${d.prenom || 'L\'élève'} pourra passer « ${nomDExercice(d.exo)} ».`,
                 'success');
         });
+        return;
+    }
+
+    // ── LA CALCULATRICE, ET LE PARCOURS OUVERT, POUR CET ÉLÈVE-LÀ ───────────
+    //
+    // Le même bouton donne et retire : `data-deja` porte l'identifiant du
+    // réglage quand il existe. Deux boutons côte à côte dont l'un n'est actif
+    // qu'une fois sur deux demanderaient de lire avant d'appuyer, et une
+    // fiche d'élève se lit debout, en dix secondes.
+    if (d.calcEleve) {
+        const qui = d.prenom || 'L\'élève';
+        await fait(d.deja
+            ? annulerUnReglage(cid, d.deja)
+            : accorderLaCalculatrice(cid, '*', [d.calcEleve]), (r) => {
+            vue.reglages = r.reglages || vue.reglages;
+        }, d.deja ? `🧮 Calculatrice retirée à ${qui}.`
+            : `🧮 ${qui} a la calculatrice, pour toute la séance.`);
+        return;
+    }
+
+    if (d.sautTout) {
+        const qui = d.prenom || 'L\'élève';
+        await fait(d.deja
+            ? annulerUnReglage(cid, d.deja)
+            : reglerUnExercice(cid, '*', 'saut', d.sautTout), (r) => {
+            vue.reglages = r.reglages || vue.reglages;
+        }, d.deja ? `🔓 ${qui} suit de nouveau son parcours dans l'ordre.`
+            : `🔓 ${qui} peut passer n'importe quel exercice de la séance.`);
         return;
     }
 

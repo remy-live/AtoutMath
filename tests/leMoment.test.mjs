@@ -100,11 +100,63 @@ test('LE TEMPS RESTANT EST CORRIGÉ DE L\'ÉCART ENTRE LES HORLOGES', () => {
 });
 
 test('le temps restant ne descend jamais sous zéro', () => {
+    // ON LE VOIT D'ABORD COURIR : depuis que « Temps écoulé » ne s'annonce
+    // qu'à ceux qui l'ont vu courir, un chrono appliqué DÉJÀ expiré ne donne
+    // plus rien du tout — c'est l'épreuve suivante qui garde cela.
     const n = Math.floor(Date.now() / 1000);
-    appliquerEtat({ chrono: { finAt: n - 10, aZero: 'pause' }, maintenant: n });
+    appliquerEtat({ chrono: { finAt: n + 30, aZero: 'pause' }, maintenant: n });
     const t = tempsRestant(n + 100);
     assert.equal(t.reste, 0);
     assert.equal(t.aZero, 'pause');
+});
+
+// ── UN COMPTE À REBOURS NE CONCERNE QUE CEUX QUI L'ONT VU COURIR ────────────
+//
+// RÉMY, séance donnée en deux fois : « j'ai arrêté avec le compte à rebours le
+// premier groupe et du coup quand le deuxième groupe s'est connecté, il avait
+// l'information temps écoulé ».
+//
+// Le compte à rebours est une donnée de CLASSE, gardée au serveur, et rien ne
+// l'efface quand il tombe à zéro. Le second groupe se connectait donc sur un
+// temps écoulé qui ne le concernait pas : pour ces élèves, la séance était
+// finie avant d'avoir commencé.
+
+test('UN ÉLÈVE QUI ARRIVE APRÈS LA FIN NE VOIT PAS « TEMPS ÉCOULÉ »', () => {
+    // Le second groupe. Il se connecte, le serveur lui tend l'état de la
+    // classe — chrono compris —, et cet état porte la fin de l'heure d'avant.
+    const n = Math.floor(Date.now() / 1000);
+    appliquerEtat({ className: '4A', maintenant: n, chrono: { finAt: n - 1800, aZero: 'terminer' } });
+    assert.equal(tempsRestant(n), null,
+        'le second groupe hérite du temps écoulé du premier');
+});
+
+test('MAIS CELUI QUI L\'A VU COURIR LE VOIT TOMBER', () => {
+    // L'autre moitié, et celle qu'on casse en corrigeant la première : le
+    // chrono doit continuer de servir à ceux pour qui il a été lancé.
+    const n = Math.floor(Date.now() / 1000);
+    // Il était là quand il courait.
+    appliquerEtat({ className: '4A', maintenant: n, chrono: { finAt: n + 60, aZero: 'terminer' } });
+    assert.equal(tempsRestant(n).reste, 60);
+    // Une minute plus tard, le serveur redit la même chose — elle est passée.
+    appliquerEtat({ className: '4A', maintenant: n + 61, chrono: { finAt: n + 60, aZero: 'terminer' } },
+        n + 61);
+    const t = tempsRestant(n + 61);
+    assert.ok(t, 'celui qui a vu le chrono courir n\'apprend pas qu\'il est fini');
+    assert.equal(t.reste, 0);
+});
+
+test('LE SOUVENIR NE DÉBORDE PAS SUR LE CHRONO SUIVANT', () => {
+    // Le professeur relance un compte à rebours pour le second groupe : c'est
+    // un AUTRE instant de fin, donc un autre chrono. Le souvenir du premier ne
+    // doit ni l'annoncer d'avance, ni l'empêcher de s'annoncer.
+    const n = Math.floor(Date.now() / 1000);
+    appliquerEtat({ maintenant: n, chrono: { finAt: n + 10, aZero: 'terminer' } });
+    assert.ok(tempsRestant(n), 'le premier court');
+    // Le second, lancé plus tard, mais que cet appareil reçoit DÉJÀ expiré —
+    // c'est le cas du troisième groupe, s'il y en avait un.
+    appliquerEtat({ maintenant: n + 5000, chrono: { finAt: n + 4000, aZero: 'terminer' } }, n + 5000);
+    assert.equal(tempsRestant(n + 5000), null,
+        'le souvenir du premier chrono fait annoncer la fin du second');
 });
 
 test('sans chrono, il n\'y a pas de chrono', () => {

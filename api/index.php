@@ -2169,10 +2169,27 @@ function handleTeacherOverride(): void
     if ($exo === '') fail(400, 'bad_exercise', 'Il faut désigner un exercice.');
     $mode = in_array($body['mode'] ?? 'saut', ['saut', 'retire', 'calculatrice'], true)
         ? (string) $body['mode'] : 'saut';
-    if ($exo === '*' && $mode !== 'calculatrice') {
-        // Sauter TOUS les exercices, ce n'est pas un réglage, c'est annuler la
-        // séance — et cela se fait en la retirant, pas en la vidant.
-        fail(400, 'bad_exercise', 'Seule la calculatrice s\'autorise pour toute la séance.');
+    // ── « TOUT DÉBLOQUER », MAIS POUR QUELQU'UN ──────────────────────────────
+    //
+    // RÉMY : « il faudrait aussi pouvoir mais seulement pour le direct
+    // permettre de débloquer tous les exercices (et aussi au cas par cas pour
+    // l'élève) quand on clique dessus », et, interrogé sur la portée : « Pour
+    // la séance en cours ».
+    //
+    // LA GARDE D'ORIGINE RESTE, ET ELLE AVAIT RAISON : sauter tous les
+    // exercices POUR LA CLASSE, ce n'est pas un réglage, c'est annuler la
+    // séance — et cela se fait en la retirant, pas en la vidant. Un clic,
+    // trente séances perdues.
+    //
+    // POUR UN ÉLÈVE NOMMÉ, c'est autre chose : c'est le geste qu'on fait
+    // debout, à côté de lui, quand il est coincé et que l'heure avance. On
+    // n'annule rien, on lui ouvre la route. La distinction est donc le
+    // DESTINATAIRE, pas le mode.
+    $pourDesEleves = !empty($body['studentIds']) || ($body['studentId'] ?? '') !== '';
+    if ($exo === '*' && $mode !== 'calculatrice' && !$pourDesEleves) {
+        fail(400, 'bad_exercise',
+            'Tout débloquer d\'un coup ne s\'accorde qu\'à un élève : pour la classe, '
+          . 'c\'est la séance qu\'il faut retirer.');
     }
 
     // UN GESTE, PLUSIEURS ÉLÈVES. Rémy : « on pourrait le donner que pour
@@ -2240,6 +2257,10 @@ function overridesDeLaClasse(string $classeId): array
         'exerciseId' => $o['exercise_id'],
         'mode' => $o['mode'],
         'pour' => $o['student_id'] ? dechiffrer($o['first_name']) : null,
+        // L'IDENTIFIANT, PAS SEULEMENT LE PRÉNOM. La fiche d'un élève doit
+        // savoir si c'est LUI qui a la calculatrice — et il y a deux Lucas
+        // dans la classe de Rémy. Un prénom ne désigne personne.
+        'pourId' => $o['student_id'] ?: null,
         'quand' => instantDe($o['created_at']),
     ], $s->fetchAll());
 }

@@ -55,7 +55,10 @@ const VIDE = {
     // à cet instant. Les deux ensemble donnent l'écart entre les horloges, et
     // c'est ce qui permet d'afficher le même chiffre sur trente appareils dont
     // aucun n'est réglé pareil. Un seul des deux ne servirait à rien.
-    maintenant: 0, recuA: 0
+    maintenant: 0, recuA: 0,
+    // LE COMPTE À REBOURS QU'ON A VU COURIR — voir `tempsRestant`. Il ne vient
+    // pas du serveur : c'est ce que CET appareil a constaté.
+    vuCourir: null
 };
 
 let etat = { ...VIDE };
@@ -97,10 +100,36 @@ export async function initSeanceDistante() {
  * fois ferait clignoter une consigne que personne n'a touchée. On compare donc
  * le contenu, pas la date.
  */
+/**
+ * LE COMPTE À REBOURS COURAIT-IL ENCORE AU MOMENT OÙ LE SERVEUR A RÉPONDU ?
+ *
+ * ON NE DEMANDE PAS L'HEURE À LA TABLETTE ICI, et c'est ce qui rend la réponse
+ * sûre : le serveur envoie dans la même phrase l'instant de FIN et l'heure
+ * qu'il est CHEZ LUI. Les deux sont sur la même horloge, la comparaison est
+ * donc exacte, qu'un appareil soit réglé dix minutes en avance ou pas réglé du
+ * tout.
+ *
+ * Repli sur l'heure de réception quand le serveur n'a pas envoyé la sienne —
+ * un serveur plus ancien, ou un état fabriqué à la main.
+ */
+function courtEncore(nouveau, recuA) {
+    const c = nouveau && nouveau.chrono;
+    if (!c || !c.finAt) return false;
+    const VRAIE_HEURE = 1.5e9;
+    const maintenant = Number(nouveau.maintenant) > VRAIE_HEURE
+        ? Number(nouveau.maintenant) : recuA;
+    return c.finAt > maintenant;
+}
+
 export function appliquerEtat(nouveau, recuA = Math.floor(Date.now() / 1000)) {
     if (!nouveau || typeof nouveau !== 'object') return etat;
     const avant = JSON.stringify(etat);
-    etat = { ...VIDE, ...nouveau, recuA };
+    // ON RETIENT LE CHRONO QU'ON A VU COURIR, et on ne l'oublie pas quand le
+    // serveur répond à nouveau : `VIDE` écraserait ce souvenir à chaque appel.
+    const vuCourir = courtEncore(nouveau, recuA)
+        ? nouveau.chrono.finAt
+        : (etat.vuCourir || null);
+    etat = { ...VIDE, ...nouveau, recuA, vuCourir };
     globalStore.set(CLE, etat).catch(() => {});
     if (JSON.stringify(etat) !== avant) prevenir();
     return etat;
@@ -277,6 +306,29 @@ export function seanceImposee() {
  * bouge plus. Sans cette correction, une tablette réglée dix minutes en avance
  * afficherait « temps écoulé » pendant que la classe travaille encore.
  *
+ * ── UN COMPTE À REBOURS NE CONCERNE QUE CEUX QUI L'ONT VU COURIR ────────────
+ *
+ * RÉMY, séance donnée en deux fois : « j'ai arrêté avec le compte à rebours le
+ * premier groupe et du coup quand le deuxième groupe s'est connecté, il avait
+ * l'information temps écoulé ».
+ *
+ * Le compte à rebours est une donnée de CLASSE, gardée au serveur, et rien ne
+ * l'efface quand il tombe à zéro : la classe porte encore `chrono_fin` une
+ * heure plus tard. Le second groupe se connectait donc sur un temps écoulé qui
+ * ne le concernait pas — et, pour ces élèves, la séance était finie avant
+ * d'avoir commencé.
+ *
+ * UN DÉLAI DE GRÂCE N'AURAIT RIEN RÉGLÉ : entre deux groupes, il y a cinq
+ * minutes d'interclasse, moins que n'importe quel délai qu'on aurait osé
+ * écrire. Et ce n'est pas une question de DURÉE, c'est une question de QUI :
+ * « Temps écoulé » a un sens pour celui qui a vu les minutes descendre, et
+ * aucun pour celui qui arrive après.
+ *
+ * ON NE L'EFFACE PAS AU SERVEUR NON PLUS. Trente élèves interrogent la classe
+ * toutes les dix secondes : le premier à constater zéro effacerait le chrono
+ * des vingt-neuf autres, qui le regardaient. La mémoire est donc sur
+ * l'appareil, où elle appartient.
+ *
  * @returns {{reste:number, aZero:string}|null} `reste` en secondes, jamais négatif
  */
 export function tempsRestant(maintenant = Math.floor(Date.now() / 1000)) {
@@ -294,7 +346,10 @@ export function tempsRestant(maintenant = Math.floor(Date.now() / 1000)) {
     const ecart = (etat.maintenant > VRAIE_HEURE && etat.recuA > VRAIE_HEURE)
         ? (etat.maintenant - etat.recuA) : 0;
     const reste = etat.chrono.finAt - (maintenant + ecart);
-    return { reste: Math.max(0, reste), aZero: etat.chrono.aZero || 'terminer' };
+    const dit = { reste: Math.max(0, reste), aZero: etat.chrono.aZero || 'terminer' };
+    if (reste > 0) return dit;
+    // Il est à zéro : on ne l'annonce qu'à ceux qui l'ont vu courir.
+    return etat.vuCourir === etat.chrono.finAt ? dit : null;
 }
 
 export function estRetire(exerciceId) {
@@ -306,9 +361,23 @@ export function estRetire(exerciceId) {
  * l'élève qui s'y casse les dents continue son parcours, et l'étape ne compte
  * ni pour ni contre lui — elle n'a aucune tentative, donc aucun poids dans la
  * note (voir `gradeRun`, qui agrège les tentatives et non les étapes).
+ *
+ * ── `*` VEUT DIRE « TOUS », ICI AUSSI ───────────────────────────────────────
+ *
+ * RÉMY : « il faudrait aussi pouvoir mais seulement pour le direct permettre
+ * de débloquer tous les exercices (et aussi au cas par cas pour l'élève) quand
+ * on clique dessus ».
+ *
+ * La convention existait déjà pour la calculatrice (voir `calculatriceAccordee`
+ * juste dessous) : la table dit « ce réglage vaut pour cet exercice », et
+ * l'exercice `*` est l'exercice « tous ». Elle vaut maintenant pour le saut —
+ * le serveur ne l'accorde qu'à un ÉLÈVE NOMMÉ, jamais à la classe, parce que
+ * sauter tout pour trente, ce n'est pas un réglage, c'est annuler la séance.
  */
 export function peutSauter(exerciceId) {
-    return !!exerciceId && etat.skippable.includes(exerciceId);
+    const liste = etat.skippable || [];
+    if (!liste.length) return false;
+    return liste.includes('*') || (!!exerciceId && liste.includes(exerciceId));
 }
 
 /**

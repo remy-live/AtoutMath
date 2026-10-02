@@ -342,6 +342,7 @@ $leaId = $r['json']['studentId'] ?? '';
 
 $r = json('/join', ['classCode' => $code, 'firstName' => 'Sacha']);
 $sacha = $r['json']['token'] ?? '';
+$sachaId = $r['json']['studentId'] ?? '';
 verifier('Sacha se rattache', $sacha !== '');
 
 $r = json('/join', ['classCode' => 'ZZZZZZ', 'firstName' => 'Personne']);
@@ -677,6 +678,50 @@ json('/teacher/override', ['classId' => $classId, 'exerciseId' => 'num-egypte',
 $s = json('/session', [], $lea)['json']['session'];
 verifier('« retiré » l\'emporte sur « saut autorisé »',
     in_array('num-egypte', $s['removed'], true) && !in_array('num-egypte', $s['skippable'], true));
+
+// ── « TOUT DÉBLOQUER », MAIS POUR QUELQU'UN ─────────────────────────────────
+//
+// RÉMY : « il faudrait aussi pouvoir mais seulement pour le direct permettre de
+// débloquer tous les exercices (et aussi au cas par cas pour l'élève) quand on
+// clique dessus », et, sur la portée : « Pour la séance en cours ».
+//
+// LA GARDE D'ORIGINE TIENT TOUJOURS, et elle avait raison : sauter TOUS les
+// exercices pour la CLASSE, ce n'est pas un réglage, c'est annuler la séance.
+// La distinction est le DESTINATAIRE, pas le mode.
+
+$r = json('/teacher/override', ['classId' => $classId, 'exerciseId' => '*',
+                                'mode' => 'saut'], $jetonProf);
+verifier('TOUT DÉBLOQUER POUR LA CLASSE EST REFUSÉ', $r['code'] === 400);
+
+json('/teacher/override', ['classId' => $classId, 'exerciseId' => '*',
+                           'mode' => 'saut', 'studentId' => $sachaId], $jetonProf);
+$s2 = json('/session', [], $sacha)['json']['session'];
+verifier('MAIS ACCORDÉ À UN ÉLÈVE NOMMÉ', in_array('*', $s2['skippable'], true));
+$s = json('/session', [], $lea)['json']['session'];
+verifier('et Léa suit toujours son parcours dans l\'ordre',
+    !in_array('*', $s['skippable'], true));
+
+// ── LE RÉGLAGE DIT À QUI IL EST, PAR SON IDENTIFIANT ────────────────────────
+//
+// La fiche d'un élève doit savoir si c'est LUI qui a la calculatrice. Il y a
+// deux Lucas dans la classe de Rémy : un prénom ne désigne personne.
+json('/teacher/override', ['classId' => $classId, 'exerciseId' => '*',
+                           'mode' => 'calculatrice', 'studentId' => $leaId], $jetonProf);
+$liste = json('/teacher/override', ['classId' => $classId, 'action' => 'list'],
+              $jetonProf)['json']['reglages'];
+$saCalc = null;
+foreach ($liste as $x) {
+    if ($x['mode'] === 'calculatrice' && $x['exerciseId'] === '*') $saCalc = $x;
+}
+verifier('LE RÉGLAGE PORTE L\'IDENTIFIANT DE SON ÉLÈVE',
+    $saCalc && ($saCalc['pourId'] ?? null) === $leaId);
+
+// Et on le retire par cet identifiant-là : c'est ce que fait sa fiche.
+json('/teacher/override', ['classId' => $classId, 'action' => 'cancel',
+                           'overrideId' => $saCalc['id']], $jetonProf);
+$s = json('/session', [], $lea)['json']['session'];
+verifier('et il se retire depuis la fiche, sans toucher aux autres',
+    !in_array('*', $s['calculatrice'] ?? [], true));
 
 // --- Annuler un réglage
 $over = db()->query("SELECT id FROM overrides WHERE exercise_id = 'geo-thales'")->fetch();
