@@ -3090,7 +3090,26 @@ html[data-point="plus"] .pt-croix { display: none; }
 .report-note-scale { font-size: 1.4rem; color: var(--text-muted); font-weight: 600; }
 .report-note--nograde .report-note-value { color: var(--success-texte); }
 .report-note-label { color: var(--text-muted); font-size: .92rem; margin-top: 4px; }
-.report-appreciation { text-align: center; color: var(--text-main); font-size: 1.05rem; margin: 12px 0 20px; }
+.report-appreciation { text-align: center; color: var(--text-main); font-size: 1.05rem; margin: 12px 0 6px; }
+
+/* CE QUI A ÉTÉ BIEN, ET CE QUI RESTE — en nommant les notions.
+
+   Rémy : « est ce que dans le bilan pour l'élève à la fin de l'épreuve, tu
+   pourrais en une phrase lui dire ce qui a été bien et ce qui doit être
+   retravaillé ».
+
+   ELLE SE LIT SOUS L'APPRÉCIATION, PAS À SA PLACE : l'une donne le niveau,
+   l'autre l'adresse. La marge du haut de l'appréciation a donc été ramenée de
+   20 à 6 px — les deux phrases forment un bloc, et vingt pixels entre elles les
+   auraient fait lire comme deux idées sans rapport.
+
+   `--text-muted` et non `--primary` : c'est une phrase, pas un bouton. Mesuré
+   5,48 de contraste en thème clair, 9,47 en sombre. */
+.report-notions {
+    text-align: center; color: var(--text-muted); font-size: .95rem;
+    margin: 0 0 20px; line-height: 1.45; max-width: 46ch;
+    margin-inline: auto; text-wrap: balance;
+}
 
 .report-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; margin-bottom: 22px; }
 .report-stat { background: var(--bg-app); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }

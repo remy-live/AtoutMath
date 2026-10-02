@@ -720,4 +720,55 @@ export function lesDeux(src) {
     return { arbre: a, html: html(a), texte: texte(a) };
 }
 
+/**
+ * CE QUE L'ÉLÈVE VIENT DE TAPER, DESSINÉ — ou `null` si ça ne se dessine pas.
+ *
+ * ── LE DÉFAUT ───────────────────────────────────────────────────────────────
+ *
+ * RÉMY, capture à l'appui sur « Racines carrées pas à pas » : « la racine
+ * carrée ne va pas au dessus du nombre ». Son champ de saisie affichait
+ * « 3√9 » : le caractère √ posé à côté d'un 9, sans la barre qui le couvre.
+ *
+ * Or ce fichier existe PRÉCISÉMENT pour ça, et depuis longtemps : l'énoncé,
+ * la correction et la fiche papier passent tous par lui et portent un vrai
+ * radical, tracé en SVG. Seule la LIGNE QUE L'ÉLÈVE ÉCRIT restait du texte
+ * brut — c'est-à-dire la seule ligne qu'il regarde en écrivant, et celle sur
+ * laquelle il apprend à quoi ressemble une racine carrée.
+ *
+ * ── POURQUOI ON REFUSE PLUS SOUVENT QU'ON N'ACCEPTE ─────────────────────────
+ *
+ * UNE SAISIE EN COURS N'EST PRESQUE JAMAIS UNE FORMULE. « 3√ » ne s'analyse
+ * pas, « 3√9 = » non plus : à chaque touche, la ligne passe par des états qui
+ * n'ont aucun sens. On rend donc `null` sans se plaindre, et l'appelant garde
+ * son texte.
+ *
+ * ET L'ÉLÈVE DOIT LIRE CE QU'IL A TAPÉ, PAS CE QU'ON EN COMPREND. L'analyseur
+ * NORMALISE — il écrit « 3 × 9 » là où l'élève a tapé « 3*9 ». Si l'on
+ * affichait cela, le champ corrigerait l'élève à son insu pendant qu'il tape,
+ * et l'on ne saurait plus si une faute vient de lui ou de nous. On relit donc
+ * la formule À PLAT et l'on exige qu'elle redise EXACTEMENT ce qui a été tapé,
+ * aux espaces près. Sinon : `null`.
+ *
+ * C'est une garantie de structure, pas une vigilance à tenir : aucun futur
+ * enrichissement de l'analyseur ne pourra réécrire la ligne de l'élève.
+ *
+ * ── ET SEULEMENT S'IL Y A UNE RACINE ────────────────────────────────────────
+ *
+ * Tout le reste — chiffres, lettres, parenthèses, exposants — s'écrit déjà
+ * correctement en texte. Redessiner une ligne qui n'en a pas besoin, c'est
+ * prendre un risque pour rien sur les vingt chapitres qui n'ont pas de racine.
+ *
+ * @param {string} src ce que l'élève a tapé
+ * @returns {string|null} le HTML du radical, ou null
+ */
+export function formuleSiElleTient(src) {
+    const texteTape = String(src == null ? '' : src);
+    if (!texteTape.includes('\u221a')) return null;
+    let arbre;
+    try { arbre = analyser(texteTape); } catch (e) { return null; }
+    const sansEspaces = (s) => s.replace(/\s+/g, '');
+    if (sansEspaces(texte(arbre)) !== sansEspaces(texteTape)) return null;
+    try { return html(arbre); } catch (e) { return null; }
+}
+
 export const POUR_ESSAI = { MOINS, jetons, rangDe, nombreEcrit };

@@ -8,7 +8,7 @@
 // L'ancien écran de fin affichait « Erreurs totales : 3 ». Ce n'est pas une
 // information exploitable, ni pour l'élève ni pour le professeur.
 
-import { appreciation } from '../core/grading.js';
+import { appreciation, ceQuiVaEtCeQuiReste } from '../core/grading.js';
 import { porteHtml as porteDuBac } from './bacASable.js';
 
 /**
@@ -98,6 +98,27 @@ export function showRunReport(bilan, { onClose, enTete = '' } = {}) {
 }
 
 /** Rendu réutilisable (fin de parcours, profil élève, tableau de bord prof). */
+/**
+ * CE QUI A ÉTÉ BIEN, ET CE QUI RESTE — en nommant les notions.
+ *
+ * RÉMY : « est ce que dans le bilan pour l'élève à la fin de l'épreuve, tu
+ * pourrais en une phrase lui dire ce qui a été bien et ce qui doit être
+ * retravaillé ».
+ *
+ * ELLE SE POSE SOUS L'APPRÉCIATION, ET NON À SA PLACE : les deux ne disent pas
+ * la même chose. « Objectif atteint » donne le NIVEAU, « Les priorités : c'est
+ * acquis » donne l'ADRESSE. L'élève a besoin des deux, et la seconde est celle
+ * qu'il peut emporter.
+ *
+ * ELLE DISPARAÎT QUAND ELLE N'A RIEN DE NET À DIRE — voir
+ * `ceQuiVaEtCeQuiReste` : ni réussite franche, ni trou franc, pas de phrase.
+ * Un paragraphe vide laisserait un blanc de deux lignes sous la note.
+ */
+function nomsDesNotions(bilan) {
+    const phrase = ceQuiVaEtCeQuiReste(bilan);
+    return phrase ? `<p class="report-notions">${escapeHtml(phrase)}</p>` : '';
+}
+
 export function reportHtml(bilan, { compact = false } = {}) {
     const pct = Math.round(bilan.ratioPondere * 100);
 
@@ -162,6 +183,7 @@ export function reportHtml(bilan, { compact = false } = {}) {
         ${bilan.pathName ? `<p class="report-subtitle">${escapeHtml(bilan.pathName)}</p>` : ''}
         ${noteBlock}
         <p class="report-appreciation">${appreciation(bilan)}</p>
+        ${nomsDesNotions(bilan)}
         ${calcul}
         ${stats}
         ${competences}

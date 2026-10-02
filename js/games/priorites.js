@@ -29,6 +29,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../ui/paveTactile.js';
+import { paveVoulu, seSouvenirDuPave } from '../core/paveVoulu.js';
 import { tirerOppose, reponseJuste } from '../core/opposeParentheses.js';
 import {
     tirerExpression, operationPrioritaire, critiquer, reduire, reduirePourEcrire,
@@ -215,6 +216,20 @@ class Priorites extends BaseGame {
                     <span class="pr-score" data-score></span>
                     <button type="button" class="pr-btn" data-indice>💡 Pourquoi ?</button>
                     <button type="button" class="pr-btn" data-neuf>↺ Autre calcul</button>
+                    <!-- LE PAVÉ À LA DEMANDE, ET RIEN NE BOUGE TANT QU'ON NE
+                         LE DEMANDE PAS.
+
+                         RÉMY : « pour le prio-bot relatifs pourrait on
+                         éventuellement avoir une touche qui affiche un pavé
+                         numérique avec + - et () mais si on ne demande rien ne
+                         change pas le design car c'est parfait telle quel ».
+
+                         Le pavé EXISTE déjà, mais seulement au doigt (moins de
+                         768 px) : sur un ordinateur, l'élève tape au clavier,
+                         et le signe moins des relatifs est au mauvais endroit
+                         sur un AZERTY. La touche l'ouvre, et seulement si on
+                         appuie dessus. -->
+                    <button type="button" class="pr-btn" data-pave hidden>⌨ Pavé</button>
                 </div>
                 <div class="pr-cascade" data-cascade></div>
                 <p class="pr-note" data-note></p>
@@ -229,7 +244,14 @@ class Priorites extends BaseGame {
         // iOS refuse alors d'ouvrir son clavier, et l'on regardait un curseur
         // clignoter sans pouvoir écrire. Le pavé est à nous, il s'ouvre
         // toujours, et il vise le champ courant — recréé à chaque redessin.
-        if (auDoigt()) {
+        // LE PAVÉ SE MONTE AU DOIGT TOUT SEUL, ET AILLEURS SUR DEMANDE.
+        //
+        // Il était écrit en ligne dans un `if (auDoigt())` ; il devient une
+        // méthode pour que la touche ⌨ puisse l'appeler, et pour qu'il n'y
+        // ait jamais DEUX écritures du même pavé — la seconde aurait dérivé
+        // de la première au premier ajustement.
+        this.monterLePave = () => {
+            if (this.pave) return;
             const zone = this.container.querySelector('.pr-wrap');
             this.pave = poserPaveTactile(zone, {
                 // Sous la cascade, avant la note : en fin de page le pavé
@@ -254,6 +276,36 @@ class Priorites extends BaseGame {
                     const trou = this.container.querySelector('.pr-trou');
                     if (trou && trou.value.trim()) this.valider(trou);
                 }
+            });
+            const btn = this.container.querySelector('[data-pave]');
+            if (btn) btn.hidden = true;
+        };
+
+        // ── QUI OUVRE LE PAVÉ, ET QUAND ─────────────────────────────────────
+        //
+        // AU DOIGT, TOUJOURS : le champ porte `inputmode: none` (le clavier du
+        // système ne s'ouvre pas), le pavé est donc la SEULE façon d'écrire.
+        //
+        // AILLEURS, SUR DEMANDE. Rémy : « si on ne demande rien ne change pas
+        // le design car c'est parfait telle quel ». La touche est donc cachée
+        // là où le pavé est déjà monté, et l'écran ne change pas d'un pixel
+        // tant que personne n'appuie.
+        //
+        // ET L'APPAREIL S'EN SOUVIENT. Un élève qui a besoin du pavé en a
+        // besoin à chaque question : le lui redemander à chaque fois serait le
+        // lui refuser. Le souvenir est par APPAREIL, pas par élève — c'est une
+        // façon de saisir, pas un réglage pédagogique.
+        const bouton = this.container.querySelector('[data-pave]');
+        if (auDoigt() || paveVoulu()) {
+            this.monterLePave();
+        } else if (bouton) {
+            bouton.hidden = false;
+            bouton.addEventListener('click', () => {
+                this.monterLePave();
+                seSouvenirDuPave(true);
+                // On rend la main au champ : l'élève venait d'y écrire.
+                const trou = this.container.querySelector('.pr-trou');
+                if (trou) trou.focus();
             });
         }
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.poser());

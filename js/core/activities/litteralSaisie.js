@@ -49,6 +49,7 @@ import { glypheFois } from '../signeFois.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { jugerEtape } from '../ligneEtape.js';
+import { formuleSiElleTient } from '../maths/formule.js';
 import { memeReponse, normaliser, groupesSemblables }
     from '../reductionPuissances.js';
 
@@ -375,6 +376,26 @@ export function mount(container, session, opts = {}) {
             // voir `signalerInacheve`. C'est voulu : dès que l'élève touche
             // une touche, la phrase qu'on avait coloriée n'est plus celle-là.
             texteEl.textContent = saisie;
+            // ── LA RACINE CARRÉE COUVRE SON NOMBRE ──────────────────────
+            //
+            // RÉMY, capture à l'appui sur « Racines carrées pas à pas » :
+            // « la racine carrée ne va pas au dessus du nombre ». Le champ
+            // affichait « 3√9 » — le caractère posé à côté du 9, sans la
+            // barre qui le couvre.
+            //
+            // L'ÉNONCÉ, LA CORRECTION ET LA FICHE PAPIER portaient déjà un
+            // vrai radical : ils passent tous par `maths/formule.js`. Seule
+            // la ligne que l'élève ÉCRIT restait du texte brut — c'est-à-dire
+            // la seule qu'il regarde en écrivant, et celle sur laquelle il
+            // apprend à quoi ressemble une racine carrée.
+            //
+            // `formuleSiElleTient` refuse bien plus souvent qu'elle
+            // n'accepte, et c'est ce qui rend ce branchement sûr : une saisie
+            // en cours n'est presque jamais une formule, et elle exige en
+            // plus que la formule redise EXACTEMENT ce qui a été tapé. On ne
+            // corrige donc jamais l'élève à son insu pendant qu'il écrit.
+            const dessinee = formuleSiElleTient(saisie);
+            if (dessinee) texteEl.innerHTML = dessinee;
             champ.classList.remove('ls-champ--ok', 'ls-champ--ko', 'ls-champ--presque');
             champ.classList.toggle('ls-champ--vide', saisie === '');
             poserModele();
