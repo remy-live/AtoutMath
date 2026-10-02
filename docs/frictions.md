@@ -1902,3 +1902,28 @@ lignes** — 2026-10-01
   peut pas vivre sur l'une d'elles.** Celle-ci est écrite une fois, bien, et au
   mauvais étage — chaque navigateur l'applique contre ce qu'il a, et ils n'ont
   pas tous la même chose.
+
+**La règle protégeait l'erreur du professeur autant que le travail de l'élève** — 2026-10-02
+
+- *Ce que je voulais faire* : répondre à Rémy — « et un élève qui a fait 5
+  exercices et je change le 6ème, il reçoit les modifs ? », puis « si je
+  supprime un exercice vers la fin et que personne n'est arrivé, il ne
+  l'auront pas ? »
+- *Ce qui a coûté* : la réponse était NON dans les deux cas, et le NON venait
+  d'une seule ligne — `if (apres.length <= avant.length) return null;`.
+  Changer une étape sans en ajouter laisse la longueur identique : refus AVANT
+  même de regarder LAQUELLE avait bougé. L'élève gardait l'ancienne version
+  d'une étape qu'il n'avait **jamais vue**, pendant que son camarade connecté
+  après recevait la nouvelle.
+- *Combien de fois* : | (mais c'est la troisième fois en deux jours que ce
+  module rend une mauvaise réponse sur une question de Rémy.)
+- *Ce qui manque* : rien à fabriquer. **La règle était juste, et appliquée trop
+  largement.** Sa raison d'être était écrite, mot pour mot, dans son propre
+  commentaire : « un bilan qui désigne d'autres exercices que ceux qui ont été
+  faits ne veut plus rien dire ». Elle ne concerne donc QUE les étapes
+  réellement faites — et personne n'avait relu le commentaire en écrivant la
+  garde.
+- *La règle* : **quand une garde refuse plus large que sa raison, elle protège
+  aussi l'erreur qu'on voulait pouvoir corriger.** Relire la raison écrite
+  au-dessus d'une garde avant de la croire : elle dit souvent, déjà, où elle
+  s'arrête.

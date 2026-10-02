@@ -47,7 +47,9 @@ import { auServeur } from './espaceProf.js';
 import { jetonProf } from './verrouProf.js';
 import { getActiveProfile } from './profile.js';
 import { normalizePath } from './path.js';
-import { donnerSeance, complementDeSeance, completerSeance } from './seances.js';
+import { donnerSeance, majDeSeance, appliquerLaMaj } from './seances.js';
+import { etapesFaitesDeLaSeance } from './bilanSeance.js';
+import { journal } from './journal.js';
 import { identiteDeParcours } from './shortcodes.js';
 import { empreinte } from './empreinteParcours.js';
 import { estUnParcoursSeme } from './parcoursSemes.js';
@@ -539,14 +541,33 @@ export async function recevoirLesAssignations(assignations) {
         // c'est la dispense qui est faite pour ça.
         const existante = parId.get(id);
         if (existante) {
-            const plus = complementDeSeance(existante,
-                normalizePath(chemin, a.name || chemin.name));
-            if (plus) {
-                const complete = completerSeance(existante, plus.etapes);
+            // OÙ EN EST-IL DANS CETTE SÉANCE-LÀ ? La question décide de tout.
+            //
+            // ON LA POSE AU JOURNAL, et non à `state.studentPath` : celui-ci ne
+            // porte que le DERNIER parcours ouvert. Un élève qui a fait cinq
+            // exercices lundi puis ouvert la séance de mardi n'a plus, en
+            // mémoire vive, la moindre trace de lundi — et une retouche de
+            // lundi passerait pour arrivant sur une séance jamais commencée.
+            //
+            // LES DEUX SOURCES SE COMPLÈTENT, et l'on prend leur réunion :
+            // le journal garde tout mais se compacte, `studentPath.completed`
+            // ne connaît qu'un parcours mais est toujours à jour. Se tromper
+            // par EXCÈS d'étapes faites est sans danger — on refuse alors une
+            // retouche qu'on aurait pu accepter ; se tromper par défaut
+            // réécrirait du travail réel.
+            const faites = etapesFaitesDeLaSeance(existante, journal.all());
+            const enCours = state.studentPath;
+            if (enCours && enCours.pathId && enCours.pathId === existante.pathId) {
+                for (const sid of (enCours.completed || [])) faites.add(sid);
+            }
+            const maj = majDeSeance(existante,
+                normalizePath(chemin, a.name || chemin.name), faites);
+            if (maj) {
+                const retouchee = appliquerLaMaj(existante, maj);
                 const i = seances.indexOf(existante);
-                if (i >= 0) seances[i] = complete;
-                parId.set(id, complete);
-                completees.push({ seance: complete, ajoutees: plus.etapes.length });
+                if (i >= 0) seances[i] = retouchee;
+                parId.set(id, retouchee);
+                completees.push({ seance: retouchee, ajoutees: maj.ajoutees });
             }
             continue;
         }

@@ -308,6 +308,107 @@ function memeEtape(a, b) {
 }
 
 /**
+ * CE QUE LA SÉANCE DE CET ÉLÈVE DEVIENT QUAND LE PROFESSEUR RETOUCHE SON
+ * PARCOURS — en regardant OÙ IL EN EST.
+ *
+ * ── LA QUESTION DE RÉMY, QUI A FAIT ÉCRIRE CETTE FONCTION ─────────────────
+ *
+ * « et un élève qui a fait 5 exercices et je change le 6ème, il reçoit les
+ * modifs ? » Puis : « si je supprime un exercice vers la fin et que personne
+ * n'est arrivé, il ne l'auront pas ».
+ *
+ * MESURÉ AVANT (`tools/seanceQuiBouge.mjs`) : NON, il ne recevait rien.
+ * `complementDeSeance` sortait sur `apres.length <= avant.length` — changer la
+ * 6ᵉ sans rien ajouter laisse la longueur identique, donc refus AVANT même de
+ * regarder laquelle avait bougé. L'élève gardait l'ancienne version d'une
+ * étape qu'il n'avait JAMAIS vue, et son camarade qui se connectait après
+ * recevait la nouvelle. Deux élèves, deux travaux.
+ *
+ * ── LA RÈGLE, EN UNE PHRASE ───────────────────────────────────────────────
+ *
+ *   Ce qui se passe APRÈS la dernière étape que l'élève a faite le suit ;
+ *   ce qui touche à ce qu'il a déjà fait, non.
+ *
+ * CE N'EST PAS UN RELÂCHEMENT DE L'ANCIENNE RÈGLE, C'EST LA MÊME, APPLIQUÉE
+ * LÀ OÙ ELLE A UN SENS. Sa raison d'être est écrite plus haut : « un bilan qui
+ * désigne d'autres exercices que ceux qui ont été faits ne veut plus rien
+ * dire ». Une étape jamais atteinte ne figure dans aucun bilan — il n'y a donc
+ * rien à protéger, et la refuser ne protégeait que l'erreur du professeur.
+ *
+ * ON MESURE « OÙ IL EN EST » AU RANG DE LA DERNIÈRE ÉTAPE FAITE, et non étape
+ * par étape : si l'élève a sauté la 3ᵉ pour faire la 4ᵉ, retirer la 3ᵉ
+ * décalerait la 4ᵉ qu'il a faite. Le rang est la seule borne qui tienne quand
+ * des étapes disparaissent.
+ *
+ * ET LES ÉTAPES FAITES GARDENT LEUR `stepId` : l'avancement s'y rattache. Un
+ * parcours réimporté en refabrique de neufs, et l'élève perdrait sa
+ * progression sur un travail qu'il a réellement fait.
+ *
+ * @param {object} seance    la séance telle que l'élève l'a
+ * @param {object} parcours  le parcours tel qu'il est maintenant
+ * @param {Set<string>|Array<string>} faites  les `stepId` qu'il a terminés
+ * @returns {{etapes: Array, titre: string, garde: number, ajoutees: number}|null}
+ */
+export function majDeSeance(seance, parcours, faites = [], maintenant = Date.now()) {
+    if (!seance || !parcours) return null;
+    // UNE SÉANCE CLOSE NE BOUGE JAMAIS : la note est arrêtée.
+    if (etatSeance(seance, maintenant) === ETATS.CLOSE) return null;
+    if (estRetiree(seance)) return null;
+
+    const avant = ((seance.path || {}).steps) || [];
+    const apres = (normalizePath(parcours, parcours.name).steps) || [];
+    if (!apres.length) return null;
+    const dejaFaites = faites instanceof Set ? faites : new Set(faites || []);
+
+    // JUSQU'OÙ IL EST ALLÉ : le rang de la dernière étape terminée.
+    let garde = 0;
+    for (let i = 0; i < avant.length; i++) {
+        if (dejaFaites.has(avant[i] && avant[i].stepId)) garde = i + 1;
+    }
+
+    // CE QU'IL A FAIT DOIT SE RETROUVER, IDENTIQUE, À LA MÊME PLACE. Sinon on
+    // ne touche à rien : c'est exactement l'ancienne règle, et elle garde ici
+    // tout son tranchant.
+    if (apres.length < garde) return null;
+    for (let i = 0; i < garde; i++) {
+        if (!memeEtape(avant[i], apres[i])) return null;
+    }
+
+    // RIEN N'A BOUGÉ ? RIEN À ÉCRIRE. Sans cette sortie, chaque synchronisation
+    // réécrirait la séance et annoncerait une retouche qui n'existe pas.
+    if (apres.length === avant.length && avant.every((e, i) => memeEtape(e, apres[i]))) {
+        return null;
+    }
+
+    return {
+        etapes: apres.map((e, i) => (i < garde ? avant[i] : e)),
+        titre: parcours.name || seance.titre || '',
+        garde,
+        ajoutees: Math.max(0, apres.length - avant.length)
+    };
+}
+
+/**
+ * LA SÉANCE RETOUCHÉE, sans toucher à son identité.
+ *
+ * `pathId` NE CHANGE PAS, pour la même raison que dans `completerSeance` : il
+ * est ce qui rattache le travail déjà fait au bilan de la séance.
+ */
+export function appliquerLaMaj(seance, maj) {
+    if (!seance || !maj || !maj.etapes) return seance;
+    const path = { ...(seance.path || {}) };
+    path.steps = maj.etapes;
+    return {
+        ...seance,
+        path,
+        // L'HEURE DE LA RETOUCHE, pour que l'écran puisse le dire plutôt que de
+        // faire apparaître des exercices en silence au milieu de l'heure.
+        completeeLe: Date.now(),
+        complementN: ((seance.complementN || 0) + maj.ajoutees)
+    };
+}
+
+/**
  * LA SÉANCE COMPLÉTÉE, sans toucher à son identité.
  *
  * `pathId` NE CHANGE PAS, et c'est la ligne qui fait tout tenir. L'avancement

@@ -141,23 +141,20 @@ console.log('    séance commence par un mot du professeur, qui demande son bout
 
 // ── QUESTION 2 : LE PROFESSEUR RETOUCHE SON PARCOURS ────────────────────────
 //
-// RÉMY : « si je modifie une séance dans les parcours, le parcours se modifie
-// aussi sur la séance en cours ? »
+// RÉMY, en trois temps :
+//   « si je modifie une séance dans les parcours, le parcours se modifie aussi
+//     sur la séance en cours ? »
+//   « et un élève qui a fait 5 exercices et je change le 6ème, il reçoit les
+//     modifs ? »
+//   « si je supprime un exercice vers la fin et que personne n'est arrivé, il
+//     ne l'auront pas ? »
 //
-// LA RÉPONSE N'EST NI OUI NI NON, ET C'EST POURQUOI IL FAUT LA MESURER. Le
-// logiciel distingue deux retouches (`complementDeSeance`, js/core/seances.js) :
+// LA RÈGLE, EN UNE PHRASE : ce qui se passe APRÈS la dernière étape que l'élève
+// a faite le suit ; ce qui touche à ce qu'il a déjà fait, non.
 //
-//   · AJOUTER DES ÉTAPES À LA FIN — accepté, et cela DESCEND chez les élèves
-//     qui ont déjà la séance. Rémy l'avait demandé : « si je me rends compte
-//     qu'une séance est trop courte […] puis-je la compléter ? »
-//   · CHANGER OU RETIRER une étape déjà donnée — REFUSÉ. Un élève l'a peut-être
-//     déjà validée sous l'ancien réglage, et le bilan compterait deux versions
-//     de la même étape.
-//
-// CE QU'ON VÉRIFIE ICI, ET QUI EST LE VRAI RISQUE : qu'un refus ne fasse pas
-// DIVERGER deux élèves de la même classe — celui qui avait déjà la séance et
-// celui qui se connecte après la retouche.
-console.log('\n\x1b[1mQUESTION 2 — LE PROFESSEUR RETOUCHE SON PARCOURS\x1b[0m');
+// ON LA MESURE DANS L'ORDRE OÙ ELLE SE VIT EN CLASSE : on donne, l'élève
+// travaille, et le professeur retouche pendant l'heure.
+console.log('\n\x1b[1mQUESTION 2 — LE PROFESSEUR RETOUCHE PENDANT L\'HEURE\x1b[0m');
 
 /** Ce que porte la séance rangée chez un élève. */
 const seanceDe = (page) => page.evaluate(async () => {
@@ -166,38 +163,42 @@ const seanceDe = (page) => page.evaluate(async () => {
     const m = l.find((x) => /Séance du mardi/.test(x.titre || ''));
     const steps = (m && m.path && m.path.steps) || [];
     return { etapes: steps.length, premiere: steps[0] ? steps[0].nbItems : 0,
+        derniere: steps.length ? steps[steps.length - 1].nbItems : 0,
         exos: steps.map((x) => x.exerciseId).join(',') };
 });
 
 /**
- * Retoucher le parcours dans l'atelier, le remonter, et faire resynchroniser
- * l'élève — SANS attendre les minuteries.
+ * Retoucher le parcours, le remonter, et faire resynchroniser l'élève — SANS
+ * attendre les minuteries.
  *
- * ON NE MESURE PAS LA PATIENCE DE LA SONDE. Premier jet : on retouchait, on
- * dormait quatorze secondes, et l'ajout n'arrivait pas. Impossible de dire si
- * le logiciel refusait l'ajout ou si la veille n'avait pas encore tourné — deux
- * diagnostics opposés derrière le même rouge. On appelle donc les deux
- * fonctions nommément, et l'on REGARDE LE SERVEUR entre les deux : le témoin
- * dit où la retouche s'est arrêtée.
+ * ON NE MESURE PAS LA PATIENCE DE LA SONDE. Premier jet : on dormait quatorze
+ * secondes et la retouche n'arrivait pas. Impossible de dire si le logiciel
+ * refusait ou si la veille n'avait pas tourné — deux diagnostics opposés
+ * derrière le même rouge. On appelle donc les deux fonctions nommément, et
+ * l'on REGARDE LE SERVEUR entre les deux.
  */
-const retoucher = async (quoi) => {
-    await s.page.evaluate(async ([id, q]) => {
+const retoucher = async (f) => {
+    await s.page.evaluate(async ([id, quoi]) => {
         const { state } = await import('./js/core/state.js');
         const { makeStep, normalizePath } = await import('./js/core/path.js');
         const { cheminDeLEntree } = await import('./js/core/entreeParcours.js');
         const { monterLaBibliotheque } = await import('./js/core/parcoursServeur.js');
         const entree = state.teacherPaths.find((x) => x.id === id);
-        const p = normalizePath(cheminDeLEntree(entree) || entree, entree.name);
-        if (q === 'ajouter') p.steps.push(makeStep('calc-sub', {}, { stepId: 'd', nbItems: 9 }));
-        if (q === 'changer') p.steps[0].nbItems = 20;
-        entree.data = p;
+        const parcours = normalizePath(cheminDeLEntree(entree) || entree, entree.name);
+        if (quoi === 'ajouter') {
+            parcours.steps.push(makeStep('calc-sub', {}, { stepId: 'd', nbItems: 9 }));
+        }
+        if (quoi === 'changer-la-derniere') {
+            parcours.steps[parcours.steps.length - 1].nbItems = 3;
+        }
+        if (quoi === 'retirer-la-derniere') parcours.steps.pop();
+        if (quoi === 'changer-la-premiere') parcours.steps[0].nbItems = 20;
+        entree.data = parcours;
         entree.timestamp = Date.now();
         state.saveTeacherPaths();
         await monterLaBibliotheque();
-    }, [donne.entreeId, quoi]);
+    }, [donne.entreeId, f]);
     await dormir(1200);
-    // TÉMOIN : la retouche est-elle AU SERVEUR ? Sans lui, un rouge plus bas
-    // pourrait vouloir dire « le logiciel refuse » ou « rien n'est monté ».
     const auServeur = await s.page.evaluate(async ([id]) => {
         const { auServeur: appel } = await import('./js/core/espaceProf.js');
         const r = await appel('/teacher/paths', { action: 'list' });
@@ -205,59 +206,100 @@ const retoucher = async (quoi) => {
         const d = ligne ? ligne.data : null;
         const dedans = d && d.data ? d.data : d;
         const steps = (dedans && dedans.steps) || [];
-        return { etapes: steps.length, premiere: steps[0] ? steps[0].nbItems : 0 };
+        return { etapes: steps.length,
+            premiere: steps[0] ? steps[0].nbItems : 0,
+            derniere: steps.length ? steps[steps.length - 1].nbItems : 0 };
     }, [donne.entreeId]);
-    console.log(`   témoin — au serveur : ${auServeur.etapes} étapes, `
-        + `la première en ${auServeur.premiere} questions`);
-    // L'élève resynchronise : on le lui demande plutôt que d'attendre dix
-    // secondes qu'il le fasse tout seul.
+    console.log(`   témoin — au serveur : ${auServeur.etapes} étapes `
+        + `(1ʳᵉ : ${auServeur.premiere} q., dernière : ${auServeur.derniere} q.)`);
     await p.evaluate(async () => {
         const { syncNow } = await import('./js/core/sync.js');
         await syncNow({ silent: true });
     });
-    await dormir(1500);
+    // LA SYNCHRONISATION EST ASYNCHRONE JUSQU'À L'ÉCRITURE : `syncNow` rend la
+    // main avant que `recevoirLesAssignations` ait fini d'écrire. Mesuré : à
+    // 1,5 s la sonde lisait l'ancienne séance une fois sur deux, et le même
+    // rouge désignait tantôt le logiciel, tantôt l'horloge.
+    await dormir(3000);
     return auServeur;
 };
 
-const avant = await seanceDe(p);
-console.log(`   chez l'élève AVANT : ${avant.etapes} étapes (${avant.exos}), `
-    + `la première en ${avant.premiere} questions`);
+console.log(`   au départ : ${JSON.stringify(await seanceDe(p))}`);
 
 // ── (a) AJOUTER UNE ÉTAPE À LA FIN ─────────────────────────────────────────
 console.log('\n   \x1b[1m(a) le professeur AJOUTE une étape à la fin\x1b[0m');
 await retoucher('ajouter');
 const apresAjout = await seanceDe(p);
 console.log(`   chez l'élève : ${apresAjout.etapes} étapes (${apresAjout.exos})`);
-dire('UNE ÉTAPE AJOUTÉE À LA FIN DESCEND CHEZ L\'ÉLÈVE QUI A DÉJÀ LA SÉANCE',
-    apresAjout.etapes === 4, `${apresAjout.etapes} étapes`);
+dire('UNE ÉTAPE AJOUTÉE À LA FIN DESCEND CHEZ L\'ÉLÈVE', apresAjout.etapes === 4,
+    `${apresAjout.etapes} étapes`);
 dire('ET SON EXERCICE EN COURS N\'EST PAS ARRACHÉ',
     await p.evaluate(() => !!document.querySelector('#game-board .game-question, #game-board canvas')));
 
-// ── (b) CHANGER UNE ÉTAPE DÉJÀ DONNÉE ──────────────────────────────────────
-console.log('\n   \x1b[1m(b) le professeur CHANGE la 1ʳᵉ étape : 4 → 20 questions\x1b[0m');
-await retoucher('changer');
-const apresChangement = await seanceDe(p);
-console.log(`   chez l'élève : la première en ${apresChangement.premiere} questions`);
-dire('UNE ÉTAPE DÉJÀ DONNÉE NE CHANGE PAS CHEZ L\'ÉLÈVE — c\'est la règle',
-    apresChangement.premiere === 4, `${apresChangement.premiere} questions`);
-
-// ── (c) ET UN CAMARADE QUI SE CONNECTE APRÈS LA RETOUCHE ? ─────────────────
+// ── L'ÉLÈVE TRAVAILLE : IL EN TERMINE DEUX ─────────────────────────────────
 //
-// C'EST LA MESURE QUI COMPTE. Si le second recevait 20 questions pendant que
-// le premier en garde 4, deux élèves de la même classe feraient deux travaux
-// différents sous le même nom — et rien ne le dirait, ni à eux ni à Rémy.
-console.log('\n   \x1b[1m(c) un camarade se connecte APRÈS la retouche\x1b[0m');
+// Tout ce qui suit dépend de CE QU'IL A FAIT. Sans cette étape, on mesurerait
+// une séance que personne n'a commencée, où toute retouche passe — ce qui est
+// juste, et ne répond pas à la question de Rémy.
+const faites = await p.evaluate(async () => {
+    const { state } = await import('./js/core/state.js');
+    const a = state.studentPath;
+    if (!a || !Array.isArray(a.steps)) return { sansParcours: true };
+    for (const s of a.steps.slice(0, 2)) {
+        state.markStudentPathStepCompleted(s.stepId, {
+            runId: 'sonde', solved: 4, required: 3, questions: 4, passed: true
+        });
+    }
+    return { faites: (state.studentPath.completed || []).length };
+});
+console.log(`\n   l'élève termine ${faites.faites} exercices`);
+dire('TÉMOIN : l\'élève a bien commencé sa séance', faites.faites === 2,
+    JSON.stringify(faites));
+
+// ── (b) CHANGER UNE ÉTAPE QU'IL N'A PAS ATTEINTE ───────────────────────────
+console.log('\n   \x1b[1m(b) le professeur CHANGE la dernière étape — personne n\'y est arrivé\x1b[0m');
+await retoucher('changer-la-derniere');
+const apresChangement = await seanceDe(p);
+console.log(`   chez l'élève : la dernière fait ${apresChangement.derniere} questions`);
+dire('IL REÇOIT LA RETOUCHE D\'UNE ÉTAPE QU\'IL N\'A JAMAIS VUE',
+    apresChangement.derniere === 3, `${apresChangement.derniere} questions`);
+
+// ── (c) LA RETIRER ─────────────────────────────────────────────────────────
+console.log('\n   \x1b[1m(c) le professeur RETIRE la dernière étape\x1b[0m');
+await retoucher('retirer-la-derniere');
+const apresRetrait = await seanceDe(p);
+console.log(`   chez l'élève : ${apresRetrait.etapes} étapes (${apresRetrait.exos})`);
+dire('UNE ÉTAPE QUE PERSONNE N\'A ATTEINTE DISPARAÎT AUSSI',
+    apresRetrait.etapes === 3, `${apresRetrait.etapes} étapes`);
+dire('ET LES DEUX QU\'IL A FAITES SONT TOUJOURS LÀ, DANS L\'ORDRE',
+    apresRetrait.exos.startsWith('calc-add,calc-prio'), apresRetrait.exos);
+
+// ── (d) CHANGER UNE ÉTAPE QU'IL A DÉJÀ FAITE ───────────────────────────────
+//
+// ICI LA RÈGLE DIT NON, ET ELLE A RAISON : il a travaillé sur ce qu'il avait
+// sous les yeux, et un bilan qui désigne un autre exercice ne veut plus rien
+// dire.
+console.log('\n   \x1b[1m(d) le professeur CHANGE la 1ʳᵉ étape — qu\'il a DÉJÀ faite\x1b[0m');
+await retoucher('changer-la-premiere');
+const apresInterdit = await seanceDe(p);
+console.log(`   chez l'élève : la première fait ${apresInterdit.premiere} questions`);
+dire('CE QU\'IL A DÉJÀ FAIT NE BOUGE PAS', apresInterdit.premiere === 4,
+    `${apresInterdit.premiere} questions`);
+
+// ── (e) ET LE CAMARADE QUI SE CONNECTE APRÈS ───────────────────────────────
+//
+// C'EST LA MESURE QUI COMPTE, et celle qui a fait écrire toute cette règle.
+console.log('\n   \x1b[1m(e) un camarade se connecte APRÈS toutes les retouches\x1b[0m');
 const autre = await s.page.evaluate(async ([cid]) => {
     const { listeDeClasse } = await import('./js/core/espaceProf.js');
     const r = await listeDeClasse(cid);
     const e = (r.eleves || []).find((x) => !/Emma/.test(x.prenom || ''));
     return e ? { login: e.login, code: e.code, prenom: e.prenom } : null;
 }, [classeId]);
-console.log(`   le camarade : ${autre.prenom} (${autre.login})`);
-// SON PROPRE CONTEXTE DE NAVIGATION, ET C'EST INDISPENSABLE : un onglet de
-// plus partage le stockage local, donc la session d'Emma. Premier jet : la page
-// s'ouvrait DÉJÀ connectée, le champ `#portail-login` n'existait pas, et la
-// sonde est morte sur un délai d'attente en croyant mesurer un portail.
+// SON PROPRE CONTEXTE DE NAVIGATION, ET C'EST INDISPENSABLE : un onglet de plus
+// partage le stockage local, donc la session d'Emma. Premier jet : la page
+// s'ouvrait DÉJÀ connectée, `#portail-login` n'existait pas, et la sonde est
+// morte sur un délai d'attente en croyant mesurer un portail.
 const ctxAutre = await s.nav.newContext({ viewport: { width: 1200, height: 900 } });
 const q = await ctxAutre.newPage();
 q.on('pageerror', (e) => erreursEleve.push(String(e).slice(0, 160)));
@@ -270,40 +312,27 @@ await q.click('#portail-connecter');
 await dormir(9000);
 const chezLAutre = await seanceDe(q);
 console.log(`   chez ${autre.prenom} : ${chezLAutre.etapes} étapes (${chezLAutre.exos}), `
-    + `la première en ${chezLAutre.premiere} questions`);
+    + `1ʳᵉ : ${chezLAutre.premiere} q.`);
 dire('LES DEUX ÉLÈVES ONT LE MÊME NOMBRE D\'ÉTAPES',
-    chezLAutre.etapes === apresChangement.etapes,
-    `${apresChangement.etapes} contre ${chezLAutre.etapes}`);
-// ── LE DÉFAUT CONNU, ET POURQUOI IL N'EST PAS COMPTÉ COMME UN RATÉ ────────
-//
-// Les deux élèves DIVERGENT, et c'est mesuré : 4 questions chez celui qui
-// avait ouvert la séance, 20 chez celui qui se connecte après.
-//
-// CE N'EST PAS UN ÉCHEC DE LA MESURE, C'EST SON RÉSULTAT. La règle qui protège
-// l'élève commencé (`complementDeSeance`) vit dans SON navigateur : elle
-// compare ce qui arrive à ce qu'il a. Le camarade n'a rien à comparer, donc
-// rien ne le protège. Tant que l'assignation ne porte pas au SERVEUR une copie
-// figée du contenu au moment du don, la convergence est hors de portée du
-// navigateur. Voir docs/frictions.md.
-//
-// ON NE PEINT PAS CE ROUGE EN VERT, et l'on ne le compte pas non plus en
-// raté : une sonde qui sort en erreur pour un défaut connu et documenté est
-// une sonde qu'on cesse de lancer. Elle le CONSTATE, fort — et le jour où
-// quelqu'un corrige, elle le dit aussi.
-const memeTravail = chezLAutre.premiere === apresChangement.premiere;
+    chezLAutre.etapes === apresInterdit.etapes,
+    `${apresInterdit.etapes} contre ${chezLAutre.etapes}`);
+dire('ET LES MÊMES EXERCICES, DANS LE MÊME ORDRE',
+    chezLAutre.exos === apresInterdit.exos,
+    `${apresInterdit.exos} | ${chezLAutre.exos}`);
+
+// ── LA DIVERGENCE QUI RESTE, ET POURQUOI ELLE EST VOULUE ───────────────────
+const memeTravail = chezLAutre.premiere === apresInterdit.premiere;
 if (memeTravail) {
-    console.log('  \x1b[32m✓ CORRIGÉ\x1b[0m — les deux élèves ont le même travail.');
-    console.log('    \x1b[1mMettre cette sonde à jour : le constat ci-dessous n\'a plus lieu.\x1b[0m');
+    console.log('  \x1b[32m✓\x1b[0m la 1ʳᵉ étape est la même chez les deux.');
 } else {
-    console.log(`  \x1b[33m⚠ DÉFAUT CONNU\x1b[0m — la première étape fait `
-        + `${apresChangement.premiere} questions chez l'un et ${chezLAutre.premiere} `
-        + 'chez l\'autre.');
-    console.log('    Deux élèves de la même classe, la même séance, deux travaux.');
-    console.log('    L\'atelier le DIT sur le badge « Donné à… » ; le corriger demande');
-    console.log('    une copie figée au serveur. Voir docs/frictions.md.');
+    console.log('  \x1b[33m⚠ ASYMÉTRIE VOULUE\x1b[0m — la 1ʳᵉ étape fait '
+        + `${apresInterdit.premiere} questions chez celui qui l'a FAITE et `
+        + `${chezLAutre.premiere} chez celui qui ne l'a pas encore faite.`);
+    console.log('    C\'est la seule divergence qui reste, et elle est le prix de');
+    console.log('    la règle : on ne réécrit pas le travail d\'un élève. Elle ne');
+    console.log('    survient que si le professeur change une étape DÉJÀ FAITE —');
+    console.log('    l\'atelier l\'en prévient sur le badge « Donné à… ».');
 }
-await q.close();
-await ctxAutre.close();
 
 console.log(`\nerreurs de page : ${s.erreurs.length + erreursEleve.length}`);
 [...s.erreurs, ...erreursEleve].slice(0, 5).forEach((e) => console.log('   ' + e));

@@ -85,6 +85,35 @@ export function evenementsDeLaSeance(seance, evenements = []) {
     return evenements.filter(e => e.payload && runs.has(e.payload.runId));
 }
 
+/**
+ * LES ÉTAPES QUE CET ÉLÈVE A TERMINÉES DANS CETTE SÉANCE-LÀ.
+ *
+ * ── POURQUOI ON LA LIT DANS LE JOURNAL, ET NON DANS `state.studentPath` ────
+ *
+ * `studentPath` ne porte qu'UN parcours : le dernier ouvert. Un élève qui a
+ * fait cinq exercices de la séance de lundi puis ouvert celle de mardi n'a
+ * plus, en mémoire vive, la moindre trace de lundi — et une retouche de lundi
+ * passerait alors pour arrivant sur une séance que personne n'a commencée.
+ * Le journal, lui, garde tout, et `evenementsDeLaSeance` sait déjà en extraire
+ * ce qui appartient à CETTE séance.
+ *
+ * C'EST LA FONCTION QUI REND `majDeSeance` SÛRE : sans elle, on relâcherait la
+ * règle sur des étapes qu'un élève a bel et bien faites.
+ *
+ * @param {Object} seance
+ * @param {Array} evenements  le journal complet de l'élève
+ * @returns {Set<string>} les `stepId` terminés
+ */
+export function etapesFaitesDeLaSeance(seance, evenements = []) {
+    const faites = new Set();
+    for (const e of evenementsDeLaSeance(seance, evenements)) {
+        if (e.type !== A.STEP_COMPLETED) continue;
+        const sid = (e.payload || {}).stepId;
+        if (sid) faites.add(sid);
+    }
+    return faites;
+}
+
 /** A-t-il seulement commencé ? La question qui décide d'afficher un lien bilan. */
 export function aTravaille(seance, evenements = []) {
     return runsDeLaSeance(seance, evenements).size > 0;
