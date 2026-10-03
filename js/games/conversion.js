@@ -105,6 +105,62 @@ class Conversion extends BaseGame {
                     background: var(--danger);
                 }
 
+                /* LA RANGÉE DES POIGNÉES — une par frontière de colonne.
+
+                   RÉMY : « une fois que l'on a posé la virgule, on ne peut
+                   plus l'enlever ». C'était vrai, et pire : la virgule et les
+                   zéros se posaient du MÊME clic, sur la MÊME case. Le premier
+                   clic posait la virgule, tous les suivants basculaient un
+                   zéro — la virgule ne bougeait donc plus jamais, pendant que
+                   la consigne disait « clique une case pour la déplacer ».
+
+                   ET ELLE NE POUVAIT MÊME PAS SE POSER UNE FOIS SUR TROIS :
+                   le clic était refusé sur une case portant un chiffre, or la
+                   virgule tombe sur une colonne occupée dans 27 à 31 % des
+                   tirages (mesuré). L'exercice était alors infaisable.
+
+                   DEUX GESTES, DEUX CIBLES. La virgule est une FRONTIÈRE entre
+                   deux colonnes, pas un contenu de case : elle a maintenant sa
+                   propre rangée, sous le tableau, où chaque poignée marque un
+                   bord droit. Les cases redeviennent ce qu'elles sont — les
+                   zéros —, et une poignée se reclique pour s'enlever. */
+                .cv-poignee {
+                    border: none !important; height: 26px !important; padding: 0 !important;
+                    position: relative; background: transparent;
+                }
+                .cv-etape3 .cv-poignee { cursor: pointer; }
+                /* Le repère discret : sans lui, on ne devine pas qu'il y a là
+                   quelque chose à cliquer — et l'on cherche dans les cases. */
+                .cv-etape3 .cv-poignee::before {
+                    content: ''; position: absolute; right: -2px; top: 4px;
+                    width: 4px; height: 11px; border-radius: 2px;
+                    background: color-mix(in srgb, var(--text-muted) 40%, transparent);
+                }
+                @media (hover: hover) {
+                    .cv-etape3 .cv-poignee:hover::before {
+                        background: var(--primary); height: 17px;
+                    }
+                }
+                .cv-etape3 .cv-poignee:focus-visible { outline: 2px solid var(--primary); }
+                .cv-poignee--mise::after {
+                    content: ','; position: absolute; right: -8px; top: -4px;
+                    font-size: 26px; font-weight: 900; line-height: 1;
+                    color: var(--danger);
+                }
+
+                /* CE QUI TOMBERAIT HORS DU TABLEAU, PENDANT QU'ON VISE.
+                   L'aperçu fantôme perdait silencieusement les chiffres sans
+                   colonne : on visait km avec 187 et l'on voyait « 7 », sans
+                   rien pour dire que deux chiffres manquaient. */
+                .cv-deborde-gauche::before, .cv-deborde-droite::after {
+                    position: absolute; top: 50%; transform: translateY(-50%);
+                    font-size: 15px; font-weight: 900; color: var(--danger);
+                }
+                .cv-deborde-gauche { position: relative; }
+                .cv-deborde-gauche::before { content: '«'; left: -13px; }
+                .cv-deborde-droite { position: relative; }
+                .cv-deborde-droite::after { content: '»'; right: -13px; }
+
                 .cv-etiquettes { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; }
                 .cv-etiquette {
                     padding: 7px 13px; border-radius: 10px; cursor: grab; touch-action: none;
@@ -177,9 +233,81 @@ class Conversion extends BaseGame {
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.poser());
         this.container.querySelector('[data-indice]').addEventListener('click', () => this.aider());
         this.poser();
+        this.brancherLaVue();
     }
 
     startGameLoop() { /* Pas d'horloge. */ }
+
+    // --- Le clavier de la tablette ------------------------------------------------
+    //
+    // RÉMY : « quand on veut écrire sur la tablette, le clavier cache la
+    // réponse ».
+    //
+    // MESURÉ AVANT DE CORRIGER, sur une tablette couchée de 1024 × 690 : le bas
+    // du champ de réponse est à 57 % de la hauteur visible, et un clavier de
+    // tablette en prend 35 à 45 %. Il passe donc dessous.
+    //
+    // ET IL N'Y AVAIT AUCUN RECOURS, ce qui est le vrai défaut : `.cv-wrap`
+    // fait toute la hauteur et son contenu y tient, donc `scrollHeight ===
+    // clientHeight` — mesuré — et il n'y a RIEN À FAIRE DÉFILER. L'élève ne
+    // peut pas ramener le champ sous ses yeux ; il doit fermer le clavier pour
+    // relire ce qu'il tape, le rouvrir pour écrire, et recommencer.
+    //
+    // `visualViewport` EST LE SEUL OBJET QUI DISE CE QUE L'ÉLÈVE VOIT quand le
+    // clavier est ouvert : la fenêtre, elle, ne bouge pas (sur iOS elle ne
+    // bouge jamais). On pose donc la hauteur du cadre sur ce qui reste visible,
+    // ce qui le rend défilable, puis on ramène le champ au centre. C'est le
+    // même geste que le duel (`games/duel.js`), pour la même raison.
+
+    ajusterLaVue() {
+        const wrap = this.container.querySelector('.cv-wrap');
+        if (!wrap || !wrap.isConnected) return;
+        const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+        const visible = vv ? vv.height : window.innerHeight;
+        const haut = wrap.getBoundingClientRect().top - (vv ? vv.offsetTop : 0);
+        // Un plancher : mieux vaut un cadre qui dépasse un peu qu'un cadre
+        // écrasé à rien si la mesure part en vrille pendant une rotation.
+        wrap.style.height = `${Math.max(240, Math.round(visible - haut))}px`;
+        // ET LE CHAMP REVIENT SOUS LES YEUX. Redimensionner ne suffit pas : le
+        // défilement reste où il était, et la réponse est en bas du cadre.
+        const trou = this.container.querySelector('.cv-trou');
+        if (trou && document.activeElement === trou) trou.scrollIntoView({ block: 'center' });
+    }
+
+    brancherLaVue() {
+        this.mesurerLaVue = () => this.ajusterLaVue();
+        this.ajusterLaVue();
+        // Deux fois : la première mesure tombe parfois avant que la couche de
+        // jeu ait fini de se poser, et l'en-tête peut encore changer de hauteur.
+        requestAnimationFrame(this.mesurerLaVue);
+        window.addEventListener('resize', this.mesurerLaVue);
+        window.addEventListener('orientationchange', this.mesurerLaVue);
+        const vv = window.visualViewport;
+        if (vv) {
+            vv.addEventListener('resize', this.mesurerLaVue);
+            vv.addEventListener('scroll', this.mesurerLaVue);
+        }
+    }
+
+    debrancherLaVue() {
+        if (!this.mesurerLaVue) return;
+        window.removeEventListener('resize', this.mesurerLaVue);
+        window.removeEventListener('orientationchange', this.mesurerLaVue);
+        const vv = window.visualViewport;
+        if (vv) {
+            vv.removeEventListener('resize', this.mesurerLaVue);
+            vv.removeEventListener('scroll', this.mesurerLaVue);
+        }
+        this.mesurerLaVue = null;
+    }
+
+    // UN ÉCOUTEUR SUR `window` SURVIT AU CONTENEUR. Sans ce débranchement, la
+    // mesure continuait de tourner après la sortie du jeu et cherchait un
+    // `.cv-wrap` que `innerHTML = ''` venait d'effacer.
+    destroy() {
+        this.debrancherLaVue();
+        super.destroy();
+    }
 
     poser() {
         this.exercice = tirerConversion({
@@ -208,6 +336,12 @@ class Conversion extends BaseGame {
         // --- Le tableau ---------------------------------------------------
         const entetes = document.createElement('tr');
         const cases = document.createElement('tr');
+        // LA RANGÉE DES POIGNÉES EXISTE À TOUTES LES ÉTAPES, même muette : si
+        // elle n'apparaissait qu'à l'étape 3, le tableau grandirait de
+        // vingt-six pixels sous les yeux au moment précis où l'élève vise une
+        // case, et tout glisserait d'un cran.
+        const poignees = document.createElement('tr');
+        poignees.className = 'cv-poignees';
         f.unites.forEach(u => {
             const th = document.createElement('th');
             const pose = this.unitesPosees[u.rang];
@@ -243,10 +377,22 @@ class Conversion extends BaseGame {
             const contenu = this.contenuCase(u.rang);
             td.innerHTML = contenu.html;
             cases.appendChild(td);
+
+            const poi = document.createElement('td');
+            poi.className = 'cv-poignee' + (this.virgule === u.rang ? ' cv-poignee--mise' : '');
+            poi.dataset.virgule = u.rang;
+            poi.setAttribute('role', 'button');
+            poi.tabIndex = this.etape === 3 ? 0 : -1;
+            poi.setAttribute('aria-label', `Poser la virgule après la colonne des ${u.symbole}`);
+            poignees.appendChild(poi);
         });
         this.tableEl.innerHTML = '';
         this.tableEl.appendChild(entetes);
         this.tableEl.appendChild(cases);
+        this.tableEl.appendChild(poignees);
+        // La classe porte l'étape : c'est elle qui allume les poignées, et
+        // elle évite d'écrire deux fois la même condition en JavaScript.
+        this.tableEl.parentElement.classList.toggle('cv-etape3', this.etape === 3);
 
         this.etiquettesEl.innerHTML = '';
         this.zoneEl.innerHTML = '';
@@ -347,19 +493,33 @@ class Conversion extends BaseGame {
      *  qui fait VOIR le facteur dix avant de le commettre. */
     apercuNombre(td) {
         const ex = this.exercice;
-        this.tableEl.querySelectorAll('td').forEach(c => {
-            c.classList.remove('cv-case--survol');
+        this.tableEl.querySelectorAll('td[data-rang]').forEach(c => {
+            c.classList.remove('cv-case--survol', 'cv-deborde-gauche', 'cv-deborde-droite');
             if (!c.querySelector('.cv-chiffre')) c.innerHTML = '';
         });
         if (!td) return;
         const rang = Number(td.dataset.rang);
+        // CE QUI N'A PAS DE COLONNE DOIT SE VOIR, et non disparaître.
+        //
+        // L'aperçu posait chaque chiffre dans sa colonne « si elle existe » —
+        // et se taisait sinon. En visant km avec 187, l'élève voyait « 7 » tout
+        // seul et rien pour dire où étaient passés le 1 et le 8. Le tirage ne
+        // propose plus de nombre qui déborde (voir `tientDansLeTableau`), mais
+        // un placement FAUX en fait toujours déborder — et c'est précisément
+        // là qu'il faut le montrer, puisque c'est l'erreur qu'on travaille.
+        let horsGauche = 0, horsDroite = 0;
         apercuPlacement(ex.valeur, rang).forEach(c => {
             const q = this.tableEl.querySelector(`td[data-rang="${c.colonne}"]`);
             if (q) {
                 q.innerHTML = `<span class="cv-fantome">${c.chiffre}</span>`;
                 q.classList.add('cv-case--survol');
+                return;
             }
+            if (c.colonne > this.colonnes[0]) horsGauche++; else horsDroite++;
         });
+        const cases = this.tableEl.querySelectorAll('td[data-rang]');
+        if (horsGauche && cases.length) cases[0].classList.add('cv-deborde-gauche');
+        if (horsDroite && cases.length) cases[cases.length - 1].classList.add('cv-deborde-droite');
     }
 
     poserNombre(td) {
@@ -394,14 +554,41 @@ class Conversion extends BaseGame {
         const ex = this.exercice;
         const attendu = convertir(ex.valeur, this.famille, ex.depart, ex.arrivee);
 
-        // On clique une colonne pour y poser la virgule ; on clique une case
-        // vide pour y écrire un zéro.
+        // ── DEUX GESTES, DEUX CIBLES ──────────────────────────────────────
+        //
+        // Les deux partaient du même clic sur la même case, et l'ordre des
+        // clics décidait du sens : le premier posait la virgule, les suivants
+        // basculaient un zéro. Conséquence, signalée par Rémy : « une fois que
+        // l'on a posé la virgule, on ne peut plus l'enlever » — rien, jamais,
+        // ne pouvait la déplacer, pendant que la consigne affirmait le
+        // contraire. Et le clic étant refusé sur une case portant un chiffre,
+        // la virgule ne pouvait même pas se poser dans 27 à 31 % des tirages
+        // (mesuré sur 400 tirages par famille) : l'exercice était infaisable.
+        //
+        // La virgule a donc sa propre rangée de poignées, sous les cases.
+        this.tableEl.querySelectorAll('td[data-virgule]').forEach(poi => {
+            const rang = Number(poi.dataset.virgule);
+            const basculer = () => {
+                if (this.isDemo) return;
+                // RECLIQUER L'ENLÈVE. C'est la phrase de Rémy, mot pour mot, et
+                // c'est aussi le geste qu'on essaie d'abord quand on s'est
+                // trompé.
+                this.virgule = this.virgule === rang ? null : rang;
+                this.majEtape3();
+            };
+            poi.addEventListener('click', basculer);
+            poi.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); basculer(); }
+            });
+        });
+
+        // Et les cases ne font plus qu'une chose : les zéros de comblement.
         this.tableEl.querySelectorAll('td[data-rang]').forEach(td => {
             const rang = Number(td.dataset.rang);
             td.style.cursor = 'pointer';
             td.addEventListener('click', () => {
-                if (td.querySelector('.cv-chiffre')) return;   // un chiffre ne se touche pas
-                if (this.virgule === null) { this.virgule = rang; this.majEtape3(); return; }
+                if (this.isDemo) return;
+                if (td.querySelector('.cv-chiffre')) return;   // un chiffre ne se remplace pas
                 if (this.zeros.has(rang)) this.zeros.delete(rang); else this.zeros.add(rang);
                 this.majEtape3();
             });
@@ -423,6 +610,16 @@ class Conversion extends BaseGame {
         };
         trou.addEventListener('keydown', (e) => { if (e.key === 'Enter') valider(); });
         trou.addEventListener('blur', valider);
+        // LE CLAVIER DE LA TABLETTE CACHAIT LA RÉPONSE — voir `brancherLaVue`.
+        // Le délai laisse au clavier le temps de monter : mesurer avant qu'il
+        // soit là, c'est mesurer l'écran d'avant.
+        trou.addEventListener('focus', () => {
+            setTimeout(() => {
+                if (!trou.isConnected) return;
+                this.ajusterLaVue();
+                trou.scrollIntoView({ block: 'center' });
+            }, 120);
+        });
         rep.appendChild(trou);
         const u = document.createElement('span');
         u.textContent = ex.arrivee;
@@ -432,17 +629,26 @@ class Conversion extends BaseGame {
         this.majEtape3();
     }
 
-    /** Le message d'accompagnement de l'étape 3, selon ce qui reste à faire. */
+    /**
+     * Le message d'accompagnement de l'étape 3, selon ce qui reste à faire.
+     *
+     * CES PHRASES DOIVENT DIRE LE GESTE QUI MARCHE. L'une d'elles disait
+     * « clique une case pour la déplacer » alors qu'aucun clic ne déplaçait
+     * rien : l'élève suivait la consigne, il ne se passait rien, et il en
+     * concluait que le logiciel était cassé — ce qu'il était.
+     */
     majEtape3() {
         this.dessinerTableSeulement();
         const a = this.attendu;
         if (this.virgule === null) {
-            this.note(`Clique la colonne des ${this.exercice.arrivee} : la virgule se pose juste après elle.`);
+            this.note(`Clique le petit repère SOUS la colonne des ${this.exercice.arrivee} : `
+                + 'la virgule se pose juste après cette colonne.');
             return;
         }
         if (this.virgule !== a.colonneVirgule) {
             this.note('La virgule se pose après la colonne de l\'unité demandée, jamais ailleurs. '
-                + 'Clique une case pour la déplacer.', 'ko');
+                + 'Clique un autre repère sous le tableau pour la déplacer, ou le même pour '
+                + 'l\'enlever.', 'ko');
             return;
         }
         const manquants = a.zeros.filter(z => !this.zeros.has(z));
@@ -461,6 +667,13 @@ class Conversion extends BaseGame {
             td.classList.toggle('cv-virgule', this.virgule === rang);
             if (td.querySelector('.cv-chiffre')) return;
             td.innerHTML = this.zeros.has(rang) ? '<span class="cv-zero">0</span>' : '';
+        });
+        // ET LA POIGNÉE SUIT. Sans cette boucle, la virgule se déplaçait dans
+        // l'état et sur la rangée des chiffres, mais la poignée restait
+        // allumée à son ancienne place — deux virgules à l'écran, dont une
+        // fausse.
+        this.tableEl.querySelectorAll('td[data-virgule]').forEach(poi => {
+            poi.classList.toggle('cv-poignee--mise', this.virgule === Number(poi.dataset.virgule));
         });
     }
 

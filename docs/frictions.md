@@ -2128,8 +2128,14 @@ lignes** — 2026-10-01
   par CODES de caractères, qui donne « Dylan, Fatou, Émile ». L'option, elle,
   fait tout autre chose : elle rend « Leo », « leo » et « Léo » ÉGAUX, de sorte
   que c'est l'identifiant qui départage et non une majuscule invisible.
-- *Combien de fois* : | (première fois qu'un commentaire d'option est pris en
-  défaut ; il était dans le dépôt depuis des semaines, recopié une fois.)
+- *Combien de fois* : || (deux fois le même jour. La seconde, dans le tableau
+  de conversion : j'avais écrit DEUX vérifications dans `tientDansLeTableau` —
+  les chiffres de départ, puis l'étendue écrite (virgule et zéros) — en me
+  disant que la seconde attrapait ce que la première laissait passer.
+  `epreuveTombe.mjs` a refusé l'épreuve de la seconde, et cherchant pourquoi
+  j'ai trouvé que les deux étaient **la même vérification écrite deux fois** :
+  la colonne de la virgule est celle de l'unité demandée, donc toujours une
+  colonne du tableau. J'en ai supprimé une.)
 - *Ce qui manque* : rien à fabriquer. L'outil existait et il a parlé ; il
   fallait l'écouter au lieu de chercher pourquoi « l'épreuve ne marche pas ».
 - *La règle* : **une épreuve qui refuse de tomber accuse le commentaire autant
@@ -2161,3 +2167,52 @@ lignes** — 2026-10-01
   passer la contradiction. Et l'écran reste le seul endroit où l'on voit les
   deux côte à côte : c'est pour cela qu'une sonde navigateur reste nécessaire
   même quand tout le calcul est éprouvé sans navigateur.
+
+## Deux gestes sur la même cible, et l'ordre des clics décide du sens — 2026-10-03
+
+- *Ce que je voulais faire* : rien. Rémy a signalé « une fois que l'on a posé
+  la virgule, on ne peut plus l'enlever » dans le tableau de conversion.
+- *Ce qui a coûté* : la cause tenait en quatre lignes, et elle en cachait une
+  plus grave. La virgule ET les zéros de comblement se posaient du MÊME clic,
+  sur la MÊME case : `if (this.virgule === null) { poser la virgule; return; }`
+  puis `basculer un zéro`. Donc le premier clic posait la virgule et **tous les
+  suivants basculaient un zéro** — la virgule ne bougeait plus jamais, pendant
+  que la consigne affichait « clique une case pour la déplacer ». Et comme le
+  clic était refusé sur une case portant un chiffre, la virgule ne pouvait même
+  pas SE POSER quand elle tombait sur une colonne occupée : **27 à 31 % des
+  tirages, mesuré sur 400 par famille** — un exercice sur trois était
+  infaisable, et personne ne l'avait signalé.
+- *Combien de fois* : | (mais la famille est connue : c'est le même défaut que
+  « un sélecteur inventé rend `false`, comme un logiciel cassé » — un état qui
+  ne se distingue pas d'un autre.)
+- *Ce qui manque* : rien à fabriquer. Deux gestes ont maintenant deux cibles :
+  la virgule a sa rangée de poignées, les cases ne font plus que les zéros.
+- *La règle* : **deux gestes différents sur la même cible, départagés par
+  l'ORDRE des clics, forment un mode caché — et un mode caché qu'aucun écran
+  n'affiche est un piège.** Le signe qui aurait dû alerter était la consigne :
+  elle décrivait un geste (« clique une case pour la déplacer ») que le code ne
+  savait pas faire. **Quand une consigne et un gestionnaire d'événement se
+  contredisent, c'est un défaut, pas une approximation de rédaction.**
+
+## « Le clavier cache la réponse » veut dire « et rien ne peut la ramener » — 2026-10-03
+
+- *Ce que je voulais faire* : corriger le signalement de Rémy, « quand on veut
+  écrire sur la tablette, le clavier cache la réponse ».
+- *Ce qui a coûté* : j'ai failli ne corriger que la moitié visible. Mesuré sur
+  une tablette couchée de 1024 × 690, le bas du champ est à 57 % de la hauteur
+  et un clavier en prend 35 à 45 % : il passe dessous, c'est entendu. Mais la
+  mesure qui compte est l'autre, et elle ne se devine pas — `scrollHeight ===
+  clientHeight` sur le cadre : **il n'y avait rien à faire défiler**. Déplacer
+  le champ plus haut n'aurait rien réglé pour la tablette suivante ; ce qu'il
+  fallait, c'est que le cadre prenne la hauteur VISIBLE (`visualViewport`), ce
+  qui le rend défilable, puis ramener le champ au centre.
+- *Combien de fois* : || (le duel avait déjà payé exactement cela, et son
+  commentaire le dit : « `visualViewport` est le seul objet qui dise ce que
+  l'élève voit VRAIMENT ».)
+- *Ce qui manque* : les deux jeux font maintenant le même geste avec le même
+  commentaire ; au troisième, il faudra un module — « la hauteur vraiment
+  visible » — plutôt qu'une troisième copie.
+- *La règle* : **un élément caché n'est un défaut d'emplacement que s'il peut
+  être ramené ; sinon c'est un défaut de hauteur.** On mesure donc toujours
+  deux choses devant un « c'est caché » : où est l'élément, ET si quelque
+  chose peut le déplacer. La seconde décide de la correction.
