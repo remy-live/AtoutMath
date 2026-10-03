@@ -268,15 +268,22 @@ await prof.screenshot({ path: 'tools/tmp/classe-mur.png', fullPage: true });
 await ouvrirOnglet('bilans');
 await prof.waitForTimeout(2500);
 const bilan = await prof.evaluate(() => {
-    const notions = [...document.querySelectorAll('.ec-reprendre')].map(n => ({
+    // DEUX BLOCS, DEUX SÉLECTEURS. « Ce qui est compris » réemploie la mise en
+    // page de « À reprendre » — même classe `.ec-reprendre` —, et une sonde qui
+    // lit `.ec-reprendre` tout court mélange donc les notions acquises avec les
+    // fragiles et dit n'importe quoi sans broncher.
+    const lire = (ou) => [...document.querySelectorAll(ou + ' .ec-reprendre')].map(n => ({
         quoi: (n.querySelector('b') || {}).textContent,
-        combien: (n.querySelector('.ec-reprendre-combien') || {}).textContent
+        combien: (n.querySelector('.ec-reprendre-combien') || {}).textContent,
+        qui: (n.querySelector('.ec-reprendre-qui') || {}).textContent
     }));
+    const notions = lire('.ec-bloc--reprendre');
+    const compris = lire('.ec-bloc--compris');
     const lignes = [...document.querySelectorAll('.ec-table--bilan tbody tr')];
     return {
         chiffres: [...document.querySelectorAll('.ec-chiffre')]
             .map(c => c.textContent.replace(/\s+/g, ' ').trim()),
-        notions,
+        notions, compris,
         lignes: lignes.length,
         premier: (lignes[0] && lignes[0].querySelector('b') || {}).textContent,
         premierRien: !!(lignes[0] && lignes[0].classList.contains('ec-tr-rien')),
@@ -293,6 +300,100 @@ ok('CELUI QUI N\'A RIEN FAIT EST EN HAUT, PAS À LA LETTRE Z', bilan.premierRien
     bilan.premier || '(vide)');
 ok('rien ne déborde en largeur', bilan.large === 0, bilan.large + ' px');
 await prof.screenshot({ path: 'tools/tmp/classe-bilans.png', fullPage: true });
+
+// ── CE QUI EST COMPRIS, ET LE TRI PAR NOM ───────────────────────────────────
+//
+// RÉMY : « au début du bilan, mettre ce qu'il faut revoir et ce qui a été
+// compris pour la classe […] et dans le bilan pouvoir trier par nom ».
+//
+// LES DEUX NE SE MESURENT QU'ICI. Le partage des notions entre les deux listes
+// et l'ordre des lignes se vérifient sans navigateur ; ce qui ne se vérifie
+// qu'avec trente vraies lignes à l'écran, c'est que les deux blocs se
+// distinguent, que le tri se rappelle, et que la phrase d'en-tête suit l'ordre
+// au lieu de continuer à annoncer l'autre.
+console.log('    compris     :',
+    bilan.compris.map(n => `${n.quoi} (${n.combien})`).join(' · ') || '(rien)');
+// J'AVAIS D'ABORD ÉCRIT ICI QUE LES DEUX LISTES ÉTAIENT DISJOINTES. C'est
+// faux, et c'était une erreur de ma part, pas du code : une notion acquise par
+// vingt-deux élèves et fragile pour trois appartient aux deux moitiés, et les
+// deux font agir — on raye la leçon collective, on prend les trois à part. La
+// règle est ailleurs et elle est plus étroite : on n'annonce pas « compris »
+// pour une notion fragile pour autant d'élèves ou plus (voir
+// `notionsComprises`, et `tools/lesDeuxMoities.mjs` qui le mesure à l'écran).
+//
+// ET LES RÉPONSES DE CETTE CLASSE SONT TIRÉES AU SORT. Une notion ressort donc
+// comprise un jour et pas le lendemain : j'avais écrit ici « le bloc des acquis
+// se tait », vrai au premier essai, faux au suivant — c'est la leçon déjà
+// journalisée, UNE ÉPREUVE QUI TIRE AU SORT MESURE UNE MOYENNE, PAS UNE SÉRIE.
+// On ne mesure donc pas COMBIEN de notions sont comprises, mais la RÈGLE, qui
+// ne dépend pas du hasard : aucune notion n'est annoncée comprise alors qu'elle
+// est fragile pour autant d'élèves ou plus, et celle qui est dans les deux
+// listes dit pour combien elle ne tient pas encore.
+const nombreDe = (t) => Number((String(t || '').match(/\d+/) || [0])[0]);
+const fragilite = new Map(bilan.notions.map(n => [n.quoi, nombreDe(n.combien)]));
+const menteuses = bilan.compris.filter(c => nombreDe(c.combien) <= (fragilite.get(c.quoi) || 0));
+const muettes = bilan.compris.filter(
+    c => fragilite.get(c.quoi) && !/encore fragile pour/.test(c.qui || ''));
+ok('AUCUNE NOTION N\'EST DITE COMPRISE ALORS QU\'ELLE EST AUTANT FRAGILE',
+    !menteuses.length, menteuses.map(c => c.quoi).join(', ') || 'aucune');
+ok('ET CELLE QUI EST DANS LES DEUX LISTES DIT POUR COMBIEN ÇA NE TIENT PAS',
+    !muettes.length, muettes.map(c => c.quoi).join(', ') || 'aucune');
+ok('LE BLOC « À REPRENDRE » PARLE',
+    bilan.notions.length > 0,
+    `${bilan.notions.length} à reprendre, ${bilan.compris.length} comprises`);
+
+const premierAvant = bilan.premier;
+await prof.click('[data-ordre-bilan="nom"]');
+// ON ATTEND QUE LA PREMIÈRE LIGNE CHANGE, et non une durée au hasard : deux
+// fois dans ce dépôt une sonde a lu l'écran d'avant et mesuré l'ancien état
+// sans que rien ne le signale.
+await prof.waitForFunction((avant) => {
+    const b = document.querySelector('.ec-table--bilan tbody tr.ec-tr-bilan td b');
+    return b && b.textContent !== avant;
+}, premierAvant, { timeout: 8000 });
+
+const tri = await prof.evaluate(() => {
+    const noms = [...document.querySelectorAll('.ec-table--bilan tbody tr.ec-tr-bilan td b')]
+        .map(b => b.textContent);
+    const section = (document.querySelector('.ec-table--bilan') || {}).closest
+        ? document.querySelector('.ec-table--bilan').closest('.ec-bloc') : null;
+    let garde = null;
+    try { garde = localStorage.getItem('atoutmath.bilan.ordre'); } catch (e) { /* refusé */ }
+    return {
+        noms,
+        trie: [...noms].sort((a, b) => a.localeCompare(b, 'fr',
+            { numeric: true, sensitivity: 'base' })),
+        phrase: section ? (section.querySelector('.ec-note--bloc') || {}).textContent : '',
+        actif: (document.querySelector('.ec-ordre-btn--actif[data-ordre-bilan]') || {})
+            .getAttribute ? document.querySelector('.ec-ordre-btn--actif[data-ordre-bilan]')
+                .getAttribute('data-ordre-bilan') : null,
+        garde
+    };
+});
+console.log('    par nom     :', tri.noms.slice(0, 6).join(', '), '…');
+ok('LE BILAN SE RANGE PAR NOM QUAND ON LE DEMANDE',
+    tri.noms.length === COMBIEN && tri.noms.join('|') === tri.trie.join('|'),
+    tri.noms.slice(0, 3).join(', '));
+ok('ET LA PHRASE D\'EN-TÊTE SUIT L\'ORDRE, elle ne continue pas à annoncer l\'autre',
+    /alphab/i.test(tri.phrase || ''), (tri.phrase || '').slice(0, 70));
+ok('le bouton actif est celui qu\'on a cliqué', tri.actif === 'nom', String(tri.actif));
+ok('ET L\'APPAREIL S\'EN SOUVIENT', tri.garde === 'nom', String(tri.garde));
+await prof.screenshot({ path: 'tools/tmp/classe-bilans-par-nom.png', fullPage: true });
+
+// ET ON REVIENT : un réglage qui ne se défait pas est un piège, pas un réglage.
+await prof.click('[data-ordre-bilan="geste"]');
+await prof.waitForFunction((avant) => {
+    const b = document.querySelector('.ec-table--bilan tbody tr.ec-tr-bilan td b');
+    return b && b.textContent !== avant;
+}, tri.noms[0], { timeout: 8000 });
+const retour = await prof.evaluate(() => ({
+    premierRien: !!(document.querySelector('.ec-table--bilan tbody tr.ec-tr-bilan') || {})
+        .classList?.contains('ec-tr-rien'),
+    garde: (() => { try { return localStorage.getItem('atoutmath.bilan.ordre'); }
+        catch (e) { return null; } })()
+}));
+ok('ON REVIENT À CE QUI DEMANDE UN GESTE', retour.premierRien && retour.garde === 'geste',
+    String(retour.garde));
 
 // --- Et sur un téléphone ---
 const tel = await nav.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });

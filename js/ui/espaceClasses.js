@@ -121,9 +121,29 @@ let ordreDuDirect = (() => {
     try { return localStorage.getItem(CLEF_ORDRE) || ORDRE_PAR_DEFAUT; }
     catch (e) { return ORDRE_PAR_DEFAUT; }
 })();
+
+/**
+ * ET L'ORDRE DU BILAN, QUI N'EST PAS LE MÊME RÉGLAGE.
+ *
+ * RÉMY : « dans le bilan pouvoir trier par nom ».
+ *
+ * DEUX CLEFS, ET NON UNE : le mur se range par nom parce qu'il BOUGE sous le
+ * doigt, le bilan se range par urgence parce qu'il ne bouge pas et qu'on le lit
+ * pour décider. Partager le réglage obligerait à choisir entre les deux, et
+ * c'est exactement ce qu'on vient de refuser de faire. Le défaut du bilan reste
+ * donc l'urgence (voir `ORDRES_DU_BILAN`), et ce qu'on clique ici se garde ici.
+ */
+const CLEF_ORDRE_BILAN = 'atoutmath.bilan.ordre';
+let ordreDesBilans = (() => {
+    try { return localStorage.getItem(CLEF_ORDRE_BILAN) || 'geste'; }
+    catch (e) { return 'geste'; }
+})();
 import { enMinutes } from './leMoment.js';
 import { ficheDeLEleve, gestesPossibles, pourquoiDebloquer } from '../core/ficheEleve.js';
-import { notionsAReprendre, resumeDeClasse, ordreDuBilan, enHeures } from '../core/bilanClasse.js';
+import { notionsAReprendre, notionsComprises, resumeDeClasse, enHeures,
+    ORDRES_DU_BILAN, trieurDuBilan } from '../core/bilanClasse.js';
+import { tableauDesExercices, phraseDuTableau } from '../core/tableauDesExercices.js';
+import { levelFor } from '../core/mastery.js';
 import { detailDeLEleve } from '../core/detailDeLEleve.js';
 import { getSkill as laCompetence } from '../data/skills.js';
 
@@ -213,6 +233,12 @@ export async function ouvrirEspaceClasses() {
             reglagesSite: null,
         // L'élève dont la fiche est dépliée dans Le direct — un seul à la fois.
         fiche: null,
+        // LE DÉTAIL PAR EXERCICE, fermé en arrivant : le bilan est bien « car
+        // concis », et trente lignes de plus sous les yeux de qui ne les
+        // cherche pas le défont. La séance choisie est `null` tant qu'on n'a
+        // rien cliqué, ce qui veut dire « la dernière donnée », et non « aucune ».
+        detailBilan: false,
+        seanceDetail: null,
         // Et celui dont la ligne est dépliée dans Les bilans. Les deux écrans
         // ne se partagent pas ce souvenir : on n'y cherche pas la même chose.
         bilanOuvert: null,
@@ -259,6 +285,21 @@ export async function ouvrirEspaceClasses() {
     racine.addEventListener('click', (e) => {
         if (e.target.closest('[data-fermer]')) { partir(); return; }
         brancher(e, redessiner);
+    });
+    // UNE LISTE DÉROULANTE NE SE CLIQUE PAS, ELLE CHANGE.
+    //
+    // Il y a d'autres `<select>` dans cette pièce — le quoi du chrono, l'où de
+    // la calculatrice —, mais aucun n'agit de lui-même : on les LIT quand on
+    // clique le bouton d'à côté. Le choix de la séance du tableau croisé est le
+    // premier qui doit agir tout seul, et un clic sur un `<select>` arrive
+    // AVANT que sa valeur ne change : branché sur le clic délégué, le tableau
+    // se redessinerait avec l'ancienne séance. On écoute donc « change », et
+    // seulement pour lui.
+    racine.addEventListener('change', (e) => {
+        const sel = e.target.closest('[data-seance-detail]');
+        if (!sel) return;
+        vue.seanceDetail = sel.value || null;
+        redessiner();
     });
     // ENTRÉE VALIDE LE CHAMP OÙ L'ON EST. Taper une consigne puis chercher le
     // bouton à la souris, c'est une marche pour rien — et c'est la marche qu'on
@@ -1501,7 +1542,12 @@ function bilansHtml() {
     const r = resumeDeClasse(lignes);
     const notions = notionsAReprendre(lignes);
 
-    return resumeHtml(r) + reprendreHtml(notions, r.eleves) + tableauBilanHtml(lignes);
+    return resumeHtml(r)
+        + barreDuBilanHtml()
+        + reprendreHtml(notions, r.eleves)
+        + comprisHtml(notionsComprises(lignes), r.eleves)
+        + tableauBilanHtml(lignes)
+        + detailParExerciceHtml(lignes);
 }
 
 function resumeHtml(r) {
@@ -1521,6 +1567,28 @@ function resumeHtml(r) {
 
 const chiffre = (v, quoi, ton = '') => `<div class="ec-chiffre${ton ? ' ec-chiffre--' + ton : ''}">
     <b>${esc(String(v))}</b><span>${esc(quoi)}</span></div>`;
+
+/**
+ * IMPRIMER CE BILAN — et « ce » bilan veut dire celui qu'on a sous les yeux.
+ *
+ * RÉMY : « permettre d'imprimer un pdf que tu génères ».
+ *
+ * LE PAPIER REPREND L'ÉCRAN TEL QU'IL EST : l'ordre qu'on vient de choisir, et
+ * le tableau croisé si la bascule du détail est ouverte. Un PDF qui reclasse
+ * les élèves ou qui ajoute un tableau qu'on n'avait pas demandé oblige à
+ * relire la feuille pour y retrouver ce qu'on venait d'y chercher.
+ *
+ * ET IL EXISTAIT DÉJÀ UN AUTRE PDF, celui du bilan de SÉANCE (« Donner à une
+ * classe »). Ils ne disent pas la même chose — une heure, contre un terme — et
+ * ne se remplacent pas ; ils partagent la mécanique du papier, rien d'autre.
+ */
+function barreDuBilanHtml() {
+    return `<div class="ec-bilan-gestes">
+        <button type="button" class="ec-bouton ec-bouton--doux" data-bilan-pdf
+            title="Une feuille A4 : ce qu'il faut reprendre, ce qui est compris, le tableau de la classe — et le détail par exercice si vous l'avez ouvert."
+            >Imprimer ce bilan</button>
+    </div>`;
+}
 
 /**
  * CE QU'IL FAUT REPRENDRE — le retournement du tableau.
@@ -1552,6 +1620,55 @@ function reprendreHtml(notions, combienDElevesEnTout) {
                 <div class="ec-reprendre-qui">${
                     n.eleves.slice(0, 8).map(e => esc(e.firstName)).join(', ')
                     + (n.eleves.length > 8 ? ` et ${n.eleves.length - 8} autres` : '')}</div>
+            </div>`;
+        }).join('')}
+    </section>`;
+}
+
+/**
+ * CE QUI EST COMPRIS — et pourquoi ça n'est pas la même liste à l'envers.
+ *
+ * RÉMY : « au début du bilan, mettre ce qu'il faut revoir ET CE QUI A ÉTÉ
+ * COMPRIS pour la classe ».
+ *
+ * L'ÉCRAN NE DISAIT QUE LA MOITIÉ SOMBRE, et pour une raison matérielle : la
+ * route n'envoyait que les notions fragiles. Elle envoie maintenant les deux.
+ *
+ * ON NE L'AFFICHE PAS QUAND IL N'Y A RIEN. Un bloc « Ce qui est compris » vide
+ * en tête de bilan est plus décourageant que son absence — et la phrase de
+ * `reprendreHtml` dit déjà, le cas échéant, qu'il n'y a pas encore assez de
+ * travail enregistré pour conclure quoi que ce soit.
+ *
+ * LE PARTAGE ENTRE LES DEUX LISTES EST DÉCIDÉ AILLEURS (`notionsComprises`),
+ * là où ça se mesure sans navigateur : une notion n'arrive ici que si plus
+ * d'élèves l'ont acquise qu'ils ne l'ont fragile.
+ */
+function comprisHtml(notions, combienDElevesEnTout) {
+    if (!notions.length) return '';
+    return `<section class="ec-bloc ec-bloc--compris">
+        <h3 class="ec-h3">Ce qui est compris</h3>
+        <p class="ec-note ec-note--bloc">Ce qu'on peut rayer de lundi. Une notion n'est ici
+           que si plus d'élèves l'ont acquise qu'ils ne l'ont fragile ; les autres sont
+           juste au-dessus.</p>
+        ${notions.slice(0, 8).map(n => {
+            const c = laCompetence(n.skillId);
+            const part = Math.round(100 * n.combien / Math.max(1, combienDElevesEnTout));
+            return `<div class="ec-reprendre">
+                <div class="ec-reprendre-haut">
+                    <b>${esc(c ? c.label : n.skillId)}</b>
+                    <span class="ec-reprendre-combien ec-reprendre-combien--bien"
+                        >${n.combien} élève${n.combien > 1 ? 's' : ''}</span>
+                </div>
+                <div class="ec-jauge ec-jauge--mince ec-jauge--bien"><i style="width:${part}%"></i></div>
+                <div class="ec-reprendre-qui">${
+                    n.eleves.slice(0, 8).map(e => esc(e.firstName)).join(', ')
+                    + (n.eleves.length > 8 ? ` et ${n.eleves.length - 8} autres` : '')
+                    + (n.fragilePour
+                        // ON NE CACHE PAS CEUX POUR QUI ÇA NE TIENT PAS ENCORE.
+                        // Sans cette fin de ligne, « Les relatifs : 18 élèves »
+                        // se lit « la classe sait », et l'on raye une leçon dont
+                        // sept élèves ont encore besoin.
+                        ? ` — encore fragile pour ${n.fragilePour}` : '')}</div>
             </div>`;
         }).join('')}
     </section>`;
@@ -1594,18 +1711,210 @@ function detailHtml(l) {
     </td></tr>`;
 }
 
+/**
+ * LES SÉANCES QUI PEUVENT FAIRE DES COLONNES.
+ *
+ * DÉDOUBLONNÉES PAR PARCOURS : une même séance donnée à la classe PUIS à trois
+ * élèves nommés paraît deux fois dans la liste des séances — deux
+ * « assignments », un seul parcours. Deux fois la même ligne dans un menu de
+ * choix fait douter qu'on ait cliqué la bonne.
+ *
+ * ET SEULEMENT CELLES QUI ONT DES EXERCICES : une séance faite de jeux ou de
+ * cartes n'a pas de colonnes à donner, et la proposer ne mènerait qu'à un
+ * tableau vide.
+ */
+function seancesPourLeDetail() {
+    const vues = new Set();
+    const out = [];
+    for (const s of (vue.seances && vue.seances.seances) || []) {
+        if (!s || !s.pathId || vues.has(s.pathId)) continue;
+        if (!((s.exercices || []).length)) continue;
+        vues.add(s.pathId);
+        out.push(s);
+    }
+    return out;
+}
+
+/** La séance dont on regarde le détail — la dernière donnée, à défaut de choix. */
+function seanceDuDetail() {
+    const seances = seancesPourLeDetail();
+    return seances.find(s => s.pathId === vue.seanceDetail) || seances[0] || null;
+}
+
+/**
+ * LE DÉTAIL, EXERCICE PAR EXERCICE — le tableau à double entrée.
+ *
+ * RÉMY : « permettre aussi d'avoir le détail avec un tableau des exercices
+ * (double entrée donc) et leur détail de réussite par exercice », et quand je
+ * lui ai demandé ce qui devait faire les colonnes : « pour le 4 colonne séance
+ * choisie ». Puis : « juste un switch de détail ».
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * POURQUOI UNE BASCULE, ET NON UN TABLEAU DE PLUS.
+ *
+ * C'est lui qui l'a dit le premier, de l'autre tableau : « le bilan que tu
+ * proposes est bien CAR CONCIS ». Trente lignes et huit colonnes de plus sous
+ * le bilan le rendraient illisible pour tous les jours où l'on ne cherche pas
+ * ça. Fermée, la bascule ne coûte qu'une ligne ; ouverte, elle donne tout.
+ *
+ * CE QUE LE TABLEAU CROISÉ DIT ET QUE LE BILAN NE DIT PAS : la COLONNE. « Léo :
+ * 62 % » ne distingue pas l'élève faible partout de celui qui s'est écroulé sur
+ * un seul exercice ; et une colonne rouge pour vingt-six élèves n'est pas
+ * vingt-six élèves en difficulté — c'est un exercice à reprendre au tableau.
+ *
+ * CE QUI SE CALCULE EST AILLEURS (`core/tableauDesExercices.js`), là où ça se
+ * mesure sans navigateur : les colonnes, les cases, le pied de colonne et la
+ * phrase. Ici, on ne fait que poser le HTML.
+ */
+function detailParExerciceHtml(lignes) {
+    const ouvert = !!vue.detailBilan;
+    const bascule = `<button type="button"
+            class="reglage-interrupteur${ouvert ? ' reglage-interrupteur--actif' : ''}"
+            data-detail-bilan="${ouvert ? '0' : '1'}" aria-pressed="${ouvert}">
+            <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>
+            <span class="reglage-interrupteur-mot">Le détail, exercice par exercice</span>
+        </button>`;
+
+    if (!ouvert) {
+        return `<section class="ec-bloc">${bascule}
+            <p class="ec-note ec-note--bloc">Vos élèves en lignes, les exercices d'une
+               séance en colonnes. C'est ce qui dit si UN exercice a résisté à toute la
+               classe — ce qu'un taux global ne peut pas dire.</p></section>`;
+    }
+
+    const seances = seancesPourLeDetail();
+    if (!seances.length) {
+        return `<section class="ec-bloc">${bascule}
+            <p class="ec-note ec-note--bloc">Aucune séance d'exercices n'a encore été
+               donnée à cette classe : il n'y a pas de colonnes à mettre. Ouvrez un
+               parcours dans <b>Préparer</b> et donnez-le à cette classe.</p></section>`;
+    }
+
+    const choisie = seanceDuDetail();
+    const t = tableauDesExercices(lignes, choisie, trieurDuBilan(ordreDesBilans));
+    const phrase = phraseDuTableau(t);
+
+    const choix = `<label class="ec-choix-seance">
+        <span class="ec-note">La séance</span>
+        <select data-seance-detail class="ec-champ ec-champ--ou">
+            ${seances.map(s => `<option value="${esc(s.pathId)}"${
+                s.pathId === choisie.pathId ? ' selected' : ''}>${esc(s.nom)}${
+                s.pour ? ' (à ' + esc(s.pour) + ')' : ''}</option>`).join('')}
+        </select>
+    </label>`;
+
+    const colonnes = t.exercices.map(ex => nomDExercice(ex));
+    const entete = `<tr><th>Élève</th>${colonnes.map((nom, i) =>
+        `<th class="ec-th-exo" title="${esc(nom)}">${esc(abreger(nom))}</th>`).join('')}
+        <th class="ec-th-exo">Sa séance</th></tr>`;
+
+    const corps = t.rangs.map(r => `<tr class="ec-tr-bilan${
+        r.commences ? '' : ' ec-tr-rien'}">
+        <td><b>${esc(r.firstName)}</b></td>
+        ${r.cases.map((c, i) => caseHtml(c, r.firstName, colonnes[i])).join('')}
+        <td class="ec-td-total">${r.taux === null ? '—'
+            : Math.round(r.taux * 100) + ' %'}<span class="ec-note">${
+            r.commences} / ${t.exercices.length}</span></td>
+    </tr>`).join('');
+
+    // LE PIED DE TABLEAU EST LA MOITIÉ UTILE. On balaye les cases pour UN élève ;
+    // on lit le pied pour décider de l'heure suivante.
+    const pied = `<tr class="ec-tr-pied">
+        <td><b>La classe</b></td>
+        ${t.pieds.map(p => `<td class="${classeDeCase(p.taux)}"
+            title="${p.eleves} élève${p.eleves > 1 ? 's' : ''} ${
+                p.eleves > 1 ? 'ont' : 'a'} atteint cet exercice"
+            >${p.taux === null ? '—' : Math.round(p.taux * 100) + ' %'}<span class="ec-note"
+            >${p.eleves} él.</span></td>`).join('')}
+        <td></td>
+    </tr>`;
+
+    return `<section class="ec-bloc">${bascule}
+        ${choix}
+        <p class="ec-note ec-note--bloc">Réussite <b>du premier coup</b> : une question
+           trouvée au deuxième essai ne compte pas comme juste, elle compte comme
+           rattrapée. Une case <b>vide</b> veut dire que cet élève n'a pas atteint cet
+           exercice — ce qui n'est pas « il a tout raté ».</p>
+        ${phrase ? `<p class="ec-phrase-tableau">${esc(phrase)}</p>` : ''}
+        <div class="ec-table-cadre"><table class="ec-table ec-table--croise">
+            <thead>${entete}</thead>
+            <tbody>${corps}</tbody>
+            <tfoot>${pied}</tfoot>
+        </table></div>
+    </section>`;
+}
+
+/**
+ * LE NOM D'UNE COLONNE TIENT EN DIX-HUIT MILLIMÈTRES, ou il ne tient pas.
+ *
+ * « Additions posées » tient ; « Lire et placer des coordonnées » non. On coupe
+ * donc, et le nom entier reste dans l'infobulle — contrairement au PDF, qui
+ * écrit les noms en biais et n'a pas d'infobulle à offrir.
+ */
+function abreger(nom, max = 16) {
+    const t = String(nom || '');
+    return t.length <= max ? t : t.slice(0, max - 1) + '…';
+}
+
+/**
+ * LA COULEUR D'UNE CASE suit l'échelle de maîtrise de toute l'application —
+ * NA, EC, A, E. Inventer une seconde échelle pour ce tableau ferait qu'un même
+ * élève serait « acquis » ici et « en cours » ailleurs, pour la même réussite.
+ */
+function classeDeCase(taux) {
+    if (taux === null || taux === undefined) return 'ec-case ec-case--vide';
+    return 'ec-case ec-case--' + levelFor(taux).key.toLowerCase();
+}
+
+/**
+ * UNE CASE, ET CE QU'ELLE DIT EN PASSANT DESSUS.
+ *
+ * LES TROIS NOMBRES SONT DANS L'INFOBULLE, PAS DANS LA CASE. « 9/12 · 2 rat. »
+ * dans dix-huit millimètres est illisible, et le tableau n'est utile que si on
+ * le BALAYE : un pourcentage et une teinte se lisent d'un coup d'œil, le détail
+ * s'obtient en s'arrêtant sur la case.
+ */
+function caseHtml(c, prenom, nomExo) {
+    if (c.vide) {
+        return `<td class="ec-case ec-case--vide"
+            title="${esc(prenom)} n'a pas atteint « ${esc(nomExo)} »"></td>`;
+    }
+    const quoi = `${esc(prenom)} — ${esc(nomExo)} : ${c.posees} question${
+        c.posees > 1 ? 's' : ''}, ${c.justes} du premier coup`
+        + (c.reprises ? `, ${c.reprises} rattrapée${c.reprises > 1 ? 's' : ''}` : '');
+    return `<td class="${classeDeCase(c.taux)}" title="${quoi}"
+        >${Math.round(c.taux * 100)} %<span class="ec-note">${c.justes}/${c.posees}</span></td>`;
+}
+
 function tableauBilanHtml(lignes) {
+    const parNom = ordreDesBilans === 'nom';
     return `<section class="ec-bloc">
         <h3 class="ec-h3">Élève par élève</h3>
-        <p class="ec-note ec-note--bloc">Rangés par ce qui demande un geste, pas par
-           ordre alphabétique : ceux qui n'ont rien fait d'abord, puis les plus en
-           difficulté.</p>
+        <!-- LA PHRASE SUIT L'ORDRE, SINON ELLE MENT.
+
+             « Rangés par ce qui demande un geste » au-dessus d'un tableau
+             alphabétique est pire que pas de phrase du tout : on cherche la
+             logique du classement pendant une demi-minute avant de comprendre
+             qu'il n'y en a pas celle-là. -->
+        <p class="ec-note ec-note--bloc">${parNom
+            ? 'Par ordre alphabétique — pour retrouver quelqu\'un dont on cherche le nom.'
+            : 'Rangés par ce qui demande un geste, pas par ordre alphabétique : ceux '
+              + 'qui n\'ont rien fait d\'abord, puis les plus en difficulté.'}</p>
+        <div class="ec-ordre" role="group" aria-label="Dans quel ordre ranger les élèves">
+            <span class="ec-note">Ranger</span>
+            ${ORDRES_DU_BILAN.map(o => `<button type="button"
+                class="ec-ordre-btn${o.cle === ordreDesBilans ? ' ec-ordre-btn--actif' : ''}"
+                data-ordre-bilan="${esc(o.cle)}"
+                aria-pressed="${o.cle === ordreDesBilans ? 'true' : 'false'}"
+                >${esc(o.mot)}</button>`).join('')}
+        </div>
         <div class="ec-table-cadre"><table class="ec-table ec-table--bilan">
             <thead><tr>
                 <th>Élève</th><th>Questions</th><th>Réussite</th>
                 <th>Travail</th><th>Erreurs ouvertes</th><th>Dernière note</th>
             </tr></thead>
-            <tbody>${ordreDuBilan(lignes).map(l => {
+            <tbody>${trieurDuBilan(ordreDesBilans)(lignes).map(l => {
                 const rien = !(Number(l.totalQuestions) || 0);
                 const taux = l.successRate === null || l.successRate === undefined
                     ? '—' : Math.round(l.successRate * 100) + ' %';
@@ -2219,7 +2528,7 @@ async function brancher(e, redessiner) {
         + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
         + '[data-calc-eleve], [data-saut-tout], [data-bilan-eleve],'
         + '[data-signalement], [data-signalements], [data-voir-photo], [data-classer],'
-        + '[data-ordre-direct],'
+        + '[data-ordre-direct], [data-ordre-bilan], [data-detail-bilan], [data-bilan-pdf],'
         + '[data-effacer-signal]');
     if (!el) return;
     const d = el.dataset;
@@ -2253,6 +2562,59 @@ async function brancher(e, redessiner) {
             b.classList.toggle('ec-ordre-btn--actif', actif);
             b.setAttribute('aria-pressed', actif ? 'true' : 'false');
         });
+        return;
+    }
+
+    // ── ET CELUI DU BILAN, QUI PEUT SE PERMETTRE UN REDESSIN COMPLET ────────
+    //
+    // Le direct recousait les rangs à la main pour ne pas effacer le mot que le
+    // professeur est peut-être en train d'écrire dans la barre de pilotage. Les
+    // bilans n'ont aucun champ de saisie : on redessine donc tout, ce qui remet
+    // du même coup la phrase d'en-tête d'accord avec l'ordre choisi.
+    if (d.ordreBilan !== undefined) {
+        ordreDesBilans = d.ordreBilan;
+        try { localStorage.setItem(CLEF_ORDRE_BILAN, ordreDesBilans); }
+        catch (err) { /* on range quand même, on ne s'en souviendra pas */ }
+        redessiner();
+        return;
+    }
+
+    // ── LA BASCULE DU DÉTAIL : rien à demander au serveur non plus ──────────
+    //
+    // Le tableau croisé se calcule entièrement avec ce que `/teacher/report` a
+    // déjà rendu — chaque ligne porte son `parSeance`. Ouvrir le détail ne
+    // coûte donc pas une requête, et la bascule répond tout de suite.
+    if (d.detailBilan !== undefined) {
+        vue.detailBilan = d.detailBilan === '1';
+        redessiner();
+        return;
+    }
+
+    // ── IMPRIMER LE BILAN QU'ON A SOUS LES YEUX ────────────────────────────
+    //
+    // RÉMY : « permettre d'imprimer un pdf que tu génères ».
+    //
+    // LE PAPIER REPREND L'ÉCRAN : l'ordre qu'on vient de choisir, et le tableau
+    // croisé si la bascule est ouverte. `jsPDF` ne se charge qu'ici, à la
+    // demande — c'est une bibliothèque de deux cents kilo-octets, et la
+    // plupart des bilans se lisent sans jamais s'imprimer.
+    if (d.bilanPdf !== undefined) {
+        const lignes = (vue.bilans && vue.bilans.students) || [];
+        if (!lignes.length) {
+            showToast('Il n\'y a rien à imprimer : cette classe n\'a pas encore d\'élèves.',
+                'info');
+            return;
+        }
+        const trier = trieurDuBilan(ordreDesBilans);
+        const choisie = vue.detailBilan ? seanceDuDetail() : null;
+        const { exporterBilanClassePdf } = await import('./bilanClassePdf.js');
+        await exporterBilanClassePdf({
+            classe: (vue.bilans && vue.bilans.class) || vue.classe,
+            lignes: trier(lignes),
+            tableau: choisie ? tableauDesExercices(lignes, choisie, trier) : null,
+            nommer: nomDExercice
+        });
+        showToast('Le bilan est dans vos téléchargements.', 'success');
         return;
     }
 

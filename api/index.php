@@ -1146,6 +1146,74 @@ function handleTeacherReport(): void
 
         $weak = array_slice(array_values(array_filter($mastery, fn($m) => $m['reliable'] && $m['mastery'] < 0.7)), 0, 5);
 
+        // ── ET CE QUI TIENT ───────────────────────────────────────────────
+        //
+        // RÉMY : « au début du bilan, mettre ce qu'il faut revoir ET CE QUI A
+        // ÉTÉ COMPRIS pour la classe ».
+        //
+        // La route n'envoyait que les notions fragiles, depuis toujours :
+        // l'écran ne POUVAIT donc dire que la moitié sombre, même en le
+        // voulant. Les solides sont déjà calculées — c'est la même carte de
+        // maîtrise, lue par l'autre bout —, et `masteryOf` la rend triée par
+        // maîtrise CROISSANTE : les plus solides sont à la fin, d'où le
+        // `array_reverse`.
+        //
+        // MÊME SEUIL ET MÊME PLAFOND QUE LE CLIENT (`mastery.strongSkills`,
+        // `LEVELS.A.min` = 0,7, cinq notions) : les deux moitiés de
+        // l'application doivent dire le même mot sur le même élève.
+        $strong = array_slice(array_reverse(array_values(array_filter(
+            $mastery, fn($m) => $m['reliable'] && $m['mastery'] >= 0.7))), 0, 5);
+
+        // ── LE DÉTAIL PAR EXERCICE, QUI NE DEMANDE AUCUNE DONNÉE NOUVELLE ─
+        //
+        // RÉMY : « permettre aussi d'avoir le détail avec un tableau des
+        // exercices (double entrée donc) et leur détail de réussite par
+        // exercice », puis, le lendemain : « pour le 4 colonne séance
+        // choisie ».
+        //
+        // TOUT ÉTAIT DÉJÀ EN BASE. Chaque tentative porte son `exerciseId` —
+        // `runner.js` et `itemSession.js` le posent — et son `runId` ; le run
+        // porte le parcours. On croise les deux ICI, dans la boucle qui relit
+        // déjà tous les événements de cet élève : le tableau à double entrée
+        // ne coûte donc pas une requête de plus, et il n'a RIEN demandé de
+        // nouveau aux élèves.
+        //
+        // ON COMPTE LES QUESTIONS, PAS LES TENTATIVES. Un élève qui se trompe
+        // puis se reprend produit deux tentatives et une réussite : « 50 % »
+        // dirait qu'il a raté la moitié des questions, alors qu'il les a
+        // toutes trouvées. On compte donc comme « Sans faute » compte : une
+        // question POSÉE (`attemptIndex` à zéro), juste du PREMIER COUP, ou
+        // RATTRAPÉE après une erreur. Les trois nombres partent, et c'est
+        // l'écran qui décide de la phrase.
+        //
+        // CLASSÉ PAR PARCOURS, parce que le même exercice revient dans
+        // plusieurs séances : mélanger celle de lundi avec celle de novembre
+        // ferait un tableau que personne ne peut lire. Les tentatives d'un run
+        // SANS parcours — un entraînement libre, un jeu — n'entrent dans
+        // aucune colonne, et c'est juste : elles n'appartiennent à aucune
+        // séance.
+        $parSeance = [];
+        foreach ($runs as $run) {
+            $pid = (string) ($run['pathId'] ?? '');
+            if ($pid === '') continue;
+            foreach ($run['attempts'] as $a) {
+                $ex = (string) ($a['exerciseId'] ?? '');
+                if ($ex === '') continue;
+                if (!isset($parSeance[$pid][$ex])) {
+                    $parSeance[$pid][$ex] = ['posees' => 0, 'justes' => 0, 'reprises' => 0];
+                }
+                // `attemptIndex` ABSENT VAUT ZÉRO, comme dans `masteryOf` :
+                // une activité qui ne numérote pas ses essais compte alors
+                // chaque tentative comme une question, ce qui est son ancien
+                // comportement et non une régression.
+                $premier = (int) ($a['attemptIndex'] ?? 0) === 0;
+                $juste = !empty($a['correct']);
+                if ($premier) $parSeance[$pid][$ex]['posees']++;
+                if ($juste && $premier) $parSeance[$pid][$ex]['justes']++;
+                elseif ($juste) $parSeance[$pid][$ex]['reprises']++;
+            }
+        }
+
         $rows[] = [
             'studentId' => $s['id'],
             'firstName' => $s['first_name'],
@@ -1158,6 +1226,14 @@ function handleTeacherReport(): void
             'timeSeconds' => timeOf($events),
             'openErrors' => count(openErrorsOf($events)),
             'weakSkills' => array_map(fn($m) => ['skillId' => $m['skillId'], 'mastery' => $m['mastery'], 'level' => $m['level']], $weak),
+            'strongSkills' => array_map(fn($m) => ['skillId' => $m['skillId'], 'mastery' => $m['mastery'], 'level' => $m['level']], $strong),
+            // UN TABLEAU PHP VIDE SE SÉRIALISE EN `[]`, ET NON EN `{}`. Le
+            // navigateur reçoit donc une liste là où il attend une table pour
+            // l'élève qui n'a rien fait. Ce n'est pas un défaut ici — `[]['x']`
+            // vaut `undefined` comme `{}['x']` —, mais ça se dit, parce que
+            // c'est la deuxième fois que cette règle de PHP coûte une heure
+            // dans ce fichier (voir `exercices` dans `handleTeacherPaths`).
+            'parSeance' => $parSeance,
             'lastNote' => $graded ? ['note' => $graded[0]['note'], 'sur' => $graded[0]['sur'], 'pathName' => $graded[0]['pathName']] : null,
             'notes' => array_map(fn($b) => [
                 'runId' => $b['runId'], 'pathName' => $b['pathName'],

@@ -2114,3 +2114,50 @@ lignes** — 2026-10-01
   commentaires à chaque correctif, par construction. `indexOf(fin, début)`
   coûte la même ligne et ne bouge plus. Élargir la fenêtre ne corrige rien :
   cela achète quelques commentaires de sursis.
+
+## Un commentaire qui explique une option peut être FAUX, et l'outil le dit — 2026-10-03
+
+- *Ce que je voulais faire* : ajouter le tri par nom dans « Les bilans », en
+  reprenant la comparaison du mur — `localeCompare(…, 'fr', { numeric: true,
+  sensitivity: 'base' })`. J'ai recopié le commentaire qui l'accompagnait :
+  « `sensitivity` pour que « Émile » se range avec les E et non à la fin ».
+- *Ce qui a coûté* : rien du tout, et c'est le point. `epreuveTombe.mjs` a
+  refusé l'épreuve : en retirant `sensitivity: 'base'`, elle restait VERTE.
+  Mesuré alors, en trois lignes de `node -e` : c'est `localeCompare` qui range
+  les accents, avec ou sans l'option. Le défaut qu'on évite est la comparaison
+  par CODES de caractères, qui donne « Dylan, Fatou, Émile ». L'option, elle,
+  fait tout autre chose : elle rend « Leo », « leo » et « Léo » ÉGAUX, de sorte
+  que c'est l'identifiant qui départage et non une majuscule invisible.
+- *Combien de fois* : | (première fois qu'un commentaire d'option est pris en
+  défaut ; il était dans le dépôt depuis des semaines, recopié une fois.)
+- *Ce qui manque* : rien à fabriquer. L'outil existait et il a parlé ; il
+  fallait l'écouter au lieu de chercher pourquoi « l'épreuve ne marche pas ».
+- *La règle* : **une épreuve qui refuse de tomber accuse le commentaire autant
+  que le code.** La question n'est pas « comment faire tomber cette épreuve »
+  mais « qu'est-ce que cette ligne fait VRAIMENT ». Et quand on trouve, on
+  corrige les deux endroits — ici le bilan ET le mur, d'où le commentaire
+  venait. Un commentaire faux se recopie ; c'est sa façon de se répandre.
+
+## Une phrase d'alerte doit être vraie AVEC les autres, pas seulement seule — 2026-10-03
+
+- *Ce que je voulais faire* : la phrase du tableau à double entrée, qui dit ce
+  qu'on ne voit pas en balayant les cases — la colonne rouge pour tout le
+  monde, et celle que presque personne n'a atteinte.
+- *Ce qui a coûté* : une sonde dans un vrai navigateur, sur six élèves. Les
+  deux phrases sont sorties ensemble : « Un exercice a résisté à la classe
+  entière. 2 exercices n'ont été atteints que par une partie de la classe. » —
+  **les deux parlaient de la même colonne, et se contredisaient**. Deux élèves
+  sur six l'avaient atteinte ; chacune des deux phrases était défendable seule,
+  et le couple était faux. Les vingt épreuves sans navigateur étaient vertes :
+  aucune ne regardait les deux phrases ENSEMBLE.
+- *Combien de fois* : | (mais c'est la même famille que « rien n'est pas
+  zéro » : un seuil qui ne distingue pas deux situations qu'il faut séparer.)
+- *Ce qui manque* : rien à fabriquer — un seuil à poser au bon endroit. Pour
+  parler de LA CLASSE, il faut que plus de la moitié de la classe soit arrivée
+  sur l'exercice ; les deux alertes deviennent alors exclusives **par
+  construction**, et non par chance.
+- *La règle* : **deux alertes qui peuvent sortir dans la même ligne se
+  mesurent ensemble.** Une épreuve par phrase les garde chacune vraie et laisse
+  passer la contradiction. Et l'écran reste le seul endroit où l'on voit les
+  deux côte à côte : c'est pour cela qu'une sonde navigateur reste nécessaire
+  même quand tout le calcul est éprouvé sans navigateur.

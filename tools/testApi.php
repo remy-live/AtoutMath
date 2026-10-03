@@ -407,6 +407,118 @@ $r = json('/sync', ['deviceId' => 'essai', 'cursor' => 0, 'events' => [
 ]], $lea);
 verifier('un événement malformé est ignoré sans casser la synchro', $r['code'] === 200);
 
+// ── LE BILAN DIT MAINTENANT LES DEUX MOITIÉS ────────────────────────────────
+//
+// RÉMY : « au début du bilan, mettre ce qu'il faut revoir ET CE QUI A ÉTÉ
+// COMPRIS pour la classe ».
+//
+// La route n'envoyait que `weakSkills`, depuis toujours : l'écran ne POUVAIT
+// pas dire ce qui tenait, même en le voulant. Cet essai le vérifie de bout en
+// bout, avec les deux cas dans la même élève — c'est la seule façon de voir que
+// les deux listes se partagent les notions au lieu de les répéter.
+//
+// SIX RÉPONSES, ET NON CINQ — MESURÉ, APRÈS M'ÊTRE TROMPÉ.
+//
+// `RELIABLE_MIN_ATTEMPTS` vaut 5, et j'en avais donc poussé cinq. Les deux
+// listes sont revenues VIDES. La raison est que le seuil ne porte pas sur le
+// nombre de réponses mais sur leur POIDS : `masteryOf` pèse chacune par
+// `pow(0.5, (maintenant - ts) / 21 jours)`, et une réponse enregistrée il y a
+// une milliseconde pèse un cheveu de moins que 1. Cinq d'entre elles font donc
+// 4,999… — juste en dessous de 5, et la notion est déclarée NON FIABLE. Le
+// seuil est donc atteint à six réponses, jamais à cinq.
+// ET LES RÉPONSES APPARTIENNENT À UN RUN QUI PORTE UN PARCOURS.
+//
+// C'est ce qui rend le tableau à double entrée possible : `parSeance` croise
+// l'`exerciseId` de la tentative avec le `pathId` de son run. Sans
+// `run_started`, `runsOf` fabrique bien le run — mais avec `pathId` à `null`,
+// et les réponses n'appartiennent alors à AUCUNE séance. Je l'ai découvert en
+// écrivant cet essai : les six premières réponses de ce fichier n'ont pas de
+// `run_started`, et leur colonne n'existe donc pas. C'est juste, et c'est
+// pourquoi on en pousse d'autres ici, avec leur run déclaré.
+$aPousser = [[
+    'id' => '00000000-4444-4222-8333-000000000000',
+    'type' => 'run_started',
+    'ts' => (int) (microtime(true) * 1000),
+    'payload' => ['runId' => 'run-detail', 'pathId' => 'p-essai',
+                  'pathName' => 'Devoir du mardi', 'mode' => 'entrainement'],
+]];
+for ($i = 0; $i < 6; $i++) {
+    $aPousser[] = [
+        'id' => sprintf('%08x-2222-4222-8333-%012x', $i, $i),
+        'type' => 'attempt',
+        'ts' => (int) (microtime(true) * 1000),
+        'payload' => ['exerciseId' => 'calc-add', 'skillId' => 'calc.add.entiers',
+                      'correct' => true, 'attemptIndex' => 0, 'runId' => 'run-detail'],
+    ];
+    $aPousser[] = [
+        'id' => sprintf('%08x-3333-4222-8333-%012x', $i, $i),
+        'type' => 'attempt',
+        'ts' => (int) (microtime(true) * 1000),
+        'payload' => ['exerciseId' => 'num-frac', 'skillId' => 'num.frac.comparer',
+                      'correct' => $i < 2, 'attemptIndex' => 0, 'runId' => 'run-detail'],
+    ];
+}
+// UNE QUESTION RATTRAPÉE AU SECOND ESSAI : elle ne doit compter ni comme une
+// question de plus, ni comme une réussite du premier coup. C'est le mensonge
+// qu'on a corrigé sur l'écran de fin d'étape, et il ne doit pas revenir par le
+// bilan.
+$aPousser[] = [
+    'id' => '00000000-5555-4222-8333-000000000000',
+    'type' => 'attempt',
+    'ts' => (int) (microtime(true) * 1000),
+    'payload' => ['exerciseId' => 'num-frac', 'skillId' => 'num.frac.comparer',
+                  'correct' => true, 'attemptIndex' => 1, 'runId' => 'run-detail'],
+];
+json('/sync', ['deviceId' => 'essai', 'cursor' => 0, 'events' => $aPousser], $lea);
+
+$bilan = json('/teacher/report', ['classId' => $classe['id']], $jetonProf);
+$sienne = null;
+foreach ($bilan['json']['students'] ?? [] as $ligne) {
+    if (($ligne['firstName'] ?? '') === 'Léa') { $sienne = $ligne; break; }
+}
+$faibles = array_column($sienne['weakSkills'] ?? [], 'skillId');
+$fortes  = array_column($sienne['strongSkills'] ?? [], 'skillId');
+verifier('le bilan rend aussi les notions SOLIDES, pas seulement les fragiles',
+    in_array('calc.add.entiers', $fortes, true),
+    'solides : ' . implode(', ', $fortes));
+verifier('deux réussites sur six restent une notion fragile',
+    in_array('num.frac.comparer', $faibles, true),
+    'fragiles : ' . implode(', ', $faibles));
+verifier('AUCUNE NOTION N\'EST DANS LES DEUX LISTES',
+    // Le seuil est le même des deux côtés (0,7) : une notion qui paraîtrait
+    // dans les deux rendrait l'écran contradictoire, « compris » et « à
+    // reprendre » pour le même mot.
+    array_intersect($faibles, $fortes) === []);
+
+// ── ET LE DÉTAIL PAR EXERCICE, CROISÉ AVEC LA SÉANCE ────────────────────────
+//
+// RÉMY : « un tableau des exercices (double entrée donc) et leur détail de
+// réussite par exercice », « pour le 4 colonne séance choisie ».
+//
+// AUCUNE DONNÉE NOUVELLE N'A ÉTÉ DEMANDÉE AUX ÉLÈVES : les tentatives portaient
+// déjà leur exercice, les runs déjà leur parcours. Cet essai vérifie que le
+// serveur croise bien les deux, et qu'il compte les QUESTIONS et non les
+// tentatives.
+$detail = $sienne['parSeance']['p-essai'] ?? [];
+verifier('le bilan rend le détail par exercice, croisé avec la séance',
+    isset($detail['calc-add']) && isset($detail['num-frac']),
+    'colonnes : ' . implode(', ', array_keys($detail)));
+verifier('six réponses justes font six questions et six réussites',
+    ($detail['calc-add']['posees'] ?? 0) === 6
+    && ($detail['calc-add']['justes'] ?? 0) === 6,
+    json_encode($detail['calc-add'] ?? null));
+verifier('UNE QUESTION RATTRAPÉE N\'EST NI UNE QUESTION DE PLUS NI UNE RÉUSSITE',
+    ($detail['num-frac']['posees'] ?? 0) === 6
+    && ($detail['num-frac']['justes'] ?? 0) === 2
+    && ($detail['num-frac']['reprises'] ?? 0) === 1,
+    json_encode($detail['num-frac'] ?? null));
+verifier('les réponses d\'un run SANS parcours n\'entrent dans aucune colonne',
+    // Les six premières réponses de ce fichier (« run-1 ») n'ont pas de
+    // `run_started` : elles n'appartiennent à aucune séance, et aucune colonne
+    // ne doit les réclamer. Un entraînement libre, c'est exactement ce cas.
+    !isset($sienne['parSeance']['']) && !isset($detail['num-rang']),
+    implode(', ', array_keys($sienne['parSeance'] ?? [])));
+
 // --------------------------------------------------- Ce que le prof pilote --
 
 titre('5. Le professeur conduit la séance');
@@ -735,6 +847,17 @@ verifier('annuler un réglage rend l\'exercice obligatoire',
 
 titre('7. Mettre un élève de côté, puis tout effacer');
 
+// CE QU'ON COMPTE, ON LE COMPTE AVANT — ET NON PAR CŒUR.
+//
+// Cette vérification attendait « 5 événements en base », le nombre que la
+// section de la synchro poussait ce jour-là. Ajouter six réponses ailleurs dans
+// ce fichier la faisait donc tomber, pour une raison qui n'a RIEN à voir avec
+// ce qu'elle garde : écarter un élève n'efface pas son travail. C'est la
+// quatrième fois qu'un nombre écrit à la main dans une épreuve de ce dépôt se
+// retourne contre le travail suivant (voir `docs/frictions.md`). On mesure
+// donc l'avant et l'après.
+$avantEcart = (int) db()->query('SELECT COUNT(*) c FROM events')->fetch()['c'];
+
 json('/teacher/roster', ['classId' => $classId, 'action' => 'bloquer',
                          'studentId' => $leaId, 'blocked' => true], $jetonProf);
 
@@ -743,8 +866,9 @@ verifier('L\'ÉLÈVE ÉCARTÉ NE SE RATTACHE PLUS', $r['code'] === 403, "code {$
 
 $s = json('/session', [], $lea)['json']['session'];
 verifier('son application le sait', ($s['blocked'] ?? null) === true);
+$apresEcart = (int) db()->query('SELECT COUNT(*) c FROM events')->fetch()['c'];
 verifier('mais son travail n\'est pas perdu',
-    (int) db()->query('SELECT COUNT(*) c FROM events')->fetch()['c'] === 5);
+    $apresEcart === $avantEcart && $avantEcart > 0, "$avantEcart puis $apresEcart");
 
 json('/teacher/roster', ['classId' => $classId, 'action' => 'bloquer',
                          'studentId' => $leaId, 'blocked' => false], $jetonProf);

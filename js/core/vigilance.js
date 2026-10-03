@@ -190,8 +190,17 @@ export function trierParNom(eleves, maintenant, contexte = {}) {
         .map(e => ({ ...vigilanceDe(e, maintenant, contexte), eleve: e }))
         .sort((a, b) => String(a.eleve.prenom || '')
             .localeCompare(String(b.eleve.prenom || ''), 'fr',
-                // `numeric` POUR LES HOMONYMES NUMÉROTÉS, et `sensitivity`
-                // pour que « Émile » se range avec les E et non à la fin.
+                // `numeric` POUR LES HOMONYMES NUMÉROTÉS : « Lucas 2 » avant
+                // « Lucas 10 », qui passerait sinon en premier.
+                //
+                // ET `sensitivity: 'base'` POUR LES ACCENTS OUBLIÉS À LA
+                // SAISIE : « Leo », « leo » et « Léo » comparent alors égaux,
+                // et c'est l'identifiant qui décide — plutôt qu'une majuscule
+                // invisible. J'avais écrit ici que cette option rangeait
+                // « Émile » avec les E ; c'est faux, et mesuré faux : c'est
+                // `localeCompare` qui le fait, avec ou sans elle. Le défaut
+                // qu'elle évite est la comparaison par codes de caractères,
+                // qui envoie Émile après le Z (voir `docs/frictions.md`).
                 { numeric: true, sensitivity: 'base' })
             // DEUX ÉLÈVES DU MÊME PRÉNOM NE PERMUTENT PAS D'UN BATTEMENT À
             // L'AUTRE. Sans ce départage, `localeCompare` rend 0 et l'ordre

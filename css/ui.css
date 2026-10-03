@@ -4521,8 +4521,76 @@ body.classe-ouverte #bottom-nav { display: none !important; }
 .ec-reprendre-combien--fort { color: var(--danger-texte); }
 .ec-reprendre-qui { font-size: .76rem; color: var(--text-muted); margin-top: 4px; }
 
+/* CE QUI EST COMPRIS : le même bloc, l'autre couleur.
+
+   Les deux listes se lisent l'une après l'autre en tête du bilan, et elles ne
+   disent pas la même chose. Si rien ne les distingue à l'œil, on lit la
+   seconde en croyant lire la suite de la première — et l'on reprend lundi des
+   notions que la classe maîtrise. Le filet vert et la jauge verte suffisent :
+   les titres, eux, se lisent déjà. */
+.ec-bloc--compris { border-left: 3px solid var(--success); }
+.ec-reprendre-combien--bien { color: var(--success-texte); }
+.ec-jauge--bien > i { background: var(--success); }
+
 .ec-table--bilan td { vertical-align: middle; }
 .ec-td-faible { color: var(--danger-texte); font-weight: 700; }
+
+/* ── LE TABLEAU À DOUBLE ENTRÉE ─────────────────────────────────────────────
+
+   LES CASES SONT PETITES ET SERRÉES EXPRÈS. Ce tableau n'est utile que si on
+   le BALAYE : la colonne rouge partout doit sauter aux yeux sans qu'on lise
+   une seule case. Des cases confortables à lire une par une étaleraient huit
+   colonnes sur deux écrans, et la colonne ne serait plus une colonne.
+
+   L'ÉCHELLE DE COULEUR EST CELLE DE TOUTE L'APPLICATION — NA, EC, A, E. En
+   inventer une seconde ferait qu'un même élève serait « acquis » ici et « en
+   cours » ailleurs, pour la même réussite. Les teintes sont posées en
+   `color-mix` sur le fond du panneau : franches, elles mangeraient le texte,
+   et c'est le texte qui porte le nombre. */
+.ec-table--croise { font-variant-numeric: tabular-nums; }
+.ec-th-exo {
+    font-size: .68rem; font-weight: 700; line-height: 1.15;
+    text-align: center; vertical-align: bottom; padding: 4px 3px;
+    min-width: 54px; max-width: 72px;
+}
+.ec-case {
+    text-align: center; padding: 4px 3px; font-size: .78rem; font-weight: 700;
+    border: 1px solid var(--border);
+}
+/* LE COMPTE EXACT SOUS LE POURCENTAGE, en petit : « 75 % » ne dit pas si c'est
+   trois questions sur quatre ou neuf sur douze, et ce n'est pas la même
+   confiance. */
+.ec-case > .ec-note { display: block; font-size: .6rem; font-weight: 400; }
+.ec-case--na { background: color-mix(in srgb, var(--danger) 22%, var(--bg-panel)); }
+.ec-case--ec { background: color-mix(in srgb, var(--warning) 22%, var(--bg-panel)); }
+.ec-case--a  { background: color-mix(in srgb, var(--success) 22%, var(--bg-panel)); }
+.ec-case--e  { background: color-mix(in srgb, var(--primary) 20%, var(--bg-panel)); }
+/* RIEN N'EST PAS ZÉRO. Une case vide dit « il n'est pas arrivé jusque-là » ;
+   une case rouge dirait « il a tout raté ». Les deux appellent des gestes
+   opposés — raccourcir la séance, ou reprendre la notion —, et une seule
+   couleur pour les deux rendrait le tableau trompeur là où il doit trancher. */
+.ec-case--vide { background: transparent; }
+.ec-td-total { text-align: right; font-weight: 700; white-space: nowrap; }
+.ec-td-total > .ec-note { display: block; font-size: .64rem; font-weight: 400; }
+.ec-tr-pied td {
+    border-top: 2px solid var(--text-muted); font-weight: 700;
+    text-align: center; padding: 5px 3px; font-size: .78rem;
+}
+.ec-tr-pied td > .ec-note { display: block; font-size: .6rem; font-weight: 400; }
+.ec-phrase-tableau {
+    margin: 0 0 10px; padding: 8px 12px; border-radius: 10px;
+    background: color-mix(in srgb, var(--warning) 14%, var(--bg-panel));
+    border-left: 3px solid var(--warning);
+    font-size: .84rem; color: var(--text-main);
+}
+/* LA LISTE DES SÉANCES NE PREND PAS TOUTE LA LARGEUR. Un menu de quatorze
+   cents pixels pour « Devoir du mardi » se lit comme un champ à remplir, pas
+   comme un choix déjà fait. */
+.ec-choix-seance {
+    display: flex; align-items: center; gap: 8px; margin: 10px 0 8px; flex-wrap: wrap;
+}
+.ec-choix-seance select { width: auto; max-width: min(100%, 26rem); }
+.ec-bilan-gestes { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
 .ec-tr-rien { background: color-mix(in srgb, var(--warning) 8%, transparent); }
 
 /* ── LE DÉPLIAGE D'UN ÉLÈVE, SOUS SA LIGNE ──────────────────────────────────
