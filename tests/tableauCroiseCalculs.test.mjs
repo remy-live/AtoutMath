@@ -107,3 +107,130 @@ test('ET LES LIBELLÉS NE SE RECOPIENT PLUS', async () => {
     assert.deepEqual(options.map(o => o.value), Object.keys(PALIERS));
     options.forEach(o => assert.equal(o.label, PALIERS[o.value].label, o.value));
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// DEUXIÈME PASSAGE, ET LA MÊME PHRASE DE RÉMY — « il faudrait que dans les
+// premiers niveaux, les calculs soient plus simples (dans les réglages) ».
+//
+// J'avais corrigé le PLAFOND ; le PLANCHER, lui, venait toujours du contexte.
+// MESURÉ sur 80 tableaux par palier, avant ce second passage : au palier
+// « moyen », plafonné à 25, TOUTES les cases tombaient entre 20 et 25, parce
+// que le contexte déclare `mini: 20`. La bande faisait cinq nombres de large,
+// tous à deux chiffres — 72 % des cases —, et un tableau de 22, 21, 24, 23
+// n'est pas « des nombres moyens » : c'est une addition en colonne déguisée.
+//
+// APRÈS : 1 à 25, et 57 % de cases à deux chiffres.
+
+import { TAILLES, plafondVoulu, ENONCES } from '../js/core/tableauCroise.js';
+
+/** La plus grosse case intérieure, et la part de cases à deux chiffres. */
+function cases(palier, taille) {
+    let max = 0, deux = 0, total = 0;
+    for (let i = 0; i < 50; i++) {
+        const t = genererTableau({ rng: makeRng(`t${palier}${taille}${i}`), palier, taille });
+        for (let r = 0; r < t.R; r++) {
+            for (let c = 0; c < t.C; c++) {
+                const v = t.valeurs[r][c];
+                total++; max = Math.max(max, v);
+                if (v >= 10) deux++;
+            }
+        }
+    }
+    return { max, part: deux / total };
+}
+
+test('LE PLANCHER NE VIENT PLUS DU CONTEXTE', () => {
+    // LE DÉFAUT EXACT : « les élèves du collège » déclare `mini: 20`, une
+    // plausibilité d'énoncé — pas une difficulté. Plafonné à 25, cela donnait
+    // une bande de 20 à 25. Le contexte garde ses mots ; il ne décide plus de
+    // la charge de calcul.
+    const { bas, haut } = bornesDuTirage({ mini: 20, maxi: 55 }, PALIERS.moyen);
+    assert.equal(bas, 1, `la borne basse est ${bas}`);
+    assert.equal(haut, 25);
+    // Et la bande large se voit sur les tableaux rendus.
+    assert.ok(cases('moyen', 'auto').part < 0.65,
+        `${Math.round(cases('moyen', 'auto').part * 100)} % de cases à deux chiffres au palier moyen`);
+});
+
+test('LE RÉGLAGE DES NOMBRES MORD SUR TOUS LES PALIERS', () => {
+    // C'est ce que le palier seul ne permettait pas : un GRAND tableau avec de
+    // PETITS nombres, pour l'élève qui apprend la méthode et bute sur
+    // l'addition. Et l'inverse, pour celui qui maîtrise la méthode.
+    for (const palier of Object.keys(PALIERS)) {
+        assert.ok(cases(palier, 'petits').max <= 9,
+            `${palier} en « petits » : ${cases(palier, 'petits').max}`);
+        assert.ok(cases(palier, 'moyens').max <= 20,
+            `${palier} en « moyens » : ${cases(palier, 'moyens').max}`);
+    }
+    // Y COMPRIS À L'ENVERS : « les nombres de la situation » doit rendre les
+    // grands nombres même au palier découverte, dont le plafond est 9.
+    assert.ok(cases('decouverte', 'vrais').max > 25,
+        `découverte en « vrais » : ${cases('decouverte', 'vrais').max}`);
+});
+
+test('« SELON LE NIVEAU » NE CHANGE RIEN', () => {
+    // Le réglage ne s'adresse qu'à qui vient le chercher : par défaut, il doit
+    // rendre exactement ce que le palier rendait.
+    for (const palier of Object.keys(PALIERS)) {
+        const a = genererTableau({ rng: makeRng('mem' + palier), palier });
+        const b = genererTableau({ rng: makeRng('mem' + palier), palier, taille: 'auto' });
+        assert.deepEqual(a.valeurs, b.valeurs, palier);
+    }
+});
+
+test('ZÉRO N\'EST PAS « JE NE ME PRONONCE PAS »', () => {
+    // LA SUBTILITÉ QUI PERMET DE FORCER LES GRANDS NOMBRES SUR UN PETIT
+    // PALIER. `null` veut dire « suivre le palier », `0` veut dire « aucun
+    // plafond, et c'est un choix ». Confondre les deux ferait retomber
+    // « les nombres de la situation » sur le plafond du palier — c'est-à-dire
+    // sur le contraire de ce qu'on a demandé.
+    assert.equal(TAILLES.auto.plafond, null);
+    assert.equal(TAILLES.vrais.plafond, 0);
+    assert.equal(plafondVoulu(PALIERS.decouverte, 'auto'), 9);
+    assert.equal(plafondVoulu(PALIERS.decouverte, 'vrais'), 0,
+        'forcer les vrais nombres doit lever le plafond du palier');
+    assert.equal(plafondVoulu(PALIERS.decouverte, 'petits'), 9);
+    assert.equal(plafondVoulu(PALIERS.difficile, 'petits'), 9,
+        'et en imposer un là où le palier n\'en a pas');
+    assert.equal(plafondVoulu(PALIERS.difficile, 'auto'), 0);
+    // Un réglage inconnu ne casse pas l'exercice : il suit le palier.
+    assert.equal(plafondVoulu(PALIERS.moyen, 'n\'importe quoi'), 25);
+});
+
+test('DE PETITS NOMBRES FORCÉS RESTENT PLAUSIBLES', () => {
+    // « 3 élèves en sixième B » est un tableau juste et une phrase fausse. Le
+    // choix du contexte suit donc le plafond RÉELLEMENT appliqué, et non celui
+    // du palier.
+    //
+    // ON NOMME LA RÈGLE, ET NON UN CONTEXTE. J'avais d'abord écrit « le
+    // collège n'apparaît pas » ; `epreuveTombe.mjs` a refusé l'épreuve, et
+    // pour une raison que je n'avais pas vue : le collège n'a que deux lignes,
+    // il ne peut DE TOUTE FAÇON pas sortir au palier difficile, qui en demande
+    // quatre. L'épreuve passait donc avec et sans le défaut. Les contextes qui
+    // le mettent vraiment à l'épreuve sont la boulangerie (12) et la cantine
+    // (20) — mais les nommer referait la même erreur au prochain contexte
+    // ajouté. On vérifie donc la règle elle-même.
+    const plafond = plafondVoulu(PALIERS.difficile, 'petits');
+    for (let i = 0; i < 60; i++) {
+        const t = genererTableau({ rng: makeRng('pl' + i), palier: 'difficile', taille: 'petits' });
+        const E = ENONCES.find(e => e.id === t.enonce);
+        assert.ok(E, `contexte inconnu : ${t.enonce}`);
+        assert.ok(E.mini <= plafond,
+            `« ${t.enonce} » compte à partir de ${E.mini} : plafonné à ${plafond}, `
+            + 'sa phrase devient fausse');
+    }
+});
+
+test('L\'ÉTIQUETTE D\'UN PALIER DIT LE PLAFOND QU\'IL APPLIQUE', () => {
+    // « Petits nombres » ne se vérifie pas : on choisit, on lance, on regarde,
+    // et l'on revient. « Nombres jusqu'à 9 » se décide sans ouvrir l'exercice
+    // — et devient FALSIFIABLE, ce qu'une épreuve peut alors garder.
+    for (const [cle, P] of Object.entries(PALIERS)) {
+        if (!P.plafond) continue;
+        assert.match(P.label, new RegExp(`jusqu'à ${P.plafond}\\b`),
+            `${cle} annonce « ${P.label} » pour un plafond de ${P.plafond}`);
+        assert.equal(cases(cle, 'auto').max, P.plafond,
+            `${cle} n'atteint pas le plafond qu'il annonce`);
+    }
+});

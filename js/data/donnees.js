@@ -2,7 +2,7 @@ import { TAGS } from './tags.js';
 // LES PALIERS DU TABLEAU CROISÉ VIENNENT DU NOYAU, on ne les recopie pas : les
 // libellés affichés et les vrais réglages doivent dire la même chose, et deux
 // listes jumelles finissent toujours par se contredire.
-import { PALIERS } from '../core/tableauCroise.js';
+import { PALIERS, TAILLES } from '../core/tableauCroise.js';
 
 // Domaine « Organisation de données » : ouvert par l'École du Tableur,
 // portée de l'ancien projet. D'autres exercices (lecture de tableaux, de
@@ -47,6 +47,27 @@ export const donneesExercises = [
                     + 'colonne fait partie du travail.',
                 options: Object.entries(PALIERS)
                     .map(([value, p]) => ({ value, label: p.label }))
+            },
+            {
+                // DEUX DIFFICULTÉS INDÉPENDANTES, DEUX RÉGLAGES.
+                //
+                // RÉMY : « il faudrait que dans les premiers niveaux, les
+                // calculs soient plus simples (dans les réglages) ».
+                //
+                // Les premiers paliers donnent maintenant ce que leur
+                // étiquette promet — c'était un défaut, et il est corrigé dans
+                // `bornesDuTirage`. Mais il reste une chose que le palier seul
+                // ne permet pas : un GRAND tableau avec de PETITS nombres.
+                // C'est pourtant l'exercice qu'on veut pour un élève qui
+                // apprend la méthode et bute sur l'addition — et l'inverse,
+                // pour celui qui maîtrise la méthode et doit s'entraîner à
+                // additionner. Le tableau travaille le balayage ; les nombres
+                // ne décident que de la charge de calcul.
+                id: 'taille', type: 'select', label: 'La taille des nombres', default: 'auto',
+                affiner: true,
+                aide: 'Indépendante de la taille du tableau. « Selon le niveau » suit la '
+                    + 'difficulté choisie — c\'est ce qui se passe si on n\'y touche pas.',
+                options: Object.entries(TAILLES).map(([value, t]) => ({ value, label: t.label }))
             },
             {
                 // CE QUE L'EXERCICE DEMANDE VRAIMENT. Rémy : « j'aimerais bien

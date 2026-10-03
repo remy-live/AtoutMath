@@ -35,7 +35,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
-    PALIERS, genererTableau, estDonnee, cle, estTotalLigne, consigneDe,
+    PALIERS, TAILLES, genererTableau, estDonnee, cle, estTotalLigne, consigneDe,
     estTotalColonne, prochaineLigne, conseil, nomDeLigne, nomDeColonne, totalGeneral
 } from '../core/tableauCroise.js';
 
@@ -51,6 +51,13 @@ class TableauCroise extends BaseGame {
         // le tableau part vide — c'est l'exercice que Rémy a demandé, et le
         // travail commence une étape plus tôt, au rangement.
         this.depart = this.params.depart === 'enonce' ? 'enonce' : 'tableau';
+        // LA TAILLE DES NOMBRES, RÉGLABLE À PART DU TABLEAU.
+        //
+        // RÉMY : « il faudrait que dans les premiers niveaux, les calculs
+        // soient plus simples (dans les réglages) ». « auto » suit le palier,
+        // et c'est le défaut : le réglage ne change rien tant qu'on n'y touche
+        // pas, et il ne s'adresse qu'à qui vient le chercher.
+        this.taille = TAILLES[this.params.taille] ? this.params.taille : 'auto';
         this.saisies = {};
         this.actif = null;
     }
@@ -190,7 +197,8 @@ class TableauCroise extends BaseGame {
     startGameLoop() { this.poser(); }
 
     poser() {
-        this.tableau = genererTableau({ rng: this.rng, palier: this.palier, depart: this.depart });
+        this.tableau = genererTableau({ rng: this.rng, palier: this.palier,
+            depart: this.depart, taille: this.taille });
         if (!this.tableau) return false;
         this.saisies = {};
         this.fini = false;

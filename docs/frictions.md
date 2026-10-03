@@ -2216,3 +2216,28 @@ lignes** — 2026-10-01
   être ramené ; sinon c'est un défaut de hauteur.** On mesure donc toujours
   deux choses devant un « c'est caché » : où est l'élément, ET si quelque
   chose peut le déplacer. La seconde décide de la correction.
+
+## Une borne corrigée d'un seul côté se refait signaler — 2026-10-03
+
+- *Ce que je voulais faire* : rien. Rémy a redemandé, sur le MÊME exercice et
+  presque dans les mêmes mots qu'il y a quelques semaines, « il faudrait que
+  dans les premiers niveaux, les calculs soient plus simples ».
+- *Ce qui a coûté* : la première fois, j'avais ajouté un `plafond` par palier,
+  mesuré l'avant/après, écrit l'épreuve, et clos l'affaire. Le PLANCHER, lui,
+  venait toujours du contexte : `bas = min(E.mini, haut - 5)`. Au palier
+  « moyen » — plafond 25, contexte « 55 élèves » dont `mini` vaut 20 — toutes
+  les cases tombaient **entre 20 et 25**. Une bande de cinq nombres de large,
+  tous à deux chiffres : plus simple que 70, et pas plus simple à additionner.
+  L'épreuve que j'avais écrite ne regardait que le MAXIMUM, donc elle était
+  verte.
+- *Combien de fois* : || (déjà le même oubli sur l'échelle des priorités, où
+  j'avais borné le haut sans toucher au bas.)
+- *Ce qui manque* : rien à fabriquer. Une épreuve qui mesure la PART de cases
+  à deux chiffres, et non le seul maximum — c'est la charge, pas la borne, qui
+  était en cause.
+- *La règle* : **quand on corrige une borne, on vérifie l'autre dans la même
+  minute.** Et surtout : **une épreuve qui garde un maximum ne garde pas une
+  difficulté.** Ce que Rémy appelle « des calculs plus simples » n'est pas « un
+  plus petit nombre » mais « moins de retenues » — il fallait mesurer la
+  répartition, pas la borne. Un signalement qui revient deux fois sur le même
+  écran dit presque toujours qu'on a mesuré à côté la première fois.

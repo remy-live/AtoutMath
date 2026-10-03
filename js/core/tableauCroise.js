@@ -299,23 +299,29 @@ export const ENONCES = [
  * calculatrice s'éteint.
  */
 export const PALIERS = {
+    // LES ÉTIQUETTES DISENT LE PLAFOND, parce que c'est ce qu'on vient y
+    // chercher. « Petits nombres » ne se vérifie pas : on choisit, on lance,
+    // on regarde, et l'on revient. « Nombres jusqu'à 9 » se décide sans
+    // ouvrir l'exercice — et surtout, l'étiquette devient FALSIFIABLE : une
+    // épreuve peut mesurer que le palier tient sa promesse, ce qui n'était pas
+    // possible tant qu'elle disait « petits ».
     decouverte: {
-        label: 'Petits nombres, petit tableau — avec la calculatrice',
+        label: 'Nombres jusqu\'à 9, tableau 2 × 3 — avec la calculatrice',
         lignes: 2, colonnes: 3, trous: 4, calculatrice: true, plafond: 9
     },
     facile: {
-        label: 'Petits nombres, comme sur la fiche — 2 lignes, 4 colonnes',
+        label: 'Nombres jusqu\'à 12, tableau 2 × 4 — avec la calculatrice',
         lignes: 2, colonnes: 4, trous: 7, calculatrice: true, plafond: 12
     },
     moyen: {
-        label: '3 lignes, 4 colonnes — tous les totaux cachés',
+        label: 'Nombres jusqu\'à 25, tableau 3 × 4 — tous les totaux cachés',
         lignes: 3, colonnes: 4, trous: 8, calculatrice: true, plafond: 25
     },
     difficile: {
         // La calculatrice s'éteint ici, le tableau grandit, et les nombres
         // reprennent leur taille naturelle : les trois seuls leviers qui
         // restent une fois qu'on cache déjà tout ce qu'on peut.
-        label: '4 lignes, 4 colonnes, grands nombres — sans calculatrice',
+        label: 'Les nombres de la situation, tableau 4 × 4 — sans calculatrice',
         lignes: 4, colonnes: 4, trous: 9, calculatrice: false
     }
 };
@@ -323,15 +329,80 @@ export const PALIERS = {
 /**
  * LES BORNES DU TIRAGE POUR CE PALIER ET CE CONTEXTE.
  *
- * On garde un ÉCART d'au moins cinq entre les deux bornes : sans cela, un
- * contexte qui commence à 8 et un plafond à 9 donneraient « entre 8 et 9 »,
- * c'est-à-dire un tableau de 8 et de 9 — plus simple, oui, mais plus un
- * tableau de données.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * LE PLANCHER VENAIT DU CONTEXTE, ET C'ÉTAIT LA MOITIÉ OUBLIÉE.
+ *
+ * RÉMY, une seconde fois sur le même exercice : « il faudrait que dans les
+ * premiers niveaux, les calculs soient plus simples ». J'avais corrigé le
+ * PLAFOND la première fois, et cru l'affaire close.
+ *
+ * MESURÉ, sur 80 tableaux par palier : au palier « moyen », dont le plafond est
+ * 25, TOUTES les cases tombaient entre 20 et 25. Le contexte « 55 élèves »
+ * déclare `mini: 20` — une plausibilité d'énoncé, pas une difficulté — et
+ * l'ancienne ligne gardait ce plancher-là : `bas = min(E.mini, haut - 5)`,
+ * donc 20, pour un plafond de 25. La bande faisait cinq nombres de large, tous
+ * à deux chiffres. Un tableau de 22, 21, 24, 23 n'est pas « des nombres
+ * moyens » : c'est une addition en colonne déguisée, et 72 % des cases
+ * portaient deux chiffres là où l'étiquette du réglage promet des petits.
+ *
+ * QUAND ON IMPOSE UN PLAFOND, ON PART DE UN. La plausibilité de l'histoire ne
+ * souffre pas d'un petit nombre — « 3 élèves en sixième B » se lit très bien,
+ * et c'est le TABLEAU qu'on apprend, pas la vraisemblance du recensement. Le
+ * contexte garde donc ses mots et son unité ; il ne décide plus de la charge
+ * de calcul.
+ *
+ * Le dernier palier n'a pas de plafond : là, les nombres reprennent leur
+ * taille naturelle, et c'est voulu — l'addition en colonne fait partie du
+ * travail, et la calculatrice s'y éteint.
  */
-export function bornesDuTirage(E, P) {
-    if (!P || !P.plafond) return { bas: E.mini, haut: E.maxi };
-    const haut = Math.min(E.maxi, P.plafond);
-    return { bas: Math.max(1, Math.min(E.mini, haut - 5)), haut };
+export function bornesDuTirage(E, P, taille = 'auto') {
+    const plafond = plafondVoulu(P, taille);
+    if (!plafond) return { bas: E.mini, haut: E.maxi };
+    const haut = Math.min(E.maxi, plafond);
+    // UN, ET NON `E.mini` : voir ci-dessus. L'écart reste d'au moins huit, ce
+    // qui laisse de quoi faire un vrai tableau de données.
+    return { bas: 1, haut: Math.max(haut, 9) };
+}
+
+/**
+ * LA TAILLE DES NOMBRES, QUI PEUT SE RÉGLER À PART DU TABLEAU.
+ *
+ * RÉMY : « dans les réglages ». Les deux difficultés de cet exercice sont
+ * indépendantes, et les mêler les rend toutes deux inaccessibles :
+ *
+ *   · LA TAILLE DU TABLEAU décide du travail qu'on veut apprendre — balayer,
+ *     trouver la ligne à un seul trou, propager de proche en proche ;
+ *   · LA TAILLE DES NOMBRES ne décide que de la charge d'addition.
+ *
+ * Un élève de troisième qui découvre le geste a besoin d'un grand tableau avec
+ * de petits nombres ; un élève de sixième qui le maîtrise peut faire l'inverse.
+ * Le palier seul ne permettait ni l'un ni l'autre.
+ *
+ * « Selon le niveau » reste le défaut : le réglage n'apparaît que pour qui le
+ * cherche, et ne change rien tant qu'on n'y touche pas.
+ */
+export const TAILLES = {
+    auto: { label: 'Selon le niveau choisi', plafond: null },
+    petits: { label: 'Petits nombres — jusqu\'à 9', plafond: 9 },
+    moyens: { label: 'Jusqu\'à 20', plafond: 20 },
+    vrais: { label: 'Les nombres de la situation — addition en colonne', plafond: 0 }
+};
+
+/**
+ * Le plafond qui s'applique vraiment.
+ *
+ * `0` N'EST PAS `null` ICI, et c'est ce qui permet de FORCER les grands
+ * nombres sur un petit palier : `null` veut dire « je ne me prononce pas,
+ * suivre le palier », `0` veut dire « aucun plafond, et c'est un choix ».
+ * Sans cette distinction, « les nombres de la situation » sur le palier
+ * découverte retomberait sur le plafond 9 du palier, c'est-à-dire sur le
+ * contraire de ce qu'on a demandé.
+ */
+export function plafondVoulu(P, taille = 'auto') {
+    const T = TAILLES[taille];
+    if (!T || T.plafond === null) return (P && P.plafond) || 0;
+    return T.plafond;
 }
 
 /** Le maximum démontrable de cases cachées : les totaux, et rien de plus. */
@@ -427,8 +498,14 @@ function deduireLigne(cases, n) {
  * On perce donc un trou, on relance le solveur, et on remet la case si elle ne
  * se retrouve plus. Ce qui sort est résoluble PAR CONSTRUCTION.
  */
-export function genererTableau({ rng = makeRng(1), palier = 'facile', enonce = null, tour = null, depart = 'tableau' } = {}) {
+export function genererTableau({ rng = makeRng(1), palier = 'facile', enonce = null, tour = null, depart = 'tableau', taille = 'auto' } = {}) {
     const P = PALIERS[palier] || PALIERS.facile;
+    // LE PLAFOND QUI S'APPLIQUE VRAIMENT : celui du palier, ou celui que le
+    // professeur a forcé dans les réglages. C'est lui, et non le palier, qui
+    // décide du choix des contextes ci-dessous — sinon « petits nombres » sur
+    // un grand tableau irait chercher « les élèves du collège » et écrirait
+    // « 3 élèves en sixième B ».
+    const plafond = plafondVoulu(P, taille);
     // Un énoncé qui a au moins assez de libellés pour ce palier.
     // ET UN CONTEXTE OÙ LES PETITS NOMBRES ONT DU SENS. Plafonner « les élèves
     // du collège » (25 à 70) à neuf donnerait « 4 élèves en sixième », ce qui
@@ -437,7 +514,7 @@ export function genererTableau({ rng = makeRng(1), palier = 'facile', enonce = n
     // robotique, le tournoi d'échecs, les parapluies.
     const possibles = ENONCES.filter(e => e.lignes.length >= P.lignes
         && e.colonnes.length >= P.colonnes
-        && (!P.plafond || e.mini <= P.plafond));
+        && (!plafond || e.mini <= plafond));
     const pioche = possibles.length ? possibles : ENONCES;
     // SUR UNE FEUILLE, LES ÉNONCÉS NE DOIVENT PAS SE RÉPÉTER. Tirés
     // indépendamment, huit contextes pour six blocs donnent souvent un doublon,
@@ -457,7 +534,7 @@ export function genererTableau({ rng = makeRng(1), palier = 'facile', enonce = n
     const R = Math.min(P.lignes, E.lignes.length);
     const C = Math.min(P.colonnes, E.colonnes.length);
 
-    const { bas, haut } = bornesDuTirage(E, P);
+    const { bas, haut } = bornesDuTirage(E, P, taille);
     const interieur = [];
     for (let r = 0; r < R; r++) {
         const ligne = [];
