@@ -93,6 +93,9 @@ function auCoeur(el, x, y) {
 class Ninja extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'ninja');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.mode = MODES[this.params.mode] ? this.params.mode : 'negatifs';
         this.def = MODES[this.mode];
         this.allure = allureDe(this.params);
@@ -318,7 +321,9 @@ class Ninja extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .nj-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .nj-btn:hover { background: var(--bg-hover); }
+                }
             </style>
             <div class="nj-wrap">
                 <div class="nj-consigne" data-consigne></div>
@@ -784,7 +789,10 @@ class Ninja extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Attention : laisser filer un objet qu\'il fallait prendre coûte une vie, exactement comme se tromper. Ne rien toucher n\'est donc pas une stratégie.', this.scene);
+        // LA DEUXIÈME PHRASE DISAIT VRAI, MAIS C'ÉTAIT UNE LEÇON, PAS UN GESTE :
+        // « ne rien toucher n'est pas une stratégie » se déduit de la première,
+        // et les deux ensemble faisaient 146 caractères.
+        cur.say('Attention : laisser filer un objet qu\'il fallait prendre coûte une vie.', this.scene);
         if (!await cur.pause(DEMO_SPEED.between)) return fin();
         fin();
     }

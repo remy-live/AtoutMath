@@ -338,9 +338,12 @@ class Hashi extends BaseGame {
 
         const g = this.g;
         const par = g.iles.map((_, k) => g.aretes.filter(e => e.a === k || e.b === k).length);
-        cur.say('Trois règles : le chiffre dit combien de ponts arrivent, jamais plus de deux '
-            + 'entre deux îles, et aucun croisement. On ne commence pas n\'importe où.',
-        this.plateauEl);
+        // UNE IDÉE PAR BULLE, sous 110 caractères. « On ne commence pas n'importe où »
+        // est dit juste après, en montrant l'île par où l'on entre : inutile ici.
+        cur.say('Le chiffre dit combien de ponts arrivent sur l\'île.', this.plateauEl);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Jamais plus de deux ponts entre deux îles, et aucun croisement.', this.plateauEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         // L'île la plus contrainte : celle où le chiffre sature ses voisines.
@@ -363,8 +366,8 @@ class Hashi extends BaseGame {
             if (!await cur.pause(DEMO_SPEED.press)) return fin();
         }
         this.vise = null; this.dessiner();
-        cur.say('Et voilà : cette île est finie, elle verdit. Chaque pont posé en interdit '
-            + 'd\'autres — c\'est comme cela que la grille se déplie, sans jamais essayer.',
+        // « c'est comme cela que la grille se déplie » est une leçon sur la méthode : coupée.
+        cur.say('Et voilà : cette île est finie, elle verdit. Chaque pont posé en interdit d\'autres.',
         this.plateauEl);
         await cur.pause(DEMO_SPEED.between);
         fin();

@@ -121,3 +121,99 @@ test('un essai se joue à la main : ce n\'est pas une démonstration', () => {
     assert.equal(r.correct, true);
     assert.ok(r.points > 0, 'un essai doit se jouer comme le vrai exercice');
 });
+
+// ─────────────────────────────── LE SECOND ESSAI DOIT RESTER UN ESSAI ───────
+//
+// Trouvé par l'audit UX : au PREMIER échec, l'élève recevait déjà
+// `item.explanation` — qui porte le calcul — ou « La bonne réponse était : … ».
+// Le second essai n'était donc plus un essai mais une recopie, et le bouton
+// « Un indice » posé juste à côté n'avait plus rien à offrir.
+//
+// Tout le dispositif du second essai tombait sur cette seule ligne.
+
+/**
+ * Ce que l'écran reçoit VRAIMENT.
+ *
+ * On n'écoute pas : le `document` de `helpers.mjs` est un mannequin dont le
+ * `dispatchEvent` ne fait rien et n'a pas d'auditeurs. On intercepte donc
+ * l'envoi lui-même — c'est le seul endroit par où passe le retour didactique,
+ * et c'est exactement ce que l'écran reçoit.
+ */
+function ecouterLeRetour() {
+    const vus = [];
+    const vrai = document.dispatchEvent;
+    document.dispatchEvent = (e) => {
+        if (e && e.type === 'game_feedback') vus.push(e.detail);
+        return true;
+    };
+    return { vus, couper: () => { document.dispatchEvent = vrai; } };
+}
+
+/** Une session d'entraînement à deux essais, question connue d'avance. */
+function sessionADeuxEssais() {
+    return new ItemSession({
+        generator: genTest(), params: {},
+        policy: { maxAttemptsPerItem: 2, showCorrection: true, hints: true,
+            correction: 'robot', scoring: 'none' }
+    });
+}
+
+test('AU PREMIER ÉCHEC, LA RÉPONSE N\'EST PAS DONNÉE — il reste un essai', () => {
+    const s = sessionADeuxEssais();
+    const q = s.next();
+    const oreille = ecouterLeRetour();
+    s.submit(-999);                       // faux à coup sûr
+    oreille.couper();
+
+    const dit = oreille.vus.filter(v => v.isError).map(v => `${v.msg} ${v.misconception || ''}`).join(' ');
+    assert.ok(dit, 'l\'élève doit recevoir quelque chose');
+    assert.ok(!dit.includes(String(q.answer)),
+        `la réponse « ${q.answer} » ne doit pas être donnée : ${dit}`);
+    assert.ok(!dit.includes(q.explanation || '§aucune§'),
+        'l\'explication porte le calcul : elle attend la fin des essais');
+});
+
+test('…ET IL SAIT QU\'IL LUI EN RESTE UN', () => {
+    // Un « ce n'est pas ça » sans suite se lit comme une fin de non-recevoir.
+    const s = sessionADeuxEssais();
+    s.next();
+    const oreille = ecouterLeRetour();
+    const r = s.submit(-999);
+    oreille.couper();
+    assert.equal(r.attemptsLeft, 1);
+    assert.equal(r.revealed, false, 'rien n\'est révélé tant qu\'il peut chercher');
+    const erreur = oreille.vus.find(v => v.isError);
+    assert.equal(erreur.essaisRestants, 1);
+});
+
+test('AU DERNIER ÉCHEC, TOUT EST DIT — il repart sinon avec sa question', () => {
+    const s = sessionADeuxEssais();
+    const q = s.next();
+    s.submit(-999);
+    const oreille = ecouterLeRetour();
+    const r = s.submit(-999);
+    oreille.couper();
+
+    assert.equal(r.attemptsLeft, 0);
+    assert.equal(r.revealed, true);
+    const dit = oreille.vus.filter(v => v.isError)
+        .map(v => `${v.msg} ${v.misconception || ''}`).join(' ');
+    assert.ok(dit.includes(q.explanation),
+        `l'explication doit arriver maintenant : ${dit}`);
+});
+
+test('un seul essai autorisé : rien ne change, tout est dit du premier coup', () => {
+    // Le cas de l'interrogation. Ne pas le casser en corrigeant l'autre.
+    const s = new ItemSession({
+        generator: genTest(), params: {},
+        policy: { maxAttemptsPerItem: 1, showCorrection: true, hints: false,
+            correction: 'reponse', scoring: 'none' }
+    });
+    const q = s.next();
+    const oreille = ecouterLeRetour();
+    s.submit(-999);
+    oreille.couper();
+    const dit = oreille.vus.filter(v => v.isError).map(v => v.msg).join(' ');
+    assert.ok(dit.includes(String(q.answer)),
+        `sans second essai, la bonne réponse se donne tout de suite : ${dit}`);
+});

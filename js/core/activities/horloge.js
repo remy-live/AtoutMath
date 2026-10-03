@@ -601,6 +601,14 @@ export function mount(container, session) {
         cursor.say(m.m === 0
             ? 'Zéro minute : la grande aiguille va sur le 12.'
             : `${m.m} minutes, ça fait ${m.m} ÷ 5 = ${(m.m / 5).toFixed(m.m % 5 ? 1 : 0)} : la grande aiguille s'arrête ${m.m % 5 ? 'un peu après' : 'sur'} le ${Math.floor(m.m / 5)}.`, cadran);
+        // ON LAISSE LIRE AVANT DE BOUGER. `animer` est une boucle
+        // `requestAnimationFrame` maison : elle ne consulte pas l'échéance de
+        // lecture et n'écoute ni « Pause » ni « Un pas ». La grande aiguille
+        // balayait donc ses minutes pendant les 1 500 premières millisecondes
+        // d'une phrase qui en demande 5 500 — le geste était fini avant qu'on
+        // ait lu pourquoi on le faisait, et rien ne permettait de le revoir.
+        // `pause(0)` remonte d'elle-même au temps de lecture restant.
+        if (!await cursor.pause(0) || destroyed) return fin();
         if (!await animer((e) => { etat.min = Math.round(m.m * e); }, 1500) || destroyed) return fin();
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return fin();
 
@@ -609,12 +617,14 @@ export function mount(container, session) {
             ? `${m.h} h, c'est ${m.h} − 12 = ${m.h12} sur la pendule : la petite aiguille va vers le ${m.h12}.`
             : (m.m === 0
                 ? `Puis la petite aiguille sur le ${m.h12}. Zéro minute : elle tombe pile sur le nombre.`
-                : `Puis la petite aiguille sur le ${m.h12}. Regarde : elle se décale un peu vers le nombre suivant — c'est normal, les minutes l'entraînent.`), cadran);
+                : `Puis la petite aiguille sur le ${m.h12} — elle se décale un peu : les minutes l'entraînent.`), cadran);
         // On tourne dans le SENS DES AIGUILLES, comme on règle une vraie
         // pendule : interpolé du plus court chemin, le geste partait à
         // l'envers et l'on ne reconnaissait plus ce qu'on faisait.
         const depart = etat.h12;
         const tour = ((m.h12 - depart) + 12) % 12;
+        // Même chose pour la petite aiguille : on lit, puis on tourne.
+        if (!await cursor.pause(0) || destroyed) return fin();
         if (!await animer((e) => {
             const v = depart + tour * e;
             etat.h12 = Math.round(((v - 1) % 12 + 12) % 12) + 1;

@@ -67,7 +67,7 @@ class AmisDeDix extends BaseGame {
                     container-type: inline-size;
                 }
                 .dx-tete { text-align: center; font-size: 1rem; flex: 0 0 auto; }
-                .dx-cible { font-size: 1.5rem; font-weight: 900; color: var(--primary); }
+                .dx-cible { font-size: 1.5rem; font-weight: 900; color: var(--primary-texte); }
                 .dx-vies { font-size: 1.05rem; letter-spacing: .1em; }
                 .dx-table {
                     display: grid; gap: 9px; justify-content: center; flex: 0 0 auto;
@@ -83,7 +83,9 @@ class AmisDeDix extends BaseGame {
                     color: var(--text-main);
                     transition: transform .1s ease, opacity .25s ease, box-shadow .1s ease;
                 }
-                .dx-carte:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,.15); }
+                @media (hover: hover) {
+                    .dx-carte:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,.15); }
+                }
                 /* LA TABLE QUI DÉRIVE. Les cartes quittent la grille et se
                    placent au pixel près : on les anime par leur position, et
                    non par une transformation — celle-ci reste aux états (prise,
@@ -100,7 +102,9 @@ class AmisDeDix extends BaseGame {
                     font-size: clamp(15px, 5.4cqw, 26px);
                     transition: opacity .25s ease, box-shadow .1s ease;
                 }
-                .dx-table--mouvante .dx-carte:hover { transform: none; }
+                @media (hover: hover) {
+                    .dx-table--mouvante .dx-carte:hover { transform: none; }
+                }
                 .dx-carte--prise {
                     border-color: var(--primary); background: color-mix(in srgb, var(--primary) 16%, var(--bg-panel));
                     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 35%, transparent);
@@ -370,8 +374,11 @@ class AmisDeDix extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Toujours dans cet ordre : une carte, LE calcul, puis l\'amie qu\'on cherche. '
-            + 'C\'est comme ça que les paires deviennent des réflexes.', this.tableEl);
+        // « C'est comme ça que les paires deviennent des réflexes » était la leçon, pas le
+        // geste : coupée. Au-delà de 110 caractères la bulle se lit si lentement qu'on
+        // croit la démonstration plantée (js/core/activities/choice.js, COURT).
+        cur.say('Toujours dans cet ordre : une carte, LE calcul, puis l\'amie qu\'on cherche.',
+            this.tableEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

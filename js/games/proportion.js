@@ -55,7 +55,9 @@ class Proportion extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .pr-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .pr-btn:hover { background: var(--bg-hover); }
+                }
                 .pr-consigne {
                     text-align: center; max-width: 560px; flex: 0 0 auto;
                     font-size: clamp(12px, 3cqw, 15px); line-height: 1.35; color: var(--text-muted);
@@ -94,11 +96,13 @@ class Proportion extends BaseGame {
                     color: var(--text-main);
                 }
                 .pr-trou {
-                    cursor: pointer; color: var(--primary);
+                    cursor: pointer; color: var(--primary-texte);
                     background: color-mix(in srgb, var(--primary) 9%, transparent);
                     -webkit-tap-highlight-color: transparent;
                 }
-                .pr-trou:hover { background: color-mix(in srgb, var(--primary) 17%, transparent); }
+                @media (hover: hover) {
+                    .pr-trou:hover { background: color-mix(in srgb, var(--primary) 17%, transparent); }
+                }
                 /* La case en cours d'écriture : un liseré épais À L'INTÉRIEUR,
                    pour ne pas décaler la grille d'un pixel à chaque
                    déplacement. */
@@ -134,7 +138,7 @@ class Proportion extends BaseGame {
                     font-size: clamp(12px, 2.9cqw, 15px); line-height: 1.5;
                 }
                 .pr-lien[hidden] { display: none; }
-                .pr-lien b { color: var(--primary); }
+                .pr-lien b { color: var(--primary-texte); }
                 .pr-lien-ligne { display: flex; gap: 8px; align-items: baseline; padding: 2px 0; }
                 .pr-puce {
                     flex: 0 0 auto; width: 19px; height: 19px; border-radius: 50%;

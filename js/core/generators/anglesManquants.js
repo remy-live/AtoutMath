@@ -18,6 +18,9 @@
 
 import { makeItem, finalizeChoices } from '../items.js';
 import {
+    paramMarches, marchesCochees, marcheAuRang, conseilProgression, totalDe
+} from '../progression.js';
+import {
     RELATIONS, figureSecantes, figurePartage, figureParalleles, mesureArc, pencheEtale
 } from '../anglesRemarquables.js';
 import { figureAnglesSvg } from '../anglesRemarquablesSvg.js';
@@ -105,25 +108,35 @@ function figureChaine(angle, penche) {
     return { traits: f.traits, arcs: [donne, relais, cherche] };
 }
 
+// ── LES TROIS NIVEAUX, EN CASES À COCHER ────────────────────────────────────
+//
+// Rémy : « il y a pas mal de jeux où ce sont des étapes, et il faudrait
+// pouvoir faire les check box comme pour le calcul littéral, tu ne penses
+// pas ? — fais tout, ce serait le plus cohérent non ? »
+//
+// Le menu avait déjà une entrée « Mélangés, du plus simple au plus dur », et
+// le code la traduisait par `[0, 0, 1, 1, 1, 2][i % 6]` : un partage écrit en
+// dur, que personne ne pouvait ni voir ni changer. C'est exactement ce que la
+// barre des marches montre et laisse tirer — trois cases, et le professeur
+// décide combien de figures reviennent à chaque niveau.
+const LISTE_MARCHES = [
+    { id: '0', nom: '0. Des angles égaux, rien à calculer' },
+    { id: '1', nom: '1. Une soustraction : 90°, 180° ou 360°' },
+    { id: '2', nom: '2. La chaîne : deux relations à la suite' }
+];
+/** Le réglage d'avant les cases : « melange » n'était aucune marche — donc toutes. */
+const ANCIEN = { cle: 'niveau' };
+
 export const anglesManquantsGenerator = {
     id: 'geo.angles-manquants',
     label: 'La valeur manquante — angles remarquables',
     skills: ['geo.angles.relations'],
     answerKinds: ['numeric', 'choice'],
     ecrit: true,
+    // LA LONGUEUR SUIT LE NOMBRE DE NIVEAUX COCHÉS — voir core/duree.js.
+    conseil: (p) => conseilProgression(marchesCochees(p, LISTE_MARCHES, ANCIEN).length),
     params: [
-        {
-            id: 'niveau', type: 'select', label: 'Difficulté', default: 'melange',
-            aide: 'Le niveau 0 ne demande aucun calcul : les deux angles sont égaux, il faut '
-                + 'voir lesquels. Le niveau 1 ajoute la soustraction, et le total change — 90, '
-                + '180 ou 360. La chaîne enchaîne deux relations.',
-            options: [
-                { value: '0', label: '0 — Des angles égaux, rien à calculer' },
-                { value: '1', label: '1 — Une soustraction : 90°, 180° ou 360°' },
-                { value: '2', label: '2 — La chaîne : deux relations à la suite' },
-                { value: 'melange', label: 'Mélangés, du plus simple au plus dur' }
-            ]
-        },
+        paramMarches({ marches: LISTE_MARCHES, mot: 'niveau', ancien: ANCIEN }),
         {
             id: 'familles', type: 'multiselect', label: 'Les relations travaillées',
             aide: 'Une série qui ne travaille QUE les supplémentaires s\'installe dans la '
@@ -141,11 +154,12 @@ export const anglesManquantsGenerator = {
             ? p.familles.filter(id => familleDe(id)) : FAMILLES.map(f => f.id));
         const liste = (choisies.length ? choisies : FAMILLES.map(f => f.id)).map(familleDe);
 
-        const niveau = ['0', '1', '2'].includes(String(p.niveau)) ? String(p.niveau) : 'melange';
-        // MÉLANGÉ VEUT DIRE « DANS L'ORDRE », pas « au hasard » : une fiche
-        // commence par ce qui se voit et finit par ce qui se raisonne.
-        const i = Number(ctx.index) || 0;
-        const voulu = niveau === 'melange' ? [0, 0, 1, 1, 1, 2][i % 6] : Number(niveau);
+        // MÉLANGÉ VOULAIT DIRE « DANS L'ORDRE », pas « au hasard » : une fiche
+        // commence par ce qui se voit et finit par ce qui se raisonne. C'est
+        // toujours vrai, mais c'est la barre des marches qui l'écrit
+        // maintenant — voir core/progression.js.
+        const voulu = Number(marcheAuRang(ctx.index ?? 0,
+            marchesCochees(p, LISTE_MARCHES, ANCIEN), totalDe(ctx, p), p)) || 0;
 
         if (voulu === 2) return itemChaine(rng);
         const pool = liste.filter(f => f.niveau === voulu);
@@ -197,6 +211,7 @@ function itemSimple(rng, f) {
         difficulty: f.niveau + 1,
         meta: {
             famille: f.id, relation: f.relation, niveau: f.niveau,
+            marche: String(f.niveau),
             donne: mDonne, reponse: bon, figure,
             theme: `${f.id}-${mDonne}`
         }
@@ -240,6 +255,7 @@ function itemChaine(rng) {
         difficulty: 3,
         meta: {
             famille: 'chaine', relation: 'chaine', niveau: CHAINE.niveau,
+            marche: String(CHAINE.niveau),
             donne: mDonne, relais, reponse: bon, figure,
             theme: `chaine-${mDonne}`
         }

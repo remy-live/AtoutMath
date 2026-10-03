@@ -13,7 +13,8 @@ import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import {
     ecrireTerme, ecrireSomme, reduire, normaliser, memeReponse,
-    fauteToutRegrouper, fauteAjouterExposants, partDeDegre, MOINS
+    fauteToutRegrouper, fauteAjouterExposants, partDeDegre, MOINS,
+    tronconnerSomme, signatureTerme, groupesSemblables
 } from '../js/core/reductionPuissances.js';
 import { ETAPES, question } from '../js/core/generators/litteralPuissances.js';
 
@@ -138,4 +139,75 @@ test('LE CUBE NE SORT QUE DES MARCHES QUI EN VEULENT', () => {
             }
         }
     }
+});
+
+
+// ── CE QUI VA ENSEMBLE ──────────────────────────────────────────────────────
+//
+// Rémy, devant « x² + 2x + 5x + 10 » : « tu peux faire changer de couleur ce
+// qui va ensemble ». Ce coloriage est posé sur le champ de saisie : il doit
+// donc rendre le texte de l'élève À LA LETTRE, et ne surligner que les termes
+// qui se réunissent vraiment.
+
+test('RECOLLER LES MORCEAUX REDONNE EXACTEMENT LE TEXTE TAPÉ', () => {
+    // C'EST LA PROPRIÉTÉ QUI COMPTE. Le découpage sert à envelopper des bouts
+    // du champ dans des <span> ; si les morceaux ne se recollent pas au
+    // caractère près, l'élève voit sa phrase changer sous ses doigts au moment
+    // où on lui dit qu'elle est presque juste.
+    const cas = ['x² + 2x + 5x + 10', 'x2+2x+5x+10', '−2x + 5 − 3x', '', '   ',
+        '2x×3', '(x+2)(x+5)', '3x^2 + x² + 4', 'x', '12x−12x+1+2',
+        '  x²  +  2x  ', '-3x+-2', '5−', '+x'];
+    for (const c of cas) {
+        const m = tronconnerSomme(c);
+        assert.equal(m.map(x => x.texte).join(''), c, `recollage cassé : « ${c} »`);
+        for (const x of m) {
+            if (!x.terme) continue;
+            assert.equal(x.texte.trim(), x.texte,
+                `« ${x.texte} » : un terme ne porte pas ses espaces`);
+            assert.ok(x.texte !== '', `« ${c} » : terme vide`);
+        }
+    }
+});
+
+test('UN SIGNE QUI SUIT UN OPÉRATEUR N\'EST PAS UNE COUPURE', () => {
+    // « −2x + 5 » a DEUX termes, pas trois : le premier moins est le signe de
+    // −2x. Le compter comme séparateur ferait un terme vide en tête, et la
+    // couleur partirait d'un morceau que personne n'a écrit.
+    const termes = (t) => tronconnerSomme(t).filter(m => m.terme).map(m => m.texte);
+    assert.deepEqual(termes('−2x + 5 − 3x'), ['−2x', '5', '3x']);
+    assert.deepEqual(termes('2×−3'), ['2×−3']);
+    assert.deepEqual(termes('x²+2x'), ['x²', '2x']);
+    // Les parenthèses tiennent leur contenu : on ne coupe pas à l'intérieur.
+    assert.deepEqual(termes('(x+2)(x+5)'), ['(x+2)(x+5)']);
+    assert.deepEqual(termes('(x+2)+3'), ['(x+2)', '3']);
+});
+
+test('LES TROIS ÉCRITURES D\'UN EXPOSANT DONNENT LA MÊME SIGNATURE', () => {
+    // Le clavier accepte x², le clavier physique accepte x^2 et x2 — voir
+    // `normaliser`. Si la signature changeait avec la touche choisie, la
+    // couleur d'un terme dépendrait de la façon de le taper.
+    assert.equal(signatureTerme('2x²'), signatureTerme('2x^2'));
+    assert.equal(signatureTerme('2x²'), signatureTerme('2x2'));
+    // Le coefficient et le signe ne comptent pas : c'est la part littérale.
+    assert.equal(signatureTerme('2x'), signatureTerme(MOINS + '12x'));
+    assert.notEqual(signatureTerme('2x'), signatureTerme('2x²'));
+    // Une constante a la signature vide — et les constantes vont ensemble.
+    assert.equal(signatureTerme('10'), '');
+    assert.equal(signatureTerme(MOINS + '7'), '');
+});
+
+test('ON NE COLORIE QUE CE QUI SE RÉUNIT', () => {
+    // Colorier les quatre termes de « x² + 2x + 5x + 10 » en quatre couleurs
+    // ne dirait rien ; n'en colorier que deux répond à la question posée.
+    const couleurs = (t) => groupesSemblables(t)
+        .filter(m => m.terme).map(m => m.groupe);
+    assert.deepEqual(couleurs('x² + 2x + 5x + 10'), [-1, 0, 0, -1]);
+    // Rien à réunir : rien de colorié du tout.
+    assert.deepEqual(couleurs('x² + 7x + 10'), [-1, -1, -1]);
+    // Deux groupes, deux couleurs, numérotées dans l'ordre d'apparition.
+    assert.deepEqual(couleurs('12x − 12x + 1 + 2'), [0, 0, 1, 1]);
+    // Les constantes aussi vont ensemble.
+    assert.deepEqual(couleurs('2x + 5 + 3'), [-1, 0, 0]);
+    // L'écriture n'a pas à être la même pour que la couleur le soit.
+    assert.deepEqual(couleurs('3x^2 + x² + 4'), [0, 0, -1]);
 });

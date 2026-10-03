@@ -189,7 +189,9 @@ class Plateau extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .pl-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .pl-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* LA SCÈNE NE PREND QUE LA PLACE DU DAMIER. En « flex: 1 » elle
                    occupait toute la hauteur restante et centrait le damier
@@ -338,7 +340,9 @@ class Plateau extends BaseGame {
                     border: 2px solid var(--border); border-radius: 11px;
                     background: ${co.claire};
                 }
-                .pl-promo-btn:hover { border-color: #2563eb; transform: translateY(-2px); }
+                @media (hover: hover) {
+                    .pl-promo-btn:hover { border-color: #2563eb; transform: translateY(-2px); }
+                }
                 .pl-promo-btn .pl-glyphe { font-size: clamp(24px, 7cqw, 40px); }
                 .pl-promo-btn small { font-size: .7rem; font-weight: 700; color: #3f3222; }
 

@@ -35,7 +35,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
-    PALIERS, genererTableau, estDonnee, cle, estTotalLigne, consigneDe,
+    PALIERS, TAILLES, genererTableau, estDonnee, cle, estTotalLigne, consigneDe,
     estTotalColonne, prochaineLigne, conseil, nomDeLigne, nomDeColonne, totalGeneral
 } from '../core/tableauCroise.js';
 
@@ -51,6 +51,13 @@ class TableauCroise extends BaseGame {
         // le tableau part vide — c'est l'exercice que Rémy a demandé, et le
         // travail commence une étape plus tôt, au rangement.
         this.depart = this.params.depart === 'enonce' ? 'enonce' : 'tableau';
+        // LA TAILLE DES NOMBRES, RÉGLABLE À PART DU TABLEAU.
+        //
+        // RÉMY : « il faudrait que dans les premiers niveaux, les calculs
+        // soient plus simples (dans les réglages) ». « auto » suit le palier,
+        // et c'est le défaut : le réglage ne change rien tant qu'on n'y touche
+        // pas, et il ne s'adresse qu'à qui vient le chercher.
+        this.taille = TAILLES[this.params.taille] ? this.params.taille : 'auto';
         this.saisies = {};
         this.actif = null;
     }
@@ -152,6 +159,16 @@ class TableauCroise extends BaseGame {
                     .tc-calc { width: min(260px, 100%); grid-template-columns: repeat(4, 1fr); }
                     .tc-table { font-size: clamp(11px, 3.4cqw, 15px); }
                     .tc-table th, .tc-table td { padding: 3px 4px; min-width: 2.9em; }
+                    /* LE TABLEAU DÉFILE DANS SON CADRE PLUTÔT QUE DE SORTIR.
+                       MESURÉ au doigt, au pire tirage sur huit — des en-têtes
+                       longs comme « Pointure 36 » : 361 px de tableau dans un
+                       cadre de 320 à 360 px de fenêtre, 81 px dehors à 320. Et
+                       la colonne coupée est celle des TOTAUX — celle que
+                       l'exercice demande de compléter, et sur laquelle repose
+                       sa consigne (« la ligne ou la colonne où il ne manque
+                       QU'UNE SEULE information »). Elle était invisible à
+                       l'arrivée. */
+                    [data-table] { max-width: 100%; overflow-x: auto; }
                 }
             </style>
             <div class="tc-wrap">
@@ -180,7 +197,8 @@ class TableauCroise extends BaseGame {
     startGameLoop() { this.poser(); }
 
     poser() {
-        this.tableau = genererTableau({ rng: this.rng, palier: this.palier, depart: this.depart });
+        this.tableau = genererTableau({ rng: this.rng, palier: this.palier,
+            depart: this.depart, taille: this.taille });
         if (!this.tableau) return false;
         this.saisies = {};
         this.fini = false;
@@ -496,9 +514,11 @@ class TableauCroise extends BaseGame {
         if (!this.tableau) this.poser();
         const t = this.tableau;
         if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Je ne remplis pas les cases dans l\'ordre où elles sont écrites. Je cherche '
-            + 'la ligne ou la colonne où il ne manque QU\'UNE SEULE case : celle-là, je peux '
-            + 'la boucler tout de suite.', this.tableEl);
+        // UNE SEULE IDÉE, LE GESTE DE CHERCHER : « celle-là, je peux la boucler tout de
+        // suite » redisait la même chose en plus long, et au-delà de 110 caractères la
+        // bulle se lit si lentement qu'on croit la démonstration plantée
+        // (js/core/activities/choice.js, COURT).
+        cur.say('Je cherche la ligne ou la colonne où il ne manque QU\'UNE SEULE case.', this.tableEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let k = 0; k < 3; k++) {
@@ -520,8 +540,7 @@ class TableauCroise extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Et chaque case que je viens d\'écrire en ouvre d\'autres : c\'est comme cela '
-            + 'qu\'on finit le tableau, sans jamais deviner.', this.tableEl);
+        cur.say('Et chaque case que je viens d\'écrire en ouvre d\'autres.', this.tableEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

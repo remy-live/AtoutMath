@@ -83,7 +83,9 @@ class Automate extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .au-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .au-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* Le programme À GAUCHE, le quadrillage à droite — et l'un
                    au-dessus de l'autre dès que l'écran se rétrécit. Les deux
@@ -244,7 +246,7 @@ class Automate extends BaseGame {
                 }
                 .au-annonce-rang {
                     font-size: .74rem; font-weight: 800; letter-spacing: .04em;
-                    text-transform: uppercase; color: var(--primary);
+                    text-transform: uppercase; color: var(--primary-texte);
                 }
                 .au-annonce-carte h3 { margin: 4px 0 8px; font-size: 1.25rem; }
                 .au-annonce-carte p { margin: 0 0 16px; line-height: 1.4; color: var(--text-muted); }

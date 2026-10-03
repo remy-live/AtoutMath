@@ -30,7 +30,7 @@ import { tracesDe, cercleSvg } from '../cercleFigure.js';
 // La comparaison des mots vit avec le VOCABULAIRE, pas avec l'écran : c'est une
 // règle sur les mots du cercle, et elle se teste sans navigateur.
 import { memeMot, memeNotation } from '../generators/cercleVocabulaire.js';
-import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 
 /** Les deux marches, et le préréglage qui les enchaîne. */
 export const MARCHES = ['choisir', 'seul'];
@@ -258,7 +258,7 @@ export function mount(container, session, opts = {}) {
         // En écriture, le robot ÉCRIT : montrer le champ vide et dire la
         // réponse à côté laisserait croire qu'il n'y a rien à taper.
         if (faire === 'ecrire' && cible) cible.value = item.answer;
-        cursor.say(item.explanation || `C'est ${item.answer}.`, cible || plateau);
+        cursor.say(enUneBulle(item.explanation, `C'est ${item.answer}.`), cible || plateau);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();
     }

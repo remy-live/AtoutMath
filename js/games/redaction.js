@@ -125,18 +125,18 @@ class Redaction extends BaseGame {
                     font-size: clamp(13px, 2.9cqw, 16px); line-height: 1.55;
                 }
                 .rd-ligne--vide { opacity: .35; }
-                .rd-mot { font-weight: 800; color: var(--primary); }
+                .rd-mot { font-weight: 800; color: var(--primary-texte); }
                 .rd-etiquette, .rd-groupe {
                     display: inline-block; padding: 5px 11px; border-radius: 9px;
                     border: 2px solid var(--border); background: var(--bg-panel);
                     font-weight: 700; cursor: pointer; font-size: .95em;
                 }
                 .rd-etiquette--prise, .rd-groupe--pris { opacity: .3; cursor: default; }
-                .rd-etiquette--choisi, .rd-groupe--choisi { border-color: var(--primary); color: var(--primary); }
+                .rd-etiquette--choisi, .rd-groupe--choisi { border-color: var(--primary); color: var(--primary-texte); }
                 .rd-trou {
                     display: inline-block; min-width: 3.4em; padding: 2px 9px;
                     border-bottom: 2px dashed var(--primary); text-align: center;
-                    font-weight: 800; cursor: pointer; color: var(--primary);
+                    font-weight: 800; cursor: pointer; color: var(--primary-texte);
                 }
                 .rd-trou--vide::before { content: '?'; opacity: .5; }
                 .rd-trou--juste { border-bottom-style: solid; border-color: var(--success); color: var(--success); }
@@ -162,7 +162,7 @@ class Redaction extends BaseGame {
                     position: fixed; z-index: 2147483000; pointer-events: none;
                     transform: translate(-50%, -50%) scale(1.06);
                     opacity: .95; box-shadow: var(--shadow-md);
-                    border-color: var(--primary); color: var(--primary);
+                    border-color: var(--primary); color: var(--primary-texte);
                 }
                 .rd-source { opacity: .28; }
                 .rd-survol {

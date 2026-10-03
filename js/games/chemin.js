@@ -394,9 +394,14 @@ class CheminNumerote extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Je ne fonce pas au nombre suivant : je regarde les COINS. Un coin n\'a que '
-            + 'deux voisines — si le chemin ne le prend pas en passant, il ne pourra plus '
-            + 'jamais y aller.', this.svg);
+        cur.say('Je ne fonce pas au nombre suivant : je regarde les COINS.', this.svg);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        // POURQUOI LES COINS : gardé, mais dans sa propre bulle. Au-delà de 110 caractères
+        // la bulle se lit si lentement qu'on croit la démonstration plantée
+        // (js/core/activities/choice.js, COURT).
+        cur.say('Un coin n\'a que deux voisines : si le chemin ne le prend pas en passant, c\'est perdu.',
+            this.svg);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

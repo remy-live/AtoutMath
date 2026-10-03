@@ -47,6 +47,28 @@ const MODELES_PIXEL = [
 
 const COULEURS = { red: '#ff6b6b', blue: '#4dabf7', green: '#51cf66', yellow: '#fcc419', black: '#333', white: '#fff' };
 
+/**
+ * LA BONNE RÉPONSE D'UNE TÂCHE, TELLE QU'ON L'ÉCRIT.
+ *
+ * RÉMY : « mais pour le tableur la bonne réponse est =A1+B1 pas 17 ».
+ *
+ * Il a raison, et cela se voyait à deux endroits. À l'écran, le refus
+ * annonçait « attendu : 17 » alors que la consigne demande une FORMULE :
+ * l'élève lit qu'on voulait 17 et va l'écrire — c'est-à-dire exactement
+ * la faute que ce niveau existe pour empêcher (« recopier les nombres
+ * marche une fois ; avec les références, le tableur recalcule tout seul »).
+ * Et dans le carnet d'erreurs, la réponse attendue s'enregistrait comme
+ * `17` : le professeur relisait « attendu : 17 » sous une question qui
+ * demandait `=A1+B1`.
+ *
+ * La VALEUR reste le juge — `=B1+A1` est aussi juste que `=A1+B1`, et
+ * comparer les écritures refuserait la seconde. Mais ce qu'on ANNONCE et
+ * ce qu'on ENREGISTRE est l'écriture attendue.
+ */
+export function attenduEcrit(tache) {
+    return (tache && tache.formule && tache.modele) ? tache.modele : (tache || {}).attendu;
+}
+
 class Tableur extends BaseGame {
     render() {
         this.level = Math.min(9, Math.max(1, parseInt(this.params.startLevel) || 1));
@@ -114,6 +136,12 @@ class Tableur extends BaseGame {
                 .tab-cell input.fige { color: #778; background: #f1f3f9; }
                 .tab-cell input.juste { background: #b2f2bb; }
                 .tab-cell input.faux { background: #ffc9c9; }
+                /* LA FORMULE DONNÉE APRÈS TROIS REFUS — voir aiderEtPasser().
+                   Ni verte ni rouge : ce n'est ni une réussite ni une faute, c'est
+                   un modèle. Le bleu pâle est la couleur des aides ailleurs.
+                   (Pas d'accent grave dans ce commentaire : il est DANS un
+                   littéral gabarit, et le premier le refermerait.) */
+                .tab-cell input.donne { background: #dbe4ff; font-style: italic; }
                 .tab-duo { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
                 .tab-duo h3 { text-align: center; margin: 0 0 6px; font-size: .95rem; color: #556; }
                 .tab-palette { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
@@ -390,6 +418,8 @@ class Tableur extends BaseGame {
         if (!this.isRunning) return;
         this.taches = [];
         this.tachesFaites = 0;
+        // COMBIEN DE FOIS CETTE TÂCHE-CI A ÉTÉ REFUSÉE — voir `validerSaisie`.
+        this.refus = 0;
         const grille = this.grilleActive();
         if (grille) grille.querySelectorAll('.tab-cell').forEach(c => {
             c.classList.remove('zone', 'bonne');
@@ -431,7 +461,8 @@ class Tableur extends BaseGame {
             const v1 = alea(10), v2 = alea(10);
             const [a, b, c] = ['A' + ligne, 'B' + ligne, 'C' + ligne];
             this.poser(a, v1); this.poser(b, v2);
-            this.taches = [{ id: c, attendu: String(v1 + v2), formule: true }];
+            this.taches = [{ id: c, attendu: String(v1 + v2), formule: true,
+                modele: `=${a}+${b}` }];
             // LA CONSIGNE DIT TOUJOURS LE GESTE, pas seulement la case. Rémy :
             // « parfois tu notes en B6 mais tu ne précises pas ce qu'il faut
             // faire (du genre, écris la formule…) ». L'exemple ne s'affichait
@@ -448,7 +479,8 @@ class Tableur extends BaseGame {
             const p = 2 + alea(5), q = 2 + alea(5);
             const [a, b, c] = ['A' + l, 'B' + l, 'C' + l];
             this.poser(a, p); this.poser(b, q);
-            this.taches = [{ id: c, attendu: String(p * q), formule: true }];
+            this.taches = [{ id: c, attendu: String(p * q), formule: true,
+                modele: `=${a}*${b}` }];
             consigne.innerHTML = `Écris dans <span class="cible">${c}</span> la <b>formule</b> `
                 + `qui multiplie ${a} par ${b}, avec l'étoile *`
                 + `${premier ? ` — ex : <span class="code">=${a}*${b}</span>` : ''}`;
@@ -466,7 +498,8 @@ class Tableur extends BaseGame {
             const plage = `${col}1:${col}4`;
             const attendu = this.level === 8 ? total / 4 : total;
             const fonction = this.level === 8 ? 'MOYENNE' : 'SOMME';
-            this.taches = [{ id: cible, attendu: String(attendu), formule: true }];
+            this.taches = [{ id: cible, attendu: String(attendu), formule: true,
+                modele: `=${fonction}(${plage})` }];
             consigne.innerHTML = `Écris dans <span class="cible">${cible}</span> la <b>formule</b> `
                 + `qui ${this.level === 8 ? 'fait la moyenne' : 'additionne tout'} de ${plage}`
                 + `${premier ? ` — utilise <span class="code">=${fonction}(${plage})</span>` : ''}`;
@@ -482,8 +515,10 @@ class Tableur extends BaseGame {
             });
             const grandTotal = lignes.reduce((s, l) => s + l.total, 0);
             this.taches = [
-                ...lignes.map(l => ({ id: l.cell, attendu: String(l.total), formule: true })),
-                { id: 'D6', attendu: String(grandTotal), formule: true }
+                ...lignes.map(l => ({ id: l.cell, attendu: String(l.total), formule: true,
+                    modele: `=B${l.cell[1]}*C${l.cell[1]}` })),
+                { id: 'D6', attendu: String(grandTotal), formule: true,
+                    modele: '=SOMME(D2:D4)' }
             ];
             consigne.innerHTML = '<b>La facture !</b> 1. Écris dans D2, D3 et D4 la <b>formule</b> '
                 + 'qui multiplie le prix par la quantité <span class="code">=B2*C2</span>&nbsp;· '
@@ -582,6 +617,70 @@ class Tableur extends BaseGame {
         }
     }
 
+    /**
+     * UN REFUS LAISSE LA CASE PRÊTE À ÊTRE RÉÉCRITE, ET NON À ÊTRE ALLONGÉE.
+     *
+     * RÉMY, capture à l'appui : A1 = 0, B1 = 9, `=A1+B1` dans C1 — la formule
+     * même que la consigne donne en exemple — et l'application répond « Ta
+     * formule donne Erreur ».
+     *
+     * MESURÉ : `=A1+B1` avec un zéro donne bien 9, et soixante questions
+     * d'affilée n'ont produit aucune « Erreur ». Ce qui la produit, en
+     * revanche, et au mot près : `=A1+B1=A1+B1`. Le second `=` n'est pas un
+     * caractère de calcul, donc l'évaluateur rend « Erreur » — et c'est la
+     * saisie qu'on obtient en retapant par-dessus une formule refusée, puisque
+     * la case GARDAIT son texte et que le curseur se posait au bout.
+     *
+     * On sélectionne donc ce qui est refusé : la frappe suivante le remplace,
+     * comme dans un vrai tableur. Et l'on explique le doublon au lieu de dire
+     * « Erreur », qui n'apprend rien.
+     */
+    refuser(inp, texte, snapshot) {
+        this.refus = (this.refus || 0) + 1;
+        this.message(texte, 'ko');
+        inp.classList.add('faux');
+        this.onWrongAnswer(null, snapshot);
+        // Ni en démonstration ni quand la case n'est plus là.
+        if (!this.isDemo && inp.isConnected) {
+            regTimeout(() => { try { inp.focus(); inp.select(); } catch { /* démonté */ } }, 60);
+        }
+        this.peutEtreAidee(inp);
+    }
+
+    /**
+     * TROIS REFUS SUR LA MÊME CASE : ON MONTRE ET L'ON PASSE.
+     *
+     * Rémy : « comment fonctionne la notation sur le tableur car il attend
+     * toujours la bonne réponse ». Elle est honnête — chaque refus est
+     * enregistré comme une question fausse, et la note est le taux de réussite
+     * — mais la conséquence l'était moins : la case ne se refermait JAMAIS.
+     * Ailleurs, deux essais closent la question et l'on avance ; ici un élève
+     * perdu restait sur la même case, accumulait les faux sans plafond, et la
+     * séance ne pouvait plus finir (l'étape se clôt à vingt-sept réussites).
+     *
+     * Au troisième refus, on écrit la formule attendue dans la case, on le
+     * dit, et l'on tire une autre question du même niveau. Ce n'est pas une
+     * réussite — elle n'est pas comptée — et ce n'est plus un mur.
+     */
+    aiderEtPasser(inp, tache) {
+        const modele = tache && tache.modele;
+        if (!modele) return false;
+        inp.value = modele;
+        inp.classList.remove('faux');
+        inp.classList.add('donne');
+        if (inp === this.inputActif) this.ui.fxVal.textContent = modele;
+        this.message(`La formule attendue était ${modele}. On en refait une autre.`, 'ok');
+        regTimeout(() => { if (this.isRunning) this.genererTache(); }, 2600);
+        return true;
+    }
+
+    /** Au troisième refus, la case s'ouvre au lieu de se refermer. */
+    peutEtreAidee(inp) {
+        if (this.isDemo || this.refus < 3) return;
+        const tache = this.taches.find(t => t.id === inp.dataset.cellId);
+        this.aiderEtPasser(inp, tache);
+    }
+
     validerSaisie(inp) {
         const tache = this.taches.find(t => t.id === inp.dataset.cellId);
         if (!tache) return;
@@ -591,24 +690,33 @@ class Tableur extends BaseGame {
 
         if (tache.formule) {
             if (!val.startsWith('=')) {
-                this.message('Une formule commence toujours par =', 'ko');
-                inp.classList.add('faux');
-                this.onWrongAnswer(null, {
+                this.refuser(inp, 'Une formule commence toujours par =', {
                     questionText: this.ui.consigne.textContent,
-                    input: inp.value, expected: 'une formule commençant par =',
+                    input: inp.value, expected: attenduEcrit(tache),
                     concept: SKILL_FORMULES,
                     customMessage: `Sans le signe =, le tableur croit que tu écris du texte. C'est = qui déclenche le calcul.`
+                });
+                return;
+            }
+            // DEUX « = » : LA FORMULE A ÉTÉ TAPÉE PAR-DESSUS UNE AUTRE.
+            // C'est le cas de la capture de Rémy — voir `refuser`. Le dire
+            // vaut mieux que de répondre « Erreur », qui décrit le symptôme.
+            if (val.indexOf('=', 1) > 0) {
+                this.refuser(inp, 'Il y a deux « = » : la formule est écrite deux fois.', {
+                    questionText: this.ui.consigne.textContent,
+                    input: inp.value, expected: attenduEcrit(tache),
+                    concept: SKILL_FORMULES,
+                    customMessage: `Ta case contient ${val} : la formule s'est ajoutée à la `
+                        + `précédente au lieu de la remplacer. Efface tout, puis écris-la une seule fois.`
                 });
                 return;
             }
             const aRef = /[A-E][1-9]/.test(val);
             const aFonction = /(SOMME|SUM|MOYENNE|AVERAGE)/.test(val);
             if (!aRef && !aFonction) {
-                this.message('Utilise les références des cases (A1, B2…), pas les nombres !', 'ko');
-                inp.classList.add('faux');
-                this.onWrongAnswer(null, {
+                this.refuser(inp, 'Utilise les références des cases (A1, B2…), pas les nombres !', {
                     questionText: this.ui.consigne.textContent,
-                    input: inp.value, expected: 'une formule avec des références',
+                    input: inp.value, expected: attenduEcrit(tache),
                     concept: SKILL_FORMULES,
                     customMessage: `Recopier les nombres (=3+4) marche une fois, mais si une case change, ton résultat devient faux. Avec les références (=A1+B1), le tableur recalcule tout seul : c'est toute sa force.`
                 });
@@ -619,22 +727,39 @@ class Tableur extends BaseGame {
                 inp.value = res;
                 if (inp === this.inputActif) this.ui.fxVal.textContent = String(res);
                 this.reussirSaisie(inp);
-            } else {
-                this.message(`Ta formule donne ${res}, attendu : ${tache.attendu}.`, 'ko');
-                inp.classList.add('faux');
-                this.onWrongAnswer(null, {
+            } else if (typeof res === 'string') {
+                // LA FORMULE NE SE LIT PAS : on dit POURQUOI, et l'on ne parle
+                // pas du total attendu — il n'y a pas de total à comparer.
+                // « Ta formule donne Erreur, attendu : 17 » laissait l'élève
+                // devant deux énigmes au lieu d'une.
+                const raison = res.replace(/^Erreur\s*:\s*/, '');
+                this.refuser(inp, `${raison.charAt(0).toUpperCase()}${raison.slice(1)}.`, {
                     questionText: this.ui.consigne.textContent,
-                    input: val, expected: tache.attendu,
+                    input: val, expected: attenduEcrit(tache),
                     concept: SKILL_FORMULES,
-                    customMessage: `La formule ${val} calcule ${res}. Vérifie que tu utilises les BONNES cases : relis la consigne et pointe chaque référence du doigt.`
+                    customMessage: `Le tableur n'arrive pas à calculer ${val} : ${raison}. `
+                        + `Une formule ne contient que des références de cases (A1, B2…), `
+                        + `des nombres et les signes + − * / .`
+                });
+            } else {
+                // ON NE DIT PLUS « attendu : 17 » SOUS UNE QUESTION QUI DEMANDE
+                // UNE FORMULE : l'élève lirait qu'il faut écrire 17, ce que ce
+                // niveau existe précisément pour empêcher. On dit ce que le
+                // total DEVRAIT faire, ce qui est un indice sur les cases, pas
+                // une réponse à recopier.
+                this.refuser(inp, `Ta formule calcule ${res} ; le total cherché fait ${tache.attendu}.`, {
+                    questionText: this.ui.consigne.textContent,
+                    input: val, expected: attenduEcrit(tache),
+                    concept: SKILL_FORMULES,
+                    customMessage: `La formule ${val} calcule ${res}, et l'on cherche ${tache.attendu}. `
+                        + `Vérifie que tu utilises les BONNES cases : relis la consigne et pointe `
+                        + `chaque référence du doigt.`
                 });
             }
         } else {
             if (val === tache.attendu) this.reussirSaisie(inp);
             else {
-                this.message(`Ce n'est pas la valeur demandée.`, 'ko');
-                inp.classList.add('faux');
-                this.onWrongAnswer(null, {
+                this.refuser(inp, `Ce n'est pas la valeur demandée.`, {
                     questionText: this.ui.consigne.textContent,
                     input: inp.value, expected: tache.attendu,
                     concept: SKILL_REPERAGE,
@@ -660,8 +785,30 @@ class Tableur extends BaseGame {
 
     // --- Calcul des formules ------------------------------------------------
 
+    /**
+     * « ERREUR » N'EST PAS UN DIAGNOSTIC.
+     *
+     * RÉMY, deux captures à deux jours d'écart : `=A1+B1` — la formule même
+     * que la consigne donne en exemple — et « Ta formule donne Erreur ». Je
+     * n'ai pas su reproduire son cas : la même formule, avec un zéro comme
+     * avec 8 et 9, donne le bon total, et soixante questions d'affilée n'ont
+     * produit aucune « Erreur ». Une saisie la produit — la formule écrite
+     * deux fois —, mais son message d'alors nommait le doublon, pas le sien.
+     *
+     * TANT QU'ON NE SAIT PAS, ON FAIT DIRE À LA MACHINE CE QU'ELLE VOIT. Le
+     * mot « Erreur » désigne le symptôme et cache la cause : il reste, après
+     * remplacement des références, quelque chose qui n'est pas du calcul. On
+     * rend donc ce QUELQUE CHOSE. L'élève lit « je ne sais pas lire “B7” »
+     * plutôt qu'un mot de machine, et si cela retombe sur Rémy, sa capture
+     * portera la réponse.
+     *
+     * @returns {number|string} le résultat, ou une phrase qui commence par
+     *   « Erreur » — les appelants ne testent que `parseFloat`, qui rend NaN
+     *   dans les deux cas.
+     */
     evaluerFormule(formule) {
         let expr = formule.substring(1).toUpperCase();
+        const brut = expr;
         const plage = (s, e) => {
             const vals = [];
             const c1 = this.cols.indexOf(s[0]), r1 = parseInt(s.slice(1)) - 1;
@@ -687,10 +834,29 @@ class Tableur extends BaseGame {
             return isNaN(v) ? 0 : v;
         });
         try {
-            if (/[^0-9+\-*/().\s]/.test(expr)) return 'Erreur';
+            // CE QUI RESTE ET QUI N'EST PAS DU CALCUL. Après les remplacements,
+            // une formule lisible ne contient plus que des chiffres, des
+            // opérateurs, des parenthèses et des espaces. Tout le reste est ce
+            // qu'on n'a pas su lire — et c'est cela qu'il faut nommer.
+            const restes = expr.match(/[^0-9+\-*/().\s]+/g);
+            if (restes) {
+                // UNE RÉFÉRENCE HORS GRILLE SE DIT PAR SON NOM. « B7 » quand
+                // la grille s'arrête à la ligne 6 : après remplacement il ne
+                // reste que le « B », qui ne dirait rien. On relit donc la
+                // formule d'origine pour retrouver la référence entière.
+                const refs = brut.match(/[A-Z]+\d+/g) || [];
+                const absente = refs.find(r =>
+                    !this.grilleActive()?.querySelector(`input[data-cell-id="${r}"]`));
+                if (absente) return `Erreur : il n'y a pas de case ${absente} dans cette grille`;
+                const quoi = [...new Set(restes)].slice(0, 2).join(' ');
+                return `Erreur : je ne sais pas lire « ${quoi} » dans ${brut}`;
+            }
             const res = new Function('return ' + expr)();
+            if (!Number.isFinite(res)) return 'Erreur : ce calcul n\'a pas de résultat';
             return Math.round(res * 100) / 100;
-        } catch { return 'Erreur'; }
+        } catch (e) {
+            return `Erreur : le calcul ${expr} ne se fait pas`;
+        }
     }
 
     // --- Progression --------------------------------------------------------

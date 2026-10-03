@@ -135,7 +135,7 @@ class TourBrahma extends BaseGame {
                 .tb-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .tb-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }
@@ -360,7 +360,7 @@ class TourBrahma extends BaseGame {
             this.etat = jouer(this.etat, c.de, c.vers);
             this.coups++;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.step || 700) || !this.isRunning) return fin();
+            if (!await cur.pause(700) || !this.isRunning) return fin();
         }
         cur.say(`C'est pour cela que le compte double à chaque boule ajoutée, plus un : `
             + '1, 3, 7, 15, 31… Avec soixante-quatre boules, les moines de Brahma en ont '

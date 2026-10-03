@@ -104,7 +104,7 @@ class QuadriMorph extends BaseGame {
                     background: var(--bg-panel); color: var(--text-muted);
                 }
                 .qm-etape--ici {
-                    border-color: var(--primary); color: var(--primary);
+                    border-color: var(--primary); color: var(--primary-texte);
                     background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
                 }
                 .qm-etape--faite { opacity: .5; }
@@ -133,10 +133,10 @@ class QuadriMorph extends BaseGame {
                 .qm-fig { width: 100%; height: auto; display: block;
                     background: var(--bg-panel); border: 1px solid var(--border);
                     border-radius: 16px; }
-                .qm-fig--visee { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,.25); }
+                .qm-fig--visee { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent); }
                 .qm-nom {
                     text-align: center; font-weight: 800; font-size: 1.05rem; margin-top: 6px;
-                    color: var(--primary); min-height: 1.4em;
+                    color: var(--primary-texte); min-height: 1.4em;
                 }
                 /* Le nom se cache pendant qu'on le cherche : c'est la question. */
                 .qm-nom--cache { color: var(--text-muted); }
@@ -152,7 +152,9 @@ class QuadriMorph extends BaseGame {
                     background: var(--bg-panel); border: 2px solid var(--border);
                     color: var(--text-main); cursor: grab; max-width: 220px; text-align: center;
                 }
-                .qm-cartes .kk-chip:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .qm-cartes .kk-chip:hover { border-color: var(--primary); }
+                }
                 .qm-chip--posee { opacity: .45; pointer-events: none; border-style: dashed; }
 
                 .qm-noms { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -161,7 +163,9 @@ class QuadriMorph extends BaseGame {
                     background: var(--bg-panel); color: var(--text-main);
                     font: inherit; font-weight: 800; cursor: pointer;
                 }
-                .qm-nom-btn:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .qm-nom-btn:hover { border-color: var(--primary); }
+                }
                 .qm-nom-btn--juste { border-color: var(--success); background: rgba(22,163,74,.12); }
                 .qm-nom-btn--faux { border-color: var(--danger); background: rgba(220,38,38,.1); }
 
@@ -484,9 +488,11 @@ class QuadriMorph extends BaseGame {
             + 'respecter.', this.zoneEl);
         if (!await cursor.pause(DEMO_SPEED.settle)) return;
         if (!await gate.waitTurn()) return;
-        cursor.say('Puis je LIS ce que j\'obtiens : les chevrons disent les côtés '
-            + 'parallèles, les petits traits les longueurs égales. Chaque propriété en '
-            + 'plus RÉTRÉCIT la famille.', this.familleEl);
+        // « Chaque propriété en plus RÉTRÉCIT la famille » est une leçon, et c'est
+        // justement ce que la figure montre toute seule : 158 caractères pour le
+        // redire. Reste le geste, lire le codage.
+        cursor.say('Puis je LIS la figure : les chevrons disent les côtés parallèles, '
+            + 'les petits traits les longueurs égales.', this.familleEl);
         await cursor.pause(DEMO_SPEED.between);
     }
 }

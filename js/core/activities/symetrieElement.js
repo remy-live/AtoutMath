@@ -30,6 +30,7 @@ import {
     cleElement, ecrireElement, lireElement
 } from '../elementSymetrie.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { ecrituresVoulues, seSouvenirDesEcritures } from '../reglagesDuPoste.js';
 
 /** Les trois marches, et le préréglage qui les enchaîne. */
 export const MARCHES = ['choisir', 'cliquer', 'ecrire'];
@@ -78,6 +79,44 @@ export function mount(container, session, opts = {}) {
         // afficherait « (d₂) » à côté de la droite cherchée : l'élève
         // désignerait un nom, pas une droite, et la marche n'en serait plus une.
         const candidats = m.candidats.map(c => (marche === 'choisir' ? c : { ...c, nom: '' }));
+        // ── CHAQUE DROITE PEUT DIRE COMMENT ELLE S'ÉCRIT ────────────────────
+        //
+        // RÉMY : « Les élèves ont beaucoup de mal à comprendre le concept de
+        // x = 6 […] si la souris passe sur une droite ou sur un point ou qu'il
+        // clique dessus, on a un petit tooltip visible qui donne les
+        // coordonnées du point ou l'équation de la droite ».
+        //
+        // PAS SUR LA MARCHE « ÉCRIRE », ET C'EST TOUTE LA DIFFICULTÉ. Sur
+        // cette marche-là, l'élève doit ÉCRIRE « x = 6 » lui-même : une bulle
+        // qui l'affiche au survol ne lui enseignerait plus rien, elle lui
+        // donnerait la réponse à recopier. L'escalier existe précisément pour
+        // ça — on découvre la notation sur les deux premières marches, où elle
+        // ne coûte rien, et on la restitue seul sur la troisième.
+        //
+        // ET ELLE NE TRAHIT RIEN SUR LES DEUX PREMIÈRES : TOUTES les droites
+        // disent la leur, pas seulement la bonne. Savoir que (d₂) s'écrit
+        // « x = 6 » ne dit pas que (d₂) est l'axe cherché.
+        // ET SUR LA MARCHE « ÉCRIRE », SEULEMENT SI L'ÉLÈVE LE DEMANDE.
+        //
+        // RÉMY, capture de cette marche-là à l'appui : « là il faudrait encore
+        // le point d'interrogation qui donne les coordonnées du point et de la
+        // droite ».
+        //
+        // IL A RAISON, ET SA FORMULATION LÈVE L'OBJECTION. J'avais éteint les
+        // bulles ici parce qu'afficher « x = 6 » au survol donnerait la réponse
+        // à recopier sur la marche qui demande justement de l'écrire. Mais
+        // DERRIÈRE UN POINT D'INTERROGATION, ce n'est plus un cadeau : c'est
+        // l'élève qui demande, d'un geste, et il sait ce qu'il demande.
+        //
+        // ET ÇA NE DONNE TOUJOURS PAS LA RÉPONSE : toutes les droites disent
+        // la leur, pas seulement la bonne. Savoir que (d₂) s'écrit « x = 6 »
+        // ne dit pas que (d₂) est l'axe cherché — il reste à trouver LAQUELLE,
+        // et c'est la question. D'où aussi le fait que ça ne compte pas comme
+        // un indice : c'est une aide à la LECTURE, comme la calculatrice.
+        const avecEcriture = marche !== 'ecrire' || ecrituresVoulues();
+        const montres = avecEcriture
+            ? candidats.map(c => ({ ...c, dit: ecrireElement(m.hauteur, c) }))
+            : candidats;
         const grille = quadrillageSvg({
             largeur: m.largeur, hauteur: m.hauteur, repere: true, prefixe: 'sy',
             figures: m.pieces.map((cases, i) => ({
@@ -86,7 +125,7 @@ export function mount(container, session, opts = {}) {
                     + (i === m.de ? ' qd-piece--source' : '')
                     + (i === m.vers ? ' qd-piece--cible' : '')
             })),
-            elements: candidats,
+            elements: montres,
             // Les CANDIDATS sont cliquables, pas les cases : la nappe de cases
             // recouvre la grille entière et attraperait les clics des droites.
             elementsCliquables: marche === 'cliquer'
@@ -94,7 +133,8 @@ export function mount(container, session, opts = {}) {
 
         container.innerHTML = `
             <div class="game-question">${echapper(item.prompt.text)}</div>
-            <div class="figure-wrap figure-wrap--interactive sy-plateau">${grille}</div>
+            <div class="figure-wrap figure-wrap--interactive sy-plateau">${grille}<span
+                class="sy-bulle" hidden aria-hidden="true"></span></div>
             ${zoneDeReponse()}
             ${hintBar(session)}`;
 
@@ -104,6 +144,7 @@ export function mount(container, session, opts = {}) {
             return;
         }
         wireHint(container, session);
+        brancherLaBulle();
         brancher();
     }
 
@@ -119,13 +160,77 @@ export function mount(container, session, opts = {}) {
                 directement sur le dessin.</p>`;
         }
         const quoi = 'une droite s\'écrit x = … ou y = …, un point s\'écrit (… ; …)';
+        // LE POINT D'INTERROGATION DE RÉMY. Il n'apparaît que tant que les
+        // écritures sont éteintes : un bouton qui n'allume plus rien est un
+        // bouton cassé, et celui-ci se tait dès qu'il a servi.
+        const demander = ecrituresVoulues() ? '' : `<button type="button"
+            class="sy-demander" data-sy-ecritures
+            title="Montrer comment chaque droite et chaque point du dessin s'écrivent. Cela ne dit pas lequel est la réponse."
+            aria-label="Comment ça s'écrit ?">?</button>`;
         return `<div class="sy-ecriture">
-            <label class="sy-label" for="sy-champ">Écris-le : <span>${quoi}</span></label>
+            <label class="sy-label" for="sy-champ">Écris-le : <span>${quoi}</span>${demander}</label>
             <input id="sy-champ" class="sy-champ" type="text" inputmode="text"
                    autocomplete="off" spellcheck="false" placeholder="x = 4">
             <button type="button" class="kk-btn-valider" data-valider>Valider</button>
         </div>
         <p class="sy-statut" role="status"></p>`;
+    }
+
+    /**
+     * LA BULLE QUI DIT « x = 6 ».
+     *
+     * AU DOIGT AUSSI, et pas seulement à la souris : sur une tablette il n'y a
+     * pas de survol, et c'est la moitié de la classe. Elle répond donc à trois
+     * gestes — la souris qui passe, le doigt qui touche, la tabulation qui
+     * arrive — et le doigt la laisse deux secondes et demie, le temps de lire.
+     *
+     * ELLE NE RÉPOND PAS DE LA RÉPONSE. Sur la marche « cliquer », le même
+     * geste désigne l'élément ET montre son écriture : c'est voulu, l'élève
+     * apprend le nom de ce qu'il vient de choisir au moment où il le choisit.
+     * La bulle ne juge rien, elle nomme.
+     */
+    function brancherLaBulle() {
+        const bulle = container.querySelector('.sy-bulle');
+        const plateau = container.querySelector('.sy-plateau');
+        if (!bulle || !plateau) return;
+        let minuteur = null;
+
+        const cacher = () => {
+            if (minuteur) { clearTimeout(minuteur); minuteur = null; }
+            bulle.hidden = true;
+        };
+        const montrer = (cible, tenir) => {
+            const texte = cible.dataset.dit;
+            if (!texte) return;
+            bulle.textContent = texte;
+            bulle.hidden = false;
+            // ON LA POSE SUR LA ZONE DE VISÉE, pas sous le curseur : une bulle
+            // qui suit la souris passe son temps à se glisser sous le doigt
+            // qu'on vient de poser, et au doigt il n'y a pas de curseur du
+            // tout. Le milieu de la zone est le même repère pour les deux.
+            const z = cible.getBoundingClientRect();
+            const p = plateau.getBoundingClientRect();
+            bulle.style.left = `${Math.round(z.left + z.width / 2 - p.left)}px`;
+            bulle.style.top = `${Math.round(z.top + z.height / 2 - p.top)}px`;
+            if (minuteur) { clearTimeout(minuteur); minuteur = null; }
+            // `regTimeout` et non `setTimeout` : un minuteur laissé derrière
+            // soi écrirait dans une bulle que la question suivante a effacée.
+            if (tenir) minuteur = regTimeout(cacher, 2500);
+        };
+
+        svg.querySelectorAll('.qd-el-hit[data-dit]').forEach(cible => {
+            cible.addEventListener('pointerenter', (e) => {
+                // UN DOIGT ENVOIE AUSSI `pointerenter`, et il n'enverra jamais
+                // le `pointerleave` qui va avec : sans la tenue, la bulle
+                // resterait ouverte jusqu'à la question suivante.
+                montrer(cible, e.pointerType !== 'mouse');
+            });
+            cible.addEventListener('pointerleave', (e) => {
+                if (e.pointerType === 'mouse') cacher();
+            });
+            cible.addEventListener('focus', () => montrer(cible, false));
+            cible.addEventListener('blur', cacher);
+        });
     }
 
     function brancher() {
@@ -146,6 +251,18 @@ export function mount(container, session, opts = {}) {
             });
             return;
         }
+        // ON L'ALLUME, ET L'APPAREIL S'EN SOUVIENT. Un élève qui ne tient pas
+        // la notation ne la tient pas davantage à la question suivante : la
+        // lui redemander à chaque fois, ce serait la lui refuser. Le souvenir
+        // est par APPAREIL — c'est une façon de LIRE, pas un réglage
+        // pédagogique, et le professeur garde la main par la marche qu'il
+        // choisit.
+        const demander = container.querySelector('[data-sy-ecritures]');
+        if (demander) demander.onclick = () => {
+            seSouvenirDesEcritures(true);
+            render();
+        };
+
         const champ = container.querySelector('#sy-champ');
         const valider = () => repondreParEcriture(champ.value);
         champ.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); valider(); } };

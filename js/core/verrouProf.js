@@ -26,6 +26,7 @@
 // vérifiable, et un verrou qu'on ne peut pas vérifier n'en est pas un.
 
 import { adresseApiDeduite } from './portail.js';
+import { copieDEssai } from './copieDEssai.js';
 
 const CLE = 'atoutmath-prof';
 
@@ -91,7 +92,49 @@ export async function serveurPresent() {
  */
 export function verrouActif() {
     if (typeof window === 'undefined' || !window.location) return false;
+    // UNE COPIE D'ESSAI PUBLIÉE SANS SERVEUR EST LA TROISIÈME SITUATION, et
+    // elle n'existait pas quand cette fonction a été écrite. Elle est en
+    // `https:` comme un vrai site, mais il n'y a PERSONNE pour vérifier un mot
+    // de passe — et rien à protéger non plus : aucune base, aucun élève,
+    // aucune classe. Le verrou y fermerait l'atelier sans rien garder.
+    //
+    // La marque n'est écrite que par le workflow de publication, jamais dans
+    // le dépôt : voir `copieDEssai`, qui dit pourquoi c'est ce qui rend la
+    // dérogation sûre.
+    if (copieDEssai()) return false;
     return window.location.protocol === 'http:' || window.location.protocol === 'https:';
+}
+
+/**
+ * CE QUE VEUT DIRE UN REFUS, EN FRANÇAIS ET SANS NUMÉRO.
+ *
+ * Rémy, capture d'un collègue à qui il faisait essayer le site :
+ * « Connexion impossible (code 405) ». Le numéro ne dit rien à personne, et
+ * surtout il ne dit pas LA chose qu'il fallait savoir : ce n'était pas un
+ * mauvais mot de passe, c'était qu'il n'y avait aucun serveur à cette adresse.
+ *
+ * 404 ET 405 SONT LA SIGNATURE D'UNE COPIE SANS SERVEUR. `adresseApiDeduite`
+ * fabrique l'adresse de l'API à côté de celle de la page ; sur un hébergement
+ * de fichiers statiques — GitHub Pages, par exemple — il n'y a pas de PHP
+ * pour répondre : le POST tombe sur un chemin qui n'existe pas (404), ou sur
+ * un hébergeur qui n'accepte que la lecture (405). Le mot de passe n'a alors
+ * jamais été vérifié par personne, et il faut le dire — autant pour rassurer
+ * que pour orienter vers la bonne adresse.
+ *
+ * ON NE REND PAS LE NUMÉRO POUR LES CAS QU'ON SAIT NOMMER, et on le garde pour
+ * les autres : un code inconnu est justement ce qu'il faut pouvoir me citer.
+ */
+export function pourquoiPasEntre(status) {
+    if (status === 401) return 'Adresse ou mot de passe incorrect.';
+    if (status === 403) return "Ce compte n'a pas le droit d'entrer ici.";
+    if (status === 429) return "Trop d'essais. Attends une minute.";
+    if (status === 404 || status === 405 || status === 501) {
+        return "Cette copie du site n'a pas de serveur : elle sert à essayer les "
+            + "exercices, pas à ouvrir l'espace professeur. Le mot de passe n'a "
+            + "été envoyé nulle part. Ouvrez le site à son adresse en ligne.";
+    }
+    if (status >= 500) return 'Le serveur a eu un problème. Réessayez dans un instant.';
+    return 'Connexion impossible (code ' + status + ').';
 }
 
 /**
@@ -110,9 +153,7 @@ export async function identifierProf(email, motDePasse) {
     } catch {
         throw new Error("Le serveur ne répond pas. Vérifie la connexion.");
     }
-    if (r.status === 401) throw new Error('Adresse ou mot de passe incorrect.');
-    if (r.status === 429) throw new Error("Trop d'essais. Attends une minute.");
-    if (!r.ok) throw new Error('Connexion impossible (code ' + r.status + ').');
+    if (!r.ok) throw new Error(pourquoiPasEntre(r.status));
 
     const data = await r.json().catch(() => ({}));
     if (!data.token) throw new Error('Réponse inattendue du serveur.');

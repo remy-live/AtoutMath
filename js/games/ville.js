@@ -139,7 +139,9 @@ class Ville extends BaseGame {
                 .vi-voiture { transition: transform .42s cubic-bezier(.4,.1,.2,1); }
                 .vi-voiture--stop { transition: none; }
                 .vi-cible { cursor: pointer; }
-                .vi-cible:hover circle:last-child { opacity: .5; }
+                @media (hover: hover) {
+                    .vi-cible:hover circle:last-child { opacity: .5; }
+                }
 
                 .vi-cmds {
                     display: flex; gap: 10px; justify-content: center;
@@ -157,13 +159,13 @@ class Ville extends BaseGame {
                 .vi-cmd:disabled { opacity: .32; cursor: default; }
                 .vi-cmd svg { display: block; }
                 .vi-cmd-nom { font-size: .72rem; font-weight: 700; color: var(--text-muted); }
-                .vi-cmd--go { border-color: var(--primary); color: var(--primary); }
+                .vi-cmd--go { border-color: var(--primary); color: var(--primary-texte); }
                 /* Le volant est braqué : le bouton reste enfoncé. Sans cette
                    marque, rien ne dit que la rotation est ACQUISE et qu'il ne
                    reste qu'à avancer. */
                 .vi-cmd--braque {
                     background: color-mix(in srgb, var(--primary) 18%, transparent);
-                    border-color: var(--primary); color: var(--primary);
+                    border-color: var(--primary); color: var(--primary-texte);
                     box-shadow: none; transform: translateY(3px);
                 }
 
@@ -196,7 +198,9 @@ class Ville extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .vi-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .vi-btn:hover { background: var(--bg-hover); }
+                }
             </style>
             <div class="vi-wrap">
                 <div class="vi-haut">

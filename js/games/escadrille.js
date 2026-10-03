@@ -49,6 +49,9 @@ const SEUIL_TAPE = 10;   // au-delà, l'appui est un déplacement, pas un tir
 
 class Escadrille extends BaseGame {
     render() {
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.table = Math.max(2, Math.min(12, parseInt(this.params.table) || 7));
         this.viesMax = parseInt(this.params.lives) || 3;
         this.rythme = RYTHMES[this.params.rythme] || RYTHMES.lent;

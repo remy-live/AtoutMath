@@ -74,8 +74,10 @@ class Dictee extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 6px 12px;
                 }
-                .di-btn:hover { background: var(--bg-hover); }
-                .di-btn--on { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .di-btn:hover { background: var(--bg-hover); }
+                }
+                .di-btn--on { border-color: var(--primary); color: var(--primary-texte); }
                 .di-champ {
                     font-size: clamp(24px, 7cqw, 44px); font-weight: 900;
                     letter-spacing: 2px; min-width: 5ch; text-align: center;
@@ -277,12 +279,19 @@ class Dictee extends BaseGame {
         const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
 
         if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Ici, le nombre n\'est pas écrit : il est DIT. Il faut le reconstruire — combien de milliers, combien de centaines, et surtout où sont les zéros.', this.container);
+        // UNE IDÉE PAR BULLE, et les justifications tombent (« une dictée dont on
+        // n'entend pas un morceau ne mesure rien ») : au-delà de 110 caractères la
+        // bulle se lit si longtemps qu'on croit la démonstration figée.
+        cur.say('Ici, le nombre n\'est pas écrit : il est DIT.', this.container);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Je le reconstruis : combien de milliers, combien de centaines, et où sont les zéros.', this.container);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
         if (this.btnEcouter) {
-            cur.say('J\'appuie sur le haut-parleur. On peut réécouter autant de fois qu\'on veut : une dictée dont on n\'entend pas un morceau ne mesure rien.', this.btnEcouter);
+            cur.say('J\'appuie sur le haut-parleur : on peut réécouter autant de fois qu\'on veut.', this.btnEcouter);
             if (!await cur.tap(this.btnEcouter)) return fin();
             await this.dire();
         }
@@ -300,7 +309,7 @@ class Dictee extends BaseGame {
         if (ok && !await cur.tap(ok)) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('La correction montre le nombre en lettres À CÔTÉ des chiffres : c\'est en comparant les deux qu\'on voit ce qu\'on avait mal entendu.', this.container);
+        cur.say('La correction montre le nombre en lettres À CÔTÉ des chiffres : je compare les deux.', this.container);
         if (!await cur.pause(DEMO_SPEED.between)) return fin();
         fin();
     }

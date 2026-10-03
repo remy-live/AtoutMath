@@ -33,18 +33,119 @@
 // qui ouvre cet écran a trente élèves devant lui et vingt secondes. Les bilans
 // existent, ils sont ailleurs, et c'est très bien.
 
-import { showModal, showToast } from './modal.js';
-import { demander, demanderTexte } from './demander.js';
+import { showToast, showConfirm, showModal } from './modal.js';
+import { chercher } from '../core/recherche.js';
+import { ficheDe } from './rechercheUI.js';
+import { makeStep } from '../core/path.js';
+import { PAR_DEFAUT as BAC_PAR_DEFAUT } from '../core/bacASable.js';
+import { isGame } from '../core/gameAccess.js';
+import { estADeux } from '../data/catalog.js';
+import { monterUnParcours, ramenerLaBibliotheque } from '../core/parcoursServeur.js';
+import { cheminDeLEntree } from '../core/entreeParcours.js';
+// LE CATALOGUE SE COMPTE, IL NE SE RECOPIE PAS. Deux phrases de cet écran
+// annonçaient « 172 exercices » ; le catalogue en contient 178 depuis qu'on y
+// a mis la Seconde. Un nombre écrit à la main est un nombre qui devient faux
+// le jour où l'on ajoute quelque chose — et personne ne s'en aperçoit, parce
+// qu'aucun test ne lit une phrase.
+import { exercices as catalogueComplet } from '../data/catalog.js';
+import { demander, demanderTexte, choisirIndice } from './demander.js';
+import { etatDuCodeDeClasse, motApresCopie } from '../core/codeDeClasse.js';
+import { choisirLesColonnes } from './collerListeUI.js';
+import { htmlDesBillets, csvDesBillets, nomDuFichierCsv, brancherLesBoutons } from './billets.js';
+import { oublierLesClasses } from './donnerSeance.js';
 import { nomDuProf } from '../core/verrouProf.js';
 import {
     mesClasses, creerClasse, listeDeClasse, apercuDeListe, importerListe,
     nouveauCode, refaireLesCodes, retirerEleve, ecarterEleve, leDirect,
     renommerClasse, mettreEnPause, poserConsigne, viderClasse, supprimerClasse,
-    envoyerUnMot, creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
-    lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis
+    seancesDeLaClasse,
+    envoyerUnMot, soufflerUnIndice, reglerLeBac,
+    creerUnProfesseur, lesProfesseurs, retirerUnProfesseur,
+    lesReglages, reglerUnExercice, annulerUnReglage, estEnLigne, depuis,
+    accorderLaCalculatrice, retirerLaCalculatrice,
+    imposerLaSeance, lancerLeChrono, arreterLeChrono, auServeur, reglagesDuSite,
+    lesSignalements, photoDuSignalement, classerSignalement, effacerSignalement
 } from '../core/espaceProf.js';
+import { noterReglagesSite } from '../core/reglagesSite.js';
 import { adresseAdmin } from './classesServeur.js';
-import { getExerciseById } from '../data/catalog.js';
+import { adresseDuPoste } from './posteEleve.js';
+import { versionLisible } from '../core/versionDuSite.js';
+import { copieDEssai } from '../core/copieDEssai.js';
+import { getExerciseById, skillsOf } from '../data/catalog.js';
+import { state } from '../core/state.js';
+import { getSkill } from '../data/skills.js';
+import { indicesProposes } from '../core/indice.js';
+import { enBref, avancementDeClasse, depuisCombien } from '../core/avancement.js';
+import { lesAlarmes, trierPourLeMur, direLesAlarmes, vigilanceDe,
+    ORDRES_DU_DIRECT, trieurDuDirect } from '../core/vigilance.js';
+
+/**
+ * DANS QUEL ORDRE ON RANGE LES ÉLÈVES DU DIRECT.
+ *
+ * RÉMY : « pour le direct ce serait bien de pouvoir faire le tri au nom et pas
+ * à celui qui est connecté ».
+ *
+ * IL EST GARDÉ D'UNE FOIS SUR L'AUTRE, dans le stockage du navigateur : c'est
+ * une habitude de travail, pas un geste. Un professeur qui range par nom le
+ * range par nom tous les jours, et le lui redemander à chaque ouverture de la
+ * classe serait le lui refuser.
+ *
+ * ── LE DÉFAUT EST « PAR NOM », ET C'EST RÉMY QUI L'A TRANCHÉ ──────────────
+ *
+ * J'avais d'abord gardé « urgence » par défaut, en me disant qu'on n'impose
+ * pas un changement d'habitude à ceux qui n'ont rien demandé. Il a répondu, en
+ * classe, le lendemain : « le tri n'arrête pas de changer sur le mur c'est
+ * compliqué de s'y retrouver il faudrait qqch de fixe ».
+ *
+ * L'habitude n'était donc pas un confort, c'était la gêne. Dans l'ordre
+ * d'urgence, un élève change de place dès qu'il se connecte, qu'il répond,
+ * qu'il finit ou qu'il se taise — c'est-à-dire tout le temps, et le mur se
+ * rafraîchit tout seul toutes les quelques secondes. On cherche Maëlle, on
+ * la voit, on tend le doigt, elle a bougé.
+ *
+ * ON NE PERD RIEN DE L'URGENCE EN FAISANT CELA, et c'est ce qui rend le
+ * changement acceptable : la BANDE D'ALARME, en haut du mur, NOMME les élèves
+ * arrêtés ou ralentis (voir `direLesAlarmes`). C'était d'ailleurs la raison
+ * d'être de l'ordre par urgence — qu'un élève arrêté dont le nom commence par
+ * V ne se retrouve pas hors de l'écran —, et la bande la tient mieux que le
+ * tri, puisqu'elle dit le prénom au lieu de déplacer une vignette.
+ *
+ * L'ordre par urgence reste, à un clic : il répond à « chez qui dois-je
+ * aller ? », quand on ne cherche personne en particulier.
+ */
+const CLEF_ORDRE = 'atoutmath.direct.ordre';
+const ORDRE_PAR_DEFAUT = 'nom';
+let ordreDuDirect = (() => {
+    // UN STOCKAGE QUI REFUSE NE DOIT PAS EMPÊCHER LA CLASSE DE S'OUVRIR : en
+    // navigation privée, `localStorage` peut jeter à la simple lecture.
+    try { return localStorage.getItem(CLEF_ORDRE) || ORDRE_PAR_DEFAUT; }
+    catch (e) { return ORDRE_PAR_DEFAUT; }
+})();
+
+/**
+ * ET L'ORDRE DU BILAN, QUI N'EST PAS LE MÊME RÉGLAGE.
+ *
+ * RÉMY : « dans le bilan pouvoir trier par nom ».
+ *
+ * DEUX CLEFS, ET NON UNE : le mur se range par nom parce qu'il BOUGE sous le
+ * doigt, le bilan se range par urgence parce qu'il ne bouge pas et qu'on le lit
+ * pour décider. Partager le réglage obligerait à choisir entre les deux, et
+ * c'est exactement ce qu'on vient de refuser de faire. Le défaut du bilan reste
+ * donc l'urgence (voir `ORDRES_DU_BILAN`), et ce qu'on clique ici se garde ici.
+ */
+const CLEF_ORDRE_BILAN = 'atoutmath.bilan.ordre';
+let ordreDesBilans = (() => {
+    try { return localStorage.getItem(CLEF_ORDRE_BILAN) || 'geste'; }
+    catch (e) { return 'geste'; }
+})();
+import { enMinutes } from './leMoment.js';
+import { ficheDeLEleve, gestesPossibles, pourquoiDebloquer } from '../core/ficheEleve.js';
+import { notionsAReprendre, notionsComprises, resumeDeClasse, enHeures,
+    ORDRES_DU_BILAN, trieurDuBilan } from '../core/bilanClasse.js';
+import { tableauDesExercices, phraseDuTableau } from '../core/tableauDesExercices.js';
+import { levelFor } from '../core/mastery.js';
+import { detailDeLEleve } from '../core/detailDeLEleve.js';
+import { getSkill as laCompetence } from '../data/skills.js';
 
 /**
  * LE NOM DE L'EXERCICE, PAS SON IDENTIFIANT.
@@ -72,39 +173,133 @@ const esc = (s) => String(s == null ? '' : s)
 // redessiner sans se demander ce qu'on va perdre.
 let vue = null;
 
+/**
+ * PRÉVENIR QUAND L'ÉLÈVE N'EST PAS LÀ.
+ *
+ * Rémy : « L'indice envoyé ne semble pas passer ». Il passait — le harnais de
+ * bout en bout le vérifie à chaque essai, et il arrive en une seconde. Mais sa
+ * capture disait « 0 en ligne sur 30 » et « il y a 2 h » : l'indice était bien
+ * parti, il dormait sur le serveur, et personne n'était devant l'écran pour le
+ * recevoir.
+ *
+ * RIEN NE LE LUI DISAIT, et c'est le vrai défaut. « Indice soufflé à Alicia »
+ * laisse croire qu'elle l'a sous les yeux. Un message qui part vers quelqu'un
+ * d'absent n'est pas une panne — c'est un message en attente, et il faut le
+ * dire, sinon on croit que la fonction est cassée et on cesse de s'en servir.
+ */
+function direSiHorsLigne(eleveId, prenom, quoi) {
+    const d = vue.direct;
+    if (!d || !Array.isArray(d.eleves)) return;
+    const e = d.eleves.find(x => x.id === eleveId);
+    if (!e || estEnLigne(e.vu, d.maintenant)) return;
+    showToast(`${quoi} est parti, mais ${prenom || 'cet élève'} n'est pas en ligne `
+        + `(${depuis(e.vu, d.maintenant)}). Il le verra en se reconnectant.`, 'info');
+}
+
 /** Le minuteur du direct. On l'arrête en quittant : sinon il tourne pour rien. */
 let battement = null;
 
 function arreterLeBattement() {
     if (battement) { clearInterval(battement); battement = null; }
+    // Le tic-tac du décompte part avec le battement : il n'a rien à faire sur
+    // un écran qu'on vient de quitter, et il chercherait un élément disparu.
+    arreterLeTicTac();
 }
 
 // --- Point d'entrée ---------------------------------------------------------
 
+/**
+ * REFERMER LA PIÈCE — appelé par la croix, par Échap, et par la porte
+ * « Préparer ». Le battement du direct s'arrête ici et nulle part ailleurs :
+ * une requête toutes les dix secondes qui survit à la sortie d'écran est
+ * exactement le genre de chose qu'on ne remarque jamais.
+ */
+export function fermerEspaceClasses() {
+    arreterLeBattement();
+    document.dispatchEvent(new CustomEvent('classe_fermee'));
+    const zone = document.getElementById('zone-classe');
+    if (zone) { zone.hidden = true; zone.innerHTML = ''; }
+    document.body.classList.remove('classe-ouverte');
+}
+
 export async function ouvrirEspaceClasses() {
     vue = { ou: 'classes', classes: null, erreur: '', classe: null, onglet: 'direct',
             liste: null, direct: null, apercu: null, profs: null, reglages: null,
-            occupe: false };
+            // Ce que les élèves ont signalé — `null` tant qu'on n'est pas allé
+            // voir, ce qui n'est pas « aucun signalement ».
+            signalements: null,
+            // Les réglages du SITE — `null` tant que le serveur n'a pas répondu,
+            // ce qui n'est pas la même chose que « tout est éteint ».
+            reglagesSite: null,
+        // L'élève dont la fiche est dépliée dans Le direct — un seul à la fois.
+        fiche: null,
+        // LE DÉTAIL PAR EXERCICE, fermé en arrivant : le bilan est bien « car
+        // concis », et trente lignes de plus sous les yeux de qui ne les
+        // cherche pas le défont. La séance choisie est `null` tant qu'on n'a
+        // rien cliqué, ce qui veut dire « la dernière donnée », et non « aucune ».
+        detailBilan: false,
+        seanceDetail: null,
+        // Et celui dont la ligne est dépliée dans Les bilans. Les deux écrans
+        // ne se partagent pas ce souvenir : on n'y cherche pas la même chose.
+        bilanOuvert: null,
+        // LES ÉLÈVES COCHÉS dans Le direct. Un ensemble, pas une liste : on y
+        // entre et l'on en sort par le même geste, trente fois dans l'heure.
+        // Il survit au battement de dix secondes (les cases sont redessinées
+        // d'après lui) mais pas au changement de classe.
+        choisis: new Set(),
+            bilans: null, seances: null, occupe: false };
 
-    // PAS DE BANDEAU DE FENÊTRE : l'écran porte son propre en-tête, qui dit à
-    // la fois où l'on est et par où l'on revient. Deux barres empilées, c'était
-    // exactement l'impression de « deux écrans l'un sur l'autre » que Rémy
-    // reprochait à l'ancien panneau.
-    const modal = showModal('', '<div id="ec-racine" class="ec"></div>',
-        { width: '1180px', onClose: arreterLeBattement });
+    // UNE PIÈCE, PAS UNE FENÊTRE.
+    //
+    // Rémy : « tu es toujours sur des popup, tu n'avais pas dit que tu
+    // travaillais en onglet ? ». C'était juste : la porte portait un nom, mais
+    // elle ouvrait encore une fenêtre par-dessus l'atelier.
+    //
+    // Une fenêtre est faite pour UNE décision courte : on la lit, on tranche,
+    // elle disparaît. Cet écran-ci a trois onglets, trente élèves et un direct
+    // qui bat toutes les dix secondes — on y passe l'heure. Il prend donc la
+    // place de l'atelier au lieu de se poser dessus : pas de voile gris, la
+    // barre du haut reste atteignable, et l'on revient par la porte
+    // « Préparer », au même endroit que l'aller.
+    const zone = document.getElementById('zone-classe');
+    if (!zone) return;
+    zone.innerHTML = '<div id="ec-racine" class="ec"></div>';
+    zone.hidden = false;
+    document.body.classList.add('classe-ouverte');
+    document.dispatchEvent(new CustomEvent('classe_ouverte'));
 
-    // La fenêtre met vingt pixels de marge autour de son contenu ; l'en-tête de
-    // cet écran va d'un bord à l'autre, et sa couleur de fond doit y aller
-    // aussi. On reprend donc la marge à notre compte.
-    const boite = modal.element.querySelector('div[style*="overflow-y"]');
-    if (boite) boite.style.padding = '0';
-
-    const racine = modal.element.querySelector('#ec-racine');
+    const partir = () => fermerEspaceClasses();
+    // LA PORTE « PRÉPARER » FERME CETTE PIÈCE, et elle le demande par un
+    // ÉVÉNEMENT plutôt qu'en important ce module.
+    //
+    // Elle l'importait, et la fermeture ne se faisait pas : le module se
+    // charge à la demande, et le clic partait avant qu'il ne soit là. Mesuré —
+    // la fonction appelée à la main refermait parfaitement, le même clic ne
+    // refermait rien. Un événement part tout de suite, et n'existe que tant que
+    // la pièce est ouverte : quand elle est fermée, personne n'écoute, et c'est
+    // exactement ce qu'on veut.
+    document.addEventListener('fermer_la_classe', partir, { once: true });
+    const racine = zone.querySelector('#ec-racine');
     const redessiner = () => { racine.innerHTML = ecranHtml(); };
 
     racine.addEventListener('click', (e) => {
-        if (e.target.closest('[data-fermer]')) { arreterLeBattement(); modal.close(); return; }
+        if (e.target.closest('[data-fermer]')) { partir(); return; }
         brancher(e, redessiner);
+    });
+    // UNE LISTE DÉROULANTE NE SE CLIQUE PAS, ELLE CHANGE.
+    //
+    // Il y a d'autres `<select>` dans cette pièce — le quoi du chrono, l'où de
+    // la calculatrice —, mais aucun n'agit de lui-même : on les LIT quand on
+    // clique le bouton d'à côté. Le choix de la séance du tableau croisé est le
+    // premier qui doit agir tout seul, et un clic sur un `<select>` arrive
+    // AVANT que sa valeur ne change : branché sur le clic délégué, le tableau
+    // se redessinerait avec l'ancienne séance. On écoute donc « change », et
+    // seulement pour lui.
+    racine.addEventListener('change', (e) => {
+        const sel = e.target.closest('[data-seance-detail]');
+        if (!sel) return;
+        vue.seanceDetail = sel.value || null;
+        redessiner();
     });
     // ENTRÉE VALIDE LE CHAMP OÙ L'ON EST. Taper une consigne puis chercher le
     // bouton à la souris, c'est une marche pour rien — et c'est la marche qu'on
@@ -117,7 +312,7 @@ export async function ouvrirEspaceClasses() {
     });
     // Échap ferme, comme partout ailleurs.
     racine.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') { arreterLeBattement(); modal.close(); }
+        if (e.key === 'Escape') partir();
     });
 
     redessiner();
@@ -127,12 +322,26 @@ export async function ouvrirEspaceClasses() {
     else vue.classes = liste;
     redessiner();
 
-    return modal;
+    // LES RÉGLAGES DU SITE, APRÈS LES CLASSES. Ce sont les classes qu'on vient
+    // voir ; le mode libre est en bas de l'écran, et rien ne presse. Une seule
+    // requête, et l'interrupteur cesse d'annoncer « On regarde… ».
+    const r = await reglagesDuSite();
+    if (!r.erreur && r.reglages) {
+        vue.reglagesSite = r.reglages;
+        // Le reste de l'application l'apprend aussi : la porte d'entrée, la
+        // barre du haut. C'est le même réglage pour tout le monde.
+        noterReglagesSite(r.reglages);
+        redessiner();
+    }
+
+    // Il n'y a plus de fenêtre à rendre : la pièce est une section de la page.
+    return { fermer: partir };
 }
 
 // --- Le dessin --------------------------------------------------------------
 
 function ecranHtml() {
+    if (vue.ou === 'signalements') return signalementsHtml();
     if (vue.ou === 'profs') return profsHtml();
     if (vue.ou === 'classe' && vue.classe) return classeHtml();
     return classesHtml();
@@ -156,7 +365,7 @@ function profsHtml() {
     if (!liste) {
         corps = '<div class="ec-vide">On regarde…</div>';
     } else {
-        corps = `<table class="ec-table">
+        corps = `<div class="ec-table-cadre"><table class="ec-table">
             <thead><tr><th>Professeur</th><th>Adresse</th><th>Classes</th><th></th></tr></thead>
             <tbody>${liste.map(t => `
             <tr>
@@ -168,7 +377,7 @@ function profsHtml() {
                                data-retirer-prof="${esc(t.id)}" data-nom="${esc(t.nom)}"
                                data-classes="${t.classes || 0}">retirer</button>`}</td>
             </tr>`).join('')}</tbody>
-        </table>`;
+        </table></div>`;
     }
     return enTeteHtml('Les professeurs', 'Ceux qui peuvent ouvrir ce serveur', true) + messageHtml()
         + `<div class="ec-corps">
@@ -184,6 +393,101 @@ function profsHtml() {
                     : 'Ajouter ou retirer un compte revient au professeur qui a installé le '
                       + 'site : ces gestes-là touchent au serveur entier, pas à une classe.'}</p>
         </div>`;
+}
+
+/**
+ * CE QUE LES ÉLÈVES ONT SIGNALÉ.
+ *
+ * Rémy : « un bouton désactivable ou non qui permet à l'élève d'envoyer un bug
+ * et de prendre une photo d'écran ».
+ *
+ * L'ÉCRAN NE MONTRE PAS D'ABORD LA PHOTO, IL MONTRE LE CONTEXTE. Une image dit
+ * à quoi ressemblait l'écran ; la GRAINE le rejoue. Le bouton « Sa question,
+ * chez moi » est le MÊME que celui du direct — mêmes attributs, même geste, même
+ * code derrière : ce qui vaut pour l'élève qu'on regarde travailler vaut pour
+ * celui qui vient de dire que ça ne marche pas.
+ *
+ * LA PHOTO SE DEMANDE, ELLE NE VIENT PAS TOUTE SEULE. Quatre cents kilo-octets
+ * par signalement, sur le wifi d'un collège : la liste serait illisible avant
+ * d'être lisible. Un bouton, une photo, celle qu'on veut voir.
+ *
+ * TRAITÉ NE VEUT PAS DIRE EFFACÉ, et les deux boutons existent séparément. Un
+ * défaut corrigé se classe — il sort du haut de la liste sans disparaître, parce
+ * que le même défaut signalé trois fois par trois élèves dit quelque chose qu'un
+ * seul signalement ne dit pas.
+ */
+function signalementsHtml() {
+    const liste = vue.signalements;
+    let corps;
+    if (!liste) {
+        corps = '<div class="ec-vide">On regarde…</div>';
+    } else if (!liste.length) {
+        corps = `<div class="ec-vide">Aucun signalement.
+            ${vue.reglagesSite && vue.reglagesSite.signalement === true
+                ? 'Le bouton est allumé chez vos élèves : ils peuvent en envoyer.'
+                : '<b>Le bouton est éteint</b> : vos élèves n\'en ont pas.'}</div>`;
+    } else {
+        corps = liste.map(carteSignalementHtml).join('');
+    }
+    const ouverts = liste ? liste.filter(s => !s.traite).length : 0;
+    return enTeteHtml('Ce que les élèves signalent',
+        liste === null ? 'On regarde…'
+            : (ouverts ? `${ouverts} à regarder` : 'Rien en attente'), true)
+        + messageHtml()
+        + `<div class="ec-corps"><div class="ec-signalements">${corps}</div></div>`;
+}
+
+function carteSignalementHtml(s) {
+    const c = s.contexte || {};
+    const ec = c.ecran || {};
+    const exo = ec.exerciseId ? getExerciseById(ec.exerciseId) : null;
+    // LES FAITS SUR UNE LIGNE, dans l'ordre où l'on s'en sert : l'exercice
+    // d'abord (« lequel ? »), puis ce qui explique souvent le défaut — le thème
+    // et la largeur de l'écran —, puis la version, qui dit si l'on cherche dans
+    // du code qui existe encore.
+    const faits = [];
+    if (exo) faits.push(esc(exo.title));
+    else if (ec.exerciseId) faits.push(esc(ec.exerciseId) + ' (hors catalogue)');
+    if (c.theme && c.theme !== 'clair') faits.push('thème ' + esc(c.theme));
+    if (c.largeur) faits.push(`${c.largeur}×${c.hauteur || '?'}`);
+    if (c.version) faits.push(esc(c.version));
+    if (!ec.graine) faits.push('sans graine');
+
+    return `
+    <article class="ec-signal${s.traite ? ' ec-signal--traite' : ''}" data-signal="${esc(s.id)}">
+        <div class="ec-signal-tete">
+            <b class="ec-signal-qui">${esc(s.qui || 'Un élève')}</b>
+            <span class="ec-note">${esc(s.classe || '')} · ${esc(quandLisible(s.quand))}</span>
+            ${s.traite ? '<span class="ec-signal-marque">classé</span>' : ''}
+        </div>
+        <p class="ec-signal-dit">${esc(s.corps)}</p>
+        ${faits.length ? `<p class="ec-signal-faits">${faits.join(' · ')}</p>` : ''}
+        ${ec.question ? `<p class="ec-signal-question">${esc(ec.question)}</p>` : ''}
+        ${Array.isArray(c.erreurs) && c.erreurs.length
+            ? `<pre class="ec-signal-erreurs">${esc(c.erreurs.join('\n'))}</pre>` : ''}
+        <div class="ec-signal-photo" data-photo-de="${esc(s.id)}" hidden></div>
+        <div class="ec-signal-gestes">
+            <!-- LE MÊME BOUTON QUE DANS LE DIRECT, aux mêmes attributs près :
+                 c'est la branche voirExo qui le traite, et elle sait déjà
+                 rouvrir une question exacte avec les réglages de l'élève. -->
+            <button type="button" class="ec-bouton ec-bouton--doux"
+                    data-voir-exo="${esc(ec.exerciseId || '')}"
+                    data-prenom="${esc(s.qui || '')}" data-graine="${esc(ec.graine || '')}"
+                    data-reglages="${esc(ec.reglages ? JSON.stringify(ec.reglages) : '')}"
+                    ${ec.exerciseId ? '' : 'disabled'}
+                    title="${ec.graine
+                        ? 'SA question, celle-là précisément, avec SES réglages. Rien n\'est enregistré.'
+                        : 'Son exercice, avec ses réglages. Il n\'a pas dit quelle question : ce sera le même travail, pas forcément la même.'}"
+                    >${ec.graine ? 'Sa question, chez moi' : 'Son exercice, chez moi'}</button>
+            ${s.photo ? `<button type="button" class="ec-bouton ec-bouton--doux"
+                    data-voir-photo="${esc(s.id)}">Voir sa photo</button>` : ''}
+            <button type="button" class="ec-bouton" data-classer="${esc(s.id)}"
+                    data-vers="${s.traite ? '0' : '1'}"
+                    >${s.traite ? 'Le rouvrir' : 'C\'est réglé'}</button>
+            <button type="button" class="ec-mini ec-mini--rouge" data-effacer-signal="${esc(s.id)}"
+                    >effacer</button>
+        </div>
+    </article>`;
 }
 
 /** L'en-tête, commun aux deux écrans : qui l'on est, et par où l'on revient. */
@@ -265,28 +569,174 @@ function classesHtml() {
         </div>`;
     }
 
-    return enTeteHtml('Mes classes', esc(sous)) + messageHtml() + corps + piedHtml();
+    return enTeteHtml('Mes classes', esc(sous)) + messageHtml() + corps
+        + modeLibreHtml() + piedHtml();
 }
 
 function carteClasseHtml(c) {
     const n = Number(c.student_count) || 0;
+    // `vue.reglagesSite` vaut `null` tant que le serveur n'a pas répondu, et la
+    // règle le distingue de « fermée » : on ne clignote pas un avertissement.
+    const porte = etatDuCodeDeClasse(vue.reglagesSite ? vue.reglagesSite.inscriptionLibre : null);
     return `
     <div class="ec-carte" data-ouvrir="${esc(c.id)}" role="button" tabindex="0">
         <div class="ec-carte-haut">
             <b class="ec-carte-nom">${esc(c.name)}</b>
             ${c.level ? `<span class="ec-niveau">${esc(c.level)}</span>` : ''}
         </div>
-        <div class="ec-carte-code">
-            <span class="ec-code-eti">code de classe</span>
+        <!-- LE CODE PORTE SON ÉTAT, ET LE GESTE QUI L'OUVRE EST À CÔTÉ.
+             Mesuré deux fois : ce code s'affichait en gros, avec son bouton de
+             copie, alors que le champ pour le taper n'existe chez l'élève que si
+             l'inscription libre est allumée — et elle est fermée par défaut. Le
+             professeur dictait un code que personne ne pouvait écrire, et la
+             réponse était un interrupteur dans un AUTRE écran. Voir
+             js/core/codeDeClasse.js, qui tient la règle. -->
+        <div class="ec-carte-code${porte.ouvert === false ? ' ec-carte-code--ferme' : ''}">
+            <span class="ec-code-eti">${esc(porte.etiquette)}</span>
             <button type="button" class="ec-code ec-code--copie" data-copier="${esc(c.join_code)}"
-                    title="Copier le code">${esc(c.join_code)}</button>
+                    title="${esc(porte.dit)}">${esc(c.join_code)}</button>
+            ${porte.quoiFaire ? `<button type="button" class="ec-code-ouvrir"
+                    data-inscription-libre="0"
+                    title="${esc(porte.dit)}">${esc(porte.quoiFaire)}</button>` : ''}
         </div>
         <div class="ec-carte-bas">
             <span class="ec-eff">${n} élève${n > 1 ? 's' : ''}</span>
             ${Number(c.locked) ? '<span class="ec-pastille ec-pastille--pause">en pause</span>' : ''}
             ${c.notice ? '<span class="ec-pastille ec-pastille--mot">consigne</span>' : ''}
+            <!-- SUPPRIMER DEPUIS LA LISTE, LÀ OÙ ON LES VOIT TOUTES.
+                 Rémy : « il faudrait pouvoir supprimer les classes ». Le geste
+                 existait — au fond de l'onglet « La séance », À L'INTÉRIEUR de
+                 la classe. C'est le bon endroit pour supprimer CELLE qu'on
+                 regarde, et le mauvais pour faire le ménage : ranger ses
+                 classes, c'est les voir toutes en même temps, et il fallait
+                 entrer dans chacune puis en ressortir.
+
+                 IL RESTE DISCRET, ET IL DEMANDE LE MÊME MOT ÉCRIT. Une croix
+                 sur une carte qu'on clique pour ENTRER est un piège à
+                 fausse manœuvre : elle est petite, à l'écart, et elle passe
+                 par la même confirmation qu'ailleurs — écrire EFFACER. -->
+            <button type="button" class="ec-carte-jeter" data-supprimer-carte="${esc(c.id)}"
+                    data-nom="${esc(c.name)}" title="Supprimer cette classe"
+                    aria-label="Supprimer la classe ${esc(c.name)}">✕</button>
         </div>
     </div>`;
+}
+
+/**
+ * LE MODE LIBRE — un réglage du SITE, pas d'une classe.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * Rémy : « le mode libre, mets-le en bouton dans ma zone prof (qui est admin
+ * aussi du coup) ».
+ *
+ * CE QU'IL FAIT, ET CE QU'IL NE FAIT PAS. Allumé, le catalogue s'ouvre aux
+ * élèves : une quatrième porte « Explorer les exercices » sur l'écran d'accueil,
+ * l'onglet « Exercices », tout le catalogue. Éteint, l'élève ne voit que ce
+ * qu'on lui a donné.
+ *
+ * IL NE PASSE PAS PAR-DESSUS LE VERROU D'UNE CLASSE. Une classe verrouillée
+ * reste verrouillée, mode libre ou non — c'est le réglage le plus précis qui
+ * gagne, et c'est celui du professeur devant sa classe.
+ *
+ * POURQUOI ICI ET PAS DANS UNE CLASSE. Parce qu'il ne concerne pas une classe :
+ * il concerne le site. Le poser dans l'écran d'une classe laisserait croire
+ * qu'on l'allume pour les 5eB seulement.
+ */
+function modeLibreHtml() {
+    const actif = !!vue.reglagesSite && vue.reglagesSite.modeLibre === true;
+    const su = vue.reglagesSite === null;
+    return `
+    <section class="ec-bloc ec-bloc--site">
+        <h3 class="ec-h3">Le catalogue en libre accès</h3>
+        <p class="ec-note ec-note--bloc">Allumé, les élèves peuvent explorer les
+           ${catalogueComplet.length} exercices en dehors de ce que vous leur
+           donnez. Une classe verrouillée le reste : ce réglage-ci ne passe pas
+           par-dessus.</p>
+        <button type="button" class="reglage-interrupteur${actif ? ' reglage-interrupteur--actif' : ''}"
+                data-mode-libre="${actif ? '1' : '0'}" aria-pressed="${actif}"
+                ${su ? 'disabled' : ''}>
+            <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>
+            <span class="reglage-interrupteur-mot">${su ? 'On regarde…'
+                : (actif ? 'Ouvert aux élèves' : 'Réservé à ce que vous donnez')}</span>
+        </button>
+    </section>
+    ${inscriptionHtml()}`;
+}
+
+/**
+ * L'INSCRIPTION LIBRE — la porte « Rejoindre ma classe ».
+ *
+ * RÉMY, en la découvrant : « à quoi sert rejoindre ma classe ? »… puis « je
+ * pense qu'il faut le fermer, mais permettre la réouverture dans Mes classes,
+ * au même niveau que le catalogue en libre accès ».
+ *
+ * AU MÊME NIVEAU, DONC : même écran, même interrupteur, un seul endroit à
+ * regarder pour savoir ce qui est ouvert. Les deux réglages ne font pourtant
+ * pas la même chose, et l'écran doit le dire — l'un ouvre un CATALOGUE, l'autre
+ * CRÉE DES ÉLÈVES. C'est pour cela que celui-ci est fermé par défaut et que
+ * l'autre ne l'est pas.
+ */
+function inscriptionHtml() {
+    const actif = !!vue.reglagesSite && vue.reglagesSite.inscriptionLibre === true;
+    const su = vue.reglagesSite === null;
+    return `
+    <section class="ec-bloc ec-bloc--site">
+        <h3 class="ec-h3">L'inscription libre</h3>
+        <p class="ec-note ec-note--bloc">Allumée, un élève peut entrer avec le code de la
+           classe en tapant son prénom — pratique quand vous n'avez pas importé de liste.
+           Éteinte, seuls les billets ouvrent la porte. <b>Gardez-la éteinte si votre liste
+           vient de Pronote</b> : un prénom tapé de travers crée un second élève, vierge,
+           à côté du vrai.</p>
+        <button type="button" class="reglage-interrupteur${actif ? ' reglage-interrupteur--actif' : ''}"
+                data-inscription-libre="${actif ? '1' : '0'}" aria-pressed="${actif}"
+                ${su ? 'disabled' : ''}>
+            <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>
+            <span class="reglage-interrupteur-mot">${su ? 'On regarde…'
+                : (actif ? 'Chacun peut s\'inscrire' : 'Billet obligatoire')}</span>
+        </button>
+    </section>
+    ${signalementReglageHtml()}`;
+}
+
+/**
+ * LE SIGNALEMENT DE PROBLÈMES — le troisième interrupteur du site.
+ *
+ * Rémy : « penses-tu qu'il serait possible d'ajouter un bouton désactivable ou
+ * non qui permet à l'élève d'envoyer un bug et de prendre une photo d'écran ? »
+ *
+ * ÉTEINT PAR DÉFAUT, comme l'inscription libre et pour une raison voisine : ce
+ * bouton ouvre un canal qui remonte jusqu'à vous, et c'est à vous de décider
+ * quand. Une classe d'évaluation, une séance où l'on veut le silence, un jour
+ * où l'on n'a pas le temps de lire : on l'éteint, et il n'existe plus.
+ *
+ * ET LA PORTE VERS LA LISTE EST ICI, AU MÊME ENDROIT QUE L'INTERRUPTEUR. Une
+ * fonction qu'on allume dans un écran et qu'on lit dans un autre est une
+ * fonction qu'on allume et qu'on oublie.
+ */
+function signalementReglageHtml() {
+    const actif = !!vue.reglagesSite && vue.reglagesSite.signalement === true;
+    const su = vue.reglagesSite === null;
+    return `
+    <section class="ec-bloc ec-bloc--site">
+        <h3 class="ec-h3">Signaler un problème</h3>
+        <p class="ec-note ec-note--bloc">Allumé, l'élève trouve un bouton dans l'en-tête de
+           chaque exercice pour vous dire ce qui ne marche pas. <b>L'exercice, la question
+           exacte et la taille de son écran partent avec</b> : vous rouvrez sa question chez
+           vous d'un clic. Il peut aussi joindre une photo de son écran — c'est lui qui la
+           prend, avec les boutons de son téléphone : aucun navigateur d'iPhone ne sait
+           photographier sa propre page.</p>
+        <button type="button" class="reglage-interrupteur${actif ? ' reglage-interrupteur--actif' : ''}"
+                data-signalement="${actif ? '1' : '0'}" aria-pressed="${actif}"
+                ${su ? 'disabled' : ''}>
+            <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>
+            <span class="reglage-interrupteur-mot">${su ? 'On regarde…'
+                : (actif ? 'Les élèves peuvent signaler' : 'Aucun bouton chez les élèves')}</span>
+        </button>
+        <p class="ec-note ec-note--bloc">
+            <button type="button" class="ec-lien" data-signalements>Voir ce qui a été signalé</button>
+        </p>
+    </section>`;
 }
 
 /** Le pied de page : les deux chemins qu'on ne veut pas cacher. */
@@ -302,6 +752,14 @@ function piedHtml() {
         <a class="ec-lien" href="${esc(adresseAdmin())}index.php" target="_blank" rel="noopener">
             Santé du site &amp; sauvegardes
         </a>
+        <!-- LE NUMÉRO DE VERSION, ENFIN VISIBLE. Il manquait, et son absence a
+             coûté une demi-journée : Rémy regardait un écran, je lui décrivais un
+             bouton, et personne ne pouvait dire que son serveur servait encore
+             la version d'avant. Il est ici parce que c'est ici qu'on en a
+             besoin — sur l'écran du professeur, au moment où quelque chose ne
+             ressemble pas à ce qu'on lui a décrit. -->
+        <span class="ec-pied-version" title="La version que ce navigateur a reçue du serveur"
+              >${esc(versionLisible())}${copieDEssai() ? ' · copie d\'essai' : ''}</span>
     </footer>`;
 }
 
@@ -311,7 +769,15 @@ function classeHtml() {
     const c = vue.classe;
     const eleves = (vue.liste && vue.liste.eleves) || [];
     const info = (vue.liste && vue.liste.classe) || c;
-    const sous = `<code class="ec-code ec-code--petit">${esc(c.join_code || info.joinCode || '')}</code>`
+    // MÊME VÉRITÉ DANS LES DEUX ÉCRANS. Le code reparaît ici, en petit, sous le
+    // nom de la classe : s'il n'y portait pas son état, il suffirait d'entrer
+    // dans la classe pour retrouver la promesse qu'on vient de retirer.
+    const porte = etatDuCodeDeClasse(vue.reglagesSite ? vue.reglagesSite.inscriptionLibre : null);
+    const sous = `<code class="ec-code ec-code--petit${porte.ouvert === false ? ' ec-code--ferme' : ''}"
+            title="${esc(porte.dit)}">${esc(c.join_code || info.joinCode || '')}</code>`
+        + (porte.ouvert === false
+            ? '<span class="ec-sous-sep">\u00b7</span><span class="ec-ferme-mot">porte ferm\u00e9e</span>'
+            : '')
         + `<span class="ec-sous-sep">·</span>${eleves.length} élève${eleves.length > 1 ? 's' : ''}`
         + (info.locked ? '<span class="ec-sous-sep">·</span><b>en pause</b>' : '');
 
@@ -320,15 +786,19 @@ function classeHtml() {
         data-onglet="${cle}">${texte}</button>`;
 
     let corps = '';
-    if (vue.onglet === 'direct') corps = directHtml();
+    if (vue.onglet === 'mur') corps = murHtml();
     else if (vue.onglet === 'liste') corps = listeHtml();
-    else corps = seanceHtml();
+    else if (vue.onglet === 'bilans') corps = bilansHtml();
+    else if (vue.onglet === 'seances') corps = seancesHtml();
+    else corps = directHtml();
 
     return enTeteHtml(info.name || c.name, sous, true) + messageHtml() + `
     <nav class="ec-onglets">
         ${onglet('direct', 'Le direct')}
-        ${onglet('liste', 'La liste')}
-        ${onglet('seance', 'La séance')}
+        ${onglet('mur', 'Le mur')}
+        ${onglet('seances', 'Les séances')}
+        ${onglet('liste', 'Les élèves')}
+        ${onglet('bilans', 'Les bilans')}
     </nav>
     <div class="ec-corps">${corps}</div>`;
 }
@@ -342,39 +812,1147 @@ function directHtml() {
         return `<div class="ec-vide ec-vide--invite">
             <p class="ec-vide-grand">Personne dans cette classe pour l'instant.</p>
             <p>Dictez le code de classe, ou collez votre liste dans l'onglet
-               <b>La liste</b>.</p>
+               <b>Les élèves</b>.</p>
         </div>`;
     }
     const enLigne = eleves.filter(e => estEnLigne(e.vu, maintenant)).length;
-    return `
+
+    // L'AVANCEMENT DE LA CLASSE, EN UNE LIGNE ET TROIS NOMBRES.
+    //
+    // Rémy : « il faut que la séance soit facilement visible l'avancement ». La
+    // question qu'il se pose en fin d'exercice est « est-ce que je peux passer
+    // à la suite ? », et elle se tranche sur un seul chiffre : combien n'ont
+    // pas commencé. Trente barres individuelles ne la répondent pas — il faut
+    // les lire une à une, et c'est justement ce qu'on n'a pas le temps de
+    // faire debout au fond de la salle.
+    const cl = avancementDeClasse(eleves.map(e => e.avancement || null));
+    const pourcent = Math.round(cl.fraction * 100);
+    // CE QU'ILS FONT N'EST PAS CE QUE J'AI IMPOSÉ, ET IL FAUT LE DIRE.
+    //
+    // Rémy : « Dans la classe, on ne voit que le parcours découverte ». C'était
+    // exact et trompeur à la fois : ce titre est le nom du parcours que les
+    // élèves ont RÉELLEMENT ouvert — leur dernier travail —, pas celui qu'on
+    // leur a donné. Tant qu'aucune séance n'est imposée, chacun choisit dans sa
+    // liste, et le direct montre ce que fait la majorité. On nomme donc les
+    // deux, séparément, plutôt que de laisser croire que c'est la même chose.
+    const fait = (eleves.find(e => e.avancement && e.avancement.pathName) || {}).avancement;
+    const info = (vue.liste && vue.liste.classe) || {};
+    const imposee = info.impose_path_id
+        && (vue.seances && (vue.seances.seances || []).find(s => s.pathId === info.impose_path_id));
+
+    // TROIS ZONES, ET C'EST LE BATTEMENT QUI L'EXIGE.
+    //
+    // Le battement de dix secondes réécrivait TOUT le direct, barre de pilotage
+    // comprise. Or cette barre porte des champs qu'on est en train de remplir :
+    // le mot à la classe, le mot au tableau, le nombre de minutes, et un
+    // `<details>` qu'on vient d'ouvrir. Écrire « Prenez le cahier rouge » prend
+    // plus de dix secondes : le texte disparaissait sous les doigts du
+    // professeur, et le repli se refermait avec.
+    //
+    // On sépare donc ce qui change TOUT SEUL — l'alarme, les compteurs, les
+    // rangs — de ce que le professeur MANIPULE. Le battement ne touche plus
+    // qu'au premier.
+    return `<div class="ec-direct-haut">` + alarmeHtml(eleves, maintenant) + `
     <p class="ec-compte">${enLigne} en ligne sur ${eleves.length}
        <span class="ec-note">— actualisé tout seul</span></p>
+    ${info.impose_path_id
+        ? `<p class="ec-note ec-note--bloc ec-encours-fil">Séance en cours :
+            <b>${esc(imposee ? imposee.nom : 'une séance imposée')}</b> — elle s'ouvre toute
+            seule chez eux, ${esc(jusquaDit())}.</p>`
+        : `<p class="ec-note ec-note--bloc ec-encours-fil">Aucune séance imposée : chacun
+            choisit dans sa liste. Pour en imposer une, allez dans
+            <b>Les séances</b>.</p>`}
+    <div class="ec-classe-avance">
+        <div class="ec-classe-ligne">
+            <b>${fait ? esc(fait.pathName) : 'La séance'}</b>
+            <span class="ec-note">— ce qu'ils font</span>
+            <span class="ec-classe-chiffres">
+                <span class="ec-pastille ec-pastille--fini">${cl.finis} ${
+                    cl.finis > 1 ? 'ont fini' : 'a fini'}</span>
+                <span class="ec-pastille ec-pastille--cours">${cl.enCours} en cours</span>
+                <span class="ec-pastille${cl.pasCommence ? ' ec-pastille--rien' : ''}"
+                    >${cl.pasCommence} pas commencé</span>
+            </span>
+        </div>
+        <div class="ec-jauge" title="${pourcent} % du travail de la classe">
+            <i style="width:${pourcent}%"></i>
+        </div>
+    </div>
+    </div>
+    ${barrePiloteHtml()}
+    <!-- CEUX QU'IL FAUT ALLER VOIR SONT EN HAUT.
+         Le direct rangeait ses élèves par ordre alphabétique — celui de la
+         liste du professeur. Un élève arrêté dont le nom commence par V est
+         donc en bas, hors de l'écran, pendant que la bande d'alarme le nomme
+         en haut : on lit son prénom, on ne le trouve pas, on fait défiler.
+         Le tri par urgence existe déjà, il est écrit, éprouvé et documenté
+         (core/vigilance.js), et le MUR s'en sert depuis toujours. Le direct
+         ne l'appelait pas. -->
+    <div class="ec-ordre" role="group" aria-label="Dans quel ordre ranger les élèves">
+        <span class="ec-note">Ranger</span>
+        ${ORDRES_DU_DIRECT.map(o => `<button type="button"
+            class="ec-ordre-btn${o.cle === ordreDuDirect ? ' ec-ordre-btn--actif' : ''}"
+            data-ordre-direct="${esc(o.cle)}"
+            aria-pressed="${o.cle === ordreDuDirect ? 'true' : 'false'}"
+            >${esc(o.mot)}</button>`).join('')}
+    </div>
     <div class="ec-rangs">
-        ${eleves.map(e => rangHtml(e, maintenant)).join('')}
+        ${trieurDuDirect(ordreDuDirect)(eleves, maintenant, { enPause: classeEnPause() })
+            .map(v => rangHtml(v.eleve, maintenant)).join('')}
     </div>`;
 }
 
+/**
+ * LA BARRE D'UN ÉLÈVE, ET CE QU'ELLE DIT EN PLUS DE SE REMPLIR.
+ *
+ * Une barre seule ne distingue pas l'élève qui avance lentement de celui qui
+ * est bloqué depuis dix minutes — et c'est POURTANT LA SEULE DIFFÉRENCE QUI
+ * COMPTE : le premier n'a besoin de personne, le second attend qu'on vienne.
+ * On écrit donc à côté depuis combien de temps il n'a plus répondu.
+ *
+ * (L'alarme proprement dite — celle qui va CHERCHER le professeur au lieu
+ * d'attendre qu'il lise — reste à faire. Ici on ne fait que le dire.)
+ */
+function avanceHtml(av, quand, maintenant) {
+    if (!av) return '<span class="ec-note ec-pasparti">Pas commencé</span>';
+    const p = Math.round((av.fraction || 0) * 100);
+    const classe = av.etat === 'fini' ? ' ec-jauge--fini'
+        : (av.etat === 'abandonne' ? ' ec-jauge--arrete' : '');
+
+    // DEPUIS QUAND N'A-T-IL PLUS RÉPONDU. `quand` est l'instant du dernier
+    // événement portant un exercice — c'est-à-dire de la dernière réponse.
+    // On ne l'écrit que passé une minute et sur un travail en cours : sur un
+    // parcours terminé, « il y a 6 min » désignerait la dernière question d'un
+    // devoir rendu, ce qui n'inquiète personne et encombre la ligne.
+    const silence = (quand && maintenant && av.etat === 'en-cours')
+        ? Math.max(0, maintenant - Math.round(quand / 1000)) : 0;
+    const muet = silence >= 60
+        ? ` <span class="ec-silence">· rien depuis ${esc(depuisCombien(silence))}</span>` : '';
+
+    return `<div class="ec-avance">
+        <div class="ec-jauge ec-jauge--mince${classe}"><i style="width:${p}%"></i></div>
+        <span class="ec-avance-mot">${esc(enBref(av))}${muet}</span>
+    </div>`;
+}
+
+/**
+ * LA LIGNE D'UN ÉLÈVE — ET CE QU'ELLE CACHE.
+ *
+ * Rémy : « il faut aussi pouvoir cliquer sur l'élève, voir où il en est,
+ * débloquer un exercice, envoyer un message ».
+ *
+ * LA FICHE SE DÉPLIE SOUS LA LIGNE, ELLE NE RECOUVRE RIEN. Cet écran se lit
+ * debout, au fond de la salle. Si ouvrir la fiche d'un élève faisait perdre les
+ * vingt-neuf autres, on ne l'ouvrirait pas pendant le cours — et un geste qu'on
+ * n'ose pas faire en classe n'existe pas.
+ *
+ * UNE SEULE FICHE À LA FOIS, pour la même raison : trois fiches ouvertes, et la
+ * liste des élèves ne tient plus à l'écran.
+ */
 function rangHtml(e, maintenant) {
     const ici = estEnLigne(e.vu, maintenant);
+    const v = vigilanceDe(e, maintenant, { enPause: classeEnPause() });
+    const ouverte = vue.fiche === e.id;
+    // LE SCORE S'ÉCRIT TOUJOURS, VIDE QUAND IL N'Y EN A PAS.
+    //
+    // La ligne est une grille ; une cellule qui n'apparaît que parfois décale
+    // tout ce qui la suit. MESURÉ sur une classe de trente : les lignes avec
+    // score faisaient 129 px, celles sans 64 px, l'une sous l'autre — et les
+    // deux boutons passaient à la ligne suivante, à cinq cents pixels du nom.
+    // Le compte d'enfants doit être CONSTANT, sans quoi le prochain qui ajoute
+    // quelque chose à cette ligne repose le même piège (voir `.ec-rang` dans
+    // css/ui.css : c'est la deuxième fois).
     const score = e.total
         ? `<span class="ec-score${e.justes / e.total >= 0.7 ? ' ec-score--bien' : ''}">${e.justes} / ${e.total}</span>`
-        : '';
+        : '<span class="ec-score ec-score--vide" aria-hidden="true"></span>';
     return `
-    <div class="ec-rang${ici ? ' ec-rang--ici' : ''}${e.ecarte ? ' ec-rang--ecarte' : ''}">
+    <div class="ec-rang-hote${ouverte ? ' ec-rang-hote--ouverte' : ''}">
+    <div class="ec-rang ec-rang--cliquable${ici ? ' ec-rang--ici' : ''}${e.ecarte ? ' ec-rang--ecarte' : ''}${
+        v.etat === 'bloque' ? ' ec-rang--bloque' : (v.etat === 'ralenti' ? ' ec-rang--ralenti' : '')}"
+        data-fiche="${esc(e.id)}" role="button" tabindex="0"
+        aria-expanded="${ouverte ? 'true' : 'false'}"
+        title="Voir o\u00f9 en est ${esc(e.prenom)}">
+        <!-- LA CASE NE FAIT PAS PARTIE DU BOUTON : cliquer la ligne ouvre la
+             fiche, cocher la case choisit l'élève. Les deux gestes sont à deux
+             centimètres l'un de l'autre, et le second ne doit pas déclencher le
+             premier — voir data-choix dans les gestes. -->
+        <!-- LA ZONE QU'ON VISE N'EST PAS LE DESSIN.
+             MESURÉ au doigt : la case faisait 17 px de large pour 44 de haut —
+             la hauteur donnée par la règle des champs, la largeur oubliée —,
+             trente fois par écran, et c'est le geste qui désigne qui reçoit la
+             calculatrice. C'est donc l'ENVELOPPE qui fait 44 sur 44 et qui porte
+             le geste ; la case ne reçoit plus le doigt — pointer-events none —
+             pour qu'un seul événement parte, jamais deux. Elle reste
+             atteignable au clavier, et l'espace la coche comme avant. -->
+        <span class="ec-choix" data-choix="${esc(e.id)}" title="Choisir ${esc(e.prenom)}">
+            <input type="checkbox" aria-label="Choisir ${esc(e.prenom)}"
+                   ${(vue.choisis && vue.choisis.has(e.id)) ? 'checked' : ''}>
+        </span>
         <span class="ec-point${ici ? ' ec-point--vert' : ''}"></span>
         <div class="ec-rang-qui">
             <b>${esc(e.prenom)}</b>
+            <!-- « A FINI », ÉCRIT À CÔTÉ DU NOM.
+                 Rémy : « tu peux aussi écrire dans le direct au nom de l eleve
+                 quand il a fini ». L information existait — « Terminé — 18 / 24
+                 justes » — mais dans la colonne d avancement, à droite, sous une
+                 jauge pleine. Or la question qu on se pose en marchant dans les
+                 rangs est « qui a fini ? », et on la pose aux NOMS. Elle se lit
+                 donc là où l oeil arrive. (Pas de guillemet oblique ici : ce
+                 commentaire est DANS un gabarit.) -->
+            ${aFini(e) ? '<span class="ec-fini">a fini</span>' : ''}
             <span class="ec-rang-quand">${esc(depuis(e.vu, maintenant))}</span>
         </div>
         <div class="ec-rang-quoi">
             ${e.exo ? `<span class="ec-exo">${esc(nomDExercice(e.exo))}</span>`
                     : '<span class="ec-note">—</span>'}
-            ${e.parcours ? `<span class="ec-note">${esc(e.parcours)}</span>` : ''}
+            ${avanceHtml(e.avancement, e.quand, maintenant)}
         </div>
         ${score}
-        <button type="button" class="ec-mini" data-mot-eleve="${esc(e.id)}"
-                data-prenom="${esc(e.prenom)}" title="Lui écrire un mot">mot</button>
+        <span class="ec-rang-gestes">
+            <button type="button" class="ec-mini" data-mot-eleve="${esc(e.id)}"
+                    data-prenom="${esc(e.prenom)}" title="Lui écrire un mot">mot</button>
+            <button type="button" class="ec-mini ec-mini--indice" data-indice-eleve="${esc(e.id)}"
+                    data-prenom="${esc(e.prenom)}" data-exo="${esc(e.exo || '')}"
+                    title="Lui souffler un coup de pouce, sans l'interrompre">indice</button>
+        </span>
+    </div>
+    ${ouverte ? ficheHtml(e, maintenant) : ''}
     </div>`;
+}
+
+/**
+ * LA FICHE : où il en est, ce qu'il a fait, et ce qu'on peut faire pour lui.
+ *
+ * Ce n'est PAS son bilan. Le bilan répond à « qu'est-ce que je reprends
+ * lundi » et se lit assis ; celle-ci répond à « qu'est-ce que je fais pour lui,
+ * là » et se lit debout, en dix secondes. Tout ce qui ne sert pas cette
+ * décision-là encombre — voir `js/core/ficheEleve.js`.
+ */
+/**
+ * CE QUE CET ÉLÈVE-CI A DÉJÀ REÇU, pour toute la séance.
+ *
+ * ON COMPARE LES IDENTIFIANTS, PAS LES PRÉNOMS. Il y a deux Lucas dans la
+ * classe de Rémy : un prénom ne désigne personne, et le réglage se serait
+ * affiché sur la fiche de l'autre.
+ *
+ * Rend la ligne de réglage (elle porte son identifiant, donc de quoi la
+ * retirer), ou `null`.
+ */
+function reglageDeLEleve(eleveId, mode) {
+    return (vue.reglages || []).find(x => x.mode === mode
+        && x.exerciseId === '*' && x.pourId === eleveId) || null;
+}
+
+function ficheHtml(e, maintenant) {
+    const f = ficheDeLEleve(e, maintenant, { enPause: classeEnPause() });
+    const g = gestesPossibles(f);
+    const pourquoi = pourquoiDebloquer(f);
+    const saCalc = reglageDeLEleve(e.id, 'calculatrice');
+    const sonSaut = reglageDeLEleve(e.id, 'saut');
+
+    const cases = f.etapes.map(x => `<span class="ec-fiche-pas ec-fiche-pas--${x.etat}"
+        title="\u00c9tape ${x.rang}${x.titre ? ' \u2014 ' + esc(x.titre) : ''} : ${MOT_ETAPE[x.etat]}"
+        >${x.rang}</span>`).join('');
+
+    return `
+    <div class="ec-fiche" data-fiche-de="${esc(e.id)}">
+        <div class="ec-fiche-haut">
+            <div>
+                <p class="ec-fiche-ou">${esc(f.ou)}</p>
+                ${f.parcours ? `<p class="ec-note">dans <b>${esc(f.parcours)}</b></p>` : ''}
+            </div>
+            ${f.silenceDit ? `<span class="ec-fiche-silence${f.trop ? ' ec-fiche-silence--trop' : ''}"
+                >rien depuis ${esc(f.silenceDit)}</span>` : ''}
+        </div>
+
+        ${cases ? `<div class="ec-fiche-pas-rangee" role="list"
+                        aria-label="Les \u00e9tapes de son parcours">${cases}</div>` : ''}
+        ${f.question ? `<p class="ec-fiche-question">${esc(f.question)}</p>` : ''}
+        ${f.sousLesYeux ? `<p class="ec-fiche-yeux"><span>Sous ses yeux</span>${
+            esc(f.sousLesYeux)}</p>` : ''}
+
+        ${pourquoi ? `<p class="ec-fiche-conseil">${esc(pourquoi)}</p>` : ''}
+
+        <div class="ec-fiche-gestes">
+            <button type="button" class="ec-bouton ec-bouton--doux" data-mot-eleve="${esc(e.id)}"
+                    data-prenom="${esc(e.prenom)}"${g.mot ? '' : ' disabled'}>Lui \u00e9crire</button>
+            <button type="button" class="ec-bouton ec-bouton--doux" data-indice-eleve="${esc(e.id)}"
+                    data-prenom="${esc(e.prenom)}" data-exo="${esc(e.exo || '')}"${
+                    g.indice ? '' : ' disabled'}>Coup de pouce</button>
+            <button type="button" class="ec-bouton ec-bouton--doux" data-voir-exo="${esc(e.exo || '')}"
+                    data-prenom="${esc(e.prenom)}" data-graine="${esc(f.graine || '')}"
+                    data-reglages="${esc(f.reglages ? JSON.stringify(f.reglages) : '')}"${
+                    g.indice ? '' : ' disabled'}
+                    title="${f.graine
+                        ? 'SA question, celle-là précisément, ouverte chez vous avec SES réglages. Rien n\'est enregistré. Pour être lui et non plus le regarder, c\'est « Ouvrir son poste », dans Les élèves.'
+                        : 'Son étape, avec SES réglages. Il n\'a pas encore dit quelle question il a sous les yeux : ce sera le même travail, pas forcément la même question. Pour voir ce qu\'il a sous les yeux, c\'est « Ouvrir son poste », dans Les élèves.'}"
+                    >${f.graine ? 'Sa question, chez moi' : 'Son exercice, chez moi'}</button>
+            <button type="button" class="ec-bouton" data-saut-eleve="${esc(e.id)}"
+                    data-exo="${esc(e.exo || '')}" data-prenom="${esc(e.prenom)}"${
+                    g.debloquer ? '' : ' disabled'}
+                    title="${g.debloquer
+                        ? 'Il pourra passer cet exercice. L\'\u00e9tape ne comptera ni pour ni contre lui.'
+                        : 'Il faut qu\'il soit sur un exercice.'}"
+                    >Laisse tomber celui-l\u00e0</button>
+            <!-- ── LES DEUX GESTES QUI NE VALENT QUE POUR LUI ───────────────
+
+                 RÉMY : « dans le direct quand je clique sur un élève ce serait
+                 cool de pouvoir lui donner la calculatrice (juste à lui du
+                 coup) », puis « il faudrait aussi pouvoir mais seulement pour
+                 le direct permettre de débloquer tous les exercices (et aussi
+                 au cas par cas pour l'élève) quand on clique dessus ».
+
+                 LES DEUX EXISTAIENT, MAIS PAS ICI. La calculatrice se donnait
+                 depuis la barre de pilotage, aux élèves COCHÉS dans la liste —
+                 et sans coche, elle allait à toute la classe. Rémy, le
+                 lendemain : « la calculatrice s'est mises à toute la classe
+                 pour toute la séance ». Cliquer sur un élève pour ouvrir sa
+                 fiche n'est pas le cocher, et rien ne le disait au moment du
+                 geste. Le réglage le plus large était le défaut silencieux.
+
+                 ICI, IL N'Y A AUCUN DOUTE SUR LE DESTINATAIRE : on vient de
+                 cliquer sur LUI, son prénom est en haut de la fiche, et le
+                 bouton le nomme. C'est la même correction que « Laisse tomber
+                 celui-là », qui a rejoint cette fiche pour la même raison.
+
+                 POUR LA SÉANCE EN COURS — Rémy, interrogé : « Pour la séance
+                 en cours ». C'est ce que veut dire l'exercice étoile.
+
+                 (PAS D'ACCENT GRAVE ICI, et cette fois il n'a RIEN cassé de
+                 visible : « l'exercice <accent>*<accent> » a fermé le gabarit,
+                 multiplié deux chaînes vides, et rendu NaN — la fiche de
+                 l'élève s'affichait « NaN » et node --check ne disait rien,
+                 parce que la syntaxe, elle, tenait. Voir docs/frictions.md.) -->
+            <button type="button" class="ec-bouton ec-bouton--doux"
+                    data-calc-eleve="${esc(e.id)}" data-prenom="${esc(e.prenom)}"
+                    data-deja="${saCalc ? esc(saCalc.id) : ''}"
+                    title="${saCalc
+                        ? 'Il l\'a pour toute la séance. Appuyer la lui retire.'
+                        : 'À lui seul, et pour toute la séance.'}"
+                    >🧮 ${saCalc ? 'Lui retirer la calculatrice' : 'Lui donner la calculatrice'}</button>
+            <button type="button" class="ec-bouton ec-bouton--doux"
+                    data-saut-tout="${esc(e.id)}" data-prenom="${esc(e.prenom)}"
+                    data-deja="${sonSaut ? esc(sonSaut.id) : ''}"
+                    title="${sonSaut
+                        ? 'Il peut passer n\'importe quel exercice. Appuyer le lui retire.'
+                        : 'Il pourra passer n\'importe quel exercice de la séance. Aucune étape sautée ne comptera contre lui.'}"
+                    >🔓 ${sonSaut ? 'Refermer son parcours' : 'Tout lui débloquer'}</button>
+            ${g.rouvrir ? `<button type="button" class="ec-bouton" data-ecarter="${esc(e.id)}"
+                    data-etat="1" data-prenom="${esc(e.prenom)}">Lui rendre l'acc\u00e8s</button>` : ''}
+        </div>
+    </div>`;
+}
+
+const MOT_ETAPE = {
+    reussie: 'r\u00e9ussie', ratee: 'rat\u00e9e', 'en-cours': 'en cours', 'a-venir': 'pas encore'
+};
+
+/**
+ * LA CLASSE EST-ELLE EN PAUSE ?
+ *
+ * C'est la question qui décide si l'alarme d'inactivité a le droit de sonner.
+ * Quand Rémy met la classe en pause pour expliquer au tableau, personne ne
+ * répond — c'est le but, et trente alarmes à ce moment-là feraient éteindre la
+ * fonction le jour même.
+ */
+/**
+ * JUSQU'À QUAND LA SÉANCE EN COURS S'IMPOSE — dit, et non deviné.
+ *
+ * Rémy : « si je ne clos pas une séance, à la maison l'élève aura toujours la
+ * séance en cours non ? » Elle s'éteint maintenant à la fin de la journée
+ * (voir `finDeLaJourneeScolaire` côté serveur) — encore faut-il le DIRE. Une
+ * règle qui agit sans s'annoncer se découvre le jour où elle surprend.
+ *
+ * ON ÉCRIT « ce soir » OU « demain matin », jamais une heure. « jusqu'à 03:00 »
+ * fait calculer ; « jusqu'à demain matin » se comprend sans rien faire, et
+ * c'est vrai pour les deux seuls moments où l'on pose une séance.
+ */
+function jusquaDit() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    const t = Number(info.impose_jusqu_a) || 0;
+    if (!t) return 'jusqu\'à ce que vous la retiriez';
+    const fin = new Date(t * 1000);
+    const nuit = new Date(fin);
+    nuit.setHours(0, 0, 0, 0);
+    // L'échéance tombe à 3 h : si c'est la nuit prochaine, on est encore « ce
+    // soir » ; sinon, l'élève la garde toute la soirée et elle s'arrête au matin.
+    const memeJour = nuit.getTime() <= Date.now();
+    return memeJour ? 'jusqu\'à tout à l\'heure' : 'jusqu\'à demain matin';
+}
+
+/** Le bac à sable est-il fermé pour cette classe ? (Ouvert par défaut.) */
+/**
+ * CET ÉLÈVE A-T-IL FINI SA SÉANCE ?
+ *
+ * Une seule lecture, au même endroit pour la ligne et pour la tuile : deux
+ * façons de répondre à la même question finiraient par se contredire, et l'on
+ * verrait « a fini » à gauche et « étape 3 sur 4 » à droite.
+ */
+function aFini(e) {
+    return !!(e && e.avancement && e.avancement.etat === 'fini');
+}
+
+function bacDeLaClasse() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    return !!info.bac_ferme;
+}
+
+/** Combien de minutes dure le bac chez cette classe. 0 = sans limite. */
+function minutesDuBac() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    return Number(info.bac_minutes) || 0;
+}
+
+/**
+ * LES JEUX QUE LE PROFESSEUR A MIS DANS LE BAC — `null` s'il n'y a pas touché.
+ *
+ * La colonne vaut NULL (jamais réglé), la chaîne vide (tout retiré), ou une
+ * liste. Les trois états sont différents, et c'est pour cela qu'on ne les
+ * écrase pas en un tableau par commodité.
+ */
+function jeuxDuBacDeLaClasse() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    const brut = info.bac_jeux;
+    if (brut === null || brut === undefined) return null;
+    if (Array.isArray(brut)) return brut;
+    const s = String(brut);
+    return s === '' ? [] : s.split(',').filter(Boolean);
+}
+
+/** Ce qu'on écrit à côté du bouton : l'état, en français. */
+function direLesJeuxDuBac() {
+    const l = jeuxDuBacDeLaClasse();
+    if (l === null) return 'au choix du logiciel';
+    if (!l.length) return 'aucun jeu';
+    return l.length === 1 ? '1 jeu choisi' : `${l.length} jeux choisis`;
+}
+
+function classeEnPause() {
+    const ch = vue.direct && vue.direct.chrono;
+    const info = (vue.liste && vue.liste.classe) || vue.classe || {};
+    if (info.locked) return true;
+    if (!ch || ch.aZero !== 'pause') return false;
+    const maintenant = (vue.direct && vue.direct.maintenant) || Math.floor(Date.now() / 1000);
+    return ch.finAt <= maintenant;
+}
+
+/**
+ * LA BANDE D'ALARME — elle VA CHERCHER le professeur.
+ *
+ * Rémy : « un système "d'alarme si un élève est inactif" ».
+ *
+ * ELLE NOMME LES ÉLÈVES, et c'est tout ce qui la distingue d'un compteur.
+ * « 3 élèves sont arrêtés » oblige à chercher lesquels dans trente lignes —
+ * et pendant qu'on cherche, on ne va voir personne. Les règles qui décident
+ * QUI apparaît ici (et surtout qui n'y apparaît pas) sont dans
+ * js/core/vigilance.js, avec leurs raisons.
+ */
+/**
+ * LE PRÉNOM DE L'ALARME MÈNE À L'ÉLÈVE.
+ *
+ * La bande nommait les élèves arrêtés — c'est tout son mérite, « 3 élèves sont
+ * arrêtés » obligerait à chercher lesquels — mais elle n'y menait pas. Le
+ * professeur lisait « Maryam n'a plus rien fait depuis 13 min », puis
+ * redescendait la chercher lui-même dans trente lignes, à la main, pendant que
+ * la classe travaille.
+ *
+ * ON NE TOUCHE PAS À LA PHRASE. `direLesAlarmes` décide de ce qui se dit et de
+ * comment — deux états qu'on ne mélange pas, le pluriel, les minutes — et c'est
+ * éprouvé. On se contente de rendre cliquables les prénoms qu'elle a écrits.
+ *
+ * LES BORNES DE MOT SONT INDISPENSABLES : sans elles, « Léa » transformerait
+ * aussi les trois premières lettres de « Léana », et le professeur qui vise
+ * l'une ouvrirait la fiche de l'autre.
+ */
+function prenomsCliquables(phrase, alarmes) {
+    let out = phrase;
+    // Du plus long au plus court : « Marie-Claire » avant « Marie », sinon le
+    // court découpe le long et le reste ne se retrouve plus.
+    [...alarmes]
+        .sort((a, b) => String(b.eleve.prenom || '').length - String(a.eleve.prenom || '').length)
+        .forEach(a => {
+            const nom = esc(String(a.eleve.prenom || '').trim());
+            if (!nom) return;
+            const motif = new RegExp(`(^|[^\\p{L}\\p{N}-])(${nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})(?![\\p{L}\\p{N}-])`, 'u');
+            out = out.replace(motif, (tout, avant, trouve) =>
+                `${avant}<button type="button" class="ec-alarme-qui" data-fiche="${esc(a.eleve.id)}">${trouve}</button>`);
+        });
+    return out;
+}
+
+function alarmeHtml(eleves, maintenant) {
+    const alarmes = lesAlarmes(eleves, maintenant, { enPause: classeEnPause() });
+    if (!alarmes.length) return '';
+    const dur = alarmes.some(a => a.etat === 'bloque');
+    return `<div class="ec-alarme${dur ? ' ec-alarme--dur' : ''}" role="status">
+        <span class="ec-alarme-oeil" aria-hidden="true">${dur ? '!' : '·'}</span>
+        <span class="ec-alarme-mot">${prenomsCliquables(esc(direLesAlarmes(alarmes)), alarmes)}</span>
+    </div>`;
+}
+
+// --- Onglet « Le mur » ------------------------------------------------------
+
+/**
+ * LE MUR — toute la classe d'un seul regard.
+ *
+ * Rémy : « La possibilité d'avoir une zone où regarder les écrans des élèves ».
+ *
+ * CE MUR NE MONTRE PAS LES ÉCRANS, ET IL FAUT LE DIRE. Recopier trente écrans
+ * en direct demanderait un serveur qui n'existe pas ici — l'hébergement
+ * mutualisé de Rémy sert des pages PHP, il ne relaie pas trente flux — et
+ * poserait une question de vie privée qu'on ne règle pas en passant. Pour voir
+ * l'écran d'UN élève, il y a « Ouvrir son poste », dans l'onglet Les élèves :
+ * une seconde fenêtre qui se comporte comme son poste.
+ *
+ * CE QUE LE MUR MONTRE, C'EST L'ÉTAT DE TRENTE ÉLÈVES EN MÊME TEMPS — et c'est
+ * ce qu'on cherche vraiment en balayant une salle du regard : qui avance, qui
+ * s'est arrêté, qui a fini. Le direct répond à la même question en lignes ; le
+ * mur y répond en tuiles, ce qui tient sur un écran à trente et se lit sans
+ * lire.
+ *
+ * ET L'ORDRE N'EST PAS ALPHABÉTIQUE. On ne cherche pas un nom sur un mur, on
+ * cherche ce qui ne va pas : les ennuis passent devant.
+ */
+function murHtml() {
+    if (!vue.direct) return '<div class="ec-vide">On regarde la classe…</div>';
+    const { eleves, maintenant } = vue.direct;
+    if (!eleves.length) {
+        return `<div class="ec-vide ec-vide--invite">
+            <p class="ec-vide-grand">Personne dans cette classe pour l'instant.</p>
+        </div>`;
+    }
+    const enPause = classeEnPause();
+    const rangee = trierPourLeMur(eleves, maintenant, { enPause });
+
+    return alarmeHtml(eleves, maintenant)
+        + (enPause ? '<p class="ec-note ec-mur-pause">La classe est en pause : '
+            + 'personne ne répond, et c\'est normal.</p>' : '')
+        + `<div class="ec-mur">${rangee.map(v => tuileHtml(v)).join('')}</div>`
+        + `<p class="ec-mur-legende">
+            <span><i class="ec-pastel ec-pastel--bloque"></i>arrêté</span>
+            <span><i class="ec-pastel ec-pastel--ralenti"></i>ralentit</span>
+            <span><i class="ec-pastel ec-pastel--ok"></i>travaille</span>
+            <span><i class="ec-pastel ec-pastel--fini"></i>a fini</span>
+            <span><i class="ec-pastel ec-pastel--parti"></i>hors ligne</span>
+           </p>`;
+}
+
+function tuileHtml(v) {
+    const e = v.eleve;
+    const av = e.avancement || null;
+    const p = Math.round((av && av.fraction ? av.fraction : 0) * 100);
+    // Ce qu'on écrit sous le prénom : l'état d'abord quand il appelle un geste,
+    // l'avancement sinon. Une tuile de cette taille ne porte qu'une phrase.
+    const mot = v.etat === 'bloque' || v.etat === 'ralenti'
+        ? 'rien depuis ' + depuisCombien(v.silence)
+        : (v.etat === 'parti' ? 'hors ligne'
+            : (v.etat === 'pas-commence' ? 'pas commencé' : enBref(av)));
+    return `<div class="ec-tuile ec-tuile--${esc(v.etat)}" title="${esc(e.prenom)} — ${esc(v.pourquoi || mot)}">
+        <div class="ec-tuile-qui">${esc(e.prenom)}</div>
+        <div class="ec-tuile-jauge"><i style="width:${p}%"></i></div>
+        <div class="ec-tuile-mot">${esc(mot)}</div>
+        <div class="ec-tuile-actions">
+            <button type="button" class="ec-mini" data-mot-eleve="${esc(e.id)}"
+                    data-prenom="${esc(e.prenom)}" title="Lui écrire un mot">mot</button>
+            <button type="button" class="ec-mini ec-mini--indice" data-indice-eleve="${esc(e.id)}"
+                    data-prenom="${esc(e.prenom)}" data-exo="${esc(e.exo || '')}"
+                    title="Lui souffler un coup de pouce">indice</button>
+        </div>
+    </div>`;
+}
+
+// --- Onglet « Les séances » -------------------------------------------------
+//
+// Rémy : « quand je clique sur une classe, il faut pouvoir voir la liste des
+// séances attitrées, je trouve que c'est un peu confus », puis : « il y a deux
+// choses, la classe (liste + paramètres), la liste des séances attitrées et la
+// séance en cours. On organise au mieux ».
+//
+// IL A NOMMÉ TROIS CHOSES, ET L'ÉCRAN N'EN DISTINGUAIT AUCUNE.
+//
+// Un onglet « La séance » mélangeait ce qui se passe MAINTENANT — la séance
+// imposée, le compte à rebours, le mot au tableau — avec les réglages de la
+// classe elle-même : la renommer, la mettre en pause, la vider, la supprimer.
+// Et la liste de ce qu'on avait DÉJÀ donné à cette classe n'existait nulle
+// part, alors que l'information dormait en base depuis le début.
+//
+// Les onglets répondent maintenant chacun à une question :
+//   · Le direct / Le mur — qui travaille en ce moment ?
+//   · En cours           — qu'est-ce que je pilote maintenant ?
+//   · Les séances        — qu'est-ce que je leur ai donné ?     ← celui-ci
+//   · La classe          — qui est dedans, et comment elle marche ?
+//   · Les bilans         — qu'est-ce que je reprends lundi ?
+
+function seancesHtml() {
+    if (vue.seances === null) return '<div class="ec-vide">On regarde ce qui a été donné…</div>';
+    if (vue.seances.erreur) return `<div class="ec-vide">${esc(vue.seances.erreur)}</div>`;
+
+    const liste = vue.seances.seances || [];
+    if (!liste.length) {
+        return `<div class="ec-vide ec-vide--invite">
+            <p class="ec-vide-grand">Aucune séance donnée à cette classe.</p>
+            <p>Ouvrez un parcours dans <b>Préparer</b>, et cochez cette classe
+               dans le panneau <b>À qui ce parcours est donné</b>.</p>
+        </div>`;
+    }
+    const impose = (vue.liste && vue.liste.classe && vue.liste.classe.impose_path_id) || null;
+
+    // CE QUE CET ÉCRAN DOIT DIRE AVANT TOUT AUTRE CHOSE.
+    //
+    // Rémy : « Comment sait-on qu'une classe fait un parcours ? […] est-ce
+    // qu'un élève a accès à tous les parcours que je définis pour la classe, et
+    // du coup le parcours actuel c'est lequel ? »
+    //
+    // LA RÉPONSE EST OUI, ET C'EST ELLE QUI CRÉE LE FLOU. Un élève reçoit
+    // TOUTES les séances données à sa classe et les voit dans sa liste ; il
+    // choisit. Sauf si l'une est IMPOSÉE : celle-là s'ouvre toute seule, et
+    // c'est elle « la séance en cours ».
+    //
+    // Sans cette phrase en tête de liste, on ne peut pas deviner la règle — et
+    // sans un bouton sur chaque ligne, on ne peut pas la changer là où on la
+    // lit. Le menu déroulant existait, au fond d'un autre onglet.
+    const enCours = liste.find(s => s.pathId === impose);
+    return `
+        <div class="ec-encours${enCours ? '' : ' ec-encours--aucune'}">
+            ${enCours
+                ? `<b>En ce moment : ${esc(enCours.nom)}</b>
+                   <span>Elle s'ouvre toute seule chez vos élèves, sans qu'ils aient rien à
+                         lancer, ${esc(jusquaDit())}.</span>
+                   <button type="button" class="ec-bouton ec-bouton--doux" data-imposer-rien>Ne plus rien imposer</button>`
+                : `<b>Aucune séance imposée</b>
+                   <span>Vos élèves voient TOUTES les séances ci-dessous et choisissent eux-mêmes.
+                         Pour qu'une seule s'ouvre toute seule, cliquez <b>mettre en cours</b>.</span>`}
+        </div>
+        <p class="ec-note ec-note--bloc">De la plus récente à la plus ancienne.</p>
+        <div class="ec-seances">${liste.map(s => `
+            <div class="ec-seance${s.pathId === impose ? ' ec-seance--imposee' : ''}">
+                <div class="ec-seance-haut">
+                    <b>${esc(s.nom)}</b>
+                    ${s.pour
+                        // À QUI, QUAND CE N'EST PAS TOUTE LA CLASSE. Rémy peut
+                        // maintenant donner à quelques élèves ; laisser la ligne
+                        // muette ferait croire que les trente l'ont reçu, et
+                        // c'est sur cette liste qu'il décide de ce qu'il rend.
+                        ? `<span class="ec-pastille ec-pastille--nomme">à ${esc(s.pour)}</span>`
+                        : ''}
+                    ${s.pour ? ''
+                        : (s.pathId === impose
+                            ? '<span class="ec-pastille ec-pastille--impose">en cours</span>'
+                            : `<button type="button" class="ec-mini" data-mettre-en-cours="${esc(s.pathId)}"
+                                       data-nom="${esc(s.nom)}">mettre en cours</button>`)}
+                    <span class="ec-seance-quand">${esc(quandLisible(s.donneeLe))}</span>
+                </div>
+                <div class="ec-seance-bas">
+                    <span>${s.etapes} étape${s.etapes > 1 ? 's' : ''}</span>
+                    <span class="ec-sous-sep">·</span>
+                    <span>${s.questions} question${s.questions > 1 ? 's' : ''}</span>
+                    <span class="ec-sous-sep">·</span>
+                    <span>${esc(MODES[s.mode] || s.mode)}</span>
+                    ${s.pourLe ? `<span class="ec-sous-sep">·</span>
+                        <span>à rendre ${esc(quandLisible(s.pourLe))}</span>` : ''}
+                </div>
+                <!-- COMPLÉTER ET ALLÉGER, LÀ OÙ ON REGARDE SA CLASSE.
+
+                     Rémy : « il faut vraiment que pour la séance ce soit
+                     facile d'ajouter et d'enlever un exercice et surtout que
+                     ça s'actualise chez un élève. »
+
+                     LES DEUX GESTES N'EMPRUNTENT PAS LE MÊME CHEMIN, et c'est
+                     voulu — c'est l'asymétrie expliquée dans
+                     « complementDeSeance » :
+
+                       · AJOUTER écrit dans le PARCOURS. L'étape arrive chez
+                         tous les élèves, même ceux qui ont commencé, et leur
+                         avancement est gardé. C'est permanent : la séance a
+                         vraiment un exercice de plus.
+                       · RETIRER passe par la DISPENSE, qui ne touche pas au
+                         parcours. L'exercice disparaît pour la classe, le
+                         travail déjà fait dessus reste au bilan, et le réglage
+                         s'annule d'un clic. Réécrire le parcours ferait mentir
+                         le bilan de ceux qui l'avaient déjà fait.
+
+                     SEULEMENT SUR LES SÉANCES DE CLASSE. Une séance donnée à
+                     un élève nommé (« s.pour ») se rattrape, elle ne se
+                     complète pas : changer son parcours changerait aussi celui
+                     de la classe, qui le partage. -->
+                ${s.pour ? '' : `
+                <div class="ec-seance-gestes">
+                    <button type="button" class="ec-mini" data-seance-ajouter="${esc(s.pathId)}"
+                            data-nom="${esc(s.nom)}"
+                            title="Un exercice de plus, à la fin. Il arrive chez tous vos élèves, même ceux qui ont déjà commencé — ce qu'ils ont fait est gardé."
+                            >+ un exercice</button>
+                    ${s.exercices && s.exercices.length ? `
+                    <button type="button" class="ec-mini ec-mini--rouge" data-seance-retirer="${esc(s.pathId)}"
+                            data-exos="${esc((s.exercices || []).join(','))}"
+                            title="L'exercice disparaît pour toute la classe, tout de suite, même chez celui qui est dessus. Le travail déjà fait reste au bilan et le réglage s'annule."
+                            >retirer un exercice</button>` : ''}
+                </div>`}
+            </div>`).join('')}</div>`;
+}
+
+const MODES = {
+    entrainement: 'entraînement', evaluation: 'évaluation',
+    apprentissage: 'apprentissage', revision: 'révision'
+};
+
+/**
+ * « hier », « il y a 3 jours », « le 12 septembre ».
+ *
+ * Le professeur ne cherche pas un horodatage : il cherche « c'est celle de la
+ * semaine dernière ». Au-delà d'une semaine, la date exacte redevient plus
+ * parlante que le compte des jours.
+ */
+function quandLisible(quand) {
+    if (!quand) return '';
+    const t = new Date(String(quand).replace(' ', 'T'));
+    if (isNaN(t)) return String(quand);
+    const jours = Math.floor((Date.now() - t.getTime()) / 86400000);
+    if (jours <= 0) return 'aujourd\'hui';
+    if (jours === 1) return 'hier';
+    if (jours < 7) return `il y a ${jours} jours`;
+    return 'le ' + t.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+}
+
+// --- Onglet « Les bilans » --------------------------------------------------
+//
+// LA ROUTE EXISTAIT, LA PORTE N'EXISTAIT PAS.
+//
+// `/teacher/report` rend depuis longtemps, pour chaque élève, ses questions, sa
+// réussite, son temps, ses erreurs ouvertes et ses compétences faibles. AUCUN
+// ÉCRAN DE L'APPLICATION NE L'APPELAIT : on ne pouvait le lire qu'en passant
+// par les pages d'administration, c'est-à-dire en sortant de l'application —
+// et Rémy avait dit ce qu'il en pensait, « j'aimerai ne pas passer par admin ».
+//
+// MAIS BRANCHER LA ROUTE NE SUFFISAIT PAS. Trente lignes de chiffres sont la
+// MATIÈRE d'un bilan ; le bilan, c'est la phrase qu'on en tire. La question
+// qu'un professeur se pose en rentrant chez lui n'est pas « quel est le taux de
+// Léo » — il était là, il le sait. C'est « qu'est-ce que je reprends lundi, et
+// avec qui ». Ce qui suit répond à celle-là d'abord, et donne le tableau
+// ensuite.
+
+function bilansHtml() {
+    if (!vue.bilans) return '<div class="ec-vide">On rassemble les bilans…</div>';
+    if (vue.bilans.erreur) return `<div class="ec-vide">${esc(vue.bilans.erreur)}</div>`;
+
+    const lignes = vue.bilans.students || [];
+    if (!lignes.length) {
+        return `<div class="ec-vide ec-vide--invite">
+            <p class="ec-vide-grand">Aucun élève dans cette classe.</p></div>`;
+    }
+    const r = resumeDeClasse(lignes);
+    const notions = notionsAReprendre(lignes);
+
+    return resumeHtml(r)
+        + barreDuBilanHtml()
+        + reprendreHtml(notions, r.eleves)
+        + comprisHtml(notionsComprises(lignes), r.eleves)
+        + tableauBilanHtml(lignes)
+        + detailParExerciceHtml(lignes);
+}
+
+function resumeHtml(r) {
+    // « 0 % » se lit comme « tout est faux » ; quand personne n'a rien fait, il
+    // n'y a rien à dire, et c'est cela qu'on écrit.
+    const taux = r.reussite === null ? '—' : Math.round(r.reussite * 100) + ' %';
+    return `<div class="ec-bilan-resume">
+        ${chiffre(taux, 'de réussite', r.reussite !== null && r.reussite >= 0.7 ? 'bien' : '')}
+        ${chiffre(r.questions, r.questions > 1 ? 'questions' : 'question')}
+        ${chiffre(enHeures(r.secondes), 'de travail')}
+        ${chiffre(r.actifs + ' / ' + r.eleves, 'ont travaillé',
+            r.actifs < r.eleves ? 'alerte' : '')}
+        ${r.jamaisVenus ? chiffre(r.jamaisVenus, r.jamaisVenus > 1
+            ? 'ne sont jamais venus' : 'n\'est jamais venu', 'alerte') : ''}
+    </div>`;
+}
+
+const chiffre = (v, quoi, ton = '') => `<div class="ec-chiffre${ton ? ' ec-chiffre--' + ton : ''}">
+    <b>${esc(String(v))}</b><span>${esc(quoi)}</span></div>`;
+
+/**
+ * IMPRIMER CE BILAN — et « ce » bilan veut dire celui qu'on a sous les yeux.
+ *
+ * RÉMY : « permettre d'imprimer un pdf que tu génères ».
+ *
+ * LE PAPIER REPREND L'ÉCRAN TEL QU'IL EST : l'ordre qu'on vient de choisir, et
+ * le tableau croisé si la bascule du détail est ouverte. Un PDF qui reclasse
+ * les élèves ou qui ajoute un tableau qu'on n'avait pas demandé oblige à
+ * relire la feuille pour y retrouver ce qu'on venait d'y chercher.
+ *
+ * ET IL EXISTAIT DÉJÀ UN AUTRE PDF, celui du bilan de SÉANCE (« Donner à une
+ * classe »). Ils ne disent pas la même chose — une heure, contre un terme — et
+ * ne se remplacent pas ; ils partagent la mécanique du papier, rien d'autre.
+ */
+function barreDuBilanHtml() {
+    return `<div class="ec-bilan-gestes">
+        <button type="button" class="ec-bouton ec-bouton--doux" data-bilan-pdf
+            title="Une feuille A4 : ce qu'il faut reprendre, ce qui est compris, le tableau de la classe — et le détail par exercice si vous l'avez ouvert."
+            >Imprimer ce bilan</button>
+    </div>`;
+}
+
+/**
+ * CE QU'IL FAUT REPRENDRE — le retournement du tableau.
+ *
+ * Une notion faible chez douze élèves appelle une leçon ; la même chez un seul
+ * appelle un accompagnement. Ce ne sont pas les mêmes lundis, et c'est pour
+ * cela qu'on range par nombre d'élèves et qu'on écrit ce nombre.
+ */
+function reprendreHtml(notions, combienDElevesEnTout) {
+    if (!notions.length) {
+        return '<p class="ec-note ec-note--bloc">Rien ne ressort comme fragile pour l\'instant — '
+            + 'il faut un peu de travail enregistré avant que ce bilan dise quelque chose.</p>';
+    }
+    return `<section class="ec-bloc ec-bloc--reprendre">
+        <h3 class="ec-h3">À reprendre</h3>
+        <p class="ec-note ec-note--bloc">Les notions fragiles, de la plus partagée à la
+           plus isolée. Ce qui touche la moitié de la classe se reprend au tableau ;
+           ce qui touche deux élèves se reprend avec eux.</p>
+        ${notions.slice(0, 8).map(n => {
+            const c = laCompetence(n.skillId);
+            const part = Math.round(100 * n.combien / Math.max(1, combienDElevesEnTout));
+            return `<div class="ec-reprendre">
+                <div class="ec-reprendre-haut">
+                    <b>${esc(c ? c.label : n.skillId)}</b>
+                    <span class="ec-reprendre-combien${part >= 40 ? ' ec-reprendre-combien--fort' : ''}"
+                        >${n.combien} élève${n.combien > 1 ? 's' : ''}</span>
+                </div>
+                <div class="ec-jauge ec-jauge--mince"><i style="width:${part}%"></i></div>
+                <div class="ec-reprendre-qui">${
+                    n.eleves.slice(0, 8).map(e => esc(e.firstName)).join(', ')
+                    + (n.eleves.length > 8 ? ` et ${n.eleves.length - 8} autres` : '')}</div>
+            </div>`;
+        }).join('')}
+    </section>`;
+}
+
+/**
+ * CE QUI EST COMPRIS — et pourquoi ça n'est pas la même liste à l'envers.
+ *
+ * RÉMY : « au début du bilan, mettre ce qu'il faut revoir ET CE QUI A ÉTÉ
+ * COMPRIS pour la classe ».
+ *
+ * L'ÉCRAN NE DISAIT QUE LA MOITIÉ SOMBRE, et pour une raison matérielle : la
+ * route n'envoyait que les notions fragiles. Elle envoie maintenant les deux.
+ *
+ * ON NE L'AFFICHE PAS QUAND IL N'Y A RIEN. Un bloc « Ce qui est compris » vide
+ * en tête de bilan est plus décourageant que son absence — et la phrase de
+ * `reprendreHtml` dit déjà, le cas échéant, qu'il n'y a pas encore assez de
+ * travail enregistré pour conclure quoi que ce soit.
+ *
+ * LE PARTAGE ENTRE LES DEUX LISTES EST DÉCIDÉ AILLEURS (`notionsComprises`),
+ * là où ça se mesure sans navigateur : une notion n'arrive ici que si plus
+ * d'élèves l'ont acquise qu'ils ne l'ont fragile.
+ */
+function comprisHtml(notions, combienDElevesEnTout) {
+    if (!notions.length) return '';
+    return `<section class="ec-bloc ec-bloc--compris">
+        <h3 class="ec-h3">Ce qui est compris</h3>
+        <p class="ec-note ec-note--bloc">Ce qu'on peut rayer de lundi. Une notion n'est ici
+           que si plus d'élèves l'ont acquise qu'ils ne l'ont fragile ; les autres sont
+           juste au-dessus.</p>
+        ${notions.slice(0, 8).map(n => {
+            const c = laCompetence(n.skillId);
+            const part = Math.round(100 * n.combien / Math.max(1, combienDElevesEnTout));
+            return `<div class="ec-reprendre">
+                <div class="ec-reprendre-haut">
+                    <b>${esc(c ? c.label : n.skillId)}</b>
+                    <span class="ec-reprendre-combien ec-reprendre-combien--bien"
+                        >${n.combien} élève${n.combien > 1 ? 's' : ''}</span>
+                </div>
+                <div class="ec-jauge ec-jauge--mince ec-jauge--bien"><i style="width:${part}%"></i></div>
+                <div class="ec-reprendre-qui">${
+                    n.eleves.slice(0, 8).map(e => esc(e.firstName)).join(', ')
+                    + (n.eleves.length > 8 ? ` et ${n.eleves.length - 8} autres` : '')
+                    + (n.fragilePour
+                        // ON NE CACHE PAS CEUX POUR QUI ÇA NE TIENT PAS ENCORE.
+                        // Sans cette fin de ligne, « Les relatifs : 18 élèves »
+                        // se lit « la classe sait », et l'on raye une leçon dont
+                        // sept élèves ont encore besoin.
+                        ? ` — encore fragile pour ${n.fragilePour}` : '')}</div>
+            </div>`;
+        }).join('')}
+    </section>`;
+}
+
+/**
+ * LE DÉPLIAGE D'UN ÉLÈVE : ce qui est fragile, et ce qu'il a eu.
+ *
+ * Il tient dans une SEULE cellule qui traverse les six colonnes : une ligne de
+ * tableau ne peut rien porter d'autre, et c'est tant mieux — le dépliage ne se
+ * confond pas avec une ligne d'élève.
+ *
+ * CE QU'IL DIT EST DÉCIDÉ AILLEURS (`core/detailDeLEleve.js`), là où ça se
+ * mesure sans navigateur : combien de notions fragiles, dans quel ordre, et
+ * quelle phrase quand il n'y a rien — ce qui est le cas le plus fréquent la
+ * première semaine.
+ */
+function detailHtml(l) {
+    const d = detailDeLEleve(l);
+    const fragiles = d.fragiles.length ? `
+        <div class="ec-detail-bloc">
+            <h4 class="ec-detail-titre">Ce qui est fragile</h4>
+            ${d.fragiles.map(f => `<div class="ec-detail-notion">
+                <b>${esc(f.label)}</b>
+                <span class="ec-jauge ec-jauge--mince"><i style="width:${f.pourcent}%"></i></span>
+                <span class="ec-note">${f.pourcent} %</span>
+            </div>`).join('')}
+        </div>` : '';
+    const notes = d.notes.length ? `
+        <div class="ec-detail-bloc">
+            <h4 class="ec-detail-titre">Ses séances notées</h4>
+            ${d.notes.map(n => `<div class="ec-detail-note">
+                <span>${esc(n.seance)}</span>
+                <b>${esc(String(n.note))} / ${esc(String(n.sur))}</b>
+            </div>`).join('')}
+        </div>` : '';
+    return `<tr class="ec-tr-detail"><td colspan="6">
+        <p class="ec-note ec-note--bloc">${esc(d.phrase)}</p>
+        ${fragiles}${notes}
+    </td></tr>`;
+}
+
+/**
+ * LES SÉANCES QUI PEUVENT FAIRE DES COLONNES.
+ *
+ * DÉDOUBLONNÉES PAR PARCOURS : une même séance donnée à la classe PUIS à trois
+ * élèves nommés paraît deux fois dans la liste des séances — deux
+ * « assignments », un seul parcours. Deux fois la même ligne dans un menu de
+ * choix fait douter qu'on ait cliqué la bonne.
+ *
+ * ET SEULEMENT CELLES QUI ONT DES EXERCICES : une séance faite de jeux ou de
+ * cartes n'a pas de colonnes à donner, et la proposer ne mènerait qu'à un
+ * tableau vide.
+ */
+function seancesPourLeDetail() {
+    const vues = new Set();
+    const out = [];
+    for (const s of (vue.seances && vue.seances.seances) || []) {
+        if (!s || !s.pathId || vues.has(s.pathId)) continue;
+        if (!((s.exercices || []).length)) continue;
+        vues.add(s.pathId);
+        out.push(s);
+    }
+    return out;
+}
+
+/** La séance dont on regarde le détail — la dernière donnée, à défaut de choix. */
+function seanceDuDetail() {
+    const seances = seancesPourLeDetail();
+    return seances.find(s => s.pathId === vue.seanceDetail) || seances[0] || null;
+}
+
+/**
+ * LE DÉTAIL, EXERCICE PAR EXERCICE — le tableau à double entrée.
+ *
+ * RÉMY : « permettre aussi d'avoir le détail avec un tableau des exercices
+ * (double entrée donc) et leur détail de réussite par exercice », et quand je
+ * lui ai demandé ce qui devait faire les colonnes : « pour le 4 colonne séance
+ * choisie ». Puis : « juste un switch de détail ».
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * POURQUOI UNE BASCULE, ET NON UN TABLEAU DE PLUS.
+ *
+ * C'est lui qui l'a dit le premier, de l'autre tableau : « le bilan que tu
+ * proposes est bien CAR CONCIS ». Trente lignes et huit colonnes de plus sous
+ * le bilan le rendraient illisible pour tous les jours où l'on ne cherche pas
+ * ça. Fermée, la bascule ne coûte qu'une ligne ; ouverte, elle donne tout.
+ *
+ * CE QUE LE TABLEAU CROISÉ DIT ET QUE LE BILAN NE DIT PAS : la COLONNE. « Léo :
+ * 62 % » ne distingue pas l'élève faible partout de celui qui s'est écroulé sur
+ * un seul exercice ; et une colonne rouge pour vingt-six élèves n'est pas
+ * vingt-six élèves en difficulté — c'est un exercice à reprendre au tableau.
+ *
+ * CE QUI SE CALCULE EST AILLEURS (`core/tableauDesExercices.js`), là où ça se
+ * mesure sans navigateur : les colonnes, les cases, le pied de colonne et la
+ * phrase. Ici, on ne fait que poser le HTML.
+ */
+function detailParExerciceHtml(lignes) {
+    const ouvert = !!vue.detailBilan;
+    const bascule = `<button type="button"
+            class="reglage-interrupteur${ouvert ? ' reglage-interrupteur--actif' : ''}"
+            data-detail-bilan="${ouvert ? '0' : '1'}" aria-pressed="${ouvert}">
+            <span class="reglage-interrupteur-piste" aria-hidden="true"><span></span></span>
+            <span class="reglage-interrupteur-mot">Le détail, exercice par exercice</span>
+        </button>`;
+
+    if (!ouvert) {
+        return `<section class="ec-bloc">${bascule}
+            <p class="ec-note ec-note--bloc">Vos élèves en lignes, les exercices d'une
+               séance en colonnes. C'est ce qui dit si UN exercice a résisté à toute la
+               classe — ce qu'un taux global ne peut pas dire.</p></section>`;
+    }
+
+    const seances = seancesPourLeDetail();
+    if (!seances.length) {
+        return `<section class="ec-bloc">${bascule}
+            <p class="ec-note ec-note--bloc">Aucune séance d'exercices n'a encore été
+               donnée à cette classe : il n'y a pas de colonnes à mettre. Ouvrez un
+               parcours dans <b>Préparer</b> et donnez-le à cette classe.</p></section>`;
+    }
+
+    const choisie = seanceDuDetail();
+    const t = tableauDesExercices(lignes, choisie, trieurDuBilan(ordreDesBilans));
+    const phrase = phraseDuTableau(t);
+
+    const choix = `<label class="ec-choix-seance">
+        <span class="ec-note">La séance</span>
+        <select data-seance-detail class="ec-champ ec-champ--ou">
+            ${seances.map(s => `<option value="${esc(s.pathId)}"${
+                s.pathId === choisie.pathId ? ' selected' : ''}>${esc(s.nom)}${
+                s.pour ? ' (à ' + esc(s.pour) + ')' : ''}</option>`).join('')}
+        </select>
+    </label>`;
+
+    const colonnes = t.exercices.map(ex => nomDExercice(ex));
+    const entete = `<tr><th>Élève</th>${colonnes.map((nom, i) =>
+        `<th class="ec-th-exo" title="${esc(nom)}">${esc(abreger(nom))}</th>`).join('')}
+        <th class="ec-th-exo">Sa séance</th></tr>`;
+
+    const corps = t.rangs.map(r => `<tr class="ec-tr-bilan${
+        r.commences ? '' : ' ec-tr-rien'}">
+        <td><b>${esc(r.firstName)}</b></td>
+        ${r.cases.map((c, i) => caseHtml(c, r.firstName, colonnes[i])).join('')}
+        <td class="ec-td-total">${r.taux === null ? '—'
+            : Math.round(r.taux * 100) + ' %'}<span class="ec-note">${
+            r.commences} / ${t.exercices.length}</span></td>
+    </tr>`).join('');
+
+    // LE PIED DE TABLEAU EST LA MOITIÉ UTILE. On balaye les cases pour UN élève ;
+    // on lit le pied pour décider de l'heure suivante.
+    const pied = `<tr class="ec-tr-pied">
+        <td><b>La classe</b></td>
+        ${t.pieds.map(p => `<td class="${classeDeCase(p.taux)}"
+            title="${p.eleves} élève${p.eleves > 1 ? 's' : ''} ${
+                p.eleves > 1 ? 'ont' : 'a'} atteint cet exercice"
+            >${p.taux === null ? '—' : Math.round(p.taux * 100) + ' %'}<span class="ec-note"
+            >${p.eleves} él.</span></td>`).join('')}
+        <td></td>
+    </tr>`;
+
+    return `<section class="ec-bloc">${bascule}
+        ${choix}
+        <p class="ec-note ec-note--bloc">Réussite <b>du premier coup</b> : une question
+           trouvée au deuxième essai ne compte pas comme juste, elle compte comme
+           rattrapée. Une case <b>vide</b> veut dire que cet élève n'a pas atteint cet
+           exercice — ce qui n'est pas « il a tout raté ».</p>
+        ${phrase ? `<p class="ec-phrase-tableau">${esc(phrase)}</p>` : ''}
+        <div class="ec-table-cadre"><table class="ec-table ec-table--croise">
+            <thead>${entete}</thead>
+            <tbody>${corps}</tbody>
+            <tfoot>${pied}</tfoot>
+        </table></div>
+    </section>`;
+}
+
+/**
+ * LE NOM D'UNE COLONNE TIENT EN DIX-HUIT MILLIMÈTRES, ou il ne tient pas.
+ *
+ * « Additions posées » tient ; « Lire et placer des coordonnées » non. On coupe
+ * donc, et le nom entier reste dans l'infobulle — contrairement au PDF, qui
+ * écrit les noms en biais et n'a pas d'infobulle à offrir.
+ */
+function abreger(nom, max = 16) {
+    const t = String(nom || '');
+    return t.length <= max ? t : t.slice(0, max - 1) + '…';
+}
+
+/**
+ * LA COULEUR D'UNE CASE suit l'échelle de maîtrise de toute l'application —
+ * NA, EC, A, E. Inventer une seconde échelle pour ce tableau ferait qu'un même
+ * élève serait « acquis » ici et « en cours » ailleurs, pour la même réussite.
+ */
+function classeDeCase(taux) {
+    if (taux === null || taux === undefined) return 'ec-case ec-case--vide';
+    return 'ec-case ec-case--' + levelFor(taux).key.toLowerCase();
+}
+
+/**
+ * UNE CASE, ET CE QU'ELLE DIT EN PASSANT DESSUS.
+ *
+ * LES TROIS NOMBRES SONT DANS L'INFOBULLE, PAS DANS LA CASE. « 9/12 · 2 rat. »
+ * dans dix-huit millimètres est illisible, et le tableau n'est utile que si on
+ * le BALAYE : un pourcentage et une teinte se lisent d'un coup d'œil, le détail
+ * s'obtient en s'arrêtant sur la case.
+ */
+function caseHtml(c, prenom, nomExo) {
+    if (c.vide) {
+        return `<td class="ec-case ec-case--vide"
+            title="${esc(prenom)} n'a pas atteint « ${esc(nomExo)} »"></td>`;
+    }
+    const quoi = `${esc(prenom)} — ${esc(nomExo)} : ${c.posees} question${
+        c.posees > 1 ? 's' : ''}, ${c.justes} du premier coup`
+        + (c.reprises ? `, ${c.reprises} rattrapée${c.reprises > 1 ? 's' : ''}` : '');
+    return `<td class="${classeDeCase(c.taux)}" title="${quoi}"
+        >${Math.round(c.taux * 100)} %<span class="ec-note">${c.justes}/${c.posees}</span></td>`;
+}
+
+function tableauBilanHtml(lignes) {
+    const parNom = ordreDesBilans === 'nom';
+    return `<section class="ec-bloc">
+        <h3 class="ec-h3">Élève par élève</h3>
+        <!-- LA PHRASE SUIT L'ORDRE, SINON ELLE MENT.
+
+             « Rangés par ce qui demande un geste » au-dessus d'un tableau
+             alphabétique est pire que pas de phrase du tout : on cherche la
+             logique du classement pendant une demi-minute avant de comprendre
+             qu'il n'y en a pas celle-là. -->
+        <p class="ec-note ec-note--bloc">${parNom
+            ? 'Par ordre alphabétique — pour retrouver quelqu\'un dont on cherche le nom.'
+            : 'Rangés par ce qui demande un geste, pas par ordre alphabétique : ceux '
+              + 'qui n\'ont rien fait d\'abord, puis les plus en difficulté.'}</p>
+        <div class="ec-ordre" role="group" aria-label="Dans quel ordre ranger les élèves">
+            <span class="ec-note">Ranger</span>
+            ${ORDRES_DU_BILAN.map(o => `<button type="button"
+                class="ec-ordre-btn${o.cle === ordreDesBilans ? ' ec-ordre-btn--actif' : ''}"
+                data-ordre-bilan="${esc(o.cle)}"
+                aria-pressed="${o.cle === ordreDesBilans ? 'true' : 'false'}"
+                >${esc(o.mot)}</button>`).join('')}
+        </div>
+        <div class="ec-table-cadre"><table class="ec-table ec-table--bilan">
+            <thead><tr>
+                <th>Élève</th><th>Questions</th><th>Réussite</th>
+                <th>Travail</th><th>Erreurs ouvertes</th><th>Dernière note</th>
+            </tr></thead>
+            <tbody>${trieurDuBilan(ordreDesBilans)(lignes).map(l => {
+                const rien = !(Number(l.totalQuestions) || 0);
+                const taux = l.successRate === null || l.successRate === undefined
+                    ? '—' : Math.round(l.successRate * 100) + ' %';
+                const note = l.lastNote
+                    ? `${esc(String(l.lastNote.note))} / ${esc(String(l.lastNote.sur))}` : '—';
+                // ── ON CLIQUE SUR LUI, ET SA LIGNE SE DÉPLIE ───────────────
+                //
+                // RÉMY : « le bilan que tu proposes est bien car concis, on
+                // pourrait avoir un peu de détail par élève si on le souhaite
+                // et qu'on clique sur lui ? »
+                //
+                // LES DEUX MOITIÉS DE SA PHRASE COMPTENT. Le tableau est bien
+                // PARCE QU'il est concis : six colonnes, trente lignes, et
+                // l'œil trouve en deux secondes qui n'a rien fait. Trois
+                // colonnes de plus le détruiraient. Le détail se déplie donc,
+                // et seulement là où l'on a cliqué.
+                //
+                // LE SERVEUR L'ENVOYAIT DÉJÀ : `/teacher/report` rend
+                // `weakSkills` et `notes` par élève depuis toujours, et
+                // l'écran n'en affichait aucune. Il n'y avait rien à aller
+                // chercher, seulement à montrer.
+                const ouvert = vue.bilanOuvert === l.studentId;
+                return `<tr class="ec-tr-bilan${rien ? ' ec-tr-rien' : ''}${
+                    ouvert ? ' ec-tr-bilan--ouverte' : ''}"
+                    data-bilan-eleve="${esc(l.studentId)}" role="button" tabindex="0"
+                    aria-expanded="${ouvert ? 'true' : 'false'}"
+                    title="Voir le détail de ${esc(l.firstName)}">
+                    <td><b>${esc(l.firstName)}</b>${l.lastSeenAt ? ''
+                        : ' <span class="ec-note">(jamais venu)</span>'}</td>
+                    <td>${l.totalQuestions || 0}</td>
+                    <td class="${!rien && l.successRate < 0.5 ? 'ec-td-faible' : ''}">${taux}</td>
+                    <td class="ec-note">${esc(enHeures(l.timeSeconds))}</td>
+                    <td>${l.openErrors || 0}</td>
+                    <td>${note}</td>
+                </tr>${ouvert ? detailHtml(l) : ''}`;
+            }).join('')}</tbody>
+        </table></div>
+    </section>`;
 }
 
 // --- Onglet « La liste » ----------------------------------------------------
@@ -389,23 +1967,59 @@ function listeHtml() {
 
     const outils = `
     <div class="ec-outils">
-        <button type="button" class="ec-bouton" data-coller>Coller une liste d'élèves</button>
+        <!-- UN ÉLÈVE À LA FOIS, ET C'EST UN BOUTON À PART.
+
+             Rémy : « j'ai l'impression qu'on ne peut pas ajouter un élève dans
+             une classe ». MESURÉ : on pouvait déjà — « importerListe » n'efface
+             rien, il AJOUTE —, mais le seul chemin était « Coller une liste
+             d'élèves », dont la fenêtre dit « collez le fichier ENTIER ». Un
+             professeur qui lit cela n'y colle pas un nom le 15 novembre quand
+             un élève arrive : il croit qu'il va écraser sa classe. Une commande
+             qu'on n'ose pas employer n'existe pas.
+
+             CE BOUTON NE DOUBLE PAS LE CODE DE L'IMPORT : il fabrique une
+             liste d'UNE LIGNE et la fait passer par le même aperçu. L'élève
+             arrivé par le code de la classe est donc rattaché à son travail,
+             l'homonyme est signalé, l'identifiant est fabriqué — tout ce que
+             l'import sait faire, et rien de réécrit. -->
+        <button type="button" class="ec-bouton" data-ajouter-eleve
+                title="Un seul élève, sans toucher aux autres : son identifiant et son code sont fabriqués, et vous verrez l'aperçu avant que rien ne soit écrit"
+                >+ Ajouter un élève</button>
+        <button type="button" class="ec-bouton ec-bouton--doux" data-coller
+                title="Toute une classe d'un coup, depuis Pronote ou un tableur. Les élèves déjà là gardent leur code : une liste collée AJOUTE, elle n'efface jamais."
+                >Coller une liste d'élèves</button>
         ${avec.length ? `
         <button type="button" class="ec-bouton ec-bouton--doux" data-imprimer>Imprimer les billets</button>
         <button type="button" class="ec-bouton ec-bouton--doux" data-codes-communs>Un même code pour tous</button>
         <button type="button" class="ec-bouton ec-bouton--doux" data-codes-chacun>Refaire tous les codes</button>` : ''}
+        <button type="button" class="ec-bouton ec-bouton--doux" data-poste=""
+                title="Une seconde fenêtre, vierge, qui se comporte comme le poste d'un élève"
+                >Ouvrir un poste élève</button>${avec.length > 1 ? `
+        <!-- LE MUR DES POSTES. Rémy : « un mode qui m'ouvre […] une fenêtre
+             avec plusieurs iframes où ça ouvre des fenêtres d'élèves, pour
+             tester […] que je puisse voir ce que cela donne pour plusieurs
+             élèves. » Voir postes.html.
+
+             LES PREMIERS DE LA LISTE, et on le dit. Choisir lesquels
+             demanderait une case par ligne et un bouton « ouvrir la
+             sélection » — trois gestes de plus pour un outil d'essai. Pour un
+             élève précis, « Ouvrir son poste » est sur sa ligne. -->
+        <button type="button" class="ec-bouton ec-bouton--doux" data-mur-postes="4"
+                title="Une fenêtre qui montre les postes des ${Math.min(4, avec.length)} premiers élèves de la liste, côte à côte. Pour un élève précis, « Ouvrir son poste » est sur sa ligne."
+                >Ouvrir plusieurs postes</button>` : ''}
     </div>`;
 
     if (!eleves.length) {
         return outils + `<div class="ec-vide ec-vide--invite">
             <p class="ec-vide-grand">La liste est vide.</p>
-            <p>Collez-la depuis Pronote ou un tableur — un élève par ligne. On vous
-               montrera <b>ce qui va se passer</b> avant d'écrire quoi que ce soit.</p>
-        </div>`;
+            <p>Collez-la depuis Pronote ou un tableur — le fichier ENTIER, sans rien
+               nettoyer. On vous montrera <b>ce qui va se passer</b> avant d'écrire
+               quoi que ce soit.</p>
+        </div>` + reglagesClasseHtml();
     }
 
     return outils + (avec.length ? `
-    <table class="ec-table">
+    <div class="ec-table-cadre"><table class="ec-table ec-table--eleves">
         <thead><tr>
             <th>Élève</th><th>Identifiant</th><th>Code</th><th>Vu</th><th></th>
         </tr></thead>
@@ -417,6 +2031,13 @@ function listeHtml() {
             <td><span class="ec-code ec-code--petit">${esc(e.code)}</span></td>
             <td class="ec-note">${esc(depuis(e.vu, Math.floor(Date.now() / 1000)))}</td>
             <td class="ec-actions">
+                <button type="button" class="ec-mini" data-poste="${esc(e.login)}"
+                        data-poste-code="${esc(e.code || '')}"
+                        title="Une seconde fenêtre qui se comporte comme SON poste, connecté sous son nom. C'est plus fort que « Son exercice, chez moi » du Direct : ici vous êtes lui."
+                        >Ouvrir son poste</button>
+                <button type="button" class="ec-mini" data-billet="${esc(e.id)}"
+                        title="Réimprimer CE billet, sans changer son code"
+                        >billet</button>
                 <button type="button" class="ec-mini" data-code="${esc(e.id)}"
                         title="Tirer un nouveau code : l'ancien billet ne vaudra plus rien">code</button>
                 <button type="button" class="ec-mini" data-ecarter="${esc(e.id)}"
@@ -429,7 +2050,7 @@ function listeHtml() {
             </td>
         </tr>`).join('')}
         </tbody>
-    </table>` : '')
+    </table></div>` : '')
     + (sans.length ? `
     <h3 class="ec-h3">Entrés par le code de la classe <span class="ec-note">(${sans.length})</span></h3>
     <p class="ec-note ec-note--bloc">Ils travaillent déjà, mais n'ont pas de billet.
@@ -437,8 +2058,35 @@ function listeHtml() {
        travail</b> au lieu d'être recréés à côté.</p>
     <div class="ec-puces">
         ${sans.map(e => `<span class="ec-puce">${esc(e.prenom)}</span>`).join('')}
-    </div>` : '');
+    </div>` : '')
+    + reglagesClasseHtml();
 }
+
+/**
+ * LES RÉGLAGES DE LA CLASSE, avec la classe.
+ *
+ * Rémy : « il y a deux choses, la classe (liste + paramètres), la liste des
+ * séances attitrées et la séance en cours ».
+ *
+ * Renommer, vider, supprimer ne sont PAS des gestes de séance : ils portent sur
+ * la classe elle-même, et ils vivaient pourtant au fond de l'onglet qui pilote
+ * l'heure en cours. On les remet là où on les cherche — avec la liste des
+ * élèves, c'est-à-dire avec la classe.
+ */
+function reglagesClasseHtml() {
+    return `
+    <section class="ec-bloc ec-bloc--reglages">
+        <h3 class="ec-h3">Réglages de la classe</h3>
+        <div class="ec-outils">
+            <button type="button" class="ec-bouton ec-bouton--doux" data-renommer>Renommer</button>
+            <button type="button" class="ec-bouton ec-bouton--doux" data-vider>Vider la liste</button>
+            <button type="button" class="ec-bouton ec-bouton--rouge" data-supprimer>Supprimer la classe</button>
+        </div>
+        <p class="ec-note ec-note--bloc">Vider et supprimer emportent le travail des élèves,
+           et c'est sans retour : on vous demandera d'écrire <b>EFFACER</b>.</p>
+    </section>`;
+}
+
 
 /**
  * L'APERÇU : ce qui va se passer, avant que quoi que ce soit soit écrit.
@@ -466,7 +2114,7 @@ function apercuHtml() {
     <div class="ec-apercu">
         <h3 class="ec-h3">Voici ce qui va se passer</h3>
         <p class="ec-note ec-note--bloc"><b>Rien n'est encore enregistré.</b> ${esc(resume)}.</p>
-        <table class="ec-table">
+        <div class="ec-table-cadre"><table class="ec-table">
             <thead><tr><th>Élève</th><th>Identifiant</th><th>Code</th><th>Ce qui se passera</th></tr></thead>
             <tbody>
             ${a.lignes.map(l => `
@@ -479,7 +2127,7 @@ function apercuHtml() {
                 <td class="ec-note">${esc(l.dit)}</td>
             </tr>`).join('')}
             </tbody>
-        </table>
+        </table></div>
         ${a.ignorees && a.ignorees.length ? `
         <p class="ec-note ec-note--bloc"><b>Lignes non comprises</b>, laissées de côté :
            ${a.ignorees.map(x => `<code>${esc(x)}</code>`).join(' ')}</p>` : ''}
@@ -494,82 +2142,254 @@ function apercuHtml() {
     </div>`;
 }
 
-// --- Onglet « La séance » ---------------------------------------------------
+// --- Piloter la séance, DEPUIS LE DIRECT ------------------------------------
+//
+// Rémy : « je pense que dans le direct, c'est là qu'il faut gérer la séance,
+// pouvoir mettre en pause, envoyer un message commun », puis : « oui, tout dans
+// le direct ».
+//
+// IL Y AVAIT DEUX ÉCRANS POUR LE MÊME INSTANT, et c'était le défaut. On
+// regardait « Le direct » pour voir qui bloque, et il fallait changer d'onglet
+// pour agir — en perdant de vue précisément ce qui avait fait agir. L'onglet
+// « En cours » a donc disparu : ses commandes sont ici, au-dessus des élèves,
+// et « imposer la séance » est parti dans « Les séances », qui parle de séances.
+//
+// CE QUI EST TOUJOURS VISIBLE EST CE QU'ON FAIT EN COURS D'HEURE : la pause, le
+// chrono, le mot à la classe. Le reste — la consigne au tableau, le bac à
+// sable, dispenser toute la classe d'un exercice — se replie : ce sont des
+// gestes de début ou de fin d'heure, et les laisser ouverts repousserait les
+// élèves sous la ligne de flottaison.
 
-function seanceHtml() {
+/**
+ * CE QU'IL RESTE AU CHRONO, EN SECONDES.
+ *
+ * On lit l'heure du SERVEUR (`vue.direct.maintenant`) et non celle du poste :
+ * c'est la même horloge que celle des élèves, et deux horloges pour un seul
+ * compte à rebours finissent toujours par afficher deux nombres différents —
+ * le professeur dirait « encore trente secondes » à une classe qui en voit dix.
+ */
+function resteDuChrono(ch) {
+    if (!ch || !ch.finAt) return 0;
+    const maintenant = (vue.direct && vue.direct.maintenant) || Math.floor(Date.now() / 1000);
+    return Math.max(0, ch.finAt - maintenant);
+}
+
+function barrePiloteHtml() {
     const info = (vue.liste && vue.liste.classe) || {};
+    const ch = vue.direct && vue.direct.chrono;
+    const enCours = !!(ch && ch.finAt);
     return `
-    <div class="ec-cartes-reglages">
-
-        <section class="ec-bloc">
-            <h3 class="ec-h3">Le mot au tableau</h3>
-            <p class="ec-note ec-note--bloc">Il s'affiche chez tous les élèves de la classe,
-               et il y reste jusqu'à ce que vous le retiriez.</p>
-            <div class="ec-champ-ligne">
-                <input type="text" id="ec-consigne" class="ec-champ" maxlength="300"
-                       placeholder="Exercice 3 page 42, en binôme"
-                       value="${esc(info.notice || '')}"
-                       data-valide-sur-entree="data-consigne">
-                <button type="button" class="ec-bouton" data-consigne>Afficher</button>
-                ${info.notice ? '<button type="button" class="ec-bouton ec-bouton--doux" '
-                    + 'data-consigne-off>Retirer</button>' : ''}
-            </div>
-        </section>
-
-        <section class="ec-bloc">
-            <h3 class="ec-h3">Un mot à toute la classe</h3>
-            <p class="ec-note ec-note--bloc">Celui-là passe une fois, comme on lève la tête pour
-               dire quelque chose. On voit qui l'a lu.</p>
-            <div class="ec-champ-ligne">
-                <input type="text" id="ec-mot" class="ec-champ" maxlength="500"
-                       placeholder="On s'arrête dans cinq minutes"
-                       data-valide-sur-entree="data-mot-classe">
-                <button type="button" class="ec-bouton" data-mot-classe>Envoyer</button>
-            </div>
-        </section>
-
-        <section class="ec-bloc">
-            <h3 class="ec-h3">La pause</h3>
-            <p class="ec-note ec-note--bloc">En pause, les élèves ne voient plus que ce que
-               vous leur donnez : le catalogue disparaît. C'est le réglage d'un devoir surveillé.</p>
-            <button type="button" class="ec-bouton${info.locked ? '' : ' ec-bouton--doux'}"
-                    data-pause="${info.locked ? '0' : '1'}">
-                ${info.locked ? 'Rouvrir la classe' : 'Mettre la classe en pause'}
+    <!-- L'attribut data-forme dit ce qui, dans cette barre, changerait sa
+         STRUCTURE. Le battement s'en sert pour savoir s'il doit la refaire —
+         sinon il la laisse tranquille, avec le message qu'on est en train d'y
+         écrire. Elle le porte elle-même : posé après coup, il manquerait au
+         premier dessin, et le premier battement effacerait le premier message.
+         (Et pas de guillemet oblique dans ce commentaire : il est DANS un
+         gabarit, et le premier qu'on y pose ferme le gabarit.) -->
+    <div class="ec-pilote" data-forme="${esc(signatureDuPilote())}">
+        <div class="ec-pilote-rangee">
+            <button type="button" class="ec-pilote-btn${info.locked ? ' ec-pilote-btn--actif' : ''}"
+                    data-pause="${info.locked ? '0' : '1'}"
+                    title="En pause, les élèves ne voient plus que ce que vous leur donnez : le catalogue disparaît.">
+                ${info.locked ? '▶ Rouvrir la classe' : '⏸ Mettre en pause'}
             </button>
-        </section>
 
-        <section class="ec-bloc">
-            <h3 class="ec-h3">Débloquer un exercice</h3>
-            <p class="ec-note ec-note--bloc">Pour un élève coincé : autoriser le saut fait
-               apparaître un bouton « passer » — l'étape ne compte alors ni pour ni contre lui.
-               Le retirer l'enlève du parcours de tout le monde.</p>
-            <div class="ec-champ-ligne">
-                <input type="text" id="ec-exo" class="ec-champ" maxlength="80"
-                       placeholder="calc-add" list="ec-exos"
-                       data-valide-sur-entree="data-saut">
-                <datalist id="ec-exos">
-                    ${((vue.direct && vue.direct.eleves) || [])
-                        .map(e => e.exo).filter(Boolean)
-                        .filter((x, i, t) => t.indexOf(x) === i)
-                        .map(x => `<option value="${esc(x)}">${esc(nomDExercice(x))}</option>`).join('')}
-                </datalist>
-                <button type="button" class="ec-bouton" data-saut>Autoriser le saut</button>
-                <button type="button" class="ec-bouton ec-bouton--doux" data-retire>Le retirer</button>
-            </div>
-            ${reglagesHtml()}
-        </section>
+            <span class="ec-pilote-mot">
+                <input type="text" id="ec-mot" class="ec-champ" maxlength="500"
+                       placeholder="Un mot à toute la classe…"
+                       aria-label="Un mot à toute la classe"
+                       data-valide-sur-entree="data-mot-classe">
+                <button type="button" class="ec-pilote-btn" data-mot-classe>Envoyer</button>
+            </span>
+        </div>
 
-        <section class="ec-bloc">
-            <h3 class="ec-h3">La classe elle-même</h3>
-            <div class="ec-outils">
-                <button type="button" class="ec-bouton ec-bouton--doux" data-renommer>Renommer</button>
-                <button type="button" class="ec-bouton ec-bouton--doux" data-vider>Vider la liste</button>
-                <button type="button" class="ec-bouton ec-bouton--rouge" data-supprimer>Supprimer la classe</button>
+        <!-- LE CHRONO EST UN OBJET, PAS QUATRE CHAMPS EN VRAC.
+             Rémy : « le bandeau rouvrir la classe avec le 10 le lancer à zéro
+             on termine le mot pour toute la classe est vraiment en bazar ».
+             Il avait raison : cinq commandes de rôles différents se suivaient
+             sur une seule ligne, et rien ne disait lesquelles allaient
+             ensemble — « 10 » tout seul à côté d'un bouton « Pause » ne veut
+             rien dire. Le compte à rebours se referme donc dans son propre
+             cadre, avec son nom écrit dessus. -->
+        <div class="ec-pilote-rangee">
+            <!-- LE PROFESSEUR DOIT VOIR LE TEMPS QU'IL A LANCÉ.
+                 Il lançait un compte à rebours et ne le voyait JAMAIS : seuls
+                 ses élèves l'avaient à l'écran. Pendant que la classe regarde
+                 les secondes tomber, lui devait demander « il reste combien ? »
+                 — ou regarder l'écran d'un élève par-dessus son épaule.
+                 Quand il tourne, le champ de réglage cède donc la place au
+                 décompte lui-même, gros et lisible à bout de bras : ce n'est
+                 plus le moment de régler, c'est le moment de lire. -->
+            <span class="ec-pilote-cadre" role="group" aria-label="Compte à rebours">
+                <span class="ec-pilote-eti">⏱ Compte à rebours</span>
+                ${enCours ? `
+                <b class="ec-chrono-reste${resteDuChrono(ch) <= 60 ? ' ec-chrono-reste--court' : ''}"
+                   role="timer" aria-live="off">${enMinutes(resteDuChrono(ch))}</b>
+                <span class="ec-pilote-mot-liant">${ch.quoi === 'pause'
+                    ? 'puis on s\'arrête' : 'puis on termine'}</span>
+                <button type="button" class="ec-pilote-btn ec-pilote-btn--actif"
+                        data-chrono-off>Arrêter</button>
+                ` : `
+                <input type="number" id="ec-chrono-min" class="ec-champ ec-champ--court"
+                       min="1" max="180" value="${vue.chronoMin || 10}" aria-label="Minutes">
+                <span class="ec-pilote-mot-liant">min,</span>
+                <select id="ec-chrono-quoi" class="ec-champ ec-champ--mince"
+                        aria-label="Ce qui se passe à zéro">
+                    <option value="terminer">puis on termine</option>
+                    <option value="pause">puis on s'arrête</option>
+                </select>
+                <button type="button" class="ec-pilote-btn" data-chrono>Lancer</button>
+                `}
+            </span>
+
+            <!-- LA CALCULATRICE, ACCORDÉE EN PLEINE HEURE.
+                 RÉMY : « pourrait-on autoriser dans les options l'utilisation
+                 de la calculatrice ou le permettre en direct à un groupe ou aux
+                 élèves (on pourrait sélectionner dans le direct) », puis « les
+                 deux au choix mais on pourrait le donner que pour certains
+                 élèves ».
+                 DEUX PORTÉES, comme il les a demandées : toute la séance — le
+                 « vous pouvez prendre la calculatrice » qu'on dit à voix haute
+                 et qu'on ne répète pas — ou un exercice seul. Et deux
+                 destinataires : toute la classe, ou les élèves cochés dans la
+                 liste en dessous. L'étiquette dit lequel, parce qu'accorder à
+                 trente en croyant accorder à quatre ne se voit qu'après. -->
+            <span class="ec-pilote-cadre">
+                <span class="ec-pilote-eti">🧮 Calculatrice</span>
+                <span class="ec-pilote-mot-liant" data-calc-aqui>${aQuiLaCalculatrice()}</span>
+                <select id="ec-calc-ou" class="ec-champ ec-champ--ou"
+                        aria-label="Où la calculatrice est autorisée">
+                    <option value="*">pour toute la séance</option>
+                    ${exercicesSousLaMain().map(x =>
+        `<option value="${esc(x.id)}">sur ${esc(x.titre)}</option>`).join('')}
+                </select>
+                <button type="button" class="ec-pilote-btn" data-calc-donner>Autoriser</button>
+                ${(vue.reglages || []).some(x => x.mode === 'calculatrice')
+        ? '<button type="button" class="ec-pilote-btn" data-calc-retirer>Retirer</button>' : ''}
+            </span>
+
+            <span class="ec-pilote-cadre">
+                <span class="ec-pilote-eti">🧰 Bac à sable</span>
+                <span class="ec-pilote-mot-liant">${bacDeLaClasse()
+                    ? 'fermé pour cette heure' : 'ouvert à ceux qui ont fini'}</span>
+                ${bacDeLaClasse()
+                    ? '<button type="button" class="ec-pilote-btn" data-bac="0">Ouvrir</button>'
+                    : '<button type="button" class="ec-pilote-btn" data-bac="1">Fermer</button>'}
+                ${bacDeLaClasse() ? '' : `
+                <!-- COMBIEN DE TEMPS IL DURE. Rémy, interrogé sur ce qui doit
+                     borner les jeux du bac : « un temps, réglé par vous ». Le
+                     compte part quand l ELEVE ouvre le bac, pas à l heure de la
+                     classe : celui qui finit dix minutes avant les autres a
+                     droit aux mêmes dix minutes. 0 = sans limite, et c est le
+                     défaut. (Pas de guillemet oblique ici : ce commentaire est
+                     DANS un gabarit.) -->
+                <span class="ec-pilote-mot-liant">·</span>
+                <input type="number" id="ec-bac-min" class="ec-champ ec-champ--court"
+                       min="0" max="120" step="5" value="${minutesDuBac()}"
+                       aria-label="Minutes de bac à sable par élève"
+                       data-valide-sur-entree="data-bac-minutes">
+                <span class="ec-pilote-mot-liant">min par élève</span>
+                <button type="button" class="ec-pilote-btn" data-bac-minutes>Poser</button>
+                <!-- CE QU'IL Y A DEDANS. Rémy : « pour le bac à sable
+                     j'aimerai quand même bien pouvoir éditer le contenu ».
+
+                     LE NOYAU SAVAIT DÉJÀ RECEVOIR UNE LISTE — « la liste du
+                     professeur, sinon celle par défaut », écrit dans
+                     core/bacASable.js — mais rien ne la rangeait ni ne la
+                     portait jusqu'à l'élève. Il manquait une colonne, un
+                     aller-retour, et ce bouton.
+
+                     L'ÉTIQUETTE DIT L'ÉTAT, et les deux états ne sont pas le
+                     même : « au choix du logiciel » tant qu'on n'y a pas
+                     touché, le compte sinon — zéro compris, parce qu'un bac
+                     vidé exprès doit se voir. -->
+                <span class="ec-pilote-mot-liant">·</span>
+                <span class="ec-pilote-mot-liant" data-bac-combien>${direLesJeuxDuBac()}</span>
+                <button type="button" class="ec-pilote-btn" data-bac-jeux
+                        title="Choisir les jeux que vos élèves trouveront dans le bac. Sans choix, le logiciel propose ses valeurs sûres, élargies à ce que la séance vient de travailler."
+                        >Choisir</button>`}
+            </span>
+        </div>
+
+        <details class="ec-pilote-plus">
+            <summary>Le mot au tableau · dispenser toute la classe d'un exercice</summary>
+            <div class="ec-pilote-plus-corps">
+
+                <div class="ec-pilote-bloc">
+                    <span class="ec-pilote-eti">Le mot au tableau</span>
+                    <p class="ec-note">Il reste affiché chez tous jusqu'à ce que vous le retiriez.</p>
+                    <div class="ec-champ-ligne">
+                        <input type="text" id="ec-consigne" class="ec-champ" maxlength="300"
+                               placeholder="Exercice 3 page 42, en binôme"
+                               value="${esc(info.notice || '')}"
+                               data-valide-sur-entree="data-consigne">
+                        <button type="button" class="ec-bouton" data-consigne>Afficher</button>
+                        ${info.notice ? '<button type="button" class="ec-bouton ec-bouton--doux" '
+                            + 'data-consigne-off>Retirer</button>' : ''}
+                    </div>
+                </div>
+
+                <div class="ec-pilote-bloc">
+                    <span class="ec-pilote-eti">Dispenser TOUTE la classe d'un exercice</span>
+                    <p class="ec-note">Pour un seul élève, cliquez sur son nom : c'est presque
+                       toujours ce qu'il faut. Ici, c'est quand l'exercice lui-même pose problème.</p>
+                    <div class="ec-champ-ligne">
+                        <!-- ON CHOISIT L'EXERCICE, ON NE L'ÉCRIT PLUS.
+                             Rémy : « il faudrait pouvoir de façon globale
+                             permettre de sauter un exercice ». On pouvait
+                             déjà — à condition de taper son IDENTIFIANT,
+                             « calc-add », dans un champ libre. Une liste
+                             déroulante sous les yeux et un identifiant à
+                             retenir de tête, ce n'est pas le même geste : le
+                             premier se fait en classe, le second se remet à
+                             plus tard. -->
+                        <select id="ec-exo" class="ec-champ"
+                                aria-label="L'exercice dont on dispense la classe">
+                            ${exercicesSousLaMain().map(x =>
+        `<option value="${esc(x.id)}">${esc(x.titre)}${x.ou ? ` — ${esc(x.ou)}` : ''}</option>`)
+        .join('') || '<option value="">Aucun exercice en cours</option>'}
+                        </select>
+                        <!-- DEUX GESTES QUI N'ONT PAS LA MÊME PORTÉE, ET QUI
+                             se ressemblaient trop. « Autoriser le saut » ouvre
+                             une porte : l'élève peut passer, rien ne
+                             disparaît. « Le retirer » fait disparaître
+                             l'exercice pour les trente. Le second était en
+                             bouton DISCRET à côté du premier en bouton plein —
+                             le geste le plus fort, le moins annoncé. Il est
+                             désormais marqué en rouge, il dit sa portée dans
+                             son libellé, et il demande confirmation. -->
+                        <button type="button" class="ec-bouton" data-saut
+                                title="Toute la classe verra un bouton « passer » sur cet exercice. L'étape ne comptera ni pour ni contre eux."
+                                >Autoriser le saut</button>
+                        <button type="button" class="ec-bouton ec-bouton--rouge" data-retire
+                                title="L'exercice disparaît de la séance pour TOUTE la classe, comme s'il n'y était pas. On vous le fera confirmer, et le réglage s'annule juste en dessous."
+                                >Le retirer pour tous</button>
+                    </div>
+                    ${reglagesHtml()}
+                </div>
+
             </div>
-            <p class="ec-note ec-note--bloc">Vider et supprimer emportent le travail des élèves,
-               et c'est sans retour : on vous demandera d'écrire <b>EFFACER</b>.</p>
-        </section>
+        </details>
     </div>`;
+}
+
+/**
+ * À QUI LA CALCULATRICE VA — dit avant de cliquer, pas après.
+ *
+ * Accorder à trente élèves en croyant en accorder à quatre ne se voit qu'au
+ * moment où trente sortent leur calculatrice. L'étiquette suit donc les cases
+ * cochées, et c'est elle qu'on relit avant d'appuyer.
+ */
+function aQuiLaCalculatrice() {
+    const n = elevesChoisis().length;
+    if (!n) return 'à toute la classe';
+    return n === 1 ? 'à 1 élève coché' : `à ${n} élèves cochés`;
+}
+
+/** Les élèves cochés dans le direct, filtrés sur ceux qui y sont encore. */
+function elevesChoisis() {
+    const vus = new Set((((vue.direct || {}).eleves) || []).map(e => e.id));
+    return [...(vue.choisis || [])].filter(id => vus.has(id));
 }
 
 /** Les réglages d'exercice en vigueur, avec de quoi les défaire. */
@@ -578,7 +2398,8 @@ function reglagesHtml() {
     if (!r || !r.length) return '';
     return `<div class="ec-puces ec-puces--reglages">
         ${r.map(x => `<span class="ec-puce">
-            ${x.mode === 'retire' ? '⊘' : '↷'} ${esc(nomDExercice(x.exerciseId))}
+            ${x.mode === 'retire' ? '⊘' : (x.mode === 'calculatrice' ? '🧮' : '↷')} ${
+        x.exerciseId === '*' ? 'toute la séance' : esc(nomDExercice(x.exerciseId))}
             ${x.pour ? '· ' + esc(x.pour) : '· toute la classe'}
             <button type="button" class="ec-mini" data-annuler-reglage="${esc(x.id)}"
                     title="Annuler ce réglage">×</button>
@@ -587,6 +2408,87 @@ function reglagesHtml() {
 }
 
 // --- Les gestes -------------------------------------------------------------
+
+/**
+ * L'ÉTAPE DE LA SÉANCE QUI PORTE CET EXERCICE — avec ses réglages.
+ *
+ * RÉMY : « voir son exercice ne montre pas la même chose ».
+ *
+ * L'élève ne travaille pas l'exercice du CATALOGUE : il travaille l'étape que
+ * le professeur a réglée — les paliers cochés, le nombre de questions, la
+ * partie de la leçon. Ouvrir l'exercice nu montrerait autre chose que ce qu'il
+ * a sous les yeux, et c'est précisément ce que Rémy a photographié.
+ *
+ * ON CHERCHE D'ABORD DANS LA SÉANCE IMPOSÉE, puis dans les autres parcours du
+ * professeur : un même exercice peut figurer dans dix parcours avec dix
+ * réglages, et c'est celui de l'heure en cours qui a raison.
+ *
+ * Rend `null` quand on ne trouve rien — l'exercice a pu être lancé librement
+ * par l'élève. L'appelant le DIT alors, plutôt que de faire passer les
+ * réglages du catalogue pour les siens.
+ */
+/**
+ * LES RÉGLAGES QUE L'ÉLÈVE A ANNONCÉS, relus depuis le bouton.
+ *
+ * Ils y voyagent en JSON parce que c'est là qu'on les a sous la main au moment
+ * du clic — le direct se redessine entièrement à chaque battement, et garder
+ * une carte d'objets à côté du HTML ferait deux vérités à tenir d'accord.
+ *
+ * ET L'ON SE MÉFIE DE CE QU'ON RELIT. Un attribut de page se retouche à la main
+ * dans n'importe quel navigateur ; un JSON malformé ne doit pas empêcher
+ * d'ouvrir l'exercice, seulement faire retomber sur la devinette.
+ */
+function lireReglagesDuBouton(bouton) {
+    const brut = bouton && bouton.dataset ? bouton.dataset.reglages : '';
+    if (!brut) return null;
+    try {
+        const r = JSON.parse(brut);
+        return (r && typeof r === 'object' && !Array.isArray(r) && Object.keys(r).length) ? r : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function etapeDeLaSeance(exerciceId) {
+    if (!exerciceId) return null;
+    const info = (vue.liste && vue.liste.classe) || {};
+    const parcours = state.teacherPaths || [];
+    const imposee = info.impose_path_id
+        ? parcours.find(p => p && p.id === info.impose_path_id) : null;
+    const ordre = imposee ? [imposee, ...parcours.filter(p => p !== imposee)] : parcours;
+    for (const p of ordre) {
+        const etape = (p && p.steps || []).find(st => st && st.exerciseId === exerciceId);
+        if (etape) return etape;
+    }
+    return null;
+}
+
+/**
+ * LES EXERCICES QU'ON PEUT DISPENSER, NOMMÉS.
+ *
+ * Ceux de la séance donnée d'abord, DANS LEUR ORDRE — c'est celui du parcours,
+ * et le professeur pense « le troisième », pas « num-arrondi ». Puis ceux que
+ * des élèves ont ouverts sans être dans la séance, qui existent aussi.
+ */
+function exercicesSousLaMain() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    const imposee = info.impose_path_id
+        ? (state.teacherPaths || []).find(p => p && p.id === info.impose_path_id) : null;
+    const out = [];
+    const vus = new Set();
+    ((imposee && imposee.steps) || []).forEach((st, i) => {
+        const id = st && st.exerciseId;
+        if (!id || vus.has(id)) return;
+        vus.add(id);
+        out.push({ id, titre: `${i + 1}. ${nomDExercice(id)}` });
+    });
+    ((vue.direct && vue.direct.eleves) || []).forEach(e => {
+        if (!e.exo || vus.has(e.exo)) return;
+        vus.add(e.exo);
+        out.push({ id: e.exo, titre: nomDExercice(e.exo), ou: 'ouvert par un élève' });
+    });
+    return out;
+}
 
 async function brancher(e, redessiner) {
     // LE CODE SE COPIE SANS OUVRIR LA CLASSE. Il est DANS la carte, et la carte
@@ -598,7 +2500,11 @@ async function brancher(e, redessiner) {
         const code = copie.dataset.copier;
         try {
             await navigator.clipboard.writeText(code);
-            showToast('Code copié : ' + code, 'success');
+            // « Code copié » tout court serait le même mensonge que l'étiquette
+            // d'avant : le professeur colle ce code dans son cahier de textes le
+            // soir, et c'est le dernier moment où l'avertissement sert.
+            const mot = motApresCopie(code, vue.reglagesSite ? vue.reglagesSite.inscriptionLibre : null);
+            showToast(mot.texte, mot.genre);
         } catch (err) {
             // Sans permission (ou hors HTTPS), on ne ment pas : on le montre.
             showToast('Le code est ' + code + ' — le navigateur refuse de le copier '
@@ -608,30 +2514,254 @@ async function brancher(e, redessiner) {
     }
 
     const el = e.target.closest('[data-ouvrir], [data-retour], [data-onglet], [data-nouvelle-classe],'
-        + '[data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code],'
+        + '[data-ajouter-eleve], [data-coller], [data-confirmer-import], [data-annuler-apercu], [data-code],'
+        + '[data-seance-ajouter], [data-seance-retirer], [data-bac-jeux],'
         + '[data-retirer], [data-ecarter], [data-codes-communs], [data-codes-chacun],'
-        + '[data-imprimer], [data-consigne], [data-consigne-off], [data-mot-classe],'
-        + '[data-mot-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
+        + '[data-imprimer], [data-billet], [data-consigne], [data-consigne-off], [data-mot-classe],'
+        + '[data-mot-eleve], [data-indice-eleve], [data-pause], [data-renommer], [data-vider], [data-supprimer],'
         + '[data-nouveau-prof], [data-retirer-prof], [data-saut], [data-retire],'
-        + '[data-profs], [data-reessayer],'
-        + '[data-annuler-reglage]');
+        + '[data-profs], [data-reessayer], [data-poste], [data-mur-postes],'
+        + '[data-mode-libre], [data-inscription-libre],'
+        + '[data-imposer-rien], [data-mettre-en-cours],'
+        + '[data-chrono], [data-chrono-off], [data-bac], [data-supprimer-carte],'
+        + '[data-annuler-reglage], [data-fiche], [data-saut-eleve], [data-voir-exo],'
+        + '[data-choix], [data-calc-donner], [data-calc-retirer], [data-bac-minutes],'
+        + '[data-calc-eleve], [data-saut-tout], [data-bilan-eleve],'
+        + '[data-signalement], [data-signalements], [data-voir-photo], [data-classer],'
+        + '[data-ordre-direct], [data-ordre-bilan], [data-detail-bilan], [data-bilan-pdf],'
+        + '[data-effacer-signal]');
     if (!el) return;
     const d = el.dataset;
+
+    // CHANGER L'ORDRE NE DEMANDE RIEN AU SERVEUR, ET NE REDESSINE QUE LES RANGS.
+    //
+    // Rémy : « pour le direct ce serait bien de pouvoir faire le tri au nom ».
+    //
+    // CE CAS PASSE AVANT LE VERROU `vue.occupe` et avant tout `redessiner()`,
+    // pour la même raison que les cases à cocher : un redessin complet du
+    // direct effacerait le mot que le professeur est peut-être en train
+    // d'écrire dans la barre de pilotage.
+    if (d.ordreDirect !== undefined) {
+        ordreDuDirect = d.ordreDirect;
+        // UN STOCKAGE QUI REFUSE NE DOIT PAS EMPÊCHER LE TRI : en navigation
+        // privée, `localStorage` jette à l'écriture. L'ordre vaut alors pour
+        // cette séance-ci, et c'est déjà ce qu'on demandait.
+        try { localStorage.setItem(CLEF_ORDRE, ordreDuDirect); }
+        catch (err) { /* on range quand même, on ne s'en souviendra pas */ }
+        const zone = el.closest('.ec-corps');
+        const rangs = zone && zone.querySelector('.ec-rangs');
+        if (rangs && vue.direct) {
+            rangs.innerHTML = trieurDuDirect(ordreDuDirect)(
+                vue.direct.eleves, vue.direct.maintenant, { enPause: classeEnPause() })
+                .map(v => rangHtml(v.eleve, vue.direct.maintenant)).join('');
+        }
+        // ET LES DEUX BOUTONS DISENT LEQUEL EST ACTIF : un réglage qu'on ne
+        // voit pas est un réglage qu'on reclique.
+        (zone ? zone.querySelectorAll('[data-ordre-direct]') : []).forEach(b => {
+            const actif = b.dataset.ordreDirect === ordreDuDirect;
+            b.classList.toggle('ec-ordre-btn--actif', actif);
+            b.setAttribute('aria-pressed', actif ? 'true' : 'false');
+        });
+        return;
+    }
+
+    // ── ET CELUI DU BILAN, QUI PEUT SE PERMETTRE UN REDESSIN COMPLET ────────
+    //
+    // Le direct recousait les rangs à la main pour ne pas effacer le mot que le
+    // professeur est peut-être en train d'écrire dans la barre de pilotage. Les
+    // bilans n'ont aucun champ de saisie : on redessine donc tout, ce qui remet
+    // du même coup la phrase d'en-tête d'accord avec l'ordre choisi.
+    if (d.ordreBilan !== undefined) {
+        ordreDesBilans = d.ordreBilan;
+        try { localStorage.setItem(CLEF_ORDRE_BILAN, ordreDesBilans); }
+        catch (err) { /* on range quand même, on ne s'en souviendra pas */ }
+        redessiner();
+        return;
+    }
+
+    // ── LA BASCULE DU DÉTAIL : rien à demander au serveur non plus ──────────
+    //
+    // Le tableau croisé se calcule entièrement avec ce que `/teacher/report` a
+    // déjà rendu — chaque ligne porte son `parSeance`. Ouvrir le détail ne
+    // coûte donc pas une requête, et la bascule répond tout de suite.
+    if (d.detailBilan !== undefined) {
+        vue.detailBilan = d.detailBilan === '1';
+        redessiner();
+        return;
+    }
+
+    // ── IMPRIMER LE BILAN QU'ON A SOUS LES YEUX ────────────────────────────
+    //
+    // RÉMY : « permettre d'imprimer un pdf que tu génères ».
+    //
+    // LE PAPIER REPREND L'ÉCRAN : l'ordre qu'on vient de choisir, et le tableau
+    // croisé si la bascule est ouverte. `jsPDF` ne se charge qu'ici, à la
+    // demande — c'est une bibliothèque de deux cents kilo-octets, et la
+    // plupart des bilans se lisent sans jamais s'imprimer.
+    if (d.bilanPdf !== undefined) {
+        const lignes = (vue.bilans && vue.bilans.students) || [];
+        if (!lignes.length) {
+            showToast('Il n\'y a rien à imprimer : cette classe n\'a pas encore d\'élèves.',
+                'info');
+            return;
+        }
+        const trier = trieurDuBilan(ordreDesBilans);
+        const choisie = vue.detailBilan ? seanceDuDetail() : null;
+        const { exporterBilanClassePdf } = await import('./bilanClassePdf.js');
+        await exporterBilanClassePdf({
+            classe: (vue.bilans && vue.bilans.class) || vue.classe,
+            lignes: trier(lignes),
+            tableau: choisie ? tableauDesExercices(lignes, choisie, trier) : null,
+            nommer: nomDExercice
+        });
+        showToast('Le bilan est dans vos téléchargements.', 'success');
+        return;
+    }
+
+    // COCHER UN ÉLÈVE NE DEMANDE RIEN AU SERVEUR, et ne redessine rien.
+    //
+    // Ce cas passe AVANT le verrou `vue.occupe` et avant tout `redessiner()` :
+    // cocher quatre noms d'affilée pendant qu'une requête est en vol doit
+    // marcher, et un redessin complet du direct effacerait le mot que le
+    // professeur est peut-être en train d'écrire dans la barre. On ne touche
+    // donc qu'à l'étiquette qui dit à qui l'on parle.
+    if (d.choix !== undefined) {
+        if (!vue.choisis) vue.choisis = new Set();
+        if (vue.choisis.has(d.choix)) vue.choisis.delete(d.choix);
+        else vue.choisis.add(d.choix);
+        // LA CASE SUIT CE QU'ON VIENT DE DÉCIDER, ET NON L'INVERSE.
+        //
+        // Le geste part maintenant de l'enveloppe de 44 px, pas de la case :
+        // le navigateur ne la coche donc plus tout seul. On l'accorde ici, ce
+        // qui vaut aussi pour la barre d'espace — le clavier coche, l'événement
+        // remonte, et l'on repose la même valeur : les deux chemins disent la
+        // même chose.
+        const laCase = el.querySelector('input[type="checkbox"]');
+        if (laCase) laCase.checked = vue.choisis.has(d.choix);
+        const eti = document.querySelector('[data-calc-aqui]');
+        if (eti) eti.textContent = aQuiLaCalculatrice();
+        return;
+    }
 
     // UNE SEULE ACTION À LA FOIS. Deux clics pendant que le réseau réfléchit,
     // et l'on écrit deux fois la même liste.
     if (vue.occupe) return;
 
-    const fait = async (promesse, surSucces) => {
+    // `dire` REMPLACE LA PHRASE DU SERVEUR QUAND LE CLIENT EN SAIT PLUS.
+    //
+    // Le serveur ne connaît pas les TITRES des exercices — il n'a que leurs
+    // identifiants. Il annonçait donc « la calculatrice est autorisée sur
+    // “calc-add” », et le professeur lisait un nom de code pour un exercice qui
+    // s'appelle « Additions Mystères ». Ici, `nomDExercice` le sait.
+    const fait = async (promesse, surSucces, dire = '') => {
         vue.occupe = true;
         const r = await promesse;
         vue.occupe = false;
         if (r && r.erreur) { showToast(r.erreur, 'error'); return null; }
-        if (r && r.dit) showToast(r.dit, 'success');
+        if (dire) showToast(dire, 'success');
+        else if (r && r.dit) showToast(r.dit, 'success');
         if (surSucces) surSucces(r);
         redessiner();
         return r;
     };
+
+    // SE METTRE À LA PLACE D'UN ÉLÈVE, SANS QUITTER SA PLACE DE PROFESSEUR.
+    //
+    // Rémy : « comment je pourrais simuler un mode élève et prof simultané,
+    // pour être sûr que ça fonctionne ».
+    //
+    // On ouvre une seconde fenêtre sur la MÊME application et le MÊME serveur,
+    // avec le billet de cet élève-là. Elle range ce qu'elle sait dans un tiroir
+    // à part (voir le préambule d'`index.html`), si bien que les deux fenêtres
+    // ne se déconnectent pas l'une l'autre : le professeur peut regarder son
+    // direct d'un côté pendant que « l'élève » travaille de l'autre.
+    //
+    // ON N'ATTEND RIEN AVANT D'OUVRIR. `window.open` appelé après un `await`
+    // n'est plus rattaché au clic, et le navigateur le bloque comme une
+    // fenêtre surgissante. C'est pour cela que ce cas passe avant tous les
+    // autres, et qu'il ne demande rien au serveur.
+    // LE MUR DES POSTES — UNE SEULE FENÊTRE, PLUSIEURS CADRES.
+    //
+    // UNE et non plusieurs : un navigateur n'autorise qu'UNE fenêtre
+    // surgissante par geste de l'utilisateur. Quatre `window.open` d'affilée,
+    // et trois sont bloqués en silence — le professeur croirait à une panne.
+    if (d.murPostes !== undefined) {
+        const combien = Math.max(2, Math.min(10, Number(d.murPostes) || 4));
+        const liste = ((vue.liste && vue.liste.eleves) || [])
+            .filter(e => !e.sansBillet && e.login)
+            .slice(0, combien);
+        if (liste.length < 2) {
+            showToast('Il faut au moins deux élèves avec un billet pour ouvrir un mur.', 'info');
+            return;
+        }
+        // LES CODES DANS LE FRAGMENT, jamais dans la requête : un fragment ne
+        // part pas au serveur, donc ni journal, ni référent, ni historique
+        // d'intermédiaire. `postes.html` l'efface dès qu'il l'a lu.
+        const billets = liste.map(e => `${e.login}/${e.code || ''}`).join(',');
+        const f = window.open(
+            `postes.html#eleves=${encodeURIComponent(billets)}`,
+            'atoutmath-mur-postes',
+            'width=1400,height=900'
+        );
+        if (!f) {
+            showToast('Le navigateur a bloqu\u00e9 la fen\u00eatre. Autorisez les '
+                + 'fen\u00eatres surgissantes pour ce site, puis r\u00e9essayez.', 'error');
+            return;
+        }
+        showToast(`${liste.length} postes ouverts : ${liste.map(e => e.login).join(', ')}. `
+            + 'Chacun a son tiroir de stockage — leurs travaux arrivent dans votre Direct.',
+            'success', 8000);
+        return;
+    }
+
+    if (d.poste !== undefined) {
+        const f = window.open(
+            adresseDuPoste({ login: d.poste, code: d.posteCode || '' }),
+            'atoutmath-poste-' + d.poste,
+            'width=980,height=860'
+        );
+        if (!f) {
+            showToast('Le navigateur a bloqu\u00e9 la seconde fen\u00eatre. Autorisez les '
+                + 'fen\u00eatres surgissantes pour ce site, puis r\u00e9essayez.', 'error');
+        }
+        return;
+    }
+
+    // METTRE UNE SÉANCE EN COURS, DEPUIS LA LISTE DES SÉANCES.
+    //
+    // Le geste existait — un menu déroulant, au fond de l'onglet « En cours ».
+    // Rémy ne l'a pas trouvé, et il a raison de ne pas l'avoir cherché là : on
+    // choisit la séance du jour en regardant la liste des séances, pas en
+    // déroulant un menu ailleurs. Même route, même effet.
+    if (d.mettreEnCours) {
+        await fait(imposerLaSeance(vue.classe.id, d.mettreEnCours), () => {
+            if (vue.liste && vue.liste.classe) vue.liste.classe.impose_path_id = d.mettreEnCours;
+        });
+        return;
+    }
+    if (d.imposerRien !== undefined) {
+        await fait(imposerLaSeance(vue.classe.id, ''), () => {
+            if (vue.liste && vue.liste.classe) vue.liste.classe.impose_path_id = null;
+        });
+        return;
+    }
+
+    if (d.chrono !== undefined) {
+        const min = Number((document.getElementById('ec-chrono-min') || {}).value || 0);
+        const quoi = (document.getElementById('ec-chrono-quoi') || {}).value || 'terminer';
+        // ON RETIENT LA DURÉE CHOISIE. Le champ revenait à 10 dès qu'on lançait,
+        // puis à 10 encore après l'arrêt : le professeur qui donne toujours
+        // sept minutes devait les retaper à chaque fois, et ne pouvait pas
+        // relire ce qu'il venait de lancer.
+        if (min > 0) vue.chronoMin = min;
+        await fait(lancerLeChrono(vue.classe.id, min, quoi));
+        return;
+    }
+
+    if (d.chronoOff !== undefined) {
+        await fait(arreterLeChrono(vue.classe.id));
+        return;
+    }
 
     if (d.reessayer !== undefined) {
         vue.erreur = ''; vue.classes = null;
@@ -639,6 +2769,112 @@ async function brancher(e, redessiner) {
         const l = await mesClasses();
         if (l.erreur) vue.erreur = l.erreur; else vue.classes = l;
         redessiner();
+        return;
+    }
+
+    // LE MODE LIBRE — on bascule, et l'on croit le SERVEUR, pas le bouton.
+    //
+    // La route rend l'état après écriture. On pourrait inverser la valeur
+    // localement et redessiner tout de suite ; l'écran dirait alors « ouvert »
+    // même si le serveur a refusé, et le professeur croirait avoir ouvert le
+    // catalogue à trente élèves. On attend, on lit, on affiche ce qui EST.
+    if (d.inscriptionLibre !== undefined) {
+        const cible = d.inscriptionLibre !== '1';
+        await fait(reglagesDuSite({ inscriptionLibre: cible }), (r) => {
+            vue.reglagesSite = r.reglages || vue.reglagesSite;
+            noterReglagesSite(vue.reglagesSite);
+            showToast(cible
+                ? 'L\'inscription libre est ouverte : un élève peut se déclarer avec le code de la classe.'
+                : 'L\'inscription libre est fermée : seuls les billets ouvrent la porte.',
+                'success');
+        });
+        return;
+    }
+
+    if (d.modeLibre !== undefined) {
+        const cible = d.modeLibre !== '1';
+        await fait(reglagesDuSite({ modeLibre: cible }), (r) => {
+            vue.reglagesSite = r.reglages || vue.reglagesSite;
+            // L'application entière suit : la porte d'entrée, la barre du haut.
+            // Sans cet avis, le professeur verrait son propre écran inchangé et
+            // se demanderait si le bouton a marché.
+            noterReglagesSite(vue.reglagesSite);
+            showToast(cible
+                ? 'Le catalogue est ouvert aux élèves.'
+                : 'Le catalogue est refermé : les élèves ne voient que ce que vous donnez.',
+                'success');
+        });
+        return;
+    }
+
+    if (d.signalement !== undefined) {
+        const cible = d.signalement !== '1';
+        await fait(reglagesDuSite({ signalement: cible }), (r) => {
+            vue.reglagesSite = r.reglages || vue.reglagesSite;
+            noterReglagesSite(vue.reglagesSite);
+            showToast(cible
+                ? 'Vos élèves ont maintenant un bouton pour signaler un problème.'
+                : 'Le bouton de signalement est retiré des écrans des élèves.',
+                'success');
+        });
+        return;
+    }
+
+    if (d.signalements !== undefined) {
+        vue.ou = 'signalements'; vue.signalements = null; vue.erreur = '';
+        redessiner();
+        const l = await lesSignalements();
+        if (l.erreur) vue.erreur = l.erreur;
+        else vue.signalements = Array.isArray(l.signalements) ? l.signalements : [];
+        redessiner();
+        return;
+    }
+
+    if (d.voirPhoto !== undefined) {
+        // LA PHOTO S'AFFICHE SOUS SON SIGNALEMENT, pas dans une fenêtre. On la
+        // regarde EN LISANT ce que l'élève a écrit — les deux ensemble disent
+        // ce que ni l'un ni l'autre ne dit seul, et une fenêtre par-dessus
+        // cacherait justement le texte.
+        const hote = document.querySelector(`[data-photo-de="${d.voirPhoto}"]`);
+        if (!hote) return;
+        if (!hote.hidden) { hote.hidden = true; hote.innerHTML = ''; return; }
+        hote.hidden = false;
+        hote.innerHTML = '<p class="ec-note">On la charge…</p>';
+        const r = await photoDuSignalement(d.voirPhoto);
+        if (r.erreur || !r.image) {
+            hote.innerHTML = `<p class="ec-note">${esc(r.erreur || 'Cette photo est introuvable.')}</p>`;
+            return;
+        }
+        // `src` POSÉ EN PROPRIÉTÉ, PAS DANS LE GABARIT : l'URL fait des
+        // centaines de milliers de signes, et la faire passer par une chaîne
+        // HTML échappée la recopierait deux fois pour rien.
+        hote.innerHTML = '<img class="ec-signal-image" alt="La photo envoyée par l\'élève">';
+        hote.firstChild.src = r.image;
+        return;
+    }
+
+    if (d.classer !== undefined) {
+        await fait(classerSignalement(d.classer, d.vers === '1'), () => {
+            const s = (vue.signalements || []).find(x => x.id === d.classer);
+            if (s) s.traite = d.vers === '1';
+        });
+        return;
+    }
+
+    if (d.effacerSignal !== undefined) {
+        // ON DEMANDE AVANT D'EFFACER — un signalement ne se refait pas, et
+        // l'élève qui l'a écrit ne saura jamais qu'il a disparu. Pas de mot à
+        // recopier ici, contrairement aux gestes qui touchent une classe : on
+        // efface une ligne, pas trente élèves, et exiger « EFFACER » au clavier
+        // pour chacune ferait qu'on n'en effacerait plus aucune.
+        const id = d.effacerSignal;
+        showConfirm(
+            'Effacer ce signalement ? Pour le sortir de la liste sans le perdre, '
+            + 'il y a « C\'est réglé ».',
+            () => fait(effacerSignalement(id), () => {
+                vue.signalements = (vue.signalements || []).filter(x => x.id !== id);
+            }, 'Signalement effacé.'),
+            { titre: 'Effacer ce signalement', bouton: 'Effacer' });
         return;
     }
 
@@ -666,10 +2902,19 @@ async function brancher(e, redessiner) {
     if (d.ouvrir) {
         const c = (vue.classes || []).find(x => x.id === d.ouvrir);
         if (!c) return;
-        vue.ou = 'classe'; vue.classe = c; vue.onglet = 'direct';
+        vue.ou = 'classe'; vue.classe = c; vue.onglet = 'direct'; vue.fiche = null;
         vue.liste = null; vue.direct = null; vue.apercu = null; vue.erreur = '';
+        vue.bilans = null; vue.seances = null;
         redessiner();
         await rafraichirClasse(redessiner);
+        // LE DIRECT DOIT POUVOIR NOMMER LA SÉANCE IMPOSÉE. Il ne connaît que
+        // son identifiant ; le nom est dans la liste des séances. On la
+        // demande en entrant plutôt qu'en arrivant sur son onglet — c'est une
+        // lecture courte, et sans elle le direct dirait « une séance imposée »
+        // au lieu de la nommer.
+        seancesDeLaClasse(c.id).then(r => {
+            if (!r.erreur) { vue.seances = r; redessiner(); }
+        });
         lancerLeBattement(redessiner);
         return;
     }
@@ -680,9 +2925,34 @@ async function brancher(e, redessiner) {
         redessiner();
         // Le direct ne bat que quand on le regarde : inutile d'interroger le
         // serveur toutes les vingt secondes pendant qu'on colle une liste.
-        if (d.onglet === 'direct') lancerLeBattement(redessiner);
+        // Le direct ET le mur battent : ce sont les deux écrans qui changent
+        // tout seuls sous les yeux du professeur.
+        if (d.onglet === 'direct' || d.onglet === 'mur') lancerLeBattement(redessiner);
         else arreterLeBattement();
         if (!vue.liste) await rafraichirClasse(redessiner);
+        // LA BIBLIOTHÈQUE DU SERVEUR, pour savoir ce qu'on peut imposer. On ne
+        // la demande qu'en arrivant sur l'onglet qui s'en sert : le direct n'en
+        // a que faire, et c'est la lecture la plus lourde de cet écran.
+        // LES BILANS SE DEMANDENT EN ARRIVANT SUR L'ONGLET, et une seule fois.
+        // C'est la lecture la plus lourde de toute l'API — elle reprojette le
+        // journal entier de chaque élève — et elle n'a aucune raison de tourner
+        // pendant qu'on regarde Le direct.
+        // LES SÉANCES DE CETTE CLASSE, demandées en arrivant sur leur onglet.
+        if (d.onglet === 'seances') {
+            vue.seances = null;
+            redessiner();
+            const r = await seancesDeLaClasse(vue.classe && vue.classe.id);
+            vue.seances = r.erreur ? { erreur: r.erreur } : r;
+            redessiner();
+        }
+        if (d.onglet === 'bilans') {
+            vue.bilans = null;
+            redessiner();
+            const r = await auServeur('/teacher/report',
+                { classId: vue.classe && vue.classe.id });
+            vue.bilans = r.erreur ? { erreur: r.erreur } : r;
+            redessiner();
+        }
         return;
     }
 
@@ -730,19 +3000,91 @@ async function brancher(e, redessiner) {
         return;
     }
 
+    // SUPPRIMER DEPUIS LA LISTE — ET AVANT LE GARDE-FOU CI-DESSOUS.
+    //
+    // C'est tout l'intérêt du geste : on est justement dans la liste, donc
+    // AUCUNE classe n'est ouverte. Placée après `if (!cid) return`, cette
+    // branche n'était jamais atteinte — le clic ne faisait rien, sans erreur ni
+    // message, ce qui est la pire des pannes : rien ne dit qu'il s'est passé
+    // quelque chose. Mesuré au navigateur.
+    //
+    // Même route et même mot à écrire que depuis l'intérieur de la classe : on
+    // ne fabrique pas un second chemin plus permissif parce qu'il est plus
+    // pratique.
+    if (d.supprimerCarte) {
+        const mot = await demander(`Supprimer la classe « ${d.nom} » ?`, {
+            bouton: 'Supprimer', placeholder: 'EFFACER',
+            aide: 'La classe, ses élèves et tout leur travail disparaissent. '
+                + 'C\'est sans retour. Écrivez EFFACER pour confirmer.'
+        });
+        if ((mot || '').trim() !== 'EFFACER') return;
+        const r = await supprimerClasse(d.supprimerCarte, 'EFFACER');
+        if (r && r.erreur) { vue.erreur = r.erreur; redessiner(); return; }
+        showToast(r && r.dit ? r.dit : 'Classe supprimée.', 'info');
+        // Le panneau « À qui ce parcours est donné » lit la même liste : sans
+        // cet oubli, il montrerait encore la classe qu'on vient d'effacer.
+        oublierLesClasses();
+        const l = await mesClasses();
+        if (!l.erreur) vue.classes = l;
+        redessiner();
+        return;
+    }
+
     // --- Les gestes qui demandent une classe ouverte ---
     const cid = vue.classe && vue.classe.id;
     if (!cid) return;
 
+    // --- Ajouter UN élève, sans toucher aux autres ---
+    //
+    // DEUX QUESTIONS AU PLUS, et la seconde est facultative. Le nom suffit :
+    // l'identifiant et le code se fabriquent côté serveur, exactement comme
+    // pour une liste collée. On ne demande l'identifiant que si le professeur
+    // veut le choisir — ce qui n'arrive que pour lever un homonyme.
+    //
+    // ET L'APERÇU RESTE. On pourrait écrire directement : c'est un seul nom,
+    // que le professeur vient de taper. On ne le fait pas, parce que c'est
+    // précisément sur UN nom que les cas tordus se jouent — « Noé » qui est
+    // déjà entré par le code de la classe doit être RATTACHÉ à son travail et
+    // non recréé à côté, et seul l'aperçu le dit avant d'écrire.
+    if (d.ajouterEleve !== undefined) {
+        const nom = await demander('Ajouter un élève', {
+            bouton: 'Voir ce qui va se passer', max: 80,
+            placeholder: 'DUPONT Emma',
+            aide: 'Son nom tel que vous l\'écrivez dans votre liste. L\'identifiant et le '
+                + 'code seront fabriqués. Pour choisir l\'identifiant vous-même — deux '
+                + 'homonymes, par exemple —, écrivez « DUPONT Emma ; dupont.e ».'
+        });
+        if (!nom) return;
+        // ON ENVOIE LA LIGNE TELLE QUELLE : `lireListe()` côté serveur sait
+        // déjà séparer « nom ; identifiant » et reconnaître lequel est lequel.
+        // Normaliser ici serait écrire une seconde fois sa devinette.
+        const r = await fait(apercuDeListe(cid, nom.trim(), ''));
+        if (r && r.apercu) { vue.apercu = r.apercu; redessiner(); }
+        return;
+    }
+
     if (d.coller !== undefined) {
         const texte = await demanderTexte('Collez votre liste d\'élèves', {
             bouton: 'Voir ce qui va se passer', lignes: 12,
-            aide: 'Un élève par ligne. « DUPONT ; Emma » ou « Emma Dupont » : les deux '
-                + 'se lisent. Vous pouvez aussi coller directement depuis Pronote ou un tableur.',
-            placeholder: 'DUPONT;Emma\nNGUYÊN;Maëlle\nBernard Tom;tom.b;7777'
+            aide: 'Collez le fichier ENTIER, tel qu\'il sort de Pronote ou d\'un tableur — '
+                + 'toutes ses colonnes, sans rien nettoyer. Je vous montrerai le tableau et '
+                + 'les colonnes que j\'ai retenues, et vous corrigerez si je me trompe.',
+            placeholder: 'Élève\tNé(e) le\tClasse\tRégime\t…\nANDRIANTSITOHAINA Tiffany\t06/28/2013\t…'
         });
         if (!texte) return;
-        const r = await fait(apercuDeListe(cid, texte, ''));
+
+        // LE TABLEAU DES COLONNES S'INTERCALE ICI, et il ne remplace pas
+        // l'aperçu du serveur — il le PRÉCÈDE.
+        //
+        // Rémy colle un export de Pronote de vingt-deux colonnes ; le serveur,
+        // lui, sait très bien lire trois colonnes propres. On fait donc le
+        // travail de lecture ICI, sous ses yeux et avec son accord, puis on
+        // envoie au serveur une liste normalisée sur laquelle il n'a plus rien
+        // à deviner. Les identifiants manquants, les doublons et l'aperçu avant
+        // écriture restent son affaire, et ils marchaient déjà.
+        const normalisee = await choisirLesColonnes(texte);
+        if (!normalisee) return;
+        const r = await fait(apercuDeListe(cid, normalisee, ''));
         if (r && r.apercu) { vue.apercu = r.apercu; redessiner(); }
         return;
     }
@@ -790,8 +3132,17 @@ async function brancher(e, redessiner) {
         const propose = (vue.liste && vue.liste.codePropose) || '';
         const code = await demander('Le même code pour toute la classe', {
             valeur: propose, bouton: 'Refaire les codes', max: 12,
+            // CE QU'IL FAUT DIRE, ET QUE CET ÉCRAN NE DISAIT PAS : un code
+            // commun veut dire que N'IMPORTE QUEL élève peut entrer à la place
+            // d'un autre. La phrase existait dans `api/admin/eleves.php` — la
+            // page des listes de l'administration — et elle a failli partir
+            // avec elle quand Rémy a demandé de retirer les classes de là.
+            // C'est une mise en garde, pas un détail de formulation : sans
+            // elle, on choisit le code commun sans savoir ce qu'on échange.
             aide: 'De 3 à 12 lettres ou chiffres. Pratique pour une première séance : '
-                + 'un seul code à écrire au tableau. Les anciens billets ne vaudront plus rien.'
+                + 'un seul code à écrire au tableau. En échange, n\'importe quel élève '
+                + 'peut entrer à la place d\'un autre — à refaire dès que possible. '
+                + 'Les anciens billets ne vaudront plus rien.'
         });
         if (!code) return;
         await fait(refaireLesCodes(cid, code), (r) => {
@@ -813,15 +3164,347 @@ async function brancher(e, redessiner) {
         return;
     }
 
+    // ── LA FICHE D'UN ÉLÈVE, DANS LE DIRECT ──────────────────────────────────
+    //
+    // Rémy : « il faut aussi pouvoir cliquer sur l'élève, voir où il en est ».
+    // Un second clic referme : c'est ce qu'on essaie, et c'est ce qui permet de
+    // retrouver la classe entière sans chercher de croix.
+    // UN ÉLÈVE À LA FOIS, comme la fiche du direct : deux dépliages ouverts
+    // font reculer le tableau de six lignes, et l'on perd la vue d'ensemble
+    // qui est tout l'intérêt de cet écran.
+    if (d.bilanEleve !== undefined) {
+        vue.bilanOuvert = vue.bilanOuvert === d.bilanEleve ? null : d.bilanEleve;
+        redessiner();
+        return;
+    }
+
+    if (d.fiche !== undefined) {
+        vue.fiche = vue.fiche === d.fiche ? null : d.fiche;
+        redessiner();
+        return;
+    }
+
+    // ── DEUX GESTES VOISINS, DEUX NOMS QUI LE DISENT ────────────────────────
+    //
+    // En parcourant les écrans, j'ai d'abord cru tenir un doublon : « son
+    // écran » d'un côté, « Voir son exercice » de l'autre. C'en était presque
+    // l'inverse, et c'était pire — ce sont DEUX gestes différents, et c'est le
+    // plus puissant des deux qui portait le nom le plus vague :
+    //
+    //   Le direct  → « Son exercice, chez moi »  ouvre SON ÉTAPE, avec ses
+    //                réglages, sur VOTRE profil. Rien n'est enregistré.
+    //   Les élèves → « Ouvrir son poste »        ouvre une fenêtre connectée
+    //                SOUS SON NOM. Vous êtes lui.
+    //
+    // Un professeur qui cherche « voir ce qu'il fait » tombait sur le premier
+    // et ne découvrait jamais le second. Les noms disent maintenant ce que
+    // chacun fait, et chaque infobulle renvoie à l'autre.
+
+    // ── VOIR CE QU'IL A SOUS LES YEUX ─────────────────────────────────────────
+    //
+    // Rémy : « quand on clique sur l'élève, il faudrait aussi pouvoir voir
+    // l'écran ».
+    //
+    // ON OUVRE SON EXERCICE, ET L'ON NE PRÉTEND PAS QUE C'EST SON ÉCRAN. Les
+    // nombres de chaque question sont tirés au sort chez l'élève ; ouvrir le
+    // même exercice ici donne le même TRAVAIL, pas la même question. Appeler
+    // cela « son écran » serait exactement le genre de petit mensonge d'écran
+    // qu'on passe ses journées à débusquer — le bouton dit donc « Voir son
+    // exercice », et son infobulle dit le reste.
+    //
+    // MAIS IL OUVRAIT LE ROBOT. Rémy, capture des deux écrans côte à côte :
+    // « voir son exercice ne montre pas la même chose ». Non : ce bouton
+    // appelait `openGameLayer(exo, true)`, et ce second argument s'appelle
+    // `startAsDemo`. Le professeur voyait donc LA DÉMONSTRATION — « Le robot
+    // joue : Les quadrilatères… », sur une autre étape que celle de l'élève —
+    // pendant que son élève glissait des noms dans un organigramme.
+    //
+    // Et même sans le robot, il aurait manqué l'essentiel : les RÉGLAGES. Le
+    // catalogue donne ses défauts ; l'élève, lui, travaille avec ce que le
+    // professeur a coché dans l'étape. On ouvre donc l'étape elle-même.
+    //
+    // « UN VRAI MIROIR DE SON ÉCRAN RESTE UN AUTRE MÉTIER : il faudrait que
+    // l'élève envoie sa question au fil de l'eau, ce qui change ce qui voyage
+    // sur le réseau pendant l'heure. À décider ensemble. » C'était écrit ici, et
+    // c'est décidé : l'élève envoie sa graine ET SES RÉGLAGES avec le battement
+    // de cœur qui partait déjà vide toutes les dix secondes. Voir
+    // `js/core/ecran.js` pour ce qui voyage et ce qui a été refusé.
+    if (d.voirExo !== undefined) {
+        if (!d.voirExo) { showToast('Il n\'est sur aucun exercice pour l\'instant.', 'info'); return; }
+        const exo = getExerciseById(d.voirExo);
+        if (!exo) { showToast('Cet exercice n\'est pas au catalogue.', 'error'); return; }
+        const etape = etapeDeLaSeance(d.voirExo);
+        const [{ Runner }, { makeStep, makePath }, { politiquePerso }] = await Promise.all([
+            import('../core/runner.js'), import('../core/path.js'),
+            import('../core/mesExercices.js')
+        ]);
+        // AVEC SES RÉGLAGES À LUI, et une seule étape : ce qu'on ouvre doit
+        // être le travail qu'il a devant les yeux, pas l'exercice du catalogue.
+        // ET SA QUESTION, PAS UNE AU HASARD — ce qui manquait à ce bouton.
+        //
+        // Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+        // exercice, car c'est créé de façon aléatoire. »
+        //
+        // Le bouton était bon ; c'est la GRAINE qui n'arrivait pas. Une question
+        // porte la sienne depuis toujours (`item.seed`), `makeRng(graine)` est
+        // reproductible, et `forceSeed` sait déjà rejouer une question précise —
+        // la remédiation s'en sert pour refaire l'erreur du carnet. Il ne
+        // manquait que le transport, et c'est le relevé d'écran qui l'assure
+        // maintenant (`js/core/ecran.js`).
+        //
+        // SANS GRAINE, RIEN NE CHANGE : on ouvre l'étape comme avant, et
+        // l'infobulle du bouton dit que ce sera le même travail, pas la même
+        // question. Un élève qui n'a pas encore rechargé sa page, ou un jeu qui
+        // ne dit pas sa graine, retombent proprement sur l'ancien geste.
+        // SES RÉGLAGES À LUI L'EMPORTENT SUR LA DEVINETTE.
+        //
+        // Rémy : « ce serait aussi vraiment cool dans le direct de pouvoir avoir
+        // le même exercice avec les mêmes paramètres que l'élève ».
+        //
+        // `etapeDeLaSeance` cherchait l'exercice dans les parcours du
+        // professeur. C'est une bonne devinette — c'est bien lui qui a réglé
+        // l'étape — et elle tombe juste la plupart du temps. Elle tombe à côté
+        // dès que l'élève n'est pas là où on le croit : une partie du bac à
+        // sable, un exercice ouvert librement, une étape modifiée depuis, ou le
+        // même exercice présent dans dix parcours avec dix réglages.
+        //
+        // ET ALORS LA GRAINE NE SUFFIT PLUS : le générateur lit la graine ET les
+        // réglages, si bien qu'un palier différent donne d'autres nombres avec
+        // la même graine. On aurait ouvert un écran qui RESSEMBLE au sien sans
+        // être le sien — un miroir presque juste, dont on ne sait pas lequel des
+        // deux on regarde.
+        //
+        // Les réglages voyagent donc avec le relevé. La devinette reste, en
+        // second : elle sert encore à l'élève qui n'a pas rechargé sa page.
+        const siens = lireReglagesDuBouton(el);
+        const reglages = siens || (etape && etape.overrides) || {};
+        const pas = makeStep(exo.id, reglages, {
+            stepId: 'voir', nbItems: (etape && etape.nbItems) || 5, threshold: 0, bonus: true,
+            forceSeed: d.graine || null
+        });
+        const parcours = makePath(
+            `${d.graine ? 'Sa question' : 'Son exercice'} — ${d.prenom || 'l\'élève'} · ${exo.title}`,
+            [pas], politiquePerso());
+        parcours.personnel = true;
+        // `essai` : RIEN N'EST ENREGISTRÉ. Le professeur qui regarde ne doit
+        // pas apparaître dans son propre direct, ni gonfler ses statistiques.
+        new Runner({
+            path: parcours, deviceMode: 'none', essai: true,
+            onExit: () => import('./navigation.js').then(m => m.setTopNavMode('path'))
+        }).start();
+        // ON DIT D'OÙ VIENNENT LES RÉGLAGES QU'ON VIENT D'OUVRIR.
+        //
+        // Trois provenances, et elles ne se valent pas : les siens (certitude),
+        // ceux de l'étape (devinette raisonnable), ceux du catalogue (aucun
+        // rapport garanti avec son écran). Le professeur doit savoir lequel il
+        // regarde — sans quoi il conseille sur une question qui n'est
+        // peut-être pas la sienne, en croyant la voir.
+        if (siens) {
+            showToast('Ses réglages à lui, tels qu\'il les a annoncés.', 'success', 2500);
+        } else if (etape) {
+            showToast('Réglages de votre séance : il n\'a pas encore dit les siens.',
+                'info', 4000);
+        } else {
+            showToast('Réglages du catalogue : cet exercice n\'est pas dans la séance donnée, '
+                + 'et il n\'a pas dit les siens.', 'info', 4000);
+        }
+        return;
+    }
+
+    // ── DISPENSER CET ÉLÈVE-CI DE CET EXERCICE-LÀ ────────────────────────────
+    //
+    // Rémy : « rendre facultatif un exercice — en fait s'il bloque il risque de
+    // passer trop de temps ».
+    //
+    // LE SERVEUR SAVAIT DÉJÀ LE FAIRE POUR UN SEUL ÉLÈVE (`overrides.student_id`,
+    // gardé et testé) ; l'écran ne l'offrait que pour la classe entière.
+    // Dispenser trente élèves parce qu'un seul coince, c'est retirer la question
+    // à vingt-neuf. Il manquait l'endroit où le dire — et c'est ici, puisqu'on
+    // vient de cliquer sur LUI.
+    if (d.sautEleve) {
+        if (!d.exo) { showToast('Il faut qu\'il soit sur un exercice.', 'info'); return; }
+        await fait(reglerUnExercice(cid, d.exo, 'saut', d.sautEleve), (r) => {
+            vue.reglages = r.reglages || vue.reglages;
+            showToast(`${d.prenom || 'L\'élève'} pourra passer « ${nomDExercice(d.exo)} ».`,
+                'success');
+        });
+        return;
+    }
+
+    // ── LA CALCULATRICE, ET LE PARCOURS OUVERT, POUR CET ÉLÈVE-LÀ ───────────
+    //
+    // Le même bouton donne et retire : `data-deja` porte l'identifiant du
+    // réglage quand il existe. Deux boutons côte à côte dont l'un n'est actif
+    // qu'une fois sur deux demanderaient de lire avant d'appuyer, et une
+    // fiche d'élève se lit debout, en dix secondes.
+    if (d.calcEleve) {
+        const qui = d.prenom || 'L\'élève';
+        await fait(d.deja
+            ? annulerUnReglage(cid, d.deja)
+            : accorderLaCalculatrice(cid, '*', [d.calcEleve]), (r) => {
+            vue.reglages = r.reglages || vue.reglages;
+        }, d.deja ? `🧮 Calculatrice retirée à ${qui}.`
+            : `🧮 ${qui} a la calculatrice, pour toute la séance.`);
+        return;
+    }
+
+    if (d.sautTout) {
+        const qui = d.prenom || 'L\'élève';
+        await fait(d.deja
+            ? annulerUnReglage(cid, d.deja)
+            : reglerUnExercice(cid, '*', 'saut', d.sautTout), (r) => {
+            vue.reglages = r.reglages || vue.reglages;
+        }, d.deja ? `🔓 ${qui} suit de nouveau son parcours dans l'ordre.`
+            : `🔓 ${qui} peut passer n'importe quel exercice de la séance.`);
+        return;
+    }
+
     if (d.imprimer !== undefined) return imprimerLesBillets();
+    // UN SEUL BILLET, POUR L'ÉLÈVE QUI A PERDU LE SIEN.
+    //
+    // « J'ai perdu mon code » arrive, et la seule réponse était de RETIRER le
+    // code — le bouton d'à côté en tire un nouveau, ce qui invalide l'ancien
+    // billet et oblige à tout réexpliquer. Or le code n'est pas perdu : il est
+    // écrit dans la colonne d'à côté. Ce qui manque, c'est le bout de papier.
+    if (d.billet) return imprimerLesBillets([d.billet]);
+
+    // --- Compléter et alléger la séance, depuis l'écran de la classe ------
+    //
+    // Rémy : « il faut vraiment que pour la séance ce soit facile d'ajouter et
+    // d'enlever un exercice et surtout que ça s'actualise chez un élève. »
+    if (d.seanceAjouter) {
+        const exo = await choisirUnExercice(`Ajouter un exercice à « ${d.nom || 'la séance'} »`);
+        if (!exo) return;
+        const parcours = await parcoursDeLaSeance(d.seanceAjouter);
+        if (!parcours) {
+            // ON LE DIT, ET ON DIT OÙ ALLER. Un bouton qui échoue sans
+            // expliquer envoie le professeur chercher la panne pendant
+            // l'heure.
+            showToast('Ce parcours n\'est pas sur cet appareil et le serveur ne l\'a pas '
+                + 'rendu. Ouvrez-le dans Préparer, puis réessayez.', 'error', 7000);
+            return;
+        }
+        // ON AJOUTE À LA FIN, ET SEULEMENT À LA FIN. C'est la condition pour
+        // que le complément atteigne les élèves qui ont déjà commencé sans
+        // rendre orphelin ce qu'ils ont fait — voir `complementDeSeance`.
+        //
+        // ET L'ON ÉCRIT DANS LA FORME QU'ON A TROUVÉE : l'entrée peut être une
+        // enveloppe ou le parcours nu (voir `cheminDeLEntree`). On ne la
+        // convertit pas au passage — ce serait changer, sans raison et sans le
+        // dire, la forme de ce que le serveur conserve.
+        const chemin = cheminDeLEntree(parcours);
+        if (!chemin) {
+            showToast('Ce parcours est illisible sur cet appareil.', 'error', 6000);
+            return;
+        }
+        chemin.steps = [...(chemin.steps || []), makeStep(exo)];
+        state.saveTeacherPaths();
+        const m = await monterUnParcours(parcours);
+        if (!m.monte) {
+            showToast(m.erreur || 'Le serveur n\'a pas pris la modification.', 'error', 6000);
+            return;
+        }
+        // ON RELIT LA LISTE : le compte d'étapes affiché vient du serveur,
+        // et laisser l'ancien ferait croire que l'ajout n'a pas pris.
+        vue.seances = null;
+        redessiner();
+        const liste = await seancesDeLaClasse(cid);
+        vue.seances = liste.erreur ? { erreur: liste.erreur } : liste;
+        redessiner();
+        showToast(`« ${nomDExercice(exo)} » ajouté à la séance. Vos élèves le verront, `
+            + 'même ceux qui ont déjà commencé.', 'success', 6000);
+        return;
+    }
+
+    if (d.seanceRetirer) {
+        // ON NE PROPOSE QUE CE QUI EST DANS LA SÉANCE. Un choisisseur ouvert
+        // sur tout le catalogue laisserait retirer un exercice qui n'y est
+        // pas : le réglage serait écrit, et rien ne changerait à l'écran.
+        const dedans = (d.exos || '').split(',').filter(Boolean);
+        if (!dedans.length) { showToast('Cette séance n\'a aucun exercice.', 'info'); return; }
+        const exo = await choisirParmi('Retirer un exercice de la séance',
+            dedans.map(id => ({ id, titre: nomDExercice(id) })));
+        if (!exo) return;
+        // LE MÊME CHEMIN QUE LA DISPENSE DE LA BARRE DE PILOTAGE, et non une
+        // réécriture du parcours : le travail déjà fait reste au bilan, le
+        // réglage s'annule d'un clic, et l'élève qui est DESSUS voit son
+        // bouton « Passer » apparaître sans recharger.
+        await fait(reglerUnExercice(cid, exo, 'retire'), (r) => {
+            vue.reglages = r.reglages || vue.reglages;
+        }, `« ${nomDExercice(exo)} » retiré de la séance, pour toute la classe.`);
+        return;
+    }
 
     if (d.saut !== undefined || d.retire !== undefined) {
         const champ = document.getElementById('ec-exo');
         const exo = champ ? champ.value.trim() : '';
-        if (!exo) { showToast('Écrivez l\'identifiant de l\'exercice.', 'info'); return; }
+        // LE MESSAGE DISAIT ENCORE « Écrivez l'identifiant de l'exercice »,
+        // alors que le champ libre est devenu une LISTE DÉROULANTE : on n'y
+        // écrit plus rien, et l'on ne peut donc pas suivre ce conseil. Un
+        // message qui demande un geste impossible est pire qu'un message
+        // absent. Le seul cas où la liste ne rend rien, c'est quand aucun
+        // exercice n'est sous la main — et c'est cela qu'il faut dire, avec
+        // les deux façons d'en avoir un.
+        if (!exo) {
+            showToast('Aucun exercice sous la main : imposez une séance, ou attendez '
+                + 'qu\'un élève en ouvre un.', 'info');
+            return;
+        }
+        // ON DIT CE QU'ON VA FAIRE, ET À COMBIEN DE PERSONNES.
+        //
+        // « Le retirer » fait disparaître l'exercice pour TOUTE la classe. Il
+        // vivait en bouton discret à côté de « Autoriser le saut » en bouton
+        // plein, sans confirmation et sans dire sa portée : le geste le plus
+        // fort de cet écran était le moins annoncé. Le saut, lui, ne retire
+        // rien — il ouvre une porte — et n'a rien à faire confirmer.
+        //
+        // ET LA CONFIRMATION DIT QUE C'EST RÉVERSIBLE, ce qui change tout :
+        // le réglage s'annule d'un clic juste en dessous, et le travail déjà
+        // fait reste au bilan. On ne fait pas peur, on informe.
+        if (d.retire !== undefined) {
+            const combien = ((vue.liste && vue.liste.eleves) || []).length;
+            // ON ATTEND UNE RÉPONSE, ET LES DEUX RÉPONSES COMPTENT.
+            // `showConfirm` rend maintenant la main sur un refus — par le
+            // bouton, la croix ou le clic à côté — sans quoi cet `await`
+            // gèlerait tous les autres gestes de l'écran, en silence.
+            const ok = await new Promise((repondre) => {
+                showConfirm(
+                    `« ${esc(nomDExercice(exo))} » disparaîtra de la séance pour `
+                    + (combien ? `les ${combien} élèves de la classe` : 'toute la classe')
+                    + ', comme s\'il n\'y était pas.<br><br>Ce qu\'ils ont déjà fait dessus '
+                    + 'reste au bilan, et vous pourrez annuler ce réglage juste en dessous.',
+                    () => repondre(true),
+                    { bouton: 'Le retirer pour tous', titre: 'Retirer cet exercice ?',
+                      onCancel: () => repondre(false) });
+            });
+            if (!ok) return;
+        }
         await fait(reglerUnExercice(cid, exo, d.retire !== undefined ? 'retire' : 'saut'), (r) => {
             vue.reglages = r.reglages || vue.reglages;
-            if (champ) champ.value = '';
+        });
+        return;
+    }
+
+    // LA CALCULATRICE, ACCORDÉE EN DIRECT. Rémy : « le permettre en direct à un
+    // groupe ou aux élèves ». Deux portées (`*` pour toute la séance, ou un
+    // exercice), deux destinataires (la classe, ou les élèves cochés).
+    if (d.calcDonner !== undefined) {
+        const ou = document.getElementById('ec-calc-ou');
+        const exo = ou ? ou.value : '*';
+        const qui = elevesChoisis();
+        const portee = exo === '*' ? 'pour toute la séance' : `sur « ${nomDExercice(exo)} »`;
+        await fait(accorderLaCalculatrice(cid, exo, qui), (r) => {
+            vue.reglages = r.reglages || vue.reglages;
+            // ON NE DÉCOCHE PAS : le professeur vient peut-être de donner la
+            // calculatrice à ces quatre-là, et il va leur souffler un indice
+            // juste après. Perdre la sélection lui ferait recocher.
+        }, `🧮 Calculatrice autorisée ${aQuiLaCalculatrice()}, ${portee}.`);
+        return;
+    }
+
+    if (d.calcRetirer !== undefined) {
+        await fait(retirerLaCalculatrice(cid), (r) => {
+            vue.reglages = r.reglages || [];
         });
         return;
     }
@@ -865,6 +3548,67 @@ async function brancher(e, redessiner) {
         });
         if (!corps) return;
         await fait(envoyerUnMot(cid, corps, d.motEleve));
+        direSiHorsLigne(d.motEleve, d.prenom, 'Votre mot');
+        return;
+    }
+
+    // L'INDICE : on propose, on n'impose pas.
+    //
+    // Ce qu'on propose sort de la LEÇON de la compétence que l'exercice
+    // travaille — écrite une seule fois, dans js/data/skills.js, donc jamais
+    // désynchronisée de ce que l'élève lira dans l'aide. Le professeur garde le
+    // champ libre : c'est lui qui connaît son élève.
+    if (d.indiceEleve) {
+        const exo = d.exo ? getExerciseById(d.exo) : null;
+        const competence = exo ? getSkill((skillsOf(exo) || [])[0]) : null;
+        const corps = await choisirIndice(d.prenom, indicesProposes(competence));
+        if (!corps) return;
+        await fait(soufflerUnIndice(cid, corps, d.indiceEleve));
+        direSiHorsLigne(d.indiceEleve, d.prenom, 'Ton indice');
+        return;
+    }
+
+    if (d.bac !== undefined) {
+        // ON NE TOUCHE PAS À LA DURÉE EN OUVRANT OU EN FERMANT : le quart
+        // d'heure posé doit survivre à une fermeture le temps d'une
+        // explication au tableau.
+        await fait(reglerLeBac(cid, d.bac === '1'), (r) => {
+            if (vue.liste && vue.liste.classe) vue.liste.classe.bac_ferme = !!r.ferme;
+        });
+        return;
+    }
+
+    // CHOISIR LES JEUX DU BAC. Rémy : « pour le bac à sable j'aimerai quand
+    // même bien pouvoir éditer le contenu ».
+    if (d.bacJeux !== undefined) {
+        const actuels = jeuxDuBacDeLaClasse();
+        // LA LISTE PAR DÉFAUT SERT DE POINT DE DÉPART, et non une page blanche :
+        // un professeur qui veut ajouter UN jeu ne doit pas avoir à recomposer
+        // les dix-sept autres. Tant qu'il n'a rien réglé, on lui montre ce que
+        // ses élèves voient aujourd'hui.
+        const depart = actuels === null ? lesJeuxParDefaut() : actuels;
+        const choisis = await composerLeBac(depart);
+        if (choisis === null) return;
+        await fait(reglerLeBac(cid, bacDeLaClasse(), null, choisis), (r) => {
+            if (vue.liste && vue.liste.classe) {
+                vue.liste.classe.bac_jeux = Array.isArray(r.jeux) ? r.jeux.join(',') : null;
+            }
+        }, choisis.length
+            ? `🧰 Bac à sable : ${choisis.length} jeu(x) pour vos élèves.`
+            : '🧰 Bac à sable vidé : vos élèves n\'y trouveront plus rien.');
+        return;
+    }
+
+    if (d.bacMinutes !== undefined) {
+        const champ = document.getElementById('ec-bac-min');
+        const min = champ ? Math.max(0, Math.min(120, parseInt(champ.value, 10) || 0)) : 0;
+        await fait(reglerLeBac(cid, bacDeLaClasse(), min), (r) => {
+            if (vue.liste && vue.liste.classe) {
+                vue.liste.classe.bac_ferme = !!r.ferme;
+                vue.liste.classe.bac_minutes = r.minutes || 0;
+            }
+        }, min ? `🧰 Bac à sable : ${min} minutes par élève, à partir du moment où il l'ouvre.`
+               : '🧰 Bac à sable sans limite de temps.');
         return;
     }
 
@@ -922,7 +3666,7 @@ async function rafraichirClasse(redessiner) {
     if (!cid) return;
     const [l, d, r] = await Promise.all([listeDeClasse(cid), leDirect(cid), lesReglages(cid)]);
     if (l.erreur) vue.erreur = l.erreur; else { vue.liste = l; vue.erreur = ''; }
-    if (!d.erreur) vue.direct = d;
+    if (!d.erreur) { vue.direct = d; noterLHeureDuServeur(d); }
     if (!r.erreur) vue.reglages = r.reglages || [];
     redessiner();
 }
@@ -936,19 +3680,455 @@ async function rafraichirClasse(redessiner) {
  * ON NE REDESSINE QUE L'ONGLET DU DIRECT. Redessiner l'écran entier effacerait
  * ce que le professeur est en train de taper dans « le mot au tableau ».
  */
+/**
+ * DIX SECONDES, ET C'EST LA MOITIÉ DE CE QUE C'ÉTAIT.
+ *
+ * Rémy : « je ne peux pas avoir un aperçu en temps réel de la progression des
+ * élèves ».
+ *
+ * Le délai total qu'il constatait était la SOMME de trois attentes : l'élève
+ * pousse son journal quatre secondes après une réponse, le professeur relit
+ * toutes les dix, et — c'était le gros du problème — la première des deux ne
+ * partait jamais dans la session où l'élève s'était connecté (voir `initSync`).
+ * Corrigées ensemble, elles donnent une quinzaine de secondes au pire.
+ *
+ * CINQ SECONDES, ET NON DIX. Rémy : « peut-on rendre la synchronisation plus
+ * réactive ? » MESURÉ (`tools/tmp/delaiReel.mjs`), réponse de l'élève →
+ * chiffre qui bouge sur l'écran du professeur :
+ *
+ *                              avant                après
+ *     trois essais             8,0 · 7,0 · 7,0 s    voir le test
+ *
+ * Les deux moitiés du délai ont bougé ensemble : la poussée de l'élève part
+ * maintenant tout de suite après un temps calme (voir `schedulePush` dans
+ * core/sync.js), et ce battement-ci passe de dix à cinq secondes.
+ *
+ * ON NE DESCEND PAS PLUS BAS, et la raison n'est pas l'œil du professeur :
+ * c'est que chaque battement fait relire au serveur les deux cents derniers
+ * événements de CHACUN des trente élèves. Doubler la fréquence double ce
+ * travail ; le quadrupler le quadruplerait, sur un hébergement mutualisé. Le
+ * direct ne bat que pendant que son onglet est ouvert, ce qui borne la casse,
+ * mais cinq secondes est le point où l'on s'arrête sans mesurer la charge du
+ * serveur — et cette mesure-là, on ne l'a pas faite.
+ */
+const BATTEMENT_MS = 5000;
+
+/**
+ * CE QUE LE BATTEMENT A LE DROIT DE TOUCHER.
+ *
+ * Pas la barre de pilotage : elle porte des champs qu'on est en train de
+ * remplir. Écrire « Prenez le cahier rouge » prend plus de dix secondes, et le
+ * texte disparaissait sous les doigts du professeur — avec le repli qu'il
+ * venait d'ouvrir.
+ *
+ * La barre n'est refaite que si sa FORME a changé : la pause bascule, le bac
+ * s'ouvre, le compte à rebours démarre ou s'arrête. Ce sont des événements, pas
+ * un rythme — et trois d'entre eux viennent d'un geste du professeur, qui
+ * redessine déjà tout de son côté. Le quatrième, l'arrivée du chrono par le
+ * serveur, est celui qui justifie cette signature.
+ */
+function signatureDuPilote() {
+    const info = (vue.liste && vue.liste.classe) || {};
+    const ch = vue.direct && vue.direct.chrono;
+    // LA SÉANCE DONNÉE EN FAIT PARTIE depuis que la liste « dispenser la classe »
+    // est peuplée par ses étapes : changer de séance change la liste, et la
+    // barre doit se refaire. On n'y met PAS les exercices ouverts par les
+    // élèves — ils changent à chaque minute du début de l'heure, et refaire la
+    // barre effacerait le mot que le professeur est en train d'écrire.
+    // LA CALCULATRICE EN FAIT PARTIE : le bouton « Retirer » n'existe que
+    // lorsqu'il y a quelque chose à retirer. Sans cela, il n'apparaissait
+    // qu'au prochain changement de forme — le professeur venait d'accorder la
+    // calculatrice et n'avait aucun moyen de revenir en arrière.
+    return [!!info.locked, !!bacDeLaClasse(), !!(ch && ch.finAt), (ch && ch.quoi) || '',
+        info.impose_path_id || '',
+        (vue.reglages || []).some(x => x.mode === 'calculatrice') ? 'calc' : '',
+        String(minutesDuBac())].join('|');
+}
+
+function rafraichirLeDirect(zone) {
+    const haut = zone.querySelector('.ec-direct-haut');
+    const rangs = zone.querySelector('.ec-rangs');
+    const pilote = zone.querySelector('.ec-pilote');
+    // Pas encore la bonne structure — on vient d'arriver sur l'onglet : on
+    // dessine tout, une fois.
+    if (!haut || !rangs || !pilote) { zone.innerHTML = directHtml(); return; }
+
+    if (pilote.dataset.forme !== signatureDuPilote()) { zone.innerHTML = directHtml(); return; }
+
+    // On redessine le direct entier dans une boîte de côté, et l'on ne prend
+    // que les deux morceaux vivants. Écrire deux fois le même gabarit — un pour
+    // le tout, un pour les morceaux — serait deux vérités à tenir d'accord.
+    const boite = document.createElement('div');
+    boite.innerHTML = directHtml();
+    const hautNeuf = boite.querySelector('.ec-direct-haut');
+    const rangsNeufs = boite.querySelector('.ec-rangs');
+    if (hautNeuf) haut.innerHTML = hautNeuf.innerHTML;
+    if (rangsNeufs) rangs.innerHTML = rangsNeufs.innerHTML;
+}
+
+/**
+ * LE DÉCOMPTE BAT À LA SECONDE, et rien d'autre avec lui.
+ *
+ * Le battement du serveur tourne toutes les dix secondes : un compte à rebours
+ * qui n'en dépendrait que sauterait de dix en dix — « 06:52 », puis « 06:42 ».
+ * Ce n'est pas un compte à rebours, c'est une horloge cassée.
+ *
+ * Ce minuteur-ci ne touche donc QU'AU TEXTE du décompte. Il ne redessine rien,
+ * n'interroge pas le serveur, et disparaît avec l'écran. L'heure reste celle du
+ * serveur : on ne fait qu'en soustraire les secondes écoulées depuis.
+ */
+let tictac = null;
+
+/**
+ * L'ÉCART ENTRE L'HORLOGE DU SERVEUR ET CELLE DU POSTE, en secondes.
+ *
+ * Le compte à rebours est daté par le SERVEUR (`ch.finAt`), parce que c'est la
+ * même date pour les trente élèves et pour le professeur. Le tic-tac, lui, ne
+ * dispose que de l'horloge du poste. Un ordinateur de salle réglé à trois
+ * minutes près — cela existe, et personne ne s'en aperçoit jamais — afficherait
+ * donc trois minutes de moins que la classe.
+ *
+ * On note l'écart à chaque réponse du serveur, et le tic-tac s'en sert. C'est
+ * la seule façon d'avoir un seul compte à rebours dans la salle.
+ */
+let decalageHorloge = 0;
+function noterLHeureDuServeur(d) {
+    if (d && typeof d.maintenant === 'number') {
+        decalageHorloge = d.maintenant - Math.floor(Date.now() / 1000);
+    }
+}
+
+function arreterLeTicTac() { if (tictac) { clearInterval(tictac); tictac = null; } }
+
+function lancerLeTicTac() {
+    arreterLeTicTac();
+    tictac = setInterval(() => {
+        const el = document.querySelector('.ec-chrono-reste');
+        if (!el) return;
+        const ch = vue.direct && vue.direct.chrono;
+        if (!ch || !ch.finAt) return;
+        const reste = Math.max(0,
+            ch.finAt - (Math.floor(Date.now() / 1000) + decalageHorloge));
+        el.textContent = enMinutes(reste);
+        el.classList.toggle('ec-chrono-reste--court', reste <= 60);
+    }, 1000);
+}
+
 function lancerLeBattement(redessiner) {
     arreterLeBattement();
+    lancerLeTicTac();
     battement = setInterval(async () => {
-        if (vue.ou !== 'classe' || vue.onglet !== 'direct' || vue.occupe) return;
+        // LE MUR BAT AUSSI, et il ne battait pas.
+        //
+        // La ligne d'appel dit « le direct ET le mur battent : ce sont les deux
+        // écrans qui changent tout seuls sous les yeux du professeur » — et ce
+        // garde-ci ne laissait passer que le direct. Le minuteur démarrait donc
+        // sur le mur et n'y faisait rien. Mesuré : les six tuiles relevées à
+        // t = 0 et à t = 35 s étaient identiques au caractère près, alors qu'un
+        // élève avait répondu entre les deux, et « rien depuis 14 min » restait
+        // « 14 min » indéfiniment — l'heure d'affichage était gelée avec.
+        //
+        // C'est le seul écran trié par urgence : figé, il désigne le mauvais
+        // élève, ce qui est pire que ne rien désigner du tout.
+        const surUnEcranVivant = vue.onglet === 'direct' || vue.onglet === 'mur';
+        if (vue.ou !== 'classe' || !surUnEcranVivant || vue.occupe) return;
         const cid = vue.classe && vue.classe.id;
         if (!cid) return;
         const d = await leDirect(cid);
         if (d.erreur) return;          // une panne passagère ne vide pas l'écran
         vue.direct = d;
+        noterLHeureDuServeur(d);
         const zone = document.querySelector('#ec-racine .ec-corps');
-        if (zone) zone.innerHTML = directHtml();
-    }, 20000);
+        if (!zone) return;
+        // ET L'ON REDESSINE L'ÉCRAN QU'ON REGARDE. En levant le garde sans
+        // toucher à cette ligne, le mur se serait fait remplacer par le direct
+        // au bout de dix secondes : le professeur aurait vu son écran changer
+        // tout seul sous ses yeux, ce qui est un défaut plus grave que celui
+        // qu'on corrige.
+        if (vue.onglet === 'mur') { zone.innerHTML = murHtml(); return; }
+        rafraichirLeDirect(zone);
+    }, BATTEMENT_MS);
 }
+
+/**
+ * LA LISTE PAR DÉFAUT DU BAC, résolue sur CE catalogue.
+ *
+ * Elle sert de point de départ au composeur : un professeur qui veut ajouter
+ * un jeu ne doit pas avoir à recomposer les dix-sept autres.
+ */
+/** Un jeu qu'un élève seul peut lancer — le bac s'ouvre à celui qui a fini
+ *  avant les autres, et lui proposer une activité à deux, c'est lui proposer
+ *  d'attendre quelqu'un. */
+function estUnJeuSeul(exo) {
+    return isGame(exo) && !estADeux(exo);
+}
+
+function lesJeuxParDefaut() {
+    return BAC_PAR_DEFAUT.filter(id => !!getExerciseById(id));
+}
+
+/**
+ * COMPOSER LE BAC À SABLE — ce que les élèves y trouveront.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « pour le bac à sable j'aimerai quand même bien pouvoir éditer le
+ * contenu ». Et, sur l'idée d'un bac à sable propre à chaque séance : c'est
+ * justement ce qu'on NE fait pas. Un second concept pour le même besoin, c'est
+ * une chose de plus à apprendre et un endroit de plus où chercher. Le bac
+ * suit déjà la séance tout seul — ce qui manquait, c'est une étagère que le
+ * professeur remplit.
+ *
+ * UNE FENÊTRE QUI MONTRE L'ÉTAT, pas un formulaire. On voit ce qu'il y a
+ * dedans, on retire d'un clic, on ajoute par la recherche. Rien ne part au
+ * serveur avant « Enregistrer » : composer une liste demande d'hésiter, et
+ * une liste qui s'enregistre à chaque clic ne se laisse pas essayer.
+ *
+ * ON NE BORNE PAS À VINGT ICI, mais au serveur. Une borne posée des deux
+ * côtés finit par ne plus être la même ; celle qui compte est celle qui écrit.
+ *
+ * @param {string[]} depart ce qu'il y a dedans aujourd'hui
+ * @returns {Promise<string[]|null>} la nouvelle liste, ou null si on renonce
+ */
+function composerLeBac(depart) {
+    return new Promise((repondre) => {
+        let choisis = [...depart];
+        let repondu = false;
+
+        const corps = `
+            <p class="ec-note">Ce que vos élèves trouveront dans le bac quand ils auront
+               fini. Le logiciel y ajoute toujours quelques jeux <b>comme la séance</b>
+               qu'ils viennent de faire : cette liste-ci est le fond fixe.</p>
+            <div id="ec-bac-dedans" class="ec-choix-liste"></div>
+            <label class="ec-pilote-mot-liant" for="ec-bac-q">Ajouter un jeu</label>
+            <input id="ec-bac-q" class="ec-champ" type="text" autocomplete="off"
+                   spellcheck="false" placeholder="tangram, calcul, labyrinthe…"
+                   aria-label="Chercher un jeu à ajouter">
+            <div id="ec-bac-trouves" class="ec-choix-liste"></div>
+            <div class="ec-seance-gestes">
+                <button type="button" class="ec-bouton" id="ec-bac-ok">Enregistrer</button>
+                <button type="button" class="ec-bouton ec-bouton--doux" id="ec-bac-defaut"
+                        title="Remettre les jeux que le logiciel propose quand on n'a rien choisi"
+                        >Remettre ceux du logiciel</button>
+            </div>`;
+
+        const modal = showModal('Les jeux du bac à sable', corps, {
+            width: '560px',
+            onClose: () => { if (!repondu) repondre(null); }
+        });
+        const dedans = modal.element.querySelector('#ec-bac-dedans');
+        const champ = modal.element.querySelector('#ec-bac-q');
+        const trouves = modal.element.querySelector('#ec-bac-trouves');
+
+        // ON NE PROPOSE QUE DES JEUX JOUABLES SEUL. Le bac s'ouvre à un élève
+        // qui a fini avant les autres : lui proposer une activité à deux, c'est
+        // lui proposer d'attendre quelqu'un.
+        const candidats = catalogueComplet.filter(e => e && e.id && estUnJeuSeul(e));
+
+        const peindreDedans = () => {
+            if (!choisis.length) {
+                dedans.innerHTML = '<p class="ec-note">Le bac est vide : vos élèves '
+                    + 'n\'y trouveront que les jeux « comme leur séance ».</p>';
+                return;
+            }
+            dedans.innerHTML = choisis.map(id => {
+                const e = getExerciseById(id);
+                return `<button type="button" class="ec-choix-ligne" data-ote="${esc(id)}">
+                    <b>${esc(e ? e.title : id)}</b>
+                    <span class="ec-note">retirer du bac</span>
+                </button>`;
+            }).join('');
+        };
+
+        const peindreTrouves = () => {
+            const q = (champ.value || '').trim();
+            if (!q) { trouves.innerHTML = ''; return; }
+            const dejaLa = new Set(choisis);
+            const liste = chercher(candidats.filter(e => !dejaLa.has(e.id)).map(ficheDe),
+                q, { max: 8 })
+                .map(r => candidats.find(e => e.id === r.fiche.id)).filter(Boolean);
+            trouves.innerHTML = liste.length
+                ? liste.map(e => `<button type="button" class="ec-choix-ligne" data-mets="${esc(e.id)}">
+                       <b>${esc(e.title)}</b>
+                       <span class="ec-note">${esc((e.tags && e.tags.chemin || []).join(' › '))}</span>
+                   </button>`).join('')
+                : '<p class="ec-note">Aucun jeu pour ces mots.</p>';
+        };
+
+        champ.oninput = peindreTrouves;
+        modal.element.onclick = (ev) => {
+            const ote = ev.target.closest('[data-ote]');
+            const mets = ev.target.closest('[data-mets]');
+            if (ote) { choisis = choisis.filter(x => x !== ote.dataset.ote); peindreDedans(); peindreTrouves(); return; }
+            if (mets) {
+                choisis = [...choisis, mets.dataset.mets];
+                champ.value = '';
+                peindreDedans(); peindreTrouves(); champ.focus();
+                return;
+            }
+            if (ev.target.closest('#ec-bac-defaut')) {
+                choisis = lesJeuxParDefaut();
+                peindreDedans(); peindreTrouves();
+                return;
+            }
+            if (ev.target.closest('#ec-bac-ok')) {
+                repondu = true;
+                modal.close();
+                repondre(choisis);
+            }
+        };
+
+        peindreDedans();
+        champ.focus();
+    });
+}
+
+// --- Choisir un exercice, sans quitter l'écran de la classe ----------------
+
+/**
+ * UN CHOISISSEUR D'EXERCICE, POUR LA SÉANCE EN COURS.
+ *
+ * RÉMY : « il faut vraiment que pour la séance ce soit facile d'ajouter et
+ * d'enlever un exercice et surtout que ça s'actualise chez un élève. »
+ *
+ * POURQUOI ICI ET PAS DANS « PRÉPARER ». Compléter une séance se décide EN
+ * CLASSE, à la minute où l'on voit que les élèves vont trop vite. Le chemin
+ * existant — retrouver le bon parcours dans sa bibliothèque, l'ouvrir, y
+ * ajouter une étape — demande de savoir que c'est possible, de se souvenir
+ * duquel il s'agit, et de quitter l'écran où l'on surveille sa classe. Trois
+ * raisons de remettre à plus tard, et « plus tard » n'arrive jamais pendant
+ * l'heure.
+ *
+ * ON NE REFAIT PAS LE CATALOGUE POUR AUTANT. Deux cents exercices dans une
+ * fenêtre, c'est l'écran « Préparer » en moins bien. On donne un champ de
+ * recherche et dix résultats : celui qui cherche sait ce qu'il veut — il vient
+ * de voir sa classe buter ou filer sur une notion précise.
+ *
+ * @param {string} titre     ce qu'on écrit en haut de la fenêtre
+ * @param {string[]} [sauf]  les exercices déjà dans la séance : les proposer
+ *                           une seconde fois ferait doublon dans le parcours
+ * @returns {Promise<string|null>} l'identifiant choisi, ou null
+ */
+function choisirUnExercice(titre, sauf = []) {
+    return new Promise((repondre) => {
+        const exclus = new Set(sauf);
+        const candidats = catalogueComplet.filter(e => e && e.id && !exclus.has(e.id));
+        const corps = `
+            <p class="ec-note">Tapez deux ou trois lettres : le nom de l'exercice,
+               la notion, le niveau.</p>
+            <input id="ec-choix-q" class="ec-champ" type="text" autocomplete="off"
+                   spellcheck="false" placeholder="fraction, tables, symétrie…"
+                   aria-label="Chercher un exercice">
+            <div id="ec-choix-liste" class="ec-choix-liste"></div>`;
+        let repondu = false;
+        const modal = showModal(titre, corps, {
+            width: '520px',
+            onClose: () => { if (!repondu) repondre(null); }
+        });
+        const champ = modal.element.querySelector('#ec-choix-q');
+        const liste = modal.element.querySelector('#ec-choix-liste');
+
+        const peindre = () => {
+            const q = (champ.value || '').trim();
+            // SANS RIEN DE TAPÉ, ON NE MONTRE PAS DEUX CENTS LIGNES : on dit
+            // quoi faire. Une liste trop longue ne se lit pas, elle se fuit.
+            if (!q) {
+                liste.innerHTML = '<p class="ec-note">Commencez à taper…</p>';
+                return;
+            }
+            const trouves = chercher(candidats.map(ficheDe), q, { max: 10 })
+                .map(r => candidats.find(e => e.id === r.fiche.id))
+                .filter(Boolean);
+            if (!trouves.length) {
+                liste.innerHTML = '<p class="ec-note">Aucun exercice pour ces mots.</p>';
+                return;
+            }
+            liste.innerHTML = trouves.map(e => `
+                <button type="button" class="ec-choix-ligne" data-choix="${esc(e.id)}">
+                    <b>${esc(e.title)}</b>
+                    <span class="ec-note">${esc((e.tags && e.tags.chemin || []).join(' › '))}</span>
+                </button>`).join('');
+        };
+
+        champ.oninput = peindre;
+        liste.onclick = (ev) => {
+            const b = ev.target.closest('[data-choix]');
+            if (!b) return;
+            repondu = true;
+            modal.close();
+            repondre(b.dataset.choix);
+        };
+        // ENTRÉE PREND LE PREMIER : c'est le geste de celui qui a tapé trois
+        // lettres et vu arriver ce qu'il voulait. L'obliger à lâcher le
+        // clavier pour viser une ligne, c'est lui coûter la seconde qu'on
+        // vient de lui faire gagner.
+        champ.onkeydown = (ev) => {
+            if (ev.key !== 'Enter') return;
+            ev.preventDefault();
+            const premier = liste.querySelector('[data-choix]');
+            if (premier) premier.click();
+        };
+        peindre();
+        champ.focus();
+    });
+}
+
+/**
+ * CHOISIR DANS UNE COURTE LISTE — les exercices d'UNE séance, pas le catalogue.
+ *
+ * Pas de champ de recherche ici, et c'est le point : une séance fait deux à
+ * douze exercices. Les montrer tous, c'est une seconde de lecture et un clic ;
+ * y mettre une recherche obligerait à taper pour atteindre ce qui est déjà à
+ * l'écran.
+ *
+ * @param {string} titre
+ * @param {Array<{id:string, titre:string}>} choix
+ * @returns {Promise<string|null>}
+ */
+function choisirParmi(titre, choix) {
+    return new Promise((repondre) => {
+        const corps = `<div class="ec-choix-liste">${choix.map(c => `
+            <button type="button" class="ec-choix-ligne" data-choix="${esc(c.id)}">
+                <b>${esc(c.titre)}</b>
+            </button>`).join('')}</div>`;
+        let repondu = false;
+        const modal = showModal(titre, corps, {
+            width: '460px',
+            onClose: () => { if (!repondu) repondre(null); }
+        });
+        modal.element.onclick = (ev) => {
+            const b = ev.target.closest('[data-choix]');
+            if (!b) return;
+            repondu = true;
+            modal.close();
+            repondre(b.dataset.choix);
+        };
+    });
+}
+
+/**
+ * LE PARCOURS DE CETTE SÉANCE, DANS LA BIBLIOTHÈQUE DU PROFESSEUR.
+ *
+ * ON VA LE CHERCHER AU SERVEUR S'IL N'EST PAS LÀ, et ce n'est pas une
+ * précaution de principe : le professeur a pu donner cette séance depuis le
+ * poste de la salle, et ouvrir sa classe depuis le sien. Sans ce rappel, le
+ * bouton « ajouter » échouerait exactement là où il sert le plus — sur un
+ * autre poste que celui qui a préparé.
+ */
+async function parcoursDeLaSeance(pathId) {
+    let p = (state.teacherPaths || []).find(x => x && x.id === pathId);
+    if (p) return p;
+    await ramenerLaBibliotheque();
+    return (state.teacherPaths || []).find(x => x && x.id === pathId) || null;
+}
+
+// LE DÉBALLAGE D'UNE ENTRÉE DE BIBLIOTHÈQUE A QUITTÉ CE FICHIER.
+//
+// Il était ici, écrit pour l'ajout d'un exercice à une séance — et il manquait
+// au rapatriement des parcours, où le même oubli faisait redescendre du serveur
+// des parcours vides. Deux fois la même ligne, deux fois le même défaut : elle
+// vit maintenant dans `js/core/entreeParcours.js`, avec les deux mesures qui
+// l'ont payée, et s'éprouve sans navigateur.
 
 // --- Les billets à imprimer -------------------------------------------------
 
@@ -960,11 +4140,36 @@ function lancerLeBattement(redessiner) {
  * navigateur croit voir — la barre du haut, la fenêtre modale, le fond gris.
  * Une page neuve ne contient QUE les billets, et l'on sait exactement ce qui
  * sortira de l'imprimante de la salle des profs.
+ *
+ * CE QUI SE PASSE ICI, ET CE QUI SE PASSE AILLEURS. La page elle-même — les
+ * billets à découper, le tableau de la classe, le CSV — vit dans
+ * `js/ui/billets.js`, où elle s'éprouve sans navigateur : un prénom qui
+ * contient un point-virgule casse un CSV, et on ne va pas chercher ce cas à la
+ * main. Ici on ne garde que ce qui demande l'écran : QUELS élèves, QUELLE
+ * classe, et l'ouverture de la fenêtre.
+ *
+ * Rémy : « pour imprimer les billets, tu pourrais aussi me proposer une
+ * présentation en tableau et ou export cvs ». Les deux sont DANS la page, dans
+ * une barre qui ne s'imprime pas : un clic pour changer de présentation, un
+ * clic pour le fichier. On ne lui demande donc rien avant d'ouvrir la fenêtre —
+ * le geste courant, « j'imprime mes billets », reste à un seul clic.
  */
-function imprimerLesBillets() {
-    const eleves = ((vue.liste && vue.liste.eleves) || []).filter(e => !e.sansBillet);
+/**
+ * @param {string[]} [seulement] les identifiants à imprimer ; tous par défaut.
+ *   Un seul billet tient sur un tiers de page : c'est ce qu'on donne à l'élève
+ *   qui a perdu le sien, sans toucher à son code ni déranger les vingt-neuf
+ *   autres.
+ */
+function imprimerLesBillets(seulement) {
+    let eleves = ((vue.liste && vue.liste.eleves) || []).filter(e => !e.sansBillet);
+    if (seulement && seulement.length) {
+        const gardes = new Set(seulement);
+        eleves = eleves.filter(e => gardes.has(e.id));
+    }
     if (!eleves.length) { showToast('Aucun billet à imprimer.', 'info'); return; }
     const info = (vue.liste && vue.liste.classe) || vue.classe || {};
+    const nom = info.name || '';
+    const origine = location.origin + location.pathname.replace(/\/[^/]*$/, '/');
 
     const f = window.open('', '_blank');
     if (!f) {
@@ -972,35 +4177,26 @@ function imprimerLesBillets() {
             + 'Autorisez les fenêtres pour ce site, puis réessayez.', 'error');
         return;
     }
-    f.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8">
-    <title>Billets — ${esc(info.name || '')}</title>
-    <style>
-      body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-             margin: 14mm; color: #111; }
-      h1 { font-size: 1.1rem; margin: 0 0 3mm; }
-      .sous { color: #555; margin: 0 0 6mm; font-size: .9rem; }
-      .billets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
-      .billet { border: 1px dashed #999; border-radius: 3mm; padding: 4mm; break-inside: avoid; }
-      .nom { font-weight: 700; font-size: 1.05rem; margin-bottom: 2mm; }
-      .l { font-size: .88rem; margin: 1mm 0; }
-      b.code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1.15rem;
-               letter-spacing: .08em; }
-      .pied { margin-top: 3mm; font-size: .72rem; color: #666; }
-      @media print { .rien { display: none; } }
-    </style></head><body>
-    <h1>Billets — ${esc(info.name || '')}</h1>
-    <p class="sous">À découper et à distribuer. L'élève tape son identifiant et son code
-       sur la page d'accueil du site.</p>
-    <p class="rien"><button onclick="window.print()">Imprimer</button></p>
-    <div class="billets">
-      ${eleves.map(e => `<div class="billet">
-        <div class="nom">${esc(e.prenom)}</div>
-        <div class="l">identifiant <b>${esc(e.login)}</b></div>
-        <div class="l">code <b class="code">${esc(e.code)}</b></div>
-        <div class="pied">${esc(location.origin + location.pathname.replace(/\/[^/]*$/, '/'))}</div>
-      </div>`).join('')}
-    </div></body></html>`);
+    f.document.write(htmlDesBillets({ eleves, nom, origine }));
     f.document.close();
+
+    // LES BOUTONS SE BRANCHENT D'ICI, ET C'EST UNE CORRECTION, PAS UN STYLE.
+    //
+    // Cette page portait un `onclick="window.print()"`. MESURÉ avec la CSP de
+    // production (`tools/fenetresFilles.mjs`, témoin sans en-tête à l'appui) :
+    // une fenêtre ouverte par `window.open('')` HÉRITE de la CSP de son
+    // ouvreur, et notre `script-src` n'a pas 'unsafe-inline' — les empreintes
+    // ne couvrent pas les gestionnaires d'attribut. Le bouton « Imprimer »
+    // était donc MORT chez Rémy et VIVANT chez nous, parce que le serveur
+    // d'essai ne pose pas l'en-tête. C'est le genre de défaut qui attend
+    // l'imprimante du collège pour se montrer.
+    //
+    // La fenêtre est de même origine : son document nous est ouvert, et le code
+    // qui pose les écouteurs est le nôtre, déjà autorisé.
+    brancherLesBoutons(f, {
+        csv: csvDesBillets(eleves, nom),
+        fichier: nomDuFichierCsv(nom)
+    });
 }
 
 // --- Ajouter un professeur --------------------------------------------------

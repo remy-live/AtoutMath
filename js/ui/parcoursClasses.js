@@ -41,8 +41,11 @@ import {
     clore, rouvrir, retirer, remettre, estRetiree, elevesDe,
     poserMot, aRattraper
 } from '../core/seances.js';
-import { bilanSeance, bilanEleveSeance, aTravaille } from '../core/bilanSeance.js';
-import { lireClasses, lireSeances, ecrireSeances } from './donnerSeance.js';
+import { bilanSeance, bilanEleveSeance, aTravaille,
+    onSaitQuiATravaille } from '../core/bilanSeance.js';
+import {
+    lireClasses, lireSeances, ecrireSeances, classesIllisibles, oublierLesClasses
+} from './donnerSeance.js';
 import { couleurNiveau, consigneDe, consigneClasse } from '../core/bilan.js';
 import { LEVELS } from '../core/mastery.js';
 
@@ -82,6 +85,28 @@ const NIVEAU_MOT = { NA: 'Non acquis', EC: 'En cours', A: 'Acquis', E: 'Expert' 
 function pourcent(x) { return Math.round((x || 0) * 100) + ' %'; }
 
 /**
+ * À QUI C'EST DONNÉ, EN UNE PHRASE — classes ET élèves nommés.
+ *
+ * Rémy pouvait donner à une classe, et à rien d'autre. Maintenant qu'il peut
+ * cocher trois noms, la phrase du bas doit les compter : « pas encore donné »
+ * sous trois cases cochées serait le genre de contradiction qui fait recocher.
+ */
+function direAQui(classes, combienNommes) {
+    const bouts = [];
+    if (classes.length) {
+        const eleves = classes.reduce((n, c) => n + combienDEleves(c), 0);
+        bouts.push(`${classes.length} classe${classes.length > 1 ? 's' : ''}`
+            + ` — ${eleves} élève${eleves > 1 ? 's' : ''}`);
+    }
+    if (combienNommes) {
+        bouts.push(`${combienNommes} élève${combienNommes > 1 ? 's' : ''} nommé${
+            combienNommes > 1 ? 's' : ''}`);
+    }
+    return bouts.length ? 'Donné à ' + bouts.join(', et à ') + '.'
+        : 'Pas encore donné. Cochez une classe, ou dépliez-la pour choisir des élèves.';
+}
+
+/**
  * L'ÉTAT D'UNE CLASSE VIS-À-VIS DE CE PARCOURS.
  *
  * Trois cas seulement, et ils commandent toute la ligne :
@@ -107,6 +132,11 @@ function etatClasse(classe, seances, pathId, maintenant = Date.now()) {
         retiree: !!retiree && !vivante,
         etat: seance ? etatSeance(seance, maintenant) : null,
         travaille: seance ? (classe.eleves || []).some(e => aTravaille(seance, e.evenements || [])) : false,
+        // ET SAIT-ON SEULEMENT ? `travaille: false` veut dire deux choses —
+        // « personne n'a commencé » et « je n'ai pas les journaux » — et cet
+        // écran est précisément celui qui ne les a pas. Voir
+        // `onSaitQuiATravaille` : la confusion coûtait un bilan.
+        onSait: onSaitQuiATravaille(classe),
         // LES RATTRAPAGES SONT DES SÉANCES À PART, ET ILS SE RETROUVENT ICI.
         //
         // Un rattrapage porte une COPIE du parcours avec un identifiant neuf,
@@ -126,8 +156,24 @@ const PUCE = {
     [ETATS.CLOSE]: ['Close', 'pc-calme']
 };
 
+/**
+ * COMBIEN D'ÉLÈVES DANS CETTE CLASSE — une seule définition, pour tout l'écran.
+ *
+ * Rémy : « il y a une incohérence ». Le panneau affichait « 4C · 30 » sur la
+ * ligne et « Donné à 1 classe — 0 élèves » trois lignes plus bas. Le même
+ * nombre était calculé de deux façons : la ligne retombait sur `effectif`, que
+ * le serveur envoie ; le total ne comptait que `eleves`, qui reste vide tant
+ * qu'on n'a pas déplié la classe. Deux calculs du même nombre finissent
+ * toujours par donner deux nombres.
+ */
+function combienDEleves(classe) {
+    return (classe && classe.eleves || []).length || Number(classe && classe.effectif) || 0;
+}
+
 function ligneClasseHtml(classe, info) {
-    const n = (classe.eleves || []).length;
+    // L'EFFECTIF VIENT DU SERVEUR, LA LISTE VIENDRA AU DÉPLIAGE. On ne charge
+    // pas trente élèves par classe pour afficher un nombre.
+    const n = combienDEleves(classe);
     const puce = info.etat ? PUCE[info.etat] : null;
     return `
     <div class="pc-classe${info.retiree ? ' pc-classe--retiree' : ''}" data-classe="${esc(classe.id)}">
@@ -135,6 +181,8 @@ function ligneClasseHtml(classe, info) {
             <label class="pc-case">
                 <input type="checkbox" data-donner="${esc(classe.id)}"${info.donnee ? ' checked' : ''}>
                 <span class="pc-nom">${esc(classe.nom)}</span>
+                ${classe.homonyme ? `<span class="pc-code"
+                    title="Deux classes portent ce nom : voici son code">${esc(classe.code || '?')}</span>` : ''}
             </label>
             <span class="pc-eff">${n}</span>
             ${puce ? `<span class="pc-puce ${puce[1]}">${puce[0]}</span>` : ''}
@@ -161,25 +209,157 @@ function ligneClasseHtml(classe, info) {
 }
 
 /**
+ * ALLER CHERCHER LES ÉLÈVES D'UNE CLASSE DU SERVEUR.
+ *
+ * Rendus à la forme que cet écran connaît — `{ id, nom }` — plutôt que celle du
+ * serveur. Une seule traduction, ici, plutôt qu'un `c.prenom || c.nom ||
+ * c.first_name` répété dans chaque gabarit.
+ *
+ * SI ÇA ÉCHOUE, ON REND UNE LISTE VIDE ET L'ÉCRAN LE DIT. Un dépliage qui
+ * resterait sur « On va chercher les élèves… » pour toujours est pire qu'un
+ * dépliage vide : on attend quelque chose qui ne viendra pas.
+ */
+async function elevesDeLaClasse(classe) {
+    try {
+        const { listeDeClasse } = await import('../core/espaceProf.js');
+        const r = await listeDeClasse(classe.id);
+        if (!r || r.erreur || !Array.isArray(r.eleves)) return [];
+        return r.eleves.map(e => ({
+            id: e.id, nom: e.prenom || e.nom || '?', login: e.login || '', code: e.code || ''
+        }));
+    } catch (err) {
+        return [];
+    }
+}
+
+/**
  * LA LISTE DES ÉLÈVES D'UNE CLASSE, dépliée.
  *
  * ON N'AFFICHE QUE LES ÉLÈVES CONCERNÉS quand la séance vise un groupe : dix-huit
  * lignes vides feraient croire à dix-huit absents.
  */
+/**
+ * LES ÉLÈVES DE LA CLASSE, AVEC LEUR PROPRE CASE.
+ *
+ * Rémy : « quand on donne la séance on le donne à la classe ; il faudrait
+ * pouvoir, en cliquant sur la classe, ne le donner qu'à certains élèves. En
+ * fait pour l'instant on ne peut donner une séance qu'à une classe, ni à un
+ * groupe ni à un élève spécifique. »
+ *
+ * UN GROUPE N'EST PAS UN OBJET, C'EST UNE POIGNÉE DE CASES. On aurait pu
+ * inventer des « groupes » à créer, à nommer, à tenir à jour quand un élève
+ * change de classe. Trois écrans de plus pour une chose qui change toutes les
+ * semaines. Cocher trois noms donne le même résultat et ne demande rien à
+ * ranger — c'est la même raison qui a fait préférer les dossiers de parcours
+ * à une arborescence.
+ *
+ * LA CASE DE LA CLASSE COCHE CELLES DES ÉLÈVES, ET L'ON PEUT DÉCOCHER.
+ *
+ * RÉMY : « quand on sélectionne une classe, ça sélectionne tous les élèves et
+ * on peut décocher. »
+ *
+ * C'ÉTAIT L'INVERSE, ET C'ÉTAIT UN CHOIX — écrit ici même : « cocher trente
+ * cases qu'on ne peut pas décocher une à une serait un mensonge poli ». Le
+ * raisonnement tenait à la base de données : une assignation vise une CLASSE ou
+ * un ÉLÈVE, jamais « la classe sauf lui ». Les cases étaient donc grisées, et
+ * retirer le travail à un seul élève était impossible.
+ *
+ * Sauf que le mensonge est venu par l'autre bout. Capture de Rémy : « Toute la
+ * classe l'a reçu : chacun l'a déjà » écrit AU-DESSUS de quatre cases
+ * décochées. Les deux moitiés de l'écran lisaient deux sources différentes —
+ * la phrase venait de la séance LOCALE, les cases de ce que le SERVEUR sert.
+ *
+ * ON CONVERTIT AU MOMENT OÙ L'ON DÉCOCHE. La classe entière l'a, on retire un
+ * élève : on retire la ligne de classe et l'on en pose une par élève restant.
+ * C'est exactement ce que le professeur vient de dire, et la base sait
+ * l'écrire — il fallait juste le faire au bon moment. La séance locale, elle,
+ * reste : vingt-huit élèves sur vingt-neuf, c'est encore la séance de la
+ * classe, et c'est d'elle que vient le bilan.
+ */
 function elevesHtml(classe, info) {
     const liste = info.seance ? elevesDe(info.seance, classe) : (classe.eleves || []);
     if (!liste.length) return '<p class="pc-vide">Aucun élève dans cette classe.</p>';
-    return [...liste]
+    // CE QUE LE SERVEUR SERT, et non ce que la bibliothèque locale croit.
+    const toute = info.servieAuServeur;
+    const combien = (info.nommes || new Set()).size;
+    return (toute
+        ? '<p class="pc-vide pc-vide--note">Toute la classe l\'a reçu. '
+          + 'Décochez ceux à qui vous ne le donnez pas.</p>'
+        : (combien
+            ? `<p class="pc-vide pc-vide--note">${combien} élève${combien > 1 ? 's' : ''} sur `
+              + `${liste.length} l'${combien > 1 ? 'ont' : 'a'}. Cochez, décochez.</p>`
+            : '<p class="pc-vide pc-vide--note">Cochez ceux à qui vous le donnez.</p>'))
+        // CET ÉCRAN DISTRIBUE, IL NE RELIT PAS — et il ne possède pas de quoi
+        // relire : voir le commentaire sur `aTravaille`, plus bas. On dit donc
+        // où le travail se lit, plutôt que de laisser chercher.
+        + (info.seance
+            ? '<p class="pc-vide pc-vide--note pc-vide--ou">Ce qu\'ils en ont fait se lit '
+              + 'dans <b>Mes classes</b>, onglet <b>Les bilans</b> : chaque ligne s\'y '
+              + 'déplie sur ses notions fragiles et ses séances notées.</p>'
+            : '')
+        + [...liste]
         .sort((a, b) => String(a.nom).localeCompare(String(b.nom), 'fr'))
         .map(e => {
-            const fait = info.seance && aTravaille(info.seance, e.evenements || []);
-            const b = fait ? bilanEleveSeance(info.seance, e) : null;
+            // ── CET ÉCRAN NE SAIT PAS QUI A TRAVAILLÉ, ET IL NE LE DIT PLUS ──
+            //
+            // MESURÉ (`tools/reinitialiserUnEleve.mjs`) : TOUTE la classe
+            // s'affichait « n'a pas commencé », y compris un élève qui venait
+            // de finir sa séance. La raison est la même que celle du bouton de
+            // remise à zéro, deux commentaires plus bas : cette liste vient de
+            // la route « roster », qui rend des noms et des codes, PAS les
+            // événements. `aTravaille` y répond donc toujours non.
+            //
+            // ON NE DIT PLUS RIEN PLUTÔT QUE DE DIRE FAUX. « n'a pas
+            // commencé » sous le nom d'un élève qui vient de rendre son
+            // travail est une information inventée, et Rémy la croirait — il
+            // n'a aucune raison de se méfier d'une phrase aussi nette. Un
+            // blanc se remarque et se demande ; une fausse phrase, non.
+            //
+            // ET LE BILAN PAR ÉLÈVE EXISTE, À UN ONGLET D'ICI : « Mes classes
+            // › Les bilans », où chaque ligne se déplie depuis peu sur ses
+            // notions fragiles et ses séances notées. Le dupliquer ici
+            // demanderait d'envoyer au professeur le journal de trente élèves
+            // à chaque ouverture de ce panneau, pour une information qu'il a
+            // déjà ailleurs et mieux rangée. On l'y renvoie (voir l'en-tête de
+            // la liste) au lieu de la recopier.
+            //
+            // `aTravaille` et `bilanEleveSeance` restent importés : ils
+            // servent au BILAN DE SÉANCE, plus bas dans ce fichier, qui reçoit
+            // bien les événements.
+            const b = (info.seance && (e.evenements || []).length)
+                ? bilanEleveSeance(info.seance, e) : null;
+            // TOUTE LA CLASSE L'A : chacun l'a, donc chaque case est cochée.
+            // Elle n'est plus grisée — c'est tout l'objet de la correction.
+            const sien = toute || (info.nommes || new Set()).has(e.id);
             return `<div class="pc-eleve">
+                <label class="pc-eleve-case">
+                    <input type="checkbox" data-donner-eleve="${esc(e.id)}"
+                           data-classe="${esc(classe.id)}" data-nom="${esc(e.nom)}"
+                           ${sien ? ' checked' : ''}>
+                </label>
                 <span class="pc-eleve-nom">${esc(e.nom)}</span>
                 ${b ? `<span class="pc-chiffre">${b.questions} q · ${pourcent(b.reussite)}</span>` : ''}
                 ${b ? `<button type="button" class="pc-bilan" data-bilan-eleve="${esc(e.id)}"
-                        data-classe="${esc(classe.id)}">bilan</button>`
-        : '<span class="pc-rien">n\'a pas commencé</span>'}
+                        data-classe="${esc(classe.id)}">bilan</button>` : ''}
+                <!-- IL NE DÉPEND PAS DU BILAN, ET C'EST VOULU.
+                     Première version : le bouton n'apparaissait que si l'élève
+                     avait travaillé — ce qui paraissait sage. MESURÉ
+                     (tools/reinitialiserUnEleve.mjs) : il n'apparaissait JAMAIS.
+                     Cette liste vient de la route « roster », qui rend des noms
+                     et des codes, PAS les événements ; la fonction aTravaille y
+                     répond donc toujours non, et toute la classe s'affiche
+                     « n'a pas commencé ». Le bouton était gardé par une
+                     information que cet écran ne possède pas.
+                     (Pas d'accent grave ici : ce commentaire est à l'intérieur
+                     d'un gabarit, et il le fermerait.)
+                     C'EST LE SERVEUR QUI SAIT, et il le dit : remettre à zéro un
+                     élève qui n'a rien fait répond « cet élève n'avait rien
+                     commencé » et n'efface rien. Mieux vaut un bouton honnête
+                     qu'un bouton absent pour une mauvaise raison. -->
+                ${info.seance ? `<button type="button" class="pc-remettre pc-remettre--ligne"
+                        data-reinit-eleve="${esc(e.id)}" data-classe="${esc(classe.id)}"
+                        aria-label="Remettre ${esc(e.nom)} à zéro sur cette séance"
+                        >remettre à zéro</button>` : ''}
             </div>`;
         }).join('');
 }
@@ -286,6 +466,22 @@ function bilanEleveHtml(b) {
             <button type="button" class="pc-mot-ok" data-mot-envoyer>Envoyer</button>
             ${b.mot ? '<button type="button" class="pc-mot-non" data-mot-effacer>Retirer</button>' : ''}
         </div>
+        <!-- REMETTRE À ZÉRO SE TROUVE LÀ OÙ L'ON REGARDE UN ÉLÈVE.
+             Rémy : « je ne trouve pas ta flèche qui tourne ». Je l'avais posée
+             dans l'écran « Donner à une classe » — celui où l'on DISTRIBUE une
+             séance —, et non dans celui où l'on LIT ce qu'un élève en a fait.
+             Ce sont deux moments différents du métier, et la remise à zéro
+             appartient au second : on regarde son travail, et l'on décide de
+             l'effacer.
+             ET C'EST ÉCRIT EN TOUTES LETTRES. Un « ↺ » seul ne se trouve pas,
+             et il se confond avec le « ↻ Donner un rattrapage » qui vit sur
+             l'écran d'à côté. -->
+        <div class="pc-remise">
+            <button type="button" class="pc-remettre" data-reinit-eleve="${esc(b.id)}"
+                    >↺ Remettre cette séance à zéro</button>
+            <span class="pc-remise-dit">Il la retrouvera entière, comme s'il ne
+                l'avait jamais commencée.</span>
+        </div>
     </div>`;
 }
 
@@ -303,16 +499,79 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         return showAlert('Ajoutez au moins une activité avant de donner ce parcours.');
     }
 
-    const classes = await lireClasses();
+    // UNE COPIE, PARCE QU'ON LA RÉÉCRIT SUR PLACE APRÈS UN « Réessayer » :
+    // `lireClasses` rend son propre souvenir, et le vider ici le viderait
+    // pour toute l'application.
+    const classes = [...(await lireClasses())];
     let seances = await lireSeances();
+    // QUI L'A DÉJÀ — demandé au serveur, pas deviné du navigateur. Le
+    // professeur a pu donner ce parcours depuis un autre poste ; son stock
+    // local n'en saurait rien, et les cases s'ouvriraient décochées.
+    let nommes = new Set();
+    // ET LES CLASSES QUE LE SERVEUR SERT VRAIMENT. `info.donnee` vient de la
+    // séance LOCALE — c'est ce que le professeur voit dans sa bibliothèque —,
+    // et les deux peuvent diverger : c'est exactement ce que montrait la
+    // capture de Rémy, « Toute la classe l'a reçu » au-dessus de quatre cases
+    // décochées. Pour savoir qui a le travail, il faut demander à qui le donne.
+    let classesServies = new Set();
+    const relireLesNommes = async () => {
+        const { aQuiEstDonne } = await import('../core/parcoursServeur.js');
+        const d = await aQuiEstDonne(parcours);
+        nommes = new Set((d.eleves || []).map(e => e.id));
+        classesServies = new Set((d.classes || []).map(c => c.id));
+    };
+    await relireLesNommes();
     // ON COMPARE L'IDENTITÉ DU TRAVAIL, celle que la séance a écrite et que
     // l'élève recalcule de son code — et non l'identifiant d'atelier, qui ne
     // vaut que dans la bibliothèque de ce navigateur-ci.
     const pathId = identiteDeParcours(parcours);
 
+    // DEUX CLASSES DU MÊME NOM NE DOIVENT PAS SE RESSEMBLER.
+    //
+    // Rémy avait deux « 4C » dans la liste — l'une à trente élèves, l'autre
+    // vide — et rien à l'écran ne permettait de dire laquelle est laquelle.
+    // Cocher au hasard, c'est donner le devoir à la classe d'à côté. On ne
+    // montre le code QUE dans ce cas : l'afficher partout ferait du bruit
+    // permanent pour un problème rare.
+    // DEUX CLASSES DE MÊME NOM SE DISTINGUENT PAR LEUR CODE. Sortie en
+    // fonction parce qu'on la rejoue après un « Réessayer ».
+    const nommerLesHomonymes = () => {
+        const parNom = new Map();
+        classes.forEach(c => parNom.set(c.nom, (parNom.get(c.nom) || 0) + 1));
+        classes.forEach(c => { c.homonyme = (parNom.get(c.nom) || 0) > 1; });
+    };
+    nommerLesHomonymes();
+
+    /**
+     * LES CLASSES DÉPLIÉES LE RESTENT APRÈS UN REDESSIN.
+     *
+     * Rémy : « quand on clique sur une classe à qui on donne la séance et qu'on
+     * ouvre pour avoir la liste d'élèves, dès qu'on coche un élève, la classe se
+     * referme, il faut sans arrêt rouvrir la classe pour avoir les élèves. »
+     *
+     * C'était exact, et la cause tient en une ligne : cocher un élève appelle
+     * `dessiner()`, qui refait `panel.innerHTML` en entier — et un panneau
+     * reconstruit naît replié. Le professeur qui donne le parcours à cinq élèves
+     * d'une classe rouvrait donc la classe cinq fois.
+     *
+     * On ne peut pas simplement ne plus redessiner : le panneau affiche des
+     * comptes (« 3 élèves nommés ») qui doivent suivre. On retient donc ce qui
+     * était ouvert, et on le rouvre — avec la position de défilement, sans quoi
+     * la liste remonterait en haut à chaque case cochée, ce qui revient au même
+     * pour la main qui vise.
+     */
     const dessiner = () => {
+        const etaientOuvertes = [...panel.querySelectorAll('[data-plier][aria-expanded="true"]')]
+            .map(b => b.dataset.plier);
+        const defilement = panel.scrollTop;
         const mode = resolvePolicy(parcours.policy).mode;
-        const infos = new Map(classes.map(c => [c.id, etatClasse(c, seances, pathId)]));
+        const infos = new Map(classes.map(c => {
+            const info = etatClasse(c, seances, pathId);
+            // Les élèves de CETTE classe à qui on l'a donné nommément.
+            info.nommes = new Set((c.eleves || []).map(e => e.id).filter(id => nommes.has(id)));
+            info.combienNommes = [...nommes].length;
+            return [c.id, info];
+        }));
         const donnees = classes.filter(c => infos.get(c.id).donnee);
 
         panel.innerHTML = `
@@ -331,17 +590,34 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
 
                 ${classes.length ? `<div class="pc-classes">
                     ${classes.map(c => ligneClasseHtml(c, infos.get(c.id))).join('')}
-                </div>` : `<p class="pc-vide">Vous n'avez pas encore de classe.
-                    Créez-en une dans <b>Mes outils → Mes classes</b>.</p>`}
+                </div>` : (classesIllisibles()
+        // MUET N'EST PAS VIDE — voir `lireClasses` dans ui/donnerSeance.js.
+        // Rémy : « je n'ai plus les paramètres qui me permettent de donner un
+        // parcours à la classe ». Le panneau annonçait « Vous n'avez pas
+        // encore de classe » alors qu'il en a deux et que c'est le serveur
+        // qui n'avait pas répondu.
+        ? `<p class="pc-vide pc-vide--muet">Je n'ai pas pu lire vos classes :
+                    le serveur n'a pas répondu. Vos classes ne sont pas perdues.
+                    <button type="button" class="pc-reessayer" data-reessayer>Réessayer</button></p>`
+        : `<p class="pc-vide">Vous n'avez pas encore de classe.
+                    Créez-en une par la porte <b>La classe</b>, en haut.</p>`)}
 
-                <p class="pc-compte" role="status" aria-live="polite">${donnees.length
-                ? `Donné à ${donnees.length} classe${donnees.length > 1 ? 's' : ''} — ${donnees
-                    .reduce((n, c) => n + (c.eleves || []).length, 0)} élèves.`
-                : 'Pas encore donné. Cochez une classe.'}</p>
+                <p class="pc-compte" role="status" aria-live="polite">${
+                    direAQui(donnees, nommes.size)}</p>
                 <div class="pc-rapport-zone" hidden></div>
             </div>`;
         panel.classList.add('mob-open');
         brancher();
+
+        // ON ROUVRE CE QUI ÉTAIT OUVERT, et l'on remet la liste où elle était.
+        // Les élèves sont déjà en mémoire (`classe.eleves`) : il n'y a pas de
+        // second aller-retour au serveur, seulement le dessin à refaire.
+        if (etaientOuvertes.length) {
+            Promise.all(etaientOuvertes.map(id => {
+                const b = panel.querySelector(`[data-plier="${id}"]`);
+                return b ? deplier(b) : null;
+            })).then(() => { panel.scrollTop = defilement; });
+        }
     };
 
     const zone = () => panel.querySelector('.pc-rapport-zone');
@@ -462,6 +738,21 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         if (envoyer) envoyer.onclick = () => poser(champ.value.trim());
         const effacer = z.querySelector('[data-mot-effacer]');
         if (effacer) effacer.onclick = () => poser('');
+
+        // ET LA REMISE À ZÉRO, SOUS LE BILAN QU'ELLE EFFACE. C'est l'écran où
+        // l'on regarde ce qu'un élève a fait : c'est là qu'on décide de le lui
+        // reprendre, pas dans celui où l'on distribue la séance.
+        const remettre = z.querySelector('[data-reinit-eleve]');
+        if (remettre) {
+            remettre.onclick = () => remettreAZero(contexte.eleve, contexte.seance,
+                () => {
+                    // ON FERME LE BILAN qu'on vient d'effacer : le laisser à
+                    // l'écran ferait croire que rien ne s'est passé. Il n'y a
+                    // plus rien à montrer de cet élève sur cette séance.
+                    z.hidden = true;
+                    z.innerHTML = '';
+                });
+        }
     }
 
     /**
@@ -547,6 +838,36 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         };
     }
 
+    /**
+     * DÉPLIER UNE CLASSE : la liste de ses élèves, branchée.
+     *
+     * Sortie du gestionnaire de clic parce qu'on l'appelle aussi APRÈS un
+     * redessin, pour rouvrir ce qui l'était (voir `dessiner`). Deux copies de
+     * cette logique auraient divergé au premier bouton ajouté dans la liste.
+     */
+    async function deplier(b) {
+        const liste = b.closest('.pc-classe').querySelector('.pc-eleves');
+        const classe = classes.find(c => c.id === b.dataset.plier);
+        // LA LISTE SE DEMANDE ICI, ET UNE SEULE FOIS. C'est le seul moment où
+        // elle sert, et la charger d'avance pour cinq classes ferait cent
+        // cinquante élèves qu'on ne regarde pas.
+        liste.hidden = false;
+        if (classe && classe.serveur && !(classe.eleves || []).length) {
+            liste.innerHTML = '<p class="pc-vide">On va chercher les élèves…</p>';
+            classe.eleves = await elevesDeLaClasse(classe);
+        }
+        const info = etatClasse(classe, seances, pathId);
+        info.nommes = new Set((classe.eleves || []).map(x => x.id)
+            .filter(id => nommes.has(id)));
+        info.servieAuServeur = classesServies.has(classe.id);
+        liste.innerHTML = elevesHtml(classe, info);
+        b.textContent = '▾';
+        b.setAttribute('aria-expanded', 'true');
+        brancherBilansEleves(liste, classe);
+        brancherRemisesAZero(liste, classe);
+        brancherLesCasesEleves(liste, classe);
+    }
+
     function brancher() {
         const fermerPanneau = () => panel.classList.remove('mob-open');
         const close = panel.querySelector('#mob-close-props');
@@ -557,6 +878,21 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 { actif: () => document.body.classList.contains('mobile-view') });
         });
 
+        // RÉESSAYER, quand le serveur n'a pas répondu. On oublie le souvenir
+        // — sinon la relecture rendrait la même liste vide sans rien demander
+        // — puis on redemande et l'on redessine.
+        const reessayer = panel.querySelector('[data-reessayer]');
+        if (reessayer) reessayer.onclick = async () => {
+            reessayer.disabled = true;
+            reessayer.textContent = 'On redemande…';
+            oublierLesClasses();
+            const fraiches = await lireClasses({ fraiches: true });
+            classes.length = 0;
+            fraiches.forEach(c => classes.push(c));
+            nommerLesHomonymes();
+            dessiner();
+        };
+
         const sel = panel.querySelector('[data-mode]');
         if (sel) sel.onchange = () => {
             parcours.policy = { ...(parcours.policy || {}), mode: sel.value };
@@ -566,16 +902,14 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
 
         panel.querySelectorAll('[data-plier]').forEach(b => {
             b.onclick = () => {
-                const bloc = b.closest('.pc-classe');
-                const liste = bloc.querySelector('.pc-eleves');
-                const ouvert = !liste.hidden;
-                if (ouvert) { liste.hidden = true; b.textContent = '▸'; b.setAttribute('aria-expanded', 'false'); return; }
-                const classe = classes.find(c => c.id === b.dataset.plier);
-                liste.innerHTML = elevesHtml(classe, etatClasse(classe, seances, pathId));
-                liste.hidden = false;
-                b.textContent = '▾';
-                b.setAttribute('aria-expanded', 'true');
-                brancherBilansEleves(liste, classe);
+                const liste = b.closest('.pc-classe').querySelector('.pc-eleves');
+                if (!liste.hidden) {
+                    liste.hidden = true;
+                    b.textContent = '▸';
+                    b.setAttribute('aria-expanded', 'false');
+                    return;
+                }
+                deplier(b);
             };
         });
 
@@ -628,6 +962,74 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
         });
     }
 
+    /**
+     * REMETTRE UN ÉLÈVE À ZÉRO SUR UNE SÉANCE.
+     *
+     * RÉMY : « j'ai créé un élève virtuel dans la classe puis je réinitialise
+     * la séance depuis mon poste comme s'il ne l'avait jamais commencée ».
+     *
+     * ── ÉCRITE UNE FOIS, APPELÉE DE DEUX ÉCRANS ──────────────────────────
+     *
+     * Le geste se propose là où l'on DISTRIBUE la séance (la liste des élèves
+     * d'une classe) et là où l'on LIT ce qu'un élève en a fait (son bilan).
+     * Rémy : « je ne trouve pas ta flèche qui tourne » — je ne l'avais mise
+     * que dans le premier, et c'est le second qu'il regarde. Deux copies de
+     * cette fonction auraient divergé au premier garde-fou ajouté.
+     *
+     * ON DEMANDE AVANT, et la phrase dit ce qui part : c'est le seul geste du
+     * logiciel qui efface du travail d'élève sans corbeille derrière.
+     *
+     * @param {{id: string, nom: string}} eleve
+     * @param {object} seance
+     * @param {Function} apres  rappelé une fois le serveur d'accord
+     */
+    function remettreAZero(eleve, seance, apres) {
+        if (!eleve || !seance) return;
+        showConfirm(
+            `Tout le travail de <b>${esc(eleve.nom)}</b> sur cette séance sera `
+            + 'effacé : ses réponses, son avancement et son bilan.<br><br>'
+            + 'Il la retrouvera entière, comme s\'il ne l\'avait jamais '
+            + 'commencée — sur tous ses appareils.<br><br>'
+            + '<b>Ce geste ne s\'annule pas.</b>',
+            async () => {
+                const { auServeur } = await import('../core/espaceProf.js');
+                // L'IDENTITÉ DE LA SÉANCE, et non celle du parcours de
+                // l'atelier : c'est sous celle-là que l'élève a inscrit son
+                // travail (voir `pathIdentity` dans parcoursServeur).
+                const r = await auServeur('/teacher/student', {
+                    action: 'reinitialiser',
+                    studentId: eleve.id,
+                    pathId: seance.pathId || (seance.path && seance.path.id) || pathId
+                });
+                if (r.erreur) return showToast(r.erreur, 'error', 6000);
+                showToast(r.dit || 'Séance remise à zéro.', 'success', 5000);
+                if (typeof apres === 'function') await apres();
+            },
+            { titre: 'Remettre à zéro', bouton: 'Remettre à zéro' });
+    }
+
+    /** Le bouton de la liste des élèves d'une classe. */
+    function brancherRemisesAZero(liste, classe) {
+        liste.querySelectorAll('[data-reinit-eleve]').forEach(b => {
+            b.onclick = () => {
+                const info = etatClasse(classe, seances, pathId);
+                const eleve = (classe.eleves || []).find(e => e.id === b.dataset.reinitEleve);
+                remettreAZero(eleve, info.seance, async () => {
+                    // ON REDESSINE EN REDEMANDANT LA LISTE AU SERVEUR.
+                    //
+                    // `classe.eleves` porte les ÉVÉNEMENTS de chaque élève,
+                    // chargés une fois au dépliage — c'est d'eux que le bilan
+                    // est calculé. Les garder afficherait le travail qu'on
+                    // vient d'effacer, et le bouton aurait l'air de n'avoir
+                    // rien fait. On vide, et `deplier` recharge.
+                    classe.eleves = [];
+                    const plier = b.closest('.pc-classe').querySelector('[data-plier]');
+                    if (plier) await deplier(plier);
+                });
+            };
+        });
+    }
+
     function brancherBilansEleves(liste, classe) {
         liste.querySelectorAll('[data-bilan-eleve]').forEach(b => {
             b.onclick = () => {
@@ -646,11 +1048,157 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
     /**
      * COCHER DONNE, DÉCOCHER RETIRE — et la nuance est dans `retirer`.
      */
+    /**
+     * LE SERVEUR EST CE QUI DONNE VRAIMENT — le reste n'est qu'un affichage.
+     *
+     * Rémy, deux captures côte à côte : « il y a une incohérence ». Le panneau
+     * disait « 4C · En cours » ; l'onglet « Les séances » de la même 4C
+     * disait « Aucune séance donnée à cette classe ».
+     *
+     * LES DEUX DISAIENT VRAI, ET C'EST BIEN LE PROBLÈME. Cocher une classe
+     * n'écrivait QUE dans le navigateur du professeur : `ecrireSeances` range
+     * dans IndexedDB, et rien n'appelait `/teacher/assign`. L'onglet de la
+     * classe, lui, lit le serveur — il avait raison. Et les élèves reçoivent
+     * leurs séances par `/sync`, c'est-à-dire par la table que personne ne
+     * remplissait : le travail n'arrivait chez PERSONNE.
+     *
+     * `donnerAuServeur` existait, écrite et testée, et n'était appelée de
+     * nulle part. C'est ce raccordement-ci.
+     *
+     * ON DIT QUAND ÇA N'EST PAS PARTI. Une coche qui répond « Donné à 4C »
+     * sans que rien ne soit parti est exactement le mensonge qu'on répare :
+     * si le serveur refuse, on le nomme, et l'état local ne prétend pas le
+     * contraire.
+     */
+    async function auServeurDonner(classe) {
+        const { donnerAuServeur } = await import('../core/parcoursServeur.js');
+        const r = await donnerAuServeur(parcours, classe.id);
+        if (r && r.erreur) {
+            showToast(`${classe.nom} : le serveur n'a pas pris la séance — ${r.erreur}`, 'error');
+            return false;
+        }
+        return true;
+    }
+
+    async function auServeurRetirer(classe) {
+        const { retirerDuServeur } = await import('../core/parcoursServeur.js');
+        const r = await retirerDuServeur(parcours, classe.id);
+        if (r && r.erreur) {
+            showToast(`${classe.nom} : le serveur garde la séance — ${r.erreur}`, 'error');
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * DONNER, OU REPRENDRE, À UN SEUL ÉLÈVE.
+     *
+     * Rémy : « il faudrait pouvoir, en cliquant sur la classe, ne le donner
+     * qu'à certains élèves. En fait pour l'instant on ne peut donner une séance
+     * qu'à une classe, ni à un groupe ni à un élève spécifique. »
+     *
+     * LE SERVEUR SAVAIT DÉJÀ VISER UN ÉLÈVE — `assignments.student_id` existe
+     * depuis le début, et `/sync` sert déjà « ma classe OU moi ». C'est encore
+     * l'écran qui ne le demandait jamais. Trois trous restaient de ce côté-ci :
+     * personne ne cochait, personne ne reprenait, et la liste des séances d'une
+     * classe ne montrait pas ce qu'on avait donné à quelques-uns.
+     *
+     * ON N'ÉCRIT PAS DE SÉANCE LOCALE ICI, et c'est une décision. La séance
+     * locale porte le bilan de CLASSE ; un travail donné à trois élèves n'est
+     * pas une séance de classe, et l'y ranger ferait compter vingt-sept
+     * absents comme « pas commencé » dans un tableau qui ne les concerne pas.
+     */
+    /**
+     * DÉCOCHER UN ÉLÈVE ALORS QUE TOUTE LA CLASSE L'A.
+     *
+     * La base ne sait pas écrire « la classe sauf lui » : une assignation vise
+     * une CLASSE ou un ÉLÈVE. On convertit donc — on retire la ligne de classe,
+     * et l'on en pose une par élève restant. Le geste du professeur est
+     * simple ; c'est ici que ça coûte, et c'est le bon endroit.
+     *
+     * LA SÉANCE LOCALE RESTE. Vingt-huit élèves sur vingt-neuf, c'est encore la
+     * séance de la classe, et c'est d'elle que vient le bilan.
+     */
+    async function convertirEnNominatif(classe, exclu) {
+        const { donnerAuServeur, retirerDuServeur } =
+            await import('../core/parcoursServeur.js');
+        const autres = (classe.eleves || []).filter(e => e.id !== exclu);
+        if (!autres.length) return { erreur: 'Cette classe n\'a aucun autre élève.' };
+
+        const r = await retirerDuServeur(parcours, classe.id);
+        if (r && r.erreur) return r;
+
+        // UN PAR UN, ET NON EN PARALLÈLE. J'ai d'abord écrit un `Promise.all`,
+        // pour ne pas faire attendre une demi-minute sur un geste qui doit
+        // paraître immédiat. MESURÉ contre un vrai serveur, sur une classe de
+        // six : cinq assignations lancées ensemble en posaient 4, puis 2, puis
+        // 4 — et sans jamais rendre d'erreur. Chaque appel MONTE le parcours
+        // avant d'assigner ; cinq montées simultanées du même parcours se
+        // marchent dessus, et les lignes se perdent en silence.
+        //
+        // Un résultat qui change d'une fois sur l'autre est un résultat faux,
+        // et il valait mieux le découvrir ici qu'un lundi matin avec une classe
+        // qui ne reçoit pas son travail.
+        let rates = 0;
+        for (const e of autres) {
+            const un = await donnerAuServeur(parcours, null, { studentId: e.id });
+            if (un && un.erreur) rates++;
+        }
+        // ON DIT CE QUI N'EST PAS PARTI. Un « c'est fait » sur vingt-huit
+        // réussites et deux échecs est le mensonge qu'on passe ses journées à
+        // débusquer.
+        return rates
+            ? { erreur: `${rates} élève${rates > 1 ? 's' : ''} n'${rates > 1 ? 'ont' : 'a'} pas `
+                + 'reçu le travail. Rouvrez la classe pour voir qui.' }
+            : { ok: true, combien: autres.length };
+    }
+
+    function brancherLesCasesEleves(liste, classe) {
+        liste.querySelectorAll('[data-donner-eleve]').forEach(c => {
+            c.onchange = async () => {
+                const id = c.dataset.donnerEleve;
+                const nom = c.dataset.nom || 'L\'élève';
+                const { donnerAuServeur, retirerDuServeur } =
+                    await import('../core/parcoursServeur.js');
+                c.disabled = true;
+                const r = c.checked
+                    ? await donnerAuServeur(parcours, null, { studentId: id })
+                    : (classesServies.has(classe.id)
+                        ? await convertirEnNominatif(classe, id)
+                        : await retirerDuServeur(parcours, null, id));
+                c.disabled = false;
+                if (r && r.erreur) {
+                    // ON REMET LA CASE OÙ ELLE ÉTAIT. Une case qui reste cochée
+                    // alors que rien n'est parti est exactement le mensonge
+                    // qu'on a mis la journée à débusquer.
+                    c.checked = !c.checked;
+                    showToast(`${nom} : ${r.erreur}`, 'error');
+                    return;
+                }
+                // ON RELIT CE QUE LE SERVEUR SERT, on ne le devine pas : la
+                // conversion vient de poser vingt-huit lignes et d'en retirer
+                // une, et deviner cet état de tête serait recommencer
+                // l'incohérence qu'on est en train de corriger.
+                await relireLesNommes();
+                showToast(c.checked ? `Donné à ${nom}.` : `Repris à ${nom}.`,
+                    c.checked ? 'success' : 'info');
+                dessiner();
+            };
+        });
+    }
+
     async function basculer(classe, caseEl) {
         if (!classe) return;
         const info = etatClasse(classe, seances, pathId);
 
         if (caseEl.checked) {
+            // ON MONTE D'ABORD, ON RANGE ENSUITE. Si le serveur refuse, la case
+            // revient où elle était : mieux vaut un geste qui n'a pas pris
+            // qu'un geste qui prétend avoir pris.
+            if (!await auServeurDonner(classe)) {
+                caseEl.checked = false;
+                return;
+            }
             if (info.retiree) {
                 // Elle existait, on la remet : les bilans reprennent leur place.
                 seances = seances.map(s => (s.id === info.seance.id ? remettre(s) : s));
@@ -664,7 +1212,30 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 showToast(`Donné à ${classe.nom}.`, 'success');
             }
         } else if (info.seance) {
-            if (info.travaille) {
+            // RETIRER, C'EST RETIRER DE CHEZ LES ÉLÈVES. Sans cela, la séance
+            // quittait l'écran du professeur et restait en base : les élèves
+            // auraient continué de la recevoir à chaque synchronisation.
+            //
+            // MAIS APRÈS LA QUESTION, JAMAIS AVANT. La branche « personne n'a
+            // commencé » demande confirmation ; retirer du serveur en amont
+            // aurait fait qu'annuler laisse la séance chez le professeur et
+            // plus chez les élèves — c'est-à-dire exactement l'incohérence
+            // qu'on est en train de réparer, dans l'autre sens.
+            // ── DANS LE DOUTE, ON RETIRE : ON NE SUPPRIME PAS ───────────────
+            //
+            // `info.travaille` vaut `false` aussi bien quand personne n'a
+            // commencé que quand cet écran n'a pas les journaux — et il ne les
+            // a JAMAIS (voir `onSaitQuiATravaille`). La branche « personne n'a
+            // encore commencé » SUPPRIME la séance de la bibliothèque, et le
+            // bilan de cette séance avec elle : un professeur qui retirait une
+            // séance travaillée perdait son bilan.
+            //
+            // RETIRER N'EFFACE RIEN, SUPPRIMER EFFACE TOUT. Le pire qui puisse
+            // arriver du côté prudent est une séance que personne n'a ouverte
+            // qui reste dans la liste, marquée « retirée ». Le pire de l'autre
+            // côté est un bilan de classe perdu. Ce n'est pas un arbitrage.
+            if (info.travaille || !info.onSait) {
+                if (!await auServeurRetirer(classe)) { caseEl.checked = true; return; }
                 // ON NE SUPPRIME PAS DU TRAVAIL. On retire, et on le dit.
                 seances = seances.map(s => (s.id === info.seance.id ? retirer(s) : s));
                 showToast(`${classe.nom} : séance retirée. Le bilan reste consultable.`, 'info');
@@ -681,14 +1252,19 @@ export async function ouvrirPanneauClasses(parcours, onChange) {
                 showConfirm(
                     `Retirer ce parcours à ${esc(classe.nom)} ? Personne n'a encore commencé.`,
                     async () => {
+                        if (!await auServeurRetirer(classe)) { dessiner(); return; }
                         seances = seances.filter(x => x.id !== info.seance.id);
                         await enregistrer();
                         dessiner();
-                    });
+                    }, { bouton: `Retirer à ${esc(classe.nom)}` });
                 return;
             }
         }
         await enregistrer();
+        // CE QUE LE SERVEUR SERT A CHANGÉ : les cases des élèves en dépendent
+        // maintenant (cocher la classe coche tout le monde). Sans cette
+        // relecture, la liste ouverte garderait l'état d'avant le clic.
+        await relireLesNommes();
         dessiner();
     }
 

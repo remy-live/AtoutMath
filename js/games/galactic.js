@@ -20,6 +20,9 @@ const SKILL = 'geo.angles.mesure';
 
 class Galactic extends BaseGame {
     render() {
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.score = 0;
         this.level = parseInt(this.params.startLevel) || 1;
         this.lives = parseInt(this.params.lives) || 3;

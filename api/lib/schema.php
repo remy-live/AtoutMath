@@ -16,18 +16,139 @@ declare(strict_types=1);
  * schéma qu'on applique depuis une page web est la seule installation possible
  * là-bas — et c'est aussi la plus simple partout ailleurs.
  *
- * `migrer()` est IDEMPOTENT : on peut l'appeler à chaque démarrage sans risque,
- * et c'est ce qu'on fait. Une mise à jour du logiciel qui ajoute une table
- * n'oblige alors à aucune manœuvre.
+ * `migrer()` est IDEMPOTENT : on peut l'appeler à chaque démarrage sans risque.
+ *
+ * CE COMMENTAIRE DISAIT « ET C'EST CE QU'ON FAIT ». C'ÉTAIT FAUX, ET ÇA A COÛTÉ
+ * UNE HEURE DE COURS. `migrer()` n'était appelé que par `install.php`,
+ * `motdepasse.php` et les pages d'administration — jamais par `api/index.php`,
+ * c'est-à-dire jamais par l'application elle-même. Une mise à jour déposée qui
+ * ajoutait une colonne laissait donc la base EN ARRIÈRE, et la première requête
+ * qui nommait cette colonne partait en erreur SQL : le serveur répondait 500,
+ * et l'élève lisait « Connexion impossible pour l'instant. Préviens ton
+ * professeur. » Rémy l'a eu en classe.
+ *
+ * `migrerSiNecessaire()` répare cela, et se paie d'une seule lecture par
+ * requête (voir plus bas).
  */
 
 require_once __DIR__ . '/db.php';
+
+/**
+ * LA VERSION DU SCHÉMA — CALCULÉE, et non plus tenue à la main.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * IL Y AVAIT ICI `const VERSION_SCHEMA = 4;` et, juste au-dessus, la consigne :
+ * « à monter dès qu'on touche aux tables ou aux colonnes. C'est le seul geste
+ * qu'une modification de schéma demande ». Un seul geste, et il a été oublié
+ * DEUX FOIS — pour `classes.bac_jeux`, puis pour `paths.supprime_le`.
+ *
+ * CE QUE L'OUBLI A COÛTÉ, ET IL FAUT L'ÉCRIRE EN ENTIER. `migrerSiNecessaire()`
+ * compare la version stockée à celle-ci et REND LA MAIN si elles sont égales :
+ * la base de Rémy, à jour de numéro, n'a donc jamais reçu les deux colonnes.
+ * Résultat chez lui, en v909 :
+ *
+ *   · `/teacher/paths` nomme `supprime_le` → 500 → « Le serveur a refusé » sur
+ *     la bibliothèque entière, pas seulement sur la corbeille ;
+ *   · `etatDeSeance()` nomme `bac_jeux` → 500 sur `/login` et `/sync` → ses
+ *     ÉLÈVES lisaient « Connexion impossible pour l'instant. Préviens ton
+ *     professeur. »
+ *
+ * C'est mot pour mot la panne que l'en-tête de ce fichier raconte déjà, en
+ * disant qu'elle est réparée. Elle l'était : on avait corrigé le déclencheur,
+ * pas ce qui le commande.
+ *
+ * ON NE DEMANDE DONC PLUS DE S'EN SOUVENIR. La version est l'empreinte des
+ * définitions elles-mêmes : ajouter, retirer ou retyper une colonne la change,
+ * et la migration part toute seule. Reformuler un commentaire ne la change pas
+ * — `colonnesDeLaDefinition()` les retire —, ce qui évite de faire migrer
+ * trente bases pour une virgule.
+ *
+ * LA COLLISION EST SANS CONSÉQUENCE : deux schémas différents qui tomberaient
+ * sur la même empreinte coûteraient une migration non faite, pas une base
+ * abîmée — et une migration, ici, est idempotente.
+ */
+function versionDuSchema(): int
+{
+    static $vue = null;
+    if ($vue !== null) return $vue;
+    $signature = '';
+    foreach (lesTablesDuSchema(dbPilote() === 'sqlite') as $table => $definition) {
+        foreach (colonnesDeLaDefinition($definition) as $col => $type) {
+            $signature .= "$table.$col:$type;";
+        }
+    }
+    return $vue = (int) (crc32($signature) & 0x7fffffff);
+}
+
+/**
+ * MIGRER, MAIS PAS À CHAQUE REQUÊTE.
+ *
+ * `migrer()` lance une quinzaine de `CREATE TABLE IF NOT EXISTS` et autant
+ * d'`ALTER TABLE` qui échouent volontairement quand la colonne est déjà là.
+ * C'est sans risque, mais le payer à chaque appel de l'API — trente élèves qui
+ * se synchronisent toutes les dix secondes — serait absurde sur un hébergement
+ * mutualisé.
+ *
+ * On garde donc la version appliquée dans `reglages`, et l'on ne migre que
+ * lorsqu'elle diffère : une lecture d'une ligne, sur une table d'une poignée
+ * d'entrées, en regard d'une mise à jour qui se fait toute seule.
+ *
+ * TOUTE ERREUR DE LECTURE VAUT « IL FAUT MIGRER ». Une base d'avant la table
+ * `reglages` doit être rattrapée, pas contournée.
+ */
+function migrerSiNecessaire(?PDO $pdo = null): bool
+{
+    $pdo = $pdo ?: db();
+    try {
+        $s = $pdo->prepare('SELECT valeur FROM reglages WHERE cle = ?');
+        $s->execute(['schema']);
+        $vu = $s->fetchColumn();
+        if ($vu !== false && (int) $vu === versionDuSchema()) return false;
+    } catch (Throwable $t) {
+        // Pas de table `reglages` : base d'avant, ou base vide. On migre.
+    }
+
+    migrer($pdo);
+
+    try {
+        $maj = $pdo->prepare('UPDATE reglages SET valeur = ? WHERE cle = ?');
+        $maj->execute([(string) versionDuSchema(), 'schema']);
+        if (!$maj->rowCount()) {
+            $pdo->prepare(sqlInsereSansDoublon() . ' INTO reglages (cle, valeur) VALUES (?, ?)')
+                ->execute(['schema', (string) versionDuSchema()]);
+        }
+    } catch (Throwable $t) {
+        // On a migré, c'est l'essentiel. La marque se reposera au prochain coup.
+    }
+    return true;
+}
 
 function migrer(?PDO $pdo = null): void
 {
     $pdo = $pdo ?: db();
     $sqlite = dbPilote() === 'sqlite';
+    $moteur = $sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+    $tables = lesTablesDuSchema($sqlite);
 
+    foreach ($tables as $nom => $colonnes) {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS $nom ($colonnes)$moteur");
+    }
+
+    migrerLaSuite($pdo, $sqlite, $tables);
+}
+
+/**
+ * LES DÉFINITIONS DES TABLES — une seule source, et elle est lisible d'ailleurs.
+ *
+ * ELLES ÉTAIENT ENFERMÉES DANS `migrer()`, et c'est ce qui a permis au défaut
+ * de passer : rien, hors de cette fonction, ne pouvait vérifier qu'une base
+ * porte bien toutes les colonnes qu'on déclare. Le harnais le fait maintenant
+ * (`php tools/testApi.php`, « CHAQUE COLONNE DÉCLARÉE EXISTE VRAIMENT EN
+ * BASE »), et il ne le pouvait pas avant.
+ */
+function lesTablesDuSchema(bool $sqlite): array
+{
     // Le vocabulaire qui change d'un moteur à l'autre, dit une fois.
     $id      = $sqlite ? 'TEXT NOT NULL PRIMARY KEY' : 'CHAR(36) NOT NULL PRIMARY KEY';
     $ref     = $sqlite ? 'TEXT NOT NULL' : 'CHAR(36) NOT NULL';
@@ -66,6 +187,62 @@ function migrer(?PDO $pdo = null): void
         locked     $bool,
         -- Le mot affiché à toute la classe, ou vide.
         notice     $txtNull,
+        -- LE MOMENT EN COURS. Rémy : « est-ce qu'il ne serait pas possible que
+        -- lorsque les élèves se connectent, j'impose la séance, comme cela ils
+        -- n'ont rien à lancer » et « pour le compte à rebours c'est pour
+        -- terminer la séance ou mettre en pause ».
+        --
+        -- TROIS COLONNES, ET PAS UNE TABLE : ce sont trois valeurs par classe,
+        -- qui ne s'empilent pas et dont on ne garde pas l'historique. Une table
+        -- \u00ab moments \u00bb obligerait \u00e0 chercher \u00ab le dernier \u00bb \u00e0 chaque lecture,
+        -- pour une information qui n'existe qu'au pr\u00e9sent.
+        --
+        --   · impose_path_id : le parcours que l'\u00e9l\u00e8ve ouvre TOUT SEUL en
+        --     arrivant. Vide = il choisit ;
+        --   · chrono_fin : quand le compte \u00e0 rebours atteint z\u00e9ro (UNIX) ;
+        --   · chrono_a_zero : 'terminer' ou 'pause' \u2014 R\u00e9my voulait les deux,
+        --     l'un pour ramasser les copies, l'autre pour reprendre la parole.
+        impose_path_id $refNull,
+        --   · impose_jusqu_a : JUSQU'À QUAND elle s'impose (UNIX).
+        --
+        --     Rémy : « si je ne clos pas une séance, à la maison l'élève aura
+        --     toujours la séance en cours non ? » — oui, et sans fin. La
+        --     séance en cours n'avait pas de date de péremption : posée un
+        --     mardi matin et oubliée, elle s'ouvrait encore toute seule le
+        --     samedi. Un instant, et non un drapeau : c'est la seule forme qui
+        --     survit à un serveur qu'on ne redémarre jamais.
+        impose_jusqu_a " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
+        chrono_fin     " . ($sqlite ? 'INTEGER' : 'BIGINT') . " NULL,
+        chrono_a_zero  $txtNull,
+        --   · bac_ferme : le bac à sable de ceux qui ont fini. Ouvert par
+        --     défaut — une fonction qu'il faut allumer pour la découvrir n'est
+        --     jamais découverte. Il y a des heures où l'on veut que celui qui a
+        --     fini relise ou aide son voisin : c'est ce que ferme ce drapeau.
+        bac_ferme      $bool,
+        --   · bac_minutes : combien de temps dure le bac à sable, en minutes.
+        --     Rémy, interrogé sur ce qui doit borner les jeux du bac : « un
+        --     temps, réglé par vous ». Le compte part quand l'ÉLÈVE ouvre le
+        --     bac, pas à l'heure de la classe : celui qui finit dix minutes
+        --     avant les autres a droit aux mêmes dix minutes de jeu. NULL ou 0
+        --     veut dire « pas de limite », ce qui reste le défaut.
+        bac_minutes    " . ($sqlite ? 'INTEGER' : 'INT NULL') . ",
+        --   · bac_jeux : CE QU'IL Y A DEDANS, quand le professeur l'a choisi.
+        --     Rémy : « pour le bac à sable j'aimerai quand même bien pouvoir
+        --     éditer le contenu ». Le noyau savait déjà recevoir une liste —
+        --     `jeuxDuBac(trouver, liste)`, « la liste du professeur, sinon
+        --     celle par défaut » — mais rien ne la rangeait ni ne la portait
+        --     jusqu'à l'élève. C'est cette colonne qui manquait, et elle seule.
+        --
+        --     DES IDENTIFIANTS SÉPARÉS PAR DES VIRGULES, et non du JSON : on
+        --     n'y range que des identifiants d'exercice du catalogue, qui n'ont
+        --     ni virgule ni espace. Une colonne JSON demanderait un décodage
+        --     des deux côtés pour ranger une liste de mots.
+        --
+        --     NULL VEUT DIRE « CELLE PAR DÉFAUT », et c'est différent de la
+        --     liste VIDE : vide, c'est un professeur qui a tout retiré, et son
+        --     bac doit alors rester vide plutôt que de se remplir tout seul de
+        --     ce qu'il vient d'enlever.
+        bac_jeux       $txtNull,
         created_at $date,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 
@@ -108,6 +285,25 @@ function migrer(?PDO $pdo = null): void
         login_key      " . ($sqlite ? 'TEXT NULL' : 'CHAR(64) NULL') . ",
         access_code    $txtNull,
         token_hash   $txt,
+        -- CE QU'IL A SOUS LES YEUX EN CE MOMENT — une ligne, pas un journal.
+        --
+        -- Rémy : « on ne peut jamais vraiment voir l'écran de l'élève, juste son
+        -- exercice, car c'est créé de façon aléatoire. » Le relevé porte
+        -- l'exercice, LA GRAINE (c'est elle qui manquait : elle rend la question
+        -- reproductible à l'identique) et l'énoncé abrégé.
+        --
+        -- ÉCRASÉE À CHAQUE FOIS, et c'est le fond du choix. Un événement de
+        -- journal par question aurait doublé le journal, et le direct ne lit que
+        -- les quarante derniers événements de chaque élève : on aurait payé la
+        -- question d'aujourd'hui avec la moitié de l'historique. Une colonne ne
+        -- grandit pas.
+        --
+        -- CHIFFRÉE COMME LE PRÉNOM. Ce n'est pas la réponse de l'élève — elle,
+        -- elle voyage par le journal —, mais c'est ce qu'un élève NOMMÉ est en
+        -- train de faire, à la minute. Le fichier qui part seul ne doit pas le
+        -- dire (voir « Le fichier tel qu'on l'emporterait » dans testApi).
+        ecran        $txtNull,
+        ecran_ts     $dateN,
         -- Un élève peut être mis de côté sans être effacé : il ne peut plus
         -- se rattacher, mais son travail reste lisible jusqu'à la purge.
         blocked      $bool,
@@ -163,17 +359,73 @@ function migrer(?PDO $pdo = null): void
         name       $txt,
         data       $json,
         updated_at $date,
+        --   · supprime_le : LA CORBEILLE, et c'est une SUPPRESSION DOUCE.
+        --
+        --     Rémy : « supprimer en bloc, mettre dans la corbeille ».
+        --
+        --     POURQUOI UNE COLONNE ET NON UN `DELETE`. D'abord parce qu'une
+        --     suppression en bloc sur une année de préparation est le genre de
+        --     geste qu'on ne fait qu'une fois. Ensuite, et surtout, parce que
+        --     `assignments.path_id` est en ON DELETE CASCADE : effacer vraiment
+        --     un parcours emporterait SILENCIEUSEMENT la trace des séances
+        --     qu'on a données avec. Rémy, interrogé : « on prévient, et on
+        --     garde le bilan ».
+        --
+        --     NULL = vivant. Une date = dans la corbeille depuis ce jour-là.
+        --     `purgerSiNecessaire()` efface pour de bon au-delà de trente
+        --     jours — c'est le choix de Rémy : « il y reste 30 jours, puis part
+        --     tout seul ». Une corbeille qu'il faut penser à vider est une
+        --     seconde bibliothèque à gérer.
+        supprime_le $dateN,
         FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE";
 
+    // `path_identity` — L'IDENTITÉ DU TRAVAIL, FIGÉE AU MOMENT OÙ ON DONNE.
+    //
+    // Elle est calculée par le navigateur (`identiteDeParcours`, une empreinte
+    // du CONTENU) et envoyée ici. Le serveur ne saurait pas la recalculer, et
+    // c'est tant mieux : il n'a pas à connaître cette définition.
+    //
+    // POURQUOI ELLE DOIT VIVRE EN BASE. L'élève la recalculait chez lui, à la
+    // réception. Tant que le parcours ne bougeait pas, tout le monde tombait
+    // sur la même — mais dès qu'on COMPLÈTE une séance, celui qui l'avait déjà
+    // garde l'ancienne et celui qui la reçoit après en obtient une neuve.
+    // MESURÉ : Tom « path_cDPF7NX », Emma « path_cK8LZGE », même séance, même
+    // contenu. Or le bilan de séance filtre les travaux sur cette identité
+    // (`runsDeLaSeance`, js/core/bilanSeance.js) : l'un des deux élèves en
+    // tombait, sans un mot. Une identité qu'on recalcule n'est pas une
+    // identité.
     $tables['assignments'] = "
-        id         $id,
-        path_id    $ref,
-        class_id   $refNull,
-        student_id $refNull,
-        due_at     $dateN,
-        created_at $date,
+        id            $id,
+        path_id       $ref,
+        class_id      $refNull,
+        student_id    $refNull,
+        due_at        $dateN,
+        path_identity $txtNull,
+        created_at    $date,
         FOREIGN KEY (path_id) REFERENCES paths(id) ON DELETE CASCADE,
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";
+
+    // REMETTRE UN ÉLÈVE À ZÉRO SUR UNE SÉANCE.
+    //
+    // RÉMY : « j'ai créé un élève virtuel dans la classe puis je réinitialise
+    // la séance depuis mon poste comme s'il ne l'avait jamais commencée ».
+    //
+    // POURQUOI UNE LIGNE EN BASE, ALORS QU'ON EFFACE DÉJÀ LES ÉVÉNEMENTS.
+    // Effacer au serveur ne suffit pas : l'appareil de l'élève garde SON
+    // journal, et c'est lui qui dessine l'écran. Comme ses événements sont
+    // déjà synchronisés, il ne les repousse pas — mais il ne les oublie pas
+    // non plus. Il faut donc le LUI DIRE, et cette ligne est le message :
+    // `/sync` la lui rend, il oublie ce qui précède, et l'on ne la relit plus.
+    //
+    // ELLE NE S'EFFACE PAS APRÈS COUP, et c'est voulu : un élève qui ouvre son
+    // poste trois jours plus tard doit l'apprendre aussi. Une ligne par remise
+    // à zéro et par parcours, c'est quelques octets par an et par élève.
+    $tables['reinitialisations'] = "
+        id         $id,
+        student_id $ref,
+        path_id    $txt,
+        le         $date,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";
 
     // --- Ce que Rémy a demandé en plus -----------------------------------
@@ -182,11 +434,18 @@ function migrer(?PDO $pdo = null): void
     // individuellement ». Le message est tiré par l'élève à sa prochaine
     // synchro ; `read_at` dit s'il l'a vu, ce qui évite au professeur de
     // répéter à voix haute ce qu'il vient d'écrire.
+    //
+    // `genre` DISTINGUE LE MOT DE L'INDICE, et ce n'est pas une nuance
+    // d'affichage. Le mot prend l'écran et se ferme d'un bouton « J'ai lu » —
+    // c'est ce qu'il faut pour « arrêtez tout ». L'indice se pose à CÔTÉ de la
+    // question et n'interrompt rien — c'est ce qu'il faut pour « regarde la
+    // retenue », où interrompre détruirait la pensée qu'on veut aider.
     $tables['messages'] = "
         id         $id,
         student_id $refNull,
         class_id   $refNull,
         body       TEXT NOT NULL,
+        genre      $txtNull,
         created_at $date,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE";
@@ -224,6 +483,44 @@ function migrer(?PDO $pdo = null): void
         valeur TEXT NOT NULL,
         maj    $date";
 
+    // CE QUE L'ÉLÈVE SIGNALE QUAND ÇA NE MARCHE PAS.
+    //
+    // Rémy : « un bouton désactivable ou non qui permet à l'élève d'envoyer un
+    // bug et de prendre une photo d'écran ».
+    //
+    // POURQUOI UNE TABLE ET PAS UN MESSAGE. `messages` va du professeur vers
+    // l'élève : une ligne y porte un destinataire, pas un expéditeur, et sa
+    // lecture s'accuse dans `message_reads`. Un signalement va dans l'autre
+    // sens, porte un CONTEXTE que personne d'autre n'a, et se traite plutôt
+    // qu'il ne se lit. Les deux auraient fini par se gêner dans la même table.
+    //
+    // `contexte` EST CE QUI VAUT LE PLUS ICI, et c'est le relevé d'écran de
+    // `js/core/ecran.js` — exercice, GRAINE, énoncé abrégé, réglages. Le
+    // professeur rouvre la question exacte, telle que l'élève l'avait sous les
+    // yeux ; sans la graine, « ça bugue en calcul » ne se reproduit pas.
+    //
+    // `image` EST UNE PHOTO QUE L'ÉLÈVE JOINT, pas une capture que le logiciel
+    // prend — voir `js/core/signalement.js`, qui explique pourquoi la seconde
+    // n'existe pas sur un iPhone. Elle est donc facultative, et elle est BORNÉE
+    // au serveur comme au client : ce qui vient d'un navigateur n'est jamais cru
+    // sur parole.
+    //
+    // TOUT EST CHIFFRÉ, corps et contexte, pour la raison qui vaut déjà pour
+    // `ecran` : c'est ce qu'un élève NOMMÉ était en train de faire. « Je ne
+    // comprends rien à cet exercice » écrit par Léa n'a pas à se lire dans un
+    // fichier de base qui part tout seul.
+    $tables['signalements'] = "
+        id         $id,
+        student_id $refNull,
+        class_id   $refNull,
+        corps      TEXT NOT NULL,
+        contexte   TEXT NULL,
+        image      " . ($sqlite ? 'TEXT NULL' : 'LONGTEXT NULL') . ",
+        traite     $bool,
+        created_at $date,
+        FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+        FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE";
+
     $tables['overrides'] = "
         id          $id,
         class_id    $refNull,
@@ -234,9 +531,12 @@ function migrer(?PDO $pdo = null): void
         FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
         FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE";
 
-    foreach ($tables as $nom => $colonnes) {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS $nom ($colonnes)$moteur");
-    }
+    return $tables;
+}
+
+/** Les index, les colonnes rattrapées, les réparations. */
+function migrerLaSuite(PDO $pdo, bool $sqlite, array $tables): void
+{
 
     foreach ([
         'idx_students_class'   => 'students(class_id)',
@@ -254,6 +554,10 @@ function migrer(?PDO $pdo = null): void
         'idx_messages_student' => 'messages(student_id)',
         'idx_messages_class'   => 'messages(class_id)',
         'idx_reads_student'    => 'message_reads(student_id)',
+        // Le professeur lit ses signalements par classe, du plus récent au plus
+        // ancien : c'est la seule lecture de cette table, et c'est celle-là
+        // qu'on indexe.
+        'idx_signal_class'     => 'signalements(class_id, created_at)',
         'idx_over_class'       => 'overrides(class_id)',
         'idx_over_student'     => 'overrides(student_id)',
     ] as $nom => $cible) {
@@ -265,24 +569,96 @@ function migrer(?PDO $pdo = null): void
         }
     }
 
-    // Les colonnes ajoutées après coup, pour une base déjà installée. On
-    // essaie, et l'échec veut dire « elle y est déjà ».
-    foreach ([
-        'classes'  => ['locked' => $bool, 'notice' => $txtNull],
-        'students' => ['blocked' => $bool,
-                       'first_name_key' => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
-                       'login'          => $sqlite ? 'TEXT NULL' : 'VARCHAR(255) NULL',
-                       'login_key'      => $sqlite ? 'TEXT NULL' : 'CHAR(64) NULL',
-                       'access_code'    => $txtNull],
-    ] as $table => $colonnes) {
-        foreach ($colonnes as $col => $type) {
+    // ─── LES COLONNES D'UNE BASE DÉJÀ INSTALLÉE ───────────────────────────
+    //
+    // `CREATE TABLE IF NOT EXISTS` ne touche pas à une table qui existe. Toute
+    // colonne ajoutée à une définition ci-dessus n'arrive donc JAMAIS chez
+    // quelqu'un qui a installé le logiciel avant. Il faut la demander
+    // explicitement, et c'est ce que fait cette boucle.
+    //
+    // ── IL Y AVAIT ICI UNE SECONDE LISTE, TENUE À LA MAIN. ON L'A SUPPRIMÉE ─
+    //
+    // Elle nommait les colonnes une par une — `classes.locked`, `students.
+    // ecran`… — et il fallait penser à l'allonger à chaque fois. MESURÉ le jour
+    // où cela a coûté : la base de Rémy, installée à la rentrée, n'avait reçu
+    // NI `assignments.path_identity`, NI `classes.bac_jeux`, NI
+    // `paths.supprime_le`. Les trois étaient dans les `CREATE TABLE` ci-dessus,
+    // et aucune n'arrivait chez lui.
+    //
+    // CE QUE ÇA DONNAIT À L'ÉCRAN : « Le serveur a refusé (code 500) ». Pas sur
+    // la corbeille seule — la requête qui LISTE les parcours nomme
+    // `supprime_le`, donc toute la bibliothèque tombait. Un professeur qui met
+    // à jour perd l'écran entier, et rien ne lui dit pourquoi.
+    //
+    // ON DÉRIVE DONC LA MIGRATION DES DÉFINITIONS ELLES-MÊMES. Il n'y a plus
+    // deux listes à tenir d'accord, donc plus de divergence possible : une
+    // colonne écrite dans un `CREATE TABLE` est, par construction, une colonne
+    // que les bases existantes recevront.
+    //
+    // CE QU'ON ACCEPTE : une colonne `NOT NULL` sans valeur par défaut échoue
+    // sur une table non vide, et l'échec est silencieux — comme avec l'ancienne
+    // liste. C'est pourquoi toute colonne ajoutée après coup doit être NULLable
+    // ou porter un défaut. Les types `$txtNull`, `$dateN`, `$refNull` et `$bool`
+    // sont là pour cela.
+    foreach ($tables as $table => $definition) {
+        foreach (colonnesDeLaDefinition($definition) as $col => $type) {
             try {
                 $pdo->exec("ALTER TABLE $table ADD COLUMN $col $type");
-            } catch (Throwable $t) { /* déjà là */ }
+            } catch (Throwable $t) { /* déjà là, ou impossible à ajouter après coup */ }
         }
     }
 
     reparerEmpreintesPrenom($pdo);
+}
+
+/**
+ * LES COLONNES D'UNE DÉFINITION DE TABLE, lues telles qu'on les a écrites.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * ON NE LIT PAS DU SQL EN GÉNÉRAL, on lit NOS définitions — celles du tableau
+ * `$tables` juste au-dessus, écrites une colonne par ligne. C'est ce qui rend
+ * l'exercice sûr : la forme est connue, et elle est à nous.
+ *
+ * CE QU'ON ÉCARTE, ET POURQUOI :
+ *   · les lignes de commentaire `--`, qui portent ici la moitié du sens ;
+ *   · les contraintes de table — `FOREIGN KEY`, `PRIMARY KEY`, `UNIQUE`,
+ *     `CHECK` — qui ne sont pas des colonnes ;
+ *   · la clé primaire elle-même : on ne l'ajoute pas après coup, et l'essayer
+ *     ne ferait qu'un échec de plus à avaler en silence.
+ *
+ * @param string $definition le corps d'un `CREATE TABLE`, sans les parenthèses
+ * @return array<string,string> nom de colonne → type
+ */
+function colonnesDeLaDefinition(string $definition): array
+{
+    $out = [];
+    foreach (explode("\n", $definition) as $ligne) {
+        $ligne = trim($ligne);
+        if ($ligne === '' || str_starts_with($ligne, '--')) {
+            continue;
+        }
+        $ligne = rtrim($ligne, ',');
+        // Un commentaire en fin de ligne ne fait pas partie du type.
+        $ligne = preg_split('/\s--\s/', $ligne)[0];
+        if (preg_match('/^(FOREIGN|PRIMARY|UNIQUE|CHECK|CONSTRAINT)\b/i', $ligne)) {
+            continue;
+        }
+        $bouts = preg_split('/\s+/', trim($ligne), 2);
+        if (count($bouts) !== 2) {
+            continue;
+        }
+        [$nom, $type] = $bouts;
+        if (!preg_match('/^[a-z_][a-z0-9_]*$/i', $nom)) {
+            continue;
+        }
+        // LA CLÉ PRIMAIRE NE S'AJOUTE PAS APRÈS COUP.
+        if (stripos($type, 'PRIMARY KEY') !== false) {
+            continue;
+        }
+        $out[$nom] = trim($type);
+    }
+    return $out;
 }
 
 /**

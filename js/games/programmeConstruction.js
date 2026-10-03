@@ -370,8 +370,8 @@ export class ProgrammeConstruction extends BaseGame {
                 .pc-figures { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 0 0 auto; }
                 @container (max-width: 330px) { .pc-figures { grid-template-columns: 1fr; } }
                 .pc-cadre {
-                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 12px;
-                    background: var(--card-bg, #fff); padding: 6px; position: relative;
+                    border: 1.5px solid var(--border); border-radius: 12px;
+                    background: var(--bg-panel); padding: 6px; position: relative;
                     /* Le cadre devient sa propre référence de largeur : c'est
                        lui qui doit dire au dessin sa hauteur, pas la fenêtre. */
                     container-type: inline-size;
@@ -387,7 +387,7 @@ export class ProgrammeConstruction extends BaseGame {
                 .pc-etiq {
                     position: absolute; top: -9px; left: 10px; padding: 0 6px;
                     font-size: min(11px, 6cqw); white-space: nowrap;
-                    font-weight: 700; background: var(--card-bg, #fff); color: var(--text-muted);
+                    font-weight: 700; background: var(--bg-panel); color: var(--text-muted);
                 }
                 /* LA HAUTEUR SUIT LA LARGEUR DU CADRE, et plus la fenêtre.
                    Le monde du dessin fait 100 sur 70 : un cadre de 155 pixels
@@ -435,8 +435,8 @@ export class ProgrammeConstruction extends BaseGame {
                    les boutons ne sont que la façon de l'écrire. */
                 .pc-arbre {
                     display: flex; flex-direction: column; gap: 8px;
-                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
-                    background: var(--card-bg, #fff); padding: 10px; min-height: 120px;
+                    border: 1.5px solid var(--border); border-radius: 10px;
+                    background: var(--bg-panel); padding: 10px; min-height: 120px;
                 }
                 .pc-arbre-phrase {
                     font-size: clamp(14px, 2.9cqw, 19px); font-weight: 700; line-height: 1.4;
@@ -450,12 +450,14 @@ export class ProgrammeConstruction extends BaseGame {
                 }
                 .pc-arbre-mots { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
                 .pc-mot {
-                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
-                    cursor: pointer; background: var(--card-bg, #fff); color: var(--text-main);
+                    border: 1.5px solid var(--border); border-radius: 10px;
+                    cursor: pointer; background: var(--bg-panel); color: var(--text-main);
                     font: inherit; font-weight: 600; padding: 7px 12px;
                     font-size: clamp(12px, 2.3cqw, 15px); line-height: 1.3;
                 }
-                .pc-mot:hover { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .pc-mot:hover { border-color: var(--primary); color: var(--primary-texte); }
+                }
                 /* UNE LETTRE EST UNE CIBLE CARRÉE : « A » dans un bouton taillé
                    pour « le cercle de centre » se cherche du doigt. */
                 .pc-mot--lettre { min-width: 44px; text-align: center; font-weight: 800; }
@@ -465,14 +467,16 @@ export class ProgrammeConstruction extends BaseGame {
                     border: 0; background: transparent; color: var(--text-muted); cursor: pointer;
                     font: inherit; font-size: clamp(11px, 2.1cqw, 13px); padding: 4px 8px;
                 }
-                .pc-retour:hover { color: var(--text-main); }
+                @media (hover: hover) {
+                    .pc-retour:hover { color: var(--text-main); }
+                }
                 .pc-lignes { display: flex; flex-direction: column; gap: 0; font-size: clamp(10px, 2cqw, 12.5px); }
                 .pc-l { display: flex; gap: 6px; line-height: 1.55;
                     font-size: clamp(12px, 2.3cqw, 15px); min-height: 1.55em; }
                 .pc-l small { font-size: .82em; line-height: 1.55; }
                 .pc-l--ok { color: var(--success); }
                 .pc-l--ko { color: var(--danger); }
-                .pc-l--note { color: var(--primary); }
+                .pc-l--note { color: var(--primary-texte); }
                 /* --- LA COMPOSITION PAR PHRASES ------------------------------
                    Deux colonnes comme la rédaction : à gauche ce qu'on a posé,
                    à droite la banque. On garde exactement la même géométrie que
@@ -480,8 +484,8 @@ export class ProgrammeConstruction extends BaseGame {
                    déplace rien à l'écran. */
                 .pc-pose {
                     display: flex; flex-direction: column; gap: 4px; min-height: 120px;
-                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
-                    background: var(--card-bg, #fff); padding: 8px;
+                    border: 1.5px solid var(--border); border-radius: 10px;
+                    background: var(--bg-panel); padding: 8px;
                 }
                 .pc-pose--vide {
                     align-items: center; justify-content: center; text-align: center;
@@ -504,34 +508,55 @@ export class ProgrammeConstruction extends BaseGame {
                    il n'y a pas de survol, et une commande qu'on ne voit pas
                    n'existe pas. */
                 .pc-posee-x { flex: 0 0 auto; color: var(--text-muted); font-weight: 700; }
-                .pc-posee:hover .pc-posee-x { color: var(--danger); }
+                @media (hover: hover) {
+                    .pc-posee:hover .pc-posee-x { color: var(--danger); }
+                }
                 .pc-banque { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
                 .pc-carte {
-                    border: 1.5px solid var(--border-color, #d7dae3); border-radius: 10px;
-                    cursor: pointer; background: var(--card-bg, #fff); color: var(--text-main);
+                    border: 1.5px solid var(--border); border-radius: 10px;
+                    cursor: pointer; background: var(--bg-panel); color: var(--text-main);
                     font: inherit; padding: 6px 10px; font-size: clamp(11px, 2.2cqw, 14px);
                     line-height: 1.35; text-align: left;
                 }
-                .pc-carte:hover { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .pc-carte:hover { border-color: var(--primary); color: var(--primary-texte); }
+                }
                 .pc-carte--posee { opacity: .38; cursor: default; }
-                .pc-carte--posee:hover { border-color: var(--border-color, #d7dae3); color: var(--text-main); }
+                @media (hover: hover) {
+                    .pc-carte--posee:hover { border-color: var(--border); color: var(--text-main); }
+                }
                 .pc-modeles { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
                 .pc-ajout {
                     border: 1.5px dashed var(--primary); border-radius: 10px; cursor: pointer;
-                    background: transparent; color: var(--primary); font: inherit; font-weight: 600;
+                    background: transparent; color: var(--primary-texte); font: inherit; font-weight: 600;
                     padding: 5px 9px; font-size: clamp(11px, 2.1cqw, 13px);
                 }
-                .pc-barre { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+                /* LA BARRE DE VALIDATION RESTE COLLÉE AU BAS DU CADRE.
+                   MESURÉ au doigt : « Vérifier ma figure » tombait 53 px sous
+                   la fenêtre d'un iPhone 12 à 15 (390 x 844), 138 px sur un
+                   iPhone SE (375 x 667), 205 px sur le plus petit. Le cadre
+                   défile — l'élève n'est donc pas bloqué — mais RIEN ne le lui
+                   dit, et c'est un défilement DANS un cadre, pas la page : il
+                   ouvre l'exercice, voit deux dessins et une phrase, et n'a
+                   aucune raison de deviner qu'un bouton l'attend plus bas.
+                   Collée, elle est toujours là. */
+                .pc-barre {
+                    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+                    position: sticky; bottom: 0; z-index: 2; flex: 0 0 auto;
+                    margin: 0 -10px -10px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+                    background: var(--bg-plateau, #fff);
+                    border-top: 1px solid var(--border);
+                }
                 .pc-btn {
                     border: 0; border-radius: 10px; cursor: pointer; font: inherit; font-weight: 700;
                     padding: 7px 14px; background: var(--primary); color: #fff;
                 }
                 .pc-btn--doux { background: transparent; color: var(--text-muted);
-                    border: 1.5px solid var(--border-color, #d7dae3); }
+                    border: 1.5px solid var(--border); }
                 .pc-note { text-align: center; min-height: 1.3em; font-size: clamp(11px, 2.2cqw, 14px); }
                 .pc-note--ok { color: var(--success); font-weight: 700; }
                 .pc-note--ko { color: var(--danger); font-weight: 600; }
-                .pc-note--info { color: var(--primary); font-weight: 600; }
+                .pc-note--info { color: var(--primary-texte); font-weight: 600; }
             </style>
             <div class="pc-wrap" lang="fr">
                 <div class="pc-consigne" data-consigne></div>
@@ -886,15 +911,20 @@ export class ProgrammeConstruction extends BaseGame {
         const butEl = this.container.querySelector('.pc-cadre--but');
 
         if (!await gate.waitTurn()) return;
-        cursor.say('À gauche, la figure à obtenir. Tout ce qu\'il faut savoir est '
-            + 'dessiné dessus : les lettres des points, les traits, et le codage '
-            + 'en rouge.', butEl);
+        // UNE IDÉE PAR BULLE, et la conclusion qui commentait le logiciel (« c'est
+        // la figure obtenue qui décide, pas la tournure des phrases ») est partie :
+        // au-delà de 110 caractères la bulle se lit si longtemps qu'on croit la
+        // démonstration plantée.
+        cursor.say('À gauche, la figure à obtenir.', butEl);
+        if (!await cursor.pause(DEMO_SPEED.settle)) return;
+
+        if (!await gate.waitTurn()) return;
+        cursor.say('Tout est dessiné dessus : les lettres des points, les traits, et le codage en rouge.', butEl);
         if (!await cursor.pause(DEMO_SPEED.settle)) return;
 
         if (!await gate.waitTurn()) return;
         cursor.say('À droite, ce que mon programme trace vraiment. Elle est vide : '
-            + 'je n\'ai encore rien posé. C\'est elle qui dira si j\'ai juste, pas moi.',
-        this.cadreMoiEl);
+            + 'je n\'ai encore rien posé.', this.cadreMoiEl);
         if (!await cursor.pause(DEMO_SPEED.settle)) return;
 
         const jusque = [];
@@ -936,9 +966,7 @@ export class ProgrammeConstruction extends BaseGame {
         if (!await gate.waitTurn()) return;
         this.note('Le programme est écrit : la figure de droite est celle de gauche.', 'ok');
         this.cadreMoiEl.classList.add('pc-cadre--ok');
-        cursor.say('Les deux figures sont les mêmes : le programme est bon. Il en '
-            + 'existe d\'autres — c\'est la figure obtenue qui décide, pas la '
-            + 'tournure des phrases.', this.cadreMoiEl);
+        cursor.say('Les deux figures sont les mêmes : le programme est bon.', this.cadreMoiEl);
         await cursor.pause(DEMO_SPEED.between);
     }
 

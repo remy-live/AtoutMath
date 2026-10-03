@@ -25,3 +25,9 @@ balayage.md
 # valent que le temps d'une vérification et n'ont rien à faire dans
 # l'historique.
 tools/tmp/
+
+# L'ARCHIVE DE DÉPÔT, QUI SE REFABRIQUE À CHAQUE VERSION. Quatre mégaoctets
+# reconstruits depuis les fichiers d'à côté : la mettre dans l'historique
+# doublerait le poids du dépôt à chaque livraison, et la version committée
+# serait périmée dès la modification suivante.
+atoutmath-v*.zip

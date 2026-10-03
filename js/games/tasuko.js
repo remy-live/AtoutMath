@@ -108,8 +108,13 @@ class Tasuko extends BaseGame {
                     min-width: 1.7em; padding: 1px 4px; border-radius: 999px;
                     font-weight: 800; text-align: center;
                     font-size: clamp(10px, 2.3cqh, 15px);
+                    /* TROIS COULEURS FIXES ET UN FOND DU THÈME : l'encre et la
+                       bordure sont écrites en dur, le fond suivait le thème et
+                       devenait sombre — de l'indigo foncé sur de l'ardoise,
+                       mesuré à 2,04. Une pastille dont on choisit l'encre doit
+                       choisir son fond. */
                     border: 1.5px solid #6d5cf6; color: #4c3fd0;
-                    background: var(--bg-panel, #fff);
+                    background: #fff;
                 }
                 .tk-somme--faite {
                     border-color: #cbd5e1; color: #a0aec0;
@@ -120,7 +125,7 @@ class Tasuko extends BaseGame {
                 .tk-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .tk-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }
@@ -433,8 +438,10 @@ class Tasuko extends BaseGame {
             + 'Relier ce qui tombe juste ne suffit donc pas.', this.grilleEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
-        cur.say('Le bon réflexe n\'est pas de regarder les chiffres, c\'est de regarder cette '
-            + 'liste-là et de prendre une somme qui reste.', this.sommesEl);
+        // LA MÊME CONSIGNE DITE COMME UN GESTE, ET NON COMME UN « bon réflexe » :
+        // 118 caractères pour dire deux fois où regarder.
+        cur.say('Je ne regarde pas les chiffres : je prends dans cette liste une somme '
+            + 'qui reste.', this.sommesEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let n = 0; n < 3; n++) {

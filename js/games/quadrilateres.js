@@ -1084,7 +1084,9 @@ class Organigramme extends BaseGame {
                     font: inherit; font-size: .72rem; font-weight: 700;
                     padding: 2px 10px; min-height: 24px; cursor: pointer; vertical-align: middle;
                 }
-                .qd-passer:hover { border-color: var(--primary); color: var(--primary); }
+                @media (hover: hover) {
+                    .qd-passer:hover { border-color: var(--primary); color: var(--primary-texte); }
+                }
                 @keyframes qd-attendre {
                     0%, 100% { border-color: var(--border); box-shadow: none; }
                     50% {
@@ -1120,7 +1122,7 @@ class Organigramme extends BaseGame {
                     text-align: center; font-weight: 800; line-height: 1.25;
                     font-size: clamp(11px, 2.6cqw, 14px);
                 }
-                .qd-etape-titre b { color: var(--primary); }
+                .qd-etape-titre b { color: var(--primary-texte); }
                 .qd-fentes { display: flex; flex-direction: column; gap: 4px; }
                 .qd-fente {
                     min-height: 30px; border-radius: 9px; box-sizing: border-box;
@@ -1154,7 +1156,7 @@ class Organigramme extends BaseGame {
                     font-size: clamp(10px, 2.2cqw, 13px); line-height: 1.35;
                 }
                 .qd-carnet h4 {
-                    margin: 6px 0 2px; font-size: 1em; color: var(--primary);
+                    margin: 6px 0 2px; font-size: 1em; color: var(--primary-texte);
                 }
                 .qd-carnet ul { margin: 0; padding-left: 18px; }
 
@@ -1289,7 +1291,7 @@ class Organigramme extends BaseGame {
                    fort pour cette flèche » n'est pas une réussite et n'est pas
                    une faute ; le peindre en rouge redirait exactement ce que la
                    phrase nie. */
-                .qd-note--info { color: var(--primary); font-weight: 600; }
+                .qd-note--info { color: var(--primary-texte); font-weight: 600; }
 
                 /* Couché, le plan à gauche et les cartes à droite : en paysage
                    c'est la hauteur qui manque. La requête interroge le PLATEAU,
@@ -1949,8 +1951,8 @@ class Organigramme extends BaseGame {
                             this.largeurFenetre(), etroit ? [] : boitesDuPlan(),
                             this.reglageFenetre()),
             v);
-        // Le fondu ne s'allume que là où l'on coupe vraiment.
-        this.planEl.style.setProperty('--fondu', (codage || etroit) ? '16px' : '0px');
+        // (Le fondu se pose dans `cadrer`, qui est le seul à connaître les deux
+        //  boîtes — voir son commentaire.)
 
         // LES TRAITS. Chaque condition en porte deux : ce qui y entre, ce qui en
         // sort. Ils ne se dessinent que si la condition est montrée — sinon on
@@ -3009,6 +3011,22 @@ class Organigramme extends BaseGame {
         // décaler d'un centième du MONDE, c'est bien avancer d'une unité de plan.
         m.style.transform = `translate(${(-(fen.x0 - monde.x0) / monde.w * 100).toFixed(3)}%,`
             + ` ${(-(fen.y0 - monde.y0) / monde.h * 100).toFixed(3)}%)`;
+
+        // LE FONDU S'ALLUME OÙ L'ON COUPE — et c'est ICI qu'on le sait.
+        //
+        // Il se posait au point d'appel, sur `codage || etroit` : une devinette
+        // de ce qui est coupé, et non la chose elle-même. MESURÉ à 1440 x 900,
+        // en mode étape, sur un écran large : le monde dépassait le plan de
+        // 61 px à GAUCHE et à DROITE, avec un fondu à zéro — et l'on voyait
+        // deux amorces de flèches tranchées net aux deux bords, qui ne mènent
+        // nulle part. C'est exactement ce que la note du fondu décrit : « une
+        // carte tranchée au couteau se lit c'est cassé ; la même fondue au
+        // blanc se lit ça continue par là ».
+        //
+        // `cadrer` est le seul endroit qui connaisse les deux boîtes. Un pixel
+        // de marge, parce qu'un arrondi de pourcentage n'est pas une coupure.
+        const coupe = (monde.w > fen.w + 1) || (monde.h > fen.h + 1);
+        this.planEl.style.setProperty('--fondu', coupe ? '16px' : '0px');
     }
 
     /** Combien de temps pour aller de la fenêtre précédente à celle-ci. */
@@ -3452,9 +3470,16 @@ class Organigramme extends BaseGame {
 
         if (!this.org) this.poser();
         if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Cet organigramme n\'est pas une liste : les familles s\'EMBOÎTENT. On part du '
-            + 'quadrilatère, à gauche, et chaque flèche avance d\'un cran en ajoutant UNE seule '
-            + 'condition. Tout ce qui est à droite est aussi tout ce qui est à gauche.', this.planEl);
+        // UNE IDÉE PAR BULLE. La phrase qui énonçait l'emboîtement en toutes
+        // lettres (« tout ce qui est à droite est aussi tout ce qui est à gauche »)
+        // est partie : les deux chemins vers le carré, montrés à la fin, la disent
+        // mieux. Au-delà de 110 caractères, la bulle se lit si longtemps qu'on
+        // croit la démonstration plantée.
+        cur.say('Cet organigramme n\'est pas une liste : les familles s\'EMBOÎTENT.', this.planEl);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('On part du quadrilatère, à gauche, et chaque flèche ajoute UNE seule condition.', this.planEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (this.progressif) {
@@ -3494,9 +3519,11 @@ class Organigramme extends BaseGame {
                 if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
             }
             if (!await gate.waitTurn() || !this.isRunning) return fin();
-            cur.say('L\'étape est finie, et la case suivante apparaît. On continue ainsi jusqu\'au '
-                + 'carré — où l\'on arrive PAR DEUX CHEMINS, depuis le rectangle et depuis le '
-                + 'losange. Chacun apporte ce que l\'autre avait déjà.', this.planEl);
+            cur.say('L\'étape est finie, et la case suivante apparaît.', this.planEl);
+            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            cur.say('On continue ainsi jusqu\'au carré : on y arrive PAR DEUX CHEMINS, le rectangle et le losange.', this.planEl);
             if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
             return fin();
         }
@@ -3524,8 +3551,11 @@ class Organigramme extends BaseGame {
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
         cur.say('Et regarde la droite : on arrive au carré depuis le rectangle ET depuis le '
-            + 'losange. Chaque chemin ajoute ce que l\'autre avait déjà — c\'est pour cela '
-            + 'qu\'un carré est à la fois un rectangle et un losange.', this.planEl);
+            + 'losange.', this.planEl);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Donc un carré est à la fois un rectangle et un losange.', this.planEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

@@ -62,7 +62,7 @@ class Mastermind extends BaseGame {
                     padding: 2px 4px; border-radius: 8px;
                 }
                 /* La ligne en cours se détache : c'est la seule où l'on écrit. */
-                .mm-ligne--ici { background: var(--bg-soft, #eef2f7); }
+                .mm-ligne--ici { background: var(--bg-hover); }
                 .mm-ligne--vieille { opacity: .95; }
                 .mm-num {
                     width: 1.6em; text-align: right; font-weight: 700; opacity: .55;
@@ -94,7 +94,7 @@ class Mastermind extends BaseGame {
                 /* Une case encore vide de la ligne en cours : un rond creux. */
                 .mm-jeton--vide {
                     background: var(--bg-panel, #fff); color: transparent;
-                    box-shadow: inset 0 0 0 2px var(--border-soft, #cbd5e1);
+                    box-shadow: inset 0 0 0 2px var(--border);
                     cursor: pointer;
                 }
                 .mm-jeton--vise { box-shadow: inset 0 0 0 3px #6d5cf6; }
@@ -106,7 +106,7 @@ class Mastermind extends BaseGame {
                     padding: 1px 6px; border-radius: 999px; font-weight: 800;
                     font-size: calc(var(--mm-jeton) * .38);
                     background: var(--bg-panel, #fff);
-                    box-shadow: inset 0 0 0 1px var(--border-soft, #cbd5e1);
+                    box-shadow: inset 0 0 0 1px var(--border);
                 }
                 .mm-rep .mm-place { color: #2f855a; }
                 .mm-rep .mm-present { color: #b7791f; }
@@ -131,7 +131,7 @@ class Mastermind extends BaseGame {
                 .mm-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .mm-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }
@@ -455,9 +455,12 @@ class Mastermind extends BaseGame {
         const a = this.m.couleurs[0].id, b = this.m.couleurs[1].id;
         this.enCours = Array.from({ length: this.m.longueur }, (_, i) => (i < 2 ? a : b));
         this.dessiner();
-        cur.say('Le premier essai ne cherche pas à trouver : il cherche à SAVOIR. '
-            + 'Deux couleurs seulement, et je saurai déjà combien il y en a de chacune.',
-        this.tableEl);
+        // UNE IDÉE PAR BULLE, chacune sous 110 caractères : au-delà, la démonstration
+        // paraît figée (js/core/activities/choice.js, COURT = 110).
+        cur.say('Le premier essai ne cherche pas à trouver : il cherche à SAVOIR.', this.tableEl);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Deux couleurs seulement, et je saurai déjà combien il y en a de chacune.', this.tableEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         const code = this.enCours.slice();
@@ -471,9 +474,8 @@ class Mastermind extends BaseGame {
             + `d'éliminer ${this.codes.length - reste} codes sur ${this.codes.length}.`, this.tableEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
-        cur.say('Et c\'est là qu\'on se trompe : on repart au hasard. Alors qu\'il faut '
-            + 'RELIRE — chaque nouvelle proposition doit être un code qui colle encore à '
-            + 'tout ce qu\'on sait.', this.tableEl);
+        cur.say('Je ne repars pas au hasard : mon essai suivant doit coller à tout ce qu\'on sait déjà.',
+        this.tableEl);
         await cur.pause(DEMO_SPEED.between);
         fin();
     }

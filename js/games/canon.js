@@ -25,6 +25,9 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { CSS_GLISSER } from '../core/glisserDeposer.js';
+// `regTimeout` ET NON `setTimeout` : voir `perdu()`. Un minuteur que
+// `clearEngines()` ne peut pas annuler survit à l'exercice qui l'a posé.
+import { regTimeout } from '../core/timers.js';
 
 /**
  * De quoi laisser le temps de calculer — ou de ne pas s'ennuyer. « Tranquille »
@@ -64,6 +67,9 @@ export function direPalier(cible, niveau) {
 class Canon extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'canon');
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         this.rng = makeRng(this.params.seed);
         this.cible = Number(this.params.cible) || 100;
         this.voies = this.cible === 10 ? 1 : (this.cible === 100 ? 2 : 3);
@@ -87,7 +93,7 @@ class Canon extends BaseGame {
                 }
                 .cn-tete { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
                     justify-content: center; font-size: .92rem; }
-                .cn-cible { font-weight: 900; color: var(--primary); font-size: 1.1rem; }
+                .cn-cible { font-weight: 900; color: var(--primary-texte); font-size: 1.1rem; }
                 .cn-palier { color: var(--text-muted); font-size: .82rem; font-style: italic; }
 
                 /* L'ESPACE. Le champ de bataille au sol enfermait le jeu dans
@@ -185,7 +191,9 @@ class Canon extends BaseGame {
                     -webkit-tap-highlight-color: transparent;
                     transition: filter .12s ease;
                 }
-                .cn-boulet:hover { filter: brightness(1.4) drop-shadow(0 0 10px rgba(252,211,77,.95)); }
+                @media (hover: hover) {
+                    .cn-boulet:hover { filter: brightness(1.4) drop-shadow(0 0 10px rgba(252,211,77,.95)); }
+                }
                 /* LA TRAÎNÉE, derrière l'astéroïde — donc du côté d'où il
                    vient : à droite quand il arrive de droite, en bas quand il
                    tombe. Elle dit le sens de la marche d'un coup d'œil. */
@@ -375,9 +383,16 @@ class Canon extends BaseGame {
     }
 
     majTete() {
-        this.container.querySelector('[data-vies]').textContent =
+        // LE PLATEAU PEUT AVOIR ÉTÉ REMPLACÉ ENTRE-TEMPS — un minuteur en
+        // retard, un exercice qu'on vient de quitter. Chercher sans regarder ce
+        // qu'on trouve, c'est « Cannot set properties of null ». Le palier était
+        // déjà prudent (`if (pal)`) ; les deux autres ne l'étaient pas.
+        const vies = this.container.querySelector('[data-vies]');
+        const niv = this.container.querySelector('[data-niveau]');
+        if (!vies || !niv) return;
+        vies.textContent =
             '❤️'.repeat(Math.max(0, this.vies)) + '🖤'.repeat(Math.max(0, this.viesDepart - this.vies));
-        this.container.querySelector('[data-niveau]').textContent = String(this.niveau);
+        niv.textContent = String(this.niveau);
         const pal = this.container.querySelector('[data-palier]');
         if (pal) pal.textContent = direPalier(this.cible, this.niveau);
     }
@@ -419,7 +434,18 @@ class Canon extends BaseGame {
         // choisir lequel traiter d'abord. C'est là que le complément doit être
         // devenu automatique, pas seulement calculable.
         this.prochainBoulet -= 28;
-        const simultanes = Math.min(this.voies * 2 + 1, this.voies + Math.floor((this.niveau + 1) / 2));
+        // SOUS LE ROBOT, UN SEUL À LA FOIS. Une démonstration montre UN geste :
+        // lire le nombre, calculer le complément, charger, tirer. Le ciel qui
+        // se remplit est justement ce qu'on apprend à gérer APRÈS, et pendant
+        // l'explication il ne fait qu'une chose — il occupe la voie voisine et
+        // atteint le canon pendant que le robot parle.
+        //
+        // MESURÉ, robot lancé quarante secondes sur un téléphone de 390 px :
+        // sans cette ligne, deux vies sur trois tombaient et l'écran affichait
+        // « 💥 Le 60 a atteint le canon ! » sous une leçon qui venait de
+        // réussir son tir. Avec, les trois cœurs restent.
+        const simultanes = this.isDemo ? 1
+            : Math.min(this.voies * 2 + 1, this.voies + Math.floor((this.niveau + 1) / 2));
         if (this.boulets.length < Math.max(1, simultanes) && this.prochainBoulet <= 0) {
             // Si toutes les voies sont encombrées à l'entrée, on repasse dans
             // un instant plutôt que d'attendre un cycle entier.
@@ -605,7 +631,29 @@ class Canon extends BaseGame {
         this.vies = this.viesDepart;
         this.niveau = 1;
         this.detruits = 0;
-        setTimeout(() => { if (this.isRunning) { this.poser(); this.majTete(); } }, 1500);
+        // UN MINUTEUR QUI SURVIT À SON EXERCICE ÉCRIT DANS LE VIDE.
+        //
+        // `setTimeout` NU : rien ne l'annule. Quand la partie est perdue et que
+        // l'on quitte l'exercice dans la seconde et demie qui suit — ce qui est
+        // exactement le moment où l'on quitte —, ce rappel s'exécute sur une
+        // couche de jeu déjà remplacée. `majTete()` y cherche `[data-vies]`,
+        // ne le trouve plus, et la page rend « Cannot set properties of null
+        // (setting 'textContent') ».
+        //
+        // MESURÉ : l'erreur n'apparaissait qu'en enchaînant plusieurs robots,
+        // jamais en en ouvrant un seul — ce qui l'a d'abord fait passer pour un
+        // défaut de la sonde. Elle vient bien du jeu.
+        //
+        // `regTimeout` est le minuteur du dépôt, et `clearEngines()` l'annule
+        // avec tous les autres quand un exercice se ferme.
+        //
+        // ET L'ON VÉRIFIE QUAND MÊME QUE LE PLATEAU EST ENCORE LÀ : annuler un
+        // minuteur demande que quelqu'un pense à le faire, et ce quelqu'un-là
+        // change avec les écrans. `majTete` est appelée de cinq endroits ; la
+        // rendre incapable de lever est plus sûr que de compter sur les cinq.
+        regTimeout(() => {
+            if (this.isRunning && this.container.isConnected) { this.poser(); this.majTete(); }
+        }, 1500);
     }
 
     showNext() { this.vies = this.viesDepart; this.niveau = 1; this.detruits = 0; return this.poser(); }
@@ -618,6 +666,27 @@ class Canon extends BaseGame {
 
     // --- La démonstration ----------------------------------------------------------
 
+    /**
+     * L'ASTÉROÏDE QUE LE ROBOT VISE — LE PLUS JEUNE, PAS LE PREMIER.
+     *
+     * `this.boulets[0]` est le plus ANCIEN : celui qui est sur le point
+     * d'atteindre le canon. C'est exactement le seul qu'il ne faut pas choisir
+     * quand on va passer cinq secondes à expliquer ce qu'on fait — dire une
+     * phrase, charger, laisser lire, déplacer le curseur, appuyer.
+     *
+     * MESURÉ : un astéroïde met une quinzaine de secondes à traverser au
+     * premier niveau ; le robot, lui, met de quatre à six secondes entre le
+     * choix et l'appui. Viser le plus avancé, c'est viser celui qui a le moins
+     * de chances d'être encore là — et c'est ce qui se passait.
+     *
+     * `avancee` est la distance parcourue : le plus petit est le plus frais,
+     * donc celui qui laisse le plus de temps pour montrer le geste en entier.
+     */
+    bouletDeLaDemo() {
+        if (!this.boulets || !this.boulets.length) return null;
+        return this.boulets.reduce((a, b) => (b.avancee < a.avancee ? b : a));
+    }
+
     async runDemoSequence() {
         const cur = createDemoCursor();
         this.demoCursor = cur;
@@ -625,25 +694,83 @@ class Canon extends BaseGame {
         this.demoGate = gate;
         const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
 
-        if (!this.boulets) this.poser();
+        // LA DÉMONSTRATION A BESOIN D'UNE VRAIE PARTIE, et c'est tout le défaut
+        // que Rémy a photographié : « bug avec le robot ».
+        //
+        // `BaseGame.start()` choisit L'UN OU L'AUTRE — `if (this.isDemo)
+        // runDemoSequence(); else startGameLoop();`. Le robot n'appelait donc
+        // jamais `startGameLoop`, et il en manquait trois choses à la fois :
+        //
+        //   · `this.niveau`, jamais posé → l'en-tête affichait « Niveau
+        //     undefined », et `direPalier(100, undefined)` tombait à travers
+        //     toutes ses comparaisons pour annoncer le palier le PLUS dur —
+        //     « des nombres quelconques » au premier niveau ;
+        //   · `this.vies`, jamais posé → `'❤️'.repeat(Math.max(0, undefined))`
+        //     vaut `repeat(NaN)`, donc la chaîne vide : aucun cœur ;
+        //   · `this.boucle()`, jamais lancée → AUCUN ASTÉROÏDE NE PART. Or ce
+        //     robot n'a rien d'autre à montrer : sa boucle attend un ennemi
+        //     pendant 40 × 120 ms, n'en voit aucun, et rend la main. MESURÉ sur
+        //     un iPhone de 390 px, relevé à 2, 6 et 12 secondes : 0 astéroïde,
+        //     0 tir, « prépare… » inchangé, les trois fois.
+        //
+        // La démonstration se jouait donc en entier sur un terrain vide, et
+        // expliquait un geste que personne ne voyait faire.
+        //
+        // Rien n'est enregistré pour autant : `onCorrectAnswer`,
+        // `onWrongAnswer` et `terminerPartie` rendent tous la main quand
+        // `isDemo` est vrai (voir `js/core/BaseGame.js`). Une partie qui tourne
+        // sous le robot ne touche ni au carnet ni aux statistiques.
+        this.startGameLoop();
+        // ET LE CIEL RESTE VIDE PENDANT LA PHRASE D'OUVERTURE.
+        //
+        // MESURÉ : le tout premier astéroïde partait à la seconde zéro et
+        // mettait une quinzaine de secondes à traverser — soit exactement le
+        // temps que le robot passe à annoncer ce qu'il va faire. Il atteignait
+        // le canon à la quatorzième seconde, juste avant le premier tir : la
+        // démonstration commençait par un échec, et l'on ne voyait pas
+        // pourquoi.
+        //
+        // `Infinity` PLUTÔT QU'UN DÉLAI EN SECONDES : la durée de l'ouverture
+        // dépend du facteur de vitesse, que le professeur règle lui-même. Un
+        // chiffre écrit ici serait juste à une allure et faux aux trois autres.
+        // On retient le départ, et c'est le robot qui le relâche quand il a
+        // fini de parler.
+        this.prochainBoulet = Infinity;
         if (!await cur.pause(700) || !this.isRunning) return fin();
         cur.say(`L'ordre fait tout : on CALCULE d'abord, on tire ensuite. Un boulet approche, `
             + `je cherche son complément à ${this.cible} AVANT de le toucher.`, this.chargeEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        this.prochainBoulet = 0;
 
         // Attendre un ennemi, préparer son complément, tirer.
         for (let k = 0; k < 2; k++) {
             let garde = 0;
             while (!this.boulets.length && garde++ < 40) { await cur.pause(120); if (!this.isRunning) return fin(); }
-            const ennemi = this.boulets[0];
-            if (!ennemi) break;
+            // LE TOUR D'ABORD, LA CIBLE ENSUITE — et c'est l'ordre qui compte.
+            //
+            // `waitTurn` peut retenir le robot aussi longtemps que le
+            // professeur le laisse en pause. Choisir l'astéroïde AVANT, c'est
+            // le choisir pour un tir qui n'aura lieu qu'après cette attente :
+            // à la reprise, il a depuis longtemps atteint le canon.
             if (!await gate.waitTurn() || !this.isRunning) return fin();
+            const ennemi = this.bouletDeLaDemo();
+            if (!ennemi) break;
             const manque = this.cible - ennemi.valeur;
             cur.say(`Le ${ennemi.valeur} arrive : pour aller à ${this.cible}, il manque ${manque}. Je le charge.`, this.chargeEl);
             this.charge = String(manque);
             this.majCharge();
             if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
-            if (ennemi.el.isConnected && !await cur.tap(ennemi.el)) return fin();
+            // ET S'IL EST MORT ENTRE-TEMPS, ON NE TIRE PAS SUR UN FANTÔME.
+            //
+            // MESURÉ AVANT : le robot chargeait 80 pour le 20, puis 10 pour le
+            // 90 — les deux compléments JUSTES —, et pas un seul tir n'est
+            // jamais parti. Sa cible avait touché le canon pendant qu'il
+            // parlait ; `cibleBoulet` ne désignait plus rien, et la boucle
+            // effaçait le boulet au premier tour. Le robot perdait ses trois
+            // vies en vingt-huit secondes sans avoir tiré une fois.
+            if (!this.boulets.includes(ennemi)) { k--; continue; }
+            if (!await cur.tap(ennemi.el)) return fin();
+            if (!this.boulets.includes(ennemi)) { k--; continue; }
             // Le tir, à la main du robot.
             const valeur = Number(this.charge);
             this.charge = '';
@@ -661,9 +788,25 @@ class Canon extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Toujours ce chemin : je lis le nombre, je calcule le complément, je charge, et '
-            + 'SEULEMENT ensuite je tire. Le calcul d\'abord, le geste après.', this.chargeEl);
+        // « Le calcul d'abord, le geste après » redisait la phrase qui précède, et au-delà
+        // de 110 caractères la bulle se lit si lentement qu'on croit la démonstration
+        // plantée (js/core/activities/choice.js, COURT).
+        cur.say('Toujours ce chemin : je lis le nombre, je calcule le complément, je charge, puis je tire.',
+            this.chargeEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        // ET L'ON FIGE À LA FIN — sans quoi la partie continuerait toute seule,
+        // personne aux commandes : les astéroïdes atteindraient le canon l'un
+        // après l'autre, « 💥 Le 40 a atteint le canon ! » s'écrirait sous une
+        // explication terminée, et la démonstration finirait par se perdre.
+        //
+        // `'fige'` N'EST PAS UN MOT NEUF : la boucle le teste depuis toujours
+        // (`this.isDemo === 'fige'`), et PERSONNE NE LE POSAIT. Le garde-fou
+        // était écrit, le câblage manquait — il était donc impossible de
+        // comprendre en lisant la boucle que ce mode n'existait pas.
+        //
+        // Il reste truthy, donc tous les garde-fous de `BaseGame` qui
+        // interrogent `isDemo` continuent de répondre « on est en démonstration ».
+        this.isDemo = 'fige';
         fin();
     }
 

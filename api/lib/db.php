@@ -330,7 +330,17 @@ function applyCors(): void
  * empêcher qu'un client en boucle sature la base ; à remplacer par une vraie
  * solution si l'usage grandit.
  */
-function rateLimit(string $key, int $maxPerMinute = 60): void
+/**
+ * Compter un essai, et dire si le quota de la minute est dépassé.
+ *
+ * SÉPARÉE DE `rateLimit` PARCE QU'IL Y A DEUX FAÇONS DE REFUSER. L'API répond
+ * un 429 en JSON et s'arrête là ; l'administration, elle, est faite de pages
+ * HTML ordinaires que Rémy ouvre depuis le fond de la classe — lui servir un
+ * bloc JSON à la place de sa page de connexion, c'est le laisser devant un
+ * écran qu'il ne peut pas lire. Une seule mécanique de comptage, deux façons
+ * de le dire.
+ */
+function compterEtDepasse(string $key, int $maxPerMinute = 60): bool
 {
     // UN COMPTEUR PAR INSTALLATION, ET NON UN POUR TOUT LE SERVEUR.
     //
@@ -360,9 +370,48 @@ function rateLimit(string $key, int $maxPerMinute = 60): void
         }
     }
     $file = $dir . '/' . hash('sha256', $key) . '_' . date('YmdHi');
-    $count = is_file($file) ? (int) file_get_contents($file) : 0;
-    if ($count >= $maxPerMinute) {
+
+    // LIRE, AJOUTER ET ÉCRIRE SOUS UN SEUL VERROU.
+    //
+    // La version d'avant lisait le compteur, décidait, puis écrivait —
+    // `LOCK_EX` ne protégeait que l'écriture. Quarante requêtes lancées
+    // ensemble lisent donc toutes la même valeur AVANT qu'aucune n'ait écrit,
+    // et passent toutes. MESURÉ sur la page d'administration : quota de dix,
+    // 24 essais passés sur 40 au lieu de 10.
+    //
+    // Ce n'est pas un détail de concurrence théorique : c'est exactement la
+    // façon dont on force un mot de passe. On ouvre donc le fichier une fois,
+    // on le verrouille, et on ne le lâche qu'après avoir écrit.
+    $fh = @fopen($file, 'c+');
+    if ($fh === false) {
+        // Pas de compteur possible (disque plein, droits) : on laisse passer.
+        // Enfermer toute une classe dehors parce qu'un fichier temporaire ne
+        // s'ouvre pas serait un remède pire que le mal.
+        return false;
+    }
+    try {
+        if (!flock($fh, LOCK_EX)) {
+            return false;
+        }
+        $count = (int) stream_get_contents($fh);
+        if ($count >= $maxPerMinute) {
+            return true;
+        }
+        rewind($fh);
+        ftruncate($fh, 0);
+        fwrite($fh, (string) ($count + 1));
+        fflush($fh);
+        return false;
+    } finally {
+        @flock($fh, LOCK_UN);
+        @fclose($fh);
+    }
+}
+
+/** La même chose, pour l'API : on refuse en JSON et l'on s'arrête. */
+function rateLimit(string $key, int $maxPerMinute = 60): void
+{
+    if (compterEtDepasse($key, $maxPerMinute)) {
         fail(429, 'rate_limited', 'Trop de requêtes, réessayez dans une minute.');
     }
-    file_put_contents($file, (string) ($count + 1), LOCK_EX);
 }

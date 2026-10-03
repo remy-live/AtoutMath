@@ -29,11 +29,15 @@ import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { poserPaveTactile, sansClavierSysteme, auDoigt } from '../ui/paveTactile.js';
+import { paveVoulu, seSouvenirDuPave } from '../core/reglagesDuPoste.js';
+import { tirerOppose, reponseJuste } from '../core/opposeParentheses.js';
 import {
     tirerExpression, operationPrioritaire, critiquer, reduire, reduirePourEcrire,
     ecrireJeton,
-    ecrire, terminee
+    ecrire, terminee,
+    MARCHES_PRIORITES, MARCHES_OPPOSE, ANCIEN_NIVEAU
 } from '../core/priorites.js';
+import { marchesCochees, marcheAuRang, totalDe } from '../core/progression.js';
 
 const COMPETENCE = 'num.prio';
 
@@ -41,7 +45,27 @@ class Priorites extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'priorites');
         this.rng = makeRng(this.params.seed);
-        this.niveau = Math.max(1, Math.min(4, parseInt(this.params.niveau) || 2));
+        // CINQ BARREAUX QUAND L'OPPOSÉ EST EN JEU, quatre sinon : l'échelle de
+        // Rémy ajoute « avec les priorités » APRÈS les quatre de remplissage.
+        const hautBarreau = this.params.oppose ? 5 : 4;
+        this.niveau = Math.max(1, Math.min(hautBarreau, parseInt(this.params.niveau) || 2));
+        // LES BARREAUX COCHÉS SE PARTAGENT LES QUESTIONS, DANS L'ORDRE.
+        //
+        // Rémy : « il faudrait pouvoir faire les check box comme pour le
+        // calcul littéral ». Le jeu lisait `params.niveau` UNE fois, ici, et
+        // toute la partie restait dessus : on ne pouvait demander qu'un seul
+        // barreau à la fois, et surtout pas « les trois premiers » ni « le 2
+        // et le 4 » — ce qu'un menu à choix unique ne sait pas dire.
+        //
+        // La feuille papier le faisait déjà (`prioritesFiche.js`) ; l'écran,
+        // non. Deux portes vers le même travail qui ne se règlent pas pareil,
+        // c'est une des deux qu'on oublie.
+        this.echelle = this.params.oppose ? MARCHES_OPPOSE : MARCHES_PRIORITES;
+        this.cochees = marchesCochees(this.params, this.echelle, ANCIEN_NIVEAU);
+        // ON COMPTE LES QUESTIONS POSÉES, PAS LES RÉUSSIES : une question
+        // ratée reste une question, et la progression ne doit pas piétiner sur
+        // l'élève qui bute — c'est justement celui qu'on veut voir avancer.
+        this.poses = 0;
         this.avecParentheses = this.params.parentheses !== false;
         this.avecPuissances = !!this.params.puissances;
         // LES NOMBRES RELATIFS DANS LA CASCADE. Rémy : « sur les Prio-Bot
@@ -52,6 +76,40 @@ class Priorites extends BaseGame {
         // le résultat final et ne peut pas dire où l'élève a dérapé ; la
         // cascade, elle, s'arrête sur la ligne fautive.
         this.relatifs = !!this.params.relatifs;
+        // LE MOINS DEVANT UNE PARENTHÈSE — Rémy : « les élèves galèrent aux
+        // exercices −(−3+5×6)−(−7) […] je pense qu'il faut être progressif ».
+        // C'est une TABLE DE FORMES différente, et rien d'autre : la cascade,
+        // la correction et les messages ne changent pas d'un mot.
+        this.avecOppose = !!this.params.oppose;
+        // Un opposé sans négatifs n'enseigne rien : le réglage entraîne l'autre.
+        if (this.avecOppose) this.relatifs = true;
+        // ─────────────────────────────────────────────────────────────────────
+        // LES QUATRE PREMIERS BARREAUX DE L'OPPOSÉ NE SONT PLUS ICI.
+        //
+        // Rémy, après avoir vu ses élèves dessus : « Au départ, je préfèrerais
+        // juste remplacer (avec QCM éventuellement) −(−4) = ? −(+4) = ? puis
+        // −(−4) + (−5) = .......... = ; l'élève écrit +4 − 5 et donne le
+        // résultat. […] Puis avec des priorités opératoires ».
+        //
+        // POURQUOI CE N'EST PAS UN DÉTAIL D'INTERFACE. La cascade à cliquer est
+        // le geste du chapitre des PRIORITÉS : trancher un ordre. Ici on
+        // apprend UNE règle de signe, et on ne devrait avoir à penser qu'à
+        // elle. Demander de conduire une cascade dès la première question fait
+        // payer les deux difficultés d'un coup — c'est exactement ce qui a
+        // arrêté ses élèves.
+        //
+        // ILS ONT LEURS PROPRES EXERCICES, ET LEURS PROPRES ACTIVITÉS :
+        // `calc-oppose-regle` est un QCM servi par `activities/choice.js`,
+        // `calc-oppose-enlever` une saisie ligne à ligne servie par
+        // `activities/litteralSaisie.js` et son `meta.etapes`.
+        //
+        // RÉMY : « pourquoi n'utilises tu pas le système de QCM, pourquoi as tu
+        // tout refait », puis « ce n'est pas trop joli non plus ». J'avais
+        // écrit ici un QCM et un remplissage à la main — deux cent quatre-vingts
+        // lignes qui refaisaient, moins bien, ce que deux activités savaient
+        // déjà faire : les essais, l'échelle d'aide, la réduction des
+        // propositions, la barre d'outils, le robot, la traçabilité au bilan.
+        // Ce fichier ne conduit plus que ce qu'il sait conduire : une cascade.
         // L'option qui voyage avec chaque appel au noyau : c'est elle qui
         // autorise une soustraction à descendre sous zéro.
         this.opts = { relatifs: this.relatifs };
@@ -76,7 +134,9 @@ class Priorites extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .pr-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .pr-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* LA CASCADE. Chaque ligne sous la précédente, alignée à
                    gauche : c'est la présentation du cahier, et elle rend la
@@ -98,11 +158,19 @@ class Priorites extends BaseGame {
                     padding: 2px 6px; border-radius: 8px; line-height: 1.1;
                     border: 2px solid transparent;
                 }
+                /* L'ENCRE EST LA VERSION « TEXTE » DU JETON, PAS LE JETON.
+                   --primary est une couleur de FOND ; posée en encre sur
+                   --bg-hover, elle donne 1,65 de contraste en thème sombre —
+                   deux gris-bleus l'un sur l'autre. --primary-texte existe
+                   exactement pour cela, et il s'éclaircit en thème sombre au
+                   lieu de s'assombrir. */
                 .pr-jeton--op {
-                    cursor: pointer; background: var(--bg-hover); color: var(--primary);
+                    cursor: pointer; background: var(--bg-hover); color: var(--primary-texte);
                     border-color: var(--border); transition: .12s;
                 }
-                .pr-jeton--op:hover { background: var(--primary); color: #fff; }
+                @media (hover: hover) {
+                    .pr-jeton--op:hover { background: var(--primary); color: #fff; }
+                }
 
                 /* L'OPÉRATION SOULIGNÉE : UN SEUL TRAIT sous les trois jetons.
                    C'est pour cela qu'ils sont enveloppés ensemble — souligner
@@ -141,12 +209,27 @@ class Priorites extends BaseGame {
                 }
                 .pr-note--ok { color: var(--success); font-weight: 700; }
                 .pr-note--ko { color: var(--danger); font-weight: 700; }
+
             </style>
             <div class="pr-wrap">
                 <div class="pr-tete">
                     <span class="pr-score" data-score></span>
                     <button type="button" class="pr-btn" data-indice>💡 Pourquoi ?</button>
                     <button type="button" class="pr-btn" data-neuf>↺ Autre calcul</button>
+                    <!-- LE PAVÉ À LA DEMANDE, ET RIEN NE BOUGE TANT QU'ON NE
+                         LE DEMANDE PAS.
+
+                         RÉMY : « pour le prio-bot relatifs pourrait on
+                         éventuellement avoir une touche qui affiche un pavé
+                         numérique avec + - et () mais si on ne demande rien ne
+                         change pas le design car c'est parfait telle quel ».
+
+                         Le pavé EXISTE déjà, mais seulement au doigt (moins de
+                         768 px) : sur un ordinateur, l'élève tape au clavier,
+                         et le signe moins des relatifs est au mauvais endroit
+                         sur un AZERTY. La touche l'ouvre, et seulement si on
+                         appuie dessus. -->
+                    <button type="button" class="pr-btn" data-pave hidden>⌨ Pavé</button>
                 </div>
                 <div class="pr-cascade" data-cascade></div>
                 <p class="pr-note" data-note></p>
@@ -161,7 +244,14 @@ class Priorites extends BaseGame {
         // iOS refuse alors d'ouvrir son clavier, et l'on regardait un curseur
         // clignoter sans pouvoir écrire. Le pavé est à nous, il s'ouvre
         // toujours, et il vise le champ courant — recréé à chaque redessin.
-        if (auDoigt()) {
+        // LE PAVÉ SE MONTE AU DOIGT TOUT SEUL, ET AILLEURS SUR DEMANDE.
+        //
+        // Il était écrit en ligne dans un `if (auDoigt())` ; il devient une
+        // méthode pour que la touche ⌨ puisse l'appeler, et pour qu'il n'y
+        // ait jamais DEUX écritures du même pavé — la seconde aurait dérivé
+        // de la première au premier ajustement.
+        this.monterLePave = () => {
+            if (this.pave) return;
             const zone = this.container.querySelector('.pr-wrap');
             this.pave = poserPaveTactile(zone, {
                 // Sous la cascade, avant la note : en fin de page le pavé
@@ -187,6 +277,36 @@ class Priorites extends BaseGame {
                     if (trou && trou.value.trim()) this.valider(trou);
                 }
             });
+            const btn = this.container.querySelector('[data-pave]');
+            if (btn) btn.hidden = true;
+        };
+
+        // ── QUI OUVRE LE PAVÉ, ET QUAND ─────────────────────────────────────
+        //
+        // AU DOIGT, TOUJOURS : le champ porte `inputmode: none` (le clavier du
+        // système ne s'ouvre pas), le pavé est donc la SEULE façon d'écrire.
+        //
+        // AILLEURS, SUR DEMANDE. Rémy : « si on ne demande rien ne change pas
+        // le design car c'est parfait telle quel ». La touche est donc cachée
+        // là où le pavé est déjà monté, et l'écran ne change pas d'un pixel
+        // tant que personne n'appuie.
+        //
+        // ET L'APPAREIL S'EN SOUVIENT. Un élève qui a besoin du pavé en a
+        // besoin à chaque question : le lui redemander à chaque fois serait le
+        // lui refuser. Le souvenir est par APPAREIL, pas par élève — c'est une
+        // façon de saisir, pas un réglage pédagogique.
+        const bouton = this.container.querySelector('[data-pave]');
+        if (auDoigt() || paveVoulu()) {
+            this.monterLePave();
+        } else if (bouton) {
+            bouton.hidden = false;
+            bouton.addEventListener('click', () => {
+                this.monterLePave();
+                seSouvenirDuPave(true);
+                // On rend la main au champ : l'élève venait d'y écrire.
+                const trou = this.container.querySelector('.pr-trou');
+                if (trou) trou.focus();
+            });
         }
         this.container.querySelector('[data-neuf]').addEventListener('click', () => this.poser());
         this.container.querySelector('[data-indice]').addEventListener('click', () => this.expliquer());
@@ -196,9 +316,16 @@ class Priorites extends BaseGame {
     startGameLoop() { /* Pas d'horloge : on réfléchit à son rythme. */ }
 
     poser() {
+        // LE BARREAU DE CETTE QUESTION-CI — voir le constructeur. `marcheAuRang`
+        // partage les questions entre les barreaux cochés, dans l'ordre : sur
+        // seize questions et trois barreaux, l'élève en fait six du premier,
+        // cinq du deuxième, cinq du troisième. Il n'y a rien à régler de plus.
+        this.niveau = Number(marcheAuRang(this.poses++, this.cochees,
+            totalDe(null, this.params), this.params)) || this.niveau;
         const e = tirerExpression({
             rng: this.rng, niveau: this.niveau, parentheses: this.avecParentheses,
-            puissances: this.avecPuissances, relatifs: this.relatifs
+            puissances: this.avecPuissances, relatifs: this.relatifs,
+            avecOppose: this.avecOppose
         });
         this.expression = e;
         // Chaque ligne écrite, avec l'endroit où elle est soulignée.
@@ -269,7 +396,19 @@ class Priorites extends BaseGame {
         // à faire : « 4² » n'a pas de signe entre deux nombres, il y a un
         // nombre qui porte son exposant. L'élève la souligne donc comme il
         // soulignerait un ×.
-        const agissant = j.type === 'op' || j.type === 'p';
+        // ET LE MOINS UNAIRE AUSSI — c'est une opération, la seule de « −(−4) ».
+        //
+        // Rémy : « −(−4) il demande de cliquer sur une opération mais ça ne va
+        // pas, ça ne fait rien ». MESURÉ : sur « − (−4) », les deux jetons
+        // sortaient en `.pr-jeton` nus, sans `--op`, donc sans gestionnaire de
+        // clic. L'écran réclamait un clic et n'offrait rien à cliquer — l'élève
+        // ne pouvait pas se tromper, il était simplement arrêté.
+        //
+        // Le jeton `u` avait été ajouté au MOTEUR sans l'être à la MAIN qui le
+        // montre : `etapes()` savait le réduire, l'écran ne savait pas le
+        // proposer. Une épreuve du moteur passait donc au vert sur un exercice
+        // injouable.
+        const agissant = j.type === 'op' || j.type === 'p' || j.type === 'u';
         el.className = 'pr-jeton' + (agissant ? ' pr-jeton--op' : '');
         // LE VOISIN DE GAUCHE VOYAGE AVEC LE JETON : c'est lui qui décide si le
         // nombre négatif prend ses parenthèses. Sans lui, la cascade écrivait

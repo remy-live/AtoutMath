@@ -78,7 +78,9 @@ class Virgule extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: .82rem; padding: 4px 10px;
                 }
-                .vg-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .vg-btn:hover { background: var(--bg-hover); }
+                }
 
                 /* Le fil des trois temps : on doit voir où l'on en est, et
                    surtout qu'il RESTE quelque chose après. */
@@ -95,7 +97,7 @@ class Virgule extends BaseGame {
                     font-size: clamp(21px, 6cqw, 34px); font-weight: 800; flex: 0 0 auto;
                     letter-spacing: .01em; text-align: center;
                 }
-                .vg-op b { color: var(--primary); }
+                .vg-op b { color: var(--primary-texte); }
                 .vg-consigne {
                     text-align: center; max-width: 560px; flex: 0 0 auto;
                     font-size: clamp(12px, 2.9cqw, 15px); line-height: 1.35; color: var(--text-muted);
@@ -151,7 +153,18 @@ class Virgule extends BaseGame {
                     position: absolute; bottom: 2px; height: 17px;
                     display: flex; align-items: center; justify-content: center;
                     font-size: 9px; font-weight: 800; letter-spacing: .02em;
-                    color: #fff; background: var(--danger); border-radius: 5px;
+                    /* DU BLANC SUR « --danger » NE FAIT QUE 3,99 — il en faut 4,5.
+                       Mesuré en thème sombre sur les PIXELS peints
+                       (tools/quiEstIllisible.mjs) : 3,76 pour « unités ».
+                       Et ce mot-là est le repère du tableau : c'est lui qui dit
+                       de quel côté de la virgule on se trouve. On ne touche pas
+                       au jeton — « --danger » sert partout et son rouge doit
+                       rester reconnaissable — on fonce LE FOND DE CE BADGE
+                       seul, assez pour passer le seuil et pas assez pour
+                       changer de couleur à l'œil. */
+                    color: #fff;
+                    background: color-mix(in srgb, var(--danger) 78%, #000);
+                    border-radius: 5px;
                     z-index: 4; pointer-events: none; white-space: nowrap;
                     transition: left .34s cubic-bezier(.35, .1, .25, 1);
                 }
@@ -207,7 +220,7 @@ class Virgule extends BaseGame {
                     font-size: clamp(12px, 2.9cqw, 15px); font-weight: 800; flex: 0 0 auto;
                     color: var(--text-muted);
                 }
-                .vg-compteur b { color: var(--primary); }
+                .vg-compteur b { color: var(--primary-texte); }
 
                 /* Les quatre propositions, en cartes : « 0,025 » ne tient pas
                    dans une bulle ronde. */
@@ -219,13 +232,15 @@ class Virgule extends BaseGame {
                     display: flex; align-items: center; justify-content: center;
                     min-height: clamp(54px, 11cqw, 72px); padding: 11px 13px;
                     border-radius: 18px; border: 3px solid rgba(255,255,255,.22);
-                    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+                    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
                     color: #fff; font-weight: 800; font-size: clamp(1.05rem, 4cqw, 1.5rem);
-                    cursor: pointer; box-shadow: 0 7px 18px rgba(79,70,229,.32);
+                    cursor: pointer; box-shadow: 0 7px 18px color-mix(in srgb, var(--primary) 32%, transparent);
                     transition: all .22s cubic-bezier(.4,0,.2,1);
                     -webkit-tap-highlight-color: transparent;
                 }
-                .vg-carte:hover:not(:disabled) { transform: translateY(-4px); }
+                @media (hover: hover) {
+                    .vg-carte:hover:not(:disabled) { transform: translateY(-4px); }
+                }
                 .vg-carte:disabled { cursor: default; }
                 .vg-carte--ok { background: linear-gradient(135deg, #34d399, #16a34a); }
                 .vg-carte--ko { background: linear-gradient(135deg, #f87171, #dc2626); }
@@ -238,7 +253,7 @@ class Virgule extends BaseGame {
                 .vg-ecran {
                     min-width: clamp(140px, 42cqw, 230px); padding: 8px 16px;
                     border: 3px solid var(--primary); border-radius: 14px;
-                    background: var(--bg-panel); color: var(--primary); text-align: center;
+                    background: var(--bg-panel); color: var(--primary-texte); text-align: center;
                 }
                 .vg-ecran--vide::after { content: '?'; opacity: .4; }
                 .vg-pave {

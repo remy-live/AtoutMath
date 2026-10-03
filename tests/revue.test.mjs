@@ -13,7 +13,7 @@ import { exercices } from '../js/data/catalog.js';
 
 const exo = (id, extra = {}) => ({
     id, title: `Exercice ${id}`,
-    tags: { chemin: ['Numérique', 'Calcul'], niveaux: ['6ème'] },
+    tags: { chemin: ['Nombres et calculs', 'Calcul'], niveaux: ['6ème'] },
     ...extra
 });
 
@@ -265,9 +265,9 @@ test('un tri venu d\'une colonne sait dire son nom et son sens', () => {
 
 test('une proposition de classement se garde et se relit', () => {
     // La virgule d'une fiche écrite à la main devient le séparateur de liste.
-    const r = decider(nouvelleRevue(), 'a', { tags: 'Géométrique > Angles, 5ème' });
-    assert.equal(ficheDe(r, 'a').tags, 'Géométrique > Angles · 5ème');
-    assert.equal(ficheDe(lireRevue(JSON.stringify(r)), 'a').tags, 'Géométrique > Angles · 5ème');
+    const r = decider(nouvelleRevue(), 'a', { tags: 'Espace et géométrie > Angles, 5ème' });
+    assert.equal(ficheDe(r, 'a').tags, 'Espace et géométrie > Angles · 5ème');
+    assert.equal(ficheDe(lireRevue(JSON.stringify(r)), 'a').tags, 'Espace et géométrie > Angles · 5ème');
 });
 
 test('elle date la ligne, comme toute décision', () => {
@@ -325,7 +325,8 @@ test('un classement se lit comme une liste, quel que soit le séparateur', () =>
 });
 
 test('il s\'écrit avec le point médian, et sans doublon', () => {
-    assert.equal(ecrireTags(['Numérique', 'Fractions', 'Numérique']), 'Numérique · Fractions');
+    assert.equal(ecrireTags(['Nombres et calculs', 'Fractions', 'Nombres et calculs']),
+        'Nombres et calculs · Fractions');
     assert.equal(ecrireTags([]), '');
 });
 

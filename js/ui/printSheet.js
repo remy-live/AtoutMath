@@ -16,6 +16,7 @@
 // la page, l'en-tête et la page des solutions sont communs.
 
 import { getGenerator, generateurDeFiche } from '../core/registry.js';
+import { replierApercuSiEtroit } from './modal.js';
 import { ficheSvg, refaireSvg, telechargerSvg } from './icones.js';
 import { makeRng } from '../core/ids.js';
 import { dessinerChemin } from '../core/cheminSvg.js';
@@ -349,9 +350,12 @@ function assurerModale() {
                         <select id="fp-couleur" class="cfg-input"></select></label>
                 </div>
             </details>
+            <details class="fp-apercu-repli" open>
+                <summary>L’aperçu de la feuille</summary>
             <div class="fp-apercu-cadre">
                 <div class="fp-apercu" id="fp-apercu"></div>
             </div>
+            </details>
             <div class="fp-note" id="fp-note">Page 1 : les grilles, avec un en-tête Nom / Date.
                 Page 2 : les solutions — à garder pour soi ou à donner après.</div>
             <div class="modal-actions-center">
@@ -360,6 +364,7 @@ function assurerModale() {
             </div>
         </div>`;
     document.body.appendChild(modal);
+    replierApercuSiEtroit(modal);
     // Les deux commandes de fenêtre — ancrer/détacher, replier les réglages —
     // sont posées dans le titre une fois pour toutes.
     fenetreFiche = equiperFenetre(modal, CLE_FENETRE, { peutDetacher: fenetresDetachables });
@@ -631,6 +636,14 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
             // boulangerie trois fois sur la même feuille.
             items.push(generator.generate(reglages, {
                 rng: makeRng(), index: items.length,
+                // COMBIEN DE BLOCS AURA LA FEUILLE. Un générateur à
+                // progression en a besoin pour partager ses marches sur la
+                // page — voir `totalDe` dans core/progression.js. Sans lui, la
+                // feuille retombait sur deux calculs par marche et les
+                // dernières marches n'apparaissaient jamais sur une page
+                // courte, ou toutes les dernières lignes tombaient sur la plus
+                // dure sur une page longue.
+                total,
                 // UNE FICHE EST DU PAPIER, et un générateur a le droit de le
                 // savoir : la feuille de questions le disait déjà, la feuille
                 // de grilles non. C'est ce qui permet à un axe gradué d'y
@@ -754,6 +767,11 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
                 // revenir, et le tirage se rétrécit à chaque clic.
                 items[i] = generator.generate(reglages, {
                     rng: makeRng(), index: i,
+                    // MÊME RANG, MÊME TOTAL : relancer un bloc doit rendre un
+                    // calcul de la MÊME marche que celui qu'on remplace, sinon
+                    // un clic sur la première ligne d'une feuille qui monte en
+                    // ramènerait la plus dure.
+                    total: items.length,
                     themesExclus: items
                         .filter((_, j) => j !== i)
                         .map(it => it.meta && it.meta.theme).filter(Boolean)

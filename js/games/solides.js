@@ -22,6 +22,8 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
+import { marchesCochees, marcheAuRang, totalDe } from '../core/progression.js';
+import { LISTE_MARCHES, ANCIEN } from '../core/generators/solides.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import {
     ASPECTS, tirerQuestion, dessiner, facesVisibles, aretesCachees, sommetsCaches,
@@ -41,7 +43,7 @@ class Solides extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'solides');
         this.rng = makeRng(this.params.seed);
-        this.niveau = this.params.niveau || 'tous';
+        this.poses = 0;
         this.aspectVoulu = this.params.aspect || 'tous';
         this.reussis = 0;
         this.marques = new Set();
@@ -169,7 +171,9 @@ class Solides extends BaseGame {
                     border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-main);
                     font: inherit; font-weight: 800; font-size: 1rem;
                 }
-                .sd-touche:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .sd-touche:hover { background: var(--bg-hover); }
+                }
                 .sd-ecran {
                     min-width: 66px; text-align: center; font-weight: 800; font-size: 1.25rem;
                     border: 2px solid var(--primary); border-radius: 10px; padding: 5px 10px;
@@ -224,6 +228,17 @@ class Solides extends BaseGame {
     // --- Une question -------------------------------------------------------
 
     poser() {
+        // LA MARCHE DE LA QUESTION QU'ON POSE. Le jeu lisait `params.niveau`
+        // UNE fois, au démarrage, et toute la partie restait dessus. Depuis
+        // que le réglage est une colonne de cases (Rémy : « il faudrait
+        // pouvoir faire les check box comme pour le calcul littéral »), les
+        // niveaux cochés se partagent les questions dans l'ordre — voir
+        // core/progression.js. On compte les questions POSÉES et non les
+        // réussies : une question ratée reste une question, et la progression
+        // ne doit pas piétiner.
+        this.niveau = String(marcheAuRang(this.poses++,
+            marchesCochees(this.params, LISTE_MARCHES, ANCIEN),
+            totalDe(null, this.params), this.params) || 'tous');
         this.q = tirerQuestion(this.rng, {
             niveau: this.niveau, aspect: this.aspectVoulu, eviter: this.precedent
         });

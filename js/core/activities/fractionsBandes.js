@@ -28,7 +28,7 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
-import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
@@ -534,7 +534,9 @@ export function mount(container, session, opts = {}) {
 
         if (!await gate.waitTurn() || destroyed) return;
         if (scene.reussi) scene.reussi();
-        cursor.say(item.explanation || 'Et voilà : la longueur n\'a pas bougé.',
+        // L'EXPLICATION VIENT DU GÉNÉRATEUR : rien ne garantit qu'elle tienne
+        // en une bulle, et elle grandira sans que personne relise cette ligne.
+        cursor.say(enUneBulle(item.explanation, 'Et voilà : la longueur n\'a pas bougé.'),
             sceneEl || container);
         if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
         renderNext();

@@ -206,8 +206,18 @@ export function verifierCodage(fig, pose, ids = ORDRE_SEGMENTS, points = POINTS_
         problemes.push({
             genre: 'manque',
             cibles: nus,
+            // ON NOMME CE QUI MANQUE, MÊME QUAND TOUT MANQUE.
+            //
+            // Le message générique — « chaque segment doit porter une marque »
+            // — ne paraissait QU'AU DÉPART, c'est-à-dire au seul moment où
+            // l'élève ne sait pas encore ce que « chaque segment » recouvre.
+            // Or sur un losange avec ses diagonales, cela veut dire HUIT
+            // segments : les quatre côtés ET les quatre demi-diagonales. Rien
+            // ne le disait, et c'est justement ce qui bloque : on code les
+            // quatre côtés, on valide, et l'on ne comprend pas le refus.
             message: nus.length === ids.length
-                ? 'Rien n\'est codé pour l\'instant : chaque segment doit porter une marque.'
+                ? `Rien n'est codé pour l'instant. Chaque segment doit porter une `
+                    + `marque : ${nus.map(nomSegment).join(', ')}.`
                 : `Il reste ${nus.length} segment${nus.length > 1 ? 's' : ''} sans marque : `
                     + `${nus.map(nomSegment).join(', ')}.`
         });

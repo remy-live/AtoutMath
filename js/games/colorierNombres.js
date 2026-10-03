@@ -56,7 +56,7 @@ class ColorierNombres extends BaseGame {
                     text-align: center; flex: 0 0 auto; max-width: 640px; line-height: 1.35;
                     font-size: clamp(11px, 2.6cqw, 14px); color: var(--text-muted);
                 }
-                .cn-consigne b { color: var(--primary); }
+                .cn-consigne b { color: var(--primary-texte); }
 
                 /* LA GRILLE SE MESURE SUR LA SCÈNE, pas sur le plateau entier :
                    la consigne, les boutons et la note prennent déjà leur part,
@@ -94,7 +94,7 @@ class ColorierNombres extends BaseGame {
                 /* La ligne dont le compte ne peut plus tomber juste : on le dit
                    tout de suite plutôt qu'à la fin, quand il faudrait chercher. */
                 .cn-ind.cn-ind--faux { color: var(--danger); }
-                .cn-ind.cn-ind--visee { color: var(--primary); }
+                .cn-ind.cn-ind--visee { color: var(--primary-texte); }
 
                 .cn-case {
                     width: var(--cn-case); height: var(--cn-case); box-sizing: border-box;
@@ -126,7 +126,7 @@ class ColorierNombres extends BaseGame {
                     padding: 6px 11px; font-size: .82rem; min-height: 34px;
                 }
                 .cn-btn--actif {
-                    border-color: var(--primary); color: var(--primary);
+                    border-color: var(--primary); color: var(--primary-texte);
                     background: color-mix(in srgb, var(--primary) 12%, var(--bg-panel));
                 }
                 .cn-note {
@@ -135,7 +135,7 @@ class ColorierNombres extends BaseGame {
                 }
                 .cn-note--ok { color: var(--success); font-weight: 700; }
                 .cn-note--ko { color: var(--danger); font-weight: 600; }
-                .cn-note b { color: var(--primary); }
+                .cn-note b { color: var(--primary-texte); }
 
                 /* --- LA GRILLE FINIE DEVIENT UN DESSIN ---------------------
                    Rémy : « Quand le dessin est bon dis le ».
@@ -553,7 +553,12 @@ class ColorierNombres extends BaseGame {
 
         await gate.wait(400);
         dire('Les nombres disent les blocs coloriés de chaque ligne.');
-        await gate.wait(DEMO_SPEED * 2);
+        // `DEMO_SPEED` EST UN TABLEAU DE DURÉES NOMMÉES, PAS UN FACTEUR — le
+        // piège est documenté en tête de `core/demoPointer.js`, et il était
+        // encore ici quatre fois. « DEMO_SPEED * 2 » vaut NaN : le garde-fou
+        // de `gate.wait` le rattrapait à 900 ms, si bien que la phrase
+        // d'ouverture tenait 0,9 s au lieu du temps de la lire.
+        await gate.wait(DEMO_SPEED.between);
 
         // UN DÉPLACEMENT PAR LIGNE, PAS PAR CASE. Mesuré : à raison d'un trajet
         // de curseur et d'une pause par case, le robot avait posé cinq croix au
@@ -570,7 +575,9 @@ class ColorierNombres extends BaseGame {
             const y0 = coup.sens === 'ligne' ? coup.index : premiere.i;
             const x0 = coup.sens === 'ligne' ? premiere.i : coup.index;
             const cible = this.plateauEl.querySelector(`[data-x="${x0}"][data-y="${y0}"]`);
-            if (cible) await cursor.moveTo(cible, DEMO_SPEED / 3);
+            // NaN ici faisait TÉLÉPORTER le curseur : on ne voyait pas le
+            // trajet, c'est-à-dire la seule chose que ce geste montre.
+            if (cible) await cursor.moveTo(cible, DEMO_SPEED.move);
             if (gate.stopped) break;
 
             for (const { i, v } of coup.cases) {
@@ -579,7 +586,7 @@ class ColorierNombres extends BaseGame {
                 this.etat[y][x] = v;
             }
             this.dessiner();
-            await gate.wait(pas < 3 ? DEMO_SPEED : DEMO_SPEED / 3);
+            await gate.wait(pas < 3 ? DEMO_SPEED.settle : DEMO_SPEED.press);
             if (verifier(this.grille.solution, this.etat).fini) break;
         }
 
@@ -596,7 +603,7 @@ class ColorierNombres extends BaseGame {
                   + 'il ne reste que le dessin — et l\'on passe à la suivante quand on veut.'
                 : 'Et le dessin est bon. Les croix s\'effacent, il ne reste que la forme — '
                   + 'et l\'on passe à la suivante quand on veut.');
-            await gate.wait(DEMO_SPEED * 2);
+            await gate.wait(DEMO_SPEED.between);
         }
         cursor.destroy();
     }

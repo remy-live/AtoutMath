@@ -190,7 +190,7 @@ class Embouteillage extends BaseGame {
                 .eb-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .eb-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }
@@ -519,14 +519,21 @@ class Embouteillage extends BaseGame {
         if (!this.jeu) return fin();
         if (!await cur.pause(400) || !this.isRunning) return fin();
 
-        cur.say('Chaque voiture ne glisse que dans SON axe : celles qui sont couchées vont '
-            + 'à gauche et à droite, celles qui sont debout montent et descendent. Jamais '
-            + 'l\'inverse, et jamais par-dessus une autre.', this.plateauEl);
+        // UNE IDÉE PAR BULLE, chacune sous 110 caractères : au-delà, la bulle se lit si
+        // lentement (340 ms le mot) qu'on croit la démonstration plantée.
+        cur.say('Les voitures couchées vont à gauche et à droite, les voitures debout montent et descendent.',
+        this.plateauEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
-        cur.say('Alors on ne regarde pas la rouge : on regarde CE QUI LA BLOQUE. Et si celle-là '
-            + 'ne peut pas bouger non plus, on regarde ce qui la bloque, elle. C\'est en '
-            + 'remontant cette chaîne qu\'on trouve par quoi commencer.', this.plateauEl);
+        cur.say('Jamais l\'inverse, et jamais par-dessus une autre.', this.plateauEl);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        // « C'est en remontant cette chaîne… » nomme la méthode que les deux bulles
+        // précédentes viennent de MONTRER : elle est partie.
+        cur.say('Je ne regarde pas la rouge : je regarde CE QUI LA BLOQUE.', this.plateauEl);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Et si celle-là ne bouge pas non plus, je regarde ce qui la bloque, elle.', this.plateauEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let i = 0; i < 4; i++) {
@@ -534,12 +541,12 @@ class Embouteillage extends BaseGame {
             if (!c) break;
             this.montre = c.k;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.step || 500) || !this.isRunning) return fin();
+            if (!await cur.pause(500) || !this.isRunning) return fin();
             this.etat = jouer(this.etat, c);
             this.coups++;
             this.montre = null;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.step || 500) || !this.isRunning) return fin();
+            if (!await cur.pause(500) || !this.isRunning) return fin();
         }
         cur.say(`Il en faut ${this.jeu.mini} au minimum sur ce parking-là, et le compteur te dit `
             + 'à chaque coup combien il en reste : s\'il monte, tu viens de faire un détour.',

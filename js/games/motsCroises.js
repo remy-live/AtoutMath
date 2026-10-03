@@ -67,9 +67,30 @@ class MotsCroises extends BaseGame {
                    de son emplacement et venait se poser PAR-DESSUS le clavier.
                    Sa hauteur ne vient plus de son contenu mais de ce qui
                    reste — sans quoi la mesurer serait circulaire. */
+                /* ET IL RETIENT CE QUI DÉBORDE. C'est un FILET, pas un
+                   réglage : la correction précédente avait repris quatre-vingts
+                   pixels à ce qui n'est pas la grille, ce qui suffisait à la
+                   grille du jour — mais un budget se dépasse, et quand il se
+                   dépassait la grille se posait PAR-DESSUS le clavier. Mesuré
+                   sur un téléphone couché : corps de 118 px, grille de 259,
+                   débordement de 141 — trente et un par-dessus la définition,
+                   cinquante-quatre par-dessus le clavier, neuf par-dessus les
+                   boutons. Les cases portent position: relative, donc elles
+                   passent DEVANT leurs voisines : une case qu'on ne peut pas
+                   toucher parce qu'un clavier est dessous, et un clavier qu'on
+                   ne peut pas toucher parce qu'une grille est dessus.
+                   Avec overflow: auto, le pire cas devient un défilement.
+
+                   SAFE CENTER, ET NON CENTER : un enfant centré qui déborde
+                   sort des DEUX côtés, et le côté du haut n'est pas atteignable
+                   au défilement — la première rangée serait perdue. safe center
+                   centre tant que ça tient, et s'aligne au début dès que ça ne
+                   tient plus. */
                 .mc-corps {
                     flex: 1 1 0; min-height: 0; width: 100%;
-                    display: flex; gap: 14px; align-items: center; justify-content: center;
+                    display: flex; gap: 14px;
+                    align-items: safe center; justify-content: safe center;
+                    overflow: auto;
                     container-type: size; container-name: mccorps;
                 }
                 /* La liste, elle, reste calée en haut : centrée, elle
@@ -142,7 +163,7 @@ class MotsCroises extends BaseGame {
                     text-align: center; font-weight: 700; max-width: 46ch; min-height: 2.4em;
                     font-size: clamp(12px, min(2.6cqw, 3.2cqh), 17px); line-height: 1.3;
                 }
-                .mc-indice b { color: var(--primary); }
+                .mc-indice b { color: var(--primary-texte); }
 
                 /* LA LISTE COMPLÈTE, dépliable — et posée À CÔTÉ dès que la
                    largeur le permet : c'est la mise en page du journal. */
@@ -158,9 +179,11 @@ class MotsCroises extends BaseGame {
                     max-height: 100%; overflow-y: auto; font-size: .82rem; line-height: 1.35;
                     overflow-wrap: anywhere;
                 }
-                .mc-listes h5 { margin: 4px 0 2px; font-size: .8rem; color: var(--primary); }
+                .mc-listes h5 { margin: 4px 0 2px; font-size: .8rem; color: var(--primary-texte); }
                 .mc-def { cursor: pointer; padding: 1px 3px; border-radius: 4px; }
-                .mc-def:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .mc-def:hover { background: var(--bg-hover); }
+                }
                 .mc-def--faite { color: var(--text-muted); text-decoration: line-through; }
                 .mc-def--vue { background: color-mix(in srgb, var(--warning, #f59e0b) 22%, transparent); }
                 @container (min-width: 980px) {
@@ -185,7 +208,12 @@ class MotsCroises extends BaseGame {
                     display: flex; align-items: center; justify-content: center;
                     -webkit-tap-highlight-color: transparent;
                 }
-                .mc-touche--eff { background: #fef3c7; border-color: #fcd34d; }
+                /* LA TOUCHE D'EFFACEMENT PORTE SON FOND EN DUR ; SON ENCRE AUSSI.
+                   Elle héritait de --text-main, qui devient BLANC en thème
+                   sombre : du blanc sur un ambre pâle, mesuré à 1,06 de
+                   contraste. Un fond fixe demande une encre fixe — l'un sans
+                   l'autre est la recette du blanc sur blanc. */
+                .mc-touche--eff { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
 
                 .mc-barre { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; flex: 0 0 auto; }
                 .mc-btn {
@@ -220,7 +248,13 @@ class MotsCroises extends BaseGame {
                    sur deux rangées faute d'être un peu plus serrés, la note
                    redit ce que la grille montre, et la définition n'a pas
                    besoin d'être écrite en dix-sept points sur un téléphone. */
-                @container (max-width: 520px) {
+                /* ET LA MÊME CURE QUAND C'EST LA HAUTEUR QUI MANQUE. Le bloc
+                   ne regardait que la largeur : un téléphone COUCHÉ fait 804 px
+                   de large, n'entrait donc dans aucune de ces règles, et gardait
+                   la définition en dix-sept points, les boutons larges et le
+                   plancher à quinze — dans 118 px de hauteur utile. C'est la
+                   seule condition qui reproduisait la capture de Rémy. */
+                @container ((max-width: 520px) or (max-height: 460px)) {
                     .mc-indice { min-height: 1.4em; font-size: clamp(11px, 3.1cqw, 13px); }
                     .mc-btn { padding: 4px 7px; font-size: .76rem; }
                     .mc-barre { gap: 4px; }

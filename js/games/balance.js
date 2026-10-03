@@ -182,11 +182,11 @@ export class Balance extends BaseGame {
                    dans un fléau devenu blanc en thème nuit. Le fond du plateau,
                    lui, est toujours le contraire du trait. */
                 .bl-axe {
-                    fill: var(--bg-plateau, var(--card-bg, #fff));
+                    fill: var(--bg-plateau);
                     stroke: var(--text-main); stroke-width: 3;
                 }
                 .bl-pied {
-                    fill: color-mix(in srgb, var(--text-main) 86%, var(--card-bg, #fff));
+                    fill: color-mix(in srgb, var(--text-main) 86%, var(--bg-plateau));
                     stroke: var(--text-main); stroke-width: 1.6; stroke-linejoin: round;
                 }
                 .bl-jour { fill: var(--bg-plateau, #fff); opacity: .22; }
@@ -196,13 +196,15 @@ export class Balance extends BaseGame {
                 .bl-ombre { fill: var(--text-main); opacity: .1; }
                 .bl-fil { stroke: var(--text-muted); stroke-width: 1.6; fill: none; }
                 .bl-plateau {
-                    fill: var(--card-bg, #fff); stroke: var(--text-main); stroke-width: 2.4;
+                    fill: var(--bg-plateau); stroke: var(--text-main); stroke-width: 2.4;
                     stroke-linejoin: round;
                 }
                 .bl-rebord { stroke: var(--text-main); stroke-width: 1.2; opacity: .35; }
                 .bl-jeton { cursor: pointer; }
                 .bl-jeton rect, .bl-jeton circle { transition: opacity .18s; }
-                .bl-jeton:hover rect, .bl-jeton:hover circle { opacity: .55; }
+                @media (hover: hover) {
+                    .bl-jeton:hover rect, .bl-jeton:hover circle { opacity: .55; }
+                }
                 .bl-boite { fill: var(--primary, #4a6fd4); stroke: #22315f; stroke-width: 1.6; }
                 .bl-poids { fill: #d9a441; stroke: #8a6414; stroke-width: 1.4; }
                 /* CE QUI MANQUE SE DESSINE AUSSI. « 5x − 5 » ne veut pas dire
@@ -228,11 +230,13 @@ export class Balance extends BaseGame {
                     display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto;
                 }
                 .bl-btn {
-                    border: 1.5px solid var(--border-color, #d7dae3); background: var(--card-bg, #fff);
+                    border: 1.5px solid var(--border); background: var(--bg-plateau);
                     color: var(--text-main); border-radius: 9px; padding: 5px 11px; cursor: pointer;
                     font-size: clamp(11px, 2.2cqw, 13px); font-weight: 700;
                 }
-                .bl-btn:hover:not(:disabled) { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .bl-btn:hover:not(:disabled) { border-color: var(--primary); }
+                }
                 .bl-btn:disabled { opacity: .38; cursor: default; }
                 .bl-btn--doux { font-weight: 600; color: var(--text-muted); }
                 /* --- LA BARRE D'OPÉRATIONS ----------------------------------
@@ -244,12 +248,19 @@ export class Balance extends BaseGame {
                 .bl-ops { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; flex: 0 0 auto; }
                 .bl-op {
                     border: 1.5px solid var(--primary, #4a6fd4); border-radius: 9px;
-                    background: color-mix(in srgb, var(--primary) 8%, var(--card-bg, #fff));
-                    color: var(--primary, #4a6fd4); cursor: pointer; font: inherit; font-weight: 800;
+                    background: color-mix(in srgb, var(--primary) 8%, var(--bg-plateau));
+                    /* L'ENCRE EST LA VERSION « TEXTE » DU JETON. --primary est
+                       une couleur de FOND ; posée en encre sur un fond qui la
+                       contient déjà à 8 %, elle donne 2,16 en thème sombre.
+                       --primary-texte existe pour cela, et il s'ÉCLAIRCIT en
+                       thème sombre au lieu de s'assombrir. */
+                    color: var(--primary-texte); cursor: pointer; font: inherit; font-weight: 800;
                     padding: 6px 13px; font-size: clamp(12px, 2.4cqw, 15px);
                     font-variant-numeric: tabular-nums;
                 }
-                .bl-op:hover:not(:disabled) { background: var(--primary); color: #fff; }
+                @media (hover: hover) {
+                    .bl-op:hover:not(:disabled) { background: var(--primary); color: #fff; }
+                }
                 .bl-op:disabled { opacity: .3; cursor: default; }
                 /* Le refus se voit : un bouton qui ne fait rien passe pour une
                    panne, un bouton qui SURSAUTE dit qu'il a compris et qu'il
@@ -302,7 +313,7 @@ export class Balance extends BaseGame {
                    recopie. */
                 .bl-jl--detail { color: var(--text-muted); padding-left: 1em; font-size: .92em; }
                 .bl-jl--fin { color: var(--success); font-weight: 800; margin-top: 3px; }
-                .bl-jl i { font-style: normal; color: var(--primary); font-weight: 700; }
+                .bl-jl i { font-style: normal; color: var(--primary-texte); font-weight: 700; }
                 .bl-note {
                     text-align: center; min-height: 2.4em; flex: 0 0 auto;
                     font-size: clamp(11px, 2.2cqw, 13px); line-height: 1.3;
@@ -328,7 +339,7 @@ export class Balance extends BaseGame {
                     .bl-journal {
                         grid-column: 2; grid-row: 4 / -1; max-height: none;
                         align-self: stretch; text-align: left; overflow-y: auto;
-                        border-left: 1.5px solid var(--border-color, #d7dae3);
+                        border-left: 1.5px solid var(--border);
                         padding-left: 12px; gap: 3px;
                         font-size: clamp(12px, 1.6cqw, 15px);
                     }

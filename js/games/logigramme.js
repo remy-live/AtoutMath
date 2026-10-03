@@ -23,6 +23,8 @@ import {
     genererLogigramme, niveauDe, creerEtats, lire, verifierSaisie,
     etiquette, INCONNU, OUI, NON
 } from '../core/logigramme.js';
+import { marchesCochees, marcheAuRang, totalDe } from '../core/progression.js';
+import { LISTE_MARCHES, ANCIEN } from '../core/generators/logigramme.js';
 
 const COMPETENCE = 'num.logique.logigramme';
 
@@ -30,7 +32,7 @@ class Logigramme extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params, 'logigramme');
         this.rng = makeRng(this.params.seed);
-        this.niveau = Number(this.params.niveau) || 1;
+        this.poses = 0;
         // UN ROND MET UN ROND, ET RIEN D'AUTRE.
         //
         // On barrait automatiquement le reste de la ligne et de la colonne :
@@ -74,7 +76,7 @@ class Logigramme extends BaseGame {
                 }
                 .lg-indice--fait { opacity: .48; text-decoration: line-through; }
                 .lg-indice--vise { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 25%, transparent); }
-                .lg-indice-num { font-weight: 800; color: var(--primary); flex: 0 0 auto; }
+                .lg-indice-num { font-weight: 800; color: var(--primary-texte); flex: 0 0 auto; }
 
                 .lg-grille { flex: 0 0 auto; }
                 .lg-table { border-collapse: collapse; }
@@ -87,7 +89,9 @@ class Logigramme extends BaseGame {
                     background: var(--bg-panel); font-weight: 800; user-select: none;
                     -webkit-tap-highlight-color: transparent; line-height: 1;
                 }
-                .lg-case--vide:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .lg-case--vide:hover { background: var(--bg-hover); }
+                }
                 .lg-case--non { color: var(--danger, #dc2626); }
                 .lg-case--oui { color: var(--success, #16a34a); background: color-mix(in srgb, var(--success, #16a34a) 12%, var(--bg-panel)); }
                 .lg-case--faute { animation: lg-faute .5s ease 3; }
@@ -129,7 +133,9 @@ class Logigramme extends BaseGame {
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700;
                     font-size: .84rem; padding: 7px 14px;
                 }
-                .lg-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .lg-btn:hover:not(:disabled) { background: var(--bg-hover); }
+                }
                 .lg-btn--valider { border-color: var(--primary); background: var(--primary); color: #fff; }
                 .lg-note {
                     min-height: 2.4em; text-align: center; font-size: .86rem;
@@ -170,6 +176,17 @@ class Logigramme extends BaseGame {
     // --- Une énigme ---------------------------------------------------------
 
     poser() {
+        // LA MARCHE DE LA QUESTION QU'ON POSE. Le jeu lisait `params.niveau`
+        // UNE fois, au démarrage, et toute la partie restait dessus. Depuis
+        // que le réglage est une colonne de cases (Rémy : « il faudrait
+        // pouvoir faire les check box comme pour le calcul littéral »), les
+        // niveaux cochés se partagent les questions dans l'ordre — voir
+        // core/progression.js. On compte les questions POSÉES et non les
+        // réussies : une question ratée reste une question, et la progression
+        // ne doit pas piétiner.
+        this.niveau = Number(marcheAuRang(this.poses++,
+            marchesCochees(this.params, LISTE_MARCHES, ANCIEN),
+            totalDe(null, this.params), this.params)) || 1;
         this.puzzle = genererLogigramme(
             { niveau: this.niveau, theme: this.params.theme || null }, this.rng);
         this.n = this.puzzle.categories[0].valeurs.length;
@@ -427,8 +444,10 @@ class Logigramme extends BaseGame {
         if (!this.puzzle) this.poser();     // hors partie (aperçu), on en tire une
         if (!await cur.pause(500) || !this.isRunning) return fin();
 
-        cur.say('Un logigramme se résout SANS jamais deviner : chaque case s\'écrit parce qu\'un indice '
-            + 'ou la grille l\'oblige. Regarde.', this.teteEl);
+        // Sous 110 caractères : au-delà, la bulle se lit si lentement (340 ms le mot)
+        // qu'on croit la démonstration plantée.
+        cur.say('On ne devine jamais : chaque case s\'écrit parce qu\'un indice ou la grille l\'oblige.',
+        this.teteEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         // IL REPREND LA GRILLE EN COURS, LÀ OÙ L'ÉLÈVE EN EST.
@@ -458,9 +477,12 @@ class Logigramme extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('On continue ainsi jusqu\'à ce que chaque ligne ait son rond. '
-            + 'Si tu bloques, le bouton « Aide-moi » te donne la déduction suivante — '
-            + 'la raison, pas la réponse.', this.container.querySelector('[data-aide]'));
+        // UNE IDÉE PAR BULLE : la suite de la grille, puis le bouton que le robot désigne.
+        cur.say('On continue ainsi jusqu\'à ce que chaque ligne ait son rond.',
+        this.container.querySelector('[data-aide]'));
+        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        cur.say('Si tu bloques, « Aide-moi » te donne la déduction suivante : la raison, pas la réponse.',
+        this.container.querySelector('[data-aide]'));
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

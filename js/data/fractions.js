@@ -377,7 +377,8 @@ export const fractionsExercises = [
             + 'ou supprime la première phase.'
     },
     {
-        id: 'frac-samurai', title: 'Le Samouraï des Fractions',
+        id: 'frac-samurai',
+        jeu: false, title: 'Le Samouraï des Fractions',
         cree: '2026-08-04',
         revisions: [{
             date: '2026-08-20',
@@ -412,7 +413,8 @@ export const fractionsExercises = [
         // découpage commun. L'élève ne calcule pas une fraction équivalente sur
         // une feuille : il compte des parts, et le nombre trouvé EST le
         // numérateur.
-        id: 'frac-pizza', title: 'La Pizzeria des Fractions',
+        id: 'frac-pizza',
+        jeu: false, title: 'La Pizzeria des Fractions',
         colonnesPapier: 3,
         cree: '2026-08-11',
         activityId: 'pizza',

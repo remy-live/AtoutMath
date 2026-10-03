@@ -121,7 +121,9 @@ class Tangram extends BaseGame {
                     border: 2px solid var(--border); background: var(--bg-panel); color: var(--text-main);
                     border-radius: 10px; cursor: pointer; font: inherit; font-weight: 700; padding: 8px 14px;
                 }
-                .tg-choix button:hover { border-color: var(--primary); }
+                @media (hover: hover) {
+                    .tg-choix button:hover { border-color: var(--primary); }
+                }
                 .tg-choix button.tg-juste { border-color: var(--success, #16a34a);
                     background: color-mix(in srgb, var(--success, #16a34a) 16%, var(--bg-panel)); }
                 .tg-choix button.tg-faux { border-color: var(--danger, #dc2626);
@@ -613,15 +615,24 @@ class Tangram extends BaseGame {
 
         if (!this.figure) this.poser(0);
         if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Sept pièces, et toujours les mêmes : deux grands triangles, un moyen, deux petits, '
-            + 'un carré et un parallélogramme. Elles remplissent la figure EXACTEMENT, '
-            + 'sans trou ni chevauchement.', this.plateauEl);
+        // UNE IDÉE PAR BULLE, et les parts (1/4, 1/8, 1/16) comme les touches (↻, ⇄)
+        // restent : l'élève en a besoin. Ce qui est parti, ce sont les phrases qui
+        // concluaient à sa place (« des formes différentes, une même surface »).
+        // Au-delà de 110 caractères, la bulle se lit si longtemps qu'on croit la
+        // démonstration plantée.
+        cur.say('Sept pièces : deux grands triangles, un moyen, deux petits, un carré et un parallélogramme.', this.plateauEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Retiens leurs parts, la question de la fin les demande : 1/4 pour un grand '
-            + 'triangle, 1/8 pour le carré, 1/16 pour un petit. Le carré et le triangle moyen ont '
-            + 'la MÊME aire — des formes différentes, une même surface.', this.plateauEl);
+        cur.say('Elles remplissent la figure EXACTEMENT, sans trou ni chevauchement.', this.plateauEl);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Retiens leurs parts : 1/4 pour un grand triangle, 1/8 pour le carré, 1/16 pour un petit.', this.plateauEl);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Le carré et le triangle moyen ont la MÊME aire.', this.plateauEl);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         // Le robot pose quatre pièces, en disant à chaque fois ce qui compte.
@@ -644,8 +655,12 @@ class Tangram extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('À toi : prends une pièce, tourne-la avec ↻, et approche-la du bon endroit — '
-            + 'elle se cale toute seule. Seul le parallélogramme se retourne avec ⇄.',
+        cur.say('À toi : prends une pièce, tourne-la avec ↻, et approche-la — elle se cale toute seule.',
+        this.container.querySelector('[data-tourner]'));
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        cur.say('Seul le parallélogramme se retourne, avec ⇄.',
         this.container.querySelector('[data-tourner]'));
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();

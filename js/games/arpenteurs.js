@@ -156,7 +156,9 @@ class Arpenteurs extends BaseGame {
                     color: var(--text-main); border-radius: 9px; cursor: pointer;
                     font: inherit; font-weight: 600; font-size: 13px; padding: 5px 11px;
                 }
-                .ar-btn:hover { background: var(--bg-hover); }
+                @media (hover: hover) {
+                    .ar-btn:hover { background: var(--bg-hover); }
+                }
             </style>
             <div class="ar-wrap">
                 <div class="ar-haut">
@@ -453,7 +455,11 @@ class Arpenteurs extends BaseGame {
         const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
 
         if (!await cur.pause(600) || !this.isRunning) return fin();
-        cur.say('Un jeu à DEUX, sur la même tablette. À chaque tour, un nombre de la table de Pythagore tombe, et celui dont c\'est le tour doit clôturer une parcelle de cette aire exactement.', this.terrain);
+        // UNE IDÉE PAR BULLE : au-delà de 110 caractères (js/core/activities/choice.js,
+        // COURT = 110) la bulle se lit si lentement qu'on croit la démonstration plantée.
+        cur.say('Un jeu à DEUX, sur la même tablette.', this.terrain);
+        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        cur.say('Un nombre de la table de Pythagore tombe : je clôture une parcelle qui a exactement cette aire.', this.terrain);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let tour = 0; tour < 5 && this.etat.cible; tour++) {
@@ -477,7 +483,11 @@ class Arpenteurs extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Celui qui ne peut plus poser a perdu. À la fin il reste toujours des trous : une surface libre ne suffit pas, encore faut-il qu\'elle ait la bonne FORME. Connaître beaucoup de décompositions, c\'est donc avoir plus de coups possibles que l\'autre.', this.terrain);
+        // La morale finale (« connaître beaucoup de décompositions, c'est avoir plus de
+        // coups ») est une leçon, pas un geste montré : elle est partie.
+        cur.say('Celui qui ne peut plus poser a perdu.', this.terrain);
+        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        cur.say('Il reste des trous : la surface libre ne suffit pas, il faut la bonne FORME.', this.terrain);
         if (!await cur.pause(DEMO_SPEED.between)) return fin();
         fin();
     }

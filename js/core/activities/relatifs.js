@@ -20,7 +20,7 @@
 
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint, wireShowMe } from './choice.js';
-import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 
 /** Un nombre avec un VRAI signe moins : le même que sur l'énoncé. */
 const nb = (v) => String(v).replace('-', '−');
@@ -931,7 +931,11 @@ export function mount(container, session) {
         }
 
         if (!await gate.waitTurn() || destroyed) return fin();
-        cursor.say(`On arrive à ${m.total}. ${item.explanation}`, container);
+        // 208 CARACTÈRES MESURÉS sur le modèle « écriture » — la bulle tape le
+        // plafond de quatorze secondes, et le préfixe redit ce que
+        // l'explication conclut déjà. On dit l'arrivée ; le raisonnement reste
+        // dans la correction.
+        cursor.say(`On arrive à ${m.total}.`, container);
         if (!await cursor.pause(DEMO_SPEED.between + 1600) || destroyed) return fin();
         return fin();
     }

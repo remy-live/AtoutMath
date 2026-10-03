@@ -38,6 +38,9 @@ function drawRoundRect(ctx, x, y, width, height, radius) {
 class Tetris extends BaseGame {
     constructor(container, isDemo, params) {
         super(container, isDemo, params);
+        // CE JEU AVANCE TOUT SEUL : sa boucle ne s'arrête pas pour qu'on lise.
+        // La correction y reste donc éphémère (voir `tempsReel` dans BaseGame).
+        this.tempsReel = true;
         
         // Une grille de 10 × 20, c'est la mesure du Tetris d'arcade — où les
         // cases sont des FORMES qu'on reconnaît de loin. Ici chaque case porte
@@ -105,7 +108,7 @@ class Tetris extends BaseGame {
                 }
                 .tetris-panel h2 { margin: 0 0 2px 0; font-size: .72rem; color: var(--text-muted);
                     text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-                .tetris-value { font-size: 2rem; color: var(--primary); font-weight: 800; line-height: 1;
+                .tetris-value { font-size: 2rem; color: var(--primary-texte); font-weight: 800; line-height: 1;
                     font-variant-numeric: tabular-nums; }
                 #tetris-target-val { color: var(--warning); font-size: 2.8rem;
                     transition: transform .2s cubic-bezier(.175,.885,.32,1.275); }
@@ -119,7 +122,7 @@ class Tetris extends BaseGame {
                 .tetris-pad-row { display: flex; gap: 8px; }
                 .tetris-pad-btn {
                     flex: 1; min-width: 48px; height: 52px; border-radius: 12px;
-                    background: var(--bg-panel); border: 2px solid var(--primary); color: var(--primary);
+                    background: var(--bg-panel); border: 2px solid var(--primary); color: var(--primary-texte);
                     font-size: 1.4rem; font-weight: 900; cursor: pointer;
                     display: flex; align-items: center; justify-content: center;
                     user-select: none; -webkit-user-select: none; touch-action: manipulation;
@@ -140,7 +143,9 @@ class Tetris extends BaseGame {
                     box-shadow: 0 4px 15px rgba(0,0,0,.25); text-transform: uppercase; letter-spacing: 1px;
                     font-family: inherit;
                 }
-                .tetris-start-btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+                @media (hover: hover) {
+                    .tetris-start-btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+                }
                 .tetris-hidden { display: none !important; }
                 .tetris-regle { display: flex; align-items: center; gap: 10px; margin-top: 14px;
                     color: #e2e8f0; font-weight: 700; font-size: 1.05rem; }
@@ -217,7 +222,7 @@ class Tetris extends BaseGame {
                     </div>
 
                     <div id="tetris-start-screen" class="tetris-overlay">
-                        <h1 style="font-size: 2.4rem; color: var(--primary); margin: 0;">MATH TETRIS</h1>
+                        <h1 style="font-size: 2.4rem; color: var(--primary-texte); margin: 0;">MATH TETRIS</h1>
                         <p style="font-size: 1.05rem; color: #fff; margin: 10px 0 0;">
                             Colle deux chiffres dont le PRODUIT fait la cible.</p>
                         <div class="tetris-regle">

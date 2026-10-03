@@ -395,8 +395,13 @@ class Relier extends BaseGame {
 
         if (!this.grille) this.poser();
         if (!await cur.pause(500) || !this.isRunning) return fin();
-        cur.say('Deux points de même marque, un chemin de l\'un à l\'autre, sans diagonale. '
-            + 'Et la règle qu\'on oublie : à la fin, AUCUNE case ne doit rester vide.', this.svg);
+        cur.say('Deux points de même marque, un chemin de l\'un à l\'autre, sans diagonale.', this.svg);
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        // UNE IDÉE PAR BULLE, ICI ET PLUS BAS : le tracé d'abord, la case vide ensuite.
+        // Au-delà de 110 caractères la bulle se lit si lentement qu'on croit la
+        // démonstration plantée (js/core/activities/choice.js, COURT).
+        cur.say('Et à la fin, AUCUNE case ne doit rester vide.', this.svg);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let k = 0; k < 2; k++) {
@@ -419,9 +424,11 @@ class Relier extends BaseGame {
         }
 
         if (!await gate.waitTurn() || !this.isRunning) return fin();
-        cur.say('Si une case reste vide à la fin, ce n\'est pas perdu : il suffit d\'allonger '
-            + 'un chemin pour qu\'il y passe. Commence toujours par les coins — un coin n\'a '
-            + 'que deux voisines.', this.container.querySelector('[data-verifier]'));
+        cur.say('Une case reste vide ? J\'allonge un chemin pour qu\'il y passe.',
+            this.container.querySelector('[data-verifier]'));
+        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Je commence toujours par les coins : un coin n\'a que deux voisines.', this.svg);
         if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
         fin();
     }

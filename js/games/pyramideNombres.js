@@ -78,7 +78,7 @@ class PyramideNombres extends BaseGame {
                 .pn-pave { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
                 .pn-touche {
                     width: clamp(26px, 6.5cqw, 44px); height: clamp(24px, 5cqh, 40px);
-                    border: 1px solid var(--border-soft, #cbd5e1); border-radius: 8px;
+                    border: 1px solid var(--border); border-radius: 8px;
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     font-weight: 800; font-size: clamp(13px, 2.8cqh, 19px);
                     cursor: pointer; -webkit-tap-highlight-color: transparent;
@@ -87,7 +87,7 @@ class PyramideNombres extends BaseGame {
                 .pn-barre { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
                 .pn-btn {
                     padding: 5px 12px; border-radius: 999px; font-weight: 700;
-                    border: 1px solid var(--border-soft, #cbd5e1);
+                    border: 1px solid var(--border);
                     background: var(--bg-panel, #fff); color: var(--text-main);
                     cursor: pointer; font-size: clamp(11px, 2.4cqh, 14px);
                 }
@@ -341,9 +341,14 @@ class PyramideNombres extends BaseGame {
         if (!this.p) this.poser();
         if (!await cur.pause(500) || !this.isRunning) return fin();
 
-        cur.say('Chaque case est la somme des deux du dessous. Mais on ne remplit pas '
-            + 'la pyramide dans l\'ordre : on cherche un TRIANGLE où deux cases sur trois '
-            + 'sont déjà là.', this.tableEl);
+        // DEUX IDÉES, DONC DEUX BULLES : la règle des cases, puis le geste de
+        // recherche. Ensemble elles faisaient 156 caractères, soit trois lignes
+        // qu'on croit plantées.
+        cur.say('Chaque case est la somme des deux du dessous.', this.tableEl);
+        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+
+        cur.say('Je ne remplis pas dans l\'ordre : je cherche un TRIANGLE où deux cases '
+            + 'sur trois sont là.', this.tableEl);
         if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
 
         for (let n = 0; n < 3; n++) {

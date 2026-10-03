@@ -114,7 +114,24 @@ function launchFreePlay(exo, params) {
     const path = makePath(exo.title, [step], defaultPolicy());
 
     import('../core/runner.js').then(({ Runner }) => {
-        const runner = new Runner({ path, deviceMode: cadreDe(exo) });
+        const runner = new Runner({
+            path, deviceMode: cadreDe(exo),
+            // LE PROFESSEUR DOIT POUVOIR AVANCER, MÊME DANS UN EXERCICE SEUL.
+            //
+            // Rémy : « on peut tjs pas (par exemple pour le tableau des
+            // conversion) en tant que prof avancer dans les exercices ».
+            //
+            // Mesuré : en ouvrant « Le Tableau de Conversion » depuis le
+            // catalogue en mode professeur, les deux barres de navigation sont
+            // absentes — `allowStepNavigation` n'était posé que par le
+            // constructeur, quand on teste un PARCOURS. Le geste existait donc
+            // déjà, entièrement construit, mais pas là où l'on regarde un
+            // exercice — c'est-à-dire là où l'on décide de le donner ou non.
+            //
+            // Pour l'élève, rien ne change : il n'a pas à sauter les questions
+            // qu'il n'a pas faites.
+            allowStepNavigation: state.isTeacherMode
+        });
         runner.start();
     });
 }
@@ -176,7 +193,9 @@ export function openDemo(exo) {
     const banner = document.getElementById('demo-overlay-banner');
     if (banner) {
         const msg = document.getElementById('demo-banner-text');
-        if (msg) msg.textContent = `Aperçu${exo.instruction ? ' : ' + exo.instruction : ' — le robot joue'}`;
+        // « Le robot joue » plutôt que « Aperçu » : c'est le nom que l'Atelier
+        // et le bouton de l'en-tête donnent tous deux à la même chose.
+        if (msg) msg.textContent = `Le robot joue${exo.instruction ? ' : ' + exo.instruction : ''}`;
         // Repliée à chaque ouverture : une consigne dépliée la fois d'avant
         // ne doit pas manger l'écran de l'aperçu suivant.
         banner.classList.remove('demo-banner--ouvert');
@@ -256,7 +275,12 @@ export function launchPreview(exo, container, params = null, opts = {}) {
         if (!generator) return null;
         const session = new ItemSession({
             generator, params: effective, exercise: exo, isDemo: true, frozen,
-            preferredKind: activity.accepts[0]
+            preferredKind: activity.accepts[0],
+            // OÙ L'ON ENTRE, ET COMBIEN IL Y EN A EN TOUT. Un aperçu remonte
+            // une session neuve à chaque « Question suivante » : sans ces
+            // deux-là, un exercice à progression y repose éternellement sa
+            // première marche — voir `ItemSession`.
+            depuis: opts.depuis, nbItems: opts.nbItems
         });
         return mod.mount(container, session, activity.mountOptions || {});
     }).catch(err => {

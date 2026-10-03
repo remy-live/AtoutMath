@@ -90,7 +90,7 @@ class LabyrintheNombres extends BaseGame {
                     border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700;
                     padding: 7px 12px; font-size: .85rem; min-height: 38px;
                 }
-                .ln-btn--on { border-color: var(--primary); color: var(--primary); }
+                .ln-btn--on { border-color: var(--primary); color: var(--primary-texte); }
                 .ln-compte {
                     font-weight: 800; font-size: .9rem; background: var(--bg-hover);
                     border-radius: 999px; padding: 5px 14px;

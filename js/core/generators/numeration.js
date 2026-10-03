@@ -90,7 +90,19 @@ export const chiffreRangGenerator = {
     generate(params, ctx) {
         const rng = ctx.rng;
         const decDigits = params.decimales || 3;
-        const { value } = randomDecimal(rng, { intDigits: 4, decDigits });
+        // UN NOMBRE ASSEZ VARIÉ POUR PORTER SES PROPRES LEURRES.
+        //
+        // Les propositions sont désormais tirées des chiffres DU NOMBRE (voir
+        // plus bas) : encore faut-il qu'il en ait quatre différents. « 8 888,88 »
+        // n'en a qu'un, et la question n'aurait plus qu'une seule proposition —
+        // elle serait d'ailleurs sans intérêt, puisque la réponse y est la même
+        // à tous les rangs. On retire donc, au plus dix fois : sur sept chiffres
+        // tirés au hasard, en avoir quatre distincts est le cas ordinaire.
+        let value;
+        for (let essai = 0; essai < 10; essai++) {
+            value = randomDecimal(rng, { intDigits: 4, decDigits }).value;
+            if (new Set(String(value).replace(/[^0-9]/g, '')).size >= 4) break;
+        }
 
         const pool = params.partie === 'entière' ? RANKS_ENTIER
             : params.partie === 'décimale' ? RANKS_DECIMAL
@@ -104,8 +116,54 @@ export const chiffreRangGenerator = {
         // sert justement à lever.
         const miroir = rank > 0 ? -rank : (rank < 0 ? -rank : null);
         const chiffreMiroir = miroir !== null ? digitAtRank(value, miroir) : null;
-        // Compter les rangs depuis la gauche au lieu de la droite.
-        const parLaGauche = digitAtRank(value, 3 - Math.min(rank, 3));
+        // LES CHIFFRES DU NOMBRE, DANS L'ORDRE OÙ ON LES LIT. C'est la chaîne
+        // affichée qu'on découpe, et non `String(value)` : un nombre comme
+        // 4 528,900 s'écrit « 4528.9 » en JavaScript, et les deux zéros de fin —
+        // que l'élève voit pourtant — disparaîtraient du jeu de leurres.
+        const chiffres = [...affiche.replace(/[^0-9]/g, '')].map(Number);
+
+        // COMPTER LES RANGS DEPUIS LA GAUCHE AU LIEU DE LA VIRGULE — la seconde
+        // erreur du chapitre, et un leurre qui doit donc exister.
+        //
+        // La formule d'avant, `3 - Math.min(rank, 3)`, sortait du nombre dès
+        // qu'on interrogeait un rang décimal : pour les millièmes elle demandait
+        // le rang 6 d'un nombre qui s'arrête au rang 3, et `digitAtRank` rendait
+        // alors 0. Mesuré : 985 leurres sur 12 000 étaient hors du nombre, et
+        // c'était TOUJOURS ce zéro-là. On compte donc les chiffres à partir de
+        // la gauche, ce qui est précisément l'erreur qu'on veut proposer, et
+        // rend forcément un chiffre du nombre.
+        const parLaGauche = chiffres[Math.min(chiffres.length - 1,
+            rank >= 0 ? rank : (-rank) - 1)];
+
+        // LES LEURRES SORTENT DU NOMBRE LUI-MÊME, ET DE NULLE PART AILLEURS.
+        //
+        // Retour d'un professeur, capture à l'appui : « Quel est le chiffre des
+        // unités de 8 788,13 ? » proposait 0, 8, 4, 7. Le 0 et le 4 ne SONT PAS
+        // dans le nombre. Un élève qui ignore tout du rang des unités les écarte
+        // d'un coup d'œil et il lui reste une chance sur deux — « 2 chiffres qui
+        // ne se trouvent pas dans les chiffres du nombre à analyser c'est trop
+        // facilitant, ça vide l'exo de sa substance ».
+        //
+        // Il a raison, et c'est exactement le reproche qu'un inspecteur ferait :
+        // la question ne mesurait plus la capacité à SITUER un rang, elle
+        // mesurait celle à reconnaître un chiffre déjà vu.
+        //
+        // MESURÉ sur 4 000 questions, en simulant l'élève qui ne sait rien du
+        // rang mais écarte les chiffres absents du nombre, puis répond au
+        // hasard parmi ce qui reste :
+        //
+        //     avant : 4 295 leurres sur 12 000 absents du nombre (36 %)
+        //             → 37 réussites sur 100, contre 25 au pur hasard
+        //     après : 0 leurre sur 12 000 absent du nombre
+        //             → 25 sur 100, c'est-à-dire le hasard et rien d'autre
+        //
+        // Douze points de réussite qui ne venaient d'aucun savoir : c'est cela,
+        // « vider l'exo de sa substance ».
+        //
+        // Les deux leurres écrits à la main ci-dessus en viennent déjà (le rang
+        // miroir, le comptage par la gauche) ; c'est le BOUCHE-TROU qui tirait
+        // un chiffre entre 0 et 9 sans regarder le nombre.
+        const autresChiffres = rng.shuffle([...new Set(chiffres)].filter(d => d !== answer));
 
         return makeItem({
             seed: rng.seed, generatorId: 'num.chiffre-rang', skillId: 'num.numeration.rang',
@@ -125,7 +183,7 @@ export const chiffreRangGenerator = {
                     }
                     : null,
                 { value: parLaGauche, why: 'Les rangs se comptent à partir de la virgule, pas depuis le début du nombre.' }
-            ].filter(Boolean), { count: 4, filler: r => r.int(0, 9) }),
+            ].filter(Boolean), { count: 4, filler: () => autresChiffres.pop() ?? null }),
             // UN INDICE QUI COMMANDE DOIT NOMMER SUR QUOI. « Place le nombre
             // dans le tableau » ne désigne rien — et c'est le PREMIER indice,
             // donc la phrase que le robot prononce, sans montrer quoi que ce
@@ -272,10 +330,53 @@ export const zerosGenerator = {
         const affiche = `${zerosGauche}${base}${zerosDroite}`;
         const answer = stripUselessZeros(affiche);
 
-        // Distracteurs : supprimer un zéro qui compte, ou n'en retirer qu'une partie.
+        // LES FAUSSES RÉPONSES, ET CE QU'ELLES DISENT. Une seule liste sert aux
+        // DEUX chemins — la réponse tapée (`diagnostics`) et la proposition
+        // cliquée (`choices`) — pour qu'ils ne puissent pas dire deux choses
+        // différentes de la même erreur.
+        //
+        // RÉMY : « dans les zéros inutiles, tu considères comme bon comme
+        // réponse 53,300 ». Elles étaient comptées justes parce que la
+        // comparaison porte sur le NOMBRE, et que 53,300 EST 53,3 (voir
+        // `ecritureExacte` dans core/items.js). Ici la réponse n'est pas un
+        // nombre, c'est une ÉCRITURE.
+        //
+        // ET EN CHERCHANT CE QU'ON N'AVAIT PAS CORRIGÉ, ON A TROUVÉ PIRE : ces
+        // fausses réponses étaient écartées de la liste des propositions
+        // PARCE QU'ELLES VALAIENT LE MÊME NOMBRE que la bonne. Mesuré sur
+        // quatre-vingts questions : soixante-treize n'offraient qu'UNE SEULE
+        // proposition — un bouton, toujours juste. Maintenant qu'on juge
+        // l'écriture, ce sont les meilleurs leurres qui existent, et ils
+        // reviennent dans la liste.
+        //
+        // On les dérive de la RÈGLE, pas des morceaux qu'on a collés : quand la
+        // base finit elle-même par un zéro (94,90), l'élève qui enlève « les
+        // zéros de la fin » en enlève deux, et un leurre calculé sur
+        // `zerosDroite` ne l'aurait pas reconnu.
+        const sansCeuxDeGauche = (x) => x.replace(/^0+(?=\d)/, '');
+        const sansCeuxDeDroite = (x) => x.includes(',')
+            ? x.replace(/0+$/, '').replace(/,$/, '') : x;
+        // Un zéro qui compte, retiré : celui du milieu s'il y en a un, sinon
+        // celui qui tient le rang des unités (250 → 25).
         const trop = answer.includes(',')
             ? answer.replace(/0/g, '') || '0'
             : answer.replace(/0+$/, '') || '0';
+        const fausses = [
+            { value: sansCeuxDeGauche(affiche),
+                why: 'Bien pour les zéros de devant — mais il en reste à la FIN des décimales, et ceux-là ne changent rien non plus.' },
+            { value: sansCeuxDeDroite(affiche),
+                why: 'Bien pour les zéros de la fin — mais il en reste DEVANT le nombre, et un zéro devant la partie entière ne change rien.' },
+            { value: affiche,
+                why: 'Tu as recopié le nombre sans rien enlever. Cherche les zéros qui ne changent rien : ceux tout à gauche de la partie entière, et ceux tout à droite de la partie décimale.' },
+            // Il en reste UN : l'erreur de celui qui a compris la règle et s'est
+            // arrêté trop tôt.
+            { value: zerosGauche ? `0${answer}` : null,
+                why: 'Il en reste un devant : ils partent tous, même le dernier — 0147 s\'écrit 147.' },
+            { value: zerosDroite ? `${answer}0` : null,
+                why: 'Il en reste un à la fin : ils partent tous, même le dernier — 3,470 s\'écrit 3,47.' },
+            { value: trop,
+                why: 'Tu en as enlevé un qui compte : il tient la place d\'un rang. On ne supprime que ceux tout à gauche de la partie entière et tout à droite de la partie décimale.' }
+        ].filter(d => d.value && d.value !== answer);
 
         return makeItem({
             seed: rng.seed, generatorId: 'num.zeros', skillId: 'num.decimal.zeros',
@@ -286,11 +387,14 @@ export const zerosGenerator = {
                        <span class="nb-highlight nb-highlight--lg">${affiche}</span></div>`
             },
             answer,
-            choices: finalizeChoices(rng, [
-                { value: answer, correct: true },
-                trop !== answer ? { value: trop, why: 'Tu en as enlevé un qui compte : on ne supprime que les zéros tout à gauche de la partie entière et tout à droite de la partie décimale.' } : null,
-                { value: `${zerosGauche}${base}`.replace(/^0+/, '') === answer ? null : `${base}${zerosDroite}`, why: 'Il reste des zéros inutiles à la fin.' }
-            ].filter(c => c && c.value), { count: 3, filler: () => null }),
+            // C'EST L'ÉCRITURE QU'ON JUGE, PAS LE NOMBRE — sans quoi toutes les
+            // fausses réponses ci-dessus sont des bonnes réponses.
+            ecritureExacte: true,
+            diagnostics: fausses,
+            // `finalizeChoices` écarte tout seul ce qui s'écrit comme la bonne
+            // réponse : on lui donne les candidats, il garde ceux qui tiennent.
+            choices: finalizeChoices(rng, [{ value: answer, correct: true }, ...fausses],
+                { count: 4, filler: () => null }),
             hints: [
                 'Un zéro tout à gauche de la partie entière ne change rien : 032,12 = 32,12.',
                 'Un zéro tout à droite de la partie décimale ne change rien non plus : 3,470 = 3,47.',
