@@ -210,6 +210,72 @@ if (typeof aLEcran === 'string') {
     dire('ET IL Y LIT SON PARCOURS DU COLLÈGE', aLEcran.leSien === true);
 }
 
+// ── ET MAINTENANT, LA SECONDE MOITIÉ DU VOYAGE ──────────────────────────────
+//
+// RÉMY, trois semaines plus tard : « sur mon ordi de boulot et mon ordi
+// personnel, le parcours que j'ai modifié sur mon ordi perso n'est pas à jour
+// sur mon ordi de boulot pourtant c'est sur mon compte ».
+//
+// CE N'EST PAS LE MÊME DÉFAUT QUE CELUI DU HAUT, ET C'EST POUR ÇA QU'IL A
+// SURVÉCU. Le premier était « le parcours n'arrive pas sur une machine qui ne
+// l'a jamais vu » ; celui-ci est « il arrive une fois, et plus jamais ». Une
+// sonde qui s'arrête au premier voyage déclare la synchronisation bonne — et
+// elle l'est, dans un seul sens et une seule fois.
+//
+// ON MODIFIE DONC LE PARCOURS SUR LE POSTE DU COLLÈGE, et l'on retourne voir
+// le Mac, qui en a DÉJÀ une copie. C'est la situation de tous les jours : deux
+// machines qui ont toutes les deux déjà vu le parcours.
+console.log('\n\x1b[1mON LE MODIFIE AU COLLÈGE — le Mac en a déjà une copie\x1b[0m');
+const retouche = await s.page.evaluate(async (id) => {
+    const { state } = await import('./js/core/state.js');
+    const { makeStep } = await import('./js/core/path.js');
+    const entree = (state.teacherPaths || []).find((p) => p.id === id);
+    const parcours = entree && entree.data ? entree.data : entree;
+    parcours.steps.push(makeStep('calc-sub', {}, { stepId: 'c', nbQuestions: 7 }));
+    // ON REPASSE PAR LA PORTE DU LOGICIEL, ET PAR LA BONNE.
+    //
+    // `updateTeacherPath(id, nom, parcours)` est ce qu'appelle l'atelier quand
+    // on enregistre une séance DÉJÀ existante (voir `builder.js`). J'avais
+    // d'abord écrit `saveTeacherPath(nom, parcours, { id })` — dont le
+    // troisième argument est le DOSSIER, pas des options : la sonde créait
+    // alors une seconde entrée et accusait l'application d'un doublon qu'elle
+    // venait de fabriquer elle-même.
+    state.updateTeacherPath(entree.id, parcours.name, parcours);
+    return { etapes: parcours.steps.length };
+}, posé.id);
+console.log(`   il a maintenant ${retouche.etapes} étapes au collège`);
+await dormir(4500);
+
+const serveurApres = await s.page.evaluate(async () => {
+    const { auServeur: appel } = await import('./js/core/espaceProf.js');
+    const r = await appel('/teacher/paths', { action: 'list' });
+    return (r.paths || []).map((x) => ({
+        nom: (x.data || {}).name || x.name || '?',
+        etapes: (((x.data || {}).steps) || []).length }));
+});
+console.log(`   le serveur a  : ${JSON.stringify(serveurApres)}`);
+const majServeur = serveurApres.find((p) => p.nom === 'Les priorités du jeudi');
+dire('LA RETOUCHE EST MONTÉE AU SERVEUR', !!majServeur && majServeur.etapes === 3,
+    majServeur ? `${majServeur.etapes} étapes` : 'absent');
+
+// LE MAC REDÉMARRE — c'est ce que fait Rémy en arrivant au travail.
+await mac.reload();
+await mac.waitForFunction(() => window.__atoutmathPret === true, { timeout: 30000 });
+await dormir(6000);
+const macApres = await mac.evaluate(async (compterSource) => {
+    const compter = eval(compterSource);
+    const { state } = await import('./js/core/state.js');
+    return (state.teacherPaths || [])
+        .filter((p) => (p.name || '').includes('priorités'))
+        .map((p) => ({ nom: p.name, etapes: compter(p) }));
+}, COMPTER);
+console.log(`   le Mac a      : ${JSON.stringify(macApres)}`);
+const surLeMac = macApres.find((p) => p.nom === 'Les priorités du jeudi');
+dire('ET LE MAC LA REÇOIT, SANS RIEN CLIQUER',
+    !!surLeMac && surLeMac.etapes === 3,
+    surLeMac ? `${surLeMac.etapes} étape(s) au lieu de 3` : 'parcours absent');
+dire('sans fabriquer de doublon', macApres.length === 1, `${macApres.length} entrées`);
+
 console.log(`\nerreurs de page : ${s.erreurs.length + erreursMac.length}`);
 [...s.erreurs, ...erreursMac].slice(0, 5).forEach((e) => console.log('   ' + e));
 

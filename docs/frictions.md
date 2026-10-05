@@ -2270,3 +2270,32 @@ lignes** — 2026-10-01
   pas savoir qu'elle s'est trompée de propriétaire. **Quand une mesure dit
   « vide », la première question n'est pas « pourquoi est-ce vide » mais
   « est-ce que je lis bien ce que je crois lire ».**
+
+## Une épreuve qui garde une LIGNE défend le défaut qu'elle contient — 2026-10-05
+
+- *Ce que je voulais faire* : corriger le signalement de Rémy — « le parcours
+  que j'ai modifié sur mon ordi perso n'est pas à jour sur mon ordi de
+  boulot ». La cause tenait en une ligne : `ramenerLaBibliotheque` sautait tout
+  identifiant déjà connu, donc un parcours descendait UNE fois et plus jamais.
+- *Ce qui a coûté* : la correction faite et mesurée (la sonde `deuxPostes.mjs`
+  passait de « 2 étapes » à « 3 »), `npm test` est tombé sur une épreuve qui
+  exigeait `assert.match(corps, /connus\.has\(brut\.id\)/)` — c'est-à-dire la
+  PRÉSENCE LITTÉRALE de la ligne fautive. Son message disait « un parcours
+  local serait écrasé par la version du serveur », une crainte juste ; mais la
+  ligne qu'elle gardait faisait DEUX choses, dont une mauvaise, et l'épreuve
+  les gardait toutes les deux. **Une épreuve écrite pour protéger une garantie
+  en était venue à défendre un défaut.**
+- *Combien de fois* : || (déjà vu avec les tranches bornées par un nombre de
+  caractères : l'épreuve mesurait le texte source au lieu du comportement.)
+- *Ce qui manque* : rien à fabriquer. La garantie — « une retouche d'ici
+  survit, une retouche d'ailleurs descend » — vit maintenant dans un module
+  qu'on peut interroger sans navigateur (`arbitrageParcours.js`), et chacun de
+  ses trois verdicts a été vu tomber. L'épreuve de câblage, elle, se contente
+  de vérifier que l'arbitrage est BRANCHÉ.
+- *La règle* : **une épreuve qui cite du code source garde une mise en œuvre,
+  pas une promesse — et le jour où la mise en œuvre est fautive, elle se range
+  du côté du défaut.** Quand il faut vraiment lire la source (parce que le
+  module ne s'importe pas sans navigateur), on y cherche le NOM de la garantie,
+  jamais la ligne qui la réalise. Et le vrai remède est de sortir la règle dans
+  un module qui s'éprouve : c'est ce qu'on avait déjà fait pour `empreinte`,
+  pour la même raison, dans le même fichier.

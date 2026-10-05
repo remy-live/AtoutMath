@@ -52,12 +52,29 @@ import { etapesFaitesDeLaSeance } from './bilanSeance.js';
 import { journal } from './journal.js';
 import { identiteDeParcours } from './shortcodes.js';
 import { empreinte } from './empreinteParcours.js';
+import { formeEnvoyee, sceauDeParcours, quiGagne, fondreDansLeLocal }
+    from './arbitrageParcours.js';
 import { estUnParcoursSeme } from './parcoursSemes.js';
 import { cheminDeLEntree } from './entreeParcours.js';
 
-/** Ce qu'on a déjà réussi à monter : identifiant → empreinte de ce qui est parti. */
+/**
+ * CE QU'ON SAIT DU SERVEUR : identifiant → empreinte de ce qui s'y trouve.
+ *
+ * CE N'EST PLUS SEULEMENT « CE QU'ON A MONTÉ », et le nom de la clef a changé
+ * avec le sens. Cette carte sert maintenant à DEUX choses : éviter de remonter
+ * ce qui n'a pas bougé, et surtout décider qui a raison quand les deux côtés
+ * diffèrent (voir `arbitrageParcours.js`). Pour cela elle doit retenir
+ * l'empreinte de la forme QUE LE SERVEUR RANGE — le parcours déballé — et non
+ * celle de l'enveloppe locale, qui porte en plus le dossier et la date.
+ *
+ * D'OÙ LA SECONDE CLEF DE RANGEMENT. Les empreintes déjà gardées par les
+ * versions précédentes portent l'ancienne forme : les relire ici ferait croire
+ * que TOUT a été retouché localement, c'est-à-dire exactement le défaut qu'on
+ * corrige. On ne les lit donc plus — et leur absence est traitée comme ce
+ * qu'elle est, une machine qui ne sait rien et qui s'en remet au serveur.
+ */
 const dejaMonte = new Map();
-const CLE_MONTEE = 'parcoursMontes';
+const CLE_MONTEE = 'parcoursMontes2';
 
 /** Une empreinte courte et stable de ce qu'on enverrait. */
 // L'empreinte du contenu vit dans son propre module : voir son en-tête, et
@@ -82,9 +99,6 @@ export async function monterUnParcours(parcours) {
     if (!parcours || !parcours.id || !parcours.name) {
         return { monte: false, erreur: 'Parcours sans nom : rien à monter.' };
     }
-    const sceau = empreinte(parcours);
-    if (dejaMonte.get(parcours.id) === sceau) return { monte: true };
-
     // UNE SEULE FORME EN BASE, ET C'EST LE PARCOURS.
     //
     // Deux écrivains visaient la même ligne avec deux formes différentes :
@@ -96,8 +110,19 @@ export async function monterUnParcours(parcours) {
     // ON DÉBALLE DONC AVANT D'ENVOYER, en gardant l'identifiant et le nom de
     // l'ENTRÉE : ce sont eux que les assignations désignent, et les renommer
     // ici détacherait les séances déjà données de leur parcours.
-    const dedans = cheminDeLEntree(parcours) || parcours;
-    const aEnvoyer = { ...dedans, id: parcours.id, name: parcours.name };
+    const aEnvoyer = formeEnvoyee(parcours);
+
+    // L'EMPREINTE PORTE SUR CE QU'ON ENVOIE, PAS SUR CE QU'ON A SOUS LA MAIN.
+    //
+    // Elle portait sur l'enveloppe, ce qui suffisait tant qu'elle ne servait
+    // qu'à éviter un envoi inutile. Elle sert maintenant à comparer les deux
+    // côtés (`arbitrageParcours.js`), et comparer une enveloppe à un parcours
+    // rend « différent » à tous les coups — une règle qui dit toujours « ça a
+    // changé » ne décide de rien. Autre effet, utile : ranger un parcours dans
+    // un dossier ne le fait plus remonter au serveur, puisque le dossier ne
+    // part pas.
+    const sceau = empreinte(aEnvoyer);
+    if (dejaMonte.get(parcours.id) === sceau) return { monte: true };
 
     const r = await auServeur('/teacher/paths', { action: 'save', path: aEnvoyer });
     if (r.erreur) return { monte: false, erreur: r.erreur };
@@ -135,12 +160,32 @@ export async function monterLaBibliotheque() {
  * LA BIBLIOTHÈQUE DU SERVEUR, RAMENÉE SUR CETTE MACHINE.
  *
  * C'est ce qui fait qu'un professeur retrouve ses parcours sur un ordinateur
- * qu'il n'a jamais utilisé. On n'écrase JAMAIS un parcours local du même
- * identifiant : celui qu'on a sous la main peut contenir des retouches qui ne
- * sont pas encore parties. En cas de doute, on garde les deux et c'est le
- * professeur qui tranche — perdre son travail est pire que d'avoir un doublon.
+ * qu'il n'a jamais utilisé — ET QU'IL Y RETROUVE LA DERNIÈRE VERSION.
  *
- * @returns {Promise<{ramenes:number, erreur:string}>}
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * CETTE SECONDE MOITIÉ A MANQUÉ TROIS SEMAINES DE PLUS QUE LA PREMIÈRE.
+ *
+ * RÉMY : « sur mon ordi de boulot et mon ordi personnel, le parcours que j'ai
+ * modifié sur mon ordi perso n'est pas à jour sur mon ordi de boulot pourtant
+ * c'est sur mon compte ».
+ *
+ * La fonction sautait tout identifiant déjà connu — `if (connus.has(brut.id))
+ * continue;` — et son commentaire l'expliquait ainsi : « On n'écrase JAMAIS un
+ * parcours local : il peut contenir des retouches pas encore parties. En cas
+ * de doute, on garde les deux et c'est le professeur qui tranche. »
+ *
+ * LA CRAINTE ÉTAIT JUSTE, LA PHRASE ÉTAIT FAUSSE SUR DEUX POINTS : on ne
+ * gardait pas les deux, et il n'y avait aucun doute à lever — on gardait le
+ * local, toujours, sans rien regarder. Une séance retouchée à la maison
+ * n'arrivait donc jamais au collège, et rien ne le disait.
+ *
+ * LE DOUTE SE LÈVE MAINTENANT, et sans horloge : cette machine sait ce qu'elle
+ * a échangé en dernier avec le serveur, donc elle sait si la différence vient
+ * d'ici ou d'ailleurs. La règle, ses trois cas et ce qu'elle ne sait pas faire
+ * sont dans `arbitrageParcours.js`, où ça s'éprouve sans navigateur.
+ *
+ * @returns {Promise<{ramenes:number, rafraichis:number, gardes:number, erreur:string}>}
  */
 export async function ramenerLaBibliotheque() {
     if (!enPosteDeProf()) return { ramenes: 0, erreur: 'Pas identifié comme professeur.' };
@@ -165,11 +210,15 @@ export async function ramenerLaBibliotheque() {
         }
     }
 
-    const connus = new Set((state.teacherPaths || []).map(p => p && p.id));
-    let ramenes = 0;
+    // LE RANG DE CHAQUE PARCOURS, et non un simple « on le connaît » : il faut
+    // pouvoir REMPLACER l'entrée à sa place, et non l'ajouter à la fin — un
+    // parcours qui change de rang à chaque démarrage se cherche dans le tiroir.
+    const rangDe = new Map();
+    (state.teacherPaths || []).forEach((p, i) => { if (p && p.id) rangDe.set(p.id, i); });
+    let ramenes = 0, rafraichis = 0, gardes = 0;
     for (const ligne of (r.paths || [])) {
         const brut = ligne && ligne.data;
-        if (!brut || typeof brut !== 'object' || !brut.id || connus.has(brut.id)) continue;
+        if (!brut || typeof brut !== 'object' || !brut.id) continue;
         // CE QUE LE LOGICIEL SE DONNE À LUI-MÊME NE REDESCEND PAS. Voir
         // `parcoursSemes.js`. « Tout sur papier » est même PLUS JUSTE refabriqué
         // ici que rapatrié : rapatrié, il porterait le catalogue de l'autre
@@ -202,19 +251,49 @@ export async function ramenerLaBibliotheque() {
         // parcours nu y entrait sans dossier et sans date. On garde l'identifiant
         // de l'enveloppe du serveur, sinon le prochain démarrage le remonterait
         // sous un nom neuf et l'on aurait fabriqué le doublon qu'on évite.
-        state.teacherPaths.push({
+        const fraiche = {
             id: brut.id,
             name: brut.name || parcours.name,
             data: parcours,
             folderId: brut.folderId || 'root',
             timestamp: brut.timestamp || Date.now()
-        });
-        dejaMonte.set(brut.id, empreinte(brut));
-        ramenes++;
+        };
+
+        const rang = rangDe.get(brut.id);
+        if (rang === undefined) {
+            state.teacherPaths.push(fraiche);
+            // L'EMPREINTE DE CE QU'ON VIENT DE POSER, pas de ce qui est arrivé :
+            // `normalizePath` a pu compléter des champs, et retenir l'autre
+            // ferait croire, au démarrage suivant, à une retouche locale.
+            dejaMonte.set(brut.id, sceauDeParcours(fraiche));
+            ramenes++;
+            continue;
+        }
+
+        // IL EST DÉJÀ LÀ — ET C'EST ICI QUE TOUT SE JOUAIT.
+        const locale = state.teacherPaths[rang];
+        const verdict = quiGagne({ local: locale, serveur: fraiche, connu: dejaMonte.get(brut.id) });
+        if (verdict === 'serveur') {
+            state.teacherPaths[rang] = fondreDansLeLocal(locale, fraiche);
+            dejaMonte.set(brut.id, sceauDeParcours(fraiche));
+            rafraichis++;
+        } else if (verdict === 'local') {
+            // Une retouche d'ici n'est pas encore partie : `monterLaBibliotheque`
+            // s'en charge juste après, au démarrage comme à l'enregistrement.
+            gardes++;
+        } else {
+            // Les deux disent la même chose : on en profite pour poser le
+            // souvenir, faute de quoi une machine mise à jour depuis une version
+            // précédente resterait sans repère jusqu'à sa prochaine montée.
+            dejaMonte.set(brut.id, sceauDeParcours(fraiche));
+        }
     }
-    if (ramenes) state.saveTeacherPaths();
+    if (ramenes || rafraichis) state.saveTeacherPaths();
+    if (ramenes || rafraichis || gardes) {
+        await globalStore.set(CLE_MONTEE, Object.fromEntries(dejaMonte)).catch(() => {});
+    }
     if (jetes) await globalStore.set(CLE_MONTEE, Object.fromEntries(dejaMonte)).catch(() => {});
-    return { ramenes, jetes, erreur: '' };
+    return { ramenes, rafraichis, gardes, jetes, erreur: '' };
 }
 
 /**

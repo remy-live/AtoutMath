@@ -132,10 +132,25 @@ test('LE RAPATRIEMENT DÉBALLE, ET ÉCARTE CE QUE LE LOGICIEL SÈME', () => {
         'une enveloppe passerait telle quelle à normalizePath, qui la vide');
     assert.match(corps, /estUnParcoursSeme\(brut\)/,
         'les parcours semés redescendraient et doubleraient la bibliothèque');
-    // ON N'ÉCRASE JAMAIS UN PARCOURS LOCAL : une retouche pas encore partie
-    // doit survivre à un démarrage.
-    assert.match(corps, /connus\.has\(brut\.id\)/,
-        'un parcours local serait écrasé par la version du serveur');
+    // UNE RETOUCHE PAS ENCORE PARTIE DOIT SURVIVRE À UN DÉMARRAGE — et c'est
+    // tout ce que cette épreuve a jamais voulu dire.
+    //
+    // ELLE EXIGEAIT `connus.has(brut.id)`, c'est-à-dire LA LIGNE, et non la
+    // garantie. Or cette ligne faisait DEUX choses : protéger la retouche
+    // locale (ce qu'on veut) et sauter tout parcours déjà connu (ce qui
+    // empêchait une modification faite ailleurs de jamais descendre — le
+    // défaut que Rémy a signalé : « le parcours que j'ai modifié sur mon ordi
+    // perso n'est pas à jour sur mon ordi de boulot »).
+    //
+    // L'arbitrage remplace la ligne et garde la protection. Ce qui se vérifie
+    // ici est donc qu'il soit BRANCHÉ ; que ses trois verdicts soient justes se
+    // mesure dans `tests/arbitrageParcours.test.mjs`, où chacun a été vu tomber.
+    assert.match(corps, /quiGagne\(/,
+        'sans arbitrage, le rapatriement écrase ou saute — il n\'y a pas de milieu');
+    assert.match(corps, /verdict === 'local'/,
+        'rien ne protège plus une retouche locale pas encore partie');
+    assert.match(corps, /verdict === 'serveur'/,
+        'une modification faite sur l\'autre machine ne descendrait jamais');
     // ET L'ENTRÉE RANGÉE EST UNE ENVELOPPE, parce que c'est ce que l'explorateur
     // lit — `name`, `folderId`, `timestamp`.
     assert.match(corps, /folderId: brut\.folderId \|\| 'root'/,
