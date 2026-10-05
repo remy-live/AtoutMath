@@ -78,6 +78,20 @@ const BASE = {
         descriptor: 'Remplir une grille en croisant trois contraintes de placement \u2014 ligne, colonne et ruisseau \u2014 sans aucun calcul.',
         lesson: "LE STRIMKO NE DEMANDE AUCUN CALCUL, ET C'EST TOUT SON INT\u00c9R\u00caT. Chaque ligne, chaque colonne et chaque RUISSEAU \u2014 la cha\u00eene de cases reli\u00e9es \u2014 portent les nombres de 1 \u00e0 n, une fois chacun. Il ne reste donc que la d\u00e9duction, toute nue : un \u00e9l\u00e8ve que le calcul encombre peut y r\u00e9ussir brillamment, et c'est souvent la premi\u00e8re fois qu'il se voit raisonner. LA M\u00c9THODE EST TOUJOURS LA M\u00caME, et elle ne consiste JAMAIS \u00e0 deviner : on cherche la case o\u00f9 il ne reste qu'UNE SEULE possibilit\u00e9. Pour cela on prend une case vide et l'on barre, dans sa t\u00eate, tous les nombres d\u00e9j\u00e0 pr\u00e9sents dans sa ligne, dans sa colonne ET dans son ruisseau \u2014 les trois, pas deux. S'il en reste un seul, il est forc\u00e9 ; s'il en reste plusieurs, on passe \u00e0 la case suivante et l'on y reviendra. LE RUISSEAU EST LA CONTRAINTE QU'ON OUBLIE, parce qu'il serpente : on le suit du doigt, perle apr\u00e8s perle, jusqu'au bout. Une case remplie en d\u00e9bloque d'autres, de proche en proche \u2014 et la grille se termine sans qu'on ait jamais essay\u00e9 au hasard."
     },
+    // L'APPROXDOKU. Rémy : « et un approxdoku ».
+    //
+    // C'EST LA SEULE COMPÉTENCE DE LA FAMILLE « LOGIQUE » QUI TRAVAILLE LES
+    // PRIORITÉS, et c'est ce qui la distingue du Mathdoku d'à côté : là-bas on
+    // calcule une cage et l'on cherche où la poser ; ici on calcule DEUX côtés
+    // et l'on compare, en sachant qu'ils ne doivent surtout pas être égaux.
+    'num.logique.approxdoku': {
+        label: 'Approxdoku — rater de un',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: ['num.add.entiers'],
+        descriptor: 'Remplir un carré latin dont les chaînes de calcul doivent être fausses d\'exactement un.',
+        lesson: "LE « ≈ » NE VEUT PAS DIRE « ÉGAL » : il veut dire « à un près ». Les deux côtés d'une chaîne valent des entiers positifs qui SE SUIVENT — 6 et 5, 2 et 1. Une égalité parfaite est donc FAUSSE ici, et c'est tout le sel du jeu : il faut calculer juste pour rater de un. Par-dessus, chaque ligne et chaque colonne portent les nombres de 1 à n, une fois chacun, comme dans un sudoku. LES PRIORITÉS S'APPLIQUENT : dans « 2+3×4 », on fait d'abord 3×4. ET CHAQUE ÉTAPE DOIT TOMBER SUR UN ENTIER POSITIF — une division juste, jamais de soustraction qui passe sous zéro : « 5÷2 » et « 2−5 » n'existent pas dans ce jeu, ce qui élimine d'un coup des quantités de possibilités. COMMENCE PAR LA CHAÎNE LA PLUS LONGUE : plus elle a de cases, moins elle laisse de combinaisons possibles, et c'est elle qui se résout la première."
+    },
     'num.logique.mathodu': {
         label: 'Grilles à contraintes (Mathdoku)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

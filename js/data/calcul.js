@@ -891,6 +891,65 @@ export const calculExercises = [
         }
     },
     {
+        // ─────────────────────────────────────────────────────────────────
+        // RÉMY : « et un approxdoku », avec la page d'Erich Friedman en capture.
+        //
+        // LE JEU OÙ L'ÉGALITÉ PARFAITE EST UNE FAUTE. Les deux côtés d'une
+        // chaîne doivent SE SUIVRE — 6 et 5, 2 et 1 — jamais être égaux. C'est
+        // une inversion complète de ce qu'un élève croit chercher depuis le
+        // CP, et c'est exactement ce qui l'oblige à calculer pour de bon : on
+        // ne peut pas rater de un sans savoir où l'on tombe.
+        //
+        // LE SEUL DE LA FAMILLE QUI TRAVAILLE LES PRIORITÉS. Le Mathdoku fait
+        // calculer une cage puis chercher où la poser ; le Strimko ne fait
+        // rien calculer. Ici, « 2+3×4 » apparaît pour de vrai et il faut le
+        // lire juste. Le palier Découverte n'a qu'une opération par côté :
+        // la question ne s'y pose pas, et c'est par là qu'on commence.
+        // ─────────────────────────────────────────────────────────────────
+        id: 'logi-approxdoku', title: 'Approxdoku',
+        cree: '2026-10-05',
+        generatorId: 'logique.approxdoku', activityId: 'approxdoku',
+        // Une erreur de placement dans une grille ne se révise pas : « case B3 »
+        // n'est pas une question qu'on peut reposer hors de SA grille. Comme le
+        // Mathdoku, le Strimko, le sudoku et le binairo.
+        sansRevision: true,
+        // 3 grilles par défaut : une grille est une « question » longue, dix
+        // seraient une punition.
+        params: { nbQuestions: 3, palier: 'facile' },
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
+        },
+        motsClefs: ['approxdoku', 'carré latin', 'priorités', 'à un près', 'logique',
+            'sudoku', 'grille', 'calcul mental', 'friedman'],
+        instruction: "Écris les nombres de 1 à n dans les ronds : chacun une fois par LIGNE et une fois par COLONNE. Les chaînes enfermées dans une capsule sont des calculs, et le signe « ≈ » au milieu NE VEUT PAS DIRE « égal » : il veut dire « à un près ». Les deux côtés valent des entiers positifs qui se suivent — 6 et 5, 2 et 1 —, donc une égalité parfaite est FAUSSE ici. Les priorités s'appliquent : dans 2+3×4 on fait d'abord 3×4. Et chaque étape tombe sur un entier positif : une division juste, jamais de soustraction qui passe sous zéro — 5÷2 et 2−5 n'existent pas, ce qui supprime d'un coup des quantités de possibilités. Commence par la chaîne la plus longue, c'est elle qui laisse le moins de choix. « Vérifier » ne dit jamais la réponse : il montre les nombres qui se répètent et les chaînes fausses, trois fois par grille.",
+        apprentissage: {
+            intro: "Dans un Approxdoku, les calculs sont faux — et ils doivent l'être d'exactement un.",
+            regles: [
+                {
+                    titre: 'Chaque nombre une seule fois par ligne et par colonne',
+                    texte: "Dans une grille 4 × 4, chaque ligne contient 1, 2, 3 et 4 — une fois chacun. Idem pour chaque colonne. C'est la règle du sudoku.",
+                    exemple: '<span class="lec-suite"><b>1</b><b>3</b><b>4</b><b>2</b></span>'
+                },
+                {
+                    titre: 'Le « ≈ » veut dire « à un près », pas « égal »',
+                    texte: "Les deux côtés d'une chaîne se suivent. 2+3+1 fait 6, et en face il y a 5 : la chaîne est juste. Si les deux côtés étaient égaux, elle serait fausse.",
+                    exemple: '<span class="lec-suite"><b>2</b><b>+</b><b>3</b><b>+</b><b>1</b><b>≈</b><b>5</b></span>'
+                },
+                {
+                    titre: 'Jamais de reste, jamais de négatif',
+                    texte: "Chaque étape doit tomber sur un entier positif. 4÷2 vaut 2, mais 5÷2 n'existe pas ici ; 5−4 vaut 1, mais 4−5 n'existe pas. C'est ce qui élimine le plus de possibilités.",
+                    exemple: '<span class="lec-suite"><b>4</b><b>÷</b><b>2</b><b>≈</b><b>1</b></span>'
+                },
+                {
+                    titre: 'Et les priorités s\'appliquent',
+                    texte: "Dans une chaîne comme 1+2×3, on fait d'abord la multiplication : 1+6, donc 7. Au palier Découverte, il n'y a qu'une opération de chaque côté et la question ne se pose pas.",
+                    exemple: '<span class="lec-suite"><b>1</b><b>+</b><b>2</b><b>×</b><b>3</b><b>≈</b><b>8</b></span>'
+                }
+            ]
+        }
+    },
+    {
         id: 'calc-mathodu', title: 'Mathdoku',
         cree: '2026-07-30',
         generatorId: 'logique.mathodu', activityId: 'kenken',

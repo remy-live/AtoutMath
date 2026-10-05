@@ -12600,3 +12600,138 @@ body.en-boite > #app-container { background: none; }
     font-size: clamp(13px, 2.6cqh, 17px);
     margin-bottom: 0; text-shadow: none;
 }
+
+/* ─────────────────────────── L'APPROXDOKU ───────────────────────────
+   Rémy : « et un approxdoku ». Des cercles reliés par des opérateurs,
+   enfermés dans une capsule, et quelque part un « ≈ » : les deux côtés
+   diffèrent de UN.
+
+   LA GRILLE A 2n−1 PISTES DANS CHAQUE SENS. Les impaires portent les
+   cercles, les paires portent les opérateurs — le blanc entre deux
+   cercles n'est pas une marge, c'est une piste qui porte un caractère.
+   Une capsule s'y pose alors comme n'importe quel élément, de la piste
+   du premier cercle à celle du dernier, et le navigateur la place au
+   pixel près à toutes les largeurs sans qu'on calcule rien. */
+.approxdoku-layout {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    width: 100%; height: 100%; padding: 8px; box-sizing: border-box;
+    container-type: size; color: var(--text-main);
+}
+.approxdoku-context { font-weight: 700; text-align: center; font-size: clamp(14px, 3.2cqh, 18px); }
+
+.ax-cadre {
+    position: relative; aspect-ratio: 1; flex: 0 1 auto;
+    width: min(100%, 62cqh); max-height: 100%;
+}
+/* LA PISTE D'UN OPÉRATEUR VAUT UN TIERS DE CELLE D'UN CERCLE, et ce
+   chiffre a été corrigé sur capture.
+
+   À 0,45, les cercles d'une chaîne étaient trop écartés : la capsule
+   devenait une longue gaine à grands vides, et deux capsules parallèles
+   — une horizontale, une verticale — offraient à l'œil quatre côtés
+   droits qu'il refermait en RECTANGLES FANTÔMES. On lisait des boîtes
+   vides au lieu de chaînes de cercles, c'est-à-dire le contraire de ce
+   que la capsule est là pour dire.
+
+   La géométrie, elle, était juste : mesuré, chaque capsule faisait bien
+   53 px de large pour un cercle de 49. Le défaut était entièrement dans
+   la LECTURE — et aucune des mesures de la sonde ne pouvait le voir. */
+.ax-grille {
+    position: absolute; inset: 0;
+    display: grid;
+    --ax-rond: minmax(0, 1fr);
+    --ax-op: minmax(0, .34fr);
+    border-radius: 10px;
+}
+.ax-rond {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    min-width: 0; min-height: 0;
+    /* LE CERCLE EST PLUS PÂLE QUE SA CAPSULE : c'est la capsule qui dit
+       le groupe, le cercle ne porte qu'une case à remplir. À trait égal,
+       les deux se disputaient l'œil et aucun ne gagnait. */
+    border: 1.5px solid color-mix(in srgb, var(--text-main) 28%, transparent);
+    border-radius: 50%; background: var(--bg-panel);
+    font-size: clamp(.9rem, 6cqh, 1.8rem); font-weight: 800;
+    color: #2563eb; cursor: pointer;
+}
+.ax-rond input { width: 100%; height: 100%; text-align: center; }
+.ax-rond--visee { box-shadow: 0 0 0 3px var(--primary); }
+.ax-faute { box-shadow: 0 0 0 3px var(--danger); }
+.ax-rond:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+/* LA CAPSULE DÉBORDE LES CERCLES DE DEUX PIXELS, sinon son trait se
+   confond exactement avec celui des cercles des extrémités et la chaîne
+   n'a plus de contour : on ne voit plus où elle commence.
+
+   ET ELLE EST REMPLIE, PAS SEULEMENT CERNÉE. Un simple contour laissait
+   l'œil refermer les côtés droits de deux capsules voisines en un
+   rectangle qui n'existe pas. Une teinte, même très pâle, fait de la
+   chaîne une SURFACE : le regard la saisit d'un bloc, et deux chaînes
+   qui se croisent montrent leur croisement — un carré un peu plus
+   soutenu, qui est une information vraie, là où le vide n'en était pas
+   une. C'est la même raison qu'au Strimko, où le ruisseau est une
+   chaîne de perles et non une tache : ce qui se parcourt doit se voir
+   d'un coup. */
+.ax-capsule {
+    z-index: 1; margin: -2px;
+    border: 1.5px solid color-mix(in srgb, var(--primary) 42%, transparent);
+    background: color-mix(in srgb, var(--primary) 7%, transparent);
+    border-radius: 999px; pointer-events: none;
+}
+.ax-capsule--faute {
+    border-color: var(--danger); border-width: 2.5px;
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+.ax-capsule--montre { border-color: var(--primary); border-width: 2.5px; }
+
+.ax-op {
+    z-index: 3;
+    display: flex; align-items: center; justify-content: center;
+    min-width: 0; min-height: 0;
+    font-size: clamp(.7rem, 3.4cqh, 1.1rem); font-weight: 700;
+    color: var(--text-main); pointer-events: none;
+    /* PAS DE FOND. Il en avait un, du temps où la capsule n'était qu'un
+       contour : le signe devait percer le trait qui passait derrière lui.
+       La capsule étant remplie, son trait ne passe plus JAMAIS par un
+       opérateur — un opérateur est à l'intérieur, le trait est sur le
+       pourtour —, et ce fond ne perçait plus rien : il découpait la
+       chaîne en tronçons blancs, vu sur capture. */
+}
+/* Le « ≈ » est LE point de règle du jeu : il se distingue des quatre
+   opérations, qui ne sont que de l'arithmétique ordinaire.
+
+   `--primary-texte` ET NON `--primary` : la seconde est une couleur de
+   FOND, et employée comme encre elle ne passe pas le seuil AA. C'est
+   l'épreuve `contraste` qui l'a dit, et elle a raison — ce signe-là est
+   le plus petit caractère de la grille et le plus important. */
+.ax-op--tilde { color: var(--primary-texte); font-size: clamp(.8rem, 3.8cqh, 1.25rem); }
+
+.ax-palette { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ax-chip {
+    width: clamp(44px, 8cqh, 56px); height: clamp(44px, 8cqh, 56px);
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px;
+    font-size: clamp(1.1rem, 3.4cqh, 1.5rem); font-weight: 800; color: var(--text-main);
+    cursor: grab; box-shadow: var(--shadow-sm); touch-action: none;
+}
+@media (hover: hover) { .ax-chip:hover { border-color: var(--primary); } }
+.ax-chip--gomme { font-size: 1.1rem; }
+
+.ax-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.ax-btn-valider {
+    padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer;
+    background: var(--primary); color: #fff; font: inherit; font-weight: 800;
+}
+.ax-btn-verif:disabled { opacity: .5; cursor: not-allowed; }
+.ax-status { min-height: 1.4em; font-size: .86rem; color: var(--text-muted); text-align: center; }
+.ax-grille--ok .ax-rond { border-color: var(--success); }
+.ax-grille--secoue { animation: kkSecoue .35s ease; }
+
+/* Même raison qu'au Strimko : la consigne ne change jamais d'une grille
+   à l'autre, c'est la grille qui change. Laissée à sa taille d'énoncé,
+   elle prenait le tiers haut de l'écran. */
+.approxdoku-layout > .approxdoku-context .game-question {
+    font-size: clamp(13px, 2.6cqh, 17px);
+    margin-bottom: 0; text-shadow: none;
+}

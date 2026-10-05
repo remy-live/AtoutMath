@@ -2385,3 +2385,33 @@ lignes** — 2026-10-01
   qu'on voulait, et six épreuves tombées d'un coup disent qu'on n'a pas remis le
   défaut qu'on croyait. Les trois comportements ont été vus à l'œuvre sur le cas
   qui a servi à l'écrire.
+
+## Aucune sonde ne voit un RECTANGLE FANTÔME — il faut regarder l'image — 2026-10-05
+
+- *Ce que je voulais faire* : livrer l'Approxdoku. La sonde disait tout vert :
+  grille résoluble telle qu'elle est montrée, capsules et opérateurs sur les
+  bonnes pistes, deux saisies, vérificateur juste, 0 erreur de page.
+- *Ce qui a coûté* : j'ai pris une capture par acquit de conscience, et le jeu
+  était **illisible**. Les capsules, longues et seulement cernées, offraient à
+  l'œil quatre côtés droits parallèles qu'il refermait en rectangles vides : on
+  lisait des boîtes, pas des chaînes de ronds. La GÉOMÉTRIE était pourtant
+  juste au pixel — mesuré : 53 px de large pour un rond de 49. Le défaut était
+  entièrement dans la LECTURE, et aucune des quatorze mesures de la sonde ne
+  pouvait le voir, parce qu'aucune ne regarde l'image. Trois allers-retours
+  capture → CSS → capture (piste d'opérateur 0,45 → 0,34, capsule remplie,
+  fonds d'opérateurs retirés). Une demi-heure.
+- *Combien de fois* : || (déjà vu sur le tableau de conversion, où « on ne voit
+  pas tout » était un débordement que les épreuves ne pouvaient pas exprimer.)
+- *Ce qui manque* : rien à fabriquer, et c'est le point. `s.photo()` dit déjà si
+  une image est UNIE, ce qui attrape l'écran blanc ; il n'existe pas et il
+  n'existera pas de mesure automatique pour « ce dessin raconte autre chose que
+  ce qu'il montre ». **La règle est donc de procédure** : un jeu dont le DESSIN
+  porte une partie de la règle — capsules, cages, ruisseaux, graduations — se
+  regarde en capture avant d'être livré, en plus d'être joué à la sonde. La
+  sonde répond « est-ce que ça marche » ; seule l'image répond « est-ce que ça
+  se comprend ».
+- *À verser au même dossier* : le contraste du « ≈ » est passé, lui, par une
+  épreuve (`--primary` employé comme encre), puis par `s.contrasteRendu`, qui
+  lit les PIXELS et voit donc la teinte de la capsule derrière le signe — 5,67,
+  au-dessus du seuil AA. Ce qui se mesure se mesure ; c'est la composition
+  d'ensemble qui ne se mesure pas.

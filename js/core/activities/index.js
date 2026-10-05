@@ -27,6 +27,7 @@ import {
 } from '../generators/numeration.js';
 import { kenkenGenerator } from '../generators/kenken.js';
 import { strimkoGenerator } from '../generators/strimko.js';
+import { approxdokuGenerator } from '../generators/approxdoku.js';
 import { binairoGenerator } from '../generators/binairo.js';
 import { colorierNombresGenerator } from '../generators/colorierNombres.js';
 import { garamGenerator } from '../generators/garam.js';
@@ -141,7 +142,7 @@ import {
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
-    kenkenGenerator, strimkoGenerator, binairoGenerator, colorierNombresGenerator,
+    kenkenGenerator, strimkoGenerator, approxdokuGenerator, binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, relatifsProduitGenerator, litteralReduireGenerator,
@@ -449,6 +450,31 @@ registerActivity({
     supports: { timed: true, autonomous: false, demo: true },
     params: [REGLAGE_SAISIE],
     load: () => import('./strimko.js')
+});
+
+// L'APPROXDOKU — le troisième de la famille, et celui qui fait CALCULER.
+//
+// RÉMY : « et un approxdoku », avec la page d'Erich Friedman en capture.
+//
+// Les trois se ressemblent de loin — un carré latin, une grille, une palette —
+// et ne demandent pas du tout la même chose :
+//
+//   · le MATHDOKU fait calculer une cage, puis chercher où la poser ;
+//   · le STRIMKO ne fait rien calculer du tout, c'est de la déduction nue ;
+//   · l'APPROXDOKU fait calculer les DEUX CÔTÉS d'une chaîne et comparer — et
+//     il refuse l'égalité parfaite, ce qui oblige à calculer juste pour rater
+//     de un. C'est le seul des trois où les PRIORITÉS OPÉRATOIRES servent.
+//
+// UNE GRILLE EST UN TRAVAIL FINI : `parDefaut: 3`, comme ses deux voisins.
+registerActivity({
+    id: 'approxdoku',
+    unite: 'grille',
+    parDefaut: 3,
+    label: 'Approxdoku',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [REGLAGE_SAISIE],
+    load: () => import('./approxdoku.js')
 });
 
 // LE CIRCUIT D'EAU — un jeu qui ne demande rien à valider.
