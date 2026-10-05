@@ -722,6 +722,14 @@ const BASE = {
         descriptor: 'R\u00e9soudre un probl\u00e8me en le ramenant au m\u00eame probl\u00e8me avec un objet de moins, et compter les \u00e9tapes qui en r\u00e9sultent.',
         lesson: "IL Y A DES PROBL\u00c8MES QU'ON NE R\u00c9SOUT PAS EN AVAN\u00c7ANT, MAIS EN RECULANT. Pour amener quatre boules \u00e0 droite, inutile de chercher le premier coup : demande-toi plut\u00f4t ce qu'il faut AVANT de pouvoir d\u00e9placer la plus grosse. Il faut que le conduit de droite soit libre, donc que les trois autres boules soient ailleurs \u2014 et te voil\u00e0 avec le m\u00eame probl\u00e8me, une boule de moins. C'est cela, r\u00e9currer : ramener un probl\u00e8me \u00e0 lui-m\u00eame en plus petit, jusqu'\u00e0 un cas si simple qu'il n'y a plus rien \u00e0 faire \u2014 ici, UNE boule, qu'on pose directement. Le compte suit la m\u00eame logique : d\u00e9placer n boules co\u00fbte deux fois ce que co\u00fbtent n \u2212 1 boules, plus un coup pour la grosse. D'o\u00f9 1, 3, 7, 15, 31, 63 \u2014 le double plus un \u00e0 chaque fois, c'est-\u00e0-dire 2\u207f \u2212 1. Avec les soixante-quatre disques de la l\u00e9gende, cela fait plus de cinq cents milliards d'ann\u00e9es."
     },
+    'defi.trefles': {
+        label: 'Chercher en balayant, au lieu de chercher au hasard',
+        chemin: [D.DEFIS, SD.CASSE_TETE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME],
+        prereqs: [],
+        descriptor: 'Retrouver quelques formes différentes au milieu de deux cents semblables, en parcourant la page avec méthode plutôt qu’au hasard.',
+        lesson: "CE N'EST PAS UN EXERCICE DE MATHÉMATIQUES, ET POURTANT IL S'Y JOUE QUELQUE CHOSE QU'ON TRAVAILLE TOUTE L'ANNÉE. Chercher trois trèfles à quatre feuilles parmi deux cents à trois feuilles, au hasard, prend une éternité : on repasse vingt fois au même endroit sans le savoir, et l'on saute des zones entières. Les chercher LIGNE PAR LIGNE, de gauche à droite, prend trente secondes — et l'on sait, à la fin, qu'on a tout regardé. C'est exactement le geste qui manque à l'élève qui compte une collection en désordre : il en oublie, ou il en compte deux fois, et il ne peut pas dire lequel des deux. La leçon tient en une phrase : QUAND IL Y A BEAUCOUP DE CHOSES À REGARDER, CE N'EST PAS L'ŒIL QUI DÉCIDE, C'EST LE PARCOURS. On choisit un ordre, on s'y tient, et l'on n'a plus besoin de se souvenir de ce qu'on a déjà vu."
+    },
     'defi.grenouilles': {
         label: 'Anticiper un coup qui bloque tout',
         chemin: [D.DEFIS, SD.CASSE_TETE],

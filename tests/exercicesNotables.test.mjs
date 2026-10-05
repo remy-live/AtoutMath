@@ -154,8 +154,13 @@ test('COMBIEN, EXACTEMENT', () => {
     // Ce chiffre n'est pas une règle, c'est un repère : s'il bouge beaucoup
     // sans qu'on l'ait voulu, c'est qu'un jeu entier a cessé de dire juste ou
     // faux — et ça, on veut le savoir.
+    //
+    // Le trente-deuxième est « Le Trèfle à Quatre Feuilles », ajouté le
+    // 5 octobre : une pause où cliquer à côté n'est pas une faute de
+    // mathématiques. Monter ce chiffre est donc un geste qu'on fait EN LE
+    // SACHANT — c'est tout l'intérêt du repère.
     const sans = exercices.filter(e => !estNotable(e));
-    assert.equal(sans.length, 31, `${sans.length} exercices sans note : ${sans.map(e => e.id).join(', ')}`);
+    assert.equal(sans.length, 32, `${sans.length} exercices sans note : ${sans.map(e => e.id).join(', ')}`);
     assert.ok(sans.some(e => e.id === 'geo-quadrilateres'),
         'l\'organigramme de Rémy est bien du lot — c\'est de lui qu\'on est parti');
 });

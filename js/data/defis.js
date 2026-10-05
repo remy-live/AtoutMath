@@ -2,6 +2,9 @@ import { TAGS } from './tags.js';
 // Les cinquante paliers du Pousseur viennent du noyau : ils y sont calculés,
 // et les recopier ici serait la promesse d'une liste qui vieillit toute seule.
 import { NIVEAUX_POUSSEUR } from '../core/pousseur.js';
+// Les paliers du champ de trèfles viennent du noyau, pour la même raison : les
+// recopier ici serait la promesse d'une liste qui vieillit toute seule.
+import { PALIERS as PALIERS_TREFLES } from '../core/champDeTrefles.js';
 
 // DOMAINE « DÉFIS ET ÉNIGMES ».
 //
@@ -245,5 +248,56 @@ export const defisExercises = [
             niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME]
         },
         instruction: "Range toutes les caisses sur les ronds verts. Touche une case libre pour y emmener le pousseur, ou touche une caisse pour la pousser ; les quatre flèches et celles du clavier marchent aussi. LA RÈGLE QUI FAIT TOUT : on POUSSE, on ne tire JAMAIS. Une caisse plaquée contre un mur ne pourra plus s'en éloigner — elle ne glissera que le long de ce mur — et dans un coin, elle ne bougera plus du tout. Si elle n'est pas sur un but à ce moment-là, c'est perdu. Alors avant chaque poussée, ne te demande pas « est-ce que ça avance ? » mais « est-ce que je pourrai revenir ? ». Le jeu te prévient dès que la position devient perdue, et « Annuler » te ramène en arrière — mais l'exercice est de le voir AVANT. Deux réflexes qui sauvent : ne colle pas une caisse contre un mur sans y être obligé, et commence par celles qui sont près d'un coin. On compte les POUSSÉES, pas les pas : marcher ne coûte rien."
+    },
+    {
+        // LE TRÈFLE À QUATRE FEUILLES — la page de jeux, et la pause.
+        //
+        // RÉMY : « J'ai pensé à des mini jeux pour une pause comme la
+        // grenouille ou le parking, je pensais aussi à des choses sympas comme
+        // cela », avec la photo d'une revue : un champ de trèfles, et
+        // « Encoure les trèfles à 4 feuilles ».
+        //
+        // IL N'Y A PAS DE MATHÉMATIQUES DEDANS, ET C'EST VOULU. Une séance
+        // d'exercices dure quarante minutes ; ce qu'on met au milieu ne doit
+        // pas être un exercice de plus déguisé en jeu — les élèves le voient
+        // tout de suite, et la pause ne repose de rien.
+        //
+        // CE QUI S'Y TRAVAILLE QUAND MÊME, et qui justifie sa place ici : le
+        // BALAYAGE ORGANISÉ. Au hasard, on repasse vingt fois au même endroit ;
+        // ligne par ligne, on sait à la fin qu'on a tout regardé. C'est le
+        // geste exact qui manque à l'élève qui compte une collection en
+        // désordre et qui en oublie — et personne ne le lui apprend jamais,
+        // parce qu'aucun exercice ne le demande explicitement.
+        id: 'defi-trefles', title: 'Le Trèfle à Quatre Feuilles',
+        cree: '2026-10-05',
+        activityId: 'trefles', skills: ['defi.trefles'],
+        sansRevision: true,
+        params: { palier: 'pre' },
+        paramSchema: [
+            {
+                // CE N'EST PAS LE NOMBRE DE TRÈFLES QUI FAIT LA DIFFICULTÉ,
+                // contrairement à ce qu'on croit en regardant la page. Deux
+                // cents trèfles tous dessinés droit se balaient très vite :
+                // l'œil repère une silhouette qui n'est pas la bonne. Ce qui
+                // coûte, c'est la ROTATION — un trèfle à trois feuilles tourné
+                // de 40° ressemble à un trèfle à quatre feuilles tourné de
+                // 10°, et il faut alors COMPTER les feuilles au lieu de
+                // reconnaître une forme.
+                id: 'palier', type: 'select', label: 'La taille du champ', default: 'pre',
+                aide: 'Le nombre de trèfles compte moins qu\'on ne croit : ce qui rend la '
+                    + 'recherche difficile, c\'est qu\'ils soient tournés dans tous les sens '
+                    + 'et qu\'ils se chevauchent.',
+                options: Object.entries(PALIERS_TREFLES)
+                    .map(([value, p]) => ({ value, label: p.label }))
+            }
+        ],
+        motsClefs: ['trèfle', 'quatre feuilles', 'chercher', 'trouver', 'observation',
+            'balayage', 'cherche et trouve', 'pause', 'récréation', 'défi', 'jeu'],
+        tags: {
+            chemin: [TAGS.DOMAINE.DEFIS, TAGS.SOUS_DOMAINE.CASSE_TETE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME,
+                TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Clique les trèfles à QUATRE feuilles : ils sont cachés parmi des trèfles à trois feuilles, tournés dans tous les sens. Quand tu en trouves un, il s'entoure tout seul, comme au crayon sur le papier. Se tromper ne coûte rien — le trèfle se colore une demi-seconde pour te dire que celui-là en a trois. LE SEUL CONSEIL QUI SERVE : ne saute pas d'un trèfle à l'autre au hasard. BALAIE, ligne par ligne, de gauche à droite. Au hasard, on repasse vingt fois au même endroit sans le savoir et l'on saute des zones entières ; en balayant, on va deux fois plus vite et l'on sait, à la fin, qu'on a tout regardé. C'est exactement ce qu'il faut faire pour compter une collection en désordre sans en oublier. Le bouton « Où chercher ? » n'indique jamais le trèfle : il éteint les trois quarts du champ, comme on dirait « regarde plutôt en bas à gauche »."
     }
 ];

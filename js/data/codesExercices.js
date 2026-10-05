@@ -219,6 +219,7 @@ export const CODES_EXERCICES = {
     'defi-parking':               'PK',   // Le Parking
     'defi-embouteillage':         'EB',   // L'Embouteillage
     'defi-pousseur':              'PJ',   // Le Pousseur
+    'defi-trefles':               'TK',   // Le Trèfle à Quatre Feuilles
 
     // --- Seconde : ensembles et intervalles ---
     //

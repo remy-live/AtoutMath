@@ -2241,3 +2241,32 @@ lignes** — 2026-10-01
   plus petit nombre » mais « moins de retenues » — il fallait mesurer la
   répartition, pas la borne. Un signalement qui revient deux fois sur le même
   écran dit presque toujours qu'on a mesuré à côté la première fois.
+
+## Un sélecteur trop GÉNÉRAL attrape autre chose, et ment aussi bien — 2026-10-05
+
+- *Ce que je voulais faire* : vérifier, dans le navigateur, que le compteur du
+  nouveau champ de trèfles affiche « 0 / 3 trouvé ».
+- *Ce qui a coûté* : la sonde a rendu `compte: ""`. J'ai cru à un défaut du
+  jeu — le compteur ne se remplit pas — et j'ai relu `majCompte`, le moment où
+  il est appelé, l'ordre de `poser()` et de `dessiner()`. Tout était juste. Le
+  jeu écrivait bien son compteur : c'est la SONDE qui lisait
+  `document.querySelector('[data-compte]')`, attrapait le `<b data-compte>` de
+  la barre de passage — vide, et plus haut dans le document — et le rapportait
+  comme s'il était le mien. Le jeu, lui, interroge `this.container`, et ne
+  s'est jamais trompé.
+- *Combien de fois* : || (c'est le frère du défaut déjà journalisé : « un
+  sélecteur inventé rend `false`, c'est-à-dire la même réponse qu'un logiciel
+  cassé ». Celui-ci est pire : il ne rend pas `false`, il rend la valeur de
+  QUELQU'UN D'AUTRE, qui a l'air d'une vraie réponse.)
+- *Ce qui manque* : rien à fabriquer — `doitExister` ne peut pas attraper ça,
+  puisque l'élément existe. Une règle d'écriture suffit : les crochets d'un jeu
+  portent son préfixe (`data-tr-compte`), comme ses classes CSS portent déjà
+  `tr-`. Le jeu est corrigé ainsi, et le piège est fermé pour de bon — personne
+  ne peut plus confondre.
+- *La règle* : **un `data-` sans préfixe est un nom de variable globale.**
+  Dans une application d'une seule page, tous les écrans partagent le même
+  document : `data-compte`, `data-note`, `data-etape` appartiennent à tout le
+  monde, donc à personne. Et la sonde qui les lit depuis `document` ne peut
+  pas savoir qu'elle s'est trompée de propriétaire. **Quand une mesure dit
+  « vide », la première question n'est pas « pourquoi est-ce vide » mais
+  « est-ce que je lis bien ce que je crois lire ».**

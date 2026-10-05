@@ -777,6 +777,10 @@ const legacy = [
     ['tour-brahma', 'La Tour de Hanoï', 'tourBrahma', 'engineTourBrahma', 'tour', 1],
     ['grenouilles', 'Les Grenouilles', 'grenouilles', 'engineGrenouilles', 'échange', 1],
     ['parking', 'Le Parking', 'parking', 'engineParking', 'échange', 1],
+    // UN CHAMP, UNE PARTIE. Chercher trois trèfles dans deux cents est un
+    // travail fini : on ne découpe pas « un demi-champ ». C'est le même
+    // raisonnement que la tour de Hanoï juste au-dessus.
+    ['trefles', 'Le Trèfle à Quatre Feuilles', 'trefles', 'engineTrefles', 'champ', 1],
     // L'embouteillage se compte en PARKINGS : une partie, c'est une voiture
     // rouge sortie. Trois suffisent — le niveau monte tout seul entre chaque,
     // donc trois parties, ce sont déjà trois marches.
@@ -934,6 +938,12 @@ const SANS_NOTE = [
     'parking', 'petites-ailes', 'pipopipette', 'pousseur', 'programme-construction',
     'puissance4', 'pyramide', 'pyramide-nombres', 'quadrilateres', 'sans-croiser',
     'serpent', 'sim', 'tableau-croise', 'tasuko', 'tetris', 'tour-brahma',
+    // LE CHAMP DE TRÈFLES EST UNE PAUSE : il n'y a rien à y rater. Cliquer
+    // à côté ne compte pas une faute — c'est l'œil qui passe, pas une erreur
+    // de mathématiques —, et le carnet d'erreurs n'en entend donc jamais
+    // parler. Un exercice qui ne peut RIEN rater rendrait 20 à qui le
+    // traverse : il se déclare ici au lieu de fausser une moyenne.
+    'trefles',
     'trigo-cotes'
 ];
 SANS_NOTE.forEach(id => declarerSansNote(id));
