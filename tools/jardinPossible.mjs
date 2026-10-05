@@ -59,6 +59,7 @@
 
 import { LEXIQUE } from '../js/core/motsCaches.js';
 import { LEXIQUE_PYRAMIDE } from '../js/data/motsPyramide.js';
+import { MOTS_COURANTS } from '../js/data/motsCourants.js';
 import { makeRng } from '../js/core/ids.js';
 
 const LONG = process.argv.includes('--long');
@@ -67,7 +68,8 @@ const LONG = process.argv.includes('--long');
 
 const MOTS = [...new Set([
     ...LEXIQUE.map(e => e.mot),
-    ...LEXIQUE_PYRAMIDE.map(x => (typeof x === 'string' ? x : x.mot))
+    ...LEXIQUE_PYRAMIDE.map(x => (typeof x === 'string' ? x : x.mot)),
+    ...MOTS_COURANTS.map(e => e.mot)
 ].map(m => String(m).toUpperCase()).filter(m => /^[A-Z]{3,}$/.test(m)))];
 const LEX = {};
 MOTS.forEach(m => (LEX[m.length] ||= []).push(m));
@@ -229,8 +231,20 @@ function remplir(cadre, fleurs, rng, budget) {
     return poserFleur(0);
 }
 
-/** Le jardin pavé : y a-t-il UN SEUL remplissage ? (recherche exhaustive) */
-function exhaustifPave(centres) {
+/**
+ * LE JARDIN PAVÉ : EN EXISTE-T-IL UN SEUL REMPLISSAGE ?
+ *
+ * Bornée des DEUX CÔTÉS, et il a fallu l'apprendre : écrite pour un lexique de
+ * deux cents mots, cette recherche répondait en quarante millisecondes. Avec
+ * huit cents mots elle ne rendait plus la main du tout — cent cinquante mots de
+ * six lettres font neuf cents poses par fleur, et l'arbre explose.
+ *
+ * On s'arrête donc au PREMIER remplissage trouvé (la question est « en
+ * existe-t-il », pas « combien »), et au bout d'un budget de pas si l'on n'en
+ * trouve aucun. Une réponse bornée dit alors « aucun en N essais », ce qui est
+ * plus faible que « aucun n'existe » — et le verdict le dit.
+ */
+function exhaustifPave(centres, budget = 400000) {
     const j = jardinPave(centres);
     const DEC = {};
     j.rangees.forEach(rg => { DEC[rg.cles.length] ||= decoupes(rg.cles.length); });
@@ -238,20 +252,24 @@ function exhaustifPave(centres) {
     const touchees = j.fleurs.map(f => j.rangees.filter(rg => rg.cles.some(c => f.petales.includes(c))));
     let trouves = 0, essais = 0;
     const poser = (i) => {
-        if (i === j.fleurs.length) { trouves++; return; }
+        if (i === j.fleurs.length) { trouves++; return true; }
         for (const mot of LEX[6]) {
             for (let rot = 0; rot < 6; rot++) {
-                essais++;
+                if (++essais > budget) return true;
                 for (let k = 0; k < 6; k++) lettres.set(j.fleurs[i].petales[(k + rot) % 6], mot[k]);
                 const ok = touchees[i].every(rg =>
                     rangeePossible(rg.cles.map(c => lettres.get(c) || null), DEC[rg.cles.length]));
-                if (ok) poser(i + 1);
+                let fini = false;
+                if (ok) fini = poser(i + 1);
                 j.fleurs[i].petales.forEach(c => lettres.delete(c));
+                if (fini) return true;
             }
         }
+        return false;
     };
     poser(0);
-    return { trouves, essais, cases: j.cases.size, fleurs: j.fleurs.length, rangees: j.rangees };
+    return { trouves, essais, epuise: essais <= budget,
+        cases: j.cases.size, fleurs: j.fleurs.length, rangees: j.rangees };
 }
 
 /** Le champ semé : combien de fleurs tiennent, et à quel prix ? */
@@ -286,7 +304,7 @@ const titre = (t) => console.log(`\n\x1b[1m${t}\x1b[0m\n${'─'.repeat(t.length)
 console.log('\x1b[1mQUEL JARDIN LE VOCABULAIRE PERMET-IL AUJOURD\'HUI ?\x1b[0m');
 
 titre('Le stock de mots du dépôt');
-console.log(`  ${MOTS.length} mots distincts (mots cachés + pyramide)`);
+console.log(`  ${MOTS.length} mots distincts (mots cachés + pyramide + mots du chemin)`);
 for (let L = 3; L <= 11; L++) {
     if (!LEX[L]) continue;
     console.log(`   ${String(L).padStart(2)} lettres : ${String(LEX[L].length).padStart(4)}`);
@@ -303,10 +321,11 @@ for (const [nom, centres] of Object.entries({
     const r = exhaustifPave(centres);
     const longs = r.rangees.map(x => x.cles.length).join(' ');
     const verdict = r.trouves
-        ? `\x1b[32m${r.trouves} remplissage(s) existent\x1b[0m`
-        : '\x1b[31mAUCUN remplissage n\'existe\x1b[0m';
+        ? '\x1b[32mil en existe au moins un\x1b[0m'
+        : (r.epuise ? '\x1b[31mAUCUN remplissage n\'existe\x1b[0m'
+            : '\x1b[33maucun trouvé dans le budget\x1b[0m');
     console.log(`  ${nom}, ${r.cases} cases, rangées ${longs || '(aucune ≥ 4)'} — `
-        + `${verdict}  (exhaustif : ${r.essais} essais, ${Date.now() - t} ms)`);
+        + `${verdict}  (${r.essais} essais${r.epuise ? ', arbre épuisé' : ''}, ${Date.now() - t} ms)`);
 }
 
 titre('Le champ SEMÉ de fleurs — où le plafond se trouve');
