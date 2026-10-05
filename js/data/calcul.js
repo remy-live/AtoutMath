@@ -1420,6 +1420,66 @@ export const calculExercises = [
         // le désordre et rien n'aide rien. Le générateur fabrique donc une
         // dizaine de grilles et garde la plus SERRÉE — c'est le chaînage qui
         // fait l'exercice.
+        // ─────────────────────────────────────────────────────────────────
+        // LE JARDIN — Rémy : « j'adore le jeu rows garden qui était souvent sur
+        // world of puzzles, on pourrait le faire en français avec des mots de
+        // math ».
+        //
+        // DEUX RESSORTS, ET IL FAUT RÉSISTER À L'ENVIE DE LES ADOUCIR. Une
+        // rangée porte DEUX réponses bout à bout et l'on ne dit pas où la
+        // première s'arrête ; une fleur se lit dans le sens horaire et l'on ne
+        // dit pas par quel pétale. Et les définitions des fleurs sont rangées
+        // par COULEUR, mélangées dedans : savoir qu'une définition va sur une
+        // fleur claire ne dit pas laquelle. C'est le croisement des deux qui
+        // fait tout le jeu.
+        //
+        // L'ARRIVÉE EST EN MATHS, LE CHEMIN EST EN FRANÇAIS — la règle que la
+        // pyramide avait déjà trouvée. Les fleurs sont au centre du dessin et
+        // viennent d'abord du lexique de cours ; les rangées acceptent en plus
+        // le français courant, sans quoi aucun jardin n'existerait : mesuré,
+        // avec le seul vocabulaire de maths, la recherche exhaustive ne trouve
+        // AUCUN remplissage, même sur le plus petit jardin possible.
+        //
+        // UN SEUL JARDIN PAR DÉFAUT : il est long. Trois d'affilée font l'heure.
+        // ─────────────────────────────────────────────────────────────────
+        id: 'voc-jardin', title: 'Le Jardin',
+        cree: '2026-10-05',
+        generatorId: 'jeu.jardin', activityId: 'jardin',
+        // Une lettre posée dans un jardin ne se révise pas : « case 2,1 » n'est
+        // pas une question qu'on peut reposer hors de SON jardin. Comme les
+        // mots croisés d'à côté.
+        sansRevision: true,
+        params: { nbQuestions: 1 },
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME,
+                TAGS.NIVEAU.TROISIEME]
+        },
+        motsClefs: ['jardin', 'rows garden', 'mots', 'vocabulaire', 'hexagone',
+            'fleurs', 'rangées', 'croisés', 'lettres'],
+        instruction: "Remplis le jardin avec des LETTRES. Chaque RANGÉE se lit de gauche à droite et porte DEUX réponses bout à bout : leurs définitions sont données dans l'ordre, mais on ne te dit pas où la première s'arrête. Chaque FLEUR — six hexagones de même couleur autour d'un cœur — porte un mot de six lettres qui se lit dans le sens des aiguilles d'une montre, et on ne te dit pas par quel pétale il commence. Les définitions des fleurs sont rangées PAR COULEUR et mélangées entre elles : savoir qu'une définition va sur une fleur claire ne dit pas sur laquelle. Commence par les rangées, elles te donneront des lettres ; une fleur à moitié remplie n'a plus souvent qu'une seule façon de se poser. Le cœur d'une fleur n'appartient à aucun mot de six : il ne se lit que dans sa rangée. « Vérifier » dit quelles réponses COMPLÈTES sont fausses, trois fois par jardin.",
+        apprentissage: {
+            intro: "Un jardin se remplit par les rangées, et se termine par les fleurs.",
+            regles: [
+                {
+                    titre: 'Une rangée porte deux réponses',
+                    texte: "Les deux définitions sont données dans l'ordre, de gauche à droite. Tu connais le nombre total de cases, pas la coupure : une rangée de sept peut être 3 + 4 ou 4 + 3.",
+                    exemple: '<span class="lec-suite"><b>R</b><b>U</b><b>E</b><b>M</b><b>O</b><b>T</b><b>S</b></span>'
+                },
+                {
+                    titre: 'Une fleur tourne dans le sens des aiguilles',
+                    texte: "Six pétales autour d'un cœur, un mot de six lettres. Le départ n'est pas donné : c'est aux lettres déjà posées par les rangées de le trahir.",
+                    exemple: '<span class="lec-suite"><b>D</b><b>R</b><b>O</b><b>I</b><b>T</b><b>E</b></span>'
+                },
+                {
+                    titre: 'Les définitions sont rangées par couleur',
+                    texte: "Tu sais qu'une définition va sur une fleur claire, pas laquelle. Il faut croiser avec les rangées pour trancher — c'est là que se fait le travail.",
+                    exemple: '<span class="lec-suite"><b>?</b><b>?</b><b>?</b><b>?</b><b>?</b><b>?</b></span>'
+                }
+            ]
+        }
+    },
+    {
         id: 'voc-mots-croises',
         // Une grille de mots croisés EST un objet de papier ; l'écran n'en est
         // qu'une transcription. Rémy : « on pourrait avoir un pdf ».

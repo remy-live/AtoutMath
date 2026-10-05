@@ -28,6 +28,7 @@ import {
 import { kenkenGenerator } from '../generators/kenken.js';
 import { strimkoGenerator } from '../generators/strimko.js';
 import { approxdokuGenerator } from '../generators/approxdoku.js';
+import { jardinGenerator } from '../generators/jardin.js';
 import { binairoGenerator } from '../generators/binairo.js';
 import { colorierNombresGenerator } from '../generators/colorierNombres.js';
 import { garamGenerator } from '../generators/garam.js';
@@ -142,7 +143,8 @@ import {
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
-    kenkenGenerator, strimkoGenerator, approxdokuGenerator, binairoGenerator, colorierNombresGenerator,
+    kenkenGenerator, strimkoGenerator, approxdokuGenerator, jardinGenerator,
+    binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, relatifsProduitGenerator, litteralReduireGenerator,
@@ -475,6 +477,29 @@ registerActivity({
     supports: { timed: true, autonomous: false, demo: true },
     params: [REGLAGE_SAISIE],
     load: () => import('./approxdoku.js')
+});
+
+// LE JARDIN — un Rows Garden en français, et le seul jeu du catalogue dont les
+// grilles sont COMPOSÉES D'AVANCE.
+//
+// RÉMY : « j'adore le jeu rows garden qui était souvent sur world of puzzles,
+// on pourrait le faire en français avec des mots de math ».
+//
+// PAS DE `REGLAGE_SAISIE` ICI, et c'est voulu : le réglage offre de remplir une
+// case en la touchant plutôt qu'en tapant, ce qui vaut pour quatre ou cinq
+// chiffres et ne vaut rien pour vingt-six lettres — il faudrait dix-sept appuis
+// pour un Q. Une case du jardin est toujours un champ.
+//
+// `parDefaut: 1` : un jardin est long. Trois d'affilée, c'est une heure.
+registerActivity({
+    id: 'jardin',
+    unite: 'grille',
+    parDefaut: 1,
+    label: 'Le Jardin',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [],
+    load: () => import('./jardin.js')
 });
 
 // LE CIRCUIT D'EAU — un jeu qui ne demande rien à valider.

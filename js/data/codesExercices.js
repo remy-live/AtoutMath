@@ -94,6 +94,7 @@ export const CODES_EXERCICES = {
     'calc-mathodu':               'MA',   // Mathdoku
     'logi-strimko':               'SH',   // Strimko
     'logi-approxdoku':            'AX',   // ApproXdoku
+    'voc-jardin':                 'JR',   // le JaRdin
     'calc-binairo':               'BN',   // Binairo
     'calc-nova':                  'NV',   // Nova
     'calc-escadrille':            'ET',   // Escadrille des Tables

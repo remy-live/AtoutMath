@@ -12735,3 +12735,114 @@ body.en-boite > #app-container { background: none; }
     font-size: clamp(13px, 2.6cqh, 17px);
     margin-bottom: 0; text-shadow: none;
 }
+
+/* ───────────────────────────── LE JARDIN ─────────────────────────────
+   Rémy : « j'adore le jeu rows garden qui était souvent sur world of
+   puzzles, on pourrait le faire en français avec des mots de math ».
+
+   DES HEXAGONES EN HTML, DÉCOUPÉS PAR `clip-path`. Chaque case porte un
+   CHAMP de saisie, et un champ ne se met pas dans un `<polygon>` SVG :
+   il aurait fallu superposer une couche de formes et une couche de
+   champs, et les tenir alignées à toutes les largeurs. Un seul dessin
+   vaut mieux que deux qui doivent s'accorder.
+
+   TOUTE POSITION EST EN POURCENTAGE d'un cadre au rapport fixe, calculé
+   depuis le repère axial. Aucun pixel n'est écrit à la main, donc rien
+   ne se décale quand l'écran change. */
+.jardin-layout {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    width: 100%; height: 100%; padding: 8px 10px; box-sizing: border-box;
+    overflow-y: auto; color: var(--text-main);
+}
+.jardin-context { font-weight: 700; text-align: center; font-size: clamp(13px, 3.4vw, 17px); }
+
+.ja-cadre { position: relative; width: min(100%, 520px); flex: none; }
+.ja-champ { position: absolute; inset: 0; }
+
+/* L'hexagone pointe en haut : sommet, deux épaules, deux hanches, pointe. */
+.ja-case {
+    position: absolute;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex; align-items: center; justify-content: center;
+    background: var(--ja-fond, #e5e7eb);
+    font-weight: 800; color: var(--text-main);
+    /* LA BORDURE NE PEUT PAS ÊTRE UNE BORDURE : `clip-path` la coupe avec
+       le reste. On creuse donc un liseré par une ombre intérieure, qui
+       suit la découpe. */
+    box-shadow: inset 0 0 0 2px var(--bg-panel);
+}
+.ja-case input {
+    width: 100%; height: 100%; text-align: center;
+    background: transparent; border: none; outline: none;
+    font: inherit; font-size: clamp(11px, 3.4vw, 20px); font-weight: 800;
+    color: #1d4ed8; text-transform: uppercase;
+}
+.ja-case input:focus { background: color-mix(in srgb, var(--primary) 16%, transparent); }
+
+/* LES TROIS COULEURS DE FLEURS, ET LEUR NOM DIT LA VÉRITÉ.
+
+   Elles s'appellent claire, moyenne et foncée : il faut donc qu'elles le
+   soient, et dans cet ordre. Trois TEINTES différentes mais de clarté
+   voisine porteraient des noms faux, et un élève daltonien — qui ne lit
+   que la clarté — ne pourrait plus les ranger du tout. Mesuré sur les
+   valeurs : 95 %, 79 % puis 58 % de clarté, soit un écart net à chaque
+   marche.
+
+   Pâles à dessein, toutes les trois : la lettre de l'élève s'écrit
+   par-dessus, et c'est elle qu'on doit lire en premier. */
+.ja-case--claire { --ja-fond: #fef3c7; }
+.ja-case--moyenne { --ja-fond: #b6d4f7; }
+.ja-case--foncee { --ja-fond: #8e88dc; }
+/* Le cœur d'une fleur n'appartient à aucun mot de six : il ne se lit que
+   dans sa rangée, et il reste donc neutre, comme dans le jeu d'origine. */
+.ja-case--centre { --ja-fond: #f3f4f6; }
+.ja-faux { box-shadow: inset 0 0 0 3px var(--danger); }
+
+.ja-indices {
+    display: flex; flex-wrap: wrap; gap: 10px 18px; justify-content: center;
+    width: 100%; max-width: 640px; font-size: clamp(12px, 3.2vw, 14px);
+}
+.ja-groupe { flex: 1 1 280px; min-width: 0; }
+.ja-groupe h4 {
+    margin: 0 0 4px; font-size: .92em; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--text-muted);
+}
+.ja-groupe ul, .ja-groupe ol { margin: 0; padding-left: 1.1em; }
+.ja-indice { margin-bottom: 3px; line-height: 1.35; }
+.ja-rangees { list-style: none; padding-left: 0; }
+.ja-rangees .ja-indice { display: flex; gap: 8px; }
+.ja-rangees b { flex: none; width: 1.2em; color: var(--primary-texte); }
+/* LE POINT MÉDIAN SÉPARE LES DEUX DÉFINITIONS D'UNE RANGÉE, et il ne dit
+   RIEN de l'endroit où la rangée se coupe : c'est tout l'intérêt. */
+.ja-rangees i { font-style: normal; color: var(--text-muted); padding: 0 2px; }
+/* `--danger-texte` ET NON `--danger` : la seconde est une couleur de
+   FOND, et employée comme encre elle ne passe pas le seuil AA. C'est
+   l'épreuve de contraste qui l'a dit, et elle a raison — cette
+   définition-là est justement celle que l'élève doit relire. */
+.ja-indice--faux { color: var(--danger-texte); font-weight: 700; }
+
+/* Chaque groupe porte la pastille de sa couleur : la liste et le champ se
+   répondent sans qu'on ait à les nommer. */
+.ja-groupe--claire h4::before,
+.ja-groupe--moyenne h4::before,
+.ja-groupe--foncee h4::before {
+    content: ''; display: inline-block; width: .8em; height: .8em;
+    border-radius: 50%; margin-right: .4em; vertical-align: -1px;
+}
+.ja-groupe--claire h4::before { background: #fef3c7; box-shadow: inset 0 0 0 1px var(--border); }
+.ja-groupe--moyenne h4::before { background: #b6d4f7; }
+.ja-groupe--foncee h4::before { background: #8e88dc; }
+
+.ja-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.ja-btn-valider {
+    padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer;
+    background: var(--primary); color: #fff; font: inherit; font-weight: 800;
+}
+.ja-btn-verif:disabled { opacity: .5; cursor: not-allowed; }
+.ja-status { min-height: 1.4em; font-size: .86rem; color: var(--text-muted); text-align: center; }
+.ja-champ--secoue { animation: kkSecoue .35s ease; }
+.ja-champ--ok .ja-case { box-shadow: inset 0 0 0 2px var(--success); }
+
+.jardin-layout > .jardin-context .game-question {
+    font-size: clamp(12px, 3.2vw, 15px); margin-bottom: 0; text-shadow: none;
+}

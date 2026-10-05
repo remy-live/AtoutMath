@@ -2415,3 +2415,50 @@ lignes** — 2026-10-01
   lit les PIXELS et voit donc la teinte de la capsule derrière le signe — 5,67,
   au-dessus du seuil AA. Ce qui se mesure se mesure ; c'est la composition
   d'ensemble qui ne se mesure pas.
+
+## Une mesure dont le sélecteur ne peut pas rendre FAUX — 2026-10-05
+
+- *Ce que je voulais faire* : clore la sonde du Jardin sur « “Valider” accepte un
+  jardin juste ».
+- *Ce qui a coûté* : j'avais écrit
+  `document.querySelector('.ja-champ--ok, .ja-case[data-cle]')` — « la classe du
+  succès OU n'importe quelle case ». La seconde moitié est toujours vraie, donc
+  la mesure l'était aussi. Elle est restée verte pendant que « Valider » jugeait
+  FAUX un jardin rempli juste — le pire défaut possible pour un exercice — et
+  c'est une ÉPREUVE écrite ensuite qui a dû le dire. Vingt minutes de retard, et
+  surtout une sonde qui aurait pu me mentir longtemps.
+- *Combien de fois* : || (c'est le miroir exact de la friction que `doitExister`
+  ferme : là, un sélecteur INVENTÉ rend `false` comme un logiciel cassé ; ici,
+  un sélecteur TROP LARGE rend `true` comme un logiciel sain.)
+- *Ce qui manque* : `doitExister` garde l'entrée d'une sonde ; rien ne garde sa
+  SORTIE. Il faudrait l'équivalent pour les mesures de fin — une aide qui refuse
+  un sélecteur dont une partie est satisfaite avant même que le geste ait eu
+  lieu. À défaut d'outil : **une mesure de fin se vérifie en la faisant échouer
+  une fois**, exactement comme une épreuve. On remplit le jardin FAUX et l'on
+  regarde la sonde rougir ; si elle reste verte, c'est elle qu'il faut corriger.
+- *La règle, en une phrase* : **un sélecteur à virgule dans une mesure de succès
+  est presque toujours une faute** — « A ou B » veut dire qu'on ne sait pas ce
+  qu'on mesure.
+
+## Un outil écrit pour cent données ne dit pas qu'il a renoncé sur mille — 2026-10-05
+
+- *Ce que je voulais faire* : relancer `jardinPossible.mjs` après avoir porté le
+  lexique de 237 à 786 mots — c'est exactement ce pour quoi je l'avais gardé.
+- *Ce qui a coûté* : il ne rendait plus la main. Sa recherche exhaustive, écrite
+  quand il y avait quarante mots de six lettres, en avait cent quarante-sept :
+  neuf cents poses par fleur au lieu de deux cent quarante, et l'arbre explose.
+  Dix minutes à comprendre que le silence n'était pas une panne mais une
+  explosion combinatoire. Pire : sa réponse « AUCUN remplissage n'existe » ne
+  distinguait pas « j'ai tout exploré » de « j'ai abandonné » — deux verdicts de
+  force très différente sous la même phrase.
+- *Combien de fois* : | (mais la famille est connue : c'est le même défaut que
+  les budgets de `compterSolutions` au Strimko et à l'Approxdoku, où l'on avait
+  pris soin de faire pencher le plafond du côté prudent.)
+- *Ce qui manque — fait dans la foulée* : l'outil s'arrête au PREMIER
+  remplissage trouvé (la question est « en existe-t-il », pas « combien »),
+  borne sa recherche, et dit maintenant « arbre épuisé » ou « aucun trouvé dans
+  le budget ».
+- *La règle* : **un outil de mesure doit dire la FORCE de son verdict, pas
+  seulement le verdict.** « Aucun n'existe » et « je n'en ai pas trouvé » se
+  ressemblent dans une sortie de terminal et ne valent pas du tout la même
+  chose — surtout quand c'est sur cette phrase qu'on décide de livrer ou non.
