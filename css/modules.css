@@ -12756,26 +12756,74 @@ body.en-boite > #app-container { background: none; }
 }
 .jardin-context { font-weight: 700; text-align: center; font-size: clamp(13px, 3.4vw, 17px); }
 
-.ja-cadre { position: relative; width: min(100%, 520px); flex: none; }
-.ja-champ { position: absolute; inset: 0; }
+/* LE PARTERRE. Rémy, capture à l'appui : « ca manque d'une bordure ».
+   Un champ d'hexagones posé à même la page flotte sans commencer ni
+   finir nulle part ; un cadre lui donne un bord, comme la grille d'un
+   Strimko ou d'un Approxdoku en a un. */
+.ja-cadre {
+    position: relative; width: min(100%, 520px); flex: none;
+    box-sizing: border-box; padding: 10px;
+    border: 2px solid var(--text-main); border-radius: 14px;
+    background: var(--bg-plateau);
+}
+/* `inset: 0` se cale sur la boîte de REMBOURRAGE : le jardin respire donc
+   des dix pixels du parterre sans qu'on ait à les retrancher à la main. */
+.ja-champ { position: absolute; inset: 10px; }
 
-/* L'hexagone pointe en haut : sommet, deux épaules, deux hanches, pointe. */
+/* L'hexagone pointe en haut : sommet, deux épaules, deux hanches, pointe.
+
+   LES FLEURS SONT À FLEUR, et c'est Rémy qui l'a vu : « les fleurs ne
+   sont pas à fleur (ahaha) ». La première version creusait un liseré par
+   une ombre intérieure de la couleur de la PAGE — les hexagones se
+   touchaient donc géométriquement (la sonde le mesure : zéro voisinage
+   décalé) mais se lisaient séparés par du blanc, comme des jetons posés
+   côte à côte plutôt que comme un nid d'abeille.
+
+   On empile maintenant deux hexagones : le parent porte le TRAIT, et son
+   `::before` porte la couleur, d'un pixel plus petit. Deux cases voisines
+   accolent alors leurs traits, et il en naît une seule ligne partagée —
+   exactement ce que fait une alvéole. */
 .ja-case {
     position: absolute;
     clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
     display: flex; align-items: center; justify-content: center;
+    /* Le trait des alvéoles est lui aussi FIXE : il sépare deux fonds
+       fixes, et un trait qui s'éclaircirait en thème sombre disparaîtrait
+       entre deux pétales restés pâles. */
+    background: #6b7280;
+    font-weight: 800; color: #0f172a;
+}
+.ja-case::before {
+    content: ''; position: absolute; inset: 1.5px;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
     background: var(--ja-fond, #e5e7eb);
-    font-weight: 800; color: var(--text-main);
-    /* LA BORDURE NE PEUT PAS ÊTRE UNE BORDURE : `clip-path` la coupe avec
-       le reste. On creuse donc un liseré par une ombre intérieure, qui
-       suit la découpe. */
-    box-shadow: inset 0 0 0 2px var(--bg-panel);
 }
 .ja-case input {
+    /* AU-DESSUS DE LA COULEUR, qui est peinte par le `::before`. */
+    position: relative; z-index: 1;
     width: 100%; height: 100%; text-align: center;
     background: transparent; border: none; outline: none;
     font: inherit; font-size: clamp(11px, 3.4vw, 20px); font-weight: 800;
-    color: #1d4ed8; text-transform: uppercase;
+    /* L'ENCRE EST SOMBRE ET FIXE — ni bleue, ni prise dans un jeton.
+
+       PAS BLEUE, contrairement au Strimko et au Mathdoku : là-bas le bleu
+       distingue ce que l'ÉLÈVE pose de ce que l'énoncé DONNE, et un
+       jardin ne donne rien — toutes les cases sont vides au départ, il
+       n'y a personne à distinguer. Le bleu n'était donc que décoratif, et
+       il ne passait pas : 2,14 de contraste sur une fleur foncée, pour un
+       seuil AA de 4,5. Du bleu sur du violet ne se lit pas.
+
+       ET SURTOUT PAS `var(--text-main)`, qui a été ma première correction
+       et qui est PIRE : les trois couleurs de fleurs sont des valeurs
+       FIXES, les mêmes dans tous les thèmes. En thème sombre, l'encre du
+       jeton devient claire et tombe sur un fond resté pâle — 1,11 de
+       contraste sur une fleur claire, c'est-à-dire invisible. Un fond
+       fixe veut une encre fixe.
+
+       Mesuré sur les quatre fonds, encre #0f172a : claire 16,03 ·
+       moyenne 11,69 · foncée 5,70 · cœur 16,22. Tous au-dessus du seuil,
+       dans tous les thèmes. */
+    color: #0f172a; text-transform: uppercase;
 }
 .ja-case input:focus { background: color-mix(in srgb, var(--primary) 16%, transparent); }
 
@@ -12796,7 +12844,10 @@ body.en-boite > #app-container { background: none; }
 /* Le cœur d'une fleur n'appartient à aucun mot de six : il ne se lit que
    dans sa rangée, et il reste donc neutre, comme dans le jeu d'origine. */
 .ja-case--centre { --ja-fond: #f3f4f6; }
-.ja-faux { box-shadow: inset 0 0 0 3px var(--danger); }
+/* UNE CASE FAUSSE ÉPAISSIT SON PROPRE TRAIT : l'ombre intérieure serait
+   coupée par la découpe, mais le fond du parent EST le trait. */
+.ja-faux { background: var(--danger); }
+.ja-faux::before { inset: 3px; }
 
 .ja-indices {
     display: flex; flex-wrap: wrap; gap: 10px 18px; justify-content: center;
@@ -12841,7 +12892,7 @@ body.en-boite > #app-container { background: none; }
 .ja-btn-verif:disabled { opacity: .5; cursor: not-allowed; }
 .ja-status { min-height: 1.4em; font-size: .86rem; color: var(--text-muted); text-align: center; }
 .ja-champ--secoue { animation: kkSecoue .35s ease; }
-.ja-champ--ok .ja-case { box-shadow: inset 0 0 0 2px var(--success); }
+.ja-champ--ok .ja-case { background: var(--success); }
 
 .jardin-layout > .jardin-context .game-question {
     font-size: clamp(12px, 3.2vw, 15px); margin-bottom: 0; text-shadow: none;
