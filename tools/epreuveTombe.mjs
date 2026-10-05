@@ -34,13 +34,40 @@
 // où le fichier contient un tableau de paires `[ancien, nouveau]`. On en
 // applique plusieurs d'un coup quand un seul défaut se répare à deux endroits.
 //
+// ET DANS UN FICHIER QUI PORTE VINGT ÉPREUVES, ON DIT LAQUELLE DOIT TOMBER :
+//
+//     node tools/epreuveTombe.mjs <essai> <source> --epreuve "<nom>" <ancien> <nouveau>
+//
+// SANS CE NOM, L'OUTIL MESURE « LE FICHIER ROUGIT » — ce qui est une garantie
+// beaucoup plus faible que celle qu'il annonce, et il annonçait la forte. Cas
+// réel : le défaut remis faisait tomber l'épreuve n° 3 du fichier, la n° 17 que
+// je venais d'écrire restait verte, et l'outil répondait « L'ÉPREUVE GARDE CE
+// QU'ELLE PRÉTEND GARDER ». Vingt minutes à l'établir à la main.
+//
+// Avec le nom, il exige trois choses : que CETTE épreuve existe (un nom inventé
+// ne tombe jamais — c'est la même friction que `doitExister` ferme ailleurs),
+// qu'elle soit verte avant, et que ce soit ELLE qui tombe après. Il dit en plus
+// quelles autres sont tombées en même temps : un défaut qui en fait tomber six
+// n'est pas le défaut qu'on croyait remettre.
+//
 // Il rend 0 si l'épreuve est verte AVANT et rouge APRÈS — c'est-à-dire si elle
 // garde vraiment quelque chose. Tout le reste est un échec, et il dit lequel.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
-const [essai, source, ancien, nouveau] = process.argv.slice(2);
+const args = process.argv.slice(2);
+let nomVoulu = null;
+const iNom = args.indexOf('--epreuve');
+if (iNom >= 0) {
+    nomVoulu = args[iNom + 1];
+    if (!nomVoulu) {
+        console.error('« --epreuve » attend le nom de l\'épreuve qui doit tomber.');
+        process.exit(2);
+    }
+    args.splice(iNom, 2);
+}
+const [essai, source, ancien, nouveau] = args;
 
 // UN DÉFAUT TIENT PARFOIS SUR PLUSIEURS LIGNES, et la ligne de commande ne sait
 // pas les porter — l'interpréteur exécute ce qui est entre accents graves, et un
@@ -77,14 +104,31 @@ if (ancien === '--depuis') {
     paires = [[ancien, nouveau]];
 }
 
-/** Lance l'épreuve. Rend `true` si elle passe. */
-function verte() {
+/**
+ * Lance le fichier d'épreuves. Rend ce que le harnais a dit : s'il est vert, et
+ * le NOM de chacune — celles qui sont tombées, et toutes celles qu'on a vues.
+ *
+ * ON LIT LES NOMS, et pas seulement le code de sortie, parce qu'un fichier qui
+ * rougit ne dit pas LAQUELLE a rougi (voir l'en-tête). `node --test` imprime
+ * « ok N - <nom> » et « not ok N - <nom> » ; on ne lit que cela.
+ */
+function lancer() {
+    let sortie = '';
+    let verte = true;
     try {
-        execFileSync('node', ['--test', essai], { encoding: 'utf8', stdio: 'pipe' });
-        return true;
+        sortie = execFileSync('node', ['--test', essai], { encoding: 'utf8', stdio: 'pipe' });
     } catch (e) {
-        return false;
+        verte = false;
+        sortie = `${e.stdout || ''}${e.stderr || ''}`;
     }
+    const vues = new Set(), tombees = new Set();
+    for (const ligne of sortie.split('\n')) {
+        const m = /^(not ok|ok) \d+ - (.*)$/.exec(ligne.trim());
+        if (!m) continue;
+        vues.add(m[2]);
+        if (m[1] === 'not ok') tombees.add(m[2]);
+    }
+    return { verte, vues, tombees };
 }
 
 const avant = readFileSync(source, 'utf8');
@@ -112,17 +156,43 @@ for (const [vieux, neuf] of paires) {
 }
 console.log('');
 
-if (!verte()) {
+const intact = lancer();
+
+// UN NOM INVENTÉ NE TOMBE JAMAIS, et l'outil conclurait « elle ne garde rien »
+// en désignant le code alors que la faute est dans l'argument. On le dit avant
+// de toucher au fichier.
+if (nomVoulu && !intact.vues.has(nomVoulu)) {
+    console.error(`AUCUNE ÉPREUVE DE ${essai} NE S'APPELLE :`);
+    console.error(`  « ${nomVoulu} »`);
+    // LA SUGGESTION SE CHERCHE SUR UN TEXTE DÉPOUILLÉ, sans quoi elle ne sert
+    // JAMAIS. La première faute de frappe qu'on fait sur ces noms-là est « 6e »
+    // pour « 6ᵉ » — et l'exposant ne se réduit PAS à un « e » par `normalize` :
+    // il n'a pas de décomposition. Sans la table ci-dessous, « 6e » tombait d'un
+    // côté et « 6ᵉ » devenait « 6 » de l'autre, donc aucune suggestion jamais.
+    // Les cinq exposants sont ceux des ordinaux français : 1ᵉʳ, 2ᵈ, 6ᵉ, nᵗ, ⁿ.
+    const EXPOSANTS = { 'ᵉ': 'e', 'ʳ': 'r', 'ᵈ': 'd', 'ᵗ': 't', 'ⁿ': 'n' };
+    const nu = (s) => s.toLowerCase().replace(/[ᵉʳᵈᵗⁿ]/g, (c) => EXPOSANTS[c])
+        .normalize('NFD').replace(/[^a-z0-9]/g, '');
+    const cible = nu(nomVoulu).slice(0, 15);
+    const proche = [...intact.vues].filter(n => nu(n).includes(cible));
+    if (proche.length) console.error('\nVoulais-tu dire :\n  ' + proche.join('\n  '));
+    process.exit(2);
+}
+if (!intact.verte) {
     console.error('L\'ÉPREUVE EST DÉJÀ ROUGE avant qu\'on touche à quoi que ce soit.');
     console.error('Il n\'y a rien à conclure : réparer d\'abord, mesurer ensuite.');
+    if (nomVoulu) console.error('  tombées : ' + [...intact.tombees].join(', '));
     process.exit(1);
 }
-console.log('  ok    elle est verte sur le dépôt intact');
+console.log(`  ok    elle est verte sur le dépôt intact${nomVoulu ? ` (${intact.vues.size} épreuves dans le fichier)` : ''}`);
 
 let tombe = false;
+let avecElle = [];
 try {
     writeFileSync(source, abime());
-    tombe = !verte();
+    const abimee = lancer();
+    tombe = nomVoulu ? abimee.tombees.has(nomVoulu) : !abimee.verte;
+    avecElle = [...abimee.tombees].filter(n => n !== nomVoulu);
 } finally {
     // LE `finally` N'EST PAS UNE POLITESSE. Sans lui, une interruption laisse
     // le défaut DANS LE DÉPÔT, et le prochain commit l'emporte.
@@ -130,7 +200,15 @@ try {
 }
 
 const remis = readFileSync(source, 'utf8') === avant;
-console.log(`  ${tombe ? 'ok  ' : 'RATÉ'}  elle ${tombe ? 'TOMBE' : 'reste verte'} quand on remet le défaut`);
+console.log(`  ${tombe ? 'ok  ' : 'RATÉ'}  ${nomVoulu ? `« ${nomVoulu} » ` : 'elle '}${tombe ? 'TOMBE' : 'reste verte'} quand on remet le défaut`);
+// CE QUI EST TOMBÉ AVEC ELLE EST UNE MESURE, pas un bavardage : un défaut qui
+// en fait tomber six n'est pas celui qu'on croyait remettre, et une garde qui
+// est SEULE à voir son défaut est une garde qui sert.
+if (nomVoulu) {
+    console.log(avecElle.length
+        ? `  ····  ${avecElle.length} autre(s) épreuve(s) tombent avec elle : ${avecElle.join(', ')}`
+        : '  ok    et elle est SEULE à le voir');
+}
 console.log(`  ${remis ? 'ok  ' : 'RATÉ'}  ${source} est remis comme il était`);
 
 if (!remis) {
@@ -141,6 +219,10 @@ if (!tombe) {
     console.error('\nCETTE ÉPREUVE NE GARDE RIEN. Elle passe avec et sans le défaut ;');
     console.error('elle donne donc une assurance qui n\'existe pas, ce qui est pire');
     console.error('que pas d\'épreuve du tout. La corriger avant de la croire.');
+    if (nomVoulu && avecElle.length) {
+        console.error(`\n(Le défaut n'est pas passé inaperçu pour autant : ${avecElle.join(', ')}`);
+        console.error('tombent. Mais ce n\'est pas CELLE-LÀ qu\'on voulait voir tomber.)');
+    }
     process.exit(1);
 }
 console.log('\nL\'ÉPREUVE GARDE CE QU\'ELLE PRÉTEND GARDER.');

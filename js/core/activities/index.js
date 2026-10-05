@@ -26,6 +26,7 @@ import {
     egypteGenerator, complementGenerator, pariteGenerator
 } from '../generators/numeration.js';
 import { kenkenGenerator } from '../generators/kenken.js';
+import { strimkoGenerator } from '../generators/strimko.js';
 import { binairoGenerator } from '../generators/binairo.js';
 import { colorierNombresGenerator } from '../generators/colorierNombres.js';
 import { garamGenerator } from '../generators/garam.js';
@@ -140,7 +141,8 @@ import {
     chiffreRangGenerator, partiesGenerator, zerosGenerator, conversionGenerator,
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
-    kenkenGenerator, binairoGenerator, colorierNombresGenerator, garamGenerator, sudokuGenerator,
+    kenkenGenerator, strimkoGenerator, binairoGenerator, colorierNombresGenerator,
+    garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
     relatifsAdditionGenerator, relatifsProduitGenerator, litteralReduireGenerator,
     litteralPuissancesGenerator,
@@ -422,6 +424,31 @@ registerActivity({
     // aujourd'hui comme demain, et le réglage n'est écrit qu'une fois.
     params: [REGLAGE_SAISIE],
     load: () => import('./kenken.js')
+});
+
+// LE STRIMKO — la même famille, et pourtant un autre exercice.
+//
+// RÉMY : « tu me fais le jeu strimko ».
+//
+// Même genre de réponse que le Mathdoku (`grid`), même saisie, même palette.
+// Ce qui change est ce qu'on demande à l'élève : le Mathdoku fait CALCULER
+// avant de déduire — une cage « 12× » occupe la tête pendant qu'on cherche où
+// la poser —, le Strimko ne demande aucun calcul. Il ne reste que la
+// déduction, toute nue. C'est l'exercice de raisonnement le plus dépouillé
+// qu'on puisse poser, et c'est pour cela qu'il marche avec ceux que le calcul
+// encombre.
+//
+// UNE GRILLE EST UN TRAVAIL FINI : `parDefaut: 3`, comme le Mathdoku. On ne
+// découpe pas « un demi-Strimko ».
+registerActivity({
+    id: 'strimko',
+    unite: 'grille',
+    parDefaut: 3,
+    label: 'Strimko',
+    accepts: ['grid'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [REGLAGE_SAISIE],
+    load: () => import('./strimko.js')
 });
 
 // LE CIRCUIT D'EAU — un jeu qui ne demande rien à valider.

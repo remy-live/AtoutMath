@@ -92,6 +92,7 @@ export const CODES_EXERCICES = {
     'calc-math-memory':           'MT',   // Memory des Tables
     'calc-labyrinthe':            'LM',   // Labyrinthe Mathématique
     'calc-mathodu':               'MA',   // Mathdoku
+    'logi-strimko':               'SH',   // Strimko
     'calc-binairo':               'BN',   // Binairo
     'calc-nova':                  'NV',   // Nova
     'calc-escadrille':            'ET',   // Escadrille des Tables

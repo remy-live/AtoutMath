@@ -12485,3 +12485,118 @@ body.en-boite > #app-container { background: none; }
     .bj-sortie:hover { color: var(--primary-texte); border-bottom-color: currentColor; }
 }
 @media (pointer: coarse) { .bj-sortie { min-height: 44px; line-height: 36px; } }
+
+/* ── LE STRIMKO ──────────────────────────────────────────────────────────────
+
+   Un carré latin dont les régions sont des RUISSEAUX : des chaînes de cases
+   qui se touchent. Tout le dessin tient à cette différence.
+
+   LE MATHDOKU ENTOURE SES CAGES D'UN TRAIT ÉPAIS, et c'est juste pour lui :
+   une cage est une TACHE, on la voit d'un coup. Un ruisseau est un CHEMIN : on
+   le suit. Dessiné en bordures, il donnerait une tache en forme de serpent
+   qu'on ne saurait ni suivre ni distinguer de sa voisine quand elles
+   s'enroulent l'une dans l'autre — et elles s'enroulent toujours.
+
+   D'OÙ LA CHAÎNE DE PERLES, en SVG au-dessous des cases : un disque par case,
+   un fil épais entre deux cases consécutives. Le doigt suit le fil.
+
+   ET LA COULEUR NE PORTE RIEN TOUTE SEULE. Sept ruisseaux, sept teintes : un
+   élève daltonien en confondrait deux. C'est le FIL qui dit l'appartenance ;
+   la couleur ne fait que reposer l'œil. */
+.strimko-layout {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    width: 100%; height: 100%; padding: 8px; box-sizing: border-box;
+    container-type: size; color: var(--text-main);
+}
+.strimko-context { font-weight: 700; text-align: center; font-size: clamp(14px, 3.2cqh, 18px); }
+
+/* Le cadre empile le dessin et la grille : même boîte, même taille, donc le
+   fil tombe toujours au centre des cases quelle que soit la largeur. */
+.st-cadre {
+    position: relative; aspect-ratio: 1; flex: 0 1 auto;
+    width: min(100%, 62cqh); max-height: 100%;
+}
+.st-ruisseaux {
+    position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+}
+.st-fil {
+    fill: none; stroke-width: .30; stroke-linecap: round; stroke-linejoin: round;
+    stroke: var(--st-teinte);
+}
+.st-perle { fill: var(--st-teinte); }
+/* Les sept teintes. Pâles À DESSEIN : le chiffre de l'élève s'écrit par-dessus,
+   et c'est lui qu'on doit lire en premier. */
+.st-ruisseau--0 { --st-teinte: #bfdbfe; }
+.st-ruisseau--1 { --st-teinte: #fed7aa; }
+.st-ruisseau--2 { --st-teinte: #bbf7d0; }
+.st-ruisseau--3 { --st-teinte: #e9d5ff; }
+.st-ruisseau--4 { --st-teinte: #fecdd3; }
+.st-ruisseau--5 { --st-teinte: #fde68a; }
+.st-ruisseau--6 { --st-teinte: #a5f3fc; }
+/* Pendant la démonstration, le ruisseau qu'on explique passe au premier plan. */
+.st-ruisseau--montre .st-fil { stroke: var(--primary); }
+.st-ruisseau--montre .st-perle { fill: var(--primary); }
+
+.st-board {
+    position: absolute; inset: 0;
+    display: grid;
+    /* `minmax(0, 1fr)` ET NON `1fr`, des deux côtés : c'est la correction déjà
+       payée par le Mathdoku, le binairo et le garam — une piste en `1fr` refuse
+       de descendre sous la hauteur de son contenu, la grille déborde, et
+       `overflow` coupe des cases sans rien dire. */
+    grid-template-columns: repeat(var(--st-n), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--st-n), minmax(0, 1fr));
+    border: 2px solid var(--text-main); border-radius: 10px; overflow: hidden;
+}
+.st-cell {
+    display: flex; align-items: center; justify-content: center;
+    min-width: 0; min-height: 0;
+    border: 1px solid color-mix(in srgb, var(--text-main) 22%, transparent);
+    font-size: clamp(1rem, 7cqh, 2rem); font-weight: 800;
+    background: transparent; cursor: pointer;
+}
+.st-cell input { width: 100%; height: 100%; }
+/* UNE CASE DONNÉE NE SE DISTINGUE PAS PAR SA COULEUR DE FOND : le fond est
+   déjà pris par le ruisseau. C'est l'ENCRE qui change — noire et grasse pour
+   ce qui est donné, bleue pour ce que l'élève pose. */
+.st-given { font-weight: 900; color: var(--text-main); cursor: default; }
+.st-cell:not(.st-given) { color: #2563eb; }
+.st-cell--visee { box-shadow: inset 0 0 0 3px var(--primary); }
+.st-faute { box-shadow: inset 0 0 0 3px var(--danger); }
+.st-cell:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
+
+.st-palette { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.st-chip {
+    /* 44 px, comme les jetons du Mathdoku : ces jetons-là se GLISSENT sur une
+       grille, et les rater c'est poser un nombre ailleurs. */
+    width: clamp(44px, 8cqh, 56px); height: clamp(44px, 8cqh, 56px);
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px;
+    font-size: clamp(1.1rem, 3.4cqh, 1.5rem); font-weight: 800; color: var(--text-main);
+    cursor: grab; box-shadow: var(--shadow-sm); touch-action: none;
+}
+@media (hover: hover) { .st-chip:hover { border-color: var(--primary); } }
+.st-chip--gomme { font-size: 1.1rem; }
+
+.st-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.st-btn-valider {
+    padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer;
+    background: var(--primary); color: #fff; font: inherit; font-weight: 800;
+}
+.st-btn-verif:disabled { opacity: .5; cursor: not-allowed; }
+.st-status { min-height: 1.4em; font-size: .86rem; color: var(--text-muted); text-align: center; }
+.st-board--ok { border-color: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 35%, transparent); }
+.st-board--secoue { animation: kkSecoue .35s ease; }
+
+/* LA CONSIGNE NE RÈGNE PAS ICI, PARCE QU'ELLE NE CHANGE JAMAIS.
+
+   `.game-question` monte jusqu'à 2,9 rem, et c'est juste pour une question de
+   calcul : elle change à chaque fois, on la relit à chaque fois, elle doit
+   dominer. La consigne d'un Strimko, elle, est la même depuis la première
+   grille — « Remplis la grille avec les nombres de 1 à 5 ». Laissée à sa
+   taille d'énoncé, elle prenait le tiers haut de l'écran (mesuré) et poussait
+   la grille vers le bas, alors que c'est la grille qui change. */
+.strimko-layout > .strimko-context .game-question {
+    font-size: clamp(13px, 2.6cqh, 17px);
+    margin-bottom: 0; text-shadow: none;
+}

@@ -837,6 +837,60 @@ export const calculExercises = [
         instruction: "Déplace-toi vers la case contenant la bonne réponse pour atteindre la sortie."
     },
     {
+        // LE STRIMKO — le Mathdoku sans le calcul.
+        //
+        // RÉMY : « tu me fais le jeu strimko ».
+        //
+        // CE QU'IL APPORTE À CÔTÉ DU MATHDOKU, qui est juste au-dessous. Le
+        // Mathdoku fait CALCULER avant de déduire : une cage « 12× » occupe la
+        // tête pendant qu'on cherche où la poser, et l'élève qui bute sur la
+        // table de 3 rate un exercice de raisonnement. Le Strimko ne demande
+        // aucun calcul — il ne reste que la déduction, toute nue.
+        //
+        // C'EST DONC LE MÊME EXERCICE POUR UN AUTRE ÉLÈVE, et c'est pour cela
+        // que les deux restent : celui que le calcul encombre peut réussir
+        // brillamment ici, et c'est souvent la première fois qu'il se voit
+        // raisonner.
+        id: 'logi-strimko', title: 'Strimko',
+        cree: '2026-10-05',
+        generatorId: 'logique.strimko', activityId: 'strimko',
+        // Une erreur de placement dans une grille ne se révise pas : « case B3 »
+        // n'est pas une question qu'on peut reposer hors de SA grille. Comme le
+        // Mathdoku, le sudoku et le binairo.
+        sansRevision: true,
+        // 3 grilles par défaut : une grille est une « question » longue, dix
+        // seraient une punition.
+        params: { nbQuestions: 3, palier: 'facile' },
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.CM2, TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME,
+                TAGS.NIVEAU.QUATRIEME]
+        },
+        motsClefs: ['strimko', 'ruisseau', 'carré latin', 'déduction', 'logique',
+            'sudoku', 'grille', 'sans calcul'],
+        instruction: "Remplis la grille : chaque LIGNE, chaque COLONNE et chaque RUISSEAU portent les nombres une fois chacun. Un ruisseau, c'est la chaîne de perles reliées par un trait de couleur — suis-la du doigt, elle serpente. IL N'Y A AUCUN CALCUL ICI, rien que de la déduction, et elle ne consiste JAMAIS à deviner : on cherche la case où il ne reste qu'UNE seule possibilité. Pour cela, prends une case vide et barre dans ta tête tous les nombres déjà présents dans sa ligne, dans sa colonne ET dans son ruisseau — les trois, pas deux. S'il en reste un seul, il est forcé ; s'il en reste plusieurs, passe à la suivante et reviens-y. C'est le ruisseau qu'on oublie, parce qu'il serpente. Une case remplie en débloque d'autres, de proche en proche. « Vérifier » ne dit jamais la réponse : il montre seulement les nombres qui se répètent, trois fois par grille.",
+        apprentissage: {
+            intro: "Un Strimko se remplit sans jamais deviner : chaque case se déduit des trois contraintes.",
+            regles: [
+                {
+                    titre: 'Chaque nombre une seule fois par ligne et par colonne',
+                    texte: "Dans une grille 4 × 4, chaque ligne contient 1, 2, 3 et 4 — une fois chacun. Idem pour chaque colonne. C'est la règle du sudoku.",
+                    exemple: '<span class="lec-suite"><b>1</b><b>3</b><b>4</b><b>2</b></span>'
+                },
+                {
+                    titre: 'Et chaque RUISSEAU aussi',
+                    texte: "Le ruisseau est la chaîne de cases reliées par un trait de couleur. Il serpente dans la grille, et lui aussi porte tous les nombres une fois chacun. C'est la contrainte qu'on oublie.",
+                    exemple: '<span class="lec-suite"><b>2</b><b>4</b><b>1</b><b>3</b></span>'
+                },
+                {
+                    titre: 'On cherche la case où il ne reste qu\'un seul nombre',
+                    texte: "Barre les nombres déjà présents dans la ligne, dans la colonne et dans le ruisseau de la case. S'il n'en reste qu'un, il est forcé — et il en débloque d'autres.",
+                    exemple: '<span class="lec-suite"><b>?</b></span>'
+                }
+            ]
+        }
+    },
+    {
         id: 'calc-mathodu', title: 'Mathdoku',
         cree: '2026-07-30',
         generatorId: 'logique.mathodu', activityId: 'kenken',

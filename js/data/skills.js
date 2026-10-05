@@ -70,6 +70,14 @@ const BASE = {
         descriptor: 'Calculer un quotient exact en s\'appuyant sur les tables.',
         lesson: '56 ÷ 8, c\'est chercher combien de fois 8 tient dans 56 : 7 fois.'
     },
+    'num.logique.strimko': {
+        label: 'D\u00e9duire sans calculer (Strimko)',
+        chemin: [D.NUMERIQUE, SD.LOGIQUE],
+        niveaux: [N.CM2, N.SIXIEME, N.CINQUIEME, N.QUATRIEME],
+        prereqs: [],
+        descriptor: 'Remplir une grille en croisant trois contraintes de placement \u2014 ligne, colonne et ruisseau \u2014 sans aucun calcul.',
+        lesson: "LE STRIMKO NE DEMANDE AUCUN CALCUL, ET C'EST TOUT SON INT\u00c9R\u00caT. Chaque ligne, chaque colonne et chaque RUISSEAU \u2014 la cha\u00eene de cases reli\u00e9es \u2014 portent les nombres de 1 \u00e0 n, une fois chacun. Il ne reste donc que la d\u00e9duction, toute nue : un \u00e9l\u00e8ve que le calcul encombre peut y r\u00e9ussir brillamment, et c'est souvent la premi\u00e8re fois qu'il se voit raisonner. LA M\u00c9THODE EST TOUJOURS LA M\u00caME, et elle ne consiste JAMAIS \u00e0 deviner : on cherche la case o\u00f9 il ne reste qu'UNE SEULE possibilit\u00e9. Pour cela on prend une case vide et l'on barre, dans sa t\u00eate, tous les nombres d\u00e9j\u00e0 pr\u00e9sents dans sa ligne, dans sa colonne ET dans son ruisseau \u2014 les trois, pas deux. S'il en reste un seul, il est forc\u00e9 ; s'il en reste plusieurs, on passe \u00e0 la case suivante et l'on y reviendra. LE RUISSEAU EST LA CONTRAINTE QU'ON OUBLIE, parce qu'il serpente : on le suit du doigt, perle apr\u00e8s perle, jusqu'au bout. Une case remplie en d\u00e9bloque d'autres, de proche en proche \u2014 et la grille se termine sans qu'on ait jamais essay\u00e9 au hasard."
+    },
     'num.logique.mathodu': {
         label: 'Grilles à contraintes (Mathdoku)',
         chemin: [D.NUMERIQUE, SD.LOGIQUE],

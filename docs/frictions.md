@@ -2299,3 +2299,89 @@ lignes** — 2026-10-01
   jamais la ligne qui la réalise. Et le vrai remède est de sortir la règle dans
   un module qui s'éprouve : c'est ce qu'on avait déjà fait pour `empreinte`,
   pour la même raison, dans le même fichier.
+
+## Une épreuve qui refuse de tomber accuse parfois le JEU, pas l'épreuve — 2026-10-05
+
+- *Ce que je voulais faire* : garder la contrainte de ruisseau dans le solveur
+  du Strimko. J'ai donc retiré cette contrainte avec `epreuveTombe.mjs`, en
+  attendant de voir mes épreuves rougir.
+- *Ce qui a coûté* : rien ne tombait. Première réaction, la mauvaise :
+  « l'épreuve est mal écrite ». En cherchant POURQUOI elle ne tombait pas, j'ai
+  compris que sans la contrainte, le générateur produit des grilles **plus
+  aidées** — donc toujours uniques, toujours valides, et **résolubles sans
+  jamais regarder les ruisseaux**. Mesuré aussitôt : 23 grilles sur 25 au
+  palier découverte, 9 ou 10 sur 25 ailleurs. J'allais livrer des sudokus à
+  décor coloré sous le nom d'un jeu que Rémy avait demandé par son nom.
+- *Combien de fois* : ||| (troisième fois que l'outil refuse une chute ; les
+  deux premières accusaient un commentaire faux et une vérification écrite deux
+  fois. C'est la première fois qu'il met en cause le PRODUIT.)
+- *Ce qui manque* : rien à fabriquer. Il manquait une épreuve — « sans les
+  ruisseaux, la grille doit être AMBIGUË » — et le générateur a dû apprendre à
+  rejouer la main entière quand la sienne ne demandait pas les ruisseaux.
+  Résultat mesuré : 30 grilles sur 30, sur les cinq paliers.
+- *La règle* : **quand une épreuve refuse de tomber, la question n'est pas
+  « comment la faire tomber » mais « qu'est-ce que cette ligne fait vraiment ».**
+  La réponse est parfois « rien » (on supprime la ligne), parfois « autre chose
+  que ce que je croyais » (on corrige le commentaire) — et parfois **« elle
+  tient debout une qualité que personne ne mesure »**. Ce troisième cas est le
+  plus cher : le défaut n'est pas dans le code, il est dans ce qu'on livre, et
+  aucune épreuve verte ne l'aurait jamais dit.
+
+## Une clef inventée dans un objet ou une classe inventée dans un sélecteur est un SILENCE — 2026-10-05
+
+- *Ce que je voulais faire* : livrer le Strimko. Seize épreuves vertes sur le
+  générateur, 4 436 épreuves vertes dans le dépôt, les trois harnais au vert.
+- *Ce qui a coûté* : j'ai failli le livrer avec **quatre** défauts que personne
+  n'aurait vus avant Rémy — tous de la même famille, un nom écrit de travers
+  dans un contrat qu'aucun outil ne vérifie :
+  - `prompt: { hint: … }` — le conseil le plus utile du jeu, écrit sous une clef
+    que **rien** dans le dépôt ne lit (zéro occurrence) ; il n'arrivait jamais
+    sur l'écran de l'élève ;
+  - `bloque: (el) => verrous[el.dataset.r]…` — `brancherChamps` appelle `bloque()`
+    **sans argument** ; douze `TypeError` par grille, dans une console où aucun
+    élève ne regarde ;
+  - `cleDe: (el) => el.dataset.r` — il reçoit le CHAMP, pas la case ; `poser`
+    recevait des coordonnées `NaN` et écrivait à côté ;
+  - `el.querySelector('.cg-valeur')` — classe qui n'existe **nulle part** (une
+    seule occurrence : celle-là). Au doigt, la valeur était bien retenue mais
+    **jamais affichée** : on tapait, rien n'apparaissait, et le jeu annonçait
+    ensuite « ta grille est complète ». Toute la saisie tablette était morte.
+  Deux heures, dont une et demie à écrire la sonde qui les a tous trouvés.
+- *Combien de fois* : |||| (c'est la même friction que `doitExister` ferme pour
+  les ÉPREUVES — « un sélecteur inventé rend `false`, la même réponse qu'un
+  logiciel cassé ». Elle est ici dans le CODE DE L'APPLICATION, où rien ne la
+  ferme.)
+- *Ce qui manque* : un outil qui lise les activités et jette sur deux choses.
+  **Un.** Toute classe citée dans un `querySelector('.x')` d'une activité doit
+  apparaître soit dans le gabarit de cette activité, soit dans un module d'UI
+  qu'elle importe, soit dans le CSS. **Deux.** Toute clef passée à un module
+  partagé (`brancherChamps`, `brancherGlisserPalette`, `makeItem`) doit figurer
+  dans ce que ce module lit. Les deux sont de la lecture de source, pas du
+  navigateur : deux cents millisecondes, comme `nouvelExercice.mjs`.
+- *La règle, en attendant* : **un jeu neuf se joue en entier à la sonde avant
+  d'être livré, et sur LES DEUX saisies** — clavier et doigt ne partagent aucun
+  code, et le pire des quatre défauts n'existait que du côté du doigt. Une sonde
+  qui ne fait qu'ouvrir l'écran et compter les cases aurait tout laissé passer :
+  elle doit TAPER, VÉRIFIER et VALIDER. C'est `tools/strimko.mjs`.
+
+## `epreuveTombe.mjs` dit « elle tombe » quand une AUTRE épreuve du fichier tombe — 2026-10-05
+
+- *Ce que je voulais faire* : prouver qu'une épreuve réécrite sur le classement
+  par chapitre gardait bien ce qu'elle prétendait garder.
+- *Ce qui a coûté* : l'outil a répondu « L'ÉPREUVE GARDE CE QU'ELLE PRÉTEND
+  GARDER » — en vert, sans réserve. Le défaut que j'avais remis faisait en
+  réalité tomber l'épreuve **n° 3** du fichier, pas la **n° 17** que je venais
+  d'écrire ; la mienne restait verte. Vingt minutes à l'établir à la main
+  (`node --test` puis `grep "^not ok"`), et à chercher un autre défaut qui ne
+  fasse tomber QUE la mienne — un `some` passé en `every` dans `proposePar`.
+- *Combien de fois* : | (première, mais structurelle : elle se reproduira à
+  chaque garde ajoutée dans un fichier qui en contient déjà vingt.)
+- *Ce qui manque — fait dans la foulée* : `--epreuve "<nom>"`, le nom de
+  l'épreuve qui doit tomber. L'outil exige alors trois choses au lieu d'une :
+  que cette épreuve EXISTE (un nom inventé ne tombe jamais — la même friction
+  que `doitExister` ferme pour les sélecteurs, et il propose le nom voisin),
+  qu'elle soit verte avant, et que ce soit ELLE qui tombe après. Il dit en plus
+  ce qui est tombé AVEC elle : « et elle est SEULE à le voir » est la mesure
+  qu'on voulait, et six épreuves tombées d'un coup disent qu'on n'a pas remis le
+  défaut qu'on croyait. Les trois comportements ont été vus à l'œuvre sur le cas
+  qui a servi à l'écrire.

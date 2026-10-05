@@ -134,20 +134,59 @@ test('LA CLEF DÉCLARÉE PAR L\'ACTIVITÉ L\'EMPORTE — c\'est le cas de Rémy'
         }
     };
 
-    // SANS LA CLEF : quatre énoncés distincts, donc la session est contente —
-    // et l'élève lit deux fois 12 et deux fois 12. C'est exactement le défaut.
-    const sansClef = session(generator, 4);
-    const enonces = [sansClef.next(), sansClef.next(), sansClef.next(), sansClef.next()];
-    assert.equal(new Set(enonces.map(i => i.prompt.text)).size, 4,
-        'le dédoublonnage par énoncé devrait suffire pour les énoncés');
+    // ─────────────────────────────────────────────────────────────────────
+    // UNE SEULE SÉRIE EST UN COUP DE DÉ — LA MÊME LEÇON QUE CINQUANTE LIGNES
+    // PLUS HAUT, ET ELLE N'AVAIT PAS ÉTÉ APPLIQUÉE ICI.
+    //
+    // Cette épreuve tirait UNE série de quatre et exigeait quatre énoncés
+    // distincts. Au quatrième tirage, les douze retirages ont encore (3/4)¹²
+    // ≈ 3 % de chances de retomber chaque fois sur du déjà vu : elle tombait
+    // donc toute seule une fois sur trente environ. Prise sur le fait au milieu
+    // d'une série sans rapport, où elle a fait croire une seconde que le travail
+    // du jour avait cassé le tirage des questions. L'épreuve voisine porte, mot
+    // pour mot, l'avertissement qu'il fallait lire : « une épreuve qui dépend du
+    // hasard ne garde rien ».
+    //
+    // ON MESURE DONC SUR DES SÉRIES, et l'on énonce les deux moitiés du défaut
+    // séparément — c'est leur CONTRASTE qui est la démonstration.
+    // ─────────────────────────────────────────────────────────────────────
+    const SERIES = 200;
+    let enoncesVus = 0, resultatsVus = 0, clefEnDefaut = 0;
+    for (let n = 0; n < SERIES; n++) {
+        const sans = session(generator, 4);
+        const quatre = [sans.next(), sans.next(), sans.next(), sans.next()];
+        enoncesVus += new Set(quatre.map(i => i.prompt.text)).size;
+        resultatsVus += new Set(quatre.map(i => i.answer)).size;
 
-    // AVEC LA CLEF que l'activité déclare : deux résultats possibles, deux
-    // questions posées, et la troisième n'a plus rien de neuf à offrir.
-    const avec = session(generator, 2);
-    avec.clefDeQuestion(it => String(it.answer));
-    const resultats = [avec.next().answer, avec.next().answer];
-    assert.equal(new Set(resultats).size, 2,
-        `le même résultat deux fois : ${resultats.join(' et ')}`);
+        const avec = session(generator, 2);
+        avec.clefDeQuestion(it => String(it.answer));
+        const deux = [avec.next().answer, avec.next().answer];
+        if (new Set(deux).size < 2) clefEnDefaut++;
+    }
+
+    // PREMIÈRE MOITIÉ : LE DÉDOUBLONNAGE PAR ÉNONCÉ FAIT SON TRAVAIL. Quatre
+    // énoncés sur quatre, ou presque — et c'est bien là le problème : il le
+    // fait, et il ne suffit pas.
+    assert.ok(enoncesVus / SERIES > 3.5,
+        `${(enoncesVus / SERIES).toFixed(2)} énoncés distincts sur quatre : `
+        + 'le dédoublonnage par énoncé ne fonctionne plus du tout');
+
+    // SECONDE MOITIÉ : L'ÉLÈVE N'A POURTANT LU QUE DEUX RÉSULTATS. C'est le
+    // défaut de Rémy, et il est CERTAIN — quatre questions pour deux résultats
+    // possibles, c'est le principe des tiroirs. On l'écrit quand même, parce que
+    // c'est la ligne qui dit POURQUOI dédoublonner les énoncés ne suffisait pas.
+    assert.ok(resultatsVus / SERIES <= 2,
+        `${(resultatsVus / SERIES).toFixed(2)} résultats distincts : le jeu `
+        + "d'essai ne reproduit plus la forme du défaut (deux résultats pour "
+        + 'quatre énoncés)');
+
+    // ET C'EST CELLE-CI QUI GARDE LA CLEF. Les douze retirages ont chacun une
+    // chance sur deux de retomber sur le résultat déjà vu : il en reste 2⁻¹²
+    // ≈ 0,02 % par série, soit 0,05 série attendue sur deux cents. On en tolère
+    // une, pas deux — sinon c'est que la clef n'est plus lue du tout.
+    assert.ok(clefEnDefaut <= 1,
+        `${clefEnDefaut} séries sur ${SERIES} reposent le même résultat : `
+        + "la clef déclarée par l'activité n'est pas prise en compte");
 });
 
 test('LA TABLE DE PYTHAGORE DÉCLARE SA CLEF — sinon le correctif ne l\'atteint pas', () => {
