@@ -1576,10 +1576,36 @@ function initDebugToolbar() {
         // faisait rien, sans un mot.
         const porteur = [r && r.handle && r.handle.jeu, r && r.handle]
             .find(x => x && typeof x.montrerSolution === 'function');
-        if (!porteur || !porteur.montrerSolution()) {
-            showToast(r ? 'Cet exercice ne sait pas montrer sa solution.' : 'Aucun exercice en cours.',
-                'warning');
+        if (porteur && porteur.montrerSolution()) return;
+        if (!r) { showToast('Aucun exercice en cours.', 'warning'); return; }
+
+        // ── ET À DÉFAUT, LA RÉPONSE ATTENDUE — « de manière générale » ──────
+        //
+        // RÉMY : « pourrais-tu dans la barre de debug me mettre une option
+        // réponse (de manière générale) pour voir si ».
+        //
+        // Le bouton ne savait dire que « cet exercice ne sait pas montrer sa
+        // solution », ce qui est vrai de la grande majorité d'entre eux :
+        // `montrerSolution` est un luxe que seuls quelques jeux à plateau
+        // peuvent offrir. Or TOUT item porte sa réponse — c'est elle que la
+        // séance compare, c'est elle qui part au bilan, et c'est elle que Rémy
+        // veut lire « pour voir si ».
+        //
+        // `reponsePapier` D'ABORD : « la réponse telle qu'on l'écrit ». Les
+        // deux chapitres de calcul littéral posent la sentinelle `'ok'` dans
+        // `answer` — un QCM dont les propositions sont des expressions ne peut
+        // pas se servir de l'expression comme valeur. Afficher « ok » aurait
+        // été exactement le genre de réponse qui ne répond pas.
+        const it = r.session && r.session.item;
+        const dite = it && String(it.reponsePapier || it.answer || '');
+        if (!dite) {
+            showToast('Cet exercice ne dit pas sa réponse.', 'warning');
+            return;
         }
+        // ON MONTRE AUSSI L'EXPLICATION QUAND IL Y EN A UNE : vérifier qu'un
+        // exercice est juste, c'est souvent vérifier qu'il se JUSTIFIE bien.
+        const pourquoi = it.explanation ? `\n${it.explanation}` : '';
+        showToast(`Réponse attendue : ${dite}${pourquoi}`, 'info', 9000);
     };
 }
 

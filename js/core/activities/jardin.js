@@ -133,10 +133,40 @@ export function mount(container, session, opts = {}) {
                 <span>${rg.reponses.map(r => escaper(r.def)).join('<i> · </i>')}</span>
             </li>`).join('');
 
+        // ── CHAQUE DÉFINITION DE FLEUR SAIT DÉSORMAIS À QUELLE FLEUR ELLE VA
+        //
+        // RÉMY : « pour les fleurs, c'est pas clair, on ne sait pas où mettre
+        // les définitions. Il faudrait aller sur une fleur, connaître au moins
+        // le début du mot, le sens (dans un premier temps) ».
+        //
+        // CE QU'ON ABANDONNE, ET C'EST LUI QUI LE DEMANDE. L'en-tête de ce
+        // fichier défendait l'inverse en gras : « on ne dit pas par quel pétale
+        // la fleur commence », « savoir qu'une définition va sur une fleur
+        // claire ne dit pas laquelle ». C'est la règle du Rows Garden, et elle
+        // est juste — pour un lecteur de magazine qui a une heure devant lui.
+        // Pour une classe de collège qui découvre le jeu, elle empile trois
+        // inconnues sur la même case : quel mot, par où il commence, et sur
+        // quelle fleur. Rémy a vu ses élèves rester devant.
+        //
+        // « DANS UN PREMIER TEMPS » est sa formule, et elle dit bien ce qu'elle
+        // dit : on ouvre la porte maintenant, on la refermera quand la classe
+        // saura jouer. Le durcissement tiendra dans une ligne — c'est pour cela
+        // que le lien fleur ↔ définition est calculé ici et non cuit dans les
+        // données.
+        const rangDeLaFleur = (def) => jardin.fleurs.findIndex(f => f.def === def);
         const fleurs = couleurs.map(c => `
             <div class="ja-groupe ja-groupe--${c.id}">
                 <h4>${c.label}</h4>
-                <ul>${c.definitions.map(d => `<li class="ja-indice">${escaper(d)}</li>`).join('')}</ul>
+                <ul>${c.definitions.map(d => {
+            const n = rangDeLaFleur(d);
+            // UNE DÉFINITION QU'ON NE SAIT PAS RATTACHER RESTE UNE LIGNE
+            // MUETTE, et ne devient pas un bouton qui ne fait rien : un
+            // bouton inerte est pire qu'un texte.
+            return n < 0
+                ? `<li class="ja-indice">${escaper(d)}</li>`
+                : `<li class="ja-indice ja-indice--fleur" data-fleur="${n}"
+                       tabindex="0" role="button">${escaper(d)}</li>`;
+        }).join('')}</ul>
             </div>`).join('');
 
         container.innerHTML = `
@@ -158,6 +188,7 @@ export function mount(container, session, opts = {}) {
                     </button>
                     <button type="button" class="ja-btn-valider" data-valider>Valider</button>
                 </div>
+                <div class="ja-fleur-info" data-fleur-info hidden></div>
                 <div class="ja-status" role="status"></div>
                 ${hintBar(session)}
             </div>`;
@@ -166,6 +197,7 @@ export function mount(container, session, opts = {}) {
         if (session.isDemo) { runDemo(); return; }
 
         brancherSaisie();
+        brancherLesFleurs();
         brancherVerificateur();
         brancherValidation();
         wireHint(container, session);
@@ -188,6 +220,107 @@ export function mount(container, session, opts = {}) {
         if (champ && champ.value.toUpperCase() !== v) champ.value = v;
         el.classList.toggle('ja-posee', !!v);
         effacerVerdict();
+    }
+
+    // --- La fleur qu'on regarde ---------------------------------------------
+    //
+    // RÉMY : « Il faudrait aller sur une fleur, connaître au moins le début du
+    // mot, le sens (dans un premier temps) ».
+    //
+    // TROIS CHOSES, ET AUCUNE N'EST LA RÉPONSE : où le mot commence, de quel
+    // côté il tourne, et quelle définition est la sienne. Le mot, lui, reste
+    // entièrement à trouver — on a seulement cessé d'empiler trois inconnues
+    // sur la même case.
+    //
+    // ON NUMÉROTE LES PÉTALES DE 1 À 6 plutôt que de poser une flèche courbe :
+    // les chiffres disent le départ ET le sens d'un seul geste, ils se lisent
+    // au vidéoprojecteur, et ils ne couvrent pas la lettre qu'on écrit — ils se
+    // posent dans le coin haut du pétale.
+    //
+    // LE CŒUR N'EST PAS UN PÉTALE : il porte la couleur, il entre dans sa
+    // rangée, et il ne fait partie d'aucun mot de six. On ne le numérote donc
+    // pas, sans quoi l'élève chercherait une septième lettre.
+    let fleurChoisie = null;
+
+    function oublierLaFleur() {
+        fleurChoisie = null;
+        container.querySelectorAll('.ja-case--fleur, .ja-case--depart')
+            .forEach(el => el.classList.remove('ja-case--fleur', 'ja-case--depart'));
+        container.querySelectorAll('[data-rang-petale]').forEach(el => el.remove());
+        container.querySelectorAll('.ja-indice--choisie')
+            .forEach(el => el.classList.remove('ja-indice--choisie'));
+        container.querySelectorAll('.ja-coeur--choisi')
+            .forEach(el => el.classList.remove('ja-coeur--choisi'));
+        const info = container.querySelector('[data-fleur-info]');
+        if (info) { info.hidden = true; info.innerHTML = ''; }
+    }
+
+    function montrerLaFleur(n) {
+        const f = item.meta.jardin.fleurs[n];
+        if (!f) return;
+        if (fleurChoisie === n) { oublierLaFleur(); return; }
+        oublierLaFleur();
+        fleurChoisie = n;
+
+        const coeur = caseEl(f.centre);
+        if (coeur) coeur.classList.add('ja-coeur--choisi');
+        f.petales.forEach((cle, k) => {
+            const el = caseEl(cle);
+            if (!el) return;
+            // LE RANG DE LECTURE : le pétale `depart` porte la première lettre,
+            // et l'on tourne dans l'ordre de `petales` — c'est la convention de
+            // `lettresDuJardin`, et il n'y en a qu'une dans le dépôt.
+            const rang = ((k - f.depart + 6) % 6) + 1;
+            el.classList.add('ja-case--fleur');
+            if (rang === 1) el.classList.add('ja-case--depart');
+            const badge = document.createElement('span');
+            badge.className = 'ja-rang';
+            badge.dataset.rangPetale = String(rang);
+            badge.textContent = String(rang);
+            badge.setAttribute('aria-hidden', 'true');
+            el.appendChild(badge);
+        });
+
+        const ligne = container.querySelector(`.ja-indice--fleur[data-fleur="${n}"]`);
+        if (ligne) ligne.classList.add('ja-indice--choisie');
+
+        const info = container.querySelector('[data-fleur-info]');
+        if (info) {
+            // LE SINGULIER S'ÉCRIT, IL NE SE RABOTE PAS. Ma première version
+            // retirait le « s » de « Fleurs foncées » et affichait « Fleur
+            // foncées » : la sonde l'a imprimé dans son relevé, ce qui est
+            // exactement à quoi sert une sonde qui MONTRE ce qu'elle mesure au
+            // lieu de rendre « ok ».
+            const AU_SINGULIER = {
+                claire: 'Fleur claire', moyenne: 'Fleur moyenne', foncee: 'Fleur foncée'
+            };
+            const couleur = AU_SINGULIER[f.couleur] || 'Fleur';
+            info.hidden = false;
+            info.innerHTML = `<b>${escaper(couleur)}</b>`
+                + ` — le mot de six lettres commence au pétale <b>1</b> et se lit`
+                + ` dans le sens des aiguilles d'une montre.`
+                + `<span class="ja-fleur-def">${escaper(f.def)}</span>`;
+        }
+    }
+
+    function brancherLesFleurs() {
+        // ON ENTRE PAR LE CŒUR OU PAR LA DÉFINITION, et l'on ressort par le
+        // même geste : les deux sens sont utiles, puisque la question de Rémy
+        // se pose dans les deux — « où mettre cette définition » et « quelle
+        // est la définition de cette fleur ».
+        container.querySelectorAll('.ja-coeur').forEach(el => {
+            el.addEventListener('click', () => {
+                const n = item.meta.jardin.fleurs.findIndex(f => f.centre === el.dataset.cle);
+                if (n >= 0) montrerLaFleur(n);
+            });
+        });
+        container.querySelectorAll('.ja-indice--fleur').forEach(el => {
+            const aller = () => montrerLaFleur(Number(el.dataset.fleur));
+            el.addEventListener('click', aller);
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); aller(); }
+            });
+        });
     }
 
     function brancherSaisie() {
@@ -412,6 +545,36 @@ export function mount(container, session, opts = {}) {
     return {
         showNext: renderNext,
         showPrevious() { if (session.rewind()) renderNext(); },
+
+        /**
+         * LE CORRIGÉ, POUR CELUI QUI MET AU POINT — jamais pour l'élève.
+         *
+         * RÉMY : « pourrais-tu dans la barre de debug me mettre une option
+         * réponse (de manière générale) pour voir si ».
+         *
+         * Le bouton « Solution » de la barre existait déjà et demandait
+         * `montrerSolution()` à l'exercice ; le Jardin ne savait pas répondre,
+         * et le bouton se taisait. Or c'est l'exercice où la question se pose
+         * le plus : on ne peut pas vérifier à l'œil qu'un jardin de vingt-huit
+         * cases est soluble.
+         *
+         * ON POSE LES LETTRES COMME DES DONNÉES, pas comme une saisie : elles
+         * prennent la teinte des cases fournies, et `lettres` est rempli pour
+         * que « Valider » dise bien « juste » — c'est précisément ce qu'on veut
+         * contrôler.
+         */
+        montrerSolution() {
+            if (!item || !item.meta || !item.meta.solution) return false;
+            oublierLaFleur();
+            for (const [cle, lettre] of item.meta.solution) {
+                poser(cle, lettre);
+                const el = caseEl(cle);
+                if (el) el.classList.add('ja-donnee');
+            }
+            const s = statutEl();
+            if (s) s.textContent = 'Corrigé affiché — outil d\u2019auteur.';
+            return true;
+        },
         destroy() {
             destroyed = true;
             if (cursor) { cursor.destroy(); cursor = null; }

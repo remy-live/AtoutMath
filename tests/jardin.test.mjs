@@ -25,6 +25,10 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import { JARDINS } from '../js/data/jardins.js';
+import { readFileSync } from 'node:fs';
+
+/** La source d'un fichier du dépôt — les activités ne s'importent pas sous Node. */
+const lire = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 import {
     jardinGenerator, lettresDuJardin, definitionsParCouleur, COULEURS, nomDeRangee
 } from '../js/core/generators/jardin.js';
@@ -248,4 +252,106 @@ test('le générateur rend un jardin complet et sa solution', () => {
 test('les rangées se nomment A, B, C comme dans le jeu d\'origine', () => {
     assert.equal(nomDeRangee(0), 'A');
     assert.equal(nomDeRangee(3), 'D');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// ALLER SUR UNE FLEUR : SON DÉPART, SON SENS, SA DÉFINITION.
+//
+// RÉMY : « pour les fleurs, c'est pas clair, on ne sait pas où mettre les
+// définitions. Il faudrait aller sur une fleur, connaître au moins le début du
+// mot, le sens (dans un premier temps) ».
+//
+// CE QUE CELA ABANDONNE, ET C'EST LUI QUI LE DEMANDE. L'en-tête du générateur
+// défend l'inverse en toutes lettres — « trouver laquelle va où fait partie du
+// jeu ». C'est la règle du Rows Garden, et elle est juste pour un lecteur de
+// magazine qui a une heure devant lui. Pour une classe qui découvre, elle
+// empile trois inconnues sur la même case : quel mot, par où il commence, sur
+// quelle fleur. « Dans un premier temps » est sa formule : on rouvrira quand la
+// classe saura jouer, et ce sera une ligne.
+//
+// CE QUI NE CHANGE PAS : le MOT reste entièrement à trouver. On ne donne ni une
+// lettre ni un emplacement de coupure de rangée.
+
+test('CHAQUE DÉFINITION DE FLEUR SE RATTACHE À UNE FLEUR, ET À UNE SEULE', () => {
+    // LA CONDITION SANS LAQUELLE LE LIEN SERAIT FAUX : l'activité retrouve la
+    // fleur par sa définition (`f.def === d`). Deux fleurs qui partageraient la
+    // même définition mèneraient donc toutes deux à la première — et l'élève
+    // apprendrait une correspondance fausse.
+    for (let i = 0; i < 8; i++) {
+        const item = jardinGenerator.generate({}, { rng: makeRng(`lien-${i}`), index: i });
+        const defs = item.meta.jardin.fleurs.map(f => f.def);
+        assert.equal(new Set(defs).size, defs.length,
+            'deux fleurs portent la même définition : le lien vers la fleur sera faux');
+        // Et toutes les définitions listées sont bien celles des fleurs : une
+        // ligne orpheline resterait muette à l'écran.
+        const listees = item.meta.couleurs.flatMap(c => c.definitions);
+        assert.deepEqual([...listees].sort(), [...defs].sort(),
+            'la liste des définitions ne dit pas exactement les fleurs du jardin');
+    }
+});
+
+test('LE RANG D\'UN PÉTALE DIT LA LETTRE QU\'IL PORTE', () => {
+    // LA RÈGLE QUE L'ÉCRAN AFFICHE MAINTENANT EN CHIFFRES, et elle doit être
+    // CELLE du dépôt, pas une seconde écrite à côté : `lettresDuJardin` pose
+    // `f.mot[(k - f.depart + 6) % 6]` sur le pétale `k`. L'activité numérote
+    // `((k - depart + 6) % 6) + 1`. Si les deux divergeaient, le « 1 » affiché
+    // ne serait pas la première lettre — on aurait écrit une aide qui ment.
+    for (let i = 0; i < 6; i++) {
+        const item = jardinGenerator.generate({}, { rng: makeRng(`rang-${i}`), index: i });
+        const sol = item.meta.solution;
+        for (const f of item.meta.jardin.fleurs) {
+            f.petales.forEach((cle, k) => {
+                const rang = ((k - f.depart + 6) % 6) + 1;
+                assert.equal(sol.get(cle), f.mot[rang - 1],
+                    `le pétale de rang ${rang} ne porte pas la ${rang}e lettre de ${f.mot}`);
+            });
+            // LE PÉTALE 1 EST BIEN CELUI DU DÉPART — c'est ce que la phrase
+            // affichée promet à l'élève.
+            assert.equal(((f.depart - f.depart + 6) % 6) + 1, 1);
+            assert.equal(sol.get(f.petales[f.depart]), f.mot[0]);
+        }
+    }
+});
+
+test('L\'ÉCRAN MONTRE LE DÉPART, LE SENS, ET LA DÉFINITION', () => {
+    // L'activité touche le document dès qu'on l'importe : on lit sa source.
+    // `tools/jardinFleurChoisie.mjs` mesure l'écran pour de vrai — il clique un
+    // cœur et vérifie que les numéros 1 à 6 TOURNENT dans le sens des aiguilles
+    // autour du cœur, ce qu'aucune lecture de source ne peut dire.
+    const src = lire('js/core/activities/jardin.js');
+    assert.match(src, /const rang = \(\(k - f\.depart \+ 6\) % 6\) \+ 1;/,
+        'le rang affiché doit suivre la même règle que `lettresDuJardin`');
+    assert.match(src, /ja-case--depart/, 'le pétale de départ doit se marquer');
+    assert.match(src, /sens des aiguilles d'une montre/,
+        'le sens de lecture doit être dit en toutes lettres');
+    assert.match(src, /data-fleur="\$\{n\}"/, 'les définitions doivent porter leur fleur');
+    // LE TÉMOIN : sans lui, supprimer la zone d'information laisserait les
+    // trois règles ci-dessus vertes et Rémy sans sa phrase.
+    assert.match(src, /\[data-fleur-info\]/);
+});
+
+test('LE JARDIN SAIT MONTRER SON CORRIGÉ — « une option réponse pour voir si »', () => {
+    // RÉMY : « pourrais-tu dans la barre de debug me mettre une option réponse
+    // (de manière générale) pour voir si ». `#db-solution` existait et demandait
+    // `montrerSolution()` à l'exercice ; le Jardin ne savait pas répondre, et le
+    // bouton se taisait — sur l'exercice où la question se pose le plus, puisque
+    // personne ne vérifie à l'œil qu'un jardin de vingt-huit cases est soluble.
+    const src = lire('js/core/activities/jardin.js');
+    assert.match(src, /montrerSolution\(\) \{/, 'le Jardin doit savoir montrer son corrigé');
+    assert.match(src, /item\.meta\.solution/, 'et le prendre dans la solution de l\'item');
+
+    // ET LE BOUTON RETOMBE SUR LA RÉPONSE DE L'ITEM quand l'exercice ne sait
+    // rien montrer : c'est le « de manière générale » de sa demande. Presque
+    // aucun exercice n'a de `montrerSolution`, mais TOUS portent leur réponse.
+    const app = lire('js/app.js');
+    const i = app.indexOf('db-solution');
+    const bloc = app.slice(i, i + 2600);
+    assert.ok(bloc.length > 500, 'tranche vide : l\'épreuve ne vérifierait rien');
+    assert.match(bloc, /it\.reponsePapier \|\| it\.answer/,
+        'le bouton doit dire la réponse attendue quand l\'exercice ne montre rien');
+    // `reponsePapier` D'ABORD : les deux chapitres de calcul littéral posent la
+    // sentinelle `'ok'` dans `answer`, et afficher « ok » ne répondrait rien.
+    assert.ok(bloc.indexOf('reponsePapier') < bloc.indexOf('it.answer'),
+        '`answer` est lu avant `reponsePapier` : on affichera « ok »');
 });

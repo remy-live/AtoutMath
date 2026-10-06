@@ -49,10 +49,17 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js'
 import { meneurDemo } from '../meneurDemo.js';
 import { appliquer } from '../transformations.js';
 import { direTransformation } from '../mosaique.js';
+import { marqueurPoint } from '../figures.js';
 
 /** Le côté d'une case, en unités de dessin. */
-const COTE = 34;
-const MARGE = 18;
+// LA CASE, EN PIXELS. Rémy, devant l'écran : « il faudrait des carreaux, une
+// figure plus grande ». Elle valait 34 px — assez pour viser au doigt, pas
+// assez pour COMPTER. Or compter les carreaux est le geste même de l'exercice :
+// « trois à droite et deux en haut » ne se lit pas sur un dessin où l'on
+// distingue mal les lignes. À 46 px la plus grande mosaïque tient encore dans
+// une page, et le cadre défile si l'écran est étroit.
+const COTE = 46;
+const MARGE = 22;
 
 /**
  * LES COULEURS DES PIÈCES.
@@ -111,9 +118,37 @@ export function mount(container, session, opts = {}) {
 
     function svgDuPavage() {
         const { w, h } = tailleSvg();
+        const b = boite();
         const pieces = item.meta.pieces;
         const occupe = new Map();
         pieces.forEach(p => p.cases.forEach(c => occupe.set(`${c.x},${c.y}`, p.n)));
+
+        // ── LES CARREAUX, ET J'AVAIS ÉCRIT LE CONTRAIRE ────────────────────
+        //
+        // RÉMY : « il faudrait des carreaux ».
+        //
+        // IL A RAISON, ET MON COMMENTAIRE D'ORIGINE DISAIT L'INVERSE : « un
+        // quadrillage complet ferait ressembler la mosaïque à du papier
+        // millimétré ». C'était un argument de dessinateur, pas de professeur.
+        // Sa feuille EST du papier quadrillé, et ce n'est pas un décor : la
+        // réponse à « quelle translation ? » se lit en comptant les carreaux
+        // entre deux sommets. Sans eux, l'élève voit des taches de couleur et
+        // ne peut mesurer aucun déplacement — c'est-à-dire qu'il ne peut pas
+        // faire l'exercice autrement qu'à l'œil.
+        //
+        // ILS PASSENT PAR-DESSUS LES COULEURS, et non dessous : les fonds sont
+        // opaques, un quadrillage posé en dessous disparaîtrait à l'intérieur
+        // des pièces — c'est-à-dire partout où l'on compte. Très pâle, il se
+        // lit comme les carreaux d'un cahier sous la couleur d'un feutre.
+        let carreaux = '';
+        for (let x = b.x0; x <= b.x1; x++) {
+            carreaux += `<line class="pv-carreau" x1="${X(x)}" y1="${Y(b.y0)}"`
+                + ` x2="${X(x)}" y2="${Y(b.y1)}"/>`;
+        }
+        for (let y = b.y0; y <= b.y1; y++) {
+            carreaux += `<line class="pv-carreau" x1="${X(b.x0)}" y1="${Y(y)}"`
+                + ` x2="${X(b.x1)}" y2="${Y(y)}"/>`;
+        }
 
         let fond = '', traits = '', numeros = '';
         pieces.forEach((p, i) => {
@@ -140,17 +175,49 @@ export function mount(container, session, opts = {}) {
                 + ` text-anchor="middle" dominant-baseline="central">${p.n}</text>`;
         });
 
-        // Les sommets nommés, par-dessus tout : ce sont eux que l'énoncé cite.
+        // ── LES SOMMETS NOMMÉS, ET ILS SUIVENT LE RÉGLAGE DU POSTE ─────────
+        //
+        // RÉMY : « que les points soient des croix, pixel ou rond selon
+        // l'option ».
+        //
+        // L'OPTION EXISTE DEPUIS LONGTEMPS — « Marque des points » dans les
+        // réglages d'affichage, `state.stylePoint` : croix, plus ou disque —
+        // et toutes les figures du logiciel la suivent. Celle-ci dessinait son
+        // propre disque de 3,5 px : un exercice qui invente sa convention
+        // apprend à l'élève que la convention n'en est pas une.
+        //
+        // `marqueurPoint` écrit LES TROIS marques dans le SVG, et le CSS en
+        // montre une selon `html[data-point]`. Changer le réglage ne redessine
+        // donc rien : une mosaïque déjà à l'écran change de convention à
+        // l'instant où le professeur bascule l'option.
         let points = '';
         for (const s of item.meta.sommets) {
-            points += `<circle class="pv-sommet" cx="${X(s.x)}" cy="${Y(s.y)}" r="3.5"/>`
-                + `<text class="pv-lettre" x="${X(s.x)}" y="${Y(s.y) - 8}"`
+            points += marqueurPoint(X(s.x), Y(s.y), 'pv-sommet', 6)
+                // LA LETTRE SE POSE PLUS HAUT QU'AVANT, parce que la marque a
+                // grandi avec la figure : une croix de 6 px de demi-branche
+                // monte jusqu'à 7 px au-dessus du point, et la lettre posée à
+                // 11 px s'asseyait dessus. Vu à l'écran sur « I » et « J ».
+                + `<text class="pv-lettre" x="${X(s.x)}" y="${Y(s.y) - 14}"`
                 + ` text-anchor="middle">${s.nom}</text>`;
         }
 
-        return `<svg class="pv-svg" viewBox="0 0 ${w} ${h}" role="img"
+        // LA TAILLE EST ÉCRITE SUR LE DESSIN, ET C'EST TOUT LE DÉFAUT.
+        //
+        // RÉMY : « une figure plus grande ». Je commençais par agrandir la
+        // case — et MESURÉ dans un navigateur, cela ne changeait RIEN :
+        // viewBox 550 de large, rendu 320 px. Un `<svg>` sans `width` ni
+        // `height` n'a pas de taille naturelle ; `max-width: 100%` n'a donc
+        // rien à limiter, et c'est le `min-width: 320px` de la feuille de
+        // style qui décidait de tout. La mosaïque faisait 320 px sur un écran
+        // de 1400, quelle que soit la valeur de COTE.
+        //
+        // On écrit donc sa taille naturelle. `max-width: 100%` et
+        // `height: auto` la font toujours rétrécir sur un téléphone — mais
+        // elle ne RÉTRÉCIT plus sur un grand écran, où il y a la place.
+        return `<svg class="pv-svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img"
             aria-label="Mosaïque de ${pieces.length} pièces numérotées">
             <g class="pv-fonds">${fond}</g>
+            <g class="pv-carreaux">${carreaux}</g>
             <g class="pv-traits">${traits}</g>
             <g class="pv-contour-g" data-contour></g>
             <g class="pv-repere" data-repere></g>
@@ -270,7 +337,12 @@ export function mount(container, session, opts = {}) {
             return;
         }
         if (t.genre === 'centrale' || t.genre === 'rotation') {
-            g.innerHTML = `<circle class="pv-centre" cx="${X(t.centre.x)}" cy="${Y(t.centre.y)}" r="5.5"/>`;
+            // LE CENTRE EST UN POINT, LUI AUSSI, et il suit donc la même
+            // option que les sommets nommés — « croix, pixel ou rond selon
+            // l'option », dit Rémy. Deux conventions dans une seule figure,
+            // l'une pour les sommets et l'autre pour le centre, c'est une de
+            // trop. Il reste rouge : c'est l'énoncé, pas le dessin.
+            g.innerHTML = marqueurPoint(X(t.centre.x), Y(t.centre.y), 'pv-centre', 8);
             return;
         }
         if (t.genre === 'translation' && t.pointsVecteur) {

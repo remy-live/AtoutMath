@@ -12898,6 +12898,51 @@ body.en-boite > #app-container { background: none; }
     background: var(--primary); color: #fff; font: inherit; font-weight: 800;
 }
 .ja-btn-verif:disabled { opacity: .5; cursor: not-allowed; }
+/* ── LA FLEUR QU'ON REGARDE ──────────────────────────────────────────────────
+
+   RÉMY : « on ne sait pas où mettre les définitions. Il faudrait aller sur une
+   fleur, connaître au moins le début du mot, le sens ».
+
+   LA COURONNE S'ÉCLAIRE, LE DÉPART SE MARQUE, LES PÉTALES SE NUMÉROTENT. Les
+   chiffres disent le départ ET le sens d'un seul geste — une flèche courbe
+   aurait demandé de deviner lequel des deux elle montrait.
+
+   `--ja-fond` EST LA VARIABLE QUE LA CASE LIT DÉJÀ : on la repeint, plutôt que
+   de poser un fond par-dessus. Un second fond passerait sous la découpe de
+   l'hexagone et déborderait en carré. */
+.ja-case--fleur { --ja-fond: #e8f0fe; }
+.ja-case--depart { --ja-fond: #cfe2ff; }
+.ja-coeur--choisi::before { inset: 1px; }
+
+/* LE RANG SE POSE DANS LE COIN HAUT, jamais au milieu : le milieu est à la
+   LETTRE que l'élève écrit, et un chiffre derrière une lettre se lit mal.
+   `pointer-events: none` : le chiffre ne doit pas voler le clic du champ. */
+.ja-rang {
+    position: absolute; top: 8%; left: 50%; transform: translateX(-50%);
+    font-size: .62em; font-weight: 800; line-height: 1;
+    color: var(--primary-texte); opacity: .85; pointer-events: none;
+}
+
+/* La définition de la fleur regardée, sous le champ. */
+.ja-fleur-info {
+    width: 100%; max-width: 640px; margin: 2px auto 0;
+    padding: 8px 12px; border-radius: 10px;
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+    font-size: .9rem; line-height: 1.4; text-align: center;
+}
+.ja-fleur-def { display: block; margin-top: 3px; font-weight: 700; }
+
+/* Une définition de fleur se clique : elle mène à sa fleur, et retour. */
+.ja-indice--fleur { cursor: pointer; border-radius: 6px; }
+.ja-indice--fleur:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media (hover: hover) {
+    .ja-indice--fleur:hover { color: var(--primary-texte); }
+}
+.ja-indice--choisie {
+    color: var(--primary-texte); font-weight: 700;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
 .ja-status { min-height: 1.4em; font-size: .86rem; color: var(--text-muted); text-align: center; }
 .ja-champ--secoue { animation: kkSecoue .35s ease; }
 .ja-champ--ok .ja-case { background: var(--success); }
@@ -12959,17 +13004,44 @@ body.en-boite > #app-container { background: none; }
     fill: none;
 }
 
+/* LE NUMÉRO SUIT LA TAILLE DE LA CASE. Il valait 15 px pour une case de 34 ;
+   la case en fait 46, et le numéro paraissait perdu au milieu. C'est pourtant
+   LUI la réponse de l'exercice : il doit se lire du fond de la classe. */
 .pv-num {
-    font-size: 15px;
+    font-size: 19px;
     font-weight: 700;
     fill: #0f172a;
     pointer-events: none;
 }
 
-/* Les sommets nommés : ils font partie de l'énoncé, pas du décor. */
-.pv-sommet { fill: #0f172a; }
+/* LES CARREAUX. Rémy : « il faudrait des carreaux ».
+
+   ILS SONT PAR-DESSUS LES COULEURS, parce que les fonds des pièces sont
+   opaques : dessous, ils disparaîtraient à l'intérieur des pièces, c'est-à-dire
+   exactement là où l'élève compte. Très pâles, et en encre LITTÉRALE comme tout
+   ce qui se pose sur une pièce : les teintes des pièces sont fixes, une encre
+   qui suivrait le thème deviendrait invisible en thème sombre — c'est la mesure
+   du Jardin, 1,11 de contraste.
+
+   `pointer-events: none` : ce sont des traits, pas des cibles. Sans cela, le
+   trait qui passe sur une case volerait le clic destiné à la pièce. */
+.pv-carreaux { pointer-events: none; }
+.pv-carreau {
+    stroke: #94a3b8;
+    stroke-width: 1;
+    opacity: .45;
+    fill: none;
+}
+
+/* Les sommets nommés : ils font partie de l'énoncé, pas du décor.
+   `color` ET NON `fill` : la marque est dessinée par `marqueurPoint`, dont les
+   trois écritures — croix, plus, disque — prennent toutes `currentColor`. Un
+   `fill` ne colorerait que le disque, et la croix sortirait noire quoi qu'on
+   fasse. */
+.pv-sommet { color: #0f172a; }
+/* La lettre d'un sommet nommé : c'est l'énoncé qui la cite, elle se lit. */
 .pv-lettre {
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 700;
     fill: #0f172a;
     /* Un liseré clair pour que la lettre se lise même posée sur un trait. */
@@ -12986,11 +13058,9 @@ body.en-boite > #app-container { background: none; }
     stroke-width: 2.4;
     stroke-dasharray: 9 5;
 }
-.pv-centre {
-    fill: #dc2626;
-    stroke: #ffffff;
-    stroke-width: 1.5;
-}
+/* Le centre d'une symétrie ou d'une rotation : un point de l'ÉNONCÉ, donc
+   rouge, et marqué comme tous les autres points — voir `.pv-sommet`. */
+.pv-centre { color: #dc2626; }
 .pv-fleche {
     stroke: #dc2626;
     stroke-width: 2.6;

@@ -2765,3 +2765,44 @@ lignes** — 2026-10-01
   serveur et ferment le navigateur. Deux lignes dans `tools/sonde.mjs`, et plus
   jamais un serveur orphelin. (Et `kill <PID>` nommément, jamais `pkill -f` :
   ce piège-là a déjà tué le shell de l'agent deux fois.)
+
+---
+
+## Une taille qu'on croit avoir donnée — 2026-10-06
+
+- **Ce que je voulais faire** : agrandir la mosaïque, Rémy la trouvant trop
+  petite pour qu'on y compte les carreaux.
+- **Ce qui a coûté** : j'ai changé `COTE` de 34 à 46, relu le code, trouvé cela
+  juste — et **rien n'avait bougé à l'écran**. La sonde l'a dit en une ligne :
+  « viewBox 550×458, rendu 320 px ». Un `<svg>` sans `width` ni `height` n'a pas
+  de taille naturelle ; `max-width: 100%` n'a donc rien à limiter, et c'est le
+  `min-width: 320px` de la feuille de style qui décidait de tout. La figure
+  faisait 320 px sur un écran de 1400, quelle que soit la valeur de la constante.
+- **Combien de fois** : | (mais la famille est celle des défauts dont la cause
+  est une règle du NAVIGATEUR et non une ligne du dépôt — comme le foyer que
+  perd un bouton désactivé, trouvé le même jour.)
+- **Ce qui manque** : rien à fabriquer, une habitude à prendre. **Toute sonde
+  qui mesure une apparence doit relever la taille RENDUE, pas la taille
+  demandée.** Deux appels — `getBoundingClientRect()` sur le dessin et sur une
+  de ses cases — et l'écart saute aux yeux. Sans eux, j'aurais livré « c'est
+  plus grand » à quelqu'un qui aurait vu exactement la même image qu'avant.
+
+---
+
+## Un bouton d'auteur qui ne sait répondre que pour une poignée d'exercices — 2026-10-06
+
+- **Ce que je voulais faire** : donner à Rémy « une option réponse (de manière
+  générale) pour voir si », dans la barre de débogage.
+- **Ce qui a coûté** : peu — mais le constat mérite d'être noté. Le bouton
+  existait depuis longtemps (`#db-solution`) et demandait `montrerSolution()` à
+  l'exercice. **Presque aucun exercice ne l'implémente** : c'est un luxe que
+  seuls quelques jeux à plateau peuvent offrir. Le bouton répondait donc « cet
+  exercice ne sait pas montrer sa solution » dans la quasi-totalité des cas,
+  c'est-à-dire qu'il était décoratif. Rémy l'a redemandé sans savoir qu'il
+  existait, ce qui est le signe le plus clair qu'un outil ne sert à rien.
+- **Combien de fois** : || (même forme que le bouton « ? » de la symétrie, le
+  même jour : une commande posée là où elle ne pouvait pas répondre.)
+- **Ce qui manque** : la question à se poser en posant un outil d'auteur —
+  **« sur combien d'exercices cela répondra-t-il ? »** Si la réponse est « ceux
+  qui ont écrit la méthode », il faut un REPLI qui marche partout. Ici il était
+  à portée : tout item porte sa réponse, c'est elle que la séance compare.
