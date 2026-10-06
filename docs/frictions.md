@@ -2595,3 +2595,36 @@ lignes** — 2026-10-01
   (`#btn-uc-confirm`, la fenêtre de `index.html`). Chercher la mauvaise rend
   `null`, c'est-à-dire la même réponse qu'un logiciel cassé. **Deux fenêtres qui
   font la même chose sont une dette en soi** : à fondre en une.
+
+---
+
+## Deux juges pour un même exercice, et un seul corrigé — 2026-10-06
+
+- **Ce que je voulais faire** : comprendre pourquoi une élève de Rémy, qui avait
+  écrit `−(−2) + (+7)` là où le logiciel attendait `−(−2) + (7)`, s'était vu
+  compter faux.
+- **Ce qui a coûté** : rien à chercher dans les mathématiques — la règle qui lui
+  donnait raison était **déjà écrite, et deux fois**. « Le + de tête est une
+  trace utile au tableau, pas une condition de justesse », dit
+  `opposeParentheses.js` depuis des mois. Le coût est ailleurs : il a fallu
+  **remonter deux chaînes d'appel distinctes** pour découvrir que la LIGNE
+  FINALE passe par `reponseJuste` et les LIGNES INTERMÉDIAIRES par
+  `jugerEtape → memeReponse → normaliser` (`reductionPuissances.js`), chacun
+  avec SA copie de la règle, chacune limitée au premier caractère de la chaîne.
+  Corriger celle que j'avais sous les yeux aurait laissé l'autre refuser la même
+  réponse — une ligne sur deux.
+- **Combien de fois** : ||| — c'est la **troisième en deux jours**, et toujours
+  la même forme : la corbeille des parcours (`removeTeacherPath` dans un seul
+  des deux boutons), la carte du monde (`sansCarteDOuverture` chez un seul des
+  deux appelants), et maintenant le « + » facultatif (deux juges, deux copies).
+- **Ce qui manque** : un outil qui, **partant d'un exercice**, dise par quels
+  juges une réponse d'élève peut passer. On a `tools/nouvelExercice.mjs` pour le
+  catalogue, `tools/gardesDemo.mjs` pour les démonstrations ; il manque
+  l'équivalent pour la correction : « `geo-pavage` juge avec X et Y » se lit
+  dans les imports, mais personne ne le lit avant d'avoir payé.
+- **La règle, et elle est maintenant écrite trois fois dans le dépôt** : *une
+  correction posée sur un seul des chemins qui mènent au même endroit ne ferme
+  rien.* Le réflexe à prendre : avant de corriger un juge, **chercher les autres
+  appelants du même geste** — et si la règle est recopiée, la poser dans un seul
+  fichier et garder par une épreuve le fait que personne n'en refait une copie
+  (`tests/plusFacultatif.test.mjs` le fait).

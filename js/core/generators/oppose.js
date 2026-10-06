@@ -205,7 +205,22 @@ export const opposeEnleverGenerator = {
              */
             verifieTexte: (saisie) => {
                 if (reponseJuste(saisie, [finale.montrer])) return { juste: true };
-                if (normaliserEcriture(saisie) === normaliserEcriture(q.reponse)) {
+                // ON RECONNAÎT LE SAUT AVEC LE MÊME JUGE QUE LA RÉPONSE JUSTE,
+                // et non avec une comparaison écrite ici : un juge de rechange
+                // posé à côté du vrai finit toujours par être plus sévère que
+                // lui — c'est exactement ce qui vient de coûter une bonne réponse
+                // à une élève de Rémy, un juge sur deux ayant sa copie de la
+                // règle du « + » facultatif.
+                //
+                // MESURÉ, ET IL FAUT LE DIRE : aujourd'hui cette branche ne se
+                // TRAVERSE JAMAIS, parce que la dernière ligne de chaque barreau
+                // EST le résultat — `finale.montrer` vaut donc toujours
+                // `q.reponse`, et le `return` du dessus a déjà répondu. Elle
+                // attend un barreau dont la dernière ligne ne serait pas le
+                // résultat, et elle restera juste ce jour-là. On ne la supprime
+                // pas, mais on n'écrit pas non plus qu'elle protège l'élève
+                // d'aujourd'hui : ce serait se raconter une histoire.
+                if (reponseJuste(saisie, [q.reponse])) {
                     return { juste: false, inacheve: true,
                         pourquoi: 'C\'est bien la bonne valeur — mais on demande '
                             + 'd\'abord la ligne SANS parenthèses, avant de la calculer.' };

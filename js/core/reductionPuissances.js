@@ -27,6 +27,8 @@
 /** Le vrai signe moins (U+2212), pas le trait d'union du clavier. */
 export const MOINS = '−';
 
+import { sansPlusFacultatif } from './plusFacultatif.js';
+
 const CHIFFRES_HAUT = '⁰¹²³⁴⁵⁶⁷⁸⁹';
 export const exposant = (n) =>
     String(n).split('').map(c => CHIFFRES_HAUT[Number(c)]).join('');
@@ -123,8 +125,12 @@ export function normaliser(texte) {
     // « x1 » est « x » : un exposant 1 ne s'écrit pas, mais l'élève qui l'écrit
     // n'a pas fait d'erreur de mathématiques.
     t = t.replace(/([a-z])1(?![0-9])/g, '$1');
-    // Un « + » de tête ne veut rien dire.
-    t = t.replace(/^\+/, '');
+    // UN « + » QUI N'EST QU'UN SIGNE NE VEUT RIEN DIRE — en tête de l'écriture
+    // comme en tête d'une parenthèse. La règle est dans `core/plusFacultatif.js`,
+    // et elle y est parce que ce juge-ci la partageait avec `reponseJuste` sans
+    // le savoir : chacun en avait sa copie, chacun ne l'appliquait qu'au premier
+    // caractère, et une élève de Rémy a été comptée fausse sur « −(−2) + (+7) ».
+    t = sansPlusFacultatif(t);
     return t;
 }
 

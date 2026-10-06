@@ -51,6 +51,8 @@
 // Rémy au tableau, et une parenthèse dans une parenthèse ajoute une difficulté
 // qui n'est pas celle du barreau.
 
+import { sansPlusFacultatif } from './plusFacultatif.js';
+
 /** Le signe d'écriture d'un relatif isolé : « −3 », « 5 ». */
 const relatif = (n) => (n < 0 ? '−' : '') + Math.abs(n);
 
@@ -97,18 +99,23 @@ export function normaliserEcriture(s) {
  * sont bons » — un élève qui écrit « 4 − 5 » a compris exactement la même
  * chose que celui qui écrit « +4 − 5 ». Le `+` de tête est une trace utile au
  * tableau, pas une condition de justesse.
+ *
+ * ET « −(−2) + (+7) » VAUT « −(−2) + (7) ». La même phrase, et il a fallu
+ * qu'une élève de Rémy la paye pour qu'on voie que le code ne l'appliquait
+ * qu'au PREMIER caractère : son « + » était dans une parenthèse. La règle vit
+ * maintenant dans `core/plusFacultatif.js`, qui dit où un « + » n'est qu'un
+ * signe — et les deux juges de cet exercice l'appellent au lieu de la recopier.
  */
 export function reponseJuste(donnee, attendu) {
-    // LE `+` DE TÊTE EST FACULTATIF DES DEUX CÔTÉS. On l'enlève avant de
+    // LE « + » FACULTATIF S'ENLÈVE DES DEUX CÔTÉS. On l'enlève avant de
     // comparer plutôt que d'écrire deux écritures attendues pour chaque trou :
     // une règle dite une fois ne peut pas se contredire, deux listes tenues à
     // la main finissent toujours par diverger. (La première version fabriquait
     // la variante par concaténation et produisait « +−4 − 5 » dès que le
     // premier terme était négatif.)
-    const sansPlus = (s) => (s.startsWith('+') ? s.slice(1) : s);
-    const d = normaliserEcriture(donnee);
+    const d = sansPlusFacultatif(normaliserEcriture(donnee));
     if (!d) return false;
-    return attendu.some((a) => sansPlus(d) === sansPlus(normaliserEcriture(a)));
+    return attendu.some((a) => d === sansPlusFacultatif(normaliserEcriture(a)));
 }
 
 /**
