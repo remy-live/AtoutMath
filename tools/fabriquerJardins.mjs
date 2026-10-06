@@ -120,7 +120,18 @@ const FORMES = {
     // Un champ plus long laisse aux fleurs de la place pour se chevaucher SANS
     // s'étouffer, et six fleurs font trois couleurs de deux — le partage par
     // couleur ne cache quelque chose qu'à partir de là.
-    grand: { longueurs: [9, 10, 11, 12, 11, 12, 11, 10, 9], fleurs: 6 },
+    // ONZE RANGÉES, ET UN CHAMP PRESQUE CARRÉ.
+    //
+    // La forme précédente — neuf rangées jusqu'à douze cases — était PLATE
+    // (rapport 1,55), et sur un téléphone de 390 px cela donnait des hexagones
+    // de 24 px : trop petits pour un doigt, trop petits pour une lettre. Le
+    // rapport décide de la taille des cases, et personne ne le voit avant de
+    // regarder une capture.
+    //
+    // Mesuré sur les formes candidates, à 330 px de large : 9 rangées → 26 px ;
+    // celle-ci → 37 px. Et elle a ONZE rangées, ce qui la rapproche des douze
+    // du jeu de magazine.
+    grand: { longueurs: [7, 8, 9, 8, 9, 8, 9, 8, 9, 8, 7], fleurs: 6 },
     // Le vrai format de magazine : 130 cases, 24 fleurs, 53 pétales partagés.
     // MESURÉ : jamais rempli, même en soixante secondes par essai. On le garde
     // écrit pour que le jour où le lexique aura encore grossi, il suffise de le
@@ -151,9 +162,40 @@ function jardin(forme, rng) {
         const petales = HORAIRE.map(([dq, dr]) => `${c.q + dq},${c.r + dr}`);
         if (petales.every(p => cases.has(p))) possibles.push({ centre: cle, petales });
     }
-    const fleurs = (rng ? rng.shuffle([...possibles]) : possibles)
-        .slice(0, combien)
-        .map((f, i) => ({ ...f, i }));
+    // ON CHOISIT LE BOUQUET, ON NE LE TIRE PAS AU HASARD.
+    //
+    // MESURÉ : à six fleurs, un tirage brut ne se remplit qu'une fois sur sept,
+    // et chaque échec brûle vingt-cinq secondes. Les réussites, elles, tombent
+    // en une seconde. Ce n'est donc pas la durée de recherche qui manque —
+    // c'est que certains bouquets sont INFAISABLES et qu'on s'acharne dessus.
+    //
+    // CE QUI SÉPARE LES DEUX : le nombre de pétales PARTAGÉS. Un bouquet serré
+    // en a beaucoup, et chacun porte alors deux mots de six EN PLUS de sa
+    // rangée — trois contraintes sur une seule lettre. La forme « petit », à
+    // trois partagés, se remplit quatre fois sur quatre ; « grand », à six
+    // partagés, une fois sur quatre.
+    //
+    // ON VISE DONC UNE FOURCHETTE, et surtout pas le minimum : zéro partagé
+    // serait la version disjointe que Rémy a corrigée, et le jeu y perdrait ce
+    // qui fait son sel. Deux à quatre suffisent pour que les fleurs
+    // s'entraident sans s'étouffer.
+    const partagesDe = (choix) => {
+        const vus = new Map();
+        choix.forEach(f => f.petales.forEach(c => vus.set(c, (vus.get(c) || 0) + 1)));
+        return [...vus.values()].filter(n => n > 1).length;
+    };
+    let fleurs = (rng ? rng.shuffle([...possibles]) : possibles).slice(0, combien);
+    if (rng) {
+        let meilleur = fleurs, score = partagesDe(fleurs);
+        for (let essai = 0; essai < 80; essai++) {
+            const candidat = rng.shuffle([...possibles]).slice(0, combien);
+            const n = partagesDe(candidat);
+            if (n >= 2 && n <= 4) { meilleur = candidat; score = n; break; }
+            if (n >= 1 && (score < 1 || n < score)) { meilleur = candidat; score = n; }
+        }
+        fleurs = meilleur;
+    }
+    fleurs = fleurs.map((f, i) => ({ ...f, i }));
 
     const parR = new Map();
     for (const [cle, c] of cases) { if (!parR.has(c.r)) parR.set(c.r, []); parR.get(c.r).push({ cle, ...c }); }
@@ -171,6 +213,32 @@ function jardin(forme, rng) {
 const colle = (mot, motif) => {
     for (let i = 0; i < mot.length; i++) if (motif[i] !== null && motif[i] !== mot[i]) return false;
     return true;
+};
+
+/**
+ * LE MÊME TEST, MAIS À PARTIR D'UN DÉCALAGE — et sans découper le motif.
+ *
+ * MESURÉ AU PROFILAGE, et c'était inattendu : `rangeeTient` pesait 42 % du
+ * temps de fabrication, et les allocations de tableaux (`slice`, `map`) 43 %
+ * de plus. Ce n'était donc PAS le parcours des mots qui coûtait — c'était de
+ * fabriquer un tableau neuf à chaque vérification, des millions de fois.
+ *
+ * (J'avais d'abord cru au parcours, et rangé tous les mots par lettre et par
+ * place pour n'en examiner qu'une poignée. Mesuré à seuil égal : 31,65 s
+ * contre 31,58 s — du bruit. Quarante lignes pour rien, retirées. Le profilage
+ * a ensuite montré où était vraiment le temps.)
+ */
+const colleA = (mot, motif, depart) => {
+    for (let i = 0; i < mot.length; i++) {
+        const attendu = motif[depart + i];
+        if (attendu !== null && attendu !== mot[i]) return false;
+    }
+    return true;
+};
+const existeMotA = (L, motif, depart) => {
+    const liste = LEX[L];
+    for (let i = 0; i < liste.length; i++) if (colleA(liste[i], motif, depart)) return true;
+    return false;
 };
 const decoupes = (n) => {
     const out = [];
@@ -214,19 +282,41 @@ function remplir(j0, rng, finAvant) {
     // même groupe de couleur, ce qui n'est plus une énigme mais une faute
     // d'impression. C'est aussi la règle de tous les mots croisés.
     const employes = new Set();
+    // LA FAMILLE SE REFUSE PENDANT LA RECHERCHE, PAS APRÈS.
+    //
+    // La vérification finale attrape bien ECU et ECUS dans le même jardin —
+    // mais après avoir rempli quatre-vingt-dix cases pour rien. On écarte donc
+    // le mot au moment de le poser : un mot ne doit ni commencer un mot déjà
+    // employé, ni être commencé par lui.
+    const familleLibre = (mot) => {
+        for (const autre of employes) {
+            if (mot.startsWith(autre) || autre.startsWith(mot)) return false;
+        }
+        return true;
+    };
     let pas = 0;
     // LE TEMPS SE REGARDE PARTOUT, pas seulement dans la boucle profonde : une
     // première version ne le vérifiait que dans les rangées, et la recherche
     // continuait à moudre les fleurs pendant des minutes après l'échéance.
     const expire = () => (++pas & 255) === 0 && Date.now() > finAvant;
 
+    // UN SEUL TAMPON POUR TOUS LES MOTIFS : on le remplit, on le lit, on
+    // recommence — au lieu d'allouer un tableau par appel.
+    const tampon = new Array(Math.max(...j.rangees.map(rg => rg.cles.length)));
     const rangeeTient = (rg) => {
-        const motif = rg.cles.map(c => lettres.get(c) || null);
-        return DEC[rg.cles.length].some(d => {
-            let i = 0;
-            for (const L of d) { if (!LEX[L].some(m => colle(m, motif.slice(i, i + L)))) return false; i += L; }
-            return true;
-        });
+        const n = rg.cles.length;
+        for (let k = 0; k < n; k++) tampon[k] = lettres.get(rg.cles[k]) || null;
+        const choix = DEC[n];
+        for (let o = 0; o < choix.length; o++) {
+            const d = choix[o];
+            let i = 0, va = true;
+            for (let x = 0; x < d.length; x++) {
+                if (!existeMotA(d[x], tampon, i)) { va = false; break; }
+                i += d[x];
+            }
+            if (va) return true;
+        }
+        return false;
     };
     const touchees = j.fleurs.map(f => j.rangees.filter(rg => rg.cles.some(c => f.petales.includes(c))));
 
@@ -259,7 +349,7 @@ function remplir(j0, rng, finAvant) {
                 const liste = LEX[L], n = liste.length, dep = rng.int(0, n - 1);
                 for (let k = 0; k < n; k++) {
                     const mot = liste[(dep + k) % n];
-                    if (employes.has(mot) || !colle(mot, bout)) continue;
+                    if (employes.has(mot) || !colle(mot, bout) || !familleLibre(mot)) continue;
                     employes.add(mot);
                     const poses = [];
                     for (let x = 0; x < L; x++) {
@@ -306,7 +396,7 @@ function remplir(j0, rng, finAvant) {
                 // la recherche pour de bon.
                 if (Date.now() > finAvant) return false;
                 const mot = liste[(dep + i) % n];
-                if (employes.has(mot)) continue;
+                if (employes.has(mot) || !familleLibre(mot)) continue;
                 for (let rot = 0; rot < 6; rot++) {
                     if (expire()) return false;
                     const poses = [];
@@ -387,6 +477,25 @@ function composer(forme, nom, graine, secondes) {
     }
     const tous = [...fleurs.map(f => f.mot), ...rangees.flatMap(rg => rg.reponses.map(x => x.mot))];
     if (new Set(tous).size !== tous.length) throw new Error(`${nom} : un mot sert deux fois`);
+
+    // DEUX MOTS DE LA MÊME FAMILLE NE TIENNENT PAS DANS UN MÊME JARDIN.
+    //
+    // VU SUR CAPTURE : la rangée A disait « Les boucliers des chevaliers » et la
+    // rangée D « Le bouclier du chevalier » — ECUS et ECU. Deux définitions que
+    // rien ne distingue sauf la longueur de la case, ce qui n'est pas une
+    // énigme mais une devinette sur le nombre de cases.
+    //
+    // Le lexique du chemin porte beaucoup de pluriels à côté de leurs
+    // singuliers (PORTE/PORTES, FLEUR/FLEURS, ECOLE/ECOLES) : c'est utile pour
+    // remplir, et insupportable dans la même grille. La règle la plus simple
+    // les attrape tous : un mot ne doit pas en commencer un autre.
+    for (const a of tous) {
+        for (const b of tous) {
+            if (a !== b && b.startsWith(a)) {
+                throw new Error(`${nom} : « ${a} » et « ${b} » sont de la même famille`);
+            }
+        }
+    }
 
     // ET LES FLEURS SE CHEVAUCHENT VRAIMENT. C'est la correction de Rémy — « ce
     // sont les pétales communes qui créent des mots » —, donc c'est à vérifier
@@ -478,9 +587,22 @@ const t0 = Date.now();
 while (jardins.length < combien && essais < combien * 4) {
     essais++;
     const t = Date.now();
-    const g = composer(forme, `jardin-${String(jardins.length + 1).padStart(2, '0')}`,
-        `jardin-${forme}-${essais}`, secondes);
+    // UNE VÉRIFICATION QUI REJETTE N'EST PAS UNE PANNE.
+    //
+    // `composer` se relit et JETTE quand le jardin ne tient pas la route — deux
+    // mots de la même famille, une fleur qui ne touche personne, une rangée qui
+    // ne dit pas ce qu'elle porte. Ces refus-là sont le travail normal du
+    // fabricant, pas un accident : on les compte et l'on retire. Sans ce
+    // `try`, la première famille rencontrée arrêtait tout.
+    let g = null, refus = null;
+    try {
+        g = composer(forme, `jardin-${String(jardins.length + 1).padStart(2, '0')}`,
+            `jardin-${forme}-${essais}`, secondes);
+    } catch (e) {
+        refus = e.message;
+    }
     const ms = Date.now() - t;
+    if (refus) { console.log(`  essai ${essais} : ${refus}`); continue; }
     if (!g) { console.log(`  essai ${essais} : abandon après ${ms} ms`); continue; }
     // DEUX JARDINS AUX MÊMES FLEURS SONT LE MÊME JARDIN pour l'élève : il
     // reconnaît les six définitions et replace tout de mémoire.

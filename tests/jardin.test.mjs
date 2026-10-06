@@ -121,6 +121,28 @@ test('LES FLEURS SE CHEVAUCHENT — c\'est la correction de Rémy', () => {
     aucun(sans, 'jardins sans pétale partagé');
 });
 
+test('DEUX MOTS DE LA MÊME FAMILLE NE TIENNENT PAS DANS UN MÊME JARDIN', () => {
+    // VU SUR CAPTURE, et c'est tout ce qui l'a révélé : la rangée A disait
+    // « Les boucliers des chevaliers » et la rangée D « Le bouclier du
+    // chevalier » — ECUS et ECU. Deux définitions que rien ne distingue sauf la
+    // longueur de la case : ce n'est plus une énigme, c'est une devinette sur
+    // le nombre de cases.
+    //
+    // Le lexique du chemin porte beaucoup de pluriels à côté de leurs
+    // singuliers (PORTE/PORTES, FLEUR/FLEURS, ECOLE/ECOLES) — utile pour
+    // remplir, insupportable dans la même grille. La règle la plus simple les
+    // attrape tous : un mot ne doit pas en commencer un autre.
+    const fautifs = [];
+    JARDINS.forEach(j => {
+        const tous = [...j.fleurs.map(f => f.mot),
+            ...j.rangees.flatMap(rg => rg.reponses.map(r => r.mot))];
+        tous.forEach(a => tous.forEach(b => {
+            if (a !== b && b.startsWith(a)) fautifs.push(`${j.id} : ${a} et ${b}`);
+        }));
+    });
+    aucun(fautifs, 'mots de la même famille dans un même jardin');
+});
+
 test('LES COULEURS SE PARTAGENT LES FLEURS À PEU PRÈS ÉGALEMENT', () => {
     // C'est la signature du jeu : les définitions sont rangées par couleur et
     // mélangées dedans. Une couleur qui ne porterait qu'UNE fleur ne cacherait
