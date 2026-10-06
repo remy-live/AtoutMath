@@ -510,7 +510,13 @@ function majCompteur(el) {
     const b = bilan(revue, exercices);
     const montres = filtrer(exercices, revue, criteres).length;
     const c = el.querySelector('[data-compteur]');
-    c.textContent = `${montres}/${b.total} affichés · ${b.enTest} en test, ${b.valides} validés · `
+    // LE BROUILLON SE DIT, ET SEULEMENT S'IL Y EN A UN. Il manquait à cette
+    // ligne comme il manquait au bilan : la revue affichait « 222 validés » sur
+    // 223 affichés, et le vingt-troisième s'était évaporé. On ne l'écrit pas
+    // quand il n'y en a pas — une mention « 0 désactivé » est du bruit sur une
+    // ligne qui en porte déjà huit.
+    const eteints = b.brouillons ? `, ${b.brouillons} désactivé${b.brouillons > 1 ? 's' : ''}` : '';
+    c.textContent = `${montres}/${b.total} affichés · ${b.enTest} en test, ${b.valides} validés${eteints} · `
         + `${b.jeux} jeux · ${b.calc} avec calculatrice · `
         + `${b.decides} décidés, ${b.changes + b.jeuxChanges + b.calcChanges} à reporter, `
         + `${b.remarques} remarques, ${b.classer} à reclasser`;

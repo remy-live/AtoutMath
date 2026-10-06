@@ -650,14 +650,23 @@ test('le catalogue entier passe dans la revue sans exploser', () => {
     assert.equal(filtrer(exercices, r, {}).length, exercices.length);
     const b = bilan(r, exercices);
     assert.equal(b.decides, 0);
-    assert.equal(b.enTest + b.valides, exercices.length);
+    // AUCUN EXERCICE NE SE PERD ENTRE LES TROIS ÉTATS. La somme ne portait que
+    // `enTest + valides` : elle valait le total tant que personne n'avait rien
+    // désactivé, et le jour où Rémy a dit « désactive le jardin » le bilan a
+    // affiché 222 sur 223 — un exercice évaporé, sans un mot.
+    assert.equal(b.enTest + b.valides + b.brouillons, exercices.length,
+        'le bilan de la revue perd un exercice : il n\'est ni en test, ni validé, '
+        + 'ni compté comme désactivé');
     // Ce test exigeait autrefois « b.enTest > 0 ». Rémy a ouvert tout le
     // catalogue aux élèves (« ouvre-les tous ») : il ne reste plus rien à
     // trier, et la revue doit le dire calmement plutôt que de planter. Le tri
     // lui-même est vérifié plus haut sur des lots fabriqués — c'est là qu'il
     // faut l'éprouver, pas sur l'humeur du catalogue du jour.
     assert.equal(b.enTest, 0, 'plus rien n\'attend d\'être trié');
-    assert.equal(b.valides, exercices.length);
+    // Et les validés sont tout le reste : le catalogue moins ce qu'on a éteint
+    // exprès. Écrire `exercices.length` ici redeviendrait faux à la prochaine
+    // désactivation — c'est précisément ce qui vient d'arriver.
+    assert.equal(b.valides, exercices.length - b.brouillons);
 });
 
 test('chaque domaine du catalogue se filtre', () => {

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './helpers.mjs';
 import '../js/core/activities/index.js';
-import { exercices, filterByStatus, statusOf, countByStatus, STATUS } from '../js/data/catalog.js';
+import { exercices, filterByStatus, statusOf, countByStatus, STATUS, exercisesForSkill, skillsOf } from '../js/data/catalog.js';
 
 const ex = (id, status) => (status ? { id, status } : { id });
 const LOT = [ex('a'), ex('b', STATUS.VALIDE), ex('c', STATUS.TEST), ex('d', STATUS.BROUILLON)];
@@ -37,7 +37,24 @@ test('le comptage couvre l\'intégralité du catalogue', () => {
     // (« ouvre-les tous »), et le catalogue ne compte donc plus une seule
     // fiche en test. Le mécanisme, lui, est vérifié plus haut sur un lot
     // fabriqué — c'est là qu'il faut le vérifier, pas sur l'état du jour.
-    assert.equal(c.brouillon, 0, 'aucun exercice n\'est laissé au brouillon');
+    assert.equal(c.test, 0, 'aucun exercice n\'est laissé en test');
+
+    // ── ET LE BROUILLON SE NOMME, IL NE SE COMPTE PAS ──────────────────────
+    //
+    // Cette ligne exigeait zéro brouillon, ce qui était juste tant que personne
+    // n'en avait demandé. Rémy en a demandé un, le 6 octobre : « désactive le
+    // jardin ». Desserrer la règle en « au plus quelques-uns » aurait rendu
+    // l'épreuve muette — un exercice oublié au brouillon serait reparti chez
+    // les élèves sans que rien ne le dise, et c'est TOUT ce qu'elle garde.
+    //
+    // On NOMME donc les désactivations voulues. Une de plus fait tomber
+    // l'épreuve, et celui qui la rallume doit écrire ici POURQUOI elle est là.
+    const ETEINTS_EXPRES = ['voc-jardin'];
+    const brouillons = exercices.filter(e => statusOf(e) === STATUS.BROUILLON)
+        .map(e => e.id).sort();
+    assert.deepEqual(brouillons, [...ETEINTS_EXPRES].sort(),
+        'un exercice est au brouillon sans que personne l\'ait décidé — ou une '
+        + 'désactivation voulue n\'est pas nommée ici');
 });
 
 test('aucun exercice ne porte un statut inconnu', () => {
@@ -184,4 +201,46 @@ test('L\'INSTRUCTION DE L\'ÉCRAN NE PART JAMAIS ENTIÈRE SUR LE PAPIER', async 
     // Et le pavé des puissances rend bien la chaîne vide, pas son premier tiers.
     const puissances = exercices.find(e => e.id === 'num-puissances-reconnaitre');
     assert.equal(puissances.consignePapier, 'Calcule.', 'Rémy : « mets juste calcule »');
+});
+
+test('UN EXERCICE DÉSACTIVÉ N\'EST PROPOSÉ NI EN RÉVISION NI EN REMÉDIATION', () => {
+    // LA PORTE DE DERRIÈRE. `exercisesForSkill` cherchait dans le catalogue NON
+    // filtré, et ses deux seuls appelants sont côté ÉLÈVE : le plan de révision
+    // (`ui/profileUI.js`) et la remédiation, qui compose la « séance
+    // conseillée ». Un exercice que Rémy venait d\'éteindre pouvait donc lui
+    // être proposé quand même — disparu du catalogue par la grande porte, et
+    // revenu par celle-ci.
+    //
+    // TROUVÉ PAR UNE SONDE, PAS PAR UNE RELECTURE : six exercices paraissaient
+    // sous le filtre « Non validé » là où le catalogue n\'en comptait qu\'un, et
+    // les cinq autres venaient du plan de révision.
+    //
+    // ON ÉPROUVE LA RÈGLE, PAS LE CAS. Nommer le Jardin ici ferait une épreuve
+    // qui ne garde plus rien le jour où on le rallume — or ce qu\'on garde vaut
+    // pour tout exercice qu\'on éteindra ensuite.
+    const eteints = exercices.filter(e => statusOf(e) === STATUS.BROUILLON);
+    assert.ok(eteints.length > 0,
+        'aucun exercice désactivé : cette épreuve ne mesure plus rien');
+
+    for (const exo of eteints) {
+        // LES COMPÉTENCES SE DÉDUISENT DU GÉNÉRATEUR, elles ne sont pas écrites
+        // sur l\'exercice — ma première version lisait `exo.skills`, qui vaut
+        // `undefined`, et la boucle ne tournait pas une seule fois. Une épreuve
+        // qui n\'itère sur rien passe toujours.
+        const competences = skillsOf(exo);
+        assert.ok(competences.length > 0,
+            `« ${exo.id} » ne déclare aucune compétence : l\'épreuve ne vérifierait rien`);
+        for (const c of competences) {
+            assert.ok(!exercisesForSkill(c).some(e => e.id === exo.id),
+                `« ${exo.id} » est encore proposé pour « ${c} » : un élève peut le `
+                + 'recevoir en révision alors qu\'il est désactivé');
+        }
+    }
+
+    // ET LE TÉMOIN, SANS LEQUEL « ne rend plus rien » PASSERAIT : les exercices
+    // OUVERTS qui travaillent les mêmes compétences sont bien rendus.
+    const compétences = eteints.flatMap(skillsOf);
+    const vivants = compétences.flatMap(c => exercisesForSkill(c));
+    assert.ok(vivants.length > 0,
+        'plus aucun exercice pour ces compétences : la fonction ne rend plus rien du tout');
 });

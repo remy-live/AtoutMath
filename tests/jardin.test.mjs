@@ -25,6 +25,8 @@ import assert from 'node:assert/strict';
 import './helpers.mjs';
 import { makeRng } from '../js/core/ids.js';
 import { JARDINS } from '../js/data/jardins.js';
+import { exercices, filterByStatus, statusOf, getExerciseById } from '../js/data/catalog.js';
+import { STATUS } from '../js/data/status.js';
 import { readFileSync } from 'node:fs';
 
 /** La source d'un fichier du dépôt — les activités ne s'importent pas sous Node. */
@@ -354,4 +356,44 @@ test('LE JARDIN SAIT MONTRER SON CORRIGÉ — « une option réponse pour voir s
     // sentinelle `'ok'` dans `answer`, et afficher « ok » ne répondrait rien.
     assert.ok(bloc.indexOf('reponsePapier') < bloc.indexOf('it.answer'),
         '`answer` est lu avant `reponsePapier` : on affichera « ok »');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// LE JARDIN EST DÉSACTIVÉ, ET CE N'EST PAS UN ACCIDENT.
+//
+// RÉMY, le 6 octobre : « désactive le jardin ». Il venait de signaler que les
+// fleurs n'étaient pas claires — « on ne sait pas où mettre les définitions » —
+// et l'on avait corrigé le jour même : la fleur dit maintenant son départ, son
+// sens et sa définition. Il juge que cela ne suffit pas pour une classe. C'est
+// son métier.
+//
+// CETTE ÉPREUVE N'EMPÊCHE PAS DE LE RALLUMER — elle oblige à PASSER PAR ICI
+// pour le faire, et donc à lire pourquoi il a été éteint. Un exercice qui
+// reviendrait au catalogue par un coup de rangement, sans que personne ne
+// décide, serait exactement ce qu'on veut éviter : il irait chez ses élèves.
+
+test('LE JARDIN N\'EST PROPOSÉ À PERSONNE — « désactive le jardin »', () => {
+    const exo = getExerciseById('voc-jardin');
+    assert.ok(exo, 'l\'exercice doit continuer d\'EXISTER : seul son statut change');
+    assert.equal(statusOf(exo), STATUS.BROUILLON,
+        'le Jardin est revenu au catalogue : Rémy l\'avait désactivé, relire le '
+        + 'commentaire dans js/data/calcul.js avant de le rallumer');
+
+    // NI À L'ÉLÈVE, NI AU PROFESSEUR. `test` l'aurait laissé dans le catalogue
+    // du professeur — ce n'est pas ce qu'il a demandé.
+    for (const teacher of [false, true]) {
+        const vus = filterByStatus(exercices, { teacher });
+        assert.ok(!vus.some(e => e.id === 'voc-jardin'),
+            `le Jardin est encore proposé ${teacher ? 'au professeur' : 'à l\'élève'}`);
+    }
+    // MAIS IL RESTE ATTEIGNABLE PAR SON IDENTIFIANT, et c'est ce qui empêche
+    // cette désactivation de casser quoi que ce soit : une séance enregistrée
+    // qui le contient déjà continue de tourner. Le statut décide de ce qu'on
+    // PROPOSE, pas de ce qui existe.
+    assert.equal(getExerciseById('voc-jardin').id, 'voc-jardin');
+    // Et le filtre explicite de la palette d'auteur le retrouve : on doit
+    // pouvoir aller le voir pour le reprendre.
+    assert.ok(filterByStatus(exercices, { only: STATUS.BROUILLON })
+        .some(e => e.id === 'voc-jardin'));
 });

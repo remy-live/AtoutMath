@@ -188,6 +188,37 @@ export function paramSchemaOf(exo) {
 }
 
 /** Exercices permettant de travailler une compétence donnée. */
+/**
+ * LES EXERCICES QUI TRAVAILLENT UNE COMPÉTENCE — JAMAIS UN BROUILLON.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * CETTE FONCTION CHERCHAIT DANS LE CATALOGUE NON FILTRÉ, et ses deux seuls
+ * appelants sont côté ÉLÈVE : le plan de révision (`ui/profileUI.js`) et la
+ * remédiation (`core/remediation.js`, qui compose la « séance conseillée »).
+ * Un exercice désactivé pouvait donc être PROPOSÉ à un élève, par la porte de
+ * derrière, alors qu'il avait disparu du catalogue par la grande.
+ *
+ * TROUVÉ EN DÉSACTIVANT LE JARDIN à la demande de Rémy — pas par une relecture :
+ * la sonde a montré six exercices sous le filtre « Non validé » là où le
+ * catalogue n'en comptait qu'un, et les cinq autres venaient du plan de
+ * révision, qui ne passe pas par `filterByStatus`.
+ *
+ * LE JARDIN N'EN SOUFFRAIT PAS — il porte `sansRevision: true`, « une lettre
+ * posée dans un jardin ne se révise pas ». C'est un hasard, et c'est
+ * exactement pourquoi on corrige : le prochain exercice qu'on éteindra
+ * n'aura pas cette chance.
+ *
+ * `brouillon` VEUT DIRE INVISIBLE, le fichier des statuts l'écrit mot pour mot :
+ * « gardé pour plus tard : invisible sauf filtre explicite ». Une règle posée
+ * sur un seul des chemins qui mènent à l'élève ne ferme rien — c'est la leçon
+ * de la semaine, payée quatre fois.
+ *
+ * ON NE TOUCHE PAS À `test` ICI : il veut dire « visible du professeur seul »,
+ * et cette fonction n'a pas de quoi savoir qui regarde. Le jour où un exercice
+ * passera en test, c'est l'appelant qui devra le dire.
+ */
 export function exercisesForSkill(skillId) {
-    return exercices.filter(e => skillsOf(e).includes(skillId));
+    return exercices.filter(e => skillsOf(e).includes(skillId)
+        && statusOf(e) !== STATUS.BROUILLON);
 }

@@ -369,7 +369,17 @@ export function filtrer(exercices, revue, criteres = {}) {
 
 /** Où en est la revue ? Le compteur qui décide si l'on peut s'arrêter. */
 export function bilan(revue, exercices) {
-    const b = { total: exercices.length, decides: 0, enTest: 0, valides: 0, changes: 0,
+    // `brouillons` COMPTE AUSSI, et il manquait. La chaîne `if/else if` ne
+    // connaissait que `test` et `valide` : un exercice DÉSACTIVÉ tombait entre
+    // les deux et disparaissait du bilan sans un mot. Tant qu'aucun exercice
+    // n'était au brouillon, la somme `enTest + valides` valait le total et
+    // personne ne pouvait s'en apercevoir — c'est le jour où Rémy a demandé
+    // « désactive le jardin » que le compte est tombé à 222 sur 223.
+    //
+    // UN BILAN QUI PERD UNE LIGNE EST PIRE QU'UN BILAN QUI N'EXISTE PAS : on le
+    // lit pour savoir ce qui reste à trier, et il affirmait avoir tout vu.
+    const b = { total: exercices.length, decides: 0, enTest: 0, valides: 0, brouillons: 0,
+        changes: 0,
         remarques: 0, vus: 0, classer: 0, jeux: 0, jeuxChanges: 0, calc: 0, calcChanges: 0 };
     exercices.forEach(e => {
         const f = ficheDe(revue, e.id);
@@ -380,6 +390,7 @@ export function bilan(revue, exercices) {
         if (aChangeCalc(e, f)) b.calcChanges++;
         if (statutRevu(e, f) === STATUS.TEST) b.enTest++;
         else if (statutRevu(e, f) === STATUS.VALIDE) b.valides++;
+        else if (statutRevu(e, f) === STATUS.BROUILLON) b.brouillons++;
         if (aChange(e, f)) b.changes++;
         if (f && f.remarque.trim()) b.remarques++;
         if (f && f.tags.trim()) b.classer++;

@@ -1444,6 +1444,29 @@ export const calculExercises = [
         // ─────────────────────────────────────────────────────────────────
         id: 'voc-jardin', title: 'Le Jardin',
         cree: '2026-10-05',
+        // ── DÉSACTIVÉ, À LA DEMANDE DE RÉMY — 6 octobre 2026 ──────────────
+        //
+        // RÉMY : « désactive le jardin ».
+        //
+        // IL L'A DIT APRÈS AVOIR VU L'ÉCRAN, et c'est le seul avis qui compte
+        // ici : il venait de signaler que les fleurs n'étaient pas claires —
+        // « on ne sait pas où mettre les définitions » — et l'on avait corrigé
+        // le jour même (la fleur dit maintenant son départ, son sens et sa
+        // définition). Il juge que cela ne suffit pas pour une classe. C'est
+        // son métier, pas le mien.
+        //
+        // `BROUILLON` ET NON `TEST`, parce qu'il a dit « désactive » :
+        // `brouillon` le retire à TOUT LE MONDE, lui compris ; `test` l'aurait
+        // laissé dans SON catalogue, et il aurait cru que je n'avais rien fait.
+        // Pour le ressortir, un mot à changer — et il reste entier : l'exercice,
+        // ses dix-huit jardins composés, ses épreuves et son apprentissage sont
+        // intacts.
+        //
+        // ET UNE SÉANCE QUI LE CONTIENDRAIT DÉJÀ CONTINUE DE TOURNER :
+        // `getExerciseById` cherche dans le catalogue NON filtré. Le statut
+        // décide de ce qu'on PROPOSE, pas de ce qui existe — sans quoi
+        // désactiver un exercice casserait les parcours enregistrés.
+        status: STATUS.BROUILLON,
         generatorId: 'jeu.jardin', activityId: 'jardin',
         // Une lettre posée dans un jardin ne se révise pas : « case 2,1 » n'est
         // pas une question qu'on peut reposer hors de SON jardin. Comme les
