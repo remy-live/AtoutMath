@@ -95,16 +95,24 @@ const litItem = () => s.page.evaluate(() => {
 const item0 = await litItem();
 dire(item0 !== null, 'la sonde atteint l\'item courant par le meneur', JSON.stringify(item0));
 
-// On touche une pièce qui n'est PAS la bonne — et pas non plus celle de départ,
-// qui n'aurait aucun sens comme réponse.
-const faux = await s.page.evaluate(() => {
+// ON TOUCHE UNE PIÈCE SÛREMENT FAUSSE, et il faut le dire parce que c'est une
+// correction : la première version prenait « la première pièce qui n'est pas
+// celle de départ ». Une fois sur dix, c'était la BONNE — la sonde mesurait
+// alors une réponse juste, sautait toute la partie « le trajet se montre », et
+// annonçait TOUT TIENT sans avoir rien mesuré de ce que Rémy a demandé. Une
+// sonde dont le verdict dépend du hasard est pire qu'une sonde absente : elle
+// est verte, donc on la croit.
+const faux = await s.page.evaluate((bonne) => {
     const dep = document.querySelector('.pv-case.pv-depart')?.dataset.piece;
     const cases = [...document.querySelectorAll('.pv-case')];
-    const autre = cases.find(c => c.dataset.piece !== dep);
+    const autre = cases.find(c => c.dataset.piece !== dep && c.dataset.piece !== String(bonne));
     if (!autre) return null;
-    autre.click();
+    // UN <rect> SVG N'A PAS DE `.click()` : cette méthode appartient à
+    // HTMLElement, et un élément SVG est un SVGElement. On envoie donc un vrai
+    // événement, ce qui est aussi plus proche du doigt de l'élève.
+    autre.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     return autre.dataset.piece;
-});
+}, item0 && item0.answer);
 dire(faux !== null, 'on peut toucher une pièce', `touché : ${faux}`);
 await dormir(700);
 
@@ -116,20 +124,76 @@ const apres = await s.page.evaluate(() => ({
     statut: (document.querySelector('[data-statut]')?.textContent || '').trim()
 }));
 
-dire(apres.faux > 0 || apres.juste > 0, 'la réponse est jugée', `faux ${apres.faux}, juste ${apres.juste}`);
-if (apres.faux > 0) {
-    dire(apres.fantome > 0, 'LE TRAJET SE MONTRE quand l\'élève se trompe — la demande de Rémy');
-    dire(apres.arrivee > 0, 'et l\'arrivée s\'allume : l\'œil sait où regarder');
-    dire(apres.statut.length > 0, 'l\'écran dit quoi faire', apres.statut.slice(0, 50));
-}
+dire(apres.faux > 0, 'la première erreur est comptée fausse', `faux ${apres.faux}`);
+dire(apres.statut.length > 0, 'l\'écran dit quoi faire', apres.statut.slice(0, 54));
+
+// AU PREMIER ÉCHEC, ON NE MONTRE PAS — et c'est la règle la plus importante de
+// cet écran.
+//
+// `core/itemSession.js` l'a apprise à ses dépens, et c'est écrit là-bas : « ON
+// NE DONNE PAS LA RÉPONSE TANT QU'IL LUI RESTE UN ESSAI […] le deuxième essai
+// n'était plus un essai, c'était une recopie ». Un trajet joué tout de suite
+// DÉSIGNE la pièce d'arrivée : le second essai se réduirait à la toucher.
+dire(apres.fantome === 0, 'et le trajet ne se joue PAS : il lui reste un essai');
+
+// ── LE SECOND ESSAI, PUIS LA CORRECTION ─────────────────────────────────────
+//
+// L'élève doit pouvoir REJOUER. `tools/mosaique.mjs` a trouvé ici que
+// l'activité le laissait BLOQUÉ après une erreur : la marque rouge restait, le
+// clic suivant était ignoré, et la question ne tournait pas davantage.
+await s.page.waitForFunction(
+    () => document.querySelectorAll('.pv-case.pv-faux').length === 0,
+    null, { timeout: 8000 }).catch(() => {});
+const rejouable = await s.page.evaluate(
+    () => document.querySelectorAll('.pv-case.pv-faux').length === 0);
+dire(rejouable, 'la marque rouge s\'efface : l\'élève peut retenter');
+
+const faux2 = await s.page.evaluate((bonne) => {
+    const dep = document.querySelector('.pv-case.pv-depart')?.dataset.piece;
+    const cases = [...document.querySelectorAll('.pv-case')];
+    const autre = cases.find(c => c.dataset.piece !== dep && c.dataset.piece !== String(bonne));
+    if (!autre) return null;
+    autre.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    return autre.dataset.piece;
+}, item0 && item0.answer);
+dire(faux2 !== null, 'il peut toucher une seconde pièce', `touché : ${faux2}`);
+await dormir(700);
+
+const apres2 = await s.page.evaluate(() => ({
+    faux: document.querySelectorAll('.pv-case.pv-faux').length,
+    fantome: document.querySelectorAll('.pv-fantome').length,
+    arrivee: document.querySelectorAll('.pv-case.pv-arrivee').length,
+    statut: (document.querySelector('[data-statut]')?.textContent || '').trim()
+}));
+dire(apres2.fantome > 0, 'LE TRAJET SE MONTRE quand les essais sont épuisés — la demande de Rémy');
+dire(apres2.arrivee > 0, 'et l\'arrivée s\'allume : l\'œil sait où regarder');
+dire(/se pose sur la pièce \d+/.test(apres2.statut), 'l\'écran dit où elle tombe', apres2.statut.slice(0, 54));
+const apresEssais = apres2;
 if (PHOTOS) await s.photo('.pv-cadre', 'tools/tmp/mosaique-trajet.png');
 
-await dormir(1400);
-const enVol = await s.page.evaluate(() => {
-    const f = document.querySelector('.pv-fantome');
-    return f ? f.getAttribute('transform') : null;
+// ON MESURE LE FANTÔME PENDANT QU'IL VOLE, PAS APRÈS.
+//
+// Première version : on attendait 1,4 s puis on lisait son `transform`. Il
+// valait `null` — et ce n'était pas « il ne bouge pas », c'était « il n'est
+// plus là » : le trajet dure environ 640 ms, puis le fantôme se pose et part
+// 700 ms plus tard. Une mesure prise trop tard ne dit pas que la chose est
+// absente, elle dit qu'on l'a ratée, et les deux se ressemblent à l'écran.
+//
+// On échantillonne donc PENDANT, et l'on exige des positions DIFFÉRENTES :
+// c'est la définition d'un trajet, par opposition à un saut.
+const trajet = await s.page.evaluate(async () => {
+    const vus = [];
+    for (let i = 0; i < 14; i++) {
+        const f = document.querySelector('.pv-fantome');
+        if (f) vus.push(f.getAttribute('transform') || '(aucun)');
+        await new Promise(ok => setTimeout(ok, 60));
+    }
+    return vus;
 });
-dire(apres.faux === 0 || enVol !== null, 'le fantôme fait un vrai trajet, il ne saute pas', `transform : ${enVol}`);
+const etapes = new Set(trajet.filter(t => t && t !== '(aucun)'));
+dire(apresEssais.fantome === 0 || etapes.size >= 3,
+    'le fantôme fait un vrai trajet, il ne saute pas',
+    `${etapes.size} position(s) différentes`);
 
 // ─────────────────────────────────────────────────────────────────────────────
 console.log('\nUNE BONNE RÉPONSE N\'ANIME RIEN');
@@ -139,12 +203,40 @@ console.log('─'.repeat(64));
 // apercevoir : si le trajet se jouait AUSSI sur une bonne réponse, l'exercice
 // montrerait la méthode à chaque question et il n'y aurait plus rien à chercher.
 
-await dormir(2600);
+// ON ATTEND QUE LA QUESTION CHANGE, on ne compte pas les secondes. Une attente
+// fixe tombe soit avant le changement — on clique alors sur l'ancienne question,
+// déjà répondue, et rien ne se passe — soit après, et l'on ne sait pas laquelle
+// on mesure. Les deux donnent « la bonne réponse n'est pas reconnue » pour une
+// raison qui n'a rien à voir avec le code mesuré.
+// ON ATTEND CE QU'ON PEUT VOIR, pas ce qu'on suppose. Guetter un changement de
+// « pièce de départ » échoue quand la question suivante part de la même pièce —
+// l'attente expire, on clique sur une question déjà répondue, et rien ne se
+// passe. Le marquage rouge de la réponse fausse, lui, disparaît forcément quand
+// l'écran se redessine : c'est le signal honnête.
+// L'ÉLÈVE FERME LA CORRECTION, ET LA SONDE AUSSI.
+//
+// `announce()` rend une promesse que l'activité attend pour enchaîner, et c'est
+// la FERMETURE du retour qui la résout (`js/ui/gameFeedbackUI.js`, bouton
+// `.fb-close` — « J'ai compris »). Tant que personne ne clique, la question ne
+// tourne pas : c'est voulu, et c'est juste.
+//
+// La sonde l'ignorait. Elle attendait donc quinze secondes que l'écran change
+// tout seul, puis cliquait sur une question déjà répondue — où le clic est
+// ignoré — et concluait « une bonne réponse n'est pas reconnue ». Le défaut
+// était dans la mesure, pas dans l'écran : vérifié à part, une bonne réponse
+// est parfaitement reconnue.
+await s.page.evaluate(() => {
+    document.querySelector('.fb-close')?.click();
+});
+await s.page.waitForFunction(
+    () => document.querySelectorAll('.pv-case.pv-faux').length === 0,
+    null, { timeout: 15000 }).catch(() => {});
+await dormir(600);
 const courant = await litItem();
 const bonneRep = courant && await s.page.evaluate((n) => {
     const el = document.querySelector(`.pv-case[data-piece="${n}"]`);
     if (!el) return null;
-    el.click();
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     return n;
 }, courant.answer);
 await dormir(700);

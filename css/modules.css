@@ -12999,15 +12999,33 @@ body.en-boite > #app-container { background: none; }
 
 /* La pièce de départ s'allume : sans cela, l'élève commence par la chercher
    parmi seize numéros, et c'est du temps pris sur la transformation. */
+/* LA PIÈCE DE DÉPART S'ÉCLAIRE ; SON CONTOUR EST TRACÉ À PART (.pv-contour).
+   Un `stroke` sur chaque case dessinait aussi les côtés INTÉRIEURS : la pièce
+   apparaissait quadrillée de bleu, comme découpée en morceaux — le contraire
+   de ce qu'on montre, puisqu'elle se déplace d'un bloc. */
 .pv-case.pv-depart {
+    filter: brightness(1.06) saturate(1.15);
+}
+.pv-contour {
     stroke: #2563eb;
-    stroke-width: 3;
-    filter: brightness(1.04);
+    stroke-width: 3.2;
+    stroke-linecap: square;
+    fill: none;
 }
 
-.pv-case.pv-juste { stroke: var(--success, #16a34a); stroke-width: 3.5; }
-.pv-case.pv-faux { stroke: #dc2626; stroke-width: 3.5; }
-.pv-case.pv-arrivee { stroke: #16a34a; stroke-width: 2.5; stroke-dasharray: 5 4; }
+/* TOUTES LES MARQUES SUIVENT LE CONTOUR DE LEUR PIÈCE, jamais ses cases : une
+   pièce est UNE figure, et un liseré posé case par case la montre découpée en
+   morceaux. Le remplissage dit l'état, le contour dit la pièce. */
+.pv-case.pv-juste { filter: brightness(1.08) saturate(1.3); }
+.pv-case.pv-faux { filter: brightness(.92) saturate(.75); }
+.pv-case.pv-arrivee { filter: brightness(1.05); }
+
+.pv-contour--ok { stroke: #16a34a; stroke-width: 3.5; stroke-linecap: square; fill: none; }
+.pv-contour--ko { stroke: #dc2626; stroke-width: 3.5; stroke-linecap: square; fill: none; }
+.pv-contour--arrivee {
+    stroke: #16a34a; stroke-width: 3; stroke-dasharray: 6 4;
+    stroke-linecap: butt; fill: none;
+}
 
 /* LE FANTÔME QUI FAIT LE TRAJET. Il doit se voir par-dessus la mosaïque sans
    la cacher : d'où le remplissage à demi transparent et le contour franc. */

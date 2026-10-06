@@ -152,6 +152,7 @@ export function mount(container, session, opts = {}) {
             aria-label="Mosaïque de ${pieces.length} pièces numérotées">
             <g class="pv-fonds">${fond}</g>
             <g class="pv-traits">${traits}</g>
+            <g class="pv-contour-g" data-contour></g>
             <g class="pv-repere" data-repere></g>
             <g class="pv-numeros">${numeros}</g>
             <g class="pv-points">${points}</g>
@@ -159,11 +160,27 @@ export function mount(container, session, opts = {}) {
         </svg>`;
     }
 
-    /** Le centre de gravité des cases, là où le numéro se pose. */
+    /**
+     * OÙ SE POSE LE NUMÉRO — et pourquoi ce n'est PAS le centre de gravité.
+     *
+     * Vu à l'écran : le « 6 » d'une pièce en L flottait DEHORS, à côté de la
+     * figure. Le centre de gravité d'un polyomino concave tombe dans le creux,
+     * c'est-à-dire chez la voisine — et le numéro EST la réponse de l'exercice.
+     * Un élève qui lit « 6 » sur la mauvaise pièce donne la mauvaise réponse en
+     * ayant parfaitement raisonné.
+     *
+     * On prend donc le centre de la CASE la plus proche du centre de gravité :
+     * elle appartient à la pièce par construction.
+     */
     function centreDessin(cases) {
-        const sx = cases.reduce((s, c) => s + X(c.x), 0) / cases.length;
-        const sy = cases.reduce((s, c) => s + Y(c.y), 0) / cases.length;
-        return { x: sx, y: sy };
+        const gx = cases.reduce((s, c) => s + c.x, 0) / cases.length;
+        const gy = cases.reduce((s, c) => s + c.y, 0) / cases.length;
+        let meilleure = cases[0], mieux = Infinity;
+        for (const c of cases) {
+            const d = (c.x - gx) ** 2 + (c.y - gy) ** 2;
+            if (d < mieux) { mieux = d; meilleure = c; }
+        }
+        return { x: X(meilleure.x), y: Y(meilleure.y) };
     }
 
     function dessiner() {
@@ -179,6 +196,7 @@ export function mount(container, session, opts = {}) {
         // chercher parmi seize numéros — et c'est du temps pris sur la
         // transformation, qui est le vrai sujet.
         marquer(item.meta.depuis, 'pv-depart');
+        entourer(item.meta.depuis, 'pv-contour', { remplacer: true });
         dessinerRepere(t);
 
         container.querySelectorAll('.pv-case').forEach(el => {
@@ -189,6 +207,43 @@ export function mount(container, session, opts = {}) {
     }
 
     const casesDe = (n) => (item.meta.pieces.find(p => p.n === n) || { cases: [] }).cases;
+
+    /**
+     * LE LISERÉ DE LA PIÈCE DE DÉPART SUIT SON CONTOUR, PAS SES CASES.
+     *
+     * Vu à l'écran : un `stroke` posé sur chaque `<rect>` dessine les QUATRE
+     * côtés de chaque case, y compris celles qui sont à l'intérieur de la
+     * pièce. La pièce de départ apparaissait quadrillée de bleu — elle avait
+     * l'air découpée en morceaux, ce qui est exactement le contraire de ce
+     * qu'on veut montrer : une pièce est UNE figure, qui se déplace d'un bloc.
+     *
+     * On retrace donc son seul CONTOUR, avec la même règle que les traits noirs
+     * de la mosaïque : un côté n'est dessiné que s'il donne sur autre chose.
+     */
+    function entourer(n, classe, { remplacer = false } = {}) {
+        const g = container.querySelector('[data-contour]');
+        if (!g) return;
+        const cases = casesDe(n);
+        const dedans = new Set(cases.map(c => `${c.x},${c.y}`));
+        let d = '';
+        for (const c of cases) {
+            const voisins = [
+                ['haut', { x: c.x, y: c.y + 1 }], ['bas', { x: c.x, y: c.y - 1 }],
+                ['gauche', { x: c.x - 1, y: c.y }], ['droite', { x: c.x + 1, y: c.y }]
+            ];
+            for (const [cote, v] of voisins) {
+                if (dedans.has(`${v.x},${v.y}`)) continue;
+                const [x1, y1, x2, y2] = cotesDe(c)[cote];
+                d += `<line class="${classe}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+            }
+        }
+        if (remplacer) g.innerHTML = d; else g.insertAdjacentHTML('beforeend', d);
+    }
+
+    /** Retirer un contour posé plus tôt — la réponse fausse, au second essai. */
+    function effacerContour(classe) {
+        container.querySelectorAll(`[data-contour] .${classe}`).forEach(el => el.remove());
+    }
 
     function marquer(n, classe) {
         container.querySelectorAll(`.pv-case[data-piece="${n}"]`)
@@ -241,16 +296,52 @@ export function mount(container, session, opts = {}) {
         if (result.ignored) { repondu = false; return; }
 
         marquer(n, juste ? 'pv-juste' : 'pv-faux');
+        entourer(n, juste ? 'pv-contour--ok' : 'pv-contour--ko');
         const statut = container.querySelector('[data-statut]');
-        if (statut) {
-            statut.textContent = juste
-                ? 'Oui : c\'est bien là que la pièce tombe.'
-                : `Non. Regarde où la pièce ${item.meta.depuis} se pose vraiment.`;
-        }
 
-        // ON MONTRE LA TRANSFORMATION QUAND IL S'EST TROMPÉ — c'est la demande
-        // de Rémy, et c'est la seule correction qui dise quelque chose ici.
-        if (!juste && item.meta.montrer !== 'jamais') animer();
+        // ─────────────────────────────────────────────────────────────────────
+        //
+        // TROIS ISSUES, ET LA DEUXIÈME MANQUAIT — `tools/mosaique.mjs` l'a
+        // trouvée : après une réponse fausse, l'élève restait BLOQUÉ. `repondu`
+        // ne retombait jamais, et la question ne tournait pas non plus, puisque
+        // `renderNext` n'est appelé que sur `correct || revealed`. L'exercice
+        // s'arrêtait à la première erreur.
+        //
+        // ON NE MONTRE PAS LE TRAJET TANT QU'IL LUI RESTE UN ESSAI, et ce n'est
+        // pas une précaution de confort : c'est la règle que `core/itemSession.js`
+        // a déjà apprise à ses dépens — « ON NE DONNE PAS LA RÉPONSE TANT QU'IL
+        // LUI RESTE UN ESSAI […] le deuxième essai n'était plus un essai,
+        // c'était une recopie ». Un trajet joué au premier échec désigne la
+        // pièce d'arrivée : le second essai se réduirait à la toucher.
+        //
+        // ─────────────────────────────────────────────────────────────────────
+        if (juste) {
+            if (statut) statut.textContent = 'Oui : c\'est bien là que la pièce tombe.';
+        } else if (!result.done) {
+            // Il lui reste un essai : on dit que ce n'est pas là, on efface la
+            // marque, et on lui rend la main. Rien d'autre — surtout pas la
+            // réponse.
+            if (statut) {
+                statut.textContent = `Ce n'est pas là. Reprends UN coin de la pièce ${item.meta.depuis}, `
+                    + 'et cherche où il tombe.';
+            }
+            regTimeout(() => {
+                if (destroyed || repondu === false) return;
+                container.querySelectorAll('.pv-case.pv-faux')
+                    .forEach(el => el.classList.remove('pv-faux'));
+                effacerContour('pv-contour--ko');
+                repondu = false;
+            }, 900);
+        } else {
+            // Plus d'essai : c'est le moment de MONTRER, et c'est la demande de
+            // Rémy — « si l'élève se trompe, lui compter faux mais aussi montrer
+            // la transformation ».
+            if (statut) {
+                statut.textContent = `La pièce ${item.meta.depuis} se pose sur la pièce ${item.meta.vers}. `
+                    + 'Regarde le trajet.';
+            }
+            if (item.meta.montrer !== 'jamais') animer();
+        }
 
         result.dismissed.then(() => {
             if (destroyed) return;
@@ -297,6 +388,7 @@ export function mount(container, session, opts = {}) {
 
         // L'arrivée s'allume dès le départ : l'œil sait où regarder.
         marquer(item.meta.vers, 'pv-arrivee');
+        entourer(item.meta.vers, 'pv-contour--arrivee');
 
         const etapes = trajet(t, cases);
         let i = 0;
