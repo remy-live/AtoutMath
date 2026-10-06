@@ -2496,3 +2496,47 @@ lignes** — 2026-10-01
   YEUX — j'avais même mesuré qu'un champ de douze rangées donne 130 cases — et
   je ne l'ai pas rapproché du jeu réel. **Un chiffre qui ne ressemble pas à
   celui du modèle est une question, pas un détail.**
+
+---
+
+## ~~`epreuveTombe` reste pendu, sans rien dire, quand l'épreuve fuit un minuteur~~ — 2026-10-06
+
+- **Ce que je voulais faire** : voir tomber l'épreuve neuve de `core/timers.js`,
+  en retirant `activeIntervals.forEach(clearInterval)` du code.
+- **Ce qui a coûté** : deux lancements à vide (120 s de délai de harnais chacun),
+  puis un `pkill -f epreuveTombe` qui a tué **le shell qui le lançait** — et donc
+  laissé `js/core/timers.js` ABÎMÉ sur le disque, puisque l'outil n'a jamais
+  atteint sa ligne de restauration. Quatre minutes, et un fichier de production
+  mutilé qu'il fallait penser à relire. L'outil ne disait rien du tout : ni
+  « ça tourne », ni « ça ne rend pas la main ».
+- **Combien de fois** : | (mais la famille est connue : le `pkill -f` qui se
+  tue lui-même est la deuxième fois, après `fabriquerJardins`.)
+- **Ce qui manque** : rien à fabriquer, c'était un défaut de l'outil — il lance
+  désormais `node --test` avec un délai de deux minutes et **dit** que l'épreuve
+  n'a pas rendu la main, en nommant la cause probable.
+- **La règle, et elle vaut pour toute épreuve neuve** : *une épreuve qui gèle le
+  harnais en échouant ne peut pas être vue échouer.* Quand l'épreuve CRÉE ce que
+  le code sous épreuve est censé arrêter — un minuteur, une répétition, une
+  promesse en vol —, elle ferme ce qu'elle a ouvert dans un `after()`, avec la
+  fonction du système et non celle qu'on mesure.
+
+---
+
+## ~~`node -e '…'` perd les apostrophes, et le script agit à moitié en silence~~ — 2026-10-06
+
+- **Ce que je voulais faire** : corriger cinq occurrences de `{ largeur: 12,
+  hauteur: 5 }` dans une épreuve, avec un script jetable de six lignes.
+- **Ce qui a coûté** : deux allers-retours. Dans `node -e '…'` lancé depuis une
+  chaîne entre apostrophes simples du shell, on ne peut pas écrire d'apostrophe ;
+  je l'ai écrite `'`, **et elle est arrivée vide**. Le script a donc cherché
+  `construireFigure(rectangle, …)` — sans les apostrophes —, n'a rien trouvé, et
+  **n'a rien dit** : il a écrit le fichier à moitié corrigé, et l'épreuve est
+  tombée sur une tout autre ligne. Même piège le même jour pour un fichier de
+  paires de `epreuveTombe` : le JSON écrit contenait `readLegacy(atoutmath_attempts)`
+  au lieu de `readLegacy('atoutmath_attempts')`, et l'outil a répondu
+  « apparaît 0 fois » — lui, au moins, le disait.
+- **Combien de fois** : ||
+- **Ce qui manque** : rien à fabriquer. `tools/remplacer.mjs` existe pour cela et
+  il COMPTE avant d'écrire — c'est exactement la garde qui manquait. **La règle :
+  un script jetable qui contient une apostrophe s'écrit dans un fichier de
+  `tools/tmp/` et se lance par son nom ; jamais par `node -e`.**

@@ -116,10 +116,35 @@ function lancer() {
     let sortie = '';
     let verte = true;
     try {
-        sortie = execFileSync('node', ['--test', essai], { encoding: 'utf8', stdio: 'pipe' });
+        // UN DÉLAI, PARCE QU'UNE ÉPREUVE QUI TOMBE PEUT EMPÊCHER NODE DE SORTIR.
+        //
+        // Mesuré en écrivant `tests/minuteurs.test.mjs` : le défaut qu'on remet
+        // était le retrait de `clearInterval` dans `core/timers.js`. L'épreuve
+        // tombait bien — mais les répétitions qu'elle venait de créer
+        // survivaient, Node n'avait plus de raison de sortir, et cet outil
+        // restait pendu jusqu'au délai du harnais SANS RIEN DIRE. On relançait
+        // alors, puis on tuait le processus à la main, et l'on n'obtenait jamais
+        // la réponse qu'on cherchait.
+        //
+        // Deux minutes suffisent très largement : le fichier le plus lourd du
+        // dépôt en met quarante secondes. Au-delà, ce n'est plus une épreuve
+        // lente, c'est une épreuve qui ne rend pas la main — et c'est une
+        // information, pas une panne de l'outil.
+        sortie = execFileSync('node', ['--test', essai], {
+            encoding: 'utf8', stdio: 'pipe', timeout: 120_000, killSignal: 'SIGKILL'
+        });
     } catch (e) {
         verte = false;
         sortie = `${e.stdout || ''}${e.stderr || ''}`;
+        if (e.killed || e.signal) {
+            // On le DIT, plutôt que de compter cela comme une chute ordinaire :
+            // une épreuve qui gèle le harnais en échouant ne peut pas être vue
+            // échouer, et c'est elle qu'il faut corriger — pas le code.
+            console.error('\n  !!    ' + essai + ' n\'a pas rendu la main en deux minutes.');
+            console.error('        Le défaut remis laisse probablement un minuteur ou une');
+            console.error('        promesse en vol. Arrêter ce que l\'épreuve crée (un');
+            console.error('        `after()` qui ferme tout) avant de la croire.');
+        }
     }
     const vues = new Set(), tombees = new Set();
     for (const ligne of sortie.split('\n')) {

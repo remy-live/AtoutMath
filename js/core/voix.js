@@ -32,8 +32,16 @@ let attente = null;
  * Chrome renvoie une liste VIDE au premier appel puis la remplit : sans
  * l'attente, la première dictée de la séance se dit avec l'accent du système,
  * ce qui rend « quatre-vingts » incompréhensible.
+ *
+ * EXPORTÉE POUR POUVOIR ÊTRE ÉPROUVÉE, et la raison mérite d'être écrite : la
+ * voix choisie est mémorisée pour toute la session (`voixFr`), ce qui est
+ * voulu — on ne va pas reparcourir la liste à chaque nombre dicté. Mais cela
+ * rend le CHOIX impossible à mesurer deux fois dans un même processus, et il a
+ * deux règles distinctes à garder : le français d'abord, puis la voix locale
+ * plutôt que la distante. Une épreuve qui ne pourrait en voir qu'une donnerait
+ * une assurance à moitié.
  */
-function chercherVoixFr() {
+export function chercherVoixFr() {
     const toutes = window.speechSynthesis.getVoices() || [];
     // `fr_FR` autant que `fr-FR` : les deux écritures circulent selon le moteur.
     const fr = toutes.filter(v => (v.lang || '').replace('_', '-').toLowerCase().startsWith('fr'));

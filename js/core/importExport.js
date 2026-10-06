@@ -18,6 +18,139 @@ import { uuid } from './ids.js';
 
 const FORMAT = 'atoutmath/v2';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CE QUI SE DÉCIDE SANS ÉCRAN — et qui est désormais à part.
+//
+// Ce fichier mélangeait trois choses : ouvrir une fenêtre, fabriquer un
+// fichier, et FUSIONNER les données d'un professeur avec celles qu'il a déjà.
+// Seule la troisième peut détruire quelque chose, et c'était la seule
+// impossible à éprouver : pour l'atteindre il fallait un `document`, un
+// `FileReader`, `ui/modal.js` et `ui/builder.js`.
+//
+// Les quatre fonctions qui suivent ne touchent à rien : on leur donne le
+// fichier et l'état actuel, elles disent ce qu'il faut en faire. `applyImport`
+// reste le seul à écrire. C'est ce découpage qui rend `tests/importExport.test.mjs`
+// possible — et c'est le propre des quarante parcours d'une année de cours qui
+// est en jeu.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * DE QUEL FICHIER S'AGIT-IL ? On le dit en un mot, avant d'y toucher.
+ *
+ * Les quatre réponses possibles correspondent aux quatre branches de
+ * `applyImport`, et le `null` est la seule qui compte vraiment : un fichier
+ * qu'on ne reconnaît pas doit être REFUSÉ, pas lu à moitié.
+ *
+ * @returns {'contenu-professeur'|'progression-eleve'|'progression-ancienne'|null}
+ */
+export function reconnaitreFichier(data) {
+    if (!data || typeof data !== 'object') return null;
+    if (data.kind === 'teacher_content' || data.type === 'teacher_paths') return 'contenu-professeur';
+    if (data.kind === 'student_progress' && Array.isArray(data.events)) return 'progression-eleve';
+    if (data.type === 'student_progress') return 'progression-ancienne';
+    return null;
+}
+
+/**
+ * FUSIONNER LE CONTENU D'UN PROFESSEUR DANS CE QU'IL A DÉJÀ.
+ *
+ * Rien n'est écrasé, et c'est la règle entière. Un professeur qui réimporte
+ * son fichier de la semaine dernière ne doit pas se retrouver avec quarante
+ * parcours en double, ni perdre les trois qu'il a écrits depuis.
+ *
+ * On ne rend pas l'état fusionné mais CE QU'IL FAUT AJOUTER : les tableaux de
+ * `state` sont tenus par ailleurs (l'interface des parcours garde des
+ * références dessus), et les remplacer ferait pointer l'écran sur l'ancien.
+ *
+ * @param {Object} data le fichier importé
+ * @param {{parcours: Array, dossiers: Array, classement: Object}} actuel
+ * @returns {{parcoursAAjouter: Array, dossiersAAjouter: Array, classement: Object, casesClassees: number}}
+ */
+export function fusionnerContenuProfesseur(data, actuel = {}) {
+    const parcours = actuel.parcours || [];
+    const dossiers = actuel.dossiers || [];
+
+    // L'IDENTIFIANT DÉCIDE, PAS LE NOM. Deux parcours peuvent légitimement
+    // s'appeler « Relatifs » — celui de la 6e B et celui de la 6e C.
+    const dejaLa = new Set(parcours.map(p => p && p.id));
+    const parcoursAAjouter = [];
+    for (const p of (data.teacherPaths || [])) {
+        if (!p || dejaLa.has(p.id)) continue;
+        dejaLa.add(p.id);        // un fichier qui se répète lui-même ne double pas
+        parcoursAAjouter.push(p);
+    }
+
+    const dossiersLa = new Set(dossiers.map(d => d && d.id));
+    const dossiersAAjouter = [];
+    for (const d of (data.teacherFolders || [])) {
+        if (!d || dossiersLa.has(d.id)) continue;
+        dossiersLa.add(d.id);
+        dossiersAAjouter.push(d);
+    }
+
+    // LE CLASSEMENT PAR CHAPITRE SE FUSIONNE CASE PAR CASE.
+    //
+    // Il vit dans le stockage du poste : sur un autre navigateur, le professeur
+    // ne retrouverait rien. C'est une soirée de relecture — elle ne peut pas
+    // dépendre d'un cache. Le fichier importé, plus récent dans l'intention,
+    // l'emporte sur une case déjà remplie ; une case qu'il ne connaît pas
+    // reste.
+    const classement = { ...(actuel.classement || {}) };
+    let casesClassees = 0;
+    if (data.chapitres && typeof data.chapitres === 'object') {
+        for (const [exoId, cases] of Object.entries(data.chapitres)) {
+            if (!cases || typeof cases !== 'object') continue;
+            classement[exoId] = { ...(classement[exoId] || {}), ...cases };
+            casesClassees += Object.keys(cases).length;
+        }
+    }
+
+    return { parcoursAAjouter, dossiersAAjouter, classement, casesClassees };
+}
+
+/**
+ * LE FICHIER QU'ON ÉCRIT, sans rien qui touche au disque.
+ *
+ * @param {Object} quoi
+ * @param {boolean} quoi.professeur vrai pour un fichier de parcours
+ * @param {number} [quoi.quand] la date d'export, pour pouvoir l'éprouver
+ */
+export function contenuAExporter({ professeur, profile, events, teacherPaths, teacherFolders, chapitres, quand = Date.now() }) {
+    // POUR CELUI QUI OUVRE LE FICHIER DANS UN ÉDITEUR. `format` et `kind`
+    // disent à la MACHINE quoi en faire ; `aPropos` le dit à la personne. Elle
+    // ne coûte rien et évite la question « c'est quoi, ce fichier, et
+    // qu'est-ce que j'en fais ? »
+    if (professeur) {
+        return {
+            format: FORMAT, kind: 'teacher_content', exportedAt: quand,
+            aPropos: 'Fichier AtoutMath — parcours et dossiers du professeur. '
+                + 'Déposez-le sur la page d\'AtoutMath pour l\'importer.',
+            teacherPaths: teacherPaths || [],
+            teacherFolders: teacherFolders || [],
+            chapitres: chapitres || {}
+        };
+    }
+    return {
+        format: FORMAT, kind: 'student_progress', exportedAt: quand,
+        aPropos: 'Fichier AtoutMath — progression d\'un élève. '
+            + 'Déposez-le sur la page d\'AtoutMath pour l\'importer.',
+        profile: { id: profile && profile.id, name: profile && profile.name },
+        // LE JOURNAL BRUT, MOINS LE DRAPEAU `synced`.
+        //
+        // Tout est reconstructible depuis là. Mais `synced` dit « ce poste-ci a
+        // déjà envoyé cet événement au serveur », ce qui n'a aucun sens sur
+        // l'appareil qui recevra le fichier : il le croirait envoyé et ne
+        // l'enverrait jamais. Le travail de l'élève n'arriverait pas au
+        // professeur, et personne ne verrait pourquoi.
+        events: (events || []).map(({ synced, ...e }) => e)
+    };
+}
+
+/** Le nom sous lequel le fichier se range dans les téléchargements. */
+export function nomDuFichier(professeur, profile) {
+    return professeur ? 'parcours_atoutmath.json' : `progression_${slug(profile && profile.name)}.json`;
+}
+
 export function initImportExport() {
     const modal = document.getElementById('import-export-modal');
     const open = () => { if (modal) modal.style.display = 'flex'; };
@@ -43,37 +176,18 @@ export function exportData() {
     const profile = getActiveProfile();
     const teacher = state.isTeacherMode;
 
-    const payload = teacher
-        ? {
-            format: FORMAT, kind: 'teacher_content', exportedAt: Date.now(),
-            // POUR CELUI QUI OUVRE LE FICHIER DANS UN ÉDITEUR. `format` et
-            // `kind` disent à la MACHINE quoi en faire ; cette ligne-ci le dit
-            // à la personne. Elle ne coûte rien et évite la question « c'est
-            // quoi, ce fichier, et qu'est-ce que j'en fais ? »
-            aPropos: 'Fichier AtoutMath — parcours et dossiers du professeur. '
-                + 'Déposez-le sur la page d\'AtoutMath pour l\'importer.',
-            teacherPaths: state.teacherPaths,
-            teacherFolders: state.teacherFolders,
-            // LE CLASSEMENT PAR CHAPITRE VOYAGE AVEC LES PARCOURS.
-            //
-            // Il vit dans le stockage du poste, comme les parcours : sur un
-            // autre navigateur, le professeur ne retrouverait rien. C'est une
-            // soirée de relecture — elle ne peut pas dépendre d'un cache.
-            chapitres: getClassement()
-        }
-        : {
-            format: FORMAT, kind: 'student_progress', exportedAt: Date.now(),
-            aPropos: 'Fichier AtoutMath — progression d\'un élève. '
-                + 'Déposez-le sur la page d\'AtoutMath pour l\'importer.',
-            profile: { id: profile.id, name: profile.name },
-            // Le journal brut : tout est reconstructible à partir de là.
-            events: journal.all().map(({ synced, ...e }) => e)
-        };
+    // LE CLASSEMENT PAR CHAPITRE VOYAGE AVEC LES PARCOURS : il vit dans le
+    // stockage du poste, comme eux.
+    const payload = contenuAExporter({
+        professeur: teacher,
+        profile,
+        events: teacher ? null : journal.all(),
+        teacherPaths: state.teacherPaths,
+        teacherFolders: state.teacherFolders,
+        chapitres: teacher ? getClassement() : null
+    });
 
-    download(
-        JSON.stringify(payload, null, 2),
-        teacher ? 'parcours_atoutmath.json' : `progression_${slug(profile.name)}.json`
-    );
+    download(JSON.stringify(payload, null, 2), nomDuFichier(teacher, profile));
 }
 
 function download(text, filename) {
@@ -122,35 +236,25 @@ function handleFile(e, modal, input) {
 export async function applyImport(data, modal) {
     const { showToast, showAlert, showConfirm } = await import('../ui/modal.js');
 
+    const quoi = reconnaitreFichier(data);
+
     // Contenu professeur (parcours et dossiers)
-    if (data.kind === 'teacher_content' || data.type === 'teacher_paths') {
-        const incoming = data.teacherPaths || [];
-        let added = 0;
-        incoming.forEach(p => {
-            if (!state.teacherPaths.some(x => x.id === p.id)) {
-                state.teacherPaths.push(p);
-                added++;
-            }
+    if (quoi === 'contenu-professeur') {
+        const fusion = fusionnerContenuProfesseur(data, {
+            parcours: state.teacherPaths,
+            dossiers: state.teacherFolders,
+            classement: getClassement()
         });
-        (data.teacherFolders || []).forEach(f => {
-            if (!state.teacherFolders.some(x => x.id === f.id)) state.teacherFolders.push(f);
-        });
+        // On POUSSE dans les tableaux de `state` au lieu de les remplacer :
+        // l'interface des parcours garde des références dessus.
+        fusion.parcoursAAjouter.forEach(p => state.teacherPaths.push(p));
+        fusion.dossiersAAjouter.forEach(f => state.teacherFolders.push(f));
         state.saveTeacherPaths();
         state.saveTeacherFolders();
+        if (fusion.casesClassees) saveClassement(fusion.classement);
 
-        // Le classement par chapitre se FUSIONNE, il ne remplace pas : le
-        // professeur qui reprend son fichier sur un autre poste a peut-être
-        // déjà relu deux chapitres ici. Le fichier importé, plus récent dans
-        // l'intention, l'emporte case par case.
-        let classees = 0;
-        if (data.chapitres && typeof data.chapitres === 'object') {
-            const fusion = { ...getClassement() };
-            Object.entries(data.chapitres).forEach(([exoId, cases]) => {
-                fusion[exoId] = { ...(fusion[exoId] || {}), ...cases };
-                classees += Object.keys(cases || {}).length;
-            });
-            saveClassement(fusion);
-        }
+        const added = fusion.parcoursAAjouter.length;
+        const classees = fusion.casesClassees;
 
         const { renderPathBrowser } = await import('../ui/builder.js');
         renderPathBrowser();
@@ -162,7 +266,7 @@ export async function applyImport(data, modal) {
     }
 
     // Progression élève
-    if (data.kind === 'student_progress' && Array.isArray(data.events)) {
+    if (quoi === 'progression-eleve') {
         if (state.isTeacherMode) {
             if (modal) modal.style.display = 'none';
             return showStudentAnalysis(data);
@@ -177,14 +281,14 @@ export async function applyImport(data, modal) {
     }
 
     // Ancien format (score + errorHistory)
-    if (data.type === 'student_progress') {
+    if (quoi === 'progression-ancienne') {
         if (state.isTeacherMode) {
             if (modal) modal.style.display = 'none';
             return showStudentAnalysis({ ...data, legacy: true });
         }
         showConfirm('Ce fichier vient d\'une ancienne version. L\'importer ajoutera son historique au tien. Continuer ?', async () => {
             // On reconstruit des événements à partir des agrégats du fichier.
-            journal.merge(legacyToEvents(data, getActiveProfile().id));
+            journal.merge(evenementsDepuisAncienFormat(data, getActiveProfile().id));
             await journal.flush();
             showToast('Ancienne progression importée.', 'success');
         }, { bouton: 'Importer cet historique', doux: true });
@@ -194,12 +298,23 @@ export async function applyImport(data, modal) {
     showAlert('Format de fichier non reconnu.');
 }
 
-function legacyToEvents(data, profileId) {
+/**
+ * LES ÉVÉNEMENTS QU'ON RECONSTRUIT D'UN FICHIER DE L'ANCIENNE VERSION.
+ *
+ * Elle ne gardait que des agrégats : un score, et une liste d'erreurs. On ne
+ * peut donc pas reconstituer les bonnes réponses — seulement les fautes, qui
+ * sont justement ce qu'un élève a besoin de reprendre, et le score, qu'on
+ * réinjecte en un bonus unique puisqu'il n'est pas reconstituable question par
+ * question.
+ *
+ * @param {number} [quand] la date de repli, pour pouvoir l'éprouver
+ */
+export function evenementsDepuisAncienFormat(data, profileId, quand = Date.now()) {
     const out = [];
     const mk = (type, payload, ts) => out.push({
-        id: uuid(), type, ts: ts || Date.now(), profileId, deviceId: 'import', payload
+        id: uuid(), type, ts: ts || quand, profileId, deviceId: 'import', payload
     });
-    (data.errorHistory || []).forEach(err => {
+    ((data && data.errorHistory) || []).forEach(err => {
         const qd = err.questionData || {};
         mk('attempt', {
             exerciseId: err.exoId, exerciseTitle: err.exoTitle,
@@ -207,7 +322,7 @@ function legacyToEvents(data, profileId) {
             correct: false, attemptIndex: 0, points: 0
         }, err.timestamp);
     });
-    if (data.score) mk('bonus', { points: data.score, reason: 'import' });
+    if (data && data.score) mk('bonus', { points: data.score, reason: 'import' });
     return out;
 }
 
