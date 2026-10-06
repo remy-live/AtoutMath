@@ -434,8 +434,14 @@ class Tetris extends BaseGame {
     async jouerDemo() {
         const cur = this.demoCursor, gate = this.demoGate;
         const fin = () => { cur?.hideBubble(); if (this.demoInterval) clearInterval(this.demoInterval); };
-        const robot = meneurDemo(cur, gate, vivant, fin, { rangementSeul: true });
+        // `vivant` SE DÉCLARE AVANT LE MENEUR, et ce n'est pas du rangement.
+        // La migration posait le meneur juste après `const fin = …`, donc AVANT
+        // cette ligne-ci : `const` n'étant pas remonté, on lisait `vivant` dans
+        // sa zone morte et la démonstration mourait sur « Cannot access 'vivant'
+        // before initialization ». Une seule démonstration sur 223, trouvée par
+        // `tools/robotsMuets.mjs` — rien d'autre ne l'a vue.
         const vivant = () => this.gameRunning && !this.destroyed;
+        const robot = meneurDemo(cur, gate, vivant, fin, { rangementSeul: true });
 
         if (!await robot.pause(600)) return fin();
         if (!await robot.tour()) return fin();

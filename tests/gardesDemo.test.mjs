@@ -78,3 +78,21 @@ test('LES GARDES SONT TOUJOURS LÀ — l\'épreuve ne se contente pas du vide', 
         assert.ok(mesure.pas.get(pas) > 0, `aucune démonstration n'appelle robot.${pas}()`);
     }
 });
+
+test('AUCUN MENEUR NE LIT UNE VARIABLE AVANT SA DÉCLARATION', () => {
+    // LA SECONDE ERREUR QUE LA MIGRATION A LAISSÉE, et de la même famille que la
+    // première : elle n'existe qu'à l'exécution.
+    //
+    //     const robot = meneurDemo(cur, gate, vivant, fin, …);
+    //     const vivant = () => this.gameRunning && !this.destroyed;
+    //
+    // `const` n'est pas remonté : on lit `vivant` dans sa zone morte, et la
+    // démonstration meurt sur « Cannot access 'vivant' before initialization ».
+    // Une sur 223, dans js/games/tetris.js, et seul le navigateur l'a vue — la
+    // troisième mesure de trente-cinq minutes de la journée.
+    const liste = mesure.zonesMortes
+        .map(z => `${z.fichier}:${z.ligne}  « ${z.nom} » est déclaré ligne ${z.declaree}`);
+    assert.deepEqual(liste, [],
+        'ces meneurs reçoivent une variable déclarée plus bas : node --check passe, '
+        + 'et la démonstration meurt à son premier pas');
+});

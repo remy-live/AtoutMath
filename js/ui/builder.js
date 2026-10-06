@@ -2646,10 +2646,41 @@ function pathItem(p, resume = null) {
     row.title = `Ouvrir « ${p.name} »`;
 
     const del = iconButton('Supprimer', ICONS.trash, 'danger');
-    del.onclick = () => window.appConfirm('Suppression', 'Supprimer ce parcours définitivement ?', () => {
-        state.removeTeacherPath(p.id);
-        renderPathBrowser();
-    });
+    // LA CORBEILLE EST AU SERVEUR, PAS DANS CE NAVIGATEUR.
+    //
+    // RÉMY, capture du tiroir à l'appui : « quand je supprime un exercice, il
+    // revient », puis « la j'avais supprimé conversion ».
+    //
+    // CE BOUTON-CI N'EFFAÇAIT QUE LA COPIE LOCALE. Le serveur gardait la
+    // sienne, et `ramenerLaBibliotheque()` la redescendait au démarrage
+    // suivant : le parcours réapparaissait dans la liste, et le bouton avait
+    // dit « définitivement ».
+    //
+    // LE PLUS AMER EST QUE LE DÉFAUT ÉTAIT DÉJÀ CONNU ET DÉJÀ CORRIGÉ.
+    // `core/parcoursServeur.js` le raconte en toutes lettres au-dessus de
+    // `jeterALaCorbeille` — « on supprimait un parcours, on rechargeait la
+    // page, IL REVENAIT » — et `tools/parcoursSupprime.mjs` le mesure. Mais la
+    // correction n'avait été posée que sur la suppression EN BLOC de la fenêtre
+    // « Gérer ». Les deux boutons font la même promesse à l'élève comme au
+    // professeur ; un seul la tenait. Une correction qui ne ferme qu'un des
+    // deux chemins ne ferme rien : c'est l'autre que Rémy a employé.
+    //
+    // ON JETTE AU SERVEUR D'ABORD, ON OUBLIE ICI ENSUITE — c'est
+    // `jeterALaCorbeille` qui tient cet ordre, et une panne de réseau laisse
+    // alors le parcours en place des deux côtés plutôt que dans un seul.
+    del.onclick = () => window.appConfirm('Suppression',
+        'Mettre ce parcours à la corbeille ? Vous pourrez l\'en ressortir.', async () => {
+            const { jeterALaCorbeille } = await import('../core/parcoursServeur.js');
+            const r = await jeterALaCorbeille([p.id]);
+            // UNE SUPPRESSION QUI RATE DOIT SE DIRE. Muette, elle laisse le
+            // parcours à l'écran et le professeur croit avoir mal cliqué — puis
+            // recommence, et accuse le logiciel de ne pas répondre.
+            if (r && r.erreur) return showToast(r.erreur, 'error', 6000);
+            renderPathBrowser();
+            showToast(r && r.local
+                ? `« ${p.name} » est supprimé.`
+                : `🗑 « ${p.name} » est à la corbeille.`, 'success', 4000);
+        });
 
     actions.append(share, del);
     row.append(info, actions);

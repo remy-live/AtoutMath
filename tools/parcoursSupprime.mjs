@@ -55,18 +55,59 @@ const auServeur = async () => s.page.evaluate(async () => {
 let noms = await auServeur();
 dire('il est au serveur', noms.includes('À SUPPRIMER'), JSON.stringify(noms));
 
-// ── ON LE SUPPRIME, COMME LE BOUTON LE FAIT ─────────────────────────────────
-console.log('\n\x1b[1m2. ON LE SUPPRIME\x1b[0m');
-const apres = await s.page.evaluate(async ([id]) => {
-    // ON PASSE PAR LA PORTE QUE L'ÉCRAN EMPRUNTE : `jeterALaCorbeille`, qui
-    // jette AU SERVEUR d'abord et oublie localement ensuite. `removeTeacherPath`
-    // seul n'efface que la copie de ce navigateur — c'est précisément ce que
-    // cette sonde a mis en évidence.
-    const { jeterALaCorbeille } = await import('./js/core/parcoursServeur.js');
-    const r = await jeterALaCorbeille([id]);
-    const { state } = await import('./js/core/state.js');
-    return { local: state.teacherPaths.map((p) => p.name), r };
+// ── ON LE SUPPRIME EN CLIQUANT LE VRAI BOUTON ───────────────────────────────
+//
+// CETTE SONDE APPELAIT LA FONCTION, ET C'EST POUR CELA QUE LE DÉFAUT EST REVENU.
+//
+// Sa première version important `jeterALaCorbeille` et l'appelait, avec un
+// commentaire qui disait « on passe par la porte que l'écran emprunte ». Elle
+// mesurait donc que LA PORTE fonctionne — ce qui était vrai — et jamais que les
+// boutons la prennent. Or le bouton corbeille de chaque ligne du tiroir, lui,
+// appelait encore `state.removeTeacherPath` tout seul : il effaçait la copie du
+// navigateur et laissait celle du serveur, qui redescendait le lendemain.
+//
+// Rémy l'a vu avant nous : « quand je supprime un exercice, il revient », puis
+// « la j'avais supprimé conversion ».
+//
+// UNE SONDE QUI APPELLE LA FONCTION NE MESURE PAS LE BOUTON. On clique donc le
+// bouton, celui que le professeur a sous la main.
+console.log('\n\x1b[1m2. ON LE SUPPRIME EN CLIQUANT LE BOUTON DU TIROIR\x1b[0m');
+const clic = await s.page.evaluate(async ([id]) => {
+    const { renderPathBrowser } = await import('./js/ui/builder.js');
+    renderPathBrowser();
+    await new Promise((ok) => setTimeout(ok, 400));
+    const ligne = document.querySelector(`#path-browser-list [data-parcours="${id}"]`);
+    if (!ligne) return { raté: 'la ligne du parcours est introuvable dans le tiroir' };
+    const bouton = ligne.querySelector('.path-browser-actions button[title*="upprimer"]')
+        || [...ligne.querySelectorAll('.path-browser-actions button')].pop();
+    if (!bouton) return { raté: 'aucun bouton de suppression sur la ligne' };
+    bouton.click();
+    // La confirmation est une FENÊTRE DU LOGICIEL, jamais une fenêtre native —
+    // c'est la règle de Rémy : « tu utilises des alert et prompt, on évite ! ».
+    await new Promise((ok) => setTimeout(ok, 500));
+    // ON LIT LE CROCHET DANS LA SOURCE, ON NE L'INVENTE PAS — et il y en a DEUX.
+    //
+    // Le logiciel a deux confirmations : `showConfirm` (js/ui/modal.js) qui pose
+    // `.confirm-ok-btn`, et `window.appConfirm` (js/app.js) qui réutilise la
+    // fenêtre `#universal-confirm-modal` de la page et son `#btn-uc-confirm`.
+    // Le tiroir des parcours emploie la seconde.
+    //
+    // Deux versions de cette sonde ont échoué avant de le savoir : l'une
+    // cherchait « un bouton dont le texte ressemble à Supprimer », l'autre le
+    // seul `.confirm-ok-btn`. Les deux rendaient `null`, c'est-à-dire la même
+    // réponse qu'un logiciel cassé. On accepte donc les deux portes, et l'on
+    // dit laquelle on a prise.
+    const oui = document.querySelector('#btn-uc-confirm') || document.querySelector('.confirm-ok-btn');
+    if (!oui) return { raté: 'aucun bouton de confirmation visible (#btn-uc-confirm ni .confirm-ok-btn)' };
+    oui.click();
+    return { raté: null };
 }, [pose.id]);
+dire('le bouton du tiroir existe et se clique', !clic.raté, clic.raté || 'cliqué');
+await dormir(2500);
+const apres = await s.page.evaluate(async () => {
+    const { state } = await import('./js/core/state.js');
+    return { local: state.teacherPaths.map((p) => p.name) };
+});
 dire('il a bien quitté la bibliothèque de ce poste',
     !apres.local.includes('À SUPPRIMER'));
 await dormir(3500);

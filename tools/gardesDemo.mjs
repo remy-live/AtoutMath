@@ -85,10 +85,41 @@ function porteeDesMeneurs(lignes) {
 /** L'ancienne forme : le pointeur ou la barre appelés sans passer par le meneur. */
 const ANCIENNE = /if \(!await (cur|cursor|curseur|gate|barre)\??\.[a-zA-Z]+\(/;
 
+/**
+ * UNE VARIABLE LUE DANS SA ZONE MORTE.
+ *
+ * `const robot = meneurDemo(cur, gate, vivant, …)` posé AVANT
+ * `const vivant = () => …` : `const` n'est pas remonté, et la démonstration
+ * meurt sur « Cannot access 'vivant' before initialization ».
+ *
+ * Mesuré dans `js/games/tetris.js` : UNE démonstration sur 223, et seul le
+ * navigateur l'a vue. C'est la même famille que le meneur hors de portée —
+ * `node --check` passe, l'erreur est à l'exécution — donc la même réponse :
+ * on la lit dans la source.
+ *
+ * On ne regarde que les identifiants NUS passés en troisième argument : une
+ * fonction fléchée écrite sur place (`() => this.isRunning`) ne peut pas être
+ * dans sa zone morte.
+ */
+function zoneMorte(lignes) {
+    const fautifs = [];
+    lignes.forEach((l, i) => {
+        const m = /const robot = meneurDemo\([^,]+,\s*[^,]+,\s*([A-Za-z_$][\w$]*)\s*[,)]/.exec(l);
+        if (!m) return;
+        const nom = m[1];
+        if (nom === 'null' || nom === 'undefined') return;
+        const declaree = lignes.findIndex(x =>
+            new RegExp(`(const|let|var|function)\\s+${nom}\\b`).test(x));
+        if (declaree > i) fautifs.push({ ligne: i + 1, nom, declaree: declaree + 1 });
+    });
+    return fautifs;
+}
+
 export function mesurerGardesDemo() {
     const pas = new Map();
     const horsPortee = [];
     const anciennes = [];
+    const zonesMortes = [];
     let fichiers = 0;
 
     for (const p of fichiersJs('js')) {
@@ -101,6 +132,7 @@ export function mesurerGardesDemo() {
         fichiers++;
         const lignes = src.split('\n');
         const couvertes = porteeDesMeneurs(lignes);
+        zoneMorte(lignes).forEach(z => zonesMortes.push({ fichier: p, ...z }));
 
         lignes.forEach((l, i) => {
             if (/^\s*(\/\/|\*|\/\*)/.test(l)) return;    // un commentaire n'exécute rien
@@ -116,11 +148,11 @@ export function mesurerGardesDemo() {
             }
         });
     }
-    return { pas, horsPortee, anciennes, fichiers };
+    return { pas, horsPortee, anciennes, zonesMortes, fichiers };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-    const { pas, horsPortee, anciennes, fichiers } = mesurerGardesDemo();
+    const { pas, horsPortee, anciennes, zonesMortes, fichiers } = mesurerGardesDemo();
     const total = [...pas.values()].reduce((a, b) => a + b, 0);
 
     console.log(`${total} gardes de démonstration dans ${fichiers} fichiers`);
@@ -142,8 +174,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         anciennes.slice(0, 20).forEach(a => console.log(`  ${a.fichier}:${a.ligne}  ${a.texte.slice(0, 64)}`));
     }
 
-    if (!horsPortee.length && !anciennes.length) {
+    if (zonesMortes.length) {
+        console.log(`\n\x1b[31m${zonesMortes.length} meneur(s) lisent une variable AVANT sa déclaration\x1b[0m`);
+        console.log('Une declaration const n\'est pas remontee : la demonstration meurt sur');
+        console.log('« Cannot access … before initialization », et seulement à l\'exécution.');
+        zonesMortes.forEach(z => console.log(
+            `  ${z.fichier}:${z.ligne}  « ${z.nom} » est déclaré ligne ${z.declaree}`));
+    }
+
+    if (!horsPortee.length && !anciennes.length && !zonesMortes.length) {
         console.log('\n\x1b[32mToutes les gardes passent par le meneur, et toutes sont dans sa portée.\x1b[0m');
     }
-    process.exit(horsPortee.length ? 1 : 0);
+    process.exit(horsPortee.length || zonesMortes.length ? 1 : 0);
 }

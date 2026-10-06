@@ -2566,3 +2566,32 @@ lignes** — 2026-10-01
   démonstration EXPLIQUE quelque chose ; il ne doit pas servir à découvrir
   qu'une variable n'est pas déclarée. Chaque fois qu'une mesure de trente-cinq
   minutes répond à une question statique, c'est qu'il manque un outil.
+
+---
+
+## ~~Une sonde qui appelle la fonction ne mesure pas le bouton~~ — 2026-10-06
+
+- **Ce que je voulais faire** : comprendre pourquoi un parcours supprimé revient
+  chez Rémy, alors que le dépôt porte une sonde écrite exprès pour ce défaut.
+- **Ce qui a coûté** : le défaut avait été trouvé, mesuré et corrigé — mais à UN
+  seul des deux endroits. `tools/parcoursSupprime.mjs` importait
+  `jeterALaCorbeille` et l'appelait, avec un commentaire qui affirmait « on
+  passe par la porte que l'écran emprunte ». Elle mesurait donc que LA PORTE
+  marche, jamais que les boutons la prennent. Le bouton du tiroir, lui,
+  appelait encore `state.removeTeacherPath` tout seul. Rémy l'a signalé des mois
+  plus tard, sur ses vrais parcours.
+- **Combien de fois** : | (mais la famille est celle du crochet inventé : une
+  mesure qui ne passe pas par le chemin de l'utilisateur ne mesure pas son
+  problème — c'est écrit en tête de CLAUDE.md, et c'est la deuxième fois.)
+- **Ce qui manque** : rien à fabriquer, deux choses à faire.
+  1. La sonde **clique le bouton** : elle rend la ligne du tiroir, clique la
+     corbeille, puis la confirmation, puis recharge.
+  2. `tests/suppressionParcours.test.mjs` garde la règle de STRUCTURE en
+     quelques millisecondes : **aucun fichier de `js/ui/` n'a le droit
+     d'appeler `removeTeacherPath`**. Elle aurait vu le défaut le jour où il a
+     été écrit.
+- **Et un détail qui a coûté deux lancements** : le logiciel a DEUX
+  confirmations — `showConfirm` (`.confirm-ok-btn`) et `window.appConfirm`
+  (`#btn-uc-confirm`, la fenêtre de `index.html`). Chercher la mauvaise rend
+  `null`, c'est-à-dire la même réponse qu'un logiciel cassé. **Deux fenêtres qui
+  font la même chose sont une dette en soi** : à fondre en une.
