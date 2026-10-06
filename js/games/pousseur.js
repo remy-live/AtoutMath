@@ -24,6 +24,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     MUR, BUT, DIRECTIONS, NIVEAUX_POUSSEUR, creerPousseur, zone, pousseesPossibles,
     pousser, estRange, pousseesRestantes, estPerdue, prochainePoussee, cheminAPied,
@@ -537,33 +538,34 @@ class Pousseur extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        for (let i = 0; i < 60 && !this.jeu; i++) if (!await cur.pause(100)) return fin();
+        for (let i = 0; i < 60 && !this.jeu; i++) if (!await robot.pause(100)) return fin();
         if (!this.jeu) return fin();
-        if (!await cur.pause(400) || !this.isRunning) return fin();
+        if (!await robot.pause(400)) return fin();
 
         cur.say('Le pousseur POUSSE, il ne tire jamais.', this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // DEUX BULLES LÀ OÙ IL N'Y EN AVAIT QU'UNE : la règle de poussée et le sort de la
         // caisse coincée sont deux idées, et une bulle de plus de 110 caractères se lit si
         // lentement qu'on croit la démonstration plantée (js/core/activities/choice.js, COURT).
         cur.say('Une caisse poussée contre un mur ne revient plus ; dans un coin, elle ne bouge plus.',
             this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // « Le jeu te prévient dès que la position devient perdue » est parti : le robot
         // montre le geste, il n'explique pas ce que le logiciel décide à la place de l'élève.
         cur.say('Avant de pousser, je me demande : est-ce que je pourrai revenir ?', this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         for (let i = 0; i < 4; i++) {
             const c = prochainePoussee(this.jeu.plan, this.jeu.table, this.caisses, this.pousseur);
             if (!c) break;
             this.montre = c.k;
             this.dessiner();
-            if (!await cur.pause(500) || !this.isRunning) return fin();
+            if (!await robot.pause(500)) return fin();
             const suite = pousser(this.caisses, c);
             this.caisses = suite.caisses;
             this.pousseur = suite.pousseur;
@@ -571,7 +573,7 @@ class Pousseur extends BaseGame {
             this.poussees++;
             this.montre = null;
             this.dessiner();
-            if (!await cur.pause(500) || !this.isRunning) return fin();
+            if (!await robot.pause(500)) return fin();
         }
         cur.say(`Il en faut ${this.jeu.mini} au minimum sur cet entrepôt-là. Le compteur te dit `
             + 'combien il en reste : s\'il monte, tu viens de faire un détour.', this.compteEl);

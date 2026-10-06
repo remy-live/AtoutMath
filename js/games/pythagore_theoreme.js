@@ -21,6 +21,7 @@ import {
 } from '../core/pythagore.js';
 import { poserPaveTactile, sansClavierSysteme } from '../ui/paveTactile.js';
 import { rendreGlissable, CSS_GLISSER } from '../core/glisserDeposer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const SKILL = 'geo.pythagore';
 
@@ -712,43 +713,44 @@ class Pythagore extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.t) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         // Quel que soit le niveau, le robot commence par LE geste fondateur :
         // trouver l'angle droit, puis le côté d'en face.
         const carre = this.figureEl.querySelector('.py-angle');
         cur.say(`D'abord l'angle droit : il est en ${this.infos.sommetDroit}, marqué par le petit carré.`, carre || this.figureEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         const hypoEl = this.figureEl.querySelector(`.py-cote[data-cote="${this.infos.hypo.nom}"]`);
         if (hypoEl) hypoEl.classList.add('py-cote--hypo', 'py-cote--montre');
         cur.say(`En face de lui, le côté [${this.infos.hypo.nom}] : c'est l'HYPOTÉNUSE, toujours la plus longue. `
             + `Tout le théorème parle d'elle.`, hypoEl || this.figureEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         const e = egaliteDe(this.t);
         cur.say(`L'égalité s'écrit alors sans réfléchir : ${e.texte}. Le carré SEUL, c'est elle ; `
             + `les deux autres s'additionnent.`, this.zoneEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         if (this.niveau.id >= 4 && this.calc) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say('On descend ligne à ligne : '
                 + this.calc.lignes.slice(1).map(ligneEnTexte).join(', puis ')
                 + '. Les petits deux s\'écrivent — c\'est la touche ² du pavé — et la racine carrée '
                 + 'est la dernière marche, ne l\'oublie jamais.', this.zoneEl);
-            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Toujours ce chemin : l\'angle droit, l\'hypoténuse d\'en face, l\'égalité, et seulement '
             + 'ensuite les nombres.', this.consigneEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

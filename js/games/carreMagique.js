@@ -14,6 +14,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { CSS_GLISSER, rendreGlissable } from '../core/glisserDeposer.js';
 import { genererCarreMagique, verifierSaisie, lignesDe } from '../core/carreMagique.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const COMPETENCE = 'num.logique.carre-magique';
 
@@ -435,16 +436,17 @@ class CarreMagique extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.puzzle) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         cur.say(`Un carré magique se résout toujours pareil : je cherche une ligne où il ne manque `
             + `qu'UNE case, et je la trouve par une soustraction depuis ${this.puzzle.somme}.`, this.sommeEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (const e of this.puzzle.etapes.slice(0, 4)) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const el = this.grilleEl.querySelector(`.cm-case[data-i="${e.case}"]`);
             cur.say(`${e.raison}.`, el || this.grilleEl);
             // Le robot va CHERCHER le jeton, puis le pose : c'est le geste
@@ -452,7 +454,7 @@ class CarreMagique extends BaseGame {
             const jeton = (this.jetons || []).find(j => !j.dataset.pose
                 && Number(j.dataset.v) === e.valeur);
             if (jeton && el) {
-                if (!await cur.dragFromTo(jeton, el)) return fin();
+                if (!await robot.glisser(jeton, el)) return fin();
                 jeton.dataset.pose = String(e.case);
                 jeton.classList.add('cm-jeton--place');
                 el.textContent = String(e.valeur);
@@ -460,14 +462,14 @@ class CarreMagique extends BaseGame {
                 this.majReserve();
                 this.majTotaux();
             } else if (el && !await cur.tap(el)) { return fin(); }
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         // « on continue jusqu'au bout, sans jamais deviner » était la leçon, pas le geste.
         cur.say('Chaque case écrite débloque une nouvelle ligne à une seule case.',
             this.container.querySelector('[data-aide]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

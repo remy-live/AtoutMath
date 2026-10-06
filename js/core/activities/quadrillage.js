@@ -26,6 +26,7 @@ import { quadrillageSvg, gesteDuFilm } from '../quadrillageSvg.js';
 import { cleFigure, comparer } from '../transformations.js';
 import { imageAttendue } from '../generators/transfoQuadrillage.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /**
  * COMBIEN DE FOIS ON A LE DROIT DE VOIR LE MOUVEMENT.
@@ -500,23 +501,24 @@ export function mount(container, session) {
         if (!cases.length) { regTimeout(renderNext, DEMO_SPEED.between); return; }
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         cursor.say(phraseDepart(), container.querySelector('.qd-plateau') || container);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
         for (const p of cases) {
             const hit = svg.querySelector(`.qd-hit[data-c="${p.x},${p.y}"]`);
             if (!hit) continue;
-            if (!await gate.waitTurn() || destroyed) return;
-            if (!await cursor.tap(hit) || destroyed) return;
+            if (!await robot.tour()) return;
+            if (!await robot.toucher(hit)) return;
             svg.insertBefore(rectangle(hit, 'qd-posee', `${p.x},${p.y}`), sousLesMarques());
         }
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(phraseFin(), container.querySelector('.qd-plateau') || container);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

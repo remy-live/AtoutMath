@@ -18,6 +18,7 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     MUR, NIVEAUX, lireNiveau, cloner, simuler, pousser, gagne,
     bloqueDefinitivement, resoudre
@@ -599,45 +600,46 @@ class Chantier extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.plateau);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         // UNE IDÉE PAR BULLE, ET LE GESTE PLUTÔT QUE LA LEÇON. Les phrases qui
         // concluaient (« le calcul ouvre la porte, le chemin la referme », « se
         // tromper ici ne coûte rien ») sont parties : au-delà de 110 caractères
         // la bulle se lit si longtemps qu'on croit la démonstration plantée, et
         // la règle se voit dans le geste qui suit.
         cur.say('Chaque bloc porte une multiplication, chaque dalle creuse porte un résultat.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         cur.say('Je pose chaque bloc sur la dalle qui porte SON résultat.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Un bloc poussé ne fait pas un pas : il GLISSE jusqu\'à un mur ou un autre bloc.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         cur.say('Je ne choisis donc pas où il s\'arrête, mais contre quoi.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await this.demoNiveau(cur, gate)) return fin();
+        if (!await robot.puis(this.demoNiveau(cur, gate))) return fin();
 
         // Puis le niveau qui contient toute l'idée du jeu : deux blocs de même
         // valeur, donc un calcul qui ne suffit plus à décider.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         this.charger(NIVEAUX.findIndex(n => n.id === 'ch5'));
         cur.say('Ce bloc fait 4 × 4, celui-là 2 × 8 : les deux font 16, et les deux dalles portent 16.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Savoir que 4 × 4 = 16 ne suffit plus : je regarde QUEL bloc atteint QUELLE dalle.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await this.demoNiveau(cur, gate)) return fin();
+        if (!await robot.puis(this.demoNiveau(cur, gate))) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Un bloc scellé au mauvais endroit bouche un passage : le bouton Annuler défait le coup.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 
@@ -645,7 +647,7 @@ class Chantier extends BaseGame {
     async demoNiveau(cur, gate) {
         const sol = resoudre(this.etat, 200000) || [];
         for (const { id, dir } of sol) {
-            if (!await gate.waitTurn() || !this.isRunning) return false;
+            if (!await robot.tour()) return false;
             const b = this.etat.blocs.find(o => o.id === id);
             const r = simuler(this.etat, id, dir);
             if (!b || !r) break;
@@ -655,7 +657,7 @@ class Chantier extends BaseGame {
                 ? `${b.a} × ${b.b} = ${b.produit} : je pousse ce bloc vers ${NOMS[dir]}, il glisse et vient se poser sur la dalle ${b.produit}.`
                 : `Je pousse ${b.a} × ${b.b} vers ${NOMS[dir]} : il ne se pose pas encore, il va simplement se placer pour la suite.`,
                 this.plateau.querySelector(`[data-bloc="${id}"]`));
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return false;
+            if (!await robot.pause(DEMO_SPEED.settle)) return false;
 
             const cible = this.plateau.querySelector(`.ch-cible[data-dir="${dir}"]`);
             if (cible && !await cur.tap(cible)) return false;
@@ -663,9 +665,9 @@ class Chantier extends BaseGame {
             this.choisi = null;
             this.majPlateau();
             this.majBarre();
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return false;
+            if (!await robot.pause(DEMO_SPEED.press)) return false;
         }
-        if (!await gate.waitTurn() || !this.isRunning) return false;
+        if (!await robot.tour()) return false;
         cur.say('Toutes les dalles sont couvertes : le chantier est terminé.', this.plateau);
         return await cur.pause(DEMO_SPEED.between);
     }

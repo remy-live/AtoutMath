@@ -21,6 +21,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerMastermind, indices, tousLesCodes, compatibles, certitudes,
     estResoluMastermind, FORMATS
@@ -446,10 +447,11 @@ class Mastermind extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.m) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         // Un premier essai « d'exploration » : deux couleurs, deux fois.
         const a = this.m.couleurs[0].id, b = this.m.couleurs[1].id;
@@ -458,10 +460,10 @@ class Mastermind extends BaseGame {
         // UNE IDÉE PAR BULLE, chacune sous 110 caractères : au-delà, la démonstration
         // paraît figée (js/core/activities/choice.js, COURT = 110).
         cur.say('Le premier essai ne cherche pas à trouver : il cherche à SAVOIR.', this.tableEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say('Deux couleurs seulement, et je saurai déjà combien il y en a de chacune.', this.tableEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         const code = this.enCours.slice();
         const rep = indices(this.m.secret, code);
@@ -472,7 +474,7 @@ class Mastermind extends BaseGame {
         const reste = compatibles(this.codes, this.lignes).length;
         cur.say(`${rep.places} bien placés, ${rep.presents} mal placés. Ce seul essai vient `
             + `d'éliminer ${this.codes.length - reste} codes sur ${this.codes.length}.`, this.tableEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say('Je ne repars pas au hasard : mon essai suivant doit coller à tout ce qu\'on sait déjà.',
         this.tableEl);

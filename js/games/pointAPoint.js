@@ -27,6 +27,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     DESSINS, NOMS_DESSINS, FAMILLES, NOMS_FAMILLES,
     tirerPointAPoint, commencer, attendu, cliquer, annuler, corriger, traits
@@ -458,32 +459,33 @@ class PointAPoint extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.etat) this.poser();
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say('Les points ne portent pas de numéro : ils portent un CALCUL. Le résultat '
             + 'donne le rang.', this.container.querySelector('[data-cherche]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let k = 1; k <= Math.min(4, this.exercice.total); k++) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const p = this.exercice.points[k - 1];
             cur.say(`Je cherche ${k}. Là : ${p.texte} fait ${k} — je clique.`,
                 this.boutons.get(k));
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             cliquer(this.etat, k);
             this.dessinerTraits();
             this.majTout();
-            if (!await cur.pause(DEMO_SPEED.settle / 2) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle / 2)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         // « que personne n'a vue en commençant » était un commentaire sur le jeu,
         // pas sur ce que fait l'élève : la bulle passait 110 caractères pour lui.
         cur.say('Et ainsi de suite. À la fin, les calculs s\'effacent et il ne reste que '
             + 'l\'image.', this.sceneEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

@@ -18,6 +18,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerVille, tirerItineraire, decrireItineraire, jugerCoup,
     sortiesRelatives, tourner, sensEntre, CAPS, devant, nomCap, aLieu
@@ -780,22 +781,23 @@ class Ville extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.planEl);
         this.demoGate = gate;
-        const fin = () => { cur?.destroy(); gate?.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         // UNE IDÉE PAR BULLE, et des phrases courtes : le robot attend le
         // temps de lire ce qu'il vient de dire (340 ms par mot). Une bulle de
         // vingt-cinq mots fige la démonstration dix secondes — on croit qu'elle
         // a planté, et on la ferme avant le premier virage.
         cur.say('Le plan ne bouge pas. C\'est la voiture qui tourne.', this.planEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`Direction : ${this.lieu.nom}. On avance, puis ${this.consigneSuivante().toLowerCase()}.`, this.routeEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         while (this.isRunning && this.etat.index < this.etat.noeuds.length - 1) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const ici = this.etat.noeuds[this.etat.index];
             const suivant = this.etat.noeuds[this.etat.index + 1];
             const capVers = CAPS.find(c => {
@@ -813,7 +815,7 @@ class Ville extends BaseGame {
             } else {
                 cur.say(`Elle monte : sa ${sens} est celle de l'écran.`, this.planEl);
             }
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
 
             // Le robot BRAQUE d'abord, puis avance — dans cet ordre, parce que
             // c'est l'ordre que l'élève devra reproduire. Le voir tourner le
@@ -826,19 +828,19 @@ class Ville extends BaseGame {
                 this.braquage = sens === 'gauche' ? -1 : 1;
                 this.placerVoiture(true);
                 this.majCommandes();
-                if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             }
             const go = this.container.querySelector('[data-sens="avance"]');
             if (go && !await cur.tap(go)) return fin();
             const res = jugerCoup(this.ville, this.etat, sens);
             if (res.ok) this.avancer(res);
             this.majCommandes();
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Arrivé. Avant chaque virage : dans quel sens roule-t-elle ?', this.planEl);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

@@ -12,6 +12,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerPartie, avancerBalle, lancerMur, pousserMur, murTouche, casserMur, pourcentage
 } from '../core/jezzball.js';
@@ -297,33 +298,34 @@ class JezzBall extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.p) this.poser();
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say(`La jauge est un POURCENTAGE d'aire : la part du terrain déjà conquise. `
             + `Le trait rouge marque la cible, ${CIBLE} %.`, this.container.querySelector('.jz-jauge'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         // DEUX IDÉES, DONC DEUX BULLES : le geste avant le lancer, ce qu'il
         // rapporte pendant que le mur avance. En une seule, 138 caractères à lire
         // d'un coup.
         cur.say('Je lance un mur LOIN des balles : il pousse des deux côtés.', this.toile);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Un mur dans le tiers le plus vide.
         const x = this.p.balles.every(b => b.x > this.p.cols / 2) ? 4 : this.p.cols - 5;
         lancerMur(this.p, x, Math.floor(this.p.lignes / 2), true);
         cur.say('S\'il arrive au bout sans être touché, toute région sans balle est conquise.', this.toile);
-        if (!await cur.pause(2600) || !this.isRunning) return fin();
+        if (!await robot.pause(2600)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         const pc = pourcentage(this.p);
         cur.say(`${pc} % : chaque coupe se lit en proportion. Couper le reste en deux rapporte `
             + `la moitié de ce qui reste — c'est pour ça que la fin est plus dure que le début.`,
             this.container.querySelector('[data-pc]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

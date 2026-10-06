@@ -25,6 +25,7 @@ import { makeRng } from '../core/ids.js';
 import { marchesCochees, marcheAuRang, totalDe } from '../core/progression.js';
 import { LISTE_MARCHES, ANCIEN } from '../core/generators/solides.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     ASPECTS, tirerQuestion, dessiner, facesVisibles, aretesCachees, sommetsCaches,
     compter, euler, direMethode, accorder
@@ -526,12 +527,13 @@ class Solides extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.q) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         cur.say(direMethode(this.q.solide, this.q.aspect), this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Le robot marque tout, en commençant par ce qui se voit — puis il
         // annonce qu'il va chercher derrière. C'est là qu'est la leçon.
@@ -542,24 +544,24 @@ class Solides extends BaseGame {
             .concat([...Array(total).keys()].filter(cache));
         let annonce = false;
         for (const i of ordre) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             if (cache(i) && !annonce) {
                 annonce = true;
                 cur.say('Et maintenant celles de DERRIÈRE. C\'est là qu\'on se trompe : '
                     + 'elles ne se voient pas, mais elles existent.', this.svg);
-                if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.between)) return fin();
             }
             const el = this.svg.querySelector(`[data-cible="${i}"]`);
             if (el && !await cur.tap(el)) return fin();
             this.marques.add(i);
             this.peindreMarques();
             this.majCompteur();
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`J'en ai marqué ${total}. ${this.q.explication}`, this.compteurEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

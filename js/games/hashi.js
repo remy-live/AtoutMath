@@ -21,6 +21,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerHashi, saisieVide, degres, estResoluHashi, diagnostic, qualiteHashi,
     TAILLES_HASHI
@@ -331,20 +332,21 @@ class Hashi extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.g) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         const g = this.g;
         const par = g.iles.map((_, k) => g.aretes.filter(e => e.a === k || e.b === k).length);
         // UNE IDÉE PAR BULLE, sous 110 caractères. « On ne commence pas n'importe où »
         // est dit juste après, en montrant l'île par où l'on entre : inutile ici.
         cur.say('Le chiffre dit combien de ponts arrivent sur l\'île.', this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say('Jamais plus de deux ponts entre deux îles, et aucun croisement.', this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // L'île la plus contrainte : celle où le chiffre sature ses voisines.
         let k = 0, mieux = -1;
@@ -356,14 +358,14 @@ class Hashi extends BaseGame {
         cur.say(`Celle-ci demande ${g.iles[k].n} ponts et n'a que ${par[k]} voisine`
             + `${par[k] > 1 ? 's' : ''} : ${mieux === 0 ? 'il n\'y a aucun choix, deux ponts partout'
                 : 'presque aucun choix'}. C'est par là qu'on entre.`, this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         const miennes = g.aretes.map((e, i) => i).filter(i => g.aretes[i].a === k || g.aretes[i].b === k);
         for (const i of miennes) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             this.val[i] = g.solution[i];
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.press)) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
         this.vise = null; this.dessiner();
         // « c'est comme cela que la grille se déplie » est une leçon sur la méthode : coupée.

@@ -35,6 +35,7 @@ import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 import { multiplesCommuns, bougeDansPose, etapesPosees } from '../fractionsEquivalentes.js';
 import { showModal } from '../../ui/modal.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
@@ -572,8 +573,9 @@ export function mount(container, session, opts = {}) {
     async function runDemo() {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         const scene = container.querySelector('.fa-scene');
         cursor.say(calcul.type === 'complement'
@@ -583,7 +585,7 @@ export function mount(container, session, opts = {}) {
                 ? 'Les parts ont déjà la même taille : il n\'y a rien à convertir, on calcule.'
                 : 'On ne peut additionner que des parts de MÊME taille. Je commence donc par '
                     + 'chercher un dénominateur commun.', scene || container);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
 
         const dits = {
             entier: `Le tout, c'est TOUTES les parts : ici des ${calcul.commun}èmes, `
@@ -609,29 +611,29 @@ export function mount(container, session, opts = {}) {
         };
 
         for (const ligne of lignes) {
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             cursor.say(dits[ligne.nom] || '', ligne.el);
-            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+            if (!await robot.pause(DEMO_SPEED.settle)) return;
             for (const nom of ligne.noms) {
                 const c = cases[nom];
                 selectionner(nom);
-                if (!await cursor.tap(c.el, 300) || destroyed) return;
+                if (!await robot.toucher(c.el, 300)) return;
                 const cible = String(c.attendu);
                 for (let i = 0; i < cible.length; i++) {
                     poser(nom, cible.slice(0, i + 1));
-                    if (!await cursor.pause(170) || destroyed) return;
+                    if (!await robot.pause(170)) return;
                 }
                 c.el.classList.add('fa-case--juste');
             }
             ligne.el.classList.add('fa-ligne--faite');
             if (ligne.nom === 'commun' || ligne.nom === 'entier') revelerCommun();
             if (ligne !== lignes[lignes.length - 1]) ouvrirSuivante();
-            if (!await cursor.pause(260) || destroyed) return;
+            if (!await robot.pause(260)) return;
         }
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(enUneBulle(item.explanation, 'Et voilà le calcul posé en entier.'), scene || container);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

@@ -13,6 +13,7 @@
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 export function mount(container, session, opts = {}) {
     let destroyed = false;
@@ -119,15 +120,16 @@ export function mount(container, session, opts = {}) {
         // couvrait la ligne de chiffres sur laquelle porte l'explication.
         cursor.protegerZone(container.querySelector('.pyt-board'));
         const gate = createDemoGate(container.querySelector('.pyt-layout') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
-        if (!await cursor.pause(800) || destroyed) return fin();
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.pause(800)) return fin();
+        if (!await robot.tour()) return fin();
 
         const caseCible = container.querySelector(`.pyt-case[data-r="${r}"][data-c="${c}"]`);
         cursor.say(`${t}… je le connais dans la table de ${r} : ${r} × ${c} = ${t}. Ligne ${r}, colonne ${c}.`,
             container.querySelector('.pyt-cible'));
-        if (!await cursor.pause(2400) || destroyed) return fin();
+        if (!await robot.pause(2400)) return fin();
         if (!caseCible || !await cursor.tap(caseCible, 900) || destroyed) return fin();
         caseCible.classList.add('pyt-case--ok');
         caseCible.textContent = t;
@@ -136,7 +138,7 @@ export function mount(container, session, opts = {}) {
             ? `${t} = ${r} × ${r} est sur la DIAGONALE des carrés : c'est sa seule case dans la table.`
             : `Et ${t} a un jumeau de l'autre côté de la diagonale : ${c} × ${r}. Les deux cases sont justes.`,
             caseCible);
-        if (!await cursor.pause(DEMO_SPEED.between + 1200) || destroyed) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 1200)) return fin();
         fin();
         renderNext();
     }

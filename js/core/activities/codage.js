@@ -25,6 +25,7 @@ import {
     verifierCodage, bornesDe, NOM_TYPE
 } from '../codage.js';
 import { codageSvg, jetonSvg, jetonAngleSvg } from '../codageSvg.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /** Les quatre marques d'égalité disponibles, dans l'ordre de la palette. */
 const MARQUES = [1, 2, 3, 4];
@@ -332,43 +333,44 @@ export function mount(container, session) {
         cursor.protegerZone(container.querySelector('.cg-figure'));
         gate = createDemoGate(container.querySelector('.cg-layout') || container);
         const fin = () => { cursor?.hideBubble(); gate?.destroy(); gate = null; };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, fin, { rangementSeul: true });
 
-        if (!await cursor.pause(600) || destroyed) return fin();
+        if (!await robot.pause(600)) return fin();
 
         const classes = classesDeLongueur(fig, ids);
         for (let i = 0; i < classes.length; i++) {
             const classe = classes[i];
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             const premier = cibleSegment(classe[0]);
             if (premier) cursor.say(phraseClasse(classe, i), premier);
-            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             for (const id of classe) {
                 const el = cibleSegment(id);
                 if (!el) continue;
-                if (!await cursor.tap(el, 300) || destroyed) return fin();
+                if (!await robot.toucher(el, 300)) return fin();
                 pose.marques[id] = i + 1;
                 redessiner();
             }
         }
 
         const droits = anglesDroitsDe(fig, pts);
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.tour()) return fin();
         const ancre = container.querySelector('.cg-figure');
         cursor.say(droits.length
             ? `Les angles droits, maintenant : ${droits.length === 1 ? 'il y en a un seul' : `il y en a ${droits.length}`}.`
             : `Dans ${NOM_TYPE[item.meta.type]}, aucun angle n'est droit : on ne pose rien.`, ancre);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         for (const p of droits) {
             const el = ciblePoint(p);
             if (!el) continue;
-            if (!await cursor.tap(el, 300) || destroyed) return fin();
+            if (!await robot.toucher(el, 300)) return fin();
             pose.angles[p] = true;
             redessiner();
         }
 
         fin();
         if (destroyed) return;
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

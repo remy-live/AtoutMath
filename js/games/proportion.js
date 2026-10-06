@@ -24,6 +24,7 @@ import {
 } from '../core/proportion.js';
 import { boutonAide, majBoutonAide } from '../ui/gameChrome.js';
 import { suivreDefilement } from '../ui/defilement.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const SKILL = 'num.proportion.tableau';
 
@@ -442,35 +443,36 @@ class Proportion extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur?.destroy(); gate?.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say('Un tableau de proportionnalité. Il manque des cases.', this.tabEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Surtout : on ne compte pas de colonne en colonne.', this.tabEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Le geste central : chercher le lien avant de calculer.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Je cherche d\'abord le lien entre les deux lignes.', this.voirEl);
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
-        if (!await cur.tap(this.voirEl)) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
+        if (!await robot.toucher(this.voirEl)) return fin();
         this.basculerLien();
-        if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.press)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`Le coefficient est ${ecrire(this.t.coef)}. Le même partout.`, this.lienEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Une case remplie sous les yeux, du choix jusqu'à la validation.
         const k = 0;
         const trou = this.t.trous[k];
         const td = this.tabEl.querySelector(`[data-trou="${k}"]`);
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Je touche la case, puis je tape.', td || this.tabEl);
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         if (td && !await cur.tap(td)) return fin();
         this.actif = k;
         this.majCases();
@@ -487,11 +489,11 @@ class Proportion extends BaseGame {
         this.faits[k] = true;
         this.suivant();
         this.majCases();
-        if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.press)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('À toi. Cherche le coefficient, puis multiplie.', this.tabEl);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

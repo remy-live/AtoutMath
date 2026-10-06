@@ -38,6 +38,7 @@ import {
     verifierGlissement, verifierEcriture, expliquer, IDS_NIVEAUX
 } from '../core/virgule.js';
 import { suivreDefilement } from '../ui/defilement.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const SKILL = 'num.dec.puissances10';
 
@@ -679,21 +680,22 @@ class Virgule extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur?.destroy(); gate?.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say('Un tableau de numération. Chaque chiffre a son rang.', this.tabEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Le trait rouge, c\'est la virgule. C\'est ELLE qu\'on déplace.', this.virguleEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`${this.q.op} ${this.q.facteur} : la virgule se décale de `
             + `${Math.abs(this.q.rangs)} rang${Math.abs(this.q.rangs) > 1 ? 's' : ''} vers `
             + `${this.q.rangs > 0 ? 'la DROITE' : 'la GAUCHE'}. Les chiffres, eux, ne bougent pas.`, this.tabEl);
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
 
         const sens = this.q.rangs > 0 ? '1' : '-1';
         for (let i = 0; i < Math.abs(this.q.rangs); i++) {
@@ -702,16 +704,16 @@ class Virgule extends BaseGame {
             this.rangsFaits += Number(sens);
             this.placerChiffres(true);
             this.majCompteur();
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(this.q.etapes[1], this.tabEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Surtout pas « on ajoute un zéro » : faux avec une virgule.', this.opEl);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

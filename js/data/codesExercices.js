@@ -186,6 +186,7 @@ export const CODES_EXERCICES = {
     'geo-translation-fleche':     'TG',   // La Flèche qui Glisse
     'geo-course-vecteurs':        'CV',   // La Course de Vecteurs
     'geo-pavage':                 'ST',   // Symétrique par Rapport à Quoi ?
+    'geo-mosaique':               'MZ',   // La Mosaïque des Transformations
     'geo-angles':                 'AE',   // Angle Master
     'geo-chat-geometre':          'CG',   // Le Chat Géomètre
     'geo-chat-libre':             'GE',   // Le Chat Géomètre — atelier libre

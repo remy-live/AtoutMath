@@ -23,6 +23,7 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     departGrenouilles, coupsPossibles, jouerGrenouille, estGagneGrenouilles,
     cheminLePlusCourt, prochainCoupGrenouilles, minimumGrenouilles,
@@ -278,10 +279,11 @@ class Grenouilles extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.etat) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         // UNE IDÉE PAR BULLE : le constat et sa conséquence sont séparés, et la
         // phrase qui répétait la règle (« on ne revient jamais en arrière ») est
@@ -289,7 +291,7 @@ class Grenouilles extends BaseGame {
         // croit la démonstration plantée.
         cur.say('Les vertes ne vont qu\'à droite, les rouges qu\'à gauche, et un saut ne '
             + 'franchit qu\'UNE grenouille.', this.rubanEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // La faute : deux vertes de suite.
         const depart = this.etat.slice();
@@ -299,19 +301,19 @@ class Grenouilles extends BaseGame {
         this.dessiner();
         cur.say('Regarde la faute que tout le monde fait : deux vertes avancent l\'une '
             + 'derrière l\'autre.', this.rubanEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say('La position est déjà PERDUE : il reste des coups, mais aucun ne mène au but.', this.rubanEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         this.etat = depart;
         this.coups = 0;
         this.dessiner();
         cur.say('Deux de la même couleur côte à côte, et plus personne ne passe.', this.rubanEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say('Donc on ALTERNE : une verte, une rouge, une verte…', this.rubanEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         for (let i = 0; i < 5; i++) {
             const c = prochainCoupGrenouilles(this.etat, this.n);
@@ -319,7 +321,7 @@ class Grenouilles extends BaseGame {
             this.etat = jouerGrenouille(this.etat, c.de);
             this.coups++;
             this.dessiner();
-            if (!await cur.pause(700) || !this.isRunning) return fin();
+            if (!await robot.pause(700)) return fin();
         }
         cur.say(`Et le compte se démontre : ${this.n} × ${this.n} sauts, un par croisement, `
             + `plus ${2 * this.n} glissades. ${minimumGrenouilles(this.n)} coups, jamais moins.`,

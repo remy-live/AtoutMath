@@ -17,6 +17,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     proprieteDe, ETAPES, tirerFigure, donnees, conclusion, etiquettes,
     groupesMelanges, verifierPhrase, verifierDonnee, verifierConclusion
@@ -781,16 +782,17 @@ class Redaction extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say('En géométrie, une justification a toujours trois lignes : JE SAIS QUE, OR, DONC. On va les écrire une par une.', this.container);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Temps 1 : la phrase, dans l'ordre.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('D\'abord la propriété du cours. Je la remets dans l\'ordre : elle doit s\'entendre comme une phrase.', this.banqueEl);
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         for (const g of this.propriete.groupes) {
             const i = this.banque.indexOf(g);
             const el = this.banqueEl.querySelector(`[data-groupe="${i}"]`);
@@ -800,34 +802,34 @@ class Redaction extends BaseGame {
             this.peindrePhrase();
         }
         cur.say(this.propriete.enonce, this.texteEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Temps 2 : les données.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         this.etape = 1; this.peindre();
         const d = donnees(this.figure);
         cur.say(`Je lis la figure. Les droites en pointillés sont parallèles : ${d[0].dit}. Et l'angle droit dit que ${d[1].dit}.`, this.figureEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         this.trous = { ...this.trous, d0g: d[0].gauche, d0d: d[0].droite, d1g: d[1].gauche, d1d: d[1].droite };
         this.peindre();
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
 
         // Temps 3 : la mise en scène — c'est le cœur.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         this.etape = 2; this.peindre();
         cur.say('Voilà le moment important : la propriété s\'écrit, et la figure montre de QUOI elle parle à chaque morceau.', this.texteEl);
-        if (!await cur.pause(DEMO_SPEED.between * 2) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between * 2)) return fin();
 
         // Temps 4 : conclure.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         this.etape = 3; this.peindre();
         const c = conclusion(this.figure);
         cur.say(`La propriété parle de « l'autre » parallèle : celle dont on n'a pas encore parlé. Donc (${c.gauche}) est perpendiculaire à (${c.droite}).`, this.texteEl);
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         this.trous.cg = c.gauche; this.trous.cd = c.droite;
         this.peindre();
         this.montrerAngleDroit();
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

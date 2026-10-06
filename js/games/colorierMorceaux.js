@@ -26,6 +26,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { regTimeout } from '../core/timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 // Des couleurs de tissu, assez différentes pour qu'on distingue deux morceaux
 // voisins d'un coup d'œil, et assez pâles pour qu'un nombre reste lisible
@@ -305,13 +306,14 @@ export class JeuAColorier extends BaseGame {
             cur.destroy(); gate.destroy();
             this.demoCursor = null; this.demoGate = null;
         };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, fin, { rangementSeul: true });
 
         if (!this.g) this.nouvelleGrille();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         const mots = this.motsDuRobot();
 
         cur.say(mots.ouverture, this.ui.grille);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         const sol = this.solutionDe(this.g);
         for (const m of this.g.morceaux.slice(0, 3)) {
@@ -320,14 +322,14 @@ export class JeuAColorier extends BaseGame {
             this.dessiner();
             const caseEl = this.ui.grille.querySelector(`[data-i="${m.indice}"]`);
             cur.say(mots.parMorceau(m), caseEl);
-            if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.attendre(DEMO_SPEED.between)) return fin();
             sol.forEach((a, i) => { if (a === m.indice) this.appartenance[i] = a; });
             this.dessiner();
-            if (!await gate.wait(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.attendre(DEMO_SPEED.settle)) return fin();
         }
         if (this.decorerLaVictoire) this.decorerLaVictoire();
         cur.say(mots.conclusion, this.ui.grille);
-        if (!await gate.wait(DEMO_SPEED.between)) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
         fin();
     }
 

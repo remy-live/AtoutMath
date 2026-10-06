@@ -34,6 +34,7 @@ import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { CONFIGURATIONS, creerThales, longueurTexte } from '../core/thales.js';
 import { figureThalesSvg, egaliteEnColonnes } from '../core/generators/thales.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     ETIQUETTES, hypotheses, isolements, trio, calculEcrit, verifierEgalite, verifierChiffres
 } from '../core/thalesRedaction.js';
@@ -717,11 +718,12 @@ class ThalesRedaction extends BaseGame {
         const cursor = createDemoCursor();
         const gate = createDemoGate(this.container);
         this.demoCursor = cursor;
-        if (!await gate.waitTurn()) return;
+        const robot = meneurDemo(cursor, gate, null, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
         cursor.say('Une démonstration se rédige en trois temps, et ce sont eux qui '
             + 'rapportent les points — pas le nombre.', this.copieEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
-        if (!await gate.waitTurn()) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
         // UNE IDÉE PAR BULLE : les trois temps gardent leur définition et leur
         // geste, et ce qui commentait la correction (« la ligne où l'on remplace
         // par les valeurs ne se recopie pas ») est parti. Au-delà de 110
@@ -729,14 +731,14 @@ class ThalesRedaction extends BaseGame {
         // plantée.
         cursor.say('JE SAIS QUE : ce qui vient de l\'énoncé. Deux droites sécantes, et '
             + 'deux parallèles.', this.figEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
-        if (!await gate.waitTurn()) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
         cursor.say('OR : ce qui vient du cours. J\'écris l\'égalité des trois rapports.', this.copieEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
-        if (!await gate.waitTurn()) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
         cursor.say('Chaque petit segment sur le grand qui le contient.', this.copieEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
-        if (!await gate.waitTurn()) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
         cursor.say('DONC : ce que j\'en déduis. Produit en croix, calcul, conclusion.',
         this.copieEl);
         await cursor.pause(DEMO_SPEED.between);

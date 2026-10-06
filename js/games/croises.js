@@ -18,6 +18,7 @@ import { BaseGame } from '../core/BaseGame.js';
 import { regTimeout } from '../core/timers.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import { genererCroise, verifierCroise, solutionCroise, PALIERS_CROISES }
     from '../core/croises.js';
 
@@ -253,8 +254,9 @@ class Croises extends BaseGame {
             cur.destroy(); gate.destroy();
             this.demoCursor = null; this.demoGate = null;
         };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, fin, { rangementSeul: true });
         if (!this.g) this.nouvelleCroix();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         const croisement = this.g.rangee * 5 + this.g.colonne;
         // LA LEÇON COUPÉE : « son chiffre sert aux deux calculs » tenait déjà dans le
@@ -262,7 +264,7 @@ class Croises extends BaseGame {
         // si lentement qu'on croit la démonstration plantée (js/core/activities/choice.js).
         cur.say('Cette case est dans la ligne ET dans la colonne : je commence par elle.',
         this.ui.grille.querySelector(`[data-i="${croisement}"]`) || this.ui.grille);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         const sol = solutionCroise(this.g);
         const deux = this.g.aTrouver.slice(0, 2);
@@ -274,11 +276,11 @@ class Croises extends BaseGame {
             this.dessiner();
             cur.say(`Je pose le ${sol[i]} : la ligne devient vraie de ce côté-là.`,
                 this.ui.grille.querySelector(`[data-i="${i}"]`));
-            if (!await gate.wait(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.attendre(DEMO_SPEED.settle)) return fin();
         }
         cur.say('À toi : il ne reste plus qu\u2019à essayer les chiffres qui restent, '
             + 'en regardant si le calcul tombe juste.', this.ui.plateau);
-        if (!await gate.wait(DEMO_SPEED.between)) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
         fin();
     }
 

@@ -15,6 +15,7 @@ import { state } from '../state.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { aideSelonEtat, reduireChoix, itemPeutAllerAuClavier } from '../aide.js';
 import { barreOutils, boiteOutils, brancherOutils } from './outils.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /**
  * Ce que le robot dit avant de choisir, et après avoir choisi.
@@ -385,8 +386,9 @@ export function mount(container, session, opts = {}) {
         // la bulle se range autour.
         cursor.protegerZone([...container.children].filter(el => !el.classList.contains('hint-bar')));
 
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         // LE ROBOT DIT POURQUOI. Il se contentait de poser le doigt sur la
         // bonne case : montrer LAQUELLE est juste sans dire pourquoi n'apprend
@@ -408,8 +410,8 @@ export function mount(container, session, opts = {}) {
         const cible = viseDansEnonce(container);
         if (cible !== container) cible.classList.add('demo-vise');
         cursor.say(phraseDepart(item), cible);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
 
         // Le surlignage tient PENDANT le trajet du doigt : la bulle affiche
         // encore « Commence par 4 × 2 » tout le temps que le pointeur met à
@@ -424,9 +426,9 @@ export function mount(container, session, opts = {}) {
         el.classList.add('demo-target');
         fillSlot(el, true);
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(phraseFin(item, el), el);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

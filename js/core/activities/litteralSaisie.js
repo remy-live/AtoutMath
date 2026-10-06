@@ -50,6 +50,7 @@ import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { jugerEtape } from '../ligneEtape.js';
 import { formuleSiElleTient } from '../maths/formule.js';
+import { meneurDemo } from '../meneurDemo.js';
 import { memeReponse, normaliser, groupesSemblables }
     from '../reductionPuissances.js';
 
@@ -816,8 +817,9 @@ export function mount(container, session, opts = {}) {
     async function runDemo(item, taper, champ, etapes = [], hote = container) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         // ── LE ROBOT PARLE DE L'EXERCICE QU'IL JOUE ─────────────────────
         //
@@ -849,15 +851,15 @@ export function mount(container, session, opts = {}) {
             ? 'Je range chaque terme dans son sac : les carrés ensemble, les lettres '
                 + 'ensemble, les nombres ensemble.'
             : 'Je lis l\'énoncé en entier avant d\'écrire.', contexte || container);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
 
         const deuxieme = avecLettre
             ? 'Dans un sac, j\'additionne les nombres de devant. L\'exposant ne bouge pas.'
             : ((item.hints || []).find(tientEnUneBulle) || '');
         if (deuxieme) {
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             cursor.say(deuxieme, container.querySelector('.ls-clavier') || container);
-            if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+            if (!await robot.pause(DEMO_SPEED.between)) return;
         }
 
         // ON TAPE LA RÉPONSE SIGNE PAR SIGNE, en visant les vraies touches :
@@ -867,9 +869,9 @@ export function mount(container, session, opts = {}) {
             for (const c of String(texte)) {
                 if (destroyed) return false;
                 const btn = hote.querySelector(`[data-t="${CSS.escape(c)}"]`);
-                if (btn && !btn.hidden) { if (!await cursor.tap(btn)) return false; }
+                if (btn && !btn.hidden) { if (!await robot.toucher(btn)) return false; }
                 taper(c);
-                if (!await cursor.pause(DEMO_SPEED.settle / 2) || destroyed) return false;
+                if (!await robot.pause(DEMO_SPEED.settle / 2)) return false;
             }
             return true;
         };
@@ -877,22 +879,22 @@ export function mount(container, session, opts = {}) {
         for (let i = 0; i < etapes.length - 1; i++) {
             const e = etapes[i];
             const li = hote.querySelector(`[data-etape="${i}"]`);
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             cursor.say(e.aide || e.titre, li || champ);
-            if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+            if (!await robot.pause(DEMO_SPEED.between)) return;
             if (!await ecrire(e.montrer || '')) return;
             const cel = hote.querySelector(`[data-val="${i}"]`);
             if (cel) cel.textContent = String(e.montrer || '');
             saisieDemoRAZ(taper);
-            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+            if (!await robot.pause(DEMO_SPEED.settle)) return;
         }
 
         if (!await ecrire(item.reponsePapier || item.answer || '')) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         champ.classList.add('ls-champ--ok');
         cursor.say(item.explanation || '', champ);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
     }
 
     /**

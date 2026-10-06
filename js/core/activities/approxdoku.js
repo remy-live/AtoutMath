@@ -34,6 +34,7 @@ import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, createDemoGate } from '../demoPointer.js';
 import { equationJuste, placeDuTilde, evaluerCote } from '../generators/approxdoku.js';
 import { contenuCase, brancherChamps, saisieActive } from '../../ui/champsGrille.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 // Le vérificateur est LIMITÉ, comme au Mathdoku et au Strimko : vérifier doit
 // rester un choix qui se paie, pas un oracle qu'on presse après chaque case.
@@ -411,13 +412,14 @@ export function mount(container, session, opts = {}) {
         const { n, equations, solution } = item.meta;
         if (!cursor) cursor = createDemoCursor();
         const gate = createDemoGate(container.querySelector('.approxdoku-layout') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
         try {
             cursor.protegerZone(container.querySelector('.ax-cadre'));
-            if (!await gate.wait(600) || destroyed) return fin();
+            if (!await robot.attendre(600)) return fin();
             cursor.say(`Chaque ligne et chaque colonne portent les nombres de 1 à ${n}, `
                 + 'une fois chacun — comme un sudoku.', container.querySelector('.ax-grille'));
-            if (!await gate.wait(3200) || destroyed) return fin();
+            if (!await robot.attendre(3200)) return fin();
 
             // ON MONTRE UNE CHAÎNE EN LA PARCOURANT, parce que c'est le seul
             // point de règle qui ne se devine pas : le « ≈ » ne veut pas dire
@@ -429,7 +431,7 @@ export function mount(container, session, opts = {}) {
                 if (capsule) capsule.classList.add('ax-capsule--montre');
                 cursor.say('Dans une capsule, les deux côtés du « ≈ » ne sont PAS égaux : '
                     + 'ils se suivent, à un près.', capsule || container.querySelector('.ax-grille'));
-                if (!await gate.wait(3600) || destroyed) return fin();
+                if (!await robot.attendre(3600)) return fin();
                 for (const p of eq.cases) {
                     const el = rondEl(p.r, p.c);
                     if (el && !await cursor.tap(el, 420)) return fin();
@@ -446,10 +448,10 @@ export function mount(container, session, opts = {}) {
                 const d = evaluerCote(vals.slice(k + 1), eq.ops.slice(k + 1));
                 cursor.say(`Ici ${g} d'un côté et ${d} de l'autre : ils se suivent, `
                     + 'la chaîne est juste.', capsule || container.querySelector('.ax-grille'));
-                if (!await gate.wait(3800) || destroyed) return fin();
+                if (!await robot.attendre(3800)) return fin();
                 if (capsule) capsule.classList.remove('ax-capsule--montre');
             }
-            if (!await gate.wait(1200) || destroyed) return fin();
+            if (!await robot.attendre(1200)) return fin();
         } catch (e) { /* démonstration coupée */ }
         fin();
     }

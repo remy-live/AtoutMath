@@ -32,6 +32,7 @@ import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, createDemoGate } from '../demoPointer.js';
 import { carteDesRuisseaux } from '../generators/strimko.js';
 import { contenuCase, brancherChamps, saisieActive } from '../../ui/champsGrille.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 // Le vérificateur est LIMITÉ, comme au Mathdoku : vérifier doit rester un choix
 // qui se paie, pas un oracle qu'on presse après chaque case.
@@ -391,13 +392,14 @@ export function mount(container, session, opts = {}) {
         const { n, ruisseaux, solution } = item.meta;
         if (!cursor) cursor = createDemoCursor();
         const gate = createDemoGate(container.querySelector('.strimko-layout') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
         try {
             cursor.protegerZone(container.querySelector('.st-cadre'));
-            if (!await gate.wait(600) || destroyed) return fin();
+            if (!await robot.attendre(600)) return fin();
             cursor.say(`Chaque ligne et chaque colonne portent les nombres de 1 à ${n}, `
                 + 'une fois chacun — comme un sudoku.', container.querySelector('.st-board'));
-            if (!await gate.wait(3200) || destroyed) return fin();
+            if (!await robot.attendre(3200)) return fin();
 
             // ON MONTRE LE RUISSEAU EN LE PARCOURANT, parce que c'est le seul
             // point de règle qui ne se devine pas — et qu'un chemin se montre
@@ -406,7 +408,7 @@ export function mount(container, session, opts = {}) {
             if (el0) el0.classList.add('st-ruisseau--montre');
             cursor.say('Et la chaîne de perles, c\'est un RUISSEAU : lui aussi porte '
                 + `les ${n} nombres.`, container.querySelector('.st-cadre'));
-            if (!await gate.wait(3400) || destroyed) return fin();
+            if (!await robot.attendre(3400)) return fin();
             for (const p of ruisseaux[0]) {
                 const el = celluleEl(p.r, p.c);
                 if (el && !await cursor.tap(el, 420)) return fin();
@@ -423,10 +425,10 @@ export function mount(container, session, opts = {}) {
                 const el = celluleEl(cible.r, cible.c);
                 cursor.say('Ici, un seul nombre tient à la fois dans la ligne, la colonne '
                     + 'et le ruisseau.', el);
-                if (!await gate.wait(2800) || destroyed) return fin();
+                if (!await robot.attendre(2800)) return fin();
                 if (el && await cursor.tap(el, 700)) poser(cible.r, cible.c, solution[cible.r][cible.c]);
             }
-            if (!await gate.wait(1600) || destroyed) return fin();
+            if (!await robot.attendre(1600)) return fin();
         } catch (e) { /* démonstration coupée */ }
         fin();
     }

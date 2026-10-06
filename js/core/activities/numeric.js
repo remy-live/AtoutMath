@@ -11,6 +11,7 @@ import { espacerMilliers, FINE } from '../nombres.js';
 import { hintBar, wireHint } from './choice.js';
 import { barreOutils, boiteOutils, brancherOutils } from './outils.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const DIGITS = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
 
@@ -518,19 +519,20 @@ export function mount(container, session, opts = {}) {
         cursor.protegerZone([container.querySelector('.numpad-context'),
             container.querySelector('.np-choix')].filter(Boolean));
 
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         const contexte = container.querySelector('.numpad-context');
         cursor.say(phraseDepart(item), contexte || container);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
         const montre = container.querySelector('[data-montrer]');
         const indiceFigure = (item.hints || [])[1];
         if (montre && tientEnUneBulle(indiceFigure)) {
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             cursor.say(indiceFigure.trim(), montre);
-            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+            if (!await robot.pause(DEMO_SPEED.settle)) return;
         }
 
         // LE CALCUL, ET IL DÉSIGNE LES PROPOSITIONS EN LE DISANT : c'est parmi
@@ -540,31 +542,31 @@ export function mount(container, session, opts = {}) {
         // le replier sur le deuxième faisait répéter la bulle précédente.
         const dernier = (item.hints || [])[2];
         if (tientEnUneBulle(dernier)) {
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             cursor.say(dernier.trim(), el.parentElement || el);
-            if (!await cursor.pause(DEMO_SPEED.press) || destroyed) return;
+            if (!await robot.pause(DEMO_SPEED.press)) return;
         }
 
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.tap(el, 480) || destroyed) return;
+        if (!await robot.tour()) return;
+        if (!await robot.toucher(el, 480)) return;
         el.classList.add('np-choix-btn--ok', 'demo-target');
         boutons.forEach(b => { b.disabled = true; });
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(phraseFin(item), el);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 
     async function runDemo(target, setBuffer, screen, item) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         const contexte = container.querySelector('.numpad-context');
         cursor.say(phraseDepart(item), contexte || container);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
         // LE ROBOT MONTRE CE DONT IL PARLE.
         //
@@ -579,14 +581,14 @@ export function mount(container, session, opts = {}) {
         const montre = container.querySelector('[data-montrer]');
         const indiceFigure = (item.hints || [])[1];
         if (montre && tientEnUneBulle(indiceFigure)) {
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             cursor.say(indiceFigure.trim(), montre);
-            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+            if (!await robot.pause(DEMO_SPEED.settle)) return;
         }
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(phraseCalcul(item, target), screen);
-        if (!await cursor.pause(DEMO_SPEED.press) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.press)) return;
 
         for (let i = 0; i < target.length; i++) {
             // Le robot ne cherche pas une touche « - » : elle n'existe pas,
@@ -594,21 +596,21 @@ export function mount(container, session, opts = {}) {
             const cle = target[i] === '-' ? '\u00b1' : target[i];
             const touche = container.querySelector(`[data-key="${cssEscape(cle)}"]`);
             if (touche) {
-                if (!await cursor.tap(touche, 420) || destroyed) return;
+                if (!await robot.toucher(touche, 420)) return;
                 touche.classList.add('numpad-key--demo');
                 regTimeout(() => touche.classList.remove('numpad-key--demo'), 220);
             }
             setBuffer(target.slice(0, i + 1));
-            if (!await cursor.pause(180) || destroyed) return;
+            if (!await robot.pause(180)) return;
         }
 
         const valider = container.querySelector('[data-validate]');
-        if (!await cursor.tap(valider, 480) || destroyed) return;
+        if (!await robot.toucher(valider, 480)) return;
         screen.classList.add('numpad-screen--ok');
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(phraseFin(item), screen);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 
@@ -622,12 +624,12 @@ export function mount(container, session, opts = {}) {
     async function runDemoTrous(item, valeurs, setBuffer, viser, screen) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         const contexte = container.querySelector('.numpad-context');
         cursor.say(phraseDepart(item), contexte || container);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
         const cases = [...container.querySelectorAll('[data-trou]')];
         const cibles = String(item.answer).split('|');
@@ -642,35 +644,35 @@ export function mount(container, session, opts = {}) {
         // logiciel.
         const rangement = (item.hints || [])[0];
         if (tientEnUneBulle(rangement) && rangement.trim() !== phraseDepart(item)) {
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             cursor.say(rangement.trim(), cases[0] || contexte);
-            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+            if (!await robot.pause(DEMO_SPEED.settle)) return;
         }
 
         for (let n = 0; n < cibles.length; n++) {
-            if (cases[n]) { if (!await cursor.tap(cases[n], 420) || destroyed) return; }
+            if (cases[n]) { if (!await robot.toucher(cases[n], 420)) return; }
             viser(n);
             const cible = String(cibles[n]);
             for (let i = 0; i < cible.length; i++) {
                 const cle = cible[i] === '-' ? '±' : cible[i];
                 const touche = container.querySelector(`[data-key="${cssEscape(cle)}"]`);
                 if (touche) {
-                    if (!await cursor.tap(touche, 380) || destroyed) return;
+                    if (!await robot.toucher(touche, 380)) return;
                     touche.classList.add('numpad-key--demo');
                     regTimeout(() => touche.classList.remove('numpad-key--demo'), 220);
                 }
                 setBuffer(cible.slice(0, i + 1));
-                if (!await cursor.pause(160) || destroyed) return;
+                if (!await robot.pause(160)) return;
             }
         }
 
         const valider = container.querySelector('[data-validate]');
-        if (!await cursor.tap(valider, 480) || destroyed) return;
+        if (!await robot.toucher(valider, 480)) return;
         screen.classList.add('numpad-screen--ok');
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(phraseFin(item), cases[0] || screen);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

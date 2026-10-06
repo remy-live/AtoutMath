@@ -25,6 +25,7 @@
 
 import { BaseGame } from '../core/BaseGame.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     plateauParking, departParking, coupsPossiblesParking, jouerParking,
     estGagneParking, restantsParking, prochainCoupParking, minimumParking,
@@ -357,25 +358,26 @@ class Parking extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.p) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         // UNE IDÉE PAR BULLE, chacune sous 110 caractères : au-delà, la bulle se lit si
         // lentement (340 ms le mot) qu'on croit la démonstration plantée.
         cur.say('Une seule voie relie les deux parkings, et on ne se double pas dessus.', this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say('La case en pointillés, sous la voie : la SEULE place pour se ranger et laisser passer.',
         this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // « Tout le jeu est là : qui se range, et quand ? » commente le jeu au lieu de
         // montrer le geste : la bulle garde la seule phrase qui dit quoi regarder.
         cur.say('Une voiture qui entre dans la voie sans savoir où se ranger bloque tout le monde derrière.',
         this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         for (let i = 0; i < 8; i++) {
             const c = prochainCoupParking(this.p, this.etat);
@@ -386,7 +388,7 @@ class Parking extends BaseGame {
             this.cap[c.de] = null;
             this.coups++;
             this.dessiner();
-            if (!await cur.pause(600) || !this.isRunning) return fin();
+            if (!await robot.pause(600)) return fin();
         }
         cur.say(`Et il en faut ${minimumParking(this.n)} comme ça, au minimum. C'est bien un `
             + 'jeu de fin de semaine — le compteur t\'indique à chaque coup combien il en '

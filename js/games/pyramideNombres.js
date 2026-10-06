@@ -17,6 +17,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerPyramideNombres, saisieInitialePN, estResoluePN, casesFaussesPN,
     prochaineCase, qualitePN, TAILLES_PN, DIFFICULTES_PN
@@ -336,20 +337,21 @@ class PyramideNombres extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.p) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         // DEUX IDÉES, DONC DEUX BULLES : la règle des cases, puis le geste de
         // recherche. Ensemble elles faisaient 156 caractères, soit trois lignes
         // qu'on croit plantées.
         cur.say('Chaque case est la somme des deux du dessous.', this.tableEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say('Je ne remplis pas dans l\'ordre : je cherche un TRIANGLE où deux cases '
             + 'sur trois sont là.', this.tableEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         for (let n = 0; n < 3; n++) {
             const c = prochaineCase(this.p, this.saisie);
@@ -362,7 +364,7 @@ class PyramideNombres extends BaseGame {
                 ? `En voilà un : ${c.calcul}. Vers le haut, on additionne.`
                 : `Et celui-ci descend : ${c.calcul}. Vers le bas, on SOUSTRAIT — c'est `
                     + 'la moitié du jeu que tout le monde oublie.', this.tableEl);
-            if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.attendre(DEMO_SPEED.between)) return fin();
             this.saisie[k][i] = c.valeur;
             this.montre = null;
             this.dessiner();

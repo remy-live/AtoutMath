@@ -25,6 +25,7 @@ import {
 } from '../core/logigramme.js';
 import { marchesCochees, marcheAuRang, totalDe } from '../core/progression.js';
 import { LISTE_MARCHES, ANCIEN } from '../core/generators/logigramme.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const COMPETENCE = 'num.logique.logigramme';
 
@@ -439,16 +440,17 @@ class Logigramme extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.puzzle) this.poser();     // hors partie (aperçu), on en tire une
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         // Sous 110 caractères : au-delà, la bulle se lit si lentement (340 ms le mot)
         // qu'on croit la démonstration plantée.
         cur.say('On ne devine jamais : chaque case s\'écrit parce qu\'un indice ou la grille l\'oblige.',
         this.teteEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // IL REPREND LA GRILLE EN COURS, LÀ OÙ L'ÉLÈVE EN EST.
         //
@@ -461,11 +463,11 @@ class Logigramme extends BaseGame {
             .slice(0, 14);
         if (!etapes.length) {
             cur.say('Ta grille est déjà complète : il n\'y a plus rien à déduire. Vérifie-la !', this.container);
-            if (!await cur.pause(DEMO_SPEED.between)) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
             return fin();
         }
         for (const e of etapes) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const td = this.caseEl(e);
             const cats = this.puzzle.categories;
             const ou = `${etiquette(cats[e.a], e.i)} / ${etiquette(cats[e.b], e.j)}`;
@@ -473,17 +475,17 @@ class Logigramme extends BaseGame {
             if (td && !await cur.tap(td)) return fin();
             this.poserCase(e.a, e.i, e.b, e.j, e.val);
             this.peindre();
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         // UNE IDÉE PAR BULLE : la suite de la grille, puis le bouton que le robot désigne.
         cur.say('On continue ainsi jusqu\'à ce que chaque ligne ait son rond.',
         this.container.querySelector('[data-aide]'));
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         cur.say('Si tu bloques, « Aide-moi » te donne la déduction suivante : la raison, pas la réponse.',
         this.container.querySelector('[data-aide]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

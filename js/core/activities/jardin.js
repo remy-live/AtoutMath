@@ -41,6 +41,7 @@ import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate } from '../demoPointer.js';
 import { nomDeRangee } from '../generators/jardin.js';
 import { contenuCase, brancherChamps } from '../../ui/champsGrille.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 // Le vérificateur est LIMITÉ, comme au Mathdoku, au Strimko et à l'Approxdoku :
 // vérifier doit rester un choix qui se paie, pas un oracle qu'on presse après
@@ -359,27 +360,28 @@ export function mount(container, session, opts = {}) {
         const { jardin, solution } = item.meta;
         if (!cursor) cursor = createDemoCursor();
         const gate = createDemoGate(container.querySelector('.jardin-layout') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
         try {
             cursor.protegerZone(container.querySelector('.ja-cadre'));
-            if (!await gate.wait(600) || destroyed) return fin();
+            if (!await robot.attendre(600)) return fin();
 
             const premiere = jardin.rangees[0];
             cursor.say('Une RANGÉE porte deux réponses bout à bout — et l\'on ne dit pas '
                 + 'où la première s\'arrête.', container.querySelector('.ja-cadre'));
-            if (!await gate.wait(3600) || destroyed) return fin();
+            if (!await robot.attendre(3600)) return fin();
             for (const cle of premiere.cles) {
                 const el = caseEl(cle);
                 if (el && !await cursor.tap(el, 260)) return fin();
                 if (destroyed) return fin();
                 poser(cle, solution.get(cle));
             }
-            if (!await gate.wait(1400) || destroyed) return fin();
+            if (!await robot.attendre(1400)) return fin();
 
             const fleur = jardin.fleurs[0];
             cursor.say('Une FLEUR se lit dans le sens horaire, et l\'on ne dit pas par quel '
                 + 'pétale elle commence.', caseEl(fleur.centre));
-            if (!await gate.wait(3600) || destroyed) return fin();
+            if (!await robot.attendre(3600)) return fin();
             for (let k = 0; k < 6; k++) {
                 const cle = fleur.petales[(k + fleur.depart) % 6];
                 const el = caseEl(cle);
@@ -387,7 +389,7 @@ export function mount(container, session, opts = {}) {
                 if (destroyed) return fin();
                 poser(cle, solution.get(cle));
             }
-            if (!await gate.wait(2000) || destroyed) return fin();
+            if (!await robot.attendre(2000)) return fin();
         } catch (e) { /* démonstration coupée */ }
         fin();
     }

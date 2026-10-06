@@ -12905,3 +12905,132 @@ body.en-boite > #app-container { background: none; }
 .jardin-layout > .jardin-context .game-question {
     font-size: clamp(12px, 3.2vw, 15px); margin-bottom: 0; text-shadow: none;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LA MOSAÏQUE DES TRANSFORMATIONS
+
+   Rémy : « tu pourrais refaire ce pavage et poser différentes questions et si
+   l'élève se trompe, lui compter faux mais aussi montrer la transformation ».
+
+   L'ENCRE EST LITTÉRALE, ET C'EST UNE LEÇON PAYÉE. Les pièces portent des
+   couleurs FIXES (elles viennent du code, pas du thème) ; une encre qui suivrait
+   `var(--text-main)` deviendrait blanche en thème sombre, sur un fond resté
+   clair — mesuré à 1,11 de contraste sur le Jardin, c'est-à-dire illisible. Tout
+   ce qui s'écrit sur une pièce est donc noir en toutes lettres.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.pv-cadre {
+    display: flex;
+    justify-content: center;
+    margin: 10px auto 14px;
+    /* Le dessin peut être plus large qu'un téléphone : il défile, il ne
+       rétrécit pas. Une mosaïque réduite à 60 % rend les numéros illisibles,
+       et le numéro EST la réponse. */
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.pv-svg {
+    display: block;
+    height: auto;
+    max-width: 100%;
+    /* En dessous, un doigt ne vise plus une case de 34 px. */
+    min-width: 320px;
+}
+
+.pv-case {
+    cursor: pointer;
+    transition: filter .12s ease;
+}
+
+/* LE SURVOL NE S'APPLIQUE QUE LÀ OÙ IL EXISTE. Sur un téléphone, un appui
+   laisse le :hover COLLÉ sur la pièce touchée — elle reste éclaircie jusqu'au
+   prochain appui ailleurs, et l'élève croit qu'elle est sélectionnée.
+   `tests/survolTactile.test.mjs` garde cette règle pour tout le dépôt, et c'est
+   lui qui a attrapé celle-ci. */
+@media (hover: hover) {
+    .pv-case:hover { filter: brightness(1.06); }
+}
+
+.pv-bord {
+    stroke: #1e293b;
+    stroke-width: 1.6;
+    stroke-linecap: square;
+    fill: none;
+}
+
+.pv-num {
+    font-size: 15px;
+    font-weight: 700;
+    fill: #0f172a;
+    pointer-events: none;
+}
+
+/* Les sommets nommés : ils font partie de l'énoncé, pas du décor. */
+.pv-sommet { fill: #0f172a; }
+.pv-lettre {
+    font-size: 13px;
+    font-weight: 700;
+    fill: #0f172a;
+    /* Un liseré clair pour que la lettre se lise même posée sur un trait. */
+    paint-order: stroke;
+    stroke: #ffffff;
+    stroke-width: 3px;
+    pointer-events: none;
+}
+
+/* L'AXE, LE CENTRE ET LE VECTEUR SONT L'ÉNONCÉ. Ils sont donc tracés dès le
+   départ, et dans une couleur qui ne se confond avec aucune pièce. */
+.pv-axe {
+    stroke: #dc2626;
+    stroke-width: 2.4;
+    stroke-dasharray: 9 5;
+}
+.pv-centre {
+    fill: #dc2626;
+    stroke: #ffffff;
+    stroke-width: 1.5;
+}
+.pv-fleche {
+    stroke: #dc2626;
+    stroke-width: 2.6;
+    color: #dc2626;        /* la pointe lit `currentColor` */
+}
+
+/* La pièce de départ s'allume : sans cela, l'élève commence par la chercher
+   parmi seize numéros, et c'est du temps pris sur la transformation. */
+.pv-case.pv-depart {
+    stroke: #2563eb;
+    stroke-width: 3;
+    filter: brightness(1.04);
+}
+
+.pv-case.pv-juste { stroke: var(--success, #16a34a); stroke-width: 3.5; }
+.pv-case.pv-faux { stroke: #dc2626; stroke-width: 3.5; }
+.pv-case.pv-arrivee { stroke: #16a34a; stroke-width: 2.5; stroke-dasharray: 5 4; }
+
+/* LE FANTÔME QUI FAIT LE TRAJET. Il doit se voir par-dessus la mosaïque sans
+   la cacher : d'où le remplissage à demi transparent et le contour franc. */
+.pv-fantome rect {
+    fill: color-mix(in srgb, #2563eb 42%, transparent);
+    stroke: #1d4ed8;
+    stroke-width: 2;
+}
+.pv-fantome { pointer-events: none; }
+.pv-fantome--pose rect {
+    fill: color-mix(in srgb, #16a34a 42%, transparent);
+    stroke: #15803d;
+}
+
+.pv-aide {
+    text-align: center;
+    font-size: .95rem;
+    color: var(--text-muted);
+    min-height: 1.4em;
+}
+
+/* Un élève qui demande moins d'animation en reçoit moins : le trajet se pose
+   d'un coup au lieu de se dérouler. */
+@media (prefers-reduced-motion: reduce) {
+    .pv-case { transition: none; }
+}

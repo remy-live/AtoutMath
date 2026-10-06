@@ -20,6 +20,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const COMPETENCE = 'num.complement';
 
@@ -344,42 +345,43 @@ class AmisDeDix extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.cartes) this.poserTable();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         cur.say(`Je ne cherche pas deux cartes au hasard : j'en choisis UNE, et je calcule ce qui `
             + `lui manque pour faire ${this.cible}.`, this.cibleEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let k = 0; k < 3; k++) {
             const libres = [...this.tableEl.querySelectorAll('.dx-carte:not(.dx-carte--partie)')];
             if (libres.length < 2) break;
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const a = libres[0];
             const va = Number(a.dataset.v);
             const manque = this.cible - va;
             const b = libres.find(c => c !== a && Number(c.dataset.v) === manque);
             if (!b) break;
             cur.say(`${va}… pour aller à ${this.cible}, il manque ${manque}. Je cherche un ${manque}.`, a);
-            if (!await cur.tap(a)) return fin();
+            if (!await robot.toucher(a)) return fin();
             a.classList.add('dx-carte--prise');
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
-            if (!await cur.tap(b)) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
+            if (!await robot.toucher(b)) return fin();
             a.classList.remove('dx-carte--prise');
             a.classList.add('dx-carte--partie');
             b.classList.add('dx-carte--partie');
             this.note(`${va} + ${manque} = ${this.cible} ✓`, 'ok');
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         // « C'est comme ça que les paires deviennent des réflexes » était la leçon, pas le
         // geste : coupée. Au-delà de 110 caractères la bulle se lit si lentement qu'on
         // croit la démonstration plantée (js/core/activities/choice.js, COURT).
         cur.say('Toujours dans cet ordre : une carte, LE calcul, puis l\'amie qu\'on cherche.',
             this.tableEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

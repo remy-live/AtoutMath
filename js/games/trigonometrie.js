@@ -51,6 +51,7 @@ import { makeRng } from '../core/ids.js';
 import { marchesCochees, marcheAuRang, totalDe } from '../core/progression.js';
 import { MARCHES_TRIGO, ANCIEN_TRIGO } from '../core/trigonometrie.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     ROLES, LIBELLES, COURTS, tirerTriangle, rolesDe, pointsDe, questionsDe,
     verifier, conseil, laLecon, sommetDroit, sommetVise, memeCote, nomCote,
@@ -714,12 +715,13 @@ class Trigonometrie extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.triangle) this.poser();
         const t = this.triangle;
         const r = rolesDe(t);
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         // LA DÉMONSTRATION DE LA FORMULE EST UNE AUTRE DÉMONSTRATION. Refaire le
         // repérage devant un élève à qui l'on demande d'écrire cos(G) lui montre
@@ -739,28 +741,28 @@ class Trigonometrie extends BaseGame {
                 + `${f.fonction.memo} — ${f.rappel}. Deux gestes, dans cet ordre : `
                 + 'se tromper de rapport et se tromper de côté ne sont pas la même faute.',
             this.saisieEl || this.figEl);
-            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say(`Au numérateur, ${LIBELLES[f.haut]} de l'angle en ${f.angle} : `
                 + `c'est [${f.attenduHaut}].`,
             this.figEl.querySelector(`[data-trait="${f.attenduHaut}"]`) || this.figEl);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             // ON MARQUE SANS REDESSINER : un redessin refabrique les deux cases
             // et efface ce que le robot vient d'y écrire — or c'est justement
             // l'écriture qu'il doit montrer.
             marquer(f.attenduHaut);
             ecrire('haut', `[${f.attenduHaut}]`);
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
 
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say(`Au dénominateur, ${LIBELLES[f.bas]} : [${f.attenduBas}]. `
                 + `Donc ${f.texte}.`,
             this.figEl.querySelector(`[data-trait="${f.attenduBas}"]`) || this.figEl);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             marquer(f.attenduBas);
             ecrire('bas', `[${f.attenduBas}]`);
-            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
             return fin();
         }
 
@@ -768,7 +770,7 @@ class Trigonometrie extends BaseGame {
         // viennent juste après nomment chaque côté, ce qui la rend inutile. 169
         // caractères avant même le premier geste.
         cur.say('Avant toute formule, il faut savoir QUEL côté est lequel.', this.figEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         const etapes = [
             { role: ROLES.HYPOTENUSE, dit: `Je cherche l'angle droit : il est en ${sommetDroit(t)}. `
@@ -780,32 +782,32 @@ class Trigonometrie extends BaseGame {
                 + `Deux côtés touchent l'angle, l'un est l'hypoténuse — reste ${r[ROLES.ADJACENT]}.` }
         ];
         for (const e of etapes) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const cible = this.figEl.querySelector(`[data-trait="${r[e.role]}"]`);
             cur.say(e.dit, cible || this.figEl);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             // AU PALIER ÉCRIT, LE ROBOT ÉCRIT. Montrer le côté sans jamais le
             // taper, c'est démontrer l'exercice d'avant : l'élève doit voir la
             // réponse SE FORMER dans le champ, crochets compris.
             const champ = this.saisieEl && this.saisieEl.querySelector('[data-haut]');
             if (champ) {
                 champ.value = `[${r[e.role]}]`;
-                if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.press)) return fin();
             }
             this.trouves[e.role] = r[e.role];
             this.rang += 1;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.settle / 2) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle / 2)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(this.ecrit
             ? 'À toi de les ÉCRIRE : deux lettres, celles des deux extrémités — et les '
                 + 'crochets si tu les connais, [AB] est le segment. Le triangle suivant sera '
                 + 'tourné autrement : c\'est la figure qu\'on lit, pas une image qu\'on reconnaît.'
             : 'Et le triangle suivant sera tourné autrement : c\'est la figure qu\'on lit, '
                 + 'pas une image qu\'on reconnaît.', this.figEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

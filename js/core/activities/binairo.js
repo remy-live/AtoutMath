@@ -14,6 +14,7 @@ import { hintBar } from './choice.js';
 import { brancherGlisserPalette } from './paletteDrag.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { contenuCase, brancherChamps, saisieActive } from '../../ui/champsGrille.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const VERIFICATIONS_PAR_GRILLE = 3;
 const VIDE = -1;
@@ -343,26 +344,27 @@ export function mount(container, session, opts = {}) {
         // couvrait la ligne de chiffres sur laquelle porte l'explication.
         cursor.protegerZone(container.querySelector('.bn-board, .kk-board'));
         const gate = createDemoGate(container.querySelector('.kenken-layout') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
-        if (!await cursor.pause(600) || destroyed) return fin();
+        if (!await robot.pause(600)) return fin();
         while (!destroyed) {
             const coup = prochainCoupBinairo(grille, n, solution);
             if (!coup) break;
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             const el = celluleEl(coup.r, coup.c);
             if (!el) return fin();
             cursor.say(coup.motif, el);
-            if (!await cursor.tap(el, 340) || destroyed) return fin();
+            if (!await robot.toucher(el, 340)) return fin();
             grille[coup.r][coup.c] = coup.v;
             el.querySelector('.kk-val').textContent = coup.v;
             el.classList.add('demo-target');
-            if (!await cursor.pause(900) || destroyed) return fin();
+            if (!await robot.pause(900)) return fin();
         }
         fin();
         if (destroyed) return;
         container.querySelector('.kk-board').classList.add('kk-board--ok');
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

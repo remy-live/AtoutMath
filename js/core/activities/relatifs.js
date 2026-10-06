@@ -21,6 +21,7 @@
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint, wireShowMe } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /** Un nombre avec un VRAI signe moins : le même que sur l'énoncé. */
 const nb = (v) => String(v).replace('-', '−');
@@ -904,39 +905,40 @@ export function mount(container, session) {
         cursor = createDemoCursor();
         gate = createDemoGate(container);
         const fin = () => { cursor?.hideBubble(); return true; };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, fin, { rangementSeul: true });
         const m = item.meta;
         const d = m.deplacements[0];
 
-        if (!await cursor.pause(700) || destroyed) return fin();
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.pause(700)) return fin();
+        if (!await robot.tour()) return fin();
 
         if (m.modele === 'pastilles') {
             cursor.say(`Une pastille rouge vaut +1, une bleue vaut −1. Ensemble, elles font ZÉRO : c'est tout le secret.`, container);
-            if (!await cursor.pause(DEMO_SPEED.between + 1200) || destroyed) return fin();
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.pause(DEMO_SPEED.between + 1200)) return fin();
+            if (!await robot.tour()) return fin();
             cursor.say('Je barre les paires une par une. Ce qui reste sans partenaire donne la réponse.', container);
             await animerTrajet();
-            if (!await cursor.pause(DEMO_SPEED.between + 900) || destroyed) return fin();
+            if (!await robot.pause(DEMO_SPEED.between + 900)) return fin();
         } else {
             const axe = m.modele === 'ecriture' ? 'la droite des nombres' : 'la colonne';
             cursor.say(`On commence par SE PLACER : je cherche ${m.depart} sur ${axe}. Le zéro n'est pas le début, c'est juste un repère au milieu.`, container);
-            if (!await cursor.pause(DEMO_SPEED.between + 1200) || destroyed) return fin();
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.pause(DEMO_SPEED.between + 1200)) return fin();
+            if (!await robot.tour()) return fin();
             const sens = m.modele === 'ecriture'
                 ? (d >= 0 ? 'vers la droite' : 'vers la gauche')
                 : (d >= 0 ? 'vers le haut' : 'vers le bas');
             cursor.say(`Maintenant je me DÉPLACE de ${Math.abs(d)} cran${Math.abs(d) > 1 ? 's' : ''} ${sens}. Je compte, je n'additionne pas.`, container);
             await animerTrajet();
-            if (!await cursor.pause(DEMO_SPEED.between + 900) || destroyed) return fin();
+            if (!await robot.pause(DEMO_SPEED.between + 900)) return fin();
         }
 
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.tour()) return fin();
         // 208 CARACTÈRES MESURÉS sur le modèle « écriture » — la bulle tape le
         // plafond de quatorze secondes, et le préfixe redit ce que
         // l'explication conclut déjà. On dit l'arrivée ; le raisonnement reste
         // dans la correction.
         cursor.say(`On arrive à ${m.total}.`, container);
-        if (!await cursor.pause(DEMO_SPEED.between + 1600) || destroyed) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 1600)) return fin();
         return fin();
     }
 

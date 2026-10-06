@@ -84,11 +84,21 @@ test('ET IL LE CHOISIT APRÈS SON TOUR DE PAROLE', () => {
     // `waitTurn` peut retenir le robot aussi longtemps que le professeur le
     // laisse en pause. Choisir avant, c'est choisir pour un tir qui n'aura lieu
     // qu'après cette attente — et la cible aura disparu.
+    //
+    // CETTE ÉPREUVE LIT LA SOURCE, et elle a rougi le jour où les gardes de
+    // démonstration sont passées par `core/meneurDemo.js` : `gate.waitTurn()`
+    // s'écrit désormais `robot.tour()`. C'est le bon comportement — une épreuve
+    // qui lit du code doit tomber quand ce code change de forme —, et c'est
+    // précisément ce qu'on attend d'elle. On accepte donc les deux écritures,
+    // pour qu'elle garde la RÈGLE (choisir après le tour de parole) et non une
+    // façon de l'écrire.
     const d = demo();
-    const iTour = d.indexOf('gate.waitTurn()', d.indexOf('for (let k = 0'));
+    const depart = d.indexOf('for (let k = 0');
+    const iTour = [d.indexOf('robot.tour()', depart), d.indexOf('gate.waitTurn()', depart)]
+        .filter(i => i > 0).sort((a, b) => a - b)[0] ?? -1;
     const iCible = d.indexOf('this.bouletDeLaDemo()');
     assert.ok(iTour > 0 && iCible > iTour,
-        'la cible doit être choisie APRÈS `waitTurn`, pas avant');
+        'la cible doit être choisie APRÈS le tour de parole, pas avant');
 });
 
 test('ON NE TIRE PAS SUR UN FANTÔME', () => {

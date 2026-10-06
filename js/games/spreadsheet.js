@@ -18,6 +18,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { regTimeout } from '../core/timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const SKILL_REPERAGE = 'don.tableur.reperage';
 const SKILL_FORMULES = 'don.tableur.formules';
@@ -889,30 +890,31 @@ class Tableur extends BaseGame {
         const cursor = createDemoCursor();
         this.demoCursor = cursor;
         const gate = createDemoGate(this.container.querySelector('.tab-corps'));
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => this.isRunning, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
         this.montrerNiveau(1, false);
-        if (!await cursor.pause(1200) || !this.isRunning) return fin();
+        if (!await robot.pause(1200)) return fin();
 
         while (this.isRunning && this.isDemo) {
             // 1. Nommer une case.
             this.montrerNiveau(1, false);
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const cell = this.grilleActive().querySelector(`[data-id="${this.cible}"]`);
             cursor.say(`La case ${this.cible} : la lettre donne la COLONNE (${this.cible[0]}), le chiffre la LIGNE (${this.cible.slice(1)}). Je descends la colonne ${this.cible[0]} jusqu'à la ligne ${this.cible.slice(1)}.`, cell);
-            if (!await cursor.pause(2600) || !this.isRunning) return fin();
+            if (!await robot.pause(2600)) return fin();
             if (!cell || !await cursor.tap(cell, 320)) return fin();
             this.cliquerCase(cell);
-            if (!await cursor.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
             // 2. Étirer une plage.
             this.montrerNiveau(2, false);
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const [debut, finPlage] = this.cible.split(':');
             const cDebut = this.grilleActive().querySelector(`[data-id="${debut}"]`);
             const cFin = this.grilleActive().querySelector(`[data-id="${finPlage}"]`);
             cursor.say(`La plage ${this.cible} se lit coin à coin : je pars de ${debut} et je glisse jusqu'à ${finPlage}.`, cDebut);
-            if (!await cursor.pause(2200) || !this.isRunning) return fin();
+            if (!await robot.pause(2200)) return fin();
             if (!cDebut || !await cursor.tap(cDebut, 260)) return fin();
             this.selDepart = cDebut;
             this.selEnCours = true;
@@ -920,26 +922,26 @@ class Tableur extends BaseGame {
             if (!cFin || !await cursor.tap(cFin, 380)) return fin();
             this.etendreSelection(cFin);
             this.finirSelection();
-            if (!await cursor.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
             // 3. Écrire une formule.
             this.montrerNiveau(5, false);
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const tache = this.taches[0];
             const inp = this.grilleActive().querySelector(`input[data-cell-id="${tache.id}"]`);
             const l = tache.id.slice(1);
             const formule = `=A${l}+B${l}`;
             cursor.say(`Le signe = dit au tableur : « calcule ! ». A${l} et B${l} sont des RÉFÉRENCES : si une case change, le résultat se met à jour tout seul. J'écris ${formule}.`, inp);
-            if (!await cursor.pause(3000) || !this.isRunning) return fin();
+            if (!await robot.pause(3000)) return fin();
             if (!inp || !await cursor.tap(inp, 260)) return fin();
             this.ui.fxNom.textContent = tache.id;
             for (const ch of formule) {
                 inp.value += ch;
                 this.ui.fxVal.textContent = inp.value;
-                if (!await cursor.pause(170) || !this.isRunning) return fin();
+                if (!await robot.pause(170)) return fin();
             }
             this.validerSaisie(inp);
-            if (!await cursor.pause(DEMO_SPEED.between + 600) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between + 600)) return fin();
         }
         fin();
     }

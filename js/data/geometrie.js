@@ -888,6 +888,53 @@ export const geometrieExercises = [
     },
 
     {
+        // LA MOSAÏQUE DES TRANSFORMATIONS — et pourquoi c'est un TROISIÈME
+        // exercice, à côté de « Tracer l'image » et de « Symétrique par rapport
+        // à quoi ».
+        //
+        // RÉMY, photo de sa fiche à l'appui : « je sais que l'on a déjà un
+        // exercice sur les transformations mais tu pourrais refaire ce pavage et
+        // poser différentes questions et si l'élève se trompe, lui compter faux
+        // mais aussi montrer la transformation ».
+        //
+        // LES TROIS QUESTIONS NE SE RESSEMBLENT PAS, et c'est l'ordre d'un
+        // chapitre :
+        //
+        //   TRACER L'IMAGE        on donne la règle, l'élève l'APPLIQUE.
+        //   PAR RAPPORT À QUOI    on donne le résultat, l'élève RETROUVE la règle.
+        //   LA MOSAÏQUE           on donne la règle et une mosaïque entière, et
+        //                         l'élève doit SUIVRE la pièce des yeux.
+        //
+        // La troisième est la plus difficile des trois, et c'est celle d'un
+        // contrôle : rien à tracer, rien à comparer, il faut tenir une figure,
+        // un centre et un sens dans sa tête à la fois.
+        //
+        // ET LA CORRECTION EST UNE ANIMATION, parce qu'écrire « c'était la 9 »
+        // n'apprend rien ici : l'élève voit bien que ce n'est pas ce qu'il a
+        // touché, et il ne sait toujours pas pourquoi. Ce qui lui manque est le
+        // TRAJET — voir sa pièce passer de l'autre côté de l'axe et se poser.
+        id: 'geo-mosaique', title: 'La Mosaïque des Transformations',
+        colonnesPapier: 2,
+        cree: '2026-10-06',
+        consignePapier: 'Pour chaque ligne, écris le numéro de la pièce image.',
+        generatorId: 'geo.transfo.pavageImage', activityId: 'pavage-image',
+        skills: ['geo.transfo.axiale', 'geo.transfo.centrale',
+            'geo.transfo.translation', 'geo.transfo.rotation'],
+        params: { genres: ['axiale', 'centrale', 'translation', 'rotation'], montrer: 'si-faux' },
+        motsClefs: ['pavage', 'mosaïque', 'image', 'symétrie', 'axe', 'centre',
+            'translation', 'vecteur', 'rotation', 'quart de tour', 'transformation'],
+        tags: {
+            chemin: [TAGS.DOMAINE.GEOMETRIQUE, TAGS.SOUS_DOMAINE.TRANSFORMATIONS],
+            niveaux: [TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME, TAGS.NIVEAU.TROISIEME]
+        },
+        instruction: "Une pièce de la mosaïque est allumée, et l'énoncé donne une "
+            + "transformation. Touche la pièce sur laquelle elle se pose. L'axe, le centre "
+            + "ou le vecteur sont tracés sur le dessin : ils font partie de l'énoncé. Le "
+            + "conseil qui change tout : ne suis pas la pièce entière, choisis UN de ses "
+            + "coins et cherche où il tombe — le reste se recopie. Si tu te trompes, la "
+            + "pièce fera le trajet sous tes yeux."
+    },
+    {
         // L'EXERCICE INVERSE DU PRÉCÉDENT, et c'est tout son intérêt. Tracer,
         // c'est appliquer une règle qu'on vous donne ; reconnaître, c'est la
         // retrouver. Encore faut-il demander la bonne chose : une première

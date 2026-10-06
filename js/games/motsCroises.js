@@ -19,6 +19,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     grilleOptimisee, definitions, estResolue, casesFausses, qualite
 } from '../core/motsCroises.js';
@@ -589,16 +590,17 @@ class MotsCroises extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.grille) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         const q = qualite(this.grille);
         cur.say(`${q.mots} mots du vocabulaire, ${q.croisements} croisements. `
             + 'On ne répond pas dans l\'ordre des numéros : on commence par celui dont on est sûr.',
         this.grilleEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // Le mot le plus long : c'est celui qui donne le plus de lettres aux
         // autres, donc celui par lequel on commence.
@@ -606,18 +608,18 @@ class MotsCroises extends BaseGame {
         this.vise = long; this.pos = 0; this.dessiner();
         cur.say(`Je prends le plus long — ${long.mot.length} lettres : « ${long.def} » `
             + 'Chaque lettre qu\'il pose sert aux mots qui le croisent.', this.indiceEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         for (let i = 0; i < long.mot.length; i++) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const c = this.casesDe(long)[i];
             this.saisie[`${c.x},${c.y}`] = long.mot[i];
             this.pos = Math.min(long.mot.length - 1, i + 1);
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.press)) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         const croise = this.grille.mots.find(m => m !== long
             && this.casesDe(m).some(c => this.saisie[`${c.x},${c.y}`]));
         if (croise) {

@@ -37,6 +37,7 @@ import {
     reserveMelangee, demiDe, ajusterAuCarre, insecable
 } from '../core/dominos.js';
 import { chaineDepuisGenerateur, sourceDe } from '../core/generators/dominos.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const COMPETENCE = 'num.logique.dominos';
 
@@ -656,21 +657,22 @@ class Dominos extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.chaine) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         // UNE IDÉE PAR BULLE : au-delà de 110 caractères la démonstration paraît figée.
         cur.say('La planche est tracée d\'avance : je vois la forme et le nombre de pièces.', this.plateauEl);
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         cur.say('Une pièce porte une question d\'un côté, la réponse d\'une AUTRE question de l\'autre.',
         this.plateauEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let k = 0; k < 4 && !plateauFini(this.etat); k++) {
             const pose = prochaineCase(this.chaine, this.etat);
             if (!pose) break;
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const el = this.elementReserve(pose.id);
             cur.say(direJoint(this.chaine, this.etat, pose), el || this.reserveEl);
             if (el && !await cur.tap(el)) return fin();
@@ -678,15 +680,15 @@ class Dominos extends BaseGame {
             this.reserve = this.reserve.filter(x => x !== pose.id);
             this.derniere = pose.index;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         // « Rien n'est refusé au moment où on pose » explique une décision du logiciel :
         // la bulle ne garde que le geste, puisqu'elle désigne le bouton « Vérifier ».
         cur.say('On continue jusqu\'à ARRIVÉE, puis « Vérifier » entoure les jointures fausses.',
         this.container.querySelector('[data-verifier]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

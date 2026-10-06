@@ -25,6 +25,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     PALIERS, CONSIGNE, COULEURS, genererFigure, carres, verifierTrait, verifierFigure,
     dansRect, conseil
@@ -393,24 +394,25 @@ class SansCroiser extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.fig) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         // 204 CARACTÈRES D'UN SEUL BLOC : les trois interdits restent, l'élève en a
         // besoin, mais le troisième prend sa propre bulle — c'est celui qu'on oublie,
         // et la leçon sur l'étiquette ne faisait que le répéter.
         cur.say('Trois interdits : les traits ne se croisent pas, et ils ne sortent pas '
             + 'du cadre.', this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Le troisième : un trait ne passe jamais sur un carré.', this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let k = 0; k < 2 && k < this.fig.solution.length; k++) {
             const t = this.fig.solution[k];
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say(k === 0
                 ? `Je commence par ${t.lettre}, et je CONTOURNE au lieu de couper droit : `
                   + 'un trait qui file tout droit referme le cadre derrière lui.'
@@ -419,13 +421,13 @@ class SansCroiser extends BaseGame {
                   + 'qui est à refaire.', this.svg);
             this.traits.push({ lettre: t.lettre, points: t.points.map(p => ({ ...p })) });
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Et si un trait me gêne, je le touche : il s\'efface, et je le refais autrement.',
             this.container.querySelector('[data-effacer]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

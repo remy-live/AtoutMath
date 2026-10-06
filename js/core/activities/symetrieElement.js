@@ -31,6 +31,7 @@ import {
 } from '../elementSymetrie.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { ecrituresVoulues, seSouvenirDesEcritures } from '../reglagesDuPoste.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /** Les trois marches, et le préréglage qui les enchaîne. */
 export const MARCHES = ['choisir', 'cliquer', 'ecrire'];
@@ -374,26 +375,27 @@ export function mount(container, session, opts = {}) {
         const m = item.meta;
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         const plateau = container.querySelector('.sy-plateau') || container;
         cursor.say(m.genre === 'axe'
             ? 'La figure est retournée : on cherche une droite.'
             : 'La figure a fait un demi-tour : on cherche un point.', plateau);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say(m.genre === 'axe'
             ? 'Elle passe au milieu de chaque point et de son image.'
             : 'Il est le milieu du segment qui joint un point à son image.', plateau);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         const btn = container.querySelector(`.sy-btn[data-el="${m.idJuste}"]`);
         if (btn && await cursor.tap(btn)) btn.classList.add('sy-juste');
         cursor.say(`C'est ${ecrireElement(m.hauteur, m.bon)}.`, btn || plateau);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

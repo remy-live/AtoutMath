@@ -23,6 +23,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     CACHE, OUVERT, DRAPEAU, niveauDe, creerGrille, xy,
     ouvrir, ouvrirAutour, basculerDrapeau, drapeauxPoses, gagnee,
@@ -594,28 +595,29 @@ class Demineur extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.plateau);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         // LA LEÇON TOMBE, LE GESTE RESTE. « Tout se déduit », « c'est de là que
         // part le raisonnement » : la démonstration le MONTRE ensuite, déduction
         // par déduction, et une bulle de plus de 110 caractères se lit si
         // longtemps qu'on croit la démonstration figée.
         cur.say('Chaque chiffre compte les mines des huit cases qui l\'entourent.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Le premier clic ne tombe jamais sur une mine : il ouvre toujours une zone, comme celle-ci.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Puis on déroule : à chaque tour, une déduction, dite avant d'être jouée.
         for (let tour = 0; tour < 14; tour++) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             if (gagnee(this.grille)) break;
             const d = deduire(this.grille);
             if (!d) {
                 cur.say('Plus rien ne se déduit avec certitude : c\'est le moment où il faudrait choisir.', this.plateau);
-                if (!await cur.pause(DEMO_SPEED.between)) return fin();
+                if (!await robot.pause(DEMO_SPEED.between)) return fin();
                 break;
             }
             this.effacerSurbrillance();
@@ -625,7 +627,7 @@ class Demineur extends BaseGame {
             // `tap` attend d'abord que la bulle ait eu le temps d'être lue :
             // le robot explique, PUIS joue. L'inverse — jouer puis expliquer —
             // fait regarder le résultat au lieu du raisonnement.
-            if (!await cur.tap(cible) || !this.isRunning) return fin();
+            if (!await robot.toucher(cible)) return fin();
             if (d.type === 'mine') {
                 d.cases.forEach(c => { if (this.grille.etat[c] === CACHE) this.grille.etat[c] = DRAPEAU; });
             } else {
@@ -633,15 +635,15 @@ class Demineur extends BaseGame {
             }
             this.effacerSurbrillance();
             this.peindre();
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Un chiffre dont les drapeaux sont au complet libère ses voisines ; à court de cases, il les marque toutes.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         cur.say('Le bouton 💡 rejoue ce raisonnement quand tu bloques.', this.plateau);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

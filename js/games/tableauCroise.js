@@ -34,6 +34,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     PALIERS, TAILLES, genererTableau, estDonnee, cle, estTotalLigne, consigneDe,
     estTotalColonne, prochaineLigne, conseil, nomDeLigne, nomDeColonne, totalGeneral
@@ -509,17 +510,18 @@ class TableauCroise extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.tableau) this.poser();
         const t = this.tableau;
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         // UNE SEULE IDÉE, LE GESTE DE CHERCHER : « celle-là, je peux la boucler tout de
         // suite » redisait la même chose en plus long, et au-delà de 110 caractères la
         // bulle se lit si lentement qu'on croit la démonstration plantée
         // (js/core/activities/choice.js, COURT).
         cur.say('Je cherche la ligne ou la colonne où il ne manque QU\'UNE SEULE case.', this.tableEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let k = 0; k < 3; k++) {
             const suite = prochaineLigne(t, this.saisies);
@@ -528,7 +530,7 @@ class TableauCroise extends BaseGame {
             const ou = suite.sens === 'ligne' ? nomDeLigne(t, r) : nomDeColonne(t, c);
             const estTotal = estTotalLigne(t, r) || estTotalColonne(t, c);
             const td = this.tableEl.querySelector(`[data-cell="${r},${c}"]`);
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say(estTotal
                 ? `Dans ${ou}, la case qui manque est un TOTAL : j'additionne tout le reste.`
                 : `Dans ${ou}, il ne manque que celle-ci. Elle est dans le corps du tableau : `
@@ -536,12 +538,12 @@ class TableauCroise extends BaseGame {
             if (td && !await cur.tap(td)) return fin();
             this.saisies[cle(r, c)] = String(t.valeurs[r][c]);
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Et chaque case que je viens d\'écrire en ouvre d\'autres.', this.tableEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

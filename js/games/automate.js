@@ -22,6 +22,7 @@ import {
     devant, nomCap, tourner, PALIERS, palierPour, TAILLES_NIVEAU
 } from '../core/automate.js';
 import { scriptScratchSvg } from '../ui/scriptScratchSvg.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const SKILL = 'geo.espace.programme';
 const ANGLES = { N: 0, E: 90, S: 180, O: 270 };
@@ -858,19 +859,20 @@ class Automate extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur?.destroy(); gate?.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say('Le programme est écrit. C\'est toi l\'ordinateur.', this.progEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Le bloc allumé, c\'est où on en est.', this.progEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         let bouclePresentee = false;
         while (this.isRunning && this.k < this.deroule.pas.length && this.k < 9) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const p = this.deroule.pas[this.k];
             const tour = p.tours[p.tours.length - 1];
 
@@ -878,7 +880,7 @@ class Automate extends BaseGame {
             if (tour && tour.tour === 2 && !bouclePresentee) {
                 bouclePresentee = true;
                 cur.say('La boucle remonte ! Tour 2 sur ' + tour.total + '.', this.progEl);
-                if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.between)) return fin();
             } else if (p.bloc.type === 'avance') {
                 cur.say(`Avancer de ${p.bloc.n}. Je compte devant le robot.`, this.planEl);
             } else if (p.bloc.type === 'pose') {
@@ -886,7 +888,7 @@ class Automate extends BaseGame {
             } else {
                 cur.say(`Sa ${p.bloc.type} à lui, pas celle de l'écran.`, this.planEl);
             }
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
 
             // Le curseur montre VRAIMENT le geste : la case pour avancer, le
             // bouton pour tourner.
@@ -898,12 +900,12 @@ class Automate extends BaseGame {
                 if (b && !await cur.tap(b)) return fin();
             }
             this.avancerDemo();
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('À toi : lis le bloc, puis fais-le.', this.progEl);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

@@ -31,6 +31,7 @@ import {
 // LE GESTE, EN PLUS DU CLIC. Rémy : « on pourrait aussi cliquer sans relâcher
 // et glisser plutôt que cliquer et cliquer (on peut garder les deux) ».
 import { relierAuGlisse } from '../core/activities/glisser.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const COMPETENCE = 'num.logique.tasuko';
 
@@ -428,21 +429,22 @@ class Tasuko extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.g) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         cur.say(`Il y a ${this.g.paires.length} façons de relier deux cases voisines dans cette `
             + `grille, et il n'en faut que ${this.g.n} : une par somme, de 1 à ${this.g.n}. `
             + 'Relier ce qui tombe juste ne suffit donc pas.', this.grilleEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // LA MÊME CONSIGNE DITE COMME UN GESTE, ET NON COMME UN « bon réflexe » :
         // 118 caractères pour dire deux fois où regarder.
         cur.say('Je ne regarde pas les chiffres : je prends dans cette liste une somme '
             + 'qui reste.', this.sommesEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         for (let n = 0; n < 3; n++) {
             const p = prochaineAddition(this.g, this.choisies);
@@ -458,13 +460,13 @@ class Tasuko extends BaseGame {
                 cur.say(`Ou par la case : ce ${v}-là n'a plus qu'une seule voisine libre dont `
                     + 'la somme serve encore.', this.grilleEl);
             }
-            if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.attendre(DEMO_SPEED.between)) return fin();
             this.choisies.push(p.paire.id);
             this.montre = null;
             this.dessiner();
             cur.say(`${p.paire.a} + ${p.paire.b} = ${p.paire.somme}. Et cette paire-là en coince `
                 + 'd\'autres à son tour.', this.sommesEl);
-            if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.attendre(DEMO_SPEED.between)) return fin();
         }
         cur.say('De proche en proche, toute la grille se découpe. On ne devine jamais.',
             this.grilleEl);

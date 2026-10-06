@@ -57,6 +57,7 @@ import { anglesNommerGenerator } from '../generators/anglesNommer.js';
 import { graduationsGenerator } from '../generators/graduations.js';
 import { transfoQuadrillageGenerator } from '../generators/transfoQuadrillage.js';
 import { pavageGenerator } from '../generators/pavage.js';
+import { generator as pavageImageGenerator } from '../generators/pavageImage.js';
 import { carreMagiqueGenerator } from '../generators/carreMagique.js';
 import { futoshikiGenerator } from '../generators/futoshiki.js';
 import { relierGenerator } from '../generators/relier.js';
@@ -156,7 +157,7 @@ import {
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,
     elementsGeometrieGenerator,
     anglesManquantsGenerator, anglesNommerGenerator,
-    graduationsGenerator, transfoQuadrillageGenerator, pavageGenerator,
+    graduationsGenerator, transfoQuadrillageGenerator, pavageGenerator, pavageImageGenerator,
     carreMagiqueGenerator, futoshikiGenerator,
     slitherlinkGenerator, relierGenerator, solidesGenerator, cubesGenerator,
     repereFicheGenerator,
@@ -1034,3 +1035,30 @@ SANS_NOTE.forEach(id => declarerSansNote(id));
 ['othello', 'dames', 'echecs'].forEach(id =>
     declarerSansNote(id, (p) => p.mode === 'exercice'));
 
+
+// LA MOSAÏQUE DES TRANSFORMATIONS — « quelle est l'image de la pièce 5 ? »
+//
+// RÉMY, photo de sa fiche à l'appui : « je sais que l'on a déjà un exercice sur
+// les transformations mais tu pourrais refaire ce pavage et poser différentes
+// questions et si l'élève se trompe, lui compter faux mais aussi montrer la
+// transformation ».
+//
+// CE N'EST PAS LE MÊME EXERCICE QUE « LE PAVAGE » (`symetrie-element`), et il
+// le dit lui-même. Là-bas on montre DEUX pièces et l'on demande par rapport à
+// quoi elles sont symétriques ; ici on donne UNE pièce et UNE transformation,
+// et l'on demande où elle tombe. La première question se résout en comparant
+// deux dessins, la seconde oblige à suivre une figure de tête — c'est plus
+// difficile, et c'est ce qu'un contrôle demande.
+//
+// UNE QUESTION EST UNE QUESTION : `unite: 'question'`, et pas une grille
+// entière comme un Strimko. L'élève touche une pièce, et c'est fini.
+registerActivity({
+    id: 'pavage-image',
+    unite: 'question',
+    parDefaut: 6,
+    label: 'La mosaïque des transformations',
+    accepts: ['piece'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [],
+    load: () => import('./pavageImage.js')
+});

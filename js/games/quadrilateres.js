@@ -46,6 +46,7 @@ import {
 } from '../core/codage.js';
 import { codageSvg, jetonSvg, jetonAngleSvg } from '../core/codageSvg.js';
 import { ajusterAuRectangle } from '../core/dominos.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 /**
  * LA TAILLE DU TEXTE D'UNE CARTE — calculée, et non laissée au navigateur.
@@ -3466,21 +3467,22 @@ class Organigramme extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.org) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         // UNE IDÉE PAR BULLE. La phrase qui énonçait l'emboîtement en toutes
         // lettres (« tout ce qui est à droite est aussi tout ce qui est à gauche »)
         // est partie : les deux chemins vers le carré, montrés à la fin, la disent
         // mieux. Au-delà de 110 caractères, la bulle se lit si longtemps qu'on
         // croit la démonstration plantée.
         cur.say('Cet organigramme n\'est pas une liste : les familles s\'EMBOÎTENT.', this.planEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('On part du quadrilatère, à gauche, et chaque flèche ajoute UNE seule condition.', this.planEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         if (this.progressif) {
             // LE CODAGE D'ABORD, PUISQUE C'EST LA PREMIÈRE ÉTAPE — et le robot
@@ -3492,11 +3494,11 @@ class Organigramme extends BaseGame {
             // qu'il y a de particulier dans cet exercice.
             if (this.etapeCourante && this.etapeCourante.genre === 'codage') {
                 const nom = familleDe(this.etapeCourante.figure).nom.toLowerCase();
-                if (!await gate.waitTurn() || !this.isRunning) return fin();
+                if (!await robot.tour()) return fin();
                 cur.say(`On commence par CODER la figure : je marque d'un même trait les `
                     + `segments de même longueur, et d'un petit carré les angles droits. `
                     + `Coder un ${nom}, c'est déjà dire ce qu'il est.`, this.coderEl);
-                if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.settle)) return fin();
                 this.sauterEtape();
             }
             // LA DÉMONSTRATION MONTRE LA PREMIÈRE ÉTAPE EN ENTIER, et pas deux
@@ -3506,7 +3508,7 @@ class Organigramme extends BaseGame {
             const e = this.etapeCourante;
             if (!e || !e.bonnes) return fin();
             for (let k = 0; k < e.bonnes.length; k++) {
-                if (!await gate.waitTurn() || !this.isRunning) return fin();
+                if (!await robot.tour()) return fin();
                 cur.say(k === 0
                     ? `Je cherche ce qu\'un ${familleDe(e.vers).nom.toLowerCase()} a de plus qu\'un `
                       + `${familleDe(e.de).nom.toLowerCase()}. Il y a ${e.bonnes.length} réponses : `
@@ -3516,15 +3518,15 @@ class Organigramme extends BaseGame {
                 this.trouvees[e.rang] = (this.trouvees[e.rang] || []).concat(e.bonnes[k]);
                 this.posesEtape.push((e.cartes.find(c => c.texte === e.bonnes[k]) || {}).id);
                 this.dessiner();
-                if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             }
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say('L\'étape est finie, et la case suivante apparaît.', this.planEl);
-            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say('On continue ainsi jusqu\'au carré : on y arrive PAR DEUX CHEMINS, le rectangle et le losange.', this.planEl);
-            if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
             return fin();
         }
 
@@ -3537,7 +3539,7 @@ class Organigramme extends BaseGame {
             const caseId = this.org.trous[this.org.trous.length - 1 - k];
             const carte = this.org.cartes.find(c => verifierDepot(this.org, caseId, c).ok);
             if (!carte) break;
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             cur.say(k === 0
                 ? 'Je commence par la GAUCHE, la case la plus générale : c\'est celle qui n\'a '
                   + 'encore aucune condition.'
@@ -3546,17 +3548,17 @@ class Organigramme extends BaseGame {
             this.poses[caseId] = carte;
             this.vientDePoser = caseId;
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Et regarde la droite : on arrive au carré depuis le rectangle ET depuis le '
             + 'losange.', this.planEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Donc un carré est à la fois un rectangle et un losange.', this.planEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

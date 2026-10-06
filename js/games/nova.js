@@ -42,6 +42,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { regTimeout } from '../core/timers.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 // --- Secteurs : un décor par niveau -----------------------------------------
 const SECTEURS = [
@@ -4145,34 +4146,35 @@ class Nova extends BaseGame {
 
     async jouerDemo() {
         const cur = this.demoCursor, gate = this.demoGate;
-        const fin = () => { cur?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, null, { garderPointeur: true });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(700) || !this.isRunning) return fin();
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.pause(700)) return fin();
+        if (!await robot.tour()) return fin();
         // UNE IDÉE PAR BULLE, chacune sous 110 caractères : au-delà, la bulle se lit si
         // lentement (340 ms le mot) qu'on croit la démonstration plantée.
         cur.say('Le canon tire tout seul : mon doigt ne sert qu\'à piloter.', this.arene);
         this.lancerVague();
-        if (!await cur.pause(1800) || !this.isRunning) return fin();
+        if (!await robot.pause(1800)) return fin();
 
         cur.say('Si je le laisse POSÉ, je charge un rayon lourd, et pendant ce temps le canon ralentit.', this.arene);
-        if (!await cur.pause(2400) || !this.isRunning) return fin();
+        if (!await robot.pause(2400)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         this.lancerPorte();
         const p = this.porte;
         cur.say(`Un mur ! La question est ${p.question}. Trois portes, un seul bon résultat.`, this.arene);
-        if (!await cur.pause(2600) || !this.isRunning) return fin();
+        if (!await robot.pause(2600)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`${p.question} = ${p.bon}. Je vise la porte ${p.bon} et je m'y glisse.`, this.arene);
         const cible = p.portes.find(o => o.v === p.bon);
         if (cible) this.vaisseau.cible = (cible.x0 + cible.x1) / 2 * this.canvas.width;
-        if (!await cur.pause(DEMO_SPEED.between + 2200) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 2200)) return fin();
         cur.say('Bonne porte : bouclier et canon renforcé. Deux épreuves comme celle-là, et le Gardien du secteur se présente.', this.arene);
-        if (!await cur.pause(DEMO_SPEED.between + 1600) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 1600)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         this.porte = null;
         this.lancerConvoi();
         const cv = this.convoi;
@@ -4181,33 +4183,33 @@ class Nova extends BaseGame {
         const suivre = setInterval(() => {
             if (bonShip && bonShip.vivant && this.isRunning) this.vaisseau.cible = bonShip.x;
         }, 120);
-        if (!await cur.pause(DEMO_SPEED.between + 4200) || !this.isRunning) { clearInterval(suivre); return fin(); }
+        if (!await robot.pause(DEMO_SPEED.between + 4200)) { clearInterval(suivre); return fin(); }
         clearInterval(suivre);
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Et si je suis submergé : une DOUBLE TAPE déclenche la bombe NOVA, qui balaie tout l\'écran.', this.arene);
         this.declencherNova();
-        if (!await cur.pause(DEMO_SPEED.between + 1800) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 1800)) return fin();
 
         // Le GARDIEN : la mécanique la plus neuve, donc celle qui mérite le
         // plus d'explications. On la montre en trois temps — la consigne, la
         // bonne sphère, la mine — parce qu'elle inverse le réflexe du jeu :
         // ici, ne PAS tirer est parfois la bonne réponse.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         this.convoi = null;
         this.lancerBoss();
         const b = this.boss;
         cur.say(`${b.g.nom} ferme le secteur. Sa coque encaisse mon canon, mais ce n'est pas là que ça se joue : il lâche des SALVES de trois missiles.`, this.arene);
-        if (!await cur.pause(DEMO_SPEED.between + 3000) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 3000)) return fin();
 
         // Chaque secteur a SON Gardien, et chacun a sa parade. Le robot la dit
         // à voix haute : c'est la seule chose de ce jeu qui se retienne d'un
         // secteur à l'autre, autant l'énoncer clairement une fois.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`Il y en a quatre, un par secteur, et chacun tire à sa façon. ${b.g.nom} ? ${b.g.conseil}`, this.arene);
-        if (!await cur.pause(DEMO_SPEED.between + 1500) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 1500)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`Dans chaque salve, UN SEUL missile relève de ${b.regle.libelle}. Mon canon tire tout seul : viser, c'est me glisser dessous — et laisser filer les deux autres.`, this.arene);
         const viser = setInterval(() => {
             if (!this.isRunning || !this.boss) return;
@@ -4223,14 +4225,14 @@ class Nova extends BaseGame {
                     : Math.max(30, gene.x - 140);
             }
         }, 100);
-        if (!await cur.pause(DEMO_SPEED.between + 5200) || !this.isRunning) { clearInterval(viser); return fin(); }
+        if (!await robot.pause(DEMO_SPEED.between + 5200)) { clearInterval(viser); return fin(); }
         clearInterval(viser);
 
         // La FAILLE : elle INVERSE le jeu. Partout ailleurs on évite tout ;
         // ici il faut aller CHERCHER certains nombres. On la montre en deux
         // temps — l'anneau, puis la règle en action — et on laisse le robot
         // esquiver sous les yeux du joueur.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         this.boss = null; this.orbes = [];
         this.lancerPortail();
         const pt = this.portail;
@@ -4238,12 +4240,12 @@ class Nova extends BaseGame {
         const versAnneau = setInterval(() => {
             if (this.isRunning && this.portail) this.vaisseau.cible = this.portail.x;
         }, 100);
-        if (!await cur.pause(DEMO_SPEED.between + 2600) || !this.isRunning) { clearInterval(versAnneau); return fin(); }
+        if (!await robot.pause(DEMO_SPEED.between + 2600)) { clearInterval(versAnneau); return fin(); }
         clearInterval(versAnneau);
         this.portail = null;
         if (!this.faille && this.isRunning) this.entrerFaille(pt.table);
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`Ici mon canon est coupé : j'ATTRAPE les multiples de ${pt.table} et j'ESQUIVE tous les autres. Attraper un nombre qui n'est pas dans la table casse ma chaîne.`, this.arene);
         const trier = setInterval(() => {
             if (!this.isRunning || !this.faille) return;
@@ -4259,20 +4261,20 @@ class Nova extends BaseGame {
                     ? Math.min(w - 30, gene.x + 140) : Math.max(30, gene.x - 140);
             }
         }, 100);
-        if (!await cur.pause(DEMO_SPEED.between + 5200) || !this.isRunning) { clearInterval(trier); return fin(); }
+        if (!await robot.pause(DEMO_SPEED.between + 5200)) { clearInterval(trier); return fin(); }
         clearInterval(trier);
 
         // La PISTE : le second visage du même anneau. On la montre juste après
         // la faille pour que la parenté saute aux yeux — même consigne, même
         // table, un point de vue de plus.
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         this.faille = null;
         this.portail = null;
         this.entrerPiste(pt.table);
         cur.say(`Un anneau sur deux ouvre une PISTE : la même consigne, mais vue de derrière mon vaisseau. Les nombres arrivent du fond du couloir — j'ai le temps de les lire.`, this.arene);
-        if (!await cur.pause(DEMO_SPEED.between + 3000) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 3000)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`Je me place sur la voie du multiple de ${pt.table} et je laisse filer les autres. Cinq voies, un seul choix à faire à chaque fois.`, this.arene);
         const piloter = setInterval(() => {
             if (!this.isRunning || !this.piste) return;
@@ -4289,17 +4291,17 @@ class Nova extends BaseGame {
                 this.vaisseau.cible = geo.cx + fuite * geo.demi * 0.9;
             }
         }, 100);
-        if (!await cur.pause(DEMO_SPEED.between + 5200) || !this.isRunning) { clearInterval(piloter); return fin(); }
+        if (!await robot.pause(DEMO_SPEED.between + 5200)) { clearInterval(piloter); return fin(); }
         clearInterval(piloter);
         this.piste = null;
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Une faille ou une piste sans faute rapporte des crédits ⬢ et une bombe ✹.', this.arene);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('À l\'ATELIER, ces crédits achètent un canon, une coque ou un bouclier.', this.arene);
-        if (!await cur.pause(DEMO_SPEED.between + 2600) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 2600)) return fin();
         fin();
     }
 

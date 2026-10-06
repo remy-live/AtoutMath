@@ -26,6 +26,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     genererChute, ecrire, verifierPose, aider, niveauDe
 } from '../core/chuteDecimaux.js';
@@ -389,25 +390,26 @@ class ChuteDecimaux extends BaseGame {
         const cur = createDemoCursor();
         const gate = createDemoGate();
         this.demoCursor = cur; this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
         const t = this.tour;
 
         cur.say(`La brique porte ${ecrire(t.nombre)}. En bas, la droite va de `
             + `${ecrire(t.debut)} à ${ecrire(t.debut + t.longueur)}, en dix morceaux.`, this.ciel);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('On regarde le PREMIER chiffre après la virgule : c\'est lui qui dit '
             + 'entre quelles graduations on tombe.', this.nombresEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         const cible = this.casesEl.querySelectorAll('.cd-case')[t.bonIntervalle];
         cur.say(`${ecrire(t.nombre)} est entre ${ecrire(t.bornes.gauche)} et `
             + `${ecrire(t.bornes.droite)} : c'est là.`, cible || this.casesEl);
         if (cible && !await cur.tap(cible)) return fin();
         if (cible) { cible.classList.add('cd-case--bonne'); }
-        if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         fin();
     }
 

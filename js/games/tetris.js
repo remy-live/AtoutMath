@@ -1,6 +1,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { state } from '../core/state.js';
 import { createDemoGate, createDemoCursor, dureeDemo } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 export function engineTetris(container, isDemo, params) {
     const game = new Tetris(container, isDemo, params);
@@ -433,19 +434,20 @@ class Tetris extends BaseGame {
     async jouerDemo() {
         const cur = this.demoCursor, gate = this.demoGate;
         const fin = () => { cur?.hideBubble(); if (this.demoInterval) clearInterval(this.demoInterval); };
+        const robot = meneurDemo(cur, gate, vivant, fin, { rangementSeul: true });
         const vivant = () => this.gameRunning && !this.destroyed;
 
-        if (!await cur.pause(600) || !vivant()) return fin();
-        if (!await gate.waitTurn() || !vivant()) return fin();
+        if (!await robot.pause(600)) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`La CIBLE, en haut : ${this.currentTarget}. Je dois coller côte à côte deux chiffres dont le PRODUIT fait ${this.currentTarget}.`, this.container);
-        if (!await cur.pause(2800) || !vivant()) return fin();
+        if (!await robot.pause(2800)) return fin();
 
-        if (!await gate.waitTurn() || !vivant()) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Le bloc pâle en bas montre où la pièce va se poser. Je n\'ai qu\'à choisir la colonne, et à la faire tomber.', this.container);
-        if (!await cur.pause(2600) || !vivant()) return fin();
+        if (!await robot.pause(2600)) return fin();
 
         // À partir d'ici le robot joue, et commente chaque coup réfléchi.
-        if (!await gate.waitTurn() || !vivant()) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('À moi de jouer : je cherche, pour le chiffre du bas de ma pièce, un voisin qui complète la cible.', this.container);
         this.demoInterval = setInterval(() => {
             if (!this.gameRunning || this.gelDemo) return;
@@ -458,11 +460,11 @@ class Tetris extends BaseGame {
                 this.playerHardDrop();
             }
         }, dureeDemo(560));
-        if (!await cur.pause(9000) || !vivant()) return fin();
+        if (!await robot.pause(9000)) return fin();
 
-        if (!await gate.waitTurn() || !vivant()) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('Deux blocs qui font la cible disparaissent, la pile retombe et une nouvelle cible arrive. C\'est tout le jeu.', this.container);
-        if (!await cur.pause(3000) || !vivant()) return fin();
+        if (!await robot.pause(3000)) return fin();
         fin();
     }
 

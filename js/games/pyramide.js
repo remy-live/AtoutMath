@@ -25,6 +25,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     creerPyramide, saisieInitiale, ligneJuste, estResoluePyramide,
     lettreAjoutee, qualitePyramide, DIFFICULTES
@@ -403,10 +404,11 @@ class Pyramide extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.p) this.poser();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
 
         const i = this.p.donnes.findIndex(d => !d);
         if (i < 1) return fin();
@@ -416,15 +418,15 @@ class Pyramide extends BaseGame {
 
         cur.say(`La ligne du dessus dit ${dessus}. La suivante a UNE lettre de plus — `
             + 'et les autres peuvent être remélangées.', this.tableEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say(`Alors je n'essaie pas de coller une lettre à ${dessus}. J'écris ses lettres `
             + `en désordre : ${dessus.split('').sort().join(' ')}.`, this.rappelEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say(`La définition dit « ${this.p.barreaux[i].def} ». Avec ces lettres et un `
             + `${neuve} de plus… ça fait ${attendu}.`, this.tableEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         this.saisie[i] = attendu;
         this.vise = i;

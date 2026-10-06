@@ -28,6 +28,7 @@ import { CSS_GLISSER } from '../core/glisserDeposer.js';
 // `regTimeout` ET NON `setTimeout` : voir `perdu()`. Un minuteur que
 // `clearEngines()` ne peut pas annuler survit à l'exercice qui l'a posé.
 import { regTimeout } from '../core/timers.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 /**
  * De quoi laisser le temps de calculer — ou de ne pas s'ennuyer. « Tranquille »
@@ -692,7 +693,8 @@ class Canon extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         // LA DÉMONSTRATION A BESOIN D'UNE VRAIE PARTIE, et c'est tout le défaut
         // que Rémy a photographié : « bug avec le robot ».
@@ -736,10 +738,10 @@ class Canon extends BaseGame {
         // On retient le départ, et c'est le robot qui le relâche quand il a
         // fini de parler.
         this.prochainBoulet = Infinity;
-        if (!await cur.pause(700) || !this.isRunning) return fin();
+        if (!await robot.pause(700)) return fin();
         cur.say(`L'ordre fait tout : on CALCULE d'abord, on tire ensuite. Un boulet approche, `
             + `je cherche son complément à ${this.cible} AVANT de le toucher.`, this.chargeEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         this.prochainBoulet = 0;
 
         // Attendre un ennemi, préparer son complément, tirer.
@@ -752,14 +754,14 @@ class Canon extends BaseGame {
             // professeur le laisse en pause. Choisir l'astéroïde AVANT, c'est
             // le choisir pour un tir qui n'aura lieu qu'après cette attente :
             // à la reprise, il a depuis longtemps atteint le canon.
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const ennemi = this.bouletDeLaDemo();
             if (!ennemi) break;
             const manque = this.cible - ennemi.valeur;
             cur.say(`Le ${ennemi.valeur} arrive : pour aller à ${this.cible}, il manque ${manque}. Je le charge.`, this.chargeEl);
             this.charge = String(manque);
             this.majCharge();
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             // ET S'IL EST MORT ENTRE-TEMPS, ON NE TIRE PAS SUR UN FANTÔME.
             //
             // MESURÉ AVANT : le robot chargeait 80 pour le 20, puis 10 pour le
@@ -769,7 +771,7 @@ class Canon extends BaseGame {
             // effaçait le boulet au premier tour. Le robot perdait ses trois
             // vies en vingt-huit secondes sans avoir tiré une fois.
             if (!this.boulets.includes(ennemi)) { k--; continue; }
-            if (!await cur.tap(ennemi.el)) return fin();
+            if (!await robot.toucher(ennemi.el)) return fin();
             if (!this.boulets.includes(ennemi)) { k--; continue; }
             // Le tir, à la main du robot.
             const valeur = Number(this.charge);
@@ -784,16 +786,16 @@ class Canon extends BaseGame {
             this.terrainEl.appendChild(el);
             this.tirs.push({ el, valeur, cibleBoulet: ennemi, x, y });
             this.reculer();
-            if (!await cur.pause(1500) || !this.isRunning) return fin();
+            if (!await robot.pause(1500)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         // « Le calcul d'abord, le geste après » redisait la phrase qui précède, et au-delà
         // de 110 caractères la bulle se lit si lentement qu'on croit la démonstration
         // plantée (js/core/activities/choice.js, COURT).
         cur.say('Toujours ce chemin : je lis le nombre, je calcule le complément, je charge, puis je tire.',
             this.chargeEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         // ET L'ON FIGE À LA FIN — sans quoi la partie continuerait toute seule,
         // personne aux commandes : les astéroïdes atteindraient le canon l'un
         // après l'autre, « 💥 Le 40 a atteint le canon ! » s'écrirait sous une

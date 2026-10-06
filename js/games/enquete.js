@@ -17,6 +17,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     genererEnquete, SCENES, phrasesDesIndices, laQuestion,
     verifierSaisie, prochaineDeduction, lieuDe
@@ -451,39 +452,40 @@ class Enquete extends BaseGame {
         const gate = createDemoGate();
         this.demoCursor = cur;
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
         const e = this.enquete;
 
         cur.say('Un objet a disparu. Chacun était quelque part — un seul par rangée, '
             + 'un seul par colonne.', this.histoireEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // « On ne devine jamais : on élimine » était la leçon ; la démonstration qui suit
         // montre l'élimination indice par indice, elle n'a pas besoin qu'on l'annonce.
         cur.say('Les indices sont tous VRAIS : ensemble, ils ne laissent qu\'une seule disposition.',
             this.indicesEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let tour = 0; tour < e.noms.length; tour++) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const d = prochaineDeduction(e, this.saisie);
             if (d.degre !== 'force') break;
             this.vise = Number.isInteger(d.indice) ? d.indice : -1;
             this.dessiner();
             cur.say(d.texte, this.indicesEl);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             const cell = e.solution[d.personnage];
             const el = this.planEl.querySelector(`.eq-case[data-r="${cell.r}"][data-c="${cell.c}"]`);
             if (el && !await cur.tap(el)) return fin();
             this.saisie[d.personnage] = { r: cell.r, c: cell.c };
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say(`Tout le monde est placé. Reste à lire le plan : qui est dans `
             + `${e.scene.lieux[e.lieuDeLObjet]} ? C'est ${e.noms[e.coupable]}.`, this.planEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

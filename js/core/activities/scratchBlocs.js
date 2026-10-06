@@ -20,6 +20,7 @@ import { executer, compterBlocs, contientBoucle, profondeurBoucles } from '../sc
 import { comparerTrace, diagnostiquer, verifierExigences } from '../scratchScore.js';
 import { CHAT_SVG, CHAT_TAILLE } from './chatSvg.js';
 import { Atelier, vignettePalette } from './scratchAtelier.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const DEMI = 200;          // la scène couvre -200..200 dans les deux sens
 const CARREAU = 10;        // valeur d'un carreau par défaut, en pas du chat
@@ -617,29 +618,30 @@ export function mount(container, session, opts = {}) {
         if (!cursor) cursor = createDemoCursor();
         cursor.protegerZone(container.querySelector('.sc-scene'));
         const gate = createDemoGate(container.querySelector('.sc-layout') || container);
-        const fin = () => { cursor?.hideBubble(); gate?.destroy(); };
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { garderPointeur: true });
+        const fin = () => robot.fin();
         const m = item.meta;
 
-        if (!await cursor.pause(700) || destroyed) return fin();
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.pause(700)) return fin();
+        if (!await robot.tour()) return fin();
         cursor.say(m.libre
             ? 'Ici, rien à repasser : on dessine ce qu\'on veut. Je te montre un programme.'
             : `On doit repasser ${m.titre.toLowerCase()}. Je vais écrire le programme du chat.`,
             container.querySelector('.sc-scene'));
-        if (!await cursor.pause(1600) || destroyed) return fin();
+        if (!await robot.pause(1600)) return fin();
 
         // Le robot POSE les pièces une par une, en disant pourquoi : c'est la
         // seule façon de transmettre « 360 divisé par le nombre de côtés ».
         for (let i = 0; i < m.modele.length; i++) {
-            if (!await gate.waitTurn() || destroyed) return fin();
+            if (!await robot.tour()) return fin();
             atelier.charger(m.modele.slice(0, i + 1));
             const phrase = commenter(m.modele[i], m);
             const derniere = [...container.querySelectorAll('.sc-piece--vive')].pop();
             if (phrase) cursor.say(phrase, derniere);
-            if (!await cursor.pause(900) || destroyed) return fin();
+            if (!await robot.pause(900)) return fin();
         }
 
-        if (!await gate.waitTurn() || destroyed) return fin();
+        if (!await robot.tour()) return fin();
         const btn = container.querySelector('[data-run]');
         cursor.say(item.meta.libre
             ? 'Et je lance : regarde ce que ce petit programme dessine.'
@@ -648,7 +650,7 @@ export function mount(container, session, opts = {}) {
         await lancer();
         if (destroyed) return fin();
         cursor.say(enUneBulle(item.explanation, 'Le chat a refait la figure : le programme est bon.'), container.querySelector('.sc-scene'));
-        if (!await cursor.pause(DEMO_SPEED.between + 1400) || destroyed) return fin();
+        if (!await robot.pause(DEMO_SPEED.between + 1400)) return fin();
         fin();
         renderNext();
     }

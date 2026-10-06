@@ -34,6 +34,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     PALIERS, CONSIGNE, genererGrille, traceVide, valeur, voisines, produit, facteurs,
     peutAvancer, avancer, couper, verifier, prochainPas, conseil, decomposer,
@@ -379,21 +380,22 @@ class BonsChemins extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         if (!this.grille) this.poser();
         const g = this.grille;
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         cur.say(`Il faut arriver à ${g.cible} en multipliant les nombres traversés. `
             + 'Avant de chercher un chemin au hasard, je casse le nombre en facteurs — '
             + 'le bouton « Aide-moi » le fait pour moi si je bloque.', this.cibleEl);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         const caseEl = ([x, y]) => this.svg.querySelector(`[data-x="${x}"][data-y="${y}"]`);
         for (let k = 0; k < 3; k++) {
             const pas = prochainPas(g, this.chemin);
             if (!pas || estArrivee(g, pas)) break;
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const n = valeur(g, pas[0], pas[1]);
             const reste = g.cible / produit(g, this.chemin);
             cur.say(k === 0
@@ -405,21 +407,21 @@ class BonsChemins extends BaseGame {
             if (el && !await cur.tap(el)) return fin();
             this.chemin = avancer(g, this.chemin, pas);
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         // DEUX BULLES : le piège d'abord, le geste pour en sortir ensuite — et ce geste
         // garde sa flèche sur le bouton de retour. Au-delà de 110 caractères la bulle se
         // lit si lentement qu'on croit la démonstration plantée
         // (js/core/activities/choice.js, COURT).
         cur.say('Si mon produit ne divise plus la cible, c\'est fini : multiplier n\'enlève jamais un facteur.',
             this.svg);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         cur.say('Je reviens en touchant une case de mon trait.',
         this.container.querySelector('[data-retour]'));
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

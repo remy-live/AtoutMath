@@ -25,6 +25,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     MODES, creerPartie, genererVague, toucher, laisserPasserGroupe, vagueFinie, resteAPrendre
 } from '../core/tri.js';
@@ -745,14 +746,15 @@ class Ninja extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.scene);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
-        if (!await cur.pause(600) || !this.isRunning) return fin();
+        if (!await robot.pause(600)) return fin();
         cur.say(`${this.def.consigne} ${this.def.rappel}`, this.scene);
-        if (!await cur.pause(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         for (let tour = 0; tour < 3 && this.isRunning; tour++) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             const v = this.etat.vague;
             if (!v) break;
             const cible = v.objets.find(o => o.cible && !o.coupe);
@@ -774,7 +776,7 @@ class Ninja extends BaseGame {
                     ? `Celui-là, je le laisse : ${laisser.texte === '0' ? 'ce zéro tient un rang, l\'enlever changerait le nombre' : 'ce n\'est pas un zéro'}.`
                     : `${laisser.texte} fait ${laisser.valeur < 0 ? '−' + Math.abs(laisser.valeur) : laisser.valeur} : je le laisse passer.`,
                     el || this.scene);
-                if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+                if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             }
 
             const el = this.scene.querySelector(`[data-obj="${cible.id}"]`);
@@ -782,18 +784,18 @@ class Ninja extends BaseGame {
                 ? `Ce zéro-là ne sert à rien : je le tranche.`
                 : `${cible.texte} fait ${cible.valeur < 0 ? '−' + Math.abs(cible.valeur) : cible.valeur} : celui-là, je le prends.`,
                 el || this.scene);
-            if (!await cur.pause(DEMO_SPEED.settle) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             if (el && !await cur.tap(el)) return fin();
             this.frapper(el || document.createElement('div'));
-            if (!await cur.pause(DEMO_SPEED.press) || !this.isRunning) return fin();
+            if (!await robot.pause(DEMO_SPEED.press)) return fin();
         }
 
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         // LA DEUXIÈME PHRASE DISAIT VRAI, MAIS C'ÉTAIT UNE LEÇON, PAS UN GESTE :
         // « ne rien toucher n'est pas une stratégie » se déduit de la première,
         // et les deux ensemble faisaient 146 caractères.
         cur.say('Attention : laisser filer un objet qu\'il fallait prendre coûte une vie.', this.scene);
-        if (!await cur.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
         fin();
     }
 

@@ -63,6 +63,7 @@ import { makeRng } from '../core/ids.js';
 import { brancherGlisserPalette } from '../core/activities/paletteDrag.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
 import { FAMILLES } from '../core/quadrilateres.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     PALIERS, CADRE, proprieteDe, genererDefi, poser, familleApres
 } from '../core/quadriMorph.js';
@@ -479,15 +480,16 @@ class QuadriMorph extends BaseGame {
         const cursor = createDemoCursor();
         const gate = createDemoGate(this.container);
         this.demoCursor = cursor;
-        if (!await gate.waitTurn()) return;
+        const robot = meneurDemo(cursor, gate, null, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
         cursor.say('Une propriété, ce n\'est pas une étiquette : c\'est une CONTRAINTE.',
             this.figEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
-        if (!await gate.waitTurn()) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
         cursor.say('Je la pose sur la figure, et la figure se déforme AUSSITÔT pour la '
             + 'respecter.', this.zoneEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
-        if (!await gate.waitTurn()) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.tour()) return;
         // « Chaque propriété en plus RÉTRÉCIT la famille » est une leçon, et c'est
         // justement ce que la figure montre toute seule : 158 caractères pour le
         // redire. Reste le geste, lire le codage.

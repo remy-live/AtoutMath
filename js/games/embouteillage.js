@@ -24,6 +24,7 @@
 import { BaseGame } from '../core/BaseGame.js';
 import { makeRng } from '../core/ids.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 import {
     COTE, RANGEE_SORTIE, NIVEAUX_EMBOUTEILLAGE, niveauDe, creerEmbouteillage,
     coupsPossibles, jouer, estSorti, restants, prochainCoup, qualiteEmbouteillage
@@ -510,43 +511,44 @@ class Embouteillage extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         // La préparation est différée : on attend qu'un plateau existe.
         for (let i = 0; i < 60 && !this.jeu; i++) {
-            if (!await cur.pause(100)) return fin();
+            if (!await robot.pause(100)) return fin();
         }
         if (!this.jeu) return fin();
-        if (!await cur.pause(400) || !this.isRunning) return fin();
+        if (!await robot.pause(400)) return fin();
 
         // UNE IDÉE PAR BULLE, chacune sous 110 caractères : au-delà, la bulle se lit si
         // lentement (340 ms le mot) qu'on croit la démonstration plantée.
         cur.say('Les voitures couchées vont à gauche et à droite, les voitures debout montent et descendent.',
         this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say('Jamais l\'inverse, et jamais par-dessus une autre.', this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // « C'est en remontant cette chaîne… » nomme la méthode que les deux bulles
         // précédentes viennent de MONTRER : elle est partie.
         cur.say('Je ne regarde pas la rouge : je regarde CE QUI LA BLOQUE.', this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         cur.say('Et si celle-là ne bouge pas non plus, je regarde ce qui la bloque, elle.', this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         for (let i = 0; i < 4; i++) {
             const c = prochainCoup(this.jeu.vehicules, this.jeu.table, this.etat);
             if (!c) break;
             this.montre = c.k;
             this.dessiner();
-            if (!await cur.pause(500) || !this.isRunning) return fin();
+            if (!await robot.pause(500)) return fin();
             this.etat = jouer(this.etat, c);
             this.coups++;
             this.montre = null;
             this.dessiner();
-            if (!await cur.pause(500) || !this.isRunning) return fin();
+            if (!await robot.pause(500)) return fin();
         }
         cur.say(`Il en faut ${this.jeu.mini} au minimum sur ce parking-là, et le compteur te dit `
             + 'à chaque coup combien il en reste : s\'il monte, tu viens de faire un détour.',

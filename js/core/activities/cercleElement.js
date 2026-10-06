@@ -31,6 +31,7 @@ import { tracesDe, cercleSvg } from '../cercleFigure.js';
 // règle sur les mots du cercle, et elle se teste sans navigateur.
 import { memeMot, memeNotation } from '../generators/cercleVocabulaire.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /** Les deux marches, et le préréglage qui les enchaîne. */
 export const MARCHES = ['choisir', 'seul'];
@@ -233,8 +234,9 @@ export function mount(container, session, opts = {}) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
         const plateau = container.querySelector('.cv-plateau') || container;
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         // LE ROBOT NE VA PAS DROIT À LA RÉPONSE : il dit d'abord les deux
         // questions qui la donnent — d'où part le tracé, et est-il droit ou
@@ -242,14 +244,14 @@ export function mount(container, session, opts = {}) {
         // reconnaître ; entendre la règle, si.
         cursor.say('Je regarde OÙ commence et où finit le tracé : au centre ? sur le cercle ?',
             plateau);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         cursor.say('Puis s\'il est DROIT ou COURBE — c\'est ce qui sépare la corde de l\'arc.',
             plateau);
-        if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         const cible = faire === 'cliquer'
             ? container.querySelector(`.cv-hit[data-el="${(item.meta.bon || 1) - 1}"]`)
             : (faire === 'ecrire' ? container.querySelector('#cv-champ')
@@ -259,7 +261,7 @@ export function mount(container, session, opts = {}) {
         // réponse à côté laisserait croire qu'il n'y a rien à taper.
         if (faire === 'ecrire' && cible) cible.value = item.answer;
         cursor.say(enUneBulle(item.explanation, `C'est ${item.answer}.`), cible || plateau);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
         renderNext();
     }
 

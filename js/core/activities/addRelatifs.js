@@ -23,6 +23,7 @@
 import { regTimeout } from '../timers.js';
 import { hintBar, wireHint, wireShowMe } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 /** Un nombre à la française : virgule décimale, vrai signe moins. */
 const fmt = (v) => String(Math.round(v * 10) / 10).replace('-', '−').replace('.', ',');
@@ -378,6 +379,7 @@ export function mount(container, session) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
         const fin = () => { cursor?.hideBubble(); return true; };
+        const robot = meneurDemo(cursor, gate, null, fin, { rangementSeul: true });
         const m = item.meta;
 
         // Tableau, ligne de calcul, pavé : rien de tout cela ne doit passer
@@ -385,27 +387,27 @@ export function mount(container, session) {
         cursor.protegerZone([...container.querySelectorAll('.ad-layout > *')]
             .filter(el => !el.classList.contains('hint-bar')));
 
-        if (!await cursor.pause(500)) return fin();
+        if (!await robot.pause(500)) return fin();
         if (m.texteLecon) {
             // LA LEÇON DU GÉNÉRATEUR EST FAITE POUR LA CORRECTION, pas pour une
             // bulle : dix des douze marches dépassent 110 caractères, et la pire
             // en fait 231 — quarante mots, treize secondes de robot figé.
             // `enUneBulle` en garde la première phrase, ou dit le geste.
             cursor.say(enUneBulle(m.texteLecon, 'Je regarde d\'abord le signe de chaque nombre.'), vise('[data-tableau]', '[data-calcul]', '.game-question'));
-            if (!await cursor.pause(DEMO_SPEED.between)) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
         }
 
-        if (!await gate.waitTurn()) return fin();
+        if (!await robot.tour()) return fin();
         if (m.question === 'ecriture') {
             cursor.say(`On n'écrit jamais deux signes à la suite. Dans ${item.prompt.text.replace('Écris ce calcul plus simplement : ', '')}, `
                 + `le « + » et le signe du deuxième nombre se réduisent à un seul signe.`, vise('.game-question'));
-            if (!await cursor.pause(DEMO_SPEED.settle)) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             const bon = item.choices.findIndex(c => c.correct);
             const cible = container.querySelector(`[data-choix="${bon}"]`);
             if (cible && !await cursor.tap(cible)) return fin();
             if (cible) cible.classList.add('demo-target');
             cursor.say(`On écrit donc ${item.answer}. Le calcul, lui, n'a pas changé.`, cible || container);
-            if (!await cursor.pause(DEMO_SPEED.between)) return fin();
+            if (!await robot.pause(DEMO_SPEED.between)) return fin();
             fin();
             renderNext();
             return true;
@@ -417,21 +419,21 @@ export function mount(container, session) {
                 ? `Toutes les pastilles sont dans la même colonne : il n'y a aucune paire à éliminer, on compte.`
                 : `Il y a des pastilles des deux couleurs. Une rouge et une bleue valent zéro ensemble : je les élimine deux par deux, une de chaque côté.`,
                 vise('[data-tableau]'));
-            if (!await cursor.pause(DEMO_SPEED.settle)) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             await animerElimination();
         } else {
             cursor.say(`${item.prompt.text.replace(' = ?', '')} s'écrit plus simplement ${m.simplifiee}.`,
                 vise('[data-calcul]', '.game-question'));
-            if (!await cursor.pause(DEMO_SPEED.settle)) return fin();
+            if (!await robot.pause(DEMO_SPEED.settle)) return fin();
             await animerEcriture();
         }
 
-        if (!await gate.waitTurn()) return fin();
+        if (!await robot.tour()) return fin();
         // 215 caractères mesurés, et qui REDISENT ce que les deux bulles
         // précédentes viennent de montrer. L'explication entière reste dans la
         // correction, où l'élève la lit à son rythme.
         cursor.say(enUneBulle(item.explanation, 'Et voilà le résultat.'), vise('[data-calcul]', '[data-tableau]', '.game-question'));
-        if (!await cursor.pause(DEMO_SPEED.between)) return fin();
+        if (!await robot.pause(DEMO_SPEED.between)) return fin();
 
         // Puis on tape la réponse, chiffre par chiffre — la virgule comprise,
         // qui a sa propre touche et que l'on oublie sinon d'appuyer.
@@ -444,7 +446,7 @@ export function mount(container, session) {
         }
         const valider = container.querySelector('[data-valider]');
         if (valider && !await cursor.tap(valider)) return fin();
-        if (!await cursor.pause(DEMO_SPEED.settle)) return fin();
+        if (!await robot.pause(DEMO_SPEED.settle)) return fin();
 
         // ON ENCHAÎNE. La démonstration s'arrêtait ici : elle jouait la marche 1
         // et laissait le robot planté devant, alors que l'exercice en compte

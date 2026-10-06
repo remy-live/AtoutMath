@@ -17,6 +17,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 import { GAUCHES, DROITES, SYMBOLES, composer, diagnostic } from '../notationSaisie.js';
+import { meneurDemo } from '../meneurDemo.js';
 
 const ditDe = (s) => (SYMBOLES.find(x => x.s === s) || {}).dit || '';
 
@@ -184,8 +185,9 @@ export function mount(container, session, opts = {}) {
     async function runDemo(item, a, b, poser, ecritureEl) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
-        if (!await gate.waitTurn() || destroyed) return;
-        if (!await cursor.pause(600) || destroyed) return;
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
+        if (!await robot.pause(600)) return;
 
         const bon = String(item.answer);
         const g = bon[0], d = bon[bon.length - 1];
@@ -193,25 +195,25 @@ export function mount(container, session, opts = {}) {
 
         cursor.say('Je regarde chaque bout du trait séparément : est-ce qu\'il s\'arrête, '
             + 'ou est-ce qu\'il continue ?', contexte || container);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
 
         for (const [sym, cote, point] of [[g, 'gauche', a], [d, 'droite', b]]) {
-            if (!await gate.waitTurn() || destroyed) return;
+            if (!await robot.tour()) return;
             cursor.say(`Du côté de ${point}, ${ditDe(sym)} : je pose ${sym}.`,
                 container.querySelector(`[data-fente="${cote}"]`) || container);
             const btn = container.querySelector(`[data-sym="${sym}"]`);
             if (btn && !await cursor.tap(btn)) return;
             poser(sym);
-            if (!await cursor.pause(DEMO_SPEED.settle) || destroyed) return;
+            if (!await robot.pause(DEMO_SPEED.settle)) return;
         }
 
-        if (!await gate.waitTurn() || destroyed) return;
+        if (!await robot.tour()) return;
         ecritureEl.classList.add('nt-ecriture--ok');
         // ON S'EN TIENT AU GESTE ACCOMPLI. L'explication du générateur monte à
         // 153 caractères sur la demi-droite ; elle a toute sa place dans la
         // correction, qui a de quoi l'afficher.
         cursor.say(`Ça donne ${bon}.`, ecritureEl);
-        if (!await cursor.pause(DEMO_SPEED.between) || destroyed) return;
+        if (!await robot.pause(DEMO_SPEED.between)) return;
     }
 
     // UNE QUESTION DÉJÀ TIRÉE PEUT ÊTRE PASSÉE EN ARRIVANT (`opts.item`) :

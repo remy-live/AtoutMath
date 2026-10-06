@@ -42,6 +42,7 @@ import {
 } from '../core/programmeConstruction.js';
 import { branches, descendre, remonter, phraseEnCours, phraseFinie, verbeDe } from '../core/arbrePhrase.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../core/demoPointer.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const COMPETENCE = 'geo.construction.programme';
 
@@ -910,22 +911,23 @@ export class ProgrammeConstruction extends BaseGame {
         const niv = this.niveau;
         const butEl = this.container.querySelector('.pc-cadre--but');
 
-        if (!await gate.waitTurn()) return;
+        const robot = meneurDemo(cursor, gate, null, null, { rangementSeul: true });
+        if (!await robot.tour()) return;
         // UNE IDÉE PAR BULLE, et la conclusion qui commentait le logiciel (« c'est
         // la figure obtenue qui décide, pas la tournure des phrases ») est partie :
         // au-delà de 110 caractères la bulle se lit si longtemps qu'on croit la
         // démonstration plantée.
         cursor.say('À gauche, la figure à obtenir.', butEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn()) return;
+        if (!await robot.tour()) return;
         cursor.say('Tout est dessiné dessus : les lettres des points, les traits, et le codage en rouge.', butEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
-        if (!await gate.waitTurn()) return;
+        if (!await robot.tour()) return;
         cursor.say('À droite, ce que mon programme trace vraiment. Elle est vide : '
             + 'je n\'ai encore rien posé.', this.cadreMoiEl);
-        if (!await cursor.pause(DEMO_SPEED.settle)) return;
+        if (!await robot.pause(DEMO_SPEED.settle)) return;
 
         const jusque = [];
         const vus = {};
@@ -945,25 +947,25 @@ export class ProgrammeConstruction extends BaseGame {
             // 1. LE POURQUOI, SUR LA FIGURE À OBTENIR. C'est là qu'on voit qu'il
             // manque un côté ; le raisonnement se lit sur le modèle, jamais sur
             // la liste des phrases disponibles.
-            if (!await gate.waitTurn()) return;
+            if (!await robot.tour()) return;
             cursor.say(dit.avant ? dit.avant(valeurs, n) : phrase, butEl);
-            if (!await cursor.pause(DEMO_SPEED.settle)) return;
+            if (!await robot.pause(DEMO_SPEED.settle)) return;
 
             // 2. LE GESTE, SUR LA COMMANDE — celle que l'élève aura sous le doigt.
-            if (!await this.gesteDemo(cursor, ins, valeurs, phrase)) return;
+            if (!await robot.puis(this.gesteDemo(cursor, ins, valeurs, phrase))) return;
             jusque.push(ins);
             vus[ins.op] = n + 1;
 
             // 3. LE RÉSULTAT, SUR LA FIGURE QUI VIENT DE CHANGER.
             const apres = dit.apres && dit.apres(valeurs, n);
             if (apres) {
-                if (!await gate.waitTurn()) return;
+                if (!await robot.tour()) return;
                 cursor.say(apres, this.cadreMoiEl);
-                if (!await cursor.pause(DEMO_SPEED.settle)) return;
+                if (!await robot.pause(DEMO_SPEED.settle)) return;
             }
         }
 
-        if (!await gate.waitTurn()) return;
+        if (!await robot.tour()) return;
         this.note('Le programme est écrit : la figure de droite est celle de gauche.', 'ok');
         this.cadreMoiEl.classList.add('pc-cadre--ok');
         cursor.say('Les deux figures sont les mêmes : le programme est bon.', this.cadreMoiEl);
@@ -997,7 +999,7 @@ export class ProgrammeConstruction extends BaseGame {
             const mot = [...this.arbreEl.querySelectorAll('[data-mot]')]
                 .find(b => b.dataset.mot === String(v));
             if (!mot) return true;              // l'arbre ne propose pas ce mot : on n'insiste pas
-            if (!await cursor.tap(mot)) return false;
+            if (!await robot.toucher(mot)) return false;
             this.chemin = descendre(this.chemin, v);
             // UNE PHRASE SANS TROU S'AJOUTE TOUTE SEULE — c'est la règle de
             // l'écran, et la démonstration doit la montrer telle quelle.

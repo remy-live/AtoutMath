@@ -21,6 +21,7 @@ import { meilleurCoup } from '../core/ia.js';
 import * as pipo from '../core/pipopipette.js';
 import * as p4 from '../core/puissance4.js';
 import * as sim from '../core/sim.js';
+import { meneurDemo } from '../core/meneurDemo.js';
 
 const NIVEAUX = {
     facile: { profondeur: 1, fantaisie: 0.45 },
@@ -415,12 +416,13 @@ class JeuADeux extends BaseGame {
         this.demoCursor = cur;
         const gate = createDemoGate(this.container);
         this.demoGate = gate;
-        const fin = () => { cur.destroy(); gate.destroy(); this.demoCursor = null; this.demoGate = null; };
+        const robot = meneurDemo(cur, gate, () => this.isRunning, () => { this.demoCursor = null; this.demoGate = null; });
+        const fin = () => robot.fin();
 
         this.dessiner();
-        if (!await cur.pause(500) || !this.isRunning) return fin();
+        if (!await robot.pause(500)) return fin();
         cur.say(this.def.consigne, this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         const LECONS = {
             pipopipette: 'Le piège est là : poser le TROISIÈME côté d\'un carré l\'offre à '
@@ -434,13 +436,13 @@ class JeuADeux extends BaseGame {
                 + 'inévitable. C\'est un théorème.'
         };
         cur.say(LECONS[this.quel], this.plateauEl);
-        if (!await gate.wait(DEMO_SPEED.between) || !this.isRunning) return fin();
+        if (!await robot.attendre(DEMO_SPEED.between)) return fin();
 
         // Le robot joue les deux camps, quelques coups : c'est le déroulé qu'on
         // veut montrer, pas une partie entière.
         const m = this.def.module;
         for (let i = 0; i < 8; i++) {
-            if (!await gate.waitTurn() || !this.isRunning) return fin();
+            if (!await robot.tour()) return fin();
             if (m.terminee(this.partie)) break;
             const r = meilleurCoup(m.JEU, this.partie, {
                 profondeur: Math.min(2, this.def.plafond), fantaisie: 0.25, rng: this.rng
@@ -448,9 +450,9 @@ class JeuADeux extends BaseGame {
             if (!r) break;
             this.partie = m.jouer(this.partie, r.coup);
             this.dessiner();
-            if (!await cur.pause(DEMO_SPEED.press * 2)) return fin();
+            if (!await robot.pause(DEMO_SPEED.press * 2)) return fin();
         }
-        if (!await gate.waitTurn() || !this.isRunning) return fin();
+        if (!await robot.tour()) return fin();
         cur.say('À toi maintenant. On peut y jouer à deux sur la même tablette, ou contre '
             + 'l\'ordinateur.', this.plateauEl);
         await cur.pause(DEMO_SPEED.between);
