@@ -156,6 +156,56 @@ dire(`DEUX CLICS EN TOUT : « Commencer ma séance », puis « J'ai compris »`,
 // TÉMOIN DE LA CORRECTION PRÉCÉDENTE. Si l'on avait supprimé la carte tout
 // court, cette sonde serait verte et le parcours aurait perdu le seul endroit
 // d'où l'on prend une étape facultative ou un jeu gagné.
+// ── L'AUTRE ENTRÉE : ON CLIQUE UNE ÉTAPE SUR LA CARTE DE « MON PARCOURS » ───
+//
+// C'EST LE TROU QUI A LAISSÉ PASSER LE DÉFAUT UNE SECONDE FOIS.
+//
+// Cette sonde ne mesurait QUE le bouton « Commencer ma séance ». Or l'élève qui
+// REPREND une séance commencée — c'est-à-dire la plupart du temps — n'appuie pas
+// sur ce bouton : il clique une étape sur la carte de « Mon Parcours », ou le
+// bouton « Jouer : … » posé dessous. Ces deux chemins-là passaient par
+// `launchAssigned`, qui ne disait pas au meneur qu'on venait de la carte — et le
+// meneur la redessinait.
+//
+// RÉMY : « il y a toujours l'écran d'accueil avec le monde puis on clique et on
+// va sur le monde, il y a tjs deux étapes ».
+console.log('\n\x1b[1mET SI L\'ON CLIQUE UNE ÉTAPE SUR LA CARTE DE « MON PARCOURS »\x1b[0m');
+const parLaCarte = await p.evaluate(async () => {
+    // On quitte la séance en cours et l'on revient à « Mon Parcours », comme
+    // l'élève qui ferme et rouvre.
+    const { state } = await import('./js/core/state.js');
+    const run = state.activeSequenceRunner;
+    if (run) { try { run.exit(); } catch (e) { /* déjà sorti */ } }
+    await new Promise((ok) => setTimeout(ok, 900));
+    // LE NOM EST LU DANS LA SOURCE : `renderStudentPathView`, et non le
+    // `renderPathView` que j'allais inventer — un nom faux rend `undefined`,
+    // c'est-à-dire la même réponse qu'un logiciel cassé.
+    const { renderStudentPathView } = await import('./js/ui/pathView.js');
+    renderStudentPathView();
+    await new Promise((ok) => setTimeout(ok, 900));
+    // LE BOUTON « Jouer : … » DE LA CARTE. Crochet LU dans `ui/pathView.js`
+    // (`btn.className = 'btn-toggle active world-map-play'`), pas deviné.
+    const jouer = document.querySelector('.world-map-play');
+    if (!jouer) return { raté: 'pas de bouton « Jouer » sur la carte de Mon Parcours' };
+    jouer.click();
+    await new Promise((ok) => setTimeout(ok, 1800));
+    return {
+        raté: null,
+        carteDuMeneur: !!document.querySelector('.run-carte'),
+        question: !!(document.querySelector('#game-board .game-question')
+            || document.querySelector('#game-board canvas'))
+    };
+});
+if (parLaCarte.raté) {
+    dire('on peut partir de la carte de Mon Parcours', false, parLaCarte.raté);
+} else {
+    dire('ON NE REMONTRE PAS LA CARTE : elle était déjà sous les yeux',
+        !parLaCarte.carteDuMeneur,
+        parLaCarte.carteDuMeneur ? 'le monde s\'affiche DEUX fois' : 'une seule fois');
+    dire('et l\'on travaille tout de suite', parLaCarte.question,
+        JSON.stringify(parLaCarte));
+}
+
 console.log('\n\x1b[1mLA CARTE REVIENT ENTRE LES ÉTAPES\x1b[0m');
 const apresUneEtape = await p.evaluate(async () => {
     const { state } = await import('./js/core/state.js');

@@ -484,9 +484,41 @@ function salleDeJeux(path, steps, etat) {
     return box;
 }
 
+/**
+ * PARTIR DE LA CARTE — SANS LA REMONTRER.
+ *
+ * RÉMY : « il y a toujours l'écran d'accueil avec le monde puis on clique et on
+ * va sur le monde, il y a tjs deux étapes alors que si j'ouvre la séance, on
+ * devrait pouvoir toujours aller directement sans double clic au monde ».
+ *
+ * TOUT CE QUI AMÈNE ICI A DÉJÀ MONTRÉ LA CARTE. C'est ce fichier qui la
+ * dessine, entière, avec la règle de la séance et « C'est ici ! » sur la
+ * prochaine étape ; puis l'élève clique une étape, ou le bouton « Jouer », et
+ * le meneur la redessinait aussitôt avec un bouton « Continuer ». Deux écrans,
+ * la même image, et un clic pour rien.
+ *
+ * LA MÊME CORRECTION EXISTAIT DÉJÀ — AILLEURS. `ui/maSeance.js` passe
+ * `sansCarteDOuverture` depuis des mois, avec la phrase de Rémy en commentaire
+ * (« il y a deux mouvements »). Elle n'avait été posée que sur le bouton
+ * « Commencer ma séance ». Les clics depuis la carte, eux, gardaient le double
+ * écran — et ce sont ceux qu'on fait quand on REPREND une séance commencée,
+ * c'est-à-dire la plupart du temps.
+ *
+ * C'est la deuxième fois dans la même journée qu'une correction juste n'avait
+ * fermé qu'un chemin sur plusieurs (voir la corbeille des parcours). La
+ * sonde `tools/entreeDansLaSeance.mjs` mesure désormais LES DEUX entrées.
+ *
+ * L'ORDRE LIBRE GARDE SA CARTE, et ce n'est pas une exception posée ici : le
+ * meneur la lui rend lui-même (`runner.js`, `!(sansCarteDOuverture &&
+ * !policy.ordreLibre)`). Une séance dont tout l'intérêt est que l'élève
+ * choisisse par où commencer ne peut pas sauter l'écran du choix.
+ */
 async function launchAssigned(path, startIndex) {
     const { Runner } = await import('../core/runner.js');
-    new Runner({ path, deviceMode: 'none', isStudentPath: true, startIndex }).start();
+    new Runner({
+        path, deviceMode: 'none', isStudentPath: true, startIndex,
+        sansCarteDOuverture: true
+    }).start();
 }
 
 // --- Habillage commun des parcours illustrés --------------------------------
