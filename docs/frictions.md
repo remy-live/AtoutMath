@@ -2831,3 +2831,24 @@ lignes** — 2026-10-01
   sans. **Une dette sans mesure à côté n'est pas une dette, c'est une
   impression.** Au prochain `/distill`, refuser toute entrée de cette liste qui
   ne dit pas ce qu'elle COÛTE, et à qui.
+
+## Le champ que la frise lit s'appelle « marche », et rien ne le dit — 2026-10-06
+
+- **Ce que je voulais faire** : brancher les quatre niveaux des Dingbats sur les
+  cases à cocher de la maison, comme les trente-huit autres générateurs à
+  progression.
+- **Ce qui coûte** : quatre minutes de `npm test` pour apprendre une faute de
+  nommage. J'avais posé `meta.niveau = 1` là où la frise cherche
+  `meta.marche = 'n1'` — le NOMBRE au lieu de l'IDENTIFIANT. L'exercice se
+  jouait, les quatre niveaux sortaient bien, et l'épreuve `progression`
+  annonçait tout de même « marches jamais jouées en 16 questions : n1, n2, n3,
+  n4 ». `tools/nouvelExercice.mjs`, qui dit en deux cents millisecondes ce que
+  `npm test` met quatre minutes à dire, ne regarde pas ce champ-là.
+- **Combien de fois** : | (mais le coût est structurel : `paramMarches` rend un
+  réglage complet et n'exige RIEN du `meta` en retour. Le prochain générateur à
+  progression paiera la même minute, ou la même heure s'il ne lit pas le
+  verdict.)
+- **Ce qui manque** : que `nouvelExercice.mjs` joue la longueur conseillée d'un
+  générateur à progression et dise, tout de suite, quelles marches cochées ne
+  sont jamais sorties. C'est le même calcul que `tests/progression.test.mjs`,
+  mais au moment où l'on écrit le générateur, pas quatre minutes plus tard.

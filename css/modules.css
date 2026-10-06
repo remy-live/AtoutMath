@@ -13122,3 +13122,227 @@ body.en-boite > #app-container { background: none; }
 @media (prefers-reduced-motion: reduce) {
     .pv-case { transition: none; }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   LES DINGBATS — une expression cachée dans la FAÇON dont les mots sont posés.
+
+   RÉMY : « j'aimerais bien un jeu de dingbats, idéalement dans le thème
+   mathématique mais dans les réglages on peut avoir le choix. »
+
+   TOUT CE FICHIER TIENT SUR UNE IDÉE : c'est la DISPOSITION qui parle. Le style
+   ne décore donc pas, il ÉNONCE — un mot plus gros, un mot retourné, un mot qui
+   fait le tour sont la question elle-même. Une faute de style ici n'est pas une
+   question d'esthétique : c'est une énigme qui ne veut plus rien dire.
+
+   LES COULEURS SUIVENT LE THÈME, à la différence de la Mosaïque dont les pièces
+   portent des teintes fixes : ici rien n'est posé sur un fond coloré, tout est
+   de l'encre sur le fond de la page. `currentColor` et les jetons suffisent.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+.dingbat-layout {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    width: 100%; max-width: 680px; margin: 0 auto;
+}
+
+.dg-consigne { text-align: center; }
+
+/* LA SCÈNE EST GRANDE, ET C'EST LE SUJET. Un dingbat se regarde de loin : on
+   doit voir d'un coup qu'un mot est AU-DESSUS d'un autre, pas le déduire en
+   plissant les yeux. La hauteur est fixée pour que l'énigme ne saute pas d'une
+   question à l'autre — un cadre qui change de taille fait croire à un changement
+   d'exercice. */
+.dg-cadre {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; min-height: 230px; padding: 18px 14px;
+    border: 2px solid var(--border); border-radius: 16px;
+    background: var(--bg-panel);
+    overflow: hidden;
+}
+
+.dg-scene { display: flex; align-items: center; justify-content: center; }
+
+/* LE MOT. Capitales, espacées, lourdes : c'est la convention du genre, et elle
+   sert — des capitales n'ont ni jambages ni hampes, donc elles se retournent et
+   s'empilent sans que la lecture hésite. */
+.dg-mot {
+    font-weight: 900;
+    font-size: clamp(1.4rem, 5.5vw, 2.3rem);
+    letter-spacing: .06em;
+    line-height: 1.15;
+    color: var(--text-main);
+    white-space: nowrap;
+}
+
+.dg-pale { opacity: .38; }
+.dg-vedette { color: var(--primary-texte); }
+.dg-grand { font-size: clamp(2rem, 8vw, 3.4rem); }
+.dg-petit { font-size: clamp(.85rem, 3vw, 1.2rem); letter-spacing: .02em; }
+
+.dg-serie { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.dg-serie--bas { align-items: flex-end; }
+
+/* L'EMPILEMENT, avec le trait qui sépare : sans lui, « POUR » sur « CENT » se
+   lirait comme deux mots l'un après l'autre, et toute l'énigme tomberait. */
+.dg-pile { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.dg-pile .dg-mot + .dg-mot { border-top: 3px solid var(--text-main); padding-top: 6px; }
+/* DEUX PARALLÈLES N'ONT PAS DE TRAIT ENTRE ELLES : le trait dirait « sur », et
+   l'énigme dit « alignées ». C'est exactement le genre de détail qui change la
+   réponse. */
+.dg-paralleles .dg-mot + .dg-mot { border-top: none; padding-top: 0; }
+.dg-paralleles { gap: 14px; }
+
+/* LES FORMES. Elles sont dessinées en traits, jamais remplies : le mot est
+   DEDANS et doit rester lisible. */
+.dg-forme {
+    display: flex; align-items: center; justify-content: center;
+    min-width: 170px; min-height: 120px; padding: 14px 20px;
+    border: 3px solid var(--text-main);
+}
+.dg-forme--vide { min-width: 120px; min-height: 90px; }
+.dg-forme--carre { border-radius: 2px; }
+.dg-forme--rectangle { min-width: 230px; min-height: 100px; border-radius: 2px; }
+.dg-forme--cercle { border-radius: 50%; min-width: 200px; min-height: 200px; }
+/* LE TRIANGLE ET LE LOSANGE NE SE DESSINENT PAS AVEC UNE BORDURE : une bordure
+   suit un rectangle. On découpe donc la forme et on la remplit d'un filet, ce
+   qui donne un contour franc sans qu'aucun angle ne manque. */
+.dg-forme--triangle, .dg-forme--losange, .dg-forme--nuage, .dg-forme--cube {
+    border: none; position: relative;
+}
+.dg-forme--triangle::before, .dg-forme--losange::before,
+.dg-forme--nuage::before, .dg-forme--cube::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--text-main);
+}
+.dg-forme--triangle::after, .dg-forme--losange::after,
+.dg-forme--nuage::after, .dg-forme--cube::after {
+    content: ''; position: absolute; inset: 3px;
+    background: var(--bg-panel);
+}
+.dg-forme--triangle::before, .dg-forme--triangle::after {
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+.dg-forme--losange::before, .dg-forme--losange::after {
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+.dg-forme--nuage::before, .dg-forme--nuage::after {
+    border-radius: 50% 50% 46% 54% / 60% 58% 42% 40%;
+}
+/* LE CUBE N'EST PAS UN CARRÉ, et c'est toute la différence entre « racine
+   carrée » et « racine cubique ». On le dit par la perspective. */
+.dg-forme--cube::before, .dg-forme--cube::after {
+    clip-path: polygon(22% 10%, 100% 10%, 100% 78%, 78% 100%, 0% 100%, 0% 32%);
+}
+.dg-forme--triangle .dg-mot, .dg-forme--losange .dg-mot,
+.dg-forme--nuage .dg-mot, .dg-forme--cube .dg-mot { position: relative; z-index: 1; }
+.dg-forme--triangle { min-height: 160px; padding-top: 60px; }
+.dg-forme--cube { min-height: 150px; }
+/* LE COIN : deux traits, et rien d'autre. C'est l'équerre de l'angle droit. */
+.dg-forme--coin {
+    border-width: 0 0 4px 4px; border-radius: 0;
+    padding: 26px 22px 14px 18px;
+}
+
+/* AUTOUR : le mot fait le tour, et les côtés verticaux sont tournés. Sans cette
+   rotation, « MÈTRE » posé à gauche et à droite se lirait comme deux mots de
+   plus, pas comme un contour. */
+.dg-autour {
+    display: grid; align-items: center; justify-items: center;
+    grid-template-columns: auto auto auto;
+    grid-template-rows: auto auto auto;
+    gap: 6px 10px;
+}
+.dg-autour-haut { grid-area: 1 / 2; }
+.dg-autour-gauche { grid-area: 2 / 1; }
+.dg-autour .dg-forme { grid-area: 2 / 2; }
+.dg-autour-droite { grid-area: 2 / 3; }
+.dg-autour-bas { grid-area: 3 / 2; }
+.dg-autour-h, .dg-autour-v {
+    font-weight: 900; font-size: clamp(.85rem, 3vw, 1.25rem);
+    letter-spacing: .08em; color: var(--text-main);
+}
+.dg-autour-gauche { writing-mode: vertical-rl; transform: rotate(180deg); }
+.dg-autour-droite { writing-mode: vertical-rl; }
+
+/* TRAVERSER : le mot passe PAR-DESSUS la forme, d'un bord à l'autre. */
+.dg-traverse { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+.dg-traverse-mot { position: absolute; background: var(--bg-panel); padding: 0 6px; }
+.dg-biais { transform: rotate(-38deg); }
+
+/* LES TRANSFORMATIONS. Elles ne sont pas des effets : ce sont les réponses. */
+.dg-miroir { transform: scaleX(-1); display: inline-block; }
+.dg-demi-tour { transform: rotate(180deg); display: inline-block; }
+.dg-tourne { transform: rotate(-90deg); display: inline-block; }
+.dg-axe {
+    width: 3px; align-self: stretch; min-height: 60px;
+    background: var(--danger); border-radius: 2px;
+}
+/* LE POINT CENTRAL EST DE L'ENCRE, PAS UN FOND — donc `--danger-texte`. Au-dessus,
+   `.dg-axe` et `.dg-coupure` emploient `--danger` en `background`, ce qui est son
+   emploi légitime ; ici le même jeton servait de couleur de texte et ne passait
+   pas le seuil AA. L'épreuve `tests/contraste.test.mjs` me l'a dit avant Rémy. */
+.dg-centre { font-size: 2rem; font-weight: 900; color: var(--danger-texte); line-height: 1; }
+.dg-fleche { font-size: 1.6rem; color: var(--text-muted); }
+.dg-glisse { display: flex; align-items: center; gap: 18px; }
+
+.dg-ecarte { display: flex; gap: 26px; flex-wrap: wrap; justify-content: center; }
+.dg-serre .dg-mot { letter-spacing: -.1em; }
+
+/* LA COUPURE : un trait net, comme un coup de ciseaux. */
+.dg-coupure {
+    width: 4px; align-self: stretch; min-height: 54px;
+    background: repeating-linear-gradient(to bottom,
+        var(--danger) 0 8px, transparent 8px 15px);
+}
+
+/* CE QUI MANQUE SE VOIT EN CREUX : la lettre reste lisible en pointillé, sinon
+   l'élève ne sait pas CE qui manque — et c'est justement la question. */
+.dg-trou { opacity: .18; text-decoration: line-through; text-decoration-color: var(--danger); }
+
+.dg-desordre { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.dg-desordre .dg-mot {
+    display: inline-block;
+    transform: rotate(var(--dg-tour, 0deg)) translateY(var(--dg-haut, 0));
+}
+
+/* LA RÉPONSE SE TAPE EN FRANÇAIS : c'est le clavier du système qu'il faut, et
+   un champ large, pas une case. */
+.dg-reponse {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    justify-content: center; width: 100%;
+}
+.dg-label { flex: 1 1 100%; text-align: center; font-weight: 700; color: var(--text-muted); font-size: .9rem; }
+.dg-champ {
+    flex: 1 1 260px; max-width: 360px;
+    padding: 11px 16px; border-radius: 12px;
+    border: 2px solid var(--border); background: var(--bg-panel);
+    font: inherit; font-size: 1.1rem; font-weight: 700; color: var(--text-main);
+    text-align: center;
+}
+.dg-champ:focus { outline: none; border-color: var(--primary); }
+.dg-champ--ko { border-color: var(--danger); }
+.dg-champ--donnee { border-color: var(--success); color: var(--success-texte, var(--text-main)); }
+.dg-valider {
+    padding: 11px 22px; border-radius: 12px; border: none; cursor: pointer;
+    background: var(--primary); color: #fff; font: inherit; font-weight: 800;
+}
+.dg-valider:disabled { opacity: .45; cursor: not-allowed; }
+.dg-note {
+    min-height: 1.4em; margin: 0; text-align: center;
+    font-size: .92rem; line-height: 1.45; color: var(--text-muted);
+    max-width: 560px;
+}
+
+/* L'APERÇU DE LA PAGE D'APPRENTISSAGE — trois exemples, pas une figure. */
+.dg-apercu { font-weight: 800; letter-spacing: .02em; }
+
+/* AU DOIGT, l'écran est étroit : la scène garde sa hauteur mais le mot rétrécit
+   plutôt que de déborder. `clamp` s'en charge déjà ; ici on rend seulement le
+   cadre moins gourmand en marge. */
+@media (max-width: 480px) {
+    .dg-cadre { min-height: 190px; padding: 12px 8px; }
+    .dg-forme--cercle { min-width: 160px; min-height: 160px; }
+    .dg-ecarte { gap: 16px; }
+}
+
+/* UNE SCÈNE NE S'ANIME PAS, donc rien à réduire — mais le curseur de la
+   démonstration, lui, se déplace. Il porte sa propre règle. */

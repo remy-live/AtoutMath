@@ -29,6 +29,7 @@ import { kenkenGenerator } from '../generators/kenken.js';
 import { strimkoGenerator } from '../generators/strimko.js';
 import { approxdokuGenerator } from '../generators/approxdoku.js';
 import { jardinGenerator } from '../generators/jardin.js';
+import { dingbatGenerator } from '../generators/dingbat.js';
 import { binairoGenerator } from '../generators/binairo.js';
 import { colorierNombresGenerator } from '../generators/colorierNombres.js';
 import { garamGenerator } from '../generators/garam.js';
@@ -145,6 +146,7 @@ import {
     decompositionGenerator, lettresGenerator, ordreGrandeurGenerator,
     egypteGenerator, complementGenerator, pariteGenerator,
     kenkenGenerator, strimkoGenerator, approxdokuGenerator, jardinGenerator,
+    dingbatGenerator,
     binairoGenerator, colorierNombresGenerator,
     garamGenerator, sudokuGenerator,
     anglesGenerator, scratchGenerator, horlogeGenerator, relatifsGenerator,
@@ -501,6 +503,28 @@ registerActivity({
     supports: { timed: true, autonomous: false, demo: true },
     params: [],
     load: () => import('./jardin.js')
+});
+
+// LES DINGBATS — une expression cachée dans la FAÇON dont les mots sont posés.
+//
+// Rémy : « j'aimerais bien un jeu de dingbats, idéalement dans le thème
+// mathématique mais dans les réglages on peut avoir le choix ».
+//
+// `accepts: ['text']` ET RIEN D'AUTRE : un QCM tuerait le jeu — on reconnaîtrait
+// la bonne proposition sans avoir lu la disposition. On écrit ce qu'on lit.
+//
+// `parDefaut: 8` : une énigme se résout ou ne se résout pas, et il n'y a pas de
+// calcul derrière. Huit tiennent dans un quart d'heure, ce qui est la place
+// qu'un jeu de vocabulaire prend dans une heure.
+registerActivity({
+    id: 'dingbat',
+    unite: 'énigme',
+    parDefaut: 8,
+    label: 'Dingbats',
+    accepts: ['text'],
+    supports: { timed: true, autonomous: false, demo: true },
+    params: [],
+    load: () => import('./dingbat.js')
 });
 
 // LE CIRCUIT D'EAU — un jeu qui ne demande rien à valider.

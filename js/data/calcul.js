@@ -1508,6 +1508,69 @@ export const calculExercises = [
         }
     },
     {
+        // ─────────────────────────────────────────────────────────────────
+        // LES DINGBATS — Rémy : « j'aimerais bien un jeu de dingbats, idéalement
+        // dans le thème mathématique mais dans les réglages on peut avoir le
+        // choix. Une centaine serait bien. Classe aussi par niveau. »
+        //
+        // POURQUOI CE JEU A SA PLACE DANS UN LOGICIEL DE MATHÉMATIQUES. Parce
+        // que le vocabulaire de la géométrie est DÉJÀ spatial : « périmètre »
+        // veut dire « la mesure autour », « diamètre » « la mesure à travers »,
+        // « médiatrice » « celle qui coupe au milieu ». Ce ne sont pas des mots
+        // à retenir, ce sont des POSITIONS — et c'est exactement ce qu'un
+        // dingbat sait écrire. Un élève qui a vu MÈTRE faire le tour d'un carré
+        // ne confondra plus périmètre et aire.
+        //
+        // CENT NEUF ÉNIGMES, dont 69 de mathématiques et 40 de culture
+        // générale, sur quatre niveaux. Le thème se règle, et le défaut est les
+        // mathématiques — « idéalement dans le thème mathématique ».
+        // ─────────────────────────────────────────────────────────────────
+        id: 'voc-dingbats', title: 'Dingbats',
+        cree: '2026-10-06',
+        generatorId: 'jeu.dingbat', activityId: 'dingbat',
+        // UNE ÉNIGME NE SE RÉVISE PAS. Une fois qu’on a vu que RACINE dans un
+        // carré se lit « racine carrée », on le sait pour toujours : la reposer
+        // en révision ne mesure plus rien. Comme les mots croisés et le Jardin,
+        // d’à côté.
+        sansRevision: true,
+        params: {},
+        tags: {
+            chemin: [TAGS.DOMAINE.NUMERIQUE, TAGS.SOUS_DOMAINE.LOGIQUE],
+            niveaux: [TAGS.NIVEAU.SIXIEME, TAGS.NIVEAU.CINQUIEME, TAGS.NIVEAU.QUATRIEME,
+                TAGS.NIVEAU.TROISIEME]
+        },
+        motsClefs: ['dingbat', 'dingbats', 'rébus', 'énigme', 'vocabulaire', 'mots',
+            'devinette', 'expression', 'jeu de mots'],
+        instruction: "Un DINGBAT cache une expression dans la FAÇON dont les mots sont posés. Rien n’est dessiné : ce sont des mots, et c’est leur place qui parle. RACINE écrit dans un carré se lit « racine carrée ». Regarde d’abord le MOT, puis ce qui lui arrive : est-il dans une forme, autour d’une forme, répété, retourné, coupé, écarté, au-dessus d’un autre ? Dis-le à voix haute — beaucoup se résolvent par l’oreille. Écris ensuite ce que tu lis : les accents, les articles et les pluriels ne comptent pas, seuls les mots comptent. En mathématiques, la disposition n’est jamais décorative : « périmètre » veut dire la mesure AUTOUR, « diamètre » la mesure À TRAVERS, « médiatrice » celle qui coupe AU MILIEU.",
+        apprentissage: {
+            intro: 'Un dingbat ne se lit pas, il se regarde.',
+            regles: [
+                {
+                    titre: 'Le mot, puis sa place',
+                    texte: 'Lis le mot écrit. Puis demande-toi ce qu’on lui a FAIT : '
+                        + 'il est dans une forme, il en fait le tour, il la traverse, '
+                        + 'il est répété, retourné, coupé, écarté. C’est cela, la moitié '
+                        + 'cachée de la phrase.',
+                    exemple: '<span class="dg-apercu">RACINE dans un carré → racine carrée</span>'
+                },
+                {
+                    titre: 'Dis-le à voix haute',
+                    texte: 'Beaucoup de dingbats se résolvent par l’oreille et non par '
+                        + 'l’œil : POUR écrit sur CENT se lit « pour cent ».',
+                    exemple: '<span class="dg-apercu">POUR sur CENT → pourcentage</span>'
+                },
+                {
+                    titre: 'En maths, la place EST le sens',
+                    texte: 'MÈTRE autour d’un carré, c’est le périmètre ; MÈTRE à travers '
+                        + 'un cercle, c’est le diamètre. Les mots de la géométrie disent '
+                        + 'où l’on mesure — c’est pour cela qu’on ne doit pas les '
+                        + 'confondre.',
+                    exemple: '<span class="dg-apercu">MÈTRE autour → périmètre · MÈTRE à travers → diamètre</span>'
+                }
+            ]
+        }
+    },
+    {
         id: 'voc-mots-croises',
         // Une grille de mots croisés EST un objet de papier ; l'écran n'en est
         // qu'une transcription. Rémy : « on pourrait avoir un pdf ».

@@ -95,6 +95,7 @@ export const CODES_EXERCICES = {
     'logi-strimko':               'SH',   // Strimko
     'logi-approxdoku':            'AX',   // ApproXdoku
     'voc-jardin':                 'JR',   // le JaRdin
+    'voc-dingbats':               'DZ',   // DingbatZ — « DG » est déjà la Dictée de Grands nombres
     'calc-binairo':               'BN',   // Binairo
     'calc-nova':                  'NV',   // Nova
     'calc-escadrille':            'ET',   // Escadrille des Tables
