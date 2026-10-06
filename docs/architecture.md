@@ -900,20 +900,19 @@ déclare trop grande se croit aussi mal qu'une dette qu'on cache.*
 
   On garde la ligne BARRÉE plutôt que de l'effacer : sans elle, je la
   réécrirai dans trois mois en recomptant les mêmes 1 960 lignes.
-- **Les 159 copies de la garde de démonstration.** `if (!await gate.waitTurn()
-  || !this.isRunning) return fin();` est recopiée 159 fois dans 115 fichiers,
-  et quatre autres lignes du même échafaudage la suivent partout. C'est la plus
-  grosse duplication du dépôt — environ cinq cents lignes. Chaque démonstration
-  est un SCÉNARIO différent, et c'est normal ; l'échafaudage autour, lui, ne
-  l'est pas. Un `jouerDemo([...étapes])` le prendrait en charge.
-- **Quatorze modules de noyau sans aucune épreuve** sur deux cent trente :
-  `anglesRemarquablesSvg`, `cardinal`, `codageSvg`, `compat`, `errorSchema`,
-  `glisserDeposer`, `importExport`, `migrate`, `profile`, `scoresLocaux`,
-  `sequenceRunner`, `stats`, `timers`, `voix`. Tous courts (19 à 284 lignes),
-  mais `importExport` et `migrate` touchent aux DONNÉES d'un professeur : ce
-  sont les deux à couvrir d'abord.
+**Et c'est tout.** Les deux autres entrées de cette liste ont été réglées le
+6 octobre ; elles sont rangées plus bas avec ce qui est fait.
 
-### Ce qui n'est plus à faire, et qui traînait ici
+### Ce qui n'est plus à faire
+
+- ~~Les 159 copies de la garde de démonstration~~ — faites le 6 octobre.
+  `core/meneurDemo.js` les porte toutes : **865 gardes dans 102 fichiers**
+  passent par lui, et `tools/gardesDemo.mjs` le vérifie à chaque `npm test`.
+  Au passage, 56 d'entre elles ne vérifiaient RIEN — un exercice quitté
+  continuait d'y parler dans le vide.
+- ~~Quatorze modules de noyau sans aucune épreuve~~ — faits le 6 octobre :
+  treize sont couverts (environ 125 épreuves neuves), et le quatorzième,
+  `sequenceRunner`, a été SUPPRIMÉ — mesuré sans un seul appelant.
 
 - ~~Interface professeur pour le tableau de bord de classe~~ — faite
   (`js/ui/espaceClasses.js`, 4 244 lignes).
