@@ -253,16 +253,28 @@ test('IL REND TOUT LE MONDE, Y COMPRIS CEUX QUI NE SONT PAS LÀ', () => {
     assert.equal(trierParNom(null, 0).length, 0);
 });
 
-test('LES DEUX ORDRES SONT NOMMÉS UNE FOIS, ET UN RÉGLAGE INCONNU NE CASSE RIEN', () => {
+test('LES ORDRES SONT NOMMÉS UNE FOIS, ET UN RÉGLAGE INCONNU NE CASSE RIEN', () => {
     // L'écran ne choisit pas ses propres mots : il lit `ORDRES_DU_DIRECT`.
-    assert.equal(ORDRES_DU_DIRECT.length, 2);
-    assert.deepEqual(ORDRES_DU_DIRECT.map(o => o.cle), ['urgence', 'nom']);
-    // LE REPLI EST CELUI D'AVANT : un réglage gardé d'une version précédente,
-    // ou un stockage abîmé, ne doit pas vider le direct.
+    //
+    // ILS SONT QUATRE DEPUIS QUE RÉMY LES A DEMANDÉS : « pour le mur en direct
+    // as tu mis les options de tri ? (soit progression, soit actualisation, ou
+    // nom) ». Cette épreuve en attendait DEUX et fixait leur ordre — elle a
+    // rougi, et c'est son travail : une liste que l'écran parcourt pour
+    // dessiner ses boutons ne s'allonge pas sans qu'on le sache.
+    //
+    // Le détail de chaque ordre est éprouvé dans `tests/ordresDuDirect.test.mjs` ;
+    // ici on garde le CONTRAT : ils sont nommés une fois, et un réglage inconnu
+    // retombe sur le premier.
+    assert.deepEqual(ORDRES_DU_DIRECT.map(o => o.cle),
+        ['nom', 'urgence', 'progression', 'actualisation']);
     assert.equal(trieurDuDirect('nom'), trierParNom);
     assert.equal(trieurDuDirect('urgence'), trierPourLeMur);
-    assert.equal(trieurDuDirect('n_importe_quoi'), trierPourLeMur);
-    assert.equal(trieurDuDirect(undefined), trierPourLeMur);
+    // LE REPLI A CHANGÉ AVEC LE DÉFAUT, et c'est voulu : « le tri n'arrête pas
+    // de changer sur le mur c'est compliqué de s'y retrouver il faudrait qqch
+    // de fixe ». Un réglage gardé d'une version précédente, ou un stockage
+    // abîmé, doit retomber sur l'ordre qui ne bouge pas — le nom.
+    assert.equal(trieurDuDirect('n_importe_quoi'), trierParNom);
+    assert.equal(trieurDuDirect(undefined), trierParNom);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

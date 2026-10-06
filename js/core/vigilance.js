@@ -211,10 +211,66 @@ export function trierParNom(eleves, maintenant, contexte = {}) {
             || String(a.eleve.id || '').localeCompare(String(b.eleve.id || '')));
 }
 
-/** Les deux ordres, nommés une fois — l'écran ne choisit pas ses propres mots. */
+/**
+ * DU PLUS AVANCÉ AU MOINS AVANCÉ.
+ *
+ * RÉMY : « pour le mur en direct as tu mis les options de tri ? (soit
+ * progression, soit actualisation, ou nom) ».
+ *
+ * ON TRIE DU PLUS AVANCÉ VERS LE MOINS, et c'est le sens utile : en fin
+ * d'heure, le professeur cherche qui a fini pour lui donner la suite, et il
+ * trouve en bas de liste ceux qui n'ont pas démarré. L'ordre inverse mettrait
+ * en haut les absents, qui n'appellent aucun geste — c'est le défaut qu'on
+ * avait déjà corrigé sur l'ordre « urgence ».
+ *
+ * `avancement.fraction` EXISTE DÉJÀ et compte proprement : les étapes finies,
+ * plus la part de l'étape en cours. On ne refait pas ce calcul ici — il est
+ * écrit, commenté et éprouvé dans `core/avancement.js`.
+ *
+ * ET LE NOM DÉPARTAGE LES ÉGALITÉS. Sans lui, vingt élèves à zéro permuteraient
+ * à chaque battement — exactement ce que Rémy a signalé du mur : « le tri
+ * n'arrête pas de changer […] il faudrait qqch de fixe ».
+ */
+export function trierParProgression(eleves, maintenant, contexte = {}) {
+    return trierParNom(eleves, maintenant, contexte)
+        .sort((a, b) => fractionDUnEleve(b.eleve) - fractionDUnEleve(a.eleve));
+}
+
+/**
+ * DU PLUS RÉCEMMENT ACTIF AU PLUS SILENCIEUX.
+ *
+ * C'est « l'actualisation » de Rémy : qui vient de faire quelque chose. Elle ne
+ * se confond pas avec « ceux qu'il faut voir » — celui-là range par ce qui
+ * APPELLE un geste (bloqué, puis ralenti), celui-ci par la seule fraîcheur.
+ * Les deux disent des choses différentes de la même classe.
+ *
+ * ON RANGE PAR LE SILENCE, CROISSANT : le plus petit silence est le plus frais.
+ */
+export function trierParActualisation(eleves, maintenant, contexte = {}) {
+    return trierParNom(eleves, maintenant, contexte)
+        .sort((a, b) => silenceDe(a.eleve, maintenant) - silenceDe(b.eleve, maintenant));
+}
+
+/** La part de séance faite, ou 0 — un élève sans avancement n'a rien fait. */
+function fractionDUnEleve(eleve) {
+    const av = eleve && eleve.avancement;
+    if (!av) return 0;
+    if (av.etat === 'fini') return 1;
+    return Number(av.fraction) || 0;
+}
+
+/**
+ * LES ORDRES, NOMMÉS UNE FOIS — l'écran ne choisit pas ses propres mots.
+ *
+ * L'ORDRE DE CETTE LISTE EST CELUI DES BOUTONS, et « par nom » reste le défaut
+ * (voir `ORDRE_PAR_DEFAUT` dans `ui/espaceClasses.js`) : Rémy l'a tranché en
+ * classe, « il faudrait qqch de fixe ».
+ */
 export const ORDRES_DU_DIRECT = [
+    { cle: 'nom', mot: 'par nom', trier: trierParNom },
     { cle: 'urgence', mot: 'ceux qu\'il faut voir', trier: trierPourLeMur },
-    { cle: 'nom', mot: 'par nom', trier: trierParNom }
+    { cle: 'progression', mot: 'par progression', trier: trierParProgression },
+    { cle: 'actualisation', mot: 'par activité récente', trier: trierParActualisation }
 ];
 
 /** Le trieur d'une clef, avec repli : un réglage inconnu ne casse pas l'écran. */
