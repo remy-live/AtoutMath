@@ -873,12 +873,32 @@ la question — la correction est toujours une ligne, dans
 
 ## 12. Ce qui reste à faire
 
-- Porter Memory et Météorites sur le contrat `Item` ; `core/generators.js`
-  (couche de compatibilité) disparaîtra avec eux.
-- Découper `index.html` (une vue par fragment) — utile à partir de la
-  quatrième vue.
-- Interface professeur pour le tableau de bord de classe : l'API existe
-  (`/teacher/report`), le front reste à écrire.
-- Héberger localement `localforage` et `canvas-confetti` : chargés depuis un
-  CDN, ils manquent en salle sans réseau. `store.js` dégrade déjà proprement
-  vers `localStorage`, mais mieux vaut ne pas en dépendre.
+*Relu et remesuré le 6 octobre 2026. Deux lignes de cette liste annonçaient
+comme « à faire » des chantiers terminés depuis des mois : une dette qu'on
+déclare trop grande se croit aussi mal qu'une dette qu'on cache.*
+
+- **Porter Memory et Météorites sur le contrat `Item`** ; `core/generators.js`
+  (couche de compatibilité, 83 lignes) disparaîtra avec eux. Mesuré : il n'est
+  plus importé que par `js/games/math_memory.js` et `js/games/arcade_shooter.js`.
+  Dette réelle, petite et bornée.
+- **Découper `index.html`** (une vue par fragment) — 1 960 lignes aujourd'hui.
+- **Les 159 copies de la garde de démonstration.** `if (!await gate.waitTurn()
+  || !this.isRunning) return fin();` est recopiée 159 fois dans 115 fichiers,
+  et quatre autres lignes du même échafaudage la suivent partout. C'est la plus
+  grosse duplication du dépôt — environ cinq cents lignes. Chaque démonstration
+  est un SCÉNARIO différent, et c'est normal ; l'échafaudage autour, lui, ne
+  l'est pas. Un `jouerDemo([...étapes])` le prendrait en charge.
+- **Quatorze modules de noyau sans aucune épreuve** sur deux cent trente :
+  `anglesRemarquablesSvg`, `cardinal`, `codageSvg`, `compat`, `errorSchema`,
+  `glisserDeposer`, `importExport`, `migrate`, `profile`, `scoresLocaux`,
+  `sequenceRunner`, `stats`, `timers`, `voix`. Tous courts (19 à 284 lignes),
+  mais `importExport` et `migrate` touchent aux DONNÉES d'un professeur : ce
+  sont les deux à couvrir d'abord.
+
+### Ce qui n'est plus à faire, et qui traînait ici
+
+- ~~Interface professeur pour le tableau de bord de classe~~ — faite
+  (`js/ui/espaceClasses.js`, 4 244 lignes).
+- ~~Héberger localement `localforage` et `canvas-confetti`~~ — fait : ils sont
+  dans `vendor/`, et `index.html` ne charge plus aucun CDN (vérifié : zéro
+  occurrence).
