@@ -881,7 +881,25 @@ déclare trop grande se croit aussi mal qu'une dette qu'on cache.*
   (couche de compatibilité, 83 lignes) disparaîtra avec eux. Mesuré : il n'est
   plus importé que par `js/games/math_memory.js` et `js/games/arcade_shooter.js`.
   Dette réelle, petite et bornée.
-- **Découper `index.html`** (une vue par fragment) — 1 960 lignes aujourd'hui.
+- ~~**Découper `index.html`** (une vue par fragment) — 1 960 lignes.~~ **CE
+  N'EST PAS UNE DETTE, ET C'EST MESURÉ.** Rémy, en lisant cette liste :
+  « pourquoi découper index.html ? » — je n'avais pas de réponse, et c'était la
+  SEULE entrée de cette liste sans mesure à côté. Les voici :
+
+  | ce qu'on craignait | ce qu'on a mesuré |
+  | --- | --- |
+  | un fichier qu'on retouche sans cesse | **0 commit sur 301** a modifié son contenu — jusqu'au 7 septembre, un mois en arrière |
+  | 1 960 lignes à relire | elles ne bougent pas : 115 des 120 derniers commits ne l'ont touché que pour le `?v=NNN` du rituel |
+  | un poids pour l'élève | 36 Ko une fois compressé, sur un site qui en pèse 19 000 — et le `sw.js` le garde |
+
+  **Un fichier que personne n'édite ne coûte rien à personne.** « 1 960 lignes »
+  est un chiffre qui SONNE gros ; ce n'est pas une mesure. Le découper
+  demanderait de toucher les neuf fenêtres, le voile d'avant-porte et l'ordre
+  de chargement — c'est-à-dire de risquer un défaut chez les élèves pour ranger
+  quelque chose que personne ne dérange.
+
+  On garde la ligne BARRÉE plutôt que de l'effacer : sans elle, je la
+  réécrirai dans trois mois en recomptant les mêmes 1 960 lignes.
 - **Les 159 copies de la garde de démonstration.** `if (!await gate.waitTurn()
   || !this.isRunning) return fin();` est recopiée 159 fois dans 115 fichiers,
   et quatre autres lignes du même échafaudage la suivent partout. C'est la plus

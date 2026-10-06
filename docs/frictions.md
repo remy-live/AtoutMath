@@ -2806,3 +2806,28 @@ lignes** — 2026-10-01
   **« sur combien d'exercices cela répondra-t-il ? »** Si la réponse est « ceux
   qui ont écrit la méthode », il faut un REPLI qui marche partout. Ici il était
   à portée : tout item porte sa réponse, c'est elle que la séance compare.
+
+---
+
+## Un chiffre qui sonne gros n'est pas une mesure — 2026-10-06
+
+- **Ce que je voulais faire** : répondre à Rémy, qui demandait « pourquoi
+  découper index.html ? » — une dette que j'avais moi-même inscrite dans
+  `docs/architecture.md` et répétée trois fois dans la journée.
+- **Ce qui a coûté** : rien à corriger, tout à désapprendre. **Je n'avais pas
+  de réponse.** La mesure, faite en dix minutes le jour où il a posé la
+  question : sur 301 commits — un mois — le CONTENU d'`index.html` n'a pas
+  bougé une seule fois. Les 115 commits qui « le touchent » y écrivent le
+  `?v=NNN` du rituel de version, six fois, et rien d'autre. Un fichier que
+  personne n'édite ne coûte rien à personne. J'avais pris « 1 960 lignes » pour
+  un diagnostic alors que c'est un nombre.
+- **Combien de fois** : || (même forme que le « ? » de la symétrie et que le
+  tableau de numération : une décision que je prends seul, que je justifie
+  bien, et qui ne survit pas à la première question.)
+- **Ce qui manque** : une règle d'écriture pour `docs/architecture.md` §12, et
+  elle était déjà à moitié là — chacune des autres entrées porte sa mesure
+  (« il n'est plus importé que par deux fichiers », « environ cinq cents
+  lignes », « touchent aux DONNÉES d'un professeur »). Celle-ci était la seule
+  sans. **Une dette sans mesure à côté n'est pas une dette, c'est une
+  impression.** Au prochain `/distill`, refuser toute entrée de cette liste qui
+  ne dit pas ce qu'elle COÛTE, et à qui.
