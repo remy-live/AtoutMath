@@ -93,10 +93,17 @@ export function mount(container, session, opts = {}) {
         const { jardin, couleurs } = item.meta;
         const cadre = cadreDe(jardin.cases);
 
-        // Chaque case sait à quelle fleur elle appartient : les pétales
-        // prennent la couleur de leur fleur, les centres restent neutres.
+        // LA COULEUR EST SUR LE CŒUR, PAS SUR LES PÉTALES — et j'avais fait
+        // l'inverse jusqu'à ce que Rémy corrige la règle : « ce sont les pétales
+        // communes qui créent des mots, c'est en rond en fait ».
+        //
+        // La conséquence est mécanique : un pétale appartient à DEUX fleurs, il
+        // ne peut donc pas porter « la » couleur de sa fleur — il en aurait
+        // deux. C'est le cœur qui porte la couleur, et la couronne se lit
+        // AUTOUR de lui. Les pétales restent blancs, et le cœur n'entre dans
+        // aucun mot de six : il ne se lit que dans sa rangée.
         const couleurDe = new Map();
-        jardin.fleurs.forEach(f => f.petales.forEach(p => couleurDe.set(p, f.couleur)));
+        jardin.fleurs.forEach(f => couleurDe.set(f.centre, f.couleur));
 
         const cases = jardin.cases.map(cle => {
             const { x, y } = centreDe(cle);
@@ -107,10 +114,11 @@ export function mount(container, session, opts = {}) {
             const couleur = couleurDe.get(cle);
             const [q, r] = cle.split(',');
             return `
-                <div class="ja-case ${couleur ? `ja-case--${couleur}` : 'ja-case--centre'}"
+                <div class="ja-case ${couleur ? `ja-case--${couleur} ja-coeur` : 'ja-case--petale'}"
                      style="left:${gauche.toFixed(3)}%;top:${haut.toFixed(3)}%;`
                      + `width:${large.toFixed(3)}%;height:${haute.toFixed(3)}%"
-                     data-cle="${cle}" data-q="${q}" data-r="${r}">
+                     data-cle="${cle}" data-q="${q}" data-r="${r}"
+                     ${couleur ? `data-coeur="${couleur}"` : ''}>
                     ${contenuCase({
         valeur: '', donnee: false, champ: true,
         aria: `Case ${cle}`, motif: '[A-Za-z]'

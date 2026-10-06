@@ -61,7 +61,7 @@ for (const [sel, pourquoi] of [
     ['.ja-cadre', 'le cadre du jardin'],
     ['.ja-case[data-cle]', 'les cases, repérées par leur coordonnée'],
     ['.ja-case input', 'un champ par case'],
-    ['.ja-case--centre', 'le cœur des fleurs, qui n\'est dans aucun mot de six'],
+    ['.ja-case--petale', 'les pétales, blancs, partagés par deux fleurs'],
     ['.ja-rangees .ja-indice', 'les définitions des rangées'],
     ['.ja-groupe--claire', 'le groupe des fleurs claires'],
     ['[data-verifier]', 'le bouton « Vérifier »'],

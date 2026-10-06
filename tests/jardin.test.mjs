@@ -92,10 +92,41 @@ test('un mot ne sert qu\'une fois dans le même jardin', () => {
     aucun(fautifs, 'mots employés deux fois dans un jardin');
 });
 
+test('LES FLEURS SE CHEVAUCHENT — c\'est la correction de Rémy', () => {
+    // ─────────────────────────────────────────────────────────────────────
+    // RÉMY, sur la première livraison : « pour les fleurs, tu as plutôt faux
+    // car ce sont les pétales communes qui créent des mots, c'est en rond en
+    // fait ».
+    //
+    // J'avais pavé le champ de fleurs DISJOINTES — chaque case dans une seule
+    // fleur. C'est un jeu valable, ce n'est pas le sien : dans un Rows Garden
+    // les couronnes se recouvrent, et un pétale partagé porte DEUX mots de six
+    // à la fois. C'est ce qui fait qu'une fleur en aide une autre.
+    //
+    // LA DIFFÉRENCE NE SE VOIT PAS À L'ŒIL sur un jardin rempli : les deux
+    // versions se ressemblent trait pour trait. Elle ne se voit QUE comme ceci,
+    // en comptant combien de fleurs réclament la même case.
+    // ─────────────────────────────────────────────────────────────────────
+    const sans = [];
+    JARDINS.forEach(j => {
+        const partages = j.cases.filter(c =>
+            j.fleurs.filter(f => f.petales.includes(c)).length > 1);
+        if (!partages.length) sans.push(`${j.id} : aucune fleur n'en touche une autre`);
+        // Et jamais trois : le réseau employé donne au plus deux fleurs par
+        // pétale. Trois voudrait dire que la géométrie a changé sans qu'on le
+        // sache.
+        const trop = j.cases.filter(c => j.fleurs.filter(f => f.petales.includes(c)).length > 2);
+        trop.forEach(c => sans.push(`${j.id} : la case ${c} est dans trois fleurs`));
+    });
+    aucun(sans, 'jardins sans pétale partagé');
+});
+
 test('LES COULEURS SE PARTAGENT LES FLEURS À PEU PRÈS ÉGALEMENT', () => {
     // C'est la signature du jeu : les définitions sont rangées par couleur et
     // mélangées dedans. Une couleur qui ne porterait qu'UNE fleur ne cacherait
-    // rien — sa définition irait forcément là. Il en faut au moins deux.
+    // rien — sa définition irait forcément là. Il en faut au moins deux, et
+    // c'est pour cela qu'on n'emploie que DEUX couleurs à quatre ou cinq
+    // fleurs : trois groupes en donneraient un d'une seule.
     const fautifs = [];
     JARDINS.forEach(j => {
         const compte = {};
@@ -107,6 +138,9 @@ test('LES COULEURS SE PARTAGENT LES FLEURS À PEU PRÈS ÉGALEMENT', () => {
         const valeurs = Object.values(compte);
         if (Math.max(...valeurs) - Math.min(...valeurs) > 1) {
             fautifs.push(`${j.id} : partage déséquilibré ${JSON.stringify(compte)}`);
+        }
+        if (Math.min(...valeurs) < 2) {
+            fautifs.push(`${j.id} : une couleur ne porte qu'une fleur ${JSON.stringify(compte)}`);
         }
     });
     aucun(fautifs, 'couleurs mal réparties');

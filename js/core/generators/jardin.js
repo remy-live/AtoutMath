@@ -5,12 +5,23 @@
 // RÉMY : « j'adore le jeu rows garden qui était souvent sur world of puzzles,
 // on pourrait le faire en français avec des mots de math ».
 //
-// LA RÈGLE, en trois lignes. Un champ d'hexagones. Chaque RANGÉE se lit de
-// gauche à droite et porte DEUX réponses bout à bout — on ne dit pas où la
-// première finit. Chaque FLEUR — six hexagones de même couleur autour d'un
-// centre — porte un mot de six lettres qui se lit dans le sens horaire, et l'on
-// ne dit pas par quel pétale il commence. Les définitions des fleurs sont
-// rangées PAR COULEUR et mélangées : trouver laquelle va où fait partie du jeu.
+// LA RÈGLE. Un champ d'hexagones. Chaque RANGÉE se lit de gauche à droite et
+// porte DEUX réponses bout à bout — on ne dit pas où la première finit. Chaque
+// FLEUR est la COURONNE des six hexagones qui entourent un hexagone coloré :
+// elle porte un mot de six lettres lu dans le sens horaire, et l'on ne dit pas
+// par quel pétale il commence. Les définitions des fleurs sont rangées PAR
+// COULEUR et mélangées : trouver laquelle va où fait partie du jeu.
+//
+// ET LES COURONNES SE CHEVAUCHENT. Rémy, sur la première livraison : « pour les
+// fleurs, tu as plutôt faux car ce sont les pétales communes qui créent des
+// mots, c'est en rond en fait ». J'avais pavé le champ de fleurs DISJOINTES —
+// chaque case dans une seule fleur. Dans son jeu, un hexagone blanc appartient
+// à DEUX fleurs, et c'est ce qui les fait s'entraider : une lettre trouvée pour
+// l'une sert aussitôt à l'autre.
+//
+// LA COULEUR EST DONC SUR LE CŒUR, PAS SUR LES PÉTALES, et c'est une
+// conséquence mécanique de la correction : un pétale qui appartient à deux
+// fleurs ne peut pas porter « la » couleur de sa fleur — il en aurait deux.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 //

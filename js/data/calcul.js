@@ -1457,7 +1457,7 @@ export const calculExercises = [
         },
         motsClefs: ['jardin', 'rows garden', 'mots', 'vocabulaire', 'hexagone',
             'fleurs', 'rangées', 'croisés', 'lettres'],
-        instruction: "Remplis le jardin avec des LETTRES. Chaque RANGÉE se lit de gauche à droite et porte DEUX réponses bout à bout : leurs définitions sont données dans l'ordre, mais on ne te dit pas où la première s'arrête. Chaque FLEUR — six hexagones de même couleur autour d'un cœur — porte un mot de six lettres qui se lit dans le sens des aiguilles d'une montre, et on ne te dit pas par quel pétale il commence. Les définitions des fleurs sont rangées PAR COULEUR et mélangées entre elles : savoir qu'une définition va sur une fleur claire ne dit pas sur laquelle. Commence par les rangées, elles te donneront des lettres ; une fleur à moitié remplie n'a plus souvent qu'une seule façon de se poser. Le cœur d'une fleur n'appartient à aucun mot de six : il ne se lit que dans sa rangée. « Vérifier » dit quelles réponses COMPLÈTES sont fausses, trois fois par jardin.",
+        instruction: "Remplis le jardin avec des LETTRES. Chaque RANGÉE se lit de gauche à droite et porte DEUX réponses bout à bout : leurs définitions sont données dans l'ordre, mais on ne te dit pas où la première s'arrête. Chaque FLEUR est la COURONNE des six hexagones blancs qui entourent un hexagone COLORÉ : elle porte un mot de six lettres qui se lit dans le sens des aiguilles d'une montre, et on ne te dit pas par quel pétale il commence. UN HEXAGONE BLANC APPARTIENT SOUVENT À DEUX FLEURS À LA FOIS — c'est ce qui les fait s'entraider : une lettre trouvée pour l'une sert aussitôt à l'autre. L'hexagone coloré, lui, n'entre dans aucun mot de six ; il ne se lit que dans sa rangée. Les définitions des fleurs sont rangées PAR COULEUR et mélangées entre elles : savoir qu'une définition va sur une fleur claire ne dit pas sur laquelle. Commence par les rangées, elles te donneront des lettres ; une fleur à moitié remplie n'a plus souvent qu'une seule façon de se poser. « Vérifier » dit quelles réponses COMPLÈTES sont fausses, trois fois par jardin.",
         apprentissage: {
             intro: "Un jardin se remplit par les rangées, et se termine par les fleurs.",
             regles: [
@@ -1468,8 +1468,13 @@ export const calculExercises = [
                 },
                 {
                     titre: 'Une fleur tourne dans le sens des aiguilles',
-                    texte: "Six pétales autour d'un cœur, un mot de six lettres. Le départ n'est pas donné : c'est aux lettres déjà posées par les rangées de le trahir.",
+                    texte: "Six hexagones blancs autour d'un hexagone coloré, un mot de six lettres. Le départ n'est pas donné : c'est aux lettres déjà posées par les rangées de le trahir.",
                     exemple: '<span class="lec-suite"><b>D</b><b>R</b><b>O</b><b>I</b><b>T</b><b>E</b></span>'
+                },
+                {
+                    titre: 'Deux fleurs se partagent des pétales',
+                    texte: "Les couronnes se chevauchent : un même hexagone blanc sert à DEUX mots de six. Une lettre trouvée pour l'une des deux fleurs est aussitôt donnée à l'autre — c'est là que le jardin se débloque.",
+                    exemple: '<span class="lec-suite"><b>E</b><b>?</b><b>?</b></span>'
                 },
                 {
                     titre: 'Les définitions sont rangées par couleur',

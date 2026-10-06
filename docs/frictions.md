@@ -2462,3 +2462,37 @@ lignes** — 2026-10-01
   seulement le verdict.** « Aucun n'existe » et « je n'en ai pas trouvé » se
   ressemblent dans une sortie de terminal et ne valent pas du tout la même
   chose — surtout quand c'est sur cette phrase qu'on décide de livrer ou non.
+
+## J'ai simplifié une règle sans m'apercevoir que je la simplifiais — 2026-10-06
+
+- *Ce que je voulais faire* : livrer le Rows Garden que Rémy avait demandé par
+  son nom, d'après une description qu'il m'en avait faite en une phrase.
+- *Ce qui a coûté* : j'ai pavé le champ de fleurs DISJOINTES — chaque case dans
+  une seule fleur —, livré, montré une capture, et c'est Rémy qui a corrigé :
+  « pour les fleurs, tu as plutôt faux car ce sont les pétales communes qui
+  créent des mots, c'est en rond en fait ». Une journée de travail sur la
+  mauvaise structure : générateur, fabricant, activité, épreuves, sonde, données.
+  Et la correction en entraîne une seconde, purement mécanique, que je n'avais
+  pas vue non plus : si un pétale appartient à deux fleurs, il ne peut pas
+  porter LA couleur de sa fleur — c'est le CŒUR qui est coloré. J'avais colorié
+  à l'envers.
+- *Combien de fois* : | (mais la famille est connue : c'est celle de
+  l'Approxdoku, où j'ai su m'arrêter pour demander les règles plutôt que de les
+  inventer — et où la page de Friedman a servi de témoin.)
+- *Ce qui manque* : rien à fabriquer, et c'est bien le problème — **aucune
+  épreuve, aucune sonde, aucun harnais ne peut dire qu'on a implémenté le
+  mauvais jeu.** Tout était vert : les rangées se lisaient, les fleurs portaient
+  leur mot, les hexagones tombaient sur leurs voisins. Un logiciel juste, pour
+  un jeu faux.
+- *La règle* : **quand un jeu vient du dehors, il faut un TÉMOIN qui vienne du
+  dehors.** Pour l'Approxdoku, c'était la grille résolue publiée par Erich
+  Friedman : ses cinq équations devaient être justes sous mes règles, et sa
+  grille unique — deux mesures que je ne pouvais pas truquer. Pour le Jardin,
+  je n'avais qu'une phrase, et j'ai construit sur ma lecture de cette phrase
+  sans jamais chercher à la contredire. **Demander une grille résolue coûte un
+  aller-retour ; se tromper de jeu coûte une journée.**
+- *Le signe qui aurait dû m'alerter* : ma géométrie donnait 42 cases pour
+  6 fleurs, quand un Rows Garden de magazine en a 24. Ce chiffre était SOUS MES
+  YEUX — j'avais même mesuré qu'un champ de douze rangées donne 130 cases — et
+  je ne l'ai pas rapproché du jeu réel. **Un chiffre qui ne ressemble pas à
+  celui du modèle est une question, pas un détail.**

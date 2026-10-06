@@ -12841,9 +12841,17 @@ body.en-boite > #app-container { background: none; }
 .ja-case--claire { --ja-fond: #fef3c7; }
 .ja-case--moyenne { --ja-fond: #b6d4f7; }
 .ja-case--foncee { --ja-fond: #8e88dc; }
-/* Le cœur d'une fleur n'appartient à aucun mot de six : il ne se lit que
-   dans sa rangée, et il reste donc neutre, comme dans le jeu d'origine. */
-.ja-case--centre { --ja-fond: #f3f4f6; }
+/* LE PÉTALE EST BLANC, ET C'EST LA RÈGLE DU JEU.
+
+   Rémy : « ce sont les pétales communes qui créent des mots ». Un pétale
+   appartient à DEUX fleurs : il ne peut donc pas porter la couleur de
+   « sa » fleur, il en aurait deux. La couleur marque le CŒUR, autour
+   duquel la couronne se lit — et le cœur, lui, n'entre dans aucun mot de
+   six : il ne se lit que dans sa rangée. */
+.ja-case--petale { --ja-fond: #ffffff; }
+/* Le cœur porte en plus un trait plus épais : il faut le voir d'un coup,
+   c'est lui qui dit où une couronne commence. */
+.ja-coeur::before { inset: 3px; }
 /* UNE CASE FAUSSE ÉPAISSIT SON PROPRE TRAIT : l'ombre intérieure serait
    coupée par la découpe, mais le fond du parent EST le trait. */
 .ja-faux { background: var(--danger); }

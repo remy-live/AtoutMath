@@ -33,7 +33,7 @@
 //     couleur sont mélangées entre elles : trouver OÙ va chaque définition fait
 //     partie du jeu, c'est la signature du Rows Garden.
 //
-//     node tools/fabriquerJardins.mjs [--combien=30] [--forme=2x3] [--secondes=90]
+//     node tools/fabriquerJardins.mjs [--combien=30] [--forme=moyen] [--secondes=90]
 //
 // Sans `--ecrire`, il imprime ce qu'il a trouvé sans toucher à `js/data/`.
 
@@ -74,31 +74,87 @@ const SIX_MATHS = (LEX[6] || []).filter(m => DICO.get(m).maths);
 // fleur, et il doit être le même ici et à l'écran.
 const HORAIRE = [[1, -1], [1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1]];
 
-// Les centres d'un pavage par sept forment un sous-réseau engendré par (1,2) et
-// (3,−1) : une case est centre si (q + 3r) ≡ 0 [7].
-const centre = (a, b) => [a + 3 * b, 2 * a - b];
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// LES FLEURS SE CHEVAUCHENT, ET J'AVAIS FAIT L'INVERSE.
+//
+// RÉMY, sur la première livraison : « pour les fleurs, tu as plutôt faux car ce
+// sont les pétales communes qui créent des mots, c'est en rond en fait ».
+//
+// J'avais pavé le champ de fleurs DISJOINTES — réseau d'indice 7, où chaque
+// case appartient à exactement une fleur. C'est un jeu valable, ce n'est pas le
+// sien : dans un Rows Garden, les couronnes se recouvrent et un pétale partagé
+// porte DEUX mots de six à la fois. C'est ce qui fait qu'une fleur en aide une
+// autre.
+//
+// LE BON RÉSEAU EST D'INDICE 4 — les cases dont q et r sont tous deux pairs.
+// Vérifié en comptant, sur les trois réseaux possibles, combien de cœurs touche
+// un pétale : indice 7 → un seul (ce que j'avais livré), indice 3 → trois,
+// indice 4 → exactement DEUX. Et le compte tombe juste sur le vrai jeu : un
+// champ de douze rangées donne 130 cases et 24 fleurs, qui est très exactement
+// le nombre de fleurs d'un Rows Garden de magazine.
+//
+// ET C'EST LE CŒUR QUI PORTE LA COULEUR, PAS LES PÉTALES. J'avais colorié à
+// l'envers, et la correction de Rémy le dit par sa conséquence : si un pétale
+// appartient à deux fleurs, il ne peut pas porter la couleur de « sa » fleur —
+// il en a deux. La couleur marque donc le cœur, autour duquel la couronne se
+// lit, et les pétales restent blancs. Le cœur, lui, n'entre dans aucun mot de
+// six : il ne se lit que dans sa rangée.
+const estCoeur = (q, r) => ((q % 2) + 2) % 2 === 0 && ((r % 2) + 2) % 2 === 0;
 
+// LES FORMES SONT DES CHAMPS, PAS DES PAQUETS DE FLEURS.
+//
+// Le champ se décrit par la longueur de ses rangées ; les fleurs sont ensuite
+// CHOISIES parmi les cœurs dont les six voisins tiennent dedans. `fleurs` dit
+// combien on en garde — mesuré, c'est là qu'est le plafond du vocabulaire, pas
+// dans la taille du champ.
 const FORMES = {
-    // Rangées 5 7 7 5 : deux rangées à UNE réponse, deux à deux (3+4).
-    losange: { fleurs: 4, centres: [[0, 0], centre(1, 0), centre(0, 1), centre(1, 1)] },
-    // Rangées 5 7 7 7 7 5, six fleurs — deux par couleur, le minimum pour que
-    // les définitions rangées par couleur cachent quelque chose.
-    '2x3': { fleurs: 6, centres: [[0, 0], centre(1, 0), centre(2, 0),
-        centre(0, 1), centre(1, 1), centre(2, 1)] },
-    trapeze: { fleurs: 5, centres: [[0, 0], centre(1, 0), centre(2, 0), centre(0, 1), centre(1, 1)] }
+    // Mesuré avec les 730 mots définis du dépôt : 4 fleurs → 4 essais sur 4 en
+    // 350 ms ; 5 → 2 sur 4 ; 6 → 0 sur 4 en vingt-cinq secondes. Comme les
+    // jardins se composent hors ligne, deux essais sur quatre suffisent.
+    moyen: { longueurs: [11, 12, 13, 12, 13, 12, 11], fleurs: 5 },
+    petit: { longueurs: [9, 10, 11, 12, 11, 10, 9], fleurs: 4 },
+    // NEUF RANGÉES PLUTÔT QUE SEPT, ET SIX FLEURS PLUTÔT QUE CINQ — c'est
+    // contre-intuitif et c'est mesuré : sur le champ de sept rangées, six
+    // fleurs ne sortaient jamais (0/4) ; sur celui-ci, deux fois sur quatre.
+    // Un champ plus long laisse aux fleurs de la place pour se chevaucher SANS
+    // s'étouffer, et six fleurs font trois couleurs de deux — le partage par
+    // couleur ne cache quelque chose qu'à partir de là.
+    grand: { longueurs: [9, 10, 11, 12, 11, 12, 11, 10, 9], fleurs: 6 },
+    // Le vrai format de magazine : 130 cases, 24 fleurs, 53 pétales partagés.
+    // MESURÉ : jamais rempli, même en soixante secondes par essai. On le garde
+    // écrit pour que le jour où le lexique aura encore grossi, il suffise de le
+    // demander.
+    magazine: { longueurs: [9, 10, 11, 12, 13, 12, 13, 12, 11, 10, 9, 8], fleurs: 24 }
 };
 
-function jardin(centres) {
+/**
+ * LE CHAMP, PUIS LES FLEURS QU'ON Y SÈME.
+ *
+ * Les cœurs possibles sont ceux du réseau d'indice 4 dont les six voisins sont
+ * dans le champ. On en garde `combien`, tirés au sort — et ils se CHEVAUCHENT
+ * naturellement, puisque deux cœurs voisins du réseau partagent des pétales.
+ */
+function jardin(forme, rng) {
+    const { longueurs, fleurs: combien } = FORMES[forme];
     const cases = new Map();
-    const fleurs = centres.map(([q, r], i) => {
-        cases.set(`${q},${r}`, { q, r });
-        const petales = HORAIRE.map(([dq, dr]) => {
-            const k = `${q + dq},${r + dr}`;
-            cases.set(k, { q: q + dq, r: r + dr });
-            return k;
-        });
-        return { i, centre: `${q},${r}`, petales };
+    longueurs.forEach((n, L) => {
+        for (let c = 0; c < n; c++) {
+            const q = c - Math.floor(L / 2);
+            cases.set(`${q},${L}`, { q, r: L });
+        }
     });
+
+    const possibles = [];
+    for (const [cle, c] of cases) {
+        if (!estCoeur(c.q, c.r)) continue;
+        const petales = HORAIRE.map(([dq, dr]) => `${c.q + dq},${c.r + dr}`);
+        if (petales.every(p => cases.has(p))) possibles.push({ centre: cle, petales });
+    }
+    const fleurs = (rng ? rng.shuffle([...possibles]) : possibles)
+        .slice(0, combien)
+        .map((f, i) => ({ ...f, i }));
+
     const parR = new Map();
     for (const [cle, c] of cases) { if (!parR.has(c.r)) parR.set(c.r, []); parR.get(c.r).push({ cle, ...c }); }
     const rangees = [...parR.entries()].sort((a, b) => a[0] - b[0])
@@ -107,7 +163,7 @@ function jardin(centres) {
         // n'existe pas de mot de deux lettres, et un mot de trois dans une
         // rangée de trois ne laisse rien à chercher.
         .filter(x => x.cles.length >= 4);
-    return { cases, fleurs, rangees };
+    return { cases, fleurs, rangees, possibles: possibles.length };
 }
 
 // --- Le remplissage -----------------------------------------------------------
@@ -283,14 +339,19 @@ function remplir(j0, rng, finAvant) {
 const COULEURS = ['claire', 'moyenne', 'foncee'];
 
 function composer(forme, nom, graine, secondes) {
-    const j = jardin(FORMES[forme].centres);
     const rng = makeRng(graine);
+    const j = jardin(forme, rng);
     const r = remplir(j, rng, Date.now() + secondes * 1000);
     if (!r) return null;
 
-    // LES COULEURS TOURNENT, elles ne sont pas tirées au sort : trois fleurs
-    // voisines de la même couleur donneraient une couleur de trois définitions
-    // et une autre d'une seule, et le partage ne cacherait plus rien.
+    // AUTANT DE COULEURS QUE DE GROUPES D'AU MOINS DEUX FLEURS.
+    //
+    // C'est tout l'objet du partage : savoir qu'une définition va sur une fleur
+    // claire ne doit pas dire LAQUELLE. Une couleur qui ne porte qu'une seule
+    // fleur livre sa réponse — autant l'écrire à côté du dessin. À quatre
+    // fleurs on n'en emploie donc que deux (2 + 2), à cinq deux aussi (3 + 2),
+    // et trois à partir de six.
+    const palette = COULEURS.slice(0, Math.max(1, Math.min(3, Math.floor(j.fleurs.length / 2))));
     const fleurs = j.fleurs.map((f, i) => {
         const { mot, depart } = r.parFleur.get(f.centre);
         return {
@@ -300,7 +361,7 @@ function composer(forme, nom, graine, secondes) {
             def: DICO.get(mot).def,
             maths: DICO.get(mot).maths,
             depart,
-            couleur: COULEURS[i % COULEURS.length]
+            couleur: palette[i % palette.length]
         };
     });
     const rangees = j.rangees.map(rg => ({
@@ -327,6 +388,14 @@ function composer(forme, nom, graine, secondes) {
     const tous = [...fleurs.map(f => f.mot), ...rangees.flatMap(rg => rg.reponses.map(x => x.mot))];
     if (new Set(tous).size !== tous.length) throw new Error(`${nom} : un mot sert deux fois`);
 
+    // ET LES FLEURS SE CHEVAUCHENT VRAIMENT. C'est la correction de Rémy — « ce
+    // sont les pétales communes qui créent des mots » —, donc c'est à vérifier
+    // et non à espérer : un jardin dont aucune fleur n'en touche une autre est
+    // retombé dans la version simplifiée sans que rien ne le signale.
+    const partages = [...j.cases.keys()]
+        .filter(c => fleurs.filter(f => f.petales.includes(c)).length > 1);
+    if (!partages.length) throw new Error(`${nom} : aucune fleur n'en touche une autre`);
+
     return { id: nom, cases: [...j.cases.keys()], rangees, fleurs };
 }
 
@@ -337,9 +406,9 @@ const arg = (nom, defaut) => {
     return t ? t.slice(nom.length + 3) : defaut;
 };
 const combien = Number(arg('combien', 20));
-const forme = arg('forme', '2x3');
+const forme = arg('forme', 'moyen');
 const secondes = Number(arg('secondes', 90));
-const mathsMini = Number(arg('mathsMini', Math.ceil((FORMES[arg('forme', '2x3')] || { fleurs: 2 }).fleurs / 2)));
+const mathsMini = Number(arg('mathsMini', Math.ceil((FORMES[arg('forme', 'moyen')] || { fleurs: 2 }).fleurs / 2)));
 const ecrire = process.argv.includes('--ecrire');
 
 if (!FORMES[forme]) {
@@ -348,8 +417,14 @@ if (!FORMES[forme]) {
 }
 
 console.log(`lexique : ${DICO.size} mots définis, dont ${SIX_MATHS.length} de six lettres en maths`);
-console.log(`forme « ${forme} » : ${FORMES[forme].fleurs} fleurs — on en veut ${combien}, `
-    + `${secondes} s au plus par jardin, ${mathsMini} fleur(s) de maths au moins\n`);
+{
+    const apercu = jardin(forme, null);
+    console.log(`forme « ${forme} » : ${apercu.cases.size} cases, `
+        + `${FORMES[forme].fleurs} fleurs sur ${apercu.possibles} emplacements, `
+        + `rangées ${apercu.rangees.map(r => r.cles.length).join(' ')}`);
+}
+console.log(`on en veut ${combien}, ${secondes} s au plus par jardin, `
+    + `${mathsMini} fleur(s) de maths au moins\n`);
 
 const jardins = [];
 let essais = 0;
