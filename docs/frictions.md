@@ -2891,3 +2891,41 @@ lignes** — 2026-10-01
   y ramener les neuf autres **quand on passera dessus pour une autre raison**.
   Toucher neuf fichiers pour une refonte cosmétique fait un diff qu'on ne relit
   pas, et un diff qu'on ne relit pas est là où se cachent les défauts.
+
+## Redessiner depuis le gestionnaire du nœud qu'on redessine — 2026-10-06
+
+- **Ce que je voulais faire** : le glisser-déposer « hyper facile » que Rémy a
+  demandé — prendre un mot sur la toile et le traîner.
+- **Ce qui coûte** : trois mesures et deux faux diagnostics. Le gestionnaire de
+  `pointerdown` et celui de `pointermove` appelaient `peindreToile()`, qui
+  **remplace le `<svg>`** — c'est-à-dire le nœud même depuis lequel ils écoutent.
+  Deux dégâts, et ils ne ressemblent pas à leur cause :
+  · `setPointerCapture` sur un nœud détaché jette `InvalidStateError` ;
+  · surtout, l'élément n'avançait que **d'un pas de souris sur huit** — le
+    second `pointermove` arrivait sur un nœud mort. On croit avoir mal visé, on
+    recommence, et le « hyper facile » demande deux essais sur deux.
+- **Combien de fois** : || (la forme se reproduira : tout écran de ce dépôt qui
+  se redessine en entier à chaque changement — et ils le font TOUS, c'est la
+  convention de la maison — a ce piège dès qu'il écoute un geste CONTINU. Le
+  glissé est le premier ; une poignée de redimensionnement serait le deuxième.)
+- **Ce qui manque** : une règle écrite, et elle tient en une phrase — **un geste
+  continu ne redessine que ce qui bouge, jamais son conteneur**. Et de quoi la
+  garder : `tools/sonde.mjs` pourrait offrir `s.glisser(selecteur, dx, dy)` qui
+  vérifie lui-même que l'objet a parcouru la distance DEMANDÉE.
+
+## Une mesure qui ne vérifie que le SIGNE ne mesure rien — 2026-10-06
+
+- **Ce que je voulais faire** : prouver que le glissé marche.
+- **Ce qui coûte** : une journée de fausse assurance. Ma sonde disait
+  `motApres.x > motAvant.x` — « la coordonnée a augmenté ». Elle passait au vert
+  pendant que l'élément n'avançait que d'un huitième du geste. **Le défaut était
+  sous la mesure, et la mesure disait oui.** Corrigée, elle calcule la distance
+  attendue en unités de toile et tolère six unités ; le défaut est alors sauté
+  aux yeux en une exécution.
+- **Combien de fois** : || (même famille que l'épreuve verte qui ne gardait rien,
+  qui a valu `epreuveTombe.mjs`. Ici l'épreuve n'est pas fausse : elle est
+  FAIBLE, ce qui ne se voit pas du tout.)
+- **Ce qui manque** : une habitude à écrire dans CLAUDE.md § 3 — **une sonde qui
+  mesure un déplacement, une durée ou un compte dit la VALEUR attendue, jamais
+  seulement son sens**. `epreuveTombe.mjs` attrape l'épreuve qui ne garde rien ;
+  rien n'attrape encore l'épreuve qui garde à moitié.

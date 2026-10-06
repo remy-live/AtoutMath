@@ -39,6 +39,7 @@ import {
     GENRES, LIBELLES_GENRE, EMOJIS_GENRE, LISTES, normaliser as vueCommune, decalagePour
 } from '../data/quotidien.js';
 import { figureSvg, FIGURES } from '../data/enigmesFigures.js';
+import { indiceDonneLaReponse } from '../core/indiceQuiDonne.js';
 import { copierDans, telechargerTexte, jourPourFichier } from './exporter.js';
 import { showToast } from './modal.js';
 
@@ -384,31 +385,11 @@ export function avisSur(genre, entree, liste = []) {
             dits.push('Pas d\'explication : « 15 » ne s\'apprend pas, le raisonnement s\'apprend.');
         }
         // LA RÈGLE D'OR, et elle ne se voit pas à l'œil dans une liste de cent :
-        // « UN INDICE QUI NE DONNE PAS LA RÉPONSE ».
-        //
-        // DEUX PRÉCAUTIONS, ET J'AI PAYÉ LES DEUX. Ma première version cherchait
-        // la réponse comme simple sous-chaîne de l'indice, et elle a dénoncé
-        // quatre énigmes sur cent — toutes à tort :
-        //
-        //   · une réponse d'UN CHIFFRE se retrouve partout. « Les unités des
-        //     puissances de 7 tournent : 7, 9, 3, 1 » contient « 1 », qui est la
-        //     réponse, mais l'indice donne le CYCLE : il reste à compter jusqu'à
-        //     la quatrième. C'est la méthode, pas la réponse.
-        //
-        //   · une réponse NOMBRE est presque toujours citée en route. Un indice
-        //     utile dit « enlève d'abord les 20 € d'écart » ; refuser tout nombre
-        //     de l'indice interdirait d'expliquer quoi que ce soit.
-        //
-        // On ne garde donc que le cas qui compte : la réponse en MOTS, écrite
-        // telle quelle dans l'indice. « Le 47ᵉ jour » ou « racine carrée » dans
-        // un indice, c'est la réponse donnée ; « 2 » ne l'est pas.
-        //
-        // UNE MESURE QUI CRIE QUATRE FOIS POUR RIEN NE SERA PLUS LUE — et c'est
-        // ce qui serait arrivé : Rémy aurait vu quatre avertissements faux sur
-        // ses énigmes validées, et il aurait cessé de regarder l'encart.
-        const mots = rep.replace(/[^\p{L}]+/gu, ' ').trim();
-        if (mots.length >= 4 && ind && new RegExp(`(^|[^\\p{L}])${
-            rep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^\\p{L}]|$)`, 'iu').test(ind)) {
+        // « UN INDICE QUI NE DONNE PAS LA RÉPONSE ». Elle vit dans
+        // `core/indiceQuiDonne.js`, qui porte aussi les deux précautions qu'elle
+        // a coûtées — et l'atelier des dingbats emploie LA MÊME. Une règle
+        // subtile écrite à deux endroits finit par ne plus dire la même chose.
+        if (indiceDonneLaReponse(ind, rep)) {
             dits.push(`L'indice contient la réponse « ${rep} » : il la donne au lieu de la faire chercher.`);
         }
         if (entree.figure && !FIGURES[entree.figure]) {

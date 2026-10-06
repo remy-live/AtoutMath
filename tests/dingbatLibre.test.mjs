@@ -27,7 +27,8 @@ import {
 } from '../js/core/dingbat.js';
 import {
     TOILE, COULEURS, FORMES_LIBRES, couleurCss, elementNeuf, dessinerElement,
-    rendreLibre, validerLibre, enigmeEnJson, enigmeEnTexte, direLibre
+    rendreLibre, validerLibre, enigmeEnJson, enigmeEnTexte, direLibre,
+    lotEnTexte, lireUnLot
 } from '../js/core/dingbatLibre.js';
 
 /** Une composition complète, du genre que l'atelier produit. */
@@ -261,5 +262,93 @@ test('LES FORMES ET LES ÉLÉMENTS NEUFS SE POSENT OÙ ON LES VOIT', () => {
             assert.ok(!/height="60"|ry="30"/.test(svg),
                 `« ${f.nom} » se laisse donner une hauteur différente de sa largeur`);
         }
+    }
+});
+
+// ── CE QUE LA SECONDE DEMANDE DE RÉMY A AJOUTÉ ─────────────────────────────
+//
+// « Qu'il se sauve au fur et à mesure et je te les enverrai grâce à un bouton
+// exporter. […] Et on peut mettre des indices. »
+
+test('UNE ÉNIGME PORTE PLUSIEURS INDICES, ET LE JEU LES SERT DANS L\'ORDRE', () => {
+    const d = exemple({
+        aides: ['Regarde ce qui entoure le mot.', 'La forme a quatre côtés égaux.']
+    });
+    const suite = indices(d);
+    // LES SIENS D'ABORD, DANS SON ORDRE — du plus discret au plus parlant. Les
+    // deux que le jeu ajoute toujours (la tournure, puis la première lettre)
+    // viennent après, parce qu'ils en disent plus.
+    assert.equal(suite[0], 'Regarde ce qui entoure le mot.');
+    assert.equal(suite[1], 'La forme a quatre côtés égaux.');
+    assert.equal(suite.length, 4);
+    assert.match(suite[suite.length - 1], /commence par/);
+    // ET AUCUN NE DONNE LA RÉPONSE : la règle de `core/itemSession.js`, qu'un
+    // indice bavard contournerait.
+    for (const i of suite) assert.ok(!juste(i, d), `un indice donne la réponse : « ${i} »`);
+
+    // LES CENT NEUF N'ONT QU'UN INDICE, nommé `aide` au singulier, et elles ne
+    // changent pas : les deux écritures cohabitent, sinon il aurait fallu
+    // réécrire cent neuf lignes pour ajouter un « s ».
+    assert.deepEqual(indices(exemple({ aides: undefined, aide: 'Un seul.' }))[0], 'Un seul.');
+    // Un indice vide ne s'affiche pas : il ferait une marche pour rien.
+    assert.equal(indices(exemple({ aides: ['', '  ', 'Le vrai.'] }))[0], 'Le vrai.');
+});
+
+test('UN INDICE QUI DONNE LA RÉPONSE EST SIGNALÉ AVANT L\'EXPORT', () => {
+    const dit = (e) => validerLibre(e).map(a => a.dit).join(' | ');
+    assert.match(dit(exemple({ aides: ['C\'est la racine carrée, voilà.'] })),
+        /n° 1 contient la réponse/);
+    assert.match(dit(exemple({ aides: ['Bon indice.', '   '] })), /n° 2 est vide/);
+    // ET LA MOITIÉ DE LA RÉPONSE N'EST PAS LA RÉPONSE : « racine » seul est
+    // précisément ce qu'un bon indice dit.
+    assert.deepEqual(validerLibre(exemple({ aides: ['Le mot RACINE est enfermé.'] })), []);
+});
+
+test('L\'EXPORT ÉCRIT `aide` POUR UN, `aides` POUR PLUSIEURS', () => {
+    // CE FICHIER SE RELIT À L'ŒIL, cent neuf lignes à la file, et les cent neuf
+    // disent `aide`. Une entrée qui écrirait `aides: ['…']` pour un seul indice
+    // sauterait aux yeux comme une faute — et l'on perdrait une minute à
+    // comprendre qu'elle n'en est pas une.
+    const un = enigmeEnJson(exemple({ aides: ['Un seul.'] }));
+    assert.equal(un.aide, 'Un seul.');
+    assert.ok(!('aides' in un));
+
+    const deux = enigmeEnJson(exemple({ aides: ['Premier.', 'Second.'] }));
+    assert.deepEqual(deux.aides, ['Premier.', 'Second.']);
+    assert.ok(!('aide' in deux));
+
+    // Aucun indice : ni l'un ni l'autre, plutôt qu'un champ vide qu'on croirait.
+    const zero = enigmeEnJson(exemple({ aides: ['', '  '] }));
+    assert.ok(!('aide' in zero) && !('aides' in zero));
+});
+
+test('LA RÉCOLTE S\'EXPORTE ENTIÈRE, ET SE RELIT', () => {
+    // Rémy : « je te les enverrai grâce à un bouton exporter ». Ce qu'il envoie
+    // n'est pas UNE énigme mais sa récolte de la semaine.
+    const texte = lotEnTexte([exemple(), exemple({ id: 'dg-deux', reponse: 'demi-tour' })]);
+    const brut = JSON.parse(texte);
+    assert.equal(brut.quoi, 'dingbats');
+    // ON DIT COMBIEN IL Y EN A : un fichier de huit cents lignes ne le dit pas
+    // de lui-même, et si j'en colle onze alors qu'il en avait douze, personne ne
+    // s'en apercevra.
+    assert.equal(brut.combien, 2);
+    assert.equal(brut.dingbats.length, 2);
+
+    // ET CE QU'ON ÉCRIT SE RELIT — c'est la boucle entière : il compose, il
+    // m'envoie, je colle, et six semaines plus tard il retouche.
+    assert.equal(lireUnLot(texte).length, 2);
+    // Les deux formes circulent : la récolte, et l'énigme seule recopiée depuis
+    // `js/data/dingbats.js`.
+    assert.equal(lireUnLot(enigmeEnTexte(exemple())).length, 1);
+    assert.equal(lireUnLot(JSON.stringify([enigmeEnJson(exemple())])).length, 1);
+    // Ce qui n'est ni l'un ni l'autre JETTE, plutôt que de rendre une récolte
+    // vide qu'on croirait relue.
+    assert.throws(() => lireUnLot('{"quoi":"autre chose"}'), /ni une composition/);
+
+    // ET CHAQUE ÉNIGME DE LA RÉCOLTE RESTE JOUABLE : c'est tout ce qui compte à
+    // la sortie.
+    for (const d of lireUnLot(texte)) {
+        assert.ok(dessiner(d).replace(/<[^>]*>/g, '').trim().length > 0);
+        for (const e of attendues(d)) assert.ok(juste(e, d));
     }
 });

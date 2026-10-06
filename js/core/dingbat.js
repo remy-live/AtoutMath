@@ -401,7 +401,18 @@ export function indices(d) {
     const forme = DISPOSITIONS[d.forme];
     const mots = String(d.reponse).trim().split(/\s+/);
     const suite = [];
-    if (d.aide) suite.push(d.aide);
+    // UN INDICE OU PLUSIEURS, ET LES DEUX ÉCRITURES COHABITENT.
+    //
+    // Rémy : « et on peut mettre des indices ». Les cent neuf énigmes écrites à
+    // la main n'en portent qu'un, nommé `aide`, et les réécrire toutes pour
+    // ajouter un « s » serait cent neuf lignes changées pour rien. Celles qui
+    // sortent de l'atelier en portent autant qu'il veut, sous `aides`.
+    //
+    // L'ORDRE EST CELUI QU'IL A ÉCRIT : du plus discret au plus parlant, comme
+    // la suite entière. Un indice qui donnerait trop tôt casserait la marche.
+    const siennes = Array.isArray(d.aides) ? d.aides : (d.aide ? [d.aide] : []);
+    siennes.map(x => String(x == null ? '' : x).trim()).filter(Boolean)
+        .forEach(x => suite.push(x));
     if (forme) suite.push(`Ce qu'il faut voir : ${forme.lit}.`);
     suite.push(mots.length === 1
         ? `La réponse est UN seul mot, et il commence par « ${mots[0][0].toUpperCase()} ».`

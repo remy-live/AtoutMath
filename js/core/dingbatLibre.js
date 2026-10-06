@@ -51,6 +51,8 @@
 // Sept couleurs nommées en français, toutes lisibles sur les cinq thèmes. C'est
 // « choisir la couleur » sans la possibilité de choisir une couleur invisible.
 
+import { indiceDonneLaReponse } from './indiceQuiDonne.js';
+
 /** Le HTML est fabriqué ici : tout ce qui vient des données est échappé. */
 // Oui, `core/dingbat.js` a le même. Le lui importer créerait un cycle — il
 // importe CE module pour sa disposition `libre` —, et trois lignes dupliquées
@@ -361,6 +363,24 @@ export function validerLibre(enigme) {
     if (!String((enigme && enigme.reponse) || '').trim()) {
         avis.push({ element: null, dit: 'Pas de réponse écrite : l\'énigme serait insoluble.' });
     }
+
+    // LES INDICES, UN PAR UN. Rémy : « et on peut mettre des indices ». Chacun
+    // doit dire la PREMIÈRE CHOSE À REGARDER, jamais la réponse — et un indice
+    // qui la donne contournerait la règle de `core/itemSession.js` (« on ne donne
+    // pas la réponse tant qu'il lui reste un essai »). La règle elle-même, et les
+    // deux faux signalements qu'elle a coûtés, vivent dans `core/indiceQuiDonne.js`.
+    const aides = (Array.isArray(enigme && enigme.aides) ? enigme.aides
+        : ((enigme && enigme.aide) ? [enigme.aide] : []));
+    aides.forEach((a, k) => {
+        if (!String(a == null ? '' : a).trim()) {
+            avis.push({ element: null, dit: `L'indice n° ${k + 1} est vide : il ne s'affichera pas.` });
+        } else if (indiceDonneLaReponse(a, enigme.reponse)) {
+            avis.push({
+                element: null,
+                dit: `L'indice n° ${k + 1} contient la réponse : il la donne au lieu de la faire chercher.`
+            });
+        }
+    });
     return avis;
 }
 
@@ -425,9 +445,54 @@ export function enigmeEnJson(enigme) {
     const variantes = (e.variantes || [])
         .map(v => String(v).trim()).filter(Boolean);
     if (variantes.length) sortie.variantes = variantes;
-    if (String(e.aide || '').trim()) sortie.aide = String(e.aide).trim();
+
+    // UN SEUL INDICE S'ÉCRIT `aide`, PLUSIEURS S'ÉCRIVENT `aides` — et ce n'est
+    // pas une coquetterie. `js/data/dingbats.js` se relit à l'œil, cent neuf
+    // lignes à la file, et les cent neuf disent `aide`. Une entrée qui écrirait
+    // `aides: ['…']` pour un seul indice sauterait aux yeux comme une faute, et
+    // l'on perdrait une minute à comprendre qu'elle n'en est pas une. Le moteur
+    // lit les deux (voir `indices()`), donc c'est à l'export de choisir la forme
+    // qui ressemble au voisinage.
+    const aides = (Array.isArray(e.aides) ? e.aides : (e.aide ? [e.aide] : []))
+        .map(a => String(a == null ? '' : a).trim()).filter(Boolean);
+    if (aides.length === 1) sortie.aide = aides[0];
+    else if (aides.length > 1) sortie.aides = aides;
+
     if (String(e.explication || '').trim()) sortie.explication = String(e.explication).trim();
     return sortie;
+}
+
+/**
+ * TOUT CE QU'ON A COMPOSÉ, EN UN SEUL TEXTE.
+ *
+ * Rémy : « qu'il se sauve au fur et à mesure et je te les enverrai grâce à un
+ * bouton exporter ». Ce qu'il m'envoie n'est donc pas UNE énigme mais SA
+ * RÉCOLTE — celles de la semaine, composées entre deux cours.
+ *
+ * ON DIT COMBIEN IL Y EN A. Un fichier de huit cents lignes ne dit pas de
+ * lui-même combien d'énigmes il porte, et c'est la première chose que je veux
+ * savoir en le recevant : si j'en colle onze et qu'il en avait douze, personne
+ * ne s'en apercevra.
+ */
+export function lotEnTexte(enigmes) {
+    const liste = (enigmes || []).map(enigmeEnJson);
+    return JSON.stringify({
+        quoi: 'dingbats',
+        combien: liste.length,
+        dingbats: liste
+    }, null, 4);
+}
+
+/** Relire ce que `lotEnTexte` a écrit — ou une énigme seule, collée telle quelle. */
+export function lireUnLot(texte) {
+    const brut = JSON.parse(texte);
+    // LES DEUX FORMES SONT ACCEPTÉES, parce que les deux circulent : la récolte
+    // entière que l'atelier exporte, et l'énigme seule qu'on recopie depuis
+    // `js/data/dingbats.js` pour la retoucher.
+    if (brut && Array.isArray(brut.dingbats)) return brut.dingbats;
+    if (Array.isArray(brut)) return brut;
+    if (brut && Array.isArray(brut.elements)) return [brut];
+    throw new Error('ce texte ne porte ni une composition ni une récolte de compositions');
 }
 
 /**

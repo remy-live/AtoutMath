@@ -13591,3 +13591,128 @@ body.en-boite > #app-container { background: none; }
     .atq-colonne--liste, .atq-colonne--vue { flex: 1 1 auto; max-width: none; width: 100%; }
     .atq-liste { max-height: 30vh; }
 }
+
+/* --- L'ATELIER DES DINGBATS, SECONDE PASSE --------------------------------
+   Rémy : « qu'il se sauve au fur et à mesure et je te les enverrai grâce à un
+   bouton exporter. Du drag drop facile, qqch d'hyper facile. » */
+
+/* LE MOT QUI DIT QUE C'EST ENREGISTRÉ. Il est là en permanence, en gris, et
+   s'allume une seconde à chaque enregistrement : une promesse qu'on ne voit
+   jamais tenue n'est pas une promesse. Il ne CLIGNOTE pas — un clignotement
+   attire l'œil loin de la toile à chaque frappe. */
+.dgl-sauve {
+    margin-left: auto; font-size: .74rem; font-weight: 700;
+    color: var(--text-muted); transition: color .25s ease;
+}
+.dgl-sauve--frais { color: var(--success-texte); }
+
+/* LA BANDE DES COMPOSITIONS. Elle défile horizontalement : une récolte de vingt
+   dingbats ne tient pas en largeur, et l'empiler mangerait la toile. */
+.dgl-bande {
+    display: flex; gap: 8px; align-items: stretch;
+    overflow-x: auto; padding: 2px 2px 6px;
+    scrollbar-width: thin;
+}
+.dgl-vignette { position: relative; flex: 0 0 auto; }
+.dgl-vignette-btn {
+    display: flex; flex-direction: column; gap: 4px; align-items: center;
+    width: 104px; padding: 6px; cursor: pointer; font: inherit;
+    border: 2px solid var(--border); border-radius: 11px;
+    background: var(--bg-panel); color: var(--text-main);
+}
+@media (hover: hover) {
+    .dgl-vignette-btn:hover { border-color: var(--primary); }
+}
+.dgl-vignette--courante .dgl-vignette-btn { border-color: var(--primary); background: var(--bg-hover); }
+.dgl-vignette-dessin {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 52px; overflow: hidden;
+}
+.dgl-vignette-dessin svg { max-width: 100%; max-height: 52px; height: auto; }
+.dgl-vignette-vide { font-size: .7rem; color: var(--text-muted); font-style: italic; }
+.dgl-vignette-nom {
+    font-size: .7rem; font-weight: 700; line-height: 1.2;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dgl-vignette-x {
+    position: absolute; top: -4px; right: -4px;
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    color: var(--danger-texte); font-size: .72rem; font-weight: 800; line-height: 1;
+}
+.dgl-vignette-neuve {
+    display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center;
+    flex: 0 0 auto; width: 78px; cursor: pointer; font: inherit; font-size: 1.1rem; font-weight: 800;
+    border: 2px dashed var(--border); border-radius: 11px;
+    background: none; color: var(--text-muted);
+}
+.dgl-vignette-neuve span { font-size: .68rem; font-weight: 700; }
+@media (hover: hover) {
+    .dgl-vignette-neuve:hover { border-color: var(--primary); color: var(--primary-texte); }
+}
+.dgl-vignette-reprendre { border-style: solid; color: var(--warning-texte); border-color: var(--warning-texte); }
+
+/* LA RÉSERVE. Chaque pièce porte son VRAI rendu en petit — un aperçu dessiné à
+   part finirait par ne plus ressembler à ce qu'on pose. */
+.dgl-reserve { display: flex; flex-wrap: wrap; gap: 6px; }
+.dgl-piece {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    width: 72px; padding: 4px 2px; cursor: grab; font: inherit;
+    border: 2px solid var(--border); border-radius: 10px;
+    background: var(--bg-panel); color: var(--text-main);
+    /* SANS CECI, GLISSER UNE PIÈCE FAIT DÉFILER LA PAGE au doigt : le navigateur
+       prend le geste pour un balayage avant que nous ne le voyions. */
+    touch-action: none;
+    -webkit-user-select: none; user-select: none;
+}
+.dgl-piece svg { width: 56px; height: 38px; }
+.dgl-piece-nom { font-size: .65rem; font-weight: 700; color: var(--text-muted); }
+@media (hover: hover) {
+    .dgl-piece:hover { border-color: var(--primary); }
+}
+/* LA PIÈCE EN MAIN SE VOIT. Sans cela, on touche « Un mot », on ne comprend pas
+   que l'appui suivant posera un mot, et l'on retouche la pièce — ce qui la
+   repose. Deux gestes pour rien, et l'impression que rien ne marche. */
+.dgl-piece--prise {
+    border-color: var(--primary); background: var(--bg-hover);
+    box-shadow: 0 0 0 2px var(--primary) inset;
+}
+.dgl-consigne--active { color: var(--primary-texte); font-weight: 700; }
+
+/* LE FANTÔME QUI SUIT LE DOIGT. Il ne reçoit aucun événement, sans quoi il
+   serait lui-même la cible du relâché et la pièce ne se poserait jamais. */
+.dgl-fantome {
+    position: fixed; z-index: 9999; pointer-events: none;
+    transform: translate(-50%, -50%); opacity: .85;
+    border: 2px solid var(--primary); border-radius: 10px;
+    background: var(--bg-panel); padding: 2px;
+}
+.dgl-fantome svg { display: block; width: 56px; height: 38px; }
+
+/* LA TOILE RÉPOND QUAND ON LA VISE, et quand on tient une pièce. Sans retour,
+   on ne sait pas si l'on peut lâcher — alors on lâche à côté. */
+.dgl-toile--visee { border-color: var(--primary); }
+.dgl-toile--pose { cursor: copy; }
+.dgl-toile-vide {
+    fill: var(--text-muted); font-size: 18px; font-weight: 700;
+    opacity: .75; pointer-events: none;
+}
+
+/* LES INDICES, EN LISTE NUMÉROTÉE — l'ordre compte : du plus discret au plus
+   parlant, et le logiciel les donne un à un dans cet ordre-là. */
+.dgl-aide-ligne { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.dgl-aide-n {
+    flex: 0 0 auto; width: 18px; text-align: center;
+    font-size: .72rem; font-weight: 800; color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.dgl-aide-ligne input {
+    flex: 1 1 auto; min-width: 0;
+    border: 1px solid var(--border); border-radius: 9px; padding: 6px 9px;
+    font: inherit; font-size: .84rem; background: var(--bg-panel); color: var(--text-main);
+}
+.dgl-aide-x {
+    flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-hover);
+    color: var(--danger-texte); font-size: .74rem; font-weight: 800;
+}
