@@ -26,19 +26,24 @@
 // et l'on rend « non ». Le pavé s'ouvre alors à la demande, pour cette séance —
 // ce qui est déjà ce qu'on demandait.
 
-// ── DEUX RÉGLAGES, ET C'EST LE MOMENT DE LES NOMMER ENSEMBLE ────────────────
+// ── IL Y EN A EU DEUX, IL N'EN RESTE QU'UN, ET C'EST INSTRUCTIF ─────────────
 //
-// Le premier était le pavé du Prio-Bot. Le second est arrivé le jour même :
-// Rémy, devant la marche « écrire » de la symétrie — « là il faudrait encore
-// le point d'interrogation qui donne les coordonnées du point et de la
-// droite ». Même forme exactement : une touche, rien ne bouge tant qu'on ne
-// l'a pas pressée, et l'appareil s'en souvient.
+// Le second réglage était celui des écritures de la symétrie : un bouton « ? »
+// sur la marche « écrire », que l'appareil se rappelait d'avoir vu presser.
+// Rémy l'a essayé en classe et l'a retiré — « c'est le point ? qui n'est pas
+// instinctif, et qui disparaît d'ailleurs quand on clique dessus » : les bulles
+// sont maintenant allumées d'emblée, et il n'y a plus rien à se rappeler.
 //
-// On les range donc au même endroit plutôt que de recopier dix lignes. Deux
-// est le moment : à un, c'est prématuré ; à trois, on a déjà deux copies qui
-// ont divergé.
+// ON SUPPRIME DONC SA CLEF ET SES DEUX FONCTIONS plutôt que de les garder « au
+// cas où » : un réglage que personne ne lit est un réglage dont on croira un
+// jour qu'il règle quelque chose. La forme générale — `vouluSurCePoste` et
+// `seSouvenirSurCePoste` — reste, elle : c'est elle qui a servi deux fois, et
+// elle resservira.
+//
+// (La clef déjà posée chez les élèves qui ont pressé le « ? » ne gêne personne :
+// plus rien ne la lit, et `localStorage` n'est pas une base de données qu'on
+// migre.)
 export const CLE_PAVE = 'atoutmath.pave.voulu';
-export const CLE_ECRITURES = 'atoutmath.ecritures.voulues';
 
 /** Ce réglage a-t-il été demandé sur CET appareil ? */
 export function vouluSurCePoste(cle) {
@@ -48,16 +53,6 @@ export function vouluSurCePoste(cle) {
 
 /** L'élève a-t-il demandé le pavé sur CET appareil ? */
 export const paveVoulu = () => vouluSurCePoste(CLE_PAVE);
-
-/**
- * A-t-il demandé à voir COMMENT chaque droite et chaque point s'écrivent ?
- *
- * Ce n'est pas un indice : toutes les droites disent la leur, pas seulement la
- * bonne. Savoir que (d₂) s'écrit « x = 6 » ne dit pas que (d₂) est l'axe
- * cherché — c'est une aide à la LECTURE, comme la calculatrice, et elle ne
- * coûte donc rien à la note.
- */
-export const ecrituresVoulues = () => vouluSurCePoste(CLE_ECRITURES);
 
 /**
  * S'en souvenir — ou l'oublier.
@@ -75,6 +70,5 @@ export function seSouvenirSurCePoste(cle, oui) {
 }
 
 export const seSouvenirDuPave = (oui) => seSouvenirSurCePoste(CLE_PAVE, oui);
-export const seSouvenirDesEcritures = (oui) => seSouvenirSurCePoste(CLE_ECRITURES, oui);
 
 export const POUR_ESSAI = { CLE: CLE_PAVE };

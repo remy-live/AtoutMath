@@ -2628,3 +2628,36 @@ lignes** — 2026-10-01
   appelants du même geste** — et si la règle est recopiée, la poser dans un seul
   fichier et garder par une épreuve le fait que personne n'en refait une copie
   (`tests/plusFacultatif.test.mjs` le fait).
+
+---
+
+## Une aide derrière un bouton n'est pas une aide — 2026-10-06
+
+- **Ce que je voulais faire** : rendre l'aide au survol disponible sur la marche
+  « écrire » de « Symétrique par rapport à quoi », comme Rémy venait de le
+  demander pour la deuxième fois.
+- **Ce qui a coûté** : trois versions pour une seule question, et les deux
+  premières sont de moi. (1) J'avais ÉTEINT la bulle sur cette marche, en
+  raisonnant seul : « l'élève doit écrire x = 6 lui-même, la bulle lui donnerait
+  la réponse ». (2) Rémy demande un « ? » ; je le pose, avec un réglage par
+  appareil, une feuille de style et **quatre épreuves** qui le gardent. (3) Il
+  l'essaie en classe : « c'est le point ? qui n'est pas instinctif, et qui
+  disparaît d'ailleurs quand on clique dessus ». Les quatre épreuves partent
+  avec le bouton. Et mon objection de départ était fausse depuis le début —
+  toutes les droites disent la leur, pas seulement la bonne, donc la bulle ne
+  donne rien. Je l'avais même ÉCRIT, deux fois, sans en tirer la conséquence.
+- **Combien de fois** : || (la première était le pavé numérique du Prio-Bot,
+  arrivé par le même chemin : « si on ne demande rien, ne change pas le
+  design » — là c'était justifié, puisqu'il change la mise en page. Une bulle au
+  survol ne change rien tant qu'on ne survole pas.)
+- **Ce qui manque** : pas un outil, une question à se poser. **Avant de mettre
+  une aide derrière un geste, se demander ce qu'elle révélerait si elle était
+  toujours là.** Si la réponse est « rien que l'élève ne doive chercher ailleurs »
+  — et c'est le cas dès que TOUS les éléments parlent, pas seulement le bon —
+  alors le geste n'est qu'un obstacle, et un obstacle qu'il faut deviner.
+- **Et un piège de dépendance mesuré au passage** : un bouton qui s'efface après
+  usage (« un bouton qui n'allume plus rien est un bouton cassé », ce qui est
+  vrai) rend l'aide **inexplicable** : celui qui l'a pressé ne sait plus d'où
+  viennent les bulles, celui qui ne l'a pas vu ne sait pas qu'il existe. Les deux
+  règles sont justes séparément et incompatibles ensemble — l'issue est de ne pas
+  avoir de bouton.

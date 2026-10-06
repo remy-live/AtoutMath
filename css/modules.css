@@ -1661,26 +1661,12 @@ html[data-point="plus"] .pt-croix { display: none; }
 .sy-label { flex: 1 1 100%; text-align: center; font-weight: 700; font-size: .95rem; }
 /* Le rappel de la notation est en petit : il aide sans dicter la réponse. */
 .sy-label span { display: block; font-weight: 500; font-size: .82rem; color: var(--text-muted); }
-/* LE POINT D'INTERROGATION DE RÉMY — « là il faudrait encore le point
-   d'interrogation qui donne les coordonnées du point et de la droite ».
-
-   44 PX SUR 44, comme toute cible qu'un doigt doit atteindre : il est posé à
-   côté d'un champ de saisie, c'est-à-dire là où le pouce arrive déjà.
-
-   IL SE VOIT SANS CRIER : c'est une aide, pas la consigne. La teinte du
-   primaire à 12 %, et la bordure pleine seulement au survol. */
-.sy-demander {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 44px; height: 44px; margin-left: 8px; vertical-align: middle;
-    border: 2px solid transparent; border-radius: 50%;
-    background: color-mix(in srgb, var(--primary) 12%, transparent);
-    color: var(--primary-texte, var(--primary)); font: inherit;
-    font-size: 1.15rem; font-weight: 800; cursor: pointer;
-}
-@media (hover: hover) and (pointer: fine) {
-    .sy-demander:hover { border-color: var(--primary); }
-}
-.sy-demander:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* IL Y AVAIT ICI UN BOUTON « ? », DE 44 PX SUR 44, qui allumait les écritures
+   des droites sur la marche « écrire ». Rémy l'a vu en classe : « en fait c'est
+   le point ? qui n'est pas instinctif, et qui disparaît d'ailleurs quand on
+   clique dessus ». Les bulles sont maintenant là d'emblée, à toutes les marches,
+   et le bouton n'a plus de raison d'être — ni ses règles.
+   Voir js/core/activities/symetrieElement.js. */
 .sy-champ {
     width: min(190px, 60vw); padding: 10px 14px; border-radius: 12px;
     border: 2px solid var(--border); background: var(--bg-panel);

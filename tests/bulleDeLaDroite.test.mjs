@@ -8,27 +8,36 @@
 // tooltip visible qui donne les coordonnées du point ou l'équation de la droite
 // x = 6 ou y = 8 par exemple et il faut le signaler ».
 //
-// ── CE QUI SE DÉCIDE ICI, ET QUI N'ÉTAIT PAS DANS SA DEMANDE ────────────────
+// ── TROIS TEMPS POUR Y ARRIVER, DONT DEUX FAUX. C'EST L'HISTOIRE DE CE FICHIER.
 //
-// SUR LA MARCHE « ÉCRIRE », LA BULLE NE PARAÎT PAS. C'est la seule décision
-// que Rémy n'a pas prise, parce qu'il pensait à l'enseignement et pas à
-// l'exercice : sur cette marche-là, l'élève doit ÉCRIRE « x = 6 » lui-même.
-// Une bulle qui l'affiche au survol ne lui enseignerait plus rien, elle lui
-// donnerait la réponse à recopier — et la marche cesserait d'être une marche.
+//   1. J'avais ÉTEINT la bulle sur la marche « écrire », en raisonnant seul :
+//      l'élève doit écrire « x = 6 » lui-même, une bulle qui l'affiche lui
+//      donnerait la réponse à recopier. L'argument paraissait solide, et ce
+//      fichier l'a porté en gras pendant des semaines.
+//   2. Rémy : « là il faudrait encore le point d'interrogation qui donne les
+//      coordonnées ». J'ai mis un bouton « ? » qui l'allumait, et que l'appareil
+//      se rappelait d'avoir vu presser.
+//   3. Rémy, l'ayant essayé en classe : « en fait c'est le point ? qui n'est pas
+//      instinctif, et qui disparaît d'ailleurs quand on clique dessus. Mets par
+//      défaut quand on passe ou clique dessus. »
 //
-// L'escalier existe précisément pour ça : on DÉCOUVRE la notation sur les deux
-// premières marches, où elle ne coûte rien, et on la RESTITUE seul sur la
-// troisième.
+// SES DEUX GRIEFS SE TIENNENT, ET LE SECOND DÉCOUSAIT LE PREMIER. Le bouton
+// s'effaçait dès qu'il avait servi — c'était voulu, « un bouton qui n'allume
+// plus rien est un bouton cassé » —, si bien que l'élève qui l'avait pressé une
+// fois ne pouvait plus comprendre d'où venaient les bulles, et celui qui ne
+// l'avait jamais remarqué ne savait pas qu'il existait. Une aide qu'il faut
+// deviner n'est pas une aide.
 //
-// ET ELLE NE TRAHIT RIEN SUR LES DEUX PREMIÈRES : toutes les droites disent la
-// leur, pas seulement la bonne. Savoir que (d₂) s'écrit « x = 6 » ne dit pas
-// que (d₂) est l'axe cherché.
+// ET MON OBJECTION DE DÉPART ÉTAIT FAUSSE, ce qui rend la décision facile : la
+// bulle ne donne PAS la réponse. Toutes les droites disent la leur, pas
+// seulement la bonne. Savoir que (d₂) s'écrit « x = 6 » ne dit pas que (d₂) est
+// l'axe cherché — il reste à trouver LAQUELLE, et c'est toute la question.
 //
-// MESURÉ dans un vrai navigateur, sur « Symétrique par Rapport à Quoi ? » :
-//   marche « choisir » → 4 zones, qui disent « y = 3 », « x = 9 », « x = 6 »
-//                        et « (4 ; 5) » ; la bulle paraît au survol ET au
-//                        doigt, et s'en va quand la souris s'en va.
-//   marche « écrire »  → 0 zone. Rien à recopier.
+// MESURÉ dans un vrai navigateur (tools/mesureAideSymetrie.mjs), les neuf
+// combinaisons de marche et de taille :
+//   AVANT   choisir et cliquer → 3, 4 et 5 zones qui parlent toutes ;
+//           écrire → 0 zone aux trois tailles, puis 4 après le « ? ».
+//   APRÈS   les neuf combinaisons parlent, et il n'y a plus de « ? ».
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -103,21 +112,25 @@ test('CE QU\'ELLE DIT EST CE QUE L\'ÉLÈVE DEVRA ÉCRIRE — le même module', 
     assert.equal(ecrireElement(10, axe('v', 6)), 'x = 6,5');
 });
 
-test('SUR LA MARCHE « ÉCRIRE », AUCUNE DROITE NE DIT RIEN — tant qu\'on n\'a rien demandé', () => {
-    // LA DÉCISION QUE RÉMY N'A PAS PRISE D'ABORD, et la raison d'être de ce
-    // fichier. Il l'a prise le lendemain, et mieux : pas « jamais », mais
-    // « derrière un point d'interrogation » — voir la fin du fichier. Le
-    // défaut par défaut reste donc : rien ne se dit tant que personne ne
-    // demande.
+test('CHAQUE DROITE DIT COMMENT ELLE S\'ÉCRIT, À TOUTES LES MARCHES', () => {
+    // RÉMY : « mets par défaut quand on passe ou clique dessus ». Il n'y a donc
+    // plus de condition du tout — et c'est cela qu'on garde, parce que les deux
+    // versions précédentes en avaient une, chacune juste à sa façon et chacune
+    // retirée par l'usage en classe.
     const SRC = lire('js/core/activities/symetrieElement.js');
-    assert.match(SRC, /const avecEcriture = marche !== 'ecrire' \|\| ecrituresVoulues\(\);/);
-    assert.match(SRC, /const montres = avecEcriture\s*\n\s*\? candidats\.map/);
+    assert.match(SRC,
+        /const montres = candidats\.map\(c => \(\{ \.\.\.c, dit: ecrireElement\(m\.hauteur, c\) \}\)\);/,
+        'les écritures doivent être posées sans condition');
+    // AUCUNE TRACE DE LA CONDITION D'AVANT. Sans cette ligne, un `if` remis
+    // discrètement sur la marche « écrire » passerait inaperçu.
+    assert.ok(!/avecEcriture|ecrituresVoulues/.test(SRC),
+        'une condition est revenue sur les écritures : Rémy les a demandées par défaut');
     // Et c'est `montres` qui part au dessin, pas `candidats`.
     assert.match(SRC, /elements: montres,/);
 });
 
-test('AU DOIGT AUSSI — c\'est la moitié de la classe', () => {
-    // Sur une tablette il n'y a pas de survol. La bulle répond donc à trois
+test('AU DOIGT ET AU CLIC AUSSI — c\'est la moitié de la classe', () => {
+    // Sur une tablette il n'y a pas de survol. La bulle répond donc à quatre
     // gestes, et le doigt la laisse le temps de lire : un doigt envoie bien
     // `pointerenter`, mais il n'enverra JAMAIS le `pointerleave` qui va avec,
     // et sans la tenue la bulle resterait ouverte jusqu'à la question suivante.
@@ -125,6 +138,12 @@ test('AU DOIGT AUSSI — c\'est la moitié de la classe', () => {
     assert.match(SRC, /addEventListener\('pointerenter'/);
     assert.match(SRC, /addEventListener\('pointerleave'/);
     assert.match(SRC, /addEventListener\('focus'/);
+    // LE CLIC ÉTAIT DANS SA DEMANDE DEPUIS LE PREMIER JOUR — « si la souris
+    // passe sur une droite ou sur un point OU QU'IL CLIQUE DESSUS » — et il
+    // n'était pas branché. À la souris cela ne se voyait pas, un clic étant
+    // toujours précédé d'un survol ; pour l'élève qui vise et appuie, si.
+    assert.match(SRC, /addEventListener\('pointerdown'/,
+        'le clic doit montrer la bulle : Rémy l\'a demandé deux fois');
     assert.match(SRC, /montrer\(cible, e\.pointerType !== 'mouse'\)/);
     assert.match(SRC, /if \(e\.pointerType === 'mouse'\) cacher\(\);/);
     // `regTimeout` ET NON `setTimeout` : un minuteur laissé derrière soi
@@ -156,71 +175,50 @@ test('ELLE SE SIGNALE, ET ELLE NE SE MET PAS DEVANT CE DONT ELLE PARLE', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// ET SUR LA MARCHE « ÉCRIRE », DERRIÈRE UN POINT D'INTERROGATION.
+// IL Y A EU UN BOUTON « ? » ICI, ET IL N'A PAS SURVÉCU À LA CLASSE.
 //
-// RÉMY, capture de cette marche-là à l'appui : « là il faudrait encore le point
-// d'interrogation qui donne les coordonnées du point et de la droite ».
+// Rémy l'avait demandé — « là il faudrait encore le point d'interrogation qui
+// donne les coordonnées du point et de la droite » —, et quatre épreuves le
+// gardaient : son existence sur la seule marche « écrire », le souvenir par
+// appareil, le fait qu'il ne comptait pas comme un indice, ses 44 px sur 44.
+// Toutes les quatre étaient justes, et toutes les quatre sont parties avec lui.
 //
-// SA FORMULATION LÈVE L'OBJECTION QUE J'AVAIS POSÉE. J'avais éteint les bulles
-// ici parce qu'afficher « x = 6 » au survol donnerait la réponse à recopier sur
-// la marche qui demande justement de l'écrire. Mais DERRIÈRE UN POINT
-// D'INTERROGATION, ce n'est plus un cadeau : c'est l'élève qui demande, d'un
-// geste, et il sait ce qu'il demande.
+// RÉMY, APRÈS L'AVOIR ESSAYÉ : « en fait c'est le point ? qui n'est pas
+// instinctif, et qui disparaît d'ailleurs quand on clique dessus. Mets par
+// défaut quand on passe ou clique dessus. »
 //
-// ET ÇA NE DONNE TOUJOURS PAS LA RÉPONSE : toutes les droites disent la leur,
-// pas seulement la bonne. Il reste à trouver LAQUELLE, et c'est la question.
-// D'où aussi le fait que ça ne compte pas comme un indice — c'est une aide à la
-// LECTURE, comme la calculatrice, et elle ne coûte rien à la note.
-//
-// MESURÉ dans un vrai navigateur, marche « écrire » :
-//   AVANT   0 zone, un bouton « ? » de 44 × 44
-//   APRÈS   4 zones — « y = 5 », « (3 ; 3) », « (3 ; 1) », « (5 ; 2) » —,
-//           le bouton disparu, le réglage gardé, le champ toujours là,
-//           et la bulle qui paraît au survol.
+// LES DEUX ÉPREUVES QUI RESTENT SONT CELLES QUI GARDENT SA DÉCISION : qu'il ne
+// revienne ni bouton, ni réglage, ni condition. Une aide par défaut se défait
+// en remettant un `if` de trois mots ; c'est cela qu'on surveille.
 
-test('LE « ? » EXISTE SUR LA MARCHE QUI DEMANDE D\'ÉCRIRE, et seulement là', () => {
+test('IL N\'Y A PLUS DE BOUTON « ? », NI DE RÉGLAGE QUI L\'ACCOMPAGNAIT', () => {
     const SRC = lire('js/core/activities/symetrieElement.js');
-    // Il est posé dans la zone de réponse de l'écriture, pas dans les deux
-    // autres : ailleurs, les bulles sont déjà allumées et il n'ouvrirait rien.
-    const i = SRC.indexOf('const quoi =');
-    const bloc = SRC.slice(i, SRC.indexOf('</div>', i));
-    assert.ok(bloc.length > 200, 'tranche vide : le test ne vérifierait rien');
-    assert.match(bloc, /data-sy-ecritures/);
-    // ET IL SE TAIT DÈS QU'IL A SERVI : un bouton qui n'allume plus rien est un
-    // bouton cassé.
-    assert.match(bloc, /const demander = ecrituresVoulues\(\) \? '' : `<button/);
+    assert.ok(!/data-sy-ecritures|sy-demander/.test(SRC),
+        'le bouton « ? » est revenu : Rémy l\'a retiré, « pas instinctif »');
+    assert.ok(!/seSouvenirDesEcritures|ecrituresVoulues/.test(SRC),
+        'le réglage par appareil est revenu : il n\'y a plus rien à se rappeler');
+    // ET SA FEUILLE DE STYLE AUSSI EST PARTIE. Une règle qui habille un élément
+    // que personne ne dessine plus se garde des années par superstition.
+    const CSS = lire('css/modules.css');
+    assert.ok(!/^\.sy-demander/m.test(CSS), '.sy-demander habille un bouton qui n\'existe plus');
+    // LE CHAMP DE SAISIE, LUI, EST TOUJOURS LÀ : c'est la marche « écrire », et
+    // supprimer le bouton ne doit pas avoir emporté la zone de réponse.
+    assert.match(SRC, /id="sy-champ"/);
+    assert.match(SRC, /data-valider/);
 });
 
-test('IL ALLUME LES ÉCRITURES, ET L\'APPAREIL S\'EN SOUVIENT', () => {
-    const SRC = lire('js/core/activities/symetrieElement.js');
-    assert.match(SRC, /const avecEcriture = marche !== 'ecrire' \|\| ecrituresVoulues\(\);/);
-    assert.match(SRC, /seSouvenirDesEcritures\(true\);/);
-    // Un élève qui ne tient pas la notation ne la tient pas davantage à la
-    // question suivante : la lui redemander à chaque fois, ce serait la lui
-    // refuser.
-    const i = SRC.indexOf('demander.onclick');
-    const bloc = SRC.slice(i, i + 200);
-    assert.match(bloc, /render\(\);/, 'le dessin ne se refait pas : rien ne s\'allume');
-});
-
-test('MAIS IL NE DIT PAS LAQUELLE — ce n\'est donc pas un indice', () => {
-    // LA RAISON POUR LAQUELLE ÇA NE COÛTE RIEN À LA NOTE. Si seul le bon
-    // élément disait son écriture, le « ? » serait la réponse déguisée.
+test('ET AUCUNE DROITE N\'EST SEULE À PARLER — ce n\'est donc pas un indice', () => {
+    // LA RAISON POUR LAQUELLE L'AIDE PAR DÉFAUT NE COÛTE RIEN À LA NOTE, et
+    // c'est elle qui a fait tomber mon objection d'origine. Si seul le bon
+    // élément disait son écriture, la bulle serait la réponse déguisée.
     const SRC = lire('js/core/activities/symetrieElement.js');
     // Les écritures sont posées sur TOUS les candidats, d'un seul `map`.
-    assert.match(SRC, /\? candidats\.map\(c => \(\{ \.\.\.c, dit: ecrireElement\(m\.hauteur, c\) \}\)\)/);
-    // Et le geste ne passe PAS par le compteur d'indices de la session.
-    const i = SRC.indexOf('demander.onclick');
-    const bloc = SRC.slice(i, i + 300);
+    assert.match(SRC,
+        /const montres = candidats\.map\(c => \(\{ \.\.\.c, dit: ecrireElement\(m\.hauteur, c\) \}\)\);/);
+    // Et montrer la bulle ne passe PAS par le compteur d'indices de la session.
+    const i = SRC.indexOf('function brancherLaBulle');
+    const bloc = SRC.slice(i, SRC.indexOf('function brancher()', i));
+    assert.ok(bloc.length > 400, 'tranche vide : le test ne vérifierait rien');
     assert.ok(!/useHint|hintIndex|session\.indice/.test(bloc),
-        'montrer les écritures compte comme un indice : il ne donne pourtant rien');
-});
-
-test('LE « ? » SE TOUCHE AU DOIGT — 44 px, comme toute cible', () => {
-    const CSS = lire('css/modules.css');
-    assert.match(CSS, /\.sy-demander \{[^}]*width: 44px; height: 44px;/);
-    assert.match(CSS, /\.sy-demander:focus-visible \{ outline:/);
-    // `--primary-texte` ET NON `--primary` : l'un est un FOND, l'autre du TEXTE
-    // sur le fond de la page. La confusion a déjà coûté un contraste.
-    assert.match(CSS, /\.sy-demander \{[^}]*color: var\(--primary-texte/);
+        'la bulle compte comme un indice : elle ne donne pourtant rien');
 });

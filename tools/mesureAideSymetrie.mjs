@@ -7,8 +7,14 @@
 // clique dessus, on a un petit tooltip visible qui donne les coordonnées du
 // point ou l'équation de la droite ».
 //
-// Puis, aujourd'hui : « tu as bien mis l'aide quand la souris passe sur un
-// point ou une droite quelque soit le niveau ? »
+// Puis : « tu as bien mis l'aide quand la souris passe sur un point ou une
+// droite quelque soit le niveau ? » — la réponse mesurée était « non » : la
+// marche « écrire » n'avait aucune zone, l'aide y était derrière un bouton « ? ».
+//
+// Puis, l'ayant essayé en classe : « en fait c'est le point ? qui n'est pas
+// instinctif, et qui disparaît d'ailleurs quand on clique dessus. Mets par
+// défaut quand on passe ou clique dessus. » Ce que cette sonde mesure
+// maintenant : les neuf combinaisons, au survol ET au clic.
 //
 // LA RÉPONSE NE SE LIT PAS DANS LE CODE, parce qu'elle dépend de TROIS choses
 // qui se combinent : la MARCHE (choisir / cliquer / écrire), la TAILLE du
@@ -50,7 +56,13 @@ for (const mode of MARCHES) {
             const tous = [...document.querySelectorAll('.qd-el-hit')];
             const disent = tous.filter(e => e.hasAttribute('data-dit'));
             // ON SURVOLE POUR DE VRAI : la bulle n'existe qu'au `pointerenter`.
-            let bulleVue = 0, exemple = '';
+            // ET L'ON CLIQUE POUR DE VRAI AUSSI, séparément. Rémy l'a demandé
+            // deux fois — « si la souris passe […] ou qu'il clique dessus »,
+            // puis « quand on passe ou clique dessus » — et ce n'était branché
+            // que pour le survol. À la souris le défaut est invisible, un clic
+            // étant toujours précédé d'un survol : il faut donc mesurer le
+            // `pointerdown` SEUL, après avoir fait partir le survol.
+            let bulleVue = 0, clicVu = 0, exemple = '';
             for (const c of disent.slice(0, 3)) {
                 c.dispatchEvent(new PointerEvent('pointerenter',
                     { bubbles: true, pointerType: 'mouse' }));
@@ -65,64 +77,63 @@ for (const mode of MARCHES) {
                 c.dispatchEvent(new PointerEvent('pointerleave',
                     { bubbles: true, pointerType: 'mouse' }));
                 await new Promise(ok => setTimeout(ok, 80));
+
+                // LE CLIC SEUL, survol refermé.
+                c.dispatchEvent(new PointerEvent('pointerdown',
+                    { bubbles: true, pointerType: 'mouse' }));
+                await new Promise(ok => setTimeout(ok, 120));
+                const b2 = document.querySelector('.sy-bulle');
+                if (b2 && !b2.hidden && (b2.textContent || '').trim()) clicVu++;
+                c.dispatchEvent(new PointerEvent('pointerleave',
+                    { bubbles: true, pointerType: 'mouse' }));
+                await new Promise(ok => setTimeout(ok, 80));
             }
             return {
-                candidats: tous.length, disent: disent.length, bulleVue, exemple,
-                pointInterrogation: !!document.querySelector('button[aria-label*="s\'écrit"], button[aria-label*="Comment"]')
+                candidats: tous.length, disent: disent.length, bulleVue, clicVu, exemple,
+                // LE BOUTON « ? » NE DOIT PLUS EXISTER. On le cherche encore,
+                // pour le dire s'il revenait : Rémy l'a retiré — « pas
+                // instinctif, et il disparaît quand on clique dessus ».
+                pointInterrogation: !!document.querySelector('[data-sy-ecritures], .sy-demander')
             };
         });
         // CE QU'ON JUGE EST LA BULLE QUI S'OUVRE, pas l'attribut qui la porte.
         // Un `data-dit` posé sans que rien ne l'affiche serait une aide
         // parfaitement invisible — et l'épreuve, parfaitement verte.
-        const ok = vu.disent === vu.candidats && vu.candidats > 0 && vu.bulleVue > 0;
+        const ok = vu.disent === vu.candidats && vu.candidats > 0
+            && vu.bulleVue > 0 && vu.clicVu > 0;
         if (!ok) manques++;
         const marque = ok ? '\x1b[32mok  \x1b[0m' : '\x1b[33mnon \x1b[0m';
         console.log(`  ${marque} ${mode.padEnd(8)} ${taille.padEnd(8)} ${String(vu.candidats).padStart(5)}`
-            + `   ${String(vu.disent).padStart(5)}   bulle ${vu.bulleVue}/3`
+            + `   ${String(vu.disent).padStart(5)}   survol ${vu.bulleVue}/3   clic ${vu.clicVu}/3`
             + (vu.exemple ? `   « ${vu.exemple.slice(0, 28)} »` : '')
-            + (vu.pointInterrogation ? '   [bouton ?]' : ''));
+            + (vu.pointInterrogation ? '   \x1b[31m[le bouton ? est revenu]\x1b[0m' : ''));
     }
 }
 
-// ── ET SUR LA MARCHE « ÉCRIRE », APRÈS AVOIR APPUYÉ SUR « ? » ──────────────
+// ── ET LA MARCHE « ÉCRIRE » A GARDÉ SA ZONE DE RÉPONSE ─────────────────────
 //
-// RÉMY, capture de cette marche à l'appui : « là il faudrait encore le point
-// d'interrogation qui donne les coordonnées du point et de la droite ». La
-// bulle n'est donc pas absente de cette marche : elle est DERRIÈRE un geste,
-// pour ne pas donner à recopier ce qu'on demande d'écrire.
+// LE TÉMOIN DE CETTE CORRECTION-LÀ. Supprimer le bouton « ? » voulait dire
+// toucher au gabarit de la zone de saisie, où il était posé contre l'étiquette.
+// Un `</div>` de travers et le champ partait avec lui — les neuf lignes
+// ci-dessus resteraient vertes, et l'élève n'aurait plus où répondre.
 console.log('─'.repeat(72));
 await s.ouvrirExercice('geo-pavage', { reponse: 'ecrire', taille: 'moyen', especes: ['axe', 'point'] });
 await dormir(1400);
-const apresLePoint = await s.page.evaluate(async () => {
-    const q = [...document.querySelectorAll('button')]
-        .find(b => (b.getAttribute('aria-label') || '').includes('Comment'));
-    if (!q) return { raté: 'pas de bouton « ? » sur la marche écrire' };
-    q.click();
-    await new Promise(ok => setTimeout(ok, 700));
-    const cibles = [...document.querySelectorAll('.qd-el-hit[data-dit]')];
-    let bulle = '';
-    if (cibles[0]) {
-        cibles[0].dispatchEvent(new PointerEvent('pointerenter', { bubbles: true, pointerType: 'mouse' }));
-        await new Promise(ok => setTimeout(ok, 150));
-        const b = document.querySelector('.sy-bulle');
-        bulle = (b && !b.hidden && (b.textContent || '').trim()) || '';
-    }
-    return { raté: null, cibles: cibles.length, bulle };
-});
-if (apresLePoint.raté) {
-    manques++;
-    console.log(`  \x1b[31mnon \x1b[0m écrire + « ? »   ${apresLePoint.raté}`);
-} else {
-    const ok = apresLePoint.cibles > 0 && apresLePoint.bulle;
-    if (!ok) manques++;
-    console.log(`  ${ok ? '\x1b[32mok  \x1b[0m' : '\x1b[31mnon \x1b[0m'} écrire + « ? »   `
-        + `${apresLePoint.cibles} candidat(s) parlent   « ${apresLePoint.bulle} »`);
-}
+const zoneDEcriture = await s.page.evaluate(() => ({
+    champ: !!document.querySelector('#sy-champ'),
+    valider: !!document.querySelector('[data-valider]'),
+    bouton: !!document.querySelector('[data-sy-ecritures], .sy-demander')
+}));
+const zoneOk = zoneDEcriture.champ && zoneDEcriture.valider && !zoneDEcriture.bouton;
+if (!zoneOk) manques++;
+console.log(`  ${zoneOk ? '\x1b[32mok  \x1b[0m' : '\x1b[31mnon \x1b[0m'} écrire : zone de réponse   `
+    + `champ ${zoneDEcriture.champ ? 'oui' : 'NON'} · bouton Valider `
+    + `${zoneDEcriture.valider ? 'oui' : 'NON'} · bouton « ? » `
+    + `${zoneDEcriture.bouton ? 'REVENU' : 'parti'}`);
 
 console.log('─'.repeat(72));
 console.log(manques
     ? `${manques} combinaison(s) sans aide au survol — voir le détail ci-dessus`
-    : '\x1b[32mL\'AIDE EST LÀ PARTOUT : au survol sur « choisir » et « cliquer », '
-      + 'derrière le « ? » sur « écrire ».\x1b[0m');
+    : '\x1b[32mL\'AIDE EST LÀ PARTOUT, AU SURVOL ET AU CLIC, AUX TROIS MARCHES.\x1b[0m');
 console.log(`erreurs de page : ${s.erreurs.length}`);
 await s.fermer();
