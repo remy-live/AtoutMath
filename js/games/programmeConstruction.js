@@ -994,6 +994,7 @@ export class ProgrammeConstruction extends BaseGame {
 
     /** Le même geste, mot à mot, quand l'élève descend l'arbre des phrases. */
     async gesteDemoArbre(cursor, ins, valeurs) {
+        const robot = meneurDemo(cursor, null, null, null, { rangementSeul: true });
         const op = OPERATIONS[ins.op];
         for (const v of [verbeDe(op), op.id, ...valeurs]) {
             const mot = [...this.arbreEl.querySelectorAll('[data-mot]')]

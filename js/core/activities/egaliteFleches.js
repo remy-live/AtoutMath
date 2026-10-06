@@ -243,6 +243,7 @@ export function mount(container, session, opts = {}) {
     async function runDemo() {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
         const m = item.meta;
         // `souffler` passait par `cursor.pause` directement, et refaisait donc la
         // garde à la main derrière le dos du meneur. Il la lui laisse.

@@ -645,6 +645,7 @@ class Chantier extends BaseGame {
 
     /** Joue la solution du niveau courant, un coup expliqué à la fois. */
     async demoNiveau(cur, gate) {
+        const robot = meneurDemo(cur, gate, () => this.isRunning, null, { rangementSeul: true });
         const sol = resoudre(this.etat, 200000) || [];
         for (const { id, dir } of sol) {
             if (!await robot.tour()) return false;

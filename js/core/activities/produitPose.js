@@ -507,6 +507,7 @@ export function mount(container, session, opts = {}) {
     async function runDemo() {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
         const souffler = (ms) => cursor.pause(ms);
         const vise = (sel) => container.querySelector(sel);
 

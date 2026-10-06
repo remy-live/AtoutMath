@@ -561,6 +561,7 @@ export function mount(container, session, opts = {}) {
     async function runDemo(target, setBuffer, screen, item) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
         if (!await robot.tour()) return;
         if (!await robot.pause(600)) return;
 
@@ -624,6 +625,7 @@ export function mount(container, session, opts = {}) {
     async function runDemoTrous(item, valeurs, setBuffer, viser, screen) {
         if (!cursor) cursor = createDemoCursor();
         if (!gate) gate = createDemoGate(container);
+        const robot = meneurDemo(cursor, gate, () => !destroyed, null, { rangementSeul: true });
         if (!await robot.tour()) return;
         if (!await robot.pause(600)) return;
 

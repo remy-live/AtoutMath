@@ -2540,3 +2540,29 @@ lignes** — 2026-10-01
   il COMPTE avant d'écrire — c'est exactement la garde qui manquait. **La règle :
   un script jetable qui contient une apostrophe s'écrit dans un fichier de
   `tools/tmp/` et se lance par son nom ; jamais par `node -e`.**
+
+---
+
+## ~~Un `robot` hors de sa portée : 35 minutes de navigateur pour une ligne qui se lit~~ — 2026-10-06
+
+- **Ce que je voulais faire** : migrer les 674 gardes de démonstration vers
+  `core/meneurDemo.js` et savoir si j'avais cassé quelque chose.
+- **Ce qui a coûté** : la migration déclarait UN meneur par fichier et réécrivait
+  les gardes de TOUT le fichier. Cinq fichiers ont deux ou trois fonctions de
+  démonstration : leurs gardes lisaient un `robot` hors de leur portée.
+  `node --check` passe — `robot.tour()` est une expression valide même quand
+  `robot` n'existe nulle part. `npm test` passe — 4 641 épreuves, aucune n'ouvre
+  une démonstration. **Seul `tools/robotsMuets.mjs` l'a vu : 19 erreurs de page
+  contre 0 avant, au bout de 35 minutes de navigateur.** Et il a fallu les
+  mesurer DEUX fois, avant et après, soit soixante-dix minutes au total.
+- **Combien de fois** : |
+- **Ce qui manque** : c'est fabriqué — `tools/gardesDemo.mjs` calcule la portée
+  de chaque `const robot = meneurDemo(…)` par comptage d'accolades et nomme
+  toute garde qui en sort, en deux cents millisecondes.
+  `tests/gardesDemo.test.mjs` l'appelle à chaque `npm test`, et elle a été vue
+  tomber en remettant le défaut exact.
+- **La règle** : *une erreur qui n'existe qu'à l'exécution ne se cherche pas au
+  navigateur si elle se lit dans la source.* Le navigateur dit si une
+  démonstration EXPLIQUE quelque chose ; il ne doit pas servir à découvrir
+  qu'une variable n'est pas déclarée. Chaque fois qu'une mesure de trente-cinq
+  minutes répond à une question statique, c'est qu'il manque un outil.
