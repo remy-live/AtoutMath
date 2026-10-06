@@ -58,12 +58,12 @@
     <!-- Le suffixe ?v= force le navigateur à retélécharger la feuille après
          une modification : une URL jamais vue ne peut pas venir du cache.
          À incrémenter quand on touche au CSS. -->
-    <link rel="stylesheet" href="css/base.css?v=951">
-    <link rel="stylesheet" href="css/layout.css?v=951">
-    <link rel="stylesheet" href="css/ui.css?v=951">
-    <link rel="stylesheet" href="css/games.css?v=951">
-    <link rel="stylesheet" href="css/components.css?v=951">
-    <link rel="stylesheet" href="css/modules.css?v=951">
+    <link rel="stylesheet" href="css/base.css?v=952">
+    <link rel="stylesheet" href="css/layout.css?v=952">
+    <link rel="stylesheet" href="css/ui.css?v=952">
+    <link rel="stylesheet" href="css/games.css?v=952">
+    <link rel="stylesheet" href="css/components.css?v=952">
+    <link rel="stylesheet" href="css/modules.css?v=952">
     <!-- LES BIBLIOTHÈQUES SONT SERVIES AVEC L'APPLICATION, plus depuis un CDN.
          Une classe derrière un filtre d'établissement, un réseau qui tombe, un
          bloqueur de publicité : il suffisait de l'un des trois pour que le
@@ -414,6 +414,37 @@
             <button class="debug-btn" id="db-atelier" title="L'Atelier : le jeu, la feuille et le robot côte à côte"
                     aria-label="Ouvrir l'Atelier">
                 <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M11 4v16M11 12h10"/></svg>
+            </button>
+            <!-- L'ATELIER DES DINGBATS : poser des mots, les orienter, les
+                 colorer, ajouter des traits et des formes, et en sortir le JSON
+                 d'une énigme. Rémy : « qqch pour éditer des dingbats et les
+                 transformer en json. Globalement un éditeur de lettre où on peut
+                 choisir l'orientation la couleur rajouter des traits des
+                 formes. »
+                 Les cent neuf énigmes du jeu ne passent pas par là : elles sont
+                 écrites à la main et validées à l'œil. Cet atelier fabrique la
+                 vingt-deuxième disposition, celle dont le dessin vient des
+                 données. L'icône : un carré et une lettre posée dessus.
+                 CES DEUX BOUTONS SONT VOISINS, et ce n'est pas un hasard : ce
+                 sont les deux seuls outils de la palette qui ÉCRIVENT du
+                 contenu. Tous les autres regardent. -->
+            <button class="debug-btn" id="db-atelier-dingbats"
+                    title="Atelier des dingbats : composer une énigme et en sortir le JSON"
+                    aria-label="Ouvrir l'atelier des dingbats">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7.5 15.5 10 9l2.5 6.5"/><path d="M8.4 13.5h3.2"/><path d="M17.5 4.5v4M15.5 6.5h4"/></svg>
+            </button>
+            <!-- L'ATELIER DU QUOTIDIEN : écrire et retoucher les quatre listes
+                 du jour — conseils, blagues, citations, énigmes. Rémy : « tu me
+                 fais dans le debug un atelier pour les phrases énigmes du jour
+                 (ça on a déjà) ».
+                 La revue savait les TRIER (« celle-là oui, celle-là non ») ; elle
+                 ne savait pas les ÉCRIRE. Quand une énigme est presque bonne —
+                 l'indice en dit trop, l'explication manque — le tri ne sait que
+                 la jeter. L'icône : un calendrier avec une plume. -->
+            <button class="debug-btn" id="db-atelier-quotidien"
+                    title="Atelier du quotidien : écrire les conseils, blagues, citations et énigmes"
+                    aria-label="Ouvrir l'atelier du quotidien">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 5V3M16 5V3"/><path d="m10 18 7-7 2 2-7 7h-2z"/></svg>
             </button>
             <!-- LA BARRE DE PASSE. Rémy : « garder les mini-barres, c'est bien
                  aussi. » Un écran d'auteur est une PAGE : il faut le fermer

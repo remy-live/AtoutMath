@@ -1416,8 +1416,15 @@ body.teacher-mode .student-only { display: none !important; }
    eux qui avait fait abandonner `flex-wrap` la première fois.
    Le défilement horizontal reste, en dernier recours : à vingt icônes sur un
    petit téléphone, deux rangées ne suffiront plus non plus. */
+/* DIX COLONNES POUR VINGT ICÔNES — soit DEUX rangées pleines, ce que
+   `tests/paletteAuteur.test.mjs` exige. Elle était à neuf pour dix-huit ; les
+   deux ateliers d'auteur (dingbats, quotidien) en font vingt, et sans ce
+   réglage la palette passait à trois rangées — c'est-à-dire qu'elle recouvrait
+   une rangée de touches de plus sur un téléphone, précisément le défaut que
+   Rémy avait signalé sur le Duel des Tables. Le nombre d'icônes est dans la
+   page et le nombre de colonnes ici : rien ne les relie, sauf cette épreuve. */
 .dbg-tools {
-    display: grid; grid-auto-flow: row; grid-template-columns: repeat(9, auto);
+    display: grid; grid-auto-flow: row; grid-template-columns: repeat(10, auto);
     align-items: center; justify-content: start; gap: 4px;
     flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden;
     scrollbar-width: none; -ms-overflow-style: none;

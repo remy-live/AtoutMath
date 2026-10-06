@@ -1485,6 +1485,24 @@ function initDebugToolbar() {
     const btnAtelier = document.getElementById('db-atelier');
     if (btnAtelier) btnAtelier.onclick = () => import('./ui/atelier.js').then(m => m.basculerAtelier());
 
+    // LES DEUX ATELIERS QUI ÉCRIVENT DU CONTENU, et non qui le regardent.
+    //
+    // Rémy : « tu me fais dans le debug un atelier pour les phrases énigmes du
+    // jour (ça on a déjà) et aussi qqch pour éditer des dingbats et les
+    // transformer en json. »
+    //
+    // Chargés à la demande comme tout le reste de la palette : ce sont des outils
+    // d'auteur, et ils n'ont aucune raison de peser sur le démarrage d'un élève.
+    // L'atelier des dingbats importe à lui seul les cent neuf énigmes et le
+    // moteur de la composition libre.
+    const btnDingbats = document.getElementById('db-atelier-dingbats');
+    if (btnDingbats) btnDingbats.onclick = () =>
+        import('./ui/atelierDingbats.js').then(m => m.ouvrirAtelierDingbats());
+
+    const btnQuotidien = document.getElementById('db-atelier-quotidien');
+    if (btnQuotidien) btnQuotidien.onclick = () =>
+        import('./ui/atelierQuotidien.js').then(m => m.ouvrirAtelierQuotidien());
+
     // Passer la question en cours, ou revenir sur la précédente, quel que soit
     // l'exercice. Reculer manquait : on dépassait d'un cran la question qu'on
     // voulait examiner et il fallait relancer l'exercice depuis le début.

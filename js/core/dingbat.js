@@ -38,6 +38,8 @@
 // rend éprouvable sous Node. La leçon de `core/ligneEtape.js`, payée une fois :
 // une règle qu'aucune épreuve ne peut atteindre se casse en silence.
 
+import { rendreLibre } from './dingbatLibre.js';
+
 /** Le HTML est fabriqué ici : tout ce qui vient des données est échappé. */
 const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -283,6 +285,33 @@ export const DISPOSITIONS = {
         lit: 'tout est écrit — c\'est ce qu\'on LIT à voix haute qui compte',
         rendre: (d) => `<div class="dg-serie">${
             d.mots.map(m => `<span class="dg-mot">${esc(m)}</span>`).join('')}</div>`
+    },
+
+    // ── Et la vingt-deuxième : celle dont le dessin vient des DONNÉES ──────
+    //
+    // LES VINGT-ET-UNE AU-DESSUS SONT DES TOURNURES, écrites une fois pour
+    // toutes : « un mot DANS une forme » dessine toujours la même chose, et
+    // c'est ce qui les rend vérifiables et explicables. Celle-ci est l'inverse :
+    // elle ne connaît aucune tournure, elle pose ce qu'on lui donne.
+    //
+    // Rémy : « qqch pour éditer des dingbats et les transformer en json.
+    // Globalement un éditeur de lettre où on peut choisir l'orientation la
+    // couleur rajouter des traits des formes. » Aucune liste de tournures ne
+    // couvre le geste de quelqu'un qui INVENTE un dessin — c'est justement
+    // pourquoi il demandait un éditeur, et pas vingt dispositions de plus.
+    //
+    // Le dessin vit dans `core/dingbatLibre.js`, en SVG : poser librement
+    // demande un système de coordonnées et une rotation autour d'un point, que
+    // le HTML ne donne qu'en réécrivant le SVG en moins bien.
+    libre: {
+        nom: 'une composition libre',
+        // CE QUE L'INDICE PEUT DIRE, ET PAS PLUS. Il serait tentant de décrire la
+        // scène — « le mot MOITIÉ coupé en deux » — mais la description nomme les
+        // mots, et un mot de la scène EST parfois la réponse : l'indice la
+        // donnerait. `indices()` l'interdit et l'épreuve le vérifie, donc cette
+        // phrase reste générale à dessein.
+        lit: 'des mots posés, orientés, entourés — c\'est leur DISPOSITION qui se lit',
+        rendre: (d) => rendreLibre(d)
     }
 };
 

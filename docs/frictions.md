@@ -2852,3 +2852,42 @@ lignes** — 2026-10-01
   générateur à progression et dise, tout de suite, quelles marches cochées ne
   sont jamais sorties. C'est le même calcul que `tests/progression.test.mjs`,
   mais au moment où l'on écrit le générateur, pas quatre minutes plus tard.
+
+## Un écran qui se mesure pendant qu'il est caché se mesure à zéro — 2026-10-06
+
+- **Ce que je voulais faire** : ouvrir l'atelier des dingbats sur une toile où
+  chaque élément s'attrape, y compris entre deux lettres.
+- **Ce qui coûte** : rien cette fois, parce que la sonde l'a vu — mais elle a
+  failli ne pas le voir, et c'est ça qui est cher. Les zones de prise se posent
+  en mesurant chaque élément (`getBBox`), et un élément dans un conteneur en
+  `display: none` n'a AUCUNE géométrie : la mesure rend zéro et la pose est
+  sautée **sans un mot**. L'atelier s'ouvrait donc sur une toile où l'on ne
+  pouvait attraper un mot que sur le tracé exact de ses lettres. **En l'essayant
+  moi-même je n'aurais rien vu : on vise le milieu du mot, qui tombe sur une
+  lettre.** La sonde comptait « 0 zone de prise » pendant que son glissé
+  réussissait — les deux mesures étaient justes, et c'est leur désaccord qui a
+  parlé.
+- **Combien de fois** : | (mais la forme est générale : toute modale du dépôt
+  qui MESURE à l'ouverture — une échelle, une boîte englobante, une hauteur de
+  colonne — a ce piège, et l'ordre « peindre puis montrer » est le réflexe.)
+- **Ce qui manque** : une ligne dans `tools/sonde.mjs` — `s.mesurable(selecteur)`
+  qui jette si l'élément visé a une boîte de largeur nulle. Le symptôme est
+  toujours le même (une mesure géométrique qui rend 0 au lieu de jeter), et il
+  se confond toujours avec « l'élément n'existe pas », exactement comme un
+  sélecteur inventé rendait `false` avant `doitExister`.
+
+## Le même repli de presse-papiers, écrit neuf fois — 2026-10-06
+
+- **Ce que je voulais faire** : donner à Rémy un bouton « copier le JSON » dans
+  chacun des deux ateliers.
+- **Ce qui coûte** : six lignes, deux fois de plus. `navigator.clipboard` est
+  REFUSÉ hors HTTPS et sur certains navigateurs ; quand il refuse, il faut
+  montrer le texte dans une zone sélectionnable, sinon le bouton ne fait **rien**
+  et l'on croit le logiciel cassé. Le dépôt écrivait déjà ce repli à neuf
+  endroits, chacun à sa façon — et deux d'entre eux ne le font pas du tout.
+- **Combien de fois** : ||||| ||||| | (neuf avant moi, deux de plus ce jour-là)
+- **Ce qui manque** : plus rien, `js/ui/exporter.js` est écrit et les deux
+  ateliers y passent. Ce qui reste à faire, et qui n'est pas pour aujourd'hui :
+  y ramener les neuf autres **quand on passera dessus pour une autre raison**.
+  Toucher neuf fichiers pour une refonte cosmétique fait un diff qu'on ne relit
+  pas, et un diff qu'on ne relit pas est là où se cachent les défauts.
