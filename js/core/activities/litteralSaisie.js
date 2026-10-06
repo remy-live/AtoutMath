@@ -49,6 +49,7 @@ import { glypheFois } from '../signeFois.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED } from '../demoPointer.js';
 import { jugerEtape } from '../ligneEtape.js';
+import { eteindreSansPerdreLeFoyer } from '../foyerDeLaSaisie.js';
 import { formuleSiElleTient } from '../maths/formule.js';
 import { meneurDemo } from '../meneurDemo.js';
 import { memeReponse, normaliser, groupesSemblables }
@@ -401,7 +402,18 @@ export function mount(container, session, opts = {}) {
             champ.classList.toggle('ls-champ--vide', saisie === '');
             poserModele();
             noteEl.textContent = '';
-            btnValider.disabled = saisie.trim() === '';
+            // LE BOUTON S'ÉTEINT SANS EMPORTER LE FOYER — voir
+            // `core/foyerDeLaSaisie.js`, qui porte la mesure et la raison : un
+            // élément désactivé ne peut pas garder le foyer, le navigateur le
+            // lui retire, il tombe sur `<body>`, et `container.onkeydown` ne
+            // voit plus rien. L'élève tape sa ligne suivante, rien ne s'écrit,
+            // donc le champ reste vide, donc le bouton reste éteint.
+            //
+            // `session.locked` dit qu'une bannière de correction attend « J'ai
+            // compris » : on ne lui prend pas le foyer, sinon son propre bouton
+            // devient inatteignable au clavier.
+            eteindreSansPerdreLeFoyer(
+                btnValider, saisie.trim() === '', container, session.locked);
         };
         const taper = (t) => { saisie += t; redessiner(); };
         const effacer = () => {

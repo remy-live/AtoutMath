@@ -1232,8 +1232,11 @@ function classeEnPause() {
     const info = (vue.liste && vue.liste.classe) || vue.classe || {};
     if (info.locked) return true;
     if (!ch || ch.aZero !== 'pause') return false;
-    const maintenant = (vue.direct && vue.direct.maintenant) || Math.floor(Date.now() / 1000);
-    return ch.finAt <= maintenant;
+    // LA MÊME HORLOGE QUE LE RESTE DU CADRE. Celle-ci lisait l'heure du dernier
+    // battement, c'est-à-dire jusqu'à dix secondes en arrière : la classe
+    // passait en pause jusqu'à dix secondes après le zéro que ses élèves
+    // voyaient. Un seul compte à rebours dans la salle, donc une seule horloge.
+    return !!ch.finAt && resteDuChrono(ch) === 0;
 }
 
 /**
@@ -2170,14 +2173,49 @@ function apercuHtml() {
  */
 function resteDuChrono(ch) {
     if (!ch || !ch.finAt) return 0;
-    const maintenant = (vue.direct && vue.direct.maintenant) || Math.floor(Date.now() / 1000);
+    // L'HEURE DU SERVEUR, MAIS QUI AVANCE. `vue.direct.maintenant` est datée du
+    // dernier battement, c'est-à-dire d'il y a zéro à dix secondes : elle suffit
+    // pour afficher un nombre, pas pour décider que le chrono est FINI. Le
+    // tic-tac, lui, lit l'heure du poste corrigée de `decalageHorloge` — la même
+    // heure serveur, à la seconde près.
+    //
+    // LES DEUX DOIVENT DIRE LA MÊME CHOSE, sans quoi le tic-tac voit zéro,
+    // demande à la barre de reprendre sa forme, et la barre — qui lit l'autre
+    // horloge — répond qu'il reste trois secondes et ne change rien. La
+    // correction ne corrigerait alors rien du tout une fois sur deux.
+    const maintenant = Math.floor(Date.now() / 1000) + decalageHorloge;
     return Math.max(0, ch.finAt - maintenant);
+}
+
+/**
+ * UN CHRONO QUI EXISTE N'EST PAS UN CHRONO QUI TOURNE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « quand j'ai mis un compte à rebours et qu'il arrive à zéro, pour le
+ * groupe d'après je ne peux plus mettre de compte à rebours ».
+ *
+ * LA CAUSE TIENT DANS UN POINT D'EXCLAMATION. La barre lisait `!!(ch &&
+ * ch.finAt)` — « le serveur connaît une date de fin » —, ce qui reste VRAI
+ * pour toujours une fois le chrono terminé : le serveur garde la date, elle
+ * passe simplement dans le passé. Le cadre restait donc figé sur « 00:00 /
+ * Arrêter », et le champ des minutes avec le bouton « Lancer » ne revenait
+ * jamais. Le professeur n'avait aucun moyen d'en relancer un pour le groupe
+ * suivant — sauf à deviner qu'il fallait d'abord cliquer « Arrêter » sur un
+ * chrono déjà fini, ce qui ne se devine pas.
+ *
+ * LA QUESTION N'EST DONC PAS « y a-t-il un chrono » MAIS « RESTE-T-IL DU
+ * TEMPS ». `resteDuChrono` la posait déjà, et rendait bien 0 : elle n'était
+ * simplement lue nulle part pour décider de la FORME de la barre.
+ */
+function chronoQuiTourne(ch) {
+    return !!(ch && ch.finAt) && resteDuChrono(ch) > 0;
 }
 
 function barrePiloteHtml() {
     const info = (vue.liste && vue.liste.classe) || {};
     const ch = vue.direct && vue.direct.chrono;
-    const enCours = !!(ch && ch.finAt);
+    const enCours = chronoQuiTourne(ch);
     return `
     <!-- L'attribut data-forme dit ce qui, dans cette barre, changerait sa
          STRUCTURE. Le battement s'en sert pour savoir s'il doit la refaire —
@@ -3726,20 +3764,38 @@ const BATTEMENT_MS = 5000;
  * un rythme — et trois d'entre eux viennent d'un geste du professeur, qui
  * redessine déjà tout de son côté. Le quatrième, l'arrivée du chrono par le
  * serveur, est celui qui justifie cette signature.
+ *
+ * ── CE QUE CHAQUE MORCEAU FAIT LÀ, ET POURQUOI C'EST ÉCRIT ICI ────────────
+ *
+ * LA SÉANCE DONNÉE, depuis que la liste « dispenser à la classe » est peuplée
+ * par ses étapes : changer de séance change la liste, et la barre doit se
+ * refaire. On n'y met PAS les exercices ouverts par les élèves — ils changent
+ * à chaque minute du début de l'heure, et refaire la barre effacerait le mot
+ * que le professeur est en train d'écrire.
+ *
+ * LA CALCULATRICE : le bouton « Retirer » n'existe que lorsqu'il y a quelque
+ * chose à retirer. Sans elle ici, il n'apparaissait qu'au prochain changement
+ * de forme — le professeur venait d'accorder la calculatrice et n'avait aucun
+ * moyen de revenir en arrière.
+ *
+ * LE CHRONO Y ENTRE PAR SA VIE, ET NON PAR SON EXISTENCE. « Il y a une date de
+ * fin » reste vrai après zéro : la signature ne changeait donc jamais, le
+ * battement laissait la barre tranquille, et le cadre restait bloqué sur
+ * « 00:00 / Arrêter ». Rémy : « quand j'ai mis un compte à rebours et qu'il
+ * arrive à zéro, pour le groupe d'après je ne peux plus mettre de compte à
+ * rebours ». Voir `chronoQuiTourne`.
+ *
+ * (CES EXPLICATIONS SONT AU-DESSUS ET NON DEDANS, et c'est une épreuve du dépôt
+ * qui l'a demandé : `tests/pilotageDuDirect.test.mjs` lit les neuf cents
+ * premiers caractères du CORPS pour vérifier que la séance donnée y figure. Un
+ * commentaire de vingt lignes posé au milieu repousse la ligne hors de sa
+ * fenêtre, et l'épreuve tombe — à juste titre : un corps qu'on ne peut plus
+ * lire d'un coup d'œil est un corps qu'on ne relit plus.)
  */
 function signatureDuPilote() {
     const info = (vue.liste && vue.liste.classe) || {};
     const ch = vue.direct && vue.direct.chrono;
-    // LA SÉANCE DONNÉE EN FAIT PARTIE depuis que la liste « dispenser la classe »
-    // est peuplée par ses étapes : changer de séance change la liste, et la
-    // barre doit se refaire. On n'y met PAS les exercices ouverts par les
-    // élèves — ils changent à chaque minute du début de l'heure, et refaire la
-    // barre effacerait le mot que le professeur est en train d'écrire.
-    // LA CALCULATRICE EN FAIT PARTIE : le bouton « Retirer » n'existe que
-    // lorsqu'il y a quelque chose à retirer. Sans cela, il n'apparaissait
-    // qu'au prochain changement de forme — le professeur venait d'accorder la
-    // calculatrice et n'avait aucun moyen de revenir en arrière.
-    return [!!info.locked, !!bacDeLaClasse(), !!(ch && ch.finAt), (ch && ch.quoi) || '',
+    return [!!info.locked, !!bacDeLaClasse(), chronoQuiTourne(ch), (ch && ch.quoi) || '',
         info.impose_path_id || '',
         (vue.reglages || []).some(x => x.mode === 'calculatrice') ? 'calc' : '',
         String(minutesDuBac())].join('|');
@@ -3811,6 +3867,21 @@ function lancerLeTicTac() {
             ch.finAt - (Math.floor(Date.now() / 1000) + decalageHorloge));
         el.textContent = enMinutes(reste);
         el.classList.toggle('ec-chrono-reste--court', reste <= 60);
+        // ET À ZÉRO, LA BARRE REPREND SA FORME TOUT DE SUITE.
+        //
+        // Sans cette ligne, elle attendrait le prochain battement du serveur —
+        // jusqu'à dix secondes à regarder « 00:00 » sans pouvoir rien lancer.
+        // Dix secondes devant une classe qui attend la consigne suivante, c'est
+        // long, et c'est le moment précis où le professeur a besoin du champ.
+        //
+        // On passe par `rafraichirLeDirect`, qui ne refait la barre que si sa
+        // SIGNATURE a changé : elle vient justement de changer, et elle ne
+        // changera pas une seconde fois — le redessin n'a donc lieu qu'une
+        // fois, et non à chaque tic.
+        if (reste === 0) {
+            const zone = document.querySelector('#ec-racine .ec-corps');
+            if (zone && vue.onglet === 'direct') rafraichirLeDirect(zone);
+        }
     }, 1000);
 }
 

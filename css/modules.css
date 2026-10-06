@@ -1789,6 +1789,20 @@ html[data-point="plus"] .pt-croix { display: none; }
     line-height: 1.15; padding: 5px 2px; white-space: nowrap;
 }
 .tn-tab td { height: 2.4em; }
+/* LA CASE OÙ L'ÉLÈVE POSE SON CHIFFRE. Rémy : « dans cet exercice, on ne peut
+   mettre le nombre » — et la phrase sous le tableau disait pourtant « pose ton
+   nombre ». Elle occupe TOUTE la cellule : une case plus petite que son carreau
+   laisse une bordure morte autour, et au doigt on tape à côté. 2,4em de haut
+   font 44 px à la taille courante, la cible minimale de la maison. */
+.tn-case {
+    width: 100%; height: 2.4em; min-height: 40px; padding: 0; margin: 0;
+    border: 0; background: transparent; color: var(--text-main);
+    font: inherit; font-size: 1.1rem; font-weight: 800; text-align: center;
+}
+.tn-case:focus {
+    outline: none;
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+}
 .tn-tab .tn-dec { background: color-mix(in srgb, var(--primary) 10%, transparent); }
 /* La virgule ne vit pas DANS une colonne : elle SÉPARE les unités des
    dixièmes. On la dessine donc sur le bord droit de la colonne des unités —

@@ -38,12 +38,23 @@ const RANKS_DECIMAL = [-1, -2, -3];
  * proposer un bouton pour afficher un tableau de numération pour placer son
  * nombre ».
  *
- * IL EST VIDE, ET C'EST TOUT L'INTÉRÊT. Un tableau où le nombre serait déjà
- * posé donnerait la réponse à lire dans une case : l'exercice n'existerait
- * plus. Ce qu'on rend disponible, c'est l'OUTIL — les colonnes, leur ordre, la
- * virgule à sa place — pour que l'élève y pose son nombre lui-même, du doigt
- * ou sur son brouillon. C'est le geste que le premier indice commande déjà
- * (« Place 3 407,52 dans le tableau ») et qu'aucun écran ne montrait.
+ * IL EST VIDE, ET C'EST TOUT L'INTÉRÊT — mais il SE REMPLIT. Un tableau où le
+ * nombre serait DÉJÀ posé donnerait la réponse à lire dans une case :
+ * l'exercice n'existerait plus. Un tableau que l'élève remplit lui-même est
+ * tout le contraire — c'est le geste même du chapitre, et s'il place les
+ * chiffres dans les bonnes colonnes, il a fait le travail qu'on lui demande.
+ *
+ * RÉMY, DEVANT CE TABLEAU : « dans cet exercice, on ne peut mettre le
+ * nombre ». Il avait raison, et le reproche était d'autant plus juste que la
+ * phrase sous le tableau dit « POSE TON NOMBRE : un chiffre par colonne » —
+ * une consigne qui commande un geste que l'écran ne permettait pas. J'avais
+ * lu « vide » comme « non modifiable », ce qui n'était ni ce qu'il demandait
+ * (« un tableau de numération POUR PLACER SON NOMBRE ») ni ce que la phrase
+ * promettait. Chaque colonne porte donc une case d'un seul chiffre.
+ *
+ * ET CE N'EST PAS UN INDICE : il ne dit rien de la question, il n'écrit rien
+ * tout seul, et placer correctement les chiffres EST la compétence évaluée.
+ * Comme la calculatrice ailleurs, il ne coûte rien à la note.
  *
  * LA VIRGULE EST UNE FRONTIÈRE, PAS UNE COLONNE. Elle est dessinée sur le bord
  * entre unités et dixièmes, comme dans le jeu du glissement (js/games/
@@ -69,7 +80,9 @@ const TABLEAU_HTML = `<div class="tn-cadre"><table class="tn-tab"><thead><tr>${
         c.court === 'unités' ? ' tn-avant-virgule' : ''}">${c.court}</th>`).join('')
 }</tr></thead><tbody><tr>${
     COLONNES_TABLEAU.map(c => `<td class="${c.dec ? 'tn-dec' : ''}${
-        c.court === 'unités' ? ' tn-avant-virgule' : ''}"></td>`).join('')
+        c.court === 'unités' ? ' tn-avant-virgule' : ''}"><input class="tn-case"
+        type="text" inputmode="numeric" maxlength="1" autocomplete="off"
+        data-case-outil aria-label="Chiffre des ${c.court}"></td>`).join('')
 }</tr></tbody></table></div>
 <p class="tn-mot">Pose ton nombre : un chiffre par colonne, en partant de la virgule.</p>`;
 

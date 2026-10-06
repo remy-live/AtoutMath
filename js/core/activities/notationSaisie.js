@@ -18,6 +18,7 @@ import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 import { GAUCHES, DROITES, SYMBOLES, composer, diagnostic } from '../notationSaisie.js';
 import { meneurDemo } from '../meneurDemo.js';
+import { eteindreSansPerdreLeFoyer } from '../foyerDeLaSaisie.js';
 
 const ditDe = (s) => (SYMBOLES.find(x => x.s === s) || {}).dit || '';
 
@@ -104,7 +105,13 @@ export function mount(container, session, opts = {}) {
             fentes.droite.classList.toggle('nt-fente--pleine', !!droite);
             ecritureEl.classList.remove('nt-ecriture--ok', 'nt-ecriture--ko');
             noteEl.textContent = '';
-            btnValider.disabled = !(gauche && droite);
+            // LE BOUTON S'ÉTEINT SANS EMPORTER LE FOYER — voir
+            // `core/foyerDeLaSaisie.js`. Même forme que les trois autres écrans
+            // de saisie : un `[data-valider]` qu'on désactive, et une écoute du
+            // clavier posée sur le conteneur. Deux des quatre ont été mesurés
+            // cassés ; on ne laisse pas les deux autres attendre leur tour.
+            eteindreSansPerdreLeFoyer(
+                btnValider, !(gauche && droite), container, session.locked);
         };
 
         if (session.isDemo) {

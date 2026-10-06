@@ -36,6 +36,7 @@ import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../dem
 import { multiplesCommuns, bougeDansPose, etapesPosees } from '../fractionsEquivalentes.js';
 import { showModal } from '../../ui/modal.js';
 import { meneurDemo } from '../meneurDemo.js';
+import { eteindreSansPerdreLeFoyer } from '../foyerDeLaSaisie.js';
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
@@ -356,7 +357,14 @@ export function mount(container, session, opts = {}) {
     function majValider() {
         const btn = container.querySelector('[data-valider]');
         if (!btn || !lignes.length) return;
-        btn.disabled = lignes[ligneActive].noms.some(n => !valeurs[n]);
+        // LE BOUTON S'ÉTEINT SANS EMPORTER LE FOYER — voir
+        // `core/foyerDeLaSaisie.js`. MESURÉ SAIN ICI, et on le branche quand
+        // même : le foyer retombait sur une touche `.fa-touche`, qui est dans
+        // le conteneur, donc les frappes remontaient. Rien ne garantit que
+        // cette touche ne sera pas désactivée un jour à son tour — et ce
+        // jour-là l'écran tomberait exactement comme les deux autres.
+        eteindreSansPerdreLeFoyer(btn,
+            lignes[ligneActive].noms.some(n => !valeurs[n]), container, session.locked);
     }
 
     // --- Validation, ligne par ligne -----------------------------------------

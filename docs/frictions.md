@@ -2661,3 +2661,107 @@ lignes** — 2026-10-01
   viennent les bulles, celui qui ne l'a pas vu ne sait pas qu'il existe. Les deux
   règles sont justes séparément et incompatibles ensemble — l'issue est de ne pas
   avoir de bouton.
+
+---
+
+## « Parfois » est une donnée, pas un flou — 2026-10-06
+
+- **Ce que je voulais faire** : trouver pourquoi, « parfois », le bouton Valider
+  d'« Enlever les parenthèses » est inactif.
+- **Ce qui a coûté** : rien, une fois la bonne mesure faite — et c'est le point.
+  La cause n'était PAS lisible dans le code : `btnValider.disabled =
+  saisie.trim() === ''` est juste, et le relire cent fois ne dit pas que
+  **le navigateur retire le foyer à un élément qu'on désactive**. Il a fallu
+  relever `document.activeElement` tous les dixièmes de seconde autour du clic
+  pour voir la ligne qui explique tout : « focusout de ls-valider vers
+  (aucun) ». Trois minutes de sonde contre un temps indéfini de relecture.
+- **Combien de fois** : | (mais la famille est grande : tout défaut dont la
+  cause est un comportement du NAVIGATEUR et non une ligne du dépôt — le foyer,
+  le défilement, la mise en page, le clavier virtuel.)
+- **Ce qui manque** : un réflexe, et il est maintenant outillé.
+  `tools/boutonValiderInactif.mjs` reste : il joue l'exercice **au clavier
+  physique** et compare, à chaque geste, CE QUE LE CHAMP MONTRE et CE QUE LE
+  BOUTON DIT. Mesurer le seul `disabled` aurait crié au défaut sur un champ
+  vide ; mesurer le seul texte n'aurait rien vu. **Un symptôme se mesure par
+  l'écart entre deux choses, jamais par une seule.**
+- **Et le mot de Rémy était une donnée** : « parfois » décrivait exactement la
+  forme du défaut — deuxième ligne seulement, clavier physique seulement, et
+  réparé par n'importe quelle touche du pavé. Trois conditions dont une qui se
+  répare toute seule : c'est pour cela qu'il ne se reproduisait pas quand on le
+  cherchait. **Prendre au sérieux l'adverbe plutôt que de le traiter comme une
+  imprécision aurait fait gagner le premier quart d'heure.**
+
+---
+
+## Une consigne qui commande un geste impossible — 2026-10-06
+
+- **Ce que je voulais faire** : comprendre « dans cet exercice, on ne peut
+  mettre le nombre », sur le tableau de numération de la Chasse au Chiffre.
+- **Ce qui a coûté** : peu à corriger, mais l'écart était écrit depuis le
+  premier jour **dans le logiciel lui-même** : sous un tableau non modifiable,
+  la phrase « Pose ton nombre : un chiffre par colonne ». Et dans le code, un
+  commentaire en majuscules affirmait « IL EST VIDE, ET C'EST TOUT L'INTÉRÊT » —
+  j'avais lu la demande de Rémy (« un tableau de numération **pour placer son
+  nombre** ») comme « un tableau vide », puis j'avais écrit une justification
+  solide de ce contresens. Un bon commentaire sur une mauvaise décision la rend
+  plus difficile à voir, pas moins.
+- **Combien de fois** : || (c'est le même motif que le bouton « ? » de la
+  symétrie, le même jour : une décision que je prends seul, que Rémy n'a pas
+  demandée, et que j'argumente si bien qu'elle survit jusqu'à ce qu'il l'essaie
+  en classe.)
+- **Ce qui manque** : une relecture mécanique des CONSIGNES contre ce que
+  l'écran permet. « Pose », « clique », « déplace », « écris » sont des verbes
+  d'action : chacun promet un geste, et un outil pourrait vérifier que l'écran
+  qui porte la phrase porte aussi de quoi le faire. À fabriquer quand le motif
+  se présentera une troisième fois.
+
+---
+
+## Un clic au centre n'est pas un clic sur l'objet — 2026-10-06
+
+- **Ce que je voulais faire** : mesurer, dans un navigateur, qu'un compte à
+  rebours arrivé à zéro rend bien son champ au professeur.
+- **Ce qui a coûté** : quatre lancements de sonde pour ATTEINDRE l'écran, avant
+  d'avoir mesuré quoi que ce soit. Trois crochets inventés — `#ec-racine` au
+  lieu de passer par la porte, `#btn-classes` qui existe mais reste `hidden`
+  (c'est la commande, pas la porte : `#top-btn-classe`), `[data-classe]` qui
+  n'existe nulle part — puis, le plus coûteux, un clic sur `[data-ouvrir]` qui
+  **tombait au centre de la carte, c'est-à-dire sur le code de classe et son
+  bouton de copie**. Le gestionnaire les traite AVANT et rend la main : la carte
+  ne s'ouvrait pas, sans la moindre erreur de page. `doitExister` a rendu les
+  trois premiers tout de suite ; le quatrième, personne ne pouvait le dire.
+- **Combien de fois** : || (même famille que le crochet inventé, mais une
+  marche plus loin : le sélecteur est JUSTE et le geste est faux.)
+- **Ce qui manque** : une habitude, à défaut d'un outil. **Sur une carte
+  cliquable qui contient d'autres commandes, on vise un enfant inerte** — ici
+  `.ec-carte-nom`, le nom de la classe. Et une idée d'outil, si le motif
+  revient : `s.cliquerPourDeVrai(sel)` qui dirait, en cas d'échec, QUEL élément
+  a réellement reçu le clic — c'est l'information qui manquait pendant les dix
+  minutes de recherche.
+- **Et la mesure elle-même coûte une minute**, parce que le plus petit chrono
+  que le serveur accepte dure une minute. C'est pour cela que le défaut a
+  survécu : personne ne reste une minute devant un écran pour voir si un bouton
+  revient. Rémy, lui, y passe son heure de cours. `tools/chronoQuiFinit.mjs`
+  reste, et `tests/chronoQuiFinit.test.mjs` garde la règle en millisecondes.
+
+---
+
+## Une sonde qui jette laisse son serveur derrière elle — 2026-10-06
+
+- **Ce que je voulais faire** : écrire une sonde, et me tromper trois fois de
+  crochet avant qu'elle n'atteigne l'écran — ce qui est normal et sain,
+  puisque `doitExister` est fait pour ça.
+- **Ce qui a coûté** : **quatre serveurs d'essai restés en vie**, un par
+  lancement raté, trouvés par hasard une demi-heure plus tard. `s.fermer()`
+  « ne tue que SON serveur », ce qui est juste — mais il n'est jamais appelé
+  quand la sonde jette, et c'est précisément ce qui arrive pendant qu'on
+  l'écrit. Quatre PHP et quatre bases SQLite pour rien, sur un conteneur dont
+  le disque est compté. Et le jour où l'un d'eux reprend un port, on cherche
+  pourquoi la mesure suivante voit les données de la précédente.
+- **Combien de fois** : | (mais elle se reproduira à chaque sonde neuve, et
+  c'est le critère de ce journal.)
+- **Ce qui manque** : `ouvrirSonde` devrait **poser son propre ménage** —
+  `process.on('exit')` et `process.on('uncaughtException')` qui tuent le
+  serveur et ferment le navigateur. Deux lignes dans `tools/sonde.mjs`, et plus
+  jamais un serveur orphelin. (Et `kill <PID>` nommément, jamais `pkill -f` :
+  ce piège-là a déjà tué le shell de l'agent deux fois.)

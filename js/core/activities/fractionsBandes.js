@@ -30,6 +30,7 @@ import { regTimeout } from '../timers.js';
 import { hintBar, wireHint } from './choice.js';
 import { createDemoCursor, createDemoGate, DEMO_SPEED, enUneBulle } from '../demoPointer.js';
 import { meneurDemo } from '../meneurDemo.js';
+import { eteindreSansPerdreLeFoyer } from '../foyerDeLaSaisie.js';
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
@@ -170,7 +171,14 @@ export function mount(container, session, opts = {}) {
 
     function majValider() {
         const btn = container.querySelector('[data-valider]');
-        if (btn) btn.disabled = Object.keys(cases).some(n => !valeurs[n]);
+        // LE BOUTON S'ÉTEINT SANS EMPORTER LE FOYER — voir
+        // `core/foyerDeLaSaisie.js`. MESURÉ ICI AUSSI, et Rémy ne l'avait pas
+        // encore signalé : sur « L'Égalité à Compléter », après « Valider », le
+        // foyer tombait sur `<body>` et le clavier devenait muet pour le reste
+        // de la question. Le défaut qu'il a vu sur « Enlever les parenthèses »
+        // vivait donc à deux endroits, et la même ligne ferme les deux.
+        eteindreSansPerdreLeFoyer(btn,
+            Object.keys(cases).some(n => !valeurs[n]), container, session.locked);
     }
 
 
