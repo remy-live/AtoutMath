@@ -137,6 +137,13 @@ test('LE RUISSEAU SERT VRAIMENT — sinon ce n\'est pas un Strimko', () => {
         for (const m of grilles(palier, 20)) {
             assert.ok(compterSolutions(m.n, [], m.donnees, 2) > 1,
                 `${palier} : cette grille se résout sans jamais regarder les ruisseaux`);
+            // ET LE GÉNÉRATEUR LE DIT LUI-MÊME. `vraiStrimko` est la trace que
+            // la grille vient d'une main où les ruisseaux servent, et non du
+            // repli qu'on garde quand aucune main ne donne mieux. Sans cette
+            // marque, une livraison dégradée — un sudoku à décor coloré — serait
+            // indiscernable d'une bonne grille.
+            assert.equal(m.vraiStrimko, true,
+                `${palier} : grille livrée par le repli`);
         }
     }
 });

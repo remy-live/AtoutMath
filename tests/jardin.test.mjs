@@ -178,14 +178,24 @@ test('LE CŒUR D\'UNE FLEUR N\'EST DANS AUCUN MOT DE SIX', () => {
 });
 
 test('les définitions des fleurs se rangent par couleur, sans en perdre', () => {
-    const j = JARDINS[0];
-    const groupes = definitionsParCouleur(j, makeRng('couleurs'));
-    const total = groupes.reduce((n, g) => n + g.definitions.length, 0);
-    assert.equal(total, j.fleurs.length, 'une définition de fleur s\'est perdue en route');
-    groupes.forEach(g => {
-        const attendues = j.fleurs.filter(f => f.couleur === g.id).map(f => f.def).sort();
-        assert.deepEqual(g.definitions.slice().sort(), attendues, `groupe ${g.id}`);
+    // SUR TOUS LES JARDINS, et non sur le premier : un fichier engendré n'est
+    // pas homogène par nature, et n'en éprouver qu'un revient à croire que les
+    // dix-sept autres lui ressemblent.
+    const fautifs = [];
+    JARDINS.forEach(j => {
+        const groupes = definitionsParCouleur(j, makeRng(`couleurs-${j.id}`));
+        const total = groupes.reduce((n, g) => n + g.definitions.length, 0);
+        if (total !== j.fleurs.length) {
+            fautifs.push(`${j.id} : ${total} définitions pour ${j.fleurs.length} fleurs`);
+        }
+        groupes.forEach(g => {
+            const attendues = j.fleurs.filter(f => f.couleur === g.id).map(f => f.def).sort();
+            if (JSON.stringify(g.definitions.slice().sort()) !== JSON.stringify(attendues)) {
+                fautifs.push(`${j.id} groupe ${g.id} : le contenu ne correspond pas`);
+            }
+        });
     });
+    aucun(fautifs, 'groupes de couleur mal formés');
 });
 
 test('le générateur rend un jardin complet et sa solution', () => {
@@ -199,8 +209,17 @@ test('le générateur rend un jardin complet et sa solution', () => {
         assert.ok(item.explanation && item.explanation.length > 20, 'pas d\'explication');
         // La réponse attendue est la suite des rangées : c'est ce que l'activité
         // envoie à `submit`.
+        // LA RÉPONSE ATTENDUE EST LE JARDIN ENTIER, case par case.
+        //
+        // Elle était la suite des RANGÉES, ce qui couvre tout le jardin
+        // aujourd'hui — mais seulement parce que les formes livrées n'ont que
+        // des rangées longues. Une rangée de deux cases ne porte pas de
+        // réponse : ses cases seraient restées hors de ce qu'on envoie au
+        // meneur, qui aurait dit « juste » sur un jardin faux.
         assert.equal(item.answer,
-            item.meta.jardin.rangees.map(rg => rg.reponses.map(r => r.mot).join('')).join('|'));
+            item.meta.jardin.cases.map(c => item.meta.solution.get(c)).join(''));
+        assert.equal(item.answer.length, item.meta.jardin.cases.length,
+            'une case du jardin n\'entre pas dans la réponse attendue');
     }
 });
 

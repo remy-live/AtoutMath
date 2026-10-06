@@ -234,6 +234,12 @@ for (const [nom, P] of Object.entries(PALIERS)) {
             assert.equal(compterSolutions(n, equations, 2, perms, Infinity), 1,
                 `${nom} #${i} : la grille n'a pas exactement une solution`);
 
+            // ET LE GÉNÉRATEUR LE DIT LUI-MÊME. `deduite` est la trace que la
+            // grille vient d'une main déductible et non du repli : sans elle,
+            // une livraison dégradée serait indiscernable d'une bonne.
+            assert.equal(item.meta.deduite, true,
+                `${nom} #${i} : grille livrée par le repli, donc non déductible`);
+
             // ET ELLE SE DÉDUIT SANS JAMAIS DEVINER. C'est la promesse qui
             // sépare cet Approxdoku de celui de Friedman, dont l'exemple
             // publié échoue à cette même mesure (voir plus haut).

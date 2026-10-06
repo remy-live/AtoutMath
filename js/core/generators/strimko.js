@@ -393,6 +393,12 @@ export const strimkoGenerator = {
             // au cas où aucune main ne donnerait mieux, et l'on retente.
             repli = { solution: sol, ruisseaux: ru, donnees: ind };
         }
+        // LE REPLI LAISSE UNE TRACE, pour les mêmes raisons qu'à l'Approxdoku :
+        // une grille qui se résout sans regarder les ruisseaux est un sudoku
+        // déguisé, et la livrer en silence reviendrait à démentir sans le dire
+        // ce que le catalogue promet. Mesuré : 30 grilles sur 30 demandent les
+        // ruisseaux, sur les cinq paliers.
+        const vraiStrimko = !repli;
         if (repli) { solution = repli.solution; ruisseaux = repli.ruisseaux; donnees = repli.donnees; }
 
         return makeItem({
@@ -433,7 +439,8 @@ export const strimkoGenerator = {
                 ruisseaux,
                 donnees,
                 solution,
-                palier: (params || {}).palier || 'facile'
+                palier: (params || {}).palier || 'facile',
+                vraiStrimko
             }
         });
     }

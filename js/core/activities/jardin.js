@@ -326,7 +326,17 @@ export function mount(container, session, opts = {}) {
                 return;
             }
             const juste = jardin.cases.every(c => lettres.get(c) === solution.get(c));
-            const donne = jardin.rangees.map(rg => lu(rg.cles)).join('|');
+            // CE QU'ON ENVOIE COUVRE TOUTES LES CASES, PAS SEULEMENT LES
+            // RANGÉES.
+            //
+            // On envoyait les rangées mises bout à bout — ce qui couvre tout le
+            // jardin AUJOURD'HUI, parce que les formes livrées n'ont que des
+            // rangées longues. Une forme avec une rangée de deux cases (il en
+            // existait une, et le format de magazine en a) laisserait ces
+            // cases HORS de la réponse envoyée : le meneur dirait « juste » sur
+            // un jardin où elles sont fausses. Le `juste` ci-dessus, lui,
+            // regarde toutes les cases — les deux auraient divergé en silence.
+            const donne = jardin.cases.map(c => lettres.get(c) || '.').join('');
             const result = session.submit(donne, { element: bouton });
             if (result.ignored) return;
 
@@ -383,6 +393,17 @@ export function mount(container, session, opts = {}) {
     }
 
     // --- Cycle de vie ---------------------------------------------------------
+
+    // DEUX JARDINS DE SUITE NE DOIVENT PAS ÊTRE LE MÊME.
+    //
+    // Le générateur tire au sort parmi dix-huit ; sur une séance à plusieurs
+    // jardins, le hasard en répète. Plutôt que de bricoler un décalage dans le
+    // générateur — ce que j'avais fait, sous un commentaire qui affirmait à
+    // tort que ça suffisait —, on emploie ce que le dépôt a déjà : la clef de
+    // question, écrite pour la Table de Pythagore le jour où Rémy a signalé
+    // les répétitions. Deux questions sont « la même » quand c'est le même
+    // jardin.
+    if (session.clefDeQuestion) session.clefDeQuestion(it => it.meta.jardin.id);
 
     renderNext();
 

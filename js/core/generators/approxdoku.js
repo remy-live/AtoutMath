@@ -501,11 +501,21 @@ export const approxdokuGenerator = {
         const n = P.n;
         const perms = permutations(n);
 
-        let grille = null;
+        // LE REPLI NE DOIT PAS ÊTRE SILENCIEUX.
+        //
+        // Si aucune des quarante mains ne donne de grille déductible, on en
+        // livre une quand même — mieux vaut une grille qui demande d'essayer que
+        // pas de grille du tout. Mais sans marque, PERSONNE ne le saurait :
+        // l'élève recevrait une grille qu'on ne finit qu'en devinant, et le
+        // dépôt continuerait d'annoncer le contraire. Mesuré aujourd'hui :
+        // 40 grilles sur 40 déductibles sur les cinq paliers, donc ce repli ne
+        // sert jamais — et c'est précisément pour qu'on s'en aperçoive le jour
+        // où il servirait qu'il laisse une trace.
+        let grille = null, deduite = false;
         for (let main = 0; main < MAINS; main++) {
             const essai = uneMain(rng, n, P, perms);
             if (!essai) continue;
-            if (deduitSansDeviner(n, essai.equations)) { grille = essai; break; }
+            if (deduitSansDeviner(n, essai.equations)) { grille = essai; deduite = true; break; }
             // On la garde sous le coude : une grille unique qui demande d'essayer
             // vaut mieux que pas de grille du tout, mais on continue à chercher.
             grille = grille || essai;
@@ -531,7 +541,7 @@ export const approxdokuGenerator = {
             explanation: 'Chaque côté doit tomber sur un entier positif — une division '
                 + 'juste, jamais de soustraction qui passe sous zéro — et les deux '
                 + 'résultats se suivent.',
-            meta: { n, solution, equations, palier: nom || 'facile' }
+            meta: { n, solution, equations, palier: nom || 'facile', deduite }
         });
     }
 };

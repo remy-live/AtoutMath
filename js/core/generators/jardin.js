@@ -36,12 +36,13 @@
 // livrés dans `js/data/jardins.js`. C'est exactement ce que fait le magazine
 // dont Rémy parle : un Rows Garden est composé, puis imprimé.
 //
-// POURQUOI IL EN A FALLU TANT DE MOTS. Dans un jardin, les fleurs PAVENT le
-// champ : chaque case appartient à une fleur ET à une rangée, donc chaque lettre
-// est contrainte deux fois. Avec les 237 mots que le dépôt portait, la recherche
-// EXHAUSTIVE ne trouvait AUCUN remplissage, même sur le plus petit jardin
-// possible. `js/data/motsCourants.js` a porté le stock à 786, et le même jardin
-// se remplit alors. Tout est mesuré par `node tools/jardinPossible.mjs`.
+// POURQUOI IL EN A FALLU TANT DE MOTS. Chaque case appartient à une RANGÉE et
+// à une ou deux FLEURS : une lettre est donc contrainte deux ou trois fois.
+// Avec les 237 mots que le dépôt portait, la recherche EXHAUSTIVE ne trouvait
+// AUCUN remplissage, même sur le plus petit jardin possible.
+// `js/data/motsCourants.js` a porté le stock à 786, et le même jardin se
+// remplit alors. Tout se remesure par `node tools/fabriquerJardins.mjs
+// --mesurer`.
 //
 // L'ARRIVÉE EST EN MATHS, LE CHEMIN EST EN FRANÇAIS — la règle de la pyramide.
 // Le fabricant exige qu'au moins la moitié des fleurs soient des mots de cours :
@@ -116,10 +117,18 @@ export const jardinGenerator = {
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        // ON NE REPREND PAS LE MÊME JARDIN DEUX FOIS DE SUITE DANS UNE SÉANCE :
-        // `ctx.index` est le rang de la question, et il suffit à décaler.
-        const rang = (rng.int(0, JARDINS.length - 1) + (ctx.index || 0)) % JARDINS.length;
-        const jardin = JARDINS[rang];
+        // ON TIRE AU SORT, ET C'EST LA SESSION QUI ÉVITE LES REPRISES.
+        //
+        // Il y avait ici `(rng.int(…) + ctx.index) % JARDINS.length`, sous un
+        // commentaire affirmant qu'on ne reprenait pas deux fois le même jardin
+        // dans une séance. C'ÉTAIT FAUX : chaque question tire une graine
+        // neuve, donc `rng.int` repart de zéro et ajouter le rang ne décale
+        // rien du tout. Deux questions de suite pouvaient tomber sur le même.
+        //
+        // Le dépôt a déjà ce qu'il faut — `session.clefDeQuestion`, écrite pour
+        // la Table de Pythagore quand Rémy a signalé les répétitions. L'activité
+        // la déclare sur l'identifiant du jardin ; ici, on tire simplement.
+        const jardin = JARDINS[rng.int(0, JARDINS.length - 1)];
 
         return makeItem({
             seed: rng.seed,
@@ -129,7 +138,10 @@ export const jardinGenerator = {
             prompt: {
                 text: 'Remplis le jardin : chaque rangée porte deux réponses, chaque fleur un mot de six lettres.'
             },
-            answer: jardin.rangees.map(rg => rg.reponses.map(r => r.mot).join('')).join('|'),
+            // LA RÉPONSE EST LE JARDIN ENTIER, case par case et dans l'ordre
+            // de `cases` : c'est la seule forme qui ne laisse aucune case
+            // dehors, quelle que soit la forme du champ (voir l'activité).
+            answer: jardin.cases.map(c => lettresDuJardin(jardin).get(c)).join(''),
             hints: [
                 'Commence par les RANGÉES : leurs deux définitions sont données dans '
                     + 'l\'ordre, de gauche à droite. Tu ne sais pas où la première réponse '

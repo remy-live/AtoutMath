@@ -8,12 +8,11 @@
 // on pourrait le faire en français avec des mots de math ».
 //
 // Le Rows Garden est un champ d'hexagones où chaque RANGÉE porte deux réponses
-// et chaque FLEUR un mot de six lettres. Dans sa forme d'origine les fleurs
-// PAVENT le champ : chaque case appartient à une fleur ET à une rangée, donc
-// chaque lettre est contrainte deux fois. C'est ce qui rend le jeu si dense —
-// et si vorace.
+// et chaque FLEUR un mot de six lettres. Les couronnes SE CHEVAUCHENT : un
+// hexagone blanc appartient à deux fleurs, et il porte donc deux mots de six en
+// plus de sa rangée. C'est ce qui rend le jeu si dense — et si vorace.
 //
-// MESURÉ (`node tools/jardinPossible.mjs`), et de plusieurs façons :
+// MESURÉ (`node tools/fabriquerJardins.mjs --mesurer`), et de plusieurs façons :
 //
 //   · le dépôt portait 237 mots, soit 30 à 40 par longueur ;
 //   · sur le plus petit jardin pavé — quatre fleurs, vingt-huit cases —, la

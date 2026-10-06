@@ -39,7 +39,6 @@
 
 import { writeFileSync } from 'node:fs';
 import { LEXIQUE } from '../js/core/motsCaches.js';
-import { LEXIQUE_PYRAMIDE } from '../js/data/motsPyramide.js';
 import { MOTS_COURANTS } from '../js/data/motsCourants.js';
 import { makeRng } from '../js/core/ids.js';
 
@@ -55,13 +54,14 @@ const ajouter = (mot, def, maths) => {
 };
 LEXIQUE.forEach(e => ajouter(e.mot, e.def, true));
 MOTS_COURANTS.forEach(e => ajouter(e.mot, e.def, false));
-// LA PYRAMIDE N'A PAS DE DÉFINITIONS : ses mots sont des barreaux, pas des
-// réponses. On ne les prend donc QUE s'ils sont déjà définis ailleurs — une
+// LA PYRAMIDE N'EST PAS DANS CE DICTIONNAIRE, ET C'EST VOLONTAIRE : ses mots
+// sont des BARREAUX, pas des réponses, et ils n'ont pas de définition. Une
 // réponse sans indice est une case que l'élève ne peut pas trouver.
-LEXIQUE_PYRAMIDE.forEach(x => {
-    const m = String(typeof x === 'string' ? x : x.mot || '').toUpperCase();
-    if (DICO.has(m)) return;
-});
+//
+// (Il y avait ici une boucle sur `LEXIQUE_PYRAMIDE` qui ne faisait RIEN — elle
+// calculait un mot, regardait s'il était déjà connu, et s'arrêtait là. Du code
+// mort, avec l'import qui allait avec. Ne pas ajouter un mot ne demande pas une
+// boucle : il suffit de ne pas l'ajouter.)
 
 const LEX = {};
 for (const m of DICO.keys()) (LEX[m.length] ||= []).push(m);
@@ -410,6 +410,7 @@ const forme = arg('forme', 'moyen');
 const secondes = Number(arg('secondes', 90));
 const mathsMini = Number(arg('mathsMini', Math.ceil((FORMES[arg('forme', 'moyen')] || { fleurs: 2 }).fleurs / 2)));
 const ecrire = process.argv.includes('--ecrire');
+const mesurer = process.argv.includes('--mesurer');
 
 if (!FORMES[forme]) {
     console.error(`forme inconnue : ${forme} (connues : ${Object.keys(FORMES).join(', ')})`);
@@ -417,6 +418,51 @@ if (!FORMES[forme]) {
 }
 
 console.log(`lexique : ${DICO.size} mots définis, dont ${SIX_MATHS.length} de six lettres en maths`);
+
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// LE MODE MESURE : QUEL JARDIN LE VOCABULAIRE PERMET-IL AUJOURD'HUI ?
+//
+// Il y avait pour cela un outil à part, `tools/jardinPossible.mjs`. Il a été
+// SUPPRIMÉ, et la raison vaut d'être écrite : il portait sa PROPRE copie de la
+// géométrie. Quand Rémy a corrigé la règle — les fleurs se chevauchent —, le
+// fabricant a changé et pas lui. Il continuait donc à répondre, très
+// sérieusement, sur une structure que le jeu n'emploie plus. Un outil de mesure
+// qui mesure autre chose que ce qu'on livre est pire qu'un outil absent : on le
+// croit.
+//
+// La mesure vit maintenant ici, sur la MÊME géométrie et le MÊME remplissage
+// que la fabrication. Elle ne peut plus diverger parce qu'il n'y a plus deux
+// codes à faire diverger.
+//
+//     node tools/fabriquerJardins.mjs --mesurer
+if (mesurer) {
+    console.log('\nCe que le vocabulaire permet, forme par forme');
+    console.log('─'.repeat(60));
+    for (const [nom, f] of Object.entries(FORMES)) {
+        const apercu = jardin(nom, null);
+        let reussis = 0; const temps = [];
+        const essais = 4;
+        for (let i = 0; i < essais; i++) {
+            const t = Date.now();
+            let g = null;
+            try { g = composer(nom, 'mesure', `mesure-${nom}-${i}`, secondes); } catch (e) { g = null; }
+            temps.push(Date.now() - t);
+            if (g) reussis++;
+        }
+        temps.sort((a, b) => a - b);
+        const partages = apercu.cases.size && apercu.fleurs.length
+            ? [...apercu.cases.keys()].filter(c =>
+                apercu.fleurs.filter(x => x.petales.includes(c)).length > 1).length
+            : 0;
+        console.log(`  ${nom.padEnd(10)} ${String(apercu.cases.size).padStart(4)} cases, `
+            + `${String(f.fleurs).padStart(2)} fleurs sur ${apercu.possibles} emplacements, `
+            + `${partages} pétale(s) partagé(s) → ${reussis}/${essais} rempli(s), `
+            + `médiane ${temps[essais >> 1]} ms`);
+    }
+    console.log(`\n  (${secondes} s au plus par essai ; « --secondes=N » pour changer)`);
+    process.exit(0);
+}
 {
     const apercu = jardin(forme, null);
     console.log(`forme « ${forme} » : ${apercu.cases.size} cases, `
