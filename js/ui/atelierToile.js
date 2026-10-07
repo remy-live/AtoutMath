@@ -169,6 +169,19 @@ const SQUELETTE = `
         <button type="button" class="ae-btn" id="ae-relire">↺ Relire ce JSON</button>
         <button type="button" class="ae-btn" id="ae-copier">📋 Copier</button>
         <button type="button" class="ae-btn ae-btn--fort" id="ae-fichier">⤓ Exporter</button>
+        <!-- RÉMY : « comment j'efface le tampon du fichier des dingbats […]
+             pour éviter de t'envoyer un fichier avec des choses déjà faites ».
+
+             Il n'y avait aucune réponse à cette question : la récolte
+             s'accumule, et la seule façon de la vider était de cliquer le ✕ de
+             chaque vignette, une par une. Au septième dingbat, c'est sept clics
+             pour défaire ce qu'on vient d'envoyer — et l'envoi suivant porte
+             tout, du premier au dernier.
+
+             LE BOUTON EST APRÈS « EXPORTER », dans l'ordre du geste : on
+             exporte, on envoie, on vide. -->
+        <button type="button" class="ae-btn" id="ae-vider"
+            title="Repartir d'une récolte vide, une fois le fichier envoyé">🧹 Vider</button>
     </div>
 </footer>
 `;
@@ -1496,7 +1509,50 @@ function demarrer(racine) {
             : `${identifiantPropose(enigme.reponse) || 'dingbat'}.json`;
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 4000);
-        dire(tout ? `Tes ${lot.length} dingbats sont dans tes téléchargements.` : 'Le JSON est téléchargé.');
+        // ON DIT OÙ EST LE FICHIER, PUIS CE QU'IL RESTE À FAIRE. La question
+        // « comment j'efface le tampon » s'est posée ICI, juste après un envoi :
+        // c'est donc ici que la réponse doit être écrite, et pas dans un coin
+        // d'aide que personne ne relit.
+        dire(tout
+            ? `Tes ${lot.length} dingbats sont dans tes téléchargements. Une fois envoyés, `
+                + '« 🧹 Vider » remet la récolte à zéro — le prochain fichier n\'aura que du neuf.'
+            : 'Le JSON est téléchargé.');
+    };
+
+    // ── VIDER LA RÉCOLTE, EN DEUX APPUIS ───────────────────────────────────
+    //
+    // PAS DE `confirm()`. Rémy : « tu utilises des alert et prompt, on évite ! ».
+    // Le bouton pose la question LUI-MÊME, et il la retire tout seul au bout de
+    // six secondes : un appui malheureux ne coûte rien, et il n'y a pas de
+    // fenêtre à chasser.
+    //
+    // ET LE VRAI FILET EST CTRL+Z. On empile l'état AVANT de vider, donc la
+    // récolte revient entière — c'est ce qui permet de n'exiger qu'un second
+    // appui plutôt qu'une confirmation écrite.
+    let videArme = null;
+    const rendreLeVider = () => {
+        const b = q('#ae-vider');
+        if (!b) return;
+        b.textContent = '🧹 Vider';
+        b.classList.remove('ae-btn--fort');
+        clearTimeout(videArme);
+        videArme = null;
+    };
+    q('#ae-vider').onclick = () => {
+        const b = q('#ae-vider');
+        const combien = lot.filter(d => (d.elements || []).length || String(d.reponse || '').trim()).length;
+        if (!combien) { dire('La récolte est déjà vide.'); return; }
+        if (!videArme) {
+            b.textContent = `Vider les ${combien} ? Appuie encore`;
+            b.classList.add('ae-btn--fort');
+            videArme = setTimeout(rendreLeVider, 6000);
+            return;
+        }
+        rendreLeVider();
+        pousser();
+        lot = [vierge()];
+        allerA(0);
+        dire('Récolte vidée. Ctrl+Z la remet si c\'était une fausse manœuvre.');
     };
     q('#ae-relire').onclick = () => {
         let venues;

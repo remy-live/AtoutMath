@@ -137,6 +137,59 @@ const clef = await s.page.evaluate(() => {
 });
 dire(clef, 'la récolte est enregistrée sous la clef de l\'application');
 
+// ── VIDER LA RÉCOLTE ──────────────────────────────────────────────────────
+//
+// RÉMY : « comment j'efface le tampon du fichier des dingbats […] pour éviter
+// de t'envoyer un fichier avec des choses déjà faites ? » Il n'y avait pas de
+// réponse : la seule façon de vider était de cliquer le ✕ de chaque vignette.
+//
+// TROIS CHOSES À MESURER, et la troisième est la plus importante : que le
+// premier appui ne vide RIEN. Un bouton qui vide au premier appui perd un
+// travail d'une heure sur un doigt qui glisse.
+await s.doitExister('#ae-vider', 'le bouton « Vider la récolte »');
+await s.page.click('[data-outil="rectangle"]');
+const a2 = await surLaToile(60, 50);
+const b2 = await surLaToile(200, 150);
+await s.page.mouse.move(a2.x, a2.y);
+await s.page.mouse.down();
+await s.page.mouse.move(b2.x, b2.y, { steps: 6 });
+await s.page.mouse.up();
+await dormir(400);
+const avantVide = (await etat()).lot[0].elements.length;
+dire(avantVide > 0, 'il y a bien quelque chose à vider', `${avantVide} élément(s)`);
+
+await s.page.click('#ae-vider');
+await dormir(250);
+const demandeDg = await s.page.textContent('#ae-vider');
+dire(/Appuie encore/.test(demandeDg), 'le premier appui DEMANDE, il ne vide pas',
+    demandeDg.trim());
+dire((await etat()).lot[0].elements.length === avantVide,
+    'et la récolte est encore entière après ce premier appui');
+
+await s.page.click('#ae-vider');
+await dormir(400);
+const apresVide = await etat();
+dire(apresVide.lot.length === 1 && apresVide.lot[0].elements.length === 0,
+    'le second appui remet la récolte à zéro',
+    `${apresVide.lot.length} composition(s), ${apresVide.lot[0].elements.length} élément(s)`);
+
+// ET CTRL+Z LA REMET : c'est le vrai filet, et c'est ce qui permet de ne pas
+// poser de fenêtre de confirmation.
+// ON NE TOUCHE PAS AU FOYER, ET C'EST DEUX FOIS PAYÉ. Après l'appui sur
+// « Vider », le foyer est sur le bouton — qui est dans la racine de l'atelier,
+// donc le raccourci y arrive. J'ai d'abord cliqué la toile pour « aider » : un
+// appui sur la toile est LUI-MÊME un geste, il empile un état, et le Ctrl+Z
+// annulait l'appui de la sonde. J'ai ensuite posé le foyer par `focus()` sans
+// cliquer : le raccourci ne partait plus du tout. Les deux fois, la mesure
+// rendait « 0 élément retrouvé » et accusait le bouton « Vider », qui n'avait
+// rien. UNE SONDE QUI DÉPLACE LE FOYER POUR S'AIDER MESURE UN ÉCRAN QUE
+// PERSONNE N'A SOUS LES YEUX.
+await s.page.keyboard.press('Control+z');
+await dormir(400);
+dire((await etat()).lot[0].elements.length === avantVide,
+    'et Ctrl+Z la remet entière — une fausse manœuvre ne coûte rien',
+    `${(await etat()).lot[0].elements.length} élément(s) retrouvé(s)`);
+
 await s.photo('.ae-modale', 'tools/tmp/atelier-dingbats.png');
 await s.page.click('#ae-modale-fermer');
 await dormir(300);
@@ -198,6 +251,80 @@ const citation = await s.page.evaluate(() => ({
 }));
 dire(citation.auteur && citation.sur && !citation.reponse,
     'changer de genre change les champs, pas seulement le titre', JSON.stringify(citation));
+
+// ── LE PANIER, ET CE QU'IL NE CONTIENT PAS ─────────────────────────────────
+//
+// RÉMY : « comment j'efface le tampon du fichier des dingbats et pensée du jour
+// pour éviter de t'envoyer un fichier avec des choses déjà faites ? »
+//
+// Pour le quotidien, l'export emportait les 201 entrées du code à chaque fois.
+// On mesure donc la SEULE chose qui compte : que le fichier ne porte QUE ce que
+// Rémy a écrit. Un test sous Node ne peut pas le dire — il faut écrire dans le
+// formulaire, mettre de côté, et lire ce qui sort.
+await s.page.click('.atq-onglet[data-genre="conseil"]');
+await dormir(350);
+await s.doitExister('#atq-panier', 'le panier');
+await s.doitExister('#atq-mettre', 'le bouton « Mettre de côté »');
+await s.doitExister('#atq-vider', 'le bouton « Vider »');
+
+await s.page.fill('#atq-formulaire [data-ch="texte"]', 'Relis ta consigne avant de calculer.');
+await dormir(250);
+await s.page.click('#atq-mettre');
+await dormir(350);
+await s.page.fill('#atq-formulaire [data-ch="texte"]', 'Un brouillon n\'est pas une faute.');
+await dormir(250);
+await s.page.click('#atq-mettre');
+await dormir(350);
+
+const panier = await s.page.evaluate(() => ({
+    jetons: document.querySelectorAll('.atq-jeton').length,
+    dit: (document.querySelector('.atq-panier-titre') || {}).textContent || '',
+    champVide: (document.querySelector('#atq-formulaire [data-ch="texte"]') || {}).value || ''
+}));
+dire(panier.jetons === 2, 'deux entrées mises de côté, deux jetons dans le panier',
+    panier.dit.trim());
+dire(panier.champVide === '', 'et le formulaire est reparti vide, prêt pour la suivante');
+
+const jetons = await s.page.evaluate(() =>
+    [...document.querySelectorAll('.atq-jeton-txt')].map(e => e.textContent));
+dire(jetons.length === 2 && jetons[0].includes('Relis ta consigne'),
+    'le panier montre ce qu\'il porte, dans l\'ordre écrit', jetons.join(' | '));
+
+// ── LE FICHIER LUI-MÊME ───────────────────────────────────────────────────
+//
+// C'EST LA SEULE MESURE QUI RÉPOND À LA QUESTION DE RÉMY. Tout le reste décrit
+// un écran ; lui demande ce qu'il y a DANS le fichier qu'il m'envoie. On le
+// télécharge pour de vrai et on le lit — un `evaluate` qui appellerait la
+// fabrique de texte mesurerait la fabrique, pas le bouton.
+const [recu] = await Promise.all([
+    s.page.waitForEvent('download', { timeout: 15000 }),
+    s.page.click('#atq-fichier')
+]);
+const dedans = JSON.parse(await (await import('node:fs/promises'))
+    .readFile(await recu.path(), 'utf8'));
+const pese = JSON.stringify(dedans).length;
+dire(dedans.ajouts.length === 2 && !dedans.corrections.length,
+    'le fichier porte les deux entrées écrites', dedans.dit);
+dire(!JSON.stringify(dedans).includes('Quand tu bloques'),
+    'ET PAS UNE SEULE des 201 entrées déjà faites',
+    `${pese} octets au lieu des ~14 000 de la liste entière`);
+dire(/^quotidien-\d{4}-\d{2}-\d{2}\.json$/.test(recu.suggestedFilename()),
+    'le fichier est daté, pour qu\'on sache lequel est lequel', recu.suggestedFilename());
+
+// ── VIDER : DEUX APPUIS, ET AUCUNE FENÊTRE NATIVE ─────────────────────────
+await s.page.click('#atq-vider');
+await dormir(250);
+const demande = await s.page.textContent('#atq-vider');
+dire(/Appuie encore/.test(demande), 'le premier appui DEMANDE, il ne vide pas', demande.trim());
+dire((await s.page.evaluate(() => document.querySelectorAll('.atq-jeton').length)) === 2,
+    'et le panier est encore entier');
+await s.page.click('#atq-vider');
+await dormir(350);
+dire((await s.page.evaluate(() => document.querySelectorAll('.atq-jeton').length)) === 0,
+    'le second appui vide le panier');
+dire(/Vider/.test((await s.page.textContent('#atq-vider')).trim())
+    && !/Appuie/.test(await s.page.textContent('#atq-vider')),
+    'et le bouton reprend son libellé');
 
 await s.photo('.atq-panneau', 'tools/tmp/atelier-quotidien.png');
 await s.page.click('#atq-fermer');

@@ -3047,3 +3047,23 @@ lignes** — 2026-10-01
   désigne plus d'un nœud, en les décrivant. Trois lignes dans `sonde.mjs`, et
   l'erreur dirait « deux `[data-consigne]` : BUTTON.rv-btn et TEXTAREA.tt-consigne »
   au lieu de parler du type d'un nœud qu'on n'a jamais visé.
+
+## Une sonde qui déplace le foyer mesure un écran que personne n'a — 2026-10-07
+
+- **Ce que je voulais faire** : vérifier qu'après « 🧹 Vider », un Ctrl+Z remet
+  la récolte — c'est ce qui permet de ne pas poser de fenêtre de confirmation.
+- **Ce qui coûte** : vingt minutes, et DEUX fausses pistes successives, toutes
+  les deux contre le même bouton qui n'avait rien. D'abord
+  `page.click('#ae-toile')` pour « donner le foyer » : un appui sur la toile est
+  lui-même un geste, il empile un état, et le Ctrl+Z annulait l'appui de la
+  sonde. Ensuite `evaluate(() => toile.focus())` pour ne pas cliquer : le
+  raccourci ne partait plus du tout. Les deux fois la mesure rendait
+  « 0 élément retrouvé » et accusait « Vider ». Le foyer là où le CLIC DE
+  L'UTILISATEUR le laisse — sur le bouton — marchait depuis le début.
+- **Combien de fois** : || (déjà payé sur le champ de remarque du tri au pouce,
+  où j'allais « aider » en cliquant avant de taper.)
+- **Ce qui manque** : une ligne dans la sonde — `s.raccourci('Control+z')` —
+  qui REFUSE de partir si le foyer n'est pas déjà dans la zone mesurée, en
+  disant où il est. Et la règle, plus générale que l'outil : **on ne prépare pas
+  un écran pour la mesure ; si la mesure a besoin d'une préparation que
+  l'utilisateur ne fait pas, c'est la mesure qui est fausse.**

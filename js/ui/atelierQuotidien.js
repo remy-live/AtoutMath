@@ -48,6 +48,29 @@ const CLE = 'atoutmath.atelier.quotidien';
 const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/**
+ * LE PANIER : CE QUE JE RECEVRAI, ET RIEN D'AUTRE.
+ *
+ * RÉMY : « comment j'efface le tampon du fichier des dingbats et pensée du jour
+ * pour éviter de t'envoyer un fichier avec des choses déjà faites ? »
+ *
+ * Pour le quotidien, il n'y avait pas de tampon à effacer : l'export emportait
+ * la LISTE ENTIÈRE du code — deux cent une entrées — avec une ligne disant
+ * laquelle avait bougé. Chaque fichier était donc fait à 99,5 % de choses déjà
+ * faites, et la ligne « change » était le seul endroit où regarder.
+ *
+ * Le panier renverse cela : on met de côté ce qu'on a écrit, autant de fois
+ * qu'on veut, et le fichier ne porte QUE ça. Trois lignes au lieu de deux
+ * cents, et plus rien à relire pour savoir ce qui est neuf.
+ *
+ * CHAQUE ENTRÉE GARDE SON GENRE : on écrit deux énigmes et une citation dans la
+ * même séance, et tout part dans un seul fichier.
+ *
+ * `remplace` vaut l'index de l'entrée corrigée, ou `null` pour un ajout. C'est
+ * la seule chose que la liste entière me disait et que je ne veux pas perdre.
+ */
+let panier = [];
+
 /** Le genre travaillé, et l'entrée en cours d'écriture. */
 let genre = 'enigme';
 /** Le rang dans la liste, ou −1 pour une entrée neuve. */
@@ -72,13 +95,19 @@ const texteDe = (e) => (typeof e === 'string' ? e : (e && e.texte) || '');
 // ── CE QU'ON RETIENT ────────────────────────────────────────────────────────
 
 function garder() {
-    try { localStorage.setItem(CLE, JSON.stringify({ genre, rang, brouillon })); }
+    try { localStorage.setItem(CLE, JSON.stringify({ genre, rang, brouillon, panier })); }
     catch (e) { /* navigation privée */ }
 }
 
 function relire() {
     try {
         const b = JSON.parse(localStorage.getItem(CLE) || 'null');
+        // LE PANIER SURVIT À LA FERMETURE, et il se relit SÉPARÉMENT du
+        // brouillon : un carnet d'il y a trois versions n'a pas de panier, et
+        // le brouillon qu'il porte reste bon.
+        if (b && Array.isArray(b.panier)) {
+            panier = b.panier.filter(x => x && GENRES.includes(x.genre) && x.entree);
+        }
         if (b && GENRES.includes(b.genre) && b.brouillon) {
             genre = b.genre;
             rang = Number.isInteger(b.rang) ? b.rang : -1;
@@ -133,10 +162,17 @@ function assurerModale() {
             <div class="atq-pied">
                 <textarea class="atq-export" id="atq-json" data-export rows="4" spellcheck="false"
                     aria-label="Le texte de cette entrée"></textarea>
+                <!-- LE PANIER : ce qui partira dans le fichier, et rien d'autre. -->
+                <div class="atq-panier" id="atq-panier"></div>
                 <div class="atq-pied-boutons">
                     <button type="button" class="btn-secondary" id="atq-neuve">＋ Entrée neuve</button>
                     <button type="button" class="btn-secondary" id="atq-copier">📋 Copier cette entrée</button>
-                    <button type="button" class="btn-primary" id="atq-liste-fichier">⤓ Toute la liste, corrigée</button>
+                    <button type="button" class="btn-secondary" id="atq-vider"
+                        title="Repartir d'un panier vide, une fois le fichier envoyé">🧹 Vider</button>
+                    <button type="button" class="btn-secondary" id="atq-mettre"
+                        title="Garder celle-ci et en écrire une autre">＋ Mettre de côté</button>
+                    <button type="button" class="btn-primary" id="atq-fichier"
+                        title="Un fichier qui ne contient QUE ce que tu as écrit">⤓ M'envoyer</button>
                 </div>
             </div>
         </div>`;
@@ -453,19 +489,39 @@ function peindreJson() {
  * fichier-là ne se colle pas : il me sert à remplacer la liste, et un JSON se
  * relit par machine.
  */
-function listeCorrigee() {
-    const liste = (LISTES[genre] || []).map(e => (typeof e === 'string' ? e : { ...e }));
-    const neuf = genre === 'conseil' ? String(brouillon.texte || '') : { ...brouillon };
-    if (rang >= 0 && rang < liste.length) liste[rang] = neuf;
-    else liste.push(neuf);
-    return JSON.stringify({
-        genre,
-        // CE QU'ON A CHANGÉ, DIT EN CLAIR. Un fichier de deux cents lignes ne dit
-        // pas de lui-même ce qui a bougé, et c'est la seule chose que je veux
-        // savoir en le recevant.
-        change: rang >= 0 ? `l'entrée n° ${rang + 1}` : 'une entrée ajoutée à la fin',
-        liste
-    }, null, 2);
+/**
+ * LE PANIER, ÉCRIT SOUS LES BOUTONS.
+ *
+ * Il dit trois choses, et chacune ferme une question qu'on se pose juste avant
+ * d'envoyer : combien il y en a, lesquelles, et comment en retirer une qu'on
+ * a mise de côté par erreur.
+ */
+function peindrePanier() {
+    const boite = modal.querySelector('#atq-panier');
+    if (!panier.length) {
+        boite.innerHTML = '<p class="atq-note">Le panier est vide. « ＋ Mettre de côté » garde '
+            + 'l\'entrée écrite et t\'en ouvre une neuve ; « ⤓ M\'envoyer » fabrique un fichier '
+            + 'qui ne contient QUE ce que tu as écrit — jamais la liste déjà faite.</p>';
+        return;
+    }
+    boite.innerHTML = `<p class="atq-panier-titre">Dans le panier : <strong>${panier.length}</strong>`
+        + ' — c\'est tout ce que le fichier contiendra.</p>'
+        + `<div class="atq-panier-liste">${panier.map((x, i) => `
+            <span class="atq-jeton">
+                <span class="atq-jeton-genre">${EMOJIS_GENRE[x.genre] || ''}</span>
+                <span class="atq-jeton-txt">${esc(texteDe(x.entree).slice(0, 60))}</span>
+                ${x.remplace === null ? '' : `<span class="atq-jeton-n">corrige n° ${x.remplace + 1}</span>`}
+                <button type="button" class="atq-jeton-x" data-oter="${i}"
+                    aria-label="Retirer du panier">✕</button>
+            </span>`).join('')}</div>`;
+
+    boite.querySelectorAll('[data-oter]').forEach(b => {
+        b.onclick = () => {
+            panier.splice(Number(b.dataset.oter), 1);
+            garder();
+            tout();
+        };
+    });
 }
 
 // ── LE BRANCHEMENT ──────────────────────────────────────────────────────────
@@ -478,6 +534,8 @@ function tout() {
     peindreQuand();
     peindreAvis();
     peindreJson();
+    peindrePanier();
+    rendreLeVider();   // le panier a changé : la question posée ne vaut plus
 }
 
 function brancher() {
@@ -508,16 +566,107 @@ function brancher() {
 
     q('#atq-copier').onclick = () => copierDans(q('#atq-copier'), q('#atq-json').value, '📋 Copier cette entrée');
 
-    q('#atq-liste-fichier').onclick = () => {
-        const dits = avisSurLEntree();
-        if (dits.length) {
-            // ON PRÉVIENT, ON N'INTERDIT PAS. Un avertissement peut être assumé —
-            // une citation sans auteur sûr, par exemple — et un atelier qui
-            // refuse d'exporter oblige à contourner l'atelier.
-            showToast(`${dits.length} point(s) à regarder, mais le fichier est quand même prêt.`, 'warning');
-        }
-        telechargerTexte(`quotidien-${genre}-${jourPourFichier()}.json`, listeCorrigee());
+    q('#atq-mettre').onclick = () => {
+        if (!mettreDeCote()) return;
+        showToast(`Mis de côté. ${panier.length} entrée(s) partiront ensemble.`, 'success');
+        tout();
     };
+
+    q('#atq-fichier').onclick = () => {
+        // ON EMPORTE AUSSI CE QUI EST À L'ÉCRAN. Le piège sinon : on écrit une
+        // pensée, on clique « M'envoyer » sans avoir cliqué « Mettre de côté »,
+        // et le fichier ne la contient pas — un envoi vide qui a l'air plein.
+        mettreDeCote({ silencieux: true });
+        if (!panier.length) {
+            showToast('Il n\'y a rien à m\'envoyer : écris d\'abord une entrée.', 'warning');
+            return;
+        }
+        telechargerTexte(`quotidien-${jourPourFichier()}.json`, texteDuPanier());
+        showToast(`${panier.length} entrée(s) dans tes téléchargements. `
+            + 'Une fois envoyées, « 🧹 Vider » remet le panier à zéro.', 'success');
+        tout();
+    };
+
+    q('#atq-vider').onclick = () => {
+        if (!panier.length) { showToast('Le panier est déjà vide.', 'warning'); return; }
+        // PAS DE `confirm()` — Rémy : « tu utilises des alert et prompt, on
+        // évite ! ». Le bouton pose la question lui-même et la retire tout seul
+        // au bout de six secondes, comme celui de l'atelier des dingbats.
+        const b = q('#atq-vider');
+        if (!videArme) {
+            b.textContent = `Vider les ${panier.length} ? Appuie encore`;
+            b.classList.add('btn-primary');
+            videArme = setTimeout(() => rendreLeVider(), 6000);
+            return;
+        }
+        rendreLeVider();
+        panier = [];
+        garder();
+        tout();
+        showToast('Panier vidé. Ce que tu écriras maintenant partira seul.', 'success');
+    };
+}
+
+/** Le minuteur du second appui sur « Vider ». */
+let videArme = null;
+function rendreLeVider() {
+    const b = modal && modal.querySelector('#atq-vider');
+    clearTimeout(videArme);
+    videArme = null;
+    if (!b) return;
+    b.textContent = '🧹 Vider';
+    b.classList.remove('btn-primary');
+}
+
+/**
+ * METTRE L'ENTRÉE DE CÔTÉ — et repartir d'une entrée neuve.
+ *
+ * ON PRÉVIENT, ON N'INTERDIT PAS : un avertissement peut être assumé (une
+ * citation dont l'auteur n'est pas sûr), et un atelier qui refuse oblige à
+ * contourner l'atelier. Seul le vide est refusé, parce qu'il n'y a rien à
+ * mettre de côté.
+ */
+function mettreDeCote({ silencieux = false } = {}) {
+    const texte = String(brouillon.texte || '').trim();
+    if (!texte) {
+        if (!silencieux) showToast('Cette entrée est vide : il n\'y a rien à mettre de côté.', 'warning');
+        return false;
+    }
+    const dits = avisSurLEntree();
+    if (dits.length && !silencieux) {
+        showToast(`${dits.length} point(s) à regarder, mais elle est quand même gardée.`, 'warning');
+    }
+    panier.push({
+        genre,
+        remplace: rang >= 0 ? rang : null,
+        // CE QU'ELLE REMPLACE, ÉCRIT EN CLAIR. Un numéro de ligne ne se vérifie
+        // pas : si la liste a bougé entre le moment où Rémy écrit et celui où je
+        // reporte, le début de l'ancienne entrée me dit tout de suite que je ne
+        // remplace pas celle qu'il visait.
+        avant: rang >= 0 ? texteDe((LISTES[genre] || [])[rang]).slice(0, 80) : undefined,
+        entree: genre === 'conseil' ? texte : JSON.parse(JSON.stringify(brouillon))
+    });
+    rang = -1;
+    brouillon = entreeVierge(genre);
+    garder();
+    return true;
+}
+
+/** Le fichier que je recevrai : ce qui est neuf, ce qui est corrigé, rien d'autre. */
+function texteDuPanier() {
+    const neuves = panier.filter(x => x.remplace === null);
+    const corrigees = panier.filter(x => x.remplace !== null);
+    return JSON.stringify({
+        quoi: 'quotidien',
+        jour: jourPourFichier(),
+        // LE COMPTE EST ÉCRIT : c'est la première chose que je regarde, et c'est
+        // aussi ce qui dit à Rémy, avant d'envoyer, que le fichier n'est pas vide.
+        dit: `${neuves.length} à ajouter, ${corrigees.length} à corriger`,
+        ajouts: neuves.map(x => ({ genre: x.genre, entree: x.entree })),
+        corrections: corrigees.map(x => ({
+            genre: x.genre, remplace: x.remplace + 1, avant: x.avant, entree: x.entree
+        }))
+    }, null, 2);
 }
 
 /** Ouvre l'atelier, et retrouve le brouillon laissé en plan. */
