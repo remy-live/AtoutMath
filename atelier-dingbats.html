@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atelier des dingbats — essai</title>
+<!--
+    L'ATELIER DES DINGBATS, VERSION D'ESSAI — une page à part.
+
+    Rémy : « fais-moi à part l'atelier, on l'intégrera après. Pour créer une
+    flèche, un rectangle, on clique on relâche. Idem pour le mot. Double-clic
+    pour éditer. Fais-moi quelque chose de plus moderne, plus facile, plus
+    sympa. On essaie d'abord puis on l'intègre. »
+
+    POURQUOI UNE PAGE SÉPARÉE, ET PAS UN DRAPEAU DANS L'ATELIER EXISTANT. Les
+    deux gestes sont incompatibles : dans l'atelier intégré, un appui sur la
+    toile DÉPLACE ou SÉLECTIONNE ; ici il DESSINE. Les faire cohabiter derrière
+    un interrupteur aurait donné deux logiciels dans un fichier, et c'est ainsi
+    qu'on se retrouve avec un comportement que personne ne sait plus expliquer.
+    On essaie celui-ci en vrai, on tranche, on garde UN geste.
+
+    CE QUI EST PARTAGÉ, ET CE QUI NE L'EST PAS. Le MODÈLE est le même —
+    `js/core/dingbatLibre.js` — donc tout ce qu'on compose ici est déjà du
+    dingbat jouable, et le JSON se colle dans `js/data/dingbats.js` sans
+    traduction. Seul le GESTE est neuf. C'est ce qui permet de jeter cette page
+    sans rien perdre si le geste ne plaît pas.
+
+    LA RÉCOLTE EST RANGÉE À PART (`…essai`), exprès : un essai qui abîmerait la
+    récolte de l'atelier intégré coûterait plus cher que le temps qu'il fait
+    gagner. Les deux communiquent par le JSON, qui est fait pour ça.
+-->
+<link rel="stylesheet" href="css/base.css?v=955">
+<link rel="stylesheet" href="css/atelierEssai.css?v=955">
+</head>
+<body class="ae-corps">
+
+<header class="ae-tete">
+    <h1 class="ae-titre">🧩 Atelier des dingbats <span class="ae-essai">essai</span></h1>
+    <span class="ae-sauve" id="ae-sauve" role="status">enregistré au fur et à mesure</span>
+    <a class="ae-retour" href="index.html">← AtoutMath</a>
+</header>
+
+<!-- LA BANDE DES COMPOSITIONS : la récolte, et c'est elle qu'on exporte. -->
+<div class="ae-bande" id="ae-bande" aria-label="Tes compositions"></div>
+
+<main class="ae-scene">
+
+    <!-- LA BOÎTE À OUTILS. Un outil, un geste : on le prend, on dessine sur la
+         toile, et l'outil revient tout seul à la main — le geste de n'importe
+         quel logiciel de dessin depuis trente ans. -->
+    <div class="ae-outils" id="ae-outils" role="toolbar" aria-label="Les outils"></div>
+
+    <!-- LA BARRE DE CE QUI EST CHOISI, POSÉE AU-DESSUS DE LA TOILE.
+
+         Je l'avais d'abord faite FLOTTANTE, collée à la sélection : « ce qu'on
+         règle est à côté de ce qu'on regarde ». C'était joli et c'était faux.
+         Sur une toile de quatre cents unités, une barre de trois cents pixels
+         couvre un quart de la surface — et surtout elle BLOQUE le geste : on ne
+         peut pas commencer un tracé sous elle. Mesuré : `elementFromPoint` au
+         point de tracé rendait « ae-barre », et ni la flèche ni le
+         redimensionnement ne partaient.
+
+         Elle garde sa place en permanence, même vide, pour que la toile ne
+         saute pas de quarante pixels chaque fois qu'on choisit un objet. -->
+    <div class="ae-barre" id="ae-barre" aria-label="Ce qui est choisi"></div>
+
+    <div class="ae-toile-zone">
+        <div class="ae-toile-cadre" id="ae-toile-cadre"></div>
+        <!-- LE CHAMP D'ÉDITION SUR PLACE : il se pose PAR-DESSUS le mot, à sa
+             taille et à son endroit. Un champ dans un panneau latéral oblige à
+             faire l'aller-retour des yeux ; ici on tape là où l'on regarde. -->
+        <input type="text" class="ae-saisie" id="ae-saisie" hidden
+               maxlength="40" autocomplete="off" spellcheck="false"
+               aria-label="Ce qui est écrit">
+    </div>
+
+    <p class="ae-consigne" id="ae-consigne"></p>
+
+    <div class="ae-pied-toile">
+        <button type="button" class="ae-btn" id="ae-annuler" title="Annuler (Ctrl+Z)">↶ Annuler</button>
+        <button type="button" class="ae-btn" id="ae-refaire" title="Refaire (Ctrl+Maj+Z)">↷ Refaire</button>
+        <span class="ae-vide"></span>
+        <label class="ae-coche"><input type="checkbox" id="ae-magnetisme" checked> Magnétisme</label>
+        <label class="ae-coche"><input type="checkbox" id="ae-eleve"> Voir comme l'élève</label>
+    </div>
+
+    <div class="ae-avis" id="ae-avis" role="status"></div>
+</main>
+
+<section class="ae-fiche">
+    <h2 class="ae-h2">La solution</h2>
+    <label class="ae-champ">Ce qu'il faut lire
+        <input type="text" id="ae-reponse" maxlength="60" placeholder="racine carrée"></label>
+    <label class="ae-champ">Autres écritures acceptées (séparées par des virgules)
+        <input type="text" id="ae-variantes" maxlength="160" placeholder="la racine, racine"></label>
+    <label class="ae-champ">L'explication, donnée après
+        <textarea id="ae-explication" rows="2" maxlength="300"
+            placeholder="Le mot est écrit dans un carré : on lit « racine carrée »."></textarea></label>
+
+    <h2 class="ae-h2">Les indices</h2>
+    <p class="ae-note">Du plus discret au plus parlant, donnés un à un.
+        Un indice dit où REGARDER, jamais la réponse.</p>
+    <div id="ae-aides"></div>
+    <button type="button" class="ae-btn" id="ae-aide-plus">＋ Un indice</button>
+
+    <h2 class="ae-h2">Le rangement</h2>
+    <div class="ae-duo">
+        <label class="ae-champ">Thème <select id="ae-theme"></select></label>
+        <label class="ae-champ">Niveau <select id="ae-niveau"></select></label>
+    </div>
+    <label class="ae-champ">L'identifiant
+        <input type="text" id="ae-id" maxlength="40" placeholder="dg-racine-carree"></label>
+</section>
+
+<footer class="ae-sortie">
+    <textarea class="ae-export" id="ae-json" data-export rows="4" spellcheck="false"
+        aria-label="Le JSON de ta récolte"></textarea>
+    <div class="ae-sortie-boutons">
+        <label class="ae-coche"><input type="checkbox" id="ae-tout" checked> Toute la récolte</label>
+        <span class="ae-vide"></span>
+        <button type="button" class="ae-btn" id="ae-relire">↺ Relire ce JSON</button>
+        <button type="button" class="ae-btn" id="ae-copier">📋 Copier</button>
+        <button type="button" class="ae-btn ae-btn--fort" id="ae-fichier">⤓ Exporter</button>
+    </div>
+</footer>
+
+<script type="module" src="js/essai/atelierEssai.js?v=955"></script>
+</body>
+</html>

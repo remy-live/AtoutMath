@@ -2929,3 +2929,61 @@ lignes** — 2026-10-01
   mesure un déplacement, une durée ou un compte dit la VALEUR attendue, jamais
   seulement son sens**. `epreuveTombe.mjs` attrape l'épreuve qui ne garde rien ;
   rien n'attrape encore l'épreuve qui garde à moitié.
+
+## Troisième fois : redessiner depuis le gestionnaire du nœud qu'on redessine — 2026-10-07
+
+- **Ce que je voulais faire** : le tracé « appuie, tire, relâche » de l'atelier
+  d'essai.
+- **Ce qui coûte** : une mesure de plus, et surtout l'humilité. **J'avais écrit
+  cette friction la veille, et j'y suis retombé le lendemain, dans un fichier
+  neuf, à la première ligne de `pointerdown`.** Le rectangle restait à 0×0 : le
+  `peindreToile()` du `pointerdown` remplaçait le `<svg>` sur lequel le geste
+  venait de commencer. Écrire la leçon dans un journal ne la fait pas respecter.
+- **Combien de fois** : ||| (atelier intégré : le glissé ; puis le `pointerdown`
+  de la sélection ; puis le tracé de l'essai.)
+- **Ce qui manque** : non plus une note mais un GARDE-FOU. La forme est toujours
+  la même et elle est détectable : une fonction qui fait `conteneur.innerHTML =`
+  appelée depuis un gestionnaire d'événement posé SUR ce conteneur. Un `hook` à
+  l'écriture pourrait refuser `peindreX()` dans un `addEventListener` du même X —
+  comme `verifierSyntaxe.sh` refuse un accent grave dans un gabarit. Trois
+  occurrences, c'est le seuil que le dépôt s'est donné pour fabriquer l'outil.
+
+## Une barre qui flotte sur une surface de dessin en bloque le geste — 2026-10-07
+
+- **Ce que je voulais faire** : une barre contextuelle collée à la sélection,
+  « ce qu'on règle est à côté de ce qu'on regarde ».
+- **Ce qui coûte** : trois mesures et deux faux diagnostics. La barre est un
+  calque AU-DESSUS de la toile : partout où elle se pose, le geste ne peut plus
+  COMMENCER. Elle a successivement avalé le clic de sélection d'un mot, la
+  poignée de rotation, la poignée de coin après rotation, puis le tracé d'une
+  flèche. Chaque fois le symptôme était « l'outil ne marche pas » et jamais
+  « quelque chose est devant » ; c'est `elementFromPoint` au point visé qui a
+  tranché, en rendant « ae-barre » là où j'attendais une poignée.
+- **Combien de fois** : |||| (quatre fois le même défaut sous quatre symptômes
+  différents, dans la même heure.)
+- **Ce qui manque** : deux choses. Une règle : **sur une surface de dessin, un
+  calque flottant se pose à côté, jamais dessus** — c'est ce qu'on a fini par
+  faire, et la barre est maintenant AU-DESSUS de la toile, dans le flux. Et un
+  outil : `s.quiEstDevant(selecteur)` dans la sonde, qui dit ce que
+  `elementFromPoint` trouve au centre d'une cible. Les quatre diagnostics
+  auraient tenu en une ligne chacun.
+
+## Une page à part hérite d'un `body` fait pour une application d'un seul écran — 2026-10-07
+
+- **Ce que je voulais faire** : une page d'essai autonome, qui charge
+  `css/base.css` pour avoir les jetons de couleur des cinq thèmes.
+- **Ce qui coûte** : un défaut que la photo CACHAIT. `base.css` pose
+  `body { display: flex; height: 100dvh; overflow: hidden }` — juste pour
+  l'application, qui est un écran unique dont chaque volet défile tout seul.
+  Ma page, elle, est plus haute que l'écran : **elle ne défilait pas du tout**,
+  la fiche et l'export étaient inatteignables, et la bande des compositions
+  s'écrasait à 17 pixels pour un contenu de 83. La capture d'écran ne montrait
+  rien, parce qu'elle photographie la BOÎTE ENTIÈRE d'un élément, défilement ou
+  non.
+- **Combien de fois** : | (mais la prochaine page autonome héritera du même
+  `body`, et `postes.html` est peut-être déjà concernée — à vérifier.)
+- **Ce qui manque** : une ligne dans la sonde, et elle est générale :
+  `s.laPageDefile()` — vrai si le document est plus haut que la fenêtre ET que
+  le bas du dernier élément est atteignable. **Une photo ne dit jamais si une
+  page défile** ; il faut le demander, et on ne pense à le demander qu'une fois
+  qu'on a payé.

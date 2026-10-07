@@ -13716,3 +13716,46 @@ body.en-boite > #app-container { background: none; }
     border: 1px solid var(--border); background: var(--bg-hover);
     color: var(--danger-texte); font-size: .74rem; font-weight: 800;
 }
+
+/* --- LE TRI DES DINGBATS, DANS LA REVUE -----------------------------------
+   Rémy : « pour les dingbats intègre-le dans la revue catalogue pour que je
+   puisse faire le tri et te faire un rapport. » */
+
+.dgt-filtres { display: flex; flex-wrap: wrap; gap: 14px; margin: 8px 0 10px; }
+.dgt-groupe { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* UNE GRILLE, ET NON UNE LISTE : on trie un dingbat EN LE REGARDANT, pas en
+   lisant son nom. Trois par rangée sur un écran d'ordinateur, une seule sur un
+   téléphone — la scène doit rester assez grande pour se lire. */
+.dgt-liste {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.dgt-carte {
+    display: flex; flex-direction: column; gap: 7px;
+    border: 2px solid var(--border); border-radius: 14px; padding: 10px;
+    background: var(--bg-panel);
+}
+/* LE VERDICT SE VOIT SUR LA CARTE ENTIÈRE, pas seulement sur son bouton : en
+   descendant une grille de cent neuf cartes, on cherche ce qui n'est pas encore
+   tranché, et une pastille de seize pixels ne se repère pas de loin. */
+.dgt-carte--oui { border-color: var(--success-texte); }
+.dgt-carte--non { border-color: var(--danger-texte); opacity: .62; }
+
+.dgt-scene { display: flex; justify-content: center; }
+.dgt-scene .dg-cadre { min-height: 0; }
+.dgt-scene .dg-scene { transform: scale(.78); transform-origin: center; }
+.dgt-scene .dg-libre { max-width: 240px; }
+
+.dgt-dit { display: flex; flex-direction: column; gap: 2px; }
+.dgt-reponse { font-size: .95rem; color: var(--text-main); }
+.dgt-forme { font-size: .78rem; color: var(--text-muted); line-height: 1.35; }
+.dgt-exp { font-size: .76rem; color: var(--text-muted); line-height: 1.4; }
+.dgt-rang {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .68rem; color: var(--text-muted); opacity: .8;
+}
+.dgt-rate { margin: 0; color: var(--danger-texte); font-size: .8rem; font-weight: 700; }
+
+.dgt-verdict { display: flex; gap: 6px; justify-content: flex-end; margin-top: auto; }

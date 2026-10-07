@@ -26,7 +26,7 @@
 //
 // Il imprime la ligne à recopier dans le message de commit.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const DIRE = process.argv.includes('--dire');
@@ -97,6 +97,32 @@ writeFileSync('sw.js', sw
     .replaceAll(`?v=${v}`, `?v=${v + 1}`)
     .replace(`const CACHE = 'atoutmath-v${c}'`, `const CACHE = 'atoutmath-v${c + 1}'`));
 
+// --- 2 bis. LES PAGES À PART SUIVENT, SANS ENTRER DANS LE RITUEL ----------
+//
+// `index.html` et `sw.js` portent six `?v=` chacun, et l'outil REFUSE de monter
+// s'il n'en trouve pas exactement six — c'est ce qui le rend sûr. Les pages
+// autonomes (`postes.html`, la page d'essai de l'atelier) en portent un nombre
+// quelconque, et elles ne doivent pas pouvoir faire échouer le rituel.
+//
+// ON LES MONTE DONC À PART, SANS EXIGENCE DE COMPTE : une page absente ou sans
+// `?v=` n'est pas une faute, c'est le cas normal. Mais une page qui en porte et
+// qu'on oublierait servirait un vieux CSS après une correction — c'est-à-dire
+// exactement le défaut que ce rituel existe pour empêcher.
+const PAGES_A_PART = ['atelier-dingbats.html', 'postes.html'];
+const suivies = [];
+for (const f of PAGES_A_PART) {
+    if (!existsSync(f)) continue;
+    const avant = lire(f);
+    const combien = versions(avant).filter(x => x === v).length;
+    if (!combien) continue;
+    writeFileSync(f, avant.replaceAll(`?v=${v}`, `?v=${v + 1}`));
+    // On relit, comme pour les deux autres : un `replaceAll` qui n'a rien
+    // remplacé ne se plaint pas.
+    const apres = versions(lire(f));
+    if (apres.some(x => x !== v + 1)) arreter(`${f} n'a pas suivi : numéros ${uniques(apres).join(', ')}`);
+    suivies.push(`${f} (${combien})`);
+}
+
 // --- 3. ON RELIT CE QU'ON VIENT D'ÉCRIRE ---------------------------------
 //
 // Une écriture qui n'a rien remplacé ne se plaint pas : `replaceAll` rend la
@@ -123,6 +149,7 @@ try {
 
 console.log(`v${v} → v${v + 1}   ·   CACHE atoutmath-v${c} → v${c + 1}`);
 console.log(`${OCCURRENCES_ATTENDUES} occurrences dans index.html, ${OCCURRENCES_ATTENDUES} dans sw.js, relues sur le disque.`);
+if (suivies.length) console.log(`   Pages à part montées aussi : ${suivies.join(', ')}.`);
 console.log(csp ? '   ' + csp.replace(/\n/g, '\n   ') : '   (csp.mjs n\'a rien dit)');
 console.log('\nÀ recopier dans le message de commit :');
 console.log(`  Rituel de version : ?v=${v} → ${v + 1} (six par fichier), `

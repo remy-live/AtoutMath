@@ -1,0 +1,297 @@
+/* L'ATELIER DES DINGBATS, VERSION D'ESSAI — sa feuille à elle.
+   ─────────────────────────────────────────────────────────────────────────────
+
+   Rémy : « fais-moi à part l'atelier […] quelque chose de plus moderne, plus
+   facile, plus sympa. On essaie d'abord puis on l'intègre. »
+
+   ELLE VIT À PART, COMME LA PAGE. Mêler ces règles à `css/modules.css` les
+   ferait charger par toute l'application, et surtout : si l'essai ne plaît pas,
+   on supprime deux fichiers et il n'en reste rien.
+
+   ELLE NE REDÉFINIT AUCUNE COULEUR. Les jetons viennent de `css/base.css`, qui
+   porte les cinq thèmes : l'essai suit le thème de l'appareil comme le reste de
+   l'application, et personne n'a à y penser. */
+
+/* ON REPREND LE CORPS À `base.css`, ET IL FAUT LE DIRE.
+
+   `base.css` pose `body { display: flex; height: 100dvh; overflow: hidden }` —
+   et c'est juste POUR L'APPLICATION, qui est un écran unique dont chaque volet
+   gère son propre défilement. Cette page-ci est une PAGE : elle est plus haute
+   que l'écran et doit défiler.
+
+   Sans cette reprise, `body` restait un conteneur flexible de hauteur fixe : la
+   bande des compositions s'écrasait à un pixel, et surtout LA PAGE NE DÉFILAIT
+   PAS — la fiche et l'export étaient inatteignables. Mesuré : la bande faisait
+   17 pixels de haut pour un contenu de 83.
+
+   `width: auto` ET PAS `100vw` : avec une barre de défilement verticale,
+   `100vw` déborde de la largeur utile et fabrique un défilement horizontal
+   dont personne ne comprend d'où il vient. */
+html:has(> body.ae-corps) { height: auto; overflow: visible; }
+body.ae-corps {
+    display: block;
+    height: auto; min-height: 100%; width: auto;
+    overflow: visible;
+    margin: 0;
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    background: var(--bg-app);
+    color: var(--text-main);
+    font-family: inherit;
+}
+
+/* --- L'EN-TÊTE ------------------------------------------------------------ */
+
+.ae-tete {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 16px calc(10px + env(safe-area-inset-top, 0px));
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+}
+.ae-titre { margin: 0; font-size: 1.05rem; font-weight: 800; }
+.ae-essai {
+    font-size: .64rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--warning-texte); border: 1px solid var(--warning-texte);
+    border-radius: 999px; padding: 1px 7px; vertical-align: 2px;
+}
+/* LE MOT QUI DIT QUE C'EST ENREGISTRÉ : en gris en permanence, il s'allume une
+   seconde à chaque enregistrement. Une promesse qu'on ne voit jamais tenue n'en
+   est pas une — et il ne CLIGNOTE pas, ce qui attirerait l'œil hors de la toile
+   à chaque frappe. */
+.ae-sauve {
+    margin-left: auto; font-size: .74rem; font-weight: 700;
+    color: var(--text-muted); transition: color .25s ease;
+}
+.ae-sauve--frais { color: var(--success-texte); }
+.ae-retour { font-size: .8rem; font-weight: 700; color: var(--primary-texte); text-decoration: none; }
+
+/* --- LA BANDE DES COMPOSITIONS ------------------------------------------- */
+
+.ae-bande {
+    display: flex; gap: 8px; align-items: stretch;
+    overflow-x: auto; padding: 8px 16px; scrollbar-width: thin;
+    border-bottom: 1px solid var(--border);
+}
+.ae-vignette { position: relative; flex: 0 0 auto; }
+.ae-vignette-btn {
+    display: flex; flex-direction: column; gap: 4px; align-items: center;
+    width: 104px; padding: 6px; cursor: pointer; font: inherit;
+    border: 2px solid var(--border); border-radius: 11px;
+    background: var(--bg-panel); color: var(--text-main);
+}
+.ae-vignette--courante .ae-vignette-btn { border-color: var(--primary); background: var(--bg-hover); }
+.ae-vignette-dessin {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 50px; overflow: hidden;
+}
+.ae-vignette-dessin svg { max-width: 100%; max-height: 50px; height: auto; }
+.ae-vignette-vide { font-size: .7rem; color: var(--text-muted); font-style: italic; }
+.ae-vignette-nom {
+    font-size: .7rem; font-weight: 700; line-height: 1.2;
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ae-vignette-x {
+    position: absolute; top: -4px; right: -4px;
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-panel);
+    color: var(--danger-texte); font-size: .72rem; font-weight: 800; line-height: 1;
+}
+.ae-vignette-neuve {
+    display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center;
+    flex: 0 0 auto; width: 78px; cursor: pointer; font: inherit; font-size: 1.1rem; font-weight: 800;
+    border: 2px dashed var(--border); border-radius: 11px; background: none; color: var(--text-muted);
+}
+.ae-vignette-neuve span { font-size: .68rem; font-weight: 700; }
+
+/* --- LA SCÈNE ------------------------------------------------------------ */
+
+.ae-scene {
+    display: flex; flex-direction: column; gap: 10px;
+    max-width: 880px; margin: 0 auto; padding: 14px 16px;
+}
+
+/* LA BOÎTE À OUTILS. Des cibles de soixante-douze pixels : « hyper facile » se
+   joue d'abord là, et un outil qu'on rate au doigt est un outil qu'on n'emploie
+   plus. */
+.ae-outils { display: flex; flex-wrap: wrap; gap: 6px; }
+.ae-outil {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    width: 72px; padding: 5px 2px; cursor: pointer; font: inherit;
+    border: 2px solid var(--border); border-radius: 11px;
+    background: var(--bg-panel); color: var(--text-main);
+    touch-action: none; -webkit-user-select: none; user-select: none;
+}
+.ae-outil svg { width: 54px; height: 36px; }
+.ae-outil .ae-picto { width: 30px; height: 30px; margin: 3px 0; }
+.ae-outil-nom { font-size: .65rem; font-weight: 700; color: var(--text-muted); }
+@media (hover: hover) {
+    .ae-outil:hover { border-color: var(--primary); }
+}
+/* L'OUTIL EN MAIN SE VOIT DE LOIN. Sans cela on ne sait pas si le prochain appui
+   va dessiner ou sélectionner — et c'est la seule chose qu'il faut savoir. */
+.ae-outil--actif {
+    border-color: var(--primary); background: var(--bg-hover);
+    box-shadow: 0 0 0 2px var(--primary) inset;
+}
+.ae-outil--actif .ae-outil-nom { color: var(--primary-texte); }
+
+.ae-toile-zone { position: relative; display: flex; justify-content: center; }
+.ae-toile {
+    display: block; width: 100%; max-width: 760px; height: auto;
+    border: 2px solid var(--border); border-radius: 14px;
+    /* sans quoi le glissé fait défiler la page au doigt */
+    touch-action: none;
+}
+.ae-toile:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+/* LE CURSEUR DIT CE QUI VA SE PASSER : une croix quand on va tracer. */
+.ae-toile--trace { cursor: crosshair; }
+.ae-fond { fill: var(--bg-panel); }
+.ae-grille line { stroke: var(--border); stroke-width: .6; }
+.ae-el { cursor: move; }
+.ae-prise { fill: transparent; pointer-events: all; }
+.ae-toile-vide {
+    fill: var(--text-muted); font-size: 17px; font-weight: 700;
+    opacity: .7; pointer-events: none;
+}
+
+/* LES POIGNÉES. Quatorze unités de toile, soit vingt-deux pixels à l'écran : le
+   plancher tactile de la maison. J'avais écrit dans l'atelier intégré qu'une
+   poignée est intenable au doigt — c'était vrai à dix pixels. */
+.ae-poignee {
+    fill: var(--bg-panel); stroke: var(--primary); stroke-width: 2.5;
+    cursor: pointer;
+}
+.ae-pivot { cursor: grab; }
+.ae-bout { cursor: move; }
+.ae-contour, .ae-contour-trait {
+    fill: none; stroke: var(--primary); stroke-width: 1.5;
+    stroke-dasharray: 6 4; pointer-events: none;
+}
+.ae-tige { stroke: var(--primary); stroke-width: 1.5; pointer-events: none; }
+/* LES REPÈRES D'ALIGNEMENT : c'est ce qui fait qu'un dessin composé en trente
+   secondes a l'air soigné au lieu d'avoir l'air approximatif. */
+.ae-repere {
+    stroke: var(--danger-texte); stroke-width: 1; stroke-dasharray: 4 4;
+    pointer-events: none; opacity: .85;
+}
+
+/* LE CHAMP D'ÉDITION SUR PLACE, posé PAR-DESSUS le mot. */
+.ae-saisie {
+    position: absolute; transform: translate(-50%, -50%);
+    min-width: 120px; max-width: 80%;
+    text-align: center; font-weight: 800; font-family: inherit;
+    border: 2px solid var(--primary); border-radius: 8px;
+    padding: 2px 8px; background: var(--bg-panel); color: var(--text-main);
+    box-shadow: var(--shadow-md);
+}
+
+/* LA BARRE DE CE QUI EST CHOISI, AU-DESSUS DE LA TOILE.
+   Elle ne flotte PAS sur la toile : une barre posée sur une surface de dessin
+   en bloque le geste — on ne peut pas commencer un tracé sous elle. Mesuré.
+   Elle garde sa hauteur même vide, pour que la toile ne saute pas. */
+.ae-barre {
+    display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+    min-height: 40px; padding: 4px 8px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg-panel);
+}
+.ae-barre--vide {
+    color: var(--text-muted); font-size: .8rem; font-weight: 600;
+    border-style: dashed; background: none;
+}
+.ae-pastilles { display: flex; gap: 3px; }
+.ae-pastille {
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+    border: 2px solid var(--border);
+}
+.ae-pastille--choisie { border-color: var(--text-main); box-shadow: 0 0 0 2px var(--bg-panel) inset; }
+.ae-sep { width: 1px; height: 20px; background: var(--border); }
+.ae-mini {
+    min-width: 28px; height: 28px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-hover); color: var(--text-main);
+    font: inherit; font-size: .82rem; font-weight: 800;
+}
+.ae-mini[aria-pressed="true"] { border-color: var(--primary); color: var(--primary-texte); }
+.ae-mini--danger { color: var(--danger-texte); }
+
+.ae-pied-toile { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ae-vide { margin-left: auto; }
+.ae-coche {
+    display: flex; align-items: center; gap: 6px;
+    font-size: .82rem; font-weight: 600; color: var(--text-muted);
+}
+.ae-btn {
+    border: 1px solid var(--border); background: var(--bg-hover); color: var(--text-main);
+    border-radius: 9px; cursor: pointer; font: inherit; font-weight: 700; font-size: .85rem;
+    padding: 7px 11px;
+}
+.ae-btn--fort { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.ae-consigne {
+    margin: 0; min-height: 1.3em;
+    font-size: .82rem; line-height: 1.4; color: var(--text-muted);
+}
+.ae-consigne--active { color: var(--primary-texte); font-weight: 700; }
+.ae-consigne--alerte { color: var(--danger-texte); font-weight: 700; }
+
+.ae-avis {
+    border: 1px solid var(--border); border-radius: 11px; padding: 8px 11px;
+    font-size: .82rem; line-height: 1.4;
+}
+.ae-avis ul { margin: 4px 0 0; padding-left: 18px; }
+.ae-avis--ok { color: var(--success-texte); border-color: var(--success-texte); }
+.ae-avis--attention { color: var(--warning-texte); border-color: var(--warning-texte); }
+.ae-rate { margin: 0; color: var(--danger-texte); font-weight: 700; font-size: .85rem; }
+.ae-cadre-eleve { max-width: 760px; }
+
+/* --- LA FICHE ------------------------------------------------------------ */
+
+.ae-fiche {
+    display: flex; flex-direction: column; gap: 8px;
+    max-width: 880px; margin: 0 auto; padding: 0 16px 14px;
+}
+.ae-h2 { margin: 10px 0 0; font-size: .95rem; font-weight: 800; }
+.ae-note { margin: 0; font-size: .8rem; line-height: 1.4; color: var(--text-muted); }
+.ae-champ {
+    display: flex; flex-direction: column; gap: 4px;
+    font-weight: 600; font-size: .78rem; color: var(--text-muted);
+}
+.ae-champ input, .ae-champ select, .ae-champ textarea {
+    border: 1px solid var(--border); border-radius: 9px; padding: 7px 10px;
+    font: inherit; font-size: .88rem; background: var(--bg-panel); color: var(--text-main);
+    width: 100%; box-sizing: border-box; resize: vertical;
+}
+.ae-duo { display: flex; gap: 8px; }
+.ae-duo > * { flex: 1 1 0; min-width: 0; }
+.ae-aide-ligne { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.ae-aide-n {
+    flex: 0 0 auto; width: 18px; text-align: center;
+    font-size: .72rem; font-weight: 800; color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.ae-aide-ligne input {
+    flex: 1 1 auto; min-width: 0;
+    border: 1px solid var(--border); border-radius: 9px; padding: 6px 9px;
+    font: inherit; font-size: .84rem; background: var(--bg-panel); color: var(--text-main);
+}
+
+/* --- LA SORTIE ----------------------------------------------------------- */
+
+.ae-sortie {
+    display: flex; flex-direction: column; gap: 8px;
+    max-width: 880px; margin: 0 auto; padding: 0 16px 24px;
+}
+.ae-export {
+    width: 100%; box-sizing: border-box; resize: vertical;
+    border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .76rem;
+    background: var(--bg-panel); color: var(--text-main);
+}
+.ae-sortie-boutons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* SUR UN TÉLÉPHONE, les outils se serrent et la toile prend toute la largeur. */
+@media (max-width: 560px) {
+    .ae-outil { width: 62px; }
+    .ae-outil svg { width: 46px; height: 30px; }
+    .ae-scene { padding: 10px 12px; }
+    .ae-barre { gap: 2px; padding: 4px; }
+    .ae-pastille { width: 19px; height: 19px; }
+}

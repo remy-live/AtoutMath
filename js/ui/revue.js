@@ -51,6 +51,7 @@ import {
 // loin : parcourir une longue liste et trancher une fois par ligne, c'est
 // exactement ce que fait cet écran sur les exercices.
 import { quotidienHtml, brancherQuotidien } from './quotidienTri.js';
+import { dingbatsHtml, brancherDingbats } from './dingbatsTri.js';
 
 const CLE = 'mathbox-revue';
 let revue = null;
@@ -423,6 +424,14 @@ function assurerPanneau() {
                 role="tab" aria-selected="true">Les exercices</button>
             <button type="button" class="rv-onglet" data-vue="quotidien"
                 role="tab" aria-selected="false">📅 Le quotidien</button>
+            <!-- TROIS OBJETS, TROIS ONGLETS. Rémy : « pour les dingbats
+                 intègre-le dans la revue catalogue pour que je puisse faire le
+                 tri et te faire un rapport. » C'est le même geste que sur les
+                 proverbes — parcourir, trancher, recoller — donc le même écran,
+                 et surtout PAS un bouton de plus dans la palette d'auteur :
+                 « on a beaucoup d'interface de debug ». -->
+            <button type="button" class="rv-onglet" data-vue="dingbats"
+                role="tab" aria-selected="false">🧩 Les dingbats</button>
         </div>
         <div class="rv-filtres" data-filtres></div>
         <div class="rv-cadre" data-cadre></div>
@@ -1107,11 +1116,16 @@ function peindre() {
     // de proverbes proposerait de filtrer par niveau et par domaine des
     // phrases qui n'en ont pas.
     const cadre = el.querySelector('[data-cadre]');
-    el.classList.toggle('rv--quotidien', vue === 'quotidien');
-    if (vue === 'quotidien') {
-        cadre.className = 'rv-cadre rv-quotidien';
-        cadre.innerHTML = quotidienHtml();
-        brancherQuotidien(cadre, peindre);
+    // LES FILTRES ET LE COMPTEUR SONT CEUX DES EXERCICES : on les cache sur les
+    // deux autres onglets. `rv--quotidien` porte cette règle dans le CSS depuis
+    // le premier jour ; l'onglet des dingbats la partage plutôt que d'en
+    // dupliquer une identique sous un autre nom.
+    el.classList.toggle('rv--quotidien', vue === 'quotidien' || vue === 'dingbats');
+    if (vue === 'quotidien' || vue === 'dingbats') {
+        const cesDingbats = vue === 'dingbats';
+        cadre.className = 'rv-cadre rv-quotidien' + (cesDingbats ? ' rv-dingbats' : '');
+        cadre.innerHTML = cesDingbats ? dingbatsHtml() : quotidienHtml();
+        (cesDingbats ? brancherDingbats : brancherQuotidien)(cadre, peindre);
         // Le compteur parle des exercices : il n'a rien à dire ici, et un
         // « 152 lignes » sous une liste de proverbes serait un mensonge.
         el.querySelector('[data-compteur]').textContent = '';

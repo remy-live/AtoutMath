@@ -437,6 +437,66 @@ dire(citation.auteur && citation.sur && !citation.reponse,
     'changer de genre change les champs, pas seulement le titre', JSON.stringify(citation));
 
 await s.photo('.atq-panneau', 'tools/tmp/atelier-quotidien.png');
+await s.page.click('#atq-fermer');
+await dormir(300);
+
+console.log('\nLE TRI DES DINGBATS, DANS LA REVUE');
+console.log('─'.repeat(78));
+
+// RÉMY : « pour les dingbats intègre-le dans la revue catalogue pour que je
+// puisse faire le tri et te faire un rapport. » Un onglet qui ne s'ouvre pas est
+// le défaut le plus bête et le plus fréquent : on le mesure.
+await s.page.click('#db-revue');
+await dormir(900);
+await s.doitExister('[data-vue="dingbats"]', 'l\'onglet des dingbats dans la revue');
+await s.page.click('[data-vue="dingbats"]');
+await dormir(900);
+await s.doitExister('.dgt-liste', 'la grille des dingbats');
+
+const grille = await s.page.evaluate(() => ({
+    cartes: document.querySelectorAll('.dgt-carte').length,
+    dessins: document.querySelectorAll('.dgt-scene .dg-scene').length,
+    filtres: document.querySelectorAll('[data-filtre]').length,
+    compte: (document.querySelector('[data-tri-compte]').textContent || '').trim()
+}));
+dire(grille.cartes >= 100 && grille.dessins === grille.cartes,
+    'les 109 dingbats sont là, chacun DESSINÉ — on trie en regardant, pas en lisant',
+    `${grille.cartes} cartes, ${grille.dessins} dessins`);
+dire(grille.filtres >= 10, 'les filtres thème / niveau / déjà lus sont là', `${grille.filtres}`);
+
+// ON TRANCHE DEUX LIGNES, et l'on vérifie que le compte ET le rapport suivent.
+await s.page.click('.dgt-carte:nth-child(1) .banc-q-oui');
+await dormir(400);
+await s.page.click('.dgt-carte:nth-child(2) .banc-q-non');
+await dormir(400);
+const apresTri = await s.page.evaluate(() => ({
+    compte: (document.querySelector('[data-tri-compte]').textContent || '').trim(),
+    oui: document.querySelectorAll('.dgt-carte--oui').length,
+    non: document.querySelectorAll('.dgt-carte--non').length
+}));
+dire(apresTri.oui === 1 && apresTri.non === 1 && /2 relus sur 109/.test(apresTri.compte),
+    'un verdict se pose, se voit sur la carte entière, et le compte suit',
+    apresTri.compte);
+
+// LE FILTRE « PAS ENCORE LUS » est le plus utile de tous : on relit cent neuf
+// énigmes en plusieurs fois, et retrouver où l'on en était est tout le problème.
+await s.page.click('[data-filtre="vu"][data-valeur="nonlues"]');
+await dormir(600);
+const restantes = await s.page.evaluate(() => document.querySelectorAll('.dgt-carte').length);
+dire(restantes === grille.cartes - 2, 'le filtre « pas encore lus » retire ce qui est tranché',
+    `${restantes} restantes sur ${grille.cartes}`);
+
+// LE RAPPORT, qui est le seul objet qui sort de l'écran et m'arrive.
+const rapport = await s.page.evaluate(async () => {
+    const { rapport } = await import('./js/ui/dingbatsTri.js');
+    return rapport();
+});
+dire(/À SUPPRIMER \(1\)/.test(rapport) && /À GARDER \(1\)/.test(rapport)
+    && /2 relus sur 109/.test(rapport) && /dg-/.test(rapport),
+    'le rapport porte les deux tas, leur compte, et les identifiants',
+    rapport.split('\n')[0]);
+
+await s.photo('.rv-cadre', 'tools/tmp/revue-dingbats.png');
 
 // ── LE VERDICT ──────────────────────────────────────────────────────────────
 console.log('\n' + '─'.repeat(78));
