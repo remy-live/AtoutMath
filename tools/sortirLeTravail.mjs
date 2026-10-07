@@ -25,7 +25,9 @@
 
 import { ouvrirSonde } from './sonde.mjs';
 import { setTimeout as dormir } from 'node:timers/promises';
-const s = await ouvrirSonde({ largeur: 1400, hauteur: 980 });
+// 390 px : l'iPhone sur lequel Rémy trie vraiment. C'est la largeur qui a
+// révélé le défaut des cibles, et une mesure prise à 1400 ne l'aurait jamais vu.
+const s = await ouvrirSonde({ largeur: 390, hauteur: 844 });
 let manques = 0;
 const dire = (ok, quoi, detail = '') => { if (!ok) manques++;
   console.log(`  ${ok ? '\x1b[32mok  \x1b[0m' : '\x1b[31mnon \x1b[0m'}${quoi}` + (detail ? `  — ${detail}` : '')); };
@@ -40,6 +42,13 @@ if (await s.page.evaluate(() => document.getElementById('debug-toolbar').classLi
 console.log('\nLE TRI DU QUOTIDIEN : CE QUI SORT, ET CE QUI NE S\'EFFACE PAS');
 console.log('─'.repeat(78));
 await s.page.click('#db-revue'); await dormir(900);
+// LA PALETTE D'AUTEUR SE REPLIE AVANT TOUTE MESURE. À 390 px elle flotte
+// par-dessus la revue : un clic « force » atterrit alors sur la palette, le
+// bouton visé ne reçoit rien, et la sonde conclut qu'il ne fait rien — en
+// accusant le code d'un défaut qui est le sien. Rémy, lui, la replie.
+if (await s.page.evaluate(() => !document.getElementById('debug-toolbar').classList.contains('dbg--folded'))) {
+    await s.page.click('#db-fold'); await dormir(300);
+}
 await s.page.click('[data-vue="quotidien"]'); await dormir(900);
 await s.doitExister('[data-tri-copier]');
 await s.doitExister('[data-tri-fichier]');
@@ -49,6 +58,31 @@ await s.page.click('.banc-q-non[data-verdict="1"]', { force: true }); await dorm
 await s.page.click('.banc-q-non[data-verdict="2"]', { force: true }); await dormir(400);
 dire((await s.page.textContent('[data-tri-compte]')).includes('3 relues'),
   'trois verdicts posés', (await s.page.textContent('[data-tri-compte]')).trim());
+
+// ── ✓ ET ✕ SE TOUCHENT-ILS ? ──────────────────────────────────────────────
+//
+// RÉMY : « je ne suis pas sûr d'avoir retiré autant de blagues. » Mesuré ici :
+// les deux boutons faisaient 24 × 24 px, séparés de TROIS pixels, sur deux
+// cents lignes. Le minimum tenable au pouce est 44. « Je garde » et « je
+// supprime » se touchaient, et l'écran enregistre fidèlement ce qu'il reçoit :
+// rien ne garantissait qu'on avait touché celui qu'on visait.
+//
+// LA MESURE NE DIT PAS QU'UN CLIC PRÉCIS ÉTAIT FAUX — elle dit que le doute
+// était fondé, et c'est bien assez.
+const cibles = await s.page.evaluate(() => {
+  const li = document.querySelectorAll('.banc-q-item')[10];
+  const o = li.querySelector('.banc-q-oui').getBoundingClientRect();
+  const n = li.querySelector('.banc-q-non').getBoundingClientRect();
+  return { oh: Math.round(o.height), ow: Math.round(o.width),
+           nh: Math.round(n.height), nw: Math.round(n.width),
+           ecart: Math.round(n.x - (o.x + o.width)) };
+});
+dire(Math.min(cibles.oh, cibles.ow, cibles.nh, cibles.nw) >= 44,
+  '✓ et ✕ font 44 px au moins — le minimum tenable au pouce',
+  `${cibles.ow}×${cibles.oh} et ${cibles.nw}×${cibles.nh}`);
+dire(cibles.ecart >= 8,
+  'ET ILS SONT SÉPARÉS : « je garde » et « je supprime » ne se touchent pas',
+  `${cibles.ecart} px d'écart`);
 
 // 1. LE TEXTE PARAÎT, QUOI QUE FASSE LE PRESSE-PAPIERS
 await s.page.click('[data-tri-copier]', { force: true }); await dormir(700);

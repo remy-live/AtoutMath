@@ -11694,11 +11694,38 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .banc-q-item--oui { background: rgba(31, 122, 77, .08); }
 .banc-q-item--non { background: rgba(184, 58, 44, .10); }
 .banc-q-item--non .banc-q-corps { text-decoration: line-through; opacity: .6; }
-.banc-q-verdict { display: flex; gap: 3px; flex: none; }
-.banc-q-verdict button {
-    width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+/* ✓ ET ✕ : DEUX RÉPONSES OPPOSÉES, ET ELLES ÉTAIENT À TROIS PIXELS.
+
+   RÉMY : « je ne suis pas sûr d'avoir retiré autant de blagues. »
+
+   Mesuré sur un iPhone (390 px) : les deux boutons faisaient 24 × 24 px,
+   séparés de 3 px, sur une ligne de 50. Le minimum tenable au pouce est de 44
+   — ils étaient à un peu plus de la moitié —, et surtout « je garde » et « je
+   supprime » se touchaient. Sur deux cents lignes, c'est une machine à
+   regretter : rien ne garantit qu'on a touché celui qu'on visait, et l'écran
+   enregistre fidèlement ce qu'il a reçu.
+
+   LA MESURE NE DIT PAS QU'UN CLIC PRÉCIS ÉTAIT FAUX — elle dit que le doute de
+   Rémy est fondé, et c'est bien assez pour corriger.
+
+   44 px et dix d'écart au doigt ; on garde 28 à la souris, où le pointeur ne
+   tremble pas et où dix lignes de plus à l'écran valent mieux. */
+.banc-q-verdict { display: flex; gap: 6px; flex: none; }
+/* Le tri des dingbats emprunte les mêmes boutons dans son propre conteneur :
+   la règle vaut pour les deux, sinon la correction ne tient que d'un côté —
+   « une correction posée sur un seul des chemins qui mènent au même endroit ne
+   ferme rien », cinq fois payé dans ce dépôt. */
+.banc-q-verdict button, .dgt-verdict button {
+    width: 28px; height: 28px; border-radius: 7px; cursor: pointer;
     border: 1px solid var(--border, #d7dce5); background: #fff;
     font-weight: 800; line-height: 1; padding: 0;
+}
+@media (pointer: coarse), (max-width: 768px) {
+    .banc-q-verdict, .dgt-verdict { gap: 10px; }
+    .banc-q-verdict button, .dgt-verdict button {
+        width: 44px; height: 44px; border-radius: 10px; font-size: 1.05rem;
+    }
+    .banc-q-item { padding: 7px 6px; gap: 10px; }
 }
 .banc-q-oui { color: #1f7a4d; }
 .banc-q-non { color: #b83a2c; }

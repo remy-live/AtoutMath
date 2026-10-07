@@ -3109,3 +3109,22 @@ lignes** — 2026-10-01
   des contenus doit énoncer ce que le nombre sert à garantir, jamais le nombre
   qu'on avait le jour où on l'a écrite.** À passer en revue quand on touchera
   aux deux autres.
+
+## Une cible de 24 px entre « je garde » et « je supprime » — 2026-10-07
+
+- **Ce que je voulais faire** : vérifier le doute de Rémy — « je ne suis pas
+  sûr d'avoir retiré autant de blagues » — après avoir reporté 74 suppressions.
+- **Ce qui coûte** : une heure à chercher un défaut d'enregistrement qui
+  n'existait pas. La sonde a montré que l'écran note exactement ce qu'on
+  touche : la liste ne saute pas au redessin, la 60ᵉ reste sous le doigt, seule
+  la 60ᵉ est marquée. Le défaut était ailleurs, et une mesure de GÉOMÉTRIE l'a
+  dit en trois lignes : les boutons ✓ et ✕ faisaient **24 × 24 px, séparés de
+  3 px**, sur deux cents lignes — 55 % du minimum tenable au pouce, et les deux
+  réponses OPPOSÉES collées l'une à l'autre.
+- **Combien de fois** : || — le tri au pouce avait déjà demandé cette mesure,
+  et je l'avais écrite pour LUI seul (`tools/triAuPouce.mjs`) au lieu d'en
+  faire une règle. Les boutons du tri du quotidien étaient là depuis le début.
+- **Ce qui manque** : `s.ciblesAuDoigt(selecteur)` dans la sonde — qui rend
+  toutes les cibles sous 44 px ET toutes les paires séparées de moins de 8 px,
+  d'un coup, sur n'importe quel écran. **On ne mesure pas la taille des cibles
+  de l'écran qu'on vient d'écrire ; on la mesure sur tous ceux qu'on a.**
