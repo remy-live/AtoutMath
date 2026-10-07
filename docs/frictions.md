@@ -3087,3 +3087,25 @@ lignes** — 2026-10-01
   de repli qu'aucune mesure n'emprunte n'existe pas.** C'est le pendant de
   « une mesure qui n'emprunte pas le chemin de l'utilisateur ne mesure pas son
   problème » : ici le chemin de l'utilisateur est celui où ça REFUSE.
+
+## Une épreuve qui fige un stock de départ interdit le tri qu'elle préparait — 2026-10-07
+
+- **Ce que je voulais faire** : retirer du code les soixante-quatorze blagues
+  que Rémy venait d'écarter.
+- **Ce qui coûte** : `npm test` est devenu rouge sur « DEUX CENTS ENTRÉES PAR
+  LISTE, comme demandé ». Or les deux cents avaient été demandées POUR qu'on
+  puisse en jeter la moitié — Rémy : « mets-en alors deux cents et un clic oui
+  ou non et je te l'envoie ». L'épreuve défendait donc exactement le contraire
+  de ce pour quoi elle avait été écrite : elle interdisait le tri qu'elle
+  devait rendre possible. Vingt minutes à trouver la vraie règle (le temps
+  qu'une entrée met à revenir, qui dépend aussi du roulement des genres — et où
+  RACCOURCIR une liste peut ALLONGER le cycle, parce qu'un multiple de cinq
+  retombe sur le même jour du roulement).
+- **Combien de fois** : | — mais ça se reproduira au prochain tri : le dépôt
+  compte au moins trois épreuves de la même famille (109 dingbats, 224
+  exercices, 201 par liste), et chacune fige un stock de DÉPART au lieu de la
+  propriété qui compte.
+- **Ce qui manque** : pas un outil — une relecture. **Une épreuve qui compte
+  des contenus doit énoncer ce que le nombre sert à garantir, jamais le nombre
+  qu'on avait le jour où on l'a écrite.** À passer en revue quand on touchera
+  aux deux autres.
