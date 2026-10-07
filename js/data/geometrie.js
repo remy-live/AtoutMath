@@ -1860,7 +1860,21 @@ export const geometrieExercises = [
         consignePapier: notion === 'milieu' ? 'Quelle phrase est vraie ?'
             : (notion === 'codage' ? 'Que donne le codage ?'
                 : 'Quelle affirmation est vraie ?'),
-        colonnesPapier: 1,
+        // LA FIGURE S'IMPRIME, et il a fallu un rendu pour ça.
+        //
+        // RÉMY : « tu oublies toutes les figures sur la version imprimé ». La
+        // feuille tombait sur le rendu générique « questions écrites », qui
+        // n'écrit que `prompt.papier` — d'où dix lignes « Quelle affirmation
+        // est vraie ? » sans figure NI affirmations. Une question dont
+        // l'énoncé entier a disparu n'est pas incomplète, elle est insoluble.
+        printable: 'geoElements',
+        // ET PLUS DE `colonnesPapier` : c'est le RENDU qui dispose.
+        //
+        // Le « 1 » qui s'y trouvait datait du rendu générique, où un bloc ne
+        // portait qu'une ligne de texte. Depuis que la figure s'imprime, la
+        // forme d'un bloc n'est plus une affaire de colonnes mais de
+        // PROPORTIONS — une figure, puis quatre affirmations —, et seul le
+        // rendu les connaît.
         generatorId: 'geo.elements', activityId: 'buttons',
         params: { notion, sortes },
         // CHAQUE EXERCICE N'OFFRE QUE LES RÉGLAGES QUI LE GOUVERNENT. Un

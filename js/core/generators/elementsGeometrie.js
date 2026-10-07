@@ -342,7 +342,12 @@ function genAppartenance(rng, params) {
         }))],
         explanation: `${bonne.texte} : ${phraseExplication(sc, bonne)}`,
         difficulty: bonne.sorte === 'demi-droite' ? 3 : 2,
-        meta: { notion: 'appartenance', sorte: bonne.sorte }
+        // LA SCÈNE VOYAGE AVEC L'ITEM, et c'est ce qui rend la figure
+        // imprimable. RÉMY : « tu oublies toutes les figures sur la version
+        // imprimé » — la feuille ne sait pas lire le SVG de `prompt.html`,
+        // elle dessine en traits et en points. Il lui faut donc les
+        // COORDONNÉES, pas le balisage. Voir `planDeLaScene`.
+        meta: { notion: 'appartenance', sorte: bonne.sorte, scene: sc }
     });
 }
 
@@ -452,7 +457,9 @@ function genCodage(rng, params) {
         explanation: `Le codage donne ${egalites.map(([p, q]) => `${p} = ${q}`).join(', ')}. `
             + 'On écrit les LONGUEURS, sans crochets.',
         difficulty: 2,
-        meta: { notion: 'codage' }
+        // LA FIGURE VOYAGE AVEC L'ITEM : le papier la dessine en traits et
+        // en points, il ne sait pas lire un SVG. Voir `planFigureCodee`.
+        meta: { notion: 'codage', figure: fig }
     });
 }
 
@@ -503,7 +510,9 @@ function itemCompter(rng, fig, egalites, svg) {
         explanation: `Le codage donne ${n} égalité${n > 1 ? 's' : ''} : `
             + egalites.map(([p, q]) => `${p} = ${q}`).join(', ') + '.',
         difficulty: 3,
-        meta: { notion: 'codage' }
+        // LA FIGURE VOYAGE AVEC L'ITEM : le papier la dessine en traits et
+        // en points, il ne sait pas lire un SVG. Voir `planFigureCodee`.
+        meta: { notion: 'codage', figure: fig }
     });
 }
 
@@ -673,6 +682,8 @@ function itemMilieu(rng, { fig, bonne, leurres, piege }) {
                 + `${bonne.x}${bonne.z} : c'est donc bien le milieu.`
             : pourquoiPasMilieu(fig, bonne.x, bonne.y, bonne.z),
         difficulty: piege ? 3 : 2,
-        meta: { notion: 'milieu', piege }
+        // LA FIGURE VOYAGE AVEC L'ITEM : le papier la dessine en traits et
+        // en points, il ne sait pas lire un SVG. Voir `planFigureCodee`.
+        meta: { notion: 'milieu', piege, figure: fig }
     });
 }

@@ -117,18 +117,46 @@ export function projeter(sc) {
  *   parle la question, ce qu'aucune phrase ne remplace.
  * @param {string[]} [cfg.vedettes] des points à faire ressortir
  */
-export function sceneSvg(sc, cfg = {}) {
+/**
+ * LA GÉOMÉTRIE DE LA SCÈNE — sans une once de SVG.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, dans sa revue du catalogue, quatre fois : « tu oublies toutes les
+ * figures sur la version imprimé ».
+ *
+ * La feuille ne sait pas lire un SVG : elle est dessinée par jsPDF, en traits
+ * et en points. Il lui faut donc les COORDONNÉES, et l'on ne pouvait pas les
+ * lui donner tant qu'elles n'existaient que sous forme de balises.
+ *
+ * ON NE RECALCULE RIEN DE L'AUTRE CÔTÉ, et c'est tout l'objet de cette
+ * fonction. Le placement des noms, en particulier, est une correction payée :
+ * « 56 noms sur 196 touchés par un trait, sur 28 figures » — dont le « H » de
+ * la capture de Rémy, barré au croisement des deux droites. Le papier hérite de
+ * cette mesure au lieu de la refaire, et mal.
+ *
+ * Les coordonnées sont celles de l'écran ; au papier de les ramener à ses
+ * millimètres.
+ */
+export function planDeLaScene(sc, cfg = {}) {
     const W = MARGE * 2 + sc.grille.largeur * UNITE;
     const H = MARGE * 2 + sc.grille.hauteur * UNITE;
     const P = projeter(sc);
+
+    /** Un trait allongé du débord, d'un côté, des deux, ou d'aucun. */
+    const allonger = (A, B, avant, apres) => {
+        const dx = B.x - A.x, dy = B.y - A.y;
+        const L = Math.hypot(dx, dy) || 1;
+        const e = DEBORD * UNITE;
+        return {
+            x1: avant ? A.x - dx / L * e : A.x, y1: avant ? A.y - dy / L * e : A.y,
+            x2: apres ? B.x + dx / L * e : B.x, y2: apres ? B.y + dy / L * e : B.y
+        };
+    };
+
     // LES SEGMENTS QU'ON ÉVITE SONT CEUX QU'ON DESSINE, dépassement compris.
-    // Ils étaient pris entre les deux points nommés, alors que le trait les
-    // dépasse de 34,5 px de chaque côté — tout le sens de la figure, d'ailleurs :
-    // « un trait qui s'arrête pile sur le dernier point se lit comme un
-    // segment ». Un nom posé au-delà d'un bout était donc noté LOIN de la
-    // droite, et la droite lui passait dessus. MESURÉ avant : 56 noms sur 196
-    // touchés par un trait, sur 28 figures — dont le « H » de la capture de
-    // Rémy, barré au croisement des deux droites.
+    // Un nom posé au-delà d'un bout était sinon noté LOIN de la droite, et la
+    // droite lui passait dessus.
     const noms = placerNoms(P, sc.droites.map(d => {
         const [a, b] = boutsDe(d);
         return traitDessine(P[a], P[b]);
@@ -140,48 +168,52 @@ export function sceneSvg(sc, cfg = {}) {
     // sur [AB] ? » n'aurait alors plus d'objet.
     const traits = sc.droites.map(d => {
         const [a, b] = boutsDe(d);
-        const A = P[a], B = P[b];
-        const dx = B.x - A.x, dy = B.y - A.y;
-        const L = Math.hypot(dx, dy) || 1;
-        const e = DEBORD * UNITE;
-        return `<line class="pd-droite" x1="${n2(A.x - dx / L * e)}" y1="${n2(A.y - dy / L * e)}"
-            x2="${n2(B.x + dx / L * e)}" y2="${n2(B.y + dy / L * e)}"/>`;
-    }).join('');
+        return allonger(P[a], P[b], true, true);
+    });
 
-    // L'OBJET MONTRÉ EST TRACÉ PAR-DESSUS, en couleur et plus épais : il ne
-    // remplace pas la droite, il la surligne — comme le vert et le rouge que
-    // Rémy fait poser sur sa fiche.
-    let surligne = '';
+    // L'OBJET MONTRÉ : il ne remplace pas la droite, il la surligne — comme le
+    // vert et le rouge que Rémy fait poser sur sa fiche. Un segment s'arrête à
+    // ses deux points, une demi-droite déborde d'un seul côté, une droite des
+    // deux : c'est la distinction que tout l'exercice enseigne.
+    let surligne = null;
     if (cfg.montrer) {
         const { a, b, sorte } = cfg.montrer;
-        const d = droiteDe(sc, a, b);
-        if (d) {
-            const A = P[a], B = P[b];
-            const dx = B.x - A.x, dy = B.y - A.y;
-            const L = Math.hypot(dx, dy) || 1;
-            const e = DEBORD * UNITE;
-            const deb = sorte === 'droite'
-                ? { x: A.x - dx / L * e, y: A.y - dy / L * e } : A;
-            const fin = sorte === 'segment' ? B
-                : { x: B.x + dx / L * e, y: B.y + dy / L * e };
-            surligne = `<line class="pd-montre" x1="${n2(deb.x)}" y1="${n2(deb.y)}"
-                x2="${n2(fin.x)}" y2="${n2(fin.y)}"/>`;
+        if (droiteDe(sc, a, b)) {
+            surligne = allonger(P[a], P[b], sorte === 'droite', sorte !== 'segment');
         }
     }
 
     const vedettes = new Set(cfg.vedettes || []);
-    const marques = Object.keys(sc.points).map(nom =>
-        marqueurPoint(P[nom].x, P[nom].y,
-            vedettes.has(nom) ? 'pd-pt pd-pt--vedette' : 'pd-pt', 7)).join('');
+    const points = Object.keys(sc.points).map(nom =>
+        ({ nom, x: P[nom].x, y: P[nom].y, vedette: vedettes.has(nom) }));
 
-    const etiquettes = Object.keys(sc.points).map(nom =>
-        `<text class="pd-nom${vedettes.has(nom) ? ' pd-nom--vedette' : ''}"
-            x="${n2(noms[nom].x)}" y="${n2(noms[nom].y + 5)}"
-            text-anchor="middle">${nom}</text>`).join('');
+    return { W, H, traits, surligne, points, noms };
+}
+
+/**
+ * La figure entière, en SVG — pour l'écran.
+ *
+ * @param {object} sc      la scène
+ * @param {object} [cfg]
+ * @param {{a:string,b:string,sorte:string}} [cfg.montrer]
+ *   un objet à mettre en évidence — l'indice s'en sert pour MONTRER ce dont
+ *   parle la question, ce qu'aucune phrase ne remplace.
+ * @param {string[]} [cfg.vedettes] des points à faire ressortir
+ */
+export function sceneSvg(sc, cfg = {}) {
+    const { W, H, traits, surligne, points, noms } = planDeLaScene(sc, cfg);
+    const ligne = (cls, t) => `<line class="${cls}" x1="${n2(t.x1)}" y1="${n2(t.y1)}"
+            x2="${n2(t.x2)}" y2="${n2(t.y2)}"/>`;
 
     return `<svg class="fig-svg pd-svg" viewBox="0 0 ${W} ${H}"
         role="img" aria-label="${echapper(decrire(sc))}">
-        ${traits}${surligne}${marques}${etiquettes}
+        ${traits.map(t => ligne('pd-droite', t)).join('')}
+        ${surligne ? ligne('pd-montre', surligne) : ''}
+        ${points.map(p => marqueurPoint(p.x, p.y,
+        p.vedette ? 'pd-pt pd-pt--vedette' : 'pd-pt', 7)).join('')}
+        ${points.map(p => `<text class="pd-nom${p.vedette ? ' pd-nom--vedette' : ''}"
+            x="${n2(noms[p.nom].x)}" y="${n2(noms[p.nom].y + 5)}"
+            text-anchor="middle">${p.nom}</text>`).join('')}
     </svg>`;
 }
 
@@ -226,7 +258,15 @@ export function decrire(sc) {
  *   celles que le codage impose (`marquesDe`)
  * @param {string[]} [cfg.vedettes] des points à faire ressortir
  */
-export function figureCodeeSvg(fig, cfg = {}) {
+/**
+ * LE PLAN D'UNE FIGURE CODÉE — les coordonnées, sans SVG.
+ *
+ * Même raison que `planDeLaScene` : la feuille dessine en traits et en points,
+ * pas en balises. Rémy : « sur la version imprimé tu oublies toutes les
+ * figures... ». Le calcul d'unité et de cadre ci-dessous est fait de mesures
+ * prises dans le jeu ; le papier en hérite au lieu de le refaire.
+ */
+export function planFigureCodee(fig, cfg = {}) {
     // LA FIGURE TIENT DANS UNE BOÎTE, ELLE N'IMPOSE PAS SA TAILLE.
     //
     // Première version : une unité de grille fixe, à 34 pixels. Mesuré dans le
@@ -271,25 +311,38 @@ export function figureCodeeSvg(fig, cfg = {}) {
     }
     const marques = cfg.marques || marquesDe(fig);
     const noms = placerNoms(P, fig.segments.map(s => [P[s.a], P[s.b]]), { W, H });
-
-    const traits = fig.segments.map(s =>
-        `<line class="pd-segment" x1="${n2(P[s.a].x)}" y1="${n2(P[s.a].y)}"
-            x2="${n2(P[s.b].x)}" y2="${n2(P[s.b].y)}"/>`).join('');
-
-    const codes = fig.segments.map(s => {
-        const n = marques[`${s.a}${s.b}`] || marques[`${s.b}${s.a}`];
-        return n ? marqueSvg(P[s.a], P[s.b], n, 'pd-marque') : '';
-    }).join('');
-
     const vedettes = new Set(cfg.vedettes || []);
-    const croix = Object.keys(fig.points).map(nom =>
-        marqueurPoint(P[nom].x, P[nom].y,
-            vedettes.has(nom) ? 'pd-pt pd-pt--vedette' : 'pd-pt', 7)).join('');
 
-    const etiquettes = Object.keys(fig.points).map(nom =>
-        `<text class="pd-nom${vedettes.has(nom) ? ' pd-nom--vedette' : ''}"
-            x="${n2(noms[nom].x)}" y="${n2(noms[nom].y + 5)}"
-            text-anchor="middle">${nom}</text>`).join('');
+    return {
+        W, H, UNIT,
+        segments: fig.segments.map(s => ({
+            a: s.a, b: s.b, A: P[s.a], B: P[s.b],
+            marque: marques[`${s.a}${s.b}`] || marques[`${s.b}${s.a}`] || 0
+        })),
+        points: Object.keys(fig.points).map(nom =>
+            ({ nom, x: P[nom].x, y: P[nom].y, vedette: vedettes.has(nom) })),
+        noms
+    };
+}
+
+/** La figure codée en SVG — pour l'écran. */
+export function figureCodeeSvg(fig, cfg = {}) {
+    const { W, H, segments, points, noms } = planFigureCodee(fig, cfg);
+
+    const traits = segments.map(s =>
+        `<line class="pd-segment" x1="${n2(s.A.x)}" y1="${n2(s.A.y)}"
+            x2="${n2(s.B.x)}" y2="${n2(s.B.y)}"/>`).join('');
+
+    const codes = segments.map(s =>
+        (s.marque ? marqueSvg(s.A, s.B, s.marque, 'pd-marque') : '')).join('');
+
+    const croix = points.map(p => marqueurPoint(p.x, p.y,
+        p.vedette ? 'pd-pt pd-pt--vedette' : 'pd-pt', 7)).join('');
+
+    const etiquettes = points.map(p =>
+        `<text class="pd-nom${p.vedette ? ' pd-nom--vedette' : ''}"
+            x="${n2(noms[p.nom].x)}" y="${n2(noms[p.nom].y + 5)}"
+            text-anchor="middle">${p.nom}</text>`).join('');
 
     return `<svg class="fig-svg pd-svg pd-svg--codee" viewBox="0 0 ${n2(W)} ${n2(H)}"
         role="img" aria-label="${echapper(decrireCodage(fig))}">

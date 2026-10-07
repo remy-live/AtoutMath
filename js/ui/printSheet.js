@@ -132,6 +132,11 @@ import { RENDUS_JEUX } from './fiches/jeux.js';
 import { RENDUS_MOTS } from './fiches/mots.js';
 import { RENDUS_CASSETETE } from './fiches/casseTete.js';
 import { RENDUS_FIGURES } from './fiches/figures.js';
+// LES QUATRE EXERCICES D'ÉLÉMENTS DE GÉOMÉTRIE, qui n'avaient aucune fiche —
+// Rémy : « tu oublies toutes les figures sur la version imprimé ». Leur famille
+// est à part parce qu'elle est la seule à poser une FIGURE ET UN QCM dans le
+// même bloc ; tout le reste de la géométrie demande une réponse écrite.
+import { RENDUS_ELEMENTS_GEO } from './fiches/elementsGeo.js';
 import { RENDUS_THEOREMES } from './fiches/theoremes.js';
 import { RENDUS_REPERAGE } from './fiches/reperage.js';
 import { RENDUS_NOMBRES } from './fiches/nombres.js';
@@ -285,6 +290,7 @@ export const RENDUS = {
     ...RENDUS_MOTS,
     ...RENDUS_CASSETETE,
     ...RENDUS_FIGURES,
+    ...RENDUS_ELEMENTS_GEO,
     ...RENDUS_THEOREMES,
     ...RENDUS_REPERAGE,
     ...RENDUS_NOMBRES,
