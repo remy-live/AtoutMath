@@ -49,7 +49,8 @@ const MODULES = [
     { nom: 'svgSobre', chemin: 'js/core/svgSobre.js' },
     { nom: 'dingbatLibre', chemin: 'js/core/dingbatLibre.js' },
     { nom: 'dingbat', chemin: 'js/core/dingbat.js' },
-    { nom: 'atelierEssai', chemin: 'js/essai/atelierEssai.js' }
+    { nom: 'atelierToile', chemin: 'js/ui/atelierToile.js' },
+    { nom: 'montage', chemin: 'js/essai/montage.js' }
 ];
 
 /** Le nom de module que désigne un chemin d'import, quel que soit le `../`. */

@@ -3027,3 +3027,23 @@ lignes** — 2026-10-01
   le bas du dernier élément est atteignable. **Une photo ne dit jamais si une
   page défile** ; il faut le demander, et on ne pense à le demander qu'une fois
   qu'on a payé.
+
+## Deux couches du même panneau portent le même nom de crochet — 2026-10-07
+
+- **Ce que je voulais faire** : mesurer, à 390 px, la consigne que le tri au
+  pouce prépare — `page.inputValue('[data-consigne]')`.
+- **Ce qui coûte** : Playwright répond *« Node is not an `<input>`,
+  `<textarea>` or `<select>` element »*, ce qui ressemble à un défaut de ma
+  zone de texte. Elle n'avait rien. La TÊTE de la revue, qui reste à l'écran
+  au-dessus des cartes, porte depuis toujours un bouton `data-consigne` — et
+  `querySelector` rend le PREMIER du document. Le sélecteur désignait un bouton,
+  pas le champ ; la même chose attendait sur `data-copier`. Dix minutes à
+  chercher le défaut dans la bonne couche du mauvais élément.
+- **Combien de fois** : ||| — c'est la famille de `:last-of-type` qui désignait
+  le calque des poignées, et de `querySelector('.auj-go')` qui mesurait le
+  premier bouton de la page. **Un sélecteur qui trouve quelque chose n'a pas
+  trouvé la bonne chose.** `doitExister` ne peut rien ici : l'élément existe.
+- **Ce qui manque** : `s.doitEtreUnique(selecteur)` — qui JETTE si le sélecteur
+  désigne plus d'un nœud, en les décrivant. Trois lignes dans `sonde.mjs`, et
+  l'erreur dirait « deux `[data-consigne]` : BUTTON.rv-btn et TEXTAREA.tt-consigne »
+  au lieu de parler du type d'un nœud qu'on n'a jamais visé.

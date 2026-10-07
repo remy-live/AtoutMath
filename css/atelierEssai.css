@@ -408,3 +408,49 @@ body.ae-corps {
 
 /* SUR UN ÉCRAN ÉTROIT, rien ne change : tout s'empile dans l'ordre du travail —
    les outils, la barre, la toile, puis la fiche. */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   L'ATELIER DANS L'APPLICATION — la modale de la palette d'auteur.
+
+   Rémy : « parfait, tu me l'intègres à AtoutMath désormais. »
+
+   Le même atelier, dans une boîte au lieu d'une page. Ces quelques règles sont
+   tout ce que l'intégration a coûté côté style : le reste de cette feuille sert
+   aux deux écrans sans une ligne de différence.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ae-modale {
+    display: flex; flex-direction: column; gap: 10px; max-height: 94vh;
+    /* LA MODALE EST PLUS LARGE QUE LES AUTRES, et c'est mesuré : avec la largeur
+       ordinaire, la toile tombait à 304 pixels — trois cent quatre pixels pour
+       dessiner, à côté d'une colonne de fiche de trois cent vingt. On ne compose
+       pas là-dedans. */
+    width: min(1280px, 96vw); max-width: none;
+}
+.ae-modale-tete { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ae-modale-titre { margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-main); }
+.ae-modale-x {
+    border: 1px solid var(--border); background: var(--bg-hover); color: var(--text-main);
+    width: 34px; height: 34px; border-radius: 10px; cursor: pointer;
+    font-size: 1rem; font-weight: 800;
+}
+/* LA MODALE DÉFILE À L'INTÉRIEUR, et c'est elle qui le fait — pas la page. Une
+   page d'application ne défile pas (voir `css/base.css`), et sans ce défilement
+   interne la fiche et l'export seraient hors d'atteinte sur un portable. */
+.ae-modale-corps {
+    overflow: auto; min-height: 0;
+    /* LA PLACE DE LA BARRE DE DÉFILEMENT EST RÉSERVÉE D'AVANCE. Sans cela, elle
+       apparaît dès que le contenu grandit — ce qui arrive PENDANT qu'on trace,
+       quand la barre de l'élément choisi se remplit — la colonne se rétrécit de
+       quinze pixels, et la toile change de taille SOUS LE DOIGT. Mesuré : un
+       rectangle tiré de 160 × 100 sortait à 160 × 70. */
+    scrollbar-gutter: stable;
+}
+/* Dans la modale, l'atelier n'a plus besoin de ses marges de page : le panneau
+   les porte déjà. */
+.ae-modale-corps .ae-scene,
+.ae-modale-corps .ae-sortie { padding-left: 0; padding-right: 0; }
+.ae-modale-corps .ae-bande { padding-left: 0; padding-right: 0; border-bottom: 0; }
+/* LE TÉMOIN D'ENREGISTREMENT est dans l'en-tête sur la page autonome ; ici il
+   se pose au-dessus de la bande, à droite, où l'œil le trouve sans le chercher. */
+.ae-ligne-sauve { display: flex; justify-content: flex-end; }

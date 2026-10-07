@@ -1,57 +1,47 @@
-// L'ATELIER DES DINGBATS, VERSION D'ESSAI — on dessine, on ne dépose plus.
+// L'ATELIER DES DINGBATS — on prend un outil, on trace, on écrit.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// RÉMY : « fais-moi à part l'atelier, on l'intégrera après. Pour créer une
-// flèche, un rectangle, on clique on relâche. Idem pour le mot. Double-clic
-// pour éditer. Fais-moi quelque chose de plus moderne, plus facile, plus
-// sympa. On essaie d'abord puis on l'intègre. »
+// RÉMY, après avoir essayé les deux gestes : « parfait, tu me l'intègres à
+// AtoutMath désormais. »
 //
-// ── LE GESTE, ET CE QU'IL REMPLACE ─────────────────────────────────────────
+// ── IL Y AVAIT DEUX ATELIERS ; IL N'EN RESTE QU'UN ─────────────────────────
 //
-// L'atelier intégré a une RÉSERVE : on prend une pièce, on la pose, elle arrive
-// à sa taille par défaut, et on la règle ensuite sur des curseurs. C'est sûr, et
-// c'est un geste de deux temps.
+// Le premier avait une RÉSERVE : on prenait une pièce, on la posait, elle
+// arrivait à sa taille par défaut, et on la réglait ensuite sur des curseurs.
+// Le second — celui-ci — a des OUTILS : on en prend un et on DESSINE. Rémy les a
+// essayés tous les deux en vrai, et c'est le second qui reste.
 //
-// Ici il n'y en a plus qu'un : ON PREND UN OUTIL ET ON DESSINE. On appuie, on
-// tire, on relâche — le rectangle a la taille qu'on vient de tracer. C'est le
-// geste de tous les logiciels de dessin, et c'est pour ça qu'il n'a pas besoin
-// d'être expliqué.
+// On ne garde pas le premier « au cas où ». Les deux gestes sont incompatibles —
+// dans l'un, un appui sur la toile déplace ; dans l'autre, il dessine — et les
+// faire cohabiter derrière un interrupteur, c'est deux logiciels dans un
+// fichier, avec un comportement que personne ne sait plus expliquer.
 //
-// « ON CLIQUE ON RELÂCHE » EST PRIS AU MOT, ET C'EST LA MOITIÉ DU TRAVAIL : un
-// appui suivi d'un relâché AU MÊME ENDROIT crée quand même la forme, à une
-// taille raisonnable. Sans cela, un doigt qui ne glisse pas d'un pixel ne
-// fabrique rien — et l'on croit que l'outil est cassé alors qu'on a « trop bien »
-// cliqué. C'est le cas le plus fréquent sur un écran tactile.
+// ── UN SEUL CODE, DEUX ÉCRANS ──────────────────────────────────────────────
 //
-// L'OUTIL REVIENT À LA MAIN APRÈS UNE FORME. On dessine, et l'on est tout de
-// suite en train de la déplacer, de la tourner, de la colorer. Dessiner dix
-// rectangles d'affilée est rare ; vouloir ajuster celui qu'on vient de tracer
-// est systématique.
+// Ce module porte TOUT : le balisage, le geste, l'enregistrement, l'export. Deux
+// coquilles l'habillent :
 //
-// ── CE QUI EST PARTAGÉ AVEC L'ATELIER INTÉGRÉ ──────────────────────────────
+//   · `ui/atelierDingbats.js` — la modale de l'application, ouverte depuis la
+//     palette d'auteur ;
+//   · `atelier-dingbats.html` — la page autonome, qu'on recoud en un fichier
+//     unique (`tools/paquetAtelier.mjs`) et qu'on envoie par courriel.
 //
-// LE MODÈLE, ENTIÈREMENT : `core/dingbatLibre.js`. Ce qu'on compose ici est déjà
-// un dingbat jouable, son JSON se colle dans `js/data/dingbats.js` sans
-// traduction, et les épreuves qui gardent le format le gardent aussi pour cette
-// page. C'est ce qui permet de JETER cette page sans rien perdre si le geste ne
-// plaît pas — ou de jeter l'autre, si c'est celui-ci qui gagne.
+// Laisser le balisage dans la page aurait fait deux copies, et la correction
+// suivante serait allée dans l'une et pas dans l'autre.
 //
-// LA RÉCOLTE EST RANGÉE À PART, exprès : un essai qui abîmerait la récolte de
-// l'atelier intégré coûterait plus cher que le temps qu'il fait gagner.
+// ── LE GESTE, EN QUATRE PHRASES QUE RÉMY A DICTÉES ─────────────────────────
 //
-// ── CE QUI EST NEUF, ET POURQUOI ───────────────────────────────────────────
+//   · « pour créer une flèche, un rectangle, on clique on relâche » — appuie,
+//     tire, relâche ; et un simple clic pose la figure DEPUIS le point cliqué,
+//     qui est son coin supérieur gauche ;
+//   · « au premier clic, il ne devrait juste afficher qu'un point » — tant qu'on
+//     n'a pas tiré, la figure n'a pas de taille, donc elle ne dessine rien ;
+//   · « double-clic pour éditer » — et l'on écrit DIRECTEMENT sur la toile :
+//     le champ est invisible, il ne reste que le curseur ;
+//   · « l'outil sélectionné reste par défaut » — on pose trois traits sans
+//     reprendre l'outil. Échap ramène la flèche.
 //
-//   · DOUBLE-CLIC POUR ÉDITER, sur place et à la bonne taille. Un champ dans une
-//     colonne oblige à faire l'aller-retour des yeux entre ce qu'on tape et ce
-//     qu'on voit ; ici les deux sont au même endroit.
-//   · DES POIGNÉES qui tournent et redimensionnent. L'atelier intégré n'en a
-//     pas — j'avais écrit qu'une poignée de dix pixels est intenable au doigt, et
-//     c'était vrai à dix pixels. Elles font vingt-deux pixels ici, et les
-//     curseurs restent dans la barre pour le réglage fin.
-//   · DES REPÈRES D'ALIGNEMENT qui apparaissent quand deux centres se trouvent.
-//     C'est ce qui fait qu'un dessin fait en trente secondes a l'air soigné.
-//   · ANNULER, parce qu'on ose essayer quand on peut revenir.
 
 import {
     TOILE, COULEURS, FORMES_LIBRES, elementNeuf, dessinerElement, validerLibre,
@@ -60,7 +50,130 @@ import {
 import { dessiner, THEMES, NIVEAUX, juste, attendues } from '../core/dingbat.js';
 import { nettoyerSvg } from '../core/svgSobre.js';
 
-const CLE = 'atoutmath.atelier.essai';
+/** La racine où l'atelier est monté — c'est elle qui écoute le clavier. */
+let racine = null;
+
+/**
+ * LE SQUELETTE DE L'ATELIER, et il vit ICI plutôt que dans une page.
+ *
+ * Deux écrans le montent désormais : la modale de l'application (le bouton de la
+ * palette d'auteur) et la page autonome qu'on envoie par courriel. Laisser le
+ * balisage dans la page aurait fait DEUX copies — et la correction suivante
+ * serait allée dans l'une et pas dans l'autre, ce qui est exactement la raison
+ * pour laquelle on fabrique le fichier autonome avec un outil et non à la main.
+ */
+const SQUELETTE = `
+<div class="ae-ligne-sauve"><span class="ae-sauve" id="ae-sauve" role="status">enregistré au fur et à mesure</span></div>
+
+<!-- LA BANDE DES COMPOSITIONS : la récolte, et c'est elle qu'on exporte. -->
+<div class="ae-bande" id="ae-bande" aria-label="Tes compositions"></div>
+
+<main class="ae-scene">
+
+    <!-- LA BOÎTE À OUTILS. Un outil, un geste : on le prend, on dessine sur la
+         toile, et l'outil revient tout seul à la main — le geste de n'importe
+         quel logiciel de dessin depuis trente ans. -->
+    <div class="ae-outils" id="ae-outils" role="toolbar" aria-label="Les outils">
+        <!-- L'IMPORT D'UN SVG N'EST PAS UN OUTIL DE TRACÉ : on ne le « prend »
+             pas pour dessiner ensuite, on choisit un fichier et le dessin se
+             pose. Il est donc à part, à la fin de la rangée, et il porte un
+             libellé plutôt qu'un aperçu — un aperçu de quoi ? -->
+        <label class="ae-outil ae-outil--import" id="ae-import-boite"
+               title="Importer un dessin SVG">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="ae-picto">
+                <path d="M12 16V4M12 4 7.5 8.5M12 4l4.5 4.5" fill="none" stroke="currentColor"
+                      stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span class="ae-outil-nom">Importer</span>
+            <input type="file" id="ae-import" accept=".svg,image/svg+xml" hidden>
+        </label>
+    </div>
+
+    <!-- LA BARRE DE CE QUI EST CHOISI, POSÉE AU-DESSUS DE LA TOILE.
+
+         Je l'avais d'abord faite FLOTTANTE, collée à la sélection : « ce qu'on
+         règle est à côté de ce qu'on regarde ». C'était joli et c'était faux.
+         Sur une toile de quatre cents unités, une barre de trois cents pixels
+         couvre un quart de la surface — et surtout elle BLOQUE le geste : on ne
+         peut pas commencer un tracé sous elle. Mesuré : « elementFromPoint » au
+         point de tracé rendait « ae-barre », et ni la flèche ni le
+         redimensionnement ne partaient.
+
+         Elle garde sa place en permanence, même vide, pour que la toile ne
+         saute pas de quarante pixels chaque fois qu'on choisit un objet. -->
+    <div class="ae-barre" id="ae-barre" aria-label="Ce qui est choisi"></div>
+
+    <div class="ae-toile-zone">
+        <div class="ae-toile-cadre" id="ae-toile-cadre"></div>
+        <!-- LE CHAMP D'ÉDITION SUR PLACE : il se pose PAR-DESSUS le mot, à sa
+             taille et à son endroit. Un champ dans un panneau latéral oblige à
+             faire l'aller-retour des yeux ; ici on tape là où l'on regarde. -->
+        <input type="text" class="ae-saisie" id="ae-saisie" hidden
+               maxlength="40" autocomplete="off" spellcheck="false"
+               aria-label="Ce qui est écrit">
+    </div>
+
+    <p class="ae-consigne" id="ae-consigne"></p>
+
+    <div class="ae-pied-toile">
+        <button type="button" class="ae-btn" id="ae-annuler" title="Annuler (Ctrl+Z)">↶ Annuler</button>
+        <button type="button" class="ae-btn" id="ae-refaire" title="Refaire (Ctrl+Maj+Z)">↷ Refaire</button>
+        <span class="ae-vide"></span>
+        <label class="ae-coche"><input type="checkbox" id="ae-magnetisme" checked> Magnétisme</label>
+        <label class="ae-coche"><input type="checkbox" id="ae-eleve"> Voir comme l'élève</label>
+    </div>
+
+    <div class="ae-avis" id="ae-avis" role="status"></div>
+<!-- LA FICHE EST DANS LA SCÈNE, ET NON À CÔTÉ D'ELLE.
+
+     Une grille CSS ne place que ses PROPRES enfants : tant que la fiche était
+     une sœur de la scène, la mise en deux colonnes ne pouvait rien lui dire, et
+     elle restait huit cents pixels sous la toile. Mesuré en photographiant la
+     page : les colonnes ne se formaient pas.
+
+     Sur un écran étroit, rien ne change : elle vient après l'avis, dans l'ordre
+     du travail. -->
+<section class="ae-fiche">
+    <h2 class="ae-h2">La solution</h2>
+    <label class="ae-champ">Ce qu'il faut lire
+        <input type="text" id="ae-reponse" maxlength="60" placeholder="racine carrée"></label>
+    <label class="ae-champ">Autres écritures acceptées (séparées par des virgules)
+        <input type="text" id="ae-variantes" maxlength="160" placeholder="la racine, racine"></label>
+    <label class="ae-champ">L'explication, donnée après
+        <textarea id="ae-explication" rows="2" maxlength="300"
+            placeholder="Le mot est écrit dans un carré : on lit « racine carrée »."></textarea></label>
+
+    <h2 class="ae-h2">Les indices</h2>
+    <p class="ae-note">Du plus discret au plus parlant, donnés un à un.
+        Un indice dit où REGARDER, jamais la réponse.</p>
+    <div id="ae-aides"></div>
+    <button type="button" class="ae-btn" id="ae-aide-plus">＋ Un indice</button>
+
+    <h2 class="ae-h2">Le rangement</h2>
+    <div class="ae-duo">
+        <label class="ae-champ">Thème <select id="ae-theme"></select></label>
+        <label class="ae-champ">Niveau <select id="ae-niveau"></select></label>
+    </div>
+    <label class="ae-champ">L'identifiant
+        <input type="text" id="ae-id" maxlength="40" placeholder="dg-racine-carree"></label>
+</section>
+</main>
+
+<footer class="ae-sortie">
+    <textarea class="ae-export" id="ae-json" data-export rows="4" spellcheck="false"
+        aria-label="Le JSON de ta récolte"></textarea>
+    <div class="ae-sortie-boutons">
+        <label class="ae-coche"><input type="checkbox" id="ae-tout" checked> Toute la récolte</label>
+        <span class="ae-vide"></span>
+        <button type="button" class="ae-btn" id="ae-relire">↺ Relire ce JSON</button>
+        <button type="button" class="ae-btn" id="ae-copier">📋 Copier</button>
+        <button type="button" class="ae-btn ae-btn--fort" id="ae-fichier">⤓ Exporter</button>
+    </div>
+</footer>
+`;
+
+const CLE = 'atoutmath.atelier.dingbats.recolte';
 
 const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -1273,7 +1386,26 @@ function dire(texte, alerte = false) {
     el.classList.toggle('ae-consigne--active', !!texte);
 }
 
-function demarrer() {
+/**
+ * MONTER L'ATELIER DANS UN CONTENEUR, et le rendre à qui l'a demandé.
+ *
+ * C'est le seul point d'entrée : la modale de l'application et la page autonome
+ * l'appellent toutes les deux, avec le même balisage et le même code.
+ *
+ * ON NE MONTE QU'UNE FOIS PAR CONTENEUR : rouvrir la modale ne doit pas
+ * reconstruire la toile, sinon la récolte affichée repartirait de zéro sous les
+ * yeux de celui qui vient de la fermer par mégarde.
+ */
+export function monterAtelier(conteneur) {
+    if (conteneur.dataset.atelierMonte === '1') { toutPeindre(); return conteneur; }
+    conteneur.innerHTML = SQUELETTE;
+    conteneur.dataset.atelierMonte = '1';
+    racine = conteneur;
+    demarrer(conteneur);
+    return conteneur;
+}
+
+function demarrer(racine) {
     // Les outils. ON INSÈRE AU DÉBUT au lieu de remplacer : la boîte porte déjà
     // le bouton d'import, qui est dans le HTML parce qu'il contient un champ de
     // fichier — et un `innerHTML =` l'aurait effacé sans un mot. (C'est
@@ -1420,7 +1552,19 @@ function demarrer() {
             : 'Dessin importé.');
     };
 
-    document.addEventListener('keydown', surLeClavier);
+    racine.addEventListener('keydown', surLeClavier);
+
+    // LA TOILE PREND LE FOYER QUAND ON Y TOUCHE. Le clavier est écouté sur la
+    // RACINE de l'atelier et non sur le document — sinon, dans l'application,
+    // les touches traverseraient jusqu'au jeu ouvert derrière. Mais un
+    // `preventDefault` sur l'appui empêche le navigateur de donner le foyer : on
+    // le donne donc à la main, sans quoi « Suppr » et Ctrl+Z ne feraient rien
+    // après avoir touché la toile.
+    racine.addEventListener('pointerdown', (ev) => {
+        if (ev.target.closest('input, textarea, select, button, label')) return;
+        const t = racine.querySelector('#ae-toile');
+        if (t) t.focus({ preventScroll: true });
+    });
 
     // POUR LA SONDE : de quoi lire l'état sans passer par l'écran.
     window.__atelierEssai = {
@@ -1440,4 +1584,3 @@ function demarrer() {
     document.documentElement.dataset.atelierEssai = 'pret';
 }
 
-demarrer();

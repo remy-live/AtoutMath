@@ -46,7 +46,10 @@ const ouvrirLaPage = async () => {
 // exécution précédente a laissé, et son premier chiffre serait celui d'hier.
 await s.page.goto(adresse);
 await s.page.evaluate(() => {
-    try { localStorage.removeItem('atoutmath.atelier.essai'); } catch (e) { /* privé */ }
+    try {
+        localStorage.removeItem('atoutmath.atelier.dingbats.recolte');
+        localStorage.removeItem('atoutmath.atelier.essai');   // l'ancienne clef de l'essai
+    } catch (e) { /* privé */ }
 });
 await ouvrirLaPage();
 
@@ -428,13 +431,23 @@ dire(survit, 'RIEN N\'EST PERDU APRÈS UN RECHARGEMENT — aucun bouton « enreg
     `${apresRechargement.lot[0].elements.length} éléments, `
     + `${(apresRechargement.lot[0].aides || []).length} indice(s)`);
 
-// --- LA RÉCOLTE EST BIEN À PART ----------------------------------------------
-const separee = await s.page.evaluate(() => {
+// --- UNE SEULE RÉCOLTE, DES DEUX CÔTÉS ---------------------------------------
+//
+// Rémy : « parfait, tu me l'intègres à AtoutMath désormais. » Tant que l'atelier
+// était un essai, sa récolte était rangée à part pour ne pas abîmer celle de
+// l'application. Maintenant qu'il EST l'atelier de l'application, les deux
+// écrans doivent lire la MÊME : on commence sur la page et l'on finit dans le
+// logiciel, ou l'inverse, sans rien recopier.
+const clefs = await s.page.evaluate(() => {
     try {
-        return !localStorage.getItem('atoutmath.atelier.dingbats.recolte');
-    } catch (e) { return true; }
+        return {
+            partagee: !!localStorage.getItem('atoutmath.atelier.dingbats.recolte'),
+            ancienne: !!localStorage.getItem('atoutmath.atelier.essai')
+        };
+    } catch (e) { return { partagee: false, ancienne: false }; }
 });
-dire(separee, 'l\'essai n\'a pas touché à la récolte de l\'atelier intégré');
+dire(clefs.partagee && !clefs.ancienne,
+    'la page et l\'application lisent LA MÊME récolte', JSON.stringify(clefs));
 
 // --- L'IMPORT D'UN SVG -------------------------------------------------------
 //
