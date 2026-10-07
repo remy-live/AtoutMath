@@ -124,6 +124,35 @@ dire(rect && rect.type === 'forme' && rect.forme === 'rectangle'
 // L'OUTIL REVIENT À LA MAIN : on vient de tracer, on veut ajuster.
 dire((await etat()).outil === 'select', 'l\'outil revient à la main après une forme');
 
+// --- LE TRACÉ NE DOIT PAS TREMBLER -------------------------------------------
+//
+// RÉMY : « c'est bizarre au début, quand on trace les figures, ça tremble ».
+//
+// TREMBLER, C'EST RECULER QUAND LA MAIN AVANCE. On tire donc un rectangle en
+// vingt petits pas tous dans le même sens, et l'on exige que sa largeur ne
+// DIMINUE jamais. Une seule marche arrière suffit à faire trembler l'image, et
+// c'est précisément ce qu'un œil voit sans savoir le nommer.
+await s.page.click('[data-outil="rectangle"]');
+await dormir(200);
+const t0 = await surLaToile(60, 50);
+await s.page.mouse.move(t0.x, t0.y);
+await s.page.mouse.down();
+const largeurs = [];
+for (let k = 1; k <= 20; k++) {
+    const pas = await surLaToile(60 + k * 8, 50 + k * 4);
+    await s.page.mouse.move(pas.x, pas.y);
+    largeurs.push((await elements()).at(-1).largeur);
+}
+await s.page.mouse.up();
+await dormir(300);
+const reculs = largeurs.filter((l, i) => i > 0 && l < largeurs[i - 1]);
+dire(reculs.length === 0,
+    'le tracé ne TREMBLE pas : la largeur ne recule jamais quand la main avance',
+    `${reculs.length} recul(s) sur 20 pas · ${largeurs.join(' ')}`);
+// Et l'on nettoie ce rectangle d'épreuve : la suite compte les éléments.
+await s.page.keyboard.press('Delete');
+await dormir(300);
+
 // --- « ON CLIQUE ON RELÂCHE » : le cas le plus fréquent au doigt --------------
 await s.page.click('[data-outil="fleche"]');
 await dormir(200);
@@ -152,6 +181,23 @@ const saisieOuverte = await s.page.evaluate(() => {
 dire(saisieOuverte.visible && saisieOuverte.foyer,
     'un mot neuf ouvre sa saisie tout de suite — on n\'a pas à deviner le double-clic',
     JSON.stringify(saisieOuverte));
+
+// ON ÉCRIT DIRECTEMENT SUR LA TOILE : plus de cadre, plus de fond, plus d'encre
+// dans le champ — il ne reste que le curseur. Rémy : « sans cadre autour ».
+const sansCadre = await s.page.evaluate(() => {
+    const g = getComputedStyle(document.getElementById('ae-saisie'));
+    const transparent = (c) => /rgba\(0, 0, 0, 0\)|transparent/.test(c);
+    return {
+        bordure: g.borderTopWidth, fond: g.backgroundColor,
+        encre: g.webkitTextFillColor || g.color, curseur: g.caretColor,
+        ombre: g.boxShadow,
+        ok: parseFloat(g.borderTopWidth) === 0 && transparent(g.backgroundColor)
+            && transparent(g.webkitTextFillColor || g.color)
+            && !transparent(g.caretColor) && g.boxShadow === 'none'
+    };
+});
+dire(sansCadre.ok, 'on écrit SUR la toile : ni cadre, ni fond, ni encre — rien que le curseur',
+    `bordure ${sansCadre.bordure}, fond ${sansCadre.fond}, curseur ${sansCadre.curseur}`);
 
 await s.page.type('#ae-saisie', 'RACINE', { delay: 35 });
 await dormir(250);
@@ -217,6 +263,10 @@ dire(tourne.angle === 90, 'le pivot tourne le mot, et se cale sur les angles dro
 // d'arriver. UNE MESURE DOIT TENIR DANS LE REPÈRE DE L'OBJET, pas dans celui de
 // l'écran, dès que l'objet peut tourner.
 const avantTaille = tourne.taille;
+// LE COIN OPPOSÉ EST LE CLOU : on relève sa position avant de tirer. C'est la
+// demande de Rémy — « que le ragrandissement ne se fasse pas centré, que le coin
+// supérieur gauche reste fixe » — et elle ne se vérifie qu'en le comparant.
+const coinsAvant = await s.page.evaluate(() => window.__atelierEssai.coins());
 const coin = await s.page.locator('[data-poignee="se"]').boundingBox();
 const cxy = await surLaToile(motPose.x, motPose.y);
 const cxCoin = coin.x + coin.width / 2, cyCoin = coin.y + coin.height / 2;
@@ -230,6 +280,13 @@ const grossi = (await elements())[2];
 dire(grossi.taille > avantTaille && !('hauteur' in grossi),
     'une poignée de coin fait GROSSIR le mot, elle ne l\'étire pas',
     `taille ${avantTaille} → ${grossi.taille}`);
+
+const coinsApres = await s.page.evaluate(() => window.__atelierEssai.coins());
+// On a tiré « se » : le clou est « no », l'autre bout de la diagonale.
+const clouAvant = coinsAvant[0], clouApres = coinsApres[0];
+const bouge = Math.hypot(clouApres.x - clouAvant.x, clouApres.y - clouAvant.y);
+dire(bouge <= 2, 'LE COIN OPPOSÉ NE BOUGE PAS : l\'objet grandit depuis lui, pas depuis son centre',
+    `(${clouAvant.x},${clouAvant.y}) → (${clouApres.x},${clouApres.y}), écart ${bouge.toFixed(1)}`);
 
 // --- ANNULER -----------------------------------------------------------------
 await s.page.click('#ae-annuler');

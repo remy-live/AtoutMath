@@ -2968,6 +2968,25 @@ lignes** — 2026-10-01
   `elementFromPoint` trouve au centre d'une cible. Les quatre diagnostics
   auraient tenu en une ligne chacun.
 
+## Accrocher à la grille une valeur déjà déduite d'autres valeurs accrochées — 2026-10-07
+
+- **Ce que je voulais faire** : tracer un rectangle au doigt, avec magnétisme.
+- **Ce qui coûte** : Rémy l'a vu avant moi — « c'est bizarre au début, quand on
+  trace les figures, ça tremble ». J'accrochais TROIS choses : le coin de départ,
+  le coin courant, et le CENTRE calculé comme leur moyenne. La moyenne de deux
+  multiples de 5 tombe une fois sur deux sur un multiple de 2,5, que le troisième
+  accrochage renvoyait tantôt en haut tantôt en bas : la figure avançait puis
+  reculait d'un demi-pas pendant qu'on la tirait. **Aucune de mes épreuves ne
+  pouvait le voir** — elles vérifiaient la taille FINALE, qui était juste.
+- **Combien de fois** : | (mais la forme reviendra partout où une grandeur se
+  déduit d'autres grandeurs accrochées : une rotation par crans, un partage en
+  parts égales, un redimensionnement proportionnel.)
+- **Ce qui manque** : une règle — **on accroche les ENTRÉES du geste, jamais ce
+  qu'on en déduit** — et une mesure qui sache la garder. Elle existe maintenant
+  et elle est générale : tirer en vingt petits pas tous dans le même sens, et
+  exiger que la grandeur ne RECULE jamais. Trembler, c'est reculer quand la main
+  avance ; une épreuve qui ne regarde que la valeur finale ne le voit pas.
+
 ## Une page à part hérite d'un `body` fait pour une application d'un seul écran — 2026-10-07
 
 - **Ce que je voulais faire** : une page d'essai autonome, qui charge

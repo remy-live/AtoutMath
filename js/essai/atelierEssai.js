@@ -225,6 +225,16 @@ function boiteDe(svg, i) {
     return null;   // un trait n'a pas de boîte : il a deux bouts
 }
 
+/** Le coin qui sert de clou quand on tire celui d'en face. */
+function coinOppose(b, coin) {
+    const noms = ['no', 'ne', 'se', 'so'];
+    const i = noms.indexOf(coin);
+    if (i < 0) return null;
+    // Les coins se font face deux à deux : no↔se, ne↔so. C'est exactement un
+    // demi-tour dans la liste.
+    return coinsDe(b)[(i + 2) % 4];
+}
+
 /** Les quatre coins d'une boîte tournée, dans l'ordre no, ne, se, so. */
 function coinsDe(b) {
     const c = Math.cos(rad(b.a)), s = Math.sin(rad(b.a));
@@ -456,10 +466,15 @@ function brancherLaToile(svg) {
         const poignee = ev.target.closest('[data-poignee]');
         if (poignee && enigme.elements[sel]) {
             pousser();
+            const boite = boiteDe(svg, sel);
             geste = {
                 quoi: 'poignee', coin: poignee.dataset.poignee, depart: p,
                 copie: JSON.parse(JSON.stringify(enigme.elements[sel])),
-                boite: boiteDe(svg, sel)
+                boite,
+                // LE CLOU : le coin OPPOSÉ à celui qu'on tire, figé une fois pour
+                // toutes au début du geste. Le recalculer à chaque mouvement le
+                // ferait dériver, puisque la boîte, elle, change.
+                clou: boite ? coinOppose(boite, poignee.dataset.poignee) : null
             };
             return;
         }
@@ -545,21 +560,52 @@ function brancherLaToile(svg) {
 }
 
 /** Le tracé en cours : la forme suit le coin opposé au point d'appui. */
+/**
+ * LE TRACÉ EN COURS — ET POURQUOI IL NE DOIT PLUS TREMBLER.
+ *
+ * RÉMY : « c'est bizarre au début, quand on trace les figures, ça tremble ».
+ *
+ * Ma première version accrochait TROIS choses à la grille : le coin de départ,
+ * le coin courant, et LE CENTRE calculé comme leur moyenne. Or la moyenne de
+ * deux multiples de 5 tombe une fois sur deux sur un multiple de 2,5 — que le
+ * troisième accrochage renvoyait tantôt en haut, tantôt en bas. La figure
+ * sautait d'un demi-pas en avant puis en arrière PENDANT qu'on la tirait, sans
+ * jamais s'arrêter : exactement un tremblement.
+ *
+ * ON N'ACCROCHE PLUS QUE LES DEUX COINS, et le centre se DÉDUIT. Deux coins sur
+ * la grille donnent un centre parfaitement déterminé — même s'il tombe sur un
+ * demi — et la figure ne bouge plus qu'aux pas de la grille, dans un seul sens.
+ *
+ * ACCROCHER UNE VALEUR DÉJÀ DÉDUITE D'AUTRES VALEURS ACCROCHÉES LA FAIT TREMBLER.
+ * C'est la règle, et elle vaut pour tout ce qui se tire au doigt.
+ */
 function tirerLaCreation(el, depart, p) {
     if (el.type === 'mot') return;
+    const x0 = accrocher(depart.x), y0 = accrocher(depart.y);
+    const x1 = accrocher(p.x), y1 = accrocher(p.y);
     if (el.type === 'trait') {
-        el.x2 = accrocher(p.x); el.y2 = accrocher(p.y);
+        el.x1 = x0; el.y1 = y0;
+        el.x2 = x1; el.y2 = y1;
         return;
     }
     const def = FORMES_LIBRES.find(f => f.id === el.forme) || FORMES_LIBRES[0];
-    const l = Math.abs(accrocher(p.x) - accrocher(depart.x));
-    const h = Math.abs(accrocher(p.y) - accrocher(depart.y));
-    el.x = accrocher((depart.x + p.x) / 2);
-    el.y = accrocher((depart.y + p.y) / 2);
-    // UN CARRÉ ET UN CERCLE N'ONT QU'UNE DIMENSION : on prend la plus grande des
-    // deux, sinon tracer un carré « large » rendrait un carré petit.
-    el.largeur = def.egal ? Math.max(l, h) : l;
-    el.hauteur = h;
+    if (def.egal) {
+        // UN CARRÉ ET UN CERCLE N'ONT QU'UN CÔTÉ : on prend le plus grand des
+        // deux écarts, et on le pose DANS LE SENS OÙ LA MAIN VA — ancré sur le
+        // coin de départ, qui ne bouge pas. Centrer la moyenne, comme avant,
+        // faisait glisser la figure sous le doigt.
+        const cote = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+        const sx = (x1 < x0) ? -1 : 1, sy = (y1 < y0) ? -1 : 1;
+        el.largeur = cote;
+        el.hauteur = cote;
+        el.x = x0 + sx * cote / 2;
+        el.y = y0 + sy * cote / 2;
+        return;
+    }
+    el.largeur = Math.abs(x1 - x0);
+    el.hauteur = Math.abs(y1 - y0);
+    el.x = (x0 + x1) / 2;
+    el.y = (y0 + y1) / 2;
 }
 
 /** Une poignée tirée : coin, rotation, ou bout de trait. */
@@ -583,28 +629,53 @@ function tirerUnePoignee(el, geste, p) {
         return;
     }
 
-    // REDIMENSIONNEMENT DEPUIS LE CENTRE, dans le repère TOURNÉ de l'objet. On
-    // projette l'écart sur les axes propres de l'objet : c'est ce qui fait qu'un
-    // rectangle penché s'élargit dans SON sens, et non dans celui de l'écran.
+    // LE COIN OPPOSÉ NE BOUGE PAS, ET C'EST LA DEMANDE DE RÉMY : « que le
+    // ragrandissement ne se fasse pas centré, que le coin supérieur gauche reste
+    // fixe ». C'est aussi la convention de tous les logiciels de dessin : on tire
+    // un coin, celui d'en face sert de clou.
+    //
+    // Ma première version grossissait DEPUIS LE CENTRE : les quatre coins
+    // partaient à la fois, et l'objet semblait fuir la main qui le tire.
+    //
+    // ON MESURE DONC TOUT DEPUIS LE CLOU, dans le repère TOURNÉ de l'objet — ce
+    // qui fait qu'un rectangle penché s'élargit dans SON sens et non dans celui
+    // de l'écran — puis l'on replace le centre pour que le clou retombe
+    // exactement où il était.
     const c = Math.cos(rad(b.a)), s = Math.sin(rad(b.a));
-    const dx = p.x - b.cx, dy = p.y - b.cy;
-    const surU = Math.abs(dx * c + dy * s);
-    const surV = Math.abs(-dx * s + dy * c);
+    const u = { x: c, y: s }, v = { x: -s, y: c };
+    const F = geste.clou;
+    if (!F) return;
+    const dx = p.x - F.x, dy = p.y - F.y;
+    const surU = dx * u.x + dy * u.y;
+    const surV = dx * v.x + dy * v.y;
+    // LE SENS DANS LEQUEL ON S'ÉLOIGNE DU CLOU : sans lui, tirer un coin
+    // au-delà du clou retournerait l'objet au lieu de l'agrandir.
+    const sU = surU < 0 ? -1 : 1, sV = surV < 0 ? -1 : 1;
 
+    let l, h;
     if (el.type === 'mot') {
         // UN MOT NE S'ÉTIRE PAS : il GROSSIT. Étirer une lettre dans un seul sens
-        // la rend illisible, et un dingbat se lit.
-        const avant = Math.hypot(b.l / 2, b.h / 2) || 1;
-        const apres = Math.hypot(surU, surV);
-        const taille = Math.round((geste.copie.taille || 34) * (apres / avant));
-        el.taille = Math.min(90, Math.max(10, taille));
-        return;
+        // la rend illisible, et un dingbat se lit. On prend donc UN seul rapport,
+        // celui des diagonales, et la boîte suit proportionnellement.
+        const avant = Math.hypot(b.l, b.h) || 1;
+        const rapport = Math.hypot(surU, surV) / avant;
+        const taille = Math.min(90, Math.max(10, Math.round((geste.copie.taille || 34) * rapport)));
+        el.taille = taille;
+        const vrai = taille / (geste.copie.taille || 34);
+        l = b.l * vrai; h = b.h * vrai;
+    } else {
+        const def = FORMES_LIBRES.find(f => f.id === el.forme) || FORMES_LIBRES[0];
+        l = Math.max(10, Math.round(Math.abs(surU)));
+        h = Math.max(10, Math.round(Math.abs(surV)));
+        if (def.egal) { l = h = Math.max(l, h); }
+        el.largeur = l;
+        if (!def.egal) el.hauteur = h;
     }
-    const def = FORMES_LIBRES.find(f => f.id === el.forme) || FORMES_LIBRES[0];
-    const l = Math.max(10, Math.round(surU * 2));
-    const h = Math.max(10, Math.round(surV * 2));
-    el.largeur = def.egal ? Math.max(l, h) : l;
-    if (!def.egal) el.hauteur = h;
+
+    // LE CLOU RETOMBE OÙ IL ÉTAIT : le centre est à une demi-boîte de lui, dans
+    // le sens où la main est partie.
+    el.x = F.x + u.x * (sU * l / 2) + v.x * (sV * h / 2);
+    el.y = F.y + u.y * (sU * l / 2) + v.y * (sV * h / 2);
 }
 
 /**
@@ -648,6 +719,29 @@ function deplacer(el, copie, dx, dy) {
 let saisieOuverte = false;
 
 /** Ouvre le champ PAR-DESSUS le mot, à sa place et à sa taille. */
+/**
+ * ON ÉCRIT DIRECTEMENT SUR LA TOILE — il n'y a plus de cadre.
+ *
+ * RÉMY : « pour le texte, j'aimerais que l'on puisse écrire directement sur le
+ * canvas sans cadre autour ».
+ *
+ * COMMENT ON FAIT DISPARAÎTRE LE CHAMP SANS PERDRE LE CLAVIER. Le champ est
+ * toujours là — c'est lui qui reçoit les frappes, la correction automatique du
+ * téléphone, le copier-coller —, mais il est rendu INVISIBLE : son texte est
+ * transparent, son fond et sa bordure n'existent pas. Ce qu'on voit, c'est le
+ * VRAI texte du dessin, qui se réécrit à chaque lettre.
+ *
+ * IL NE RESTE QUE LE CURSEUR, et c'est tout ce qu'il faut pour savoir où l'on
+ * tape. Pour qu'il tombe au bon endroit, le champ copie les mesures du mot :
+ * même police, même corps, même graisse, même écart entre les lettres, même
+ * centre — et il TOURNE avec lui, sinon un mot à l'envers se taperait à
+ * l'endroit, au-dessus de lui.
+ *
+ * LE CURSEUR VA À LA FIN, PAS SUR TOUT LE MOT. Sélectionner le mot entier était
+ * commode tant que le champ se voyait ; maintenant qu'il est invisible, une
+ * sélection invisible fait disparaître le mot à la première frappe sans qu'on
+ * comprenne pourquoi.
+ */
 function ouvrirLaSaisie() {
     const el = enigme.elements[sel];
     const svg = q('#ae-toile');
@@ -656,15 +750,28 @@ function ouvrirLaSaisie() {
     const zone = q('.ae-toile-zone');
     const r = svg.getBoundingClientRect();
     const z = zone.getBoundingClientRect();
+    const echelle = r.width / TOILE.largeur;
+
     champ.value = el.texte || '';
     champ.hidden = false;
-    champ.style.left = `${r.left - z.left + el.x / TOILE.largeur * r.width}px`;
+    champ.style.left = `${r.left - z.left + el.x * echelle}px`;
     champ.style.top = `${r.top - z.top + el.y / TOILE.hauteur * r.height}px`;
-    champ.style.fontSize = `${Math.max(14, (el.taille || 34) * r.width / TOILE.largeur)}px`;
+    champ.style.fontSize = `${Math.max(12, (el.taille || 34) * echelle)}px`;
+    champ.style.fontWeight = el.gras === false ? '600' : '800';
+    champ.style.letterSpacing = `${(Number(el.espacement) || 0) * echelle}px`;
+    champ.style.transform = `translate(-50%, -50%) rotate(${Number(el.angle) || 0}deg)`
+        + (el.miroir ? ' scaleX(-1)' : '');
+    // LA LARGEUR SUIT LE MOT : le curseur d'un champ centré se place par rapport
+    // à SA boîte. Trop étroite, le texte défilerait ; trop large, rien ne change
+    // puisqu'elle est transparente — mais elle doit rester dans la toile.
+    const large = Math.min(r.width - 8, Math.max(90, (el.texte || '').length * (el.taille || 34) * echelle * 0.8 + 40));
+    champ.style.width = `${large}px`;
+
     saisieOuverte = true;
     champ.focus();
-    champ.select();
-    dire('Tape le mot, puis Entrée. Échap annule.');
+    const n2 = champ.value.length;
+    champ.setSelectionRange(n2, n2);
+    dire('Écris : le mot se forme sur la toile. Entrée pour poser, Échap pour annuler.');
 }
 
 function fermerLaSaisie(garderLeTexte = true) {
@@ -1097,6 +1204,16 @@ function demarrer() {
     // POUR LA SONDE : de quoi lire l'état sans passer par l'écran.
     window.__atelierEssai = {
         etat: () => ({ lot, courant, sel, outil }),
+        // LES COINS DE CE QUI EST CHOISI, rotation comprise. La sonde ne peut pas
+        // les recalculer de son côté : la boîte d'un MOT se mesure sur le dessin
+        // (`getBBox`), pas sur ses champs. Sans ce crochet, on ne pourrait pas
+        // vérifier que le coin opposé ne bouge pas — c'est-à-dire la demande.
+        coins: () => {
+            const svg = q('#ae-toile');
+            if (sel < 0 || !svg) return null;
+            const b = boiteDe(svg, sel);
+            return b ? coinsDe(b).map(p => ({ x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 })) : null;
+        },
         choisirOutil, annuler, refaire
     };
     document.documentElement.dataset.atelierEssai = 'pret';

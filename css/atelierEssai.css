@@ -174,15 +174,27 @@ body.ae-corps {
     pointer-events: none; opacity: .85;
 }
 
-/* LE CHAMP D'ÉDITION SUR PLACE, posé PAR-DESSUS le mot. */
+/* LE CHAMP D'ÉDITION EST INVISIBLE — on écrit directement sur la toile.
+
+   Rémy : « j'aimerais que l'on puisse écrire directement sur le canvas sans
+   cadre autour ». Le champ reste là (c'est lui qui reçoit les frappes, la
+   correction du téléphone, le copier-coller) mais il ne se voit plus : texte
+   transparent, aucun fond, aucune bordure. Ce qu'on lit est le VRAI texte du
+   dessin, qui se réécrit à chaque lettre.
+
+   IL NE RESTE QUE LE CURSEUR. `caret-color` est la seule couleur qu'on garde :
+   sans lui on ne saurait pas où l'on tape, et le champ paraîtrait mort. */
 .ae-saisie {
-    position: absolute; transform: translate(-50%, -50%);
-    min-width: 120px; max-width: 80%;
-    text-align: center; font-weight: 800; font-family: inherit;
-    border: 2px solid var(--primary); border-radius: 8px;
-    padding: 2px 8px; background: var(--bg-panel); color: var(--text-main);
-    box-shadow: var(--shadow-md);
+    position: absolute;
+    text-align: center; font-family: inherit; line-height: 1;
+    border: 0; outline: none; padding: 0; background: transparent;
+    color: transparent;
+    caret-color: var(--primary);
+    -webkit-text-fill-color: transparent;   /* Safari ignore `color` sur un champ */
 }
+/* LA SÉLECTION AUSSI DOIT SE VOIR, sinon un Ctrl+A invisible efface le mot sans
+   prévenir. Un fond léger suffit : il dit « c'est pris » sans redessiner un cadre. */
+.ae-saisie::selection { background: color-mix(in srgb, var(--primary) 30%, transparent); }
 
 /* LA BARRE DE CE QUI EST CHOISI, AU-DESSUS DE LA TOILE.
    Elle ne flotte PAS sur la toile : une barre posée sur une surface de dessin
