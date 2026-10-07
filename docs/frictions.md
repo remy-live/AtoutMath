@@ -3156,3 +3156,26 @@ lignes** — 2026-10-01
   doit être servi comme ce qui sera livré ; un réglage qui ne vit que chez
   l'hébergeur n'est pas mesuré, il est espéré.** Reste à faire entrer de la
   même façon les redirections et les en-têtes de cache.
+
+## L'aperçu d'une fiche et son PDF sont deux dessins, et c'est le second qu'on imprime — 2026-10-07
+
+- **Ce que je voulais faire** : corriger la barre du radical, que Rémy signale
+  QUATRE fois dans la même revue — « la racine carré ne recouvre pas bien le
+  nombre sur la version imprimé ».
+- **Ce qui coûte** : deux pièges enchaînés. **(1)** L'aperçu est du HTML, où la
+  barre est un `text-decoration: overline` que le navigateur pose seul ; le PDF
+  est tiré par jsPDF, qui ne connaît ni `overline` ni le caractère de barre —
+  il faut y DESSINER un trait. Une correction faite sur l'aperçu seul aurait
+  paru bonne à l'écran et n'aurait rien changé sur la feuille. **(2)** Ma
+  première mesure du PDF cherchait des traits horizontaux « entre 2 et 25
+  points » et n'en trouvait aucun : la barre en fait 32. Dix minutes à croire
+  le code cassé alors que le FILTRE était faux — une mesure qui cherche une
+  valeur devinée ne mesure que ma devinette.
+- **Combien de fois** : || — c'est la famille de « une correction posée sur un
+  seul des chemins qui mènent au même endroit ne ferme rien », ici avec deux
+  chemins qui ne se ressemblent même pas. Et `ficheRendu.js` le dit déjà de
+  lui-même : `morceauxLigne` a CINQ sortes de morceaux et TROIS lecteurs.
+- **Ce qui manque** : `tools/ficheRacines.mjs` existe maintenant et lit le PDF
+  produit, pas l'aperçu. La règle : **quand une chose se rend deux fois, la
+  mesure va sur celle qu'on livre** — et elle compare à la géométrie voisine,
+  jamais à un nombre choisi d'avance.

@@ -644,6 +644,27 @@ const HORS_TABLE = {
  */
 const RE_EXPOSANT = '([\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207B]+)';
 
+/**
+ * LE RADICAL, ET CE QU'IL DOIT RECOUVRIR.
+ *
+ * RÉMY, quatre fois dans la même revue : « racine carré qui ne recouvre pas
+ * tout », « la racine carré ne recouvre pas bien le nombre sur la version
+ * imprimé », « attention au racine carré pour le mode imprimable ».
+ *
+ * LA CAUSE EST STRUCTURELLE, PAS COSMÉTIQUE. L'écran dessine le radical avec
+ * sa barre (`core/maths/formule.js`), mais la FEUILLE reçoit la forme TEXTE —
+ * et à plat, un radical s'écrit « √64 ». Il n'y a pas de barre à perdre : il
+ * n'y en a jamais eu. Or « √64 » ne dit pas si l'on prend la racine de 64 ou
+ * la racine de 6 multipliée par 4, et « √81 × √49 » ne se distingue pas de
+ * « √(81 × 49) » autrement que par cette barre.
+ *
+ * ON RECONNAÎT DEUX FORMES, celles que `formule.js` produit : le radicande
+ * parenthésé (`√(9 + 16)`) et le radicande atomique (`√64`, `√a`). Rien
+ * d'autre — un motif qui essaierait de deviner où s'arrête un radicande non
+ * parenthésé se tromperait sur « √2 + 3 », où la barre ne couvre que le 2.
+ */
+const RE_RACINE = '\u221A\\(([^()]*)\\)|\u221A([0-9]+(?:[.,][0-9]+)?|[a-zA-Z])';
+
 export function morceauxLigne(ligne, avecFractions) {
     const out = [];
     // Le motif vient de core/fiche.js : l'aperçu, le PDF et la mesure des
@@ -662,7 +683,10 @@ export function morceauxLigne(ligne, avecFractions) {
     // π, et un bloc d'exposants ne contient que des exposants. Le reste est une
     // fraction, et ses deux étages sont les deux premiers groupes — ceux qui
     // marchaient déjà avant qu'on touche à ce motif.
-    const hors = `\u2248|\u03C0|${RE_EXPOSANT}`;
+    // LA RACINE PASSE AVANT LA FRACTION, et l'ordre compte : dans « √(a/b) »,
+    // le motif de la fraction attraperait « a/b » tout seul et laisserait le
+    // « √( » au texte, ce qui donnerait une barre posée sur rien.
+    const hors = `${RE_RACINE}|\u2248|\u03C0|${RE_EXPOSANT}`;
     const re = avecFractions
         ? new RegExp(`${RE_FRACTION().source}|${hors}`, 'g')
         : new RegExp(hors, 'g');
@@ -670,7 +694,11 @@ export function morceauxLigne(ligne, avecFractions) {
     let dernier = 0, m;
     while ((m = re.exec(ligne))) {
         if (m.index > dernier) out.push({ texte: ligne.slice(dernier, m.index) });
-        if (m[0] === '\u2248') out.push({ presque: true });
+        // ON RECONNAÎT LE MORCEAU À CE QU'IL EST, PAS À SON NUMÉRO DE GROUPE —
+        // la leçon est écrite plus haut, et la racine la respecte : elle se
+        // reconnaît à son premier caractère, pas à la place de sa capture.
+        if (m[0][0] === '\u221A') out.push({ racine: m[0].slice(1).replace(/^\((.*)\)$/, '$1') });
+        else if (m[0] === '\u2248') out.push({ presque: true });
         else if (m[0] === '\u03C0') out.push({ pi: true });
         else if (queDesExposants.test(m[0])) out.push({ haut: m[0] });
         else out.push({ num: m[1], den: m[2] });
@@ -678,6 +706,43 @@ export function morceauxLigne(ligne, avecFractions) {
     }
     if (dernier < ligne.length) out.push({ texte: ligne.slice(dernier) });
     return out.length ? out : [{ texte: ligne }];
+}
+
+/**
+ * LE RADICAL DU PDF : le signe, puis le radicande, puis LA BARRE PAR-DESSUS.
+ *
+ * RÉMY : « la racine carré ne recouvre pas bien le nombre sur la version
+ * imprimé ». Elle ne le recouvrait pas du tout — la feuille recevait « √64 »,
+ * une chaîne plate, et jsPDF l'écrivait telle quelle.
+ *
+ * LA BARRE EST DESSINÉE, PAS ÉCRITE. Le caractère « ‾ » n'existe pas dans les
+ * polices standard du PDF — c'est le même piège que la case à cocher « ☐ »,
+ * déjà payé dix lignes plus bas. On mesure le radicande et l'on tire un trait
+ * de cette longueur.
+ *
+ * LES PROPORTIONS SONT CELLES DE L'ÉCRAN (`css/components.css`) : la barre se
+ * pose au niveau du sommet du radical, soit un peu au-dessus des capitales, et
+ * elle déborde d'un cheveu à droite pour ne pas sembler s'arrêter trop tôt sur
+ * un chiffre à jambage.
+ */
+export function dessinerRacine(pdf, dedans, x, y, taille) {
+    const t = pourPdf(String(dedans));
+    pdf.text('\u221A', x, y);
+    const wSigne = pdf.getTextWidth('\u221A');
+    const wDedans = pdf.getTextWidth(t);
+    pdf.text(t, x + wSigne, y);
+    const haut = y - taille * 0.74;
+    pdf.setLineWidth(0.28);
+    pdf.setDrawColor(...ENCRE.texte);
+    // LE TRAIT PART DU SOMMET DU SIGNE, pas du bord du radicande : entre les
+    // deux il reste sinon un blanc qui fait lire « √ 64 » en deux morceaux.
+    pdf.line(x + wSigne * 0.92, haut, x + wSigne + wDedans + 0.3, haut);
+    return wSigne + wDedans + 0.4;
+}
+
+/** La largeur d'un radical, sans l'écrire — pour centrer avant de dessiner. */
+export function largeurRacine(pdf, dedans) {
+    return pdf.getTextWidth('\u221A') + pdf.getTextWidth(pourPdf(String(dedans))) + 0.4;
 }
 
 /** Le π du PDF : le « p » de la police Symbol, qui en est un. */
@@ -704,14 +769,21 @@ export function dessinerPi(pdf, x, y) {
  */
 export function texteRiche(pdf, texte, x, y, taille, o = {}) {
     const morceaux = morceauxLigne(String(texte ?? ''), false);
+    // LA CINQUIÈME SORTE DE MORCEAU, ET LE TROISIÈME LECTEUR. `morceauxLigne`
+    // en a maintenant CINQ et il y a TROIS lecteurs : l'aperçu, le PDF et cette
+    // mesure. Le commentaire de `ligneHtml` le dit déjà — en ajouter une sans
+    // faire le tour des trois, c'est composer sur une largeur et imprimer sur
+    // une autre.
     const large = (m) => (m.texte !== undefined ? pdf.getTextWidth(pourPdf(m.texte))
-        : m.pi ? largeurPi(pdf)
-            : m.haut ? largeurExposant(pdf, m.haut, taille)
-                : taille * 1.25);
+        : m.racine !== undefined ? largeurRacine(pdf, m.racine)
+            : m.pi ? largeurPi(pdf)
+                : m.haut ? largeurExposant(pdf, m.haut, taille)
+                    : taille * 1.25);
     const total = morceaux.reduce((n, m) => n + large(m), 0);
     let cx = o.align === 'center' ? x - total / 2 : o.align === 'right' ? x - total : x;
     for (const m of morceaux) {
         if (m.texte !== undefined) { const t = pourPdf(m.texte); pdf.text(t, cx, y); }
+        else if (m.racine !== undefined) dessinerRacine(pdf, m.racine, cx, y, taille);
         else if (m.pi) dessinerPi(pdf, cx, y);
         else if (m.haut) dessinerExposant(pdf, m.haut, cx, y, taille);
         else signePresque(pdf, cx + taille * 0.15, y, taille);
@@ -787,6 +859,8 @@ function dessinerLigne(pdf, ligne, x0, y, o, avecFractions) {
             x += dessinerPi(pdf, x, y);
         } else if (m.haut) {
             x += dessinerExposant(pdf, m.haut, x, y, o.taille);
+        } else if (m.racine !== undefined) {
+            x += dessinerRacine(pdf, m.racine, x, y, o.taille);
         } else {
             const w = largeurFraction(pdf, m);
             // L'ÉTAGE À REMPLIR, en pointillés : le même trait qu'ailleurs sur
@@ -852,6 +926,13 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
         // sortes de morceaux et TROIS lecteurs (l'aperçu, le PDF, la mesure).
         // Ajouter une sorte sans faire le tour des trois, c'est reproduire ce
         // bug — et il ne se voit que sur une feuille, à l'écran d'un élève.
+        // LA RACINE DE L'APERÇU : le signe, puis le radicande sous une barre.
+        // `overline` plutôt qu'une bordure : il suit la taille du texte tout
+        // seul, et l'aperçu se redessine à cinq tailles de papier.
+        if (m.racine !== undefined) {
+            return '<span class="fq-rac">&#8730;<span class="fq-rac-dedans">'
+                + texteHtml(m.racine) + '</span></span>';
+        }
         if (m.pi) return '<span class="fx-pi">&#960;</span>';
         // Le navigateur sait écrire « ² » ; mais au-delà de ³ les polices ne
         // suivent pas toutes, et l'on verrait un carré vide. Un `<sup>` avec le
