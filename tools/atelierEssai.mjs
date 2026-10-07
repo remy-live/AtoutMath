@@ -121,8 +121,43 @@ dire(rect && rect.type === 'forme' && rect.forme === 'rectangle'
     'on trace un rectangle, et il a LA TAILLE TRACÉE',
     rect ? `${rect.largeur}×${rect.hauteur} centré en (${rect.x},${rect.y}), attendu 160×100 en (160,110)` : 'rien');
 
-// L'OUTIL REVIENT À LA MAIN : on vient de tracer, on veut ajuster.
-dire((await etat()).outil === 'select', 'l\'outil revient à la main après une forme');
+// L'OUTIL RESTE EN MAIN — Rémy : « l'outil sélectionné reste par défaut ». On
+// compose un dingbat en posant trois traits et deux carrés : reprendre l'outil
+// entre chacun serait un geste sur deux pour rien.
+dire((await etat()).outil === 'rectangle',
+    'l\'outil RESTE en main après une figure : on en pose plusieurs de suite',
+    `outil « ${(await etat()).outil} »`);
+
+// ET AU MOMENT DE L'APPUI, IL N'Y A QU'UN POINT. Rémy : « au premier clic le
+// rectangle est centré alors qu'il ne devrait juste afficher qu'un point ».
+// La figure a une taille NULLE tant qu'on n'a pas tiré ; le rendu la traitait
+// comme « non renseignée » et retombait sur sa taille par défaut.
+const p0 = await surLaToile(300, 200);
+await s.page.mouse.move(p0.x, p0.y);
+await s.page.mouse.down();
+await dormir(250);
+const auPremierClic = await s.page.evaluate(() => {
+    // `:last-of-type` DÉSIGNAIT LA COUCHE DES POIGNÉES, et non le dernier
+    // élément : il compte parmi les `<g>` frères, et la toile en porte trois qui
+    // ne sont pas des éléments (la grille, les repères, les poignées). On prend
+    // donc le dernier `[data-el]` par son rang.
+    const groupes = document.querySelectorAll('#ae-toile [data-el]');
+    const dernier = groupes[groupes.length - 1];
+    const r = dernier && dernier.querySelector('rect:not(.ae-prise)');
+    return {
+        largeur: r ? Number(r.getAttribute('width')) : -1,
+        point: document.querySelectorAll('#ae-toile .ae-point').length
+    };
+});
+await s.page.mouse.up();
+await dormir(200);
+await s.page.keyboard.press('Delete');
+await dormir(250);
+dire(auPremierClic.largeur === 0 && auPremierClic.point === 1,
+    'au premier appui, il n\'y a QU\'UN POINT — la figure n\'a pas encore de taille',
+    JSON.stringify(auPremierClic));
+await s.page.click('[data-outil="rectangle"]');
+await dormir(200);
 
 // --- LE TRACÉ NE DOIT PAS TREMBLER -------------------------------------------
 //
@@ -242,6 +277,11 @@ dire(pendant.surLaToile === 'RACINE' && pendant.foyer === 'ae-saisie',
 await s.page.keyboard.press('Enter');
 await dormir(350);
 
+// ON REPREND LA MAIN AVANT DE MANIPULER : l'outil mot est toujours armé — c'est
+// ce que Rémy a demandé —, donc un clic sur la toile écrirait un deuxième mot au
+// lieu de choisir le premier.
+await s.page.click('[data-outil="select"]');
+await dormir(250);
 const motPose = (await elements())[2];
 // LE MOT GARDE LA POSITION DU CURSEUR — c'est la demande de Rémy : « le mot ne
 // se centre pas, il garde la position du curseur ». On ne regarde donc PAS son

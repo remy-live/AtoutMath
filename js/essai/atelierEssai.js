@@ -55,7 +55,7 @@
 
 import {
     TOILE, COULEURS, FORMES_LIBRES, elementNeuf, dessinerElement, validerLibre,
-    enigmeEnTexte, lotEnTexte, lireUnLot, direLibre
+    enigmeEnTexte, lotEnTexte, lireUnLot, direLibre, pourcentDeTeinte
 } from '../core/dingbatLibre.js';
 import { dessiner, THEMES, NIVEAUX, juste, attendues } from '../core/dingbat.js';
 import { nettoyerSvg } from '../core/svgSobre.js';
@@ -367,6 +367,20 @@ function majPoignees(svg) {
     const el = enigme.elements[sel];
     if (!el || commeEleve) { boite.innerHTML = ''; return; }
 
+    // AU MOMENT DE L'APPUI, IL N'Y A QU'UN POINT. Rémy : « il ne devrait juste
+    // afficher qu'un point ». La figure a une taille nulle tant qu'on n'a pas
+    // tiré — elle ne dessine donc rien —, et un cadre de sélection autour de
+    // rien ferait croire à une figure invisible. On montre le point d'appui, et
+    // il disparaît au premier millimètre de glissé.
+    const minuscule = (el.type === 'forme' && Math.abs(Number(el.largeur) || 0) < 2)
+        || (el.type === 'trait' && Math.hypot(el.x2 - el.x1, el.y2 - el.y1) < 2);
+    if (minuscule) {
+        const px = el.type === 'trait' ? el.x1 : el.x;
+        const py = el.type === 'trait' ? el.y1 : el.y;
+        boite.innerHTML = `<circle class="ae-point" cx="${px}" cy="${py}" r="3"/>`;
+        return;
+    }
+
     if (el.type === 'trait') {
         boite.innerHTML =
             `<line class="ae-contour-trait" x1="${el.x1}" y1="${el.y1}" x2="${el.x2}" y2="${el.y2}"/>`
@@ -561,8 +575,16 @@ function brancherLaToile(svg) {
             const petit = (el.type === 'forme' && Math.abs(el.largeur) < 12)
                 || (el.type === 'trait' && Math.hypot(el.x2 - el.x1, el.y2 - el.y1) < 12);
             if (petit) tailleParDefaut(el);
-            // L'OUTIL REVIENT À LA MAIN : on vient de tracer, on veut ajuster.
-            choisirOutil('select');
+            // L'OUTIL RESTE EN MAIN, ET C'EST RÉMY QUI A TRANCHÉ : « l'outil
+            // sélectionné reste par défaut ».
+            //
+            // J'avais fait l'inverse — revenir à la main après chaque figure —
+            // en me disant qu'on veut ajuster ce qu'on vient de tracer. Mais on
+            // compose un dingbat en posant TROIS traits et DEUX carrés : devoir
+            // reprendre l'outil entre chacun, c'est un geste sur deux pour rien.
+            //
+            // POUR REVENIR À LA MAIN : la touche Échap, ou l'outil « Choisir ».
+            // La consigne sous la toile le dit, parce que personne ne le devine.
             // UN MOT NEUF EST VIDE : on ouvre la saisie tout de suite, sinon il
             // faudrait deviner qu'un double-clic l'ouvre.
             if (el.type === 'mot') { enregistrer(); ouvrirLaSaisie(); return; }
@@ -906,29 +928,55 @@ function majBarre() {
             data-couleur="${c.id}" title="${esc(c.nom)}" aria-label="${esc(c.nom)}"
             style="background: var(${c.jeton})"></button>`).join('');
 
+    /** Une réglette avec son nom et sa valeur : on règle en voyant le chiffre. */
+    const reglette = (id, nom, valeur, min, max, pas, unite) =>
+        `<label class="ae-reglette"><span class="ae-etiq">${esc(nom)}</span>
+            <input type="range" data-reg="${id}" min="${min}" max="${max}" step="${pas}"
+                   value="${valeur}" aria-label="${esc(nom)}">
+            <output>${valeur}${unite}</output></label>`;
+
+    const nomDuGenre = { mot: 'Le mot', trait: 'Le trait', forme: 'La forme', dessin: 'Le dessin' };
+
+    // LES RÉGLAGES QUI MANQUAIENT. L'épaisseur d'un trait, la taille d'un mot et
+    // l'opacité d'un remplissage n'étaient réglables NULLE PART dans cet essai :
+    // la barre ne portait que des bascules. Rémy : « pour la teinte, on n'a pas
+    // l'opacité » — et c'était vrai des trois.
     let propres = '';
     if (el.type === 'mot') {
-        propres = `<button type="button" class="ae-mini" data-bascule="miroir"
-                aria-pressed="${!!el.miroir}" title="Miroir">⇄</button>
-            <button type="button" class="ae-mini" data-editer title="Modifier le mot">Aa</button>`;
+        propres = reglette('taille', 'Taille', Math.round(el.taille || 34), 10, 90, 1, ' px')
+            + reglette('espacement', 'Écart', Math.round(el.espacement || 0), -6, 30, 1, '')
+            + `<button type="button" class="ae-mini" data-bascule="gras"
+                    aria-pressed="${el.gras !== false}" title="Gras"><b>G</b></button>
+               <button type="button" class="ae-mini" data-bascule="miroir"
+                    aria-pressed="${!!el.miroir}" title="Miroir">⇄</button>
+               <button type="button" class="ae-mini" data-editer title="Modifier le mot (double-clic)">Aa</button>`;
     } else if (el.type === 'trait') {
-        propres = `<button type="button" class="ae-mini" data-bascule="fleche"
-                aria-pressed="${!!el.fleche}" title="Flèche">→</button>
-            <button type="button" class="ae-mini" data-bascule="pointille"
-                aria-pressed="${!!el.pointille}" title="Pointillés">┄</button>`;
+        propres = reglette('epaisseur', 'Épaisseur', Math.round(el.epaisseur || 3), 1, 14, 1, ' px')
+            + `<button type="button" class="ae-mini" data-bascule="fleche"
+                    aria-pressed="${!!el.fleche}" title="Flèche">→</button>
+               <button type="button" class="ae-mini" data-bascule="pointille"
+                    aria-pressed="${!!el.pointille}" title="Pointillés">┄</button>`;
+    } else if (el.type === 'forme') {
+        propres = reglette('epaisseur', 'Épaisseur', Math.round(el.epaisseur || 3), 1, 14, 1, ' px')
+            + reglette('remplissage', 'Remplissage', pourcentDeTeinte(el.remplissage), 0, 100, 5, ' %');
     } else {
-        propres = `<button type="button" class="ae-mini" data-bascule="remplissage"
-                aria-pressed="${el.remplissage === 'teinte'}" title="Remplir d'une teinte">◧</button>`;
+        propres = '<span class="ae-etiq">Les poignées le redimensionnent et le tournent.</span>';
     }
 
-    barre.innerHTML = `<span class="ae-pastilles">${pastilles}</span>
-        <span class="ae-sep"></span>${propres}
+    barre.innerHTML = `<span class="ae-groupe">
+            <span class="ae-etiq ae-etiq--titre">${nomDuGenre[el.type] || 'L\u2019élément'}</span></span>
         <span class="ae-sep"></span>
-        <button type="button" class="ae-mini" data-dupliquer title="Dupliquer (Ctrl+D)">⧉</button>
-        <button type="button" class="ae-mini" data-devant title="Mettre devant">▲</button>
-        <button type="button" class="ae-mini" data-derriere title="Mettre derrière">▼</button>
-        <button type="button" class="ae-mini ae-mini--danger" data-supprimer
-            title="Supprimer (Suppr)">🗑</button>`;
+        <span class="ae-groupe"><span class="ae-etiq">Couleur</span>
+            <span class="ae-pastilles">${pastilles}</span></span>
+        <span class="ae-sep"></span>
+        <span class="ae-groupe">${propres}</span>
+        <span class="ae-pousse"></span>
+        <span class="ae-groupe">
+            <button type="button" class="ae-mini" data-dupliquer title="Dupliquer (Ctrl+D)">⧉</button>
+            <button type="button" class="ae-mini" data-devant title="Mettre devant">▲</button>
+            <button type="button" class="ae-mini" data-derriere title="Mettre derrière">▼</button>
+            <button type="button" class="ae-mini ae-mini--danger" data-supprimer
+                title="Supprimer (Suppr)">🗑</button></span>`;
     barre.className = 'ae-barre';
     brancherLaBarre();
 }
@@ -944,11 +992,39 @@ function brancherLaBarre() {
             pousser();
             const nom = b.dataset.bascule;
             const e = el();
-            if (nom === 'remplissage') e.remplissage = e.remplissage === 'teinte' ? 'aucun' : 'teinte';
-            else e[nom] = !e[nom];
+            // `gras` EST VRAI PAR DÉFAUT : son absence veut dire « gras », pas
+            // « maigre ». Le basculer naïvement aurait rendu un premier clic sans
+            // effet visible.
+            e[nom] = nom === 'gras' ? (e.gras === false) : !e[nom];
             enregistrer();
             peindreToile();
         };
+    });
+
+    // LES RÉGLETTES NE REDESSINENT PAS LA BARRE, et c'est tout le sujet : la
+    // reconstruire à chaque pixel du curseur arracherait la réglette qu'on est en
+    // train de tirer. On met à jour la toile et le chiffre affiché, rien d'autre.
+    barre.querySelectorAll('[data-reg]').forEach(ch => {
+        let commence = false;
+        ch.oninput = () => {
+            if (!commence) { pousser(); commence = true; }
+            const e = el();
+            if (!e) return;
+            e[ch.dataset.reg] = Number(ch.value);
+            const sortie = ch.parentElement.querySelector('output');
+            if (sortie) {
+                const unite = ch.dataset.reg === 'remplissage' ? ' %'
+                    : ch.dataset.reg === 'espacement' ? '' : ' px';
+                sortie.textContent = ch.value + unite;
+            }
+            const svg = q('#ae-toile');
+            if (svg) { rafraichirUn(svg, sel); majPoignees(svg); }
+            enregistrer();
+        };
+        // UN SEUL PAS D'ANNULATION PAR GLISSÉ : sans ce drapeau, tirer une
+        // réglette d'un bout à l'autre empilerait quatre-vingt-dix annulations,
+        // et Ctrl+Z ne reviendrait plus nulle part.
+        ch.onchange = () => { commence = false; };
     });
     const brancher = (sel2, faire) => {
         const b = barre.querySelector(sel2);
@@ -1015,9 +1091,11 @@ function choisirOutil(id) {
     }
     dire(id === 'select' ? ''
         : id === 'mot'
-            ? 'Clique à l\u2019endroit où le mot doit COMMENCER, puis écris.'
+            ? 'Clique à l\u2019endroit où le mot doit COMMENCER, puis écris. '
+              + 'L\u2019outil reste en main — Échap pour revenir à la flèche.'
             : `Trace ton ${OUTILS.find(o => o.id === id).nom.toLowerCase()} sur la toile : appuie, tire, relâche. `
-              + 'Un simple clic en pose un depuis ce coin.');
+              + 'Un simple clic en pose un depuis ce coin. '
+              + 'L\u2019outil reste en main — Échap pour revenir à la flèche.');
 }
 
 function surLeClavier(ev) {

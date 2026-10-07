@@ -62,6 +62,27 @@ const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
+/**
+ * UNE MESURE ABSENTE PREND SA VALEUR PAR DÉFAUT ; UNE MESURE NULLE RESTE NULLE.
+ *
+ * RÉMY : « non, au premier clic le rectangle est centré alors qu'il ne devrait
+ * juste afficher qu'un point ».
+ *
+ * Il décrivait exactement ceci. Au moment où l'on appuie, la figure a une
+ * largeur de ZÉRO — on n'a pas encore tiré. Or le rendu écrivait
+ * `n(e.largeur) || 120`, et zéro est FAUX en JavaScript : la figure sortait donc
+ * à sa taille par défaut, centrée sous le doigt, avant de se replier d'un coup
+ * au premier millimètre de glissé. Un rectangle qui apparaît grand puis rétrécit
+ * quand on l'agrandit.
+ *
+ * `||` CONFOND « ABSENT » ET « ZÉRO », et c'est la seule différence qui compte
+ * ici. On distingue donc les deux : un champ qui n'est pas un nombre prend le
+ * défaut, un zéro est un zéro — et un zéro ne dessine rien, ce qui est
+ * précisément ce qu'on veut voir avant d'avoir tiré.
+ */
+const mesure = (v, parDefaut) =>
+    (v === undefined || v === null || !Number.isFinite(Number(v))) ? parDefaut : Math.abs(n(v));
+
 /** Deux décimales : un dessin doit rendre la MÊME chaîne à chaque appel. */
 const n = (v) => {
     const x = Number(v);
@@ -145,7 +166,7 @@ export function elementNeuf(genre, quoi = {}) {
     if (genre === 'forme') {
         return {
             type: 'forme', forme: 'carre', x: cx, y: cy, largeur: 150, hauteur: 110,
-            angle: 0, couleur: 'encre', epaisseur: 3, remplissage: 'aucun', ...quoi
+            angle: 0, couleur: 'encre', epaisseur: 3, remplissage: 0, ...quoi
         };
     }
     if (genre === 'dessin') {
@@ -216,20 +237,40 @@ function dessinerTrait(e) {
     return e.fleche ? trait + pointeDeFleche(e) : trait;
 }
 
-/** Le remplissage d'une forme : rien, ou une teinte de sa propre couleur. */
+/**
+ * LE REMPLISSAGE D'UNE FORME : rien, ou une teinte de SA PROPRE couleur.
+ *
+ * RÉMY : « pour la teinte, on n'a pas l'opacité ».
+ *
+ * C'était une bascule : rempli ou pas, et toujours à seize pour cent. Or seize
+ * pour cent est beaucoup pour un fond derrière un mot, et pas assez pour un
+ * aplat qui doit se voir. C'est devenu un NOMBRE — le pourcentage lui-même — et
+ * l'ancienne bascule continue de se lire : `remplissage: 'teinte'` vaut seize,
+ * ce qui laisse les compositions déjà écrites exactement comme elles étaient.
+ *
+ * UNE TEINTE DE SA PROPRE COULEUR, ET NON UN JETON DE FOND. `color-mix` garde le
+ * lien : la forme rouge se remplit de rouge pâle sur le thème clair ET sur le
+ * sombre, et le mot posé dessus reste lisible dans les deux. Mesuré au contraste
+ * des pixels (`sonde.contrasteRendu`).
+ */
+export function pourcentDeTeinte(valeur) {
+    if (valeur === 'teinte') return 16;          // l'ancienne bascule
+    if (valeur === 'aucun' || valeur === undefined || valeur === null) return 0;
+    const p = Number(valeur);
+    if (!Number.isFinite(p)) return 0;
+    return Math.min(100, Math.max(0, Math.round(p)));
+}
+
 function remplissageCss(e) {
-    if (e.remplissage !== 'teinte') return 'none';
-    // UNE TEINTE DE SA PROPRE COULEUR, ET NON UN JETON DE FOND. `color-mix` garde
-    // le lien : la forme rouge se remplit de rouge pâle sur le thème clair ET sur
-    // le sombre, et le mot posé dessus reste lisible dans les deux. Mesuré au
-    // contraste des pixels (`sonde.contrasteRendu`).
-    return `color-mix(in srgb, ${couleurCss(e.couleur)} 16%, transparent)`;
+    const p = pourcentDeTeinte(e.remplissage);
+    if (!p) return 'none';
+    return `color-mix(in srgb, ${couleurCss(e.couleur)} ${p}%, transparent)`;
 }
 
 function dessinerForme(e) {
     const def = FORMES_LIBRES.find(f => f.id === e.forme) || FORMES_LIBRES[0];
-    const l = Math.abs(n(e.largeur) || 120);
-    const h = def.egal ? l : Math.abs(n(e.hauteur) || 90);
+    const l = mesure(e.largeur, 120);
+    const h = def.egal ? l : mesure(e.hauteur, 90);
     const x = n(e.x), y = n(e.y);
     const style = `stroke: ${couleurCss(e.couleur)}; stroke-width: ${n(e.epaisseur) || 3};`
         + ` fill: ${remplissageCss(e)}; stroke-linejoin: round`;
@@ -271,8 +312,8 @@ function dessinerForme(e) {
  * dessin, et elle serait fausse le jour où le dessin a un `viewBox` décalé.
  */
 function dessinerDessin(e) {
-    const l = Math.abs(n(e.largeur)) || 100;
-    const h = Math.abs(n(e.hauteur)) || 100;
+    const l = mesure(e.largeur, 100);
+    const h = mesure(e.hauteur, 100);
     const vb = (Array.isArray(e.vueBoite) && e.vueBoite.length === 4)
         ? e.vueBoite.map(n).join(' ') : `0 0 ${l} ${h}`;
     const tour = n(e.angle) ? ` transform="rotate(${n(e.angle)} ${n(e.x)} ${n(e.y)})"` : '';
@@ -464,7 +505,10 @@ function elementPropre(e) {
         // et quelqu'un qui relit le JSON croirait qu'elle compte.
         if (!def.egal) o.hauteur = n(e.hauteur);
         if (n(e.angle)) o.angle = n(e.angle);
-        if (e.remplissage === 'teinte') o.remplissage = 'teinte';
+        // ON N'ÉCRIT QUE CE QUI SERT : un `remplissage: 0` sur chaque forme ferait
+        // une ligne de bruit par figure dans un fichier qu'on relit à l'œil.
+        const teinte = pourcentDeTeinte(e.remplissage);
+        if (teinte) o.remplissage = teinte;
         return o;
     }
     if (e.type === 'dessin') {

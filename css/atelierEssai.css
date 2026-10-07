@@ -168,6 +168,9 @@ body.ae-corps {
     cursor: pointer;
 }
 .ae-pivot { cursor: grab; }
+/* LE POINT D'APPUI, tant qu'on n'a rien tiré. Rémy : « il ne devrait juste
+   afficher qu'un point ». Il disparaît au premier millimètre de glissé. */
+.ae-point { fill: var(--primary); stroke: var(--bg-panel); stroke-width: 1.5; pointer-events: none; }
 .ae-bout { cursor: move; }
 .ae-contour, .ae-contour-trait {
     fill: none; stroke: var(--primary); stroke-width: 1.5;
@@ -314,3 +317,94 @@ body.ae-corps {
     .ae-barre { gap: 2px; padding: 4px; }
     .ae-pastille { width: 19px; height: 19px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SECONDE PASSE SUR L'INTERFACE — Rémy : « améliore l'interface ».
+
+   TROIS CHOSES, ET AUCUNE N'EST DÉCORATIVE :
+
+     1. LA FICHE REMONTE À CÔTÉ DE LA TOILE. Elle était SOUS la toile, à huit
+        cents pixels de défilement : on composait un dessin et l'on écrivait sa
+        solution sans jamais voir les deux ensemble — alors que la solution est
+        précisément ce qu'on vérifie EN REGARDANT le dessin.
+
+     2. LA BARRE DE CE QUI EST CHOISI PORTE DES RÉGLETTES. L'épaisseur d'un
+        trait, la taille d'un mot et l'opacité d'un remplissage n'étaient
+        réglables nulle part dans cet essai.
+
+     3. LES OUTILS SE LISENT EN FAMILLES. Dix boutons d'affilée se lisent un par
+        un ; trois groupes se lisent d'un coup d'œil.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* --- La barre de ce qui est choisi ---------------------------------------- */
+
+.ae-groupe { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.ae-pousse { margin-left: auto; }
+.ae-etiq {
+    font-size: .66rem; font-weight: 700; color: var(--text-muted);
+    letter-spacing: .02em; white-space: nowrap;
+}
+.ae-etiq--titre { color: var(--text-main); font-size: .78rem; }
+
+.ae-reglette { display: flex; align-items: center; gap: 5px; }
+/* CENT PIXELS, ET PAS PLUS : la barre porte jusqu'à deux réglettes, des
+   pastilles et quatre boutons. Une réglette large les repousserait à la ligne
+   suivante, et la barre ferait deux étages sur un portable. */
+.ae-reglette input[type="range"] { width: 92px; }
+.ae-reglette output {
+    min-width: 40px; text-align: right;
+    font-size: .7rem; font-weight: 700; color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- La boîte à outils, en familles --------------------------------------- */
+
+/* ON SÉPARE PAR UN BLANC, PAS PAR UN TRAIT : la main (choisir), l'écriture
+   (mot), les formes, les traits, et l'import. Un trait de séparation de plus
+   dans un écran qui en porte déjà beaucoup se lit comme une bordure de bouton. */
+.ae-outils { gap: 6px; align-items: stretch; }
+.ae-outil[data-outil="mot"] { margin-left: 10px; }
+.ae-outil[data-outil="rectangle"] { margin-left: 10px; }
+.ae-outil[data-outil="trait"] { margin-left: 10px; }
+.ae-outil--import { margin-left: 10px; }
+
+/* --- La toile et la fiche, côte à côte sur un écran large ----------------- */
+
+@media (min-width: 1100px) {
+    .ae-scene, .ae-fiche, .ae-sortie { max-width: 1240px; }
+    .ae-scene {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        grid-template-areas:
+            'outils outils'
+            'barre  barre'
+            'toile  fiche'
+            'consigne fiche'
+            'pied   fiche'
+            'avis   fiche';
+        column-gap: 18px;
+    }
+    /* CHAQUE BLOC ÉPOUSE SON CONTENU. Sans cela, une grille étire ses enfants
+       sur toute la hauteur de leur rangée : l'encart d'avertissement faisait
+       cent vingt pixels pour une ligne de texte, et l'on cherchait ce qui
+       manquait dedans. */
+    .ae-scene > * { align-self: start; }
+    .ae-outils { grid-area: outils; }
+    .ae-barre { grid-area: barre; }
+    .ae-toile-zone { grid-area: toile; }
+    .ae-consigne { grid-area: consigne; }
+    .ae-pied-toile { grid-area: pied; }
+    .ae-avis { grid-area: avis; }
+    /* LA FICHE EST DANS LA GRILLE DE LA SCÈNE : c'est ce qui la met À CÔTÉ de la
+       toile et non huit cents pixels plus bas. Elle défile avec le reste — la
+       coller en haut la ferait flotter devant une toile qu'on fait défiler. */
+    .ae-fiche {
+        grid-area: fiche; margin: 0; padding: 0;
+        align-self: start; gap: 6px;
+        border-left: 1px solid var(--border); padding-left: 18px;
+    }
+    .ae-fiche .ae-h2:first-child { margin-top: 0; }
+}
+
+/* SUR UN ÉCRAN ÉTROIT, rien ne change : tout s'empile dans l'ordre du travail —
+   les outils, la barre, la toile, puis la fiche. */

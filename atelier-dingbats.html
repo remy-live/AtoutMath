@@ -29,8 +29,8 @@
     récolte de l'atelier intégré coûterait plus cher que le temps qu'il fait
     gagner. Les deux communiquent par le JSON, qui est fait pour ça.
 -->
-<link rel="stylesheet" href="css/base.css?v=957">
-<link rel="stylesheet" href="css/atelierEssai.css?v=957">
+<link rel="stylesheet" href="css/base.css?v=958">
+<link rel="stylesheet" href="css/atelierEssai.css?v=958">
 </head>
 <body class="ae-corps">
 
@@ -100,8 +100,15 @@
     </div>
 
     <div class="ae-avis" id="ae-avis" role="status"></div>
-</main>
+<!-- LA FICHE EST DANS LA SCÈNE, ET NON À CÔTÉ D'ELLE.
 
+     Une grille CSS ne place que ses PROPRES enfants : tant que la fiche était
+     une sœur de la scène, la mise en deux colonnes ne pouvait rien lui dire, et
+     elle restait huit cents pixels sous la toile. Mesuré en photographiant la
+     page : les colonnes ne se formaient pas.
+
+     Sur un écran étroit, rien ne change : elle vient après l'avis, dans l'ordre
+     du travail. -->
 <section class="ae-fiche">
     <h2 class="ae-h2">La solution</h2>
     <label class="ae-champ">Ce qu'il faut lire
@@ -126,6 +133,7 @@
     <label class="ae-champ">L'identifiant
         <input type="text" id="ae-id" maxlength="40" placeholder="dg-racine-carree"></label>
 </section>
+</main>
 
 <footer class="ae-sortie">
     <textarea class="ae-export" id="ae-json" data-export rows="4" spellcheck="false"
@@ -139,6 +147,6 @@
     </div>
 </footer>
 
-<script type="module" src="js/essai/atelierEssai.js?v=957"></script>
+<script type="module" src="js/essai/atelierEssai.js?v=958"></script>
 </body>
 </html>
