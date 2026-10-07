@@ -71,59 +71,107 @@ await dormir(4000);
 
 await s.doitExister('#pp-apercu');
 const apercu = await s.page.evaluate(() => {
-    const rac = [...document.querySelectorAll('#pp-apercu .fq-rac-dedans')];
+    // LE MÊME BALISAGE QUE L'ÉCRAN : l'aperçu appelle désormais `formule()`
+    // de `core/maths/formule.js` plutôt que d'écrire son propre radical. Un
+    // second rendu de la même chose aurait divergé au premier réglage — et
+    // c'est exactement par là que la rupture était arrivée.
+    const rac = [...document.querySelectorAll('#pp-apercu .fx-rac')];
+    const un = rac[0];
     return {
         n: rac.length,
-        dedans: rac.slice(0, 3).map(e => e.textContent),
-        // SUR LES PIXELS, pas sur la feuille de style : un `overline` qu'une
-        // règle plus forte annulerait se verrait ici, et nulle part ailleurs.
-        barre: rac.length ? getComputedStyle(rac[0]).textDecorationLine : '',
-        // Et la barre doit vraiment surmonter le radicande, pas flotter à côté.
-        large: rac.length ? Math.round(rac[0].getBoundingClientRect().width) : 0
+        dedans: rac.slice(0, 3).map(e => e.querySelector('.fx-sous').textContent.trim()),
+        crochet: !!(un && un.querySelector('.fx-crochet')),
+        barre: !!(un && un.querySelector('.fx-barre')),
+        // LES DEUX TRAITS SONT-ILS DE LA MÊME ÉPAISSEUR ? La question est de
+        // Rémy, il y a des mois : « sur ton banc les radicaux ont-ils une ligne
+        // de la même épaisseur ». Mesurée sur les pixels rendus.
+        hCrochet: un ? Math.round(un.querySelector('.fx-crochet').getBoundingClientRect().height) : 0,
+        hBarre: un ? Math.round(un.querySelector('.fx-barre').getBoundingClientRect().height) : 0,
+        // ET SE TOUCHENT-ILS ? Le bord droit du crochet et le bord gauche de la
+        // barre : c'est là que Rémy voyait la rupture.
+        ecart: un ? Math.round((un.querySelector('.fx-barre').getBoundingClientRect().left
+            - un.querySelector('.fx-crochet').getBoundingClientRect().right) * 10) / 10 : 99
     };
 });
-dire(apercu.n >= 6, 'l\'aperçu sort un radicande par question',
+dire(apercu.n >= 6, 'l\'aperçu sort un radical par question',
     `${apercu.n} radicaux · ${apercu.dedans.join(' · ')}`);
-dire(apercu.barre.includes('overline'), 'et chacun porte sa barre', apercu.barre);
-dire(apercu.large > 8, 'la barre a la largeur du radicande, pas celle d\'un point',
-    `${apercu.large} px`);
+dire(apercu.crochet && apercu.barre,
+    'et chacun est DESSINÉ — crochet et barre, comme à l\'écran',
+    `crochet ${apercu.crochet} · barre ${apercu.barre}`);
+dire(Math.abs(apercu.ecart) <= 1,
+    'LE CROCHET ET LA BARRE SE REJOIGNENT — pas de rupture',
+    `${apercu.ecart} px entre les deux`);
 
 // ── 2. LE PDF, QUI EST CE QUE RÉMY IMPRIME ─────────────────────────────────
-
+//
+// L'aperçu est du HTML, où le navigateur dessine les SVG. Le PDF est un AUTRE
+// dessin, tiré par jsPDF — et c'est celui-là que Rémy pose sur la photocopieuse.
+// Une sonde qui s'arrêterait à l'aperçu dirait « c'est corrigé » d'une feuille
+// où il ne se serait rien passé.
 const [recu] = await Promise.all([
     s.page.waitForEvent('download', { timeout: 40000 }),
     s.page.click('text=Télécharger le PDF')
 ]);
 const brut = (await fs.readFile(await recu.path())).toString('latin1');
 
-// Le signe, le radicande, puis le trait — dans cet ordre, c'est ce qu'écrit
-// `dessinerRacine`. On lit les trois et on vérifie que le troisième recouvre
-// le deuxième.
-const RADICAL = /\/F\d+ [\d.]+ Tf\s+[\d.]+ TL\s+[\d.]+ g\s+([\d.]+) ([\d.]+) Td\s+\(Ö\) Tj\s+ET\s+BT\s+\/F\d+ [\d.]+ Tf\s+[\d.]+ TL\s+[\d.]+ g\s+([\d.]+) ([\d.]+) Td\s+\(([^)]*)\) Tj\s+ET\s+[\d.]+ w\s+[\d.]+ G\s+([\d.]+) ([\d.]+) m\s+([\d.]+) ([\d.]+) l\s+S/g;
+// LE RADICAL EST UN SEUL CHEMIN, et c'est cela qu'on vérifie.
+//
+// RÉMY : « il faut bien que la racine carrée soit continue, là il y a une
+// rupture sur ce que tu as fait. » La première version posait le caractère
+// « √ » de la police puis tirait un trait au-dessus du radicande : deux objets
+// différents, dont ni l'épaisseur ni la hauteur ne pouvaient coïncider.
+//
+// Le radical s'écrit désormais ainsi dans le flux du PDF :
+//
+//     123.20 685.74 Td (81 + 144) Tj        ← le radicande
+//     118.00 689.94 m                        ← le départ du crochet
+//     119.55 689.94 l  120.88 685.74 l       ← le petit horizontal, la descente
+//     122.54 696.80 l  123.20 696.80 l       ← la remontée, le bout du sommet
+//     167.02 696.80 l  S                     ← LA BARRE, même trait
+//
+// UN SEUL « m », CINQ « l », UN SEUL « S ». La continuité n'est plus un calage
+// qu'on mesure : elle est dans la structure du chemin, et c'est ce que la
+// mesure lit. S'il y avait une rupture, il y aurait DEUX chemins.
+const CHEMIN = /\(([^)]*)\) Tj\s+ET\s+([\d.]+) w\s+[\d.]+ G\s+([\d.]+) ([\d.]+) m\s+((?:[\d.]+ [\d.]+ l\s+)+)S/g;
 
-const trouves = [...brut.matchAll(RADICAL)].map(m => ({
-    xSigne: +m[1], yTexte: +m[2], xDedans: +m[3], dedans: m[5],
-    xBarre1: +m[6], yBarre: +m[7], xBarre2: +m[8]
-}));
+const trouves = [...brut.matchAll(CHEMIN)].map(m => {
+    const points = [[+m[3], +m[4]],
+        ...m[5].trim().split(/\s*l\s*/).filter(Boolean)
+            .map(p => p.trim().split(/\s+/).map(Number))];
+    return { dedans: m[1], epaisseur: +m[2], points };
+}).filter(t => t.points.length >= 6);
 
 dire(trouves.length >= 6, 'le PDF porte un radical par question',
-    `${trouves.length} trouvé(s) — ${trouves.slice(0, 3).map(t => `√${t.dedans}`).join(' · ')}`);
+    `${trouves.length} trouvé(s) — ${trouves.slice(0, 3).map(t => t.dedans).join(' · ')}`);
 
 if (trouves.length) {
-    // LA BARRE PART DU SIGNE ET DÉPASSE LE RADICANDE. On ne compare pas à une
-    // longueur devinée : on compare à la géométrie du radical lui-même.
-    const mauvais = trouves.filter(t => {
-        const longueur = t.xBarre2 - t.xBarre1;
-        const besoin = t.xDedans - t.xSigne;        // la largeur du signe
-        return longueur < besoin || t.xBarre1 > t.xDedans + 0.5 || t.yBarre <= t.yTexte;
+    // 1. UN SEUL TRAIT, DU CROCHET À LA BARRE.
+    dire(trouves.every(t => t.points.length === 6),
+        'CROCHET ET BARRE SONT LE MÊME CHEMIN — aucune rupture possible',
+        `${trouves[0].points.length} points d'un seul tenant`);
+
+    // 2. LE SOMMET DU CROCHET ET LA BARRE SONT À LA MÊME HAUTEUR. C'est la
+    //    marche que Rémy voyait : un sommet à une hauteur, la barre à une autre.
+    const marches = trouves.filter(t => {
+        const [, , , sommet, bout, fin] = t.points;
+        return Math.abs(sommet[1] - bout[1]) > 0.01 || Math.abs(bout[1] - fin[1]) > 0.01;
     });
-    dire(!mauvais.length, 'CHAQUE BARRE PART DU SIGNE, RECOUVRE LE RADICANDE, ET LE DÉPASSE',
-        mauvais.length ? `${mauvais.length} barre(s) mal posée(s)`
-            : trouves.slice(0, 3).map(t =>
-                `√${t.dedans} : ${(t.xBarre2 - t.xBarre1).toFixed(1)} pt de barre`).join(' · '));
-    dire(trouves.every(t => t.yBarre > t.yTexte + 2),
-        'et elle est AU-DESSUS du texte, pas dessus',
-        `${(trouves[0].yBarre - trouves[0].yTexte).toFixed(1)} pt plus haut`);
+    dire(!marches.length, 'et le sommet, son prolongement et la barre sont à la MÊME hauteur',
+        marches.length ? `${marches.length} marche(s)` : 'écart nul');
+
+    // 3. LA BARRE RECOUVRE LE RADICANDE EN ENTIER.
+    const courtes = trouves.filter(t => {
+        const bout = t.points[4][0], fin = t.points[5][0];
+        return fin - bout < 4;      // un radicande, même à un chiffre, fait plus
+    });
+    dire(!courtes.length, 'la barre court sur toute la largeur du radicande',
+        trouves.slice(0, 3).map(t =>
+            `${t.dedans} : ${(t.points[5][0] - t.points[4][0]).toFixed(1)} pt`).join(' · '));
+
+    // 4. ET LE RADICANDE COMMENCE OÙ LE CROCHET FINIT. S'il commençait avant,
+    //    le trait lui passerait dedans ; après, il y aurait un blanc.
+    dire(trouves.every(t => Math.abs(t.points[4][0] - t.points[5][0]) > 1),
+        'le radicande tient sous sa barre, sans blanc ni chevauchement');
 }
 
 console.log('─'.repeat(78));

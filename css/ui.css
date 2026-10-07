@@ -2904,23 +2904,17 @@ body.teacher-mode .exo-list-item:active { cursor: grabbing; }
 .fq-ligne { position: absolute; line-height: 1.05; white-space: pre; }
 .fq-choix { position: absolute; color: #5a6270; line-height: 1.05; white-space: pre; }
 
-/* LA RACINE DE L'APERÇU DE FICHE.
+/* LE RADICAL DE L'APERÇU DE FICHE n'a PLUS de style à lui.
 
-   Rémy, quatre fois dans la même revue : « la racine carré ne recouvre pas
-   bien le nombre sur la version imprimé ». La feuille recevait « √64 », une
-   chaîne plate — il n'y avait pas de barre à perdre, il n'y en avait jamais eu.
+   J'en avais écrit un — le caractere racine suivi d'un `overline` — et Remy a
+   vu tout de suite ce que cela donnait : « il faut bien que la racine carree
+   soit continue, la il y a une rupture sur ce que tu as fait ». Un glyphe de
+   police et un soulignement ne se rejoignent pas : ni la meme epaisseur, ni la
+   meme hauteur.
 
-   `overline` plutôt qu'une bordure haute : il suit la taille du texte tout
-   seul, et l'aperçu se redessine à cinq tailles de papier. Le PDF, lui, tire
-   un vrai trait (`dessinerRacine`) : le caractère de barre n'existe pas dans
-   ses polices standard, comme la case a cocher juste a cote. */
-.fq-rac { white-space: nowrap; }
-.fq-rac-dedans {
-    text-decoration: overline;
-    /* Le signe et sa barre doivent se toucher : sans ce rapprochement, on lit
-       le radical et son radicande comme deux morceaux separes. */
-    margin-left: -.06em; padding-left: .06em; padding-right: .08em;
-}
+   L'apercu emploie desormais `formule()` de `core/maths/formule.js`, dont le
+   crochet et la barre sont deux traces SVG aux memes reglages — les styles
+   `fx-*` de `components.css` suffisent. UN SEUL RENDU POUR UNE SEULE CHOSE. */
 /* La ligne à remplir : des pointillés, pas un trait plein — un trait plein
    ressemble à une réponse déjà écrite quand on photocopie en gris. */
 .fq-reponse { position: absolute; border-top: 1px dotted #9aa3b2; }

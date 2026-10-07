@@ -11,6 +11,24 @@
 import { A4, morceauxReponse, typographieFr, couperEnLignes } from '../core/fiche.js';
 import { refaireSvg, croixSvg } from './icones.js';
 import { RE_FRACTION, etageEstUnTrou } from '../core/fiche.js';
+// LE RADICAL DE L'ÉCRAN, RÉUTILISÉ TEL QUEL SUR L'APERÇU.
+//
+// RÉMY : « il faut bien que la racine carrée soit continue, là il y a une
+// rupture sur ce que tu as fait. » J'avais écrit un second radical — le
+// caractère « √ » suivi d'un `overline` —, et entre le crochet de la police et
+// la barre du soulignement il restait une marche : deux traits d'épaisseurs et
+// de hauteurs différentes qui ne se rejoignent pas.
+//
+// `core/maths/formule.js` existe PRÉCISÉMENT pour ça. Rémy, il y a des mois :
+// « les racines carrées sont très moches », puis « sur ton banc les radicaux
+// ont-ils une ligne de la même épaisseur ». Son crochet et sa barre sont DEUX
+// TRACÉS SVG aux mêmes réglages, et le crochet se termine par un bout
+// horizontal qui prolonge la barre : la jonction est structurelle, pas calée.
+//
+// EN ÉCRIRE UN SECOND ÉTAIT L'ERREUR. Deux rendus de la même chose divergent au
+// premier réglage — c'est la leçon que ce fichier porte déjà pour l'aperçu et
+// le PDF, et je venais de la repayer à l'intérieur même de l'aperçu.
+import { formule as formuleHtml } from '../core/maths/formule.js';
 // Les dessins de grilles vivent avec la fiche de grilles : un sudoku se dessine
 // pareil qu'il occupe une page entière ou un bloc au milieu d'une évaluation.
 import { RENDUS } from './printSheet.js';
@@ -725,24 +743,67 @@ export function morceauxLigne(ligne, avecFractions) {
  * elle déborde d'un cheveu à droite pour ne pas sembler s'arrêter trop tôt sur
  * un chiffre à jambage.
  */
+/**
+ * LES PROPORTIONS DU CROCHET, celles du tracé de l'écran ramenées au corps.
+ *
+ * Le tracé de `core/maths/formule.js` est « M0 12.4 L2.7 12.4 L5.2 19.4
+ * L8.2 0 L10 0 » dans une boîte de 10 × 20 : un petit horizontal, la descente,
+ * la remontée jusqu'au sommet, puis UN BOUT HORIZONTAL AU SOMMET — c'est lui
+ * qui prolonge la barre, et c'est lui qui manquait.
+ */
+const CROCHET = [
+    [0.00, -0.38],   // départ du petit horizontal de gauche
+    [0.14, -0.38],   // fin de ce petit horizontal
+    [0.26, 0.00],    // le bas du V, posé sur la ligne d'écriture
+    [0.41, -1.00],   // le sommet
+    [0.47, -1.00]    // le bout horizontal qui devient la barre
+];
+/** La largeur du crochet, en corps : c'est là que commence le radicande. */
+const CROCHET_LARGE = 0.47;
+
+/**
+ * LE RADICAL DU PDF — CROCHET ET BARRE D'UN SEUL TRACÉ.
+ *
+ * RÉMY : « il faut bien que la racine carrée soit continue, là il y a une
+ * rupture sur ce que tu as fait. »
+ *
+ * PREMIÈRE VERSION : le caractère « √ » de la police, puis un trait tiré
+ * au-dessus du radicande. Deux objets différents — un glyphe et un trait —
+ * dont ni l'épaisseur ni la hauteur ne pouvaient coïncider : jsPDF écrit le
+ * radical avec le « Ö » de la police Symbol, dont le sommet est où il est, et
+ * mon trait passait à côté. Une marche, visible à l'œil nu.
+ *
+ * ICI, LE CROCHET N'EST PLUS UN CARACTÈRE : c'est le même tracé que l'écran,
+ * prolongé par la barre dans LE MÊME chemin. La continuité n'est plus un calage
+ * qu'on ajuste, elle est structurelle — on ne peut plus la casser sans casser
+ * le trait. C'est exactement ce que `formule.js` avait déjà établi pour
+ * l'écran, pour la même raison.
+ */
 export function dessinerRacine(pdf, dedans, x, y, taille) {
     const t = pourPdf(String(dedans));
-    pdf.text('\u221A', x, y);
-    const wSigne = pdf.getTextWidth('\u221A');
     const wDedans = pdf.getTextWidth(t);
-    pdf.text(t, x + wSigne, y);
-    const haut = y - taille * 0.74;
-    pdf.setLineWidth(0.28);
+    const xDedans = x + taille * CROCHET_LARGE;
+    // Le radicande d'abord : la barre doit passer PAR-DESSUS, et un trait tiré
+    // avant le texte se laisse recouvrir par ses jambages hauts.
+    pdf.text(t, xDedans, y);
+
+    pdf.setLineWidth(taille * 0.055);
     pdf.setDrawColor(...ENCRE.texte);
-    // LE TRAIT PART DU SOMMET DU SIGNE, pas du bord du radicande : entre les
-    // deux il reste sinon un blanc qui fait lire « √ 64 » en deux morceaux.
-    pdf.line(x + wSigne * 0.92, haut, x + wSigne + wDedans + 0.3, haut);
-    return wSigne + wDedans + 0.4;
+    // UN SEUL CHEMIN : le crochet, puis la barre jusqu'au bout du radicande.
+    // `lines` prend des déplacements RELATIFS ; on les calcule depuis le point
+    // précédent, et le dernier segment est la barre.
+    const pts = CROCHET.map(([dx, dy]) => [x + dx * taille, y + dy * taille]);
+    pts.push([xDedans + wDedans + taille * 0.08, pts[pts.length - 1][1]]);
+    const deltas = pts.slice(1).map(([px, py], i) => [px - pts[i][0], py - pts[i][1]]);
+    pdf.lines(deltas, pts[0][0], pts[0][1], [1, 1], 'S', false);
+
+    return taille * CROCHET_LARGE + wDedans + taille * 0.12;
 }
 
 /** La largeur d'un radical, sans l'écrire — pour centrer avant de dessiner. */
-export function largeurRacine(pdf, dedans) {
-    return pdf.getTextWidth('\u221A') + pdf.getTextWidth(pourPdf(String(dedans))) + 0.4;
+export function largeurRacine(pdf, dedans, taille) {
+    const t = taille || 1;
+    return t * CROCHET_LARGE + pdf.getTextWidth(pourPdf(String(dedans))) + t * 0.12;
 }
 
 /** Le π du PDF : le « p » de la police Symbol, qui en est un. */
@@ -775,7 +836,7 @@ export function texteRiche(pdf, texte, x, y, taille, o = {}) {
     // faire le tour des trois, c'est composer sur une largeur et imprimer sur
     // une autre.
     const large = (m) => (m.texte !== undefined ? pdf.getTextWidth(pourPdf(m.texte))
-        : m.racine !== undefined ? largeurRacine(pdf, m.racine)
+        : m.racine !== undefined ? largeurRacine(pdf, m.racine, taille)
             : m.pi ? largeurPi(pdf)
                 : m.haut ? largeurExposant(pdf, m.haut, taille)
                     : taille * 1.25);
@@ -926,12 +987,14 @@ function ligneHtml(ligne, avecFractions, opts = {}) {
         // sortes de morceaux et TROIS lecteurs (l'aperçu, le PDF, la mesure).
         // Ajouter une sorte sans faire le tour des trois, c'est reproduire ce
         // bug — et il ne se voit que sur une feuille, à l'écran d'un élève.
-        // LA RACINE DE L'APERÇU : le signe, puis le radicande sous une barre.
-        // `overline` plutôt qu'une bordure : il suit la taille du texte tout
-        // seul, et l'aperçu se redessine à cinq tailles de papier.
+        // LA RACINE DE L'APERÇU, DESSINÉE PAR LE MÊME CODE QUE L'ÉCRAN.
+        // `formule('√(…)')` rend le crochet et la barre en SVG, d'une seule
+        // venue. On lui passe le radicande ENTRE PARENTHÈSES quoi qu'il
+        // arrive : son analyseur les retire, et sans elles « 9 + 16 » ne
+        // passerait que le 9 sous la barre.
         if (m.racine !== undefined) {
-            return '<span class="fq-rac">&#8730;<span class="fq-rac-dedans">'
-                + texteHtml(m.racine) + '</span></span>';
+            try { return formuleHtml(`\u221A(${m.racine})`); }
+            catch (e) { return '&#8730;' + texteHtml(m.racine); }
         }
         if (m.pi) return '<span class="fx-pi">&#960;</span>';
         // Le navigateur sait écrire « ² » ; mais au-delà de ³ les polices ne

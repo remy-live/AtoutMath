@@ -3179,3 +3179,25 @@ lignes** — 2026-10-01
   produit, pas l'aperçu. La règle : **quand une chose se rend deux fois, la
   mesure va sur celle qu'on livre** — et elle compare à la géométrie voisine,
   jamais à un nombre choisi d'avance.
+
+## J'ai réécrit un rendu qui existait déjà, et la jonction s'est vue — 2026-10-07
+
+- **Ce que je voulais faire** : poser la barre du radical sur la fiche papier.
+- **Ce qui coûte** : un aller-retour entier avec Rémy. J'ai écrit un SECOND
+  radical — le caractère « √ » de la police suivi d'un `text-decoration:
+  overline` — alors que `core/maths/formule.js` existe DEPUIS DES MOIS pour
+  cette seule raison, et porte en commentaire la question de Rémy qui l'a fait
+  naître : « sur ton banc les radicaux ont-ils une ligne de la même
+  épaisseur ». Son crochet se termine par un bout horizontal qui PROLONGE la
+  barre ; les deux sont des tracés SVG aux mêmes réglages. Le mien juxtaposait
+  un glyphe et un soulignement : ni la même épaisseur, ni la même hauteur.
+  Rémy l'a vu en une seconde — « il faut bien que la racine carrée soit
+  continue, là il y a une rupture ».
+- **Combien de fois** : || — même famille que l'atelier qu'on a failli
+  recopier dans la modale. **Avant d'écrire le rendu d'un objet mathématique,
+  on cherche s'il est déjà dessiné quelque part** ; dans ce dépôt, la réponse
+  est presque toujours oui, et c'est `core/maths/`.
+- **Ce qui manque** : une ligne dans `tools/nouvelExercice.mjs` — ou une
+  épreuve — qui refuse qu'un radical, une fraction ou une puissance soit
+  composé à la main ailleurs que par `core/maths/formule.js`. Le motif est
+  simple à chercher : un `√` ou un `overline` écrit hors de ce module.
