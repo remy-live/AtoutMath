@@ -46,6 +46,7 @@ const arreter = (dit) => { console.error(`\n  ARRÊT — ${dit}\n`); process.exi
 /** Les modules, dans l'ordre où ils doivent être posés : un module avant ceux qui l'emploient. */
 const MODULES = [
     { nom: 'indiceQuiDonne', chemin: 'js/core/indiceQuiDonne.js' },
+    { nom: 'svgSobre', chemin: 'js/core/svgSobre.js' },
     { nom: 'dingbatLibre', chemin: 'js/core/dingbatLibre.js' },
     { nom: 'dingbat', chemin: 'js/core/dingbat.js' },
     { nom: 'atelierEssai', chemin: 'js/essai/atelierEssai.js' }

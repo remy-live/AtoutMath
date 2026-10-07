@@ -133,6 +133,10 @@ body.ae-corps {
     box-shadow: 0 0 0 2px var(--primary) inset;
 }
 .ae-outil--actif .ae-outil-nom { color: var(--primary-texte); }
+/* L'IMPORT N'EST PAS UN OUTIL DE TRACÉ : il ne se « prend » pas, il agit tout
+   de suite. Un trait pointillé le dit sans qu'on ait à l'expliquer. */
+.ae-outil--import { border-style: dashed; }
+.ae-outil--import .ae-picto { color: var(--text-muted); }
 
 .ae-toile-zone { position: relative; display: flex; justify-content: center; }
 .ae-toile {
@@ -142,8 +146,11 @@ body.ae-corps {
     touch-action: none;
 }
 .ae-toile:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
-/* LE CURSEUR DIT CE QUI VA SE PASSER : une croix quand on va tracer. */
+/* LE CURSEUR DIT CE QUI VA SE PASSER : une croix quand on va tracer, une barre
+   de texte quand on va écrire. Rémy : « quand on prend l'outil mot, le curseur
+   de la souris devrait prendre la forme d'un curseur ». */
 .ae-toile--trace { cursor: crosshair; }
+.ae-toile--texte { cursor: text; }
 .ae-fond { fill: var(--bg-panel); }
 .ae-grille line { stroke: var(--border); stroke-width: .6; }
 .ae-el { cursor: move; }

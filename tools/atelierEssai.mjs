@@ -153,6 +153,29 @@ dire(reculs.length === 0,
 await s.page.keyboard.press('Delete');
 await dormir(300);
 
+// --- LE POINT CLIQUÉ EST LE COIN SUPÉRIEUR GAUCHE ----------------------------
+//
+// RÉMY : « au rectangle dessiné, cela ne dessine pas depuis le coin supérieur
+// gauche, cela dessine depuis le centre ». C'était vrai du CLIC — tirer donnait
+// bien un rectangle de coin à coin, mais un simple clic le posait centré sur le
+// point, et la moitié partait hors de la toile quand on cliquait près du bord.
+//
+// Un outil ne doit pas changer de sens selon qu'on a bougé la main ou non.
+await s.page.click('[data-outil="rectangle"]');
+await dormir(200);
+const coinClic = await surLaToile(40, 30);
+await s.page.mouse.move(coinClic.x, coinClic.y);
+await s.page.mouse.down();
+await s.page.mouse.up();
+await dormir(350);
+const pose = (await elements()).at(-1);
+const hautGauche = { x: pose.x - pose.largeur / 2, y: pose.y - pose.hauteur / 2 };
+dire(Math.abs(hautGauche.x - 40) <= 3 && Math.abs(hautGauche.y - 30) <= 3,
+    'un simple clic pose la figure DEPUIS le coin cliqué, pas centrée dessus',
+    `cliqué en (40,30) → coin supérieur gauche (${hautGauche.x},${hautGauche.y})`);
+await s.page.keyboard.press('Delete');
+await dormir(250);
+
 // --- « ON CLIQUE ON RELÂCHE » : le cas le plus fréquent au doigt --------------
 await s.page.click('[data-outil="fleche"]');
 await dormir(200);
@@ -171,6 +194,14 @@ dire(!!fleche && fleche.type === 'trait' && fleche.fleche === true && longue > 1
 // --- LE MOT, ET LE DOUBLE-CLIC POUR ÉDITER -----------------------------------
 await s.page.click('[data-outil="mot"]');
 await dormir(200);
+// LE CURSEUR DIT CE QUI VA SE PASSER. Rémy : « quand on prend l'outil mot, le
+// curseur de la souris devrait prendre la forme d'un curseur ». Une croix
+// annonce un tracé, une barre annonce qu'on va écrire : ce sont deux gestes
+// différents, et la main doit le savoir AVANT d'appuyer.
+const curseur = await s.page.evaluate(() =>
+    getComputedStyle(document.getElementById('ae-toile')).cursor);
+dire(curseur === 'text', 'avec l\'outil mot, le curseur de la souris devient une barre de texte',
+    curseur);
 const d = await surLaToile(160, 110);
 await s.page.mouse.click(d.x, d.y);
 await dormir(400);
@@ -212,8 +243,15 @@ await s.page.keyboard.press('Enter');
 await dormir(350);
 
 const motPose = (await elements())[2];
-dire(!!motPose && motPose.texte === 'RACINE' && Math.abs(motPose.x - 160) <= 6,
-    'Entrée pose le mot', motPose ? `« ${motPose.texte} » en (${motPose.x},${motPose.y})` : 'rien');
+// LE MOT GARDE LA POSITION DU CURSEUR — c'est la demande de Rémy : « le mot ne
+// se centre pas, il garde la position du curseur ». On ne regarde donc PAS son
+// centre (qui se décale à droite à mesure qu'il s'allonge, et c'est normal) mais
+// son BORD GAUCHE, qui doit rester sur le point cliqué.
+const coinsDuMot = await s.page.evaluate(() => window.__atelierEssai.coins());
+const bordGauche = coinsDuMot ? Math.min(...coinsDuMot.map(p => p.x)) : null;
+dire(!!motPose && motPose.texte === 'RACINE' && bordGauche !== null && Math.abs(bordGauche - 160) <= 6,
+    'Entrée pose le mot, et il COMMENCE là où l\'on a cliqué',
+    motPose ? `« ${motPose.texte} » : bord gauche ${bordGauche}, centre ${motPose.x} — cliqué en 160` : 'rien');
 
 // DOUBLE-CLIC POUR ÉDITER — la demande, mot pour mot.
 const surLeMot = await surLaToile(motPose.x, motPose.y);
@@ -357,6 +395,34 @@ const separee = await s.page.evaluate(() => {
     } catch (e) { return true; }
 });
 dire(separee, 'l\'essai n\'a pas touché à la récolte de l\'atelier intégré');
+
+// --- L'IMPORT D'UN SVG -------------------------------------------------------
+//
+// RÉMY : « il faudrait pouvoir importer des svg ». Ce qu'il importe finira servi
+// à chaque élève : on mesure donc AUSSI que le fichier d'épreuve, qui porte
+// exprès un `<script>` et un `onclick`, en ressorte sans eux.
+console.log('─'.repeat(78));
+await s.doitExister('#ae-import', 'le bouton d\'import');
+await s.page.setInputFiles('#ae-import', 'tools/tmp/maison.svg');
+await dormir(700);
+const importe = (await elements()).at(-1);
+dire(!!importe && importe.type === 'dessin' && importe.contenu.includes('<path'),
+    'un SVG s\'importe et se pose sur la toile',
+    importe ? `${importe.largeur}×${importe.hauteur}, viewBox ${(importe.vueBoite || []).join(' ')}` : 'rien');
+dire(!!importe && !/script|onclick/i.test(importe.contenu),
+    'LE SCRIPT ET LE GESTIONNAIRE D\'ÉVÉNEMENT SONT PARTIS — c\'est ce qui sera servi aux élèves',
+    importe ? importe.contenu.replace(/\s+/g, ' ').slice(0, 60) : '');
+dire(!!importe && /currentColor/.test(importe.contenu),
+    'le dessin suit l\'encre du thème : il ne disparaîtra pas sur le thème sombre');
+const proportions = importe ? Math.abs(importe.hauteur / importe.largeur - 18 / 24) : 1;
+dire(proportions < 0.05, 'ses proportions sont gardées : un dessin étiré est un dessin abîmé',
+    importe ? `${importe.largeur}×${importe.hauteur} pour un viewBox 24×18` : '');
+const dessine = await s.page.evaluate(() =>
+    document.querySelectorAll('#ae-toile [data-el] svg').length);
+dire(dessine === 1, 'et il se dessine vraiment dans la scène', `${dessine} svg imbriqué(s)`);
+const ditImport = await s.page.evaluate(() =>
+    (document.getElementById('ae-consigne').textContent || '').trim());
+dire(/retiré/.test(ditImport), 'on DIT ce qu\'on a retiré du fichier', ditImport.slice(0, 70));
 
 await s.photo('body', 'tools/tmp/atelier-essai.png');
 

@@ -58,6 +58,7 @@ import {
     enigmeEnTexte, lotEnTexte, lireUnLot, direLibre
 } from '../core/dingbatLibre.js';
 import { dessiner, THEMES, NIVEAUX, juste, attendues } from '../core/dingbat.js';
+import { nettoyerSvg } from '../core/svgSobre.js';
 
 const CLE = 'atoutmath.atelier.essai';
 
@@ -115,6 +116,16 @@ let outil = 'select';
 let sel = -1;
 let magnetisme = true;
 let commeEleve = false;
+
+/**
+ * LES DESSINS IMPORTÉS SUIVENT-ILS L'ENCRE DU THÈME ? Oui, et c'est le défaut
+ * qui protège : l'application a cinq thèmes, et un dessin au trait noir importé
+ * tel quel DISPARAÎT sur le sombre — que personne ne verra, puisqu'on compose en
+ * clair. Celui qui veut garder les couleurs d'origine d'une illustration le dira.
+ */
+let teinterLesImports = true;
+/** Un compte qui ne redescend pas : il sert à ne jamais répéter un identifiant. */
+let compteurDImport = 1;
 
 /** L'historique, pour annuler. Cinquante pas : au-delà on refait, on n'annule pas. */
 let pile = [];
@@ -404,17 +415,41 @@ function elementDOutil(id, x, y) {
 }
 
 /** La taille qu'on donne quand le geste n'a pas tiré : « on clique on relâche ». */
+/**
+ * LA TAILLE QU'ON DONNE QUAND LE GESTE N'A PAS TIRÉ — et OÙ on la pose.
+ *
+ * RÉMY : « au rectangle dessiné, cela ne dessine pas depuis le coin supérieur
+ * gauche, cela dessine depuis le centre ».
+ *
+ * Il a raison, et c'était ce cas-ci : TIRER donnait bien un rectangle de coin à
+ * coin, mais un simple CLIC posait la figure CENTRÉE sur le point cliqué. En
+ * cliquant près du bord, la moitié de la figure partait hors de la toile — ce
+ * qu'on voit sur sa capture.
+ *
+ * LE POINT CLIQUÉ EST DONC LE COIN SUPÉRIEUR GAUCHE, comme quand on tire : un
+ * outil ne doit pas changer de sens selon qu'on a bougé la main ou non.
+ *
+ * ET LA FIGURE RESTE DANS LA TOILE : cliquer à trois unités du bord droit
+ * donnerait sinon un rectangle dont on ne verrait qu'un trait.
+ */
 function tailleParDefaut(el) {
-    if (el.type === 'forme') { el.largeur = 150; el.hauteur = 110; }
-    else if (el.type === 'trait') {
+    if (el.type === 'forme') {
+        const def = FORMES_LIBRES.find(f => f.id === el.forme) || FORMES_LIBRES[0];
+        const L = 150, H = def.egal ? 150 : 110;
+        const dans = (v, demi, total) => Math.min(Math.max(demi, v), total - demi);
+        el.x = dans(el.x + L / 2, L / 2, TOILE.largeur);
+        el.y = dans(el.y + H / 2, H / 2, TOILE.hauteur);
+        el.largeur = L;
+        el.hauteur = H;
+    } else if (el.type === 'trait') {
         // UN TRAIT N'A PAS DE CENTRE, IL A DEUX BOUTS — et ma première version
         // lisait `el.x`, qui n'existe que sur un mot ou une forme. Le trait
-        // sortait avec des coordonnées `NaN`, c'est-à-dire invisible : un clic
-        // sur « flèche » ne fabriquait rien du tout. Les deux bouts étant
-        // confondus au point d'appui, c'est CE point qu'on étale.
-        const mx = (el.x1 + el.x2) / 2, my = (el.y1 + el.y2) / 2;
-        el.x1 = mx - 70; el.x2 = mx + 70;
-        el.y1 = my; el.y2 = my;
+        // sortait avec des coordonnées `NaN`, c'est-à-dire invisible.
+        // LE POINT CLIQUÉ EST SON DÉBUT, pour la même raison que ci-dessus.
+        const x = el.x1, y = el.y1;
+        el.x1 = Math.min(x, TOILE.largeur - 140);
+        el.x2 = el.x1 + 140;
+        el.y1 = y; el.y2 = y;
     }
 }
 
@@ -718,6 +753,33 @@ function deplacer(el, copie, dx, dy) {
 
 let saisieOuverte = false;
 
+/**
+ * OÙ LE MOT COMMENCE — et il n'en bouge plus.
+ *
+ * RÉMY : « le mot ne se centre pas, il garde la position du curseur ».
+ *
+ * Le modèle, lui, reste CENTRÉ : `x` est le milieu du mot, comme pour les cent
+ * neuf énigmes du jeu, et l'on ne touche pas au format du JSON pour une
+ * question d'ergonomie. Ce qu'on change, c'est le GESTE : on retient le bord
+ * GAUCHE une fois pour toutes, et après chaque lettre on replace le centre à une
+ * demi-largeur de ce bord. Le mot pousse alors vers la droite, comme un texte
+ * qu'on tape — au lieu de s'écarter des deux côtés sous le curseur.
+ */
+let ancreDuMot = null;
+
+/** Replace le centre du mot pour que son bord gauche reste sur l'ancre. */
+function calerLeMot() {
+    const el = enigme.elements[sel];
+    const svg = q('#ae-toile');
+    if (!el || el.type !== 'mot' || !svg || !ancreDuMot) return;
+    const t = svg.querySelector(`[data-el="${sel}"] text`);
+    if (!t) return;
+    let b;
+    try { b = t.getBBox(); } catch (e) { return; }
+    el.x = Math.round((ancreDuMot.x + b.width / 2) * 100) / 100;
+    rafraichirUn(svg, sel);
+}
+
 /** Ouvre le champ PAR-DESSUS le mot, à sa place et à sa taille. */
 /**
  * ON ÉCRIT DIRECTEMENT SUR LA TOILE — il n'y a plus de cadre.
@@ -742,7 +804,8 @@ let saisieOuverte = false;
  * sélection invisible fait disparaître le mot à la première frappe sans qu'on
  * comprenne pourquoi.
  */
-function ouvrirLaSaisie() {
+/** Le champ invisible, posé exactement sur le mot — appelé à chaque lettre. */
+function placerLaSaisie() {
     const el = enigme.elements[sel];
     const svg = q('#ae-toile');
     if (!el || el.type !== 'mot' || !svg) return;
@@ -752,8 +815,6 @@ function ouvrirLaSaisie() {
     const z = zone.getBoundingClientRect();
     const echelle = r.width / TOILE.largeur;
 
-    champ.value = el.texte || '';
-    champ.hidden = false;
     champ.style.left = `${r.left - z.left + el.x * echelle}px`;
     champ.style.top = `${r.top - z.top + el.y / TOILE.hauteur * r.height}px`;
     champ.style.fontSize = `${Math.max(12, (el.taille || 34) * echelle)}px`;
@@ -764,8 +825,29 @@ function ouvrirLaSaisie() {
     // LA LARGEUR SUIT LE MOT : le curseur d'un champ centré se place par rapport
     // à SA boîte. Trop étroite, le texte défilerait ; trop large, rien ne change
     // puisqu'elle est transparente — mais elle doit rester dans la toile.
-    const large = Math.min(r.width - 8, Math.max(90, (el.texte || '').length * (el.taille || 34) * echelle * 0.8 + 40));
+    const large = Math.min(r.width - 8,
+        Math.max(90, (el.texte || '').length * (el.taille || 34) * echelle * 0.8 + 40));
     champ.style.width = `${large}px`;
+}
+
+function ouvrirLaSaisie() {
+    const el = enigme.elements[sel];
+    const svg = q('#ae-toile');
+    if (!el || el.type !== 'mot' || !svg) return;
+    const champ = q('#ae-saisie');
+
+    champ.value = el.texte || '';
+    champ.hidden = false;
+    placerLaSaisie();
+
+    // L'ANCRE EST LE BORD GAUCHE ACTUEL DU MOT, et ce calcul vaut dans les deux
+    // cas : sur un mot neuf, la boîte est vide et le bord gauche EST le point
+    // qu'on vient de cliquer ; sur un mot qu'on rouvre, c'est son bord gauche
+    // d'aujourd'hui. Une seule règle, pas de cas particulier.
+    const t = svg.querySelector(`[data-el="${sel}"] text`);
+    let largeurActuelle = 0;
+    try { if (t) largeurActuelle = t.getBBox().width; } catch (e) { /* non rendu */ }
+    ancreDuMot = { x: el.x - largeurActuelle / 2, y: el.y };
 
     saisieOuverte = true;
     champ.focus();
@@ -775,6 +857,7 @@ function ouvrirLaSaisie() {
 }
 
 function fermerLaSaisie(garderLeTexte = true) {
+    ancreDuMot = null;
     if (!saisieOuverte) return;
     const champ = q('#ae-saisie');
     saisieOuverte = false;
@@ -921,11 +1004,20 @@ function choisirOutil(id) {
         b.setAttribute('aria-pressed', String(actif));
     });
     const toile = q('#ae-toile');
-    if (toile) toile.classList.toggle('ae-toile--trace', id !== 'select');
-    dire(id === 'select'
-        ? ''
-        : `Trace ton ${OUTILS.find(o => o.id === id).nom.toLowerCase()} sur la toile : appuie, tire, relâche. `
-          + 'Un simple clic en pose un de taille normale.');
+    if (toile) {
+        // LE CURSEUR DIT CE QUI VA SE PASSER. Rémy : « quand on prend l'outil
+        // mot, le curseur de la souris devrait prendre la forme d'un curseur ».
+        // Une croix annonce un tracé ; une barre de texte annonce qu'on va
+        // écrire. Ce sont deux gestes différents, et la main doit le savoir
+        // AVANT d'appuyer.
+        toile.classList.toggle('ae-toile--trace', id !== 'select' && id !== 'mot');
+        toile.classList.toggle('ae-toile--texte', id === 'mot');
+    }
+    dire(id === 'select' ? ''
+        : id === 'mot'
+            ? 'Clique à l\u2019endroit où le mot doit COMMENCER, puis écris.'
+            : `Trace ton ${OUTILS.find(o => o.id === id).nom.toLowerCase()} sur la toile : appuie, tire, relâche. `
+              + 'Un simple clic en pose un depuis ce coin.');
 }
 
 function surLeClavier(ev) {
@@ -1104,12 +1196,15 @@ function dire(texte, alerte = false) {
 }
 
 function demarrer() {
-    // Les outils.
-    q('#ae-outils').innerHTML = OUTILS.map(o => `
+    // Les outils. ON INSÈRE AU DÉBUT au lieu de remplacer : la boîte porte déjà
+    // le bouton d'import, qui est dans le HTML parce qu'il contient un champ de
+    // fichier — et un `innerHTML =` l'aurait effacé sans un mot. (C'est
+    // exactement ce qui est arrivé : `doitExister` l'a vu disparaître.)
+    q('#ae-outils').insertAdjacentHTML('afterbegin', OUTILS.map(o => `
         <button type="button" class="ae-outil" data-outil="${o.id}"
                 title="${esc(o.nom)}${o.touche ? ` (${o.touche})` : ''}"
                 aria-label="${esc(o.nom)}" aria-pressed="false">
-            ${apercuDOutil(o)}<span class="ae-outil-nom">${esc(o.nom)}</span></button>`).join('');
+            ${apercuDOutil(o)}<span class="ae-outil-nom">${esc(o.nom)}</span></button>`).join(''));
     document.querySelectorAll('[data-outil]').forEach(b => {
         b.onclick = () => choisirOutil(b.dataset.outil);
     });
@@ -1163,7 +1258,16 @@ function demarrer() {
         if (!el) return;
         el.texte = champ.value;
         const svg = q('#ae-toile');
-        if (svg) { rafraichirUn(svg, sel); majPoignees(svg); }
+        if (!svg) return;
+        // On dessine, PUIS on mesure, PUIS on recale : la largeur d'un mot ne se
+        // calcule pas, elle se mesure sur le dessin.
+        rafraichirUn(svg, sel);
+        calerLeMot();
+        majPoignees(svg);
+        // LE CHAMP SUIT LE MOT : il est invisible, mais c'est lui qui porte le
+        // curseur. S'il restait en place pendant que le mot pousse à droite, le
+        // curseur se décalerait peu à peu du bout du texte.
+        placerLaSaisie();
     });
     champ.addEventListener('blur', () => { fermerLaSaisie(true); peindreToile(); });
 
@@ -1199,6 +1303,45 @@ function demarrer() {
     // LE CLAVIER EST ÉCOUTÉ SUR LA PAGE, pas seulement sur la toile : on vient de
     // cliquer un bouton de la barre, le foyer y est resté, et « Suppr » ne
     // faisait rien. On ignore les champs de saisie, évidemment.
+    // L'IMPORT D'UN SVG. Rémy : « il faudrait pouvoir importer des svg ».
+    q('#ae-import').onchange = async (ev) => {
+        const f = ev.target.files && ev.target.files[0];
+        ev.target.value = '';   // pour pouvoir réimporter le MÊME fichier
+        if (!f) return;
+        let texte;
+        try { texte = await f.text(); }
+        catch (e) { dire('Je n\u2019arrive pas à lire ce fichier.', true); return; }
+
+        let propre;
+        try {
+            // LE PRÉFIXE EST UNIQUE PAR IMPORT : deux dessins portent souvent
+            // tous deux `id="a"`, et le second volerait le dégradé du premier.
+            propre = nettoyerSvg(texte, { prefixe: `dg${compteurDImport++}-`, encre: teinterLesImports });
+        } catch (e) {
+            dire(`Ce SVG est refusé : ${e.message}`, true);
+            return;
+        }
+
+        pousser();
+        // ON GARDE LES PROPORTIONS DU DESSIN : un logo étiré est un logo abîmé,
+        // et personne ne pense à le rétablir après coup. La plus grande
+        // dimension tient dans la moitié de la toile.
+        const [, , vl, vh] = propre.vueBoite;
+        const rapport = (vh > 0 ? vh / vl : 1);
+        const large = Math.min(TOILE.largeur / 2, 160);
+        enigme.elements.push(elementNeuf('dessin', {
+            contenu: propre.contenu, vueBoite: propre.vueBoite,
+            x: TOILE.largeur / 2, y: TOILE.hauteur / 2,
+            largeur: Math.round(large), hauteur: Math.round(large * rapport)
+        }));
+        sel = enigme.elements.length - 1;
+        enregistrer();
+        peindreToile();
+        dire(propre.retires.length
+            ? `Dessin importé. J\u2019en ai retiré : ${propre.retires.join(', ')}.`
+            : 'Dessin importé.');
+    };
+
     document.addEventListener('keydown', surLeClavier);
 
     // POUR LA SONDE : de quoi lire l'état sans passer par l'écran.

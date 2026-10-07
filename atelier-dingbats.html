@@ -29,8 +29,8 @@
     récolte de l'atelier intégré coûterait plus cher que le temps qu'il fait
     gagner. Les deux communiquent par le JSON, qui est fait pour ça.
 -->
-<link rel="stylesheet" href="css/base.css?v=956">
-<link rel="stylesheet" href="css/atelierEssai.css?v=956">
+<link rel="stylesheet" href="css/base.css?v=957">
+<link rel="stylesheet" href="css/atelierEssai.css?v=957">
 </head>
 <body class="ae-corps">
 
@@ -48,7 +48,22 @@
     <!-- LA BOÎTE À OUTILS. Un outil, un geste : on le prend, on dessine sur la
          toile, et l'outil revient tout seul à la main — le geste de n'importe
          quel logiciel de dessin depuis trente ans. -->
-    <div class="ae-outils" id="ae-outils" role="toolbar" aria-label="Les outils"></div>
+    <div class="ae-outils" id="ae-outils" role="toolbar" aria-label="Les outils">
+        <!-- L'IMPORT D'UN SVG N'EST PAS UN OUTIL DE TRACÉ : on ne le « prend »
+             pas pour dessiner ensuite, on choisit un fichier et le dessin se
+             pose. Il est donc à part, à la fin de la rangée, et il porte un
+             libellé plutôt qu'un aperçu — un aperçu de quoi ? -->
+        <label class="ae-outil ae-outil--import" id="ae-import-boite"
+               title="Importer un dessin SVG">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="ae-picto">
+                <path d="M12 16V4M12 4 7.5 8.5M12 4l4.5 4.5" fill="none" stroke="currentColor"
+                      stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span class="ae-outil-nom">Importer</span>
+            <input type="file" id="ae-import" accept=".svg,image/svg+xml" hidden>
+        </label>
+    </div>
 
     <!-- LA BARRE DE CE QUI EST CHOISI, POSÉE AU-DESSUS DE LA TOILE.
 
@@ -124,6 +139,6 @@
     </div>
 </footer>
 
-<script type="module" src="js/essai/atelierEssai.js?v=956"></script>
+<script type="module" src="js/essai/atelierEssai.js?v=957"></script>
 </body>
 </html>

@@ -52,6 +52,7 @@
 // « choisir la couleur » sans la possibilité de choisir une couleur invisible.
 
 import { indiceDonneLaReponse } from './indiceQuiDonne.js';
+import { verifierSvg } from './svgSobre.js';
 
 /** Le HTML est fabriqué ici : tout ce qui vient des données est échappé. */
 // Oui, `core/dingbat.js` a le même. Le lui importer créerait un cycle — il
@@ -117,11 +118,12 @@ export const FORMES_LIBRES = [
     { id: 'losange', nom: 'Losange' }
 ];
 
-/** Les trois genres d'élément, et leur nom à l'écran. */
+/** Les genres d'élément, et leur nom à l'écran. */
 export const GENRES_ELEMENT = [
     { id: 'mot', nom: 'Un mot' },
     { id: 'trait', nom: 'Un trait' },
-    { id: 'forme', nom: 'Une forme' }
+    { id: 'forme', nom: 'Une forme' },
+    { id: 'dessin', nom: 'Un dessin importé' }
 ];
 
 /**
@@ -144,6 +146,12 @@ export function elementNeuf(genre, quoi = {}) {
         return {
             type: 'forme', forme: 'carre', x: cx, y: cy, largeur: 150, hauteur: 110,
             angle: 0, couleur: 'encre', epaisseur: 3, remplissage: 'aucun', ...quoi
+        };
+    }
+    if (genre === 'dessin') {
+        return {
+            type: 'dessin', contenu: '', vueBoite: [0, 0, 100, 100],
+            x: cx, y: cy, largeur: 120, hauteur: 120, angle: 0, couleur: 'encre', ...quoi
         };
     }
     return {
@@ -245,12 +253,46 @@ function dessinerForme(e) {
         + ` rx="3" style="${style}"${tour}/>`;
 }
 
+/**
+ * UN DESSIN IMPORTÉ — du SVG qui vient d'ailleurs, posé dans la scène.
+ *
+ * Rémy : « il faudrait pouvoir importer des svg ».
+ *
+ * ON NE FAIT CONFIANCE À RIEN ICI : le contenu a été tamisé à l'import par
+ * `core/svgSobre.js`, et il l'est À NOUVEAU au moment de valider l'énigme. Ce
+ * qui arrive jusqu'ici est donc un dessin et rien d'autre — mais si un jour un
+ * JSON écrit à la main contournait l'atelier, c'est `validerLibre` qui le
+ * dirait, pas ce rendu-ci : un rendu qui vérifie est un rendu qu'on oublie
+ * d'appeler.
+ *
+ * UN `<svg>` IMBRIQUÉ, et c'est ce qui rend la mise à l'échelle gratuite : il
+ * porte le `viewBox` d'origine du dessin et la taille qu'on lui donne, et le
+ * navigateur fait le reste. Le calculer à la main demanderait une matrice par
+ * dessin, et elle serait fausse le jour où le dessin a un `viewBox` décalé.
+ */
+function dessinerDessin(e) {
+    const l = Math.abs(n(e.largeur)) || 100;
+    const h = Math.abs(n(e.hauteur)) || 100;
+    const vb = (Array.isArray(e.vueBoite) && e.vueBoite.length === 4)
+        ? e.vueBoite.map(n).join(' ') : `0 0 ${l} ${h}`;
+    const tour = n(e.angle) ? ` transform="rotate(${n(e.angle)} ${n(e.x)} ${n(e.y)})"` : '';
+    // `color` SUR LE GROUPE : le dessin tamisé peint ses traits en
+    // `currentColor`, donc il prend l'encre qu'on lui donne — et reste lisible
+    // sur les cinq thèmes. Un dessin qu'on a choisi de ne pas teindre garde ses
+    // couleurs : `color` ne le touche pas.
+    return `<g${tour} style="color: ${couleurCss(e.couleur)}">`
+        + `<svg x="${n(e.x - l / 2)}" y="${n(e.y - h / 2)}" width="${n(l)}" height="${n(h)}"`
+        + ` viewBox="${vb}" preserveAspectRatio="xMidYMid meet" overflow="visible">`
+        + String(e.contenu == null ? '' : e.contenu) + '</svg></g>';
+}
+
 /** Un élément, quel qu'il soit. Un genre inconnu JETTE — voir `rendreLibre`. */
 export function dessinerElement(e) {
     if (!e || typeof e !== 'object') throw new Error('élément libre vide');
     if (e.type === 'mot') return dessinerMot(e);
     if (e.type === 'trait') return dessinerTrait(e);
     if (e.type === 'forme') return dessinerForme(e);
+    if (e.type === 'dessin') return dessinerDessin(e);
     throw new Error(`élément libre de genre inconnu « ${e.type} »`);
 }
 
@@ -309,11 +351,16 @@ export function direLibre(d) {
     const formes = els.filter(e => e && e.type === 'forme')
         .map(e => (FORMES_LIBRES.find(f => f.id === e.forme) || FORMES_LIBRES[0]).nom.toLowerCase());
     const traits = els.filter(e => e && e.type === 'trait').length;
+    const dessins = els.filter(e => e && e.type === 'dessin').length;
 
     const bouts = [];
     if (mots.length) bouts.push(mots.length === 1 ? `le mot ${mots[0]}` : `les mots ${mots.join(', ')}`);
     if (formes.length) bouts.push(formes.length === 1 ? `un ${formes[0]}` : `${formes.length} formes : ${formes.join(', ')}`);
     if (traits) bouts.push(traits === 1 ? 'un trait' : `${traits} traits`);
+    // ON NE PEUT PAS DÉCRIRE UN DESSIN IMPORTÉ : personne ne sait ce qu'il
+    // représente, pas même celui qui l'a posé. On dit au moins qu'il est là,
+    // plutôt que de laisser croire que la scène n'en porte pas.
+    if (dessins) bouts.push(dessins === 1 ? 'un dessin importé' : `${dessins} dessins importés`);
     return bouts.length ? `Dingbat : ${bouts.join(' ; ')}.` : 'Dingbat sans rien de dessiné.';
 }
 
@@ -352,6 +399,16 @@ export function validerLibre(enigme) {
         } else if (e.type === 'forme') {
             if (Math.abs(n(e.largeur)) < 4) avis.push({ element: i, dit: 'Cette forme est trop petite pour se voir.' });
             if (!dedans(n(e.x), n(e.y))) avis.push({ element: i, dit: 'Cette forme est posée hors de la toile.' });
+        } else if (e.type === 'dessin') {
+            // LE TAMIS EST REPASSÉ ICI, ET C'EST LE VRAI GARDE-FOU. L'atelier
+            // tamise à l'import, mais une énigme peut aussi arriver d'un JSON
+            // collé à la main — et ce qu'elle porte sera servi à chaque élève.
+            // On ne fait donc pas confiance à l'import : on revérifie avant
+            // d'exporter.
+            const verdict = verifierSvg(e.contenu);
+            if (!verdict.ok) avis.push({ element: i, dit: `Ce dessin importé est refusé : ${verdict.dit}.` });
+            if (Math.abs(n(e.largeur)) < 8) avis.push({ element: i, dit: 'Ce dessin est trop petit pour se voir.' });
+            if (!dedans(n(e.x), n(e.y))) avis.push({ element: i, dit: 'Ce dessin est posé hors de la toile.' });
         } else {
             avis.push({ element: i, dit: `Genre d'élément inconnu : « ${e && e.type} ».` });
         }
@@ -408,6 +465,21 @@ function elementPropre(e) {
         if (!def.egal) o.hauteur = n(e.hauteur);
         if (n(e.angle)) o.angle = n(e.angle);
         if (e.remplissage === 'teinte') o.remplissage = 'teinte';
+        return o;
+    }
+    if (e.type === 'dessin') {
+        const o = {
+            type: 'dessin', x: n(e.x), y: n(e.y),
+            largeur: n(e.largeur), hauteur: n(e.hauteur),
+            couleur: e.couleur || 'encre',
+            vueBoite: (Array.isArray(e.vueBoite) ? e.vueBoite : [0, 0, 100, 100]).map(n),
+            // LE CONTENU EN DERNIER, ET C'EST VOULU : c'est le champ long, celui
+            // qui fait plusieurs milliers de caractères. Rangé en tête, il
+            // repousserait tout le reste hors de vue dans un fichier qu'on relit
+            // à l'œil.
+            contenu: String(e.contenu == null ? '' : e.contenu)
+        };
+        if (n(e.angle)) o.angle = n(e.angle);
         return o;
     }
     const o = {

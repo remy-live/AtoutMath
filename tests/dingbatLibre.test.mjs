@@ -352,3 +352,77 @@ test('LA RÉCOLTE S\'EXPORTE ENTIÈRE, ET SE RELIT', () => {
         for (const e of attendues(d)) assert.ok(juste(e, d));
     }
 });
+
+// ── LE DESSIN IMPORTÉ ──────────────────────────────────────────────────────
+//
+// RÉMY : « il faudrait pouvoir importer des svg ».
+
+test('UN DESSIN IMPORTÉ SE POSE DANS LA SCÈNE, ET SUIT L\'ENCRE', async () => {
+    const { nettoyerSvg } = await import('../js/core/svgSobre.js');
+    const { contenu, vueBoite } = nettoyerSvg(
+        '<svg viewBox="0 0 24 24"><path d="M3 12 12 3l9 9" fill="none" stroke="#111"/></svg>');
+
+    const d = exemple({
+        elements: [
+            elementNeuf('dessin', { contenu, vueBoite, x: 120, y: 90, largeur: 80, hauteur: 80, couleur: 'bleu' }),
+            elementNeuf('mot', { texte: 'TOIT', x: 260, y: 150 })
+        ]
+    });
+    const html = dessiner(d);
+    // UN `<svg>` IMBRIQUÉ porte le viewBox d'origine et la taille qu'on donne :
+    // la mise à l'échelle est alors gratuite et juste.
+    assert.match(html, /<svg x="80" y="50" width="80" height="80" viewBox="0 0 24 24"/);
+    // LE DESSIN TAMISÉ PEINT EN `currentColor`, et le groupe lui donne l'encre
+    // choisie : il reste lisible sur les cinq thèmes.
+    assert.match(html, /style="color: var\(--primary-texte\)"/);
+    assert.match(html, /currentColor/);
+    // ET LE MOT EST TOUJOURS LÀ : un dingbat SE LIT, un dessin ne remplace pas
+    // ce qu'il y a à lire.
+    assert.ok(html.replace(/<[^>]*>/g, '').includes('TOIT'));
+
+    // LA DESCRIPTION LE MENTIONNE : on ne peut pas dire ce qu'il représente,
+    // mais laisser croire qu'il n'y a rien serait pire.
+    assert.match(direLibre(d), /un dessin importé/);
+});
+
+test('UN DESSIN REFUSÉ PAR LE TAMIS EST SIGNALÉ AVANT L\'EXPORT', () => {
+    // LE VRAI GARDE-FOU EST ICI, et pas à l'import : une énigme peut arriver
+    // d'un JSON collé à la main, et ce qu'elle porte sera servi à chaque élève.
+    // On ne fait donc pas confiance à l'import — on revérifie.
+    const dit = (e) => validerLibre(e).map(a => a.dit).join(' | ');
+    const mauvais = exemple({
+        elements: [
+            elementNeuf('mot', { texte: 'A' }),
+            elementNeuf('dessin', { contenu: '<g onload="voler()"><path d="M0 0"/></g>' })
+        ]
+    });
+    assert.match(dit(mauvais), /refusé.*onload/);
+
+    const trop = exemple({
+        elements: [
+            elementNeuf('mot', { texte: 'A' }),
+            elementNeuf('dessin', { contenu: '<path d="M0 0"/>', largeur: 2 })
+        ]
+    });
+    assert.match(dit(trop), /trop petit/);
+});
+
+test('L\'EXPORT D\'UN DESSIN RANGE SON CONTENU EN DERNIER', () => {
+    const j = enigmeEnJson(exemple({
+        elements: [
+            elementNeuf('mot', { texte: 'A' }),
+            elementNeuf('dessin', { contenu: '<path d="M0 0"/>', vueBoite: [0, 0, 24, 24] })
+        ]
+    }));
+    const dessin = j.elements.find(e => e.type === 'dessin');
+    // LE CHAMP LONG EN DERNIER : c'est le seul qui fasse plusieurs milliers de
+    // caractères, et rangé en tête il repousserait tout le reste hors de vue
+    // dans un fichier qu'on relit à l'œil.
+    assert.equal(Object.keys(dessin).at(-1), 'contenu');
+    assert.deepEqual(dessin.vueBoite, [0, 0, 24, 24]);
+    // Et le JSON fait l'aller-retour : c'est ce que Rémy colle.
+    assert.deepEqual(JSON.parse(enigmeEnTexte(exemple({
+        elements: [elementNeuf('mot', { texte: 'A' }),
+            elementNeuf('dessin', { contenu: '<path d="M0 0"/>' })]
+    }))).elements.length, 2);
+});

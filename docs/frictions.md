@@ -2987,6 +2987,27 @@ lignes** — 2026-10-01
   exiger que la grandeur ne RECULE jamais. Trembler, c'est reculer quand la main
   avance ; une épreuve qui ne regarde que la valeur finale ne le voit pas.
 
+## Un lot de remplacements annulé laisse croire que les bonnes paires sont passées — 2026-10-07
+
+- **Ce que je voulais faire** : poser l'import de SVG dans l'atelier — cinq
+  remplacements d'un coup dans `js/essai/atelierEssai.js`.
+- **Ce qui coûte** : deux allers-retours et un faux diagnostic. La cinquième
+  paire n'a pas trouvé son compte, et `remplacer.mjs` a fait ce qu'il doit :
+  **RIEN n'est écrit**. Mais son compte rendu affiche d'abord `ok` pour les
+  quatre premières, et l'on retient `ok, ok, ok, ok, RATÉ`. J'ai reposé la
+  cinquième seule, en croyant les quatre autres en place : le bouton d'import
+  existait dans le HTML, mais `innerHTML =` l'effaçait au démarrage et le
+  gestionnaire n'était jamais branché. Deux symptômes, une seule cause —
+  l'écriture n'avait pas eu lieu.
+- **Combien de fois** : | (mais la forme reviendra : plus le lot est gros, plus
+  la ligne finale est loin des `ok`, et c'est précisément quand le lot est gros
+  qu'on ne relit pas.)
+- **Ce qui manque** : que `remplacer.mjs` dise, quand il renonce, **ce qui n'a
+  PAS été écrit** — « les 4 autres paires n'ont pas été appliquées non plus » —
+  plutôt que de laisser le lecteur déduire une règle qu'il connaît pourtant.
+  Ce qui a sauvé la mise : `doitExister` sur `#ae-import`, qui a refusé de rendre
+  `false` là où un crochet manquant ressemble à un logiciel cassé.
+
 ## Une page à part hérite d'un `body` fait pour une application d'un seul écran — 2026-10-07
 
 - **Ce que je voulais faire** : une page d'essai autonome, qui charge
