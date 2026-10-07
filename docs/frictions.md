@@ -3067,3 +3067,23 @@ lignes** — 2026-10-01
   disant où il est. Et la règle, plus générale que l'outil : **on ne prépare pas
   un écran pour la mesure ; si la mesure a besoin d'une préparation que
   l'utilisateur ne fait pas, c'est la mesure qui est fausse.**
+
+## Une mesure qui ne casse rien ne mesure que le beau temps — 2026-10-07
+
+- **Ce que je voulais faire** : être sûr que le bouton « Copier les verdicts »
+  rend bien le tri du quotidien. Il y avait une mesure, et elle était verte.
+- **Ce qui coûte** : Rémy a trié DEUX CENTS entrées une par une, a cliqué, et
+  n'a rien eu. La mesure était verte parce qu'elle mesurait Chromium, en
+  contexte sûr, la fenêtre au premier plan — les trois conditions dans
+  lesquelles `navigator.clipboard` ne refuse jamais. Elle ne pouvait donc PAS
+  voir le défaut : le repli existait dans le code, mais rien ne l'avait jamais
+  emprunté. Et le seul bouton voisin était « Tout remettre à zéro », qui
+  effaçait tout en un appui, sans un mot.
+- **Combien de fois** : | — mais le dépôt copie dans le presse-papiers à onze
+  endroits, et neuf gardent l'ancien repli jamais emprunté.
+- **Ce qui manque** : de quoi CASSER une capacité du navigateur pendant la
+  mesure. Trois lignes dans la sonde — `s.sansPressePapiers()`,
+  `s.sansStockage()`, `s.horsLigne()` — et la règle qui va avec : **le chemin
+  de repli qu'aucune mesure n'emprunte n'existe pas.** C'est le pendant de
+  « une mesure qui n'emprunte pas le chemin de l'utilisateur ne mesure pas son
+  problème » : ici le chemin de l'utilisateur est celui où ça REFUSE.

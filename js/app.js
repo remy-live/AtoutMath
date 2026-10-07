@@ -1428,7 +1428,20 @@ function initDebugToolbar() {
                 // banc a été retiré —, si bien que ce bouton effaçait
                 // exactement ce qu'il promettait de préserver : les décisions,
                 // les remarques de la barre de passe et le tri du quotidien.
-                const GARDES = ['mathbox-revue', 'atoutmath.quotidien.verdicts'];
+                // TOUT CE QUI EST LE TRAVAIL DE RÉMY, ET PAS CELUI DES ÉLÈVES.
+                //
+                // La liste en portait DEUX et il y en a cinq. Rémy : « je ne
+                // veux pas que mon travail soit supprimé » — un bouton de
+                // ménage qui emporte un après-midi de tri parce qu'une clef a
+                // été ajoutée après lui est exactement ce qu'on ne peut pas se
+                // permettre. Quand on en ajoute une, elle vient ici.
+                const GARDES = [
+                    'mathbox-revue',                      // la revue du catalogue
+                    'atoutmath.quotidien.verdicts',       // le tri des proverbes et énigmes
+                    'atoutmath.dingbats.verdicts',        // le tri des dingbats
+                    'atoutmath.atelier.dingbats.recolte', // la récolte de l'atelier
+                    'atoutmath.atelier.quotidien'         // le panier de l'atelier du quotidien
+                ];
                 const carnets = {};
                 GARDES.forEach(k => {
                     try { carnets[k] = window.localStorage.getItem(k); } catch (e) { /* privé */ }

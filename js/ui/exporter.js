@@ -43,6 +43,59 @@ export async function copierDans(bouton, texte, libelle) {
 }
 
 /**
+ * SORTIR UN TEXTE SANS JAMAIS DÉPENDRE DU PRESSE-PAPIERS.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY : « j'ai mis copier les verdicts, ça ne copie rien, et j'ai tout trié
+ * dans tout le quotidien, je ne veux pas que mon travail soit supprimé. »
+ *
+ * Deux cents entrées triées une par une, et le bouton qui les sort ne rend
+ * rien. Mesuré au navigateur sur ce dépôt : le presse-papiers RÉUSSIT —
+ * l'épreuve passe. Elle passe parce qu'elle mesure Chromium, en contexte sûr,
+ * la fenêtre au premier plan. Rien de tout cela n'est garanti chez lui :
+ * `navigator.clipboard` n'existe PAS hors HTTPS, Safari refuse l'écriture si
+ * le geste n'est plus « récent », et un presse-papiers d'application web se
+ * perd d'un onglet à l'autre sur iPhone.
+ *
+ * UN BOUTON QUI PEUT NE RIEN FAIRE N'EST PAS UN BOUTON. Celui-ci fait TOUJOURS
+ * quelque chose de visible : il pose le texte dans une zone à l'écran, et le
+ * presse-papiers n'est qu'un bonus par-dessus. On ne peut plus cliquer et ne
+ * rien obtenir.
+ *
+ * @param {HTMLElement} bouton   celui qu'on vient de toucher
+ * @param {string} texte         ce qu'on veut sortir
+ * @param {string} libelle       ce que le bouton dit au repos
+ * @param {HTMLElement} [apres]  l'élément après lequel poser la zone
+ */
+export async function copierOuMontrer(bouton, texte, libelle, apres) {
+    const hote = apres || bouton.parentElement;
+    let zone = hote.parentElement && hote.parentElement.querySelector('[data-sortie-texte]');
+    if (!zone) {
+        zone = document.createElement('textarea');
+        zone.className = 'sortie-texte';
+        zone.readOnly = true;
+        zone.setAttribute('data-sortie-texte', '');
+        zone.setAttribute('aria-label', 'Le texte à m\'envoyer');
+        hote.after(zone);
+    }
+    zone.value = texte;
+    // ON SÉLECTIONNE, TOUJOURS. Même quand le presse-papiers a marché : c'est
+    // le dernier recours si la copie s'est perdue entre deux applications, et
+    // il ne coûte rien.
+    zone.focus();
+    zone.select();
+    try {
+        await navigator.clipboard.writeText(texte);
+        bouton.textContent = '✓ Copié — et le texte est ci-dessous';
+    } catch (e) {
+        bouton.textContent = '⚠ Copie refusée — le texte est ci-dessous, sélectionné';
+    }
+    setTimeout(() => { bouton.textContent = libelle; }, 3600);
+    return zone;
+}
+
+/**
  * TÉLÉCHARGER UN TEXTE SOUS UN NOM DE FICHIER.
  *
  * Rémy travaille aussi depuis son téléphone, où le presse-papiers d'une

@@ -11707,6 +11707,27 @@ body:not(.teacher-mode):not(.auj-catalogue-ouvert) #sidebar { display: none; }
 .banc-q-corps { flex: 1 1 auto; }
 .banc-q-export { width: 100%; min-height: 180px; font: 12px/1.4 ui-monospace, monospace; margin-top: 8px; }
 
+/* LA ZONE QUI PORTE CE QU'ON SORT — et qui paraît À CHAQUE FOIS, que le
+   presse-papiers ait marché ou non.
+
+   Rémy : « j'ai mis copier les verdicts, ça ne copie rien. » Un bouton qui
+   peut échouer sans le dire coûte un après-midi de travail ; celui-ci pose
+   toujours le texte sous lui, assez grand pour qu'on ne puisse pas le
+   manquer. */
+.sortie-texte {
+    width: 100%; box-sizing: border-box; min-height: 200px; margin-top: 10px;
+    resize: vertical; border: 2px solid var(--primary); border-radius: 10px;
+    padding: 10px 12px; background: var(--bg-app); color: var(--text-main);
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+/* LE BOUTON QUI EFFACE SE TIENT À L'ÉCART, et il le dit avant de le faire.
+   Il était contre le bouton « Copier » — c'est-à-dire que le doigt qui
+   réessaie une copie ratée tombait juste à côté de la destruction. */
+.banc-chip--prudent { margin-left: auto; color: var(--text-muted); }
+.banc-chip--arme {
+    border-color: var(--danger); color: var(--danger-texte); font-weight: 800;
+}
+
 
 
 

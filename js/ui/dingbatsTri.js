@@ -33,6 +33,7 @@
 
 import { DINGBATS } from '../data/dingbats.js';
 import { DISPOSITIONS, dessiner, THEMES, NIVEAUX } from '../core/dingbat.js';
+import { copierOuMontrer, telechargerTexte, jourPourFichier } from './exporter.js';
 
 const CLE_VERDICTS = 'atoutmath.dingbats.verdicts';
 
@@ -180,7 +181,10 @@ export function dingbatsHtml() {
 
         <div class="banc-q-actions">
             <button type="button" class="banc-chip" data-tri-copier>📋 Copier le rapport</button>
-            <button type="button" class="banc-chip" data-tri-vider>Tout remettre à zéro</button>
+            <!-- Même paire que sur le tri du quotidien, et pour la même raison :
+                 un presse-papiers peut refuser sans le dire, un fichier non. -->
+            <button type="button" class="banc-chip" data-tri-fichier>⤓ En fichier</button>
+            <button type="button" class="banc-chip banc-chip--prudent" data-tri-vider>Tout remettre à zéro</button>
             <span class="banc-q-compte" data-tri-compte>${echapper(compte())}</span>
         </div>
 
@@ -214,25 +218,38 @@ export function brancherDingbats(zone, redessiner) {
     });
 
     const copier = zone.querySelector('[data-tri-copier]');
-    if (copier) copier.onclick = async () => {
-        const texte = rapport();
-        try {
-            await navigator.clipboard.writeText(texte);
-            copier.textContent = '✓ Copié — colle-le-moi';
-        } catch {
-            // Le presse-papiers est refusé hors HTTPS et sur certains
-            // navigateurs : on montre alors le texte, il reste sélectionnable.
-            copier.textContent = '📋 Copier le rapport';
-            const boite = document.createElement('textarea');
-            boite.className = 'banc-q-export';
-            boite.readOnly = true;
-            boite.value = texte;
-            copier.parentElement.after(boite);
-            boite.select();
-        }
-        setTimeout(() => { copier.textContent = '📋 Copier le rapport'; }, 2500);
+    if (copier) copier.onclick = () =>
+        copierOuMontrer(copier, rapport(), '📋 Copier le rapport', copier.parentElement);
+
+    const fichier = zone.querySelector('[data-tri-fichier]');
+    if (fichier) fichier.onclick = () => {
+        telechargerTexte(`dingbats-tries-${jourPourFichier()}.txt`, rapport(), 'text/plain');
+        fichier.textContent = '✓ Dans tes téléchargements';
+        setTimeout(() => { fichier.textContent = '⤓ En fichier'; }, 3600);
     };
 
+    // DEUX APPUIS POUR EFFACER. Voir `ui/quotidienTri.js` : ce bouton efface
+    // cent neuf verdicts posés un par un, et il était à côté de celui qui
+    // pouvait ne rien faire.
     const vider = zone.querySelector('[data-tri-vider]');
-    if (vider) vider.onclick = () => { verdicts = {}; garder(); redessiner(); };
+    if (vider) vider.onclick = () => {
+        const n = Object.keys(verdicts).length;
+        if (!n) return;
+        if (!vider.dataset.arme) {
+            vider.dataset.arme = '1';
+            vider.textContent = `Effacer les ${n} verdicts ? Appuie encore`;
+            vider.classList.add('banc-chip--arme');
+            clearTimeout(brancherDingbats._t);
+            brancherDingbats._t = setTimeout(() => {
+                delete vider.dataset.arme;
+                vider.textContent = 'Tout remettre à zéro';
+                vider.classList.remove('banc-chip--arme');
+            }, 6000);
+            return;
+        }
+        clearTimeout(brancherDingbats._t);
+        verdicts = {};
+        garder();
+        redessiner();
+    };
 }
