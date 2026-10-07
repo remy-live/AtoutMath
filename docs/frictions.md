@@ -3128,3 +3128,31 @@ lignes** — 2026-10-01
   toutes les cibles sous 44 px ET toutes les paires séparées de moins de 8 px,
   d'un coup, sur n'importe quel écran. **On ne mesure pas la taille des cibles
   de l'écran qu'on vient d'écrire ; on la mesure sur tous ceux qu'on a.**
+
+## Le serveur d'essai n'applique pas `.htaccess` : aucune sonde ne voyait les vrais en-têtes — 2026-10-07
+
+- **Ce que je voulais faire** : comprendre la capture de Rémy — les trois volets
+  de l'Atelier affichaient « atout-math.fr refused to connect ».
+- **Ce qui coûte** : le défaut tenait en un mot (`frame-ancestors 'none'`
+  interdit l'encadrement **y compris par le site lui-même**), mais il vivait
+  là depuis le jour où la politique a été écrite, et **quatre** fonctions
+  étaient muettes en ligne — l'Atelier, le Contrôle, l'atelier de géométrie.
+  Rien dans ce dépôt ne pouvait le dire : `.htaccess` est appliqué par Apache,
+  le serveur d'essai est `php -S`, **qui l'ignore**. Sept cents mesures
+  tournaient sur une configuration qui n'existe nulle part. Et le navigateur
+  ne prévient pas la page : seul un humain devant l'écran s'en aperçoit.
+  Deux heures, dont deux fausses pistes instructives :
+  **(1)** poser l'en-tête depuis la sonde (`route.fulfill`) ne marche pas —
+  Chromium n'applique pas `frame-ancestors` à une réponse fabriquée par
+  l'interception, et la sonde restait verte avec `'none'` ;
+  **(2)** un routeur PHP qui rend `false` fait **jeter** ses en-têtes par le
+  serveur intégré. Il faut qu'il serve lui-même le document.
+- **Combien de fois** : | — mais la famille est large : tout ce qui est
+  configuré HORS du code (`.htaccess`, en-têtes, redirections, PHP de
+  l'hébergeur) échappait de la même façon à toutes les mesures.
+- **Ce qui manque** : c'est fait — `tools/routeurEssai.php` sert les documents
+  HTML avec la politique lue dans `.htaccess`, et **toutes** les sondes en
+  profitent d'un coup. La règle, plus large que l'outil : **ce qu'on mesure
+  doit être servi comme ce qui sera livré ; un réglage qui ne vit que chez
+  l'hébergeur n'est pas mesuré, il est espéré.** Reste à faire entrer de la
+  même façon les redirections et les en-têtes de cache.

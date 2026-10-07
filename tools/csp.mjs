@@ -122,10 +122,31 @@ export function fabriquerCsp(lireFichier = (f) => readFileSync(join(RACINE, f), 
         // ci-dessus : un `blob:` ne peut naître que du script déjà en train de
         // tourner sur l'origine, que `script-src` gouverne déjà.
         "manifest-src 'self' blob:",
-        // PERSONNE N'ENFERME CE SITE DANS UNE IFRAME. C'est ce qui empêche
-        // qu'on habille l'espace professeur d'une fausse page pour lui faire
-        // cliquer ce qu'il ne veut pas.
-        "frame-ancestors 'none'",
+        // AUCUN AUTRE SITE N'ENFERME CELUI-CI DANS UNE IFRAME — mais lui, si.
+        //
+        // RÉMY, capture à l'appui : « pourquoi j'ai cela ». Les trois volets de
+        // l'Atelier — le jeu, l'aperçu papier, le robot — affichaient
+        // « atout-math.fr refused to connect ». C'était 'none' qui parlait :
+        // il interdit TOUT encadrement, y compris par le site lui-même.
+        //
+        // QUATRE FONCTIONS S'ENCADRENT ELLES-MÊMES, et toutes les quatre
+        // étaient muettes en ligne : l'Atelier (`ui/atelier.js`, trois cadres),
+        // le Contrôle qui mesure les débordements sur trois écrans
+        // (`ui/controle.js`), et l'atelier de géométrie (`games/geometrie.js`).
+        //
+        // 'self' NE REND RIEN DE CE QUE 'none' PROTÉGEAIT. L'attaque que le
+        // commentaire précédent décrivait — habiller l'espace professeur d'une
+        // fausse page pour lui faire cliquer ce qu'il ne veut pas — suppose
+        // une page sur une AUTRE origine. 'self' la refuse exactement comme
+        // 'none'. Ce qu'on rend, c'est le droit pour atout-math.fr de se
+        // montrer à lui-même.
+        //
+        // POURQUOI AUCUNE MESURE NE L'AVAIT VU : le serveur d'essai
+        // (`php -S`) N'APPLIQUE PAS `.htaccess`. Toutes les sondes du dépôt
+        // tournaient donc sans cette politique — elles mesuraient un site qui
+        // n'a pas les en-têtes du vrai. C'est corrigé dans `tools/siteEssai.php`,
+        // qui sert désormais la même ligne que l'hébergement.
+        "frame-ancestors 'self'",
         // Un `<base>` injecté détournerait toutes les adresses relatives de la
         // page — y compris celles des modules.
         "base-uri 'self'",
