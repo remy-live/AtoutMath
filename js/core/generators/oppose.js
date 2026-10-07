@@ -93,10 +93,49 @@ const ANCIEN = { cle: 'niveau', jusqua: true, valeurs: LISTE_MARCHES.map(m => NI
 export const opposeRegleGenerator = {
     id: 'num.oppose.regle',
     skills: [COMPETENCE],
+    // RÉMY, dans sa revue : « Tu peux faire une version imprimé ». Il n'y avait
+    // rien à écrire pour cela — les questions sont déjà du texte propre,
+    // « −(+2) = ? » pour « −2 » —, il manquait seulement de le DIRE. Sans ce
+    // drapeau, `aUneFichePapier` répond non et la fiche n'est même pas offerte.
+    ecrit: true,
+    // UN RÉGLAGE QUI CHANGE VRAIMENT LA FEUILLE.
+    //
+    // `ficheReglages.test.mjs` refuse une fiche écrite sans réglage — « on ne
+    // pouvait demander ni la table de 7, ni un niveau, ni une difficulté une
+    // fois la feuille ouverte » —, et il est tombé sur celle-ci dès qu'elle est
+    // devenue imprimable. Il a raison : une fiche qu'on ne peut pas doser ne
+    // sert qu'une fois.
+    //
+    // LE RÉGLAGE N'EST PAS UN NIVEAU : cet exercice EST le barreau 1, et offrir
+    // d'en changer reviendrait à offrir de changer d'exercice. Ce qui se dose
+    // ici, c'est le PIÈGE — « −(−3) », le double moins, est la seule des deux
+    // formes qui se rate. Un professeur qui vient de l'introduire veut une
+    // feuille qui n'en contient QUE ça ; une semaine plus tard, il veut le
+    // mélange, où il faut lire avant d'écrire.
+    params: [
+        {
+            id: 'sorte', type: 'select', label: 'Quelles écritures', default: 'tous',
+            aide: 'Le double moins — «\u00a0−(−3)\u00a0» — est la seule des deux formes '
+                + 'qui se rate. Mélangées, il faut lire avant d\'écrire.',
+            options: [
+                { value: 'tous', label: 'Les deux mélangées' },
+                { value: 'moins-moins', label: 'Seulement −(−a), le double moins' },
+                { value: 'moins-plus', label: 'Seulement −(+a)' }
+            ]
+        }
+    ],
 
     generate(params, ctx) {
         const rng = ctx.rng;
-        const q = tirerOppose({ rng, niveau: 1 });
+        // ON RETIRE JUSQU'À TOMBER SUR LA FORME DEMANDÉE, et l'on finit par
+        // accepter : le tirage est équilibré, trente essais suffisent très
+        // largement, et une question rendue vaut mieux qu'un trou dans la
+        // feuille si jamais le hasard s'acharnait.
+        const sorte = String((params && params.sorte) || 'tous');
+        const voulue = (e) => sorte === 'tous'
+            || (sorte === 'moins-moins' ? /\(\u2212/.test(e) : /\(\+/.test(e));
+        let q = tirerOppose({ rng, niveau: 1 });
+        for (let i = 0; i < 30 && !voulue(q.enonce); i++) q = tirerOppose({ rng, niveau: 1 });
         const val = Number(normaliserEcriture(q.reponse));
         const recopie = -val;
 
@@ -153,6 +192,9 @@ export const opposeEnleverGenerator = {
     label: 'Enlever les parenthèses, pas à pas',
     skills: [COMPETENCE],
     answerKinds: ['text'],
+    // Même chose que pour la règle du signe, et pour la même remarque de Rémy :
+    // « −(+3) − (−5) = ? » pour « 2 » s'imprime sans qu'on ait rien à dessiner.
+    ecrit: true,
     // LA LONGUEUR SUIT LE NOMBRE DE MARCHES COCHÉES — voir core/duree.js. Dix
     // questions sur trois marches n'en montrent que trois par marche ; le
     // conseil le dit au professeur au lieu de le lui laisser découvrir.
