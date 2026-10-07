@@ -1571,3 +1571,110 @@ export const BAREME = (points) => {
 
 /** La ligne débarrassée de ses marques : pour mesurer, et pour les tests. */
 export const sansMarques = (t) => String(t ?? '').replace(/[\u0001-\u0006]/g, '');
+
+/**
+ * L'ÉNONCÉ QUI SE RÉPÈTE DEVANT CHAQUE QUESTION S'EN VA EN TÊTE.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * RÉMY, sur `cf-ensemble` : « laisse de la place et ne remets pas l'énoncé à
+ * chaque question sur la version imprimé ».
+ *
+ * Une feuille de dix questions écrivait dix fois « Simplifier : », « Calculer :
+ * », « Dans chaque cas, … ». Sur un cahier d'écolier cela ne se fait pas : la
+ * consigne est donnée UNE fois, en tête, et les questions ne portent que ce qui
+ * les distingue. La place gagnée est celle où l'élève écrit.
+ *
+ * ── CE QU'ON DÉGAGE, ET CE QU'ON NE DÉGAGE PAS ─────────────────────────────
+ *
+ * On ne coupe qu'au bout d'un VRAI séparateur — « : », « — », « ? » — et
+ * seulement si toutes les questions le partagent. Couper au mot près donnerait
+ * « Simplifier : √64 » et « Simplifier : √(9 + 16) » réduits à « √64 » et
+ * « (9 + 16) » le jour où deux questions commenceraient par « Simplifier : √ ».
+ *
+ * ET IL DOIT RESTER QUELQUE CHOSE. Deux questions identiques au séparateur près
+ * se retrouveraient vides, numérotées devant une ligne blanche — ce qui est
+ * exactement le défaut qu'on répare, à l'envers.
+ *
+ * ON NE TOUCHE PAS À UNE QUESTION SEULE : un préfixe ne se « répète » pas à un
+ * exemplaire, et le dégager laisserait une question sans énoncé.
+ *
+ * @param {string[]} textes   les questions, telles qu'elles seraient écrites
+ * @returns {{prefixe: string, textes: string[]}}
+ */
+export function degagerLePrefixe(textes) {
+    const liste = (textes || []).map(t => String(t ?? ''));
+    const rien = { prefixe: '', suffixe: '', textes: liste };
+    if (liste.length < 2) return rien;
+
+    // ── LE DÉBUT COMMUN ────────────────────────────────────────────────────
+    let n = 0;
+    const court = Math.min(...liste.map(t => t.length));
+    while (n < court && liste.every(t => t[n] === liste[0][n])) n++;
+
+    let prefixe = '';
+    if (n) {
+        // ON RECULE JUSQU'AU DERNIER SÉPARATEUR. C'est lui qui fait d'un début
+        // commun un ÉNONCÉ ; sans lui on couperait au milieu d'un mot ou d'un
+        // nombre.
+        const m = liste[0].slice(0, n).match(/^(.*[:?\u2014\u00bb.][\s\u00a0]+)/);
+        // UN SÉPARATEUR N'EST PAS UN ÉNONCÉ. « : » tout seul, « Soit : »,
+        // « Et : » ne valent pas d'être hissés — et les retirer priverait la
+        // question du peu qu'elle disait. La plus courte consigne utile du
+        // catalogue est « Calcule : », qui fait neuf signes.
+        if (m && m[1].trim().length >= 8) prefixe = m[1];
+    }
+
+    // ── LA FIN COMMUNE ─────────────────────────────────────────────────────
+    //
+    // RÉMY, sur `cf-ensemble` : « ne remets pas l'énoncé à chaque question ».
+    // Son énoncé ne se répétait pas DEVANT mais DERRIÈRE — « …, puis préciser
+    // le plus petit ensemble auquel le résultat appartient. », dix fois, pour
+    // une consigne qui le disait déjà en tête. Une queue qui se répète est
+    // exactement aussi encombrante qu'une tête, et deux fois plus longue ici.
+    const reste0 = liste.map(t => t.slice(prefixe.length));
+    let k = 0;
+    const court2 = Math.min(...reste0.map(t => t.length));
+    while (k < court2 && reste0.every(t => t[t.length - 1 - k] === reste0[0][reste0[0].length - 1 - k])) k++;
+
+    let suffixe = '';
+    if (k) {
+        const queue = reste0[0].slice(reste0[0].length - k);
+        // ON AVANCE JUSQU'AU PREMIER DÉBUT DE MOT : une fin commune commence
+        // rarement sur une limite propre — « …ppartient. » est commun à toutes
+        // sans être une phrase.
+        const m2 = queue.match(/[\s\u00a0]([^\s\u00a0].*)$/s);
+        const candidat = m2 ? m2[1] : '';
+        // Assez long pour valoir la peine, et il doit rester la question.
+        if (candidat.trim().length >= 12) suffixe = candidat.trim();
+    }
+
+    const restes = reste0.map(t => (suffixe ? t.slice(0, t.length - suffixe.length) : t)
+        .replace(/[\s\u00a0,;]+$/, '').trim());
+    // ET IL DOIT RESTER QUELQUE CHOSE. Deux questions identiques au séparateur
+    // près se retrouveraient vides, numérotées devant une ligne blanche — le
+    // défaut qu'on répare, à l'envers.
+    if (!prefixe && !suffixe) return rien;
+    if (restes.some(r => !r)) return rien;
+    return { prefixe: prefixe.trim(), suffixe, textes: restes };
+}
+
+export function consigneAvecPrefixe(consigne, ...bouts) {
+    const net = (t) => String(t).toLowerCase().replace(/[^a-zà-ÿ]+/g, '');
+    let c = String(consigne || '').trim();
+    for (const bout of bouts) {
+        const b = String(bout || '').trim();
+        if (!b) continue;
+        // LE BÉGAIEMENT EST LE SEUL RISQUE. La consigne de `cf-ensemble` dit
+        // déjà « puis préciser le plus petit ensemble auquel appartient le
+        // résultat » — l'y remettre une seconde fois ne gagnerait rien et se
+        // lirait comme une erreur. On compare sur les LETTRES SEULES :
+        // « appartient le résultat » et « le résultat appartient » ne sont pas
+        // le même ordre, mais c'est la même phrase, et c'est ce qui compte.
+        const lettres = net(b).replace(/^(.{12,}?)$/, '$1');
+        if (c && (net(c).includes(lettres) || lettres.length > 20
+            && net(c).includes(lettres.slice(0, 20)))) continue;
+        c = c ? `${c} ${b}` : b;
+    }
+    return c;
+}

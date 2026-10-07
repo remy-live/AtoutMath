@@ -31,7 +31,10 @@ import { paramSchemaOf } from '../data/catalog.js';
 import { fieldHtml, readParams, wireTips, brancherMarches, valeurDeChamp } from '../games/configUI.js';
 import { makeRng } from '../core/ids.js';
 import { espacerMilliers } from '../core/nombres.js';
-import { composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction } from '../core/fiche.js';
+import {
+    composerBlocs, composerSolutions, repartirBareme, pageDe, porteUneFraction,
+    degagerLePrefixe, consigneAvecPrefixe
+} from '../core/fiche.js';
 import { RENDUS } from './printSheet.js';
 /**
  * UN JEU À DÉCOUPER NE SE TIRE QU'À UN EXEMPLAIRE.
@@ -1149,7 +1152,7 @@ export function ouvrirFicheParcours(chemin) {
                 // s'appliquent au moment de composer. Retirer une autre
                 // question au sort les emporte donc avec l'ancienne, ce qui
                 // est le bon comportement.
-                const tire = (blocs.get(id) || []).slice(0, quantites[id]).map((q, rang) => {
+                let tire = (blocs.get(id) || []).slice(0, quantites[id]).map((q, rang) => {
                     const r = retouches.get(cleRetouche(id, rang));
                     if (!r) return q;
                     // UNE GRILLE SE RÉCRIT AUTREMENT QU'UNE QUESTION : on ne
@@ -1166,6 +1169,24 @@ export function ouvrirFicheParcours(chemin) {
                     }
                     return { ...q, texte: r.texte, reponse: r.reponse, retouchee: true };
                 });
+                // L'ÉNONCÉ QUI SE RÉPÈTE MONTE EN TÊTE DE L'EXERCICE.
+                //
+                // RÉMY, sur `cf-ensemble` : « laisse de la place et ne remets
+                // pas l'énoncé à chaque question sur la version imprimé ». Dix
+                // questions écrivaient dix fois « Simplifier : ». Sur un cahier
+                // la consigne est donnée une fois ; la place gagnée est celle où
+                // l'élève écrit.
+                //
+                // ON NE TOUCHE PAS AUX GRILLES : une grille n'a pas d'énoncé
+                // par question, elle a une règle du jeu.
+                let hisse = ['', ''];
+                if (!e.grille && tire.length > 1) {
+                    const d = degagerLePrefixe(tire.map(q => q.texte));
+                    if (d.prefixe || d.suffixe) {
+                        hisse = [d.prefixe, d.suffixe];
+                        tire = tire.map((q, i) => ({ ...q, texte: d.textes[i] }));
+                    }
+                }
                 // Une grille n'a pas de consigne écrite par le professeur :
                 // c'est la règle du jeu, et elle se déduit de la grille tirée.
                 const consigneGrille = e.grille && tire.length && RENDUS[e.grille].consigne
@@ -1178,7 +1199,10 @@ export function ouvrirFicheParcours(chemin) {
                     // ouvrira les bons réglages.
                     id,
                     titre: titres[id] ?? e.title,
-                    consigne: o.interrogation ? '' : (e.grille ? consigneGrille : consignes[id]),
+                    // LA CONSIGNE RECUEILLE CE QU'ON A ÔTÉ DES QUESTIONS — et
+                    // une seule fois : si elle le disait déjà, on ne bégaie pas.
+                    consigne: o.interrogation ? '' : (e.grille ? consigneGrille
+                        : consigneAvecPrefixe(consignes[id], ...hisse)),
                     points: o.interrogation ? (points[id] || null) : null,
                     numeroter: numeroter[id] !== false,
                     insecable: estInsecable(id),
