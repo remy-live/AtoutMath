@@ -34,13 +34,14 @@ const n2 = (v) => Number(v).toFixed(1);
 // choisit la moins mauvaise — c'est-à-dire une lettre barrée. MESURÉ : 31 noms
 // sur 196 encore touchés après avoir corrigé les segments. On donne donc de la
 // marge de manoeuvre : douze directions, deux distances, vingt-quatre places.
-const AUTOUR = [];
-for (const rayon of [1.2, 1.6, 2.1]) {
-    for (let i = 0; i < 12; i++) {
+// LES TROIS ANNEAUX SONT ESSAYÉS DU PLUS PROCHE AU PLUS LOIN, et c'est l'ordre
+// qui compte — voir `placerNoms`. Groupés, parce qu'on s'arrête au premier qui
+// dégage assez.
+const ANNEAUX = [1.2, 1.6, 2.1].map(rayon =>
+    Array.from({ length: 12 }, (_, i) => {
         const a = i * Math.PI / 6;
-        AUTOUR.push({ x: Math.cos(a) * rayon, y: Math.sin(a) * rayon });
-    }
-}
+        return { x: Math.cos(a) * rayon, y: Math.sin(a) * rayon };
+    }));
 
 /** Les deux bouts RÉELLEMENT DESSINÉS d'une droite : ses points, dépassés. */
 function traitDessine(A, B) {
@@ -52,7 +53,32 @@ function traitDessine(A, B) {
 }
 
 function placerNoms(P, segments, boite) {
-    const RAYON = 15;
+    // LA LETTRE SE POSE CONTRE SON POINT, PAS À CÔTÉ.
+    //
+    // RÉMY, sur « lire un codage » et sur « le milieu » : « le label du point
+    // est loin du point. Vérifie aussi cela pour la version interactive. »
+    //
+    // CE QUI SE MESURE ICI N'EST PAS UNE DISTANCE, C'EST UN RAPPORT : une
+    // étiquette est bien posée quand elle est NETTEMENT plus près de son point
+    // que du point voisin le plus proche. Sur 670 étiquettes de « codage » et
+    // de « milieu » :
+    //
+    //            rapport médian    pire cas
+    //   avant        0,35            0,99   ← la lettre touchait l'autre point
+    //   après        0,15            0,38
+    //
+    // Un rapport de 0,99 veut dire qu'un élève lisant la figure n'avait aucune
+    // raison de rattacher la lettre à l'un plutôt qu'à l'autre.
+    //
+    // 15 px était le rayon d'origine, et le tour le plus large portait alors
+    // l'étiquette à 31 px. À 11, le bord de la lettre arrive à deux pixels du
+    // point : c'est ce que fait un manuel, la lettre touche presque. En
+    // dessous, elle recouvre la marque du point et devient illisible.
+    //
+    // CE NOMBRE SERT AUSSI À L'ÉCRAN — les deux dessins partent de ce plan, et
+    // Rémy a demandé de vérifier les deux. Mesuré au navigateur sur
+    // « lire un codage » et « le milieu » : 11,8 à 14,8 px.
+    const RAYON = 11;
     // LA LETTRE A UNE TAILLE, ET C'EST ELLE QU'UN TRAIT TRAVERSE. La première
     // version notait la distance du CENTRE de l'étiquette aux droites : un
     // centre à 15 px d'un trait laisse la lettre à sept, c'est-à-dire dessus.
@@ -68,6 +94,19 @@ function placerNoms(P, segments, boite) {
         x: Math.max(BORD, Math.min(boite.W - BORD, q.x)),
         y: Math.max(BORD + 4, Math.min(boite.H - BORD, q.y))
     });
+    // DÉGAGEMENT SUFFISANT : au-delà, être PLUS PRÈS vaut mieux qu'être mieux
+    // dégagé.
+    //
+    // C'est toute la correction, et elle ne tient pas au rayon. Le score CROÎT
+    // avec la distance — un nom posé loin est forcément loin des traits —,
+    // donc le plus grand des trois tours gagnait PRESQUE TOUJOURS, même quand
+    // le plus proche était déjà parfaitement libre.
+    //
+    // Mesuré avant, sur 670 étiquettes : écart médian de 31,5 px, c'est-à-dire
+    // 15 × 2,1 — le tour le plus large, dans la quasi-totalité des cas. Après :
+    // 13,2 px, le tour le plus étroit, pour 659 étiquettes sur 670 ; les onze
+    // autres sont celles qui en avaient vraiment besoin.
+    const DEGAGE = 2;
     const poses = [];
     const distSeg = (p, [a, b]) => {
         const dx = b.x - a.x, dy = b.y - a.y;
@@ -84,13 +123,20 @@ function placerNoms(P, segments, boite) {
         // La pince qui ramène l'étiquette dans le cadre s'appliquait APRÈS le
         // choix : pour un point posé au bord, elle déplaçait le nom élu — et
         // pouvait le reposer exactement sur le trait qu'on venait de fuir.
-        for (const dir of AUTOUR) {
-            const q = dansLeCadre({ x: c.x + dir.x * RAYON, y: c.y + dir.y * RAYON });
-            const aTraits = Math.min(...segments.map(s => distSeg(q, s))) - DEMI;
-            const aNoms = poses.length ? Math.min(...poses.map(p => Math.hypot(q.x - p.x, q.y - p.y)))
-                : 999;
-            const score = Math.min(aTraits, aNoms * 0.8);
-            if (score > meilleurScore) { meilleurScore = score; meilleur = q; }
+        for (const anneau of ANNEAUX) {
+            let deCetAnneau = null, scoreDeCetAnneau = -1;
+            for (const dir of anneau) {
+                const q = dansLeCadre({ x: c.x + dir.x * RAYON, y: c.y + dir.y * RAYON });
+                const aTraits = Math.min(...segments.map(s => distSeg(q, s))) - DEMI;
+                const aNoms = poses.length
+                    ? Math.min(...poses.map(p => Math.hypot(q.x - p.x, q.y - p.y))) : 999;
+                const score = Math.min(aTraits, aNoms * 0.8);
+                if (score > scoreDeCetAnneau) { scoreDeCetAnneau = score; deCetAnneau = q; }
+                if (score > meilleurScore) { meilleurScore = score; meilleur = q; }
+            }
+            // ON S'ARRÊTE AU PREMIER ANNEAU QUI DÉGAGE ASSEZ. Les suivants ne
+            // feraient qu'éloigner la lettre de ce qu'elle nomme.
+            if (scoreDeCetAnneau >= DEGAGE) { meilleur = deCetAnneau; break; }
         }
         poses.push(meilleur);
         out[nom] = meilleur;

@@ -86,11 +86,15 @@ for (const [id, quoi] of EXOS) {
             chiffres: [...ap.querySelectorAll('svg text')].map(t => t.textContent.trim())
         };
     });
-    // LE CHAMP DE TRÈFLES EST SEUL SUR SA PAGE, et c'est l'exercice qui le
-    // veut : chercher trois trèfles parmi quatre-vingt-dix demande qu'ils
-    // soient à la taille où l'on compte des feuilles.
-    dire(id === 'defi-trefles' ? vu.blocs === 1 : vu.blocs >= 2,
-        id === 'defi-trefles' ? 'un seul champ par page' : 'plusieurs grilles sur la page',
+    // DEUX CHAMPS DE TRÈFLES PAR PAGE. RÉMY : « Les trèfles prennent toutes
+    // une page sur le pdf. »
+    //
+    // Cette ligne disait l'inverse il y a une version, et le commentaire qui
+    // la justifiait annonçait quatre millimètres à deux par page. MESURÉ : 7,4
+    // sur « le pré », 9,2 sur « la promenade » — la taille d'un trèfle de
+    // revue. Un chiffre supposé avait tenu lieu de mesure pendant une semaine.
+    dire(vu.blocs >= 2,
+        id === 'defi-trefles' ? 'deux champs par page' : 'plusieurs grilles sur la page',
         `${vu.blocs} bloc(s)`);
     if (id === 'defi-trefles') {
         // Chaque trèfle est une poignée de `<path>` : trois ou quatre feuilles

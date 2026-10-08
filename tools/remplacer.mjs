@@ -22,9 +22,17 @@
 //     node tools/remplacer.mjs <fichier> ... --combien 2     (autorise 2 occurrences)
 //     node tools/remplacer.mjs <fichier> ... --voir          (ne change rien, montre)
 //
-// Le fichier JSON est une liste de paires : `[["ancien", "nouveau"], …]`. C'est
-// le seul moyen commode de porter un texte multiligne, et il évite les
-// guillemets du terminal — qui sont l'autre moitié du problème.
+// Le fichier JSON est une liste de paires, sous l'une OU L'AUTRE forme :
+//
+//     [["ancien", "nouveau"], …]
+//     [{ "ancien": "…", "nouveau": "…" }, …]
+//
+// C'est le seul moyen commode de porter un texte multiligne, et il évite les
+// guillemets du terminal — qui sont l'autre moitié du problème. Les deux
+// formes sont acceptées parce que la seconde vient tout aussi naturellement
+// sous la main, et qu'elle rendait jusqu'ici un `TypeError` sorti des
+// entrailles de cet outil, sur une pile d'appels qui ne nommait même pas le
+// fichier fautif.
 //
 // APRÈS COUP, CET OUTIL LANCE `node --check` sur les fichiers JavaScript. Le
 // piège de l'accent grave a été payé SEPT FOIS dans ce dépôt : un accent grave
@@ -54,7 +62,34 @@ const iDepuis = args.indexOf('--depuis');
 if (iDepuis >= 0) {
     const cheminJson = args[iDepuis + 1];
     if (!cheminJson) { console.error('--depuis attend un fichier JSON'); process.exit(2); }
-    paires = JSON.parse(readFileSync(cheminJson, 'utf8'));
+    // LE FICHIER DE PAIRES EST LU AVEC INDULGENCE, ET SES DÉFAUTS SONT DITS.
+    //
+    // Il s'écrit à la main, souvent assemblé par un script jetable, et la
+    // forme attendue — un tableau de `[ancien, nouveau]` — n'est pas la seule
+    // à laquelle on pense : `[{ ancien, nouveau }]` vient tout aussi
+    // naturellement. Elle rendait un `TypeError: object is not iterable`
+    // DEPUIS LES ENTRAILLES de l'outil, vingt lignes plus bas, sur une pile
+    // d'appels qui ne dit rien du fichier qu'on vient d'écrire.
+    //
+    // On accepte donc les deux, et tout le reste est refusé EN NOMMANT la
+    // ligne fautive. Un outil qui jette sa propre pile d'appels fait croire
+    // qu'il est cassé, alors que c'est l'entrée qui l'est.
+    const brut = JSON.parse(readFileSync(cheminJson, 'utf8'));
+    if (!Array.isArray(brut)) {
+        console.error(`${cheminJson} doit contenir un TABLEAU de paires.`);
+        process.exit(2);
+    }
+    paires = brut.map((p, i) => {
+        if (Array.isArray(p) && p.length === 2) return p;
+        if (p && typeof p === 'object'
+            && typeof p.ancien === 'string' && typeof p.nouveau === 'string') {
+            return [p.ancien, p.nouveau];
+        }
+        console.error(`${cheminJson}, paire ${i + 1} : attendu [ancien, nouveau] ou`
+            + ' { "ancien": …, "nouveau": … }, reçu ' + JSON.stringify(p).slice(0, 70));
+        process.exit(2);
+        return null;
+    });
 } else {
     const reste = nus.slice(1);
     if (!reste.length || reste.length % 2) {

@@ -36,6 +36,20 @@
 
 import { planDeLaScene, planFigureCodee } from '../../core/pointsDroitesSvg.js';
 import { boiteDe, echapperSheet } from './socle.js';
+import { traitsDuPoint } from '../../core/figures.js';
+
+/**
+ * LE RÉGLAGE « MARQUE DES POINTS », LU À LA MÊME SOURCE QUE LE CSS.
+ *
+ * `state.stylePoint` le pose sur `document.documentElement.dataset.point`, et
+ * la feuille de style s'en sert pour montrer l'une des trois marques. On lit
+ * donc cet attribut plutôt que d'importer `core/state.js` : une seule source,
+ * et aucun module de plus dans le cercle d'imports des fiches.
+ */
+const styleDuPoint = () => {
+    const v = (typeof document !== 'undefined' && document.documentElement.dataset.point) || '';
+    return ['croix', 'plus', 'disque'].includes(v) ? v : 'croix';
+};
 // L'ENCRE VIENT DU MODULE FEUILLE, et non de `socle.js` qui la ré-exporte :
 // les deux constantes ci-dessous sont lues EN TÊTE DE MODULE, et `socle.js`
 // est dans un cercle d'imports où une lecture en tête de module jette ou passe
@@ -136,12 +150,43 @@ export function elementsGeoPreviewHtml(item, slot, k, solution) {
                 stroke="rgb(${TRAIT.join(',')})" stroke-width="${T(0.42)}" stroke-linecap="round"/>`;
         }));
     }
-    // LES POINTS SONT DES DISQUES PLEINS, et les noms à côté. Une croix se
-    // confondrait avec une marque de codage sur la même figure.
+    // LA MARQUE DU POINT SUIT LE RÉGLAGE DU PROFESSEUR.
+    //
+    // RÉMY : « il faut se fier au paramètre, sur le pdf un point est représenté
+    // par un point alors que dans mes options j'avais mis une croix ».
+    //
+    // La fiche dessinait un disque EN DUR, et j'avais même écrit le commentaire
+    // qui le justifiait — « une croix se confondrait avec une marque de
+    // codage ». L'argument n'était pas faux ; il n'était pas à moi. Le réglage
+    // existe, il est à lui, et il dit croix par défaut parce que c'est la
+    // convention des manuels.
+    //
+    // À l'écran, le SVG dessine les trois marques et le CSS en cache deux —
+    // c'est ce qui les fait changer à l'instant où l'on touche le réglage. Le
+    // papier n'a pas de feuille de style : il lit `data-point` sur la racine,
+    // qui est la MÊME source que le CSS, et trace la marque demandée.
+    const marque = styleDuPoint();
     g.plan.points.forEach(p => {
         const c = g.P(p.x, p.y);
-        d += `<circle cx="${T(c.x)}" cy="${T(c.y)}" r="${T(0.72)}"
-            fill="rgb(${TRAIT.join(',')})"/>`;
+        const m = traitsDuPoint(c.x, c.y, marque, 0.85);
+        // `class="eg-point"` NE SERT À RIEN AU DESSIN, et tout à la MESURE.
+        //
+        // La sonde comptait les `<circle>` et appelait ça « les points ». Le
+        // jour où un point est devenu deux traits, elle a annoncé « 0 point »
+        // sans broncher — et elle aurait annoncé la même chose si les marques
+        // avaient disparu. Une mesure qui ne peut plus voir son sujet rend la
+        // réponse d'un logiciel cassé.
+        if (m.disque) {
+            d += `<circle class="eg-point" cx="${T(c.x)}" cy="${T(c.y)}"
+                r="${T(m.rayon)}" fill="rgb(${TRAIT.join(',')})"/>`;
+            return;
+        }
+        m.traits.forEach(t => {
+            d += `<line class="eg-point" x1="${T(t.x1)}" y1="${T(t.y1)}"
+                x2="${T(t.x2)}" y2="${T(t.y2)}"
+                stroke="rgb(${TRAIT.join(',')})" stroke-width="${T(0.32)}"
+                stroke-linecap="round"/>`;
+        });
     });
     g.plan.points.forEach(p => {
         const n = g.plan.noms[p.nom];
@@ -192,11 +237,19 @@ export function dessinerElementsGeoPdf(doc, item, slot, solution) {
             doc.line(p.x, p.y, q.x, q.y)));
     }
 
+    // La marque du point suit le réglage — voir l'aperçu, même source.
+    const marque = styleDuPoint();
     doc.setFillColor(...TRAIT);
+    doc.setDrawColor(...TRAIT);
+    doc.setLineWidth(0.32);
+    doc.setLineCap('round');
     g.plan.points.forEach(p => {
         const c = g.P(p.x, p.y);
-        doc.circle(c.x, c.y, 0.72, 'F');
+        const m = traitsDuPoint(c.x, c.y, marque, 0.85);
+        if (m.disque) { doc.circle(c.x, c.y, m.rayon, 'F'); return; }
+        m.traits.forEach(t => doc.line(t.x1, t.y1, t.x2, t.y2));
     });
+    doc.setLineCap('butt');
 
     doc.setTextColor(...TRAIT);
     doc.setFont('helvetica', 'bold');

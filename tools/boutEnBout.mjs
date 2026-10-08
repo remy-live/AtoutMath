@@ -644,7 +644,22 @@ poste.on('dialog', async d => { erreurs.push('FENÊTRE NATIVE: ' + d.message());
 
 await poste.goto(`http://127.0.0.1:${PORT}/index.html?poste=1#billet=leo.r%2F2024`);
 await poste.waitForFunction(() => window.__atoutmathPret === true, { timeout: 20000 });
-await poste.waitForTimeout(3500);
+// ON ATTEND LA CHOSE MESURÉE, PAS UNE DURÉE.
+//
+// Trois secondes et demie suffisaient la plupart du temps — et c'est le pire
+// des cas. Le billet part en réseau : sur une machine chargée, la porte était
+// encore là quand on la regardait, et le verdict annonçait « 1 POINT À
+// REPRENDRE » sur un logiciel intact. Un harnais qui rougit au hasard coûte
+// plus cher qu'il ne rapporte : on met en doute la mesure suivante, et l'on
+// finit par mettre en doute les vraies.
+//
+// `waitForFunction` rend la main DÈS que la porte s'efface, et n'attend
+// jusqu'au bout que si elle ne s'efface pas — c'est-à-dire quand il y a
+// vraiment quelque chose à dire. Le `catch` est là pour cela : on veut que la
+// mesure ci-dessous CONSTATE l'échec, pas que la sonde s'arrête ici.
+await poste.waitForFunction(() => !document.getElementById('portail'), { timeout: 15000 })
+    .catch(() => {});
+await poste.waitForTimeout(400);
 
 const côtéÉlève = await poste.evaluate(() => ({
     tiroir: !!window.__posteEleve,

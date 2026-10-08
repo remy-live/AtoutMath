@@ -90,6 +90,10 @@ const TEINTE = 'var(--primary, #4f46e5)';
 // trait des yeux d'un bout à l'autre.
 const TEINTE2 = 'var(--success, #16a34a)';
 const DECALAGE = 15;  // l'écart vertical entre deux intervalles superposés
+// DE COMBIEN LA POINTE D'UN INTERVALLE INFINI RECULE DEVANT CELLE DE L'AXE.
+// Mesuré sur « I = ]1 ; +∞[ » : à zéro de recul les deux pointes se
+// confondent. Seize unités valent un demi-écart de graduation.
+const RECUL = 16;
 
 /**
  * LA FENÊTRE DE L'AXE : ce qu'on montre autour de l'intervalle.
@@ -265,8 +269,27 @@ export function planDAxe(parts, opts = {}) {
     // Les intervalles eux-mêmes, chacun à sa hauteur quand il y en a deux.
     const lesParts = vivants.map((p, i) => ({
         dy: i * DECALAGE,
+        // UN INTERVALLE INFINI S'ARRÊTE AVANT LA FLÈCHE DE L'AXE.
+        //
+        // RÉMY : « attention à la présentation ». L'axe porte sa propre flèche
+        // à droite, pointe en L − 4 ; celle de l'intervalle non borné tombait
+        // en L − 3. DEUX POINTES L'UNE SUR L'AUTRE ne se lisent pas comme deux
+        // flèches : elles se lisent comme une seule, un peu plus grasse. Vu sur
+        // « I = ]1 ; +∞[ », où l'élève ne pouvait plus dire où s'arrêtait
+        // l'intervalle et où continuait la droite.
+        //
+        // Seize unités de recul — un demi-écart de graduation : les deux
+        // pointes se voient alors chacune pour elle-même. À GAUCHE il n'y a
+        // rien à reculer, l'axe n'y porte pas de flèche ; on n'écarte que ce
+        // qui se cogne.
+        //
+        // ET `x1`/`x2` SONT LA POINTE quand la borne est infinie. C'est la
+        // seule source : l'écran dessinait la sienne en dur, en L − 3, donc
+        // l'écran et le papier ne pouvaient QUE diverger — reculer ici aurait
+        // laissé, à l'écran, une pointe flottant à neuf unités de sa barre.
+        // C'est la leçon de la racine carrée, payée une fois de plus.
         x1: p.a === null ? 6 : versX(p.a, f),
-        x2: p.b === null ? L - 6 : versX(p.b, f),
+        x2: p.b === null ? L - 4 - RECUL : versX(p.b, f),
         teinte: p.teinte || TEINTE,
         crochetA: p.a === null ? null : { x: versX(p.a, f), ferme: p.ea, versLaDroite: true },
         crochetB: p.b === null ? null : { x: versX(p.b, f), ferme: p.eb, versLaDroite: false },
@@ -323,8 +346,11 @@ export function axeHtml(parts, opts = {}) {
         if (p.crochetB) g += crochet(p.crochetB.x, p.crochetB.ferme, false, p.teinte);
         // Vers l'infini, une flèche plutôt qu'un crochet : c'est ce qui se
         // dessine au tableau, et cela redit que la borne n'est pas atteinte.
-        if (p.flecheA) g += `<path d="M 3 ${Y} l 8 -4.2 l 0 8.4 z" fill="${p.teinte}"/>`;
-        if (p.flecheB) g += `<path d="M ${L - 3} ${Y} l -8 -4.2 l 0 8.4 z" fill="${p.teinte}"/>`;
+        // LA POINTE EST EN `x1`/`x2`, JAMAIS EN DUR : c'est ce qui la garde
+        // au bout de sa barre quand `planDAxe` recule devant la flèche de
+        // l'axe, et ce qui la met au même endroit qu'au papier.
+        if (p.flecheA) g += `<path d="M ${p.x1} ${Y} l 8 -4.2 l 0 8.4 z" fill="${p.teinte}"/>`;
+        if (p.flecheB) g += `<path d="M ${p.x2} ${Y} l -8 -4.2 l 0 8.4 z" fill="${p.teinte}"/>`;
         g += `</g>`;
     }
 
@@ -1309,7 +1335,23 @@ export const ensemblistesGenerator = {
             // il dessine en traits — et il lui faut donc I, J et la réponse
             // sous forme de BORNES. Voir `planDAxe` et `fiches/axes.js`.
             meta: { op, position, vide: !bonne.length, morceaux: bonne.length,
-                I, J, reponse: bonne }
+                I, J, reponse: bonne,
+                // L'ÉNONCÉ EN DEUX LIGNES, UNE PAR INTERVALLE.
+                //
+                // RÉMY : « attention à la présentation et au mauvais retour à
+                // la ligne pour union et intersection d'intervalle ».
+                //
+                // `prompt.papier` est UNE phrase — « I = ]−4 ; −1[ et J = ]−2 ;
+                // 2[ » —, et la colonne de gauche de la fiche fait un quart de
+                // la largeur : le navigateur la coupait où il pouvait, c'est-à-
+                // dire au milieu d'un intervalle. « I = ]−4 ; » sur une ligne et
+                // « −1[ et J = … » sur la suivante ne se lit plus comme un
+                // intervalle, ça se lit comme une faute de frappe.
+                //
+                // On ne coupe donc pas : on donne les DEUX lignes, et la fiche
+                // les pose telles quelles. Un intervalle n'est jamais séparé de
+                // son nom.
+                enonces: [`I = ${intervalleTexte(I)}`, `J = ${intervalleTexte(J)}`] }
         });
     }
 };

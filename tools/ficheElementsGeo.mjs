@@ -62,7 +62,14 @@ for (const [id, quoi] of EXOS) {
         return {
             blocs: ap.innerText.match(/Figure \d+/g) ? ap.innerText.match(/Figure \d+/g).length : 0,
             traits: svg.reduce((n, s2) => n + s2.querySelectorAll('line').length, 0),
-            points: svg.reduce((n, s2) => n + s2.querySelectorAll('circle').length, 0),
+            // LES MARQUES DE POINT SE COMPTENT PAR LEUR CLASSE, ET NON PAR LA
+            // FORME QU'ELLES AVAIENT. Cette ligne comptait les `<circle>` et
+            // annonçait « 0 point » depuis que la marque suit le réglage de
+            // Rémy — c'est-à-dire la réponse qu'elle donnerait si les points
+            // avaient disparu de la feuille.
+            points: svg.reduce((n, s2) => n + s2.querySelectorAll('.eg-point').length, 0),
+            disques: svg.reduce((n, s2) =>
+                n + s2.querySelectorAll('circle.eg-point').length, 0),
             noms: svg.reduce((n, s2) => n + s2.querySelectorAll('text').length, 0),
             // Les cases des affirmations : un carré bordé devant chaque phrase.
             cases: ap.querySelectorAll('div > span[style*="border"]').length,
@@ -73,7 +80,12 @@ for (const [id, quoi] of EXOS) {
     dire(!!vu && vu.blocs >= 4, `${id} : quatre figures par page`,
         vu ? `${vu.blocs} bloc(s)` : 'aucun aperçu');
     dire(!!vu && vu.traits >= vu.blocs, `${id} — ${quoi} : LA FIGURE EST DESSINÉE`,
-        vu ? `${vu.traits} trait(s), ${vu.points} point(s), ${vu.noms} nom(s)` : '');
+        vu ? `${vu.traits} trait(s), ${vu.points} marque(s) de point, ${vu.noms} nom(s)` : '');
+    // ET CHAQUE FIGURE PORTE SES POINTS. Une croix fait deux traits, et une
+    // figure en porte au moins trois : le compte est large exprès, c'est
+    // « il y en a » qu'on mesure, pas « il y en a exactement tant ».
+    dire(!!vu && vu.points >= vu.blocs * 3, 'et chaque figure porte ses marques de point',
+        vu ? `${vu.points} marque(s) pour ${vu.blocs} figure(s)` : '');
     dire(!!vu && vu.cases >= vu.blocs * 4, 'et les quatre affirmations portent leur case',
         vu ? `${vu.cases} case(s) pour ${vu.blocs} figure(s)` : '');
     // CE QUI A DISPARU : la question répétée sans son énoncé. Si elle revenait,
@@ -81,6 +93,61 @@ for (const [id, quoi] of EXOS) {
     dire(!!vu && !/Quelle affirmation est vraie \?.*Quelle affirmation est vraie \?/.test(vu.texte),
         'et la question n\'est plus écrite dix fois toute seule');
 }
+
+// ── LA MARQUE DU POINT SUIT LE RÉGLAGE, SUR LE CHEMIN DU PROFESSEUR ────────
+//
+// RÉMY : « il faut se fier au paramètre, sur le pdf un point est représenté
+// par un point alors que dans mes options j'avais mis une croix ».
+//
+// Des épreuves tiennent déjà la règle sous Node (`tests/pointEtSonNom.test
+// .mjs`), et elles y posent `data-point` à la main. Ce qu'elles ne peuvent pas
+// dire : que le réglage de l'interface ARRIVE jusqu'à cet attribut, et que
+// l'aperçu redessiné après coup en tienne compte. C'est tout le trajet, et il
+// ne se mesure que dans un navigateur.
+//
+// On passe par `state.setStylePoint`, qui est EXACTEMENT ce que le bouton des
+// réglages appelle (`js/app.js`, les boutons `[data-point]`) : un cran plus
+// bas que le clic, mais pas un cran plus bas que l'application.
+for (const style of ['disque', 'croix']) {
+    const attendu = style === 'disque';
+    await s.page.evaluate(async (st) => {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+        const { state } = await import('./js/core/state.js');
+        await state.setStylePoint(st);
+        const cat = await import('./js/data/catalog.js');
+        const ps = await import('./js/ui/printSheet.js');
+        const e = cat.exercices.find(x => x.id === 'geo-codage-lire');
+        ps.ouvrirFicheModal(e, { ...(e.params || {}) }, null, { flottant: false });
+    }, style);
+    await dormir(3500);
+    const vu = await s.page.evaluate(() => {
+        const ap = document.querySelector('#fp-apercu');
+        if (!ap) return null;
+        return {
+            marques: ap.querySelectorAll('svg .eg-point').length,
+            disques: ap.querySelectorAll('svg circle.eg-point').length,
+            racine: document.documentElement.dataset.point || ''
+        };
+    });
+    dire(!!vu && vu.racine === style, `le réglage « ${style} » arrive à la page`,
+        vu ? `data-point = « ${vu.racine} »` : 'aucun aperçu');
+    dire(!!vu && vu.marques > 0 && (vu.disques > 0) === attendu,
+        `ET LA FEUILLE DESSINE ${attendu ? 'DES DISQUES' : 'DES CROIX'}`,
+        vu ? `${vu.marques} marque(s), dont ${vu.disques} disque(s)` : '');
+}
+
+// ET L'ON REMET « le milieu » SOUS LES YEUX avant la suite : le PDF se
+// télécharge depuis l'aperçu OUVERT, et la mesure d'après cherche le mot
+// « milieu » dedans. La boucle ci-dessus laissait « lire un codage » à
+// l'écran, et cette mesure-là rougissait sans que rien ne soit cassé.
+await s.page.evaluate(async () => {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+    const cat = await import('./js/data/catalog.js');
+    const ps = await import('./js/ui/printSheet.js');
+    const e = cat.exercices.find(x => x.id === 'geo-milieu');
+    ps.ouvrirFicheModal(e, { ...(e.params || {}) }, null, { flottant: false });
+});
+await dormir(3500);
 
 // ── LE CORRIGÉ COCHE LA BONNE ──────────────────────────────────────────────
 //

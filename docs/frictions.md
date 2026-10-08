@@ -3400,3 +3400,105 @@ lignes** — 2026-10-01
   les points faits s'y cochent au fur et à mesure. Une revue de vingt-deux
   points ne tient pas dans une session, et ce qui n'est pas sur le disque
   n'existe pas à la suivante.
+
+## Reculer une valeur dans le plan ne recule pas celle qu'un rendu écrit en dur — 2026-10-08
+
+- **Ce que je voulais faire** : écarter la pointe d'un intervalle infini de la
+  pointe de l'axe, qui se superposaient. Rémy : « attention à la présentation ».
+- **Ce qui a coûté** : une correction qui marchait sur le papier et CASSAIT
+  l'écran, sans que rien ne le dise. `planDAxe` rend `x1`/`x2` ; le rendu papier
+  y pose sa pointe, mais `axeHtml` écrivait la sienne en dur, en `L − 3`.
+  Reculer le plan a donc laissé, à l'écran, une pointe flottant à neuf unités
+  de sa barre. Trouvé parce que j'ai ouvert le SVG pour regarder, pas parce que
+  quelque chose a rougi — la sonde `ficheAxes.mjs` ne mesure que le papier.
+- **Combien de fois** : ||| — c'est la troisième forme du même défaut. La
+  racine carrée (deux fois) et les figures de géométrie ont toutes payé « on ne
+  redessine pas de l'autre côté ». La leçon était écrite ; elle disait
+  « extraire le plan », et le plan EXISTAIT. Ce qui manquait, c'est que l'un des
+  deux lecteurs ne s'en servait pas.
+- **Ce qui manque** : la règle, que je formule enfin dans les deux sens : **avant
+  de déplacer une valeur DANS un plan, chercher qui l'écrit en dur en DEHORS.**
+  `grep` sur la constante littérale (`L - 3`, `0.72`) coûte dix secondes et
+  répond. Et la garde qui tient : confronter les deux dessins l'un à l'autre
+  (`tests/axeSurLaFiche.test.mjs`, « ET L'ÉCRAN POSE SA POINTE OÙ LE PLAN LA
+  MET »), jamais chacun à un nombre.
+
+## Un chiffre supposé dans un commentaire fait autorité pendant une semaine — 2026-10-08
+
+- **Ce que je voulais faire** : répondre à « Les trèfles prennent toutes une
+  page sur le pdf ».
+- **Ce qui a coûté** : le commentaire qui défendait « un champ par page »
+  annonçait, pour écarter l'autre choix, que deux par page ramèneraient les
+  trèfles « à quatre millimètres ». Je l'avais écrit sans le mesurer. C'est
+  **10,2 mm** sur le palier par défaut — deux fois et demie le chiffre annoncé,
+  et exactement la taille d'un trèfle de revue. Rémy a vécu une semaine avec des
+  feuilles deux fois trop grandes parce que ma propre phrase disait de ne pas
+  essayer.
+- **Combien de fois** : || — la deuxième entrée sur ce thème. La première disait
+  « un commentaire qui cite une mesure fait autorité, et plus personne ne la
+  refait » ; celle-ci ajoute le cas plus dangereux : **un commentaire qui cite
+  une mesure QU'ON N'A PAS FAITE**.
+- **Ce qui manque** : une convention d'écriture, et je la prends. **Un chiffre
+  dans un commentaire s'écrit avec la commande qui le refait**, ou il s'écrit
+  « supposé ». `node tools/tailleTrefle.mjs` existe maintenant pour celui-ci :
+  deux cents millisecondes, et le tableau entier.
+
+## Le fichier de paires de `remplacer.mjs` jetait sa propre pile d'appels — 2026-10-08
+
+- **Ce que je voulais faire** : écrire trois remplacements multilignes dans
+  `intervalles.js`.
+- **Ce qui a coûté** : un aller-retour. J'avais écrit les paires sous la forme
+  `[{ "ancien": …, "nouveau": … }]`, qui vient tout aussi naturellement sous la
+  main que `[["ancien", "nouveau"]]`. L'outil rendait un `TypeError: object is
+  not iterable` DEPUIS SES ENTRAILLES, sur une pile d'appels qui ne nommait même
+  pas le fichier de paires — l'erreur se lit comme un outil cassé, pas comme une
+  entrée mal formée.
+- **Combien de fois** : | — mais le fichier de paires s'écrit à la main ou par
+  un script jetable à chaque usage multiligne, c'est-à-dire plusieurs fois par
+  séance.
+- **Ce qui manque** : rien de plus, c'est fait. `remplacer.mjs` **et**
+  `epreuveTombe.mjs` acceptent désormais les deux formes et refusent tout le
+  reste EN NOMMANT la paire fautive. Deux outils voisins qui n'acceptaient pas
+  le même format étaient eux-mêmes la moitié de la friction.
+
+## Une garde qui lit la source tombe sur une réécriture qui ne change rien — 2026-10-08
+
+- **Ce que je voulais faire** : rapprocher les noms de points de leurs points,
+  ce qui demandait d'essayer les trois tours de places DANS L'ORDRE.
+- **Ce qui a coûté** : quatre minutes de `npm test` pour apprendre que
+  `tests/nomsDeFigure.test.mjs` cherchait, à la lettre,
+  `for (const rayon of [...])` et `for (let i = 0; i < 12; i++)` dans la source
+  de `pointsDroitesSvg.js`. La boucle est devenue un `map` et un `Array.from`,
+  le comportement n'a pas bougé d'un pixel, et l'épreuve est tombée. Une
+  épreuve rouge sur un code juste coûte deux fois : on cherche d'abord le
+  défaut qui n'existe pas.
+- **Combien de fois** : ||| — la troisième. Les deux premières disaient déjà
+  « une garde qui lit la source trouve son propre commentaire ». Celle-ci ajoute
+  l'autre moitié : **elle tombe aussi quand on réécrit sans rien changer**, ce
+  qui décourage exactement les réécritures qu'on voudrait encourager.
+- **Ce qui manque** : rien d'outillable, et la règle est simple à tenir. Une
+  garde lit la source quand elle n'a pas le choix — un `paint-order` en CSS, un
+  import interdit. Dès qu'une PROPRIÉTÉ se mesure sur le résultat, c'est le
+  résultat qu'on mesure. L'épreuve réécrite ici compte les noms qu'un trait
+  traverse (zéro sur 369) au lieu de compter les tours dans le code.
+
+## Le harnais qui garde tous les commits rougissait au hasard — 2026-10-08
+
+- **Ce que je voulais faire** : lire le verdict de `node tools/boutEnBout.mjs`
+  avant de committer, comme le veut `CLAUDE.md`.
+- **Ce qui a coûté** : dix minutes et un `git worktree` monté exprès. Le verdict
+  annonçait « 1 POINT À REPRENDRE » sur la mesure « le billet ouvre la porte
+  tout seul ». Mes modifications ne touchaient que du dessin ; il a fallu
+  relancer la sonde sur un arbre propre pour écarter ma faute, puis la relancer
+  sur le mien — où elle est passée. C'était un `waitForTimeout(3500)` sur un
+  aller-retour réseau.
+- **Combien de fois** : | pour celle-ci, mais le mal est générique : **une sonde
+  qui attend une DURÉE au lieu d'attendre la CHOSE mesurée finit par rougir sur
+  un logiciel intact**, et le coût ne se paie pas une fois — il se paie à chaque
+  fois qu'on se demande si c'est sérieux.
+- **Ce qui manque** : rien d'outillable ; la ligne est devenue un
+  `waitForFunction` sur la disparition de la porte, avec `.catch` pour que la
+  mesure CONSTATE l'échec au lieu d'arrêter la sonde. **La règle : dans une
+  sonde, `waitForTimeout` ne doit jamais être ce qui décide qu'une mesure est
+  prête.** Le dépôt en porte d'autres ; on les corrigera au fur et à mesure
+  qu'elles se signaleront.

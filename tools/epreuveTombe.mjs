@@ -31,7 +31,8 @@
 //
 //     node tools/epreuveTombe.mjs <essai> <source> --depuis <paires.json>
 //
-// où le fichier contient un tableau de paires `[ancien, nouveau]`. On en
+// où le fichier contient un tableau de paires `[ancien, nouveau]` — ou
+// d'objets `{ "ancien": …, "nouveau": … }`, comme `remplacer.mjs`. On en
 // applique plusieurs d'un coup quand un seul défaut se répare à deux endroits.
 //
 // ET DANS UN FICHIER QUI PORTE VINGT ÉPREUVES, ON DIT LAQUELLE DOIT TOMBER :
@@ -89,10 +90,20 @@ if (ancien === '--depuis') {
         console.error(`${nouveau} ne se lit pas : ${e.message}`);
         process.exit(2);
     }
+    // LES DEUX FORMES, COMME `remplacer.mjs`. Le fichier de paires s'écrit à
+    // la main ou par un script jetable, et `[{ ancien, nouveau }]` vient tout
+    // aussi naturellement que `[[ancien, nouveau]]`. Deux outils voisins qui
+    // acceptent des formats différents, c'est un aller-retour à chaque usage.
+    if (Array.isArray(paires)) {
+        paires = paires.map((p) => (p && !Array.isArray(p) && typeof p === 'object'
+            && typeof p.ancien === 'string' && typeof p.nouveau === 'string'
+            ? [p.ancien, p.nouveau] : p));
+    }
     if (!Array.isArray(paires) || !paires.length
         || paires.some((p) => !Array.isArray(p) || p.length !== 2
             || typeof p[0] !== 'string' || typeof p[1] !== 'string')) {
-        console.error(`${nouveau} doit contenir un tableau de paires [ancien, nouveau].`);
+        console.error(`${nouveau} doit contenir un tableau de paires [ancien, nouveau]`
+            + ' — ou d\'objets { "ancien": …, "nouveau": … }.');
         process.exit(2);
     }
 } else if (!essai || !source || ancien === undefined || nouveau === undefined) {

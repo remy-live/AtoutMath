@@ -1989,10 +1989,31 @@ function geoTrefles(item, slot) {
     // LE CHAMP GARDE SES PROPORTIONS. Étiré, les trèfles deviendraient des
     // ovales et l'on ne compterait plus leurs feuilles — ce qui est la seule
     // chose que l'exercice demande.
-    const k = Math.min(b.w / m.largeur, b.h / m.hauteur);
-    const x0 = b.x + (b.w - m.largeur * k) / 2;
-    const y0 = b.y + (b.h - m.hauteur * k) / 2;
-    return { b, m, k, x0, y0, rayon: m.rayon * k,
+    // LE RAYON DES TRÈFLES DU BORD COMPTE DANS L'ENCOMBREMENT.
+    //
+    // `largeur` et `hauteur` sont les bornes des CENTRES ; un trèfle posé sur
+    // le bord déborde d'un rayon de chaque côté. Mesuré sur la feuille : les
+    // trèfles des quatre bords sortaient du cadre, et ceux du haut recouvraient
+    // le titre « Champ 1 ».
+    //
+    // On calcule donc l'échelle sur l'étendue DESSINÉE, bords compris — ce qui
+    // se résout d'un trait, les deux étant en unités de vue.
+    const R = m.rayon;
+    const etenduW = m.largeur + 2 * R, etenduH = m.hauteur + 2 * R;
+    const k = Math.min(b.w / etenduW, b.h / etenduH);
+    const x0 = b.x + (b.w - etenduW * k) / 2 + R * k;
+    // LE CHAMP SE POSE SOUS SON TITRE, il ne flotte pas au milieu du bloc.
+    //
+    // Deux champs côte à côte, centrés chacun dans un bloc deux fois plus haut
+    // que large, laissaient une bande blanche en haut et en bas — et « Champ 1 »
+    // se retrouvait seul à dix centimètres de son champ.
+    const y0 = b.y + R * k;
+    return { b, m, k, x0, y0, rayon: R * k,
+        // LE CADRE DU CHAMP. Deux champs sur la même page se touchaient par le
+        // milieu et se lisaient comme un seul : on ne savait plus où chercher
+        // les trois trèfles du premier. Un cadre, c'est aussi ce qu'une revue
+        // imprime autour de ce jeu.
+        cadre: { x: x0 - R * k, y: y0 - R * k, w: etenduW * k, h: etenduH * k },
         centre: (t) => ({ x: x0 + t.x * k, y: y0 + t.y * k }) };
 }
 
@@ -2034,7 +2055,9 @@ function treflesPreviewHtml(item, slot, k, solution) {
     const d = (depart, courbes) => `M${T(depart.x)},${T(depart.y)} `
         + courbes.map(([a, b2, z]) =>
             `C${T(a.x)},${T(a.y)} ${T(b2.x)},${T(b2.y)} ${T(z.x)},${T(z.y)}`).join(' ');
-    let out = '';
+    let out = `<rect x="${T(g.cadre.x)}" y="${T(g.cadre.y)}"
+        width="${T(g.cadre.w)}" height="${T(g.cadre.h)}" rx="${T(1.5)}" fill="none"
+        stroke="rgb(${ENCRE.grille.join(',')})" stroke-width="${T(0.3)}"/>`;
     g.m.trefles.forEach(t => {
         const p = plantDUnTrefle(g, t);
         out += `<path d="${d(p.pedoncule.depart, p.pedoncule.courbes)}" fill="none"
@@ -2085,6 +2108,9 @@ function dessinerTreflesPdf(doc, item, slot, solution) {
         });
         doc.lines(deltas, depart.x, depart.y, [1, 1], style, style === 'FD' || style === 'F');
     };
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(g.cadre.x, g.cadre.y, g.cadre.w, g.cadre.h, 1.5, 1.5, 'S');
     doc.setLineWidth(0.22);
     doc.setDrawColor(...ENCRE.trait);
     doc.setFillColor(255, 255, 255);
@@ -2375,13 +2401,39 @@ export const RENDUS_CASSETETE = {
         previewGrille: treflesPreviewHtml,
         pdfGrille: dessinerTreflesPdf,
         nomBloc: 'Champ', nomBlocs: 'champs',
-        // UN SEUL CHAMP PAR PAGE. Ce n'est pas un choix de mise en page, c'est
-        // l'exercice : chercher trois trèfles parmi quatre-vingt-dix demande
-        // qu'ils soient à la taille où l'on compte des feuilles. Deux champs
-        // par page les ramènent à quatre millimètres, et il ne reste plus
-        // qu'une tache verte à regarder.
-        disposition: { cols: 1, rows: 1, maxCols: 1, maxRows: 2 },
-        parLigneDefaut: 1,
+        // DEUX CHAMPS PAR PAGE — et le chiffre que j'avais mis ici était
+        // SUPPOSÉ, pas mesuré.
+        //
+        // RÉMY : « Les trèfles prennent toutes une page sur le pdf. » Ce même
+        // commentaire annonçait, pour justifier l'inverse, que deux champs par
+        // page ramèneraient les trèfles « à quatre millimètres ». Personne ne
+        // l'avait vérifié, et il faisait autorité depuis.
+        //
+        // MESURÉ cette fois — diamètre d'un trèfle sur la feuille, en
+        // millimètres (`node tools/tailleTrefle.mjs`, qui refait le calcul de
+        // la mise en page) :
+        //
+        //                        1 par page   2 côte à côte   2 empilés
+        //   la promenade (40)      19,4           12,4           9,2
+        //   le pré (90)            16,1           10,2           7,6
+        //   le champ (160)         13,5            8,6           6,4
+        //   le grand pré (240)     11,8            7,5           5,6
+        //
+        // Un trèfle de la revue que Rémy a apportée fait six à huit
+        // millimètres. À une par page, le dessin était donc DEUX FOIS trop
+        // gros, et il fallait une feuille entière pour trois trèfles à
+        // trouver.
+        //
+        // CÔTE À CÔTE, ET NON EMPILÉS. Le champ est plus large que haut : à
+        // deux rangées, c'est la HAUTEUR qui borne, on perd un quart de la
+        // taille et la largeur de la page reste blanche. La même raison fait
+        // que quatre par page ne rend rien de plus que deux empilés — c'est la
+        // même colonne de chiffres.
+        //
+        // La bande blanche sous les deux champs n'est pas perdue : c'est là que
+        // la main se pose pendant qu'on cherche.
+        disposition: { cols: 2, rows: 1, maxCols: 2, maxRows: 2 },
+        parLigneDefaut: 2,
         proportions: { w: 4, h: 3 }
     },
 };

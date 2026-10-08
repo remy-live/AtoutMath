@@ -465,31 +465,88 @@ function axesDeLUnion(item, solution) {
 
 function unionPreviewHtml(item, slot, k, solution) {
     const g = plantDesAxes(item, slot, { axes: axesDeLUnion(item, solution) });
-    return enonceHtml(g, k, (item.prompt && item.prompt.papier) || '')
+    return enonceHtml(g, k, enoncesDeLUnion(item))
         + `<svg class="fx-abs" style="position:absolute; left:0; top:0; overflow:visible"
             width="1" height="1">${g.axes.map((a, i) =>
     axeHtmlPapier(g, i, a, k, true)).join('')}</svg>`;
 }
 
+/**
+ * LES DEUX LIGNES DE L'ÉNONCÉ — une par intervalle, jamais coupées.
+ *
+ * Le générateur les prépare (`meta.enonces`) parce que lui seul sait écrire un
+ * intervalle. Le repli découpe l'ancienne phrase sur le « et », pour qu'une
+ * feuille rouverte depuis un parcours enregistré hier s'affiche quand même.
+ */
+function enoncesDeLUnion(item) {
+    const m = item.meta || {};
+    if (Array.isArray(m.enonces) && m.enonces.length) return m.enonces;
+    const brut = (item.prompt && item.prompt.papier) || '';
+    return brut.includes(' et J = ') ? brut.split(' et ') : brut;
+}
+
 function dessinerUnionPdf(doc, item, slot, solution) {
     const g = plantDesAxes(item, slot, { axes: axesDeLUnion(item, solution) });
-    enoncePdf(doc, g, (item.prompt && item.prompt.papier) || '');
+    enoncePdf(doc, g, enoncesDeLUnion(item));
     g.axes.forEach((a, i) => axePdf(doc, g, i, a, true));
 }
 
 // ── L'ÉNONCÉ, DANS SA COLONNE DE GAUCHE ─────────────────────────────────────
 
+/**
+ * L'ÉNONCÉ, DANS SA COLONNE DE GAUCHE.
+ *
+ * Une CHAÎNE se centre en face des axes — c'est le cas de la valeur absolue,
+ * qui n'a qu'une droite et un énoncé court.
+ *
+ * UN TABLEAU DE LIGNES se pose EN HAUT, une ligne par entrée, et chacune reste
+ * entière. RÉMY : « attention à la présentation et au mauvais retour à la ligne
+ * pour union et intersection d'intervalle ». Deux défauts, et le second causait
+ * le premier :
+ *
+ *   · « I = ]−4 ; −1[ et J = ]−2 ; 2[ » tenait sur une seule ligne dans une
+ *     colonne large d'un quart de page. Le navigateur la coupait où il pouvait,
+ *     donc au milieu d'un intervalle ;
+ *   · centré sur la hauteur du bloc, cet énoncé se retrouvait en face du
+ *     DEUXIÈME axe — celui de J — et se lisait comme s'il ne nommait que lui.
+ *
+ * Une ligne par intervalle, posées en haut : chaque ligne reste entière, et le
+ * bloc se lit de haut en bas comme il s'écrit.
+ */
 function enonceHtml(g, k, texte) {
     const T = (v) => (v * k).toFixed(2);
+    const lignes = Array.isArray(texte) ? texte : null;
+    const haut = lignes
+        ? g.b.y + g.marge + g.taille * 0.2
+        : g.b.y + g.b.h / 2 - g.taille;
+    // `white-space:nowrap` : UN INTERVALLE NE SE COUPE PAS NON PLUS EN SON
+    // MILIEU. Les séparateurs de « ]−4 ; −1[ » sont des espaces ordinaires —
+    // le navigateur a donc deux endroits où couper DANS l'intervalle, et une
+    // colonne plus étroite (une feuille en deux colonnes, un énoncé plus long)
+    // lui en donnerait l'occasion. Une ligne par intervalle ne suffit pas si
+    // la ligne elle-même peut se rompre : on le lui interdit.
+    const corps = lignes
+        ? lignes.map((l, i) =>
+            `<div style="white-space:nowrap; margin-top:${i ? T(g.taille * 0.55) : 0}px">`
+                + `${echapperSheet(l)}</div>`).join('')
+        : echapperSheet(texte);
     return `<div class="fx-abs" style="position:absolute; left:${T(g.b.x)}px;
-        top:${T(g.b.y + g.b.h / 2 - g.taille)}px; width:${T(g.gaucheW - 2)}px;
-        font-size:${T(g.taille)}px; line-height:1.3">${echapperSheet(texte)}</div>`;
+        top:${T(haut)}px; width:${T(g.gaucheW - 2)}px;
+        font-size:${T(g.taille)}px; line-height:1.3">${corps}</div>`;
 }
 
 function enoncePdf(doc, g, texte) {
     doc.setTextColor(...ENCRE.texte);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(g.taille * 2.83);
+    // UN TABLEAU DE LIGNES NE PASSE PAS PAR `splitTextToSize` : chacune est
+    // déjà entière, et la découper serait précisément le défaut qu'on répare.
+    // Voir le long commentaire de `enonceHtml`.
+    if (Array.isArray(texte)) {
+        texte.forEach((l, i) => doc.text(String(l), g.b.x,
+            g.b.y + g.marge + g.taille + i * g.taille * 1.85));
+        return;
+    }
     const lignes = doc.splitTextToSize(String(texte), g.gaucheW - 2);
     lignes.forEach((l, i) =>
         doc.text(l, g.b.x, g.b.y + g.b.h / 2 - g.taille * 0.2 + i * g.taille * 1.3));

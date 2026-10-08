@@ -29,7 +29,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planDAxe } from '../js/core/generators/intervalles.js';
+import {
+    planDAxe, axeHtml, intervalleTexte, ensemblistesGenerator
+} from '../js/core/generators/intervalles.js';
+import { RENDUS_AXES } from '../js/ui/fiches/axes.js';
 import { valeurAbsolueGenerator } from '../js/core/generators/valeurAbsolue.js';
 import { solutionTexte } from '../js/core/valeursAbsolues.js';
 import { makeRng } from '../js/core/ids.js';
@@ -132,4 +135,92 @@ test('LE BARREAU 1 NE S\'IMPRIME PAS SUR UNE FICHE D\'AXES', () => {
     const ecran = tirer('lire', false);
     assert.equal(ecran.meta.marche, 'lire');
     assert.ok(!ecran.meta.solution, 'à l\'écran, c\'est bien la question de lecture');
+});
+
+// ── « ATTENTION À LA PRÉSENTATION » — les deux défauts de l'union ───────────
+//
+// RÉMY : « Attention à la présentation et au mauvais retour à la ligne pour
+// union et intersection d'intervalle. »
+
+test('L\'ÉNONCÉ DE L\'UNION TIENT EN DEUX LIGNES, ET AUCUNE NE SE COUPE', () => {
+    // MESURÉ AVANT : `prompt.papier` était UNE phrase — « I = ]−4 ; −1[ et
+    // J = ]−2 ; 2[ » — posée dans une colonne large d'un quart de page. Le
+    // navigateur la coupait où il pouvait, c'est-à-dire au milieu d'un
+    // intervalle : « I = ]−4 ; » sur une ligne, « −1[ et J = … » sur la
+    // suivante. Cela ne se lit plus comme un intervalle, cela se lit comme une
+    // faute de frappe.
+    //
+    // DEUX RÈGLES, ET IL FAUT LES DEUX : une ligne par intervalle, ET une
+    // ligne qu'on ne peut pas rompre. Les séparateurs de « ]−4 ; −1[ » sont
+    // des espaces ORDINAIRES : sans interdiction, une colonne plus étroite
+    // rendrait le défaut tel quel.
+    for (let i = 0; i < 12; i++) {
+        const q = ensemblistesGenerator.generate({},
+            { rng: makeRng('u' + i), index: i, total: 12, papier: true, themesExclus: [] });
+        const l = q.meta.enonces;
+        assert.ok(Array.isArray(l) && l.length === 2,
+            `l'énoncé n'est pas en deux lignes : ${JSON.stringify(l)}`);
+        assert.equal(l[0], `I = ${intervalleTexte(q.meta.I)}`);
+        assert.equal(l[1], `J = ${intervalleTexte(q.meta.J)}`);
+        // Et chaque ligne porte un intervalle ENTIER : ses deux bornes et ses
+        // deux crochets. C'est ce que la coupure détruisait.
+        l.forEach(ligne => assert.match(ligne, /^[IJ] = [[\]].+ ; .+[[\]]$/,
+            `« ${ligne} » n'est pas un intervalle entier`));
+    }
+
+    const q = ensemblistesGenerator.generate({},
+        { rng: makeRng('u0'), index: 0, total: 2, papier: true, themesExclus: [] });
+    const vu = RENDUS_AXES.unionInterAxe.previewGrille(
+        q, { boite: { x: 10, y: 10, w: 240, h: 70 } }, 3, false);
+    const divs = vu.match(/<div style="white-space:nowrap[^>]*>([^<]*)<\/div>/g) || [];
+    assert.equal(divs.length, 2,
+        `l'aperçu pose ${divs.length} ligne(s) insécable(s) au lieu de 2`);
+    q.meta.enonces.forEach(ligne => assert.ok(
+        divs.some(d => d.includes(ligne.replace(/</g, '&lt;'))),
+        `« ${ligne} » n'est pas sur sa propre ligne dans l'aperçu`));
+});
+
+test('UN INTERVALLE INFINI N\'EMPILE PAS SA POINTE SUR CELLE DE L\'AXE', () => {
+    // RÉMY : « attention à la présentation ». L'axe porte sa propre flèche à
+    // droite ; celle de l'intervalle non borné tombait un pixel plus loin.
+    // DEUX POINTES L'UNE SUR L'AUTRE ne se lisent pas comme deux flèches :
+    // elles se lisent comme une seule, un peu plus grasse — et l'élève ne sait
+    // plus où s'arrête l'intervalle ni où continue la droite.
+    //
+    // ON MESURE L'ÉCART, PAS LA CONSTANTE. Une épreuve qui relirait `RECUL`
+    // relirait ma propre décision ; celle-ci confronte les deux dessins.
+    const INFINI = [
+        [{ a: 1, b: null, ea: false, eb: false }],
+        [{ a: null, b: null, ea: false, eb: false }]
+    ];
+    for (const parts of INFINI) {
+        const P = planDAxe(parts, { tousLesEntiers: true });
+        const axe = P.fleches.find(f => f.role === 'axe');
+        const p = P.parts[0];
+        assert.ok(p.flecheB, 'la borne +∞ ne porte pas de flèche');
+        // Les deux pointes sont séparées d'au moins une demi-graduation : en
+        // dessous, elles se touchent à l'impression.
+        const pas = P.tics[1].x - P.tics[0].x;
+        assert.ok(axe.x - p.x2 >= pas * 0.45,
+            `les deux pointes sont à ${(axe.x - p.x2).toFixed(0)} unités l'une de `
+            + `l'autre pour une graduation de ${pas.toFixed(0)}`);
+    }
+});
+
+test('ET L\'ÉCRAN POSE SA POINTE OÙ LE PLAN LA MET', () => {
+    // LE PIÈGE, ET IL A ÉTÉ PAYÉ : `axeHtml` écrivait sa pointe EN DUR, en
+    // L − 3, pendant que le papier la lisait dans le plan. Reculer le plan
+    // corrigeait donc le papier et cassait l'écran — la pointe y restait au
+    // bord, séparée de sa barre par neuf unités de blanc.
+    //
+    // Les deux dessins partent du MÊME plan ou ils divergeront : c'est la
+    // leçon de la racine carrée, et c'est elle qu'on garde ici.
+    const parts = [{ a: null, b: null, ea: false, eb: false }];
+    const P = planDAxe(parts);
+    const svg = axeHtml(parts);
+    const pointes = [...svg.matchAll(/<path d="M ([\d.]+) [\d.]+ l -?8 /g)]
+        .map(m => Number(m[1]));
+    assert.deepEqual(pointes.sort((a, b) => a - b), [P.parts[0].x1, P.parts[0].x2],
+        `l'écran pose ses pointes en ${pointes.join(' et ')}, le plan les met en `
+        + `${P.parts[0].x1} et ${P.parts[0].x2}`);
 });

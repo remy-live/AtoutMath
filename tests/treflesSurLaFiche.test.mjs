@@ -24,6 +24,8 @@ import {
 } from '../js/core/champDeTrefles.js';
 import { treflesFicheGenerator } from '../js/core/generators/treflesFiche.js';
 import { makeRng } from '../js/core/ids.js';
+// LE RENDU LUI-MÊME : on mesure ce qui est DESSINÉ, pas ce qui est semé.
+import { RENDUS_CASSETETE } from '../js/ui/fiches/casseTete.js';
 
 /** Les nombres d'un chemin SVG, dans l'ordre. */
 const nombres = (d) => (d.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
@@ -118,4 +120,52 @@ test('LE CHAMP TIENT DANS SA BOÎTE', () => {
             assert.ok(t.y >= 0 && t.y <= m.hauteur, `${palier} : y = ${t.y} hors de ${m.hauteur}`);
         });
     }
+});
+
+test('ET CE QUI EST DESSINÉ TIENT DANS LE BLOC, PAS SEULEMENT LES CENTRES', () => {
+    // L'ÉPREUVE AU-DESSUS NE VOIT PAS CE DÉFAUT-LÀ, et c'est pour cela que
+    // celle-ci existe. Elle compare les CENTRES à `largeur`/`hauteur`, qui
+    // sont justement les bornes des centres : elle est verte par
+    // construction. Un trèfle posé sur le bord déborde d'un RAYON, et c'est le
+    // dessin qui sortait du cadre — sur la feuille, les trèfles du haut
+    // passaient par-dessus le titre « Champ 1 ».
+    //
+    // On confronte donc le DESSIN à sa boîte, en relisant les coordonnées que
+    // le rendu écrit vraiment. Une mesure qui ne regarde pas ce que l'élève
+    // voit ne mesure pas son problème.
+    const B = { x: 20, y: 30, w: 120, h: 80 };
+    for (const palier of Object.keys(PALIERS)) {
+        const q = treflesFicheGenerator.generate({ palier },
+            { rng: makeRng('bord'), index: 0, total: 1, papier: true });
+        const svg = RENDUS_CASSETETE.trefles.previewGrille(q, { boite: B }, 1, false);
+        // LES POINTS SUR LA COURBE, ET EUX SEULS. Un `C` porte deux points de
+        // CONTRÔLE, qui ne sont pas dessinés : une courbe de Bézier reste dans
+        // l'enveloppe de ses points, jamais dessus. Les compter rendait la
+        // mesure fausse de deux dixièmes de millimètre — assez pour la faire
+        // rougir sur un dessin correct, ce qui est la pire espèce d'épreuve.
+        const pts = [...svg.matchAll(/([MC])([-\d., ]+)/g)].flatMap(m => {
+            const p = m[2].trim().split(/\s+/)
+                .map(v => v.split(',').map(Number))
+                .filter(v => v.length === 2 && v.every(Number.isFinite));
+            return m[1] === 'M' ? p : p.slice(-1);
+        });
+        assert.ok(pts.length > 200, `${palier} : ${pts.length} point(s) dessinés`);
+        const dehors = pts.filter(([x, y]) =>
+            x < B.x - 0.01 || x > B.x + B.w + 0.01
+            || y < B.y - 0.01 || y > B.y + B.h + 0.01);
+        assert.equal(dehors.length, 0,
+            `${palier} : ${dehors.length} point(s) hors du bloc, par exemple `
+            + `(${(dehors[0] || []).map(v => v.toFixed(1)).join(' ; ')}) `
+            + `pour un bloc [${B.x} ; ${B.x + B.w}] × [${B.y} ; ${B.y + B.h}]`);
+    }
+});
+
+test('DEUX CHAMPS PAR PAGE, PAS UN — et c\'est ce que Rémy a demandé', () => {
+    // « Les trèfles prennent toutes une page sur le pdf. » Mesuré : à un champ
+    // par page le trèfle fait 16,1 mm sur le palier par défaut, deux fois la
+    // taille d'un trèfle de revue. Voir `node tools/tailleTrefle.mjs`.
+    const r = RENDUS_CASSETETE.trefles;
+    assert.equal(r.parLigneDefaut, 2, 'la feuille sort encore un champ par ligne');
+    assert.ok(r.disposition.cols >= 2 && r.disposition.maxCols >= 2,
+        `disposition ${JSON.stringify(r.disposition)}`);
 });

@@ -37,6 +37,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+// POUR MESURER SUR LES FIGURES, ET NON SUR LA SOURCE — voir plus bas.
+import { planDeLaScene, planFigureCodee } from '../js/core/pointsDroitesSvg.js';
+import { elementsGeometrieGenerator } from '../js/core/generators/elementsGeometrie.js';
+import { makeRng } from '../js/core/ids.js';
 
 const SVG = readFileSync(new URL('../js/core/pointsDroitesSvg.js', import.meta.url), 'utf8');
 const CSS = readFileSync(new URL('../css/modules.css', import.meta.url), 'utf8')
@@ -64,14 +68,54 @@ test('LA NOTE SE PREND SUR LA LETTRE, ET SUR LA PLACE QU\'ON PRENDRA', () => {
         'ramener l\'étiquette APRÈS le choix peut la reposer sur le trait évité');
 });
 
-test('VINGT-QUATRE PLACES, PAS HUIT', () => {
-    // Un point de croisement n'a aucune place dégagée parmi huit.
-    const m = /for \(const rayon of \[([^\]]*)\]\)/.exec(SVG);
-    assert.ok(m, 'les places doivent se décliner sur plusieurs distances');
-    assert.ok(m[1].split(',').length >= 2,
-        `une seule distance ne donne pas d'échappatoire (${m[1]})`);
-    assert.match(SVG, /for \(let i = 0; i < 12; i\+\+\)/,
-        'douze directions : huit laissent des trous aux croisements');
+test('VINGT-QUATRE PLACES, PAS HUIT — mesuré sur les figures, plus sur le code', () => {
+    // CETTE ÉPREUVE LISAIT LA SOURCE, et elle est tombée le jour où l'on a
+    // réécrit la boucle sans rien changer à ce qu'elle fait — les trois
+    // distances étaient devenues un `map`, les douze directions un
+    // `Array.from`. C'est la friction du journal, mot pour mot : « une garde
+    // qui lit la source trouve son propre commentaire ».
+    //
+    // Elle regarde donc maintenant LE RÉSULTAT, qui est la seule chose dont
+    // Rémy se plaignait : « ce serait bien que le libellé des points ne soient
+    // pas coupé ».
+    const DEMI = 9;
+    const distSeg = (p, a, b) => {
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy)
+            / ((dx * dx + dy * dy) || 1)));
+        return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+    };
+
+    let noms = 0, touches = 0;
+    const ecarts = new Set();
+    for (let i = 0; i < 60; i++) {
+        const it = elementsGeometrieGenerator.generate(
+            { notion: ['appartenance', 'codage', 'milieu'][i % 3] },
+            { rng: makeRng('places' + i), index: i, total: 60, themesExclus: [] });
+        const m = it.meta || {};
+        const plan = m.scene ? planDeLaScene(m.scene)
+            : m.figure ? planFigureCodee(m.figure) : null;
+        if (!plan) continue;
+        // LES TRAITS RÉELLEMENT DESSINÉS, dépassement compris : c'est tout le
+        // sujet de la première épreuve de ce fichier.
+        const segs = plan.traits
+            ? plan.traits.map(t => [{ x: t.x1, y: t.y1 }, { x: t.x2, y: t.y2 }])
+            : plan.segments.map(s => [s.A, s.B]);
+        plan.points.forEach(p => {
+            const n = plan.noms[p.nom];
+            if (!n) return;
+            noms++;
+            if (Math.min(...segs.map(([a, b]) => distSeg(n, a, b))) - DEMI < 0) touches++;
+            ecarts.add(Math.hypot(n.x - p.x, n.y - p.y).toFixed(1));
+        });
+    }
+    assert.ok(noms > 200, `${noms} noms seulement : la mesure est trop courte`);
+    assert.equal(touches, 0, `${touches} nom(s) sur ${noms} traversés par un trait`);
+    // ET LES PLACES SE DÉCLINENT SUR PLUSIEURS DISTANCES. Un seul tour ne
+    // laisse aucune échappatoire à un point de croisement : on observe ici que
+    // plusieurs distances SERVENT vraiment, au lieu de lire qu'elles existent.
+    assert.ok(ecarts.size >= 2,
+        `toutes les étiquettes sont à la même distance (${[...ecarts].join(', ')})`);
 });
 
 test('ET LE TRAIT S\'INTERROMPT DERRIÈRE LA LETTRE', () => {
