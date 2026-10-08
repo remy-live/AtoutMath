@@ -87,10 +87,30 @@ const apercu = await s.page.evaluate(() => {
         // de la même épaisseur ». Mesurée sur les pixels rendus.
         hCrochet: un ? Math.round(un.querySelector('.fx-crochet').getBoundingClientRect().height) : 0,
         hBarre: un ? Math.round(un.querySelector('.fx-barre').getBoundingClientRect().height) : 0,
-        // ET SE TOUCHENT-ILS ? Le bord droit du crochet et le bord gauche de la
-        // barre : c'est là que Rémy voyait la rupture.
-        ecart: un ? Math.round((un.querySelector('.fx-barre').getBoundingClientRect().left
-            - un.querySelector('.fx-crochet').getBoundingClientRect().right) * 10) / 10 : 99
+        // LA BARRE RECOUVRE-T-ELLE LE PLAT DU CROCHET ?
+        //
+        // La question n'est plus « se touchent-elles ? » et c'est une
+        // correction, pas un assouplissement. Rémy a revu la rupture des mois
+        // plus tard : « il y a un léger décalage entre la ligne horizontale et
+        // la fin du V ». Deux traits BOUT À BOUT ne peuvent pas s'aligner —
+        // chaque <svg> est rastérisé pour son compte, et à certaines tailles
+        // l'un arrondit d'un pixel d'appareil de plus que l'autre. La barre
+        // part donc AVANT le sommet du crochet et le recouvre entièrement : le
+        // haut du trait est le sien d'un bout à l'autre.
+        //
+        // Ce qu'on garde ici, c'est que ce recouvrement existe. Qu'il suffise
+        // se mesure sur l'ENCRE, et c'est `tools/jonctionRacine.mjs` qui le
+        // fait, à onze tailles — parce qu'un défaut d'arrondi ne se voit pas à
+        // la taille où l'on mesure, mais à celle où l'on regarde.
+        recouvrement: un
+            ? Math.round((un.querySelector('.fx-crochet').getBoundingClientRect().right
+                - un.querySelector('.fx-barre').getBoundingClientRect().left) * 10) / 10
+            : -99,
+        // Le plat du crochet : les 18 % de droite de sa largeur.
+        platDuCrochet: un
+            ? Math.round(un.querySelector('.fx-crochet').getBoundingClientRect().width
+                * 0.18 * 10) / 10
+            : 99
     };
 });
 dire(apercu.n >= 6, 'l\'aperçu sort un radical par question',
@@ -98,9 +118,9 @@ dire(apercu.n >= 6, 'l\'aperçu sort un radical par question',
 dire(apercu.crochet && apercu.barre,
     'et chacun est DESSINÉ — crochet et barre, comme à l\'écran',
     `crochet ${apercu.crochet} · barre ${apercu.barre}`);
-dire(Math.abs(apercu.ecart) <= 1,
-    'LE CROCHET ET LA BARRE SE REJOIGNENT — pas de rupture',
-    `${apercu.ecart} px entre les deux`);
+dire(apercu.recouvrement >= apercu.platDuCrochet,
+    'LA BARRE RECOUVRE TOUT LE PLAT DU CROCHET — pas de couture possible',
+    `${apercu.recouvrement} px de recouvrement pour un plat de ${apercu.platDuCrochet} px`);
 
 // ── 2. LE PDF, QUI EST CE QUE RÉMY IMPRIME ─────────────────────────────────
 //

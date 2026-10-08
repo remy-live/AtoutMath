@@ -854,6 +854,11 @@ export const calculExercises = [
         id: 'logi-strimko', title: 'Strimko',
         cree: '2026-10-05',
         generatorId: 'logique.strimko', activityId: 'strimko',
+        // SUR LE PAPIER AUSSI. Rémy l'a relevé dans sa revue : la grille
+        // n'existait qu'à l'écran. Les ruisseaux y sont des BANDES et non des
+        // couleurs, parce qu'une feuille passe à la photocopieuse — voir
+        // `ui/fiches/latins.js`.
+        printable: 'strimko',
         // Une erreur de placement dans une grille ne se révise pas : « case B3 »
         // n'est pas une question qu'on peut reposer hors de SA grille. Comme le
         // Mathdoku, le sudoku et le binairo.
@@ -909,6 +914,10 @@ export const calculExercises = [
         id: 'logi-approxdoku', title: 'Approxdoku',
         cree: '2026-10-05',
         generatorId: 'logique.approxdoku', activityId: 'approxdoku',
+        // SUR LE PAPIER AUSSI — voir `ui/fiches/latins.js`. La capsule y est
+        // DESSINÉE : sans elle, une chaîne n'est qu'une rangée de ronds et le
+        // « ≈ » du milieu ne sépare plus rien.
+        printable: 'approxdoku',
         // Une erreur de placement dans une grille ne se révise pas : « case B3 »
         // n'est pas une question qu'on peut reposer hors de SA grille. Comme le
         // Mathdoku, le Strimko, le sudoku et le binairo.

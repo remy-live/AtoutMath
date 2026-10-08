@@ -141,6 +141,11 @@ import { RENDUS_ELEMENTS_GEO } from './fiches/elementsGeo.js';
 // Les deux exercices avaient une fiche, mais ÉCRITE : on ne trace pas une
 // droite graduée sur un pointillé de trois centimètres.
 import { RENDUS_AXES } from './fiches/axes.js';
+// LES CARRÉS LATINS À RONDS — Strimko et Approxdoku n'avaient pas de version
+// imprimée du tout, et ce sont deux des casse-tête qu'on distribue le plus
+// volontiers. Un ruisseau y est une BANDE, pas une couleur : une feuille passe
+// à la photocopieuse.
+import { RENDUS_LATINS } from './fiches/latins.js';
 import { RENDUS_THEOREMES } from './fiches/theoremes.js';
 import { RENDUS_REPERAGE } from './fiches/reperage.js';
 import { RENDUS_NOMBRES } from './fiches/nombres.js';
@@ -296,6 +301,7 @@ export const RENDUS = {
     ...RENDUS_FIGURES,
     ...RENDUS_ELEMENTS_GEO,
     ...RENDUS_AXES,
+    ...RENDUS_LATINS,
     ...RENDUS_THEOREMES,
     ...RENDUS_REPERAGE,
     ...RENDUS_NOMBRES,

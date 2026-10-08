@@ -436,6 +436,94 @@ export function compterLesTeintes(chemin) {
  *
  * @returns {{c:number[], n:number}[]|null}
  */
+/**
+ * LE PNG DÉCODÉ, PIXEL PAR PIXEL.
+ *
+ * `couleursDe` rend un HISTOGRAMME : il dit quelles couleurs sont là, jamais
+ * OÙ elles sont. Pour « la barre et le crochet se rejoignent-ils ? », il faut
+ * la géométrie de l'encre — le haut du noir, colonne par colonne —, et la
+ * réponse ne peut pas venir de `getBoundingClientRect` : la BOÎTE d'un SVG
+ * n'est pas son TRAIT, et c'est précisément l'écart qu'on cherche.
+ *
+ * Le décodage était déjà écrit, enfermé dans `couleursDe`. Il en sort pour que
+ * la prochaine mesure de forme ne le réécrive pas : c'est la troisième fois
+ * qu'une question de Rémy porte sur un alignement de deux traits.
+ *
+ * @returns {{largeur:number, hauteur:number, voies:number, data:Buffer,
+ *            px:(x:number,y:number)=>number[],
+ *            sombre:(x:number,y:number,seuil?:number)=>boolean,
+ *            hautDeLEncre:(x:number,seuil?:number)=>?number}|null}
+ */
+export function decoderPng(chemin) {
+    const d = readFileSync(chemin);
+    let i = 8, largeur = 0, hauteur = 0, couleur = 6, profondeur = 8;
+    const morceaux = [];
+    while (i < d.length) {
+        const taille = d.readUInt32BE(i);
+        const type = d.toString('ascii', i + 4, i + 8);
+        if (type === 'IHDR') {
+            largeur = d.readUInt32BE(i + 8); hauteur = d.readUInt32BE(i + 12);
+            profondeur = d[i + 16]; couleur = d[i + 17];
+        } else if (type === 'IDAT') morceaux.push(d.subarray(i + 8, i + 8 + taille));
+        else if (type === 'IEND') break;
+        i += taille + 12;
+    }
+    if (profondeur !== 8 || (couleur !== 6 && couleur !== 2)) return null;
+    const voies = couleur === 6 ? 4 : 3;
+    const brut = zlib.inflateSync(Buffer.concat(morceaux));
+    const ligne = largeur * voies;
+    const data = Buffer.alloc(hauteur * ligne);
+    const precedent = Buffer.alloc(ligne);
+    let p = 0;
+    for (let y = 0; y < hauteur; y++) {
+        const filtre = brut[p++];
+        const courant = Buffer.from(brut.subarray(p, p + ligne));
+        p += ligne;
+        // LES CINQ FILTRES DU FORMAT PNG, et l'on ne peut en sauter aucun :
+        // chaque ligne est encodée comme une différence avec ses voisines.
+        for (let x = 0; x < ligne; x++) {
+            const a = x >= voies ? courant[x - voies] : 0;
+            const b = precedent[x];
+            const c = x >= voies ? precedent[x - voies] : 0;
+            if (filtre === 1) courant[x] = (courant[x] + a) & 255;
+            else if (filtre === 2) courant[x] = (courant[x] + b) & 255;
+            else if (filtre === 3) courant[x] = (courant[x] + ((a + b) >> 1)) & 255;
+            else if (filtre === 4) {
+                const pp = a + b - c, pa = Math.abs(pp - a), pb = Math.abs(pp - b),
+                    pc = Math.abs(pp - c);
+                courant[x] = (courant[x] + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c)) & 255;
+            }
+        }
+        courant.copy(data, y * ligne);
+        courant.copy(precedent);
+    }
+    const px = (x, y) => {
+        const o = y * ligne + x * voies;
+        return voies === 4
+            ? [data[o], data[o + 1], data[o + 2], data[o + 3]]
+            : [data[o], data[o + 1], data[o + 2], 255];
+    };
+    const sombre = (x, y, seuil = 150) => {
+        const c = px(x, y);
+        // Un pixel transparent n'a pas de couleur à l'écran : le compter, c'est
+        // inventer un fond noir qui n'existe pas.
+        return c[3] >= 40 && (c[0] + c[1] + c[2]) / 3 < seuil;
+    };
+    return {
+        largeur, hauteur, voies, data, px, sombre,
+        /** La première ligne où cette colonne est encrée, ou `null`. */
+        hautDeLEncre(x, seuil = 150) {
+            for (let y = 0; y < hauteur; y++) if (sombre(x, y, seuil)) return y;
+            return null;
+        },
+        /** La dernière ligne où cette colonne est encrée, ou `null`. */
+        basDeLEncre(x, seuil = 150) {
+            for (let y = hauteur - 1; y >= 0; y--) if (sombre(x, y, seuil)) return y;
+            return null;
+        }
+    };
+}
+
 export function couleursDe(chemin) {
     const d = readFileSync(chemin);
     let i = 8, largeur = 0, hauteur = 0, couleur = 6, profondeur = 8;

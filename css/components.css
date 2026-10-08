@@ -1064,10 +1064,27 @@ body.mobile-view #toast-container {
 .fx-crochet {
     position: absolute; left: 0; bottom: 0;
     /* Le haut du crochet est le MILIEU de la barre, et non le haut de la
-       boîte : la bordure occupe [0, N], un trait centré occuperait [−N/2,
-       +N/2]. Cette demi-épaisseur les fait coïncider — écart mesuré au banc
-       d'essai : 0,19 px, c'est-à-dire l'arrondi du navigateur. */
-    top: calc(var(--fx-trait) / 2);
+       boîte : le trait de la barre occupe [0, N], un trait centré occuperait
+       [−N/2, +N/2]. Cette demi-épaisseur les fait coïncider.
+
+       ET IL DESCEND ENCORE D'UN TIERS DE PIXEL, qui n'est pas une coquetterie.
+
+       RÉMY : « il y a un léger décalage entre la ligne horizontale et la fin
+       du V ». Les deux traits ont la même trajectoire — mesurée, 0,012 px
+       d'écart —, mais CHAQUE <svg> EST RASTÉRISÉ POUR SON COMPTE : à certaines
+       tailles l'un arrondit vers le haut et l'autre vers le bas, et le crochet
+       dépasse alors d'un pixel d'appareil AU-DESSUS de la barre. Le recouvrir
+       n'y change rien — ce qui dépasse par le haut n'est pas caché par ce qui
+       passe dessous.
+
+       Un tiers de pixel suffit à ce que l'arrondi tombe toujours du bon côté,
+       et aucun œil ne voit un V descendu de .4 px. En PIXELS et non en em :
+       c'est une garde contre la grille de l'écran, qui est en pixels.
+
+       MESURÉ, `tools/jonctionRacine.mjs`, onze corps × quatre radicandes :
+         sans ce décalage   9 cas sur 44 gardent une marche d'un pixel
+         avec               44 sur 44 d'une seule hauteur */
+    top: calc(var(--fx-trait) / 2 + .4px);
     width: .58em;
     /* LA HAUTEUR EST IMPOSÉE, ET IL LE FAUT — c'est le même piège que pour la
        barre, quelques règles plus bas, et il mordait ici aussi.
@@ -1141,9 +1158,37 @@ body.mobile-view #toast-container {
    calcul, elle est structurelle. */
 .fx-barre {
     position: absolute;
-    /* Le haut de la boîte EST le haut du radicande : le rectangle y occupe
-       [0, --fx-trait], exactement là où le crochet l'attend. */
-    left: 0; top: 0;
+    /* Le haut de la boîte EST le haut du radicande : le trait y occupe
+       [0, --fx-trait], exactement là où le crochet l'attend.
+       ET ELLE RECOUVRE TOUT LE PLAT DU CROCHET, EMBOUT COMPRIS.
+
+       C'est le cœur de la correction, et la raison tient en une phrase : DEUX
+       COUCHES SVG NE SE CALENT PAS SUR LA MÊME GRILLE DE PIXELS. Les deux
+       traits ont bien la même trajectoire — mesurée, 0,012 px d'écart —, mais
+       chaque <svg> est rastérisé pour son compte, et à certaines tailles l'un
+       arrondit vers le haut et l'autre vers le bas. On ne peut donc pas les
+       faire coïncider ; on peut seulement n'en montrer QU'UN.
+
+       Le crochet mesure .58em de large, son segment plat en occupe les 18 %
+       de droite (.1044em) et son embout rond déborde encore d'une demi-
+       épaisseur à gauche du sommet. La barre part donc de
+       .1044em + --fx-trait / 2 avant sa boîte : au-delà de ce point il n'y a
+       plus que la branche montante du V, qui est bien plus bas.
+
+       MESURÉ SUR L'ENCRE, par étapes, à deux pixels par point :
+         bout à bout             crochet 12, barre 11, jonction 13 — une encoche
+         recouvrement .075em     encoche fermée, marche d'un pixel sur les
+                                 deux colonnes du sommet
+         recouvrement .11em      34 cas sur 44 plats ; les 10 autres gardaient
+                                 un pixel dans le recouvrement, là où l'embout
+                                 du crochet dépassait encore
+         recouvrement complet    une seule hauteur, à toutes les tailles
+       `tools/jonctionRacine.mjs` tient le compte et refuse la moindre marche.
+
+       EN EM, ET NON EN UNITÉS DE VUE : la vue de la barre est étirée sur toute
+       la largeur du radicande, où trois unités valaient trente-quatre pixels —
+       la barre recouvrait alors le V entier. */
+    left: calc(-.1044em - var(--fx-trait) / 2); top: 0;
     /* LA LARGEUR EST IMPOSÉE, ET IL LE FAUT. Un `<svg>` porteur d'un viewBox a
        un RAPPORT D'ASPECT intrinsèque — ici 10 sur 10, donc carré — et ce
        rapport l'emporte dès qu'une des deux dimensions est déduite des bords.
@@ -1151,13 +1196,10 @@ body.mobile-view #toast-container {
        2,39 px de large au lieu des 44 px du radicande : un point, pas un
        trait. En posant explicitement les deux dimensions, le rapport d'aspect
        ne s'applique plus.
-       UNE VRAIE BOÎTE, aussi : le tracé est AU MILIEU de la vue (y = 5 sur
-       10), et un trait est centré sur sa trajectoire — il occupe donc
-       exactement [0, e] dans la boîte, là où le crochet l'attend. Premier
-       essai avec une boîte de hauteur nulle : le facteur d'échelle vertical
-       devenait nul et le trait se peignait par morceaux, avec des trous
-       mesurés à 0,00 px. */
-    width: 100%;
+       UNE VRAIE BOÎTE, aussi : premier essai avec une boîte de hauteur
+       nulle, le facteur d'échelle vertical devenait nul et le trait se
+       peignait par morceaux, avec des trous mesurés à 0,00 px. */
+    width: calc(100% + .1044em + var(--fx-trait) / 2);
     /* UNE BOÎTE CONFORTABLE, ET LE TRAIT DESSINÉ DEDANS EN PROPORTION.
        Une boîte haute de --fx-trait exactement, soit 1,2 px à 16 px de corps,
        est trop fine pour échapper à l'arrondi : mesurée, elle se calait sur
@@ -1172,21 +1214,52 @@ body.mobile-view #toast-container {
     /* Le dessin se superpose au radicande : il ne doit pas intercepter la
        souris ni gêner la sélection du texte. */
     pointer-events: none;
-    /* UN RECTANGLE REMPLI, ET NON UN TRAIT TRACÉ. Un trait déclaré
-       `non-scaling-stroke` ne survit pas à un étirement ANISOTROPE : la barre
-       s'étire beaucoup en largeur et pas du tout en hauteur, et le trait
-       tombait alors à 0,67 px au lieu de 2,40. Un rectangle rempli, lui, suit
-       la boîte exactement.
-       MESURÉ, quatre façons de peindre le même .075em à 32 px de corps
-       (2,40 px demandés), encre relevée à 8× :
-         bordure CSS   2,000 px   (−16,7 %)
-         bloc CSS      2,000 px   (−16,7 %)
-         rectangle SVG 2,391 px   ( −0,4 %)
-         tracé SVG     2,406 px   ( +0,3 %)
-       Les deux formes CSS sont calées sur le pixel entier ; les deux formes
-       SVG tiennent la valeur. Le crochet étant un tracé, la barre doit être
-       un rectangle : c'est le seul couple qui s'accorde. */
-    fill: currentColor;
+    /* LE DÉBORDEMENT EST VOULU : la barre commence AVANT sa boîte (x1 = −3
+       dans la vue) pour recouvrir le bout du crochet. Sans cela, le navigateur
+       la couperait net à son bord gauche — `svg:root` est coupé par défaut —
+       et l'encoche que ce recouvrement existe pour fermer reviendrait. */
+    overflow: visible;
+}
+
+/* LA BARRE EST UN TRACÉ, EXACTEMENT COMME LE CROCHET, ET C'EST LE SUJET.
+
+   RÉMY, sur une fiche de parcours : « il y a un léger décalage entre la ligne
+   horizontale et la fin du V ».
+
+   MESURÉ SUR L'ENCRE, à 32 px de corps, sur un écran à deux pixels par point :
+   le sommet du crochet commençait à la ligne 12, la barre à la 11, et la
+   colonne de la jonction retombait à 13 — une encoche. Un demi-pixel CSS, soit
+   42 % de l'épaisseur du trait. La géométrie, elle, était juste : les deux
+   bords tombaient à 0,012 px l'un de l'autre. Ce n'était donc pas un problème
+   de PLACEMENT mais de PEINTURE — un rectangle REMPLI et un tracé TRACÉ ne
+   sont pas anticrénelés de la même façon au même bord.
+
+   C'est la leçon déjà payée sur le PDF, où le radical est devenu UN SEUL
+   chemin pour cette raison exacte : deux mécanismes qui se rejoignent laissent
+   toujours une couture.
+
+   L'ANCIEN COMMENTAIRE DISAIT LE CONTRAIRE, et il avait tort : « un trait
+   déclaré non-scaling-stroke ne survit pas à un étirement ANISOTROPE, il
+   tombait à 0,67 px au lieu de 2,40 ». C'est le piège documenté quelques
+   règles plus haut, à l'envers : `vector-effect` NE S'HÉRITE PAS. Posé sur le
+   <svg>, il ne touche pas la forme et le viewBox écrase le trait. Posé sur la
+   FORME, il tient — remesuré, 2,40 px demandés, 2,40 px peints.
+
+   Le relevé des quatre façons de peindre le même .075em à 32 px de corps
+   reste vrai, et c'est lui qui écarte les deux formes CSS :
+     bordure CSS   2,000 px   (−16,7 %)
+     bloc CSS      2,000 px   (−16,7 %)
+     rectangle SVG 2,391 px   ( −0,4 %)
+     tracé SVG     2,406 px   ( +0,3 %) */
+.fx-barre line {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: var(--fx-trait);
+    vector-effect: non-scaling-stroke;
+    /* PAS D'EMBOUT ARRONDI ICI. Le bout GAUCHE passe sous le crochet, et le
+       bout DROIT est le filet qui dépasse du dernier chiffre : un arrondi y
+       ajouterait une demi-épaisseur de longueur que personne n'a demandée. */
+    stroke-linecap: butt;
 }
 
 /* ── LA PARENTHÈSE QUI GRANDIT ──────────────────────────────────────────── */

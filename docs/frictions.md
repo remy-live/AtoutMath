@@ -3269,3 +3269,49 @@ lignes** — 2026-10-01
   qu'on a écrit de mémoire.
 - **Ce qui manque** : rien. `epreuveTombe` fait exactement son travail ; la
   note est là pour que la règle se retienne.
+
+## La même couture, revue une troisième fois — 2026-10-08
+
+- **Ce que je voulais faire** : poser une barre de radical qui prolonge le
+  crochet. Rémy, sur la fiche : « il y a un léger décalage entre la ligne
+  horizontale et la fin du V ».
+- **Ce qui coûte** : une demi-journée, et c'est la TROISIÈME fois qu'il voit
+  cette couture — « les racines carrées sont très moches », puis « il faut
+  bien que la racine carrée soit continue », puis celle-ci. À chaque fois le
+  défaut était ailleurs, et à chaque fois pour la même raison de fond : **le
+  radical est fait de deux objets qui se rejoignent, et deux objets qui se
+  rejoignent laissent une couture quelque part.** D'abord l'épaisseur (bordure
+  CSS contre tracé SVG), puis la hauteur (glyphe contre soulignement), puis la
+  rastérisation (rectangle rempli contre tracé tracé). Les trois corrections
+  sont justes ; aucune ne s'attaquait à la cause.
+- **Combien de fois** : ||| — et chaque fois j'ai mesuré la GÉOMÉTRIE, qui
+  était juste à 0,012 px près, avant de comprendre qu'il fallait mesurer
+  l'ENCRE. `getBoundingClientRect` ne pouvait rien dire : la BOÎTE d'un SVG
+  n'est pas son TRAIT, et c'est justement l'écart cherché.
+- **Ce qui manque** : deux choses, maintenant là.
+  `tools/jonctionRacine.mjs` lit le haut de l'encre colonne par colonne, à onze
+  corps et quatre radicandes — **un défaut d'arrondi ne se voit pas à la taille
+  où l'on mesure, il se voit à celle où l'on regarde** : à 13 px la jonction
+  était nette, à 32 px elle avait une marche et une encoche.
+  Et `decoderPng` sort de `sonde.mjs` avec `hautDeLEncre` / `basDeLEncre` : le
+  décodeur existait, enfermé dans un compteur de couleurs qui dit QUELLES
+  couleurs sont là et jamais OÙ. Trois questions de Rémy sur un alignement de
+  deux traits, trois fois la même mesure à réécrire.
+
+## Un commentaire qui dit le contraire de ce qui est vrai — 2026-10-08
+
+- **Ce que je voulais faire** : faire de la barre du radical un tracé plutôt
+  qu'un rectangle.
+- **Ce qui coûte** : j'ai failli ne pas essayer. Le commentaire CSS l'interdisait
+  en citant une mesure : « un trait déclaré non-scaling-stroke ne survit pas à
+  un étirement ANISOTROPE, il tombait à 0,67 px au lieu de 2,40 ». Or c'était le
+  piège documenté quelques règles PLUS HAUT dans le même fichier, à l'envers :
+  `vector-effect` ne s'hérite pas, et posé sur le `<svg>` il ne touche pas la
+  forme. Remesuré avec la règle sur la forme : 2,40 px demandés, 2,40 peints.
+- **Combien de fois** : | — mais c'est le risque propre à un dépôt qui explique
+  tout : **un commentaire qui cite une mesure fait autorité**, et plus personne
+  ne la refait. Celui-ci a tenu des mois.
+- **Ce qui manque** : rien d'outillable. La règle est de conduite : quand un
+  commentaire interdit une voie en citant un chiffre, on refait la mesure avant
+  de renoncer — surtout si le même fichier documente ailleurs un piège qui
+  expliquerait ce chiffre.

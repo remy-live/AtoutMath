@@ -368,7 +368,48 @@ function radicalHtml(dedans, haut = false) {
         + `<span class="fx-sous${haut ? ' fx-sous--haut' : ''}">`
         + `<svg class="fx-barre" viewBox="0 0 10 100" `
         + 'preserveAspectRatio="none" aria-hidden="true" focusable="false">'
-        + `<rect x="0" y="0" width="10" height="15"/></svg>${dedans}</span></span>`;
+        // UN TRAIT, COMME LE CROCHET — ET NON PLUS UN RECTANGLE.
+        //
+        // RÉMY, sur une fiche de parcours : « il y a un léger décalage entre
+        // la ligne horizontale et la fin du V ».
+        //
+        // MESURÉ SUR L'ENCRE, à 32 px de corps et sur un écran à deux pixels
+        // par point : le sommet du crochet commençait à la ligne 12, la barre
+        // à la 11, et la colonne de la jonction retombait à 13 — une encoche.
+        // Un demi-pixel CSS d'écart, soit 42 % de l'épaisseur du trait : assez
+        // pour que l'œil voie une marche, trop peu pour qu'un calcul la
+        // soupçonne. La géométrie, elle, était juste à 0,012 px près.
+        //
+        // La cause n'était donc pas le placement mais la PEINTURE : un
+        // rectangle REMPLI et un tracé TRACÉ ne sont pas anticrénelés de la
+        // même façon au même bord. Deux mécanismes qui se rejoignent laissent
+        // toujours une couture ; c'est la leçon déjà payée sur le PDF, où le
+        // radical est devenu UN SEUL chemin pour cette raison exacte.
+        //
+        // Le commentaire CSS disait qu'un trait avait été essayé et tombait à
+        // 0,67 px au lieu de 2,40 sous l'étirement anisotrope. C'était le piège
+        // documenté deux règles plus haut, à l'envers : `vector-effect` NE
+        // S'HÉRITE PAS. Posé sur la FORME, il tient — remesuré : 2,40 px
+        // demandés, 2,40 px peints.
+        //
+        // `y = 7.5` dans une vue de 100 pour une boîte de .5em : le trait est
+        // alors centré sur .0375em, et occupe [0 ; .075em] — c'est-à-dire
+        // exactement là où le crochet l'attend, et le rapport est CONSTANT,
+        // les deux valeurs étant en em.
+        //
+        // LE RECOUVREMENT DU CROCHET NE SE FAIT PAS ICI, MAIS EN CSS.
+        //
+        // Premier essai, `x1 = -3` : la vue de la barre est ÉTIRÉE sur toute
+        // la largeur du radicande, donc trois unités de vue valaient trente-
+        // quatre pixels — la barre recouvrait le V entier et débordait à
+        // gauche du radical. Mesuré : les soixante-dix colonnes de l'image
+        // encrées à la même hauteur, y compris celles d'avant le crochet.
+        //
+        // Un recouvrement doit être une LONGUEUR, pas une fraction : il vaut
+        // une épaisseur de trait, et il est posé par `left` et `width` dans
+        // `components.css`, en em.
+        + '<line x1="0" y1="7.5" x2="10" y2="7.5"/>'
+        + `</svg>${dedans}</span></span>`;
 }
 
 /**
