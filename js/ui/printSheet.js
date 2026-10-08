@@ -587,7 +587,13 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
     // de l'exercice de repérage ; une planche composée à la main n'est pas cet
     // exercice-là, et coiffer la feuille du professeur d'une consigne qu'il
     // n'a pas écrite serait la lui prendre.
-    const titreFiche = (atelier && atelier.titre) || rendu.titre;
+    //
+    // ET IL PEUT DÉPENDRE DES ITEMS, comme la consigne et les proportions.
+    // Un même rendu sert parfois deux chapitres : celui des priorités imprime
+    // aussi « Le moins devant la parenthèse », et coiffer cette feuille-là du
+    // titre de l'autre, c'est demander à l'élève de chercher ce qu'il révise.
+    const titreDe = (its) => (atelier && atelier.titre)
+        || (typeof rendu.titre === 'function' ? rendu.titre(its || []) : rendu.titre);
     let items = [];
     let solutionsVisibles = false;
 
@@ -734,7 +740,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
         const pageHtml = (feuille, iFeuille) => {
         let html = `
             <div class="fp-entete fp-entete--partage" style="left:${en}px; right:${en}px; top:${(PAGE.marge + 1) * k}px;">
-                <b>${titreFiche}${solutionsVisibles ? ' — ' + (rendu.nomSolutions || 'Solutions') : ''}${
+                <b>${titreDe(items)}${solutionsVisibles ? ' — ' + (rendu.nomSolutions || 'Solutions') : ''}${
     feuilles.length > 1 ? ` (${iFeuille + 1}/${feuilles.length})` : ''}</b>
                 <span>Nom : ............  Date : ......</span>
             </div>
@@ -923,7 +929,7 @@ export function ouvrirFicheModal(exo, params, atelier = null, opts = {}) {
                 // Un plateau de jeu vide n'a pas
                 // de correction — la page de solutions serait le même plateau,
                 // toujours vide, et une feuille de plus à photocopier.
-                const doc = construirePdf(jsPDF, rendu, items, cols, rows, titreFiche,
+                const doc = construirePdf(jsPDF, rendu, items, cols, rows, titreDe(items),
                     !!atelier || !!rendu.sansSolution, rendu.plusieursPages ? parPage : 0);
                 doc.save(`${(atelier && atelier.nom) || exo.printable}-${items.length}.pdf`);
             })

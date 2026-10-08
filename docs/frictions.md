@@ -3362,3 +3362,22 @@ lignes** — 2026-10-01
   la règle à retenir est qu'il faut le lui donner à faire **sur chaque épreuve,
   une par une** — pas sur le fichier entier, où une épreuve qui tombe en cache
   deux qui ne tombent pas.
+
+## Du code qu'aucune épreuve ne peut atteindre — 2026-10-08
+
+- **Ce que je voulais faire** : garder le plafond de barreaux de la fiche du
+  « moins devant la parenthèse ». J'avais écrit `Math.min(2, …)` par prudence.
+- **Ce qui coûte** : trois passes de `epreuveTombe` pour comprendre que ce
+  plafond **ne sert jamais**. `marchesCochees` ne rend que des barreaux DE LA
+  TABLE, donc deux pour cette échelle : le `Math.min` ne peut mordre que si la
+  table est fausse ET le plafond retiré — deux défauts à la fois, qu'aucune
+  épreuve d'une seule ligne ne produit. J'ai d'abord écrit une épreuve pour
+  lui ; elle est restée verte sur trois défauts différents.
+- **Combien de fois** : | — mais la leçon est générale et je ne l'avais pas
+  formulée : **du code qu'aucune épreuve ne peut atteindre finit par être cru
+  sur parole**. Une garde qui ne peut pas tomber et une ligne qui ne peut pas
+  servir sont le même problème vu des deux bouts.
+- **Ce qui manque** : rien d'outillable. La règle : quand `epreuveTombe` refuse
+  de faire tomber une épreuve neuve, se demander d'abord si c'est l'ÉPREUVE qui
+  est faible — ou si c'est le CODE qui est mort. Ici c'était le code, et la
+  bonne correction était de le retirer.

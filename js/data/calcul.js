@@ -332,6 +332,15 @@ export const calculExercises = [
             + 'Attention au moins devant la parenthèse.',
         colonnesPapier: 4,
         activityId: 'priorites',
+        // ET IL S'IMPRIME — relevé par Rémy dans sa revue du catalogue.
+        //
+        // L'exercice portait DÉJÀ sa consigne papier et ses quatre colonnes :
+        // il lui manquait seulement un générateur, parce qu'il n'existe qu'à
+        // l'écran. Le moteur savait pourtant tout faire — `tirerExpression`
+        // prend `avecOppose`, `etapesMax` aussi. Il n'y avait rien à écrire,
+        // seulement à brancher, et `printParams` est fait pour ça.
+        printable: 'priorites', printGeneratorId: 'calc.priorites-fiche',
+        printParams: { oppose: true, relatifs: true },
         skills: ['num.prio.relatifs'],
         // `niveauOppose` DIT AU MOTEUR OÙ EN EST L'ÉCHELLE COMPLÈTE. Cet
         // exercice ne porte plus que ses deux derniers barreaux ; ses formes

@@ -2915,15 +2915,30 @@ export const RENDUS_NOMBRES = {
         grilleMax: 60
     },
     priorites: {
-        titre: 'Priorités opératoires — ligne par ligne',
+        // UN MÊME RENDU, DEUX CHAPITRES. « Le Moins devant la Parenthèse »
+        // sort par ici aussi : ses expressions sont des cascades, et la feuille
+        // est la même — l'énoncé, puis les lignes où l'élève écrit. Mais ce
+        // n'est pas le même travail, et coiffer sa feuille du titre de l'autre,
+        // c'est demander à l'élève de chercher ce qu'il révise.
+        //
+        // Relevé par Rémy : l'exercice portait déjà sa `consignePapier`, mais
+        // seule la fiche de QUESTIONS la lit — la fiche de GRILLES prend celle
+        // du rendu. On reconnaît donc le chapitre AUX ITEMS.
+        titre: (items) => ((items || []).some(it => it && it.meta && it.meta.oppose)
+            ? 'Le moins devant la parenthèse'
+            : 'Priorités opératoires — ligne par ligne'),
         // COURTE. Rémy : « pour l'énoncé, mets juste Calcule en respectant les
         // priorités, écris les calculs ». Six lignes de méthode en tête de
         // feuille ne se lisent pas — la méthode s'enseigne au tableau, la
         // consigne rappelle ce qu'on attend. Et la dernière phrase était
         // devenue fausse : les lignes sont maintenant les mêmes pour tous les
         // calculs, elles ne comptent plus les étapes de celui-là.
-        consigne: () => 'Calcule en respectant les priorités, et écris les calculs : '
-            + 'une opération par ligne, en recopiant tout le reste.',
+        consigne: (items) => 'Calcule en respectant les priorités, et écris les calculs : '
+            + 'une opération par ligne, en recopiant tout le reste.'
+            // La phrase de Rémy, mot pour mot : c'est ce qu'il avait écrit dans
+            // le `consignePapier` de cet exercice-là.
+            + ((items || []).some(it => it && it.meta && it.meta.oppose)
+                ? ' Attention au moins devant la parenthèse.' : ''),
         previewGrille: prioritesPreviewHtml,
         pdfGrille: dessinerPrioritesPdf,
         // CE RENDU SAIT SE FAIRE RÉCRIRE — et surtout, se faire RECORRIGER.
