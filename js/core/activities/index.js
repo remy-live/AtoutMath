@@ -43,6 +43,7 @@ import { relatifsProduitGenerator } from '../generators/relatifsProduit.js';
 import { litteralReduireGenerator } from '../generators/litteral.js';
 import { litteralPuissancesGenerator } from '../generators/litteralPuissances.js';
 import { balanceFicheGenerator } from '../generators/balanceFiche.js';
+import { serpentsFicheGenerator } from '../generators/serpentsFiche.js';
 import { arrondiGenerator } from '../generators/arrondi.js';
 import { redactionGenerator } from '../generators/redaction.js';
 import { CONSIGNES } from '../geoConstruction.js';
@@ -153,7 +154,9 @@ import {
     relatifsAdditionGenerator, relatifsProduitGenerator, litteralReduireGenerator,
     litteralPuissancesGenerator,
     // La balance n'a pas de générateur — elle a une activité. Sa fiche en a un.
-    balanceFicheGenerator,
+    // Les Serpents sont dans le même cas, et pour la même raison : le jeu se
+    // joue en coloriant, la fiche se fait au crayon.
+    balanceFicheGenerator, serpentsFicheGenerator,
     arrondiGenerator,
     redactionGenerator, logigrammeGenerator, dominosGenerator,
     pythagoreGenerator, vitesseGenerator, vocabulaireGenerator, notationGenerator,

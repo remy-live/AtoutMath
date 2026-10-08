@@ -2458,6 +2458,13 @@ export const calculExercises = [
     {
         id: 'logi-serpents', title: 'Les Serpents', cree: '2026-09-26',
         activityId: 'serpents',
+        // ET SUR LE PAPIER. Relevé par Rémy dans sa revue du catalogue : le jeu
+        // n'existait qu'à l'écran, alors qu'on le fait au crayon bien plus
+        // volontiers qu'à la souris. Le jeu n'a pas de générateur — il a une
+        // activité —, donc sa fiche en a un à elle, comme la balance.
+        // Le corrigé y trace le CONTOUR de chaque serpent : à l'écran on les
+        // distingue par la couleur, et une feuille passe à la photocopieuse.
+        printable: 'serpents', printGeneratorId: 'logique.serpents-fiche',
         skills: ['num.logique.serpents'],
         params: { palier: 'facile', etiquettes: 'nombres' },
         paramSchema: [

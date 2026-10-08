@@ -1616,6 +1616,101 @@ function dessinerLabyNombresPdf(doc, item, slot, solution) {
     doc.setFont('helvetica', 'normal');
 }
 
+// ── LES SERPENTS ────────────────────────────────────────────────────────────
+//
+// RÉMY, dans sa revue : les Serpents n'avaient pas de version imprimée. C'est
+// pourtant un jeu qu'on fait au crayon bien plus volontiers qu'à la souris —
+// on gomme, on recommence, et la grille supporte les repentirs.
+//
+// À L'ÉCRAN, L'ÉLÈVE COLORIE : chaque serpent prend une teinte, et c'est ainsi
+// qu'on les distingue. Sur une feuille photocopiée, les teintes deviennent des
+// gris qui se ressemblent — et l'élève n'a de toute façon pas sept crayons.
+//
+// Le corrigé trace donc le CONTOUR de chaque serpent, un trait épais le long
+// de ses bords extérieurs. On le suit du doigt comme on suit un ruisseau de
+// Strimko, et cela se lit en noir et blanc. Les segments du contour sont
+// calculés par `contourDuSerpent` dans le générateur : c'est de la géométrie
+// pure, elle se tient sous Node, et une épreuve la garde.
+
+function geoSerpents(item, slot) {
+    const b = boiteDe(slot);
+    const m = item.meta;
+    const cote = Math.min(b.w / m.colonnes, b.h / m.lignes);
+    const x0 = b.x + (b.w - cote * m.colonnes) / 2;
+    const y0 = b.y + (b.h - cote * m.lignes) / 2;
+    return {
+        b, m, cote, x0, y0,
+        // D'UN SOMMET DE LA GRILLE au papier : les contours sont donnés en
+        // coins de case, pas en centres.
+        P: (x, y) => ({ x: x0 + x * cote, y: y0 + y * cote }),
+        centre: (i) => ({
+            x: x0 + ((i % m.colonnes) + 0.5) * cote,
+            y: y0 + (Math.floor(i / m.colonnes) + 0.5) * cote
+        }),
+        taille: Math.max(2, Math.min(cote * 0.42, 5))
+    };
+}
+
+function serpentsPreviewHtml(item, slot, k, solution) {
+    const g = geoSerpents(item, slot);
+    const T = (v) => (v * k).toFixed(2);
+    let d = '';
+    for (let r = 0; r < g.m.lignes; r++) for (let c = 0; c < g.m.colonnes; c++) {
+        d += `<rect x="${T(g.x0 + c * g.cote)}" y="${T(g.y0 + r * g.cote)}"
+            width="${T(g.cote)}" height="${T(g.cote)}" fill="none"
+            stroke="rgb(${ENCRE.grille.join(',')})" stroke-width="${T(0.25)}"/>`;
+    }
+    if (solution) {
+        g.m.serpents.forEach(s => s.contour.forEach(seg => {
+            const a = g.P(seg.x1, seg.y1), z = g.P(seg.x2, seg.y2);
+            d += `<line x1="${T(a.x)}" y1="${T(a.y)}" x2="${T(z.x)}" y2="${T(z.y)}"
+                stroke="rgb(${ENCRE.trait.join(',')})" stroke-width="${T(0.7)}"
+                stroke-linecap="square"/>`;
+        }));
+    }
+    // LES ÉTIQUETTES PAR-DESSUS LE CONTOUR : une tête tombe sur un coin, et le
+    // trait épais passerait sur le chiffre.
+    g.m.serpents.forEach(s => {
+        const p = g.centre(s.tete);
+        d += `<circle cx="${T(p.x)}" cy="${T(p.y)}" r="${T(g.cote * 0.33)}"
+            fill="#ffffff" stroke="rgb(${ENCRE.trait.join(',')})" stroke-width="${T(0.3)}"/>`;
+        d += `<text x="${T(p.x)}" y="${T(p.y)}" fill="rgb(${ENCRE.trait.join(',')})"
+            font-weight="700" font-size="${T(g.taille)}" text-anchor="middle"
+            dominant-baseline="central"
+            font-family="Helvetica, Arial, sans-serif">${echapperSheet(s.etiquette)}</text>`;
+    });
+    return `<svg style="position:absolute; left:0; top:0; width:100%; height:100%;
+        overflow:visible; pointer-events:none">${d}</svg>`;
+}
+
+function dessinerSerpentsPdf(doc, item, slot, solution) {
+    const g = geoSerpents(item, slot);
+    doc.setDrawColor(...ENCRE.grille);
+    doc.setLineWidth(0.25);
+    for (let r = 0; r < g.m.lignes; r++) for (let c = 0; c < g.m.colonnes; c++) {
+        doc.rect(g.x0 + c * g.cote, g.y0 + r * g.cote, g.cote, g.cote);
+    }
+    if (solution) {
+        doc.setDrawColor(...ENCRE.trait);
+        doc.setLineWidth(0.7);
+        g.m.serpents.forEach(s => s.contour.forEach(seg => {
+            const a = g.P(seg.x1, seg.y1), z = g.P(seg.x2, seg.y2);
+            doc.line(a.x, a.y, z.x, z.y);
+        }));
+    }
+    doc.setLineWidth(0.3);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(g.taille * 2.83);
+    g.m.serpents.forEach(s => {
+        const p = g.centre(s.tete);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...ENCRE.trait);
+        doc.circle(p.x, p.y, g.cote * 0.33, 'FD');
+        doc.setTextColor(...ENCRE.trait);
+        doc.text(String(s.etiquette), p.x, p.y + g.taille * 0.35, { align: 'center' });
+    });
+}
+
 export const RENDUS_CASSETETE = {
     chemin: {
         titre: 'Le chemin numéroté',
@@ -1817,5 +1912,28 @@ export const RENDUS_CASSETETE = {
         disposition: { cols: 2, rows: 1, maxCols: 3, maxRows: 2 },
         parLigneDefaut: 1,
         grilleMax: 130
+    },
+    serpents: {
+        titre: 'Les Serpents',
+        consigne: (items) => {
+            const calculs = items[0] && items[0].meta.etiquettes === 'calculs';
+            return 'Chaque case appartient à un serpent et un seul. '
+                + (calculs
+                    ? 'Le CALCUL écrit dans un rond donne la longueur de son serpent, en cases'
+                    : 'Le NOMBRE écrit dans un rond dit la longueur de son serpent, en cases')
+                + ' — ce rond en est un bout. Un serpent va tout droit ou tourne à angle '
+                + 'droit, ne se recoupe jamais, et ne remplit jamais un carré de quatre '
+                + 'cases. Entoure chaque serpent au crayon.';
+        },
+        previewGrille: serpentsPreviewHtml,
+        pdfGrille: dessinerSerpentsPdf,
+        nomBloc: 'Grille', nomBlocs: 'grilles',
+        proportions: { w: 1, h: 1 },
+        // DEUX PAR PAGE. Une grille de serpents se fait au crayon et se gomme :
+        // il y faut la place du poignet, et des cases où un trait raté reste
+        // effaçable. À quatre par page, une case du palier « difficile » — sept
+        // sur sept — tombe à huit millimètres.
+        disposition: { cols: 2, rows: 1, maxCols: 2, maxRows: 2 },
+        parLigneDefaut: 2
     },
 };

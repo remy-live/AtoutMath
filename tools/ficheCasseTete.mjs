@@ -28,7 +28,8 @@ import { setTimeout as dormir } from 'node:timers/promises';
 
 const EXOS = [
     ['logi-strimko', 'le Strimko'],
-    ['logi-approxdoku', 'l\'Approxdoku']
+    ['logi-approxdoku', 'l\'Approxdoku'],
+    ['logi-serpents', 'les Serpents']
 ];
 
 // Assez haute pour la feuille entière : `photo` découpe sur la FENÊTRE, et une
@@ -75,20 +76,32 @@ for (const [id, quoi] of EXOS) {
             blocs: ap.querySelectorAll('.fp-bloc').length,
             ronds: ap.querySelectorAll('svg circle').length,
             bandes: ap.querySelectorAll('svg line').length,
+            // Les `<rect>` sont les CASES d'une grille de serpents et les
+            // CAPSULES d'un Approxdoku : le même nom compterait deux choses.
+            cases: ap.querySelectorAll('svg rect').length,
             capsules: ap.querySelectorAll('svg rect').length,
             chiffres: [...ap.querySelectorAll('svg text')].map(t => t.textContent.trim())
         };
     });
     dire(vu.blocs >= 2, 'plusieurs grilles sur la page', `${vu.blocs} grille(s)`);
-    dire(vu.ronds >= vu.blocs * 16, 'LA GRILLE DE RONDS EST DESSINÉE',
-        `${vu.ronds} rond(s) pour ${vu.blocs} grille(s)`);
+    if (id === 'logi-serpents') {
+        // UNE GRILLE DE CASES, pas de ronds : une case par position, plus un
+        // rond par tête de serpent pour porter son étiquette.
+        dire(vu.cases >= vu.blocs * 16, 'LA GRILLE DE CASES EST DESSINÉE',
+            `${vu.cases} case(s) pour ${vu.blocs} grille(s)`);
+        dire(vu.ronds >= vu.blocs * 3, 'et chaque serpent porte son étiquette',
+            `${vu.ronds} étiquette(s)`);
+    } else {
+        dire(vu.ronds >= vu.blocs * 16, 'LA GRILLE DE RONDS EST DESSINÉE',
+            `${vu.ronds} rond(s) pour ${vu.blocs} grille(s)`);
+    }
     if (id === 'logi-strimko') {
         // Les bandes PORTENT la règle du ruisseau. Sans elles, il ne reste
         // qu'un carré latin — c'est-à-dire un autre exercice, plus facile,
         // et souvent sans solution unique.
         dire(vu.bandes >= vu.blocs * 9, 'et les ruisseaux sont des BANDES, pas des couleurs',
             `${vu.bandes} segment(s) de bande`);
-    } else {
+    } else if (id === 'logi-approxdoku') {
         // Sans capsule, une chaîne n'est qu'une rangée de ronds.
         dire(vu.capsules >= vu.blocs * 2, 'et chaque chaîne porte sa capsule',
             `${vu.capsules} capsule(s)`);
@@ -100,6 +113,17 @@ for (const [id, quoi] of EXOS) {
     const photo = await s.photo('#fp-apercu', `tools/tmp/ct-${id}.png`);
     dire(!!photo && photo.entiere, 'la photo porte la feuille ENTIÈRE');
 
+    // ET LA FEUILLE DE SOLUTIONS, qui est l'autre moitié de ce qu'on imprime.
+    // Le bouton est `#fp-voir-sol` — LU dans `printSheet.js`.
+    await s.doitExister('#fp-voir-sol');
+    await s.page.click('#fp-voir-sol');
+    await dormir(2000);
+    await deplier();
+    const photoSol = await s.photo('#fp-apercu', `tools/tmp/ct-${id}-corrige.png`);
+    dire(!!photoSol && photoSol.entiere, 'et la photo du corrigé aussi');
+    await s.page.click('#fp-voir-sol');
+    await dormir(1200);
+
     // ── LA FEUILLE DE L'ÉLÈVE NE PORTE PAS LA SOLUTION ─────────────────────
     //
     // Les deux feuilles sortent du MÊME rendu, avec un seul booléen de
@@ -109,31 +133,55 @@ for (const [id, quoi] of EXOS) {
         const cat = await import('./js/data/catalog.js');
         const { generateurDeFiche } = await import('./js/core/registry.js');
         const { makeRng } = await import('./js/core/ids.js');
-        const lat = await import('./js/ui/fiches/latins.js');
+        const ps = await import('./js/ui/printSheet.js');
         const e = cat.exercices.find(x => x.id === id);
         const fab = generateurDeFiche(e);
-        const r = lat.RENDUS_LATINS[e.printable];
+        // LA TABLE COMPLÈTE, et non une famille nommée en dur : les trois
+        // grilles mesurées ici ne vivent pas dans le même fichier, et viser
+        // `RENDUS_LATINS` faisait jeter la sonde sur les Serpents.
+        const r = ps.RENDUS[e.printable];
         const q = fab.generate({ ...(e.params || {}) },
             { rng: makeRng(), index: 0, total: 2, papier: true, themesExclus: [] });
         const item = { meta: q.meta || {}, prompt: q.prompt || {} };
         const slot = { x: 10, y: 10, w: 80, h: 80 };
         const nb = (h) => (h.match(/<text[^>]*>[^<]*<\/text>/g) || [])
             .filter(t => /<text[^>]*>\s*\d+\s*<\/text>/.test(t)).length;
+        const traits = (h) => (h.match(/<line/g) || []).length;
+        const eleve = r.previewGrille(item, slot, 1, false);
+        const corrige = r.previewGrille(item, slot, 1, true);
         return {
             n: q.meta.n,
-            donnees: (q.meta.donnees || []).length,
-            eleve: nb(r.previewGrille(item, slot, 1, false)),
-            corrige: nb(r.previewGrille(item, slot, 1, true))
+            // Un Strimko donne quelques chiffres de départ ; un Approxdoku
+            // aucun ; une grille de serpents donne des ÉTIQUETTES, une par
+            // serpent, qui ne sont pas des cases remplies.
+            donnees: q.meta.serpents
+                ? q.meta.serpents.length
+                : (q.meta.donnees || []).length,
+            cases: q.meta.serpents ? q.meta.lignes * q.meta.colonnes : q.meta.n * q.meta.n,
+            eleve: nb(eleve), corrige: nb(corrige),
+            // Le corrigé des serpents ne REMPLIT rien : il TRACE les contours.
+            traitsEleve: traits(eleve), traitsCorrige: traits(corrige),
+            parContour: !!q.meta.serpents
         };
     }, id);
-    // Un Approxdoku ne donne AUCUN chiffre de départ : toute l'information est
-    // dans les capsules. Un Strimko en donne quelques-uns.
-    dire(compte.eleve === compte.donnees,
-        'la feuille de l\'élève ne porte QUE les données',
-        `${compte.eleve} chiffre(s) écrit(s), ${compte.donnees} donnée(s)`);
-    dire(compte.corrige === compte.n * compte.n,
-        'ET LE CORRIGÉ PORTE LA GRILLE ENTIÈRE',
-        `${compte.corrige} chiffre(s) sur ${compte.n * compte.n} cases`);
+    if (compte.parContour) {
+        // LE CORRIGÉ TRACE, IL N'ÉCRIT PAS. Un serpent se corrige en montrant
+        // son contour ; aucun chiffre ne s'ajoute, et une mesure qui compterait
+        // les chiffres déclarerait le corrigé muet.
+        dire(compte.eleve === compte.donnees,
+            'la feuille de l\'élève ne porte QUE les étiquettes',
+            `${compte.eleve} étiquette(s) pour ${compte.donnees} serpent(s)`);
+        dire(compte.traitsCorrige > compte.traitsEleve,
+            'ET LE CORRIGÉ TRACE LE CONTOUR DE CHAQUE SERPENT',
+            `${compte.traitsEleve} trait(s) pour l'élève, ${compte.traitsCorrige} au corrigé`);
+    } else {
+        dire(compte.eleve === compte.donnees,
+            'la feuille de l\'élève ne porte QUE les données',
+            `${compte.eleve} chiffre(s) écrit(s), ${compte.donnees} donnée(s)`);
+        dire(compte.corrige === compte.cases,
+            'ET LE CORRIGÉ PORTE LA GRILLE ENTIÈRE',
+            `${compte.corrige} chiffre(s) sur ${compte.cases} cases`);
+    }
 
     // ── ET LE PDF SORT ─────────────────────────────────────────────────────
     const bouton = await s.page.$('text=Télécharger le PDF');
@@ -144,10 +192,20 @@ for (const [id, quoi] of EXOS) {
         ]);
         const buf = await fs.readFile(await recu.path());
         const brut = buf.toString('latin1');
-        // Un rond est une suite de quatre courbes de Bézier : « c » dans le flux.
+        // Un rond est une suite de quatre courbes de Bézier : « c » dans le
+        // flux. Une case est un « re ». On ne compte donc pas la même chose
+        // selon la grille — une mesure qui cherchait des ronds sur une grille
+        // de serpents en trouvait quinze pour les étiquettes et déclarait la
+        // feuille vide, alors qu'elle portait cinquante cases.
         const courbes = (brut.match(/ c\b/g) || []).length;
-        dire(courbes >= vu.blocs * 16 * 4, 'le PDF porte les ronds de chaque grille',
-            `${courbes} courbe(s) · ${Math.round(buf.length / 1024)} Ko`);
+        const rectangles = (brut.match(/ re\b/g) || []).length;
+        if (id === 'logi-serpents') {
+            dire(rectangles >= vu.blocs * 16, 'le PDF porte les cases de chaque grille',
+                `${rectangles} case(s), ${courbes} courbe(s) · ${Math.round(buf.length / 1024)} Ko`);
+        } else {
+            dire(courbes >= vu.blocs * 16 * 4, 'le PDF porte les ronds de chaque grille',
+                `${courbes} courbe(s) · ${Math.round(buf.length / 1024)} Ko`);
+        }
     }
 }
 
